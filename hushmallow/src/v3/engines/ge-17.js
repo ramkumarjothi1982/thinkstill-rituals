@@ -66,8 +66,11 @@ export function create(E) {
   let heroCk = false;
 
   // ---- geometry
-  let cx, cy, Rt, r0, M, Rd, sr, heroS = 0;
+  let cx, cy, Rt, r0, M, Rd, sr, heroS = 0, wordsUp = false;
   function fit() {
+    // short stages (small phones): the host's speech bubble and plot-twist banner sit over the
+    // lower film, so the words ride the upper film there and the joined bubbles rest below
+    wordsUp = stage.h < 330;
     Rt = Math.min(stage.w * 0.385, stage.h * 0.37);
     cx = stage.cx; cy = stage.cy;
     // the starting film is about half the outline, so even a small phone sees it grow ~1.7×
@@ -100,7 +103,7 @@ export function create(E) {
   const HA = (p) => A0 - clamp(p) * SWEEP;
   // where a joined bubble rests on the film: its own direction, squeezed out of the
   // lower sector where the words float, so pictures and words never sit on each other
-  const restAngle = (a) => Math.PI * 1.5 + angDiff(Math.PI * 1.5, a) * ((Math.PI - WORD_GAP) / Math.PI);
+  const restAngle = (a) => { const o = wordsUp ? Math.PI / 2 : Math.PI * 1.5; return o + angDiff(o, a) * ((Math.PI - WORD_GAP) / Math.PI); };
   const tense = (a) => tenseAmp * (0.7 * Math.sin(2 * a + ph1 + 0.35 * Math.sin(clockT * 0.35)) + 0.45 * Math.sin(3 * a + ph2 - clockT * 0.22))
     + breathAmp * Math.sin(clockT * 1.1 + 4 * a);
   function rimAt(a) {
@@ -326,8 +329,10 @@ export function create(E) {
   // ---------------------------------------------------------- drawing --
   function drawBackdrop(fin) {
     const rb = rBase();
-    shadow(g, cx, cy + Rt * 1.2, Rt * 0.78, Rt * 0.1, 0.22);
-    glow(g, cx, cy + Rt * 1.16, Rt * (0.45 + 0.25 * shown), mix(pal.glow, '#ffd6f2', 0.4 + 0.2 * Math.sin(flowT * 0.5)), 0.14 + 0.1 * shown + 0.1 * fin);
+    // a soft shadow and floor light under the film, kept above the dock
+    const floor = stage.y + stage.h, sy = Math.min(cy + Rt * 1.2, floor - Rt * 0.12), fy = Math.min(cy + Rt * 1.14, floor - Rt * 0.24);
+    shadow(g, cx, sy, Rt * 0.78, Rt * 0.1, 0.22);
+    glow(g, cx, fy, Math.min(Rt * (0.45 + 0.25 * shown), (floor - fy) / 0.6), mix(pal.glow, '#ffd6f2', 0.4 + 0.2 * Math.sin(flowT * 0.5)), 0.14 + 0.1 * shown + 0.1 * fin);
     glow(g, cx, cy, rb * 1.7, pal.glow, 0.11 + 0.04 * Math.sin(clockT * 0.6) + fin * (heavy ? 0.08 : 0.14));
   }
   function drawOutline(fin) {
@@ -392,8 +397,9 @@ export function create(E) {
     g.strokeStyle = 'rgba(255,255,255,0.1)'; g.lineWidth = rb * 0.05;
     g.beginPath(); g.arc(cx, cy + rb * 1.35, rb * 1.3, Math.PI * 1.2, Math.PI * 1.8); g.stroke();
     g.strokeStyle = `rgba(255,255,255,${0.3 + 0.1 * shown})`; g.lineWidth = rb * 0.065;
-    g.beginPath(); g.arc(cx, cy, rb * 0.82, -2.6, -1.95); g.stroke();
-    g.lineWidth = rb * 0.035; g.beginPath(); g.arc(cx, cy, rb * 0.82, -1.82, -1.62); g.stroke();
+    const ho = wordsUp ? -0.42 : 0, hr = rb * (wordsUp ? 0.86 : 0.82);     // window highlight: kept off the words
+    g.beginPath(); g.arc(cx, cy, hr, -2.6 + ho, -1.95 + ho); g.stroke();
+    g.lineWidth = rb * 0.035; g.beginPath(); g.arc(cx, cy, hr, -1.82 + ho, -1.62 + ho); g.stroke();
     g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = rb * 0.04;
     g.beginPath(); g.arc(cx, cy, rb * 0.86, 0.3, 0.95); g.stroke();
     g.restore();
@@ -412,8 +418,8 @@ export function create(E) {
     if (E.phase !== 'law') {
       const size = clamp(rb * 0.12, 13, 19);
       const wx = cx + (reduced ? 0 : Math.sin(clockT * 0.31) * rb * 0.04);
-      // with a photo behind, the words ride the lower film (clear of the faces and the joined bubbles)
-      const wy = cy + (hero >= 0 ? rb * 0.4 : rb * 0.04) + (reduced ? 0 : Math.sin(clockT * 0.5) * 3);
+      // with a photo behind, the words ride the lower film (the upper film on short stages), clear of faces and joined bubbles
+      const wy = cy + (hero >= 0 ? rb * (wordsUp ? -0.38 : 0.4) : rb * 0.04) + (reduced ? 0 : Math.sin(clockT * 0.5) * 3);
       words.draw(g, wx, wy, { style: 'light', size, maxWidth: Math.max(rb * (hero >= 0 ? 1.2 : 1.35), 104), lines: 3, alpha: 0.96, rot: reduced ? 0 : Math.sin(clockT * 0.23) * 0.035,
         glowColour: mix(pal.glow, '#ffc8ef', 0.5 + 0.5 * Math.sin(flowT * 0.3)) });
     }
@@ -434,11 +440,11 @@ export function create(E) {
     g.restore();
     // a sparkle riding the window highlight
     const rb = rBase();
-    glint(g, cx - rb * 0.52, cy - rb * 0.6, 7 + 2 * Math.sin(clockT * 1.3), '#ffffff', 0.45 + 0.15 * Math.sin(clockT * 0.9));
+    glint(g, cx - rb * (wordsUp ? 0.7 : 0.52), cy - rb * (wordsUp ? 0.42 : 0.6), 7 + 2 * Math.sin(clockT * 1.3), '#ffffff', 0.45 + 0.15 * Math.sin(clockT * 0.9));
   }
   function drawBands(fin) {
     if (!np || fin >= 1) return;
-    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineWidth = 1.3;
+    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineWidth = 1.5;
     for (let q = 0; q < np; q++) {
       const sn = clamp(pullS[q] / M);
       if (sn < 0.08) continue;
@@ -450,7 +456,7 @@ export function create(E) {
         for (let o = -9; o < 9; o++) {
           const j0 = (jc + o + N) % N, j1 = (j0 + 1) % N;
           const w0 = Math.exp((ca[j0] * pullC[q] + sa[j0] * pullN[q] - 1) * KAPPA), w1 = Math.exp((ca[j1] * pullC[q] + sa[j1] * pullN[q] - 1) * KAPPA);
-          const al = 0.75 * sn * (1 - b / 5) * (w0 + w1) * 0.5 * (1 - fin);
+          const al = 0.9 * sn * (1 - b / 5) * (w0 + w1) * 0.5 * (1 - fin);
           if (al < 0.02) continue;
           const r0b = rim[j0] - gap * (0.4 + 0.6 * w0), r1b = rim[j1] - gap * (0.4 + 0.6 * w1);
           g.globalAlpha = al;
@@ -592,7 +598,7 @@ export function create(E) {
         if (r > rBase() + tense(a) - 6 && finAt < 0) {
           // slow pulls are followed closely; rushing thins the film and it lags behind
           const fast = invLerp(380, 1100, q.spd / stage.s);
-          wanted = Math.min(1, wanted + (dr * lerp(0.3, 0.1, fast)) / (Rt - r0), prog + CAP);
+          wanted = Math.min(1, wanted + (dr * lerp(0.36, 0.11, fast)) / (Rt - r0), prog + CAP);
           if (E.locked && wanted >= prog + CAP - 1e-3) waitNudge();
           if (fast > 0.6 && !rushHinted && prog < 0.8) { rushHinted = true; E.hint('Slowly — let the film follow your finger.'); }
         }

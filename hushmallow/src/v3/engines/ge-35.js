@@ -5,8 +5,9 @@
 // the way to the soil pad and it touches down softly instead of crashing.
 // Win: the meteor rests in the soil as a gentle glowing seed.
 //
-// Photos: one photo is the meteor's core (a circle) cooling from ember tone
-// back to its own colours, landing as the seed (a drop). The others orbit the
+// Photos: one photo is the meteor's core (a circle in a craggy ember crust that
+// flakes back to a thin stone rim) cooling from ember tone back to its own
+// colours, landing as the seed (a drop). The others orbit the
 // core as warm stones; as the meteor cools each one detaches and floats off to
 // hang as glowing fruit in the orchard trees. Words: the garden tag tied to
 // the soil pad.
@@ -113,9 +114,9 @@ export function create(E) {
 
   function fit() {
     W = stage.w; H = stage.h; X0 = stage.x; Y0 = stage.y; cx = stage.cx;
-    mz = clamp(Math.min(W * 0.22, H * 0.18), 40, 90);
-    cz = clamp(Math.min(W * 0.125, H * 0.1), 22, 50);
-    fz = clamp(Math.min(W * 0.125, H * 0.1), 24, 50);
+    mz = clamp(Math.min(W * 0.22, H * 0.18), 46, 90);
+    cz = clamp(Math.min(W * 0.125, H * 0.1), 24, 50);
+    fz = clamp(Math.min(W * 0.125, H * 0.1), 26, 50);
     orbR = mz * 0.5 + cz * 0.62;
     TOL = Math.max(50, 60 * stage.s);
     maxDev = TOL * 0.75;
@@ -553,11 +554,15 @@ export function create(E) {
   function drawGuide(t) {
     if (landed) return;
     const i0 = Math.ceil(laid * (N - 1)) + 1, wave = laid + ((t * 0.3 * amb) % 1.3) * (1 - laid);
-    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = coolSoft;
-    for (let i = i0; i < N - 1; i += 2) {
-      const s = i / (N - 1), w = Math.max(0, 1 - Math.abs(s - wave) * 9);
-      g.globalAlpha = 0.24 + 0.46 * w;
-      g.beginPath(); g.arc(rx[i] + nx[i] * on[i], ry[i] + ny[i] * on[i], 1.7 + w * 1.6, 0, TAU); g.fill();
+    g.save();
+    // two passes: a soft ink underlay (reads on pale realms), then the additive light
+    for (let pass = 0; pass < 2; pass++) {
+      if (pass) { g.globalCompositeOperation = 'lighter'; g.fillStyle = coolSoft; } else g.fillStyle = ink;
+      for (let i = i0; i < N - 1; i += 2) {
+        const s = i / (N - 1), w = Math.max(0, 1 - Math.abs(s - wave) * 9);
+        g.globalAlpha = pass ? 0.24 + 0.46 * w : 0.16 + 0.12 * w;
+        g.beginPath(); g.arc(rx[i] + nx[i] * on[i], ry[i] + ny[i] * on[i], 1.7 + w * 1.6 + (pass ? 0 : 1.4), 0, TAU); g.fill();
+      }
     }
     g.restore();
   }
@@ -570,15 +575,19 @@ export function create(E) {
     return true;
   }
   function drawTrail(t, fin) {
-    g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.globalCompositeOperation = 'lighter';
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     // travelled: the trail cools into stardust behind the meteor
     if (strokeRange(0, shown)) {
+      g.globalCompositeOperation = 'source-over'; g.strokeStyle = rgba(ink, 0.13); g.lineWidth = 4.5; g.stroke();
+      g.globalCompositeOperation = 'lighter';
       g.strokeStyle = rgba(coolCol, 0.1 + fin * 0.06); g.lineWidth = 6; g.stroke();
       g.setLineDash(DASH_B); g.lineDashOffset = -t * 6;
       g.strokeStyle = rgba(coolSoft, 0.38 + fin * 0.3); g.lineWidth = 1.5; g.stroke(); g.setLineDash(NO_DASH);
     }
     // ahead: the live gravity trail the meteor is about to ride
     if (strokeRange(shown, laid)) {
+      g.globalCompositeOperation = 'source-over'; g.strokeStyle = rgba(ink, 0.2); g.lineWidth = 7; g.stroke();
+      g.globalCompositeOperation = 'lighter';
       for (const [w, a] of AHEAD) { g.strokeStyle = a > 0.8 ? rgba('#ffffff', a) : rgba(coolCol, a); g.lineWidth = w || mz * 0.32; g.stroke(); }
       g.setLineDash(DASH_A); g.lineDashOffset = -t * 36 * amb; g.strokeStyle = rgba('#ffffff', 0.6); g.lineWidth = 3.4; g.stroke(); g.setLineDash(NO_DASH);
     }
@@ -753,9 +762,10 @@ export function create(E) {
     if (drag == null) return;
     const a = fOn ? 1 : 0.45;
     glow(g, fX, fY, 30, coolCol, 0.4 * a);
-    g.save(); g.translate(fX, fY); g.rotate(t * (reduced ? 0.6 : 2)); g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = rgba(coolSoft, 0.55 * a); g.lineWidth = 1.5;
-    g.beginPath(); g.arc(0, 0, 17, 0, 1.4); g.stroke(); g.beginPath(); g.arc(0, 0, 17, Math.PI, Math.PI + 1.4); g.stroke();
+    g.save(); g.translate(fX, fY); g.rotate(t * (reduced ? 0.6 : 2)); g.lineCap = 'round';
+    g.beginPath(); g.arc(0, 0, 17, 0, 1.4); g.moveTo(-17, 0); g.arc(0, 0, 17, Math.PI, Math.PI + 1.4);
+    g.strokeStyle = rgba(ink, 0.2 * a); g.lineWidth = 3.2; g.stroke();
+    g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(coolSoft, 0.6 * a); g.lineWidth = 1.5; g.stroke();
     g.restore();
   }
   // plot twist (even rounds): a tiny wishing star crosses and settles on a tree

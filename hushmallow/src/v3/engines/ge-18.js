@@ -193,8 +193,8 @@ export function create(E) {
     hearthC = canvas(Math.ceil(hearthO.w * dpr), Math.ceil(hearthO.h * dpr));
     const c = hearthC.getContext('2d');
     c.setTransform(dpr, 0, 0, dpr, -hearthO.x * dpr, -hearthO.y * dpr);
-    shadow(c, bx, by + BH * 0.6, BW * 0.68, BH * 0.24, 0.55);
-    shadow(c, dx, dy + Rd * 1.36, Rd * 1.9, Rd * 0.3, 0.45);
+    shadow(c, bx, by + BH * 0.6, BW * 0.58, BH * 0.22, 0.55);
+    shadow(c, dx, dy + Rd * 1.36, Rd * 1.66, Rd * 0.3, 0.45);
     // vent housing below the tray: a neck and a round iron plate
     const PR = Rd * 1.64, py0 = by + BH / 2;
     const pg = c.createLinearGradient(dx - PR, dy - PR, dx + PR * 0.6, dy + PR);
@@ -336,6 +336,10 @@ export function create(E) {
     else if (press) { (docked ? wob : wobG).kick(0.3); hap('tick'); }
     if (press) { if (docked) knobNudgeAt = t; else nudgeAt = t; }
   }
+  function overPhoto(x, y) {
+    for (let k = 0; k < K; k++) if (slotPh[k] >= 0 && Math.hypot(x - bx - slots[k].x, y - by - slots[k].y) < cellR * 1.15) return true;
+    return false;
+  }
   function onGrille(p) { return p.x >= bx - railX - 18 && p.x <= bx + railX + 18 && p.y >= gyV - GH / 2 - 16 && p.y <= gyV + GH / 2 + hh + 20; }
   function onDial(p) { const d = Math.hypot(p.x - dx, p.y - dy); return d > Rd * 0.2 && d < Rd * 1.8; }
   function dock(t) {
@@ -370,7 +374,7 @@ export function create(E) {
 
     // ---- the grille: a weighty spring on its rails, stretched a little by the finger
     strain *= Math.exp(-dt * (drag ? 4 : 10)); strainA *= Math.exp(-dt * (drag ? 4 : 10));
-    const wg = wobG.update(dt), wd = wob.update(dt);
+    const wk = reduced ? 0.4 : 1, wg = wobG.update(dt) * wk, wd = wob.update(dt) * wk;
     const gT = docked ? gy1 + wg * 2 : lerp(gy0, gy1, clamp(prog / S1)) + strain + wg * 3;
     gV += (-(gyV - gT) * 420 - gV * (reduced ? 41 : 30)) * dt; gyV += gV * dt;
     if (docked && gyV > gy1 + 6) { gyV = gy1 + 6; gV = Math.min(0, gV); }
@@ -410,7 +414,9 @@ export function create(E) {
       sparkAcc += dt * agit * (Math.pow(heat, 2.2) * 15) * (1 - 0.55 * sl) * (lowStim ? 0.4 : 1) * (reduced ? 0.4 : 1);
       while (sparkAcc >= 1) {
         sparkAcc -= 1;
-        E.particles.emit({ x: bx + (vr() - 0.5) * BW * 0.9, y: by + (vr() - 0.5) * BH * 0.8, vx: (vr() - 0.5) * 24, vy: -(40 + vr() * 70) * (0.5 + heat * 0.6),
+        const sx = bx + (vr() - 0.5) * BW * 0.9, sy = by + (vr() - 0.5) * BH * 0.8;
+        if (overPhoto(sx, sy)) continue;                 // sparks come from the coals, never from a photo
+        E.particles.emit({ x: sx, y: sy, vx: (vr() - 0.5) * 24, vy: -(40 + vr() * 70) * (0.5 + heat * 0.6),
           life: 0.8 + vr() * 1.0, size: 2.5 + vr() * 2.5, colour: hc(heat + 0.2), drag: 0.97, gravity: -30, kind: vr() < 0.35 ? 'glint' : 'glow' });
       }
     }
