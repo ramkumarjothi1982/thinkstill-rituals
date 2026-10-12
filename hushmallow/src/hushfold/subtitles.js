@@ -95,8 +95,9 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
 
   function showCtl(on) {
     clearTimeout(hideCtlTimer);
+    ctl.classList.toggle('idle', !on);
     if (on) ctl.classList.remove('is-hidden');
-    else hideCtlTimer = setTimeout(() => { if (!paused) ctl.classList.add('is-hidden'); }, 1400);
+    else hideCtlTimer = setTimeout(() => { if (!paused) ctl.classList.add('is-hidden'); }, 1800);
   }
 
   function layout() {

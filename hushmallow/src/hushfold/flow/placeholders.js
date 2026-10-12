@@ -137,39 +137,39 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
       if (calm > 0.05) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * calm; g.drawImage(halo, -r * 2.2, -r * 2.2, r * 4.4, r * 4.4); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
       g.save(); g.scale(sx, sy);
       g.drawImage(body, -r * 1.25, -r * 1.25, r * 2.5, r * 2.5);
-      // simple face
-      const ink = '#1d1438';
-      const eo = clamp(0.45 + 0.55 * (1 - tension) * (1 - sigh));
-      g.fillStyle = ink;
+      // simple face: soft dark eyes with catch-lights, a mouth that tightens with tension
+      const ink = '#24163f';
+      const eo = clamp(0.5 + 0.5 * (1 - tension) * (1 - sigh));
+      const look = o.reduced ? 0 : Math.sin(now * 0.7) * r * 0.025;
       for (let side = -1; side <= 1; side += 2) {
-        const ex = side * r * 0.3, ey = -r * 0.06;
+        const ex = side * r * 0.29 + look, ey = -r * 0.05;
         if (calm > 0.6 || sigh > 0.5) {
-          // closed, content eyes
-          g.strokeStyle = ink; g.lineWidth = r * 0.07; g.lineCap = 'round';
-          g.beginPath(); g.arc(ex, ey - r * 0.02, r * 0.1, Math.PI * 0.15, Math.PI * 0.85); g.stroke();
+          g.strokeStyle = ink; g.lineWidth = r * 0.075; g.lineCap = 'round';
+          g.beginPath(); g.arc(ex, ey - r * 0.03, r * 0.1, Math.PI * 0.18, Math.PI * 0.82); g.stroke();
         } else {
-          g.beginPath(); g.ellipse(ex, ey, r * 0.085, r * 0.13 * eo + r * 0.02, 0, 0, TAU); g.fill();
-          g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc(ex - r * 0.03, ey - r * 0.05 * eo, r * 0.03, 0, TAU); g.fill(); g.fillStyle = ink;
-          // a tense brow line
-          if (tension > 0.55) {
-            g.strokeStyle = ink; g.lineWidth = r * 0.05; g.lineCap = 'round';
-            const tilt = (tension - 0.55) * 0.5 * side;
-            g.beginPath(); g.moveTo(ex - r * 0.11, ey - r * 0.2 - tilt * r); g.lineTo(ex + r * 0.11, ey - r * 0.2 + tilt * r); g.stroke();
+          const ew = r * 0.1, eh = r * (0.07 + 0.075 * eo);
+          g.fillStyle = ink; g.beginPath(); g.ellipse(ex, ey, ew, eh, 0, 0, TAU); g.fill();
+          g.fillStyle = 'rgba(255,255,255,0.92)'; g.beginPath(); g.arc(ex - ew * 0.35, ey - eh * 0.4, r * 0.035, 0, TAU); g.fill();
+          g.fillStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.arc(ex + ew * 0.3, ey + eh * 0.35, r * 0.016, 0, TAU); g.fill();
+          if (tension > 0.62) {
+            // a worried brow, angled towards the middle
+            g.strokeStyle = rgba(ink, clamp((tension - 0.62) * 3)); g.lineWidth = r * 0.05; g.lineCap = 'round';
+            g.beginPath(); g.moveTo(ex - side * r * 0.12, ey - r * 0.25); g.quadraticCurveTo(ex, ey - r * 0.3, ex + side * r * 0.1, ey - r * 0.2); g.stroke();
           }
         }
       }
-      // cheeks
-      g.fillStyle = rgba('#ff6f9a', 0.22 + 0.25 * tension);
-      for (let side = -1; side <= 1; side += 2) { g.beginPath(); g.ellipse(side * r * 0.5, r * 0.16, r * (0.12 + puff), r * 0.08, 0, 0, TAU); g.fill(); }
-      // mouth: a tight wobbly line when tense, a soft smile when calm
+      // cheeks puff when tense
+      g.fillStyle = rgba('#ff6f9a', 0.2 + 0.28 * tension);
+      for (let side = -1; side <= 1; side += 2) { g.beginPath(); g.ellipse(side * r * 0.5, r * 0.16, r * (0.11 + puff), r * 0.075, 0, 0, TAU); g.fill(); }
+      // mouth: a small tight wave when tense, a soft smile when calm
       g.strokeStyle = ink; g.lineWidth = r * 0.055; g.lineCap = 'round';
       g.beginPath();
-      if (calm > 0.5) { g.arc(0, r * 0.12, r * 0.13, Math.PI * 0.2, Math.PI * 0.8); }
+      if (calm > 0.5) g.arc(0, r * 0.1, r * 0.12, Math.PI * 0.22, Math.PI * 0.78);
       else {
-        const wv = tension * r * 0.04;
-        g.moveTo(-r * 0.13, r * 0.22);
-        g.quadraticCurveTo(-r * 0.06, r * 0.22 - wv, 0, r * 0.22);
-        g.quadraticCurveTo(r * 0.06, r * 0.22 + wv, r * 0.13, r * 0.22);
+        const wv = tension * r * 0.045, mw = r * (0.13 - 0.04 * tension);
+        g.moveTo(-mw, r * 0.23);
+        g.quadraticCurveTo(-mw * 0.45, r * 0.23 - wv, 0, r * 0.23);
+        g.quadraticCurveTo(mw * 0.45, r * 0.23 + wv, mw, r * 0.23);
       }
       g.stroke();
       g.restore();

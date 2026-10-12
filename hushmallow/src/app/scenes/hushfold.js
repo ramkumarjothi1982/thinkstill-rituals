@@ -211,8 +211,9 @@ export default function hushfold(app, params = {}) {
     if (S.left) return;
     worldMode = true;
     router.setWorld((r) => flowRef?.pointer?.(r));
-    // the words now live inside the world: the shell's placeholder hands over
-    stage?.thoughts.clear();
+    // the words now live inside the world: the shell's placeholder hands over, and the world melts in over the realm
+    stage?.thoughts.release(900);
+    requestAnimationFrame(() => document.body.classList.remove('hf-world-arriving'));
     // each world has its own Mallow (Glitzi hosts the Static Storm)
     if (d?.mallow && MALLOWS[d.mallow] && d.mallow !== mallowId) {
       homeMallow ||= mallowId;
@@ -236,8 +237,9 @@ export default function hushfold(app, params = {}) {
   }
   function onFinished() {
     if (S.left) return;
-    // the last frame stays a moment, then the Hushfold's own realm is back
-    later(() => { endWorldMode(); say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]); app.applyUpdateIfSafe?.(); }, 900);
+    // the last frame melts away over the Hushfold's own realm
+    document.body.classList.add('hf-world-leaving');
+    later(() => { endWorldMode(); document.body.classList.remove('hf-world-leaving'); say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]); app.applyUpdateIfSafe?.(); }, 1250);
   }
   function onFlowError(d) {
     if (S.left || worldMode) return;
@@ -274,6 +276,7 @@ export default function hushfold(app, params = {}) {
     mallowId = MALLOW_IDS[i];
     app.state.homeMallow = mallowId;
     prefs.set('mallow', mallowId);
+    if (homeMallow) homeMallow = mallowId;   // in a world: their pick is who they come back to
     app.audio.ui('whoosh');
     subtitles.clear();
     theme();
@@ -370,16 +373,23 @@ export default function hushfold(app, params = {}) {
     }
     S.told = true;
     world.react('nod');
-    if (emotion) say(lines.pick(mallowId, 'ack', { emotion, feelingName: S.emotionName }));
-    if (text) {
+    let spoken = Promise.resolve();
+    if (emotion) spoken = say(lines.pick(mallowId, 'ack', { emotion, feelingName: S.emotionName }));
+    if (text && !worldMode) {
       spawnThought(text, emotion);
       world.setStage('curious', { quiet: true });
-      if (!emotion) say(lines.pick(mallowId, 'thought'));
+      if (!emotion) spoken = say(lines.pick(mallowId, 'thought'));
     }
-    if (safety?.level === 'care') say(SHARED_LINES.supportCare);
-    // a beat with the Thought Mallow in the Hushfold before the first world melts in
+    if (safety?.level === 'care') spoken = say(SHARED_LINES.supportCare);
     const go = () => startFlow({ emotion: emotion || S.emotion, intention: intention || S.intention, input, safety });
-    if (text) later(go, prefs.reducedMotion() ? 1200 : 2800); else await go();
+    if (worldMode) { go(); return; }
+    // a beat with the Thought Mallow in the Hushfold (the line read to the end) before the first world melts in
+    if (text) {
+      const minBeat = new Promise((r) => later(r, prefs.reducedMotion() ? 1200 : 2400));
+      const maxBeat = new Promise((r) => later(r, 7000));
+      await Promise.race([Promise.all([spoken, minBeat]), maxBeat]);
+      if (!S.left) go();
+    } else await go();
   }
 
   /** Start Hushflow (paid; enforced here as well as by the routes). Feeling ids map to the registry's. */
@@ -388,19 +398,35 @@ export default function hushfold(app, params = {}) {
     const [{ createWords }, em] = await Promise.all([import('../../v3/words.js'), import('../../data/emotions.js')]);
     if (S.left) return;
     if (input) wordsCur = createWords(input);
+    const fe = flowEmotion(emotion, em.getEmotion(emotion)?.family);
+    if (worldMode && flowRef && !flowRef.stub && !worldId) {
+      // already in a world: the new words join it (no restart), and a changed feeling steers it
+      if (words.full) await handThought(flowRef, fe);
+      if (fe) flowRef.setEmotion?.(fe);
+      if (intention) flowRef.setIntention?.(intention);
+      panel?.update();
+      return;
+    }
     const flow = await getFlow();
     if (S.left) return;
-    const fe = flowEmotion(emotion, em.getEmotion(emotion)?.family);
-    if (!flow.stub && words.full) {
-      try {
-        const [ph, type] = await Promise.all([import('../../hushfold/flow/placeholders.js'), import('../../ui/type.js').catch(() => null)]);
-        flow.setThought?.(ph.createPlaceholderThought({ words, emotion: fe || 'other', font: type?.canvasFontPx, dpr: Math.min(2, devicePixelRatio || 1) }));
-      } catch (e) { console.info('[hushfold] no placeholder thought for the world', e?.message); }
-    }
+    if (!flow.stub && words.full) await handThought(flow, fe);
+    if (!flow.stub) { document.body.classList.add('hf-world-arriving'); if (!subtitles.holding) subtitles.clear(); }
     try {
       await flow.start({ emotion: fe, intention, intensity: input?.intensity ?? 0.6, input: input ? { text: input.text, safety: input.safety } : null, worldId });
     } catch (e) { console.warn('[hushfold] flow.start', e); }
+    if (!worldMode) document.body.classList.remove('hf-world-arriving');   // nothing started: the realm stays
     panel?.update();
+  }
+
+  /** Give the world its Thought Mallow for the current words (W4's 2D stand-in until W2's ThoughtLayer lands). */
+  async function handThought(flow, fe) {
+    try {
+      const [ph, type] = await Promise.all([import('../../hushfold/flow/placeholders.js'), import('../../ui/type.js').catch(() => null)]);
+      // a fresh words object each time, so an earlier thought keeps its own words
+      const own = wordsCur;
+      const w = { get full() { return own?.full || ''; }, get token() { return own?.token || ''; }, get own() { return !!own?.own; }, get feelings() { return own?.feelings || []; }, setToken: (t) => own?.setToken(t), onChange: (fn) => own?.onChange?.(fn) || (() => {}) };
+      flow.setThought?.(ph.createPlaceholderThought({ words: w, emotion: fe || 'other', font: type?.canvasFontPx, dpr: Math.min(2, devicePixelRatio || 1) }));
+    } catch (e) { console.info('[hushfold] no placeholder thought for the world', e?.message); }
   }
 
   /** The words become a Thought Mallow (W2's ThoughtLayer later; the placeholder today). */
@@ -489,15 +515,17 @@ export default function hushfold(app, params = {}) {
   };
 
   // -------------------------------------------------- the opening --
+  // the opening lines only play into an untouched, quiet stage
+  const quiet = () => !S.touches && !S.told && !worldMode && !overlay;
   function opening() {
     const returning = !params.intro && prefs.get('seenIntro');
     prefs.set('seenIntro', true);
     if (returning) {
       showTell(true);
-      later(() => { if (!S.touches) say(lines.pick(mallowId, 'return')); }, 1400);
-      nudgeT = later(() => { if (!S.touches && !subtitles.busy) say(lines.pick(mallowId, 'nudge')); }, 9000);
+      later(() => { if (quiet()) say(lines.pick(mallowId, 'return')); }, 1400);
+      nudgeT = later(() => { if (quiet() && !subtitles.busy) say(lines.pick(mallowId, 'nudge')); }, 9000);
     } else {
-      nudgeT = later(() => { if (!S.touches) say(lines.pick(mallowId, 'nudge')); }, 3200);
+      nudgeT = later(() => { if (quiet()) say(lines.pick(mallowId, 'nudge')); }, 3200);
     }
   }
   async function resumePendingTell() {
@@ -575,7 +603,7 @@ export default function hushfold(app, params = {}) {
       world.fx.replaceChildren();
       world.fx.classList.remove('live');
       world.dim(false);
-      document.body.classList.remove('hf-active');
+      document.body.classList.remove('hf-active', 'hf-world-arriving', 'hf-world-leaving');
     },
     get blockBack() {
       if (overlay) return () => overlay?.close('back');

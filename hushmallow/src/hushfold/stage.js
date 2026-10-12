@@ -271,7 +271,7 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, 
       th.tag.remove();
       layer.onChange?.();
     },
-    hitTest(x, y) { for (let i = list.length - 1; i >= 0; i--) if (list[i].hitTest(x, y)) return list[i]; return null; },
+    hitTest(x, y) { for (let i = list.length - 1; i >= 0; i--) if (!list[i].leaving && list[i].hitTest(x, y)) return list[i]; return null; },
     pointer(th, e) {
       if (e.type === 'down') { th.press = { id: e.id, x0: e.x, y0: e.y, ox: th.x - e.x, oy: th.y - e.y, t0: performance.now(), moved: 0 }; th.sqV += 1.6; }
       else if (e.type === 'move' && th.press && th.press.id === e.id) {
@@ -300,7 +300,7 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, 
     },
     /** Rectangles to keep subtitles off (thought body + its word tag). */
     rects() {
-      return list.map((th) => {
+      return list.filter((th) => !th.leaving).map((th) => {
         const r = th.r * Math.max(0.6, th.scale) * 1.25;
         const tb = th.tag.getBoundingClientRect();
         return { left: Math.min(th.x - r, tb.left), right: Math.max(th.x + r, tb.right), top: th.y - r, bottom: Math.max(th.y + r, tb.bottom) };
@@ -309,9 +309,10 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, 
     frame(dt, t) {
       if (!list.length) return false;
       const rm = reducedMotion(), low = lowStim();
-      for (const th of list) {
+      for (const th of [...list]) {
         const mo = MOTION[th.key];
-        th.born = Math.min(1, th.born + dt / (rm ? 0.4 : 1.1));
+        if (th.leaving) { th.born -= dt / th.leaving; if (th.born <= 0) { layer.remove(th); continue; } }
+        else th.born = Math.min(1, th.born + dt / (rm ? 0.4 : 1.1));
         // springs: home position, scale, squash
         const k = th.press ? 120 : 26, d = th.press ? 18 : 7.5;
         th.vx += ((th.hx - th.x) * k - th.vx * d) * dt; th.vy += ((th.hy - th.y) * k - th.vy * d) * dt;
@@ -339,6 +340,8 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, 
       return true;
     },
     clear() { for (const th of [...list]) layer.remove(th); },
+    /** Let every thought fade away gently (a world is taking the words over). */
+    release(ms = 700) { for (const th of list) { th.leaving = ms / 1000; th.tag.style.pointerEvents = 'none'; } layer.onChange?.(); },
     destroy() { layer.clear(); },
   };
   return layer;

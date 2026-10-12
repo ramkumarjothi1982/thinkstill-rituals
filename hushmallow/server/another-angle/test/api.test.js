@@ -405,3 +405,20 @@ test('unhandled errors return a generic 500 without details', async () => {
   assert.equal(j.status, 'fallback');
   assert.ok(!JSON.stringify(j).includes('secret stack detail'));
 });
+
+test('feedback: the four buttons are recorded as metadata only', async () => {
+  const { app, logs } = makeApp();
+  const env = makeEnv();
+  const token = await getToken(app, env);
+  const send = (body, auth = token) => app.fetch(req('/v1/feedback', { body, headers: auth ? { authorization: `Bearer ${auth}` } : {} }), env);
+  const ok = await send({ rating: 'helped', reasoning_pattern: 'fact_vs_assumption', interaction_type: 'pull_apart', mallow_character: 'zuzu', prompt_version: 'angle-v1' });
+  assert.equal(ok.status, 202);
+  const evt = JSON.parse(logs.find((l) => l.includes('"evt":"feedback"')));
+  assert.deepEqual([evt.rating, evt.pattern, evt.interaction, evt.mallow], ['helped', 'fact_vs_assumption', 'pull_apart', 'zuzu']);
+  assert.equal((await send({ rating: 'not_relevant' })).status, 202);
+  assert.equal((await send({ rating: 'meh' })).status, 400);
+  assert.equal((await send({ rating: 'helped', comment: 'my boss is awful' })).status, 400, 'no free text accepted');
+  assert.equal((await send({ rating: 'helped', mallow_character: 'clippy' })).status, 400);
+  assert.equal((await send({ rating: 'helped' }, null)).status, 401);
+  assertNoContent(logs, 'my boss is awful');
+});

@@ -73,7 +73,7 @@ export function createPace({ U = 390, pointerType = 'touch' } = {}) {
 /**
  * 'slowing': the person moved fast (charge high), then slowed down and the
  * world visibly calmed under their finger.
- *   1. Armed: fast for a cumulative ≥ armFastSec within a armWindowSec window, with Q ≥ armQ.
+ *   1. Armed (while still fast): fast for a cumulative ≥ armFastSec within an armWindowSec window, with Q ≥ armQ.
  *   2. Fires: a slow run (finger down, slowness ≥ slowS) starting within withinSec of the last
  *      fast moment, lasting ≥ slowSec (dips shorter than graceSec forgiven), having drained
  *      ≥ drainFrac · Q_armed · drainScale light since arming.
@@ -102,7 +102,7 @@ export function createSlowingDetector(opts = {}) {
       if (m.fast && m.down) { bins[bin] += dt; sinceFast = 0; } else sinceFast += dt;
       let fastWin = 0;
       for (let i = 0; i < NB; i++) fastWin += bins[i];
-      if (fastWin >= c.armFastSec && m.Q >= c.armQ) {
+      if (m.fast && m.down && fastWin >= c.armFastSec && m.Q >= c.armQ) {
         if (state === 'idle') { state = 'armed'; qArmed = m.Q; lightAtArm = m.light; armedAt = t; }
         else qArmed = Math.max(qArmed, m.Q);
         fastMs = Math.max(fastMs, fastWin * 1000);

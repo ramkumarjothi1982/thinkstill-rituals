@@ -43,7 +43,7 @@ const COLS = 21, ROWS = 21;
 const PAD = 3;                 // source px of margin around the body box
 const HOP_SCALE = 2.2;         // the rig measures hops in layer heights (≈ 2.2 body heights)
 const TIERS = { gl: 'A', tri: 'B', strip: 'C' };
-const REBOUND = 3.2;           // upward velocity (body heights/s) a full squeeze releases
+const REBOUND = 2.4;           // upward velocity (body heights/s) a full squeeze releases
 
 const hexRgb = (hex) => {
   const h = hex.replace('#', '');
@@ -600,7 +600,9 @@ export class MallowTouch {
     // and the body pops up past its rest height before it settles
     if (this.reader.ptrs.size === 0 && depth > 0.1) {
       this._squash = 0;
-      if (!this.opts.reducedMotion) this.sb.deform('squash', -REBOUND * depth * (this.sb.material.dMax / 0.34));
+      // the same pop height for every Mallow (softer ones ring slower, not taller)
+      const M = this.sb.material, k = Math.sqrt((M.kG + M.kL) / 0.83);
+      if (!this.opts.reducedMotion) this.sb.deform('squash', -REBOUND * depth * k);
     }
     this._touchEvent('release', { depth });
   }
@@ -880,8 +882,8 @@ export class MallowTouch {
       const x = p.x - this.view.left, y = p.y - this.view.top;
       const gr = this._dentGrad || (this._dentGrad = (() => {
         const gg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-        gg.addColorStop(0, 'rgba(8,4,30,0.34)'); gg.addColorStop(0.55, 'rgba(8,4,30,0.12)');
-        gg.addColorStop(0.8, 'rgba(255,255,255,0.10)'); gg.addColorStop(1, 'rgba(255,255,255,0)');
+        gg.addColorStop(0, 'rgba(8,4,30,0.2)'); gg.addColorStop(0.5, 'rgba(8,4,30,0.08)');
+        gg.addColorStop(0.78, 'rgba(255,250,240,0.12)'); gg.addColorStop(1, 'rgba(255,250,240,0)');
         return gg;
       })());
       ctx.save();

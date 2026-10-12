@@ -11,7 +11,7 @@
 
 import { readConfig } from './config.js';
 import { json, error, corsHeaders, preflight, readJson, nextUtcMidnight, utcDay } from './http.js';
-import { validateAngleRequest, validateSessionRequest, ANGLE_BODY_MAX_BYTES, SESSION_BODY_MAX_BYTES } from './validate.js';
+import { validateAngleRequest, validateSessionRequest, validateFeedbackRequest, ANGLE_BODY_MAX_BYTES, SESSION_BODY_MAX_BYTES } from './validate.js';
 import { checkSafety, supportPayload } from './safety/index.js';
 import { runAngle, PROMPT_VERSION, SCHEMA_VERSION } from './pipeline.js';
 import { signToken, verifyToken, keyedHash } from './auth/tokens.js';
@@ -100,7 +100,8 @@ export function createApp(options) {
     }
     if (route === 'POST /v1/session') return session(request, env, cfg, cors);
     if (route === 'POST /v1/angle') return angle(request, env, cfg, cors, ctx);
-    if (['/v1/health', '/v1/session', '/v1/angle'].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: url.pathname === '/v1/health' ? 'GET, OPTIONS' : 'POST, OPTIONS' });
+    if (route === 'POST /v1/feedback') return feedback(request, env, cfg, cors);
+    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback'].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: url.pathname === '/v1/health' ? 'GET, OPTIONS' : 'POST, OPTIONS' });
     return error(404, 'not_found', 'Not found.', cors);
   }
 
@@ -256,6 +257,26 @@ export function createApp(options) {
       ...base, status: result.status, scene: result.scene, support: result.support, fallback: result.fallback,
       keep_support_close: result.keep_support_close, quota: quotaOut,
     }, cors);
+  }
+
+  /**
+   * "That helped" / "Show me another angle" / "Not relevant" / "I'd rather
+   * just squeeze a Mallow": logged as metadata only (which button, which kind
+   * of scene), so the owner can see which patterns land. No words, no ids.
+   * @param {Request} request @param {Record<string, any>} env
+   * @param {import('./config.js').Config} cfg @param {Record<string, string>} cors
+   */
+  async function feedback(request, env, cfg, cors) {
+    if (!cfg.signingKeys.length) return error(503, 'not_configured', 'TOKEN_SIGNING_KEY is not set.', cors);
+    if (!(await allow(env.ANGLE_IP_LIMITER, fallbackAngleLimiter, await ipKey(request, cfg)))) return error(429, 'rate_limited', 'Too many requests. Try again in a minute.', { ...cors, 'retry-after': '60' });
+    const m = /^Bearer ([A-Za-z0-9._-]{10,2048})$/.exec(request.headers.get('authorization') || '');
+    if (!m || !(await verifyToken(m[1], cfg.signingKeys, now())).ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    const body = await readJson(request, 2048);
+    if (!body.ok) return error(body.status, body.code, body.message, cors);
+    const v = validateFeedbackRequest(body.value);
+    if (!v.ok) return error(400, v.code, v.message, cors, { field: v.field });
+    logger.event({ evt: 'feedback', prompt_version: PROMPT_VERSION, rating: v.value.rating, pattern: v.value.reasoning_pattern, interaction: v.value.interaction_type, mallow: v.value.mallow_character });
+    return json(202, { status: 'ok' }, cors);
   }
 
   return {

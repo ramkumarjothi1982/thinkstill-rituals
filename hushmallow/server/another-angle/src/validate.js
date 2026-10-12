@@ -2,7 +2,7 @@
 // probing show up immediately. The person's text is normalised only for
 // transport safety (NFC, control characters, whitespace) and never reworded.
 
-import { normaliseEmotion, normaliseIntention, PATTERNS } from './vocab.js';
+import { normaliseEmotion, normaliseIntention, PATTERNS, INTERACTIONS, MALLOWS } from './vocab.js';
 
 export const TEXT_MAX = 600;
 export const PREVIOUS_MAX = 4;
@@ -105,4 +105,30 @@ export function validateSessionRequest(body) {
       platform: typeof b.platform === 'string' ? b.platform : null,
     },
   };
+}
+
+export const FEEDBACK_RATINGS = /** @type {const} */ (['helped', 'another_angle', 'not_relevant', 'just_squeeze']);
+
+/**
+ * Feedback carries no words at all: one of the four buttons, plus which kind
+ * of scene it was about. It is only logged as metadata, never stored per person.
+ * @param {unknown} body
+ * @returns {{ ok: true, value: { rating: string, reasoning_pattern: string | null, interaction_type: string | null, mallow_character: string | null } } | Invalid}
+ */
+export function validateFeedbackRequest(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return bad('invalid_body', '', 'Body must be a JSON object.');
+  const b = /** @type {Record<string, unknown>} */ (body);
+  for (const k of Object.keys(b)) if (!['rating', 'reasoning_pattern', 'interaction_type', 'mallow_character', 'prompt_version'].includes(k)) return bad('unknown_field', k.slice(0, 40), `Unknown field "${k.slice(0, 40)}".`);
+  if (!FEEDBACK_RATINGS.includes(/** @type {any} */ (b.rating))) return bad('invalid_rating', 'rating', `rating must be one of ${FEEDBACK_RATINGS.join(', ')}.`);
+  /** @param {string} k @param {readonly string[]} list */
+  const pick = (k, list) => (b[k] === undefined || b[k] === null ? null : list.includes(/** @type {any} */ (b[k])) ? /** @type {string} */ (b[k]) : undefined);
+  const value = {
+    rating: /** @type {string} */ (b.rating),
+    reasoning_pattern: pick('reasoning_pattern', PATTERNS),
+    interaction_type: pick('interaction_type', INTERACTIONS),
+    mallow_character: pick('mallow_character', MALLOWS),
+  };
+  for (const [k, v] of Object.entries(value)) if (v === undefined) return bad('invalid_field', k, `${k} is not one of the allowed values.`);
+  if (b.prompt_version !== undefined && (typeof b.prompt_version !== 'string' || !/^angle-v\d{1,3}$/.test(b.prompt_version))) return bad('invalid_field', 'prompt_version', 'Unknown prompt_version.');
+  return { ok: true, value: /** @type {any} */ (value) };
 }

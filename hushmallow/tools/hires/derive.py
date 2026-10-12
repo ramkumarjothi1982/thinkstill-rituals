@@ -48,16 +48,32 @@ def dil(m, r):
 
 
 # ------------------------------------------------------------- masks --
-def erase_mask(name, meas, masks, shape):
+def loose_stroke(mask, img, u):
+    """Painted strokes taper into lighter ends and soft shadows that the
+    detection threshold misses: grow the stroke into every pixel near it that
+    is clearly darker than the local body."""
+    L = img[..., :3].astype(np.float64) @ [0.299, 0.587, 0.114]
+    solid = (img[..., 3] > 240).astype(np.float64)
+    near = dil(mask, 9 * u)
+    Lb, _ = norm_blur(L, (solid * ~near).astype(np.float64), 14 * u)
+    dark = near & (L < 0.82 * Lb)
+    lab, n = ndimage.label(dark | mask)
+    keep = np.unique(lab[mask])
+    return np.isin(lab, keep[keep > 0])
+
+
+def erase_mask(name, meas, masks, shape, img=None):
     u = meas['unit']
     f = meas['feats']
     style = meas['mapped']['eyeStyle']
     m = np.zeros(shape, bool)
     for s in 'LR':
         if style == 'closed':
-            m |= dil(masks['eye' + s], 12 * u)
+            m |= dil(loose_stroke(masks['eye' + s], img, u), 6 * u)
         elif style == 'open':
-            m |= dil(masks['eye' + s], 12 * u)
+            # sclera + its dark outline ring; not further, the blush sits
+            # right under these eyes and is part of the approved face
+            m |= dil(masks['eye' + s], 7 * u)
         elif style == 'spiral':
             sp = f['spiral' + s]
             c = np.zeros(shape, np.uint8)
@@ -84,12 +100,14 @@ def erase_mask(name, meas, masks, shape):
             limit = (yy >= topi[None, :] - 4.5 * u) | (tx[None, :] < x0 - 2 * u) | (tx[None, :] > x1 + 2 * u)
             m |= grown & limit
         if 'brow' + s in masks:
-            m |= dil(masks['brow' + s], 12 * u)
+            m |= dil(loose_stroke(masks['brow' + s], img, u), 6 * u)
     mouth = f['mouth']
     if mouth['style'] == 'crease':
         m |= dil(masks['mouth'], 9 * u)
+    elif mouth['style'] == 'line':
+        m |= dil(loose_stroke(masks['mouth'], img, u), 6 * u)
     else:
-        m |= dil(masks['mouth'], 12 * u)
+        m |= dil(masks['mouth'], 9 * u)
     return m
 
 
@@ -201,7 +219,7 @@ def inpaint(name, img, mask, unit, protect=None):
         # lines and sparkles out of it, they belong to the copied texture
         neon = (hsv[..., 2] > 150) & ((hsv[..., 1] > 110) | (hsv[..., 2] > 220))
         known &= ~dil(neon, 2.5 * unit)
-    s_lo = 6.0 * unit
+    s_lo = (6.0 if glitzi else 9.0) * unit
     lf_known, den = norm_blur(rgb, known.astype(np.float64), s_lo)
     unknown = grow | (den < 0.05)
     lf_known[~(al > 0.02)] = 0
@@ -297,7 +315,7 @@ if __name__ == '__main__':
         meas = json.load(open(f'{WORK}/measure-{name}.json'))
         masks = dict(np.load(f'{WORK}/masks_{name}.npz'))
         u = meas['unit']
-        m = erase_mask(name, meas, masks, img.shape[:2])
+        m = erase_mask(name, meas, masks, img.shape[:2], img)
         Image.fromarray((m * 255).astype(np.uint8)).save(f'{WORK}/erase_{name}.png')
         protect = None
         if name == 'glitzi':

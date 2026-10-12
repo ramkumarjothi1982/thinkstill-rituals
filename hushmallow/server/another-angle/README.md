@@ -87,6 +87,10 @@ Response (always HTTP 200 unless the request itself was wrong):
 
 HTTP errors: `400` invalid body (`error.code`, plus `field`), `401` no or bad token, `403` origin not allowed / invite needed / HTTPS required, `413` too large, `415` not JSON, `429` daily limit (`quota`, `Retry-After`) or burst limit, `503` not configured.
 
+### `POST /v1/feedback`
+
+`{ "rating": "helped" | "another_angle" | "not_relevant" | "just_squeeze", "reasoning_pattern"?, "interaction_type"?, "mallow_character"?, "prompt_version"? }` with the same bearer token → `202 { "status": "ok" }`. No free text is accepted. It is logged as metadata only (which button, which kind of scene), so you can see which patterns land without anyone's words being kept — the privacy-safe way to "use feedback to improve future suggestions". Nothing is used to train any model.
+
 ### The ten mechanics
 
 | `reasoning_pattern` | `interaction_type` | The scene | Usual Mallow |
@@ -176,7 +180,7 @@ The report lands in `eval/reports/angle-eval-<date>.md` (and a `.json` beside it
 
 **Never logged or stored:** the person's words, the model's lines, tokens, IP addresses, device ids.
 
-**Logged (Cloudflare Workers Logs, metadata only):** time, route, HTTP status, outcome (`ok`/`care`/`crisis`/`fallback`), fallback reason, latency, attempts, quality-gate result and failure codes, reasoning pattern, mechanic, Mallow, scene emotion and situation type, the chosen feeling and intention ids, how many earlier angles were sent, a length bucket (short/medium/long), safety level and category, whether the text looked like an injection attempt, model name, token counts, cost, remaining quota. `src/log.js` drops anything else, and the tests check that no input text reaches the logs. Cloudflare keeps Workers Logs for a few days (plan-dependent).
+**Logged (Cloudflare Workers Logs, metadata only):** time, route, HTTP status, outcome (`ok`/`care`/`crisis`/`fallback`), fallback reason, latency, attempts, quality-gate result and failure codes, reasoning pattern, mechanic, Mallow, scene emotion and situation type, the chosen feeling and intention ids, how many earlier angles were sent, a length bucket (short/medium/long), safety level and category, whether the text looked like an injection attempt, model name, token counts, cost, remaining quota; and, for feedback, which of the four buttons was pressed for which pattern, mechanic and Mallow. `src/log.js` drops anything else, and the tests check that no input text reaches the logs. Cloudflare keeps Workers Logs for a few days (plan-dependent).
 
 **Stored by the server:** daily counters only — angles per session subject, new sessions per hashed network address, total spend — in a Durable Object, deleted after two days.
 
