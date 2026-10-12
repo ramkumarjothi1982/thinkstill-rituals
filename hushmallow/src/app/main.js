@@ -13,6 +13,7 @@ import { RITUALS } from '../data/rituals.js';
 import { AVAILABLE } from '../rituals/index.js';
 import { toast } from './ui.js';
 import { newerVersion, moveTo } from './update.js';
+import { docTitle } from '../brand.js';
 
 const store = createStore();
 const prefs = createPrefs(store);
@@ -63,24 +64,44 @@ app.applyUpdateIfSafe = () => {
   if (newer && stack[stack.length - 1]?.name === 'home' && safeToUpdate()) { moveTo(newer); return true; }
   return false;
 };
+/**
+ * Code from this deploy failed to load (a lazy import after a newer deploy
+ * removed this version's folder): look for the newer version and move to it
+ * now if the moment is safe, else at the next safe moment (back home, the
+ * Hushfold idle). Resolves true when it is moving now.
+ */
+app.staleCode = async () => {
+  newer = (await newerVersion()) || newer;
+  return app.applyUpdateIfSafe();
+};
+const STALE_IMPORT = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
+addEventListener('unhandledrejection', (e) => { if (STALE_IMPORT.test(String(e.reason?.message ?? e.reason ?? ''))) app.staleCode(); });
 
 // scenes that may not be in this build yet: a gentle note instead of an error
 const OPTIONAL_SCENES = { garden: 'The Memory Garden opens soon.' };
+
+// Only the newest go() mounts its scene and names the tab: a scene that is
+// still loading when another go() starts (two quick taps, Back during a
+// load) is dropped instead of landing on top of the newer one.
+let goSeq = 0;
 
 app.go = async function go(name, params = {}, { replace = false, fromPop = false } = {}) {
   // words waiting to come back to the Hushfold (Continue → plans → home) are never lost to a reload;
   // the Hushfold itself decides once they are on stage (safeForUpdate, applyUpdateIfSafe)
   if (newer && name === 'home' && !app.state.pendingTell && safeToUpdate()) { moveTo(newer); return; }
-  // a layer that just closed is still stepping history back: let it land first
-  await popsSettled();
   const load = SCENES[name];
   if (!load) throw new Error(`No scene ${name}`);
+  const seq = ++goSeq;
+  // a layer that just closed is still stepping history back: let it land first
+  await popsSettled();
   let mod;
   try { mod = await load(); } catch (e) {
     if (await checkVersion()) return moveTo(newer);
+    if (seq !== goSeq) return null;
     if (OPTIONAL_SCENES[name]) { console.warn(`[scene ${name}]`, e?.message || e); toast(OPTIONAL_SCENES[name], 3200); return null; }
     throw e;
   }
+  if (seq !== goSeq) return null;   // a newer go() took over while this scene loaded
   if (typeof mod?.default !== 'function') {
     if (OPTIONAL_SCENES[name]) { toast(OPTIONAL_SCENES[name], 3200); return null; }
     throw new Error(`Scene ${name} has no default export`);
@@ -99,7 +120,7 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
   }
   await view.enter?.();
   if (name === 'home') checkVersion();
-  document.title = view.title ? `${view.title} · hushmallow` : 'hushmallow';
+  if (seq === goSeq) document.title = docTitle(view.title);
   sceneEl.querySelector('h1, h2, [data-focus]')?.setAttribute('tabindex', '-1');
 };
 app.back = () => history.back();
@@ -164,6 +185,8 @@ const SCENES = {
 
 async function boot() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
+  // a page left open for hours still hears about a new deploy (only while it is on screen)
+  setInterval(() => { if (document.visibilityState === 'visible') checkVersion(); }, 10 * 60 * 1000);
   app.world = createWorld({ prefs, audio: audioProxy, haptic: (k) => app.haptic(k) });
   applyTextScale(prefs.get('textScale'));
   const styles = ensureStylesheet('../ui/hushfold.css');
