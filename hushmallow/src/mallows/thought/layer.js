@@ -403,7 +403,9 @@ export class ThoughtLayer {
       }
       const tg = this.tags.get(th), below = tg && tg.w ? tg.h + 16 : 0;
       // keep its body (and the words below it) inside the bounds
-      const minX = B.left + hwL, maxX = B.right - hwR, minY = B.top + hhT, maxY = B.bottom - hhB - Math.min(below, 0.5 * below + 8);
+      // limits for the home, so that the drawn body (home + its own sink / drift) stays inside
+      const dx = R.cx - th.x, dy = R.cy - th.y;
+      const minX = B.left + hwL - dx, maxX = B.right - hwR - dx, minY = B.top + hhT - dy, maxY = B.bottom - hhB - Math.min(below, 0.5 * below + 8) - dy;
       const hw = (hwL + hwR) / 2, hh = (hhT + hhB) / 2;
       const lim = th._lim || (th._lim = { minX: 0, maxX: 0, minY: 0, maxY: 0 });
       lim.minX = minX; lim.maxX = maxX; lim.minY = minY; lim.maxY = maxY;
@@ -411,7 +413,7 @@ export class ThoughtLayer {
       if (h.y < minY) h.y += (minY - h.y) * k; if (h.y > maxY && maxY > minY) h.y += (maxY - h.y) * k;
       // never on the hero Mallow (it takes touches first there): out by the nearest way that stays in bounds
       if (K) {
-        const l = K.left - hwR - 8, r = K.right + hwL + 8, t = K.top - hhB - 8, b = K.bottom + hhT + 4;
+        const l = K.left - hwR - 8 - dx, r = K.right + hwL + 8 - dx, t = K.top - hhB - 8 - dy, b = K.bottom + hhT + 4 - dy;
         if (h.x > l && h.x < r && h.y > t && h.y < b) {
           let bx = 0, by = 0, bd = Infinity, fx = 0, fy = 0, fd = Infinity;
           for (let q = 0; q < 4; q++) {
@@ -454,11 +456,12 @@ export class ThoughtLayer {
     const R = th.render, sp = 1 + 0.9 * Math.max(th.levels.space.cur, th.earned.space);
     const hw = (R.W / 2) * sp + (th.siblings.length ? R.W * 0.45 : 0), hh = (R.P / 2) * sp + (th.siblings.length ? R.P * 0.35 : 0);
     const tg = this.tags.get(th);
-    const x = th.home.x, y = th.home.y;
+    // where it will be drawn when it rests at home (its own sink and drift included)
+    const x = th.home.x + (R.cx - th.x), y = th.home.y + (R.cy - th.y);
     f.l = x - hw - 6; f.r = x + hw + 6; f.t = y - hh - 4; f.b = y + hh + 4;
     if (tg && tg.w) {
       // the words where they sit now (relative to the thought), or below it before they are placed
-      const dx = tg.shown ? tg.tx - th.x : 0, dy = tg.shown ? tg.ty - th.y : hh + 18;
+      const dx = tg.shown ? tg.tx - R.cx : 0, dy = tg.shown ? tg.ty - R.cy : hh + 18;
       f.l = Math.min(f.l, x + dx - tg.w / 2 - 4); f.r = Math.max(f.r, x + dx + tg.w / 2 + 4);
       f.t = Math.min(f.t, y + dy - 4); f.b = Math.max(f.b, y + dy + tg.h + 4);
     }
@@ -546,7 +549,7 @@ export class ThoughtLayer {
   _tags(dt, env) {
     const rm = env.rm, W = env.view.W, H = env.view.H, edge = W < 360 ? 12 : 16;
     const B = env.bounds, K = this._keep();
-    const yMin = Math.max(edge, B.top - 10), yMax = Math.min(H - edge, B.bottom + 2);
+    const yMin = Math.max(edge, B.top), yMax = Math.min(H - edge, B.bottom + 2);
     this._crowdLevel(env);
     const placed = this._placed || (this._placed = []);
     placed.length = 0;
