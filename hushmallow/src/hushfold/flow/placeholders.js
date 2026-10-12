@@ -40,7 +40,22 @@ export function rigMallow(appWorld) {
     react(kind) { try { rig()?.react(kind); } catch { /* not ready */ } },
     setEmotion(mix, intensity, opts) { try { rig()?.setEmotion(mix, intensity, opts); } catch { /* not ready */ } },
     lookAt(nx, ny) { try { rig()?.lookAt(nx, ny); } catch { /* not ready */ } },
-    float() {},
+    /**
+     * Float on the water: lift in body heights (up), tilt in degrees. The rig has no float of its
+     * own, so the canvas moves with the CSS `translate` / `rotate` properties — separate from the
+     * layer's `transform` (and its 720 ms transition), so the bob is never lagged or eased away.
+     */
+    float({ lift = 0, tilt = 0 } = {}) {
+      const c = rig()?.canvas;
+      if (!c?.style) return;
+      const h = rect()?.height || 200;
+      const ty = Math.round(-lift * h * 10) / 10, rot = Math.round(tilt * 20) / 20;
+      if (c._fy === ty && c._fr === rot) return;
+      c._fy = ty; c._fr = rot;
+      c.style.transformOrigin = '50% 82%';
+      c.style.translate = ty ? `0 ${ty}px` : '';
+      c.style.rotate = rot ? `${rot}deg` : '';
+    },
     /** Hand a real pointerdown to the rig's own canvas: it captures the pointer and plays the squeeze natively. */
     forward(e) {
       const c = rig()?.canvas;
