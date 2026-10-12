@@ -1186,6 +1186,7 @@ export function create(ctx) {
   // the words plate: candidate places round the thought (offsets from its centre, and the box on screen)
   const pc = { lx: 0, ly: 0, x0: 0, y0: 0, x1: 0, y1: 0 }, pb = { lx: 0, ly: 0, x0: 0, y0: 0, x1: 0, y1: 0 };
   const SIDES_L = ['above', 'left', 'right', 'below', 'tuck'], SIDES_R = ['above', 'right', 'left', 'below', 'tuck'];
+  const tb = { x0: 0, y0: 0, x1: 0, y1: 0 };
   const ovA = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
   function plateCand(side, sx, sy, rr, w, h) {
     const bb = bandBottom() + 4, fl = plan?.floor ?? H;
@@ -1210,7 +1211,7 @@ export function create(ctx) {
     c += 6 * Math.max(0, bandBottom() + 4 - pc.y0) * (pc.x1 - pc.x0) + 6 * Math.max(0, pc.y1 - (plan?.floor ?? H)) * (pc.x1 - pc.x0);
     if (side === 'left' || side === 'right') c += 8 * (Math.max(0, E - pc.x0) + Math.max(0, pc.x1 - (W - E))) * (pc.y1 - pc.y0);
     // (over the thought's own body: allowed only as the last resort, and cheaply when it is small)
-    const tb = { x0: sx - rr, y0: sy - rr, x1: sx + rr, y1: sy + rr };
+    tb.x0 = sx - rr; tb.y0 = sy - rr; tb.x1 = sx + rr; tb.y1 = sy + rr;
     c += 0.5 * ovA(pc, tb) + (side === 'tuck' ? 1 : 0);
     return c;
   }
@@ -1290,6 +1291,10 @@ export function create(ctx) {
         if (b.glide > 0) {
           const r = b.D / 2 + 2;
           if (K.on && discHits(sx, sy, r, K)) { pushOut(sx, sy, r, K, b.D / 2); sx += po.x; sy += po.y; }
+          if (thought && tS.alpha > 0.3) {
+            const dx = sx - tS.sx, dy = sy - tS.sy, d = Math.hypot(dx, dy) || 1e-3, need = r + tS.r * tS.surf + 4;
+            if (d < need) { sx += (dx / d) * (need - d); sy += (dy / d) * (need - d); }
+          }
           if (thought && tS.plateW && discHits(sx, sy, r, plateRect(prB))) { const P = prB, l = sx + r - P.x0, rt = P.x1 - (sx - r), u = sy + r - P.y0, d = P.y1 - (sy - r), m = Math.min(l, rt, u, d); if (m === l) sx -= l; else if (m === rt) sx += rt; else if (m === u) sy -= u; else sy += d; }
         }
       }

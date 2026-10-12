@@ -1365,7 +1365,8 @@ export class ThoughtLayer {
         // (a sibling round its thought: where it sits in the ring without its slow wobble, with room for
         // the wobble — so a plate beside the cluster never flickers as the voices sway)
         let dx = 0, dy = 0, m = 0;
-        if (!s.free && !s.pressed) { const q = siblingHome(th, s, this._sh || (this._sh = { x: 0, y: 0 }), true); dx = q.x - s._pos.x; dy = q.y - s._pos.y; m = 0.04 * s.render.P + 1; }
+        // (the wobble swings it up to about 0.24 of the ring's radius either way)
+        if (!s.free && !s.pressed) { const q = siblingHome(th, s, this._sh || (this._sh = { x: 0, y: 0 }), true); dx = q.x - s._pos.x; dy = q.y - s._pos.y; m = (th.reducedMotion ? 0.02 : 0.25) * 0.5 * (th.render.P + s.render.P) + 1; }
         this._obPush(th, s.free ? OB_FREE : OB_SIB, s._bbox(), dx, dy, m);
         this._obPush(th, OB_SIBFACE, s.faceRect(R1), dx, dy, m);
       }
@@ -1400,7 +1401,9 @@ export class ThoughtLayer {
     // (outward reaches — below, above, right, left, half its height — hold their furthest at once and ease
     // back in slowly: steady through a squash or a tremble, never late for a body that grows; the x of
     // its top and bottom and its middle follow smoothly)
-    const k = tg.gaInit ? Math.min(1, dt * (th.pressed ? 6 : 1)) : 1, kin = tg.gaInit ? Math.min(1, dt * 0.6) : 1;
+    // (still appearing or on its way: it follows exactly — an appearing jelly overshoots its size)
+    const settled = tg.gaInit && th.ov.appear >= 1 && !th._trav;
+    const k = settled ? Math.min(1, dt * (th.pressed ? 6 : 1)) : 1, kin = settled ? Math.min(1, dt * 0.6) : 1;
     for (let i = 0; i < 8; i++) {
       const out = OUTWARD[i];
       if (out && (A[i] - ga[i]) * out > 0) ga[i] = A[i];
