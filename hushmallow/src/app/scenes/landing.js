@@ -112,6 +112,8 @@ export default function landing(app) {
       g.beginPath(); g.roundRect(540 - lw / 2 - px, 1250 - lh / 2 - py, lw + px * 2, lh + py * 2, (lh + py * 2) / 2); g.fill();
       g.drawImage(img, 540 - lw / 2, 1250 - lh / 2, lw, lh);
     } catch {}
+    g.font = '600 30px "Fraunces", Georgia, serif'; g.fillStyle = 'rgba(255,255,255,.82)'; g.textAlign = 'center';
+    g.fillText('Feel it. Squish it. Shift it.', 540, 1330);
     const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
     const file = new File([blob], 'hushmallow.png', { type: 'image/png' });
     try {

@@ -1,4 +1,4 @@
-// Hushmallow — your second brain for feelings.
+// hushmallow — Less noise. More magic.
 // App bootstrap: storage, preferences, entitlements, recommender, the
 // persistent Hushfold stage and a tiny scene router with real history.
 
@@ -71,7 +71,7 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
   }
   await view.enter?.();
   if (name === 'home') checkVersion();
-  document.title = view.title ? `${view.title} · Hushmallow` : 'Hushmallow';
+  document.title = view.title ? `${view.title} · hushmallow` : 'hushmallow · Less noise. More magic.';
   sceneEl.querySelector('h1, h2, [data-focus]')?.setAttribute('tabindex', '-1');
 };
 app.back = () => history.back();

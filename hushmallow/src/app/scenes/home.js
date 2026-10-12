@@ -43,7 +43,7 @@ export default function home(app, params = {}) {
       iconBtn('mallow', 'Meet the Mallows', () => app.go('mallows')),
       iconBtn('gear', 'Settings', () => app.go('settings'))),
     h('div', { style: { marginTop: '18px' } },
-      h('h1', { class: 'hero' }, 'Your second brain', h('br'), 'for feelings.')),
+      h('h1', { class: 'hero' }, 'Less noise.', h('br'), 'More magic.')),
     h('div', { class: 'spacer' }),
     h('div', { class: 'mallow-switch', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', pointerEvents: 'none' } },
       h('button', { class: 'icon-btn', style: { pointerEvents: 'auto' }, 'aria-label': 'Previous Mallow', onclick: () => cycle(-1) }, icon('back')),

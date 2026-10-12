@@ -1,4 +1,6 @@
-# Hushmallow — your second brain for feelings
+# hushmallow — Less noise. More magic.
+
+*Feel it. Squish it. Shift it.*
 
 A mobile-first web app (plain ES modules, no build step, no AI) with seven
 living Mallows, the Hushfold fantasy world, and two paid experiences:

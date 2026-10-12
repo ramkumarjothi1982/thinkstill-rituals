@@ -434,6 +434,16 @@ export default function hushfold(app, params = {}) {
     const dpr = devicePixelRatio || 1;
     for (const th of S.thoughts) th.render(dpr);
   }
+  // the official tagline, once per visit: it rises softly out of the scene
+  // and leaves before the Mallow says anything (never over the Mallow)
+  function showTagline() {
+    try { if (sessionStorage.getItem('hm:tagline')) return; sessionStorage.setItem('hm:tagline', '1'); } catch {}
+    const el = h('div', { class: 'hf-tagline' }, h('span', {}, 'Less noise.'), ' ', h('span', {}, 'More magic.'));
+    ui.append(el);
+    requestAnimationFrame(() => el.classList.add('in'));
+    setTimeout(() => { el.classList.remove('in'); el.classList.add('out'); }, reduced() ? 2600 : 3400);
+    setTimeout(() => el.remove(), 5200);
+  }
   const onResize = () => S.world?.resize?.();
   const onVis = () => { if (document.hidden && S.mode === 'journey' && !S.paused) pause(); };
 
@@ -449,6 +459,7 @@ export default function hushfold(app, params = {}) {
       raf = requestAnimationFrame(frame);
       await Promise.all([stage.setRealm(MALLOWS[S.mallowId].realm), showMallow(S.mallowId)]);
       updateResume();
+      showTagline();
       if (params.intro) prefs.set('seenIntro', true);
       // nothing to read first: the Mallow is already squeezable; the invite
       // comes while you play (or after a little while if you just look)
