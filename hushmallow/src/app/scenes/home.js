@@ -3,8 +3,7 @@
 import { h, icon, iconBtn, say, clearBubble, wait } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
 import { testPurchasesAllowed } from '../config.js';
-import { planItems } from '../play-item.js';
-import { titleCase } from '../../engine/tricks.js';
+import { testPanel } from '../test-panel.js';
 
 const QUICK = [
   ['anger', 'Angry'], ['anxiety', 'Anxious'], ['sadness', 'Sad'], ['overwhelm', 'Overwhelmed'],
@@ -25,7 +24,8 @@ export default function home(app, params = {}) {
   app.state.homeMallow = id;
   const m = MALLOWS[id];
   const subscribed = ent.has('paid');
-  const testing = subscribed && testPurchasesAllowed(); // see testStep()
+  const testing = testPurchasesAllowed(); // TESTING ONLY: see test-panel.js
+  const panel = testing ? testPanel(app) : null;
 
   const nameEl = h('div', { class: 'eyebrow', style: { textAlign: 'center', marginTop: '4px', padding: '6px 12px', borderRadius: '999px',
     background: 'rgba(14,10,40,.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: 'var(--text-1)' } }, `${m.name} · ${m.title}`);
@@ -44,13 +44,13 @@ export default function home(app, params = {}) {
       subscribed ? iconBtn('library', 'Library: every ritual and trick', () => { clearBubble(); app.go('library'); }) : null,
       iconBtn('mallow', 'Meet the Mallows', () => app.go('mallows')),
       iconBtn('gear', 'Settings', () => app.go('settings'))),
-    h('div', { style: { marginTop: '18px' } },
+    panel ? panel.el : h('div', { style: { marginTop: '18px' } },
       h('h1', { class: 'hero' }, 'Your second brain', h('br'), 'for feelings.')),
     h('div', { class: 'spacer' }),
     h('div', { class: 'mallow-switch', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', pointerEvents: 'none' } },
-      h('button', { class: 'icon-btn', style: { pointerEvents: 'auto' }, 'aria-label': testing ? 'Test: previous ritual' : 'Previous Mallow', onclick: () => cycle(-1) }, icon('back')),
+      h('button', { class: 'icon-btn', style: { pointerEvents: 'auto' }, 'aria-label': 'Previous Mallow', onclick: () => cycle(-1) }, icon('back')),
       nameEl,
-      h('button', { class: 'icon-btn', style: { pointerEvents: 'auto', transform: 'scaleX(-1)' }, 'aria-label': testing ? 'Test: next ritual' : 'Next Mallow', onclick: () => cycle(1) }, icon('back'))),
+      h('button', { class: 'icon-btn', style: { pointerEvents: 'auto', transform: 'scaleX(-1)' }, 'aria-label': 'Next Mallow', onclick: () => cycle(1) }, icon('back'))),
     h('div', { style: { display: 'grid', gap: '12px', marginTop: '14px' } }, ask, subscribed ? quick : null, ultra));
 
   function start(emotionId) {
@@ -65,34 +65,7 @@ export default function home(app, params = {}) {
     if (!ent.has('ultra')) { app.go('plans', { reason: 'ultra', focus: 'ultra' }); return; }
     app.go('angle', {});
   }
-  // TESTING ONLY (test hosts): the arrows pick ritual/trick n of the whole
-  // plan instead of a Mallow. Meet a Mallow then shows exactly that one.
-  const TKEY = `test-step-${ent.tier()}`;
-  let testItems = null;
-  const itemName = (it) => (it.kind === 'trick' ? `${it.ref.ref} ${titleCase(it.ref.title)}` : it.ref.name);
-  async function testLabel() {
-    testItems ||= await planItems(app);
-    const n = app.store.get(TKEY, 0);
-    nameEl.textContent = n ? `TEST #${n} / ${testItems.length} · ${itemName(testItems[n - 1])}` : `TEST · press › for #1 of ${testItems.length}`;
-  }
-  async function testStep(dir) {
-    testItems ||= await planItems(app);
-    if (!testItems.length) return;
-    const n = Math.min(testItems.length, Math.max(1, app.store.get(TKEY, 0) + dir));
-    app.store.set(TKEY, n);
-    app.store.set('test-pick', true); // Meet a Mallow shows this one next
-    const it = testItems[n - 1];
-    const mid = it.kind === 'trick' ? it.ref.mallow : it.ref.mallows[0];
-    app.state.homeMallow = mid;
-    await testLabel();
-    app.audio.ui('toggle');
-    clearBubble();
-    await Promise.all([world.setRealm(MALLOWS[mid].realm), world.setMallow(mid)]);
-    say(world, `Picked #${n}: ${itemName(it)}. Now tell me what’s on your mind.`, { who: MALLOWS[mid].name, ms: 3200 });
-  }
-
   async function cycle(dir) {
-    if (testing) return testStep(dir);
     const i = (MALLOW_IDS.indexOf(app.state.homeMallow) + dir + MALLOW_IDS.length) % MALLOW_IDS.length;
     const next = MALLOW_IDS[i];
     app.state.homeMallow = next;
@@ -112,7 +85,6 @@ export default function home(app, params = {}) {
       world.showMallow(true);
       world.place({ x: 50, y: 50, scale: 1 });
       await Promise.all([world.setRealm(m.realm), world.setMallow(id)]);
-      if (testing) testLabel();
       world.setStage('neutral');
       world.rig?.on?.('react', ({ kind }) => { if (kind === 'doubleTap') app.haptic('pop'); });
       if (params.intro) {
