@@ -57,6 +57,8 @@ export function createWorld({ prefs, audio, haptic = null }) {
       }
       requestAnimationFrame(() => { box.style.opacity = '1'; });
       const old = realm, oldBox = realmBox;
+      // a realm held still under a Hushflow world stays held across the swap
+      if (old?.paused) handle?.pause?.(true);
       realm = handle; realmBox = box;
       setTimeout(() => { old?.destroy?.(); oldBox?.remove(); }, fade + 50);
       audio?.ambience?.(id, {});
