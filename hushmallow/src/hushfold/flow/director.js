@@ -283,6 +283,12 @@ export function createHushflow(opts = {}) {
       fontsReady: (groups, ms) => fontsReady(groups, ms),
       say(lines, o = {}) { if (!subtitles?.say || paused) return Promise.resolve(); return Promise.resolve(subtitles.say(lines, { who: entry.mallow?.id, ...o })).catch(() => {}); },
       discover: (id, evidence) => discover(inst, id, evidence),
+      /**
+       * While this world melts in: how far the melt has reached at a client point (0 = still the
+       * outgoing world there, 1 = this world), from the last composited frame. 1 when not melting in.
+       * (W4b: postcards turn into bubbles exactly as the melt reaches them.)
+       */
+      meltMask: (x, y) => (melt && melt.to === inst ? (reducedMotion() ? melt.e : comp.maskAt(x, y)) : 1),
       /** A moment of progress worth keeping (e.g. { kind:'photo', i }): emitted as 'checkpoint', and saved. */
       checkpoint: (kind, data = {}) => { if (inst !== cur && inst !== inc) return; emit('checkpoint', { worldId: entry.id, kind, ...data }); save(); },
       sound: (name, o) => { try { return audio?.fx?.(name, o); } catch { return false; } },

@@ -52,7 +52,7 @@ const HUSH_SEC = 1.8;                   // a still finger's mirror grows to full
 const STILL_RELEASE = 0.35;             // a resting finger lets its swell go after this long
 const TAP_PX = 10, TAP_SEC = 0.34;
 const RISE_SEC = 3;                     // the horizon rises 0.655H → 0.44H after the melt's midpoint
-const LAND_SEC = 3;
+const GLIDE_SEC = 2.2;                  // a bubble / the thought glides from where it hung down onto the water
 const HINT_AT = 5.5, HINT_SEC = 3.6;
 const FLICK_U = 0.2, LONG_U = 0.6;
 
@@ -362,26 +362,44 @@ export function create(ctx) {
     tS.x = (plan.home.x - W / 2) / 0.5; tS.z = cam ? cam.Z0 : 500; tS.vx = 0; tS.vz = 0; tS.yb = 0; tS.vb = 0;
     tS.labelY = tS.labelYT = -(tS.r + 4 + (plan.plate?.h || 40)); tS.labelW = plan.textMax; tS.labelFade = -1;
   }
+  /** Slots for the photos: the planned ones (near, roomy), then small ones far out on the horizon, clear of the words. */
+  function bubbleSlots(n) {
+    const out = plan.slots.map((sl) => ({ x: sl.x, y: sl.y, D: sl.D }));
+    if (out.length >= n) return out;
+    const fin = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
+    const d = 8.3, s0 = 1 / (1 + d), D = bubbleSize(s0, d, U);
+    const y = fin.hy + fin.Hw * s0 - 0.3 * D;
+    const P = plan.rects.plate, T = plan.rects.thought;
+    for (let x = OCEAN.EDGE + D / 2; x <= W - OCEAN.EDGE - D / 2 && out.length < n; x += 2) {
+      const b = { x0: x - D / 2, x1: x + D / 2, y0: y - D / 2, y1: y + D / 2 };
+      const hit = (o) => o && b.x0 < o.x1 + 6 && b.x1 > o.x0 - 6 && b.y0 < o.y1 + 6 && b.y1 > o.y0 - 6;
+      if (hit(P) || hit(T) || hit(plan.rects.band)) continue;
+      if (out.some((q) => Math.hypot(q.x - x, q.y - y) < (q.D + D) / 2 + OCEAN.BUBBLE_GAP + 6)) continue;
+      out.push({ x, y, D, far: true });
+      x += D;
+    }
+    return out;
+  }
   function initBubbles(fromCards = null) {
     bubbles.length = 0; waiting = [];
     const n = Math.min(7, photos?.n || 0);
     if (!n) return;
-    const slots = plan.slots.slice();
+    const slots = bubbleSlots(n);
     const used = new Set();
-    // postcards from the storm keep their identity (postcard i → bubble i) and their place
+    // postcards from the storm keep their identity (postcard i → bubble i) and start where they hang
     const order = fromCards?.length ? fromCards.map((c) => c.i).filter((i) => i < n) : [];
     for (let i = 0; i < n; i++) if (!order.includes(i)) order.push(i);
     for (const i of order) {
       const card = fromCards?.find((c) => c.i === i) || null;
-      // the nearest free slot (to its postcard if it had one)
       let best = -1, bd = Infinity;
-      for (let k = 0; k < slots.length; k++) { if (used.has(k)) continue; const d = card ? Math.hypot(slots[k].x - card.x, slots[k].y - card.y) : k; if (d < bd) { bd = d; best = k; } }
+      for (let k = 0; k < slots.length; k++) { if (used.has(k)) continue; const d = card ? Math.hypot(slots[k].x - card.x, slots[k].y - card.y) + (slots[k].far ? 60 : 0) : k; if (d < bd) { bd = d; best = k; } }
       if (best < 0) { waiting.push(i); continue; }
       used.add(best);
       const sl = slots[best];
       unproject(cam, sl.x, sl.y + 0.3 * sl.D, wo);
-      bubbles.push({ i, x: wo.x, z: wo.z, vx: 0, vz: 0, yb: 0, vb: 0, rot: 0, rv: 0, D: sl.D, sx: card ? card.x : sl.x, sy: card ? card.y : sl.y, alpha: fromCards ? 1 : 0, state: card ? 'card' : (fromCards ? 'float' : 'rise'), riseK: 0,
-        lift: 0, glowAge: -1, morph: card ? 0 : 1, from: card ? { x: card.x, y: card.y, w: card.w, h: card.h, rot: card.rot || 0, size: Math.max(card.w, card.h) } : null, landK: card ? 0 : 1, ph: R() * TAU, slotW: { x: wo.x, z: wo.z } });
+      bubbles.push({ i, x: wo.x, z: wo.z, vx: 0, vz: 0, yb: 0, vb: 0, rot: 0, rv: 0, D: sl.D, sx: card ? card.x : sl.x, sy: card ? card.y : sl.y,
+        alpha: fromCards ? (card ? 1 : 0) : 0, state: card ? 'card' : 'rise', riseK: 0, lift: 0, glowAge: -1, morph: card ? 0 : 1, glide: 0,
+        from: card ? { x: card.x, y: card.y, size: Math.max(card.w, card.h), rot: card.rot || 0 } : null, target: { x: sl.x, y: sl.y, D: sl.D }, ph: R() * TAU });
     }
   }
 
@@ -702,7 +720,12 @@ export function create(ctx) {
   }
 
   // ----------------------------------------------------------- the melt --
-  /** Melting in from another world: k is the director's eased melt progress (0..1). */
+  /**
+   * Melting in from another world: k is the director's eased melt progress (0..1). Each postcard
+   * turns into its bubble exactly as the melt reaches it (ctx.meltMask), and only then glides down to
+   * the water; the thought glides once the melt has passed it, its words moving above it as it goes.
+   * Things settle onto the water once the horizon has finished rising.
+   */
   function meltStep(dt) {
     const k = melt.k;
     const rm = reduced();
@@ -712,31 +735,40 @@ export function create(ctx) {
       const rk = melt.riseAt >= 0 ? easeInOut((elapsed - melt.riseAt) / RISE_SEC) : 0;
       hyNow = lerp(melt.hy0, hyTarget, rk);
     }
-    if (k >= 0.45 && melt.landAt < 0) melt.landAt = elapsed;
-    const lk = rm ? 1 : (melt.landAt >= 0 ? clamp((elapsed - melt.landAt) / LAND_SEC) : 0);
-    // the thought glides down from where it hung in the storm to its place on the water
-    if (thought && tS.from) { tS.landK = lk; if (lk >= 1 && !tS.landed) land(); }
+    const riseDone = rm || (melt.riseAt >= 0 && elapsed - melt.riseAt >= RISE_SEC);
+    const mask = (x, y) => { try { return ctx.meltMask ? ctx.meltMask(x, y) : k; } catch { return k; } };
     for (const b of bubbles) {
-      if (b.state === 'card' || b.state === 'morph') {
-        b.morph = rm ? smoothstep(0, 1, k) : smoothstep(0.3, 0.7, k);
-        b.state = b.morph >= 1 ? 'land' : 'morph';
+      if (!b.from) continue;
+      const m = rm ? k : mask(b.from.x, b.from.y);
+      b.morph = Math.max(b.morph, rm ? k : smoothstep(0.3, 0.95, m));
+      b.state = b.morph < 1 ? 'card' : 'glide';
+      if (b.morph >= 1 && k >= 0.5) b.glide = Math.min(1, b.glide + dt / GLIDE_SEC);
+      if (b.glide >= 1 && riseDone) settleBubble(b);
+    }
+    if (thought && tS.from) {
+      const m = rm ? 1 : Math.min(mask(tS.from.x, tS.from.y), mask(tS.from.x, tS.from.y + (tS.r + 30)));
+      if (m >= 0.95 && k >= 0.45) {
+        if (tS.glide <= 0) tS.labelFade = 0;                  // its words move above it as it goes
+        tS.glide = Math.min(1, tS.glide + dt / GLIDE_SEC);
       }
-      if (b.state === 'land' || b.state === 'morph') b.landK = rm ? 1 : clamp((elapsed - Math.max(0, melt.landAt)) / LAND_SEC) * (melt.landAt >= 0 ? 1 : 0);
-      if (b.state === 'land' && b.landK >= 1) { b.state = 'float'; b.from = null; splash(b.sx, b.sy + b.D * 0.32, b.D); }
+      if (tS.glide >= 1 && riseDone) land();
     }
     hero.floatK = rm ? k : smoothstep(0.15, 0.9, k);
-    hero.floatRamp = false;
-    const done = (rm || (melt.riseAt >= 0 && elapsed - melt.riseAt >= RISE_SEC)) && (!thought || !tS.from || tS.landK >= 1) && k >= 1 && bubbles.every((b) => b.state === 'float' || b.state === 'rise');
-    if (done) {
-      melt = null; hyNow = hyTarget; hero.floatK = 1;
-      for (const b of bubbles) if (b.state !== 'float' && b.state !== 'rise') { b.state = 'float'; b.from = null; }
-      arriveAt = 1.6;
-    }
+    const done = riseDone && k >= 1 && (!thought || !tS.from) && bubbles.every((b) => !b.from);
+    if (done) { melt = null; hyNow = hyTarget; hero.floatK = 1; arriveAt = 1.6; }
+  }
+  /** A bubble that glided down from its postcard settles on the water (physics from here). */
+  function settleBubble(b) {
+    const t = b.target;
+    unproject(cam, t.x, t.y + 0.3 * t.D, wo);
+    b.x = wo.x; b.z = wo.z; b.vx = b.vz = 0;
+    b.from = null; b.state = 'float'; b.alpha = 1;
+    splash(t.x, t.y + t.D * 0.32, t.D);
   }
   function land() {
-    tS.landed = true; tS.from = null;
-    // the words settle onto the water: a soft dip of the plate, its ocean width taken at the bottom of it
-    tS.labelFade = 0;
+    tS.landed = true; tS.from = null; tS.landK = 1;
+    // from its home on the water, the swells take over
+    tS.x = (plan.home.x - W / 2) / 0.5; tS.z = cam.Z0; tS.vx = tS.vz = 0; tS.yb = tS.vb = 0;
     splash(tS.sx, tS.sy + tS.r * tS.surf * 0.55, tS.r * 2 * tS.surf);
     try { thought?.react?.('appear'); } catch { /* optional */ }
     ctx.sound('drip', { intensity: 0.2, pitch: 0.7 });
@@ -784,11 +816,11 @@ export function create(ctx) {
     const wy = cam.hy + (cam.Hw - tS.yb * (rm ? 0.3 : 1)) * s;
     let sx = W / 2 + tS.x * s, sy = wy - tS.r * tS.surf * 0.55;
     if (wake && wy > hyNow) sy += wake.at(sx, wy) * 3;
-    // landing from the storm: from where it hung, down to the water
-    if (tS.from && tS.landK < 1) {
-      const k = easeInOut(tS.landK);
-      sx = lerp(tS.from.x, sx, k); sy = lerp(tS.from.y, sy, k);
-      tS.surf = lerp(tS.from.scale ?? 1, tS.surf, k);
+    // landing from the storm: from where it hung, down to its home on the water
+    if (tS.from) {
+      const k = easeInOut(tS.glide);
+      sx = lerp(tS.from.x, plan.home.x, k); sy = lerp(tS.from.y, plan.home.y, k);
+      tS.surf = lerp(tS.from.scale ?? 1, 1, k);
     }
     tS.sx = sx; tS.sy = sy;
     tS.alpha = Math.min(1, tS.alpha + dt / (tS.from ? 0.01 : 0.9));
@@ -801,7 +833,7 @@ export function create(ctx) {
       if (tS.labelFade >= 0.5 && tS.labelW !== plan.textMax) { tS.labelW = plan.textMax; tS.labelY = sy + above < bandBottom + 6 ? below : above; }
       if (tS.labelFade >= 1) tS.labelFade = -1;
     }
-    if (!tS.from) {
+    if (!tS.from || tS.glide > 0) {
       tS.labelYT = sy + above < bandBottom + 6 ? below : above;
       tS.labelY += (tS.labelYT - tS.labelY) * (1 - Math.exp(-dt / 0.28));
     }
@@ -825,7 +857,7 @@ export function create(ctx) {
       sea.sample(b.x, b.z, sm);
       const ki = 1 - Math.exp(-dt / 0.35);
       b.vx += (sm.ux * g - b.vx) * ki; b.vz += (sm.uz * g - b.vz) * ki;
-      if ((b.state === 'float' || b.state === 'rise') && dt > 0) {
+      if (!b.from && (b.state === 'float' || b.state === 'rise') && dt > 0) {
         b.x += b.vx * dt; b.z += b.vz * dt;
         b.z = clamp(b.z, -0.6 * cam.Z0, OCEAN.CAP * cam.Z0);
       }
@@ -840,8 +872,7 @@ export function create(ctx) {
       const wy = cam.hy + (cam.Hw - b.yb * (rm ? 0.3 : 1)) * s;
       let sx = W / 2 + b.x * s, sy = wy - 0.3 * b.D - easeOut(b.lift) * b.D * 0.35 + (b.state === 'rise' ? (1 - b.riseK) * b.D * 0.5 : 0);
       if (wake && wy > hyNow) sy += wake.at(sx, wy) * 3;
-      if (b.from && b.landK < 1) { const k = easeInOut(b.landK); sx = lerp(b.from.x, sx, k); sy = lerp(b.from.y, sy, k); }
-      else if (b.from && b.state !== 'float') { /* card held in place until it lands */ }
+      if (b.from) { const k = easeInOut(b.glide); sx = lerp(b.from.x, b.target.x, k); sy = lerp(b.from.y, b.target.y, k); b.D = b.target.D; }
       b.sx = sx; b.sy = sy;
     }
     separate(dt);
@@ -1287,7 +1318,7 @@ export function create(ctx) {
     const x = b.sx, y = b.sy, D = b.D;
     // the postcard (from the storm) turning into a bubble, in place
     if (b.from && b.morph < 1) {
-      const k = b.morph, size = lerp(b.from.size, D, k);
+      const k = b.morph, size = lerp(b.from.size, D, easeInOut(k));
       const cx = x, cy = y;
       if (k < 1) photos.draw(g, b.i, cx, cy, size, { shape: 'card', rot: b.from.rot * (1 - k), alpha: b.alpha * (1 - k), shadow: false, glow: 0.3 * (1 - k), glowColour: C.dawn });
       if (k > 0) {
@@ -1448,7 +1479,7 @@ export function create(ctx) {
           const th = handoff.thought;
           if (th && Number.isFinite(th.x) && Number.isFinite(th.y) && !rm) {
             tS.from = { x: th.x, y: th.y, scale: ((th.r || tS.r) * (th.scale ?? 1)) / tS.r, labelW: th.labelW || plan.textMax };
-            tS.landK = 0; tS.alpha = 1; tS.landed = false; tS.sx = th.x; tS.sy = th.y; tS.surf = tS.from.scale;
+            tS.landK = 0; tS.glide = 0; tS.alpha = 1; tS.landed = false; tS.sx = th.x; tS.sy = th.y; tS.surf = tS.from.scale;
             // its words stay as the storm showed them (under it) until it settles on the water
             tS.labelY = tS.labelYT = (th.r || tS.r) * (th.scale ?? 1) * 0.98 + 8; tS.labelW = tS.from.labelW;
           }

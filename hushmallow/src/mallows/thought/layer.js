@@ -497,9 +497,9 @@ export class ThoughtLayer {
   }
 
   // the extent a thought will have once it has appeared (offsets from its centre), from its size, feeling and prop
-  _predict(th) {
+  _predict(th, zAt) {
     const p = th._pred || (th._pred = { l: 0, r: 0, t: 0, b: 0 });
-    const z = Math.max(th.zGoal, th.zFloor);
+    const z = Number.isFinite(zAt) ? Math.max(th.zGoal, zAt) : Math.max(th.zGoal, th.zFloor);
     const P = th.r * 2 * th.scale * (1 - 0.5 * z) * (1 - 0.16 * th.style.motion.shrink * 0.7), W = P * th.aspect;
     p.l = p.r = W / 2 + 2; p.t = p.b = P / 2 + 2;
     // siblings: their ring round it
@@ -757,26 +757,25 @@ export class ThoughtLayer {
     if (!force && c[0] === v0 && c[1] === v1 && c[2] === v2 && c[3] === v3 && c[4] === v4 && c[5] === v5 && c[6] === v6 && Math.abs(c[7] - v7) < 2000) return this.crowd;
     c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; c[4] = v4; c[5] = v5; c[6] = v6; c[7] = v7;
     const area = Math.max(1, (B.right - B.left) * (B.bottom - B.top) - v7 * 0.8);
-    // what each level needs: every body (at that level's depth, siblings and effects round it) and its
-    // words (an estimated plate for that level's lines and width, 17 px Nunito ≈ 8.6 px a character),
+    // what each level needs: every thought's footprint as it would be there — its body, siblings, effects
+    // and prop at that level's depth (as placement predicts them) with its words below it on a plate of
+    // that level's lines and width (17 px Nunito ≈ 8.6 px a character, never fewer than three words) —
     // with slack for packing; the roomiest level that fits wins
-    const W = env.view.W;
+    const W = env.view.W, cw = W < 361 ? 8.1 : 8.6;
     let crowd = 4;
     for (let lv = 0; lv < 5 && n > 1; lv++) {
       const z = CROWD_Z[lv], lines = lv === 0 ? 3 : lv === 1 ? 2 : 1;
-      const { maxW, pad } = this._tagMax(W, lv);
+      const { maxW, pad } = this._tagMax(W, lv), wide = this._tagMax(W, 0).maxW;
       let need = 0;
       for (const th of this.thoughts) {
-        const P = th.r * 2 * th.scale * (1 - 0.5 * z), Wb = P * th.aspect;
-        let bw = Wb + 24, bh = P + 16;
-        if (th.siblings.length) { bw += Wb * 0.9; bh += P * 0.6; }
-        if (th.style.fx.rain > 0 || th.style.fx.steam > 0) bh += P * 0.75;
-        if (th.kind === 'belief') bh += P * 0.35;
-        const tw = Math.min(th.text.length * 8.6, (maxW - pad) * lines), l = Math.max(1, Math.ceil(tw / (maxW - pad)));
-        const pw = Math.min(maxW, tw / l + pad) + 16, ph = l * 22 + 32;
-        need += bw * bh + pw * ph;
+        const p = this._predict(th, z);
+        const tw = th.text.length * cw, three = (th._words || wordsOf(th.text)).slice(0, 3).join(' ').length * cw + 12 + pad;
+        const l = Math.max(1, Math.min(lines, Math.ceil(tw / (maxW - pad))));
+        const pw = Math.min(Math.max(maxW, Math.min(wide, three)), l > 1 ? maxW : tw + pad), ph = l * 22 + 17;
+        const gap = 14 + 8 * (1 - z);
+        need += (Math.max(p.l + p.r, pw) + 16) * (p.t + p.b + gap + ph + 12);
       }
-      if (area >= need * 1.15) { crowd = lv; break; }
+      if (area >= need * 1.3) { crowd = lv; break; }
     }
     if (n <= 1) crowd = 0;
     this.room = area / Math.max(1, n);
@@ -860,9 +859,17 @@ export class ThoughtLayer {
     const fits = (txt) => { tg.words.textContent = txt; return tg.words.offsetHeight <= lines * lh + 2; };
     let text = words.join(' ');
     if (!fits(text)) {
-      // the most words that fit (binary search over a prefix)
+      // the most words that fit (binary search over a prefix)…
       let lo = 1, hi = words.length - 1, ok = 0;
       while (lo <= hi) { const mid = (lo + hi) >> 1; if (fits(firstWords(words, mid))) { ok = mid; lo = mid + 1; } else hi = mid - 1; }
+      // …but a crowded plate never carries fewer than the first three words: it widens back for them
+      const minK = Math.min(3, words.length - 1);
+      if (ok < minK) {
+        const wide = this._tagMax(W, 0).maxW;
+        el.style.maxWidth = `${wide}px`; el.style.width = `${wide}px`;
+        if (fits(firstWords(words, minK))) ok = minK;
+        else if (!ok) { lo = 1; hi = minK - 1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (fits(firstWords(words, mid))) { ok = mid; lo = mid + 1; } else hi = mid - 1; } }
+      }
       if (ok) text = firstWords(words, ok);
       else {
         // one very long first word: cut inside it (by code point), still marked "…"
