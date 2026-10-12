@@ -14,7 +14,10 @@ Reads <work_dir>/<id>.png (prepare.py), measure-<id>.json and masks_<id>.npz
   zuzu-spiral-L|R      Zuzu's spirals with their dark rim, rounded so the rim
                        sits on one radius and cut just inside it (drawn at
                        native px; ~300 px across at the 1024 px art scale).
-  boppo-/pipzi-iris-L|R  irises cut from the art.
+  boppo-/pipzi-iris-L|R  irises cut from the art: where measure.py's circle
+                       runs into the sclera (Boppo: a pale crescent at the
+                       top), along the painted iris outline instead
+                       (iris_circle; derive-report.json 'iris').
   iris-navy            Boppo's iris recoloured for the closed-eyed Mallows.
 and <work_dir>/erase_<id>.png (the removal mask) for review.
 
@@ -361,6 +364,58 @@ def cut_circle(img, cx, cy, r, soft=1.5):
     return crop
 
 
+def pale_px(rgb):
+    """Sclera-like pixels: light and unsaturated (an iris's sparkles are
+    saturated, so they never count)."""
+    hsv = cv2.cvtColor(np.ascontiguousarray(rgb[..., :3]), cv2.COLOR_RGB2HSV).astype(np.float64)
+    return (hsv[..., 2] > 150) & (hsv[..., 1] < 110)
+
+
+def iris_circle(img, cx, cy, r, unit):
+    """The painted iris outline as a circle. measure.py fits the iris with its
+    glow, and on Boppo that circle runs ~14 px into a pale crescent of sclera
+    at the top (the painted iris is smaller and sits lower), which a cut-out
+    of that circle would carry into every open-eyed expression. Per 2 degrees
+    the edge is where the sclera starts: the start of the pale run that
+    reaches past the circle, walking out from 0.78 r (inside that sit the
+    catchlight and sparkles). A least-squares circle through those edges,
+    refitted without the >2 px outliers. Returns (cx, cy, r, n_edges) or None
+    when the circle already sits inside the iris (no crescent)."""
+    pale = pale_px(img)
+    H, W = pale.shape
+    pts = []
+    for deg in range(0, 360, 2):
+        t = np.radians(deg)
+        rr = np.arange(0.78 * r, r + 6 * unit / 2.657, 0.5)
+        xs = np.clip(np.round(cx + rr * np.cos(t)).astype(int), 0, W - 1)
+        ys = np.clip(np.round(cy + rr * np.sin(t)).astype(int), 0, H - 1)
+        p = pale[ys, xs]
+        if not p[-1]:
+            continue
+        k = len(p) - 1
+        while k > 0 and p[k - 1]:
+            k -= 1
+        if k > 0:
+            pts.append((cx + rr[k] * np.cos(t), cy + rr[k] * np.sin(t)))
+    if len(pts) < 60:
+        return None
+    P = np.array(pts)
+
+    def fit(P):
+        A = np.c_[2 * P[:, 0], 2 * P[:, 1], np.ones(len(P))]
+        b = (P ** 2).sum(1)
+        (a, c, k), *_ = np.linalg.lstsq(A, b, rcond=None)
+        return a, c, float(np.sqrt(k + a * a + c * c))
+    a, c, R = fit(P)
+    keep = np.abs(np.hypot(P[:, 0] - a, P[:, 1] - c) - R) < 2.0
+    a, c, R = fit(P[keep])
+    # inside the measured circle by more than a pixel somewhere: a crescent
+    inner = np.hypot(P[:, 0] - cx, P[:, 1] - cy).min()
+    if inner > r - 1.5:
+        return None
+    return float(a), float(c), R, int(keep.sum())
+
+
 def rim_edges(L, cx, cy, r_lo, r_hi, n=180):
     """Per angle, the radius where a disc's dark rim ends: the luminance
     minimum in [r_lo, r_hi], then the first radius at which the profile has
@@ -570,10 +625,18 @@ if __name__ == '__main__':
                 ir = f['iris' + s]
                 # r reaches the first white pixel: cut just inside it
                 spr['glitzi-iris-' + s] = glitzi_iris(img, masks['eye' + s], ir['cx'], ir['cy'], ir['r'] - 2.5, u)
+        irises = {}
         if name in ('boppo', 'pipzi'):
             for s in 'LR':
                 ir = f['iris' + s]
-                spr[f'{name}-iris-{s}'] = cut_circle(img, ir['cx'], ir['cy'], ir['r'] - 0.5)
+                cx, cy, r = ir['cx'], ir['cy'], ir['r'] - 0.5
+                ref = iris_circle(img, ir['cx'], ir['cy'], ir['r'], u)
+                if ref:
+                    # the painted outline (no sclera crescent), cut 1 px inside
+                    # it; build_table.py places the sprite from this circle
+                    cx, cy, r = ref[0], ref[1], ref[2] - 1.0
+                    irises[s] = {'cx': round(cx, 3), 'cy': round(cy, 3), 'r': round(r, 3), 'edges': ref[3]}
+                spr[f'{name}-iris-{s}'] = cut_circle(img, cx, cy, r)
         if name == 'boppo':
             spr['iris-navy'] = recolour(spr['boppo-iris-L'], 232, 1.0, 1.15)
         if name == 'zuzu':
@@ -594,6 +657,7 @@ if __name__ == '__main__':
             Image.fromarray(a, 'RGBA').save(f'{WORK}/{k}.png')
         report[name] = {'erase_px': int(m.sum()), 'sprites': {k: [a.shape[1], a.shape[0]] for k, a in spr.items()},
                         **({'spiral_rims': rims} if rims else {}),
+                        **({'iris': irises} if irises else {}),
                         'body_kb': round(os.path.getsize(f'{OUT}/{name}-body.webp') / 1024, 1)}
         print(name, report[name])
     prev = {}

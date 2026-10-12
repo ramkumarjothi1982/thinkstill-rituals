@@ -6,7 +6,10 @@
 (assets/source/hires). For each Mallow this writes the approved cut-out the
 rig uses, <out_dir>/<id>.webp (and a lossless <work_dir>/<id>.png that the
 later steps measure), trimmed to its alpha
-bounding box with an 8 px pad and resampled to a 1024 px max side.
+bounding box with an 8 px pad and resampled to a 1024 px max side, and
+<out_dir>/<id>-thumb.webp, the same cut-out at a 384 px max side for every
+picture of a Mallow that is not the rig (cards, switcher, lists: the
+current art's ~390 px budget, so seven decode in ~4 MB, not ~28 MB).
 
 Clean-ups (no repainting of the artwork):
   * alpha: the source body is 251-253 inside, not 255 (lossy encoder), which
@@ -27,6 +30,7 @@ from PIL import Image
 SRC, OUT, WORK = sys.argv[1], sys.argv[2], sys.argv[3]
 IDS = sys.argv[4:] or ['glitzi', 'zuzu', 'boppo', 'pipzi', 'blubi', 'loomi', 'noomi']
 MAX_SIDE, PAD = 1024, 8
+THUMB_SIDE = 384
 os.makedirs(OUT, exist_ok=True)
 os.makedirs(WORK, exist_ok=True)
 
@@ -77,6 +81,10 @@ for name in IDS:
     out = resample(rgb, a, box, (W, H))
     Image.fromarray(out, 'RGBA').save(f'{WORK}/{name}.png')
     Image.fromarray(out, 'RGBA').save(f'{OUT}/{name}.webp', quality=94, method=6, alpha_quality=100, exact=False)
+    # the thumbnail: the same source box, so it is the cut-out, smaller
+    k = THUMB_SIDE / max(W, H)
+    thumb = resample(rgb, a, box, (int(round(W * k)), int(round(H * k))))
+    Image.fromarray(thumb, 'RGBA').save(f'{OUT}/{name}-thumb.webp', quality=90, method=6, alpha_quality=100, exact=False)
     al = out[..., 3]
     ys, xs = np.nonzero(al > 0)
     report[name] = {
@@ -84,6 +92,7 @@ for name in IDS:
         'alpha_bbox': [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1],
         'opaque_frac': float((al == 255).sum() / max(1, (al > 0).sum())),
         'webp_kb': round(os.path.getsize(f'{OUT}/{name}.webp') / 1024, 1),
+        'thumb': [thumb.shape[1], thumb.shape[0]], 'thumb_kb': round(os.path.getsize(f'{OUT}/{name}-thumb.webp') / 1024, 1),
     }
     print(name, report[name])
 
