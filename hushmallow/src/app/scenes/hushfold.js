@@ -536,16 +536,29 @@ export default function hushfold(app, params = {}) {
       emotion: S.emotion, intention: S.intention, hasPlan: ent.has('paid'),
       face: (f) => stageMallow.setEmotion(f, 0.6, { quiet: true }),
       onLayout: () => layout(),
+      // the level is the scene's the moment it is seen, whether or not anything is sent
+      onSafety: (r) => noteSafety(r),
+      support: (opts) => openSupportSheet(opts),
+      trackSheet: (sh) => trackSheet(sh),
       onSubmit: (r) => afterTell(r),
-      onClose: (reason) => {
+      onClose: (reason, meta = {}) => {
         overlay = null;
         popLayer('overlay');
         root.classList.remove('hf-typing');
         if (S.left) return;
+        noteSafety(meta.safety);
+        // crisis words typed in the last moment before closing: the urgent sheet still opens, once
+        if (meta.safety?.level === 'crisis' && !meta.supportShown && reason !== 'submit') openSupportSheet({ urgent: true });
         showTell(true);
         layout();
         subtitles.unsuspend();
-        if (reason !== 'submit') { stageMallow.setStage('neutral', { quiet: true }); app.applyUpdateIfSafe?.(); }
+        if (reason !== 'submit') {
+          stageMallow.setStage(gentle() ? 'comforting' : 'neutral', { quiet: true });
+          speakCrisis();
+          // care or distress typed and closed without sending: support stays close, said once, quietly
+          if (!S.crisis && gentle() && !S.careSaid) { S.careSaid = true; say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding }); }
+          app.applyUpdateIfSafe?.();
+        }
       },
     });
     pushLayer('overlay');
@@ -554,18 +567,23 @@ export default function hushfold(app, params = {}) {
   }
 
   async function afterTell({ text, emotion, intention, safety, input }) {
+    S.pendingResume = false;
+    // safety comes first, before anything else is decided (with or without a plan)
+    noteSafety(safety);
     const fam = emotion ? await setFeeling(emotion, { quiet: true }) : null;
+    if (S.left) return;
     if (intention) S.intention = intention;
     if (safety?.level === 'crisis') {
       // no Thought Mallow, no world that transforms the words; support stays one tap away
-      S.crisis = true;
-      supportPill.hidden = false;
       stageMallow.setStage('comforting');
-      say(SHARED_LINES.support, { interrupt: !subtitles.holding });
+      speakCrisis();
       layout();
       return;
     }
-    if (safety?.level === 'care' || safety?.level === 'concern') { supportPill.hidden = false; layout(); }
+    // care (abuse, violence, threats…), distress, or wanting to hurt someone: the person stays on the
+    // stage with or without a plan. No jokes, no Thought Mallow made of it, nothing starts by itself:
+    // support first, then they choose whether anything plays (the plans page only if they ask to play)
+    if (safety?.level === 'care' || safety?.level === 'concern') { S.told = true; S.careSaid = true; await careBeat({ emotion, intention, safety }); return; }
     if (!ent.has('paid')) {
       // D4: the Thought Mallow and Hushflow are part of hushmallow Flow. The words wait in memory only.
       app.state.pendingTell = { input, emotion, intention, at: Date.now() };
@@ -573,18 +591,13 @@ export default function hushfold(app, params = {}) {
       return;
     }
     S.told = true;
-    // a harm disclosure or wanting to hurt someone: no jokes, no Thought Mallow made of it, nothing
-    // starts by itself; support first, then the person chooses whether anything plays
-    if (safety?.level === 'care' || safety?.category === 'harm-others') { await careBeat({ emotion, intention, safety }); return; }
     stageMallow.react('nod');
     let spoken = Promise.resolve();
-    const gentle = safety?.level === 'concern';
-    if (gentle) spoken = say(SHARED_LINES.supportConcern, { interrupt: !subtitles.holding });
-    else if (emotion) spoken = say(lines.pick(mallowId, 'ack', { emotion, feelingName: S.emotionName, family: fam?.family }));
+    if (emotion) spoken = say(lines.pick(mallowId, 'ack', { emotion, feelingName: S.emotionName, family: fam?.family }));
     if (text && !worldMode) {
       spawnThought(text, emotion);
       stageMallow.setStage('curious', { quiet: true });
-      if (!emotion && !gentle) spoken = say(lines.pick(mallowId, 'thought'));
+      if (!emotion) spoken = say(lines.pick(mallowId, 'thought'));
     }
     const go = () => startFlow({ emotion: emotion || S.emotion, intention: intention || S.intention, input, safety });
     if (worldMode) { go(); return; }
@@ -597,19 +610,46 @@ export default function hushfold(app, params = {}) {
     } else await go();
   }
 
-  /** Care: support first; a gentle world only if the person asks for one (and never with their words in it). */
+  /** The world a gentle choice plays, named for what it is (a calm one first, once it is playable). */
+  async function gentleWorld() {
+    try {
+      if (!(await flowAvailable())) return null;
+      const { registry } = await import('../../hushfold/flow/registry.js');
+      for (const [id, label] of GENTLE_WORLDS) if (registry.playable(id)) return { worldId: id, label };
+      const any = (registry.list || []).find((e) => registry.playable(e.id));
+      return any ? { worldId: any.id, label: `Play ${any.title}` } : null;
+    } catch { return null; }
+  }
+  /**
+   * Care, distress or wanting to hurt someone: support first, on the stage, plan or no plan.
+   * Staying quietly is the first choice; a world only if the person asks for one (never with their
+   * words in it). Without a plan that one optional tap is the only way to the plans page.
+   */
   async function careBeat({ emotion, intention, safety }) {
     S.care = true;
+    supportPill.hidden = false;
+    layout();
     stageMallow.setStage('comforting', { quiet: true });
-    const first = safety?.category === 'harm-others' ? SHARED_LINES.harmOthers : SHARED_LINES.supportCare;
+    const first = safety?.category === 'harm-others' ? SHARED_LINES.harmOthers : safety?.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern;
     await say(first, { interrupt: !subtitles.holding });
     if (S.left || overlay) return;
+    const gw = await gentleWorld();
+    if (S.left || overlay) return;
+    if (!gw) { say(SHARED_LINES.careQuiet); return; }
     const v = await subtitles.choice(SHARED_LINES.careAsk[0],
-      [{ label: 'Stay here quietly', value: 'stay' }, { label: 'Play something gentle', value: 'play', primary: true }],
+      [{ label: 'Stay here quietly', value: 'stay', primary: true }, { label: gw.label, value: 'play' }],
       { who: M().name, colour: M().colours.glow, timeoutMs: 30000 });
     if (S.left) return;
-    if (v === 'play') startFlow({ emotion: emotion || S.emotion, intention: intention && intention !== 'let-go' ? intention : 'calm', input: null, safety });
-    else if (v === 'stay') say(SHARED_LINES.careQuiet);
+    if (v === 'play') {
+      const calm = intention && intention !== 'let-go' ? intention : 'calm';
+      if (!ent.has('paid')) {
+        // D4: worlds open with hushmallow Flow. Only because they asked; their words are not carried
+        app.state.pendingTell = { input: null, emotion: emotion || S.emotion, intention: calm, worldId: gw.worldId, gentle: { level: S.level, category: S.category }, at: Date.now() };
+        app.go('plans', { reason: 'tell' });
+        return;
+      }
+      startFlow({ emotion: emotion || S.emotion, intention: calm, input: null, safety, worldId: gw.worldId });
+    } else if (v === 'stay') say(SHARED_LINES.careQuiet);
   }
 
   /** Start Hushflow (paid; enforced here as well as by the routes). Feeling ids map to the registry's. */
@@ -817,6 +857,15 @@ export default function hushfold(app, params = {}) {
     if (!p || Date.now() - p.at > 30 * 60 * 1000 || !ent.has('paid')) return false;
     S.invited = true;
     showTell(true);
+    if (p.gentle) {
+      // they asked for something gentle after a care or distress disclosure: support stays up, no words in it
+      noteSafety(p.gentle);
+      S.careSaid = true;
+      later(() => startFlow({ emotion: p.emotion, intention: p.intention || 'calm', input: null, worldId: p.worldId || null }), 700);
+      return true;
+    }
+    // their words wait for this (no reload for a new deploy in between)
+    S.pendingResume = true;
     later(() => afterTell({ text: p.input?.text || '', emotion: p.emotion, intention: p.intention, safety: p.input?.safety?.detail || { level: 'none' }, input: p.input }), 700);
     return true;
   }

@@ -325,6 +325,10 @@ const LABEL_RE = new RegExp(R`\byou(?:'re| are)( not| never)?(?: just| really| s
 // "Three failed tests tell you the test is hard for you, not that you are
 // stupid": the label is named only to set what the evidence shows against it.
 const LABEL_CONTRAST = new RegExp(R`\b(?:tells?|shows?|measures?|measured|means?|says?|said|proves?|proved|is about|are about|was about|were about)\b[^.?!]*\b(?:not|rather than|instead of) (?:that |whether |proof that )?you(?:'re| are)(?: just| really| so| such| totally| completely)* ${HARSH}\b`, 'iu');
+// "You might be treating three failed tests as proof you're stupid": the
+// person's own verdict, named as the thing under examination ("as proof",
+// "whether", "you called yourself"), is not the gate applying the label.
+const LABEL_FRAME = new RegExp(R`\b(?:as (?:(?:proof|evidence|a sign|a verdict|confirmation|a ruling)(?: that)?|if|though)|whether|you(?: have| had)?(?: just| keep| kept| might| may)? (?:said|say|wrote|called yourself|call yourself|calling yourself|told yourself|tell yourself|telling yourself|concluded|decided|feel|felt|fear|feared)(?: that)?) you(?:'re| are)(?: just| really| so| such| totally| completely)* ${HARSH}\b`, 'iu');
 
 // American spellings (exempted when the person used the same word).
 const IZE_ALLOW = new Set(['size', 'sizes', 'sized', 'resize', 'resized', 'downsize', 'downsized', 'oversize', 'oversized', 'prize', 'prizes', 'prized', 'seize', 'seized', 'seizes', 'seizing', 'capsize', 'maize', 'baize', 'assize']);
@@ -410,7 +414,9 @@ export function qualityGate(scene, ctx) {
   const inputLower = input.toLowerCase();
   const inputWords = new Set(words(input).map((w) => w.toLowerCase().replace(/’/g, "'")));
   const info = inputInfo(input);
-  const heavy = HEAVY_EMOTIONS.has(scene.emotion) || HEAVY_EMOTIONS.has(ctx.emotion || '') || scene.situation_type === 'loss';
+  const inputNums = numbersIn(input);
+  for (const n of quotedCounts(input)) inputNums.add(n);
+  const heavy =HEAVY_EMOTIONS.has(scene.emotion) || HEAVY_EMOTIONS.has(ctx.emotion || '') || scene.situation_type === 'loss';
 
   // 1. Shape of the two subtitle lines.
   const l1 = scene.subtitle_line_1;
@@ -466,8 +472,10 @@ export function qualityGate(scene, ctx) {
       if (claimsOthersMinds(expand(unquoted), echo)) fail('claims_others_minds', field, mindsMessage(field));
     }
     // The harsh label, repeated or flatly denied.
-    const lab = LABEL_RE.exec(t);
-    if (lab && !LABEL_CONTRAST.test(t)) {
+    // A label inside quotes is the person's own word, quoted.
+    const tq = t.replace(/"[^"]*"/g, ' … ');
+    const lab = LABEL_RE.exec(tq);
+    if (lab && !LABEL_CONTRAST.test(tq) && !LABEL_FRAME.test(tq)) {
       fail(lab[1] ? 'counter_label' : 'label_echo', field, lab[1]
         ? 'Do not simply deny the harsh label ("you\'re not useless"); show what the evidence actually measures instead.'
         : 'Never apply a harsh label to the person.');
@@ -480,24 +488,34 @@ export function qualityGate(scene, ctx) {
       if (american) { fail('american_spelling', field, `Use British spelling ("${raw}" is American spelling).`); break; }
     }
     if (PRACTICE_VERB.test(t) && !/practice/i.test(inputLower)) fail('american_spelling', field, 'Use British spelling: "practise" is the verb.');
-    // Invented details: numbers and names the person never gave. Vague
-    // idioms ("a hundred ordinary things") and, in an action, a time box
-    // ("in the next twenty minutes") are not details about their situation.
-    const inputNums = numbersIn(input);
-    let forNumbers = t.replace(VAGUE_QUANTITY, ' ');
-    if (TIME_BOX_FIELDS.has(field)) forNumbers = forNumbers.replace(TIME_BOX, ' ');
-    for (const num of numbersIn(forNumbers)) {
-      if (num === 'one' || num === 'two' || inputNums.has(num)) continue;
-      fail('invented_detail', field, `Do not add details the person did not give (the number "${num}").`);
-      break;
+    // Invented details: numbers presented as facts, and names, that the
+    // person never gave. Not invented: the person's own numbers (also the
+    // word count of a phrase they quoted), "one" and "two", vague idioms ("a
+    // hundred ordinary things"), and inside a suggested action a time box
+    // ("spend twenty minutes") or a small count of what to do ("write down
+    // three things"); nor, outside known_fact, a general remark about
+    // repetition ("an answer can sound worse on the tenth replay").
+    const isLine = field === 'subtitle_line_1' || field === 'subtitle_line_2';
+    numbers: for (const s of sentences(t)) {
+      let x = s.replace(VAGUE_QUANTITY, ' ');
+      const action = field === 'practical_next_step' || (isLine && ACTION_CUE.test(s));
+      if (action || field === 'subtitle_line_2') x = x.replace(TIME_BOX, ' ');
+      if (action) x = x.replace(ACTION_COUNT, ' ');
+      if (field !== 'known_fact' && GENERIC_CUE.test(s)) x = x.replace(REPEAT_ORDINAL, ' ');
+      for (const num of numbersIn(x)) {
+        if (num === 'one' || num === 'two' || inputNums.has(num)) continue;
+        fail('invented_detail', field, `Do not add details the person did not give (the number "${num}"). A small count or a time span inside a suggested step is fine.`);
+        break numbers;
+      }
     }
     for (const s of sentences(t)) {
-      const ws = s.match(/[\p{L}][\p{L}'’-]*/gu) || [];
+      const ws = s.match(/[\p{L}][\p{L}'’&-]*/gu) || [];
       for (let i = 1; i < ws.length; i++) {
         const w = ws[i];
         if (!/^\p{Lu}/u.test(w)) continue;
-        const lw = w.toLowerCase().replace(/’/g, "'");
-        if (SENTENCE_START_OK.has(lw) || inputWords.has(lw) || inputLower.includes(lw)) continue;
+        // "Saturday's argument" is Saturday; "Monday's interview" is Monday.
+        const lw = w.toLowerCase().replace(/’/g, "'").replace(/'s?$/u, '');
+        if (SENTENCE_START_OK.has(lw) || COMMON_CAPS.has(lw) || inputWords.has(lw) || inputLower.includes(lw)) continue;
         const before = s.slice(0, s.indexOf(w));
         if (/[:"“'‘]\s*$/.test(before)) continue;
         fail('invented_detail', field, `Do not add names or details the person did not give ("${w}").`);
