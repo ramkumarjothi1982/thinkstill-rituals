@@ -113,7 +113,7 @@ export function create(ctx) {
   // grid (rows × columns) — world → screen, shading
   const NG = ROWS * COLS;
   const gH = new Float32Array(NG), gHX = new Float32Array(NG), gHZ = new Float32Array(NG), gGX = new Float32Array(NG), gGZ = new Float32Array(NG), gA = new Float32Array(NG), gAU = new Float32Array(NG);
-  const gMark = new Uint8Array(NG);
+  const gMark = new Uint8Array(NG), gPred = new Uint8Array(NG), gSucc = new Int32Array(NG);
   const gSX = new Float32Array(NG), gSY = new Float32Array(NG), gR = new Float32Array(NG), gG = new Float32Array(NG), gB = new Float32Array(NG), gCrest = new Float32Array(NG), gSpec = new Float32Array(NG), gPath = new Float32Array(NG);
   const rY = new Float32Array(ROWS), rS = new Float32Array(ROWS), rZ = new Float32Array(ROWS), rDZ = new Float32Array(ROWS);
   let rowsN = ROWS;
@@ -1147,25 +1147,33 @@ export function create(ctx) {
         gMark[q] = on;
       }
     }
+    // link each crest point to the next one along its crest (along the row first, else down a row)
+    gSucc.fill(-1); gPred.fill(0);
+    for (let j = 3; j < n; j++) {
+      const o = j * COLS;
+      for (let c = 0; c < COLS; c++) {
+        const q = o + c;
+        if (!gMark[q]) continue;
+        const cand = c < COLS - 1 && gMark[q + 1] ? q + 1 : j < n - 1 ? (gMark[q + COLS] ? q + COLS : c < COLS - 1 && gMark[q + COLS + 1] ? q + COLS + 1 : c > 0 && gMark[q + COLS - 1] ? q + COLS - 1 : -1) : -1;
+        if (cand >= 0 && !gPred[cand]) { gSucc[q] = cand; gPred[cand] = 1; }
+      }
+    }
     g.lineCap = 'round'; g.lineJoin = 'round';
     const lv = [0.1, 0.26, 0.5];
+    const bucket = (v) => (v < lv[0] ? -1 : v < lv[1] ? 0 : v < lv[2] ? 1 : 2);
     for (let depth = 0; depth < 2; depth++) for (let b = 0; b < 3; b++) {
       g.beginPath();
       let segs = 0;
-      for (let j = 3; j < n; j++) {
-        const sN = clamp(rS[j] / 1.2);
-        if ((depth === 0) !== (sN < 0.4)) continue;
-        const o = j * COLS;
-        for (let c = 0; c < COLS; c++) {
-          const q = o + c;
-          if (!gMark[q]) continue;
-          // join to the next crest point: along the row first, else down a row (straight or diagonal)
-          const cand = c < COLS - 1 && gMark[q + 1] ? q + 1 : j < n - 1 ? (gMark[q + COLS] ? q + COLS : c < COLS - 1 && gMark[q + COLS + 1] ? q + COLS + 1 : c > 0 && gMark[q + COLS - 1] ? q + COLS - 1 : -1) : -1;
-          if (cand < 0) continue;
-          const v = (gCrest[q] + gCrest[cand]) * 0.5;
-          const bi = v < lv[0] ? -1 : v < lv[1] ? 0 : v < lv[2] ? 1 : 2;
-          if (bi !== b) continue;
-          g.moveTo(gSX[q], gSY[q]); g.lineTo(gSX[cand], gSY[cand]); segs++;
+      // walk every crest from its first point, one continuous line per run of the same brightness
+      for (let q0 = 3 * COLS; q0 < n * COLS; q0++) {
+        if (!gMark[q0] || gPred[q0] || gSucc[q0] < 0) continue;
+        let q = q0, pen = false;
+        while (q >= 0 && gSucc[q] >= 0) {
+          const nq = gSucc[q], j = (q / COLS) | 0;
+          const sN = clamp(rS[j] / 1.2);
+          const ok = (depth === 0) === (sN < 0.4) && bucket((gCrest[q] + gCrest[nq]) * 0.5) === b;
+          if (ok) { if (!pen) { g.moveTo(gSX[q], gSY[q]); pen = true; } g.lineTo(gSX[nq], gSY[nq]); segs++; } else pen = false;
+          q = nq;
         }
       }
       if (!segs) continue;
@@ -1317,31 +1325,37 @@ export function create(ctx) {
       const h = sm.h * (rm ? 0.4 : 1) * (1 - 0.35 * mirrorK);
       pts[k] = wl - h * wo.s * 0.6 + (wake ? wake.at(x, wl) * 3 : 0) - bob * 0.15;
     }
-    const key = `${Math.round(wl)}|${Math.round(base)}`;
-    if (key !== hero.lipKey) {
-      hero.lipKey = key;
-      const lg = g.createLinearGradient(0, wl - 4, 0, base + 10);
-      lg.addColorStop(0, 'rgba(16,84,108,0)'); lg.addColorStop(0.2, 'rgba(14,78,104,0.34)'); lg.addColorStop(0.72, 'rgba(8,52,74,0.62)'); lg.addColorStop(1, 'rgba(6,36,52,0)');
-      hero.lipGrad = lg;
-    }
+    // the body's base where it is now (it bobs; the water keeps its own level)
+    const bNow = base - bob;
+    let wMin = Infinity; for (let k = 1; k < N; k++) wMin = Math.min(wMin, pts[k]);
+    const sub = clamp((bNow - wMin) / Math.max(4, base - wl));   // how much of the lowest tenth is under water
     const cx = (hero.left + hero.right) / 2, rx = w / 2 + 6;
     const k0 = hero.floatK;
-    g.save();
-    // only round the body's base: an ellipse clip, so the tint never reads as a box
-    g.beginPath(); g.ellipse(cx, base - 4, rx, Math.max(12, base - wl + 14), 0, 0, TAU); g.clip();
-    g.globalAlpha = k0;
-    g.beginPath(); g.moveTo(left, base + 12);
-    for (let k = 0; k <= N; k++) g.lineTo(left + (right - left) * (k / N), pts[k]);
-    g.lineTo(right, base + 12); g.closePath();
-    g.fillStyle = hero.lipGrad; g.fill();
-    g.restore();
+    if (sub > 0.02) {
+      const key = `${Math.round(wMin)}|${Math.round(bNow)}`;
+      if (key !== hero.lipKey) {
+        hero.lipKey = key;
+        const lg = g.createLinearGradient(0, wMin - 3, 0, bNow + 4);
+        lg.addColorStop(0, 'rgba(16,84,108,0)'); lg.addColorStop(0.25, 'rgba(14,78,104,0.32)'); lg.addColorStop(0.8, 'rgba(8,52,74,0.58)'); lg.addColorStop(1, 'rgba(6,36,52,0)');
+        hero.lipGrad = lg;
+      }
+      g.save();
+      // only round the body's base: an ellipse clip, so the tint never reads as a box
+      g.beginPath(); g.ellipse(cx, bNow - 4, rx, Math.max(12, bNow - wMin + 10), 0, 0, TAU); g.clip();
+      g.globalAlpha = k0;
+      g.beginPath(); g.moveTo(left, bNow + 6);
+      for (let k = 0; k <= N; k++) g.lineTo(left + (right - left) * (k / N), Math.min(pts[k], bNow + 6));
+      g.lineTo(right, bNow + 6); g.closePath();
+      g.fillStyle = hero.lipGrad; g.fill();
+      g.restore();
+    }
     // the meniscus: a bright line where water meets the Mallow, softly fading at both ends
     g.save();
     g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
     for (let pass = 0; pass < 2; pass++) {
       g.beginPath();
       for (let k = 1; k < N; k++) { const x = left + (right - left) * (k / N); if (k === 1) g.moveTo(x, pts[k]); else g.lineTo(x, pts[k]); }
-      g.strokeStyle = C.crest2; g.globalAlpha = (pass ? 0.55 : 0.16) * k0; g.lineWidth = pass ? 1.4 : 6; g.stroke();
+      g.strokeStyle = C.crest2; g.globalAlpha = (pass ? 0.55 : 0.16) * k0 * (0.35 + 0.65 * sub); g.lineWidth = pass ? 1.4 : 6; g.stroke();
     }
     // a soft ring of water round the body, flattened by the view
     const s = Math.max(0.05, (wl - cam.hy) / cam.Hw), asp = clamp(s * cam.Hw / cam.Z0, 0.16, 0.7);
