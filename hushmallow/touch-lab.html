@@ -77,6 +77,13 @@
   .trow, #tlow { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
   #tlow > .trow { -webkit-mask-image: none; mask-image: none; }
   .trow:first-child { -webkit-mask-image: none; mask-image: none; }
+  /* the support line (crisis or care words): instead of a Thought Mallow, above everything */
+  #tsupport { position: fixed; z-index: 14; left: 16px; right: 16px; top: calc(max(12px, env(safe-area-inset-top)) + 12px); margin: 0 auto; max-width: 440px; box-sizing: border-box;
+    padding: 16px 18px 14px; border-radius: 20px; background: #140f33; border: 1px solid rgba(255, 255, 255, 0.22); color: #fbf8ff; box-shadow: 0 18px 44px rgba(3, 1, 14, 0.55); }
+  #tsupport[hidden] { display: none; }
+  #tsupport h2 { margin: 0 0 6px; font: 700 17px/1.3 var(--ff-ui, system-ui), system-ui, sans-serif; }
+  #tsupport p { margin: 0 0 12px; font: 500 16px/1.45 var(--ff-voice, system-ui), system-ui, sans-serif; }
+  #tsupport button { width: 100%; min-height: 44px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.08); color: #fbf8ff; font: 650 16px/1 var(--ff-ui, system-ui), system-ui, sans-serif; }
 </style>
 </head>
 <body>
@@ -102,6 +109,7 @@
   <div class="row"><button id="totab" aria-pressed="false">thoughts</button></div>
 </div>
 <div id="tags"></div>
+<div id="tsupport" class="ui" role="alert" hidden><h2></h2><p></p><button type="button">Close</button></div>
 <section id="tpanel" class="ui" aria-label="Thoughts">
   <div class="trow">
     <input id="ttext" type="text" maxlength="280" autocomplete="off" enterkeyhint="go" aria-label="A thought, in your words" placeholder="Type a thought…" value="My boss embarrassed me today.">
@@ -130,6 +138,7 @@
 import { MALLOWS, MALLOW_IDS } from './src/mallows/registry.js';
 import { MallowTouch } from './src/mallows/touch/mallow-touch.js';
 import { ThoughtLayer } from './src/mallows/thought/index.js';
+import { checkText, safetyCopy } from './src/engine/safety.js';
 
 const qs = new URLSearchParams(location.search);
 const stage = document.getElementById('stage');
@@ -192,7 +201,8 @@ function layout(count) {
     // lower stage; the tiny Thought Mallows float above and beside it, all above the panel
     const { top, bottom } = stageBand();
     // a fuller stage on a short phone: the hero gives the thoughts a little more room (the Hushfold does this through onBand)
-    const n = Number.isFinite(count) ? count : thoughts?.list.length || 0, k = n > 4 && h < 700 ? 0.3 : n > 3 ? 0.36 : n > 1 ? (h < 700 ? 0.42 : 0.46) : 0.5;
+    // (four or five thoughts: the hero steps back further, as the Hushfold does when roominess is low)
+    const n = Number.isFinite(count) ? count : thoughts?.list.length || 0, k = n > 4 ? (h < 700 ? 0.27 : 0.3) : n > 3 ? 0.33 : n > 1 ? (h < 700 ? 0.42 : 0.46) : 0.5;
     const size = Math.round(Math.max(120, Math.min(k * (bottom - top), w < 700 ? 0.56 * w : 300, 300)));
     const x = w < 700 ? w / 2 : Math.max(size * 0.62 + 24, w * 0.34);
     mt.place({ x, y: bottom - size * 0.56 - 6, size }, { instant: true });
@@ -268,16 +278,18 @@ requestAnimationFrame(tick);
 // or toss them. One router, as in the Hushfold: the hero Mallow first, then
 // the Thought Mallows. The verbs act on every thought on stage.
 const panel = document.getElementById('tpanel');
+const supportEl = document.getElementById('tsupport');
+supportEl.querySelector('button').onclick = () => { supportEl.hidden = true; document.getElementById('ttext').focus({ preventScroll: true }); };
 const tagsEl = document.getElementById('tags');
 const FEELINGS = [['anger', 'Angry'], ['frustration', 'Frustrated'], ['anxiety', 'Anxious'], ['overwhelm', 'Overthinking'], ['sadness', 'Sad'],
   ['loneliness', 'Lonely'], ['embarrassment', 'Embarrassed'], ['restlessness', 'Restless'], ['neutral', 'Something else']];
 let thoughts = null;
 const tEvents = [];
 // the stage above the panel (and below the roster): 20 px clear of the screen edges
-function stageBand() { const h = innerHeight; return { top: h < 640 ? 16 : 76, bottom: h - (panel.offsetHeight || 220) - 8 }; }
+function stageBand() { const h = innerHeight; return { top: h < 640 ? 20 : 76, bottom: h - (panel.offsetHeight || 220) - 8 }; }
 function ensureThoughts() {
   if (thoughts) return thoughts;
-  thoughts = new ThoughtLayer({ tagRoot: tagsEl, haptic, reducedMotion: () => mt?.opts?.reducedMotion ?? state.rm,
+  thoughts = new ThoughtLayer({ tagRoot: tagsEl, haptic, reducedMotion: () => mt?.opts?.reducedMotion ?? state.rm, light: () => document.body.classList.contains('bg-light'),
     bounds: () => { const b = stageBand(); return { left: 20, right: innerWidth - 20, top: b.top, bottom: b.bottom }; } });
   thoughts.on('touch', (e) => {
     tEvents.push({ t: performance.now() | 0, id: e.thought.id, kind: e.kind, depth: e.depth });
@@ -299,10 +311,24 @@ function wish(i, n) {
   const span = Math.min(w - 120, 130 * Math.max(1, n - 1)), x = n > 1 ? w / 2 - span / 2 + (span * i) / (n - 1) : r.cx + r.width * 0.25;
   return { x, y: b.top + (r.top - b.top) * (n > 2 && i % 2 ? 0.3 : 0.55) };
 }
+// every typed sentence goes through the shared safety check first (src/engine/safety.js), as in the
+// Hushfold: crisis → the support line and no Thought Mallow; care → the support line as well
+function safe(text) {
+  const r = checkText(text), copy = safetyCopy(r);
+  if (copy) showSupport(copy);
+  return r.level !== 'crisis';
+}
+function showSupport(copy) {
+  supportEl.querySelector('h2').textContent = copy.title;
+  supportEl.querySelector('p').textContent = copy.message;
+  supportEl.hidden = false;
+  supportEl.querySelector('button').focus({ preventScroll: true });
+}
 function spawn({ text = document.getElementById('ttext').value, emotion = state.feel, n = state.count, intensity = 0.75 } = {}) {
   const L = ensureThoughts();
   text = String(text || '').trim();
   if (!text) { document.getElementById('ttext').focus(); say('type a thought first'); return []; }
+  if (!safe(text)) return [];
   const small = innerWidth < 360;
   const out = [];
   const k = L.list.length;
@@ -319,10 +345,12 @@ function belief(prop = 'stone', text = document.getElementById('ttext').value) {
   const L = ensureThoughts();
   text = String(text || '').trim();
   if (!text) { document.getElementById('ttext').focus(); say('type a belief first'); return null; }
+  if (!safe(text)) return null;
   layout(L.list.length + 1);
   const r = mt?.bodyRect?.();
   const k = L.list.length, home = wish(k, k + 1);
-  return L.add({ text, prop, r: innerWidth < 360 ? 30 : 36 }, { from: { x: r ? r.cx : home.x, y: r ? r.top + r.height * 0.2 : home.y }, home });
+  // (the same r as a thought: a belief is 1.4× that)
+  return L.add({ text, prop, r: innerWidth < 360 ? 32 : 38 }, { from: { x: r ? r.cx : home.x, y: r ? r.top + r.height * 0.2 : home.y }, home });
 }
 function verb(name) {
   const L = ensureThoughts();
