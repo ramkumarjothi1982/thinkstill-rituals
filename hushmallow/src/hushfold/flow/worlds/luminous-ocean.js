@@ -1953,6 +1953,7 @@ export function create(ctx) {
         packets: sea.active, dist: thought ? tS.z / (cam?.Z0 || 1) : null, long: prog.long, progress: api.progress,
         hush: Math.max(...fingers.map((f) => f.hush)), bubbles: bubbles.length, waiting: waiting.length, calm: 1 - clamp(metricsCache.chop * 5),
         driftGain, horizon: hyNow, longPending: longD.pending, share: distD.share,
+        swells: metricsCache.swells || 0, played: firstTouchAt >= 0 ? elapsed - firstTouchAt : 0, capD, words: tS.side, tension: thought ? tS.tension : null, base: baseTension,
       };
     },
     get progress() { return complete ? 1 : lastP; },
