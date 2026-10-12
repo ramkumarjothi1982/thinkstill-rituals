@@ -293,7 +293,7 @@ export async function loadMallowAssets(id) {
     if (e.sprite) keys.add(e.sprite);
   }
   const [original, body, ...sprites] = await Promise.all([
-    loadImage(m.file), loadImage(m.body), ...[...keys].map((k) => loadImage(SPRITES[k])),
+    loadImage(m.art || m.file), loadImage(m.body), ...[...keys].map((k) => loadImage(SPRITES[k])),
   ]);
   const map = {};
   [...keys].forEach((k, i) => { map[k] = sprites[i]; });

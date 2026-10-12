@@ -327,7 +327,7 @@ export class MallowTouch {
     const g = c.getContext('2d');
     g.setTransform(rig.q, 0, 0, rig.q, 0, 0);
     g.imageSmoothingQuality = 'high';
-    g.drawImage(img, 0, 0);
+    g.drawImage(img, 0, 0, rig.mallow.size[0], rig.mallow.size[1]);   // at the logical size (high-res art: res px per unit)
     return c;
   }
 

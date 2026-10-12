@@ -316,7 +316,7 @@ export class MallowRig {
     this.CX = W / 2;
     this.BASE = H * this.opts.baseline;
     // skin resolution follows on-screen size (cheap for thumbnails)
-    const q = this.opts.skinSize ? this.opts.skinSize / Math.max(...m.size) : clamp(this.S * dpr * 1.05, 0.28, 1.25);
+    const q = this.opts.skinSize ? this.opts.skinSize / Math.max(...m.size) : clamp(this.S * dpr * 1.05, 0.28, 1.25 * (m.res || 1));
     if (q !== this.q) {
       this.q = q;
       this.skin.width = Math.ceil(m.size[0] * q);
@@ -859,21 +859,22 @@ export class MallowRig {
    *  [y, x0, len, alpha] in source px, plus out.thick and out.mode ('lit');
    *  null when calm. With {dim:true} a calm Glitzi returns its quieted rows
    *  instead (out.mode 'dim': dark bands over the approved lines). */
-  glitchLines(out = new Float32Array(GLITCH_ROWS.length * 4), opts = {}) {
+  glitchLines(out = new Float32Array((this.mallow.glitchRows || GLITCH_ROWS).length * 4), opts = {}) {
+    const rows = this.mallow.glitchRows || GLITCH_ROWS;   // high-res art: its own rows
     const g = clamp(this.val.glitch, 0, 2);
     if (this.id !== 'glitzi') return null;
     if (g < 0.55) {
       const a = (0.55 - g) * 1.2;
       if (!opts.dim || a < 0.003) return null;
-      for (let i = 0; i < GLITCH_ROWS.length; i++) { out[4 * i] = GLITCH_ROWS[i]; out[4 * i + 1] = 0; out[4 * i + 2] = this.mallow.size[0]; out[4 * i + 3] = a; }
+      for (let i = 0; i < rows.length; i++) { out[4 * i] = rows[i]; out[4 * i + 1] = 0; out[4 * i + 2] = this.mallow.size[0]; out[4 * i + 3] = a; }
       out.thick = 6; out.mode = 'dim';
       return out;
     }
     out.mode = 'lit';
     const W = this.mallow.size[0], k = (g - 0.55) / 1.45;
-    for (let i = 0; i < GLITCH_ROWS.length; i++) {
+    for (let i = 0; i < rows.length; i++) {
       const ph = this.time * (0.6 + i * 0.13) + i * 1.7;
-      out[4 * i] = GLITCH_ROWS[i];
+      out[4 * i] = rows[i];
       out[4 * i + 1] = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;
       out[4 * i + 2] = W * (0.35 + 0.5 * k);
       out[4 * i + 3] = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
@@ -961,7 +962,8 @@ export class MallowRig {
     }
     ctx.setTransform(q, 0, 0, q, 0, 0);
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(A.body, 0, 0);
+    // art drawn at the rig's logical size (high-res art: res image px per logical px)
+    ctx.drawImage(A.body, 0, 0, m.size[0], m.size[1]);
 
     const f = m.face;
     const P = P0;
@@ -978,7 +980,7 @@ export class MallowRig {
     if (this.opts.pristine && this.restMix > 0.004 && !shaderRest) {
       ctx.globalAlpha = this.restMix;
       ctx.globalCompositeOperation = 'source-atop';   // keep the approved alpha, no edge build-up
-      ctx.drawImage(A.original, 0, 0);
+      ctx.drawImage(A.original, 0, 0, m.size[0], m.size[1]);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     }
@@ -1160,7 +1162,7 @@ function partBounds(rig, pt, P, r) {
       let cx0, cy0, cx1, cy1;
       if (style === 'spiral') {
         const img = rig.assets?.sprites?.[spec.sprite];
-        const rr = ((img ? img.width / 2 : spec.spriteR || spec.rx) * P.eyeScale) + 1;
+        const rr = ((img ? img.width / 2 / (rig.mallow.res || 1) : spec.spriteR || spec.rx) * P.eyeScale) + 1;
         cx0 = g.ex - rr; cx1 = g.ex + rr; cy0 = g.ey - rr; cy1 = g.ey + rr;
       } else {
         cx0 = g.ex - g.rx * 1.06; cx1 = g.ex + g.rx * 1.06; cy0 = g.ey - g.ry * 1.06; cy1 = g.ey + g.ry * 1.06;
@@ -1347,7 +1349,7 @@ function drawEye(ctx, rig, f, side, P) {
     ctx.clip();
     if (style === 'spiral') {
       const img = A[spec.sprite];
-      const r = (img.width / 2) * P.eyeScale;
+      const r = (img.width / 2 / (rig.mallow.res || 1)) * P.eyeScale;
       ctx.save();
       ctx.translate(g.ex, g.ey);
       ctx.rotate(rig.spinAngle * (side === 'L' ? 1 : -1));
@@ -1479,6 +1481,9 @@ function drawBrow(ctx, f, side, P) {
     spec.lw, spec.ink || f.line, spec.hi || f.lineHi, alpha);
 }
 
+// the carved frown's lit ridge: [colour, width, offset] strokes, in lw units
+const CREASE_RELIEF = [['rgba(120,170,255,0.22)', 0.6, -0.8]];
+
 function drawMouth(ctx, f, P, time) {
   const M = f.mouth;
   const s = clamp(P.mouthSmile, -1.2, 1.2);
@@ -1527,13 +1532,18 @@ function drawMouth(ctx, f, P, time) {
     ctx.closePath();
   };
   if (M.style === 'crease' && !open) {
-    // carved frown (Glitzi): shadow groove with a lit ridge above
+    // carved frown (Glitzi): shadow groove with a lit ridge above; a
+    // re-rigged face may carry its art's own relief (M.relief: [colour,
+    // width, offset] strokes in lw units, + = below the groove)
     ctx.save();
     ctx.lineCap = 'round';
-    ctx.strokeStyle = 'rgba(120,170,255,0.22)';
-    ctx.lineWidth = M.lw * 0.6;
-    ctx.translate(0, -M.lw * 0.8);
-    linePath(); ctx.stroke();
+    for (const [col, wk, yk] of M.relief || CREASE_RELIEF) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = M.lw * wk;
+      ctx.translate(0, M.lw * yk);
+      linePath(); ctx.stroke();
+      ctx.translate(0, -M.lw * yk);
+    }
     ctx.restore();
     tube(ctx, linePath, M.lw, '#05061c', null, 1);
   } else if (open) {
@@ -1705,6 +1715,7 @@ function drawTearsAndSweat(ctx, rig, f, P) {
 }
 
 function drawGlitchLines(ctx, rig, P) {
+  const rows = rig.mallow.glitchRows || GLITCH_ROWS;
   const g = clamp(P.glitch, 0, 2);
   const W = rig.mallow.size[0];
   ctx.save();
@@ -1713,12 +1724,12 @@ function drawGlitchLines(ctx, rig, P) {
     // calm / sad Glitzi: its static quiets down
     ctx.globalAlpha = (0.55 - g) * 1.2;
     ctx.fillStyle = '#1b1452';
-    for (const y of GLITCH_ROWS) ctx.fillRect(0, y - 3, W, 6);
+    for (const y of rows) ctx.fillRect(0, y - 3, W, 6);
   } else {
     // energised: lines brighten, drift and stretch, never strobing
     const k = (g - 0.55) / 1.45;
-    for (let i = 0; i < GLITCH_ROWS.length; i++) {
-      const y = GLITCH_ROWS[i];
+    for (let i = 0; i < rows.length; i++) {
+      const y = rows[i];
       const ph = rig.time * (0.6 + i * 0.13) + i * 1.7;
       const a = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
       const x0 = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;
