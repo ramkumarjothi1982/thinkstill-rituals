@@ -9,8 +9,8 @@
 // back. As the weights come off, the thought rises and breathes out. Tap a
 // weight, or the assist pill, to send it to the next bowl.
 //
-// Each bowl's name is tied to its bowl (above the top two, below the side
-// ones) and never drifts towards another; the words ride on the slab itself,
+// Each bowl's name is tied to its bowl (above it; below the lower pair on a
+// short phone) and never drifts towards another; the words ride on the slab itself,
 // so nothing floats over the pile the person has to drag.
 
 import { Blob, drawGlow, drawJelly, clamp, approach, rgba, LIGHT, Motes, blinkAt, TAU, Timers, RectList, roundRect, thoughtFor } from './kit.js';
@@ -63,20 +63,22 @@ export function mount(ctx) {
     G.tx = A.x + A.w / 2;
     if (SHORT) {
       const pr = G.pr = clamp(Math.min(A.w * 0.12, A.h * 0.15), 28, 44);
-      const lx = A.x + pr + 6, rx = A.x + A.w - pr - 6, y0 = A.y + A.h * 0.2, y1 = A.y + A.h * 0.66;
+      // the top pair carry their names above them, the lower pair below: the pile in the middle stays clear
+      const lx = A.x + pr + 6, rx = A.x + A.w - pr - 6, y0 = A.y + Math.max(A.h * 0.2, 36 + pr * 0.45), y1 = A.y + A.h * 0.66;
       G.ty = A.y + A.h * 0.66;
       G.pos[0].x = lx; G.pos[0].y = y0; G.pos[1].x = rx; G.pos[1].y = y0; G.pos[2].x = lx; G.pos[2].y = y1; G.pos[3].x = rx; G.pos[3].y = y1;
-      G.top[0] = G.top[1] = G.top[2] = G.top[3] = false;
+      G.top[0] = G.top[1] = true; G.top[2] = G.top[3] = false;
       return G;
     }
     const pr = G.pr = clamp(Math.min(A.w * 0.12, A.h * 0.15), 28, 44);
-    // the top two leave room above them for their names; the side two carry their names below
-    const yTop = A.y + 36 + pr * 0.45, ySide = A.y + Math.max(A.h * 0.42, 36 + pr * 0.45 + pr * 1.3);
+    // every bowl carries its name above it (below would put the side names beside the pile), so the side two
+    // sit low enough for their names to clear the top two
+    const yTop = A.y + 36 + pr * 0.45, ySide = A.y + Math.max(A.h * 0.44, 82 + pr * 1.45);
     G.pos[0].x = A.x + pr + 12; G.pos[0].y = ySide;
     G.pos[1].x = A.x + A.w * 0.29; G.pos[1].y = yTop;
     G.pos[2].x = A.x + A.w * 0.71; G.pos[2].y = yTop;
     G.pos[3].x = A.x + A.w - pr - 12; G.pos[3].y = ySide;
-    G.top[0] = false; G.top[1] = true; G.top[2] = true; G.top[3] = false;
+    G.top[0] = G.top[1] = G.top[2] = G.top[3] = true;
     G.ty = A.y + A.h - R * 1.15 - 58;
     return G;
   }

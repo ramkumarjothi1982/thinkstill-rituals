@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import * as V from '../src/beyond/vocab.js';
 import * as SV from '../server/another-angle/src/vocab.js';
 import { THOUGHT_PATTERNS } from '../src/ultra/frameworks.js';
-import { authoredScene, sceneParts, exactPhrase, chunkStep, candidatePatterns, sameWords, FACT_ASK, GUESS_ASK } from '../src/beyond/authored.js';
+import { authoredScene, sceneParts, exactPhrase, chunkStep, candidatePatterns, sameWords, secondPerson, FACT_ASK, GUESS_ASK } from '../src/beyond/authored.js';
 import { createAngleClient, resolveEndpoint, makeDeviceId, PATHS } from '../src/beyond/angle-client.js';
 import { consentState, setConsent, withdrawConsent, deleteAngleData, hasAngleData, noteFeedback, lessWanted, STORE_KEYS, CONSENT_VERSION, PROVIDER_RETENTION, RETENTION_PLACEHOLDER } from '../src/beyond/consent.js';
 import * as LINES from '../src/beyond/lines.js';
@@ -128,11 +128,13 @@ test('authored scenes fit the words: fair anger, replaying, mind-reading, self-c
   for (const t of ['I always mess things up.', 'I feel like a fraud at work.']) assert.ok(!candidatePatterns(t).includes('mind_reading'), t);
 });
 
-test('"Show me another angle" (offline) always moves to a genuinely different pattern', () => {
+test('"Show me another angle" (offline) always moves to a genuinely different pattern, or says there are no more', () => {
   for (const text of SAMPLES) {
     const seen = [], used = [];
     for (let i = 0; i < 4; i++) {
       const s = authoredScene(text, { exclude: seen, usedAngles: used });
+      // only scenes that fit the words: when they run out the scene says so (the experience: "That's every angle…")
+      if (s.exhausted) { assert.ok(i >= 2, `${text}: at least two angles before running out (${seen.join(', ')})`); break; }
       assert.ok(!seen.includes(s.reasoning_pattern), `${text}: ${s.reasoning_pattern} repeated`);
       seen.push(s.reasoning_pattern); used.push(s.angle_id, s.alt_id);
     }
@@ -150,7 +152,8 @@ test('scene parts for the mechanics: exact phrases, a harsh verdict, a step in t
   assert.equal(p.steps.length, 3);
   assert.equal(p.steps.join(' ').replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' '), 'Make a small plan for your weakest area three short sessions this week');
   assert.equal(chunkStep('').length, 3);
-  for (const s of SAMPLES) assert.ok(sceneParts(s).excerpt.length <= 46, s);
+  // the person's words are shown whole on their tag (it wraps); only very long words are shortened, at a word
+  for (const s of SAMPLES) { const e = sceneParts(s).excerpt; assert.ok(e.length <= 72, s); if (s.length <= 72) assert.equal(e, s.replace(/\s+/g, ' ').trim(), s); }
 });
 
 // fact versus assumption: the two sides never say the same thing (review r2, blocking 2)
@@ -178,6 +181,62 @@ test('scene parts: the fact and the assumption are never the same words; an empt
   // the authored explore lines never quote the same words twice either
   const a = authoredScene('Nobody likes me.');
   assert.ok(!(a.known_fact.includes('Nobody likes me') && a.possible_assumption.includes('Nobody likes me')), a.known_fact);
+});
+
+// the brief's own seven examples, offline, through four "Show me another angle" steps (review r3, blocking 2)
+const BRIEF_INPUTS = ['My boss embarrassed me in front of everyone.', 'My partner hasn’t replied for hours.', 'I failed my exam. I’m useless.', 'Nobody likes me.',
+  'My colleague got promoted instead of me.', 'I made a mistake at work. Everyone will judge me.', 'My friend invited everyone except me.',
+  'My friend must think I am boring company.', 'He hasn’t replied to my message for five hours.'];
+const OTHER_PERSON = /^(?:they|he|she|someone|somebody|people|anyone|anybody|your \w+|the other)\b/i;
+const outsideQuotes = (l) => String(l).replace(/“[^”]*”|"[^"]*"/g, '');
+test('authored path: four angles for the brief’s examples, never cut, never nonsense', () => {
+  for (const text of BRIEF_INPUTS) {
+    const seen = [], used = [];
+    for (let i = 0; i < 4; i++) {
+      const s = authoredScene(text, { exclude: seen, usedAngles: used });
+      if (s.exhausted) { assert.ok(i >= 2, `${text}: at least two angles (${seen.join(', ')})`); break; }
+      const p = sceneParts(text, s);
+      const lines = [s.subtitle_line_1, s.subtitle_line_2, s.known_fact, s.possible_assumption, s.alternative_angle, s.practical_next_step];
+      const shown = [...lines, p.fact, p.guess, ...p.alternatives, ...p.steps, p.harsh, p.weight, p.excerpt].filter(Boolean);
+      for (const l of shown) assert.doesNotMatch(l, /…|\.\.\./, `${text} [${s.reasoning_pattern}]: nothing is cut: ${l}`);
+      // a "one word" frame quotes the label itself, never a whole sentence
+      for (const l of lines) {
+        if (/one word/.test(l)) { const q = /“([^”]+)”/.exec(l); assert.ok(!q || words(q[1]) <= 3, `${text}: "${q?.[1]}" in ${l}`); }
+        // always / never lines only when those words (or their own strong word) are theirs
+        for (const w of ['always', 'never']) if (new RegExp(`“${w}”`).test(l)) assert.match(text, new RegExp(`\\b${w}\\b`, 'i'), `${text}: ${l}`);
+        const quotedWord = /A word like “([^”]+)”/.exec(l);
+        if (quotedWord) assert.match(text, new RegExp(`\\b${quotedWord[1]}\\b`, 'i'), `${text}: ${l}`);
+      }
+      // Zuzu's voice: the step talks to "you" (a line to say, in quotes, may be first person)
+      assert.doesNotMatch(outsideQuotes(s.practical_next_step), /\b(?:I|I’m|I'm|my|me|myself)\b/, `${text}: ${s.practical_next_step}`);
+      // mind reading opens readings of the other person, never facts about thoughts
+      if (s.reasoning_pattern === 'mind_reading') for (const a of p.alternatives) assert.match(a, OTHER_PERSON, `${text}: ${a}`);
+      for (const a of p.alternatives) assert.ok(a.length <= 72 || s.source === 'server', `a possibility fits as written: ${a}`);
+      seen.push(s.reasoning_pattern); used.push(s.angle_id, s.alt_id);
+    }
+    assert.ok(seen.length >= 2, `${text}: ${seen.join(', ')}`);
+  }
+  // overgeneralisation only when "always", "never", "nobody", "everyone"… is really the claim
+  for (const t of ['My boss embarrassed me in front of everyone.', 'My friend invited everyone except me.']) {
+    const seen = [];
+    for (let i = 0; i < 6; i++) { const s = authoredScene(t, { exclude: seen }); if (s.exhausted) break; seen.push(s.reasoning_pattern); }
+    assert.ok(!seen.includes('overgeneralisation'), `${t}: ${seen.join(', ')}`);
+  }
+  assert.equal(authoredScene('Nobody likes me.').subtitle_line_1, 'A word like “nobody” is powerful, but it’s rarely exactly true.');
+  // "another angle" for mind-reading words: the label, not the sentence
+  const second = authoredScene('My friend must think I am boring company.', { exclude: ['mind_reading'] });
+  assert.equal(second.subtitle_line_1, '“I am boring” squashes a whole person into one word.');
+});
+
+test('steps: second person in Zuzu’s voice, and cut at a sentence end before anything else', () => {
+  assert.equal(secondPerson('Check the facts: did my message ask something, or was there nothing that obviously needed a reply?'), 'Check the facts: did your message ask something, or was there nothing that obviously needed a reply?');
+  assert.equal(secondPerson('Check the scale: was it a big group thing, or a smaller plan I wouldn’t usually be part of?'), 'Check the scale: was it a big group thing, or a smaller plan you wouldn’t usually be part of?');
+  assert.equal(secondPerson('It’s okay to say: “I’m happy to talk, but not if we’re shouting.”'), 'It’s okay to say: “I’m happy to talk, but not if we’re shouting.”');
+  assert.deepEqual(chunkStep('Give it a night. Cringe tends to fade by morning.'), ['Give it a night', 'Cringe tends to fade', 'by morning']);
+  for (const st of ['Write the prediction down with a 0–100 confidence score. Check it afterwards.', 'Give it a night. Cringe tends to fade by morning.']) {
+    const pieces = chunkStep(st);
+    assert.ok(pieces.some((x, i) => i > 0 && /^[A-Z]/.test(x) && st.includes(`. ${x}`)), `${st}: a piece starts at the second sentence (${pieces.join(' | ')})`);
+  }
 });
 
 const SERVER_BOSS = { ...V.validateScene({
@@ -372,6 +431,17 @@ test('consent: asked once per notice version, withdrawable, and deletable', () =
 test('the consent notice says it plainly (the one place automated processing is described)', () => {
   const src = read('src/beyond/consent.js');
   for (const must of [/secure server/, /AI language model/, /Anthropic/, /Never your photos/, /stores nothing you write on its server/, /doesn’t log your words/, /isn’t therapy or crisis support/, /'Accept'/, /'Not now'/, /Support lines/]) assert.match(src, must);
+  // everything the client sends is told (review r3, blocking 3): the words and feeling, the kind of help
+  // (intention), the lines already seen, the feedback buttons (never words), and the session's code + app version
+  for (const must of [/the feeling and the kind of help you pick/, /the lines you’ve already seen/, /If you tap a feedback button: which button and what kind of angle it was, never your words/, /a random code/, /the app’s version/, /the kind of device/, /an invite code, if you were given one/]) assert.match(src, must);
+  const client = read('src/beyond/angle-client.js');
+  for (const field of ['device_id', 'platform', 'app_version', 'invite', 'intention', 'previous_angles', 'rating', 'reasoning_pattern', 'interaction_type', 'mallow_character', 'prompt_version']) assert.match(client, new RegExp(field), `the client sends ${field} (and the notice says so)`);
+  // on the card, "Not therapy" and the support link sit by the buttons (always in view), and a cue says when there is more to read
+  const card = src.slice(src.indexOf('export function openConsent'), src.indexOf('export function openConsentSheet'));
+  assert.match(card, /notTherapy\(app\),\s*h\('div', \{ class: 'bx-actions' \}/);
+  assert.match(card, /'More below'/);
+  // the Settings sheet carries the same notice, "Not therapy" included
+  assert.match(src, /noticeBody\(app, \{ compact: true, therapy: true \}\)/);
   // the provider's retention is a marked placeholder until the owner confirms it
   assert.equal(PROVIDER_RETENTION, '');
   assert.match(RETENTION_PLACEHOLDER, /^\[Owner to confirm before launch:/);
@@ -580,4 +650,29 @@ test('a mechanic that stops is never a dead end (pull_apart, then the perspectiv
   const src = read('src/beyond/another-angle.js');
   assert.match(src, /catch \(e\) \{ mechFailed\(e\); \}/);
   assert.match(src, /if \(!mech \|\| mech\.failed\)[\s\S]{0,260}scene\.mechanic = 'pull_apart'[\s\S]{0,120}reveal\(scene, seq, \{ played: false \}\)/);
+});
+
+test('mechanics drive the person’s living Thought Mallow (W2) when the scene hands one in (review r3, polish 1)', async () => {
+  const { createThought } = await import('../src/mallows/thought/index.js');
+  const { ThoughtBody } = await import('../src/beyond/mechanics/kit.js');
+  let drawn = 0;
+  const W2 = { create: createThought, draw: () => { drawn++; } };
+  for (const id of V.MECHANICS) {
+    const mod = await MECHANIC_MODULES[id]();
+    const ctx = mountCtx(id);
+    const made = [];
+    ctx.thought = (o) => { const t = new ThoughtBody({ text: ctx.text, emotion: 'anxiety', rmFn: () => false, ...o }, W2); made.push(t); return t; };
+    const m = mod.mount(ctx);
+    assert.ok(made.length >= 1 && made.every((t) => t.living), `${id} plays the living Thought Mallow`);
+    await settle(m, 1 / 30, 0.6);
+    // a touch on it reaches the jelly (it dents), and lets go
+    const t0 = made[0];
+    m.pointer({ type: 'down', id: 7, x: t0.x, y: t0.y, t: 2000 });
+    m.pointer({ type: 'up', id: 7, x: t0.x, y: t0.y, t: 2080 });
+    for (let i = 0; i < 14 && !m.settled; i++) { m.assist(); await settle(m, 1 / 30, 1.6); }
+    assert.equal(m.settled, true, `${id} still completes`);
+    m.destroy();
+    assert.ok(made.every((t) => t.w2 === null), `${id} lets its Thought Mallows go`);
+  }
+  assert.ok(drawn > 100);
 });

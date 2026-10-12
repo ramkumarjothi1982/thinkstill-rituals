@@ -53,7 +53,8 @@ export function defaultMallowBox(W, H) {
  * z/Z0 = d: proportional to s, at least BUBBLE_MIN until 6·Z0, then easing to BUBBLE_FAR.
  */
 export function bubbleSize(s, d, U) {
-  const ref = clamp(0.16 * U, 50, 88);
+  // (a little smaller than the Thought Mallow at the same depth: the person's thought stays the focus among the photos)
+  const ref = clamp(0.135 * U, 46, 76);
   const far = smoothstep(6, OCEAN.CAP, d);
   const floor = OCEAN.BUBBLE_MIN * (1 - far) + OCEAN.BUBBLE_FAR * far;
   return Math.max(floor, Math.min(ref * 1.3, (ref * s) / 0.5));

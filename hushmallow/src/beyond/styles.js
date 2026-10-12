@@ -40,6 +40,10 @@ const CSS = `
 .bx-tag.card .bx-card-text { font: 600 calc(15px * var(--bx-k))/1.3 var(--hf-ff-voice); color: #fbf8ff; }
 .bx-tag.card.ask .bx-card-text { font-style: italic; font-weight: 550; color: #e4dcfb; }
 .bx-tag.piece { padding: 0 6px; font: 750 calc(15px * var(--bx-k))/1.22 var(--hf-ff-voice); color: #3a1d04; text-shadow: 0 1px 0 rgba(255, 246, 225, 0.6); }
+/* the blame, carried on its own amber weight (return_responsibility): two balanced lines at most */
+.bx-tag.piece.slab { padding: 0 4px; line-height: 1.2; color: #3a1a02; }
+/* no line ever leaves one word on its own */
+.bx-tag.line, .bx-tag.words, .bx-tag.piece, .bx-tag.card .bx-card-text, .bx-tag.verdict { text-wrap: balance; }
 .bx-tag.verdict { --bx-soft: 0; padding: 8px 14px; font: 800 calc(17px * var(--bx-k))/1.25 var(--hf-ff-voice);
   border-radius: calc(4px + 16px * var(--bx-soft)); border: 1.5px solid rgba(220, 226, 255, calc(0.7 - 0.45 * var(--bx-soft)));
   background: rgba(32, 34, 72, calc(0.86 - 0.18 * var(--bx-soft))); letter-spacing: calc(0.02em - 0.02em * var(--bx-soft)); box-shadow: 0 8px 22px rgba(4, 2, 16, 0.35); }
@@ -59,13 +63,25 @@ const CSS = `
 .bx-consent.reduced, .bx-consent.reduced.in { transform: none; transition: opacity 200ms ease; }
 .bx-eyebrow { margin: 0; font: 700 calc(13px * var(--bx-k))/1.2 var(--hf-ff-ui); letter-spacing: 0.04em; color: #9ff7ff; }
 .bx-title { margin: 0; font: var(--type-world, 540 calc(clamp(24px, 9.091vw - 9.091px, 30px) * var(--bx-k))/1.12 var(--hf-ff-story)); font-optical-sizing: auto; letter-spacing: -0.01em; text-wrap: balance; }
-.bx-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; margin: 0 -6px; padding: 0 6px 14px; -webkit-overflow-scrolling: touch;
-  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); }
+.bx-scrollwrap { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.bx-scroll { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; min-height: 0; margin: 0 -6px; padding: 0 6px 10px; -webkit-overflow-scrolling: touch; }
+.bx-scroll:focus { outline: none; }
+.bx-scroll:focus-visible { outline: 2px solid rgba(159, 247, 255, 0.6); outline-offset: 2px; border-radius: 10px; }
+.bx-has-more .bx-scroll { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 34px), rgba(0, 0, 0, 0.18)); mask-image: linear-gradient(180deg, #000 calc(100% - 34px), rgba(0, 0, 0, 0.18)); }
+/* there is more of the notice below: said plainly, and a tap reads on */
+.bx-more { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px;
+  border-radius: 999px; border: 1px solid rgba(159, 247, 255, 0.5); background: rgba(24, 18, 62, 0.94); color: #e9fcff; cursor: pointer;
+  font: 700 calc(13px * var(--bx-k))/1 var(--hf-ff-ui); letter-spacing: 0.01em; box-shadow: 0 6px 18px rgba(4, 2, 16, 0.45); }
+.bx-more[hidden] { display: none; }
+.bx-more .bx-more-arrow { font-size: 15px; line-height: 1; }
+.bx-more:focus-visible { outline: 3px solid #9ff7ff; outline-offset: 2px; }
+.bx-care { color: #e9e4fb; }
+.bx-care b { color: #fff; font-weight: 800; }
 .bx-notice { display: grid; gap: 10px; }
 .bx-notice p, .bx-notice li { font: 500 calc(15px * var(--bx-k))/1.45 var(--hf-ff-voice); color: #e9e4fb; }
 .bx-notice .bx-lead { margin: 0; font-weight: 600; color: #fbf8ff; font-size: calc(16px * var(--bx-k)); }
 .bx-points { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-.bx-points li { padding: 9px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.07); }
+.bx-points li { padding: 7px 11px; border-radius: 13px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.07); }
 .bx-points b { color: #fff; font-weight: 800; }
 .bx-todo { display: inline; padding: 1px 6px; border-radius: 6px; border: 1.5px dashed #ffc35c; background: rgba(255, 195, 92, 0.12); color: #ffe2a6; font-weight: 700; }
 .bx-link { display: inline-flex; align-items: center; min-height: 44px; margin: -10px 0 -12px; padding: 0 4px; border: 0; background: none; color: #ffd6ea; font: 700 calc(15px * var(--bx-k))/1.2 var(--hf-ff-ui); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
@@ -78,12 +94,16 @@ const CSS = `
 .bx-actions .bx-choice:hover { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.5); }
 .bx-actions .bx-choice:active { transform: scale(0.97); }
 .bx-actions .bx-choice:focus-visible { outline: 3px solid #9ff7ff; outline-offset: 2px; }
-.bx-title:focus { outline: none; }
-.bx-title:focus-visible { outline: 2px solid rgba(159, 247, 255, 0.7); outline-offset: 4px; border-radius: 6px; }
+/* the title takes focus only so a screen reader starts there (it is not a control): no ring */
+.bx-title:focus, .bx-title[tabindex="-1"]:focus-visible { outline: none; }
 .bx-after { text-align: right; }
 .bx-setting-note { display: block; margin-top: 2px; font: var(--type-caption, 550 13px/1.4 var(--hf-ff-ui)); color: var(--text-3, #b9b1dc); }
 .bx-sheet-copy { margin: 0; font: var(--type-body, 500 17px/1.5 var(--hf-ff-voice)); color: var(--text-2, #cdc6ea); }
 
+@media (max-height: 700px) {
+  .bx-consent .bx-title { font-size: calc(22px * var(--bx-k)); line-height: 1.12; }
+  .bx-consent { gap: 7px; }
+}
 @media (max-width: 360px) {
   .bx-consent { left: 10px; right: 10px; padding: 14px 14px 12px; border-radius: 22px; gap: 8px; }
   .bx-notice p, .bx-notice li { font-size: calc(14px * var(--bx-k)); }

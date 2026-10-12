@@ -21,7 +21,7 @@ import { openSupport } from '../app/scenes/support.js';
 import { ensureBeyondCss } from './styles.js';
 
 export const STORE_KEYS = Object.freeze({
-  consent: 'beyond.consent', device: 'beyond.device', session: 'beyond.session', feedback: 'beyond.feedback', invite: 'beyond.invite', seen: 'beyond.seen',
+  consent: 'beyond.consent', device: 'beyond.device', session: 'beyond.session', feedback: 'beyond.feedback', invite: 'beyond.invite', seen: 'beyond.seen', visits: 'beyond.visits',
 });
 /** Bump when the notice changes in a way people should read again. */
 export const CONSENT_VERSION = 1;
@@ -77,25 +77,36 @@ export function lessWanted(store) {
 }
 
 // ------------------------------------------------------------ the notice --
-function noticeBody(app, { compact = false } = {}) {
+/** "Not therapy or crisis support", with the way to support (always in view on the consent card). */
+function notTherapy(app, tag = 'p') {
+  return h(tag, { class: 'bx-small bx-care' }, h('b', {}, 'Not therapy. '), 'Another Angle isn’t therapy or crisis support. ',
+    h('button', { type: 'button', class: 'bx-link', onclick: () => openSupport(app) }, 'Support lines'));
+}
+/**
+ * What is sent, kept and shared, accurately (review r3: every request is described, the feedback buttons
+ * and the session code included). `therapy`: the "Not therapy" point in the list too (the sheet in
+ * Settings; the card keeps it by its buttons instead, always in view).
+ */
+function noticeBody(app, { compact = false, therapy = false } = {}) {
   const retention = PROVIDER_RETENTION
     ? h('span', {}, PROVIDER_RETENTION)
     : h('span', { class: 'bx-todo', role: 'note', 'aria-label': 'Placeholder, to be confirmed by hushmallow before launch' }, RETENTION_PLACEHOLDER);
   return h('div', { class: `bx-notice${compact ? ' compact' : ''}` },
     h('p', { class: 'bx-lead' },
-      'Another Angle sends the words you choose to share to our secure server. There, an AI language model from an outside provider, Anthropic, suggests a perspective, and our server checks it before Zuzu shows it to you.'),
+      'Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.'),
     h('ul', { class: 'bx-points' },
-      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words and the feeling you pick, plus the lines you’ve already seen when you ask for another angle. Never your photos.'),
-      h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write on its server and doesn’t log your words. A random code for this phone keeps the daily allowance fair. It isn’t your name or your account.'),
+      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (when you ask for another angle) the lines you’ve already seen. If you tap a feedback button: which button and what kind of angle it was, never your words. Never your photos.'),
+      h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write on its server and doesn’t log your words. To start, this phone sends a random code, the app’s version and the kind of device (and an invite code, if you were given one), to keep the daily allowance fair. It isn’t your name or your account.'),
       h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention),
-      h('li', {}, h('b', {}, 'Not therapy. '), 'Another Angle isn’t therapy or crisis support, and it can’t replace people who can be there with you. ',
-        h('button', { type: 'button', class: 'bx-link', onclick: () => openSupport(app) }, 'Support lines'))),
+      therapy ? notTherapy(app, 'li') : null),
     h('p', { class: 'bx-small' }, 'You can change your mind any time in Settings, and delete this phone’s Another Angle data there.'));
 }
 
 /**
  * The consent card inside the Another Angle scene: calm, above Zuzu (who stays
  * squeezable underneath), not a form. Resolves through onDecide('yes'|'no').
+ * When the notice is taller than the card, a "More below" cue says so (and
+ * scrolls it); "Not therapy" and the support link sit by the buttons, in view.
  */
 export function openConsent({ app, root = document.body, onDecide } = {}) {
   ensureBeyondCss();
@@ -114,16 +125,34 @@ export function openConsent({ app, root = document.body, onDecide } = {}) {
   const accept = h('button', { type: 'button', class: 'bx-choice bx-accept', onclick: () => decide('yes') }, 'Accept');
   const notNow = h('button', { type: 'button', class: 'bx-choice bx-notnow', onclick: () => decide('no') }, 'Not now');
   const title = h('h2', { class: 'bx-title', id: `${uid}-t`, tabindex: '-1' }, 'Before Zuzu looks at your words');
+  const scroll = h('div', { class: 'bx-scroll', id: `${uid}-d`, tabindex: '0', 'aria-label': 'The notice' }, noticeBody(app));
+  const more = h('button', { type: 'button', class: 'bx-more', hidden: true, 'aria-label': 'Show more of the notice', onclick: () => {
+    scroll.scrollBy({ top: Math.max(60, scroll.clientHeight * 0.8), behavior: reduced ? 'auto' : 'smooth' });
+  } }, 'More below', h('span', { class: 'bx-more-arrow', 'aria-hidden': 'true' }, '↓'));
   const el = h('section', { class: `bx-consent hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': `${uid}-t`, 'aria-describedby': `${uid}-d`, 'data-bx': 'consent' },
     title,
-    h('div', { class: 'bx-scroll', id: `${uid}-d` }, noticeBody(app)),
+    h('div', { class: 'bx-scrollwrap' }, scroll, more),
+    notTherapy(app),
     h('div', { class: 'bx-actions' }, notNow, accept),
-    h('p', { class: 'bx-small bx-after' }, 'Not now: Zuzu uses its own angles, worked out on this phone. Nothing is sent.'));
+    h('p', { class: 'bx-small bx-after' }, 'Not now: Zuzu’s own angles, worked out on this phone. Nothing is sent.'));
   root.append(el);
-  requestAnimationFrame(() => el.classList.add('in'));
+  // the cue shows while there is more of the notice below what fits (looked at on scroll, resize and as fonts land)
+  const cue = () => {
+    if (done) return;
+    const left = scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop;
+    const show = left > 12;
+    if (more.hidden === show) more.hidden = !show;
+    el.classList.toggle('bx-has-more', show);
+  };
+  scroll.addEventListener('scroll', cue, { passive: true });
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(cue) : null;
+  ro?.observe(scroll); if (scroll.firstChild) ro?.observe(scroll.firstChild);
+  requestAnimationFrame(() => { el.classList.add('in'); cue(); });
+  setTimeout(cue, 600);
   // focus goes to the notice's title (read first), never to a button
   setTimeout(() => { if (!done) title.focus({ preventScroll: true }); }, reduced ? 60 : 420);
   function close() {
+    ro?.disconnect();
     el.classList.remove('in'); el.classList.add('out');
     setTimeout(() => el.remove(), reduced ? 120 : 360);
   }
@@ -136,7 +165,7 @@ export function openConsentSheet(app, { onDecide } = {}) {
   let decided = false;
   const s = openSheet({
     title: 'Another Angle and your words', label: 'Another Angle privacy notice',
-    body: noticeBody(app, { compact: true }),
+    body: noticeBody(app, { compact: true, therapy: true }),
     foot: h('div', { class: 'row-btns' },
       h('button', { class: 'btn', onclick: () => { decided = true; setConsent(app.store, 'no'); s.close(); onDecide?.('no'); } }, 'Not now'),
       h('button', { class: 'btn', onclick: () => { decided = true; setConsent(app.store, 'yes'); s.close(); onDecide?.('yes'); } }, 'Accept')),

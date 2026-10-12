@@ -5,7 +5,12 @@
 // personalisation run exactly as in production; safety cases must make no request at all.
 //
 //   cd /home/user/thinkstill-rituals && python3 -m http.server 8000      (in another shell)
-//   node hushmallow/tools/beyond/angle-gate.cjs [--size 320x568] [--mech pull_apart,find_boundary] [--safety] [--rm] [--shots DIR]
+//   node hushmallow/tools/beyond/angle-gate.cjs [--size 320x568] [--mech pull_apart,find_boundary] [--safety] [--rm] [--authored] [--shots DIR]
+//
+// --authored: no server at all (the build as it ships while ANGLE_ENDPOINT is empty): each mechanic plays the
+// authored scene for the same words (forced to that mechanic through the dev hook), by real touch.
+// Every layout check also proves each named label sits nearest its own object (a bowl, the guess, a bud) and
+// never moved past its tie (review r3, blocking 1).
 //
 // Exit code 1 when any check fails. Slow on SwiftShader (≈40 s a mechanic); run one browser job at a time.
 const fs = require('fs');
@@ -18,6 +23,7 @@ const [W, H] = (arg('--size', '320x568')).split('x').map(Number);
 const SCENES = JSON.parse(fs.readFileSync(path.join(__dirname, 'scenes.json'), 'utf8'));
 const MECHS = (arg('--mech', 'all') === 'all' ? Object.keys(SCENES) : arg('--mech').split(','));
 const SAFETY = process.argv.includes('--safety');
+const AUTHORED = process.argv.includes('--authored');
 const RM = process.argv.includes('--rm');
 const SHOTS = arg('--shots', null);
 const BASE = arg('--base', 'http://localhost:8000/hushmallow/index.html');
@@ -60,6 +66,19 @@ const layoutCheck = (page) => page.evaluate(() => {
   }
   for (const e of document.querySelectorAll('#scene *')) { if (!e.offsetParent || e.closest('.sr-only')) continue; if (![...e.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim())) continue; const fs = parseFloat(getComputedStyle(e).fontSize); if (fs < 13) bad.push(`text ${fs}px: ${e.textContent.trim().slice(0, 20)}`); }
   if (document.documentElement.scrollWidth > innerWidth) bad.push('sideways scroll');
+  // ownership: a label that names an object is nearer its own object than any other of its kind, and stays within its tie
+  const ties = A?.mech?.tags?.ties?.() || [];
+  const edge = (r, x, y) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+  for (const t of ties) {
+    if (!t.visible) continue;
+    if (t.tie && t.moved > t.tie + 1) bad.push(`label moved ${t.moved}px past its tie (${t.tie}): ${(t.title || t.text).slice(0, 26)}`);
+    if (!t.group) continue;
+    const own = edge(t.rect, t.ox, t.oy);
+    for (const m of ties) {
+      if (m.group !== t.group || (Math.abs(m.ox - t.ox) < 1 && Math.abs(m.oy - t.oy) < 1)) continue;
+      if (edge(t.rect, m.ox, m.oy) + 2 < own) { bad.push(`label nearer another object: ${(t.title || t.text).slice(0, 26)} (own ${Math.round(own)}px, other ${Math.round(edge(t.rect, m.ox, m.oy))}px)`); break; }
+    }
+  }
   return bad;
 });
 /** The word "AI" anywhere visible outside the consent and privacy notice. */
@@ -92,7 +111,7 @@ async function play(page, cdp, id) {
   return settled();
 }
 
-async function openPage(browser, { route }) {
+async function openPage(browser, { route, authored = false }) {
   const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: W < 600, reducedMotion: RM ? 'reduce' : 'no-preference' });
   const page = await context.newPage();
   const sent = [];
@@ -108,7 +127,7 @@ async function openPage(browser, { route }) {
     return r.fulfill({ status: 200, headers: cors, body: JSON.stringify(route()) });
   });
   await page.addInitScript(() => { try { localStorage.setItem('hm2:beyond.consent', JSON.stringify({ v: 1, choice: 'yes', at: '2026-10-12' })); } catch {} });
-  await page.goto(`${BASE}?angleDev=8799`);
+  await page.goto(authored ? BASE : `${BASE}?angleDev=8799`);
   await page.waitForFunction(() => window.__hush && window.__hush.world && window.__hushfold, null, { timeout: 120000 });
   await page.evaluate(async () => { if (!window.__hush.ent.has('ultra')) await window.__hush.ent.purchase('ultra'); });
   const cdp = await context.newCDPSession(page);
@@ -134,8 +153,34 @@ const shot = (page, name) => (SHOTS ? page.screenshot({ path: path.join(SHOTS, `
   const report = (name, problems) => { console.log(`${problems.length ? 'FAIL' : 'ok  '} ${name}${problems.length ? `\n       ${problems.join('\n       ')}` : ''}`); if (problems.length) failed++; };
   for (const id of SAFETY ? [] : MECHS) {
     const { text, scene } = SCENES[id];
-    const { context, page, cdp, sent, errors } = await openPage(browser, { route: () => ({ status: 'ok', prompt_version: 'angle-v4', scene, keep_support_close: false }) });
+    const { context, page, cdp, sent, errors } = await openPage(browser, { route: () => ({ status: 'ok', prompt_version: 'angle-v4', scene, keep_support_close: false }), authored: AUTHORED });
     const problems = [];
+    if (AUTHORED) {
+      try {
+        if (await page.evaluate(() => window.__angle.serverMode())) problems.push('a server is configured');
+        await page.evaluate(({ t, id }) => { window.__angle.play(t, { mechanic: id }); }, { t: text, id });
+        await page.waitForFunction(() => window.__angle.mech, null, { timeout: 90000 });
+        await sleep(1800);
+        await shot(page, `a-${id}-${W}-1-start`);
+        problems.push(...(await layoutCheck(page)).map((p) => `start: ${p}`));
+        if (!(await play(page, cdp, id))) problems.push('did not land through touch');
+        await sleep(700);
+        await shot(page, `a-${id}-${W}-2-landed`);
+        problems.push(...(await layoutCheck(page)).map((p) => `landed: ${p}`));
+        await page.waitForFunction(() => window.__angle.S.phase === 'reveal', null, { timeout: 60000 });
+        await sleep(700);
+        problems.push(...(await layoutCheck(page)).map((p) => `done line: ${p}`));
+        // nothing on screen is cut, and the word "AI" never shows
+        const cut = await page.evaluate(() => [...document.querySelectorAll('.bx-tag, .hf-sub .text')].filter((e) => parseFloat(getComputedStyle(e).opacity) > 0.1 && /…/.test(e.textContent)).map((e) => e.textContent.slice(0, 50)));
+        for (const c of cut) problems.push(`cut text on screen: ${c}`);
+        problems.push(...(await aiOnScreen(page)).map((t) => `"AI" on screen: ${t}`));
+        if (sent.length) problems.push(`requests were made: ${sent.join(', ')}`);
+      } catch (e) { problems.push(`error: ${e.message.split('\n')[0]}`); await shot(page, `a-${id}-${W}-err`); }
+      problems.push(...errors.map((e) => `page error: ${e}`));
+      report(`authored ${id} ${W}×${H}${RM ? ' reduced motion' : ''}`, problems);
+      await context.close();
+      continue;
+    }
     try {
       await tell(page, cdp, text);
       await tapEl(page, cdp, '.hf-input .hf-send');

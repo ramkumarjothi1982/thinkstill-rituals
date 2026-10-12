@@ -322,6 +322,7 @@ export function create(ctx) {
     if (first || !cam) { camHome = plan.homeY; camWater = plan.waterY; if (!melt || reduced()) hyNow = hyTarget; }
     if (!cam) cam = makeCamera({ W, H, hy: hyNow || hyTarget, homeY: camHome, waterY: camWater });
     cam.W = W; cam.H = H; cam.homeY = camHome; cam.waterY = camWater; fitCamera(cam, hyNow || hyTarget);
+    if (first) lastZ0 = cam.Z0;               // (a fresh plan: positions are set for this camera)
     // the drift gain from the settled camera (what the person will play with; cached per screen)
     const target = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
     driftGain = calibrateDrift(target, U);
@@ -352,6 +353,15 @@ export function create(ctx) {
     if (!first) {
       reslot(false);
       if (!everTouched && thought && tS.landK >= 1 && !tS.from && !melt && cam) { const a = tS.alpha; thoughtHome(); tS.alpha = a; tS.snapOff = a > 0.05; }
+      else if (thought && tS.landK >= 1 && !tS.from && !melt && cam && tS.alpha > 0.05) {
+        // the hero moved (a turned phone, the shell's new layout): if the thought's place on the water is now on it, the
+        // thought glides back into its home's column at the same distance (never pushed out to the horizon by it)
+        const rr = tS.r * tS.surf + 4, M = plan.rects.mallow;
+        if (tS.sx + rr > M.x0 && tS.sx - rr < M.x1 && tS.sy + rr > M.y0 - 2 * rr) {
+          tS.z = clamp(tS.z, cam.Z0, capD * cam.Z0); tS.x = (plan.home.x - W / 2) / scaleAt(cam, tS.z); tS.vx = 0;
+          tS.dP = Math.min(tS.dP, tS.z / cam.Z0); tS.snapOff = true;
+        }
+      }
     }
   }
 
@@ -624,7 +634,9 @@ export function create(ctx) {
     const cx = hero.ok ? hero.cx : W / 2;
     const side = (x) => (x < cx - 0.12 * W ? -1 : x > cx + 0.12 * W ? 1 : 0);
     const dur = (c, q) => clamp(Math.hypot(q.x - c.x, q.y - c.y) / 115, 1.8, 3.4);
-    const cost = (c, q) => Math.hypot(q.x - c.x, q.y - c.y) + (q.far ? 60 : 0) + (side(c.x) * side(q.x) < 0 ? 420 : 0);
+    const T0 = plan.rects.thought;
+    const blockers = [plan.rects.mallow, plan.rects.plate, T0].filter(Boolean);
+    const cost = (c, q) => Math.hypot(q.x - c.x, q.y - c.y) + (q.far ? 60 : 0) + (side(c.x) * side(q.x) < 0 ? 420 : 0) + (blockers.some((o) => segHitsBox(c.x, c.y, q.x, q.y, o, q.D / 2 + 4)) ? 300 : 0);
     const cr = (ox, oy, px, py, qx, qy) => (px - ox) * (qy - oy) - (py - oy) * (qx - ox);
     const NT = 14;
     // its way down goes round the hero and the thought's clear zone (as the glide steers), on the side of its slot
@@ -687,6 +699,11 @@ export function create(ctx) {
     return best;
   }
   const SLOT_ORDER = Array.from({ length: 16 }, (_, k) => k);
+  /** Does the segment (x0, y0) → (x1, y1), swept by a disc of radius r, cross box o? (sampled: short, exact enough) */
+  function segHitsBox(x0, y0, x1, y1, o, r) {
+    for (let k = 1; k < 12; k++) { const t = k / 12, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > o.x0 - r && x < o.x1 + r && y > o.y0 - r && y < o.y1 + r) return true; }
+    return false;
+  }
   function initBubbles(fromCards = null) {
     bubbles.length = 0; waiting = [];
     const n = Math.min(7, photos?.n || 0);
@@ -992,6 +1009,15 @@ export function create(ctx) {
     camHome += (plan.homeY - camHome) * e; camWater += (plan.waterY - camWater) * e;
     if (!melt) hyNow += (hyTarget - hyNow) * e;
     cam.homeY = camHome; cam.waterY = camWater; fitCamera(cam, hyNow);
+    // (the camera re-fitted for a new layout — a turned phone, a hero moved by the shell: whatever floats keeps how far
+    // out it looks, z/Z0, instead of seeming to rush away or come close as the lens changes under it)
+    if (lastZ0 > 0 && Math.abs(cam.Z0 - lastZ0) > 1e-3 * lastZ0 && !melt) {
+      const k = cam.Z0 / lastZ0;
+      if (thought && !tS.from) tS.z *= k;
+      for (const b of bubbles) if (!b.from) b.z *= k;
+      for (const t of tows) t.zFar *= k;
+    }
+    lastZ0 = cam.Z0;
     wakeRows();
     heroFromRect(false);
     if (!melt && hero.floatK < 1) hero.floatK = Math.min(1, hero.floatK + dt / 1.5);
@@ -1080,7 +1106,7 @@ export function create(ctx) {
     }
     if (hint.age >= 0) { hint.age += dt; if (hint.age > HINT_SEC) hint.age = -1; }
   }
-  let wakeAcc = 0, windClock = 0;
+  let wakeAcc = 0, windClock = 0, lastZ0 = 0;
   const aliveFn = (id) => sea.alive(id);
 
   /** Quick flicks make chop: while each chop packet lives, its envelope glitters (fading as it fades). */
@@ -1190,7 +1216,9 @@ export function create(ctx) {
       // it settles on the water once it has arrived (or, held off its place by something floating there, after a moment where it is)
       if (b.glide >= 1) b.wait += dt;
       // (never above the water: a bubble only ever settles on it — its waterline below the horizon)
-      if (b.glide >= 1 && riseDone && b.gy + 0.3 * b.D > hyNow + 3 && (Math.hypot(b.gx - b.target.x, b.gy - b.target.y) < 2.5 || b.wait > 2.5)) settleBubble(b);
+      // (held where it is — wedged between the thought, its words and the hero, with nowhere free to go — it settles there
+      // after a moment and floats aside from it on the water, rather than hovering)
+      if (b.glide >= 1 && riseDone && b.gy + 0.3 * b.D > hyNow + 3 && (Math.hypot(b.gx - b.target.x, b.gy - b.target.y) < 2.5 || b.wait > 2.5 || (b.stuck || 0) > 1.3)) settleBubble(b);
     }
     if (thought && tS.from) {
       const m = rm ? 1 : Math.min(mask(tS.from.x, tS.from.y), mask(tS.from.x, tS.from.y + (tS.r + 30)));
@@ -1595,9 +1623,10 @@ export function create(ctx) {
   /** The thought's clear zone on screen now (null when it is not shown). */
   function liveZone() {
     if (!thought || tS.alpha * tS.vis < 0.2) return null;
-    return thoughtZone(tS.sx, tS.sy, tS.r * tS.surf, tS.side === 'left' || tS.side === 'right' ? 0 : tS.plateW || 0, TZ);
+    // (far out it is small, but its clear zone stays a good size: it keeps a little open water of its own)
+    return thoughtZone(tS.sx, tS.sy, Math.max(tS.r * tS.surf, 0.6 * tS.r), tS.side === 'left' || tS.side === 'right' ? 0 : tS.plateW || 0, TZ);
   }
-  const GLIDE_V = 190, REP_V = 340, REP_M = 16, REP_MB = 6;     // px/s, px/s, px: the glide's top speed, how firmly things hold it off, from how far (another bubble: closer)
+  const GLIDE_V = 190, REP_V = 340, REP_M = 16, REP_MB = 8;     // px/s, px/s, px: the glide's top speed, how firmly things hold it off, from how far (another bubble: closer)
   const rep = { x: 0, y: 0 };
   /** Steer a gliding bubble towards (qx, qy) on its way, held off what it must go round (velocity-limited: no jumps). */
   function steer(b, qx, qy, dt) {
@@ -1626,8 +1655,9 @@ export function create(ctx) {
     for (const o of bubbles) {
       if (o === b || o.alpha < 0.02 || o.state === 'leave') continue;
       if (resting && o.from && !atRest(o)) continue;
+      if (resting && o.from && atRest(o)) continue;          // (two resting at their planned slots are already apart)
       const ox = o.from ? o.gx : o.sx, oy = o.from ? o.gy : o.sy;
-      repelDisc(b.gx, b.gy, r, ox, oy, o.D / 2 + 1, REP_MB);
+      repelDisc(b.gx, b.gy, r, ox, oy, o.D / 2 + 2, REP_MB);
     }
     vx += rep.x; vy += rep.y;
     const v = Math.hypot(vx, vy), cap = GLIDE_V * 1.15;
@@ -1657,7 +1687,27 @@ export function create(ctx) {
         b.cap = b.target.D + 0.5; o.cap = o.target.D + 0.5;
         break;
       }
+      // nobody to change places with, and still no nearer: another free place it can reach without crossing the hero,
+      // the thought or its words (a fresh, unhurried way there)
+      if (b.stuck > 1 && !b.away && !b.tried) retarget(b);
     }
+  }
+  function retarget(b) {
+    const slots = bubbleSlots(Math.min(7, photos?.n || 0)), r = b.D / 2;
+    const obs = [K.on ? K : null, thought && tS.plateW ? plateRect(prB) : null, thought ? { x0: tS.sx - tS.r * tS.surf, x1: tS.sx + tS.r * tS.surf, y0: tS.sy - tS.r * tS.surf, y1: tS.sy + tS.r * tS.surf } : null].filter(Boolean);
+    let best = null, bc = Infinity;
+    for (const q of slots) {
+      if (q === b.target || (q.x === b.target.x && q.y === b.target.y)) continue;
+      // taken: another bubble is headed there, or floats there
+      if (bubbles.some((o) => o !== b && o.state !== 'leave' && ((o.target && Math.hypot(o.target.x - q.x, o.target.y - q.y) < 4) || (!o.from && Math.hypot(o.sx - q.x, o.sy - q.y) < (o.D + q.D) / 2)))) continue;
+      const c = Math.hypot(q.x - b.gx, q.y - b.gy) + (obs.some((o) => segHitsBox(b.gx, b.gy, q.x, q.y, o, r + 4)) ? 600 : 0) + (q.far ? 60 : 0);
+      if (c < bc) { bc = c; best = q; }
+    }
+    if (!best || bc >= 600) { b.tried = true; return; }
+    b.stuck = 0; b.best = Infinity;
+    b.target = { x: best.x, y: best.y, D: best.D }; b.cap = best.D + 0.5;
+    b.from = { ...b.from, x: b.gx, y: b.gy }; b.glide = 0.35; b.wait = 0;
+    b.glideSec = clamp(Math.hypot(best.x - b.gx, best.y - b.gy) / 115, 1.2, 3);
   }
   function repelDisc(x, y, r, cx, cy, R, M = REP_M) {
     const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1e-3, gap = d - R - r;

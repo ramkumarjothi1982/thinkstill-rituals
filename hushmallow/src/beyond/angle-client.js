@@ -29,8 +29,12 @@ import { validateScene, previousAngles, PATTERNS } from './vocab.js';
 
 export { resolveEndpoint };
 export const PATHS = Object.freeze({ session: '/v1/session', angle: '/v1/angle', feedback: '/v1/feedback' });
-/** ms. The server answers within 28 s (15 s per attempt, one retry), so the client waits a little longer. */
-export const TIMEOUTS = Object.freeze({ session: 8000, angle: 31000, feedback: 6000 });
+/**
+ * ms. The server's own model attempt is 15 s (it may retry once, up to 28 s), but nobody should watch waiting
+ * lines for half a minute: the client waits a little over one attempt, then Zuzu's own angle plays (the
+ * experience also caps the whole wait, session included, at ANGLE_BUDGET_MS in another-angle.js).
+ */
+export const TIMEOUTS = Object.freeze({ session: 6000, angle: 17000, feedback: 6000 });
 
 // THE network call (see the header): one place, one shape.
 const netFetch = (url, init) => globalThis.fetch(url, init);

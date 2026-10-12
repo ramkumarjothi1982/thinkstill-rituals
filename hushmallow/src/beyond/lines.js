@@ -26,6 +26,8 @@ export const ARRIVAL = Object.freeze({
   prompt: 'What’s bothering you?',
   justSqueeze: ['Squeeze away. I’m right here.', 'Whenever you like, tell me what’s on your mind.'],
   offline: 'Zuzu’s own angles, worked out right here.',
+  /** Every few visits after "Not now": the consent notice again, only if they want it. */
+  share: 'About sharing my words',
 });
 
 export const SAFETY = Object.freeze({
@@ -74,7 +76,7 @@ export const MECHANIC_LINES = Object.freeze({
     hint: 'Your mind picked one meaning. Open the others too.',
     assist: 'Open one', done: 'None of these is the answer. They’re all still possible.',
     labels: { guess: 'Your first guess' },
-    others: ['It might mean something smaller.', 'It might be about them, not you.', 'It might not mean anything yet.'],
+    others: ['They might have something else on their mind.', 'They might not see it the way you fear.', 'They might not have meant it the way it landed.'],
   },
   separate_one: {
     hint: 'One moment has joined a whole pile. Lift it out on its own.',

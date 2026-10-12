@@ -74,6 +74,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   const endpoint = resolveEndpoint();
   // QA on the development host only: ?angleTimeout=<ms> shortens the wait (timeout tests)
   const devTimeout = DEV() ? Number(new URLSearchParams(location.search).get('angleTimeout')) || 0 : 0;
+  const devBudget = devTimeout > 0 ? devTimeout + 500 : 0;
   const client = endpoint ? createAngleClient({ store, endpoint, ...(devTimeout > 0 ? { timeouts: { ...TIMEOUTS, angle: devTimeout } } : {}) }) : null;
   const serverMode = () => !!client && consentState(store) === 'yes';
 
@@ -108,6 +109,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   let subs = null, router = null, inputMod = null, touchBox = null, zt = null, zAd = null, compBox = null, ct = null, compAd = null, compId = null;
   let overlay = null, consentCard = null, mech = null, mechId = null, thought = null, thoughtTag = null, rigTicker = null, removeTicker = null;
   let TL = null, wth = null, sheetObs = null;   // W2's ThoughtLayer (src/mallows/thought) and the person's Thought Mallow on it
+  let W2 = null;                                // W2's Thought Mallow + its renderer, for the mechanics (null: the kit's jelly)
   let area = { x: 16, y: 160, w: 358, h: 360 };
   const ripples = [];
   const layer = { overlay: 0 };
@@ -451,13 +453,27 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     else await say(ARRIVAL.again[0]);
     if (S.left || S.phase !== 'invite') return;
     if (!serverMode() && !S.offlineSaid) { S.offlineSaid = true; say(ARRIVAL.offline, { who: null, colour: null }); }
-    const v = await choose(first ? ARRIVAL.first[1] : ARRIVAL.ask, [
+    // "Not now" is never a closed door: every few visits on Zuzu's own angles, the invitation mentions sharing once
+    const options = [
       { label: ARRIVAL.tell, value: 'tell', primary: true, onPick: () => openTell() },
       { label: ARRIVAL.squeeze, value: 'squeeze' },
-    ], { transient: true });
+    ];
+    if (shareAgainNow()) options.push({ label: ARRIVAL.share, value: 'share' });
+    const v = await choose(first ? ARRIVAL.first[1] : ARRIVAL.ask, options, { transient: true });
     if (S.left || S.phase !== 'invite') return;
+    if (v === 'share') { await askConsent(); if (S.left) return; S.offlineSaid = false; return invite(); }
     dockShow({ tell: true });
     if (v === 'squeeze') say(ARRIVAL.justSqueeze[0]);
+  }
+
+  /** Said "Not now" before, and this is one of the visits (every few) where sharing is mentioned again. */
+  let shareAsked = false;
+  function shareAgainNow() {
+    if (shareAsked || !client || consentState(store) !== 'no') return false;
+    shareAsked = true;
+    let n = 0;
+    try { n = (Number(store.get(STORE_KEYS.visits, 0)) || 0) + 1; store.set(STORE_KEYS.visits, n); } catch { return false; }
+    return n % SHARE_AGAIN_EVERY === 0;
   }
 
   let inputP = null;
@@ -513,8 +529,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function afterTell({ text, emotion, intention, input = null, reading = null, safety: seen = null }) {
     S.text = String(text || '').trim();
     S.emotion = emotion || null;
-    // how the Thought Mallow looks: the chosen feeling, else what the words suggest (only its look; nothing is sent)
-    S.look = emotion || input?.emotions?.[0]?.id || reading?.emotions?.[0]?.id || 'anxiety';
+    // how the Thought Mallow looks (only its look; nothing is sent): the feeling they chose; else a reading of the
+    // words only when it is sure and troubled; else the kind of thought it is (fair anger looks hot, replaying busy)
+    S.look = firstLook({ emotion, input, reading, text: S.text });
     S.intention = intention || null;
     S.shown = []; S.used = []; S.kept = false; S.explored = 0;
     // the app's own safety check first, always (never dependent on the server); and the visit's level
@@ -526,6 +543,23 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (S.level === 'concern') S.keepSupport = true;
     if (!S.text || !hasWords(S.text)) { unclear(); return; }
     startAngle({ another: false });
+  }
+
+  function firstLook({ emotion = null, input = null, reading = null, text = '' } = {}) {
+    if (emotion) return emotion;
+    for (const e of [input?.emotions?.[0], reading?.emotions?.[0]]) {
+      if (e && typeof e.id === 'string' && (e.confidence ?? 0) >= READING_SURE && familyOf(e.id) !== 'none') return e.id;
+    }
+    let p = null;
+    try { p = candidatePatterns(text)[0] || null; } catch { p = null; }
+    return PATTERN_LOOK[p] || 'anxiety';
+  }
+  /** The look for a played scene: their chosen feeling, else the scene's own (a server's reading), else the thought's so far. */
+  function sceneLook(scene) {
+    if (S.emotion) return S.emotion;
+    const se = typeof scene?.emotion === 'string' ? scene.emotion.trim().toLowerCase() : '';
+    if (se && familyOf(se) !== 'none' && scene.source === 'server') return se;
+    return S.look || PATTERN_LOOK[scene?.reasoning_pattern] || 'anxiety';
   }
 
   /**
@@ -604,8 +638,12 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     waitingLines(seq);
     // the request (only with consent) and a cinematic minimum beat, together
     const exclude = S.shown.map((s) => s.reasoning_pattern);
+    // (a stalled server never keeps the person waiting long: past the budget, Zuzu's own angle plays)
     const req = serverMode()
-      ? client.angle({ text: S.text, emotion: S.emotion, intention: S.intention, previous: S.shown }).catch(() => ({ status: 'error', reason: 'exception' }))
+      ? Promise.race([
+        client.angle({ text: S.text, emotion: S.emotion, intention: S.intention, previous: S.shown }).catch(() => ({ status: 'error', reason: 'exception' })),
+        sleep(devBudget || ANGLE_BUDGET_MS).then(() => ({ status: 'error', reason: 'timeout' })),
+      ])
       : Promise.resolve(null);
     const res = await req;
     if (S.left || seq !== S.seq) return;
@@ -624,8 +662,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (again.level === 'crisis') { crisisMode(); return; }
       if (again.level === 'care') { careMode(); return; }
       const avoid = [...exclude, ...(another ? [] : lessWanted(store).filter((p) => p !== hint))];
-      scene = authoredScene(S.text, { emotion: S.emotion, exclude: avoid.length < 9 ? avoid : exclude, usedAngles: S.used, hint });
-      if (exclude.includes(scene.reasoning_pattern)) { await noMoreAngles(); return; }
+      scene = authoredScene(S.text, { emotion: S.emotion, exclude: avoid, usedAngles: S.used, hint });
+      // the kinds they found less useful are only skipped while others still fit
+      if (scene.exhausted && avoid.length > exclude.length) scene = authoredScene(S.text, { emotion: S.emotion, exclude, usedAngles: S.used, hint });
+      // every angle that fits these words has been shown: Zuzu says so, and never plays one that doesn't fit
+      if (scene.exhausted || exclude.includes(scene.reasoning_pattern)) { await noMoreAngles(); return; }
     }
     prefetchMechanic(scene.mechanic);
     const minBeat = rmOn() ? 1400 : (another ? 2200 : 3200);
@@ -636,13 +677,13 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     await playScene(scene, seq);
   }
   async function waitingLines(seq) {
-    let i = 0;
-    const t0 = now();
+    // Zuzu's line first, then (early, once) what is happening, in the Hushfold's own words; then the rest in turn
+    let i = 0, w = 0, n = 0;
     while (!S.left && seq === S.seq && S.phase === 'waiting') {
-      const long = now() - t0 > 9000 && i % 2 === 1;
-      if (long) await say(pick(WAITING_LONG, i >> 1), { who: null, colour: null });
-      else await say(pick(WAITING, i), { mallow: 'zuzu' });
-      i++;
+      const narrate = n === 1 || (n > 2 && n % 3 === 0);
+      if (narrate) await say(pick(WAITING_LONG, i++), { who: null, colour: null });
+      else await say(pick(WAITING, w++), { mallow: 'zuzu' });
+      n++;
       if (S.phase !== 'waiting' || seq !== S.seq) break;
       await sleep(rmOn() ? 300 : 700);
     }
@@ -663,9 +704,17 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // the Thought Mallow hands over to the mechanic where it sits (a short cross-fade)
     dropThought(rmOn() ? 120 : 420);
     const parts = sceneParts(S.text, scene);
+    const look = sceneLook(scene);
+    S.look = look;
+    const [tl, td] = tintFor(look);
     const ctx = {
-      g, area: () => area, from, scene, parts, text: S.text, emotion: S.emotion || S.look, tags: makeTags(root, { bounds: () => area }),
+      g, area: () => area, from, scene, parts, text: S.text, emotion: look, tags: makeTags(root, { bounds: () => area, announce: announceSoon }),
       reducedMotion: rmOn, lowStim: lowOn,
+      // the person's Thought Mallow in the mechanic: the same living jelly (W2) they watched while Zuzu explored
+      thought: (o = {}) => new ThoughtBody({ text: S.text, emotion: look, intensity: 0.7, light: tl, deep: td, reducedMotion: rmOn(), lowStim: lowOn(), rmFn: rmOn,
+        haptic: (k) => app.haptic(k), bounds: { left: area.x, top: area.y, right: area.x + area.w, bottom: area.y + area.h }, ...o }, W2),
+      // something the mechanic changed that a screen reader should hear (a weight put down, a step made)
+      say: (t) => announceSoon(t),
       hint: (line) => { if (line && !subs?.holding) say(line, { mallow: 'zuzu', interrupt: true }); },
       // a mechanic's own question (find_boundary): the chips are the way on, so the assist pill steps aside meanwhile
       choose: async (prompt, options) => {
@@ -747,6 +796,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     await say(scene.subtitle_line_2, { mallow: lead, hold: true });
     if (S.left || seq !== S.seq) return;
     zt?.setStage('neutral'); ct?.setStage('neutral');
+    // the played scene has said what it had to: it fades away, so what follows reads on the open sky
+    await endMechanic();
+    if (S.left || seq !== S.seq) return;
     await explore(scene, seq);
   }
 
@@ -845,7 +897,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       root.classList.add('bx-installing');
       const r = await install.keepDiscovery({
         app, store, skillId: 'another-angle', worldId: 'another-angle', mallow: 'zuzu', origin, face,
-        avoid: () => [rectOf(compAd), ...(mech?.avoid?.() || [])].filter(Boolean),
+        // Zuzu (and the scene's Mallow) stay clear: the garden's chip never sits on them
+        avoid: () => [rectOf(zAd), rectOf(compAd), ...(mech?.avoid?.() || [])].filter(Boolean),
         subtitles: subs, reducedMotion: rmOn(), lowStim: lowOn(),
         // which kind of angle it was (no words): for the garden's own copy per kind, when it has it
         evidence: { reasoning_pattern: S.scene?.reasoning_pattern || null, interaction_type: S.scene?.interaction_type || null },
@@ -943,6 +996,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       try {
         const tm = await import('../mallows/thought/index.js');
         if (S.left) return;
+        try { const tr = await import('../mallows/thought/render.js'); if (typeof tm.createThought === 'function' && typeof tr.drawThought === 'function') W2 = { create: tm.createThought, draw: tr.drawThought }; } catch { W2 = null; }
+        if (S.left) return;
         TL = new tm.ThoughtLayer({
           ctx2d: g, tagRoot: root, reducedMotion: rmOn, lowStim: lowOn, keepOut: () => rectOf(zAd),
           bounds: () => ({ left: area.x, top: area.y, right: area.x + area.w, bottom: area.y + area.h }),
@@ -1023,6 +1078,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       /** Play a scene directly (lab): an authored scene for `text`, optionally forcing the mechanic. */
       async play(text, { mechanic = null, emotion = null } = {}) {
         S.text = text; S.emotion = emotion; S.shown = []; S.used = [];
+        S.look = firstLook({ emotion, text });
         const sc = authoredScene(text, { emotion });
         if (mechanic && MECHANICS.includes(mechanic)) { sc.mechanic = mechanic; sc.interaction_type = mechanic; }
         spawnThought();
