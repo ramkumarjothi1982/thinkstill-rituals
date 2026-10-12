@@ -284,12 +284,15 @@ export function halo(g, cx, cy, r, t, colour, { rings = 5, alpha = 0.35, speed =
   g.restore();
 }
 /** Field of slowly twinkling motes (cheap, deterministic). */
+const moteCache = new Map();
 export function motes(g, x, y, w, h, t, colour, { n = 40, alpha = 0.6, seed = 3, size = 2 } = {}) {
-  const r = rng(seed);
-  g.save(); g.globalCompositeOperation = 'lighter';
+  const key = seed * 1000 + n;
+  let m = moteCache.get(key);
+  if (!m) { const r = rng(seed); m = new Float32Array(n * 5); for (let i = 0; i < n * 5; i++) m[i] = r(); moteCache.set(key, m); }
+  g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = colour;
   for (let i = 0; i < n; i++) {
-    const px = x + r() * w, py = y + ((r() * h - t * (8 + r() * 14)) % h + h) % h, tw = 0.5 + 0.5 * Math.sin(t * (1 + r() * 2) + i);
-    g.globalAlpha = alpha * tw; g.fillStyle = colour; g.beginPath(); g.arc(px, py, size * (0.5 + r()), 0, TAU); g.fill();
+    const o = i * 5, px = x + m[o] * w, py = y + ((m[o + 1] * h - t * (8 + m[o + 2] * 14)) % h + h) % h, tw = 0.5 + 0.5 * Math.sin(t * (1 + m[o + 3] * 2) + i);
+    g.globalAlpha = alpha * tw; g.beginPath(); g.arc(px, py, size * (0.5 + m[o + 4]), 0, TAU); g.fill();
   }
   g.restore();
 }

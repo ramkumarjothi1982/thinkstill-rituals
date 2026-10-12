@@ -322,6 +322,23 @@ function toneSprite(p, shape, px, tone, seed) {
   return c;
 }
 
+/** The whole photo (no mask) in a tone, same size as p.img — for clipped/cover drawing. */
+function toneImage(p, tone) {
+  const key = `${p.id}|full|${tone}`;
+  let c = spriteCache.get(key);
+  if (c) return c;
+  c = makeCanvas(p.w, p.h);
+  const g = c.getContext('2d');
+  g.drawImage(p.img, 0, 0);
+  if (tone === 'blur') {
+    const sm = makeCanvas(Math.max(2, p.w / 7), Math.max(2, p.h / 7)); const sg = sm.getContext('2d'); sg.drawImage(p.img, 0, 0, sm.width, sm.height);
+    g.imageSmoothingQuality = 'high'; g.drawImage(sm, 0, 0, p.w, p.h);
+  } else for (const [op, col, a] of TONES[tone] || []) { g.globalCompositeOperation = op; g.globalAlpha = a; g.fillStyle = col; g.fillRect(0, 0, p.w, p.h); }
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  spriteCache.set(key, c);
+  return c;
+}
+
 function sprite(p, shape, px, tone = 'natural', seed = 1) {
   px = bucket(px);
   return tone && tone !== 'natural' ? toneSprite(p, shape, px, tone, seed) : baseSprite(p, shape, px, seed);
@@ -544,7 +561,7 @@ export function photoApi({ particles, dpr = 1, seed = 1 } = {}) {
       const sc = Math.max(w / p.w, h / p.h), dw = p.w * sc, dh = p.h * sc;
       const ox = clamp(w / 2 - p.focus.x * dw, w - dw, 0), oy = clamp(h / 2 - p.focus.y * dh, h - dh, 0);
       g.drawImage(p.img, x - w / 2 + ox, y - h / 2 + oy, dw, dh);
-      if (tone && toneMix > 0) { g.globalAlpha *= toneMix; g.drawImage(sprite(p, 'natural', Math.max(w, h) * dpr, tone), x - w / 2, y - h / 2, w, h); }
+      if (tone && toneMix > 0) { g.globalAlpha *= toneMix; g.drawImage(toneImage(p, tone), x - w / 2 + ox, y - h / 2 + oy, dw, dh); }
       g.restore();
     },
   };

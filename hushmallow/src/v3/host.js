@@ -147,6 +147,7 @@ export async function run(ctx) {
   const setPrompt = (text) => { promptOverride = text; const p = titleBox?.querySelector('p'); if (p) p.textContent = text; live.textContent = text; };
 
   // phase state
+  let twistSide = null;
   let phaseName = 'play', engine = null, law = null, finaleAt = 0, endAt = 0, lawAt = 0, endShown = false, twistAt = -1, twistShown = false;
   let lastInput = 0, firstTouch = false, lastP = 0, halfSaid = false, lockToastAt = -9, lockMsg = '';
   const route = [];
@@ -322,7 +323,8 @@ export async function run(ctx) {
       engine.frame(dt, t);
     } catch (err) { console.error('[v3 engine]', err); }
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.setLineDash([]);
-    if (phaseName === 'play') { law.frame?.(g, t, dt); updatePlay(); }
+    // only gate laws draw during play (guides, pulses, wakes); closing-move laws wait for their own phase
+    if (phaseName === 'play') { if (law.kind === 'gate') law.frame?.(g, t, dt); updatePlay(); }
     else if (phaseName === 'law') { veil(0.44 * smooth(clamp((now() - lawAt) / 0.7))); lawWipe(); law.frame(g, t, dt); if (law.done) startFinale(); }
     particles.update(dt); particles.draw(g);
     ripples.update(dt); ripples.draw(g, 0.9);
@@ -343,7 +345,7 @@ export async function run(ctx) {
       lastP = p;
     }
     if (!halfSaid && p >= 0.5) { halfSaid = true; if (round === 1) say(copy.during[0], 3600); react('nod', true); }
-    if (!twistShown && p >= 0.62) { twistShown = true; twistAt = now(); engine.twist?.(); world.realm?.pulse?.('burst', { x: stage.cx, y: stage.cy }); sound('shimmer', { intensity: 0.5 }); react('gasp', true); }
+    if (!twistShown && p >= 0.62) { twistShown = true; twistAt = now(); twistSide = null; engine.twist?.(); world.realm?.pulse?.('burst', { x: stage.cx, y: stage.cy }); sound('shimmer', { intensity: 0.5 }); react('gasp', true); }
     if (law.locked && pointers.size) showLock();
     if (engine.done && law.gateReady()) {
       if (law.kind === 'phase') startLaw(); else startFinale();
@@ -439,15 +441,19 @@ export async function run(ctx) {
   function drawTwist(t) {
     const tw = twistText();
     if (twistAt < 0 || !tw) return;
-    const k = now() - twistAt, dur = 5.2;
+    const k = now() - twistAt, dur = 4.4;
     if (k > dur) return;
     const a = smooth(clamp(k / 0.5)) * (1 - smooth(clamp((k - dur + 0.7) / 0.7)));
     const s = stage.s, w = Math.min(stage.w - 8, 330 * s);
-    const y = stage.y + 6 + (1 - ease.outCubic(clamp(k / 0.6))) * -24;
-    g.save(); g.globalAlpha = a;
+    g.save();
     g.font = `600 ${13 * s + 1}px ${fx.FONT}`;
     const lines = fx.wrap(g, tw, w - 28, 3);
     const hgt = 30 + lines.length * (16 * s + 3);
+    // sit at the top or the bottom of the stage, whichever is away from the active object
+    if (twistSide == null) { const q = engine?.pointAt?.(clamp(engine.progress || 0)) || { y: stage.cy }; twistSide = q.y < stage.cy ? 'bottom' : 'top'; }
+    const slide = (1 - ease.outCubic(clamp(k / 0.6))) * 24;
+    const y = twistSide === 'top' ? stage.y + 6 - slide : stage.y + stage.h - hgt - 6 + slide;
+    g.globalAlpha = a * 0.94;
     fx.roundRect(g, stage.cx - w / 2, y, w, hgt, 18); g.fillStyle = 'rgba(16,10,40,0.78)'; g.fill();
     g.strokeStyle = rgba(pal.accent, 0.5); g.lineWidth = 1.2; g.stroke();
     // shimmer sweep across the plate

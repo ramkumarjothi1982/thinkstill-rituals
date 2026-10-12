@@ -12,7 +12,7 @@ const { chromium } = req('playwright');
 (async () => {
   const [query, out, mode = 'tap', vw = '390', vh = '844'] = process.argv.slice(2);
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] }).catch(() => chromium.launch());
-  const page = await browser.newPage({ viewport: { width: +vw, height: +vh }, deviceScaleFactor: 2, hasTouch: true });
+  const page = await browser.newPage({ viewport: { width: +vw, height: +vh }, deviceScaleFactor: Number(process.env.V3_DPR || 1.5), hasTouch: true });
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.type() + ': ' + m.text()); });
