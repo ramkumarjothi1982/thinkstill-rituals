@@ -175,32 +175,32 @@ test('F6 a perspective carrying a home address or real name is stored and passed
 
 test('F7a feeling screening: “my zip code is 90210” passes (the ZIP rule only looks for “zip” AFTER the number)', () => {
   const w = world();
-  assert.throws(() => w.svc.submitFeeling(w.T.moon, { text: 'My zip code is 90210 and everyone here knows me', clientId: cid() }), (e) => e.code === 'feeling-identifying');
+  assert.throws(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'My zip code is 90210 and everyone here knows me', clientId: cid() }), (e) => e.code === 'feeling-identifying');
 });
 
 test('F7b feeling screening: “My name’s …” and a lower-case UK postcode pass', () => {
   const w = world();
-  assert.throws(() => w.svc.submitFeeling(w.T.moon, { text: 'My name’s Sarah Jones and I feel invisible at work', clientId: cid() }), (e) => e.code === 'feeling-identifying');
-  assert.throws(() => w.svc.submitFeeling(w.T.moon, { text: 'I live in sw1a 1aa and feel so alone', clientId: cid() }), (e) => e.code === 'feeling-identifying');
+  assert.throws(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'My name’s Sarah Jones and I feel invisible at work', clientId: cid() }), (e) => e.code === 'feeling-identifying');
+  assert.throws(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'I live in sw1a 1aa and feel so alone', clientId: cid() }), (e) => e.code === 'feeling-identifying');
 });
 
 // ------------------------------------- 8. compatibility characters (NFKC) --
 test('F8a full-width crisis words are released to strangers and sent to the AI provider', async () => {
   const provider = countingProvider();
   const w = world({ provider });
-  const r = w.svc.submitFeeling(w.T.moon, { text: 'I want to ｅｎｄ ｉｔ ａｌｌ', clientId: cid(), allowFallback: true });
+  const r = w.svc.submitFeeling(w.T.moon, { consent: true, text: 'I want to ｅｎｄ ｉｔ ａｌｌ', clientId: cid(), allowFallback: true });
   assert.equal(r.status, 'support', 'crisis words circulated instead of answered with support');
 });
 
 test('F8b full-width digits carry a phone number past the contact rule', () => {
   const w = world();
-  assert.throws(() => w.svc.submitFeeling(w.T.moon, { text: 'Nobody listens, call ０７７００ ９００１２３ tonight', clientId: cid() }), (e) => e.code === 'feeling-contact');
+  assert.throws(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'Nobody listens, call ０７７００ ９００１２３ tonight', clientId: cid() }), (e) => e.code === 'feeling-contact');
 });
 
 // ----------------------------------------------------- 9. clientId replay --
 test('F9 crisis words sent with a reused clientId get “released”, not support', () => {
   const w = world();
-  w.svc.submitFeeling(w.T.moon, { text: FEELING, clientId: 'draft-000001' });   // reply lost; person edits, client retries
-  const r = w.svc.submitFeeling(w.T.moon, { text: 'I want to end it all', clientId: 'draft-000001' });
+  w.svc.submitFeeling(w.T.moon, { consent: true, text: FEELING, clientId: 'draft-000001' });   // reply lost; person edits, client retries
+  const r = w.svc.submitFeeling(w.T.moon, { consent: true, text: 'I want to end it all', clientId: 'draft-000001' });
   assert.equal(r.status, 'support', 'a person who just wrote crisis words was shown “released”');
 });

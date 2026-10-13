@@ -24,7 +24,7 @@ export function world({ limits = {}, provider = null } = {}) {
   seedRelay(svc);
   const T = {};
   for (const k of ['moon', 'cloud', 'star', 'fern', 'dream', 'pebble', 'ember', 'mod']) T[k] = svc.signInTestAccount(k);
-  const release = (key = 'moon', o = {}) => svc.submitFeeling(T[key], { text: FEELING, label: 'worry', clientId: cid('f'), ...o });
+  const release = (key = 'moon', o = {}) => svc.submitFeeling(T[key], { text: FEELING, label: 'worry', consent: true, clientId: cid('f'), ...o });
   /** catch whatever this person is offered and write a perspective; returns the submit result */
   const give = (key, text) => {
     const { offer } = svc.findFeeling(T[key]);

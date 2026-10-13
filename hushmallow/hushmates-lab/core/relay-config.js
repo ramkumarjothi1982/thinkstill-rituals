@@ -11,6 +11,7 @@ export const RELAY = {
   fallbackAfterMs: 30 * 60e3,         // no human perspective by then → offer a Mallow perspective (if allowed)
   journeyTtlMs: 24 * 3600e3,          // after 24 h a feeling returns with whatever it has
   maxActiveJourneys: 3,               // feelings travelling at once, per person
+  maxResends: 2,                      // "Send it out again" for a feeling nobody caught, per feeling
   feelingMinChars: 3,
   feelingMaxChars: 500,
   reframeMinChars: 8,
@@ -56,11 +57,8 @@ export const MALLOW_VOICES = {
   glitzi: 'cheeky, direct and constructively challenging',
 };
 
-// Which Mallow offers a fallback perspective for a feeling label.
-export const FALLBACK_MALLOW = {
-  worry: 'loomi', sadness: 'blubi', anger: 'glitzi', joy: 'boppo', loneliness: 'noomi',
-  confusion: 'zuzu', frustration: 'glitzi', excitement: 'pipzi', none: 'loomi',
-};
+// The Mallow perspective comes from the author's own Mallow (the one that carried
+// the feeling), in that Mallow's voice (MALLOW_VOICES).
 
 export const REPORT_REASONS = [
   { id: 'unkind', label: 'Unkind or judgemental' },
@@ -73,9 +71,10 @@ export const REPORT_REASONS = [
 ];
 export const REPORT_REASON_IDS = REPORT_REASONS.map((r) => r.id);
 
+// What a person sees. Never technical, never misleading about who wrote it.
 export const PERSPECTIVE_LABELS = {
-  human: 'From a Hushmates member',
-  ai: 'A Mallow perspective · AI-generated',
-  library: 'A Mallow perspective · from the Reframe library, not AI',
-  demo: 'A Mallow perspective · demo example, not live AI',
+  human: 'A Hushmate’s perspective',
+  ai: 'A Mallow perspective · Automatically generated',
+  library: 'A Mallow perspective · Automatically generated',     // the rule-based Reframe library: automatic, not a person
+  demo: 'A Mallow perspective · Example for testing, not generated',   // canned development text: never called generated
 };

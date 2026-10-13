@@ -516,7 +516,7 @@ $('#play').addEventListener('click', () => play());
 async function fixture(name) {
   const T = tokens;
   service.s.profiles[accId(AUTHOR)].onboarded = true;
-  const rel = (kind, extra = {}) => journeyFor(kind) || service.submitFeeling(T[AUTHOR], { text: FEELINGS[kind].text, label: FEELINGS[kind].label, clientId: `fx-${kind}-0001`, ...extra }).journey && journeyFor(kind);
+  const rel = (kind, extra = {}) => journeyFor(kind) || service.submitFeeling(T[AUTHOR], { consent: true, text: FEELINGS[kind].text, label: FEELINGS[kind].label, clientId: `fx-${kind}-0001`, ...extra }).journey && journeyFor(kind);
   const giveN = (j, n) => {
     for (const k of ['cloud', 'star', 'fern', 'dream', 'pebble'].slice(0, n)) {
       if (gaveOn(j, k)) continue;

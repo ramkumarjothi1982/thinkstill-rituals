@@ -22,7 +22,7 @@ test('a released feeling travels through five different people and comes home', 
   assert.equal(j.status, 'returned');
   assert.equal(j.returnReason, 'complete');
   assert.equal(j.collection.length, 5);
-  assert.ok(j.collection.every((p) => p.kind === 'human' && p.label === 'From a Hushmates member'));
+  assert.ok(j.collection.every((p) => p.kind === 'human' && p.label === 'A Hushmate’s perspective'));
   assert.deepEqual(j.collection.map((p) => p.text), REFRAMES);
 });
 
@@ -85,8 +85,8 @@ test('an offered feeling not caught within 3 minutes drifts on', () => {
 
 test('submissions and perspectives are idempotent (same clientId → same result)', () => {
   const w = world();
-  const a = w.svc.submitFeeling(w.T.moon, { text: FEELING, clientId: 'same-feeling-01' });
-  const b = w.svc.submitFeeling(w.T.moon, { text: FEELING, clientId: 'same-feeling-01' });
+  const a = w.svc.submitFeeling(w.T.moon, { consent: true, text: FEELING, clientId: 'same-feeling-01' });
+  const b = w.svc.submitFeeling(w.T.moon, { consent: true, text: FEELING, clientId: 'same-feeling-01' });
   assert.equal(a.journey.id, b.journey.id);
   assert.equal(b.duplicate, true);
   assert.equal(w.svc.listJourneys(w.T.moon).journeys.length, 1);
@@ -120,9 +120,9 @@ test('fair distribution: older feelings are offered first and never starve', () 
 
 test('screening: contact details are refused; crisis words get support and are never circulated or stored', () => {
   const w = world();
-  throwsCode(() => w.svc.submitFeeling(w.T.moon, { text: 'message me on whatsapp 07700 900123', clientId: cid() }), 'feeling-contact');
-  throwsCode(() => w.svc.submitFeeling(w.T.moon, { text: 'I live at 22 Baker Street and it is lonely', clientId: cid() }), 'feeling-identifying');
-  const crisis = w.svc.submitFeeling(w.T.moon, { text: 'I want to end it all', clientId: cid(), allowFallback: true });
+  throwsCode(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'message me on whatsapp 07700 900123', clientId: cid() }), 'feeling-contact');
+  throwsCode(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'I live at 22 Baker Street and it is lonely', clientId: cid() }), 'feeling-identifying');
+  const crisis = w.svc.submitFeeling(w.T.moon, { consent: true, text: 'I want to end it all', clientId: cid(), allowFallback: true });
   assert.equal(crisis.status, 'support');
   assert.equal(crisis.level, 'crisis');
   assert.ok(crisis.support.message);
@@ -203,11 +203,11 @@ test('after 24 hours a feeling returns with whatever it has, even fewer than fiv
 
 test('limits: concurrent travelling feelings and submission rate (no lifetime quota)', () => {
   const w = world();
-  for (let i = 0; i < 3; i++) w.svc.submitFeeling(w.T.moon, { text: `${FEELING} (${i})`, clientId: cid() });
-  throwsCode(() => w.svc.submitFeeling(w.T.moon, { text: FEELING, clientId: cid() }), 'too-many-active');
+  for (let i = 0; i < 3; i++) w.svc.submitFeeling(w.T.moon, { consent: true, text: `${FEELING} (${i})`, clientId: cid() });
+  throwsCode(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: FEELING, clientId: cid() }), 'too-many-active');
   // once feelings come home you can keep sending more over time
   w.advance(25 * HOUR);
-  for (let i = 0; i < 3; i++) w.svc.submitFeeling(w.T.moon, { text: `${FEELING} again (${i})`, clientId: cid() });
+  for (let i = 0; i < 3; i++) w.svc.submitFeeling(w.T.moon, { consent: true, text: `${FEELING} again (${i})`, clientId: cid() });
   assert.equal(w.svc.listJourneys(w.T.moon).journeys.length, 6);
 });
 
@@ -313,7 +313,7 @@ test('fallback: one generation per feeling, ever: concurrent and repeated reques
   assert.deepEqual(a.collection, b.collection);
   const p = a.collection[0];
   assert.equal(p.kind, 'mallow');
-  assert.equal(p.label, 'A Mallow perspective · demo example, not live AI');
+  assert.equal(p.label, 'A Mallow perspective · Example for testing, not generated');
   assert.equal(a.humanCount, 0, 'a Mallow is never counted as a person');
 });
 
@@ -323,7 +323,7 @@ test('fallback is labelled honestly by source and never fills a slot five people
   const id = w.release('moon', { allowFallback: true }).journey.id;
   w.advance(31 * MIN);
   let j = await w.svc.askMallow(w.T.moon, { journeyId: id });
-  assert.equal(j.collection[0].label, 'A Mallow perspective · AI-generated');
+  assert.equal(j.collection[0].label, 'A Mallow perspective · Automatically generated');
   // humans keep coming while the journey is open; five people push the Mallow out
   ['cloud', 'star', 'fern', 'dream', 'pebble'].forEach((k, i) => w.give(k, REFRAMES[i]));
   j = w.svc.getJourney(w.T.moon, { journeyId: id });
@@ -391,6 +391,6 @@ test('a restricted person who writes crisis words is still answered with support
   const w = world();
   const cloud = Object.values(w.svc.s.accounts).find((a) => a.key === 'cloud');
   cloud.state = 'restricted';
-  const r = w.svc.submitFeeling(w.T.cloud, { text: 'I want to end it all', clientId: cid('f') });
+  const r = w.svc.submitFeeling(w.T.cloud, { consent: true, text: 'I want to end it all', clientId: cid('f') });
   assert.equal(r.status, 'support');
 });

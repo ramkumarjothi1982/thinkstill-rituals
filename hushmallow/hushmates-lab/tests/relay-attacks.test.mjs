@@ -25,7 +25,7 @@ test('attack: forged tokens and caller-supplied identities are ignored', async (
   const link = w.net.link('x');
   for (const tok of ['tok_forged', '', null, 7, { id: 'acc' }]) await rejects(link.request('listJourneys', tok), 'not-signed-in');
   const moonId = Object.values(w.svc.s.accounts).find((a) => a.key === 'moon').id;
-  const r = await link.request('submitFeeling', w.T.cloud, { text: FEELING, clientId: cid(), owner: moonId, accountId: moonId });
+  const r = await link.request('submitFeeling', w.T.cloud, { text: FEELING, consent: true, clientId: cid(), owner: moonId, accountId: moonId });
   assert.equal(w.svc.s.journeys[r.journey.id].owner, Object.values(w.svc.s.accounts).find((a) => a.key === 'cloud').id);
 });
 
@@ -93,8 +93,8 @@ test('lost reply + retry never duplicates a feeling or a perspective', async () 
   const link = w.net.link('moon');
   link.loseNextResponse = true;
   const clientId = cid('f');
-  await rejects(link.request('submitFeeling', w.T.moon, { text: FEELING, clientId }), 'response-lost');
-  const again = await link.request('submitFeeling', w.T.moon, { text: FEELING, clientId });
+  await rejects(link.request('submitFeeling', w.T.moon, { text: FEELING, consent: true, clientId }), 'response-lost');
+  const again = await link.request('submitFeeling', w.T.moon, { text: FEELING, consent: true, clientId });
   assert.equal(again.duplicate, true);
   assert.equal(Object.keys(w.svc.s.journeys).length, 1);
 });
