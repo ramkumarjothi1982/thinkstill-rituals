@@ -6,7 +6,8 @@
 // Covers: TouchTalk on all seven Mallows; Comfort DNA changing real behaviour
 // in TouchTalk, SoftBody, home and Pocket Hush (plus privacy controls); every
 // Pocket Hush mode started, played with real input or its button, stopped,
-// replayed and deep-linked; layout at phone and desktop sizes.
+// replayed and deep-linked; layout at phone and desktop sizes; a regression
+// check for every finding of the Phase 2 code review.
 
 const path = require('path');
 const fs = require('fs');
@@ -307,6 +308,7 @@ async function pocket(browser, vpName, full) {
     const card = await page.evaluate(() => ({ cap: document.querySelector('.end-cap')?.textContent, line: document.querySelector('.end-line')?.textContent }));
     check(scope, 'ends with its own closing and a Mallow line', !!card.cap && /“.+”/.test(card.line || ''), JSON.stringify(card));
     await layout(page, scope + ':end');
+    await page.waitForTimeout(450);   // let the card finish fading in
     await page.screenshot({ path: path.join(OUT, `${vpName}-pocket-${id}-end.jpg`), type: 'jpeg', quality: 78 });
     // replay
     await page.locator('.end-card').getByRole('button', { name: 'Again' }).click();
@@ -336,9 +338,117 @@ async function pocket(browser, vpName, full) {
   await ctx.close();
 }
 
+// --------------------------------------------- review regressions --
+// One check per finding from the Phase 2 code review, so none can come back.
+async function regressions(browser) {
+  const vp = VP.phone;
+  const liveVoices = (page) => page.evaluate(() => [...__lab.sound.live].map((v) => v.dur));
+  // each block stands alone: one crash must not hide the others
+  const guard = async (scope, fn) => { let ctx = null; try { await fn(scope, (c) => { ctx = c; }); } catch (e) { check(scope, 'crashed', false, e.message.split('\n')[0]); } finally { await ctx?.close().catch(() => {}); } };
+  await guard('review:boot', async (scope, own) => {
+    const { ctx, page, errors } = await open(browser, vp, '#home', { style: 'gentle' }, { version: 1, prefs: { valueOf: 1, motion: 'soft' } });
+    own(ctx);
+    await page.waitForFunction(() => globalThis.__lab?.dna && document.querySelector('.screen.home'), null, { timeout: 15000 });
+    const st = await page.evaluate(() => ({ motion: __lab.dna.get('motion'), responses: __lab.dna.chosen('responses'), stored: JSON.parse(localStorage.getItem('hm.sensorylab.v1')) }));
+    check(scope, 'a hand-edited profile still boots and keeps its valid choices', st.motion === 'soft', JSON.stringify(st));
+    check(scope, 'the Phase 1 response style carries over once', st.responses === 'gentle' && !('style' in st.stored), JSON.stringify(st));
+    check(scope, 'no console errors', !errors.length, errors.join(' | '));
+  });
+  await guard('review:pocket', async (scope, own) => {
+    const { ctx, page, errors } = await open(browser, vp, '#pocket-quiet-moment', {}, comfort({ favouriteMallow: 'loomi' }));
+    own(ctx);
+    await page.waitForFunction(() => __lab.moment?.mode && __lab.companion?.rig?.soft, null, { timeout: 20000 });
+    const g = await geo(page);
+    await page.mouse.click(g.cx, g.base - g.h * 0.5);
+    await page.waitForTimeout(900);
+    check(scope, 'Quiet Moment\'s sound starts after the first tap on a deep link', (await liveVoices(page)).includes(600), JSON.stringify(await liveVoices(page)));
+    await page.evaluate(() => __lab.prefs.set('sound', false)); await page.waitForTimeout(400);
+    await page.evaluate(() => __lab.prefs.set('sound', true)); await page.waitForTimeout(900);
+    check(scope, 'Quiet Moment\'s sound comes back after mute and unmute', (await liveVoices(page)).includes(600), JSON.stringify(await liveVoices(page)));
+    // Again keeps the new Mallow connected
+    await page.evaluate(() => __lab.moment.api.complete());
+    await page.waitForSelector('.end-card.on', { timeout: 10000 });
+    await page.locator('.end-card').getByRole('button', { name: 'Again' }).click();
+    await page.waitForFunction(() => __lab.moment && !__lab.moment.ended && __lab.moment.t < 3, null, { timeout: 20000 });
+    const wired = await page.evaluate(() => ({ live: !!__lab.companion, same: __lab.companion === __lab.moment.api.companion, focus: document.activeElement?.classList.contains('stage') }));
+    check(scope, 'Again keeps the live Mallow connected to settings', wired.live && wired.same, JSON.stringify(wired));
+    check(scope, 'a new moment puts keyboard focus on the stage', wired.focus, JSON.stringify(wired));
+    await page.evaluate(() => __lab.prefs.set('motion', 'reduced'));
+    check(scope, 'settings still reach the Mallow after Again', await page.evaluate(() => __lab.companion?.rig?.opts?.reducedMotion === true));
+    await page.evaluate(() => __lab.prefs.set('motion', 'system'));
+    // closing twice, and closing then leaving, each leave exactly one screen
+    await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+    await page.waitForSelector('.ptile'); await page.waitForTimeout(600);
+    const one = await page.evaluate(() => ({ screens: document.querySelectorAll('#lab > .screen').length, focus: document.activeElement?.dataset?.mode }));
+    check(scope, 'closing twice leaves one picker', one.screens === 1, JSON.stringify(one));
+    check(scope, 'back from a moment, focus returns to its tile', one.focus === 'quiet-moment', JSON.stringify(one));
+    await page.locator('.ptile[data-mode="quiet-moment"]').click();
+    await page.waitForFunction(() => __lab.moment?.mode, null, { timeout: 20000 });
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => { location.hash = '#home'; });
+    await page.waitForTimeout(900);
+    const home = await page.evaluate(() => [...document.querySelectorAll('#lab > .screen')].map((x) => x.getAttribute('aria-label')));
+    check(scope, 'closing then going home leaves only home', home.length === 1 && home[0] === 'Sensory Lab', JSON.stringify(home));
+    // a breath fades soon after Soft Breath closes
+    await page.evaluate(() => { location.hash = '#pocket-soft-breath'; });
+    await page.waitForFunction(() => __lab.moment?.id === 'soft-breath' && __lab.moment.mode, null, { timeout: 20000 });
+    await page.waitForTimeout(900);
+    const during = await liveVoices(page);
+    await page.getByRole('button', { name: 'Close' }).click();
+    await page.waitForSelector('.ptile'); await page.waitForTimeout(1300);
+    const afterClose = await liveVoices(page);
+    check(scope, 'the breath sound stops soon after Soft Breath closes', during.length > 0 && afterClose.length === 0, `${JSON.stringify(during)} → ${JSON.stringify(afterClose)}`);
+    // two fingers on two floaters: both let go, and the moment can still finish
+    await page.evaluate(() => { location.hash = '#pocket-let-it-float'; });
+    await page.waitForFunction(() => __lab.moment?.mode?.items?.length === 6, null, { timeout: 20000 });
+    await page.waitForTimeout(500);
+    const states = await page.evaluate(async () => {
+      const { mode, api } = __lab.moment;
+      const r = api.stage.getBoundingClientRect(), scr = api.screen;
+      const [a, b] = mode.items.filter((x) => x.state === 'waiting');
+      const ev = (type, id, f) => scr.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: id === 11, clientX: r.left + f.x, clientY: r.top + f.y, bubbles: true, cancelable: true }));
+      ev('pointerdown', 11, a); ev('pointerdown', 12, b); ev('pointerup', 11, a); ev('pointerup', 12, b);
+      await new Promise((res) => setTimeout(res, 150));
+      return mode.items.map((x) => x.state);
+    });
+    check(scope, 'two fingers on two floaters release both', !states.includes('held'), states.join());
+    const letGo = page.getByRole('button', { name: 'Let one go' });
+    for (let i = 0; i < 4; i++) { if (await letGo.isVisible()) await letGo.click(); await page.waitForTimeout(250); }
+    await page.waitForSelector('.end-card.on', { timeout: 20000 }).then(() => check(scope, 'the moment still finishes', true), () => check(scope, 'the moment still finishes', false));
+    check(scope, 'the end card focuses Again', await page.evaluate(() => document.activeElement?.textContent) === 'Again');
+    await page.locator('.end-card').getByRole('button', { name: 'Another moment' }).click();
+    await page.waitForSelector('.ptile');
+    check(scope, 'Another returns to the picker with focus on that tile', await page.evaluate(() => document.activeElement?.dataset?.mode) === 'let-it-float');
+    check(scope, 'no console errors', !errors.length, errors.join(' | '));
+  });
+  await guard('review:dna', async (scope, own) => {
+    const { ctx, page, errors } = await open(browser, vp, '#home', { mallow: 'noomi' }, comfort({ favouriteMallow: 'pipzi' }, { favourites: [{ kind: 'softbody', id: 'softbody', mallow: 'noomi', material: 'jelly' }] }));
+    own(ctx);
+    await page.waitForSelector('.offers');
+    await page.locator('.offer', { hasText: 'Noomi as Jelly' }).click();
+    await page.waitForFunction(() => __lab.route === 'softbody' && __lab.companion?.rig?.soft, null, { timeout: 20000 });
+    const sb = await page.evaluate(() => ({ id: __lab.companion.rig.id, fav: __lab.dna.get('favouriteMallow'), stored: JSON.parse(localStorage.getItem('hm.sensorylab.comfort.v1')).prefs.favouriteMallow }));
+    check(scope, 'a suggestion opens with its own Mallow', sb.id === 'noomi', JSON.stringify(sb));
+    check(scope, 'a suggestion never replaces the favourite', sb.fav === 'pipzi' && sb.stored === 'pipzi', JSON.stringify(sb));
+    await page.evaluate(() => { location.hash = '#home'; });
+    await page.waitForFunction(() => __lab.route === 'home' && __lab.companion?.rig, null, { timeout: 20000 });
+    check(scope, 'home shows the favourite again', await page.evaluate(() => __lab.companion.rig.id) === 'pipzi');
+    await page.evaluate(() => { location.hash = '#comfort-dna'; });
+    await page.waitForSelector('.dna-sec');
+    await page.getByRole('radiogroup', { name: 'Personalise my Mallow' }).getByRole('radio', { name: 'Off' }).click();
+    const f1 = await page.evaluate(() => ({ t: document.activeElement?.textContent, g: document.activeElement?.closest('[role="radiogroup"]')?.getAttribute('aria-label') }));
+    check(scope, 'focus stays on the control when the screen updates', f1.t === 'Off' && f1.g === 'Personalise my Mallow', JSON.stringify(f1));
+    await page.locator('#dna-reset').click();
+    const pm = await page.evaluate(() => ({ mallow: __lab.prefs.get('mallow'), focus: document.activeElement?.id }));
+    check(scope, 'reset with personalisation off keeps the lab\'s own Mallow', pm.mallow === 'noomi', JSON.stringify(pm));
+    check(scope, 'focus stays on Reset', pm.focus === 'dna-reset', JSON.stringify(pm));
+    check(scope, 'no console errors', !errors.length, errors.join(' | '));
+  });
+}
+
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ARGS });
-  const parts = { seven: () => sevenMallows(browser), comfort: () => comfortBehaviour(browser), pocket: () => pocket(browser, 'phone', true), small: () => pocket(browser, 'small', false), desktop: () => pocket(browser, 'desktop', false) };
+  const parts = { seven: () => sevenMallows(browser), comfort: () => comfortBehaviour(browser), pocket: () => pocket(browser, 'phone', true), small: () => pocket(browser, 'small', false), desktop: () => pocket(browser, 'desktop', false), review: () => regressions(browser) };
   for (const [name, fn] of Object.entries(parts)) {
     if (ONLY && !ONLY.split(',').includes(name)) continue;
     console.log(`▸ ${name}`);

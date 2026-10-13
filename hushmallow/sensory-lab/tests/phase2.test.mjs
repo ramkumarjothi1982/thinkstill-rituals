@@ -10,7 +10,7 @@ import { pickSurprise } from '../core/pocket-rules.js';
 import { Floater } from '../core/effects.js';
 import { tuneMaterial, MALLOW_FEEL, LOOKS, MATERIAL_IDS } from '../core/materials.js';
 import { POCKET } from '../features/pocket/catalog.js';
-import { PREFS_KEY } from '../core/prefs.js';
+import { PREFS_KEY, Prefs } from '../core/prefs.js';
 
 const fresh = async (initial, now) => new ComfortDNA(new MemoryComfortStore(initial), { now }).load();
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -127,6 +127,36 @@ test('corrupted or hostile stored data is cleaned on load', () => {
   assert.equal(Object.keys(d.history).length, 1);
   assert.deepEqual(sanitize({ version: 2, prefs: { responses: 'gentle' } }).prefs, {});
   assert.equal(itemKey({ kind: 'softbody', material: 'jelly' }), 'softbody:*:jelly');
+});
+
+test('inherited names and unknown items in stored data never break loading', async () => {
+  // a hand-edited profile must not stop the lab from starting (review finding)
+  for (const k of ['valueOf', 'hasOwnProperty', 'toString', 'constructor', '__proto__']) {
+    const raw = JSON.parse(`{"version":1,"prefs":{"${k}":1,"responses":"gentle"}}`);
+    const d = sanitize(raw);
+    assert.ok(!Object.hasOwn(d.prefs, k), k);
+    assert.equal(d.prefs.responses, 'gentle');
+  }
+  const dna = await fresh({ version: 1, prefs: { valueOf: 1 }, favourites: [{ kind: 'softbody', material: 'lava' }], history: { x: { kind: 'experience', id: 'Not A Route!', n: 1, last: 1 } } });
+  assert.equal(dna.get('responses'), 'balanced');
+  assert.equal(dna.get('toString'), undefined, 'inherited names are not preferences');
+  assert.equal(dna.set('toString', 1), false);
+  assert.deepEqual(dna.favourites(), [], 'unknown materials are refused');
+  assert.deepEqual(dna.history(), [], 'free-form ids are refused');
+  const throwing = { load: async () => ({ get version() { throw new Error('boom'); } }), save: async () => {}, clear: async () => {}, describe: () => ({}) };
+  const safe = await new ComfortDNA(throwing).load();
+  assert.equal(safe.get('favouriteMallow'), 'boppo');
+});
+
+test('device settings: malformed storage is ignored and Phase 1 keys are handed over once', () => {
+  const mem = (v) => { const m = new Map(v == null ? [] : [[PREFS_KEY, v]]); return { getItem: (k) => m.get(k) ?? null, setItem: (k, x) => m.set(k, x), removeItem: (k) => m.delete(k), m }; };
+  for (const bad of ['null', '5', '"x"', '[1]', '{oops']) assert.equal(new Prefs(mem(bad)).get('sound'), true, bad);
+  const st = mem(JSON.stringify({ style: 'gentle', volume: 0.4 }));
+  const p = new Prefs(st);
+  assert.deepEqual(p.legacy, { style: 'gentle' });
+  assert.equal(p.get('volume'), 0.4);
+  assert.deepEqual(JSON.parse(st.m.get(PREFS_KEY)), { volume: 0.4 }, 'the old key is dropped from storage');
+  assert.deepEqual(new Prefs(st).legacy, {}, 'handed over only once');
 });
 
 test('local store keeps working when storage is blocked', async () => {

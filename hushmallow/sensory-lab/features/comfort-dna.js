@@ -49,7 +49,28 @@ export function mount(root, ctx) {
   };
   const choose = (k) => (v) => { dna.set(k, v); demo(); };
 
+  // rebuilding the screen keeps keyboard focus on the same control, or on its section if it went away
   function render() {
+    const el = document.activeElement;
+    const key = el && inner.contains(el) ? {
+      id: el.id, label: el.getAttribute('aria-label'), text: el.textContent,
+      group: el.closest('[role="group"],[role="radiogroup"]')?.getAttribute('aria-label'),
+      section: el.closest('section.dna-sec')?.getAttribute('aria-label'),
+    } : null;
+    build();
+    if (!key) return;
+    const groupOf = (c) => c.closest('[role="group"],[role="radiogroup"]')?.getAttribute('aria-label');
+    const all = [...inner.querySelectorAll('button, input, summary')];
+    let target = (key.id && inner.querySelector('#' + CSS.escape(key.id)))
+      || (key.group && all.find((c) => groupOf(c) === key.group && c.textContent === key.text))
+      || (key.label && all.find((c) => c.getAttribute('aria-label') === key.label))
+      || [...inner.querySelectorAll('section.dna-sec')].find((x) => x.getAttribute('aria-label') === key.section)?.querySelector('h3')
+      || inner.querySelector('h1');
+    if (target.matches('h1, h3')) target.tabIndex = -1;
+    target.focus({ preventScroll: true });
+  }
+
+  function build() {
     inner.replaceChildren();
     const on = dna.enabled;
     const view = dna.view();
@@ -106,8 +127,8 @@ export function mount(root, ctx) {
       section('Privacy',
         h('details', { class: 'dna-view' }, h('summary', {}, 'View everything saved'), h('dl', {}, ...savedList(view))),
         h('div', { class: 'dna-actions' },
-          h('button', { type: 'button', class: 'btn-quiet', id: 'dna-reset', onclick: () => { dna.resetPreferences(); ctx.setMallow(dna.get('favouriteMallow')); render(); mountPreview(); } }, 'Reset my settings'),
-          twoStep('Delete everything', 'Tap again to delete', async () => { await dna.deleteAll(); ctx.setMallow(dna.get('favouriteMallow')); render(); mountPreview(); })),
+          h('button', { type: 'button', class: 'btn-quiet', id: 'dna-reset', onclick: () => { dna.resetPreferences(); render(); mountPreview(); } }, 'Reset my settings'),
+          twoStep('Delete everything', 'Tap again to delete', async () => { await dna.deleteAll(); render(); mountPreview(); })),
         h('p', { class: 'dna-empty' }, 'Hushmallow is a companion, not therapy. Comfort DNA never stores what you feel, and nothing here leaves this browser.')),
     );
     hero.hidden = false;
@@ -150,6 +171,6 @@ export function mount(root, ctx) {
   mountPreview();
   const off = dna.onChange((what) => { if (what === 'colours' || what === 'environment' || what === 'comfort') return; companion?.applyTuning(dna.tuning()); });
   return {
-    unmount() { off(); companion?.destroy(); ctx.setCompanion(null); screen.remove(); },
+    unmount() { off(); companion?.destroy(); if (ctx.companion === companion) ctx.setCompanion(null); screen.remove(); },
   };
 }

@@ -232,7 +232,10 @@ async function softbody(browser, vp) {
   await layout(page, vp, 'softbody');
   const g = await geo(page);
   const top = { x: g.cx, y: g.base - g.h * 0.85 };
-  const pull = async () => {
+  // a living Mallow hops and settles on its own: pull only once it is resting on the floor and still
+  const settled = () => page.waitForFunction(() => { const r = __lab.companion.rig; return !(r._lift > 0.5) && r.metrics().energy < 0.05; }, null, { timeout: 4000 }).catch(() => {});
+  const pullOnce = async () => {
+    await settled();
     await page.mouse.move(top.x, top.y); await page.mouse.down();
     for (let i = 1; i <= 10; i++) { await page.mouse.move(top.x, top.y - i * 10); await page.waitForTimeout(16); }
     await page.waitForTimeout(300);
@@ -242,6 +245,8 @@ async function softbody(browser, vp) {
     await page.waitForTimeout(1800);
     return { stretch: -m.squash, maxE };
   };
+  // the better of two pulls, so one pull caught mid-hop doesn't decide a material's character
+  const pull = async () => { const a = await pullOnce(), b = await pullOnce(); return { stretch: Math.max(a.stretch, b.stretch), maxE: Math.max(a.maxE, b.maxE) }; };
   const res = {};
   for (const id of ['marshmallow', 'jelly', 'mochi', 'cloud', 'pillow']) {
     await page.locator(`[data-material="${id}"]`).click();

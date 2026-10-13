@@ -30,8 +30,14 @@ export class Prefs {
     this.storage = storage;
     this.key = key;
     this.listeners = new Set();
-    this.data = { ...DEFAULTS, ...this._load() };
+    const raw = this._load();
+    this.data = { ...DEFAULTS };
+    this.legacy = {};          // keys from older lab versions (Phase 1 kept `style` here), handed over once
+    for (const [k, v] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
+      if (Object.hasOwn(DEFAULTS, k)) this.data[k] = v; else this.legacy[k] = v;
+    }
     this.persistent = this._probe();
+    if (Object.keys(this.legacy).length) this._save();   // drop them from storage
   }
 
   /** Can settings actually be saved here? (false in private modes / blocked storage) */
@@ -53,7 +59,7 @@ export class Prefs {
   get(k) { return this.data[k]; }
 
   set(k, v) {
-    if (!(k in DEFAULTS) || this.data[k] === v) return;
+    if (!Object.hasOwn(DEFAULTS, k) || this.data[k] === v) return;
     this.data[k] = v;
     this._save();
     for (const fn of this.listeners) fn(k, v);

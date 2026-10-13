@@ -54,8 +54,14 @@ places but is one setting.
 - **Storage:** the lab uses one key, `hm.sensorylab.comfort.v1`, in this
   browser only. If storage is blocked, the profile lives in memory for the
   visit and the screen says that nothing is kept.
-- **Stored data is untrusted:** it is sanitised on load. Unknown keys,
-  invalid values, a wrong version and malformed history are dropped.
+- **Stored data is untrusted:** it is sanitised on load. Unknown keys
+  (including inherited names such as `toString` or `__proto__`), invalid
+  values, unknown materials, free-form ids, a wrong version and malformed
+  history are dropped. If the data can't be read at all, the profile starts
+  empty; a damaged profile never stops the lab from opening.
+- **Favourites:** up to 12. Keeping a 13th drops the oldest.
+- **Suggestions don't change choices:** opening a "For you" suggestion with
+  another Mallow uses that Mallow for that visit only; the favourite stays.
 
 ## Store interface
 

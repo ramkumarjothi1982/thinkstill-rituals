@@ -368,15 +368,26 @@ export class SoundEngine {
   }
 
   // ------------------------------------------------------ Pocket Hush --
-  /** A breath: 'in' swells and brightens, 'out' sighs down. dur in seconds. */
+  /** A breath: 'in' swells and brightens, 'out' sighs down. dur in seconds.
+   *  Returns {end()} to fade it early (the next breath, or the moment closing). */
   breath(phase = 'in', dur = 4, intensity = 0.6, mallowId = 'loomi') {
-    if (!this.fxOn || !this._ok('breath')) return;
+    if (!this.fxOn || !this._ok('breath')) return NOOP;
     const V = VOICES[mallowId] || VOICES.loomi;
     const v = this._voice(dur + 1), t = v.t, I = clamp(intensity, 0, 1);
     const inhale = phase === 'in';
     this._noise(v, t, { dur: dur + 0.4, f0: inhale ? 260 : 950, f1: inhale ? 950 : 240, q: 0.9, peak: 0.02 + 0.03 * I, a: dur * (inhale ? 0.7 : 0.15) });
     this._tone(v, t, { f0: V.root * 0.5, f1: V.root * (inhale ? 0.5 * st(2) : 0.5), dur: dur + 0.6, type: 'sine', peak: 0.018 + 0.02 * I, a: dur * (inhale ? 0.6 : 0.2) });
     v.end(t + dur + 1);
+    let alive = true;
+    return {
+      update() {},
+      end: () => {
+        if (!alive || !this.ctx) return; alive = false;
+        const now = this.ctx.currentTime;
+        v.out.gain.cancelScheduledValues(now); v.out.gain.setTargetAtTime(0, now, 0.15);
+        for (const src of v.srcs) { try { src.stop(now + 0.8); } catch { /* already stopped */ } }
+      },
+    };
   }
 
   /** A soft bell on the Mallow's scale (step 0..9). */
@@ -400,7 +411,8 @@ export class SoundEngine {
     v.end(t + 0.5);
   }
 
-  /** Quiet ambient bed on the Mallow's root. Returns {update(level 0..1), end()}. */
+  /** Quiet ambient bed on the Mallow's root. Returns {alive, update(level 0..1), end()}.
+   *  It is a silent no-op (alive false) before the first gesture or with touch sounds off. */
   pad(mallowId = 'loomi') {
     if (!this.ready || !this.fxOn) return NOOP;
     const V = VOICES[mallowId] || VOICES.loomi;
@@ -417,6 +429,7 @@ export class SoundEngine {
     lfo.connect(lg); lg.connect(f.frequency); lfo.start(t); v.srcs.push(lfo); v.nodes.push(lfo, lg, g, f);
     let alive = true;
     const handle = {
+      get alive() { return alive; },
       update: (level) => { if (alive) g.gain.setTargetAtTime(this.muted ? 0 : 0.035 * clamp(level, 0, 1), c.currentTime, 0.8); },
       end: () => {
         if (!alive) return; alive = false;

@@ -189,7 +189,7 @@ export class Companion {
         this.stretchSnd?.end(); this.stretchSnd = null;
         this.drag = null;
         this.director.clear();
-        if (d.converted) break;
+        if (d.converted || d.cancelled) break;   // a second finger or the browser took over: no release yet
         this.sound.release(this.mat(), clamp(Math.max(stretch * 2.5, pressed * 1.4) + (d.fling ? 0.3 : 0), 0.1, 1), this._pan(d.x));
         if (stretch > 0.12 || pressed > 0.2) this._materialFx();
         const r = this.persona.respond('dragend', d);

@@ -21,6 +21,8 @@ const root = document.getElementById('lab');
 const prefs = new Prefs();
 const sound = new SoundEngine({ volume: prefs.get('volume'), muted: !prefs.get('sound') });
 const dna = await new ComfortDNA(new LocalComfortStore()).load();
+// Phase 1 kept the response style with the device settings; it is a Comfort DNA choice now
+if (prefs.legacy.style) dna.set('responses', prefs.legacy.style);
 
 // Which Mallow: ?mallow=<id> locally (the query string never reaches a hosted
 // preview), else the Comfort DNA favourite, else the last one picked, else Boppo.
@@ -28,7 +30,9 @@ const DEFAULT_MALLOW = 'boppo';
 const askMallow = (params.get('mallow') || '').toLowerCase();
 const validMallow = (id) => (MALLOW_IDS.includes(id) ? id : null);
 const chosenMallow = () => (dna.enabled ? dna.get('favouriteMallow') : validMallow(prefs.get('mallow'))) || DEFAULT_MALLOW;
-let mallowId = validMallow(askMallow) || chosenMallow();
+let visitMallow = null;   // a "For you" suggestion's Mallow: until the next return home, never saved
+const currentMallow = () => validMallow(askMallow) || visitMallow || chosenMallow();
+let mallowId = currentMallow();
 
 const qParam = params.get('quality');
 let quality = ['high', 'medium', 'low'].includes(qParam) ? qParam : initialTier(prefs.get('quality'));
@@ -39,6 +43,7 @@ const ctx = {
   /** Switch Mallow: remembered as the favourite when personalisation is on. */
   setMallow(id) {
     if (!validMallow(id)) return;
+    visitMallow = null;
     mallowId = id;
     if (dna.enabled) dna.set('favouriteMallow', id); else prefs.set('mallow', id);
   },
@@ -105,7 +110,7 @@ dna.onChange((what) => {
   const t = dna.tuning();
   sound.setParts({ voice: t.voice, fx: t.touchSounds });
   ctx.companion?.applyTuning(t);
-  if (what === 'enabled' || what === 'favouriteMallow' || what === 'reset' || what === '*') mallowId = validMallow(askMallow) || chosenMallow();
+  if (what === 'enabled' || what === 'favouriteMallow' || what === 'reset' || what === '*') mallowId = currentMallow();
 });
 sound.setParts({ voice: dna.tuning().voice, fx: dna.tuning().touchSounds });
 
@@ -140,7 +145,7 @@ function home() {
   const c = new Companion(hero, { mallowId, material: prefs.get('material'), quality, sound, prefs, rig: { fit: 0.62, baseline: 0.9 } });
   c.applyTuning(dna.tuning());
   ctx.setCompanion(c);
-  return { unmount() { c.destroy(); ctx.setCompanion(null); screen.remove(); } };
+  return { unmount() { c.destroy(); if (ctx.companion === c) ctx.setCompanion(null); screen.remove(); } };
 }
 
 // A familiar thing to come back to, with an honest reason
@@ -150,7 +155,7 @@ function offer(it) {
   if (it.kind === 'pocket') { const p = pocketById(it.id); title = p ? p.title : it.id; go = () => ctx.navigate(`/pocket-${it.id}`); }
   else if (it.kind === 'softbody') {
     title = `${MALLOWS[it.mallow]?.name || MALLOWS[mallowId].name} as ${MATERIALS[it.material]?.label || it.material}`;
-    go = () => { prefs.set('material', it.material); if (it.mallow) ctx.setMallow(it.mallow); ctx.navigate('/softbody'); };
+    go = () => { prefs.set('material', it.material); if (validMallow(it.mallow)) { visitMallow = it.mallow; mallowId = it.mallow; } ctx.navigate('/softbody'); };
   }
   return h('button', { class: 'offer', type: 'button', 'data-offer': it.kind + ':' + (it.id || it.material), onclick: go },
     h('span', { class: 't' }, title), h('span', { class: 'd' }, why));
@@ -186,7 +191,8 @@ function settings() {
       row('Quality', segmented([['auto', 'Auto'], ['high', 'High'], ['medium', 'Med'], ['low', 'Low']], prefs.get('quality'), (v) => prefs.set('quality', v), 'Quality'), `Running: ${quality}`),
       row('Lab settings', h('button', { class: 'btn-quiet', type: 'button', onclick: () => {
         prefs.reset();
-        mallowId = validMallow(askMallow) || chosenMallow();
+        visitMallow = null;
+        mallowId = currentMallow();
         quality = initialTier('auto');
         startMonitor();
         close();
@@ -231,7 +237,10 @@ async function route(id = fromHash()) {
   // #pocket-<mode> opens a Pocket Hush mode directly (one tap from anywhere that links it)
   const mode = id.startsWith('pocket-') && pocketById(id.slice(7)) ? id.slice(7) : null;
   const e = byId(mode ? 'pocket-hush' : id);
-  if (!e || !e.load) { current = home(); lab.route = 'home'; return; }
+  if (!e || !e.load) {
+    if (visitMallow) { visitMallow = null; mallowId = currentMallow(); }
+    current = home(); lab.route = 'home'; return;
+  }
   const mod = await e.load();
   if (my !== token) return;
   current = mod.mount(root, ctx, { mode });

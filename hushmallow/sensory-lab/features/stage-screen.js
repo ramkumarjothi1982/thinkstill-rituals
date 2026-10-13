@@ -102,7 +102,7 @@ export function stageScreen(root, ctx, { title, subtitle, material, extraButtons
       ro.disconnect();
       realm?.destroy();
       companion.destroy();
-      ctx.setCompanion(null);
+      if (ctx.companion === companion) ctx.setCompanion(null);
       screen.remove();
     },
   };

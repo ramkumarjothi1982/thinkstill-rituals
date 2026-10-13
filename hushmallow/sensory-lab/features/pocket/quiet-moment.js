@@ -17,10 +17,14 @@ export default {
     const silence = api.button('Silence', () => {
       silent = !silent;
       silence.setAttribute('aria-pressed', String(silent));
-      if (silent) { pad.end(); pad = { update() {}, end() {} }; } else { pad = sound.pad(api.mallowId); }
+      if (silent) pad.end();
     }, { 'aria-pressed': 'false' });
     return {
-      tick(dt) { t += dt; api.progress(t / 30 * 0.8); },
+      tick(dt) {
+        t += dt; api.progress(t / 30 * 0.8);
+        // the pad can't start before the first touch, and mute or a hidden tab ends it: bring it back
+        if (!silent && !pad.alive && sound.ready && !sound.muted && t < 28) pad = sound.pad(api.mallowId);
+      },
       done: () => false,
       ending() {
         pad.end();

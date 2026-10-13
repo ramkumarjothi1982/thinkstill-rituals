@@ -17,11 +17,12 @@ export default {
     companion.restOverride = { mix: { calm: 0.7, comforted: 0.3 }, i: 0.55 };
     rig.setFaceOverride({ set: { breath: 0 } });          // the breath here replaces its idle breathing
     api.realm?.setEmotion('calm', 0.6);
-    let phase = 'in', pt = 0, breaths = 0, held = false, level = 0, done = false;
+    let phase = 'in', pt = 0, breaths = 0, held = false, level = 0, done = false, voice = null;
     const begin = (p) => {
       phase = p; pt = 0;
       const dur = p === 'in' ? timing.inhale : timing.exhale;
-      sound.breath(p, dur, 0.6, api.mallowId);
+      voice?.end();                                        // a led breath replaces the one still sounding
+      voice = sound.breath(p, dur, 0.6, api.mallowId);
       api.hint(p === 'in' ? 'Breathe in…' : '…and out', 0);
     };
     begin('in');
@@ -58,7 +59,7 @@ export default {
         return { mix: { calm: 0.6, comforted: 0.4 }, i: 0.6, reaction: 'nod', motif: 'rest', line: 'rest',
           caption: why === 'complete' ? 'Three slow breaths.' : `${breaths} slow breath${breaths === 1 ? '' : 's'}.` };
       },
-      stop() { rig.setInflate(0); rig.setFaceOverride({}); ring.gone = true; },
+      stop() { voice?.end(); rig.setInflate(0); rig.setFaceOverride({}); ring.gone = true; },
     };
   },
 };

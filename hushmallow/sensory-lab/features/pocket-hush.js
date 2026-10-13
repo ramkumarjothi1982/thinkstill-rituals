@@ -31,16 +31,22 @@ let lineCount = 0;
 
 export function mount(root, ctx, { mode } = {}) {
   let view = null;     // current picker or moment
-  let alive = true;
+  let alive = true, seq = 0;
 
-  function show(next) { view?.unmount(); view = next; }
-  function picker() { show(pickerView(root, ctx, { start: (id, variant, surprise) => moment(id, variant, surprise) })); }
+  // the old view goes before the new one is built, so it can't undo the new one's setup
+  function show(build) { view?.unmount(); view = null; view = build(); }
+  function picker(focusId) {
+    if (!alive) return;
+    seq++;
+    show(() => pickerView(root, ctx, { start: (id, variant, surprise) => moment(id, variant, surprise), focusId }));
+  }
   async function moment(id, variant = {}, surprise = false) {
     const load = MODES[id];
     if (!load) { picker(); return; }
+    const my = ++seq;      // a double tap, or a newer choice, wins
     const mod = (await load()).default;
-    if (!alive) return;
-    show(momentView(root, ctx, mod, { id, variant, surprise, onClose: picker, again: () => moment(id, variant, surprise), other: picker }));
+    if (!alive || my !== seq) return;
+    show(() => momentView(root, ctx, mod, { id, variant, surprise, onClose: () => picker(id), again: () => moment(id, variant, surprise), other: () => picker(id) }));
   }
 
   if (mode && MODES[mode]) moment(mode); else picker();
@@ -48,7 +54,7 @@ export function mount(root, ctx, { mode } = {}) {
 }
 
 // ---------------------------------------------------------------- picker --
-function pickerView(root, ctx, { start }) {
+function pickerView(root, ctx, { start, focusId }) {
   const { dna } = ctx;
   const screen = h('section', { class: 'screen home pocket', 'aria-label': 'Pocket Hush' });
   const helps = new Set(dna.suggestions(5).filter((s) => s.kind === 'pocket').map((s) => s.id));
@@ -79,6 +85,8 @@ function pickerView(root, ctx, { start }) {
         h('span', { class: 'd' }, 'Your Mallow picks one'),
         h('span', { class: 'meta' }, 'One tap')))));
   root.append(screen);
+  // back from a moment: focus returns to the tile that started it
+  if (focusId) screen.querySelector(`.ptile[data-mode="${focusId}"]`)?.focus({ preventScroll: true });
   return { unmount() { screen.remove(); } };
 }
 
@@ -87,7 +95,7 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
   const { dna, sound } = ctx;
   const info = pocketById(id);
   const mallow = MALLOWS[ctx.mallowId];
-  let mode = null, ended = false, closed = false, t = 0, raf = 0, last = 0, captureFn = null, gestureFn = null;
+  let mode = null, ended = false, closed = false, leaving = false, leaveT = 0, t = 0, raf = 0, last = 0, captureFn = null, gestureFn = null;
   const s = stageScreen(root, ctx, {
     title: info.title, subtitle: surprise ? 'Surprise' : mallow.name, material: variant.material || 'marshmallow',
     backdrop: dna.environment('moment', ctx.mallowId), settings: false,
@@ -188,6 +196,7 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
   const vis = () => { if (!document.hidden && !raf && !closed) { last = 0; raf = requestAnimationFrame(loop); } };
   document.addEventListener('visibilitychange', vis);
   raf = requestAnimationFrame(loop);
+  s.stage.focus({ preventScroll: true });   // keyboard gestures work straight away
 
   function finish(why) {
     if (ended) return;
@@ -218,7 +227,7 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
       h('p', { class: 'end-line' }, `“${line}”`, h('span', {}, ` ${mallow.name}`)),
       h('div', { class: 'end-actions' },
         h('button', { type: 'button', class: 'chip primary', onclick: () => again() }, 'Again'),
-        h('button', { type: 'button', class: 'chip', onclick: () => other() }, 'Something else'),
+        h('button', { type: 'button', class: 'chip', 'aria-label': 'Another moment', onclick: () => other() }, 'Another'),
         keep,
         h('button', { type: 'button', class: 'chip', onclick: () => ctx.navigate('/') }, 'Done')));
     s.screen.append(card);
@@ -227,14 +236,17 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
   }
 
   function close() {
-    if (closed) return;
+    if (closed || leaving) return;
+    leaving = true;
+    s.screen.inert = true;               // no Again / Done by keyboard while it fades out
     s.screen.classList.add('leaving');
-    setTimeout(() => onClose(), 260);
+    leaveT = setTimeout(() => { if (!closed) onClose(); }, 260);
   }
 
   return {
     unmount() {
       closed = true;
+      clearTimeout(leaveT);
       if (globalThis.__lab?.moment?.api === api) globalThis.__lab.moment = null;
       cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', vis);

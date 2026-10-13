@@ -91,7 +91,7 @@ closing, and can be replayed:
 
 Every ending has a reaction, a closing line taken from that Mallow's
 authored lines, a short sound motif, the realm's own transform and a bloom,
-then an end card: **Again**, **Something else**, **★ Keep** and **Done**.
+then a compact end card that leaves the Mallow in view: **Again**, **Another**, **★ Keep** and **Done**.
 Surprise Me is a small rules engine (`core/pocket-rules.js`): it avoids
 moments from this visit (and recent history, if learning is on), leans
 towards what the person said helps, weights calm moments in the evening,
@@ -105,8 +105,8 @@ In Pocket Hush the Mallow appears in its own Hushfold realm by default
 | Suite | Result |
 |---|---|
 | `node --test hushmallow/sensory-lab/tests/*.test.mjs` | **UNIT_RESULT** |
-| `node hushmallow/sensory-lab/tests/e2e-phase2.cjs` (Chromium; seven Mallows, Comfort DNA, every Pocket Hush moment at 390×844, plus 320×568 and 1280×860 layouts) | **P2_RESULT** (`docs/phase2/e2e-results.json`) |
-| `node hushmallow/sensory-lab/tests/e2e.cjs` (Phase 1 suite, five viewports, updated for Phase 2 behaviour) | **P1_RESULT** |
+| `node hushmallow/sensory-lab/tests/e2e-phase2.cjs` (Chromium; seven Mallows, Comfort DNA, every Pocket Hush moment at 390×844, plus 320×568 and 1280×860 layouts) | **P2_RESULT** (`docs/phase2/e2e-phase2.json`) |
+| `node hushmallow/sensory-lab/tests/e2e.cjs` (Phase 1 suite, five viewports, updated for Phase 2 behaviour) | **P1_RESULT** (`docs/phase1/e2e-results.json`) |
 | Both browser suites against the published bundle (an imitation of the viewer's frame) | **STAGED_RESULT** |
 | Main app tests (`node --test hushmallow/tests/*.test.mjs`) | **APP_RESULT** (unchanged; this folder isn't in their scope) |
 
@@ -115,7 +115,9 @@ untrusted data, personalisation off, learning opt-in, reset, delete history,
 delete everything, unchanged writes, store isolation, the Supabase adapter's
 query shape and user scoping against a fake client), Surprise Me (recency,
 bias, evening weighting, variants, determinism), floater physics, and every
-Mallow's profile and feel being complete.
+Mallow's profile and feel being complete, and the review fixes below
+(inherited names in stored data, malformed device settings, the Phase 1
+hand-over).
 
 The Phase 2 browser suite checks, with real pointer input:
 - **Seven Mallows:** for each, the favourite is the one on stage; tap is
@@ -140,9 +142,52 @@ The Phase 2 browser suite checks, with real pointer input:
   stops a moment.
 - **Layout** at 390×844, 320×568 and 1280×860: controls don't overlap,
   stay on screen, and there's no horizontal scroll.
+- **Review regressions:** one check for each finding of the code review
+  (see below).
 
 Screenshots of every Mallow, the Comfort DNA screen and every moment's
 start and ending are in `docs/phase2/`.
+
+## Code review
+A separate review pass read the whole Phase 2 diff and tried to break it
+with scripted repros. It found nine minor bugs and no major ones. All nine
+are fixed, and each has a browser check in the suite's `review` part. That
+part fails 16 of its 21 checks on the code before the fixes and passes on the
+code after them:
+
+1. **Again lost the link to the live Mallow**, so later setting changes didn't
+   reach it. Old screens are now removed before new ones are built.
+2. **Closing twice, or closing and then leaving,** could leave a stray screen.
+   Closing is now once only, and a closing moment ignores input.
+3. **A hand-edited profile** (e.g. a `valueOf` key) stopped the lab from
+   starting. Stored data now only accepts the schema's own keys, and
+   unreadable data starts an empty profile.
+4. **Opening a "For you" suggestion replaced the favourite Mallow.** It now
+   switches the Mallow for that visit only.
+5. **Reset with personalisation off** overwrote the lab's Mallow setting.
+6. **Breath sounds kept playing** for a few seconds after Soft Breath closed.
+   They now fade out at once, and a breath you lead replaces the one before.
+7. **Two fingers on two floaters** left one stuck, so Let It Float couldn't
+   finish. Each finger now holds its own floater.
+8. **Quiet Moment's background sound** didn't start after the first tap on a
+   deep link, and didn't come back after mute or a tab switch. It now
+   restarts whenever it can.
+9. **Keyboard focus** was lost after the Comfort DNA screen updated, and
+   between moments. Focus now stays on the control you used, moves to the
+   stage when a moment starts, and returns to the moment's tile when it ends.
+
+Smaller notes were also handled. Mesh lines and the focus ring now use the
+realm's light or dark colours. A press that turns into a pinch now counts as
+one squeeze. Let It Float says when the last floaters drifted off by
+themselves. Gentle Glow gives the arrow keys back when it ends. The Phase 1
+response style carries over once. The end card is now one compact row of
+buttons, so the Mallow's face stays visible.
+
+The Phase 1 suite had one check flake on the published copy: Mochi stretched
+1.29× as far as Jelly against a 1.3× threshold. Repeated pulls showed the
+cause: the Mallow was still hopping or settling when the test grabbed it.
+Mochi typically reaches 2–2.5× Jelly's stretch. The test now waits for the
+Mallow to settle and uses the better of two pulls per material.
 
 ## Hosted preview
 The link now serves Phase 2. The published bundle is built from the lab's

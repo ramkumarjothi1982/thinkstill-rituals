@@ -18,7 +18,7 @@ export default {
     let warmth = 0, done = false, step = 0, bring = false, nearNow = false;
     const keys = (e) => {
       const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-      if (!d) return;
+      if (!d || e.target.closest?.('input, select, textarea, [role="radiogroup"]')) return;
       e.preventDefault();
       orb.moveTo(orb.tx + d[0] * 28, orb.ty + d[1] * 28);
     };
@@ -49,6 +49,7 @@ export default {
       orb,
       done: () => done,
       ending(why) {
+        document.removeEventListener('keydown', keys);   // arrow keys belong to the page again
         orb.moveTo(api.body().cx, api.body().top - 20);
         return { mix: { loved: 0.6, happy: 0.4 }, i: 0.75, reaction: 'comfort', motif: 'bright', line: 'cheer',
           caption: why === 'complete' ? 'All warm.' : 'A little warmer.' };

@@ -16,6 +16,7 @@
 
 import { REALM_IDS } from '../../src/world/realm.js';
 import { MALLOW_IDS } from '../../src/mallows/registry.js';
+import { MATERIAL_IDS } from './materials.js';
 
 export const POCKET_MODES = ['quick-squeeze', 'soft-breath', 'gentle-glow', 'let-it-float', 'quiet-moment'];
 export const COMFORTS = ['squeeze', 'hold', 'stroke', 'breathe', 'glow', 'float', 'quiet'];
@@ -60,8 +61,8 @@ export const PALETTES = {
 const empty = () => ({ version: 1, enabled: true, learn: false, prefs: {}, favourites: [], history: {} });
 
 const valid = (k, v) => {
+  if (!Object.hasOwn(SCHEMA, k)) return false;     // never inherited names (toString, __proto__…)
   const rule = SCHEMA[k];
-  if (!rule) return false;
   return typeof rule === 'function' ? rule(v) : rule.includes(v);
 };
 
@@ -82,7 +83,7 @@ export class ComfortDNA {
   async load() {
     let raw = null;
     try { raw = await this.store.load(); } catch { raw = null; }
-    this.data = sanitize(raw);
+    try { this.data = sanitize(raw); } catch { this.data = empty(); }   // unreadable data must never stop the lab
     return this;
   }
 
@@ -95,12 +96,12 @@ export class ComfortDNA {
 
   /** Effective value: what experiences should use (defaults when personalisation is off). */
   get(k) {
-    if (!this.data.enabled || !(k in this.data.prefs)) return clone(DEFAULT_PREFS[k]);
+    if (!this.data.enabled || !Object.hasOwn(this.data.prefs, k)) return byDefault(k);
     return clone(this.data.prefs[k]);
   }
 
   /** What the person chose, regardless of the on/off switch (for the settings screen). */
-  chosen(k) { return k in this.data.prefs ? clone(this.data.prefs[k]) : clone(DEFAULT_PREFS[k]); }
+  chosen(k) { return Object.hasOwn(this.data.prefs, k) ? clone(this.data.prefs[k]) : byDefault(k); }
 
   set(k, v) {
     if (!valid(k, v)) return false;
@@ -240,12 +241,13 @@ function ownRealm(mallowId) {
 }
 
 function clone(v) { return v == null || typeof v !== 'object' ? v : JSON.parse(JSON.stringify(v)); }
+const byDefault = (k) => (Object.hasOwn(DEFAULT_PREFS, k) ? clone(DEFAULT_PREFS[k]) : undefined);
 
 function cleanItem(it) {
   if (!it || typeof it !== 'object') return null;
   if (it.kind === 'pocket' && POCKET_MODES.includes(it.id)) return { kind: 'pocket', id: it.id };
-  if (it.kind === 'softbody' && typeof it.material === 'string') return { kind: 'softbody', id: 'softbody', material: it.material, ...(MALLOW_IDS.includes(it.mallow) ? { mallow: it.mallow } : {}) };
-  if ((it.kind === 'experience') && typeof it.id === 'string') return { kind: 'experience', id: it.id };
+  if (it.kind === 'softbody' && MATERIAL_IDS.includes(it.material)) return { kind: 'softbody', id: 'softbody', material: it.material, ...(MALLOW_IDS.includes(it.mallow) ? { mallow: it.mallow } : {}) };
+  if (it.kind === 'experience' && typeof it.id === 'string' && /^[a-z][a-z-]{0,31}$/.test(it.id)) return { kind: 'experience', id: it.id };
   if (it.kind === 'mallow' && MALLOW_IDS.includes(it.id)) return { kind: 'mallow', id: it.id };
   return null;
 }
