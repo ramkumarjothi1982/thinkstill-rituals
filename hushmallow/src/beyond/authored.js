@@ -51,7 +51,71 @@ export function fairAnger(text) {
  * death talk (review r10: "my friend ODd last night and everyone blames me" is never "Being angry about this makes
  * sense"); those words get a stated event's kind steps, or the gentle path.
  */
-export const angerAnswer = (text) => fairAnger(text) && !bagWords(text);
+export const angerAnswer = (text, { emotion = null } = {}) => fairAnger(text) && !bagWords(text) && !angerUnsaid(text, emotion);
+/** The anger family's feelings (a chip they picked): anger they stated. */
+const ANGER_CHIPS = new Set(['anger', 'irritation', 'annoyance', 'frustration', 'resentment', 'rage', 'fury', 'bitterness', 'outrage', 'hostility', 'impatience',
+  'indignation', 'irritable', 'grumpy', 'cranky', 'hangry', 'sulky', 'petty', 'spiteful', 'vindictive', 'scorned', 'defensive', 'provoked', 'aggravation',
+  'disrespected', 'wronged', 'insulted', 'quarrelsome', 'rebellious', 'taken-advantage-of']);
+const ANGER_WORD = /\b(?:angry|anger|furious|fury|fuming|livid|seething|raging|rage|enraged|incensed|outraged|infuriat\w*|mad|cross|pissed(?:\s+off)?|annoyed|irritated|wound\s+up|resentful|bitter|frustrated|frustrating)\b/giu;
+/** Someone else as the one feeling it ("he was furious", "my boss is so angry", "she's livid"): read just before the word. */
+const OTHER_FEELS = new RegExp(`\\b(?:(?:hes|shes|theyre|youre)|(?:he|she|they|you|everyone|everybody|people|(?:(?:my|our|his|her|their|your|the)\\s+)?(?:\\w+\\s+)?(?:mum|mom|mam|mother|dad|father|parents?|nan|gran|grandma|grandad|brother|sister|son|daughter|kids?|husband|wife|partner|boyfriend|girlfriend|ex|friends?|mates?|boss|manager|teacher|colleagues?|coworkers?|team|family|flatmates?|housemates?|neighbou?rs?|landlord|coach))\\s+(?:(?:really|probably|just|obviously|clearly|must|might|may|will|would|could|ll|d|has|had|have|always|still|also)\\s+)*(?:is|was|were|are|s|re|be|been|being|got|gets|getting|seemed|seems|looked|looks|sounded|sounds|became|becomes|went|goes|felt|feels))\\s+(?:(?:so|really|very|absolutely|totally|well|quite|a\\s+bit|pretty|super|properly|completely|fucking|bloody|getting|being)\\s+)*$`, 'iu');
+/** Anger of their own in the words ("I'm furious", "it makes me so angry"), never someone's anger at them, guessed at, or theirs. */
+export function ownAnger(text) {
+  const t = String(text ?? '').replace(/[‘’ʼ`´']/gu, '').replace(ANGRY_AT_ME, ' ').replace(ANGER_GUESSED, ' ');
+  for (const m of t.matchAll(ANGER_WORD)) {
+    const before = t.slice(Math.max(0, m.index - 80), m.index);
+    if (OTHER_FEELS.test(before) || /\b(?:his|her|their|your|its)\s+$/iu.test(before)) continue;
+    if (/\b(?:not|never|isnt|wasnt|arent|werent|dont|didnt|no)\s+(?:(?:even|really|that|so|too)\s+)?$/iu.test(before)) continue;
+    return true;
+  }
+  return false;
+}
+/** Embarrassment or shame, said ("I'm so ashamed") or the wrong's own word for it ("embarrassed me", "made a fool of me"). */
+const SHAME_SAID = /\b(?:embarrass(?:ed|ing|ment)|humiliat(?:ed|ing|ion)|ashamed|shamed|shameful|mortif(?:ied|ying)|cringe|cringing|made\s+a\s+fool\s+of\s+me|made\s+me\s+(?:look|feel)\s+(?:so\s+|really\s+)?(?:like\s+)?(?:a\s+|an\s+)?(?:fool|idiot|stupid|small|tiny|useless|worthless|pathetic|silly|thick|dumb))\b/iu;
+/**
+ * A feeling of their own in the words that is not anger: embarrassment or shame (SHAME_SAID), hurt ("it really hurt",
+ * "that was hurtful"), or any feeling they say they have that is not anger ("I feel so small", "I'm gutted").
+ */
+function feelingNotAnger(text) {
+  const t = String(text ?? '');
+  if (SHAME_SAID.test(t) || /\bhurt(?:ful|s|ing)?\b/iu.test(t)) return true;
+  let parts = [];
+  try { parts = clauses(t).map((c) => c.text); } catch { parts = [t]; }
+  return parts.some((p) => { const k = feelingClause(p); return !!k && k !== 'angry'; });
+}
+/**
+ * Anger they never stated (the QA sweep: "My boss embarrassed me in front of everyone" was answered "Being angry about
+ * this makes sense"): a feeling of their own that is not anger, the chip they picked or their words, and no anger of
+ * their own in either. Then no scene of anger's own plays (find_boundary, valid_anger, "That anger is pointing at
+ * something…", "Your anger might be pointing…"); the wrong is still a wrong (fairAnger: never framed as the mind's guess,
+ * never excused), acknowledged on a stated event's kind steps.
+ */
+export function angerUnsaid(text, emotion = null) {
+  if (emotion && ANGER_CHIPS.has(emotion)) return false;
+  if (ownAnger(text)) return false;
+  return !!emotion || feelingNotAnger(text);
+}
+/** The shame family's chips: embarrassment or shame picked. */
+const SHAME_CHIPS = new Set(['shame', 'guilt', 'embarrassment', 'humiliation', 'remorse', 'self-consciousness', 'awkwardness', 'sheepish', 'exposed', 'self-critical',
+  'inadequate', 'worthless', 'foolish', 'secondhand-embarrassment', 'self-loathing', 'flustered']);
+/**
+ * The kind mechanic that goes first for a wrong told with embarrassment or shame and no anger of their own ("My boss
+ * embarrassed me in front of everyone"): separate_one, the one moment lifted out from the rest of them ("This is real,
+ * and it's taking up a lot of room." / "There's still more to you than this one thing."). Else null (the kind's order).
+ */
+export function unsaidLead(text, emotion = null) {
+  if (!fairAnger(text) || !angerUnsaid(text, emotion)) return null;
+  return (emotion ? SHAME_CHIPS.has(emotion) : SHAME_SAID.test(String(text ?? ''))) ? 'separate_one' : null;
+}
+/** A line that speaks of anger. */
+const ANGER_LINE = /\b(?:anger|angry|furious|fury|rage|raging|mad|livid|fuming|seething|resent\w*|annoyed|irritated)\b/iu;
+/** A scene of anger's own: its reading, its mechanic, an angry feeling, or a line that speaks of anger. */
+export function speaksAnger(scene) {
+  if (!scene) return false;
+  if (scene.reasoning_pattern === 'valid_anger' || scene.mechanic === 'find_boundary' || scene.interaction_type === 'find_boundary' || scene.feeling === 'angry') return true;
+  // (what Zuzu says, never what they told, quoted back: "What you know: “she was angry”")
+  return [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.alternative_angle].some((l) => ANGER_LINE.test(String(l || '')));
+}
 /**
  * Death talk (grief.js: any death or loss word about anyone or anything alive, recall first) and words with a harm
  * word that no ordinary idiom explains (backstop.js) take the gentle path (gentleScene): never a mechanic or a
@@ -213,10 +277,12 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
   if (feel) return feelingOrder(feel.kind, hint).map((m) => INTERACTION_PATTERN[m]);
   // fair anger at something someone did: the scenes that acknowledge the wrong (the line it needs, its weight put
   // back with them, one step), and the guess scenes only for a clause that really reads into it
-  if (angerAnswer(text)) return angerOrder(text, hint);
+  if (angerAnswer(text, { emotion })) return angerOrder(text, hint);
   const out = [];
+  // (anger they never stated, the chip or the words naming another feeling: never anger's own scene, whoever hinted it)
+  const unsaid = angerUnsaid(text, emotion);
   // (review r8) the guess scenes only for the marker they need; every other scene acknowledges what was said
-  const add = (p) => { if (p && PATTERNS.includes(p) && !out.includes(p) && (!GUESS_PATTERNS.has(p) || fits(p))) out.push(p); };
+  const add = (p) => { if (p && PATTERNS.includes(p) && !out.includes(p) && (!GUESS_PATTERNS.has(p) || fits(p)) && !(p === 'valid_anger' && unsaid)) out.push(p); };
   const M = framingAllowed(text) ? markerKinds(text) : new Set();
   let found = [];
   try { found = detectPatterns(text); } catch { found = []; }
@@ -234,7 +300,7 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
     if (p === 'catastrophising') return M.has('cata');
     if (p === 'all_or_nothing') return M.has('over') || M.has('cata') || M.has('label');
     if (p === 'personalisation') return (BLAME.test(text) || has('spotlight-on-me')) && !fairAnger(text);
-    if (p === 'valid_anger') return angerAnswer(text) || (ANGRY.has(emotion) && !bagWords(text));
+    if (p === 'valid_anger') return angerAnswer(text, { emotion }) || (ANGRY.has(emotion) && !bagWords(text));
     if (p === 'rumination') return CUES.rumination.test(text) || LOOPY.has(emotion) || /\bwhat if\b/i.test(text);
     if (p === 'practical_problem') return CUES.practical_problem.test(text) || (!!scenario && scenario !== GENERAL && !fairAnger(text)) || ['overwhelm', 'stress'].includes(emotion);
     return false;
@@ -243,7 +309,7 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
   if (hint) add(hint);
   if (CUES.rumination.test(text)) add('rumination');
   // (review r11: never beside a bag word or death talk, so the Thought Mallow is never tinted anger beside a loss)
-  if (angerAnswer(text)) add('valid_anger');
+  if (angerAnswer(text, { emotion })) add('valid_anger');
   // a habit the engine found in the words, when its scene makes sense for them ("everyone" / "nobody" are
   // everywhere in ordinary speech: always/never only counts when it is the subject: "Nobody likes me")
   for (const f of found) if (f.pattern.id !== 'always-never') maybe(AUTHORED_TO_PATTERN[f.pattern.id]);
@@ -387,14 +453,16 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   const fresh = cands.find((p) => !exclude.includes(p));
   // (no fitting scene, or every one shown, and no marker of their own: the acknowledging ones for a stated event
   // follow; fair anger keeps to its own three)
-  if (!cands.length || (!fresh && !framingAllowed(t) && !fairAnger(t))) {
-    const kind = feelingScene(t, eventKind(t), { emotion, exclude, hint, guarded: true });
+  if (!cands.length || (!fresh && !framingAllowed(t) && !angerAnswer(t, { emotion }))) {
+    const kind = feelingScene(t, eventKind(t), { emotion, exclude, hint, guarded: true, lead: unsaidLead(t, emotion) });
     if (!cands.length || !kind.exhausted) return kind;
   }
   const exhausted = !fresh;
   const pattern = fresh || cands[0] || 'fact_vs_assumption';
   const authoredId = PATTERN_TO_AUTHORED[pattern];
   const anger = fairAnger(t);
+  // (a wrong done to them, with anger of their own or no other feeling named: anger's own lines may speak)
+  const angry = anger && !angerUnsaid(t, emotion);
   const sp = split(t);
   // fair anger: the wrong is the fact, and only a clause that reads into it may be the guess
   const { fact, guess } = anger ? angerSplit(t) : sp;
@@ -457,7 +525,8 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   // short enough to read as it is; for mind reading only a reading of the other person ("They might…")
   let alternative = '', altId = null;
   // (fair anger: a situation's "other explanation" could excuse a real wrong; only a guess about others is read)
-  if (pattern === 'valid_anger' || (anger && pattern !== 'mind_reading')) alternative = AUTHORED_ALT.valid_anger;
+  // (anger they never stated: no "Your anger might be pointing…"; nothing that could excuse the wrong either)
+  if (pattern === 'valid_anger' || (anger && pattern !== 'mind_reading')) alternative = angry ? AUTHORED_ALT.valid_anger : '';
   else {
     try {
       const angles = buildAngles(scenario, { interpretation: guess, patterns: authoredId ? [authoredId] : [] });
@@ -528,7 +597,7 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
     ...(exhausted ? { exhausted: true } : {}),
   };
   // the last word: a scene that would still frame words without a marker plays as an acknowledging one
-  if (!framingAllowed(t) && framesScene(scene)) return feelingScene(t, angerAnswer(t) ? 'angry' : eventKind(t), { emotion, exclude, hint, guarded: true });
+  if (!framingAllowed(t) && framesScene(scene)) return feelingScene(t, angerAnswer(t, { emotion }) ? 'angry' : eventKind(t), { emotion, exclude, hint, guarded: true, lead: unsaidLead(t, emotion) });
   return scene;
 }
 
@@ -677,7 +746,7 @@ export function feelingGuard(scene, text, { emotion = null, exclude = [] } = {})
   if (!feel) return scene;
   // (review r9: without a marker of their own, only a reading that keeps them may say its own lines, SERVER_KEEPS)
   if ([scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact, scene.possible_assumption].some(framesAsGuess)
-    || (!framingAllowed(text) && !serverLinesKeep(scene, text))) {
+    || (!framingAllowed(text) && !serverLinesKeep(scene, text, { emotion }))) {
     return feelingScene(text, feel.kind, { emotion, exclude });
   }
   const plays = FEELING_PLAYS.has(scene.mechanic) && scene.mechanic !== 'return_responsibility' || (feel.kind === 'angry' && scene.mechanic === 'find_boundary');
@@ -697,12 +766,19 @@ export function feelingGuard(scene, text, { emotion = null, exclude = [] } = {})
  */
 export function guessGuard(scene, text, { emotion = null, exclude = [] } = {}) {
   if (!scene || scene.grief) return scene;
+  // anger they never stated ("My boss embarrassed me in front of everyone", or the Embarrassed chip): no scene of anger's
+  // own, whoever chose it (find_boundary, valid_anger, a line that speaks of anger), but Zuzu's own scene for these words
+  // without one (a stated event's kind steps; a wrong done to them is still never the guess)
+  if (speaksAnger(scene) && angerUnsaid(text, emotion)) scene = authoredScene(text, { emotion, exclude: [...exclude, 'valid_anger'] });
   // an interpretive marker of their own: the framing may play, but only that clause is the guess (a server's
   // reading of the stated event as the guess gives way to the clause, and its lines to the authored ones)
   if (framingAllowed(text)) return scene.source === 'server' ? onlyTheClause(scene, text) : scene;
-  const kind = scene.feeling || feelingOf(text)?.kind || (angerAnswer(text) ? 'angry' : eventKind(text));
+  const kind = scene.feeling || feelingOf(text)?.kind || (angerAnswer(text, { emotion }) ? 'angry' : eventKind(text));
   // (fair anger gets its own scenes, the wrong as the fact: find_boundary, its weight put back, one step)
-  const kindScene = () => (angerAnswer(text) && !scene.feeling ? authoredScene(text, { emotion, exclude }) : feelingScene(text, kind, { emotion, exclude, guarded: true }));
+  // (a wrong told with another feeling than anger: the server's own acknowledging mechanic leads, "lift this one moment
+  // out", else unsaidLead's; never anger's own)
+  const leadFor = () => { const own = unsaidLead(text, emotion); return own && scene.source === 'server' && FEELING_PLAYS.has(scene.mechanic) ? scene.mechanic : own; };
+  const kindScene = () => (angerAnswer(text, { emotion }) && !scene.feeling ? authoredScene(text, { emotion, exclude }) : feelingScene(text, kind, { emotion, exclude, guarded: true, lead: leadFor() }));
   if (scene.source !== 'server') {
     // an authored scene that doesn't frame them (fair anger's line, a practical step, replaying, its own blame) stays;
     // beside a bag word only the kind steps' own lines play
@@ -711,7 +787,7 @@ export function guessGuard(scene, text, { emotion = null, exclude = [] } = {}) {
   }
   // a server scene whose reading frames them (whatever its lines say), or whose lines frame them or excuse a wrong
   // done to them: the authored kind scene, with its own lines (review r9: an allowlist by reading, SERVER_KEEPS)
-  if (!serverLinesKeep(scene, text)) return kindScene();
+  if (!serverLinesKeep(scene, text, { emotion })) return kindScene();
   // its kind lines stay (as for a feeling): on a mechanic that acknowledges on its own lines (fair anger's line, a
   // step, replaying, its weight put back), else on a kind step with the kind lines (never a framing mechanic, a
   // label's "harsh verdict" or "every time")
@@ -741,13 +817,13 @@ const wrongDone = (text) => fairAnger(text) || eventKind(text) === 'hurt';
  * (SERVER_KEEPS), its mechanic frames nothing, none of its lines frames the words, and beside a wrong done to them
  * none of its lines excuses the act.
  */
-export function serverLinesKeep(scene, text) {
+export function serverLinesKeep(scene, text, { emotion = null } = {}) {
   if (!scene) return false;
   // (personalisation, only for blame they put on themselves: "it's my fault" is theirs to re-weigh, on return_responsibility)
   const blame = scene.reasoning_pattern === 'personalisation' && BLAME.test(String(text ?? '')) && !fairAnger(text);
   if (!SERVER_KEEPS.has(scene.reasoning_pattern) && !blame) return false;
   // (review r10) beside a bag word or death talk, a server's fair-anger reading never says its lines
-  if (scene.reasoning_pattern === 'valid_anger' && !angerAnswer(text)) return false;
+  if (scene.reasoning_pattern === 'valid_anger' && !angerAnswer(text, { emotion })) return false;
   if (FRAMING_MECHANICS.has(scene.mechanic) || FRAMING_MECHANICS.has(scene.interaction_type)) return false;
   // (only the lines that are said: a kept scene's assumption and "another explanation" are never shown)
   const said = [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact];
@@ -815,8 +891,10 @@ const STOP = new Set(['that', 'this', 'with', 'they', 'them', 'their', 'what', '
 const contentWords = (s) => (String(s || '').toLowerCase().replace(/[‘’']/g, '').match(/\p{L}{4,}/gu) || []).filter((w) => !STOP.has(w)).map((w) => w.replace(/(?:ing|ed|s)$/u, '').replace(/e$/u, ''));
 
 /** A feeling's scene (feelingStatement): in the server's shape, with `feeling` set to its kind. */
-export function feelingScene(text, kind = 'low', { emotion = null, exclude = [], hint = null, guarded = false } = {}) {
+export function feelingScene(text, kind = 'low', { emotion = null, exclude = [], hint = null, guarded = false, lead = null } = {}) {
   const order = feelingOrder(kind, hint);
+  // (`lead`: one of the kind mechanics that goes first, a wrong told with embarrassment or shame: unsaidLead)
+  if (lead && FEELING_PLAYS.has(lead)) { if (order.includes(lead)) order.splice(order.indexOf(lead), 1); order.unshift(lead); }
   const fresh = order.find((m) => !exclude.includes(INTERACTION_PATTERN[m]));
   const mechanic = fresh || order[0];
   // (a stated event's own lines: it happened, it counts; a feeling's: it is real)
@@ -836,6 +914,8 @@ export function feelingScene(text, kind = 'low', { emotion = null, exclude = [],
     subtitle_line_1: l1, subtitle_line_2: pair[1], safety_status: 'ok',
     authored_pattern: null, angle_id: null, alt_id: null, scenario_id: null,
     ...(guarded ? { guarded: true } : {}),
+    // (a wrong done to them, told with another feeling than anger: still a wrong, never "weight on one thought")
+    ...(fairAnger(text) ? { wrong: true } : {}),
     ...(fresh ? {} : { exhausted: true }),
   };
 }
