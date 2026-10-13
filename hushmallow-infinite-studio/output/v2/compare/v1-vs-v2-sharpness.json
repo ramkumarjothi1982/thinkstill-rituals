@@ -1,0 +1,10 @@
+{
+ "v1": {
+  "mean_gradient": 4.12,
+  "high_freq_energy_ratio": 0.1963
+ },
+ "v2": {
+  "mean_gradient": 4.197,
+  "high_freq_energy_ratio": 0.2496
+ }
+}

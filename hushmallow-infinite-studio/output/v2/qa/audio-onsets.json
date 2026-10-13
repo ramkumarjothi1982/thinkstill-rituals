@@ -1,0 +1,67 @@
+[
+ {
+  "cue": "take",
+  "t": 0.4,
+  "onset_ms_offset": 0.0
+ },
+ {
+  "cue": "lift_off",
+  "t": 0.42,
+  "onset_ms_offset": -20.0
+ },
+ {
+  "cue": "land",
+  "t": 0.98,
+  "onset_ms_offset": 0.0
+ },
+ {
+  "cue": "blink",
+  "t": 1.42,
+  "onset_ms_offset": 0.0
+ },
+ {
+  "cue": "blink",
+  "t": 1.66,
+  "onset_ms_offset": 45.0
+ },
+ {
+  "cue": "thought",
+  "t": 3,
+  "onset_ms_offset": 0.0
+ },
+ {
+  "cue": "thought",
+  "t": 4,
+  "onset_ms_offset": 0.0
+ },
+ {
+  "cue": "thought",
+  "t": 5,
+  "onset_ms_offset": 0.0
+ },
+ {
+  "cue": "wince",
+  "t": 3.42,
+  "onset_ms_offset": -20.0
+ },
+ {
+  "cue": "release",
+  "t": 9.32,
+  "onset_ms_offset": 0.0
+ },
+ {
+  "cue": "eyes_open",
+  "t": 11.7,
+  "onset_ms_offset": 0.0
+ },
+ {
+  "cue": "logo",
+  "t": 12.6,
+  "onset_ms_offset": -10.0
+ },
+ {
+  "cue": "blink",
+  "t": 12.8,
+  "onset_ms_offset": -30.0
+ }
+]
