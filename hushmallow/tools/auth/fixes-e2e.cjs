@@ -365,9 +365,11 @@ async function r2screens(H) {
     await shot(p, `r2-01-guest-choice-names-account-${w}`);
     await tapNav(p, '[data-act="fresh"]');
     await waitView(p, 'account');
-    const local = email.split("@")[0], masked = `${local.slice(0, local.length > 2 ? 2 : 1)}…@example.com`;   // src/auth/namespace.js maskEmail
-    const toast = await p.waitForFunction(() => document.querySelector('body > .toast')?.textContent || '', null, { timeout: 8000 }).then((x) => x.jsonValue(), () => '');
-    check(toast === `You’re signed in as ${masked}.`, `${w}: the arrival names the account, shortened`, toast);
+    // the arrival names the account on the card itself (its lede, the address in full as the card shows it),
+    // never in a toast over the card's fields (QA-around); a toast elsewhere still names it shortened
+    const arrived = await p.waitForFunction(() => document.getElementById('hm-account-lede')?.textContent || '', null, { timeout: 8000 }).then((x) => x.jsonValue(), () => '');
+    const toast = await p.evaluate(() => document.querySelector('body > .toast')?.textContent || '');
+    check(arrived === `You’re signed in as ${email}.` && !toast, `${w}: the arrival names the account, on the card`, { arrived, toast });
     // the home Mallow: nobody has picked one, so the one greeting you is the stage's (the time of day)
     await p.waitForFunction(() => window.__account?.mallow, null, { timeout: 20000 });
     const hm = await p.evaluate(() => ({ checked: document.querySelector('.hm-account-mallows [aria-checked="true"]')?.dataset.mallow, above: window.__account.mallow.id, stage: window.__hush.world?.mallowId, hint: document.getElementById(document.querySelector('.hm-account-mallows')?.getAttribute('aria-describedby'))?.textContent || '' }));
@@ -400,8 +402,10 @@ async function r2screens(H) {
     await p.waitForFunction(() => /Enter the code/.test(document.getElementById('hm-account-title')?.textContent || ''), null, { timeout: 30000 }).catch(async (e) => { await shot(p, `FAILED-r2-code-${w}`); throw new Error(`${e.message.split('\n')[0]} on ${await p.evaluate(() => document.getElementById('hm-account-title')?.textContent + ' | ' + [...document.querySelectorAll('.hm-auth-error')].map((x) => x.textContent).join(' '))}`); });
     const addr = await p.evaluate(() => {
       const s = document.querySelector('#hm-account-lede .hm-account-strong strong');
-      const rg = document.createRange(); rg.selectNodeContents(s);
-      const tops = new Set([...rg.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top)));
+      // the lines the address's own text sits on (its halves are inline blocks: their boxes are not lines)
+      const tops = new Set();
+      const tw = document.createTreeWalker(s, NodeFilter.SHOW_TEXT);
+      while (tw.nextNode()) { const rg = document.createRange(); rg.selectNodeContents(tw.currentNode); for (const x of rg.getClientRects()) if (x.width > 0) tops.add(Math.round(x.top)); }
       const lede = document.getElementById('hm-account-lede').getBoundingClientRect();
       const box = s.parentElement.getBoundingClientRect();
       return { text: s.textContent, lines: tops.size, inside: box.left >= lede.left - 1 && box.right <= lede.right + 1, tail: s.parentElement.textContent };

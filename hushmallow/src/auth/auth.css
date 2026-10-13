@@ -90,7 +90,10 @@ html:has(.hm-auth-page) { height: 100%; background: var(--ink-0); }
 
 .hm-auth-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 0 22px;
   border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--glass); color: var(--text-1); text-decoration: none;
-  font: var(--type-button); letter-spacing: var(--type-button-ls); cursor: pointer; transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast); }
+  font: var(--type-button); letter-spacing: var(--type-button-ls); cursor: pointer; transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast);
+  text-align: center; text-wrap: balance; }   /* a pill that must wrap never leaves one word alone on its second line */
+/* one line on purpose (account.js fitPill): text-wrap above would win over .fit-one's nowrap */
+.hm-auth-btn.fit-one { white-space: nowrap; text-wrap: nowrap; }
 .hm-auth-btn:active { transform: scale(.97); }
 .hm-auth-btn.primary { background: linear-gradient(180deg, #ffe2a3, var(--accent) 55%, var(--accent-2)); color: var(--text-on-accent); border-color: transparent;
   box-shadow: 0 10px 30px rgba(255, 190, 90, .28), inset 0 1px 0 rgba(255, 255, 255, .6); }

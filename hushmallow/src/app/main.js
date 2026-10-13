@@ -254,12 +254,14 @@ async function boot() {
 /** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */
 function afterAuthBoot() {
   const said = AUTH.notice ? noticeText(AUTH.notice, AUTH.ns) : null;   // an arrival names the account (shortened)
-  if (said) setTimeout(() => toast(said, 3600), 500);
   // /#account (an email link, a bookmark) opens the account over the Hushfold, so Back comes home;
   // a first sign-in on this device opens it too, to ask once about this device's guest things.
   // Deep links: #account is the only one honoured (sign-in builds only); any other hash
   // (#garden, #settings, #plans, #angle…) opens the Hushfold, on purpose (docs/AUTH.md).
-  if (AUTH.deepLink === 'account' || AUTH.guestChoice) app.go('account', { arrived: AUTH.notice || null });
+  const opensAccount = AUTH.deepLink === 'account' || AUTH.guestChoice;
+  // the account scene says an arrival on its card (or toasts it itself); everywhere else it is a toast
+  if (said && !opensAccount) setTimeout(() => toast(said, 3600), 500);
+  if (opensAccount) app.go('account', { arrived: AUTH.notice || null, notice: said });
   // signed in: supabase-js loads after the first screen, checks the session with the server,
   // then keeps in step only what the person opted into on the account screen (src/auth/autosync.js)
   if (AUTH.ns.mode === 'account') {
