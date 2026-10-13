@@ -201,7 +201,7 @@ export default function account(app, params = {}) {
     return { name, input, hintEl, wrap: h('div', { class: 'hm-auth-field', 'data-field': name }, ...parts), onInput(fn) { onFieldInput = fn; } };
   }
 
-  /** A form whose submit runs onSubmit(values) → { ok } | { ok:false, error, action? }. */
+  /** A form whose submit runs onSubmit(values) → { ok } | { ok, hold } (stays busy: the next screen is coming) | { ok:false, error, action? }. */
   function form({ fields, submit, busy, onSubmit, before = [], after = [], act = 'submit', danger = false, quiet = false }) {
     const errEl = h('p', { class: 'hm-auth-error', role: 'alert', id: uid('err') });
     const submitBtn = btn(submit, null, { cls: danger ? 'danger' : quiet ? 'small' : 'primary', type: 'submit', act });
@@ -231,6 +231,7 @@ export default function account(app, params = {}) {
       let r;
       try { r = await onSubmit(values); } catch (ex) { r = { ok: false, error: friendlyError(ex, 'unknown') }; }
       if (!f.isConnected || left) return;   // a successful step moved on
+      if (r?.hold) { submitBtn.textContent = 'One moment…'; return; }   // success: the next screen (or a reload) is on its way
       delete f.dataset.busy; f.removeAttribute('aria-busy');
       submitBtn.disabled = false; submitBtn.textContent = submit;
       if (r && r.ok === false) fail(r.error, r.action);
@@ -285,7 +286,7 @@ export default function account(app, params = {}) {
   V.create = (o) => {
     const email = field({ name: 'email', label: 'Email', kind: 'email', autocomplete: 'email', inputmode: 'email', enterkeyhint: 'next', value: o.email, maxlength: 254 });
     const pw = field({ name: 'password', label: 'Password', autocomplete: 'new-password', enterkeyhint: 'next', password: true, meter: true, maxlength: 72 });
-    const name = field({ name: 'name', label: 'Your name', autocomplete: 'nickname', enterkeyhint: 'go', optional: true, maxlength: 40, hintText: 'Only you see it, on this screen.' });
+    const name = field({ name: 'name', label: 'Your name', autocomplete: 'nickname', enterkeyhint: 'go', optional: true, maxlength: 40, hintText: 'Kept with your account. Only you see it.' });
     const f = form({
       fields: [email, pw, name], submit: 'Create my account', busy: 'Creating your account…', act: 'create-submit',
       onSubmit: async (v) => {
@@ -421,7 +422,7 @@ export default function account(app, params = {}) {
   const acct = { profile: null, consents: null, loading: false, error: null };
   V.account = (o) => {
     const u = auth.user() || {};
-    const nameIn = field({ name: 'displayName', label: 'Your name', autocomplete: 'nickname', enterkeyhint: 'done', optional: true, maxlength: 40, value: acct.profile?.displayName || '', hintText: 'Only you see it, on this screen.' });
+    const nameIn = field({ name: 'displayName', label: 'Your name', autocomplete: 'nickname', enterkeyhint: 'done', optional: true, maxlength: 40, value: acct.profile?.displayName || '', hintText: 'Kept with your account. Only you see it.' });
     const nameForm = form({
       fields: [nameIn], submit: 'Save name', busy: 'Saving…', act: 'save-name', quiet: true,
       onSubmit: async (v) => {
@@ -626,7 +627,7 @@ export default function account(app, params = {}) {
         toast('Your new password is saved.', 3200);
         say('Your new password is saved.');
         later(popView, reduced() ? 300 : 900);
-        return { ok: true };
+        return { ok: true, hold: true };
       },
       after: [resend],
     });
@@ -670,7 +671,7 @@ export default function account(app, params = {}) {
         const a = await api();
         const r = await a.deleteAccount();
         if (!r.ok) return r;
-        return { ok: true };   // the page reloads as a guest with a calm notice
+        return { ok: true, hold: true };   // the page reloads as a guest with a calm notice
       },
       after: [linkBtn('Keep my account', () => goBack(), 'cancel')],
     });
@@ -696,9 +697,9 @@ export default function account(app, params = {}) {
   /** Signed in (this page is still a guest's): ask about the guest things, or go straight in. */
   function signedIn(r) {
     mood('happy');
-    if (r.needsGuestChoice) { later(() => go('guest-choice', {}, { replace: true }), reduced() ? 0 : 650); return { ok: true }; }
+    if (r.needsGuestChoice) { later(() => go('guest-choice', {}, { replace: true }), reduced() ? 0 : 650); return { ok: true, hold: true }; }
     later(() => client.enter('#account'), reduced() ? 150 : 800);
-    return { ok: true };
+    return { ok: true, hold: true };
   }
 
   async function choose(choice) {
