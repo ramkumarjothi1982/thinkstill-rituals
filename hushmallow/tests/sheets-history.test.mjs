@@ -5,7 +5,11 @@
 //     that tracks its own sheets (the Hushfold's trackSheet) owns that entry and
 //     no second one is added; Escape closes the newest sheet only
 //     (src/app/ui.js createSheetHistory + openSheet, src/app/layers.js, main.js);
-//   * a ritual's own Back keeps the ritual's name in the address bar.
+//   * a ritual's own Back keeps the ritual's name in the address bar;
+//   * the hidden classic Mallow is inert and aria-hidden (src/app/world.js);
+//   * Settings → About and the Plans page say the same about Another Angle,
+//     derived from resolveEndpoint() (src/app/privacy.js), plus what an account keeps;
+//   * Settings' delete button says whose things it deletes with sign-in on.
 // Run with: node --test tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -315,4 +319,102 @@ test('ui.js: openSheet reports open and close to the history hooks, Escape is fo
   assert.match(ui, /try \{ sheetHooks\?\.closed\?\.\(handle, reason\); \}[^\n]*\n\s*onClose\?\.\(reason\);/, 'the entry goes before onClose (a scene change from onClose lands after it)');
   assert.match(ui, /liveSheets\[liveSheets\.length - 1\] !== handle\) return;/);
   assert.match(ui, /requestAnimationFrame\(\(\) => \{ if \(!closed\)/, 'a sheet closed before its first frame never shows');
+});
+
+test('world: the hidden classic Mallow is out of reach (inert, aria-hidden), and back in reach when shown', async () => {
+  const layer = { classList: new Set(), attrs: {}, inert: false, style: { setProperty() {}, removeProperty() {} } };
+  layer.classList.toggle = function (c, on) { if (on) this.add(c); else this.delete(c); };
+  layer.setAttribute = (k, v) => { layer.attrs[k] = v; };
+  layer.removeAttribute = (k) => { delete layer.attrs[k]; };
+  const prevDoc = globalThis.document;
+  globalThis.document = { getElementById: (id) => (id === 'mallow-layer' ? layer : { append() {}, classList: { toggle() {} } }), addEventListener() {}, removeEventListener() {}, createElement: () => ({ style: {}, getContext: () => null }) };
+  try {
+    const { createWorld } = await import('../src/app/world.js');
+    const w = createWorld({ prefs: { get: () => false, reducedMotion: () => false }, audio: null });
+    w.showMallow(false);
+    assert.ok(layer.classList.has('hidden'));
+    assert.equal(layer.inert, true, 'no Tab stop on an invisible canvas');
+    assert.equal(layer.attrs['aria-hidden'], 'true', 'nothing announced for a Mallow that is not on screen');
+    w.showMallow(true);
+    assert.ok(!layer.classList.has('hidden'));
+    assert.equal(layer.inert, false);
+    assert.equal(layer.attrs['aria-hidden'], undefined);
+  } finally { globalThis.document = prevDoc; }
+});
+
+test('privacy copy: Settings → About and Plans say the same about Another Angle, from resolveEndpoint()', async () => {
+  const P = await import('../src/app/privacy.js');
+  const { resolveEndpoint } = await import('../src/beyond/endpoint.js');
+  const { ANGLE_ENDPOINT } = await import('../src/app/config.js');
+  // this build: no endpoint, so Another Angle works on the phone, in both places
+  assert.equal(resolveEndpoint({ loc: null }) === null, !ANGLE_ENDPOINT);
+  const local = P.aboutPrivacy({ endpoint: null });
+  assert.match(local, /^Nothing you type or add leaves this phone\. Another Angle in hushmallow Beyond works on this phone too: what you type there stays here\.$/);
+  assert.equal(P.plansBeyondNote({ endpoint: null }), 'Another Angle works on this phone: what you type stays here.');
+  assert.doesNotMatch(local, /server/);
+  // live (G1): both switch together; the Plans sentence is the one the owner approved
+  const live = P.aboutPrivacy({ endpoint: 'https://hushmallow-another-angle.vibyfy-chat.workers.dev' });
+  assert.match(live, /The one exception is Another Angle in hushmallow Beyond: only after you say yes, the words you choose go to our server/);
+  const approved = P.plansBeyondNote({ endpoint: 'https://x.workers.dev' });
+  assert.ok(read('docs/integration/DECISIONS.md').includes(`> ${approved}`), 'the DECISIONS "Plans page sentence", word for word');
+  assert.equal(P.angleLive(null), false);
+  // sign-in on: "nothing you type leaves" is no longer claimed; what an account keeps is named
+  const signed = P.aboutPrivacy({ endpoint: null, signIn: true });
+  assert.doesNotMatch(signed, /Nothing you type/);
+  assert.match(signed, /^Your words, feelings and photos stay on this phone\./);
+  assert.match(signed, /your email \(and your name and home Mallow, if you choose them\) is kept with it/);
+  assert.match(signed, /settings, favourite worlds, Memory Garden and where a Hushflow paused\. Never your words, feelings or photos\.$/);
+  // the account screen's own list says the same things are kept
+  const acct = read('src/app/scenes/account.js');
+  assert.match(acct, /settings, favourite worlds, Memory Garden tools and where a Hushflow paused/);
+  // and both screens use it (neither keeps its own copy of the clause)
+  const settings = read('src/app/scenes/settings.js'), plans = read('src/app/scenes/plans.js');
+  assert.match(settings, /aboutPrivacy\(\{ signIn, beyond: PLANS\.ultra\?\.name \|\| 'hushmallow Beyond' \}\)/);
+  assert.match(plans, /plansBeyondNote\(\)/);
+  for (const src of [settings, plans]) assert.doesNotMatch(src, /what you type stays here|your words go to our server/);
+});
+
+test('Settings: "Delete everything on this phone" says whose things it deletes once sign-in is on', () => {
+  const s = read('src/app/scenes/settings.js');
+  assert.match(s, /signedIn \? 'Delete this account’s things on this phone' : otherAccounts \? 'Delete the guest’s things on this phone' : 'Delete everything on this phone'/);
+  assert.match(s, /accountNamespaces\(globalThis\.localStorage\)\.length > 0/);
+  assert.match(s, /Accounts on this phone keep their own things\./);
+  assert.match(s, /title: signedIn \? 'Delete this account’s things\?' : otherAccounts \? 'Delete the guest’s things\?' : 'Delete everything\?'/);
+  assert.doesNotMatch(s, /there is no account/, 'the header comment is current');
+  assert.match(read('src/app/config.js'), /export const BUILD = '2026-10-13 · Hushfold pilot \+ optional sign-in';/);
+});
+
+test('account: addresses break only after "@" or a dot (the Settings row too); arrivals said on the card, not over it', async () => {
+  installDom();
+  const { emailParts, ARRIVALS, carriesArrival } = await import('../src/app/scenes/account.js');
+  // two whole halves, the break between them first ("qa89044@" / "example.com"), a dot only as a last resort inside one
+  const text = (n) => (typeof n === 'string' ? n : n.nodeType === 3 ? n.textContent : (n.children || []).map(text).join(''));
+  const parts = emailParts('qa89044@example.com');
+  assert.deepEqual(parts.map((p) => p.tagName), ['SPAN', 'WBR', 'SPAN']);
+  assert.deepEqual([text(parts[0]), text(parts[2])], ['qa89044@', 'example.com']);
+  assert.equal(parts[0].style.display, 'inline-block');
+  assert.equal(parts[2].children.filter((c) => c.tagName === 'WBR').length, 1, 'example.<wbr>com');
+  assert.deepEqual(emailParts('your email'), ['your email'], 'not an address: plain text');
+  const src = read('src/app/scenes/account.js');
+  const row = src.slice(src.indexOf('export function mountAccountRow('), src.indexOf('const PRIVACY_LINE'));
+  assert.match(row, /\.\.\.emailParts\(email\)/);
+  assert.doesNotMatch(row, /overflowWrap: 'anywhere'/, 'never mid-word');
+  // the card's lede says the arrival; main.js hands the notice over instead of toasting over the card
+  assert.ok(ARRIVALS.includes('signed-in') && ARRIVALS.includes('verified'));
+  assert.equal(carriesArrival('account', 'signed-in'), true);
+  assert.equal(carriesArrival('guest-choice', 'verified'), true);
+  assert.equal(carriesArrival('welcome', 'signed-out'), false, 'any other notice is still a toast');
+  assert.match(src, /if \(params\.notice && !carriesArrival\(first, params\.arrived\)\) later\(\(\) => toast\(params\.notice, 3600\), 500\);/);
+  const main = read('src/app/main.js');
+  assert.match(main, /if \(said && !opensAccount\) setTimeout\(\(\) => toast\(said, 3600\), 500\);/);
+  assert.match(main, /app\.go\('account', \{ arrived: AUTH\.notice \|\| null, notice: said \}\)/);
+  // check email: one line when it fits ("Confirmed? Sign in" on a small phone), never a lone "in"
+  assert.match(src, /after: \(\) => fitPill\(confirmed, 'Confirmed\? Sign in'\)/);
+  assert.match(read('src/auth/auth.css'), /\.hm-auth-btn \{[^}]*text-wrap: balance;/);
+  assert.match(read('src/auth/auth.css'), /\.hm-auth-btn\.fit-one \{ white-space: nowrap; text-wrap: nowrap; \}/, 'text-wrap: balance never undoes .fit-one');
+});
+
+test('garden: the "Where this comes from" chevron fits inside its button', () => {
+  const g = read('src/app/scenes/garden.js');
+  assert.match(g, /\.hg-more \{[^}]*padding: 0 4px 0 0;/);
 });

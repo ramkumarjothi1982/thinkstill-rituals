@@ -116,9 +116,10 @@ const CSS = `
 .hg-sources .n { font: var(--type-row, 600 calc(16px * var(--hg-k))/1.3 var(--hg-ff-ui)); font-weight: 700; color: #f3efff; }
 .hg-sources .g { font: var(--type-caption, 550 calc(13px * var(--hg-k))/1.4 var(--hg-ff-ui)); color: #b9b2dc; margin-top: 2px; }
 .hg-sources q { display: block; margin-top: 8px; font: var(--type-body, 500 calc(17px * var(--hg-k))/1.5 var(--hg-ff-voice)); color: #dcd5f3; quotes: "“" "”"; }
-.hg-more { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 6px; padding: 0; border: 0; background: none; color: #ffd98a; cursor: pointer;
+.hg-more { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 6px; padding: 0 4px 0 0; border: 0; background: none; color: #ffd98a; cursor: pointer;
   font: var(--type-row, 600 calc(16px * var(--hg-k))/1.3 var(--hg-ff-ui)); }
-.hg-more::after { content: ''; width: 8px; height: 8px; margin-top: -4px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform .25s ease, margin .25s ease; }
+/* the chevron is a rotated 10 px square (about 14 px across): the 4 px of end padding keep it inside the button */
+.hg-more::after { content: ''; flex: 0 0 auto; width: 8px; height: 8px; margin-top: -4px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform .25s ease, margin .25s ease; }
 .hg-more[aria-expanded="true"]::after { transform: rotate(-135deg); margin-top: 4px; }
 .hg-more:focus-visible { outline: 2.5px solid #ffd98a; outline-offset: 3px; }
 .hg-more-body[hidden] { display: none; }
