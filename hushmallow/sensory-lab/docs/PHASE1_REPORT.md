@@ -10,6 +10,7 @@ It is waiting for your visual approval before Phase 2.
 | Base commit | `57c0a5d38ceeb06ce78ed27e6eec2f6da57108ef` (main) |
 | Hero Mallow | Boppo. All seven load through the same code (`?mallow=<id>`), but only Boppo is tuned. |
 | Production files changed | **none**. Everything is under `hushmallow/sensory-lab/`. |
+| Preview link | private claude.ai artifact: https://claude.ai/artifact/LDiTDFQuZJrhzhHx9N9dtb (only the owner can open it unless shared from its Share menu) |
 
 ## What is actually built
 
@@ -75,8 +76,8 @@ the artwork itself deforms.
 
 | Suite | Result |
 |---|---|
-| `node --test hushmallow/sensory-lab/tests/*.test.mjs` (physics, gestures, personality, expression, prefs) | **28 / 28 pass** |
-| `node hushmallow/sensory-lab/tests/e2e.cjs` (Chromium; 390×844, 375×812, 320×568, 412×915 Android, 1280×860) | **268 / 268 pass** (`docs/phase1/e2e-results.json`) |
+| `node --test hushmallow/sensory-lab/tests/*.test.mjs` (physics, gestures, personality, expression, prefs) | **29 / 29 pass** |
+| `node hushmallow/sensory-lab/tests/e2e.cjs` (Chromium; 390×844, 375×812, 320×568, 412×915 Android, 1280×860) | **308 / 308 pass** (`docs/phase1/e2e-results.json`) |
 | Main app tests (`node --test hushmallow/tests/*.test.mjs`) | **69 / 69 pass** (unchanged; this folder isn't in their scope) |
 
 For every viewport, the browser suite checks the following. Recognition: tap,
@@ -103,6 +104,21 @@ physical phone is still listed in the checklist below.
 Screenshots for every viewport are in `docs/phase1/`. The demo video was
 recorded with simulated input at 390×844.
 
+## Hosted preview
+The private preview link is published from a copy of this folder plus the
+read-only production modules and art it imports (51 files, 4.3 MB). The copy
+is laid out like `hushmallow/`, and the self-hosted font is swapped for
+Fredoka from Google Fonts. Before publishing, it went through three review
+rounds plus a closing review: the full browser suite, an imitation of the
+viewer's sandboxed frame (blocked storage, host-set theme, plain-hash deep
+links, opaque-origin art), a contract audit, and adversarial code reviews.
+The fixes they produced are in the commits after `319591d`. Differences from
+running it locally:
+- The theme follows the device or Claude's light/dark setting by default.
+- The Mallow and quality pickers are in Settings, because the query string
+  never reaches a hosted page.
+- Routes are plain hash tokens (`#touchtalk`, `#softbody`).
+
 ## Known issues and limits
 - **Only Boppo is tuned.** The other six run through the same code and look
   right in quick previews, but their softness, framing and per-Mallow
@@ -117,6 +133,10 @@ recorded with simulated input at 390×844.
 - **Haptics:** these use the main app's haptics helper. They work on Android
   Chrome; iPhone browsers have no vibration API, so iPhone needs the native
   wrapper.
+- **Light theme and particles:** some of the main app's particle colours
+  (white stars, puffs, dust, Noomi's moons) are pale on the light stage.
+  They live in the production `src/mallows/particles.js`, which the lab
+  doesn't modify.
 - **Sound:** the lab's volume and mute are separate from the main app's.
   They'll share one preference at integration.
 

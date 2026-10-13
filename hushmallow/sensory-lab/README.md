@@ -11,7 +11,12 @@ and it doesn't change any file outside `hushmallow/sensory-lab/`.
 | Branch | `claude/epic-mendel-3lfmuy` (this session's authorised branch, see "Branch" below) |
 | Phase | **1 of 6**: foundation + Mallow TouchTalk + SoftBody Lab, tuned on **Boppo** |
 
-## Run it
+## Try it
+
+The private preview link (only its owner can open it unless shared) is
+https://claude.ai/artifact/LDiTDFQuZJrhzhHx9N9dtb
+
+## Run it locally
 
 ```bash
 # from the repository root (the folder that contains hushmallow/)
@@ -25,8 +30,8 @@ On a phone on the same Wi-Fi, use your computer's IP address in place of
 
 | Option | Effect |
 |---|---|
-| `#/touchtalk`, `#/softbody` | open an experience directly |
-| `?mallow=blubi` (or any Mallow) | preview another Mallow. These aren't tuned yet (Phase 2) |
+| `#touchtalk`, `#softbody` | open an experience directly |
+| `?mallow=blubi` (or any Mallow) | preview another Mallow (also in Settings). These aren't tuned yet (Phase 2) |
 | `?quality=high\|medium\|low` | force a soft-body quality tier (the default is automatic) |
 
 ## Gestures

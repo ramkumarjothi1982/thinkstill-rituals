@@ -1,6 +1,6 @@
 {
- "when": "2026-10-13T10:13:19.826Z",
- "passed": 268,
+ "when": "2026-10-13T12:26:51.424Z",
+ "passed": 308,
  "failed": 0,
  "results": [
   {
@@ -47,9 +47,27 @@
   },
   {
    "vp": "iphone-390x844",
+   "name": "Mallow picker switches the Mallow in place",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"canvases\":1,\"focus\":\"Settings\",\"stored\":\"blubi\"}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "focus returns to Settings after a switch",
+   "ok": true,
+   "detail": "Settings"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "Reset restores defaults without closing or reloading",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"theme\":null,\"pref\":\"system\",\"motion\":false,\"monitor\":true}"
+  },
+  {
+   "vp": "iphone-390x844",
    "name": "lab stores only its own key",
    "ok": true,
-   "detail": "hm.sensorylab.v1"
+   "detail": ""
   },
   {
    "vp": "iphone-390x844",
@@ -91,7 +109,7 @@
    "vp": "iphone-390x844",
    "name": "touchtalk: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":91.90213336614819,\"y\":484.86472676791385,\"w\":206.17563164472523,\"h\":224.09527323208607}"
+   "detail": "{\"x\":92.01903194947705,\"y\":484.58399495534707,\"w\":205.943518133078,\"h\":224.37600504465286}"
   },
   {
    "vp": "iphone-390x844",
@@ -101,1311 +119,1503 @@
   },
   {
    "vp": "iphone-390x844",
-   "name": "tap dents the soft body",
-   "ok": true,
-   "detail": "offset 0.040"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "Mallow looks toward the finger",
-   "ok": true,
-   "detail": "{\"x\":-0.19122001452323717,\"y\":0.24367102455753867,\"t\":0.7340000000000002}"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "double tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "hold recognised and released",
-   "ok": true,
-   "detail": "hold,holdend"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "stroke recognised (sweep onto the body)",
-   "ok": true,
-   "detail": "stroke,stroke,strokeend"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "drag stretches the Mallow",
-   "ok": true,
-   "detail": "squash -0.188"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "release recognised",
-   "ok": true,
-   "detail": "drag,release"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "settles back to shape after release",
-   "ok": true,
-   "detail": "{\"o\":\"0.038\",\"s\":\"-0.035\"}"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "pinch squeeze recognised",
-   "ok": true,
-   "detail": "squeeze,release"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "pinch compresses the body",
-   "ok": true,
-   "detail": "squash 0.392"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "touchtalk + gesture buttons: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "touchtalk + gesture buttons: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "touchtalk + gesture buttons: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "touchtalk + gesture buttons: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "touchtalk + gesture buttons: no horizontal page scroll",
-   "ok": true,
-   "detail": "390 > 390"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "touchtalk + gesture buttons: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":93.22137458062127,\"y\":377.4749749334141,\"w\":203.68802372606123,\"h\":231.5250250665859}"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "gesture buttons drive tap/double/stroke/squeeze",
-   "ok": true,
-   "detail": "tap,doubletap,stroke,stroke,strokeend,squeeze,release"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "squeeze button compresses",
-   "ok": true,
-   "detail": "squash 0.323"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "keyboard shortcuts work",
-   "ok": true,
-   "detail": "doubletap,hold,holdend"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "simulation pauses when the page is hidden and resumes",
-   "ok": true,
-   "detail": "{\"paused\":true,\"resumed\":true}"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "back returns to the lab",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "touchtalk: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "softbody: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "softbody: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "softbody: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "softbody: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "softbody: no horizontal page scroll",
-   "ok": true,
-   "detail": "390 > 390"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "softbody: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":92.41916566097663,\"y\":420.4520457241483,\"w\":205.1442530331008,\"h\":225.54795427585168}"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "material marshmallow applied",
-   "ok": true,
-   "detail": "marshmallow"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "material jelly applied",
-   "ok": true,
-   "detail": "jelly"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "material mochi applied",
-   "ok": true,
-   "detail": "mochi"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "material cloud applied",
-   "ok": true,
-   "detail": "cloud"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "material pillow applied",
-   "ok": true,
-   "detail": "pillow"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "mochi stretches more than jelly",
-   "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.17341207270966907,\"maxE\":0.30682840225791247},\"jelly\":{\"stretch\":0.16864576502021822,\"maxE\":1.2687596185811523},\"mochi\":{\"stretch\":0.2991828867496311,\"maxE\":1.2632113682240198},\"cloud\":{\"stretch\":0.22048814653501703,\"maxE\":0.4390644501104295},\"pillow\":{\"stretch\":0.16218064045385705,\"maxE\":0.33601967968938823}}"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "jelly rebounds livelier than marshmallow",
-   "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.17341207270966907,\"maxE\":0.30682840225791247},\"jelly\":{\"stretch\":0.16864576502021822,\"maxE\":1.2687596185811523},\"mochi\":{\"stretch\":0.2991828867496311,\"maxE\":1.2632113682240198},\"cloud\":{\"stretch\":0.22048814653501703,\"maxE\":0.4390644501104295},\"pillow\":{\"stretch\":0.16218064045385705,\"maxE\":0.33601967968938823}}"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "cloud floats",
-   "ok": true,
-   "detail": "-24.10511696300982"
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "mesh overlay toggles",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-390x844",
-   "name": "softbody: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "home lists 10 experiences, 2 playable",
-   "ok": true,
-   "detail": "10/2"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "no leaked canvases or screens after 12 switches",
-   "ok": true,
-   "detail": "{\"canvases\":1,\"screens\":1,\"live\":0}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "no audio before a user gesture",
-   "ok": true,
-   "detail": "none"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "sounds play after unlock and every voice is cleaned up",
-   "ok": true,
-   "detail": "{\"before\":\"none\",\"state\":\"running\",\"peak\":13,\"after\":0,\"mutedPlays\":null}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "mute silences the Mallow",
-   "ok": true,
-   "detail": "null"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "reduced motion reaches the rig and calms the physics",
-   "ok": true,
-   "detail": "{\"rm\":true,\"theme\":\"light\",\"damp\":27}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "light theme applies",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "lab stores only its own key",
-   "ok": true,
-   "detail": "hm.sensorylab.v1"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "lifecycle: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk: no horizontal page scroll",
-   "ok": true,
-   "detail": "375 > 375"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":88.50155910362128,\"y\":466.20966625915804,\"w\":197.97762123430797,\"h\":215.8703337408419}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "tap dents the soft body",
-   "ok": true,
-   "detail": "offset 0.038"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "Mallow looks toward the finger",
-   "ok": true,
-   "detail": "{\"x\":-0.19122005208333334,\"y\":0.24387343533520653,\"t\":0.7174999999999999}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "double tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "hold recognised and released",
-   "ok": true,
-   "detail": "hold,holdend"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "stroke recognised (sweep onto the body)",
-   "ok": true,
-   "detail": "stroke,stroke,strokeend"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "drag stretches the Mallow",
-   "ok": true,
-   "detail": "squash -0.198"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "release recognised",
-   "ok": true,
-   "detail": "drag,release"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "settles back to shape after release",
-   "ok": true,
-   "detail": "{\"o\":\"0.034\",\"s\":\"-0.032\"}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "pinch squeeze recognised",
-   "ok": true,
-   "detail": "squeeze,release"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "pinch compresses the body",
-   "ok": true,
-   "detail": "squash 0.401"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk + gesture buttons: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk + gesture buttons: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk + gesture buttons: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk + gesture buttons: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk + gesture buttons: no horizontal page scroll",
-   "ok": true,
-   "detail": "375 > 375"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk + gesture buttons: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":86.45508899004018,\"y\":358.74636538349995,\"w\":202.1046741040596,\"h\":218.25363461650005}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "gesture buttons drive tap/double/stroke/squeeze",
-   "ok": true,
-   "detail": "tap,doubletap,stroke,stroke,strokeend,squeeze,release"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "squeeze button compresses",
-   "ok": true,
-   "detail": "squash 0.317"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "keyboard shortcuts work",
-   "ok": true,
-   "detail": "doubletap,hold,holdend"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "simulation pauses when the page is hidden and resumes",
-   "ok": true,
-   "detail": "{\"paused\":true,\"resumed\":true}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "back returns to the lab",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "touchtalk: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "softbody: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "softbody: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "softbody: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "softbody: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "softbody: no horizontal page scroll",
-   "ok": true,
-   "detail": "375 > 375"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "softbody: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":89.0016978964763,\"y\":396.6709813365193,\"w\":196.980614337698,\"h\":217.32901866348072}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "material marshmallow applied",
-   "ok": true,
-   "detail": "marshmallow"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "material jelly applied",
-   "ok": true,
-   "detail": "jelly"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "material mochi applied",
-   "ok": true,
-   "detail": "mochi"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "material cloud applied",
-   "ok": true,
-   "detail": "cloud"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "material pillow applied",
-   "ok": true,
-   "detail": "pillow"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "mochi stretches more than jelly",
-   "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.1697996937235049,\"maxE\":0.3182051422735419},\"jelly\":{\"stretch\":0.15369742280828413,\"maxE\":0.944082076823443},\"mochi\":{\"stretch\":0.33698071635617755,\"maxE\":1.5621138842407654},\"cloud\":{\"stretch\":0.18439992593125343,\"maxE\":0.34710976381548947},\"pillow\":{\"stretch\":0.13146282843265067,\"maxE\":0.36121595001973067}}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "jelly rebounds livelier than marshmallow",
-   "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.1697996937235049,\"maxE\":0.3182051422735419},\"jelly\":{\"stretch\":0.15369742280828413,\"maxE\":0.944082076823443},\"mochi\":{\"stretch\":0.33698071635617755,\"maxE\":1.5621138842407654},\"cloud\":{\"stretch\":0.18439992593125343,\"maxE\":0.34710976381548947},\"pillow\":{\"stretch\":0.13146282843265067,\"maxE\":0.36121595001973067}}"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "cloud floats",
-   "ok": true,
-   "detail": "-25.71220159747265"
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "mesh overlay toggles",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-375x812",
-   "name": "softbody: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "home lists 10 experiences, 2 playable",
-   "ok": true,
-   "detail": "10/2"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "no leaked canvases or screens after 12 switches",
-   "ok": true,
-   "detail": "{\"canvases\":1,\"screens\":1,\"live\":0}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "no audio before a user gesture",
-   "ok": true,
-   "detail": "none"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "sounds play after unlock and every voice is cleaned up",
-   "ok": true,
-   "detail": "{\"before\":\"none\",\"state\":\"running\",\"peak\":13,\"after\":0,\"mutedPlays\":null}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "mute silences the Mallow",
-   "ok": true,
-   "detail": "null"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "reduced motion reaches the rig and calms the physics",
-   "ok": true,
-   "detail": "{\"rm\":true,\"theme\":\"light\",\"damp\":27}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "light theme applies",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "lab stores only its own key",
-   "ok": true,
-   "detail": "hm.sensorylab.v1"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "lifecycle: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk: no horizontal page scroll",
-   "ok": true,
-   "detail": "320 > 320"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":77.42020479586304,\"y\":261.2204368010461,\"w\":165.14411408455499,\"h\":179.77956319895392}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "tap dents the soft body",
-   "ok": true,
-   "detail": "offset 0.038"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "Mallow looks toward the finger",
-   "ok": true,
-   "detail": "{\"x\":-0.1868316650390625,\"y\":0.17552917910293786,\"t\":0.9676000000000003}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "double tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "hold recognised and released",
-   "ok": true,
-   "detail": "hold,holdend"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "stroke recognised (sweep onto the body)",
-   "ok": true,
-   "detail": "stroke,stroke,strokeend"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "drag stretches the Mallow",
-   "ok": true,
-   "detail": "squash -0.204"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "release recognised",
-   "ok": true,
-   "detail": "drag,release"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "settles back to shape after release",
-   "ok": true,
-   "detail": "{\"o\":\"0.016\",\"s\":\"0.005\"}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "pinch squeeze recognised",
-   "ok": true,
-   "detail": "squeeze,release"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "pinch compresses the body",
-   "ok": true,
-   "detail": "squash 0.418"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk + gesture buttons: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk + gesture buttons: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk + gesture buttons: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk + gesture buttons: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk + gesture buttons: no horizontal page scroll",
-   "ok": true,
-   "detail": "320 > 320"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk + gesture buttons: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":105.20162333986019,\"y\":202.61881974142773,\"w\":109.59066795651727,\"h\":130.38118025857233}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "gesture buttons drive tap/double/stroke/squeeze",
-   "ok": true,
-   "detail": "tap,doubletap,stroke,stroke,strokeend,squeeze,release"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "squeeze button compresses",
-   "ok": true,
-   "detail": "squash 0.395"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "keyboard shortcuts work",
-   "ok": true,
-   "detail": "doubletap,hold,holdend"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "simulation pauses when the page is hidden and resumes",
-   "ok": true,
-   "detail": "{\"paused\":true,\"resumed\":true}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "back returns to the lab",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "touchtalk: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "softbody: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "softbody: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "softbody: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "softbody: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "softbody: no horizontal page scroll",
-   "ok": true,
-   "detail": "320 > 320"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "softbody: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":94.23893136331746,\"y\":227.20950811474793,\"w\":131.5107882401811,\"h\":142.79049188525207}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "material marshmallow applied",
-   "ok": true,
-   "detail": "marshmallow"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "material jelly applied",
-   "ok": true,
-   "detail": "jelly"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "material mochi applied",
-   "ok": true,
-   "detail": "mochi"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "material cloud applied",
-   "ok": true,
-   "detail": "cloud"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "material pillow applied",
-   "ok": true,
-   "detail": "pillow"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "mochi stretches more than jelly",
-   "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.20416724501685724,\"maxE\":0.36828893398551915},\"jelly\":{\"stretch\":0.19808265590811325,\"maxE\":1.4672900579256345},\"mochi\":{\"stretch\":0.44095705748112146,\"maxE\":2.0906207694964083},\"cloud\":{\"stretch\":0.23317673280682016,\"maxE\":0.6203147155537052},\"pillow\":{\"stretch\":0.20345141410568512,\"maxE\":0.6194093741433955}}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "jelly rebounds livelier than marshmallow",
-   "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.20416724501685724,\"maxE\":0.36828893398551915},\"jelly\":{\"stretch\":0.19808265590811325,\"maxE\":1.4672900579256345},\"mochi\":{\"stretch\":0.44095705748112146,\"maxE\":2.0906207694964083},\"cloud\":{\"stretch\":0.23317673280682016,\"maxE\":0.6203147155537052},\"pillow\":{\"stretch\":0.20345141410568512,\"maxE\":0.6194093741433955}}"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "cloud floats",
-   "ok": true,
-   "detail": "-26.404320577370015"
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "mesh overlay toggles",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "iphone-se-320x568",
-   "name": "softbody: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "home lists 10 experiences, 2 playable",
-   "ok": true,
-   "detail": "10/2"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "no leaked canvases or screens after 12 switches",
-   "ok": true,
-   "detail": "{\"canvases\":1,\"screens\":1,\"live\":0}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "no audio before a user gesture",
-   "ok": true,
-   "detail": "none"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "sounds play after unlock and every voice is cleaned up",
-   "ok": true,
-   "detail": "{\"before\":\"none\",\"state\":\"running\",\"peak\":13,\"after\":0,\"mutedPlays\":null}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "mute silences the Mallow",
-   "ok": true,
-   "detail": "null"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "reduced motion reaches the rig and calms the physics",
-   "ok": true,
-   "detail": "{\"rm\":true,\"theme\":\"light\",\"damp\":27}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "light theme applies",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "lab stores only its own key",
-   "ok": true,
-   "detail": "hm.sensorylab.v1"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "lifecycle: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk: no horizontal page scroll",
-   "ok": true,
-   "detail": "412 > 412"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":98.69937766573494,\"y\":525.015152774689,\"w\":214.59133780922457,\"h\":243.584847225311}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "tap dents the soft body",
-   "ok": true,
-   "detail": "offset 0.040"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "Mallow looks toward the finger",
-   "ok": true,
-   "detail": "{\"x\":-0.19122003351600425,\"y\":0.25277968109631144,\"t\":0.6841000000000003}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "double tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "hold recognised and released",
-   "ok": true,
-   "detail": "hold,holdend"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "stroke recognised (sweep onto the body)",
-   "ok": true,
-   "detail": "stroke,stroke,strokeend"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "drag stretches the Mallow",
-   "ok": true,
-   "detail": "squash -0.211"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "release recognised",
-   "ok": true,
-   "detail": "drag,release"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "settles back to shape after release",
-   "ok": true,
-   "detail": "{\"o\":\"0.018\",\"s\":\"-0.023\"}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "pinch squeeze recognised",
-   "ok": true,
-   "detail": "squeeze,release"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "pinch compresses the body",
-   "ok": true,
-   "detail": "squash 0.411"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk + gesture buttons: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk + gesture buttons: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk + gesture buttons: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk + gesture buttons: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk + gesture buttons: no horizontal page scroll",
-   "ok": true,
-   "detail": "412 > 412"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk + gesture buttons: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":99.87045018512276,\"y\":432.94279026637787,\"w\":212.28680117495895,\"h\":247.05720973362216}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "gesture buttons drive tap/double/stroke/squeeze",
-   "ok": true,
-   "detail": "tap,doubletap,stroke,stroke,strokeend,squeeze,release"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "squeeze button compresses",
-   "ok": true,
-   "detail": "squash 0.146"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "keyboard shortcuts work",
-   "ok": true,
-   "detail": "doubletap,hold,holdend"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "simulation pauses when the page is hidden and resumes",
-   "ok": true,
-   "detail": "{\"paused\":true,\"resumed\":true}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "back returns to the lab",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "touchtalk: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "softbody: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "softbody: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "softbody: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "softbody: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "softbody: no horizontal page scroll",
-   "ok": true,
-   "detail": "412 > 412"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "softbody: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":97.2748180239436,\"y\":479.1381622321434,\"w\":217.43651774244273,\"h\":237.86183776785666}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "material marshmallow applied",
-   "ok": true,
-   "detail": "marshmallow"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "material jelly applied",
-   "ok": true,
-   "detail": "jelly"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "material mochi applied",
-   "ok": true,
-   "detail": "mochi"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "material cloud applied",
-   "ok": true,
-   "detail": "cloud"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "material pillow applied",
-   "ok": true,
-   "detail": "pillow"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "mochi stretches more than jelly",
-   "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.19361216635284761,\"maxE\":0.30466355838431214},\"jelly\":{\"stretch\":0.13112287470982475,\"maxE\":1.1040244318122212},\"mochi\":{\"stretch\":0.3237157388727685,\"maxE\":1.4023555673682475},\"cloud\":{\"stretch\":0.16328544648753462,\"maxE\":0.4414331606496426},\"pillow\":{\"stretch\":0.1793471372343023,\"maxE\":0.4480118022543904}}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "jelly rebounds livelier than marshmallow",
-   "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.19361216635284761,\"maxE\":0.30466355838431214},\"jelly\":{\"stretch\":0.13112287470982475,\"maxE\":1.1040244318122212},\"mochi\":{\"stretch\":0.3237157388727685,\"maxE\":1.4023555673682475},\"cloud\":{\"stretch\":0.16328544648753462,\"maxE\":0.4414331606496426},\"pillow\":{\"stretch\":0.1793471372343023,\"maxE\":0.4480118022543904}}"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "cloud floats",
-   "ok": true,
-   "detail": "-26.2026859104606"
-  },
-  {
-   "vp": "android-412x915",
-   "name": "mesh overlay toggles",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "android-412x915",
-   "name": "softbody: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "home lists 10 experiences, 2 playable",
-   "ok": true,
-   "detail": "10/2"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "no leaked canvases or screens after 12 switches",
-   "ok": true,
-   "detail": "{\"canvases\":1,\"screens\":1,\"live\":0}"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "no audio before a user gesture",
-   "ok": true,
-   "detail": "none"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "sounds play after unlock and every voice is cleaned up",
-   "ok": true,
-   "detail": "{\"before\":\"none\",\"state\":\"running\",\"peak\":13,\"after\":0,\"mutedPlays\":null}"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "mute silences the Mallow",
-   "ok": true,
-   "detail": "null"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "reduced motion reaches the rig and calms the physics",
-   "ok": true,
-   "detail": "{\"rm\":true,\"theme\":\"light\",\"damp\":27}"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "light theme applies",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "lab stores only its own key",
-   "ok": true,
-   "detail": "hm.sensorylab.v1"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "lifecycle: no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "touchtalk: controls don't overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "touchtalk: controls never cover the Mallow",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "touchtalk: controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "touchtalk: touch targets ≥ 38px tall",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "touchtalk: no horizontal page scroll",
-   "ok": true,
-   "detail": "1280 > 1280"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "touchtalk: Mallow fully visible",
-   "ok": true,
-   "detail": "{\"x\":519.6798615360927,\"y\":449.2808894536184,\"w\":240.62568744045265,\"h\":273.1191105463816}"
-  },
-  {
-   "vp": "desktop-1280x860",
-   "name": "tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "vp": "desktop-1280x860",
    "name": "tap dents the soft body",
    "ok": true,
    "detail": "offset 0.039"
   },
   {
+   "vp": "iphone-390x844",
+   "name": "Mallow looks toward the finger",
+   "ok": true,
+   "detail": "{\"x\":-0.19122001452323717,\"y\":0.24367102455753867,\"t\":0.8677000000000005}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "double tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "hold recognised and released",
+   "ok": true,
+   "detail": "hold,holdend"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "stroke recognised (sweep onto the body)",
+   "ok": true,
+   "detail": "stroke,stroke,strokeend"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "drag stretches the Mallow",
+   "ok": true,
+   "detail": "squash -0.191"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "release recognised",
+   "ok": true,
+   "detail": "drag,release"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "settles back to shape after release",
+   "ok": true,
+   "detail": "{\"o\":\"0.031\",\"s\":\"-0.025\"}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "pinch squeeze recognised",
+   "ok": true,
+   "detail": "squeeze,release"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "pinch compresses the body",
+   "ok": true,
+   "detail": "squash 0.416"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "touchtalk + gesture buttons: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "touchtalk + gesture buttons: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "touchtalk + gesture buttons: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "touchtalk + gesture buttons: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "touchtalk + gesture buttons: no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "touchtalk + gesture buttons: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":88.23703559502003,\"y\":391.5544412570333,\"w\":213.4980402430098,\"h\":217.44555874296668}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "gesture buttons drive tap/double/stroke/squeeze",
+   "ok": true,
+   "detail": "tap,doubletap,stroke,stroke,strokeend,squeeze,release"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "squeeze button compresses",
+   "ok": true,
+   "detail": "squash 0.302"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "keyboard shortcuts work",
+   "ok": true,
+   "detail": "doubletap,hold,holdend"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "simulation pauses when the page is hidden and resumes",
+   "ok": true,
+   "detail": "{\"paused\":true,\"resumed\":true}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "back returns to the lab",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "touchtalk: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "softbody: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "softbody: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "softbody: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "softbody: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "softbody: no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "softbody: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":92.37236181214202,\"y\":419.4029129623388,\"w\":205.23495960774233,\"h\":226.5970870376612}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "material marshmallow applied",
+   "ok": true,
+   "detail": "marshmallow"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "material jelly applied",
+   "ok": true,
+   "detail": "jelly"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "material mochi applied",
+   "ok": true,
+   "detail": "mochi"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "material cloud applied",
+   "ok": true,
+   "detail": "cloud"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "material pillow applied",
+   "ok": true,
+   "detail": "pillow"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "mochi stretches more than jelly",
+   "ok": true,
+   "detail": "{\"marshmallow\":{\"stretch\":0.1849287180673631,\"maxE\":0.310746546862592},\"jelly\":{\"stretch\":0.14377294435381316,\"maxE\":1.0337244047369916},\"mochi\":{\"stretch\":0.3751686003221164,\"maxE\":1.8345644108419281},\"cloud\":{\"stretch\":0.16127685835783434,\"maxE\":0.3104534038351655},\"pillow\":{\"stretch\":0.15377016102677565,\"maxE\":0.4101632649276117}}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "jelly rebounds livelier than marshmallow",
+   "ok": true,
+   "detail": "{\"marshmallow\":{\"stretch\":0.1849287180673631,\"maxE\":0.310746546862592},\"jelly\":{\"stretch\":0.14377294435381316,\"maxE\":1.0337244047369916},\"mochi\":{\"stretch\":0.3751686003221164,\"maxE\":1.8345644108419281},\"cloud\":{\"stretch\":0.16127685835783434,\"maxE\":0.3104534038351655},\"pillow\":{\"stretch\":0.15377016102677565,\"maxE\":0.4101632649276117}}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "cloud floats",
+   "ok": true,
+   "detail": "-28.734976226525816"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "mesh overlay toggles",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "softbody: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "audio test is meaningful (no user activation before the tap)",
+   "ok": true,
+   "detail": "{\"cx\":195,\"base\":708.9599999999999,\"h\":250.6180871626767,\"active\":false,\"state\":\"none\"}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "no audio before the first touch",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "the first real tap on the Mallow starts sound",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "the first touch is recognised as a tap",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "iphone-390x844",
+   "name": "audio gesture test: no page errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "home lists 10 experiences, 2 playable",
+   "ok": true,
+   "detail": "10/2"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "no leaked canvases or screens after 12 switches",
+   "ok": true,
+   "detail": "{\"canvases\":1,\"screens\":1,\"live\":0}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "no audio before a user gesture",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "sounds play after unlock and every voice is cleaned up",
+   "ok": true,
+   "detail": "{\"before\":\"none\",\"state\":\"running\",\"peak\":13,\"after\":0,\"mutedPlays\":null}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "mute silences the Mallow",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "reduced motion reaches the rig and calms the physics",
+   "ok": true,
+   "detail": "{\"rm\":true,\"theme\":\"light\",\"damp\":27}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "light theme applies",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "Mallow picker switches the Mallow in place",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"canvases\":1,\"focus\":\"Settings\",\"stored\":\"blubi\"}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "focus returns to Settings after a switch",
+   "ok": true,
+   "detail": "Settings"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "Reset restores defaults without closing or reloading",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"theme\":null,\"pref\":\"system\",\"motion\":false,\"monitor\":true}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "lab stores only its own key",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "lifecycle: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk: no horizontal page scroll",
+   "ok": true,
+   "detail": "375 > 375"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":88.192374655779,\"y\":466.4314607791219,\"w\":198.59556992132187,\"h\":215.64853922087804}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "tap dents the soft body",
+   "ok": true,
+   "detail": "offset 0.043"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "Mallow looks toward the finger",
+   "ok": true,
+   "detail": "{\"x\":-0.19122005208333334,\"y\":0.24387343533520653,\"t\":0.6676000000000001}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "double tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "hold recognised and released",
+   "ok": true,
+   "detail": "hold,holdend"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "stroke recognised (sweep onto the body)",
+   "ok": true,
+   "detail": "stroke,stroke,strokeend"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "drag stretches the Mallow",
+   "ok": true,
+   "detail": "squash -0.195"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "release recognised",
+   "ok": true,
+   "detail": "drag,release"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "settles back to shape after release",
+   "ok": true,
+   "detail": "{\"o\":\"0.024\",\"s\":\"-0.011\"}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "pinch squeeze recognised",
+   "ok": true,
+   "detail": "squeeze,release"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "pinch compresses the body",
+   "ok": true,
+   "detail": "squash 0.396"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk + gesture buttons: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk + gesture buttons: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk + gesture buttons: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk + gesture buttons: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk + gesture buttons: no horizontal page scroll",
+   "ok": true,
+   "detail": "375 > 375"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk + gesture buttons: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":84.86840791229089,\"y\":365.5148328949394,\"w\":205.25867345405902,\"h\":211.4851671050606}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "gesture buttons drive tap/double/stroke/squeeze",
+   "ok": true,
+   "detail": "tap,doubletap,stroke,stroke,strokeend,squeeze,release"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "squeeze button compresses",
+   "ok": true,
+   "detail": "squash 0.275"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "keyboard shortcuts work",
+   "ok": true,
+   "detail": "doubletap,hold,holdend"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "simulation pauses when the page is hidden and resumes",
+   "ok": true,
+   "detail": "{\"paused\":true,\"resumed\":true}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "back returns to the lab",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "touchtalk: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "softbody: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "softbody: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "softbody: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "softbody: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "softbody: no horizontal page scroll",
+   "ok": true,
+   "detail": "375 > 375"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "softbody: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":89.77456349462597,\"y\":392.39467059914006,\"w\":195.4452179415862,\"h\":221.60532940085994}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "material marshmallow applied",
+   "ok": true,
+   "detail": "marshmallow"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "material jelly applied",
+   "ok": true,
+   "detail": "jelly"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "material mochi applied",
+   "ok": true,
+   "detail": "mochi"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "material cloud applied",
+   "ok": true,
+   "detail": "cloud"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "material pillow applied",
+   "ok": true,
+   "detail": "pillow"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "mochi stretches more than jelly",
+   "ok": true,
+   "detail": "{\"marshmallow\":{\"stretch\":0.19581135021297902,\"maxE\":0.35438187768357365},\"jelly\":{\"stretch\":0.14974096885739474,\"maxE\":0.9222026744969894},\"mochi\":{\"stretch\":0.37868571081933355,\"maxE\":1.803939897754405},\"cloud\":{\"stretch\":0.18066324345566454,\"maxE\":0.39743043773429954},\"pillow\":{\"stretch\":0.1945318939858871,\"maxE\":0.5201815485519934}}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "jelly rebounds livelier than marshmallow",
+   "ok": true,
+   "detail": "{\"marshmallow\":{\"stretch\":0.19581135021297902,\"maxE\":0.35438187768357365},\"jelly\":{\"stretch\":0.14974096885739474,\"maxE\":0.9222026744969894},\"mochi\":{\"stretch\":0.37868571081933355,\"maxE\":1.803939897754405},\"cloud\":{\"stretch\":0.18066324345566454,\"maxE\":0.39743043773429954},\"pillow\":{\"stretch\":0.1945318939858871,\"maxE\":0.5201815485519934}}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "cloud floats",
+   "ok": true,
+   "detail": "-23.116563773926003"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "mesh overlay toggles",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "softbody: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "audio test is meaningful (no user activation before the tap)",
+   "ok": true,
+   "detail": "{\"cx\":187.5,\"base\":682.0799999999999,\"h\":240.97892996411218,\"active\":false,\"state\":\"none\"}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "no audio before the first touch",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "the first real tap on the Mallow starts sound",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "the first touch is recognised as a tap",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "iphone-375x812",
+   "name": "audio gesture test: no page errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "home lists 10 experiences, 2 playable",
+   "ok": true,
+   "detail": "10/2"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "no leaked canvases or screens after 12 switches",
+   "ok": true,
+   "detail": "{\"canvases\":1,\"screens\":1,\"live\":0}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "no audio before a user gesture",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "sounds play after unlock and every voice is cleaned up",
+   "ok": true,
+   "detail": "{\"before\":\"none\",\"state\":\"running\",\"peak\":13,\"after\":0,\"mutedPlays\":null}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "mute silences the Mallow",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "reduced motion reaches the rig and calms the physics",
+   "ok": true,
+   "detail": "{\"rm\":true,\"theme\":\"light\",\"damp\":27}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "light theme applies",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "Mallow picker switches the Mallow in place",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"canvases\":1,\"focus\":\"Settings\",\"stored\":\"blubi\"}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "focus returns to Settings after a switch",
+   "ok": true,
+   "detail": "Settings"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "Reset restores defaults without closing or reloading",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"theme\":null,\"pref\":\"system\",\"motion\":false,\"monitor\":true}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "lab stores only its own key",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "lifecycle: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk: no horizontal page scroll",
+   "ok": true,
+   "detail": "320 > 320"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":77.16960633716346,\"y\":261.3208124815636,\"w\":165.6475320472278,\"h\":179.67918751843638}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "tap dents the soft body",
+   "ok": true,
+   "detail": "offset 0.056"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "Mallow looks toward the finger",
+   "ok": true,
+   "detail": "{\"x\":-0.1868316650390625,\"y\":0.17552917910293786,\"t\":0.8342000000000004}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "double tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "hold recognised and released",
+   "ok": true,
+   "detail": "hold,holdend"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "stroke recognised (sweep onto the body)",
+   "ok": true,
+   "detail": "stroke,stroke,strokeend"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "drag stretches the Mallow",
+   "ok": true,
+   "detail": "squash -0.210"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "release recognised",
+   "ok": true,
+   "detail": "drag,release"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "settles back to shape after release",
+   "ok": true,
+   "detail": "{\"o\":\"0.013\",\"s\":\"0.005\"}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "pinch squeeze recognised",
+   "ok": true,
+   "detail": "squeeze,release"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "pinch compresses the body",
+   "ok": true,
+   "detail": "squash 0.384"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk + gesture buttons: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk + gesture buttons: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk + gesture buttons: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk + gesture buttons: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk + gesture buttons: no horizontal page scroll",
+   "ok": true,
+   "detail": "320 > 320"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk + gesture buttons: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":103.4857476575894,\"y\":209.40342582253516,\"w\":113.0323343887709,\"h\":123.5965741774649}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "gesture buttons drive tap/double/stroke/squeeze",
+   "ok": true,
+   "detail": "tap,doubletap,stroke,stroke,strokeend,squeeze,release"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "squeeze button compresses",
+   "ok": true,
+   "detail": "squash 0.406"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "keyboard shortcuts work",
+   "ok": true,
+   "detail": "doubletap,hold,holdend"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "simulation pauses when the page is hidden and resumes",
+   "ok": true,
+   "detail": "{\"paused\":true,\"resumed\":true}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "back returns to the lab",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "touchtalk: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "softbody: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "softbody: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "softbody: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "softbody: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "softbody: no horizontal page scroll",
+   "ok": true,
+   "detail": "320 > 320"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "softbody: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":95.06564516836907,\"y\":225.10049589505132,\"w\":129.86262017434785,\"h\":144.89950410494868}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "material marshmallow applied",
+   "ok": true,
+   "detail": "marshmallow"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "material jelly applied",
+   "ok": true,
+   "detail": "jelly"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "material mochi applied",
+   "ok": true,
+   "detail": "mochi"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "material cloud applied",
+   "ok": true,
+   "detail": "cloud"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "material pillow applied",
+   "ok": true,
+   "detail": "pillow"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "mochi stretches more than jelly",
+   "ok": true,
+   "detail": "{\"marshmallow\":{\"stretch\":0.18988249007801805,\"maxE\":0.35144608122515375},\"jelly\":{\"stretch\":0.18074358263679136,\"maxE\":1.291060984605998},\"mochi\":{\"stretch\":0.413512505744805,\"maxE\":1.8172500226303794},\"cloud\":{\"stretch\":0.20237130063230802,\"maxE\":0.39400306540635416},\"pillow\":{\"stretch\":0.1666778309532384,\"maxE\":0.37441899542929374}}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "jelly rebounds livelier than marshmallow",
+   "ok": true,
+   "detail": "{\"marshmallow\":{\"stretch\":0.18988249007801805,\"maxE\":0.35144608122515375},\"jelly\":{\"stretch\":0.18074358263679136,\"maxE\":1.291060984605998},\"mochi\":{\"stretch\":0.413512505744805,\"maxE\":1.8172500226303794},\"cloud\":{\"stretch\":0.20237130063230802,\"maxE\":0.39400306540635416},\"pillow\":{\"stretch\":0.1666778309532384,\"maxE\":0.37441899542929374}}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "cloud floats",
+   "ok": true,
+   "detail": "-19.540337782235717"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "mesh overlay toggles",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "softbody: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "audio test is meaningful (no user activation before the tap)",
+   "ok": true,
+   "detail": "{\"cx\":160,\"base\":441,\"h\":200.9161828575785,\"active\":false,\"state\":\"none\"}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "no audio before the first touch",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "the first real tap on the Mallow starts sound",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "the first touch is recognised as a tap",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "iphone-se-320x568",
+   "name": "audio gesture test: no page errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "home lists 10 experiences, 2 playable",
+   "ok": true,
+   "detail": "10/2"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "no leaked canvases or screens after 12 switches",
+   "ok": true,
+   "detail": "{\"canvases\":1,\"screens\":1,\"live\":0}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "no audio before a user gesture",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "sounds play after unlock and every voice is cleaned up",
+   "ok": true,
+   "detail": "{\"before\":\"none\",\"state\":\"running\",\"peak\":13,\"after\":0,\"mutedPlays\":null}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "mute silences the Mallow",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "reduced motion reaches the rig and calms the physics",
+   "ok": true,
+   "detail": "{\"rm\":true,\"theme\":\"light\",\"damp\":27}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "light theme applies",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "Mallow picker switches the Mallow in place",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"canvases\":1,\"focus\":\"Settings\",\"stored\":\"blubi\"}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "focus returns to Settings after a switch",
+   "ok": true,
+   "detail": "Settings"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "Reset restores defaults without closing or reloading",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"theme\":null,\"pref\":\"system\",\"motion\":false,\"monitor\":true}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "lab stores only its own key",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "lifecycle: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk: no horizontal page scroll",
+   "ok": true,
+   "detail": "412 > 412"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":97.7557062550066,\"y\":529.9762398175751,\"w\":216.47152132129628,\"h\":238.62376018242495}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "tap dents the soft body",
+   "ok": true,
+   "detail": "offset 0.036"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "Mallow looks toward the finger",
+   "ok": true,
+   "detail": "{\"x\":-0.19122003351600425,\"y\":0.25277968109631144,\"t\":0.8010000000000002}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "double tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "hold recognised and released",
+   "ok": true,
+   "detail": "hold,holdend"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "stroke recognised (sweep onto the body)",
+   "ok": true,
+   "detail": "stroke,stroke,strokeend"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "drag stretches the Mallow",
+   "ok": true,
+   "detail": "squash -0.199"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "release recognised",
+   "ok": true,
+   "detail": "drag,release"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "settles back to shape after release",
+   "ok": true,
+   "detail": "{\"o\":\"0.020\",\"s\":\"-0.025\"}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "pinch squeeze recognised",
+   "ok": true,
+   "detail": "squeeze,release"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "pinch compresses the body",
+   "ok": true,
+   "detail": "squash 0.396"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk + gesture buttons: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk + gesture buttons: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk + gesture buttons: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk + gesture buttons: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk + gesture buttons: no horizontal page scroll",
+   "ok": true,
+   "detail": "412 > 412"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk + gesture buttons: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":92.52891989121397,\"y\":451.61381168783936,\"w\":226.96786074956748,\"h\":228.38618831216067}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "gesture buttons drive tap/double/stroke/squeeze",
+   "ok": true,
+   "detail": "tap,doubletap,stroke,stroke,strokeend,squeeze,release"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "squeeze button compresses",
+   "ok": true,
+   "detail": "squash 0.285"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "keyboard shortcuts work",
+   "ok": true,
+   "detail": "doubletap,hold,holdend"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "simulation pauses when the page is hidden and resumes",
+   "ok": true,
+   "detail": "{\"paused\":true,\"resumed\":true}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "back returns to the lab",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "touchtalk: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "softbody: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "softbody: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "softbody: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "softbody: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "softbody: no horizontal page scroll",
+   "ok": true,
+   "detail": "412 > 412"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "softbody: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":98.3322672267928,\"y\":476.3468970228418,\"w\":215.3404213858318,\"h\":240.65310297715823}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "material marshmallow applied",
+   "ok": true,
+   "detail": "marshmallow"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "material jelly applied",
+   "ok": true,
+   "detail": "jelly"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "material mochi applied",
+   "ok": true,
+   "detail": "mochi"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "material cloud applied",
+   "ok": true,
+   "detail": "cloud"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "material pillow applied",
+   "ok": true,
+   "detail": "pillow"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "mochi stretches more than jelly",
+   "ok": true,
+   "detail": "{\"marshmallow\":{\"stretch\":0.18551489299526014,\"maxE\":0.4026759530195704},\"jelly\":{\"stretch\":0.1623959436870821,\"maxE\":1.1135014863212485},\"mochi\":{\"stretch\":0.3161983613230428,\"maxE\":1.399919558207297},\"cloud\":{\"stretch\":0.17495986525524887,\"maxE\":0.2956905284684035},\"pillow\":{\"stretch\":0.19671719557451928,\"maxE\":0.5317855565540953}}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "jelly rebounds livelier than marshmallow",
+   "ok": true,
+   "detail": "{\"marshmallow\":{\"stretch\":0.18551489299526014,\"maxE\":0.4026759530195704},\"jelly\":{\"stretch\":0.1623959436870821,\"maxE\":1.1135014863212485},\"mochi\":{\"stretch\":0.3161983613230428,\"maxE\":1.399919558207297},\"cloud\":{\"stretch\":0.17495986525524887,\"maxE\":0.2956905284684035},\"pillow\":{\"stretch\":0.19671719557451928,\"maxE\":0.5317855565540953}}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "cloud floats",
+   "ok": true,
+   "detail": "-26.178974181194416"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "mesh overlay toggles",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "softbody: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "android-412x915",
+   "name": "audio test is meaningful (no user activation before the tap)",
+   "ok": true,
+   "detail": "{\"cx\":206,\"base\":768.6,\"h\":264.7555177205713,\"active\":false,\"state\":\"none\"}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "no audio before the first touch",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "the first real tap on the Mallow starts sound",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "the first touch is recognised as a tap",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "android-412x915",
+   "name": "audio gesture test: no page errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "home lists 10 experiences, 2 playable",
+   "ok": true,
+   "detail": "10/2"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "no leaked canvases or screens after 12 switches",
+   "ok": true,
+   "detail": "{\"canvases\":1,\"screens\":1,\"live\":0}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "no audio before a user gesture",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "sounds play after unlock and every voice is cleaned up",
+   "ok": true,
+   "detail": "{\"before\":\"none\",\"state\":\"running\",\"peak\":13,\"after\":0,\"mutedPlays\":null}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "mute silences the Mallow",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "reduced motion reaches the rig and calms the physics",
+   "ok": true,
+   "detail": "{\"rm\":true,\"theme\":\"light\",\"damp\":27}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "light theme applies",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "Mallow picker switches the Mallow in place",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"canvases\":1,\"focus\":\"Settings\",\"stored\":\"blubi\"}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "focus returns to Settings after a switch",
+   "ok": true,
+   "detail": "Settings"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "Reset restores defaults without closing or reloading",
+   "ok": true,
+   "detail": "{\"marker\":1,\"sheets\":0,\"theme\":null,\"pref\":\"system\",\"motion\":false,\"monitor\":true}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "lab stores only its own key",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "lifecycle: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "touchtalk: controls don't overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "touchtalk: controls never cover the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "touchtalk: controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "touchtalk: touch targets ≥ 38px tall",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "touchtalk: no horizontal page scroll",
+   "ok": true,
+   "detail": "1280 > 1280"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "touchtalk: Mallow fully visible",
+   "ok": true,
+   "detail": "{\"x\":519.5321005064216,\"y\":450.9455033698617,\"w\":240.9316324437635,\"h\":271.4544966301383}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "tap dents the soft body",
+   "ok": true,
+   "detail": "offset 0.036"
+  },
+  {
    "vp": "desktop-1280x860",
    "name": "Mallow looks toward the finger",
    "ok": true,
-   "detail": "{\"x\":-0.0690232276916504,\"y\":0.18571201058321227,\"t\":0.5176999999999999}"
+   "detail": "{\"x\":-0.0690232276916504,\"y\":0.18571201058321227,\"t\":0.48420000000000024}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1429,7 +1639,7 @@
    "vp": "desktop-1280x860",
    "name": "drag stretches the Mallow",
    "ok": true,
-   "detail": "squash -0.206"
+   "detail": "squash -0.218"
   },
   {
    "vp": "desktop-1280x860",
@@ -1441,7 +1651,7 @@
    "vp": "desktop-1280x860",
    "name": "settles back to shape after release",
    "ok": true,
-   "detail": "{\"o\":\"0.014\",\"s\":\"-0.042\"}"
+   "detail": "{\"o\":\"0.019\",\"s\":\"-0.002\"}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1477,7 +1687,7 @@
    "vp": "desktop-1280x860",
    "name": "touchtalk + gesture buttons: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":529.0943035066521,\"y\":413.25179829513536,\"w\":221.835677117756,\"h\":257.74820170486464}"
+   "detail": "{\"x\":525.7694878696334,\"y\":422.23974703758836,\"w\":228.45363670911962,\"h\":248.7602529624116}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1489,7 +1699,7 @@
    "vp": "desktop-1280x860",
    "name": "squeeze button compresses",
    "ok": true,
-   "detail": "squash 0.345"
+   "detail": "squash 0.316"
   },
   {
    "vp": "desktop-1280x860",
@@ -1549,7 +1759,7 @@
    "vp": "desktop-1280x860",
    "name": "softbody: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":528.696446960985,\"y\":414.69622373933817,\"w\":222.59641992335008,\"h\":247.30377626066186}"
+   "detail": "{\"x\":529.0263398910276,\"y\":411.6527075652299,\"w\":221.9599277617897,\"h\":250.34729243477008}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1585,19 +1795,19 @@
    "vp": "desktop-1280x860",
    "name": "mochi stretches more than jelly",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.18369610672133474,\"maxE\":0.38252530784107475},\"jelly\":{\"stretch\":0.16608341447376573,\"maxE\":1.0948864549656423},\"mochi\":{\"stretch\":0.3097796149758054,\"maxE\":1.4351457057168309},\"cloud\":{\"stretch\":0.15006218761107237,\"maxE\":0.2345434112796386},\"pillow\":{\"stretch\":0.1926666617062689,\"maxE\":0.5437324312134064}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.20494265242208543,\"maxE\":0.3878931028025069},\"jelly\":{\"stretch\":0.165560375194981,\"maxE\":1.4083034876301934},\"mochi\":{\"stretch\":0.31267563300621815,\"maxE\":1.4198969540420436},\"cloud\":{\"stretch\":0.17032503326547466,\"maxE\":0.3283829342451041},\"pillow\":{\"stretch\":0.17490953968304468,\"maxE\":0.548343478295973}}"
   },
   {
    "vp": "desktop-1280x860",
    "name": "jelly rebounds livelier than marshmallow",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.18369610672133474,\"maxE\":0.38252530784107475},\"jelly\":{\"stretch\":0.16608341447376573,\"maxE\":1.0948864549656423},\"mochi\":{\"stretch\":0.3097796149758054,\"maxE\":1.4351457057168309},\"cloud\":{\"stretch\":0.15006218761107237,\"maxE\":0.2345434112796386},\"pillow\":{\"stretch\":0.1926666617062689,\"maxE\":0.5437324312134064}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.20494265242208543,\"maxE\":0.3878931028025069},\"jelly\":{\"stretch\":0.165560375194981,\"maxE\":1.4083034876301934},\"mochi\":{\"stretch\":0.31267563300621815,\"maxE\":1.4198969540420436},\"cloud\":{\"stretch\":0.17032503326547466,\"maxE\":0.3283829342451041},\"pillow\":{\"stretch\":0.17490953968304468,\"maxE\":0.548343478295973}}"
   },
   {
    "vp": "desktop-1280x860",
    "name": "cloud floats",
    "ok": true,
-   "detail": "-24.818276973647134"
+   "detail": "-20.719561043755565"
   },
   {
    "vp": "desktop-1280x860",
@@ -1608,6 +1818,36 @@
   {
    "vp": "desktop-1280x860",
    "name": "softbody: no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "audio test is meaningful (no user activation before the tap)",
+   "ok": true,
+   "detail": "{\"cx\":640,\"base\":722.4,\"h\":296.90637431300195,\"active\":false,\"state\":\"none\"}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "no audio before the first touch",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "the first real tap on the Mallow starts sound",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "the first touch is recognised as a tap",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"tap\":true}"
+  },
+  {
+   "vp": "desktop-1280x860",
+   "name": "audio gesture test: no page errors",
    "ok": true,
    "detail": ""
   }
