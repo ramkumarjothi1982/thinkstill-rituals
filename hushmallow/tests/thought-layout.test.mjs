@@ -271,19 +271,25 @@ test('loneliness on a stage: a drift you can see into its own free room, away fr
   const lo = L.add({ text: 'Nobody texted me back', emotion: 'loneliness', intensity: 0.75, r: 38 }, { from: { x: 195, y: 400 }, home: { x: 200, y: 230 } });
   const other = L.add({ text: 'My boss embarrassed me today.', emotion: 'anger', intensity: 0.75, r: 38 }, { from: { x: 195, y: 400 }, home: { x: 100, y: 150 } });
   run(L, 1.5);
-  const h0 = { x: lo.home.x, y: lo.home.y }, z0 = lo.z, hc = { x: (hero.left + hero.right) / 2, y: (hero.top + hero.bottom) / 2 };
-  let worst = 0;
+  // (final-round review B5: away means the gap between its body and the hero grows — a drift sideways
+  // across the top of the hero is not away. Here the other thought and its words fill the room above it,
+  // so it may not drift far: then it goes farther away where it is — smaller, a little higher)
+  const gap = () => { const b = lo.bodyRect(), dx = Math.max(0, hero.left - b.right, b.left - hero.right), dy = Math.max(0, hero.top - b.bottom, b.top - hero.bottom); return Math.hypot(dx, dy); };
+  const h0 = { x: lo.home.x, y: lo.home.y }, z0 = lo.z, zd0 = lo._zDrift, g0 = gap();
+  let worst = 0, gMin = Infinity;
   for (let k = 0; k < 9 * 4; k++) {
     run(L, 0.25);
     const tl = L.tags.get(lo), to = L.tags.get(other);
     const a = { left: tl.x - tl.w / 2, top: tl.y, right: tl.x + tl.w / 2, bottom: tl.y + tl.h }, c = { left: to.x - to.w / 2, top: to.y, right: to.x + to.w / 2, bottom: to.y + to.h };
     worst = Math.max(worst, ov(a, c), ov(a, other.faceRect({})), ov(c, lo.faceRect({})));
+    gMin = Math.min(gMin, gap());
   }
   const d = Math.hypot(lo.home.x - h0.x, lo.home.y - h0.y);
-  assert.ok(d >= 40 && d <= 92, `drifted ${d.toFixed(0)} px`);
-  // apart: farther from the hero and from the other thought (into the room there is)
-  const o = other.home, dHero = Math.hypot(lo.home.x - hc.x, lo.home.y - hc.y) - Math.hypot(h0.x - hc.x, h0.y - hc.y), dOther = Math.hypot(lo.home.x - o.x, lo.home.y - o.y) - Math.hypot(h0.x - o.x, h0.y - o.y);
-  assert.ok(dHero > -2 && dOther > -2 && dHero + dOther > 40, `drifted apart: hero +${dHero.toFixed(0)} px, the other +${dOther.toFixed(0)} px`);
+  assert.ok(d <= 92, `drifted ${d.toFixed(0)} px`);
+  // apart: never nearer the hero, nor the other thought; 25 px farther from the hero, or (no room) farther away
+  const o = other.home, dOther = Math.hypot(lo.home.x - o.x, lo.home.y - o.y) - Math.hypot(h0.x - o.x, h0.y - o.y);
+  assert.ok(gMin > g0 - 2 && dOther > -2, `drifted apart: gap to the hero ${g0.toFixed(0)} → ≥ ${gMin.toFixed(0)} px, the other +${dOther.toFixed(0)} px`);
+  assert.ok(gap() - g0 >= 25 || lo._zDrift - zd0 >= 0.15, `away: gap +${(gap() - g0).toFixed(0)} px, drift depth +${(lo._zDrift - zd0).toFixed(2)}`);
   assert.ok(lo.z > z0 + 0.08, `a little farther away (z ${z0.toFixed(2)} → ${lo.z.toFixed(2)})`);
   assert.equal(Math.round(worst), 0, 'its words and the other\'s stay clear as it drifts');
   L.destroy();

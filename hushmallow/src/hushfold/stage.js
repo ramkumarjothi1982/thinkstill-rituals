@@ -1,6 +1,6 @@
-// The Hushfold stage: the hero Mallow behind one small adapter, the stage
-// canvas on #fx-layer (touch ripples, placeholder Thought Mallows) and the
-// one animation loop that draws it.
+// The Hushfold stage: the hero Mallow behind one small adapter, and the stage
+// canvas on #fx-layer (touch ripples and the Thought Mallows), drawn in the
+// Mallow rig's shared loop.
 //
 // stageMallow is the seam for MallowTouch (W2): createStageMallow(world) drives
 // the existing MallowRig through app.world, and createStageMallow(world, {touch})
@@ -15,18 +15,14 @@
 // 'touch' events: { kind: 'press'|'squeeze'|'release'|'tap'|'doubleTap'|'flick'
 //   (+ MallowTouch: 'stretch'|'massage'|'stroke'|'jiggle'), depth, speed, held }
 //
-// The placeholder Thought layer stands in for W2's ThoughtLayer until it
-// lands (same shape: add/hitTest/pointer/rects/destroy; thoughts carry
-// {id, text, emotion, x, y, scale, state:{tension, charge, calm, distance},
-// react, soften, settle, transform, hitTest, pointer, destroy}). It draws a
-// translucent jelly with a simple face — clearly not one of the seven — and
-// keeps the person's exact words in a DOM tag (textContent only).
+// createStage draws W2's ThoughtLayer (src/mallows/thought, loaded lazily) on the
+// stage canvas, and runs the world (the Hushflow director, through worldTicker)
+// first in the same tick: what a world writes to a thought this frame is drawn
+// this frame, in one loop with the Mallow.
 
 import { h } from '../app/ui.js';
+import { addTicker, removeTicker, prefersReducedMotion } from '../mallows/rig.js';
 
-const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
-const hexA = (hex, a) => { const n = parseInt(String(hex).slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
-const lerp = (a, b, t) => a + (b - a) * t;
 const TAU = Math.PI * 2;
 
 // ------------------------------------------------------------ Mallow --
@@ -206,38 +202,145 @@ function touchAdapter(t, world = null) {
 }
 
 // ------------------------------------------------------ stage canvas --
+const NO_THOUGHTS = Object.freeze([]);
+
 /**
- * createStage({fx, prefs, reducedMotion}) → { canvas, ripple(x,y,colour), thoughts, start(), destroy() }
- * One canvas on #fx-layer (DPR ≤ 2) and one rAF loop that runs only while
- * something moves (ripples, thoughts) and stops when the tab is hidden.
+ * createStage({ fx, tagRoot, reducedMotion, lowStim, onReadThought, keepOut, bounds, haptic, audio, textScale })
+ *   → { canvas, thoughts, whenThoughts(), start(), worldTicker: { add, remove }, freeze(b), frozen,
+ *       ripple(x, y, colour), kick(), size, destroy() }
+ *
+ * One canvas on #fx-layer (DPR ≤ 2) and no animation loop of its own: the stage ticks in the Mallow rig's
+ * shared loop (rig.js addTicker, which also stops for a hidden tab). Each tick, in this order:
+ *   1. the world tickers (worldTicker.add(fn): the Hushflow director, `ticker: stage.worldTicker`), so a
+ *      world writes the thought's x / y / z / scale / rot / state / labelSide / opacity before it is drawn;
+ *   2. nothing more while frozen (a paused world: the thoughts hold still where they are drawn);
+ *   3. nothing while idle (no ripple, no thought, and nothing left on the canvas);
+ *   4. clear, the ripples, then the ThoughtLayer's frame: the bodies on this canvas, their DOM word tags.
+ * The ThoughtLayer (src/mallows/thought) loads lazily: whenThoughts() resolves with it (null if it could
+ * not load). Until then `thoughts` is a stand-in with the same calls — empty: no list, no rects, no hits;
+ * add() waits for the layer — and whatever kept the stand-in (the input router) reaches the layer
+ * through it once it has loaded. After destroy() `thoughts` is that empty stand-in again.
+ * start() puts the stage on the shared loop (a ripple, a thought or a world ticker does too).
+ *
+ * keepOut() → the hero's rect (client px; thoughts and their words keep off it); bounds() → where the
+ * thoughts may float (default: under tagRoot's .hf-top, over its .hf-dock pills); onReadThought(th) → a
+ * tap on the words; textScale() → the person's text size
+ * (default: --type-scale on <html>, as Settings sets it); haptic(kind), audio {fx(name, opts)}.
  */
-export function createStage({ fx, tagRoot, reducedMotion = () => false, lowStim = () => false, onReadThought, keepOut = () => null } = {}) {
+export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersReducedMotion(), lowStim = () => false, onReadThought = null, onRead = null,
+  keepOut = null, bounds = null, haptic = null, audio = null, textScale = null } = {}) {
   const canvas = h('canvas', { class: 'hf-stage', 'aria-hidden': 'true' });
   fx.replaceChildren(canvas);
   fx.classList.add('live');
   const g = canvas.getContext('2d');
   let W = 0, H = 0, dpr = 1;
-  function resize() {
-    dpr = Math.min(2, devicePixelRatio || 1);
-    W = innerWidth; H = innerHeight;
-    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    kick();
-  }
   const ripples = [];
-  let raf = 0, last = 0, destroyed = false, drewSomething = false;
-  const thoughts = createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead: onReadThought, size: () => ({ W, H }), keepOut });
+  const worlds = new Set(), failed = new WeakSet();
+  let layer = null, destroyed = false, frozen = false, onLoop = false, drawn = false, dirty = false;
+  // what the shell asked of the thoughts before the layer had loaded (a first Tell on a slow line):
+  // done on the layer once it has
+  let early = [], subs = [], hide = null, held = null, unavailable = false;
 
-  function frame(t) {
-    raf = 0;
+  function resize() {
+    dpr = Math.min(2, (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1);
+    W = typeof innerWidth === 'number' ? innerWidth : 0; H = typeof innerHeight === 'number' ? innerHeight : 0;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    // (that wiped the canvas: the next tick draws it again, frozen or not; a resize alone does not join
+    // the shared loop — start() does, after the hero, so a world sees this frame's hero)
+    dirty = true;
+  }
+  // the person's text size as Settings sets it on <html> (ui/type.js setTextScale): the words grow with it
+  const textK = textScale ?? (() => { try { return parseFloat(document.documentElement.style.getPropertyValue('--type-scale')) || 1; } catch { return 1; } });
+  // no bounds from the shell: the room its own controls leave — under its top bar and subtitle band, over
+  // its dock — read at most four times a second (never every frame); a shell that passes bounds() decides
+  let shellB = null, shellAt = -1e9;
+  function shellBounds() {
+    const now = performance.now();
+    if (now - shellAt < 250) return shellB;
+    shellAt = now;
+    const q = (s) => (typeof tagRoot?.querySelector === 'function' ? tagRoot.querySelector(s) : null);
+    const top = q('.hf-top'), dock = q('.hf-dock');
+    if (!top && !dock) return (shellB = null);
+    const vh = typeof innerHeight === 'number' ? innerHeight : H;
+    let dockTop = vh - 24;
+    for (const el of dock?.children || []) {
+      if (el.hidden || el.classList?.contains('is-hidden')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.height) dockTop = Math.min(dockTop, r.top);
+    }
+    // (under the top bar and the subtitle band the shell keeps below it: clamp(0.17 H, 118, 156) px)
+    const tb = top?.getBoundingClientRect(), band = top ? Math.min(156, Math.max(118, vh * 0.17)) : 0;
+    shellB = { top: Math.max(Math.min(96, vh * 0.12), (tb?.bottom || 0) + band), bottom: dockTop - 10 };
+    return shellB;
+  }
+
+  const ready = import('../mallows/thought/index.js').then(({ ThoughtLayer }) => {
+    if (destroyed) return null;
+    const L = new ThoughtLayer({ ctx2d: g, tagRoot, keepOut, bounds: bounds || shellBounds, onRead: onReadThought || onRead, reducedMotion, lowStim, haptic, audio, textScale: textK });
+    L.onChange = kick;
+    layer = L;
+    if (hide != null) L.hideTags(hide);
+    if (held != null) L.pause(held);
+    for (const [ev, fn] of subs.splice(0)) L.on(ev, fn);
+    for (const [th, place] of early.splice(0)) { try { L.add(th, place); } catch (e) { console.warn('[stage] a thought could not be added', e); } }
+    return L;
+  }, (e) => {
+    unavailable = true; early = []; subs = [];
+    console.warn('[stage] Thought Mallows unavailable:', e?.message || e);
+    return null;
+  });
+
+  /** The thoughts before the layer has loaded (and after destroy): empty, the same calls, forwarding once it is there. */
+  const soon = Object.freeze({
+    get list() { return layer ? layer.list : NO_THOUGHTS; },
+    get primary() { return layer ? layer.primary : null; },
+    get roominess() { return layer ? layer.roominess : Infinity; },
+    get crowding() { return layer ? layer.crowding : 0; },
+    get pressed() { return !!layer?.pressed; },
+    get reading() { return !!layer?.reading; },
+    add(th, place) {
+      if (layer) return layer.add(th, place);
+      if (!unavailable && !destroyed) { early.push([th, place]); kick(); }
+      return null;
+    },
+    remove(th) { if (layer) layer.remove(th); else early = early.filter((q) => q[0] !== th); },
+    release(ms, which) { if (layer) layer.release(ms, which); else if (which == null) early = []; },
+    clear() { if (layer) layer.clear(); else early = []; },
+    rects(out = []) { if (layer) return layer.rects(out); out.length = 0; return out; },
+    hitTest(x, y) { return layer ? layer.hitTest(x, y) : null; },
+    pointer(a, b) { return layer ? layer.pointer(a, b) : false; },
+    hideTags(b = true) { hide = !!b; layer?.hideTags(hide); },
+    pause(b = true) { held = !!b; layer?.pause(held); },
+    resume() { held = false; layer?.resume(); },
+    relayout() { layer?.relayout(); },
+    tagOf(th) { return layer ? layer.tagOf(th) : null; },
+    tagText(th) { return layer ? layer.tagText(th) : ''; },
+    read(th) { layer?.read(th); },
+    closeRead() { layer?.closeRead(); },
+    on(ev, fn) { if (layer) layer.on(ev, fn); else if (!destroyed) subs.push([ev, fn]); return soon; },
+    off(ev, fn) { if (layer) layer.off(ev, fn); else subs = subs.filter((q) => q[0] !== ev || q[1] !== fn); return soon; },
+  });
+
+  function tick(dt, t) {
     if (destroyed) return;
-    const dt = Math.min(0.05, Math.max(0.001, (t - (last || t)) / 1000));
-    last = t;
+    // 1. the world first: what it writes to a thought this frame is drawn this frame
+    for (const fn of worlds) {
+      try { fn(dt, t); } catch (e) { if (!failed.has(fn)) { failed.add(fn); console.error('[stage] a world ticker failed a frame:', e); } }
+    }
+    // 2. a paused world: everything holds still where it is drawn (unless the canvas was wiped)
+    if (frozen && !dirty) return;
+    // 3. idle: nothing to draw, nothing left on the canvas
+    const live = ripples.length > 0 || (layer ? layer.list.length > 0 : false);
+    if (!live && !drawn && !dirty) return;
+    dirty = false;
+    const step = frozen ? 0 : dt;
+    // 4. clear, ripples, the thoughts (their words last)
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
     const rm = reducedMotion(), low = lowStim();
     for (let i = ripples.length - 1; i >= 0; i--) {
       const r = ripples[i];
-      r.t += dt / (rm ? 0.5 : 0.9);
+      r.t += step / (rm ? 0.5 : 0.9);
       if (r.t >= 1) { ripples.splice(i, 1); continue; }
       const k = r.t, a = (1 - k) * (1 - k) * (low ? 0.16 : 0.32);
       g.globalAlpha = a;
@@ -249,21 +352,35 @@ export function createStage({ fx, tagRoot, reducedMotion = () => false, lowStim 
       if (!rm) { g.globalAlpha = a * 0.5; g.beginPath(); g.arc(r.x, r.y, 6 + 30 * k, 0, TAU); g.stroke(); }
     }
     g.globalAlpha = 1;
-    const living = thoughts.frame(dt, t / 1000);
-    drewSomething = ripples.length > 0 || living;
-    if (drewSomething && !document.hidden) raf = requestAnimationFrame(frame);
-    else last = 0;
+    drawn = ripples.length > 0;
+    if (layer && layer.list.length) drawn = layer.frame(step, t) || drawn;
   }
-  function kick() { if (!raf && !destroyed && !document.hidden) raf = requestAnimationFrame(frame); }
-  const onVis = () => { if (!document.hidden) kick(); };
-  document.addEventListener('visibilitychange', onVis);
-  addEventListener('resize', resize);
-  resize();
-  thoughts.onChange = kick;
+  /** On the shared loop (once; until destroy). */
+  function ensure() { if (!onLoop && !destroyed) { onLoop = true; addTicker(tick); } }
+  /** Something changed: draw the next frame (even when idle or frozen). */
+  function kick() { dirty = true; ensure(); }
 
-  return {
+  /** The director's ticker ({ ticker: stage.worldTicker }): its worlds step first in the stage's tick. */
+  const worldTicker = Object.freeze({
+    add(fn) { if (typeof fn === 'function' && !destroyed) { worlds.add(fn); ensure(); } return fn; },
+    remove(fn) { worlds.delete(fn); },
+  });
+
+  if (typeof addEventListener === 'function') addEventListener('resize', resize);
+  resize();
+
+  const stage = {
     canvas,
-    thoughts,
+    /** The ThoughtLayer once it has loaded; until then (and after destroy) the empty stand-in. */
+    get thoughts() { return layer || soon; },
+    /** Resolves with the ThoughtLayer (null if it could not load or the stage is gone). */
+    whenThoughts: () => ready,
+    /** Join the shared loop now (the shell: after the hero is up). */
+    start() { kick(); return stage; },
+    worldTicker,
+    /** Hold the thoughts and ripples still where they are drawn (a paused world); the world tickers still run. */
+    freeze(b = true) { frozen = !!b; kick(); },
+    get frozen() { return frozen; },
     get size() { return { W, H }; },
     ripple(x, y, colour = '#ffd98a') {
       if (ripples.length > 5) ripples.shift();
@@ -272,220 +389,17 @@ export function createStage({ fx, tagRoot, reducedMotion = () => false, lowStim 
     },
     kick,
     destroy() {
+      if (destroyed) return;
       destroyed = true;
-      cancelAnimationFrame(raf);
-      document.removeEventListener('visibilitychange', onVis);
-      removeEventListener('resize', resize);
-      thoughts.destroy();
+      if (onLoop) { removeTicker(tick); onLoop = false; }
+      worlds.clear(); early = []; subs = [];
+      if (typeof removeEventListener === 'function') removeEventListener('resize', resize);
+      const L = layer;
+      layer = null;
+      try { L?.destroy(); } catch (e) { console.warn('[stage] thoughts', e); }
       canvas.remove();
       fx.classList.remove('live');
     },
   };
-}
-
-// --------------------------------------------- placeholder Thoughts --
-// Tints per feeling: soft, translucent, distinct from every Mallow's body.
-const TINTS = {
-  anger: ['#ff8a7a', '#ff5470'], anxiety: ['#a9e4ff', '#6fb8ff'], sadness: ['#9db4ff', '#6c7ff0'], overwhelm: ['#d6b8ff', '#a77bff'],
-  frustration: ['#ffc58a', '#ff9a52'], loneliness: ['#a8efe2', '#5fcfc0'], restlessness: ['#ffe9a3', '#ffc94d'], none: ['#e8dcff', '#b9a3ff'],
-};
-const MOTION = {
-  anger: { jitter: 1.2, bob: 0.9, speed: 1.4 }, anxiety: { jitter: 0.9, bob: 0.7, speed: 2.2 }, sadness: { jitter: 0, bob: 0.5, speed: 0.45, droop: 1 },
-  overwhelm: { jitter: 0.4, bob: 0.9, speed: 1.2 }, frustration: { jitter: 0.7, bob: 0.8, speed: 1.1 }, loneliness: { jitter: 0, bob: 1.2, speed: 0.5 },
-  restlessness: { jitter: 0.5, bob: 1.1, speed: 1.8 }, none: { jitter: 0.2, bob: 1, speed: 0.8 },
-};
-const BASE_TENSION = { anger: 0.85, anxiety: 0.75, frustration: 0.7, overwhelm: 0.7, restlessness: 0.55, sadness: 0.55, loneliness: 0.45, none: 0.45 };
-
-function excerpt(text, max = 42) {
-  const t = String(text || '').replace(/\s+/g, ' ').trim();
-  if (t.length <= max) return t;
-  const words = t.split(' ');
-  let out = '';
-  for (const w of words) { if ((out ? out.length + 1 : 0) + w.length > max - 1) break; out = out ? `${out} ${w}` : w; }
-  return `${(out || t.slice(0, max - 1)).replace(/[.,;:]$/, '')}…`;
-}
-
-function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, keepOut = () => null }) {
-  const list = [];
-  let nextId = 1;
-  const layer = {
-    onChange: null,
-    get list() { return list; },
-    /** add({text, emotion, intensity, from:{x,y}, home:{x,y}, r}) → thought */
-    add({ text, emotion = null, intensity = 0.6, from = null, home, r = 38 } = {}) {
-      const key = TINTS[emotion] ? emotion : 'none';
-      const id = `t${nextId++}`;
-      const tag = h('button', { class: 'hf-tag hf-ui', type: 'button', 'aria-label': `Your thought: ${text}. Tap to read it all.` });
-      tag.textContent = excerpt(text);
-      tagRoot.append(tag);
-      const th = {
-        id, text: String(text || ''), token: tag.textContent, emotion, key, intensity, r,
-        x: from?.x ?? home.x, y: from?.y ?? home.y, hx: home.x, hy: home.y, vx: 0, vy: 0,
-        scale: reducedMotion() ? 1 : 0.2, born: 0, sq: 0, sqV: 0, phase: Math.random() * TAU,
-        state: { tension: BASE_TENSION[key] * (0.6 + 0.4 * clamp(intensity)), charge: 0, calm: 0, distance: 0 },
-        press: null, tag, gradient: null,
-        react(kind) { if (kind === 'tap') th.sqV += 2.4; if (kind === 'squeeze') th.sqV += 1.2; layer.onChange?.(); },
-        soften(k = 0.1) { th.state.calm = clamp(th.state.calm + k); layer.onChange?.(); },
-        settle(k = 0.1) { th.state.tension = clamp(th.state.tension - k); layer.onChange?.(); },
-        transform(k = 0) { th.state.charge = clamp(k); layer.onChange?.(); },
-        hitTest(x, y) { return Math.hypot(x - th.x, y - th.y) < th.r * th.scale * 1.35; },
-        pointer(e) { layer.pointer(th, e); },
-        moveHome(p) { th.hx = p.x; th.hy = p.y; layer.onChange?.(); },
-        destroy() { layer.remove(th); },
-      };
-      tag.addEventListener('click', () => onRead?.(th));
-      list.push(th);
-      layer.onChange?.();
-      return th;
-    },
-    remove(th) {
-      const i = list.indexOf(th);
-      if (i >= 0) list.splice(i, 1);
-      th.tag.remove();
-      layer.onChange?.();
-    },
-    hitTest(x, y) { for (let i = list.length - 1; i >= 0; i--) if (!list[i].leaving && list[i].hitTest(x, y)) return list[i]; return null; },
-    pointer(th, e) {
-      if (e.type === 'down') { th.press = { id: e.id, x0: e.x, y0: e.y, ox: th.x - e.x, oy: th.y - e.y, t0: performance.now(), moved: 0 }; th.sqV += 1.6; }
-      else if (e.type === 'move' && th.press && th.press.id === e.id) {
-        th.press.moved = Math.max(th.press.moved, Math.hypot(e.x - th.press.x0, e.y - th.press.y0));
-        if (th.press.moved > 10) {
-          const { W, H } = size();
-          let x = clamp(e.x + th.press.ox, th.r + 16, W - th.r - 16);
-          const y = clamp(e.y + th.press.oy, 90 + th.r, H - th.r - 90);
-          // a thought never sits on the hero Mallow (the Mallow takes touches first there)
-          const k = keepOut();
-          if (k && y > k.top - th.r && y < k.bottom + th.r && x > k.left - th.r && x < k.right + th.r) {
-            const toLeft = x - (k.left - th.r), toRight = (k.right + th.r) - x;
-            const nx = toLeft < toRight ? k.left - th.r : k.right + th.r;
-            x = nx < th.r + 8 || nx > W - th.r - 8 ? x : nx;
-            if (x > k.left - th.r && x < k.right + th.r) th.hy = Math.max(k.bottom + th.r, y); else th.hy = y;
-          } else th.hy = y;
-          th.hx = x;
-        }
-      } else if ((e.type === 'up' || e.type === 'cancel') && th.press && th.press.id === e.id) {
-        const held = (performance.now() - th.press.t0) / 1000;
-        if (held < 0.3 && th.press.moved < 12) th.react('tap');
-        th.sqV -= 2.2;
-        th.press = null;
-      }
-      layer.onChange?.();
-    },
-    /** Rectangles to keep subtitles off (thought body + its word tag). */
-    rects() {
-      return list.filter((th) => !th.leaving).map((th) => {
-        const r = th.r * Math.max(0.6, th.scale) * 1.25;
-        const tb = th.tag.getBoundingClientRect();
-        return { left: Math.min(th.x - r, tb.left), right: Math.max(th.x + r, tb.right), top: th.y - r, bottom: Math.max(th.y + r, tb.bottom) };
-      });
-    },
-    frame(dt, t) {
-      if (!list.length) return false;
-      const rm = reducedMotion(), low = lowStim();
-      for (const th of [...list]) {
-        const mo = MOTION[th.key];
-        // leaving fades on the clock, not per frame (a slow frame never stretches the hand-over)
-        if (th.leaving) { th.born = th.leaveFrom * (1 - (performance.now() - th.leaveAt) / (th.leaving * 1000)); if (th.born <= 0) { layer.remove(th); continue; } }
-        else th.born = Math.min(1, th.born + dt / (rm ? 0.4 : 1.1));
-        // springs: home position, scale, squash
-        const k = th.press ? 120 : 26, d = th.press ? 18 : 7.5;
-        th.vx += ((th.hx - th.x) * k - th.vx * d) * dt; th.vy += ((th.hy - th.y) * k - th.vy * d) * dt;
-        th.x += th.vx * dt; th.y += th.vy * dt;
-        th.scale += ((1 - th.scale) * 9) * dt;
-        const sqGoal = th.press ? 0.16 + 0.06 * Math.sin(t * 9) * (rm ? 0 : 1) : 0;
-        th.sqV += ((sqGoal - th.sq) * 160 - th.sqV * 9) * dt;
-        th.sq += th.sqV * dt;
-        // holding a thought gently softens it; it never disappears
-        if (th.press) { th.state.calm = clamp(th.state.calm + dt * 0.18); }
-        const tension = th.state.tension * (1 - 0.75 * th.state.calm);
-        // motion: bob + feeling-specific jitter (calmer as it softens)
-        const bob = rm ? 0 : Math.sin(t * mo.speed + th.phase) * 3.2 * mo.bob * (1 - 0.5 * th.state.calm);
-        const jit = rm || low ? 0 : mo.jitter * tension * 1.6;
-        const jx = jit ? Math.sin(t * 37 + th.phase) * jit : 0, jy = jit ? Math.cos(t * 41 + th.phase * 2) * jit : 0;
-        drawThought(g, th, th.x + jx, th.y + bob + jy, tension, t, { rm, low, droop: mo.droop || 0 });
-        // the word tag rides just under the body, always fully on screen
-        const tagY = th.y + bob + th.r * th.scale * 1.05 + 8;
-        const tw = th.tagW || (th.tagW = th.tag.offsetWidth || 120);
-        const { W } = size();
-        const edge = W < 360 ? 12 : 20;   // clear of the edge-swipe zone where there is room
-        const tx = clamp(th.x, edge + tw / 2, Math.max(edge + tw / 2, W - edge - tw / 2));
-        th.tag.style.transform = `translate3d(${Math.round(tx)}px, ${Math.round(tagY)}px, 0) translate(-50%, 0)`;
-        th.tag.style.opacity = String(clamp(th.born * 1.4 - 0.2));
-      }
-      return true;
-    },
-    clear() { for (const th of [...list]) layer.remove(th); },
-    /** Let every thought fade away gently (a world is taking the words over). */
-    release(ms = 700) { const now = performance.now(); for (const th of list) { if (th.leaving) continue; th.leaving = ms / 1000; th.leaveAt = now; th.leaveFrom = th.born; th.tag.style.pointerEvents = 'none'; } layer.onChange?.(); },
-    destroy() { layer.clear(); },
-  };
-  return layer;
-}
-
-function drawThought(g, th, x, y, tension, t, { rm, low, droop }) {
-  const [light, deep] = TINTS[th.key];
-  const r = th.r * Math.max(0.05, th.scale);
-  const sx = 1 + th.sq * 0.9, sy = 1 - th.sq;
-  g.save();
-  g.translate(x, y + r * (1 - sy));
-  g.scale(sx, sy);
-  // soft glow halo (no shadowBlur: cheaper, photosafe); a cached falloff, not a flat disc
-  if (!th.halo || th.haloR !== Math.round(r)) {
-    const hg = g.createRadialGradient(0, 0, r * 0.7, 0, 0, r * 1.55);
-    hg.addColorStop(0, deep); hg.addColorStop(1, hexA(deep, 0));
-    th.halo = hg; th.haloR = Math.round(r);
-  }
-  g.globalAlpha = (low ? 0.22 : 0.42) * th.born;
-  g.fillStyle = th.halo;
-  g.beginPath(); g.arc(0, 0, r * 1.55, 0, TAU); g.fill();
-  // jelly body
-  const rk = Math.round(r * 2) / 2;      // re-make the gradient only when the size really changes
-  if (!th.gradient || th.gradR !== rk) {
-    const gr = g.createRadialGradient(-r * 0.32, -r * 0.38, r * 0.08, 0, 0, r);
-    gr.addColorStop(0, 'rgba(255,255,255,0.92)');
-    gr.addColorStop(0.35, light);
-    gr.addColorStop(1, deep);
-    th.gradient = gr; th.gradR = rk;
-  }
-  g.globalAlpha = 0.82 * th.born;
-  g.fillStyle = th.gradient;
-  g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
-  // rim
-  g.globalAlpha = 0.55 * th.born;
-  g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1.5;
-  g.beginPath(); g.arc(0, 0, r - 0.75, Math.PI * 1.05, Math.PI * 1.75); g.stroke();
-  // shine
-  g.globalAlpha = 0.5 * th.born;
-  g.fillStyle = '#fff';
-  g.beginPath(); g.ellipse(-r * 0.36, -r * 0.44, r * 0.2, r * 0.11, -0.5, 0, TAU); g.fill();
-  // face: two dots, a brow line that eases as tension drops, a small mouth
-  const blinkT = (t + th.phase) % 4.2;
-  const blink = !rm && blinkT < 0.12 ? 0.15 : 1;
-  const ey = -r * 0.04 + droop * r * 0.04, ex = r * 0.27, er = r * 0.085;
-  g.globalAlpha = 0.9 * th.born;
-  g.fillStyle = '#241640';
-  for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * ex, ey, er, er * blink * (th.press ? 0.55 : 1), 0, 0, TAU); g.fill(); }
-  g.strokeStyle = '#241640'; g.lineCap = 'round'; g.lineWidth = Math.max(1.5, r * 0.05);
-  // brows: inner ends dip when tense (worried/cross); sadness lifts them instead
-  const bt = tension * (droop ? -0.6 : 1);
-  g.globalAlpha = 0.65 * th.born * clamp(tension * 1.4);
-  for (const s of [-1, 1]) {
-    g.beginPath();
-    g.moveTo(s * (ex + er * 1.5), ey - er * 2.3 - bt * er * 0.5);
-    g.lineTo(s * (ex - er * 1.5), ey - er * 2.3 + bt * er * 0.9);
-    g.stroke();
-  }
-  const smile = lerp(-0.9, 0.5, clamp(th.state.calm * 1.1 + (1 - tension) * 0.3));
-  g.globalAlpha = 0.85 * th.born;
-  g.beginPath();
-  g.moveTo(-r * 0.13, r * 0.25);
-  g.quadraticCurveTo(0, r * 0.25 + smile * r * 0.12, r * 0.13, r * 0.25);
-  g.stroke();
-  // cheeks puff pink while held
-  if (th.sq > 0.05) {
-    g.globalAlpha = clamp(th.sq * 3) * 0.45 * th.born;
-    g.fillStyle = '#ff8fc8';
-    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * r * 0.45, r * 0.16, r * 0.12, r * 0.07, 0, 0, TAU); g.fill(); }
-  }
-  g.restore();
+  return stage;
 }

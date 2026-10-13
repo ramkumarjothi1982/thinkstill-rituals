@@ -497,7 +497,8 @@ test('privacy: nothing in the Hushfold shell stores or sends words or photos', (
   }
   // the person's words reach the DOM through textContent only
   const overlay = read('src/hushfold/input-overlay.js'), stage = read('src/hushfold/stage.js');
-  assert.match(stage, /tag\.textContent = excerpt\(text\)/);
+  // (the stage hands them to W2's ThoughtLayer, which writes its word tags with textContent only)
+  assert.match(read('src/mallows/thought/layer.js'), /tg\.words\.textContent = text;/);
   assert.doesNotMatch(overlay + stage, /\bhtml:/);
 });
 
