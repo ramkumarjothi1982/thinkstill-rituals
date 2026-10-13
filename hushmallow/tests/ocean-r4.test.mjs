@@ -44,68 +44,155 @@ const MELTS = [
   { tag: '320×568, 7 photos', W: 320, H: 568, n: 7, cards: [[0, 173, 244, 62, 79], [1, 262, 244, 57, 79]], th: [86, 255], heroA: [81.4, 342.1, 238.6, 492.2], heroB: [85.8, 321.8, 233.7, 482.5] },
 ];
 
-test('melt (review r4): every glide is planned — the ocean’s melt ends within 2.5 s of the director’s; no shuffle, no winding, nothing covered, nothing popped', async () => {
-  for (const C of MELTS) {
-    const dom = installFakeDom(C.W, C.H);
-    let D = null;
-    try {
-      const { createHushflow } = await import('../src/hushfold/flow/director.js');
-      const { W, H } = C;
-      let heroNow = box(C.heroA);
-      const mallow = { rect: () => heroNow, bodyRect: () => heroNow, react() {}, setEmotion() {}, lookAt() {}, float() {} };
-      const cards = C.cards.map(([i, x, y, w, h]) => ({ i, x, y, w, h, rot: 0.05, state: 'grounded' }));
-      const STORM = { ...WORLDS[0], load: async () => ({ create: () => ({ prepare() {}, enter() {}, frame() {}, pointer() {}, outro() {}, intro() {}, get progress() { return 1; }, get complete() { return true; }, get metrics() { return {}; },
-        handoff: () => ({ horizonY: 0.655 * H, seeds: [[[40, 0.7 * H], [W / 2, 0.7 * H + 4], [W - 40, 0.7 * H]]], thought: { x: C.th[0], y: C.th[1], scale: 1, tension: 0.3, r: 30, labelW: 260 }, photos: cards, energy: 0.1 }),
-        serialize: () => ({ v: 1 }), restore() {}, pause() {}, resume() {}, destroy() {} }) }) };
-      const photos = { n: C.n, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }) };
-      D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought: fakeThought(), photos, subtitles: subtitles(), registry: createRegistry([STORM, WORLDS[1]]), ticker: fakeTicker(), store: memStore(), reducedMotion: false });
-      await D.start({ worldId: 'static-storm', emotion: 'angry', intention: 'calm' });
-      assert.ok(D.next(), C.tag);
-      for (let i = 0; i < 300 && D.state.phase !== 'melting'; i++) { D.debug.step(1 / 60); await new Promise((r) => setTimeout(r, 2)); }
-      assert.equal(D.state.phase, 'melting', C.tag);
-      const ocean = D.incoming;
-      let dirEnd = -1, end = -1, worstStep = 0, overB = 0, overT = 0, overH = 0, prev = null, glideAfter = 0, skyAfter = 0, skyDeep = 0;
-      const wind = new Map(), ang = new Map();
-      for (let f = 0; f < 30 * 14; f++) {
-        D.debug.step(1 / 30);
-        if (D.state.melt != null && D.state.melt >= 0.5) heroNow = box(C.heroB);      // (the shell hands the stage to Loomi halfway)
-        if (dirEnd < 0 && D.state.phase === 'playing') dirEnd = f;
-        if (dirEnd >= 0 && end < 0 && !ocean.debug.melt) end = f;
-        if (end >= 0 && f > end + 90 && ocean.debug.bubbles.some((b) => b.state === 'glide')) glideAfter++;
-        // (once the director's melt is over, nothing is left gliding in the sky: every bubble's waterline is on the water)
-        if (dirEnd >= 0) for (const b of ocean.debug.bubbles) if (b.alpha > 0.3 && b.state === 'glide') { const up = ocean.debug.hy - (b.sy + 0.3 * b.D); if (up > 0) { skyAfter++; skyDeep = Math.max(skyDeep, up); } }
-        const T = ocean.debug.thought, rr = T.r * T.surf, K = heroNow, kw = K.right - K.left;
-        const bs = ocean.debug.bubbles.filter((b) => b.alpha > 0.3 && b.state !== 'leave' && b.state !== 'card');
-        for (let a = 0; a < bs.length; a++) for (let c = a + 1; c < bs.length; c++) {
-          const A = bs[a], B = bs[c], d = Math.hypot(A.sx - B.sx, A.sy - B.sy);
-          overB = Math.max(overB, (A.D + B.D) / 2 - d);
-          // winding: how far the line between two close bubbles turns (one passing round another)
-          const key = `${A.i}-${B.i}`, an = Math.atan2(B.sy - A.sy, B.sx - A.sx), close = d < (A.D + B.D) / 2 + 40;
-          const p = ang.get(key);
-          if (p && close && p[1]) { let da = an - p[0]; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; wind.set(key, (wind.get(key) || 0) + da); }
-          ang.set(key, [an, close]);
-        }
-        if (T.alpha * T.vis > 0.3) for (const b of bs) overT = Math.max(overT, b.D / 2 + rr - Math.hypot(b.sx - T.sx, b.sy - T.sy));
-        for (const b of bs) { const ox = Math.min(b.sx + b.D / 2, K.right - 0.06 * kw) - Math.max(b.sx - b.D / 2, K.left + 0.06 * kw), oy = Math.min(b.sy + b.D / 2, K.bottom) - Math.max(b.sy - b.D / 2, K.top + 2); if (ox > 0 && oy > 0) overH = Math.max(overH, Math.min(ox, oy)); }
-        if (prev) for (const b of bs) { const q = prev.get(b.i); if (q) worstStep = Math.max(worstStep, Math.hypot(b.sx - q[0], b.sy - q[1])); }
-        prev = new Map(bs.map((b) => [b.i, [b.sx, b.sy]]));
-      }
-      assert.ok(dirEnd > 0, `${C.tag}: the director's melt finished`);
-      assert.ok(end >= 0 && end - dirEnd <= 15, `${C.tag}: the ocean's own melt ended ${((end - dirEnd) / 30).toFixed(2)} s after the director's (its queue keeps time with it: ≤ 0.5 s; the hard deadline is 2.5 s)`);
-      assert.equal(glideAfter, 0, `${C.tag}: nothing still glides 3 s after the melt`);
-      assert.ok(skyAfter <= 3 && skyDeep <= 6, `${C.tag}: bubbles still glided in the sky after the director's melt (${skyAfter} bubble-frames, up to ${skyDeep.toFixed(1)} px above the horizon)`);
-      // (a glide may run up to 1.25× its own pace to be down by the end of the director's melt: never a jump all the same)
-      assert.ok(worstStep <= 8, `${C.tag}: a bubble moved ${worstStep.toFixed(1)} px in one 1/30 s step`);
-      assert.ok(overB <= 1, `${C.tag}: two bubbles overlapped by ${overB.toFixed(1)} px`);
-      assert.ok(overT <= 0.5, `${C.tag}: a bubble covered the thought by ${overT.toFixed(1)} px`);
-      assert.equal(overH, 0, `${C.tag}: a bubble on the hero (${overH.toFixed(1)} px)`);
-      const worstWind = Math.max(0, ...[...wind.values()].map((v) => Math.abs(v) * 180 / Math.PI));
-      assert.ok(worstWind <= 120, `${C.tag}: two bubbles wound round each other by ${worstWind.toFixed(0)}°`);
-      const w = D.world;
-      assert.equal(w.metrics.bubbles + w.metrics.waiting, C.n, `${C.tag}: every photo is still there`);
-      assert.ok(w.debug.bubbles.length >= Math.min(C.n, C.cards.length), `${C.tag}: every postcard that hung in the storm landed on the water`);
-    } finally { D?.destroy(); dom.restore(); }
+// (review B1 r2) The MallowTouch hero, the default once H1 merges: its box is the soft body's — the float the ocean asks
+// for (lift and tilt, sprung as MallowTouch springs them) and a breath are in it — and a new Mallow arrives with the
+// entrance hop measured in the H1 shell at 390, 375 and 320 (as fractions of the rest box: [s, top, each side, bottom]).
+const HOP = [[0, -0.1, 0.04, -0.05], [0.1, -0.16, 0.035, -0.08], [0.2, -0.17, 0.02, -0.09], [0.3, -0.14, 0.005, -0.07], [0.38, -0.06, 0, -0.02], [0.45, 0.07, 0.06, 0], [0.5, 0.09, 0.085, 0], [0.6, 0.03, 0.04, 0], [0.7, -0.04, 0, 0], [0.8, -0.06, -0.015, 0], [0.95, -0.03, -0.005, 0], [1.1, 0, 0, 0]];
+function touchHero(rest) {
+  const s = { rest: rest.slice(), lift: 0, vl: 0, gl: 0, tilt: 0, vt: 0, gt: 0, t: 0, hopAt: -1 };
+  const hop = (u) => {
+    if (u < 0 || u >= HOP[HOP.length - 1][0]) return [0, 0, 0];
+    let k = 0;
+    while (HOP[k + 1][0] <= u) k++;
+    const A = HOP[k], B = HOP[k + 1], f = (u - A[0]) / (B[0] - A[0]);
+    return [1, 2, 3].map((j) => A[j] + (B[j] - A[j]) * f);
+  };
+  const rect = () => {
+    const [l, t, r, b] = s.rest, w = r - l, h = b - t, br = 0.012 * Math.sin(s.t * 2 * Math.PI * 0.8);
+    const [kt, ks, kb] = s.hopAt >= 0 ? hop(s.t - s.hopAt) : [0, 0, 0];
+    const cx = (l + r) / 2, cy = (t + b) / 2 - s.lift * h;
+    const x0 = cx - (w / 2) * (1 + br) - ks * w, x1 = cx + (w / 2) * (1 + br) + ks * w;
+    const y0 = cy - (h / 2) * (1 - br) + kt * h, y1 = cy + (h / 2) * (1 - br) + kb * h;
+    // (tilted: the box of the turned body's box, as MallowTouch.bodyRect() measures it)
+    const th = (s.tilt * Math.PI) / 180, c = Math.abs(Math.cos(th)), sn = Math.abs(Math.sin(th));
+    const hw = (x1 - x0) / 2, hh = (y1 - y0) / 2, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    return box([mx - (hw * c + hh * sn), my - (hh * c + hw * sn), mx + (hw * c + hh * sn), my + (hh * c + hw * sn)]);
+  };
+  return {
+    rect, bodyRect: rect, react() {}, setEmotion() {}, lookAt() {},
+    float({ lift, tilt } = {}) { if (Number.isFinite(lift)) s.gl = lift; if (Number.isFinite(tilt)) s.gt = tilt; },
+    tick(dt) { s.t += dt; const kf = 40, cf = 2 * Math.sqrt(kf) * 0.8; s.vl += (kf * (s.gl - s.lift) - cf * s.vl) * dt; s.lift += s.vl * dt; s.vt += (kf * (s.gt - s.tilt) - cf * s.vt) * dt; s.tilt += s.vt * dt; },
+    swap(next) { s.rest = next.slice(); s.hopAt = s.t; },
+  };
+}
+// The MallowTouch rest boxes measured in the H1-merged shell (B1 r2): Glitzi in the storm, Loomi after the melt.
+const TOUCH = {
+  390: { glitzi: [70, 515, 320, 749], loomi: [87, 521, 304, 751] },
+  375: { glitzi: [70, 492, 305, 721], loomi: [84, 500, 292, 724] },
+  320: { glitzi: [76, 336, 245, 494], loomi: [88, 330, 232, 490] },
+};
+const MT_MELTS = [];
+for (const [base, size] of [[3, 390], [0, 390], [2, 375], [5, 320]]) {
+  for (const swap of ['k1', 'host']) {
+    const C = MELTS[base];
+    MT_MELTS.push({ ...C, tag: `${C.tag}, MallowTouch Glitzi → Loomi, host swapped ${swap === 'k1' ? 'at k = 1 (H1)' : 'halfway on host (H2)'}`, touch: TOUCH[size], swap, dt: 1 / 20 });
   }
+}
+// (and the H1 shell's own storm at 390: the seven-Mallow fallback where its postcards hung, no words on the stage)
+for (const swap of ['k1', 'host']) {
+  MT_MELTS.push({ tag: `390×844, the shell's seven-Mallow storm, no thought, MallowTouch Glitzi → Loomi, host swapped ${swap === 'k1' ? 'at k = 1 (H1)' : 'halfway on host (H2)'}`, W: 390, H: 844, n: 7, noThought: true,
+    cards: [[5, 95, 307, 62, 78], [6, 202, 309, 62, 78], [0, 325, 311, 62, 78], [1, 71, 246, 62, 78], [2, 167, 246, 62, 78], [3, 248, 247, 62, 78], [4, 339, 246, 62, 78]], th: [195, 420], touch: TOUCH[390], swap, dt: 1 / 20 });
+}
+
+/** Melt the synthetic storm into the real ocean, every 1/30 s step measured. */
+async function melt(C) {
+  const dom = installFakeDom(C.W, C.H);
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const { W, H } = C;
+    let heroNow = C.touch ? null : box(C.heroA);
+    const th = C.touch ? touchHero(C.touch.glitzi) : null;
+    const mallow = th || { rect: () => heroNow, bodyRect: () => heroNow, react() {}, setEmotion() {}, lookAt() {}, float() {} };
+    const cards = C.cards.map(([i, x, y, w, h]) => ({ i, x, y, w, h, rot: 0.05, state: 'grounded' }));
+    const STORM = { ...WORLDS[0], load: async () => ({ create: () => ({ prepare() {}, enter() {}, frame() {}, pointer() {}, outro() {}, intro() {}, get progress() { return 1; }, get complete() { return true; }, get metrics() { return {}; },
+      handoff: () => ({ horizonY: 0.655 * H, seeds: [[[40, 0.7 * H], [W / 2, 0.7 * H + 4], [W - 40, 0.7 * H]]], thought: { x: C.th[0], y: C.th[1], scale: 1, tension: 0.3, r: 30, labelW: 260 }, photos: cards, energy: 0.1 }),
+      serialize: () => ({ v: 1 }), restore() {}, pause() {}, resume() {}, destroy() {} }) }) };
+    const photos = { n: C.n, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }) };
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought: C.noThought ? null : fakeThought(), photos, subtitles: subtitles(), registry: createRegistry([STORM, WORLDS[1]]), ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+    if (th && C.swap === 'host') D.on('host', () => th.swap(C.touch.loomi));
+    await D.start({ worldId: 'static-storm', emotion: 'angry', intention: 'calm' });
+    assert.ok(D.next(), C.tag);
+    for (let i = 0; i < 300 && D.state.phase !== 'melting'; i++) { th?.tick(1 / 60); D.debug.step(1 / 60); await new Promise((r) => setTimeout(r, 2)); }
+    assert.equal(D.state.phase, 'melting', C.tag);
+    const ocean = D.incoming;
+    const m = { dirEnd: -1, end: -1, worstStep: 0, overB: 0, overT: 0, overH: 0, glideAfter: 0, skyAfter: 0, skyDeep: 0, rev: 0, revAmp: 0, revAt: null, flicker: 0, flickAt: null, worstWind: 0 };
+    let prev = null, prev2 = null;
+    const wind = new Map(), ang = new Map(), lastRev = new Map();
+    const dt = C.dt || 1 / 30;                             // (the browser review saw 20–30 fps: the holds-off must hold at both)
+    for (let f = 0; f < 14 / dt; f++) {
+      th?.tick(dt);
+      D.debug.step(dt);
+      if (!th && D.state.melt != null && D.state.melt >= 0.5) heroNow = box(C.heroB);      // (the shell hands the stage to Loomi halfway)
+      if (m.dirEnd < 0 && D.state.phase === 'playing') { m.dirEnd = f * dt; if (th && C.swap === 'k1') th.swap(C.touch.loomi); }   // (H1: at the melt's end)
+      if (m.dirEnd >= 0 && m.end < 0 && !ocean.debug.melt) m.end = f * dt;
+      if (m.end >= 0 && f * dt > m.end + 3 && ocean.debug.bubbles.some((b) => b.state === 'glide')) m.glideAfter++;
+      // (once the director's melt is over, nothing is left gliding in the sky: every bubble's waterline is on the water)
+      if (m.dirEnd >= 0) for (const b of ocean.debug.bubbles) if (b.alpha > 0.3 && b.state === 'glide') { const up = ocean.debug.hy - (b.sy + 0.3 * b.D); if (up > 0) { m.skyAfter++; m.skyDeep = Math.max(m.skyDeep, up); } }
+      const T = ocean.debug.thought, rr = T.r * T.surf, K = mallow.rect(), kw = K.right - K.left;
+      const bs = ocean.debug.bubbles.filter((b) => b.alpha > 0.3 && b.state !== 'leave' && b.state !== 'card');
+      for (let a = 0; a < bs.length; a++) for (let c = a + 1; c < bs.length; c++) {
+        const A = bs[a], B = bs[c], d = Math.hypot(A.sx - B.sx, A.sy - B.sy);
+        m.overB = Math.max(m.overB, (A.D + B.D) / 2 - d);
+        // winding: how far the line between two close bubbles turns (one passing round another)
+        const key = `${A.i}-${B.i}`, an = Math.atan2(B.sy - A.sy, B.sx - A.sx), close = d < (A.D + B.D) / 2 + 40;
+        const p = ang.get(key);
+        if (p && close && p[1]) { let da = an - p[0]; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; wind.set(key, (wind.get(key) || 0) + da); }
+        ang.set(key, [an, close]);
+      }
+      if (T.alpha * T.vis > 0.3) for (const b of bs) m.overT = Math.max(m.overT, b.D / 2 + rr - Math.hypot(b.sx - T.sx, b.sy - T.sy));
+      for (const b of bs) { const ox = Math.min(b.sx + b.D / 2, K.right - 0.06 * kw) - Math.max(b.sx - b.D / 2, K.left + 0.06 * kw), oy = Math.min(b.sy + b.D / 2, K.bottom) - Math.max(b.sy - b.D / 2, K.top + 2); if (ox > 0 && oy > 0) m.overH = Math.max(m.overH, Math.min(ox, oy)); }
+      if (prev) for (const b of bs) { const q = prev.get(b.i); if (q) m.worstStep = Math.max(m.worstStep, Math.hypot(b.sx - q[0], b.sy - q[1]) / (dt * 30)); }
+      // (review B1 r2) no flicker: a bubble never steps more than 1 px one way and then more than 1 px straight back
+      if (prev && prev2) {
+        for (const b of bs) {
+          const q = prev.get(b.i), q2 = prev2.get(b.i);
+          if (!q || !q2) continue;
+          const ax = q[0] - q2[0], ay = q[1] - q2[1], bx = b.sx - q[0], by = b.sy - q[1], na = Math.hypot(ax, ay), nb = Math.hypot(bx, by);
+          if (na > 1 && nb > 1 && ax * bx + ay * by < -0.8 * na * nb) { m.rev++; const last = lastRev.get(b.i); if (last != null && f - last <= 3) { m.flicker++; m.flickAt ||= `bubble ${b.i} (${b.state}) at ${(f * dt).toFixed(2)} s`; } lastRev.set(b.i, f); if (Math.min(na, nb) > m.revAmp) { m.revAmp = Math.min(na, nb); m.revAt = `bubble ${b.i} (${b.state}) at ${(f * dt).toFixed(2)} s`; } }
+        }
+      }
+      prev2 = prev;
+      prev = new Map(bs.map((b) => [b.i, [b.sx, b.sy]]));
+    }
+    m.worstWind = Math.max(0, ...[...wind.values()].map((v) => Math.abs(v) * 180 / Math.PI));
+    const w = D.world;
+    m.photos = w.metrics.bubbles + w.metrics.waiting; m.landed = w.debug.bubbles.length; m.slots = w.debug.slotsAll.length;
+    return m;
+  } finally { D?.destroy(); dom.restore(); }
+}
+function checkMelt(C, m) {
+  assert.ok(m.dirEnd > 0, `${C.tag}: the director's melt finished`);
+  assert.ok(m.end >= 0 && m.end - m.dirEnd <= 0.5 + 1e-6, `${C.tag}: the ocean's own melt ended ${(m.end - m.dirEnd).toFixed(2)} s after the director's (its queue keeps time with it: ≤ 0.5 s; the hard deadline is 2.5 s)`);
+  assert.equal(m.glideAfter, 0, `${C.tag}: nothing still glides 3 s after the melt`);
+  assert.ok(m.skyAfter <= 3 && m.skyDeep <= 6, `${C.tag}: bubbles still glided in the sky after the director's melt (${m.skyAfter} bubble-frames, up to ${m.skyDeep.toFixed(1)} px above the horizon)`);
+  // (a glide may run up to 1.25× its own pace to be down by the end of the director's melt: never a jump all the same)
+  assert.ok(m.worstStep <= 8, `${C.tag}: a bubble moved ${m.worstStep.toFixed(1)} px in one 1/30 s step`);
+  // (review B1 r2) no flicker: a bubble never goes back and forth, more than 1 px each way, again within three frames —
+  // the MallowTouch melt flicked two of them between two places on alternate frames for 1.4 s (23–42 reversals); one
+  // bumped by another may turn back once (the reviewer's rig-hero baseline had 0–6)
+  assert.equal(m.flicker, 0, `${C.tag}: a bubble flickered back and forth (${m.flickAt}; ${m.rev} reversals over 1 px in all)`);
+  assert.ok(m.rev <= 3, `${C.tag}: ${m.rev} frame-to-frame reversals over 1 px (worst ${m.revAmp.toFixed(1)} px, ${m.revAt})`);
+  assert.ok(m.overB <= 1, `${C.tag}: two bubbles overlapped by ${m.overB.toFixed(1)} px`);
+  assert.ok(m.overT <= 0.5, `${C.tag}: a bubble covered the thought by ${m.overT.toFixed(1)} px`);
+  assert.equal(m.overH, 0, `${C.tag}: a bubble on the hero (${m.overH.toFixed(1)} px)`);
+  assert.ok(m.worstWind <= 120, `${C.tag}: two bubbles wound round each other by ${m.worstWind.toFixed(0)}°`);
+  assert.equal(m.photos, C.n, `${C.tag}: every photo is still there`);
+  // (as many as the water has places for: a host wider than planned can leave fewer, and the rest take turns)
+  // (with the wider MallowTouch host up to two may still be over the horizon 9 s after the melt, waiting their turn: a
+  // queue that could not be down by the end of the melt lets its last glides fade where they hang rather than glide on
+  // in the sky, and a place a floating bubble has drifted onto is not free — every photo is still there, above)
+  assert.ok(m.landed >= Math.min(C.n, C.cards.length, m.slots || C.n) - (C.touch ? 2 : 0), `${C.tag}: every postcard that hung in the storm landed on the water (${m.landed} afloat, ${m.slots} places)`);
+}
+
+test('melt (review r4): every glide is planned — the ocean’s melt ends within 0.5 s of the director’s; no shuffle, no winding, no flicker, nothing covered, nothing popped', async () => {
+  for (const C of MELTS) checkMelt(C, await melt(C));
+});
+
+test('melt (review B1 r2): the MallowTouch hero — Glitzi to Loomi at 390, 375 and 320, swapped at k = 1 (H1) or halfway (H2): no flicker, nothing left in the sky, the ocean’s melt ends with the director’s', async () => {
+  const fails = [];
+  for (const C of MT_MELTS) { const m = await melt(C); try { checkMelt(C, m); } catch (e) { fails.push(e.message); } }
+  assert.deepEqual(fails, []);
 });
 
 // ------------------------------------------------------------------ play --
