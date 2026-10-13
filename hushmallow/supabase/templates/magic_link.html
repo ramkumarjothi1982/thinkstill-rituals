@@ -3,7 +3,7 @@
   <div style="max-width:440px;margin:0 auto;padding:28px 24px;border-radius:22px;background:#1e1a44;border:1px solid rgba(255,255,255,.12)">
     <p style="margin:0 0 18px;font-size:20px;font-weight:800;letter-spacing:-.01em">hushmallow</p>
     <h1 style="margin:0 0 10px;font-size:22px;line-height:1.25;font-weight:700">Sign in to hushmallow</h1>
-    <p style="margin:0 0 22px"><a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email" style="display:inline-block;padding:14px 26px;border-radius:999px;background:#ffd98a;color:#23140a;font-size:16px;font-weight:700;text-decoration:none">Sign in</a></p>
+    <p style="margin:0 0 22px"><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email" style="display:inline-block;padding:14px 26px;border-radius:999px;background:#ffd98a;color:#23140a;font-size:16px;font-weight:700;text-decoration:none">Sign in</a></p>
     <p style="margin:0 0 6px;font-size:14px;line-height:1.5;color:#918ab6">The link works once and expires in an hour. If you didn’t ask for it, you can ignore this email.</p>
   </div>
 </div>

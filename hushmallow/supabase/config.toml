@@ -1,0 +1,148 @@
+# hushmallow · Supabase CLI config for the LOCAL stack only.
+#
+# Used by the isolated sign-in end-to-end check in GitHub Actions
+# (.github/workflows/hushmallow-auth-e2e.yml: `supabase start` from
+# hushmallow/, Supabase CLI 2.117.0, Docker on the runner). It never points at
+# a hosted project: there is no [remotes] block, no project ref, no access
+# token, and nothing here is ever pushed (`supabase link` / `config push` /
+# `db push` are never run). The production project is configured by the owner
+# in the dashboard (docs/AUTH.md) and its SQL is pasted by hand
+# (supabase/README.md).
+#
+# What it sets up, on the runner only:
+#   * Postgres 17 with supabase/migrations/0001…0008 applied on start (as
+#     `postgres`, like the SQL editor); no seed.
+#   * Auth (GoTrue) with email confirmations ON, secure password change ON,
+#     8-character passwords, refresh-token rotation, and SHORT access tokens
+#     (120 s) so the E2E sees supabase-js refresh them for real.
+#   * The same email templates the owner pastes into production
+#     (supabase/templates/*.html: every link is token_hash on /auth/callback,
+#     the reauthentication email is the 6-digit code), caught by the local
+#     mail server (Mailpit, web UI + API on port 54324).
+#   * The built site is served at http://127.0.0.1:8000, so that is the Site
+#     URL and the redirect allow-list.
+#   * Only what the app uses: Kong + Auth + PostgREST + Mailpit + Postgres.
+#     Studio, Realtime, Storage, Edge Functions, analytics and the pooler are
+#     off.
+# The keys `supabase status` prints for this stack are the CLI's fixed,
+# public, local-only test values. The E2E reads only the URL and the
+# publishable (anon) key; it never reads or uses a secret / service-role key.
+
+project_id = "hushmallow"
+
+[api]
+enabled = true
+port = 54321
+# hm_private (trigger functions, bookkeeping) is never exposed.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+# New public tables get NO Data API privileges by default (the stricter of the
+# two cloud settings): the migrations' own GRANTs must be enough. Production
+# may have either setting; the migrations revoke anon / grant authenticated
+# explicitly, and supabase/tests/rls_check.sql checks the result there.
+auto_expose_new_tables = false
+
+[db]
+port = 54322
+shadow_port = 54320
+health_timeout = "2m"
+major_version = 17
+
+[db.pooler]
+enabled = false
+
+[db.migrations]
+# supabase/migrations/0001_foundation.sql … 0008_backfill_profiles.sql, in order
+enabled = true
+schema_paths = []
+
+[db.seed]
+# nothing to seed: the E2E creates its own throwaway accounts
+enabled = false
+
+[realtime]
+enabled = false
+
+[studio]
+enabled = false
+
+# Mailpit catches every email Auth sends (nothing leaves the runner).
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:8000"
+# exactly the callback the app asks for (src/auth/client.js callbackUrl), with and without the slash
+additional_redirect_urls = [
+  "http://127.0.0.1:8000/auth/callback",
+  "http://127.0.0.1:8000/auth/callback/",
+  "http://localhost:8000/auth/callback",
+  "http://localhost:8000/auth/callback/",
+]
+# short on purpose: supabase-js must refresh while the E2E runs (production: 3600)
+jwt_expiry = 120
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+minimum_password_length = 8
+password_requirements = ""
+
+# The E2E signs in and out many times from one IP (127.0.0.1); the defaults
+# would throttle it. Local stack only: production keeps Supabase's limits.
+[auth.rate_limit]
+email_sent = 100
+sms_sent = 30
+anonymous_users = 30
+token_refresh = 1000
+sign_in_sign_ups = 300
+token_verifications = 300
+web3 = 30
+
+[auth.email]
+enable_signup = true
+# secure email change: both addresses confirm
+double_confirm_changes = true
+enable_confirmations = true
+# Auth asks for the emailed code unless the session was created in the last
+# 24 hours (the E2E ages its session in the local database to see the code demanded)
+secure_password_change = true
+# the app keeps its own 60 s cooldown; 1 s lets the E2E resend at once
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 3600
+
+# The templates the owner pastes into production (Authentication → Emails →
+# Templates); the subjects match each file's first line.
+[auth.email.template.confirmation]
+subject = "Confirm your hushmallow account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your hushmallow password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new email for hushmallow"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.reauthentication]
+subject = "Your hushmallow code"
+content_path = "./supabase/templates/reauthentication.html"
+
+[auth.email.template.magic_link]
+subject = "Your hushmallow sign-in link"
+content_path = "./supabase/templates/magic_link.html"
