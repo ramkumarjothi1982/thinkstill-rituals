@@ -29,9 +29,9 @@ import { hfIcon } from '../hushfold/icons.js';
 import { ensureBeyondCss } from './styles.js';
 import {
   WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, MECHANIC_LINES, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
-  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, pick,
+  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, pick,
 } from './lines.js';
-import { authoredScene, sceneParts, candidatePatterns } from './authored.js';
+import { authoredScene, sceneParts, candidatePatterns, bereavement, griefScene } from './authored.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
 import { createAngleClient, resolveEndpoint, TIMEOUTS } from './angle-client.js';
 import { RATINGS, MECHANICS } from './vocab.js';
@@ -411,6 +411,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.squeezes++;
     // after something heavy, squeezing stays and the playful lines go
     if (overlay || S.phase === 'typing' || S.level !== 'none' || S.crisis || S.care) return;
+    if (S.grief) return;
     // an occasional line, never a running commentary (and never over a perspective)
     if (['arrive', 'invite', 'squeeze', 'end'].includes(S.phase) && !subs?.busy && now() - S.lastLineAt > 9000 && S.squeezes % 3 === 1) say(pick(ZUZU_SQUEEZE, S.squeezes));
   }
@@ -660,6 +661,36 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.concernSaid = true;
     say(SAFETY.concern, { interrupt: !subs?.holding });
   }
+  /**
+   * A loss (lines.js GRIEF): Zuzu says the validating pair and stays close; support is one tap away, nothing
+   * playful follows, and there is no "another angle" or feedback to give. Nothing is sent for it.
+   */
+  async function griefMode(scene) {
+    const seq = ++S.seq;
+    S.grief = true; S.keepSupport = true; S.phase = 'support';
+    S.scene = scene;
+    keepCtl?.abort();
+    dropThought(); endMechanic(true); dismissCompanion();
+    supportPill.hidden = false;
+    careFace();
+    dockShow({ finish: true, tell: true });
+    subs?.clear();
+    await say(scene.subtitle_line_1, { mallow: 'zuzu', interrupt: true });
+    if (S.left || seq !== S.seq) return;
+    await sleep(rmOn() ? 400 : 1000);
+    await say(scene.subtitle_line_2, { mallow: 'zuzu' });
+    if (S.left || seq !== S.seq) return;
+    const v = await choose(GRIEF.ask, GRIEF.options, { mallow: 'zuzu' });
+    if (S.left || seq !== S.seq) return;
+    if (v === 'support') { openSupportSheet(); return; }
+    if (v === 'finish') { finish(); return; }
+    if (v === 'squeeze') {
+      // Zuzu comes forward to be held (no playful face, no playful lines)
+      S.phase = 'squeeze';
+      later(() => layout(), 480);
+      say(GRIEF.squeeze, { mallow: 'zuzu' });
+    }
+  }
   async function unclear() {
     S.phase = 'invite';
     // the choice carries "Tell Zuzu more": the dock's own Tell pill waits until it is answered
@@ -672,6 +703,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
 
   /** The words → a Thought Mallow → (server or authored) scene → its mechanic. */
   async function startAngle({ another = false } = {}) {
+    // someone has died: no Thought Mallow, no mechanic, no request for an angle (grief isn't a thought to fix)
+    if (bereavement(S.text)) return griefMode(griefScene(S.text, { emotion: S.emotion }));
     const seq = ++S.seq;
     S.phase = 'waiting';
     dockShow({});
@@ -1006,7 +1039,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.phase = 'finishing';
     S.seq++;
     subs?.clear();
-    const heavy = S.crisis || S.care;
+    const heavy = S.crisis || S.care || S.grief;
     dockShow({});
     if (heavy) careFace(); else zt?.setStage('comforting');
     if (!rmOn() && !heavy) zt?.react('hop');
@@ -1154,6 +1187,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
         S.text = text; S.emotion = emotion; S.shown = []; S.used = [];
         S.look = firstLook({ emotion, text });
         const sc = authoredScene(text, { emotion });
+        if (sc.grief) return griefMode(sc);
         if (mechanic && MECHANICS.includes(mechanic)) { sc.mechanic = mechanic; sc.interaction_type = mechanic; }
         spawnThought();
         const seq = ++S.seq;

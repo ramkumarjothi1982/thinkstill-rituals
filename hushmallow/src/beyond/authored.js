@@ -15,14 +15,49 @@
 import { detectPatterns, splitThought, matchScenarios, buildNextSteps, buildAngles } from '../ultra/reframe-engine.js';
 import { GENERAL } from '../ultra/frameworks.js';
 import { PATTERNS, PATTERN_INTERACTION, PATTERN_TO_AUTHORED, AUTHORED_TO_PATTERN, PATTERN_MALLOWS, mallowFor } from './vocab.js';
-import { AUTHORED_PAIRS, AUTHORED_ALT } from './lines.js';
+import { AUTHORED_PAIRS, AUTHORED_ALT, GRIEF } from './lines.js';
 
 // strong cues the authored habits don't name (practical problems, fair anger, replaying)
 const CUES = {
   rumination: /\b(?:replay\w*|keep (?:thinking|going over|going back to|coming back to)|can'?t stop (?:thinking|replaying|going over)|over and over|round and round|going round in circles)\b/i,
   valid_anger: /\b(?:unfair|furious|fuming|livid|seething|rude|disrespect\w*|took (?:the |all the )?credit|shouted at|yelled at|humiliat\w*|so angry|really angry|angry (?:at|with|that|about)|cancell?ed on me(?: again)?|lied to me|went behind my back|talked over me|interrupt\w* me|embarrassed me|belittled me|made fun of me|mocked me|put me down|undermin\w* me)\b/i,
-  practical_problem: /\b(?:deadline|interview|rent|bills?|overdraft|debt|promot\w*|appraisal|job hunt\w*|exam (?:is|on|next|tomorrow)|how do i|what do i do|what should i do|need to (?:decide|sort|fix|find|choose)|too much to do)\b/i,
+  practical_problem: /\b(?:deadline|interview|rent|bills?|overdraft|debt|promot\w*|appraisal|job hunt\w*|exam (?:is|on|next|tomorrow)|how do i|what do i do|what should i do|need to (?:decide|sort|fix|find|choose)|too much to do|due (?:on|by|in|tomorrow|today|tonight|next|this|first thing)|essays?|assignments?|coursework|dissertation|homework|(?:haven['’]?t|have not|not even) started)\b/i,
 };
+/**
+ * Someone else's anger at the person ("I think she's angry with me") is a guess about them (mind reading),
+ * never the person's own fair anger: those words are set aside before the fair-anger cue is read.
+ */
+const ANGRY_AT_ME = /\b(?:(?:so|really|very|quite|a bit|pretty|super) )?(?:angry|furious|fuming|livid|seething|mad|cross|annoyed|upset|pissed off|raging|irritated) (?:at|with) me\b/giu;
+/** The person's own fair anger in the words (not someone's anger at them). */
+export function fairAnger(text) {
+  return CUES.valid_anger.test(String(text ?? '').replace(ANGRY_AT_ME, ' '));
+}
+/**
+ * A loss: someone (or a pet) has died. Grief is not a thought to fix, so it never plays a mechanic or a
+ * fact/assumption split ("What your mind added: I can't stop crying"); Zuzu says an authored, validating
+ * pair instead and keeps support close (griefScene). Never "my phone died", "my boss gives me grief",
+ * "my dad nearly died" or "my son passed his test".
+ */
+const KIN = `(?:mum|mom|mam|mummy|mommy|mother|dad|daddy|father|parents?|step-?(?:dad|mum|mom|father|mother)|grandma|grandmother|grandad|granddad|grandpa|grandfather|grandparents?|nan|nana|nanna|gran|granny|sister|brother|sibling|twin|son|daughter|child|baby|kid|husband|wife|partner|boyfriend|girlfriend|fianc[eé]e?|friend|best friend|bestie|mate|uncle|aunt|auntie|cousin|niece|nephew|godmother|godfather|colleague|teacher|neighbou?r)`;
+const PET = `(?:dog|cat|puppy|kitten|pet|horse|pony|rabbit|bunny|hamster|guinea pig|budgie|parrot|bird|tortoise|ferret)`;
+/** 'passed' as a death ('my dad passed last year'), never 'passed his test' or 'passed me in the corridor'. */
+const PASSED = `passed(?: away| on\\b|(?=\\s*(?:$|[.,!?;:…]))|(?= (?:last|this|recently|suddenly|yesterday|earlier|peacefully|in (?:the night|his sleep|her sleep|their sleep|hospital|january|february|march|april|may|june|july|august|september|october|november|december|\\d)|a (?:week|month|year|few|couple)|(?:two|three|four|five|six|several|a few) (?:days|weeks|months|years)|and\\b|when\\b|before\\b)))`;
+const LOSS = [
+  new RegExp(`\\b(?:my|our|his|her|their) (?:(?:best|dear|beloved|little|big|old|older|younger|baby|twin|late|lovely) )?(?:${KIN}|${PET})s?(?:['’]s (?:${KIN}|${PET}))? (?:(?:has|had|have|just|suddenly|finally|recently|sadly) )*(?:died|${PASSED}|is dead|was killed|got killed|was put down|was put to sleep|had to be put down)`, 'iu'),
+  new RegExp(`\\b(?:since|after|when|before|until) (?:he|she|they|my (?:${KIN}|${PET})) (?:died|${PASSED})`, 'iu'),
+  new RegExp(`\\b(?:he|she|they) died (?:last|this|on|in|a|two|three|four|five|six|several|few|over|yesterday|recently|suddenly)\\b`, 'iu'),
+  new RegExp(`\\blost my (?:(?:best|dear|little|big|old|baby|twin|lovely) )?${KIN}\\b(?! (?:in the|at the|on the)\\b)`, 'iu'),
+  new RegExp(`\\b(?:my|our|his|her|their) (?:${KIN}|${PET})['’]s (?:death|passing)\\b`, 'iu'),
+  new RegExp(`\\b(?:my|our|his|her|their) ${PET} (?:was |were |got |being |had to be )?put (?:down|to sleep)\\b`, 'iu'),
+];
+const GRIEVING = /\b(?:passed away|funeral|bereave\w*|grieving|grief|in mourning|mourning)\b/iu;
+const NOT_A_LOSS = /\b(?:give|gives|giving|gave|getting|get|got) (?:me|us|him|her|them|you) (?:so much |a lot of |some |such )?grief\b|\bgood grief\b|\b(?:nearly|almost|could have|could['’]ve|would have|would['’]ve|might have|didn['’]?t|did not|never|haven['’]?t|has not|hasn['’]?t) (?:died|passed)\b/giu;
+/** 'loss' (someone or a pet died: "Missing them…"), 'grief' (grieving, a funeral), or null. */
+export function bereavement(text) {
+  const t = String(text ?? '').replace(NOT_A_LOSS, ' ');
+  if (LOSS.some((re) => re.test(t))) return 'loss';
+  return GRIEVING.test(t) ? 'grief' : null;
+}
 const EMOTION_DEFAULT = {
   anger: 'valid_anger', frustration: 'valid_anger', resentment: 'valid_anger', irritation: 'valid_anger',
   anxiety: 'catastrophising', worry: 'catastrophising', fear: 'catastrophising', dread: 'catastrophising',
@@ -127,11 +162,26 @@ const sentences = (s) => String(s).match(/[^.!?…]+(?:[.!?…]+["”’)]*|$)/g
 function split(text) {
   let pieces = [];
   try { pieces = splitThought(text); } catch { pieces = []; }
+  // a verdict on themselves ("I’m a horrible mother") is never "what happened": it is what the mind added
+  pieces = pieces.map((p) => (p.guess !== 'interpretation' && HARSH.test(String(p.text || '')) ? { ...p, guess: 'interpretation' } : p));
   const factP = pieces.find((p) => p.guess === 'fact') || (pieces.length > 1 ? pieces.find((p) => p.guess === 'unsure') : null);
-  const guessP = pieces.find((p) => p.guess === 'interpretation' && p !== factP) || (pieces.length > 1 ? pieces[pieces.length - 1] : null);
+  const lastP = pieces.length > 1 ? pieces[pieces.length - 1] : null;
+  const guessP = pieces.find((p) => p.guess === 'interpretation' && p !== factP && readsAsGuess(p.text)) || (lastP && lastP !== factP && readsAsGuess(lastP.text) ? lastP : null);
   const fact = factP ? exactPhrase(text, factP.text) : '';
   const guess = guessP && guessP !== factP ? exactPhrase(text, guessP.text) : '';
   return { fact, guess, pieces };
+}
+
+/**
+ * A piece the engine was unsure of, taken as "what my mind added" only when it reads like one: about someone
+ * else, ahead in time, a verdict or an extreme. What the person says about themselves, now ("I haven’t started",
+ * "I can’t stop crying", "I feel empty"), is something that happened, never their mind's addition.
+ */
+const SELF_NOW = /^(?:(?:and|but|so|now|still) )?(?:i|i['’]ve|i['’]m|i am|i have|i had|i was|i feel|i felt|i keep|i can['’]?t|i cannot|i don['’]?t|i didn['’]?t|i haven['’]?t|i hadn['’]?t|i wasn['’]?t|i still|i just|i've)\b/iu;
+function readsAsGuess(piece) {
+  const p = String(piece || '');
+  if (!SELF_NOW.test(p)) return true;
+  return MINDY.test(p) || FUTURE.test(p) || EXTREME.test(p) || HARSH.test(p);
 }
 
 /** "always", "never", or "nobody" / "everyone" as the subject of the sentence ("Nobody likes me"), not "in front of everyone". */
@@ -146,7 +196,7 @@ const OTHERS = /\b(?:he|she|they|them|him|her|his|their|people|everyone|everybod
 /** The person takes the blame on themselves (personalisation needs that, never "someone did this to me"). */
 const BLAME = /\b(?:my (?:own )?fault|blame (?:myself|me)|because of me|i ruined|i caused|i spoiled|i let (?:them|everyone|the team|her|him|you) down|all on me|down to me)\b/i;
 /** The words read someone else's mind or meaning (what they think, feel, want, or why they did or didn't). */
-const MINDY = /\b(?:thinks?|thought (?:i|i'm|me)|must (?:be|think|hate|feel)|judg\w*|hates?|(?:don'?t|doesn'?t|didn'?t) (?:like|want|care)|likes? me|annoyed (?:with|at) me|upset with me|angry (?:with|at) me|ignor\w*|repl(?:y|ied|ies)|respond\w*|text\w* (?:me )?back|invit\w*|left out|leave me out|excluded|except me|without me|bored of me|boring|laugh\w* at me|talking about me|staring|noticed)\b/i;
+const MINDY = /\b(?:thinks?|thought (?:i|i'm|me)|must (?:be|think|hate|feel)|judg\w*|hates?|(?:don'?t|doesn'?t|didn'?t) (?:like|want|care)|likes? me|(?:annoyed|upset|angry|furious|mad|cross|fuming|livid|pissed off|irritated) (?:with|at) me|ignor\w*|repl(?:y|ied|ies)|respond\w*|text\w* (?:me )?back|invit\w*|left out|leave me out|excluded|except me|without me|bored of me|boring|laugh\w* at me|talking about me|staring|noticed)\b/i;
 /** The words look ahead to something going wrong (catastrophising needs a future to shrink). */
 const FUTURE = /\b(?:will|won'?t|going to|gonna|what if|tomorrow|next (?:week|month|time)|never going to|end up|forever|ruin\w*|disaster|worst|fired|dump\w*|dread\w*|scared|afraid|terrified)\b/i;
 /** Black-and-white words (all-or-nothing needs two extremes to find the middle of). */
@@ -167,23 +217,25 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
   // is never played to fill a gap: when the fitting ones run out, Zuzu says so)
   const fits = (p) => {
     if (p === 'mind_reading') return OTHERS.test(text) && (MINDY.test(text) || has('mind-reading'));
-    if (p === 'personalisation') return (BLAME.test(text) || has('spotlight-on-me')) && !CUES.valid_anger.test(text);
-    if (p === 'valid_anger') return CUES.valid_anger.test(text) || ANGRY.has(emotion);
+    if (p === 'personalisation') return (BLAME.test(text) || has('spotlight-on-me')) && !fairAnger(text);
+    if (p === 'valid_anger') return fairAnger(text) || ANGRY.has(emotion);
     if (p === 'rumination') return CUES.rumination.test(text) || LOOPY.has(emotion) || /\bwhat if\b/i.test(text);
     if (p === 'overgeneralisation') return strong;
     if (p === 'self_criticism') return HARSH.test(text) || has('big-label') || has('should-rules');
     if (p === 'catastrophising') return FUTURE.test(text) || has('worst-case-jump') || has('future-reading') || ANXIOUS.has(emotion);
     if (p === 'all_or_nothing') return EXTREME.test(text) || has('all-or-nothing') || has('only-the-bad-bit') || has('shrinking-the-good');
-    if (p === 'practical_problem') return CUES.practical_problem.test(text) || (!!scenario && scenario !== GENERAL && !CUES.valid_anger.test(text)) || ['overwhelm', 'stress'].includes(emotion);
+    if (p === 'practical_problem') return CUES.practical_problem.test(text) || (!!scenario && scenario !== GENERAL && !fairAnger(text)) || ['overwhelm', 'stress'].includes(emotion);
     return true;
   };
   const maybe = (p) => { if (p && fits(p)) add(p); };
   if (hint) add(hint);
   if (CUES.rumination.test(text)) add('rumination');
-  if (CUES.valid_anger.test(text)) add('valid_anger');
+  if (fairAnger(text)) add('valid_anger');
   // a habit the engine found in the words, when its scene makes sense for them ("everyone" / "nobody" are
   // everywhere in ordinary speech: always/never only counts when it is the subject: "Nobody likes me")
   for (const f of found) if (f.pattern.id !== 'always-never') maybe(AUTHORED_TO_PATTERN[f.pattern.id]);
+  // a harsh label of their own the engine's list doesn't name ("I’m a horrible mother") is that habit too
+  if (HARSH.test(text)) maybe('self_criticism');
   if (CUES.practical_problem.test(text)) add('practical_problem');
   if (strong) add('overgeneralisation');
   if (scenario && scenario !== GENERAL) for (const id of scenario.likelyPatterns || []) maybe(AUTHORED_TO_PATTERN[id]);
@@ -200,11 +252,35 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
  * with a whole sentence it doesn't fit.
  */
 const LABEL_KITS = new Set(['big-label']);
+/** Words that describe the noun after them ("a terrible person"): a label never ends on one after an article. */
+const LABEL_ADJ = /^(?:stupid|useless|terrible|pathetic|worthless|hopeless|incompetent|awful|rubbish|dumb|thick|clueless|horrible|bad|selfish|lazy|ugly|weak|disgusting|crap|crappy|cruel|mean|boring|weird|lousy|dreadful|appalling|toxic|unlovable|unlikeable|unlikable|failed|total|complete|absolute|utter|massive|huge|biggest|such|so|really|just|literally|actually)$/iu;
+/** What can follow such a word without being the noun it describes ("terrible at maths", "useless and lazy"). */
+const LABEL_STOP = /^(?:and|or|but|so|because|cos|at|to|for|of|in|on|with|who|that|which|when|if|like|than|as|too|really|now|again|today|anyway|right|here|there|lately|sometimes|always|all|the|my|this|that)$/iu;
+/**
+ * A label as the whole phrase they typed: "I’m a terrible" → "I’m a terrible person", "I’m a useless" →
+ * "I’m a useless boyfriend" (the engine's match stops at the adjective). '' when the words after it never
+ * name the noun: a quoted label never ends on an adjective after "a", "an" or "such a".
+ */
+export function wholeLabel(text, phrase) {
+  const src = String(text ?? '');
+  const p = exactPhrase(src, phrase);
+  if (!p) return '';
+  const last = (p.split(/\s+/).pop() || '').replace(/[^\p{L}'’-]/gu, '');
+  if (!/\b(?:a|an)\b/iu.test(p) || !LABEL_ADJ.test(last)) return p;
+  let rest = src.slice(src.indexOf(p) + p.length), out = p;
+  for (let i = 0; i < 3; i++) {
+    const m = /^ +([\p{L}][\p{L}'’-]*)/u.exec(rest);
+    if (!m || LABEL_STOP.test(m[1])) return '';
+    out += m[0]; rest = rest.slice(m[0].length);
+    if (!LABEL_ADJ.test(m[1])) return out;
+  }
+  return '';
+}
 const CLAUSE_KITS = new Set(['mind-reading', 'future-reading']);
 function kitThought(kitId, text, hit, pieces) {
   const m = exactPhrase(text, hit?.matches?.[0]?.text || '');
   if (!m) return '';
-  if (LABEL_KITS.has(kitId)) return words(m) <= 3 ? m : '';
+  if (LABEL_KITS.has(kitId)) { const w = wholeLabel(text, m); return w && words(w) <= 5 ? w : ''; }
   if (CLAUSE_KITS.has(kitId)) {
     const clause = pieces.map((p) => exactPhrase(text, p.text)).find((c) => c && c.toLowerCase().includes(m.toLowerCase()));
     const c = String(clause || '').replace(/[\s.,;:!?…]+$/u, '');
@@ -249,11 +325,13 @@ function linesFrom(text, pattern) {
  */
 export function authoredScene(text, { emotion = null, exclude = [], usedAngles = [], hint = null } = {}) {
   const t = String(text ?? '');
+  // someone has died: never a mechanic or a fact/assumption split (the orchestrator plays griefScene gently)
+  if (bereavement(t)) return griefScene(t, { emotion });
   let scenario = GENERAL;
   // a situation is trusted only on a real match (two keywords, or a phrase), never on one stray word
   try { const m = matchScenarios(t, { limit: 1 })[0]; scenario = m && m.score >= 2 ? m.scenario : GENERAL; } catch { scenario = GENERAL; }
   // someone did something to them: the situations about one's own slip ("awkward moment") would make light of it
-  if (CUES.valid_anger.test(t) && SELF_CAUSED.has(scenario.id)) scenario = GENERAL;
+  if (fairAnger(t) && SELF_CAUSED.has(scenario.id)) scenario = GENERAL;
   let detected = [];
   try { detected = detectPatterns(t); } catch { detected = []; }
   const cands = candidatePatterns(t, { emotion, hint, scenario });
@@ -273,7 +351,9 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   // and a situation's angle could make light of a real wrong.
   let angleId = null, l1 = null, l2 = null;
   const ownPair = pattern === 'valid_anger' || pattern === 'rumination';
-  const hit = authoredId ? detected.find((f) => f.pattern.id === authoredId) : null;
+  // (a harsh label the engine's own list doesn't name, "I’m a horrible mother", still gets the label's angles)
+  const harshAt = authoredId === 'big-label' ? HARSH.exec(t) : null;
+  const hit = authoredId ? detected.find((f) => f.pattern.id === authoredId) || (harshAt ? { pattern: { id: 'big-label' }, matches: [{ text: harshAt[0], index: harshAt.index }] } : null) : null;
   const fromKit = () => {
     if (!hit || !GENERAL.patternKit[authoredId]) return false;
     for (const a of GENERAL.patternKit[authoredId].angles) {
@@ -301,6 +381,17 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   if (!ownPair) {
     if (KIT_FIRST.has(pattern)) { if (!fromKit()) fromScenario(); } else if (!fromScenario()) fromKit();
   }
+  // fact versus assumption from their own words ("“My chest felt tight today” is what happened.") rather than
+  // the bare authored pair, which says nothing about what they told; and never that bare pair as the first angle
+  // while another scene still fits these words
+  if (!l1 && pattern === 'fact_vs_assumption') {
+    const own = ownFactPair(fact, guess, allGuess, t);
+    if (own) [l1, l2] = own;
+    else if (!exclude.length && !exhausted && !hint) {
+      const next = authoredScene(t, { emotion, exclude: ['fact_vs_assumption'], usedAngles, hint });
+      if (!next.exhausted && !next.grief) return next;
+    }
+  }
   if (!l1) [l1, l2] = AUTHORED_PAIRS[pattern];
 
   // "another explanation": a different angle from the same situation (never the one just revealed), whole and
@@ -327,6 +418,9 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
     const s = pattern === 'valid_anger' ? ((ANGER_SCENARIOS.has(scenario.id) && steps.find((x) => x.kind === 'boundary')) || GENERAL.nextSteps.find((x) => x.kind === 'boundary'))
       : kinds.map((k) => steps.find((x) => x.kind === k)).find(Boolean) || steps[0];
     step = s && words(s.text) <= 26 ? s.text : (GENERAL.nextSteps.find((x) => x.kind === (kinds[0] || 'act'))?.text || '');
+    // no situation matched: the general step is about nothing they said, so a frame around their own words
+    // (or a step for the practical problem they named) replaces it where one fits
+    if (scenario === GENERAL) step = ownStep(pattern, t, { fact, guess, allGuess }) || step;
     // in Zuzu's voice: "you", never the engine's own "my message" / "I wouldn't" (quoted lines to say stay as they are)
     step = secondPerson(step);
   } catch { step = ''; }
@@ -364,7 +458,58 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   };
 }
 
-const HARSH = /\b(?:i'?m|i am|i feel like)(?: (?:so|such|a|an|just|completely|totally|really|basically|the|absolute|total|complete|utter|utterly|literally|actually|massive|huge|biggest))* (?:stupid|an? idiot|idiot|a failure|failure|a loser|loser|useless|terrible|pathetic|worthless|hopeless|incompetent|a disaster|disaster|a mess|mess|a joke|joke|a fraud|fraud|a burden|burden|awful|rubbish|not good enough|not enough|too much|dumb|thick|clueless)\b/i;
+/** The longest of their words a subtitle line quotes (characters, without the end punctuation). */
+const LINE_QUOTE = 64;
+const bare = (q) => String(q || '').replace(/[.!?…]+$/u, '').trim();
+/** Fact versus assumption in their own words, or null when nothing of theirs fits a line whole. */
+function ownFactPair(fact, guess, allGuess, t) {
+  const f = bare(fact), g = bare(guess), all = bare(t);
+  const fits = (q) => !!q && q.length <= LINE_QUOTE;
+  if (fits(f) && fits(g) && !sameWords(f, g)) return [`“${f}” is what happened.`, `“${g}” is one way to read it.`];
+  if (allGuess && fits(all)) return [`“${all}” is one way to read what happened.`, 'What you know for sure is probably smaller than this thought.'];
+  if (fits(g) && !sameWords(g, f)) return ['What happened is one thing.', `“${g}” is one way to read it.`];
+  if (fits(f)) return [`“${f}” is what happened.`, AUTHORED_PAIRS.fact_vs_assumption[1]];
+  return null;
+}
+/** Steps for the practical problem they named (no situation of the library matched it). */
+const PRACTICAL_STEPS = [
+  [/\b(?:essays?|assignments?|coursework|dissertation|homework)\b/iu, 'Pick one piece of work and write just its first few lines today.'],
+  [/\b(?:deadline|due (?:on|by|in|tomorrow|today|tonight|next|this))\b/iu, 'Write down the one part the deadline really needs, and start with that.'],
+  [/\binterview\b/iu, 'Write down three things you’d like them to know about you.'],
+  [/\b(?:rent|bills?|overdraft|debt)\b/iu, 'Write down the exact amount and the date it’s due, then look at one option.'],
+  [/\b(?:how do i|what do i do|what should i do|need to (?:decide|choose))\b/iu, 'Write the options side by side, and sleep on it before choosing.'],
+];
+/** A next step that quotes their own words (or fits the practical problem they named), or '' when none fits. */
+function ownStep(pattern, t, { fact, guess, allGuess }) {
+  const g = bare(guess || (allGuess ? t : '')), q = (s) => s && s.length <= 48;
+  if (pattern === 'practical_problem') return (PRACTICAL_STEPS.find(([re]) => re.test(t)) || [])[1] || '';
+  if (['fact_vs_assumption', 'mind_reading', 'catastrophising', 'personalisation'].includes(pattern) && q(g)) return `Check one fact about “${g}”, instead of guessing.`;
+  if (pattern === 'self_criticism') {
+    const hit = HARSH.exec(t);
+    const label = hit ? wholeLabel(t, hit[0]) : '';
+    if (q(label)) return `Try saying what happened, instead of “${bare(label)}”.`;
+  }
+  void fact;
+  return '';
+}
+
+/**
+ * The scene for a loss (bereavement(text)): no mechanic, no reasoning pattern, no other angle to show;
+ * an authored, validating pair (lines.js GRIEF). The orchestrator plays it gently and keeps support close.
+ */
+export function griefScene(text, { emotion = null } = {}) {
+  const kind = bereavement(text) || 'grief';
+  const [l1, l2] = GRIEF[kind] || GRIEF.grief;
+  return {
+    source: 'authored', grief: true, reasoning_pattern: null, interaction_type: null, mechanic: null,
+    mallow_character: 'zuzu', emotion: emotion || null, situation_type: null,
+    known_fact: '', possible_assumption: '', alternative_angle: '', practical_next_step: '',
+    subtitle_line_1: l1, subtitle_line_2: l2, safety_status: 'ok',
+    authored_pattern: null, angle_id: null, alt_id: null, scenario_id: null,
+  };
+}
+
+const HARSH = /\b(?:i['’]?m|i am|i feel like)(?: (?:so|such|a|an|just|completely|totally|really|basically|the|absolute|total|complete|utter|utterly|literally|actually|massive|huge|biggest))* (?:stupid|an? idiot|idiot|a failure|failure|a loser|loser|useless|terrible|pathetic|worthless|hopeless|incompetent|a disaster|disaster|a mess|mess|a joke|joke|a fraud|fraud|a burden|burden|awful|horrible|rubbish|selfish|lazy|disgusting|unlovable|not good enough|not enough|too much|dumb|thick|clueless|(?:an? )?bad (?:person|friend|mum|mom|mother|dad|father|parent|daughter|son|sister|brother|partner|wife|husband|girlfriend|boyfriend|human|employee|student|teacher|colleague))\b/iu;
 /** The blame the person put on themselves, as typed ("it's my fault"), for the heaviest weight. */
 const BLAME_PHRASE = /(?:\b(?:it['’]?s|it is|it was|that['’]?s|that was|this is|was)\s+)?(?:all\s+)?\b(?:my fault|on me|because of me|my own fault|down to me|i ruined it|i let (?:them|everyone|the team|her|him) down)\b/iu;
 
@@ -414,9 +559,10 @@ export function sceneParts(text, scene = {}) {
   if (guess && sameWords(guess, fact)) guess = '';
   const factAsk = !fact, guessAsk = !guess;
 
+  // (the whole label as typed: "I’m a terrible person", never "I’m a terrible")
   const harshHit = HARSH.exec(t);
-  let harsh = harshHit ? harshHit[0] : '';
-  if (!harsh) { try { const big = detectPatterns(t).find((f) => f.pattern.id === 'big-label'); harsh = big ? exactPhrase(t, big.matches[0].text) : ''; } catch { /* none */ } }
+  let harsh = harshHit ? wholeLabel(t, harshHit[0]) : '';
+  if (!harsh) { try { const big = detectPatterns(t).find((f) => f.pattern.id === 'big-label'); harsh = big ? wholeLabel(t, big.matches[0].text) : ''; } catch { /* none */ } }
   // no harsh word of their own: the scene's (a server's assumption), or their words when short, else an authored name for it
   if (!harsh) harsh = (server && firstWhole(scene.possible_assumption, 70)) || (g0 && g0.length <= 48 ? g0 : '') || (t.length <= 48 ? t : '') || HARSH_NAME;
 

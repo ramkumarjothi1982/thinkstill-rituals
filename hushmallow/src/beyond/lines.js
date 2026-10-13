@@ -40,6 +40,20 @@ export const SAFETY = Object.freeze({
   finish: ['Go gently.', 'Support is one tap away whenever you need it.'],
 });
 
+/**
+ * Someone (or a pet) has died. Grief is not a thought to fix: no mechanic, no "what your mind added", no
+ * "another angle", nothing playful; a validating pair, Zuzu close by, and support one tap away.
+ */
+export const GRIEF = Object.freeze({
+  /** a loss named in the words ("my grandad died", "since he died") */
+  loss: ['Missing them this much makes sense.', 'Grief isn’t a thought to fix.'],
+  /** grieving, a funeral, without a loss named */
+  grief: ['Loss is heavy, and it makes sense that this hurts.', 'Grief isn’t a thought to fix.'],
+  ask: 'I’m right here. Squeeze me whenever you like.',
+  options: [{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'See support', value: 'support' }, { label: 'Finish', value: 'finish' }],
+  squeeze: 'Take all the time you need.',
+});
+
 /** Narration (no speaker), once a visit, when the server is open only to invited testers; Zuzu's own angle follows. */
 export const INVITE = Object.freeze({
   line: 'Another Angle is open to invited testers for now. You can add your code in Settings.',
