@@ -572,6 +572,8 @@ export default function hushfold(app, params = {}) {
     subtitles.clear({ keepHeld: true });
     // after a crisis nothing that invites play is kept either: no choice, no Paused pill, nothing to resume
     if (S.crisis) { subtitles.clear(); pausedPill.hidden = true; forgetProgress(); }
+    // (a paused world that is finished: its Paused pill and line go with it, not 1.25 s later)
+    pausedPill.hidden = true; pausedLine = null;
     // the realm underneath runs again as the world's last frame melts away over it
     world.realm?.pause?.(false);
     // the closing line is for the stage: the panel steps aside so it is seen
@@ -1178,6 +1180,8 @@ export default function hushfold(app, params = {}) {
       S.holdOnWorld = null;
       // in a world: a gentle session from here, and a melt into the calm world (or the calm world carries on)
       if (worldMode && flowRef && !flowRef.stub && !S.finishing) { calmTheWorld(gw.worldId); return; }
+      // (a world still loading under a safety pause: their choice starts the calm one instead, unheld)
+      if (starting && flowRef && !flowRef.stub) { try { flowRef.resume?.(); } catch (e) { console.warn(e); } }
       startFlow({ emotion: emotion || S.emotion, intention: calm, input: null, safety, worldId: gw.worldId });
     } else if (v === 'stay') say(SHARED_LINES.careQuiet);
   }
