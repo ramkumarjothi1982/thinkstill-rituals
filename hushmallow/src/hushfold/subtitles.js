@@ -87,8 +87,10 @@ function placeBandAt(bounds, blocks, need, gap) {
   const fitting = free.filter((f) => f.bottom - f.top >= need);
   const pick = fitting[0] || free.slice().sort((p, q) => (q.bottom - q.top) - (p.bottom - p.top))[0];
   if (!pick) return { y: top, fits: false, band: null };
-  const yy = pick.above ? pick.bottom - need : pick.top;
-  return { y: Math.max(top, Math.round(yy)), fits: fitting.length > 0, band: { top: pick.top, bottom: pick.bottom } };
+  const fits = fitting.length > 0;
+  // (nothing fits: the largest band, but never past the bottom bound — the dock is below it — while the bounds hold it)
+  const yy = Math.min(pick.above ? pick.bottom - need : pick.top, fits ? Infinity : bottom - need);
+  return { y: Math.max(top, Math.round(yy)), fits, band: { top: pick.top, bottom: pick.bottom } };
 }
 
 // ------------------------------------------------------------ contrast --
@@ -203,6 +205,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
 
   function showCtl(on) {
     clearTimeout(hideCtlTimer);
+    ctl.classList.remove('gap');
     ctl.classList.toggle('idle', !on);
     if (on) ctl.classList.remove('is-hidden');
     // the pill leaves with the last line (it never lingers alone on the stage); a paused pill stays
@@ -323,6 +326,9 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     const mine = cur;
     // the last line of all: the pill fades out together with it (never left alone on the stage)
     if (cur.i >= cur.item.lines.length - 1 && !queue.length && !paused) { clearTimeout(hideCtlTimer); ctl.classList.add('idle', 'is-hidden'); }
+    // another line follows: the pill steps out with this one for the gap between them and comes back with the next (it
+    // is never seen alone, with no line; it keeps its focus meanwhile — a held line's Continue)
+    else if (!paused) ctl.classList.add('gap');
     fadeOut(cur.lineEl, () => {
       if (cur !== mine) return;
       cur.i += 1;
@@ -379,7 +385,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   const keeper = (it) => !!(it && ((it.choice && !it.opts?.transient) || it.opts?.hold || it.lines?.some((l) => l.hold)));
   function hideNow() {
     liveEl.replaceChildren(); chipsEl.hidden = true; chipsEl.replaceChildren();
-    ctl.classList.remove('holding'); clearTimeout(hideCtlTimer); ctl.classList.add('is-hidden'); watch(false);
+    ctl.classList.remove('holding', 'gap'); clearTimeout(hideCtlTimer); ctl.classList.add('is-hidden'); watch(false);
   }
 
   const api = {

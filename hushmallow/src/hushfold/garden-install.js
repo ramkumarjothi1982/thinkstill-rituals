@@ -172,6 +172,8 @@ const CSS = `
 .hm-chip.is-reduced { transform: none; transition: opacity .35s ease; }
 /* no corner is free (the side panel or the phone sheet is open over them): the chip waits, unseen, until one is */
 .hm-chip.is-blocked { visibility: hidden; pointer-events: none; }
+/* the shell holds the moment (a world saying goodbye): the chip waits, unseen, until it lets go (holdInstall) */
+.hm-chip.is-held { visibility: hidden; pointer-events: none; }
 .hm-chip canvas { flex: 0 0 auto; display: block; margin: -4px -2px; }
 .hm-chip span { overflow-wrap: anywhere; }
 `;
@@ -550,6 +552,8 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
 }
 
 let openCard = null, openOffer = null, openChip = null;
+// the shell holds the moment (holdInstall): an open offer stays folded, its chip unseen, until it lets go
+let installHeld = false;
 // move focus to the card only for people using a keyboard (touch play is never interrupted)
 let keyboardUser = false;
 if (typeof addEventListener === 'function') {
@@ -572,6 +576,30 @@ export function relayoutInstall() {
   // (and the folded chip: never left over the panel, the sheet or the face the Mallow moved to)
   try { openChip?.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
 }
+/**
+ * A world is saying goodbye (the Hushfold's Finish): its last frame melts away and its closing line plays on a stage
+ * that is changing under the offer. While held, an offer still open folds into its chip at once (it never unfolds into
+ * a full card on the roomier home stage meanwhile, over the closing line, the dock or the person's thought on its way
+ * home) and the chip — this one, or a folded card's — waits unseen. Let go (false): the chip fades in, in a corner
+ * clear of what is on stage then. Nothing is saved or lost either way: a tap on the chip still brings the choice back.
+ */
+export function holdInstall(on) {
+  const was = installHeld;
+  installHeld = !!on;
+  if (installHeld) {
+    try { openOffer?.__fold?.(); } catch (e) { console.warn('[garden-install]', e); }
+    try { openCard?.__fold?.(); } catch (e) { console.warn('[garden-install]', e); }
+  }
+  const chip = openChip;
+  if (!chip) return;
+  try { chip.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
+  if (was && !installHeld && !chip.gone) {
+    // (it fades in where it now belongs, rather than appearing at once)
+    chip.el.classList.remove('is-in');
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (!chip.gone) chip.el.classList.add('is-in'); }));
+  }
+}
+export const installHeldNow = () => installHeld;
 /** window 'hm:offer' { phase: 'open' | 'fold' | 'unfold' | 'close', skillId }: the offer's life, for the shell (e.g. holding Auto-flow). */
 function offerEvent(phase, skillId) {
   try { dispatchEvent(new CustomEvent('hm:offer', { detail: { phase, skillId } })); } catch { /* old browsers: no signal, nothing breaks */ }
@@ -631,6 +659,7 @@ function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, ge
     const firm = obstacles.filter((o) => o.hard || !o.soft), body = (g || geom)?.body || null;
     const free = clear(obstacles) || (body ? clear([...firm, body]) : null) || clear(firm);
     b.classList.toggle('is-blocked', !free);
+    b.classList.toggle('is-held', installHeld);
     const at = free || spots[0];
     b.style.left = `${Math.round(at[0])}px`; b.style.top = `${Math.round(at[1])}px`;
   };
@@ -718,9 +747,9 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
 
     // left alone, it folds into a chip in a corner (nothing is saved, nothing lost)
     const armFold = () => { clearTimeout(foldT); if (foldAfterMs > 0) foldT = setTimeout(fold, foldAfterMs); };
-    function fold() {
+    function fold(force = false) {
       if (done || folded) return;
-      if (el.contains(document.activeElement)) { armFold(); return; }
+      if (!force && el.contains(document.activeElement)) { armFold(); return; }
       folded = true;
       el.classList.remove('is-in'); el.classList.add('is-folded');
       offerEvent('fold', skillId);
@@ -731,6 +760,8 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     armFold();
     el.addEventListener('pointerdown', armFold);
     el.addEventListener('focusin', armFold);
+    // (offered while the shell holds the moment: it starts folded, its chip waiting)
+    if (installHeld) fold(true);
 
     const stopLeave = onSceneLeave(() => close(false));
     const stopBand = onBandChange(() => {
@@ -759,6 +790,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     signal?.addEventListener?.('abort', onAbort);
     el.__close = close;
     el.__place = () => { if (!folded) geom = place(); };
+    el.__fold = () => fold(true);
     no.addEventListener('click', () => close(false));
     yes.addEventListener('click', () => close(true));
   });
@@ -1228,6 +1260,9 @@ export function playInstall(opts = {}) {
   }
   card.__finish = finish;
   card.__place = () => { if (!finished) onResize(); };
+  // (the shell holds the moment: a card already showing folds into its "In your garden" chip; one still to come shows as
+  // it would — the installation is the person's own "Keep this", seconds old)
+  card.__fold = () => { if (!finished && cardShown) finish('folded'); };
   const onKey = (e) => { if (e.key !== 'Escape') return; if (cardShown) finish('play'); else if (root.classList.contains('is-animating')) doSkip(); };
   document.addEventListener('keydown', onKey);
   skip.addEventListener('click', doSkip);

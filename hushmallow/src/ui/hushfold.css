@@ -125,7 +125,11 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 .hf-subctl { display: inline-flex; align-items: center; gap: 0; padding: 2px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(14, 10, 36, 0.52); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0.82;
   transition: opacity 360ms var(--hf-ease), transform 360ms var(--hf-ease); }
-.hf-subctl.is-hidden { opacity: 0; transform: translateY(-4px); pointer-events: none !important; visibility: hidden; }
+.hf-subctl.is-hidden { opacity: 0; transform: translateY(-4px); pointer-events: none !important; visibility: hidden; transition-delay: 0s; }
+/* it comes in a moment after its line starts to (the line rises 620 ms): never seen first, alone; between two lines it
+   steps out with the line (.gap: no line on the stage), keeping its focus */
+.hf-subctl:not(.is-hidden):not(.gap) { transition-delay: 180ms; }
+.hf-subctl.gap { opacity: 0 !important; transform: translateY(-4px); pointer-events: none !important; transition-duration: 240ms; transition-delay: 0s; }
 .hushfold.hf-tight .hf-subctl { display: none; }
 /* the garden installation pauses the lines for its moment: that is not the person's pause, so no ▶ pill (and the card has the room) */
 .hushfold.hf-install-quiet .hf-subctl { visibility: hidden !important; pointer-events: none !important; }

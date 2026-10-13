@@ -678,7 +678,7 @@ test('H1: worlds pause the realm and end with a real fade; nothing cheery after 
   assert.match(fin, /world\.realm\?\.pause\?\.\(false\)/);
   assert.match(fin, /S\.finishing = true;\s*(\/\/[^\n]*\n\s*if \(crisisLine\)[^\n]*\n\s*)?subtitles\.clear\(\{ keepHeld: true \}\);/);
   assert.match(scene, /say: \(lines, o\) => \{ if \(S\.hold === 'crisis' \|\| S\.finishing\) return Promise\.resolve\(null\);/);
-  assert.match(fin, /if \(S\.crisis\) \{[^}]*\} else if \(gentle\(\)\) say\(SHARED_LINES\.careQuiet\); else say\(lines\.pick\(mallowId, 'finished'\)/);
+  assert.match(fin, /if \(S\.crisis\) \{[^}]*\} else if \(gentle\(\)\) bye = say\(SHARED_LINES\.careQuiet\); else bye = say\(lines\.pick\(mallowId, 'finished'\)/);
   // the director keeps its reveal opacity inline: only !important lets Finish fade instead of cut
   const css = read('src/ui/hushfold.css').replace(/\s+/g, ' ');
   assert.match(css, /body\.hf-world-leaving #world > canvas\.hf-back, body\.hf-world-leaving #fx-layer > canvas\.hf-front \{ opacity: 0 !important; transition: opacity 1200ms/);

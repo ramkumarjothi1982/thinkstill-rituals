@@ -731,6 +731,9 @@ export default function hushfold(app, params = {}) {
     world.realm?.pause?.(false);
     // the closing line is for the stage: the panel steps aside so it is seen
     panel?.close();
+    // a garden offer left unanswered folds into its chip, which waits unseen while the world says goodbye: it never
+    // unfolds into a full card on the roomier home stage over the closing line, the dock or the thought going home
+    holdOffer(true);
     // the last frame melts away over the Hushfold's own realm
     document.body.classList.add('hf-world-leaving');
     later(() => {
@@ -739,9 +742,20 @@ export default function hushfold(app, params = {}) {
       // after a crisis no goodbye: the one calm line, now that the world has gone (or when the sheet
       // over it closes); after care, no cheery goodbye: the attentive face and a quiet line
       if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
-      if (S.crisis) { speakCrisis(); } else if (gentle()) say(SHARED_LINES.careQuiet); else say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
+      let bye = null;
+      if (S.crisis) { speakCrisis(); } else if (gentle()) bye = say(SHARED_LINES.careQuiet); else bye = say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
+      // (the chip comes back in a corner once the closing line has been said, and the thought is home: 8 s at most)
+      Promise.resolve(bye).then(() => later(() => holdOffer(false), 300));
+      later(() => holdOffer(false), 8000);
       app.applyUpdateIfSafe?.();
     }, 1250);
+  }
+  /** A world's goodbye holds the garden offer folded (garden-install's holdInstall); one hold at a time, always let go. */
+  let offerHeld = false;
+  function holdOffer(on) {
+    if (!!on === offerHeld) return;
+    offerHeld = !!on;
+    try { installMod?.holdInstall?.(offerHeld); } catch (e) { console.warn('[garden]', e); }
   }
   function onFlowError(d) {
     // a world's code that no longer loads is usually an older deploy's: move to the newer one when it is safe
@@ -2052,6 +2066,7 @@ export default function hushfold(app, params = {}) {
     leave() {
       S.left = true;
       offerCtl?.abort();
+      holdOffer(false);
       if (window.__hushfold?.subtitles === subtitles) delete window.__hushfold;
       for (const t of timers) clearTimeout(t);
       timers.clear();
