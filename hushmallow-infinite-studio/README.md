@@ -12,8 +12,10 @@ comparison (see the end of this file).
 
 | File | What it is |
 |---|---|
-| `output/v2/my-brain-at-2am-v2.mp4` | **The deliverable** (spec and loudness in `output/v2/verify.json`) |
+| `output/v2/my-brain-at-2am-v2.mp4` | **The deliverable**: H.264 High 4.2, yuv420p, BT.709, 1080×1920, 30 fps, 450 frames, 15.000 s; AAC 48 kHz stereo; faststart; −16 LUFS, −2 dBTP; 34.6 MB (all checks in `output/v2/verify.json`) |
+| `output/v2/my-brain-at-2am-v2.preview.mp4` | A lighter copy for messaging/phones (11.6 MB, CRF 20, same resolution, frames and audio; ≈ 42.5 dB PSNR vs the master) |
 | `output/v2/poster.jpg` | Cover still |
+| `AUDIT-v2.md` | My frame-by-frame audit against the ten approval questions, improvements, limitations |
 | `output/v2/my-brain-at-2am-v2.soundtrack.wav` | The mixed soundtrack (48 kHz / 24-bit) |
 | `output/v2/cues.json` | Every timed story event + the per-frame curves the soundtrack is built from |
 | `output/v2/compare/` | v1 vs v2 at the same story beats, 1:1 pixel crops and a sharpness measurement |

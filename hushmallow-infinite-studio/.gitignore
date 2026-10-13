@@ -12,6 +12,7 @@ output/*
 !output/v2/
 output/v2/*
 !output/v2/my-brain-at-2am-v2.mp4
+!output/v2/my-brain-at-2am-v2.preview.mp4
 !output/v2/my-brain-at-2am-v2.soundtrack.wav
 !output/v2/cues.json
 !output/v2/verify.json
