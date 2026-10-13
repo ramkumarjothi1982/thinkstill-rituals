@@ -271,7 +271,8 @@ export default function hushfold(app, params = {}) {
     stage?.thoughts.hideTags(tagsAway);
     const thought = !worldMode && liveThoughts().length > 0;
     let B = Math.min(vw * 0.66, regionH * (ov?.height || panelSheet() ? 0.86 : 0.7), 360);
-    if (thought && vw < 700) B *= 0.84;
+    // (a short phone: a little smaller still, so two Thought Mallows and their words have room round it)
+    if (thought && vw < 700) B *= vh < 640 ? 0.74 : 0.84;
     // in a world the Mallow stands on the floor in the foreground, smaller, leaving the sky to play in
     if (worldMode && !ov?.height && !panelSheet()) B = Math.min(vw * 0.58, vh * 0.27, 300);
     B = Math.max(minB, Math.min(B, regionH));
