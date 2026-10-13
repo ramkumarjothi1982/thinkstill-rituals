@@ -73,3 +73,30 @@ test('account: the full stop after an address is glued to its last piece, never 
   // and the line under it never strands its year ("With hushmallow since 13 Oct" / "2026.")
   assert.match(read('src/ui/account.css'), /\.hm-account \[data-since\] \{ text-wrap: balance; \}/);
 });
+
+// ------------------------------------------------------------------ 3 --
+test('Settings → Privacy account row: the button stacks under the label on a narrow row', async () => {
+  const { mountAccountRow } = await import('../src/app/scenes/account.js');
+  const el = new FakeEl('div');
+  const app = { auth: { enabled: true, status: () => 'signed-in', user: () => ({ email: 'ana.longer.name@example.com' }) } };
+  mountAccountRow(app, el);
+  const row = el.children[0];
+  assert.deepEqual(classes(row), ['setting', 'setting-action']);
+  const [label, btn] = row.children;
+  assert.equal(row.children.length, 2, 'label and button are the row\'s two flex items');
+  assert.deepEqual(classes(label), ['grow']);
+  assert.ok(classes(btn).includes('btn') && btn.attrs['data-act'] === 'account-row');
+  assert.equal(text(btn), 'Manage');
+  assert.match(text(label), /^Your accountSigned in as ana\.longer\.name@example\.com$/);
+  // guest: the same shape
+  mountAccountRow({ auth: { enabled: true, status: () => 'guest', user: () => null } }, el);
+  assert.deepEqual(classes(el.children[0]), ['setting', 'setting-action']);
+  assert.equal(text(el.children[0].children[1]), 'Sign in');
+  // app.css (always loaded; account.css only loads with the account screens): the label asks for
+  // 10 em of its own text, so the row really wraps; alone on its line the button takes the full width
+  const css = read('src/ui/app.css');
+  assert.match(css, /\.setting\.setting-action \{ flex-wrap: wrap; row-gap: 10px; \}/);
+  assert.match(css, /\.setting\.setting-action > \.grow \{ flex: 999 1 10em; min-width: 0; \}/);
+  assert.match(css, /\.setting\.setting-action > \.btn \{ flex: 1 0 auto; \}/);
+  assert.doesNotMatch(read('src/ui/account.css'), /setting-action/, 'not where Settings cannot see it');
+});

@@ -95,7 +95,9 @@ export function mountAccountRow(app, el) {
   // the address as on the account card: whole on its line, broken only after "@" or a dot if it must
   const addr = (email) => h('span', { translate: 'no', 'data-email': '', style: { display: 'inline-block', maxWidth: '100%', overflowWrap: 'break-word' } }, ...emailParts(email));
   const sub = signedIn ? (u.email ? ['Signed in as ', addr(u.email)] : ['Signed in']) : ['Optional. Everything works without one.'];
-  el.replaceChildren(h('div', { class: 'setting' },
+  // .setting-action (app.css): on a narrow row (320 px at text size 1.25) the button goes under the label,
+  // full width, instead of squeezing it ("Your / account", the address broken inside a word)
+  el.replaceChildren(h('div', { class: 'setting setting-action' },
     h('div', { class: 'grow', style: { ...type('row'), minWidth: 0 } }, label, h('small', { style: type('caption', { display: 'block', color: 'var(--text-3)', marginTop: '2px', overflowWrap: 'break-word' }) }, ...sub)),
     h('button', { class: 'btn', style: { minHeight: '44px' }, 'data-act': 'account-row', onclick: () => openAccount(app) }, signedIn ? 'Manage' : 'Sign in')));
 }
