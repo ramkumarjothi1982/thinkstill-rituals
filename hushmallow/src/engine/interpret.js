@@ -194,6 +194,19 @@ export function interpret(text) {
   return out;
 }
 
+/**
+ * The feelings worth highlighting as suggestions for an interpret() reading: ids of the confident matches
+ * (≥ min), most confident first, at most `max`. Words with a safety cue in them (crisis, care or distress)
+ * never get a positive feeling suggested — "relieved" beside "he hit me", "happy" beside "done with life" —
+ * and when the reading has one, nothing is suggested at all (the person names it, if they want to).
+ */
+export function suggestedFeelings(reading, { min = 0.6, max = 3 } = {}) {
+  const list = (reading?.emotions || []).filter((e) => e.confidence >= min);
+  const level = reading?.safety?.detail?.level || reading?.safety?.level || 'none';
+  if (level !== 'none' && list.some((e) => (getEmotion(e.id)?.valence ?? 0) > 0)) return [];
+  return list.slice(0, max).map((e) => e.id);
+}
+
 function acknowledge(r) {
   const names = r.emotions.filter((e) => e.confidence >= 0.5).slice(0, 2).map((e) => (getEmotion(e.id).phrase || getEmotion(e.id).name).toLowerCase());
   if (r.safety.level === 'crisis') return 'That sounds really heavy. You deserve support from a real person right now.';
