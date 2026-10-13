@@ -778,6 +778,15 @@ export default function hushfold(app, params = {}) {
    * P4); a safety hold or leaving aborts it (signal), and the Mallow's face and what the world
    * keeps clear are read live, so the offer stays off them as things move.
    */
+  /** The person's thoughts (soft: kept clear when it can be) and their words tags, as they are on screen now. */
+  function thoughtWords() {
+    const Lr = stage?.thoughts;
+    if (!Lr) return [];
+    const out = (Lr.rects?.() || []).map((r) => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom, soft: true }));
+    // (the layer's own record of where each tag is: read every frame of the moment, so no layout is forced)
+    for (const th of Lr.thoughts || []) { const t = Lr.tagRect?.(th); if (t) out.push({ left: t.left, top: t.top, right: t.right, bottom: t.bottom }); }
+    return out;
+  }
   async function onOffer({ skillId, worldId } = {}) {
     if (S.left || S.crisis || gentle()) return;
     // (an offer from a world that has melted away, or is melting away, is that world's: never over the next host)
@@ -797,7 +806,8 @@ export default function hushfold(app, params = {}) {
     // (it keeps off the person's Thought Mallow as that moves, until the offer, card and chip have gone)
     watchInstall(true);
     try {
-      await install.onOffer({ app, store, skillId, worldId, mallow: MALLOWS[host] ? host : mallowId, origin, face, avoid: offerAvoid,
+      // (words: the person's thoughts and their words tags, which the installation's charm never forms on or flies across)
+      await install.onOffer({ app, store, skillId, worldId, mallow: MALLOWS[host] ? host : mallowId, origin, face, avoid: offerAvoid, words: thoughtWords,
         subtitles: installSubtitles, reducedMotion: prefs.reducedMotion(), lowStim: lowStimNow(), signal: ctl.signal });
     } catch (e) { console.warn('[garden] onOffer', e); } finally {
       try { flow?.hold?.('offer', false); } catch { /* gone */ }

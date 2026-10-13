@@ -213,3 +213,28 @@ test('subtitle scrim: a bright spot behind it (the daytime sun) is found and dee
   const css = read('src/ui/hushfold.css');
   assert.match(css, /radial-gradient\(circle at var\(--hf-hot-x, 50%\) var\(--hf-hot-y, 50%\)/);
 });
+
+test('the garden installation never lies on the person\'s words: the ripple beside them, the flight round them, each tag cut out', () => {
+  const src = read('src/hushfold/garden-install.js');
+  const hf = read('src/app/scenes/hushfold.js');
+  // the Hushfold hands it the thoughts (soft) and their words tags, live, from the layer's own record (no forced layout)
+  assert.match(hf, /avoid: offerAvoid, words: thoughtWords,/);
+  assert.match(hf, /function thoughtWords\(\) \{[\s\S]{0,400}soft: true[\s\S]{0,300}Lr\.tagRect\?\.\(th\)/);
+  assert.match(src, /export async function keepDiscovery\(\{[^)]*words = null/);
+  assert.match(src, /playInstall\(\{ app, skillId, mallow, origin, face, avoid, words, from,/);
+  // the ripple's rings (≈1.1 S each side) form clear of them, as near the crown as can be (never down to the eyes)
+  assert.match(src, /const ring = \(x, y\) => \(\{ left: x - S \* 1\.1, right: x \+ S \* 1\.1/);
+  assert.match(src, /const down = geom \? Math\.max\(0, geom\.face\.top - S \* 0\.3 - F\.y\) : 0;/);
+  assert.match(src, /ripOffWords\(obstacles\);\n\s+placeCard\(\);/);
+  // the flight: the other bow, a wider one, the portal from the other side, then the ripple's next clear place;
+  // clear of the thoughts if it can be, of the tags always when any way is; chosen again as it sets off
+  assert.match(src, /const WAYS = \[\[0, 0\.2\], \[1, 0\.2\], \[0, 0\.32\], \[1, 0\.32\]\];/);
+  assert.match(src, /for \(const set of tags\.length < words\.length \? \[words, tags\] : \[words\]\)/);
+  assert.match(src, /for \(const c of ripFree\) \{ F\.x = c\.x; F\.y = c\.y; if \(tryWays\(set\)\) return; \}/);
+  assert.match(src, /if \(travelK > 0 && !rebowed && manual == null\) rebow\(\);/);
+  assert.match(src, /flightOffWords\(!!at\);\n\s+motesOffWords\(\);/);
+  // (with reduced motion nothing flies: only the ripple's place counts)
+  assert.match(src, /if \(!words\.length \|\| reduced\) return;/);
+  // whatever moves afterwards: each frame cuts the tags out of what it paints
+  assert.match(src, /const holes = liveTags\(\);[\s\S]{0,400}g\.clip\('evenodd'\);[\s\S]{0,120}\(reduced \? frameReduced : frameFull\)\(t\);\n\s+if \(holes\.length\) g\.restore\(\);/);
+});
