@@ -46,7 +46,7 @@ const fail = (code, message) => { throw new RelayError(code, message); };
 
 export const CLIENT_METHODS = [
   'me', 'savePreferences',
-  'submitFeeling', 'listJourneys', 'getJourney', 'withdrawFeeling', 'askMallow', 'resendJourney',
+  'submitFeeling', 'listJourneys', 'getJourney', 'withdrawFeeling', 'askMallow', 'resendJourney', 'setGiftSharing',
   'markReturnSeen', 'choosePerspective', 'saveJourney', 'releaseJourney', 'deleteJourney',
   'findFeeling', 'catchFeeling', 'letFloatPast', 'submitReframe', 'myGifts',
   'reportFeeling', 'reportPerspective', 'blockContributor', 'exportMyData', 'deleteMyData',
@@ -214,7 +214,7 @@ export class RelayService {
     const dupe = Object.values(this.s.journeys).find((j) => j.owner === acc.id && j.clientId === clientId);
     if (dupe) {
       // a replay must be the same words; a reused id with different words is a client bug, not a release
-      if (dupe.status === 'deleted' || dupe.text !== screen.text) fail('invalid', 'This was sent before with different words. Please try again.');
+      if (dupe.status === 'deleted' || dupe.text !== screen.text || dupe.allowFallback !== (allowFallback === true)) fail('invalid', 'This was sent before with different words. Please try again.');
       return { status: 'released', journey: this._journeyView(dupe, acc.id), duplicate: true };
     }
     if (acc.state !== 'active') fail('account-inactive');
@@ -247,7 +247,7 @@ export class RelayService {
   _exposed(jid, user) { return !!this.s.exposures[`${jid}:${user}`]; }
 
   _eligible(j, user) {
-    if (j.status !== 'travelling' || j.paused || j.owner === user) return false;
+    if (j.status !== 'travelling' || j.paused || j.owner === user || !j.consentAt) return false;   // nothing circulates without recorded consent
     if (j.expiresAt <= this.now()) return false;
     if (this._exposed(j.id, user)) return false;                         // never shown twice
     if (this._blocked(j.owner, user)) return false;
@@ -330,7 +330,7 @@ export class RelayService {
     // if this person has blocked the author, their words still fill the slot (ending the hold would tell
     // them whose feeling it is) but are never shown to the person they blocked
     const r = { id: this._id('pv'), journeyId: j.id, author: acc.id, slot: humans.length + 1, text: screen.text, clientId, at: t, mallow: this.s.profiles[acc.id].mallow, hiddenForOwner: this._blockedBy(acc.id, j.owner), removed: false,
-      allowShare: allowShare === true };   // may the author include these words in a share picture? (off unless the writer says yes)
+      allowShare: allowShare === true, shareConsentAt: allowShare === true ? t : null };   // may the author include these words in a share picture? (off unless the writer says yes)
     this.s.reframes[r.id] = r;
     this._endHold(h, 'used');
     j.lastProgressAt = t;
@@ -352,7 +352,19 @@ export class RelayService {
   myGifts(token) {
     const acc = this._actor(token, { allow: ['active', 'restricted', 'suspended'] });
     const list = Object.values(this.s.reframes).filter((r) => r.author === acc.id && !r.removed).sort((a, b) => b.at - a.at);
-    return { gifts: list.map((r) => ({ id: r.id, text: r.text, at: r.at, slot: r.slot, journeyHome: this.s.journeys[r.journeyId]?.status !== 'travelling' })) };
+    return { gifts: list.map((r) => ({ id: r.id, text: r.text, at: r.at, slot: r.slot, allowShare: !!r.allowShare, journeyHome: this.s.journeys[r.journeyId]?.status !== 'travelling' })) };
+  }
+  /** A writer can change their mind about appearing in share pictures. Only their own words. */
+  setGiftSharing(token, { perspectiveId, allowShare } = {}) {
+    const acc = this._actor(token, { allow: ['active', 'restricted', 'suspended'] });
+    const r = typeof perspectiveId === 'string' ? this.s.reframes[perspectiveId] : undefined;
+    if (!r || r.author !== acc.id || r.removed) fail('not-found');
+    if (allowShare !== true && allowShare !== false) fail('invalid');
+    r.allowShare = allowShare;
+    r.shareConsentAt = allowShare ? this.now() : null;
+    this._changed([this.s.journeys[r.journeyId]?.owner].filter(Boolean), 'journeys', r.journeyId);
+    this._save();
+    return this.myGifts(token);
   }
 
   _offerView(h) {
@@ -382,10 +394,13 @@ export class RelayService {
   resendJourney(token, { journeyId, clientId, allowFallback } = {}) {
     const { acc, j } = this._mine(token, journeyId);
     if (typeof clientId !== 'string' || !/^[a-z0-9_-]{8,64}$/i.test(clientId)) fail('invalid');
-    if (j.status === 'travelling' && j.resendClientId === clientId) return { status: 'released', journey: this._journeyView(j, acc.id), duplicate: true };
+    // a replay of a resend already applied is answered as a duplicate, whatever happened since (it never sends it out again)
+    const usedIds = j.resendClientIds || [];
+    if (usedIds.includes(clientId)) return { status: 'released', journey: this._journeyView(j, acc.id), duplicate: true };
     if (j.status !== 'returned' || j.paused || j.returnReason === 'removed') fail('not-available');
     if (this._humans(j).length > 0) fail('not-available', 'Only a feeling nobody caught can be sent out again.');
     if ((j.resends || 0) >= this.L.maxResends) fail('resend-limit');
+    if (!j.consentAt) fail('consent-required');
     const screen = screenFeeling(j.text, { minChars: this.L.feelingMinChars, maxChars: this.L.feelingMaxChars });
     if (!screen.ok && screen.code === 'support') return { status: 'support', level: screen.level, support: screen.support };
     if (!screen.ok) fail(`feeling-${screen.code}`, screen.message);
@@ -397,10 +412,12 @@ export class RelayService {
     const t = this.now();
     Object.assign(j, {
       status: 'travelling', releasedAt: t, expiresAt: t + this.L.journeyTtlMs, lastProgressAt: t,
-      returnedAt: null, returnReason: null, seenReturn: false, resends: (j.resends || 0) + 1, resendClientId: clientId,
+      returnedAt: null, returnReason: null, seenReturn: false, resends: (j.resends || 0) + 1, resendClientIds: [...usedIds, clientId],
       fallbackOfferedAt: this.s.fallbacks[j.id] ? j.fallbackOfferedAt : null,
     });
+    // the Mallow choice can be given or taken back for the new trip; left out, the earlier choice stands
     if (allowFallback === true && !j.allowFallback) { j.allowFallback = true; j.fallbackConsentAt = t; }
+    else if (allowFallback === false) { j.allowFallback = false; j.fallbackConsentAt = null; }
     j.events.push({ type: 'resent', at: t });
     this._changed([acc.id], 'journeys', j.id);
     this._save();
@@ -435,33 +452,40 @@ export class RelayService {
     let extra = null;
     if (f && f.status === 'ready' && !f.hidden) {
       const item = { id: f.id, kind: 'mallow', source: f.source, label: PERSPECTIVE_LABELS[f.source] || PERSPECTIVE_LABELS.demo, text: f.text, mallow: f.mallow, at: f.at, kept: j.choices[f.id] ?? null };
-      if (this._humans(j).length < this.L.perspectivesPerFeeling && visible.length < this.L.perspectivesPerFeeling) visible.push(item);
+      if (this._answered(j) < this.L.perspectivesPerFeeling && visible.length < this.L.perspectivesPerFeeling) visible.push(item);
       else extra = item;
     }
     return { visible, extra };
   }
+  /** The people whose words still stand (humanCount counts the same people). Slots still use _humans. */
+  _answered(j) { return this._humans(j).filter((r) => !r.removed).length; }
   _collection(j) { return this._items(j).visible; }
   _allItems(j) { const { visible, extra } = this._items(j); return extra ? [...visible, extra] : visible; }
 
   _fallbackView(j) {
     const f = this.s.fallbacks[j.id];
     if (f) {
-      const v = { status: f.status, mallow: f.mallow, source: f.source || null, reason: f.reason || null, superseded: f.status === 'ready' && this._humans(j).length >= this.L.perspectivesPerFeeling };
+      const v = { status: f.status, mallow: f.mallow, source: f.source || null, reason: f.reason || null, superseded: f.status === 'ready' && this._answered(j) >= this.L.perspectivesPerFeeling };
       if (f.support && !f.hidden) v.support = structuredClone(f.support);       // the provider's safety gate spoke: show support
       return v;
     }
     if (!j.allowFallback) return { status: 'off' };
     if (j.paused || j.returnReason === 'removed') return { status: 'held' };    // under human review: nothing goes to a provider
-    if (this._humans(j).length > 0) return { status: 'not-needed' };            // a person caught it: humans first
     if (this._askable(j)) return { status: 'available', mallow: j.mallow };
+    if (this._humans(j).length > 0) return { status: 'not-needed' };            // a person caught it: humans first
     return { status: 'waiting', mallow: j.mallow, availableAt: (j.releasedAt || j.createdAt) + this.L.fallbackAfterMs };
   }
-  /** May a Mallow be asked? Opt-in, after the wait, nobody has caught it, nothing under review, owner in good standing. */
+  /**
+   * May a Mallow be asked? Opt-in, once per feeling, nothing under review, owner in good standing.
+   * While it travels: only after the wait and while nobody has caught it (humans first).
+   * Once it is home ("Explore another angle"): whatever came back, the people have had their turn.
+   */
   _askable(j) {
     const t = this.now();
-    return j.allowFallback && !this.s.fallbacks[j.id] && this._humans(j).length === 0
-      && !j.paused && j.returnReason !== 'removed' && this.s.accounts[j.owner]?.state === 'active'
-      && (t - (j.releasedAt || j.createdAt) >= this.L.fallbackAfterMs) && (j.status === 'travelling' || j.status === 'returned');
+    if (!j.allowFallback || this.s.fallbacks[j.id] || j.paused || j.returnReason === 'removed') return false;
+    if (this.s.accounts[j.owner]?.state !== 'active') return false;
+    if (j.status === 'returned') return true;
+    return j.status === 'travelling' && this._humans(j).length === 0 && t - (j.releasedAt || j.createdAt) >= this.L.fallbackAfterMs;
   }
 
   _journeyView(j, viewer) {
@@ -481,7 +505,9 @@ export class RelayService {
       collection: home ? visible : visible.filter((x) => x.kind === 'mallow'),
       mallowExtra: extra,                                                        // a Mallow's, kept apart once five people answered
       seenReturn: j.seenReturn, saved: j.saved, resends: j.resends || 0,
-      canResend: j.status === 'returned' && this._humans(j).length === 0 && !j.paused && j.returnReason !== 'removed' && (j.resends || 0) < this.L.maxResends,
+      canResend: j.status === 'returned' && !!j.consentAt && this.s.accounts[j.owner]?.state === 'active' && this._humans(j).length === 0
+        && !j.paused && j.returnReason !== 'removed' && (j.resends || 0) < this.L.maxResends,
+      canExplore: j.status === 'returned' && this._askable({ ...j, allowFallback: true }),   // "Explore another angle", with consent
     };
   }
 
@@ -523,7 +549,7 @@ export class RelayService {
     j.releasedAt = this.now();
     for (const p of this._allItems(j)) if (j.choices[p.id] !== true) this._forget(j, p);
     const f = this.s.fallbacks[j.id];
-    if (f && j.choices[f.id] !== true) { f.hidden = true; if (f.status === 'pending') Object.assign(f, { status: 'failed', reason: 'withdrawn' }); }
+    if (f && j.choices[f.id] !== true) this._wipeFallback(j);               // let go: its words go too
     this._changed([acc.id], 'journeys', j.id);
     this._save();
     return this._journeyView(j, acc.id);
@@ -560,22 +586,20 @@ export class RelayService {
     const { acc, j } = this._mine(token, journeyId);
     const existing = this.s.fallbacks[j.id];
     if (existing) { if (this.inflight.has(j.id)) await this.inflight.get(j.id); return this._journeyView(j, acc.id); }
-    // "Explore another angle" at home: the person can opt in now, with the same disclosure, but only
-    // when a Mallow could really answer (so a consent is never recorded for nothing)
-    if (!j.allowFallback && consent === true && this._askable({ ...j, allowFallback: true })) {
-      j.allowFallback = true;
-      j.fallbackConsentAt = this.now();
-    }
-    if (!j.allowFallback) fail('fallback-off');
+    // "Explore another angle": the person can opt in now, with the same disclosure, but the consent
+    // is recorded only once the request is accepted (never for a refused one)
+    const optIn = !j.allowFallback && consent === true;
+    if (!j.allowFallback && !optIn) fail('fallback-off');
     if (acc.state !== 'active') fail('account-inactive');
     if (j.paused || j.returnReason === 'removed') fail('fallback-held');
-    if (!this._askable(j)) fail('fallback-not-yet');
+    if (!this._askable(optIn ? { ...j, allowFallback: true } : j)) fail('fallback-not-yet');
     // budgets: per person per day and the whole service per day
     const day = this._day();
     const used = (this.s.daily[day] ||= { global: 0, people: {} });
     if (used.global >= this.L.fallbackGlobalPerDay || (used.people[acc.id] || 0) >= this.L.fallbackPerPersonPerDay) fail('fallback-budget');
     used.global += 1;
     used.people[acc.id] = (used.people[acc.id] || 0) + 1;
+    if (optIn) { j.allowFallback = true; j.fallbackConsentAt = this.now(); }
     const mallow = j.mallow;                // the author's own Mallow offers it, in its own voice
     const f = { id: this._id('mp'), journeyId: j.id, status: 'pending', mallow, source: null, text: '', at: this.now(), requestedBy: acc.id };
     this.s.fallbacks[j.id] = f;           // reserved before the call: a second request can never start another
@@ -730,7 +754,8 @@ export class RelayService {
       exportedAt: new Date(this.now()).toISOString(),
       note: 'Your Hushmates data: your feelings and what came back, and the perspectives you gave. Other people never appear by name.',
       profile: { ...this.s.profiles[acc.id] },
-      journeys: this.listJourneys(token).journeys,
+      // when each choice was made: sharing anonymously, and (if given) letting a Mallow offer a perspective
+      journeys: this.listJourneys(token).journeys.map((v) => ({ ...v, consentAt: this.s.journeys[v.id].consentAt ?? null, fallbackConsentAt: this.s.journeys[v.id].fallbackConsentAt ?? null })),
       gifts: this.myGifts(token).gifts,
     };
   }

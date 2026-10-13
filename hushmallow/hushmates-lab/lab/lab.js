@@ -12,7 +12,7 @@ import { RelayClient } from '../client/relay-client.js';
 import { Device } from '../ui/device.js';
 import { SCREENS, startScene, connectRelay } from '../ui/relay/index.js';
 
-const STORE = 'hushmates-relay-lab:v1';
+const STORE = 'hushmates-relay-lab:v2';   // v2: consent is recorded on every journey; older lab state is not reloaded
 const $ = (sel, root = document) => root.querySelector(sel);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const store = {
@@ -30,6 +30,7 @@ const NAME = Object.fromEntries(RELAY_IDENTITIES.map((p) => [p.key, p.pseudonym]
 const FEELINGS = {
   relay: { text: 'My friend hasn’t replied. I think they’re avoiding me.', label: 'worry' },
   fallback: { text: 'I keep replaying something awkward I said in a meeting.', label: 'worry' },
+  partial: { text: 'I said yes to plans I don’t have the energy for, and now I feel stuck.', label: 'frustration' },
 };
 const SUGGESTED = {
   cloud: 'Maybe they’ve had a really full week and meant to reply when they had more energy.',
@@ -37,6 +38,18 @@ const SUGGESTED = {
   fern: 'Could there be another explanation, like them worrying about saying the wrong thing?',
   dream: 'Maybe the silence says more about their week than about how they feel about you.',
   pebble: 'Another possibility: they might be going through something of their own right now, and it isn’t about you at all.',
+};
+const FALLBACK_HUMAN = [
+  'Maybe the moment felt bigger to you than it did to anyone else in the room.',
+  'Could it be that people remember the work you did more than one sentence?',
+  'Another possibility: everyone has said something clumsy in a meeting and moved on.',
+  'Maybe replaying it is your care for the team showing up a bit too loudly.',
+  'Perhaps a quick, light follow-up would let you put it down.',
+];
+// Scenario C uses two different people on a different feeling.
+const SUGGESTED_PARTIAL = {
+  cloud: 'Maybe saying yes was a kindness, and it’s still allowed to change shape.',
+  star: 'Could there be a smaller version of the plan that fits the energy you have?',
 };
 
 // ------------------------------------------------------------- boot --
@@ -509,15 +522,24 @@ async function fixture(name) {
   const T = tokens;
   service.s.profiles[accId(AUTHOR)].onboarded = true;
   const rel = (kind, extra = {}) => journeyFor(kind) || service.submitFeeling(T[AUTHOR], { consent: true, text: FEELINGS[kind].text, label: FEELINGS[kind].label, clientId: `fx-${kind}-0001`, ...extra }).journey && journeyFor(kind);
-  const giveN = (j, n) => {
+  // Fixtures pin each offer to the journey being set up (the random pick is
+  // tested elsewhere); catching and writing still go through the real rules.
+  const offerOf = (j, k) => {
+    const t = service.now();
+    const h = { id: service._id('hold'), journeyId: j.id, user: accId(k), status: 'offered', createdAt: t, expiresAt: t + service.L.offerHoldMs };
+    service.s.holds[h.id] = h;
+    service.s.exposures[`${j.id}:${h.user}`] = t;
+    return h.id;
+  };
+  const giveN = (j, n, words = SUGGESTED) => {
     for (const k of ['cloud', 'star', 'fern', 'dream', 'pebble'].slice(0, n)) {
-      if (gaveOn(j, k)) continue;
-      const { offer } = service.findFeeling(T[k]);
-      if (!offer) continue;
-      service.catchFeeling(T[k], { holdId: offer.holdId });
-      service.submitReframe(T[k], { holdId: offer.holdId, text: SUGGESTED[k], clientId: `fx-${k}-${j.id.slice(-6)}` });
+      if (gaveOn(j, k) || !service._eligible(j, accId(k))) continue;
+      const holdId = offerOf(j, k);
+      service.catchFeeling(T[k], { holdId });
+      service.submitReframe(T[k], { holdId, text: words[k], allowShare: k !== 'star', clientId: `fx-${k}-${j.id.slice(-6)}` });
     }
   };
+  const expire = () => { clock.offset += service.L.journeyTtlMs + 60e3; service.tick(); };
   if (name === 'travelling') rel('relay');
   if (name === 'three') giveN(rel('relay'), 3);
   if (name === 'home') giveN(rel('relay'), 5);
@@ -527,11 +549,27 @@ async function fixture(name) {
     if (name === 'fallback-ready') await service.askMallow(T[AUTHOR], { journeyId: j.id }).catch(() => {});
   }
   if (name === 'offer') { rel('relay'); }
+  // Scenario C: two people catch it, then the day runs out.
+  if (name === 'partial') { giveN(rel('partial'), 2, SUGGESTED_PARTIAL); expire(); }
+  // Scenario B endings: nobody caught it, with or without the Mallow's view.
+  if (name === 'zero' || name === 'zero-mallow') {
+    const j = rel('fallback', { allowFallback: true });
+    if (!j.fallbackOfferedAt) { clock.offset += 31 * 60e3; service.tick(); }
+    if (name === 'zero-mallow') await service.askMallow(T[AUTHOR], { journeyId: j.id }).catch(() => {});
+    expire();
+  }
+  // Five people answered after the Mallow had already offered its view.
+  if (name === 'home-extra') {
+    const j = rel('fallback', { allowFallback: true });
+    if (!j.fallbackOfferedAt) { clock.offset += 31 * 60e3; service.tick(); }
+    await service.askMallow(T[AUTHOR], { journeyId: j.id }).catch(() => {});
+    giveN(j, 5, Object.fromEntries(Object.keys(SUGGESTED).map((k, i) => [k, FALLBACK_HUMAN[i]])));
+  }
   persist();
   await Promise.all(Object.values(devices).filter((d) => d.started).map((d) => d.client.refreshAll().catch(() => {})));
   renderClock();
   scheduleGuide();
-  return { relay: journeyFor('relay')?.id, fallback: journeyFor('fallback')?.id };
+  return { relay: journeyFor('relay')?.id, fallback: journeyFor('fallback')?.id, partial: journeyFor('partial')?.id };
 }
 function show(key, screen, p = {}) {
   setView(key === AUTHOR ? 'author' : 'catcher');

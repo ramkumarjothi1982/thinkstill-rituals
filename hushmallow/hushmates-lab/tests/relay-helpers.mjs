@@ -26,11 +26,11 @@ export function world({ limits = {}, provider = null } = {}) {
   for (const k of ['moon', 'cloud', 'star', 'fern', 'dream', 'pebble', 'ember', 'mod']) T[k] = svc.signInTestAccount(k);
   const release = (key = 'moon', o = {}) => svc.submitFeeling(T[key], { text: FEELING, label: 'worry', consent: true, clientId: cid('f'), ...o });
   /** catch whatever this person is offered and write a perspective; returns the submit result */
-  const give = (key, text) => {
+  const give = (key, text, o = {}) => {
     const { offer } = svc.findFeeling(T[key]);
     if (!offer) return null;
     svc.catchFeeling(T[key], { holdId: offer.holdId });
-    return svc.submitReframe(T[key], { holdId: offer.holdId, text, clientId: cid('r') });
+    return svc.submitReframe(T[key], { holdId: offer.holdId, text, clientId: cid('r'), ...o });
   };
   return { svc, clock, T, release, give, advance: (ms) => { clock.t += ms; svc.tick(); } };
 }

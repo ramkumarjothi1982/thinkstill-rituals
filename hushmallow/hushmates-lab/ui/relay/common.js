@@ -100,14 +100,14 @@ export function perspective(p, { onKeep, onMore, compact = false } = {}) {
 }
 
 /** Support (shown instead of releasing when a feeling sounds unsafe). Copy comes from the Reframe engine's safety layer. */
-export function supportBody(support = {}) {
+export function supportBody(support = {}, { lab = false } = {}) {
   const resources = support.resources || [];
   return h('div', { class: 'rl-support' },
     h('p', { class: 'rl-support-msg' }, support.message || 'What you wrote sounds really heavy. It won’t be sent to anyone, and you deserve real support with it.'),
     resources.length ? h('ul', { class: 'rl-support-list', dataset: { test: 'support-resources' } },
       resources.map((r) => h('li', {}, h('strong', {}, r.label), r.detail ? h('span', {}, r.detail) : null))) : null,
     support.stillHere ? h('p', { class: 'kit-note' }, support.stillHere) : null,
-    h('p', { class: 'kit-note rl-pilot-note' }, 'Pilot note: crisis resources must be reviewed for each launch region by a safety lead before real people use Hushmates.'));
+    lab ? h('p', { class: 'kit-note rl-pilot-note hf-lab-tag--block' }, 'Lab note: crisis resources must be reviewed for each launch region by a safety lead before real people use Hushmates.') : null);
 }
 
 /** Choose a reason, then send a report. → { reason } or null */

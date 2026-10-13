@@ -1,56 +1,130 @@
-// SHARE: a vertical picture of a journey, for the person to keep or post
-// themselves. Private by default: nothing is uploaded or posted from here.
-// It shows light and an emotion label only, never the feeling's words and
-// never anyone's perspective, and its numbers are the real ones.
+// SHARE: the journey as a 9:16 story, for the person to keep or post
+// themselves. Private by default: nothing is uploaded or posted from here,
+// and the picture or video is made on this device.
+//   "I released one thought into the world…" → "Five strangers saw it
+//   differently." → "Here’s what came back." → "What would they see in yours?"
+// The author chooses what it reveals. Their own words are off by default; a
+// person's perspective can only be chosen if its writer allowed it; a Mallow
+// perspective is always labelled automatically generated and never counted
+// or presented as a stranger. All numbers are the real ones.
 
 import { h, icon } from '../dom.js';
 import { sentenceSwitch } from '../kit.js';
 import { MALLOWS } from '../mallows-data.js';
-import { Orb } from '../orb.js';
-import { top, feelColour, feelName, lights } from './common.js';
-
-const END_CARD = 'A softer space for feelings.';
-
-function headlineFor(j) {
-  const n = j.humanCount;
-  if (!n && j.mallowPetal) return { big: 'One feeling.', small: 'Seen another way by a Mallow.' };
-  if (!n) return { big: 'One feeling.', small: 'Released into the sky.' };
-  return { big: 'One feeling.', small: `${n === 5 ? 'Five' : n} ${n === 1 ? 'perspective' : 'perspectives'}. Back to me.` };
-}
+import { reducedMotion } from '../motion.js';
+import { top, feelColour, feelName } from './common.js';
+import { room, line, put } from './parts.js';
+import { makeStory, renderPicture, renderVideo, videoType, loadFonts, W, H, HUMAN_LABEL, MALLOW_LABEL } from './share-render.js';
 
 export function share(dev, { id } = {}) {
-  const j = dev.client.journey(id);
-  if (!j) return { el: h('div', { class: 'hm-scene rl-scene' }, h('div', { class: 'rl-head-slot' }, top(dev, { title: 'Share', back: true }))), mood: 'warm' };
-  const opts = { label: !!j.label };
-  const tint = feelColour(j.label);
-  const orb = new Orb({ size: null, tint, label: 'The journey’s orb of light' });
-  orb.setPetals(j.petals || [], j.mallowPetal);
-  const line = headlineFor(j);
-  const chip = h('span', { class: 'rl-feel rl-share-chip', style: { '--feel': tint } }, h('i'), feelName(j.label));
-  const card = h('figure', { class: 'rl-share-card', style: { '--feel': tint }, 'aria-label': 'Preview of the picture', dataset: { test: 'share-preview' } },
-    h('span', { class: 'rl-share-glow', 'aria-hidden': 'true' }),
-    h('p', { class: 'rl-share-brand' }, 'Hush', h('em', {}, 'mates')),
-    h('div', { class: 'rl-share-orb' }, orb.el),
-    j.label ? chip : null,
-    h('p', { class: 'rl-share-big' }, line.big),
-    h('p', { class: 'rl-share-small' }, line.small),
-    lights(j),
-    h('figcaption', { class: 'rl-share-end' }, h('strong', {}, 'Hushmallow'), h('span', {}, END_CARD)));
-  const el = h('div', { class: 'hm-scene rl-scene rl-share' },
-    h('div', { class: 'rl-head-slot' }, top(dev, { title: 'Share a picture', back: true })),
-    h('div', { class: 'hm-scroll rl-share-scroll' },
-      card,
-      h('div', { class: 'rl-card rl-card--lilac', dataset: { test: 'share-privacy' } },
-        h('div', { class: 'rl-card-head' }, icon('shield'), h('h3', {}, 'Private until you choose')),
-        h('p', {}, 'Nothing is posted anywhere from here. The picture never includes your words or anyone’s perspective: only light, the number of perspectives, and (if you like) the feeling’s name.')),
-      j.label ? sentenceSwitch({ label: 'Show the feeling’s name', checked: opts.label, test: 'share-label', onChange: (on) => { opts.label = on; chip.hidden = !on; } }) : null,
-      h('div', { class: 'rl-actions' },
-        h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'share-save' }, onclick: () => save() }, icon('download'), 'Make the picture'),
-        h('p', { class: 'kit-note rl-center' }, 'You decide if and where to post it.'))));
+  const c = dev.client;
+  const j = c.journey(id);
+  const mine = MALLOWS[j?.mallow] || MALLOWS.noomi;
+  const r = room(mine.id, 'hf-share', { seed: 8 });
+  const head = h('div', { class: 'hf-head' }, top(dev, { title: 'Share your journey', back: true }));
+  r.el.append(head);
+  if (!j) {
+    r.el.append(h('div', { class: 'hf-scroll' }, h('div', { class: 'hf-copy hf-copy--top' }, line('This journey isn’t here any more.', { cls: 'hf-line--sm' }))));
+    return { el: r.el, mood: 'warm' };
+  }
 
-  async function save() {
+  // what can be shown: everything that came back, people first, the Mallow's labelled
+  const items = [...(j.collection || []), ...(j.mallowExtra ? [j.mallowExtra] : [])];
+  const opts = { label: !!j.label, words: false, picks: new Set() };
+  const hasMallow = items.some((p) => p.kind === 'mallow');
+  let story = null;
+  let alive = true;
+  let raf = 0;
+  let playing = !reducedMotion();
+  let t0 = 0;
+
+  const canvas = h('canvas', { class: 'hf-share-canvas', width: W / 2, height: H / 2, role: 'img', 'aria-label': 'Preview of your share story' });
+  const ctx = canvas.getContext('2d');
+  const playBtn = h('button', { type: 'button', class: 'kit-round hf-share-play', 'aria-label': 'Pause the preview', dataset: { test: 'share-play' }, onclick: () => setPlaying(!playing) }, icon('pause'));
+  const preview = h('figure', { class: 'hf-share-preview', dataset: { test: 'share-preview' } }, canvas, playBtn);
+  const described = h('p', { class: 'hf-sr', 'aria-live': 'polite' });
+
+  function data() {
+    return {
+      tint: feelColour(j.label),
+      label: opts.label && j.label ? feelName(j.label) : null,
+      labelColour: feelColour(j.label),
+      words: opts.words && j.text ? j.text : null,
+      humans: j.humanCount,
+      petals: j.petals || [],
+      mallowPetal: j.mallowPetal,
+      hasMallow,
+      picks: items.filter((p) => opts.picks.has(p.id) && (p.kind === 'mallow' || p.shareable === true)).map((p) => ({ kind: p.kind, text: p.text, mallow: p.mallow })),
+    };
+  }
+  function refresh() {
+    story = makeStory(data());
+    t0 = performance.now();
+    const d = data();
+    described.textContent = `The story shows: ${[d.label ? `the feeling’s name (${d.label})` : null, d.words ? 'your words' : null, `${d.humans} ${d.humans === 1 ? 'petal' : 'petals'} of light`, d.picks.length ? `${d.picks.length} chosen ${d.picks.length === 1 ? 'perspective' : 'perspectives'}` : null].filter(Boolean).join(', ')}.`;
+    if (!playing) still();
+  }
+  function frame() {
+    if (!alive || !playing) return;
+    const t = ((performance.now() - t0) / 1000) % (story.duration + 1.2);
+    ctx.setTransform(0.5, 0, 0, 0.5, 0, 0);
+    story.draw(ctx, Math.min(t, story.duration));
+    raf = requestAnimationFrame(frame);
+  }
+  function still() { ctx.setTransform(0.5, 0, 0, 0.5, 0, 0); story.still(ctx); }
+  function setPlaying(on) {
+    playing = on;
+    cancelAnimationFrame(raf);
+    put(playBtn, icon(on ? 'pause' : 'orb'));
+    playBtn.setAttribute('aria-label', on ? 'Pause the preview' : 'Play the preview');
+    if (on) { t0 = performance.now(); raf = requestAnimationFrame(frame); } else still();
+  }
+
+  // ----------------------------------------------------------- choices --
+  const pickRow = (p) => {
+    const allowed = p.kind === 'mallow' || p.shareable === true;
+    const m = MALLOWS[p.mallow] || MALLOWS.noomi;
+    const mark = p.kind === 'mallow' ? h('span', { class: 'hf-pick-star', style: { color: m.deep } }, icon('star')) : h('i', { class: 'hf-src-dot', style: { '--dot': m.body } });
+    if (!allowed) {
+      return h('div', { class: 'hf-pick is-locked', dataset: { test: 'share-pick-locked' } },
+        h('span', { class: 'hf-pick-box', 'aria-hidden': 'true' }, icon('key')),
+        h('span', { class: 'hf-pick-body' }, h('span', { class: 'hf-pick-src' }, mark, HUMAN_LABEL), h('span', { class: 'hf-pick-text' }, 'The person who wrote this kept it private, so it can’t be shared.')));
+    }
+    const btn = h('button', {
+      type: 'button', role: 'checkbox', class: 'hf-pick', 'aria-checked': 'false', dataset: { test: 'share-pick', kind: p.kind },
+      onclick: () => {
+        const on = !opts.picks.has(p.id);
+        if (on) opts.picks.add(p.id); else opts.picks.delete(p.id);
+        btn.setAttribute('aria-checked', String(on));
+        refresh();
+      },
+    }, h('span', { class: 'hf-pick-box', 'aria-hidden': 'true' }, icon('check')),
+    h('span', { class: 'hf-pick-body' }, h('span', { class: 'hf-pick-src' }, mark, p.kind === 'mallow' ? MALLOW_LABEL : HUMAN_LABEL), h('span', { class: 'hf-pick-text' }, `“${p.text}”`)));
+    return btn;
+  };
+
+  const vtype = videoType();
+  const makePic = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'share-save' }, onclick: () => savePicture() }, icon('download'), 'Make the picture');
+  const makeVid = vtype ? h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--block', dataset: { test: 'share-video' }, onclick: () => saveVideo() }, icon('orb'), 'Make a short video') : null;
+
+  r.el.append(h('div', { class: 'hf-scroll hf-share-scroll' },
+    preview, described,
+    h('div', { class: 'hf-copy' },
+      h('h1', { class: 'hf-line hf-line--sm', 'data-autofocus': '' }, 'Private until you choose.'),
+      h('p', { class: 'hf-sub', dataset: { test: 'share-privacy' } }, 'Nothing is posted from here. You choose what your story shows; the numbers are always the real ones.')),
+    h('div', { class: 'hf-form' },
+      j.label ? sentenceSwitch({ label: 'Show the feeling’s name', checked: opts.label, test: 'share-label', onChange: (on) => { opts.label = on; refresh(); return true; } }) : null,
+      j.text ? sentenceSwitch({ label: 'Include my own words', hint: 'Off unless you choose. Leave out anything that could identify you or anyone else.', checked: false, test: 'share-words', onChange: (on) => { opts.words = on; refresh(); return true; } }) : null),
+    items.length ? h('section', { class: 'hf-you-sec' },
+      h('p', { class: 'kit-label' }, 'Perspectives to include'),
+      h('p', { class: 'hf-hint hf-hint--left' }, 'Only ones their writers allowed. Nobody is named, and a Mallow’s is always shown as automatically generated. The picture fits two; the video shows each one.'),
+      h('div', { class: 'hf-picks' }, items.map(pickRow))) : null,
+    h('div', { class: 'hf-actions' }, makePic, makeVid,
+      h('p', { class: 'hf-hint' }, vtype ? 'Made on this device. You decide if and where to post it.' : 'Made on this device. (This browser can’t make videos, but the picture works everywhere.)'))));
+
+  async function savePicture() {
     let url;
-    try { url = URL.createObjectURL(await render(j, { ...opts, line })); } catch {
+    try { url = URL.createObjectURL(await renderPicture(makeStory(data()))); } catch {
       dev.toast('Couldn’t make the picture here. Please try again.', { tone: 'warn' });
       return;
     }
@@ -58,67 +132,44 @@ export function share(dev, { id } = {}) {
     dev.sheet({
       title: 'Your picture',
       body: h('div', { class: 'rl-share-out' },
-        h('img', { src: url, alt: 'Your journey as a picture: an orb of light with its petals, the feeling’s name and the Hushmallow end card', class: 'rl-share-img', dataset: { test: 'share-image' } }),
-        h('p', { class: 'kit-note rl-center' }, 'Press and hold the picture (or right-click it) to save it. It was made on this device; nothing was uploaded or posted.')),
+        h('img', { src: url, alt: 'Your journey as a picture: the orb with a petal of light for each person, the real count, and any perspectives you chose', class: 'rl-share-img', dataset: { test: 'share-image' } }),
+        h('p', { class: 'kit-note rl-center' }, 'Press and hold the picture (or right-click it) to save it. Nothing was uploaded or posted.')),
       actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
       onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
     });
   }
-  return { el, mood: 'warm', destroy() { orb.destroy(); } };
-}
 
-/** Draw the 1080 × 1920 picture (canvas, no network). */
-async function render(j, { label, line }) {
-  const W = 1080; const H = 1920;
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const x = cv.getContext('2d');
-  const tint = feelColour(j.label);
-  try { await Promise.all(['500 96px Fraunces', 'italic 500 96px Fraunces', '800 40px Manrope'].map((f) => document.fonts.load(f))); } catch { /* system fonts */ }
-  const bg = x.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#FFF8F3'); bg.addColorStop(0.55, '#F7F0FF'); bg.addColorStop(1, '#FFF3EC');
-  x.fillStyle = bg; x.fillRect(0, 0, W, H);
-  const blob = (cx, cy, r, c) => { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, c); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H); };
-  blob(120, 160, 760, 'rgba(255,186,219,.65)'); blob(980, 380, 820, 'rgba(191,230,255,.75)'); blob(540, 1780, 900, 'rgba(205,184,255,.5)');
-  blob(540, 820, 520, `${tint}88`);
-  // petals (one per person, in their Mallow's colour) and the Mallow's star
-  const cx = 540; const cy = 820; const R = 210;
-  (j.petals || []).forEach((p, i) => {
-    const m = MALLOWS[p.mallow] || MALLOWS.loomi;
-    x.save(); x.translate(cx, cy); x.rotate((i * 72 * Math.PI) / 180);
-    const g = x.createLinearGradient(0, -R, 0, -R - 230); g.addColorStop(0, m.body); g.addColorStop(0.7, m.glow); g.addColorStop(1, '#fff');
-    x.fillStyle = g; x.globalAlpha = 0.95;
-    x.beginPath(); x.moveTo(0, -R + 20); x.bezierCurveTo(-60, -R - 60, -55, -R - 170, 0, -R - 240); x.bezierCurveTo(55, -R - 170, 60, -R - 60, 0, -R + 20); x.fill();
-    x.restore();
-  });
-  if (j.mallowPetal) {
-    const m = MALLOWS[j.mallowPetal.mallow] || MALLOWS.loomi;
-    x.save(); x.strokeStyle = m.deep; x.globalAlpha = 0.35; x.setLineDash([10, 18]); x.lineWidth = 4; x.beginPath(); x.arc(cx, cy, 330, 0, Math.PI * 2); x.stroke(); x.restore();
-    const sx = cx + 330 * Math.sin(0.6); const sy = cy - 330 * Math.cos(0.6);
-    x.save(); x.translate(sx, sy); x.fillStyle = '#fff'; x.strokeStyle = m.deep; x.lineWidth = 4;
-    x.beginPath(); x.moveTo(0, -30); x.quadraticCurveTo(4, -4, 30, 0); x.quadraticCurveTo(4, 4, 0, 30); x.quadraticCurveTo(-4, 4, -30, 0); x.quadraticCurveTo(-4, -4, 0, -30); x.fill(); x.stroke(); x.restore();
+  async function saveVideo() {
+    const ctl = new AbortController();
+    const bar = h('span', { class: 'hf-progress-bar' });
+    const status = h('p', { class: 'kit-note rl-center', 'aria-live': 'polite' }, 'Recording your story… it plays once, in real time.');
+    dev.sheet({
+      title: 'Making your video',
+      body: h('div', { class: 'kit-stack' }, h('div', { class: 'hf-progress', role: 'progressbar', 'aria-label': 'Making your video' }, bar), status),
+      actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', onclick: () => { ctl.abort(); dev.closeSheet(); } }, 'Cancel')],
+      onClose: () => ctl.abort(),
+    });
+    let blob;
+    try {
+      blob = await renderVideo(makeStory(data()), { signal: ctl.signal, onProgress: (p) => { bar.style.width = `${Math.round(p * 100)}%`; } });
+    } catch (e) {
+      if (!ctl.signal.aborted) { dev.closeSheet(); dev.toast('Couldn’t make the video here. The picture still works.', { tone: 'warn' }); }
+      return;
+    }
+    if (!alive) return;
+    const url = URL.createObjectURL(blob);
+    dev.closeSheet();
+    dev.sheet({
+      title: 'Your video',
+      body: h('div', { class: 'rl-share-out' },
+        h('video', { src: url, class: 'rl-share-img', controls: true, playsinline: true, loop: true, muted: true, dataset: { test: 'share-video-out' }, 'aria-label': 'Your journey as a short video' }),
+        h('p', { class: 'kit-note rl-center' }, `A ${Math.round(blob.size / 1024)} KB video made on this device. Use the player’s menu to save it. Nothing was uploaded or posted.`)),
+      actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
+      onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
+    });
   }
-  const sphere = x.createRadialGradient(cx - 70, cy - 80, 20, cx, cy, R);
-  sphere.addColorStop(0, '#ffffff'); sphere.addColorStop(0.35, `${tint}`); sphere.addColorStop(1, '#8E6BFF');
-  x.fillStyle = sphere; x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.fill();
-  x.fillStyle = 'rgba(255,255,255,.75)'; x.beginPath(); x.ellipse(cx - 70, cy - 110, 70, 38, -0.4, 0, Math.PI * 2); x.fill();
-  // words: only the brand, the line and the label
-  x.textAlign = 'center'; x.fillStyle = '#1F1640';
-  x.font = 'italic 500 64px Fraunces, Georgia, serif'; x.fillText('Hushmates', W / 2, 200);
-  let y = 1240;
-  if (label && j.label) {
-    x.font = '800 36px Manrope, sans-serif';
-    const t = feelName(j.label).toUpperCase(); const w = x.measureText(t).width + 110;
-    x.fillStyle = 'rgba(255,255,255,.9)'; x.beginPath(); x.roundRect((W - w) / 2, y - 52, w, 76, 38); x.fill();
-    x.fillStyle = tint; x.beginPath(); x.arc((W - w) / 2 + 42, y - 14, 12, 0, Math.PI * 2); x.fill();
-    x.fillStyle = '#4B4366'; x.fillText(t, W / 2 + 18, y);
-    y += 140;
-  }
-  x.fillStyle = '#1F1640'; x.font = '500 104px Fraunces, Georgia, serif'; x.fillText(line.big, W / 2, y); y += 96;
-  x.font = 'italic 500 62px Fraunces, Georgia, serif'; x.fillStyle = '#4B4366'; x.fillText(line.small, W / 2, y);
-  // end card
-  x.fillStyle = 'rgba(31,22,64,.88)'; x.beginPath(); x.roundRect(140, H - 250, W - 280, 140, 70); x.fill();
-  x.fillStyle = '#FFF8F3'; x.font = '800 40px Manrope, sans-serif'; x.fillText('Hushmallow', W / 2, H - 192);
-  x.font = '500 34px Manrope, sans-serif'; x.fillStyle = 'rgba(255,248,243,.85)'; x.fillText(END_CARD, W / 2, H - 144);
-  return new Promise((resolve, reject) => cv.toBlob((b) => (b ? resolve(b) : reject(new Error('no image'))), 'image/png'));
+
+  refresh();
+  loadFonts().then(() => { if (alive) { refresh(); if (playing) setPlaying(true); } });
+  return { el: r.el, mood: 'warm', destroy() { alive = false; cancelAnimationFrame(raf); } };
 }
