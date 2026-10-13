@@ -26,6 +26,7 @@ const OUT = argOut ? path.resolve(argOut) : path.join(ROOT, 'output');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : d; };
 const VIDEO = opt('video', 'my-brain-at-2am');
+const STAGE = opt('stage', VIDEO.endsWith('-v2') ? 'stage2' : 'stage');
 const SEED = opt('seed', '20261013');
 const STILLS = opt('stills', null);
 const DRY = !!opt('dry', false);
@@ -56,10 +57,12 @@ async function openStage() {
   });
   // stage world is 720×1280 CSS px; DSF 2 gives the rig a 1440×2560 backing
   // store (headroom for camera push-ins); the output canvas is 1080×1920.
-  const page = await browser.newPage({ viewport: { width: 720, height: 1280 }, deviceScaleFactor: 2 });
+  const page = STAGE === 'stage2'
+    ? await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 })
+    : await browser.newPage({ viewport: { width: 720, height: 1280 }, deviceScaleFactor: 2 });
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log('[page]', m.type(), m.text()); });
   page.on('pageerror', (e) => console.log('[page] error', e.message));
-  const url = `http://127.0.0.1:${port}/hushmallow-infinite-studio/stage/index.html?video=${VIDEO}&seed=${SEED}`;
+  const url = `http://127.0.0.1:${port}/hushmallow-infinite-studio/${STAGE}/index.html?video=${VIDEO}&seed=${SEED}`;
   await page.goto(url);
   const info = await page.evaluate(() => window.__stage.ready);
   return { server, browser, page, info };
@@ -80,7 +83,8 @@ async function assemble(info) {
   const final = path.join(OUT, `${VIDEO}.mp4`);
   const wav = path.join(OUT, `${VIDEO}.soundtrack.wav`);
   await new Promise((resolve, reject) => {
-    const p = spawn(process.execPath, [path.join(ROOT, 'audio', 'soundtrack.mjs'), path.join(OUT, 'cues.json'), wav], { stdio: 'inherit' });
+    const score = VIDEO.endsWith('-v2') ? 'soundtrack-v2.mjs' : 'soundtrack.mjs';   // each direction has its own cue → sound plan
+    const p = spawn(process.execPath, [path.join(ROOT, 'audio', score), path.join(OUT, 'cues.json'), wav], { stdio: 'inherit' });
     p.on('close', (c) => (c === 0 ? resolve() : reject(new Error(`soundtrack exited ${c}`))));
   });
   await ffmpeg([
@@ -134,21 +138,27 @@ async function main() {
     const frames = LIMIT ? Math.min(info.frames, parseInt(LIMIT, 10)) : info.frames;
     const silent = path.join(OUT, `${VIDEO}.video.mp4`);
     let frameMs = 0;
+    // stage v2 hands over raw RGBA (bottom-up rows from WebGL → vflip); v1 hands over PNGs
+    const RAW = STAGE === 'stage2';
+    const input = RAW
+      ? ['-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${info.width}x${info.height}`, '-framerate', String(info.fps), '-i', '-']
+      : ['-f', 'image2pipe', '-framerate', String(info.fps), '-c:v', 'png', '-i', '-'];
+    const vf = (RAW ? 'vflip,' : '') + 'scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p';
     await ffmpeg([
       '-y', '-hide_banner', '-loglevel', 'error',
-      '-f', 'image2pipe', '-framerate', String(info.fps), '-c:v', 'png', '-i', '-',
+      ...input,
       '-c:v', 'libx264', '-preset', 'slow', '-crf', String(CRF), '-tune', 'film',
       '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.2', '-g', '30', '-keyint_min', '30',
       '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
-      '-vf', 'scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p',
+      '-vf', vf,
       '-r', String(info.fps), '-movflags', '+faststart', silent,
     ], {
       input: async (stdin) => {
         for (let i = 0; i < frames; i++) {
           const ts = Date.now();
-          const url = await page.evaluate((i) => window.__stage.renderFrame(i), i);
+          const data = await page.evaluate(([i, raw]) => window.__stage.renderFrame(i, { capture: raw ? 'raw' : 'png' }), [i, RAW]);
           frameMs += Date.now() - ts;
-          const buf = Buffer.from(url.split(',')[1], 'base64');
+          const buf = Buffer.from(RAW ? data : data.split(',')[1], 'base64');
           if (!stdin.write(buf)) await new Promise((r) => stdin.once('drain', r));
           if (i % 30 === 0) log(`frame ${i}/${frames}  (${(frameMs / (i + 1)).toFixed(0)} ms/frame)`);
         }

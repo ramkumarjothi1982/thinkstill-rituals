@@ -539,7 +539,7 @@ async function renderInPage(plan) {
     for (let i = 0; i < n; i++) {
       const u = i / (n - 1);
       fin[i] = (floor + (1 - floor) * Math.sin(u * Math.PI / 2)) * Math.min(1, (u * plan.fade.inEnd) / 0.004);
-      fout[i] = Math.cos(u * Math.PI / 2) ** 2;
+      fout[i] = (plan.fade.outFloor || 0) + (1 - (plan.fade.outFloor || 0)) * Math.cos(u * Math.PI / 2) ** 2;
     }
     fade.gain.setValueAtTime(0, 0);
     fade.gain.setValueCurveAtTime(fin, PRE, plan.fade.inEnd);
@@ -645,7 +645,7 @@ async function renderInPage(plan) {
       }
       const sides = e.width ? [-e.width, e.width] : [0];
       sides.forEach((pan, k) => {
-        const s = noiseSrc(t, t + total + 0.05, 0.37 + k * 1.13 + (e.t % 1));
+        const s = noiseSrc(t, t + total + 0.05, 0.37 + k * 1.13 + (((e.t % 1) + 1) % 1));   // (pre-roll events have t < 0)
         const bp = biquad('bandpass', e.f0, e.q || 0.8);
         bp.frequency.setValueAtTime(e.f0, t); bp.frequency.exponentialRampToValueAtTime(e.f1, t + total);
         const lp = biquad('lowpass', 3000, 0.5);
@@ -871,7 +871,7 @@ function limit(x, gainDb, ceilingDb, { lookahead = 0.003, release = 0.09 } = {})
 
 // --------------------------------------------------------------- main --
 
-async function main() {
+async function main(builder = buildPlan) {
   const args = process.argv.slice(2);
   const flag = (k) => { const i = args.indexOf(k); return i >= 0 ? args.splice(i, 2)[1] : null; };
   const rawPath = flag('--raw');                 // debug: also dump the un-normalised mix (f32le, 48 kHz stereo)
@@ -880,7 +880,7 @@ async function main() {
   if (!cuesPath || !outPath) { console.error('usage: node audio/soundtrack.mjs <cues.json> <out.wav> [--raw mix.f32] [--mute group,…]'); process.exit(2); }
   const log = JSON.parse(fs.readFileSync(cuesPath, 'utf8'));
   if (!Array.isArray(log.cues) || !Array.isArray(log.curves)) throw new Error('cues.json needs { cues, curves }');
-  const plan = buildPlan(log);
+  const plan = builder(log);
   for (const m of mute) { if (m === 'bed') plan.bed.mute = true; else if (m === 'swirl' || m === 'pad') plan[m] = null; else plan[m] = []; }
   const t0 = Date.now();
   console.log(`[soundtrack] ${log.video}: ${plan.engine.length} engine voices, ${plan.synth.length} synth events, ${plan.ticks.length} ticks; thought layout from ${plan.swirl?.layout ?? 'n/a'}`);
@@ -942,7 +942,7 @@ async function main() {
   }
 }
 
-export { buildPlan, renderInPage, offlineDeterminism, thoughtLayout };
+export { buildPlan, renderInPage, offlineDeterminism, thoughtLayout, main, N, mulberry32 };
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((e) => { console.error('[soundtrack]', e); process.exit(1); });

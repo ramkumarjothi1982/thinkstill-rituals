@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080, initial-scale=1">
+<title>Hushmallow Studio Stage v2</title>
+<style>
+  html, body { margin: 0; background: #05040f; overflow: hidden; }
+  #out { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  #hud { position: absolute; left: 8px; top: 8px; color: #cdc6ea; font: 12px ui-monospace, monospace; z-index: 3; }
+</style>
+</head>
+<body>
+  <canvas id="out" width="1080" height="1920"></canvas>
+  <div id="hud"></div>
+  <script type="module" src="./stage.js"></script>
+</body>
+</html>
