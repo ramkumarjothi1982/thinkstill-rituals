@@ -68,6 +68,15 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
   const angleLink = link('sparkle', 'Another Angle', () => { api.close(); if (onAngle) onAngle(); else app.go('angle'); }, 'With Zuzu, a fresh side to something real');
   angleLink.hidden = true;
 
+  // (in a world the Hushflow section — Pause, Finish, Stay longer, Drift on — comes first: on a phone's sheet it is
+  // what the person opened the panel for, and it must not wait below the fold)
+  const flowSec = h('section', { class: 'p-flow' },
+    h('h3', {}, 'Hushflow'),
+    resumeBtn,
+    h('div', { class: 'hf-actions' }, pauseBtn, finishBtn, stayBtn, driftBtn, favBtn),
+    h('label', { class: 'hf-toggle' }, h('span', { class: 't' }, 'Auto-flow', h('small', {}, 'The next world begins by itself when one is complete.')), auto),
+    flowNote);
+  const intentSec = h('section', {}, h('h3', {}, 'What would help?'), intentWrap);
   const el = h('aside', { class: 'hf-panel hf-ui', role: 'dialog', 'aria-modal': 'false', 'aria-label': 'Feelings and worlds', 'aria-hidden': 'true', 'data-hf': 'panel', inert: '' },
     h('div', { class: 'p-head' }, h('h2', {}, 'Your Hushfold'), closeBtn),
     h('div', { class: 'p-body' },
@@ -77,13 +86,8 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
           h('div', { class: 'who' }, mallowImg, h('div', {}, mallowName, mallowTitle)),
           h('button', { class: 'hf-btn', type: 'button', 'aria-label': 'Next Mallow', onclick: () => onMallow?.(1) }, hfIcon('next')))),
       h('section', {}, h('h3', {}, 'How are you feeling?'), feelWrap),
-      h('section', {}, h('h3', {}, 'What would help?'), intentWrap),
-      h('section', {},
-        h('h3', {}, 'Hushflow'),
-        resumeBtn,
-        h('div', { class: 'hf-actions' }, pauseBtn, finishBtn, stayBtn, driftBtn, favBtn),
-        h('label', { class: 'hf-toggle' }, h('span', { class: 't' }, 'Auto-flow', h('small', {}, 'The next world begins by itself when one is complete.')), auto),
-        flowNote),
+      intentSec,
+      flowSec,
       h('section', {}, h('div', { class: 'hf-links' },
         angleLink,
         link('garden', 'Memory Garden', () => go('garden'), 'The skills you chose to keep'),
@@ -153,6 +157,12 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       const world = !!st.worldId;
       const stub = flow ? !!flow.stub : !(await flowAvailable());
       const locked = !!s.locked;
+      // in a world the Hushflow actions lead the panel; at home they follow the feelings and intentions again
+      const bodyEl = flowSec.parentNode;
+      if (bodyEl && typeof bodyEl.prepend === 'function' && typeof intentSec.after === 'function') {
+        if (world && bodyEl.firstChild !== flowSec) bodyEl.prepend(flowSec);
+        else if (!world && intentSec.nextSibling !== flowSec) intentSec.after(flowSec);
+      }
       for (const b of [pauseBtn, stayBtn, finishBtn]) b.disabled = !world && !stub;
       favBtn.disabled = !world && !stub;
       if (locked) { pauseBtn.disabled = true; stayBtn.disabled = true; }
