@@ -240,3 +240,33 @@ test('ThoughtLayer.plateFor: the plate measured for a budget is the plate drawn 
   assert.equal(tg.text, before.text);
   L.destroy();
 });
+
+for (const reducedMotion of [false, true]) {
+  test(`ThoughtLayer${reducedMotion ? ', reduced motion' : ''}: a thought a world drives out to the horizon gets fewer lines — the words change only while unseen, never re-flowing in plain sight`, () => {
+    VIEW.W = 390; VIEW.H = 844;
+    const L = new ThoughtLayer({ bounds: () => ({ left: 10, right: 380, top: 96, bottom: 760 }), keepOut: () => null, reducedMotion, tagRoot: document.body });
+    const th = L.add({ text: TEXT, emotion: 'embarrassed', intensity: 0.6, r: 38 }, { x: 200, y: 360 });
+    for (let i = 0; i < 60; i++) L.frame(1 / 60);
+    const tg = L.tags.get(th), lines0 = tg.cur.lines;
+    assert.ok(tg.shown && lines0 >= 2, `the words show, ${lines0} lines`);
+    // (the Luminous Ocean writes the thought each frame — place and depth — as the person's swells carry it out)
+    const frames = [];
+    for (let i = 0; i < 60 * 4; i++) {
+      th.x = 200; th.y = 360; th.z = Math.min(0.95, i / 150);
+      L.frame(1 / 60);
+      frames.push({ dt: 1 / 60, op: tg.shown && !L.hidden ? (tg.opQ ?? 20) / 20 : 0, wf: !!tg.wfade, box: `${tg.w}×${tg.h}`, text: tg.text, lines: tg.cur.lines });
+    }
+    const vis = seenOps(frames);
+    let changes = 0, seen = null;
+    for (let i = 1; i < frames.length; i++) {
+      if (frames[i].box === frames[i - 1].box && frames[i].text === frames[i - 1].text) continue;
+      changes++;
+      if (Math.max(vis[i - 1], vis[i]) > 0.15 && !seen) seen = { i, from: frames[i - 1].box, to: frames[i].box, op: [vis[i - 1], vis[i]].map((v) => +v.toFixed(2)) };
+    }
+    assert.ok(frames[frames.length - 1].lines < lines0, `it got fewer lines (${lines0} → ${frames[frames.length - 1].lines})`);
+    assert.ok(changes >= 1, 'its words changed');
+    assert.equal(seen, null, `re-flowed while seen: ${JSON.stringify(seen)}`);
+    assert.ok(vis[vis.length - 1] > 0.9, 'and they show again afterwards');
+    L.destroy();
+  });
+}

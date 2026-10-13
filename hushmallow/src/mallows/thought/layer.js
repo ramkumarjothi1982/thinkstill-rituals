@@ -1550,10 +1550,11 @@ export class ThoughtLayer {
       const last = tg.drop >= 3 && this.crowd + tg.drop >= 6;
       mw = last ? this._tagMax(W, 4) - 26 : this._tagMax(W, Math.min(4, this.crowd + tg.drop)); minWords = last ? 2 : 3;
     }
-    // a world asking for its plate, or letting go of it, while the words show: they fade out where they are, change
-    // unseen, and come back — never re-flowing or resizing in plain sight (the stage's own steps change in place)
+    // a world asking for its plate, or letting go of it — or any new budget for a thought a world drives (it floats far
+    // and the words get fewer lines) — while the words show: they fade out where they are, change unseen, and come
+    // back, never re-flowing or resizing in plain sight (the home stage's own steps change in place)
     const cur = tg.cur, host = !!F;
-    if (cur && (host || tg.byHost) && !(cur.lines === lines && cur.maxW === mw && cur.W === W) && (tg.shown || tg.hop > 0)) {
+    if (cur && (host || tg.byHost || th.driven) && !(cur.lines === lines && cur.maxW === mw && cur.W === W) && (tg.shown || tg.hop > 0)) {
       if (!(tg.hop > 0)) tg.hop = HOP_S;
       tg.refit = true;
       return cur;
