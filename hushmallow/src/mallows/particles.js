@@ -132,9 +132,11 @@ export class ParticleField {
         break;
       }
       case 'steam': {
+        // an angry Mallow's steam: soft, feathered wisps that rise off the top of the head and fade (never a
+        // flat, hard-edged disc beside it)
         const side = Math.random() < 0.5 ? -1 : 1;
         Object.assign(p, { x: g.cx + side * g.w * 0.38, y: g.top + g.h * 0.1, vx: side * rand(10, 30), vy: -rand(40, 80) * sp,
-          life: rand(0.8, 1.2), size: g.w * rand(0.06, 0.1), col: 'rgba(255,255,255,0.75)', drag: 0.8 });
+          life: rand(0.8, 1.2), size: g.w * rand(0.06, 0.1), col: 'rgba(255,255,255,0.5)', drag: 0.8, wisp: true });
         break;
       }
       case 'z': {
