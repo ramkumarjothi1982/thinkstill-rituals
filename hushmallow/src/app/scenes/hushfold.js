@@ -672,7 +672,8 @@ export default function hushfold(app, params = {}) {
     if (S.left || !worldMode || S.finishing || !MALLOWS[id] || id === mallowId) return;
     homeMallow ||= mallowId;
     mallowId = id;
-    theme();
+    // (the dock's "Tell …" and the colours change with the host on stage — showMallow calls theme() as the new one is
+    // revealed — never while the one leaving is still the hero)
     showMallow(id, { entrance: false, soft: true, hop: true });
   }
   function endWorldMode() {
