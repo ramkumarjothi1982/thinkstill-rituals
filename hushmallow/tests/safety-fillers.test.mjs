@@ -10,7 +10,9 @@ import { fileURLToPath } from 'node:url';
 
 import { checkText, checkTextFirstPass, fillerFreeCopy, tidyForSafety, FILLERS, SECOND_PASS } from '../src/engine/safety.js';
 import { interpret } from '../src/engine/interpret.js';
-import { GROUPS, POSITIVE, NEGATIVE, NEGATIVE_APP_ONLY, NEGATIONS_TODAY, NEGATED_BUT_HAPPENED } from './safety-fillers.probes.mjs';
+import { checkSafety as classicCheck } from '../src/ultra/reframe-engine.js';
+import { HARM_LEXICON, HARM_COPY, CONCERN_LEXICON, HARM_OTHERS_LEXICON } from '../src/data/safety-lexicon.js';
+import { GROUPS, POSITIVE, NEGATIVE, NEGATIVE_APP_ONLY, NEGATIONS_TODAY, NEGATED_BUT_HAPPENED, AS_WITHOUT_FILLERS } from './safety-fillers.probes.mjs';
 
 const RANK = { none: 0, concern: 1, care: 2, crisis: 3 };
 const copyOf = (t) => fillerFreeCopy(tidyForSafety(t));
@@ -45,6 +47,13 @@ test('fillers: most positives were missed by the first pass alone (the second pa
     assert.equal(checkTextFirstPass(t).level, 'none', t);
     assert.equal(checkText(t).level, 'care', t);
     assert.equal(checkText(t).category, 'violence', t);
+  }
+});
+
+test('fillers: words the lexicon already flags without fillers get that same level with them', () => {
+  for (const [t, plain] of AS_WITHOUT_FILLERS) {
+    assert.equal(checkText(t).level, checkText(plain).level, `${t} {${copyOf(t)}}`);
+    assert.equal(checkText(plain).level, checkTextFirstPass(plain).level, plain);
   }
 });
 
@@ -91,6 +100,16 @@ test('fillers: the copy only drops fillers (and reads "keeps hitting" as "hits")
     ['what kind of pills are these', 'what kind of pills are these'],
     ['I want to sleep for ever and never wake up', 'I want to sleep for ever and never wake up'],
     ['he touched me even though I said no', 'he touched me even though I said no'],
+    // review round 1
+    ['i want to like die', 'i want to die'],
+    ['i wanna like die', 'i wanna die'],
+    ['nobody would care even if i died', 'nobody would care if i died'],
+    ['my boyfriend, honestly, like, hit me', 'my boyfriend hit me'],
+    ['he, like, honestly, really, hit me', 'he hit me'],
+    ['I want to like him', 'I want to like him'],
+    ["I'd like to die my hair", "I'd like to die my hair"],
+    ['I would like to go home', 'I would like to go home'],
+    ["I'm going to like this", "I'm going to like this"],
     ['this is honestly killing me', 'this is killing me'],
     ['he hit me', 'he hit me'],
   ];
@@ -130,4 +149,93 @@ test('fillers: the second pass stays fast on long text', () => {
   const t0 = performance.now();
   for (let i = 0; i < 5; i++) checkText(long);
   assert.ok((performance.now() - t0) / 5 < 150, 'checkText on 2,000 characters with fillers and negations stays fast');
+});
+
+// The check exactly as it was before the second pass (13 Oct 2026), rebuilt
+// here from the lexicon so an accidental edit to the first pass in
+// src/engine/safety.js shows up (comparing checkText with checkTextFirstPass
+// in the same module would not).
+function referenceCheck(text) {
+  const c = (list, flags = 'i') => list.map((src) => new RegExp(src, flags));
+  const first = (regexes, t) => { for (const re of regexes) { const m = re.exec(t); if (m) return m[0]; } return null; };
+  let t = String(text ?? '').slice(0, 2000).replace(/[‘’‛ʼ`´]/g, "'").replace(/[“”„‟]/g, '"').replace(/\s+/g, ' ').trim();
+  if (!t) return { level: 'none', category: null, matched: null };
+  for (const re of c(HARM_LEXICON.idiomGuards, 'gi')) t = t.replace(re, (m) => ' '.repeat(m.length));
+  let hit = first(c(HARM_LEXICON.crisis), t);
+  if (hit) return { level: 'crisis', category: 'self-harm', matched: hit };
+  hit = first(c(HARM_LEXICON.crisisOther), t);
+  if (hit) return { level: 'crisis', category: 'someone-in-danger', matched: hit };
+  for (const [category, list] of Object.entries(HARM_LEXICON.care)) {
+    hit = first(c(list), t);
+    if (hit) return { level: 'care', category, matched: hit };
+  }
+  hit = first(c(HARM_OTHERS_LEXICON), t);
+  if (hit) return { level: 'concern', category: 'harm-others', matched: hit };
+  hit = first(c(CONCERN_LEXICON), t);
+  if (hit) return { level: 'concern', category: 'distress', matched: hit };
+  return { level: 'none', category: null, matched: null };
+}
+
+function quotedTestStrings() {
+  const root = fileURLToPath(new URL('./', import.meta.url));
+  const texts = new Set([...POSITIVE.flatMap(([, a, b]) => [a, b]), ...NEGATIVE, ...NEGATIVE_APP_ONLY, ...AS_WITHOUT_FILLERS.flat()]);
+  for (const f of readdirSync(root).filter((n) => n.endsWith('.test.mjs') || n.endsWith('.probes.mjs'))) {
+    for (const m of readFileSync(root + f, 'utf8').matchAll(/'((?:[^'\\\n]|\\.){4,200})'|"((?:[^"\\\n]|\\.){4,200})"/g)) {
+      const s = (m[1] ?? m[2]).replace(/\\'/g, "'");
+      if (/[a-z] [a-z]/i.test(s)) texts.add(s);
+    }
+  }
+  return texts;
+}
+
+test('fillers: the first pass is the original check, rebuilt from the lexicon (frozen reference)', () => {
+  const texts = quotedTestStrings();
+  assert.ok(texts.size > 1000, `texts: ${texts.size}`);
+  let raised = 0;
+  for (const t of texts) {
+    const ref = referenceCheck(t);
+    assert.deepEqual(checkTextFirstPass(t), ref, t);
+    const r = checkText(t);
+    assert.ok(RANK[r.level] >= RANK[ref.level], `${t}: ${ref.level} → ${r.level}`);
+    if (r.level === ref.level) assert.deepEqual(r, ref, t);
+    if (RANK[r.level] > RANK[ref.level]) raised++;
+  }
+  assert.ok(raised >= 100, `raised: ${raised}`);
+});
+
+test('fillers: the classic Another Angle check (reframe-engine) takes its decision from checkText', () => {
+  // the review's probes: the classic ritual used to reframe these
+  for (const [t, level, category] of [
+    ['he finally hit me', 'care', 'violence'], ['she always hits me', 'care', 'violence'],
+    ['i want to actually die', 'crisis', 'self-harm'], ['nobody would even really miss me', 'crisis', 'self-harm'],
+    ['he hit me', 'care', 'violence'], ['my husband hit me again', 'care', 'violence'],
+    ['my sister honestly wants to die', 'crisis', 'someone-in-danger'], ['i want to like die', 'crisis', 'self-harm'],
+  ]) {
+    const r = classicCheck(t);
+    assert.equal(r.reframeAppropriate, false, t);
+    assert.equal(r.level, level, t);
+    assert.equal(r.category, category, t);
+    assert.equal(r.matched, checkText(t).matched, t);
+    const copy = level === 'crisis' ? (category === 'someone-in-danger' ? HARM_COPY.crisisOther : HARM_COPY.crisis) : HARM_COPY.care[category];
+    assert.equal(r.title, copy.title, t);
+    assert.equal(r.message, copy.message, t);
+    assert.deepEqual(r.resources, level === 'crisis' ? copy.resources : HARM_COPY.careResources, t);
+    assert.equal(r.stillHere, HARM_COPY.stillHere, t);
+  }
+  // every care category has its own copy
+  for (const category of Object.keys(HARM_LEXICON.care)) assert.ok(HARM_COPY.care[category]?.message, category);
+  // agreement over every quoted test string: crisis and care as checkText has them, everything else reframes
+  for (const t of quotedTestStrings()) {
+    const a = checkText(t);
+    const r = classicCheck(t);
+    const stops = a.level === 'crisis' || a.level === 'care';
+    assert.equal(r.reframeAppropriate, !stops, t);
+    assert.deepEqual([r.level, r.category, r.matched], stops ? [a.level, a.category, a.matched] : ['none', null, null], t);
+  }
+  // concern (distress, wanting to hurt someone) still reframes here, as before
+  assert.equal(classicCheck("I can't cope").reframeAppropriate, true);
+  // past checkText's 2,000 characters the classic check still reads the rest, as it always did
+  const long = `${'a calm day at the park with friends. '.repeat(60)}he hit me`;
+  assert.equal(checkText(long).level, 'none');
+  assert.equal(classicCheck(long).level, 'care');
 });

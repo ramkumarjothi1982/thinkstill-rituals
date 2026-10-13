@@ -56,6 +56,17 @@ export const POSITIVE = [
   ['crisis', 'I want, like, to die', 'I want to die'],
   ['crisis', 'I keep on wanting to die', 'I want to die'],
   ['crisis', 'I still kind of wish I was dead', 'I wish I was dead'],
+  // review round 1: 'like' straight after 'to', and 'even if'
+  ['crisis', 'i want to actually die', 'i want to die'],
+  ['crisis', 'nobody would even really miss me', 'nobody would miss me'],
+  ['crisis', 'i want to like die', 'i want to die'],
+  ['crisis', 'i wanna like die', 'i wanna die'],
+  ['crisis', 'i just want to like end it', 'i want to end it'],
+  ['crisis', 'i want to like disappear forever', 'i want to disappear forever'],
+  ['crisis', 'nobody would care even if i died', 'nobody would care if i died'],
+  ['crisis', 'no one would notice even if i was gone', 'no one would notice if i was gone'],
+  ['crisis', "i'm gonna like end it tonight", "i'm gonna end it tonight"],
+  ['crisis', "I don't want to like be here anymore", "I don't want to be here anymore"],
   // crisis: someone else in danger
   ['crisisOther', 'my sister honestly wants to die', 'my sister wants to die'],
   ['crisisOther', 'he is really not breathing', 'he is not breathing'],
@@ -67,6 +78,8 @@ export const POSITIVE = [
   ['crisisOther', 'she still wants to die', 'she wants to die'],
   ['crisisOther', 'they are honestly not breathing', 'they are not breathing'],
   ['crisisOther', 'my mum is actually in danger', 'my mum is in danger'],
+  ['crisisOther', 'my sister wants to like die', 'my sister wants to die'],
+  ['crisisOther', 'my brother is threatening to like jump', 'my brother is threatening to jump'],
   // care: abuse
   ['abuse', "he won't even let me see my friends", "he won't let me see my friends"],
   ['abuse', "she won't really let me leave", "she won't let me leave"],
@@ -106,6 +119,17 @@ export const POSITIVE = [
   ['violence', 'my boyfriend kept on punching me', 'my boyfriend punches me'],
   ['violence', "I can't believe he actually hit me", "I can't believe he hit me"],
   ['violence', 'nobody knows he always hits me', 'nobody knows he hits me'],
+  // review round 1: second-pass guards and denials that hid real disclosures
+  ['violence', 'my boss actually grabbed me a couple of times', 'my boss grabbed me a couple of times'],
+  ['violence', 'he finally grabbed me a few times', 'he grabbed me a few times'],
+  ['violence', 'he just hit me back when i pushed him', 'he hit me back when i pushed him'],
+  ['violence', 'he just hit me up the side of the head', 'he hit me up the side of the head'],
+  ['violence', "it's not because he always hits me", "it's not because he hits me"],
+  ['violence', 'no doubt he actually hit me', 'no doubt he hit me'],
+  ['violence', 'my boyfriend, honestly, like, hit me', 'my boyfriend hit me'],
+  ['violence', 'he always hits me with his belt', 'he hits me with his belt'],
+  ['violence', 'she always hits me with the remote', 'she hits me with the remote'],
+  ['violence', 'my mum started to like slap me', 'my mum slaps me'],
   // care: threat
   ['threat', "he said he'd really kill me", "he said he'd kill me"],
   ['threat', 'she told me she would actually hurt me', 'she told me she would hurt me'],
@@ -114,6 +138,7 @@ export const POSITIVE = [
   ['threat', 'she says she will really hit me', 'she says she will hit me'],
   ['threat', 'he says he would just kill me', 'he says he would kill me'],
   ['threat', 'my ex is gonna basically share my pictures', 'my ex is gonna share my pictures'],
+  ['threat', "he's going to like leak my photos", "he's going to leak my photos"],
   // care: harassment
   ['harassment', "she won't ever stop messaging me", "she won't stop messaging me"],
   ['harassment', "he won't really leave me alone", "he won't leave me alone"],
@@ -129,6 +154,7 @@ export const POSITIVE = [
   ['unsafe', "I'm never really safe at home", "I'm never safe at home"],
   ['unsafe', "I'm not actually safe with him", "I'm not safe with him"],
   ['unsafe', "I don't even feel safe in my own home", "I don't feel safe in my own home"],
+  ['unsafe', "I'm scared to like go home", "I'm scared to go home"],
   // concern: wanting to hurt someone else
   ['harmOthers', 'I want to finally kill him', 'I want to kill him'],
   ['harmOthers', "I'm going to literally stab her", "I'm going to stab her"],
@@ -139,6 +165,7 @@ export const POSITIVE = [
   ['harmOthers', 'I need to just really hurt somebody', 'I need to hurt somebody'],
   ["harmOthers", "I'm about to actually poison my flatmate", "I'm about to poison my flatmate"],
   ['harmOthers', 'I really feel like just punching him', 'I feel like punching him'],
+  ['harmOthers', 'I want to like kill him', 'I want to kill him'],
 ];
 
 // Everyday words with fillers, and negations: 'none' on both sides.
@@ -197,6 +224,37 @@ export const NEGATIVE = [
   "I honestly can't wait to see you",
   'I like really like him',
   'he actually likes me',
+  // review round 1: 'like' after 'to' only goes when a verb follows; 'even if'
+  'i want to like him',
+  "i'd like to die my hair",
+  'i would like to go home',
+  'i used to like dying my hair',
+  "I'm starting to like her",
+  'I used to like swimming',
+  'I want to like cut my hair',
+  "I'm going to like end it with him",
+  'I want to like overdose on chocolate',
+  'I want to like kill time before the movie',
+  'I wanna like hurt his feelings',
+  'trying to like cut down on coffee',
+  "I'm going to like cut ties with her",
+  "I'm about to like hit the road",
+  "it's going to like kill me if I don't win",
+  'she wants to like die her hair red',
+  "I'd go even if it killed me",
+  "I'll be there even if I die trying",
+  "I'll finish this marathon even if it kills me",
+  'nobody would notice even if I dyed my hair pink',
+  'no one would care even if I wore pyjamas to work',
+  'nobody would care even if I was late',
+  // ...and the second-pass guards that stay
+  "she'll hit me back when she gets a chance",
+  'she just grabbed me a coffee',
+  'he finally grabbed me a ticket',
+  'he really hit me with the truth',
+  'no doubt he actually meant well',
+  "it's not because he always forgets",
+  'my boyfriend, honestly, like, loves me',
   // negations
   'he never hit me',
   "he didn't hit me",
@@ -217,6 +275,10 @@ export const NEGATIVE = [
   "she doesn't actually hit me",
   "they don't ever hit me",
   'my partner has honestly never hit me',
+  'not once has he ever hit me',
+  'not once has she ever hit me',
+  'never once did he really touch me',
+  'he never once actually hurt me',
 ];
 
 // Flagged by the server's own extra rules before the second pass existed
@@ -232,6 +294,28 @@ export const NEGATIVE_APP_ONLY = [
   'I always beat my brother at chess',
   'he just beat me to it',
   'my sister always beats me to the bathroom',
+  'she always hits me with the best advice',
+  'he always hits me with the best jokes',
+  'he just hit me back when he was free',
+  'never once did he actually hit me',
+];
+
+// Flagged with fillers because the same words without them are flagged today
+// (the lexicon's breadth, which the second pass now reaches; review round 1).
+// [with fillers, without]: each gets the level the words without fillers get,
+// on each side. For anything about dying caution wins, so a negation before
+// the phrase does not clear it, exactly as without fillers.
+export const AS_WITHOUT_FILLERS = [
+  ["i don't want to actually die, i'm just scared of the surgery", "i don't want to die, i'm just scared of the surgery"],
+  ['i never said i wanted to literally die', 'i never said i wanted to die'],
+  ["it's not that i want to really die", "it's not that i want to die"],
+  ["i'm going to literally die if he sees this", "i'm going to die if he sees this"],
+  ["I'm gonna like die when I see the bill", "I'm gonna die when I see the bill"],
+  ["if he ever hits me again i'm leaving", "if he hits me again i'm leaving"],
+  ['I want to like sleep forever this weekend', 'I want to sleep forever this weekend'],
+  ['I wanna like disappear into a book for a week', 'I wanna disappear into a book for a week'],
+  ["I'm going to like kill my boss with kindness", "I'm going to kill my boss with kindness"],
+  ["i don't really feel safe driving in snow", "i don't feel safe driving in snow"],
 ];
 
 // Negations as they are today, without fillers: they must stay exactly so.

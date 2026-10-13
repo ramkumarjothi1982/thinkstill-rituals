@@ -23,7 +23,9 @@
 // lost. Negations are never removed, and a second-pass match that only
 // works by stepping over one ("he never really hurt me") does not count,
 // unless the sentence goes on with before / until / again. The server's
-// pre-check (server/another-angle/src/safety/index.js) mirrors this.
+// pre-check (server/another-angle/src/safety/index.js) mirrors this, and the
+// classic Another Angle check (checkSafety in the Beyond reframe engine)
+// takes its decision from checkText.
 //
 // Pure ES module, no DOM. Works in browsers and Node.
 
@@ -64,7 +66,7 @@ const F = String.raw;
 export const FILLERS = Object.freeze({
   // Removed wherever another word follows them (never at the end of a clause,
   // where the lexicon's lookaheads may read them).
-  free: F`just|finally|actually|really|literally|basically|totally|honestly|always|sometimes|often|also|then|still|kinda|sorta|even(?! (?:though|if|so)\b)|(?<!\bfor )ever(?! (?:again|since|after)\b)|(?<!\b(?:a|an|the|what|this|that|these|those|any|some|every|which|my|your|his|her|our|their|no|one|same|its) )(?:kind|sort) of`,
+  free: F`just|finally|actually|really|literally|basically|totally|honestly|always|sometimes|often|also|then|still|kinda|sorta|even(?! (?:though|so)\b)|(?<!\bfor )ever(?! (?:again|since|after)\b)|(?<!\b(?:a|an|the|what|this|that|these|those|any|some|every|which|my|your|his|her|our|their|no|one|same|its) )(?:kind|sort) of`,
   // Removed only straight after a subject, a helper verb or 'to' ("he
   // already hit me", "want to seriously hurt him"): the lexicon reads them
   // after a phrase ("taking my life seriously", "over already").
@@ -84,13 +86,18 @@ export const FILLERS = Object.freeze({
 
 const FORCE_BASE = Object.keys(FILLERS.force).join('|');
 const FORCE_ING = Object.keys(FILLERS.forceIng).join('|');
+const COMMA_FILLER = `${FILLERS.free}|${FILLERS.positional}|like`;
 const forceFromIng = (ing) => FILLERS.force[FILLERS.forceIng[ing.toLowerCase()]];
 const FILLER_STEPS = [
-  // ", like, " / ", honestly, " standing alone between commas
-  [new RegExp(F`\s*,\s*(?:${FILLERS.free}|${FILLERS.positional}|like)\s*,\s*`, 'gi'), ' '],
+  // ", like, " / ", honestly, " standing alone between commas, and chains of
+  // them (", honestly, like, ")
+  [new RegExp(F`\s*,\s*(?:${COMMA_FILLER})(?:\s*,\s*(?:${COMMA_FILLER}))*\s*,\s*`, 'gi'), ' '],
   [new RegExp(F`\b(?:${FILLERS.free}) (?=[a-z0-9'])`, 'gi'), ''],
   [new RegExp(F`(?<=(?:^|[\s,])(?:${FILLERS.subject}|${FILLERS.helper}) )(?:${FILLERS.positional}) (?=[a-z0-9'])`, 'gi'), ''],
   [new RegExp(F`(?<=(?:^|[\s,])(?:${FILLERS.subject}) )like (?!(?:${FILLERS.likeNot})\b)(?=[a-z])`, 'gi'), ''],
+  // ...and straight after 'to' ("I want to like die", "I wanna like end it");
+  // 'I want to like him' and 'I'd like to' stay.
+  [new RegExp(F`(?<=\b(?:to|wanna|gonna|gotta) )like (?!(?:${FILLERS.likeNot})\b)(?=[a-z])`, 'gi'), ''],
   // 'keep on hurting me' → 'keep hurting me' (the lexicon knows 'keeps hurting', 'keep cutting')
   [/\b(keep|keeps|kept|keeping) on (?=[a-z]+ing\b)/gi, '$1 '],
   [new RegExp(F`\b(?:keep|keeps|kept|keeping|start|starts|started|starting|began|begun) (${Object.keys(FILLERS.wishIng).join('|')})\b`, 'gi'), (_, ing) => FILLERS.wishIng[ing.toLowerCase()]],
@@ -115,10 +122,14 @@ export const SECOND_PASS = Object.freeze({
   // Idioms that only need blanking once fillers are gone: 'she just hit me up'
   // is a message, not a blow. (The first pass is left exactly as it was.)
   guards: Object.freeze([
-    F`\b(?:hit|hits|hitting) (?:me|us) up\b(?! against\b)`,
-    F`\b(?:hit|hits) (?:me|us) back (?:with (?:an?|the|some|my|his|her|their) (?:answer|reply|response|quote|price|update|decision|text|message|email|call|date)|later|tomorrow|soon|when|about|on (?:this|that|it))\b`,
-    // 'she just grabbed me a seat', 'he finally beat me to it'
-    F`\b(?:grab|grabs|grabbed|grabbing) (?:me|us) (?:a|an|some|one|another)\b`,
+    F`\b(?:hit|hits|hitting) (?:me|us) up\b(?! (?:against|the (?:side|back|front|head|face)|side|round|around|across)\b)`,
+    F`\b(?:hit|hits) (?:me|us) back (?:with (?:an?|the|some|my|his|her|their) (?:answer|reply|response|quote|price|update|decision|text|message|email|call|date)|later|tomorrow|soon|about|on (?:this|that|it)|when (?:you|u|he|she|they|we|i)(?:'re|'s|'m|'ve)?(?: (?:are|is|am|was|were|have|has|had|get|gets|got|find|finds))? (?:free|ready|done|back|home|sure|able|out|a chance|a minute|a moment|a sec|the chance|time)|when (?:you|u|he|she|they|we|i) (?:can|know|knows|hear|hears|decide|decides))\b`,
+    // words, not blows: 'he always hits me with the truth', 'she really hit me
+    // with the best advice' (never 'with a belt', 'with the remote')
+    F`\b(?:hit|hits|hitting) (?:me|us) with (?:(?:the|a|an|some|his|her|their|this|that|these|those) )?(?:(?:best|worst|same|latest|usual|big|hard|brutal|honest|cold|harsh|awful|terrible|funniest|weirdest) )?(?:truth|news|facts|advice|jokes?|puns?|questions?|compliments?|comebacks?|reality check|bombshell|details|ideas?|request|proposal|quote|update|offer|bill|deadline|feedback|gossip|memes?)\b`,
+    // 'she just grabbed me a seat', 'he finally beat me to it' (but never
+    // 'he grabbed me a few times', 'a bit too hard', 'another time')
+    F`\b(?:grab|grabs|grabbed|grabbing) (?:me|us) (?:a|an|some|one|another)\b(?! (?:(?:couple|few|number|bunch|handful|load|lot)(?: of)? (?:times|occasions|nights|days|weeks|months|years)|bit|little|second|third|fourth|fifth|time|times|while|moment|minute|night|day|lot)\b)`,
     F`\b(?:beat|beats|beaten) (?:me|us) to (?:it|the (?:punch|bathroom|shower|loo|toilet|front|finish|finish line|top|answer|post|draw|chase|seat|last one|car|door|bus|queue))\b`,
     // 'dye' spelt 'die': 'my sister really wants to die her hair pink'
     F`\b(?:die|dies|died) (?:my|her|his|their|your|our) (?:hair|fringe|roots|beard|eyebrows)\b`,
@@ -129,9 +140,11 @@ export const SECOND_PASS = Object.freeze({
   ]),
   negation: F`\b(?:not|never|no|nobody|noone|nothing|none|nowhere|neither|nor|cannot|[a-z]+n't|dont|didnt|doesnt|wont|cant|isnt|wasnt|arent|werent|hasnt|havent|hadnt|shouldnt|wouldnt|couldnt|mustnt|aint)\b`,
   // Words that deny what follows them: "it's not like he really hit me",
-  // "I don't think he'd ever really hurt me" (but never "I can't believe he
-  // actually hit me" or "nobody knows he always hits me", which tell it).
-  denial: F`(?:\bnot (?:like|that|as if|as though|saying|because|sure)|\b(?:don'?t|do not|didn'?t|did not|never|wouldn'?t|would not|can'?t say|cannot say) (?:think|believe|reckon|mean|say|said|claim|suppose|imagine|expect|feel like)|\bdoubt|\bno way)(?: that)?\s*$`,
+  // "I don't think he'd ever really hurt me", "not once has he ever hit me"
+  // (but never "I can't believe he actually hit me", "nobody knows he always
+  // hits me", "no doubt he actually hit me" or "it's not because he always
+  // hits me", which tell it).
+  denial: F`(?:\bnot (?:like|that|as if|as though|saying|sure)|\b(?:don'?t|do not|didn'?t|did not|never|wouldn'?t|would not|can'?t say|cannot say) (?:think|believe|reckon|mean|say|said|claim|suppose|imagine|expect|feel like)|(?<!\b(?:no|don'?t|do not|never|without(?: a| any)?|beyond(?: a| any)?) )\bdoubt|\bno way|\b(?:never|not) once (?:did|does|do|has|had|have|was|were|would|will))(?: that)?\s*$`,
   // ...unless the sentence goes on to say it did happen: "he never hurt me
   // until last year", "he'd never hit me before", "never hit me again".
   unless: F`^[^.!?;]*?\b(?:before|until|till|again)\b`,
