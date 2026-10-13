@@ -267,8 +267,9 @@ export function createAuth({
     return { ok: true, signedIn: true, uid: u.id, needsGuestChoice: s.needsChoice, keepIntent: true };
   }
 
-  const cooldownLeft = () => { const at = Number(safe(() => ss?.getItem(COOLDOWN_KEY), 0)) || 0; return Math.max(0, at + COOLDOWN_MS - now()); };
-  const startCooldown = () => safe(() => ss?.setItem(COOLDOWN_KEY, String(now())));
+  // one cooldown per kind of email (Supabase limits each kind per address): 'signup' (sign-up and resend), 'recovery'
+  const cooldownLeft = (kind = 'signup') => { const at = Number(safe(() => ss?.getItem(`${COOLDOWN_KEY}:${kind}`), 0)) || 0; return Math.max(0, at + COOLDOWN_MS - now()); };
+  const startCooldown = (kind = 'signup') => safe(() => ss?.setItem(`${COOLDOWN_KEY}:${kind}`, String(now())));
   const notice = (kind) => safe(() => ss?.setItem(NOTICE_KEY, kind));
 
   async function liveUid(c) {
@@ -421,13 +422,13 @@ export function createAuth({
       const e = normEmail(email);
       const bad = checkEmail(e);
       if (bad) return fail(bad);
-      const wait = cooldownLeft();
+      const wait = cooldownLeft('recovery');
       if (wait > 0) return { ok: false, error: friendlyError({ status: 429 }, 'reset'), cooldownMs: wait };
       return flow('reset', async (c) => {
         const { error } = await c.auth.resetPasswordForEmail(e, { redirectTo: callbackUrl(loc) });
         const f = error ? friendlyError(error, 'reset') : null;
         if (f && ['rate_limited', 'network', 'server'].includes(f.code)) return fail(f);
-        startCooldown();
+        startCooldown('recovery');
         return { ok: true, cooldownMs: COOLDOWN_MS };
       });
     },
