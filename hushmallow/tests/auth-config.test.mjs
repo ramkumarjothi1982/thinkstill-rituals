@@ -7,6 +7,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { validatePublicConfig, classifyKey, resolveAuthConfig, storageKeyFor, publicConfigModule, PROJECT_REF, PROJECT_URL, DEV_KEY } from '../src/auth/config.js';
 import { buildPublicConfig, envProblems, headersFile } from '../tools/site/auth-config.mjs';
@@ -176,7 +178,7 @@ test('no secret key, service-role key or access token anywhere in the app, tools
 });
 
 test('build-site.sh: a refused value stops the build before anything is written', () => {
-  const out = `/tmp/claude-0/hf/auth/test-refused-${process.pid}`;
+  const out = join(tmpdir(), `hm-test-refused-${process.pid}`);
   let failed = false, msg = '';
   try {
     execFileSync('bash', [`${root}tools/build-site.sh`, out, 'test1'], { env: { ...process.env, SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co', SUPABASE_PUBLISHABLE_KEY: KEY }, stdio: 'pipe' });

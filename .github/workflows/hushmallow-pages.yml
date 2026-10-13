@@ -25,6 +25,7 @@ on:
       - '!hushmallow/tools/**'
       - 'hushmallow/tools/build-site.sh'
       - 'hushmallow/tools/site/**'
+      - 'hushmallow/tools/auth/**'                      # the auth tests run the local fake of Supabase
       - 'hushmallow/tools/hires/**'                     # hires.test reads its patch and data
       - 'hushmallow/docs/V3_SKILLS.md'                  # garden.test / v3.test read these
       - 'hushmallow/docs/V3_CORRECTIONS.md'
@@ -41,6 +42,7 @@ on:
       - '!hushmallow/tools/**'
       - 'hushmallow/tools/build-site.sh'
       - 'hushmallow/tools/site/**'
+      - 'hushmallow/tools/auth/**'                      # the auth tests run the local fake of Supabase
       - 'hushmallow/tools/hires/**'                     # hires.test reads its patch and data
       - 'hushmallow/docs/V3_SKILLS.md'                  # garden.test / v3.test read these
       - 'hushmallow/docs/V3_CORRECTIONS.md'

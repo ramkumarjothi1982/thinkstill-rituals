@@ -229,6 +229,13 @@ runs as before (the GitHub Pages workflow builds this way).
 14. Delete account (typed confirmation): Authentication → Users no longer lists it; no rows remain for it; the app is a guest again.
 15. On a preview (`*.hushmallow.pages.dev`): sign up; the email returns to that preview.
 
+## Known limits
+
+* The GitHub Pages copy (`hushmallow-pages.yml`) builds without the two values: sign-in is off there, and its `/auth/callback/` (absolute `/v/<ver>/` paths for a site at the domain root) is not meant to be used under a project path.
+* Signing out while offline removes the session from this device but cannot revoke it on the server; it expires on its own (refresh-token rotation ends it at the next refresh attempt).
+* The Framer embed is a cross-site iframe: browsers partition its storage, so an account there is a separate session (see below).
+* Deep paths other than `/`, `/#…` and `/auth/callback` (e.g. `/a/b`) still get Pages' single-page fallback, whose relative asset paths do not resolve two folders down (unchanged from before; nothing links there).
+
 ## Coordinator wiring points
 
 * **Settings row**: in `src/app/scenes/settings.js`, an empty `h('div')` in the Privacy section filled with
