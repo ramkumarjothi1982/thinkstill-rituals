@@ -72,6 +72,19 @@ const DESIRES = [
 // ../data/safety-lexicon.js) so the free path and Another Angle agree.
 
 const NEGATORS = /\b(not|no|never|isn'?t|wasn'?t|aren'?t|weren'?t|don'?t|doesn'?t|didn'?t|no longer|hardly|barely)\b/;
+/**
+ * A feeling the words give to someone else ("she must be angry with me", "my mum is upset", "they were furious"): read on
+ * the normalised words just before the feeling word. It is their feeling (or a guess at it), never the person's own, so it
+ * is kept only as a low-confidence note (target 'other') and is never suggested or acknowledged as theirs.
+ */
+const OTHER_WHO = '(?:he|she|they|you|everyone|everybody|people|(?:(?:my|our|his|her|their|your|the)(?: [a-z]+)? )?(?:mum|mom|mam|mother|dad|father|parents?|nan|nana|gran|granny|grandma|grandad|grandpa|grandparents?|brother|sister|siblings?|son|daughter|kids?|child|children|husband|wife|partner|boyfriend|girlfriend|bf|gf|fiance|fiancee|ex|friends?|mates?|bestie|boss|manager|teacher|tutor|coach|colleagues?|coworkers?|team|family|flatmates?|housemates?|roommates?|neighbou?rs?|aunt|auntie|uncle|cousins?|landlord|dog|cat|classmates?))';
+const OTHER_BE = '(?:(?:must|might|may|could|would|will|should|ll|d|is going to|are going to|gonna) (?:be|have been|get|feel)|is|was|are|were|has been|have been|had been|seems?|seemed|looks?|looked|sounds?|sounded|feels?|felt|gets?|got|getting|became|becomes?|is being|was being|is getting|was getting|is feeling|was feeling)';
+const OTHER_ADV = '(?: (?:so|really|very|quite|pretty|super|totally|completely|absolutely|well|a bit|a little|kind of|kinda|sort of|bloody|fucking|still|always|properly|probably|definitely|clearly|obviously|surely|actually|just|getting))*';
+const OTHERS_FEEL = new RegExp(`(?:^|\\s)(?:(?:hes|shes|theyre|youre|theyve been|hes been|shes been)|${OTHER_WHO}${OTHER_ADV} ${OTHER_BE})${OTHER_ADV}$`);
+/** True when the normalised words before a feeling give it to someone else. */
+const othersFeeling = (before) => OTHERS_FEEL.test(` ${String(before || '').trim()}`);
+/** Someone else's feeling: noted, never as theirs (below every threshold a suggestion or an acknowledgement reads). */
+const OTHERS_CONFIDENCE = 0.3;
 const INTENSIFY = /\b(really|so|very|extremely|super|completely|totally|absolutely|incredibly|beyond|utterly|fucking|f\*+ing|insanely|deeply|massively)\b/g;
 const SOFTEN = /\b(a bit|slightly|kind of|kinda|a little|somewhat|sort of|a tad|mildly)\b/g;
 const UNSURE = /\b(don'?t know why|not sure|i guess|maybe|kind of|weird|idk|dunno|can'?t tell)\b/;
@@ -157,13 +170,20 @@ export function interpret(text) {
           continue;
         }
         for (let k = 0; k < n; k++) used.add(i + k);
+        // someone else's feeling ("she must be angry with me"): theirs, never the person's
+        if (othersFeeling(toks.slice(Math.max(0, i - 7), i).join(' '))) { note(hit[0], Math.min(hit[1], OTHERS_CONFIDENCE), gram, { intensity: intens, target: 'other' }); continue; }
         // meta-emotion: "ashamed of being jealous" → shame about self
         const after = toks.slice(i + n, i + n + 3).join(' ');
         const target = /^(of|about|for) (being|feeling|myself)/.test(after) || /^(at|with) myself/.test(after) ? 'self' : null;
         note(hit[0], hit[1], gram, { intensity: intens, target });
       }
     }
-    for (const [re, id, conf] of PHRASES) if (re.test(clause)) note(id, conf, clause.match(re)[0], { intensity: intens });
+    for (const [re, id, conf] of PHRASES) {
+      const m = clause.match(re);
+      if (!m) continue;
+      if (othersFeeling(clause.slice(0, m.index))) note(id, Math.min(conf, OTHERS_CONFIDENCE), m[0], { intensity: intens, target: 'other' });
+      else note(id, conf, m[0], { intensity: intens });
+    }
     for (const [re, id, conf] of IMPLIED) if (re.test(clause)) note(id, conf, clause.match(re)[0], { intensity: intens * 0.9 });
   }
 
@@ -197,17 +217,33 @@ export function interpret(text) {
 }
 
 /**
- * The feelings worth highlighting as suggestions for an interpret() reading: ids of the confident matches
- * (≥ min), most confident first, at most `max`. Words with a safety cue in them (crisis, care or distress)
- * never get a positive feeling suggested — "relieved" beside "he hit me", "happy" beside "done with life" —
- * and when the reading has one, nothing is suggested at all (the person names it, if they want to).
+ * The feelings that fit a death or a loss: the only word-read feelings suggested beside one. LOSS_OFFER is what is
+ * suggested beside one whatever the words read ("covid took my grandad" reads no feeling word): grief, then sadness.
  */
-export function suggestedFeelings(reading, { min = 0.6, max = 3 } = {}) {
-  const list = (reading?.emotions || []).filter((e) => e.confidence >= min);
-  const level = reading?.safety?.detail?.level || reading?.safety?.level || 'none';
+export const LOSS_FIT = Object.freeze(new Set(['grief', 'sadness', 'sorrow', 'mourning', 'heartache', 'heartbreak', 'bereft', 'anguish', 'tearful',
+  'heavy-hearted', 'longing', 'emptiness', 'numbness', 'shock', 'disbelief', 'anticipatory-grief', 'loneliness', 'despair']));
+export const LOSS_OFFER = Object.freeze(['grief', 'sadness']);
+/**
+ * The feelings worth highlighting as suggestions for an interpret() reading: ids of the confident matches
+ * (≥ min), most confident first, at most `max`. Never a feeling the words give to someone else ("she must be angry
+ * with me"). Words with a safety cue in them (crisis, care or distress) never get a positive feeling suggested —
+ * "relieved" beside "he hit me", "happy" beside "done with life" — and when the reading has one, nothing is
+ * suggested at all (the person names it, if they want to). `level`: the caller's own safety reading (the main screen's
+ * Tell reads loss talk as concern), counted with the reading's.
+ *
+ * `loss` (the caller read a death or a loss in the words: grief.js deathTalk / livingLoss, backstop.js strongLoss, or a
+ * safety reading of category 'loss'): grief and sadness, then any other word-read feeling that fits a loss (LOSS_FIT),
+ * never any other word-read feeling beside it ("rested" and "obligated" in "there was no heartbeat. I should have rested
+ * more", the self-blame echoed back after a pregnancy loss).
+ */
+export function suggestedFeelings(reading, { min = 0.6, max = 3, loss = false, level = null } = {}) {
+  const list = (reading?.emotions || []).filter((e) => e.confidence >= min && e.target !== 'other');
+  if (loss) return [...new Set([...LOSS_OFFER, ...list.filter((e) => LOSS_FIT.has(e.id)).map((e) => e.id)])].slice(0, Math.max(LOSS_OFFER.length, max));
+  const read = reading?.safety?.detail?.level || reading?.safety?.level || 'none';
   // (words about being hurt by someone count as a cue here even when the safety detector reads none —
   // "glad he finally hit me so I could leave": no "joy" is highlighted for them)
-  if ((level !== 'none' || reading?.hurtCue) && list.some((e) => (getEmotion(e.id)?.valence ?? 0) > 0)) return [];
+  const cue = read !== 'none' || (level && level !== 'none') || reading?.hurtCue;
+  if (cue && list.some((e) => (getEmotion(e.id)?.valence ?? 0) > 0)) return [];
   return list.slice(0, max).map((e) => e.id);
 }
 // being hurt by someone (for the suggestion guard only; safety routing is the detector's)
