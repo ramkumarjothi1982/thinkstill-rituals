@@ -2,59 +2,87 @@
 
 The relay's interface is made of scenes (`ui/relay/*.js`), each a function
 `(device, params) → { el, mood, update?, destroy? }` mounted by `ui/device.js`.
-They follow the landing page's visual language:
 
-- **Ground and light:** cream ground and drifting pastel light (`ui/atmosphere.js`),
-  under a parallax cloud sky with a camera that glides up when a feeling is released
-  (`ui/sky.js`).
-- **Type and controls:** Fraunces SOFT headlines with gradient italics, Manrope and
-  Nunito Sans text, ink pills, hairline insets and long lilac shadows.
-- **The living Mallows** (`ui/mallow.js`): breathing, blinking, squash-and-stretch
-  on springs, and a signature move each.
-- **The feeling orb** (`ui/orb.js`): a luminous sphere that squashes and stretches,
-  holds the words, and gains a petal of light for each person.
-- **Sound:** delicate synthesised sounds (`ui/sound.js`), started only after a
-  touch, with one switch to turn them off.
+## The Hushfold language
 
-There are no dashboards and no boxes of data. Every scene is a column (head, body,
-stage, foot, dock) sized from its own box, so it composes the same way at 320 × 480
-inside the lab and at 390 × 844.
+2.0 rebuilt every scene around the landing page's composition (the notes the
+redesign worked from are summarised below), not just its colours:
+
+- **A room, not a page.** Each scene is a soft room tinted by a Mallow's
+  colours (`room()` in `ui/relay/parts.js`), under a drifting parallax sky
+  (`ui/sky.js`) and the breathing light of `ui/atmosphere.js`.
+- **One living character at the centre.** The official Mallow art stands on
+  its three-cloud pillow with a breathing halo (`stage()`); it breathes,
+  blinks, notices, reaches, thinks, squeezes and cheers (`ui/mallow.js`).
+- **Words live in thought clouds, never cards.** The landing page's blob
+  (`ThoughtCloud`) holds what someone wrote; status comes from the Mallow's
+  speech bubble (`Speech`), not banners.
+- **One serif line, one big action, quiet escape hatches.** Fraunces SOFT
+  headlines, Nunito Sans text, ink pill buttons, text links for the rest; no
+  borders (inset hairlines), long soft lilac shadows.
+- **The orb** (`ui/orb.js`): a luminous sphere that forms from words, squashes
+  and stretches, ripples, glows, and gains a petal of light for each person
+  (a star for a Mallow). It flies on bezier paths with a delicate trail
+  (`fly()`).
+- **Sound** (`ui/sound.js`): delicate synthesised sounds for gather, squish,
+  ripple, release, arrive, catch, petal, think, reveal and home, started only
+  after a touch, with one switch to turn them off.
+
+Every scene is a column (head, scroll, dock) sized from its own box with
+container queries, so it composes the same way at 320 × 568, 390 × 844, a
+768 tablet and a desktop window. Long content scrolls inside the phone; the
+header and dock float above it.
 
 ## The four places (dock)
 
 | Dock | Scene | What it is |
 |---|---|---|
-| Release | `release` | "What's on your mind?", your Mallow holding an empty orb. Compose → review → the release moment → "Your feeling is on its way." |
-| Catch | `catch` | "Catch a feeling". Look up → "A feeling has found you." → catch or let it float past → "Can you see this another way?" → the petal → pass it on → how others saw it. |
-| Journeys | `journeys` → `journey` | Your travelling feelings: petals, "3 of 5 perspectives found", time left, the Mallow offer if you allowed one. Bring it home early, delete. |
-| Returned | `returned` → `homecoming` | Feelings that came home. First time: the cinematic return. Then keep or let go of each perspective, save, release, delete, share, explore another angle. |
+| Release | `release` | Your Mallow in its room, a thought cloud that fills as you write, "What's on your mind?", optional tags, the consent tick, the Mallow choice (off by default), "Release into Hushfold" and "Cancel". Then the release moment and "Your feeling is on its way." |
+| Catch | `catch` | "Catch a feeling" → look up → the orb arrives: "A feeling has found you." → "Catch this feeling" / "Let it float past" → "Can you see this another way?" "Offer a possibility, not a verdict." → the petal moment → how the others saw it. |
+| My journeys | `journeys` → `journey` | Feelings still travelling, as a small constellation of orbs with their petals and "3 of 5 human perspectives". The detail shows your words, time left, and your Mallow offering another way to see it once it can. Bring it home early, delete. |
+| Returned | `returned` → `homecoming` | Feelings that came home. First time: the cinematic return. Then each perspective as a slide (keep / let it go), your Mallow's perspective apart once five people answered, and Save my journey, Explore another angle, Share, Release this feeling, Delete my journey. Nobody caught it: Send it out again / Keep it with me / Let it go. |
 
 Other scenes:
-- `welcome` (three steps, ending with catching and the adult-pilot confirmation)
-- `support` (shown instead of a release when words suggest someone isn't safe)
-- `share` (a 9:16 picture: light and the label only)
-- `you` (You & safety: choices, standards, support, data)
-- `deleted`
+- `welcome`: three quiet beats in your Mallow's room: what Hushmates is, how a
+  feeling travels (the orb gathering petals), then the promises, privacy
+  details, "Let feelings find me" and the adult-pilot confirmation.
+- `support`: shown instead of a release when words suggest someone may not be
+  safe. Nothing was sent or saved; real places to turn.
+- `share`: a live 9:16 story, then a picture or a short video, made on the
+  device. The author chooses what it shows (see `RELAY.md` §2a).
+- `you`: You & safety: who you are here, choices, your Mallow, the
+  perspectives you've offered (with their share choice), the standards,
+  support, your data.
+- `deleted`.
 
 ## Motion moments
 
-- **Release:**
-  1. The orb (with the words inside) drops into the Mallow's arms.
-  2. Both squeeze; the words fade into light.
-  3. The Mallow springs back and lets it go: the orb flies up on a curve with a
-     trail of motes.
-  4. The sky camera pans up and the Mallow sinks out of frame.
-  5. "Your feeling is on its way." then "Let's see how someone else sees it."
-- **Catch:** the orb arrives from the sky; catching squeezes it. Your perspective
-  unfurls as a petal in your Mallow's colour (with a chime and the Mallow's cheer),
-  then the orb flies on.
-- **Homecoming:**
-  1. Dusk, then the sky settles from above.
-  2. "Something is coming home…": the orb drifts down and the Mallow catches it.
-  3. Bloom, then "Your feeling found its way home."
-  4. The orb rises into place and each perspective opens out of it.
+- **Release** (`release.js` `launch`):
+  1. The words in the thought cloud drift together and shrink into light: the
+     orb forms.
+  2. Your Mallow notices it, leans in and reaches.
+  3. The orb settles in its arms; it squeezes, the orb compresses, ripples and
+     glows.
+  4. It lets go with its signature move; light blooms and the sky pans.
+  5. The orb floats up through the atmosphere with a delicate trail.
+  6. "Your feeling is on its way." then "Let's see how someone else sees it."
+- **Catch** (`catch.js`): ripples in the sky while you look; the orb drifts in
+  and the Mallow notices and reaches. When you add your perspective the Mallow
+  squeezes the orb, it ripples, gains a petal in your Mallow's colour, and
+  flies on: "Your perspective is woven in."
+- **Fallback magic** (`journeys.js` `ask`, `returned.js` `explore`): the orb
+  drifts into your Mallow's arms; it thinks (sleepy eyes, a slow sway) while
+  the answer is made, squeezes, the orb glows and gains a star, and "Your
+  Mallow found another way to see it." unfolds.
+- **Homecoming** (`returned.js` `moment`):
+  1. The sky softens to dusk and pans: "Something is coming home…"
+  2. A distant orb drifts closer; the Mallow notices it and reaches.
+  3. It floats into the Mallow's arms: bloom, "Your feeling found its way home."
+  4. A petal of light for each person, a star if a Mallow helped.
+  5. The orb rises into place and opens; the first perspective emerges from it.
 
-Reduced motion replaces flights with cross-fades and keeps every state reachable.
+**Reduced motion** replaces flights with cross-fades, stops ambient loops, and
+keeps every state reachable (checked by the QA tool's reduced-motion run).
 
 ## Scene contract (`data-test` hooks)
 
@@ -62,13 +90,13 @@ The lab's autoplay, the QA tool and the guide use these hooks; scenes keep them 
 
 | Scene | Hooks |
 |---|---|
-| dock | `nav-release`, `nav-catch`, `nav-journeys`, `nav-returned` |
-| welcome | `welcome-next`, `welcome-catching`, `welcome-adult`, `welcome-enter` |
-| release | `start-feeling`, `feeling-text`, `label-<id>`, `allow-fallback`, `disclosure`, `review-feeling`, `cancel-feeling`, `edit-feeling`, `release-submit`, `release-sent`, `follow-journey`, `go-catch`, `release-limit`, `feeling-error` |
+| dock | `nav-release`, `nav-catch`, `nav-journeys`, `nav-returned`, `open-you` |
+| welcome | `welcome`, `welcome-next`, `welcome-privacy`, `welcome-catching`, `welcome-adult`, `welcome-enter` |
+| release | `feeling-text`, `label-<id>`, `share-consent`, `privacy-link`, `allow-fallback`, `release-submit`, `cancel-feeling`, `feeling-error`, `release-limit`, `release-sent`, `follow-journey`, `go-catch`, `release-another` |
 | support | `support-scene`, `support-unsent`, `support-resources`, `support-edit`, `support-clear` |
-| catch | `catching-on`, `find-feeling`, `catch-none`, `look-again`, `catch-offer`, `offer-text`, `catch-feeling`, `float-past`, `offer-more`, `report-feeling`, `block-author`, `reframe-text`, `starter-<n>`, `reframe-error`, `reframe-submit`, `reframe-after`, `catch-another`, `catch-done`, `catch-gone`, `my-gifts` |
-| journeys | `journey-<id>`, `empty-release`, `journey-detail`, `progress`, `mallow-waiting`, `mallow-available`, `ask-mallow`, `mallow-pending`, `mallow-ready`, `mallow-failed`, `mallow-held`, `withdraw`, `delete-journey` |
-| returned | `returned-<id>`, `homecoming`, `homecoming-ready`, `perspective` (+ `data-kind`, `data-source`), `persp-source`, `keep`, `let-go`, `persp-more`, `report-perspective`, `block-contributor`, `explore-angle`, `save-journey`, `share-journey`, `release-journey`, `delete-journey`, `home-empty` |
-| share | `share-preview`, `share-privacy`, `share-label`, `share-save` |
-| you | `open-you`, `pref-catching`, `pref-notify`, `pref-sound`, `mallow-<id>`, `open-support`, `export-data`, `delete-data`, `pilot-note`, `deleted` |
-| sheets | `confirm`, `reason-<id>`, `report-send`, `report-received` |
+| catch | `catching-on`, `find-feeling`, `catch-none`, `look-again`, `catch-offer`, `offer-text`, `catch-feeling`, `float-past`, `offer-more`, `report-feeling`, `block-author`, `caught-text`, `starter-<n>`, `reframe-text`, `allow-share`, `reframe-error`, `reframe-submit`, `reframe-after`, `catch-another`, `catch-done`, `catch-gone`, `my-gifts` |
+| journeys | `journey-<id>`, `empty-release`, `progress`, `mallow-waiting`, `mallow-available`, `ask-mallow`, `mallow-ready`, `mallow-failed`, `perspective`, `persp-source`, `lab-source` (lab only), `withdraw`, `delete-journey` |
+| returned | `returned-<id>`, `homecoming`, `homecoming-ready`, `home-note`, `perspective` (+ `data-kind`, `data-source`), `persp-source`, `lab-source` (lab only), `keep`, `let-go`, `persp-more`, `report-perspective`, `block-contributor`, `mallow-extra`, `home-empty`, `send-again`, `keep-with-me`, `explore-angle`, `save-journey`, `share-journey`, `release-journey`, `delete-journey` |
+| share | `share-preview`, `share-play`, `share-privacy`, `share-label`, `share-words`, `share-pick` (+ `data-kind`), `share-pick-locked`, `share-save`, `share-image`, `share-video`, `share-video-out` |
+| you | `privacy-link`, `pref-catching`, `pref-notify`, `pref-sound`, `mallow-<id>`, `gifts`, `gift`, `gift-share-<id>`, `open-support`, `export-data`, `export-json`, `export-copy`, `delete-data`, `pilot-note`, `deleted` |
+| sheets | `confirm`, `privacy-details`, `reason-<id>`, `report-send`, `report-received` |

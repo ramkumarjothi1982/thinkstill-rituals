@@ -49,11 +49,24 @@ safe, fictional words written for the demonstration.
 Rules are a floor, not a guarantee. The interface says so, and the human layer is
 not optional.
 
-## 2. Anonymity, honestly
+## 2. Consent, and anonymity, honestly
 
+- **Sharing is an active, recorded choice.** On the release screen the person
+  ticks "Share anonymously with Hushmates participants" ("Your words may be
+  shown to other people who can offer different perspectives. Please leave out
+  identifying details."). The button stays off until they do, and the service
+  refuses any release without it (`consent-required`), so a modified client
+  can't skip it. The time is recorded, nothing circulates without it, and it
+  is in the person's data export.
+- **Privacy details are one tap away before any choice** ("Privacy details" on
+  the release screen, the welcome and You & safety): who sees your words, why
+  it isn't perfectly anonymous, what happens if you allow a Mallow
+  perspective, your choices, and safety.
+- **Withdrawal:** bring a feeling home early, let it go, delete it, delete
+  everything, withdraw the Mallow choice on a resend, or (as a writer) stop
+  your words appearing in share stories.
 - Pseudonymous, **not** perfectly anonymous. The interface says this in the
-  welcome, on release ("Leave out names, places and anything that could identify
-  you or someone else") and in You & safety.
+  welcome, in the privacy details and in You & safety.
 - **Nobody is shown who released a feeling or who wrote a perspective.** The
   pseudonym is never shown to other people at all.
 - Nobody can contact anyone: there is no messaging, no reply thread, no profile
@@ -67,35 +80,63 @@ not optional.
     hidden from you;
   - any feeling of yours they are holding drifts on.
 
-## 3. AI, honestly
+## 3. Automated perspectives, honestly
 
-- The relay is human-first. A Mallow perspective exists only when:
-  - the author opted in for that feeling, with the disclosure "This needs AI
-    processing: your words are sent to an AI service for one reply";
-  - nobody caught it for 30 minutes;
-  - and the author then asks.
-- **It is always labelled with its real source:**
-  - "A Mallow perspective · AI-generated" only when the provider reports a real
-    model;
-  - "… · from the Reframe library, not AI";
-  - "… · demo example, not live AI".
-- It is drawn as a star, never a petal. It never counts as a person ("0 of 5 from
-  people · plus a Mallow's") and gives way to five humans.
-- **No invented humans, no inflated numbers.** There are no live counts, no "people
-  online", and nothing decorative in the sky that implies other people's activity.
-  The share picture uses the journey's real numbers.
-- High-risk text is never sent to a generative provider as an ordinary fallback.
-  The same applies to anything paused or removed by moderation.
-- **In this lab no AI key is configured.** No output here is live AI, and none is
-  labelled as if it were.
+- The relay is human-first, and the AI behind the Mallow is never promoted:
+  no "AI companion", chatbot, therapy or "AI reframing" language, and no
+  model, provider, token or latency details anywhere a person sees.
+- A Mallow perspective exists only when the author:
+  - opted in for that feeling ("Let a Mallow offer another perspective if
+    nobody responds." — off by default; the privacy details explain that the
+    words are then sent to an automated service, that the reply is not written
+    by a person, and that it is deleted with the journey);
+  - then asks: after 30 minutes with nobody while it travels, or with
+    "Explore another angle" once it is home (confirmed again there, with the
+    same disclosure if they hadn't opted in).
+- **It is always labelled.** "A Mallow perspective · Automatically generated",
+  and "Automatically generated · not written by a person" next to the button
+  that asks for it. A canned development example is never called generated:
+  "A Mallow perspective · Example for testing, not generated". In the lab
+  only, a tag under it names the real source so testers can tell a live test
+  response from a canned example.
+- It is drawn as a star, never a petal. It never counts as a person ("0 of 5
+  human perspectives") and gives way to five people, moving to its own
+  optional section.
+- **No invented humans, no inflated numbers.** There are no live counts, no
+  "people online", and nothing decorative in the sky that implies other
+  people's activity. When nobody caught a feeling the copy says so kindly
+  ("No one caught it this time. Want to give it another journey?" and "Sometimes
+  the sky is just quiet. It says nothing about you or your feeling."). Share
+  stories use the journey's real numbers.
+- **High-risk text never reaches the relay or the Mallow.** Crisis words are
+  answered with support on the device and again by the service (before the
+  consent check), are never stored, and never go to a provider. Anything paused
+  or removed by moderation can't be sent to a provider either.
+- **In this lab no AI key is configured.** No output here is live AI, and none
+  is labelled as if it were.
+
+## 3a. Share stories
+
+- Private by default: the picture or video is made on the device and nothing
+  is uploaded or posted.
+- The author chooses what it shows. Their own words are off by default.
+- **Contributors' consent:** a perspective can appear only if its writer
+  allowed it when they wrote it ("They may include my words in a share
+  picture", off by default). Writers can change their mind any time in You &
+  safety. Nobody is ever named.
+- A Mallow's perspective is always labelled automatically generated and is
+  never presented as a stranger's. "Five strangers saw it differently" appears
+  only when five people did.
 
 ## 4. Your data
 
-- **Download my data:** your feelings and what came back, and the perspectives you
-  gave. Other people never appear in it.
-- **Delete my journey**, **release this feeling** (words cleared; perspectives you
-  kept stay), **delete my Hushmates data** (every feeling, every perspective you
-  gave, your sessions).
+- **Download my data:** your feelings and what came back, the perspectives you
+  gave (with your share choice), and when you agreed to share and to a Mallow
+  perspective. Other people never appear in it.
+- **Delete my journey**, **release this feeling** (words cleared, a Mallow
+  perspective you didn't keep wiped with them; perspectives you kept stay),
+  **delete my Hushmates data** (every feeling, every perspective you gave, your
+  sessions).
 - A Mallow answer that arrives after a deletion or a release is dropped, never
   written back.
 - The proposed retention schedule is in `RELAY.md` §5. It needs the owner's
@@ -106,7 +147,7 @@ not optional.
 The support screens reuse the safety copy the main app already ships (emergency
 numbers, Samaritans 116 123, 988 in the US, findahelpline.com). **They must be
 reviewed for each launch region by a safety lead** before real people use
-Hushmates; the interface marks them as a pilot placeholder.
+Hushmates; in the lab a note says so under them (hidden from consumers).
 
 ## 6. Before any real person uses it
 
