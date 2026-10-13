@@ -285,6 +285,19 @@ export default function hushfold(app, params = {}) {
     return { left: Math.min(rest.left, live.left), right: Math.max(rest.right, live.right), top: Math.min(rest.top, live.top), bottom: Math.max(rest.bottom, live.bottom) };
   }
 
+  /**
+   * The bottom sheet on a short screen hides the thoughts' words (they would sit on the Mallow above it). The Mallow's
+   * new place is planned at once (restRect reports it), but the body sets off only once the words have faded out
+   * (.tm-tag's .2 s and a frame), so it never rises through words that can still be seen.
+   */
+  function heroWaitsForTagsOut() {
+    if (!stageMallow?.holdPlace || stageMallow.placeHeld) return;   // (an arrival's own hold already waits for them)
+    const L = stage?.thoughts;
+    if (!(L?.list || []).some((t) => L.tagRect?.(t))) return;
+    stageMallow.holdPlace(true);
+    stageMallow.holdPlace(230);
+  }
+
   /** The Thought Mallows on stage that are not drifting off (oldest first). */
   const liveThoughts = () => (stage?.thoughts.list || []).filter((t) => !t.leaving);
 
@@ -322,6 +335,8 @@ export default function hushfold(app, params = {}) {
     const regionH = Math.max(minB + 8, regionBottom - regionTop);
     // a short strip above the sheet: the thoughts' word tags would sit on the Mallow, so they wait
     const tagsAway = panelSheet() && regionBottom - regionTop < 220;
+    // (the words going away for the sheet: the Mallow waits where it is while they fade, so it never rises through them)
+    if (tagsAway && !stage?.thoughts?.hidden) heroWaitsForTagsOut();
     root.classList.toggle('hf-tags-away', tagsAway);
     stage?.thoughts.hideTags(tagsAway);
     const thought = !worldMode && liveThoughts().length > 0;
