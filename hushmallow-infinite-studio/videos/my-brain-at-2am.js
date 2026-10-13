@@ -33,14 +33,14 @@ const meta = {
 // ------------------------------------------------------------- beats --
 const B = {
   hookIn: -0.25,
-  nuzzle: 0.8,                 // sleepy settle
-  ping: 1.22,                  // the memory twinkles above Noomi's head
-  stir: 1.34,                  // still asleep: the smile falls, brows knit
-  peek: 1.52,                  // one eye cracks open
-  antic: 1.72,                 // tiny compress before the take
-  startle: 1.8,                // eyes SNAP open
-  blink1: 2.3, blink2: 2.47,
-  glance: 2.62,
+  nuzzle: 0.55,                // sleepy settle
+  ping: 0.97,                  // the memory twinkles above Noomi's head
+  stir: 1.09,                  // still asleep: the smile falls, brows knit
+  peek: 1.27,                  // one eye cracks open
+  antic: 1.47,                 // tiny compress before the take
+  startle: 1.55,               // eyes SNAP open
+  blink1: 2.3, blink2: 2.58,   // the deadpan "blink… blink"
+  glance: 2.75,
   b1: 3.05, b2: 3.72, b3: 4.15,
   sweat: 4.3,
   orbitStart: 5.0, orbitFull: 5.5,
@@ -76,7 +76,7 @@ const P = {
     squashBias: 0.03, shrink: 0.06, blush: 0.9, blushLines: 0.45 },
   panic: { ...BREATH, eyeOpen: 1.36, eyeScale: 1.18, irisScale: 0.55, wet: 0.5, browAlpha: 1, browY: 1.05, browTilt: 1.25,
     mouthSmile: -0.62, mouthRound: 0.2, mouthOpen: 1.0, mouthWidth: 1.0, mouthTremble: 1.0, mouthWave: 0.8,
-    tremble: 2.4, squashBias: 0.06, shrink: 0.14, blush: 0.85, blushLines: 1 },
+    browAsym: 0.45, tremble: 2.4, squashBias: 0.06, shrink: 0.14, blush: 0.85, blushLines: 1 },
   close: { ...BREATH, eyeOpen: 0, closedCurve: 0.9, browAlpha: 0.45, browY: 0.15, browTilt: 0.45,
     mouthSmile: 0.05, mouthWidth: 0.8, blush: 1.0 },
   inhale: { ...BREATH, eyeOpen: 0, closedCurve: 0.6, browAlpha: 0.55, browY: 0.9, browTilt: 0.15,
@@ -99,7 +99,7 @@ const P = {
 };
 
 const POSES = [
-  [-99, P.sleep], [B.stir, P.stir], [B.peek, P.peek], [B.startle, P.startle], [2.15, P.stare],
+  [-99, P.sleep], [B.stir, P.stir], [B.peek, P.peek], [B.startle, P.startle], [B.startle + 0.35, P.stare],
   [B.b1 - 0.05, P.worry], [B.b3, P.fret], [B.panic, P.panic], [B.close, P.close],
   [B.inhale, P.inhale], [B.crest, P.crest], [B.exhale, P.exhale], [10.0, P.exhaleTail],
   [B.squish, P.squish], [B.release, P.relaxed],
@@ -192,8 +192,9 @@ async function setup(stage) {
   bokeh = new Bokeh();
   endcard = new EndCard({ appearAt: B.url, y: 575, gap: 64 });
   await endcard.load();
-  // register bubble sound events in the cue log (with stage-space pan)
-  for (const e of field.events) stage.cue(e.t, e.type, { id: e.id, pan: e.pan, step: e.step });
+  // register bubble sound events in the cue log (dissolves are logged when the
+  // breath's ring actually reaches each thought, see fireOnce('exhale'))
+  for (const e of field.events) if (!/^dissolve/.test(e.type)) stage.cue(e.t, e.type, { id: e.id, pan: e.pan, step: e.step });
 }
 
 // ---------------------------------------------------------- camera --
@@ -202,12 +203,12 @@ function camera(t) {
   // A monotone spline flows through the keys; the inhale pushes in and the
   // exhale opens out, so the camera breathes with Noomi.
   const zoom = spline([
-    [-9, 1.06], [0, 1.06], [1.78, 1.2], [2.7, 1.26], [3.55, 1.0], [4.8, 1.02], [6.95, 1.15],
-    [B.inhale, 1.12], [B.crest, 1.17], [B.exhale, 1.17], [B.exhaleEnd, 1.02], [11.6, 1.0], [15, 1.075],
+    [-9, 1.06], [0, 1.06], [B.startle - 0.02, 1.2], [2.7, 1.26], [3.55, 1.0], [4.8, 1.02], [6.95, 1.15],
+    [B.inhale, 1.12], [B.crest, 1.17], [B.exhale, 1.17], [B.exhaleEnd, 1.02], [11.6, 1.0], [15, 1.06],
   ], t);
   const fy = spline([
-    [-9, 770], [0, 770], [1.78, 800], [2.7, 820], [3.55, 735], [4.8, 737], [6.95, 772],
-    [B.inhale, 770], [B.crest, 745], [B.exhale, 745], [B.exhaleEnd, 700], [11.6, 690], [15, 716],
+    [-9, 770], [0, 770], [B.startle - 0.02, 800], [2.7, 820], [3.55, 735], [4.8, 737], [6.95, 772],
+    [B.inhale, 770], [B.crest, 745], [B.exhale, 745], [B.exhaleEnd, 700], [11.6, 690], [15, 770],
   ], t);
   // punch-in on the startle: fast spring with overshoot, released before thought 1 pops
   const punch = t >= B.startle ? springStep(t - B.startle, 2.4, 0.38) * (1 - smoothstep(2.65, 3.3, t)) : 0;
@@ -233,7 +234,6 @@ function grade(t) {
   const warm = warmOf(t);
   const night = 1 - warm;
   const anx = track([[0, 0], [4.6, 0], [6.95, 1], [7.4, 0.3], [8.4, 0]], t);
-  const fadeOut = smoothstep(14.5, 15.0, t);
   return {
     bloom: lerp(0.3, 0.36, warm), bloomRadius: 16,
     tint: { top: mixHex('#5f4fd0', '#3d3aa8', anx), bottom: '#2a1f78', amount: (0.3 + 0.12 * anx) * (1 - 0.55 * warm) + 0.06, bottomK: 0.8 },
@@ -243,7 +243,7 @@ function grade(t) {
     base: `brightness(${(1 - 0.12 * anx - 0.06 * warm).toFixed(3)}) contrast(${lerp(1.1, 1.2, warm).toFixed(3)}) saturate(${(lerp(1.0, 1.12, warm) - 0.12 * anx).toFixed(3)})`,
     vignette: 0.5 + 0.42 * anx, vignetteCy: 0.56, vignetteInner: lerp(0.28, 0.2, anx),
     grain: 0.042,
-    fade: { color: '#06040f', amount: fadeOut * 0.12 },
+    fade: { color: '#06040f', amount: 0 },
   };
 }
 
@@ -292,12 +292,18 @@ function gaze(t, head) {
   }
   // darting: faster and faster; every third switch flicks down/away, and the
   // head turns a touch with the eyes
-  const rate = lerp(4, 7.5, smoothstep(5.3, 6.9, t));
+  const rate = lerp(3.5, 6, smoothstep(5.3, 6.9, t));
   const k = Math.floor((t - B.orbitStart) * rate + Math.sin(t * 3) * 0.3);
   let look;
   if (k % 3 === 2) look = [k % 2 ? 0.55 : -0.55, 0.4];
-  else look = toLook(items[(k * 5 + 3) % items.length]);
-  if (k !== lastDart) { lastDart = k; actor.impulse({ tilt: 0.03 * Math.sign(look[0] || 1) }); }
+  else { look = toLook(items[(k * 5 + 3) % items.length]); look[1] = Math.max(look[1], -0.35); }
+  if (k !== lastDart) {
+    lastDart = k;
+    // a crisp saccade: snap most of the way, the gaze spring settles the rest
+    actor.val.lookX = look[0] * 0.85; actor.val.lookY = look[1] * 0.85;
+    actor.vel.lookX = 0; actor.vel.lookY = 0;
+    actor.impulse({ tilt: 0.03 * Math.sign(look[0] || 1) });
+  }
   return look;
 }
 
@@ -340,6 +346,8 @@ function direct(t, dt, stage, info = {}) {
       actor.val.browAlpha = 1;
       actor.impulse({ squash: -0.85, hop: 0.2 });
       actor.burst('exclaim', 1).burst('moon', 6);
+      const ex = actor.particles.list.find((q) => q.kind === 'exclaim');
+      if (ex) { ex.size *= 2.1; ex.y -= ex.size * 0.6; }
       stage.cue(B.startle, 'startle');
     });
     fireOnce('blink1', t, B.blink1, () => { actor.blinkNow(); stage.cue(B.blink1, 'blink'); });
@@ -358,6 +366,13 @@ function direct(t, dt, stage, info = {}) {
       actor.val.browAlpha = Math.min(actor.val.browAlpha, 0.15); actor.vel.browAlpha = -8;
       realm.pulse('ripple', 0.5, 0.79);
       stage.cue(B.exhale, 'exhale', { dur: B.exhaleEnd - B.exhale });
+      // each thought bursts when the ring of calm reaches it
+      const m = actor.bodyMetrics, c = { x: m.cx, y: m.top + m.h * 0.55 }, r0 = m.w * 0.45;
+      const at = field.scheduleDissolve(t, headLag, (p) => {
+        const frac = clamp((Math.hypot(p.x - c.x, p.y - c.y) - r0) / (WAVE_R - r0));
+        return WAVE_DELAY + WAVE_DUR * (1 - Math.cbrt(1 - frac));      // invert ease.outCubic
+      });
+      for (const e of at) stage.cue(e.t, e.type, { id: e.id });
     });
     fireOnce('squish', t, B.squish, () => stage.cue(B.squish, 'squish', { dur: B.release - B.squish }));
     fireOnce('release', t, B.release, () => {
@@ -501,14 +516,15 @@ function drawPing(ctx, t) {
   ctx.restore();
 }
 
+const WAVE_DELAY = 0.05, WAVE_DUR = 1.9, WAVE_R = 820;
 function drawExhaleWave(ctx, t) {
   // a soft circle of calm that rolls out from Noomi on the exhale
-  const u = (t - B.exhale - 0.05) / 1.9;
+  const u = (t - B.exhale - WAVE_DELAY) / WAVE_DUR;
   if (u < 0 || u > 1) return;
   const m = actor.bodyMetrics;
   const cx = m.cx, cy = m.top + m.h * 0.55;
-  const r = lerp(m.w * 0.45, 820, ease.outCubic(u));
-  const a = Math.sin(Math.PI * Math.min(1, u * 1.2)) * 0.26 * (1 - u);
+  const r = lerp(m.w * 0.45, WAVE_R, ease.outCubic(u));
+  const a = Math.sin(Math.PI * Math.min(1, u * 1.2)) * 0.42 * (1 - u);
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   const g = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r);

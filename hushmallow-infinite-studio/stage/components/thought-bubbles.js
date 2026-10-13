@@ -212,8 +212,23 @@ export class ThoughtField {
   }
 
   _dissolveDelay(it, k) {
+    if (this.dissolveAt) return this.dissolveAt.get(it) - this.o.dissolve.at;
     const D = this.o.dissolve;
     return it.mini ? 0.05 * (k % 5) : D.stagger * it.i;
+  }
+
+  /** Re-time the dissolve from the scene: delayOf(place) → seconds after t
+   *  for each item (e.g. when a wave reaches it). Returns the new events. */
+  scheduleDissolve(t, head, delayOf) {
+    const map = new Map();
+    const out = [];
+    for (const it of this.items) {
+      const at = t + delayOf(this._place(it, t, head));
+      map.set(it, at);
+      out.push({ t: at, type: it.mini ? 'dissolveMini' : 'dissolve', id: it.i });
+    }
+    this.dissolveAt = map;
+    return out.sort((a, b) => a.t - b.t);
   }
 
   angle(t) {
@@ -249,6 +264,15 @@ export class ThoughtField {
       const oy = head.y + ob.cy + lift + Math.sin(a) * ob.ry * rr * ex + bob * 0.5;
       x = lerp(x, ox, om); y = lerp(y, oy, om);
       z = lerp(1, Math.sin(a), om);   // + front / - behind
+    }
+    if (this.dissolveAt) {
+      const dAt = this.dissolveAt.get(it);
+      const k = smoothstep(dAt - 0.35, dAt + 0.15, t);
+      if (k > 0) {
+        const dx = x - head.x, dy = y - head.y, len = Math.hypot(dx, dy) || 1;
+        x += (dx / len) * 70 * k;
+        y += (dy / len) * 70 * k - 20 * k;
+      }
     }
     if (o.topSafe) y = Math.max(y, o.topSafe(t) + (it.h || 0) * 0.5);
     // stress jitter

@@ -40,7 +40,12 @@
 //
 // Determinism: same cues.json → bit-identical WAV. Math.random is seeded, Voice
 // self-disposal (main-thread timing) is disabled, and node inputs are kept at
-// ≤ 2 connections so Chromium's summing order cannot vary (see renderInPage).
+// ≤ 2 connections so Chromium's summing order cannot vary (offlineDeterminism).
+//
+// Phone translation: phone speakers roll off below ~350-400 Hz, so every key
+// gesture (startle, bubbles, squash-and-release, open, chime) carries its shape
+// in the 0.6-2.5 kHz band; low layers (thuds, the pad's root) are support for
+// headphones only, and the warm pad is high-passed so the calm stays light.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -87,6 +92,48 @@ function curveSampler(curves, fps) {
   };
 }
 
+// ThoughtField layout: the orbit ellipse and each thought's home (offset from Noomi's head).
+// The swirl needs it so that each whoosh peaks when its bubble passes in front of Noomi.
+// The source of truth is the video module (videos/<video>.js); the cue log does not carry
+// it, so it is read from the module's source text (read-only, never executed) and
+// cross-checked against the cue log: every bubble / mini cue's pan is home.x / 420
+// (stage/components/thought-bubbles.js). If the module cannot be read or does not
+// match, the layout below (my-brain-at-2am at the time of writing) is used instead.
+const FALLBACK_LAYOUT = {
+  orbit: { start: 5.0, full: 5.5, rx: 196, ry: 76, cy: -200 },
+  bubbles: [[-168, -128], [150, -222], [182, -78]],
+  minis: [[-262, -12], [262, -170], [-40, -318], [-250, -262]],
+};
+
+function thoughtLayout(log) {
+  if (log.thoughtField?.orbit && Array.isArray(log.thoughtField.bubbles)) return { ...log.thoughtField, source: 'cues.json' };
+  const fail = (why) => { console.warn(`[soundtrack] thought layout: ${why}; using the built-in layout`); return { ...FALLBACK_LAYOUT, source: 'fallback' }; };
+  let src;
+  try {
+    src = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'videos', `${log.video}.js`), 'utf8');
+  } catch { return fail(`videos/${log.video}.js not readable`); }
+  const num = (re, s = src) => { const m = s.match(re); return m ? parseFloat(m[1]) : NaN; };
+  const field = src.slice(Math.max(0, src.indexOf('new ThoughtField(')));   // the field's options object
+  const between = (a, b) => { const i = field.indexOf(a), j = i < 0 ? -1 : field.indexOf(b, i); return i < 0 || j < 0 ? '' : field.slice(i, j); };
+  const homes = (s) => [...s.matchAll(/home:\s*\[\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\]/g)].map((m) => [+m[1], +m[2]]);
+  const orbitSrc = between('orbit: {', 'speed:');
+  const L = {
+    orbit: { start: num(/orbitStart:\s*([\d.]+)/), full: num(/orbitFull:\s*([\d.]+)/),
+      rx: num(/\brx:\s*(-?[\d.]+)/, orbitSrc), ry: num(/\bry:\s*(-?[\d.]+)/, orbitSrc), cy: num(/\bcy:\s*(-?[\d.]+)/, orbitSrc) },
+    bubbles: homes(between('bubbles: [', 'minis: [')),
+    minis: homes(between('minis: [', 'orbit: {')),
+    source: `videos/${log.video}.js`,
+  };
+  if (!Object.values(L.orbit).every(Number.isFinite) || !L.bubbles.length) return fail('orbit / homes not found in the module');
+  for (const c of log.cues) {
+    const h = c.type === 'bubble' ? L.bubbles[c.id] : c.type === 'mini' ? L.minis[c.id - 10] : undefined;
+    if ((c.type === 'bubble' || c.type === 'mini') && (!h || Math.abs(clamp(h[0] / 420, -1, 1) - c.pan) > 1e-3)) {
+      return fail(`module does not match the cue log (${c.type} ${c.id})`);
+    }
+  }
+  return L;
+}
+
 // pitches (Hz): C major pentatonic, the key of Noomi's kit and the realm hum
 const N = { C3: 130.81, G3: 196.0, C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.0, A4: 440.0,
   C5: 523.25, D5: 587.33, E5: 659.26, G5: 783.99, A5: 880.0, C6: 1046.5, D6: 1174.66, E6: 1318.51,
@@ -114,6 +161,10 @@ function buildPlan(log) {
   const bubblePan = Object.fromEntries(of('bubble').map((c) => [c.id, c.pan]));
   const miniPan = Object.fromEntries(of('mini').map((c) => [c.id, c.pan]));
   const hardBlinks = of('blink').filter((c) => !c.soft);
+  const ping = first('ping')?.t ?? startle - 0.3;
+  const open = first('open')?.t ?? exhale.t + 2.3;
+  const chimeT = first('chime')?.t ?? DUR - 1.6;
+  const releaseT = first('release')?.t ?? null;
 
   for (const c of cues) {
     const t = c.t;
@@ -125,11 +176,12 @@ function buildPlan(log) {
         break;
 
       case 'startle': // THE comedic beat: cartoon eye-pop ON the frame + Noomi's surprise + a tiny boing
-        S(t, 'blip', { f: 340, f1: 1500, glide: 0.045, a: 0.0015, h: 0.012, d: 0.055, peak: 0.09, lp: 4200, send: 0.12 });
+        // still the loudest gesture of the piece, but ~4 LU above the mix, not a stinger
+        S(t, 'blip', { f: 340, f1: 1500, glide: 0.045, a: 0.0015, h: 0.012, d: 0.055, peak: 0.07, lp: 4200, send: 0.12 });
         S(t, 'blip', { type: 'triangle', f: 170, f1: 750, glide: 0.045, a: 0.0015, h: 0.012, d: 0.06, peak: 0.034, lp: 1800 });
-        S(t + 0.02, 'blip', { type: 'triangle', f: 235, f1: 440, glide: 0.07, a: 0.006, d: 0.42, peak: 0.04, lp: 1600, send: 0.15,
+        S(t + 0.02, 'blip', { type: 'triangle', f: 235, f1: 440, glide: 0.07, a: 0.006, d: 0.42, peak: 0.035, lp: 1600, send: 0.15,
           vib: { rate: 14, cents: 70, decay: 0.4 } });
-        E(t, 'mallow', 'surprise', { intensity: 0.9 }, 0.52);
+        E(t, 'mallow', 'surprise', { intensity: 0.9 }, 0.33);
         break;
 
       case 'blink':
@@ -202,24 +254,32 @@ function buildPlan(log) {
         E(t, 'fx', 'chime', { intensity: 0.25, pitch: { 10: st(7), 11: st(5), 12: st(-2), 13: st(3) }[c.id] || 1, pan: (miniPan[c.id] || 0) * 0.8 }, 0.13);
         break;
 
-      case 'squish': // satisfying squash …
-        E(t, 'mallow', 'squeeze', { intensity: 0.7 }, 0.25);
-        S(t, 'noiseHit', { filter: 'lowpass', f: 2300, f1: 380, sweep: 0.11, a: 0.003, d: 0.13, peak: 0.046, q: 2.2 });
+      // The squash-and-release must read on a phone speaker (nothing below ~350 Hz survives), so
+      // the gesture itself lives in the mids: Noomi's squeeze / release an octave up, a band-passed
+      // squelch and a mid boing. The low thud / sub-boing only add weight on headphones.
+      case 'squish': // satisfying squash: squelch sweeping down + the squeezed glide, held until the release
+        // the squeezed glide is held, then cut just before the release: a beat of anticipation
+        E(t, 'mallow', 'squeeze', { intensity: 0.7, pitch: 2 }, 0.2,
+          releaseT && releaseT > t + 0.12 ? { at: releaseT - 0.08, fade: 0.05 } : null);
+        S(t, 'noiseHit', { filter: 'bandpass', f: 1800, f1: 600, sweep: 0.11, a: 0.003, d: 0.12, peak: 0.08, q: 1.5 });
         S(t, 'blip', { f: 215, f1: 118, glide: 0.09, a: 0.004, d: 0.16, peak: 0.058, lp: 1200 });
         break;
-      case 'release': // … and elastic release: springy boing + stretch pop, jelly wobble
-        E(t, 'mallow', 'release', { intensity: 0.7 }, 0.27);
-        S(t, 'blip', { f: 620, f1: 1250, glide: 0.035, a: 0.002, d: 0.05, peak: 0.046, lp: 3000, send: 0.1 });
-        S(t, 'blip', { type: 'triangle', f: 210, f1: 420, glide: 0.07, a: 0.004, d: 0.5, peak: 0.045, lp: 1700, send: 0.2,
+      case 'release': // … and elastic release: stretch pop + springy boing, jelly wobble
+        E(t, 'mallow', 'release', { intensity: 0.7, pitch: 2 }, 0.32);
+        S(t, 'blip', { f: 620, f1: 1250, glide: 0.035, a: 0.002, d: 0.06, peak: 0.08, lp: 3000, send: 0.1 });
+        S(t, 'blip', { type: 'triangle', f: 420, f1: 840, glide: 0.07, a: 0.004, d: 0.5, peak: 0.05, lp: 2600, send: 0.2,
           vib: { rate: 7.5, cents: 85, decay: 0.5 } });
+        S(t, 'blip', { f: 210, f1: 420, glide: 0.07, a: 0.004, d: 0.4, peak: 0.026, lp: 1200, vib: { rate: 7.5, cents: 85, decay: 0.5 } });
         break;
 
-      case 'open': // eyes open halfway, tiny peaceful smile: warm, content
-        E(t, 'mallow', 'comfort', { intensity: 0.3 }, 0.3);
+      case 'open': // eyes open halfway, tiny peaceful smile: warm, content glide + a tiny celesta smile on the frame
+        E(t, 'mallow', 'comfort', { intensity: 0.3, pitch: 2 }, 0.35);
+        S(t, 'bell', { f: N.G5, peak: 0.02, decay: 0.7, partials: 'celesta', send: 0.4, lp: 5000 });
+        S(t + 0.11, 'bell', { f: N.C6, peak: 0.015, decay: 0.8, partials: 'celesta', send: 0.45, lp: 5000 });
         break;
 
       case 'chime': // logo pillow + hushmallow.com: the soothing closing chime, let it ring
-        E(t, 'mallow', 'success', { intensity: 0.55 }, 0.58);
+        E(t, 'mallow', 'success', { intensity: 0.55 }, 0.38);   // gentle: clearly below the startle
         break;
 
       case 'sleep': // drifting back to sleep, under the chime
@@ -254,7 +314,7 @@ function buildPlan(log) {
   const addTick = (t) => { const hi = ticks.length % 2 === 0; ticks.push({ t: r4(t), hi, peak: 0.042 * (1 + 0.6 * C('anx', Math.max(0, t))) }); };
   for (let t = -0.85; t < startle - 0.1; t += 1) addTick(t);
   {
-    let t = 2.92;
+    let t = Math.max(startle + 0.9, (first('glance')?.t ?? startle + 0.8) + 0.3);   // after the blink/glance gag (~2.9 s)
     while (t < close - 0.03) {
       let moved = clear(t);
       while (moved !== null) { t = moved; moved = clear(t); }
@@ -279,17 +339,22 @@ function buildPlan(log) {
       }
     };
     chirps(-PRE, startle, 0.0075);
-    chirps(11.7, 14.5, 0.0042, 1.2);
+    chirps(open + 0.4, DUR - 0.5, 0.0042, 1.2);
     crickets.push({ f, pan, ev });
   }
 
   // ---- orbit swirl: per-thought band-passed noise whooshes that follow the actual orbit
-  //      (angle = ∫orbit dt, as stage/components/thought-bubbles.js), loudest when a thought
-  //      passes in front, panned with its x, brighter with speed; muffles when Noomi closes its eyes.
-  //      ORB / homes mirror the ThoughtField set-up in videos/my-brain-at-2am.js (3 bubbles, 4 minis).
-  const ORB = { start: 5.0, full: 5.8, rx: 262, ry: 118, cy: -150 };
-  const homes = [[-168, -128, 0], [150, -222, 0], [182, -78, 0], [-262, -12, 1], [262, -170, 1], [-40, -318, 1], [-250, -262, 1]];
-  const sw = { t0: 4.6, t1: 9.4, dt: 0.01 };
+  //      (angle = ∫orbit dt, as stage/components/thought-bubbles.js): each whoosh swells as its
+  //      thought passes in front of Noomi and pans with the rotation; brighter and louder with speed.
+  //      When Noomi closes its eyes the anxiety drops but the thoughts keep circling, so from `close`
+  //      the level follows the orbit speed alone (anx held at its close value) and the swirl winds
+  //      down with the visible orbit (~7 → 9 s), muffled and a little softer under the inhale.
+  const LAY = thoughtLayout(log);
+  const ORB = LAY.orbit;
+  const homes = [...LAY.bubbles.map(([x, y]) => [x, y, 0]), ...LAY.minis.map(([x, y]) => [x, y, 1])];
+  const orbitAt = curves.map((c, i) => [i / fps, c.orbit]).filter(([, o]) => o > 0.01);
+  const orbitMax = Math.max(0.5, ...curves.map((c) => c.orbit));    // normalise to this video's top speed
+  const sw = { t0: Math.max(0, ORB.start - 0.4), t1: Math.min(DUR, (orbitAt.length ? orbitAt[orbitAt.length - 1][0] : close + 2) + 0.4), dt: 0.01 };
   const n = Math.round((sw.t1 - sw.t0) / sw.dt) + 1;
   const ang = new Float64Array(n); // ∫ orbit dt from 0
   {
@@ -303,40 +368,48 @@ function buildPlan(log) {
     }
   }
   const angAtStart = (() => { let acc = 0; const h = 1 / 240; for (let tt = h / 2; tt < ORB.start; tt += h) acc += C('orbit', tt) * h; return acc; })();
+  const anxAtClose = C('anx', close);
   const items = homes.map(() => ({ gain: [], pan: [], fc: [] }));
   const tension = { gain: [], freq: [] }, muffle = [];
   for (let i = 0; i < n; i++) {
     const t = sw.t0 + i * sw.dt;
     const orbit = C('orbit', t), anx = C('anx', t);
-    const sp = clamp(orbit / 2.7, 0, 1);
-    const A = 0.07 * Math.pow(sp, 1.15) * (0.4 + 0.6 * anx);
+    const sp = clamp(orbit / orbitMax, 0, 1);
+    const calm = smoothstep(close, close + 0.8, t);
+    // level: builds with speed × anxiety; from close on it follows the speed alone (anx held)
+    const drive = t < close ? Math.pow(sp, 1.15) * (0.4 + 0.6 * anx) : Math.pow(sp, 0.85) * (0.4 + 0.6 * anxAtClose);
+    const A = 0.075 * drive * (1 - 0.15 * calm);
     const om = smoothstep(ORB.start, ORB.full, t);
-    const calm = smoothstep(close, close + 0.5, t);
-    const fBase = 450 * Math.pow(1750 / 450, Math.pow(sp, 0.8)) * (1 - 0.4 * calm);
+    const fBase = 450 * Math.pow(1750 / 450, Math.pow(sp, 0.8)) * (1 - 0.15 * calm);
     homes.forEach(([hx, hy, mini], k) => {
       const base = Math.atan2((hy - ORB.cy) / ORB.ry, hx / ORB.rx);
       const a = base + (ang[i] - angAtStart) * (mini ? 1.35 : 1);
       const front = (1 + Math.sin(a)) / 2;                 // 1 = passing in front of Noomi
       const it = items[k];
-      it.gain.push(r4(A * om * (0.3 + 0.7 * Math.pow(front, 2.5)) * (mini ? 0.75 : 1)));
-      it.pan.push(r4(clamp(0.75 * Math.cos(a) * om + (hx / 420) * (1 - om), -1, 1)));
+      it.gain.push(r4(A * om * (0.1 + 0.9 * Math.pow(front, 4)) * (mini ? 0.5 : 1)));   // a whoosh per pass (big thoughts lead)
+      // full-width rotation: each whoosh sweeps across the stereo field as its thought passes in front
+      it.pan.push(r4(clamp(1.5 * Math.cos(a) * om + (hx / 420) * (1 - om), -1, 1)));
       it.fc.push(Math.round(clamp(fBase * (mini ? 1.12 : 1) * (1 + 0.15 * Math.sin(a)), 200, 2000)));
     });
-    tension.gain.push(r4(0.011 * Math.pow(anx, 1.6)));
-    tension.freq.push(r4(N.G3 * st(1.0 * anx)));
-    muffle.push(Math.round(lerp(2400, 1000, smoothstep(close, close + 0.35, t))));
+    // an undertone only (≈ -4 dB under the whooshes); after close it relaxes over the inhale instead of snapping off
+    const tAnx = t < close ? anx : Math.max(anx, anxAtClose * Math.exp(-(t - close) / 0.6));
+    tension.gain.push(r4(0.007 * Math.pow(tAnx, 1.6)));
+    tension.freq.push(r4(N.G3 * st(1.0 * tAnx)));
+    muffle.push(Math.round(lerp(2400, 1200, smoothstep(close, close + 0.8, t))));
   }
-  const swirl = { ...sw, n, items: items.map((it, k) => ({ ...it, q: homes[k][2] ? 2.0 : 1.6, offset: r4(rr(0, 2.5)) })), tension, muffle };
+  const swirl = { ...sw, n, items: items.map((it, k) => ({ ...it, q: homes[k][2] ? 2.0 : 1.6, offset: r4(rr(0, 2.5)) })), tension, muffle, layout: LAY.source };
 
-  // ---- warm transformation pad: C major add9, slow swell from the exhale, gently gone by ~14.5 s
+  // ---- warm transformation pad: C major add9, slow swell from the exhale, gently gone by ~14.5 s.
+  //      Voiced light (thin root, the colour in the 4th/5th octave) and high-passed in the renderer,
+  //      so the calm is warm without a muddy low end and still reads on a phone.
   const pad = {
-    t0: exhale.t, dt: 0.02,
-    notes: [[N.C3, 1.0], [N.G3, 0.8], [N.D4, 0.45], [N.E4, 0.55], [N.G4, 0.4], [N.C5, 0.18]],
-    peak: 0.0142, env: [], lp: [],
+    t0: exhale.t, dt: 0.02, hp: 170,
+    notes: [[N.C3, 0.3], [N.G3, 0.45], [N.D4, 0.45], [N.E4, 0.55], [N.G4, 0.4], [N.C5, 0.35], [N.E5, 0.2]],
+    peak: 0.0175, env: [], lp: [],
   };
   for (let t = pad.t0; t <= DUR + 1e-9; t += pad.dt) {
     const up = smoothstep(pad.t0, pad.t0 + 1.9, t);
-    const down = t < 12.0 ? 1 : lerp(1, 0.3, smoothstep(12.0, 13.7, t)) * (1 - smoothstep(13.7, 14.6, t));
+    const down = t < chimeT - 1.4 ? 1 : lerp(1, 0.3, smoothstep(chimeT - 1.4, chimeT + 0.3, t)) * (1 - smoothstep(DUR - 1.3, DUR - 0.4, t));
     pad.env.push(r4(up * down * (0.85 + 0.15 * C('warm', t))));
     pad.lp.push(Math.round(800 + 900 * C('warm', t)));
   }
@@ -347,19 +420,73 @@ function buildPlan(log) {
     const tc = clamp(t, 0, DUR);
     mood.push({ t: r4(t), m: { agitation: r4(C('agitation', tc)), heaviness: r4(C('heaviness', tc)), clarity: r4(C('clarity', tc)), warmth: r4(C('warmth', tc)) } });
   }
+  const firstBubble = first('bubble')?.t ?? startle + 1.4;
   const bed = {
     realm: 'moonmilk-cove', fadeIn: 0.8, mood,
-    // sparse music-box events of the bed only where they cannot collide with a cue
-    tickWindows: [[-0.9, 0.75], [11.5, 12.6]],
+    // sparse music-box events of the bed only in the quiet stretches (before the ping, after the eyes open)
+    tickWindows: [[-0.9, ping - 0.75], [open + 0.25, chimeT - 0.8]],
     // bed level: present but low; dips a little under the swirl peak, rises in the warm ending
-    level: [[-PRE, 1.0], [2.0, 1.0], [3.2, 0.88], [5.4, 0.85], [6.9, 0.7], [8.6, 0.85], [11.5, 0.9], [14.0, 0.9]],
+    level: [[-PRE, 1.0], [startle + 0.2, 1.0], [firstBubble - 0.06, 0.88], [ORB.start + 0.4, 0.85], [close - 0.1, 0.7],
+      [exhale.t - 0.4, 0.85], [open + 0.2, 0.9], [DUR - 1.0, 0.9]],
   };
 
   return {
     SR, PRE, DUR, LAT, engineUrl: ENGINE_URL,
     engine: engine.sort((a, b) => a.t - b.t), synth: synth.sort((a, b) => a.t - b.t),
     ticks, crickets, swirl, pad, bed,
-    fade: { inEnd: 0.3, outStart: DUR - 0.6 },
+    // fade-in starts at -12 dB (frame 0 is already the night, not silence) and opens fully by 0.3 s
+    fade: { inEnd: 0.3, inFloor: 0.25, outStart: DUR - 0.6 },
+  };
+}
+
+// ------------------------------------------------- offline determinism --
+// Installed in the page with page.addInitScript() before any page code runs.
+
+function offlineDeterminism() {
+  // 1. never let a Voice dispose itself on 'ended' (that runs on the main thread at a
+  //    non-deterministic moment); offline there is nothing to leak.
+  Object.defineProperty(AudioScheduledSourceNode.prototype, 'onended', { configurable: true, get() { return null; }, set() {} });
+
+  // 2. Chromium sums the connections of a node input in hash-set order (i.e. by memory address),
+  //    so with 3+ simultaneous inputs the float additions happen in a different order on every
+  //    launch (±1e-6 jitter). Two inputs are exact (a+b == b+a), so every input is kept at ≤ 2
+  //    connections: extra ones are folded into a chain of 2-input summing gains, whose order is
+  //    fixed by creation order. Pure graph plumbing, inaudible, engine untouched.
+  //    connect()/disconnect() keep their Web Audio meaning: connecting twice is a no-op, and
+  //    src.disconnect(dest) also works after src was folded into a summing gain in front of dest.
+  const connect = AudioNode.prototype.connect, disconnect = AudioNode.prototype.disconnect;
+  const ins = new WeakMap();     // destination node → its (≤ 2) direct sources
+  const outs = new WeakMap();    // source node → destination nodes it feeds directly
+  const standsFor = new WeakMap(); // summing gain → the destination it was created in front of
+  const list = (m, k, make) => m.get(k) || m.set(k, make()).get(k);
+  const link = (s, d) => { connect.call(s, d); list(ins, d, () => []).push(s); list(outs, s, () => new Set()).add(d); };
+  const forget = (s, d) => { const l = ins.get(d); const i = l ? l.indexOf(s) : -1; if (i >= 0) l.splice(i, 1); outs.get(s)?.delete(d); };
+  // the node through which `s` feeds `d`: d itself, or the summing gain standing in for d (or null)
+  const via = (s, d) => { for (const x of outs.get(s) || []) if (x === d || standsFor.get(x) === d) return x; return null; };
+  AudioNode.prototype.connect = function (dest, output, input) {
+    if (!(dest instanceof AudioNode) || output || input) return connect.apply(this, arguments);
+    if (via(this, dest)) return dest;              // already connected (directly or folded)
+    const l = ins.get(dest) || [];
+    if (l.length >= 2) {                           // fold the two current inputs into a summer
+      const [p, q] = l, sum = this.context.createGain();
+      standsFor.set(sum, dest);
+      link(p, sum); link(q, sum); link(sum, dest);
+      disconnect.call(p, dest); forget(p, dest);
+      disconnect.call(q, dest); forget(q, dest);
+    }
+    link(this, dest);
+    return dest;
+  };
+  AudioNode.prototype.disconnect = function (dest, ...rest) {
+    if (dest === undefined) { for (const d of outs.get(this) || []) forget(this, d); return disconnect.call(this); }
+    if (dest instanceof AudioNode && rest.length === 0) {
+      // if the connection was folded, cut it at the summing gain; if it never existed, the
+      // native call throws InvalidAccessError, exactly as without this patch
+      const d = via(this, dest) || dest;
+      disconnect.call(this, d); forget(this, d);
+      return undefined;
+    }
+    return disconnect.call(this, dest, ...rest);
   };
 }
 
@@ -370,41 +497,7 @@ async function renderInPage(plan) {
   const { SR, PRE, DUR, LAT } = plan;
   const LEN = Math.round((PRE + DUR) * SR);
 
-  // offline determinism: never let a Voice dispose itself on 'ended' (that runs on the
-  // main thread at a non-deterministic moment); offline there is nothing to leak.
-  Object.defineProperty(AudioScheduledSourceNode.prototype, 'onended', { configurable: true, get() { return null; }, set() {} });
-
-  // offline determinism, part 2: Chromium sums the connections of a node input in hash-set
-  // order (i.e. by memory address), so with 3+ simultaneous inputs the float additions happen in
-  // a different order on every launch (±1e-6 jitter). Two inputs are exact (a+b == b+a), so every
-  // input is kept at ≤ 2 connections: extra ones are folded into a chain of 2-input summing gains,
-  // whose order is fixed by creation order. Pure graph plumbing, inaudible, engine untouched.
-  {
-    const connect = AudioNode.prototype.connect, disconnect = AudioNode.prototype.disconnect;
-    const ins = new WeakMap();   // destination node → its (≤ 2) direct sources
-    const outs = new WeakMap();  // source node → destination nodes it feeds directly
-    const list = (m, k, make) => m.get(k) || m.set(k, make()).get(k);
-    const link = (s, d) => { connect.call(s, d); list(ins, d, () => []).push(s); list(outs, s, () => new Set()).add(d); };
-    const forget = (s, d) => { const l = ins.get(d); const i = l ? l.indexOf(s) : -1; if (i >= 0) l.splice(i, 1); outs.get(s)?.delete(d); };
-    AudioNode.prototype.connect = function (dest, output, input) {
-      if (!(dest instanceof AudioNode) || output || input) return connect.apply(this, arguments);
-      const l = ins.get(dest) || [];
-      if (l.includes(this)) return dest;
-      if (l.length >= 2) {                         // fold the two current inputs into a summer
-        const [p, q] = l, sum = this.context.createGain();
-        link(p, sum); link(q, sum); link(sum, dest);
-        disconnect.call(p, dest); forget(p, dest);
-        disconnect.call(q, dest); forget(q, dest);
-      }
-      link(this, dest);
-      return dest;
-    };
-    AudioNode.prototype.disconnect = function (dest, ...rest) {
-      if (dest === undefined) { for (const d of outs.get(this) || []) forget(this, d); return disconnect.call(this); }
-      if (dest instanceof AudioNode && rest.length === 0) { disconnect.call(this, dest); forget(this, dest); return undefined; }
-      return disconnect.call(this, dest, ...rest);
-    };
-  }
+  // (offlineDeterminism() has already been installed in this page as an init script)
 
   // 1. the engine, read-only: fetched as text, one export appended, imported from a Blob URL
   const src = await (await fetch(plan.engineUrl)).text();
@@ -431,8 +524,13 @@ async function renderInPage(plan) {
   const fade = ctx.createGain();
   g.out.connect(fade); fade.connect(ctx.destination);
   {
-    const n = 64, fin = new Float32Array(n), fout = new Float32Array(n);
-    for (let i = 0; i < n; i++) { const u = i / (n - 1); fin[i] = Math.sin(u * Math.PI / 2); fout[i] = Math.cos(u * Math.PI / 2) ** 2; }
+    // fade-in: a 4 ms ramp from 0 (no step at the very first sample) to inFloor, then a sine rise to 1
+    const n = 256, fin = new Float32Array(n), fout = new Float32Array(n), floor = plan.fade.inFloor || 0;
+    for (let i = 0; i < n; i++) {
+      const u = i / (n - 1);
+      fin[i] = (floor + (1 - floor) * Math.sin(u * Math.PI / 2)) * Math.min(1, (u * plan.fade.inEnd) / 0.004);
+      fout[i] = Math.cos(u * Math.PI / 2) ** 2;
+    }
     fade.gain.setValueAtTime(0, 0);
     fade.gain.setValueCurveAtTime(fin, PRE, plan.fade.inEnd);
     fade.gain.setValueCurveAtTime(fout, PRE + plan.fade.outStart, DUR - plan.fade.outStart);
@@ -608,7 +706,8 @@ async function renderInPage(plan) {
     const t0 = T(P.t0), dur = (P.env.length - 1) * P.dt, end = t0 + dur + 0.05;
     const amp = gainNode(0); amp.gain.setValueCurveAtTime(f32(P.env.map((v) => v * P.peak)), t0, dur);
     const lp = biquad('lowpass', P.lp[0], 0.6); lp.frequency.setValueCurveAtTime(f32(P.lp), t0, dur);
-    lp.connect(amp);
+    const hp = biquad('highpass', P.hp || 20, 0.707);   // 12 dB/oct: no low-end build-up under the calm
+    lp.connect(hp); hp.connect(amp);
     const L = strip(-0.3, 0.35), R = strip(0.3, 0.35);
     amp.connect(L); amp.connect(R);
     const vib = ctx.createOscillator(); vib.frequency.value = 0.23;
@@ -774,7 +873,7 @@ async function main() {
   const plan = buildPlan(log);
   for (const m of mute) { if (m === 'bed') plan.bed.mute = true; else if (m === 'swirl' || m === 'pad') plan[m] = null; else plan[m] = []; }
   const t0 = Date.now();
-  console.log(`[soundtrack] ${log.video}: ${plan.engine.length} engine voices, ${plan.synth.length} synth events, ${plan.ticks.length} ticks`);
+  console.log(`[soundtrack] ${log.video}: ${plan.engine.length} engine voices, ${plan.synth.length} synth events, ${plan.ticks.length} ticks; thought layout from ${plan.swirl?.layout ?? 'n/a'}`);
 
   const server = await startServer(0);
   const browser = await chromium.launch();
@@ -787,6 +886,7 @@ async function main() {
       let s = seed >>> 0;
       Math.random = () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     }, SEED);
+    await page.addInitScript(offlineDeterminism);
     // a blank same-origin page (the server root serves the repo; the engine is fetched from it)
     await page.route('**/__soundtrack__.html', (route) => route.fulfill({ contentType: 'text/html', body: '<!doctype html><meta charset="utf-8"><title>soundtrack</title>' }));
     await page.goto(`http://127.0.0.1:${server.address().port}/__soundtrack__.html`);
@@ -832,7 +932,7 @@ async function main() {
   }
 }
 
-export { buildPlan, renderInPage };
+export { buildPlan, renderInPage, offlineDeterminism, thoughtLayout };
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((e) => { console.error('[soundtrack]', e); process.exit(1); });
