@@ -4,7 +4,7 @@
 // 'home' is the Hushfold (src/app/scenes/hushfold.js); the old home screen
 // stays reachable as 'classic' for QA and rollback.
 
-import { createStore } from '../engine/storage.js';
+import { authBoot, createAuthHandle, NOTICE_TEXT } from '../auth/boot.js';
 import { createPrefs } from './prefs.js';
 import { createEntitlements } from './entitlements.js';
 import { createRecommender } from '../engine/recommend.js';
@@ -15,7 +15,11 @@ import { toast } from './ui.js';
 import { newerVersion, moveTo } from './update.js';
 import { docTitle } from '../brand.js';
 
-const store = createStore();
+// Sign-in (optional, src/auth/): which local namespace this page runs in is
+// decided here, synchronously, from the session already on this device. With
+// sign-in off this is exactly createStore() and nothing else changes.
+const AUTH = authBoot();
+const store = AUTH.store;
 const prefs = createPrefs(store);
 const ent = createEntitlements({ store });
 
@@ -40,6 +44,7 @@ const app = {
   state: { input: null, ritual: null, result: null, mallow: null },
   world: null,
   scenes: {},
+  auth: null,
 };
 
 const sceneEl = document.getElementById('scene');
@@ -54,6 +59,32 @@ const stack = [];
 // mid-progress or a discovery waits to be acknowledged.
 let newer = null;
 const safeToUpdate = () => { try { return current?.safeForUpdate?.() ?? true; } catch { return false; } };
+
+// Signing in or out reloads the page into the right namespace: at once when
+// the person asked for it (the account screen), otherwise (a session that
+// expired, another tab) at the same kind of safe moment as an update.
+let authReload = null;
+const CALM_SCENES = ['account', 'settings'];
+function reloadForAuth() {
+  const hash = authReload?.hash || '#home';
+  authReload = null;
+  try { const u = new URL(location.href); u.hash = hash; history.replaceState(null, '', u.href); } catch { /* keep the URL */ }
+  location.reload();
+}
+const authSafeNow = () => {
+  const top = stack[stack.length - 1]?.name;
+  return CALM_SCENES.includes(top) || (top === 'home' && safeToUpdate());
+};
+app.auth = createAuthHandle(AUTH, {
+  onReload: ({ urgent, hash, reason }) => {
+    authReload = { hash };
+    if (urgent || authSafeNow()) {
+      // an expired session: the calm line shows once, after the reload
+      if (reason === 'expired') { try { sessionStorage.setItem('hm2:auth.notice', 'expired'); } catch { /* no line then */ } }
+      reloadForAuth();
+    } else if (reason === 'expired') toast(NOTICE_TEXT.expired, 4200);   // say it now; the reload waits for a calm moment
+  },
+});
 async function checkVersion() {
   newer = (await newerVersion()) || newer;
   if (newer && stack[stack.length - 1]?.name === 'home' && safeToUpdate()) moveTo(newer);
@@ -61,6 +92,7 @@ async function checkVersion() {
 }
 /** Called by the Hushfold when it becomes idle again (overlay closed, discovery acknowledged…). */
 app.applyUpdateIfSafe = () => {
+  if (authReload && authSafeNow()) { reloadForAuth(); return true; }
   if (newer && stack[stack.length - 1]?.name === 'home' && safeToUpdate()) { moveTo(newer); return true; }
   return false;
 };
@@ -89,6 +121,7 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
   // words waiting to come back to the Hushfold (Continue → plans → home) are never lost to a reload;
   // the Hushfold itself decides once they are on stage (safeForUpdate, applyUpdateIfSafe)
   if (newer && name === 'home' && !app.state.pendingTell && safeToUpdate()) { moveTo(newer); return; }
+  if (authReload && name === 'home' && !app.state.pendingTell && safeToUpdate()) { reloadForAuth(); return; }
   const load = SCENES[name];
   if (!load) throw new Error(`No scene ${name}`);
   const seq = ++goSeq;
@@ -181,6 +214,7 @@ const SCENES = {
   angle: () => import('./scenes/angle.js'),
   library: () => import('./scenes/library.js'),
   journey: () => import('./scenes/journey.js'),
+  account: () => import('./scenes/account.js'),
 };
 
 async function boot() {
@@ -215,6 +249,21 @@ async function boot() {
   history.replaceState({ i: 0 }, '', '#home');
   stack.push({ name: 'home', params: {} });
   await app.go('home', { intro: !prefs.get('seenIntro') }, { replace: true });
+  if (app.auth.enabled) afterAuthBoot();
+}
+
+/** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */
+function afterAuthBoot() {
+  if (AUTH.notice && NOTICE_TEXT[AUTH.notice]) setTimeout(() => toast(NOTICE_TEXT[AUTH.notice], 3600), 500);
+  // /#account (an email link, a bookmark) opens the account over the Hushfold, so Back comes home;
+  // a first sign-in on this device opens it too, to ask once about this device's guest things
+  if (AUTH.deepLink === 'account' || AUTH.guestChoice) app.go('account', { arrived: AUTH.notice || null });
+  // signed in: supabase-js loads after the first screen, checks the session with the server,
+  // then keeps in step only what the person opted into on the account screen (src/auth/autosync.js)
+  if (AUTH.ns.mode === 'account') {
+    const start = () => app.auth.start({ store, prefs }).catch((e) => console.warn('[auth]', e?.code || e?.message || e));
+    if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2500 }); else setTimeout(start, 1200);
+  }
 }
 
 // Developer ritual lab (localhost only): run any module inside the real shell.
@@ -294,5 +343,5 @@ function applyTextScale(k) {
   });
 }
 
-boot();
+if (!AUTH.forwarding) boot();   // a sign-in link that landed here is on its way to /auth/callback
 window.__hush = app;

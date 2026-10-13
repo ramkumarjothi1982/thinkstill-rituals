@@ -1,0 +1,115 @@
+/* hushmallow sign-in surfaces: the /auth/callback page and the account
+   screens. Same night-ink, glass and moonmilk-gold language as the app
+   (tokens.css / type.css); everything is scoped under .hm-auth so it never
+   touches the Hushfold. Text ≥ 13 px, inputs ≥ 16 px (iOS never zooms),
+   44 px touch targets, reduced motion respected. */
+
+.hm-auth-page { margin: 0; min-height: 100%; background: var(--ink-0); color: var(--text-1);
+  font: 500 calc(16px * var(--type-scale, 1))/1.45 var(--ff-ui); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+html:has(.hm-auth-page) { height: 100%; background: var(--ink-0); }
+.hm-auth-page::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(70% 45% at 50% 108%, rgba(120, 90, 255, .38), transparent 70%),
+    radial-gradient(55% 35% at 82% 12%, rgba(143, 227, 255, .10), transparent 70%),
+    radial-gradient(60% 40% at 12% 30%, rgba(255, 156, 207, .08), transparent 70%),
+    radial-gradient(120% 80% at 50% 100%, #2b2163, var(--ink-0) 72%); }
+
+.hm-auth { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;
+  min-height: 100dvh; padding: calc(var(--safe-top, 0px) + 18px) 16px calc(var(--safe-bottom, 0px) + 18px);
+  /* the keyboard (visualViewport) lifts the card: --kb is set by JS */
+  padding-bottom: calc(var(--safe-bottom, 0px) + 18px + var(--kb, 0px)); }
+.hm-auth-scene { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.hm-auth-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; align-items: center;
+  padding: 12px 0 calc(16px + var(--kb, 0px)); }
+.hm-auth-logo { display: block; width: 168px; height: auto; margin: 4px auto 0; }
+
+/* the home Mallow above the card */
+.hm-auth-mallow { position: relative; width: clamp(104px, 30vw, 150px); aspect-ratio: 1; margin: clamp(10px, 4vh, 34px) auto -18px; z-index: 2;
+  filter: drop-shadow(0 18px 26px rgba(4, 2, 16, .55)); transition: transform 600ms var(--ease-spring), filter 400ms var(--ease-out); }
+.hm-auth-mallow img { width: 100%; height: 100%; object-fit: contain; display: block; transform-origin: 50% 85%;
+  animation: hmAuthFloat 5.6s var(--ease-in-out) infinite; transition: transform 500ms var(--ease-out), filter 400ms var(--ease-out); }
+.hm-auth-mallow::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: -6%; height: 10%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .45), transparent); animation: hmAuthShadow 5.6s var(--ease-in-out) infinite; }
+/* while a password field has focus the Mallow politely looks away */
+.hm-auth-mallow[data-mood="away"] img { transform: translateX(-8%) rotate(-9deg) scaleX(-1); filter: saturate(.85) brightness(.92); }
+/* success: one soft hop */
+.hm-auth-mallow[data-mood="happy"] img { animation: hmAuthHop 900ms var(--ease-spring) 1, hmAuthFloat 5.6s var(--ease-in-out) 900ms infinite; }
+/* something went wrong: a small concerned tilt, no shake */
+.hm-auth-mallow[data-mood="concerned"] img { transform: rotate(6deg) translateY(4%); filter: saturate(.75) brightness(.9); animation-play-state: paused; }
+.hm-auth-mallow[data-mood="busy"] img { animation-duration: 2.8s; }
+.hm-auth-mallow[data-kind="rig"] { animation: hmAuthRigFloat 6.4s var(--ease-in-out) infinite; }
+.hm-auth-mallow[data-kind="rig"]::after { display: none; }   /* the rig draws its own contact shadow */
+.hm-auth-rig { position: absolute; inset: 0; }
+.hm-auth-rig canvas { display: block; width: 100%; height: 100%; }
+@keyframes hmAuthRigFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+.hm-auth-rm.hm-auth-mallow, .hm-auth-rm.hm-auth-mallow img, .hm-auth-rm.hm-auth-mallow::after { animation: none !important; }
+@keyframes hmAuthFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5%; } }
+@keyframes hmAuthShadow { 0%, 100% { transform: scaleX(1); opacity: .9; } 50% { transform: scaleX(.86); opacity: .6; } }
+@keyframes hmAuthHop { 0% { translate: 0 0; scale: 1 1; } 22% { translate: 0 2%; scale: 1.06 .92; } 52% { translate: 0 -16%; scale: .96 1.05; } 78% { translate: 0 0; scale: 1.04 .96; } 100% { translate: 0 0; scale: 1 1; } }
+
+.hm-auth-card { position: relative; width: min(100%, 420px); padding: 30px 22px 22px; border-radius: var(--r-lg);
+  background: linear-gradient(180deg, rgba(36, 30, 84, .78), rgba(18, 14, 46, .86)); border: 1px solid var(--line-strong);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: var(--shadow-2), inset 0 1px 0 rgba(255, 255, 255, .08); }
+.hm-auth-title { margin: 0; text-align: center; text-wrap: balance; font: var(--type-world); letter-spacing: var(--type-world-ls); font-optical-sizing: auto; }
+/* the heading takes focus only so screen readers start there (tabindex -1): no ring */
+.hm-auth-title:focus { outline: none; }
+.hm-auth-lede { margin: 10px 0 0; text-align: center; color: var(--text-2); font: var(--type-body); letter-spacing: var(--type-body-ls); text-wrap: pretty; }
+.hm-auth-tagline { margin: 18px 0 0; text-align: center; color: var(--text-3); font: var(--type-caption); letter-spacing: var(--type-caption-ls); }
+/* over a bright realm (the in-app scene) the tagline sits on a soft dark pill */
+.hm-auth-scene .hm-auth-tagline { align-self: center; padding: 2px 12px 3px; border-radius: var(--r-pill); background: rgba(12, 8, 34, .55); color: var(--text-2);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.hm-auth-body { margin-top: 18px; display: grid; gap: 14px; }
+.hm-auth-body:empty { display: none; }
+
+.hm-auth-field { display: grid; gap: 6px; }
+.hm-auth-label { font: var(--type-label); letter-spacing: var(--type-label-ls); color: var(--text-2); }
+.hm-auth-hint { font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); min-height: 1.4em; }
+.hm-auth-center { text-align: center; }
+.hm-auth-inputwrap { position: relative; display: flex; align-items: center; }
+.hm-auth-input { width: 100%; min-height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid var(--line-strong);
+  background: rgba(10, 8, 30, .62); color: var(--text-1); font: 500 max(16px, calc(16px * var(--type-scale, 1)))/1.3 var(--ff-ui); outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast); }
+.hm-auth-input::placeholder { color: var(--text-3); }
+.hm-auth-input:focus { border-color: rgba(255, 217, 138, .7); box-shadow: 0 0 0 4px rgba(255, 217, 138, .16); }
+.hm-auth-input[aria-invalid="true"] { border-color: rgba(255, 138, 138, .8); }
+.hm-auth-inputwrap .hm-auth-input { padding-right: 76px; }
+.hm-auth-reveal { position: absolute; right: 6px; min-width: 64px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: transparent;
+  color: var(--text-2); font: var(--type-label); letter-spacing: var(--type-label-ls); cursor: pointer; }
+.hm-auth-meter { display: flex; gap: 4px; height: 4px; margin-top: 2px; }
+.hm-auth-meter i { flex: 1; border-radius: 2px; background: rgba(255, 255, 255, .12); transition: background var(--t-med); }
+.hm-auth-meter[data-score="1"] i:nth-child(-n+1),
+.hm-auth-meter[data-score="2"] i:nth-child(-n+2),
+.hm-auth-meter[data-score="3"] i:nth-child(-n+3),
+.hm-auth-meter[data-score="4"] i:nth-child(-n+4) { background: linear-gradient(90deg, var(--calm), var(--accent)); }
+
+.hm-auth-error { margin: 0; padding: 10px 14px; border-radius: 14px; background: rgba(255, 138, 138, .12); border: 1px solid rgba(255, 138, 138, .35);
+  color: #ffd2d2; font: var(--type-label); letter-spacing: var(--type-label-ls); }
+.hm-auth-error:empty { display: none; }
+.hm-auth-ok { margin: 0; padding: 10px 14px; border-radius: 14px; background: rgba(143, 227, 255, .10); border: 1px solid rgba(143, 227, 255, .3);
+  color: #d8f6ff; font: var(--type-label); letter-spacing: var(--type-label-ls); }
+
+.hm-auth-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 0 22px;
+  border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--glass); color: var(--text-1); text-decoration: none;
+  font: var(--type-button); letter-spacing: var(--type-button-ls); cursor: pointer; transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast); }
+.hm-auth-btn:active { transform: scale(.97); }
+.hm-auth-btn.primary { background: linear-gradient(180deg, #ffe2a3, var(--accent) 55%, var(--accent-2)); color: var(--text-on-accent); border-color: transparent;
+  box-shadow: 0 10px 30px rgba(255, 190, 90, .28), inset 0 1px 0 rgba(255, 255, 255, .6); }
+.hm-auth-btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); min-height: 44px; }
+.hm-auth-btn[disabled], .hm-auth-btn[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+.hm-auth-actions { display: grid; gap: 8px; margin-top: 4px; }
+.hm-auth-dots { display: inline-flex; gap: 6px; justify-content: center; margin: 4px auto 0; }
+.hm-auth-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .35; animation: hmAuthDot 1.4s var(--ease-in-out) infinite; }
+.hm-auth-dots i:nth-child(2) { animation-delay: .18s; }
+.hm-auth-dots i:nth-child(3) { animation-delay: .36s; }
+@keyframes hmAuthDot { 0%, 100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+
+@media (max-height: 600px) {
+  .hm-auth-mallow { width: 92px; margin-top: 6px; margin-bottom: -12px; }
+  .hm-auth-card { padding: 24px 18px 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-auth-mallow, .hm-auth-mallow img, .hm-auth-mallow::after, .hm-auth-dots i { animation: none !important; }
+  .hm-auth-mallow img { transition: opacity 200ms; }
+  .hm-auth-mallow[data-mood="away"] img { transform: none; opacity: .75; }
+  .hm-auth-mallow[data-mood="concerned"] img { transform: none; }
+}
