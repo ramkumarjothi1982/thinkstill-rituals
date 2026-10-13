@@ -1,5 +1,5 @@
 // Preferences, stored only on this device.
-const DEFAULTS = {
+export const DEFAULTS = Object.freeze({
   sound: true, volume: 0.6, haptics: true,
   motion: 'system',          // 'system' | 'reduced' | 'full'
   lowStim: false,            // calmer visuals, fewer particles
@@ -11,7 +11,7 @@ const DEFAULTS = {
   subtitleSpeed: 1,          // 0.75 | 1 | 1.25 | 1.5 (reading time divides by this)
   textScale: 1,              // 1 | 1.12 | 1.25 (every voice / UI type token)
   mallow: null,              // the Mallow you last chose on the Hushfold (id)
-};
+});
 
 export function createPrefs(store) {
   let state = { ...DEFAULTS, ...store.get('prefs', {}) };

@@ -7,13 +7,16 @@
 //
 //   friendlyError(err, context) → { code, message, field, retry, kind }
 //     context: 'signin' | 'signup' | 'resend' | 'reset' | 'verify' | 'callback'
+//              | 'current' (checking the current password before a change)
 //              | 'password' | 'reauth' | 'delete' | 'profile' | 'sync' | 'session'
 //     code:    a stable id for tests and analytics-free logic
-//     field:   'email' | 'password' | 'code' | 'name' | null (where to show it)
+//     field:   'email' | 'password' | 'current' | 'code' | 'name' | null (where to show it)
 //     kind:    'input' | 'link' | 'limit' | 'network' | 'server' | 'session' | 'unknown'
 
 export const MESSAGES = Object.freeze({
   invalid_login: 'That email and password don’t match. Check them, or reset your password.',
+  // the current password, asked before a change: no lockout talk, nothing about the account
+  password_mismatch: 'That password doesn’t match.',
   email_not_confirmed: 'Please confirm your email first. We can send the link again.',
   email_invalid: 'That email doesn’t look quite right.',
   password_short: 'Choose a password with at least 8 characters.',
@@ -25,6 +28,7 @@ export const MESSAGES = Object.freeze({
   link_invalid: 'This link isn’t complete. Open it straight from the email, or ask for a new one.',
   code_wrong: 'That code didn’t work. Check it, or ask for a new one.',
   code_needed: 'For your safety, enter the code we’ve just emailed you.',
+  current_needed: 'Enter your current password first.',
   rate_limited: 'Let’s take a short breather. Try again in a minute.',
   signup_closed: 'New accounts are paused for now. You can keep using hushmallow as a guest.',
   signed_out: 'You’ve been signed out. Sign in again whenever you like.',
@@ -68,12 +72,22 @@ export function friendlyError(err, context = 'unknown') {
   if (status >= 500 && status !== 0) return R('server', 'server');
   if (isNetwork(err) && !code) return R('network', 'network');
 
+  // the current password before a change: every "no" from the sign-in reads the same
+  if (context === 'current') {
+    if (['invalid_credentials', 'user_not_found', 'invalid_grant', 'email_not_confirmed', 'password_mismatch', 'validation_failed'].includes(code) || status === 400 || status === 401 || status === 403) return R('password_mismatch', 'input', 'current');
+    if (code === 'current_needed') return R('current_needed', 'input', 'current');
+  }
+
   switch (code) {
     case 'invalid_credentials':
     case 'user_not_found':
     case 'invalid_grant':
       if (context === 'signin') return R('invalid_login', 'input', 'password');
       break;
+    case 'password_mismatch':
+      return R('password_mismatch', 'input', 'current');
+    case 'current_needed':
+      return R('current_needed', 'input', 'current');
     case 'email_not_confirmed':
       return R('email_not_confirmed', 'input', 'email');
     case 'email_address_invalid':

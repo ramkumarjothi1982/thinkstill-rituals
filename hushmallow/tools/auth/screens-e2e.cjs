@@ -12,8 +12,8 @@
 //          and typing, at 390×844: create → check email → confirm on another
 //          device → sign in (wrong password first) → keep this phone's things →
 //          reload keeps the session → sync opt-in (rows appear, ongoing changes
-//          follow) → withdraw (rows deleted) → change password with the emailed
-//          code (a wrong code first) → sign out → forgot → reset on another
+//          follow) → withdraw (rows deleted) → change password: a wrong current
+//          password, then the right one (no code today); a 25-hour-old session asks for the emailed code (a wrong code first) → sign out → forgot → reset on another
 //          device → sign in with it; unconfirmed + resend (375×812); token
 //          expiry → refresh → a refresh that fails → calm guest fallback;
 //          Back through the screens; the keyboard (visualViewport) lifts the card.
@@ -41,17 +41,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const post = (path, body) => fetch(`${FAKE}${path}`, { method: 'POST', body: JSON.stringify(body || {}) }).then((r) => r.json());
 const state = () => fetch(`${FAKE}/__fake/state`).then((r) => r.json());
 const outbox = (to) => fetch(`${FAKE}/__fake/outbox?to=${encodeURIComponent(to)}`).then((r) => r.json());
-async function mail(to, kind, after = 0) {
-  for (let i = 0; i < 60; i++) { const m = (await outbox(to)).filter((x) => x.kind === kind && x.at > after).pop(); if (m) return m; await sleep(100); }
+async function mail(to, kind, after = 0, tries = 60) {
+  for (let i = 0; i < tries; i++) { const m = (await outbox(to)).filter((x) => x.kind === kind && x.at > after).pop(); if (m) return m; await sleep(100); }
   return null;
 }
-const PASS1 = 'gentle-moon-42', PASS2 = 'quiet-harbour-77', PASS3 = 'soft-lantern-19';
+/** Whether these credentials sign in on the fake (HTTP status); the session it opens is closed again at once. */
+async function canSignIn(email, password) {
+  const r = await fetch(`${FAKE}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: 'sb_publishable_hushmallow_local_dev_only', 'content-type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  const j = await r.json().catch(() => ({}));
+  if (j.access_token) await fetch(`${FAKE}/auth/v1/logout?scope=local`, { method: 'POST', headers: { apikey: 'sb_publishable_hushmallow_local_dev_only', authorization: `Bearer ${j.access_token}` } });
+  return r.status;
+}
+const PASS1 = 'gentle-moon-42', PASS2 = 'quiet-harbour-77', PASS3 = 'soft-lantern-19', PASS4 = 'misty-meadow-31';
 let VER = null;
 
 async function main() {
   VER = (await (await fetch(`${SITE}/version.json`)).json()).v;
   await post('/__fake/reset');
-  await post('/__fake/config', { rateLimitMs: 0, autoconfirm: false, failRefresh: false, refreshDown: false, accessTtl: 3600, down: false, securePasswordChange: true, recentLoginMs: 0 });
+  await post('/__fake/config', { rateLimitMs: 0, autoconfirm: false, failRefresh: false, refreshDown: false, accessTtl: 3600, down: false, securePasswordChange: true, recentLoginMs: 86_400_000, restDelayMs: 0, restDelayTables: null });
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
   const problems = [], expected = [];
   const H = {
@@ -102,6 +109,8 @@ const lsKeys = (p) => p.evaluate(() => Object.keys(localStorage));
 const favs = (p) => p.evaluate((ver) => import(`/v/${ver}/src/engine/flow-store.js`).then((m) => m.favouriteWorlds(window.__hush.store)), VER);
 const star = (p, id) => p.evaluate(({ ver, id }) => import(`/v/${ver}/src/engine/flow-store.js`).then((m) => m.toggleFavouriteWorld(window.__hush.store, id)), { ver: VER, id });
 const uidOf = (p) => p.evaluate(() => window.__hush.auth.namespace.uid);
+/** The session id inside this page's persisted access token. */
+const sidOf = (p) => p.evaluate(() => { try { const k = Object.keys(localStorage).find((x) => /^sb-.*-auth-token$/.test(x)); return JSON.parse(atob(JSON.parse(localStorage.getItem(k)).access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).session_id; } catch { return null; } });
 const lastToast = (p) => p.waitForFunction(() => document.querySelector('.toast')?.textContent || '', null, { timeout: 15000 }).then((h) => h.jsonValue(), () => '');
 
 /** A real touch (CDP Input.dispatchTouchEvent) at the element's centre. */
@@ -286,25 +295,49 @@ async function flows(H) {
   await p.waitForFunction(() => /settings were deleted/.test(document.querySelector('[data-sync-status]')?.textContent || ''), null, { timeout: 30000 });
   check(!(await state()).rows.preferences.some((r) => r.user_id === uidA), 'turning settings sync off deletes the preferences row');
 
-  // change password with reauthentication (an emailed code)
+  // change password: the CURRENT password first (checked on an isolated client), no code on a session from today
   await tap(p, '[data-act="password"]'); await waitView(p, 'password');
+  const pa = await p.evaluate(() => ({ cur: document.querySelector('[data-auth-view] input[name="current"]')?.autocomplete, nw: document.querySelector('[data-auth-view] input[name="password"]')?.autocomplete, user: document.querySelector('[data-auth-view] input[name="username"]')?.autocomplete, forgot: !!document.querySelector('[data-act="forgot-current"]'), code: !!document.querySelector('[data-auth-view] input[name="code"]') }));
+  check(pa.cur === 'current-password' && pa.nw === 'new-password' && pa.user === 'username' && pa.forgot && !pa.code, 'Change password: the current password and the new one (current-password / new-password, a username for password managers), forgot one tap away, no code asked', JSON.stringify(pa));
+  await layoutOk(p, 'change password (390)');
   await shot(p, 'flow-08-password-start-390');
-  const before = Date.now();
-  await tap(p, '[data-act="send-code"]');
-  await p.waitForFunction(() => document.querySelector('[data-auth-view="password"] input[name="code"]'), null, { timeout: 30000 });
-  const code = await mail(ana, 'reauthentication', before - 1000);
-  check(!!code?.token && await p.getAttribute('[data-auth-view] input[name="code"]', 'autocomplete') === 'one-time-code', 'a 6-digit code is emailed first; the field is one-time-code', code?.token ? 'code sent' : 'no code');
-  await fill(p, 'code', '000000'); await fill(p, 'password', PASS2);
+  const pageSid = await sidOf(p);
+  const t8 = Date.now();
+  await fill(p, 'current', 'not-my-password'); await fill(p, 'password', PASS2);
   await tap(p, '[data-act="password-submit"]');
   await p.waitForFunction(() => document.querySelector('[data-auth-view] .hm-auth-error')?.textContent, null, { timeout: 30000 });
-  check(/code didn’t work/.test(await errText(p)) && await mood(p) === 'concerned', 'a wrong code: "That code didn’t work", nothing changes');
-  await shot(p, 'flow-09-password-wrong-code-390');
-  await fill(p, 'code', code.token);
+  const e8 = await errText(p);
+  check(e8 === 'That password doesn’t match.' && await mood(p) === 'concerned' && await p.getAttribute('[data-auth-view] input[name="current"]', 'aria-invalid') === 'true', 'a wrong current password: "That password doesn’t match.", the field marked, a concerned Mallow', e8);
+  check(!(await mail(ana, 'reauthentication', t8 - 1000, 10)) && await canSignIn(ana, PASS2) === 400, 'nothing changed and no code was emailed');
+  await shot(p, 'flow-09-password-wrong-current-390');
+  await fill(p, 'current', PASS1);
   await tap(p, '[data-act="password-submit"]');
   await waitView(p, 'account', 30000);
-  const okNew = await fetch(`${FAKE}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: 'sb_publishable_hushmallow_local_dev_only', 'content-type': 'application/json' }, body: JSON.stringify({ email: ana, password: PASS2 }) });
-  const okOld = await fetch(`${FAKE}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: 'sb_publishable_hushmallow_local_dev_only', 'content-type': 'application/json' }, body: JSON.stringify({ email: ana, password: PASS1 }) });
-  check(okNew.status === 200 && okOld.status === 400, 'the right code: the new password works, the old one no longer does', `${okNew.status}/${okOld.status}`);
+  const t9toast = await lastToast(p);
+  const live9 = (await state()).liveSessions;
+  check(await canSignIn(ana, PASS2) === 200 && await canSignIn(ana, PASS1) === 400 && /new password is saved/.test(t9toast) && !(await mail(ana, 'reauthentication', t8 - 1000, 10)), 'a session from today: the right current password changes it at once, no code', t9toast);
+  check(live9.length === 1 && live9[0] === pageSid && await status(p) === 'signed-in', 'the check’s own session is gone (scope local); this page’s session is the one left alive', JSON.stringify({ live9, pageSid }));
+  // a session over 24 hours old: Supabase asks for the emailed code as well
+  await post('/__fake/age-sessions', { email: ana, hours: 25 });
+  await tap(p, '[data-act="password"]'); await waitView(p, 'password');
+  const t10 = Date.now();
+  await fill(p, 'current', PASS2); await fill(p, 'password', PASS4);
+  await tap(p, '[data-act="password-submit"]');
+  await p.waitForSelector('[data-auth-view="password"] input[name="code"]', { timeout: 30000 });
+  const code = await mail(ana, 'reauthentication', t10 - 1000);
+  check(!!code?.token && await p.getAttribute('[data-auth-view] input[name="code"]', 'autocomplete') === 'one-time-code' && /more than a day/.test(await p.textContent('.hm-auth-lede')), 'a 25-hour-old session: the code step appears, the 6-digit code is emailed; the field is one-time-code', code?.token ? 'code sent' : 'no code');
+  await layoutOk(p, 'enter the code (390)');
+  await shot(p, 'flow-09b-password-code-390');
+  await fill(p, 'code', code.token === '000000' ? '111111' : '000000');
+  await tap(p, '[data-act="code-submit"]');
+  await p.waitForFunction(() => document.querySelector('[data-auth-view] .hm-auth-error')?.textContent, null, { timeout: 30000 });
+  check(/code didn’t work/.test(await errText(p)) && await mood(p) === 'concerned' && await canSignIn(ana, PASS4) === 400, 'a wrong code: "That code didn’t work", the password stays as it was');
+  await shot(p, 'flow-09c-password-wrong-code-390');
+  await fill(p, 'code', code.token);
+  await tap(p, '[data-act="code-submit"]');
+  await waitView(p, 'account', 30000);
+  check(await canSignIn(ana, PASS4) === 200 && await canSignIn(ana, PASS2) === 400, 'the right code: the new password works, the old one no longer does');
+  await post('/__fake/age-sessions', { email: ana, hours: 0 });
 
   // sign out
   await tap(p, '[data-act="signout"]'); await waitView(p, 'signout');
@@ -549,7 +582,7 @@ async function gallery(H) {
     await layoutOk(p, `${S.tag} account`);
     const sh = await p.evaluate(() => document.querySelector('.hm-auth-scroll').scrollHeight - document.querySelector('.hm-auth-scroll').clientHeight);
     if (sh > 0) { await p.evaluate(() => { const s = document.querySelector('.hm-auth-scroll'); s.scrollTop = s.scrollHeight; }); await sleep(300); await shot(p, `gallery-account-end-${S.tag}`); }
-    for (const [v, opts] of [['password', {}], ['password', { step: 2 }], ['signout', {}], ['device-data', {}], ['delete', {}]]) {
+    for (const [v, opts] of [['password', {}], ['signout', {}], ['device-data', {}], ['delete', {}]]) {
       await p.evaluate(({ v, opts }) => window.__account.go(v, opts), { v, opts });
       await waitView(p, v);
       await sleep(450);

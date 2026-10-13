@@ -43,10 +43,17 @@ export function createAuthMallow(holder, { id = 'blubi', mood: initial = 'idle',
   holder.setAttribute('aria-hidden', 'true');
   holder.classList.toggle('hm-auth-rm', !!reducedMotion);
 
-  function applyFace() {
+  function applyFace(instant = false) {
     if (!rig?.ready) return;
     const f = FACE[current] || FACE.idle;
-    try { rig.setEmotion(f.mix, f.intensity, { quiet: current !== 'happy', extra: f.extra || null }); } catch { /* the face is decoration */ }
+    try {
+      if (instant) {
+        // from this very frame: no smile left over from a reaction still playing, no hop still rising
+        if (Array.isArray(rig.overlays)) rig.overlays.length = 0;
+        if (rig.body && !rig.body.grounded && rig.body.hopV > 0) rig.body.hopV = 0;
+      }
+      rig.setEmotion(f.mix, f.intensity, { quiet: current !== 'happy', instant, extra: f.extra || null });
+    } catch { /* the face is decoration */ }
   }
 
   async function mountRig(idNow) {
@@ -61,7 +68,7 @@ export function createAuthMallow(holder, { id = 'blubi', mood: initial = 'idle',
     await r.loaded;
     if (destroyed || rig !== r) { r.destroy(); return 'none'; }
     if (!r.ready) throw new Error('rig not ready');
-    applyFace();
+    applyFace(true);   // it arrives already wearing the screen's face
     holder.dataset.kind = 'rig';
     return 'rig';
   }
@@ -93,13 +100,17 @@ export function createAuthMallow(holder, { id = 'blubi', mood: initial = 'idle',
     get mood() { return current; },
     get id() { return mallowId; },
     get rig() { return rig; },
-    /** Change how the Mallow feels: one of MOODS. 'happy' returns to idle by itself. */
-    mood(name) {
+    /**
+     * Change how the Mallow feels: one of MOODS. 'happy' returns to idle by itself.
+     * { instant: true } shows the new face at once and drops any reaction still
+     * playing (a screen that must never open with a smile: Delete account).
+     */
+    mood(name, { instant = false } = {}) {
       if (!MOODS.includes(name) || destroyed) return api;
       clearTimeout(back);
       current = name;
       holder.dataset.mood = name;
-      applyFace();
+      applyFace(instant && name !== 'happy');
       if (name === 'happy' && rig?.ready) {
         try { rig.react(reducedMotion ? 'nod' : 'success'); } catch { /* decoration */ }
       }

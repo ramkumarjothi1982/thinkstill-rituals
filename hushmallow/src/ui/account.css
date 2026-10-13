@@ -31,6 +31,8 @@
 .hm-account p.hm-auth-hint:empty, .hm-account p.hm-account-consent:empty { display: none; }
 .hm-auth-optional { color: var(--text-3); font-weight: 500; }
 .hm-account-strong { color: var(--text-1); font-weight: 700; overflow-wrap: break-word; }
+/* the word to type for Delete account: plainly the thing to type */
+.hm-account-word { color: var(--text-1); font-weight: 800; letter-spacing: .01em; }
 .hm-account .hm-auth-lede { overflow-wrap: break-word; }   /* an email breaks at its <wbr>s first */
 
 /* quiet text buttons (forgot password, switch screens) */

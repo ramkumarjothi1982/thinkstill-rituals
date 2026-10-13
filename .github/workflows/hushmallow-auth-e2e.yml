@@ -7,7 +7,7 @@
 # the CLI's fixed public test values, and only its publishable key is read),
 # and nothing is linked, pushed or migrated anywhere.
 #
-#   1. supabase start (hushmallow/supabase/config.toml): the migrations 0001…0008 in order
+#   1. supabase start (hushmallow/supabase/config.toml): the migrations 0001…0009 in order
 #   2. supabase/tests/rls_check.sql with psql against the local database: fails on any isolation breach
 #   3. the real site, built by tools/build-site.sh in CI mode with the stack's URL + publishable key,
 #      served at http://127.0.0.1:8000 by tools/auth/pages-serve.mjs the way Cloudflare Pages serves it
@@ -100,7 +100,7 @@ jobs:
           set -euo pipefail
           psql "$E2E_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select version || ' ' || name from hm_private.schema_migrations order by version" | tee "$RUNNER_TEMP/e2e/migrations.txt"
           n="$(psql "$E2E_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c 'select count(*) from hm_private.schema_migrations')"
-          test "$n" = 8 || { echo "::error title=Migrations::$n of 8 hushmallow migrations recorded"; exit 1; }
+          test "$n" = 9 || { echo "::error title=Migrations::$n of 9 hushmallow migrations recorded"; exit 1; }
           psql "$E2E_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select count(*) from supabase_migrations.schema_migrations" | sed 's/^/CLI migration history: /' || echo "CLI migration history: not readable (informational only)"
           # PostgREST picks up the new tables
           psql "$E2E_DB_URL" -X -q -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema'"

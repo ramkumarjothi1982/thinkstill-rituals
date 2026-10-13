@@ -18,8 +18,10 @@
 //                  (each with a plain privacy line and when it was given),
 //                  change password, sign out, remove this device's data,
 //                  delete account
-//   password       change password: an emailed code first (reauthentication),
-//                  then the code and the new password
+//   password       change password: the current password (checked with an
+//                  isolated sign-in) and the new one; only when Supabase asks
+//                  for reauthentication (a session over 24 hours old) a second
+//                  step takes the 6-digit code it emailed. Forgot it? one tap.
 //   signout        sign out (optionally removing this account's things here)
 //   device-data    remove this device's copy of the account's things
 //   delete         typed confirmation; says exactly what goes, where
@@ -109,12 +111,22 @@ export default function account(app, params = {}) {
   const el = h('div', { class: 'hm-auth-scene hm-account', 'data-auth-view': 'loading', style: { visibility: 'hidden' } },
     h('div', { class: 'topbar' }, backBtn, h('div', { class: 'grow' }), offlineEl), scroll, announce);
   const say = (text) => { announce.textContent = ''; later(() => { announce.textContent = text; }, 60); };
-  const mood = (m) => mallow?.mood(m);
+  // Delete account and Remove this phone's data never show a happy Mallow, not even for a frame:
+  // their face comes at once (no reaction left playing), and a late "happy" from an earlier screen
+  // (a save that finished after the tap) is ignored there
+  const SOMBRE = ['delete', 'device-data'];
+  const sombre = () => SOMBRE.includes(nav[nav.length - 1]?.view);
+  const mood = (m, o) => { if (m === 'happy' && sombre()) return; mallow?.mood(m, o); };
+  /** The person moved on: a notice still showing from before (e.g. "You’re signed in.") fades so it covers nothing. */
+  const dismissToasts = () => {
+    for (const t of document.querySelectorAll('body > .toast')) { t.style.transition = 'opacity 160ms linear'; t.style.opacity = '0'; setTimeout(() => t.remove(), 180); }
+  };
 
   // -------------------------------------------------------- navigation --
   const nav = [];   // { view, opts, token }
   function go(view, opts = {}, { replace = false } = {}) {
     if (left) return;
+    if (nav.length) dismissToasts();
     if (!nav.length) nav.push({ view, opts, token: null });
     else if (replace) nav[nav.length - 1] = { ...nav[nav.length - 1], view, opts };
     else nav.push({ view, opts, token: app.pushLayer ? app.pushLayer() : null });
@@ -123,7 +135,7 @@ export default function account(app, params = {}) {
   function goBack() {
     const top = nav[nav.length - 1];
     if (top?.view === 'guest-choice') { choose('fresh'); return; }   // leaving the question = "Not now"
-    if (nav.length > 1) { nav.pop(); if (top.token != null) app.popLayer?.(top.token); render(); return; }
+    if (nav.length > 1) { dismissToasts(); nav.pop(); if (top.token != null) app.popLayer?.(top.token); render(); return; }
     app.back();
   }
   /** Back to the screen below this one (the account card when there is none). */
@@ -156,7 +168,7 @@ export default function account(app, params = {}) {
   const list = (items) => h('ul', { class: 'hm-account-list' }, ...items.map((t) => h('li', {}, t)));
 
   /** A labelled input. password: show / hide button and the Mallow looks away; meter: the strength hint. */
-  function field({ name, label, kind = 'text', autocomplete, value = '', hintText = '', optional = false, inputmode, maxlength, enterkeyhint, password = false, meter = false }) {
+  function field({ name, label, labelNode = null, kind = 'text', autocomplete, value = '', hintText = '', optional = false, inputmode, maxlength, enterkeyhint, password = false, meter = false }) {
     const id = uid(name), hintId = `${id}-hint`;
     const plain = kind === 'email' || password || name === 'code' || name === 'confirm';
     const input = h('input', {
@@ -165,7 +177,7 @@ export default function account(app, params = {}) {
       'aria-describedby': hintId,
     });
     input.value = value || '';
-    const labelEl = h('label', { class: 'hm-auth-label', for: id }, label, optional ? h('span', { class: 'hm-auth-optional' }, ' (optional)') : null);
+    const labelEl = h('label', { class: 'hm-auth-label', for: id }, labelNode || label, optional ? h('span', { class: 'hm-auth-optional' }, ' (optional)') : null);
     const hintEl = h('div', { class: 'hm-auth-hint', id: hintId }, hintText);
     const parts = [labelEl];
     if (password) {
@@ -194,7 +206,7 @@ export default function account(app, params = {}) {
     input.addEventListener('input', () => {
       input.removeAttribute('aria-invalid');
       input.setAttribute('aria-describedby', hintId);
-      if (mallow?.mood === 'concerned') mood(password ? 'away' : 'idle');
+      if (mallow?.mood === 'concerned' && !sombre()) mood(password ? 'away' : 'idle');
       if (meterEl) { const s = passwordStrength(input.value); meterEl.dataset.score = String(s.score); hintEl.textContent = s.hint; }
       onFieldInput?.();
     });
@@ -259,6 +271,8 @@ export default function account(app, params = {}) {
   }
 
   const lowerEmail = (s) => String(s || '').trim().toLowerCase();
+  /** Signed in on this page (forgot password from Change password goes back to the account, not to sign in). */
+  const inAccount = () => auth?.status?.() === 'signed-in';
 
   // ------------------------------------------------------------- views --
   const V = {};
@@ -373,7 +387,8 @@ export default function account(app, params = {}) {
         go('reset-sent', { email: lowerEmail(v.email) }, { replace: true });
         return { ok: true };
       },
-      after: [linkBtn('Back to sign in', () => goBack(), 'back-signin')],
+      // signed in (from Change password): back to the account, else back to sign in
+      after: [inAccount() ? linkBtn('Back to your account', () => popView(), 'back-account') : linkBtn('Back to sign in', () => goBack(), 'back-signin')],
     });
     preload();
     return { title: 'Forgot your password?', lede: 'Tell us your email and we’ll send a link to choose a new one.', body: [f.form] };
@@ -393,7 +408,8 @@ export default function account(app, params = {}) {
       body: [
         hint('It can take a minute. If it isn’t there, look in spam or junk.', 'hm-auth-center'),
         h('div', { class: 'hm-auth-actions' },
-          btn('Back to sign in', () => go('signin', { email: o.email }, { replace: true }), { cls: 'primary', act: 'back-signin' }),
+          inAccount() ? btn('Back to your account', () => popView(), { cls: 'primary', act: 'back-account' })
+            : btn('Back to sign in', () => go('signin', { email: o.email }, { replace: true }), { cls: 'primary', act: 'back-signin' }),
           resend),
         status,
       ],
@@ -479,7 +495,7 @@ export default function account(app, params = {}) {
         section('Keep with my account', hint('Both are off unless you turn them on. Turning one off deletes what it kept with your account; this phone keeps its own copy.'), settingsRow.el, libraryRow.el, syncStatus, loadNote),
         guestRow ? section('This phone', guestRow) : null,
         section('Sign-in and security',
-          rowButton('Change password', 'We’ll email you a code first, to make sure it’s you.', 'Change', () => go('password'), 'password')),
+          rowButton('Change password', 'You’ll confirm your current password first.', 'Change', () => go('password'), 'password')),
         section(guestRow ? 'Leaving' : 'This phone',
           rowButton('Sign out', 'Your things stay on this phone, apart from the guest’s.', 'Sign out', () => go('signout'), 'signout'),
           rowButton('Remove this phone’s data', 'This account’s things on this phone only. You stay signed in.', 'Remove', () => go('device-data'), 'device-data')),
@@ -583,57 +599,81 @@ export default function account(app, params = {}) {
     api().then((a) => a.profile.update({ homeMallow: id })).then((r) => { if (r?.ok) acct.profile = { ...(acct.profile || {}), homeMallow: id }; }).catch(() => {});
   }
 
+  // Change password: real reauthentication on every session. Step 1 asks for the CURRENT password
+  // (checked with an isolated sign-in, src/auth/client.js updatePassword) and the new one. Only when
+  // Supabase wants more (secure password change on a session over 24 hours old) does a second step
+  // ask for the 6-digit code it has just emailed. The two passwords wait in this closure for that
+  // step only (never in history or storage) and are dropped when the screen goes.
+  let pendingPw = null;
+  const passwordSaved = (a) => {
+    pendingPw = null;
+    a.takeNotice();   // said here, not after a reload
+    mood('happy');
+    toast('Your new password is saved.', 3200);
+    say('Your new password is saved.');
+    later(popView, reduced() ? 300 : 900);
+    return { ok: true, hold: true };
+  };
+  const userNameField = (u) => h('input', { type: 'email', name: 'username', autocomplete: 'username', value: u.email || '', style: { display: 'none' }, tabindex: '-1', 'aria-hidden': 'true' });
+
   V.password = (o) => {
     const u = auth.user() || {};
-    if (o.step !== 2) {
-      const errEl = h('p', { class: 'hm-auth-error', role: 'alert' });
-      const send = btn('Email me a code', async () => {
-        send.disabled = true; send.textContent = 'Sending…'; mood('busy');
-        const a = await api();
-        const r = await a.reauthenticate();
-        if (left) return;
-        if (r.ok) { mood('happy'); go('password', { step: 2, sentAt: Date.now() }, { replace: true }); return; }
-        send.disabled = false; send.textContent = 'Email me a code';
-        errEl.textContent = r.error?.message || MESSAGES.unknown; mood('concerned');
-      }, { cls: 'primary', act: 'send-code' });
-      return {
-        title: 'Change your password',
-        lede: ['For your safety, we’ll first email a 6‑digit code to ', strong(u.email || 'your email'), '.'],
-        body: [errEl, h('div', { class: 'hm-auth-actions' }, send, linkBtn('Keep my password', () => goBack(), 'cancel'))],
-      };
-    }
-    const userName = h('input', { type: 'email', name: 'username', autocomplete: 'username', value: u.email || '', style: { display: 'none' }, tabindex: '-1', 'aria-hidden': 'true' });
-    const code = field({ name: 'code', label: 'Code from the email', autocomplete: 'one-time-code', inputmode: 'numeric', enterkeyhint: 'next', maxlength: 10, hintText: 'Six digits. It works for a few minutes.' });
-    code.input.setAttribute('pattern', '[0-9]*');
+    if (o.step === 'code' && pendingPw) return V['password-code'](o, u);
+    pendingPw = null;
+    const cur = field({ name: 'current', label: 'Current password', autocomplete: 'current-password', enterkeyhint: 'next', password: true, maxlength: 128 });
     const pw = field({ name: 'password', label: 'New password', autocomplete: 'new-password', enterkeyhint: 'done', password: true, meter: true, maxlength: 72 });
-    let sentAt = o.sentAt || Date.now();
-    const resend = cooldownButton('Send a new code', () => Math.max(0, sentAt + 60_000 - Date.now()), async () => {
+    const f = form({
+      fields: [cur, pw], submit: 'Save my new password', busy: 'Checking…', act: 'password-submit', before: [userNameField(u)],
+      onSubmit: async (v) => {
+        if (!v.current) return { ok: false, error: friendlyError({ code: 'current_needed' }, 'current') };
+        const bad = checkPassword(v.password);
+        if (bad) return { ok: false, error: bad };
+        if (v.current === v.password) return { ok: false, error: friendlyError({ code: 'same_password' }, 'password') };
+        const a = await api();
+        const r = await a.updatePassword({ current: v.current, password: v.password });
+        if (r.ok) return passwordSaved(a);
+        if (r.needsCode) {
+          pendingPw = { current: v.current, password: v.password };
+          go('password', { step: 'code', email: r.email || u.email || '' }, { replace: true });
+          return { ok: true, hold: true };
+        }
+        return r;
+      },
+      after: [linkBtn('Keep my password', () => goBack(), 'cancel')],
+    });
+    // forgot it? one tap away, from right under the field
+    cur.wrap.append(h('div', { class: 'hm-account-forgot' }, linkBtn('Forgot your password?', () => { pendingPw = null; go('forgot', { email: u.email || '' }, { replace: true }); }, 'forgot-current')));
+    return {
+      title: 'Change your password',
+      lede: 'First your current password, so we know it’s you. Then the new one.',
+      body: [f.form, hint('Changing it signs you out on your other devices.', 'hm-auth-center')],
+    };
+  };
+
+  V['password-code'] = (o, u = auth.user() || {}) => {
+    const code = field({ name: 'code', label: 'Code from the email', autocomplete: 'one-time-code', inputmode: 'numeric', enterkeyhint: 'done', maxlength: 10, hintText: 'Six digits. It works for a few minutes.' });
+    code.input.setAttribute('pattern', '[0-9]*');
+    const resend = cooldownButton('Send a new code', () => client?.cooldownLeft('reauth') || 0, async () => {
       const a = await api();
       const r = await a.reauthenticate();
-      if (r.ok) { sentAt = Date.now(); mood('happy'); say('A new code is on its way.'); }
+      if (r.ok) { mood('happy'); say('A new code is on its way.'); }
       else f.fail(r.error);
     }, 'resend-code');
     const f = form({
-      fields: [code, pw], submit: 'Save my new password', busy: 'Saving…', act: 'password-submit', before: [userName],
+      fields: [code], submit: 'Save my new password', busy: 'Saving…', act: 'code-submit', before: [userNameField(u)],
       onSubmit: async (v) => {
         if (!VM.codeLooksRight(v.code)) return { ok: false, error: { ...friendlyError({ code: 'reauthentication_needed' }, 'password'), message: 'Enter the 6‑digit code from the email.' } };
-        const bad = checkPassword(v.password);
-        if (bad) return { ok: false, error: bad };
+        if (!pendingPw) { go('password', {}, { replace: true }); return { ok: true, hold: true }; }
         const a = await api();
-        const r = await a.updatePassword({ password: v.password, nonce: VM.cleanCode(v.code) });
-        if (!r.ok) return r;
-        a.takeNotice();   // said here, not after a reload
-        mood('happy');
-        toast('Your new password is saved.', 3200);
-        say('Your new password is saved.');
-        later(popView, reduced() ? 300 : 900);
-        return { ok: true, hold: true };
+        const r = await a.updatePassword({ ...pendingPw, nonce: VM.cleanCode(v.code) });
+        if (r.ok) return passwordSaved(a);
+        return r;
       },
-      after: [resend],
+      after: [resend, linkBtn('Keep my password', () => { pendingPw = null; goBack(); }, 'cancel')],
     });
     return {
       title: 'Enter the code',
-      lede: ['We’ve emailed a code to ', strong(u.email || 'your email'), '. Enter it with your new password.'],
+      lede: ['You’ve been signed in here for more than a day, so for your safety we’ve also emailed a 6‑digit code to ', strong(o.email || u.email || 'your email'), '.'],
       body: [f.form],
     };
   };
@@ -655,7 +695,13 @@ export default function account(app, params = {}) {
       body: [
         hint(kept ? 'What you keep with your account stays there and comes back to this phone.' : 'Nothing is kept with your account, so this can’t be undone.', 'hm-auth-center'),
         h('div', { class: 'hm-auth-actions' },
-          btn('Remove this phone’s data', async (e) => { e.currentTarget.disabled = true; const a = await api(); a.removeDeviceData(); }, { cls: 'danger', act: 'device-data-confirm' }),
+          btn('Remove this phone’s data', async (e) => {
+            const b = e.currentTarget;
+            b.disabled = true; b.textContent = 'Removing…'; mood('busy');
+            const a = await api();
+            const r = await a.removeDeviceData();   // waits for a sync in flight, then removes and reloads
+            if (!r?.ok && !left) { b.disabled = false; b.textContent = 'Remove this phone’s data'; mood('concerned'); }
+          }, { cls: 'danger', act: 'device-data-confirm' }),
           linkBtn('Keep it', () => goBack(), 'cancel')),
       ],
       mood: 'concerned',
@@ -663,11 +709,11 @@ export default function account(app, params = {}) {
   };
 
   V.delete = () => {
-    const confirm = field({ name: 'confirm', label: `Type ${VM.DELETE_WORD} to confirm`, autocomplete: 'off', enterkeyhint: 'done', maxlength: 20 });
+    const confirm = field({ name: 'confirm', label: `Type “${VM.DELETE_WORD}” to confirm`, labelNode: ['Type ', h('strong', { class: 'hm-account-word', translate: 'no' }, `“${VM.DELETE_WORD}”`), ' to confirm'], autocomplete: 'off', enterkeyhint: 'done', maxlength: 20 });
     const f = form({
       fields: [confirm], submit: 'Delete my account', busy: 'Deleting…', act: 'delete-confirm', danger: true,
       onSubmit: async (v) => {
-        if (!VM.deleteConfirmed(v.confirm)) return { ok: false, error: { code: 'confirm', field: 'confirm', message: `Type ${VM.DELETE_WORD} to confirm.` } };
+        if (!VM.deleteConfirmed(v.confirm)) return { ok: false, error: { code: 'confirm', field: 'confirm', message: `Type “${VM.DELETE_WORD}” to confirm.` } };
         const a = await api();
         const r = await a.deleteAccount();
         if (!r.ok) return r;
@@ -723,6 +769,7 @@ export default function account(app, params = {}) {
     if (left) return;
     const top = nav[nav.length - 1];
     clearTimers();
+    if (top.view !== 'password') pendingPw = null;   // the passwords of a change in progress go with its screen
     const make = V[top.view] || V.welcome;
     let v;
     try { v = make(top.opts || {}); } catch (e) { console.warn('[account]', e); v = V.welcome(); }
@@ -733,7 +780,7 @@ export default function account(app, params = {}) {
     card.classList.remove('hm-swap'); void card.offsetWidth; card.classList.add('hm-swap');
     backBtn.setAttribute('aria-label', nav.length > 1 ? 'Back' : 'Close');
     backBtn.title = backBtn.getAttribute('aria-label');
-    mood(v.mood || 'idle');
+    mood(v.mood || 'idle', { instant: sombre() });
     scroll.scrollTop = 0;
     title.focus({ preventScroll: true });
     v.after?.();
@@ -805,6 +852,7 @@ export default function account(app, params = {}) {
     },
     leave() {
       left = true;
+      pendingPw = null;
       clearTimers();
       off?.();
       mallow?.destroy();
