@@ -1,0 +1,1393 @@
+{
+ "when": "2026-10-13T19:49:56.641Z",
+ "passed": 231,
+ "failed": 0,
+ "results": [
+  {
+   "scope": "touchtalk:glitzi",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:glitzi",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:glitzi",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:glitzi",
+   "name": "eyes look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.25496567946213944,\"y\":0.2436788347434095,\"t\":0.06770000000000005}"
+  },
+  {
+   "scope": "touchtalk:glitzi",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:glitzi",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.164"
+  },
+  {
+   "scope": "touchtalk:glitzi",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.4010968054463051,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:glitzi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:blubi",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:blubi",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:blubi",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:blubi",
+   "name": "closed eyes open to look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.25536240797776444,\"y\":0.24423234550873832,\"t\":0.6509000000000001}"
+  },
+  {
+   "scope": "touchtalk:blubi",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:blubi",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.145"
+  },
+  {
+   "scope": "touchtalk:blubi",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.40245720241155236,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:blubi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:zuzu",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:zuzu",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:zuzu",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:zuzu",
+   "name": "eyes look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.25322484725560895,\"y\":0.2412291844083236,\"t\":0.6176}"
+  },
+  {
+   "scope": "touchtalk:zuzu",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:zuzu",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.135"
+  },
+  {
+   "scope": "touchtalk:zuzu",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.3932008972234954,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:zuzu",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "eyes look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.25496004544771633,\"y\":0.24367102455753867,\"t\":0.6843}"
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.123"
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.400050805559348,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "eyes look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.25942805363581734,\"y\":0.24980780578902562,\"t\":0.6176000000000003}"
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.120"
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.433264141866021,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "closed eyes open to look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.24548934545272436,\"y\":0.22992422962640716,\"t\":0.6176}"
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,stroke,stroke,stroke,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.130"
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.417549544143732,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:noomi",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:noomi",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:noomi",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:noomi",
+   "name": "closed eyes open to look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.2616408128004808,\"y\":0.2527694571978675,\"t\":0.6174999999999999}"
+  },
+  {
+   "scope": "touchtalk:noomi",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,stroke,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:noomi",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.133"
+  },
+  {
+   "scope": "touchtalk:noomi",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.4418483453830613,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:noomi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "responses: gentle reaches the personality",
+   "ok": true,
+   "detail": "gentle"
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "animation: slower slows the rig clock",
+   "ok": true,
+   "detail": "0.82"
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "movement: soft scales impulses",
+   "ok": true,
+   "detail": "0.6"
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "voice off silences the Mallow voice",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "favourite Mallow on stage",
+   "ok": true,
+   "detail": "pipzi"
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "chosen environment behind the Mallow",
+   "ok": true,
+   "detail": "{\"style\":\"gentle\",\"speed\":0.82,\"motion\":0.6,\"voice\":false,\"id\":\"pipzi\",\"realm\":\"moonmilk-cove\",\"realmCanvas\":true,\"tint\":\"rgba(205,182,255,0.35)\"}"
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "colours tint the stage",
+   "ok": true,
+   "detail": "rgba(205,182,255,0.35)"
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "gentle responses never hop",
+   "ok": true,
+   "detail": "tap,nod,nod,nod,nod,nod,nod,nod"
+  },
+  {
+   "scope": "dna:touchtalk",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:off",
+   "name": "defaults apply while off",
+   "ok": true,
+   "detail": "{\"style\":\"balanced\",\"id\":\"boppo\",\"realm\":false,\"chosen\":\"gentle\"}"
+  },
+  {
+   "scope": "dna:off",
+   "name": "choices are kept while off",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:off",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:screen",
+   "name": "picking a favourite switches the preview Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:screen",
+   "name": "changes reach the live preview at once",
+   "ok": true,
+   "detail": "{\"style\":\"playful\",\"motion\":1.25}"
+  },
+  {
+   "scope": "dna:screen",
+   "name": "choices are saved in the lab's own key",
+   "ok": true,
+   "detail": "{\"favouriteMallow\":\"loomi\",\"responses\":\"playful\",\"motion\":\"bouncy\",\"comfort\":[\"float\",\"breathe\"]}"
+  },
+  {
+   "scope": "dna:screen",
+   "name": "everything saved is viewable in plain words",
+   "ok": true,
+   "detail": "View everything saved\nWhere\nThis browser only\nPersonalisation\non\nLearning\non\nFavourite Mallow\nLoomi\nResponses / animatio"
+  },
+  {
+   "scope": "dna:screen",
+   "name": "home offers familiar moments with honest reasons",
+   "ok": true,
+   "detail": "Let It Float\nFavourite | Soft Breath\nYou said this helps"
+  },
+  {
+   "scope": "dna:screen",
+   "name": "learning recorded the moment (opted in)",
+   "ok": true,
+   "detail": "let-it-float,pocket-hush"
+  },
+  {
+   "scope": "dna:screen",
+   "name": "an offer opens its moment in one tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:screen",
+   "name": "delete history empties it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:screen",
+   "name": "reset returns personal settings to defaults",
+   "ok": true,
+   "detail": "{\"r\":\"balanced\",\"favs\":0}"
+  },
+  {
+   "scope": "dna:screen",
+   "name": "delete everything clears the store",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:screen",
+   "name": "only the lab's own keys are used",
+   "ok": true,
+   "detail": "hm.sensorylab.v1"
+  },
+  {
+   "scope": "dna:screen",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:screen",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:screen",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "dna:screen",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "dna:default-off",
+   "name": "no history without opting in",
+   "ok": true,
+   "detail": "{\"hist\":0,\"learn\":false}"
+  },
+  {
+   "scope": "dna:default-off",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone",
+   "name": "picker shows six choices (five moments + Surprise Me)",
+   "ok": true,
+   "detail": "6"
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze",
+   "name": "pressing down on the Mallow counts as squeezes",
+   "ok": true,
+   "detail": "3"
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze",
+   "name": "ends with its own closing and a Mallow line",
+   "ok": true,
+   "detail": "{\"cap\":\"All squished out.\",\"line\":\"“You did that so gently. I’m going to cry. Happy tears!” Blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze",
+   "name": "Again replays it from the start",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quick-squeeze",
+   "name": "stopping cleans up",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"live\":0}"
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "pressing leads the breath in",
+   "ok": true,
+   "detail": "in"
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "the Mallow inflates with the breath",
+   "ok": true,
+   "detail": "1.00"
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "ends with its own closing and a Mallow line",
+   "ok": true,
+   "detail": "{\"cap\":\"Three slow breaths.\",\"line\":\"“Rest here as long as you like. The rain can wait.” Blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:soft-breath:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:soft-breath:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:soft-breath:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "Again replays it from the start",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:soft-breath",
+   "name": "stopping cleans up",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"live\":1}"
+  },
+  {
+   "scope": "pocket:phone:gentle-glow",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:gentle-glow",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:gentle-glow",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:gentle-glow",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:gentle-glow",
+   "name": "the light warms and lights up the Mallow",
+   "ok": true,
+   "detail": "{\"w\":0.3209830000000017,\"glow\":0.6292323062703493}"
+  },
+  {
+   "scope": "pocket:phone:gentle-glow",
+   "name": "ends with its own closing and a Mallow line",
+   "ok": true,
+   "detail": "{\"cap\":\"All warm.\",\"line\":\"“You did that so gently. I’m going to cry. Happy tears!” Blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:gentle-glow:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:gentle-glow:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:gentle-glow:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:gentle-glow",
+   "name": "Again replays it from the start",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:gentle-glow",
+   "name": "stopping cleans up",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"live\":0}"
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "flicked floaters rise away",
+   "ok": true,
+   "detail": "2"
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "flicks on floaters never grab the Mallow",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "ends with its own closing and a Mallow line",
+   "ok": true,
+   "detail": "{\"cap\":\"All floated away.\",\"line\":\"“Rest here as long as you like. The rain can wait.” Blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:let-it-float:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:let-it-float:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:let-it-float:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "Again replays it from the start",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:let-it-float",
+   "name": "stopping cleans up",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"live\":0}"
+  },
+  {
+   "scope": "pocket:phone:quiet-moment",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:quiet-moment",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quiet-moment",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quiet-moment",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:quiet-moment",
+   "name": "resting a finger still reaches the Mallow",
+   "ok": true,
+   "detail": "hold,holdend"
+  },
+  {
+   "scope": "pocket:phone:quiet-moment",
+   "name": "ends with its own closing and a Mallow line",
+   "ok": true,
+   "detail": "{\"cap\":\"A quiet half minute.\",\"line\":\"“Rest here as long as you like. The rain can wait.” Blubi\"}"
+  },
+  {
+   "scope": "pocket:phone:quiet-moment:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quiet-moment:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quiet-moment:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "390 > 390"
+  },
+  {
+   "scope": "pocket:phone:quiet-moment",
+   "name": "Again replays it from the start",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone:quiet-moment",
+   "name": "stopping cleans up",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"live\":1}"
+  },
+  {
+   "scope": "pocket:phone",
+   "name": "Surprise Me starts a moment",
+   "ok": true,
+   "detail": "Surprise"
+  },
+  {
+   "scope": "pocket:phone",
+   "name": "a #pocket-<mode> link opens the moment directly",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone",
+   "name": "Escape stops a moment",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:phone",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small",
+   "name": "picker shows six choices (five moments + Surprise Me)",
+   "ok": true,
+   "detail": "6"
+  },
+  {
+   "scope": "pocket:small:quick-squeeze",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:small:quick-squeeze",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:quick-squeeze",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:quick-squeeze",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "320 > 320"
+  },
+  {
+   "scope": "pocket:small:quick-squeeze",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:small:soft-breath",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:small:soft-breath",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:soft-breath",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:soft-breath",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "320 > 320"
+  },
+  {
+   "scope": "pocket:small:soft-breath",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:small:gentle-glow",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:small:gentle-glow",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:gentle-glow",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:gentle-glow",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "320 > 320"
+  },
+  {
+   "scope": "pocket:small:gentle-glow",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:small:let-it-float",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:small:let-it-float",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:let-it-float",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:let-it-float",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "320 > 320"
+  },
+  {
+   "scope": "pocket:small:let-it-float",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:small:quiet-moment",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:small:quiet-moment",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:quiet-moment",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small:quiet-moment",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "320 > 320"
+  },
+  {
+   "scope": "pocket:small:quiet-moment",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:small",
+   "name": "Surprise Me starts a moment",
+   "ok": true,
+   "detail": "Surprise"
+  },
+  {
+   "scope": "pocket:small",
+   "name": "a #pocket-<mode> link opens the moment directly",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small",
+   "name": "Escape stops a moment",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:small",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop",
+   "name": "picker shows six choices (five moments + Surprise Me)",
+   "ok": true,
+   "detail": "6"
+  },
+  {
+   "scope": "pocket:desktop:quick-squeeze",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:desktop:quick-squeeze",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:quick-squeeze",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:quick-squeeze",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "1280 > 1280"
+  },
+  {
+   "scope": "pocket:desktop:quick-squeeze",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:desktop:soft-breath",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:desktop:soft-breath",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:soft-breath",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:soft-breath",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "1280 > 1280"
+  },
+  {
+   "scope": "pocket:desktop:soft-breath",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:desktop:gentle-glow",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:desktop:gentle-glow",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:gentle-glow",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:gentle-glow",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "1280 > 1280"
+  },
+  {
+   "scope": "pocket:desktop:gentle-glow",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:desktop:let-it-float",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:desktop:let-it-float",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:let-it-float",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:let-it-float",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "1280 > 1280"
+  },
+  {
+   "scope": "pocket:desktop:let-it-float",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:desktop:quiet-moment",
+   "name": "starts in the Mallow's realm with the effects layer",
+   "ok": true,
+   "detail": "{\"realm\":true,\"fx\":true,\"mallow\":\"blubi\"}"
+  },
+  {
+   "scope": "pocket:desktop:quiet-moment",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:quiet-moment",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop:quiet-moment",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": "1280 > 1280"
+  },
+  {
+   "scope": "pocket:desktop:quiet-moment",
+   "name": "stops cleanly",
+   "ok": true,
+   "detail": "{\"canvases\":0,\"moment\":false}"
+  },
+  {
+   "scope": "pocket:desktop",
+   "name": "Surprise Me starts a moment",
+   "ok": true,
+   "detail": "Surprise"
+  },
+  {
+   "scope": "pocket:desktop",
+   "name": "a #pocket-<mode> link opens the moment directly",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop",
+   "name": "Escape stops a moment",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "pocket:desktop",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "review:boot",
+   "name": "a hand-edited profile still boots and keeps its valid choices",
+   "ok": true,
+   "detail": "{\"motion\":\"soft\",\"responses\":\"gentle\",\"stored\":{\"quality\":\"low\"}}"
+  },
+  {
+   "scope": "review:boot",
+   "name": "the Phase 1 response style carries over once",
+   "ok": true,
+   "detail": "{\"motion\":\"soft\",\"responses\":\"gentle\",\"stored\":{\"quality\":\"low\"}}"
+  },
+  {
+   "scope": "review:boot",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "review:pocket",
+   "name": "Quiet Moment's sound starts after the first tap on a deep link",
+   "ok": true,
+   "detail": "[600]"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "Quiet Moment's sound comes back after mute and unmute",
+   "ok": true,
+   "detail": "[600,600]"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "Again keeps the live Mallow connected to settings",
+   "ok": true,
+   "detail": "{\"live\":true,\"same\":true,\"focus\":true}"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "a new moment puts keyboard focus on the stage",
+   "ok": true,
+   "detail": "{\"live\":true,\"same\":true,\"focus\":true}"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "settings still reach the Mallow after Again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "review:pocket",
+   "name": "closing twice leaves one picker",
+   "ok": true,
+   "detail": "{\"screens\":1,\"focus\":\"quiet-moment\"}"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "back from a moment, focus returns to its tile",
+   "ok": true,
+   "detail": "{\"screens\":1,\"focus\":\"quiet-moment\"}"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "closing then going home leaves only home",
+   "ok": true,
+   "detail": "[\"Sensory Lab\"]"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "the breath sound stops soon after Soft Breath closes",
+   "ok": true,
+   "detail": "[5] → []"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "two fingers on two floaters release both",
+   "ok": true,
+   "detail": "rising,rising,waiting,waiting,waiting,waiting"
+  },
+  {
+   "scope": "review:pocket",
+   "name": "the moment still finishes",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "review:pocket",
+   "name": "the end card focuses Again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "review:pocket",
+   "name": "Another returns to the picker with focus on that tile",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "review:pocket",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "review:dna",
+   "name": "a suggestion opens with its own Mallow",
+   "ok": true,
+   "detail": "{\"id\":\"noomi\",\"fav\":\"pipzi\",\"stored\":\"pipzi\"}"
+  },
+  {
+   "scope": "review:dna",
+   "name": "a suggestion never replaces the favourite",
+   "ok": true,
+   "detail": "{\"id\":\"noomi\",\"fav\":\"pipzi\",\"stored\":\"pipzi\"}"
+  },
+  {
+   "scope": "review:dna",
+   "name": "home shows the favourite again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "review:dna",
+   "name": "focus stays on the control when the screen updates",
+   "ok": true,
+   "detail": "{\"t\":\"Off\",\"g\":\"Personalise my Mallow\"}"
+  },
+  {
+   "scope": "review:dna",
+   "name": "reset with personalisation off keeps the lab's own Mallow",
+   "ok": true,
+   "detail": "{\"mallow\":\"noomi\",\"focus\":\"dna-reset\"}"
+  },
+  {
+   "scope": "review:dna",
+   "name": "focus stays on Reset",
+   "ok": true,
+   "detail": "{\"mallow\":\"noomi\",\"focus\":\"dna-reset\"}"
+  },
+  {
+   "scope": "review:dna",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}
