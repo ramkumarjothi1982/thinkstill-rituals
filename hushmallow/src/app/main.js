@@ -4,7 +4,7 @@
 // 'home' is the Hushfold (src/app/scenes/hushfold.js); the old home screen
 // stays reachable as 'classic' for QA and rollback.
 
-import { authBoot, createAuthHandle, NOTICE_TEXT } from '../auth/boot.js';
+import { authBoot, createAuthHandle, NOTICE_TEXT, noticeText } from '../auth/boot.js';
 import { createPrefs } from './prefs.js';
 import { createEntitlements } from './entitlements.js';
 import { createRecommender } from '../engine/recommend.js';
@@ -258,7 +258,8 @@ async function boot() {
 
 /** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */
 function afterAuthBoot() {
-  if (AUTH.notice && NOTICE_TEXT[AUTH.notice]) setTimeout(() => toast(NOTICE_TEXT[AUTH.notice], 3600), 500);
+  const said = AUTH.notice ? noticeText(AUTH.notice, AUTH.ns) : null;   // an arrival names the account (shortened)
+  if (said) setTimeout(() => toast(said, 3600), 500);
   // /#account (an email link, a bookmark) opens the account over the Hushfold, so Back comes home;
   // a first sign-in on this device opens it too, to ask once about this device's guest things
   if (AUTH.deepLink === 'account' || AUTH.guestChoice) app.go('account', { arrived: AUTH.notice || null });

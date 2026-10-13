@@ -349,3 +349,32 @@ test('the home Mallow: one chain for the picker and the Mallow above the card, t
   assert.match(src, /p\.profile\.homeMallow && !shownMallow\(\)\.chosen/);
   assert.doesNotMatch(src, /pickMallow\(/, 'no second chain');
 });
+
+test('an arrival names the account it signed in (shortened); the guest question names it in full', async () => {
+  const { maskEmail } = await import('../src/auth/namespace.js');
+  const { noticeText, NOTICE_TEXT } = await import('../src/auth/boot.js');
+  assert.equal(maskEmail('ana@example.com'), 'an…@example.com');
+  assert.equal(maskEmail('b@example.com'), 'b…@example.com');
+  assert.equal(maskEmail('bo@x.io'), 'b…@x.io');
+  assert.equal(maskEmail('not an email'), null);
+  assert.equal(maskEmail(null), null);
+  const acct = { mode: 'account', uid: '11111111-1111-4111-8111-111111111111', email: 'ana@example.com' };
+  assert.equal(noticeText('signed-in', acct), 'You’re signed in as an…@example.com.');
+  assert.equal(noticeText('verified', acct), 'Your email is confirmed. You’re signed in as an…@example.com.');
+  assert.equal(noticeText('signed-out', { mode: 'guest' }), NOTICE_TEXT['signed-out']);
+  assert.equal(noticeText('signed-in', { mode: 'account', email: null }), NOTICE_TEXT['signed-in']);
+  assert.equal(noticeText('nonsense', acct), null);
+  const main = readFileSync(`${ROOT}src/app/main.js`, 'utf8');
+  assert.match(main, /noticeText\(AUTH\.notice, AUTH\.ns\)/);
+  const cb = readFileSync(`${ROOT}src/auth/callback.js`, 'utf8');
+  assert.match(cb, /You’re signed in\$\{as\(r\.email\)\}/);
+  const src = readFileSync(`${ROOT}src/app/scenes/account.js`, 'utf8');
+  assert.match(src, /V\['guest-choice'\] = \(o\) => \{[\s\S]{0,400}You’re signed in as /);
+  assert.match(src, /go\('guest-choice', \{ email: r\.email/);
+  // a field's error sits right under that field (Change password: "That password doesn't match." under Current)
+  assert.match(src, /if \(target\) target\.hintEl\.after\(errEl\); else actionsEl\.before\(errEl\);/);
+  // an address stays together (moves to the next line whole), punctuation kept with it
+  assert.match(src, /strong\(o\.email \|\| u\.email \|\| 'your email', '\.'\)/);
+  const css = readFileSync(`${ROOT}src/ui/account.css`, 'utf8');
+  assert.match(css, /\.hm-account-strong \{ display: inline-block; max-width: 100%;/);
+});

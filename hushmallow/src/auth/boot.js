@@ -17,7 +17,7 @@
 
 import PUBLISHED from './public-config.js';
 import { resolveAuthConfig } from './config.js';
-import { bootNamespace, createNamespacedStore, settleNamespace, needsGuestChoice, readPersistedSession, readMarker, guestHasData, cleanupWipes, honourWipe, wipedSince, wipeKey, WIPE_RELOAD } from './namespace.js';
+import { bootNamespace, createNamespacedStore, settleNamespace, needsGuestChoice, readPersistedSession, readMarker, guestHasData, cleanupWipes, honourWipe, wipedSince, wipeKey, WIPE_RELOAD, maskEmail } from './namespace.js';
 import { createStore } from '../engine/storage.js';
 
 const AUTH_PARAMS = ['code', 'token_hash', 'error_code', 'error_description'];
@@ -71,6 +71,20 @@ export const NOTICE_TEXT = Object.freeze({
   'device-cleared': 'This device’s copy of your things is removed.',
   'guest-kept': 'This device’s guest things are with your account here now.',
 });
+
+/**
+ * The notice's line for this page: an arrival names the account it signed in
+ * (shortened, maskEmail), so a link or a shared phone that signed in someone
+ * other than expected is plain at once. null for an unknown notice.
+ */
+export function noticeText(kind, ns) {
+  const base = NOTICE_TEXT[kind];
+  if (!base) return null;
+  const who = ns?.mode === 'account' ? maskEmail(ns.email) : null;
+  if (who && kind === 'signed-in') return `You’re signed in as ${who}.`;
+  if (who && kind === 'verified') return `Your email is confirmed. You’re signed in as ${who}.`;
+  return base;
+}
 
 export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, ls = safe(() => globalThis.localStorage) } = {}) {
   const { config, ns } = boot;

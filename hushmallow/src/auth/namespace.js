@@ -107,6 +107,17 @@ export function readPersistedSession(ls, storageKey) {
 }
 
 /**
+ * An account's address, shortened for a line anyone nearby might see (a
+ * toast, the callback page): enough to tell "that's me" from "that's not
+ * me" (a link or a shared phone can sign in someone else). "an…@example.com"
+ */
+export function maskEmail(email) {
+  const m = /^([^@\s]+)@([^@\s]+)$/.exec(String(email ?? '').trim());
+  if (!m) return null;
+  return `${m[1].slice(0, m[1].length > 2 ? 2 : 1)}…@${m[2]}`;
+}
+
+/**
  * Which namespace this page boots into. config: resolveAuthConfig()'s result.
  * An account's namespace remembers the tombstone it booted with (wipeId), so
  * a later one seals it. A boot that lands while another tab is still

@@ -11,7 +11,7 @@
 //     onChange(fn)        fn({ status, user, event }) → unsubscribe
 //     init()              boot: check the persisted session with the server
 //     signUp({ email, password, name })      → { ok, needsConfirmation, email } | { ok, signedIn, uid, needsGuestChoice }
-//     signIn({ email, password })            → { ok, signedIn, uid, needsGuestChoice } | { ok:false, error }
+//     signIn({ email, password })            → { ok, signedIn, uid, email, needsGuestChoice } | { ok:false, error }
 //     chooseGuestData('keep'|'fresh')        the once-only question after a first sign-in on this device
 //     enter(hash)                            reload into the signed-in account's namespace
 //     signOut({ removeLocal })               local sign-out, session cleanup, reload as guest
@@ -351,7 +351,7 @@ export function createAuth({
     pendingUid = u.id;
     settleWipe(ls, u.id, now());   // signed in here again after its copy was removed: anything left of it goes first
     const s = settleNamespace(ls, u.id, now());
-    return { ok: true, signedIn: true, uid: u.id, needsGuestChoice: s.needsChoice, keepIntent: true };
+    return { ok: true, signedIn: true, uid: u.id, email: u.email, needsGuestChoice: s.needsChoice, keepIntent: true };
   }
 
   // one cooldown per kind of email (Supabase limits each kind per address): 'signup' (sign-up and resend), 'recovery'

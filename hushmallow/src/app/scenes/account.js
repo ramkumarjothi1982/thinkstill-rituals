@@ -163,9 +163,11 @@ export default function account(app, params = {}) {
     h('button', { type: t, class: `hm-auth-btn ${cls}`.trim(), 'data-act': act, onclick, disabled }, label);
   const linkBtn = (label, onclick, act = null) => h('button', { type: 'button', class: 'hm-auth-link', 'data-act': act, onclick }, label);
   const hint = (text, cls = '') => h('p', { class: `hm-auth-hint ${cls}`.trim() }, text);
-  // an email address may break after "@" or a dot, never mid-word
-  const strong = (text) => h('strong', { class: 'hm-account-strong', translate: 'no' },
-    ...String(text).split(/(?<=[@.])/).flatMap((part, i) => (i ? [h('wbr'), part] : [part])));
+  // an email address stays in one piece (account.css: it moves to the next line whole); only one wider
+  // than the card breaks, after "@" or a dot, never mid-word. tail: the punctuation that follows it, kept with it
+  const strong = (text, tail = '') => h('span', { class: 'hm-account-strong' },
+    h('strong', { translate: 'no' }, ...String(text).split(/(?<=[@.])/).flatMap((part, i) => (i ? [h('wbr'), part] : [part]))),
+    tail ? h('span', { class: 'hm-account-tail' }, tail) : null);
   const section = (label, ...kids) => h('section', { class: 'hm-account-section', 'aria-label': label }, h('h2', { class: 'hm-account-eyebrow' }, label), ...kids);
   const list = (items) => h('ul', { class: 'hm-account-list' }, ...items.map((t) => h('li', {}, t)));
 
@@ -219,14 +221,17 @@ export default function account(app, params = {}) {
   function form({ fields, submit, busy, onSubmit, before = [], after = [], act = 'submit', danger = false, quiet = false }) {
     const errEl = h('p', { class: 'hm-auth-error', role: 'alert', id: uid('err') });
     const submitBtn = btn(submit, null, { cls: danger ? 'danger' : quiet ? 'small' : 'primary', type: 'submit', act });
+    const actionsEl = h('div', { class: 'hm-auth-actions' }, submitBtn, ...after);
     const f = h('form', { class: 'hm-auth-form', novalidate: true },
-      ...before, ...fields.map((x) => x.wrap), errEl, h('div', { class: 'hm-auth-actions' }, submitBtn, ...after));
-    const clear = () => { errEl.replaceChildren(); for (const x of fields) { x.input.removeAttribute('aria-invalid'); x.input.setAttribute('aria-describedby', x.hintEl.id); } };
+      ...before, ...fields.map((x) => x.wrap), errEl, actionsEl);
+    const clear = () => { errEl.replaceChildren(); actionsEl.before(errEl); for (const x of fields) { x.input.removeAttribute('aria-invalid'); x.input.setAttribute('aria-describedby', x.hintEl.id); } };
     function fail(error, action) {
       const e = error || friendlyError({}, 'unknown');
+      const target = fields.find((x) => x.name === e.field) || (e.field === 'password' ? fields.find((x) => x.name.includes('password')) : null);
+      // a field's error sits right under that field (and its hint); anything else just above the buttons
+      if (target) target.hintEl.after(errEl); else actionsEl.before(errEl);
       errEl.replaceChildren(e.message || MESSAGES.unknown);
       if (action) errEl.append(' ', linkBtn(action.label, action.run, action.act));
-      const target = fields.find((x) => x.name === e.field) || (e.field === 'password' ? fields.find((x) => x.name.includes('password')) : null);
       if (target) {
         target.input.setAttribute('aria-invalid', 'true');
         target.input.setAttribute('aria-describedby', `${target.hintEl.id} ${errEl.id}`);
@@ -333,7 +338,7 @@ export default function account(app, params = {}) {
     preload();
     return {
       title: 'Check your email',
-      lede: ['We’ve sent a link to ', strong(o.email || 'your email'), '. Open it on this phone or any other to confirm your account.'],
+      lede: ['We’ve sent a link to ', strong(o.email || 'your email', '.'), ' Open it on this phone or any other to confirm your account.'],
       body: [
         hint('It can take a minute. If it isn’t there, look in spam or junk.', 'hm-auth-center'),
         h('div', { class: 'hm-auth-actions' },
@@ -406,7 +411,7 @@ export default function account(app, params = {}) {
     }, 'resend-reset');
     return {
       title: 'Check your email',
-      lede: ['If there’s an account for ', strong(o.email || 'that email'), ', a link to choose a new password is on its way. It works on any device.'],
+      lede: ['If there’s an account for ', strong(o.email || 'that email', ','), ' a link to choose a new password is on its way. It works on any device.'],
       body: [
         hint('It can take a minute. If it isn’t there, look in spam or junk.', 'hm-auth-center'),
         h('div', { class: 'hm-auth-actions' },
@@ -419,16 +424,20 @@ export default function account(app, params = {}) {
     };
   };
 
-  V['guest-choice'] = () => ({
+  V['guest-choice'] = (o) => {
+    // which account this is, said plainly (a link or a shared phone can sign in someone other than you expected)
+    const who = o.email || auth.user()?.email || null;
+    return {
     title: 'Keep this phone’s things?',
-    lede: 'This phone has favourites, settings or a Memory Garden from before you signed in. Keep a copy with your account on this phone?',
+    lede: [...(who ? ['You’re signed in as ', strong(who, '.'), ' '] : []), 'This phone has favourites, settings or a Memory Garden from before you signed in. Keep a copy with your account on this phone?'],
     body: [
       list(['Keep: your account starts with them here. Nothing is uploaded.', 'Not now: your account starts fresh. You can bring them in later from this screen.', 'Either way, the guest’s own copy stays on this phone for when you’re signed out.']),
       h('div', { class: 'hm-auth-actions' },
         btn('Keep them with my account', (e) => { e.currentTarget.disabled = true; choose('keep'); }, { cls: 'primary', act: 'keep' }),
         btn('Not now', (e) => { e.currentTarget.disabled = true; choose('fresh'); }, { act: 'fresh' })),
     ],
-  });
+    };
+  };
 
   V.expired = () => ({
     title: 'You’ve been signed out', lede: 'Your session on this phone ended. Your things are safe, and the guest’s are just as you left them.',
@@ -678,7 +687,7 @@ export default function account(app, params = {}) {
     });
     return {
       title: 'Enter the code',
-      lede: ['You’ve been signed in here for more than a day, so for your safety we’ve also emailed a 6‑digit code to ', strong(o.email || u.email || 'your email'), '.'],
+      lede: ['You’ve been signed in here for more than a day, so for your safety we’ve also emailed a 6‑digit code to ', strong(o.email || u.email || 'your email', '.')],
       body: [f.form],
     };
   };
@@ -748,7 +757,7 @@ export default function account(app, params = {}) {
   /** Signed in (this page is still a guest's): ask about the guest things, or go straight in. */
   function signedIn(r) {
     mood('happy');
-    if (r.needsGuestChoice) { later(() => go('guest-choice', {}, { replace: true }), reduced() ? 0 : 650); return { ok: true, hold: true }; }
+    if (r.needsGuestChoice) { later(() => go('guest-choice', { email: r.email || '' }, { replace: true }), reduced() ? 0 : 650); return { ok: true, hold: true }; }
     later(() => client.enter('#account'), reduced() ? 150 : 800);
     return { ok: true, hold: true };
   }
