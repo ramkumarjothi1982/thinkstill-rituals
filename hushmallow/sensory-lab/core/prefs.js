@@ -1,9 +1,9 @@
-// Sensory Lab preferences — development-only local storage, own namespace.
+// Sensory Lab device settings — development-only local storage, own namespace.
 //
-// Phase 1 keeps the settings the lab needs (sound, motion, material, quality,
-// response style). Comfort DNA (Phase 2) extends this same store; the
-// persistence backend is swappable through adapters/ (a Supabase adapter will
-// implement the same get/set/reset interface once Claude 1's auth is live).
+// Sound, volume, haptics, motion, theme, quality, material, and the Mallow
+// used while personalisation is off. Personal choices (favourite Mallow,
+// response style, colours, what helps…) live in Comfort DNA
+// (core/comfort-dna.js) behind its own store adapter and key.
 // Nothing here touches the main app's keys (hm2:*).
 
 export const PREFS_KEY = 'hm.sensorylab.v1';

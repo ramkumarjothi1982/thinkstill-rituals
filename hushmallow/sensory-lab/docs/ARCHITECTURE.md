@@ -5,16 +5,19 @@ one-way dependency graph with no cycles:
 
 ```
 features/*  ──▶ features/stage-screen ──▶ core/companion
-                                              ├─▶ core/soft-mallow ──▶ src/mallows/rig.js (production, read-only)
-                                              │        ├─▶ core/softbody ──▶ core/materials
-                                              │        ├─▶ core/mesh-renderer
-                                              │        ├─▶ core/expression-engine (deformationFace)
-                                              │        └─▶ adapters/rig-adapter (contract check)
-                                              ├─▶ core/gesture-engine
-                                              ├─▶ core/personality
-                                              ├─▶ core/expression-engine (ExpressionDirector)
-                                              └─▶ src/engine/haptics.js (production, read-only)
-lab.js ──▶ core/prefs, core/sound-engine, core/perf, features/registry
+                     │                        ├─▶ core/soft-mallow ──▶ src/mallows/rig.js (production, read-only)
+                     │                        │        ├─▶ core/softbody ──▶ core/materials
+                     │                        │        ├─▶ core/mesh-renderer
+                     │                        │        ├─▶ core/expression-engine (deformationFace)
+                     │                        │        └─▶ adapters/rig-adapter (contract check)
+                     │                        ├─▶ core/gesture-engine
+                     │                        ├─▶ core/personality
+                     │                        ├─▶ core/expression-engine (ExpressionDirector)
+                     │                        └─▶ src/engine/haptics.js (production, read-only)
+                     └─▶ src/world/realm.js (Hushfold realm backdrops, production, read-only)
+features/pocket-hush ──▶ core/effects, core/pocket-rules, features/pocket/* (one module per moment)
+lab.js ──▶ core/prefs, core/sound-engine, core/perf, features/registry,
+           core/comfort-dna ──▶ adapters/comfort-store (local) | adapters/supabase-comfort (later, unused)
 ```
 
 `core/math.js` is a leaf that everything may use. Only `soft-mallow`,
@@ -123,11 +126,53 @@ unit tested there.
   compressor master, caps voices, rate-limits, disconnects every node, and
   suspends when the page is hidden.
 
-### Sensory Preferences Engine (Phase 1 subset): `core/prefs.js`
+### Device settings: `core/prefs.js`
 - `new Prefs(storage?, key?)`: `get`, `set` (known keys only), `all`,
-  `reset`, `onChange`, `reducedMotion()`.
-- It uses the key `hm.sensorylab.v1`. Comfort DNA (Phase 2) extends this
-  store and adds the persistence adapter interface.
+  `reset`, `onChange`, `reducedMotion()`, `persistent`.
+- It uses the key `hm.sensorylab.v1` for device settings only (sound,
+  volume, haptics, motion, theme, quality, material) and stores only values
+  that differ from the defaults.
+
+### Sensory Preferences Engine (Comfort DNA): `core/comfort-dna.js`
+- `new ComfortDNA(store)`, then `await load()`. `get(key)` returns the
+  effective value (defaults while personalisation is off), `chosen(key)` the
+  saved one, `set(key, value)` validates and skips unchanged writes.
+- Behaviour helpers: `tuning()` (response style, speed and motion scales,
+  voice and touch-sound switches), `breathTiming()`, `palette()`,
+  `environment(kind, mallowId)`, `suggestions(n)`, `surpriseBias()`.
+- Favourites and opt-in history: `toggleFavourite`, `isFavourite`,
+  `record(kind, id)` (only while learning is on, known items only).
+- Privacy: `view()`, `resetPreferences()`, `deleteHistory()`, `deleteAll()`.
+  Stored data is sanitised on load.
+- Stores share one interface (`load`, `save`, `clear`, `describe`):
+  `LocalComfortStore` (key `hm.sensorylab.comfort.v1`, memory fallback),
+  `MemoryComfortStore` (tests), and `SupabaseComfortStore` (an injected
+  client, not connected). Details in `docs/COMFORT_DNA.md`.
+
+### Effects Engine (first part): `core/effects.js`
+- `EffectsLayer(parent, {quality, reducedMotion})`: one canvas over the
+  stage with `add`, `remove`, `clear`, `destroy`.
+- Effects: `GlowOrb`, `Floater` (a pure `step` with hit, hold, drag and
+  release), `BreathRing`, `Bloom`, `Motes`. Phase 3 extends this for
+  Weather Weaver and Nightlight.
+
+### Pocket Hush: `features/pocket-hush.js`, `core/pocket-rules.js`
+- The moment host owns the stage, input routing, hint, time limit, ending
+  (a reaction, a closing line from that Mallow's authored lines, a sound
+  motif, the realm's transform and a bloom) and the end card.
+- Each moment in `features/pocket/` exports `{id, hint, maxSeconds,
+  start(api)}` and uses the host API: `body()`, `hint()`, `button()`,
+  `holdButton()`, `dots()`, `capture()`, `onGesture()`, `progress()`,
+  `complete()`, plus `effectsKit`, `palette` and `timing`.
+- `pickSurprise({modes, bias, recent, hour, reducedMotion, seed})` is a pure
+  rules engine: it avoids recent moments, leans on Comfort DNA, weights
+  evening moments at night, and picks a variant.
+
+### Environments: `src/world/realm.js` (production, read-only)
+- `stage-screen` mounts a Hushfold realm behind the Mallow when an
+  experience asks for one (`backdrop` option, chosen through Comfort DNA).
+  The top bar switches its colour tokens from the realm's sky brightness
+  (`data-backdrop="light|dark"`).
 
 ### Performance: `core/perf.js`
 - `initialTier(pref)` picks the starting quality from the device (pointer
@@ -138,9 +183,9 @@ unit tested there.
   Canvas 2D textured-triangle fallback.
 
 ### Not built yet (later phases)
-These are planned modules: Environment Engine (Phase 3), Effects Engine
-(Phase 3, which will expand the rig's ParticleField), Keepsake Renderer
-(Phase 4), and Connection Interface (Phase 5).
+These are planned modules: the rest of the Environment Engine (weather and
+time of day, Phase 3), the rest of the Effects Engine (Phase 3), Keepsake
+Renderer (Phase 4), and Connection Interface (Phase 5).
 
 ## Integration
 
@@ -149,7 +194,7 @@ These are the points that will change when the lab joins the main app:
 | Seam | Today (lab) | Later (main app) |
 |---|---|---|
 | Rig internals | `SoftMallow` subclasses `MallowRig`. The contract is listed in `adapters/rig-adapter.js` and checked at construction. | Keep the subclass, or move the mesh stage into `rig.js` as an option. Either way it's one file. |
-| Preferences | `core/prefs.js` → localStorage `hm.sensorylab.v1` | A persistence adapter for Supabase, owned by Claude 1's auth (Phase 2 defines the interface and draft table). |
+| Preferences | Device settings: `core/prefs.js` → `hm.sensorylab.v1`. Comfort DNA: `LocalComfortStore` → `hm.sensorylab.comfort.v1` | `SupabaseComfortStore` with the authenticated client from Claude 1's auth, after the draft table (`docs/drafts/comfort_profiles.sql`) is reviewed and applied outside production first. |
 | Sound | Its own `SoundEngine` with lab settings | Share the main app's sound on/off and volume preference through an adapter. |
 | Haptics | `src/engine/haptics.js`, gated by the lab's setting | The same module. |
 | Navigation | Hash router in `lab.js` | The main app's scene router. Features already export `mount(root, ctx)` / `unmount()`. |
