@@ -675,6 +675,8 @@ export default function hushfold(app, params = {}) {
     S.category = r.category || null;
     if (r.level === 'crisis') S.crisis = true;
     else S.care = true;
+    keepSafety();
+    root.classList.add('hf-heavy');   // (the panel's "No plan yet · See plans" steps aside)
     clearTimeout(inviteT); timers.delete(inviteT);
     clearNudge();
     supportPill.hidden = false;
@@ -1190,13 +1192,15 @@ export default function hushfold(app, params = {}) {
   async function resumePendingTell() {
     const p = app.state.pendingTell;
     app.state.pendingTell = null;
-    if (!p || Date.now() - p.at > 30 * 60 * 1000 || !ent.has('paid')) return false;
+    if (!p || Date.now() - p.at > 30 * 60 * 1000) return false;
+    // they asked for something gentle after a care or distress disclosure: support stays up, with or
+    // without a plan (back from the plans page without buying, the visit is still a gentle one)
+    if (p.gentle) { noteSafety(p.gentle); S.careSaid = true; }
+    if (!ent.has('paid')) return false;
     S.invited = true;
     showTell(true);
     if (p.gentle) {
-      // they asked for something gentle after a care or distress disclosure: support stays up, no words in it
-      noteSafety(p.gentle);
-      S.careSaid = true;
+      // ...and the gentle world they chose plays, with no words in it
       later(() => startFlow({ emotion: p.emotion, intention: p.intention || 'calm', input: null, worldId: p.worldId || null }), 700);
       return true;
     }
@@ -1251,6 +1255,10 @@ export default function hushfold(app, params = {}) {
       }
       if (!touchMt) world.showMallow(true);
       stageMallow ||= createStageMallow(world, { touch: null });
+      // something heavy earlier in this page session (Settings and back, the plans page and back…): the
+      // visit is still a gentle one from the first squeeze, support stays close, and the calm line is not said twice
+      const kept = app.state.hfSafety;
+      if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; noteSafety(kept); S.careSaid = true; }
       router = createInputRouter({
         el: world.fx, mallow: stageMallow, thoughts: stage.thoughts,
         onEmpty: (r) => { if (r.type === 'down') stage.ripple(r.x, r.y, M().colours.glow); },
@@ -1259,11 +1267,12 @@ export default function hushfold(app, params = {}) {
       stageMallow.on('touch', onMallowTouch);
       layout();
       // the Mallow first (squeezable within the first second), then its realm
-      const rigP = showMallow(mallowId);
+      // (after something heavy earlier in the visit: no hop, and the attentive face)
+      const rigP = showMallow(mallowId, { entrance: !gentle() });
       rigP.then(() => { if (!S.left) requestAnimationFrame(() => world.setRealm(M().realm, { crossfadeMs: 900 })); });
       await rigP;
       if (S.left) return;
-      stageMallow.setStage('neutral', { quiet: true });
+      stageMallow.setStage(gentle() ? CARE_FACE : 'neutral', { quiet: true });
       addEventListener('resize', onResize);
       visualViewport?.addEventListener('resize', onResize);
       document.addEventListener('keydown', onKey);
@@ -1282,7 +1291,9 @@ export default function hushfold(app, params = {}) {
       // the code the next steps need, fetched while the stage is quiet (a newer deploy can't strand it)
       idle(() => warmModules());
       // back from Another Angle: support stays close after something heavy there (said once, by Zuzu)
-      if (params.safety?.level) { noteSafety(params.safety); S.careSaid = true; }
+      if (params.safety?.level) { if (params.safety.level === 'crisis') S.crisisSpoken = true; noteSafety(params.safety); S.careSaid = true; }
+      // (a crisis earlier in the visit whose calm line was never said: it is said now, once nothing covers the stage)
+      speakCrisis();
       if (await resumePendingTell()) return;
       if (params.flow?.worldId && ent.has('paid')) {
         S.invited = true; showTell(true);

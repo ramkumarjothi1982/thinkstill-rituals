@@ -767,7 +767,7 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
 test('H1: back from Another Angle, panel state, and the modules warmed for a new deploy', () => {
   const scene = read('src/app/scenes/hushfold.js');
   const enter = fnBody(scene, 'async enter() {', 'leave() {');
-  const safetyAt = enter.indexOf('if (params.safety?.level) { noteSafety(params.safety); S.careSaid = true; }');
+  const safetyAt = enter.indexOf("if (params.safety?.level) { if (params.safety.level === 'crisis') S.crisisSpoken = true; noteSafety(params.safety); S.careSaid = true; }");
   assert.ok(safetyAt > 0 && safetyAt < enter.indexOf('await resumePendingTell()'));
   assert.match(enter, /if \(params\.flow\.emotion\) await setFeeling\(params\.flow\.emotion, \{ quiet: true \}\);/);
   assert.match(enter, /if \(params\.flow\.intention\) S\.intention = params\.flow\.intention;/);
@@ -806,4 +806,27 @@ test('H1 r3: the one calm crisis line comes after a crisis-ended world has gone,
   const hold = fnBody(scene, 'function holdWorld(on) {', '// ----------------------------------------------- saved progress');
   assert.match(hold, /if \(held \|\| !worldMode \|\| S\.finishing \|\|/);
   assert.match(hold, /if \(!worldMode \|\| S\.finishing \|\| !flowRef\) return;/);
+});
+
+test('H1 r3: the visit stays gentle across scenes (memory only) and when the plans page is left without buying', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  // the level (no words) is kept in app.state for the page session whenever it rises or the calm line is said
+  const keep = fnBody(scene, 'function keepSafety() {', '// ---------------------------------------------------- telling');
+  assert.match(keep, /app\.state\.hfSafety = \{ level: S\.level, category: S\.category, crisisSpoken: S\.crisisSpoken \};/);
+  assert.doesNotMatch(keep, /text|words|input|localStorage|sessionStorage|store\./, 'only the level, never the words, and never stored');
+  assert.match(fnBody(scene, 'function noteSafety(r) {', 'function safetyHold('), /else S\.care = true;\s*keepSafety\(\);/);
+  // ...and applied again on enter, before the router takes a single squeeze, without repeating the calm line
+  const enter = fnBody(scene, 'async enter() {', 'leave() {');
+  const keptAt = enter.indexOf('if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; noteSafety(kept); S.careSaid = true; }');
+  assert.ok(keptAt > 0 && keptAt < enter.indexOf('router = createInputRouter('), 'restored before any touch is routed');
+  assert.ok(enter.indexOf('speakCrisis();') > keptAt && enter.indexOf('speakCrisis();') < enter.indexOf('await resumePendingTell()'));
+  assert.match(enter, /stageMallow\.setStage\(gentle\(\) \? CARE_FACE : 'neutral', \{ quiet: true \}\);/);
+  assert.match(enter, /const rigP = showMallow\(mallowId, \{ entrance: !gentle\(\) \}\);/);
+  // care before plans on the free tier: back without buying, the gentle level is applied before the plan check
+  const resume = fnBody(scene, 'async function resumePendingTell() {', 'const view = {');
+  const g = resume.indexOf('if (p.gentle) { noteSafety(p.gentle); S.careSaid = true; }');
+  assert.ok(g > 0 && g < resume.indexOf("if (!ent.has('paid')) return false;"), 'the gentle level does not depend on the plan');
+  // no upsell in the panel after something heavy
+  assert.match(fnBody(scene, 'function noteSafety(r) {', 'function safetyHold('), /root\.classList\.add\('hf-heavy'\);/);
+  assert.match(read('src/ui/hushfold.css'), /\.hushfold\.hf-heavy \.hf-panel \.plan:not\(\.on\):not\(\.beyond\) \{ display: none; \}/);
 });
