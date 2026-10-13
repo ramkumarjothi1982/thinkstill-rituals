@@ -15,8 +15,18 @@
 //
 // One shared requestAnimationFrame loop drives every rig; rigs that are off
 // screen or in a hidden tab don't render.
+//
+// The skin outlives a frame: a headless rig (MallowTouch) redraws only the
+// face parts that changed, over the full drawing underneath. The browser can
+// drop a canvas's pixels (a GPU process crash, memory pressure: Chrome fires
+// contextlost, then contextrestored with the canvas blank), so a partial
+// redraw runs only over a full drawing known to be there (_skinBaseOk) — and
+// anything else (a lost or restored context, a new canvas, size or scale, a
+// draw that threw, verifySkin() finding the body gone) makes the next redraw
+// a full one. Otherwise only the changed parts would come back: a patchwork
+// face of eye, brow and mouth tiles with no body.
 
-import { MALLOWS, loadMallowAssets } from './registry.js';
+import { MALLOWS, loadMallowAssets, MASK_SIZE } from './registry.js';
 import { PARAMS, PARAM_NAMES, PRESETS, STAGES, resolveExpression, baseParams, describeExpression, stageLimits, applyStageLimits } from './expressions.js';
 import { REACTIONS } from './reactions.js';
 import { ParticleField } from './particles.js';
@@ -102,6 +112,33 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) ensureLoop(); });
 }
 
+// ------------------------------------------------------- canvas loss --
+const SKIN_LOST_WAIT = 2000;   // ms a lost skin context may take to come back before the skin is a new canvas
+const clockMs = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+/** Listen for a 2D canvas losing and regaining its pixels (contextlost / contextrestored: a GPU process crash,
+ *  memory pressure; restored, the canvas is blank and its context reset). Returns the unsubscribe function. */
+export function watchCanvas(c, lost, restored) {
+  if (!c || typeof c.addEventListener !== 'function') return null;
+  const onLost = () => lost(), onRestored = () => restored();
+  c.addEventListener('contextlost', onLost);
+  c.addEventListener('contextrestored', onRestored);
+  return () => { c.removeEventListener?.('contextlost', onLost); c.removeEventListener?.('contextrestored', onRestored); };
+}
+// one shared canvas, the art mask's grid in size, that reads a skin back (verifySkin); a fresh one after it lost
+// its own context
+let probe = null;
+function probeCtx() {
+  if (probe?.isContextLost?.()) probe = null;
+  if (!probe && typeof document !== 'undefined') {
+    try {
+      const c = document.createElement('canvas');
+      c.width = c.height = MASK_SIZE;
+      probe = c.getContext('2d', { willReadFrequently: true });
+    } catch { probe = null; }
+  }
+  return probe;
+}
+
 // vibration only after the person has interacted (browsers require it);
 // in the iOS app wrapper haptics go through the native bridge instead
 function buzz(pattern) {
@@ -154,6 +191,7 @@ export class MallowRig {
     this.ctx = this.headless ? null : this.canvas.getContext('2d');
     this.skin = document.createElement('canvas');
     this.sctx = this.skin.getContext('2d');
+    this._unwatchSkin = watchCanvas(this.skin, () => this._onSkinLost(), () => this._onSkinRestored());
 
     // parameters
     this.base = baseParams(this.mallow);
@@ -357,6 +395,7 @@ export class MallowRig {
     this.ro?.disconnect();
     this.io?.disconnect();
     this._unbind?.();
+    this._unwatchSkin?.();
     this.canvas.remove();
   }
 
@@ -988,13 +1027,13 @@ export class MallowRig {
     // Glitzi's glitch lines span the body, so they force a full redraw
     // unless a shader draws them.
     const fullKey = this.q + (this.id === 'glitzi' && !shaderGlitch && !covered ? String(this.time) : '');
-    const partial = this.headless && !this.skinDirty && this.skinVersion > 0 && fullKey === this._fullKey;
+    // (a context that is lost now draws nothing: wait for it, the redraw after it comes back is a full one)
+    const ctx = this._skinCtx();
+    if (!ctx) { this.skinDirty = true; return false; }
+    // …and parts are drawn only over a full drawing that is still there
+    const partial = this.headless && !this.skinDirty && this.skinVersion > 0 && fullKey === this._fullKey && this._skinBaseOk();
     this._fullKey = fullKey;
     this.skinDirty = false;
-    const ctx = this.sctx;
-    const q = this.q;
-    const m = this.mallow;
-    const A = this.assets;
     // one reused params object (the face renderers read P.blink as well)
     const P0 = this._P0 || (this._P0 = {});
     Object.assign(P0, v); P0.blink = blinkAmt;
@@ -1012,7 +1051,26 @@ export class MallowRig {
     }
     if (partial && !dirty) { this.skinRect = null; this.skinRects = null; return false; }
     if (!shaderRest) this._drawnRest = this.restMix;
+    // always balanced: a face draw that throws must not leave its clip, transform or blend on the skin's context
+    // for every later frame, and leaves no full drawing to draw parts over
     ctx.save();
+    let drawn = false;
+    try {
+      this._paintSkin(ctx, partial, dirty, P0, shaderGlitch, shaderRest);
+      drawn = true;
+    } finally {
+      ctx.restore();
+      if (!drawn || ctx.isContextLost?.()) { this._skinBase = null; this.skinDirty = true; }
+    }
+    if (!partial && !this.skinDirty) this._skinBase = { canvas: this.skin, ctx, w: this.skin.width, h: this.skin.height, q: this.q };
+    this.skinVersion++;
+    return true;
+  }
+
+  // the skin's pixels, inside _renderSkin's save/restore: the changed face parts (partial: clipped to
+  // this._dirtyRects, over the full drawing) or everything
+  _paintSkin(ctx, partial, dirty, P, shaderGlitch, shaderRest) {
+    const q = this.q, m = this.mallow, A = this.assets;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (partial) {
       const rs = this._dirtyRects;
@@ -1033,7 +1091,6 @@ export class MallowRig {
     ctx.drawImage(A.body, 0, 0, m.size[0], m.size[1]);
 
     const f = m.face;
-    const P = P0;
     // Glitzi's energised/dimmed glitch lines sit on the body, under the eyes
     if (this.id === 'glitzi' && !shaderGlitch) drawGlitchLines(ctx, this, P);
     for (const side of ['L', 'R']) drawEye(ctx, this, f, side, P);
@@ -1054,9 +1111,117 @@ export class MallowRig {
     drawCheeks(ctx, f, P, this.time);
     drawTearsAndSweat(ctx, this, f, P);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
-    this.skinVersion++;
-    return true;
+  }
+
+  // ------------------------------------------------- the skin's canvas --
+  // The skin's 2D context, or null while it is lost (drawing on it would draw nothing; the browser gives it back
+  // blank with contextrestored, and the redraw after that is a full one). A skin with no context or no size, or
+  // one still lost after 2 s, is replaced by a new canvas (at most every 2 s); 'skin' tells MallowTouch, whose
+  // tier A texture is bound to the canvas.
+  _skinCtx() {
+    const s = this.skin, g = this.sctx;
+    // (isContextLost where the engine has it; else the contextlost / contextrestored events)
+    const api = typeof g?.isContextLost === 'function';
+    const lost = api ? !!g.isContextLost() : !!this._skinLost;
+    if (api && !lost) this._skinLost = false;
+    if (g && !lost && s.width > 0 && s.height > 0) { this._skinLostAt = 0; return g; }
+    const t = clockMs();
+    if (g && lost && s.width > 0 && s.height > 0) {
+      if (!this._skinLostAt) this._skinLostAt = t;
+      if (t - this._skinLostAt < SKIN_LOST_WAIT) return null;
+    }
+    if (t - (this._skinNewAt ?? -Infinity) < SKIN_LOST_WAIT || this.destroyed) return null;
+    this._skinNewAt = t;
+    this._newSkin();
+    const n = this.sctx;
+    return n && !n.isContextLost?.() && this.skin.width > 0 ? n : null;
+  }
+
+  _newSkin() {
+    const old = this.skin, m = this.mallow, q = this.q || 1;
+    this._unwatchSkin?.();
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(m.size[0] * q);
+    c.height = Math.ceil(m.size[1] * q);
+    this.skin = c;
+    this.sctx = c.getContext('2d');
+    this._unwatchSkin = watchCanvas(c, () => this._onSkinLost(), () => this._onSkinRestored());
+    this._skinLost = false; this._skinLostAt = 0;
+    this._skinBase = null; this.skinDirty = true;
+    this._faceRect = null;
+    if (old && old !== c) { try { old.width = 0; old.height = 0; } catch { /* gone */ } }
+    this._emit('skin', { reason: 'new' });
+  }
+
+  _onSkinLost() { this._skinLost = true; this._skinBase = null; this.skinDirty = true; }
+  _onSkinRestored() {
+    this._skinLost = false; this._skinLostAt = 0;
+    this._skinBase = null; this.skinDirty = true;
+    this._emit('skin', { reason: 'restored' });
+  }
+
+  // the last full drawing is still on the skin: the same canvas, context, size and scale, nothing lost since
+  _skinBaseOk() {
+    const b = this._skinBase, s = this.skin;
+    return !!b && b.canvas === s && b.ctx === this.sctx && b.w === s.width && b.h === s.height && b.q === this.q && !this._skinLost;
+  }
+
+  /** Headless: is the last full drawing still on the skin? Reads the skin back once, at the art mask's 64 px grid,
+   *  through a probe canvas (never the skin's own context) and looks at a few cells on the body clear of every face
+   *  part (sentinels from the mask). When one has gone transparent — the browser dropped the canvas's pixels
+   *  without a contextlost — the next renderSkin() is a full redraw and this returns false. A sentinel still
+   *  transparent right after that full redraw is not on the body (it is dropped). About once a second in the 2D
+   *  tiers, which show the skin as it is (tier A keeps its own texture). */
+  verifySkin() {
+    if (!this.ready || this.destroyed || this.skinDirty || !this._skinBaseOk() || !this.assets) return true;
+    const cells = this._sentinels(), N = MASK_SIZE;
+    const g = probeCtx();
+    if (!cells.length || !g || g.isContextLost?.()) return true;
+    let px;
+    try {
+      g.imageSmoothingEnabled = false;      // each probe pixel is the skin's pixel at that cell's centre
+      g.clearRect(0, 0, N, N);
+      g.drawImage(this.skin, 0, 0, this.skin.width, this.skin.height, 0, 0, N, N);
+      px = g.getImageData(0, 0, N, N).data;
+    } catch { return true; }
+    const gone = cells.filter(([i, j]) => px[4 * (j * N + i) + 3] < 128);
+    if (!gone.length) { this._verifyRedrew = 0; return true; }
+    if (this._verifyRedrew && this._verifyRedrew !== this.skinVersion) {
+      // transparent on the full drawing just made: a bad sentinel, not a lost skin
+      this._sent = cells.filter((c) => !gone.includes(c));
+      this._verifyRedrew = 0;
+      return true;
+    }
+    this._skinBase = null; this.skinDirty = true;
+    this._verifyRedrew = this.skinVersion;
+    return false;
+  }
+
+  // a few cells of the art mask's 64 px grid on the body (solid, with their neighbours) well clear of every face
+  // part: the lowest one and the outermost on each side, as [column, row]
+  _sentinels() {
+    if (this._sent) return this._sent;
+    const m = this.mallow, mask = this.assets?.mask, N = MASK_SIZE, out = [];
+    if (mask && mask.length >= N * N) {
+      const parts = Object.values(facePartsSrc(m)), pad = 0.04 * Math.max(...m.size);
+      const [bx0, by0, bx1, by1] = m.bodyBox;
+      const solid = (i, j) => mask[j * N + i] >= 0.99;
+      let low = null, left = null, right = null;
+      for (let j = 1; j < N - 1; j++) {
+        for (let i = 1; i < N - 1; i++) {
+          if (!solid(i, j) || !solid(i - 1, j) || !solid(i + 1, j) || !solid(i, j - 1) || !solid(i, j + 1)) continue;
+          const x = ((i + 0.5) / N) * m.size[0], y = ((j + 0.5) / N) * m.size[1];
+          if (x < bx0 || x > bx1 || y < by0 || y > by1) continue;
+          if (parts.some((r) => x > r[0] - pad && x < r[2] + pad && y > r[1] - pad && y < r[3] + pad)) continue;
+          if (!low || j > low[1]) low = [i, j];
+          if (!left || i < left[0]) left = [i, j];
+          if (!right || i > right[0]) right = [i, j];
+        }
+      }
+      for (const c of [low, left, right]) if (c && !out.some((o) => o[0] === c[0] && o[1] === c[1])) out.push(c);
+    }
+    this._sent = out;
+    return out;
   }
 
   _faceSignature(blink) {
