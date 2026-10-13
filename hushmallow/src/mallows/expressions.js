@@ -226,7 +226,11 @@ export const STAGES = {
   neutral: { mix: { neutral: 1 }, intensity: 0 },
   curious: { mix: { curious: 1 }, intensity: 0.6 },
   listening: { mix: { curious: 0.55, calm: 0.45 }, intensity: 0.5, extra: { leanBias: 0.25, tiltBias: 5 } },
-  concerned: { mix: { sad: 0.45, anxious: 0.25, loved: 0.3 }, intensity: 0.45, extra: { leanBias: 0.2, fxRain: 0, tears: 0 } },
+  // attentive and soft after something heavy: the mouth closed (no grin, whatever the Mallow's own resting mouth —
+  // Zuzu's and Pipzi's are open), and nothing drawn over or round the face (no sighs, ?, !, sparks, hearts or rain)
+  concerned: { mix: { sad: 0.45, anxious: 0.25, loved: 0.3 }, intensity: 0.45,
+    extra: { leanBias: 0.2, fxRain: 0, tears: 0, mouthOpen: 0.02, mouthRound: 0, tongue: 0, sighCycle: 0, yawnCycle: 0, fxSigh: 0, fxExclaim: 0, fxQuestion: 0,
+      fxSpark: 0, fxStar: 0, fxHeart: 0, fxNote: 0, sweat: 0 } },
   playful: { mix: { playful: 1 }, intensity: 0.75 },
   surprised: { mix: { surprised: 1 }, intensity: 0.8 },
   comforting: { mix: { loved: 0.5, calm: 0.5 }, intensity: 0.7, extra: { fxHeart: 0.15 } },
