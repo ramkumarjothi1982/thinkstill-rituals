@@ -31,8 +31,9 @@ squeezes, and a resting face. Each one keeps to its character:
 | Noomi | heaviest, slowest to recover | sleepy peeks and yawns, dozes on a hold, startled by a squeeze, grumpy if stroked too much |
 
 The soft body now follows each Mallow's own shape: it uses the rig's width
-profile (belly bulge, droop, cheek puff), so a long hold visibly inflates
-the cheeks and a squeeze bulges where that Mallow bulges. Per-Mallow feel
+profile (belly bulge, droop, cheek puff). When the face puffs its cheeks (a
+squeeze, a pout) the body's cheeks puff too, a squeeze bulges where that
+Mallow bulges, and Soft Breath visibly inflates the whole body. Per-Mallow feel
 multipliers (`MALLOW_FEEL` in `core/materials.js`) make Noomi heavier and
 slower to settle and Glitzi crisper. Closed-eyed Mallows (Blubi, Loomi,
 Noomi) open their eyes for a brief peek when tapped.
@@ -60,7 +61,7 @@ Optional, reversible personalisation (details in `docs/COMFORT_DNA.md`):
   (responses, speed, movement, voice, touch sounds, colour tint, backdrop),
   Pocket Hush (breathing pace, palette, realm backdrop, picker order,
   Surprise Me weights) and Home ("For you" offers with an honest reason:
-  "you said this helps", "a favourite", "you've used this often").
+  "Favourite", "You use this often" or "You said this helps").
 - **Privacy:** personalisation can be switched off (defaults everywhere,
   choices kept), learning is off by default and only counts which moments
   and materials are opened, "View everything saved" lists it all in plain
@@ -104,11 +105,11 @@ In Pocket Hush the Mallow appears in its own Hushfold realm by default
 
 | Suite | Result |
 |---|---|
-| `node --test hushmallow/sensory-lab/tests/*.test.mjs` | **UNIT_RESULT** |
-| `node hushmallow/sensory-lab/tests/e2e-phase2.cjs` (Chromium; seven Mallows, Comfort DNA, every Pocket Hush moment at 390×844, plus 320×568 and 1280×860 layouts) | **P2_RESULT** (`docs/phase2/e2e-phase2.json`) |
-| `node hushmallow/sensory-lab/tests/e2e.cjs` (Phase 1 suite, five viewports, updated for Phase 2 behaviour) | **P1_RESULT** (`docs/phase1/e2e-results.json`) |
+| `node --test hushmallow/sensory-lab/tests/*.test.mjs` | **45 / 45 pass** |
+| `node hushmallow/sensory-lab/tests/e2e-phase2.cjs` (Chromium; seven Mallows, Comfort DNA, every Pocket Hush moment at 390×844, plus 320×568 and 1280×860 layouts) | **231 / 231 pass** (`docs/phase2/e2e-phase2.json`) |
+| `node hushmallow/sensory-lab/tests/e2e.cjs` (Phase 1 suite, five viewports, updated for Phase 2 behaviour) | **308 / 308 pass** (`docs/phase1/e2e-results.json`) |
 | Both browser suites against the published bundle (an imitation of the viewer's frame) | **STAGED_RESULT** |
-| Main app tests (`node --test hushmallow/tests/*.test.mjs`) | **APP_RESULT** (unchanged; this folder isn't in their scope) |
+| Main app tests (`node --test hushmallow/tests/*.test.mjs`) | **69 / 69 pass** (unchanged; this folder isn't in their scope) |
 
 New unit tests cover Comfort DNA (defaults, validation, sanitising
 untrusted data, personalisation off, learning opt-in, reset, delete history,
