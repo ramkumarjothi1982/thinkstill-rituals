@@ -48,7 +48,8 @@ export class SoftMallow extends MallowRig {
     // know when the rig re-rendered its skin, so the texture is re-uploaded only then
     const sctx = this.sctx, clear = sctx.clearRect.bind(sctx);
     sctx.clearRect = (...a) => { this._skinDrawn = true; clear(...a); };
-    this.softReady = this.loaded.then(() => { if (!this.destroyed) this._initSoft(); return this; });
+    this.softReady = this.loaded.then(() => { if (!this.destroyed) this._initSoft(); return this; })
+      .catch((err) => { console.warn('[sensory-lab] soft body unavailable, using the standard rig', err); return this; });
   }
 
   // -------------------------------------------------------------- setup --
@@ -59,8 +60,13 @@ export class SoftMallow extends MallowRig {
     c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
     const x = c.getContext('2d', { willReadFrequently: true });
     x.drawImage(img, 0, 0);
-    const data = x.getImageData(0, 0, c.width, c.height).data;
-    this._mask = alphaMask(data, c.width, c.height, m.bodyBox);
+    try {
+      const data = x.getImageData(0, 0, c.width, c.height).data;
+      this._mask = alphaMask(data, c.width, c.height, m.bodyBox);
+    } catch {
+      // pixels unreadable (e.g. an opaque-origin sandbox): a rounded body shape is close enough
+      this._mask = (u, v) => ((u - 0.5) / 0.52) ** 2 + ((v - 0.52) / 0.54) ** 2 < 1;
+    }
     this._buildBody();
     this.renderer = new MeshRenderer({ prefer: this.prefer });
     this.renderer.setMesh(this.soft.tri, this._uv());
@@ -335,15 +341,16 @@ export class SoftMallow extends MallowRig {
   _drawMesh(ctx) {
     const P = this._pos, T = this.soft.tri;
     ctx.save();
+    const col = getComputedStyle(this.canvas).getPropertyValue('--mesh').trim() || 'rgba(255,255,255,0.55)';
     ctx.lineWidth = 0.75;
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.strokeStyle = col;
     ctx.beginPath();
     for (let t = 0; t < T.length; t += 3) {
       const a = T[t] * 2, b = T[t + 1] * 2, c = T[t + 2] * 2;
       ctx.moveTo(P[a], P[a + 1]); ctx.lineTo(P[b], P[b + 1]); ctx.lineTo(P[c], P[c + 1]); ctx.closePath();
     }
     ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillStyle = col;
     for (let k = 0; k < P.length; k += 2) ctx.fillRect(P[k] - 1, P[k + 1] - 1, 2, 2);
     ctx.restore();
   }

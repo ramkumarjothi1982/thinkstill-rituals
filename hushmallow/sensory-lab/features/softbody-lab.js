@@ -35,7 +35,7 @@ export function mount(root, ctx) {
         // a little demonstration wobble so the change is felt immediately
         ctx.sound.unlock();
         c.act('tap');
-        e.currentTarget.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
+        reveal(e.currentTarget);
       },
     }, MATERIALS[id].label)));
   const actions = h('div', { class: 'chips', role: 'group', 'aria-label': 'Squish without touch' },
@@ -43,5 +43,22 @@ export function mount(root, ctx) {
     h('button', { type: 'button', class: 'chip', onclick: () => c.act('stretch') }, 'Stretch'),
     h('button', { type: 'button', class: 'chip', onclick: () => c.act('tap') }, 'Poke'));
   s.bottom.append(blurb, chips, actions);
-  return { unmount: s.unmount };
+  const edges = () => {
+    const max = chips.scrollWidth - chips.clientWidth;
+    chips.classList.toggle('fade-l', max > 2 && chips.scrollLeft > 2);
+    chips.classList.toggle('fade-r', max > 2 && chips.scrollLeft < max - 2);
+  };
+  chips.addEventListener('scroll', edges, { passive: true });
+  const ro = new ResizeObserver(edges);
+  ro.observe(chips);
+  // scroll only the chip row (scrollIntoView could also scroll a page hosting this one)
+  function reveal(chip) {
+    if (!chip) return;
+    const box = chips.getBoundingClientRect(), r = chip.getBoundingClientRect();
+    if (r.left < box.left + 24) chips.scrollLeft -= box.left + 24 - r.left;
+    else if (r.right > box.right - 24) chips.scrollLeft += r.right - (box.right - 24);
+    edges();
+  }
+  requestAnimationFrame(() => reveal(chips.querySelector('[aria-checked="true"]')));
+  return { unmount() { ro.disconnect(); s.unmount(); } };
 }

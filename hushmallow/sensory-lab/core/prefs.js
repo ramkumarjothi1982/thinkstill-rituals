@@ -38,8 +38,11 @@ export class Prefs {
     try { const raw = this.storage?.getItem(this.key); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
   }
 
+  // only choices that differ from the defaults are stored, so improved defaults reach everyone
   _save() {
-    try { this.storage?.setItem(this.key, JSON.stringify(this.data)); } catch { /* private mode: keep in memory */ }
+    const out = {};
+    for (const [k, v] of Object.entries(this.data)) if (v !== DEFAULTS[k]) out[k] = v;
+    try { this.storage?.setItem(this.key, JSON.stringify(out)); } catch { /* private mode: keep in memory */ }
   }
 
   get(k) { return this.data[k]; }

@@ -44,7 +44,7 @@ export class SoundEngine {
 
   /** Call from a user gesture. Safe to call often. */
   unlock() {
-    if (this.ctx) { if (this.ctx.state === 'suspended' && !document.hidden) this.ctx.resume().catch(() => {}); return; }
+    if (this.ctx) { this._resume(); return; }
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!AC) return;
     try { this.ctx = new AC({ latencyHint: 'interactive' }); } catch { try { this.ctx = new AC(); } catch { return; } }
@@ -64,10 +64,23 @@ export class SoundEngine {
     this.noise = this._noiseBuffer(1.5);
     // iOS: a silent buffer inside the gesture fully unlocks output
     try { const b = c.createBuffer(1, 1, c.sampleRate); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(); } catch { /* ignore */ }
-    if (c.state === 'suspended') c.resume().catch(() => {});
+    this._resume();
   }
 
-  get ready() { return !!this.ctx && this.ctx.state === 'running' && !this.muted; }
+  // Resume from 'suspended' (or WebKit's 'interrupted'). While a resume started
+  // inside a gesture is pending, sounds are still scheduled: they start the
+  // moment the context runs, so the first touch is not silent.
+  _resume() {
+    const c = this.ctx;
+    if (!c || c.state === 'running' || c.state === 'closed' || document.hidden) return;
+    this.resuming = true;
+    c.resume().then(() => { this.resuming = false; }, () => { this.resuming = false; this.stopAll(); });
+  }
+
+  get ready() {
+    const s = this.ctx?.state;
+    return !this.muted && (s === 'running' || (this.resuming && s !== 'closed'));
+  }
 
   setMuted(b) {
     this.muted = !!b;

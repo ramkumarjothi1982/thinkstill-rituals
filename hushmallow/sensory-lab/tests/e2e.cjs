@@ -106,6 +106,8 @@ async function touchtalk(browser, vp) {
   if (vp.touch) await page.touchscreen.tap(face.x, face.y); else await page.mouse.click(face.x, face.y);
   const afterTap = { offset: await peak };
   check(vp, 'tap recognised', (await events(page)).includes('tap'));
+  const audio = await page.evaluate(() => __lab.sound.debug());
+  check(vp, 'first touch on the Mallow starts sound', audio.state === 'running', JSON.stringify(audio));
   check(vp, 'tap dents the soft body', afterTap.offset > 0.01, `offset ${afterTap.offset.toFixed(3)}`);
   const look = await page.evaluate(() => __lab.companion.rig.pointerLook);
   check(vp, 'Mallow looks toward the finger', look && look.x < 0, JSON.stringify(look));
@@ -163,7 +165,9 @@ async function touchtalk(browser, vp) {
   const dev = await events(page);
   check(vp, 'drag stretches the Mallow', stretched.squash < -0.08, `squash ${stretched.squash.toFixed(3)}`);
   check(vp, 'release recognised', dev.includes('drag') && dev.includes('release'), dev.join());
-  await page.waitForTimeout(2500);
+  // wait 2.5 s of *simulated* time (software-GL frames are slow; each frame is capped at 50 ms of physics)
+  const t0 = await page.evaluate(() => __lab.companion.rig.time);
+  await page.waitForFunction((t0) => __lab.companion.rig.time - t0 >= 2.5, t0, { timeout: 30000 });
   const settled = await metrics(page);
   // energy is not checked: Boppo's own idle hops keep him moving
   check(vp, 'settles back to shape after release', settled.offset < 0.06 && Math.abs(settled.squash) < 0.06, JSON.stringify({ o: settled.offset.toFixed(3), s: settled.squash.toFixed(3) }));
@@ -316,6 +320,23 @@ async function lifecycle(browser, vp) {
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(OUT, `${vp.name}-settings.jpg`), type: 'jpeg', quality: 80 });
+  // Settings: Mallow picker and Reset rebuild the screen in place (the page must never close or reload)
+  await page.evaluate(() => { window.__marker = 1; });
+  await page.locator('.pills [data-mallow="blubi"]').click();
+  await page.waitForFunction(() => __lab.companion?.rig?.id === 'blubi' && __lab.companion.rig.soft, null, { timeout: 15000 });
+  await page.waitForTimeout(400);
+  const picked = await page.evaluate(() => ({ marker: window.__marker, sheets: document.querySelectorAll('.sheet').length, canvases: document.querySelectorAll('canvas').length,
+    focus: document.activeElement?.getAttribute('aria-label'), stored: JSON.parse(localStorage.getItem('hm.sensorylab.v1') || '{}').mallow }));
+  check(vp, 'Mallow picker switches the Mallow in place', picked.marker === 1 && picked.sheets === 0 && picked.canvases === 1 && picked.stored === 'blubi', JSON.stringify(picked));
+  check(vp, 'focus returns to Settings after a switch', picked.focus === 'Settings', String(picked.focus));
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Reset' }).click();
+  await page.waitForFunction(() => __lab.companion?.rig?.id === 'boppo' && __lab.companion.rig.soft, null, { timeout: 15000 });
+  await page.waitForTimeout(400);
+  const reset = await page.evaluate(() => ({ marker: window.__marker, sheets: document.querySelectorAll('.sheet').length, theme: document.documentElement.getAttribute('data-theme'),
+    pref: __lab.prefs.get('theme'), motion: __lab.companion.rig.opts.reducedMotion, monitor: !!__lab.ctx.monitor?.enabled }));
+  check(vp, 'Reset restores defaults without closing or reloading', reset.marker === 1 && reset.sheets === 0 && reset.pref === 'system' && reset.theme === null && reset.monitor, JSON.stringify(reset));
   const keys = await page.evaluate(() => Object.keys(localStorage));
   check(vp, 'lab stores only its own key', keys.every((k) => k === 'hm.sensorylab.v1'), keys.join());
   check(vp, 'lifecycle: no console errors', !errors.length, errors.join(' | '));

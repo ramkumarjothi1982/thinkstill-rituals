@@ -10,8 +10,8 @@ export function stageScreen(root, ctx, { title, subtitle, material, extraButtons
   const m = MALLOWS[ctx.mallowId];
   const screen = h('section', { class: 'screen', 'aria-label': title });
   const wrap = h('div', { class: 'stage-wrap' });
-  wrap.style.setProperty('--mallow-glow', hexA(m.colours.glow, 0.35));
   const tint = h('div', { class: 'stage-tint' });
+  tint.style.setProperty('--mallow-glow', hexA(m.colours.glow, 0.35));
   const stage = h('div', { class: 'stage', tabindex: '0', role: 'application',
     'aria-label': `${m.name}. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.` });
   const soundBtn = iconBtn(ctx.prefs.get('sound') ? 'sound' : 'mute', 'Mute sound', () => {

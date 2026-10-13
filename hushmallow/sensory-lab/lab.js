@@ -18,7 +18,7 @@ const prefs = new Prefs();
 const sound = new SoundEngine({ volume: prefs.get('volume'), muted: !prefs.get('sound') });
 
 // Phase 1 is tuned on Boppo. Other Mallows can be previewed (untuned) from
-// Settings, or locally with ?mallow=<id>.
+// Settings, or locally with ?mallow=<id> (the query string never reaches a hosted preview).
 const PHASE1_MALLOW = 'boppo';
 const askMallow = (params.get('mallow') || '').toLowerCase();
 const validMallow = (id) => (MALLOW_IDS.includes(id) ? id : null);
@@ -41,7 +41,7 @@ const ctx = {
 };
 
 // adaptive quality (auto only): step down a tier if frames are consistently slow
-if (!qParam && prefs.get('quality') === 'auto') {
+function startMonitor() {
   ctx.monitor = new FrameMonitor((p75) => {
     const next = NEXT_TIER[quality];
     if (!next) { ctx.monitor.enabled = false; return; }
@@ -50,20 +50,23 @@ if (!qParam && prefs.get('quality') === 'auto') {
     ctx.companion?.rig.setQuality(next);
   });
 }
+if (!qParam && prefs.get('quality') === 'auto') startMonitor();
 
 // Theme: 'system' leaves the root alone, so the device setting (or a theme the
 // hosting page sets on the root) decides; 'dark' / 'light' override it.
 const rootEl = document.documentElement;
 let hostTheme = rootEl.getAttribute('data-theme');
-let ownTheme = null;
-new MutationObserver(() => {
-  const t = rootEl.getAttribute('data-theme');
-  if (t !== ownTheme) hostTheme = t;          // changed by the host, not by us
-}).observe(rootEl, { attributes: true, attributeFilter: ['data-theme'] });
+const themeObserver = new MutationObserver(() => {
+  hostTheme = rootEl.getAttribute('data-theme');   // only host writes reach here (ours are discarded below)
+  const t = prefs.get('theme');
+  if ((t === 'dark' || t === 'light') && hostTheme !== t) applyTheme();   // an explicit choice wins
+});
+themeObserver.observe(rootEl, { attributes: true, attributeFilter: ['data-theme'] });
 function applyTheme() {
   const t = prefs.get('theme');
-  ownTheme = t === 'dark' || t === 'light' ? t : hostTheme;
-  if (ownTheme) rootEl.setAttribute('data-theme', ownTheme); else rootEl.removeAttribute('data-theme');
+  const want = t === 'dark' || t === 'light' ? t : hostTheme;
+  if (want) rootEl.setAttribute('data-theme', want); else rootEl.removeAttribute('data-theme');
+  themeObserver.takeRecords();   // our own write is not a host change
 }
 applyTheme();
 prefs.onChange((k, v) => {
@@ -73,8 +76,17 @@ prefs.onChange((k, v) => {
   if (k === 'motion' || k === '*') ctx.companion?.setReducedMotion(prefs.reducedMotion());
   if (k === 'style' || k === '*') ctx.companion?.setStyle(prefs.get('style'));
   if (k === 'showMesh') ctx.companion?.setShowMesh(v);
-  if (k === 'quality' && v !== 'auto') { quality = v; ctx.companion?.rig.setQuality(v); if (ctx.monitor) ctx.monitor.enabled = false; }
+  if (k === 'quality') {
+    if (v === 'auto') { quality = initialTier('auto'); ctx.companion?.rig.setQuality(quality); startMonitor(); }
+    else { quality = v; ctx.companion?.rig.setQuality(v); if (ctx.monitor) ctx.monitor.enabled = false; }
+  }
 });
+
+// Audio may only start from a real user gesture. Touch pointerdown does not
+// count (pointerup / touchend / click / keydown do), so unlock on those too.
+for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) {
+  addEventListener(ev, () => { if (prefs.get('sound')) sound.unlock(); }, { capture: true, passive: true });
+}
 
 // ------------------------------------------------------------------ home --
 function home() {
@@ -114,7 +126,7 @@ function card(e) {
 
 // -------------------------------------------------------------- settings --
 function settings() {
-  openSheet(root, 'Settings', () => {
+  openSheet(root, 'Settings', (close) => {
     const vol = h('input', { type: 'range', min: '0', max: '1', step: '0.05', value: String(prefs.get('volume')), 'aria-label': 'Volume',
       oninput: (e) => prefs.set('volume', +e.target.value) });
     const row = (label, ctl, sub) => h('div', { class: 'row' }, h('span', { class: 'lbl' }, label, sub ? h('span', { class: 'sub' }, sub) : null), ctl);
@@ -126,28 +138,37 @@ function settings() {
       row('Motion', segmented([['system', 'System'], ['reduced', 'Reduced'], ['full', 'Full']], prefs.get('motion'), (v) => prefs.set('motion', v), 'Motion')),
       row('Responses', segmented([['gentle', 'Gentle'], ['balanced', 'Balanced'], ['playful', 'Playful']], prefs.get('style'), (v) => prefs.set('style', v), 'Response style')),
       row('Theme', segmented([['system', 'System'], ['dark', 'Dark'], ['light', 'Light']], prefs.get('theme'), (v) => prefs.set('theme', v), 'Theme')),
-      row('Mallow', mallowPicker(close), 'Boppo is tuned; the others are untuned previews'),
+      h('div', { class: 'row stack' }, h('span', { class: 'lbl' }, 'Mallow', h('span', { class: 'sub' }, 'Boppo is tuned; the others are untuned previews')), mallowPicker(close)),
       row('Quality', segmented([['auto', 'Auto'], ['high', 'High'], ['medium', 'Med'], ['low', 'Low']], prefs.get('quality'), (v) => prefs.set('quality', v), 'Quality'), `Running: ${quality}`),
       row('Lab settings', h('button', { class: 'btn-quiet', type: 'button', onclick: () => {
         prefs.reset();
         mallowId = PHASE1_MALLOW;
         quality = initialTier('auto');
+        startMonitor();
         close();
-        route(lab.route);
+        reroute();
       } }, 'Reset'), 'Stored only in this browser'));
   });
 }
 
 function mallowPicker(close) {
-  const sel = h('select', { id: 'lab-mallow', class: 'select', 'aria-label': 'Mallow',
-    onchange: (e) => {
-      mallowId = e.target.value;
-      prefs.set('mallow', mallowId);
-      close();
-      route(lab.route);
-    } },
-  ...MALLOW_IDS.map((id) => h('option', { value: id, selected: id === mallowId }, MALLOWS[id].name + (id === PHASE1_MALLOW ? '' : ' (preview)'))));
-  return sel;
+  const wrap = h('div', { class: 'pills', role: 'radiogroup', 'aria-label': 'Mallow' },
+    ...MALLOW_IDS.map((id) => h('button', {
+      type: 'button', role: 'radio', 'aria-checked': String(id === mallowId), 'data-mallow': id,
+      onclick: () => {
+        if (id === mallowId) return;
+        mallowId = id;
+        prefs.set('mallow', id);
+        close();
+        reroute();
+      },
+    }, MALLOWS[id].name)));
+  return wrap;
+}
+
+/** Rebuild the current screen (after a Mallow change or Reset) and put focus back on Settings. */
+function reroute() {
+  route(lab.route).then(() => root.querySelector('button[aria-label="Settings"]')?.focus({ preventScroll: true }));
 }
 
 // ---------------------------------------------------------------- router --
