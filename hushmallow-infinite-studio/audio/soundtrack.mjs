@@ -176,6 +176,10 @@ function buildPlan(log) {
         S(t + 0.10, 'bell', { f: N.E7, peak: 0.0035, decay: 0.4, partials: 'celesta', send: 0.45 });
         break;
 
+      case 'peek': // one eye cracks open: a single soft, rising "pip?" (quieter than the blinks)
+        S(t, 'blip', { f: 900, f1: 1180, glide: 0.06, a: 0.002, h: 0.01, d: 0.07, peak: 0.034, lp: 3200, send: 0.18 });
+        break;
+
       case 'startle': // THE comedic beat: cartoon eye-pop ON the frame + Noomi's surprise + a tiny boing
         // still the loudest gesture of the piece, but ~4 LU above the mix, not a stinger
         S(t, 'blip', { f: 340, f1: 1500, glide: 0.045, a: 0.0015, h: 0.012, d: 0.055, peak: 0.066, lp: 4200, send: 0.12 });

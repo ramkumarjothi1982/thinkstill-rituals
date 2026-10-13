@@ -3,6 +3,7 @@
 //   node render/render.mjs                         full render → output/<id>.mp4
 //   node render/render.mjs --stills 0,54,120       PNG stills only → output/stills/
 //   node render/render.mjs --dry                   cue log + audio curves only → output/cues.json
+//   node render/render.mjs --remux                 new soundtrack from cues.json + mux onto the existing video pass
 //   options: --video my-brain-at-2am  --seed 20261013  --no-audio  --crf 17  --out <dir>
 //
 // Pipeline: static server (repo root) → headless Chromium (Playwright) loads
@@ -31,6 +32,7 @@ const DRY = !!opt('dry', false);
 const NO_AUDIO = !!opt('no-audio', false);
 const CRF = opt('crf', '16');
 const LIMIT = opt('frames', null);
+const REMUX = !!opt('remux', false);
 
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -72,8 +74,32 @@ function ffmpeg(argv, { input } = {}) {
   });
 }
 
+// soundtrack from the cue log, then mux it onto the video pass (AAC, faststart, provenance)
+async function assemble(info) {
+  const silent = path.join(OUT, `${VIDEO}.video.mp4`);
+  const final = path.join(OUT, `${VIDEO}.mp4`);
+  const wav = path.join(OUT, `${VIDEO}.soundtrack.wav`);
+  await new Promise((resolve, reject) => {
+    const p = spawn(process.execPath, [path.join(ROOT, 'audio', 'soundtrack.mjs'), path.join(OUT, 'cues.json'), wav], { stdio: 'inherit' });
+    p.on('close', (c) => (c === 0 ? resolve() : reject(new Error(`soundtrack exited ${c}`))));
+  });
+  await ffmpeg([
+    '-y', '-hide_banner', '-loglevel', 'error', '-i', silent, '-i', wav,
+    '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy',
+    '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2',
+    '-t', String(info.duration), '-metadata', `comment=${sourceStamp()}`, '-metadata', `title=${info.title || VIDEO}`,
+    '-movflags', '+faststart', final,
+  ]);
+  log('wrote', final);
+}
+
 async function main() {
   const t0 = Date.now();
+  if (REMUX) {
+    const c = JSON.parse(fs.readFileSync(path.join(OUT, 'cues.json'), 'utf8'));
+    await assemble({ duration: c.duration, title: c.title });
+    return;
+  }
   const { server, browser, page, info } = await openStage();
   log(`${info.title}: ${info.width}×${info.height} @ ${info.fps} fps, ${info.frames} frames`);
   try {
@@ -130,27 +156,14 @@ async function main() {
       },
     });
     const { cues, curves } = await page.evaluate(() => ({ cues: window.__stage.cues, curves: window.__stage.curves }));
-    fs.writeFileSync(path.join(OUT, 'cues.json'), JSON.stringify({ video: VIDEO, fps: info.fps, duration: info.duration, cues, curves }, null, 1));
+    fs.writeFileSync(path.join(OUT, 'cues.json'), JSON.stringify({ video: VIDEO, title: info.title, fps: info.fps, duration: info.duration, cues, curves }, null, 1));
     log(`video pass done in ${((Date.now() - t0) / 1000).toFixed(0)} s; ${cues.length} cues`);
     await browser.close();
     server.close();
 
-    const final = path.join(OUT, `${VIDEO}.mp4`);
-    if (NO_AUDIO) { fs.copyFileSync(silent, final); log('wrote', final, '(no audio)'); return; }
-    // soundtrack from the cue log
-    const wav = path.join(OUT, `${VIDEO}.soundtrack.wav`);
-    await new Promise((resolve, reject) => {
-      const p = spawn(process.execPath, [path.join(ROOT, 'audio', 'soundtrack.mjs'), path.join(OUT, 'cues.json'), wav], { stdio: 'inherit' });
-      p.on('close', (c) => (c === 0 ? resolve() : reject(new Error(`soundtrack exited ${c}`))));
-    });
-    await ffmpeg([
-      '-y', '-hide_banner', '-loglevel', 'error', '-i', silent, '-i', wav,
-      '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy',
-      '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2',
-      '-t', String(info.duration), '-metadata', `comment=${sourceStamp()}`, '-metadata', `title=${info.title}`,
-      '-movflags', '+faststart', final,
-    ]);
-    log('wrote', final, `in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+    if (NO_AUDIO) { fs.copyFileSync(silent, path.join(OUT, `${VIDEO}.mp4`)); log('wrote', `${VIDEO}.mp4`, '(no audio)'); return; }
+    await assemble(info);
+    log(`done in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
   } finally {
     try { await browser.close(); } catch {}
     try { server.close(); } catch {}
