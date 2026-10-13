@@ -100,3 +100,35 @@ test('Settings → Privacy account row: the button stacks under the label on a n
   assert.match(css, /\.setting\.setting-action > \.btn \{ flex: 1 0 auto; \}/);
   assert.doesNotMatch(read('src/ui/account.css'), /setting-action/, 'not where Settings cannot see it');
 });
+
+// ------------------------------------------------------------------ 4 --
+test('Plans: the top bar rests on a veil over the scrolled words; no lone word in the billing note or the support link', async () => {
+  const { periodNote, SUPPORT_LINK } = await import('../src/app/scenes/plans.js');
+  // breaks only after a "·": "Test purchase · monthly ·" / "nothing is charged", never "· nothing…" or "nothing is / charged"
+  const test1 = periodNote({ period: 'monthly' });
+  assert.equal(test1.replaceAll(NBSP, ' '), 'Test purchase · monthly · nothing is charged');
+  const spaces = [...test1.matchAll(/ /g)].map((m) => m.index);
+  for (const i of spaces) assert.equal(test1[i - 1], '·', `a plain space only after "·" (at ${i})`);
+  assert.equal(periodNote({ period: 'yearly' }).replaceAll(NBSP, ' '), 'Test purchase · yearly · nothing is charged');
+  assert.ok(periodNote({ native: true, period: 'yearly' }).endsWith(`Cancel any${NBSP}time.`));
+  assert.equal(periodNote({ native: true }).replaceAll(NBSP, ' '), 'Billed monthly by the App Store. Cancel any time.');
+  // "It's free →" stays together (and "right now?")
+  assert.equal(SUPPORT_LINK.replaceAll(NBSP, ' '), 'Need support right now? It’s free →');
+  assert.ok(SUPPORT_LINK.endsWith(`It’s${NBSP}free${NBSP}→`));
+  assert.match(read('src/app/scenes/plans.js'), /openSupport\(app\) \}, SUPPORT_LINK\)/);
+  const css = read('src/ui/app.css');
+  assert.match(css, /\.invite-period \{[^}]*text-wrap: balance;/);
+  // the veil: from the top of the screen (the scroller runs over the scene's top padding) to a soft
+  // fade under the bar, near-opaque night ink plus a blur, shown once the page has scrolled
+  assert.match(css, /#scene \{[^}]*--scene-pad-top: calc\(var\(--safe-top\) \+ 14px\);[^}]*padding: var\(--scene-pad-top\)/);
+  assert.match(css, /\.plans \{[^}]*height: calc\(100% \+ var\(--scene-pad-top\)\); margin: calc\(-1 \* var\(--scene-pad-top\)\)/);
+  assert.match(css, /\.plans > \.plans-topbar \{[^}]*position: sticky; top: 0;[^}]*padding: var\(--scene-pad-top\) var\(--gutter\) 0; min-height: calc\(44px \+ var\(--scene-pad-top\)\);/);
+  const veil = css.match(/\.plans > \.plans-topbar::before \{([^}]*)\}/)[1];
+  assert.match(veil, /inset: 0 0 -28px; z-index: -1; pointer-events: none; opacity: 0;/);
+  assert.match(veil, /rgba\(8,6,22,\.95\)/);
+  assert.match(veil, /backdrop-filter: blur\(14px\)/);
+  assert.match(css, /\.plans\.scrolled > \.plans-topbar::before \{ opacity: 1; \}/);
+  assert.doesNotMatch(css, /\.plans\.scrolled > \.plans-topbar \{ background-color/, 'the old see-through band is gone');
+  // the entrance fade is not held, or the blur would see nothing under the bar (Chrome's backdrop root)
+  assert.match(css, /\.plans\.scene-enter \{ animation-name: fadeIn; animation-fill-mode: backwards; \}/);
+});

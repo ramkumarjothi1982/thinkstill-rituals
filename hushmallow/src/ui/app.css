@@ -18,7 +18,8 @@ a { color: var(--accent); }
 #fx-layer { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
 #fx-layer.live { pointer-events: auto; touch-action: none; }
 #scene { position: fixed; inset: 0; z-index: 3; pointer-events: none; display: flex; flex-direction: column;
-  padding: calc(var(--safe-top) + 14px) var(--gutter) calc(var(--safe-bottom) + 16px); }
+  --scene-pad-top: calc(var(--safe-top) + 14px);
+  padding: var(--scene-pad-top) var(--gutter) calc(var(--safe-bottom) + 16px); }
 #scene > * { pointer-events: auto; }
 #scene .spacer { flex: 1; pointer-events: none; }
 #sheet-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
@@ -221,11 +222,16 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 /* ---------------------------------------------------------- plans --- */
 /* Two invitations into the Hushfold. The top of the screen lets touches
    through to the live Mallow; a veil keeps every line readable over any
-   realm (Sunpop's peach sky included). */
-.plans { position: relative; isolation: isolate; display: flex; flex-direction: column; height: 100%; overflow-y: auto; overscroll-behavior: contain;
-  pointer-events: none !important; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) 10px; scrollbar-width: none; }
+   realm (Sunpop's peach sky included). The scroller runs up to the top of
+   the screen (over the scene's top padding), so the words scroll on under
+   the top bar's veil instead of being cut off in a hard line 14 px down. */
+.plans { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+  height: calc(100% + var(--scene-pad-top)); margin: calc(-1 * var(--scene-pad-top)) calc(var(--gutter) * -1) 0;
+  pointer-events: none !important; padding: 0 var(--gutter) 10px; scrollbar-width: none; }
 .plans::-webkit-scrollbar { display: none; }
-.plans.scene-enter { animation-name: fadeIn; }
+/* the fade is not held once it ends: a held opacity animation makes the scroller a
+   backdrop root (Chrome), and the top bar's veil could not blur the words under it */
+.plans.scene-enter { animation-name: fadeIn; animation-fill-mode: backwards; }
 .plans::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(180deg, rgba(8,6,22,0) 0%, rgba(8,6,22,.18) 16%, rgba(8,6,22,.62) 34%, rgba(8,6,22,.78) 60%, rgba(8,6,22,.86) 100%); }
 .plans > .topbar, .plans-body { pointer-events: auto; }
@@ -276,9 +282,9 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .invite-list b { color: var(--text-1); font-weight: 750; }
 .invite-list li.all b { font-weight: 750; }
 .invite-note { margin: -4px 0 16px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.06); border: 1px solid var(--line);
-  font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-2); }
+  font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-2); text-wrap: pretty; }
 .invite-cta { display: grid; gap: 8px; }
-.invite-period { margin: 0; text-align: center; font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); }
+.invite-period { margin: 0; text-align: center; font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); text-wrap: balance; }
 .invite-price { margin: 0; text-align: center; font: var(--type-label); letter-spacing: var(--type-label-ls); font-weight: 700; color: var(--text-1); }
 .invite-price[hidden] { display: none; }
 /* a purchase in flight: the tapped invitation shows a soft ring, the others rest */
@@ -286,15 +292,20 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .invite-buy.is-busy .invite-buy-label::after { content: ''; display: inline-block; width: 15px; height: 15px; margin-left: 10px; vertical-align: -2px; border-radius: 50%;
   border: 2px solid currentColor; border-right-color: transparent; opacity: .8; animation: spin 900ms linear infinite; }
 @media (prefers-reduced-motion: reduce) { .invite-buy.is-busy .invite-buy-label::after { animation: none; border-right-color: currentColor; opacity: .45; } }
-/* the back button stays in reach while the invitation scrolls, on a soft fade */
-.plans > .plans-topbar { position: sticky; top: 0; z-index: 2; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter); transition: background-color 240ms var(--ease-out); }
-.plans > .plans-topbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 22px; pointer-events: none; opacity: 0; transition: opacity 240ms var(--ease-out);
-  background: linear-gradient(180deg, rgba(8,6,22,.78), rgba(8,6,22,0)); }
-.plans.scrolled > .plans-topbar { background-color: rgba(8,6,22,.78); }
-.plans.scrolled > .plans-topbar::after { opacity: 1; }
+/* the back button stays in reach while the invitations scroll. Scrolled, it rests on
+   a veil of the same night ink as the cards' glass, from the top of the screen to a
+   soft fade under the bar: blurred, so the words passing under it are a haze, never
+   a second line of text beside the button. The bar sits where it always did (its top
+   padding is the scene's). */
+.plans > .plans-topbar { position: sticky; top: 0; z-index: 2; margin: 0 calc(var(--gutter) * -1); padding: var(--scene-pad-top) var(--gutter) 0; min-height: calc(44px + var(--scene-pad-top)); }
+.plans > .plans-topbar::before { content: ''; position: absolute; inset: 0 0 -28px; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 240ms var(--ease-out);
+  background: linear-gradient(180deg, rgba(8,6,22,.95), rgba(8,6,22,.88) calc(100% - 40px), rgba(8,6,22,.5) calc(100% - 18px), rgba(8,6,22,0));
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 30px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 30px), transparent); }
+.plans.scrolled > .plans-topbar::before { opacity: 1; }
 .invite-included { color: var(--text-2); }
 .plans-foot { display: grid; gap: 4px; margin-top: 14px; }
-.test-note { font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); text-align: center; margin: 8px 8px 0; text-shadow: var(--type-shadow); }
+.test-note { font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); text-align: center; margin: 8px 8px 0; text-shadow: var(--type-shadow); text-wrap: pretty; }
 @media (prefers-reduced-motion: reduce) {
   .invite, .invite::after { animation: none; }
   .invite::after { display: none; }
