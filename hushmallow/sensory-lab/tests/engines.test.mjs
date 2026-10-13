@@ -317,6 +317,6 @@ test('lab prefs use their own namespace and reset cleanly', () => {
 test('only built experiences are playable; all ten are listed', () => {
   assert.equal(EXPERIENCES.length, 10);
   const live = EXPERIENCES.filter((e) => e.load).map((e) => e.id);
-  assert.deepEqual(live, ['touchtalk', 'softbody']);
+  assert.deepEqual(live, ['touchtalk', 'softbody', 'pocket-hush', 'comfort-dna']);
   for (const id of MATERIAL_IDS) assert.ok(MATERIALS[id].label && MATERIALS[id].sound);
 });
