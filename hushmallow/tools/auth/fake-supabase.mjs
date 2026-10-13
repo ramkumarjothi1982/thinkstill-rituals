@@ -586,6 +586,7 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
         sessions: [...sessions.values()].filter((s) => !s.revoked).length,
         sessionsByUser: [...sessions.values()].filter((s) => !s.revoked && users.has(s.uid)).reduce((o, s) => ({ ...o, [s.uid]: (o[s.uid] || 0) + 1 }), {}),
         liveSessions: [...sessions.entries()].filter(([, s]) => !s.revoked && users.has(s.uid)).map(([sid]) => sid),
+        pending,   // table requests held by restDelayMs right now
         rows: Object.fromEntries(Object.entries(rows).map(([t, list]) => [t, list.map((r) => ({ ...r }))])),
       });
     }

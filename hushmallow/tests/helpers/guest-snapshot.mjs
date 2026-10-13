@@ -9,7 +9,8 @@ export const GUEST_DEVICE_ID = 'Qm9vcHBvLWRldmljZS0xMjM0';   // makeDeviceId's s
 /** { 'hm2:<key>': '<raw string>' } for a guest, timestamps relative to `now`. */
 export function todayGuestKeys(now = Date.now()) {
   return {
-    'hm2:prefs': JSON.stringify({ ...DEFAULTS, textScale: 1.25, subtitleSpeed: 1.25, motion: 'reduced', haptics: false, mallow: 'zuzu', seenIntro: true }),
+    // consistent the way today's app keeps them: the audio and haptics engines mirror prefs.sound / volume / haptics in their raw keys
+    'hm2:prefs': JSON.stringify({ ...DEFAULTS, sound: false, volume: 0.35, textScale: 1.25, subtitleSpeed: 1.25, motion: 'reduced', haptics: false, mallow: 'zuzu', seenIntro: true }),
     'hm2:hushfold.favourites': JSON.stringify({ v: 1, ids: ['static-storm', 'luminous-ocean'] }),
     'hm2:hushfold.progress': JSON.stringify({ v: 1, savedAt: now - 3600_000, worldId: 'static-storm', idx: 1, sequence: ['luminous-ocean', 'static-storm'], step: 0.4, emotion: 'anxious', intention: 'calm', mallow: 'zuzu', seed: 12345 }),
     'hm2:hushfold.rotation': JSON.stringify({ v: 1, bags: { worlds: ['static-storm'] } }),
