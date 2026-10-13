@@ -80,15 +80,18 @@ export function thoughtZone(x, y, rr, plateW = 0, out = {}) {
  * lines, side:'above'|'below'|'side', x, y}, homeY (camera: the s = 0.5 line), labelW, slots:[{x, y, D}],
  * floor (lowest y a floater may use), rects: { band, mallow, thought, plate } }.
  */
-export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn = null, n = 0 }) {
+export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn = null, n = 0, x1 = W }) {
   const U = Math.min(W, H), E = OCEAN.EDGE;
+  // x1: the right edge of the stage's free width (left of the shell's side panel while it is open): the thought, its
+  // words and the bubbles are planned left of it (the sea and its camera still span W)
+  const XR = Math.max(Math.min(W, 240), Math.min(W, Number.isFinite(x1) ? x1 : W));
   const M = mallow && mallow.height > 20 ? { left: mallow.left, right: mallow.right ?? mallow.left + mallow.width, top: mallow.top, bottom: mallow.bottom ?? mallow.top + mallow.height } : defaultMallowBox(W, H);
   M.width = M.right - M.left; M.height = M.bottom - M.top;
   const bandBottom = band ? band.y + band.h : 0;
   const floor = H - OCEAN.BOTTOM;
   const r = clamp(Math.round(U * 0.085), 26, 40);
-  const labelW = Math.min(OCEAN.PLATE_MAX, W - 2 * E);
-  const P = plateIn && plateIn.w > 0 && plateIn.h > 0 ? { w: Math.min(plateIn.w, W - 2 * E), h: plateIn.h, lines: plateIn.lines || 1 } : plateSize(textW, labelW);
+  const labelW = Math.min(OCEAN.PLATE_MAX, XR - 2 * E);
+  const P = plateIn && plateIn.w > 0 && plateIn.h > 0 ? { w: Math.min(plateIn.w, XR - 2 * E), h: plateIn.h, lines: plateIn.lines || 1 } : plateSize(textW, labelW);
   const hyLo = bandBottom + OCEAN.SKY_MIN, hyHi = M.top - OCEAN.WATER_MIN;
   const hy = Math.round(hyHi >= hyLo ? clamp(H * OCEAN.HORIZON, hyLo, hyHi) : hyLo);
   // the hero's waterline: its lowest tenth in the water (the body box hugs the art, with a hair of soft edge below it)
@@ -98,7 +101,7 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
 
   // the Thought Mallow's home: just beyond the hero's head, its words above it (else below, else beside)
   let home = null, plate = null;
-  const fits = (b) => b.x0 >= E - 0.5 && b.x1 <= W - E + 0.5 && b.y0 >= bandBottom + 4 && b.y1 <= floor && !overlaps(b, mrect);
+  const fits = (b) => b.x0 >= E - 0.5 && b.x1 <= XR - E + 0.5 && b.y0 >= bandBottom + 4 && b.y1 <= floor && !overlaps(b, mrect);
   // (a strip of open water between the thought and the hero's head, plus room for the hero's float: it never sits on it)
   const lift = OCEAN.WATER_STRIP * r + OCEAN.BOB * M.height;
   const tryCentre = () => {
@@ -118,9 +121,9 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
   };
   const trySide = () => {
     // beside the hero, on the roomier side, at mid water; its words above, below or beside it
-    const leftW = M.left - E, rightW = W - E - M.right;
+    const leftW = M.left - E, rightW = XR - E - M.right;
     const left = leftW >= rightW;
-    const span = left ? [E, mrect.x0 - 2] : [mrect.x1 + 2, W - E];
+    const span = left ? [E, mrect.x0 - 2] : [mrect.x1 + 2, XR - E];
     const pw = P ? Math.min(P.w, labelW) : 0;
     const xs = [];
     const mid = (span[0] + span[1]) / 2;
@@ -148,7 +151,7 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
   const homeY = Math.max(hy + 18, home.y + 0.55 * r);
   const Hw = (homeY - hy) / 0.5;
   const thoughtRect = box(home.x, home.y, 2 * r + 12, 2 * r + 12);
-  const plateRect = plate ? box(clamp(plate.x, E + plate.w / 2, W - E - plate.w / 2), plate.y, plate.w + 8, plate.h + 8) : null;
+  const plateRect = plate ? box(clamp(plate.x, E + plate.w / 2, XR - E - plate.w / 2), plate.y, plate.w + 8, plate.h + 8) : null;
   const zoneRect = P ? thoughtZone(home.x, home.y, r, plate && plate.side !== 'side' ? plate.w : 0) : thoughtZone(home.x, home.y, r);
 
   // bubbles: candidate spots over the water, greedily spread (deterministic)
@@ -164,10 +167,10 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
       const D0 = bubbleSize(s, d, U);
       // where the water is narrow (beside the hero on a small phone) a smaller bubble fits instead
       const Dmin = d <= 6 ? Math.min(D0, OCEAN.BUBBLE_TIGHT) : D0;
-      for (let x = E + Dmin / 2; x <= W - E - Dmin / 2; x += st) {
+      for (let x = E + Dmin / 2; x <= XR - E - Dmin / 2; x += st) {
         // (smaller by an eighth at a time, and always the smallest last: a step that lands a hair above it never skips it)
         for (let D = D0; D >= Dmin - 0.01; D = D > Dmin + 0.01 ? (D * 0.88 < Dmin + 0.5 ? Dmin : D * 0.88) : Dmin - 1) {
-          if (x - D / 2 < E - 0.01 || x + D / 2 > W - E + 0.01) continue;
+          if (x - D / 2 < E - 0.01 || x + D / 2 > XR - E + 0.01) continue;
           // the bubble sits on the water: its centre a little above the waterline
           const cy = y - 0.3 * D;
           if (cy - D / 2 < bandBottom + 4) continue;

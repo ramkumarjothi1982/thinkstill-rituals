@@ -218,13 +218,15 @@ export function create(ctx) {
     // the words' anchor holding its furthest reach: a plate planned at the very edge would be brushed and hop sides)
     let keep = null;
     try { const k = plate ? layer.wordsKeepOut?.() : null; if (k) keep = { x0: k.left - WORDS_SLACK / 2, y0: k.top - WORDS_SLACK, x1: k.right + WORDS_SLACK / 2, y1: k.bottom }; } catch { keep = null; }
-    return planStormLayout({ W, H, safe: ctx.safe, band: ctx.band, mallow: mallowBox(), n: Math.min(7, photos?.n || 0), thought: thought ? { textW: textWidth(tok), plate, keep } : null });
+    // (its things keep to the stage's free width: left of the shell's side panel while that is open)
+    return planStormLayout({ W: freeW(), H, safe: ctx.safe, band: ctx.band, mallow: mallowBox(), n: Math.min(7, photos?.n || 0), thought: thought ? { textW: textWidth(tok), plate, keep } : null });
   }
 
   // the shell may move or resize the hero Mallow after the world enters (its 720 ms glide):
   // re-plan once its box has been steady for half a second
   let layoutKey = '', pendingKey = '', pendingFor = 0, relayoutClock = 0;
-  function keyNow() { const m = mallowBox(), sf = ctx.safe; return m ? `${Math.round(m.left / 6)},${Math.round(m.top / 6)},${Math.round(m.width / 6)},${Math.round(sf.y / 4)},${W},${H}` : `-,${Math.round(sf.y / 4)},${W},${H}`; }
+  const freeW = () => { const f = ctx.freeW; return Number.isFinite(f) && f > 0 ? Math.min(W, f) : W; };
+  function keyNow() { const m = mallowBox(), sf = ctx.safe, fw = freeW(); return m ? `${Math.round(m.left / 6)},${Math.round(m.top / 6)},${Math.round(m.width / 6)},${Math.round(sf.y / 4)},${W},${H},${fw}` : `-,${Math.round(sf.y / 4)},${W},${H},${fw}`; }
   function relayoutCheck(dt) {
     relayoutClock += dt;
     if (relayoutClock < 0.25) return;

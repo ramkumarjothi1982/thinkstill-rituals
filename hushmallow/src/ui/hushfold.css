@@ -292,8 +292,9 @@ body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; 
 .hf-support svg { width: 19px; height: 19px; }
 .hf-panel .fine { font: var(--hf-font-caption); color: var(--text-3, #a59fc9); margin: 8px 0 0; }
 
-/* phones: a shorter bottom sheet, so the Mallow (lifted above it by the scene) stays playable */
-@media (max-width: 699px) {
+/* phones and portrait tablets: a shorter bottom sheet, so the Mallow (lifted above it by the scene) stays playable
+   (side-panel.js PANEL_SHEET_QUERY / panelIsSheet: the scene lays the stage out by the same rule) */
+@media (max-width: 699px), (max-width: 999px) and (orientation: portrait) {
   .hf-panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(52vh, 520px); max-height: calc(100% - 150px); border-left: 0;
     border-top: 1px solid var(--hf-line-strong); border-radius: 28px 28px 0 0; transform: translateY(104%); box-shadow: 0 -24px 60px rgba(3, 1, 14, 0.45); padding-top: 0; }
   .hf-panel::before { content: ''; position: absolute; left: 50%; top: 8px; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: rgba(255, 255, 255, 0.22); }

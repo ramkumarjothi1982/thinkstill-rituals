@@ -134,7 +134,7 @@ export default function hushfold(app, params = {}) {
     root, prefs,
     reducedMotion: () => prefs.reducedMotion(),
     // (in a world the lines keep to the band the world keeps clear for them; over the phone sheet, the strip above it)
-    bounds: () => ({ top: bandTop(), bottom: Math.min(dockTop(), panelTop()) - 12 }),
+    bounds: () => ({ top: bandTop(), bottom: Math.min(dockTop(), panelTop()) - 12, left: 0, right: stageRight() }),
     avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), ...(flowRef?.avoid?.() || []), overlay?.rect?.(),
       ...(installMod?.installAvoidRects?.() || [])].filter(Boolean),
     // what is behind the band (the realm, a world's back and front layers): sampled once per line for the scrim
@@ -254,8 +254,19 @@ export default function hushfold(app, params = {}) {
     const tops = items.map((e) => e.getBoundingClientRect()).filter((r) => r.height).map((r) => r.top);
     return tops.length ? Math.min(...tops) : innerHeight - 24;
   }
-  /** Phones: the side panel is a bottom sheet; the stage above it stays playable. */
-  const panelSheet = () => !!panel?.isOpen && innerWidth < 700;
+  /** Phones and portrait tablets: the side panel is a bottom sheet; the stage above it stays playable (side-panel.js panelIsSheet). */
+  let sheetRule = null;   // side-panel.js's panelIsSheet, once the panel is loaded
+  const panelSheet = () => !!panel?.isOpen && (sheetRule ? sheetRule() : innerWidth < 700);
+  /**
+   * The stage's right edge: the side panel's left edge where it rests while it is open (a landscape tablet, a desktop),
+   * else the viewport's. The Mallow, the lines, the dock, the thoughts and a world's safe rect all keep to the free
+   * width left of it, so nothing of the stage is hidden under the opaque panel.
+   */
+  function stageRight() {
+    if (!panel?.isOpen || panelSheet()) return innerWidth;
+    const w = panel.el.offsetWidth || 0;
+    return w > 0 && w < innerWidth ? innerWidth - w : innerWidth;
+  }
   // where the sheet comes to rest (offsetHeight ignores its slide-in transform)
   function panelTop() { return panelSheet() ? innerHeight - (panel.el.offsetHeight || 0) : innerHeight; }
   function mallowAvoidRect() {
@@ -278,7 +289,10 @@ export default function hushfold(app, params = {}) {
   /** Size and place the Mallow in the free region between the subtitle band and the dock (no CSS scale). */
   function layout() {
     if (S.left) return;
-    const vw = innerWidth, vh = innerHeight;
+    // (vw: the stage's width — left of the side panel while it is open)
+    const vw = stageRight(), vh = innerHeight;
+    // the dock keeps to the stage too (its pills centred in it, never under the panel)
+    dock.style.right = vw < innerWidth ? `${innerWidth - vw}px` : '';
     const topB = topEl.getBoundingClientRect().bottom || 60;
     const band = Math.max(Math.min(156, Math.max(118, vh * 0.17)), bandNeed ? bandNeed + 24 : 0);
     bandPx = Math.round(band);
@@ -330,7 +344,7 @@ export default function hushfold(app, params = {}) {
     // where the thoughts may float: beside the side panel, under the band (or the overlay), over the dock (or the sheet)
     const side = panel?.isOpen && !panelSheet() ? panel.el.getBoundingClientRect() : null;
     thoughtBounds.left = 10;
-    thoughtBounds.right = (side?.width ? side.left : vw) - 10;
+    thoughtBounds.right = Math.min(side?.width ? side.left : vw, vw) - 10;
     thoughtBounds.top = (ov?.height ? ov.bottom : regionTop) + 10;
     // (while the garden installation has the lines paused, the band is free: a thought giving way to its card may
     // rise into it, its words with it)
@@ -440,7 +454,8 @@ export default function hushfold(app, params = {}) {
     // (where the Mallow rests, not where its live body is this frame: the worlds plan round it)
     const b = stageMallow?.restRect?.() || stageMallow?.bodyRect?.();
     const bottom = b?.height ? Math.max(top + 160, b.top - 14) : innerHeight * 0.62;
-    return { x: 20, y: top, w: innerWidth - 40, h: bottom - top };
+    // (beside an open side panel, the free width left of it: the world plans its things there)
+    return { x: 20, y: top, w: stageRight() - 40, h: bottom - top };
   };
 
   function createStubFlow() {
@@ -1611,8 +1626,9 @@ export default function hushfold(app, params = {}) {
   // ------------------------------------------------------ panel --
   async function ensurePanel() {
     if (panel) return panel;
-    const { createSidePanel } = await import('../../hushfold/side-panel.js');
+    const { createSidePanel, panelIsSheet } = await import('../../hushfold/side-panel.js');
     if (S.left) return null;
+    sheetRule = typeof panelIsSheet === 'function' ? () => panelIsSheet() : null;
     panel ||= createSidePanel({
       app, root,
       getFlow: (create = false) => (create ? getFlow() : Promise.resolve(flowRef)),

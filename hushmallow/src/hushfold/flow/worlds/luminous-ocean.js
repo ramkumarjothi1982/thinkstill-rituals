@@ -211,6 +211,9 @@ export function create(ctx) {
   // shell put it, the world's own float excluded — the waterline)
   const hero = { ok: false, cx: 0, bottom: 0, top: 0, left: 0, right: 0, liveBottom: 0, h: 1, x: 0, z: 0, s: 1, yb: 0, vb: 0, lift: 0, tilt: 0, liftApplied: 0, tiltApplied: 0, floatK: 1, restB: 0, lipGrad: null, lipKey: '' };
   const so = { x: 0, y: 0, s: 0 }, wo = { x: 0, z: 0, s: 0 }, sm = {};
+  let layoutFreeW = 0;   // the stage's free width the plan was made for (ctx.freeW)
+  // the right edge things on the water keep inside: the stage's free width (left of the shell's side panel while open)
+  const freeRight = () => (layoutFreeW > 0 ? Math.min(W, layoutFreeW) : W);
   let layoutRest = null, layoutBandB = 0, pendingRect = null, pendingFor = 0, relayoutClock = 0, skyKey = '', camKey = '';
   let measureG = null;
   const layoutLog = { n: 0, last: null };                    // (QA: how often the screen was re-planned, and why)
@@ -298,7 +301,8 @@ export function create(ctx) {
     if (relayoutClock < 0.25) return;
     const step = relayoutClock; relayoutClock = 0;
     const r = restBox();
-    const changed = boxMoved(r, layoutRest, RELAYOUT_TOL) || Math.abs(bandBottom() - layoutBandB) > 4;
+    const fw = Number.isFinite(ctx.freeW) && ctx.freeW > 0 ? Math.min(W, ctx.freeW) : W;
+    const changed = boxMoved(r, layoutRest, RELAYOUT_TOL) || Math.abs(bandBottom() - layoutBandB) > 4 || Math.abs(fw - layoutFreeW) > 4;
     if (!changed) { pendingRect = null; pendingFor = 0; return; }
     // wait until the move has settled (the shell glides its Mallow for 720 ms), or 2 s at most
     pendingFor += step;
@@ -314,15 +318,18 @@ export function create(ctx) {
     layoutRest = rest; layoutBandB = bandBottom();
     const tok = thought ? (thought.token || words?.token || '') : '';
     const n = Math.min(7, photos?.n || 0);
-    const max2 = Math.min(OCEAN.PLATE_MAX, W - 2 * OCEAN.EDGE) - 2 * OCEAN.LABEL_PAD_X, max1 = W - 2 * OCEAN.EDGE - 2 * OCEAN.LABEL_PAD_X;
+    // (the thought, its words and the bubbles keep to the stage's free width: left of the shell's side panel while open)
+    const XR = Number.isFinite(ctx.freeW) && ctx.freeW > 0 ? Math.min(W, ctx.freeW) : W;
+    layoutFreeW = XR;
+    const max2 = Math.min(OCEAN.PLATE_MAX, XR - 2 * OCEAN.EDGE) - 2 * OCEAN.LABEL_PAD_X, max1 = XR - 2 * OCEAN.EDGE - 2 * OCEAN.LABEL_PAD_X;
     let pl = tok ? plateFor(tok, max2, 2) : null;
-    let p = planOcean({ W, H, band: ctx.band, mallow: rest, n, textW: pl ? pl.w - 2 * OCEAN.LABEL_PAD_X : (tok ? tok.length * 8.5 : 0), plate: pl });
+    let p = planOcean({ W, H, band: ctx.band, mallow: rest, n, textW: pl ? pl.w - 2 * OCEAN.LABEL_PAD_X : (tok ? tok.length * 8.5 : 0), plate: pl, x1: XR });
     let textMax = max2;
     plateLines = 2;
     // a short screen: the words on one wide line, when two lines would not fit above the thought far out
     if (pl && pl.lines > 1 && !aboveFits(p, pl.h, OCEAN.FAR + 0.6)) {
       const pl1 = plateFor(tok, max1, 1);
-      if (pl1 && pl1.h < pl.h) { p = planOcean({ W, H, band: ctx.band, mallow: rest, n, textW: pl1.w - 2 * OCEAN.LABEL_PAD_X, plate: pl1 }); pl = pl1; plateLines = 1; textMax = max1; }
+      if (pl1 && pl1.h < pl.h) { p = planOcean({ W, H, band: ctx.band, mallow: rest, n, textW: pl1.w - 2 * OCEAN.LABEL_PAD_X, plate: pl1, x1: XR }); pl = pl1; plateLines = 1; textMax = max1; }
     }
     plan = p;
     if (pl && plan.plate) Object.assign(plan.plate, { w: pl.w, h: pl.h, lines: pl.lines });
@@ -513,7 +520,7 @@ export function create(ctx) {
     }
     let best = null;
     for (let side = -1; side <= 1; side += 2) {
-      const a = side < 0 ? E + 12 : MR + 18, b = side < 0 ? ML - 18 : W - E - 12;
+      const a = side < 0 ? E + 12 : MR + 18, b = side < 0 ? ML - 18 : freeRight() - E - 12;
       if (b < a) continue;
       for (const f of HINT_F) {
         const x = a + (b - a) * f;
@@ -619,9 +626,9 @@ export function create(ctx) {
       const half = pass ? 2.5 * plan.home.r + 24 : Math.max(2.5 * plan.home.r, ((P ? P.x1 - P.x0 : 0) / 2) + 6);
       const cL = plan.home.x - half, cR = plan.home.x + half;
       let lane = out.filter((q) => q.far).length;
-      for (let x = E + 14; x <= W - E - 14 && out.length < n + 2; x += 2) {
+      for (let x = E + 14; x <= freeRight() - E - 14 && out.length < n + 2; x += 2) {
         const d = FAR_D[lane % FAR_D.length], s0 = 1 / (1 + d), D = bubbleSize(s0, d, U);
-        if (x - D / 2 < E || x + D / 2 > W - E) continue;
+        if (x - D / 2 < E || x + D / 2 > freeRight() - E) continue;
         if (x + D / 2 > cL - 4 && x - D / 2 < cR + 4) continue;
         const y = fin.hy + fin.Hw * s0 - 0.3 * D;
         const b = { x0: x - D / 2, x1: x + D / 2, y0: y - D / 2, y1: y + D / 2 };
@@ -1808,7 +1815,7 @@ export function create(ctx) {
     let cost = Math.abs(po.y);
     const ml = B.x0 - r - x, mr = B.x1 + r - x;
     if (B.x0 - r >= E + rr && Math.abs(ml) < cost) { po.x = ml; po.y = 0; cost = Math.abs(ml); }
-    if (B.x1 + r <= W - E - rr && Math.abs(mr) < cost) { po.x = mr; po.y = 0; }
+    if (B.x1 + r <= freeRight() - E - rr && Math.abs(mr) < cost) { po.x = mr; po.y = 0; }
     return po;
   }
   // the words plate: candidate places round the thought (offsets from its centre, and the box on screen)
@@ -1827,7 +1834,7 @@ export function create(ctx) {
       // beside it, level with it — sliding up or down (while still beside it) to stay out of the band and off the floor
       ly = clamp(-h / 2, Math.max(bb - sy, -h + 6 - rr * 0.5), Math.min(fl - h - sy, rr * 0.5 - 6));
     }
-    const cx = side === 'left' || side === 'right' ? sx + lx : clamp(sx, OCEAN.EDGE + w / 2, W - OCEAN.EDGE - w / 2);
+    const cx = side === 'left' || side === 'right' ? sx + lx : clamp(sx, OCEAN.EDGE + w / 2, freeRight() - OCEAN.EDGE - w / 2);
     pc.lx = lx; pc.ly = ly; pc.x0 = cx - w / 2; pc.x1 = cx + w / 2; pc.y0 = sy + ly; pc.y1 = sy + ly + h;
     return pc;
   }
@@ -1837,7 +1844,7 @@ export function create(ctx) {
     let c = 0;
     if (K.on) c += 12 * ovA(pc, K);
     c += 6 * Math.max(0, bandBottom() + 4 - pc.y0) * (pc.x1 - pc.x0) + 6 * Math.max(0, pc.y1 - (plan?.floor ?? H)) * (pc.x1 - pc.x0);
-    if (side === 'left' || side === 'right') c += 8 * (Math.max(0, E - pc.x0) + Math.max(0, pc.x1 - (W - E))) * (pc.y1 - pc.y0);
+    if (side === 'left' || side === 'right') c += 8 * (Math.max(0, E - pc.x0) + Math.max(0, pc.x1 - (freeRight() - E))) * (pc.y1 - pc.y0);
     // (over the thought's own body: allowed only as the last resort, and cheaply when it is small)
     tb.x0 = sx - rr; tb.y0 = sy - rr; tb.x1 = sx + rr; tb.y1 = sy + rr;
     c += 0.5 * ovA(pc, tb) + (side === 'tuck' ? 1 : 0);
@@ -1884,7 +1891,7 @@ export function create(ctx) {
   const prS = { x0: 0, y0: 0, x1: 0, y1: 0 };
   function plateRect(out = prS) {
     const w = tS.plateW, h = tS.plateH, beside = tS.side === 'left' || tS.side === 'right';
-    const cx = beside ? tS.sx + tS.labelX : clamp(tS.sx + tS.labelX, OCEAN.EDGE + w / 2, W - OCEAN.EDGE - w / 2), y0 = tS.sy + tS.labelY;
+    const cx = beside ? tS.sx + tS.labelX : clamp(tS.sx + tS.labelX, OCEAN.EDGE + w / 2, freeRight() - OCEAN.EDGE - w / 2), y0 = tS.sy + tS.labelY;
     out.x0 = cx - w / 2 - 4; out.y0 = y0 - 4; out.x1 = cx + w / 2 + 4; out.y1 = y0 + h + 4;
     return out;
   }
@@ -2047,7 +2054,7 @@ export function create(ctx) {
         // the edges, the band and the floor hold firm (a bubble only ever drifts slowly into them)
         let ex = 0, ey = 0;
         if (A.sx + mx - ra < E) ex = E - (A.sx + mx - ra);
-        if (A.sx + mx + ra > W - E) ex = W - E - (A.sx + mx + ra);
+        if (A.sx + mx + ra > freeRight() - E) ex = freeRight() - E - (A.sx + mx + ra);
         if (A.sy + my - ra < bb) ey = bb - (A.sy + my - ra);
         if (A.sy + my + ra > plan.floor) ey = plan.floor - (A.sy + my + ra);
         mx += ex; my += ey;
@@ -2075,11 +2082,11 @@ export function create(ctx) {
   function offHero(A) {
     const ra = A.D / 2, E = OCEAN.EDGE;
     if (!discHits(A.sx, A.sy, ra, K)) return;
-    const left = A.sx < hero.cx, gap = (left ? K.x0 - E : W - E - K.x1) - 2;
+    const left = A.sx < hero.cx, gap = (left ? K.x0 - E : freeRight() - E - K.x1) - 2;
     // (beside it: at least half of it below the hero's top — never lifted over its head for a gap a hair too narrow)
     if (gap >= OCEAN.BUBBLE_FAR && gap < A.D && A.sy > K.y0 - 0.5 * ra) {
       A.cap = Math.min(A.cap, gap);
-      nudge(A, (left ? E + ra : W - E - ra) - A.sx, 0);
+      nudge(A, (left ? E + ra : freeRight() - E - ra) - A.sx, 0);
       return;
     }
     aimClear(A.sx, A.sy, ra, apt, 1);
@@ -2113,13 +2120,13 @@ export function create(ctx) {
     const inside = (A) => {
       const ra = A.D / 2;
       let ex = 0, ey = 0;
-      if (A.sx - ra < E) ex = E - (A.sx - ra); else if (A.sx + ra > W - E) ex = W - E - (A.sx + ra);
+      if (A.sx - ra < E) ex = E - (A.sx - ra); else if (A.sx + ra > freeRight() - E) ex = freeRight() - E - (A.sx + ra);
       if (A.sy - ra < bb) ey = bb - (A.sy - ra); else if (A.sy + ra > fl) ey = fl - (A.sy + ra);
       if (ex || ey) mv(A, ex, ey);
       if (K.on) offHero(A);
     };
     // (pressed against an edge, the floor or the hero, a bubble cannot give way: the other one moves the whole way)
-    const pinned = (A) => { const ra = A.D / 2; return A.sx - ra < E + 1 || A.sx + ra > W - E - 1 || A.sy + ra > fl - 1 || (K.on && discHits(A.sx, A.sy, ra + 2, K)); };
+    const pinned = (A) => { const ra = A.D / 2; return A.sx - ra < E + 1 || A.sx + ra > freeRight() - E - 1 || A.sy + ra > fl - 1 || (K.on && discHits(A.sx, A.sy, ra + 2, K)); };
     for (let it = 0; it < 6; it++) {
       for (let a = 0; a < bubbles.length; a++) {
         const A = bubbles[a];
@@ -2162,7 +2169,7 @@ export function create(ctx) {
             // (out by the nearest side — down, towards you, only when nothing else is near: it would grow there)
             // (never out into an edge, the band or the floor: there it would only be pushed back in)
             const l = A.sx + ra - P.x0, r = P.x1 - (A.sx - ra), u = A.sy + ra - P.y0, dn = P.y1 - (A.sy - ra);
-            let L2 = A.sx - A.D / 2 - l < E ? Infinity : l, R2 = A.sx + A.D / 2 + r > W - E ? Infinity : r, U2 = A.sy - A.D / 2 - u < bb ? Infinity : u, D2 = A.sy + A.D / 2 + dn > fl ? Infinity : 1.5 * dn;
+            let L2 = A.sx - A.D / 2 - l < E ? Infinity : l, R2 = A.sx + A.D / 2 + r > freeRight() - E ? Infinity : r, U2 = A.sy - A.D / 2 - u < bb ? Infinity : u, D2 = A.sy + A.D / 2 + dn > fl ? Infinity : 1.5 * dn;
             if (Math.min(L2, R2, U2, D2) === Infinity) { L2 = l; R2 = r; U2 = u; D2 = 1.5 * dn; }
             const m = Math.min(L2, R2, U2, D2);
             if (m === L2) mv(A, -l, 0); else if (m === R2) mv(A, r, 0); else if (m === U2) mv(A, 0, -u); else mv(A, 0, dn);
@@ -2243,7 +2250,7 @@ export function create(ctx) {
   /** Is there room round a floating bubble to grow a little (clear of the hero, the edges and the band)? */
   function roomy(b) {
     const r = b.D / 2 + 6, E = OCEAN.EDGE;
-    if (b.sx - r < E || b.sx + r > W - E || b.sy - r < bandBottom() + 4 || b.sy + r > (plan?.floor ?? H)) return false;
+    if (b.sx - r < E || b.sx + r > freeRight() - E || b.sy - r < bandBottom() + 4 || b.sy + r > (plan?.floor ?? H)) return false;
     if (K.on && discHits(b.sx, b.sy, r, K)) return false;
     for (const o of bubbles) if (o !== b && o.state !== 'leave' && Math.hypot(o.sx - b.sx, o.sy - b.sy) < r + o.D / 2 + OCEAN.BUBBLE_GAP) return false;
     return true;
@@ -2299,7 +2306,7 @@ export function create(ctx) {
       const l = x - K.x0, rt = K.x1 - x, u = y - K.y0, mn = Math.min(l, rt, u);
       if (mn === l) out.x = K.x0 - R; else if (mn === rt) out.x = K.x1 + R; else out.y = K.y0 - R;
     }
-    const lo = OCEAN.EDGE + r, hi = W - OCEAN.EDGE - r;
+    const lo = OCEAN.EDGE + r, hi = freeRight() - OCEAN.EDGE - r;
     if (out.x >= lo && out.x <= hi) return out;
     // (no room that far out beside it: as far out as the screen allows, at the same height, while that still clears its
     // body; else over its head — a smaller margin rather than a bubble lifted into the sky)
@@ -2325,7 +2332,7 @@ export function create(ctx) {
     }
     // (the band and the screen's sides hold only what would go past them: a slot may sit right at the edge's margin)
     { const top = bandBottom() + 4 + r; if (b.gy < top) rep.y += Math.min(3, (top - b.gy) / REP_M) * REP_V; }
-    { const L = OCEAN.EDGE + r, Rt = W - OCEAN.EDGE - r; if (b.gx < L) rep.x += Math.min(3, (L - b.gx) / REP_M) * REP_V; if (b.gx > Rt) rep.x -= Math.min(3, (b.gx - Rt) / REP_M) * REP_V; }
+    { const L = OCEAN.EDGE + r, Rt = freeRight() - OCEAN.EDGE - r; if (b.gx < L) rep.x += Math.min(3, (L - b.gx) / REP_M) * REP_V; if (b.gx > Rt) rep.x -= Math.min(3, (b.gx - Rt) / REP_M) * REP_V; }
     // held off something that does not move out of the way (the hero, the thought, its words, the band, an edge): it
     // slides along it at its own pace instead of pressing against it — round it and on its way, never stalled there
     const rl = Math.hypot(rep.x, rep.y);
@@ -2348,7 +2355,7 @@ export function create(ctx) {
     if (v > cap) { vx *= cap / v; vy *= cap / v; }
     b.gx += vx * dt; b.gy += vy * dt;
     // (the edges are firm: a glide is pressed along them, never past them)
-    b.gx = clamp(b.gx, Math.min(W / 2, OCEAN.EDGE + r), Math.max(W / 2, W - OCEAN.EDGE - r));
+    b.gx = clamp(b.gx, Math.min(freeRight() / 2, OCEAN.EDGE + r), Math.max(freeRight() / 2, freeRight() - OCEAN.EDGE - r));
   }
   function repelDisc(x, y, r, cx, cy, R, M = REP_M) {
     const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1e-3, gap = d - R - r;
@@ -2388,7 +2395,7 @@ export function create(ctx) {
     const y = cam.hy + cam.Hw * s0 - 0.3 * D;
     const P = thought && tS.plateW ? plateRect(prB) : null;
     let bestX = null, bs = -Infinity;
-    for (let x = OCEAN.EDGE + D / 2; x <= W - OCEAN.EDGE - D / 2; x += 6) {
+    for (let x = OCEAN.EDGE + D / 2; x <= freeRight() - OCEAN.EDGE - D / 2; x += 6) {
       if (P && x + D / 2 > P.x0 - 4 && x - D / 2 < P.x1 + 4 && y + D / 2 > P.y0 && y - D / 2 < P.y1) continue;
       let clear = Infinity;
       for (const b of bubbles) clear = Math.min(clear, Math.hypot(b.sx - x, b.sy - y) - (b.D + D) / 2);
@@ -2998,7 +3005,7 @@ export function create(ctx) {
     if (thought.draw) {
       try {
         const la = tS.labelFade >= 0 ? Math.pow(Math.abs(1 - 2 * tS.labelFade), 1.6) : 1;
-        thought.draw(g, x, y, tS.surf, { radius: tS.r, tension: tS.tension, calm: tS.calm, charge: 0, reduced: rm, now, minX: OCEAN.EDGE, maxX: W - OCEAN.EDGE, labelWidth: tS.labelW || plan.textMax, labelLines: plateLines, labelY: tS.labelY, labelX: tS.labelX, alpha: A, labelAlpha: la });
+        thought.draw(g, x, y, tS.surf, { radius: tS.r, tension: tS.tension, calm: tS.calm, charge: 0, reduced: rm, now, minX: OCEAN.EDGE, maxX: freeRight() - OCEAN.EDGE, labelWidth: tS.labelW || plan.textMax, labelLines: plateLines, labelY: tS.labelY, labelX: tS.labelX, alpha: A, labelAlpha: la });
         if (thought.plate) { tS.plateW = thought.plate.w; tS.plateH = thought.plate.h; }
       } catch { /* placeholder only */ }
     }

@@ -49,6 +49,11 @@ export function placeBand(bounds, blocks, need, { gap = 12 } = {}) {
   const tight = placeBandAt(bounds, blocks, need, 6);   // small screens: a little closer, rather than on top of something
   return tight.fits ? tight : wide;
 }
+/** A block's horizontal span [left, right] (DOMRect-like or the director's {x, w}). */
+function horizOf(b) {
+  if (b.left != null) return [b.left, b.right ?? b.left + (b.width ?? 0)];
+  return [b.x ?? 0, (b.x ?? 0) + (b.w ?? b.width ?? 0)];
+}
 function placeBandAt(bounds, blocks, need, gap) {
   const top = bounds.top, bottom = bounds.bottom;
   // DOMRect-like {top, bottom} or {x, y, w, h} (the Hushflow director's shape)
@@ -191,7 +196,15 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     if (!chipsEl.hidden) need += chipsEl.offsetHeight + gapPx;
     if (!ctl.classList.contains('is-hidden')) need += ctl.offsetHeight + gapPx;
     need = need || 64;
-    const { y, fits } = placeBand(b, avoid() || [], need);
+    // a stage narrower than the viewport (beside an open side panel): the lines keep to it, and only what is beside
+    // them across that width can push them up or down (a thought under the panel does not)
+    const right = Number.isFinite(b.right) && b.right < innerWidth - 1 ? Math.max(160, b.right) : null;
+    const left = Number.isFinite(b.left) && b.left > 1 ? b.left : null;
+    el.style.right = right != null ? `${Math.round(innerWidth - right)}px` : '';
+    el.style.left = left != null ? `${Math.round(left)}px` : '';
+    let blocks = avoid() || [];
+    if (right != null || left != null) blocks = blocks.filter((r) => !r || !(horizOf(r)[0] >= (right ?? Infinity) || horizOf(r)[1] <= (left ?? -Infinity)));
+    const { y, fits } = placeBand(b, blocks, need);
     // no free band is tall enough (a choice with two rows of chips on a small phone): ask the
     // scene for room (it shrinks the Mallow); the reservation lasts until the lines go away
     const showing = !!liveEl.firstChild || !chipsEl.hidden;
