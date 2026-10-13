@@ -96,7 +96,7 @@ export function anotherAngleProvider({ baseUrl, session, fetch: doFetch = global
   const call = async (body, signal) => {
     if (!token) {
       const t = await Promise.race([session(), timeout(signal, timeoutMs)]);
-      if (!t || t.timedOut) throw new Error('session timeout');
+      if (!t || t.timedOut || typeof t !== 'string') throw Object.assign(new Error('no session'), { code: 'session' });   // refused, limited or too slow
       token = t;
     }
     return doFetch(`${base}/v1/angle`, {
@@ -117,8 +117,8 @@ export function anotherAngleProvider({ baseUrl, session, fetch: doFetch = global
       if (res.status === 429) return { status: 'unavailable', reason: 'limit' };
       if (!res.ok) return { status: 'unavailable', reason: `http-${res.status}` };
       data = await res.json();                                                   // the deadline covers the body too
-    } catch {
-      return { status: 'unavailable', reason: signal?.aborted ? 'timeout' : 'network' };
+    } catch (e) {
+      return { status: 'unavailable', reason: e?.code === 'session' ? 'session' : signal?.aborted ? 'timeout' : 'network' };
     }
     if (data.status === 'crisis' || data.status === 'care') return { status: 'support', level: data.status, support: data.support || null };
     if (data.status !== 'ok' || !data.scene) return { status: 'unavailable', reason: data.fallback?.reason || 'fallback' };

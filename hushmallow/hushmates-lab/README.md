@@ -73,7 +73,7 @@ needs approval.
 ## Test it
 
 ```bash
-node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 82 relay tests
+node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 83 relay tests
 node --test hushmallow/hushmates-lab/v1-messaging/tests/*.test.mjs    # 32 (archived v1)
 node hushmallow/hushmates-lab/tools/shots.cjs <out-dir> http://localhost:8000   # interface QA
 ```

@@ -178,7 +178,19 @@ test('optional: the real Another Angle server (local harness, mock provider) if 
   const session = async () => (await (await fetch(`${base}/v1/session`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ device_id: 'hushmates-tests-0001' }) })).json()).token;
   const p = anotherAngleProvider({ baseUrl: base, session });
   const ok = await p({ text: FEELING, label: 'worry' });
+  // the harness has its own per-minute and per-day limits; when it refuses, there's nothing live to check
+  // (how the adapter handles refusals is covered above against a fake server)
+  if (ok.status === 'unavailable' && ['session', 'limit'].includes(ok.reason)) { t.skip(`the local harness refused (${ok.reason}): its own limits`); return; }
   assert.equal(ok.status, 'ok');
   assert.equal(ok.source, 'demo', 'mock provider must never be labelled AI');
   assert.equal((await p({ text: 'I want to end it all' })).status, 'support');
+});
+
+test('provider: a refused session (no token) is reported as "session", never shown as a perspective', async () => {
+  let calls = 0;
+  const fetch = async () => { calls += 1; return new Response('{}'); };
+  const r = await anotherAngleProvider({ baseUrl: 'https://angle.test', session: async () => undefined, fetch })({ text: FEELING, label: 'worry' });
+  assert.equal(r.status, 'unavailable');
+  assert.equal(r.reason, 'session');
+  assert.equal(calls, 0, 'nothing is sent without a session');
 });

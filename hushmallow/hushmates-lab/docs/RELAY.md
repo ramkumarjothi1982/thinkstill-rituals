@@ -306,14 +306,14 @@ tier; that is an estimate to confirm, not a quote.
 ## 7. Tests
 
 ```bash
-node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 82 relay tests
+node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 83 relay tests
 node --test hushmallow/hushmates-lab/v1-messaging/tests/*.test.mjs    # 32 (archived v1)
 ```
 
 | File | What it covers |
 |---|---|
 | `relay.test.mjs` (31) | Every rule above: five-person cap, atomic last slot, expiry, idempotency, fairness, screening, privacy both ways, 24-hour return, choices, reports, fallback opt-in / human-first / one generation / labels / budget / failure, data deletion |
-| `relay-attacks.test.mjs` (14) | A hostile client through the network layer: forbidden internals, forged tokens, other people's journeys, hold theft and replay, malformed input, rate limits, realtime privacy, lost replies; the provider contracts against a fake Another Angle server; an optional live check against a local harness |
+| `relay-attacks.test.mjs` (15) | A hostile client through the network layer: forbidden internals, forged tokens, other people's journeys, hold theft and replay, malformed input, rate limits, realtime privacy, lost replies; the provider contracts against a fake Another Angle server (including refused sessions); an optional live check against a local harness, which skips if the harness itself refuses (its own per-minute and per-day limits) |
 | `review-*.test.mjs` (37) | Written by three independent adversarial reviewers to **fail** on the reviewed code (caps and concurrency, privacy and safety, the fallback and costs). All failed; all now pass after the fixes, and they stay as regression tests. |
 
 **Interface QA:** `tools/shots.cjs` captures 20 scenes at 390 × 844,
