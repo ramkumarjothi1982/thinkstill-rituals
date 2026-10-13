@@ -41,8 +41,10 @@ body.hf-active #fx-layer { touch-action: none; -webkit-user-select: none; user-s
 #fx-layer > canvas.hf-stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* Hushflow layers (the director's canvases) melt in over the realm and out again, never a hard cut */
 #world > canvas.hf-back, #fx-layer > canvas.hf-front { transition: opacity 1200ms cubic-bezier(0.65, 0, 0.35, 1); }
-body.hf-world-arriving #world > canvas.hf-back, body.hf-world-arriving #fx-layer > canvas.hf-front,
-body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer > canvas.hf-front { opacity: 0; }
+body.hf-world-arriving #world > canvas.hf-back, body.hf-world-arriving #fx-layer > canvas.hf-front { opacity: 0; }
+/* Finish: the last frame fades out over 1.2 s (!important: the director keeps its reveal opacity and transition inline) */
+body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer > canvas.hf-front {
+  opacity: 0 !important; transition: opacity 1200ms cubic-bezier(0.65, 0, 0.35, 1) !important; }
 /* phones: while the sheet holds a world, its front layer (postcards, the Thought Mallow) steps back
    so nothing ever covers the Mallow lifted above the sheet; the back layer waits under its veil */
 /* (!important: the director keeps its reveal opacity inline) */
@@ -256,6 +258,8 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
   background: rgba(255, 255, 255, 0.05); font: var(--hf-font-label); color: var(--text-1, #f7f3ff); cursor: pointer; margin: 0 0 4px 0; }
 .hf-panel .plan.on { border-color: rgba(255, 217, 138, 0.6); color: var(--accent, #ffd98a); }
 .hf-panel .plan.beyond { border-color: rgba(190, 130, 255, 0.6); color: #e2c8ff; }
+/* after something heavy in this visit, no upsell: the free tier's "No plan yet · See plans" steps aside */
+.hushfold.hf-heavy .hf-panel .plan:not(.on):not(.beyond) { display: none; }
 .hf-switcher { display: flex; align-items: center; gap: 10px; }
 .hf-switcher .who { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
 .hf-switcher img { width: 52px; height: 52px; object-fit: contain; flex: 0 0 auto; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35)); }

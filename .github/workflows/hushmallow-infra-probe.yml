@@ -1,0 +1,37 @@
+# Read-only check of the live hushmallow deployment, run on request (edit
+# hushmallow/tools/infra/PROBE on a work branch). It fetches public pages of
+# the production app and, with the repository's Cloudflare token, reads the
+# Cloudflare Pages project's settings and latest deployments. It changes nothing.
+name: hushmallow infra probe
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['hushmallow/tools/infra/PROBE']
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Public pages
+        run: |
+          for u in https://app.hushmallow.com/ https://app.hushmallow.com/version.json https://app.hushmallow.com/auth/callback https://app.hushmallow.com/index.html https://hushmallow.com/ https://hushmallow.pages.dev/; do
+            echo "===== $u"
+            curl -sS -m 20 -D - -o body.txt "$u" | grep -iE '^(HTTP|content-type|location|cf-|server|cache-control|x-)' || true
+            head -c 1500 body.txt | sed -e 's/^/    /'; echo
+          done
+      - name: Cloudflare Pages project (read only)
+        env:
+          CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          tok="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '[:space:]')"; acct="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '[:space:]')"
+          echo "::add-mask::$tok"; echo "::add-mask::$acct"
+          api() { curl -sS -m 20 -H "Authorization: Bearer $tok" "https://api.cloudflare.com/client/v4/accounts/$acct/$1"; }
+          echo "===== projects"; api "pages/projects" | jq -c '{success, errors, result: [.result[]? | {name, subdomain, domains, production_branch, source: (.source.type // null), repo: (.source.config.repo_name // null), owner: (.source.config.owner // null), build: .build_config}]}'
+          echo "===== project hushmallow"; api "pages/projects/hushmallow" | jq -c '{success, errors, r: (.result | {name, subdomain, domains, production_branch, created_on, source, build_config, deployment_configs: {production: {env_vars: ((.deployment_configs.production.env_vars // {}) | keys), compatibility_date: .deployment_configs.production.compatibility_date}, preview: {env_vars: ((.deployment_configs.preview.env_vars // {}) | keys)}}})}'
+          echo "===== latest deployments"; api "pages/projects/hushmallow/deployments?per_page=5" | jq -c '{success, errors, r: [.result[]? | {id, environment, url, created_on, source: .deployment_trigger.type, branch: .deployment_trigger.metadata.branch, commit: .deployment_trigger.metadata.commit_hash, msg: .deployment_trigger.metadata.commit_message, stage: .latest_stage.name, status: .latest_stage.status}]}'

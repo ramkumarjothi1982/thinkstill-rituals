@@ -304,6 +304,7 @@ Done when: the suite is green, and §3 checks Q1, Q2, Q3, Q6, Q10 (finish fade),
 #### B1: director and worlds (W4b files; send to W4b r2, or start after #103)
 
 - **Owns:** `src/hushfold/flow/{director,registry}.js`, `worlds/static-storm.js`, `worlds/luminous-ocean.js`, `tests/flow.test.mjs`, `tests/ocean.test.mjs`.
+  - Also, recorded after the B1 reviews: W4b's ocean helpers `worlds/ocean-sea.js` and `worlds/ocean-rules.js` (the ocean's swell cap and planner; no other unit touches them), the dev lab `flow/lab.js` (it holds the world while its offer is open, as H2 will), and the new test files `tests/director.test.mjs`, `tests/worlds-b1.test.mjs` and `tests/ocean-r4.test.mjs`.
 
 **Director (director.js):**
 - **Gentle sessions.**
@@ -352,6 +353,15 @@ Done when:
   - `hold('offer', true)` keeps the phase 'playing' with autoFlow on and the world complete.
   - `state.title === entry.title`.
 - In the lab `?hushflow=static-storm&next=luminous-ocean`, the melt's minimum luminance stays ≥ 40 (W4b measured 46).
+
+**After the B1 reviews (r2, 13 Oct): what H2 should know.**
+- **Resume in a gentle session.** `start({resume:true})` restores only into the world that was saved. When the gentle rule swaps a saved storm for the ocean, the ocean starts fresh (its own seed and intro, not complete), nothing of the storm's save carries over, and `'world'` says `resumed: false`. The side panel's 'Pick up where you left off' path can call `startFlow({resume:true})` in a gentle visit as it does now.
+- **A world that enters paused is not revealed.** After a safety pause during loading, the world enters paused under its veil but never steps, so its canvases stay transparent: the person sees the home realm, the hero and 'Paused · Resume', and the world fades in on resume. This is deliberate (the calmer of the two). `'world'` carries `paused` and `reason`, so `onWorld` can skip the world's title card when it entered paused.
+- **A world chosen while the first one loads.** `next({worldId})` and `setGentle(true)` act on a playing world only. After care is disclosed during loading, the storm still enters (paused) in a gentle session; on that `'world'` (paused, reason 'safety'), H2 calls `flowRef.setGentle(true)` and then `flowRef.next({ worldId: 'luminous-ocean' })` (a melt, allowed while paused for safety in a gentle session), or `resume()` if the world is already the ocean.
+- **Drift on while an offer is open melts under it.** `hold('offer', true)` stops anything melting by itself and keeps the completion line back until the hold is let go, but the person's own Drift on (`next()`, `wantNext`) still melts. H2 either lets that through (the offer then folds with the world) or disables Drift on while the offer is open.
+- **After a paused world is finished** (already so before B1): 'Glitzi: Paused. Everything waits for you.' stays on screen at home, and the Paused pill stays for 1.25 s. H2 clears both on `'finish'`.
+- **`finish()` during loading.** `state.title` and `state.worldId` are null afterwards. A `start()` that fails drops a pause asked for while it loaded.
+- **The ocean with the MallowTouch hero.** The ocean takes the hero's live box as it comes (float, tilt, the entrance hop): a glide aims just clear of it and settles there, the keep-out eases out of a hop, and a queue that could not be down by the end of the director's melt lets its last glides fade where they hang (they come back from the horizon in their turn). Measured in the H1-merged shell at 320, 375 and 390, with the host swapped at k = 1 as H1 does; `tests/ocean-r4.test.mjs` also melts with the host swapped on `'host'` as H2 will.
 
 #### B2: stage on one loop, with W2b's ThoughtLayer (after #107 and A2)
 

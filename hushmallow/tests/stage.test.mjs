@@ -1,11 +1,13 @@
-// The Hushfold stage's Mallow adapters (src/hushfold/stage.js): the same calls over the
-// classic MallowRig (through app.world) and over a MallowTouch instance.
+// The Hushfold stage (src/hushfold/stage.js): the Mallow adapters — the same calls over the classic
+// MallowRig (through app.world) and over a MallowTouch instance — and createStage on one loop with the
+// real ThoughtLayer (B2): the world ticks first, then the thoughts are drawn, in the rig's shared loop.
 // Run with: node --test tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createStageMallow } from '../src/hushfold/stage.js';
+import { createStageMallow, createStage } from '../src/hushfold/stage.js';
+import { addTicker, removeTicker } from '../src/mallows/rig.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (p) => readFileSync(root + p, 'utf8');
@@ -177,4 +179,267 @@ test('world.releaseMallow: the classic rig is destroyed and its holder removed; 
   assert.match(body, /rig = null; mallowId = null;/);
   assert.match(body, /\.destroy\(\)/);
   assert.match(body, /\.container\?\.remove\(\)/);
+});
+
+// ------------------------------------------------------- createStage (B2) --
+// A browser stand-in just big enough for createStage: a fake canvas whose 2D context takes any call (and
+// counts the clears), a fake #fx-layer, the viewport, and a requestAnimationFrame that only books — the
+// test runs the rig's shared loop one frame at a time. No document.body: the real ThoughtLayer has no
+// word tags here. (The frame the rig's loop booked is kept across stand-ins, as a page keeps it.)
+let booked = null, books = 0;
+function browser() {
+  const clears = { n: 0 };
+  const grad = { addColorStop() {} };
+  const canvas = { width: 0, height: 0, style: {}, setAttribute() {}, remove() { canvas.removed = true; }, getBoundingClientRect: () => ({ left: 0, top: 0, right: 390, bottom: 844, width: 390, height: 844 }) };
+  const ctx = new Proxy({ canvas }, {
+    get: (o, k) => (k in o ? o[k] : k === 'clearRect' ? () => { clears.n++; } : () => grad),
+    set: (o, k, v) => { o[k] = v; return true; },
+  });
+  canvas.getContext = () => ctx;
+  const head = { appendChild() {} };
+  const saved = {};
+  for (const k of ['document', 'requestAnimationFrame', 'cancelAnimationFrame', 'innerWidth', 'innerHeight', 'devicePixelRatio']) saved[k] = Object.getOwnPropertyDescriptor(globalThis, k);
+  Object.assign(globalThis, {
+    document: { createElement: (t) => (t === 'canvas' ? canvas : { style: {}, setAttribute() {} }), head, addEventListener() {}, removeEventListener() {} },
+    requestAnimationFrame: (fn) => { booked = fn; return ++books; },
+    cancelAnimationFrame: () => { booked = null; },
+    innerWidth: 390, innerHeight: 844, devicePixelRatio: 2,
+  });
+  const fx = { children: [], replaceChildren(...c) { fx.children = c; }, classList: { s: new Set(), add(c) { this.s.add(c); }, remove(c) { this.s.delete(c); } } };
+  let t = 1000;
+  return {
+    canvas, ctx, clears, fx,
+    get books() { return books; },
+    /** One frame of the shared loop (it books the next one first). */
+    frame(ms = 1000 / 60) { const f = booked; booked = null; t += ms; if (f) f(t); return !!f; },
+    restore() { for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; } },
+  };
+}
+
+test('createStage: no animation loop of its own; it ticks in the rig\'s shared loop and loads the real ThoughtLayer', () => {
+  const src = read('src/hushfold/stage.js');
+  assert.doesNotMatch(src, /requestAnimationFrame\(/, 'no loop of its own');
+  assert.doesNotMatch(src, /visibilitychange/, 'the shared loop handles hidden tabs');
+  assert.match(src, /import \{ addTicker, removeTicker[^}]*\} from '\.\.\/mallows\/rig\.js';/);
+  assert.match(src, /import\('\.\.\/mallows\/thought\/index\.js'\)/, 'the ThoughtLayer, loaded lazily');
+  // the placeholder thoughts are gone
+  assert.doesNotMatch(src, /createThoughtLayer|function drawThought|BASE_TENSION|TINTS|hf-tag/);
+  // the person's words: the stage never writes them to the DOM; the ThoughtLayer does, with textContent only,
+  // and keeps them on the device
+  assert.doesNotMatch(src, /\bhtml:|innerHTML/);
+  for (const f of ['layer.js', 'thought.js', 'render.js', 'belief.js', 'styles.js', 'index.js']) {
+    assert.doesNotMatch(read(`src/mallows/thought/${f}`), /innerHTML|outerHTML|insertAdjacentHTML|localStorage|sessionStorage|indexedDB|\bfetch\s*\(|XMLHttpRequest|sendBeacon/, f);
+  }
+  assert.match(read('src/mallows/thought/layer.js'), /tg\.words\.textContent = text;/);
+});
+
+test('createStage (B2 ordering): a world writes thought.x in its tick; the same tick draws it there (one loop)', async () => {
+  const B = browser();
+  try {
+    const { ThoughtLayer } = await import('../src/mallows/thought/index.js');
+    const stage = createStage({ fx: B.fx, reducedMotion: () => false, keepOut: () => null });
+    assert.deepEqual(B.fx.children, [B.canvas]);
+    const layer = await stage.whenThoughts();
+    assert.ok(layer instanceof ThoughtLayer, 'the real ThoughtLayer');
+    assert.equal(stage.thoughts, layer);
+    const th = stage.thoughts.add({ text: 'My boss embarrassed me today.', emotion: 'embarrassment', intensity: 0.7 }, { x: 100, y: 300 });
+    // a fake world on the stage's world ticker (as the director registers with { ticker: stage.worldTicker })
+    let n = 0;
+    const world = () => { n++; th.x = 200 + 10 * n; th.y = 320; };
+    stage.worldTicker.add(world);
+    stage.start();
+    const books0 = B.books;
+    for (let i = 0; i < 30; i++) {
+      assert.ok(B.frame(), 'the shared loop is running');
+      const drawnAt = th.render.cx - th.off.x;
+      assert.ok(Math.abs(drawnAt - (200 + 10 * n)) < 1, `frame ${i}: drawn at ${drawnAt.toFixed(2)}, the world wrote ${200 + 10 * n}`);
+    }
+    assert.equal(n, 30, 'the world ticked once a frame');
+    assert.equal(B.books - books0, 30, 'one requestAnimationFrame a frame: the shared loop only');
+    // control: a world on its own ticker after the stage's lags a frame behind (what the order prevents)
+    stage.worldTicker.remove(world);
+    const late = () => { n++; th.x = 200 + 10 * n; };
+    addTicker(late);
+    B.frame(); B.frame();
+    const lag = 200 + 10 * n - (th.render.cx - th.off.x);
+    assert.ok(lag > 9, `a world ticking after the layer is drawn a frame late (${lag.toFixed(1)} px)`);
+    removeTicker(late);
+    stage.destroy();
+  } finally { B.restore(); }
+});
+
+test('createStage: it joins the shared loop on start() — after the hero\'s ticker, so a world sees this frame\'s hero — not when it is made', async () => {
+  const B = browser();
+  try {
+    for (let i = 0; i < 5 && B.frame(); i++);
+    assert.equal(B.frame(), false, 'nothing on the shared loop to begin with');
+    const stage = createStage({ fx: B.fx });
+    await stage.whenThoughts();
+    assert.equal(B.frame(), false, 'made (and sized): not on the loop yet');
+    const order = [];
+    const hero = () => order.push('hero');      // (as MallowTouch adds its ticker when it is made)
+    addTicker(hero);
+    stage.worldTicker.add(() => order.push('world'));
+    stage.start();
+    order.length = 0;
+    B.frame(); B.frame();
+    assert.deepEqual(order, ['hero', 'world', 'hero', 'world']);
+    removeTicker(hero);
+    stage.destroy();
+  } finally { B.restore(); }
+});
+
+test('createStage: freeze holds the thoughts still while the world still ticks; idle frames draw nothing', async () => {
+  const B = browser();
+  try {
+    const stage = createStage({ fx: B.fx, reducedMotion: () => false });
+    await stage.whenThoughts();
+    stage.start();
+    // idle: nothing on the canvas, nothing cleared
+    assert.ok(B.frame(), 'the shared loop is running');
+    const c0 = B.clears.n; B.frame(); B.frame();
+    assert.equal(B.clears.n, c0, 'an idle stage does not clear or draw');
+    // a ripple draws until it has faded, then one last clear, then idle again
+    stage.ripple(100, 100);
+    for (let i = 0; i < 70; i++) B.frame();
+    const c1 = B.clears.n; B.frame(); B.frame();
+    assert.ok(c1 > c0 + 40, `the ripple was drawn (${c1 - c0} frames)`);
+    assert.equal(B.clears.n, c1, 'idle once it has faded');
+    // freeze: the world ticks on, the thought is not stepped
+    const th = stage.thoughts.add({ text: 'Nobody texted me back', emotion: 'sadness' }, { x: 260, y: 300 });
+    let n = 0;
+    stage.worldTicker.add(() => { n++; });
+    for (let i = 0; i < 10; i++) B.frame();
+    stage.freeze(true);
+    assert.equal(stage.frozen, true);
+    B.frame();       // (the frame that freeze asked for: drawn as it is)
+    const clk = th.clock, cx = th.render.cx, n0 = n, c2 = B.clears.n;
+    for (let i = 0; i < 20; i++) B.frame();
+    assert.equal(n, n0 + 20, 'the world still ticks (the director keeps its own pause)');
+    assert.equal(th.clock, clk, 'the thought is not stepped');
+    assert.equal(th.render.cx, cx, 'and holds still where it is drawn');
+    assert.equal(B.clears.n, c2, 'nothing is redrawn');
+    stage.freeze(false);
+    B.frame(); B.frame();
+    assert.ok(th.clock > clk, 'it lives again');
+    // a world ticker that throws does not stop the thoughts
+    stage.worldTicker.add(() => { throw new Error('boom'); });
+    const err = console.error; console.error = () => {};
+    try { const k = th.clock; B.frame(); B.frame(); assert.ok(th.clock > k, 'the thoughts are still drawn'); } finally { console.error = err; }
+    stage.destroy();
+  } finally { B.restore(); }
+});
+
+test('createStage: before the layer loads, `thoughts` is an empty stand-in that forwards once it has (the router keeps it)', async () => {
+  const B = browser();
+  try {
+    const stage = createStage({ fx: B.fx });
+    const early = stage.thoughts;
+    assert.ok(Object.isFrozen(early));
+    assert.deepEqual(early.list, []);
+    assert.ok(Object.isFrozen(early.list));
+    assert.equal(early.primary, null);
+    assert.deepEqual(early.rects(), []);
+    assert.equal(early.hitTest(10, 10), null);
+    assert.equal(early.pointer({ type: 'down', id: 1, x: 0, y: 0 }), false);
+    assert.equal(early.roominess, Infinity);
+    assert.equal(early.tagOf({}), null);
+    assert.doesNotThrow(() => { early.release(900); early.hideTags(true); early.hideTags(false); early.relayout(); });
+    // a Tell before the layer is there: the thought is added once it is
+    assert.equal(early.add({ text: 'I said the wrong thing again', emotion: 'frustration' }, { x: 280, y: 260 }), null);
+    const layer = await stage.whenThoughts();
+    assert.equal(layer.list.length, 1, 'added once the layer loaded');
+    assert.equal(layer.list[0].text, 'I said the wrong thing again', 'the exact words');
+    // the stand-in the router kept reaches the layer
+    stage.start();
+    for (let i = 0; i < 60; i++) B.frame();
+    const th = layer.list[0];
+    assert.equal(early.list, layer.list);
+    assert.equal(early.primary, th);
+    assert.equal(early.hitTest(th.render.cx, th.render.cy), th, 'touches reach the thought through it');
+    assert.ok(early.pointer({ type: 'down', id: 4, x: th.render.cx, y: th.render.cy, t: performance.now() }));
+    assert.ok(th.pressed, 'squeezable through the stand-in');
+    early.pointer(th, { type: 'up', id: 4, x: th.render.cx, y: th.render.cy, t: performance.now() });
+    assert.deepEqual(early.rects().map((r) => r.id), [th.id]);
+    // destroy: the layer goes, `thoughts` is empty again, the shared loop no longer ticks the stage
+    stage.destroy();
+    assert.equal(th.destroyed, true);
+    assert.deepEqual(stage.thoughts.list, []);
+    assert.equal(B.canvas.removed, true);
+    assert.ok(!B.fx.classList.s.has('live'));
+    const b0 = B.books;
+    B.frame();
+    assert.equal(B.books, b0, 'nothing left on the shared loop: it stops');
+    // destroyed before it loaded: whenThoughts() gives null
+    const s2 = createStage({ fx: B.fx });
+    s2.destroy();
+    assert.equal(await s2.whenThoughts(), null);
+  } finally { B.restore(); }
+});
+
+test('createStage: with no bounds() the thoughts keep under the shell\'s top bar and subtitle band and over its dock; a shell\'s own bounds win', async () => {
+  const B = browser();
+  try {
+    const pill = (top, hidden = false, cls = '') => ({ hidden, classList: { contains: (c) => cls === c }, getBoundingClientRect: () => ({ top, height: 48 }) });
+    const dock = { children: [pill(700, true), pill(760, false, 'is-hidden'), pill(778)] };
+    const top = { getBoundingClientRect: () => ({ bottom: 58 }) };
+    const tagRoot = { querySelector: (s) => (s === '.hf-top' ? top : s === '.hf-dock' ? dock : null) };
+    const stage = createStage({ fx: B.fx, tagRoot });
+    const L = await stage.whenThoughts();
+    const b = L.bounds();
+    assert.equal(Math.round(b.top), Math.round(58 + 844 * 0.17), 'under the top bar and its subtitle band (0.17 H)');
+    assert.equal(b.bottom, 768, 'over the visible dock pill, 10 px clear (hidden pills do not count)');
+    assert.equal(b.left, undefined, 'the sides stay the layer\'s own');
+    assert.equal(L.bounds(), b, 'read at most four times a second');
+    stage.destroy();
+    // nothing to read: the layer's own default
+    const s2 = createStage({ fx: B.fx });
+    assert.equal((await s2.whenThoughts()).bounds(), null);
+    s2.destroy();
+    // the shell's own bounds
+    const mine = () => ({ left: 10, top: 100, right: 300, bottom: 500 });
+    const s3 = createStage({ fx: B.fx, tagRoot, bounds: mine });
+    assert.equal((await s3.whenThoughts()).bounds, mine);
+    s3.destroy();
+  } finally { B.restore(); }
+});
+
+test('createStage: every stage and stage.thoughts call in the Hushfold scene exists (the current shell works as it is)', async () => {
+  const shell = read('src/app/scenes/hushfold.js');
+  const B = browser();
+  try {
+    const stage = createStage({ fx: B.fx });
+    const early = stage.thoughts;
+    const layer = await stage.whenThoughts();
+    const thoughtCalls = [...new Set([...shell.matchAll(/\bstage\??\.thoughts\.(\w+)/g)].map((m) => m[1]))];
+    const stageCalls = [...new Set([...shell.matchAll(/(?<![\w/.'])stage\??\.(\w+)/g)].map((m) => m[1]))].filter((k) => k !== 'thoughts');
+    assert.ok(thoughtCalls.length >= 3 && stageCalls.length >= 2, `found ${thoughtCalls} / ${stageCalls}`);
+    for (const k of thoughtCalls) {
+      assert.ok(k in early, `stand-in: thoughts.${k}`);
+      assert.ok(k in layer, `ThoughtLayer: thoughts.${k}`);
+    }
+    for (const k of [...stageCalls, 'thoughts', 'whenThoughts', 'start', 'worldTicker', 'freeze', 'ripple', 'kick', 'size', 'canvas', 'destroy']) assert.ok(k in stage, `stage.${k}`);
+    // the options the scene passes are all createStage options
+    const call = shell.match(/createStage\(\{([\s\S]*?)\}\);/)?.[1] || '';
+    const sig = read('src/hushfold/stage.js').match(/export function createStage\(\{([\s\S]*?)\} = \{\}\)/)[1];
+    // (the top-level keys of the scene's options object)
+    const keys = [];
+    let depth = 0, at = 0;
+    for (let i = 0; i <= call.length; i++) {
+      const ch = call[i] ?? ',';
+      if ('({['.includes(ch)) depth++;
+      else if (')}]'.includes(ch)) depth--;
+      else if (ch === ',' && depth === 0) { const m = call.slice(at, i).match(/^\s*(\w+)\s*(?::|$)/); if (m) keys.push(m[1]); at = i + 1; }
+    }
+    assert.ok(call && keys.length >= 4, `the scene's createStage options: ${keys}`);
+    for (const k of ['fx', 'tagRoot', 'keepOut']) assert.ok(keys.includes(k), `the scene passes ${k}`);
+    for (const k of keys) assert.match(sig, new RegExp(`\\b${k}\\b`), `createStage takes ${k}`);
+    // what the scene's layout() reads off a thought (until the shell's pass 3 moves it into the layer)
+    const th = layer.add({ text: 'My boss embarrassed me today.', emotion: 'embarrassment', intensity: 0.6, from: { x: 195, y: 300 }, home: { x: 300, y: 420 }, r: 38 });
+    assert.equal(th.r, 38);
+    assert.equal(typeof th.moveHome, 'function');
+    assert.equal(th.text, 'My boss embarrassed me today.');
+    assert.deepEqual({ x: Math.round(th._want.x), y: Math.round(th._want.y) }, { x: 300, y: 420 }, 'add({text, …, from, home, r}) in one object, as the scene calls it');
+    stage.destroy();
+  } finally { B.restore(); }
 });
