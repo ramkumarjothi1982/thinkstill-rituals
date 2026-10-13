@@ -262,7 +262,16 @@ function faceScaleY(th) {
   return clamp(d / Math.max(1, 0.47 * th.render.P), 0.6, 1.6);
 }
 
+/**
+ * How closed the eyes are drawn (0 open beans … 1 the closed curve ◡) for a look's face and the overlays
+ * (a sigh closes them a moment). From 0.3 the closed curve is drawn in and the bean shrinks away under it.
+ * (Pure: tests read it — a smile, curve > 0.2, only ever comes with eyes drawn at least 0.6 closed.)
+ */
+export function eyeShut(f, ov = null) { return smooth(0.15, 0.6, Math.max(f.closed, (ov?.sigh || 0) * 0.9)); }
+
 const MOUTH_N = 10;
+// how far (radians) the mouth may turn off level with the jelly under it (it follows a world's tilt fully)
+export const MOUTH_TILT = 0.03;
 /**
  * The mouth this frame (pure geometry; drawFace draws it, tests read it).
  * Returns (into `out`): { open, x, y, orx, ory, rot } for an open mouth, or { open:false, pts }
@@ -273,11 +282,14 @@ export function mouthGeom(th, ox = 0, oy = 0, rm = false, out = { open: false, x
   const look = th.look, f = look.face, ov = th.ov, R = th.render, P = R.P, Q = R.pts, t = th.clock;
   const squint = clamp(ov.squint * 0.7 + th.touch.depth * 0.75);
   const mcX = Q[2 * PT.mouthC] - ox, mcY = Q[2 * PT.mouthC + 1] - oy;
-  let ax = Q[2 * PT.mouthR] - Q[2 * PT.mouthL], ay = Q[2 * PT.mouthR + 1] - Q[2 * PT.mouthL + 1];
-  const al = Math.hypot(ax, ay) || 1; ax /= al; ay /= al;
-  const skew = f.skew * 0.28;
-  const cs = Math.cos(skew), sn = Math.sin(skew);
-  const dxu = ax * cs - ay * sn, dyu = ax * sn + ay * cs;     // along the mouth
+  const ax0 = Q[2 * PT.mouthR] - Q[2 * PT.mouthL], ay0 = Q[2 * PT.mouthR + 1] - Q[2 * PT.mouthL + 1];
+  const al = Math.hypot(ax0, ay0) || 1;
+  // level: the mouth turns with a world's tilt of the whole thought (R.faceAng) and at most MOUTH_TILT
+  // more — a lean under a prop's weight, a turn away, a squash or a stretch of the jelly never sets its
+  // corners at different heights (a crooked mouth reads as a smirk). "Pressed to one side" (skew) shifts
+  // it and bends one half, its corners still level.
+  const lv = R.faceAng || 0, ang = lv + clamp(Math.atan2(ay0, ax0) - lv, -MOUTH_TILT, MOUTH_TILT);
+  const dxu = Math.cos(ang), dyu = Math.sin(ang);              // along the mouth
   const nx = -dyu, ny = dxu;                                   // down, across it
   const hw = (al / 2) * (f.mouthW / 0.85) * 1.15 * (1 - 0.3 * clamp(f.puff - 0.4)) * (1 - 0.25 * squint);
   const mx = mcX + dxu * f.skew * hw * 0.35, my = mcY;
@@ -294,11 +306,14 @@ export function mouthGeom(th, ox = 0, oy = 0, rm = false, out = { open: false, x
   }
   const curve = f.curve * P * 0.075 + ov.giggle * P * 0.03;
   const wave = f.wave * P * 0.03 * (rm ? 1 : 0.85 + 0.15 * Math.sin(t * 9));
+  // (pressed to one side: one half pulled down, the other up a little — zero at both corners)
+  const bend = f.skew * P * 0.04;
   const pts = out.pts;
   for (let k = 0; k <= MOUTH_N; k++) {
     const u = k / MOUTH_N * 2 - 1;                     // −1 … 1 along the mouth
-    const sag = curve * (1 - u * u) - curve * 0.25;
-    const wv = wave * Math.sin((u + 1) * Math.PI * 1.5 + (rm ? 0 : t * 4));
+    const sag = curve * (1 - u * u) - curve * 0.25 + bend * u * (1 - u * u);
+    // (the wobble is still at the corners, so they stay level)
+    const wv = wave * Math.sin((u + 1) * Math.PI * 1.5 + (rm ? 0 : t * 4)) * (1 - u * u);
     pts[2 * k] = mx + dxu * u * hw + nx * (sag + wv); pts[2 * k + 1] = my + dyu * u * hw + ny * (sag + wv);
   }
   return out;
@@ -308,12 +323,13 @@ function drawFace(ctx, th, pal, ox, oy, sx, sy, o) {
   const look = th.look, f = look.face, ov = th.ov, R = th.render, P = R.P, W = R.W, rm = !!o.rm, Q = R.pts;
   const ang = R.ang, co = Math.cos(ang), si = Math.sin(ang);
   const g = th.gaze;
-  // eyes: open beans; as they close the lid comes down (the bean narrows to a slit at full ink,
-  // never a faded ghost) and becomes a soft closed curve (◡): relieved, content
+  // eyes: open beans; as they close they become a soft closed curve (◡): relieved, content. The curve is
+  // drawn in from early on (shut 0.3) while the bean shrinks away under it — never a flat slit (flat slit
+  // eyes over a smile read as smug), never a faded ghost (both at full ink)
   const squint = clamp(ov.squint * 0.7 + th.touch.depth * 0.75);
   const sigh = ov.sigh;
   const open = clamp(f.eyeOpen * (1 - ov.blink) * (1 - 0.6 * squint) * (1 - 0.5 * sigh) + 0.25 * ov.gasp, 0, 1.3);
-  const shut = smooth(0.35, 0.8, Math.max(f.closed, sigh * 0.9));
+  const shut = eyeShut(f, ov), curveK = smooth(0.3, 0.7, shut);
   const rx = W * 0.072 * sx, ry0 = P * 0.1 * sy;
   const lookX = g.x * W * 0.032 * (1 - shut), lookY = g.y * P * 0.026 * (1 - shut);
   ctx.fillStyle = pal.inkA;
@@ -322,7 +338,10 @@ function drawFace(ctx, th, pal, ox, oy, sx, sy, o) {
     const i = side < 0 ? PT.eyeL : PT.eyeR;
     const ex0 = Q[2 * i] - ox + lookX, ey0 = Q[2 * i + 1] - oy + lookY;
     const ryO = Math.max(0.6, ry0 * open);
-    const ry = ryO * (1 - shut);
+    // (the bean is gone by the time the curve is drawn in fully)
+    const ry = ryO * (1 - shut) * (1 - curveK) * (1 - curveK);
+    // (it narrows as well as flattens under the curve: a small bean going, never a flat dash)
+    const rxB = rx * (1 - 0.4 * curveK);
     // the bean sinks toward its lower lid as it closes (where the closed curve sits)
     const ex = ex0, ey = ey0 + ryO * shut * 0.3;
     if (ry > 0.45) {
@@ -337,7 +356,7 @@ function drawFace(ctx, th, pal, ox, oy, sx, sy, o) {
         ctx.lineTo(ex + rx * 2, ey + ry * 3); ctx.lineTo(ex - rx * 2, ey + ry * 3); ctx.closePath();
         ctx.clip();
       }
-      ctx.beginPath(); ctx.ellipse(ex, ey, rx * (1 + 0.08 * shut), ry, ang, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(ex, ey, rxB, ry, ang, 0, TAU); ctx.fill();
       // catchlights (only while the eye is properly open)
       if (open > 0.25 && ry > ry0 * 0.42) {
         ctx.fillStyle = 'rgba(255,255,255,0.95)';
@@ -355,9 +374,9 @@ function drawFace(ctx, th, pal, ox, oy, sx, sy, o) {
         ctx.restore();
       }
     }
-    if (shut > 0.5) {
-      // content: a soft closed curve (◡), drawn in as the slit closes (it thickens, it does not fade in)
-      const k = smooth(0.5, 0.92, shut);
+    if (curveK > 0) {
+      // content: a soft closed curve (◡), drawn in as the eye closes (it thickens, it does not fade in)
+      const k = curveK;
       ctx.save(); ctx.lineWidth = Math.max(0.6, Math.max(1.2, P * 0.03) * k);
       ctx.beginPath(); ctx.ellipse(ex0, ey0 - ry0 * 0.25, rx * 1.1, ry0 * 0.55, ang, 0.12 * Math.PI, 0.88 * Math.PI); ctx.stroke();
       ctx.restore();

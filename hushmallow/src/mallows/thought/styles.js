@@ -248,9 +248,10 @@ export function deriveLook(style, s, out = makeLook()) {
   out.e = e; out.relief = relief; out.pace = pace; out.soft = soft; out.tintK = k;
   // The relieved face arrives in order, so no in-between reads as smug: heavy lids and their tilt
   // ease away first (gone by relief 0.35), the eyes stay softly open, then close (◡) from 0.3, and
-  // only then does the smile come (0.35 → 0.7). A settled sad thought looks calm, never amused.
+  // only once they are drawn closed does the smile come (0.55 → 0.85; render.js eyeShut is ≥ 0.6 by
+  // then). A settled sad thought looks calm, never amused; flat slit eyes over a smile never happen.
   const F0 = REST_FACE, FE = style.face, FR = RELIEVED_FACE, f = out.face;
-  const lidK = 1 - smooth(0, 0.35, relief), smileK = smooth(0.35, 0.7, relief), shutK = smooth(0.3, 0.8, relief);
+  const lidK = 1 - smooth(0, 0.35, relief), smileK = smooth(0.55, 0.85, relief), shutK = smooth(0.3, 0.8, relief);
   for (const key of FACE_KEYS) {
     const v = lerp(F0[key], FE[key], e);
     if (key === 'lid' || key === 'lidTilt') f[key] = v * lidK;

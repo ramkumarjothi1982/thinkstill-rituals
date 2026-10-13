@@ -23,5 +23,5 @@
 export { ThoughtMallow, createThought, THOUGHT_MATERIAL, PT, FX_GEOM } from './thought.js';
 export { BeliefMallow, createBelief, PROPS, PROP_WEIGHT, beliefStyle } from './belief.js';
 export { ThoughtLayer } from './layer.js';
-export { mouthGeom } from './render.js';
+export { mouthGeom, eyeShut, MOUTH_TILT } from './render.js';
 export { THOUGHT_STYLES, THOUGHT_KINDS, CALM_TINT, BELIEF_TINTS, SHAPE, TAG_MIN_PX, normaliseEmotion, styleFor, deriveLook, tagBudget, tagLines, wordsOf, firstWords, mixOk } from './styles.js';

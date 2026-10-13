@@ -35,7 +35,8 @@ const BELIEF_FACE = {
   stone: { eyeOpen: 0.72, lid: 0.42, lidTilt: -0.55, browA: 0.65, browTilt: -0.55, curve: -0.38, mouthW: 0.7, lookY: 0.3, blush: 0.2 },
   shell: { eyeOpen: 0.82, lid: 0.18, lidTilt: -0.2, browA: 0.5, browTilt: -0.6, browY: 0.1, curve: -0.08, mouthW: 0.5, wave: 0.3, lookX: 0.45, lookY: 0.15, blush: 0.6 },
   thread: { eyeOpen: 0.98, browA: 0.8, browTilt: -0.85, browY: 0.22, curve: -0.3, wave: 0.6, mouthW: 0.55, sweat: 0.35, blush: 0.2 },
-  charm: { eyeOpen: 0.88, lid: 0.08, curve: 0.42, mouthW: 0.78, blush: 0.55, lookX: -0.45, lookY: 0.5 },
+  // (the charm: it looks down at what it holds onto, a soft level mouth — never a sly half-smile to one side)
+  charm: { eyeOpen: 0.88, lid: 0.08, curve: 0.06, mouthW: 0.74, blush: 0.55, lookX: 0, lookY: 0.55 },
 };
 
 /** A belief's style: its prop's palette and face, slower and steadier than a passing thought. */
