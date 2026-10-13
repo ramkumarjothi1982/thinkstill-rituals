@@ -51,7 +51,9 @@ export const loadGrief = () => (griefMod ||= import('../beyond/grief.js').then((
 /**
  * The safety reading with loss talk added (lossAware): a death named with a wish to follow the one who died is
  * care; any other death or loss talk is concern (the gentle path: support close, no Thought Mallow, nothing
- * playful). Never lowers what checkText found.
+ * playful), and so is a person beside a strong loss cue (grief.js strongLoss, review r11: "a drunk driver took my
+ * brother from us", "the fire took both my grandparents"; never the weak cues, a false alarm here opens the support
+ * beat). Never lowers what checkText found.
  */
 export function readSafety(m, t, lossAware) {
   const r = m.checkText(t);
@@ -59,7 +61,7 @@ export function readSafety(m, t, lossAware) {
   try {
     if (griefNow.deathEscalation(t)) return { level: 'care', category: 'unsafe', matched: null };
     if (r.level !== 'none') return r;
-    if (griefNow.deathTalk(t) || griefNow.livingLoss?.(t)) return { level: 'concern', category: 'loss', matched: null };
+    if (griefNow.deathTalk(t) || griefNow.livingLoss?.(t) || griefNow.strongLoss?.(t)) return { level: 'concern', category: 'loss', matched: null };
   } catch { /* the plain reading stands */ }
   return r;
 }

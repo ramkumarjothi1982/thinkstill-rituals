@@ -20,7 +20,7 @@ export const DEATH_TALK = [
   'My nan died in her sleep.', 'Grandad died on Tuesday.', 'my grandads dead and nobody cares', 'Our cat is dead.', 'The baby died.', 'My best friend died in a car accident.',
   'My brother died of an overdose.', 'My dad is dying.', 'My mum is dying of cancer.', 'Watching my grandma die was the worst thing.', 'I’m scared my mum will die.', 'What if my dad dies?',
   'I dreamt my mum died.', 'My dad nearly died.', 'The death of my father changed everything.', 'Since my dad’s death I can’t sleep.', 'It’s the anniversary of her death.', 'My mum is deceased.',
-  'my dog dide yesterday', 'my nan is dieing', 'He died in the game and I cried anyway.', 'She died in the film and I can’t stop thinking about it.', 'My goldfish died.', 'My plants died while I was away.',
+  'my dog dide yesterday', 'my nan is dieing', 'He died in the game and I cried anyway.', 'She died in the film and I can’t stop thinking about it.', 'My goldfish died.',
   // passed away, passed on, passed (after a person or he / she / they)
   'My grandma passed away.', 'My grandma passed awy.', 'My nan past away last week.', 'My uncle passed on in May.', 'My dad passed last year.', 'Mum passed in March.', 'Since Mum passed I can’t sleep.',
   'My husband’s passed.', 'She passed in her sleep.', 'He passed peacefully.', 'My dog has passed.', 'My son passed and I’m so proud of the man he was.', 'Since his passing nothing feels right.',
@@ -51,6 +51,9 @@ export const GRIEF_ONLY = [
 ];
 /** The short list of unambiguous idioms, and words that are not death talk at all: deathTalk is null. */
 export const NOT_DEATH_TALK = [
+  // (review r11, the coordinator's main-screen decision: a plant that died is an ordinary idiom, like a gadget; still a
+  // bag word in Another Angle, so never framed)
+  'My plants died while I was away.',
   // a gadget
   'My phone died.', 'My phone’s dead.', 'my phones dead', 'My battery died on the way home.', 'My laptop is dying.', 'My car died on the motorway.', 'My charger died.', 'My controller died mid game.',
   'My headphones died.', 'My console died again.', 'The battery is dead.', 'I have a dead battery.', 'My baby monitor died in the night.',

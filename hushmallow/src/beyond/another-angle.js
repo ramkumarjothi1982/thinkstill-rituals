@@ -607,6 +607,15 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (!S.heavyDraft) { S.heavyDraft = true; careFace(); }
     }
   }
+  /**
+   * The lines for the server's care answer: a wish to follow → SAFETY.follow; beside a bag word, a loss shape (lossNear,
+   * strongLoss) or death talk → SAFETY.careGentle ("That sounds like a lot to carry."), never "shouldn't have happened";
+   * otherwise SAFETY.care (review r11).
+   */
+  function serverCareLines() {
+    if (S.follow) return SAFETY.follow;
+    return gentleRoute(S.text) || bagWords(S.text) ? SAFETY.careGentle : SAFETY.care;
+  }
   /** Death talk that wants to follow the one who died, seen: care for the rest of the visit (grief.js deathEscalation). */
   function noteFollow() {
     S.follow = true;
@@ -857,7 +866,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (res) {
       if (res.keepSupportClose) { S.keepSupport = true; supportPill.hidden = false; }
       if (res.status === 'crisis') { crisisMode(); return; }
-      if (res.status === 'care') { careMode(); return; }
+      // (review r11) the server's care beside a bag word or a loss shape is said gently, assuming nothing (careGentle)
+      if (res.status === 'care') { careMode({ lines: serverCareLines() }); return; }
       if (res.status === 'unclear') { subs?.clear(); dropThought(); unclear(); return; }
       // the server read a loss the words didn't name the app's way ("since Mum passed"): gently, no mechanic, its two
       // lines only when both acknowledge (grief.js griefLinesOk), else the authored gentle lines

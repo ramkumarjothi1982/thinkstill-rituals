@@ -216,7 +216,7 @@ test('r10.9: the review’s other groups still hold (ordinary words, feelings, f
 });
 
 // ------------------------------------------------------------------------ over-blocking --
-test('r10.10: over-blocking: most of forty ordinary worries still get their angle; the structural false alarms are the listed two', () => {
+test('r10.10: over-blocking: the forty ordinary worries all get their angle (review r11: the two structural false alarms set aside, the four the marker gate missed read)', () => {
   const unframed = [];
   for (const t of P.WORRIES) {
     probes++;
@@ -224,10 +224,12 @@ test('r10.10: over-blocking: most of forty ordinary worries still get their angl
     if (!R.mechanics.some((m) => FRAMING_MECHANICS.has(m)) && !framings(R).length) unframed.push(t);
   }
   assert.equal(P.WORRIES.length, 40);
-  assert.deepEqual(unframed.sort(), [...P.WORRIES_FALSE_ALARMS, ...P.WORRIES_UNFRAMED_BEFORE].sort());
-  assert.ok(P.WORRIES.length - unframed.length >= 34, `${P.WORRIES.length - unframed.length}/40 still framed`);
-  for (const t of P.WORRIES_FALSE_ALARMS) assert.equal(lossNear(t), true, t);
-  for (const t of P.WORRIES_UNFRAMED_BEFORE) assert.equal(lossNear(t), false, t);
+  assert.deepEqual(unframed, []);
+  // (r10's false alarms: "left the room without saying goodbye", "want to be my friend anymore" are set aside since r11)
+  for (const t of P.WORRIES_FALSE_ALARMS) { assert.equal(lossNear(t), false, t); assert.equal(framingAllowed(t), true, t); }
+  // (r10's four the marker gate never read: "she always does this", "mum always loves her more", "he probably finds me
+  // boring", "she must be jealous" carry a marker since r11)
+  for (const t of P.WORRIES_UNFRAMED_BEFORE) { assert.equal(lossNear(t), false, t); assert.equal(framingAllowed(t), true, t); }
 });
 
 // ---------------------------------------------------------------------------- main screen --

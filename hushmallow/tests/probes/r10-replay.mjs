@@ -6,7 +6,7 @@
 //
 // Keep it in step with another-angle.js: each step below names the function it mirrors.
 
-import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene } from '../../src/beyond/authored.js';
+import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
 import { deathEscalation, serverLoss, griefLinesOk } from '../../src/beyond/grief.js';
 import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm } from '../../src/beyond/backstop.js';
 import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, mechanicLines } from '../../src/beyond/lines.js';
@@ -28,6 +28,11 @@ export const STUBS = Object.freeze({
   griefish: () => ({ status: 'ok', scene: { reasoning_pattern: 'rumination', emotion: 'sadness', situation_type: 'family', known_fact: '', possible_assumption: '', alternative_angle: '', practical_next_step: 'Sit with a photo of them for a minute.', subtitle_line_1: 'Missing them this much makes sense.', subtitle_line_2: 'Grief isn’t a thought to fix.', safety_status: 'ok', mallow_character: 'noomi' } }),
   // a fair-anger reading on find_boundary
   anger: () => ({ status: 'ok', scene: { reasoning_pattern: 'valid_anger', interaction_type: 'find_boundary', emotion: 'anger', situation_type: 'social', known_fact: 'Someone blamed you.', possible_assumption: '', alternative_angle: '', practical_next_step: 'Write down what you would want to say to them.', subtitle_line_1: 'Being angry about this makes sense.', subtitle_line_2: 'What would you want to say, ask for or protect?', safety_status: 'ok', mallow_character: 'kip' } }),
+  // (review r11, the round-4 review's stubs) fair anger without a mechanic, a harsh verdict, a spectrum, a worst case
+  angerLines: () => ({ status: 'ok', scene: { reasoning_pattern: 'valid_anger', emotion: 'anger', situation_type: 'social', known_fact: 'Someone treated you unfairly.', possible_assumption: '', alternative_angle: 'Your anger is pointing at something real.', practical_next_step: 'Decide one line you won’t let them cross again.', subtitle_line_1: 'Being angry about this makes sense.', subtitle_line_2: 'Your anger is pointing at something that matters.', safety_status: 'ok', mallow_character: 'glitzi' } }),
+  harsh: () => ({ status: 'ok', scene: { reasoning_pattern: 'self_criticism', emotion: 'shame', situation_type: 'self', known_fact: 'Something went wrong.', possible_assumption: 'That it makes you a failure.', alternative_angle: 'That’s a harsh verdict for one event.', practical_next_step: 'Write the lesson in one kind sentence.', subtitle_line_1: 'That’s a harsh verdict on yourself.', subtitle_line_2: 'Softer. And the lesson’s still there.', safety_status: 'ok', mallow_character: 'boppo' } }),
+  spectrum: () => ({ status: 'ok', scene: { reasoning_pattern: 'all_or_nothing', emotion: 'frustration', situation_type: 'self', known_fact: 'One part went badly.', possible_assumption: 'That it was all bad.', alternative_angle: 'Most things land somewhere between perfect and ruined.', practical_next_step: 'Name one part that went okay.', subtitle_line_1: 'Most things land somewhere between perfect and ruined.', subtitle_line_2: 'Where on that line does this really sit?', safety_status: 'ok', mallow_character: 'zuzu' } }),
+  catas: () => ({ status: 'ok', scene: { reasoning_pattern: 'catastrophising', emotion: 'anxiety', situation_type: 'future', known_fact: 'Nothing bad has happened yet.', possible_assumption: 'That the worst will happen.', alternative_angle: 'The worst case is one possibility, not an event.', practical_next_step: 'Write down the most likely outcome.', subtitle_line_1: 'That’s the worst case, blown up.', subtitle_line_2: 'Life size, it’s one possibility.', safety_status: 'ok', mallow_character: 'loomi' } }),
   care: () => ({ status: 'care' }),
   crisis: () => ({ status: 'crisis' }),
   statusCrisis: (t) => ({ status: 'ok', scene: { ...STUBS.pull(t).scene, safety_status: 'crisis' } }),
@@ -35,6 +40,8 @@ export const STUBS = Object.freeze({
 });
 /** The stubs that answer with a scene or a fallback (the ones a death must never be framed under). */
 export const SCENE_STUBS = ['none', 'grief', 'pull', 'fallback', 'mind', 'griefish', 'anger'];
+/** (review r11) every stub that answers with a scene or a fallback, the round-4 review's four added. */
+export const ALL_SCENE_STUBS = [...SCENE_STUBS, 'angerLines', 'harsh', 'spectrum', 'catas'];
 
 /** angle-client.js: the server's answer as the experience sees it. */
 function clientShape(raw) {
@@ -77,10 +84,10 @@ function drawn(scene, parts, L) {
  * One visit: the person types `text` and sends it, with `server` (a STUBS entry, null for no sharing). Walks "Show me
  * another angle" up to `walk` scenes. → { route, requests, said, drawn, mechanics, faces, scenes, noPlay, quips }
  * (route: crisis | care | follow | gentle | play | unclear | nomore; faces: 'attentive' | 'playful' | 'transforming';
- * quips: Zuzu's squeeze quips would still play).
+ * quips: Zuzu's squeeze quips would still play; look: the Thought Mallow's first look, 'feeling:<kind>' or 'pattern:<id>').
  */
 export function visit(text, { server = null, emotion = null, walk = 4 } = {}) {
-  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null };
+  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null };
   const S = { level: 'none', follow: false, noPlay: false, grief: false, shown: [], used: [] };
   const say = (l) => { for (const x of [l].flat()) if (x) R.said.push(String(x)); };
   const note = (r) => { if (r?.level && LEVELS.indexOf(r.level) > LEVELS.indexOf(S.level)) S.level = r.level; };
@@ -92,7 +99,9 @@ export function visit(text, { server = null, emotion = null, walk = 4 } = {}) {
   // readDraft
   const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) S.noPlay = true; };
 
-  // afterTell
+  // afterTell: firstLook (no feeling chosen): a feeling's look, else the first candidate pattern's (review r11: never
+  // 'valid_anger' beside a bag word, so the Thought Mallow and the mechanic are never tinted anger beside a loss)
+  { let f = null, p = null; try { f = feelingOf(text); } catch { f = null; } try { p = candidatePatterns(text)[0] || null; } catch { p = null; } R.look = f ? `feeling:${f.kind}` : `pattern:${p}`; }
   readDraft(text);
   note(checkText(text));
   if (S.level === 'crisis') return crisis();
@@ -132,7 +141,8 @@ export function visit(text, { server = null, emotion = null, walk = 4 } = {}) {
     let scene = null, hint = null;
     if (res) {
       if (res.status === 'crisis') return crisis();
-      if (res.status === 'care') return care();
+      // (serverCareLines, review r11)
+      if (res.status === 'care') return care(S.follow ? SAFETY.follow : gentleRoute(text) || bagWords(text) ? SAFETY.careGentle : SAFETY.care);
       if (res.status === 'unclear') return done('unclear');
       if (res.status === 'ok' && res.scene && serverLoss(res.scene, text, { heavy: heavyHarm })) return griefMode({ scene: griefLinesOk(res.scene) ? res.scene : null, asked: true });
       if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) {

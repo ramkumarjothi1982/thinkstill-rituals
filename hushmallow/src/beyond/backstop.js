@@ -15,6 +15,9 @@
 //                          fires (lossNear), or death talk does (grief.js deathTalk, its phrase families included)
 //   lossNear(text)       → (review r10) a person or a pet word within four words of a loss cue ("covid took my grandad",
 //                          "my sister is in the ground now"), or a heartbeat lost at a scan: a bag hit
+//   strongLoss(text)     → (review r11) lossNear with the strong cues only (taken from us, a killer that got them, a
+//                          heartbeat, unresponsive, buried, an angel, heaven, never woke, couldn't save…): the main
+//                          screen's backstop (input-overlay readSafety), where a false alarm costs the support beat
 //   ordinaryOnly(text)   → (review r10) the only bag words are ordinary idioms ("I passed my driving test!"): neutral lines
 //   harmWords(text)      → bagWords (the r7 name)
 //   harmRoute(text)      → null (no bag word) | 'gentle' (death talk, someone alive but going) | 'kind' (the rest)
@@ -28,7 +31,7 @@
 //
 // Pure ES module, no DOM. Deterministic.
 
-import { norm, blankOrdinary, PERSON, PET } from './death-words.js';
+import { norm, blankOrdinary, PERSON, PET, KILLERS, ORDINALS } from './death-words.js';
 import { deathTalk, livingLoss } from './grief.js';
 import { hasMarker } from './markers.js';
 
@@ -48,6 +51,9 @@ export const BAG = new RegExp(`\\b(?:${[
   // (review r9) misspelt deaths, and the phrasings deathTalk missed: a misspelt or unusual death is never framed
   'ded', 'dided', 'diied', 'dieed', 'diedd', 'dide', 'deid', 'diead', 'dieing', 'dyin', 'deaded', 'six feet under', 'put to sleep', 'no longer with us', 'with us anymore', 'with us any more',
   'is no more', 'hit by a lorry', 'hit by a truck', 'hit by a van', 'hit by a motorbike', 'hit by a tram', 'knocked down', 'pregnancy', 'heaven', 'rainbow bridge', 'vet',
+  // (review r11) the illness named as the subject ("covid got my grandad", "the virus got him"), and the slang
+  'covid', 'covid 19', 'corona', 'coronavirus', 'virus', 'bit the dust', 'carked it', 'karked it', 'copped it', 'met his maker', 'met her maker', 'breathed his last',
+  'breathed her last', 'pushing up daisies', 'pushing up the daisies',
 ].map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')).join('|')}|${[
   // a person (or pet) word beside "dyed" ("my best friend dyed"), "put him down", "first christmas without", "would have been … birthday"
   `(?:${PERSON}|${PET})s?\\s+(?:[a-z]+\\s+){0,2}dyed`, 'put\\s+(?:him|her|them|it)\\s+(?:down|to\\s+sleep)', 'first\\s+[a-z]+(?:\\s+day)?\\s+without',
@@ -61,9 +67,10 @@ const bagText = (text) => String(text ?? '').normalize('NFKC').toLowerCase().rep
 // shape counts too: a person or a pet word within four words (either side) of a word that a loss is told with. It
 // only ever takes the framing (and the playful lines) away, so a false alarm costs little; a miss costs a death read
 // as a guess. No idiom is set aside here either.
-/** A person or a pet ("my nan", "our dog", "grandad", "the baby", "mums"); and him / her / them, only beside one. */
+/** A person or a pet ("my nan", "our dog", "grandad", "the baby", "mums"); and him / her / them / he / she / they, only beside one. */
 const WHO_WORD = new RegExp(`\\b(?:${PERSON}|${PET})(?:s|es)?\\b`, 'giu');
-const PRONOUN = /\b(?:him|her|them)\b/giu;
+// (review r11: he / she / they too, "i miss my dad so much since he went")
+const PRONOUN = /\b(?:him|her|them|he|she|they|hes|shes|theyre|theyve|theyd)\b/giu;
 /** The words a loss is told with (the coordinator's list, review r10), as whole words or phrases. */
 const LOSS_CUES = [
   'took', 'taken', 'went', 'gone', 'left us', 'goodbye', 'goodbyes', 'rest', 'resting', 'laid', 'ground', 'angel', 'angels', 'heaven', 'heartbeat',
@@ -71,6 +78,8 @@ const LOSS_CUES = [
   'urn', 'hospital', 'shuffled', 'never came', 'never come', 'isnt coming', 'is not coming', 'not coming back', 'never coming back', 'isnt around',
   'is not around', 'arent around', 'no longer', 'anymore', 'any more', 'last time', 'would have been', 'wouldve been', 'would of been',
   'anniversary', 'without',
+  // (review r11) "my grandad bit the dust"
+  'bit the dust',
 ];
 const CUE = new RegExp(`\\b(?:${LOSS_CUES.map((w) => w.replace(/ /g, '\\s+')).join('|')})\\b`, 'giu');
 /** "birthday" is a cue only beside "would have been" ("today would have been my nans birthday"). */
@@ -94,10 +103,17 @@ const CUE_ASIDE = new RegExp([
   '\\btook\\s+(?:ages|forever|so\\s+long|too\\s+long|longer|a\\s+(?:long\\s+|little\\s+|short\\s+)?(?:time|while)|hours|minutes|days|weeks|months|\\d+\\s+[a-z]+|an?\\s+(?:hour|minute|day|week|month|age|second|look|photo|picture|selfie|break|nap|shower|bath|walk))\\b',
   '\\btook\\s+(?:my|our|his|her|their|the)\\s+(?:phone|charger|seat|place|spot|stuff|things|food|clothes|jumper|hoodie|book|pen|money|keys?|car|bike|turn|side|ideas?|photo|picture|bag|lunch|chips|sweets|snacks|drink|homework|notes|laptop|tablet|ipad|controller|remote|headphones|earbuds|room|bed|bus|train|advice)\\b',
   '\\bwithout\\s+(?:me|us|asking|telling|warning|permission|a\\s+word|knocking|thinking|looking)\\b',
+  // (review r11) "went to bed without saying goodnight", "left the room without saying goodbye" (someone alive, in a mood)
+  '\\bwithout\\s+(?:even\\s+)?(?:saying|a)\\s+(?:goodbye|goodnight|good\\s+night|night|bye|hello|hi|hey|a\\s+word|anything|thanks|thank\\s+you|sorry)\\b',
   '\\bwent\\s+(?:all\\s+)?(?:quiet|silent|red|mad|crazy|ballistic|mental|off\\s+on\\s+one|on\\s+and\\s+on|on\\s+about|off\\s+at\\s+me|shopping|clubbing)\\b',
   '\\bwent\\s+to\\s+(?:the\\s+|a\\s+|an\\s+|my\\s+|his\\s+|her\\s+|their\\s+|our\\s+)?(?:cinema|movies|pictures|shops?|supermarket|park|pub|bar|club|party|gym|school|college|uni|university|work|office|beach|match|game|concert|gig|festival|restaurant|cafe|town|city|library|zoo|pool|meeting|toilet|loo|bathroom|kitchen|class|lesson|practice|training|interview|dentist|mall|prom|disco|sleepover|bowling)\\b',
   '\\bfound\\s+out\\b', '\\b(?:the\\s+)?rest\\s+of\\b', '\\bsitting\\s+(?:next\\s+to|with|beside|by\\s+me|on|at|in|there|here|alone|around|together|opposite)\\b',
   '\\bforgot\\s+(?:about\\s+)?(?:our|my|the|his|her|their)\\s+(?:wedding\\s+)?anniversary\\b',
+  // (review r11) went out, home, upstairs, to bed, off with, round to ("my girlfriend went out with her friends tonight");
+  // "anymore" closing "want to be my friend anymore", "like me anymore" (someone alive, cooling off)
+  '\\bwent\\s+(?:out|home|upstairs|downstairs|up\\s+to\\s+(?:bed|her\\s+room|his\\s+room|their\\s+room)|to\\s+bed|to\\s+sleep\\s+for\\s+the\\s+night|off\\s+with|out\\s+with|round\\s+to|over\\s+to|back\\s+to\\s+(?:work|school|bed|uni|college|the\\s+office))\\b',
+  '\\b(?:want|wants|wanna|wanted)\\s+to\\s+be\\s+(?:my|our)\\s+(?:best\\s+)?(?:friend|mate|bestie|girlfriend|boyfriend|partner)s?\\s+any\\s*more\\b',
+  '\\b(?:like|likes|liked|love|loves|care\\s+about|cares\\s+about|want|wants|need|needs|trust|trusts|talk\\s+to|talks\\s+to|text|texts|call|calls|invite|invites|fancy|fancies|rate|rates)\\s+(?:me|us)\\s+any\\s*more\\b',
 ].join('|'), 'giu');
 /** Each word's index for a character offset (the words of `t`). */
 function wordAt(t) {
@@ -120,13 +136,84 @@ export function lossNear(text) {
   who.push(...spans(t, PRONOUN, at));
   const cues = spans(t, CUE, at);
   if (WOULD_HAVE_BEEN.test(t)) cues.push(...spans(t, BIRTHDAY, at));
-  return who.some(([a, b]) => cues.some(([c, d]) => Math.max(0, c - b, a - d) <= NEAR));
+  cues.push(...gotCues(t, at));
+  return near(who, cues);
+}
+const near = (who, cues) => who.some(([a, b]) => cues.some(([c, d]) => Math.max(0, c - b, a - d) <= NEAR));
+/** Who can be the subject of "got" without it being a loss ("my sister got the bigger room", "when I got home"). */
+const GOT_SUBJECT_NOT = new RegExp(`^(?:i|im|ive|id|we|you|he|she|they|it|its|who|that|which|this|there|everyone|everybody|someone|somebody|nobody|people|all|both|us|me|and|or|but|just|also|finally|then|never|only|(?:${PERSON}|${PET})(?:s|es)?)$`, 'iu');
+/**
+ * (review r11) "got" is a cue only when something that is not a person got them ("the virus got my grandad", "the big c
+ * got my dad", "that illness got her"): never "my brother got a new job", "I got home".
+ */
+function gotCues(t, at) {
+  const out = [];
+  for (const m of t.matchAll(/\b([a-z0-9]+)\s+(?:(?:has|had|have|finally|eventually|then|just|also|in\s+the\s+end|sadly)\s+)*(?:got|gets)\b/giu)) {
+    if (GOT_SUBJECT_NOT.test(m[1])) continue;
+    const g = m.index + m[0].lastIndexOf('got') + (m[0].endsWith('gets') ? -1 : 0);
+    out.push([at(Math.max(m.index, g)), at(m.index + m[0].length - 1)]);
+  }
+  return out;
+}
+
+// ------------------------------------------------------------ the main screen's strong loss cues (review r11) --
+// On the main screen a false alarm opens the support beat (a costlier step than Another Angle's kind mechanics), so
+// only the strong cues count there: never went, left, gone, goodbye, without, anymore, found, sitting, rest, last
+// time or a birthday on their own. The full bag and the weak cues (lossNear) stay inside Another Angle.
+const STRONG = [
+  // taken from us ("a drunk driver took my brother from us"), a killer that got them ("the virus got my grandad")
+  '\\b(?:took|taken|stole|stolen|snatched|ripped)\\s+(?:[a-z]+\\s+){1,6}?(?:away\\s+)?from\\s+(?:us|this\\s+world|the\\s+world|our\\s+family|our\\s+lives)\\b',
+  `\\b(?!(?:flu|sickness)\\b)(?:${KILLERS}|(?:the\\s+)?(?:c|illness|disease|sickness|infection))\\s+(?:(?:has|had|finally|eventually|then|in\\s+the\\s+end|cruelly|sadly)\\s+)*(?:got|gets|took|taken|claimed|stole)\\b`,
+  // a heartbeat (never "in a heartbeat", "heard the heartbeat"), unresponsive, succumbed, departed
+  '\\bheartbeats?\\b', '\\bheart\\s+(?:stopped|gave\\s+out|gave\\s+up|failed)\\b', '\\bunresponsive\\b',
+  '\\bsuccumbed\\b(?!\\s+to\\s+(?:the\\s+)?(?:temptation|peer\\s+pressure|pressure|urge|sleep|exhaustion|boredom|charm|my\\s+charm|tiredness|hunger|cravings?|sales|hype))',
+  '\\bdeparted\\b(?!\\s+(?:from\\s+(?:the\\s+)?(?:station|airport|platform|gate|port|terminal|school|office|party|house|room|stage)|at\\s+\\d|on\\s+time|late|early|for|to)\\b)',
+  // buried, ashes, an urn, an angel, heaven (never the idioms: "the Ashes", "a tea urn", "such an angel", "thank heavens")
+  '\\bburied\\b', '\\bashes\\b', '\\burns?\\b', '\\bangels?\\b', '\\bheaven\\b',
+  // laid to rest, in the ground, shiva, never came back or home, never woke, couldn't save, would have been + an ordinal
+  '\\blaid\\s+(?:(?:him|her|them|my|our|his|the)\\s+(?:[a-z]+\\s+){0,2})?to\\s+rest\\b', '\\bin\\s+the\\s+ground\\b', '\\bshiva\\b',
+  '\\bnever\\s+(?:came|come|made\\s+it)\\s+(?:back|home)\\b',
+  '\\bnever\\s+(?:woke|awoke|woken)(?:\\s+up)?\\b(?!\\s+(?:me|us|him|her|them|in\\s+time|on\\s+time|early|once|all\\s+night|at\\s+all|for|during|before|until|till)\\b)',
+  '\\b(?:couldnt|could\\s+not|werent\\s+able\\s+to|were\\s+unable\\s+to|wasnt\\s+able\\s+to|was\\s+unable\\s+to|failed\\s+to)\\s+(?:save|revive|resuscitate)\\b(?!\\s+(?:[a-z]+\\s+){0,3}?(?:a\\s+(?:seat|place|spot|space|slice|bit|copy)|money|time|up|enough|any|the\\s+(?:file|game|work|document|photos?)|my\\s+(?:file|game|work|document|photos?))\\b)',
+  `\\b(?:would\\s+(?:have|ve|of)|wouldve)\\s+(?:been|turned)\\s+(?:[a-z]+\\s+){0,3}?(?:\\d+(?:st|nd|rd|th)?|${ORDINALS})\\b`,
+];
+const STRONG_CUE = new RegExp(STRONG.join('|'), 'giu');
+/** The strong cues' ordinary senses, taken out first (no loss is told in them). */
+const STRONG_ASIDE = new RegExp([
+  '\\bin\\s+a\\s+heartbeat\\b',
+  '\\b(?:heard|hear|hearing|saw|see|seeing|seen|strong|healthy|good|lovely|beautiful|fast|normal|steady|regular|great|perfect|first|little|amazing)\\s+(?:a\\s+|the\\s+|its\\s+|his\\s+|her\\s+|their\\s+|our\\s+babys\\s+|the\\s+babys\\s+|babys\\s+|a\\s+strong\\s+|a\\s+healthy\\s+|the\\s+little\\s+)?heartbeats?\\b',
+  '\\bheartbeats?\\s+(?:was|is|were|are|looked|sounded)\\s+(?:so\\s+|really\\s+|nice\\s+and\\s+)?(?:strong|fine|normal|healthy|good|perfect|great|lovely|steady|fast)\\b',
+  '\\b(?:the|watch\\w*|follow\\w*)\\s+ashes\\s+(?:test|series|match|cricket|tour|on\\s+(?:tv|the\\s+radio))\\b|\\bwatching\\s+the\\s+ashes\\b|\\btea\\s+urns?\\b',
+  '\\b(?:(?:such|what|absolute|total|real|proper|little|actual|perfect|been|being|is|was|s|like|my|our|bit\\s+of)\\s+)+(?:an?\\s+)?(?:(?:absolute|total|real|proper|little|actual|perfect)\\s+)?angel\\b(?!\\s+(?:now|in\\s+heaven|above|watching|up\\s+there|in\\s+the\\s+sky|with|forever|for\\s+ever)\\b)',
+  '\\bangel\\s+(?:delight|cake|food|hair|wings?\\s+costume|costume|number|numbers)\\b|\\bhells\\s+angels\\b|\\bcharlies\\s+angels\\b|\\bguardian\\s+angel\\s+(?:card|necklace|keyring)\\b',
+  '\\b(?:thank|thanks|good|for)\\s+heavens?\\b|\\bheavens?\\s+(?:knows|forbid|sake|above|help)\\b|\\bseventh\\s+heaven\\b|\\bheaven\\s+on\\s+earth\\b|\\b(?:is|was|s|pure|absolute|sheer|like|smells\\s+like|tastes\\s+like|looks\\s+like|felt\\s+like|feels\\s+like)\\s+(?:pure\\s+|absolute\\s+|sheer\\s+)?heaven\\b',
+  '\\bburied\\s+(?:a|the|his|her|its|their|my)\\s+(?:bone|ball|toy|treasure|time\\s+capsule|head|face|nose|hands|feelings)\\b',
+  '\\b(?:holes?|dig\\w*|dug|plant\\w*|seeds?|bulbs?|stuck|stakes?|posts?|sank|sink\\w*|spade|frozen|wet|muddy|footprints?)\\s+(?:[a-z]+\\s+){0,3}?in\\s+the\\s+ground\\b',
+].join('|'), 'giu');
+/** A scan with "no" or "without" near it, never good news ("the scan showed no problems", "no big deal"). */
+const SCAN_NO = /\bscans?\b(?:\s+[a-z]+){0,5}?\s+(?:no|without)\b(?!\s+(?:problems?|issues?|worries|concerns?|signs?\s+of\s+(?:cancer|anything|any|a\s+tumou?r|spread|disease|infection)|cancer|tumou?rs?|changes?|spread|growth|damage|fractures?|breaks?|big\s+deal|need|charge|appointment|wait|queue|pain|bother|longer|one|abnormalit\w*|bleed\w*|clots?|infection|lumps?|shadows?|stones?|cysts?)\b)/iu;
+/**
+ * The main screen's loss backstop (review r11): a person or a pet word (or him / her / them / he / she / they, with one
+ * named) within four words of a STRONG loss cue only, or a heartbeat lost at a scan (no person needed). Read with the
+ * ordinary idioms blanked (death-words.js) and the cue words' ordinary senses set aside. input-overlay readSafety
+ * reads it as concern / loss: never a Thought Mallow made of a death.
+ */
+export function strongLoss(text) {
+  const raw = blankOrdinary(norm(text)).toLowerCase();
+  const t = raw.replace(WRONG_CUES, ' ').replace(CUE_ASIDE, ' ').replace(STRONG_ASIDE, ' ').replace(/\s+/gu, ' ');
+  if (!/\p{L}/u.test(t)) return false;
+  if (NO_HEARTBEAT.test(t) || SCAN_NO.test(t)) return true;
+  const at = wordAt(t);
+  const who = spans(t, WHO_WORD, at);
+  if (!who.length) return false;
+  who.push(...spans(t, PRONOUN, at));
+  return near(who, spans(t, STRONG_CUE, at));
 }
 /**
- * The backstop: any word or phrase of the bag, the structural loss backstop (lossNear), or death talk itself
- * (grief.js: its phrase families are the bag's too).
+ * The backstop: any word or phrase of the bag, the structural loss backstop (lossNear, and the main screen's strongLoss:
+ * Another Angle is never less careful than the main screen), or death talk itself (grief.js: its families are the bag's).
  */
-export const bagWords = (text) => BAG.test(bagText(text)) || lossNear(text) || !!deathTalk(text);
+export const bagWords = (text) => BAG.test(bagText(text)) || lossNear(text) || strongLoss(text) || !!deathTalk(text);
 /**
  * Words whose only bag words are ordinary idioms ("I passed my driving test!", "lost my keys", "my phone died", "killed
  * it"): nothing hard is told, so a stated event's lines are neutral (authored.js eventKind 'neutral'), never "Something

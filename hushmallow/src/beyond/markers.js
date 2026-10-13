@@ -80,6 +80,13 @@ const MIND = [
   /\b(?:is|are|s|re|shes|hes|theyre|youre|everyones|keeps?|must\s+be|probably|always|all|been|seems?|looks?|sounds?)\s+(?:\w+\s+){0,2}(?:judging|laughing\s+at|talking\s+about|staring\s+at|looking\s+down\s+on|making\s+fun\s+of|sick\s+of|tired\s+of|bored\s+of|fed\s+up\s+(?:with|of)|(?:annoyed|angry|furious|fuming|livid|raging|irritated|pissed\s+off|upset|cross|mad|disappointed|ashamed|embarrassed)\s+(?:with|at|in|of|by))\s+me\b/u,
   /\bwants?\s+me\s+to\s+(?:fail|leave|go\s+away|quit|disappear|suffer|feel\s+(?:bad|stupid|small|guilty)|look\s+(?:bad|stupid)|be\s+(?:miserable|unhappy|alone|gone)|give\s+up|mess\s+up|get\s+fired)\b/u,
   /\b(?:i\s+bet|im\s+sure|i\s+just\s+know|obviously|clearly)\s+(?:he|she|they|everyone|everybody|people|my\s+\w+)\b/u,
+  // (review r11) "she must be jealous", "he must be furious", "she must be cheating": "must be" + any word that reads
+  // into them (never a place or a plain fact: "she must be at work", "he must be fine")
+  /\b(?:he|she|they|hes|shes|theyre|everyone|everybody)\s+(?:(?:really|probably|surely|just|obviously|clearly)\s+)?must\s+be\s+(?:(?:so|really|very|totally|completely|well|proper|pretty|quite|a\s+bit|kind\s+of|kinda|getting|feeling)\s+)*(?!(?:at|in|on|home|here|there|out|away|back|off|up|down|over|done|finished|the|a|an|my|his|her|their|our|your|it|that|this|ok|okay|fine|alright|right|joking|kidding|wrong|true|nice|lovely|great|happy|proud|pleased|relieved|excited)\b)[a-z]{3,}\b/u,
+  // "she must have forgotten about me", "they must have been talking about me"
+  /\b(?:he|she|they|everyone|everybody)\s+(?:(?:really|probably|surely|just|obviously|clearly)\s+)?must\s+(?:have|ve|of)\s+(?:forgotten|forgot|been|done|decided|thought|got|gotten|stopped|lost\s+interest|moved\s+on|found|given\s+up|had\s+enough|seen|heard|noticed|meant|wanted|realised|realized|told|said)\b/u,
+  // "she obviously doesnt want to see me", "he probably finds me boring", "they clearly hate me"
+  /\b(?:he|she|they|everyone|everybody)\s+(?:(?:so|just)\s+)?(?:obviously|clearly|probably|definitely|deffo|defo)\s+(?:doesnt|dont|does\s+not|do\s+not|isnt|arent|hates?|wants?|thinks?|cant|wont|likes?|prefers?|finds?|sees|regrets?)\b/u,
 ];
 /** Overgeneralising: everyone / nobody / everything / nothing / always / never as a rule, never a stated past act. */
 const OVER = [
@@ -87,6 +94,8 @@ const OVER = [
   /\b(?:everyones|everybodys)\s+(?:laughing|talking|staring|judging|better|against|sick|tired|annoyed|angry|happier|doing\s+better)\b/u,
   /\b(?:everything|it\s+all|nothing)\s+(?:i\s+do\s+)?(?:(?:ever|always)\s+)?(?:is\s+(?:ruined|wrong|awful|terrible|falling\s+apart|my\s+fault|a\s+mess|going\s+wrong|pointless|hopeless|broken|against\s+me|always|good\s+enough)|goes\s+wrong|falls\s+apart|works|goes\s+right|changes|helps|matters|i\s+do\s+(?:is\s+)?(?:wrong|right|good\s+enough|matters)|will\s+(?:ever\s+)?(?:change|work|get\s+better|help|be\s+(?:ok|okay|the\s+same|fine|good)))\b/u,
   /\bevery\s+(?:single\s+)?time\s+(?:i|we|he|she|they|it|my|someone|anyone)\b|\beach\s+time\s+i\b|\ball\s+the\s+time\b/u,
+  // (review r11) "she always does this", "mum always loves her more" (a habit read into one event, a favourite)
+  /\b(?:he|she|they|you)\s+always\s+(?:does|do|says|pulls|plays)\s+(?:this|that|it)\b|\balways\s+(?:loves?|likes?|prefers?|favou?rs?|picks?|chooses?)\s+(?:him|her|them|my\s+\w+)\s+(?:more|better|over\s+me|first)\b/u,
 ];
 /** "always" / "never" + a verb that is not past: "he never listens", "I always mess up" (never "never paid me back"). */
 function alwaysNever(n) {
@@ -107,11 +116,15 @@ const CATA = [
   /\b(?:(?:i|ive)\s+(?:have\s+|ve\s+)?(?:ruined|wrecked|messed\s+up|blown)\s+(?:everything|it\s+all|my\s+(?:life|chances|future|career)|the\s+whole\s+thing))\b|\b(?:everything|it\s+all|my\s+life|my\s+future|my\s+career|the\s+(?:whole\s+)?(?:day|night|weekend|holiday|trip|party|thing))\s+(?:is|s|was|has\s+been|feels|will\s+be)\s+(?:completely\s+|totally\s+)?(?:ruined|over|wrecked|pointless)\b|\b(?:it|this|that)\s+(?:has\s+)?ruined\s+everything\b/u,
   /\b(?:the\s+worst\s+(?:thing\s+)?(?:will|is\s+going\s+to|could|that\s+could)|worst\s+case|expect\s+the\s+worst|the\s+end\s+of\s+the\s+world|never\s+(?:recover|get\s+over\s+(?:it|this))|(?:its|it\s+is|its\s+all)\s+over\s+for\s+me)\b/u,
   /\b(?:(?:will|is\s+going\s+to|gonna|its\s+going\s+to|it\s+will)\s+be\s+an?\s+(?:total\s+|complete\s+|absolute\s+)?(?:disaster|catastrophe|nightmare)|(?:was|is|its)\s+an?\s+(?:total|complete|absolute|utter)\s+(?:disaster|catastrophe|nightmare))\b/u,
+  // (review r11) "Im definitely getting fired", "Im going to be in so much trouble"
+  /\b(?:definitely|probably|totally|deffo|defo|surely|basically|so|100%)\s+(?:getting|gonna\s+get|going\s+to\s+get|about\s+to\s+get)\s+(?:fired|sacked|dumped|kicked\s+out|told\s+off|expelled|excluded|suspended|rejected|left|laughed\s+at|shouted\s+at|in\s+trouble|the\s+sack)\b/u,
+  /\b(?:im|i\s+am|ill|i\s+will|im\s+gonna|im\s+going\s+to|gonna|going\s+to|will)\s+(?:\w+\s+){0,2}?be\s+in\s+(?:so\s+much|big|real|serious|deep|such|massive|huge|loads\s+of|a\s+lot\s+of)\s+(?:of\s+)?trouble\b/u,
 ];
 /** Labels the person puts on themselves beyond HARSH ("I'm such a mess", "I hate myself"). */
 const LABEL = /\bi(?:m|\s+am)\s+such\s+an?\s+\w+|\bi\s+hate\s+myself\b|\bi(?:m|\s+am)\s+(?:(?:so|really|just|such|completely|totally|literally|actually)\s+)*(?:the\s+worst|a\s+disappointment|a\s+let\s+down|unlovable|not\s+good\s+enough|not\s+enough|too\s+much|boring|ugly|fat|weird|annoying|unlikeable|unlikable|unattractive|broken|damaged|clingy|needy|cringe|embarrassing|a\s+waste\s+of\s+space|the\s+problem|a\s+bad\s+\w+|a\s+terrible\s+\w+|an\s+awful\s+\w+|a\s+horrible\s+\w+)\b/u;
 /** Should / must about themselves (never "I should call my mum": a plan, not a rule). */
-const SHOULD = /\bi\s+(?:really\s+|just\s+|honestly\s+)?(?:shouldve|should\s+(?:have|ve|of|be|know|feel|not|never|always|be\s+able)|shouldnt(?:\s+(?:have|ve|be|feel|need))?|must\s+(?:be|always|never|not)|ought\s+to(?:\s+(?:have|be))?|need\s+to\s+be\s+(?:better|more|perfect|stronger|thinner|smarter)|have\s+to\s+be\s+(?:perfect|better|the\s+best))\b/u;
+// (review r11: "I must have done something wrong", "it must be my fault")
+const SHOULD = /\bi\s+(?:really\s+|just\s+|honestly\s+)?must\s+(?:have|ve|of)\s+(?:done|said|made|messed|upset|annoyed|offended|hurt|ruined|got|been)\b|\b(?:it|this|that|everything|all\s+this|it\s+all)\s+(?:must|has\s+to|is\s+probably|is\s+definitely|is\s+obviously)\s+(?:be\s+)?(?:all\s+)?my\s+fault\b|\bi\s+(?:really\s+|just\s+|honestly\s+)?(?:shouldve|should\s+(?:have|ve|of|be|know|feel|not|never|always|be\s+able)|shouldnt(?:\s+(?:have|ve|be|feel|need))?|must\s+(?:be|always|never|not)|ought\s+to(?:\s+(?:have|be))?|need\s+to\s+be\s+(?:better|more|perfect|stronger|thinner|smarter)|have\s+to\s+be\s+(?:perfect|better|the\s+best))\b/u;
 
 /** "I feel / I'm feeling / feeling" + a feeling: the feeling is the fact (never "I feel like / that …": a thought). */
 const FEELS_LIKE = /^(?:(?:and|but|so|just|honestly|really|still)\s+)*i\s+(?:\w+\s+)?(?:feel|felt|keep\s+feeling)\s+(?:like|that|as\s+if|as\s+though)\b/iu;

@@ -52,6 +52,19 @@ export const ADJ = '(?:(?:best|dear|dearest|beloved|little|big|old|older|younger
 /** Things of a person's that can be lost or broken ("lost my dad's ring", "lost my dog's lead"). */
 export const THING = 'rings?|watch|watches|keys?|car|number|phone|wallet|purse|necklace|bracelet|earrings?|letters?|photos?|pictures?|cards?|money|bag|coat|jacket|hat|scarf|glasses|books?|present|gift|trust|respect|address|recipe|stuff|things|house|home|shoes?|charger|bike|tickets?|passport|jumper|toys?|teddy|blanket|lead|collar|leash|harness|ball|bowl|teeth|tooth|weight|fat|bump|blues|number|details|password|clothes|socks|dummy|bottle|mittens|gloves|homework|work|notes|email|message|texts?|voice|attention|interest|patience|approval|love|support|money|savings|job|business|shop|seat|place|spot';
 
+/** What takes someone (shared by grief.js deathTalk and backstop.js strongLoss; "covid took my grandad", "the accident took my brother", "God took him home": review r10). */
+export const KILLERS = [
+  'diseases?', 'illness', 'sickness', 'accident', 'crash', 'car\\s+crash', 'war', 'covid(?:\\s+19)?', 'corona(?:virus)?', 'virus', 'cancer', 'leuk(?:a)?emia',
+  'lymphoma', 'tumou?r', 'stroke', 'heart\\s+attack', 'heart\\s+failure', 'sepsis', 'pneumonia', 'flu', 'dementia', 'alzheimers?', 'mnd',
+  'motor\\s+neuron(?:e)?\\s+disease', 'cot\\s+death', 'sids', 'suicide', 'overdose', 'drugs', 'heroin', 'alcohol', 'addiction', 'sea', 'fire',
+  'flood', 'bomb', 'aids', 'hiv', 'tb', 'malaria', 'ebola', 'meningitis', '(?:kidney|liver|organ)\\s+failure', 'complications', 'death', 'god',
+  'the\\s+lord', 'jesus', 'heaven', 'the\\s+angels',
+  // (review r11) a drunk driver, a knife, a storm, "the big c"
+  'drunk\\s+driver', 'drink\\s+driver', 'drunk\\s+driving', 'knife', 'knife\\s+crime', 'gun', 'shooting', 'storm', 'earthquake', 'tsunami', 'avalanche',
+  '(?:the\\s+)?big\\s+c', 'infection', 'covid\\s+virus', 'brain\\s+tumou?r', 'motor\\s+neurone',
+].join('|');
+/** "would have been mums 60th", "his fortieth" (an ordinal; never "would have been my first time"). */
+export const ORDINALS = '(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)?(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth)|(?:twentieth|thirtieth|fortieth|fiftieth|sixtieth|seventieth|eightieth|ninetieth|hundredth)';
 /** Gadgets and things that "die" or are "dead" without anyone dying (a pet mouse is never one of them). */
 const DEVICE = 'baby\\s+monitors?|phones?|mobiles?|iphones?|androids?|laptops?|batter(?:y|ies|ys)|cars?|chargers?|consoles?|controllers?|headphones|earbuds|airpods|ipads?|tablets?|computers?|pcs?|tvs?|telly|tellies|torch(?:es)?|remotes?|kindle|xbox|playstation|ps\\d|switch|router|wifi|internet|engines?|keyboards?|screens?|watch|fitbit|cameras?|speakers?|alarms?|clocks?|printers?|fridges?|freezers?|kettles?|toasters?|microwaves?|bulbs?|lights?|lamps?|signal|connection|servers?|apps?|games?|vapes?|ereaders?|smartwatch|monitor|hoover|vacuum|boiler|heating|fan|radio';
 /** Little words between a gadget and "died" ("my phone has just died", "my laptop is dead"): never a person's words. */
@@ -65,6 +78,11 @@ const DEV_AUX = '(?:(?:is|was|are|were|re|has|had|have|s|just|completely|totally
 const CLAUSE_START = '(?:^|[.!?;,:]\\s*|\\b(?:and|but|so|then|because|cos|coz|now|when|after|before|until|as|since|while|if|think|guess|reckon|that|plus|also|again|just|ugh|lol|omg)\\s+)';
 // (a gadget's part right after it, "phone battery died", is still the gadget: review r9)
 const DEV_SUBJ = `${CLAUSE_START}(?:(?:my|our|his|her|their|your|the|this|that|its)\\s+(?:(?!(?:${'guy|man|woman|lady|driver|person|boy|girl|kid|child|baby|someone|somebody|passenger|people|family|friend|mum|dad|mom|brother|sister|son|daughter|husband|wife|nan|grandad|grandma|dog|cat|in|on|of|at|with|by|from|inside|behind|under'})\\b)[a-z]+\\s+){0,2})?(?:${DEVICE})(?:\\s+(?:${DEVICE}))?`;
+/** (review r11) Plants, which die without anyone dying ("my plant died", "the basil is dead"). */
+const PLANT = 'plants?|houseplants?|house\\s+plants?|flowers?|cactus|cacti|succulents?|basil|herbs?|tomato(?:es)?(?:\\s+plants?)?|orchids?|bonsai|seedlings?|trees?|lawn|grass|roses?|tulips?|sunflowers?|daffodils?|monstera|ferns?|ivy|crops?|veg|vegetables|chilli\\s+plants?|strawberr(?:y|ies)|hedge|bush|bushes|shrubs?|moss|bouquet|christmas\\s+tree|peace\\s+lily|spider\\s+plant|aloe(?:\\s+vera)?|mint|parsley|coriander|rosemary|lavender|bamboo|palm';
+const PLANT_SUBJ = `${CLAUSE_START}(?:(?:my|our|his|her|their|your|the|this|that|its|all\\s+my|all\\s+the|all\\s+our)\\s+(?:(?!(?:${'guy|man|woman|lady|person|boy|girl|kid|child|baby|someone|somebody|family|friend|mum|dad|mom|brother|sister|son|daughter|husband|wife|nan|grandad|grandma|dog|cat|in|on|of|at|with|by|from|inside|behind|under'})\\b)[a-z]+\\s+){0,2})?(?:${PLANT})`;
+/** (review r11) A place, a chat or a night that is "dead" (quiet): "the party is dead", "the group chat is dead". */
+const QUIET_PLACE = 'party|pub|bar|club|town|city|village|place|shop|shops|street|streets|high\\s+street|chat|group\\s+chat|groupchat|server|market|crowd|atmosphere|vibe|vibes|dance\\s+floor|office|school|stadium|restaurant|cafe|gym|beach|park|mall|centre|center|discord|night|nightlife|scene|thread|forum|channel|timeline|feed|inbox|convo|conversation|lesson|class|meeting|weekend|area|estate|road|roads|bus|train|carriage|cinema|venue|gig|event|disco|prom|square|campus|library|canteen|staffroom|break\\s+room|work|game|match|lobby';
 
 /**
  * The ordinary idioms: unambiguous, cheap, and never a person. Blanked before any death or harm word is read.
@@ -73,6 +91,12 @@ const DEV_SUBJ = `${CLAUSE_START}(?:(?:my|our|his|her|their|your|the|this|that|i
 export const ORDINARY = [
   // a gadget that died, a dead battery
   new RegExp(`${DEV_SUBJ}\\s+${DEV_AUX}(?:die|dies|died|dying|dead|deaded|dyin)\\b`, 'giu'),
+  // (review r11) a plant that died ("my plant died", "all my tomato plants are dead"), a place or a night that was dead
+  // ("the party is dead", "the pub was dead"), "this traffic is murder", "the walking dead": never a person or a pet
+  new RegExp(`${PLANT_SUBJ}\\s+${DEV_AUX}(?:die|dies|died|dying|dead|deaded|dyin)\\b`, 'giu'),
+  new RegExp(`\\b(?:the|this|that|our|my|tonights|todays)\\s+(?:${QUIET_PLACE})\\s+(?:is|was|s|are|were|went|has\\s+gone|had\\s+gone|has\\s+been|have\\s+been|seems|seemed|felt|feels|looks|looked)\\s+(?:(?:so|really|totally|completely|absolutely|pretty|well|proper|stone|kind\\s+of|kinda|a\\s+bit|bit)\\s+)*dead\\b|\\bdead\\s+in\\s+(?:here|there)\\b`, 'giu'),
+  /\b(?:the|this|that|my)\s+(?:traffic|commute|journey|drive|queue|queues|weather|heat|motorway|m25|rush\s+hour|parking|hill|stairs|climb|workout|training|session|shift|week|exam|exams|revision|deadline|school\s+run|feet|back|legs|knees)\s+(?:is|was|s|are|were|has\s+been|will\s+be|gonna\s+be|is\s+going\s+to\s+be)\s+(?:(?:absolute|pure|sheer|total|literally|actual|bloody|just)\s+)*murder\b|\b(?:its|it\s+is|it\s+was)\s+(?:(?:absolute|pure|sheer|total|literally|bloody)\s+)*murder\s+(?:out\s+there|on\s+the\s+(?:roads|motorway|m25)|in\s+(?:here|this\s+heat|town|traffic))\b/giu,
+  /\b(?:the\s+)?(?:walking|living)\s+dead\b|\bdead\s+on\s+my\s+feet\b|\bdead\s+man\s+walking\b/giu,
   new RegExp(`\\bdead\\s+(?:${DEVICE})\\b`, 'giu'),
   // "dead" as a word for "very" or a place
   /\bdead\s+(?:tired|easy|set|end|ends|on(?!\s+(?:arrival|the\s+scene|impact))|serious|seriously|keen|against|right|wrong|good|nice|funny|cute|clever|lucky|excited|bored|boring|busy|proud|chuffed|centre|center|heat|weight|giveaway|ringer|zone|cert|certain|sure|slow|fast|straight|ahead|quiet|posh|happy|chuffed|jealous|annoying|hard|simple|cheap|expensive|brilliant|popular)\b/giu,

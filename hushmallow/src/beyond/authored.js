@@ -17,7 +17,7 @@ import { GENERAL } from '../ultra/frameworks.js';
 import { PATTERNS, PATTERN_INTERACTION, INTERACTION_PATTERN, PATTERN_TO_AUTHORED, AUTHORED_TO_PATTERN, PATTERN_MALLOWS, mallowFor } from './vocab.js';
 import { AUTHORED_PAIRS, AUTHORED_ALT, ANGER_PAIRS, GRIEF, FEELING, KIND, EVENT_KINDS, MECHANIC_LINES } from './lines.js';
 import { deathTalk } from './grief.js';
-import { bagWords, gentleRoute, framingAllowed, FRAMING_MECHANICS, framesAsGuess, ordinaryOnly } from './backstop.js';
+import { bagWords, gentleRoute, framingAllowed, FRAMING_MECHANICS, framesAsGuess, ordinaryOnly, strongLoss } from './backstop.js';
 import { feelingStatement, feelingClause, feelingOpens } from './feelings.js';
 import { HARSH, ownLabel, clauses, markerKinds, guessClause } from './markers.js';
 
@@ -37,9 +37,14 @@ const ANGRY_AT_ME = /\b(?:(?:so|really|very|quite|a bit|pretty|super) )?(?:angry
  * everyone" still is one): set aside, like someone's anger at them, before the fair-anger cue is read.
  */
 const FEEL_HUMILIATED = /\bi(?:\s+(?:just\s+|really\s+)?(?:feel|felt)|['’]?m\s+(?:just\s+|really\s+)?feeling|['’]?ve\s+(?:been\s+feeling|felt)|\s+am\s+feeling)\s+(?:(?:so|really|very|quite|a bit|completely|totally|utterly|deeply)\s+)*humiliated\b/giu;
-/** The person's own fair anger in the words (not someone's anger at them). */
+/**
+ * Someone else's anger guessed at ("he must be furious", "she'll be livid"): a guess about them (mind reading), never
+ * the person's own fair anger (review r11).
+ */
+const ANGER_GUESSED = /\b(?:he|she|they|hes|shes|theyre|everyone|everybody|(?:my|our|his|her|their)\s+\w+)\s+(?:(?:really|probably|surely|just|obviously|clearly)\s+)?(?:must|might|may|will|would|could|ll|is\s+going\s+to|are\s+going\s+to|gonna)\s+(?:be\s+|have\s+been\s+|get\s+)?(?:(?:so|really|absolutely|totally|well)\s+)*(?:angry|furious|fuming|livid|seething|mad|cross|annoyed|raging)\b/giu;
+/** The person's own fair anger in the words (not someone's anger at them, nor someone's anger guessed at). */
 export function fairAnger(text) {
-  return CUES.valid_anger.test(String(text ?? '').replace(ANGRY_AT_ME, ' ').replace(FEEL_HUMILIATED, ' '));
+  return CUES.valid_anger.test(String(text ?? '').replace(/[‘’ʼ`´']/gu, '').replace(ANGRY_AT_ME, ' ').replace(FEEL_HUMILIATED, ' ').replace(ANGER_GUESSED, ' '));
 }
 /**
  * Fair anger the scenes may answer as anger (find_boundary, its lines, an angry look): never beside a bag word or
@@ -229,7 +234,7 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
     if (p === 'catastrophising') return M.has('cata');
     if (p === 'all_or_nothing') return M.has('over') || M.has('cata') || M.has('label');
     if (p === 'personalisation') return (BLAME.test(text) || has('spotlight-on-me')) && !fairAnger(text);
-    if (p === 'valid_anger') return fairAnger(text) || ANGRY.has(emotion);
+    if (p === 'valid_anger') return angerAnswer(text) || (ANGRY.has(emotion) && !bagWords(text));
     if (p === 'rumination') return CUES.rumination.test(text) || LOOPY.has(emotion) || /\bwhat if\b/i.test(text);
     if (p === 'practical_problem') return CUES.practical_problem.test(text) || (!!scenario && scenario !== GENERAL && !fairAnger(text)) || ['overwhelm', 'stress'].includes(emotion);
     return false;
@@ -237,7 +242,8 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
   const maybe = (p) => { if (p && fits(p)) add(p); };
   if (hint) add(hint);
   if (CUES.rumination.test(text)) add('rumination');
-  if (fairAnger(text)) add('valid_anger');
+  // (review r11: never beside a bag word or death talk, so the Thought Mallow is never tinted anger beside a loss)
+  if (angerAnswer(text)) add('valid_anger');
   // a habit the engine found in the words, when its scene makes sense for them ("everyone" / "nobody" are
   // everywhere in ordinary speech: always/never only counts when it is the subject: "Nobody likes me")
   for (const f of found) if (f.pattern.id !== 'always-never') maybe(AUTHORED_TO_PATTERN[f.pattern.id]);
@@ -747,8 +753,18 @@ export function serverLinesKeep(scene, text) {
   const said = [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact];
   if (said.some(framesAsGuess)) return false;
   if (wrongDone(text) && said.some((l) => EXCUSES.test(String(l || '')))) return false;
+  // (review r11) lines that speak of grief or of missing someone never play for words with no death or loss in them
+  // (a server's grief pair tagged ordinary, for "my grandad is visiting next week")
+  if (said.some((l) => GRIEF_LINE.test(String(l || ''))) && !lossSignal(text)) return false;
   return true;
 }
+/**
+ * A death or a loss in the words: death talk, someone alive but going, or a person beside a strong loss cue (strongLoss;
+ * never the weak cues alone, "my mum is resting after her shift", nor a lost match).
+ */
+const lossSignal = (text) => gentleRoute(text) || strongLoss(text);
+/** A line that speaks of grief, a loss, a death or missing someone (a server's grief answer). */
+const GRIEF_LINE = /\b(?:grie\w*|griev\w*|mourn\w*|bereave\w*|loss|lost\s+(?:them|him|her|someone)|died|death|dead|passed|gone|missing\s+(?:them|him|her|someone|you)|miss(?:es|ed)?\s+(?:them|him|her|someone|you)|heaven|rest\s+in\s+peace|funeral|their\s+memory|in\s+memory)\b/iu;
 /**
  * True when a scene would frame the person's words as a fact and a guess: its mechanic, a mechanic's own framing
  * lines (an overgeneralisation's "every time", a label's "harsh verdict"), or a line of it.

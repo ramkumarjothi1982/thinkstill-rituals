@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { authoredScene, sceneParts, candidatePatterns, deathTalk, gentleScene, wholeLabel, fairAnger } from '../src/beyond/authored.js';
 import { AUTHORED_PAIRS, GRIEF } from '../src/beyond/lines.js';
 import { checkText } from '../src/engine/safety.js';
+import { bagWords, framingAllowed } from '../src/beyond/backstop.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (p) => readFileSync(root + p, 'utf8');
@@ -109,13 +110,16 @@ test('B2.3 (r7): a loss is never a thinking error: no mechanic, no fact/assumpti
   }
   assert.equal(authoredScene('My grandad died last month and I can’t stop crying.').subtitle_line_1, GRIEF.loss[0]);
   assert.deepEqual(gentleScene('It was the funeral today.').subtitle_line_1, GRIEF.grief[0]);
-  // not death talk (r7: "my dad nearly died" and "my plants died" are death talk now, and the gentle lines are true for them)
+  // not death talk (r7: "my dad nearly died" is death talk now, and the gentle lines are true for it)
   for (const text of ['My phone died in the middle of the call.', 'My boss gives me grief about everything.', 'Good grief, what a week.',
     'My son passed his driving test and I didn’t.', 'I lost my keys again.', 'The battery died on the way home.']) {
     assert.equal(deathTalk(text), null, text);
     assert.notEqual(authoredScene(text).grief, true, text);
   }
-  for (const text of ['My dad nearly died in a car crash.', 'My plants died while I was away.']) assert.equal(authoredScene(text).grief, true, text);
+  for (const text of ['My dad nearly died in a car crash.']) assert.equal(authoredScene(text).grief, true, text);
+  // (review r11, the coordinator's main-screen decision: a plant that died is an ordinary idiom, never the gentle path;
+  // still a bag word, so never a fact-vs-guess game)
+  for (const text of ['My plants died while I was away.']) { assert.notEqual(authoredScene(text).grief, true, text); assert.equal(bagWords(text), true, text); assert.equal(framingAllowed(text), false, text); }
 });
 
 test('B2.3: grief in the orchestrator: no Thought Mallow, no mechanic, nothing playful, support close (r5: the server may answer it)', () => {

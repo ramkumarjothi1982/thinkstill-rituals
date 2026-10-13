@@ -31,3 +31,31 @@ test('the Hushfold opens its Tell with lossAware, and the overlay reads it on ty
   assert.match(hf, /lossAware: true/);
   assert.equal((ov.match(/(?<!function )readSafety\((?:m|modsNow), (?:t|ta\.value), lossAware\)/g) || []).length, 3);
 });
+
+// (review r11, the coordinator's decision for the main screen) every death phrasing the round-4 review found outside the
+// lists reaches readSafety through deathTalk (concern / loss), and a person beside a strong loss cue does through grief.js
+// strongLoss; the weak cues (went, left, without, goodbye, anymore) and the full bag stay inside Another Angle, so these
+// ordinary Tells are still a Thought Mallow and a world.
+const R11 = await import('./probes/r11.mjs');
+test('r11: the review’s 27 main-screen misses, and the coordinator’s families, are concern / loss', () => {
+  assert.equal(new Set(R11.R4_MAIN_27).size, 27);
+  for (const t of [...R11.R4_MAIN_27, ...R11.MAIN_FAMILIES]) {
+    const r = readSafety(m, t, true);
+    assert.deepEqual([r.level, r.category], ['concern', 'loss'], t);
+  }
+  // a person beside a strong cue, outside deathTalk's own families
+  for (const t of ['the big c got my grandad', 'that horrible illness got my nan in the end', 'the doctors said my dad was unresponsive']) assert.equal(level(t), 'concern', t);
+});
+test('r11: the coordinator’s ordinary main-screen Tells stay none; fifty ordinary Tells, no loss false alarm', () => {
+  for (const t of ['my mum went to bed without saying goodnight, she must be upset with me', 'my dad left the room without saying goodbye', 'my girlfriend went out with her friends tonight',
+    'I lost my keys again', 'my phone died', 'I killed it at work today', 'this traffic is murder', 'my plant died', 'my sister took my charger', 'my brother got a new job',
+    'the party is dead']) assert.equal(level(t), 'none', t);
+  assert.equal(R11.MAIN_ORDINARY_50.length, 50);
+  assert.deepEqual(R11.MAIN_ORDINARY_50.filter((t) => readSafety(m, t, true).category === 'loss'), []);
+});
+test('r11: readSafety reads strongLoss only after crisis, care and escalation, and only when the level is none', () => {
+  const ov = readFileSync(new URL('../src/hushfold/input-overlay.js', import.meta.url), 'utf8');
+  assert.match(ov, /if \(r\.level !== 'none'\) return r;\n\s+if \(griefNow\.deathTalk\(t\) \|\| griefNow\.livingLoss\?\.\(t\) \|\| griefNow\.strongLoss\?\.\(t\)\) return \{ level: 'concern', category: 'loss', matched: null \};/);
+  assert.equal(level('I want to die'), 'crisis');
+  assert.equal(level('my brother died and Id like to be with him'), 'care');
+});

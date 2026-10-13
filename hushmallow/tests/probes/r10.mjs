@@ -285,11 +285,11 @@ export const WORRIES = [
   'my friends were whispering, they must be talking about me', 'my neighbour didnt wave back, he must hate me',
   'my aunt didnt reply in the family chat, everyone thinks Im a joke',
 ];
-/** The structural backstop's false alarms among them (a loss cue beside a person): kind steps, no framing. Accepted. */
+/** The structural backstop's false alarms among them in r10 (a loss cue beside a person); set aside since r11. */
 export const WORRIES_FALSE_ALARMS = [
   'my dad left the room without saying goodbye, he must be furious', 'my best friend sat with someone else at lunch, she must not want to be my friend anymore',
 ];
-/** …and those that got no guess framing before round 10 either (the marker gate reads no marker in them). */
+/** …and those that got no guess framing before round 10 either (the marker gate read no marker in them until r11). */
 export const WORRIES_UNFRAMED_BEFORE = [
   'my flatmate left the dishes again, she always does this', 'my sister got the bigger room, mum always loves her more',
   'my mate cancelled our plans, he probably finds me boring', 'my sister didnt like my post, she must be jealous',
