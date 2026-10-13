@@ -297,14 +297,14 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 .hf-pill.paused svg { color: var(--accent, #ffd98a); }
 .hf-touch { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
 
-/* ------------------------------------------------- Thought placeholder -- */
-.hushfold.hf-tags-away .hf-tag { opacity: 0 !important; pointer-events: none !important; }
-/* a world has the words now: the shell's tag goes at once (never fading across the world's Mallow) */
-.hushfold.hf-world .hf-tag { opacity: 0 !important; transition: none !important; pointer-events: none !important; }
-.hf-tag { position: fixed; z-index: 1; left: 0; top: 0; max-width: min(50vw, 230px); padding: 7px 13px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(16, 12, 40, 0.66); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fbf8ff; font: var(--hf-font-thought);
-  font-size: max(15px, calc(17px * var(--hf-k))); text-align: center; cursor: pointer; overflow-wrap: anywhere; will-change: transform; transition: opacity 400ms;
-  box-shadow: 0 8px 24px rgba(4, 2, 16, 0.3); user-select: none; -webkit-user-select: none; }
+/* ------------------------------------------------------ Thought Mallows -- */
+/* W2's ThoughtLayer draws the bodies on #fx-layer canvas.hf-stage and hangs the words on .tm-tag buttons in this
+   root: under the overlay (z4), the panel (z5) and the sheets, over the stage */
+.hushfold .tm-tag { z-index: 1; }
+/* phones: while the sheet holds a world, the thoughts step back with the world's front layer */
+body.hf-world-held #fx-layer > canvas.hf-stage, body.hf-world-held .hushfold .tm-tag { opacity: 0 !important; pointer-events: none !important; }
+/* a host taking the stage cross-fades in over a picture of the one leaving */
+.hf-hero-ghost { pointer-events: none !important; }
 .hf-read { position: fixed; z-index: 6; left: 16px; right: 16px; margin: 0 auto; max-width: 480px; top: calc(var(--safe-top, 0px) + 74px); padding: 18px 20px 14px;
   border-radius: 24px; border: 1px solid var(--hf-line-strong); background: var(--hf-glass-strong); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
   box-shadow: 0 20px 50px rgba(3, 1, 14, 0.5); animation: hfInputIn 360ms var(--hf-ease) both; }
@@ -315,7 +315,6 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 /* ------------------------------------------------------- small phones -- */
 @media (max-width: 360px) {
   .hushfold { --hf-edge: 12px; }
-  .hf-tag { font-size: max(15px, calc(15px * var(--hf-k))); max-width: min(58vw, 230px); padding: 6px 11px; }
   .hf-btn { width: 44px; height: 44px; }
 }
 @media (min-width: 700px) {

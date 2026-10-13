@@ -722,12 +722,13 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   assert.match(hold, /offerCtl\?\.abort\(\);/);
   assert.match(hold, /stage\?\.thoughts\.release\(900\);/, 'earlier thoughts drift off (owner P5)');
   assert.match(hold, /S\.hold = 'crisis';/);
-  assert.match(hold, /flowRef\.setAutoFlow\?\.\(false\); flowRef\.pause\?\.\(\);/);
+  // (H2: the director's own safety pause, which also holds a world that is still loading)
+  assert.match(hold, /flowRef\.setAutoFlow\?\.\(false\); flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
   // care or distress typed in a running world, sent or not: it pauses, Resume allowed (owner P4)
-  assert.match(hold, /\} else if \(running && !S\.hold\) \{[\s\S]*?S\.hold = 'care';[\s\S]*?flowRef\.pause\?\.\(\);/);
+  assert.match(hold, /\} else if \(running && !S\.hold\) \{[\s\S]*?S\.hold = 'care';[\s\S]*?flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
   // only a world actually on its way is held on arrival, and a start that brings none leaves no hold behind
   assert.match(hold, /if \(starting && !worldMode\) S\.holdOnWorld = /);
-  assert.match(fnBody(scene, 'async function startFlow(', 'let worldThought = null;'), /finally \{[\s\S]*?if \(!--starting && !worldMode\) S\.holdOnWorld = null;/);
+  assert.match(fnBody(scene, 'async function startFlow(', 'function warmWorld()'), /finally \{[\s\S]*?if \(!--starting && !worldMode\) S\.holdOnWorld = null;/);
   // a resume from anywhere (the panel's own Resume too) ends a care hold, and takes the "Paused" line with it
   const paused = fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()');
   assert.match(paused, /if \(!on && S\.hold === 'care'\) S\.hold = null;/);
@@ -742,7 +743,7 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   assert.match(scene, /if \(S\.level === 'crisis' && worldMode\) endCrisisWorld\(\);/);
   // ...through finish(), and a director that sent no 'finish' event still leaves the stage
   const endCrisis = fnBody(scene, 'function endCrisisWorld() {', 'function keepSafety()');
-  assert.match(endCrisis, /try \{ flowRef\?\.finish\?\.\(\); \} catch/);
+  assert.match(endCrisis, /try \{ flowRef\?\.finish\?\.\(\{ reason: 'safety' \}\); \} catch/);
   assert.match(endCrisis, /if \(worldMode && !S\.finishing\) onFinished\(\);/);
   assert.match(fnBody(scene, 'function onWorld(d) {', 'function endWorldMode()'), /if \(!overlay\) endCrisisWorld\(\);/);
   assert.doesNotMatch(scene.replace(endCrisis, ''), /flowRef\?\.finish\?\.\(\)/, 'every crisis ending goes through endCrisisWorld');
@@ -755,10 +756,11 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   assert.match(scene, /say: \(lines, o\) => \{ if \(S\.hold === 'crisis'[^)]*\) return Promise\.resolve\(null\);/);
   assert.match(scene, /choice: \(prompt, options, o\) => \(S\.hold === 'crisis'[^?]*\? Promise\.resolve\(null\)/);
   // a gentle world never carries the earlier words; after a crisis nothing starts a world (owner P3)
-  const start = fnBody(scene, 'async function startFlow(', 'let worldThought = null;');
+  const start = fnBody(scene, 'async function startFlow(', 'function warmWorld()');
   assert.match(start, /requireEntitlement\(ent, 'paid'\)[^\n]*\n\s*\/\/[^\n]*\n\s*if \(gentle\(\)\) wordsCur = null;/);
   assert.match(start, /if \(S\.crisis\) return;/);
-  assert.match(start, /if \(!flow\.stub && gentle\(\)\) \{ worldThought = null; flow\.setThought\?\.\(null\); \}/);
+  // (H3: the ThoughtLayer replaced the placeholder thought; a director made earlier lets the thoughts go)
+  assert.match(start, /if \(!flow\.stub && gentle\(\)\) flow\.setThoughts\?\.\(null\);/);
   assert.match(fnBody(scene, 'async function resumableNow()', 'function resumeSaved()'), /\|\| S\.crisis\) return null;/);
   // low stimulation while the Support pill is up (owner P5)
   assert.match(scene, /const lowStimNow = \(\) => !!prefs\.get\('lowStim'\) \|\| gentle\(\);/);
