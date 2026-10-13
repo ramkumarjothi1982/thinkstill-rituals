@@ -22,6 +22,7 @@ const props: any = {
     termsUrl: q.get("terms") || "",
     privacyUrl: q.get("privacy") || "",
     contactUrl: q.get("contact") || "",
+    hushmatesUpdatesUrl: q.get("mates") || "",
     assetBase: "assets/",
     lidImages: inlined ? { pipzi: art("pipzi-lids"), boppo: art("boppo-lids"), glitzi: art("glitzi-lids"), zuzu: art("zuzu-lids") } : undefined,
 }

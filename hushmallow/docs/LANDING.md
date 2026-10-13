@@ -11,43 +11,38 @@ Screenshots: `landing/screenshots/`. Local preview and automated checks:
 
 ---
 
-## 1. The concept: "your emotional companion"
+## 1. The concept: "A softer space for feelings."
 
-**hushmallow: your emotional companion.** The page is a short story led by the
-characters. Visitors meet a Mallow, get a reaction from it, and only then get
-asked to sign up.
+**hushmallow: A softer space for feelings.** *A playful, soothing space to
+touch, unwind and connect.* The page follows the journey curiosity → delight →
+sensory interaction → understanding → human connection → sign-up, with the
+Mallows as the stars throughout. hushmallow is never called an AI companion,
+therapy, a dating service or a game.
 
-| Scene | Section | What the visitor does |
+| Section | Headline | What the visitor does |
 |---|---|---|
-| 1 | **Big feelings. Soft landings.** / *Meet your emotional companion.* | Presses and holds Pipzi, who squishes, closes her eyes happily, rebounds and says *"Hey. Long day?"* The other six lean towards the cursor and hop along. Tapping any of them brings it to the middle. The word **Soft** in the headline squishes along with the Mallow. |
-| 2 | **Whatever you're feeling, bring it here.** | Pops floating everyday thoughts ("47 tabs open", "fine, technically"). Zuzu hops along. |
-| 3 | **How's your world feeling right now?** | Picks a feeling, or types one into **FeelSense** (see below). The matching Mallow appears, moving the way that feeling feels, and says something that fits. Then three press-and-hold breaths soften the thought cloud, the visitor lets it drift or keeps it, and checks in on how they feel. Then: *"That was just a little moment. There's more waiting inside."* → **Create my hushmallow account** |
-| 4 | **There's a Mallow for every mood.** | A character stage with the neighbouring Mallows peeking in. Picking one makes it drop into focus and say hello in its own voice. Squeezing shows its signature move. Swipe, arrows or the tray all work. |
-| 5 | **More than a moment.** | Pause, Express, Release, Reframe and Reflect along a line that fills as you scroll. Each one has its Mallow and a small live animation. |
-| 6 | **Your space, your pace.** | Why an account is worth having, with no streaks or guilt. Includes a working **"Remember my Mallow on this browser"** switch (off by default) and the sign-up panel. |
-| 7 | **Your Mallow is waiting.** | A dusk sky with all seven Mallows on the horizon, leaning towards the cursor. If the visitor asked to be remembered, it says *"Loomi is waiting."* |
+| Hero | **A *softer* space for feelings.** / *A playful, soothing space to touch, unwind and connect.* | Presses and holds Pipzi, who squishes, closes her eyes happily, rebounds and says *"Hey. Long day?"* The other six lean towards the cursor and hop along, and tapping one brings it to the middle. The word **softer** squishes with the Mallow. **Meet the Mallows** goes to the character stage and **Discover hushmallow** to the three ways in. |
+| Three ways in (`#discover`) | **Touch. Unwind. Connect.** | Three linked columns, each with its Mallows. Connect is marked *Coming soon*. |
+| Touch (`#mallows`) | **Meet the Mallows.** | A character stage with the neighbouring Mallows peeking in. Picking one makes it drop into focus and say hello in its own voice, and squeezing shows its signature move. Swipe, arrows or the tray all work. |
+| Unwind (`#unwind`) | **A little room for everything you feel.** | Pops floating everyday thoughts ("47 tabs open", "fine, technically"). |
+| Unwind (`#try`) | **How's your world feeling right now?** | Picks a feeling, or types one into **FeelSense** (see below). The matching Mallow moves the way that feeling feels, three press-and-hold breaths soften the thought cloud, the visitor lets it drift or keeps it and checks in on how they feel, and then gets the invitation → **Create my hushmallow account**. |
+| Unwind (`#how`) | **More than a moment.** | Pause, Express, Release, Reframe and Reflect along a line that fills as you scroll. |
+| Connect (`#hushmates`) | **Real people. Softer connections.** · *Coming soon* | Introduces **Hushmates**. Loomi and Boppo face each other across a soft glowing line, and squeezing one sends a little heart to the other. There is no chat, no matching and no member count. A **Keep me updated** button appears only if you set a real updates URL; otherwise the section says plainly that Hushmates isn't open yet. |
+| Your space (`#join`) | **Your space, your pace.** | Why an account is worth having today, a working opt-in **"Remember my Mallow on this browser"** switch, and the sign-up panel. |
+| Final | **Find your soft place.** | All seven Mallows on a dusk horizon. A remembered visitor reads *"Loomi will be here whenever you're ready."* |
 
-**Why it should convert:** the page lets people *feel* the product before
-asking for anything. The first tap on the hero gets a reaction. The preview in
-scene 3 has a real beginning, middle and end, so the sign-up offer arrives as
-the next step, right after someone has had a nice moment. Every sign-up button
-remembers which feeling and Mallow the visitor tried and passes them on to
-your app (`?feeling=anxious&mallow=loomi`), so the app can open with the same
-Mallow.
+**Why it should convert:** the page lets people feel the product before
+asking for anything, and it makes clear that the Mallows and the Unwind moments
+exist *today*. Hushmates is presented as something coming later, not as the
+reason to join. Every sign-up button passes the feeling and Mallow the visitor
+tried on to your app (`?feeling=anxious&mallow=loomi`).
 
-**Headline.** The brief's *"Big feelings. Soft landings."* is the hero
-headline, with *"Meet your emotional companion."* as the support line.
-Alternatives considered:
-- "Give your feelings somewhere soft to go." (clearest about what it does; this was v1's hero)
-- "Feelings, but make them squishy." (most shareable, least explicit)
-- "Whatever you're feeling, bring it here." (now scene 2's headline)
-
-**Brand rules followed.** "hushmallow" is always lowercase (the global
-capitalisation rule in `REDESIGN_BRIEF.md`). Fonts are Fraunces for display,
-Nunito Sans for Mallow speech and body text, and Manrope for the interface.
-There are no testimonials, user counts, prices, medical claims or urgency
-anywhere. hushmallow is never called therapy, a game, a meditation app or a
-chatbot, and the footer says the Mallows are characters, not people.
+**Brand rules followed.** Copy uses the tagline and description exactly.
+"hushmallow" stays lowercase to match the official logo and the global
+capitalisation rule in `REDESIGN_BRIEF.md`. Fonts are Fraunces, Nunito Sans and
+Manrope. There are no testimonials, user counts, prices, medical claims or
+urgency, and the footer says the Mallows are animated characters and Hushmates
+is a planned feature.
 
 ### FeelSense (preview)
 
@@ -122,12 +117,15 @@ Firefox and Safari 16+ (container queries).
 | Google / Apple / Email | Show or hide each button. |
 | Terms URL / Privacy URL | Adds "By continuing you agree to our Terms and Privacy Policy" with links. |
 | Contact URL | Footer link (mailto: works). |
-| Headline / Squishy word | `Big feelings. Soft landings.` and `Soft`. The squishy word must appear in the headline, and the match is case-sensitive. |
+| Headline / Squishy word | `A softer space for feelings.` and `softer`. The squishy word must appear in the headline (any case). If it doesn't, the headline simply shows without the squish. |
 | Support line, Description | Hero lines under the headline. |
-| Hero button | "Meet your Mallow". Scrolls to the live preview and focuses the first feeling. |
+| Description | Two paragraphs; a blank line in the property starts a new paragraph. |
+| Hero button | "Meet the Mallows". Scrolls to the Mallows and focuses the one in the middle, ready to squeeze. |
+| Second button | "Discover hushmallow". Scrolls to the three ways in. |
 | Second button | "See how hushmallow works". Scrolls to scene 5. |
 | Nav button, After preview, Final button | The account buttons: "Create account", "Create my hushmallow account", "Create my hushmallow account". |
-| Final headline | "Your Mallow is waiting." A headline starting with "Your Mallow" is personalised for remembered visitors. |
+| Final headline | "Find your soft place." (A headline starting with "Your Mallow" is also personalised with a remembered Mallow's name.) |
+| Hushmates updates | Leave **empty** until you have a working waitlist or newsletter page. Empty shows a plain "Coming soon" note; a URL shows a **Keep me updated** button that opens it. |
 | Plans note | Under the sign-up buttons. It promises no prices or free tiers, only that people see what they'd pay before paying. |
 | Fixed nav | Pins the nav to the top of the window. |
 | Blinking | The eyelid layers (on by default). |
@@ -192,47 +190,44 @@ webhook that records the plan in Supabase).
 - The page loads Google Fonts and, until you upload the images to Framer, the
   art from jsDelivr. There are no analytics in the component.
 
-## 6. What changed in the companion update
+## 6. What changed in the "softer space" update
 
-- **Positioning**: "hushmallow · your emotional companion". The hero reads
-  *Big feelings. Soft landings.* / *Meet your emotional companion.* with the
-  brief's description.
-- **CTAs**: "Meet your Mallow" goes to the live preview. "See how hushmallow
-  works", then "Create my hushmallow account" after the preview, then a final
-  *"Your Mallow is waiting."* The nav says "Create account".
-- **Hero**: first squeeze says *"Hey. Long day?"*. The whole squad hops when
-  you squeeze, side Mallows lean towards the cursor, a friend peeks up now and
-  then, and a returning (opted-in) visitor is greeted by their Mallow with a
-  "Forget me" link.
-- **Blinking and happy squints** for the open-eyed Mallows (new eyelid layers
-  and generator).
-- **Scene 3**: new question, the brief's feelings (*A little overwhelmed,
-  Frustrated, Feeling low, Anxious, Pretty good, Not sure*, plus *Restless* so
-  Pipzi has a home), rewritten Mallow lines (*"Too many tabs open in your
-  head? We can start with one."*, *"No need to put on a happy face here."*,
-  *"That sounds like a lot. Want to let some of it out?"*), **FeelSense** with
-  confirm and correct, a crisis-care view, and mood motion.
-- **Scene 4**: "There's a Mallow for every mood." Hello lines for every
-  Mallow, speech on the stage, neighbours peeking in.
-- **Scenes 2, 5 and 6** rewritten (*Whatever you're feeling, bring it here*;
-  *More than a moment*; *Your space, your pace*, with personal-only-if-you-want
-  and no-streaks promises and the working remember switch).
-- **Story order** now follows the seven scenes. Footer and disclaimer are
-  updated ("The Mallows are characters, not people").
-- **Fixes found in the audit**: phone side margins were 40 px (a container
-  query can't restyle its own container), tablet nav links wrapped, hero
-  buttons overflowed at 390 px, the eyebrow wrapped badly, and on tiny screens
-  the feeling chips sat one per row.
+- **Positioning**: every "companion" reference is gone (eyebrow, support
+  line, scene copy, perks, footer, defaults, code comments). The hero is now
+  *A softer space for feelings.* / *A playful, soothing space to touch, unwind
+  and connect.* with the two-paragraph description; the eyebrow reads
+  *Touch · Unwind · Connect*.
+- **CTAs**: "Meet the Mallows" (to the character stage), "Discover
+  hushmallow" (to the new three-ways strip), "Create my hushmallow account"
+  after the preview and at the end, "Find your soft place." as the final
+  headline. The nav is The Mallows · Unwind · Hushmates · Your space.
+- **Squishy word**: now matched in any case, and shown exactly as the headline
+  spells it, so changing the headline or word can't break the animation.
+- **New sections**: *Touch. Unwind. Connect.* (three ways in) and **Hushmates**
+  (Connect, coming soon), with a new **Hushmates updates** property.
+- **Story order**: hero → three ways → Touch → Unwind (thoughts, the little
+  moment, more than a moment) → Connect → your space → final.
+- **Footer**: "A softer space for feelings.", the brief's explanation of the
+  Mallows and Hushmates, and a short not-a-medical-or-crisis-service line,
+  plus the helpline link.
+- **Unchanged**: all seven Mallows and their art, lines, blinking, squints,
+  particles and signature moves; FeelSense and its crisis care; the breathing
+  moment; Remember my Mallow; the sign-up and log-in panels and URL handoff;
+  every existing property control; reduced motion.
+
+### Earlier: the companion update
+The previous round added FeelSense, blinking, the remember switch and the
+seven-scene story. Its copy has been replaced by the update above.
 
 ## 7. Quality audit
 
 Each point was checked in Chromium with Playwright at 1440×900, 1280×800,
 768×1024, 390×844, 375×812 and 320×700, plus reduced motion.
-`landing/preview/play.mjs` plays the page like a visitor (88 checks).
+`landing/preview/play.mjs` plays the page like a visitor (104 checks).
 
 | Question | Verdict |
 |---|---|
-| First screen explains hushmallow? | Yes: eyebrow, headline, "Meet your emotional companion.", a one-sentence description and a Mallow inviting a squeeze. On 390 px the Mallow's face and the CTA are both on the first screen. |
+| First screen explains hushmallow? | Yes: eyebrow, tagline, product description, the hero description and a Mallow inviting a squeeze. On 390 px the CTA and Pipzi's face are both on the first screen (the small "No account needed" note is hidden on phones to make room). |
 | Distinctly hushmallow, not SaaS? | Character-led scenes, no card grids, Fraunces SOFT display type, a dusk finale. |
 | Real logo integrated? | The official wordmark with its white background removed (mascot intact) in the nav and footer, and the logo mascot in the sign-up panel. |
 | Mallows premium and alive? | The original art at 640 px, breathing, blinking, squash and stretch, signature moves, moods, leaning, and a voice for each. |
@@ -243,7 +238,7 @@ Each point was checked in Chromium with Playwright at 1440×900, 1280×800,
 | Animations sophisticated? | Springs on transform and opacity only, with idle loops in CSS. Respects reduced motion. |
 | Every CTA real? | Anchors scroll. Account buttons open the sign-up panel and navigate with context. Unconfigured URLs show a visible message. |
 | Beautiful at 390 px? | Yes, no horizontal overflow at any size (checked automatically). |
-| Companion positioning clear? | In the eyebrow, support line, scene 2 copy, account copy and footer. |
+| New positioning clear? | Tagline and description in the hero, Touch · Unwind · Connect throughout, Hushmates clearly marked coming soon, and an automated check that no "companion" / AI wording appears on the page. |
 | Why an account? | Scene 6 lists concrete benefits, and the demo's ending invites people in. |
 | Reasons to return? | A greeting from a remembered Mallow (opt-in), and every Mallow has more to say. No streaks or guilt. |
 
@@ -262,7 +257,7 @@ npm install
 node build.mjs            # dist/index.html (open via any static server)
 node build.mjs --inline   # also dist/standalone.html, one file with the art inlined
 node shots.mjs full       # screenshots at the six viewports + overflow/error checks
-node play.mjs             # plays the page like a visitor (88 checks)
+node play.mjs             # plays the page like a visitor (104 checks)
 ```
 
 URL parameters simulate configuration: `?signup=…&login=…&terms=…&privacy=…`,

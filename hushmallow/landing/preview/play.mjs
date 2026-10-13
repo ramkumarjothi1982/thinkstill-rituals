@@ -94,17 +94,36 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     const ctaBox = await cta.boundingBox()
     ok(ctaBox.y + ctaBox.height < h, `hero CTA inside first screen (bottom ${Math.round(ctaBox.y + ctaBox.height)} < ${h})`)
 
+    // copy: the new positioning, none of the old
+    const text = await page.locator(".hm").innerText()
+    ok(/A softer space for feelings\./.test(text) && text.includes("A playful, soothing space to touch, unwind and connect."), "hero carries the tagline and description")
+    ok(!/companion|second brain|virtual therapist|AI emotional/i.test(text), "no old 'companion' / AI positioning anywhere on the page")
+    ok((await page.locator(".hm-squishword").innerText()) === "softer", "'softer' is the squishy word")
+
     // anchor nav
     await page.locator(".hm-hero .hm-btn-ghost").click()
     await wait(1400)
-    const howTop = await page.locator("#how").evaluate((el) => el.getBoundingClientRect().top)
-    ok(Math.abs(howTop) < 120, `"See how hushmallow works" scrolls to How it works (top ${Math.round(howTop)})`)
+    const disTop = await page.locator("#discover").evaluate((el) => el.getBoundingClientRect().top)
+    ok(Math.abs(disTop) < 120, `"Discover hushmallow" scrolls to the three ways in (top ${Math.round(disTop)})`)
     await page.evaluate(() => window.scrollTo(0, 0)); await wait(500)
     await page.locator(".hm-hero .hm-btn-primary").click()
     await wait(1500)
-    const tryTop = await page.locator("#try").evaluate((el) => el.getBoundingClientRect().top)
-    ok(Math.abs(tryTop) < 120, `"Meet your Mallow" scrolls to the live preview (top ${Math.round(tryTop)})`)
-    ok(await page.evaluate(() => document.activeElement?.classList.contains("hm-chip")), "…and lands on the first feeling")
+    const malTop = await page.locator("#mallows").evaluate((el) => el.getBoundingClientRect().top)
+    ok(Math.abs(malTop) < 120, `"Meet the Mallows" scrolls to the Mallows (top ${Math.round(malTop)})`)
+    ok(await page.evaluate(() => !!document.activeElement?.closest(".hm-meet-fig")), "…and focuses the Mallow, ready to squeeze")
+
+    // Hushmates: coming soon, no fake chat, no button without a real updates link
+    await page.locator("#hushmates").scrollIntoViewIfNeeded(); await wait(1200)
+    ok((await page.locator("#hushmates .hm-soon-tag").innerText()).toLowerCase().includes("coming soon"), "Hushmates is labelled Coming soon")
+    ok((await page.locator("#hushmates a, #hushmates input, #hushmates textarea").count()) === 0, "no links, inputs or chat on Hushmates without an updates URL")
+    ok((await page.locator(".hm-mates-status").innerText()).includes("isn't open yet"), "…and says plainly it isn't open yet")
+    await press(page, page.locator(".hm-mates-m-l .hm-squish"), 400)
+    await wait(500)
+    ok((await page.locator(".hm-mates-spark").count()) === 1, "squeezing Loomi sends a little heart across to Boppo")
+    if (w === 1440 || w === 390) await page.screenshot({ path: path.join(out, `play-${w}-hushmates.png`) })
+
+    await page.evaluate(() => document.getElementById("try").scrollIntoView()); await wait(800)
+    await page.locator("#try .hm-chip").first().focus()
 
     // FeelSense: rule-based, asks before assuming
     const sense = async (text) => { await page.locator("#hm-sense-input").fill(text); await page.locator(".hm-sense button[type=submit]").click(); await wait(700) }
@@ -233,6 +252,9 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     await Promise.all([cfg.page.waitForURL(/\/login/), mobile ? cfg.page.locator(".hm-finale .hm-btn-outline-light").click() : cfg.page.locator(".hm-nav-login").click()])
     ok(cfg.page.url().includes("/login"), "Log in goes straight to the log-in URL")
     ok(cfg.errors.length === 0, `no page errors (configured) ${cfg.errors.join(" | ")}`)
+    await cfg.page.goto(base + "index.html?mates=" + encodeURIComponent("https://example.com/hushmates"), { waitUntil: "networkidle" }); await wait(800)
+    const mates = cfg.page.locator("#hushmates a.hm-btn")
+    ok((await mates.count()) === 1 && (await mates.getAttribute("href")).startsWith("https://example.com/hushmates"), "with an updates URL, 'Keep me updated' links to it")
     await cfg.page.close()
 }
 
@@ -252,7 +274,7 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     await page.reload({ waitUntil: "networkidle" }); await wait(2600)
     ok((await page.locator(".hm-center .hm-squish").getAttribute("aria-label")).includes("Loomi"), "a returning visitor's Mallow takes the middle")
     ok((await page.locator(".hm-hero .hm-caption").innerText()).includes("you're back"), "…and says hello")
-    ok((await page.locator(".hm-finale-title").innerText()) === "Loomi is waiting.", "the final invitation uses their Mallow's name")
+    ok((await page.locator(".hm-finale-sub").innerText()).startsWith("Loomi will be here"), "the final invitation uses their Mallow's name")
     await page.screenshot({ path: path.join(out, "play-1440-welcome-back.png") })
     await page.locator(".hm-forget").click(); await wait(300)
     ok((await page.evaluate(() => localStorage.getItem("hushmallow.mallow"))) === null, "'Forget me' clears it")
