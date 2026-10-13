@@ -1,0 +1,82 @@
+{
+  "mobile-390x844": {
+    "scenes": 20,
+    "played": {
+      "relay": {
+        "progress": "10 of 10",
+        "seconds": 56,
+        "notTicked": []
+      },
+      "fallback": {
+        "progress": "6 of 6",
+        "seconds": 17,
+        "notTicked": []
+      }
+    },
+    "errors": []
+  },
+  "mobile-375x812": {
+    "scenes": 20,
+    "played": {
+      "relay": {
+        "progress": "10 of 10",
+        "seconds": 56,
+        "notTicked": []
+      },
+      "fallback": {
+        "progress": "6 of 6",
+        "seconds": 17,
+        "notTicked": []
+      }
+    },
+    "errors": []
+  },
+  "mobile-320x568": {
+    "scenes": 20,
+    "played": {
+      "relay": {
+        "progress": "10 of 10",
+        "seconds": 56,
+        "notTicked": []
+      },
+      "fallback": {
+        "progress": "6 of 6",
+        "seconds": 17,
+        "notTicked": []
+      }
+    },
+    "errors": []
+  },
+  "desktop-1280x860": {
+    "scenes": 20,
+    "played": {
+      "relay": {
+        "progress": "10 of 10",
+        "seconds": 57,
+        "notTicked": []
+      },
+      "fallback": {
+        "progress": "6 of 6",
+        "seconds": 18,
+        "notTicked": []
+      }
+    },
+    "errors": []
+  },
+  "desktop-1280x860-single": {
+    "scenes": 20,
+    "played": {
+      "relay": {
+        "progress": "10 of 10",
+        "seconds": 57,
+        "notTicked": []
+      },
+      "fallback": {
+        "progress": "6 of 6",
+        "seconds": 17,
+        "notTicked": []
+      }
+    },
+    "errors": []
+  }
+}

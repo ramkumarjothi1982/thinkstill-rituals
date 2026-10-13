@@ -95,6 +95,9 @@ The QA tool captures 20 scenes at 390 × 844, 375 × 812, 320 × 568, 1280 (two 
 and 1280 (one phone). It plays both scenarios through the interface and fails on any
 console error.
 
+Screenshots from the final QA run (390 × 844 unless named otherwise) are in
+`docs/screenshots/`, with the run's report in `docs/screenshots/qa-report.json`.
+
 ## What's real, what's simulated
 
 | Real (enforced, tested) | Simulated / mocked |
