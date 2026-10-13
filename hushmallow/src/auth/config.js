@@ -89,14 +89,14 @@ export function validatePublicConfig({ url = '', key = '', mode = 'production' }
   const local = LOCAL_URL_RE.exec(url);
   if (sb) {
     if (sb[1] !== PROJECT_REF) return { ok: false, error: `SUPABASE_URL points at project ${sb[1]}, not ${PROJECT_NAME} (${PROJECT_REF}). Only ${PROJECT_URL} may be used.` };
-    if (kind !== 'publishable') return { ok: false, error: `SUPABASE_PUBLISHABLE_KEY must be the project's publishable key (sb_publishable_…); got a ${kind} key.` };
+    if (kind !== 'publishable') return { ok: false, error: `SUPABASE_PUBLISHABLE_KEY must be the project's publishable key (sb_publishable_…); got ${/^[aeiou]/i.test(kind) ? 'an' : 'a'} ${kind} key.` };
     return { ok: true, enabled: true, url: PROJECT_URL, key, ref: PROJECT_REF, mode, local: false };
   }
   if (local) {
     if (mode === 'production') return { ok: false, error: `SUPABASE_URL ${url} is a local address; set HM_AUTH_MODE=dev or ci for a local build (production builds use ${PROJECT_URL} only).` };
     const port = +local[3];
     if (!(port >= 1 && port <= 65535)) return { ok: false, error: 'SUPABASE_URL has an invalid port.' };
-    if (kind !== 'publishable' && kind !== 'anon-jwt') return { ok: false, error: `SUPABASE_PUBLISHABLE_KEY must be a publishable key or a local stack's anon key; got a ${kind} key.` };
+    if (kind !== 'publishable' && kind !== 'anon-jwt') return { ok: false, error: `SUPABASE_PUBLISHABLE_KEY must be a publishable key or a local stack's anon key; got ${/^[aeiou]/i.test(kind) ? 'an' : 'a'} ${kind} key.` };
     return { ok: true, enabled: true, url: `${local[1]}://${local[2]}:${port}`, key, ref: local[2] === 'localhost' ? 'localhost' : '127', mode, local: true };
   }
   if (/\.supabase\.(co|in|net)\b/i.test(url)) return { ok: false, error: `SUPABASE_URL must be exactly ${PROJECT_URL} (https, no path, no other project).` };

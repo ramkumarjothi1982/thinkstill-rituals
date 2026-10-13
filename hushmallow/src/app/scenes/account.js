@@ -72,7 +72,7 @@ export function mountAccountRow(app, el) {
     h('button', { class: 'btn', style: { minHeight: '44px' }, 'data-act': 'account-row', onclick: () => openAccount(app) }, signedIn ? 'Manage' : 'Sign in')));
 }
 
-const PRIVACY_LINE = 'Nothing you type, no feeling and no photo is ever sent with your account.';
+const PRIVACY_LINE = 'Nothing you write in hushmallow, no feeling and no photo is ever sent with your account.';
 const DELETED_ON_SERVER = [
   'your sign-in: your email address and password',
   'your profile: your name and home Mallow',
@@ -431,7 +431,7 @@ export default function account(app, params = {}) {
     title: 'Keep this phone’s things?',
     lede: [...(who ? ['You’re signed in as ', strong(who, '.'), ' '] : []), 'This phone has favourites, settings or a Memory Garden from before you signed in. Keep a copy with your account on this phone?'],
     body: [
-      list(['Keep: your account starts with them here. Nothing is uploaded.', 'Not now: your account starts fresh. You can bring them in later from this screen.', 'Either way, the guest’s own copy stays on this phone for when you’re signed out.']),
+      list(['Keep: your account starts with them here, on this phone. If your account’s sync is already on (from another phone), they’re kept with your account too.', 'Not now: your account starts fresh. You can bring them in later from this screen.', 'Either way, the guest’s own copy stays on this phone for when you’re signed out.']),
       h('div', { class: 'hm-auth-actions' },
         btn('Keep them with my account', (e) => { e.currentTarget.disabled = true; choose('keep'); }, { cls: 'primary', act: 'keep' }),
         btn('Not now', (e) => { e.currentTarget.disabled = true; choose('fresh'); }, { act: 'fresh' })),
@@ -494,7 +494,7 @@ export default function account(app, params = {}) {
 
     const guestRow = auth.guestDataWaiting ? h('div', { class: 'hm-account-row hm-account-row-block' },
       h('div', { class: 'grow' }, h('div', { class: 'hm-account-rowtitle' }, 'This phone’s guest things'),
-        hint('Favourites, settings or a Memory Garden from before you signed in. Bring a copy into your account here. Nothing is uploaded.')),
+        hint('Favourites, settings or a Memory Garden from before you signed in. Bring a copy into your account here. It’s kept with your account only while that sync is on.')),
       btn('Bring them in', (e) => { e.currentTarget.disabled = true; mood('happy'); api().then((a) => later(() => a.importGuestData(), reduced() ? 0 : 450)).catch(() => toast(MESSAGES.unknown)); }, { act: 'import-guest' })) : null;
 
     const since = VM.formatWhen(acct.profile?.createdAt || u.createdAt, { time: false });
@@ -665,7 +665,7 @@ export default function account(app, params = {}) {
   };
 
   V['password-code'] = (o, u = auth.user() || {}) => {
-    const code = field({ name: 'code', label: 'Code from the email', autocomplete: 'one-time-code', inputmode: 'numeric', enterkeyhint: 'done', maxlength: 10, hintText: 'Six digits. It works for a few minutes.' });
+    const code = field({ name: 'code', label: 'Code from the email', autocomplete: 'one-time-code', inputmode: 'numeric', enterkeyhint: 'done', maxlength: 10, hintText: 'Six digits. It works for an hour.' });
     code.input.setAttribute('pattern', '[0-9]*');
     const resend = cooldownButton('Send a new code', () => client?.cooldownLeft('reauth') || 0, async () => {
       const a = await api();
