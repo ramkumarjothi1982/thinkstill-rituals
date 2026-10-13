@@ -586,6 +586,7 @@ type Props = {
     blinking: boolean
     rememberOption: boolean
     assetBase?: string // where the eyelid layers live (defaults to the pinned repository copy)
+    lidImages?: Partial<Record<MallowId, string>> // explicit eyelid images (used by the offline preview)
     onSignUpClick?: () => void
     onLoginClick?: () => void
 }
@@ -3332,7 +3333,10 @@ export default function HushmallowLanding(props: Props) {
         },
         [saved]
     )
-    const lidSrc = React.useCallback((id: MallowId) => (p.assetBase || ART) + `${id}-lids.webp`, [p.assetBase])
+    const lidSrc = React.useCallback(
+        (id: MallowId) => p.lidImages?.[id] || (p.assetBase || ART) + `${id}-lids.webp`,
+        [p.assetBase, p.lidImages]
+    )
 
     // the feeling a visitor tried travels with every sign-up button on the page
     const lastFeeling = React.useRef<SignupContext>({})

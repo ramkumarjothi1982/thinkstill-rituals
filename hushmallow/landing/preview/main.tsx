@@ -4,7 +4,9 @@ import HushmallowLanding from "../../framer/HushmallowLanding"
 
 // Local art instead of the CDN defaults; ?signup=… etc. simulate configured URLs.
 const q = new URLSearchParams(location.search)
-const art = (n: string) => `assets/${n}.webp`
+// the one-file build (build.mjs --inline) provides the art as data URIs
+const inlined: Record<string, string> | undefined = (window as any).__HM_ASSETS
+const art = (n: string) => inlined?.[n] ?? `assets/${n}.webp`
 const props: any = {
     logo: art("hushmallow-logo"),
     mascot: art("mascot"),
@@ -21,5 +23,6 @@ const props: any = {
     privacyUrl: q.get("privacy") || "",
     contactUrl: q.get("contact") || "",
     assetBase: "assets/",
+    lidImages: inlined ? { pipzi: art("pipzi-lids"), boppo: art("boppo-lids"), glitzi: art("glitzi-lids"), zuzu: art("zuzu-lids") } : undefined,
 }
 createRoot(document.getElementById("root")!).render(<HushmallowLanding {...props} />)

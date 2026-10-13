@@ -39,12 +39,19 @@ ${script}
 writeFileSync(path.join(dist, "index.html"), page('<script src="app.js"></script>'))
 
 if (process.argv.includes("--inline")) {
-    let js = readFileSync(path.join(dist, "app.js"), "utf8")
+    // one file: the art as data URIs in window.__HM_ASSETS, read by main.tsx
+    const assets = {}
     for (const f of readdirSync(path.join(dist, "assets"))) {
-        const b64 = readFileSync(path.join(dist, "assets", f)).toString("base64")
-        js = js.split(`assets/${f}`).join(`data:image/webp;base64,${b64}`)
-        js = js.split(`assets/"+"${f}`).join(`data:image/webp;base64,${b64}`)
+        if (!f.endsWith(".webp")) continue
+        assets[f.replace(/\.webp$/, "")] = "data:image/webp;base64," + readFileSync(path.join(dist, "assets", f)).toString("base64")
     }
-    writeFileSync(path.join(dist, "standalone.html"), page(`<script>${js.replace(/<\/script/g, "<\\/script")}</script>`))
+    const js = readFileSync(path.join(dist, "app.js"), "utf8").replace(/<\/script/g, "<\\/script")
+    const body = `<div id="root"></div>\n<script>window.__HM_ASSETS=${JSON.stringify(assets)}</script>\n<script>${js}</script>\n`
+    writeFileSync(path.join(dist, "standalone.html"), page(body.replace(/^<div id="root"><\/div>\n/, "")))
+    // body-only variant for hosts that add their own document skeleton
+    writeFileSync(
+        path.join(dist, "fragment.html"),
+        `<title>hushmallow Landing Page</title>\n<style>html,body{margin:0;background:#FFF8F3;color:#1F1640}</style>\n${body}`
+    )
 }
 console.log("built", dist)
