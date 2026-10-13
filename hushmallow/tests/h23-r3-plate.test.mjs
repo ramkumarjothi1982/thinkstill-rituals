@@ -242,6 +242,42 @@ test('ThoughtLayer.plateFor: the plate measured for a budget is the plate drawn 
 });
 
 for (const reducedMotion of [false, true]) {
+  test(`ThoughtLayer${reducedMotion ? ', reduced motion' : ''}: a world lets go of the thought and the shell sends it home — its words never show at the new home while the body is still held where the world left it, nor jump to it as it sets off`, () => {
+    VIEW.W = 390; VIEW.H = 844;
+    const L = new ThoughtLayer({ bounds: () => ({ left: 10, right: 380, top: 96, bottom: 760 }), keepOut: () => null, reducedMotion, tagRoot: document.body });
+    const th = L.add({ text: TEXT, emotion: 'embarrassed', intensity: 0.6, r: 38 }, { x: 200, y: 560 });
+    for (let i = 0; i < 60; i++) L.frame(1 / 60);
+    // the ocean drives it far out on the water, its words shown there
+    for (let i = 0; i < 90; i++) { th.x = 270; th.y = 400; th.z = 0.43; L.frame(1 / 60); }
+    const tg = L.tags.get(th);
+    assert.ok(tg.shown, 'its words show on the water');
+    // the world ends: nothing writes it any more, and the shell gives it its home beside the person's Mallow
+    // (as endWorldMode does: let go, home, near again, no side or plate of the world's)
+    th.letGo?.(); th.moveHome({ x: 300, y: 560 }); th.closer?.(0); th.labelSide = null; th.labelFit = null;
+    const frames = [];
+    for (let i = 0; i < 60 * 5; i++) {
+      L.frame(1 / 60);
+      const e = th.extent({});
+      frames.push({ dt: 1 / 60, op: tg.shown && !L.hidden ? (tg.opQ ?? 20) / 20 : 0, wf: !!tg.wfade, tc: { x: tg.x, y: tg.y + tg.h / 2 }, body: [e.left, e.top, e.right, e.bottom], tag: [tg.x - tg.w / 2, tg.y, tg.x + tg.w / 2, tg.y + tg.h] });
+    }
+    const vis = seenOps(frames);
+    const { worst, at } = worstStep(frames, vis);
+    assert.ok(worst <= 12, `largest step of the words while seen ${worst.toFixed(1)} px (${JSON.stringify(at)})`);
+    // (and whenever they can be seen they are beside their body: never 60 px or more away from it)
+    let far = null;
+    for (let i = 0; i < frames.length && !far; i++) {
+      if (vis[i] <= 0.15) continue;
+      const b = frames[i].body, t = frames[i].tag, gap = Math.max(b[0] - t[2], t[0] - b[2], b[1] - t[3], t[1] - b[3], 0);
+      if (gap >= 60) far = { i, gap: Math.round(gap), body: b.map(Math.round), tag: t.map(Math.round) };
+    }
+    assert.equal(far, null, `words seen away from their body: ${JSON.stringify(far)}`);
+    assert.ok(Math.hypot(th.x - 300, th.y - 560) < 6, `it went home (${th.x.toFixed(1)}, ${th.y.toFixed(1)})`);
+    assert.ok(vis[vis.length - 1] > 0.9, 'and its words show there');
+    L.destroy();
+  });
+}
+
+for (const reducedMotion of [false, true]) {
   test(`ThoughtLayer${reducedMotion ? ', reduced motion' : ''}: a thought a world drives out to the horizon gets fewer lines — the words change only while unseen, never re-flowing in plain sight`, () => {
     VIEW.W = 390; VIEW.H = 844;
     const L = new ThoughtLayer({ bounds: () => ({ left: 10, right: 380, top: 96, bottom: 760 }), keepOut: () => null, reducedMotion, tagRoot: document.body });

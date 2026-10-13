@@ -20,7 +20,7 @@
 //
 // Handle (HUSHFOLD §3 W2): { id, text, emotion, x, y, z, scale, state:{tension, charge,
 // calm, distance}, react(kind), soften(k), settle(k), transform(k), hitTest(x, y),
-// pointer(e), destroy() } + slow, makeSpace, farther, closer, moveHome, token, siblings.
+// pointer(e), destroy() } + slow, makeSpace, farther, closer, moveHome, letGo, token, siblings.
 // x / y / z / scale / rot / state may be written by a world every frame: a written
 // value wins (the thought only adds its own life on top while it is driven).
 //   z         depth 0 (near) … 1 (far), clamped: smaller, a little higher and fainter;
@@ -218,6 +218,12 @@ export class ThoughtMallow {
   off(ev, fn) { const l = this.listeners[ev]; if (l) { const i = l.indexOf(fn); if (i >= 0) l.splice(i, 1); } return this; }
   _emit(ev, data) { for (const fn of this.listeners[ev] || []) { try { fn(data); } catch (e) { console.error(e); } } this.layer?._relay?.(ev, this, data); }
 
+  /**
+   * A world that drove it lets go (it has ended): from now it is its own again — no longer held where it was last
+   * written for the half second a driven thought waits (that hold is for a world between its writes), so a home given
+   * it next is floated to at once, and its layer treats it as on its way there rather than resting where it was left.
+   */
+  letGo() { this._drivenT = -9; return this; }
   /** Move where it rests (it floats there). */
   moveHome(p) { if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) { this.home.x = p.x; this.home.y = p.y; this._glide = false; } return this; }
   /** Put it somewhere at once. */

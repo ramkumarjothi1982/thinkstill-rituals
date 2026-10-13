@@ -625,7 +625,9 @@ export default function hushfold(app, params = {}) {
     layout();
     // the person's thought comes back beside their Mallow, near again (the world had it far out on the water)
     const back = stage?.thoughts.primary;
-    if (back && !back.leaving) { try { back.moveHome(thoughtHome); back.closer?.(0); back.labelSide = null; back.labelFit = null; } catch (e) { console.warn(e); } }
+    // (the world has let go of it: it sets off for that home now, its words waiting until it is there — never shown at
+    // the new home while it is still held where the world left it)
+    if (back && !back.leaving) { try { back.letGo?.(); back.moveHome(thoughtHome); back.closer?.(0); back.labelSide = null; back.labelFit = null; } catch (e) { console.warn(e); } }
     panel?.update();
   }
   /**
