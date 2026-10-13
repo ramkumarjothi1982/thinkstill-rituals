@@ -905,6 +905,9 @@ export function createHushflow(opts = {}) {
   /** Save progress through W3's flow-store (sanitised: ids and numbers only). */
   function save() {
     if (!cur || !session || phase === 'finished') return;
+    // a world held for safety is never written down: nothing to offer to resume after a crisis
+    // (the tab hiding or the page reloading while the person is away calling someone included)
+    if ((paused && pauseReason === 'safety') || pausePending === 'safety') return;
     let w = null;
     try { w = cur.world.serialize?.() ?? null; } catch (e) { console.warn('[hushflow] serialize', e); }
     try {
