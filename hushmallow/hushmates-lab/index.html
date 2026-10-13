@@ -3,42 +3,53 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#0a0818">
+<meta name="theme-color" content="#FFF8F3">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Hushmates Lab</title>
-<link rel="icon" href="../assets/mallows/blubi.png">
-<link rel="preload" href="../assets/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../src/ui/tokens.css">
+<link rel="icon" href="assets/art/mascot.webp">
+<link rel="preload" href="assets/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles/fonts.css">
+<link rel="stylesheet" href="styles/world.css">
 <link rel="stylesheet" href="styles/lab.css">
-<link rel="stylesheet" href="styles/hushmates.css">
+<link rel="stylesheet" href="styles/scenes/welcome.css">
+<link rel="stylesheet" href="styles/scenes/identity.css">
+<link rel="stylesheet" href="styles/scenes/home.css">
+<link rel="stylesheet" href="styles/scenes/find.css">
+<link rel="stylesheet" href="styles/scenes/invitations.css">
+<link rel="stylesheet" href="styles/scenes/hushspace.css">
+<link rel="stylesheet" href="styles/scenes/settings.css">
 </head>
 <body>
-<div class="lab" data-view="moon">
+<div class="lab" data-view="moon" data-layout="pair">
+  <div class="lab-orbs" aria-hidden="true"><i class="lab-orb lab-orb--a"></i><i class="lab-orb lab-orb--b"></i><i class="lab-orb lab-orb--c"></i></div>
   <header class="lab-bar">
-    <div class="lab-brand"><i aria-hidden="true"></i><span>Hushmates <b>Lab</b></span></div>
-    <p class="lab-flag">Prototype · simulated test identities · local demo service, not a real backend</p>
-    <div class="lab-switch" role="group" aria-label="Which device to show">
+    <div class="lab-brand"><img src="assets/art/hushmallow-logo.webp" alt="hushmallow" width="1200" height="201"><span>Hushmates <b>Lab</b></span></div>
+    <p class="lab-flag"><span class="lab-flag-dot" aria-hidden="true"></span>Prototype · simulated test identities · local demo service, not a real backend</p>
+    <div class="lab-switch" role="group" aria-label="Which phone to show">
       <button type="button" data-view-btn="moon" aria-pressed="true">MoonMallow <em data-badge="moon" hidden></em></button>
       <button type="button" data-view-btn="cloud" aria-pressed="false">CloudMallow <em data-badge="cloud" hidden></em></button>
     </div>
+    <button type="button" class="lab-layout-btn" id="layout-toggle" aria-pressed="false" title="Show one phone at a time">One phone</button>
     <button type="button" class="lab-guide-btn" id="guide-toggle" aria-expanded="false" aria-controls="guide">Demo guide</button>
   </header>
 
   <main class="lab-stage">
-    <section class="lab-phone" data-who="moon" aria-label="Device A, signed in as the test identity MoonMallow">
+    <section class="lab-phone" data-who="moon" aria-label="Phone A, signed in as the test identity MoonMallow">
       <div class="lab-phone__label">
-        <span><b>Device A</b> · MoonMallow <small>test identity</small></span>
+        <span><b>Phone A</b> · MoonMallow <small>test identity</small></span>
         <em data-badge="moon" class="lab-notif" hidden></em>
         <button type="button" class="lab-net" data-net="moon" aria-pressed="false" title="Simulate losing the connection"><i aria-hidden="true"></i><span>Online</span></button>
       </div>
       <div class="lab-phone__frame"><div class="lab-phone__screen" id="device-moon"></div></div>
     </section>
 
-    <section class="lab-phone" data-who="cloud" aria-label="Device B, signed in as the test identity CloudMallow">
+    <section class="lab-phone" data-who="cloud" aria-label="Phone B, signed in as the test identity CloudMallow">
       <div class="lab-phone__label">
-        <span><b>Device B</b> · CloudMallow <small>test identity</small></span>
+        <span><b>Phone B</b> · CloudMallow <small>test identity</small></span>
         <em data-badge="cloud" class="lab-notif" hidden></em>
         <button type="button" class="lab-net" data-net="cloud" aria-pressed="false" title="Simulate losing the connection"><i aria-hidden="true"></i><span>Online</span></button>
       </div>
@@ -47,10 +58,10 @@
 
     <aside class="lab-guide" id="guide" aria-labelledby="guide-title">
       <div class="lab-guide__head">
-        <h2 id="guide-title" tabindex="-1">First demonstration</h2>
+        <h2 id="guide-title" tabindex="-1">First <em>demonstration</em></h2>
         <button type="button" class="lab-guide__close" id="guide-close" aria-label="Close guide">×</button>
       </div>
-      <p class="lab-guide__lede">Two people, two devices, one private Hushspace. Use the devices yourself; each step ticks itself off from the real state.</p>
+      <p class="lab-guide__lede">Two people, two phones, one private Hushspace. Use the phones yourself; each step ticks itself off from the real state.</p>
       <div class="lab-progress"><div id="guide-bar" class="lab-progress__bar"></div><span id="guide-progress">0 of 10</span></div>
       <ol class="guide-steps" id="guide-steps"></ol>
       <div class="lab-guide__box">
@@ -66,7 +77,7 @@
         <summary>What’s real and what’s simulated</summary>
         <ul>
           <li><b>Real:</b> the rules (consent, limits, blocking, text rules, rate limits, moderation access) run in the service and are covered by automated tests, including forged requests.</li>
-          <li><b>Real:</b> each device talks to the service only through a network layer with latency, offline mode and lost replies.</li>
+          <li><b>Real:</b> each phone talks to the service only through a network layer with latency, offline mode and lost replies.</li>
           <li><b>Simulated:</b> the service runs inside this page and saves to this browser. Sign-in is simulated for labelled test identities. No Supabase, no server, no real people.</li>
           <li><b>Also seeded:</b> StarMallow and FernMallow (discoverable test identities nobody is operating) and DreamMallow (hidden; never appears in Find).</li>
         </ul>

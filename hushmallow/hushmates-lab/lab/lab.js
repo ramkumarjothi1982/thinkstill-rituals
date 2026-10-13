@@ -84,6 +84,16 @@ function setView(key) {
 }
 document.querySelectorAll('[data-view-btn]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.viewBtn)));
 setView('moon');
+// "One phone": the real, single-phone experience; "Two phones": both people side by side
+const layoutBtn = $('#layout-toggle');
+function setLayout(single) {
+  lab.dataset.layout = single ? 'single' : 'pair';
+  layoutBtn.setAttribute('aria-pressed', String(single));
+  layoutBtn.textContent = single ? 'Two phones' : 'One phone';
+  layoutBtn.title = single ? 'Show both phones side by side' : 'Show one phone at a time';
+}
+layoutBtn.addEventListener('click', () => setLayout(lab.dataset.layout !== 'single'));
+setLayout(new URLSearchParams(location.search).get('layout') === 'single');
 
 function renderBadges() {
   for (const d of Object.values(devices)) {
@@ -208,28 +218,47 @@ async function toScreen(key, name) {
   d.history = []; d.go('home', {}, { back: true }); await wait(pace.ms / 2);
 }
 
+// The scene contract (data-test hooks) every scene keeps, so the demo can be
+// played through the real interface: see docs/SCENES.md.
 const RUN = [
   async () => {
     const d = devices.moon.device;
-    if (d.current?.name === 'welcome') { await tap('moon', '[data-test="create-identity"]'); }
-    if (d.current?.name === 'identity') { await tap('moon', '[data-test="save-identity"]'); await wait(pace.ms); }
+    if (d.current?.name === 'welcome') await tap('moon', '[data-test="create-identity"]');
+    for (let i = 0; i < 8 && d.current?.name === 'identity'; i++) {
+      const save = devices.moon.root.querySelector('[data-test="save-identity"]');
+      if (save && !save.disabled) { await tap('moon', '[data-test="save-identity"]'); await wait(pace.ms * 2); break; }
+      await tap('moon', '[data-test="id-next"]');
+    }
     await toScreen('moon', 'home');
     await tap('moon', '[data-test="go-find"]');
   },
-  async () => { await el('moon', '[data-test="card-CloudMallow"]'); setView('moon'); await wait(pace.ms); },
-  async () => { await tap('moon', '[data-test="invite-CloudMallow"]'); await tap('moon', '[data-test="send-invite"]'); },
-  async () => { await toScreen('cloud', 'home'); await tap('cloud', '[data-test="go-invitations"]'); await tap('cloud', '[data-test="received-MoonMallow"] [data-test="accept"]'); },
   async () => {
-    await tap('cloud', '[data-test="open-hushspace"]');
-    await toScreen('moon', 'home'); await tap('moon', '[data-test="go-hushmates"]'); await tap('moon', '[data-test="hushmate-CloudMallow"]');
+    setView('moon');
+    const pick = await el('moon', '[data-test="pick-CloudMallow"]').catch(() => null);
+    if (pick && !devices.moon.root.querySelector('[data-test="card-CloudMallow"]')) await tap('moon', '[data-test="pick-CloudMallow"]');
+    await el('moon', '[data-test="card-CloudMallow"]');
+    await wait(pace.ms);
+  },
+  async () => { await tap('moon', '[data-test="invite-CloudMallow"]'); await tap('moon', '[data-test="send-invite"]'); await wait(pace.ms * 2.5); },
+  async () => {
+    await toScreen('cloud', 'home'); await tap('cloud', '[data-test="go-invitations"]');
+    await tap('cloud', '[data-test="received-MoonMallow"] [data-test="accept"]');
+    await el('cloud', '[data-test="composer"]', 8000);       // the shared moment flows into the Hushspace
+    await wait(pace.ms);
+  },
+  async () => {
+    await toScreen('moon', 'home');
+    await tap('moon', '[data-test="hushmate-CloudMallow"]');
+    await el('moon', '[data-test="composer"]', 8000);
+    await wait(pace.ms);
   },
   async () => { await el('moon', '[data-test="composer"]'); fillComposer('moon'); await wait(pace.ms); await tap('moon', '[data-test="send"]'); },
   async () => { setView('cloud'); await wait(pace.ms); await el('cloud', '[data-test="composer"]'); fillComposer('cloud'); await wait(pace.ms); await tap('cloud', '[data-test="send"]'); },
   async () => { setView('moon'); await wait(pace.ms); await tap('moon', '[data-test="intent-mine"]'); await tap('moon', '[data-test="intent-perspective"]'); await wait(pace.ms); setView('cloud'); await wait(pace.ms * 1.5); },
-  async () => { await tap('moon', '[data-test="hs-more"]'); await tap('moon', 'input[id$="-quiet"]'); await wait(pace.ms); devices.moon.device.closeSheet(); await wait(pace.ms); },
+  async () => { await tap('moon', '[data-test="hs-more"]'); await tap('moon', '[data-test="quiet-toggle"]'); await wait(pace.ms); devices.moon.device.closeSheet(); await wait(pace.ms * 1.5); },
   async () => {
     await tap('moon', '[data-test="hs-more"]'); await tap('moon', '[data-test="block"]'); await tap('moon', '[data-test="confirm"]');
-    await wait(pace.ms); setView('cloud'); await wait(pace.ms); $('#bypass').click(); await wait(pace.ms);
+    await wait(pace.ms * 1.5); setView('cloud'); await wait(pace.ms); $('#bypass').click(); await wait(pace.ms);
   },
 ];
 async function runStep(n) { await RUN[n - 1](); renderGuide(); }
@@ -253,4 +282,4 @@ for (const d of Object.values(devices)) {
 }
 renderBadges();
 renderGuide();
-window.__lab = { service, devices, flags, setView, runStep, pace, steps: () => STEPS.map((s) => !!s.done()), ready: true };
+window.__lab = { service, devices, flags, setView, setLayout, runStep, pace, steps: () => STEPS.map((s) => !!s.done()), ready: true };

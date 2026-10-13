@@ -1,0 +1,20 @@
+/* Welcome to Hushmates */
+.wl-top { position: relative; z-index: 2; display: flex; justify-content: center; padding: calc(18px + var(--hm-safe-top)) 0 4px; }
+.wl-logo { width: 132px; height: auto; }
+.wl-scroll { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 14px; }
+.wl-title { margin-top: 14px; max-width: 11em; }
+.wl-stage { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; }
+.wl-pair { position: relative; width: 100%; max-width: 420px; aspect-ratio: 1 / .66; }
+.wl-pair-glow { position: absolute; left: 8%; right: 8%; top: 6%; bottom: 2%; border-radius: 50%; background: radial-gradient(closest-side, rgba(201,168,255,.45), rgba(201,168,255,0)); }
+.wl-pair .kit-arc.wl-pair-arc { left: 14%; top: 8%; width: 72%; height: 44%; }
+.wl-pair-m { position: absolute; bottom: 8%; width: 38%; z-index: 2; }
+.wl-pair-m--l { left: 3%; }
+.wl-pair-m--r { right: 3%; }
+.wl-support { margin-top: 18px; }
+.wl-lede { margin-top: 10px; max-width: 30em; }
+.wl-cta { width: 100%; display: grid; justify-items: center; gap: 4px; margin-top: 22px; }
+.wl-promises { list-style: none; width: 100%; display: grid; gap: 16px; margin-top: 30px; text-align: left; }
+.wl-promises li { display: flex; align-items: center; gap: 14px; }
+.wl-promises strong { display: block; font: 800 15.5px/1.3 var(--hm-ui); color: var(--hm-ink); }
+.wl-promises span { display: block; font: 400 15px/1.45 var(--hm-body); color: var(--hm-ink-2); }
+.wl-note { margin-top: 26px; max-width: 26em; }
