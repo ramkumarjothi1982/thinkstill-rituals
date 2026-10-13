@@ -411,7 +411,9 @@ export class MallowTouch {
     this.reader?.cancelAll();
     this._hold?.stop(); this._hold = null; this._hum?.stop(); this._hum = null;
     this._slipQ = null;
-    if (old.mix) rig.setEmotion(old.mix, old.intensity, { instant: true, quiet: true });
+    // (a named stage carries over as that stage — the concerned one keeps its limits on the new face from its first frame)
+    if (old.stage) rig.setStage(old.stage, { instant: true, quiet: true });
+    else if (old.mix) rig.setEmotion(old.mix, old.intensity, { instant: true, quiet: true });
     old.destroy();
     this.id = id; this.mallow = MALLOWS[id]; this.persona = personaFor(id); this.opts.id = id;
     this.rig = rig;

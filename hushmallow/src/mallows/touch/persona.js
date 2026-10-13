@@ -17,6 +17,8 @@
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 const ss = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+// a burst round the face — never while the face is held to the concerned stage (after something heavy: rig.hushed)
+const burst = (rig, fx) => { if (!rig?.hushed) rig?.particles?.burst?.(fx); };
 
 const mat = (kG, kL, beta, damp, dMax, maxStretch) => Object.freeze({ kG, kL, beta, damp, dMax, maxStretch });
 
@@ -54,7 +56,7 @@ export const TOUCH_PERSONA = {
       if (T.jiggle > 0.01) { goal.spinJitter = Math.max(goal.spinJitter, T.jiggle); goal.fxQuestion = Math.max(goal.fxQuestion, 0.5 * T.jiggle); }
       if (T.calm > 0.01 && !T.massageRate) goal.spin = lerp(goal.spin, 0.1, T.calm);
     },
-    onJiggle(mt) { mt.rig.particles?.burst?.({ kind: 'question', n: 1 }); return false; },
+    onJiggle(mt) { burst(mt.rig, { kind: 'question', n: 1 }); return false; },
   },
 
   // the softest and wobbliest; beautifully dramatic
@@ -79,10 +81,11 @@ export const TOUCH_PERSONA = {
       if (depth < 0.25) return false;
       const rig = mt.rig, b = rig.body;
       rig.react('release', { intensity: depth });
-      if (b.grounded && !rig.opts.reducedMotion) {
+      // (after something heavy, a soft hug: no bounce)
+      if (b.grounded && !rig.opts.reducedMotion && !rig.hushed) {
         b.hopV = Math.sqrt(2 * 9.8 * 1.2 * depth * 0.14); b.grounded = false;
       }
-      rig.particles?.burst?.({ kind: 'pop', n: Math.round(4 + 10 * depth) });
+      burst(rig, { kind: 'pop', n: Math.round(4 + 10 * depth) });
       return true;
     },
     onJiggle(mt) {
@@ -101,7 +104,7 @@ export const TOUCH_PERSONA = {
     onRelease(mt, { depth }) {
       if (depth < 0.2) return false;
       mt.rig.react('release', { intensity: depth });
-      mt.rig.particles?.burst?.({ kind: 'spark', n: Math.round(6 + 24 * depth) });
+      burst(mt.rig, { kind: 'spark', n: Math.round(6 + 24 * depth) });
       return true;
     },
   },
@@ -114,7 +117,7 @@ export const TOUCH_PERSONA = {
     face(goal, T) {
       if (T.calm > 0.01) goal.float = lerp(goal.float, 0.8, T.calm);
     },
-    onMassage(mt) { mt.rig.particles?.burst?.({ kind: 'ring', n: 1 }); return false; },
+    onMassage(mt) { burst(mt.rig, { kind: 'ring', n: 1 }); return false; },
   },
 
   // pillowy; a long hold lulls it to sleep
@@ -133,7 +136,7 @@ export const TOUCH_PERSONA = {
         if (!rig._lulled) { rig._lulled = true; rig.cycles.yawnT = rig.time; rig.opts.audio?.play?.(rig.id, 'yawn'); }
       } else rig._lulled = false;
     },
-    onMassage(mt) { mt.rig.particles?.burst?.({ kind: 'moon', n: 3 }); return false; },
+    onMassage(mt) { burst(mt.rig, { kind: 'moon', n: 3 }); return false; },
   },
 };
 
