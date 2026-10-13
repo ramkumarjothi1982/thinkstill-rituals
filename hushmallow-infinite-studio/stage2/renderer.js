@@ -49,7 +49,7 @@ const WATER = `
 uniform float uTime; uniform float uAgitation;
 uniform vec4 uRip[8]; uniform float uRipN;     // x, y(world), t-since, amp
 vec2 waterDisp(vec2 w, float depth, out float crest) {
-  float persp = 0.08 + depth / 900.;
+  float persp = 0.13 + depth / 700.;
   vec2 disp = vec2(0.);
   crest = 0.;
   for (int i = 0; i < 8; i++) {
@@ -62,7 +62,7 @@ vec2 waterDisp(vec2 w, float depth, out float crest) {
     float k = (dist - rad) / (30. + r.z * 22.);
     float env = exp(-k * k) * r.w * exp(-r.z * 0.9) * smoothstep(0., 0.06, r.z);
     float wave = sin(k * 3.1) * env;
-    disp += q / max(dist, 1e-3) * wave * 10.0;
+    disp += q / max(dist, 1e-3) * wave * 17.0;
     crest += max(0., wave) * 0.55 + abs(wave) * 0.1;
   }
   float sw = vnoise(vec2(w.x * 0.004, w.y * 0.11 - uTime * 0.35)) - 0.5;
@@ -166,7 +166,7 @@ uniform vec3 uSkyCam;                          // sky camera: focus x, y, zoom (
 out vec4 frag;
 
 // ---- sky, in sky-layer coordinates (horizon at uHorizonY)
-vec3 sky(vec2 w) {
+vec3 sky(vec2 w, out float discOut) {
   float h = clamp((uHorizonY - w.y) / 1150., 0., 1.);
   vec3 c = mix(uHorizon, uHigh, smoothstep(0.0, 0.42, h));
   c = mix(c, uZenith, smoothstep(0.38, 1.0, h));
@@ -211,6 +211,7 @@ vec3 sky(vec2 w) {
   }
   c += uHaloCol * glow * uMoonGlow * (1. - 0.6 * cl);
   c = mix(c, moon, disc * (1. - 0.85 * cl));
+  discOut = disc * (1. - 0.85 * cl);
   c = mix(c, cloud, cl * 0.88);
 
   // far hills: two low, hazy rolling ridges that give the lake scale
@@ -230,7 +231,8 @@ void main() {
   vec2 sp = vec2(vUv.x * uRes.x, (1. - vUv.y) * uRes.y);
   vec2 w = screenToWorld(sp);
   if (w.y < uHorizonY) {
-    frag = vec4(sky(skyWorld(sp)), 1.);
+    float dsk;
+    frag = vec4(sky(skyWorld(sp), dsk), 1.);
     return;
   }
   // ---- water: a still lake seen at a grazing angle
@@ -240,7 +242,9 @@ void main() {
   // mirror about the horizon (compressed for perspective), seen through the sky camera
   float fres = mix(0.38, 1.0, exp(-depth / (260. * uFresnel)));
   vec2 mirrorW = vec2(w.x, uHorizonY - depth * 0.85) + disp * vec2(1., 0.6);
-  vec3 rs = sky(skyWorld(worldToScreen(mirrorW)));
+  float mdisc;
+  vec3 rs = sky(skyWorld(worldToScreen(mirrorW)), mdisc);
+  rs += uMoonCol * mdisc * 0.9;            // the moon is far brighter than the sky: its reflection stays luminous
   vec3 reflected = rs;   // the Mallow's reflection is composited per sub-frame (REFL_FS)
   vec3 water = mix(uWaterNear, uWaterFar, exp(-depth / 420.));
   vec3 col = mix(water, reflected, clamp(fres * uReflAmt * 1.3, 0., 1.));
@@ -334,20 +338,26 @@ void main() {
   float aa = 1.2;
   float inside = 1. - smoothstep(-aa, aa, d);
   // soft outer glow / shadow
-  float glow = exp(-max(d, 0.) / 16.) * 0.22;
+  float glow = exp(-max(d, 0.) / 16.) * 0.16;
   vec3 bg = texture(uBlur, vScreen).rgb;
-  // frosted glass: blurred scene lifted toward a cool white, inner edge light
-  vec3 glass = mix(bg, uTint, 0.62);
-  float edge = smoothstep(-10., 0., d) * inside;
-  float topLight = smoothstep(uRect.w, -uRect.w * 0.2, vLocal.y) * 0.18;
-  glass += uEdge * (edge * 0.55 + topLight);
+  // frosted glass: the blurred scene lifted toward a cool white, a lit inner rim
+  vec3 glass = mix(bg, uTint, 0.52);
+  float edge = smoothstep(-9., 0., d) * inside;
+  float topLight = smoothstep(uRect.w, -uRect.w * 0.2, vLocal.y) * 0.14;
+  glass += uEdge * (edge * 0.5 + topLight);
+  // a glossy sheen: a thin bright crescent just inside the upper edge
+  float sheenBand = smoothstep(-14., -7., d) * (1. - smoothstep(-6., -2., d));
+  float sheenMask = smoothstep(0.1, -0.85, vLocal.y / uRect.w) * smoothstep(1.0, 0.25, abs(vLocal.x) / uRect.z);
+  glass += vec3(1.0) * sheenBand * sheenMask * 0.55;
   glass = mix(glass, glass * vec3(1.0, 0.86, 0.94), uStress * 0.25);
   vec2 tuv = vLocal / (uRect.zw * 2.) + 0.5;
   vec4 txt = texture(uText, vec2(tuv.x, tuv.y));
   vec3 col = mix(glass, txt.rgb / max(txt.a, 1e-3), txt.a * uTextAlpha);
   float a = inside * uAlpha;
   vec3 halo = uEdge * glow * uAlpha;
-  frag = vec4(col * a + halo * (1. - a), a + glow * uAlpha * 0.6 * (1. - a));
+  // soft contact shadow beneath (darkens what is behind, outside the glass)
+  float shd = exp(-max(sdRound(vLocal - vec2(0., 10.), uRect.zw, uRadius), 0.) / 18.) * (1. - inside) * 0.22 * uAlpha;
+  frag = vec4(col * a + halo * (1. - a), a + (glow * 0.6 + shd) * uAlpha * (1. - a));
 }`;
 
 // soft glowing particles (instanced points as quads)

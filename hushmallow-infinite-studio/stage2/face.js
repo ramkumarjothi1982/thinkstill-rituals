@@ -94,10 +94,10 @@ function fillPoly(ctx, poly) {
   ctx.fill();
 }
 
-const TUBE = {
-  glow: 'rgba(28,98,255,0.62)', shadow: 'rgba(0,4,40,0.35)',
-  rim: '#050c3c', body: '#0a1450', core: '#0f1f6e', top: '#16297f',
-  spec: 'rgba(170,205,255,0.9)', bead: 'rgba(205,225,255,0.9)',
+const TUBE = {   // sampled from the approved painted arcs (cross-section, top → bottom)
+  glow: 'rgba(8,112,255,0.72)', shadow: 'rgba(0,10,60,0.12)',
+  rim: [0, 6, 42], top: [1, 50, 140],
+  spec: 'rgba(125,188,255,0.95)', bead: 'rgba(190,220,255,0.9)',
 };
 
 /**
@@ -123,7 +123,7 @@ function tube(ctx, tmp, pts, lw, alpha = 1, opts = {}) {
     g.clearRect(0, 0, bw, bh);
     g.translate(pad - x0, pad - y0);
     g.fillStyle = TUBE.glow;
-    fillPoly(g, tubeOutline(pts, wfn, 1.32, 0));
+    fillPoly(g, tubeOutline(pts, wfn, 1.36, 0.08));
     g.setTransform(1, 0, 0, 1, 0, 0);
     ctx.filter = `blur(${(lw * 0.26).toFixed(1)}px)`;
     ctx.globalAlpha = alpha * (opts.glow ?? 1);
@@ -137,10 +137,13 @@ function tube(ctx, tmp, pts, lw, alpha = 1, opts = {}) {
   fillPoly(ctx, tubeOutline(pts, wfn, 1.1, -0.05));
   ctx.restore();
   // 2 body: layered fills approximate a lit cylinder (light from above)
-  ctx.fillStyle = TUBE.rim; fillPoly(ctx, tubeOutline(pts, wfn, 1.0, 0));
-  ctx.fillStyle = TUBE.body; fillPoly(ctx, tubeOutline(pts, wfn, 0.84, 0.04));
-  ctx.fillStyle = TUBE.core; fillPoly(ctx, tubeOutline(pts, wfn, 0.6, 0.08));
-  ctx.fillStyle = TUBE.top; fillPoly(ctx, tubeOutline(pts, wfn, 0.3, 0.16));
+  // fine concentric bands, dark rim → lit upper core (reads as a smooth cylinder at screen size)
+  const BANDS = 9;
+  for (let k = 0; k < BANDS; k++) {
+    const u = k / (BANDS - 1), c = (i) => Math.round(TUBE.rim[i] + (TUBE.top[i] - TUBE.rim[i]) * Math.pow(u, 1.4));
+    ctx.fillStyle = `rgb(${c(0)},${c(1)},${c(2)})`;
+    fillPoly(ctx, tubeOutline(pts, wfn, 1 - 0.76 * u, 0.17 * u));
+  }
   // 3 specular: a thin bright line along the top edge, fading toward the ends
   if ((opts.spec ?? 1) > 0.01) {
     const N = normals(pts), n = pts.length;

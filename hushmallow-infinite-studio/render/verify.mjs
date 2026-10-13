@@ -40,12 +40,12 @@ if (a) {
 // staleness: the MP4 must be newer than every source file that shapes it
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 let newestSrc = 0, newestName = '';
-for (const dir of ['videos', 'stage', 'audio', 'render']) {
+for (const dir of ['videos', 'stage', 'stage2', 'audio', 'render', 'assets']) {
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const f = path.join(d, e.name);
       if (e.isDirectory()) walk(f);
-      else if (/\.(m?js|html|py)$/.test(e.name) && !/verify\.mjs$/.test(e.name)) {
+      else if (/\.(m?js|html|py|json|png)$/.test(e.name) && !/verify\.mjs$/.test(e.name)) {
         const m = fs.statSync(f).mtimeMs;
         if (m > newestSrc) { newestSrc = m; newestName = path.relative(ROOT, f); }
       }

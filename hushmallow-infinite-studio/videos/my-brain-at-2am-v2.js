@@ -33,6 +33,7 @@ const ASSET = {
   clean: '../assets/noomi/noomi-clean.png',                          // same artwork, painted face removed
   normal: '../assets/noomi/noomi-normal.png',
   face: '../assets/noomi/noomi-face.json',
+  faceMeasured: '../stage2/noomi-face-measured.json',            // fitted to the approved painted arcs
 };
 
 // ------------------------------------------------------------ timing --
@@ -92,6 +93,8 @@ const sTrack = new Track(0, { f: 3, z: 0.8 })
   .to(0.60, -0.05, { f: 3.2, z: 0.85 })                                // rounds out in the air
   .to(0.84, -0.09, { f: 3.5, z: 0.9 })                                 // falling stretch
   .to(T.land, 0, { f: 9, z: 1 })                                       // impact → impulses below
+  .to(T.b[0] + 0.42, 0.05, { f: 5, z: 0.7 })                           // cringe at the first thought
+  .to(T.b[0] + 0.9, 0, { f: 2.2, z: 0.8 })
   .to(T.squeeze, -0.05, { f: 3, z: 0.8 })                              // tense, shoulders up
   .to(T.relax, 0, { f: 1.5, z: 0.9 })
   .to(T.inhale, -0.10, { ease: ease.inOutSine, dur: T.crest - T.inhale })  // inhale: grows tall
@@ -112,7 +115,8 @@ const liftTrack = new Track(0)
 const leanTrack = new Track(0, { f: 2.2, z: 0.75 });
 const shimmers = [[T.land, 1.0, 3.0, 19], [T.exhale + 0.12, 0.35, 2.0, 12]];
 
-const sleepEnv = (t) => (1 - smoothstep(0.18, 0.34, t)) + smoothstep(13.3, 14.4, t);
+const sleepEnv = (t) => (1 - smoothstep(0.18, 0.34, t)) + Math.max(0.7 * smoothstep(10.8, 11.8, t), smoothstep(13.3, 14.4, t));
+const pantEnv = (t) => smoothstep(1.3, 2.0, t) * (1 - smoothstep(6.95, 7.3, t));
 const trembleEnv = (t) => smoothstep(3.0, 6.6, t) * (1 - smoothstep(6.95, 7.3, t));
 
 function dofAt(t) {
@@ -121,7 +125,7 @@ function dofAt(t) {
   const tr = trembleEnv(t);
   return {
     squash: sTrack.value(t) + sKicks.value(t) + tr * 0.012 * noise1(t * 13, 3),
-    inflate: inflTrack.value(t) + 0.03 * Math.sin(TAU * t / LOOP_BREATH) * sleepEnv(t) + 0.012 * Math.sin(TAU * 1.7 * t) * tr,
+    inflate: inflTrack.value(t) + 0.03 * Math.sin(TAU * t / LOOP_BREATH) * sleepEnv(t) + 0.012 * Math.sin(TAU * 1.7 * t) * pantEnv(t),
     lean: leanTrack.value(t),
     sway: swayKicks.value(t) + tr * 0.22 * noise1(t * 9, 7),
     shimmer: shim + tr * 0.1, shimPhase: shimP + t * 6 * tr,
@@ -169,29 +173,30 @@ const MOTES = BUB.map((_, i) => {
 // --------------------------------------------------------------- face --
 const eyeOpen = new Track(0, { f: 7, z: 0.5 })
   .to(T.take, 1.32, { f: 8, z: 0.42 }).to(1.1, 1.12, { f: 2, z: 0.9 }).to(2.6, 1.02, { f: 1.5, z: 0.9 })
+  .to(T.b[0] + 0.42, 0.12, { f: 7, z: 0.8 }).to(T.b[0] + 0.9, 1.04, { f: 2.6, z: 0.7 })
   .to(T.squeeze, 0, { f: 7, z: 0.9 }).to(T.open, 1.0, { f: 1.4, z: 0.85 }).to(T.sleep, 0, { f: 1.1, z: 1 });
 const lidTop = new Track(0, { f: 1.2, z: 1 }).to(T.open, 0.04).to(T.sleep, 0);
 const lidBot = new Track(0, { f: 1.2, z: 1 }).to(T.open, 0.4).to(T.sleep, 0);
-const squint = new Track(0, { f: 5, z: 0.8 }).to(T.antic, 0.6).to(T.take, 0, { f: 10, z: 1 }).to(T.squeeze, 1, { f: 6, z: 0.8 }).to(T.relax, 0, { f: 2.2, z: 0.9 });
+const squint = new Track(0, { f: 5, z: 0.8 }).to(T.antic, 0.6).to(T.take, 0, { f: 10, z: 1 }).to(T.b[0] + 0.42, 0.7, { f: 7 }).to(T.b[0] + 0.9, 0, { f: 3 }).to(T.squeeze, 1, { f: 6, z: 0.8 }).to(T.relax, 0, { f: 2.2, z: 0.9 });
 const curve = new Track(1, { f: 5, z: 0.9 }).to(T.squeeze, 0.55).to(T.relax, 1, { f: 2.2 });
 const eyeStretch = new Track(1).to(T.take, 1.12, { f: 8, z: 0.4 }).to(1.0, 1, { f: 1.6, z: 0.8 });
 const eyeScale = new Track(1).to(T.take, 1.1, { f: 7, z: 0.45 }).to(1.2, 1, { f: 1.5, z: 0.9 });
 const iris = new Track(1, { f: 1, z: 1 }).to(T.take, 0.58, { f: 9, z: 0.8 }).to(1.4, 0.72).to(3.0, 0.82).to(T.open - 0.1, 1.12).to(T.sleep, 1);
 const lookX = new Track(0, { f: 9, z: 0.75 }), lookY = new Track(0, { f: 9, z: 0.75 });
 const blinks = new Blinks();
-for (const b of [1.42, 1.66, 3.62, 4.62, 5.45, 6.12, 6.6]) blinks.add(b);
+for (const b of [1.42, 1.66, 4.62, 5.45, 6.12, 6.6]) blinks.add(b);
 blinks.add(T.slowBlink, { close: 0.15, hold: 0.08, open: 0.32 });
 const brow = new Track(0, { f: 1.5, z: 0.9 }).to(1.2, 0.3).to(3.1, 0.78, { f: 1.6 }).to(T.squeeze, 0.35, { f: 4 }).to(T.relax, 0, { f: 2 });
 const browY = new Track(0.35, { f: 1.5, z: 0.9 }).to(5.8, 0.6).to(T.relax, 0.35);
 const smile = new Track(1, { f: 2, z: 0.9 })
-  .to(T.antic, 0.7, { f: 4 }).to(T.take, 0, { f: 9, z: 0.8 }).to(1.15, -0.25).to(3.1, -0.38, { f: 1.5 })
+  .to(T.antic, 0.7, { f: 4 }).to(T.take, 0, { f: 9, z: 0.8 }).to(1.15, -0.25).to(T.b[0] + 0.42, -0.75, { f: 6 }).to(T.b[0] + 0.92, -0.38, { f: 2 })
   .to(T.squeeze, -0.15, { f: 5 }).to(T.relax, 0.25, { f: 1.5 }).to(10.9, 0.85, { f: 1, z: 0.9 }).to(T.open, 0.95, { f: 1.2 }).to(T.sleep, 1, { f: 0.8, z: 1 });
 const mOpen = new Track(0, { f: 2, z: 0.9 }).to(T.take, 0.62, { f: 9, z: 0.55 }).to(1.1, 0.06).to(3.1, 0.08).to(T.squeeze, 0, { f: 6 })
   .to(T.exhale + 0.05, 0.28, { f: 2.2 }).to(10.7, 0, { f: 1.2, z: 1 });
 const mRound = new Track(0, { f: 2, z: 0.9 }).to(T.take, 0.85, { f: 9 }).to(1.1, 0.1).to(T.exhale + 0.05, 0.75, { f: 2.2 }).to(10.7, 0, { f: 1.2, z: 1 });
 const mWave = new Track(0, { f: 2, z: 0.9 }).to(1.15, 0.35).to(3.1, 0.85, { f: 1.5 }).to(T.squeeze, 0, { f: 6 });
 const mWidth = new Track(1, { f: 2, z: 0.9 }).to(1.15, 0.85).to(T.squeeze, 0.72, { f: 6 }).to(T.relax, 0.9).to(T.exhale + 0.05, 0.8).to(10.7, 1, { f: 1.2 });
-const blush = new Track(0, { f: 0.8, z: 1 }).to(1.5, 0.95).to(3.4, 0.5, { f: 0.6 }).to(7.4, 0, { f: 0.6 }).to(10.5, 0.35, { f: 0.6 }).to(13.6, 0);
+const blush = new Track(0, { f: 0.8, z: 1 }).to(1.5, 0.8).to(T.b[0] + 0.4, 1.15, { f: 2 }).to(4.0, 0.55, { f: 0.6 }).to(7.4, 0, { f: 0.6 }).to(10.5, 0.35, { f: 0.6 }).to(13.6, 0);
 const sparkle = new Track(0, { f: 1, z: 1 }).to(T.open, 1).to(T.sleep, 0);
 const restAt = (t) => (1 - smoothstep(0.17, 0.25, t)) + smoothstep(14.2, 14.5, t);
 
@@ -255,7 +260,7 @@ async function setup(stage) {
   const clean = (await tryImage(ASSET.clean)) || (await tryImage('../output/dev/dev-clean.png'));
   hasClean = !!clean;
   const normal = await tryImage(ASSET.normal);
-  const faceJson = await tryJSON(ASSET.face);
+  const faceJson = (await tryJSON(ASSET.face))?.spec ? await tryJSON(ASSET.face) : await tryJSON(ASSET.faceMeasured);
   sil = silhouette(pristine);
   faceCanvas = document.createElement('canvas');
   faceCanvas.width = pristine.width; faceCanvas.height = pristine.height;
@@ -277,6 +282,7 @@ async function setup(stage) {
   look(T.b[0] + 0.1, lookAtBubble(0, T.b[0] + 0.25));
   look(T.b[1] + 0.1, lookAtBubble(1, T.b[1] + 0.25));
   look(T.b[2] + 0.1, lookAtBubble(2, T.b[2] + 0.25));
+  look(T.b[2] + 0.42, [0.1, 0.6]);           // …why did I do that: a guilty look down
   [[5.62, 0], [5.98, 1], [6.3, 2], [6.55, 0], [6.76, 1], [6.92, 2]].forEach(([t, i]) => look(t, lookAtBubble(i, t)));
   look(T.relax, [0, 0]);
   look(T.open - 0.05, [0.28, -0.38]);       // first glance: up at the warm moon
@@ -304,6 +310,7 @@ async function setup(stage) {
   c(T.land, 'land', { amp: 1 }); c(T.land + 0.2, 'ripple', { amp: 0.4 });
   c(1.42, 'blink'); c(1.66, 'blink'); c(1.85, 'glance', { pan: -0.5 }); c(2.2, 'glance', { pan: 0.5 });
   T.b.forEach((tb, i) => c(tb, 'thought', { i, pan: clamp((bubbleAt(i, tb + 0.6).x - 540) / 400, -0.8, 0.8) }));
+  c(T.b[0] + 0.42, 'wince');
   c(5.6, 'spin_up', { until: T.squeeze });
   c(T.squeeze, 'squeeze'); c(T.inhale, 'inhale', { dur: T.crest - T.inhale }); c(T.crest, 'crest');
   c(T.exhale, 'exhale', { dur: 1.9 }); c(T.exhale + 0.12, 'release');

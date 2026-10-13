@@ -113,6 +113,10 @@ export function buildPlanV2(log) {
         S(t + 0.018, 'bell', { f: [N.A6, N.C7, N.E7][i], peak: 0.016, decay: 0.6, partials: 'celesta', pan: c.pan, send: 0.4, lp: 6500 });
         break;
       }
+      case 'wince':   // cringe at the memory: a tiny tight squeak
+        E(t, 'mallow', 'squeeze', { intensity: 0.35, pitch: 2.4 }, 0.11, { at: t + 0.22, fade: 0.06 });
+        S(t, 'blip', { f: 1180, f1: 900, glide: 0.09, a: 0.004, d: 0.09, peak: 0.026, lp: 3200, send: 0.12 });
+        break;
       case 'squeeze':
         E(t, 'mallow', 'squeeze', { intensity: 0.5, pitch: 2 }, 0.14, { at: t + 0.3, fade: 0.06 });
         break;
@@ -186,7 +190,7 @@ export function buildPlanV2(log) {
   // clock tick-tock (2 AM): quiet 1/s from the start, unsettled after the take, faster with the spiral,
   // stopping dead at the squeeze — then only breath
   const ticks = [];
-  const busy = cues.filter((c) => ['take', 'land', 'blink', 'glance', 'thought', 'lift_off'].includes(c.type)).map((c) => c.t);
+  const busy = cues.filter((c) => ['take', 'land', 'blink', 'glance', 'thought', 'lift_off', 'wince'].includes(c.type)).map((c) => c.t);
   const clear = (t) => { for (const ct of busy) if (t > ct - 0.08 && t < ct + 0.08) return ct + 0.08; return null; };
   {
     let t = -0.85;

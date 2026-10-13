@@ -9,7 +9,8 @@ const load = (src) => new Promise((r, j) => { const i = new Image(); i.onload = 
 const params = new URLSearchParams(location.search);
 const art = await load(params.get('art') || '../../../hushmallow/assets/source/hires/noomi.webp');
 const k = +(params.get('k') || 2.70), ox = +(params.get('ox') || 32), oy = +(params.get('oy') || 125);
-const spec = window.FACE_SPEC || specFromRig(MALLOWS.noomi.face, k, ox, oy);
+const measured = params.get('rig') ? null : await (await fetch('../noomi-face-measured.json')).json();
+const spec = measured ? measured.spec : specFromRig(MALLOWS.noomi.face, k, ox, oy);
 const fc = document.createElement('canvas'); fc.width = art.width; fc.height = art.height;
 const face = new Face(spec, fc);
 const c = document.getElementById('c'), g = c.getContext('2d');
