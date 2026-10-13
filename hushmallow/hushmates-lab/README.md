@@ -43,14 +43,14 @@ python3 -m http.server 8000
   **Control room** opens the panel.
 
 **The control room: three demonstrations**
-- **1 · Five perspectives** (Scenario A, six identities):
+- **A · Five people** (six identities):
   1. MoonMallow releases *"My friend hasn't replied. I think they're avoiding
      me."* (ticking the sharing consent).
   2. Five catchers each catch it and type a perspective. "Type it for me" inserts
      words written for the lab; you still press the button.
   3. It comes home with "5 of 5 human perspectives" and MoonMallow keeps one.
   4. EmberMallow then finds nothing: no sixth person.
-- **2 · Nobody catches it** (Scenario B):
+- **B · Nobody catches it**:
   1. MoonMallow releases a second feeling with "Let a Mallow offer another
      perspective if nobody responds." turned on.
   2. You move the **dev clock** on 30 minutes; MoonMallow asks Noomi, and the
@@ -58,7 +58,7 @@ python3 -m http.server 8000
   3. +24 hours: it comes home. "No one caught it this time. Want to give it
      another journey?", the Mallow's perspective shown on its own, and Send it
      out again / Keep it with me / Let it go.
-- **3 · Partial return** (Scenario C): a third feeling; CloudMallow and
+- **C · Two people** (partial return): a third feeling; CloudMallow and
   StarMallow catch it; +24 hours; it comes home with exactly two human
   perspectives: "2 Hushmates caught it before it came home." Nothing is invented
   for the other three places.

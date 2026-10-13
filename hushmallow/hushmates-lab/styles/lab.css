@@ -99,8 +99,8 @@ body { background: #FFF8F3; color: #1F1640; font: 400 15px/1.5 "Nunito Sans", -a
 .lab[data-layout="single"][data-view="catcher"] .lab-phone[data-who="author"] { display: none; }
 
 /* control room */
-.lab-tabs { display: flex; gap: 4px; padding: 4px; margin: 0 0 14px; border-radius: 999px; background: rgba(31,22,64,.06); }
-.lab-tabs button { flex: 1; min-height: 36px; border: 0; border-radius: 999px; background: transparent; font: 700 12.5px var(--hm-ui); color: var(--hm-ink-2); white-space: nowrap; padding: 0 8px; }
+.lab-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin: 0 0 14px; border-radius: 22px; background: rgba(31,22,64,.06); }
+.lab-tabs button { flex: 1 1 auto; min-height: 36px; border: 0; border-radius: 999px; background: transparent; font: 700 12.5px var(--hm-ui); color: var(--hm-ink-2); white-space: nowrap; padding: 0 10px; }
 .lab-tabs button[aria-selected="true"] { background: #fff; color: var(--hm-ink); box-shadow: 0 6px 16px -10px rgba(31,22,64,.5); }
 .guide-step__words { display: none; font: 500 italic 13px/1.45 var(--hm-body); color: var(--hm-ink-2); margin-top: 6px !important; padding: 8px 10px; border-radius: 12px; background: rgba(244,240,251,.9); }
 .guide-step.is-next .guide-step__words { display: block; }
