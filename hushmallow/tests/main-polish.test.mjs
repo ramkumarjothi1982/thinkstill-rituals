@@ -195,3 +195,21 @@ test('Noomi\'s concerned stage is attentive: eyes open, brows soft, no doze — 
   for (const id of Object.keys(MALLOWS).filter((m) => m !== 'noomi')) assert.deepEqual(E.resolveExpression(MALLOWS[id], s.mix, s.intensity, s.extra), E.resolveExpression(MALLOWS[id], s.mix, s.intensity, without), id);
   assert.doesNotMatch(read('src/mallows/rig.js'), /byMallow/, 'no rig change');
 });
+
+test('subtitle scrim: a bright spot behind it (the daytime sun) is found and deepened; a sky, a night or a cloud band is not', async () => {
+  const { hotSpot } = await import('../src/hushfold/subtitles.js');
+  const cols = 48, rows = 12;
+  const img = (px) => { const d = new Uint8ClampedArray(cols * rows * 4); for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const [r, g, b] = px(i, j); const k = (j * cols + i) * 4; d[k] = r; d[k + 1] = g; d[k + 2] = b; d[k + 3] = 255; } return d; };
+  const sky = [110, 175, 230], sun = [255, 250, 225], night = [30, 24, 70], cloud = [235, 240, 248];
+  // the sun at the box's top right, over a bright blue sky
+  const s = hotSpot(img((i, j) => (Math.hypot(i - 38, (j - 4) * 1) < 4 ? sun : sky)));
+  assert.ok(s, 'found');
+  assert.ok(Math.abs(s.x - 38.5 / 48) < 0.05 && Math.abs(s.y - 4.5 / 12) < 0.12, JSON.stringify(s));
+  assert.ok(s.r > 0.05 && s.r < 0.4 && s.a >= 0.7);
+  assert.equal(hotSpot(img(() => sky)), null, 'an even sky');
+  assert.equal(hotSpot(img(() => night)), null, 'a night realm');
+  assert.equal(hotSpot(img((i, j) => (j < 5 ? cloud : sky))), null, 'a cloud band across the box is not a spot');
+  assert.equal(hotSpot(null), null);
+  const css = read('src/ui/hushfold.css');
+  assert.match(css, /radial-gradient\(circle at var\(--hf-hot-x, 50%\) var\(--hf-hot-y, 50%\)/);
+});

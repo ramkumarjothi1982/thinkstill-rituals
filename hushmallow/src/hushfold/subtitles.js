@@ -127,6 +127,42 @@ export function brightPixel(data) {
   const k = idx[Math.min(n - 1, Math.floor(n * 0.95))] * 4;   // the brightest 5 % (a moon behind one word counts)
   return [data[k], data[k + 1], data[k + 2]];
 }
+/**
+ * A bright spot behind the scrim (the daytime sun): where it is in the sampled box and how big, so the scrim is
+ * deepened there and the spot never shows through the dark as a muddy blob. data: RGBA, cols × rows cells over the box.
+ * → { x, y (0…1 of the box), r (0…1 of its width), a (the scrim's alpha over it) } or null (no spot much brighter than
+ * the rest). Pure; unit-tested.
+ */
+export function hotSpot(data, cols = 48, rows = 12) {
+  const n = cols * rows;
+  if (!data || data.length < n * 4) return null;
+  const L = new Float32Array(n);
+  let sum = 0, max = 0;
+  for (let i = 0; i < n; i++) { L[i] = luminance(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]); sum += L[i]; max = Math.max(max, L[i]); }
+  const mean = sum / n;
+  // (a spot: the brightest there is, bright in itself and well over the rest — a white cloud band across the box is not one)
+  if (max < 0.75) return null;
+  const cut = Math.max(0.6, mean + 0.2, max - 0.15);
+  let w = 0, cx = 0, cy = 0, hot = 0;
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const q = L[j * cols + i] - cut;
+    if (q <= 0) continue;
+    hot++; w += q; cx += q * (i + 0.5); cy += q * (j + 0.5);
+  }
+  if (!hot || hot > n * 0.35) return null;
+  cx /= w; cy /= w;
+  // its size: how far its light spreads round the centre (brightness-weighted, in box widths: a stray bright cell of
+  // cloud at the edge does not widen it), a little more for the glow round it; a wide spread is a band, not a spot
+  let s2 = 0;
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const q = L[j * cols + i] - cut;
+    if (q <= 0) continue;
+    s2 += q * (((i + 0.5 - cx) / cols) ** 2 + (((j + 0.5 - cy) / rows) * (rows / cols)) ** 2);
+  }
+  const spread = Math.sqrt(s2 / w);
+  if (spread > 0.16) return null;
+  return { x: cx / cols, y: cy / rows, r: Math.max(0.05, spread * 2.2 + 0.03), a: 0.8 };
+}
 let sampler = null;
 /** Draw what is behind `rect` (client px) from the given canvases into a tiny canvas; → RGBA data or null. */
 function sampleBackdrop(rect, canvases) {
@@ -265,6 +301,22 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     if (data) a = scrimFor(brightPixel(data));
     node.style.setProperty('--hf-scrim', String(a));
     el.classList.toggle('bright', a > 0.62);
+    // a bright spot behind the scrim's whole box (its feathered rim reaches past the words): the scrim is deepened over it
+    // (--hf-hot-*), so the daytime sun never shows through the dark as a muddy brown blob
+    let hs = null;
+    try {
+      const r = node.getBoundingClientRect();
+      const box = { left: r.left - 24, top: r.top - 14, width: r.width + 48, height: r.height + 30 };
+      const d2 = backdrop ? sampleBackdrop(box, backdrop()) : null;
+      hs = d2 ? hotSpot(d2) : null;
+      if (hs) {
+        node.style.setProperty('--hf-hot-x', `${(hs.x * 100).toFixed(1)}%`);
+        node.style.setProperty('--hf-hot-y', `${(hs.y * 100).toFixed(1)}%`);
+        node.style.setProperty('--hf-hot-r', `${Math.round(hs.r * box.width)}px`);
+        node.style.setProperty('--hf-hot-a', String(hs.a));
+      }
+    } catch { hs = null; }
+    if (!hs) node.style.setProperty('--hf-hot-a', '0');
   }
 
   function lineNode(line) {
