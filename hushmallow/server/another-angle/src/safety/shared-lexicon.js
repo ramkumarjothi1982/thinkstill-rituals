@@ -89,16 +89,43 @@ export const HARM_LEXICON = {
     R`\b(?:cut|cuts|cutting) my ?self (?:off|out|short|loose|free|some slack|a break|a slice)\b`,
     // the server's patterns without the app's everyday exceptions: 'done with living in London', 'done with life
     // admin', 'my meds ready for the trip', 'not exist on social media', 'cutting himself off from his friends',
-    // 'burning herself out', 'the point in going on holiday', 'sleep and not wake up until noon'
-    R`\bdone with (?:living (?:in|with|here|there|at|on|near|abroad|together|apart|out of)|life (?:admin|insurance|coaching|lessons))\b`,
-    R`\b(?:the|my|all the|all my|all of my) ${PILLS} (?:are )?(?:ready|lined up|counted out) for (?:the (?:trip|journey|flight|week|weekend|morning|holiday|day)|my (?:trip|journey|flight|holiday|week|mum|mom|dad|grandma|grandad)|a (?:trip|journey|flight|holiday)|work|school|holiday|travel|bed|breakfast)\b`,
-    R`\b(?:not|never) exist(?:ing)? (?:on|online|in (?:the|this|that|our|my) (?:group|chat|office|class|team))\b`,
-    R`\b(?:cuts?|cutting|burns?|burning|burnt|starves?|starving|punish(?:es|ing)?) (?:himself|herself|themselves|themself) (?:off|free|loose|short|out|a|an|some)\b`,
-    R`\bsee (?:the|any) point (?:in |of )?(?:going|carrying) on (?:a|an|the|my|our|this|that|holiday|holidays|vacation|about|and on|at|to|trips?|dates?|it|with)\b`,
-    R`\b(?:sleep|asleep) and (?:never|not) wake(?: up)? (?:until|till|before|early|at|in time|on time|for)\b`,
+    // 'burning herself out', 'the point in going on holiday', 'sleep and not wake up until noon'.
+    // (Narrowed 13 Oct 2026, B5 review: each guard names the idiom's own object and nothing more, because a
+    // guard blanks its words before every check, the server's included. A bare 'here', 'at', 'with', 'a',
+    // 'some', 'bed' or 'on' let these hide 'done with living here on this earth', 'going on at all',
+    // 'carrying on with my life', 'cutting herself a lot', 'starving herself some days', 'lined up for bed',
+    // 'not exist on this earth' and 'never wake up at all'.)
+    R`\bdone with (?:living (?:in (?!(?:pain|fear|agony|misery|despair|darkness|torment|hell|shame|silence|my (?:own )?(?:head|body|skin|pain)|this (?:body|world|pain|hell|state|life))\b)|with (?:my |our )?(?:parents|mum|mom|dad|family|flatmates?|housemates?|roommates?|in-laws|partner|boyfriend|girlfriend|ex|sister|brother|nan|gran|grandparents|kids|friends?|strangers|other people|people|him|her|them)\b|at (?:home|uni|university|college|school|my|the|mum'?s|mom'?s|dad'?s|his|her|their)\b|near|abroad|together|apart|out of|on (?:campus|benefits|a budget|a boat|my own|toast|takeaways|noodles))|life (?:admin|insurance|coaching|lessons))\b`,
+    // 'I'm done with living here, I'm moving to Leeds' (a plain 'done with living here' stays crisis; the move is
+    // only looked at, never blanked)
+    R`\bdone with living (?:here|there)(?=[ ,;.]+(?:(?:and|so|because|cos) )?(?:i'?m|i am|we'?re|we are|i'?ll|we'?ll) (?:moving|leaving|going to move|off to|relocating)\b)`,
+    R`\b(?:the|my|all the|all my|all of my) ${PILLS} (?:are )?ready for (?:the (?:trip|journey|flight|week|weekend|morning|holiday|day)|my (?:trip|journey|flight|holiday|week|mum|mom|dad|grandma|grandad)|a (?:trip|journey|flight|holiday)|work|school|holiday|travel|breakfast)\b`,
+    R`\b(?:not|never) exist(?:ing)? (?:online|on (?:social media|socials|the socials|instagram|insta|tiktok|facebook|twitter|snapchat|whatsapp|the internet|the group chat|group chats?|(?:the|any|my) apps?)|in (?:the|this|that|our|my) (?:group chat|chat|office|class|team))\b`,
+    R`\b(?:cuts?|cutting|burns?|burning|burnt|starves?|starving|punish(?:es|ing)?) (?:himself|herself|themselves|themself) (?:off|free|loose|short|out|a (?:slice|piece|wedge|break|fringe|new fringe)|some slack)\b`,
+    R`\bsee (?:the|any) point (?:in |of )?(?:going|carrying) on (?:(?:a|an|the|this|that|our|my) (?:holiday|trip|date|course|diet|tour|cruise|walk|ride|journey|break|picnic|stage|night out|run|hike)s?|holidays?|vacation|trips?|dates?|about (?:it|this|that|him|her|them)|and on|to (?:uni|university|college|sixth form|the next (?:level|round|stage|step))|with (?:the|this|that|my|our) (?:course|degree|diet|job|project|plan|class|lessons?|band|team|book|essay|show|series|game|club|hobby|training|business|argument|conversation|relationship|studies|music lessons)s?)\b`,
+    R`\b(?:sleep|asleep) and (?:never|not) wake(?: up)? (?:(?:until|till|before|at) (?:noon|midday|lunch(?:time)?|the afternoon|the weekend|(?:my|the) alarm|\d{1,2}(?::\d\d)?(?: ?(?:am|pm|o'?clock))?|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(?: o'?clock)?)\b|early|in time|on time|for (?:work|school|class|uni|my alarm|the alarm))`,
     // 'my boss threatened my bonus' (a threat to a person stays care: 'threatened my family'); 'on the roof terrace'
     R`\bthreat(?:en|ened|ening|ens) (?:my|our) (?:bonus|pay rise|promotion|grades?|chances|lead|record|title|deal|plans|weekend)\b`,
-    R`\bon (?:the|a) roof (?:terrace|garden|bar)\b`,
+    R`\bon (?:the|a) roof (?:terrace|garden|bar)\b(?! (?:edge|ledge|railings?|parapet|wall)\b)`,
+    // (13 Oct 2026, B5 review: everyday wording the merged server patterns read as crisis or care in the free
+    // Hushfold input. Each guard is the idiom with its own object, so the words it blanks hold no disclosure.)
+    // 'jump off the call', 'jump off a meeting', 'jump from this job to a better one', 'jump from one team to another'
+    R`\b(?:jump|jumping) (?:off|on|onto) (?:the|a|this|that|my|our|another) (?:call|video call|phone call|meeting|zoom|teams call|teams|chat|stream|livestream|webinar|lesson|class)\b`,
+    R`\b(?:jump|jumping) (?:from|between) (?:this|that|my|one|the|a) (?:job|role|team|project|company|department|position|career|course|topic|task|idea|app|platform)s?\b`,
+    // 'stop living paycheck to paycheck', 'stop living out of a suitcase', "stop living for other people's approval"
+    R`\bstop living (?:pay ?(?:check|cheque) to pay ?(?:check|cheque)|hand to mouth|out of (?:a|my|boxes|bags|suitcases?)|for (?:other people|others|everyone else|the weekend|weekends|work|my job|approval|(?:other people|everyone|everyone else|my (?:parents|mum|mom|dad|family|boss))'?s? (?:approval|expectations|opinions?|dreams?|rules)))\b`,
+    // 'a plan to end it with my girlfriend' (ending a relationship; 'a plan to end it with pills' stays crisis)
+    R`\bend it with (?:him|her|them|my (?:new |current )?(?:girlfriend|boyfriend|partner|husband|wife|fianc[eé]e?|gf|bf|ex|date|crush|best friend|friend|mate|bestie|flatmate|housemate|roommate)|(?:the|this|that) (?:guy|girl|man|woman|boy|person|relationship|job|gym|club|band|company|group|course|subscription|contract|deal))\b(?!'?s\b)`,
+    // 'no way out of this argument with my sister', 'a way out of this mess at work' (a plain 'no way out of this' stays crisis)
+    R`\bway out of (?:the|this|that|my|our|a|an) (?:argument|row|fight|disagreement|dispute|misunderstanding|contract|deal|lease|tenancy|subscription|phone contract|job|course|meeting|call|car park|building|room|maze|queue|traffic|exam|essay|wedding|party|trip|group chat|chat)\b|\bway out of (?:the|this|that|my|a) mess (?:at|with|between|over) (?:work|school|uni|college|my|the|him|her|them|us)\b`,
+    // "I'd be better off gone from this company" ('better off gone from this world' stays crisis)
+    R`\bbetter off gone from (?:this|that|the|my|our) (?:company|job|team|firm|office|school|class|course|club|band|group|project|department|role|flat|house)\b`,
+    // 'what is the point of trying any more with this diet'
+    R`\bpoint (?:of|in) trying any ?more (?:with|at|on|for) (?:this|that|the|my|our|a) (?:diet|course|exam|job|project|app|game|class|team|plan|gym|instrument|language|essay|book|band|club|business|garden|recipe|test|level|puzzle|crossword)s?\b`,
+    // 'he threatened us with a parking ticket' ('threatened us with a knife' stays care)
+    R`\bthreat(?:en|ened|ening|ens) (?:us|me|him|her|them) with (?:a |an |the )?(?:parking ticket|parking fine|fine|ticket|detention|lawsuit|legal action|solicitor'?s letter|letter|bill|late fee|warning|complaint|bad review|one-star review|disciplinary|extra homework|homework|deadline|overtime|a pay cut|pay cut|the sack)\b`,
+    // 'my son keeps hitting my daughter with pillows' (play; 'hitting my daughter with a belt' stays care)
+    R`\b(?:hits?|hitting) (?:my |his |her |their |our )?(?:child|children|kids?|son|daughter|baby|brother|sister|sibling)s? with (?:a |the |his |her |their |my )?(?:pillows?|cushions?|soft toys?|teddy|teddies|balloons?|water balloons?|snowballs?|pool noodles?|foam swords?|nerf (?:darts?|guns?))\b`,
   ],
   crisis: [
     // 'my self' as two words too (review 12 Oct: 'i want to kill my self')

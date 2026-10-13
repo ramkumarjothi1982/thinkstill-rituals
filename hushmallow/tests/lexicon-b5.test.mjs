@@ -133,3 +133,77 @@ test('B5: the merged lexicon is plain data, compiles without lookbehind, stays f
   // the server's pre-check reads a verbatim copy (npm run sync:lexicon in server/another-angle)
   assert.equal(readFileSync(`${root}server/another-angle/src/safety/shared-lexicon.js`, 'utf8'), readFileSync(`${root}src/data/safety-lexicon.js`, 'utf8'));
 });
+
+// B5 review (13 Oct 2026). A guard blanks its words before every check, the server's included (the server
+// compiles the shared guards before its own list), so a guard that reaches past its idiom hides a disclosure on
+// both sides. The first ten were crisis on the server before B5 and the next three in the app too; the B5 guards
+// made them none on both. Every one must stay crisis.
+const B5_REVIEW_MUST_BE_CRISIS = [
+  'I just want to sleep and never wake up at all', 'I want to fall asleep and not wake up at all', 'I want to not exist on this earth any more',
+  "I can't see any point in going on at all", 'My friend has been cutting herself a lot lately', 'My sister is cutting herself a lot again',
+  'She keeps starving herself some days', 'my daughter is burning herself some nights', 'I am done with living here on this earth',
+  'All my pills are lined up for bed and I want it to be over',
+  'I do not see the point in going on with my life', 'I would rather not exist on this planet', "I don't see the point of carrying on with anything",
+  // the same guards, probed further: each idiom's own words with a disclosure in place of its object
+  "I'm done with living at all", "I'm done with living in pain", "I'm done with living in this body", "I'm done with living with this pain",
+  "I'm done with living on this earth", "I'm done with living here.", "I'm done with living here, I'm going to end it",
+  'my pills are ready for tonight', 'my pills are lined up for the morning', 'All my pills are ready for the end', 'I want to not exist on this planet',
+  "She's been cutting herself a lot", "She's cutting herself a little every night", 'My brother keeps burning himself a lot', 'He keeps starving himself some weeks',
+  "I can't see the point in going on with my life", "I don't see the point in going on at all", 'I want to sleep and never wake up at all',
+  'I want to fall asleep and never wake up for good', "I'm on the roof terrace edge and I want to jump",
+  // next to the new everyday guards below
+  "I'm going to jump off the bridge after the call", "I'm about to jump off a building", "I'm ready to jump from the tower", "I'm going to jump",
+  'I want to stop living', 'I want to stop living for good', "I just want to stop living. I'm living out of a suitcase",
+  'I have a plan to end it', 'I have a plan to end it with pills', "I have a plan to end it with my friend's pills", "I have a plan to end it with my dad's gun",
+  "I can't see a way out", 'There is no way out of this', "There's no way out of this life", "I'd be better off gone", "I'd be better off gone from this world",
+  "What's the point of trying any more", 'What is the point of trying any more with my life',
+];
+
+test('B5 review: the narrowed guards never blank a crisis disclosure (each was hidden by a B5 guard)', () => {
+  for (const t of B5_REVIEW_MUST_BE_CRISIS) {
+    const r = checkText(t);
+    assert.equal(r.level, 'crisis', `${t} → ${r.level}`);
+    assert.equal(interpret(t).safety.level, 'crisis', `interpret: ${t}`);
+  }
+  // a threat or a blow is still care next to the everyday 'threatened us with a parking ticket', 'hitting … with pillows'
+  for (const t of ['He threatened us with a knife', 'He threatened me with a gun', 'My dad keeps hitting my daughter with a belt', 'My husband hits my son',
+    'He threatened us with a parking ticket and then he threatened my family']) {
+    assert.equal(level(t), 'care', t);
+  }
+});
+
+test('B5 review: no single guard reaches past its idiom (its span never holds the disclosure)', () => {
+  // Each must-be-crisis phrase is blanked by one guard at a time and checked again, so a guard that blanks too
+  // much fails here by name, even where another pattern happens to catch the whole phrase.
+  const guards = LEX.HARM_LEXICON.idiomGuards.map((src) => new RegExp(src, 'gi'));
+  for (const t of B5_REVIEW_MUST_BE_CRISIS) {
+    for (const g of guards) {
+      g.lastIndex = 0;
+      const blanked = t.replace(g, (m) => ' '.repeat(m.length));
+      if (blanked === t) continue;
+      assert.equal(checkText(blanked).level, 'crisis', `guard /${g.source.slice(0, 80)}…/ hides: ${t}`);
+    }
+  }
+});
+
+test('B5 review: everyday wording the merged server patterns read as crisis or care stays none in the free input', () => {
+  for (const t of [
+    // the review's probe (none in the app before B5, crisis or care after it)
+    "I'm going to jump off the call in five minutes", "I'm about to jump off a meeting with my boss", "I'm ready to jump from this job to a better one",
+    'I need to stop living paycheck to paycheck', 'I just want to stop living out of a suitcase', "I want to stop living for other people's approval",
+    'I have a plan to end it with my girlfriend kindly', "I don't see a way out of this mess at work", "I can't see a way out of this argument with my sister",
+    "I'd be better off gone from this company", 'What is the point of trying any more with this diet',
+    'He threatened us with a parking ticket', 'My son keeps hitting my daughter with pillows',
+    // close variants
+    "I'll jump off the zoom in a minute", "I'm about to jump from one project to another", 'I want to stop living out of my car',
+    'I need to stop living for the weekend', 'I want to end it with my boyfriend', "I can't see a way out of this argument", "I'd be better off gone from this team",
+    "What's the point of trying any more at this game", 'He threatened me with detention', 'My boss threatened us with overtime',
+    'My son keeps hitting my daughter with cushions', "I'm done with living here, I'm moving to Leeds", "I'm done with living with my parents",
+    "I'm done with living at home", "I'm done with living out of a suitcase", 'My tablets are ready for the morning', "I'd rather not exist online",
+    'He cut himself a break', "I don't see the point in going on about it", "I don't see the point in going on to university",
+    "I can't see the point in carrying on with this course", 'I want to sleep and not wake up till 10am', 'I want to sleep and never wake up early again',
+  ]) {
+    const r = checkText(t);
+    assert.equal(r.level, 'none', `${t} → ${r.level} (${r.matched})`);
+  }
+});
