@@ -40,6 +40,11 @@ export const SAFETY = Object.freeze({
   finish: ['Go gently.', 'Support is one tap away whenever you need it.'],
 });
 
+/** Narration (no speaker), once a visit, when the server is open only to invited testers; Zuzu's own angle follows. */
+export const INVITE = Object.freeze({
+  line: 'Another Angle is open to invited testers for now. You can add your code in Settings.',
+});
+
 export const UNCLEAR = Object.freeze({
   line: 'I’d love a few more words. What happened?',
   options: [{ label: 'Tell Zuzu more', value: 'tell', primary: true }, { label: 'Just squeeze', value: 'squeeze' }],

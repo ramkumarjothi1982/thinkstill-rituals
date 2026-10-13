@@ -29,7 +29,7 @@ import { hfIcon } from '../hushfold/icons.js';
 import { ensureBeyondCss } from './styles.js';
 import {
   WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, MECHANIC_LINES, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
-  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, pick,
+  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, pick,
 } from './lines.js';
 import { authoredScene, sceneParts, candidatePatterns } from './authored.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
@@ -92,12 +92,12 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   ensureBeyondCss();
   root.classList.add('beyond');
   const backBtn = h('button', { class: 'hf-btn', type: 'button', 'aria-label': 'Leave Another Angle', onclick: () => app.back() }, hfIcon('prev'));
-  const supportBtn = h('button', { class: 'hf-btn', type: 'button', 'aria-label': 'Need support now?', onclick: () => openSupport(app) }, hfIcon('support'));
+  const supportBtn = h('button', { class: 'hf-btn', type: 'button', 'aria-label': 'Need support now?', onclick: () => openSupportSheet() }, hfIcon('support'));
   const top = h('header', { class: 'bx-top' }, backBtn, h('span', { class: 'bx-name' }, 'Another Angle'), h('div', { class: 'grow' }), supportBtn);
   const assistLabel = h('span', {});
   const assistBtn = h('button', { class: 'hf-pill assist', type: 'button', hidden: true, 'data-bx': 'assist', onclick: () => { S.touches++; mech?.assist?.(); } }, h('span', { class: 'dot', 'aria-hidden': 'true' }), assistLabel);
   const tellPill = h('button', { class: 'hf-pill', type: 'button', hidden: true, 'data-bx': 'tell', onclick: () => openTell() }, hfIcon('talk'), 'Tell Zuzu');
-  const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, onclick: () => openSupport(app) }, hfIcon('support'), 'Support');
+  const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, onclick: () => openSupportSheet() }, hfIcon('support'), 'Support');
   const finishPill = h('button', { class: 'hf-pill', type: 'button', hidden: true, 'data-bx': 'finish', onclick: () => finish() }, hfIcon('finish'), 'Finish');
   const dock = h('div', { class: 'bx-dock' }, assistBtn, tellPill, supportPill, finishPill);
   const live = h('p', { class: 'sr-only', 'aria-live': 'polite' });
@@ -113,6 +113,42 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   let area = { x: 16, y: 160, w: 358, h: 360 };
   const ripples = [];
   const layer = { overlay: 0 };
+  // Sheets opened here (support, urgent support, the overlay's A–Z list) get a history entry of their own,
+  // newer than the compact input beneath them, so Back closes the sheet first (as in the Hushfold shell)
+  const sheets = [];   // { token, sheet, seen, obs, done }
+  function trackSheet(sheet) {
+    if (!sheet?.el || S.left) return sheet;
+    S.sheetAt = now();
+    const rec = { token: app.pushLayer?.() || 0, sheet, seen: false, obs: [], done: false };
+    sheets.push(rec);
+    const done = () => {
+      if (rec.done) return;
+      rec.done = true;
+      rec.obs.forEach((o) => o.disconnect());
+      const i = sheets.indexOf(rec);
+      if (i >= 0) sheets.splice(i, 1);
+      // closed another way (✕, its button, the backdrop, Escape): its history entry goes too
+      if (rec.token && !S.left) { const t = rec.token; rec.token = 0; app.popLayer?.(t); }
+    };
+    const onClass = new MutationObserver(() => {
+      if (sheet.el.classList.contains('open')) rec.seen = true;
+      else if (rec.seen) done();
+    });
+    onClass.observe(sheet.el, { attributes: true, attributeFilter: ['class'] });
+    const host = sheet.el.parentNode;
+    const onGone = host ? new MutationObserver(() => { if (!sheet.el.isConnected) done(); }) : null;
+    onGone?.observe(host, { childList: true });
+    rec.obs = [onClass, onGone].filter(Boolean);
+    return sheet;
+  }
+  /** The support sheet (urgent after crisis words), as a layer of its own. */
+  const openSupportSheet = (opts = {}) => trackSheet(openSupport(app, opts));
+  /** Back: the newest sheet first, then the compact input (main.js passes the token of the entry it used). */
+  function backClose(token) {
+    const sh = token ? sheets.find((r) => r.token === token) : sheets[sheets.length - 1];
+    if (sh) { sh.token = 0; sh.sheet.close('back'); return; }
+    if (overlay && (!token || token === layer.overlay || !sheets.length)) { layer.overlay = 0; overlay.close('back'); }
+  }
 
   function resize() {
     if (!canvas) return;
@@ -434,7 +470,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function askConsent() {
     S.phase = 'consent';
     return new Promise((resolve) => {
-      consentCard = openConsent({ app, root, onDecide: (choice) => {
+      consentCard = openConsent({ app, root, support: () => openSupportSheet(), onDecide: (choice) => {
         consentCard = null;
         layout();
         if (choice === 'no') S.offlineSaid = false;
@@ -498,6 +534,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       emotion: S.emotion, intention: S.intention, hasPlan: true, text: S.text,
       // Another Angle never takes photos; with sharing on, the note says where the words go (not "on this phone")
       photos: false, privacyNote: serverMode() ? SERVER_CLAUSE : null,
+      // its support sheets (urgent on crisis words, the Support chip) and the A–Z list are layers of the scene,
+      // so Back closes them before the overlay beneath
+      support: (o) => openSupportSheet(o), trackSheet: (sh) => trackSheet(sh),
       // something heavy earlier in this visit: the overlay's Support chip is there from the start
       heavy: S.level !== 'none',
       face: (f) => { if (S.level === 'none') zt?.setEmotion(f, 0.6, { quiet: true }); },
@@ -575,6 +614,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.keepSupport = true;
     if (lv === 'crisis') S.crisis = true;
     if (lv === 'care') S.care = true;
+    // the Memory Garden offer or its installation stops at once (nothing more is saved, nothing plays)
+    if (lv === 'crisis' || lv === 'care') keepCtl?.abort();
     supportPill.hidden = false;
     // a pending invitation or a playful choice goes (a held line stays); while typing nothing shows anyway
     if (!overlay) subs?.clear({ keepHeld: true });
@@ -584,9 +625,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function crisisMode({ sheetShown = false } = {}) {
     S.crisis = true; S.keepSupport = true; S.level = 'crisis'; S.phase = 'support';
     S.seq++;                               // whatever was waiting for an answer is over
+    keepCtl?.abort();
     dropThought(); endMechanic(true); dismissCompanion();
     // openInput opens the urgent sheet as soon as it sees the words: never a second time straight after
-    if (!sheetShown && !document.querySelector('#sheet-root .sheet.open') && now() - S.sheetAt > 60000) openSupport(app, { urgent: true });
+    if (!sheetShown && !document.querySelector('#sheet-root .sheet.open') && now() - S.sheetAt > 60000) openSupportSheet({ urgent: true });
     careFace();
     dockShow({ finish: true });
     if (S.crisisSaid) return;              // said once a visit; the Support pill stays
@@ -597,6 +639,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function careMode() {
     S.care = true; S.keepSupport = true; S.level = worse(S.level, 'care'); S.phase = 'support';
     S.seq++;
+    keepCtl?.abort();
     dropThought(); endMechanic(true); dismissCompanion();
     careFace();
     dockShow({ finish: true });
@@ -606,7 +649,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     await say(SAFETY.care, { interrupt: true });
     if (S.left || S.phase !== 'support') return;
     const v = await choose(SAFETY.careAsk, SAFETY.careOptions);
-    if (v === 'support') openSupport(app);
+    if (v === 'support') openSupportSheet();
   }
   /** Something heavy (not care or crisis) typed and closed without sending: support close, said once, quietly. */
   function concernNote() {
@@ -648,14 +691,14 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       : Promise.resolve(null);
     const res = await req;
     if (S.left || seq !== S.seq) return;
-    let scene = null, offline = !serverMode(), hint = null;
+    let scene = null, offline = !serverMode(), hint = null, invited = false;
     if (res) {
       if (res.keepSupportClose) { S.keepSupport = true; supportPill.hidden = false; }
       if (res.status === 'crisis') { crisisMode(); return; }
       if (res.status === 'care') { careMode(); return; }
       if (res.status === 'unclear') { subs?.clear(); dropThought(); unclear(); return; }
       if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) scene = res.scene;
-      else { offline = true; hint = res.hint?.reasoning_pattern || null; }
+      else { offline = true; hint = res.hint?.reasoning_pattern || null; invited = res.reason === 'invite'; }
     }
     if (!scene) {
       // never "safe" by default: a fallback, a non-200, a timeout or an error runs the app's own check again
@@ -674,7 +717,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const left = minBeat - (now() - started);
     if (left > 0) await sleep(left);
     if (S.left || seq !== S.seq) return;
-    if (offline && serverMode() && !S.offlineSaid) { S.offlineSaid = true; scene.offlineNote = true; }
+    // open to invited testers only (and no code yet): said once a visit, then Zuzu's own angle (never the offline note too)
+    if (invited && !S.inviteSaid) { S.inviteSaid = true; S.offlineSaid = true; scene.inviteNote = true; }
+    else if (offline && serverMode() && !S.offlineSaid) { S.offlineSaid = true; scene.offlineNote = true; }
     await playScene(scene, seq);
   }
   async function waitingLines(seq) {
@@ -702,6 +747,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (S.left || seq !== S.seq) return;
     const L = MECHANIC_LINES[scene.mechanic];
     const from = thought ? { x: thought.x, y: thought.y, r: thought.r } : null;
+    if (from) S.lastThought = { ...from };
     // the Thought Mallow hands over to the mechanic where it sits: the same living jelly takes over there (a
     // quick cross-fade; a longer one only when the mechanic draws the kit's own jelly instead)
     dropThought(rmOn() || W2 ? 120 : 420);
@@ -745,6 +791,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     } catch (e) { console.warn('[another angle] mechanic mount', e?.message); ctx.tags.clear(); mech = null; failed(scene.mechanic); }
     zt?.lookAt(0, -0.8);
     if (mech) {
+      if (scene.inviteNote) say(INVITE.line, { who: null, colour: null });
       say(L.hint, { mallow: 'zuzu' });
       if (scene.offlineNote) say('Zuzu’s own angle this time, worked out on this phone.', { who: null, colour: null });
     }
@@ -890,10 +937,21 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     say(FEEDBACK.squeeze, { mallow: 'zuzu' });
   }
 
+  // the installation pauses the subtitles while it plays and resumes only what it paused itself (never the
+  // person's own ⏸), the same adapter as the Hushfold shell's installSubtitles
+  let subsHeld = false;
+  const installSubtitles = {
+    pause() { if (!subs) return; subsHeld = !subs.paused; subs.clear({ keepHeld: true }); subs.pause(); },
+    resume() { if (subsHeld) { subsHeld = false; subs?.resume(); } },
+  };
+  /** The keep in progress: crisis or care seen meanwhile (noteSafety), or leaving, stops it. */
+  let keepCtl = null;
   async function keep() {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    keepCtl = ctl;
     try {
       const install = await import('../hushfold/garden-install.js');
-      if (S.left) return;
+      if (S.left || ctl?.signal.aborted) return;
       const origin = () => zAd?.bodyRect?.();
       const face = () => { try { return install.mallowFaceRect?.(zAd?.bodyRect?.(), ZUZU) || null; } catch { return null; } };
       // the install owns the stage: no line, and no subtitle pill floating on its own
@@ -903,12 +961,16 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
         app, store, skillId: 'another-angle', worldId: 'another-angle', mallow: 'zuzu', origin, face,
         // Zuzu (and the scene's Mallow) stay clear: the garden's chip never sits on them
         avoid: () => [rectOf(zAd), rectOf(compAd), ...(mech?.avoid?.() || [])].filter(Boolean),
-        subtitles: subs, reducedMotion: rmOn(), lowStim: lowOn(),
+        subtitles: installSubtitles, reducedMotion: rmOn(), lowStim: lowOn(), signal: ctl?.signal,
         // which kind of angle it was (no words): for the garden's own copy per kind, when it has it
         evidence: { reasoning_pattern: S.scene?.reasoning_pattern || null, interaction_type: S.scene?.interaction_type || null },
       });
       if (r?.kept || r?.already) S.kept = true;
-    } catch (e) { console.info('[another angle] garden unavailable', e?.message); } finally { root.classList.remove('bx-installing'); }
+    } catch (e) { console.info('[another angle] garden unavailable', e?.message); } finally {
+      if (keepCtl === ctl) keepCtl = null;
+      installSubtitles.resume();
+      root.classList.remove('bx-installing');
+    }
   }
   async function endChoice(seq) {
     if (S.left || seq !== S.seq) return;
@@ -931,8 +993,12 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       const fe = flowEmotion(S.emotion, em.getEmotion(S.emotion)?.family) || null;
       worldId = registry.select({ emotion: fe, intention: S.intention && S.intention !== 'play' ? S.intention : 'calm' })?.id || null;
     } catch { worldId = null; }
-    // the feeling and intention carry on into Hushflow (and the words, in memory only, if the Hushfold takes them)
-    const carry = { emotion: S.emotion || null, intention: S.intention || null, text: S.text || '' };
+    // the feeling and intention carry on into Hushflow (and the words, in memory only, if the Hushfold takes them);
+    // where the person's Thought Mallow last sat and how it looked, for the Hushfold to use later (owner P-15; never sent)
+    const lt = S.lastThought;
+    const thoughtAt = lt && [lt.x, lt.y, lt.r].every(Number.isFinite)
+      ? { x: Math.round(lt.x), y: Math.round(lt.y), r: Math.round(lt.r), emotion: S.look || S.emotion || null } : null;
+    const carry = { emotion: S.emotion || null, intention: S.intention || null, text: S.text || '', thought: thoughtAt };
     app.go('home', worldId ? { flow: { worldId, ...carry } } : { carry });
   }
   async function finish() {
@@ -1038,6 +1104,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       removeEventListener('resize', onResize);
       visualViewport?.removeEventListener('resize', onResize);
       offPrefs?.();
+      keepCtl?.abort();
+      // the sheets' history entries are forgotten by app.go(); their watchers stop here
+      for (const r of sheets.splice(0)) { r.done = true; r.token = 0; r.obs.forEach((o) => o.disconnect()); }
       overlay?.close('leave');
       consentCard?.close();
       endMechanic(true);
@@ -1060,13 +1129,13 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       document.body.classList.remove('hf-active');
       if (window.__angle && DEV()) delete window.__angle;
     },
-    /** Back closes the compact input first (its own history entry). */
+    /** Back closes the newest layer first: a sheet (the urgent one included), then the compact input. */
     get blockBack() {
-      if (!overlay) return null;
-      return () => { layer.overlay = 0; overlay?.close('back'); };
+      if (!overlay && !sheets.length) return null;
+      return (token) => backClose(token);
     },
     safeForUpdate() {
-      if (overlay?.dirty || consentCard) return false;
+      if (overlay?.dirty || consentCard || sheets.length) return false;
       if (subs?.holding) return false;
       if (S.crisis || S.care || !supportPill.hidden) return false;
       return !['waiting', 'playing', 'reveal', 'explore', 'feedback', 'typing'].includes(S.phase);

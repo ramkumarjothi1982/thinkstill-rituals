@@ -11,7 +11,8 @@ import * as SV from '../server/another-angle/src/vocab.js';
 import { THOUGHT_PATTERNS } from '../src/ultra/frameworks.js';
 import { authoredScene, sceneParts, exactPhrase, chunkStep, candidatePatterns, sameWords, secondPerson, FACT_ASK, GUESS_ASK } from '../src/beyond/authored.js';
 import { createAngleClient, resolveEndpoint, makeDeviceId, PATHS } from '../src/beyond/angle-client.js';
-import { consentState, setConsent, withdrawConsent, deleteAngleData, hasAngleData, noteFeedback, lessWanted, STORE_KEYS, CONSENT_VERSION, PROVIDER_RETENTION, RETENTION_PLACEHOLDER } from '../src/beyond/consent.js';
+import { consentState, setConsent, withdrawConsent, deleteAngleData, hasAngleData, noteFeedback, lessWanted, STORE_KEYS, CONSENT_VERSION, PROVIDER_RETENTION, RETENTION_PLACEHOLDER,
+  saveTesterCode } from '../src/beyond/consent.js';
 import * as LINES from '../src/beyond/lines.js';
 import { MECHANIC_MODULES } from '../src/beyond/mechanics/index.js';
 import { createStore } from '../src/engine/storage.js';
@@ -438,7 +439,7 @@ test('the consent notice says it plainly (the one place automated processing is 
   for (const field of ['device_id', 'platform', 'app_version', 'invite', 'intention', 'previous_angles', 'rating', 'reasoning_pattern', 'interaction_type', 'mallow_character', 'prompt_version']) assert.match(client, new RegExp(field), `the client sends ${field} (and the notice says so)`);
   // on the card, "Not therapy" and the support link sit by the buttons (always in view), and a cue says when there is more to read
   const card = src.slice(src.indexOf('export function openConsent'), src.indexOf('export function openConsentSheet'));
-  assert.match(card, /notTherapy\(app\),\s*h\('div', \{ class: 'bx-actions' \}/);
+  assert.match(card, /notTherapy\(app, 'p', support\),\s*h\('div', \{ class: 'bx-actions' \}/);
   assert.match(card, /'More below'/);
   // the Settings sheet carries the same notice, "Not therapy" included
   assert.match(src, /noticeBody\(app, \{ compact: true, therapy: true \}\)/);
@@ -675,4 +676,111 @@ test('mechanics drive the person’s living Thought Mallow (W2) when the scene h
     assert.ok(made.every((t) => t.w2 === null), `${id} lets its Thought Mallows go`);
   }
   assert.ok(drawn > 100);
+});
+
+// ------------------------------------------------------- the client seam (B4) --
+test('B4: the compact input has no photos and says where the words go; Back closes a sheet before the input', () => {
+  const src = read('src/beyond/another-angle.js');
+  const open = src.slice(src.indexOf('function openTellNow()'), src.indexOf('async function afterTell('));
+  assert.match(open, /photos: false, privacyNote: serverMode\(\) \? SERVER_CLAUSE : null/);
+  assert.match(open, /support: \(o\) => openSupportSheet\(o\), trackSheet: \(sh\) => trackSheet\(sh\)/);
+  assert.match(src, /const SERVER_CLAUSE = '[^']*secure server[^']*'/);
+  assert.doesNotMatch(src, /hf-ghost\.photo|PRIVACY_CLAUSE/);
+  // every support sheet the scene opens is tracked (its own history entry), the urgent one included
+  assert.doesNotMatch(src.replace(/const openSupportSheet = \(opts = \{\}\) => trackSheet\(openSupport\(app, opts\)\);/, ''), /[^.\w]openSupport\(app/);
+  assert.match(src, /openSupportSheet\(\{ urgent: true \}\)/);
+  assert.match(src, /get blockBack\(\) \{\s*if \(!overlay && !sheets\.length\) return null;\s*return \(token\) => backClose\(token\);/);
+  const back = src.slice(src.indexOf('function backClose('), src.indexOf('function backClose(') + 400);
+  assert.ok(back.indexOf('sheet.close(\'back\')') < back.indexOf('overlay.close(\'back\')'), 'the sheet first, then the input');
+});
+
+test('B4: keeping a discovery passes a signal crisis or care aborts, and a subtitles adapter that never un-pauses the person', () => {
+  const src = read('src/beyond/another-angle.js');
+  const keep = src.slice(src.indexOf('async function keep()'), src.indexOf('async function endChoice('));
+  assert.match(keep, /subtitles: installSubtitles,[^\n]*signal: ctl\?\.signal/);
+  assert.match(keep, /finally \{\s*if \(keepCtl === ctl\) keepCtl = null;\s*installSubtitles\.resume\(\);/);
+  assert.match(src, /pause\(\) \{ if \(!subs\) return; subsHeld = !subs\.paused; subs\.clear\(\{ keepHeld: true \}\); subs\.pause\(\); \}/);
+  assert.match(src, /resume\(\) \{ if \(subsHeld\) \{ subsHeld = false; subs\?\.resume\(\); \} \}/);
+  const note = src.slice(src.indexOf('function noteSafety('), src.indexOf('function crisisMode('));
+  assert.match(note, /if \(lv === 'crisis' \|\| lv === 'care'\) keepCtl\?\.abort\(\);/);
+  assert.match(src.slice(src.indexOf('    leave() {')), /keepCtl\?\.abort\(\);/);
+});
+
+test('B4: Continue carries the feeling, the intention, the words (in memory) and where the thought was', () => {
+  const src = read('src/beyond/another-angle.js');
+  const cont = src.slice(src.indexOf('async function continueFlow()'), src.indexOf('async function finish()'));
+  assert.match(cont, /thought: thoughtAt/);
+  assert.match(cont, /\{ x: Math\.round\(lt\.x\), y: Math\.round\(lt\.y\), r: Math\.round\(lt\.r\), emotion: S\.look \|\| S\.emotion \|\| null \}/);
+  assert.match(cont, /app\.go\('home', worldId \? \{ flow: \{ worldId, \.\.\.carry \} \} : \{ carry \}\)/);
+});
+
+test('B4: invite_required → reason "invite", remembered until the stored code changes (no session request on each angle)', async () => {
+  const store = memStore();
+  const calls = [];
+  let codes = ['the-code'];
+  const fetchImpl = async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push(url.replace(EP, ''));
+    const res = (code, data) => ({ status: code, json: async () => data });
+    if (url.endsWith('/v1/session')) {
+      if (codes.length && !codes.includes(body.invite)) return res(403, { status: 'error', error: { code: 'invite_required', message: 'A tester invite code is required during the testing phase.' } });
+      return res(200, { status: 'ok', token: 'tok', expires_at: new Date(Date.now() + 3600e3).toISOString() });
+    }
+    if (url.endsWith('/v1/angle')) return res(200, OK);
+    return res(404, {});
+  };
+  let t = 1_000_000;
+  const mk = () => createAngleClient({ store, endpoint: EP, fetchImpl, now: () => t });
+  const a = await mk().angle({ text: 'Nobody likes me.' });
+  assert.deepEqual([a.status, a.reason], ['error', 'invite']);
+  assert.deepEqual(calls, ['/v1/session']);
+  // more angles, this visit and the next: no request at all
+  assert.equal((await mk().angle({ text: 'Nobody likes me.' })).reason, 'invite');
+  const c1 = mk();
+  await c1.angle({ text: 'x y' }); await c1.angle({ text: 'x y z' });
+  assert.deepEqual(calls, ['/v1/session'], 'remembered across angles and visits');
+  // a wrong code is asked once, then remembered too
+  saveTesterCode(store, 'wrong');
+  assert.equal((await mk().angle({ text: 'x y' })).reason, 'invite');
+  assert.equal((await mk().angle({ text: 'x y' })).reason, 'invite');
+  assert.equal(calls.length, 2);
+  // the right code (from Settings): the next angle is ok
+  saveTesterCode(store, ' the-code ');
+  assert.equal(store.get(STORE_KEYS.session, null), null, 'a new code drops the session');
+  const ok = await mk().angle({ text: 'Nobody likes me.' });
+  assert.equal(ok.status, 'ok');
+  assert.deepEqual(calls.slice(2), ['/v1/session', '/v1/angle']);
+  // codes switched off later: a device that was refused tries once more after INVITE_RETRY_MS
+  const s2 = memStore();
+  codes = ['x'];
+  const mk2 = () => createAngleClient({ store: s2, endpoint: EP, fetchImpl, now: () => t });
+  await mk2().angle({ text: 'x y' });
+  codes = [];
+  assert.equal((await mk2().angle({ text: 'x y' })).reason, 'invite');
+  t += 12 * 3600000 + 1;
+  assert.equal((await mk2().angle({ text: 'x y' })).status, 'ok');
+  // deleting this phone's data removes the code and the remembered answer
+  deleteAngleData(store);
+  assert.equal(store.get(STORE_KEYS.invite, null), null);
+  assert.equal(store.get(STORE_KEYS.inviteNeeded, null), null);
+});
+
+test('B4: the invite line is said once a visit with no speaker, then Zuzu’s own angle plays; the Tester code row is built', () => {
+  assert.equal(LINES.INVITE.line, 'Another Angle is open to invited testers for now. You can add your code in Settings.');
+  const src = read('src/beyond/another-angle.js');
+  assert.match(src, /invited = res\.reason === 'invite';/);
+  assert.match(src, /if \(invited && !S\.inviteSaid\) \{ S\.inviteSaid = true; S\.offlineSaid = true; scene\.inviteNote = true; \}/);
+  assert.match(src, /if \(scene\.inviteNote\) say\(INVITE\.line, \{ who: null, colour: null \}\);/);
+  const consent = read('src/beyond/consent.js');
+  assert.match(consent, /rows\.push\(testerCodeRow\(app\)\);/);
+  const row = consent.slice(consent.indexOf('function testerCodeRow('));
+  assert.match(row, /type: 'text', class: 'search bx-invite', maxlength: '64'/);
+  assert.match(row, /'Tester code'/);
+  assert.match(read('src/beyond/styles.js'), /\.bx-invite-row input\.bx-invite \{[^}]*font-size: max\(16px, 1em\)/);
+  const store = memStore();
+  assert.equal(saveTesterCode(store, '  abc  '), 'abc');
+  assert.equal(store.get(STORE_KEYS.invite, null), 'abc');
+  saveTesterCode(store, '   ');
+  assert.equal(store.get(STORE_KEYS.invite, null), null, 'an empty code removes it');
+  assert.equal(saveTesterCode(store, 'x'.repeat(80)).length, 64);
 });
