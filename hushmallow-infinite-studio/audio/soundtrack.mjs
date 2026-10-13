@@ -113,17 +113,17 @@ function buildPlan(log) {
     const t = c.t;
     switch (c.type) {
       case 'ping': // the unwanted memory arrives: a delicate music-box twinkle
-        E(t, 'mallow', 'tap', { intensity: 0.3 }, 0.55);
+        E(t, 'mallow', 'tap', { intensity: 0.3 }, 0.5);
         S(t + 0.045, 'bell', { f: N.A6, peak: 0.008, decay: 0.55, partials: 'celesta', send: 0.45 });
         S(t + 0.10, 'bell', { f: N.E7, peak: 0.0035, decay: 0.4, partials: 'celesta', send: 0.45 });
         break;
 
       case 'startle': // THE comedic beat: cartoon eye-pop ON the frame + Noomi's surprise + a tiny boing
-        S(t, 'blip', { f: 340, f1: 1500, glide: 0.045, a: 0.0015, h: 0.012, d: 0.055, peak: 0.115, lp: 4200, send: 0.12 });
-        S(t, 'blip', { type: 'triangle', f: 170, f1: 750, glide: 0.045, a: 0.0015, h: 0.012, d: 0.06, peak: 0.045, lp: 1800 });
-        S(t + 0.02, 'blip', { type: 'triangle', f: 235, f1: 440, glide: 0.07, a: 0.006, d: 0.42, peak: 0.045, lp: 1600, send: 0.15,
+        S(t, 'blip', { f: 340, f1: 1500, glide: 0.045, a: 0.0015, h: 0.012, d: 0.055, peak: 0.09, lp: 4200, send: 0.12 });
+        S(t, 'blip', { type: 'triangle', f: 170, f1: 750, glide: 0.045, a: 0.0015, h: 0.012, d: 0.06, peak: 0.034, lp: 1800 });
+        S(t + 0.02, 'blip', { type: 'triangle', f: 235, f1: 440, glide: 0.07, a: 0.006, d: 0.42, peak: 0.04, lp: 1600, send: 0.15,
           vib: { rate: 14, cents: 70, decay: 0.4 } });
-        E(t, 'mallow', 'surprise', { intensity: 0.9 }, 0.68);
+        E(t, 'mallow', 'surprise', { intensity: 0.9 }, 0.52);
         break;
 
       case 'blink':
@@ -152,16 +152,16 @@ function buildPlan(log) {
         const i = clamp(c.id, 0, 2);
         // Higher pitches read louder, so trims step down as the pitch steps up. The layers are
         // flammed by a few ms (heard as one "bloop", but their peaks no longer stack).
-        E(t, 'fx', 'bubble', { intensity: 1, note: [0, 2, 4][i], pan: c.pan }, [1.35, 1.2, 0.95][i]);
-        S(t + 0.004, 'noiseHit', { filter: 'lowpass', f: 1900, f1: 380, sweep: 0.06, a: 0.003, d: 0.07, peak: 0.04, q: 1.2, pan: c.pan });
-        S(t + 0.010, 'blip', { f: 230 * st([0, 4, 9][i]), f1: 470 * st([0, 4, 9][i]), glide: 0.035, a: 0.005, d: 0.15, peak: 0.05, pan: c.pan, lp: 1800 });
-        E(t + 0.018, 'mallow', 'tap', { intensity: 0.5, pan: c.pan, pitch: [1, st(3), st(7)][i] }, [1.1, 1.0, 0.85][i]);
+        E(t, 'fx', 'bubble', { intensity: 1, note: [0, 2, 4][i], pan: c.pan }, [1.2, 1.07, 0.85][i]);
+        S(t + 0.004, 'noiseHit', { filter: 'lowpass', f: 1900, f1: 380, sweep: 0.06, a: 0.003, d: 0.07, peak: 0.036, q: 1.2, pan: c.pan });
+        S(t + 0.010, 'blip', { f: 230 * st([0, 4, 9][i]), f1: 470 * st([0, 4, 9][i]), glide: 0.035, a: 0.005, d: 0.15, peak: 0.045, pan: c.pan, lp: 1800 });
+        E(t + 0.018, 'mallow', 'tap', { intensity: 0.5, pan: c.pan, pitch: [1, st(3), st(7)][i] }, [0.85, 0.85, 0.76][i]);
         break;
       }
 
       case 'mini': { // small glyph bubbles (?, !, …, ?!): smaller, higher blips — escalation
         const i = clamp(c.id - 10, 0, 3);
-        E(t, 'fx', 'bubble', { intensity: 0.8, note: 5 + i, pan: c.pan }, [1.7, 1.6, 1.5, 1.4][i]);
+        E(t, 'fx', 'bubble', { intensity: 0.8, note: 5 + i, pan: c.pan }, [1.5, 1.42, 1.34, 1.25][i]);
         S(t + 0.012, 'bell', { f: [N.G6, N.A6, N.C7, N.D7][i], peak: 0.016, decay: 0.25, partials: 'celesta', pan: c.pan, send: 0.2 });
         break;
       }
@@ -174,45 +174,45 @@ function buildPlan(log) {
       case 'inhale': { // one deep, slow inhale; cut cleanly at the puffed-cheek hold
         const hold = first('hold')?.t ?? t + (c.dur || 1.5);
         const dur = clamp(c.dur || 1.5, 1, 3);
-        E(t, 'fx', 'breathe-in', { duration: dur, intensity: 0.7 }, 0.68, { at: hold - 0.1, fade: 0.14 });
-        S(t, 'air', { dur: hold - t + 0.06, a: hold - t - 0.12, r: 0.16, f0: 700, f1: 1500, q: 0.9, peak: 0.024, width: 0.25, send: 0.2 });
+        E(t, 'fx', 'breathe-in', { duration: dur, intensity: 0.7 }, 0.38, { at: hold - 0.1, fade: 0.14 });
+        S(t, 'air', { dur: hold - t + 0.06, a: hold - t - 0.12, r: 0.16, f0: 750, f1: 1600, q: 0.9, peak: 0.07, width: 0.25, send: 0.2 });
         break;
       }
 
       case 'exhale': { // long exhale + the soft circle of calm rolling out
         const dur = clamp((c.dur || 1.2) + 0.3, 1, 3);
-        E(t, 'fx', 'breathe-out', { duration: dur, intensity: 0.7 }, 0.6);
-        E(t, 'mallow', 'press', { intensity: 0.4 }, 0.5);           // the body squishes wide (soft)
-        E(t + 0.05, 'mallow', 'sigh', { intensity: 0.35 }, 0.45);
-        S(t, 'air', { dur: dur + 0.2, a: 0.12, r: dur, f0: 1300, f1: 420, q: 0.7, peak: 0.024, width: 0.65, send: 0.3 });
+        E(t, 'fx', 'breathe-out', { duration: dur, intensity: 0.7 }, 0.31);
+        E(t, 'mallow', 'press', { intensity: 0.4 }, 0.33);           // the body squishes wide (soft)
+        E(t + 0.05, 'mallow', 'sigh', { intensity: 0.35 }, 0.3);
+        S(t, 'air', { dur: dur + 0.2, a: 0.12, r: dur, f0: 1300, f1: 420, q: 0.7, peak: 0.07, width: 0.65, send: 0.3 });
         break;
       }
 
       case 'dissolve': // each thought loses its words → glassy chime (the cloud of sparkles is added below)
-        E(t, 'fx', 'chime', { intensity: 0.35, pitch: [st(3), 1, st(-5)][clamp(c.id, 0, 2)], pan: (bubblePan[c.id] || 0) * 0.8 }, 0.3);
+        E(t, 'fx', 'chime', { intensity: 0.35, pitch: [st(3), 1, st(-5)][clamp(c.id, 0, 2)], pan: (bubblePan[c.id] || 0) * 0.8 }, 0.19);
         break;
       case 'dissolveMini':
-        E(t, 'fx', 'chime', { intensity: 0.25, pitch: { 10: st(7), 11: st(5), 12: st(-2), 13: st(3) }[c.id] || 1, pan: (miniPan[c.id] || 0) * 0.8 }, 0.2);
+        E(t, 'fx', 'chime', { intensity: 0.25, pitch: { 10: st(7), 11: st(5), 12: st(-2), 13: st(3) }[c.id] || 1, pan: (miniPan[c.id] || 0) * 0.8 }, 0.13);
         break;
 
       case 'squish': // satisfying squash …
-        E(t, 'mallow', 'squeeze', { intensity: 0.7 }, 0.4);
-        S(t, 'noiseHit', { filter: 'lowpass', f: 2300, f1: 380, sweep: 0.11, a: 0.003, d: 0.13, peak: 0.06, q: 2.2 });
-        S(t, 'blip', { f: 215, f1: 118, glide: 0.09, a: 0.004, d: 0.16, peak: 0.075, lp: 1200 });
+        E(t, 'mallow', 'squeeze', { intensity: 0.7 }, 0.25);
+        S(t, 'noiseHit', { filter: 'lowpass', f: 2300, f1: 380, sweep: 0.11, a: 0.003, d: 0.13, peak: 0.046, q: 2.2 });
+        S(t, 'blip', { f: 215, f1: 118, glide: 0.09, a: 0.004, d: 0.16, peak: 0.058, lp: 1200 });
         break;
       case 'release': // … and elastic release: springy boing + stretch pop, jelly wobble
-        E(t, 'mallow', 'release', { intensity: 0.7 }, 0.4);
-        S(t, 'blip', { f: 620, f1: 1250, glide: 0.035, a: 0.002, d: 0.05, peak: 0.06, lp: 3000, send: 0.1 });
-        S(t, 'blip', { type: 'triangle', f: 210, f1: 420, glide: 0.07, a: 0.004, d: 0.5, peak: 0.06, lp: 1700, send: 0.2,
+        E(t, 'mallow', 'release', { intensity: 0.7 }, 0.27);
+        S(t, 'blip', { f: 620, f1: 1250, glide: 0.035, a: 0.002, d: 0.05, peak: 0.046, lp: 3000, send: 0.1 });
+        S(t, 'blip', { type: 'triangle', f: 210, f1: 420, glide: 0.07, a: 0.004, d: 0.5, peak: 0.045, lp: 1700, send: 0.2,
           vib: { rate: 7.5, cents: 85, decay: 0.5 } });
         break;
 
       case 'open': // eyes open halfway, tiny peaceful smile: warm, content
-        E(t, 'mallow', 'comfort', { intensity: 0.3 }, 0.42);
+        E(t, 'mallow', 'comfort', { intensity: 0.3 }, 0.3);
         break;
 
       case 'chime': // logo pillow + hushmallow.com: the soothing closing chime, let it ring
-        E(t, 'mallow', 'success', { intensity: 0.55 }, 0.85);
+        E(t, 'mallow', 'success', { intensity: 0.55 }, 0.58);
         break;
 
       case 'sleep': // drifting back to sleep, under the chime
@@ -226,7 +226,7 @@ function buildPlan(log) {
   // ---- dissolve sparkle cloud: tiny high sine pings, panned randomly, drifting up, fading out (~9.1 → 11)
   const d0 = Math.min(...of('dissolve').concat(of('dissolveMini')).map((c) => c.t), exhale.t + 0.08);
   const sparkleNotes = [N.C6, N.D6, N.E6, N.G6, N.A6, N.C7, N.D7, N.E7];
-  for (let t = d0, k = 0; t < d0 + 1.95; k++) {
+  for (let t = d0; t < d0 + 1.95;) {
     const age = t - d0;
     const level = Math.exp(-age / 0.75);
     const f = sparkleNotes[Math.floor(rnd() * sparkleNotes.length)] * (rnd() < 0.15 ? 0.5 : 1);
@@ -279,6 +279,7 @@ function buildPlan(log) {
   // ---- orbit swirl: per-thought band-passed noise whooshes that follow the actual orbit
   //      (angle = ∫orbit dt, as stage/components/thought-bubbles.js), loudest when a thought
   //      passes in front, panned with its x, brighter with speed; muffles when Noomi closes its eyes.
+  //      ORB / homes mirror the ThoughtField set-up in videos/my-brain-at-2am.js (3 bubbles, 4 minis).
   const ORB = { start: 5.0, full: 5.8, rx: 262, ry: 118, cy: -150 };
   const homes = [[-168, -128, 0], [150, -222, 0], [182, -78, 0], [-262, -12, 1], [262, -170, 1], [-40, -318, 1], [-250, -262, 1]];
   const sw = { t0: 4.6, t1: 9.4, dt: 0.01 };
@@ -295,17 +296,16 @@ function buildPlan(log) {
     }
   }
   const angAtStart = (() => { let acc = 0; const h = 1 / 240; for (let tt = h / 2; tt < ORB.start; tt += h) acc += C('orbit', tt) * h; return acc; })();
-  const master = [], items = homes.map(() => ({ gain: [], pan: [], fc: [] }));
+  const items = homes.map(() => ({ gain: [], pan: [], fc: [] }));
   const tension = { gain: [], freq: [] }, muffle = [];
   for (let i = 0; i < n; i++) {
     const t = sw.t0 + i * sw.dt;
     const orbit = C('orbit', t), anx = C('anx', t);
     const sp = clamp(orbit / 2.7, 0, 1);
-    const A = 0.065 * Math.pow(sp, 1.15) * (0.4 + 0.6 * anx);
-    master.push(r4(A));
+    const A = 0.07 * Math.pow(sp, 1.15) * (0.4 + 0.6 * anx);
     const om = smoothstep(ORB.start, ORB.full, t);
     const calm = smoothstep(close, close + 0.5, t);
-    const fBase = 450 * Math.pow(2000 / 450, Math.pow(sp, 0.8)) * (1 - 0.4 * calm);
+    const fBase = 450 * Math.pow(1750 / 450, Math.pow(sp, 0.8)) * (1 - 0.4 * calm);
     homes.forEach(([hx, hy, mini], k) => {
       const base = Math.atan2((hy - ORB.cy) / ORB.ry, hx / ORB.rx);
       const a = base + (ang[i] - angAtStart) * (mini ? 1.35 : 1);
@@ -313,19 +313,19 @@ function buildPlan(log) {
       const it = items[k];
       it.gain.push(r4(A * om * (0.3 + 0.7 * Math.pow(front, 2.5)) * (mini ? 0.75 : 1)));
       it.pan.push(r4(clamp(0.75 * Math.cos(a) * om + (hx / 420) * (1 - om), -1, 1)));
-      it.fc.push(Math.round(clamp(fBase * (mini ? 1.3 : 1) * (1 + 0.25 * Math.sin(a)), 200, 2600)));
+      it.fc.push(Math.round(clamp(fBase * (mini ? 1.2 : 1) * (1 + 0.15 * Math.sin(a)), 200, 2200)));
     });
-    tension.gain.push(r4(0.016 * Math.pow(anx, 1.6)));
+    tension.gain.push(r4(0.011 * Math.pow(anx, 1.6)));
     tension.freq.push(r4(N.G3 * st(1.0 * anx)));
-    muffle.push(Math.round(lerp(3400, 1000, smoothstep(close, close + 0.35, t))));
+    muffle.push(Math.round(lerp(2800, 1000, smoothstep(close, close + 0.35, t))));
   }
-  const swirl = { ...sw, n, master, items: items.map((it, k) => ({ ...it, q: homes[k][2] ? 2.0 : 1.6, offset: r4(rr(0, 2.5)) })), tension, muffle };
+  const swirl = { ...sw, n, items: items.map((it, k) => ({ ...it, q: homes[k][2] ? 2.0 : 1.6, offset: r4(rr(0, 2.5)) })), tension, muffle };
 
   // ---- warm transformation pad: C major add9, slow swell from the exhale, gently gone by ~14.5 s
   const pad = {
     t0: exhale.t, dt: 0.02,
     notes: [[N.C3, 1.0], [N.G3, 0.8], [N.D4, 0.45], [N.E4, 0.55], [N.G4, 0.4], [N.C5, 0.18]],
-    peak: 0.02, env: [], lp: [],
+    peak: 0.0142, env: [], lp: [],
   };
   for (let t = pad.t0; t <= DUR + 1e-9; t += pad.dt) {
     const up = smoothstep(pad.t0, pad.t0 + 1.9, t);
@@ -345,7 +345,7 @@ function buildPlan(log) {
     // sparse music-box events of the bed only where they cannot collide with a cue
     tickWindows: [[-0.9, 0.75], [11.5, 12.6]],
     // bed level: present but low; dips a little under the swirl peak, rises in the warm ending
-    level: [[-PRE, 1.2], [2.0, 1.2], [3.2, 1.0], [5.4, 0.95], [6.9, 0.75], [8.6, 0.95], [11.5, 1.15], [14.0, 1.15]],
+    level: [[-PRE, 1.0], [2.0, 1.0], [3.2, 0.88], [5.4, 0.85], [6.9, 0.7], [8.6, 0.85], [11.5, 0.9], [14.0, 0.9]],
   };
 
   return {
@@ -376,6 +376,10 @@ async function renderInPage(plan) {
   const g = E.buildGraph(ctx, false);
   g.master.gain.value = 0.6;                 // engine default volume
   g.ambBus.gain.value = E.AMB_LEVEL;         // 0.36, as the app
+  // the bed's brown-noise "waves" carry most of their energy below 90 Hz, which phones cannot play
+  // and which only eats headroom: high-pass the ambience bus on its way into the master
+  const ambHp = ctx.createBiquadFilter(); ambHp.type = 'highpass'; ambHp.frequency.value = 90; ambHp.Q.value = 0.6;
+  g.ambBus.disconnect(); g.ambBus.connect(ambHp); ambHp.connect(g.master);
   // engine voices read g.ctx.currentTime; give them a controllable clock
   let now = 0;
   g.ctx = new Proxy(ctx, {
@@ -428,8 +432,7 @@ async function renderInPage(plan) {
     return s;
   }
   const PARTIALS = {
-    celesta: [[1, 1, 1], [2, 0.3, 0.55], [4, 0.08, 0.3]],
-    glass: [[1, 1, 1], [2.32, 0.25, 0.6], [4.25, 0.08, 0.35]],
+    celesta: [[1, 1, 1], [2, 0.3, 0.55], [4, 0.08, 0.3]],   // [ratio, level, decay factor], as the engine's
   };
 
   // ---------------- instruments ----------------
@@ -554,7 +557,7 @@ async function renderInPage(plan) {
     // tension: two sines beating slowly + a soft octave, pitch creeping up with anxiety
     const tg = gainNode(0); tg.gain.setValueCurveAtTime(f32(S.tension.gain), t0, dur);
     const tl = biquad('lowpass', 900, 0.5); tl.connect(tg); tg.connect(sbus);
-    for (const [mult, det, type, lvl] of [[1, 0, 'sine', 1], [1, 9, 'sine', 0.8], [2, 4, 'triangle', 0.25]]) {
+    for (const [mult, det, type, lvl] of [[1, 0, 'sine', 0.6], [1, 9, 'sine', 0.5], [2, 4, 'triangle', 0.55]]) {
       const o = ctx.createOscillator(); o.type = type; o.detune.value = det;
       o.frequency.setValueCurveAtTime(f32(S.tension.freq.map((f) => f * mult)), t0, dur);
       const lg = gainNode(lvl); o.connect(lg); lg.connect(tl); o.start(t0); o.stop(t0 + dur + 0.05);
@@ -758,6 +761,9 @@ async function main() {
   const frames = x.length / 2;
   if (frames !== Math.round(plan.DUR * SR)) throw new Error(`rendered ${frames} frames, expected ${Math.round(plan.DUR * SR)}`);
   for (let i = 0; i < x.length; i += 97) if (!Number.isFinite(x[i])) throw new Error('non-finite sample in render');
+  // every engine voice must have started exactly at (cue - LAT): the suspend/clock trick worked
+  const drift = Math.max(0, ...res.placed.map((p) => Math.abs(p.voiceT - (p.t - LAT))));
+  if (res.placed.length !== plan.engine.length || drift > 1e-4) throw new Error(`engine voices misplaced (${res.placed.length}/${plan.engine.length}, drift ${drift})`);
   console.log(`[soundtrack] rendered ${(frames / SR).toFixed(3)} s in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   if (rawPath) fs.writeFileSync(rawPath, Buffer.from(x.buffer));
 
@@ -777,6 +783,7 @@ async function main() {
       if (Math.abs(m.I - TARGET_LUFS) <= 0.1 && m.TP <= MAX_TP) break;
       gain += TARGET_LUFS - m.I;
     }
+    if (Math.abs(m.I - TARGET_LUFS) > 0.5) console.warn(`[soundtrack] warning: loudness ${m.I} LUFS is off target`);
     if (m.TP > MAX_TP) throw new Error(`true peak ${m.TP} dBTP above ${MAX_TP}`);
     fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
     ffmpeg(['-y', '-f', 'f32le', '-ar', String(SR), '-ac', '2', '-i', tmpF32, '-map_metadata', '-1', '-c:a', 'pcm_s24le', '-fflags', '+bitexact', '-flags:a', '+bitexact', outPath]);
