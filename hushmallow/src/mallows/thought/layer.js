@@ -1577,12 +1577,15 @@ export class ThoughtLayer {
     // a world asking for its plate, or letting go of it — or any new budget for a thought a world drives (it floats far
     // and the words get fewer lines) — while the words show: they fade out where they are, change unseen, and come
     // back, never re-flowing or resizing in plain sight (the home stage's own steps change in place)
-    const cur = tg.cur, host = !!F;
-    if (cur && (host || tg.byHost || th.driven) && !(cur.lines === lines && cur.maxW === mw && cur.W === W) && (tg.shown || tg.hop > 0)) {
-      if (!(tg.hop > 0)) tg.hop = HOP_S;
+    const cur = tg.cur, host = !!F, same = !!cur && cur.lines === lines && cur.maxW === mw && cur.W === W;
+    if (cur && (host || tg.byHost || th.driven) && !same && (tg.shown || tg.hop > 0)) {
+      if (!(tg.hop > 0)) { tg.hop = HOP_S; tg.hopFit = this._frames; }
       tg.refit = true;
       return cur;
     }
+    // (a budget asked for and taken back before a frame has passed — a stage planned again, trying its levels in turn —
+    // is no reason for the words to fade out)
+    if (tg.refit && same && tg.hopFit === this._frames) tg.hop = 0;
     tg.refit = false; tg.byHost = host;
     return this._fit(th, tg, lines, mw, W, minWords);
   }
