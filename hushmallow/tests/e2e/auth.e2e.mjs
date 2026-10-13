@@ -56,7 +56,8 @@
 //               password is saved, A's session there ends on the server, the first tab leaves A's namespace
 //   delete      delete account (typed confirmation) with a sync started just before → the auth user and
 //               every row gone, sign-in fails, this device's copy wiped (and still wiped seconds later), the
-//               other account and the guest untouched
+//               other account and the guest untouched; a second tab of the same account, open in the Memory
+//               Garden all along, writes nothing more into it and leaves nothing of it after its reload
 //   unconfirmed sign in before confirming → "Please confirm your email first" → send the link again
 import { createRequire } from 'node:module';
 import { execFile } from 'node:child_process';
@@ -827,6 +828,13 @@ async function deleteAccount() {
   if (r !== 'nav') throw new Error(`signing B in again went to ${r}`);
   await waitView(p, 'account');
   check(await uidOf(p) === S.uidB, 'signed in as the second account');
+  // a second tab of the same account sits in the Memory Garden (not a calm scene: its reload waits); round-2 review
+  const t1 = await newPage(p.context(), 'delete-tab1-garden');
+  await t1.goto(`${SITE}/?n=${++loads}#home`); await appReady(t1);
+  await star(t1, 'luminous-ocean');
+  await t1.evaluate(() => window.__hush.go('garden'));
+  await t1.waitForFunction(() => location.hash === '#garden', null, { timeout: 30000 });
+  check(await uidOf(t1) === S.uidB && (await lsKeys(t1)).some((k) => k.startsWith(`hm2:u:${S.uidB}:`)), 'a second tab of the same account is open in the Memory Garden, with things of its own');
   await tapView(p, '[data-act="delete"]', 'delete');
   await shot(p, 'delete-01-explained-390');
   await fill(p, 'confirm', 'nope');
@@ -859,6 +867,20 @@ async function deleteAccount() {
   const ra = await db.rows(S.uidA);
   check(d.localA > 0 && d.guest === 'static-storm' && ra.user === 1 && ra.favourites.includes('static-storm'), 'the other account (here and on the server) and the guest\'s things are untouched', JSON.stringify({ localA: d.localA, guest: d.guest, serverA: ra.favourites }));
   await shot(p, 'delete-02-guest-again-390');
+  // the second tab, still in the garden: what it writes now never lands, and its reload leaves nothing of the account
+  const t1Now = await t1.evaluate(() => ({ hash: location.hash, sealed: window.__hush.store.sealed }));
+  await star(t1, 'static-storm');
+  await t1.evaluate(() => { window.__hush.prefs.set('textScale', 1.12); window.__hush.store.set('journey', [{ at: Date.now(), families: ['worry'] }]); });
+  const lateT1 = (await lsKeys(t1)).filter((k) => k.startsWith(`hm2:u:${S.uidB}:`));
+  check(t1Now.hash === '#garden' && t1Now.sealed === true && lateT1.length === 0, 'the second tab, still in the garden, is sealed: a favourite, a setting and a journey entry written now never land', JSON.stringify({ t1Now, lateT1 }));
+  const reloaded = t1.waitForNavigation({ timeout: 30000 }).then(() => true, () => false);
+  await t1.evaluate(() => window.__hush.go('home')).catch(() => {});
+  const navT1 = await reloaded;
+  await appReady(t1); await sleep(2000);
+  const leftT1 = (await lsKeys(t1)).filter((k) => k.startsWith(`hm2:u:${S.uidB}:`));
+  check(navT1 && await status(t1) === 'guest' && leftT1.length === 0, 'it reloads as a guest when it comes home, and nothing of the deleted account is left on the device', JSON.stringify({ navT1, leftT1 }));
+  await shot(t1, 'delete-03-second-tab-guest-390');
+  await t1.close();
 }
 
 async function unconfirmed() {
