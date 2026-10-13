@@ -124,6 +124,12 @@ test('slow repeated taps are separate taps with a streak and steady rhythm', () 
   assert.equal(taps[4][1].steady, true);
 });
 
+test('a slow, still press shorter than a hold is still a tap', () => {
+  const { r, types } = rec();
+  r.down(1, 100, 100, 0, true); r.tick(200); r.up(1, 101, 100, 420);
+  assert.deepEqual(types(), ['tap']);
+});
+
 test('press and hold, then release', () => {
   const { r, types } = rec();
   r.down(1, 100, 100, 0, true);

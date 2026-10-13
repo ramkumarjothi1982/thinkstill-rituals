@@ -56,16 +56,13 @@ if (!qParam && prefs.get('quality') === 'auto') startMonitor();
 // hosting page sets on the root) decides; 'dark' / 'light' override it.
 const rootEl = document.documentElement;
 let hostTheme = rootEl.getAttribute('data-theme');
-let reasserts = [];
+// An explicit Dark/Light wins over the host, but only up to 3 host overrides per
+// choice: a host that keeps re-applying its own theme is never fought for long.
+let themeBudget = 3;
 const themeObserver = new MutationObserver(() => {
   hostTheme = rootEl.getAttribute('data-theme');   // only host writes reach here (ours are discarded below)
   const t = prefs.get('theme');
-  if ((t === 'dark' || t === 'light') && hostTheme !== t) {
-    // an explicit choice wins, but never fight a host that keeps re-applying its own theme
-    const now = performance.now();
-    reasserts = reasserts.filter((x) => now - x < 1000);
-    if (reasserts.length < 3) { reasserts.push(now); applyTheme(); }
-  }
+  if ((t === 'dark' || t === 'light') && hostTheme !== t && themeBudget > 0) { themeBudget--; applyTheme(); }
 });
 themeObserver.observe(rootEl, { attributes: true, attributeFilter: ['data-theme'] });
 function applyTheme() {
@@ -78,7 +75,7 @@ applyTheme();
 prefs.onChange((k, v) => {
   if (k === 'sound' || k === '*') sound.setMuted(!prefs.get('sound'));
   if (k === 'volume' || k === '*') sound.setVolume(prefs.get('volume'));
-  if (k === 'theme' || k === '*') applyTheme();
+  if (k === 'theme' || k === '*') { themeBudget = 3; applyTheme(); }
   if (k === 'motion' || k === '*') ctx.companion?.setReducedMotion(prefs.reducedMotion());
   if (k === 'style' || k === '*') ctx.companion?.setStyle(prefs.get('style'));
   if (k === 'showMesh') ctx.companion?.setShowMesh(v);
@@ -143,7 +140,8 @@ function settings() {
       row('Haptics', onOff('haptics', 'Haptics'), 'Android only; iPhone needs the app'),
       row('Motion', segmented([['system', 'System'], ['reduced', 'Reduced'], ['full', 'Full']], prefs.get('motion'), (v) => prefs.set('motion', v), 'Motion')),
       row('Responses', segmented([['gentle', 'Gentle'], ['balanced', 'Balanced'], ['playful', 'Playful']], prefs.get('style'), (v) => prefs.set('style', v), 'Response style')),
-      row('Theme', segmented([['system', 'System'], ['dark', 'Dark'], ['light', 'Light']], prefs.get('theme'), (v) => prefs.set('theme', v), 'Theme')),
+      row('Theme', segmented([['system', 'System'], ['dark', 'Dark'], ['light', 'Light']], prefs.get('theme'),
+        (v) => { if (prefs.get('theme') === v) { themeBudget = 3; applyTheme(); } else prefs.set('theme', v); }, 'Theme')),
       h('div', { class: 'row stack' }, h('span', { class: 'lbl' }, 'Mallow', h('span', { class: 'sub' }, 'Boppo is tuned; the others are untuned previews')), mallowPicker(close)),
       row('Quality', segmented([['auto', 'Auto'], ['high', 'High'], ['medium', 'Med'], ['low', 'Low']], prefs.get('quality'), (v) => prefs.set('quality', v), 'Quality'), `Running: ${quality}`),
       row('Lab settings', h('button', { class: 'btn-quiet', type: 'button', onclick: () => {

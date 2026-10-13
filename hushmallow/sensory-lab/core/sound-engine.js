@@ -57,12 +57,18 @@ export class SoundEngine {
     comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = 0.006; comp.release.value = 0.2;
     this.bus = c.createGain();
     this.bus.connect(lp); lp.connect(comp); comp.connect(this.master); this.master.connect(c.destination);
-    // small soft room
+    // small soft room. The noise and reverb buffers take tens of ms to build on
+    // a slow phone, so they're made just after this gesture, not inside it (the
+    // first tap's timing must not include them); until then sounds skip noise.
     this.verb = c.createConvolver();
-    this.verb.buffer = this._impulse(1.1);
     this.verbSend = c.createGain(); this.verbSend.gain.value = 0.16;
     this.verbSend.connect(this.verb); this.verb.connect(lp);
-    this.noise = this._noiseBuffer(1.5);
+    this.noise = null;
+    setTimeout(() => {
+      if (this.ctx !== c) return;
+      this.noise = this._noiseBuffer(1.5);
+      this.verb.buffer = this._impulse(1.1);
+    }, 0);
     // iOS: a silent buffer inside the gesture fully unlocks output
     try { const b = c.createBuffer(1, 1, c.sampleRate); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(); } catch { /* ignore */ }
     this._resume();
@@ -78,7 +84,9 @@ export class SoundEngine {
     const t0 = performance.now();
     c.resume().then(() => {
       this.resuming = false;
-      if (performance.now() - t0 > 400) this.stopAll();   // anything queued that long ago is stale: drop it
+      // voices queued before this gesture (where the browser can't tell us about
+      // gestures) are stale: drop them rather than play them all at once
+      for (const v of [...this.live]) if (v.born < t0 - 50) v.kill?.();
     }, () => { this.resuming = false; this.stopAll(); });
   }
 
@@ -94,7 +102,10 @@ export class SoundEngine {
     const t = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(t);
     this.master.gain.setTargetAtTime(this.muted ? 0 : this.volume, t, 0.04);
-    if (this.muted) this.stopAll();
+    if (this.muted) {
+      this.stopAll();
+      setTimeout(() => { if (this.muted && this.ctx?.state === 'running') this.ctx.suspend().catch(() => {}); }, 120);
+    }
   }
 
   setVolume(v) {
@@ -122,7 +133,7 @@ export class SoundEngine {
     const p = c.createStereoPanner ? c.createStereoPanner() : null;
     if (p) { p.pan.value = clamp(pan, -1, 1); out.connect(p); p.connect(this.bus); p.connect(this.verbSend); }
     else { out.connect(this.bus); }
-    const v = { out, nodes: [out, p].filter(Boolean), srcs: [], t: c.currentTime + 0.005 };
+    const v = { out, nodes: [out, p].filter(Boolean), srcs: [], t: c.currentTime + 0.005, born: performance.now() };
     v.kill = () => {
       const t = c.currentTime;
       out.gain.cancelScheduledValues(t); out.gain.setTargetAtTime(0, t, 0.02);
@@ -164,6 +175,7 @@ export class SoundEngine {
 
   /** Filtered noise burst. */
   _noise(v, t, { dur = 0.2, f0 = 800, f1 = f0, q = 0.8, type = 'bandpass', peak = 0.1, a = 0.01 }) {
+    if (!this.noise) return;
     const c = this.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
     s.buffer = this.noise; s.loop = true;
     f.type = type; f.Q.value = q;
@@ -240,7 +252,7 @@ export class SoundEngine {
     g.gain.value = 0;
     o.connect(f); f.connect(g); g.connect(v.out);
     const n = c.createBufferSource(), nf = c.createBiquadFilter(), ng = c.createGain();
-    n.buffer = this.noise; n.loop = true; nf.type = 'bandpass'; nf.frequency.value = 500; nf.Q.value = 3; ng.gain.value = 0;
+    n.buffer = this.noise || this._noiseBuffer(0.25); n.loop = true; nf.type = 'bandpass'; nf.frequency.value = 500; nf.Q.value = 3; ng.gain.value = 0;
     n.connect(nf); nf.connect(ng); ng.connect(v.out);
     o.start(t); n.start(t);
     v.srcs.push(o, n); v.nodes.push(o, g, f, n, nf, ng);
@@ -272,7 +284,7 @@ export class SoundEngine {
     if (!this.ready) return NOOP;
     const c = this.ctx, v = this._voice(10), t = v.t;
     const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-    n.buffer = this.noise; n.loop = true; f.type = 'bandpass'; f.frequency.value = 1200; f.Q.value = 0.7; g.gain.value = 0;
+    n.buffer = this.noise || this._noiseBuffer(0.25); n.loop = true; f.type = 'bandpass'; f.frequency.value = 1200; f.Q.value = 0.7; g.gain.value = 0;
     n.connect(f); f.connect(g); g.connect(v.out); n.start(t);
     v.srcs.push(n); v.nodes.push(n, f, g);
     let alive = true;
@@ -370,9 +382,9 @@ export class SoundEngine {
 
 const NOOP = { update() {}, end() {} };
 
-// Browsers only start audio from a user gesture (touch *pointerdown* and wheel
-// don't count). Where the browser can tell us, skip unlock attempts outside one
-// so nothing is created suspended and queued.
+// Browsers only start audio after a user gesture (touch *pointerdown* and wheel
+// don't count). navigator.userActivation.isActive is true for a few seconds after
+// one; where the browser has no such API, unlock attempts go ahead as before.
 function inGesture() {
   const ua = globalThis.navigator?.userActivation;
   return ua ? ua.isActive : true;

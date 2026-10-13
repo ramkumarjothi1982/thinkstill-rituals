@@ -373,7 +373,10 @@ async function audioGesture(quiet, vp) {
   } else await page.mouse.click(x, y);
   await page.waitForTimeout(1200);
   const after = await page.evaluate(() => ({ state: __lab.sound.debug().state, tap: __lab.events.some((e) => e.type === 'tap') }));
-  check(vp, 'the first real tap on the Mallow starts sound', after.state === 'running' && after.tap, JSON.stringify(after));
+  // audio start and tap recognition are separate: a stalled software-GL frame can
+  // stretch a zero-length test tap past the tap limit, which isn't an audio failure
+  check(vp, 'the first real tap on the Mallow starts sound', after.state === 'running', JSON.stringify(after));
+  check(vp, 'the first touch is recognised as a tap', after.tap, JSON.stringify(after));
   check(vp, 'audio gesture test: no page errors', !errors.length, errors.join(' | '));
   await ctx.close();
 }

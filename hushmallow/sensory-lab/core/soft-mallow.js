@@ -114,7 +114,7 @@ export class SoftMallow extends MallowRig {
     this.quality = q;
     if (!this.soft) return;
     this._buildBody();
-    this.renderer.setMesh(this.soft.tri, this._uv());
+    this.renderer?.setMesh(this.soft.tri, this._uv());   // null after a full rendering fallback
     this._resize();
   }
 

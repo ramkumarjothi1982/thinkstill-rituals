@@ -205,11 +205,11 @@ button, .card, .chip, .icon-btn, .seg button, .pills button { touch-action: mani
 .row label, .row .lbl { font-size: 15px; }
 .row .sub { display: block; color: var(--text-3); font-size: var(--fs-micro); }
 .seg { display: flex; gap: 4px; padding: 3px; border-radius: var(--r-pill); background: var(--seg-track); flex-wrap: wrap; justify-content: flex-end; }
-.seg button { border: 0; background: transparent; padding: 7px 11px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--text-2); cursor: pointer; min-height: 34px; }
+.seg button { border: 0; background: transparent; padding: 7px 11px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--text-2); cursor: pointer; min-height: 38px; }
 .seg button[aria-checked="true"] { background: var(--chip-on); color: var(--chip-on-text); }
 input[type="range"] { width: 140px; accent-color: var(--accent); }
-.sheet .done { width: 100%; margin-top: 14px; min-height: 48px; border-radius: var(--r-pill); border: 0; background: var(--chip-on); color: var(--chip-on-text); font-weight: 700; font-size: 16px; cursor: pointer; }
-.btn-quiet { border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); border-radius: var(--r-pill); padding: 7px 12px; font-size: 13px; cursor: pointer; }
+.sheet .done { position: sticky; bottom: 0; box-shadow: 0 -12px 16px 4px var(--glass-strong); width: 100%; margin-top: 14px; min-height: 48px; border-radius: var(--r-pill); border: 0; background: var(--chip-on); color: var(--chip-on-text); font-weight: 700; font-size: 16px; cursor: pointer; }
+.btn-quiet { border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); border-radius: var(--r-pill); padding: 7px 14px; min-height: 38px; font-size: 13px; cursor: pointer; }
 
 @media (max-width: 360px) {
   .topbar { padding-left: 10px; padding-right: 10px; gap: 6px; }

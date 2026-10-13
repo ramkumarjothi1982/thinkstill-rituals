@@ -23,7 +23,7 @@
 // Positions are whatever units the caller uses (CSS px in the lab).
 
 export const GESTURE_DEFAULTS = {
-  TAP_MS: 280,          // max press time for a tap
+  TAP_MS: 280,          // a typical quick tap (still presses up to HOLD_MS also count, so slow taps get an answer)
   TAP_SLOP: 12,         // max travel for a tap / hold
   DOUBLE_MS: 320,       // second tap within this → doubletap
   HOLD_MS: 480,         // rest this long → hold
@@ -163,7 +163,8 @@ export class GestureRecognizer {
     const vx = stale ? 0 : s.vx, vy = stale ? 0 : s.vy;
     switch (s.state) {
       case 'pending':
-        if (!cancelled && s.startedOnBody && t - s.t0 <= o.TAP_MS && travel <= o.TAP_SLOP) this._tap(s, t);
+        // any still press shorter than a hold is a tap: deliberate, slow taps count too
+        if (!cancelled && s.startedOnBody && t - s.t0 < o.HOLD_MS && travel <= o.TAP_SLOP) this._tap(s, t);
         break;
       case 'hold': this.emit('holdend', { x: s.x, y: s.y, dur: t - s.holdT }); break;
       case 'drag':

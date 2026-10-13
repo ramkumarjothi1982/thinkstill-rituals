@@ -76,6 +76,8 @@ export class Companion {
   _loop(t) {
     this._raf = 0;
     if (this.destroyed || document.hidden) return;
+    // schedule first: an error in one frame must never stop the companion
+    this._raf = requestAnimationFrame(this._loop);
     const dt = Math.min(0.05, (t - (this.lastT || t)) / 1000);
     this.lastT = t;
     this.gestures.tick(t);
@@ -89,7 +91,6 @@ export class Companion {
       if (m) this.stretchSnd.update(clamp(m.offset * 3, 0, 1), clamp(this.drag.speed / 1500, 0, 1));
     }
     this.o.onFrame?.(t, dt);
-    this._raf = requestAnimationFrame(this._loop);
   }
 
   _haptic(kind) { if (this.prefs.get('haptics')) haptic(kind); }

@@ -57,8 +57,11 @@ export function segmented(options, value, onChange, label) {
   }, text));
   const btn = (v) => btns[options.findIndex((o) => o[0] === v)];
   // radio-group keyboard pattern: one tab stop, arrow keys move and select
-  const sync = () => { for (const b of btns) b.tabIndex = b.getAttribute('aria-checked') === 'true' ? 0 : -1; };
-  wrap.addEventListener('click', () => requestAnimationFrame(sync));
+  const sync = () => {
+    for (const b of btns) b.tabIndex = b.getAttribute('aria-checked') === 'true' ? 0 : -1;
+    if (!btns.some((b) => b.tabIndex === 0)) btns[0].tabIndex = 0;   // never leave a group unreachable
+  };
+  wrap.addEventListener('click', sync);
   wrap.addEventListener('keydown', (e) => {
     const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
     if (!step) return;
@@ -81,7 +84,17 @@ export function openSheet(root, title, content) {
     document.removeEventListener('keydown', esc);
     setTimeout(() => { scrim.remove(); sheet.remove(); }, 300);
   };
-  const esc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  const esc = (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
+    if (e.key === 'Tab') {
+      // keep keyboard focus inside the sheet while it is open
+      const f = [...sheet.querySelectorAll('button, input, select, [tabindex="0"]')].filter((el) => !el.disabled && el.tabIndex >= 0 && el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !sheet.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !sheet.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+    }
+  };
   scrim.addEventListener('click', close);
   sheet.append(h('h3', {}, title), content(close), h('button', { class: 'done', type: 'button', onclick: close }, 'Done'));
   root.append(scrim, sheet);
