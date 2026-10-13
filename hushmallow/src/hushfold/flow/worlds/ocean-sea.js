@@ -34,6 +34,7 @@ export const SEA = Object.freeze({
   SPREAD_SEC: 14,            // envelopes widen slowly with age (dispersion), conserving energy
   MIN_A: 0.04,               // px: a packet this small is gone
   SCULPT_TAU: 0.22,          // s: a sculpted swell's amplitude follows the stroke this fast
+  CAP_SUM: 1.3,              // × capA: where swells meet, the sum of how tall they look eases off here
 });
 
 const TAU = Math.PI * 2;
@@ -86,7 +87,7 @@ export function makeCamera({ W, H, hy, homeY, waterY, ratio = 0.6 }) {
  * a hundred px. Only how tall it looks (its height, slopes, crest sharpening and what floats on it bobbing) is capped
  * (Sea.capA): what it carries — the Stokes drift that takes the thought out and back — is the stroke's own.
  */
-export const SWELL_H = 0.032;
+export const SWELL_H = 0.03;
 export function swellCap(cam) {
   const sW = Math.max(0.2, (cam.waterY - cam.hy) / cam.Hw);
   return (SWELL_H * cam.H) / sW;
@@ -198,6 +199,7 @@ export class Sea {
     this.dec = F();                            // ∫β dt so far (the settle can change the rate without a jump)
     this.damp = 1;                             // ×β (the completion settle uses 3)
     this.capA = Infinity;                      // world px: the tallest a swell looks (swellCap; its drift is uncapped)
+    // (and the tallest the whole sea looks where swells meet: their sum eases off softly — tanh — at CAP_SUM × capA)
     this.n = 0; this.serial = 0; this.time = 0;
     // the sea's own breathing: a few endless, very gentle plane swells (texture and light; they carry
     // nothing — no Stokes drift — and never count as the person's)
@@ -360,7 +362,8 @@ export class Sea {
       const th = a.k * (x * a.dx + z * a.dz) - a.w * this.time + a.ph, c = Math.cos(th), sn = Math.sin(th);
       h += a.A * c; hx -= a.A * a.k * a.dx * sn; hz -= a.A * a.k * a.dz * sn;
     }
-    out.h = h; out.hx = hx; out.hz = hz; out.dx = gx; out.dz = gz; out.amp = amp;
+    const f = this._clip(h);
+    out.h = h * f; out.hx = hx * f; out.hz = hz * f; out.dx = gx * f; out.dz = gz * f; out.amp = amp;
     const G = SEA.STOKES;
     out.ux = (userOnly ? uux : ux) * G; out.uz = (userOnly ? uuz : uz) * G;
     out.uux = uux * G; out.uuz = uuz * G;
@@ -400,8 +403,15 @@ export class Sea {
       if (a.A <= 0 || TAU / a.k < lamMin) continue;
       h += a.A * Math.cos(a.k * (x * a.dx + z * a.dz) - a.w * this.time + a.ph);
     }
-    out.h = h; out.dx = gx; out.dz = gz;
+    const f = this._clip(h);
+    out.h = h * f; out.dx = gx * f; out.dz = gz * f;
     return out;
+  }
+  /** The soft ceiling on the sea's summed height (a factor for h and what follows it: its slopes and shift). */
+  _clip(h) {
+    if (!(this.capA < Infinity) || h === 0) return 1;
+    const C = SEA.CAP_SUM * this.capA, a = Math.abs(h);
+    return a < 0.3 * C ? 1 : (C * Math.tanh(a / C)) / a;
   }
 
   /** Call once a frame before rows/samples: shares the Gerstner steepness. */
@@ -511,6 +521,7 @@ export class Sea {
         e += de; de += dde;
       }
     }
+    if (this.capA < Infinity) for (let c = 0; c < n; c++) { const j = o + c, f = this._clip(H[j]); if (f < 1) { H[j] *= f; HX[j] *= f; HZ[j] *= f; GX[j] *= f; GZ[j] *= f; } }
   }
 
   /** Is packet i one of the person's own swells, seen on the visible water? */
