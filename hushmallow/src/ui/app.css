@@ -349,6 +349,7 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
    one line, an address broken only after "@" or at a dot. */
 .setting.setting-action { flex-wrap: wrap; row-gap: 10px; }
 .setting.setting-action > .grow { flex: 999 1 10em; min-width: 0; }
+.setting.setting-action > .grow > * { text-wrap: pretty; }
 .setting.setting-action > .btn { flex: 1 0 auto; }
 /* small phones: a select goes under its label instead of squeezing it */
 @media (max-width: 360px) {

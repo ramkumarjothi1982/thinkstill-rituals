@@ -46,7 +46,7 @@ export const PLANS = {
       'The seven living, squeezable Mallows, with MallowTouch',
       'Continuous Hushflow through worlds that respond to how you feel',
       'Mallow discoveries, kept as skills in your Memory Garden',
-      'Cinematic conversations, where your thoughts become Thought Mallows',
+      'Cinematic conversations, where your thoughts become Thought\u00a0Mallows',
       'Release, calming and sensory play for big feelings',
       'Favourites and saved progress, stored on this phone',
       'Your own words and up to seven of your own photos inside the worlds (they never leave your phone), or the seven Mallows when you add none',
