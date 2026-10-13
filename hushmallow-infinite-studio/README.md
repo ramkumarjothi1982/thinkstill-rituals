@@ -8,9 +8,11 @@ dashboard, no batch mode and no "infinite engine" here yet.
 
 | File | What it is |
 |---|---|
-| `output/my-brain-at-2am.mp4` | **The deliverable**: H.264 High, yuv420p, BT.709, AAC 48 kHz stereo, faststart |
-| `output/cues.json` | Every timed story event plus the per-frame audio curves the soundtrack is built from |
+| `output/my-brain-at-2am.mp4` | **The deliverable**: H.264 High 4.2, yuv420p, BT.709, 1080×1920, 30 fps, 450 frames, 15.000 s; AAC 48 kHz stereo 192 kb/s; faststart; −16 LUFS integrated, −1.8 dBTP true peak; the source commit is stamped in its metadata |
+| `output/poster.jpg` | A still from 5.0 s (the three thoughts) |
 | `output/my-brain-at-2am.soundtrack.wav` | The mixed soundtrack (48 kHz / 24-bit) |
+| `output/cues.json` | Every timed story event plus the per-frame curves the soundtrack is built from |
+| `output/qa/` | `verify.json` (delivery spec, all checks pass), `audio-report.json` (loudness and per-cue sync: every hit within 6.6 ms of its frame), `audio-waveform.png`, `storyboard-contact-sheet.jpg` |
 
 ## What you're looking at
 
@@ -56,6 +58,8 @@ Useful variations:
 node render/render.mjs --stills 0,54,3.5s,10s   # PNG stills only → output/stills/
 node render/render.mjs --dry                    # cue log only → output/cues.json
 node render/render.mjs --no-audio               # video track only
+node render/render.mjs --remux                  # new soundtrack from cues.json, muxed onto the existing video pass (~6 s)
+node render/verify.mjs output/my-brain-at-2am.mp4   # spec + playback + loudness + freshness checks
 node audio/soundtrack.mjs output/cues.json output/my-brain-at-2am.soundtrack.wav
 node render/serve.mjs                           # open the stage in a browser (add &play=1)
 ```
@@ -89,6 +93,27 @@ The stage, the components and the cue-driven soundtrack are written to be
 reused. A new video is a new file in `videos/` with its own `meta`, `setup`,
 `direct` and `substep`. Turning that into an automated generator is Phase 2,
 pending approval.
+
+## Sound
+
+All sound is original and procedural: Noomi's own sound kit and the Moonmilk
+Cove ambience from the app's audio engine, rendered offline. A few synthesised
+textures are layered on top. There's no music bed, only story sound:
+
+* night ambience (waves, a warm hum), soft crickets, and a quiet wooden
+  tick-tock that comes back during the overthinking and speeds up with it
+* a delicate music-box twinkle when the memory arrives, a "pip?" when one eye
+  cracks open, then the comedic take: a cartoon eye-pop, Noomi's surprise
+  glide and a tiny boing, with "bip… bip" for the double blink
+* thought-bubble "bloops" (tail-dot blips first), higher blips for the minis,
+  and a swirl that follows the actual orbit, panned with each passing thought
+* one deep breath: Noomi's breathe-in, then a longer breathe-out with a sigh
+* glassy chimes and star-dust sparkles as the thoughts dissolve, under a warm
+  pad that opens with the light
+* a satisfying squish (a squelch and the squeeze glide) and an elastic release
+  (a stretch pop, a jelly boing and the release glide)
+* a content glide when the eyes open, a celesta tink for the sleepy blink, and
+  Noomi's success chime as the logo lands, fading to silence at 15.0 s
 
 ## Beat sheet
 

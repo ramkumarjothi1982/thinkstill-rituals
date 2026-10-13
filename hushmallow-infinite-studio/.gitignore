@@ -1,5 +1,10 @@
 node_modules/
 *.f32
-# render scratch: stills, review sheets, frame dumps, intermediates
+# render scratch (stills, review sheets, frame dumps, intermediate passes)
 output/*
+# the deliverables
+!output/my-brain-at-2am.mp4
+!output/my-brain-at-2am.soundtrack.wav
 !output/cues.json
+!output/poster.jpg
+!output/qa/
