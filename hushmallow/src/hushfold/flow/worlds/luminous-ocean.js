@@ -162,6 +162,8 @@ export function create(ctx) {
   const pk = {};                                           // scratch: the packet a stroke sculpts
   let xd = 0;                                              // the dawn's x (off-axis, away from the words)
   let plateLines = 2;                                      // the words on one wide line (a short screen) or two
+  let wordsFit = null;                                     // the words plate asked of W2's layer (thought.labelFit), per plan
+  let heldFit = null;                                      // melting in: the storm's plate, kept until the thought sets off
   let capD = OCEAN.CAP;                                    // the thought's furthest distance on this screen (× Z0)
   let firstTouchAt = -1, turnClock = 0, backHint = 0;      // backHint: 0 not yet, 1 shown
   let baseTension = null, relief = 0;                      // the thought's own tension (its feeling), and what the person's swells eased
@@ -260,9 +262,28 @@ export function create(ctx) {
     fl.a = a; fl.b = b;
   }
   const bandBottom = () => (ctx.band?.y || 0) + (ctx.band?.h || 0);
-  /** The words plate at the font the thought uses: ≤ `lines` lines at 17 → 15 px (null: one line does not fit at 15 px). */
-  function plateFor(tok, maxText, lines = 2) {
+  /** W2's ThoughtLayer when it draws the person's thought (it measures and shows the words: one source of truth), else null. */
+  const wordsLayer = () => (thought && !thought.draw && ctx.thoughtLayer?.plateFor ? ctx.thoughtLayer : null);
+  /**
+   * The words plate at the font the thought uses: ≤ `lines` lines at 17 → 15 px (null: one line does not fit at 15 px).
+   * When W2's layer draws the words, the very plate it will show for that budget (ThoughtLayer.plateFor, as the storm
+   * plans it) — taller by the room the layer keeps between the thought (at radius r) and its words beyond this world's
+   * own 4 px, so a plan clear of the band and the hero is clear where the layer really hangs them — and `fit`, the budget
+   * to ask the layer for (thought.labelFit).
+   */
+  function plateFor(tok, maxText, lines = 2, r = 0) {
     if (!tok) return null;
+    const L = wordsLayer();
+    if (L) {
+      const maxW = Math.round(maxText + 2 * OCEAN.LABEL_PAD_X);
+      let P = null;
+      try { P = L.plateFor(thought, { lines, maxW, r: r > 0 ? r : null, z: 0 }); } catch { P = null; }
+      if (P && P.w > 0 && P.h > 0) {
+        const rr = r > 0 ? r : (thought.r || tS.r) * (thought.scale || 1);
+        const pad = Number.isFinite(P.above) ? Math.max(0, Math.ceil(P.above - (rr + 4))) : 0;
+        return { w: Math.ceil(P.w), h: Math.ceil(P.h) + pad, lines: P.rows || P.lines || lines, textMax: maxText, fit: { lines, maxW }, pad };
+      }
+    }
     try {
       measureG ||= makeCanvas(4, 4).getContext('2d');
       for (const px of [17, 16, 15]) {
@@ -315,15 +336,21 @@ export function create(ctx) {
     const tok = thought ? (thought.token || words?.token || '') : '';
     const n = Math.min(7, photos?.n || 0);
     const max2 = Math.min(OCEAN.PLATE_MAX, W - 2 * OCEAN.EDGE) - 2 * OCEAN.LABEL_PAD_X, max1 = W - 2 * OCEAN.EDGE - 2 * OCEAN.LABEL_PAD_X;
-    let pl = tok ? plateFor(tok, max2, 2) : null;
+    // (the thought's radius at home on this screen — planOcean's, which does not depend on the words: the layer's plate
+    // hangs from it)
+    const rHome = tok && wordsLayer() ? planOcean({ W, H, band: ctx.band, mallow: rest, n: 0, textW: 0 }).home?.r || 0 : 0;
+    let pl = tok ? plateFor(tok, max2, 2, rHome) : null;
     let p = planOcean({ W, H, band: ctx.band, mallow: rest, n, textW: pl ? pl.w - 2 * OCEAN.LABEL_PAD_X : (tok ? tok.length * 8.5 : 0), plate: pl });
     let textMax = max2;
     plateLines = 2;
     // a short screen: the words on one wide line, when two lines would not fit above the thought far out
     if (pl && pl.lines > 1 && !aboveFits(p, pl.h, OCEAN.FAR + 0.6)) {
-      const pl1 = plateFor(tok, max1, 1);
+      const pl1 = plateFor(tok, max1, 1, rHome);
       if (pl1 && pl1.h < pl.h) { p = planOcean({ W, H, band: ctx.band, mallow: rest, n, textW: pl1.w - 2 * OCEAN.LABEL_PAD_X, plate: pl1 }); pl = pl1; plateLines = 1; textMax = max1; }
     }
+    // the plate W2's layer is asked to show while this world drives the thought: the one planned round (a new object per
+    // plan — the layer gives its words their whole budget again for it)
+    wordsFit = pl?.fit ? { lines: pl.fit.lines, maxW: pl.fit.maxW } : null;
     plan = p;
     if (pl && plan.plate) Object.assign(plan.plate, { w: pl.w, h: pl.h, lines: pl.lines });
     plan.textMax = textMax;
@@ -1775,6 +1802,11 @@ export function create(ctx) {
     thought.x = sx; thought.y = sy + (thought.r > 0 ? 0.45 * thought.r * tz : 0); thought.z = tz;
     thought.scale = (tS.surf * rK) / (1 - 0.5 * tz); thought.rot = tS.rot;
     thought.labelSide = tS.side === 'tuck' ? 'above' : tS.side;
+    // its words plate: the one this world planned round (W2's layer measured it), as the storm asks for its own — so the
+    // layer's budget for a far thought is never what decides whether the words fit on this screen. (Melting in, until it
+    // sets off from where it hung, the plate the storm showed: the words stay as they were.)
+    const fit = tS.from && tS.glide <= 0 ? heldFit : wordsFit;
+    if (thought.labelFit !== fit && (fit || thought.labelFit === wordsFit || thought.labelFit === heldFit)) thought.labelFit = fit;
     if (!thought.draw) thought.opacity = tS.vis;
     const st = thought.state || (thought.state = {});
     st.tension = tS.tension; st.calm = tS.calm; st.charge = 0; st.distance = clamp((dist - 1) / (OCEAN.CAP - 1));
@@ -3198,6 +3230,8 @@ export function create(ctx) {
         hero.floatK = 0;
         // the storm's grounded ground lines become the first gentle swells, rolling away
         seedSwells(handoff.seeds || []);
+        // (the words plate the outgoing world asked W2's layer for: kept while the words stay as it showed them)
+        heldFit = thought?.labelFit && thought.labelFit.lines > 0 ? thought.labelFit : null;
         if (thought) {
           thoughtHome();
           const th = handoff.thought;
@@ -3279,6 +3313,8 @@ export function create(ctx) {
     },
     setThought(h) {
       const had = !!thought;
+      // (the thought it no longer drives keeps no plate of this world's)
+      if (thought && thought !== h) { try { if (thought.labelFit && (thought.labelFit === wordsFit || thought.labelFit === heldFit)) thought.labelFit = null; } catch { /* */ } heldFit = null; }
       thought = h;
       if (prepared) layout(false);
       if (h && !had && cam) {
@@ -3343,6 +3379,8 @@ export function create(ctx) {
     destroy() {
       holds.hum?.stop(); holds.hum = null;
       try { mallow?.float?.({ lift: 0, tilt: 0 }); } catch { /* optional */ }
+      // (the words plate it asked for goes with it)
+      try { if (thought && thought.labelFit && (thought.labelFit === wordsFit || thought.labelFit === heldFit)) thought.labelFit = null; } catch { /* a handle without it */ }
     },
     /** QA hooks (dev lab, Playwright). Not product API. */
     debug: {
