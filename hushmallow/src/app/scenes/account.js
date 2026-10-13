@@ -473,7 +473,7 @@ export default function account(app, params = {}) {
       title: VM.greeting(acct.profile?.displayName) || 'Your account',
       lede: u.email ? ['Signed in as ', strong(u.email)] : 'Signed in',
       body: [
-        since ? hint(`With hushmallow since ${since}.`, 'hm-auth-center') : null,
+        h('p', { class: 'hm-auth-hint hm-auth-center', 'data-since': '' }, since ? `With hushmallow since ${since}.` : ''),
         section('You', nameForm.form, h('div', { class: 'hm-auth-field' }, h('span', { class: 'hm-auth-label', id: uid('pick') }, 'Home Mallow'), picker, pickedName)),
         section('Keep with my account', hint('Both are off unless you turn them on. Turning one off deletes what it kept with your account; this phone keeps its own copy.'), settingsRow.el, libraryRow.el, syncStatus, loadNote),
         guestRow ? section('This phone', guestRow) : null,
@@ -519,6 +519,8 @@ export default function account(app, params = {}) {
     if (p.ok && p.profile) {
       acct.profile = p.profile;
       title.textContent = VM.greeting(p.profile.displayName) || 'Your account';
+      const since = VM.formatWhen(p.profile.createdAt, { time: false }), sinceEl = bodyEl.querySelector('[data-since]');
+      if (since && sinceEl) sinceEl.textContent = `With hushmallow since ${since}.`;
       const nameInput = bodyEl.querySelector('[data-field="displayName"] input');
       if (nameInput && !nameInput.value && p.profile.displayName) nameInput.value = p.profile.displayName;
       if (p.profile.homeMallow && p.profile.homeMallow !== mallow?.id && !app.prefs.get('mallow')) pickHome(p.profile.homeMallow, rows.picker, { save: false });

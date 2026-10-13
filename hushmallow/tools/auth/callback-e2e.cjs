@@ -76,8 +76,8 @@ async function main() {
   check(!/token_hash|code=/.test(await c.evaluate(() => location.href)), 'the token left the address bar at once');
   await shot(c, '01-callback-verified');
   await c.waitForURL(`${SITE}/#account`, { timeout: 15000 }).catch(() => {});
-  await c.waitForFunction(() => window.__hush?.auth?.status?.() === 'signed-in' && document.querySelector('[data-auth-view]'), null, { timeout: 60000 });
-  const after1 = await c.evaluate(() => ({ ns: window.__hush.auth.namespace, view: document.querySelector('[data-auth-view]').dataset.authView, lede: document.querySelector('.hm-auth-lede')?.textContent, hash: location.hash, histHasToken: false }));
+  await c.waitForFunction(() => window.__hush?.auth?.status?.() === 'signed-in' && document.querySelector('[data-auth-view]:not([data-auth-view="loading"])'), null, { timeout: 60000 });
+  const after1 = await c.evaluate(() => ({ ns: window.__hush.auth.namespace, view: document.querySelector('[data-auth-view]:not([data-auth-view="loading"])').dataset.authView, lede: document.querySelector('.hm-auth-lede')?.textContent, hash: location.hash, histHasToken: false }));
   check(after1.ns.mode === 'account' && after1.view === 'account' && /ana@example\.com/.test(after1.lede), 'back in the app: signed in, in the account’s namespace, account screen open', JSON.stringify({ mode: after1.ns.mode, view: after1.view }));
   check(!navs.some((u) => /token_hash/.test(u) && u.startsWith(`${SITE}/#`)), 'the app URL never carried the token');
   await sleep(600);
@@ -188,8 +188,8 @@ async function main() {
   const dl = await browser.newContext(ctxOpts);
   const g = await newPage(dl, 'deep');
   await g.goto(`${SITE}/#account`); await appReady(g);
-  await g.waitForFunction(() => document.querySelector('[data-auth-view]'), null, { timeout: 30000 });
-  check(await g.evaluate(() => document.querySelector('[data-auth-view]').dataset.authView) === 'welcome', '/#account opens the account scene (a guest’s welcome) over the Hushfold');
+  await g.waitForFunction(() => document.querySelector('[data-auth-view]:not([data-auth-view="loading"])'), null, { timeout: 30000 });
+  check(await g.evaluate(() => document.querySelector('[data-auth-view]:not([data-auth-view="loading"])').dataset.authView) === 'welcome', '/#account opens the account scene (a guest’s welcome) over the Hushfold');
   await shot(g, '10-deeplink-account-guest');
   await g.goBack().catch(() => {});
   await sleep(800);
