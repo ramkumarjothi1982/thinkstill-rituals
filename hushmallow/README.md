@@ -17,9 +17,21 @@ squeezable Mallows, the Hushfold, and two paid experiences:
   see it.* Everything in Flow, plus **Another Angle**: fresh perspectives on
   your own situations, fact versus interpretation, alternative explanations
   and Belief Mallow investigation. Another Angle is the only part that may
-  use a server (ours, never a font or analytics service), and only with the
-  words the person chooses to share; everything else is deterministic and
-  stays on the phone. See `docs/HUSHFOLD.md` (D10).
+  send a person's words anywhere (to our server, never a font or analytics
+  service), and only the words they choose to share, after they say yes;
+  everything else they type or feel is deterministic and stays on the phone.
+  Until Another Angle goes live (`ANGLE_ENDPOINT` in `src/app/config.js`) it
+  plays Zuzu's authored angles on the phone. See `docs/HUSHFOLD.md` (D10).
+
+**Accounts are optional** (`docs/AUTH.md`). Guests keep everything exactly as
+before and never load supabase-js. An account (Supabase, email and
+password) keeps one person's things apart from another's on a shared phone
+and, only if they switch it on, keeps their settings, favourite worlds,
+Memory Garden and where a Hushflow paused with the account; never their
+words, feelings or photos. Sign in from Settings → Privacy, or at
+`/#account` (the only deep link the app honours); email links land on
+`/auth/callback`. Builds without the two public Supabase values have
+sign-in off.
 
 Typography: self-hosted HM Nunito Sans (voice), HM Manrope (UI) and HM
 Fraunces (cinematic titles), tokens in `src/ui/type.css` / `src/ui/type.js`.
@@ -53,22 +65,36 @@ Store build swaps in StoreKit (see `src/app/entitlements.js`).
 
 Putting it on your Framer site: see `docs/FRAMER.md`.
 
-Publishing: every push to `main` runs the tests and publishes to GitHub
-Pages (`.github/workflows/hushmallow-pages.yml`). `tools/build-site.sh` puts
-each deploy in its own folder (`v/<commit>/`) and writes `version.json`, so
-an open app moves itself to the new version (at start or back on the home
-screen) instead of waiting for the browser cache to expire. Settings shows
-the version that is running.
+Publishing: production is **Cloudflare Pages** (project `hushmallow`,
+production branch `main` → `https://app.hushmallow.com`, previews on
+`*.hushmallow.pages.dev`; it builds with the two public Supabase values, so
+sign-in is on there; see `docs/AUTH.md`, "Cloudflare Pages"). Every push to
+`main` also runs the tests and publishes a copy to GitHub Pages
+(`.github/workflows/hushmallow-pages.yml`), built without those values, so
+sign-in is off there. `tools/build-site.sh` puts each deploy in its own
+folder (`v/<commit>/`) and writes `version.json`, so an open app moves itself
+to the new version (at start or back on the home screen) instead of waiting
+for the browser cache to expire. Settings shows the version that is running.
+The sign-in flows also run in CI on a local Supabase stack
+(`.github/workflows/hushmallow-auth-e2e.yml`).
 
 ### Try the two flagship experiences
-- **Experience A (Flow):** Home → *What's on your mind?* → type "I'm
-  furious about what happened at work." → *Meet a Mallow* → *Let's do it*.
-- **Experience B (Beyond):** Home → *Another Angle* → *Look at a real
-  situation* → "My boss criticised my work. I think I'm terrible at my job."
-- **The ritual library:** Home → *Start hushmallow*, type what's on your mind,
-  add photos from the offer card if you like, and play. Or straight into one
-  on localhost: `index.html?v3=HM-0001&photos=3`, or any engine × law pair:
-  `index.html?engine=GE-07&law=3&photos=0`.
+Home is the **Hushfold**: one living Mallow you can squeeze, the **Tell**
+pill, and the side panel (the handle at the top: Another Angle, Memory
+Garden, More rituals, Your journey, Settings).
+- **Experience A (Flow):** Home → *Tell* → type "I'm furious about what
+  happened at work." → send: your words become a Thought Mallow and a
+  Hushflow world begins (for anger, Static Storm, which can melt into
+  Luminous Ocean); a tool you practise there can be kept in the Memory
+  Garden. Without a plan, Tell leads to the plans page and back.
+- **Experience B (Beyond):** Home → side panel → *Another Angle* (with
+  Flow, the link is an invitation to the plans page) → tell Zuzu "My boss
+  criticised my work. I think I'm terrible at my job."
+- **The ritual library:** Home → side panel → *More rituals* → tap one and
+  play. Or straight into one on localhost: `index.html?v3=HM-0001&photos=3`,
+  or any engine × law pair: `index.html?engine=GE-07&law=3&photos=0`.
+- The old home screen stays reachable for QA on localhost: Settings →
+  *Classic home (QA)*.
 
 ### Tests
 ```bash
@@ -109,10 +135,17 @@ check that every library file is listed and every module exists.
 | `src/data/` | A–Z emotion taxonomy (334 terms), ritual schema, signature ritual library (`library/`, one file per ritual) |
 | `src/rituals/` | The ten signature ritual modules |
 | `src/v3/` | The 1,000 rituals: host, 20 world laws, 50 touch engines, photo system, words, effects library, generated catalogue and copy |
-| `src/ultra/` | hushmallow Beyond only (tier id `ultra`): Another Angle, authored Reframe frameworks, rule engine |
+| `src/ultra/` | hushmallow Beyond only (tier id `ultra`): the classic Another Angle, authored Reframe frameworks, rule engine |
+| `src/hushfold/` | The Hushfold home: Tell overlay, input router, stage, subtitles, side panel, Memory Garden install and charms, and `flow/` (the Hushflow director and worlds) |
+| `src/beyond/` | Another Angle in the Hushfold: consent and privacy, the endpoint and its one request, authored scenes and the ten mechanics |
+| `src/auth/` | Optional sign-in: boot and local namespaces, the client, opt-in sync, the account Mallow, `/auth/callback` (`docs/AUTH.md`) |
+| `auth/callback/` | The page email links open (confirm, reset, change email) |
+| `supabase/` | Migrations `0001`–`0009`, rollback, RLS check, email templates, `config.toml` for the CI stack |
+| `server/another-angle/` | Another Angle's server (a Cloudflare Worker) and its evaluation tools |
+| `vendor/` | Vendored supabase-js (loaded only for sign-in screens and signed-in sessions) |
 | `content/` | The V3 ritual workbook (source of the 1,000 rituals) and its corrected copy |
 | `framer/` | `HushmallowEmbed.tsx`, the Framer code component |
-| `src/app/` | App shell: scenes, world stage, entitlements, preferences, UI helpers |
+| `src/app/` | App shell: scenes, world stage, entitlements, preferences, UI helpers, history layers (`layers.js`: Back closes the newest sheet or layer first), the shared privacy copy (`privacy.js`) |
 | `src/ui/` | Design system tokens and app styles |
 | `docs/` | Audit of the old app, status and roadmap |
 

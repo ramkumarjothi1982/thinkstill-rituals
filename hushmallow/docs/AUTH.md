@@ -11,11 +11,23 @@ account deletion, the opt-in sync while the app runs) are built and tested
 against a local fake of Supabase and a local PostgreSQL, in Node and in
 Chromium on the built site. Stage 3 adds the **isolated end-to-end check on
 a real local Supabase stack** in GitHub Actions (below: "The isolated E2E");
-it is written and dry-run against the fake here, but this sandbox has no
-Docker, so **it has not run against Supabase yet**: the coordinator triggers
-it. Production is verified only by the owner's manual checklist below. The
-screens are not wired into Settings or the side panel yet (coordinator,
-below); `/#account` opens them.
+it has run there three times on `claude/upbeat-pasteur-b0aqg1`, all green:
+run 38377721517 (**76 of 76**), run 38390483903 (**97 of 97**) and run
+38416054844 (**101 of 101**, after the round-3 docs commit `de58144`).
+Production is verified only by the owner's manual checklist below. The
+**Settings row is wired** (Settings → Privacy, the top row; nothing when
+sign-in is off); the side panel **deliberately has no account link**
+(below, "Wiring"); `/#account` opens the screens too, and is the only deep
+link the app honours.
+
+The final QA sweep (13 Oct 2026, "everything around the main screen"):
+an arrival is said on the account card's own lede, never in a toast over
+its fields; the Settings row keeps an address whole (it breaks after "@"
+first); Settings' delete button says whose things it deletes ("Delete
+this account's things on this phone" signed in, "Delete the guest's things
+on this phone" for a guest on a phone accounts also use); Settings → About
+says what an account keeps instead of "nothing you type leaves this
+phone"; every sheet closes on Back before the scene does.
 
 Round 2 (the first independent review): a password change is real
 reauthentication on every session (the current password first, the emailed
@@ -304,16 +316,25 @@ moods. Decorative (`aria-hidden`): every state is also said in words.
 **Accessibility and phones**: every field has a label; focus moves to the
 screen's heading; errors are `role=alert` and the field gets
 `aria-invalid` + `aria-describedby`; text ≥ 13 px, inputs ≥ 16 px (no iOS
-zoom), targets ≥ 44 px; emails break at `@` or `.`; keyboard-safe on iPhone
+zoom), targets ≥ 44 px; an email breaks after `@` first, then after a dot,
+never mid-word (`emailParts()`, also in the Settings row); a pill that must
+wrap balances its lines ("Confirmed? Sign in" when "I've confirmed it: sign
+in" would wrap); keyboard-safe on iPhone
 (`visualViewport` → `--kb`: the Mallow sits smaller and a field hidden by
 the keyboard is scrolled into the visible part; a field already in sight
 never moves); an offline pill; works at 320×568 at text size 1.25 and at
 1280×800 (the card stays phone-sized).
-**Naming the account**: an arrival says which account it signed in, shortened
-for anyone nearby ("You're signed in as an…@example.com.", the toast after
-the reload and the `/auth/callback` page), and "Keep this phone's things?"
-names it in full: a link, or a shared phone, that signed in someone other
-than expected is plain at once. A field's error sits right under that field
+**Naming the account**: an arrival says which account it signed in. On the
+account card (where an arrival lands: `/#account`, a first sign-in, Keep /
+Not now) the card's lede says it the first time it shows, in full as the
+card shows the address anyway ("You're signed in as ana@example.com.",
+"Your email is confirmed. You're signed in as …"), never a toast over the
+card's fields on a small phone; `main.js` hands the notice to the scene
+(`params.notice`) and the scene toasts any other notice itself. Elsewhere
+the line is a toast, shortened for anyone nearby ("You're signed in as
+an…@example.com."), as on the `/auth/callback` page. "Keep this phone's
+things?" names it in full: a link, or a shared phone, that signed in someone
+other than expected is plain at once. A field's error sits right under that field
 (Change password: "That password doesn't match." under Current password,
 above "Forgot your password?"); others just above the buttons. An email in a
 lede stays in one piece with its punctuation (it moves to the next line
@@ -618,8 +639,10 @@ production and never Supabase itself.
 * `tests/e2e/auth.e2e.mjs` dry-run against the fake on the built site:
   **97 of 97**, twice in a row (round 2; sections guest, callback, signup, guestkeys,
   signin, sync, refresh, password, signout, reset, expiry, people, shared,
-  delete, unconfirmed). **The CI run on a local Supabase stack is the
-  coordinator's; its results are not in yet.**
+  delete, unconfirmed). **On the real local Supabase stack in GitHub
+  Actions** (`hushmallow-auth-e2e.yml`, all on `claude/upbeat-pasteur-b0aqg1`):
+  run 38377721517 **76 of 76**, run 38390483903 **97 of 97**, run
+  38416054844 **101 of 101** (after `de58144`).
 * `bash hushmallow/tools/auth/sql-check.sh` on PostgreSQL 16: migrations
   `0001`–`0009` twice, `rls_check.sql` **35 of 35**, rollback, re-apply;
   the new cap check fails without `0009`.
@@ -652,14 +675,20 @@ production and never Supabase itself.
     no reaction) at 390×844 and 320×568, full and reduced motion, the notice
     faded; B's reset link while A is signed in; delete while a sync is
     mid-pull.
-* Not verified: real Supabase Auth and PostgREST (the CI job on a local
-  Supabase stack), real email delivery, a physical iPhone keyboard (a
-  stand-in `visualViewport` was used), VoiceOver.
+* Final QA sweep (the integrated pilot, `HM_AUTH_MODE=dev` build served by
+  `pages-serve.mjs`, the fake behind it): `screens-e2e.cjs` flows **49 of
+  49**, people **14 of 14**, gallery **62 of 62**; `callback-e2e.cjs` **42
+  of 42**; `fixes-e2e.cjs` **74 of 74** (the arrival checks now read the
+  card's lede, and an address's lines are counted from its text).
+* Not verified: hosted Supabase (production: the owner's checklist below),
+  real email delivery, a physical iPhone keyboard (a stand-in
+  `visualViewport` was used), VoiceOver. Real Supabase Auth and PostgREST
+  are covered by the CI runs above (a local stack, not the hosted project).
 
 ## Manual checklist (owner, production, your own email)
 
-The account screen opens at `https://app.hushmallow.com/#account` until
-the Settings row is wired.
+The account screens open from Settings → Privacy (the top row) or at
+`https://app.hushmallow.com/#account`.
 1. SQL editor: run `0001` … `0009` (already ran `0001`–`0008`? run just `0009`), then `tests/rls_check.sql` → `ALL 35 CHECKS PASSED`.
 2. Dashboard settings above (URL configuration, email provider, templates, sessions, **custom SMTP**).
 3. Cloudflare Pages: the two variables for Production and Preview; deploy.
@@ -680,7 +709,9 @@ the Settings row is wired.
 18. Authentication → URL Configuration: the Site URL is exactly `https://app.hushmallow.com` (no trailing slash), so the links in step 7 read `…com/auth/callback?…`, not `…com//auth/callback?…`.
 19. As a guest who has used the app before (favourites, a Memory Garden tool, settings, Another Angle): open the version with sign-in on; everything is exactly where it was. Sign in, answer "Not now", sign out: still exactly where it was.
 20. Two tabs: signed in, open the app in a second tab and leave it in the Memory Garden. In the first tab, Delete account. The second tab says "Your account is deleted…" at once; star a world there (nothing is kept); go back to the Hushfold: it reloads as a guest. In the browser's storage (DevTools → Application → Local Storage) no `hm2:u:<your id>:` key is left. The same with "Sign out and remove my things from this phone".
-21. Arrivals name the account: after signing in, and on the page a confirmation link opens, the line reads "You're signed in as yo…@yourdomain."; the "Keep this phone's things?" question shows your full address.
+21. Arrivals name the account: after signing in, the account card's lede reads "You're signed in as you@yourdomain." (no toast over the card); the page a confirmation link opens reads "…You're signed in as yo…@yourdomain."; the "Keep this phone's things?" question shows your full address.
+22. Settings → Privacy as a guest: the top row reads "Sign in or create an account · Optional. Everything works without one." → Sign in → the welcome screen; Back comes back to Settings. Signed in, the row reads "Your account · Signed in as <your address>" (whole, or broken after "@" on a small phone) → Manage → the account card; Back → Settings.
+23. Signed in, Settings → "Delete this account's things on this phone": the sheet says this account's things go from this phone and other people's are not touched → Delete: this account's copy here is emptied and you stay signed in (with a sync switch on, what is kept with the account comes back at the next sync). Sign out: the button now reads "Delete the guest's things on this phone" and its sheet says accounts on this phone keep their own things; Delete leaves the account's things for its next sign-in. Back (or a swipe) on either sheet closes the sheet and stays on Settings.
 
 ## Known limits
 
@@ -689,21 +720,21 @@ the Settings row is wired.
 * The Framer embed is a cross-site iframe: browsers partition its storage, so an account there is a separate session (see below).
 * Deep paths other than `/`, `/#…` and `/auth/callback` (e.g. `/a/b`) still get Pages' single-page fallback, whose relative asset paths do not resolve two folders down (unchanged from before; nothing links there).
 * Changing the account's email is not in the app yet (the template and `/auth/callback?type=email_change` are ready).
-* Settings' "Delete everything on this phone" in an account empties this account's copy here; with a sync switch on, what is kept with the account comes back at the next sync (the account still has it). Turning the switch off first deletes it there too.
+* Settings' "Delete this account's things on this phone" (signed in) empties this account's copy here; with a sync switch on, what is kept with the account comes back at the next sync (the account still has it). Turning the switch off first deletes it there too.
 * The browser proofs drive a stand-in keyboard (`visualViewport`); a physical iPhone has not been tried.
 * The current-password check is one more sign-in for the account: it counts towards Supabase's sign-in rate limit (per IP) and stamps `last_sign_in_at`. If its immediate sign-out cannot reach the server (the network drops at that moment), that short session stays on the server until Supabase ends it (the password change itself ends every other session); nobody holds its tokens (memory only).
-* Settings' "Delete everything on this phone" as a guest leaves every account's namespace on the phone (by design: those are other people's things).
+* Settings' delete as a guest leaves every account's namespace on the phone (by design: those are other people's things). Once an account has been used on the phone it reads "Delete the guest's things on this phone" and its sheet says so; on a phone no account has used it is still "Delete everything on this phone".
+* Deep links: only `/#account` is honoured, and only on builds with sign-in on. Any other hash (`#garden`, `#settings`, `#plans`, `#angle`) opens the Hushfold (boot replaces it with `#home`), so Back from that first page leaves the site. Deliberate for the pilot; a garden deep link (from a notification or the Framer page) would be handled in boot like `AUTH.deepLink`, pushing home first so Back returns to the Hushfold.
 * **An account deleted on another device can leave its copy on this one.** This phone removes it only when it asks the server while its access token is still valid (the answer is then `user_not_found`). Once the access token has expired (an hour by default), supabase-js's refresh fails with `refresh_token_not_found`, exactly as for a session ended elsewhere: the phone drops to guest calmly and keeps the copy, as it does for any signed-out account, until that account signs in here again (it cannot: it no longer exists) or someone removes it (Settings' "Delete everything on this phone" while signed in to it is no longer possible, so in practice it stays until the browser's data is cleared). Nothing of it reaches the server or another account; it is this device's own copy (settings, favourites, Memory Garden ids, journey with feeling families). The tombstone covers every tab of the device that did the deleting, not other devices.
 * With sign-in off, guests still load the small sign-in boot modules (`boot.js`, `config.js`, `namespace.js` and `sync.js`'s merge helpers, about 35 KB, no network); supabase-js itself never loads for them.
 * Email links always open the production app (`{{ .SiteURL }}/auth/callback`), also when the email was asked for on a preview (see the templates above).
 
-## Coordinator wiring points
+## Wiring (done in the integration)
 
-The screens are ready to wire (stage 2); nothing in Settings or the side
-panel was changed here.
-* **Settings row**: in `src/app/scenes/settings.js`, an empty `h('div')` at the top of the Privacy section filled with
-  `if (app.auth?.enabled) import('./account.js').then((m) => m.mountAccountRow(app, rowEl))` (guarded, so a build with sign-in off loads nothing extra on a Settings visit): "Sign in or create an account · Optional…" / "Your account · Signed in as …" with one button; renders nothing when sign-in is off.
-* **Side panel link**: `import('../app/scenes/account.js').then((m) => m.openAccount(app))`, shown only when `app.auth.enabled`; `openAccount(app, { view: 'signin' })` or `{ view: 'create' }` opens a guest's screen directly.
-* **Settings "Delete everything on this phone"** copy: in an account it deletes that account's copy on this phone (not the guest's, not other accounts'); consider "Delete this account's things on this phone" when `app.auth.status() === 'signed-in'`, and see the known limit about sync above. As a guest it deletes the guest's things only (other accounts' copies stay); say so in the row's line.
+* **Settings row** (wired): `src/app/scenes/settings.js` fills an empty `h('div')` at the top of the Privacy section with
+  `if (app.auth?.enabled) import('./account.js').then((m) => m.mountAccountRow(app, rowEl))` (guarded, so a build with sign-in off loads nothing extra on a Settings visit): "Sign in or create an account · Optional…" / "Your account · Signed in as …" with one button; nothing when sign-in is off.
+* **Side panel link**: deliberately **not** wired. The Hushfold's side panel stays with feelings and worlds (Another Angle, Memory Garden, More rituals, Your journey, Settings); sign-in is optional and lives one step away, in Settings → Privacy. Should it be wanted later: `import('../app/scenes/account.js').then((m) => m.openAccount(app))`, shown only when `app.auth.enabled`; `openAccount(app, { view: 'signin' })` or `{ view: 'create' }` opens a guest's screen directly.
+* **Settings' delete** (done): signed in it reads "Delete this account's things on this phone" (sheet: this account's things, other people's untouched); a guest on a phone an account has used reads "Delete the guest's things on this phone" (sheet: accounts keep their own things); otherwise "Delete everything on this phone".
+* **Settings → About** (done): with sign-in on it says the words, feelings and photos stay on the phone and names what an account keeps (the email, the name and home Mallow if chosen; with sync, settings, favourite worlds, Memory Garden and where a Hushflow paused), from `src/app/privacy.js`.
 * The opt-in sync needs no wiring: `main.js` starts it (`app.auth.start`) and it hears `app.prefs` and `app.store` writes.
 * The Framer embed runs the app in a cross-site iframe: browsers partition its storage, so a session there is separate from `app.hushmallow.com`; sign-in is best offered in the top-level app.

@@ -32,16 +32,21 @@
 // Screens that go deeper get a history entry of their own (app.pushLayer),
 // so Back steps back through them before leaving the scene.
 //
-// Entry points for the coordinator (Settings row, side panel link):
-//   mountAccountRow(app, el)   fills `el` with one Settings row (nothing when sign-in is off)
+// Entry points:
+//   mountAccountRow(app, el)   fills `el` with one Settings row (nothing when sign-in is off);
+//                              Settings → Privacy uses it (the side panel deliberately has no account link)
 //   openAccount(app, params)   opens this scene (params.view: 'signin' | 'create' | …)
+//   emailParts(text)           an address that breaks after "@" first, then a dot, never mid-word
+// An arrival (params.arrived, with params.notice from main.js) is said on the account card's lede
+// the first time it shows, never as a toast over the card (ARRIVALS, carriesArrival).
 import { h, iconBtn, toast } from '../ui.js';
-import { type } from '../../ui/type.js';
+import { type, fitLabel } from '../../ui/type.js';
 import { brandTagline } from '../../brand.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
 import { createAuthMallow } from '../../auth/mallow.js';
 import { checkEmail, checkPassword, friendlyError, passwordStrength, MESSAGES } from '../../auth/errors.js';
 import * as VM from '../../auth/view-model.js';
+import { NOTICE_TEXT } from '../../auth/boot.js';
 
 const CSS = [new URL('../../auth/auth.css', import.meta.url).href, new URL('../../ui/account.css', import.meta.url).href];
 /** Both stylesheets; resolves when they have loaded (or after 1.2 s). */
@@ -55,6 +60,21 @@ function ensureCss() {
   return Promise.race([Promise.all(waits), new Promise((r) => setTimeout(r, 1200))]);
 }
 
+/**
+ * An email address that stays in one piece: it moves to the next line whole,
+ * and one wider than its box breaks after "@" first ("qa89044@" / "example.com",
+ * never "example." / "com"), and only then after a dot, never mid-word. Each
+ * half is a whole block that moves as one; inside it, a dot can break as a
+ * last resort. The account card and the Settings row both use it.
+ */
+export function emailParts(text) {
+  const dots = (t) => String(t).split(/(?<=\.)/).flatMap((part, i) => (i ? [h('wbr'), part] : [part]));
+  const whole = (t) => h('span', { style: { display: 'inline-block', maxWidth: '100%', overflowWrap: 'break-word' } }, ...dots(t));
+  const at = String(text).lastIndexOf('@');
+  if (at <= 0 || at === String(text).length - 1) return dots(text);
+  return [whole(String(text).slice(0, at + 1)), h('wbr'), whole(String(text).slice(at + 1))];
+}
+
 /** Opens the account scene (for the side panel). params.view opens one screen directly. */
 export function openAccount(app, params = {}) { return app.go('account', params); }
 
@@ -66,11 +86,23 @@ export function mountAccountRow(app, el) {
   const u = auth.user();
   const signedIn = auth.status() === 'signed-in' && u;
   const label = signedIn ? 'Your account' : 'Sign in or create an account';
-  const sub = signedIn ? (u.email ? `Signed in as ${u.email}` : 'Signed in') : 'Optional. Everything works without one.';
+  // the address as on the account card: whole on its line, broken only after "@" or a dot if it must
+  const addr = (email) => h('span', { translate: 'no', 'data-email': '', style: { display: 'inline-block', maxWidth: '100%', overflowWrap: 'break-word' } }, ...emailParts(email));
+  const sub = signedIn ? (u.email ? ['Signed in as ', addr(u.email)] : ['Signed in']) : ['Optional. Everything works without one.'];
   el.replaceChildren(h('div', { class: 'setting' },
-    h('div', { class: 'grow', style: type('row') }, label, h('small', { style: type('caption', { display: 'block', color: 'var(--text-3)', marginTop: '2px', overflowWrap: 'anywhere' }) }, sub)),
+    h('div', { class: 'grow', style: { ...type('row'), minWidth: 0 } }, label, h('small', { style: type('caption', { display: 'block', color: 'var(--text-3)', marginTop: '2px', overflowWrap: 'break-word' }) }, ...sub)),
     h('button', { class: 'btn', style: { minHeight: '44px' }, 'data-act': 'account-row', onclick: () => openAccount(app) }, signedIn ? 'Manage' : 'Sign in')));
 }
+
+/**
+ * Arrivals the account card says itself, in its lede (the first time it shows),
+ * instead of a toast over the card's own fields on a small phone. main.js hands
+ * the notice to this scene when it opens it (params.notice); any other notice,
+ * or one arriving on another screen, is still a toast (see enter()).
+ */
+export const ARRIVALS = Object.freeze(['signed-in', 'verified', 'password-updated', 'email-changed', 'guest-kept', 'device-cleared']);
+/** Whether the first screen says the arrival itself: the account card, or the guest question (which names the account). */
+export const carriesArrival = (view, kind) => (view === 'account' && ARRIVALS.includes(kind)) || (view === 'guest-choice' && (kind === 'signed-in' || kind === 'verified'));
 
 const PRIVACY_LINE = 'Nothing you write in hushmallow, no feeling and no photo is ever sent with your account.';
 const DELETED_ON_SERVER = [
@@ -166,8 +198,15 @@ export default function account(app, params = {}) {
   // an email address stays in one piece (account.css: it moves to the next line whole); only one wider
   // than the card breaks, after "@" or a dot, never mid-word. tail: the punctuation that follows it, kept with it
   const strong = (text, tail = '') => h('span', { class: 'hm-account-strong' },
-    h('strong', { translate: 'no' }, ...String(text).split(/(?<=[@.])/).flatMap((part, i) => (i ? [h('wbr'), part] : [part]))),
+    h('strong', { translate: 'no' }, ...emailParts(text)),
     tail ? h('span', { class: 'hm-account-tail' }, tail) : null);
+  /** A pill on one line when it fits, a shorter label when not, and balanced lines (never a lone word) as the last resort. */
+  const fitPill = (b, ...shorter) => {
+    if (!b?.isConnected) return;
+    b.classList.add('fit-one');
+    fitLabel(b, ...shorter);
+    if (b.scrollWidth > b.clientWidth) b.classList.remove('fit-one');
+  };
   const section = (label, ...kids) => h('section', { class: 'hm-account-section', 'aria-label': label }, h('h2', { class: 'hm-account-eyebrow' }, label), ...kids);
   const list = (items) => h('ul', { class: 'hm-account-list' }, ...items.map((t) => h('li', {}, t)));
 
@@ -335,6 +374,7 @@ export default function account(app, params = {}) {
       else { mood('concerned'); status.replaceChildren(r.error?.message || MESSAGES.unknown); }
     }, 'resend');
     const status = h('p', { class: 'hm-auth-hint hm-auth-center', role: 'status', 'aria-live': 'polite' });
+    const confirmed = btn('I’ve confirmed it: sign in', () => go('signin', { email: o.email }, { replace: true }), { cls: 'primary', act: 'confirmed-signin' });
     preload();
     return {
       title: 'Check your email',
@@ -342,12 +382,14 @@ export default function account(app, params = {}) {
       body: [
         hint('It can take a minute. If it isn’t there, look in spam or junk.', 'hm-auth-center'),
         h('div', { class: 'hm-auth-actions' },
-          btn('I’ve confirmed it: sign in', () => go('signin', { email: o.email }, { replace: true }), { cls: 'primary', act: 'confirmed-signin' }),
+          confirmed,
           resend,
           linkBtn('Use a different email', () => go('create', {}, { replace: true }), 'different-email')),
         status,
       ],
       mood: 'happy',
+      // a small phone at large text: "Confirmed? Sign in" on one line rather than "sign" / "in" on two
+      after: () => fitPill(confirmed, 'Confirmed? Sign in'),
     };
   };
 
@@ -429,7 +471,7 @@ export default function account(app, params = {}) {
     const who = o.email || auth.user()?.email || null;
     return {
     title: 'Keep this phone’s things?',
-    lede: [...(who ? ['You’re signed in as ', strong(who, '.'), ' '] : []), 'This phone has favourites, settings or a Memory Garden from before you signed in. Keep a copy with your account on this phone?'],
+    lede: [...(o.arrived === 'verified' ? ['Your email is confirmed. '] : []), ...(who ? ['You’re signed in as ', strong(who, '.'), ' '] : []), 'This phone has favourites, settings or a Memory Garden from before you signed in. Keep a copy with your account on this phone?'],
     body: [
       list(['Keep: your account starts with them here, on this phone. If your account’s sync is already on (from another phone), they’re kept with your account too.', 'Not now: your account starts fresh. You can bring them in later from this screen.', 'Either way, the guest’s own copy stays on this phone for when you’re signed out.']),
       h('div', { class: 'hm-auth-actions' },
@@ -498,9 +540,12 @@ export default function account(app, params = {}) {
       btn('Bring them in', (e) => { e.currentTarget.disabled = true; mood('happy'); api().then((a) => later(() => a.importGuestData(), reduced() ? 0 : 450)).catch(() => toast(MESSAGES.unknown)); }, { act: 'import-guest' })) : null;
 
     const since = VM.formatWhen(acct.profile?.createdAt || u.createdAt, { time: false });
+    // an arrival (a sign-in, a confirmed email, a new password…) is said here, at the top of the card,
+    // the first time the card shows: never in a toast over the card's own fields on a small phone
+    const arrival = arrivalLede(o.arrived, u.email);
     const view = {
       title: VM.greeting(acct.profile?.displayName) || 'Your account',
-      lede: u.email ? ['Signed in as ', strong(u.email)] : 'Signed in',
+      lede: arrival || (u.email ? ['Signed in as ', strong(u.email)] : 'Signed in'),
       body: [
         h('p', { class: 'hm-auth-hint hm-auth-center', 'data-since': '' }, since ? `With hushmallow since ${since}.` : ''),
         section('You', nameForm.form, h('div', { class: 'hm-auth-field' }, h('span', { class: 'hm-auth-label', id: uid('pick') }, 'Home Mallow'), picker, pickedName)),
@@ -519,6 +564,17 @@ export default function account(app, params = {}) {
     };
     return view;
   };
+
+  /** The account card's lede for an arrival, once (null: the plain "Signed in as …"). */
+  let arrivalSaid = false;
+  function arrivalLede(kind, email) {
+    if (arrivalSaid || !ARRIVALS.includes(kind)) return null;
+    arrivalSaid = true;
+    const who = email ? ['You’re signed in as ', strong(email, '.')] : ['You’re signed in.'];
+    const line = kind === 'signed-in' ? who : kind === 'verified' ? ['Your email is confirmed. ', ...who] : [NOTICE_TEXT[kind], ' ', ...who];
+    say(line.map((x) => (typeof x === 'string' ? x : x.textContent)).join(''));
+    return line;
+  }
 
   function rowButton(label, sub, action, onclick, act) {
     return h('div', { class: 'hm-account-row' },
@@ -856,6 +912,8 @@ export default function account(app, params = {}) {
       const first = VM.initialView({ enabled: !!auth?.enabled, status: lastStatus, pendingGuestChoice: !!auth?.pendingGuestChoice, view: params.view });
       go(first, { arrived: params.arrived || null, email: params.email || '' });
       if (params.arrived && ['signed-in', 'verified', 'password-updated', 'email-changed', 'guest-kept'].includes(params.arrived)) later(() => mood('happy'), 450);
+      // the calm line from before the reload: on the card when this screen says it, else the usual toast
+      if (params.notice && !carriesArrival(first, params.arrived)) later(() => toast(params.notice, 3600), 500);
       if (auth?.enabled) off = auth.onChange(onAuthChange);
       vv?.addEventListener?.('resize', fitKeyboard); vv?.addEventListener?.('scroll', fitKeyboard);
       el.addEventListener('focusin', onFocusIn);

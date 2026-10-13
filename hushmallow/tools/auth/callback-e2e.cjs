@@ -81,8 +81,8 @@ async function main() {
   check(cbLine === 'Your email is confirmed. You’re signed in as an…@example.com.', 'the callback page names the account the link signed in (shortened)', cbLine);
   await shot(c, '01-callback-verified');
   await c.waitForURL(`${SITE}/#account`, { timeout: 15000 }).catch(() => {});
-  // the arrival notice shows for a few seconds from 0.5 s after boot: listen for it from the start
-  const arrivalToast = c.waitForFunction(() => document.querySelector(".toast")?.textContent || "", null, { timeout: 20000, polling: 50 }).then((x) => x.jsonValue(), () => "");
+  // the arrival is said on the account card's lede (no toast over the card): listen for any toast from the start all the same
+  const arrivalToast = c.waitForFunction(() => document.querySelector(".toast")?.textContent || "", null, { timeout: 6000, polling: 50 }).then((x) => x.jsonValue(), () => "");
   await c.waitForFunction(() => window.__hush?.auth?.status?.() === 'signed-in' && document.querySelector('[data-auth-view]:not([data-auth-view="loading"])'), null, { timeout: 60000 });
   const after1 = await c.evaluate(() => ({ ns: window.__hush.auth.namespace, view: document.querySelector('[data-auth-view]:not([data-auth-view="loading"])').dataset.authView, lede: document.querySelector('.hm-auth-lede')?.textContent, hash: location.hash, histHasToken: false }));
   check(after1.ns.mode === 'account' && after1.view === 'account' && /ana@example\.com/.test(after1.lede), 'back in the app: signed in, in the account’s namespace, account screen open', JSON.stringify({ mode: after1.ns.mode, view: after1.view }));
@@ -90,7 +90,7 @@ async function main() {
   await sleep(600);
   await shot(c, '02-app-account-after-verify');
   const toast1 = await arrivalToast;
-  check(toast1 === 'Your email is confirmed. You’re signed in as an…@example.com.', 'a calm notice says the email is confirmed, and names the account it signed in (shortened)', toast1);
+  check(after1.lede === 'Your email is confirmed. You’re signed in as ana@example.com.' && !toast1, 'the account card says the email is confirmed, and names the account it signed in (no toast over the card)', { lede: after1.lede, toast: toast1 });
   // a link works once
   const again = await newPage(laptop, 'laptop-again');
   await again.goto(link1);

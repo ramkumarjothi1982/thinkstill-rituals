@@ -11,6 +11,7 @@ import { PLANS } from '../entitlements.js';
 import { BRAND, brandName } from '../../brand.js';
 import { brandMark, logoImg, fitLabel } from '../../ui/type.js';
 import { openSupport } from './support.js';
+import { plansBeyondNote } from '../privacy.js';
 
 const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
 const SVG = 'http://www.w3.org/2000/svg';
@@ -97,11 +98,10 @@ export default function plans(app, params = {}) {
       rest.length ? h('details', { class: 'invite-more' },
         h('summary', {}, h('span', {}, 'Everything included')),
         h('ul', { class: 'invite-list' }, ...rest.map(benefit))) : null,
-      // What ships today: Another Angle's angles are authored and run on the
-      // phone. When the Beyond server client (W8) is switched on, this note
-      // changes in the same release to the wording agreed with its consent
-      // screen (who processes the words, and that nothing is kept).
-      beyond ? h('p', { class: 'invite-note' }, 'Another Angle works on this phone: what you type stays here.') : null,
+      // Where Another Angle's words go, from the same source as Settings → About
+      // (src/app/privacy.js, which follows resolveEndpoint()): on this phone until
+      // Another Angle goes live, then the approved sentence, both in the same release.
+      beyond ? h('p', { class: 'invite-note', 'data-beyond-note': '' }, plansBeyondNote()) : null,
       action(p));
   }
 

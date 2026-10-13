@@ -144,7 +144,17 @@ export function createWorld({ prefs, audio, haptic = null }) {
         layer.style.removeProperty('--mh');
       }
     },
-    showMallow(b) { layer.classList.toggle('hidden', !b); },
+    /**
+     * Shows or hides the classic Mallow. Hidden is out of reach as well as out of
+     * sight: the layer goes inert and aria-hidden, so its rig canvas (tabIndex 0,
+     * "Pipzi looks peaceful…") is no Tab stop and is never announced while
+     * another Mallow, a card or a screen of its own has the stage.
+     */
+    showMallow(b) {
+      layer.classList.toggle('hidden', !b);
+      layer.inert = !b;
+      if (b) layer.removeAttribute('aria-hidden'); else layer.setAttribute('aria-hidden', 'true');
+    },
     dim(b) { worldEl.classList.toggle('dim', !!b); },
     mallowRect() {
       const r = layer.getBoundingClientRect();

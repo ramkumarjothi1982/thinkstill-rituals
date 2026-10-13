@@ -41,6 +41,101 @@ export function iconBtn(name, label, onclick) {
 }
 
 // --------------------------------------------------------------- sheets --
+// Every sheet is a transient layer with a history entry of its own, so Back
+// (or an iOS edge swipe) closes the newest sheet first and never leaves one
+// floating over the next scene; a scene change closes any still open. The
+// app installs the history side once (main.js: setSheetHistory) and every
+// openSheet() caller gets it, wherever it lives (Settings, Plans, Support,
+// Another Angle's notice and delete sheets…). Pages without the app shell
+// (the studio, the labs) install nothing: their sheets work as before.
+//
+// A scene that tracks its own sheets (the Hushfold's trackSheet) asks for a
+// layer (app.pushLayer) in the same breath as it opens one: that entry is
+// then the scene's (its blockBack(token) closes the sheet) and no second one
+// is added. Only the newest open sheet answers Escape.
+const liveSheets = [];   // the open sheets, oldest first
+let sheetHooks = null;
+/** main.js: hooks from createSheetHistory() (null removes them). */
+export function setSheetHistory(hooks) { sheetHooks = hooks || null; }
+/** The sheets open right now, oldest first ({ el, body, close }). */
+export const openSheets = () => liveSheets.slice();
+
+/**
+ * The history side of sheets, kept free of the DOM so node can test it.
+ *   push()      → token   a new history entry for a sheet (app.pushLayer without the claim)
+ *   pop(token)            step back over that entry (app.popLayer)
+ *   defer(fn)             runs fn once this breath is over (queueMicrotask)
+ * Returns the hooks openSheet() calls (opened, closed), the ones main.js calls
+ * (claim(t) from app.pushLayer, back(t) and afterBack(t) from popstate,
+ * closeAll() on a scene change) and `open` (how many are open).
+ */
+export function createSheetHistory({ push, pop, defer = (fn) => queueMicrotask(fn) } = {}) {
+  const recs = [];   // { sheet, token: our entry, owner: the scene's entry, closed }
+  let fresh = null;  // the sheet opened in this breath: a scene's own pushLayer() now claims it
+  return {
+    opened(sheet) {
+      const rec = { sheet, token: 0, owner: 0, closed: false };
+      recs.push(rec);
+      fresh = rec;
+      defer(() => {
+        if (fresh === rec) fresh = null;
+        if (!rec.closed && !rec.owner) rec.token = push?.() || 0;
+      });
+      return rec;
+    },
+    /** A scene's app.pushLayer() just returned t: a sheet that opened in this same breath is that scene's layer. */
+    claim(t) {
+      const rec = fresh;
+      if (!rec || rec.closed || rec.owner || rec.token || !t) return false;
+      fresh = null;
+      rec.owner = t;
+      return true;
+    },
+    /** The sheet closed (✕, its own buttons, the backdrop, Escape, a swipe, Back): its entry goes with it. */
+    closed(sheet) {
+      const rec = recs.find((r) => r.sheet === sheet);
+      if (!rec) return;
+      rec.closed = true;
+      recs.splice(recs.indexOf(rec), 1);
+      if (fresh === rec) fresh = null;
+      if (rec.token) { const t = rec.token; rec.token = 0; pop?.(t); }
+    },
+    /** Back used entry t. Ours: that sheet closes, without stepping history again (true). */
+    back(t) {
+      const rec = recs.find((r) => r.token === t && !r.closed);
+      if (!rec) return false;
+      rec.token = 0;
+      rec.sheet.close('back');
+      return true;
+    },
+    /** After the scene's blockBack(t): a sheet it claimed with t closes, should the scene have left it open. */
+    afterBack(t) {
+      const rec = recs.find((r) => r.owner === t && !r.closed);
+      if (!rec) return;
+      rec.owner = 0;
+      rec.sheet.close('back');
+    },
+    /**
+     * A scene change: every open sheet closes. Returns the tokens whose entries
+     * are still in history (ours and the scenes'), for main.js to step back over
+     * in one go before the next scene's entry is pushed.
+     */
+    closeAll() {
+      const list = recs.slice();
+      const tokens = [];
+      for (const r of list) {
+        if (r.token) tokens.push(r.token);
+        if (r.owner) tokens.push(r.owner);
+        r.token = 0; r.owner = 0;
+      }
+      fresh = null;
+      for (const r of list) { try { r.sheet.close('scene'); } catch (e) { console.warn('[sheet]', e); } }
+      return tokens;
+    },
+    get open() { return recs.length; },
+  };
+}
+
 export function openSheet({ title, body, foot, full = false, onClose, label } = {}) {
   const root = document.getElementById('sheet-root');
   const backdrop = h('div', { class: 'sheet-backdrop' });
@@ -52,18 +147,36 @@ export function openSheet({ title, body, foot, full = false, onClose, label } = 
     foot ? h('div', { class: 'sheet-foot' }, foot) : null);
   root.append(backdrop, sheet);
   const prevFocus = document.activeElement;
-  requestAnimationFrame(() => { backdrop.classList.add('open'); sheet.classList.add('open'); });
   let closed = false;
+  requestAnimationFrame(() => { if (!closed) { backdrop.classList.add('open'); sheet.classList.add('open'); } });
+  const handle = { el: sheet, body: sheet.querySelector('.sheet-body'), close };
   function close(reason) {
     if (closed) return;
     closed = true;
     backdrop.classList.remove('open'); sheet.classList.remove('open');
-    setTimeout(() => { backdrop.remove(); sheet.remove(); prevFocus?.focus?.(); }, 470);
+    const i = liveSheets.indexOf(handle);
+    if (i >= 0) liveSheets.splice(i, 1);
+    // focus goes back where it was, if that is still on screen; else to the newest sheet left, or the scene's heading
+    setTimeout(() => {
+      const a = document.activeElement;
+      const lost = !a || a === document.body || sheet.contains(a);   // else focus has moved on (another sheet, a field): leave it
+      backdrop.remove(); sheet.remove();
+      if (!lost) return;
+      if (prevFocus?.isConnected && prevFocus !== document.body) prevFocus.focus?.({ preventScroll: true });
+      else (liveSheets[liveSheets.length - 1]?.el.querySelector('.icon-btn') || document.querySelector('#scene h1, #scene h2, #scene [data-focus]'))?.focus?.({ preventScroll: true });
+    }, 470);
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('pointerup', onUp);
+    // its history entry goes first, so a scene change from onClose lands after it
+    try { sheetHooks?.closed?.(handle, reason); } catch (e) { console.warn('[sheet]', e); }
     onClose?.(reason);
   }
-  const onKey = (e) => { if (e.key === 'Escape') close('escape'); };
+  // Escape closes the newest sheet only (one press, one sheet, like Back)
+  const onKey = (e) => {
+    if (e.key !== 'Escape' || e.hmSheetClosed || liveSheets[liveSheets.length - 1] !== handle) return;
+    e.hmSheetClosed = true;
+    close('escape');
+  };
   document.addEventListener('keydown', onKey);
   backdrop.addEventListener('click', () => close('backdrop'));
   // swipe down on the grab bar to dismiss
@@ -71,8 +184,10 @@ export function openSheet({ title, body, foot, full = false, onClose, label } = 
   sheet.querySelector('.grab').addEventListener('pointerdown', (e) => { y0 = e.clientY; });
   const onUp = (e) => { if (y0 != null && e.clientY - y0 > 60) close('swipe'); y0 = null; };
   window.addEventListener('pointerup', onUp);
-  setTimeout(() => (sheet.querySelector('[autofocus]') || closeBtn)?.focus?.(), 480);
-  return { el: sheet, body: sheet.querySelector('.sheet-body'), close };
+  setTimeout(() => { if (!closed) (sheet.querySelector('[autofocus]') || closeBtn)?.focus?.(); }, 480);
+  liveSheets.push(handle);
+  try { sheetHooks?.opened?.(handle); } catch (e) { console.warn('[sheet]', e); }
+  return handle;
 }
 
 export function toast(text, ms = 2200) {

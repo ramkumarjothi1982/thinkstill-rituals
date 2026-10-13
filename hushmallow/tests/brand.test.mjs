@@ -507,11 +507,17 @@ test('toasts and bubbles: centred toasts, dialogue never below 19px, calm under 
   assert.doesNotMatch(read('src/app/ui.js'), /classList\.add\('sr-only'\)/);
 });
 
-test('privacy copy matches what ships: Another Angle runs on the phone in this build', () => {
-  // no customer string in the plans screen or Another Angle claims a server
-  // until the Beyond server client is switched on (W8 changes this test with it)
+test('privacy copy matches what ships: Another Angle runs on the phone in this build', async () => {
+  // no customer string in the plans screen or Another Angle claims a server; the
+  // Plans note comes from src/app/privacy.js, which follows resolveEndpoint():
+  // on the phone while there is no endpoint (this build), the approved
+  // sentence once Another Angle goes live (G1), together with Settings → About
   for (const p of ['src/app/scenes/plans.js', 'src/ultra/another-angle.js']) {
     for (const { text } of lexJs(read(p)).strings) assert.doesNotMatch(text, /\bserver\b|secure server|beyond your phone/i, `${p}: "${text.slice(0, 80)}"`);
   }
-  assert.match(read('src/app/scenes/plans.js'), /Another Angle works on this phone: what you type stays here\./);
+  assert.match(read('src/app/scenes/plans.js'), /plansBeyondNote\(\)/);
+  const { plansBeyondNote, PLANS_BEYOND_NOTE } = await import('../src/app/privacy.js');
+  const { ANGLE_ENDPOINT } = await import('../src/app/config.js');
+  assert.equal(PLANS_BEYOND_NOTE.local, 'Another Angle works on this phone: what you type stays here.');
+  if (!ANGLE_ENDPOINT) assert.equal(plansBeyondNote({ endpoint: null }), PLANS_BEYOND_NOTE.local);
 });

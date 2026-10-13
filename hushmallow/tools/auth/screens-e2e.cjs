@@ -244,9 +244,10 @@ async function flows(H) {
   await shot(p, 'flow-05-guest-choice-390');
   await tapNav(p, '[data-act="keep"]');
   await waitView(p, 'account');
-  const t1 = await lastToast(p);
+  // the arrival is said on the card (its lede), not in a toast over the card's fields (QA-around)
+  const t1 = await p.evaluate(() => document.getElementById('hm-account-lede')?.textContent || '');
   const k1 = { ns: await p.evaluate(() => window.__hush.auth.namespace.mode), favs: await favs(p), haptics: await p.evaluate(() => window.__hush.prefs.get('haptics')) };
-  check(k1.ns === 'account' && k1.favs.includes('static-storm') && k1.haptics === false && /signed in/.test(t1), 'Keep: signed in, in the account’s own namespace, with a copy of the guest’s things', JSON.stringify({ ...k1, toast: t1 }));
+  check(k1.ns === 'account' && k1.favs.includes('static-storm') && k1.haptics === false && /signed in/.test(t1), 'Keep: signed in, in the account’s own namespace, with a copy of the guest’s things', JSON.stringify({ ...k1, lede: t1 }));
   await sleep(1200);
   await p.waitForFunction(() => !document.querySelector('[data-sync="settings"]')?.disabled, null, { timeout: 30000 });
   await shot(p, 'flow-06-account-390');

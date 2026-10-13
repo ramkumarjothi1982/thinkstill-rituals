@@ -477,9 +477,10 @@ async function signin() {
   await shot(p, 'signin-02-guest-choice-390');
   await tapNav(p, '[data-act="keep"]');
   await waitView(p, 'account');
-  const toast = await toastText(p);
+  // the arrival is said on the account card's lede, not in a toast over the card
+  const arrived = await p.evaluate(() => document.getElementById('hm-account-lede')?.textContent || '');
   const k = { ns: await p.evaluate(() => window.__hush.auth.namespace.mode), uid: await uidOf(p), favs: await favs(p), haptics: await pref(p, 'haptics') };
-  check(k.ns === 'account' && k.uid === S.uidA && k.favs.includes('static-storm') && k.haptics === false, 'Keep: signed in as this account, in its own namespace, with a copy of the guest\'s things', JSON.stringify({ ...k, toast }));
+  check(k.ns === 'account' && k.uid === S.uidA && k.favs.includes('static-storm') && k.haptics === false, 'Keep: signed in as this account, in its own namespace, with a copy of the guest\'s things', JSON.stringify({ ...k, arrived }));
   await p.reload(); await appReady(p);
   const sb = (await lsKeys(p)).filter((x) => /^sb-.*-auth-token$/.test(x));
   check(await status(p) === 'signed-in' && await uidOf(p) === S.uidA && sb.length === 1, 'a reload keeps the session (supabase-js\'s persisted session, same account)', sb.join());
