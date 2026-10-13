@@ -1,11 +1,17 @@
-// SETTINGS — feel, reading, the Hushfold, privacy, plan. Everything lives on
-// this device; there is no account.
+// SETTINGS — reading, the Hushfold, feel, privacy, plan, about. Everything
+// lives on this device. Builds with optional sign-in (src/auth/) add one
+// account row at the top of Privacy; "Delete everything on this phone" then
+// says whose things it deletes (this account's, or the guest's when accounts
+// also live on this phone). About's privacy lines come from src/app/privacy.js,
+// shared with the Plans page.
 import { h, iconBtn, openSheet, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { openSupport } from './support.js';
 import { BUILD } from '../config.js';
 import { RUNNING } from '../update.js';
 import { type } from '../../ui/type.js';
+import { aboutPrivacy } from '../privacy.js';
+import { accountNamespaces } from '../../auth/namespace.js';
 
 const TEXT_SIZES = [[1, 'Standard'], [1.12, 'Larger'], [1.25, 'Largest']];
 const SPEEDS = [[0.75, '0.75×'], [1, '1×'], [1.25, '1.25×'], [1.5, '1.5×']];
@@ -45,6 +51,10 @@ export default function settings(app) {
   // Accounts (optional sign-in): one row at the top of Privacy, only when this build has sign-in on
   const signIn = !!app.auth?.enabled;
   const signedIn = signIn && app.auth.status() === 'signed-in';
+  // "Delete everything on this phone" is only that when nobody else's things live here:
+  // signed in it is this account's things; a guest on a phone that accounts also use, the guest's
+  const otherAccounts = signIn && !signedIn && (() => { try { return accountNamespaces(globalThis.localStorage).length > 0; } catch { return false; } })();
+  const deleteLabel = signedIn ? 'Delete this account’s things on this phone' : otherAccounts ? 'Delete the guest’s things on this phone' : 'Delete everything on this phone';
   const accountRow = h('div');
   if (signIn) import('./account.js').then((m) => m.mountAccountRow(app, accountRow)).catch(() => {});
   const angleRows = h('div');
@@ -77,16 +87,17 @@ export default function settings(app) {
       sw('saveHistory', 'Remember what I played', 'Rituals and worlds, how they felt and where you paused. Never your words or photos.'),
       sw('saveWords', 'Keep my saved angles', `${PLANS.ultra?.name || 'hushmallow Beyond'} only. Stored on this phone, never uploaded.`),
       angleRows,
-      h('button', { class: 'btn block', style: { marginTop: '12px' }, onclick: () => confirmClear() }, 'Delete everything on this phone'),
+      h('button', { class: 'btn block', style: { marginTop: '12px', textWrap: 'balance' }, 'data-act': 'delete-local', onclick: () => confirmClear() }, deleteLabel),
 
       section('Plan'),
       h('div', { class: 'setting' }, rowLabel(tierName), h('button', { class: 'btn', style: { minHeight: '44px' }, onclick: () => app.go('plans') }, 'View plans')),
       ent.source() === 'test' ? h('button', { class: 'btn ghost block', onclick: () => { ent.cancelTest(); toast('Test plan removed'); app.go('home'); } }, 'Remove test plan') : null,
 
       section('About'),
-      h('p', { style: type('body', { color: 'var(--text-2)', margin: '8px 0 0' }) },
-        'Every Mallow line, world and ritual in ', h('span', { class: 'brand-name' }, 'hushmallow'), ' is written in advance, and feelings are matched with fixed word lists: you always choose what fits. Nothing you type or add leaves this phone. The one exception is Another Angle in ',
-        PLANS.ultra?.name || 'hushmallow Beyond', ': only after you say yes, your words go to our server, where an outside service prepares the perspectives you see. It’s a wellbeing app, not a medical service.', signIn ? ' An account is optional. If you sign in and switch on sync, your settings and favourites are kept with your account; never your words, feelings or photos.' : ''),
+      // what leaves this phone: the same source as the Plans page (src/app/privacy.js), so both switch together when Another Angle goes live
+      h('p', { 'data-about': 'privacy', style: type('body', { color: 'var(--text-2)', margin: '8px 0 0' }) },
+        'Every Mallow line, world and ritual in ', h('span', { class: 'brand-name' }, 'hushmallow'), ' is written in advance, and feelings are matched with fixed word lists: you always choose what fits. ',
+        aboutPrivacy({ signIn, beyond: PLANS.ultra?.name || 'hushmallow Beyond' }), ' It’s a wellbeing app, not a medical service.'),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
       h('p', { style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0' }) }, `Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`),
       // developer tools: not part of the published site
@@ -96,7 +107,10 @@ export default function settings(app) {
           h('button', { class: 'btn ghost block', onclick: () => app.go('classic') }, 'Classic home (QA)')) : null));
 
   function confirmClear() {
-    const s = openSheet({ title: 'Delete everything?', body: h('p', { style: type('body', { margin: 0, color: 'var(--text-2)' }) }, signedIn ? 'This removes this account’s favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.' : 'This removes your favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.'),
+    const body = signedIn ? 'This removes this account’s favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.'
+      : otherAccounts ? 'This removes the guest’s favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. Accounts on this phone keep their own things. Your subscription isn’t affected.'
+        : 'This removes your favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.';
+    const s = openSheet({ title: signedIn ? 'Delete this account’s things?' : otherAccounts ? 'Delete the guest’s things?' : 'Delete everything?', body: h('p', { style: type('body', { margin: 0, color: 'var(--text-2)' }) }, body),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { const keep = app.store.get('entitlement', null); app.store.clearAll(); if (keep) app.store.set('entitlement', keep); prefs.reset(); rec.clearAll(); s.close(); toast('Deleted'); app.go('home'); } }, 'Delete')) });
   }
