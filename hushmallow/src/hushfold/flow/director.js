@@ -475,26 +475,33 @@ export function createHushflow(opts = {}) {
     let prev = null;
     if (resume) { try { prev = loadProgress(kv); } catch { prev = null; } }
     const resuming = !!(prev?.worldId && registry.playable(prev.worldId));
-    const pst = resuming && prev.state && typeof prev.state === 'object' ? prev.state : {};
-    persist.sessionCount = (persist.sessionCount || 0) + 1;
-    session = {
-      emotion: resuming ? prev.emotion ?? emotion : emotion, intention: resuming ? prev.intention ?? intention : intention,
-      intensity: resuming && Number.isFinite(pst.i) ? pst.i : intensity, input,
-      seed: resuming ? prev.seed : Math.floor(hash01(`hf|${persist.sessionCount}|${emotion}|${intention}`) * 2 ** 31),
-      discoveries: new Set(resuming && Array.isArray(pst.d) ? pst.d : []), offered: new Set(resuming && Array.isArray(pst.o) ? pst.o : []),
-      sequence: resuming && Array.isArray(prev.sequence) ? [...prev.sequence] : [],
-      // (session only, never saved)
-      gentle: !!(gentle ?? gentleWant),
-    };
+    const gentleOn = !!(gentle ?? gentleWant);
     let id = resuming ? prev.worldId : worldId;
     // a gentle session plays only calm worlds, whatever was asked for or saved
-    if (id && session.gentle && registry.get(id)?.calm !== true) id = null;
+    if (id && gentleOn && registry.get(id)?.calm !== true) id = null;
+    // Restore only into the world that was saved. When a gentle session swaps a saved storm for the ocean, the
+    // ocean starts fresh (its own seed, intro and progress; not complete): nothing of the storm's save (state,
+    // seed, discoveries, offers, sequence) carries into it, and 'world' says resumed:false.
+    const restoring = resuming && id === prev.worldId;
+    const pst = restoring && prev.state && typeof prev.state === 'object' ? prev.state : {};
+    persist.sessionCount = (persist.sessionCount || 0) + 1;
+    session = {
+      // (the person's own feeling, intention and intensity carry over either way)
+      emotion: resuming ? prev.emotion ?? emotion : emotion, intention: resuming ? prev.intention ?? intention : intention,
+      intensity: resuming && Number.isFinite(prev.state?.i) ? prev.state.i : intensity, input,
+      seed: restoring ? prev.seed : Math.floor(hash01(`hf|${persist.sessionCount}|${emotion}|${intention}`) * 2 ** 31),
+      discoveries: new Set(restoring && Array.isArray(pst.d) ? pst.d : []), offered: new Set(restoring && Array.isArray(pst.o) ? pst.o : []),
+      sequence: restoring && Array.isArray(prev.sequence) ? [...prev.sequence] : [],
+      // (session only, never saved)
+      gentle: gentleOn,
+    };
     if (!id || !registry.playable(id)) {
       const pick = registry.select({ current: null, emotion: session.emotion, intention: session.intention, history: persist.history, favourites: favourites(), bags: persist.bags, seed: session.seed, sessionCount: persist.sessionCount, gentle: session.gentle });
       id = pick.id;
       if (pick.id) persist.bags = pick.bags;
     }
-    if (!id) { phase = 'idle'; emit('error', { kind: 'none' }); return null; }
+    // (no world to play: a pause asked for meanwhile has nothing to hold, and must not hold the next start())
+    if (!id) { phase = 'idle'; pausePending = null; emit('error', { kind: 'none' }); return null; }
     const entry = registry.get(id);
     comp.setFallback(entry.palette || null);
     comp.drawFallback(); comp.clearFront();
@@ -514,7 +521,7 @@ export function createHushflow(opts = {}) {
         return null;
       }
       loadingId = null;
-      if (resuming && pst.w) { try { cur.world.restore?.(pst.w); } catch (e) { console.warn('[hushflow] restore failed', e); } }
+      if (restoring && pst.w) { try { cur.world.restore?.(pst.w); } catch (e) { console.warn('[hushflow] restore failed', e); } }
       // paused while it loaded (care or crisis typed meanwhile): it enters held, under its veil — it never
       // steps, says nothing and plays no ambience until resume()
       const held = pausePending;
@@ -531,7 +538,7 @@ export function createHushflow(opts = {}) {
         comp.veil(VEIL);
         try { subtitles?.pause?.(); } catch { /* optional */ }
       }
-      emit('world', { id, from: null, mallow: entry.mallow?.id, title: entry.title, resumed: !!resuming, paused, reason: paused ? pauseReason : null });
+      emit('world', { id, from: null, mallow: entry.mallow?.id, title: entry.title, resumed: !!restoring, paused, reason: paused ? pauseReason : null });
       if (paused && cur === inst && phase === 'playing') emit('pause', { worldId: id, reason: pauseReason });
       return cur;
     } catch (e) {
@@ -539,7 +546,9 @@ export function createHushflow(opts = {}) {
       console.warn('[hushflow] world failed to start', e);
       // (a world that failed its build never frames)
       if (cur && !cur.entered) { destroyInstance(cur); cur = null; }
-      phase = 'idle';
+      // (nothing entered: a pause asked for while it loaded has nothing to hold, and the next start() must not enter
+      // paused with that stale reason; nothing is loading any more either)
+      phase = 'idle'; pausePending = null; loadingId = null;
       emit('error', { kind: 'start', id, error: e });
       return null;
     }
@@ -669,7 +678,8 @@ export function createHushflow(opts = {}) {
       } else if (d.completeStay || d.complete) inst.ctx.say([can ? d.complete : (d.completeStay || d.complete)], { kind: 'dialogue' });
     };
     // let a discovery finish speaking first (and a paused world be resumed); never once it has ended
-    const wait = () => { if (over()) return; if (discoveryPending || paused) setTimeout(wait, 400); else say(); };
+    // (and anything held — an open Memory Garden offer: the completion's own choice or line never comes over it)
+    const wait = () => { if (over()) return; if (discoveryPending || paused || holds.size) setTimeout(wait, 400); else say(); };
     wait();
   }
 
@@ -1007,7 +1017,8 @@ export function createHushflow(opts = {}) {
       phase = 'finished';
       // (finished, not paused: nothing is waiting to be resumed — the panel shows no Resume)
       paused = false; pauseReason = null;
-      hushed = true; wantNext = false; pausePending = null;
+      // (and nothing is loading any more: state.title is null with worldId)
+      hushed = true; wantNext = false; pausePending = null; loadingId = null;
       // the world's own 'Stay, or drift on?' goes with it
       if (choiceOpen) { choiceOpen = null; try { subtitles?.clear?.(); } catch { /* optional */ } }
       stopLoop();
@@ -1090,10 +1101,12 @@ export function createHushflow(opts = {}) {
       // (a pause asked for while the first world loads counts already: it will enter paused)
       const p = paused || (!!pausePending && (phase === 'loading' || phase === 'idle'));
       const why = paused ? pauseReason : (p && pausePending !== true ? pausePending : null);
+      // (a world still being built counts while it loads; finished before it ever entered, it is nobody's world)
+      const live = cur && (cur.entered || phase === 'loading') ? cur : null;
       return {
-        phase: phase === 'finished' ? 'finished' : p ? 'paused' : phase, paused: p && phase !== 'finished', reason: why || null, worldId: cur?.id || null, nextId: nextChoice?.id || null,
+        phase: phase === 'finished' ? 'finished' : p ? 'paused' : phase, paused: p && phase !== 'finished', reason: why || null, worldId: live?.id || null, nextId: nextChoice?.id || null,
         // the world's name (or the one loading), for the panel's 'Now: …'
-        title: (cur || (loadingId ? { entry: registry.get(loadingId) } : null))?.entry?.title || null,
+        title: (live || (loadingId ? { entry: registry.get(loadingId) } : null))?.entry?.title || null,
         progress: cur?.world.progress ?? 0, complete: !!cur?.world.complete, staying: !!cur?.staying, autoFlow,
         melt: melt ? Math.round(melt.e * 1000) / 1000 : null, emotion: session?.emotion || null, intention: session?.intention || null,
         discoveries: session ? [...session.discoveries] : [], quality: qLevel,

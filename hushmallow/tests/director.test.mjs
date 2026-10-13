@@ -48,7 +48,7 @@ function world(id, { calm = false, final = false, mallow = null, next = [], gate
           frame() { ctl.frames = (ctl.frames || 0) + 1; }, pointer() {},
           get progress() { return ctl.progress ?? 0; }, get complete() { return !!ctl.complete; }, get metrics() { return {}; },
           handoff: () => ({ horizonY: 500 }), outro() {}, intro() {},
-          serialize() { return { v: 1 }; }, restore() {}, pause() { log.push(`${id}:pause`); }, resume() { log.push(`${id}:resume`); }, destroy() { log.push(`${id}:destroy`); },
+          serialize() { return { v: 1, complete: !!ctl.complete }; }, restore(s) { (ctl.restores ||= []).push(s); if (s?.complete) ctl.complete = true; }, pause() { log.push(`${id}:pause`); }, resume() { log.push(`${id}:resume`); }, destroy() { log.push(`${id}:destroy`); },
           setGentle(b) { log.push(`${id}:gentle:${b}`); },
         };
         return w;
@@ -138,6 +138,106 @@ test('director: start({gentle:true}) picks the calm ocean, even when the storm i
     assert.deepEqual(ev, [{ on: true, worldId: 'w' }]);
     D4.destroy();
   } finally { dom.restore(); }
+});
+
+test('director: a saved storm resumed in a gentle session enters the ocean fresh — no restore(), not complete, resumed:false, nothing of the storm carried over', async () => {
+  const { saveProgress } = await import('../src/engine/flow-store.js');
+  const dom = installFakeDom();
+  const made = [];
+  const mk = async (...a) => { const r = await director(...a); made.push(r.D); return r; };
+  try {
+    // (a complete storm, saved with discoveries, an offer and its own seed)
+    const savedStorm = (store) => saveProgress(store, {
+      worldId: 'storm', idx: 0, sequence: ['storm'], step: 1, emotion: 'angry', intention: 'calm', mallow: 'glitzi', seed: 4242,
+      state: { w: { v: 1, complete: true, progress: 1, thought: { d: 1, x: 0 } }, d: ['slowing'], o: ['slowing'], i: 0.8, c: 1 },
+    });
+    // synthetic worlds: the restore() spy sees exactly what reaches each world
+    const sc = {}, oc = {};
+    const store = memStore();
+    savedStorm(store);
+    const { D } = await mk(dom, [world('storm', { ctl: sc }), world('ocean', { calm: true, ctl: oc })], { store });
+    const worldEv = [];
+    D.on('world', (e) => worldEv.push(e));
+    let completes = 0;
+    D.on('complete', () => completes++);
+    const st = await D.start({ resume: true, gentle: true });
+    assert.ok(st);
+    assert.equal(D.state.worldId, 'ocean', 'a gentle session never plays the saved storm');
+    assert.equal(oc.restores, undefined, 'the storm’s saved state never reaches the ocean');
+    assert.equal(sc.restores, undefined);
+    assert.equal(D.state.complete, false, 'the ocean opens fresh, not complete');
+    assert.equal(worldEv.length, 1);
+    assert.equal(worldEv[0].resumed, false, "'world' says it was not resumed");
+    assert.deepEqual(D.state.discoveries, [], 'no discoveries carried over from the storm');
+    assert.equal(D.state.emotion, 'angry', 'the person’s own feeling still carries over');
+    assert.notEqual(oc.ctx.seed, 4242, 'the ocean gets its own seed, not the storm’s');
+    for (let i = 0; i < 40; i++) D.debug.step(1 / 60);
+    assert.equal(completes, 0, 'no completion fires straight after the world enters');
+    // (what it saves now is the ocean, with a sequence of its own)
+    const rec = D.debug.persisted.progress;
+    assert.equal(rec.worldId, 'ocean');
+    assert.deepEqual(rec.sequence, ['ocean']);
+
+    // not gentle: the same save resumes the storm itself, restored and complete
+    const sc2 = {}, oc2 = {};
+    const store2 = memStore();
+    savedStorm(store2);
+    const { D: D2 } = await mk(dom, [world('storm', { ctl: sc2 }), world('ocean', { calm: true, ctl: oc2 })], { store: store2 });
+    const ev2 = [];
+    D2.on('world', (e) => ev2.push(e));
+    await D2.start({ resume: true });
+    assert.equal(D2.state.worldId, 'storm');
+    assert.equal(sc2.restores?.length, 1, 'the saved world is restored');
+    assert.equal(sc2.restores[0].complete, true);
+    assert.equal(ev2[0].resumed, true);
+    assert.equal(sc2.ctx.seed, 4242, 'the saved seed');
+    assert.deepEqual(D2.state.discoveries, ['slowing']);
+
+    // gentle, and the saved world is the calm one: it is restored as before
+    const oc3 = {};
+    const store3 = memStore();
+    saveProgress(store3, { worldId: 'ocean', idx: 0, sequence: ['ocean'], step: 0.4, emotion: 'sad', intention: 'calm', seed: 77, state: { w: { v: 1, progress: 0.4 }, d: [], o: [], i: 0.5, c: 0 } });
+    const { D: D3 } = await mk(dom, [world('storm'), world('ocean', { calm: true, ctl: oc3 })], { store: store3 });
+    const ev3 = [];
+    D3.on('world', (e) => ev3.push(e));
+    await D3.start({ resume: true, gentle: true });
+    assert.equal(D3.state.worldId, 'ocean');
+    assert.equal(oc3.restores?.length, 1);
+    assert.equal(ev3[0].resumed, true);
+  } finally { for (const d of made) d.destroy(); dom.restore(); }
+});
+
+test('director: the real Luminous Ocean, entered gentle from a saved complete Static Storm, is not complete and plays its intro', async () => {
+  const { saveProgress } = await import('../src/engine/flow-store.js');
+  const dom = installFakeDom();
+  const made = [];
+  const mk = async (...a) => { const r = await director(...a); made.push(r.D); return r; };
+  try {
+    const store = memStore();
+    saveProgress(store, {
+      worldId: 'static-storm', idx: 0, sequence: ['static-storm'], step: 1, emotion: 'angry', intention: 'calm', mallow: 'glitzi', seed: 99,
+      // (what the shell's 'Pick up where you left off' finds after a finished storm; the ocean's restore() would accept it)
+      state: { w: { v: 1, seed: 99, progress: 1, complete: true, discoveries: ['slowing', 'stillness'], thought: { q: 0, settled: true }, elapsed: 60 }, d: ['slowing', 'stillness'], o: [], i: 0.7, c: 1 },
+    });
+    const said = [];
+    const { D } = await mk(dom, WORLDS.map((w) => ({ ...w })), { store, subtitles: subs(said) });
+    const ev = [];
+    D.on('world', (e) => ev.push(e));
+    let completes = 0;
+    D.on('complete', () => completes++);
+    await D.start({ resume: true, gentle: true });
+    assert.equal(D.state.worldId, 'luminous-ocean');
+    assert.equal(ev[0].resumed, false);
+    assert.equal(D.state.complete, false, 'the ocean is not complete');
+    assert.ok(D.state.progress < 0.05, `the ocean starts at the beginning (progress ${D.state.progress})`);
+    for (let i = 0; i < 100; i++) { D.debug.step(1 / 30); await wait(1); }
+    assert.equal(completes, 0, 'no completion straight after it enters');
+    assert.equal(D.state.complete, false);
+    const lines = said.flatMap((s) => s.lines || []);
+    const ocean = WORLDS.find((w) => w.id === 'luminous-ocean');
+    assert.ok(lines.includes(ocean.dialogue.intro[0]), `Loomi's intro plays (said: ${JSON.stringify(lines)})`);
+    assert.ok(!lines.includes(ocean.dialogue.completeStay) && !lines.includes(ocean.dialogue.complete), 'no completion line');
+  } finally { for (const d of made) d.destroy(); dom.restore(); }
 });
 
 test('director: pause({reason:"safety"}) during loading — the world enters paused, never steps, says nothing, loop stopped; resume() then plays', async () => {
@@ -630,5 +730,75 @@ test('director: the calls the current shell makes still work unchanged (pause(),
     D.finish(); D.finish();
     assert.deepEqual(ev, ['world', 'autoflow', 'pause', 'resume', 'stay', 'melt', 'finish']);
     D.destroy();
+  } finally { dom.restore(); }
+});
+
+test("director: a world's completion never comes over an open offer — its choice waits for hold('offer') to let go", async () => {
+  const dom = installFakeDom();
+  try {
+    const ctl = {}, said = [];
+    const { D } = await director(dom, [world('w', { ctl }), world('x')], { subtitles: subs(said) });
+    await D.start({ worldId: 'w' });
+    said.length = 0;
+    D.hold('offer', true);
+    ctl.complete = true;
+    for (let i = 0; i < 10; i++) D.debug.step(1 / 60);
+    await wait(900);
+    assert.equal(said.filter((s) => s.choice || s.kind === 'dialogue').length, 0, `nothing said over the offer: ${JSON.stringify(said)}`);
+    assert.equal(D.state.phase, 'playing');
+    D.hold('offer', false);
+    await wait(900);
+    assert.deepEqual(said.filter((s) => s.choice).map((s) => s.choice), ['w: stay, or drift on?'], 'the completion choice once the offer is answered');
+    D.destroy();
+  } finally { dom.restore(); }
+});
+
+test('director: finish() while loading clears the loading title; a start() that fails drops a pause asked for meanwhile', async () => {
+  const dom = installFakeDom();
+  try {
+    // finish during loading: no title left behind
+    const gate = deferred();
+    const { D } = await director(dom, [world('w', { gate })], {});
+    const p = D.start({ worldId: 'w' });
+    await wait(5);
+    assert.equal(D.state.title, 'w title', 'the loading world’s name');
+    D.finish({ reason: 'safety' });
+    assert.equal(D.state.title, null, 'nothing is loading after a finish');
+    assert.equal(D.state.worldId, null);
+    gate.resolve();
+    assert.equal(await p, null);
+    assert.equal(D.state.title, null);
+    D.destroy();
+
+    // a build that fails while a safety pause waits for it: the pause goes with it
+    let fail;
+    const bad = { p: new Promise((_, r) => { fail = r; }) };
+    bad.p.catch(() => {});
+    const warn = console.warn; console.warn = () => {};
+    try {
+      const errs = [];
+      const { D: D2 } = await director(dom, [world('bad', { gate: bad }), world('ok')], {});
+      D2.on('error', (e) => errs.push(e.kind));
+      const p2 = D2.start({ worldId: 'bad' });
+      await wait(5);
+      D2.pause({ reason: 'safety' });
+      assert.equal(D2.state.paused, true);
+      await wait(40);
+      fail(new Error('build failed'));
+      assert.equal(await p2, null);
+      assert.deepEqual(errs, ['start']);
+      assert.equal(D2.state.phase, 'idle');
+      assert.equal(D2.state.paused, false, 'no pause left waiting');
+      assert.equal(D2.state.reason, null, 'no stale safety reason');
+      assert.equal(D2.state.title, null);
+      // the next start() enters playing, not paused
+      const ev = [];
+      D2.on('world', (e) => ev.push(e));
+      assert.ok(await D2.start({ worldId: 'ok' }));
+      assert.equal(D2.state.phase, 'playing');
+      assert.equal(ev[0].paused, false);
+      assert.equal(ev[0].reason, null);
+      D2.destroy();
+    } finally { console.warn = warn; }
   } finally { dom.restore(); }
 });
