@@ -14,6 +14,7 @@ const SIZES = [
   { name: 'mobile-375x812', width: 375, height: 812, mobile: true },
   { name: 'mobile-320x568', width: 320, height: 568, mobile: true },
   { name: 'desktop-1280x860', width: 1280, height: 860, mobile: false },
+  { name: 'desktop-1280x860-single', width: 1280, height: 860, mobile: false, query: '&layout=single' },
 ];
 
 (async () => {
@@ -29,7 +30,7 @@ const SIZES = [
     const errors = [];
     page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
     page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`${m.type()}: ${m.text()}`); });
-    await page.goto(`${base}/hushmallow/hushmates-lab/index.html?fresh`);
+    await page.goto(`${base}/hushmallow/hushmates-lab/index.html?fresh${size.query || ''}`);
     await page.waitForFunction(() => window.__lab?.ready, null, { timeout: 15000 });
     await page.evaluate(() => { window.__lab.pace.ms = 260; });
     await page.waitForTimeout(900);
@@ -39,7 +40,7 @@ const SIZES = [
     for (let i = 1; i <= 10; i++) {
       try { await page.evaluate((n) => window.__lab.runStep(n), i); } catch (e) { errors.push(`step ${i}: ${e.message.split('\n')[0]}`); }
       await page.waitForTimeout(500);
-      if (size.mobile) {
+      if (size.mobile || size.query) {
         await shot(`${labels[i - 1]}`);
         // also the other person's view where it matters
         if ([4, 7, 8, 9, 10].includes(i)) {

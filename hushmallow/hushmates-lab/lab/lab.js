@@ -274,6 +274,35 @@ $('#play').addEventListener('click', async () => {
   $('#play').disabled = false;
 });
 
+// Fixtures (lab only): put the service into a known state through the
+// service itself, then let both phones catch up. Used by QA and scene work.
+async function fixture(name) {
+  const k = ids();
+  const tm = tokens.moon, tc = tokens.cloud;
+  if (!service.s.profiles[k.moon]) {
+    service.saveProfile(tm, { pseudonym: 'MoonMallow', avatar: 'noomi', interests: ['Work & study', 'Everyday stress'], style: 'gentle', availability: 'evenings' });
+  }
+  let convId = conv()?.id || null;
+  if (['invited', 'connected', 'chatting'].includes(name) && !convId) {
+    let inv = Object.values(service.s.invitations).find((i) => i.from === k.moon && i.to === k.cloud && i.status === 'pending');
+    if (!inv) inv = service.s.invitations[service.sendInvitation(tm, { handle: service.me(tc).profile.handle }).id];
+    if (name !== 'invited') convId = service.respondToInvitation(tc, { id: inv.id, accept: true }).conversationId;
+  }
+  if (name === 'chatting' && convId && !(service.s.messages[convId] || []).length) {
+    service.sendMessage(tm, { conversationId: convId, body: LINES.moon, clientId: 'fixture-moon-1' });
+    service.sendMessage(tc, { conversationId: convId, body: LINES.cloud, clientId: 'fixture-cloud-1' });
+    service.setIntent(tm, { conversationId: convId, intent: 'perspective' });
+  }
+  await Promise.all(Object.values(devices).map((d) => d.client.refreshAll().catch(() => {})));
+  return { conversationId: convId };
+}
+function show(key, screen, params = {}) {
+  setView(key);
+  const d = devices[key].device;
+  d.history = [];
+  d.go(screen, params, { transition: 'none' });
+}
+
 // start the devices only once everything above exists
 await Promise.all(Object.values(devices).map((d) => d.client.start().catch(() => {})));
 for (const d of Object.values(devices)) {
@@ -282,4 +311,4 @@ for (const d of Object.values(devices)) {
 }
 renderBadges();
 renderGuide();
-window.__lab = { service, devices, flags, setView, setLayout, runStep, pace, steps: () => STEPS.map((s) => !!s.done()), ready: true };
+window.__lab = { service, devices, flags, setView, setLayout, runStep, fixture, show, pace, steps: () => STEPS.map((s) => !!s.done()), ready: true };
