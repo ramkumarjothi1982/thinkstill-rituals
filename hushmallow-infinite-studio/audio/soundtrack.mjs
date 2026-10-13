@@ -367,6 +367,38 @@ async function renderInPage(plan) {
   // main thread at a non-deterministic moment); offline there is nothing to leak.
   Object.defineProperty(AudioScheduledSourceNode.prototype, 'onended', { configurable: true, get() { return null; }, set() {} });
 
+  // offline determinism, part 2: Chromium sums the connections of a node input in hash-set
+  // order (i.e. by memory address), so with 3+ simultaneous inputs the float additions happen in
+  // a different order on every launch (±1e-6 jitter). Two inputs are exact (a+b == b+a), so every
+  // input is kept at ≤ 2 connections: extra ones are folded into a chain of 2-input summing gains,
+  // whose order is fixed by creation order. Pure graph plumbing, inaudible, engine untouched.
+  {
+    const connect = AudioNode.prototype.connect, disconnect = AudioNode.prototype.disconnect;
+    const ins = new WeakMap();   // destination node → its (≤ 2) direct sources
+    const outs = new WeakMap();  // source node → destination nodes it feeds directly
+    const list = (m, k, make) => m.get(k) || m.set(k, make()).get(k);
+    const link = (s, d) => { connect.call(s, d); list(ins, d, () => []).push(s); list(outs, s, () => new Set()).add(d); };
+    const forget = (s, d) => { const l = ins.get(d); const i = l ? l.indexOf(s) : -1; if (i >= 0) l.splice(i, 1); outs.get(s)?.delete(d); };
+    AudioNode.prototype.connect = function (dest, output, input) {
+      if (!(dest instanceof AudioNode) || output || input) return connect.apply(this, arguments);
+      const l = ins.get(dest) || [];
+      if (l.includes(this)) return dest;
+      if (l.length >= 2) {                         // fold the two current inputs into a summer
+        const [p, q] = l, sum = this.context.createGain();
+        link(p, sum); link(q, sum); link(sum, dest);
+        disconnect.call(p, dest); forget(p, dest);
+        disconnect.call(q, dest); forget(q, dest);
+      }
+      link(this, dest);
+      return dest;
+    };
+    AudioNode.prototype.disconnect = function (dest, ...rest) {
+      if (dest === undefined) { for (const d of outs.get(this) || []) forget(this, d); return disconnect.call(this); }
+      if (dest instanceof AudioNode && rest.length === 0) { disconnect.call(this, dest); forget(this, dest); return undefined; }
+      return disconnect.call(this, dest, ...rest);
+    };
+  }
+
   // 1. the engine, read-only: fetched as text, one export appended, imported from a Blob URL
   const src = await (await fetch(plan.engineUrl)).text();
   const patched = `${src}\nexport const __hm = { buildGraph, buildMallow, buildFx, startBed, tickBed, setG: (g) => { G = g; }, AMB_LEVEL };\n`;

@@ -58,8 +58,9 @@ const B = {
 const BREATH = { breath: 7, breathRate: 0 };
 const P = {
   sleep: { ...BREATH, blush: 1.1 },
-  startle: { ...BREATH, eyeOpen: 1.38, eyeScale: 1.16, irisScale: 0.76, sparkle: 1.25, browAlpha: 1, browY: 1.0, browTilt: 0.12,
-    mouthSmile: 0, mouthRound: 0.9, mouthOpen: 0.34, blush: 0.95 },
+  peek: { ...BREATH, eyeOpen: 0.3, wink: 1, closedCurve: 1, browAlpha: 0.35, browY: 0.3, mouthSmile: 0.45, blush: 1.05 },
+  startle: { ...BREATH, eyeOpen: 1.38, eyeScale: 1.16, irisScale: 0.62, sparkle: 1.0, browAlpha: 1, browY: 1.15, browTilt: 0.35,
+    mouthSmile: -0.25, mouthRound: 1, mouthOpen: 0.6, mouthWidth: 0.55, blush: 0.95 },
   stare: { ...BREATH, eyeOpen: 1.3, eyeScale: 1.13, irisScale: 0.72, browAlpha: 1, browY: 0.82, browTilt: 0.2,
     mouthSmile: -0.12, mouthRound: 0.35, mouthOpen: 0.1, mouthWidth: 0.8, blush: 0.95 },
   worry: { ...BREATH, eyeOpen: 1.18, eyeScale: 1.1, irisScale: 0.78, browAlpha: 1, browY: 0.5, browTilt: 0.8,
@@ -67,29 +68,30 @@ const P = {
   fret: { ...BREATH, eyeOpen: 1.22, eyeScale: 1.12, irisScale: 0.7, browAlpha: 1, browY: 0.62, browTilt: 0.95,
     mouthSmile: -0.45, mouthWave: 0.85, mouthTremble: 0.35, mouthWidth: 0.72, mouthOpen: 0.1, tremble: 1.1,
     squashBias: 0.03, shrink: 0.06, blush: 0.9, blushLines: 0.45 },
-  panic: { ...BREATH, eyeOpen: 1.36, eyeScale: 1.18, irisScale: 0.6, browAlpha: 1, browY: 0.9, browTilt: 1.0,
-    mouthSmile: -0.5, mouthRound: 0.55, mouthOpen: 0.42, mouthWidth: 0.66, mouthTremble: 0.75, mouthWave: 0.35,
-    tremble: 2.4, squashBias: 0.06, shrink: 0.14, blush: 0.85, blushLines: 0.8 },
-  close: { ...BREATH, eyeOpen: 0, closedCurve: 0.55, browAlpha: 0.45, browY: 0.15, browTilt: 0.45,
+  panic: { ...BREATH, eyeOpen: 1.36, eyeScale: 1.18, irisScale: 0.55, wet: 0.5, browAlpha: 1, browY: 1.05, browTilt: 1.25,
+    mouthSmile: -0.62, mouthRound: 0.2, mouthOpen: 1.0, mouthWidth: 1.0, mouthTremble: 1.0, mouthWave: 0.8,
+    tremble: 2.4, squashBias: 0.06, shrink: 0.14, blush: 0.85, blushLines: 1 },
+  close: { ...BREATH, eyeOpen: 0, closedCurve: 0.9, browAlpha: 0.45, browY: 0.15, browTilt: 0.45,
     mouthSmile: 0.05, mouthWidth: 0.8, blush: 1.0 },
-  inhale: { ...BREATH, eyeOpen: 0, closedCurve: 0.35, browAlpha: 0.75, browY: 0.75, browTilt: 0.15,
-    mouthSmile: 0.15, mouthRound: 0.5, mouthOpen: 0.14, squashBias: -0.12, float: 0.3, blush: 1.25 },
-  hold: { ...BREATH, eyeOpen: 0, closedCurve: 0.25, browAlpha: 0.8, browY: 0.85, browTilt: 0.1,
-    mouthSmile: 0.2, mouthPout: 0.55, mouthWidth: 0.6, cheekPuff: 1, squashBias: -0.14, float: 0.34, blush: 1.45 },
-  exhale: { ...BREATH, eyeOpen: 0, closedCurve: 0.85, browAlpha: 0.3, browY: 0.0, browTilt: 0.3,
+  inhale: { ...BREATH, eyeOpen: 0, closedCurve: 0.6, browAlpha: 0.55, browY: 0.9, browTilt: 0.15,
+    mouthSmile: 0, mouthRound: 1, mouthOpen: 0.32, squashBias: -0.12, float: 0.3, blush: 1.25 },
+  hold: { ...BREATH, eyeOpen: 0, closedCurve: 0.6, browAlpha: 0.55, browY: 0.95, browTilt: 0.12,
+    mouthSmile: 0, mouthRound: 1, mouthOpen: 0.2, squashBias: -0.14, float: 0.34, blush: 1.35 },
+  exhale: { ...BREATH, eyeOpen: 0, closedCurve: 0.85, browAlpha: 0, browY: 0.0, browTilt: 0.3,
     mouthSmile: 0.25, mouthRound: 1, mouthOpen: 0.5, cheekPuff: 0, squashBias: 0.14, float: 0, blush: 1.4 },
-  exhaleTail: { ...BREATH, eyeOpen: 0, closedCurve: 1, browAlpha: 0.1, mouthSmile: 0.6, mouthRound: 0.45, mouthOpen: 0.12,
+  exhaleTail: { ...BREATH, eyeOpen: 0, closedCurve: 1, browAlpha: 0, mouthSmile: 0.6, mouthRound: 0.45, mouthOpen: 0.12,
     squashBias: 0.05, blush: 1.35 },
   relaxed: { ...BREATH, blush: 1.35 },
-  peace: { ...BREATH, eyeOpen: 0.56, lidTop: 0.26, lidBot: 0.3, closedCurve: -0.6, irisScale: 1.08, sparkle: 1.55,
-    mouthSmile: 0.78, mouthWidth: 0.72, blush: 1.55 },
+  peace: { ...BREATH, eyeOpen: 0.45, lidTop: 0, lidBot: 0.5, closedCurve: -1, irisScale: 1.12, sparkle: 1.2,
+    mouthSmile: 0.55, mouthWidth: 0.6, blush: 1.6 },
+  peaceShut: { ...BREATH, eyeOpen: 0, lidBot: 0.5, closedCurve: -1, mouthSmile: 0.55, mouthWidth: 0.6, blush: 1.5 },
   sleepEnd: { ...BREATH, blush: 1.3 },
 };
 
 const POSES = [
-  [-99, P.sleep], [B.startle, P.startle], [2.15, P.stare], [B.b1 - 0.05, P.worry], [B.b3, P.fret],
+  [-99, P.sleep], [B.ping + 0.12, P.peek], [B.startle, P.startle], [2.15, P.stare], [B.b1 - 0.05, P.worry], [B.b3, P.fret],
   [6.0, P.panic], [B.close, P.close], [B.inhale, P.inhale], [B.hold, P.hold], [B.exhale, P.exhale],
-  [9.75, P.exhaleTail], [B.relaxed, P.relaxed], [B.open, P.peace], [B.sleep, P.sleepEnd],
+  [9.75, P.exhaleTail], [B.relaxed, P.relaxed], [B.open, P.peace], [B.sleep, P.peaceShut], [B.sleep + 0.3, P.sleepEnd],
 ];
 
 // breath signal s(t) ∈ [-1, 1]  (+ = inhaled: taller & narrower)
@@ -152,7 +154,7 @@ async function setup(stage) {
       { glyph: '?!', appearAt: B.minis[3], home: [-250, -262], size: 36 },
     ],
     orbit: {
-      start: B.orbitStart, full: B.orbitFull, rx: 196, ry: 96, cy: -150,
+      start: B.orbitStart, full: B.orbitFull, rx: 196, ry: 84, cy: -182,
       expand: (t) => 1 + 0.4 * smootherstep(B.close, B.hold, t),
       lift: (t) => -92 * smootherstep(B.close, B.hold, t),
       speed: [[0, 0], [B.orbitStart, 0], [B.orbitFull, 0.95], [6.4, 1.7], [6.95, 2.7], [7.4, 1.7], [8.0, 0.55], [8.8, 0.12], [9.2, 0]],
@@ -212,7 +214,7 @@ function grade(t) {
     tint: { top: mixHex('#5f4fd0', '#6a3fd8', anx), bottom: '#2a1f78', amount: (0.3 + 0.12 * anx) * night + 0.06, bottomK: 0.8 },
     warm: { top: '#ffbf72', bottom: '#ffa0b4', amount: 0.4 * warm, bottomK: 0.6 },
     glow: { followMoon: true, x: 790, y: 330, r: 820, color: mixHex('#b3a6ff', '#ffd9a6', warm), amount: lerp(0.08, 0.3, warm) },
-    base: `contrast(${lerp(1.1, 1.07, warm).toFixed(3)}) saturate(${lerp(1.06, 1.12, warm).toFixed(3)})`,
+    base: `contrast(${lerp(1.1, 1.07, warm).toFixed(3)}) saturate(${lerp(1.0, 1.12, warm).toFixed(3)})`,
     vignette: lerp(0.5, 0.42, warm) + 0.24 * anx, vignetteCy: 0.56,
     grain: 0.042,
     fade: { color: '#06040f', amount: Math.max(fadeIn * 0.22, fadeOut * 0.12) },
@@ -225,8 +227,8 @@ function light(t) {
   return {
     rim: { color: mixHex('#cfc4ff', '#ffe3b4', warm), amount: lerp(0.55, 0.75, warm), width: 9, dx: 0.62, dy: -0.78, soft: 2.5 },
     halo: { color: mixHex(mixHex('#7f6cff', '#ff6fc0', anx * 0.8), '#ffcf8f', warm), amount: lerp(0.32, 0.46, warm) + 0.1 * anx, blur: 30 },
-    shade: { key: mixHex('#ece8ff', '#fff0d8', warm), keyAmount: lerp(0.1, 0.14, warm), fill: mixHex('#2a1f78', '#5a2f78', warm),
-      amount: lerp(0.3, 0.2, warm), occlusion: 0.32, dx: 0.62, dy: -0.78 },
+    shade: { key: mixHex('#ece8ff', '#fff0d8', warm), keyAmount: lerp(0.1, 0.14, warm), fill: mixHex('#4a3fa0', '#5a2f78', warm),
+      amount: lerp(0.18, 0.2, warm), occlusion: 0.22, dx: 0.62, dy: -0.78 },
   };
 }
 
@@ -250,7 +252,7 @@ function gaze(t, head) {
   if (!items.length) return [-0.5, -0.3];
   const toLook = (p) => {
     const e = actor.eyeMid;
-    return [clamp((p.x - e.x) / 175, -1, 1), clamp((p.y - e.y) / 210, -1, 0.6)];
+    return [clamp((p.x - e.x) / 120, -1, 1), clamp((p.y - e.y) / 210, -0.55, 0.6)];
   };
   // newest bubble wins for its first 0.55 s (reading it)
   const newest = items.reduce((a, b) => (b.appearAt > a.appearAt ? b : a));
@@ -284,9 +286,13 @@ function direct(t, dt, stage, info = {}) {
     // z's while asleep (pre-roll spawns one so frame 0 already has a z drifting)
     fireOnce('z0', t, 0.35, () => actor.particles.spawn('z', 0, 1));
     fireOnce('ping', t, B.ping, () => stage.cue(B.ping, 'ping'));
+    fireOnce('peek', t, B.ping + 0.12, () => { actor.vel.eyeOpen = 6; stage.cue(B.ping + 0.12, 'peek'); });
     fireOnce('startle', t, B.startle, () => {
       actor.val.eyeOpen = 1.05; actor.vel.eyeOpen = 22;          // eyes POP open
       actor.val.eyeScale = 1.0; actor.vel.eyeScale = 6;
+      actor.val.wink = 0; actor.vel.wink = 0;
+      actor.val.mouthSmile = -0.2; actor.val.mouthRound = 0.75; actor.val.mouthOpen = 0.3; actor.vel.mouthOpen = 12;   // gasp with the eyes
+      actor.val.browAlpha = 1;
       actor.impulse({ squash: -1.05, hop: 0.2 });
       actor.burst('exclaim', 1).burst('moon', 6);
       stage.cue(B.startle, 'startle');
@@ -297,11 +303,12 @@ function direct(t, dt, stage, info = {}) {
     fireOnce('sweat', t, B.sweat, () => stage.cue(B.sweat, 'sweat'));
     fireOnce('fret', t, B.b3, () => actor.impulse({ squash: 0.35 }));
     fireOnce('panic', t, 6.0, () => { actor.impulse({ squash: 0.45, shear: 0.25 }); stage.cue(6.0, 'panic'); });
-    fireOnce('close', t, B.close, () => { actor.impulse({ squash: 0.3 }); stage.cue(B.close, 'close'); });
+    fireOnce('close', t, B.close, () => { actor.vel.eyeOpen = -26; actor.impulse({ squash: 0.3 }); stage.cue(B.close, 'close'); });
     fireOnce('inhale', t, B.inhale, () => { actor.impulse({ squash: -0.32 }); stage.cue(B.inhale, 'inhale', { dur: B.hold - B.inhale }); });
     fireOnce('hold', t, B.hold, () => stage.cue(B.hold, 'hold'));
     fireOnce('exhale', t, B.exhale, () => {
       actor.impulse({ squash: 0.85 });
+      actor.val.browAlpha = Math.min(actor.val.browAlpha, 0.15); actor.vel.browAlpha = -8;
       realm.pulse('ripple', 0.5, 0.79);
       stage.cue(B.exhale, 'exhale', { dur: B.exhaleEnd - B.exhale });
     });
@@ -311,11 +318,11 @@ function direct(t, dt, stage, info = {}) {
       actor.burst('moon', 8);
       stage.cue(B.release, 'release');
     });
-    fireOnce('open', t, B.open, () => { actor.impulse({ squash: 0.22 }); actor.burst('moon', 5); realm.pulse('success', 0.5, 0.78); stage.cue(B.open, 'open'); });
+    fireOnce('open', t, B.open, () => { actor.val.eyeOpen = 0.32; actor.vel.eyeOpen = 5; actor.val.closedCurve = -0.9; actor.impulse({ squash: 0.22 }); actor.burst('moon', 5); realm.pulse('success', 0.5, 0.78); stage.cue(B.open, 'open'); });
     fireOnce('blink3', t, B.blink3, () => { actor.blinkNow(); actor.impulse({ squash: 0.25 }); stage.cue(B.blink3, 'blink', { soft: true }); });
     fireOnce('endline', t, B.endLine, () => stage.cue(B.endLine, 'endline'));
     fireOnce('url', t, B.url, () => stage.cue(B.url, 'chime'));
-    fireOnce('sleep', t, B.sleep, () => { actor.impulse({ squash: 0.3 }); stage.cue(B.sleep, 'sleep'); });
+    fireOnce('sleep', t, B.sleep, () => { actor.vel.eyeOpen = -20; actor.impulse({ squash: 0.3 }); stage.cue(B.sleep, 'sleep'); });
     fireOnce('z1', t, 14.25, () => actor.particles.spawn('z', 0, 1));
   } else if (t > -1.6 && !fired.has('zpre')) {
     fired.add('zpre');
@@ -325,7 +332,7 @@ function direct(t, dt, stage, info = {}) {
   // gaze
   const g = gaze(t, head);
   if (g) actor.look(g[0], g[1]);
-  else if (t >= B.open && t < B.sleep) actor.look(0.12, -0.32);   // peaceful: up at the stars
+  else if (t >= B.open && t < B.sleep) actor.look(0, 0.08);       // peaceful: softly at the viewer
   else actor.look(0, 0);
 
   const cam = camera(t);
