@@ -17,6 +17,14 @@ it. Production is verified only by the owner's manual checklist below. The
 screens are not wired into Settings or the side panel yet (coordinator,
 below); `/#account` opens them.
 
+Round 2 (the first independent review): a password change is real
+reauthentication on every session (the current password first, the emailed
+code only when Supabase asks); guests' keys are pinned byte for byte by
+tests; Delete account never shows a happy Mallow; a sync in flight can no
+longer write a deleted or signed-out account's things back; a reset link
+works on a browser where someone else is signed in; the 64-row cap allows
+re-saving (SQL `0009`).
+
 ## Project
 
 | | |
@@ -46,9 +54,9 @@ below); `/#account` opens them.
 | `src/auth/view-model.js` | the screens' pure parts: first screen, cooldown and consent lines, dates, the delete check |
 | `src/auth/mallow.js` | the living home Mallow above the card (the app's rig; a still picture if it cannot load) |
 | `src/auth/autosync.js` | the opt-in sync while the app runs (never decides consent itself) |
-| `supabase/` | migrations 0001–0008, rollback, `tests/rls_check.sql`, email templates, README; `config.toml` = the **local** stack for the CI E2E only (never a hosted project) |
-| `tools/auth/` | `fake-supabase.mjs` (test double; renders the real templates and answers a Mailpit-style API), `pages-serve.mjs` (Cloudflare-Pages-like static server), `callback-e2e.cjs` and `screens-e2e.cjs` (browser proofs against the fake), `sql-check.sh` + `pg-supabase-shim.sql` (SQL on a throwaway local PostgreSQL), `e2e-stack-env.mjs` (the local stack's public values for CI), `E2E` (append a line to run the CI E2E) |
-| `tests/auth-*.test.mjs` | node tests (config, namespaces, errors + callback parsing, the client with the real supabase-js against the fake, two-device sync, the screens' logic and the Mallow, static SQL, the E2E's own safety and plumbing) |
+| `supabase/` | migrations 0001–0009, rollback, `tests/rls_check.sql`, email templates, README; `config.toml` = the **local** stack for the CI E2E only (never a hosted project) |
+| `tools/auth/` | `fake-supabase.mjs` (test double; renders the real templates and answers a Mailpit-style API), `pages-serve.mjs` (Cloudflare-Pages-like static server), `callback-e2e.cjs`, `screens-e2e.cjs` and `fixes-e2e.cjs` (browser proofs against the fake), `sql-check.sh` + `pg-supabase-shim.sql` (SQL on a throwaway local PostgreSQL), `e2e-stack-env.mjs` (the local stack's public values for CI), `E2E` (append a line to run the CI E2E) |
+| `tests/auth-*.test.mjs` | node tests (config, namespaces, errors + callback parsing, the client with the real supabase-js against the fake, two-device sync, the screens' logic and the Mallow, static SQL, the E2E's own safety and plumbing, races with a sync in flight (`auth-quiesce`), today's guest keys (`auth-guest-keys`, snapshot in `tests/helpers/guest-snapshot.mjs`)) |
 | `tests/e2e/auth.e2e.mjs` | the isolated end-to-end check (CI: a local Supabase stack; dry run: the fake) |
 | `.github/workflows/hushmallow-auth-e2e.yml` | runs it on a GitHub runner (below) |
 
@@ -87,11 +95,23 @@ below); `/#account` opens them.
 |---|---|
 | `hm2:<key>` (guest; also everything when sign-in is off) | the guest's things, exactly as before accounts |
 | `hm2:u:<uid>:<key>` (each account) | `prefs` (all settings, `seenIntro` and the home Mallow included), `hushfold.favourites`, `hushfold.progress`, `hushfold.rotation`, `hushflow.rotation`, `hushfold.lines`, `garden`, `journey`, `played`, `rotation`, `ultra.sealedPredictions`, `beyond.consent`, `beyond.feedback`, `beyond.seen`, `beyond.visits`, `auth.local` (this account on this device: created, guest-data answer `keep` / `fresh` ("Not now") / `none` / `cleared`), `auth.sync` (the sync's bookkeeping: the server time of the last settings sync, whether a setting changed here since, and the ids both sides had at the last library sync; ids and times only), `auth.touchedAt` |
-| `hm2:<key>` whoever is signed in (**device-level**) | `entitlement` (the plan belongs to the device / App Store account, test purchases included), `beyond.device` (Another Angle's random device code: the server's daily allowance is per device), `beyond.session` (the server session bound to that code), `beyond.invite` (tester invite code), `sound`, `haptics` (the engines' raw switches) |
+| `hm2:<key>` whoever is signed in (**device-level**) | `entitlement` (the plan belongs to the device / App Store account, test purchases included), `beyond.device` (Another Angle's random device code: the server's daily allowance is per device), `beyond.session` (the server session bound to that code), `beyond.invite` (tester invite code), `sound`, `haptics` (the engines' raw switches: they mirror the settings of whoever is using the phone, rewritten from that person's `prefs` at boot exactly as today's app does, so a guest's own values come back from the guest's `hm2:prefs` at the guest's next boot) |
 | supabase-js's own | `sb-<ref>-auth-token`, `…-code-verifier`, `…-flow-…`, `…-user`: removed on sign-out and deletion |
 
 Another Angle **consent is per person**: a second person on the same phone
 is asked again; the device code is not reset.
+
+**Guests keep today's data** (coordinator decision 3): every key today's app
+keeps for a guest is read and written exactly as before, with sign-in off
+and on. `tests/auth-guest-keys.test.mjs` seeds a snapshot of today's guest
+keys (`tests/helpers/guest-snapshot.mjs`: prefs, favourites, Hushflow pause
+and rotation, Memory Garden, Another Angle consent / device / session /
+feedback, the plan, the raw sound and haptics switches), boots the app's own
+store with sign-in off and on, reads every key through the app's readers and
+asserts each raw value is byte-identical with no key moved; then a real
+sign-in → "Not now" → the account's page → sign-out, and the same again. The
+browser proof (`tools/auth/fixes-e2e.cjs`) and the CI E2E (`guestkeys`) do
+it in the built app.
 
 * Sign-in / sign-out / deletion reload the page into the right namespace.
 * **First sign-in on a device** with guest things: asked once, "Keep this
@@ -102,6 +122,9 @@ is asked again; the device code is not reset.
   "This phone's guest things · Bring them in" once (the same copy, later).
   Back on the question means Not now. Asked once per account per device
   (`auth.local`).
+* The question is only asked when the guest has real things: a brand-new
+  visitor's automatic preferences (defaults, the intro seen, the Mallow
+  shown) do not count (`prefsChosen()`).
 * **Sign-out** (local scope): revokes this session on the server, removes
   every supabase-js key; the account's local copy stays unless the person
   asks to remove it (`signOut({ removeLocal: true })`).
@@ -109,6 +132,16 @@ is asked again; the device code is not reset.
   device's copy of the account and every supabase-js key; the guest's
   things stay.
 * **"Remove this device's data"**: this account's local copy only.
+* **Nothing is written back afterwards**: the moment a sign-out, a deletion
+  or "Remove this device's data" starts, the account's namespace is
+  **sealed** (`sealAccount()`: every set / remove through its store is
+  dropped) and the opt-in sync is paused and waited for (at most 5 s); the
+  account's copy is removed, and removed once more right before the reload.
+  A deletion the server refuses unseals and resumes. (Round 1 found a sync
+  in flight writing `hm2:u:<deleted uid>:auth.sync` back.)
+* **An account deleted on another device**: the next server check answers
+  `user_not_found`; this device drops to guest and removes that account's
+  copy too. An account only signed out elsewhere keeps its copy.
 * Settings' **"Delete everything on this phone"** in an account empties that
   account's namespace and the device keys (Settings puts the plan back); in
   guest mode it leaves every account namespace alone.
@@ -118,7 +151,8 @@ is asked again; the device code is not reset.
 `status()` · `user()` · `onChange(fn)` · `init()` · `signUp({ email, password, name })` ·
 `signIn({ email, password })` · `chooseGuestData('keep'|'fresh')` · `enter(hash)` ·
 `signOut({ removeLocal })` · `resend({ email })` · `sendReset({ email })` ·
-`cooldownLeft(kind)` · `reauthenticate()` · `updatePassword({ password, nonce })` ·
+`cooldownLeft(kind)` · `updatePassword({ current, password, nonce })` · `reauthenticate()` ·
+`endDetachedSession({ access_token, refresh_token })` · `addQuiescer({ pause, resume })` ·
 `deleteAccount()` · `removeDeviceData()` · `profile.get/update/touch` ·
 `consents.get/set('settings'|'library', on)` · `sync.pushPreferences/pullPreferences/pushLibrary/pullLibrary/syncNow(store, prefs)` ·
 `guestDataWaiting` · `importGuestData()` ·
@@ -128,6 +162,32 @@ Google is configured; no button). Synchronous without loading:
 `.guestDataWaiting`, `.namespace`; `app.auth.start({ store, prefs })` (signed
 in: load, check the session, start the opt-in sync; main.js calls it on
 idle) and `app.auth.autosync` once started.
+
+### Changing the password: real reauthentication (coordinator decision 2)
+
+`updatePassword({ current, password })` on the account screen:
+1. The **current** password is checked with `signInWithPassword` for the
+   signed-in email on an **isolated** supabase-js client
+   (`createIsolatedClient`: `persistSession`, `autoRefreshToken` and
+   `detectSessionInUrl` off, its own in-memory storage and its own storage
+   key, so its own lock; it never touches this page's session or the
+   account's namespace). Its short-lived session is signed out at once with
+   scope **`local`**, never `global` (which would end the person's real
+   session on every device). A wrong current password reads **"That password
+   doesn't match."** (no lockout wording, nothing about the account);
+   "Forgot your password?" sits right under the field.
+2. `updateUser({ password })` on the main client. On a session signed in
+   within the last 24 hours that is all.
+3. Only when Supabase answers `reauthentication_needed` (secure password
+   change on a session **over 24 hours old**) is the 6-digit code emailed
+   (`reauthenticate()`); the screen asks for it, and
+   `updatePassword({ current, password, nonce })` finishes the change
+   (within 10 minutes the current password is not checked again). A wrong
+   code reads "That code didn't work…". "Send a new code" waits 60 s.
+Supabase then ends the account's other sessions (its own rule for a
+password change), so other devices sign in again. `/auth/callback` sets a
+new password from a reset link with `updatePassword({ password,
+recoveryUid })`, only for the account that link opened.
 
 ### The opt-in sync (`sync.syncNow`, `src/auth/autosync.js`)
 
@@ -167,10 +227,10 @@ on the scene names the screen; deeper screens get a history entry, so Back
 | `forgot` → `reset-sent` | the same neutral answer for any email; resend with cooldown; the link sets the new password on `/auth/callback` |
 | `guest-choice` | Keep them with my account / Not now (above) |
 | `account` | "Hi, <name>", the email, with hushmallow since; name (saved to the profile); home Mallow (seven portraits, a radio group; also the Hushfold's Mallow); the two sync switches, each with a privacy line and "On since <date, time>" / "Off since … deleted then"; Change password; Sign out; Remove this phone's data; Delete my account |
-| `password` | step 1 emails a 6-digit code (Supabase reauthentication); step 2: the code (`one-time-code`, numeric) + the new password; a hidden `username` field for password managers; resend after 60 s |
+| `password` | the current password (`current-password`, show/hide, "Forgot your password?" under it) and the new one (`new-password`, strength hint); a hidden `username` field for password managers. Only when Supabase asks (a session over 24 hours old): "Enter the code" (`one-time-code`, numeric), "Send a new code" after 60 s |
 | `signout` | Sign out / Sign out and remove my things from this phone / Stay signed in |
 | `device-data` | removes this account's things from this phone only; says whether what is kept with the account comes back |
-| `delete` | exactly what is deleted on the server and on this phone, and what is not touched (the guest's things, other accounts, the plan, Another Angle); type `delete` to enable the button |
+| `delete` | exactly what is deleted on the server and on this phone, and what is not touched (the guest's things, other accounts, the plan, Another Angle); type **“delete”** (set apart in the label) to enable the button |
 | `off` / `expired` | sign-in off in this build / the session ended |
 
 **The home Mallow** (`src/auth/mallow.js`, the same on `/auth/callback`):
@@ -179,7 +239,13 @@ idle; **away** (eyes shut in two soft arcs while a password field has
 focus); busy (waiting for the server); **happy** (one soft hop on success,
 then idle); **concerned** (worried brows, a flat mouth, no tears) after an
 error, until typing starts again. Reduced motion: no hop and no float, the
-face still changes. If the rig cannot load, a still picture with small CSS
+face still changes. **Delete account** and **Remove this phone's data** are
+sombre from the very first frame (coordinator decision 4): the concerned
+face is applied at once (`mood(name, { instant: true })` drops any reaction
+still playing and a rising hop), a late "happy" from an earlier screen is
+ignored there, and typing the confirmation keeps it concerned. A notice
+still showing from before ("You're signed in.") fades as soon as the person
+moves to another screen. If the rig cannot load, a still picture with small CSS
 moods. Decorative (`aria-hidden`): every state is also said in words.
 
 **Accessibility and phones**: every field has a label; focus moves to the
@@ -212,6 +278,16 @@ DENY`, `X-Content-Type-Options: nosniff`, and a CSP (`default-src 'self'`,
 `location.replace`. No `404.html` is shipped: Pages keeps serving the root
 for unknown paths (the version forwarder is unchanged).
 
+**Shared browsers**: the callback page belongs to no account
+(`createCallbackAuth`: passive, namespace-free). The link decides whose
+session comes next: B's reset link opened where A is signed in sets **B's**
+new password (round 1 found it refused with "Sign in first"). The session
+the browser held before is ended on the server with scope `local`
+(`endDetachedSession`, an isolated client; that one session only), the app
+then boots into B's own namespace, another open tab leaves A's namespace,
+and A's things stay in A's namespace for A's next sign-in. `openLink()`
+holds the link's work, so Node tests run it.
+
 ## Supabase dashboard settings (owner)
 
 **Authentication → URL Configuration**
@@ -225,10 +301,9 @@ for unknown paths (the version forwarder is unchanged).
 **Authentication → Sign In / Providers → Email**
 * Enable email provider: on · Allow new users to sign up: on
 * Confirm email: **on** · Secure email change: **on** · **Secure password change: on**
-  (Supabase then asks for the emailed reauthentication code only when the
-  session is **more than 24 hours old**; a session signed in within the last
-  24 hours counts as "recently signed in" and the server changes the password
-  without checking the code. The app always asks for the code; see Known limits.)
+  (Supabase asks for the emailed reauthentication code when the session is
+  **more than 24 hours old**; the app always checks the current password
+  first, on every session, and asks for the code only when Supabase does.)
 * If the dashboard offers it (Authentication → Emails → notifications): the
   "password changed" notification email, so an account hears when its password changes
 * Minimum password length: **8** · Required characters: none (length matters most; the app hints gently)
@@ -241,11 +316,11 @@ link uses `token_hash`, so it works on any device; the reauthentication email
 is a code):
 | Template | Subject | Link / content |
 |---|---|---|
-| Confirm signup | Confirm your hushmallow account | `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email` (`confirmation.html`) |
-| Reset password | Reset your hushmallow password | `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery` (`recovery.html`) |
-| Change email address | Confirm your new email for hushmallow | `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email_change` (`email_change.html`) |
+| Confirm signup | Confirm your hushmallow account | `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email` (`confirmation.html`) |
+| Reset password | Reset your hushmallow password | `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=recovery` (`recovery.html`) |
+| Change email address | Confirm your new email for hushmallow | `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email_change` (`email_change.html`) |
 | Reauthentication | Your hushmallow code | `{{ .Token }}` (`reauthentication.html`) |
-| Magic link (not used by the app) | Your hushmallow sign-in link | `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email` (`magic_link.html`) |
+| Magic link (not used by the app) | Your hushmallow sign-in link | `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email` (`magic_link.html`) |
 
 Every link goes to **the Site URL's own** `/auth/callback`
 (`https://app.hushmallow.com/auth/callback`), whatever address the request
@@ -257,13 +332,16 @@ never a preview or a loopback address that some request put in
 the links `…com//auth/callback`). An email asked for on a preview therefore
 opens production; the person signs in on the preview afterwards. (Until
 stage 3 the links used `{{ .RedirectTo }}`, which returned to a preview but
-let an allow-listed origin receive tokens.) The same files are what the CI
+let an allow-listed origin receive tokens.) The links write `&amp;type=…`
+(`&amp;` is HTML for `&`; the mail client opens `…&type=…`). The same files are what the CI
 E2E's local stack sends (`supabase/config.toml`), so the links are checked
 end to end there.
 
 **Authentication → Sessions**
 * JWT expiry: 3600 s (default) · Refresh token rotation: on · Reuse interval: 10 s (defaults)
-* Single session per user: off (people use more than one device)
+* Single session per user: **off** (people use more than one device; and
+  the current-password check signs in once more on an isolated client: with
+  "single session" on, that would end the person's real session)
 * Time-box / inactivity timeout: off, or an inactivity timeout of 30 days if the plan has it
 
 **SMTP (Authentication → Emails → SMTP Settings): required before real people sign up.**
@@ -274,7 +352,7 @@ team and is heavily rate limited; real users need a custom SMTP provider
 Authentication → Rate Limits → emails per hour to fit (e.g. 30).
 
 **Database**: run the SQL in `supabase/README.md` order, then
-`supabase/tests/rls_check.sql` (must end `ALL 34 CHECKS PASSED`).
+`supabase/tests/rls_check.sql` (must end `ALL 35 CHECKS PASSED`).
 Data API exposed schemas: `public` only (never `hm_private`).
 
 **Google, later**: Authentication → Providers → Google (client id / secret
@@ -314,13 +392,13 @@ once the file is on `main`). About 10 minutes. Steps:
 3. Supabase CLI **2.117.0** (pinned, `supabase/setup-cli` pinned to a
    commit): `supabase start` in `hushmallow/` with `supabase/config.toml`
    (Postgres 17, Auth, PostgREST, Kong, Mailpit; Studio, Realtime, Storage,
-   Functions, analytics off; the migrations `0001`…`0008` applied in order
+   Functions, analytics off; the migrations `0001`…`0009` applied in order
    as `postgres`, like the SQL editor; no seed).
 4. `tools/auth/e2e-stack-env.mjs` keeps only the stack's **public** values
    from `supabase status -o json` (API URL, publishable key, the local
    database URL, Mailpit) and refuses anything not on the runner; the
    stack's secret / service-role keys are never read or stored.
-5. psql: the 8 migrations are recorded; `supabase/tests/rls_check.sql`
+5. psql: the 9 migrations are recorded; `supabase/tests/rls_check.sql`
    must print `ALL … CHECKS PASSED` with no `FAIL` and leave no account
    behind, or the job stops.
 6. `tools/build-site.sh` with `HM_AUTH_MODE=ci` and the stack's URL and
@@ -363,10 +441,16 @@ the local database (each section says why if it cannot run):
   off → the rows deleted, withdrawal time-stamped, the phone keeps its copy.
 * **refresh**: past the access token's expiry, still signed in; the next
   call works and the token was refreshed.
-* **password**: a fresh session shows Supabase's 24-hour rule (the code is
-  not checked); then the session is aged 25 hours **in the local database**
-  and a wrong code is refused, the right one works, the old password no
-  longer does.
+* **guestkeys**: a snapshot of today's guest keys boots in the built app
+  and comes through sign in → "Not now" → the account → sign out
+  byte-identical and unmoved.
+* **password**: a session from today: a wrong current password is refused
+  ("That password doesn't match."), the right one changes it at once, no
+  code is emailed and the page's own session stays alive (the check's
+  sign-in was ended with scope `local`); then the session is aged 25 hours
+  **in the local database**: Supabase asks for reauthentication, the
+  emailed code is required, a wrong code is refused, the right one works,
+  the old password no longer does.
 * **signout**: every `sb-` key gone; the guest's things back; the account's
   copy kept; this browser's session gone on the server.
 * **reset**: forgot → the reset email → its link on a 320×568 phone → a new
@@ -378,16 +462,21 @@ the local database (each section says why if it cannot run):
   B's rows in any table, refuses to create B's rows and changes or deletes
   0 of B's rows; anon reads nothing and cannot call `delete_my_account()`;
   B's token reads exactly B's row; neither local namespace holds the other's.
-* **delete**: typed confirmation → auth user, sessions and every row gone,
-  sign-in fails, this device's copy and `sb-` keys gone, the other account
-  (here and on the server) and the guest untouched.
+* **shared**: B's reset link in a second tab while A is signed in on the
+  same browser → "All set", B's new password works, A's session there is
+  ended on the server, the first tab leaves A's namespace.
+* **delete**: a sync started just before the tap; typed confirmation → auth
+  user, sessions and every row gone, sign-in fails, this device's copy and
+  `sb-` keys gone (and still gone seconds later), the other account (here
+  and on the server) and the guest untouched.
 * **unconfirmed**: "Please confirm your email first" → send the link again.
 * no page or console errors from the site (the stack's expected 4xx
   refusals aside).
 
 **Dry run here** (no Docker; the fake, which renders the same templates and
 answers a Mailpit-style API, with Supabase's one-link-per-kind, 24-hour
-reauthentication and 10 s refresh-reuse rules):
+reauthentication, sign-out-other-sessions-on-password-change and 10 s
+refresh-reuse rules):
 ```
 HM_AUTH_MODE=ci SUPABASE_URL=http://127.0.0.1:8203 SUPABASE_PUBLISHABLE_KEY=sb_publishable_hushmallow_local_dev_only \
   bash hushmallow/tools/build-site.sh /tmp/claude-0/hf/auth/site e2edry1
@@ -406,36 +495,41 @@ on the real stack is the evidence.
 Everything here ran in this sandbox against the **local fake** of Supabase
 (`tools/auth/fake-supabase.mjs`) and a throwaway PostgreSQL 16, never
 production and never Supabase itself.
-* `node --test hushmallow/tests/*.test.mjs`: the whole suite, auth included
-  (stage 2: 503 of 503; `auth-screens` 11 and `auth-sync-live` 5 are new;
-  stage 3: `auth-e2e` 11 more).
-* Stage 3: `tests/e2e/auth.e2e.mjs` dry-run against the fake on the built
-  site (`HM_AUTH_MODE=ci` build, 127.0.0.1:8202, the fake on 8203): every
-  section passes; `supabase/config.toml` parsed and validated by the pinned
-  Supabase CLI 2.117.0 (`supabase start` reads it, checks the template
-  paths, then stops for want of Docker). **The CI run on a local Supabase
-  stack has not happened yet.**
-* `bash hushmallow/tools/auth/sql-check.sh`: migrations (twice),
-  `rls_check.sql` (34/34), rollback, re-apply (stage 1; the SQL did not
-  change in stage 2).
+* `node --test hushmallow/tests/*.test.mjs`: **532 of 532** (round 2). New
+  this round: `auth-quiesce` (9: delete, sign-out with and without removing,
+  "Remove this device's data" while a sync is mid-pull, a refused deletion,
+  an account deleted elsewhere; each race fails with the seal and pause
+  taken out), `auth-guest-keys` (3: today's guest keys, sign-in off / on /
+  through a sign-in cycle), and in `auth-client` the password change both
+  ways (a fresh session, a 25-hour-old one), the isolated client, recovery
+  for the link's account only and a reset link on a shared browser; plus
+  checks in `auth-errors`, `auth-screens`, `auth-namespace`, `auth-sql`.
+* `tests/e2e/auth.e2e.mjs` dry-run against the fake on the built site:
+  **97 of 97** (round 2; sections guest, callback, signup, guestkeys,
+  signin, sync, refresh, password, signout, reset, expiry, people, shared,
+  delete, unconfirmed). **The CI run on a local Supabase stack is the
+  coordinator's; its results are not in yet.**
+* `bash hushmallow/tools/auth/sql-check.sh` on PostgreSQL 16: migrations
+  `0001`–`0009` twice, `rls_check.sql` **35 of 35**, rollback, re-apply;
+  the new cap check fails without `0009`.
 * Browser, on the **built** site (an `HM_AUTH_MODE=dev` build in
   `/tmp/claude-0/hf/auth/site`, served by `tools/auth/pages-serve.mjs` on
   8202 the way Pages serves it; the fake on 8203; the dev tree on 8201):
-  * `tools/auth/callback-e2e.cjs`: 41 checks (stage 1, rerun on the new screens).
-  * `tools/auth/screens-e2e.cjs --part flows`: 42 checks by touch (CDP):
-    create → check email → confirm on another device → sign in (wrong
-    password first) → Keep → reload keeps the session → sync on (rows
-    appear, ongoing changes follow) → withdraw (rows deleted) → change
-    password (wrong code first) → sign out → forgot → reset on another
-    device → sign in; token expiry → refresh; refresh failure → calm guest
-    fallback; Back through the screens; the keyboard; unconfirmed + resend.
-  * `--part people`: 14 checks: two accounts and a guest on one browser,
-    Not now then Bring them in, offline, delete account (auth user and rows
-    gone, this device's copy wiped, the others untouched).
-  * `--part gallery`: 67 checks: every screen at 390×844, 375×812,
-    320×568, 320×568 at text size 1.25 and 1280×800 (no sideways scroll,
-    text ≥ 13 px, inputs ≥ 16 px, targets ≥ 44 px, nothing clipped), and
-    reduced motion.
+  * `tools/auth/callback-e2e.cjs`: 41 of 41.
+  * `tools/auth/screens-e2e.cjs --part flows`: 49 of 49 by touch (CDP),
+    including Change password: a wrong current password ("That password
+    doesn't match.", no code, nothing changed), the right one (saved, the
+    check's session gone, the page's alive), and a 25-hour-old session (the
+    code step, a wrong code refused, the right one).
+  * `--part people`: 14 of 14. `--part gallery`: 62 of 62 (every screen at
+    390×844, 375×812, 320×568, 320×568 at text size 1.25 and 1280×800;
+    reduced motion).
+  * `tools/auth/fixes-e2e.cjs` (new): 38 of 38: today's guest keys in the
+    real app; Delete account and Remove this phone's data tapped while the
+    arrival reaction plays, concerned from the first frame (rig mouth ≤ 0,
+    no reaction) at 390×844 and 320×568, full and reduced motion, the notice
+    faded; B's reset link while A is signed in; delete while a sync is
+    mid-pull.
 * Not verified: real Supabase Auth and PostgREST (the CI job on a local
   Supabase stack), real email delivery, a physical iPhone keyboard (a
   stand-in `visualViewport` was used), VoiceOver.
@@ -444,7 +538,7 @@ production and never Supabase itself.
 
 The account screen opens at `https://app.hushmallow.com/#account` until
 the Settings row is wired.
-1. SQL editor: run `0001` … `0008`, then `tests/rls_check.sql` → `ALL 34 CHECKS PASSED`.
+1. SQL editor: run `0001` … `0009` (already ran `0001`–`0008`? run just `0009`), then `tests/rls_check.sql` → `ALL 35 CHECKS PASSED`.
 2. Dashboard settings above (URL configuration, email provider, templates, sessions, **custom SMTP**).
 3. Cloudflare Pages: the two variables for Production and Preview; deploy.
 4. `curl -sI https://app.hushmallow.com/auth/callback/` → `cache-control: no-store`, `x-frame-options: DENY`, `referrer-policy: no-referrer`; `curl -sI https://app.hushmallow.com/auth/callback` → a redirect to `/auth/callback/` (Pages serves the folder), with the query kept.
@@ -454,13 +548,14 @@ the Settings row is wired.
 8. On the first phone: "I've confirmed it: sign in". A wrong password first → "That email and password don't match…" (the same as for an unknown email) and a worried Mallow. Then the right one → "Keep this phone's things?" → Keep → signed in with your star.
 9. Reload: still signed in. Account card: your name, email, home Mallow; pick another Mallow (it hops; the Hushfold uses it).
 10. Turn on both switches: each shows "On since …". Table Editor: rows for your user only in `preferences` and `favourite_worlds` (no words or feelings anywhere), `sync_consents` with both times. Star another world: it appears within seconds. Turn both off: the rows are gone; `sync_consents` shows the withdrawal times; the phone keeps its stars.
-11. Change password → "Email me a code" → a 6-digit code by email (subject "Your hushmallow code") → the right code + a new password → "Your new password is saved". Sign in elsewhere with it. **A wrong code is refused only on a session more than 24 hours old** (Supabase's rule): to see "That code didn't work", stay signed in on a phone until the next day, then try a wrong code first. On a session signed in today the server does not check the code, so a wrong one also saves the password (expected, see Known limits).
+11. Change password: the screen asks for your **current** password and a new one. A wrong current password first → "That password doesn't match." (nothing changes, no email). Then the right one → "Your new password is saved", no code asked on a session signed in today. Sign in elsewhere with it (your other devices are signed out by Supabase). **On a session more than 24 hours old** (stay signed in on a phone until the next day): after the current password the screen says "Enter the code" and a 6-digit code arrives ("Your hushmallow code"); a wrong code → "That code didn't work…", the right one saves it.
 12. Sign out → Sign out: a guest again with the guest's things. Forgot your password → the email → the link (any device) → choose a new password → signed in there; sign in here with it (no second "keep" question).
-13. Shared device: sign in as A, star a world, sign out; create B (a second address) → Not now: none of A's or the guest's things; "Bring them in" brings the guest's in. Sign out: the guest's things are back. Sign in as A: A's things only.
+13. Shared device: sign in as A, star a world, sign out; create B (a second address) → Not now: none of A's or the guest's things; "Bring them in" brings the guest's in. Sign out: the guest's things are back. Sign in as A: A's things only. Then, signed in as A, open B's password-reset email on the same phone: B's new password is saved ("All set"), the app opens as B, and A is signed out there (A's things wait for A).
 14. Session end: delete your test user in Authentication → Users while the app is open on your phone; bring the app to the front: one calm line, then guest.
 15. Delete account (type `delete`): Authentication → Users no longer lists it; no rows remain for it; "Your account is deleted…"; the app is a guest again with the guest's things.
 16. Offline (aeroplane mode) on the account card: a calm pill; a switch says it can't reach hushmallow and stays as it was.
-17. On a preview (`*.hushmallow.pages.dev`): sign up; the email's button opens **production's** `https://app.hushmallow.com/auth/callback` (by design: tokens only ever go to the production app) and confirms there; then sign in on the preview with the confirmed account.
+17. On a preview (`*.hushmallow.pages.dev`): sign up; the email's button opens **production's** `https://app.hushmallow.com/auth/callback` (by design, coordinator decision 1: one-time tokens only ever reach the production app, never a preview) and confirms there; then sign in on the preview with the confirmed account. The same for a reset link asked for on a preview: the new password is set on production.
+19. As a guest who has used the app before (favourites, a Memory Garden tool, settings, Another Angle): open the version with sign-in on; everything is exactly where it was. Sign in, answer "Not now", sign out: still exactly where it was.
 18. Authentication → URL Configuration: the Site URL is exactly `https://app.hushmallow.com` (no trailing slash), so the links in step 7 read `…com/auth/callback?…`, not `…com//auth/callback?…`.
 
 ## Known limits
@@ -472,7 +567,9 @@ the Settings row is wired.
 * Changing the account's email is not in the app yet (the template and `/auth/callback?type=email_change` are ready).
 * Settings' "Delete everything on this phone" in an account empties this account's copy here; with a sync switch on, what is kept with the account comes back at the next sync (the account still has it). Turning the switch off first deletes it there too.
 * The browser proofs drive a stand-in keyboard (`visualViewport`); a physical iPhone has not been tried.
-* **The password-change code is enforced by Supabase only for sessions over 24 hours old.** Supabase's "Secure password change" treats a session signed in within the last 24 hours as recently authenticated and does not check the reauthentication code then (source of Supabase Auth v2.196, `internal/api/user.go`; the CI E2E shows both cases). The app always emails a code and asks for it, so on a session from today a wrong code still saves the new password. Options, owner's call: keep it (Supabase's model: someone who just signed in has just proved who they are); or skip the code step on sessions under 24 hours old (the access token's `amr` timestamp says when) so the screen never asks for a code the server ignores; or also ask for the current password and check it with a sign-in before the change.
+* The current-password check is one more sign-in for the account: it counts towards Supabase's sign-in rate limit (per IP) and stamps `last_sign_in_at`. If its immediate sign-out cannot reach the server (the network drops at that moment), that short session stays on the server until Supabase ends it (the password change itself ends every other session); nobody holds its tokens (memory only).
+* Settings' "Delete everything on this phone" as a guest leaves every account's namespace on the phone (by design: those are other people's things); an account deleted on another device leaves its copy only until this phone next checks with the server (then it goes).
+* With sign-in off, guests still load the small sign-in boot modules (`boot.js`, `config.js`, `namespace.js` and `sync.js`'s merge helpers, about 35 KB, no network); supabase-js itself never loads for them.
 * Email links always open the production app (`{{ .SiteURL }}/auth/callback`), also when the email was asked for on a preview (see the templates above).
 
 ## Coordinator wiring points
@@ -482,6 +579,6 @@ panel was changed here.
 * **Settings row**: in `src/app/scenes/settings.js`, an empty `h('div')` at the top of the Privacy section filled with
   `import('./account.js').then((m) => m.mountAccountRow(app, rowEl))`: "Sign in or create an account · Optional…" / "Your account · Signed in as …" with one button; renders nothing when sign-in is off.
 * **Side panel link**: `import('../app/scenes/account.js').then((m) => m.openAccount(app))`, shown only when `app.auth.enabled`; `openAccount(app, { view: 'signin' })` or `{ view: 'create' }` opens a guest's screen directly.
-* **Settings "Delete everything on this phone"** copy: in an account it deletes that account's copy on this phone (not the guest's, not other accounts'); consider "Delete this account's things on this phone" when `app.auth.status() === 'signed-in'`, and see the known limit about sync above.
+* **Settings "Delete everything on this phone"** copy: in an account it deletes that account's copy on this phone (not the guest's, not other accounts'); consider "Delete this account's things on this phone" when `app.auth.status() === 'signed-in'`, and see the known limit about sync above. As a guest it deletes the guest's things only (other accounts' copies stay); say so in the row's line.
 * The opt-in sync needs no wiring: `main.js` starts it (`app.auth.start`) and it hears `app.prefs` and `app.store` writes.
 * The Framer embed runs the app in a cross-site iframe: browsers partition its storage, so a session there is separate from `app.hushmallow.com`; sign-in is best offered in the top-level app.

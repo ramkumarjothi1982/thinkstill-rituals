@@ -18,6 +18,9 @@
 // Angle's consent, feedback tally and visit counts (consent is a person's
 // choice: a second person on the same phone is asked again).
 //
+// From the moment a sign-out, a deletion or "Remove this device's data"
+// starts, the account's namespace is sealed (sealAccount): its store drops
+// every write, so nothing in flight can put the account's things back.
 // Sign-in and sign-out reload the page into the right namespace. The first
 // time an account is used on this device it is asked once whether to keep
 // this device's guest things with it (a local copy, nothing is uploaded).

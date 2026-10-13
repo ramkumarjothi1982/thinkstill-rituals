@@ -3,7 +3,10 @@
 // account screen do (sync_consents), and the client checks them before every
 // call (src/auth/client.js syncNow; the database refuses writes without them).
 //
-//   startAutoSync({ auth, store, prefs }) → { syncNow(), flush(), stop(), state, onChange(fn) }
+//   startAutoSync({ auth, store, prefs }) → { syncNow(), flush(), stop(), pause(), resume(), state, onChange(fn) }
+//     pause()  before a sign-out, a deletion or "Remove this device's data"
+//              (src/auth/boot.js hands it to the client): nothing new starts,
+//              and it resolves once a run already in flight has finished
 //     auth   the full client (await app.auth.load()), signed in
 //     store  app.store (the account's namespaced store: onWrite())
 //     prefs  app.prefs
