@@ -645,13 +645,12 @@ test('H1: leaving, the Hushfold hands the classic rig back, so every scene after
   // after MallowTouch has gone (one Mallow at a time), and the person's own Mallow, never a world's host
   assert.ok(back > leave.indexOf('touchMt.destroy()'));
   assert.match(leave, /const own = MALLOWS\[homeMallow\] \? homeMallow : mallowId;/);
-  // world.setMallow sets world.rig and world.mallowId synchronously: a scene built right after leave() reads them
+  // (world.setMallow names the new Mallow before its art loads, so a scene built right after leave() finds
+  // it; the browser checks cover the rest: #plans, settings, the library and the classic home keep a Mallow)
   const world = read('src/app/world.js');
-  const set = fnBody(world, 'async setMallow(id,', 'releaseMallow() {');
-  assert.ok(set.indexOf('rig = next;') > 0 && set.indexOf('rig = next;') < set.indexOf('await next.loaded'));
-  assert.ok(set.indexOf('mallowId = id;') < set.indexOf('await next.loaded'));
-  // the classic scenes keep their own code: no shell hand-off through app.state (one fix, here)
-  assert.doesNotMatch(read('src/app/scenes/plans.js'), /app\.state\.stageMallow/);
+  const set = world.slice(world.indexOf('async setMallow('));
+  assert.ok(set.search(/mallowId = id\b/) > 0 && set.search(/mallowId = id\b/) < set.indexOf('await '), 'the id is set before the first await');
+  // the classic scenes keep their own code: no shell hand-off through app.state
   assert.doesNotMatch(scene, /app\.state\.stageMallow/);
   // the support sheet never asks the shared rig for heart eyes when it is urgent
   assert.match(read('src/app/scenes/support.js'), /app\.world\?\.setStage\?\.\(urgent \? 'concerned' : 'comforting'\)/);
@@ -829,4 +828,19 @@ test('H1 r3: the visit stays gentle across scenes (memory only) and when the pla
   // no upsell in the panel after something heavy
   assert.match(fnBody(scene, 'function noteSafety(r) {', 'function safetyHold('), /root\.classList\.add\('hf-heavy'\);/);
   assert.match(read('src/ui/hushfold.css'), /\.hushfold\.hf-heavy \.hf-panel \.plan:not\(\.on\):not\(\.beyond\) \{ display: none; \}/);
+});
+
+test('H1 r3: after something heavy the side panel never jokes: feelings keep the attentive face, "just play" says nothing', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const set = fnBody(scene, 'async function setFeeling(', 'const steerable');
+  assert.match(set, /if \(gentle\(\)\) stageMallow\.setStage\(CARE_FACE, \{ quiet: true \}\);\s*else if \(e\) stageMallow\.setEmotion\(/);
+  const feel = fnBody(scene, 'async function pickFeeling(', 'async function pickIntention(');
+  assert.match(feel, /if \(e && !gentle\(\)\) say\(lines\.pick\(mallowId, 'ack'/);
+  assert.doesNotMatch(feel.replace(/if \(e && !gentle\(\)\) say\(/, ''), /\bsay\(/, 'no other line from a feeling chip');
+  const intent = fnBody(scene, 'async function pickIntention(', 'function backClose(');
+  assert.match(intent, /if \(id === 'play' && !gentle\(\)\) say\(lines\.pick\(mallowId, 'justPlay'\)/);
+  // a world held for a crisis, or ending, is not steered by the panel
+  assert.match(scene, /const steerable = \(\) => !!\(flowRef && !flowRef\.stub && S\.hold !== 'crisis' && !S\.finishing\);/);
+  assert.match(feel, /if \(e && steerable\(\)\) flowRef\.setEmotion\?\./);
+  assert.match(intent, /if \(id && steerable\(\)\) flowRef\.setIntention\?\./);
 });

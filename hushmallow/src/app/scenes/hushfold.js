@@ -1109,10 +1109,14 @@ export default function hushfold(app, params = {}) {
     const e = id ? em.getEmotion(id) : null;
     S.emotion = e ? id : null;
     S.emotionName = e?.name || null;
-    if (e) stageMallow.setEmotion(e.face, 0.6, { quiet });
+    // after something heavy the feeling is noted and the attentive face stays, whatever is named
+    if (gentle()) stageMallow.setStage(CARE_FACE, { quiet: true });
+    else if (e) stageMallow.setEmotion(e.face, 0.6, { quiet });
     else stageMallow.setStage('neutral', { quiet: true });
     return e;
   }
+  /** A world the panel may steer (not one held for a crisis, nor one ending). */
+  const steerable = () => !!(flowRef && !flowRef.stub && S.hold !== 'crisis' && !S.finishing);
   async function pickFeeling(id) {
     if (id === 'other') {
       const { openEmotionPicker } = await import('../emotion-picker.js');
@@ -1121,15 +1125,18 @@ export default function hushfold(app, params = {}) {
       return;
     }
     const e = await setFeeling(id);
+    if (S.left) return;
     panel?.update();
-    if (e) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name, family: e.family }), { interrupt: !subtitles.holding });
-    if (e && flowRef && !flowRef.stub) flowRef.setEmotion?.(flowEmotion(id, e.family));
+    // after something heavy: no acknowledgement line (it would joke, or talk over the support line)
+    if (e && !gentle()) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name, family: e.family }), { interrupt: !subtitles.holding });
+    if (e && steerable()) flowRef.setEmotion?.(flowEmotion(id, e.family));
   }
   async function pickIntention(id) {
     S.intention = id;
     panel?.update();
-    if (id === 'play') say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
-    if (id && flowRef && !flowRef.stub) flowRef.setIntention?.(id);
+    // after something heavy the choice is noted, without the playful "just play" line
+    if (id === 'play' && !gentle()) say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
+    if (id && steerable()) flowRef.setIntention?.(id);
   }
 
   function backClose(token) {
