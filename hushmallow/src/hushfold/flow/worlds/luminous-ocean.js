@@ -1924,7 +1924,8 @@ export function create(ctx) {
     } else nudge(A, 0, K.y0 - A.D / 2 - 1 - A.sy);
   }
   const isLive = (b) => (b.state === 'float' || b.state === 'rise' || b.state === 'arrive') && b.alpha > 0.05;
-  // (one gliding to a free place — its slide is only how it is shown — is left to arrive before it is held off anything)
+  // (one sliding to a new place — its slide is only how it is shown — is held off others on screen, its slide bent round
+  // them, and is not held back to the hard keep-apart's pace: the slide is its own easing)
   const sliding = (b) => Math.abs(b.offX) + Math.abs(b.offY) > 3;
   const HARD_V = 120;                                       // px/s: the most the hard keep-apart moves a bubble (it never pops)
   const prC = { x0: 0, y0: 0, x1: 0, y1: 0 };
@@ -1940,12 +1941,15 @@ export function create(ctx) {
     const E = OCEAN.EDGE, bb = bandBottom() + 4, fl = plan.floor;
     const T = thought && tS.alpha * tS.vis > 0.2, rT = T ? tS.r * tS.surf : 0;
     const P = thought && tS.plateW && tS.alpha * tS.vis > 0.2 && (tS.labelFade < 0 || tS.labelFade > 0.62) ? plateRect(prC) : null;
+    // (one sliding to a new place after a re-plan is held off on screen — its slide bends round the other — and the rest
+    // on the water as usual: nothing is ever drawn over another, sliding or not)
+    const mv = (b, dx, dy) => { if (sliding(b)) { b.offX += dx; b.offY += dy; b.sx += dx; b.sy += dy; } else nudge(b, dx, dy); };
     const inside = (A) => {
       const ra = A.D / 2;
       let ex = 0, ey = 0;
       if (A.sx - ra < E) ex = E - (A.sx - ra); else if (A.sx + ra > W - E) ex = W - E - (A.sx + ra);
       if (A.sy - ra < bb) ey = bb - (A.sy - ra); else if (A.sy + ra > fl) ey = fl - (A.sy + ra);
-      if (ex || ey) nudge(A, ex, ey);
+      if (ex || ey) mv(A, ex, ey);
       if (K.on) offHero(A);
     };
     // (pressed against an edge, the floor or the hero, a bubble cannot give way: the other one moves the whole way)
@@ -1953,10 +1957,10 @@ export function create(ctx) {
     for (let it = 0; it < 6; it++) {
       for (let a = 0; a < bubbles.length; a++) {
         const A = bubbles[a];
-        if (!isLive(A) || sliding(A)) continue;
+        if (!isLive(A)) continue;
         for (let c = a + 1; c < bubbles.length; c++) {
           const B = bubbles[c];
-          if (!isLive(B) || sliding(B)) continue;
+          if (!isLive(B)) continue;
           let dx = A.sx - B.sx, dy = A.sy - B.sy, d = Math.hypot(dx, dy);
           const need = (A.D + B.D) / 2 + 2;
           if (d >= need) continue;
@@ -1973,18 +1977,18 @@ export function create(ctx) {
               let room = up.sy - up.D / 2 - bb;
               if (P && P.x0 < up.sx + up.D / 2 + 2 && P.x1 > up.sx - up.D / 2 - 2 && P.y1 <= up.sy) room = Math.min(room, up.sy - up.D / 2 - 2 - P.y1);
               const r = clamp(room, 0, ny);
-              if (r > 0) nudge(up, 0, -r);
-              if (ny > r) nudge(lo, 0, ny - r);
+              if (r > 0) mv(up, 0, -r);
+              if (ny > r) mv(lo, 0, ny - r);
             }
             continue;
           }
           const ka = pa ? 0 : pb ? 1 : 0.5;
-          if (ka) nudge(A, (dx / d) * m * ka, (dy / d) * m * ka);
-          if (ka < 1) nudge(B, (-dx / d) * m * (1 - ka), (-dy / d) * m * (1 - ka));
+          if (ka) mv(A, (dx / d) * m * ka, (dy / d) * m * ka);
+          if (ka < 1) mv(B, (-dx / d) * m * (1 - ka), (-dy / d) * m * (1 - ka));
         }
         if (T) {
           const dx = A.sx - tS.sx, dy = A.sy - tS.sy, d = Math.hypot(dx, dy) || 1e-3, need = A.D / 2 + rT + OCEAN.BUBBLE_GAP;
-          if (d < need) nudge(A, (dx / d) * (need - d), (dy / d) * (need - d));
+          if (d < need) mv(A, (dx / d) * (need - d), (dy / d) * (need - d));
         }
         if (P) {
           const ra = A.D / 2 + 2;
@@ -1995,7 +1999,7 @@ export function create(ctx) {
             let L2 = A.sx - A.D / 2 - l < E ? Infinity : l, R2 = A.sx + A.D / 2 + r > W - E ? Infinity : r, U2 = A.sy - A.D / 2 - u < bb ? Infinity : u, D2 = A.sy + A.D / 2 + dn > fl ? Infinity : 1.5 * dn;
             if (Math.min(L2, R2, U2, D2) === Infinity) { L2 = l; R2 = r; U2 = u; D2 = 1.5 * dn; }
             const m = Math.min(L2, R2, U2, D2);
-            if (m === L2) nudge(A, -l, 0); else if (m === R2) nudge(A, r, 0); else if (m === U2) nudge(A, 0, -u); else nudge(A, 0, dn);
+            if (m === L2) mv(A, -l, 0); else if (m === R2) mv(A, r, 0); else if (m === U2) mv(A, 0, -u); else mv(A, 0, dn);
           }
         }
         inside(A);
@@ -2004,7 +2008,7 @@ export function create(ctx) {
           // round the side of the thought it is on)
           const dx = A.sx - tS.sx, dy = A.sy - tS.sy, need = A.D / 2 + rT + OCEAN.BUBBLE_GAP;
           if (dx * dx + dy * dy < need * need - 0.25 && Math.abs(dy) < need) {
-            nudge(A, (dx < 0 || (dx === 0 && A.sx > W / 2) ? -1 : 1) * Math.sqrt(need * need - dy * dy) - dx, 0);
+            mv(A, (dx < 0 || (dx === 0 && A.sx > W / 2) ? -1 : 1) * Math.sqrt(need * need - dy * dy) - dx, 0);
             inside(A);
           }
         }
@@ -2025,7 +2029,7 @@ export function create(ctx) {
     for (const b of bubbles) {
       if (!isLive(b)) { b.jam = 0; b.overT = false; continue; }
       let jam = 0;
-      for (const o of bubbles) if (o !== b && isLive(o) && !sliding(o)) jam = Math.max(jam, (o.D + b.D) / 2 - Math.hypot(o.sx - b.sx, o.sy - b.sy));
+      for (const o of bubbles) if (o !== b && isLive(o)) jam = Math.max(jam, (o.D + b.D) / 2 - Math.hypot(o.sx - b.sx, o.sy - b.sy));
       const ovT = T ? b.D / 2 + rT - Math.hypot(b.sx - tS.sx, b.sy - tS.sy) : -1;
       b.overT = ovT > 0;
       jam = Math.max(jam, ovT);
