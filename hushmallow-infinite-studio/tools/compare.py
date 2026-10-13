@@ -61,18 +61,24 @@ sheet.save(os.path.join(OUT, 'v1-vs-v2-beats.jpg'), quality=92)
 
 # ---- 1:1 crops (no resampling): the face region at a calm moment of each cut
 def bbox_face(im):
-    # Noomi is the brightest saturated-blue blob; find it on a downscaled copy
-    a = np.asarray(im.convert('HSV')).astype(np.int32)
-    m = (a[..., 1] > 60) & (a[..., 2] > 150) & (a[..., 0] > 120) & (a[..., 0] < 170)
-    ys, xs = np.nonzero(m[:1500])
-    cy, cx = int(np.median(ys)), int(np.median(xs))
-    return cx, cy
+    # Noomi = the large light-blue blob above the waterline; centre the crop on the face
+    # (55 % down the body), so both cuts are framed the same way
+    a = np.asarray(im.convert('RGB')).astype(np.int32)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    m = (b > 200) & (g > 140) & (r < 215) & (g - r > 25)
+    m[:420] = False
+    m[1500:] = False
+    rows, cols = np.nonzero(m.sum(1) > 40)[0], np.nonzero(m.sum(0) > 40)[0]
+    top, bot = rows.min(), rows.max()
+    if bot - top > 900:     # v1 stands on a shore: ignore the lower body/ground run
+        bot = top + 650
+    return int((cols.min() + cols.max()) / 2), int(top + 0.58 * (bot - top))
 
 crops = []
 for path, t in [(V1, 0.4), (V2, 0.05)]:
     im = frame(path, t)
     cx, cy = bbox_face(im)
-    box = (max(0, cx - 260), max(0, cy - 150), max(0, cx - 260) + 520, max(0, cy - 150) + 300)
+    box = (max(0, cx - 260), max(0, cy - 170), max(0, cx - 260) + 520, max(0, cy - 170) + 300)
     crops.append(im.crop(box))
 pair = Image.new('RGB', (520 * 2 + 30, 300 + 50), (14, 12, 28))
 dd = ImageDraw.Draw(pair)

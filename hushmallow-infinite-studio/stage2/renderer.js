@@ -327,7 +327,7 @@ uniform vec4 uRect;      // centre world x,y, half w,h (world px, pre-scale)
 uniform float uScale; uniform vec2 uSquash; uniform float uRot;
 out vec2 vLocal; out vec2 vScreen;
 void main() {
-  vec2 local = aPos * (uRect.zw + 40.);          // padding for glow
+  vec2 local = aPos * (uRect.zw + 64.);          // padding for glow + shadow (both reach zero inside it)
   vLocal = local;
   vec2 p = local * uScale * uSquash;
   float c = cos(uRot), s = sin(uRot);
@@ -348,7 +348,8 @@ void main() {
   float aa = 1.2;
   float inside = 1. - smoothstep(-aa, aa, d);
   // soft outer glow / shadow
-  float glow = exp(-max(d, 0.) / 16.) * 0.16;
+  float fadeOut = smoothstep(58., 30., d);       // outer terms reach exactly zero before the quad edge
+  float glow = exp(-max(d, 0.) / 16.) * 0.16 * fadeOut;
   vec3 bg = texture(uBlur, vScreen).rgb;
   // frosted glass: the blurred scene lifted toward a cool white, a lit inner rim
   vec3 glass = mix(bg, uTint, 0.52);
@@ -363,11 +364,11 @@ void main() {
   vec2 tuv = vLocal / (uRect.zw * 2.) + 0.5;
   vec4 txt = texture(uText, vec2(tuv.x, tuv.y));
   vec3 col = mix(glass, txt.rgb / max(txt.a, 1e-3), txt.a * uTextAlpha);
-  col = mix(col, vec3(1.35, 1.12, 0.82), uGlowUp * 0.7 * (0.6 + 0.4 * smoothstep(-uRect.w, 0., d)));
+  col = mix(col, vec3(1.0, 0.9, 0.74), uGlowUp * 0.42 * (0.5 + 0.5 * smoothstep(-uRect.w, 0., d)));   // a soft warm glow, never a white block
   float a = inside * uAlpha;
-  vec3 halo = (uEdge + vec3(1.4, 1.0, 0.6) * uGlowUp * 2.5) * glow * uAlpha;
+  vec3 halo = (uEdge + vec3(1.2, 0.95, 0.65) * uGlowUp * 1.1) * glow * uAlpha;
   // soft contact shadow beneath (darkens what is behind, outside the glass)
-  float shd = exp(-max(sdRound(vLocal - vec2(0., 10.), uRect.zw, uRadius), 0.) / 18.) * (1. - inside) * 0.22 * uAlpha;
+  float shd = exp(-max(sdRound(vLocal - vec2(0., 10.), uRect.zw, uRadius), 0.) / 18.) * (1. - inside) * 0.22 * uAlpha * fadeOut;
   frag = vec4(col * a + halo * (1. - a), a + (glow * 0.6 + shd) * uAlpha * (1. - a));
 }`;
 

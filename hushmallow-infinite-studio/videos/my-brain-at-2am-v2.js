@@ -160,9 +160,9 @@ function bubbleAt(i, t) {
   const wob = 0.09 * ring(t - tb, 2.8, 0.28) + spin * 0.035 * Math.sin(t * 17 + i * 2);
   const grow = spring(t - tb, 2.3, 0.48);
   const scale = lerp(0.12, 1, grow) * (0.9 + 0.1 * depth) * (1 + 0.12 * smoothstep(0, 0.55, dis));
-  const alpha = smoothstep(tb, tb + 0.16, t) * (1 - smoothstep(0.12, 0.6, dis)) * (0.84 + 0.16 * (depth * 0.5 + 0.5)) * lerp(1, 0.86, smoothstep(7.4, 8.6, t));
+  const alpha = smoothstep(tb, tb + 0.16, t) * (1 - smoothstep(0.06, 0.52, dis)) * (0.84 + 0.16 * (depth * 0.5 + 0.5)) * lerp(1, 0.86, smoothstep(7.4, 8.6, t));
   // dissolving: the words go first, then the glass turns to warm light and scatters into motes
-  const glowUp = smoothstep(-0.05, 0.22, dis) * (1 - smoothstep(0.3, 0.6, dis));
+  const glowUp = smoothstep(-0.05, 0.2, dis) * (1 - smoothstep(0.18, 0.5, dis));
   const textAlpha = 1 - smoothstep(-0.08, 0.2, dis);
   return { x: lerp(HEAD[0], ox, k), y: lerp(HEAD[1], oy, k), depth, scale, squash: [1 + wob, 1 - wob], alpha, stress: spin * 0.7, th, glowUp, textAlpha };
 }
