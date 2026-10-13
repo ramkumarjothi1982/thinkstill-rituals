@@ -127,12 +127,13 @@ not optional.
 
 - Private by default: the picture or video is made on the device and nothing
   is uploaded or posted.
-- The author chooses what it shows. Their own words are off by default.
+- The author chooses what it shows. The feeling's name and their own words are
+  off by default.
 - **Contributors' consent:** a perspective can appear only if its writer
   allowed it when they wrote it ("They may include my words in a share
   picture", off by default). Writers can change their mind any time in You &
   safety. Nobody is ever named.
-- A Mallow's perspective is always labelled automatically generated and is
+- A Mallow's perspective keeps its own label ("Automatically generated") and is
   never presented as a stranger's. "Five strangers saw it differently" appears
   only when five people did.
 

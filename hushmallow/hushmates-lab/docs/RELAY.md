@@ -138,18 +138,23 @@ story.
 `ui/relay/share.js` and `share-render.js` draw a 9:16 story on a canvas, on
 the device: "I released one thought into the world…" → "Five strangers saw it
 differently." → "Here's what came back." → "What would they see in yours?",
-ending on the Hushmallow card. One renderer serves the live preview, a
+ending on the Hushmallow card, with the author's own Mallow holding the orb.
+One renderer serves the live preview, a
 1080 × 1920 picture and a short WebM video (`MediaRecorder`, where the browser
 supports it). Nothing is uploaded or posted.
 
 - The numbers are the journey's real human count; with nobody, the line is
   "My Mallow found another way to see it." or "It travelled through Hushfold,
   and came home." No petals are invented.
-- The feeling's name is on by default; the author's own words are off by
-  default.
+- Private by default: the feeling's name and the author's own words are both
+  off until the author turns them on.
 - A person's perspective can be chosen only if its writer allowed it
-  (`shareable`); others are shown locked. A Mallow's is always labelled
-  automatically generated and is never presented as a stranger's.
+  (`shareable`); others are shown as one quiet line ("A Hushmate kept theirs
+  private"). Every perspective keeps its own label from the service, so a
+  Mallow's reads "Automatically generated" (or, in the lab, "Example for
+  testing, not generated") and is never presented as a stranger's.
+- The picture holds one or two perspectives (a note says so if fewer fit); the
+  video shows each in turn.
 
 **Durations** live in `core/relay-config.js` (`RELAY`) as pilot defaults to
 be tuned, not product rules.

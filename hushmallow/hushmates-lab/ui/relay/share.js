@@ -3,10 +3,11 @@
 // and the picture or video is made on this device.
 //   "I released one thought into the world…" → "Five strangers saw it
 //   differently." → "Here’s what came back." → "What would they see in yours?"
-// The author chooses what it reveals. Their own words are off by default; a
-// person's perspective can only be chosen if its writer allowed it; a Mallow
-// perspective is always labelled automatically generated and never counted
-// or presented as a stranger. All numbers are the real ones.
+// The author chooses what it reveals. The feeling's name and their own words
+// are off by default; a person's perspective can only be chosen if its writer
+// allowed it; every perspective keeps its own honest label from the service,
+// so a Mallow's is never counted or presented as a stranger's, and a canned
+// example is never called generated. All numbers are the real ones.
 
 import { h, icon } from '../dom.js';
 import { sentenceSwitch } from '../kit.js';
@@ -14,7 +15,7 @@ import { MALLOWS } from '../mallows-data.js';
 import { reducedMotion } from '../motion.js';
 import { top, feelColour, feelName } from './common.js';
 import { room, line, put } from './parts.js';
-import { makeStory, renderPicture, renderVideo, videoType, loadFonts, W, H, HUMAN_LABEL, MALLOW_LABEL } from './share-render.js';
+import { makeStory, renderPicture, renderVideo, videoType, prepare, honestLabel, W, H } from './share-render.js';
 
 export function share(dev, { id } = {}) {
   const c = dev.client;
@@ -28,9 +29,10 @@ export function share(dev, { id } = {}) {
     return { el: r.el, mood: 'warm' };
   }
 
-  // what can be shown: everything that came back, people first, the Mallow's labelled
+  // what can be shown: everything that came back, people first, the Mallow's with its own label
   const items = [...(j.collection || []), ...(j.mallowExtra ? [j.mallowExtra] : [])];
-  const opts = { label: !!j.label, words: false, picks: new Set() };
+  const allowed = (p) => p.kind === 'mallow' || p.shareable === true;
+  const opts = { label: false, words: false, picks: new Set() };
   const hasMallow = items.some((p) => p.kind === 'mallow');
   let story = null;
   let alive = true;
@@ -40,9 +42,12 @@ export function share(dev, { id } = {}) {
 
   const canvas = h('canvas', { class: 'hf-share-canvas', width: W / 2, height: H / 2, role: 'img', 'aria-label': 'Preview of your share story' });
   const ctx = canvas.getContext('2d');
-  const playBtn = h('button', { type: 'button', class: 'kit-round hf-share-play', 'aria-label': 'Pause the preview', dataset: { test: 'share-play' }, onclick: () => setPlaying(!playing) }, icon('pause'));
+  const playBtn = h('button', { type: 'button', class: 'kit-round hf-share-play', 'aria-label': playing ? 'Pause the preview' : 'Play the preview', dataset: { test: 'share-play' }, onclick: () => setPlaying(!playing) }, icon(playing ? 'pause' : 'orb'));
   const preview = h('figure', { class: 'hf-share-preview', dataset: { test: 'share-preview' } }, canvas, playBtn);
   const described = h('p', { class: 'hf-sr', 'aria-live': 'polite' });
+  // said plainly when the picture can't hold every perspective chosen (the video always shows each)
+  const fitNote = h('p', { class: 'hf-hint hf-hint--left hf-share-fit', 'aria-live': 'polite', dataset: { test: 'share-fit' } });
+  const WORD = ['no', 'one', 'two', 'three', 'four', 'five'];
 
   function data() {
     return {
@@ -54,14 +59,20 @@ export function share(dev, { id } = {}) {
       petals: j.petals || [],
       mallowPetal: j.mallowPetal,
       hasMallow,
-      picks: items.filter((p) => opts.picks.has(p.id) && (p.kind === 'mallow' || p.shareable === true)).map((p) => ({ kind: p.kind, text: p.text, mallow: p.mallow })),
+      mallow: mine.id,
+      picks: items.filter((p) => opts.picks.has(p.id) && allowed(p)).map((p) => ({ kind: p.kind, label: honestLabel(p), text: p.text, mallow: p.mallow })),
     };
   }
   function refresh() {
-    story = makeStory(data());
-    t0 = performance.now();
     const d = data();
-    described.textContent = `The story shows: ${[d.label ? `the feeling’s name (${d.label})` : null, d.words ? 'your words' : null, `${d.humans} ${d.humans === 1 ? 'petal' : 'petals'} of light`, d.picks.length ? `${d.picks.length} chosen ${d.picks.length === 1 ? 'perspective' : 'perspectives'}` : null].filter(Boolean).join(', ')}.`;
+    story = makeStory(d);
+    t0 = performance.now();
+    described.textContent = `The story shows: ${[story.showsMallow() ? `your Mallow, ${mine.name}` : null, d.label ? `the feeling’s name (${d.label})` : null, d.words ? 'your words' : null, `${d.humans} ${d.humans === 1 ? 'petal' : 'petals'} of light`, d.picks.length ? `${d.picks.length} chosen ${d.picks.length === 1 ? 'perspective' : 'perspectives'}` : null].filter(Boolean).join(', ')}.`;
+    const n = d.picks.length;
+    const fit = n ? story.stillPicks(ctx) : 0;
+    fitNote.textContent = fit >= n ? ''
+      : fit ? `The picture has room for ${WORD[fit]} of the ${WORD[n] || n} you chose; the video shows each one.`
+        : `The picture has no room for ${n === 1 ? 'this perspective; the video shows it' : 'these perspectives; the video shows each one'}.`;
     if (!playing) still();
   }
   function frame() {
@@ -81,15 +92,19 @@ export function share(dev, { id } = {}) {
   }
 
   // ----------------------------------------------------------- choices --
-  const pickRow = (p) => {
-    const allowed = p.kind === 'mallow' || p.shareable === true;
+  const switches = [
+    j.label ? sentenceSwitch({ label: 'Show the feeling’s name', checked: opts.label, test: 'share-label', onChange: (on) => { opts.label = on; refresh(); return true; } }) : null,
+    j.text ? sentenceSwitch({ label: 'Include my own words', hint: 'Off unless you choose. Leave out anything that could identify you or anyone else.', checked: opts.words, test: 'share-words', onChange: (on) => { opts.words = on; refresh(); return true; } }) : null,
+  ].filter(Boolean);
+  switches.forEach((s) => s.classList.add('kit-switch--plain'));
+
+  const mark = (p) => {
     const m = MALLOWS[p.mallow] || MALLOWS.noomi;
-    const mark = p.kind === 'mallow' ? h('span', { class: 'hf-pick-star', style: { color: m.deep } }, icon('star')) : h('i', { class: 'hf-src-dot', style: { '--dot': m.body } });
-    if (!allowed) {
-      return h('div', { class: 'hf-pick is-locked', dataset: { test: 'share-pick-locked' } },
-        h('span', { class: 'hf-pick-box', 'aria-hidden': 'true' }, icon('key')),
-        h('span', { class: 'hf-pick-body' }, h('span', { class: 'hf-pick-src' }, mark, HUMAN_LABEL), h('span', { class: 'hf-pick-text' }, 'The person who wrote this kept it private, so it can’t be shared.')));
-    }
+    return p.kind === 'mallow'
+      ? h('span', { class: 'hf-pick-star', style: { color: m.deep }, 'aria-hidden': 'true' }, icon('star'))
+      : h('i', { class: 'hf-src-dot', style: { '--dot': m.body }, 'aria-hidden': 'true' });
+  };
+  const pickRow = (p) => {
     const btn = h('button', {
       type: 'button', role: 'checkbox', class: 'hf-pick', 'aria-checked': 'false', dataset: { test: 'share-pick', kind: p.kind },
       onclick: () => {
@@ -99,9 +114,14 @@ export function share(dev, { id } = {}) {
         refresh();
       },
     }, h('span', { class: 'hf-pick-box', 'aria-hidden': 'true' }, icon('check')),
-    h('span', { class: 'hf-pick-body' }, h('span', { class: 'hf-pick-src' }, mark, p.kind === 'mallow' ? MALLOW_LABEL : HUMAN_LABEL), h('span', { class: 'hf-pick-text' }, `“${p.text}”`)));
+    h('span', { class: 'hf-pick-body' }, h('span', { class: 'hf-pick-src' }, mark(p), h('span', {}, honestLabel(p))), h('span', { class: 'hf-pick-text' }, `“${p.text}”`)));
     return btn;
   };
+  // a person who kept theirs private: one quiet line, nothing of their words
+  const lockedRow = () => h('p', { class: 'hf-pick-locked', dataset: { test: 'share-pick-locked' } },
+    h('span', { class: 'hf-pick-key', 'aria-hidden': 'true' }, icon('key')), 'A Hushmate kept theirs private');
+  const open = items.filter(allowed);
+  const kept = items.filter((p) => !allowed(p));
 
   const vtype = videoType();
   const makePic = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'share-save' }, onclick: () => savePicture() }, icon('download'), 'Make the picture');
@@ -112,19 +132,20 @@ export function share(dev, { id } = {}) {
     h('div', { class: 'hf-copy' },
       h('h1', { class: 'hf-line hf-line--sm', 'data-autofocus': '' }, 'Private until you choose.'),
       h('p', { class: 'hf-sub', dataset: { test: 'share-privacy' } }, 'Nothing is posted from here. You choose what your story shows; the numbers are always the real ones.')),
-    h('div', { class: 'hf-form' },
-      j.label ? sentenceSwitch({ label: 'Show the feeling’s name', checked: opts.label, test: 'share-label', onChange: (on) => { opts.label = on; refresh(); return true; } }) : null,
-      j.text ? sentenceSwitch({ label: 'Include my own words', hint: 'Off unless you choose. Leave out anything that could identify you or anyone else.', checked: false, test: 'share-words', onChange: (on) => { opts.words = on; refresh(); return true; } }) : null),
-    items.length ? h('section', { class: 'hf-you-sec' },
-      h('p', { class: 'kit-label' }, 'Perspectives to include'),
-      h('p', { class: 'hf-hint hf-hint--left' }, 'Only ones their writers allowed. Nobody is named, and a Mallow’s is always shown as automatically generated. The picture fits two; the video shows each one.'),
-      h('div', { class: 'hf-picks' }, items.map(pickRow))) : null,
+    switches.length ? h('div', { class: 'hf-share-opts' }, switches) : null,
+    items.length ? h('section', { class: 'hf-share-sec' },
+      h('h2', { class: 'kit-label' }, 'Perspectives to include'),
+      h('p', { class: 'hf-hint hf-hint--left' }, open.length
+        ? 'Only ones their writers allowed. Nobody is named, and each keeps its own label. The picture fits one or two; the video shows each in turn.'
+        : 'Their writers kept these private, so the story shows the real count without their words.'),
+      h('div', { class: 'hf-picks' }, open.map(pickRow), kept.map(lockedRow)), fitNote) : null,
     h('div', { class: 'hf-actions' }, makePic, makeVid,
       h('p', { class: 'hf-hint' }, vtype ? 'Made on this device. You decide if and where to post it.' : 'Made on this device. (This browser can’t make videos, but the picture works everywhere.)'))));
 
   async function savePicture() {
     let url;
-    try { url = URL.createObjectURL(await renderPicture(makeStory(data()))); } catch {
+    const pic = makeStory(data());
+    try { url = URL.createObjectURL(await renderPicture(pic)); } catch {
       dev.toast('Couldn’t make the picture here. Please try again.', { tone: 'warn' });
       return;
     }
@@ -132,7 +153,7 @@ export function share(dev, { id } = {}) {
     dev.sheet({
       title: 'Your picture',
       body: h('div', { class: 'rl-share-out' },
-        h('img', { src: url, alt: 'Your journey as a picture: the orb with a petal of light for each person, the real count, and any perspectives you chose', class: 'rl-share-img', dataset: { test: 'share-image' } }),
+        h('img', { src: url, alt: `Your journey as a picture: the orb with a petal of light for each person${pic.showsMallow() ? `, ${mine.name} on a cloud beneath it` : ''}, the real count, and any perspectives you chose`, class: 'rl-share-img', dataset: { test: 'share-image' } }),
         h('p', { class: 'kit-note rl-center' }, 'Press and hold the picture (or right-click it) to save it. Nothing was uploaded or posted.')),
       actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
       onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
@@ -170,6 +191,7 @@ export function share(dev, { id } = {}) {
   }
 
   refresh();
-  loadFonts().then(() => { if (alive) { refresh(); if (playing) setPlaying(true); } });
+  // the type and the author's Mallow arrive, then the preview is drawn again with them
+  prepare(mine.id).then(() => { if (alive) { refresh(); if (playing) setPlaying(true); } });
   return { el: r.el, mood: 'warm', destroy() { alive = false; cancelAnimationFrame(raf); } };
 }
