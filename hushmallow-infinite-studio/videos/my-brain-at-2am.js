@@ -41,8 +41,8 @@ const B = {
   startle: 1.8,                // eyes SNAP open
   blink1: 2.3, blink2: 2.47,
   glance: 2.62,
-  b1: 3.05, b2: 3.72, b3: 4.4,
-  sweat: 4.55,
+  b1: 3.05, b2: 3.72, b3: 4.15,
+  sweat: 4.3,
   orbitStart: 5.0, orbitFull: 5.5,
   minis: [5.2, 5.45, 5.7, 5.95],
   panic: 6.0,
@@ -50,9 +50,9 @@ const B = {
   inhale: 7.15, crest: 8.35, exhale: 8.55, exhaleEnd: 10.35,
   squish: 10.35, release: 10.7, relaxed: 10.95,
   open: 11.45,
-  blink3: 12.3,
-  endLine: 12.4,
-  url: 13.4,
+  blink3: 12.05,
+  endLine: 12.1,
+  url: 12.95,
   droop: 13.6, sleep: 13.95, sleepEnd: 14.25,
 };
 const POP = 0.21;              // tail dots → bubble shell pop delay (thought-bubbles.js)
@@ -94,6 +94,7 @@ const P = {
   sleepy: { ...BREATH, eyeOpen: 0.3, lidTop: 0.45, lidBot: 0.4, closedCurve: -1, irisScale: 1.1, sparkle: 1.1,
     mouthSmile: 0.5, mouthWidth: 0.6, blush: 1.55 },
   peaceShut: { ...BREATH, eyeOpen: 0, lidBot: 0.5, closedCurve: -1, mouthSmile: 0.55, mouthWidth: 0.6, blush: 1.5 },
+  sleepShut: { ...BREATH, eyeOpen: 0, closedCurve: 1, mouthSmile: 0.7, mouthWidth: 0.8, blush: 1.4 },
   sleepEnd: { ...BREATH, blush: 1.3 },
 };
 
@@ -104,7 +105,7 @@ const POSES = [
   [B.squish, P.squish], [B.release, P.relaxed],
   [B.open, { ...P.peace, eyeOpen: 0.32 }], [B.open + 0.25, P.peace],
   [B.blink3, P.peaceShut], [B.blink3 + 0.26, P.peace],              // slow, sleepy blink
-  [B.droop, P.sleepy], [B.sleep, P.peaceShut], [B.sleepEnd, P.sleepEnd],
+  [B.droop, P.sleepy], [B.sleep, P.sleepShut], [B.sleepEnd, P.sleepEnd],
 ];
 
 // breath signal s(t) ∈ [-1, 1]  (+ = inhaled: taller & narrower)
@@ -137,11 +138,11 @@ function breathSignal(t) {
 // --------------------------------------------------------- the layers --
 const HOOK = new Caption({
   lines: ['ME TRYING TO SLEEP', '*AT 2 AM...*'], x: 540, y: 318, size: 88, weight: 700, lineHeight: 1.1,
-  enterAt: B.hookIn, stagger: 0.065, exitAt: 5.6, exitDur: 0.55, outlineW: 0.17,
+  enterAt: B.hookIn, stagger: 0.065, exitAt: 4.35, exitDur: 0.45, outlineW: 0.17,
 });
 const END = new Caption({
   lines: ['Give your feelings', 'somewhere soft to land.'], x: 540, y: 352, size: 70, weight: 600, lineHeight: 1.16,
-  enterAt: B.endLine, stagger: 0.085, wordDur: 0.75, style: 'fade', outlineW: 0.14,
+  enterAt: B.endLine, stagger: 0.05, wordDur: 0.5, style: 'fade', outlineW: 0.14,
   glow: 'rgba(255,190,140,0.5)',
 });
 
@@ -175,7 +176,7 @@ async function setup(stage) {
     minis: [
       { glyph: '?', appearAt: B.minis[0], home: [-262, -12], size: 40 },
       { glyph: '!', appearAt: B.minis[1], home: [262, -170], size: 40 },
-      { glyph: '…', appearAt: B.minis[2], home: [-40, -318], size: 38 },
+      { glyph: '??', appearAt: B.minis[2], home: [-40, -318], size: 36 },
       { glyph: '?!', appearAt: B.minis[3], home: [-250, -262], size: 36 },
     ],
     orbit: {
@@ -184,6 +185,7 @@ async function setup(stage) {
       lift: (t) => -55 * smootherstep(B.close, B.crest, t),
       speed: ORBIT_SPEED,
     },
+    topSafe: (t) => { const c = camera(t); return c.y - (960 - 240) / (1.5 * c.zoom); },
     dissolve: { at: B.exhale + 0.08, stagger: 0.11 },
     stress: (t) => track([[0, 0], [4.3, 0], [5.3, 0.45], [6.9, 1], [7.3, 0.3], [8.2, 0]], t),
   });
@@ -427,7 +429,11 @@ function substep(t, dt) {
   // the rig blends the closed-lid line and the open lash between ~2–30 %
   // openness, which reads as a flat "-_-" squint; skip through that zone
   const tgt = actor.target.eyeOpen, v = actor.val.eyeOpen;
-  if (t > 0 && tgt <= 0.02 && v > 0 && v < 0.22) { actor.val.eyeOpen = 0; actor.vel.eyeOpen = 0; }
+  if (t > 0 && tgt <= 0.02 && v > 0 && v < 0.22) {
+    actor.val.eyeOpen = 0; actor.vel.eyeOpen = 0;
+    // shut lids take their closed curve at once (no flat "— —" in between)
+    actor.val.closedCurve = actor.target.closedCurve; actor.vel.closedCurve = 0;
+  }
   else if (t > 0 && tgt >= 0.25 && v < 0.22) { actor.val.eyeOpen = 0.24; actor.vel.eyeOpen = Math.max(0, actor.vel.eyeOpen); }
 }
 

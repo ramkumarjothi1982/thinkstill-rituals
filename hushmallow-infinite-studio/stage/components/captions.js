@@ -1,6 +1,10 @@
 // On-screen text in the Hushmallow voice: Fredoka (the app's display face),
 // night-ink outline for phone readability over any background, optional
-// moonmilk-gold highlight words, and a soft per-word "squishy" entrance.
+// moonmilk-gold highlight words, and a gentle per-word reveal.
+//
+// Each word is pre-rendered once (glow + outline + fill at full opacity) and
+// faded as one image ("group opacity"), so fades go cleanly from white to
+// transparent instead of through a muddy outline-showing-through stage.
 //
 //   const cap = new Caption({
 //     lines: ['ME TRYING TO SLEEP', '*AT 2 AM...*'],   // *word* = highlight colour
@@ -9,12 +13,50 @@
 //   });
 //   cap.draw(ctx, t);
 
-import { clamp, lerp, springStep, smoothstep, ease } from './anim.js';
+import { clamp, lerp, springStep, smoothstep, ease, makeCanvas } from './anim.js';
 
 export const BRAND = {
   text: '#f7f3ff', ink: '#120c32', gold: '#ffd98a', calm: '#8fe3ff', care: '#ff9ccf',
   font: '"Fredoka", ui-rounded, system-ui, sans-serif',
 };
+
+/** One word/line rendered at full opacity: soft glow, ink outline, pillowy fill. */
+export function textSprite(text, o) {
+  const size = o.size;
+  const font = `${o.weight} ${size}px ${BRAND.font}`;
+  const m = makeCanvas(4, 4).getContext('2d');
+  m.font = font;
+  const w = m.measureText(text).width;
+  const pad = Math.ceil(size * 0.8);
+  const c = makeCanvas(w + pad * 2, size * 1.5 + pad * 2);
+  const g = c.getContext('2d');
+  const baseY = pad + size * 1.05;
+  g.font = font;
+  g.textAlign = 'center';
+  g.textBaseline = 'alphabetic';
+  g.lineJoin = 'round';
+  g.miterLimit = 2;
+  g.translate(c.width / 2, baseY);
+  if (o.shadow !== false) {
+    g.shadowColor = o.glow;
+    g.shadowBlur = size * 0.45;
+    g.fillStyle = o.outline;
+    g.fillText(text, 0, 0);
+    g.shadowBlur = 0;
+    g.shadowColor = 'transparent';
+  }
+  g.strokeStyle = o.outline;
+  g.lineWidth = size * o.outlineW;
+  g.strokeText(text, 0, 0);
+  const col = o.hi ? o.highlight : o.color;
+  const gr = g.createLinearGradient(0, -size * 0.75, 0, size * 0.1);
+  gr.addColorStop(0, o.top || '#ffffff');
+  gr.addColorStop(0.55, col);
+  gr.addColorStop(1, o.hi ? '#ffbf6e' : (o.bottom || '#e3dcff'));
+  g.fillStyle = gr;
+  g.fillText(text, 0, 0);
+  return { canvas: c, ax: c.width / 2, ay: baseY, w };
+}
 
 export class Caption {
   constructor(o) {
@@ -30,21 +72,18 @@ export class Caption {
 
   _layout(ctx) {
     const o = this.o;
+    ctx.save();
     ctx.font = `${o.weight} ${o.size}px ${BRAND.font}`;
     const words = [];
     let idx = 0;
     o.lines.forEach((line, li) => {
-      const toks = line.split(' ').filter(Boolean).map((w) => {
-        const hi = /^\*.*\*$/.test(w) || /^\*/.test(w) || /\*$/.test(w);
-        return { raw: w, text: w.replace(/\*/g, ''), hi };
-      });
+      const toks = line.split(' ').filter(Boolean).map((w) => ({ raw: w, text: w.replace(/\*/g, ''), hi: false }));
       // a highlight span "*AT 2 AM...*" marks every word between the stars
       let inSpan = false;
       for (const tk of toks) {
-        const starts = tk.raw.startsWith('*'), ends = tk.raw.endsWith('*');
-        if (starts) inSpan = true;
+        if (tk.raw.startsWith('*')) inSpan = true;
         tk.hi = inSpan;
-        if (ends) inSpan = false;
+        if (tk.raw.endsWith('*')) inSpan = false;
       }
       const space = ctx.measureText(' ').width;
       const widths = toks.map((tk) => ctx.measureText(tk.text).width + o.letterSpacing * tk.text.length);
@@ -52,10 +91,11 @@ export class Caption {
       let x = o.x - total / 2;
       const y = o.y + li * o.size * o.lineHeight;
       toks.forEach((tk, i) => {
-        words.push({ ...tk, x: x + widths[i] / 2, y, w: widths[i], i: idx++, line: li });
+        words.push({ ...tk, x: x + widths[i] / 2, y, w: widths[i], i: idx++, line: li, sprite: textSprite(tk.text, { ...o, hi: tk.hi }) });
         x += widths[i] + space;
       });
     });
+    ctx.restore();
     this.words = words;
   }
 
@@ -71,17 +111,12 @@ export class Caption {
     const o = this.o;
     if (t < o.enterAt - 0.01 || t > o.exitAt + o.exitDur + 0.01) return;
     if (!this.words) this._layout(ctx);
-    ctx.save();
-    ctx.font = `${o.weight} ${o.size}px ${BRAND.font}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.lineJoin = 'round';
-    ctx.miterLimit = 2;
     const exitK = smoothstep(o.exitAt, o.exitAt + o.exitDur, t);
+    ctx.save();
     for (const w of this.words) {
       const tw = t - (o.enterAt + w.i * o.stagger);
       if (tw < 0) continue;
-      let a, s, dy, rot = 0;
+      let a, s, dy;
       if (o.style === 'fade') {
         const k = ease.outCubic(clamp(tw / o.wordDur));
         a = k; s = lerp(0.96, 1, k); dy = lerp(o.size * 0.18, 0, k);
@@ -94,37 +129,16 @@ export class Caption {
         dy = lerp(o.size * 0.28, 0, clamp(sp));
       }
       a *= 1 - exitK;
-      const exitDy = -exitK * o.size * 0.25;
       if (a <= 0.003) continue;
-      ctx.save();
+      const exitDy = -exitK * o.size * 0.25;
+      const sp = w.sprite;
       ctx.globalAlpha = a;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      // scale about the word's optical centre (≈ a third of the size above the baseline)
       ctx.translate(w.x, w.y + dy + exitDy - o.size * 0.33);
-      ctx.rotate(rot);
-      // squash/stretch the word around its centre (Mallow-like softness)
-      ctx.scale(s * (1 + (1 - s) * 0.2), s);
+      ctx.scale(s, s);
       ctx.translate(0, o.size * 0.33);
-      // soft glow halo
-      if (o.shadow) {
-        ctx.shadowColor = o.glow;
-        ctx.shadowBlur = o.size * 0.45;
-        ctx.fillStyle = o.outline;
-        ctx.fillText(w.text, 0, 0);
-        ctx.shadowBlur = 0;
-        ctx.shadowColor = 'transparent';
-      }
-      // night-ink outline for contrast on any background
-      ctx.strokeStyle = o.outline;
-      ctx.lineWidth = o.size * o.outlineW;
-      ctx.strokeText(w.text, 0, 0);
-      // fill: subtle vertical gradient for a soft, pillowy face
-      const col = w.hi ? o.highlight : o.color;
-      const g = ctx.createLinearGradient(0, -o.size * 0.75, 0, o.size * 0.1);
-      g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.55, col);
-      g.addColorStop(1, w.hi ? '#ffbf6e' : '#e3dcff');
-      ctx.fillStyle = g;
-      ctx.fillText(w.text, 0, 0);
-      ctx.restore();
+      ctx.drawImage(sp.canvas, -sp.ax, -sp.ay);
     }
     ctx.restore();
   }

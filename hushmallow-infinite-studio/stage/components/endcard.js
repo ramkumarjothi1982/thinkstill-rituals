@@ -10,7 +10,7 @@
 //   const card = new EndCard({ appearAt: 13.4, y: 600 }); await card.load(); card.draw(ctx, t);
 
 import { clamp, lerp, smoothstep, springStep, ease, makeCanvas, TAU } from './anim.js';
-import { BRAND } from './captions.js';
+import { BRAND, textSprite } from './captions.js';
 
 const LOGO_URL = new URL('../../../hushmallow/assets/source/brand/hushmallow-logo.webp', import.meta.url).href;
 
@@ -45,6 +45,11 @@ export class EndCard {
     this.aspect = h / w;
     if (this.o.mode === 'knockout') this.knock = this._knockout(this.logo);
     this._pill();
+    // the URL as one sprite (group opacity: fades cleanly, no grey stage)
+    this.urlSprite = textSprite(this.o.url, {
+      size: this.o.urlSize, weight: 600, color: BRAND.gold, top: '#fff6dc', bottom: BRAND.gold,
+      outline: BRAND.ink, outlineW: 0.16, glow: 'rgba(255,190,120,0.55)',
+    });
   }
 
   _knockout(src) {
@@ -111,9 +116,8 @@ export class EndCard {
     const a = smoothstep(0, 0.45, tt);
     ctx.save();
     ctx.translate(o.x, o.y);
-    // gentle "landing" — a soft squash as the pillow settles
-    const wob = Math.exp(-tt * 5) * Math.sin(tt * 14) * 0.04;
-    ctx.scale(lerp(0.9, 1, sp) * (1 + wob), lerp(0.9, 1, sp) * (1 - wob));
+    // gentle, uniform "landing" (the approved mark is never squashed)
+    ctx.scale(lerp(0.9, 1, sp), lerp(0.9, 1, sp));
     ctx.globalAlpha = a;
     if (o.mode === 'knockout') {
       const lw = o.logoW, lh = lw * this.aspect;
@@ -138,32 +142,25 @@ export class EndCard {
         g.addColorStop(1, 'rgba(255,240,210,0)');
         ctx.fillStyle = g;
         ctx.fillRect(-this.pw / 2, -this.ph / 2, this.pw, this.ph);
+        // restore the mark on top: the sweep only lights the cream plate,
+        // the approved wordmark stays exactly as supplied
+        ctx.globalCompositeOperation = 'multiply';
+        const lw = o.logoW, lh = lw * this.aspect;
+        ctx.drawImage(this.logo, -lw / 2, -lh / 2, lw, lh);
         ctx.restore();
       }
     }
     ctx.restore();
 
     // hushmallow.com
-    const ua = smoothstep(0.22, 0.7, tt);
+    const ua = smoothstep(0.12, 0.45, tt);
     if (ua > 0.002) {
+      const sp2 = this.urlSprite;
+      const y = o.y + this.ph / 2 + o.gap - (1 - ease.outCubic(clamp((tt - 0.12) / 0.5))) * 14;
       ctx.save();
       ctx.globalAlpha = ua;
-      ctx.font = `600 ${o.urlSize}px ${BRAND.font}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const y = o.y + this.ph / 2 + o.gap - (1 - ease.outCubic(clamp((tt - 0.22) / 0.6))) * 14;
-      ctx.lineJoin = 'round';
-      ctx.shadowColor = 'rgba(255,190,120,0.55)';
-      ctx.shadowBlur = 26;
-      ctx.strokeStyle = BRAND.ink;
-      ctx.lineWidth = o.urlSize * 0.16;
-      ctx.strokeText(o.url, 0 + o.x, y);
-      ctx.shadowBlur = 0;
-      const g = ctx.createLinearGradient(0, y - o.urlSize * 0.5, 0, y + o.urlSize * 0.5);
-      g.addColorStop(0, '#fff6dc');
-      g.addColorStop(1, BRAND.gold);
-      ctx.fillStyle = g;
-      ctx.fillText(o.url, o.x, y);
+      // sprite baseline sits at ay; centre the text block vertically on y
+      ctx.drawImage(sp2.canvas, o.x - sp2.ax, y - sp2.ay + o.urlSize * 0.36);
       ctx.restore();
     }
   }

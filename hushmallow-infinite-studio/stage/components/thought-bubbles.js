@@ -81,13 +81,19 @@ class Bubble {
     if (this.mini) { const d = Math.max(w, h) * 0.86; w = d; h = d; }
     this.w = w; this.h = h;
     const pad = Math.ceil(h * 0.7);
-    const c = makeCanvas(w + pad * 2, h + pad * 2);
+    // supersampled 2×: the camera enlarges world px 1.5–1.9×, so 1× sprites
+    // would make the joke text visibly softer than the screen-space captions
+    const S = 2;
+    const cw = w + pad * 2, ch = h + pad * 2;
+    this.S = S; this.cw = cw; this.ch = ch;
+    const c = makeCanvas(cw * S, ch * S);
     const g = c.getContext('2d');
-    g.translate(c.width / 2, c.height / 2);
-    // outer glow
+    g.scale(S, S);
+    g.translate(cw / 2, ch / 2);
+    // outer glow (shadowBlur ignores the transform, so scale it by hand)
     g.save();
     g.shadowColor = 'rgba(190,170,255,0.95)';
-    g.shadowBlur = h * 0.42;
+    g.shadowBlur = h * 0.42 * S;
     cloudPath(g, w, h, 11 + this.i * 7);
     g.fillStyle = 'rgba(236,230,255,0.96)';
     g.fill();
@@ -125,7 +131,8 @@ class Bubble {
     // text layer (separate so words can fade before the shell dissolves)
     const tc = makeCanvas(c.width, c.height);
     const tg = tc.getContext('2d');
-    tg.translate(c.width / 2, c.height / 2);
+    tg.scale(S, S);
+    tg.translate(cw / 2, ch / 2);
     tg.font = `${this.mini ? 700 : 600} ${fs}px ${BRAND.font}`;
     tg.textAlign = 'center';
     tg.textBaseline = 'middle';
@@ -142,7 +149,7 @@ class Bubble {
     while (samples.length < wantText && tries < 40000) {
       tries++;
       const x = Math.floor(R() * tc.width), y = Math.floor(R() * tc.height);
-      if (td[(y * tc.width + x) * 4 + 3] > 140) samples.push({ x: x - tc.width / 2, y: y - tc.height / 2, text: true });
+      if (td[(y * tc.width + x) * 4 + 3] > 140) samples.push({ x: x / S - cw / 2, y: y / S - ch / 2, text: true });
     }
     const nEdge = this.mini ? 16 : 54;
     for (let k = 0; k < nEdge; k++) {
@@ -243,6 +250,7 @@ export class ThoughtField {
       x = lerp(x, ox, om); y = lerp(y, oy, om);
       z = lerp(1, Math.sin(a), om);   // + front / - behind
     }
+    if (o.topSafe) y = Math.max(y, o.topSafe(t) + (it.h || 0) * 0.5);
     // stress jitter
     const st = o.stress ? o.stress(t) : 0;
     // (kept tiny: the brand avoids shaking text)
@@ -259,7 +267,16 @@ export class ThoughtField {
     const dAt = D.at + this._dissolveDelay(it, this.items.indexOf(it));
     const p = this._place(it, t, head);
     const depthS = 0.8 + 0.2 * (p.z * 0.5 + 0.5);
-    const depthA = 0.55 + 0.45 * (p.z * 0.5 + 0.5);
+    const kz = p.z * 0.5 + 0.5;
+    let depthA = it.mini ? 0.55 + 0.45 * kz : 0.92 + 0.08 * kz;   // word plates stay opaque
+    if (it.mini && this.built) {
+      for (const o of this.items) {
+        if (o.mini || t < o.spec.appearAt + 0.21) continue;
+        const q = this._place(o, t, head);
+        const d = Math.max(Math.abs(p.x - q.x) / ((o.w + it.w) * 0.5), Math.abs(p.y - q.y) / ((o.h + it.h) * 0.5));
+        depthA *= smoothstep(0.9, 1.2, d);
+      }
+    }
     // --- tail dots (head → bubble), fade once the orbit takes over
     if (!it.mini) {
       const tailA = (1 - smoothstep(this.o.orbit.start, this.o.orbit.start + 0.6, t)) * (1 - smoothstep(dAt - 0.2, dAt, t));
@@ -287,8 +304,8 @@ export class ThoughtField {
     if (tb < 0) return;
     const shellA = 1 - smoothstep(dAt - 0.02, dAt + 0.16, t);
     if (shellA > 0.004) {
-      const sp = springStep(tb, it.mini ? 3.2 : 2.5, 0.36);
-      const wob = wobble(tb, 3.4, 5.5);
+      const sp = it.mini ? springStep(tb, 3.2, 0.36) : springStep(tb, 2.4, 0.62);
+      const wob = wobble(tb, 3.4, 5.5) * (it.mini ? 1 : 0.36);
       const breathe = 1 + 0.018 * Math.sin(t * 2.1 + it.i);
       // dissolve swell: a soft inhale-like expansion right before breaking
       const swell = 1 + 0.12 * smoothstep(dAt - 0.25, dAt + 0.3, t);
@@ -305,13 +322,13 @@ export class ThoughtField {
           ctx.translate(q.x, q.y);
           ctx.scale(sx, sy);
           ctx.globalAlpha = al * k * shellA * depthA;
-          ctx.drawImage(it.body, -it.body.width / 2, -it.body.height / 2);
+          ctx.drawImage(it.body, -it.cw / 2, -it.ch / 2, it.cw, it.ch);
           ctx.restore();
         }
       }
       ctx.save();
       ctx.translate(p.x, p.y);
-      ctx.rotate(wob * 0.06 + Math.sin(t * 1.3 + it.i) * 0.02);
+      ctx.rotate(wob * (it.mini ? 0.06 : 0.055) + Math.sin(t * 1.3 + it.i) * (it.mini ? 0.02 : 0.01));
       ctx.scale(sx, sy);
       ctx.globalAlpha = clamp(tb / 0.08) * shellA * depthA;
       // anxious rim pulse: a warm pink halo that throbs with stress
@@ -319,11 +336,12 @@ export class ThoughtField {
         const pulse = 0.5 + 0.5 * Math.sin(t * 9 + it.i * 2);
         glowDot(ctx, 0, 0, Math.max(it.w, it.h) * 0.85, '255,140,200', 0.22 * st * (0.6 + 0.4 * pulse));
       }
-      ctx.drawImage(it.body, -it.body.width / 2, -it.body.height / 2);
+      ctx.drawImage(it.body, -it.cw / 2, -it.ch / 2, it.cw, it.ch);
       const textA = 1 - smoothstep(dAt - 0.04, dAt + 0.1, t);   // words hold until the break
       if (textA > 0.004) {
-        ctx.globalAlpha *= textA * clamp((tb - 0.06) / 0.12);
-        ctx.drawImage(it.text, -it.text.width / 2, -it.text.height / 2);
+        // words arrive once the shell has landed (no bouncing text)
+        ctx.globalAlpha *= textA * (it.mini ? clamp((tb - 0.06) / 0.12) : clamp((tb - 0.16) / 0.14));
+        ctx.drawImage(it.text, -it.cw / 2, -it.ch / 2, it.cw, it.ch);
       }
       ctx.restore();
     }
@@ -353,14 +371,18 @@ export class ThoughtField {
     }
   }
 
+  // glyph minis are always painted first (back pass), so no mini can ever sit
+  // over a worded thought, whichever pass that thought lands in
   drawBack(ctx, t, head) {
     this._ensure(ctx);
-    for (const it of this._sorted(t, head)) if (this._place(it, t, head).z < -0.05) this._drawItem(ctx, it, t, head);
+    const items = this._sorted(t, head);
+    for (const it of items) if (it.mini) this._drawItem(ctx, it, t, head);
+    for (const it of items) if (!it.mini && this._place(it, t, head).z < -0.05) this._drawItem(ctx, it, t, head);
   }
 
   drawFront(ctx, t, head) {
     this._ensure(ctx);
-    for (const it of this._sorted(t, head)) if (this._place(it, t, head).z >= -0.05) this._drawItem(ctx, it, t, head);
+    for (const it of this._sorted(t, head)) if (!it.mini && this._place(it, t, head).z >= -0.05) this._drawItem(ctx, it, t, head);
   }
 
   _sorted(t, head) {
