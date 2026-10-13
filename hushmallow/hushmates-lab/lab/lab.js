@@ -57,13 +57,6 @@ function makeProvider() {
   return demoProvider();
 }
 
-// what the phones say about Mallow perspectives in this lab (the product copy says "AI service")
-const MALLOW_NOTE = {
-  demo: 'In this lab no AI key is configured: you’ll get a canned demo line, labelled as one.',
-  library: 'In this lab it comes from the Reframe library (rule-based, not AI), labelled as such.',
-  angle: 'In this lab it comes from a local Another Angle server, labelled AI-generated only if that server runs a real model.',
-};
-
 let service;
 let tokens;
 if (saved?.state && saved.tokens) {
@@ -97,7 +90,7 @@ function mount(key, host) {
     onScreen: (screen, data) => { onSignal(key, screen, data); },
   });
   connectRelay(device);
-  device.env.mallowNote = MALLOW_NOTE[config.source];
+  device.env.lab = true;                       // lab-only annotations (e.g. which source wrote a Mallow perspective)
   const d = { key, link, client, device, root, started: false };
   devices[key] = d;
   client.on(() => { renderBadges(); scheduleGuide(); });
@@ -200,7 +193,6 @@ function renderSource(extra = '') {
 document.querySelectorAll('input[name="source"]').forEach((r) => r.addEventListener('change', () => {
   config.source = r.value;
   service.provider = makeProvider();
-  for (const d of Object.values(devices)) d.device.env.mallowNote = MALLOW_NOTE[config.source];
   persist();
   renderSource();
   if (config.source === 'angle') checkAngle();

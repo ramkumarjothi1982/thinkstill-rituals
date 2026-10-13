@@ -80,8 +80,8 @@ export class RelayClient {
   journey(id) { return this.state.journeys.find((j) => j.id === id) || null; }
 
   /** Release a feeling (idempotent: the same clientId is reused on retry). */
-  async release({ text, label, mallow, allowFallback, clientId = newClientId() }) {
-    const r = await this.api('submitFeeling', { text, label, mallow, allowFallback, clientId });
+  async release({ text, label, mallow, allowFallback, consent = false, clientId = newClientId() }) {
+    const r = await this.api('submitFeeling', { text, label, mallow, allowFallback, consent, clientId });
     if (r.status === 'released') await this.refresh('journeys').catch(() => {});
     await this.refresh('me').catch(() => {});
     return r;

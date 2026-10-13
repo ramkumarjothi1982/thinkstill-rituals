@@ -218,6 +218,31 @@ export class Mallow {
     this.hop.tween([0, -16, 0, -5, 0], { duration: 0.7, delay, ease: EASE.easeOut });
   }
 
+  /** stretch up towards something above (negative squash): a reach */
+  reach(amount = 0.32, seconds = 0.55) {
+    if (this.reduced) return;
+    this.squish.tween(-Math.abs(amount), { duration: seconds, ease: EASE.out });
+  }
+  /** back to resting shape after a reach, with a soft wobble */
+  relax() {
+    if (this.reduced) { this.squish.tween(0, { duration: 0.3, ease: EASE.easeOut }); return; }
+    this.squish.spring(0, { stiffness: 170, damping: 9, velocity: 1.5 });
+  }
+  /** something appeared over there (-1..1): a glance, a blush and a little lift */
+  notice(dir = 0) {
+    this.leanTo(dir);
+    this.pulseBlush();
+    if (!this.reduced) this.hop.tween([0, -7, 0], { duration: 0.5, ease: EASE.easeOut });
+    setTimeout(() => { if (!this.dead) this.leanTo(0); }, 1400);
+  }
+  /** a quiet, thoughtful look (eyes half closed for the Mallows that have lids, a slow sway) */
+  think(on) {
+    this.sleepy(!!on);
+    if (this.reduced) return;
+    if (on) { this.rot.tween([0, -2.5, 2, -1.5, 0], { duration: 2.4 }); this.glow.tween(0.6, { duration: 1.2 }); }
+    else this.glow.tween(0, { duration: 0.8 });
+  }
+
   /** rotate towards a point: -1..1 across the stage (0 = upright) */
   leanTo(amount) { this.leanF.to(this.reduced ? 0 : clamp(amount * 9, -9, 9)); }
 

@@ -16,7 +16,7 @@ export const feelName = (label) => LABELS[label]?.label || 'A feeling';
 const DOCK = [
   { id: 'release', label: 'Release', icon: 'orb' },
   { id: 'catch', label: 'Catch', icon: 'catch' },
-  { id: 'journeys', label: 'Journeys', icon: 'path', aria: 'My journeys' },
+  { id: 'journeys', label: 'My journeys', icon: 'path' },
   { id: 'returned', label: 'Returned', icon: 'home' },
 ];
 export function dock(dev, active) {

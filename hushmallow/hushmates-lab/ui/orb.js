@@ -82,6 +82,32 @@ export class Orb {
     this.wob.tween([0, -4, 3, -1.5, 0], { duration: 0.9 });
     return this.squish.spring(0, { stiffness: soft ? 170 : 300, damping: soft ? 9 : 8, velocity: -4 });
   }
+  /** the surface ripples: soft rings spread from the sphere */
+  ripple({ rings = 2, colour } = {}) {
+    if (this.reduced) return;
+    for (let i = 0; i < rings; i++) {
+      const r = document.createElement('span');
+      r.className = 'orb-ripple';
+      if (colour) r.style.setProperty('--ripple', colour);
+      this.el.append(r);
+      const a = r.animate([{ transform: 'scale(.92)', opacity: 0.7 }, { transform: 'scale(1.9)', opacity: 0 }],
+        { duration: 1300, delay: i * 260, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' });
+      a.onfinish = () => r.remove();
+    }
+  }
+  /** a breath of light from inside */
+  glowPulse(times = 1) {
+    if (this.reduced) return;
+    this.aura.animate([{ filter: 'brightness(1)', transform: 'scale(1)' }, { filter: 'brightness(1.35)', transform: 'scale(1.18)' }, { filter: 'brightness(1)', transform: 'scale(1)' }],
+      { duration: 1100, iterations: times, easing: 'ease-in-out' });
+  }
+  /** appear: grows from a point of light with a springy overshoot */
+  form(seconds = 0.9) {
+    if (this.reduced) { this.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 }); return Promise.resolve(); }
+    return this.el.animate([{ transform: 'scale(.05)', opacity: 0, filter: 'blur(6px)' }, { transform: 'scale(1.12)', opacity: 1, filter: 'blur(0)', offset: 0.6 }, { transform: 'scale(.97)', offset: 0.8 }, { transform: 'scale(1)' }],
+      { duration: seconds * 1000, easing: 'cubic-bezier(.22,1,.36,1)' }).finished.catch(() => {});
+  }
+
   /** a quick happy squeeze */
   boop() { this.squeeze(0.45, 0.1); setTimeout(() => this.release(true), 120); }
 
@@ -158,7 +184,8 @@ export function fly(el, host, { from, to, via = null, duration = 1600, scale = [
   const a = el.animate(pts.map((p) => ({ transform: `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) scale(${p.s})` })), { duration, easing: 'linear', fill: 'forwards' });
   if (trail) {
     const step = duration / N;
-    pts.forEach((p, i) => { if (i % 2 === 0 && i > 0) setTimeout(() => sparkle(host, p.x + rand(-6, 6), p.y + rand(-6, 6), colour), i * step); });
+    // a delicate trail: a mote every third point, smaller as the orb recedes
+    pts.forEach((p, i) => { if (i % 3 === 0 && i > 0) setTimeout(() => sparkle(host, p.x + rand(-4, 4), p.y + rand(-4, 4), colour, rand(5, 11) * Math.max(0.5, p.s)), i * step); });
   }
   return a.finished.then(() => { el.style.transform = `translate(${to.x}px, ${to.y}px) translate(-50%, -50%) scale(${scale[1]})`; }).catch(() => {});
 }

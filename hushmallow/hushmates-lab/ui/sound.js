@@ -67,6 +67,10 @@ const SOUNDS = {
   petal: (c) => { tone(c, { f: 1047, dur: 0.9, gain: 0.16 }); tone(c, { f: 1568, at: 0.05, dur: 0.8, gain: 0.09 }); },
   pass: (c) => air(c, { dur: 1.0, from: 1600, to: 260, gain: 0.14 }),
   home: (c) => { [262, 330, 392, 523].forEach((f, i) => tone(c, { f, at: i * 0.12, dur: 2.4, gain: 0.13, attack: 0.5 })); [1047, 1319, 1568].forEach((f, i) => tone(c, { f, at: 1 + i * 0.18, dur: 1.2, gain: 0.07 })); },
+  gather: (c) => { air(c, { dur: 0.9, from: 2400, to: 700, gain: 0.08 }); [1319, 1175, 988, 784].forEach((f, i) => tone(c, { f, at: 0.08 * i, dur: 0.5, gain: 0.05 })); },
+  ripple: (c) => { tone(c, { f: 392, dur: 1.1, gain: 0.12, attack: 0.04, bend: 1.5 }); tone(c, { f: 587, at: 0.12, dur: 0.9, gain: 0.06 }); },
+  think: (c) => [523, 659].forEach((f, i) => tone(c, { f, type: 'triangle', at: i * 0.35, dur: 0.7, gain: 0.05, attack: 0.2 })),
+  reveal: (c) => { [659, 784, 988].forEach((f, i) => tone(c, { f, at: i * 0.09, dur: 1.4, gain: 0.08, attack: 0.05 })); air(c, { at: 0.1, dur: 0.9, from: 600, to: 2600, gain: 0.05 }); },
   unfold: (c) => [784, 988, 1175, 1319, 1568].forEach((f, i) => tone(c, { f, at: i * 0.11, dur: 0.8, gain: 0.08 })),
 };
 

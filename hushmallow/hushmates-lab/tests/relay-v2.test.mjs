@@ -210,3 +210,21 @@ test('counts: human count, petals and progress never include a Mallow or a hidde
   assert.equal(j.petals.length, 1);
   assert.equal(j.of, 5);
 });
+
+test('explore another angle: the author can opt in at home with consent; never silently, never for nothing', async () => {
+  const w = world({ provider: aiLike });
+  const id = w.release().journey.id;                       // Mallow fallback off at release
+  w.advance(10 * MIN);
+  await rejectsCode(w.svc.askMallow(w.T.moon, { journeyId: id, consent: true }), 'fallback-off');   // too early: nothing recorded
+  assert.equal(w.svc.s.journeys[id].fallbackConsentAt, null);
+  w.advance(24 * HOUR);
+  await rejectsCode(w.svc.askMallow(w.T.moon, { journeyId: id }), 'fallback-off');                  // no consent, no call
+  const j = await w.svc.askMallow(w.T.moon, { journeyId: id, consent: true });
+  assert.equal(j.fallback.status, 'ready');
+  assert.ok(w.svc.s.journeys[id].fallbackConsentAt);
+  const partly = w.release('moon', { text: 'Another feeling about the weekend' }).journey.id;
+  w.give('cloud', REFRAMES[0]);
+  w.advance(24 * HOUR + 1);
+  await rejectsCode(w.svc.askMallow(w.T.moon, { journeyId: partly, consent: true }), 'fallback-off');   // a person answered: humans first
+  assert.equal(w.svc.s.journeys[partly].fallbackConsentAt, null);
+});

@@ -556,10 +556,16 @@ export class RelayService {
    * fallbackAfterMs with no human perspective. At most one generation per
    * feeling, ever: concurrent and repeated requests share the same result.
    */
-  async askMallow(token, { journeyId } = {}) {
+  async askMallow(token, { journeyId, consent } = {}) {
     const { acc, j } = this._mine(token, journeyId);
     const existing = this.s.fallbacks[j.id];
     if (existing) { if (this.inflight.has(j.id)) await this.inflight.get(j.id); return this._journeyView(j, acc.id); }
+    // "Explore another angle" at home: the person can opt in now, with the same disclosure, but only
+    // when a Mallow could really answer (so a consent is never recorded for nothing)
+    if (!j.allowFallback && consent === true && this._askable({ ...j, allowFallback: true })) {
+      j.allowFallback = true;
+      j.fallbackConsentAt = this.now();
+    }
     if (!j.allowFallback) fail('fallback-off');
     if (acc.state !== 'active') fail('account-inactive');
     if (j.paused || j.returnReason === 'removed') fail('fallback-held');
