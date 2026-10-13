@@ -17,13 +17,17 @@ function probeLocalStorage() {
 }
 
 /**
- * createStore({prefix, backend}) — backend: 'memory', 'auto' (default) or any
- * Storage-like object ({getItem, setItem, removeItem, key, length}).
+ * createStore({prefix, backend, protect}) — backend: 'memory', 'auto' (default)
+ * or any Storage-like object ({getItem, setItem, removeItem, key, length}).
+ * protect: full-key prefixes clearAll() leaves alone (another account's
+ * namespace on this device, src/auth/namespace.js); get/set/remove are
+ * unaffected.
  */
-export function createStore({ prefix = PREFIX, backend = 'auto' } = {}) {
+export function createStore({ prefix = PREFIX, backend = 'auto', protect = [] } = {}) {
   const memory = new Map();
   const ls = backend === 'memory' ? null : backend === 'auto' ? probeLocalStorage() : backend;
   const full = (key) => prefix + key;
+  const kept = (k) => protect.some((p) => k.startsWith(p));
 
   return {
     get persistent() { return Boolean(ls); },
@@ -59,13 +63,13 @@ export function createStore({ prefix = PREFIX, backend = 'auto' } = {}) {
     },
 
     clearAll() {
-      for (const k of [...memory.keys()]) if (k.startsWith(prefix)) memory.delete(k);
+      for (const k of [...memory.keys()]) if (k.startsWith(prefix) && !kept(k)) memory.delete(k);
       if (!ls) return;
       try {
         const doomed = [];
         for (let i = 0; i < ls.length; i++) {
           const k = ls.key(i);
-          if (k && k.startsWith(prefix)) doomed.push(k);
+          if (k && k.startsWith(prefix) && !kept(k)) doomed.push(k);
         }
         for (const k of doomed) ls.removeItem(k);
       } catch { /* ignore */ }

@@ -10,7 +10,14 @@
 // 3. Every asset URL the Mallow registry, the hi-res table and the brand
 //    export (art, rigs, logos) is a shipped file.
 // 4. Developer-only folders are not shipped.
+// 5. Sign-in: the vendored supabase-js (v/<version>/vendor/) is the pinned
+//    file (sha256 from its manifest, LICENSE beside it, the same SRI as
+//    src/auth/client.js) and is never parsed as app code; /auth/callback/
+//    names only absolute /v/<version>/ files and its module graph resolves;
+//    _headers keeps /auth/* uncached, unframed and referrer-free; the
+//    published public-config.js holds only valid public values.
 // Prints a short summary; exits 1 with the list of problems.
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -109,6 +116,8 @@ export async function checkSite(outArg, ver) {
   const problems = [], notes = [], allowed = [], templates = [];
   const rel = (p) => relative(out, p).split(sep).join('/');
   const localOnly = (p) => LOCAL_ONLY.some((d) => rel(p).startsWith(`v/${ver}/${d}`));
+  // third-party bundles: checked by hash below, never parsed for imports
+  const vendored = (p) => rel(p).startsWith(`v/${ver}/vendor/`);
 
   // ---------------------------------------------------------- 1. root --
   const indexPath = join(out, 'index.html');
@@ -133,6 +142,21 @@ export async function checkSite(outArg, ver) {
   }
   if (!named.includes(`v/${ver}/src/app/main.js`)) problems.push(`index.html does not load v/${ver}/src/app/main.js`);
   queue.push(join(out, 'src/app/main.js'));
+
+  // /auth/callback/ (absolute /v/<version>/ paths: it is served two folders down)
+  const cbPath = join(out, 'auth/callback/index.html');
+  if (!isFile(cbPath)) problems.push('auth/callback/index.html is missing');
+  else {
+    const cb = readFileSync(cbPath, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    const cbNamed = [...cb.matchAll(/\s(?:href|src)="([^"]+)"/g)].map((m) => m[1]).filter((x) => !external(x));
+    for (const x of cbNamed) {
+      if (!x.startsWith(`/v/${ver}/`)) { problems.push(`auth/callback/index.html names ${x} (not an absolute /v/${ver}/ path)`); continue; }
+      const p = join(out, bare(x));
+      if (!isFile(p)) { problems.push(`auth/callback/index.html names ${x}, which is not in the site`); continue; }
+      referrer.set(p, 'auth/callback/index.html'); queue.push(p);
+    }
+    if (!cbNamed.includes(`/v/${ver}/src/auth/callback.js`)) problems.push(`auth/callback/index.html does not load /v/${ver}/src/auth/callback.js`);
+  }
 
   function checkManifest(p) {
     let man;
@@ -173,7 +197,7 @@ export async function checkSite(outArg, ver) {
       else problems.push(`missing: ${rel(f)} (named by ${referrer.get(f) || '?'})`);
       continue;
     }
-    if (!/\.(m?js|css)$/.test(f)) continue;
+    if (!/\.(m?js|css)$/.test(f) || vendored(f)) continue;
     const { lit, tpl } = specifiers(readFileSync(f, 'utf8'), f.endsWith('.css'));
     for (const s of lit) {
       if (external(s)) continue;
@@ -208,14 +232,69 @@ export async function checkSite(outArg, ver) {
     if (!isFile(p)) { missing++; problems.push(`asset missing: ${rel(p)}`); }
   }
 
-  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing } };
+  const auth = await checkAuth(out, app, problems);
+  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing }, auth };
+}
+
+/** Section 5: the sign-in pieces. Returns a one-line summary. */
+async function checkAuth(out, app, problems) {
+  // the vendored library: exactly the pinned file
+  const vdir = join(app, 'vendor/supabase');
+  let man = null;
+  try { man = JSON.parse(readFileSync(join(vdir, 'manifest.json'), 'utf8')); } catch (e) { problems.push(`vendor/supabase/manifest.json: ${e.message}`); }
+  if (man) {
+    const f = join(vdir, man.file || 'supabase.js');
+    if (!isFile(f)) problems.push(`vendor/supabase/${man.file} is missing`);
+    else {
+      const buf = readFileSync(f);
+      const sha = createHash('sha256').update(buf).digest('hex');
+      if (sha !== man.sha256) problems.push(`vendor/supabase/${man.file}: sha256 ${sha.slice(0, 12)}... is not the pinned ${String(man.sha256).slice(0, 12)}...`);
+      const sri = `sha384-${createHash('sha384').update(buf).digest('base64')}`;
+      if (sri !== man.sri) problems.push(`vendor/supabase/${man.file}: SRI differs from manifest.json`);
+      const client = join(app, 'src/auth/client.js');
+      if (isFile(client) && !readFileSync(client, 'utf8').includes(`integrity: '${sri}'`)) problems.push('src/auth/client.js does not load vendor/supabase with the pinned SRI');
+    }
+    if (!isFile(join(vdir, 'LICENSE'))) problems.push('vendor/supabase/LICENSE is missing');
+  }
+  // _headers for /auth/*
+  const hp = join(out, '_headers');
+  if (!isFile(hp)) problems.push('_headers is missing');
+  else {
+    const h = readFileSync(hp, 'utf8');
+    const block = h.split(/\n(?=\S)/).find((b) => b.startsWith('/auth/*')) || '';
+    const need = { 'Cache-Control: no-store': /Cache-Control:\s*no-store/i, 'Referrer-Policy: no-referrer': /Referrer-Policy:\s*no-referrer/i, 'X-Frame-Options: DENY': /X-Frame-Options:\s*DENY/i, "frame-ancestors 'none'": /frame-ancestors 'none'/i };
+    for (const [label, re] of Object.entries(need)) if (!re.test(block)) problems.push(`_headers: /auth/* lacks ${label}`);
+  }
+  // the published public values
+  const pc = join(app, 'src/auth/public-config.js');
+  let summary = 'sign-in: no public-config.js';
+  if (!isFile(pc)) problems.push('src/auth/public-config.js is missing');
+  else {
+    const src = readFileSync(pc, 'utf8');
+    if (/sb_secret_|service_role/i.test(src)) problems.push('src/auth/public-config.js holds a secret');
+    try {
+      const { default: cfg } = await import(`${pathToFileURL(pc).href}?check=${Date.now()}`);
+      const { validatePublicConfig } = await import(pathToFileURL(join(app, 'src/auth/config.js')).href);
+      const keys = Object.keys(cfg || {}).sort().join(',');
+      if (cfg?.enabled) {
+        if (keys !== 'enabled,key,mode,url') problems.push(`src/auth/public-config.js publishes ${keys} (only enabled, url, key, mode allowed)`);
+        const v = validatePublicConfig({ url: cfg.url, key: cfg.key, mode: cfg.mode });
+        if (!v.ok) problems.push(`src/auth/public-config.js: ${v.error}`);
+        summary = `sign-in on (${cfg.mode}, ${cfg.url})`;
+      } else {
+        if (keys !== 'enabled') problems.push(`src/auth/public-config.js (off) publishes ${keys}`);
+        summary = 'sign-in off';
+      }
+    } catch (e) { problems.push(`src/auth/public-config.js does not load: ${e.message}`); }
+  }
+  return summary;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [outArg, ver] = process.argv.slice(2);
   if (!outArg || !ver) { console.error('usage: node tools/site/check.mjs <out-dir> <version>'); process.exit(2); }
   const r = await checkSite(outArg, ver);
-  console.log(`check: ${r.reached} files reached from index.html; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}`);
+  console.log(`check: ${r.reached} files reached from index.html and auth/callback/; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}; ${r.auth}`);
   if (r.allowed.length) console.log(`check: local-only, not published (allowed): ${r.allowed.join(', ')}`);
   for (const n of r.notes) console.log(`check: note: ${n}`);
   if (process.env.CHECK_VERBOSE) for (const t of r.templates) console.log(`check: template ${t}`);

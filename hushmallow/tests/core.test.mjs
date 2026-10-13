@@ -98,15 +98,26 @@ test('shipped code calls no remote service except Another Angle’s own server',
   assert.ok(workers.every((w) => w.startsWith('src/app/config.js:')), workers.join(', '));
   assert.ok(workers.length <= 2, workers.join(', '));
   if (ANGLE_ENDPOINT) assert.equal(workers.length, 2, workers.join(', '));
+  // …and the optional sign-in (src/auth/client.js): one fetch handed to the vendored supabase-js,
+  // which refuses every URL outside the one project (src/auth/config.js PROJECT_URL, or localhost in dev)
+  const authFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
+  const authSrc = readFileSync(`${root}src/auth/client.js`, 'utf8');
+  assert.equal(authSrc.split(authFetch).length, 2, 'one fetch site in auth/client.js');
+  assert.match(authSrc, /if \(u\.origin !== origin\) return Promise\.reject/);
+  const { PROJECT_URL } = await import('../src/auth/config.js');
+  assert.equal(PROJECT_URL, 'https://igbxbfuaoybfzsroxuln.supabase.co');
   for (const f of walk(`${root}src`)) {
     let s = readFileSync(f, 'utf8');
     if (f.endsWith('/src/app/update.js')) s = s.replace(versionCheck, '');
     if (f.endsWith('/src/beyond/angle-client.js')) s = s.replace(angleFetch, '');
+    if (f.endsWith('/src/auth/client.js')) s = s.replace(authFetch, '');
     assert.doesNotMatch(s, /\bfetch\s*\(|XMLHttpRequest|new WebSocket|EventSource\(|sendBeacon/, f);
     // the only URLs allowed: the SVG namespace, the support-line directory people can open themselves,
-    // and (in src/app/config.js only) the configured Another Angle endpoint
+    // (in src/app/config.js only) the configured Another Angle endpoint, and (in src/auth/config.js
+    // only) the sign-in project
     const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com)/.test(u))
-      .filter((u) => !(ANGLE_ENDPOINT && f.endsWith('/src/app/config.js') && u === ANGLE_ENDPOINT));
+      .filter((u) => !(ANGLE_ENDPOINT && f.endsWith('/src/app/config.js') && u === ANGLE_ENDPOINT))
+      .filter((u) => !(f.endsWith('/src/auth/config.js') && u === PROJECT_URL));
     assert.deepEqual(urls, [], f);
   }
 });

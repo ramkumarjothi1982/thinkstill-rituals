@@ -1,0 +1,11 @@
+<!-- Supabase → Authentication → Emails → Templates → "Change email address". Subject: Confirm your new email for hushmallow -->
+<div style="margin:0;padding:32px 16px;background:#0a0818;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#f7f3ff">
+  <div style="max-width:440px;margin:0 auto;padding:28px 24px;border-radius:22px;background:#1e1a44;border:1px solid rgba(255,255,255,.12)">
+    <p style="margin:0 0 18px;font-size:20px;font-weight:800;letter-spacing:-.01em">hushmallow</p>
+    <h1 style="margin:0 0 10px;font-size:22px;line-height:1.25;font-weight:700">Confirm your email change</h1>
+    <p style="margin:0 0 22px;font-size:16px;line-height:1.5;color:#cdc6ea">Tap below to confirm that your hushmallow account should use {{ .NewEmail }} from now on.</p>
+    <p style="margin:0 0 22px"><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email_change" style="display:inline-block;padding:14px 26px;border-radius:999px;background:#ffd98a;color:#23140a;font-size:16px;font-weight:700;text-decoration:none">Confirm the change</a></p>
+    <p style="margin:0 0 6px;font-size:14px;line-height:1.5;color:#918ab6">If you didn’t ask for this, you can ignore this email and nothing changes.</p>
+    <p style="margin:18px 0 0;font-size:14px;color:#918ab6">Less noise. More magic.</p>
+  </div>
+</div>
