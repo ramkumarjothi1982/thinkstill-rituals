@@ -10,7 +10,7 @@ import { PLANS } from '../entitlements.js';
 import { openSupport } from './support.js';
 import { BUILD } from '../config.js';
 import { RUNNING } from '../update.js';
-import { type, withBrand } from '../../ui/type.js';
+import { type, withBrand, keepHyphenated } from '../../ui/type.js';
 import { aboutIntro, aboutPrivacy } from '../privacy.js';
 import { accountNamespaces } from '../../auth/namespace.js';
 
@@ -101,7 +101,8 @@ export default function settings(app) {
         ...withBrand(aboutIntro({ beyond: PLANS.ultra?.name || 'hushmallow Beyond' })), ' ',
         aboutPrivacy({ signIn, beyond: PLANS.ultra?.name || 'hushmallow Beyond' }), ' It’s a wellbeing app, not a medical service.'),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
-      h('p', { style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0' }) }, `Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`),
+      // the version, exactly as BUILD says it (the server sees the same string), never broken at a hyphen ("sign-" / "in")
+      h('p', { 'data-version': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0', textWrap: 'balance' }) }, ...keepHyphenated(`Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`)),
       // developer tools: not part of the published site
       ['localhost', '127.0.0.1'].includes(location.hostname)
         ? h('div', { style: { display: 'grid', gap: '4px', marginTop: '6px' } },

@@ -168,3 +168,23 @@ test('Plans: the top bar rests on a veil over the scrolled words; no lone word i
   // the entrance fade is not held, or the blur would see nothing under the bar (Chrome's backdrop root)
   assert.match(css, /\.plans\.scene-enter \{ animation-name: fadeIn; animation-fill-mode: backwards; \}/);
 });
+
+// ------------------------------------------------------------------ 5 --
+test('Settings footer: the version caption never breaks at the hyphen of "sign-in"', async () => {
+  const { keepHyphenated } = await import('../src/ui/type.js');
+  const { BUILD } = await import('../src/app/config.js');
+  const caption = `Version ${BUILD} · fsp3`;
+  const parts = keepHyphenated(caption);
+  assert.equal(parts.map(text).join(''), caption, 'exactly BUILD (no swapped characters: the server sees the same string)');
+  const glued = parts.filter((p) => typeof p !== 'string');
+  assert.deepEqual(glued.map(text), ['2026-10-13', 'sign-in']);
+  for (const g of glued) assert.equal(g.style.whiteSpace, 'nowrap');
+  for (const p of parts.filter((x) => typeof x === 'string')) assert.doesNotMatch(p, /\w-\w/, `"${p}" has no breakable hyphen left`);
+  assert.deepEqual(keepHyphenated('No hyphens here'), ['No hyphens here']);
+  assert.deepEqual(keepHyphenated('a - b').map(text), ['a - b'], 'a spaced dash is not a hyphenated word');
+  // BUILD itself is unchanged (sent as app_version by Another Angle's client, pinned in sheets-history)
+  assert.equal(BUILD, '2026-10-13 · Hushfold pilot + optional sign-in');
+  const settings = read('src/app/scenes/settings.js');
+  assert.match(settings, /\.\.\.keepHyphenated\(`Version \$\{BUILD\}\$\{RUNNING \? ` · \$\{RUNNING\}` : ''\}`\)/);
+  assert.match(settings, /'data-version': '', style: type\('caption', \{[^}]*textWrap: 'balance' \}\)/);
+});

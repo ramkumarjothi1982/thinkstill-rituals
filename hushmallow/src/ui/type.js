@@ -123,6 +123,19 @@ export function withBrand(text) {
   return String(text).split(new RegExp(`\\b(${brandName})\\b`)).filter(Boolean).map((part) => (part === brandName ? brandMark(part) : part));
 }
 
+/**
+ * Copy whose hyphenated words never break at their hyphen ("sign-in" never
+ * leaves "in" alone on a line): each such word is a nowrap span, the rest
+ * stays plain text, and the characters are exactly the original's (nothing
+ * is swapped for a non-breaking hyphen, so a copied version string is the
+ * real one). For h(…, ...keepHyphenated(text)).
+ */
+export function keepHyphenated(text) {
+  const word = /^\S*[^\s-]-[^\s-]\S*$/;
+  return String(text).split(/(\S*[^\s-]-[^\s-]\S*)/).filter(Boolean)
+    .map((part) => (word.test(part) ? h('span', { style: { whiteSpace: 'nowrap' } }, part) : part));
+}
+
 /** The approved logo artwork. tone 'light' for dark grounds, 'ink' for light.
  *  width: px number or any CSS length; the attributes reserve the 1540×289
  *  aspect ratio so nothing shifts when it loads. `sizes` (for srcset) is the
