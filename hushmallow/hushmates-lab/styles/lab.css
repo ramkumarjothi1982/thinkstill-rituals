@@ -160,3 +160,7 @@ body { background: #FFF8F3; color: #1F1640; font: 400 15px/1.5 "Nunito Sans", -a
   .lab-guide-btn { padding: 0 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .lab-orb { animation: none; } }
+.lab-mod-row summary { cursor: pointer; font: 700 12.5px/1.4 var(--hm-ui); padding: 6px 0; }
+.lab-mod-evidence { display: grid; gap: 8px; padding: 4px 0 10px; }
+.lab-quote { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(31,22,64,.05); font: 500 12.5px/1.45 var(--hm-body); color: var(--hm-ink); }
+.lab-mod-row { display: block; }

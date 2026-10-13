@@ -11,12 +11,12 @@
 import { h, icon, fmtSpan, fmtAgo } from '../dom.js';
 import { face } from '../mallow.js';
 import { MALLOWS } from '../mallows-data.js';
-import { Orb, fly, centreIn } from '../orb.js';
+import { Orb } from '../orb.js';
 import { play } from '../sound.js';
 import { wait, reducedMotion, rise, CSS_EASE } from '../motion.js';
 import { PERSPECTIVE_LABELS } from '../../core/relay-config.js';
-import { brandBar, dock, top, feelChip, feelColour, lights, errorText, supportBody } from './common.js';
-import { room, stage, handsOf, Speech, line, swapLine, put, labSourceTag } from './parts.js';
+import { brandBar, dock, top, feelChip, feelColour, lights, errorText, supportBody, reportSheet } from './common.js';
+import { room, stage, Speech, line, swapLine, put, labSourceTag, focusHeading } from './parts.js';
 
 export const humanProgress = (j) => `${j.humanCount} of ${j.of} human perspective${j.of === 1 ? '' : 's'}`;
 
@@ -71,6 +71,7 @@ const EVENT_TEXT = {
   perspective: (e) => `Perspective ${e.slot} joined`,
   'mallow-offer': () => 'Nobody had caught it yet, so your Mallow could offer a perspective',
   'mallow-perspective': () => 'Your Mallow offered another way to see it',
+  'perspective-withdrawn': () => 'Someone took back the perspective they gave',
   returned: (e) => ({ complete: 'Five people saw it differently: it came home', expired: 'A day passed: it came home', withdrawn: 'You brought it home', removed: 'Our safety team brought it home' }[e.reason] || 'It came home'),
 };
 
@@ -85,16 +86,18 @@ export function journey(dev, { id } = {}) {
   if (j.status !== 'travelling') queueMicrotask(() => dev.go('homecoming', { id }, { replace: true }));
   const m = MALLOWS[j.mallow] || MALLOWS.noomi;
   const r = room(m.id, 'hf-journey', { seed: 13 });
+  // one stage: your Mallow holds the travelling orb above its head and speaks below it,
+  // so the fallback magic happens in place and its perspective unfolds underneath
   const st = stage(m.id, { size: 'm' });
-  const speech = new Speech(m.id);
-  put(st.above, speech.el);
+  const speech = new Speech(m.id, { tail: 'up' });
   const head = h('div', { class: 'hf-head' }, top(dev, { title: '', back: true }));
   const body = h('div', { class: 'hf-scroll' });
-  const flight = h('div', { class: 'rl-flight', 'aria-hidden': 'true' });
-  r.el.append(head, body, flight);
+  r.el.append(head, body);
   const orb = new Orb({ size: null, tint: feelColour(j.label), label: humanProgress(j) });
   orb.setPetals(j.petals || [], j.mallowPetal);
   const orbSlot = h('div', { class: 'hf-jdetail-orb' }, orb.el);
+  put(st.above, orbSlot);
+  st.el.append(speech.el);
   let alive = true;
   let magic = false;
 
@@ -107,14 +110,13 @@ export function journey(dev, { id } = {}) {
     const events = (j.events || []).slice().reverse();
     const reveal = h('div', { class: 'hf-reveal', dataset: { test: f.status === 'ready' ? 'mallow-ready' : 'mallow-slot' } });
     put(body,
-      orbSlot,
       h('div', { class: 'hf-jdetail-status' },
-        h('p', { class: 'hf-jorb-progress', dataset: { test: 'progress' } }, lights(j), h('span', {}, humanProgress(j))),
+        h('p', { class: 'hf-home-progress', dataset: { test: 'progress' } }, lights(j), h('span', {}, humanProgress(j))),
         h('p', { class: 'hf-meta' }, j.paused ? 'Paused while our safety team takes a look.' : `It comes home after five human perspectives, or within ${fmtSpan(j.expiresAt - now)}.`)),
-      h('figure', { class: 'hf-own-words' }, h('blockquote', {}, j.text), h('figcaption', {}, feelChip(j.label), h('span', { class: 'hf-meta' }, `Released ${fmtAgo(j.releasedAt || j.createdAt, now)}`))),
-      reveal,
       st.el,
-      h('p', { class: 'hf-hint' }, 'You’ll read what people offered when it comes home. Nobody can see who you are, and nobody can contact you.'),
+      reveal,
+      h('figure', { class: 'hf-own-words' }, h('blockquote', {}, j.text), h('figcaption', {}, feelChip(j.label), h('span', { class: 'hf-meta' }, `Released ${fmtAgo(j.releasedAt || j.createdAt, now)}`))),
+      h('p', { class: 'hf-hint' }, 'You’ll read what people offered when it comes home. Other people never see your name, and nobody can contact you through Hushmates.'),
       h('details', { class: 'hf-events' }, h('summary', {}, 'Its journey so far'),
         h('ol', {}, events.map((e) => h('li', {}, h('i', { 'aria-hidden': 'true' }), h('span', {}, (EVENT_TEXT[e.type] || (() => e.type))(e)), h('time', {}, fmtAgo(e.at, now)))))),
       h('div', { class: 'hf-actions' },
@@ -175,39 +177,31 @@ export function journey(dev, { id } = {}) {
     const lab = labSourceTag(dev, item.source);
     reveal.dataset.test = 'mallow-ready';
     put(reveal,
-      h('h2', { class: 'hf-line hf-line--sm hf-reveal-line' }, 'Your Mallow found another way to see it.'),
+      h('h2', { class: 'hf-line hf-line--sm hf-reveal-line', 'data-autofocus': '' }, 'Your Mallow found another way to see it.'),
       h('article', { class: 'hf-mallow-persp', dataset: { test: 'perspective', kind: 'mallow', source: item.source } },
         h('p', { class: 'hf-mallow-persp-src', dataset: { test: 'persp-source' } }, face(item.mallow, { size: 24 }), h('span', {}, item.label)),
+        h('button', { type: 'button', class: 'rl-more hf-slide-more', 'aria-label': 'More: report this Mallow perspective', dataset: { test: 'persp-more' }, onclick: () => reportMallow(item) }, icon('more')),
         h('p', { class: 'hf-mallow-persp-text' }, item.text), lab));
     if (animate) rise([...reveal.children], { y: 16, stagger: 160 });
   }
 
   // ---------------------------------------- the Mallow finds another way --
+  // The orb is already in its hands: it looks at it, holds it closer, thinks (thought dots, a held
+  // blush), squeezes it softly, and it glows, gains a star and unfolds into the perspective below.
   async function ask() {
     if (magic) return;
     magic = true;
     const rm = reducedMotion();
     speech.say('');
     const reveal = body.querySelector('.hf-reveal');
-    play('think');
-    // the orb drifts down into the Mallow's arms
-    const from = centreIn(orb.el, flight);
-    const size = orb.el.getBoundingClientRect().width;
-    const flyer = h('div', { class: 'rl-flyer' });
-    flight.append(flyer);
-    orb.freeze();
-    flyer.append(orb.el);
-    flyer.style.transform = `translate(${from.x}px, ${from.y}px) translate(-50%, -50%)`;
     st.el.scrollIntoView({ block: 'center', behavior: rm ? 'auto' : 'smooth' });
     await wait(rm ? 0 : 420);
-    const hands = handsOf(st.mallow, flight, size * 0.8);
+    if (!alive) return;
+    play('think');
     st.mallow.notice(0);
-    st.mallow.reach(0.25);
-    await fly(flyer, flight, { from: centreIn(flyer, flight), to: hands, duration: rm ? 1 : 1200, scale: [1, 0.8], trail: true, colour: m.glow });
-    st.mallow.relax();
     st.mallow.press(0.4, 0.2);
     orb.squeeze(0.4, 0.2);
-    await wait(220);
+    await wait(rm ? 0 : 240);
     st.mallow.release(true);
     orb.release(true);
     // it pauses and thinks (as long as the answer takes, at least a breath)
@@ -233,24 +227,31 @@ export function journey(dev, { id } = {}) {
     if (item) {
       play('reveal');
       orb.addStar(item.mallow);
-      st.mallow.signature(0.9);
+      st.mallow.delight(0.9);
       speech.say('');
       j = res;
       showPerspective(reveal, item, true);
+      // the perspective unfolds below the Mallow; bring it gently into view
+      setTimeout(() => alive && reveal.scrollIntoView({ block: 'nearest', behavior: rm ? 'auto' : 'smooth' }), rm ? 0 : 500);
+      focusHeading(reveal);
     } else {
       play('pass');
       const f = res?.fallback || {};
       mallowState(err ? { status: 'failed', reason: 'unavailable' } : f, reveal);
-      if (err && !['fallback-budget', 'fallback-held', 'fallback-off', 'fallback-not-yet'].includes(err.code)) speech.say(errorText(err));
-      else if (err) speech.say(errorText(err));
+      if (err) speech.say(errorText(err));
     }
-    // and the feeling floats back up to keep travelling
-    await wait(rm ? 0 : 900);
-    const back = centreIn(orbSlot, flight);
-    await fly(flyer, flight, { from: hands, to: back, duration: rm ? 1 : 1300, scale: [0.8, 1], trail: false });
-    orbSlot.append(orb.unfreeze().el);
-    flyer.remove();
+    await wait(rm ? 0 : 600);
     magic = false;
+  }
+
+  async function reportMallow(item) {
+    const pick = await reportSheet(dev, { title: 'Report this Mallow perspective', intro: 'Mallow perspectives are automatically generated and can get things wrong. What best describes it? It disappears straight away.' });
+    if (!pick) return;
+    const res = await dev.run(() => c.act('reportPerspective', { journeyId: id, perspectiveId: item.id, reason: pick.reason }, ['journeys']));
+    if (!res) return;
+    dev.sheet({ title: 'Thank you for telling us', body: h('p', { class: 'hm-sheet-text', dataset: { test: 'report-received' } }, res.expectation),
+      actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Okay')] });
+    render();
   }
 
   async function withdraw() {

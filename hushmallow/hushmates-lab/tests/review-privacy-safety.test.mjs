@@ -52,7 +52,7 @@ function gatedProvider() {
   return p;
 }
 
-test('F2a deleteJourney while a Mallow perspective is in flight leaves the generated text (echoing the feeling) in state', async () => {
+test('F2a (fixed) deleteJourney while a Mallow perspective is in flight leaves no generated text (echoing the feeling) in state', async () => {
   const provider = gatedProvider();
   const w = world({ provider });
   const id = w.release('moon', { allowFallback: true }).journey.id;
@@ -65,7 +65,7 @@ test('F2a deleteJourney while a Mallow perspective is in flight leaves the gener
   assert.deepEqual(w.svc.s.journeys[id].events, [], 'events re-populated on a deleted journey');
 });
 
-test('F2b deleteMyData while a Mallow perspective is in flight leaves the generated text in state', async () => {
+test('F2b (fixed) deleteMyData while a Mallow perspective is in flight leaves no generated text in state', async () => {
   const provider = gatedProvider();
   const w = world({ provider });
   const id = w.release('moon', { allowFallback: true }).journey.id;
@@ -78,7 +78,7 @@ test('F2b deleteMyData while a Mallow perspective is in flight leaves the genera
 });
 
 // ---------------------------------------------- 3. blocks and in-flight holds --
-test('F3a a blocked contributor holding the blocker’s other feeling can still deliver a perspective to them', () => {
+test('F3a (fixed) a blocked contributor holding the blocker’s other feeling can no longer deliver a perspective to them', () => {
   const w = world({ limits: { fairnessPool: 1 } });
   const a = w.release('moon').journey.id;
   w.advance(MIN);
@@ -96,7 +96,7 @@ test('F3a a blocked contributor holding the blocker’s other feeling can still 
   assert.ok(!bcol.some((p) => p.text === REFRAMES[1]), 'blocked person’s words reached the blocker after the block');
 });
 
-test('F3b the blocker, holding the blocked person’s feeling, can still deliver a perspective to them', () => {
+test('F3b (fixed) the blocker, holding the blocked person’s feeling, can no longer deliver a perspective to them', () => {
   const w = world();
   const c = w.release('star', { text: SECOND }).journey.id;           // star's feeling
   const a = w.release('moon').journey.id;
@@ -113,7 +113,7 @@ test('F3b the blocker, holding the blocked person’s feeling, can still deliver
   assert.ok(!ccol.some((p) => p.text === REFRAMES[1]), 'blocker’s words reached the blocked person after the block');
 });
 
-test('F3c (policy) the blocked person’s still-sealed perspective on another travelling feeling is revealed after the block', () => {
+test('F3c (fixed, policy) the blocked person’s still-sealed perspective on another travelling feeling stays hidden after the block', () => {
   const w = world({ limits: { fairnessPool: 1 } });
   const a = w.release('moon').journey.id;
   w.advance(MIN);
@@ -129,7 +129,7 @@ test('F3c (policy) the blocked person’s still-sealed perspective on another tr
 });
 
 // ------------------------------------------------ 4. restricted accounts --
-test('F4 a restricted account can still catch and submit a perspective through a hold taken before the restriction', () => {
+test('F4 (fixed) a restricted account can’t catch or submit through a hold taken before the restriction', () => {
   const w = world({ limits: { fairnessPool: 1 } });
   const a = w.release('moon').journey.id;
   w.advance(MIN);
@@ -149,7 +149,7 @@ test('F4 a restricted account can still catch and submit a perspective through a
 });
 
 // ----------------------------------------- 5. report counting after review --
-test('F5 a moderator-resumed feeling is re-paused by one original reporter replaying their stale hold', () => {
+test('F5 (fixed) a moderator-resumed feeling can’t be re-paused by one original reporter replaying their stale hold', () => {
   const w = world();
   const id = w.release().journey.id;
   const a = w.svc.findFeeling(w.T.cloud).offer;
@@ -164,7 +164,7 @@ test('F5 a moderator-resumed feeling is re-paused by one original reporter repla
 });
 
 // --------------------------------------------- 6. identifying details --
-test('F6 a perspective carrying a home address or real name is stored and passed on (feelings refuse the same text)', () => {
+test('F6 (fixed) a perspective carrying a home address or real name is refused, as a feeling is', () => {
   const w = world();
   w.release();
   const { offer } = w.svc.findFeeling(w.T.cloud);
@@ -173,32 +173,32 @@ test('F6 a perspective carrying a home address or real name is stored and passed
     (e) => e.code === 'reframe-identifying');
 });
 
-test('F7a feeling screening: “my zip code is 90210” passes (the ZIP rule only looks for “zip” AFTER the number)', () => {
+test('F7a (fixed) feeling screening refuses “my zip code is 90210”', () => {
   const w = world();
   assert.throws(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'My zip code is 90210 and everyone here knows me', clientId: cid() }), (e) => e.code === 'feeling-identifying');
 });
 
-test('F7b feeling screening: “My name’s …” and a lower-case UK postcode pass', () => {
+test('F7b (fixed) feeling screening refuses “My name’s …” and a lower-case UK postcode', () => {
   const w = world();
   assert.throws(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'My name’s Sarah Jones and I feel invisible at work', clientId: cid() }), (e) => e.code === 'feeling-identifying');
   assert.throws(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'I live in sw1a 1aa and feel so alone', clientId: cid() }), (e) => e.code === 'feeling-identifying');
 });
 
 // ------------------------------------- 8. compatibility characters (NFKC) --
-test('F8a full-width crisis words are released to strangers and sent to the AI provider', async () => {
+test('F8a (fixed) full-width crisis words get support and never reach strangers or a provider', async () => {
   const provider = countingProvider();
   const w = world({ provider });
   const r = w.svc.submitFeeling(w.T.moon, { consent: true, text: 'I want to ｅｎｄ ｉｔ ａｌｌ', clientId: cid(), allowFallback: true });
   assert.equal(r.status, 'support', 'crisis words circulated instead of answered with support');
 });
 
-test('F8b full-width digits carry a phone number past the contact rule', () => {
+test('F8b (fixed) full-width digits can’t carry a phone number past the contact rule', () => {
   const w = world();
   assert.throws(() => w.svc.submitFeeling(w.T.moon, { consent: true, text: 'Nobody listens, call ０７７００ ９００１２３ tonight', clientId: cid() }), (e) => e.code === 'feeling-contact');
 });
 
 // ----------------------------------------------------- 9. clientId replay --
-test('F9 crisis words sent with a reused clientId get “released”, not support', () => {
+test('F9 (fixed) crisis words sent with a reused clientId get support, never “released”', () => {
   const w = world();
   w.svc.submitFeeling(w.T.moon, { consent: true, text: FEELING, clientId: 'draft-000001' });   // reply lost; person edits, client retries
   const r = w.svc.submitFeeling(w.T.moon, { consent: true, text: 'I want to end it all', clientId: 'draft-000001' });

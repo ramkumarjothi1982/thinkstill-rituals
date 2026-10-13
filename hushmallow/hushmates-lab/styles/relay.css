@@ -34,7 +34,7 @@
 .orb-shine { position: absolute; left: 20%; top: 12%; width: 30%; height: 18%; border-radius: 50%; transform: rotate(-24deg); pointer-events: none;
   background: radial-gradient(closest-side, rgba(255,255,255,.95), rgba(255,255,255,0)); }
 .orb-text { position: absolute; inset: 16%; display: grid; place-items: center; text-align: center; overflow: hidden; pointer-events: none;
-  font: 500 italic calc(var(--orb-size) * .072)/1.28 var(--hm-display); font-variation-settings: "SOFT" 100; letter-spacing: -.005em; color: var(--hm-ink);
+  font: 500 italic max(12px, calc(var(--orb-size) * .085))/1.25 var(--hm-display); font-variation-settings: "SOFT" 100; letter-spacing: -.005em; color: var(--hm-ink);
   text-wrap: balance; opacity: 0; transform: scale(.94); transition: opacity .6s var(--hm-ease), transform .6s var(--hm-ease);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6; padding-top: 4%; }
 .orb.show-text .orb-text { opacity: 1; transform: none; }
@@ -138,3 +138,4 @@
 @media (prefers-reduced-motion: reduce) {
   .orb-aura, .orb-swirl, .orb-petal-spin, .orb-star-ride, .sky-cloud { animation: none !important; }
 }
+.rl-dock-dot { position: absolute; top: 9px; left: calc(50% + 9px); width: 9px; height: 9px; border-radius: 50%; background: var(--hm-violet, #8E6BFF); box-shadow: 0 0 0 2px #fff, 0 0 10px rgba(142,107,255,.8); }

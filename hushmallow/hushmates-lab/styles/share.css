@@ -1,0 +1,50 @@
+/* Hushmates 2.0 · the share story scene (ui/relay/share.js).
+   The preview, then plain choices: two switches and one list of
+   perspectives, separated by hairlines rather than boxed in cards. */
+.hf-share-scroll { gap: 22px; padding-bottom: calc(32px + var(--hm-safe-bottom)); }
+.hf-share-preview { position: relative; margin: 6px auto 0; width: min(100%, calc(min(58svh, 560px) * 9 / 16)); max-width: 320px; aspect-ratio: 9 / 16; border-radius: 30px; overflow: hidden; background: #FFF8F3;
+  box-shadow: 0 40px 70px -40px rgba(70,40,140,.6), 0 0 0 1px rgba(31,22,64,.06) inset; }
+.hf-share-canvas { display: block; width: 100%; height: 100%; }
+.hf-share-play { position: absolute; right: 10px; top: 10px; width: 40px; height: 40px; background: rgba(255,255,255,.82); backdrop-filter: blur(8px); }
+.hf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.hf-hint--left { text-align: left; padding: 0; margin: 0; }
+
+/* the two switches, plain, with a hairline between them */
+.hf-share-opts { display: grid; }
+.hf-share-opts > * + * { box-shadow: 0 -1px 0 rgba(31,22,64,.08); }
+
+/* perspectives: one list with hairlines; a chosen one shows its tick and a soft tint */
+.hf-share-sec { display: grid; gap: 6px; }
+.hf-share-sec > .kit-label { margin: 0 2px; }
+.hf-share-sec > .hf-hint { padding: 0 2px; }
+.hf-picks { display: grid; margin-top: 6px; }
+.hf-picks > * { position: relative; }
+.hf-picks > * + *::before { content: ""; position: absolute; left: 10px; right: 10px; top: 0; height: 1px; background: rgba(31,22,64,.08); pointer-events: none; }
+/* chosen rows share one soft tint; no hairline where the tint begins or ends */
+.hf-picks > :not([aria-checked="true"]) + [aria-checked="true"]::before, .hf-picks > [aria-checked="true"] + :not([aria-checked="true"])::before { content: none; }
+.hf-picks > [aria-checked="true"] + [aria-checked="true"] { border-top-left-radius: 0; border-top-right-radius: 0; }
+.hf-picks > [aria-checked="true"] + [aria-checked="true"]::before { background: rgba(31,22,64,.06); }
+.hf-picks > [aria-checked="true"]:has(+ [aria-checked="true"]) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.hf-pick { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; width: 100%; padding: 14px 10px 15px; border-radius: 18px; text-align: left; transition: background-color .25s, border-radius .25s; }
+.hf-pick[aria-checked="true"] { background: color-mix(in srgb, var(--room-deep, #6A3FD1) 6%, rgba(255,255,255,.58)); }
+@media (hover: hover) { .hf-pick:hover { background: rgba(255,255,255,.4); } .hf-pick[aria-checked="true"]:hover { background: color-mix(in srgb, var(--room-deep, #6A3FD1) 9%, rgba(255,255,255,.7)); } }
+.hf-pick:focus-visible { outline-offset: 0; border-radius: 18px; }
+.hf-pick-box { width: 26px; height: 26px; margin-top: 1px; border-radius: 9px; display: grid; place-items: center; background: #fff; color: transparent;
+  box-shadow: 0 0 0 1.8px rgba(31,22,64,.28) inset; transition: background-color .2s, box-shadow .2s, color .2s; }
+.hf-pick-box .kit-ico { width: 16px; height: 16px; stroke-width: 2.6; }
+.hf-pick[aria-checked="true"] .hf-pick-box { background: var(--hm-ink); color: #FFF8F3; box-shadow: none; }
+.hf-pick-body { display: grid; gap: 5px; min-width: 0; }
+.hf-pick-src { display: flex; align-items: flex-start; gap: 8px; font: 800 11px/1.35 var(--hm-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--hm-ink-3); }
+.hf-pick-src > .hf-src-dot, .hf-pick-src > .hf-pick-star { margin-top: 1px; }
+.hf-pick-src .hf-src-dot { width: 10px; height: 10px; margin: 2px 2px 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 25%, transparent); }
+.hf-pick-star { display: inline-grid; flex: none; }
+.hf-pick-star .kit-ico { width: 14px; height: 14px; }
+.hf-pick-text { font: 450 16px/1.42 var(--hm-display); font-variation-settings: "SOFT" 100; color: var(--hm-ink); text-wrap: pretty; overflow-wrap: anywhere; }
+.hf-share-fit { margin-top: 4px; color: var(--hm-ink-2); }
+.hf-share-fit:empty { display: none; }
+.hf-pick-locked { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 8px 10px; font: 600 13.5px/1.35 var(--hm-ui); color: var(--hm-ink-3); }
+.hf-pick-key { flex: none; width: 26px; display: grid; place-items: center; opacity: .8; }
+.hf-pick-key .kit-ico { width: 17px; height: 17px; }
+
+.hf-progress { height: 8px; border-radius: 4px; background: rgba(31,22,64,.1); overflow: hidden; }
+.hf-progress-bar { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, #B583FF, #FF6FB5); transition: width .2s linear; }

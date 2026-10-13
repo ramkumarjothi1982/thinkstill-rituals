@@ -70,10 +70,17 @@ Other scenes:
   and the Mallow notices and reaches. When you add your perspective the Mallow
   squeezes the orb, it ripples, gains a petal in your Mallow's colour, and
   flies on: "Your perspective is woven in."
-- **Fallback magic** (`journeys.js` `ask`, `returned.js` `explore`): the orb
-  drifts into your Mallow's arms; it thinks (sleepy eyes, a slow sway) while
-  the answer is made, squeezes, the orb glows and gains a star, and "Your
-  Mallow found another way to see it." unfolds.
+- **Fallback magic** (`journeys.js` `ask`, `returned.js` `explore`): your
+  Mallow already holds the orb above its head. It looks at it, holds it closer,
+  thinks (thought dots rise, a held blush, a slow lean; half-closed eyes for
+  the Mallows with lids) while the answer is made, squeezes it softly, and the
+  orb glows, gains a star, and "Your Mallow found another way to see it."
+  unfolds below the Mallow, never pushing it away.
+- **Transitions** (`morph()` in `parts.js`): within a scene, outgoing content
+  fades away, the Mallow's stage glides from where it was to where it now sits,
+  and the new content rises in. The caught orb is the same orb from offer to
+  writing to passing on. Story peaks use `delight()`: joy in the Mallow's own
+  colours, never Noomi's sleepy "Zzz".
 - **Homecoming** (`returned.js` `moment`):
   1. The sky softens to dusk and pans: "Something is coming home…"
   2. A distant orb drifts closer; the Mallow notices it and reaches.
@@ -92,11 +99,11 @@ The lab's autoplay, the QA tool and the guide use these hooks; scenes keep them 
 |---|---|
 | dock | `nav-release`, `nav-catch`, `nav-journeys`, `nav-returned`, `open-you` |
 | welcome | `welcome`, `welcome-next`, `welcome-privacy`, `welcome-catching`, `welcome-adult`, `welcome-enter` |
-| release | `feeling-text`, `label-<id>`, `share-consent`, `privacy-link`, `allow-fallback`, `release-submit`, `cancel-feeling`, `feeling-error`, `release-limit`, `release-sent`, `follow-journey`, `go-catch`, `release-another` |
+| release | `feeling-text`, `label-<id>`, `share-consent`, `privacy-link`, `allow-fallback`, `fallback-details`, `release-submit`, `cancel-feeling`, `feeling-error`, `release-limit`, `release-sent`, `follow-journey`, `go-catch`, `release-another` |
 | support | `support-scene`, `support-unsent`, `support-resources`, `support-edit`, `support-clear` |
 | catch | `catching-on`, `find-feeling`, `catch-none`, `look-again`, `catch-offer`, `offer-text`, `catch-feeling`, `float-past`, `offer-more`, `report-feeling`, `block-author`, `caught-text`, `starter-<n>`, `reframe-text`, `allow-share`, `reframe-error`, `reframe-submit`, `reframe-after`, `catch-another`, `catch-done`, `catch-gone`, `my-gifts` |
-| journeys | `journey-<id>`, `empty-release`, `progress`, `mallow-waiting`, `mallow-available`, `ask-mallow`, `mallow-ready`, `mallow-failed`, `perspective`, `persp-source`, `lab-source` (lab only), `withdraw`, `delete-journey` |
-| returned | `returned-<id>`, `homecoming`, `homecoming-ready`, `home-note`, `perspective` (+ `data-kind`, `data-source`), `persp-source`, `lab-source` (lab only), `keep`, `let-go`, `persp-more`, `report-perspective`, `block-contributor`, `mallow-extra`, `home-empty`, `send-again`, `keep-with-me`, `explore-angle`, `save-journey`, `share-journey`, `release-journey`, `delete-journey` |
+| journeys | `journey-<id>`, `empty-release`, `progress`, `mallow-waiting`, `mallow-available`, `ask-mallow`, `mallow-ready`, `mallow-failed`, `perspective`, `persp-source`, `persp-more`, `lab-source` (lab only), `withdraw`, `delete-journey` |
+| returned | `returned-<id>`, `homecoming`, `homecoming-ready`, `home-note`, `perspective` (+ `data-kind`, `data-source`), `persp-source`, `lab-source` (lab only), `keep`, `let-go`, `persp-more`, `report-perspective`, `block-contributor`, `mallow-extra`, `home-empty`, `send-again`, `resend-fallback`, `keep-with-me`, `explore-angle`, `explore-details`, `save-journey`, `share-journey`, `release-journey`, `delete-journey` |
 | share | `share-preview`, `share-play`, `share-privacy`, `share-label`, `share-words`, `share-pick` (+ `data-kind`), `share-pick-locked`, `share-save`, `share-image`, `share-video`, `share-video-out` |
-| you | `privacy-link`, `pref-catching`, `pref-notify`, `pref-sound`, `mallow-<id>`, `gifts`, `gift`, `gift-share-<id>`, `open-support`, `export-data`, `export-json`, `export-copy`, `delete-data`, `pilot-note`, `deleted` |
+| you | `privacy-link`, `pref-catching`, `pref-notify`, `pref-sound`, `mallow-<id>`, `gifts`, `gift`, `gift-share-<id>`, `gift-withdraw-<id>`, `open-support`, `export-data`, `export-json`, `export-copy`, `delete-data`, `pilot-note`, `deleted` |
 | sheets | `confirm`, `privacy-details`, `reason-<id>`, `report-send`, `report-received` |

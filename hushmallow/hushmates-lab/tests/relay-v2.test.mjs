@@ -230,3 +230,99 @@ test('explore another angle: the author can opt in at home with consent; never s
   assert.equal(w.svc.s.journeys[partly].fallbackConsentAt, null);
   assert.equal(w.svc.s.journeys[partly].allowFallback, false);
 });
+
+// ------------------------------------------------ a catcher who may not be safe --
+test('a catcher whose words suggest they may not be safe gets support; nothing is stored or passed on, the feeling floats on', () => {
+  const w = world();
+  const id = w.release().journey.id;
+  const { offer } = w.svc.findFeeling(w.T.cloud);
+  w.svc.catchFeeling(w.T.cloud, { holdId: offer.holdId });
+  const res = w.svc.submitReframe(w.T.cloud, { holdId: offer.holdId, text: 'Honestly I feel the same, I don’t want to be alive any more either.', clientId: cid('r') });
+  assert.equal(res.status, 'support');
+  assert.equal(res.level, 'crisis');
+  assert.ok(res.support.resources.length >= 2);
+  assert.doesNotMatch(JSON.stringify(res.support), /reframe/i);
+  assert.equal(Object.values(w.svc.s.reframes).length, 0, 'their words are never stored');
+  assert.doesNotMatch(JSON.stringify(w.svc.toJSON()), /alive any more/, 'nor kept anywhere in state');
+  assert.equal(w.svc.s.holds[offer.holdId].status, 'passed');
+  const j = w.svc.getJourney(w.T.moon, { journeyId: id });
+  assert.equal(j.status, 'travelling');
+  assert.equal(j.humanCount, 0);
+  assert.equal(w.svc.findFeeling(w.T.cloud).offer, null, 'not offered to them again');
+  assert.ok(w.svc.findFeeling(w.T.star).offer, 'someone else can catch it');
+});
+
+test('care-level words in a perspective are refused without support for the writer; release support copy is Hushmates’ own', () => {
+  const w = world();
+  w.release();
+  const { offer } = w.svc.findFeeling(w.T.cloud);
+  w.svc.catchFeeling(w.T.cloud, { holdId: offer.holdId });
+  throwsCode(() => w.svc.submitReframe(w.T.cloud, { holdId: offer.holdId, text: 'Maybe what they did was abuse and you could talk to someone.', clientId: cid('r') }), 'reframe-unsafe');
+  const bullying = w.svc.submitFeeling(w.T.star, { text: 'Someone at school keeps bullying me every day and I dread going in.', consent: true, clientId: cid('f') });
+  assert.equal(bullying.status, 'support');
+  assert.doesNotMatch(JSON.stringify(bullying.support), /reframe|rethink/i);
+  assert.ok(!bullying.support.resources.some((r) => /domestic/i.test(r.label)), 'bullying gets general support lines, not domestic-abuse lines');
+});
+
+// ------------------------------------------------------------- early recall --
+test('early recall: it comes home with the perspectives so far; a live hold ends and that person can’t add theirs', () => {
+  const w = world();
+  const id = w.release().journey.id;
+  w.give('cloud', REFRAMES[0]);
+  w.give('star', REFRAMES[1]);
+  const { offer } = w.svc.findFeeling(w.T.fern);
+  w.svc.catchFeeling(w.T.fern, { holdId: offer.holdId });
+  const v = w.svc.withdrawFeeling(w.T.moon, { journeyId: id });
+  assert.equal(v.status, 'returned');
+  assert.equal(v.returnReason, 'withdrawn');
+  assert.equal(v.humanCount, 2);
+  assert.equal(v.collection.length, 2);
+  throwsCode(() => w.svc.submitReframe(w.T.fern, { holdId: offer.holdId, text: REFRAMES[2], clientId: cid('r') }), 'not-available');
+  assert.equal(w.svc.findFeeling(w.T.dream).offer, null, 'it no longer travels');
+  assert.equal(w.svc.getJourney(w.T.moon, { journeyId: id }).humanCount, 2);
+});
+
+// ------------------------------------------------------- taking a perspective back --
+test('a writer can take back their perspective: removed for good, the count drops honestly, nobody else can do it', () => {
+  const w = world();
+  const id = w.release().journey.id;
+  const pid = w.give('cloud', REFRAMES[0]).perspective.id;
+  w.give('star', REFRAMES[1]);
+  throwsCode(() => w.svc.withdrawPerspective(w.T.moon, { perspectiveId: pid }), 'not-found');   // not the author of the feeling
+  throwsCode(() => w.svc.withdrawPerspective(w.T.star, { perspectiveId: pid }), 'not-found');   // nor anyone else
+  const gifts = w.svc.withdrawPerspective(w.T.cloud, { perspectiveId: pid }).gifts;
+  assert.equal(gifts.length, 0);
+  assert.doesNotMatch(JSON.stringify(w.svc.toJSON()), /really full week/, 'the words are gone from state');
+  w.svc.withdrawFeeling(w.T.moon, { journeyId: id });
+  const v = w.svc.getJourney(w.T.moon, { journeyId: id });
+  assert.equal(v.humanCount, 1);
+  assert.equal(v.collection.length, 1);
+  assert.ok(v.events.some((e) => e.type === 'perspective-withdrawn'));
+  assert.ok(!JSON.stringify(v.events).includes('cloud'), 'never who');
+  throwsCode(() => w.svc.withdrawPerspective(w.T.cloud, { perspectiveId: pid }), 'not-found');   // once
+});
+
+// ------------------------------------------------- canned examples stay in the lab --
+test('outside the lab, a canned example is never shown as a Mallow perspective; the Reframe library is', async () => {
+  const { demoProvider, libraryProvider } = await import('../core/perspectives.js');
+  const prod = world({ provider: demoProvider(), cannedExamples: false });
+  const a = prod.release('moon', { allowFallback: true }).journey.id;
+  prod.advance(31 * MIN);
+  const v = await prod.svc.askMallow(prod.T.moon, { journeyId: a });
+  assert.equal(v.fallback.status, 'failed');
+  assert.equal(v.collection.length, 0);
+  const lib = world({ provider: libraryProvider(), cannedExamples: false });
+  const b = lib.release('moon', { allowFallback: true }).journey.id;
+  lib.advance(31 * MIN);
+  const u = await lib.svc.askMallow(lib.T.moon, { journeyId: b });
+  assert.equal(u.fallback.status, 'ready');
+  assert.equal(u.collection[0].label, 'A Mallow perspective · Automatically generated');
+});
+
+test('the canned examples speak in each Mallow’s own voice', async () => {
+  const { demoProvider } = await import('../core/perspectives.js');
+  const p = demoProvider();
+  const lines = new Set();
+  for (const m of ['noomi', 'blubi', 'pipzi', 'boppo', 'zuzu', 'loomi', 'glitzi']) lines.add((await p({ text: 'x', label: 'worry', mallow: m })).text);
+  assert.equal(lines.size, 7);
+});

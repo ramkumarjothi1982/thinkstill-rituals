@@ -2,7 +2,7 @@
 // through Hushfold. It squashes and stretches on springs (like the Mallows),
 // can hold the words inside it, and gains one petal of light per human
 // perspective (in that person's Mallow colour). A Mallow perspective is a
-// small star on a dashed orbit: visibly different, never mistaken for a person.
+// small star on a faint orbit of light: visibly different, never mistaken for a person.
 
 import { Channel, EASE, reducedMotion, rand, CSS_EASE } from './motion.js';
 import { MALLOWS } from './mallows-data.js';
@@ -151,7 +151,7 @@ export class Orb {
     const m = MALLOWS[p.mallow] || MALLOWS.loomi;
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'orb-star');
-    g.innerHTML = `<circle r="70" fill="none" stroke="${m.deep}" stroke-opacity=".35" stroke-width="1.2" stroke-dasharray="3 6"/>
+    g.innerHTML = `<circle r="70" fill="none" stroke="${m.deep}" stroke-opacity=".16" stroke-width="2.2"/>
       <g class="orb-star-ride"><g transform="rotate(36) translate(0 -70)"><circle r="9" fill="${m.glow}" opacity=".45" filter="url(#orb-soft-${this.id})"/><path d="M0 -9 C 1 -3 3 -1 9 0 C 3 1 1 3 0 9 C -1 3 -3 1 -9 0 C -3 -1 -1 -3 0 -9 Z" fill="#fff" stroke="${m.deep}" stroke-width="1.2"/></g></g>`;
     this.svg.append(g);
     if (animate && !this.reduced) g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, easing: CSS_EASE });

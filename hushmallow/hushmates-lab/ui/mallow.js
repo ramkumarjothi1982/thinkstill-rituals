@@ -119,7 +119,12 @@ export class Mallow {
     this.lean.append(this.breath);
     this.parts = document.createElement('span');
     this.parts.className = 'mw-parts';
-    el.append(...[this.shadowEl, this.halo, this.lean, this.parts].filter(Boolean));
+    // three little thought dots above the head while it thinks (every Mallow, lids or not)
+    this.dots = document.createElement('span');
+    this.dots.className = 'mw-dots';
+    this.dots.setAttribute('aria-hidden', 'true');
+    this.dots.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    el.append(...[this.shadowEl, this.halo, this.lean, this.parts, this.dots].filter(Boolean));
 
     // channels
     this._queued = false;
@@ -235,12 +240,41 @@ export class Mallow {
     if (!this.reduced) this.hop.tween([0, -7, 0], { duration: 0.5, ease: EASE.easeOut });
     setTimeout(() => { if (!this.dead) this.leanTo(0); }, 1400);
   }
-  /** a quiet, thoughtful look (eyes half closed for the Mallows that have lids, a slow sway) */
+  /**
+   * A thoughtful pause that every Mallow shows: thought dots rise above its head, a held blush,
+   * a slow lean and a soft settle (and half-closed eyes for the Mallows that have lids).
+   */
   think(on) {
     this.sleepy(!!on);
+    this.dots.classList.toggle('is-on', !!on);
+    this.blush.tween(on ? 0.65 : 0, { duration: on ? 0.6 : 0.9, ease: EASE.easeOut });
     if (this.reduced) return;
-    if (on) { this.rot.tween([0, -2.5, 2, -1.5, 0], { duration: 2.4 }); this.glow.tween(0.6, { duration: 1.2 }); }
-    else this.glow.tween(0, { duration: 0.8 });
+    if (on) {
+      this.rot.tween([0, -2.5, 2, -1.5, 0], { duration: 2.4 });
+      this.glow.tween(0.6, { duration: 1.2 });
+      this.leanTo(-0.35);
+      this.squish.tween(0.12, { duration: 0.8, ease: EASE.easeInOut });
+    } else {
+      this.glow.tween(0, { duration: 0.8 });
+      this.leanTo(0);
+      this.squish.spring(0, { stiffness: 170, damping: 9, velocity: 0 });
+    }
+  }
+
+  /**
+   * A story peak (a feeling released, a perspective found): joy in its own colours, a blush and a
+   * hop. Never the sleepy particle: a peak should never read as boredom.
+   */
+  delight(intensity = 1) {
+    const m = this.m;
+    this.pulseBlush();
+    const kind = m.part === 'z' ? 'sparkle' : m.part;
+    this.emit(kind, Math.max(3, Math.round((kind === 'sparkle' ? 9 : 6) * intensity)), m.colors);
+    if (this.reduced) return;
+    if (m.sig === 'sink' || m.sig === 'wobble') {
+      this.hop.tween([0, -18, 0, -6, 0], { duration: 0.8, ease: EASE.easeOut });
+      this.rot.tween([0, -4, 3, 0], { duration: 0.9 });
+    } else this.signatureMove();
   }
 
   /** rotate towards a point: -1..1 across the stage (0 = upright) */
@@ -258,6 +292,11 @@ export class Mallow {
     const n = Math.round((m.part === 'sparkle' ? 10 : 6) * intensity);
     this.emit(m.part, Math.max(2, n), m.colors);
     if (this.reduced) return;
+    this.signatureMove();
+  }
+
+  signatureMove() {
+    const m = this.m;
     switch (m.sig) {
       case 'sink':
         this.y.tween([0, 10, 0], { duration: 1.6 });
@@ -297,7 +336,7 @@ export class Mallow {
       const a = rand(-Math.PI * 0.92, -Math.PI * 0.08);
       const dist = rand(60, 140) * (this.o.particleScale || 1);
       const size = rand(14, 26) * (this.o.particleScale || 1);
-      const d = this.reduced ? 1.2 : rand(0.9, 1.5);
+      const d = this.reduced ? 0.4 : rand(0.9, 1.5);   // reduced motion: a brief glimmer in place
       const outer = document.createElement('span');
       outer.className = 'mw-part';
       outer.style.left = `${50 + rand(-20, 20)}%`;
@@ -309,7 +348,7 @@ export class Mallow {
       inner.append(shape(kind));
       outer.append(inner);
       this.parts.append(outer);
-      const dx = Math.cos(a) * dist, dy = Math.sin(a) * dist - 24, r = rand(-80, 80);
+      const dx = this.reduced ? 0 : Math.cos(a) * dist, dy = this.reduced ? 0 : Math.sin(a) * dist - 24, r = this.reduced ? 0 : rand(-80, 80);
       const eo = 'cubic-bezier(0,0,.58,1)';
       outer.animate([{ transform: 'translate(0,0) rotate(0deg)' }, { transform: `translate(${dx}px,${dy}px) rotate(${r}deg)` }],
         { duration: d * 1000, easing: eo, fill: 'forwards' });

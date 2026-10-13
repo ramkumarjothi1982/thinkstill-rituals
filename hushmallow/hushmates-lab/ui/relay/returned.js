@@ -9,13 +9,14 @@
 // When nobody caught it, it says so kindly and offers another journey.
 
 import { h, icon, fmtAgo } from '../dom.js';
+import { sentenceSwitch } from '../kit.js';
 import { face } from '../mallow.js';
 import { MALLOWS } from '../mallows-data.js';
 import { Orb, fly, centreIn } from '../orb.js';
 import { play } from '../sound.js';
 import { wait, reducedMotion, CSS_EASE, rise } from '../motion.js';
 import { brandBar, dock, top, feelChip, feelColour, lights, reportSheet, errorText } from './common.js';
-import { room, stage, handsOf, Speech, line, swapLine, put, privacySheet, labSourceTag } from './parts.js';
+import { room, stage, handsOf, Speech, line, swapLine, put, privacySheet, labSourceTag, focusHeading } from './parts.js';
 import { humanProgress } from './journeys.js';
 
 const homeList = (state) => state.journeys.filter((j) => j.status === 'returned' || j.status === 'released')
@@ -78,6 +79,7 @@ export function homecoming(dev, { id, refresh } = {}) {
   }
   const m = MALLOWS[j.mallow] || MALLOWS.noomi;
   const mem = (dev.memory.home ||= {});
+  dev.toastRoot?.replaceChildren();               // nothing announces the moment before it plays
   let alive = true;
   let playing = false;
   const cinematic = j.status === 'returned' && !j.seenReturn && !refresh;
@@ -85,7 +87,8 @@ export function homecoming(dev, { id, refresh } = {}) {
   const r = room(m.id, `hf-home${cinematic ? ' is-cinematic' : ''}`, { seed: 5 });
   const head = h('div', { class: 'hf-head' });
   const content = h('div', { class: 'hf-scroll hf-home-scroll', dataset: { test: 'homecoming' } });
-  const st = stage(m.id, { size: 'm' });
+  // the open view keeps your Mallow at the top, holding the orb
+  const st = stage(m.id, { size: 's' });
   const speech = new Speech(m.id);
   put(st.above, speech.el);
   const cineLine = h('p', { class: 'hf-line hf-line--moment', role: 'status', 'aria-live': 'polite' });
@@ -104,33 +107,34 @@ export function homecoming(dev, { id, refresh } = {}) {
     const humans = j.humanCount;
     const noOne = !released && humans === 0;
     const mallowItem = items.find((x) => x.kind === 'mallow') || null;
+    const shownHumans = items.filter((x) => x.kind === 'human').length;
     const orbSlot = h('div', { class: 'hf-home-orb' });
-    if (withOrb) orbSlot.append(orb.el);
+    if (withOrb) { orbSlot.append(orb.el); orb.unfreeze(); }
+    put(st.above, speech.el, orbSlot);
     put(head, top(dev, { title: '', back: true }));
 
     const headline = released ? 'You let this feeling go.' : j.returnReason === 'removed' ? 'Your feeling came home early.' : 'Your feeling found its way home.';
-    const sub = released ? (items.length || j.mallowExtra ? 'These are the perspectives you kept.' : 'Nothing was kept. It’s gone, gently.')
-      : j.returnReason === 'removed' ? 'Our safety team brought it home.'
-        : noOne ? 'No one caught it this time. Want to give it another journey?'
-          : 'Here’s how others saw it.';
-    const note = !released && humans > 0 && humans < j.of ? `${humans} ${humans === 1 ? 'Hushmate' : 'Hushmates'} caught it before it came home.`
-      : !released && humans === j.of ? 'Five Hushmates saw it differently.' : null;
+    const people = `${humans} ${humans === 1 ? 'Hushmate' : 'Hushmates'}`;
+    let sub;
+    let partial = false;
+    if (released) sub = items.length || j.mallowExtra ? 'These are the perspectives you kept.' : 'Nothing was kept. It’s gone, gently.';
+    else if (j.returnReason === 'removed') sub = 'Our safety team brought it home.';
+    else if (noOne) sub = 'No one caught it this time.';
+    else if (!shownHumans) sub = `${people} caught it. The perspectives you chose not to see aren’t shown.`;
+    else if (humans < j.of) { sub = `${people} caught it before it came home. Here’s how they saw it.`; partial = true; }
+    else sub = 'Here’s how others saw it.';
 
-    const humanAndVisible = noOne ? [] : items;
-    const pagerEl = humanAndVisible.length ? pager(humanAndVisible) : null;
     put(content, h('div', { class: 'hf-home-open', dataset: { test: 'homecoming-ready' } },
-      orbSlot,
+      st.el,
       h('div', { class: 'hf-copy' },
         h('h1', { class: 'hf-line', 'data-autofocus': '' }, headline),
-        h('p', { class: 'hf-sub hf-sub--soft' }, sub)),
-      !released && !noOne ? h('p', { class: 'hf-jorb-progress hf-home-progress' }, lights(j), h('span', {}, humanProgress(j))) : null,
-      note ? h('p', { class: 'hf-note', dataset: { test: 'home-note' } }, note) : null,
-      pagerEl,
-      noOne ? zeroHuman(mallowItem) : null,
+        h('p', { class: 'hf-sub hf-sub--soft', dataset: partial ? { test: 'home-note' } : undefined }, sub)),
+      !released && !noOne ? h('p', { class: 'hf-home-progress' }, lights(j), h('span', {}, humanProgress(j))) : null,
+      noOne ? zeroHuman(mallowItem) : items.length ? pager(items) : null,
       j.mallowExtra ? extraSection(j.mallowExtra) : null,
       j.text ? h('details', { class: 'hf-sent' }, h('summary', {}, 'What you sent'), h('p', { class: 'hf-own-text' }, j.text), feelChip(j.label)) : null,
       noOne ? null : choices(released),
-      h('p', { class: 'hf-hint' }, 'People who offered perspectives can’t see who you are or contact you, and you can’t contact them.')));
+      humans > 0 ? h('p', { class: 'hf-hint' }, 'People who offered perspectives can’t see who you are or contact you, and you can’t contact them.') : null));
     return { orbSlot, slides: [...content.querySelectorAll('.hf-slide')] };
   }
 
@@ -190,7 +194,7 @@ export function homecoming(dev, { id, refresh } = {}) {
   function slide(p, i, n) {
     return h('article', { class: `hf-slide hf-slide--${p.kind}${p.kept === false ? ' is-let-go' : ''}`, 'aria-label': `${i + 1} of ${n}: ${p.label}`, dataset: { test: 'perspective', kind: p.kind, source: p.source } },
       sourceLine(p),
-      h('button', { type: 'button', class: 'rl-more hf-slide-more', 'aria-label': 'More: report or block', dataset: { test: 'persp-more' }, onclick: () => more(p) }, icon('more')),
+      h('button', { type: 'button', class: 'rl-more hf-slide-more', 'aria-label': p.kind === 'human' ? 'More: report or block' : 'More: report this Mallow perspective', dataset: { test: 'persp-more' }, onclick: () => more(p) }, icon('more')),
       h('p', { class: 'hf-slide-text' }, p.text),
       h('div', { class: 'hf-slide-actions' },
         h('button', { type: 'button', class: 'hf-pill', 'aria-pressed': String(p.kept === true), dataset: { test: 'keep' }, onclick: () => keep(p, p.kept === true ? null : true) }, icon('heart'), p.kept === true ? 'Kept' : 'Keep this perspective'),
@@ -205,30 +209,30 @@ export function homecoming(dev, { id, refresh } = {}) {
   }
 
   function zeroHuman(mallowItem) {
-    const canExplore = !mallowItem && j.canExplore;
-    if (!mallowItem) speech.say(j.saved ? 'I’ll keep it here with you.' : 'Sometimes the sky is just quiet. It says nothing about you or your feeling.');
-    const wrap = h('div', { class: 'hf-zero', dataset: { test: 'home-empty' } },
-      mallowItem ? h('section', { class: 'hf-zero-mallow', 'aria-label': 'Your Mallow’s perspective' }, h('h2', { class: 'hf-line hf-line--sm' }, 'Your Mallow found another way to see it.'), slide(mallowItem, 0, 1)) : st.el,
+    if (!playing) speech.say(mallowItem ? 'I found another way to see it.' : j.saved ? 'I’ll keep it here with you.' : 'Sometimes the sky is just quiet. It says nothing about you or your feeling.');
+    return h('div', { class: 'hf-zero', dataset: { test: 'home-empty' } },
+      mallowItem ? h('section', { class: 'hf-zero-mallow', 'aria-label': 'Your Mallow’s perspective' }, slide(mallowItem, 0, 1)) : null,
+      j.canResend ? h('p', { class: 'hf-line hf-line--xs' }, 'Want to give it another journey?')
+        : j.resends ? h('p', { class: 'hf-note' }, 'It’s travelled a few times already.') : null,
       h('div', { class: 'hf-actions' },
-        j.canResend ? h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'send-again' }, onclick: () => sendAgain() }, 'Send it out again')
-          : h('p', { class: 'hf-note' }, j.resends ? 'It’s travelled a few times already.' : ''),
+        j.canResend ? h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'send-again' }, onclick: () => sendAgain() }, 'Send it out again') : null,
         h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--block', 'aria-pressed': String(!!j.saved), dataset: { test: 'keep-with-me' }, onclick: () => keepWithMe() }, j.saved ? 'Kept with you' : 'Keep it with me'),
         h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', dataset: { test: 'release-journey' }, onclick: () => letGo() }, 'Let it go'),
-        canExplore ? h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', dataset: { test: 'explore-angle' }, onclick: () => explore() }, face(j.mallow, { size: 22 }), 'Explore another angle') : null,
+        j.canExplore ? h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', dataset: { test: 'explore-angle' }, onclick: () => explore() }, face(j.mallow, { size: 22 }), 'Explore another angle') : null,
         h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block hf-danger', dataset: { test: 'delete-journey' }, onclick: () => remove() }, 'Delete my journey')));
-    return wrap;
   }
 
+  /** What to do with it: one clear choice, one gentle one, and quiet links for the rest. */
   function choices(released) {
-    const row = (test, ic, title, sub, onclick, extra = {}) => h('button', { type: 'button', class: `hf-choice${extra.cls ? ` ${extra.cls}` : ''}`, dataset: { test }, onclick, 'aria-pressed': extra.pressed }, icon(ic), h('span', {}, h('strong', {}, title), sub ? h('small', {}, sub) : null));
-    const exploreAvailable = !released && j.canExplore;
-    return h('section', { class: 'hf-choices-list', 'aria-label': 'What would you like to do with it?' },
-      h('p', { class: 'kit-label' }, 'What would you like to do with it?'),
-      released ? null : row('save-journey', 'heart', j.saved ? 'Saved' : 'Save my journey', 'Keep it here until you decide otherwise', () => save(), { pressed: String(!!j.saved), cls: j.saved ? 'is-on' : '' }),
-      exploreAvailable ? row('explore-angle', 'sparkle', 'Explore another angle', 'Your Mallow offers one more way to see it', () => explore()) : null,
-      row('share-journey', 'share', 'Share a picture', 'You choose what it shows', () => dev.go('share', { id })),
-      released ? null : row('release-journey', 'sparkle', 'Release this feeling', 'Your words are cleared; what you kept stays', () => letGo()),
-      row('delete-journey', 'trash', 'Delete my journey', 'Everything about it, for good', () => remove(), { cls: 'hf-choice--danger' }));
+    const quiet = (test, label, onclick, cls = '') => h('button', { type: 'button', class: `kit-btn kit-btn--text${cls ? ` ${cls}` : ''}`, dataset: { test }, onclick }, label);
+    return h('section', { class: 'hf-home-actions', 'aria-label': 'What would you like to do with it?' },
+      released ? null : h('button', { type: 'button', class: `kit-btn kit-btn--ink kit-btn--block hf-save${j.saved ? ' is-on' : ''}`, 'aria-pressed': String(!!j.saved), dataset: { test: 'save-journey' }, onclick: () => save() },
+        icon('heart'), j.saved ? 'Saved to your journeys' : 'Save my journey'),
+      !released && j.canExplore ? h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--block', dataset: { test: 'explore-angle' }, onclick: () => explore() }, face(j.mallow, { size: 22 }), 'Explore another angle') : null,
+      h('div', { class: 'hf-quiet-actions' },
+        quiet('share-journey', 'Share a picture', () => dev.go('share', { id })),
+        released ? null : quiet('release-journey', 'Release this feeling', () => letGo()),
+        quiet('delete-journey', 'Delete my journey', () => remove(), 'hf-danger')));
   }
 
   // ------------------------------------------------------------ actions --
@@ -300,9 +304,22 @@ export function homecoming(dev, { id, refresh } = {}) {
     if (res) dev.go('returned', {}, { replace: true, back: true });
   }
   async function sendAgain() {
+    let allow = !!j.allowFallback;
+    const hasMallow = ['ready', 'pending', 'failed'].includes(j.fallback?.status);
+    let sw = null;
+    if (!hasMallow) {
+      sw = sentenceSwitch({
+        label: 'Let a Mallow offer another perspective if nobody responds.',
+        hint: 'Your Mallow can offer an automatically generated perspective if no one catches your feeling. Your words are then processed by an automated service, not a person.',
+        checked: allow, test: 'resend-fallback', onChange: (on) => { allow = on; return true; },
+      });
+      sw.classList.add('kit-switch--plain');
+    }
+    const ok = await dev.confirm({ title: 'Send it out again?', text: 'It travels for up to another day. Anyone who already let it float past won’t see it again.', extra: sw, confirmLabel: 'Send it out again' });
+    if (!ok || !alive) return;
     mem[id] ||= c.newId();
     let res;
-    try { res = await c.act('resendJourney', { journeyId: id, clientId: mem[id] }); } catch (e) { dev.toast(errorText(e), { tone: 'warn', ms: 4200 }); return; }
+    try { res = await c.act('resendJourney', { journeyId: id, clientId: mem[id], ...(hasMallow ? {} : { allowFallback: allow }) }); } catch (e) { dev.toast(errorText(e), { tone: 'warn', ms: 4200 }); return; }
     delete mem[id];
     if (res.status === 'support') { dev.go('support', { support: res.support, level: res.level }); return; }
     play('release');
@@ -315,58 +332,46 @@ export function homecoming(dev, { id, refresh } = {}) {
     await wait(reducedMotion() ? 300 : 1700);
     if (alive) dev.go('journeys', {}, { replace: true });
   }
-  /** "Explore another angle": the orb goes back to the Mallow, who thinks, squeezes it, and it unfolds. */
+  /** "Explore another angle": your Mallow, holding the orb, thinks, squeezes it, and it glows and unfolds. */
   async function explore() {
     if (playing) return;
     const fm = MALLOWS[j.mallow] || MALLOWS.noomi;
     const needsConsent = !j.allowFallback;
     const ok = await dev.confirm({
       title: `Ask ${fm.name} for another angle?`, art: face(fm.id, { size: 64, float: true }),
-      text: `${fm.name} will offer one automatically generated perspective. It isn’t written by a person, and it isn’t counted as one. ${needsConsent ? 'To write it, your words are sent to an automated service and deleted with this journey.' : ''}`.trim(),
+      text: `${fm.name} will offer one automatically generated perspective. It isn’t written by a person, and it isn’t counted as one. ${needsConsent ? 'To write it, your words are processed by an automated service. The perspective is kept with this journey and deleted with it.' : ''}`.trim(),
+      // the details open in place, so the choice stays where it is
+      extra: needsConsent ? h('details', { class: 'hf-inline-details', dataset: { test: 'explore-details' } }, h('summary', {}, 'How this works'),
+        h('p', {}, 'Your Mallow’s perspective is written by an automated service from your words, once. It isn’t written by a person, it’s always labelled “Automatically generated”, and it never counts as one of the five. Nobody else sees it unless you choose to share it.')) : null,
       confirmLabel: `Ask ${fm.name}`,
     });
     if (!ok || !alive) return;
     playing = true;
     const rm = reducedMotion();
-    // the room quietens to the Mallow's moment; the orb goes back to its hands
-    const from = centreIn(orb.el, flight);
-    const size = orb.el.getBoundingClientRect().width || 120;
-    const flyer = h('div', { class: 'rl-flyer' });
-    flight.append(flyer);
-    orb.freeze();
-    flyer.append(orb.el);
-    flyer.style.transform = `translate(${from.x}px, ${from.y}px) translate(-50%, -50%)`;
-    content.classList.add('is-hidden');
-    cine.hidden = false;
-    cine.getAnimations().forEach((a) => a.cancel());
-    swapLine(cineLine, 'Let’s look at it another way.');
-    await wait(rm ? 0 : 260);
-    const hands = handsOf(cineStage.mallow, flight, size * 0.8);
-    cineStage.mallow.notice(0);
-    cineStage.mallow.reach(0.25);
-    if (rm) flyer.style.transform = `translate(${hands.x}px, ${hands.y}px) translate(-50%, -50%) scale(.8)`;
-    else await fly(flyer, flight, { from, to: hands, duration: 1200, scale: [1, 0.8], trail: true, colour: m.glow });
+    content.scrollTo({ top: 0, behavior: rm ? 'auto' : 'smooth' });
+    await wait(rm ? 0 : 420);
     if (!alive) return;
-    cineStage.mallow.relax();
-    cineStage.mallow.press(0.4, 0.2);
+    // it looks at the orb it is holding, holds it a little closer, and thinks
+    speech.say('Hmm… let me look at it another way.', { who: false });
+    st.mallow.notice(0);
+    st.mallow.press(0.4, 0.2);
     orb.squeeze(0.4, 0.2);
-    await wait(rm ? 0 : 220);
-    cineStage.mallow.release(true);
+    await wait(rm ? 0 : 240);
+    st.mallow.release(true);
     orb.release(true);
-    // it pauses and thinks, for as long as the answer takes (at least a breath)
-    cineStage.mallow.think(true);
+    st.mallow.think(true);
     play('think');
     let res = null;
     let err = null;
     try { [res] = await Promise.all([c.act('askMallow', { journeyId: id, consent: true }), wait(rm ? 300 : 1900)]); } catch (e) { err = e; }
     if (!alive) return;
-    cineStage.mallow.think(false);
+    st.mallow.think(false);
     // it softly compresses the orb, which glows and unfolds
     play('squish');
-    cineStage.mallow.press(0.9, 0.5);
+    st.mallow.press(0.9, 0.5);
     orb.squeeze(0.9, 0.5);
     await wait(rm ? 0 : 560);
-    cineStage.mallow.release();
+    st.mallow.release();
     orb.release();
     orb.ripple({ colour: m.glow });
     orb.glowPulse(2);
@@ -374,27 +379,16 @@ export function homecoming(dev, { id, refresh } = {}) {
     if (ready) {
       play('reveal');
       orb.addStar(j.mallow);
-      cineStage.mallow.signature(0.9);
-      swapLine(cineLine, 'Your Mallow found another way to see it.');
+      st.mallow.delight(0.9);
+      speech.say('I found another way to see it.');
     } else {
       play('pass');
-      swapLine(cineLine, err ? errorText(err) : 'Your Mallow couldn’t find the words this time.');
+      speech.say(err ? errorText(err) : 'I couldn’t find the words this time.');
     }
-    await wait(rm ? 400 : 1500);
-    if (!alive) return;
-    // home again: the open view, with the new perspective in its place
-    const { orbSlot } = build({ withOrb: false });
-    content.classList.remove('is-hidden');
-    cine.animate([{ opacity: 1 }, { opacity: 0 }], { duration: rm ? 1 : 500, easing: CSS_EASE, fill: 'forwards' });
-    const target = centreIn(orbSlot, flight);
-    if (!rm) await fly(flyer, flight, { from: hands, to: target, duration: 900, scale: [0.8, 1], colour: m.glow });
-    if (!alive) return;
-    orbSlot.append(orb.el);
-    orb.unfreeze();
-    flyer.remove();
-    cine.hidden = true;
-    swapLine(cineLine, '');
+    await wait(rm ? 300 : 1300);
     playing = false;
+    if (!alive) return;
+    rebuild();
     if (!ready) return;
     const extra = content.querySelector('[data-test=mallow-extra]');
     const pagerEl = content.querySelector('.hf-pager');
@@ -461,30 +455,43 @@ export function homecoming(dev, { id, refresh } = {}) {
     if (j.mallowPetal) { orb.addStar(j.mallowPetal.mallow); await wait(rm ? 0 : 400); }
     await wait(rm ? 300 : 900);
     if (!alive) return;
-    // the orb rises and opens
+    // the orb rises and opens: the moment's line fades, your Mallow carries the orb up to its place at
+    // the top, and only then does what came back unfold below (one headline, no flicker)
     play('unfold');
+    swapLine(cineLine, '');
     const { orbSlot, slides } = build({ withOrb: false });
     put(head, top(dev, { title: '', back: true }));
     content.scrollTop = 0;
-    content.classList.remove('is-hidden');
     content.classList.add('is-unfolding');
-    cine.animate([{ opacity: 1 }, { opacity: 0 }], { duration: rm ? 1 : 700, easing: CSS_EASE, fill: 'forwards' });
+    content.classList.remove('is-hidden');
+    const from = cineStage.figure.getBoundingClientRect();
+    const to = st.figure.getBoundingClientRect();
+    cineStage.el.style.visibility = 'hidden';
+    cine.animate([{ opacity: 1 }, { opacity: 0 }], { duration: rm ? 1 : 500, easing: CSS_EASE, fill: 'forwards' });
+    if (!rm && to.width) {
+      const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+      const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+      st.figure.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${from.width / to.width})` }, { transform: 'none' }], { duration: 1100, easing: CSS_EASE });
+    }
     await wait(30);
     const target = centreIn(orbSlot, flight);
-    if (!rm) await fly(flyer, flight, { from: hands, to: target, duration: 1100, scale: [0.8, 1], trail: true, colour: feelColour(j.label) });
+    if (!rm) await fly(flyer, flight, { from: hands, to: target, duration: 1100, scale: [0.8, 1], colour: feelColour(j.label) });
     if (!alive) return;
     orbSlot.append(orb.el);
     flyer.remove();
     cine.hidden = true;
-    content.classList.remove('is-unfolding');
+    st.mallow.relax();
     orb.ripple({ colour: m.glow });
-    const o = centreIn(orbSlot, flight);
-    const reveal = [...content.querySelectorAll('.hf-home-open > :not(.hf-home-orb)')];
-    reveal.forEach((node, i) => node.animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: rm ? 1 : 700, delay: rm ? 0 : 80 + i * 70, easing: CSS_EASE, fill: 'backwards' }));
+    const reveal = [...content.querySelectorAll('.hf-home-open > :not(.hf-stage)')];
+    // they start hidden by the class and are revealed by the animation, so nothing blinks
+    reveal.forEach((node, i) => node.animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: rm ? 1 : 700, delay: rm ? 0 : 60 + i * 70, easing: CSS_EASE, fill: 'backwards' }));
+    content.classList.remove('is-unfolding');
     if (slides[0] && !rm) {
-      const s = centreIn(slides[0], flight);
-      slides[0].animate([{ opacity: 0, transform: `translate(${o.x - s.x}px, ${o.y - s.y}px) scale(.2)`, filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 1000, delay: 200, easing: CSS_EASE, fill: 'backwards' });
+      const o = centreIn(orbSlot, flight);
+      const sc = centreIn(slides[0], flight);
+      slides[0].animate([{ opacity: 0, transform: `translate(${o.x - sc.x}px, ${o.y - sc.y}px) scale(.2)`, filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 1000, delay: 260, easing: CSS_EASE, fill: 'backwards' });
     }
+    focusHeading(content);
     await wait(rm ? 0 : 900);
     playing = false;
   }

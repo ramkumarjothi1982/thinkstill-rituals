@@ -16,7 +16,7 @@ import { screenReframe } from '../../core/feeling-safety.js';
 import { charCount } from '../../core/text-policy.js';
 import { RELAY, PERSPECTIVE_LABELS } from '../../core/relay-config.js';
 import { brandBar, dock, top, feelChip, feelColour, errorText, reportSheet } from './common.js';
-import { room, stage, handsOf, ThoughtCloud, Speech, line, swapLine, checkRow, put } from './parts.js';
+import { room, stage, handsOf, ThoughtCloud, Speech, line, swapLine, checkRow, put, morph, focusHeading } from './parts.js';
 
 const STARTERS = ['Another possibility could be…', 'Maybe…', 'Could there be another explanation?'];
 
@@ -84,7 +84,7 @@ export function catchScene(dev) {
     const gifts = c.state.gifts?.length || 0;
     put(body,
       h('div', { class: 'hf-copy hf-copy--top' }, line('Catch a feeling'),
-        h('p', { class: 'hf-sub' }, 'Somewhere, someone let a feeling go. Maybe you can see it another way.')),
+        h('p', { class: 'hf-sub' }, 'When someone lets a feeling go, it might find you here. Maybe you can see it another way.')),
       st.el,
       h('div', { class: 'hf-actions' },
         h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--lg kit-btn--block', dataset: { test: 'find-feeling' }, onclick: () => look() }, icon('sparkle'), 'Look up'),
@@ -130,7 +130,7 @@ export function catchScene(dev) {
     st.mallow.relax();
     r.sky?.pan(0, { duration: 1600 });
     put(st.above, speech.el);
-    speech.say('Nothing’s floating our way right now. That’s okay.');
+    speech.say('I’ll keep an eye on the sky.');
     put(body,
       h('div', { class: 'hf-copy hf-copy--top', dataset: { test: 'catch-none' } }, line('No feelings are floating your way right now.', { cls: 'hf-line--sm' }),
         h('p', { class: 'hf-sub' }, 'When someone releases one, it might find you.')),
@@ -152,7 +152,7 @@ export function catchScene(dev) {
     words.set(f.text);
     words.el.dataset.test = 'offer-text';
     put(st.above, slot);
-    put(body,
+    await morph(body, st.el, () => put(body,
       h('div', { class: 'hf-copy hf-copy--top', dataset: { test: 'catch-offer' } }, line('A feeling has found you.', { cls: 'hf-line--sm' })),
       h('div', { class: 'hf-their' }, words.el,
         h('p', { class: 'hf-their-meta' }, feelChip(f.label), h('span', { class: 'hf-meta' }, `${f.perspectivesSoFar} of ${f.of} human perspectives so far`))),
@@ -160,7 +160,9 @@ export function catchScene(dev) {
       h('div', { class: 'hf-actions' },
         h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'catch-feeling' }, onclick: () => catchIt() }, 'Catch this feeling'),
         h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--block', dataset: { test: 'float-past' }, onclick: () => floatPast() }, 'Let it float past'),
-        h('p', { class: 'hf-note hf-note--quiet' }, 'It waits a few minutes for you. Letting it float past is always fine.')));
+        h('p', { class: 'hf-note hf-note--quiet' }, 'It waits a few minutes for you. Letting it float past is always fine.'))));
+    if (!alive) return;
+    focusHeading(body);
     words.el.animate([{ opacity: 0, transform: 'translateY(10px) scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 700, delay: 900, easing: CSS_EASE, fill: 'backwards' });
     play('arrive');
     if (!reducedMotion()) {
@@ -171,7 +173,8 @@ export function catchScene(dev) {
       orb.freeze();
       flyer.append(orb.el);
       setTimeout(() => { if (alive) { st.mallow.notice(0); st.mallow.reach(0.28); } }, 900);
-      await fly(flyer, flight, { from: { x: to.x + 60, y: -120 }, to, via: { x: to.x - 90, y: to.y * 0.3 }, duration: 1700, scale: [0.35, 1], colour: tint });
+      const side = flight.getBoundingClientRect().width;
+      await fly(flyer, flight, { from: { x: side * 0.86, y: -120 }, to, via: { x: side * 0.97, y: to.y * 0.62 }, duration: 1700, scale: [0.35, 1], colour: tint });
       if (!alive) return;
       slot.append(orb.unfreeze().el);
       flyer.remove();
@@ -195,7 +198,12 @@ export function catchScene(dev) {
     await wait(240);
     st.mallow.release(true);
     orb?.release();
-    writing();
+    const was = orb?.el.getBoundingClientRect();
+    await morph(body, st.el, () => writing('', { keepOrb: true }));
+    if (!alive || !orb) return;
+    const now = orb.el.getBoundingClientRect();
+    if (was?.width && now.width && !reducedMotion()) orb.el.animate([{ transform: `scale(${was.width / now.width})` }, { transform: 'none' }], { duration: 650, easing: CSS_EASE });
+    focusHeading(body);
   }
 
   async function floatPast() {
@@ -220,17 +228,17 @@ export function catchScene(dev) {
   }
 
   // ---------------------------------------------------------- writing --
-  function writing(err = '') {
+  function writing(err = '', { keepOrb = false } = {}) {
     setState('writing');
     const f = offer.feeling;
-    clearOrb();
+    if (!keepOrb || !orb) { clearOrb(); orb = new Orb({ size: null, tint: feelColour(f.label), label: 'The feeling you caught' }); }
+    orb.unfreeze();
     put(head, top(dev, { title: '', action: moreButton(), back: () => idle() }));
-    orb = new Orb({ size: null, tint: feelColour(f.label), label: 'The feeling you caught' });
     put(st.above, h('div', { class: 'hf-orb-slot hf-orb-slot--held' }, orb.el));
     const words = new ThoughtCloud({ small: true, long: true, label: 'Their words' });
     words.set(f.text);
     words.el.dataset.test = 'caught-text';
-    const area = h('textarea', { id: 'hf-reframe', class: 'hf-input', rows: 3, maxlength: String(RELAY.reframeMaxChars + 40), placeholder: 'Another possibility could be…', 'aria-label': 'Your perspective', 'aria-describedby': 'hf-rf-sub hf-rf-count', dataset: { test: 'reframe-text' } });
+    const area = h('textarea', { id: 'hf-reframe', class: 'hf-input', rows: 3, maxlength: String(RELAY.reframeMaxChars + 40), placeholder: 'Write it gently…', 'aria-label': 'Your perspective', 'aria-describedby': 'hf-rf-sub hf-rf-count', dataset: { test: 'reframe-text' } });
     area.value = mem.drafts[offer.holdId] || '';
     const count = h('span', { class: 'hf-count', id: 'hf-rf-count' });
     const nudge = h('p', { class: 'hf-nudge', role: 'status', 'aria-live': 'polite' });
@@ -262,7 +270,7 @@ export function catchScene(dev) {
       }, { small: true, test: `starter-${i}` })));
     const share = checkRow({
       id: 'hf-allow-share', test: 'allow-share', checked: !!mem.share[offer.holdId],
-      label: 'They may include my words in a share picture',
+      label: 'They may include my words in a share picture or video',
       hint: 'Off unless you choose. It never shows who you are.',
       onChange: (on) => { mem.share[offer.holdId] = on; },
     });
@@ -275,24 +283,29 @@ export function catchScene(dev) {
         starters,
         h('div', { class: 'hf-field' }, area, count),
         nudge, error,
-        h('p', { class: 'hf-hint' }, 'No diagnosis, judgement or orders. They won’t know who you are, and neither of you can contact the other.'),
+        h('p', { class: 'hf-hint' }, 'No diagnosis, judgement or orders. The person who released it will read your words, and so will anyone who adds a perspective after you; nobody sees who wrote it, and nobody can contact anyone.'),
         h('div', { class: 'hf-choices' }, share),
         h('div', { class: 'hf-actions' }, send,
           h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', dataset: { test: 'float-past' }, onclick: () => floatPast() }, 'Let it float past'))));
     st.el.classList.add('hf-stage--s');
     sync();
     if (err) error.textContent = err;
-    requestAnimationFrame(() => {
-      const t = body.querySelector('.hf-copy');
-      if (body.clientHeight < 460 && t) body.scrollTop = t.offsetTop - 8;
-      if (err) error.scrollIntoView({ block: 'center' });
-    });
+    if (err) requestAnimationFrame(() => error.scrollIntoView({ block: 'center' }));
   }
 
   async function submit(text) {
     if (busy) return;
     busy = true;
     const holdId = offer.holdId;
+    // words suggesting the writer may not be safe never leave the device: support for them instead,
+    // and the feeling floats on (the service checks again)
+    const local = screenReframe(text, { minChars: 1, maxChars: 100000 });
+    if (!local.ok && local.code === 'support') {
+      busy = false;
+      c.act('letFloatPast', { holdId }, ['me']).catch(() => {});
+      toSupport(holdId, local);
+      return;
+    }
     mem.cids[holdId] ||= c.newId();
     body.querySelectorAll('button, textarea').forEach((b) => { b.disabled = true; });
     let res;
@@ -309,6 +322,7 @@ export function catchScene(dev) {
       return;
     }
     busy = false;
+    if (res?.status === 'support') { toSupport(holdId, res); return; }
     delete mem.drafts[holdId];
     delete mem.share[holdId];
     if (!alive) return;
@@ -317,22 +331,29 @@ export function catchScene(dev) {
     after(res);
   }
 
+  function toSupport(holdId, res) {
+    delete mem.drafts[holdId];
+    delete mem.share[holdId];
+    offer = null;
+    dev.go('support', { support: res.support, level: res.level, from: 'catch' }, { replace: true });
+  }
+
   // ---------------------------------------------------------- passing --
   async function passing(res) {
     setState('passing');
     const f = offer.feeling;
     const tint = feelColour(f.label);
-    clearOrb();
-    st.el.classList.remove('hf-stage--s');
+    if (!orb) orb = new Orb({ size: null, tint, label: 'The feeling, carrying your perspective' });
     put(head, h('header', { class: 'rl-top' }));
-    orb = new Orb({ size: null, tint, label: 'The feeling, carrying your perspective' });
-    const slot = h('div', { class: 'hf-orb-slot hf-orb-slot--held' }, orb.el);
-    put(st.above, slot);
     const say = h('p', { class: 'hf-line hf-line--moment', role: 'status', 'aria-live': 'polite' });
-    put(body, h('div', { class: 'hf-moment' }, say), st.el);
-    body.scrollTop = 0;
+    await morph(body, st.el, () => {
+      st.el.classList.remove('hf-stage--s');
+      put(st.above, h('div', { class: 'hf-orb-slot hf-orb-slot--held' }, orb.el));
+      put(body, h('div', { class: 'hf-moment' }, say), st.el);
+      body.scrollTop = 0;
+    });
     const rm = reducedMotion();
-    await wait(rm ? 0 : 420);
+    await wait(rm ? 0 : 300);
     // the Mallow squeezes it, it ripples, and your petal unfurls
     play('squish');
     st.mallow.press(0.8, 0.45);
@@ -343,7 +364,7 @@ export function catchScene(dev) {
     orb.ripple({ colour: mine.glow });
     play('petal');
     orb.addPetal(mine.id);
-    st.mallow.signature(0.7);
+    st.mallow.delight(0.7);
     swapLine(say, 'Your perspective is woven in.');
     await wait(rm ? 300 : 1700);
     if (!alive) return;
@@ -356,7 +377,8 @@ export function catchScene(dev) {
       flight.append(flyer); orb.freeze(); flyer.append(orb.el);
       r.sky?.pan(240, { duration: 2400 });
       st.mallow.reach(0.2);
-      await fly(flyer, flight, { from, to: { x: from.x - 40, y: -150 }, via: { x: from.x + 90, y: from.y * 0.4 }, duration: 2100, scale: [1, 0.25], colour: tint });
+      const side = flight.getBoundingClientRect().width;
+      await fly(flyer, flight, { from, to: { x: side * 0.84, y: -150 }, via: { x: side * 0.96, y: from.y * 0.5 }, duration: 2100, scale: [1, 0.25], colour: tint });
       flyer.remove();
       st.mallow.relax();
     }
@@ -370,9 +392,13 @@ export function catchScene(dev) {
     clearOrb();
     put(head, brandBar(dev));
     const earlier = res.earlier || [];
-    put(body, h('div', { class: 'hf-after', dataset: { test: 'reframe-after' } },
+    const first = res.slot === 1;
+    st.el.classList.add('hf-stage--s');
+    put(st.above, speech.el);
+    speech.say('Thank you for seeing it differently.');
+    put(body, st.el, h('div', { class: 'hf-after', dataset: { test: 'reframe-after' } },
       h('div', { class: 'hf-copy hf-copy--top' },
-        h('h1', { class: 'hf-line hf-line--sm', 'data-autofocus': '' }, earlier.length ? 'How others saw it' : 'You were the first to see it differently'),
+        h('h1', { class: 'hf-line hf-line--sm', 'data-autofocus': '' }, earlier.length ? 'How others saw it' : first ? 'You were the first to see it differently' : 'Your perspective is on its way'),
         h('p', { class: 'hf-sub' }, earlier.length ? 'You see these only after offering your own, so every perspective stays truly yours.' : 'Others may add theirs. The person who released it will see them all when it comes home.')),
       h('ol', { class: 'hf-ribbons' },
         earlier.map((p) => h('li', { class: 'hf-ribbon' }, h('span', { class: 'hf-ribbon-src' }, PERSPECTIVE_LABELS.human), h('p', { class: 'hf-ribbon-text' }, p.text))),
@@ -381,8 +407,9 @@ export function catchScene(dev) {
       h('div', { class: 'hf-actions hf-actions--row' },
         h('button', { type: 'button', class: 'kit-btn kit-btn--ink', dataset: { test: 'catch-another' }, onclick: () => look() }, 'Catch another'),
         h('button', { type: 'button', class: 'kit-btn kit-btn--ghost', dataset: { test: 'catch-done' }, onclick: () => idle() }, 'Done'))));
-    rise([...body.querySelectorAll('.hf-ribbon')], { y: 14, stagger: 90 });
+    rise([...body.querySelectorAll('.hf-copy > *, .hf-ribbon, .hf-after > .hf-note, .hf-after > .hf-actions')], { y: 14, stagger: 70 });
     offer = null;
+    focusHeading(body);
   }
 
   // ------------------------------------------------- lost / report / more --
@@ -392,10 +419,15 @@ export function catchScene(dev) {
     clearOrb();
     put(head, brandBar(dev));
     put(st.above, speech.el);
-    speech.say('It drifted on before we could catch it. There will be others.');
+    // each ending says what really happened
+    const GONE = {
+      'already-contributed': ['You’ve already seen this one differently.', 'Each person offers one perspective per feeling.'],
+      'account-inactive': ['Catching is paused for your account.', 'Our safety team has paused it. You can still release your own feelings.'],
+    }[e?.code];
+    speech.say(GONE ? '' : 'It drifted on before we could catch it. There will be others.');
     put(body,
-      h('div', { class: 'hf-copy hf-copy--top', dataset: { test: 'catch-gone' } }, line('This feeling drifted on.', { cls: 'hf-line--sm' }),
-        h('p', { class: 'hf-sub' }, errorText(e))),
+      h('div', { class: 'hf-copy hf-copy--top', dataset: { test: 'catch-gone' } }, line(GONE ? GONE[0] : 'This feeling drifted on.', { cls: 'hf-line--sm' }),
+        h('p', { class: 'hf-sub' }, GONE ? GONE[1] : errorText(e))),
       st.el,
       h('div', { class: 'hf-actions' }, h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--block', onclick: () => look() }, 'Look up again')));
   }

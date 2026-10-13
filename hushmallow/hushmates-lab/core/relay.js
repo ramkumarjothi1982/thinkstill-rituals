@@ -46,7 +46,7 @@ const fail = (code, message) => { throw new RelayError(code, message); };
 
 export const CLIENT_METHODS = [
   'me', 'savePreferences',
-  'submitFeeling', 'listJourneys', 'getJourney', 'withdrawFeeling', 'askMallow', 'resendJourney', 'setGiftSharing',
+  'submitFeeling', 'listJourneys', 'getJourney', 'withdrawFeeling', 'askMallow', 'resendJourney', 'setGiftSharing', 'withdrawPerspective',
   'markReturnSeen', 'choosePerspective', 'saveJourney', 'releaseJourney', 'deleteJourney',
   'findFeeling', 'catchFeeling', 'letFloatPast', 'submitReframe', 'myGifts',
   'reportFeeling', 'reportPerspective', 'blockContributor', 'exportMyData', 'deleteMyData',
@@ -68,8 +68,12 @@ export class RelayService {
    *   random     randomness (tests make it deterministic)
    *   provider   async ({ text, label, mallow, maxTokens }) → Mallow perspective (see core/perspectives.js)
    *   limits     overrides for RELAY
+   *   cannedExamples  allow fixed development examples (source 'demo') as Mallow perspectives. Lab and
+   *                   tests only: a real deployment leaves it off, so testing copy can never reach people
+   *                   (a canned answer is then treated as no answer, and the feeling still comes home)
    */
-  constructor({ state = null, now = () => Date.now(), random = Math.random, provider = null, limits = {} } = {}) {
+  constructor({ state = null, now = () => Date.now(), random = Math.random, provider = null, limits = {}, cannedExamples = false } = {}) {
+    this.cannedExamples = cannedExamples === true;
     this.s = state ? structuredClone(state) : emptyState();
     this.now = now;
     this.random = random;
@@ -324,6 +328,13 @@ export class RelayService {
     if (humans.some((r) => r.author === acc.id)) fail('already-contributed');
     if (humans.length >= this.L.perspectivesPerFeeling) { this._endHold(h, 'voided'); this._save(); fail('not-available'); }
     const screen = screenReframe(text, { minChars: this.L.reframeMinChars, maxChars: this.L.reframeMaxChars, earlier: humans.map((r) => r.text), threshold: this.L.similarity });
+    if (!screen.ok && screen.code === 'support') {
+      // the writer may not be safe: support for them, their words are never stored or passed on,
+      // and the feeling floats on to someone else
+      this._endHold(h, 'passed');
+      this._save();
+      return { status: 'support', level: screen.level, support: screen.support };
+    }
     if (!screen.ok) fail(`reframe-${screen.code}`, screen.message);
     this._rate(acc.id, 'reframe', this.L.reframesPerHour, 3600e3);
     const t = this.now();
@@ -354,6 +365,25 @@ export class RelayService {
     const list = Object.values(this.s.reframes).filter((r) => r.author === acc.id && !r.removed).sort((a, b) => b.at - a.at);
     return { gifts: list.map((r) => ({ id: r.id, text: r.text, at: r.at, slot: r.slot, allowShare: !!r.allowShare, journeyHome: this.s.journeys[r.journeyId]?.status !== 'travelling' })) };
   }
+  /**
+   * A writer can take back a perspective they gave: its words are removed for good (the author's count
+   * goes down honestly). The slot stays used, as when someone deletes their data, so it never reopens.
+   */
+  withdrawPerspective(token, { perspectiveId } = {}) {
+    const acc = this._actor(token, { allow: ['active', 'restricted', 'suspended'] });
+    const r = typeof perspectiveId === 'string' ? this.s.reframes[perspectiveId] : undefined;
+    if (!r || r.author !== acc.id || r.removed) fail('not-found');
+    Object.assign(r, { text: '', removed: true, withdrawnAt: this.now(), allowShare: false, shareConsentAt: null });
+    const j = this.s.journeys[r.journeyId];
+    if (j) {
+      j.events.push({ type: 'perspective-withdrawn', at: this.now() });
+      this._changed([j.owner], 'journeys', j.id);
+    }
+    this._audit(acc.id, 'withdraw-perspective', { perspectiveId: r.id });
+    this._save();
+    return this.myGifts(token);
+  }
+
   /** A writer can change their mind about appearing in share pictures. Only their own words. */
   setGiftSharing(token, { perspectiveId, allowShare } = {}) {
     const acc = this._actor(token, { allow: ['active', 'restricted', 'suspended'] });
@@ -632,12 +662,14 @@ export class RelayService {
         this._holdForSafety(j, 'The Mallow provider’s safety check flagged this feeling.');
         return;
       }
-      const clean = r && r.status === 'ok' ? normaliseText(r.text) : '';
+      const canned = r?.source === 'demo' || !['ai', 'library', 'demo'].includes(r?.source);
+      const clean = r && r.status === 'ok' && (!canned || this.cannedExamples) ? normaliseText(r.text) : '';
       // the provider's words meet the same standard as a person's (kind, no diagnosis, no contact details)
       const fit = clean && screenReframe(clean, { minChars: 1, maxChars: 600 }).ok;
       if (fit) {
         Object.assign(f, { status: 'ready', text: clean, mallow,   // the Mallow the person asked, whatever the provider picked
-           source: ['ai', 'library', 'demo'].includes(r.source) ? r.source : 'demo', model: r.model || null, at: this.now() });
+           source: ['ai', 'library', 'demo'].includes(r.source) ? r.source : 'demo', model: r.model || null, at: this.now(),
+           voice: r.mallow && r.mallow !== mallow ? r.mallow : null });   // a provider that chose another character (recorded, for the team)
         j.events.push({ type: 'mallow-perspective', at: this.now() });
       } else {
         Object.assign(f, { status: 'failed', reason: r?.reason === 'timeout' ? 'timeout' : 'unavailable' });   // the feeling still comes home

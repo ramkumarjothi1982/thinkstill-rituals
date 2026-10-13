@@ -69,11 +69,15 @@ python3 -m http.server 8000
 
   | Source | What people see | Lab-only tag under it |
   |---|---|---|
-  | Canned development example (default; no AI key is configured) | "A Mallow perspective · Example for testing, not generated" | yellow "Lab · canned example" |
-  | Reframe library (the main app's rule-based engine, no AI model) | "A Mallow perspective · Automatically generated" | yellow "Lab · Reframe library (rule-based)" |
+  | Reframe library (default: the main app's rule-based engine, no AI model; real, free, on the device) | "A Mallow perspective · Automatically generated" | yellow "Lab · Reframe library (rule-based)" |
+  | Canned development example (one line per Mallow personality) | "A Mallow perspective · Example for testing, not generated" | yellow "Lab · canned example" |
   | Another Angle server (Account 1's service, run locally, unchanged) | "Automatically generated" only if it reports a real model with a server-side key; its mock mode is treated as a canned example | green "Lab · live AI response (test key)" or yellow "Lab · canned example" |
 
   The tags exist only because the lab sets `env.lab`; consumers never see them.
+  Canned examples are refused outside the lab (`RelayService` `cannedExamples`),
+  so testing copy can never reach a real person. No AI key is configured here,
+  so this lab can't show a live AI response; with a test key on a local Another
+  Angle server (which needs approval) the green tag would say so.
 - **Online / Offline** on each phone simulates losing the connection.
 - Lab state is saved in this browser (`localStorage`); add `?fresh` to the URL to
   start clean once.
@@ -87,7 +91,7 @@ costs money and needs approval.
 ## Test it
 
 ```bash
-node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 118 relay tests
+node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 124 relay tests
 node --test hushmallow/hushmates-lab/v1-messaging/tests/*.test.mjs    # 32 (archived v1)
 node hushmallow/hushmates-lab/tools/shots.cjs <out-dir> http://localhost:8000   # interface QA
 ```
@@ -98,10 +102,11 @@ The relay tests cover:
 - catch expiry, journey expiry, early recall, idempotency, fairness, screening;
 - consent enforcement, zero-human and partial returns, send it out again, real
   human counts;
-- privacy both ways, deletion and export, reports and blocking, high-risk words;
+- privacy both ways, deletion and export, reports and blocking, high-risk words
+  (including a catcher in difficulty, who gets support while the feeling floats on);
 - the Mallow fallback (opt-in, human-first, one generation and dedupe, labels,
   budgets, failures, the separate section, Explore another angle);
-- contributors' share consent;
+- contributors' share consent, and taking a perspective back;
 - a hostile client through the network layer (forged and replayed requests).
 
 55 of them were written by independent adversarial reviewers (three in 1.x, two
@@ -111,8 +116,8 @@ were fixed, and they stay as regression tests.
 The QA tool captures 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024
 and 1280 × 860 and audits each one inside the phone. It plays all three
 demonstrations through the interface, releases a feeling with the keyboard
-alone, repeats the demonstrations with reduced motion, and fails on any console
-error. Results of the last run are below and in `docs/screenshots/qa-report.json`.
+alone, checks reduced motion really reduces motion, repeats the demonstrations
+with reduced motion, and fails on any console error. Results of the last run are below and in `docs/screenshots/qa-report.json`.
 
 _The latest run’s results are recorded at the end of the 2.0 work (see below)._
 

@@ -112,6 +112,18 @@ the in-page service for Supabase changes the link, not the scenes.
   story (`allowShare`, off unless they say yes, with `shareConsentAt`). They
   can see and change it later in You & safety (`setGiftSharing`); only the
   writer can. The author sees only `shareable`, never who.
+- A writer can take back a perspective they gave (`withdrawPerspective`): its
+  words are removed for good and the author's count goes down honestly. The
+  slot stays used, as when someone deletes their data.
+- A catcher whose own words suggest they may not be safe is answered with
+  support (the support scene, for them), their words are never stored or
+  passed on, and the feeling floats on to someone else.
+
+**Notices** (only if the person keeps "Gentle notices about my feelings"
+on): a feeling that came home, and a Mallow that can now offer another way
+to see one (with a soft dot on My journeys). Never during a moment (the
+homecoming, a release, a perspective being passed on) or over the share
+story.
 
 **The Mallow fallback** (§4)
 - Opt-in for each feeling (off by default).
@@ -223,15 +235,24 @@ What happens:
    a star on a dashed orbit, never a petal.
 8. If five people later catch the feeling, the Mallow steps aside into its own
    optional section: humans fill every visible place.
-9. **In the lab only** (`dev.env.lab`), a tag under the label names the real
+9. **Canned examples are lab-only.** `RelayService` refuses a `demo` (or
+   unknown) source unless it is created with `cannedExamples: true`, which only
+   the lab and the tests do; a real deployment treats a canned answer as no
+   answer, and the feeling still comes home.
+10. **In the lab only** (`dev.env.lab`), a tag under the label names the real
    source for testers: "Lab · live AI response (test key)" (green),
    "Lab · Reframe library (rule-based)" or "Lab · canned example" (yellow).
    Consumers never see it.
 
-**Which Mallow speaks:** the author's own Mallow, in its own voice: Noomi
-gentle, Blubi empathetic, Pipzi playful, Boppo encouraging, Zuzu imaginative,
-Loomi grounded, Glitzi cheeky but constructive. The perspective is shown under
-that Mallow whatever character a provider picked.
+**Which Mallow speaks:** the author's own Mallow: Noomi gentle, Blubi
+empathetic, Pipzi playful, Boppo encouraging, Zuzu imaginative, Loomi grounded,
+Glitzi cheeky but constructive. The Reframe library chooses each Mallow's
+preferred kinds of angle, and the lab's canned examples have one line per
+personality. **Another Angle chooses its own character** (its API rejects
+unknown fields and takes no character input), so its words may be in another
+Mallow's voice; the relay records that (`voice`) and shows the perspective
+under the Mallow the person asked. Passing the character needs a change agreed
+with that service's owner, which this branch doesn't make.
 
 **Providers** (`core/perspectives.js`):
 - `anotherAngleProvider`: Account 1's Another Angle server, reused rather
@@ -370,7 +391,7 @@ tier; that is an estimate to confirm, not a quote.
 ## 7. Tests
 
 ```bash
-node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 118 relay tests
+node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 124 relay tests
 node --test hushmallow/hushmates-lab/v1-messaging/tests/*.test.mjs    # 32 (archived v1)
 ```
 
@@ -378,7 +399,7 @@ node --test hushmallow/hushmates-lab/v1-messaging/tests/*.test.mjs    # 32 (arch
 |---|---|
 | `relay.test.mjs` (31) | Every rule above: five-person cap, atomic last slot, expiry, idempotency, fairness, screening, privacy both ways, 24-hour return, choices, reports, fallback opt-in / human-first / one generation / labels / budget / failure, data deletion |
 | `relay-attacks.test.mjs` (15) | A hostile client through the network layer: forbidden internals, forged tokens, other people's journeys, hold theft and replay, malformed input, rate limits, realtime privacy, lost replies; the provider contracts against a fake Another Angle server (including refused sessions); an optional live check against a local harness, which skips if the harness itself refuses (its own per-minute and per-day limits) |
-| `relay-v2.test.mjs` (17) | The 2.0 rules: consent enforcement (including over the network, and crisis words answered before consent), consent times, zero-human return, send it out again (exposures, idempotency, limits, Mallow timer), partial return, the author's own Mallow, the separate Mallow section (keep, let go, report), the canned-example label, contributors' share consent, real counts, Explore another angle with consent |
+| `relay-v2.test.mjs` (23) | The 2.0 rules: consent enforcement (including over the network, and crisis words answered before consent), consent times, zero-human return, send it out again (exposures, idempotency, limits, Mallow timer), partial return, the author's own Mallow, the separate Mallow section (keep, let go, report), the canned-example label, contributors' share consent, real counts, Explore another angle with consent, a catcher in difficulty getting support, Hushmates' own support copy, early recall, taking a perspective back, canned examples refused outside the lab, the seven voices |
 | `relay-review2.test.mjs` (18) | Written by two independent adversarial reviewers of the 2.0 rules to **fail** on the code they reviewed (a replayed resend re-circulating a withdrawn feeling, Mallow consent that couldn't be withdrawn, circulation without recorded consent, a Mallow perspective's words surviving "Let it go", placement after removals, consent records people couldn't see), plus Explore another angle and share-consent withdrawal. All pass after the fixes. |
 | `review-*.test.mjs` (37) | Written by three earlier adversarial reviewers to **fail** on the reviewed code (caps and concurrency, privacy and safety, the fallback and costs). All pass after the fixes, and they stay as regression tests. |
 
@@ -388,5 +409,7 @@ phone (sideways overflow, text off-screen or clipped, controls covering each
 other, small targets, tiny text, room above the dock). It plays all three
 demonstrations through the real interface (A five people, B nobody, C two
 people), checks every guide step ticks from the service's state, releases a
-feeling with the keyboard alone, runs the demonstrations again with reduced
-motion, and fails on any console error or warning.
+feeling with the keyboard alone, checks that reduced motion really reduces
+motion (no long animations during the release, the welcome doesn't advance on
+its own), runs the demonstrations again with reduced motion, and fails on any
+console error or warning.

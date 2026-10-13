@@ -230,7 +230,34 @@ function audit(who) {
     await k.ctx.close();
     console.log('keyboard', JSON.stringify(report.keyboard));
   }
-  // reduced motion: all three demonstrations, and the moments still make sense
+  // reduced motion: motion really is reduced (no long animations during the moments, the welcome
+  // beats don't advance on their own), and all three demonstrations still complete
+  {
+    const k = await open(SIZES[0], { reduced: true });
+    const p = k.page;
+    const long = async () => p.evaluate(() => document.getAnimations()
+      .filter((a) => a.playState === 'running' && a.effect?.getTiming && Number(a.effect.getTiming().duration) > 450 && a.effect.getTiming().iterations !== Infinity)
+      .map((a) => `${a.effect.target?.className?.baseVal ?? a.effect.target?.className ?? '?'}:${Math.round(a.effect.getTiming().duration)}`.slice(0, 80)));
+    await p.evaluate(() => { document.querySelector('#device-author [data-test=welcome-next]')?.click(); });
+    await p.waitForTimeout(4200);
+    const beat = await p.evaluate(() => [...document.querySelectorAll('#device-author .hf-beat')].findIndex((b) => b.getAttribute('aria-selected') === 'true'));
+    await p.evaluate(async () => { await window.__lab.fixture('ready'); window.__lab.show('moon', 'release'); });
+    await p.waitForTimeout(900);
+    await p.evaluate(() => {
+      const root = document.querySelector('#device-author');
+      const area = root.querySelector('[data-test=feeling-text]');
+      area.value = 'My friend hasn’t replied. I think they’re avoiding me.';
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+      root.querySelector('[data-test=share-consent]').click();
+      root.querySelector('[data-test=release-submit]').click();
+    });
+    const samples = [];
+    for (let i = 0; i < 6; i++) { await p.waitForTimeout(250); samples.push(...await long()); }
+    const sent = await p.waitForSelector('#device-author [data-test=release-sent]', { timeout: 8000 }).then(() => true, () => false);
+    report.reducedMotion = { welcomeBeatsStayPut: beat === 0, longAnimationsDuringRelease: [...new Set(samples)], releasedQuickly: sent, errors: k.errors };
+    console.log('reduced-motion', JSON.stringify(report.reducedMotion));
+    await k.ctx.close();
+  }
   if (!process.env.SKIP_PLAY) {
     const p = await playAll(SIZES[0], true);
     report.reduced = p;
@@ -240,6 +267,7 @@ function audit(who) {
   fs.writeFileSync(path.join(out, 'qa-report.json'), JSON.stringify(report, null, 2));
   await browser.close();
   const failed = Object.values(report.sizes).some((r) => r.errors.length || Object.values(r.played || {}).some((x) => x.notTicked.length))
-    || !report.keyboard?.releasedWithEnter || (report.reduced && (report.reduced.errors.length || Object.values(report.reduced.played).some((x) => x.notTicked.length)));
+    || !report.keyboard?.releasedWithEnter || (report.reduced && (report.reduced.errors.length || Object.values(report.reduced.played).some((x) => x.notTicked.length)))
+    || !report.reducedMotion?.welcomeBeatsStayPut || !report.reducedMotion?.releasedQuickly || report.reducedMotion?.longAnimationsDuringRelease.length;
   process.exit(failed ? 1 : 0);
 })();

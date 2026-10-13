@@ -151,13 +151,13 @@ export class Device {
     if (s.returnFocus && this.root.contains(s.returnFocus) && s.returnFocus.isConnected) s.returnFocus.focus?.({ preventScroll: true });
   }
 
-  confirm({ title, text, confirmLabel = 'Confirm', cancelLabel = 'Not now', danger = false, art = null }) {
+  confirm({ title, text, confirmLabel = 'Confirm', cancelLabel = 'Not now', danger = false, art = null, extra = null }) {
     return new Promise((resolve) => {
       let done = false;
       const finish = (v) => { if (!done) { done = true; resolve(v); this.closeSheet(); } };
       this.sheet({
         title, art,
-        body: h('p', { class: 'hm-sheet-text' }, text),
+        body: extra ? h('div', { class: 'kit-stack' }, h('p', { class: 'hm-sheet-text' }, text), extra) : h('p', { class: 'hm-sheet-text' }, text),
         actions: [
           h('button', { type: 'button', class: `kit-btn ${danger ? 'kit-btn--quiet-danger' : 'kit-btn--ink'} kit-btn--block`, onclick: () => finish(true), dataset: { test: 'confirm' } }, confirmLabel),
           h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', onclick: () => finish(false) }, cancelLabel),

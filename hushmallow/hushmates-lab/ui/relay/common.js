@@ -4,9 +4,8 @@
 
 import { h, icon } from '../dom.js';
 import { round } from '../kit.js';
-import { face } from '../mallow.js';
 import { MALLOWS } from '../mallows-data.js';
-import { FEELING_LABELS, PERSPECTIVE_LABELS, REPORT_REASONS } from '../../core/relay-config.js';
+import { FEELING_LABELS, REPORT_REASONS } from '../../core/relay-config.js';
 
 export const LABELS = Object.fromEntries(FEELING_LABELS.map((l) => [l.id, l]));
 export const feelColour = (label) => LABELS[label]?.colour || '#C9B8FF';
@@ -22,13 +21,16 @@ const DOCK = [
 export function dock(dev, active) {
   const me = dev.state.me;
   const badge = { journeys: me?.travelling || 0, returned: me?.homeUnseen || 0 };
+  // a soft dot on My journeys when a Mallow can offer another way to see one of them
+  const offer = (dev.state.journeys || []).some((j) => j.status === 'travelling' && j.fallback?.status === 'available');
   return h('nav', { class: 'rl-dock', 'aria-label': 'Hushmates' },
     DOCK.map((d) => h('button', {
       type: 'button', class: 'rl-dock-item', 'aria-current': d.id === active ? 'page' : null, dataset: { test: `nav-${d.id}` },
-      'aria-label': `${d.aria || d.label}${badge[d.id] ? ` (${badge[d.id]} ${d.id === 'returned' ? 'new' : 'travelling'})` : ''}`,
+      'aria-label': `${d.aria || d.label}${badge[d.id] ? ` (${badge[d.id]} ${d.id === 'returned' ? 'new' : 'travelling'})` : ''}${offer && d.id === 'journeys' ? ', your Mallow can offer another way to see one' : ''}`,
       onclick: () => { if (d.id !== active) dev.go(d.id, {}, { replace: true, transition: 'soft' }); },
     }, icon(d.icon), h('span', { class: 'rl-dock-label', 'aria-hidden': 'true' }, d.label),
-    badge[d.id] && d.id === 'returned' ? h('span', { class: 'rl-dock-badge', 'aria-hidden': 'true' }, String(badge[d.id])) : null)));
+    badge[d.id] && d.id === 'returned' ? h('span', { class: 'rl-dock-badge', 'aria-hidden': 'true' }, String(badge[d.id])) : null,
+    offer && d.id === 'journeys' ? h('span', { class: 'rl-dock-dot', 'aria-hidden': 'true' }) : null)));
 }
 
 /** Top bar: optional back, a quiet title, optional action. */
@@ -51,7 +53,7 @@ export function feelChip(label) {
   return h('span', { class: 'rl-feel', style: { '--feel': feelColour(label) } }, h('i', { 'aria-hidden': 'true' }), feelName(label));
 }
 
-/** "3 of 5 perspectives found" with five lights (one per person) and a star for a Mallow. */
+/** Five lights (one per person who answered) and a star for a Mallow; the words go beside them. */
 export function lights(j) {
   const petals = j.petals || [];
   const items = [];
@@ -62,43 +64,6 @@ export function lights(j) {
   if (j.mallowPetal) items.push(h('i', { class: 'is-star' }, icon('star')));
   return h('span', { class: 'rl-lights', 'aria-hidden': 'true' }, items);
 }
-export function progressText(j) {
-  const n = j.humanCount;
-  const base = `${n} of ${j.of} perspective${j.of === 1 ? '' : 's'} found`;
-  return j.mallowPetal ? `${base} · plus a Mallow’s` : base;
-}
-export function progress(j, { short = false } = {}) {
-  return h('p', { class: 'rl-progress', dataset: { test: 'progress' }, 'aria-label': progressText(j) }, lights(j),
-    h('span', { 'aria-hidden': 'true' }, short ? `${j.humanCount} of ${j.of}${j.mallowPetal ? ' + a Mallow' : ''}` : progressText(j)));
-}
-
-/** Where a perspective came from, always spelled out. */
-export function sourceLine(p) {
-  const human = p.kind === 'human';
-  return h('p', { class: `rl-persp-src${p.source === 'ai' ? ' rl-persp-src--ai' : ''}`, dataset: { test: 'persp-source' } },
-    human ? icon('heart') : face(p.mallow, { size: 22 }),
-    h('span', {}, human ? PERSPECTIVE_LABELS.human : `${MALLOWS[p.mallow]?.name || 'A Mallow'} · ${(PERSPECTIVE_LABELS[p.source] || PERSPECTIVE_LABELS.demo).replace('A Mallow perspective · ', '')}`));
-}
-
-/** One perspective object: source, words, keep / let go, and more (report, block). */
-export function perspective(p, { onKeep, onMore, compact = false } = {}) {
-  const human = p.kind === 'human';
-  const m = MALLOWS[p.mallow];
-  const card = h('article', {
-    class: `rl-persp${human ? '' : ' rl-persp--mallow'}${p.kept === false ? ' is-let-go' : ''}`,
-    style: human && m ? { '--ribbon': `linear-gradient(90deg, ${m.body}, ${m.glow})` } : undefined,
-    dataset: { test: 'perspective', kind: p.kind, source: p.source },
-    'aria-label': human ? 'A perspective from a Hushmates member' : `A Mallow perspective, ${p.source === 'ai' ? 'AI-generated' : 'not from a person'}`,
-  }, sourceLine(p), h('p', { class: 'rl-persp-text' }, p.text));
-  if (!compact && (onKeep || onMore)) {
-    card.append(h('div', { class: 'rl-persp-actions' },
-      onKeep ? h('button', { type: 'button', class: 'rl-keep', 'aria-pressed': String(p.kept === true), dataset: { test: 'keep' }, onclick: () => onKeep(p, p.kept === true ? null : true) }, icon('heart'), p.kept === true ? 'Kept' : 'Keep this') : null,
-      onKeep ? h('button', { type: 'button', class: 'rl-keep rl-keep--go', 'aria-pressed': String(p.kept === false), dataset: { test: 'let-go' }, onclick: () => onKeep(p, p.kept === false ? null : false) }, p.kept === false ? 'Let go' : 'Let it go') : null,
-      onMore ? h('button', { type: 'button', class: 'rl-more', 'aria-label': 'More: report or block', dataset: { test: 'persp-more' }, onclick: () => onMore(p) }, icon('more')) : null));
-  }
-  return card;
-}
-
 /** Support (shown instead of releasing when a feeling sounds unsafe). Copy comes from the Reframe engine's safety layer. */
 export function supportBody(support = {}, { lab = false } = {}) {
   const resources = support.resources || [];

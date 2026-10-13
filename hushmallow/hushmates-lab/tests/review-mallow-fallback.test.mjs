@@ -37,7 +37,7 @@ test('BUG 1 (fixed): the relay’s own screen now answers this text with support
   assert.ok(!JSON.stringify(w.svc.s).includes('paracetamol'), 'crisis words were stored');
 });
 
-test('BUG 1: a crisis verdict from the Mallow provider stops the feeling, brings support and asks a person to look', async () => {
+test('BUG 1 (fixed): a crisis verdict from the Mallow provider stops the feeling, brings support and asks a person to look', async () => {
   // text the rules let through, which the provider's own safety gate flags
   const support = { title: 'Let’s pause', message: 'You deserve real support with this.', resources: [{ label: 'Samaritans', detail: '116 123' }] };
   const w = world({ provider: async () => ({ status: 'support', level: 'crisis', support }) });
@@ -54,7 +54,7 @@ test('BUG 1: a crisis verdict from the Mallow provider stops the feeling, brings
   assert.ok(reports.some((x) => x.urgent && x.kind === 'feeling' && x.status === 'open'), 'no urgent report for a person on the safety team');
 });
 
-test('BUG 1 (live harness): a crisis verdict never leaves the feeling circulating', async (t) => {
+test('BUG 1 (fixed, live harness): a crisis verdict never leaves the feeling circulating', async (t) => {
   let up = false;
   try { up = (await fetch('http://127.0.0.1:8790/v1/health')).ok; } catch { up = false; }
   if (!up) { t.skip('no local Another Angle harness on :8790'); return; }
@@ -73,7 +73,7 @@ test('BUG 1 (live harness): a crisis verdict never leaves the feeling circulatin
 
 // ---------------------------------------------------------------- 2 --
 // The Another Angle health result is cached forever, including a failure.
-test('BUG 2a: one failed health probe labels every later real-model answer "demo example, not live AI"', async () => {
+test('BUG 2a (fixed): provenance is checked for every answer, so one failed health probe never mislabels later answers', async () => {
   let probes = 0;
   const fetch = async (url) => {
     if (url.endsWith('/v1/health')) { probes += 1; if (probes === 1) throw new TypeError('fetch failed'); return new Response(health('anthropic')); }
@@ -85,7 +85,7 @@ test('BUG 2a: one failed health probe labels every later real-model answer "demo
   assert.equal(later.source, 'ai', 'a real model answer is presented as not AI');
 });
 
-test('BUG 2b: a server that switches to its mock provider keeps being labelled AI-generated', async () => {
+test('BUG 2b (fixed): a server that switches to its mock provider is no longer labelled as live AI', async () => {
   let provider = 'anthropic';
   const fetch = async (url) => new Response(url.endsWith('/v1/health') ? health(provider) : JSON.stringify(scene));
   const p = anotherAngleProvider({ baseUrl: 'https://angle.test', session: async () => 'tok', fetch });
@@ -95,7 +95,7 @@ test('BUG 2b: a server that switches to its mock provider keeps being labelled A
 });
 
 // ---------------------------------------------------------------- 3 --
-test('BUG 3: deleting a feeling while its Mallow perspective is generating leaves the generated words stored', async () => {
+test('BUG 3 (fixed): deleting a feeling while its Mallow perspective is generating leaves no generated words stored', async () => {
   let open;
   const gate = new Promise((r) => { open = r; });
   const AI = 'Maybe the quiet says more about their week than about you.';
@@ -109,7 +109,7 @@ test('BUG 3: deleting a feeling while its Mallow perspective is generating leave
   assert.ok(!JSON.stringify(w.svc.s).includes(AI), 'the Mallow perspective of a deleted feeling was written back into storage');
 });
 
-test('BUG 3b: letting a feeling go while its Mallow is generating still adds the Mallow to the released collection', async () => {
+test('BUG 3b (fixed): letting a feeling go while its Mallow is generating keeps the late answer out of the released collection', async () => {
   let open;
   const gate = new Promise((r) => { open = r; });
   const w = world({ provider: async ({ mallow }) => { await gate; return { status: 'ok', text: 'Maybe the quiet says more about their week.', mallow, source: 'ai' }; } });
@@ -123,7 +123,7 @@ test('BUG 3b: letting a feeling go while its Mallow is generating still adds the
 });
 
 // ---------------------------------------------------------------- 4 --
-test('BUG 4: a generation interrupted by a restart leaves the Mallow "pending" forever', async () => {
+test('BUG 4 (fixed): a generation interrupted by a restart is marked failed, never "pending" forever', async () => {
   const w = world({ provider: () => new Promise(() => {}) });      // the process dies mid-call
   const id = w.release('moon', { allowFallback: true }).journey.id;
   w.advance(31 * MIN);
@@ -137,7 +137,7 @@ test('BUG 4: a generation interrupted by a restart leaves the Mallow "pending" f
 });
 
 // ---------------------------------------------------------------- 5 --
-test('BUG 5a: timeoutMs does not bound the health probe (a slow /v1/health hangs the Mallow)', async () => {
+test('BUG 5a (fixed): timeoutMs bounds the health probe (a slow /v1/health can’t hang the Mallow)', async () => {
   const s = await angleServer({
     '/v1/health': () => { /* never answers */ },
     '/v1/angle': (req, res) => { req.resume(); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(scene)); },
@@ -149,7 +149,7 @@ test('BUG 5a: timeoutMs does not bound the health probe (a slow /v1/health hangs
   } finally { s.close(); }
 });
 
-test('BUG 5b: timeoutMs does not bound the response body (headers then a stall hangs the Mallow)', async () => {
+test('BUG 5b (fixed): timeoutMs bounds the response body (headers then a stall can’t hang the Mallow)', async () => {
   const s = await angleServer({
     '/v1/health': (req, res) => { res.writeHead(200); res.end(health('anthropic')); },
     '/v1/angle': (req, res) => { req.resume(); res.writeHead(200, { 'content-type': 'application/json' }); res.write('{"status":"ok",'); /* stalls */ },
@@ -162,7 +162,7 @@ test('BUG 5b: timeoutMs does not bound the response body (headers then a stall h
 });
 
 // ---------------------------------------------------------------- 6 --
-test('BUG 6a: a feeling a catcher reported as "someone may be in danger" is still sent to the Mallow provider', async () => {
+test('BUG 6a (fixed): a feeling a catcher reported as "someone may be in danger" is never sent to the Mallow provider', async () => {
   const provider = counting(demoProvider());
   const w = world({ provider });
   const id = w.release('moon', { allowFallback: true }).journey.id;
@@ -174,7 +174,7 @@ test('BUG 6a: a feeling a catcher reported as "someone may be in danger" is stil
   assert.equal(provider.calls, 0, `paused-for-safety feeling went to the provider (fallback view said "${offered}")`);
 });
 
-test('BUG 6b: a feeling a moderator removed is still sent to the Mallow provider', async () => {
+test('BUG 6b (fixed): a feeling a moderator removed is never sent to the Mallow provider', async () => {
   const provider = counting(demoProvider());
   const w = world({ provider });
   const id = w.release('moon', { allowFallback: true }).journey.id;
@@ -189,7 +189,7 @@ test('BUG 6b: a feeling a moderator removed is still sent to the Mallow provider
 // ---------------------------------------------------------------- 7 --
 const aiLike = async ({ mallow }) => ({ status: 'ok', text: 'Maybe the silence is about their week, not about you.', mallow, source: 'ai', model: 'test' });
 
-test('BUG 7a: after five people push the Mallow out, the journey still shows a Mallow petal ("5 of 5 · plus a Mallow’s")', async () => {
+test('BUG 7a (fixed): after five people answer, the journey shows no Mallow petal in the human count', async () => {
   const w = world({ provider: aiLike });
   const id = w.release('moon', { allowFallback: true }).journey.id;
   w.advance(31 * MIN);
@@ -200,7 +200,7 @@ test('BUG 7a: after five people push the Mallow out, the journey still shows a M
   assert.equal(j.mallowPetal, null, 'six petals for a five-slot feeling');
 });
 
-test('BUG 7b: a Mallow perspective the owner reported still shows as a petal', async () => {
+test('BUG 7b (fixed): a Mallow perspective the owner reported no longer shows as a petal', async () => {
   const w = world({ provider: aiLike });
   const id = w.release('moon', { allowFallback: true }).journey.id;
   w.advance(31 * MIN);

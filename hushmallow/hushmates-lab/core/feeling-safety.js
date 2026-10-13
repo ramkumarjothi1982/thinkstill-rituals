@@ -30,6 +30,37 @@ function extraCrisis(probe) {
 }
 const safetyOf = (probe) => { const s = checkSafety(probe); return s.reframeAppropriate ? (extraCrisis(probe) || s) : s; };
 
+// Hushmates' own words for the support screen. The lexicon and the resource lists are the app's
+// (Reframe's, reused unchanged); its titles and messages talk about reframing, so they're replaced
+// here, and each category gets resources that fit it. To be reviewed per region by a safety lead.
+const [EMERGENCY] = HARM_COPY.crisis.resources;
+const ELSEWHERE = HARM_COPY.crisis.resources[HARM_COPY.crisis.resources.length - 1];
+const LISTENING = HARM_COPY.crisis.resources.find((r) => /samaritans/i.test(r.label));
+const GENERAL = [EMERGENCY, LISTENING, ELSEWHERE].filter(Boolean);
+const NOT_SENT = 'It won’t be sent out for other perspectives.';
+const CARE = {
+  abuse: { message: `What you’re describing sounds like it could be abuse. ${NOT_SENT} It’s not your fault, and you don’t deserve it. If you can, tell someone you trust or contact a support service, at your own pace.`, resources: HARM_COPY.careResources },
+  violence: { message: `Nobody has the right to hurt you. This is something that happened to you, and it matters. ${NOT_SENT} If you can, tell someone you trust, and reach out to a support service or the police when you feel ready.`, resources: HARM_COPY.careResources },
+  threat: { message: `Being threatened is serious, and it isn’t something to talk yourself out of. ${NOT_SENT} Keep any messages or notes, tell someone you trust, and contact the police or a support service if you feel at risk.`, resources: GENERAL },
+  harassment: { message: `Being harassed or bullied isn’t something to see differently, and it isn’t on you to fix. ${NOT_SENT} If you can, save screenshots or notes, tell someone you trust, and use the reporting routes at school, at work or on the app or site.`, resources: GENERAL },
+  discrimination: { message: `Being treated unfairly because of who you are is real, and it isn’t something to explain away. Your reaction makes sense. ${NOT_SENT} If you want to, keep a record of what happened and talk to someone you trust, HR, a union or an advice organisation.`, resources: GENERAL },
+  unsafe: { title: 'Your safety comes first', message: `Not feeling safe is important information. Please trust it. ${NOT_SENT} If you can, talk to someone you trust or a support service about what’s going on.`, resources: GENERAL },
+};
+function supportOf(safety) {
+  if (safety.level === 'crisis' && safety.category === 'someone-in-danger') {
+    return { title: safety.title, message: safety.message, resources: safety.resources, stillHere: safety.stillHere };
+  }
+  if (safety.level === 'crisis') {
+    return {
+      title: 'Let’s pause here',
+      message: 'What you’ve written sounds really painful, and it matters. It won’t be sent to anyone: you deserve real support with this, right now. If you might act on these thoughts, or you’re not safe, please call your local emergency number. If you can, tell someone near you how you’re feeling. You don’t need the right words first.',
+      resources: HARM_COPY.crisis.resources, stillHere: HARM_COPY.stillHere,
+    };
+  }
+  const c = CARE[safety.category] || CARE.unsafe;
+  return { title: c.title || 'This one deserves real support', message: c.message, resources: c.resources, stillHere: HARM_COPY.stillHere };
+}
+
 const IDENTIFYING = [
   /\b\d{1,5}\s+[A-Za-z][A-Za-z ]{1,30}\s(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|close|way|crescent|place|court)\b/i,   // street address
   /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/i,                                   // UK postcode (any case)
@@ -76,10 +107,8 @@ export function screenFeeling(input, { minChars = 3, maxChars = 500 } = {}) {
   const safety = safetyOf(probe);
   if (!safety.reframeAppropriate) {
     // never released to strangers and never sent to an AI provider
-    return fail('support', safety.message || 'This sounds really heavy.', {
-      level: safety.level,
-      support: { title: safety.title, message: safety.message, resources: safety.resources, stillHere: safety.stillHere },
-    });
+    const support = supportOf(safety);
+    return fail('support', support.message, { level: safety.level, support });
   }
   const rules = checkMessage(probe, { maxChars });
   if (!rules.ok) {
@@ -95,8 +124,9 @@ export function screenFeeling(input, { minChars = 3, maxChars = 500 } = {}) {
 
 /**
  * A perspective someone offers. `earlier` are the perspectives already given.
- * → { ok: true, text, nudges[] } | { ok: false, code, message }
- * nudges (non-blocking, for the interface): 'certainty'
+ * → { ok: true, text, nudges[] } | { ok: false, code, message } | { ok: false, code: 'support', level, support }
+ * Words suggesting the writer (or someone) may not be safe are answered with support for the writer,
+ * and never passed on. nudges (non-blocking, for the interface): 'certainty'
  */
 export function screenReframe(input, { minChars = 8, maxChars = 280, earlier = [], threshold = 0.8 } = {}) {
   const text = normaliseText(input);
@@ -104,8 +134,13 @@ export function screenReframe(input, { minChars = 8, maxChars = 280, earlier = [
   if (charCount(text) < minChars) return fail('too-short', 'Add a few more words so it can help.');
   if (charCount(text) > maxChars) return fail('too-long', `Perspectives can be up to ${maxChars} characters. Short and kind works best.`);
   const probe = probeOf(text);
-  if (!safetyOf(probe).reframeAppropriate) {
-    return fail('unsafe', 'This perspective can’t be passed on. If someone is in danger, please contact local emergency services.');
+  const safety = safetyOf(probe);
+  if (!safety.reframeAppropriate && safety.level === 'crisis') {
+    const support = supportOf(safety);
+    return fail('support', support.message, { level: safety.level, support });
+  }
+  if (!safety.reframeAppropriate) {
+    return fail('unsafe', 'This one can’t be passed on: it touches on something that needs real support rather than a new angle. If you or someone else is in danger, please contact local emergency services.');
   }
   if (UNKIND.some((re) => re.test(probe))) return fail('unkind', 'That might land as harsh. Offer a possibility, not a verdict.');
   if (DIAGNOSIS.some((re) => re.test(probe))) return fail('diagnosis', 'Please don’t diagnose anyone. Offer another way of seeing it instead.');

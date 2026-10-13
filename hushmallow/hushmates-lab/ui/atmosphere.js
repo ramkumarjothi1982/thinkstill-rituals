@@ -134,7 +134,7 @@ export class Atmosphere {
     const rm = reducedMotion();
     const a = b.animate(rm ? [{ opacity: 0 }, { opacity: 0.6 }, { opacity: 0 }]
       : [{ opacity: 0, transform: 'translate(-50%,-50%) scale(.2)' }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1.4)', offset: 0.45 }, { opacity: 0, transform: 'translate(-50%,-50%) scale(2.2)' }],
-    { duration: rm ? 600 : duration, easing: 'cubic-bezier(.22,1,.36,1)' });
+    { duration: rm ? 400 : duration, easing: 'cubic-bezier(.22,1,.36,1)' });
     a.onfinish = () => b.remove();
     return a.finished;
   }

@@ -63,8 +63,11 @@ not optional.
   it isn't perfectly anonymous, what happens if you allow a Mallow
   perspective, your choices, and safety.
 - **Withdrawal:** bring a feeling home early, let it go, delete it, delete
-  everything, withdraw the Mallow choice on a resend, or (as a writer) stop
-  your words appearing in share stories.
+  everything, withdraw the Mallow choice on a resend, or, as a writer, take
+  back a perspective you gave or stop your words appearing in share stories.
+- **Catchers are told who reads their words** before they write: the person
+  who released the feeling, and anyone who adds a perspective after them,
+  never with names.
 - Pseudonymous, **not** perfectly anonymous. The interface says this in the
   welcome, in the privacy details and in You & safety.
 - **Nobody is shown who released a feeling or who wrote a perspective.** The
@@ -110,7 +113,12 @@ not optional.
   stories use the journey's real numbers.
 - **High-risk text never reaches the relay or the Mallow.** Crisis words are
   answered with support on the device and again by the service (before the
-  consent check), are never stored, and never go to a provider. Anything paused
+  consent check), are never stored, and never go to a provider. The same holds
+  for a catcher: if their perspective suggests *they* may not be safe, they are
+  shown support, their words are not passed on or saved, and the feeling floats
+  on to someone else. Support screens use Hushmates' own words (never
+  "reframe"), and each category gets fitting resources (bullying gets general
+  lines, not domestic-abuse lines); a safety lead must review them per region. Anything paused
   or removed by moderation can't be sent to a provider either.
 - **In this lab no AI key is configured.** No output here is live AI, and none
   is labelled as if it were.
@@ -130,9 +138,9 @@ not optional.
 
 ## 4. Your data
 
-- **Download my data:** your feelings and what came back, the perspectives you
-  gave (with your share choice), and when you agreed to share and to a Mallow
-  perspective. Other people never appear in it.
+- **See and copy my data:** your feelings and what came back, the perspectives
+  you gave (with your share choice), and when you agreed to share and to a
+  Mallow perspective. Other people's words are included, never their names.
 - **Delete my journey**, **release this feeling** (words cleared, a Mallow
   perspective you didn't keep wiped with them; perspectives you kept stay),
   **delete my Hushmates data** (every feeling, every perspective you gave, your

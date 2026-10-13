@@ -18,6 +18,7 @@ export class RelayClient {
     this._queued = false;
     this._detail = null;
     this._announced = new Set();
+    this._offered = new Set();
   }
 
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -50,6 +51,7 @@ export class RelayClient {
     if (scope === 'me') { s.me = await this.api('me'); this._clock(s.me.now); }
     else if (scope === 'journeys') {
       const before = new Map(s.journeys.map((j) => [j.id, j.status]));
+      const beforeOffer = new Map(s.journeys.map((j) => [j.id, j.fallback?.status]));
       const r = await this.api('listJourneys');
       s.journeys = r.journeys;
       this._clock(r.now);
@@ -57,7 +59,11 @@ export class RelayClient {
       // announced once per journey, even when refreshes overlap
       const cameHome = s.journeys.filter((j) => j.status === 'returned' && before.get(j.id) === 'travelling' && !this._announced.has(j.id)).map((j) => j.id);
       cameHome.forEach((id) => this._announced.add(id));
-      this._notify({ journeys: true, cameHome });
+      // a feeling nobody has caught for a while, whose Mallow can now offer another way to see it
+      const mallowOffer = s.journeys.filter((j) => j.status === 'travelling' && j.fallback?.status === 'available' && beforeOffer.has(j.id)
+        && beforeOffer.get(j.id) !== 'available' && !this._offered.has(j.id)).map((j) => j.id);
+      mallowOffer.forEach((id) => this._offered.add(id));
+      this._notify({ journeys: true, cameHome, mallowOffer });
       return;
     } else if (scope === 'gifts') s.gifts = (await this.api('myGifts')).gifts;
     this._notify({ [scope]: true });

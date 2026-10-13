@@ -56,7 +56,8 @@ const SUGGESTED_PARTIAL = {
 const params = new URLSearchParams(location.search);
 const saved = params.has('fresh') ? null : store.get();
 const clock = { offset: saved?.offset || 0 };
-const config = { source: saved?.config?.source || 'demo', angleUrl: saved?.config?.angleUrl || 'http://127.0.0.1:8790' };
+// the Reframe library by default: real, free, on-device, and shown with the brief's own label
+const config = { source: saved?.config?.source || 'library', angleUrl: saved?.config?.angleUrl || 'http://127.0.0.1:8790' };
 const flags = saved?.flags || {};
 const now = () => Date.now() + clock.offset;
 
@@ -73,10 +74,10 @@ function makeProvider() {
 let service;
 let tokens;
 if (saved?.state && saved.tokens) {
-  service = new RelayService({ state: saved.state, now, provider: makeProvider() });
+  service = new RelayService({ state: saved.state, now, provider: makeProvider(), cannedExamples: true });
   tokens = saved.tokens;
 } else {
-  service = seedRelay(new RelayService({ now, provider: makeProvider() }));
+  service = seedRelay(new RelayService({ now, provider: makeProvider(), cannedExamples: true }));
   tokens = Object.fromEntries(RELAY_IDENTITIES.map((p) => [p.key, service.signInTestAccount(p.key)]));
   service.s.profiles[accId(AUTHOR)].onboarded = false;         // the author meets Hushmates from the start
 }
@@ -200,7 +201,11 @@ function renderSource(extra = '') {
   document.querySelectorAll('input[name="source"]').forEach((r) => { r.checked = r.value === config.source; });
   angleRow.hidden = config.source !== 'angle';
   const used = service.s.daily[new Date(now()).toISOString().slice(0, 10)]?.global || 0;
-  const what = { demo: 'Canned demo lines (labelled “demo example, not live AI”).', library: 'Reframe library (labelled “not AI”).', angle: 'Another Angle first, then the Reframe library if it can’t answer.' }[config.source];
+  const what = {
+    demo: 'Canned development examples: people see “A Mallow perspective · Example for testing, not generated”; lab tag “canned example”.',
+    library: 'Reframe library (rule-based, no AI model): people see “A Mallow perspective · Automatically generated”; lab tag “Reframe library”.',
+    angle: 'Another Angle first (a live AI response only if the server reports a real model with a key; its mock mode counts as a canned example), then the Reframe library if it can’t answer.',
+  }[config.source];
   sourceStatus.textContent = `${what} Provider calls this session: ${service.providerCalls}. Mallow perspectives today: ${used}. ${extra}`;
 }
 document.querySelectorAll('input[name="source"]').forEach((r) => r.addEventListener('change', () => {
@@ -215,7 +220,7 @@ async function checkAngle() {
   try {
     const hl = await (await fetch(`${config.angleUrl.replace(/\/$/, '')}/v1/health`)).json();
     const live = hl.provider === 'anthropic' && hl.configured?.provider_key;
-    renderSource(`Server says: provider “${hl.provider}”, ${live ? 'a real model: answers are labelled AI-generated.' : 'not a real model: answers are labelled demo.'}`);
+    renderSource(`Server says: provider “${hl.provider}”, ${live ? 'a real model: answers count as live AI responses (lab tag “live AI response”).' : 'not a real model: answers count as canned examples.'}`);
   } catch {
     renderSource('Couldn’t reach it (is the local harness running, and does it allow this origin?). Asking a Mallow will fall back to the Reframe library, labelled.');
   }
@@ -230,21 +235,37 @@ async function renderMod() {
   let list = [];
   try { list = (await modLink.request('modListReports', tokens.mod, {})).reports; } catch { /* offline */ }
   if (!list.length) { modList.replaceChildren(Object.assign(document.createElement('p'), { className: 'lab-small', textContent: 'No reports. Report a feeling (catcher) or a perspective (author) to see the human review queue.' })); return; }
+  const el = (tag, cls, text) => Object.assign(document.createElement(tag), { className: cls || '', textContent: text || '' });
   modList.replaceChildren(...list.slice(0, 6).map((r) => {
-    const row = document.createElement('div');
-    row.className = `lab-mod-row${r.status === 'open' ? ' is-open' : ''}`;
-    const t = document.createElement('p');
-    t.textContent = `${r.urgent ? 'Priority · ' : ''}${r.kind === 'feeling' ? 'Feeling' : 'Perspective'} · ${r.reason} · ${r.status}`;
-    row.append(t);
-    if (r.status === 'open') {
-      const acts = r.kind === 'feeling' ? [['resume-feeling', 'Resume'], ['remove-feeling', 'Remove']] : [['dismiss', 'Dismiss'], ['remove-perspective', 'Remove']];
-      for (const [action, label] of acts) {
-        const b = document.createElement('button');
-        b.type = 'button'; b.className = 'guide-btn'; b.textContent = label;
-        b.addEventListener('click', async () => { try { await modLink.request('modResolve', tokens.mod, { id: r.id, action }); } catch { /* shown by state */ } renderMod(); scheduleGuide(); });
-        row.append(b);
-      }
-    }
+    const row = el('details', `lab-mod-row${r.status === 'open' ? ' is-open' : ''}`);
+    row.append(el('summary', '', `${r.urgent ? 'Priority · ' : ''}${r.kind === 'feeling' ? 'Feeling' : 'Perspective'} · ${r.reason} · ${r.status}`));
+    const box = el('div', 'lab-mod-evidence');
+    row.append(box);
+    // a person decides with the evidence in front of them (every look is audited by the service)
+    row.addEventListener('toggle', async () => {
+      if (!row.open || box.childElementCount) return;
+      try {
+        const full = await modLink.request('modGetReport', tokens.mod, { id: r.id });
+        const ev = full.evidence || {};
+        box.append(
+          el('p', 'lab-small', `Reported ${new Date(full.at || Date.now()).toLocaleString()}${full.details ? ` · “${full.details}”` : ''}`),
+          ev.feeling ? el('blockquote', 'lab-quote', `Feeling: “${ev.feeling}”`) : el('p', 'lab-small', 'The feeling’s words are no longer stored.'),
+          ev.perspective != null ? el('blockquote', 'lab-quote', `Perspective: “${ev.perspective || '(removed)'}”`) : el('span'));
+        if (r.status === 'open') {
+          const acts = r.kind === 'feeling'
+            ? [['resume-feeling', 'Resume'], ['remove-feeling', 'Remove'], ['restrict-user', 'Restrict account']]
+            : [['dismiss', 'Dismiss'], ['remove-perspective', 'Remove'], ['restrict-user', 'Restrict account']];
+          const bar = el('div', 'lab-chipset');
+          for (const [action, label] of acts) {
+            const b = el('button', 'guide-btn', label);
+            b.type = 'button';
+            b.addEventListener('click', async () => { try { await modLink.request('modResolve', tokens.mod, { id: r.id, action }); } catch { /* shown by state */ } renderMod(); scheduleGuide(); });
+            bar.append(b);
+          }
+          box.append(bar);
+        } else box.append(el('p', 'lab-small', `Decided: ${r.status === 'actioned' ? 'action taken' : 'no action needed'}.`));
+      } catch { box.append(el('p', 'lab-small', 'Couldn’t load the report.')); }
+    });
     return row;
   }));
 }
@@ -289,7 +310,9 @@ const SCENARIOS = {
         { who: 'author', title: `MoonMallow releases “${FEELINGS.fallback.text}” and allows a Mallow perspective`, hint: 'Phone A: write the words → Worry → tick “Share anonymously…” → turn on “Let a Mallow offer another perspective…” → Release into Hushfold.', fill: 'feeling-fallback', done: !!j && j.allowFallback },
         { who: 'clock', title: 'Nobody catches it: move the clock on 30 minutes', hint: 'Use “+30 min” in the dev clock below.', done: !!j && (!!j.fallbackOfferedAt || !!f) },
         { who: 'author', title: 'MoonMallow opens the journey and asks Noomi', hint: 'Phone A: My journeys → the feeling → Ask Noomi. The orb goes to Noomi, who thinks, squeezes it and unfolds a perspective.', done: !!f },
-        { who: 'service', title: 'The Mallow perspective arrives, labelled with its real source', hint: 'Still “0 of 5 human perspectives”: a Mallow never counts as a person. The yellow lab tag says “canned example” unless a live test key answered.', done: !!f && f.status !== 'pending' },
+        { who: 'service', title: f && f.status === 'failed' ? `No Mallow perspective this time (${f.reason || 'unavailable'}): the feeling still comes home` : 'The Mallow perspective arrives, labelled with its real source',
+          hint: `Still “0 of 5 human perspectives”: a Mallow never counts as a person. ${f?.status === 'ready' ? `Answered by: ${({ ai: 'a live AI response', library: 'the Reframe library (rule-based)', demo: 'a canned development example' })[f.source] || f.source}${f.model ? ` (${f.model})` : ''}.` : 'The lab tag under it names the real source.'}`,
+          done: !!f && f.status === 'ready' },
         { who: 'clock', title: 'Move the clock on 24 hours: it comes home', hint: 'Use “+24 h”.', done: !!j && j.status !== 'travelling' },
         { who: 'author', title: 'MoonMallow opens what came back', hint: 'Phone A: Returned → the feeling. “No one caught it this time”, the Mallow’s perspective shown on its own, and Send it out again / Keep it with me / Let it go.', done: !!j && j.seenReturn },
       ];

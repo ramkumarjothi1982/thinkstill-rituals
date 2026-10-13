@@ -16,7 +16,8 @@
 // 2. libraryProvider: the main app's authored Reframe engine
 //    (src/ultra/reframe-engine.js), the same offline path Another Angle falls
 //    back to. Real, free, on-device. Not AI, and labelled so.
-// 3. demoProvider: fixed example lines, labelled "demo example, not live AI".
+// 3. demoProvider: fixed development examples, one per Mallow personality. Shown as "Example for
+//    testing, not generated", and refused outside the lab (RelayService cannedExamples).
 
 import { checkSafety, matchScenarios, detectPatterns, buildAngles } from '../../src/ultra/reframe-engine.js';
 
@@ -61,8 +62,18 @@ const DEMO_LINES = {
   excitement: 'Being excited and afraid at once is common: it means it matters. What would a small first step look like?',
   none: 'There might be more than one way to read this. What would someone who cares about you notice that you might be missing?',
 };
+// The same idea in each Mallow's voice (relay-config MALLOW_VOICES), so the lab shows the personalities.
+const DEMO_VOICES = {
+  noomi: 'It makes sense this is weighing on you. Could there be a softer reading of it, the kind you’d offer someone you love?',
+  blubi: 'That sounds like it has been sitting heavily with you. What might change if it meant a little less than it seems to right now?',
+  pipzi: 'What if we turned this round for a moment? If it were a friend’s story, what lighter version might you spot?',
+  boppo: 'You’re looking at this carefully, and that takes care. What’s one small part of it that’s still in your hands?',
+  zuzu: 'Imagine looking back on this a year from now. Which part do you think you’d still notice, and which might have faded?',
+  loomi: 'Let’s separate what happened from what it might mean. What do you know for sure, and what are you guessing?',
+  glitzi: 'Your mind might be writing the worst-case script again. What would the less dramatic version of this story say?',
+};
 export function demoProvider() {
-  return async ({ label, mallow = 'loomi' }) => ({ status: 'ok', text: DEMO_LINES[label] || DEMO_LINES.none, mallow, source: 'demo', model: 'demo-canned-v1' });
+  return async ({ label, mallow = 'loomi' }) => ({ status: 'ok', text: DEMO_VOICES[mallow] || DEMO_LINES[label] || DEMO_LINES.none, mallow, source: 'demo', model: 'demo-canned-v1' });
 }
 
 // ------------------------------------------- Account 1's Another Angle --

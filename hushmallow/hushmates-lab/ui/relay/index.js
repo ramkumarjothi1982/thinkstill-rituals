@@ -10,6 +10,7 @@ import { share } from './share.js';
 import { you, deleted } from './you.js';
 import { welcome } from './welcome.js';
 import { play } from '../sound.js';
+import { MALLOWS } from '../mallows-data.js';
 
 export const SCREENS = {
   welcome, release, support, catch: catchScene, journeys, journey, returned, homecoming, share, you, deleted,
@@ -19,13 +20,27 @@ export const SCREENS = {
 /** Where a person starts: the welcome until they've been through it. */
 export const startScene = (state) => (state.me?.accountState === 'deleted' ? 'deleted' : state.me?.profile?.onboarded ? 'release' : 'welcome');
 
-/** App-wide reactions: a feeling that comes home is announced (gently) anywhere. */
+/**
+ * App-wide reactions, gentle and only if the person wants them ("Tell me when a feeling comes home"):
+ * a feeling that came home, and a Mallow that can now offer another way to see one. Never during a
+ * moment (the homecoming, a release or a perspective being passed on), and never over the share story.
+ * The dock's badge shows the state either way.
+ */
 export function connectRelay(dev) {
-  dev.client.on((state, detail) => {
-    if (!detail?.cameHome?.length) return;
+  const quiet = () => {
     const here = dev.current?.name;
-    if (here === 'homecoming') return;
-    play('home');
-    dev.toast(detail.cameHome.length > 1 ? `${detail.cameHome.length} feelings found their way home.` : 'Your feeling found its way home.', { ms: 3600 });
+    const el = dev.current?.el;
+    return here === 'homecoming' || here === 'share' || el?.classList.contains('is-cinematic') || ['launch', 'passing'].includes(el?.dataset.state);
+  };
+  dev.client.on((state, detail) => {
+    if (state.me?.profile?.notifyReturn === false) return;
+    if (detail?.cameHome?.length && !quiet()) {
+      play('home');
+      dev.toast(detail.cameHome.length > 1 ? `${detail.cameHome.length} feelings found their way home.` : 'One of your feelings found its way home.', { ms: 3600 });
+    }
+    if (detail?.mallowOffer?.length && !quiet() && dev.current?.name !== 'journey') {
+      const m = MALLOWS[state.me?.profile?.mallow] || MALLOWS.noomi;
+      dev.toast(`Nobody’s caught one of your feelings yet. ${m.name} can offer another way to see it, if you’d like.`, { ms: 4200 });
+    }
   });
 }

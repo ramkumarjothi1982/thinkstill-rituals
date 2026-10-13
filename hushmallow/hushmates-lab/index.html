@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="styles/relay.css">
 <link rel="stylesheet" href="styles/relay-scenes.css">
 <link rel="stylesheet" href="styles/hushfold.css">
+<link rel="stylesheet" href="styles/share.css">
 <link rel="stylesheet" href="styles/lab.css">
 </head>
 <body>
@@ -89,8 +90,8 @@
       <section class="lab-guide__box" aria-labelledby="source-title">
         <p class="lab-box-title" id="source-title"><b>Mallow perspective source</b></p>
         <div class="lab-radios" role="radiogroup" aria-labelledby="source-title">
-          <label><input type="radio" name="source" value="demo" checked> <span><b>Canned development example</b> · shown as “Example for testing, not generated”, with a yellow “Lab · canned example” tag. No AI key is configured in this lab.</span></label>
-          <label><input type="radio" name="source" value="library"> <span><b>Reframe library</b> · the existing rule-based Reframe engine (authored lines chosen by rules, no AI model); shown as “Automatically generated”, with a “Lab · Reframe library” tag.</span></label>
+          <label><input type="radio" name="source" value="demo"> <span><b>Canned development example</b> · shown as “Example for testing, not generated”, with a yellow “Lab · canned example” tag. No AI key is configured in this lab.</span></label>
+          <label><input type="radio" name="source" value="library" checked> <span><b>Reframe library</b> (default) · the existing rule-based Reframe engine (authored lines chosen by rules, no AI model); shown as “Automatically generated”, with a “Lab · Reframe library” tag.</span></label>
           <label><input type="radio" name="source" value="angle"> <span><b>Another Angle server</b> · Account 1’s Reframe service, run locally and unchanged. Counted as a live AI response (“Lab · live AI”) only if it reports a real model with a server-side key; its mock mode is shown as a canned example.</span></label>
         </div>
         <div class="lab-url" id="angle-row" hidden>

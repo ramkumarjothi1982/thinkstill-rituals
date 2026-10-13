@@ -1,6 +1,6 @@
 // YOU & SAFETY: who you are here (a pseudonym, never perfectly anonymous),
 // your choices (catching, return notices, your Mallow, sound), the
-// perspectives you've offered and whether they may appear in share pictures,
+// perspectives you've offered and whether they may appear in share stories,
 // what keeps Hushmates gentle, support if you're not okay, and your data
 // (download, delete). The pilot is adults only, by invitation.
 
@@ -24,7 +24,7 @@ export function you(dev) {
   const st = stage(p.mallow, { size: 's' });
   const speech = new Speech(p.mallow);
   put(st.above, speech.el);
-  speech.say('Nobody here can see who you are.');
+  speech.say('Other Hushmates never see your name.');
 
   const mallows = h('div', { class: 'hf-mallow-pick', role: 'radiogroup', 'aria-label': 'Your Mallow' },
     ORDER.map((id) => h('button', {
@@ -51,7 +51,7 @@ export function you(dev) {
 
     section('Your choices',
       sentenceSwitch({ label: 'Let feelings find me', hint: 'Catch other people’s feelings when you choose to look. Always voluntary.', checked: p.catching, test: 'pref-catching', onChange: (on) => pref({ catching: on }) }),
-      sentenceSwitch({ label: 'Tell me when a feeling comes home', hint: 'A gentle notice. Never about other people’s activity.', checked: p.notifyReturn !== false, test: 'pref-notify', onChange: (on) => pref({ notifyReturn: on }) }),
+      sentenceSwitch({ label: 'Gentle notices about my feelings', hint: 'When one comes home, or when your Mallow can offer another way to see one. Never about other people’s activity.', checked: p.notifyReturn !== false, test: 'pref-notify', onChange: (on) => pref({ notifyReturn: on }) }),
       sentenceSwitch({ label: 'Soft sounds', hint: 'Delicate sounds for releasing, catching and returning. On this device only.', checked: soundOn(), test: 'pref-sound', onChange: (on) => { setSound(on); return true; } })),
 
     section('The Mallow who carries your feelings', mallows),
@@ -72,7 +72,7 @@ export function you(dev) {
 
     section('Your data',
       h('div', { class: 'hf-choices-list' },
-        row('export-data', 'download', 'Download my data', 'Your feelings, what came back, what you gave, and when you agreed', () => exportData()),
+        row('export-data', 'download', 'See and copy my data', 'Your feelings, what came back, what you gave, and when you agreed', () => exportData()),
         row('delete-data', 'trash', 'Delete my Hushmates data', 'Every feeling, and every perspective you gave', () => deleteAll(), 'hf-choice--danger'))),
 
     h('p', { class: 'hf-hint', dataset: { test: 'pilot-note' } }, 'Hushmates is an invitation-only pilot for adults (18+).',
@@ -84,14 +84,21 @@ export function you(dev) {
     if (!res) { put(gifts, h('p', { class: 'hf-note' }, 'Couldn’t load them just now.')); return; }
     if (!res.gifts.length) { put(gifts, h('p', { class: 'hf-note' }, 'When you offer a perspective on someone’s feeling, it appears here. Only you can see this list.')); return; }
     put(gifts,
-      h('p', { class: 'hf-note' }, 'Only you can see these. You decide whether the person whose feeling you caught may include your words in a share picture; they never learn who you are.'),
+      h('p', { class: 'hf-note' }, 'Only you can see these. You decide whether the person whose feeling you caught may include your words in a share picture or video; they never learn who you are.'),
       res.gifts.map((g) => h('article', { class: 'hf-gift', dataset: { test: 'gift' } },
         h('p', { class: 'hf-gift-text' }, g.text),
         h('p', { class: 'hf-meta' }, g.journeyHome ? 'It has come home' : 'Still travelling', ' · ', fmtAgo(g.at, c.now())),
         sentenceSwitch({
-          label: 'May appear in their share picture', checked: g.allowShare, test: `gift-share-${g.id}`,
-          onChange: (on) => dev.run(() => c.act('setGiftSharing', { perspectiveId: g.id, allowShare: on }), { ok: on ? 'They may include your words.' : 'Your words won’t appear in share pictures.' }).then((x) => !!x),
-        }))));
+          label: 'May appear in their share picture or video', checked: g.allowShare, test: `gift-share-${g.id}`,
+          onChange: (on) => dev.run(() => c.act('setGiftSharing', { perspectiveId: g.id, allowShare: on }), { ok: on ? 'They may include your words.' : 'Your words won’t appear in share pictures or videos.' }).then((x) => !!x),
+        }),
+        h('button', { type: 'button', class: 'kit-btn kit-btn--text hf-gift-take', dataset: { test: `gift-withdraw-${g.id}` }, onclick: () => takeBack(g) }, 'Take it back'))));
+  }
+  async function takeBack(g) {
+    const ok = await dev.confirm({ title: 'Take back this perspective?', text: 'Your words are removed for good, including from the collection of the person whose feeling you caught. They aren’t told who you are.', confirmLabel: 'Take it back', danger: true });
+    if (!ok) return;
+    const res = await dev.run(() => c.act('withdrawPerspective', { perspectiveId: g.id }, ['gifts']), { ok: 'Taken back.' });
+    if (res) loadGifts();
   }
   loadGifts();
 
@@ -106,7 +113,7 @@ export function you(dev) {
     } }, 'Copy my data');
     dev.sheet({
       title: 'Your Hushmates data',
-      body: h('div', { class: 'kit-stack' }, h('p', { class: 'hm-sheet-text' }, 'Your feelings and what came back, the perspectives you gave, and when you agreed to share. Other people never appear in it.'), pre),
+      body: h('div', { class: 'kit-stack' }, h('p', { class: 'hm-sheet-text' }, 'Your feelings and what came back, the perspectives you gave, and when you agreed to share. Other people’s words are included, never their names.'), pre),
       actions: [copy, h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', onclick: () => dev.closeSheet() }, 'Close')],
     });
   }

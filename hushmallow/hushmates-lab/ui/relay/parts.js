@@ -92,8 +92,15 @@ export class Speech {
   }
   async say(text, { who = true, extra = null } = {}) {
     const rm = reducedMotion();
+    // the same line again (a refresh): leave it be, no flicker
+    const key = `${who}|${text || ''}|${extra ? extra.textContent : ''}`;
+    if (key === this.said && !this.el.hidden && !extra) return;
+    this.said = key;
     if (!this.el.hidden && this.el.firstChild) {
-      try { await this.el.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-4px)' }], { duration: rm ? 1 : 220, fill: 'forwards' }).finished; } catch { /* gone */ }
+      const out = this.el.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-4px)' }], { duration: rm ? 1 : 220, fill: 'forwards' });
+      try { await out.finished; } catch { /* gone */ }
+      if (this.said !== key) return;                 // something newer was said meanwhile
+      out.cancel();                                  // never leave the bubble held at opacity 0
     }
     if (!text && !extra) { this.el.hidden = true; return; }
     this.el.replaceChildren(...[
@@ -110,6 +117,42 @@ export class Speech {
 export function line(text, { level = 'h1', cls = '' } = {}) {
   return h(level, { class: `hf-line ${cls}`, 'data-autofocus': '' }, text);
 }
+/**
+ * Change what a scene shows without a hard cut: the outgoing content (everything but the stage)
+ * fades and lifts away, the new content is put in place by `build`, the stage glides from where it
+ * was to where it now sits (FLIP), and the new content rises in. Reduced motion: a plain swap.
+ */
+export async function morph(body, stageEl, build, { out = 200 } = {}) {
+  const rm = reducedMotion();
+  const before = stageEl?.isConnected ? stageEl.getBoundingClientRect() : null;
+  const leaving = [...body.children].filter((n) => n !== stageEl);
+  if (!rm && leaving.length) {
+    await Promise.all(leaving.map((n) => n.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-6px)', filter: 'blur(2px)' }],
+      { duration: out, easing: CSS_EASE, fill: 'forwards' }).finished.catch(() => {})));
+  }
+  build();
+  if (rm) return;
+  if (before && stageEl.isConnected) {
+    const after = stageEl.getBoundingClientRect();
+    const dx = before.left - after.left;
+    const dy = before.top - after.top;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) stageEl.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 650, easing: CSS_EASE });
+  }
+  [...body.children].filter((n) => n !== stageEl).forEach((n, i) => n.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }],
+    { duration: 520, delay: 80 + i * 50, easing: CSS_EASE, fill: 'backwards' }));
+}
+
+/**
+ * After a change inside a scene (no navigation), move focus to the new heading so screen readers
+ * announce it, without scrolling. Only call it in answer to the person's own action.
+ */
+export function focusHeading(root) {
+  const el = root?.querySelector('[data-autofocus]');
+  if (!el || !el.isConnected) return;
+  if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+  try { el.focus({ preventScroll: true }); } catch { /* not focusable */ }
+}
+
 export async function swapLine(el, text) {
   if (!el) return;
   const rm = reducedMotion();
@@ -131,19 +174,22 @@ export function checkRow({ id, label, hint, checked = false, onChange, test, ext
   return h('div', { class: 'hf-check-row' }, box, hint ? h('p', { class: 'hf-check-hint', id: `${id}-hint` }, hint, extra ? ' ' : '', extra) : extra);
 }
 
-/** The privacy details, available before anyone agrees to anything. */
-export function privacySheet(dev) {
-  const sec = (title, text) => h('section', { class: 'hf-privacy-sec' }, h('h3', {}, title), h('p', {}, text));
+/** The privacy details, available before anyone agrees to anything. `focus: 'mallow'` opens at the Mallow section. */
+export function privacySheet(dev, { focus = null } = {}) {
+  const sec = (title, text, key) => h('section', { class: 'hf-privacy-sec', dataset: key ? { sec: key } : undefined }, h('h3', {}, title), h('p', {}, text));
+  const body = h('div', { class: 'hf-privacy', dataset: { test: 'privacy-details' } },
+    sec('Who sees your words', 'Your feeling is shown to Hushmates participants who choose to look for feelings, one person at a time. Some will read it and let it float past. Up to five different people can offer a perspective; then it comes home, or after a day. Nobody sees your name or anything about your account.'),
+    sec('If you catch a feeling', 'The person who released it reads your perspective when it comes home, and so does anyone who adds one after you. Nobody sees who wrote it. You choose whether it may appear in their share picture or video, and you can change your mind in You & safety.'),
+    sec('Not perfectly anonymous', 'Words can give people away. Leave out names, places, workplaces and anything that could identify you or someone else. Hushmates checks for some of these and will ask you to remove them. Our safety team can see reported words.'),
+    sec('If you allow a Mallow perspective', 'If nobody catches your feeling, your Mallow can offer one perspective when you ask. To write it, your words are processed by an automated service. It isn’t written by a person, it’s always labelled “Automatically generated”, and it never counts as one of the five. It’s kept with your journey and deleted with it.', 'mallow'),
+    sec('Your choices', 'You can bring a feeling home early, delete a journey, see and copy your data, or delete all your Hushmates data at any time in You & safety.'),
+    sec('Safety', 'Reported words are reviewed by people on our safety team. Hushmates isn’t an emergency service: if you might not be safe, please contact local emergency services or a crisis line.'));
   dev.sheet({
     title: 'Your privacy in Hushmates',
-    body: h('div', { class: 'hf-privacy', dataset: { test: 'privacy-details' } },
-      sec('Who sees your words', 'Up to five other Hushmates participants may read your feeling, one at a time, so they can offer a different perspective. They never see your name or anything about your account.'),
-      sec('Not perfectly anonymous', 'Words can give people away. Leave out names, places, workplaces and anything that could identify you or someone else. Hushmates checks for some of these and will ask you to remove them.'),
-      sec('If you allow a Mallow perspective', 'If nobody catches your feeling, your Mallow can offer one perspective. To write it, your words are sent to an automated service; it is not written by a person and it is always labelled. It’s kept with your journey and deleted when you delete it.'),
-      sec('Your choices', 'You can bring a feeling home early, delete a journey, download your data or delete all your Hushmates data at any time in You & safety.'),
-      sec('Safety', 'Reported words are reviewed by people on our safety team. Hushmates isn’t an emergency service: if you might not be safe, please contact local emergency services or a crisis line.')),
+    body,
     actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
   });
+  if (focus) requestAnimationFrame(() => body.querySelector(`[data-sec="${focus}"]`)?.scrollIntoView({ block: 'start' }));
 }
 
 /**

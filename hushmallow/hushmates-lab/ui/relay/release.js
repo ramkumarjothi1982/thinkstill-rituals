@@ -16,7 +16,7 @@ import { screenFeeling } from '../../core/feeling-safety.js';
 import { charCount } from '../../core/text-policy.js';
 import { FEELING_LABELS, RELAY } from '../../core/relay-config.js';
 import { brandBar, dock, feelColour, errorText } from './common.js';
-import { room, stage, handsOf, ThoughtCloud, Speech, line, swapLine, checkRow, privacySheet, lightRoom, put } from './parts.js';
+import { room, stage, handsOf, ThoughtCloud, Speech, line, swapLine, checkRow, privacySheet, lightRoom, put, morph, focusHeading } from './parts.js';
 
 export function release(dev, params = {}) {
   const c = dev.client;
@@ -48,8 +48,8 @@ export function release(dev, params = {}) {
   function compose({ err = '' } = {}) {
     setState('compose');
     dockSlot.hidden = false;
-    cloud.el.hidden = false;
     cloud.set(draft.text);
+    cloud.el.hidden = !draft.text.trim();          // no empty bubble: it appears with the first word
     const blocked = full() || inactive();
     const area = h('textarea', {
       id: 'hf-feeling', class: 'hf-input', rows: 3, maxlength: String(max + 40), placeholder: 'Write it the way it feels…',
@@ -58,13 +58,15 @@ export function release(dev, params = {}) {
     area.value = draft.text;
     const count = h('span', { class: 'hf-count', id: 'hf-feeling-count', 'aria-live': 'off' });
     const error = h('p', { class: 'kit-error', role: 'alert', dataset: { test: 'feeling-error' } }, err);
-    const go = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--lg kit-btn--block hf-go', dataset: { test: 'release-submit' }, onclick: () => launch() }, 'Release into Hushfold');
+    const go = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--lg kit-btn--block hf-go', 'aria-describedby': 'hf-go-why', dataset: { test: 'release-submit' }, onclick: () => launch() }, 'Release into Hushfold');
+    const why = h('p', { class: 'hf-sr', id: 'hf-go-why' });
     let lastBeat = 0;
     const sync = () => {
       const n = charCount(area.value.trim());
       count.textContent = n > max * 0.8 ? `${n} / ${max}` : '';
       count.classList.toggle('is-over', n > max);
       go.disabled = blocked || n < RELAY.feelingMinChars || n > max || !draft.consent;
+      why.textContent = blocked ? '' : n < RELAY.feelingMinChars ? 'Write a few words first.' : n > max ? 'Your words are a little too long.' : !draft.consent ? 'Tick “Share anonymously with Hushmates participants” to release.' : '';
       el.style.setProperty('--fill', String(Math.min(1, n / 160)));
     };
     area.addEventListener('input', () => {
@@ -73,6 +75,9 @@ export function release(dev, params = {}) {
       draft.clientId = null;                  // edited words are a new release
       error.textContent = '';
       cloud.set(area.value);
+      const showing = !cloud.el.hidden;
+      cloud.el.hidden = !area.value.trim();
+      if (!showing && !cloud.el.hidden && !reducedMotion()) cloud.el.animate([{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 400, easing: CSS_EASE });
       sync();
       // the Mallow listens: a glance when you begin, a soft nod every few words
       if (!before.trim() && area.value.trim()) st.mallow.notice(0);
@@ -87,7 +92,7 @@ export function release(dev, params = {}) {
         draft.label = draft.label === l.id ? null : l.id;
         tags.querySelectorAll('.kit-chip').forEach((b) => b.setAttribute('aria-pressed', String(b === e.currentTarget && !!draft.label)));
         lightRoom(el, draft.label ? feelColour(draft.label) : null);
-        if (draft.label) { st.mallow.signature(0.35); play('tap'); }
+        if (draft.label) { st.mallow.delight(0.35); play('tap'); }
       }, { dot: l.colour, small: true, test: `label-${l.id}` })));
     lightRoom(el, draft.label ? feelColour(draft.label) : null);
 
@@ -105,6 +110,12 @@ export function release(dev, params = {}) {
       onChange: (on) => { draft.allowFallback = on; draft.clientId = null; return true; },
     });
     fallback.classList.add('kit-switch--plain');
+    // what turning it on means, at the point of choosing
+    const fallbackNote = h('p', { class: 'hf-check-hint hf-fallback-note', id: 'hf-fallback-note' },
+      'If you turn this on, your words are processed by an automated service, not a person. ',
+      h('button', { type: 'button', class: 'hf-link', dataset: { test: 'fallback-details' }, onclick: () => privacySheet(dev, { focus: 'mallow' }) }, 'How this works'));
+    const sw = fallback.querySelector('[role="switch"]');
+    sw?.setAttribute('aria-describedby', [sw.getAttribute('aria-describedby'), 'hf-fallback-note'].filter(Boolean).join(' '));
 
     put(body,
       st.el,
@@ -120,8 +131,8 @@ export function release(dev, params = {}) {
         h('div', { class: 'hf-field' }, area, count),
         error,
         tags,
-        h('div', { class: 'hf-choices' }, consent, fallback),
-        h('div', { class: 'hf-actions' }, go,
+        h('div', { class: 'hf-choices' }, consent, fallback, fallbackNote),
+        h('div', { class: 'hf-actions' }, go, why,
           h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', dataset: { test: 'cancel-feeling' }, onclick: () => cancel() }, 'Cancel'))));
     sync();
     if (blocked) speech.say(inactive() ? 'Your account can’t release feelings right now.' : 'Your other feelings are still travelling. I’ll be here when one comes home.');
@@ -176,15 +187,17 @@ export function release(dev, params = {}) {
     speech.say('');
     const tint = feelColour(journey.label);
     const top = h('div', { class: 'hf-moment', role: 'status', 'aria-live': 'polite' }, h('p', { class: 'hf-line hf-line--moment' }));
-    put(body, top, st.el);
-    body.scrollTop = 0;
+    // the form fades away and the Mallow, holding your words, glides to the centre of the stage
+    await morph(body, st.el, () => { put(body, top, st.el); body.scrollTop = 0; });
     const rm = reducedMotion();
-    await wait(rm ? 0 : 420);
+    await wait(rm ? 0 : 260);
     // 1. the words gather into a glowing orb, just above the Mallow
-    const size = Math.round(Math.min(150, Math.max(96, el.clientWidth * 0.34)));
+    const size = Math.round(Math.min(180, Math.max(112, el.clientWidth * 0.42)));
     const target = handsOf(st.mallow, flight, size);
     target.y -= size * 0.55;
-    orb = new Orb({ size, tint, text: words, label: `Your feeling: ${words}` });
+    const all = words.split(/\s+/);
+    const shown = all.length > 12 ? `${all.slice(0, 12).join(' ')}…` : words;   // the first words, readably, inside the light
+    orb = new Orb({ size, tint, text: shown, label: `Your feeling: ${words}` });
     const flyer = h('div', { class: 'rl-flyer' });
     flyer.style.transform = `translate(${target.x}px, ${target.y}px) translate(-50%, -50%)`;
     flyer.append(orb.el);
@@ -217,7 +230,7 @@ export function release(dev, params = {}) {
     // 3. it's let go, and floats up through Hushfold with a thread of light
     play('release');
     st.mallow.release();
-    st.mallow.signature(0.9);
+    st.mallow.delight(0.9);
     orb.release();
     dev.atmo.bloom({ y: 0.32 });
     r.sky?.pan(320, { duration: 2800 });
@@ -231,25 +244,36 @@ export function release(dev, params = {}) {
 
   // --------------------------------------------------------------- sent --
   function sent(journey) {
+    // the moment's line stays where it is; the Mallow floats back up from where it was; the rest arrives
+    const prevLine = body.querySelector('.hf-line--moment');
+    const lineFrom = prevLine?.getBoundingClientRect();
+    const cs = getComputedStyle(st.el);
+    const stageFrom = { transform: cs.transform === 'none' ? 'none' : cs.transform, opacity: cs.opacity };
+    st.el.getAnimations().forEach((a) => a.cancel());
     setState('sent');
     dockSlot.hidden = false;
     dockSlot.replaceChildren(dock(dev, 'release'));
     cloud.el.hidden = true;
-    st.el.getAnimations().forEach((a) => a.cancel());
     r.sky?.pan(0, { duration: 3200 });
+    const first = h('h1', { class: 'hf-line hf-line--moment', 'data-autofocus': '' }, 'Your feeling is on its way.');
     const second = h('p', { class: 'hf-sub hf-sub--soft' }, 'Let’s see how someone else sees it.');
     put(body,
-      h('div', { class: 'hf-copy hf-copy--top', dataset: { test: 'release-sent' } },
-        h('h1', { class: 'hf-line', 'data-autofocus': '' }, 'Your feeling is on its way.'), second),
+      h('div', { class: 'hf-moment hf-moment--sent', dataset: { test: 'release-sent' } }, first, second),
       st.el,
       h('div', { class: 'hf-actions' },
         h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'follow-journey' }, onclick: () => dev.go('journey', { id: journey.id }) }, 'Follow its journey'),
         h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--block', dataset: { test: 'go-catch' }, onclick: () => dev.go('catch', {}, { replace: true }) }, 'Catch a feeling while you wait'),
         h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', dataset: { test: 'release-another' }, onclick: () => { compose(); body.scrollTop = 0; } }, 'Release another feeling')));
-    second.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 800, delay: 700, easing: CSS_EASE, fill: 'backwards' });
-    st.el.animate([{ transform: 'translateY(50px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 1100, delay: 300, easing: CSS_EASE, fill: 'backwards' });
-    rise([...body.querySelectorAll('.hf-actions > *')], { y: 12, delay: 900, stagger: 60 });
+    if (!reducedMotion()) {
+      const lineTo = first.getBoundingClientRect();
+      if (lineFrom) first.animate([{ transform: `translate(${lineFrom.left - lineTo.left}px, ${lineFrom.top - lineTo.top}px)` }, { transform: 'none' }], { duration: 900, easing: CSS_EASE });
+      second.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 800, delay: 700, easing: CSS_EASE, fill: 'backwards' });
+      st.el.animate([stageFrom, { transform: 'none', opacity: 1 }], { duration: 1400, easing: CSS_EASE });
+      dockSlot.animate([{ transform: 'translateY(18px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 700, delay: 600, easing: CSS_EASE, fill: 'backwards' });
+      rise([...body.querySelectorAll('.hf-actions > *')], { y: 12, delay: 900, stagger: 60 });
+    }
     st.mallow.cheer(0.6);
+    focusHeading(body);
   }
 
   compose();
