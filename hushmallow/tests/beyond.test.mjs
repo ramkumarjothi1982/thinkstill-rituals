@@ -434,7 +434,7 @@ test('the consent notice says it plainly (the one place automated processing is 
   for (const must of [/secure server/, /AI language model/, /Anthropic/, /Never your photos/, /stores nothing you write/, /doesn’t log your words/, /Not therapy or crisis support/, /'Accept'/, /'Not now'/, /Support lines/]) assert.match(src, must);
   // everything the client sends is told (review r3, blocking 3): the words and feeling, the kind of help
   // (intention), the lines already seen, the feedback buttons (never words), and the session's code + app version
-  for (const must of [/the feeling and the kind of help you pick/, /\(for another angle\) the lines you’ve seen/, /A feedback tap sends which button and what kind of angle it was, never your words/, /a random code for this phone, its version and device type/, /any invite code/, /Never your name or account/]) assert.match(src, must);
+  for (const must of [/the feeling and the kind of help you pick/, /\(for another angle\) the lines you’ve seen/, /Each angle request also carries the app’s language and a one-off random code, and every request carries this phone’s session code\./, /A feedback tap sends which button, which Mallow and what kind of angle it was \(and its version\), never your words/, /a random code for this phone, its version and device type/, /any invite code/, /Never your name or account/]) assert.match(src, must);
   const client = read('src/beyond/angle-client.js');
   for (const field of ['device_id', 'platform', 'app_version', 'invite', 'intention', 'previous_angles', 'rating', 'reasoning_pattern', 'interaction_type', 'mallow_character', 'prompt_version']) assert.match(client, new RegExp(field), `the client sends ${field} (and the notice says so)`);
   // on the card, "Not therapy" and the support link sit by the buttons (always in view), and a cue says when there is more to read
@@ -741,7 +741,10 @@ test('G1: the consent card says what the client really sends (every request body
   // …and each is told: words, feeling, kind of help, lines seen, language, request number; the session's code, version, device type, invite code
   for (const [field, words] of [['text', /your words/i], ['emotion', /the feeling/], ['intention', /the kind of help you pick/], ['previous_angles', /the lines you’ve seen/],
     ['locale', /the app’s language/], ['request_id', /a one-off random code/]]) assert.match(sent, words, `${field} is told`);
-  assert.match(sent, /A feedback tap sends which button and what kind of angle it was, never your words/);
+  // (review r6: the language and the request code ride on /v1/angle only; the session code on every request;
+  // feedback names the Mallow and the prompt version too)
+  assert.match(sent, /Each angle request also carries the app’s language and a one-off random code, and every request carries this phone’s session code\./);
+  assert.match(sent, /A feedback tap sends which button, which Mallow and what kind of angle it was \(and its version\), never your words/);
   assert.match(kept, /a random code for this phone, its version and device type \(and any invite code\)/);
   assert.doesNotMatch(JSON.stringify(srv.calls.map((x) => x.body)), /photo|image|data:/i);
 });

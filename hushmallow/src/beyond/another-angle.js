@@ -770,7 +770,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (res.status === 'care') { careMode(); return; }
       if (res.status === 'unclear') { subs?.clear(); dropThought(); unclear(); return; }
       // the server read a loss the words didn't name the app's way ("since Mum passed"): its lines, gently, no mechanic
-      if (res.status === 'ok' && res.scene && serverGrief(res.scene)) { griefMode({ scene: framesAsGuess(res.scene.subtitle_line_1) || framesAsGuess(res.scene.subtitle_line_2) ? null : res.scene, asked: true }); return; }
+      if (res.status === 'ok' && res.scene && serverGrief(res.scene, S.text)) { griefMode({ scene: framesAsGuess(res.scene.subtitle_line_1) || framesAsGuess(res.scene.subtitle_line_2) ? null : res.scene, asked: true }); return; }
       if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) {
         // a feeling said plainly is never pulled apart into "what happened" and "what your mind added", whoever wrote it
         scene = feelingGuard(res.scene, S.text, { emotion: S.emotion, exclude });

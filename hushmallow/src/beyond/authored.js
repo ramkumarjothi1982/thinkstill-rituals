@@ -16,8 +16,8 @@ import { detectPatterns, splitThought, matchScenarios, buildNextSteps, buildAngl
 import { GENERAL } from '../ultra/frameworks.js';
 import { PATTERNS, PATTERN_INTERACTION, INTERACTION_PATTERN, PATTERN_TO_AUTHORED, AUTHORED_TO_PATTERN, PATTERN_MALLOWS, mallowFor } from './vocab.js';
 import { AUTHORED_PAIRS, AUTHORED_ALT, GRIEF, FEELING } from './lines.js';
-import { bereavement, passedAlone } from './grief.js';
-import { feelingStatement, feelingClause } from './feelings.js';
+import { bereavement, passedAlone, livingLoss } from './grief.js';
+import { feelingStatement, feelingClause, feelingOpens } from './feelings.js';
 
 // strong cues the authored habits don't name (practical problems, fair anger, replaying)
 const CUES = {
@@ -30,9 +30,14 @@ const CUES = {
  * never the person's own fair anger: those words are set aside before the fair-anger cue is read.
  */
 const ANGRY_AT_ME = /\b(?:(?:so|really|very|quite|a bit|pretty|super) )?(?:angry|furious|fuming|livid|seething|mad|cross|annoyed|upset|pissed off|raging|irritated) (?:at|with) me\b/giu;
+/**
+ * "I feel humiliated" names a feeling of their own, not a wrong someone did ("he humiliated me in front of
+ * everyone" still is one): set aside, like someone's anger at them, before the fair-anger cue is read.
+ */
+const FEEL_HUMILIATED = /\bi(?:\s+(?:just\s+|really\s+)?(?:feel|felt)|['’]?m\s+(?:just\s+|really\s+)?feeling|['’]?ve\s+(?:been\s+feeling|felt)|\s+am\s+feeling)\s+(?:(?:so|really|very|quite|a bit|completely|totally|utterly|deeply)\s+)*humiliated\b/giu;
 /** The person's own fair anger in the words (not someone's anger at them). */
 export function fairAnger(text) {
-  return CUES.valid_anger.test(String(text ?? '').replace(ANGRY_AT_ME, ' '));
+  return CUES.valid_anger.test(String(text ?? '').replace(ANGRY_AT_ME, ' ').replace(FEEL_HUMILIATED, ' '));
 }
 /**
  * A loss (someone, or a pet, has died: grief.js reads only the words a person uses for a death, never
@@ -146,8 +151,9 @@ function split(text) {
   try { pieces = splitThought(text); } catch { pieces = []; }
   // a verdict on themselves ("I’m a horrible mother") is never "what happened": it is what the mind added
   pieces = pieces.map((p) => (p.guess !== 'interpretation' && HARSH.test(String(p.text || '')) ? { ...p, guess: 'interpretation' } : p));
-  // a feeling of their own ("I feel empty", "I can’t stop crying") is what is so, never what the mind added
-  pieces = pieces.map((p) => (feelingClause(p.text) && !HARSH.test(String(p.text || '')) ? { ...p, guess: 'fact', feeling: true } : p));
+  // a feeling of their own ("I feel empty", "I can’t stop crying", "I’m feeling unsafe") is what is so, never
+  // what the mind added (feelingOpens: a feeling word the list doesn't name still opens as one)
+  pieces = pieces.map((p) => (feelingOpens(p.text) && !HARSH.test(String(p.text || '')) ? { ...p, guess: 'fact', feeling: true } : p));
   const factP = pieces.find((p) => p.guess === 'fact') || (pieces.length > 1 ? pieces.find((p) => p.guess === 'unsure') : null);
   const lastP = pieces.length > 1 ? pieces[pieces.length - 1] : null;
   const guessP = pieces.find((p) => p.guess === 'interpretation' && p !== factP && readsAsGuess(p.text)) || (lastP && lastP !== factP && readsAsGuess(lastP.text) ? lastP : null);
@@ -164,7 +170,7 @@ function split(text) {
 const SELF_NOW = /^(?:(?:and|but|so|now|still) )?(?:i|i['’]ve|i['’]m|i am|i have|i had|i was|i feel|i felt|i keep|i can['’]?t|i cannot|i don['’]?t|i didn['’]?t|i haven['’]?t|i hadn['’]?t|i wasn['’]?t|i still|i just|i've)\b/iu;
 function readsAsGuess(piece) {
   const p = String(piece || '');
-  if (feelingClause(p) && !HARSH.test(p)) return false;
+  if (feelingOpens(p) && !HARSH.test(p)) return false;
   if (!SELF_NOW.test(p)) return true;
   return MINDY.test(p) || FUTURE.test(p) || EXTREME.test(p) || HARSH.test(p);
 }
@@ -459,7 +465,10 @@ function ownFactPair(fact, guess, allGuess, t) {
   const fits = (q) => !!q && q.length <= LINE_QUOTE;
   // a feeling is real, never "what happened" to be read one way or another; with nothing guessed beside it,
   // another scene comes first
-  if (feelingClause(f)) return fits(f) && fits(g) && !sameWords(f, g) ? [`“${f}” is real.`, `“${g}” is one way to read it.`] : null;
+  if (feelingOpens(f)) return fits(f) && fits(g) && !sameWords(f, g) && !feelingOpens(g) ? [`“${f}” is real.`, `“${g}” is one way to read it.`] : null;
+  // (a feeling is never the guess, whichever side the engine put it on)
+  if (feelingOpens(g)) return null;
+  if (allGuess && feelingOpens(all)) return null;
   if (fits(f) && fits(g) && !sameWords(f, g)) return [`“${f}” is what happened.`, `“${g}” is one way to read it.`];
   if (allGuess && fits(all)) return [`“${all}” is one way to read what happened.`, 'What you know for sure is probably smaller than this thought.'];
   if (fits(g) && !sameWords(g, f)) return ['What happened is one thing.', `“${g}” is one way to read it.`];
@@ -518,10 +527,13 @@ export function feelingOf(text) {
   // 'passed' alone after a person, with no exam or pride in the words: answered gently, never as a death and
   // never as a game ("“My dad passed last year” is what happened" would make light of a death)
   if (passedAlone(t)) return { kind: 'heavy' };
+  // someone still alive but going ("I lost my mum to dementia, she doesn’t know who I am"): not a death, and
+  // never a game ("“she doesn’t know who I am” is one way to read it" would make light of it)
+  if (livingLoss(t)) return { kind: 'heavy' };
   let pieces = [];
   try { pieces = splitThought(t); } catch { pieces = []; }
   const feels = pieces.filter((p) => feelingClause(p.text));
-  if (!feels.length || pieces.some((p) => !feelingClause(p.text) && p.guess === 'interpretation')) return null;
+  if (!feels.length || pieces.some((p) => !feelingOpens(p.text) && p.guess === 'interpretation')) return null;
   const said = t.replace(/\b(?:tired|sick|fed up|done) (?:of|with) (?:everything|it all)\b/giu, ' ');
   if (MINDY.test(said) || FUTURE.test(said) || EXTREME.test(said) || BLAME.test(said) || CUES.rumination.test(said) || CUES.practical_problem.test(said)) return null;
   try { if (detectPatterns(t).length) return null; } catch { return null; }

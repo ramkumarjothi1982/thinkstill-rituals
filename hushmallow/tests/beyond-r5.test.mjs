@@ -51,6 +51,12 @@ const LOSSES = [
   ['Ever since Dad died I can’t sleep.', 'loss'], ['Mum died two years ago and it still hurts.', 'loss'], ['I’m going to a funeral tomorrow and dreading it.', 'grief'],
   ['Today is the anniversary of the day she died.', 'loss'], ['My best friend passed away in a car accident.', 'loss'], ['I lost my son two years ago.', 'loss'],
   ['Rest in peace Nana.', 'loss'], ['My grandad’s death anniversary is today.', 'loss'], ['I miss my dad, he’s gone now.', 'loss'],
+  // review r6: the contraction stuck to the person, boy / girl / ex, "the death of", "losing", "watching … die"
+  ['My dad\'s dead.', 'loss'], ['My dad’s dead.', 'loss'], ['My mum\'s dead and I miss her.', 'loss'], ['Mum\'s died.', 'loss'], ['My dog\'s died.', 'loss'], ['My dog’s died.', 'loss'],
+  ['My grandad\'s just died.', 'loss'], ['My nan\'s dead.', 'loss'], ['Dad\'s been dead a year now.', 'loss'], ['Our cat\'s been put down.', 'loss'],
+  ['My little boy died in hospital.', 'loss'], ['My little girl died.', 'loss'], ['My baby boy died.', 'loss'], ['My boy died last year.', 'loss'], ['My ex died…', 'loss'],
+  ['After the death of my father…', 'loss'], ['Losing my dad was the hardest thing.', 'loss'], ['My best friend\'s dead.', 'loss'], ['My husband\'s passed.', 'loss'],
+  ['Watching my grandma die was the worst thing.', 'loss'], ['My mum\'s passed.', 'loss'],
   ['My grandmother, who I was really close to, died last week.', 'loss'], ['My nan who I loved so much passed away.', 'loss'], ['I wish my dad hadn’t died.', 'loss'],
   ['My best friend Sam died in the summer.', 'loss'], ['We scattered Grandad’s ashes on Sunday.', 'grief'], ['My dog Max was put down on Friday.', 'loss'],
   ['My grandad has not long died.', 'loss'], ['MY DOG DIED', 'loss'], ['I lost my husband to a heart attack.', 'loss'], ['My parents both died when I was young.', 'loss'],
@@ -88,6 +94,9 @@ const NOT_LOSSES = [
   // gone somewhere, not gone
   'My dad’s gone to work and I’m alone with the baby.', 'My girlfriend is gone now, she left me for someone else.', 'She’s gone to her mum’s for the weekend.', 'My dad left. He’s gone now.',
   'He’s gone now, thank god, the party was too loud.', 'The anniversary of our first date is coming up and he forgot.', 'I buried my face in my hands.',
+  // review r6: lost, but not to a death (moved, remarried, a missing pet, still alive)
+  'I lost my sister when she moved to Spain.', 'I lost my dad when he remarried and stopped calling.', 'I lost my cat last night and I’ve put posters up everywhere.',
+  'I lost my dog yesterday, he slipped his lead in the woods.', 'I lost my mum to dementia, she doesn’t know who I am.',
 ];
 
 test('r5.1: a death the person names is a bereavement (a person or a pet; died, passed away, lost my…, RIP, a grave, a pet put down)', () => {
@@ -114,6 +123,10 @@ test('r5.1: a false alarm never says someone died (no grief lines, no "Missing t
 
 test('r5.1: a loss still never plays a mechanic or a fact/assumption split, and its lines never name a death themselves', () => {
   for (const [text] of LOSSES) {
+    // every round of the authored path (one: a loss has no other angle), and none of them a game
+    const all = rounds(text);
+    assert.equal(all.length, 1, text);
+    for (const { scene } of all) { assert.equal(scene.grief, true, text); assert.equal(scene.mechanic, null, text); assert.equal(scene.interaction_type, null, text); }
     const s = authoredScene(text);
     assert.equal(s.grief, true, text);
     assert.equal(s.mechanic, null, text);
@@ -150,7 +163,7 @@ test('r5.1: grief in the orchestrator: gentle first, the server may answer with 
   const start = src.slice(src.indexOf('async function startAngle('), src.indexOf('async function waitingLines('));
   assert.match(start, /if \(bereavement\(S\.text\)\) return griefMode\(\);/);
   assert.ok(start.indexOf('bereavement(S.text)') < start.indexOf('spawnThought()'));
-  assert.match(start, /if \(res\.status === 'ok' && res\.scene && serverGrief\(res\.scene\)\) \{ griefMode\(\{ scene: framesAsGuess\(res\.scene\.subtitle_line_1\) \|\| framesAsGuess\(res\.scene\.subtitle_line_2\) \? null : res\.scene, asked: true \}\); return; \}/);
+  assert.match(start, /if \(res\.status === 'ok' && res\.scene && serverGrief\(res\.scene, S\.text\)\) \{ griefMode\(\{ scene: framesAsGuess\(res\.scene\.subtitle_line_1\) \|\| framesAsGuess\(res\.scene\.subtitle_line_2\) \? null : res\.scene, asked: true \}\); return; \}/);
   assert.equal(framesAsGuess('What happened is the part that actually happened.'), true);
   assert.equal(framesAsGuess('A year is not a deadline for missing your dad.'), false);
   // the gentle lines
@@ -198,6 +211,11 @@ const FEELINGS = [
   ['I’m not okay.', 'low'], ['I feel guilty for saying no.', 'guilty'], ['I keep crying for no reason.', 'crying'], ['I feel on edge all the time.', 'anxious'],
   ['I’m sick of it all.', 'tired'], ['Honestly I just feel numb.', 'low'], ['I feel bad about it.', 'guilty'], ['I feel hopeless.', 'low'], ['I feel anxious and I don’t know why.', 'anxious'],
   ['I feel numb since the breakup.', 'low'], ['I feel lonely at uni.', 'lonely'], ['I feel sad since my sister moved away.', 'low'], ['I feel sad after he left me.', 'low'],
+  // review r6: the contraction after "I" ("I'm feeling", "I've been feeling", "I've felt", "im feeling"), and feeling words the list lacked
+  ['I\'m feeling really low.', 'low'], ['I’m feeling really low.', 'low'], ['I\'m feeling lonely.', 'lonely'], ['I\'m feeling so anxious.', 'anxious'], ['im feeling sad', 'low'],
+  ['I’ve been feeling so lonely.', 'lonely'], ['I\'ve been feeling empty.', 'low'], ['I\'ve felt numb for weeks.', 'low'],
+  ['I feel jealous', 'low'], ['I feel jealous of my sister', 'low'], ['I feel insecure', 'low'], ['I feel helpless', 'low'], ['I feel stuck', 'low'], ['I feel trapped', 'low'],
+  ['I feel disappointed in myself', 'low'], ['I feel sick with nerves', 'anxious'],
 ];
 const NOT_FEELINGS = [
   'I feel like everyone hates me.', 'I feel like a failure.', 'I feel anxious about tomorrow’s interview.', 'I feel like nobody cares about me.', 'I’m a terrible person.',
