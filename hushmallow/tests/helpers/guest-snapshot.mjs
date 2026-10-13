@@ -16,7 +16,9 @@ export function todayGuestKeys(now = Date.now()) {
     'hm2:hushfold.rotation': JSON.stringify({ v: 1, bags: { worlds: ['static-storm'] } }),
     'hm2:hushfold.lines': JSON.stringify({ v: 1, seen: ['hello'] }),
     'hm2:garden': JSON.stringify({ v: 1, skills: { 'slowing-down': { savedAt: now - 86_400_000, lastPractised: now - 7200_000, practised: 3, fromWorld: 'static-storm', mallow: 'glitzi' } } }),
-    'hm2:beyond.consent': JSON.stringify({ v: 1, choice: 'yes', at: '2026-10-01' }),
+    // (Another Angle's notice is at version 2 since G1 went live, as the app writes it now; a version-1 choice is
+    // asked again by design: src/beyond/consent.js CONSENT_VERSION, tests/beyond-*.test.mjs)
+    'hm2:beyond.consent': JSON.stringify({ v: 2, choice: 'yes', at: '2026-10-01' }),
     'hm2:beyond.device': JSON.stringify(GUEST_DEVICE_ID),
     'hm2:beyond.session': JSON.stringify({ token: 'angle-session-token', exp: now + 3600_000, endpoint: null }),
     'hm2:beyond.feedback': JSON.stringify({ reframe: { helped: 2 } }),
