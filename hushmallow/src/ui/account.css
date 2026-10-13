@@ -30,7 +30,9 @@
 .hm-account p.hm-auth-hint { margin: 0; }
 .hm-account p.hm-auth-hint:empty, .hm-account p.hm-account-consent:empty { display: none; }
 .hm-auth-optional { color: var(--text-3); font-weight: 500; }
-.hm-account-strong { color: var(--text-1); font-weight: 700; overflow-wrap: break-word; }
+/* an address stays in one piece: it moves to the next line whole, and only an address wider than the card breaks (at its <wbr>s after "@" and dots) */
+.hm-account-strong { display: inline-block; max-width: 100%; overflow-wrap: break-word; }
+.hm-account-strong strong { color: var(--text-1); font-weight: 700; }
 /* the word to type for Delete account: plainly the thing to type */
 .hm-account-word { color: var(--text-1); font-weight: 800; letter-spacing: .01em; }
 .hm-account .hm-auth-lede { overflow-wrap: break-word; }   /* an email breaks at its <wbr>s first */

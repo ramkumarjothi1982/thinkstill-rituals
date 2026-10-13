@@ -39,7 +39,7 @@ import { h, iconBtn, toast } from '../ui.js';
 import { type } from '../../ui/type.js';
 import { brandTagline } from '../../brand.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
-import { createAuthMallow, pickMallow } from '../../auth/mallow.js';
+import { createAuthMallow } from '../../auth/mallow.js';
 import { checkEmail, checkPassword, friendlyError, passwordStrength, MESSAGES } from '../../auth/errors.js';
 import * as VM from '../../auth/view-model.js';
 
@@ -97,6 +97,8 @@ export default function account(app, params = {}) {
   const clearTimers = () => { for (const t of timers) { clearTimeout(t); clearInterval(t); } timers.clear(); };
   /** The full sign-in API (loaded once; supabase-js itself loads at the first server call). */
   const api = () => (client ? Promise.resolve(client) : auth.load().then((c) => (client = c)));
+  /** The Mallow greeting this person now, chosen the way the Hushfold chooses it (src/auth/view-model.js homeMallow). */
+  const shownMallow = () => VM.homeMallow({ ids: MALLOW_IDS, statePick: app.state?.homeMallow, prefsPick: app.prefs?.get?.('mallow'), onStage: app.world?.mallowId });
 
   // ------------------------------------------------------------- frame --
   const backBtn = iconBtn('back', 'Back', () => goBack());
@@ -161,9 +163,11 @@ export default function account(app, params = {}) {
     h('button', { type: t, class: `hm-auth-btn ${cls}`.trim(), 'data-act': act, onclick, disabled }, label);
   const linkBtn = (label, onclick, act = null) => h('button', { type: 'button', class: 'hm-auth-link', 'data-act': act, onclick }, label);
   const hint = (text, cls = '') => h('p', { class: `hm-auth-hint ${cls}`.trim() }, text);
-  // an email address may break after "@" or a dot, never mid-word
-  const strong = (text) => h('strong', { class: 'hm-account-strong', translate: 'no' },
-    ...String(text).split(/(?<=[@.])/).flatMap((part, i) => (i ? [h('wbr'), part] : [part])));
+  // an email address stays in one piece (account.css: it moves to the next line whole); only one wider
+  // than the card breaks, after "@" or a dot, never mid-word. tail: the punctuation that follows it, kept with it
+  const strong = (text, tail = '') => h('span', { class: 'hm-account-strong' },
+    h('strong', { translate: 'no' }, ...String(text).split(/(?<=[@.])/).flatMap((part, i) => (i ? [h('wbr'), part] : [part]))),
+    tail ? h('span', { class: 'hm-account-tail' }, tail) : null);
   const section = (label, ...kids) => h('section', { class: 'hm-account-section', 'aria-label': label }, h('h2', { class: 'hm-account-eyebrow' }, label), ...kids);
   const list = (items) => h('ul', { class: 'hm-account-list' }, ...items.map((t) => h('li', {}, t)));
 
@@ -217,14 +221,17 @@ export default function account(app, params = {}) {
   function form({ fields, submit, busy, onSubmit, before = [], after = [], act = 'submit', danger = false, quiet = false }) {
     const errEl = h('p', { class: 'hm-auth-error', role: 'alert', id: uid('err') });
     const submitBtn = btn(submit, null, { cls: danger ? 'danger' : quiet ? 'small' : 'primary', type: 'submit', act });
+    const actionsEl = h('div', { class: 'hm-auth-actions' }, submitBtn, ...after);
     const f = h('form', { class: 'hm-auth-form', novalidate: true },
-      ...before, ...fields.map((x) => x.wrap), errEl, h('div', { class: 'hm-auth-actions' }, submitBtn, ...after));
-    const clear = () => { errEl.replaceChildren(); for (const x of fields) { x.input.removeAttribute('aria-invalid'); x.input.setAttribute('aria-describedby', x.hintEl.id); } };
+      ...before, ...fields.map((x) => x.wrap), errEl, actionsEl);
+    const clear = () => { errEl.replaceChildren(); actionsEl.before(errEl); for (const x of fields) { x.input.removeAttribute('aria-invalid'); x.input.setAttribute('aria-describedby', x.hintEl.id); } };
     function fail(error, action) {
       const e = error || friendlyError({}, 'unknown');
+      const target = fields.find((x) => x.name === e.field) || (e.field === 'password' ? fields.find((x) => x.name.includes('password')) : null);
+      // a field's error sits right under that field (and its hint); anything else just above the buttons
+      if (target) target.hintEl.after(errEl); else actionsEl.before(errEl);
       errEl.replaceChildren(e.message || MESSAGES.unknown);
       if (action) errEl.append(' ', linkBtn(action.label, action.run, action.act));
-      const target = fields.find((x) => x.name === e.field) || (e.field === 'password' ? fields.find((x) => x.name.includes('password')) : null);
       if (target) {
         target.input.setAttribute('aria-invalid', 'true');
         target.input.setAttribute('aria-describedby', `${target.hintEl.id} ${errEl.id}`);
@@ -331,7 +338,7 @@ export default function account(app, params = {}) {
     preload();
     return {
       title: 'Check your email',
-      lede: ['We’ve sent a link to ', strong(o.email || 'your email'), '. Open it on this phone or any other to confirm your account.'],
+      lede: ['We’ve sent a link to ', strong(o.email || 'your email', '.'), ' Open it on this phone or any other to confirm your account.'],
       body: [
         hint('It can take a minute. If it isn’t there, look in spam or junk.', 'hm-auth-center'),
         h('div', { class: 'hm-auth-actions' },
@@ -404,7 +411,7 @@ export default function account(app, params = {}) {
     }, 'resend-reset');
     return {
       title: 'Check your email',
-      lede: ['If there’s an account for ', strong(o.email || 'that email'), ', a link to choose a new password is on its way. It works on any device.'],
+      lede: ['If there’s an account for ', strong(o.email || 'that email', ','), ' a link to choose a new password is on its way. It works on any device.'],
       body: [
         hint('It can take a minute. If it isn’t there, look in spam or junk.', 'hm-auth-center'),
         h('div', { class: 'hm-auth-actions' },
@@ -417,16 +424,20 @@ export default function account(app, params = {}) {
     };
   };
 
-  V['guest-choice'] = () => ({
+  V['guest-choice'] = (o) => {
+    // which account this is, said plainly (a link or a shared phone can sign in someone other than you expected)
+    const who = o.email || auth.user()?.email || null;
+    return {
     title: 'Keep this phone’s things?',
-    lede: 'This phone has favourites, settings or a Memory Garden from before you signed in. Keep a copy with your account on this phone?',
+    lede: [...(who ? ['You’re signed in as ', strong(who, '.'), ' '] : []), 'This phone has favourites, settings or a Memory Garden from before you signed in. Keep a copy with your account on this phone?'],
     body: [
       list(['Keep: your account starts with them here. Nothing is uploaded.', 'Not now: your account starts fresh. You can bring them in later from this screen.', 'Either way, the guest’s own copy stays on this phone for when you’re signed out.']),
       h('div', { class: 'hm-auth-actions' },
         btn('Keep them with my account', (e) => { e.currentTarget.disabled = true; choose('keep'); }, { cls: 'primary', act: 'keep' }),
         btn('Not now', (e) => { e.currentTarget.disabled = true; choose('fresh'); }, { act: 'fresh' })),
     ],
-  });
+    };
+  };
 
   V.expired = () => ({
     title: 'You’ve been signed out', lede: 'Your session on this phone ended. Your things are safe, and the guest’s are just as you left them.',
@@ -454,8 +465,9 @@ export default function account(app, params = {}) {
     });
     nameForm.form.classList.add('hm-account-inline');
 
-    // home Mallow
-    const current = pickMallow(MALLOW_IDS, acct.profile?.homeMallow, app.prefs.get('mallow'));
+    // home Mallow: the one greeting this person now (the same chain as the Mallow above the card and the Hushfold)
+    const now = shownMallow();
+    const current = now.id;
     const picker = h('div', { class: 'hm-account-mallows', role: 'radiogroup', 'aria-label': 'Home Mallow' },
       ...MALLOW_IDS.map((id) => {
         const m = MALLOWS[id];
@@ -471,7 +483,7 @@ export default function account(app, params = {}) {
         });
         return b;
       }));
-    const pickedName = h('p', { class: 'hm-auth-hint', id: uid('mallow') }, `${MALLOWS[current].name} greets you here and on the Hushfold.`);
+    const pickedName = h('p', { class: 'hm-auth-hint', id: uid('mallow') }, VM.homeMallowLine(MALLOWS[current].name, now.chosen));
     picker.setAttribute('aria-describedby', pickedName.id);
 
     // the two opt-in switches
@@ -540,7 +552,8 @@ export default function account(app, params = {}) {
       if (since && sinceEl) sinceEl.textContent = `With hushmallow since ${since}.`;
       const nameInput = bodyEl.querySelector('[data-field="displayName"] input');
       if (nameInput && !nameInput.value && p.profile.displayName) nameInput.value = p.profile.displayName;
-      if (p.profile.homeMallow && p.profile.homeMallow !== mallow?.id && !app.prefs.get('mallow')) pickHome(p.profile.homeMallow, rows.picker, { save: false });
+      // the account's home Mallow (chosen on another device) comes here only while this device has not chosen one
+      if (p.profile.homeMallow && !shownMallow().chosen) pickHome(p.profile.homeMallow, rows.picker, { save: 'here' });
     }
     if (k.ok) {
       acct.consents = k.consents;
@@ -586,15 +599,16 @@ export default function account(app, params = {}) {
     say(statusEl.textContent);
   }
 
+  /** save: true (a pick here: this device and the account), 'here' (the account's own pick, now on this device too). */
   function pickHome(id, picker, { save = true } = {}) {
     if (!MALLOWS[id]) return;
     for (const b of picker.querySelectorAll('[data-mallow]')) { const on = b.dataset.mallow === id; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; }
     const hintEl = picker.parentElement?.querySelector(`#${picker.getAttribute('aria-describedby')}`);
-    if (hintEl) hintEl.textContent = `${MALLOWS[id].name} greets you here and on the Hushfold.`;
+    if (hintEl) hintEl.textContent = VM.homeMallowLine(MALLOWS[id].name, true);
     mallow?.setId(id);
-    if (!save) return;
     app.state.homeMallow = id;
     app.prefs.set('mallow', id);
+    if (save !== true) return;
     app.haptic?.('light');
     api().then((a) => a.profile.update({ homeMallow: id })).then((r) => { if (r?.ok) acct.profile = { ...(acct.profile || {}), homeMallow: id }; }).catch(() => {});
   }
@@ -673,7 +687,7 @@ export default function account(app, params = {}) {
     });
     return {
       title: 'Enter the code',
-      lede: ['You’ve been signed in here for more than a day, so for your safety we’ve also emailed a 6‑digit code to ', strong(o.email || u.email || 'your email'), '.'],
+      lede: ['You’ve been signed in here for more than a day, so for your safety we’ve also emailed a 6‑digit code to ', strong(o.email || u.email || 'your email', '.')],
       body: [f.form],
     };
   };
@@ -743,7 +757,7 @@ export default function account(app, params = {}) {
   /** Signed in (this page is still a guest's): ask about the guest things, or go straight in. */
   function signedIn(r) {
     mood('happy');
-    if (r.needsGuestChoice) { later(() => go('guest-choice', {}, { replace: true }), reduced() ? 0 : 650); return { ok: true, hold: true }; }
+    if (r.needsGuestChoice) { later(() => go('guest-choice', { email: r.email || '' }, { replace: true }), reduced() ? 0 : 650); return { ok: true, hold: true }; }
     later(() => client.enter('#account'), reduced() ? 150 : 800);
     return { ok: true, hold: true };
   }
@@ -836,7 +850,7 @@ export default function account(app, params = {}) {
       if (left) return;
       el.style.visibility = '';
       const prefs = app.prefs;
-      mallow = createAuthMallow(mallowEl, { id: pickMallow(MALLOW_IDS, prefs.get('mallow'), app.state?.homeMallow, app.world?.mallowId), reducedMotion: reduced(), lowStim: !!prefs.get('lowStim') });
+      mallow = createAuthMallow(mallowEl, { id: shownMallow().id, reducedMotion: reduced(), lowStim: !!prefs.get('lowStim') });
       lastStatus = auth?.enabled ? auth.status() : 'off';
       if (auth?.enabled && auth.status() === 'signed-in') api().catch(() => {});
       const first = VM.initialView({ enabled: !!auth?.enabled, status: lastStatus, pendingGuestChoice: !!auth?.pendingGuestChoice, view: params.view });

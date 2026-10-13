@@ -4,7 +4,7 @@
 // 'home' is the Hushfold (src/app/scenes/hushfold.js); the old home screen
 // stays reachable as 'classic' for QA and rollback.
 
-import { authBoot, createAuthHandle, NOTICE_TEXT } from '../auth/boot.js';
+import { authBoot, createAuthHandle, NOTICE_TEXT, noticeText } from '../auth/boot.js';
 import { createPrefs } from './prefs.js';
 import { createEntitlements } from './entitlements.js';
 import { createRecommender } from '../engine/recommend.js';
@@ -75,14 +75,18 @@ const authSafeNow = () => {
   const top = stack[stack.length - 1]?.name;
   return CALM_SCENES.includes(top) || (top === 'home' && safeToUpdate());
 };
+// what this page says when it did not ask for the reload itself: an expired session, or another tab
+// of this device that deleted the account, signed out removing its things, or removed this phone's copy
+const LATER_NOTICE = { expired: 'expired', 'deleted-elsewhere': 'deleted', 'removed-elsewhere': 'signed-out', 'cleared-elsewhere': 'device-cleared' };
 app.auth = createAuthHandle(AUTH, {
   onReload: ({ urgent, hash, reason }) => {
     authReload = { hash };
+    const kind = LATER_NOTICE[reason];
     if (urgent || authSafeNow()) {
-      // an expired session: the calm line shows once, after the reload
-      if (reason === 'expired') { try { sessionStorage.setItem('hm2:auth.notice', 'expired'); } catch { /* no line then */ } }
+      // the calm line shows once, after the reload
+      if (kind) { try { sessionStorage.setItem('hm2:auth.notice', kind); } catch { /* no line then */ } }
       reloadForAuth();
-    } else if (reason === 'expired') toast(NOTICE_TEXT.expired, 4200);   // say it now; the reload waits for a calm moment
+    } else if (kind) toast(NOTICE_TEXT[kind], 4200);   // say it now; the reload waits for a calm moment
   },
 });
 async function checkVersion() {
@@ -254,7 +258,8 @@ async function boot() {
 
 /** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */
 function afterAuthBoot() {
-  if (AUTH.notice && NOTICE_TEXT[AUTH.notice]) setTimeout(() => toast(NOTICE_TEXT[AUTH.notice], 3600), 500);
+  const said = AUTH.notice ? noticeText(AUTH.notice, AUTH.ns) : null;   // an arrival names the account (shortened)
+  if (said) setTimeout(() => toast(said, 3600), 500);
   // /#account (an email link, a bookmark) opens the account over the Hushfold, so Back comes home;
   // a first sign-in on this device opens it too, to ask once about this device's guest things
   if (AUTH.deepLink === 'account' || AUTH.guestChoice) app.go('account', { arrived: AUTH.notice || null });
