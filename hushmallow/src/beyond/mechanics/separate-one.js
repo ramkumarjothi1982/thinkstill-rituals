@@ -9,13 +9,18 @@
 
 import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, tintFor, TAU, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
+import { framingAllowed } from '../backstop.js';
 
 export const id = 'separate_one';
 const MAX_COUNT = 15;
 const LATER = ['#ffd98a', '#9fe8ff', '#b9a6ff', '#ffc0e6', '#a8f0d8', '#ffe9b0'];
 
 export function mount(ctx) {
-  const L = MECHANIC_LINES[id];
+  // the gate (backstop.js, review r8): its own lines read one moment as "every time", so only with an interpretive marker of their
+  // own; a feeling's or a stated event's kind lines (ctx.scene.feeling) may always play
+  if (!ctx.scene?.feeling && !framingAllowed(ctx.text)) throw new Error(`${id}: never for these words`);
+  // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
+  const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;
   const rm = () => ctx.reducedMotion();
   let resolve;

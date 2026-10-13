@@ -11,7 +11,10 @@
 //
 // Each bowl's name is tied to its bowl (above it; below the lower pair on a
 // short phone) and never drifts towards another; the words ride on the slab itself,
-// so nothing floats over the pile the person has to drag.
+// so nothing floats over the pile the person has to drag. The names are fixed (nothing
+// moves them: the slab and its words make way), a slab put in a bowl sits in it, narrower
+// than the bowl and on the side away from its name, and the side bowls sit far enough
+// below the top pair that a side name is always clearly nearer its own bowl's rim.
 
 import { Blob, drawGlow, drawJelly, clamp, approach, rgba, LIGHT, Motes, blinkAt, TAU, Timers, RectList, roundRect, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
@@ -25,7 +28,8 @@ const PLACE_COLOURS = ['#7fe7ff', '#b59cff', '#ff9ad5', '#ffd98a'];
 const ROWS = [[-1, 0], [1, 0], [0, 0], [0, 1]];
 
 export function mount(ctx) {
-  const L = MECHANIC_LINES[id];
+  // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
+  const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;
   const rm = () => ctx.reducedMotion();
   let resolve;
@@ -50,17 +54,26 @@ export function mount(ctx) {
   });
   const weights = [slab, ...small];   // the slab first (lowest on the pile)
   // the bowls' names stay with their bowls (they claim their place first, and only lean a little)
-  const places = L.labels.places.map((label, i) => ({ label, i, count: 0, glow: 0, tag: ctx.tags.add(label, { kind: 'label', colour: PLACE_COLOURS[i], priority: 2, group: 'bowls' }) }));
+  // (fixed, and first: the slab, its words and the person's words make way for a bowl's name, never the reverse)
+  const places = L.labels.places.map((label, i) => ({ label, i, count: 0, glow: 0, tag: ctx.tags.add(label, { kind: 'label', colour: PLACE_COLOURS[i], priority: 3, fixed: true, group: 'bowls' }) }));
   const words = SHORT ? null : ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: 230 });
   let finished = false, warned = false, moves = 0;
   const t0 = performance.now();
-  const G = { tx: 0, ty: 0, pr: 30, short: SHORT, pos: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], top: [false, true, true, false] };
+  const G = { tx: 0, ty: 0, pr: 30, short: SHORT, name: 20, pos: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], top: [false, true, true, false] };
+  // the slab's look in a bowl: its words a little smaller and narrower, so it fits the bowl and never covers it
+  const SLAB_MAX = slabTag.el.style.maxWidth;
+  let slabInBowl = false;
   const slotN = new Int8Array(4);
   const bodiesL = new RectList(), avoidL = new RectList();
 
+  /** The slab's height in a bowl: three lines of its words at the bowl's width, or more when it really is taller
+   * (a constant, so the bowls never move when the slab goes into one). */
+  function slabBowlH() { return Math.max(R * 0.8, 3 * 15.4 + 12, slabInBowl ? slab.hh : 0); }
   function geometry() {
     const A = ctx.area();
     G.tx = A.x + A.w / 2;
+    // a name sits 7px clear of its bowl's rim (the rim's top is 0.32 × the bowl's size above its centre)
+    G.name = clamp(Math.min(A.w * 0.12, A.h * 0.15), 28, 44) * 0.32 + 7;
     if (SHORT) {
       const pr = G.pr = clamp(Math.min(A.w * 0.12, A.h * 0.15), 28, 44);
       // the top pair carry their names above them, the lower pair below: the pile in the middle stays clear
@@ -72,9 +85,14 @@ export function mount(ctx) {
     }
     const pr = G.pr = clamp(Math.min(A.w * 0.12, A.h * 0.15), 28, 44);
     // every bowl carries its name above it (below would put the side names beside the pile), so the side two
-    // sit low enough for their names to clear the top two
-    // (far enough below the top pair that a side name is always nearer its own bowl than the one above it)
-    const yTop = A.y + 38 + pr * 0.45, ySide = A.y + Math.max(A.h * 0.46, 120 + pr * 0.9);
+    // sit low enough for their names to clear the top two: under a top bowl is its rim, or a slab sitting in it
+    // (up to three lines of words); then a clear gap, the side name, and its own bowl just under it. So a side
+    // name is always much nearer its own bowl's rim (7px) than anything above it (review r4: it was 12px from
+    // the Timing bowl's rim and 23px from its own)
+    const lh = Math.max(24, ...places.map((p) => p.tag.h || 0));
+    const yTop = A.y + Math.max(38 + pr * 0.45, lh + G.name + 6);
+    const below = Math.max(pr * 0.52, 0.8 * slabBowlH());
+    const ySide = Math.max(A.y + Math.max(A.h * 0.46, 120 + pr * 0.9), yTop + below + 22 + lh + G.name);
     G.pos[0].x = A.x + pr + 12; G.pos[0].y = ySide;
     G.pos[1].x = A.x + A.w * 0.29; G.pos[1].y = yTop;
     G.pos[2].x = A.x + A.w * 0.71; G.pos[2].y = yTop;
@@ -106,12 +124,21 @@ export function mount(ctx) {
     for (const s of weights) {
       if (s.place < 0 || s.press) continue;
       const p = G.pos[s.place];
-      if (s === slab) { s.hx = clamp(p.x, A.x + slab.w / 2 + 2, A.x + A.w - slab.w / 2 - 2); s.hy = p.y + G.pr * 0.02; continue; }
+      // the slab sits in its bowl on the side away from the bowl's name (below a name above it, above a name
+      // below it), so the name always reads as the bowl's and the slab never covers it
+      if (s === slab) { s.hx = clamp(p.x, A.x + slab.w / 2 + 2, A.x + A.w - slab.w / 2 - 2); s.hy = p.y + slab.hh * (G.top[s.place] ? 0.3 : -0.3); continue; }
       const j = slotN[s.place]++;
       const others = places[s.place].count - (slab.place === s.place ? 1 : 0);
-      // small weights sit side by side in the bowl (on the slab, when the slab went there too)
+      if (slab.place === s.place) {
+        // the slab went there too: the small ones wait beside it, on the side towards the middle of the screen
+        const dir = slab.x < G.tx ? 1 : -1;
+        s.hx = slab.hx + dir * (slab.w / 2 + s.r * (1.2 + j * 2.1));
+        s.hy = slab.hy;
+        continue;
+      }
+      // small weights sit side by side in the bowl
       s.hx = p.x + (j - (others - 1) / 2) * s.r * 2.1;
-      s.hy = slab.place === s.place ? p.y - slab.hh / 2 - s.r * 0.6 : p.y + G.pr * 0.08 - j;
+      s.hy = p.y + G.pr * 0.08 - j;
     }
   }
   homes();
@@ -187,8 +214,17 @@ export function mount(ctx) {
   function frame(dt, t) {
     TM.step(dt);
     const R_ = rm();
-    // the slab is as big as the words it carries (measured once they're laid out)
-    slab.w = Math.max(R * 2.2, slabTag.w + 26); slab.hh = Math.max(R * 0.95, slabTag.h + 14); slab.r = slab.hh / 2;
+    // the slab is as big as the words it carries (measured once they're laid out); in a bowl it is no wider than
+    // the bowl (its words set a little smaller and wrap), so the bowl still shows round it
+    const inBowl = slab.place >= 0 && !slab.press;
+    if (inBowl !== slabInBowl) {
+      slabInBowl = inBowl;
+      slabTag.el.classList?.toggle('inbowl', inBowl);
+      slabTag.el.style.maxWidth = inBowl ? `${Math.round(G.pr * 2 - 10)}px` : SLAB_MAX;
+      slabTag.invalidate?.();
+    }
+    slab.w = inBowl ? Math.min(G.pr * 2 + 6, Math.max(R * 1.4, slabTag.w + 16)) : Math.max(R * 2.2, slabTag.w + 26);
+    slab.hh = Math.max(inBowl ? R * 0.8 : R * 0.95, slabTag.h + (inBowl ? 12 : 14)); slab.r = slab.hh / 2;
     homes();
     const weight = onPile / N;
     // bowls of light
@@ -209,10 +245,9 @@ export function mount(ctx) {
       g.beginPath(); g.arc(0, 0, G.pr * 0.92, 0, TAU); g.fill();
       g.restore();
       if (yours && p.count >= YOURS_CAP) { g.globalAlpha = 0.5; g.strokeStyle = '#ffe9b0'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(pos.x, pos.y + G.pr * 0.1, G.pr * 1.15, G.pr * 0.5, 0, 0, TAU); g.stroke(); g.globalAlpha = 1; }
-      // the name: above a top bowl, below a side one; tied to its own bowl
-      // (a clear gap above the bowl, so the collision pass never needs to nudge a name off its own bowl)
-      if (G.top[p.i]) p.tag.at(pos.x, pos.y - G.pr * 0.45 - 9, 'top', 1);
-      else p.tag.at(pos.x, pos.y + G.pr * 0.55 + 6, 'bottom', 1);
+      // the name: above a top bowl, below a lower one on a short phone; tied to its own bowl, 7px clear of its rim
+      if (G.top[p.i]) p.tag.at(pos.x, pos.y - G.name, 'top', 1);
+      else p.tag.at(pos.x, pos.y + G.pr * 0.52 + 7, 'bottom', 1);
       p.tag.own(pos.x, pos.y);
     }
     // the thought, squashed by what it carries
@@ -228,6 +263,18 @@ export function mount(ctx) {
       drawGlow(g, s.x, s.y, s.r * 2.2, '#ffb54a', s.press ? 0.55 : 0.35);
       drawJelly(g, { x: s.x, y: s.y, r: s.r, sx: s.sx * 1.12, sy: s.sy * 0.86, light: s.light, deep: s.deep, glow: 0, alpha: 0.96 });
     }
+    // a bowl's front lip over what sits in it: the slab reads as in the bowl, and the bowl still shows round it
+    for (const p of places) {
+      if (!p.count) continue;
+      const pos = G.pos[p.i];
+      g.save();
+      g.translate(pos.x, pos.y + G.pr * 0.1);
+      g.scale(1, 0.42);
+      g.globalAlpha = 0.9; g.strokeStyle = rgba(p.i === YOURS ? '#ffd98a' : '#a993ff', 0.85); g.lineWidth = 2.6;
+      g.beginPath(); g.arc(0, 0, G.pr, 0.1, Math.PI - 0.1); g.stroke();
+      g.restore();
+    }
+    g.globalAlpha = 1;
     motes.draw(g, dt);
     slabTag.at(slab.x, slab.y + 1, 'center', 1);
     words?.at(thought.x, thought.y + R * 1.05 + 8, 'bottom', 1);

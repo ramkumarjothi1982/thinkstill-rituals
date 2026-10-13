@@ -507,11 +507,9 @@ test('toasts and bubbles: centred toasts, dialogue never below 19px, calm under 
   assert.doesNotMatch(read('src/app/ui.js'), /classList\.add\('sr-only'\)/);
 });
 
-test('privacy copy matches what ships: Another Angle runs on the phone in this build', async () => {
-  // no customer string in the plans screen or Another Angle claims a server; the
-  // Plans note comes from src/app/privacy.js, which follows resolveEndpoint():
-  // on the phone while there is no endpoint (this build), the approved
-  // sentence once Another Angle goes live (G1), together with Settings → About
+test('privacy copy matches what ships: the plans page says what Another Angle does with the words, server on or off', async () => {
+  // the classic dock-card ritual (src/ultra), the authored fallback, never claims a server: it runs on the phone; the
+  // Plans note comes from src/app/privacy.js, which follows resolveEndpoint(), together with Settings → About
   for (const p of ['src/app/scenes/plans.js', 'src/ultra/another-angle.js']) {
     for (const { text } of lexJs(read(p)).strings) assert.doesNotMatch(text, /\bserver\b|secure server|beyond your phone/i, `${p}: "${text.slice(0, 80)}"`);
   }
@@ -519,5 +517,15 @@ test('privacy copy matches what ships: Another Angle runs on the phone in this b
   const { plansBeyondNote, PLANS_BEYOND_NOTE } = await import('../src/app/privacy.js');
   const { ANGLE_ENDPOINT } = await import('../src/app/config.js');
   assert.equal(PLANS_BEYOND_NOTE.local, 'Another Angle works on this phone: what you type stays here.');
-  if (!ANGLE_ENDPOINT) assert.equal(plansBeyondNote({ endpoint: null }), PLANS_BEYOND_NOTE.local);
+  assert.equal(PLANS_BEYOND_NOTE.live, 'Another Angle asks first, then sends only the words you choose to our secure server. Never your photos.');
+  // no customer string on the plans page names the provider or the technology (only the consent card, the privacy and delete sheets do)
+  for (const p of ['src/app/scenes/plans.js', 'src/app/privacy.js']) {
+    for (const { text } of lexJs(read(p)).strings) assert.doesNotMatch(text, /Anthropic|\bAI\b|language model/, `${p}: "${text.slice(0, 80)}"`);
+  }
+  if (ANGLE_ENDPOINT) {
+    // the server is on (G1): the owner's approved sentence, never "stays here"
+    assert.equal(plansBeyondNote({ endpoint: ANGLE_ENDPOINT }), PLANS_BEYOND_NOTE.live);
+  } else {
+    assert.equal(plansBeyondNote({ endpoint: null }), PLANS_BEYOND_NOTE.local);
+  }
 });

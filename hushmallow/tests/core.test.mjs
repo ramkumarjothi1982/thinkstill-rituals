@@ -91,6 +91,13 @@ test('shipped code calls no remote service except Another Angle’s own server',
     assert.equal(u.protocol, 'https:', 'ANGLE_ENDPOINT is https');
     assert.ok(ANGLE_ALLOWED_HOSTS.includes(u.hostname), 'ANGLE_ENDPOINT host is allow-listed');
   }
+  // the Worker's address appears once, in src/app/config.js (the endpoint and its allowed host): no staging
+  // or other workers.dev address anywhere in src, comments included
+  const workers = [];
+  for (const f of walk(`${root}src`)) readFileSync(f, 'utf8').split('\n').forEach((l, i) => { if (/workers\.dev/i.test(l)) workers.push(`${f.slice(root.length)}:${i + 1}`); });
+  assert.ok(workers.every((w) => w.startsWith('src/app/config.js:')), workers.join(', '));
+  assert.ok(workers.length <= 2, workers.join(', '));
+  if (ANGLE_ENDPOINT) assert.equal(workers.length, 2, workers.join(', '));
   // …and the optional sign-in (src/auth/client.js): one fetch handed to the vendored supabase-js,
   // which refuses every URL outside the one project (src/auth/config.js PROJECT_URL, or localhost in dev)
   const authFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';

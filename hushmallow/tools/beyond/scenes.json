@@ -1,6 +1,6 @@
 {
  "pull_apart": {
-  "text": "She has read my message and still not replied.",
+  "text": "She has read my message and still not replied, she must be upset with me.",
   "scene": {
    "emotion": "anxiety",
    "situation_type": "relationship",
@@ -51,13 +51,13 @@
   }
  },
  "reveal_spectrum": {
-  "text": "My presentation was completely awful.",
+  "text": "My presentation was a total disaster.",
   "scene": {
    "emotion": "disappointment",
    "situation_type": "work",
    "reasoning_pattern": "all_or_nothing",
    "known_fact": "Your presentation didn't go as well as you wanted.",
-   "possible_assumption": "That the whole thing was a failure.",
+   "possible_assumption": "That the whole presentation was a disaster.",
    "alternative_angle": "Some parts may have landed even if others wobbled.",
    "practical_next_step": "Write down one bit that went fine and one to improve.",
    "interaction_type": "reveal_spectrum",

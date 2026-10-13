@@ -8,12 +8,13 @@
 //
 //   consentState(store) → 'yes' | 'no' | 'unasked'      (a newer notice version asks again)
 //   setConsent(store, 'yes'|'no'), withdrawConsent(store), deleteAngleData(store)
-//   openConsent({ app, root, onDecide(choice) }) → { el, close }   the calm card in the scene
+//   openConsent({ app, root, onDecide(choice), support? }) → { el, close }   the calm card in the scene
 //   openConsentSheet(app, { onDecide })                               the same notice as a sheet (Settings)
-//   mountAngleSettings(app, el, { endpoint })                          the Settings rows
+//   mountAngleSettings(app, el, { endpoint })                          the Settings rows (with a Tester code row)
 //
 // What this phone keeps (all deletable here, and by "Delete everything"):
-// the choice, a random device code, a session token and a tally of the four
+// the choice, a random device code, a session token, a tester code if one was
+// entered (and whether the server asked for one), and a tally of the four
 // feedback buttons per kind of scene. Never words, never photos.
 
 import { h, openSheet, toast } from '../app/ui.js';
@@ -22,18 +23,25 @@ import { ensureBeyondCss } from './styles.js';
 
 export const STORE_KEYS = Object.freeze({
   consent: 'beyond.consent', device: 'beyond.device', session: 'beyond.session', feedback: 'beyond.feedback', invite: 'beyond.invite', seen: 'beyond.seen', visits: 'beyond.visits',
+  // the server asked for a tester code (and which code it refused): no new session is asked for until the code changes
+  inviteNeeded: 'beyond.inviteNeeded',
 });
-/** Bump when the notice changes in a way people should read again. */
-export const CONSENT_VERSION = 1;
+/** Bump when the notice changes in a way people should read again (2: the provider's real retention, 12 Oct 2026). */
+export const CONSENT_VERSION = 2;
 
 /**
- * How long the outside provider keeps what it receives. Left empty on purpose:
- * the owner must confirm the current figure at privacy.claude.com (Anthropic's
- * privacy centre) before launch — see server/another-angle/README.md, "What is
- * logged, and what is kept". While empty, the notice shows a clearly marked
- * placeholder instead of a number.
+ * How long the outside provider keeps what it receives: the owner's approved wording (12 Oct 2026,
+ * docs/integration/DECISIONS.md line 1, checked against Anthropic's Commercial Terms and its API
+ * data-retention docs). It stays true only while the Anthropic organisation is not in the Development
+ * Partner Program and has no retention override. Shown after "The provider receives your words to
+ * prepare the perspective." While it is empty, the notice shows the marked placeholder instead.
  */
-export const PROVIDER_RETENTION = '';
+export const PROVIDER_RETENTION = 'Anthropic doesn’t use your words to train its AI. It usually deletes them within 30 days.';
+/** The owner's approved wording (DECISIONS.md lines 2 and 3), on the consent card and the privacy sheet. */
+export const PROVIDER_SAFETY_HOLD = 'If its automatic safety checks flag a message as breaking its rules, Anthropic can keep it for up to 2 years. It also keeps anything the law requires it to.';
+export const PROVIDER_USE = 'Anthropic uses your words only to prepare your perspective, to keep its service safe, and where the law requires. It isn’t sent your account or photos, but it sees anything you type, names included.';
+/** The owner's approved wording (DECISIONS.md line 4), on the delete-data sheet. */
+export const PROVIDER_DELETE = 'Anthropic’s copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can’t delete it sooner from here.';
 export const RETENTION_PLACEHOLDER = '[Owner to confirm before launch: how long Anthropic keeps what it receives, from privacy.claude.com.]';
 
 export function consentState(store) {
@@ -54,7 +62,7 @@ export function deleteAngleData(store) {
   for (const k of Object.values(STORE_KEYS)) { try { store?.remove(k); } catch { /* ignore */ } }
 }
 export function hasAngleData(store) {
-  return [STORE_KEYS.consent, STORE_KEYS.device, STORE_KEYS.session, STORE_KEYS.feedback, STORE_KEYS.invite].some((k) => { try { return store?.get(k, null) != null; } catch { return false; } });
+  return [STORE_KEYS.consent, STORE_KEYS.device, STORE_KEYS.session, STORE_KEYS.feedback, STORE_KEYS.invite, STORE_KEYS.inviteNeeded].some((k) => { try { return store?.get(k, null) != null; } catch { return false; } });
 }
 
 /** A tally of the four feedback buttons per pattern, on this phone only (no words). */
@@ -78,9 +86,9 @@ export function lessWanted(store) {
 
 // ------------------------------------------------------------ the notice --
 /** "Not therapy or crisis support", with the way to support (always in view on the consent card). */
-function notTherapy(app, tag = 'p') {
+function notTherapy(app, tag = 'p', support = null) {
   return h(tag, { class: 'bx-small bx-care' }, h('b', {}, 'Not therapy or crisis support. '),
-    h('button', { type: 'button', class: 'bx-link', onclick: () => openSupport(app) }, 'Support lines'));
+    h('button', { type: 'button', class: 'bx-link', onclick: () => (support ? support() : openSupport(app)) }, 'Support lines'));
 }
 /**
  * What is sent, kept and shared, accurately (review r3: every request is described, the feedback buttons
@@ -95,11 +103,44 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
     h('p', { class: 'bx-lead' },
       'Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.'),
     h('ul', { class: 'bx-points' },
-      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen. A feedback tap sends which button and what kind of angle it was, never your words. Never your photos.'),
+      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen and what kind they were. Each angle request also carries the app’s language and a one-off random code, and every angle and feedback request carries this phone’s session code. A feedback tap sends which button, which Mallow and what kind of angle it was (and its version), never your words. Never your photos.'),
       h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair. Never your name or account.'),
-      h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention),
+      h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention, ` ${PROVIDER_SAFETY_HOLD}`),
+      h('li', {}, h('b', {}, 'Anthropic’s use. '), PROVIDER_USE),
       therapy ? notTherapy(app, 'li') : null),
     h('p', { class: 'bx-small' }, 'You can change your mind any time in Settings, and delete this phone’s Another Angle data there.'));
+}
+
+/** The notice's bottom edge the cue covers: the 'More below' pill (34px) and the fade above it. */
+export const CUE_COVER = 44;
+/**
+ * Where 'More below' scrolls to: the first line of the notice that isn't fully clear of the cue lands at
+ * the top edge, so following the cue shows every line whole, the opening of each point
+ * included; never a fixed step that clips a line at the top or leaves one under the pill. A line that
+ * already starts at the top (a point taller than the view) moves on by a view's height less the cue.
+ */
+export function nextNoticeStop(scroll) {
+  const max = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+  const step = Math.max(40, scroll.clientHeight - CUE_COVER);
+  try {
+    const view = scroll.getBoundingClientRect();
+    const top = view.top + (scroll.clientTop || 0);
+    const cut = top + scroll.clientHeight - CUE_COVER;
+    const range = document.createRange();
+    const walk = document.createTreeWalker(scroll, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      if (!n.textContent.trim()) continue;
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) {
+        if (r.height < 4 || r.bottom <= cut + 1) continue;
+        // the first line the cue hides (whole or in part): it goes to the top edge (the line before it then sits
+        // wholly above the edge, never a sliver of it), unless it is already there
+        const dy = Math.floor(r.top - top) - 1;
+        return Math.min(max, scroll.scrollTop + (dy > 8 ? dy : step));
+      }
+    }
+  } catch { /* no layout here: the plain step */ }
+  return Math.min(max, scroll.scrollTop + step);
 }
 
 /**
@@ -108,7 +149,7 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
  * When the notice is taller than the card, a "More below" cue says so (and
  * scrolls it); "Not therapy" and the support link sit by the buttons, in view.
  */
-export function openConsent({ app, root = document.body, onDecide } = {}) {
+export function openConsent({ app, root = document.body, onDecide, support = null } = {}) {
   ensureBeyondCss();
   const reduced = app?.prefs?.reducedMotion?.() ?? false;
   const uid = `bxc${Math.random().toString(36).slice(2, 7)}`;
@@ -127,12 +168,12 @@ export function openConsent({ app, root = document.body, onDecide } = {}) {
   const title = h('h2', { class: 'bx-title', id: `${uid}-t`, tabindex: '-1' }, 'Before Zuzu looks at your words');
   const scroll = h('div', { class: 'bx-scroll', id: `${uid}-d`, tabindex: '0', 'aria-label': 'The notice' }, noticeBody(app));
   const more = h('button', { type: 'button', class: 'bx-more', hidden: true, 'aria-label': 'Show more of the notice', onclick: () => {
-    scroll.scrollBy({ top: Math.max(60, scroll.clientHeight * 0.8), behavior: reduced ? 'auto' : 'smooth' });
+    scroll.scrollTo({ top: nextNoticeStop(scroll), behavior: reduced ? 'auto' : 'smooth' });
   } }, 'More below', h('span', { class: 'bx-more-arrow', 'aria-hidden': 'true' }, '↓'));
   const el = h('section', { class: `bx-consent hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': `${uid}-t`, 'aria-describedby': `${uid}-d`, 'data-bx': 'consent' },
     title,
     h('div', { class: 'bx-scrollwrap' }, scroll, more),
-    notTherapy(app),
+    notTherapy(app, 'p', support),
     h('div', { class: 'bx-actions' }, notNow, accept),
     h('p', { class: 'bx-small bx-after' }, 'Not now: nothing is sent, Zuzu’s own angles.'));
   root.append(el);
@@ -176,7 +217,8 @@ export function openConsentSheet(app, { onDecide } = {}) {
 
 /**
  * Settings rows (Privacy): share words with Another Angle (on/off; on shows the
- * notice first), the notice itself, and "Delete my Another Angle data".
+ * notice first), the notice itself, a Tester code (only needed while the server
+ * asks for one: TESTER_INVITE_CODES), and "Delete my Another Angle data".
  */
 export function mountAngleSettings(app, el, { endpoint = null } = {}) {
   ensureBeyondCss();
@@ -200,6 +242,7 @@ export function mountAngleSettings(app, el, { endpoint = null } = {}) {
         h('small', { class: 'bx-setting-note' }, 'On: the words you choose go to our server for a new perspective. Off: Zuzu’s own angles, on this phone.')),
       input));
     rows.push(h('button', { class: 'btn ghost block', onclick: () => openConsentSheet(app, { onDecide: () => { input.checked = consentState(store) === 'yes'; } }) }, 'Another Angle privacy notice'));
+    rows.push(testerCodeRow(app));
   }
   if (endpoint || hasAngleData(store)) {
     rows.push(h('button', { class: 'btn block', style: { marginTop: '8px' }, onclick: () => confirmDelete() }, 'Delete my Another Angle data'));
@@ -208,10 +251,45 @@ export function mountAngleSettings(app, el, { endpoint = null } = {}) {
   function confirmDelete() {
     const s = openSheet({
       title: 'Delete your Another Angle data?',
-      body: h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, your sharing choice and your feedback. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
+      body: h('div', {},
+        h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, any tester code, your sharing choice and your feedback. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
+        h('p', { class: 'bx-sheet-copy', style: { marginTop: '10px' } }, PROVIDER_DELETE)),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { deleteAngleData(store); s.close(); toast('Deleted'); mountAngleSettings(app, el, { endpoint }); } }, 'Delete')),
     });
   }
   return el;
+}
+
+/** Stores a tester code (trimmed; empty removes it). A new code always asks the server for a new session. */
+export function saveTesterCode(store, value) {
+  const code = String(value ?? '').trim().slice(0, 64);
+  try {
+    if (code) store?.set(STORE_KEYS.invite, code); else store?.remove(STORE_KEYS.invite);
+    store?.remove(STORE_KEYS.session);
+    store?.remove(STORE_KEYS.inviteNeeded);
+  } catch { /* this visit only */ }
+  return code;
+}
+
+/** "Tester code": a text field (16px, so iOS never zooms) and Save; Enter saves too. */
+function testerCodeRow(app) {
+  const { store } = app;
+  const id = `bxinv${Math.random().toString(36).slice(2, 7)}`;
+  let current = '';
+  try { const v = store.get(STORE_KEYS.invite, ''); current = typeof v === 'string' ? v : ''; } catch { current = ''; }
+  const field = h('input', { id, type: 'text', class: 'search bx-invite', maxlength: '64', autocomplete: 'off', autocapitalize: 'none', autocorrect: 'off',
+    spellcheck: 'false', enterkeyhint: 'done', placeholder: 'Your code', 'aria-describedby': `${id}-n` });
+  field.value = current;
+  const save = () => {
+    const code = saveTesterCode(store, field.value);
+    field.value = code;
+    toast(code ? 'Tester code saved' : 'Tester code removed');
+    app.haptic?.('light');
+  };
+  field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); field.blur(); } });
+  return h('div', { class: 'setting bx-invite-setting', style: { display: 'block' } },
+    h('label', { for: id, class: 'grow' }, 'Tester code',
+      h('small', { class: 'bx-setting-note', id: `${id}-n` }, 'Only while Another Angle is open to invited testers. It is sent with your next angle.')),
+    h('div', { class: 'bx-invite-row' }, field, h('button', { class: 'btn', type: 'button', onclick: save }, 'Save')));
 }
