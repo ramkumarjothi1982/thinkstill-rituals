@@ -37,6 +37,12 @@ html:has(.hm-auth-page) { height: 100%; background: var(--ink-0); }
 /* something went wrong: a small concerned tilt, no shake */
 .hm-auth-mallow[data-mood="concerned"] img { transform: rotate(6deg) translateY(4%); filter: saturate(.75) brightness(.9); animation-play-state: paused; }
 .hm-auth-mallow[data-mood="busy"] img { animation-duration: 2.8s; }
+.hm-auth-mallow[data-kind="rig"] { animation: hmAuthRigFloat 6.4s var(--ease-in-out) infinite; }
+.hm-auth-mallow[data-kind="rig"]::after { display: none; }   /* the rig draws its own contact shadow */
+.hm-auth-rig { position: absolute; inset: 0; }
+.hm-auth-rig canvas { display: block; width: 100%; height: 100%; }
+@keyframes hmAuthRigFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+.hm-auth-rm.hm-auth-mallow, .hm-auth-rm.hm-auth-mallow img, .hm-auth-rm.hm-auth-mallow::after { animation: none !important; }
 @keyframes hmAuthFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5%; } }
 @keyframes hmAuthShadow { 0%, 100% { transform: scaleX(1); opacity: .9; } 50% { transform: scaleX(.86); opacity: .6; } }
 @keyframes hmAuthHop { 0% { translate: 0 0; scale: 1 1; } 22% { translate: 0 2%; scale: 1.06 .92; } 52% { translate: 0 -16%; scale: .96 1.05; } 78% { translate: 0 0; scale: 1.04 .96; } 100% { translate: 0 0; scale: 1 1; } }
@@ -102,7 +108,7 @@ html:has(.hm-auth-page) { height: 100%; background: var(--ink-0); }
   .hm-auth-card { padding: 24px 18px 18px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hm-auth-mallow img, .hm-auth-mallow::after, .hm-auth-dots i { animation: none !important; }
+  .hm-auth-mallow, .hm-auth-mallow img, .hm-auth-mallow::after, .hm-auth-dots i { animation: none !important; }
   .hm-auth-mallow img { transition: opacity 200ms; }
   .hm-auth-mallow[data-mood="away"] img { transform: none; opacity: .75; }
   .hm-auth-mallow[data-mood="concerned"] img { transform: none; }

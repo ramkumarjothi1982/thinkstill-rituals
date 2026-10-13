@@ -32,7 +32,7 @@ const lastMail = async (to, kind) => { for (let i = 0; i < 50; i++) { const m = 
 
 async function main() {
   await fetch(`${FAKE}/__fake/reset`, { method: 'POST' });
-  await fetch(`${FAKE}/__fake/config`, { method: 'POST', body: JSON.stringify({ rateLimitMs: 0 }) });
+  await fetch(`${FAKE}/__fake/config`, { method: 'POST', body: JSON.stringify({ rateLimitMs: 0, autoconfirm: false, failRefresh: false, refreshDown: false, accessTtl: 3600, down: false }) });
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
   const problems = [], expected = [];
   const ctxOpts = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };
@@ -129,7 +129,9 @@ async function main() {
   check(kept.ns === 'account' && kept.ts === 1.12, 'kept: the guest’s setting came along (local copy)', JSON.stringify(kept));
   await shot(p, '07-app-signed-in-after-keep');
   // sign out: back to guest, guest things untouched
-  await Promise.all([p.waitForNavigation({ timeout: 60000 }), p.click('[data-auth-view="account"] .hm-auth-actions button')]);
+  await p.click('[data-auth-view="account"] [data-act="signout"]');
+  await p.waitForSelector('[data-auth-view="signout"] [data-act="signout-confirm"]', { timeout: 15000 });
+  await Promise.all([p.waitForNavigation({ timeout: 60000 }), p.click('[data-act="signout-confirm"]')]);
   await appReady(p);
   await p.waitForFunction(() => window.__hush?.auth?.status?.() === 'guest', null, { timeout: 60000 });
   const out1 = await p.evaluate(() => ({ ts: window.__hush.prefs.get('textScale'), sb: Object.keys(localStorage).filter((k) => k.startsWith('sb-')) }));
@@ -187,7 +189,7 @@ async function main() {
   const g = await newPage(dl, 'deep');
   await g.goto(`${SITE}/#account`); await appReady(g);
   await g.waitForFunction(() => document.querySelector('[data-auth-view]'), null, { timeout: 30000 });
-  check(await g.evaluate(() => document.querySelector('[data-auth-view]').dataset.authView) === 'guest', '/#account opens the account scene (guest) over the Hushfold');
+  check(await g.evaluate(() => document.querySelector('[data-auth-view]').dataset.authView) === 'welcome', '/#account opens the account scene (a guest’s welcome) over the Hushfold');
   await shot(g, '10-deeplink-account-guest');
   await g.goBack().catch(() => {});
   await sleep(800);

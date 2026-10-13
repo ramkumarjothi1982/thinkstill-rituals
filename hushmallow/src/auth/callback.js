@@ -13,6 +13,7 @@
 // The pure parts (parseCallback, returnUrl) are tested in Node.
 
 import { friendlyError, callbackError, checkPassword, passwordStrength } from './errors.js';
+import { createAuthMallow, pickMallow } from './mallow.js';
 
 export const OTP_TYPES = Object.freeze(['signup', 'email', 'recovery', 'email_change', 'invite', 'magiclink']);
 export const NEXT = Object.freeze(['account', 'home']);
@@ -70,10 +71,15 @@ function el(tag, attrs = {}, ...kids) {
   return n;
 }
 
+// the home Mallow above the card (src/auth/mallow.js); until it exists the holder's data-mood is the state
+let M = null;
+const setMood = (m) => { if (M) M.mood(m); else $('hm-auth-mallow').dataset.mood = m; };
+const getMood = () => $('hm-auth-mallow').dataset.mood;
+
 function say(title, line, mood) {
   $('hm-auth-title').textContent = title;
   $('hm-auth-status').textContent = line;
-  if (mood) $('hm-auth-mallow').dataset.mood = mood;
+  if (mood) setMood(mood);
 }
 const body = (...kids) => $('hm-auth-body').replaceChildren(...kids);
 const openApp = (next, label = 'Open hushmallow', primary = true) => el('a', { class: `hm-auth-btn${primary ? ' primary' : ''}`, href: returnUrl(location, next) }, label);
@@ -91,19 +97,19 @@ function keyboardSafe() {
 }
 
 async function mallowArt(ns) {
-  // the account's home Mallow and text size if this device knows them, else Blubi at the standard size
-  let id = 'blubi';
+  // the account's home Mallow, text size and motion choice if this device knows them, else Blubi at the standard size
+  let id = null, reduced = false, lowStim = false;
   try {
     const prefix = ns?.mode === 'account' ? `hm2:u:${ns.uid}:` : 'hm2:';
     const p = JSON.parse(localStorage.getItem(`${prefix}prefs`) || 'null');
     if (p && typeof p.mallow === 'string') id = p.mallow;
     if (p && [1.12, 1.25].includes(+p.textScale)) document.documentElement.style.setProperty('--type-scale', String(+p.textScale));
+    reduced = p?.motion === 'reduced' || (p?.motion !== 'full' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    lowStim = !!p?.lowStim;
   } catch { /* Blubi */ }
   try {
-    const { MALLOWS } = await import('../mallows/registry.js');
-    const m = MALLOWS[id] || MALLOWS.blubi;
-    const img = el('img', { src: m.file, alt: '', width: 300, height: 300, decoding: 'async' });
-    $('hm-auth-mallow').replaceChildren(img);
+    const { MALLOW_IDS } = await import('../mallows/registry.js');
+    M = createAuthMallow($('hm-auth-mallow'), { id: pickMallow(MALLOW_IDS, id), mood: getMood(), reducedMotion: reduced, lowStim });
   } catch { /* the card works without the art */ }
 }
 
@@ -114,7 +120,6 @@ function passwordForm({ onSubmit }) {
   const hint = el('div', { class: 'hm-auth-hint', id: 'hm-new-password-hint' }, passwordStrength('').hint);
   const err = el('p', { class: 'hm-auth-error', id: 'hm-auth-form-error', role: 'alert' });
   const submit = el('button', { class: 'hm-auth-btn primary', type: 'submit' }, 'Save my new password');
-  const mallow = $('hm-auth-mallow');
   reveal.addEventListener('click', () => {
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
@@ -123,10 +128,10 @@ function passwordForm({ onSubmit }) {
     input.focus();
   });
   // the Mallow looks away while a password is typed; after an error it stays concerned until typing starts again
-  input.addEventListener('focus', () => { if (mallow.dataset.mood !== 'concerned') mallow.dataset.mood = 'away'; });
-  input.addEventListener('blur', () => { if (mallow.dataset.mood === 'away') mallow.dataset.mood = 'idle'; });
+  input.addEventListener('focus', () => { if (getMood() !== 'concerned') setMood('away'); });
+  input.addEventListener('blur', () => { if (getMood() === 'away') setMood('idle'); });
   input.addEventListener('input', () => {
-    mallow.dataset.mood = 'away';
+    setMood('away');
     const s = passwordStrength(input.value);
     meter.dataset.score = String(s.score);
     hint.textContent = s.hint;
@@ -142,7 +147,7 @@ function passwordForm({ onSubmit }) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const bad = checkPassword(input.value);
-    if (bad) { err.textContent = bad.message; input.setAttribute('aria-invalid', 'true'); mallow.dataset.mood = 'concerned'; input.focus(); return; }
+    if (bad) { err.textContent = bad.message; input.setAttribute('aria-invalid', 'true'); setMood('concerned'); input.focus(); return; }
     submit.disabled = true;
     submit.textContent = 'Saving…';
     const r = await onSubmit(input.value);
@@ -151,7 +156,7 @@ function passwordForm({ onSubmit }) {
       submit.textContent = 'Save my new password';
       err.textContent = r.error?.message || friendlyError({}, 'password').message;
       if (r.error?.field === 'password') input.setAttribute('aria-invalid', 'true');
-      mallow.dataset.mood = 'concerned';
+      setMood('concerned');
       input.focus();
     }
   });
