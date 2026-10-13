@@ -20,3 +20,4 @@ output/v2/*
 !output/v2/compare/
 !output/v2/qa/
 !output/asset-qa/
+__pycache__/

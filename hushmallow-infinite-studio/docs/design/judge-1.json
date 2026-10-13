@@ -1,0 +1,107 @@
+{
+ "scores": [
+  {
+   "design": "quality-first",
+   "quality_bar": 9.5,
+   "variety": 7,
+   "feasibility_on_4_core_cpu": 7,
+   "risk_control": 8.5,
+   "brand_safety": 8.5,
+   "total": 8.4,
+   "strengths": [
+    "A tuning matrix tracks every (move x Mallow) cell as untuned, candidate or approved. Production may only use approved cells, approved face styles and approved realm/time-of-day presets, and any code change to a move demotes its cells. This is the only design that stops a move tuned on Noomi from shipping untuned on Zuzu.",
+    "It has the strictest picture gates. Rest probes need \u0394E2000 mean \u2264 1.0 and p99 \u2264 4, with silhouette IoU \u2265 0.985. A grade guard (hue \u2264 10\u00b0, chroma 0.8\u20131.2) means the Mallow is relit, never recoloured. Logo SSIM must be \u2265 0.995, the flash count must be 0 (calibrated on v2), text contrast \u2265 4.5:1, and there is a rest-fade spike check.",
+    "If a style fails rest-match, it does not ship. There is explicitly no 'turn the crossfade off' fallback, so every loop starts and ends on the painting, and asset risk is handled by narrowing the expression range, never by lowering the bar.",
+    "The circular timeline with a movable seam P lets RETRIGGER and OBJECT loops cross frame 0 seamlessly. World terms are periodic over D, and the audio is rendered circularly with a wrap-add.",
+    "Cinematic restraint is built into the data model. No roll or shake channel exists. Zoom is held to 0.95\u20131.10 at \u2264 0.04/s and pan to \u2264 40 px/s. Text can only rise or fade. R-BREATH timing is enforced in numbers, and craft gates check impact by 1.0 s, no dead interval over 1.2 s, C1 continuity and the eye gate.",
+    "A realm-likeness gate compares each world render against reference stills taken read-only from the app realm modules, so realms can't drift off-brand.",
+    "It ships fewer, deeper blocks. Phase 2.1 is 9 gags and 8 metaphors built from 4 glass primitives. Throughput is planned honestly at 60\u201380 accepted videos per day, and the content plan doesn't depend on the performance projections.",
+    "Parity is strict: 1e-9 on state at all 2,441 times, plus golden pixels. The v2 score is reproduced exactly in compat mode, and each audio fix then lands as its own commit with before/after WAVs."
+   ],
+   "weaknesses": [
+    "The Noomi pack JSON lists blush as '#ff7ff0' with a screen blend. Approved v2 draws source-over rgba(255,110,200) (stage2/face.js L476-479). D6 covers only the tongue, so the data could recolour an approved look even though the adapter is claimed to be bit-identical.",
+    "D9 proposes that approving one review video also approves every cell it used. A cell the owner saw once, in one context, would then be cleared for every template.",
+    "Moonmilk gets a headland, a lighthouse beam, a far isle and an aurora transform without being flagged as additions that aren't in the app realm. D7 covers only the Spark Festival pond.",
+    "The owner sees no new content until about 35 moves plus Moonmilk's 4 times of day are built (M1 at about 5 weeks), so feedback on taste comes late.",
+    "Realm likeness is checked on a coarse 9x16 Lab grid with \u0394E \u2264 10 (warn) and \u2264 14 (fail), which is a weak proxy for on-model scenery.",
+    "There is no burned-in DRAFT/INTERNAL mark and no runtime allowlist of loaded assets. Seeded parameters are not reviewed at the extremes of their ranges, and junctions between moves are not reviewed.",
+    "The calendar is long (M4 at roughly 17\u201320 weeks) and the moves need a lot of hand tuning."
+   ]
+  },
+  {
+   "design": "variety-scale-first",
+   "quality_bar": 7,
+   "variety": 9.5,
+   "feasibility_on_4_core_cpu": 6.5,
+   "risk_control": 7,
+   "brand_safety": 7,
+   "total": 7.2,
+   "strengths": [
+    "Seeded parameters are sampled only inside owner-approved [min, max, default] ranges, biased toward the default (Beta(3,3)). Each beat is reviewed on min/default/max contact sheets before approval, which guards seeded variation well.",
+    "Each beat declares entry and exit poses. Bridge moves are inserted automatically where they don't match, and every junction pair the enabled templates use gets its own review sheet. This is the best answer to generated sequences that feel stitched together.",
+    "Uniqueness is the most mature of the three. Fingerprint, weighted slot distance and an anchor-frame pHash are combined. The cover frame (the thumbnail) is checked against the last 30 posts. Thresholds are fitted to 20 pairs the owner rates as 'feels the same / different'.",
+    "The planner is strong. It uses LRU freshness weighting, reservations so two batches never pick the same copy, a semantic hook cooldown (Jaccard), a grief pairing rule (T14 never with a comic L3), and capability gating so only approved, buildable combinations can be sampled.",
+    "A pre-render cost gate (G5) uses real sub-frame counts from the dry run. Property tests compile 1,000 random specs through G1\u2013G4 before anything renders. Rejections carry reason codes that down-weight the slot combinations involved.",
+    "Noomi keeps her v2 tongue and blush explicitly. The face is no longer motion-blurred within a frame, and that change is put to the owner as a perf-parity sign-off (D0-1). Sweat and '!' are hard-disabled.",
+    "The design is honest about fatigue: about 3\u20135 good Noomi posts a week before the channel feels samey, with a capped cadence during Wave A. Each realm has a dressing clutter budget (\u2264 2 items + payoff, \u2264 60 ms), kept out of the safe zones."
+   ],
+   "weaknesses": [
+    "The throughput claim of 150\u2013190 per day leads, which signals volume over craft.",
+    "Wave A is too wide: 10 gags, 13 metaphors and 11 rituals in about 12 days, about 0.35 d per beat. That is not v2-level hand tuning.",
+    "Approval is per beat ('status: approved'), not per (beat x Mallow). A move cleared on Noomi can play on other Mallows after only an extremes sheet.",
+    "Weather x dressing x time of day x palette jitter multiplies world states the owner never saw together. Pearly shore, shells and the lighthouse are added without flagging that they aren't in the app realm.",
+    "'restCrossfade:false' is allowed with owner sign-off, so a Mallow could ship without its painted rest face. The fidelity gate is looser (\u0394E mean \u2264 2, SSIM \u2265 0.95, logo SSIM \u2265 0.98).",
+    "Publish encoding drops to CRF 18 from the approved CRF 16. Caption compositing from a clean plate puts captions after grain, which departs from the v2 pipeline.",
+    "It adds a new copy surface: post.json with suggested captions, hashtags and alt text. That is more brand-copy risk than the other designs take on.",
+    "The flash gate allows up to 3 flashes per second (WCAG), where the brand allows none (it partly relies on the 10%/25% house rule).",
+    "An icon sheet for M-ICONS and M-TABS invites clip-art props."
+   ]
+  },
+  {
+   "design": "ship-incrementally",
+   "quality_bar": 8,
+   "variety": 6,
+   "feasibility_on_4_core_cpu": 8,
+   "risk_control": 9,
+   "brand_safety": 9,
+   "total": 8.25,
+   "strengths": [
+    "It has the tightest staging: v2 golden first (state to 1e-9, mesh hashes, sub-frame counts, cue log, the plan, 16 lossless frames, and a SwiftShader determinism check). M1 is only T01 golden, T26 and T22 (6 finals), so the owner sees new content after about 2 weeks.",
+    "Every performance optimisation is its own commit with its own G-PIXEL tolerance. The face-cache pixel change goes to the owner as an A/B flip sheet (D6). M1 is accepted at \u2264 12 min, so it doesn't depend on estimates holding.",
+    "Only this design resolves the Noomi colour conflict correctly (D12). Noomi keeps source-over-v2 blush and tongue #ff8ab0, which matches stage2/face.js. The other six Mallows follow their measured art.",
+    "A burned-in INTERNAL or DRAFT corner mark is checked by Q9, so unapproved renders can't be posted by mistake.",
+    "Every texture the page loads is hash-checked against packs/allowlist.json, and the magnification log is verified. Guard tests ban Math.random, Date.now and performance.now, and paths.mjs refuses writes outside the studio.",
+    "A plate-extraction spike tries to capture the app realms' static layers read-only as the actual approved set-piece designs. Elements not in the app (Moonmilk lighthouse and aurora, Pipzi pond) sit behind owner decision D10, and all props are approved on one sheet (D11).",
+    "Each Mallow gets an owner checkpoint: a neutral A/B flip clip, an expression sheet, an asset QA pack and a 6\u20138 s test reel. A library smoke run compiles every eligible template x Mallow x duration and renders a draft for each pair.",
+    "Copy lint includes a tone/topic blocklist (self-harm, death, illness, body/food, alcohol, drugs, appearance). A machine-time budget is set per milestone. Opaque-ground realms skip the reflection passes, so they are cheaper than the lake."
+   ],
+   "weaknesses": [
+    "Moves carry a single 'approved' flag with mallows:'all'. M3 move acceptance is a test clip on just 2 Mallows, so there is no per-Mallow tuning matrix.",
+    "If rest-match fails, restWindow:'none' becomes the fallback and the procedural face is shown throughout, so the loop no longer starts on the painting. That lowers the bar.",
+    "Several thresholds are looser: caption contrast \u2265 3:1, loudness \u00b11 LUFS, loud cues \u00b133 ms, an in-scene chroma allowance of \u0394E \u2264 8, and up to 3 flashes per second in regional WCAG counting (with the 10%/25% house rule on top).",
+    "M2 builds all 7 Mallow packs before any realm, so non-Noomi content can't be published for about 6 weeks. M3 is then a 60\u201375 d big bang: 14 gags, 23 metaphors, 15 rituals and 7 realms across up to 10 streams competing for 4 cores.",
+    "Clean-plate variants are lossless RGB at about 1\u20131.5 GB per 15 s, a real cost on 26 GB of free disk.",
+    "Variety is narrow until M3. The duplicate check (dHash on 12 frames) is cruder, and there is no LRU freshness weighting or owner-calibrated sameness threshold."
+   ]
+  }
+ ],
+ "best": "quality-first. Weighted total on a 10-point scale = 0.30\u00b7quality_bar + 0.25\u00b7brand_safety + 0.20\u00b7risk_control + 0.15\u00b7feasibility + 0.10\u00b7variety. As the owner who approved v2, I weight 'every video stays premium and on-model' above volume. quality-first scores 8.4, ship-incrementally 8.25, variety-scale-first 7.2.\n\nquality-first is the only design that ties quality to each (move x Mallow) pair. Production can use only approved tuning cells, face styles and realm/time-of-day presets, and a code change demotes cells. It refuses bar-lowering fallbacks: no rest-match means no ship, and asset trouble narrows the expression range rather than lowering the bar. It also has the strictest pixel gates: fidelity \u0394E \u2264 1.0, logo SSIM \u2265 0.995, zero flashes, 4.5:1 contrast, and the realm-likeness check against the app.\n\nship-incrementally is a very close second and has the better process and provenance controls. The recommended plan is quality-first's architecture and gates, run on ship-incrementally's staging and safety rails. Fix three things in quality-first: the Noomi blush in its pack (#ff7ff0 screen vs v2 source-over rgba(255,110,200)), the implicit cell approval (D9), and the unflagged Moonmilk additions (headland, lighthouse, aurora).",
+ "ideas_to_graft": [
+  "From ship-incrementally: resolve the Noomi colour conflict as D12 does. Noomi keeps v2's source-over blush rgba(255,110,200) and tongue #ff8ab0 (stage2/face.js L476-479). Correct quality-first's noomi.json, which says '#ff7ff0' with a screen blend, and close its D6 in favour of v2.",
+  "From ship-incrementally: a burned-in INTERNAL/DRAFT corner mark on every draft or unapproved render, checked by the brand gate, so nothing unapproved can be posted by mistake.",
+  "From ship-incrementally: hash-check every texture URL the page loads against packs/allowlist.json at runtime, plus guard tests banning Math.random, Date.now and performance.now, and a paths.mjs that refuses writes outside the studio root.",
+  "From ship-incrementally: the WP3.0 plate-extraction spike. Capture the app realms' static layers read-only as the approved set-piece designs, and put any element not in the app (Moonmilk headland and lighthouse, aurora, far isle, Pipzi pond) behind an explicit owner decision. quality-first adds these unflagged today.",
+  "From ship-incrementally: a smaller first owner gate. Show T01 golden plus 2 new templates with a handful of new moves before building all of Tier A, so taste feedback arrives at about 2 weeks rather than about 5.",
+  "From ship-incrementally: make each performance optimisation its own commit with its own G-PIXEL tolerance, give the owner an A/B flip sheet for the face-cache change, and accept M0 at \u2264 12 min (stretch \u2264 9) so the milestone doesn't depend on estimates.",
+  "From ship-incrementally: approve all new prop looks (glass card, tile, block, cloud, light shapes) on one prop sheet before metaphors are built on them. Give each Mallow an owner checkpoint: neutral A/B flip clip, expression sheet and a 6\u20138 s test reel.",
+  "From ship-incrementally: add the tone/topic blocklist (self-harm, death, illness, body/food, alcohol, drugs, appearance) to copy lint, and a library smoke run that compiles every eligible template x Mallow x duration.",
+  "From ship-incrementally: a golden capture that includes mesh-buffer hashes, sub-frame counts and 16 lossless frames, with SwiftShader run-to-run determinism measured before the engine fork.",
+  "From variety-scale-first: approved parameter ranges [min, max, default] for each move and Mallow cell, sampled with Beta(3,3), and every cell reviewed on min/default/max contact sheets before promotion. That makes seeded variation provably stay at the bar.",
+  "From variety-scale-first: entry and exit pose contracts with automatic bridge moves, plus junction-pair review sheets (hm beat-sheet --pairs) for every gag\u2192metaphor and metaphor\u2192ritual pair in the enabled templates.",
+  "From variety-scale-first: replace quality-first's implicit cell approval (D9) with explicit reason-coded review decisions (acting, timing, copy, world, face, sameness, brand) that promote or demote cells and down-weight rejected slot combinations.",
+  "From variety-scale-first: property tests that compile 1,000 random specs through the spec and direction gates in Node, and a pre-render cost gate from dry-run sub-frame counts x a cost model refitted from real renders.",
+  "From variety-scale-first: LRU freshness weighting, copy reservations across planned batches, a semantic hook cooldown (token Jaccard \u2265 0.5), the grief-pairing rule (T14's sensitive hook never with a comic L3), and a cover-frame (thumbnail) pHash distance against the last 30 posts, with thresholds fitted to owner-rated same/different pairs.",
+  "From variety-scale-first: a dressing clutter budget per realm (\u2264 2 items + payoff, \u2264 60 ms, kept out of the safe zones and the right button rail), hard-disabled sweat and '!' parameters, and a capped posting cadence while Noomi is the only unlocked Mallow.",
+  "Do NOT graft: variety-scale-first's post.json captions and hashtags (a new copy surface), CRF 18 publish, compositing captions after grain from a clean plate, or restCrossfade:false; ship-incrementally's restWindow:'none' fallback, 3:1 caption contrast, or the 3-flashes-per-second WCAG allowance. Each of these lowers the approved bar."
+ ]
+}

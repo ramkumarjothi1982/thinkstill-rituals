@@ -1,0 +1,5640 @@
+{
+  "$schema": "hushmallow-story-library/1",
+  "version": "1.0.0",
+  "about": "Story-template library for hushmallow Infinite Studio: 10-20 s (default 15 s) loopable 9:16 shorts in the approved v2 format (hook -> escalation -> Hushmallow moment -> resolution -> loop). Data only: the generator compiles a template + slot picks into a v2-style direction (body/face/camera/light/palette tracks, bubbles, cues). Validate with: node templates/validate-library.mjs",
+  "format": {
+    "canvas": [
+      1080,
+      1920
+    ],
+    "fps": 30,
+    "codec": "H.264 High + AAC 48 kHz",
+    "loudness": "-16 LUFS integrated, <= -1.5 dBTP",
+    "durations": [
+      10,
+      12,
+      15,
+      20
+    ],
+    "defaultDuration": 15,
+    "structure": [
+      "HOOK (cover caption + physical gag landing <= 1.0 s)",
+      "ESCALATION (3 feeling lines + one visual metaphor)",
+      "TURN (a stop beat)",
+      "HUSHMALLOW MOMENT (one physical, satisfying, safe ritual + the realm's transform)",
+      "RESOLUTION (insight line or brand line + logo + hushmallow.com)",
+      "LOOP (end state == cover state, hook caption returns)"
+    ],
+    "layout": {
+      "mallowBase": [
+        540,
+        1300
+      ],
+      "mallowScale": "0.56 of the 1254 px approved art (always a downsample, never upscaled)",
+      "hook": {
+        "y": 286,
+        "size": 76,
+        "minSize": 50,
+        "weight": 600,
+        "tracking": 2,
+        "fit": "auto-shrink from 76 px (<= 20 chars/line) down to a 50 px floor so a 32-char line fits in 960 px"
+      },
+      "thoughtBubble": {
+        "size": 50,
+        "weight": 500,
+        "orbit": {
+          "cx": 540,
+          "cy": 600,
+          "rx": 270,
+          "ry": 132
+        },
+        "wrap": "2 lines max, <= 17 chars per wrapped line, break at the word boundary nearest the middle"
+      },
+      "resolution": {
+        "y": 262,
+        "size": 62,
+        "weight": 500,
+        "maxCharsPerLine": 28
+      },
+      "logoCard": {
+        "y": 488,
+        "logoW": 360,
+        "url": "hushmallow.com",
+        "urlSize": 44,
+        "plate": "approved black-on-white wordmark, untouched, on its soft off-white plate (no reversed version exists)"
+      },
+      "safeZones": "Key text inside x 60-1020, y 180-1250. Nothing important in the right rail (x > 900, y 700-1500) or under the platform caption area (y > 1500). The Mallow's face stays above y 1250."
+    },
+    "typography": "Fredoka, white with soft ink shadow, no outlines (stage2/type.js). Entrances are a gentle rise + fade only. Store ASCII in data; render straight quotes/apostrophes as typographic ones.",
+    "restFace": "Frames 0-0.17 s and the last 0.5 s show the untouched approved painted face (v2 restAt). Expressions start after 0.17 s."
+  },
+  "beatClocks": {
+    "$doc": "Absolute seconds. Gag timing is fixed (the first second never scales); the end card is anchored to the end; escalation + ritual scale. Idle breathing period = D/k so the seam is periodic.",
+    "10": {
+      "breathPeriod": 3.333,
+      "ANTIC": 0.22,
+      "GAG": 0.36,
+      "IMPACT": 0.9,
+      "HOOK_OUT": 2.0,
+      "L1": 2.2,
+      "L2": 2.9,
+      "L3": 3.6,
+      "PEAK": [
+        4.0,
+        4.6
+      ],
+      "TURN": 4.6,
+      "RITUAL": [
+        4.9,
+        7.0
+      ],
+      "OPEN": 6.9,
+      "RESOLVE": 7.1,
+      "LOGO": 7.7,
+      "SETTLE": 8.6,
+      "CARD_OUT": 9.3,
+      "HOOK_IN": 9.66,
+      "note": "quick rituals only (minDur <= 2.1 s); lines <= 22 chars preferred"
+    },
+    "12": {
+      "breathPeriod": 4.0,
+      "ANTIC": 0.24,
+      "GAG": 0.38,
+      "IMPACT": 0.95,
+      "HOOK_OUT": 2.3,
+      "L1": 2.5,
+      "L2": 3.2,
+      "L3": 3.9,
+      "PEAK": [
+        4.3,
+        5.2
+      ],
+      "TURN": 5.2,
+      "RITUAL": [
+        5.4,
+        8.7
+      ],
+      "OPEN": 8.8,
+      "RESOLVE": 9.0,
+      "LOGO": 9.6,
+      "SETTLE": 10.5,
+      "CARD_OUT": 11.3,
+      "HOOK_IN": 11.66
+    },
+    "15": {
+      "breathPeriod": 3.75,
+      "ANTIC": 0.26,
+      "GAG": 0.4,
+      "IMPACT": 0.98,
+      "HOOK_OUT": 2.72,
+      "L1": 3.0,
+      "L2": 4.0,
+      "L3": 5.0,
+      "PEAK": [
+        5.6,
+        7.0
+      ],
+      "TURN": 7.0,
+      "RITUAL": [
+        7.4,
+        11.5
+      ],
+      "OPEN": 11.7,
+      "RESOLVE": 11.9,
+      "LOGO": 12.6,
+      "SETTLE": 13.5,
+      "CARD_OUT": 14.3,
+      "HOOK_IN": 14.66,
+      "note": "identical to the approved v2 (videos/my-brain-at-2am-v2.js)"
+    },
+    "20": {
+      "breathPeriod": 4.0,
+      "ANTIC": 0.26,
+      "GAG": 0.4,
+      "IMPACT": 0.98,
+      "HOOK_OUT": 2.9,
+      "L1": 3.2,
+      "L2": 4.8,
+      "L3": 6.4,
+      "L4": 8.0,
+      "PEAK": [
+        8.4,
+        10.0
+      ],
+      "TURN": 10.0,
+      "RITUAL": [
+        10.4,
+        15.8
+      ],
+      "OPEN": 16.6,
+      "RESOLVE": 16.8,
+      "LOGO": 17.5,
+      "SETTLE": 18.4,
+      "CARD_OUT": 19.3,
+      "HOOK_IN": 19.66,
+      "note": "optional 4th line drawn from any unused pool line; ritual may run its long variant"
+    }
+  },
+  "mallows": {
+    "noomi": {
+      "realm": "moonmilk-cove",
+      "tods": [
+        "dusk",
+        "night",
+        "late-night",
+        "pre-dawn"
+      ],
+      "energy": 0.35,
+      "eyes": "closed painted face; opens only on strong beats (eyeGate), navy galaxy iris",
+      "plays": "sleepy, soothing, whimsical; reacts late and soft; big beats read as a sleepy startle",
+      "signature": {
+        "gag": "G-JOLT",
+        "ritual": "R-CLOUDWRAP"
+      },
+      "resolutionFace": "eyes open softly, moon catchlights, tiny smile, slow blink, drifts shut"
+    },
+    "glitzi": {
+      "realm": "static-storm",
+      "tods": [
+        "night",
+        "late-night",
+        "pre-dawn"
+      ],
+      "energy": 0.85,
+      "eyes": "open amber irises, heavy half-lids, side-eye at rest, glitch slices",
+      "plays": "sarcastic, mischievous, secretly lovable; deadpan side-eye, glitches when flustered; never gushes",
+      "signature": {
+        "gag": "G-GLITCHSLIP",
+        "ritual": "R-DEFRAG"
+      },
+      "resolutionFace": "a softened smirk (mouthSkew), glitch settles to 0.1 - not a beaming grin"
+    },
+    "blubi": {
+      "realm": "raindrop-lagoon",
+      "tods": [
+        "blue-hour",
+        "dusk",
+        "rainy-evening",
+        "night",
+        "misty-morning"
+      ],
+      "energy": 0.55,
+      "eyes": "closed painted face, brows visible; eyes open + wet on strong beats",
+      "plays": "sensitive, comforting, beautifully dramatic; wobbly mouth, happy/sad tears allowed (gentle)",
+      "signature": {
+        "gag": "G-SPLASHSIT",
+        "ritual": "R-RAINLIFT"
+      },
+      "resolutionFace": "closed-eye smile, big blush, warm glow"
+    },
+    "zuzu": {
+      "realm": "spiral-observatory",
+      "tods": [
+        "morning",
+        "afternoon",
+        "dusk",
+        "night",
+        "late-night"
+      ],
+      "energy": 0.75,
+      "eyes": "spiral eyes (always open); spin speed = thought speed; open smiling mouth at rest",
+      "plays": "curious, hypnotic, playful, overthinking; spirals spin up with every thought",
+      "signature": {
+        "gag": "G-SPINUP",
+        "ritual": "R-SPIRALSLOW"
+      },
+      "resolutionFace": "spirals slow to a lazy turn, open smile"
+    },
+    "boppo": {
+      "realm": "sunpop-orchard",
+      "tods": [
+        "morning",
+        "afternoon",
+        "golden"
+      ],
+      "energy": 1.0,
+      "eyes": "open star-iris eyes, brows, open smile",
+      "plays": "joyful, optimistic, bouncy, adorably chaotic; even sadness has a bounce in it",
+      "signature": {
+        "gag": "G-LAUNCH",
+        "ritual": "R-SUNSOAK"
+      },
+      "resolutionFace": "big happy closed-eye squint, sparkle"
+    },
+    "pipzi": {
+      "realm": "spark-festival",
+      "tods": [
+        "dusk",
+        "night"
+      ],
+      "energy": 1.0,
+      "eyes": "open star-iris eyes, brows, open smile",
+      "plays": "energetic, excitable, expressive, funny; emotions come out as sparks",
+      "signature": {
+        "gag": "G-SPARKPOP",
+        "ritual": "R-LANTERN"
+      },
+      "resolutionFace": "sparkle eyes, open smile, 'whisper sparks'"
+    },
+    "loomi": {
+      "realm": "blue-drift",
+      "tods": [
+        "morning",
+        "midday",
+        "afternoon",
+        "golden"
+      ],
+      "energy": 0.4,
+      "eyes": "closed painted face; opens rarely (eyeGate 0.45)",
+      "plays": "calm, unbothered, gently amusing; under-reacts on purpose - the comedy is the contrast",
+      "signature": {
+        "gag": "G-DEADPAN",
+        "ritual": "R-DRIFT"
+      },
+      "resolutionFace": "closed-eye smile, a slow content float"
+    }
+  },
+  "timeWords": {
+    "$doc": "If a hook/line contains one of these (case-insensitive), the chosen realm ToD must be in the mapped set. Places in captions (office, sofa, supermarket) are context only - the realm is never redrawn as a human location.",
+    "late-night|night": [
+      "\\b(1|2|3|4) ?AM\\b",
+      "\\bMIDNIGHT\\b",
+      "\\b(10|11) ?PM\\b",
+      "\\bTONIGHT\\b",
+      "\\bAT NIGHT\\b",
+      "\\bNIGHT BEFORE\\b",
+      "\\bFRIDAY NIGHT\\b",
+      "\\b9 ?PM\\b",
+      "\\bBEDTIME\\b"
+    ],
+    "morning|pre-dawn|misty-morning": [
+      "\\b(5|6|7|8|9) ?AM\\b",
+      "\\bALARM\\b",
+      "\\bSNOOZE\\b",
+      "\\bMORNING\\b",
+      "\\b8:15\\b"
+    ],
+    "afternoon|midday": [
+      "\\b(1|2|3|4) ?PM\\b",
+      "\\bAFTER LUNCH\\b",
+      "\\bAFTERNOON\\b"
+    ],
+    "golden|dusk|blue-hour|rainy-evening|night": [
+      "\\bSUNDAY (6 PM|NIGHT|EVENING)\\b",
+      "\\b(5|6|7|8) ?PM\\b",
+      "\\bSUN GOES DOWN\\b"
+    ]
+  },
+  "gags": {
+    "$doc": "Physical comedic hook beats. Body-only (Mallows have no limbs): squash, stretch, inflate, lift/hop, lean, sway, rim shimmer, uniform scale, base slide. Impact or peak lands <= 1.0 s. Numbers are starting points for stage2/motion.js Track/Impulses/Hops.",
+    "G-JOLT": {
+      "name": "Jolt & flump",
+      "beat": "0.26 dream flinch (sink, squash +0.07) -> 0.40 eyes snap wide (pin-prick pupils) + stretched launch (squash -0.26, hop 165 art px) -> rounds at apex -> 0.98 heavy jelly landing (kick 0.27), wave travels up, ripples",
+      "face": "surprised -> wide-eyed aftermath, double blink",
+      "world": "ripple rings, reflection separates",
+      "sound": "eye-pop, rubbery boing, water plip, flump + squelch + bloop",
+      "mallows": "all",
+      "cost": "H",
+      "source": "approved v2"
+    },
+    "G-FLOP": {
+      "name": "Pancake flop",
+      "beat": "0.30 tiny rise (anticipation) -> 0.45 collapses into a wide pancake (height 0.62, width 1.35, base spreads) -> face lands low, eyes half-lidded -> slow 'schlorp' recovery over 1.5 s",
+      "face": "exhausted -> bored",
+      "world": "contact shadow spreads, one ripple",
+      "sound": "wet flump, long deflating squeak, sigh gesture",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-DEFLATE": {
+      "name": "Slow leak",
+      "beat": "0.35 a tiny 'pip' -> inflate -0.12 over 0.6 s, body sags and droops, lean 0.03 -> 1.0 last little wobble",
+      "face": "disappointed, mouth wobble",
+      "world": "light dims 5%",
+      "sound": "soft pip, 'pfffft' air squeak, descending kit glide",
+      "mallows": "all",
+      "cost": "L"
+    },
+    "G-DOUBLETAKE": {
+      "name": "Double take",
+      "beat": "0.20 glance at the thing, glance away -> 0.45 eyes snap back + stretch (eyeStretch 1.12) + mini hop 0.15 body heights -> 0.80 small landing squash",
+      "face": "neutral -> surprised",
+      "world": "the trigger object (bubble/frame/sun) moves in the gap",
+      "sound": "blink bip, kit 'surprise' gesture, tiny boing",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-SINK": {
+      "name": "Sink to the cheeks",
+      "beat": "0.35 a gulp -> 0.45-1.0 slides down until the waterline/cloud-line sits just below the mouth (never covers the mouth: no underwater or breath-hold reading) -> eyes peek over",
+      "face": "embarrassed / guilty",
+      "world": "waterline clip + ring ripples; a few surface bubbles from the ripple, not from the mouth",
+      "sound": "soft glug, two blub plinks",
+      "mallows": [
+        "noomi",
+        "blubi",
+        "loomi",
+        "boppo"
+      ],
+      "cost": "M"
+    },
+    "G-LAUNCH": {
+      "name": "Ceiling launch",
+      "beat": "0.30 deep crouch (squash 0.2) -> 0.42 launches straight up out of the top of frame (camera holds) -> 0.95 drops back in -> boing landing, big jelly wobble",
+      "face": "excited / surprised",
+      "world": "hop shadow shrinks, rings on landing",
+      "sound": "rising boing glide, whoosh out, whistle-down, landing boing",
+      "mallows": [
+        "boppo",
+        "pipzi",
+        "zuzu",
+        "glitzi"
+      ],
+      "cost": "H"
+    },
+    "G-CRINGE": {
+      "name": "Cringe shrink",
+      "beat": "0.35 eyes squeeze -> 0.45 body shrinks to 0.72 scale with a blush flare, slight lean away -> 1.0 peeks",
+      "face": "embarrassed (blushLines)",
+      "world": "light cools a touch",
+      "sound": "cringe squeak, kit 'offended' gesture",
+      "mallows": "all",
+      "cost": "L"
+    },
+    "G-SCOOT": {
+      "name": "Nope scoot",
+      "beat": "0.30 the thing appears beside -> 0.40 lean away + three little sideways hops (base slide 160 px) -> 0.95 peeks back at it",
+      "face": "scared-lite -> guilty side-glance",
+      "world": "the thing follows one hop (comic)",
+      "sound": "three tiny patter squeaks",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-JELLYFREEZE": {
+      "name": "Jelly freeze",
+      "beat": "0.40 a ping -> body locks (squash 0, eyes pin-prick) -> 0.45-1.2 quivers like set jelly (rim shimmer 6 Hz decaying)",
+      "face": "surprised -> anxious-lite (no sweat drops)",
+      "world": "none (stillness is the joke)",
+      "sound": "soft ping, 'bwowowow' jelly wobble",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-PUFF": {
+      "name": "Balloon puff",
+      "beat": "0.30 cheeks puff -> 0.40-0.90 inflates (+0.28) and floats up 40 px, wobbling, holding it in -> a tiny squeak leaks",
+      "face": "excited with a pressed-shut smile",
+      "world": "glow brightens slowly (no flash)",
+      "sound": "rubber balloon stretch, leaky squeak",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-MELT": {
+      "name": "Melt slide",
+      "beat": "0.35 starts to sag -> 0.50-1.0 melts sideways like ice cream (lean 0.08, squash 0.25, base spread) -> eyes half-lidded",
+      "face": "exhausted / blissful (happy-melt variant)",
+      "world": "heat shimmer or warm glow",
+      "sound": "soft slide-whistle down, sticky schlorp",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-WEEBLE": {
+      "name": "Weeble wobble",
+      "beat": "0.40 a nudge (a tab, a bubble, an empty hug) -> rocks side to side (lean +/-0.06, 1.3 Hz, damped) -> never falls",
+      "face": "confused / wobbly",
+      "world": "trigger object bounces off",
+      "sound": "soft bonk, rocking creaks",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-PING": {
+      "name": "Ding stretch",
+      "beat": "0.35 a glass notification bubble pops in above the head -> 0.40 body stretches tall (squash -0.15), eyes wide, hop 0.1 -> 0.90 settles",
+      "face": "hopeful / excited",
+      "world": "bubble pops in with a spring",
+      "sound": "soft glass ding, stretch boing",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-DEADPAN": {
+      "name": "Delayed reaction",
+      "beat": "0.30 the event lands -> Mallow does nothing, one slow blink 0.50-0.80 -> 0.90 a tiny late boing",
+      "face": "neutral -> bored -> tiny smirk or tiny glee",
+      "world": "event happens loudly; the Mallow does not",
+      "sound": "event sound, silence, one late boing",
+      "mallows": "all",
+      "cost": "L"
+    },
+    "G-BONK": {
+      "name": "Bonk",
+      "beat": "0.35 a glass block/pebble drops onto the head -> 0.45 squash 0.22, wave travels down, eyes squeeze -> 0.90 settles a bit lower",
+      "face": "frustrated-lite / dazed",
+      "world": "object rests or bounces off",
+      "sound": "soft glass/wood 'tok', squelch",
+      "mallows": "all",
+      "cost": "M"
+    },
+    "G-GLITCHSLIP": {
+      "name": "Glitch slip",
+      "beat": "0.40 body slices slip sideways in 3 horizontal bands (+/-24 px) -> 0.75 snap back with a crunchy chirp",
+      "face": "side-eye, mouth crease",
+      "world": "glitch bands displace (luminance constant; max one burst per second)",
+      "sound": "bit-crushed chirp, staircase square glide",
+      "mallows": [
+        "glitzi"
+      ],
+      "cost": "M"
+    },
+    "G-SPINUP": {
+      "name": "Spiral spin-up",
+      "beat": "0.35 spirals spin up to 4x with spiral-hue shift -> body leans with them -> 0.80 tiny hop",
+      "face": "confused/curious",
+      "world": "observatory rings twitch",
+      "sound": "rising warble, phaser swirl",
+      "mallows": [
+        "zuzu"
+      ],
+      "cost": "L"
+    },
+    "G-SPARKPOP": {
+      "name": "Spark pop",
+      "beat": "0.40 a crackle of small sparks pops off the top (local, small, >= 0.15 s ramps, no full-frame brightening) -> hop 0.25 -> 0.90 land",
+      "face": "surprised -> excited",
+      "world": "sparks fall as slow embers",
+      "sound": "soft crackle grains, kit up-run",
+      "mallows": [
+        "pipzi"
+      ],
+      "cost": "M"
+    },
+    "G-SPLASHSIT": {
+      "name": "Splash sit",
+      "beat": "0.40 plops down onto a lily pad -> splash droplets arc -> pad bobs -> wobbly lip",
+      "face": "sad-lite or happy-teary",
+      "world": "droplets, rings, pad bob",
+      "sound": "splash gesture, droplet plinks",
+      "mallows": [
+        "blubi"
+      ],
+      "cost": "M"
+    }
+  },
+  "metaphors": {
+    "$doc": "Escalation visuals in the v2 frosted-glass language. Max 3 legible text elements on screen at once (plus captions); decoys are blurred and low-contrast. No phones, no real app UI, no people, no other characters.",
+    "M-ORBIT": "Three glass thought bubbles rise from behind the head and orbit, faster and faster; the eyes chase them (approved v2).",
+    "M-ECHO": "The sent message as one glass bubble that duplicates into an echo trail, each copy re-styled in a different 'tone' (bigger, tilted, smaller).",
+    "M-DOTS": "A glass message bubble with three dots that softly pulse (opacity wave, period >= 1.2 s), vanish, return; the Mallow leans in each time.",
+    "M-CLOUD": "A small personal cloud forms above the head, greys, and drizzles softly on the Mallow; the body droops.",
+    "M-SWELL": "The feeling fills the Mallow: it inflates a bit with each line, inner glow and slow sparkles rise inside, it starts to float.",
+    "M-STACK": "Each line lands as a glass block on the head; the stack grows and the Mallow squashes a little more under it.",
+    "M-WEEK": "Five small glass blocks (M T W T F) drop in from above one by one and hover; the sun slides lower with each.",
+    "M-METER": "A glass battery pill above the head in the Mallow's glow colour; one segment dims per line; the last segment pulses slowly (>= 1.2 s period).",
+    "M-TABS": "Glass tab cards pop in around the head; the 3 legible ones are the lines, 6-12 blurred decoy tabs crowd behind; the body squashes under the clutter.",
+    "M-LOOM": "One small glass task card beside the Mallow swells with each line until it towers and casts a shadow over it.",
+    "M-FRAMES": "Shiny glass frames scroll up past the Mallow, each with a sparkly abstract scene (sun over sea, trophy, little house); the Mallow's own glow dims.",
+    "M-FARGLOW": "Warm lantern-lit windows glow on a far island/hill (the plans elsewhere); each line, that glow warms while the Mallow's light cools.",
+    "M-CLOCK": "A glass clock face hovers; its hands crawl in slow motion or tick faster; the Mallow melts lower with each line.",
+    "M-SPOTLIGHT": "A soft spotlight cone narrows on the Mallow; the world dims around it (fade >= 0.3 s, never a hard switch).",
+    "M-JITTERS": "Tiny sparks and fizz crackle around the Mallow's rim, intensifying with each line; the rim quivers more.",
+    "M-FORK": "Two glass option bubbles pull left and right; the body leans/stretches toward each in turn, ping-pong getting faster.",
+    "M-NOISE": "Soft sound-rings and small glass onomatopoeia bubbles ('beep', 'bzz') drift in from the edges and overlap; never more than 6 elements, low contrast, slow.",
+    "M-BUZZ": "A glowing bubble emits soft concentric vibration rings that nudge the Mallow and ripple the ground; rings come faster.",
+    "M-PEBBLES": "Small grey glass pebbles bonk the Mallow one by one, each adding a puff to a grumpy little cloud (no lightning flashes).",
+    "M-ICONS": "Glass chore icons (sock, envelope, plate) orbit and poke at the Mallow while it tries to lie still.",
+    "M-COSYPILE": "Cosy cloud-cushions drop in one by one (soft, squishy landings) while the Mallow tries and fails to look sad.",
+    "M-FOG": "Mist rolls in, the moon/sun dims; each line is a soft memory bubble that drifts just out of reach.",
+    "M-DREAMBUBBLES": "Warm, slightly sepia glass memory bubbles rise like the realm's dream bubbles, each carrying a line; the grade warms toward nostalgia.",
+    "M-GLOW": "Positive escalation: blush spreads, slow hearts or golden stars rise (fxHeart/fxStar), the Mallow glows and grows a little prouder with each line.",
+    "M-TEARS": "Eyes well; little tear droplets lift off in gentle arcs that build to comic 'waterworks' (slow, soft, no splash flashing)."
+  },
+  "rituals": {
+    "$doc": "The Hushmallow moment. Physical, satisfying, safe; performed by the Mallow (never an instruction to the viewer). Every ritual ends by triggering the realm's own transform (from the app's realm code) at 30-100%. Times are fractions of the RITUAL window. minDur = shortest allowed version (the 10 s clock gives 2.1 s, 12 s gives 3.3 s); idealDur = full version. mallows = who may perform it (realm props / signature systems).",
+    "R-BREATH": {
+      "name": "One big breath",
+      "minDur": 3.2,
+      "idealDur": 4.1,
+      "mallows": "all",
+      "beat": "0.00 squeeze-and-let-go; 0.10-0.45 one slow inhale (body swells tall, lifts 36 px, thoughts drawn close; >= 1.2 s); natural soft crest <= 0.35 s, never labelled; 0.50-0.95 long elastic exhale melt (>= 1.5x the inhale) - calm ring spreads, the breath carries the thoughts away (words fade first, glass turns to warm motes)",
+      "safety": "no counts, no holds, no on-screen breathing instructions, no fast breathing",
+      "sound": "breathe-in air, soft crest, breathe-out, release squelch, glass chimes + sparkles, warm pad",
+      "source": "approved v2"
+    },
+    "R-SQUISH": {
+      "name": "The squish",
+      "minDur": 1.6,
+      "idealDur": 2.6,
+      "mallows": "all",
+      "beat": "0.00-0.30 slow press-down into a deep squash (height 0.62, ease-in); 0.30-0.45 squished wobble (rim shimmer); 0.45-0.80 slow rise with a jelly overshoot; the thoughts compress into one glowing pebble that melts into the glow",
+      "safety": "volume-preserving, silhouette stays recognisable",
+      "sound": "long squoosh, creak, satisfying pop-back boing"
+    },
+    "R-COSY": {
+      "name": "Cosy shrink",
+      "minDur": 2.0,
+      "idealDur": 3.2,
+      "mallows": "all",
+      "beat": "shrinks round to 0.78 scale; a realm blanket (moonmilk cloud, lily-pad leaf, festival bunting-cloud, sunbeam haze) settles over the top like a duvet, face still visible; warm inner glow; content blink",
+      "safety": "face never covered",
+      "sound": "blanket swish, cosy hum, content sigh gesture"
+    },
+    "R-CLOUDWRAP": {
+      "name": "Cloud wrap",
+      "minDur": 2.4,
+      "idealDur": 3.6,
+      "mallows": "all",
+      "beat": "a soft cloud drifts down and wraps around the body (front layer at the base, back layer behind), a gentle squeeze (squash 0.05), the face relaxes, glow rises; the cloud lifts into motes or stays as cosy",
+      "safety": "face never covered",
+      "sound": "cloud swish, kit 'comfort' gesture, pad"
+    },
+    "R-NAMEIT": {
+      "name": "Name it, softly",
+      "minDur": 2.0,
+      "idealDur": 3.2,
+      "mallows": "all",
+      "beat": "the bubbles drift together into one; the words blur and resolve into a single everyday feeling word (template nameWords); the Mallow gives a small nod (squash 0.25); the bubble warms and settles beside it, then fades into the glow",
+      "safety": "the word is an everyday feeling word, lowercase, never a diagnosis or label of a person",
+      "sound": "glass merge shimmer, one warm bell, nod tap"
+    },
+    "R-FLOAT-AWAY": {
+      "name": "Let it float",
+      "minDur": 1.8,
+      "idealDur": 3.0,
+      "mallows": "all",
+      "beat": "the Mallow rises a little and boops the bubble (tap: squash 0.2, lift 20 px); it floats up slowly, shrinking, past the moon/sun and becomes a star, lantern or mote (realm-specific); eyes follow it up; a relaxed settle",
+      "safety": "-",
+      "sound": "boop tap, rising shimmer, star ting"
+    },
+    "R-DRIFT": {
+      "name": "Lie back and drift",
+      "minDur": 2.4,
+      "idealDur": 3.6,
+      "mallows": [
+        "loomi",
+        "noomi",
+        "blubi",
+        "boppo"
+      ],
+      "beat": "body softens and spreads (squash +0.1), bobs gently on the water (2.5 s period), drifts 40 px aside and back; ripples still to a mirror; the escalation objects float off like leaves",
+      "safety": "stays on the surface; never sinks",
+      "sound": "water lap, slow wind, soft bloops as things float off"
+    },
+    "R-LANTERN": {
+      "name": "Fold it into a lantern",
+      "minDur": 2.4,
+      "idealDur": 3.6,
+      "mallows": [
+        "pipzi",
+        "noomi",
+        "blubi"
+      ],
+      "beat": "the thoughts fold (paper-fold) into a paper lantern that lights warm and rises; realm lanterns light one by one (Spark Festival transform)",
+      "safety": "no fire imagery beyond a soft glow",
+      "sound": "paper folds, pluck as it lights, rising shimmer"
+    },
+    "R-SPIRALSLOW": {
+      "name": "Slow the spiral",
+      "minDur": 2.0,
+      "idealDur": 3.2,
+      "mallows": [
+        "zuzu"
+      ],
+      "beat": "spirals slow from spin 3 to 0.1; tangled ribbons straighten into one clean orbit; the galaxy resolves and the dome shutter slides open (Spiral Observatory transform)",
+      "safety": "-",
+      "sound": "warble slowing to a hum, rotate-tick, lens-focus, chime"
+    },
+    "R-DEFRAG": {
+      "name": "Realign",
+      "minDur": 1.8,
+      "idealDur": 3.0,
+      "mallows": [
+        "glitzi"
+      ],
+      "beat": "slipped slices realign one at a time with soft clicks (3); constellations snap into clean geometry; the cracked floor heals into a golden mandala; dawn glow; a grudging smirk",
+      "safety": "glitch displacement only, luminance constant",
+      "sound": "three soft clicks, sort fx, unlock, warm swell"
+    },
+    "R-SUNSOAK": {
+      "name": "Sun soak",
+      "minDur": 2.4,
+      "idealDur": 3.6,
+      "mallows": [
+        "boppo",
+        "loomi",
+        "zuzu"
+      ],
+      "beat": "a sunbeam finds the Mallow; a slow golden warmth fills from base to top; body softens wide (squash +0.06); a soft rainbow arcs behind (Sunpop transform)",
+      "safety": "sun disc never brightens > 8%, ramps >= 0.5 s",
+      "sound": "warm swell, bloom fx, kit hum"
+    },
+    "R-RAINLIFT": {
+      "name": "Raindrops up",
+      "minDur": 2.0,
+      "idealDur": 3.2,
+      "mallows": [
+        "blubi",
+        "noomi"
+      ],
+      "beat": "the rain stops; hanging drops and tears lift upward one by one and turn to light (Raindrop Lagoon clarity transform); the Mallow rises a touch with them",
+      "safety": "-",
+      "sound": "drips reversing into rising droplet chimes"
+    },
+    "R-WIGGLE": {
+      "name": "Wiggle it loose",
+      "minDur": 1.5,
+      "idealDur": 2.4,
+      "mallows": "all",
+      "beat": "a slow jelly wiggle travels base -> top (sway <= 2 Hz, 3 damped cycles); little sparkles/droplets flick off (the annoyances); ends round and fresh with a tiny hop",
+      "safety": "body motion only; camera and text stay still",
+      "sound": "bwowow wobble, sparkle flicks, settle fx"
+    },
+    "R-STRETCH": {
+      "name": "Big stretch",
+      "minDur": 1.8,
+      "idealDur": 2.8,
+      "mallows": "all",
+      "beat": "stretches extra tall (1.22 height, lift 30 px), a yawn, a tiny tremble at the top, then pops back round with a satisfying wobble and a fresh blink",
+      "safety": "-",
+      "sound": "rubbery creak glide up, yawn gesture, pop-back boing"
+    },
+    "R-SETDOWN": {
+      "name": "Set it down",
+      "minDur": 2.0,
+      "idealDur": 3.2,
+      "mallows": "all",
+      "beat": "the weight leaves one piece at a time: blocks slide off and set down beside it with soft thunks / tabs fold shut with paper clicks; the body springs back taller with each; optionally one keeper item stays, glowing",
+      "safety": "-",
+      "sound": "shhk + thunk x3 (or paper clicks), spring boing, relief sigh"
+    },
+    "R-SAVOUR": {
+      "name": "Let it glow",
+      "minDur": 1.8,
+      "idealDur": 3.0,
+      "mallows": "all",
+      "beat": "the Mallow lets the good feeling fill it: slow golden glow bloom from inside (glow 0 -> 1.2), body rises softly (float 0.4), one soft happy hop, sparkles drift up slowly (no burst), content closed-eye smile",
+      "safety": "glow ramps >= 0.6 s, no flash",
+      "sound": "bloom fx, kit 'celebrate' gesture at low intensity, star sparkle"
+    },
+    "R-BOOP-SIZE": {
+      "name": "Boop it back to size",
+      "minDur": 1.8,
+      "idealDur": 2.8,
+      "mallows": "all",
+      "beat": "the Mallow boops the looming thing; it deflates back to its real tiny size with a squeaky pfff; one nudge and it folds into a small glowing tick",
+      "safety": "-",
+      "sound": "boop tap, deflate squeak, unlock + success gesture"
+    }
+  },
+  "loops": {
+    "$doc": "Every template uses LP-BASE plus one strategy. Seam QA: mean |delta| at frame N-1 -> 0 must not exceed the film's in-film keyframe deltas (v2: 1.89 vs 2.02-2.09).",
+    "LP-BASE": "All periodic motion (breath, sky, water, stars, bobbing) has period D/k; palette and pose at D equal frame 0; the realm bed and any loop-crossing sound are periodic; hook caption returns at HOOK_IN (D-0.34) in the identical position.",
+    "LP-RETURN": "Return to cover: the Mallow settles back into the exact cover pose and rest face (v2: eyes drift shut, warmth eases back).",
+    "LP-RETRIGGER": "The final second re-introduces the hook trigger (the dots reappear, a new tab pops, the buzz returns) so the loop reads 'here we go again'; frame 0 already shows it.",
+    "LP-CYCLE": "The story is cyclical (sun dips and comes back, morning returns); the world grade wraps through the end card back to the cover.",
+    "LP-OBJECT": "Match on an object: the released bubble/lantern/star drifts out the top; at frame 0 a new one is arriving from behind the head, continuing the same motion direction."
+  },
+  "cameras": {
+    "$doc": "One continuous shot, no cuts. Zoom 0.95-1.10, |zoom velocity| <= 0.04/s, vertical drift <= 40 px/s, no roll, no shake, no whip moves; sky parallax 0.35 of the foreground.",
+    "C-DRIFT-IN": "Locked framing; slow push-in 1.00 -> 1.075 across the escalation, ease back to 1.00 through the ritual (approved v2).",
+    "C-HOLD-WIDE": "Locked wide at 0.96 for headroom (stacks, launches, distant objects); a 1.03 push only during the ritual.",
+    "C-FOLLOW-SOFT": "Soft vertical follow of 0.2 x lift on hops and floats; otherwise still.",
+    "C-PULL-BACK": "Starts close (1.08) on the face for the hook, eases back to 1.00 to reveal the metaphor, returns to 1.08 over the last 1.5 s for the loop.",
+    "C-LOW-HERO": "Horizon 60 px lower and a gentle rise (y -24 px) for pride and joy beats."
+  },
+  "paletteArcs": {
+    "$doc": "Keyframes on the app's realm mood axes [agitation, heaviness, clarity, warmth] at beat names; values at END equal COVER. The Mallow is relit only (light hue/intensity), never recoloured. Anti-flash: exposure changes <= 12% and ramp over >= 0.5 s; no frame-to-frame relative-luminance change >= 10% over >= 25% of the frame, ever.",
+    "A-COLD-DIP-WARM": {
+      "COVER": [
+        0.0,
+        0.2,
+        0.5,
+        0.3
+      ],
+      "L1": [
+        0.2,
+        0.4,
+        0.4,
+        0.2
+      ],
+      "PEAK": [
+        0.65,
+        0.7,
+        0.25,
+        0.05
+      ],
+      "RITUAL_MID": [
+        0.2,
+        0.3,
+        0.7,
+        0.8
+      ],
+      "RESOLVE": [
+        0.0,
+        0.1,
+        0.85,
+        1.0
+      ],
+      "source": "v2 night -> cold -> warm"
+    },
+    "A-GREY-CLEAR": {
+      "COVER": [
+        0.1,
+        0.3,
+        0.5,
+        0.4
+      ],
+      "L1": [
+        0.1,
+        0.5,
+        0.4,
+        0.3
+      ],
+      "PEAK": [
+        0.2,
+        0.85,
+        0.2,
+        0.15
+      ],
+      "RITUAL_MID": [
+        0.05,
+        0.4,
+        0.7,
+        0.6
+      ],
+      "RESOLVE": [
+        0.0,
+        0.1,
+        0.9,
+        0.8
+      ]
+    },
+    "A-BUSY-STILL": {
+      "COVER": [
+        0.15,
+        0.2,
+        0.5,
+        0.4
+      ],
+      "L1": [
+        0.35,
+        0.25,
+        0.45,
+        0.35
+      ],
+      "PEAK": [
+        0.8,
+        0.35,
+        0.3,
+        0.25
+      ],
+      "RITUAL_MID": [
+        0.2,
+        0.15,
+        0.75,
+        0.6
+      ],
+      "RESOLVE": [
+        0.0,
+        0.05,
+        0.95,
+        0.75
+      ]
+    },
+    "A-FLAT-GOLDEN": {
+      "COVER": [
+        0.05,
+        0.35,
+        0.45,
+        0.4
+      ],
+      "L1": [
+        0.05,
+        0.5,
+        0.35,
+        0.3
+      ],
+      "PEAK": [
+        0.05,
+        0.7,
+        0.3,
+        0.25
+      ],
+      "RITUAL_MID": [
+        0.1,
+        0.3,
+        0.65,
+        0.8
+      ],
+      "RESOLVE": [
+        0.0,
+        0.1,
+        0.8,
+        1.0
+      ]
+    },
+    "A-BRIGHT-GLOW": {
+      "COVER": [
+        0.2,
+        0.05,
+        0.7,
+        0.6
+      ],
+      "L1": [
+        0.35,
+        0.05,
+        0.75,
+        0.7
+      ],
+      "PEAK": [
+        0.55,
+        0.0,
+        0.8,
+        0.85
+      ],
+      "RITUAL_MID": [
+        0.25,
+        0.0,
+        0.9,
+        1.0
+      ],
+      "RESOLVE": [
+        0.05,
+        0.0,
+        0.9,
+        0.95
+      ]
+    },
+    "A-DIM-SOFT": {
+      "COVER": [
+        0.05,
+        0.4,
+        0.45,
+        0.35
+      ],
+      "L1": [
+        0.05,
+        0.55,
+        0.35,
+        0.25
+      ],
+      "PEAK": [
+        0.1,
+        0.75,
+        0.25,
+        0.15
+      ],
+      "RITUAL_MID": [
+        0.0,
+        0.35,
+        0.6,
+        0.75
+      ],
+      "RESOLVE": [
+        0.0,
+        0.15,
+        0.75,
+        0.95
+      ]
+    },
+    "A-DIM-CONE-OPEN": {
+      "COVER": [
+        0.1,
+        0.3,
+        0.5,
+        0.35
+      ],
+      "L1": [
+        0.2,
+        0.5,
+        0.4,
+        0.25
+      ],
+      "PEAK": [
+        0.4,
+        0.7,
+        0.3,
+        0.15
+      ],
+      "RITUAL_MID": [
+        0.1,
+        0.3,
+        0.75,
+        0.7
+      ],
+      "RESOLVE": [
+        0.0,
+        0.1,
+        0.9,
+        0.9
+      ],
+      "note": "spotlight cone narrows to the PEAK, opens into general warm light on the exhale"
+    },
+    "A-DUSK-DIP-GOLD": {
+      "COVER": [
+        0.05,
+        0.2,
+        0.6,
+        0.8
+      ],
+      "L1": [
+        0.15,
+        0.4,
+        0.45,
+        0.55
+      ],
+      "PEAK": [
+        0.35,
+        0.65,
+        0.3,
+        0.25
+      ],
+      "RITUAL_MID": [
+        0.1,
+        0.3,
+        0.65,
+        0.65
+      ],
+      "RESOLVE": [
+        0.0,
+        0.1,
+        0.75,
+        0.85
+      ],
+      "note": "the sun slides down with the dread and inches back up during the ritual"
+    },
+    "A-PREDAWN-SUNRISE": {
+      "COVER": [
+        0.05,
+        0.45,
+        0.4,
+        0.2
+      ],
+      "L1": [
+        0.2,
+        0.55,
+        0.35,
+        0.2
+      ],
+      "PEAK": [
+        0.35,
+        0.65,
+        0.3,
+        0.15
+      ],
+      "RITUAL_MID": [
+        0.1,
+        0.3,
+        0.7,
+        0.7
+      ],
+      "RESOLVE": [
+        0.0,
+        0.1,
+        0.85,
+        0.9
+      ]
+    }
+  },
+  "scoreMotifs": {
+    "$doc": "Music-less score: realm bed (app REALM_BEDS, driven by the same 4 mood curves) + Mallow kit gestures (app GESTURES) + cue-synced procedural foley. Pitch material is the Mallow kit's major pentatonic only; resolution contours rise or arch, never fall at the end. No samples, no music library, no real-product sounds (no phone ringtones, messenger pops or alarm tones), no heartbeat sounds, no jump-scare stingers; app audio rules (soft attacks >= 3 ms, nothing harsh) apply.",
+    "MO-TICK": "Clock tick, 0.5 s -> 0.18 s period with agitation; stops dead at TURN.",
+    "MO-DOTS": "Three soft plinks (degrees 0-2-4) per 1.2 s typing cycle; a 'fwip' when the dots vanish.",
+    "MO-GLASS-RISE": "A glass ting per line arrival on degrees 0/2/4 (or 4/2/0 for deflating moods), panned to the bubble.",
+    "MO-ORBIT": "Orbit whooshes panned to each bubble, faster with PEAK.",
+    "MO-HUM": "Tension tone (filtered saw + pad) whose cutoff follows agitation; max -24 dBFS; consonant only; ducks to silence at TURN.",
+    "MO-THUNK": "Weighted glass landings, each a step lower.",
+    "MO-POP": "Card/tab pops, each a step higher.",
+    "MO-BUZZ": "Soft low vibration pattern (2 x 0.4 s, 0.8 s gap), low-passed; never a ringtone.",
+    "MO-FIZZ": "Soft crackle grains; density follows excitement/nerves.",
+    "MO-PATTER": "Rain patter; density follows heaviness.",
+    "MO-MURMUR": "Pitched noise grains suggesting a crowd (never voices or words).",
+    "MO-MUSICBOX": "A slow, original 3-4 note celesta phrase (memory / 'the advert music' / 'the old song').",
+    "MO-WARMPAD": "Warm pad (kit root, major add9) entering on the ritual exhale/peak; carries to the logo.",
+    "MO-CLOSE": "Mallow content gesture (comfort / release / celebrate) on OPEN + closing chime on LOGO (always)."
+  },
+  "brand": {
+    "closers": [
+      [
+        "Your second brain",
+        "for feelings."
+      ],
+      [
+        "Give your feelings",
+        "somewhere soft to land."
+      ]
+    ],
+    "closerRule": "The end card shows EITHER the template's insight line OR a brand closer (about 30% brand closer, higher on positive templates) - never both. Then the untouched logo on its plate + 'hushmallow.com'.",
+    "nameRule": "Brand name is always lowercase 'hushmallow' in any copy; URL lowercase 'hushmallow.com'. The logo is never recoloured, stretched, outlined, cropped, animated beyond a fade, or placed without its plate."
+  },
+  "copyRules": {
+    "hook": "ALL CAPS, 1-2 lines, <= 32 chars per line (<= 22 preferred for full 76 px size); at most one '?' or '!'; no emoji; no hashtags; time words must agree with the realm ToD (timeWords).",
+    "thought": "Sentence case, <= 28 chars, must wrap into <= 2 bubble lines of <= 17 chars; one feeling beat per line; no breath words in the escalation (the breath belongs to the ritual).",
+    "resolution": "<= 2 lines, <= 28 chars per line, reads well in all-lowercase (no proper nouns/acronyms), an observation or kindness - never an instruction to fix, never an outcome promise.",
+    "general": "Relatable and kind: never mocks the viewer, never catastrophic. No self-hatred, self-harm, death (even as a joke), illness, body/weight/food-guilt, alcohol, drugs, or appearance comparisons. No real brands, apps, people or places by name. One Mallow per video; no humans; no generic or new characters."
+  },
+  "medicalTherapyFlags": {
+    "$doc": "Copy that could read as medical or therapy advice or as a clinical claim. The validator rejects 'banned' terms everywhere and warns on 'caution' terms.",
+    "banned": [
+      "therapy",
+      "therapist",
+      "therapeutic",
+      "treatment",
+      "treat",
+      "cure",
+      "cures",
+      "heal",
+      "healing",
+      "diagnose",
+      "diagnosis",
+      "symptom",
+      "symptoms",
+      "disorder",
+      "syndrome",
+      "clinical",
+      "clinically",
+      "proven",
+      "science-backed",
+      "evidence-based",
+      "doctor",
+      "anxiety",
+      "panic",
+      "panic attack",
+      "depression",
+      "depressed",
+      "trauma",
+      "traumatic",
+      "triggered",
+      "triggering",
+      "ptsd",
+      "ocd",
+      "adhd",
+      "bipolar",
+      "insomnia",
+      "mental illness",
+      "nervous system",
+      "regulate",
+      "regulation",
+      "vagus",
+      "cortisol",
+      "dopamine",
+      "serotonin",
+      "coping mechanism",
+      "coping skill",
+      "grounding technique",
+      "breathing exercise",
+      "box breathing",
+      "4-7-8",
+      "self-soothe",
+      "name it to tame it",
+      "cbt",
+      "dbt",
+      "mindfulness exercise",
+      "hold your breath",
+      "hold my breath",
+      "breath hold",
+      "breath-hold",
+      "self-harm",
+      "suicide",
+      "kill me",
+      "i'm dead",
+      "dying",
+      "life or death",
+      "crazy",
+      "insane",
+      "psycho",
+      "toxic",
+      "gaslight",
+      "narcissist"
+    ],
+    "caution": [
+      "anxious",
+      "overstimulated",
+      "sensory overload",
+      "burnout",
+      "brain fog",
+      "intrusive",
+      "ruminat",
+      "dissociat",
+      "boundaries",
+      "you should",
+      "you need to",
+      "you must",
+      "fix",
+      "instantly",
+      "feel better",
+      "stop overthinking",
+      "mental health",
+      "breathe in",
+      "breathe out",
+      "inhale",
+      "exhale"
+    ],
+    "replacements": {
+      "imposter syndrome": "imposter feeling / feeling like a fraud",
+      "anxiety / anxious / panic": "nervous, jittery, on edge, wobbly, the spiral",
+      "overstimulated / sensory overload": "a lot, too loud, too much",
+      "brain fog / burnout": "3 pm slump, running on empty, social battery",
+      "intrusive thoughts / rumination": "that random cringe memory, the replay, overthinking",
+      "calms your nervous system / reduces stress": "(no claim - show the Mallow's moment and let it speak)",
+      "breathing exercise / breathe in for 4": "(no instruction - the Mallow takes one big breath on screen)",
+      "set boundaries": "a kind no, your time counts too",
+      "stop overthinking / fix your feelings": "give it somewhere soft to land"
+    },
+    "decisionsInThisLibrary": [
+      "Imposter template is framed as 'imposter feeling' / 'fraud' - never 'imposter syndrome'.",
+      "Removed 'What's wrong with me?' from the rejection pool (self-blame) -> 'What did I miss?'.",
+      "Removed 'Did I lock the door?' from the tabs pool (repeat-checking reads as a clinical pattern) -> 'Did I reply to that?'.",
+      "Removed bodily-symptom lines from nerves templates ('mouth so dry', racing heart, sweating) -> 'Where are my notes?'.",
+      "'Everything too loud' never says 'overstimulated' or 'sensory overload' on screen.",
+      "Escalation lines never use breath words ('deep breath') so nothing reads as an instruction; the breath is shown, never told.",
+      "R-BREATH: no counts, no holds, crest <= 0.35 s and unlabelled, exhale >= 1.5x inhale; no underwater ritual and G-SINK keeps the mouth above the waterline (no breath-hold reading).",
+      "'Cancel more things?' removed from the plans-cancelled pool (reads as encouraging withdrawal) -> 'Nobody move. Bliss.'.",
+      "'Your brain isn't broken' not used (implies a disorder frame).",
+      "Missing-someone and nostalgia may touch grief: gentle tone, gag intensity capped at 0.4, no 'gone forever' lines, no slapstick.",
+      "No heartbeat sounds (medical/anxiety connotation) and no alarm/ringtone imitations.",
+      "'LIFE OR DEATH' replaced in the decision template; no death jokes anywhere.",
+      "'Drink water', dentist, caffeine and food-guilt references avoided (health-advice adjacency)."
+    ]
+  },
+  "slotGrammar": {
+    "$doc": "VideoSpec = template x slots. Tiers: plate slots change the rendered picture (expensive: ~20-30 min per 15 s on 4 CPU cores); overlay slots (hook + resolution text) can be re-composited cheaply IF the renderer emits a clean plate + caption overlay separately (small stage2 change). Thought lines live inside the glass bubbles, so they are plate slots.",
+    "slots": {
+      "template": {
+        "tier": "plate",
+        "from": "templates[]"
+      },
+      "duration": {
+        "tier": "plate",
+        "from": "template.durations",
+        "default": 15
+      },
+      "mallow": {
+        "tier": "plate",
+        "from": "template.mallows.primary (weight 3) + secondary (weight 1)",
+        "constraint": "realm ToDs intersect template ToDs; never in avoid"
+      },
+      "realm": {
+        "tier": "plate",
+        "from": "mallows[m].realm (home realm only; no guest realms)"
+      },
+      "tod": {
+        "tier": "plate",
+        "from": "mallows[m].tods intersect template.tod",
+        "constraint": "must satisfy timeWords of the chosen hook/lines"
+      },
+      "palette": {
+        "tier": "plate",
+        "from": "template.palette arc + realm base grade at tod",
+        "jitter": "world only: hue +/-6 deg, warmth +/-0.1, exposure +/-0.05; the Mallow is never recoloured"
+      },
+      "gag": {
+        "tier": "plate",
+        "from": "template.gag.primary/alts intersect gags[g].mallows; 40% chance of the Mallow's signature gag if listed"
+      },
+      "metaphor": {
+        "tier": "plate",
+        "from": "template.escalation.metaphor (+ alts)"
+      },
+      "lines": {
+        "tier": "plate",
+        "from": "one from each of L1/L2/L3 pools (primary line counts as a pool member) or the curated primary triple",
+        "constraint": "no two lines in a triple start with the same word; <= 2 question marks per triple"
+      },
+      "ritual": {
+        "tier": "plate",
+        "from": "template.ritual.primary/alts; signature rituals only for their Mallow; minDur must fit the RITUAL window"
+      },
+      "nameWord": {
+        "tier": "plate",
+        "from": "template.nameWords (only when ritual = R-NAMEIT)"
+      },
+      "camera": {
+        "tier": "plate",
+        "from": "template.camera"
+      },
+      "seed": {
+        "tier": "plate",
+        "controls": "micro-timing +/-80 ms on non-sync beats, blink placement, glance targets, bubble orbit slots, mote seeds, decoy tab layout"
+      },
+      "score": {
+        "tier": "audio",
+        "controls": "kit root (per Mallow), motif contour seed (rising/arch set), tick tempo +/-10%, pan seed; bed mood follows the palette arc",
+        "note": "audio can be re-rendered and remuxed onto an existing picture (render.mjs --remux)"
+      },
+      "hook": {
+        "tier": "overlay",
+        "from": "template.hook.primary + variants"
+      },
+      "resolution": {
+        "tier": "overlay",
+        "from": "template.resolution.primary + variants, or brand.closers (~30%)"
+      }
+    },
+    "pipeline": [
+      "1 scheduler picks a template (cooldowns + feeling-family balance)",
+      "2 pick mallow (fit weights, not the previous post's Mallow) -> realm -> tod",
+      "3 pick gag, metaphor, ritual, camera within the template + Mallow capabilities",
+      "4 pick hook, line triple, resolution/closer under copy cooldowns; check timeWords vs tod; lint copy",
+      "5 fingerprint + distance check against the publish log; resample (max 50 tries)",
+      "6 compile beat clock for the duration -> body/face/world/camera/bubble tracks + sound cues (same structure as videos/my-brain-at-2am-v2.js)",
+      "7 render, then QA: verify.mjs spec/loudness, loop-seam delta, anti-flash luminance scan, safe-zone check, filmstrips"
+    ]
+  },
+  "variationRules": {
+    "fingerprint": "hash(template, mallow, tod, gag, metaphor, ritual, L1, L2, L3, hook, resolution, camera, seed)",
+    "uniqueness": [
+      "Never publish the same fingerprint twice.",
+      "Any two videos on the same channel within 14 days differ in >= 3 visible slots {mallow, hook text, line triple, ritual, gag, realm/tod, metaphor}, one of which is mallow or hook text.",
+      "Overlay-only variants (same plate, new hook/resolution) count as the same video for these rules; use them only for A/B hook tests or cross-platform versions, never as separate posts on one channel."
+    ],
+    "sequencing": [
+      "No back-to-back posts with the same template, Mallow, ritual or gag (keeps the profile grid colourful and the format fresh).",
+      "Every Mallow appears at least once in any 10 consecutive posts; no Mallow more than 3 times in any 10.",
+      "Within any 7 posts: >= 4 feeling families and >= 2 positive or mixed-valence templates (the feed must not be all angst).",
+      "Same template at most twice per 7 days per channel; the approved T01 at most once per 7 days."
+    ],
+    "copyCooldowns": [
+      "A hook text is not reused on a channel for 90 days; a thought line at most 3 times per 30 days; a resolution line at most once per 7 days.",
+      "No line appears in two templates (library-wide dedupe, enforced by the validator).",
+      "The brand line appears as the closer in about 30% of posts, never in more than 2 consecutive posts."
+    ],
+    "personality": [
+      "A Mallow only plays a template where it is listed in primary/secondary; the performance is filtered through the app's PERSONALITY overrides (expressions.js), so the same beat reads differently on each Mallow.",
+      "Loomi under-reacts (comedy by contrast); Glitzi stays dry (smirk, never gushing); Blubi is allowed tears; Boppo bounces even when low; Zuzu's spiral speed tracks the overthinking; Pipzi's feelings come out as sparks; Noomi reacts sleepily and opens her eyes only on big beats.",
+      "Closed-eye Mallows (noomi, blubi, loomi) open their eyes only on strong beats (app eyeGate) and always start/end on the untouched painted face."
+    ],
+    "design": [
+      "Only approved hi-res art (assets/source/hires/<id>.webp), never upscaled; no accessories, outfits, limbs or recolouring; squash height >= 0.6, stretch <= 1.3, uniform scale >= 0.6; the silhouette must always read as that Mallow.",
+      "Faces only from the app rig vocabulary (expressions.js presets + reactions.js), drawn at art resolution.",
+      "Each Mallow lives in its own realm; captions supply the human context (office, sofa) without redrawing the realm.",
+      "Cinematic restraint: no camera shake or roll, no cuts, no clutter (<= 3 legible texts + captions), no bouncing/shaking text, no flashes or strobing, no '!' glyph effects, sweat drops or outlined cartoon captions."
+    ],
+    "capacity": "Per template roughly 7 hooks x 64 line triples x 3 resolutions x 3-5 Mallows x 3 rituals x 3 gags x 1-2 cameras x 2-3 ToDs = 10^5-10^6 combinations; after the visible-distance rule, several hundred clearly distinct posts per template. Render budget on this machine is ~55 x 15 s videos/day, so variety is limited by rendering, not by the library."
+  },
+  "templates": [
+    {
+      "id": "T01-brain-at-2am",
+      "title": "My Brain at 2 AM",
+      "feeling": {
+        "family": "overthinking",
+        "label": "replaying cringe at night",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "noomi",
+          "zuzu"
+        ],
+        "secondary": [
+          "blubi",
+          "glitzi"
+        ],
+        "avoid": {
+          "boppo": "no night ToD",
+          "loomi": "no night ToD"
+        }
+      },
+      "tod": [
+        "late-night",
+        "night"
+      ],
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "H",
+      "hook": {
+        "primary": [
+          "ME TRYING TO SLEEP",
+          "AT 2 AM..."
+        ],
+        "variants": [
+          [
+            "MY BRAIN AT 3 AM:",
+            "LET'S REVIEW EVERYTHING"
+          ],
+          [
+            "ME: FINALLY COMFY",
+            "MY BRAIN: REMEMBER 2014?"
+          ],
+          [
+            "LIGHTS OFF. BRAIN ON."
+          ],
+          [
+            "TRYING TO SLEEP BUT MY",
+            "BRAIN HAS OTHER PLANS"
+          ],
+          [
+            "WHEN YOU CLOSE YOUR EYES",
+            "AND THE REPLAY STARTS"
+          ],
+          [
+            "2 AM AND MY BRAIN JUST",
+            "OPENED A NEW CHAPTER"
+          ],
+          [
+            "BEDTIME? MY BRAIN THINKS",
+            "IT'S MEETING TIME"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-JOLT",
+        "alts": [
+          "G-JELLYFREEZE",
+          "G-SINK",
+          "G-SPINUP"
+        ],
+        "staging": "asleep on the cover; the memory hits like a hypnic jerk"
+      },
+      "escalation": {
+        "metaphor": "M-ORBIT",
+        "alts": [
+          "M-ECHO"
+        ],
+        "lines": [
+          "That awkward conversation.",
+          "Did I say something weird?",
+          "Why did I do that?"
+        ],
+        "pools": {
+          "L1": [
+            "That thing from 2014.",
+            "What I said at lunch.",
+            "That email I sent."
+          ],
+          "L2": [
+            "Did they notice?",
+            "Was that rude?",
+            "Should I explain?"
+          ],
+          "L3": [
+            "Why am I like this?",
+            "Should I move away?",
+            "Time to replay it again."
+          ]
+        },
+        "staging": "clouds swallow the moon, water chops, light goes cold, eyes chase the orbit"
+      },
+      "ritual": {
+        "primary": "R-BREATH",
+        "alts": [
+          "R-CLOUDWRAP",
+          "R-FLOAT-AWAY",
+          "R-SPIRALSLOW"
+        ],
+        "staging": "the exhale carries the thoughts away as warm motes; clouds part, moon warms, lake stills"
+      },
+      "resolution": {
+        "primary": [
+          "Give your feelings",
+          "somewhere soft to land."
+        ],
+        "variants": [
+          [
+            "Thoughts get quieter",
+            "when they're held softly."
+          ],
+          [
+            "Not every thought",
+            "needs an answer tonight."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETURN",
+        "staging": "eyes drift shut, warmth eases back into night; hook returns and reads as '...every night'"
+      },
+      "palette": "A-COLD-DIP-WARM",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-ORBIT",
+          "MO-TICK",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "COVER: crickets + sleeping breath across the seam",
+          "ANTIC: dream flinch hum",
+          "GAG: eye-pop + boing + water plip",
+          "IMPACT: heavy wet flump, squelch, bloop, wobble tail",
+          "AFTER: blink bips, glances, clock that won't stop",
+          "L1-L3: glass tings rising 0/2/4, cringe squeak on L1",
+          "PEAK: orbit whooshes + tick accelerating + tension hum",
+          "TURN: everything stops dead",
+          "RITUAL: inhale / soft crest / long exhale, release squelch, dissolve chimes + sparkles, warm pad",
+          "OPEN: Noomi content glide",
+          "LOGO: closing chime"
+        ]
+      },
+      "flags": [
+        "Approved v2 reference; 'Why am I like this?' is playful, keep it out of templates about rejection."
+      ]
+    },
+    {
+      "id": "T02-sunday-scaries",
+      "title": "Sunday Scaries",
+      "feeling": {
+        "family": "dread",
+        "label": "Sunday-evening Monday dread",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "loomi",
+          "blubi",
+          "noomi"
+        ],
+        "secondary": [
+          "glitzi",
+          "zuzu"
+        ],
+        "avoid": {
+          "boppo": "no dusk ToD",
+          "pipzi": "energy reads as party, not dread"
+        }
+      },
+      "tod": [
+        "golden",
+        "dusk",
+        "blue-hour",
+        "night"
+      ],
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "SUNDAY 6 PM:",
+          "MY BRAIN STARTS MONDAY"
+        ],
+        "variants": [
+          [
+            "ME ENJOYING SUNDAY",
+            "UNTIL ABOUT 5 PM"
+          ],
+          [
+            "THE SUNDAY SCARIES",
+            "ARRIVING RIGHT ON TIME"
+          ],
+          [
+            "WEEKEND: STILL HERE",
+            "MY BRAIN: IT'S MONDAY"
+          ],
+          [
+            "SUNDAY NIGHT AND MONDAY",
+            "IS ALREADY IN MY HEAD"
+          ],
+          [
+            "ME PRETENDING TOMORROW",
+            "ISN'T MONDAY"
+          ],
+          [
+            "THAT SUNDAY FEELING",
+            "WHEN THE SUN GOES DOWN"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-DOUBLETAKE",
+        "alts": [
+          "G-DEFLATE",
+          "G-SINK",
+          "G-DEADPAN"
+        ],
+        "staging": "the Mallow glances at the low sun, looks away, looks back - the sun has visibly lurched lower"
+      },
+      "escalation": {
+        "metaphor": "M-WEEK",
+        "alts": [
+          "M-CLOCK"
+        ],
+        "lines": [
+          "Monday is coming.",
+          "Did I do anything?",
+          "The whole week at once."
+        ],
+        "pools": {
+          "L1": [
+            "Alarm at 6:30.",
+            "That inbox though.",
+            "Tomorrow's to-do list."
+          ],
+          "L2": [
+            "Where did it go?",
+            "I wasted the weekend.",
+            "Is it Friday yet?"
+          ],
+          "L3": [
+            "Every meeting. All of it.",
+            "Five days. In a row.",
+            "Can weekends be longer?"
+          ]
+        },
+        "staging": "M T W T F blocks drop in one per line; the sun slides down; light goes dusky blue"
+      },
+      "ritual": {
+        "primary": "R-FLOAT-AWAY",
+        "alts": [
+          "R-BREATH",
+          "R-COSY",
+          "R-DRIFT"
+        ],
+        "staging": "the week blocks float out to the horizon and become small islets/lanterns; the sun inches back up (the Mallow slows time)"
+      },
+      "resolution": {
+        "primary": [
+          "Monday can wait",
+          "until it's Monday."
+        ],
+        "variants": [
+          [
+            "Tonight is still yours."
+          ],
+          [
+            "Sunday evening counts",
+            "as weekend too."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-CYCLE",
+        "staging": "sun back at its cover height as the hook returns"
+      },
+      "palette": "A-DUSK-DIP-GOLD",
+      "camera": [
+        "C-HOLD-WIDE"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-THUNK",
+          "MO-TICK",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "COVER: realm evening bed",
+          "GAG: blink bip, low 'whoop' as the sun drops, tiny boing",
+          "L1-L3 + extra blocks: glass thunks stepping down",
+          "PEAK: distant soft tick + hum",
+          "TURN: silence",
+          "RITUAL: boop, blocks swish away to the horizon, rising shimmer as the sun returns, warm pad",
+          "LOGO: chime"
+        ]
+      },
+      "flags": []
+    },
+    {
+      "id": "T03-social-battery",
+      "title": "Social Battery Empty",
+      "feeling": {
+        "family": "depletion",
+        "label": "drained after people time",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "loomi",
+          "noomi",
+          "blubi"
+        ],
+        "secondary": [
+          "glitzi",
+          "boppo"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "MY SOCIAL BATTERY",
+          "AFTER ONE PHONE CALL"
+        ],
+        "variants": [
+          [
+            "ME AFTER ONE PARTY:",
+            "SOCIAL BATTERY AT 1%"
+          ],
+          [
+            "SOCIAL BATTERY: 2%",
+            "SOMEONE: ONE MORE GAME?"
+          ],
+          [
+            "WHEN YOU'VE SMILED",
+            "AT 40 PEOPLE TODAY"
+          ],
+          [
+            "ME GETTING HOME AFTER",
+            "BEING 'ON' ALL DAY"
+          ],
+          [
+            "INTROVERT FUEL GAUGE:",
+            "EMPTY"
+          ],
+          [
+            "THE MOMENT THE DOOR",
+            "CLOSES BEHIND YOU"
+          ],
+          [
+            "SOCIAL BATTERY AT 1%",
+            "AND IT'S ONLY 8 PM"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-FLOP",
+        "alts": [
+          "G-DEFLATE",
+          "G-MELT",
+          "G-DEADPAN"
+        ],
+        "staging": "the battery pill fades in at 1% and the Mallow pancakes"
+      },
+      "escalation": {
+        "metaphor": "M-METER",
+        "alts": [],
+        "lines": [
+          "So many people.",
+          "Did I talk too much?",
+          "Need to be a blob now."
+        ],
+        "pools": {
+          "L1": [
+            "Small talk. So much.",
+            "Three hours of nodding.",
+            "Everyone was so loud."
+          ],
+          "L2": [
+            "Was I weird at dinner?",
+            "Did I laugh right?",
+            "Did I say bye properly?"
+          ],
+          "L3": [
+            "No words left. Only mush.",
+            "Must lie down. Forever.",
+            "Do not perceive me."
+          ]
+        },
+        "staging": "one battery segment dims per line; the last one pulses slowly amber"
+      },
+      "ritual": {
+        "primary": "R-COSY",
+        "alts": [
+          "R-DRIFT",
+          "R-SQUISH",
+          "R-CLOUDWRAP"
+        ],
+        "staging": "tucked under the realm blanket, the battery refills one warm segment at a time"
+      },
+      "resolution": {
+        "primary": [
+          "Alone time isn't rude.",
+          "It's recharging."
+        ],
+        "variants": [
+          [
+            "Some batteries charge",
+            "in the quiet."
+          ],
+          [
+            "Quiet nights count",
+            "as plans too."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "freshly full battery drops back to 1% as the hook returns"
+      },
+      "palette": "A-GREY-CLEAR",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft low-battery 'boop', wet flump, long deflating squeak, sigh",
+          "L1-L3: segment-dim plinks stepping down 4/2/0",
+          "PEAK: slow warm low-battery pulse (not an alarm)",
+          "RITUAL: blanket swish, cosy hum, recharge plucks rising 0/2/4/7",
+          "OPEN: content sigh",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "'Introvert' is a personality word, fine; do not drift into 'burnout'."
+      ]
+    },
+    {
+      "id": "T04-replaying-the-text",
+      "title": "Replaying the Text I Sent",
+      "feeling": {
+        "family": "overthinking",
+        "label": "re-reading your own message",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "zuzu",
+          "blubi"
+        ],
+        "secondary": [
+          "glitzi",
+          "pipzi",
+          "noomi"
+        ],
+        "avoid": {
+          "loomi": "too unbothered to re-read"
+        }
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME REREADING THE TEXT",
+          "I SENT 3 HOURS AGO"
+        ],
+        "variants": [
+          [
+            "SENT IT. NOW READING IT",
+            "FOR THE 40TH TIME"
+          ],
+          [
+            "WHY DID I SEND 'OK.'",
+            "WITH A FULL STOP"
+          ],
+          [
+            "ME ANALYSING MY OWN",
+            "TEXT LIKE A DETECTIVE"
+          ],
+          [
+            "THE TEXT WAS FINE.",
+            "MY BRAIN: WAS IT THOUGH?"
+          ],
+          [
+            "RE-READING WHAT I SENT",
+            "IN 9 DIFFERENT TONES"
+          ],
+          [
+            "WHEN YOU SEND 'HAHA'",
+            "AND IMMEDIATELY REGRET IT"
+          ],
+          [
+            "ME AFTER SENDING A",
+            "VOICE NOTE"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-CRINGE",
+        "alts": [
+          "G-DOUBLETAKE",
+          "G-SINK",
+          "G-SPINUP"
+        ],
+        "staging": "the sent bubble whooshes up, the Mallow reads it and shrinks"
+      },
+      "escalation": {
+        "metaphor": "M-ECHO",
+        "alts": [
+          "M-ORBIT"
+        ],
+        "lines": [
+          "Was 'haha' too much?",
+          "Sounded rude, right?",
+          "Should I unsend it?"
+        ],
+        "pools": {
+          "L1": [
+            "Too many exclamations?",
+            "Why the full stop?",
+            "That emoji was weird."
+          ],
+          "L2": [
+            "They think I'm upset.",
+            "Did it sound annoyed?",
+            "Do I explain the joke?"
+          ],
+          "L3": [
+            "New phone. New name.",
+            "Time to move countries.",
+            "Reading it again. Again."
+          ]
+        },
+        "staging": "the message echoes into copies re-styled in different 'tones'"
+      },
+      "ritual": {
+        "primary": "R-FLOAT-AWAY",
+        "alts": [
+          "R-NAMEIT",
+          "R-SQUISH",
+          "R-SPIRALSLOW"
+        ],
+        "staging": "the echoes collapse into one bubble; the Mallow boops it up into the sky where it becomes a star"
+      },
+      "nameWords": [
+        "unsure.",
+        "embarrassed.",
+        "worried."
+      ],
+      "resolution": {
+        "primary": [
+          "Most texts are read",
+          "once. Not forty times."
+        ],
+        "variants": [
+          [
+            "They probably read it",
+            "in two seconds."
+          ],
+          [
+            "You meant it kindly.",
+            "That's what counts."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-OBJECT",
+        "staging": "the star leaves the top of frame; a new 'sent' bubble whooshes in on frame 0"
+      },
+      "palette": "A-COLD-DIP-WARM",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "COVER: soft 'send' swish up",
+          "GAG: cringe squeak",
+          "L1-L3: each echo copy a ting at a comic new pitch",
+          "PEAK: echo tings overlapping, hum (Zuzu: spiral warble)",
+          "RITUAL: boop tap, rising shimmer, star ting, pad",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Generic 'message bubble' only - never imitate a real messenger's colours, ticks or 'Read' UI."
+      ]
+    },
+    {
+      "id": "T05-waiting-for-reply",
+      "title": "Waiting for a Reply",
+      "feeling": {
+        "family": "anticipation",
+        "label": "watching the typing dots",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "pipzi",
+          "blubi"
+        ],
+        "secondary": [
+          "zuzu",
+          "boppo",
+          "glitzi"
+        ],
+        "avoid": {
+          "loomi": "would not be watching"
+        }
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "WAITING FOR A REPLY",
+          "LIKE..."
+        ],
+        "variants": [
+          [
+            "THEY'VE BEEN TYPING",
+            "FOR 4 MINUTES"
+          ],
+          [
+            "ME CHECKING IF THEY",
+            "REPLIED (IT'S BEEN 2 MIN)"
+          ],
+          [
+            "SEEN 1H AGO.",
+            "COOL. COOL COOL COOL."
+          ],
+          [
+            "WHEN THE TYPING DOTS",
+            "APPEAR AND DISAPPEAR"
+          ],
+          [
+            "ME STARING AT MY PHONE",
+            "LIKE IT OWES ME MONEY"
+          ],
+          [
+            "SENT A TEXT AT 6.",
+            "IT IS NOW 6:02."
+          ],
+          [
+            "WAITING FOR A REPLY",
+            "IS A FULL-TIME JOB"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-PING",
+        "alts": [
+          "G-DOUBLETAKE",
+          "G-SPARKPOP",
+          "G-SPLASHSIT"
+        ],
+        "staging": "the dots bubble pops in; the Mallow stretches up hopefully"
+      },
+      "escalation": {
+        "metaphor": "M-DOTS",
+        "alts": [
+          "M-CLOCK"
+        ],
+        "lines": [
+          "They're typing!",
+          "...they stopped.",
+          "Are they mad at me?"
+        ],
+        "pools": {
+          "L1": [
+            "Ooh, the dots!",
+            "Seen at 6:04.",
+            "Is that a buzz?"
+          ],
+          "L2": [
+            "Dots gone. Hmm.",
+            "Still nothing.",
+            "Should I double text?"
+          ],
+          "L3": [
+            "Did I ruin everything?",
+            "Writing a 2nd draft.",
+            "Okay, they hate me."
+          ]
+        },
+        "staging": "dots pulse, vanish, return; the Mallow leans in each time; a clock ticks faster"
+      },
+      "ritual": {
+        "primary": "R-FLOAT-AWAY",
+        "alts": [
+          "R-LANTERN",
+          "R-BREATH",
+          "R-RAINLIFT"
+        ],
+        "staging": "the Mallow nudges the dots bubble up into the sky (it'll come when it comes); attention returns to its own warm world"
+      },
+      "resolution": {
+        "primary": [
+          "Your worth isn't measured",
+          "in reply times."
+        ],
+        "variants": [
+          [
+            "People reply when",
+            "life lets them."
+          ],
+          [
+            "The wait feels longer",
+            "than it really is."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "the dots reappear beside the head as the hook returns"
+      },
+      "palette": "A-BUSY-STILL",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-DOTS",
+          "MO-TICK",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft glass ding + stretch boing",
+          "L1: typing plinks",
+          "L2: 'fwip' as the dots vanish",
+          "L3 + PEAK: tick speeding, hum",
+          "TURN: stop",
+          "RITUAL: whoosh up, lantern/star shimmer, pad",
+          "LOGO: chime",
+          "HOOK_IN: typing plinks restart across the seam"
+        ]
+      },
+      "flags": [
+        "Generic glass bubble only; no real app's 'seen' UI."
+      ]
+    },
+    {
+      "id": "T06-imposter-feeling",
+      "title": "Waiting to Be Found Out",
+      "feeling": {
+        "family": "self-doubt",
+        "label": "imposter feeling",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "glitzi",
+          "zuzu"
+        ],
+        "secondary": [
+          "boppo",
+          "pipzi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME AT WORK WAITING FOR",
+          "SOMEONE TO FIND ME OUT"
+        ],
+        "variants": [
+          [
+            "GOT THE JOB.",
+            "NOW I HAVE TO DO THE JOB."
+          ],
+          [
+            "ME IN THE MEETING",
+            "HOPING NO ONE ASKS ME"
+          ],
+          [
+            "WHEN EVERYONE SEEMS TO",
+            "KNOW WHAT THEY'RE DOING"
+          ],
+          [
+            "FIRST WEEK AT THE NEW JOB",
+            "LIKE..."
+          ],
+          [
+            "ME NODDING LIKE I KNOW",
+            "WHAT A KPI IS"
+          ],
+          [
+            "ACTING CONFIDENT WHILE",
+            "MY BRAIN SAYS 'FRAUD'"
+          ],
+          [
+            "WHEN THEY CALL YOU",
+            "'THE EXPERT'"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-JELLYFREEZE",
+        "alts": [
+          "G-SCOOT",
+          "G-GLITCHSLIP",
+          "G-SPINUP"
+        ],
+        "staging": "the spotlight thunks on and the Mallow locks up, quivering"
+      },
+      "escalation": {
+        "metaphor": "M-SPOTLIGHT",
+        "alts": [],
+        "lines": [
+          "They'll find me out.",
+          "Everyone knows more.",
+          "Was it just luck?"
+        ],
+        "pools": {
+          "L1": [
+            "Act natural.",
+            "Nod. Keep nodding.",
+            "Did they mean me?"
+          ],
+          "L2": [
+            "Who let me in here?",
+            "I'm winging it.",
+            "They're all so sure."
+          ],
+          "L3": [
+            "Any second now...",
+            "Should I confess?",
+            "Is there a back door?"
+          ]
+        },
+        "staging": "cone narrows with each line; the Mallow shrinks slightly inside it"
+      },
+      "ritual": {
+        "primary": "R-BREATH",
+        "alts": [
+          "R-NAMEIT",
+          "R-DEFRAG",
+          "R-SPIRALSLOW"
+        ],
+        "staging": "on the exhale the spotlight softens and widens into warm general light - everyone is in the same light"
+      },
+      "nameWords": [
+        "nervous.",
+        "new at this.",
+        "unsure."
+      ],
+      "resolution": {
+        "primary": [
+          "Feeling new isn't",
+          "the same as not belonging."
+        ],
+        "variants": [
+          [
+            "Everyone's figuring it",
+            "out as they go."
+          ],
+          [
+            "You were picked",
+            "for a reason."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "the spotlight fades back on (0.3 s ramp, not a flash) as the hook returns"
+      },
+      "palette": "A-DIM-CONE-OPEN",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft spotlight clunk + air, jelly wobble",
+          "L1: one comic cricket in the silence",
+          "L2-L3: tings, hum rising",
+          "TURN: stop",
+          "RITUAL: breath, light-widening swell, pad",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Never 'imposter syndrome'. Captions supply the workplace; the realm is not redrawn as an office."
+      ]
+    },
+    {
+      "id": "T07-procrastination-guilt",
+      "title": "The Task That Grew",
+      "feeling": {
+        "family": "guilt",
+        "label": "procrastination guilt",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "glitzi",
+          "pipzi",
+          "loomi"
+        ],
+        "secondary": [
+          "boppo",
+          "zuzu"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME AVOIDING ONE",
+          "5-MINUTE TASK FOR 3 WEEKS"
+        ],
+        "variants": [
+          [
+            "THE TASK: 10 MINUTES.",
+            "ME: AVOIDING IT SINCE MAY"
+          ],
+          [
+            "I'LL START AT 3:00.",
+            "IT'S 3:01. GUESS I'LL WAIT."
+          ],
+          [
+            "ME CLEANING MY WHOLE ROOM",
+            "INSTEAD OF ONE EMAIL"
+          ],
+          [
+            "ONE THING TO DO.",
+            "ME: DOES EVERYTHING ELSE."
+          ],
+          [
+            "THE DEADLINE IS TOMORROW.",
+            "ME: SNACK BREAK"
+          ],
+          [
+            "MY TO-DO LIST",
+            "WATCHING ME RELAX"
+          ],
+          [
+            "PROCRASTINATING SO HARD",
+            "I FEEL GUILTY ABOUT IT"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-SCOOT",
+        "alts": [
+          "G-DEADPAN",
+          "G-WEEBLE",
+          "G-GLITCHSLIP"
+        ],
+        "staging": "a small glass task card appears; the Mallow scoots away in three hops; the card follows one hop"
+      },
+      "escalation": {
+        "metaphor": "M-LOOM",
+        "alts": [
+          "M-STACK"
+        ],
+        "lines": [
+          "Just one more minute.",
+          "It's still not done.",
+          "Now it's huge."
+        ],
+        "pools": {
+          "L1": [
+            "I'll do it later.",
+            "After this snack.",
+            "Need the right mood."
+          ],
+          "L2": [
+            "Why haven't I started?",
+            "It's watching me.",
+            "Everyone else is done."
+          ],
+          "L3": [
+            "It grew a second task.",
+            "It's a monster now.",
+            "Moving to the woods."
+          ]
+        },
+        "staging": "the card swells with each line until it towers and shades the Mallow"
+      },
+      "ritual": {
+        "primary": "R-BOOP-SIZE",
+        "alts": [
+          "R-SQUISH",
+          "R-SETDOWN",
+          "R-BREATH"
+        ],
+        "staging": "boop - the giant card deflates to its real tiny size, one nudge folds it into a glowing tick"
+      },
+      "resolution": {
+        "primary": [
+          "Big feelings make",
+          "small tasks look huge."
+        ],
+        "variants": [
+          [
+            "Guilt is heavier",
+            "than the task."
+          ],
+          [
+            "Tiny steps",
+            "still count."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "a new small card pops in beside the Mallow as the hook returns"
+      },
+      "palette": "A-GREY-CLEAR",
+      "camera": [
+        "C-HOLD-WIDE"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-POP",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: card pop, three patter squeaks",
+          "L1-L3: glass-stretch creaks as the card swells, low 'whoom' as its shadow lands",
+          "PEAK: hum",
+          "RITUAL: boop tap, deflate squeak, unlock + success gesture",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "No productivity shaming: the insight is about guilt inflating the task, not about working harder."
+      ]
+    },
+    {
+      "id": "T08-too-many-tabs",
+      "title": "Too Many Tabs Open",
+      "feeling": {
+        "family": "overwhelm",
+        "label": "mental clutter",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "zuzu",
+          "glitzi"
+        ],
+        "secondary": [
+          "pipzi",
+          "boppo",
+          "loomi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "H",
+      "hook": {
+        "primary": [
+          "MY BRAIN RIGHT NOW:",
+          "47 TABS OPEN"
+        ],
+        "variants": [
+          [
+            "WHICH TAB IS PLAYING",
+            "THE MUSIC?"
+          ],
+          [
+            "ME TRYING TO RELAX",
+            "WITH 63 BRAIN TABS OPEN"
+          ],
+          [
+            "MY BRAIN HAS 40 TABS OPEN",
+            "AND 3 ARE FROZEN"
+          ],
+          [
+            "TRYING TO FOCUS ON ONE",
+            "THING. BRAIN: NEW TAB."
+          ],
+          [
+            "WHEN YOU WALK INTO A ROOM",
+            "AND FORGET WHY"
+          ],
+          [
+            "MENTAL LOAD:",
+            "LOADING..."
+          ],
+          [
+            "ONE THOUGHT? NO.",
+            "FORTY. AT ONCE."
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-WEEBLE",
+        "alts": [
+          "G-SPINUP",
+          "G-GLITCHSLIP",
+          "G-BONK"
+        ],
+        "staging": "the first tab pops in and bonks the Mallow's head; it rocks like a weeble"
+      },
+      "escalation": {
+        "metaphor": "M-TABS",
+        "alts": [],
+        "lines": [
+          "Reply to that email.",
+          "Buy more toothpaste.",
+          "What's that song called?"
+        ],
+        "pools": {
+          "L1": [
+            "Water the plant.",
+            "Birthday gift? Whose?",
+            "Return that parcel."
+          ],
+          "L2": [
+            "Did I reply to that?",
+            "Is that tab... music?",
+            "Learn Italian someday."
+          ],
+          "L3": [
+            "Everything. All at once.",
+            "Why is one tab beeping?",
+            "Tab 48 just opened."
+          ]
+        },
+        "staging": "3 legible tabs in front, 6-12 blurred decoys crowd in behind and jostle"
+      },
+      "ritual": {
+        "primary": "R-SETDOWN",
+        "alts": [
+          "R-SPIRALSLOW",
+          "R-DEFRAG",
+          "R-BREATH"
+        ],
+        "staging": "tabs fold shut one by one into the glow with paper clicks until a single warm star remains"
+      },
+      "resolution": {
+        "primary": [
+          "Not everything needs",
+          "to stay open."
+        ],
+        "variants": [
+          [
+            "One tab at a time",
+            "is plenty."
+          ],
+          [
+            "A full brain deserves",
+            "a soft place to rest."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "tab one pops back in on the seam"
+      },
+      "palette": "A-BUSY-STILL",
+      "camera": [
+        "C-DRIFT-IN",
+        "C-PULL-BACK"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-POP",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft 'pock' + bonk, rocking creaks",
+          "L1-L3 + decoys: pops stepping up, clutter rustle",
+          "PEAK: faint comic 'mystery music' plink + hum",
+          "TURN: stop",
+          "RITUAL: descending cascade of paper clicks, settle, 'clear' swell, pad",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Removed 'Did I lock the door?' (repeat-checking reads clinical). Decoy tabs blurred: <= 3 legible texts."
+      ]
+    },
+    {
+      "id": "T09-rejection-sting",
+      "title": "The No That Stings",
+      "feeling": {
+        "family": "hurt",
+        "label": "rejection sting",
+        "valence": "difficult",
+        "tone": "gentle-comic"
+      },
+      "mallows": {
+        "primary": [
+          "blubi",
+          "noomi"
+        ],
+        "secondary": [
+          "boppo",
+          "glitzi"
+        ],
+        "avoid": {
+          "pipzi": "sparks read as celebration"
+        }
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "WHEN THEY SAID NO",
+          "AND YOU SAID 'NO WORRIES!'"
+        ],
+        "variants": [
+          [
+            "'WE WENT WITH ANOTHER",
+            "CANDIDATE.' ME:"
+          ],
+          [
+            "ME ACTING CHILL AFTER",
+            "GETTING TURNED DOWN"
+          ],
+          [
+            "WHEN YOU PUT YOURSELF",
+            "OUT THERE AND... NOPE"
+          ],
+          [
+            "'MAYBE NEXT TIME'",
+            "ME, A WOBBLY JELLY:"
+          ],
+          [
+            "SAID 'IT'S FINE'.",
+            "IT WAS NOT FINE."
+          ],
+          [
+            "THAT LITTLE STING WHEN",
+            "THE ANSWER IS NO"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-DEFLATE",
+        "alts": [
+          "G-SPLASHSIT",
+          "G-DOUBLETAKE",
+          "G-DEADPAN"
+        ],
+        "staging": "a brave smile, then a slow leak"
+      },
+      "escalation": {
+        "metaphor": "M-CLOUD",
+        "alts": [],
+        "lines": [
+          "It's fine. Totally fine.",
+          "Was it something I did?",
+          "Ouch. That stings."
+        ],
+        "pools": {
+          "L1": [
+            "Smile and nod.",
+            "Play it cool.",
+            "Not crying. You are."
+          ],
+          "L2": [
+            "Maybe I'm too much.",
+            "Should I have tried harder?",
+            "What did I miss?"
+          ],
+          "L3": [
+            "Never trying again.",
+            "Becoming a hermit now.",
+            "Okay. That really hurt."
+          ]
+        },
+        "staging": "a little personal cloud forms and drizzles; the body droops"
+      },
+      "ritual": {
+        "primary": "R-CLOUDWRAP",
+        "alts": [
+          "R-RAINLIFT",
+          "R-BREATH",
+          "R-COSY"
+        ],
+        "staging": "the rain cloud itself softens and wraps the Mallow like a hug"
+      },
+      "resolution": {
+        "primary": [
+          "A no is about a moment,",
+          "not about you."
+        ],
+        "variants": [
+          [
+            "It stings because",
+            "you cared. That's brave."
+          ],
+          [
+            "Let it sting.",
+            "Then let it soften."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-OBJECT",
+        "staging": "the last motes re-gather into a tiny grey cloud at the seam"
+      },
+      "palette": "A-GREY-CLEAR",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-PATTER",
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft pip, 'pfff' squeak, wobbly-lip warble",
+          "L1-L3: tings stepping down 4/2/0, patter building",
+          "PEAK: patter + low pad, never a minor drone",
+          "RITUAL: cloud swish, comfort gesture, pad, droplet chimes rising",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Removed 'What's wrong with me?' (self-blame). Keep the gag soft (intensity <= 0.6)."
+      ]
+    },
+    {
+      "id": "T10-excitement-overflow",
+      "title": "Can't Contain It",
+      "feeling": {
+        "family": "joy",
+        "label": "excitement you can't hold in",
+        "valence": "positive",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "boppo",
+          "pipzi"
+        ],
+        "secondary": [
+          "zuzu",
+          "blubi",
+          "glitzi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "H",
+      "hook": {
+        "primary": [
+          "ME TRYING TO ACT CASUAL",
+          "ABOUT GOOD NEWS"
+        ],
+        "variants": [
+          [
+            "WHEN YOU HAVE NEWS",
+            "BUT CAN'T TELL ANYONE YET"
+          ],
+          [
+            "TRYING TO STAY CALM",
+            "THE WEEK BEFORE MY TRIP"
+          ],
+          [
+            "ME: ACTING NORMAL.",
+            "MY BODY: VIBRATING"
+          ],
+          [
+            "WHEN THEY SAY YES",
+            "AND YOU PLAY IT COOL"
+          ],
+          [
+            "THE NIGHT BEFORE",
+            "SOMETHING EXCITING"
+          ],
+          [
+            "TOO EXCITED TO BE",
+            "A NORMAL PERSON TODAY"
+          ],
+          [
+            "HOLDING IN THE BEST NEWS",
+            "OF MY ENTIRE LIFE"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-PUFF",
+        "alts": [
+          "G-LAUNCH",
+          "G-SPARKPOP",
+          "G-GLITCHSLIP"
+        ],
+        "staging": "cheeks puff, the Mallow inflates and floats, a squeak leaks out"
+      },
+      "escalation": {
+        "metaphor": "M-SWELL",
+        "alts": [
+          "M-GLOW"
+        ],
+        "lines": [
+          "Act normal. Act normal.",
+          "What if it's amazing?",
+          "I'm going to burst."
+        ],
+        "pools": {
+          "L1": [
+            "Be cool. Be so cool.",
+            "Normal face. Normal face.",
+            "Don't smile. Don't."
+          ],
+          "L2": [
+            "Who can I tell?",
+            "Is it real? IT'S REAL.",
+            "Counting the sleeps."
+          ],
+          "L3": [
+            "Cannot. Contain. It.",
+            "Sparkles everywhere.",
+            "Vibrating at max."
+          ]
+        },
+        "staging": "inflates a bit per line, slow sparkles rise inside, starts to float (no flashes)"
+      },
+      "ritual": {
+        "primary": "R-SAVOUR",
+        "alts": [
+          "R-LANTERN",
+          "R-SUNSOAK",
+          "R-WIGGLE"
+        ],
+        "staging": "instead of holding it in: one big soft bounce, golden bloom, sparkles drift up slowly"
+      },
+      "resolution": {
+        "primary": [
+          "Good feelings deserve",
+          "room to sparkle."
+        ],
+        "variants": [
+          [
+            "Let the good stuff",
+            "take up space."
+          ],
+          [
+            "For all the feelings,",
+            "even the sparkly ones."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "cheeks start to puff again as the hook returns"
+      },
+      "palette": "A-BRIGHT-GLOW",
+      "camera": [
+        "C-FOLLOW-SOFT",
+        "C-HOLD-WIDE"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-FIZZ",
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: rubbery balloon stretch, leaky squeak",
+          "L1-L3: tings rising 0/2/4 then 7, fizz density up",
+          "PEAK: kit 'surprise' gesture",
+          "RITUAL: big soft boing, bloom, sparkle drift, celebrate gesture (low intensity)",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Positive-valence template; sparkles small and slow, never a full-frame flash. 'THE NIGHT BEFORE' needs a night realm."
+      ]
+    },
+    {
+      "id": "T11-comparison-scroll",
+      "title": "Comparison Scrolling",
+      "feeling": {
+        "family": "comparison",
+        "label": "feeling behind while scrolling",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "glitzi",
+          "blubi"
+        ],
+        "secondary": [
+          "zuzu",
+          "loomi"
+        ],
+        "avoid": {
+          "boppo": "reads as mocking the feeling"
+        }
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME SCROLLING AT 11 PM",
+          "COMPARING MY WHOLE LIFE"
+        ],
+        "variants": [
+          [
+            "EVERYONE ONLINE: THRIVING",
+            "ME: EATING CEREAL AT 4 PM"
+          ],
+          [
+            "WHEN YOUR FEED IS",
+            "EVERYONE'S BEST DAY"
+          ],
+          [
+            "ME AFTER 5 MINUTES",
+            "OF SCROLLING"
+          ],
+          [
+            "OPENED THE APP FOR FUN.",
+            "LEFT FEELING BEHIND."
+          ],
+          [
+            "THEIR HIGHLIGHT REEL",
+            "VS MY BLOOPERS"
+          ],
+          [
+            "SCROLLING UNTIL I FEEL",
+            "LIKE I'M LOSING A RACE"
+          ],
+          [
+            "WHY IS EVERYONE ELSE",
+            "SO PUT TOGETHER?"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-DOUBLETAKE",
+        "alts": [
+          "G-CRINGE",
+          "G-GLITCHSLIP",
+          "G-DEFLATE"
+        ],
+        "staging": "a dazzling frame slides past; double take; the Mallow glances at its own reflection"
+      },
+      "escalation": {
+        "metaphor": "M-FRAMES",
+        "alts": [],
+        "lines": [
+          "They're on a beach.",
+          "They got promoted.",
+          "What am I doing?"
+        ],
+        "pools": {
+          "L1": [
+            "Another engagement.",
+            "They bought a house?",
+            "Perfect latte art."
+          ],
+          "L2": [
+            "Everyone's ahead.",
+            "Am I behind?",
+            "I made toast today."
+          ],
+          "L3": [
+            "Is my life a blooper?",
+            "Should I start over?",
+            "Five more minutes..."
+          ]
+        },
+        "staging": "frames scroll up, each brighter; the Mallow's glow dims and it shrinks a touch"
+      },
+      "ritual": {
+        "primary": "R-SQUISH",
+        "alts": [
+          "R-FLOAT-AWAY",
+          "R-DEFRAG",
+          "R-DRIFT"
+        ],
+        "staging": "a deep squish and pop-back: its own glow returns brighter than the frames, which dim and sink like cards set face-down"
+      },
+      "resolution": {
+        "primary": [
+          "You're comparing your",
+          "inside to their outside."
+        ],
+        "variants": [
+          [
+            "Highlight reels",
+            "skip the bloopers."
+          ],
+          [
+            "Your pace is",
+            "still a pace."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "a new shiny frame slides in on the seam"
+      },
+      "palette": "A-GREY-CLEAR",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft scroll swish, double-take bips",
+          "L1-L3: a bright soft ting per frame, the Mallow's glow dimming as a descending hum",
+          "RITUAL: squish squelch, glow bloom, frames sink 'bloop'",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Frames show abstract scenes only - no bodies, faces, fitness or appearance comparisons, no real app UI."
+      ]
+    },
+    {
+      "id": "T12-three-pm-slump",
+      "title": "The 3 PM Slump",
+      "feeling": {
+        "family": "depletion",
+        "label": "afternoon energy crash",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "loomi",
+          "boppo"
+        ],
+        "secondary": [
+          "zuzu"
+        ],
+        "avoid": {
+          "noomi": "no afternoon ToD",
+          "glitzi": "no afternoon ToD",
+          "pipzi": "no afternoon ToD",
+          "blubi": "no afternoon ToD"
+        }
+      },
+      "tod": [
+        "afternoon",
+        "midday"
+      ],
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME AT 3 PM:",
+          "A MELTED MARSHMALLOW"
+        ],
+        "variants": [
+          [
+            "THE 3 PM SLUMP",
+            "HITTING LIKE..."
+          ],
+          [
+            "ME AFTER LUNCH TRYING",
+            "TO LOOK PRODUCTIVE"
+          ],
+          [
+            "MY ENERGY AT 9 AM VS",
+            "MY ENERGY AT 3 PM"
+          ],
+          [
+            "WHEN THE AFTERNOON",
+            "LASTS 400 HOURS"
+          ],
+          [
+            "3 PM. EYES OPEN.",
+            "BRAIN: OUT OF OFFICE."
+          ],
+          [
+            "TRYING TO FOCUS AT 3 PM",
+            "LIKE..."
+          ],
+          [
+            "THE AFTERNOON SLUMP",
+            "HAS ENTERED THE CHAT"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-MELT",
+        "alts": [
+          "G-FLOP",
+          "G-DEADPAN"
+        ],
+        "staging": "the Mallow melts sideways like ice cream in the sun"
+      },
+      "escalation": {
+        "metaphor": "M-CLOCK",
+        "alts": [],
+        "lines": [
+          "Is it home time yet?",
+          "Read that line 4 times.",
+          "Melting. Slowly."
+        ],
+        "pools": {
+          "L1": [
+            "Snack? Snack.",
+            "What was I doing?",
+            "Eyelids: heavy."
+          ],
+          "L2": [
+            "Typing the same word.",
+            "Is it 3:01? Oh no.",
+            "The clock is frozen."
+          ],
+          "L3": [
+            "I am now a puddle.",
+            "Brain has left.",
+            "Nap under the desk?"
+          ]
+        },
+        "staging": "the clock's hands crawl in slow motion; the Mallow melts lower per line; faint heat shimmer"
+      },
+      "ritual": {
+        "primary": "R-STRETCH",
+        "alts": [
+          "R-SUNSOAK",
+          "R-DRIFT",
+          "R-WIGGLE"
+        ],
+        "staging": "a huge stretch tall and a yawn, then pops back round and fresh"
+      },
+      "resolution": {
+        "primary": [
+          "Afternoons are allowed",
+          "to be slow."
+        ],
+        "variants": [
+          {
+            "lines": [
+              "Even sunshine",
+              "needs a stretch."
+            ],
+            "only": [
+              "boppo"
+            ]
+          },
+          [
+            "Slow is still",
+            "moving."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "the Mallow starts to sag again as the hook returns"
+      },
+      "palette": "A-FLAT-GOLDEN",
+      "camera": [
+        "C-HOLD-WIDE"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-TICK",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "COVER: soft afternoon bed",
+          "GAG: slide-whistle down (soft sine), sticky schlorp",
+          "L1-L3: slow ticks detuning lower",
+          "PEAK: one comically slow 'tock'",
+          "RITUAL: rubbery creak glide up, yawn gesture, pop-back boing",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "No caffeine/energy-drink jokes; no 'brain fog'."
+      ]
+    },
+    {
+      "id": "T13-yes-meant-no",
+      "title": "Said Yes, Meant No",
+      "feeling": {
+        "family": "people-pleasing",
+        "label": "saying yes when you meant no",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "boppo",
+          "blubi"
+        ],
+        "secondary": [
+          "pipzi",
+          "loomi",
+          "glitzi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME SAYING 'SURE!'",
+          "WHEN I MEANT 'NO'"
+        ],
+        "variants": [
+          [
+            "THEY ASKED FOR A FAVOUR.",
+            "MY MOUTH SAID YES."
+          ],
+          [
+            "HOW IT STARTED: 'SURE!'",
+            "HOW IT'S GOING:"
+          ],
+          [
+            "WHEN YOU SAY YES",
+            "TO THE 5TH THING THIS WEEK"
+          ],
+          [
+            "ME AGREEING TO PLANS",
+            "I WANT TO CANCEL"
+          ],
+          [
+            "MY BRAIN: SAY NO.",
+            "MY MOUTH: OF COURSE!"
+          ],
+          [
+            "WHY DID I SAY YES",
+            "TO HELPING EVERYONE MOVE"
+          ],
+          [
+            "SAYING YES TO BE NICE",
+            "AND REGRETTING IT INSTANTLY"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-BONK",
+        "alts": [
+          "G-DOUBLETAKE",
+          "G-CRINGE"
+        ],
+        "staging": "an eager nod-bounce ('sure!') and the first block lands on its head"
+      },
+      "escalation": {
+        "metaphor": "M-STACK",
+        "alts": [],
+        "lines": [
+          "Sure, no problem!",
+          "Wait. When is it?",
+          "That's my only free day."
+        ],
+        "pools": {
+          "L1": [
+            "Of course I can!",
+            "Happy to help!",
+            "Yep, sounds great!"
+          ],
+          "L2": [
+            "Why did I say that?",
+            "How do I get out?",
+            "That's three things now."
+          ],
+          "L3": [
+            "I'm a yes-machine.",
+            "Saying yes to everyone.",
+            "When do I rest?"
+          ]
+        },
+        "staging": "each 'yes' lands as a block; the stack wobbles; the Mallow squashes lower"
+      },
+      "ritual": {
+        "primary": "R-SETDOWN",
+        "alts": [
+          "R-WIGGLE",
+          "R-BREATH"
+        ],
+        "staging": "a gentle tip and the blocks slide off one by one; the Mallow springs back up; one keeper block glows"
+      },
+      "resolution": {
+        "primary": [
+          "A kind 'no' is still",
+          "kind."
+        ],
+        "variants": [
+          [
+            "Your time counts too."
+          ],
+          [
+            "No is a full sentence.",
+            "A soft one, too."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "a new block hovers in ('one more?') as the hook returns"
+      },
+      "palette": "A-GREY-CLEAR",
+      "camera": [
+        "C-HOLD-WIDE"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-THUNK",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: eager kit 'success' chirp, then a soft glass thunk + squelch",
+          "L1-L3: thunks stepping lower, stack creaks",
+          "RITUAL: 'shhk' + thunk x3, spring boing, relief sigh gesture",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Avoid the jargon 'set boundaries' on screen."
+      ]
+    },
+    {
+      "id": "T14-missing-someone",
+      "title": "Missing Someone",
+      "feeling": {
+        "family": "longing",
+        "label": "missing someone far away",
+        "valence": "difficult",
+        "tone": "gentle"
+      },
+      "mallows": {
+        "primary": [
+          "noomi",
+          "blubi",
+          "loomi"
+        ],
+        "secondary": [
+          "zuzu"
+        ],
+        "avoid": {
+          "glitzi": "sarcasm undercuts it",
+          "boppo": "too bouncy",
+          "pipzi": "too sparky"
+        }
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "MISSING SOMEONE",
+          "IN THE QUIET MOMENTS"
+        ],
+        "variants": [
+          [
+            "WHEN YOU WANT TO TELL THEM",
+            "SOMETHING AND REMEMBER"
+          ],
+          [
+            "MILES APART. THINKING",
+            "ABOUT THEM ANYWAY."
+          ],
+          [
+            "SAW SOMETHING THEY'D LOVE",
+            "AND MISSED THEM AGAIN"
+          ],
+          [
+            "LONG DISTANCE HITS",
+            "DIFFERENT AT NIGHT"
+          ],
+          [
+            "WHEN THE HOUSE IS QUIET",
+            "AND YOU MISS YOUR PEOPLE"
+          ],
+          [
+            "HOMESICK FOR A PERSON,",
+            "NOT A PLACE"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-WEEBLE",
+        "alts": [
+          "G-DEADPAN",
+          "G-SPLASHSIT"
+        ],
+        "staging": "soft gag (intensity <= 0.4): the Mallow leans into an empty hug, tips, wobbles back upright"
+      },
+      "escalation": {
+        "metaphor": "M-FOG",
+        "alts": [],
+        "lines": [
+          "They'd love this.",
+          "Wish they were here.",
+          "Is it silly to miss them?"
+        ],
+        "pools": {
+          "L1": [
+            "Remember that day?",
+            "Their laugh, though.",
+            "Saved them a seat."
+          ],
+          "L2": [
+            "Too far away.",
+            "Should I call?",
+            "Not the same without them."
+          ],
+          "L3": [
+            "Missing them a lot.",
+            "Hug in the mail, please.",
+            "Feels so far tonight."
+          ]
+        },
+        "staging": "mist rolls in; each line is a memory bubble drifting just out of reach"
+      },
+      "ritual": {
+        "primary": "R-CLOUDWRAP",
+        "alts": [
+          "R-LANTERN",
+          "R-BREATH"
+        ],
+        "staging": "a cloud wraps the Mallow like a hug; the memory bubble drifts back and becomes a small warm star that stays near"
+      },
+      "resolution": {
+        "primary": [
+          "Missing them means",
+          "they matter."
+        ],
+        "variants": [
+          [
+            "Distance can't reach",
+            "the warm parts."
+          ],
+          [
+            "Some love travels",
+            "the long way round."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-OBJECT",
+        "staging": "the star drifts up; a memory bubble returns from the horizon at the seam"
+      },
+      "palette": "A-DIM-SOFT",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-MUSICBOX",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "COVER: quiet night bed",
+          "GAG: soft tip 'plop', gentle wobble",
+          "L1-L3: a slow 3-note celesta memory motif, repeated softer",
+          "PEAK: fog air, no drones",
+          "RITUAL: cloud swish, comfort gesture, warm pad, star ting",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "May read as grief: no slapstick, no 'gone forever' lines; 'WHEN YOU WANT TO TELL THEM SOMETHING AND REMEMBER' is the most grief-adjacent hook - schedule it sparingly and never pair with a comic L3."
+      ]
+    },
+    {
+      "id": "T15-presentation-nerves",
+      "title": "Five Minutes Before",
+      "feeling": {
+        "family": "nerves",
+        "label": "pre-presentation nerves",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "pipzi",
+          "zuzu",
+          "glitzi"
+        ],
+        "secondary": [
+          "boppo",
+          "blubi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME 5 MINUTES BEFORE",
+          "MY PRESENTATION"
+        ],
+        "variants": [
+          [
+            "WAITING FOR MY NAME",
+            "TO BE CALLED LIKE..."
+          ],
+          [
+            "WHEN THEY SAY",
+            "'YOU'RE UP NEXT'"
+          ],
+          [
+            "ME PRETENDING I'M READY",
+            "FOR THE BIG MEETING"
+          ],
+          [
+            "PRACTISED IT 40 TIMES.",
+            "FORGOT IT IN 4 SECONDS."
+          ],
+          [
+            "THE NIGHT BEFORE",
+            "THE BIG PRESENTATION"
+          ],
+          [
+            "WHEN YOU HAVE TO",
+            "SPEAK IN FRONT OF PEOPLE"
+          ],
+          [
+            "MY NERVES WHEN SOMEONE",
+            "SAYS 'QUICK QUESTION'"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-JELLYFREEZE",
+        "alts": [
+          "G-LAUNCH",
+          "G-SPARKPOP",
+          "G-SCOOT"
+        ],
+        "staging": "the name-called ping; the Mallow locks and quivers"
+      },
+      "escalation": {
+        "metaphor": "M-JITTERS",
+        "alts": [
+          "M-SPOTLIGHT"
+        ],
+        "lines": [
+          "What's my first line?",
+          "Everyone will stare.",
+          "What if I freeze?"
+        ],
+        "pools": {
+          "L1": [
+            "Slide one. Slide one.",
+            "Did I save the file?",
+            "Where are my notes?"
+          ],
+          "L2": [
+            "Why is it so quiet?",
+            "They look so serious.",
+            "Talk slower. Slower."
+          ],
+          "L3": [
+            "Can I just email it?",
+            "Is there a fire exit?",
+            "Too late to move away?"
+          ]
+        },
+        "staging": "rim sparks and fizz intensify per line; the quiver grows"
+      },
+      "ritual": {
+        "primary": "R-BREATH",
+        "alts": [
+          "R-WIGGLE",
+          "R-LANTERN",
+          "R-SPIRALSLOW"
+        ],
+        "staging": "on the exhale the jittery sparks settle into a calm, steady ring of lights - the energy becomes a glow"
+      },
+      "resolution": {
+        "primary": [
+          "Nerves are just energy",
+          "looking for a job."
+        ],
+        "variants": [
+          [
+            "Butterflies mean",
+            "it matters to you."
+          ],
+          [
+            "You don't have to be",
+            "fearless. Just you."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "the name-called ping returns on the seam"
+      },
+      "palette": "A-BUSY-STILL",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-FIZZ",
+          "MO-TICK",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: ping + jelly wobble",
+          "L1: soft paper shuffle",
+          "L2-L3: fizz rising, tick",
+          "TURN: stop",
+          "RITUAL: breath; sparks resolve into a soft pentatonic chime ring; pad",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "No symptom lists (dry mouth, racing heart, sweating). Never claim 'calm your nerves in X seconds'."
+      ]
+    },
+    {
+      "id": "T16-morning-dread",
+      "title": "Alarm vs Me",
+      "feeling": {
+        "family": "dread",
+        "label": "morning dread",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "noomi",
+          "loomi",
+          "blubi"
+        ],
+        "secondary": [
+          "glitzi",
+          "boppo",
+          "zuzu"
+        ],
+        "avoid": {
+          "pipzi": "no morning ToD"
+        }
+      },
+      "tod": [
+        "pre-dawn",
+        "morning",
+        "misty-morning"
+      ],
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "MY ALARM: BOOP BOOP.",
+          "ME: ABSOLUTELY NOT."
+        ],
+        "variants": [
+          [
+            "ME WHEN THE ALARM",
+            "GOES OFF AT 6 AM"
+          ],
+          [
+            "SNOOZE NUMBER FOUR",
+            "HITS DIFFERENT"
+          ],
+          [
+            "MORNING ME VS",
+            "THE WHOLE DAY AHEAD"
+          ],
+          [
+            "WHEN YOU WAKE UP AND",
+            "REMEMBER IT'S TUESDAY"
+          ],
+          [
+            "5 MORE MINUTES.",
+            "(SAID 6 TIMES)"
+          ],
+          [
+            "WAKING UP ALREADY",
+            "THINKING ABOUT THE DAY"
+          ],
+          [
+            "THE ALARM GOES OFF AND",
+            "THE DREAD WAKES UP TOO"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-SINK",
+        "alts": [
+          "G-JOLT",
+          "G-FLOP",
+          "G-DEADPAN"
+        ],
+        "staging": "the soft alarm bubble boops; the Mallow sinks to the cheeks to hide"
+      },
+      "escalation": {
+        "metaphor": "M-CLOCK",
+        "alts": [
+          "M-STACK"
+        ],
+        "lines": [
+          "Is it morning already?",
+          "So much to do today.",
+          "Can I stay a cloud?"
+        ],
+        "pools": {
+          "L1": [
+            "Snooze. Snooze. Snooze.",
+            "Was that the alarm?",
+            "Not the alarm. Please."
+          ],
+          "L2": [
+            "That meeting at 9.",
+            "Where are my socks?",
+            "The whole day. Ugh."
+          ],
+          "L3": [
+            "Cancel today, please.",
+            "Hibernate until spring?",
+            "Becoming one with the duvet."
+          ]
+        },
+        "staging": "the alarm clock bubble rings softly; the day's blocks drop in; the sun rises too fast"
+      },
+      "ritual": {
+        "primary": "R-STRETCH",
+        "alts": [
+          "R-SUNSOAK",
+          "R-BREATH",
+          "R-COSY"
+        ],
+        "staging": "a slow morning stretch and a yawn; the sunrise warms gently around it"
+      },
+      "resolution": {
+        "primary": [
+          "You don't have to face",
+          "the whole day at once."
+        ],
+        "variants": [
+          [
+            "Just this morning.",
+            "That's enough for now."
+          ],
+          [
+            "Mornings can start",
+            "slowly."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-CYCLE",
+        "staging": "the light dips back to pre-dawn and the alarm bubble boops as the hook returns"
+      },
+      "palette": "A-PREDAWN-SUNRISE",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-TICK",
+          "MO-THUNK",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: gentle two-note marimba 'boop boop' (never an alarm tone), soft glug + two blub plinks",
+          "L1-L3: tick + thunks",
+          "RITUAL: creak glide up, yawn gesture, sparse soft sine bird chirps, sunrise shimmer, pad",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Alarm sound must be soft and musical; G-SINK keeps the mouth above the line."
+      ]
+    },
+    {
+      "id": "T17-small-win",
+      "title": "Small Win, Huge Joy",
+      "feeling": {
+        "family": "pride",
+        "label": "small win joy",
+        "valence": "positive",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "boppo",
+          "pipzi",
+          "loomi",
+          "glitzi"
+        ],
+        "secondary": [
+          "noomi",
+          "blubi",
+          "zuzu"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME AFTER FINALLY REPLYING",
+          "TO ONE EMAIL"
+        ],
+        "variants": [
+          [
+            "I DID THE DISHES.",
+            "PLEASE CLAP."
+          ],
+          [
+            "MADE A PHONE CALL",
+            "WITHOUT PRACTISING IT"
+          ],
+          [
+            "WHEN THE TINY THING",
+            "FINALLY GETS DONE"
+          ],
+          [
+            "ME AFTER MAKING MY BED",
+            "LIKE I WON AN AWARD"
+          ],
+          [
+            "SMALL WIN. HUGE",
+            "INTERNAL CELEBRATION."
+          ],
+          [
+            "WHEN YOU REMEMBER",
+            "EVERYONE'S NAME"
+          ],
+          [
+            "SENT THE EMAIL.",
+            "VICTORY LAP TIME."
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-DOUBLETAKE",
+        "alts": [
+          "G-LAUNCH",
+          "G-SPARKPOP",
+          "G-DEADPAN"
+        ],
+        "staging": "'wait... did I just do that?' double take"
+      },
+      "escalation": {
+        "metaphor": "M-GLOW",
+        "alts": [
+          "M-SWELL"
+        ],
+        "lines": [
+          "Wait... I did it?",
+          "First try, too!",
+          "Am I unstoppable?"
+        ],
+        "pools": {
+          "L1": [
+            "It's done. DONE.",
+            "That was... easy?",
+            "No one saw. Still counts."
+          ],
+          "L2": [
+            "Should I tell someone?",
+            "Tiny trophy for me.",
+            "Look at me go!"
+          ],
+          "L3": [
+            "Running for mayor next.",
+            "Peak me. Right here.",
+            "Unstoppable. Mostly."
+          ]
+        },
+        "staging": "the joy escalates: glow grows, slow golden stars orbit, a tiny glass trophy appears"
+      },
+      "ritual": {
+        "primary": "R-SAVOUR",
+        "alts": [
+          "R-SUNSOAK",
+          "R-LANTERN",
+          "R-DEFRAG"
+        ],
+        "staging": "one happy hop, golden bloom, sparkles drift - letting the win land"
+      },
+      "resolution": {
+        "primary": [
+          "Small wins are",
+          "still wins."
+        ],
+        "variants": [
+          [
+            "Notice the good bits too."
+          ],
+          [
+            "Tiny victories",
+            "deserve a little glow."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETURN",
+        "staging": "settles back to the cover pose, a proud little bob"
+      },
+      "palette": "A-BRIGHT-GLOW",
+      "camera": [
+        "C-LOW-HERO"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "COVER: soft 'done' success gesture",
+          "GAG: bip-bip double take, tiny boing",
+          "L1-L3: rising major tings + a 3-note celesta fanfare on L3",
+          "RITUAL: celebrate gesture (low), bloom, star sparkle",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Glitzi version: 'Order. Disgusting. I love it.' energy - smirk, not grin."
+      ]
+    },
+    {
+      "id": "T18-left-out",
+      "title": "Plans Without Me",
+      "feeling": {
+        "family": "loneliness",
+        "label": "feeling left out",
+        "valence": "difficult",
+        "tone": "gentle-comic"
+      },
+      "mallows": {
+        "primary": [
+          "blubi",
+          "loomi"
+        ],
+        "secondary": [
+          "glitzi",
+          "noomi"
+        ],
+        "avoid": {
+          "boppo": "too bouncy",
+          "pipzi": "lives at the party"
+        }
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "WHEN THE GROUP CHAT",
+          "MADE PLANS WITHOUT ME"
+        ],
+        "variants": [
+          [
+            "SEEING THE PHOTOS FROM",
+            "THE PARTY I WASN'T AT"
+          ],
+          [
+            "ME FINDING OUT",
+            "THERE WAS A GROUP CHAT"
+          ],
+          [
+            "WHEN EVERYONE'S OUT",
+            "AND YOU'RE HOME. AGAIN."
+          ],
+          [
+            "'WE FIGURED YOU WERE BUSY'",
+            "ME:"
+          ],
+          [
+            "THAT LEFT-OUT FEELING",
+            "HITTING AT 9 PM"
+          ],
+          [
+            "FOMO, BUT MAKE IT",
+            "A QUIET FRIDAY NIGHT"
+          ],
+          [
+            "WATCHING THE STORIES",
+            "FROM MY SOFA LIKE..."
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-DEFLATE",
+        "alts": [
+          "G-DOUBLETAKE",
+          "G-SINK"
+        ],
+        "staging": "a far-off festive glow appears; the Mallow slowly leaks"
+      },
+      "escalation": {
+        "metaphor": "M-FARGLOW",
+        "alts": [
+          "M-FRAMES"
+        ],
+        "lines": [
+          "Oh. They all went.",
+          "Did they forget me?",
+          "Fine. I'm fine."
+        ],
+        "pools": {
+          "L1": [
+            "Wait, there's photos?",
+            "That looks fun.",
+            "Nobody asked me."
+          ],
+          "L2": [
+            "Was it on purpose?",
+            "Am I the boring one?",
+            "Should I say something?"
+          ],
+          "L3": [
+            "Me and my sofa then.",
+            "Not jealous. (Jealous.)",
+            "Party of one, I guess."
+          ]
+        },
+        "staging": "the far glow warms with each line while the Mallow's light cools"
+      },
+      "ritual": {
+        "primary": "R-COSY",
+        "alts": [
+          "R-CLOUDWRAP",
+          "R-BREATH",
+          "R-RAINLIFT"
+        ],
+        "staging": "the Mallow makes its own warmth: cosy shrink, blanket, a lantern lights beside it - the glow is here too"
+      },
+      "resolution": {
+        "primary": [
+          "Left out of one plan",
+          "isn't left out of life."
+        ],
+        "variants": [
+          [
+            "You're allowed to want",
+            "to be included."
+          ],
+          [
+            "Missing one night",
+            "doesn't change your worth."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "the far festive glow fades back in on the seam"
+      },
+      "palette": "A-DIM-SOFT",
+      "camera": [
+        "C-HOLD-WIDE"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-MURMUR",
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: distant festive hum (low-passed murmur), deflate squeak",
+          "L1-L3: tings stepping down, sigh gesture",
+          "RITUAL: blanket swish, lantern pluck, warm pad",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Generic 'group chat' wording only; no real app names."
+      ]
+    },
+    {
+      "id": "T19-cant-decide",
+      "title": "Can't Decide",
+      "feeling": {
+        "family": "overthinking",
+        "label": "decision paralysis",
+        "valence": "mixed",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "zuzu",
+          "pipzi"
+        ],
+        "secondary": [
+          "boppo",
+          "glitzi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME PICKING WHAT TO WATCH",
+          "FOR 45 MINUTES"
+        ],
+        "variants": [
+          [
+            "WHEN SOMEONE ASKS",
+            "'WHERE DO YOU WANT TO EAT?'"
+          ],
+          [
+            "TWO OPTIONS. ZERO IDEA.",
+            "SEND HELP."
+          ],
+          [
+            "ME AT THE MENU",
+            "FOR THE NEXT 20 MINUTES"
+          ],
+          [
+            "MAKING A TINY DECISION",
+            "LIKE IT'S THE BIG FINAL"
+          ],
+          [
+            "WHEN BOTH ARE FINE",
+            "AND I STILL CAN'T PICK"
+          ],
+          [
+            "OVERTHINKING WHICH",
+            "SOCKS TO WEAR"
+          ],
+          [
+            "SCROLLING FOR SOMETHING",
+            "TO WATCH UNTIL BEDTIME"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-WEEBLE",
+        "alts": [
+          "G-SPINUP",
+          "G-DOUBLETAKE"
+        ],
+        "staging": "ping-pong lean: option A, option B, A again - the body rocks between them"
+      },
+      "escalation": {
+        "metaphor": "M-FORK",
+        "alts": [],
+        "lines": [
+          "This one? Or that one?",
+          "What if I pick wrong?",
+          "Can I have both?"
+        ],
+        "pools": {
+          "L1": [
+            "Pizza? Noodles? Pizza?",
+            "Red or blue?",
+            "Left? No. Right?"
+          ],
+          "L2": [
+            "Reading reviews again.",
+            "Make a pros list?",
+            "What would they pick?"
+          ],
+          "L3": [
+            "I'll just stand here.",
+            "Flip a coin? Twice?",
+            "Now I want neither."
+          ]
+        },
+        "staging": "two option bubbles pull left and right; the ping-pong speeds up (Zuzu: spirals spin)"
+      },
+      "ritual": {
+        "primary": "R-FLOAT-AWAY",
+        "alts": [
+          "R-SPIRALSLOW",
+          "R-SQUISH"
+        ],
+        "staging": "the Mallow boops one option; it glows; the other floats off kindly as a star"
+      },
+      "resolution": {
+        "primary": [
+          "Most choices are",
+          "smaller than they feel."
+        ],
+        "variants": [
+          [
+            "Good enough",
+            "is often great."
+          ],
+          [
+            "Either way,",
+            "you'll figure it out."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "two new options pop up on the seam"
+      },
+      "palette": "A-BUSY-STILL",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-POP",
+          "MO-TICK",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: left/right 'pock' pings panned L/R, rocking boings",
+          "L1-L3: ping-pong speeding up (Zuzu: spiral warble)",
+          "RITUAL: boop tap, float shimmer, success gesture",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "'LIFE OR DEATH' replaced with 'THE BIG FINAL'."
+      ]
+    },
+    {
+      "id": "T20-too-loud",
+      "title": "Everything Is a Lot",
+      "feeling": {
+        "family": "overwhelm",
+        "label": "too much noise and people",
+        "valence": "difficult",
+        "tone": "gentle-comic"
+      },
+      "mallows": {
+        "primary": [
+          "loomi",
+          "noomi",
+          "blubi"
+        ],
+        "secondary": [
+          "glitzi",
+          "zuzu"
+        ],
+        "avoid": {
+          "boppo": "too loud itself",
+          "pipzi": "too loud itself"
+        }
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME AFTER A DAY OF",
+          "NOISE, LIGHTS AND PEOPLE"
+        ],
+        "variants": [
+          [
+            "WHEN EVERYTHING IS",
+            "JUST... A LOT"
+          ],
+          [
+            "TOO MANY SOUNDS.",
+            "TOO MANY PEOPLE. TOO MUCH."
+          ],
+          [
+            "WHEN THREE PEOPLE TALK",
+            "AT YOU AT ONCE"
+          ],
+          [
+            "ME IN A LOUD ROOM",
+            "WISHING FOR A MUTE BUTTON"
+          ],
+          [
+            "THE SUPERMARKET ON",
+            "A SATURDAY LIKE..."
+          ],
+          [
+            "WHEN YOUR BRAIN NEEDS",
+            "THE VOLUME TURNED DOWN"
+          ],
+          [
+            "ONE MORE NOISE",
+            "AND I'M BECOMING A PUDDLE"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-CRINGE",
+        "alts": [
+          "G-SINK",
+          "G-JELLYFREEZE"
+        ],
+        "staging": "a sound-ring hits and the Mallow shrinks from it"
+      },
+      "escalation": {
+        "metaphor": "M-NOISE",
+        "alts": [],
+        "lines": [
+          "So. Many. Sounds.",
+          "Who turned it up?",
+          "Need a quiet corner."
+        ],
+        "pools": {
+          "L1": [
+            "Beep. Buzz. Ding.",
+            "Everyone's talking.",
+            "Bright. So bright."
+          ],
+          "L2": [
+            "Can't hear myself think.",
+            "Too much. Too fast.",
+            "Is it getting louder?"
+          ],
+          "L3": [
+            "Mute button, please.",
+            "Becoming a pebble.",
+            "Hide in a cloud?"
+          ]
+        },
+        "staging": "rings and small onomatopoeia bubbles drift in and overlap - busy but never overwhelming to watch (<= 6 elements, low contrast, slow)"
+      },
+      "ritual": {
+        "primary": "R-COSY",
+        "alts": [
+          "R-DRIFT",
+          "R-CLOUDWRAP"
+        ],
+        "staging": "the Mallow tucks into a cloud; the score literally low-passes into muffled quiet and the rings fade"
+      },
+      "resolution": {
+        "primary": [
+          "It's okay to need",
+          "the volume down."
+        ],
+        "variants": [
+          [
+            "Quiet is a kind of",
+            "comfort too."
+          ],
+          [
+            "Soft places help",
+            "loud days land."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "a single soft 'ding' ring returns on the seam"
+      },
+      "palette": "A-BUSY-STILL",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-MURMUR",
+          "MO-POP",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: one soft ring 'whomm', cringe squeak",
+          "L1-L3: layered soft pings/buzzes/murmur grains building (all gentle, capped level)",
+          "TURN: everything ducks",
+          "RITUAL: low-pass sweep closing, cosy hum, cloud swish, then only the quiet realm bed",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Never 'overstimulated' / 'sensory overload' on screen. The visuals depict 'a lot' without being a lot."
+      ]
+    },
+    {
+      "id": "T21-plans-cancelled",
+      "title": "Plans Cancelled (Yay)",
+      "feeling": {
+        "family": "relief",
+        "label": "the joy of cancelled plans",
+        "valence": "positive",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "loomi",
+          "noomi",
+          "glitzi"
+        ],
+        "secondary": [
+          "blubi",
+          "boppo"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "L",
+      "hook": {
+        "primary": [
+          "WHEN THEY CANCEL PLANS",
+          "I WAS DREADING"
+        ],
+        "variants": [
+          [
+            "'HEY, CAN WE RESCHEDULE?'",
+            "ME:"
+          ],
+          [
+            "PLANS CANCELLED.",
+            "PYJAMAS: ACTIVATED."
+          ],
+          [
+            "WHEN THE RAIN CANCELS",
+            "THE THING I WAS DREADING"
+          ],
+          [
+            "ME PRETENDING TO BE SAD",
+            "THEY CANCELLED"
+          ],
+          [
+            "THE JOY OF A CANCELLED",
+            "PLAN ON A FRIDAY NIGHT"
+          ],
+          [
+            "THEY SAID 'RAIN CHECK?'",
+            "I SAID 'PLEASE.'"
+          ],
+          [
+            "SUDDENLY FREE EVENING",
+            "UNLOCKED"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-DEADPAN",
+        "alts": [
+          "G-DOUBLETAKE",
+          "G-LAUNCH"
+        ],
+        "staging": "reads the cancel... slow blink... a tiny gleeful hop"
+      },
+      "escalation": {
+        "metaphor": "M-COSYPILE",
+        "alts": [],
+        "lines": [
+          "Oh no. Anyway.",
+          "Sweatpants o'clock.",
+          "A whole free night?!"
+        ],
+        "pools": {
+          "L1": [
+            "Aw, what a shame.",
+            "Totally gutted. Not.",
+            "Act a bit sad."
+          ],
+          "L2": [
+            "Sofa: reserved.",
+            "Is it rude to cheer?",
+            "Snacks. Blanket. Bliss."
+          ],
+          "L3": [
+            "Best plan ever made.",
+            "Nobody move. Bliss.",
+            "Is this joy? It's joy."
+          ]
+        },
+        "staging": "the Mallow tries to frown but the smile keeps breaking through; cushions drop in one by one"
+      },
+      "ritual": {
+        "primary": "R-COSY",
+        "alts": [
+          "R-DRIFT",
+          "R-SQUISH"
+        ],
+        "staging": "sinks into the cushion pile, shrinks cosy, warm glow"
+      },
+      "resolution": {
+        "primary": [
+          "Rest is a plan too."
+        ],
+        "variants": [
+          [
+            "Relief is a feeling",
+            "worth noticing."
+          ],
+          [
+            "A free evening",
+            "is a tiny gift."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETURN",
+        "staging": "cushions fade, back to the cover pose"
+      },
+      "palette": "A-FLAT-GOLDEN",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft message 'boop', slow-blink bip, gleeful squeak",
+          "L1-L3: cushion 'pfumf' landings x3",
+          "RITUAL: sink-in squish, content sigh gesture, cosy hum",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Removed 'Cancel more things?' (reads as encouraging withdrawal); the insight frames rest, not avoidance."
+      ]
+    },
+    {
+      "id": "T22-guilty-resting",
+      "title": "Trying to Rest",
+      "feeling": {
+        "family": "guilt",
+        "label": "guilt about resting",
+        "valence": "mixed",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "loomi",
+          "noomi",
+          "boppo"
+        ],
+        "secondary": [
+          "blubi",
+          "pipzi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME TRYING TO RELAX",
+          "BUT FEELING GUILTY ABOUT IT"
+        ],
+        "variants": [
+          [
+            "DAY OFF. BRAIN:",
+            "BUT WHAT ABOUT THE EMAILS?"
+          ],
+          [
+            "WHEN YOU SIT DOWN",
+            "AND REMEMBER 9 CHORES"
+          ],
+          [
+            "TRYING TO REST LIKE",
+            "A NORMAL PERSON"
+          ],
+          [
+            "LYING ON THE SOFA",
+            "FEELING LIKE A CRIMINAL"
+          ],
+          [
+            "ME ON HOLIDAY STILL",
+            "CHECKING MY INBOX"
+          ],
+          [
+            "REST? IN THIS ECONOMY."
+          ],
+          [
+            "MY BODY: RESTING.",
+            "MY BRAIN: BUT ARE WE THOUGH?"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-FLOP",
+        "alts": [
+          "G-DEADPAN",
+          "G-JELLYFREEZE"
+        ],
+        "staging": "flops down to rest - and immediately a chore icon pings beside it"
+      },
+      "escalation": {
+        "metaphor": "M-ICONS",
+        "alts": [
+          "M-ORBIT"
+        ],
+        "lines": [
+          "Should I be doing stuff?",
+          "Everyone's so busy.",
+          "Rest = lazy?"
+        ],
+        "pools": {
+          "L1": [
+            "Just sitting. Is that ok?",
+            "The laundry is staring.",
+            "Maybe one quick email."
+          ],
+          "L2": [
+            "Did I earn this nap?",
+            "Others are working.",
+            "Am I falling behind?"
+          ],
+          "L3": [
+            "Resting... guiltily.",
+            "Fine. I'll fold socks.",
+            "Relaxing is hard work."
+          ]
+        },
+        "staging": "glass chore icons orbit and poke while the Mallow tries to lie still"
+      },
+      "ritual": {
+        "primary": "R-DRIFT",
+        "alts": [
+          "R-CLOUDWRAP",
+          "R-COSY"
+        ],
+        "staging": "lies back and drifts; the chores float away like leaves on the water"
+      },
+      "resolution": {
+        "primary": [
+          "Rest isn't a reward.",
+          "It's part of the plan."
+        ],
+        "variants": [
+          [
+            "Resting counts",
+            "as doing something."
+          ],
+          {
+            "lines": [
+              "Drifting is a valid plan."
+            ],
+            "only": [
+              "loomi"
+            ]
+          }
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "a chore icon pings back on the seam"
+      },
+      "palette": "A-GREY-CLEAR",
+      "camera": [
+        "C-HOLD-WIDE"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-ORBIT",
+          "MO-POP",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: flop flump + content sigh, then a chore 'ping'",
+          "L1-L3: icon whooshes, a guilty 'hmm' glide",
+          "RITUAL: water lap, slow wind, chores floating off 'bloop'",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "'Drifting is a valid plan.' is Loomi's approved app voice line - Loomi only."
+      ]
+    },
+    {
+      "id": "T23-compliment-malfunction",
+      "title": "Compliment Malfunction",
+      "feeling": {
+        "family": "shy-joy",
+        "label": "can't take a compliment",
+        "valence": "mixed",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "glitzi",
+          "blubi"
+        ],
+        "secondary": [
+          "boppo",
+          "pipzi",
+          "zuzu"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "WHEN SOMEONE GIVES ME",
+          "A COMPLIMENT"
+        ],
+        "variants": [
+          [
+            "THEM: GREAT IDEA!",
+            "ME: SYSTEM MALFUNCTION"
+          ],
+          [
+            "SOMEONE: YOU'RE SO FUNNY.",
+            "ME, A JELLY:"
+          ],
+          [
+            "HOW I TAKE A COMPLIMENT",
+            "(I DON'T)"
+          ],
+          [
+            "WHEN MY BOSS SAYS",
+            "'NICE WORK' IN PUBLIC"
+          ],
+          [
+            "ME TRYING TO SAY",
+            "'THANK YOU' NORMALLY"
+          ],
+          [
+            "THEY SAID SOMETHING NICE.",
+            "I FORGOT HOW TO TALK."
+          ],
+          [
+            "WHEN A STRANGER",
+            "COMPLIMENTS MY TASTE"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-JELLYFREEZE",
+        "alts": [
+          "G-CRINGE",
+          "G-GLITCHSLIP",
+          "G-SPLASHSIT"
+        ],
+        "staging": "a warm compliment bubble lands; total freeze; jelly quiver; blush floods in"
+      },
+      "escalation": {
+        "metaphor": "M-GLOW",
+        "alts": [],
+        "lines": [
+          "Wait, me?",
+          "Quick, deflect!",
+          "Did I say 'you too'?"
+        ],
+        "pools": {
+          "L1": [
+            "Nobody's ever said...",
+            "Uh. Um. Thanks?",
+            "Are they joking?"
+          ],
+          "L2": [
+            "Make it a joke!",
+            "It was nothing, really.",
+            "Act normal. Too late."
+          ],
+          "L3": [
+            "Replay it for a week.",
+            "Hide in my own blush.",
+            "Saving it forever."
+          ]
+        },
+        "staging": "blush spreads, slow hearts rise, the Mallow wobbles shyly (Glitzi: a slice slips per line, luminance constant)"
+      },
+      "ritual": {
+        "primary": "R-SAVOUR",
+        "alts": [
+          "R-SQUISH",
+          "R-DEFRAG"
+        ],
+        "staging": "the compliment bubble sinks into the Mallow and warms it from inside - letting it in"
+      },
+      "resolution": {
+        "primary": [
+          "You can just say thanks.",
+          "And keep it."
+        ],
+        "variants": [
+          [
+            "Kind words fit you.",
+            "Let them stay."
+          ],
+          [
+            "Compliments are allowed",
+            "to land."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETURN",
+        "staging": "back to the cover pose with a lingering blush that fades by the seam"
+      },
+      "palette": "A-BRIGHT-GLOW",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: warm bell ting, jelly wobble (Glitzi: bit-crushed chirps)",
+          "L1-L3: warm blush whoosh, heart plinks rising",
+          "RITUAL: soft absorb 'bloop', bloom, content glide",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Compliments are about ideas/humour/taste - never appearance."
+      ]
+    },
+    {
+      "id": "T24-one-of-those-days",
+      "title": "One of Those Days",
+      "feeling": {
+        "family": "frustration",
+        "label": "tiny annoyances piling up",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "glitzi",
+          "pipzi"
+        ],
+        "secondary": [
+          "blubi",
+          "boppo",
+          "zuzu"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ONE OF THOSE DAYS",
+          "WHERE EVERYTHING GOES..."
+        ],
+        "variants": [
+          [
+            "SPILLED TEA. MISSED BUS.",
+            "IT'S 8:15 AM."
+          ],
+          [
+            "WHEN THE SMALL THINGS",
+            "KEEP GOING WRONG"
+          ],
+          [
+            "STUBBED MY TOE ON",
+            "THE SAME CHAIR. AGAIN."
+          ],
+          [
+            "TODAY'S VIBE:",
+            "MILDLY CURSED"
+          ],
+          [
+            "WHEN EVERY LIGHT",
+            "TURNS RED FOR YOU"
+          ],
+          [
+            "LOST MY KEYS. FOUND THEM.",
+            "IN MY HAND."
+          ],
+          [
+            "ME AFTER THE 9TH",
+            "TINY INCONVENIENCE"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-BONK",
+        "alts": [
+          "G-GLITCHSLIP",
+          "G-WEEBLE"
+        ],
+        "staging": "a little grey pebble bonks the Mallow; it squashes; a grumpy puff appears"
+      },
+      "escalation": {
+        "metaphor": "M-PEBBLES",
+        "alts": [
+          "M-CLOUD"
+        ],
+        "lines": [
+          "Wi-Fi's down. Great.",
+          "Lost a sock. Again.",
+          "Is the universe mad?"
+        ],
+        "pools": {
+          "L1": [
+            "The printer. Again.",
+            "Coffee: spilled.",
+            "Phone at 2%."
+          ],
+          "L2": [
+            "Who did I upset?",
+            "Seriously, what now?",
+            "Everything's sticky."
+          ],
+          "L3": [
+            "I'm going back to bed.",
+            "Today is cancelled.",
+            "Just me vs. the day."
+          ]
+        },
+        "staging": "a pebble per line, each adding to a grumpy little cloud (no lightning flashes)"
+      },
+      "ritual": {
+        "primary": "R-WIGGLE",
+        "alts": [
+          "R-DEFRAG",
+          "R-BREATH"
+        ],
+        "staging": "a long jelly wiggle; the pebbles fly off as sparkles; round and fresh again"
+      },
+      "resolution": {
+        "primary": [
+          "A bad day isn't",
+          "a bad life."
+        ],
+        "variants": [
+          [
+            "Tiny storms pass too."
+          ],
+          [
+            "Shake it out.",
+            "Start again soft."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "one pebble bonks again on the seam"
+      },
+      "palette": "A-BUSY-STILL",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-THUNK",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft wood-block 'tok', squelch, kit 'offended' gesture",
+          "L1-L3: toks climbing in comic pitch, low soft grumble from the cloud",
+          "RITUAL: bwowow wobble, sparkle flicks, settle",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Static Storm 'digital lightning' must stay dim and slow in this template."
+      ]
+    },
+    {
+      "id": "T25-phone-call-nerves",
+      "title": "When It Actually Rings",
+      "feeling": {
+        "family": "nerves",
+        "label": "phone-call nerves",
+        "valence": "difficult",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "blubi",
+          "zuzu",
+          "loomi"
+        ],
+        "secondary": [
+          "noomi",
+          "glitzi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "WHEN THE PHONE RINGS",
+          "AND IT'S NOT A TEXT"
+        ],
+        "variants": [
+          [
+            "ME PRACTISING A PHONE CALL",
+            "BEFORE MAKING IT"
+          ],
+          [
+            "UNKNOWN NUMBER CALLING.",
+            "ME:"
+          ],
+          [
+            "MY PHONE IS RINGING.",
+            "WHO CALLS ANYMORE?"
+          ],
+          [
+            "WHEN YOU HAVE TO CALL",
+            "TO BOOK SOMETHING"
+          ],
+          [
+            "LETTING IT RING OUT",
+            "THEN TEXTING 'HEY, SORRY'"
+          ],
+          [
+            "MY PHONE BUZZES.",
+            "MY WHOLE SOUL: NO."
+          ],
+          [
+            "THE CALL WAS 2 MINUTES.",
+            "I PREPARED FOR AN HOUR."
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-JELLYFREEZE",
+        "alts": [
+          "G-SCOOT",
+          "G-SINK",
+          "G-JOLT"
+        ],
+        "staging": "the buzz starts; the Mallow freezes and quivers in sync with it"
+      },
+      "escalation": {
+        "metaphor": "M-BUZZ",
+        "alts": [],
+        "lines": [
+          "Is it ringing? It is.",
+          "What do I say first?",
+          "Can they text instead?"
+        ],
+        "pools": {
+          "L1": [
+            "Is that... a call?",
+            "Unknown number!",
+            "Hide. Just hide."
+          ],
+          "L2": [
+            "Rehearse it. Again.",
+            "What if it's awkward?",
+            "Hello? No. Hi? No."
+          ],
+          "L3": [
+            "Let it ring out?",
+            "I'll text them, okay?",
+            "Moving to a cave."
+          ]
+        },
+        "staging": "vibration rings come faster and nudge the Mallow; the ground ripples"
+      },
+      "ritual": {
+        "primary": "R-BREATH",
+        "alts": [
+          "R-SQUISH",
+          "R-NAMEIT"
+        ],
+        "staging": "after the exhale the Mallow boops the bubble - the rings resolve into a warm hum"
+      },
+      "nameWords": [
+        "nervous.",
+        "wobbly.",
+        "shy."
+      ],
+      "resolution": {
+        "primary": [
+          "Most calls are shorter",
+          "than the dread."
+        ],
+        "variants": [
+          [
+            "Nervous and brave",
+            "can happen together."
+          ],
+          [
+            "You can be nervous",
+            "and still do it."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETRIGGER",
+        "staging": "the buzz returns on the seam"
+      },
+      "palette": "A-BUSY-STILL",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-BUZZ",
+          "MO-HUM",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: soft low buzz pattern, jelly wobble",
+          "L1-L3: ring 'whoom's quickening",
+          "TURN: stop",
+          "RITUAL: breath, boop, rings resolve into a warm chord",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "'Appointment' avoided in hooks (medical adjacency); buzz never imitates a real ringtone."
+      ]
+    },
+    {
+      "id": "T26-nostalgia",
+      "title": "Nostalgia Ambush",
+      "feeling": {
+        "family": "nostalgia",
+        "label": "a memory out of nowhere",
+        "valence": "mixed",
+        "tone": "warm"
+      },
+      "mallows": {
+        "primary": [
+          "noomi",
+          "blubi",
+          "zuzu"
+        ],
+        "secondary": [
+          "loomi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "WHEN AN OLD SONG COMES ON",
+          "AND YOU'RE 15 AGAIN"
+        ],
+        "variants": [
+          [
+            "FOUND AN OLD PHOTO.",
+            "NOW I'M EMOTIONAL."
+          ],
+          [
+            "THAT SMELL THAT TAKES YOU",
+            "STRAIGHT BACK TO CHILDHOOD"
+          ],
+          [
+            "ONE SONG AND I'M",
+            "BACK IN 2012"
+          ],
+          [
+            "WHEN A MEMORY HITS",
+            "OUT OF NOWHERE"
+          ],
+          [
+            "SCROLLING OLD PHOTOS",
+            "AT MIDNIGHT LIKE..."
+          ],
+          [
+            "MISSING A TIME,",
+            "NOT JUST A PLACE"
+          ],
+          [
+            "THE NOSTALGIA HIT",
+            "NOBODY WARNED ME ABOUT"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-DOUBLETAKE",
+        "alts": [
+          "G-JELLYFREEZE",
+          "G-PUFF"
+        ],
+        "staging": "a music-note memory bubble floats past; double take"
+      },
+      "escalation": {
+        "metaphor": "M-DREAMBUBBLES",
+        "alts": [
+          "M-ORBIT"
+        ],
+        "lines": [
+          "Wait, I know this song.",
+          "Summer, years ago...",
+          "Can I go back? Briefly?"
+        ],
+        "pools": {
+          "L1": [
+            "Is that... THE song?",
+            "That old cartoon!",
+            "Remember that summer?"
+          ],
+          "L2": [
+            "We were so little.",
+            "Everything felt new.",
+            "Where did time go?"
+          ],
+          "L3": [
+            "Happy-sad. Both.",
+            "Okay, I'm emotional.",
+            "Play it again. Again."
+          ]
+        },
+        "staging": "warm sepia memory bubbles rise; the grade warms; eyes go a little wet"
+      },
+      "ritual": {
+        "primary": "R-SAVOUR",
+        "alts": [
+          "R-FLOAT-AWAY",
+          "R-CLOUDWRAP"
+        ],
+        "staging": "the memories drift in and merge into one warm orb that settles into the Mallow's glow - keeping the good part"
+      },
+      "resolution": {
+        "primary": [
+          "Happy and sad",
+          "can share one heart."
+        ],
+        "variants": [
+          [
+            "Some memories are",
+            "meant to be visited."
+          ],
+          [
+            "The past still glows",
+            "in the good bits."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-OBJECT",
+        "staging": "the orb floats up; a new memory bubble drifts in on the seam"
+      },
+      "palette": "A-DIM-SOFT",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-MUSICBOX",
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: a slow original 4-note music-box phrase starts, double-take bips",
+          "L1-L3: dream-bubble plinks, wobbly-lip warble on L3",
+          "RITUAL: gather shimmer, bloom, content glide",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "The 'old song' is an original procedural phrase - never a real song. Avoid family members by name (grief adjacency)."
+      ]
+    },
+    {
+      "id": "T27-someone-remembered",
+      "title": "They Remembered",
+      "feeling": {
+        "family": "warmth",
+        "label": "feeling seen",
+        "valence": "positive",
+        "tone": "warm"
+      },
+      "mallows": {
+        "primary": [
+          "blubi",
+          "boppo",
+          "noomi"
+        ],
+        "secondary": [
+          "loomi",
+          "pipzi",
+          "glitzi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "L",
+      "hook": {
+        "primary": [
+          "WHEN SOMEONE REMEMBERS",
+          "A TINY THING YOU SAID"
+        ],
+        "variants": [
+          [
+            "THEY REMEMBERED HOW",
+            "I TAKE MY TEA"
+          ],
+          [
+            "WHEN A FRIEND CHECKS IN",
+            "JUST BECAUSE"
+          ],
+          [
+            "SOMEONE SAVED ME",
+            "THE LAST COOKIE"
+          ],
+          [
+            "WHEN THEY ASK HOW",
+            "THE THING WENT"
+          ],
+          [
+            "THE WARM FUZZY FEELING",
+            "WHEN SOMEONE GETS YOU"
+          ],
+          [
+            "'THIS REMINDED ME OF YOU'",
+            "ME:"
+          ],
+          [
+            "BEING REMEMBERED HITS",
+            "DIFFERENT"
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-MELT",
+        "alts": [
+          "G-JELLYFREEZE",
+          "G-SPLASHSIT",
+          "G-PUFF"
+        ],
+        "staging": "happy melt: the Mallow goes soft and gooey with joy"
+      },
+      "escalation": {
+        "metaphor": "M-GLOW",
+        "alts": [],
+        "lines": [
+          "They remembered?",
+          "Oh no, I'm melting.",
+          "Best. Person. Ever."
+        ],
+        "pools": {
+          "L1": [
+            "Wait... for me?",
+            "They were listening!",
+            "That's so thoughtful."
+          ],
+          "L2": [
+            "Act normal. I can't.",
+            "Heart: doing a wobble.",
+            "Am I blushing? Yes."
+          ],
+          "L3": [
+            "Keeping them forever.",
+            "Happy tears, sorry.",
+            "Making them a cake."
+          ]
+        },
+        "staging": "blush spreads, slow hearts rise, the good melt deepens"
+      },
+      "ritual": {
+        "primary": "R-SAVOUR",
+        "alts": [
+          "R-LANTERN",
+          "R-SQUISH"
+        ],
+        "staging": "a warm orb settles inside; glow blooms; a content wiggle"
+      },
+      "resolution": {
+        "primary": [
+          "Feeling seen",
+          "is a soft kind of magic."
+        ],
+        "variants": [
+          [
+            "Little kindnesses",
+            "stay with us."
+          ],
+          [
+            "Remember the people",
+            "who remember you."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETURN",
+        "staging": "re-forms into the cover pose, warmth easing to the cover grade"
+      },
+      "palette": "A-BRIGHT-GLOW",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: warm bell ting, happy-melt glide (sweet, descending)",
+          "L1-L3: heart plinks rising, comfort gesture",
+          "RITUAL: bloom, celebrate gesture (low), pad",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "Positive-valence; good default for brand-line closers."
+      ]
+    },
+    {
+      "id": "T28-big-feelings-small-thing",
+      "title": "Crying at an Advert",
+      "feeling": {
+        "family": "tenderness",
+        "label": "big feelings over a small thing",
+        "valence": "mixed",
+        "tone": "comic"
+      },
+      "mallows": {
+        "primary": [
+          "blubi",
+          "noomi"
+        ],
+        "secondary": [
+          "boppo",
+          "zuzu",
+          "glitzi"
+        ],
+        "avoid": {}
+      },
+      "tod": "any",
+      "durations": [
+        10,
+        12,
+        15,
+        20
+      ],
+      "cost": "M",
+      "hook": {
+        "primary": [
+          "ME CRYING AT AN ADVERT",
+          "ABOUT A LOST DOG"
+        ],
+        "variants": [
+          [
+            "WHEN THE KIDS' CARTOON",
+            "GETS EMOTIONAL"
+          ],
+          [
+            "CRYING AT A VIDEO OF",
+            "A DUCK MAKING A FRIEND"
+          ],
+          [
+            "WHY AM I TEARING UP",
+            "AT A CEREAL ADVERT?"
+          ],
+          [
+            "WHEN THE SHOW'S ENDING",
+            "IS TOO WHOLESOME"
+          ],
+          [
+            "ME: I'M NOT EMOTIONAL.",
+            "ALSO ME, AT A DOG VIDEO:"
+          ],
+          [
+            "SOBBING AT A MOVIE",
+            "I'VE SEEN 12 TIMES"
+          ],
+          [
+            "BIG FEELINGS. TINY REASON."
+          ]
+        ]
+      },
+      "gag": {
+        "primary": "G-JELLYFREEZE",
+        "alts": [
+          "G-DOUBLETAKE",
+          "G-SPLASHSIT"
+        ],
+        "staging": "the (score's) advert music swells; freeze; the lip starts to wobble"
+      },
+      "escalation": {
+        "metaphor": "M-TEARS",
+        "alts": [
+          "M-CLOUD"
+        ],
+        "lines": [
+          "Oh no. The music.",
+          "He found his family!",
+          "I'm fine. Leaking."
+        ],
+        "pools": {
+          "L1": [
+            "Wait, is this sad?",
+            "The little duck!",
+            "Not the slow piano."
+          ],
+          "L2": [
+            "Who's chopping onions?",
+            "It's just an advert!",
+            "Hold it together..."
+          ],
+          "L3": [
+            "Full waterworks.",
+            "Happy crying. Mostly.",
+            "Need a tissue fort."
+          ]
+        },
+        "staging": "eyes well; tear droplets lift in gentle arcs into comic waterworks"
+      },
+      "ritual": {
+        "primary": "R-RAINLIFT",
+        "alts": [
+          "R-SQUISH",
+          "R-CLOUDWRAP"
+        ],
+        "staging": "the tears lift upward and turn to little lights; the Mallow glows (R-RAINLIFT for blubi/noomi; others squish or cloud-wrap)"
+      },
+      "resolution": {
+        "primary": [
+          "A soft heart is",
+          "a strong thing."
+        ],
+        "variants": [
+          [
+            "Big feelings, tiny reasons.",
+            "All allowed."
+          ],
+          [
+            "Tears can be",
+            "the happy kind too."
+          ]
+        ]
+      },
+      "loop": {
+        "strategy": "LP-RETURN",
+        "staging": "back to the cover pose; the advert motif restarts across the seam"
+      },
+      "palette": "A-DIM-SOFT",
+      "camera": [
+        "C-DRIFT-IN"
+      ],
+      "sound": {
+        "motifs": [
+          "MO-MUSICBOX",
+          "MO-GLASS-RISE",
+          "MO-WARMPAD",
+          "MO-CLOSE"
+        ],
+        "beats": [
+          "GAG: an original 3-note 'advert music' celesta swell, freeze wobble",
+          "L1-L3: lip warble, droplet plinks, a soft (never gross) sniffle-air",
+          "RITUAL: droplets rising into chimes, bloom, comfort gesture",
+          "LOGO: chime"
+        ]
+      },
+      "flags": [
+        "US locale: 'AD' for 'ADVERT'. Keep it light - this is happy-crying."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+ "scores": [
+  {
+   "design": "quality-first",
+   "quality_bar": 9,
+   "variety": 6,
+   "feasibility_on_4_core_cpu": 8,
+   "risk_control": 9,
+   "brand_safety": 9,
+   "total": 8.35,
+   "strengths": [
+    "Its environment facts check out against the repo: v2 render 1524 s, 26 GB free, templates/ untracked, no libvmaf or scikit-image. The design adapts to them (SSIM and \u0394E2000 in numpy/OpenCV).",
+    "Tuning matrix: every move \u00d7 Mallow cell is untuned, candidate or approved, and production may only use approved cells. Of the three, this is the best way to keep the v2 bar as combinations multiply.",
+    "Gates are ordered by cost: G-SPEC (ms), then G-DIR (Node, under 3 s), then G-DRAFT (~20 s), then the final render, then G-FINAL and G-AUDIO. Invalid specs never reach the ~8 min final render.",
+    "Circular timeline with a movable seam (domain [\u2212P, D\u2212P)). RETRIGGER and OBJECT loops can play across frame 0, frames can render out of order or in segments, and the audio tail is wrap-added so reverb crosses the seam.",
+    "Parity comes before features. Required: state equal within 1e-9 at all 450 frame and 1991 sub-frame times, cue and curve parity, legacy frames bit-identical to the goldens, and a refusal to render if the app tree hash changes.",
+    "Typed channels with ownership windows: an overlap is a compile error, not a silent overwrite. There is no roll or shake channel, so those effects cannot be authored at all.",
+    "Honest performance plan. The per-pass table is built from measured costs, budget alarms sit at 9, 12 and 15 min, and the content plan still holds at ~55 videos/day if WP-02 misses. Resource classes, a disk guard and retention rules are included.",
+    "Rollout follows asset and world reuse: Noomi, then Loomi and Blubi (closed-tube faces, lake worlds), then open-socket faces, then spiral and heavy-lid. Template unlock counts are measured against the library.",
+    "Strict brand enforcement: zero flashes allowed (threshold calibrated so v2 passes), R-BREATH timing constraints, Latin-1 copy lint, logo SSIM \u2265 0.995, and a fault fixture that must trip each gate."
+   ],
+   "weaknesses": [
+    "About 40 numeric thresholds, most calibrated on one approved video (n=1). Expect false fails and passes, and churn while gates are retuned.",
+    "Cells are demoted by the move file's content hash, so any refactor or reformat sends all of that move's cells back to candidate. Hashing the compiled channel output would avoid this.",
+    "The movable seam adds a second time domain to every evaluator, world term and the audio render. That is bug-prone, although G-DIR checks loop closure.",
+    "The realm-likeness gate needs reference stills from the app's realm modules, which run on rAF, performance.now and dt-integrated state. Nothing is scheduled to prove this works.",
+    "No fallback when rest-match fails (only a narrower expression range), so Boppo, Pipzi and Zuzu could stay blocked indefinitely.",
+    "WP-10a/b/c budget ~46 moves in ~17 agent-days, which is optimistic. First non-T01 content arrives only around week 5 (M0 + M1).",
+    "Thin variety engine: no least-recently-used weighting, no copy reservations, no weather or dressing slot in the spec, and a plain resample-50 planner.",
+    "D9 implicit approval: approving a video approves its cells, so the edges of a cell's parameter range are never explicitly reviewed.",
+    "1-second segments, with two workers splitting one video, repeat page setup and add concat overhead."
+   ]
+  },
+  {
+   "design": "variety-scale-first",
+   "quality_bar": 7,
+   "variety": 9,
+   "feasibility_on_4_core_cpu": 6,
+   "risk_control": 7,
+   "brand_safety": 8,
+   "total": 7.25,
+   "strengths": [
+    "Five independently seeded variety layers (story, copy, world, performance, sound) on namespaced PRNG streams, so changing one slot never reshuffles the others.",
+    "Capability gating: beats declare what they need and packs declare what they provide. `hm library coverage` shows exactly what is renderable today.",
+    "Beat parameters are sampled inside owner-approved [min, max] ranges with a Beta(3,3) bias toward the default. Ranges are reviewed on min, default and max contact sheets, which adds per-seed variety without leaving approved space.",
+    "Pose contracts (entry and exit pose), automatic bridge moves, and contact sheets for every gag\u2192metaphor and metaphor\u2192ritual junction (`--pairs`).",
+    "Least-recently-used weighting w = base(1 \u2212 e^(\u2212age/\u03c4)), copy reservations across planned batches, and a scheduler that samples in post order.",
+    "Three-level uniqueness: exact fingerprint, weighted slot distance, and perceptual signature. Thresholds are fitted to 20 owner-rated pairs, and the cover frame (the feed thumbnail) gets its own distance rule.",
+    "G5 predicts render time from the dry run's real sub-frame counts \u00d7 a cost model. G15 compares actual with predicted and refits the model. Proof stills take ~25 s.",
+    "Property test: 1,000 sampled specs are compiled in Node and must pass G1\u2013G4 and loop closure.",
+    "Storage policy treats spec + engine SHA as the archive and prunes MP4s, with CRF 18 to be measured.",
+    "Honest estimate that Noomi alone gives 3\u20135 good posts per week. Its dressing items (pearly shore, shells, lighthouse, fireflies) really are in the app's moonmilk-cove.js."
+   ],
+   "weaknesses": [
+    "WP9 covers ~34 beats plus the glass prop family, icon sheet, particles and soft-body DOFs in 12 days: about 0.3 d per v2-quality beat including extremes review. Unrealistic.",
+    "Throughput is overclaimed: 150\u2013190 finals per 20 h day and 1,000 finals in 5 days assume the 4-core machine does nothing else, while daytime development, benchmarks and asset derivation also need it.",
+    "Parameter sampling, automatic bridges and app-preset emotes together risk mechanical acting. Approval is a global status per beat, with no per-Mallow tuning record.",
+    "Looser fidelity gates (G12: \u0394E mean \u2264 2, SSIM \u2265 0.95), and `restCrossfade:false` is allowed as a fallback with sign-off.",
+    "The clean-plate overlay split composites captions after grain, which departs from the v2 look. Each plate is 80\u2013100 MB at CRF 10, and the feature lands early (WP6).",
+    "Rejection reason codes automatically down-weight combinations. That feedback loop can quietly starve combinations.",
+    "Phase 2a has the most moving parts before the first owner review: composer, sampler, scheduler, 15 gates, clean plate and the full world kit. Critical path WP0\u2192WP1\u2192WP2\u2192WP8\u2192WP9\u2192WP11, about 5\u20136 weeks to R1.",
+    "1,000 finals need ~20\u201325 GB, roughly all of the 26 GB free."
+   ]
+  },
+  {
+   "design": "ship-incrementally",
+   "quality_bar": 7,
+   "variety": 6,
+   "feasibility_on_4_core_cpu": 8,
+   "risk_control": 8.5,
+   "brand_safety": 8,
+   "total": 7.58,
+   "strengths": [
+    "Smallest viable first milestone: Noomi with T01 (golden), T26 and T22, six review videos, so owner feedback comes early.",
+    "Most explicit golden procedure. G-STATE checks 2,441 times plus mesh hashes and sub-frame counts. G-CUES and G-PLAN check the cue log and audio event list. G-PIXEL runs on both exact and final profiles. SwiftShader run-to-run determinism is measured first (WP1.1), with a fallback tolerance of \u2264 1/255.",
+    "Guard tests: app tree untouched, frozen v2 hashes, lint banning Math.random, Date.now and performance.now in core/ and engine/, and a path guard on all output writes.",
+    "Asset allowlist with sha256 pins. The runtime logs every texture URL it loads and compares them with the allowlist.",
+    "Burned-in INTERNAL or DRAFT mark on non-approved renders, checked by gate Q9, so unapproved content cannot be posted by accident.",
+    "M1 performance acceptance is \u2264 12 min (stretch \u2264 9), independent of the 7\u20139 min estimate. Each optimisation is its own commit with its own PSNR gate.",
+    "WP3.0 spike decides per realm whether to capture the app's static layers as plates or hand-port them. Opaque-ground realms skip the reflection passes entirely.",
+    "Machine-time budget per milestone, a heavy-job flock, an audit-risk\u2192fix traceability table, and owner decisions with defaults and a 'needed by' work package.",
+    "The renderer asserts eyeScale \u00d7 irisScale \u00d7 displayScale \u2264 1, and the planner reads the resulting caps from the pack.",
+    "Library smoke test (WP3.10): compile every eligible template \u00d7 Mallow \u00d7 duration and draft-render a clip for every template \u00d7 Mallow pair.",
+    "Removing lightning from Static Storm is an explicit owner decision (D8). That is correct process, because the app realm does have 'soft digital lightning'."
+   ],
+   "weaknesses": [
+    "Horizontal sequencing: all 7 face packs (M2) are built before any realm (M3), so there is no publishable non-Noomi video for ~8\u201311 weeks, and faces are tuned on a neutral stage rather than under realm lighting.",
+    "M3 crams 7 realms and ~52 moves into one milestone (14 gags in 5 d, 23 metaphors in 8 d, 15 rituals in 5 d). Too optimistic, and review granularity is too coarse.",
+    "Calendar is inconsistent: the M1 critical path (1.0\u21921.1\u21921.2\u21921.4\u21921.7\u21921.8\u21921.12) adds up to ~15.5 d but is claimed as 9\u201311 working days.",
+    "Moves are approved globally ('test clip on 2 Mallows'), with no per-Mallow tuning record.",
+    "Looser gates: \u221216 \u00b11 LUFS, loud cues \u00b133 ms, seam step \u2264 \u221240 dBFS, caption contrast \u2265 3:1. If rest-match fails, the fallback restWindow:'none' drops the painted loop start.",
+    "D10 factual error: it treats the Moonmilk lighthouse and aurora as not in the app realm, but they are in hushmallow/src/world/realms/moonmilk-cove.js (lines 3\u201312 and 151\u2013222).",
+    "The lossless RGB clean plate is 1\u20131.5 GB per 15 s video, against 26 GB free disk.",
+    "Thin variety mechanics: no least-recently-used weighting, no copy reservations, no weather or dressing slots. Uniqueness checks are simpler than the other two designs."
+   ]
+  }
+ ],
+ "best": "quality-first. Total = 0.25 \u00d7 quality_bar + 0.25 \u00d7 risk_control + 0.20 \u00d7 feasibility + 0.15 \u00d7 brand_safety + 0.15 \u00d7 variety, giving quality-first 8.35, ship-incrementally 7.58 and variety-scale-first 7.25. It is the only design whose mechanisms keep the approved v2 bar as combinations grow. (1) The move \u00d7 Mallow tuning matrix lets production use only approved cells. (2) Gates are ordered so CPU is never spent on invalid specs (spec, then Node compile in under 3 s, then a ~2 min draft, then the final render). (3) Ownership windows and typed channels with no roll or shake channel make brand violations impossible to author. Its render budget is grounded in the measured v2 log (1524 s), with alarms and a fallback of ~55 videos/day that the content plan does not depend on. Its rollout follows asset and world reuse (Noomi, then Loomi and Blubi with lake worlds). Main fixes before adopting it: (a) demote cells by a hash of compiled output, not source text; (b) add ship-incrementally's spike for capturing the app realms, so the realm-likeness gate rests on proven references; (c) make the M0 acceptance \u2264 12 min, with 9 as the stretch target; (d) borrow variety-first's approved parameter ranges, least-recently-used weighting and copy reservations, because its variety engine is the thinnest of the three.",
+ "ideas_to_graft": [
+  "From ship-incrementally: burn an INTERNAL or DRAFT corner mark into every render that is not approved for publishing, and have a gate check that the mark is present exactly when the spec is internal or draft.",
+  "From ship-incrementally: a hash-pinned asset allowlist, plus runtime logging of every texture URL the page loads, compared after render. This is stronger than a spec-time manifest check.",
+  "From ship-incrementally: guard tests and lint banning Math.random, Date.now and performance.now in engine/ and composer/, plus a path guard that refuses any write outside the studio root.",
+  "From ship-incrementally: measure SwiftShader run-to-run determinism first (render twice and compare hashes) and define the fallback tolerance (\u2264 1/255) before promising bit-identical golden frames and segment-resume hashes.",
+  "From ship-incrementally: set milestone performance acceptance at \u2264 12 min with \u2264 9 as the stretch target, so M0 does not slip on an estimate. Keep one commit and one PSNR gate per optimisation.",
+  "From ship-incrementally: a plate-capture spike (WP3.0). Load the app realm factory read-only, seed the RNG, capture the static scene layers at 1.15\u00d7 for zoom headroom, and decide per realm whether to capture or hand-port. This also provides the references for quality-first's realm-likeness gate.",
+  "From ship-incrementally: an opaque-ground world mode that skips the reflection passes entirely (~140\u2013170 ms per sub-frame saved) for open realms, recorded in the cost model.",
+  "From ship-incrementally: a renderer assert that eyeScale \u00d7 irisScale \u00d7 displayScale \u2264 1, with the planner reading per-pack magnification caps (Boppo's eyeScale 1.3 caps display scale at 0.77).",
+  "From ship-incrementally: a machine-time budget per milestone, a heavy-job flock lock, an audit-risk\u2192fix traceability table, a 'needed by' work package for each owner decision, and the library smoke test (compile every eligible template \u00d7 Mallow \u00d7 duration, plus a draft clip per pair).",
+  "From ship-incrementally: make removing Static Storm's lightning an explicit owner decision, because the app realm itself has 'soft digital lightning'.",
+  "From variety-scale-first: needs/provides capability gating and `hm library coverage`, so the planner opens up content automatically as cells and packs are approved.",
+  "From variety-scale-first: store approved parameter ranges [min, max, default] in each tuning cell, sample with a Beta(3,3) bias, and approve cells only after reviewing min, default and max contact sheets. This replaces implicit approval through review videos.",
+  "From variety-scale-first: entry and exit pose contracts with bridge moves, and contact sheets for each gag\u2192metaphor and metaphor\u2192ritual junction (`hm beat-sheet --pairs`).",
+  "From variety-scale-first: least-recently-used slot weighting w = base(1 \u2212 e^(\u2212age/\u03c4)), and copy reservations so concurrently planned batches never pick the same hook or line.",
+  "From variety-scale-first: fit the slot-distance and pHash thresholds to ~20 owner-rated 'feels the same / different' pairs, and add a separate cover-frame (thumbnail) distance rule against the last 30 posts.",
+  "From variety-scale-first: a G5 gate that predicts render time from the dry run's sub-frame and face-redraw counts \u00d7 a fitted cost model, and a G15 check of actual vs predicted that refits the model.",
+  "From variety-scale-first: a property test that compiles 1,000 sampled specs in Node and requires G-SPEC, G-DIR and loop closure to pass, catching bad move interactions before any render.",
+  "From variety-scale-first: reason codes on rejections (acting, timing, copy, world, face, sameness, brand) in an exported decisions file. Use them to flag cells for re-tuning, not to down-weight combinations automatically.",
+  "From variety-scale-first: lint banning certain audio recipes (ringtone or alarm imitations, messenger pops, heartbeats, jump-scare stings), a grief-pairing rule for copy, and a semantic hook cooldown (token Jaccard \u2265 0.5 counts as the same hook).",
+  "From variety-scale-first: weather and dressing slots built from features that are verifiably in the app realm (pearly shore, shells and pearls, headland lighthouse, fireflies, dream bubbles are all in moonmilk-cove.js), with a clutter budget. Combine this with an honest cap on posting cadence while only Noomi is available.",
+  "From variety-scale-first: treat spec + engine SHA + pack versions as the archive, prune MP4s 30 days after posting, and measure CRF 18 against CRF 16 for the publish encode, given 26 GB free disk."
+ ]
+}

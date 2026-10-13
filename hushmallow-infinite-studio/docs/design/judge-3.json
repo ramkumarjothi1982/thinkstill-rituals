@@ -1,0 +1,92 @@
+{
+ "scores": [
+  {
+   "design": "quality-first",
+   "quality_bar": 9,
+   "variety": 7,
+   "feasibility_on_4_core_cpu": 8,
+   "risk_control": 9,
+   "brand_safety": 9,
+   "total": 8.15,
+   "strengths": [
+    "It has the strictest craft bar of the three. A tuning matrix tracks every (move x Mallow) cell, and production can only use approved cells. Rest-match has no fallback: the loop must start and end on the painting. Rest probes need dE2000 mean <= 1.0, the logo needs SSIM >= 0.995, and the brand allows zero flashes. A realm-likeness gate compares each world against reference renders from the app realm, which keeps worlds on-brand at scale.",
+    "It adds three turns: SQUEEZE, STOP ('everything stops dead') and SIGH. The turn is the mid-video comic beat, and making it a slot stops every video having the same middle.",
+    "It has 9 palette arcs, 4 Moonmilk times of day and 9/8/9 gags/metaphors/rituals in 2.1. Gags and expressions pass through semantic face intents plus per-Mallow signature channels (Zuzu spin, Glitzi glitch, Blubi tears, Loomi under-reaction), so one gag reads differently on each character.",
+    "The validator requires the hook at full alpha on frame 0 and the gag impact by 1.0 s. That is the right first-second rule for scroll-stopping.",
+    "Batch A is planned around coverage: 8 videos use all 9 gags, all 4 loop types, all 4 durations and all 4 times of day. A Noomi move reel speeds up cell sign-off. Throughput is planned honestly at 60-80 accepted videos a day, falling to about 55 a day if the performance work slips, and it names owner review as the real bottleneck."
+   ],
+   "weaknesses": [
+    "The spec has no weather or dressing slots. The realm preset lists weather and plates, but the variant spec does not pick them. While Noomi is the only character, in-realm variety rests on time of day and arcs alone, so the profile grid will look samey quickly.",
+    "Uniqueness is only the library minimum: fingerprint, 3-slot distance and pHash. There is no least-recently-used weighting, no check on the cover frame (the feed thumbnail), no owner calibration of 'feels the same', and no learning from rejection reasons. Cheap hook A/B variants are pushed back to WP-29.",
+    "Gating by tuning cell throttles variety by design. 7 Mallows x roughly 40 core moves means hundreds of cells, and editing a move file demotes its cells. Proposal D9 (approving a video approves the cells it uses) only partly offsets this.",
+    "It never addresses the library's sequencing rules: no back-to-back posts with the same Mallow, and every Mallow 1-3 times per 10 posts. Those rules mean a Noomi-only feed cannot legally run, yet the 4th publishable Mallow arrives only at M3, about 12-13 weeks in.",
+    "The structure is the same fixed skeleton for every template (cover, gag, lines, turn, ritual, resolve, logo). There are no hooks for staging specific to a template."
+   ]
+  },
+  {
+   "design": "variety-scale-first",
+   "quality_bar": 8,
+   "variety": 9,
+   "feasibility_on_4_core_cpu": 7.5,
+   "risk_control": 8,
+   "brand_safety": 8.5,
+   "total": 8.35,
+   "strengths": [
+    "Variety comes from five independently seeded layers: story, copy, world, performance and sound. World variety includes weather and dressing, drawn from the app's own Moonmilk design. I checked hushmallow/src/world/realms/moonmilk-cove.js: it contains the headland, lighthouse, shore, shells, pearls, fireflies, bubbles and aurora. This is the only design that stretches one-realm, one-Mallow content without inventing scenery.",
+    "It treats variety as a growth problem, not just a uniqueness check. LRU 'deal from a shuffled deck' weighting runs per slot with its own tau. A weighted slot distance (>= 6.0) sits on top of the 3-slot rule. The perceptual signature uses pHash at 7 anchor frames plus colour and audio. The cover frame must differ from each of the last 30 posts, which protects the profile grid. Thresholds are calibrated on 20 owner-rated 'feels same/different' pairs, and rejection reason codes down-weight the combinations involved.",
+    "It addresses the 'stitched together' feel. Beats declare entry and exit pose contracts, the composer inserts bridge moves, and every junction pair is reviewed. Optional recipes/Txx.js hooks allow staging specific to a template (for example, the T02 sun lurch). Beat parameters are sampled inside approved ranges with a Beta(3,3) distribution, and each range is reviewed at its extremes, so a repeated gag never plays exactly the same.",
+    "Its growth tooling is the best of the three. Cheap clean-plate hook A/B variants arrive in 2a (WP6) and are correctly excluded from counting as new posts. post.json supplies a linted caption, hashtags and alt text. Copy reservations stop two batches picking the same lines. A semantic hook cooldown treats token Jaccard >= 0.5 as the same hook. Grief-pairing rules cover T14. It plans a curated copy growth of 40-60 hooks a month.",
+    "Its capacity estimate is honest: 'about 3-5 good posts a week from Noomi alone before the channel feels samey'. The R1 review set is designed to tell us something: 14 finals in post order, 24 drafts simulating 8 days of scheduling, an overlay A/B, and #14 deliberately the closest neighbour of v2 to find where 'feels the same' starts.",
+    "Property tests compile 1,000 random specs through G1-G4 before any render. A pre-render cost gate (G5) and a fault-injection suite guard scale."
+   ],
+   "weaknesses": [
+    "Its craft guarantees are looser than quality-first's. A Mallow that fails rest-match can use restCrossfade:false with sign-off. Rest dE is <= 2 against <= 1.0, the logo SSIM threshold is 0.98, and G9 allows up to 3 flashes per second under WCAG, while the brand rule is no flashes at all (the house 10%-over-25% rule partly covers this).",
+    "Wave A carries the most scope: about 49 days, with WP9 at 12 days for 10 gags, 13 metaphors, 11 rituals and props. The 150-190 finals per 20-hour day figure is simple arithmetic that leaves out drafts, QA and re-renders; the nightly plan of about 70 finals is the realistic number.",
+    "Feeding rejections back as down-weights can drift the mix toward bland, safe combinations unless the weights have floors and decay.",
+    "Like quality-first, it reaches 4 or more publishable Mallows only at about 13-14 weeks (end of 2c). Wave A relaxes the library's Mallow sequencing rules to the unlocked set, so posting cadence is capped early.",
+    "Personality is mostly app expressions plus an energy multiplier. There is no tuning table for each move x Mallow pair, so the risk is that non-Noomi Mallows act like a scaled Noomi."
+   ]
+  },
+  {
+   "design": "ship-incremental",
+   "quality_bar": 8,
+   "variety": 6.5,
+   "feasibility_on_4_core_cpu": 8,
+   "risk_control": 9,
+   "brand_safety": 9,
+   "total": 7.73,
+   "strengths": [
+    "It reaches the full cast fastest: all 7 Mallows are publishable at M3, about 10-13 weeks in. That is what the library's own sequencing rules require (no back-to-back Mallow, every Mallow in any 10 posts), and cast diversity is the strongest anti-repetition lever for the profile grid. The M3 batch puts every Mallow in twice, covers >= 12 templates and all durations, and comes in a 2-week posting order that satisfies the sequencing rules.",
+    "Its regression and operational safety are the strongest. Frozen code is hash-locked, and guard tests confirm the app is untouched and that no Math.random or wall-clock time is used. The G-STATE, G-CUES, G-PLAN and G-PIXEL gates run on every engine commit. SwiftShader determinism is measured in WP1.1, before anything depends on it. A burned-in INTERNAL/DRAFT mark prevents unapproved renders being posted by accident. Every asset the page loads is checked against an allowlist of sha256 hashes.",
+    "A library smoke test compiles every eligible template x Mallow x duration and renders a draft clip for each template x Mallow pair. That catches broken combinations hiding in the combinatorial space before they reach review.",
+    "The tone/topic blocklist (self-harm, death, illness, body/food, alcohol, drugs, appearance) adds content safety beyond the library lists. Reading-time rules apply to each glass line. A plate-extraction spike tries to reuse the app's own approved set-piece designs directly.",
+    "The 4-core accounting is the most careful. The M1 performance target is hedged at <= 12 min. Machine time is budgeted per milestone (about 6, 10 and 14 hours). It notes that opaque-ground realms are cheaper because they skip reflection passes. A heavy-job lock separates renders from derivations."
+   ],
+   "weaknesses": [
+    "Early variety is thin. M1 has 3 templates (T01, T26, T22), Noomi only, at night only, with no new world work. M2 (3-4 weeks) produces no publishable content, only test reels on a neutral stage. For about 8-11 weeks the channel has very little to post without repeating itself.",
+    "Its uniqueness machinery is basic: fingerprint, 3-slot rule and a 12-frame dHash. There is no LRU weighting, no cover-frame check, no calibration, no learning from rejections, and weather and dressing are not spec slots. Hook A/B variants are optional in M3 and need lossless plates of about 1-1.5 GB each, which strains 26 GB of free disk.",
+    "D10 wrongly treats the Moonmilk lighthouse and aurora as extras outside the app realm. The app's moonmilk-cove.js contains both, plus shore, shells, pearls and fireflies. Putting them behind a flag strips approved variety from the only realm available early.",
+    "M3 is a large final phase: 60-75 days covering 7 realms and about 80 moves. Its many streams (A-K) compete for 4 shared cores, so integration and quality risk pile up at the end.",
+    "Its quality floors are lower in places: caption contrast >= 3:1 against 4.5:1, looser audio sync tolerances (<= 33 ms) and seam tolerances (<= -40 dBFS), and a restWindow 'none' fallback. Acting is a formula (energy-scaled amplitude and frequency), with no per-character tuning, which risks personalities that read as interchangeable."
+   ]
+  }
+ ],
+ "best": "variety-scale-first. Weighting is variety 35%, quality bar 25%, 4-core feasibility 15%, brand safety 15%, risk control 10%. Variety and quality get the most weight because the question is whether the system makes varied, scroll-stopping videos without feeling templated. Scores: variety-scale-first 8.35, quality-first 8.15, ship-incremental 7.73. Variety-scale-first is the only design that treats variety as a growth system and not only a uniqueness filter. It has five independently seeded layers, including weather and dressing grounded in the app's real Moonmilk set pieces (checked in moonmilk-cove.js). It adds LRU dealing, a weighted slot distance, a cover-frame (thumbnail) freshness check, owner-calibrated 'feels the same' thresholds, rejection-coded learning, pose contracts and bridges with junction reviews, beat parameters sampled within reviewed ranges, cheap hook A/B plates in the first phase, and post metadata. Its main gap is a slightly lower craft floor. Close that by grafting quality-first's tuning matrix and zero-flash gates, and adopt ship-incremental's push to reach 4 or more Mallows sooner. The library's sequencing rules (no back-to-back Mallow, at most 3 per 10 posts) mean a Noomi-only feed cannot legally sustain posting. All three designs leave that early-phase problem underweighted.",
+ "ideas_to_graft": [
+  "From quality-first: the move x Mallow tuning matrix (untuned/candidate/approved, demoted when the move's code hash changes) as the approval gate for variety-scale's beats. Keep variety-scale's approved parameter ranges inside each cell, and let approving a video promote the cells it used (D9).",
+  "From quality-first: the turn slot (TURN-SQUEEZE / TURN-STOP / TURN-SIGH) as an explicit varied beat. The mid-video comic turn is where a fixed template most obviously repeats.",
+  "From quality-first: the realm-likeness gate (a 9x16 Lab grid against reference stills from the app realm, mean dE <= 10 warn / 14 fail). Weather and dressing combinations can then never drift off-brand at scale.",
+  "From quality-first: a brand flash gate allowing 0 flashes (any >= 10% luminance change over >= 25% of the frame), calibrated so v2 passes, in place of WCAG's 3 flashes per second. Also the hook at full alpha on frame 0, gag impact by 1.0 s, and a 'dead interval' craft check of <= 1.2 s outside rest windows.",
+  "From quality-first: no restCrossfade-off fallback (a Mallow that fails rest-match does not ship), logo SSIM >= 0.995, and rest-probe dE2000 mean <= 1.0.",
+  "From quality-first: move test cards (`hm cell`) and a 30 s 'move reel' at final quality, for fast owner sign-off on new gags and rituals.",
+  "From quality-first: plan production at 60-80 accepted videos a day, with about 55 a day if the performance work slips, not 150-190 a day.",
+  "From ship-incremental: put all 7 Mallows first in the order of work, or at least pull the Blubi and Loomi packs plus the SkyWater realm into the end of Wave A. The library's sequencing rules need 4 or more unlocked Mallows to keep a rule-compliant 10-post window, and cast diversity is the strongest anti-repetition lever for the grid.",
+  "From ship-incremental: a burned-in INTERNAL/DRAFT corner mark on every unapproved render, plus a sha256 allowlist of every asset the page loads, checked in QA.",
+  "From ship-incremental: a library smoke test that compiles every eligible template x Mallow x duration and renders a draft clip for each template x Mallow pair, so broken combinations surface before review.",
+  "From ship-incremental: the tone/topic blocklist (self-harm, death, illness, body/food, alcohol, drugs, appearance) and reading-time rules for each glass line (>= max(1.0 s, 0.25 s + 0.05 s per character)).",
+  "From ship-incremental: measure SwiftShader run-to-run determinism in the first work package, hedge the M1 render target at <= 12 min, budget machine time per milestone, and treat opaque-ground realms as cheaper because they skip reflection passes.",
+  "From ship-incremental: a param-map coverage test of all 27 app expression presets x 7 Mallows, with a contact sheet of mapped expressions per Mallow.",
+  "Gap in all three designs (growth addition): a manual import of post metrics (views, completion rate, shares per post, entered as CSV into the ledger) that adjusts template, hook and gag weights alongside the owner's rejection codes. Set weight floors and decay so the mix does not collapse to a few safe winners.",
+  "Gap in all three designs (growth addition): a few structural template variants within brand rules, for example a cold open on the gag, a 'part 2' or series continuation, or a seasonal time-word pack. Without them, every video shares the same cover, gag, lines, turn, ritual, logo skeleton, which becomes the long-run fatigue risk once slot-level variety is exhausted."
+ ]
+}
