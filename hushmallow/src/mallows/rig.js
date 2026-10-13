@@ -17,7 +17,7 @@
 // screen or in a hidden tab don't render.
 
 import { MALLOWS, loadMallowAssets } from './registry.js';
-import { PARAMS, PARAM_NAMES, PRESETS, STAGES, resolveExpression, baseParams, describeExpression } from './expressions.js';
+import { PARAMS, PARAM_NAMES, PRESETS, STAGES, resolveExpression, baseParams, describeExpression, stageLimits, applyStageLimits } from './expressions.js';
 import { REACTIONS } from './reactions.js';
 import { ParticleField } from './particles.js';
 import { drawStar, drawHeart, drawDrop } from './shapes.js';
@@ -75,6 +75,20 @@ function frame(t) {
     rafId = 0;
   }
 }
+/**
+ * A visit that turned heavy (the Hushfold's safety level, kept for the tab): every Mallow on screen keeps this stage's
+ * face (the concerned one) on every scene — a stage asked for meanwhile (the plans page's 'curious', a sheet's
+ * 'comforting') lands on it, a new rig starts on it, and its limits hold whatever face is set or put on top. null: none.
+ */
+let stageFloor = null;
+export function setStageFloor(name = null) {
+  const next = name && stageLimits(name) ? name : null;
+  if (next === stageFloor) return;
+  stageFloor = next;
+  if (next) for (const r of rigs) if (!stageLimits(r.stage)) r.setStage(next, { quiet: true });
+}
+export const getStageFloor = () => stageFloor;
+
 /** Run fn(dt, seconds) every animation frame in the shared Mallow loop. */
 export function addTicker(fn) { if (typeof fn === 'function') { tickers.add(fn); ensureLoop(); } return fn; }
 export function removeTicker(fn) { tickers.delete(fn); }
@@ -187,6 +201,8 @@ export class MallowRig {
     if (this.opts.interactive && !this.headless) this._bindPointer();
     this._resize();
     this._label();
+    // (after something heavy in this visit, a Mallow arrives on the attentive face, never on its own grin)
+    if (stageFloor) this.setStage(stageFloor, { instant: true, quiet: true });
 
     this.loaded = loadMallowAssets(this.id).then((assets) => {
       if (this.destroyed) return this;
@@ -207,6 +223,8 @@ export class MallowRig {
   /** emotion: preset id | {presetId: weight}; intensity 0..1 */
   setEmotion(emotion, intensity = 0.7, opts = {}) {
     const mix = typeof emotion === 'string' ? { [emotion]: 1 } : { ...emotion };
+    // a heavy visit's floor: a plain "no feeling" (the shared stage handing a new rig its neutral) is the attentive face
+    if (stageFloor && !opts.stage && !Object.entries(mix).some(([k, w]) => k !== 'neutral' && w > 0)) return this.setStage(stageFloor, opts);
     this.mix = mix;
     this.intensity = Number.isFinite(+intensity) ? clamp(+intensity, 0, 1) : 0.7;
     this.stage = opts.stage || null;
@@ -229,24 +247,48 @@ export class MallowRig {
   }
 
   setStage(name, opts = {}) {
+    // (a heavy visit: whatever stage is asked for, the Mallow keeps the attentive one — setStageFloor)
+    if (stageFloor && !stageLimits(name)) name = stageFloor;
     const s = STAGES[name] || STAGES.neutral;
-    this.setEmotion(s.mix, opts.intensity ?? s.intensity, { extra: s.extra, stage: name, quiet: opts.quiet });
+    this.setEmotion(s.mix, opts.intensity ?? s.intensity, { extra: s.extra, stage: name, quiet: opts.quiet, instant: opts.instant });
     this.stage = name;
     return this;
   }
+
+  /**
+   * The limits the face keeps now (the stage's own, or the visit's floor), with the face they are measured from
+   * (that stage's resting face for this Mallow); null when nothing holds it. While set the Mallow never grins: no
+   * open or smiling mouth, no sparkle or big eyes, no hop, nothing drawn round it (applyStageLimits, react()).
+   */
+  _limits() {
+    const name = stageLimits(this.stage) ? this.stage : stageFloor;
+    const lim = name ? stageLimits(name) : null;
+    if (!lim) return null;
+    const c = this._limitRef;
+    if (c?.name === name && c.id === this.id) return c;
+    const s = STAGES[name];
+    return (this._limitRef = { name, id: this.id, lim, ref: resolveExpression(this.mallow, s.mix, s.intensity, s.extra) });
+  }
+  /** Is the face held to a stage's limits now (the concerned stage, or a heavy visit's floor)? */
+  get hushed() { return !!this._limits(); }
 
   /** One-shot reaction: tap, doubleTap, flick, squeeze, release, celebrate,
    *  nod, gasp, shiver, sigh, yawn, comfort, glitchBurst, hop */
   react(kind, opts = {}) {
     if (!this.ready) return this;
     const table = REACTIONS[this.id] || {};
+    // after something heavy (the face held to the concerned stage's limits): the signature idle is a quiet look round,
+    // and every other reaction keeps its face change (held down by the limits) and a soft squash, but no hop, no
+    // pirouette and nothing drawn round the face
+    const hushed = this.hushed;
+    if (hushed && kind === 'idle') return this._quietIdle();
     const r = table[kind] || REACTIONS._shared[kind];
     if (!r) return this;
     const rm = this.opts.reducedMotion;
     const dur = (r.dur || 0.8) * (rm ? 1.15 : 1);
     this.overlays.push({ start: this.time, dur, params: r.params || {}, kind });
     const b = this.body;
-    const imp = r.impulse || {};
+    const imp = hushed ? { ...r.impulse, hop: 0, spin: 0 } : r.impulse || {};
     const k = rm ? 0.25 : 1;
     if (this.opts.onImpulse) {
       // MallowTouch: squash / lean / shear become soft-body velocity fields
@@ -261,12 +303,21 @@ export class MallowRig {
     if (imp.tilt) b.tiltV += imp.tilt * 60 * k;
     if (imp.spin && !rm) b.spin = imp.spin;
     if (imp.glitch) { b.glitchBurst = Math.max(b.glitchBurst, rm ? 0 : imp.glitch); }
-    if (r.fx && this.opts.particles) this.particles.burst(r.fx, opts);
+    if (r.fx && this.opts.particles && !hushed) this.particles.burst(r.fx, opts);
     // opts.intensity: e.g. how deep the squeeze was (MallowTouch release)
     if (r.sound) this.opts.audio?.play?.(this.id, r.sound, { intensity: Number.isFinite(opts.intensity) ? clamp(opts.intensity, 0, 1) : this.intensity });
     if (r.haptic) this._haptic(r.haptic);
     if (r.blink) this._blinkNow();
     this._emit('react', { kind });
+    return this;
+  }
+
+  /** The concerned stage's idle: a slow look to one side and a blink — no hop, no mouth, no sparkle, no sound. */
+  _quietIdle() {
+    const side = (this._quietSide = -(this._quietSide || 1));
+    this.overlays.push({ start: this.time, dur: 2.2 * (this.opts.reducedMotion ? 1.15 : 1), params: { lookX: 0.35 * side, lookY: 0.12 }, kind: 'idle-quiet' });
+    this._blinkNow();
+    this._emit('react', { kind: 'idle-quiet' });
     return this;
   }
 
@@ -290,7 +341,7 @@ export class MallowRig {
   overlay(params, { dur = 1, fx = null, sound = null } = {}) {
     if (!this.ready) return this;
     this.overlays.push({ start: this.time, dur: dur * (this.opts.reducedMotion ? 1.15 : 1), params: params || {}, kind: 'overlay' });
-    if (fx && this.opts.particles) this.particles.burst(fx);
+    if (fx && this.opts.particles && !this.hushed) this.particles.burst(fx);
     if (sound) this.opts.audio?.play?.(this.id, sound, { intensity: this.intensity });
     return this;
   }
@@ -528,6 +579,10 @@ export class MallowRig {
       goal.mouthOpen = lerp(goal.mouthOpen, 0.35, sigh);
       goal.eyeOpen *= 1 - 0.6 * sigh;
     }
+    // after something heavy: whatever was put on top (a reaction, the squeeze face, a stretch, a touch persona, a
+    // yawn) the face stays inside the concerned stage's limits — the squeeze is a soft hug, never a grin
+    const L = this._limits();
+    if (L) applyStageLimits(goal, L.lim, L.ref);
     // gaze: pointer > saccades
     this.sacc.next -= dt;
     const dart = this.val.gazeDart;

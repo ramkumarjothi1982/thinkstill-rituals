@@ -1,7 +1,8 @@
 // The Hushfold's side panel: non-modal, fixed to the viewport's right edge
 // (≤360px), sliding in over the stage without a backdrop, so the Mallow and
-// the world keep playing beside it. On phones (<700px wide) it is a shorter
-// bottom sheet instead, and the scene lifts the Mallow into the space above.
+// the world keep playing beside it, and the scene lays the stage out in the free width left of it. On phones
+// (<700px wide) and portrait tablets (<1000px wide, taller than wide) it is a shorter bottom sheet instead, and
+// the scene lifts the Mallow into the space above (panelIsSheet; the CSS media query is PANEL_SHEET_QUERY).
 //
 // createSidePanel({ app, root, getFlow, flowAvailable, state, onFeeling,
 //   onIntention, onMallow, onSupport, pausedNow, onPause, resumable, onResume, onClose, onAngle })
@@ -28,6 +29,15 @@ import { openSupport } from '../app/scenes/support.js';
 import { toggleFavouriteWorld, isFavouriteWorld } from '../engine/flow-store.js';
 import { hfIcon } from './icons.js';
 import { QUICK_FEELINGS, INTENTIONS } from './lines.js';
+
+/**
+ * Is the panel a bottom sheet at this size? Phones, and portrait tablets: at 768×1024 a 360 px side panel would leave
+ * the stage a 408 px column (the Mallow, the lines, the dock and a world's things squeezed into it beside an opaque
+ * panel), while the sheet leaves the stage its whole width above it and holds a world still meanwhile, as on a phone.
+ * Landscape tablets and desktops (1024×768, 1280×800) keep the side panel, the stage in the free width left of it.
+ */
+export const panelIsSheet = (w = innerWidth, h = innerHeight) => w < 700 || (w < 1000 && h >= w);
+export const PANEL_SHEET_QUERY = '(max-width: 699px), (max-width: 999px) and (orientation: portrait)';
 
 export function createSidePanel({ app, root, getFlow, flowAvailable = () => Promise.resolve(true), onFeeling, onIntention, onMallow, onClose, state = () => ({}),
   resumable = () => Promise.resolve(null), onResume = null, onSupport = null, pausedNow = () => null, onPause = null, onAngle = null } = {}) {

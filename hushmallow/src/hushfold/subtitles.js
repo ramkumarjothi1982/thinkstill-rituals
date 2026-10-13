@@ -49,6 +49,22 @@ export function placeBand(bounds, blocks, need, { gap = 12 } = {}) {
   const tight = placeBandAt(bounds, blocks, need, 6);   // small screens: a little closer, rather than on top of something
   return tight.fits ? tight : wide;
 }
+/** Is the band [y, y + need] inside bounds {top, bottom} and clear of every block (± gap)? (pure; unit-tested) */
+export function bandFree(bounds, blocks, y, need, gap = 6) {
+  if (!Number.isFinite(y) || y < bounds.top - 0.5 || y + need > bounds.bottom + 0.5) return false;
+  for (const b of blocks || []) {
+    if (!b) continue;
+    const t = b.top ?? b.y, bt = b.bottom ?? (b.y + (b.h ?? b.height ?? 0));
+    if (!(bt > t)) continue;
+    if (t - gap < y + need && bt + gap > y) return false;
+  }
+  return true;
+}
+/** A block's horizontal span [left, right] (DOMRect-like or the director's {x, w}). */
+function horizOf(b) {
+  if (b.left != null) return [b.left, b.right ?? b.left + (b.width ?? 0)];
+  return [b.x ?? 0, (b.x ?? 0) + (b.w ?? b.width ?? 0)];
+}
 function placeBandAt(bounds, blocks, need, gap) {
   const top = bounds.top, bottom = bounds.bottom;
   // DOMRect-like {top, bottom} or {x, y, w, h} (the Hushflow director's shape)
@@ -159,6 +175,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   let lastLine = null;
   let hideCtlTimer = 0;
   let placedOnce = false;
+  let jumpNext = false;       // the next layout places a new line: no glide
   let lastY = 0;
   let destroyed = false;
   let relayoutT = 0;          // while a line is up, keep it clear of things that move (a hop, a drifting thought)
@@ -166,6 +183,16 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   const release = () => { if (reserved) { reserved = 0; onBand?.(0); } };
   const watch = (on) => { clearInterval(relayoutT); relayoutT = on ? setInterval(() => { if (cur?.lineEl || !chipsEl.hidden) layout(); }, 600) : 0; };
   const offPrefs = prefs?.onChange?.((k, v) => { if (k === 'subtitleSpeed') { speed = normaliseSpeed(v); renderSpeed(); } });
+  // a line that changes size while it shows (its type face arriving: a world's title in story type, placed on one line
+  // in the fallback face, wraps to two once the face is there) is placed again at once — never left grown over what it
+  // was placed clear of; a line still arriving (its first 0.8 s) jumps there
+  let shownAt = 0;
+  const resized = () => { if (destroyed || !(cur?.lineEl || !chipsEl.hidden)) return; if (performance.now() - shownAt < 800) jumpNext = true; layout(); };
+  const sizeObs = typeof ResizeObserver === 'function' ? new ResizeObserver(resized) : null;
+  sizeObs?.observe(liveEl); sizeObs?.observe(chipsEl);
+  // (the face arriving also changes the widest line, which sets the line's width for its scrim: measured again)
+  const onFonts = () => { const n = cur?.lineEl; if (destroyed || !n?.isConnected) return; n.style.width = ''; adaptScrim(n); resized(); };
+  try { document.fonts?.addEventListener?.('loadingdone', onFonts); } catch { /* no font events: the size observer still places it again */ }
 
   function renderSpeed() {
     const label = `${speed === 1 ? '1' : String(speed)}×`;
@@ -191,13 +218,28 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     if (!chipsEl.hidden) need += chipsEl.offsetHeight + gapPx;
     if (!ctl.classList.contains('is-hidden')) need += ctl.offsetHeight + gapPx;
     need = need || 64;
-    const { y, fits } = placeBand(b, avoid() || [], need);
+    // a stage narrower than the viewport (beside an open side panel): the lines keep to it, and only what is beside
+    // them across that width can push them up or down (a thought under the panel does not)
+    const right = Number.isFinite(b.right) && b.right < innerWidth - 1 ? Math.max(160, b.right) : null;
+    const left = Number.isFinite(b.left) && b.left > 1 ? b.left : null;
+    el.style.right = right != null ? `${Math.round(innerWidth - right)}px` : '';
+    el.style.left = left != null ? `${Math.round(left)}px` : '';
+    let blocks = avoid() || [];
+    if (right != null || left != null) blocks = blocks.filter((r) => !r || !(horizOf(r)[0] >= (right ?? Infinity) || horizOf(r)[1] <= (left ?? -Infinity)));
+    // a line already showing stays where it is while that place is still free (inside the bounds, nothing on it): it
+    // never trails something that moves away from it (a world's title following the person's thought down, gliding
+    // into it as it travels); it moves only when something comes onto it, the bounds move, or a new line is placed
+    const keep = !jumpNext && placedOnce && (!!liveEl.firstChild || !chipsEl.hidden) && bandFree(b, blocks, lastY, need);
+    const { y, fits } = keep ? { y: lastY, fits: true } : placeBand(b, blocks, need);
     // no free band is tall enough (a choice with two rows of chips on a small phone): ask the
     // scene for room (it shrinks the Mallow); the reservation lasts until the lines go away
     const showing = !!liveEl.firstChild || !chipsEl.hidden;
     if (showing && !fits && need > reserved) { reserved = need; onBand?.(need); }
-    // a long move jumps rather than gliding across the Mallow
-    if (!placedOnce || Math.abs(y - lastY) > 140) { el.style.transition = 'none'; requestAnimationFrame(() => { el.style.transition = ''; }); placedOnce = true; }
+    // a long move jumps rather than gliding across the Mallow; so does a new line (it fades in where it belongs: gliding
+    // there from where the last line was, it would cross whatever it was placed clear of — a world's title over the
+    // person's thought that has just landed)
+    if (!placedOnce || jumpNext || Math.abs(y - lastY) > 140) { el.style.transition = 'none'; requestAnimationFrame(() => { el.style.transition = ''; }); placedOnce = true; }
+    jumpNext = false;
     lastY = y;
     el.style.transform = `translateY(${y}px)`;
   }
@@ -250,8 +292,13 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     ctl.classList.toggle('holding', cur.holding);
     // a world's name is a title card, not dialogue: no controls under it
     if (line.kind === 'title' && !cur.holding) { clearTimeout(hideCtlTimer); ctl.classList.add('is-hidden'); } else showCtl(true);
+    jumpNext = true;
+    shownAt = performance.now();
     layout();
     adaptScrim(node);
+    // ...and placed once more before it is first painted, now that it has its final width (adaptScrim) and the scene
+    // has answered a band it asked for: the line never shows first where it does not belong and then moves
+    requestAnimationFrame(() => { if (!destroyed && cur?.lineEl === node) { jumpNext = true; layout(); } });
     watch(true);
     if (cur.holding) {
       cur.timer = 0;
@@ -463,7 +510,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     get speed() { return speed; },
     /** The rectangle the subtitle block occupies now (for tests and placement). */
     rect() { return liveEl.firstChild ? el.getBoundingClientRect() : null; },
-    destroy() { suspended = false; api.clear(); destroyed = true; watch(false); offPrefs?.(); clearTimeout(hideCtlTimer); el.remove(); },
+    destroy() { suspended = false; api.clear(); destroyed = true; watch(false); offPrefs?.(); clearTimeout(hideCtlTimer); sizeObs?.disconnect(); try { document.fonts?.removeEventListener?.('loadingdone', onFonts); } catch { /* */ } el.remove(); },
   };
   return api;
 }

@@ -299,6 +299,12 @@ export function createHushflow(opts = {}) {
       get safe() { return playSafe(); },
       /** The reserved subtitle band (keep it clear). */
       get band() { return bandRect(); },
+      /**
+       * The stage's free width from the left edge (client px): the shell's safe rect with its margins — left of the
+       * shell's side panel while that is open, else W. Worlds keep what they place (postcards, bubbles, the words)
+       * inside it, so nothing is planned under the panel.
+       */
+      get freeW() { const s = shellSafe(); return Number.isFinite(s?.x) && Number.isFinite(s?.w) ? clamp(Math.round(2 * s.x + s.w), Math.min(W, 240), W) : W; },
       mallow, words, photos,
       /** The primary Thought Mallow (the person's words), or null. */
       get thought() { return primaryThought(thoughtsSrc, thoughtOne); },

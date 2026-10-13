@@ -147,7 +147,9 @@ test('Garden offer and card: kept off the thought (where it is, and where it is 
   assert.match(fnBody(scene, 'function onWorld(d) {', 'function hostMallow('), /worldMode = true;\s*S\.worldAt = now\(\);/);
   const watch = fnBody(scene, 'function watchInstall(on) {', '/**\n   * The installation');
   assert.match(watch, /const mine = installMod\?\.installAvoidRects\?\.\(\) \|\| \[\];/);
-  assert.match(watch, /if \(!mine\.some\(\(r\) => th\.some\(\(t\) => overlaps\(r, t\)\)\)\) return;/);
+  // (it steps aside when it meets the thought; QA main: and, every 2 s, when it was left over the Mallow's body)
+  assert.match(watch, /if \(!mine\.some\(\(r\) => th\.some\(\(t\) => overlaps\(r, t\)\)\)\) \{/);
+  assert.match(watch, /if \(!body \|\| now\(\) - bodyTry < 2000 \|\| !mine\.some\(\(r\) => overlaps\(r, body\)\)\) return;/);
   assert.match(watch, /installMod\.relayoutInstall\?\.\(\);/);
   assert.match(watch, /if \(now\(\) - last < 600\) return;/, 'never more often than every 0.6 s');
   const offer = fnBody(scene, 'async function onOffer(', 'function offerAvoid()');

@@ -170,6 +170,8 @@ const CSS = `
 .hm-chip.is-in { opacity: 1; transform: none; }
 .hm-chip.is-out { opacity: 0; transform: scale(.96); pointer-events: none; transition-duration: .3s; }
 .hm-chip.is-reduced { transform: none; transition: opacity .35s ease; }
+/* no corner is free (the side panel or the phone sheet is open over them): the chip waits, unseen, until one is */
+.hm-chip.is-blocked { visibility: hidden; pointer-events: none; }
 .hm-chip canvas { flex: 0 0 auto; display: block; margin: -4px -2px; }
 .hm-chip span { overflow-wrap: anywhere; }
 `;
@@ -411,11 +413,21 @@ function obstacleRects() {
   if (typeof document === 'undefined') return [];
   return [...document.querySelectorAll(OBSTACLES)].map(visibleRect).filter(Boolean);
 }
-/** What the caller says must stay clear (a world's postcards and Thought Mallow, a reserved band): rects or a function returning them. */
+/**
+ * What the caller says must stay clear (a world's postcards and Thought Mallow, a reserved band): rects or a function
+ * returning them. A rect marked { hard: true } (the side panel or the phone sheet, the overlay) is one the folded chip
+ * never lies over, even when no corner is wholly free.
+ */
 function extraRects(avoid) {
   const list = call(avoid);
   if (!Array.isArray(list)) return [];
-  return list.map((r) => (r && Number.isFinite(r.x) && Number.isFinite(r.w) ? asRect({ left: r.x, top: r.y, width: r.w, height: r.h }) : asRect(r))).filter(Boolean);
+  return list.map((r) => {
+    const o = r && Number.isFinite(r.x) && Number.isFinite(r.w) ? asRect({ left: r.x, top: r.y, width: r.w, height: r.h }) : asRect(r);
+    if (o && r.hard) o.hard = true;
+    // (a world's decoration — its postcards and photo bubbles — may lie under an offer rather than the Mallow)
+    if (o && (r.kind === 'card' || r.kind === 'bubble')) o.decor = true;
+    return o;
+  }).filter(Boolean);
 }
 /** The top bars and dock pills to stay clear of: the Hushfold's and Another Angle's (Beyond). */
 const TOP_BARS = '.hf-top, .bx-top', DOCK_ITEMS = '.hf-dock > *, .bx-dock > *';
@@ -498,13 +510,13 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
   const cx = geom ? geom.body.cx : fr.W / 2;
   const size = (form) => { apply(form); return { w: el.offsetWidth || 300, h: (el.offsetHeight || 120) + lift(form), lift: lift(form) }; };
   const leftFor = (w) => clamp(cx - w / 2, 16, Math.max(16, fr.W - 16 - w));
-  const tryIn = (list) => {
+  const tryIn = (list, obs = obstacles) => {
     for (const form of forms) {
       const { w, h, lift: l } = size(form);
       for (const [y0, y1, anchor, sideLeft] of list) {
         const left = sideLeft ? sideLeft(w) : leftFor(w);
         if (left == null || y1 - y0 < h) continue;
-        const spans = freeSpans(y0, y1, left, left + w, obstacles).filter(([s, e]) => e - s >= h);
+        const spans = freeSpans(y0, y1, left, left + w, obs).filter(([s, e]) => e - s >= h);
         if (!spans.length) continue;
         if (anchor === 'mid') {
           // level with the body's middle, in the free span nearest to it
@@ -519,7 +531,9 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
     }
     return null;
   };
-  let p = tryIn(regions.clear) || tryIn(regions.face);
+  // the clear of everything first; then still clear of the whole body (with room for its hop), the lines and the
+  // person's thought, lying over a world's postcards or bubbles if it must; only then over the body, off the face
+  let p = tryIn(regions.clear) || tryIn(regions.clear, obstacles.filter((o) => !o.decor)) || tryIn(regions.face);
   if (!p) {
     const form = forms[forms.length - 1];
     const { w, h, lift: l } = size(form);
@@ -544,7 +558,8 @@ if (typeof addEventListener === 'function') {
 }
 /** Rects of the offer / card / chip on screen now (for subtitle avoidance). */
 export function installAvoidRects() {
-  return [openOffer, openCard, openChip].map(visibleRect).filter(Boolean);
+  // (the chip is a { el, close } handle: its element is what is on screen — the lines and the shell's clash check see it)
+  return [openOffer, openCard, openChip?.el].map(visibleRect).filter(Boolean);
 }
 /**
  * Place the open offer and card again, now (the caller's avoid rects changed: the side panel or
@@ -554,6 +569,8 @@ export function installAvoidRects() {
 export function relayoutInstall() {
   try { openOffer?.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
   try { openCard?.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
+  // (and the folded chip: never left over the panel, the sheet or the face the Mallow moved to)
+  try { openChip?.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
 }
 /** window 'hm:offer' { phase: 'open' | 'fold' | 'unfold' | 'close', skillId }: the offer's life, for the shell (e.g. holding Auto-flow). */
 function offerEvent(phase, skillId) {
@@ -583,8 +600,12 @@ function onBandChange(fn) {
 }
 
 // --------------------------------------------------------------- chip --
-/** A folded offer or card: a small chip in a corner that covers no face, no subtitle and no control. */
-function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, avoid = null, onTap, ttl = 0 }) {
+/**
+ * A folded offer or card: a small chip in a corner that covers no face, no subtitle, no control and nothing the caller
+ * keeps clear (the side panel or the phone sheet among them). Placed again with the offer and the card
+ * (relayoutInstall), against the Mallow where it is now (geomNow); while no corner is free it waits unseen.
+ */
+function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, geomNow = null, avoid = null, onTap, ttl = 0 }) {
   hideChip(true);
   ensureCss();
   const b = document.createElement('button');
@@ -596,15 +617,27 @@ function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, av
   const s = document.createElement('span'); s.textContent = text;
   b.append(c.el, s);
   document.body.append(b);
-  const fr = screenFrame(), obstacles = obstacleRects().concat(extraRects(avoid));
-  const w = b.offsetWidth, h = b.offsetHeight;
-  const face = geom?.face || null;
-  const spots = [[20, fr.bottomLimit - h], [fr.W - 20 - w, fr.bottomLimit - h], [20, fr.topLimit], [fr.W - 20 - w, fr.topLimit]];
-  const free = spots.find(([x, y]) => { const r = { left: x, top: y, right: x + w, bottom: y + h }; return !(face && hits(r, face, 6)) && !obstacles.some((o) => hits(r, o, 6)); }) || spots[0];
-  b.style.left = `${Math.round(free[0])}px`; b.style.top = `${Math.round(free[1])}px`;
+  const place = () => {
+    const fr = screenFrame(), obstacles = obstacleRects().concat(extraRects(avoid).map((r) => (r.hard ? r : Object.assign(r, { soft: true }))));
+    const w = b.offsetWidth, h = b.offsetHeight;
+    let g = null;
+    try { g = typeof geomNow === 'function' ? geomNow() : null; } catch { g = null; }
+    const face = (g || geom)?.face || null;
+    const spots = [[20, fr.bottomLimit - h], [fr.W - 20 - w, fr.bottomLimit - h], [20, fr.topLimit], [fr.W - 20 - w, fr.topLimit]];
+    const clear = (list) => spots.find(([x, y]) => { const r = { left: x, top: y, right: x + w, bottom: y + h }; return !(face && hits(r, face, 6)) && !list.some((o) => hits(r, o, 6)); });
+    // a corner clear of everything; else one clear of the Mallow's body, the lines and what must never be covered (the
+    // panel, the sheet, the overlay: { hard }) — a world's own things may lie under it; else clear of the face at least;
+    // else it waits, unseen
+    const firm = obstacles.filter((o) => o.hard || !o.soft), body = (g || geom)?.body || null;
+    const free = clear(obstacles) || (body ? clear([...firm, body]) : null) || clear(firm);
+    b.classList.toggle('is-blocked', !free);
+    const at = free || spots[0];
+    b.style.left = `${Math.round(at[0])}px`; b.style.top = `${Math.round(at[1])}px`;
+  };
+  place();
   requestAnimationFrame(() => requestAnimationFrame(() => b.classList.add('is-in')));
   let ttlT = 0;
-  const chip = { el: b, gone: false, close(instant = false) {
+  const chip = { el: b, gone: false, __place: place, close(instant = false) {
     if (chip.gone) return;
     chip.gone = true; clearTimeout(ttlT); stopLeave();
     if (openChip === chip) openChip = null;
@@ -692,6 +725,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       el.classList.remove('is-in'); el.classList.add('is-folded');
       offerEvent('fold', skillId);
       showChip({ text: `Keep “${shortName}”?`, label: `${name}. Show the choice to keep it in your Memory Garden.`, skillId, mallow: m.id, reduced, glow, geom, avoid,
+        geomNow: () => mallowGeom(origin, m, face),
         onTap: () => { if (done) return; folded = false; el.classList.remove('is-folded'); geom = place(); reveal(); armFold(); offerEvent('unfold', skillId); yes.focus({ preventScroll: true }); } });
     }
     armFold();
@@ -1184,6 +1218,7 @@ export function playInstall(opts = {}) {
     if (action === 'garden' || action === 'cancelled' || action === 'replaced') gone(); else setTimeout(gone, 340);
     if (action === 'folded') {
       showChip({ text: 'In your garden', label: `${titleText} is saved in your Memory Garden. Visit the garden.`, skillId, mallow: m.id, reduced, glow: C.glow, geom, avoid: opts.avoid,
+        geomNow: () => mallowGeom(opts.origin, m, opts.face),
         ttl: FOLD_AFTER.savedChip, onTap: () => { try { app?.audio?.ui?.('open'); } catch { /* */ } app?.go?.('garden', { focus: skillId }); } });
     }
     const result = { action, skillId };

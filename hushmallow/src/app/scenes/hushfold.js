@@ -21,7 +21,8 @@
 
 import { h } from '../ui.js';
 import { MALLOWS, MALLOW_IDS, loadMallowAssets } from '../../mallows/registry.js';
-import { addTicker, removeTicker } from '../../mallows/rig.js';
+import { addTicker, removeTicker, setStageFloor } from '../../mallows/rig.js';
+import { rememberVisitSafety, recallVisitSafety } from '../visit-safety.js';
 import { openSupport } from './support.js';
 import { createSubtitles } from '../../hushfold/subtitles.js';
 import { createLines, SHARED_LINES, flowEmotion } from '../../hushfold/lines.js';
@@ -59,6 +60,8 @@ const CARE_FACE = 'concerned';
 const GENTLE_WORLDS = [['luminous-ocean', 'Somewhere calm, with Loomi'], ['static-storm', 'Glitzi’s storm, taken slowly']];
 // more words later in a visit that already had support: a short, plain acknowledgement (the full care line was said)
 const CARE_AGAIN = 'Thank you for telling me. I’m right here.';
+// back from the plans page without a plan: the words they typed are offered back (in memory only, never stored)
+const RETELL = 'No rush. Your words are still here, if you’d like to tell me again.';
 // Thought Mallows on the home stage (owner P8): at most 3, and 2 below 360 px wide; one in a world (owner P7)
 const thoughtCap = (inWorld = false) => (inWorld ? 1 : innerWidth < 360 ? 2 : 3);
 
@@ -131,8 +134,10 @@ export default function hushfold(app, params = {}) {
     root, prefs,
     reducedMotion: () => prefs.reducedMotion(),
     // (in a world the lines keep to the band the world keeps clear for them; over the phone sheet, the strip above it)
-    bounds: () => ({ top: bandTop(), bottom: Math.min(dockTop(), panelTop()) - 12 }),
-    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), ...(flowRef?.avoid?.() || []), overlay?.rect?.(),
+    bounds: () => ({ top: bandTop(), bottom: Math.min(dockTop(), panelTop()) - 12, left: 0, right: stageRight() }),
+    // (in a world's first seconds, where the person's thought is going too: a title card placed while it travels from
+    // beside their Mallow is never left over it, or its words, once it lands — the ocean's cold start at 390)
+    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), thoughtRestRect(), ...(flowRef?.avoid?.() || []), overlay?.rect?.(),
       ...(installMod?.installAvoidRects?.() || [])].filter(Boolean),
     // what is behind the band (the realm, a world's back and front layers): sampled once per line for the scrim
     backdrop: () => [...document.querySelectorAll('#world canvas, #fx-layer canvas.hf-front')],
@@ -251,8 +256,19 @@ export default function hushfold(app, params = {}) {
     const tops = items.map((e) => e.getBoundingClientRect()).filter((r) => r.height).map((r) => r.top);
     return tops.length ? Math.min(...tops) : innerHeight - 24;
   }
-  /** Phones: the side panel is a bottom sheet; the stage above it stays playable. */
-  const panelSheet = () => !!panel?.isOpen && innerWidth < 700;
+  /** Phones and portrait tablets: the side panel is a bottom sheet; the stage above it stays playable (side-panel.js panelIsSheet). */
+  let sheetRule = null;   // side-panel.js's panelIsSheet, once the panel is loaded
+  const panelSheet = () => !!panel?.isOpen && (sheetRule ? sheetRule() : innerWidth < 700);
+  /**
+   * The stage's right edge: the side panel's left edge where it rests while it is open (a landscape tablet, a desktop),
+   * else the viewport's. The Mallow, the lines, the dock, the thoughts and a world's safe rect all keep to the free
+   * width left of it, so nothing of the stage is hidden under the opaque panel.
+   */
+  function stageRight() {
+    if (!panel?.isOpen || panelSheet()) return innerWidth;
+    const w = panel.el.offsetWidth || 0;
+    return w > 0 && w < innerWidth ? innerWidth - w : innerWidth;
+  }
   // where the sheet comes to rest (offsetHeight ignores its slide-in transform)
   function panelTop() { return panelSheet() ? innerHeight - (panel.el.offsetHeight || 0) : innerHeight; }
   function mallowAvoidRect() {
@@ -275,7 +291,10 @@ export default function hushfold(app, params = {}) {
   /** Size and place the Mallow in the free region between the subtitle band and the dock (no CSS scale). */
   function layout() {
     if (S.left) return;
-    const vw = innerWidth, vh = innerHeight;
+    // (vw: the stage's width — left of the side panel while it is open)
+    const vw = stageRight(), vh = innerHeight;
+    // the dock keeps to the stage too (its pills centred in it, never under the panel)
+    dock.style.right = vw < innerWidth ? `${innerWidth - vw}px` : '';
     const topB = topEl.getBoundingClientRect().bottom || 60;
     const band = Math.max(Math.min(156, Math.max(118, vh * 0.17)), bandNeed ? bandNeed + 24 : 0);
     bandPx = Math.round(band);
@@ -327,7 +346,7 @@ export default function hushfold(app, params = {}) {
     // where the thoughts may float: beside the side panel, under the band (or the overlay), over the dock (or the sheet)
     const side = panel?.isOpen && !panelSheet() ? panel.el.getBoundingClientRect() : null;
     thoughtBounds.left = 10;
-    thoughtBounds.right = (side?.width ? side.left : vw) - 10;
+    thoughtBounds.right = Math.min(side?.width ? side.left : vw, vw) - 10;
     thoughtBounds.top = (ov?.height ? ov.bottom : regionTop) + 10;
     // (while the garden installation has the lines paused, the band is free: a thought giving way to its card may
     // rise into it, its words with it)
@@ -437,7 +456,8 @@ export default function hushfold(app, params = {}) {
     // (where the Mallow rests, not where its live body is this frame: the worlds plan round it)
     const b = stageMallow?.restRect?.() || stageMallow?.bodyRect?.();
     const bottom = b?.height ? Math.max(top + 160, b.top - 14) : innerHeight * 0.62;
-    return { x: 20, y: top, w: innerWidth - 40, h: bottom - top };
+    // (beside an open side panel, the free width left of it: the world plans its things there)
+    return { x: 20, y: top, w: stageRight() - 40, h: bottom - top };
   };
 
   function createStubFlow() {
@@ -774,9 +794,11 @@ export default function hushfold(app, params = {}) {
     // lines meanwhile, and the lines keep off the card once they come back — never over the thought or its words)
     const inst = installing(), world = flowRef?.avoid?.() || [];
     const things = inst ? world.filter((r) => r?.kind !== 'card' && r?.kind !== 'bubble') : world;
+    // (the panel or the phone sheet and the overlay are never covered, not even by the folded chip with no corner free: hard)
     return [...things, worldMode && !panelSheet() && !inst ? flowRef?.subtitleBand?.() : null, ...(stage?.thoughts.rects() || []),
-      thoughtRestRect(), overlay?.rect?.(), panelRect(), landingFace()].filter(Boolean);
+      thoughtRestRect(), hard(overlay?.rect?.()), hard(panelRect()), landingFace()].filter(Boolean);
   }
+  const hard = (r) => (r && r.bottom > r.top && r.right > r.left ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.right - r.left, height: r.bottom - r.top, hard: true } : null);
   /** Is the garden installation (its portal and card) on stage now? */
   const installing = () => typeof document !== 'undefined' && !!document.querySelector('.hm-install, .hm-install-card');
   /**
@@ -806,14 +828,21 @@ export default function hushfold(app, params = {}) {
   function watchInstall(on) {
     clearInterval(installWatch); installWatch = 0;
     if (!on || S.left) return;
-    let last = 0;
+    let last = 0, bodyTry = 0;
     installWatch = setInterval(() => {
       if (S.left) { watchInstall(false); return; }
       const mine = installMod?.installAvoidRects?.() || [];
       if (!mine.length) { if (!offerCtl) watchInstall(false); return; }
       if (now() - last < 600) return;
       const th = [...(stage?.thoughts.rects() || []), thoughtRestRect()].filter(Boolean);
-      if (!mine.some((r) => th.some((t) => overlaps(r, t)))) return;
+      if (!mine.some((r) => th.some((t) => overlaps(r, t)))) {
+        // (placed over the Mallow's body because nothing else was free then — a line was up, the thought on its way:
+        // it tries again for a clear place every 2 s while it lies there; placeBox keeps it where it is if none is free)
+        const b = stageMallow?.bodyRect?.();
+        const body = b?.height ? { left: b.left, top: b.top, right: b.left + b.width, bottom: b.top + b.height } : null;
+        if (!body || now() - bodyTry < 2000 || !mine.some((r) => overlaps(r, body))) return;
+        bodyTry = now();
+      }
       last = now();
       installMod.relayoutInstall?.();
     }, 200);
@@ -1166,6 +1195,8 @@ export default function hushfold(app, params = {}) {
     if (r.level === 'crisis') S.crisis = true;
     else S.care = true;
     keepSafety();
+    // every Mallow on screen from here on — this stage's, a world's host, the plans page's — keeps the attentive face
+    setStageFloor(CARE_FACE);
     root.classList.add('hf-heavy');   // (the panel's "No plan yet · See plans" steps aside)
     clearTimeout(inviteT); timers.delete(inviteT);
     clearNudge();
@@ -1264,13 +1295,15 @@ export default function hushfold(app, params = {}) {
     if (worldMode && !S.finishing) onFinished();
   }
   /**
-   * The visit's level outlives the scene for the page session, in memory only (no words, nothing
-   * stored): back from Settings, the plans page, the garden or a ritual, support is still close and
-   * the visit is still a gentle one (no jokes, no invitations, no world after a crisis).
+   * The visit's level outlives the scene for the page session (no words): back from Settings, the plans page, the
+   * garden or a ritual, support is still close and the visit is still a gentle one (no jokes, no invitations, no world
+   * after a crisis). It outlives a reload in this tab too (visit-safety.js: the level only, for this tab, 12 h at most),
+   * so a reload never greets playfully after something heavy.
    */
   function keepSafety() {
     if (S.level === 'none') return;
     app.state.hfSafety = { level: S.level, category: S.category, crisisSpoken: S.crisisSpoken };
+    rememberVisitSafety(app.state.hfSafety);
   }
 
   // ---------------------------------------------------- telling --
@@ -1294,10 +1327,13 @@ export default function hushfold(app, params = {}) {
     // after something heavy the Mallow listens with its attentive, concerned face
     stageMallow.setStage(gentle() ? CARE_FACE : 'listening', { quiet: true });
     root.classList.add('hf-typing');
-    overlay = inputMod.openInput({
+    // (the words offered back after the plans page: the overlay opens with them, their feeling too)
+    const again = retell && !gentle() ? retell : null;
+    let ov = null;
+    ov = overlay = inputMod.openInput({
       app, root, prompt: prompt || 'Want to tell me?',
       mallow: { id: mallowId, name: M().name, glow: M().colours.glow },
-      emotion: S.emotion, intention: S.intention, hasPlan: ent.has('paid'),
+      emotion: S.emotion || again?.emotion || null, intention: S.intention || again?.intention || null, hasPlan: ent.has('paid'), text: again?.text || '',
       // something heavy earlier in this visit: the Support chip is there from the start, and no plan offer
       heavy: gentle(),
       face: (f) => stageMallow.setEmotion(f, 0.6, { quiet: true }),
@@ -1310,6 +1346,8 @@ export default function hushfold(app, params = {}) {
       onClose: (reason, meta = {}) => {
         overlay = null;
         popLayer('overlay');
+        // the words offered back go once sent; closed unsent they stay as the person left them (none: gone)
+        if (retell) retell = reason === 'submit' ? null : (ov?.text?.trim() ? { ...retell, text: ov.text } : null);
         root.classList.remove('hf-typing');
         if (S.left) return;
         noteSafety(meta.safety);
@@ -1599,8 +1637,9 @@ export default function hushfold(app, params = {}) {
   // ------------------------------------------------------ panel --
   async function ensurePanel() {
     if (panel) return panel;
-    const { createSidePanel } = await import('../../hushfold/side-panel.js');
+    const { createSidePanel, panelIsSheet } = await import('../../hushfold/side-panel.js');
     if (S.left) return null;
+    sheetRule = typeof panelIsSheet === 'function' ? () => panelIsSheet() : null;
     panel ||= createSidePanel({
       app, root,
       getFlow: (create = false) => (create ? getFlow() : Promise.resolve(flowRef)),
@@ -1831,6 +1870,8 @@ export default function hushfold(app, params = {}) {
     // they asked for something gentle after a care or distress disclosure: support stays up, with or
     // without a plan (back from the plans page without buying, the visit is still a gentle one)
     if (p.gentle) { noteSafety(p.gentle); S.careSaid = true; }
+    // no plan after all (Back from the plans page): a warm line, and their words offered back to tell again
+    if (!ent.has('paid') && p.input?.text && !gentle()) { offerRetell(p); return true; }
     if (!ent.has('paid')) return false;
     S.invited = true;
     showTell(true);
@@ -1844,6 +1885,27 @@ export default function hushfold(app, params = {}) {
     if (p.input?.text) warmWorld({ emotion: p.emotion, intention: p.intention });
     later(() => afterTell({ text: p.input?.text || '', emotion: p.emotion, intention: p.intention, safety: p.input?.safety?.detail || { level: 'none' }, input: p.input }), 700);
     return true;
+  }
+
+  /**
+   * Free tier, back from the plans page without buying: the words they typed come back with them (held in this scene's
+   * memory only, as app.state.pendingTell held them for the plans page; never stored) — a short warm line and "Tell me
+   * again", which opens the overlay with the same words (so does the Tell pill). "Just play" lets them go.
+   */
+  let retell = null;   // { text, emotion, intention } while offered back
+  function offerRetell(p) {
+    retell = { text: p.input.text, emotion: p.emotion || null, intention: p.intention || null };
+    S.invited = true;
+    showTell(true);
+    later(async () => {
+      if (!retell || S.left || overlay || worldMode || gentle()) return;
+      const v = await subtitles.choice(RETELL, [{ label: 'Tell me again', value: 'tell', primary: true, onPick: () => openTell('retell') }, { label: 'Just play', value: 'play' }],
+        { who: M().name, colour: M().colours.glow, timeoutMs: 16000, transient: true });
+      if (S.left) return;
+      S.lastLineAt = now();
+      if (v === 'tell') openTell('retell');
+      else if (v === 'play' && !gentle()) { retell = null; S.intention ||= 'play'; say(lines.pick(mallowId, 'justPlay')); }
+    }, 900);
   }
 
   /**
@@ -1870,6 +1932,10 @@ export default function hushfold(app, params = {}) {
     get flow() { return flowRef; },
     async enter() {
       document.body.classList.add('hf-active');
+      // something heavy earlier in this visit (in this page session, or before a reload in this tab: the level kept
+      // for it, never the words): the Mallow is on its attentive face from its very first frame
+      const kept = app.state.hfSafety || recallVisitSafety();
+      if (kept?.level) setStageFloor(CARE_FACE);
       world.dim(false);
       theme();
       // the Thought Mallows (W2's ThoughtLayer, loaded lazily) keep off the Mallow (room for its hop) and inside the
@@ -1913,7 +1979,6 @@ export default function hushfold(app, params = {}) {
       stageMallow ||= createStageMallow(world, { touch: null });
       // something heavy earlier in this page session (Settings and back, the plans page and back…): the
       // visit is still a gentle one from the first squeeze, support stays close, and the calm line is not said twice
-      const kept = app.state.hfSafety;
       if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; noteSafety(kept); S.careSaid = true; }
       router = createInputRouter({
         el: world.fx, mallow: stageMallow, thoughts: stage.thoughts,

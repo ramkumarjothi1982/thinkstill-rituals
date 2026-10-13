@@ -121,7 +121,7 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 .hf-chip.primary { background: linear-gradient(180deg, #ffe6b0, var(--accent, #ffd98a) 55%, var(--accent-2, #ffb86b)); color: var(--text-on-accent, #23140a);
   border-color: transparent; box-shadow: 0 10px 28px rgba(255, 190, 90, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
 
-/* the small ⏸ ↺ ⏭ pill + speed */
+/* the small ⏸ ↺ ⏭ pill + speed (every control here, the overlay's and the panel's: a 44 px hit area at least) */
 .hf-subctl { display: inline-flex; align-items: center; gap: 0; padding: 2px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(14, 10, 36, 0.52); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0.82;
   transition: opacity 360ms var(--hf-ease), transform 360ms var(--hf-ease); }
@@ -139,7 +139,7 @@ body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; 
 .hf-subs.bright .hf-subctl.idle { opacity: 0.7; }
 .hf-subs.bright .hf-chip:not(.primary) { background: rgba(18, 13, 44, 0.8); }
 .hf-subctl:hover, .hf-subctl:focus-within { opacity: 1; }
-.hf-subctl button { min-width: 40px; height: 40px; border-radius: 999px; border: 0; background: none; color: var(--text-1, #f7f3ff); display: grid; place-items: center;
+.hf-subctl button { min-width: 44px; height: 44px; border-radius: 999px; border: 0; background: none; color: var(--text-1, #f7f3ff); display: grid; place-items: center;
   cursor: pointer; padding: 0 8px; font: 700 calc(13px * var(--hf-k))/1 var(--hf-ff-ui); }
 .hf-subctl button svg { width: 17px; height: 17px; }
 .hf-subctl button:active { background: rgba(255, 255, 255, 0.12); }
@@ -166,7 +166,7 @@ body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; 
 .hf-input .prompt .who { display: inline-flex; align-items: center; gap: 6px; margin-right: 8px; vertical-align: 1px; font: 700 calc(13px * var(--hf-k))/1.2 var(--hf-ff-ui);
   letter-spacing: 0.04em; color: #ece8ff; }
 .hf-input .prompt .who::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--hf-who, var(--hf-glow)); box-shadow: 0 0 10px var(--hf-who, var(--hf-glow)); }
-.hf-input .close { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; border: 1px solid var(--hf-line); background: rgba(255, 255, 255, 0.06); color: inherit;
+.hf-input .close { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 50%; border: 1px solid var(--hf-line); background: rgba(255, 255, 255, 0.06); color: inherit;
   display: grid; place-items: center; cursor: pointer; padding: 0; }
 .hf-input .close svg { width: 18px; height: 18px; }
 .hf-input .field { position: relative; }
@@ -182,7 +182,7 @@ body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; 
 /* larger text: the speaker's name on its own line, so the prompt keeps the width */
 .hf-input.big .prompt .who { display: flex; width: fit-content; margin: 0 0 5px; }
 .hf-input textarea::placeholder { color: rgba(205, 198, 234, 0.7); }
-.hf-input .mic { position: absolute; right: 4px; top: 3px; width: 42px; height: 42px; border: 0; border-radius: 50%; background: none; color: var(--text-2, #cdc6ea);
+.hf-input .mic { position: absolute; right: 3px; top: 2px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; color: var(--text-2, #cdc6ea);
   display: grid; place-items: center; cursor: pointer; padding: 0; }
 .hf-input .mic:active { background: rgba(255, 255, 255, 0.08); }
 .hf-input .mic svg { width: 19px; height: 19px; }
@@ -191,7 +191,7 @@ body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; 
 .hf-scroll { display: flex; gap: 7px; overflow-x: auto; min-width: 0; scrollbar-width: none; margin: 0 -12px; padding: 2px 26px 2px 12px; scroll-padding: 0 26px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 28px), transparent); }
 .hf-scroll::-webkit-scrollbar { display: none; }
-.hf-opt { flex: 0 0 auto; min-height: 42px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hf-line-strong); background: rgba(255, 255, 255, 0.05);
+.hf-opt { flex: 0 0 auto; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hf-line-strong); background: rgba(255, 255, 255, 0.05);
   color: var(--text-1, #f7f3ff); font: var(--hf-font-control); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
   transition: background 160ms, border-color 160ms, transform 140ms var(--hf-ease); }
 .hf-opt:active { transform: scale(0.96); }
@@ -261,7 +261,7 @@ body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; 
 .hf-panel section:last-child { border-bottom: 0; }
 .hf-panel h3 { margin: 0 0 10px; font: var(--hf-font-label); font-weight: 700; color: var(--text-2, #cdc6ea); }
 .hf-panel .wrap { display: flex; flex-wrap: wrap; gap: 8px; }
-.hf-panel .plan { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hf-line-strong);
+.hf-panel .plan { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hf-line-strong);
   background: rgba(255, 255, 255, 0.05); font: var(--hf-font-label); color: var(--text-1, #f7f3ff); cursor: pointer; margin: 0 0 4px 0; }
 .hf-panel .plan.on { border-color: rgba(255, 217, 138, 0.6); color: var(--accent, #ffd98a); }
 .hf-panel .plan.beyond { border-color: rgba(190, 130, 255, 0.6); color: #e2c8ff; }
@@ -292,8 +292,9 @@ body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; 
 .hf-support svg { width: 19px; height: 19px; }
 .hf-panel .fine { font: var(--hf-font-caption); color: var(--text-3, #a59fc9); margin: 8px 0 0; }
 
-/* phones: a shorter bottom sheet, so the Mallow (lifted above it by the scene) stays playable */
-@media (max-width: 699px) {
+/* phones and portrait tablets: a shorter bottom sheet, so the Mallow (lifted above it by the scene) stays playable
+   (side-panel.js PANEL_SHEET_QUERY / panelIsSheet: the scene lays the stage out by the same rule) */
+@media (max-width: 699px), (max-width: 999px) and (orientation: portrait) {
   .hf-panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(52vh, 520px); max-height: calc(100% - 150px); border-left: 0;
     border-top: 1px solid var(--hf-line-strong); border-radius: 28px 28px 0 0; transform: translateY(104%); box-shadow: 0 -24px 60px rgba(3, 1, 14, 0.45); padding-top: 0; }
   .hf-panel::before { content: ''; position: absolute; left: 50%; top: 8px; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: rgba(255, 255, 255, 0.22); }

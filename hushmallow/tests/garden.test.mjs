@@ -478,3 +478,65 @@ test('relayoutInstall places the open offer again; Beyond’s dock (.bx-dock) is
     dom.restore();
   }
 });
+
+test('QA main: the folded chip is in the avoid rects, never lies over the panel or the sheet, and comes back when it closes', async () => {
+  const dom = installInstallDom();
+  try {
+    const { offerSave, relayoutInstall, installAvoidRects } = await import('../src/hushfold/garden-install.js');
+    const ac = new AbortController();
+    let sheet = null;   // the phone sheet, marked hard by the shell (offerAvoid)
+    const avoid = () => (sheet ? [sheet] : []);
+    const body = { left: 100, top: 300, width: 190, height: 200 };
+    offerSave({ skillId: 'slowing-down', mallow: 'glitzi', reducedMotion: true, signal: ac.signal, origin: () => body, avoid, foldAfterMs: 30 });
+    const chip = await until(() => dom.byClass('hm-chip'));
+    const at = () => [parseFloat(chip.style.left), parseFloat(chip.style.top)];
+    const [x0, y0] = at();
+    assert.ok(y0 > 600, `the chip folds into a bottom corner (${y0})`);
+    assert.equal(chip.classList.contains('is-blocked'), false);
+    // the shell's clash check and the subtitles see it (it is a { el } handle, not an element)
+    assert.ok(installAvoidRects().some((r) => Math.round(r.top) === Math.round(y0)), 'the chip is among the install rects');
+    // the sheet rises over the bottom of the screen: the chip moves to a top corner, clear of it
+    sheet = { left: 0, top: 440, right: 390, bottom: 844, width: 390, height: 404, hard: true };
+    relayoutInstall();
+    const [, y1] = at();
+    assert.ok(y1 + chip.offsetHeight <= 440, `off the sheet (${y1})`);
+    assert.equal(chip.classList.contains('is-blocked'), false);
+    // a sheet over the whole screen: no corner is free, so it waits unseen rather than lie over it
+    sheet = { left: 0, top: 0, right: 390, bottom: 844, width: 390, height: 844, hard: true };
+    relayoutInstall();
+    assert.equal(chip.classList.contains('is-blocked'), true);
+    // closed again: back in its corner, seen
+    sheet = null;
+    relayoutInstall();
+    assert.deepEqual(at(), [x0, y0]);
+    assert.equal(chip.classList.contains('is-blocked'), false);
+    // a world's own things (no hard flag) never hide it: with no corner wholly free it still shows, off the Mallow
+    sheet = { x: 0, y: 0, w: 390, h: 844, kind: 'bubble' };
+    relayoutInstall();
+    assert.equal(chip.classList.contains('is-blocked'), false);
+    ac.abort();
+  } finally {
+    await new Promise((r) => setTimeout(r, 400));
+    dom.restore();
+  }
+});
+
+test('QA main: an offer lies over a world’s postcards or bubbles before it lies over the Mallow’s body', async () => {
+  const dom = installInstallDom();
+  try {
+    const { offerSave } = await import('../src/hushfold/garden-install.js');
+    const ac = new AbortController();
+    const body = { left: 70, top: 500, width: 250, height: 240 };
+    // postcards fill the sky above the Mallow; the thought's words sit just above its head
+    const avoid = () => [{ x: 0, y: 150, w: 390, h: 200, kind: 'card' }, { x: 40, y: 390, w: 300, h: 60, kind: 'thought' }];
+    offerSave({ skillId: 'slowing-down', mallow: 'glitzi', reducedMotion: true, signal: ac.signal, origin: () => body, avoid });
+    const offer = dom.doc.body.querySelectorAll('.hm-offer').at(-1);
+    const top = parseFloat(offer.style.top), bottom = top + offer.offsetHeight;
+    assert.ok(bottom <= body.top, `off the Mallow's body (offer ${top}–${bottom}, body top ${body.top})`);
+    assert.ok(!(top < 450 && bottom > 390), 'never over the thought or its words');
+    ac.abort();
+  } finally {
+    await new Promise((r) => setTimeout(r, 400));
+    dom.restore();
+  }
+});

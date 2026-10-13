@@ -230,7 +230,9 @@ export const STAGES = {
   // Zuzu's and Pipzi's are open), and nothing drawn over or round the face (no sighs, ?, !, sparks, hearts or rain)
   concerned: { mix: { sad: 0.45, anxious: 0.25, loved: 0.3 }, intensity: 0.45,
     extra: { leanBias: 0.2, fxRain: 0, tears: 0, mouthOpen: 0.02, mouthRound: 0, tongue: 0, sighCycle: 0, yawnCycle: 0, fxSigh: 0, fxExclaim: 0, fxQuestion: 0,
-      fxSpark: 0, fxStar: 0, fxHeart: 0, fxNote: 0, sweat: 0 } },
+      fxSpark: 0, fxStar: 0, fxHeart: 0, fxNote: 0, sweat: 0 },
+    // ...and it stays so whatever touches it (STAGE_LIMITS): a squeeze is a soft hug, never a grin
+    limits: 'hushed' },
   playful: { mix: { playful: 1 }, intensity: 0.75 },
   surprised: { mix: { surprised: 1 }, intensity: 0.8 },
   comforting: { mix: { loved: 0.5, calm: 0.5 }, intensity: 0.7, extra: { fxHeart: 0.15 } },
@@ -238,6 +240,33 @@ export const STAGES = {
   celebrating: { mix: { excited: 0.7, happy: 0.3 }, intensity: 0.95 },
   resting: { mix: { calm: 0.75, exhausted: 0.25 }, intensity: 0.7, extra: { fxZzz: 0.1, yawnCycle: 0.2 } },
 };
+
+/**
+ * What a stage's face may never be pushed past while it lasts — by a reaction (a tap, a release, the idle), a squeeze,
+ * a stretch, a jiggle or a touch persona — so the Mallow on the concerned stage (after something heavy) never grins:
+ * no open or smiling mouth, no sparkle, no big or heart eyes, no bounce, nothing drawn round the face. A squeeze still
+ * reads as a squeeze (the eyes close softly, the cheeks puff): a soft hug.
+ *   max: a ceiling — the larger of this value and the stage's own resting target for that Mallow (its attentive face is
+ *        never changed by the limit; only what is put on top of it is held down)
+ *   min: a floor — the smaller of this value and the stage's own target (closedCurve: -1 is the happy ^ ^ arc)
+ */
+export const STAGE_LIMITS = {
+  hushed: {
+    max: { mouthSmile: 0.2, mouthOpen: 0.1, mouthRound: 0.25, mouthWidth: 1.05, tongue: 0, sparkle: 1, eyeScale: 1, irisScale: 1.05, eyeOpen: 1,
+      heartEyes: 0, wink: 0, tears: 0, blush: 1.6, bounce: 0.05, glow: 0.6, spin: 0.8, spinJitter: 0.3,
+      fxSpark: 0, fxStar: 0, fxHeart: 0, fxNote: 0, fxExclaim: 0, fxQuestion: 0, fxSigh: 0, fxRain: 0, fxZzz: 0, yawnCycle: 0, sighCycle: 0 },
+    min: { closedCurve: -0.45 },
+  },
+};
+/** The limits a stage keeps (null for a stage without any). */
+export const stageLimits = (name) => STAGE_LIMITS[STAGES[name]?.limits] || null;
+/** Hold `goal` inside `limits`, measured from `ref` (the stage's own resting face for this Mallow). Pure; in place. */
+export function applyStageLimits(goal, limits, ref = null) {
+  if (!limits || !goal) return goal;
+  for (const k in limits.max) if (k in goal) goal[k] = Math.min(goal[k], Math.max(limits.max[k], ref?.[k] ?? -Infinity));
+  for (const k in limits.min) if (k in goal) goal[k] = Math.max(goal[k], Math.min(limits.min[k], ref?.[k] ?? Infinity));
+  return goal;
+}
 
 const smooth = (a, b, x) => {
   if (b <= a) return x >= a ? 1 : 0;
