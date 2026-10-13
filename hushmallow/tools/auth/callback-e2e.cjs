@@ -6,6 +6,9 @@
 //              bash hushmallow/tools/build-site.sh /tmp/claude-0/hf/auth/site devauth1
 //   2. serve:  node hushmallow/tools/auth/fake-supabase.mjs --port 8203 --site http://localhost:8202
 //              node hushmallow/tools/auth/pages-serve.mjs /tmp/claude-0/hf/auth/site 8202
+//              python3 -m http.server 8201            (from the worktree root: section 7
+//                                                      checks the unbuilt dev tree there;
+//                                                      DEV=… points it elsewhere)
 //   3. run:    timeout 400 node hushmallow/tools/auth/callback-e2e.cjs [--out /tmp/claude-0/hf/auth/shots]
 //
 // Scenarios: sign-up → token_hash link on ANOTHER device → signed in →
