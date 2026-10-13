@@ -37,7 +37,9 @@ Hushmallow Ultra" unlocks Ultra, without charging anything. Settings →
 in `src/app/config.js`, so a public site can't give plans away. The App
 Store build swaps in StoreKit (see `src/app/entitlements.js`).
 
-Putting it on your Framer site: see `docs/FRAMER.md`.
+Putting it on your Framer site: see `docs/FRAMER.md`. The public landing page
+(sign-up, the seven Mallows, a live preview) is its own Framer component:
+`framer/HushmallowLanding.tsx`, documented in `docs/LANDING.md`.
 
 Publishing: every push to `main` runs the tests and publishes to GitHub
 Pages (`.github/workflows/hushmallow-pages.yml`). `tools/build-site.sh` puts
@@ -97,7 +99,8 @@ check that every library file is listed and every module exists.
 | `src/v3/` | The 1,000 rituals: host, 20 world laws, 50 touch engines, photo system, words, effects library, generated catalogue and copy |
 | `src/ultra/` | Ultra only: Another Angle, authored Reframe frameworks, rule engine |
 | `content/` | The V3 ritual workbook (source of the 1,000 rituals) and its corrected copy |
-| `framer/` | `HushmallowEmbed.tsx`, the Framer code component |
+| `framer/` | `HushmallowEmbed.tsx` (the app in Framer) and `HushmallowLanding.tsx` (the landing page) |
+| `landing/` | Landing-page art (web-sized Mallows, logo, eyelid layers), screenshots, the eyelid generator and a local preview/test harness |
 | `src/app/` | App shell: scenes, world stage, entitlements, preferences, UI helpers |
 | `src/ui/` | Design system tokens and app styles |
 | `docs/` | Audit of the old app, status and roadmap |
