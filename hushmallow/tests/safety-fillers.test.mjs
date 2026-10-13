@@ -104,7 +104,8 @@ test('fillers: the negation sweep — no new flag for a negated sentence, at any
   assert.equal(checkText("I honestly don't even want to exist").level, 'crisis');
   assert.equal(checkText('nobody would ever really miss me').level, 'crisis');
   assert.equal(checkText("he won't even let me see my friends").level, 'care');
-  // a denial is weighed only straight before the phrase or its subject
+  // a negation reaches only its own clause, and not past a new subject and verb
+  // (review round 3: the scope of a negation; tests/safety-scope.test.mjs)
   assert.equal(checkText("I don't know why he always hits me").level, 'care');
   assert.equal(checkText("I don't think anyone knows he always hits me").level, 'care');
   assert.equal(checkText("I can't believe he actually hit me").level, 'care');
@@ -196,9 +197,10 @@ test('fillers: additive — the result is never less serious than the first pass
 
 test('fillers: the word lists are what the server mirrors (plain data)', () => {
   for (const k of ['free', 'positional', 'subject', 'helper', 'likeNot']) assert.equal(typeof FILLERS[k], 'string', k);
-  for (const k of ['force', 'forceIng', 'wishIng']) assert.equal(typeof FILLERS[k], 'object', k);
+  for (const k of ['force', 'forceIng', 'wishIng', 'short']) assert.equal(typeof FILLERS[k], 'object', k);
   assert.ok(Object.isFrozen(FILLERS) && Object.isFrozen(SECOND_PASS) && Object.isFrozen(SECOND_PASS.guards));
-  for (const src of [FILLERS.free, ...SECOND_PASS.guards, SECOND_PASS.negation, SECOND_PASS.denial, SECOND_PASS.unless]) assert.doesNotThrow(() => new RegExp(src, 'gi'));
+  for (const src of [FILLERS.free, ...SECOND_PASS.guards, ...Object.values(SECOND_PASS).filter((v) => typeof v === 'string')]) assert.doesNotThrow(() => new RegExp(src, 'gi'));
+  for (const k of ['negation', 'npi', 'clauseBreak', 'scopeNegation', 'person', 'tight', 'inversion', 'frame', 'stance', 'firstPerson', 'unless']) assert.equal(typeof SECOND_PASS[k], 'string', k);
 });
 
 test('fillers: the second pass stays fast on long text', () => {
