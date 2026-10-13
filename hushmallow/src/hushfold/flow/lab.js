@@ -146,11 +146,13 @@ export async function hushflowLab(app, qs) {
   // the world's name, once, as a title card in the subtitle band (as the shell does)
   director.on('world', (d) => { if (!d.from && d.title) subtitles.say([d.title], { kind: 'title' }); });
   // the Memory Garden offer belongs to W5; the lab only shows that it would be offered
+  // (held while it is open, as the shell does from H2: nothing melts by itself and the world's completion waits)
   director.on('offer', (d) => {
+    director.hold?.('offer', true);
     import('../skills.js').then((m) => m.SKILLS?.[d.skillId]?.title || m.skillTitle?.(d.skillId)).catch(() => null).then((title) => {
-      subtitles.choice(title ? `Keep this? ${title}` : 'Keep this discovery?', [{ label: 'Not now', value: 'no' }, { label: 'Keep it', value: 'keep' }])
+      return subtitles.choice(title ? `Keep this? ${title}` : 'Keep this discovery?', [{ label: 'Not now', value: 'no' }, { label: 'Keep it', value: 'keep' }])
         .then((v) => log.push({ ev: 'offer-answer', value: v, skillId: d.skillId }));
-    });
+    }).catch(() => {}).finally(() => director.hold?.('offer', false));
   });
 
   await director.start({ emotion, intention, intensity, input: { text }, worldId, resume: qs.get('resume') === '1' });
