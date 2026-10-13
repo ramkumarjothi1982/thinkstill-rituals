@@ -4,3 +4,4 @@
 2026-10-13 first run (stage 3: the E2E suite)
 2026-10-13 sign-in review round 1 (password reauth, guest keys, delete race, shared-device reset, 0009)
 2026-10-13 sign-in review round 2 (tombstone, home Mallow chain, account named) on the merged pilot
+2026-10-13 final QA (history-aware sheets, honest delete copy) on the merged pilot
