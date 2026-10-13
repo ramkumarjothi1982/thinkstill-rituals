@@ -7,11 +7,15 @@
 //
 // Scene contract: hushfold(app, params) → { el, title:'', enter(), leave(),
 //   get blockBack(), safeForUpdate(), spawnThought(text, emotion) }
-// params.flow = { worldId } starts a world (the garden's "Practise again").
+// params.flow = { worldId, emotion?, intention? } starts a world (the garden's "Practise
+// again", Another Angle's Continue); params.safety = { level } (back from Another Angle
+// after something heavy) keeps support close. Leaving, it hands the classic rig back (the
+// person's own Mallow, let go on enter by world.releaseMallow), so every scene after it finds one.
 //
-// Layers: #world realm backdrop · #mallow-layer the rig · #fx-layer the stage
-// canvas + the one input router · #scene this root (pointer-events:none; only
-// .hf-ui takes touches) · #sheet-root support/confirm sheets only.
+// Layers: #world realm backdrop · .hf-touch the squeezable Mallow (MallowTouch, the
+// default; the classic rig in #mallow-layer is the fallback, released meanwhile) ·
+// #fx-layer the stage canvas + the one input router · #scene this root
+// (pointer-events:none; only .hf-ui takes touches) · #sheet-root support/confirm sheets only.
 
 import { h } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
@@ -22,7 +26,7 @@ import { requireEntitlement } from '../entitlements.js';
 import { createStage, createStageMallow } from '../../hushfold/stage.js';
 import { createInputRouter } from '../../hushfold/input-router.js';
 import { hfIcon } from '../../hushfold/icons.js';
-import { loadProgress } from '../../engine/flow-store.js';
+import { loadProgress, clearProgress } from '../../engine/flow-store.js';
 
 // the realms whose daylight needs a deeper subtitle scrim (a fallback for the per-line sample)
 const BRIGHT_REALMS = new Set(['sunpop-orchard', 'blue-drift', 'moonmilk-cove']);
@@ -91,7 +95,8 @@ export default function hushfold(app, params = {}) {
     root, prefs,
     reducedMotion: () => prefs.reducedMotion(),
     bounds: () => ({ top: (topEl.getBoundingClientRect().bottom || 60) + 12, bottom: Math.min(dockTop(), panelTop()) - 12 }),
-    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), worldThoughtRect(), ...(flowRef?.avoid?.() || []), overlay?.rect?.()].filter(Boolean),
+    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), worldThoughtRect(), ...(flowRef?.avoid?.() || []), overlay?.rect?.(),
+      ...(installMod?.installAvoidRects?.() || [])].filter(Boolean),
     // what is behind the band (the realm, a world's back and front layers): sampled once per line for the scrim
     backdrop: () => [...document.querySelectorAll('#world canvas, #fx-layer canvas.hf-front')],
     brightHint: () => !worldMode && BRIGHT_REALMS.has(world.realmId),
@@ -101,6 +106,10 @@ export default function hushfold(app, params = {}) {
     onBand: (need) => { if (need !== bandNeed) { bandNeed = need; layout(); } },
   });
   let bandNeed = 0;
+  // the pill's ↺ (it calls subtitles.replay): held for a crisis, nothing said before it comes back
+  // (once the one calm line has been said, that is the line it replays)
+  const replayLine = subtitles.replay;
+  subtitles.replay = () => { if (S.hold === 'crisis' && !S.crisisSpoken) return; replayLine(); };
   const say = (text, opts = {}) => {
     if (!text) return Promise.resolve(false);
     S.lastLineAt = now();
@@ -109,7 +118,8 @@ export default function hushfold(app, params = {}) {
 
   // ------------------------------------------------------- stage --
   let stage = null, stageMallow = null, router = null, overlay = null, panel = null, readEl = null;
-  let touchMt = null, touchBox = null;   // the opt-in MallowTouch stage (W2), else the rig
+  let touchMt = null, touchBox = null;   // the MallowTouch stage (W2), else the rig (the fallback)
+  let rigReleased = false;               // the classic rig was let go for MallowTouch: leave() hands it back
   // each transient layer has its own history entry, so Back closes it first
   const layer = { overlay: 0, panel: 0, read: 0 };
   const pushLayer = (k) => { layer[k] = app.pushLayer?.() || 0; };
@@ -159,6 +169,8 @@ export default function hushfold(app, params = {}) {
     speakCrisis();
   }
   let flowP = null, flowRef = null, offPrefs = null;
+  let starting = 0;                      // startFlow calls in flight (a world on its way)
+  let installMod = null, offerCtl = null; // garden-install, once loaded; the open offer's AbortController
   let thoughtHome = { x: innerWidth * 0.8, y: innerHeight * 0.6 };
 
   function dockTop({ ignorePaused = false } = {}) {
@@ -235,12 +247,43 @@ export default function hushfold(app, params = {}) {
       thoughtHome.y = Math.min(Math.max(thoughtHome.y, below), above);
     }
     stage?.thoughts.list.forEach((th, i) => th.moveHome({ x: thoughtHome.x - i * 18, y: thoughtHome.y - i * (th.r * 2.4) }));
-    // the layer glides there (720ms spring); re-place the subtitles when it lands
-    later(() => subtitles.layout(), 760);
+    // the Mallow glides there (a 720 ms spring): the subtitles and an open garden offer or card are
+    // placed again once it lands, so neither is left over the face it was placed beside mid-glide
+    later(() => { subtitles.layout(); installMod?.relayoutInstall?.(); }, 760);
     subtitles.layout();
+    // an open garden offer or card steps out of whatever just moved: at once when something covers it now
+    // (the panel, the sheet, the overlay, the face, or the face the Mallow is gliding to); when the Mallow is
+    // only on its way elsewhere, once it has landed (above), so the offer moves once and never across the face
+    if (!landingFace() || installClash()) installMod?.relayoutInstall?.();
+  }
+  const overlaps = (a, b) => !!(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+  /** Does an open garden offer, card or chip sit under the panel, the overlay, the face or the landing face? */
+  function installClash() {
+    const mine = installMod?.installAvoidRects?.() || [];
+    if (!mine.length) return false;
+    let face = null;
+    try { face = installMod.mallowFaceRect?.(stageMallow?.bodyRect?.(), MALLOWS[mallowId]) || null; } catch { face = null; }
+    const now = [panelRect(), overlay?.rect?.(), face, landingFace()].filter(Boolean);
+    return mine.some((r) => now.some((o) => overlaps(r, o)));
   }
   let resizeT = 0;
   const onResize = () => { clearTimeout(resizeT); resizeT = setTimeout(layout, 120); };
+  /**
+   * The face where the Mallow is gliding to (MallowTouch's stage spring) while it is still on its way,
+   * else null: an offer placed mid-glide keeps clear of the face it is about to have, not only the one it
+   * has. (The spring, not the body box: a hop, a squeeze or the storm's tremble is not a glide.)
+   */
+  function landingFace() {
+    const st = touchMt?.st, g = touchMt?.goalSt;
+    if (!st || !g || g.x == null || g.y == null || !installMod?.mallowFaceRect) return null;
+    if (Math.abs(g.x - st.x) < 3 && Math.abs(g.y - st.y) < 3 && Math.abs(g.s - st.s) < 0.02 * g.s) return null;
+    const b = stageMallow?.bodyRect?.();
+    if (!b?.height) return null;
+    // the body box now, moved and scaled to the spring's goal (it scales about its middle)
+    const k = g.s / (st.s || g.s), w = b.width * k, hh = b.height * k;
+    const cx = b.left + b.width / 2 + (g.x - st.x), cy = b.top + b.height / 2 + (g.y - st.y);
+    try { return installMod.mallowFaceRect({ left: cx - w / 2, top: cy - hh / 2, width: w, height: hh }, MALLOWS[mallowId]) || null; } catch { return null; }
+  }
 
   function theme() {
     const m = M();
@@ -265,8 +308,10 @@ export default function hushfold(app, params = {}) {
     return m ? { ...o, who: m.name, colour: o.colour || m.colours.glow } : o;
   };
   const flowSubtitles = {
-    say: (lines, o) => { S.lastLineAt = now(); return subtitles.say(lines, whoOf(o)); },
-    choice: (prompt, options, o) => subtitles.choice(prompt, options, whoOf(o)),
+    // a world held for a crisis says nothing more (not even a line that was on its way)
+    // (nor a finished one, while its last frame fades out)
+    say: (lines, o) => { if (S.hold === 'crisis' || S.finishing) return Promise.resolve(null); S.lastLineAt = now(); return subtitles.say(lines, whoOf(o)); },
+    choice: (prompt, options, o) => (S.hold === 'crisis' || S.finishing ? Promise.resolve(null) : subtitles.choice(prompt, options, whoOf(o))),
     // a paused world drops its passing lines (a held discovery stays); the shell says "Paused" itself
     clear: () => subtitles.clear(), pause: () => subtitles.clear({ keepHeld: true }), resume: () => subtitles.resume(),
     get busy() { return subtitles.busy; }, get holding() { return subtitles.holding; },
@@ -291,6 +336,8 @@ export default function hushfold(app, params = {}) {
       destroy() {},
     };
   }
+  // the worlds read prefs live: while the Support pill is up they see low stimulation too (owner P5)
+  const flowPrefs = Object.create(prefs, { get: { value: (k) => (k === 'lowStim' ? lowStimNow() : prefs.get(k)) } });
   // Is the Hushflow director in this build? (imports the module only; never creates a director)
   let availP = null;
   const flowAvailable = () => (availP ||= import('../../hushfold/flow/director.js').then((m) => typeof m.createHushflow === 'function', () => false));
@@ -307,7 +354,7 @@ export default function hushfold(app, params = {}) {
         S.photos = true;
         const f = mod.createHushflow({
           app, worldEl: document.getElementById('world'), fxEl: world.fx, mallow: stageMallow, thought: null,
-          subtitles: flowSubtitles, photos, words, prefs, store, safeRect,
+          subtitles: flowSubtitles, photos, words, prefs: flowPrefs, store, safeRect,
         });
         if (!f || typeof f.start !== 'function') throw new Error('director returned no flow');
         f.setAutoFlow?.(!!prefs.get('autoFlow'));
@@ -320,23 +367,36 @@ export default function hushfold(app, params = {}) {
         f.on?.('resume', () => onPaused(false));
         return f;
       } catch (e) {
-        if (!S.left) console.info('[hushfold] Hushflow director not available, using the stub:', e?.message || e);
+        if (!S.left) { console.info('[hushfold] Hushflow director not available, using the stub:', e?.message || e); app.staleCode?.(); }
         return createStubFlow();
       }
     })().then((f) => { flowRef = f; return f; });
     return flowP;
   }
   /** The world paused or resumed (from the panel, the pill or the director). */
+  let pausedLine = null;   // the "Paused" line while it is still showing (it goes when the world resumes)
   function onPaused(on) {
     if (S.left) return;
+    // resumed from anywhere (the pill, ▶, Space, the panel's own Resume): a care hold is over
+    if (!on && S.hold === 'care') S.hold = null;
+    if (!on && pausedLine) { pausedLine = null; subtitles.clear({ keepHeld: true }); }
     // the sheet holding a world is not the person pausing it: no pill, no "Paused" line
     if (held) { panel?.update(); return; }
+    // held for a crisis: the world only waits to end quietly (no pill, no line, nothing to resume)
+    if (on && S.hold === 'crisis') { pausedPill.hidden = true; layout(); panel?.update(); return; }
     pausedPill.hidden = !on;
     layout();
     panel?.update();
-    if (on) say(lines.pick(mallowId, 'paused') || SHARED_LINES.paused[0], { interrupt: !subtitles.holding });
+    // held for care: the pill (Resume is theirs to choose), but no "Paused" line over the support line
+    if (on && S.hold !== 'care') {
+      const p = pausedLine = say(lines.pick(mallowId, 'paused') || SHARED_LINES.paused[0], { interrupt: !subtitles.holding });
+      p.then(() => { if (pausedLine === p) pausedLine = null; });
+    }
   }
   function resumeFlow() {
+    // a world held for a crisis never resumes in this visit (owner P3): the panel, the pill, ▶ and Space alike
+    if (S.hold === 'crisis') { panel?.update(); return; }
+    if (S.hold === 'care') S.hold = null;
     pausedPill.hidden = true;
     try { flowRef?.resume?.(); } catch (e) { console.warn(e); }
     if (subtitles.paused) subtitles.resume();
@@ -348,13 +408,31 @@ export default function hushfold(app, params = {}) {
   let homeMallow = null;       // the person's own Mallow while a world borrows the stage
   function onWorld(d) {
     if (S.left) return;
+    // something heavy was typed while this world loaded: it is held the moment it arrives
+    const hold = S.crisis ? 'crisis' : S.holdOnWorld;
+    S.holdOnWorld = null;
     worldMode = true;
     router.setWorld((r) => flowRef?.pointer?.(r));
     // the words now live inside the world: the shell's placeholder hands over (its word tag goes at
     // once, so it never fades across the world's Mallow), and the world melts in over the realm
     root.classList.add('hf-world');
     stage?.thoughts.release(900);
+    // the realm is hidden under the world: it draws nothing until the world ends (A6)
+    world.realm?.pause?.(true);
+    S.worldTitle = d?.title || S.worldTitle;
     requestAnimationFrame(() => document.body.classList.remove('hf-world-arriving'));
+    if (hold === 'crisis') {
+      // held at once under its veil (no host, no title, no lines), and ended quietly as soon as the
+      // overlay is closed (owner P3)
+      S.hold = 'crisis';
+      try { flowRef?.setAutoFlow?.(false); flowRef?.pause?.(); } catch (e) { console.warn(e); }
+      if (!overlay) endCrisisWorld();
+      panel?.update();
+      return;
+    }
+    if (hold) { S.hold = 'care'; try { flowRef?.pause?.(); } catch (e) { console.warn(e); } }
+    // a world started fresh over a held one (care, then a calm world): nothing is paused any more
+    else if (!flowRef?.state?.paused) pausedPill.hidden = true;
     // each world has its own Mallow (Glitzi hosts the Static Storm)
     if (d?.mallow && MALLOWS[d.mallow] && d.mallow !== mallowId) {
       homeMallow ||= mallowId;
@@ -363,66 +441,126 @@ export default function hushfold(app, params = {}) {
       showMallow(mallowId, { entrance: !prefs.reducedMotion() });
     }
     layout();
-    // a world's name, once, in story type, ahead of its first line
-    if (d?.title && !d.from) subtitles.say({ text: d.title, kind: 'title' }, { first: true });
+    // a world's name, once, in story type, ahead of its first line (not while it waits under its veil)
+    if (d?.title && !d.from && !hold) subtitles.say({ text: d.title, kind: 'title' }, { first: true });
     if (panel?.isOpen) holdWorld(true);
     panel?.update();
   }
   function endWorldMode() {
+    // the stage is the Hushfold's again: no float left over from the water, the realm draws again
+    stageMallow?.float?.({ lift: 0, tilt: 0 });
+    world.realm?.pause?.(false);
     worldMode = false;
+    S.finishing = false;
+    if (S.hold === 'care') S.hold = null;
+    // a world line still queued (its intro after a few pauses) never plays after the world has gone
+    pausedLine = null;
+    subtitles.clear({ keepHeld: true });
     root.classList.remove('hf-world');
+    document.body.classList.remove('hf-world-arriving');
     if (held) { held = null; document.body.classList.remove('hf-world-held'); }
     router?.setWorld(null);
     try { flowRef?.destroy?.(); } catch (e) { console.warn(e); }
     flowP = null; flowRef = null; worldThought = null;
     pausedPill.hidden = true;
-    if (homeMallow) { mallowId = homeMallow; homeMallow = null; theme(); showMallow(mallowId); world.setRealm(M().realm, { crossfadeMs: 1400 }); }
+    // (after something heavy, the person's Mallow comes back without a hop)
+    if (homeMallow) { mallowId = homeMallow; homeMallow = null; theme(); showMallow(mallowId, { entrance: !gentle() }); world.setRealm(M().realm, { crossfadeMs: 1400 }); }
     layout();
     panel?.update();
   }
   function onFinished() {
     if (S.left) return;
+    if (S.finishing) return;
+    // from here the world says nothing more: what it had queued goes (a held line or a choice stays)
+    S.finishing = true;
+    // (a calm line cut short by a world that arrived under it is said again, whole, once the world has gone)
+    if (crisisLine) { crisisLine = null; S.crisisSpoken = false; }
+    subtitles.clear({ keepHeld: true });
+    // after a crisis nothing that invites play is kept either: no choice, no Paused pill, nothing to resume
+    if (S.crisis) { subtitles.clear(); pausedPill.hidden = true; forgetProgress(); }
+    // the realm underneath runs again as the world's last frame melts away over it
+    world.realm?.pause?.(false);
     // the closing line is for the stage: the panel steps aside so it is seen
     panel?.close();
     // the last frame melts away over the Hushfold's own realm
     document.body.classList.add('hf-world-leaving');
-    later(() => { endWorldMode(); document.body.classList.remove('hf-world-leaving'); say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]); app.applyUpdateIfSafe?.(); }, 1250);
+    later(() => {
+      endWorldMode();
+      document.body.classList.remove('hf-world-leaving');
+      // after a crisis no goodbye: the one calm line, now that the world has gone (or when the sheet
+      // over it closes); after care, no cheery goodbye: the attentive face and a quiet line
+      if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
+      if (S.crisis) { speakCrisis(); } else if (gentle()) say(SHARED_LINES.careQuiet); else say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
+      app.applyUpdateIfSafe?.();
+    }, 1250);
   }
   function onFlowError(d) {
+    // a world's code that no longer loads is usually an older deploy's: move to the newer one when it is safe
+    if (d?.kind === 'load') app.staleCode?.();
     if (S.left || worldMode) return;
-    if (d?.kind === 'none' || d?.kind === 'start' || d?.kind === 'load') say(SHARED_LINES.stub[0]);
+    // (after something heavy, no "squish" joke: the quiet line)
+    if (d?.kind === 'none' || d?.kind === 'start' || d?.kind === 'load') say(gentle() ? SHARED_LINES.careQuiet : SHARED_LINES.stub[0]);
   }
   /**
-   * A discovery offered for the Memory Garden (W5). W5's offerSave() owns the
-   * offer when it is in the build; otherwise the shell asks and saves through
-   * garden.js. Offered only when the garden is in this build. Saving is always
-   * an explicit tap, and the reward never needs more play.
+   * A discovery offered for the Memory Garden (W5): garden-install owns the whole moment (offer →
+   * save only on the "Keep this" tap → install, or "already in your garden"). The reward never
+   * needs more play. Never after something heavy (no garden offers while support is showing, owner
+   * P4); a safety hold or leaving aborts it (signal), and the Mallow's face and what the world
+   * keeps clear are read live, so the offer stays off them as things move.
    */
   async function onOffer({ skillId, worldId } = {}) {
-    let install = null, garden = null, skills = null;
-    try { install = await import('../../hushfold/garden-install.js'); } catch { /* not in this build yet */ }
-    if (S.left) return;
-    const origin = stageMallow.bodyRect();
-    const face = (() => { try { return install?.mallowFaceRect?.(origin, MALLOWS[mallowId]) || null; } catch { return null; } })();
-    const ctx = { app, store, subtitles: flowSubtitles, skillId, worldId, mallow: mallowId, fx: world.fx, origin, face, reducedMotion: prefs.reducedMotion(), lowStim: !!prefs.get('lowStim') };
-    // W5 owns the whole moment: offer → save only on the tap → install (or "already in your garden")
-    if (typeof install?.onOffer === 'function') { try { await install.onOffer(ctx); } catch (e) { console.warn('[garden] onOffer', e); } return; }
-    try { [garden, skills] = await Promise.all([import('../../engine/garden.js'), import('../../hushfold/skills.js').catch(() => null)]); } catch { return; }
-    if (S.left || typeof garden?.saveSkill !== 'function') return;
-    const title = skills?.skillTitle?.(skillId) || skills?.SKILLS?.[skillId]?.title || null;
-    const v = await subtitles.choice(title ? `Keep this? ${title}` : 'Keep this discovery?',
-      [{ label: 'Keep it', value: 'keep', primary: true }, { label: 'Not now', value: 'no' }], { who: M().name, colour: M().colours.glow, timeoutMs: 20000 });
-    if (v !== 'keep' || S.left) return;
-    try { garden.saveSkill(store, { id: skillId, fromWorld: worldId, mallow: mallowId }); } catch (e) { console.warn('[garden]', e); return; }
-    try { if (typeof install?.playInstall === 'function') await install.playInstall(ctx); else app.toast('Saved to your Memory Garden'); } catch { app.toast('Saved to your Memory Garden'); }
+    if (S.left || S.crisis || gentle()) return;
+    let install;
+    try { install = installMod ||= await import('../../hushfold/garden-install.js'); } catch (e) { console.warn('[garden]', e?.message); app.staleCode?.(); return; }
+    let host = null;
+    try { host = (await import('../../hushfold/flow/registry.js')).registry.get(worldId)?.mallow?.id || null; } catch { /* the world's host is decoration */ }
+    if (S.left || S.crisis || gentle() || !ent.has('paid')) return;
+    const origin = () => stageMallow?.bodyRect?.() || null;
+    const face = () => { try { return install.mallowFaceRect(origin(), MALLOWS[mallowId]); } catch { return null; } };
+    offerCtl?.abort();
+    const ctl = offerCtl = new AbortController();
+    try {
+      await install.onOffer({ app, store, skillId, worldId, mallow: MALLOWS[host] ? host : mallowId, origin, face, avoid: offerAvoid,
+        subtitles: installSubtitles, reducedMotion: prefs.reducedMotion(), lowStim: lowStimNow(), signal: ctl.signal });
+    } catch (e) { console.warn('[garden] onOffer', e); } finally {
+      if (offerCtl === ctl) offerCtl = null;
+      installSubtitles.resume();
+      if (!S.left) app.applyUpdateIfSafe?.();
+    }
   }
+  /**
+   * What the offer, its card and its chip must leave uncovered (the face is kept clear through `face`, and
+   * the face the Mallow is gliding to through landingFace()). While the phone sheet holds a world, the
+   * world's subtitle band is not in use (one line sits in the strip above the Mallow, and garden-install
+   * steps out of the lines themselves), so the offer may use that room.
+   */
+  function offerAvoid() {
+    return [...(flowRef?.avoid?.() || []), worldMode && !panelSheet() ? flowRef?.subtitleBand?.() : null, worldThoughtRect(), ...(stage?.thoughts.rects() || []),
+      overlay?.rect?.(), panelRect(), landingFace()].filter(Boolean);
+  }
+  /** The open panel where it comes to rest (the phone sheet's slide-in transform is ignored), or null. */
+  function panelRect() {
+    if (!panel?.isOpen) return null;
+    return panelSheet() ? { left: 0, right: innerWidth, top: panelTop(), bottom: innerHeight } : panel.el.getBoundingClientRect();
+  }
+  /**
+   * The subtitles as the installation sees them: it pauses them while it plays and resumes them
+   * after, but only if it was the one that paused them (the person's own ⏸ stays pressed).
+   */
+  let installPaused = false;
+  const installSubtitles = {
+    pause() { installPaused = !subtitles.paused; subtitles.clear({ keepHeld: true }); subtitles.pause(); },
+    resume() { if (installPaused) { installPaused = false; subtitles.resume(); } },
+  };
 
   // ------------------------------------------------- the Mallow --
   async function showMallow(id, { entrance = true } = {}) {
     if (touchMt) {
-      // the opt-in MallowTouch stage (W2): same calls, the soft body instead of the rig
+      // the MallowTouch stage (W2): same calls, the soft body instead of the rig
       if (touchMt.id !== id) touchMt.setMallow?.(id);
-      await touchMt.loaded;
+      // (a Mallow whose art failed to load keeps the one on screen; the stage carries on)
+      try { await touchMt.loaded; } catch (e) { console.warn('[hushfold] MallowTouch', e?.message || e); }
+      if (!touchMt) return null;
       if (S.left || id !== mallowId) return touchMt.rig;
       if (entrance && !prefs.reducedMotion()) touchMt.react('hop');
       theme(); layout();
@@ -539,20 +677,98 @@ export default function hushfold(app, params = {}) {
     S.category = r.category || null;
     if (r.level === 'crisis') S.crisis = true;
     else S.care = true;
+    keepSafety();
+    root.classList.add('hf-heavy');   // (the panel's "No plan yet · See plans" steps aside)
     clearTimeout(inviteT); timers.delete(inviteT);
     clearNudge();
     supportPill.hidden = false;
     // a pending invitation or a playful choice goes (a held discovery stays)
     if (!overlay) subtitles.clear({ keepHeld: true });
     stageMallow?.setStage?.(CARE_FACE, { quiet: true });
+    safetyHold(r.level);
+    applyCalm();
     layout();
   }
-  /** After a crisis: one calm line, once, when neither the overlay nor a sheet covers the stage. */
+  /**
+   * What a rising level does to what is playing (interim, with today's director: pause, finish,
+   * setAutoFlow). Crisis: the garden offer goes, the earlier Thought Mallows drift off, and a running
+   * world is held (no Auto-flow, paused under its veil) until it ends quietly: on Send, or when the
+   * overlay closes (owner P3). Care or concern: the offer goes (no garden offers while support is
+   * showing, owner P4), the earlier thoughts drift off (P5), and a running world pauses with Resume
+   * allowed (P4). A world still loading is held the moment it arrives (onWorld reads S.holdOnWorld).
+   */
+  function safetyHold(level) {
+    offerCtl?.abort();
+    stage?.thoughts.release(900);
+    const running = worldMode && flowRef && !flowRef.stub;
+    if (level === 'crisis') {
+      S.hold = 'crisis';
+      if (running) { try { flowRef.setAutoFlow?.(false); flowRef.pause?.(); } catch (e) { console.warn(e); } }
+      // nothing invites play or offers to resume after a crisis: no Paused pill, and every line and
+      // choice still showing goes, a parked careBeat choice too (it resolves as no choice)
+      pausedPill.hidden = true;
+      subtitles.clear();
+      // and nothing to pick up later: a world saved on pause (or when the tab hides while the person
+      // is away, calling someone) is forgotten, so a reload never asks to carry on
+      forgetProgress();
+    } else if (running && !S.hold) {
+      // care or distress typed in a running world, sent or not: it waits under its veil with the
+      // Paused pill, and Resume stays theirs (owner P4); careBeat pauses it too when it is sent
+      S.hold = 'care';
+      if (held) held.wantPaused = true;   // (the phone sheet holding it: it stays paused when the sheet closes)
+      try { flowRef.pause?.(); } catch (e) { console.warn(e); }
+    }
+    // a world on its way (startFlow in flight) is held the moment it arrives
+    if (starting && !worldMode) S.holdOnWorld = level === 'crisis' || S.holdOnWorld === 'crisis' ? 'crisis' : level;
+    panel?.update();
+  }
+  /** After a crisis the visit keeps no world to resume: cleared now and after any later hidden-tab save. */
+  let forgetOnHide = null;
+  function forgetProgress() {
+    try { clearProgress(store); } catch (e) { console.warn(e); }
+    if (forgetOnHide || typeof document === 'undefined') return;
+    // the director saves when the tab hides; clear after it, on the next turn
+    forgetOnHide = () => { if (document.hidden && S.hold === 'crisis') setTimeout(() => { try { clearProgress(store); } catch {} }, 0); };
+    document.addEventListener('visibilitychange', forgetOnHide);
+  }
+  /** Low stimulation while the Support pill is up (owner P5): squeezing stays, the sparkles go. */
+  const lowStimNow = () => !!prefs.get('lowStim') || gentle();
+  function applyCalm() {
+    try { touchMt?.setLowStim(lowStimNow()); } catch (e) { console.warn(e); }
+    if (gentle()) world.setLowStim?.(true);
+  }
+  /**
+   * After a crisis: one calm line, once, when neither the overlay nor a sheet covers the stage, and
+   * no world is on it. A world held for the crisis ends first (owner P3): its fade-out clears the
+   * world's lines, so the calm line comes after it has gone (onFinished), whole and in the voice of
+   * the person's own Mallow, never the world's host.
+   */
+  let crisisLine = null;   // the calm line while it is showing
   function speakCrisis() {
-    if (!S.crisis || S.crisisSpoken || S.left || overlay || sheets.length) return;
+    if (!S.crisis || S.crisisSpoken || S.left || overlay || sheets.length || worldMode || S.finishing) return;
     S.crisisSpoken = true;
+    keepSafety();
     stageMallow.setStage(CARE_FACE, { quiet: true });
-    say(SHARED_LINES.support, { interrupt: !subtitles.holding });
+    const p = crisisLine = say(SHARED_LINES.support, { interrupt: !subtitles.holding });
+    p.then(() => { if (crisisLine === p) crisisLine = null; });
+  }
+  /**
+   * A crisis typed in a world: the world ends quietly now (owner P3). A director that did not say
+   * so (no 'finish' event) still leaves the stage, so the calm line is never kept waiting.
+   */
+  function endCrisisWorld() {
+    if (!worldMode || S.finishing) return;
+    try { flowRef?.finish?.(); } catch (e) { console.warn(e); }
+    if (worldMode && !S.finishing) onFinished();
+  }
+  /**
+   * The visit's level outlives the scene for the page session, in memory only (no words, nothing
+   * stored): back from Settings, the plans page, the garden or a ritual, support is still close and
+   * the visit is still a gentle one (no jokes, no invitations, no world after a crisis).
+   */
+  function keepSafety() {
+    if (S.level === 'none') return;
+    app.state.hfSafety = { level: S.level, category: S.category, crisisSpoken: S.crisisSpoken };
   }
 
   // ---------------------------------------------------- telling --
@@ -595,6 +811,8 @@ export default function hushfold(app, params = {}) {
         root.classList.remove('hf-typing');
         if (S.left) return;
         noteSafety(meta.safety);
+        // a crisis typed in a world (sent or not): the world it paused ends quietly now (owner P3)
+        if (S.level === 'crisis' && worldMode) endCrisisWorld();
         // crisis words typed in the last moment before closing: the urgent sheet still opens, once
         if (meta.safety?.level === 'crisis' && !meta.supportShown && reason !== 'submit') openSupportSheet({ urgent: true });
         showTell(true);
@@ -625,7 +843,9 @@ export default function hushfold(app, params = {}) {
     if (S.left) return;
     if (intention) S.intention = intention;
     if (safety?.level === 'crisis') {
-      // no Thought Mallow, no world that transforms the words; support stays one tap away
+      // no Thought Mallow, no world that transforms the words; support stays one tap away.
+      // A world that was playing ends quietly (owner P3); the calm line follows once it has gone
+      if (worldMode) endCrisisWorld();
       stageMallow.setStage(CARE_FACE);
       // more words later in the same visit get a calm answer, never silence (the crisis line is said once)
       if (S.crisisSpoken) say(SHARED_LINES.supportConcern, { interrupt: !subtitles.holding });
@@ -679,6 +899,8 @@ export default function hushfold(app, params = {}) {
    * words in it). Without a plan that one optional tap is the only way to the plans page.
    */
   async function careBeat({ emotion, intention, safety }) {
+    // in a world: it pauses under its veil while support comes first; Resume stays theirs (owner P4)
+    if (worldMode && flowRef && !flowRef.stub) { S.hold = 'care'; try { flowRef.pause?.(); } catch (e) { console.warn(e); } }
     S.care = true;
     supportPill.hidden = false;
     layout();
@@ -702,6 +924,9 @@ export default function hushfold(app, params = {}) {
         app.go('plans', { reason: 'tell' });
         return;
       }
+      // (in a world: today a fresh start of the calm one; H2 melts into it). Their choice: it plays, unheld
+      if (S.hold === 'care') { S.hold = null; pausedPill.hidden = true; }
+      S.holdOnWorld = null;
       startFlow({ emotion: emotion || S.emotion, intention: calm, input: null, safety, worldId: gw.worldId });
     } else if (v === 'stay') say(SHARED_LINES.careQuiet);
   }
@@ -709,29 +934,41 @@ export default function hushfold(app, params = {}) {
   /** Start Hushflow (paid; enforced here as well as by the routes). Feeling ids map to the registry's. */
   async function startFlow({ emotion = null, intention = null, input = null, safety = null, worldId = null, resume = false } = {}) {
     try { requireEntitlement(ent, 'paid'); } catch { app.go('plans', { reason: 'tell' }); return; }
+    // after something heavy a world never carries the earlier words (a gentle world has no Thought Mallow)
+    if (gentle()) wordsCur = null;
+    // after a crisis nothing starts a world in this visit (owner P3)
+    if (S.crisis) return;
     S.flowAsked = true;
-    const [{ createWords }, em] = await Promise.all([import('../../v3/words.js'), import('../../data/emotions.js')]);
-    if (S.left) return;
-    if (input) wordsCur = createWords(input);
-    const fe = flowEmotion(emotion, em.getEmotion(emotion)?.family);
-    if (worldMode && flowRef && !flowRef.stub && !worldId) {
-      // already in a world: the new words join it (no restart), and a changed feeling steers it
-      if (words.full) await handThought(flowRef, fe);
-      if (fe) flowRef.setEmotion?.(fe);
-      if (intention) flowRef.setIntention?.(intention);
-      panel?.update();
-      return;
-    }
-    const flow = await getFlow();
-    if (S.left) return;
-    if (!flow.stub && words.full) await handThought(flow, fe);
-    if (!flow.stub) { document.body.classList.add('hf-world-arriving'); if (!subtitles.holding) subtitles.clear(); }
+    starting++;   // a world is on its way: a level that rises meanwhile holds it as it arrives
     try {
-      // gentle: after a care or distress disclosure (worlds may keep their own lines calm)
-      await flow.start({ emotion: fe, intention, intensity: input?.intensity ?? 0.6, input: input ? { text: input.text, safety: input.safety } : null, worldId, resume, gentle: gentle() });
-    } catch (e) { console.warn('[hushfold] flow.start', e); }
-    if (!worldMode) document.body.classList.remove('hf-world-arriving');   // nothing started: the realm stays
-    panel?.update();
+      const [{ createWords }, em] = await Promise.all([import('../../v3/words.js'), import('../../data/emotions.js')]);
+      if (S.left || S.crisis) return;
+      if (input) wordsCur = createWords(input);
+      const fe = flowEmotion(emotion, em.getEmotion(emotion)?.family);
+      if (worldMode && flowRef && !flowRef.stub && !worldId) {
+        // already in a world: the new words join it (no restart), and a changed feeling steers it
+        if (words.full) await handThought(flowRef, fe);
+        if (fe) flowRef.setEmotion?.(fe);
+        if (intention) flowRef.setIntention?.(intention);
+        panel?.update();
+        return;
+      }
+      const flow = await getFlow();
+      if (S.left || S.crisis) return;
+      // (the director kept the earlier world's thought: a gentle start lets it go)
+      if (!flow.stub && gentle()) { worldThought = null; flow.setThought?.(null); }
+      if (!flow.stub && words.full) await handThought(flow, fe);
+      if (!flow.stub) { document.body.classList.add('hf-world-arriving'); if (!subtitles.holding) subtitles.clear(); }
+      try {
+        // gentle: after a care or distress disclosure (worlds may keep their own lines calm)
+        await flow.start({ emotion: fe, intention, intensity: input?.intensity ?? 0.6, input: input ? { text: input.text, safety: input.safety } : null, worldId, resume, gentle: gentle() });
+      } catch (e) { console.warn('[hushfold] flow.start', e); }
+      if (!worldMode) document.body.classList.remove('hf-world-arriving');   // nothing started: the realm stays
+      panel?.update();
+    } finally {
+      // (a held start that never brought a world: the next world the person starts is not paused on arrival)
+      if (!--starting && !worldMode) S.holdOnWorld = null;
+    }
   }
 
   let worldThought = null;
@@ -788,14 +1025,22 @@ export default function hushfold(app, params = {}) {
       getFlow: (create = false) => (create ? getFlow() : Promise.resolve(flowRef)),
       flowAvailable,
       // in a world, the switcher shows who the person comes back to
-      state: () => ({ mallow: worldMode ? (homeMallow || mallowId) : mallowId, mallowWaiting: worldMode, emotion: S.emotion, emotionName: S.emotionName, intention: S.intention }),
+      state: () => ({ mallow: worldMode ? (homeMallow || mallowId) : mallowId, mallowWaiting: worldMode, emotion: S.emotion, emotionName: S.emotionName, intention: S.intention,
+        // Another Angle: a link for Beyond, and for Flow an invitation to it on the plans page (owner P14); never after something heavy
+        angle: ent.has('paid') && !gentle(), worldTitle: S.worldTitle, locked: S.hold === 'crisis' }),
+      // the words told this visit go with it, on this phone only, sent only after consent and Send (owner P15)
+      onAngle: () => {
+        if (!ent.has('ultra')) { app.go('plans', { reason: 'ultra', focus: 'ultra' }); return; }
+        app.go('angle', S.level === 'none' && words.full ? { text: words.full } : {});
+      },
       onFeeling: (id) => pickFeeling(id),
       onIntention: (id) => pickIntention(id),
       onMallow: (dir) => switchMallow(dir),
       onSupport: () => openSupportSheet(),
       // while the sheet holds a world, Pause records what the person wants for when it closes
       pausedNow: () => (held ? held.wantPaused : null),
-      onPause: () => { if (!held) return false; held.wantPaused = !held.wantPaused; panel?.update(); return true; },
+      // (a world held for a crisis: Pause and Resume do nothing, owner P3)
+      onPause: () => { if (S.hold === 'crisis') { panel?.update(); return true; } if (!held) return false; held.wantPaused = !held.wantPaused; panel?.update(); return true; },
       resumable: () => resumableNow(),
       onResume: () => { panel?.close(); resumeSaved(); },
       onClose: () => { panelBtn.setAttribute('aria-expanded', 'false'); root.classList.remove('hf-panel-open'); popLayer('panel'); holdWorld(false); layout(); later(() => layout(), 480); },
@@ -826,7 +1071,8 @@ export default function hushfold(app, params = {}) {
   let held = null;   // { wantPaused } while the sheet holds a world
   function holdWorld(on) {
     if (on) {
-      if (held || !worldMode || !flowRef || flowRef.stub || !panelSheet()) return;
+      // (a world that is ending is not held: the director still reads 'paused' after finish())
+      if (held || !worldMode || S.finishing || !flowRef || flowRef.stub || !panelSheet()) return;
       const st = flowRef.state || {};
       if (st.phase === 'finished') return;
       held = { wantPaused: !!st.paused };
@@ -838,7 +1084,7 @@ export default function hushfold(app, params = {}) {
     const want = held.wantPaused;
     held = null;
     document.body.classList.remove('hf-world-held');
-    if (!worldMode || !flowRef) return;
+    if (!worldMode || S.finishing || !flowRef) return;
     const st = flowRef.state || {};
     if (st.phase === 'finished') return;
     if (want) { if (st.paused) onPaused(true); else { try { flowRef.pause?.(); } catch (e) { console.warn(e); } } }
@@ -848,7 +1094,8 @@ export default function hushfold(app, params = {}) {
   // ----------------------------------------------- saved progress --
   /** A saved Hushflow to pick up (read straight from the store; no director is made for it). */
   async function resumableNow() {
-    if (!ent.has('paid') || !prefs.get('saveHistory') || worldMode) return null;
+    // (after a crisis in this visit, no world is offered again, owner P3)
+    if (!ent.has('paid') || !prefs.get('saveHistory') || worldMode || S.crisis) return null;
     let p = null;
     try { p = loadProgress(store); } catch { p = null; }
     if (!p?.worldId) return null;
@@ -880,10 +1127,14 @@ export default function hushfold(app, params = {}) {
     const e = id ? em.getEmotion(id) : null;
     S.emotion = e ? id : null;
     S.emotionName = e?.name || null;
-    if (e) stageMallow.setEmotion(e.face, 0.6, { quiet });
+    // after something heavy the feeling is noted and the attentive face stays, whatever is named
+    if (gentle()) stageMallow.setStage(CARE_FACE, { quiet: true });
+    else if (e) stageMallow.setEmotion(e.face, 0.6, { quiet });
     else stageMallow.setStage('neutral', { quiet: true });
     return e;
   }
+  /** A world the panel may steer (not one held for a crisis, nor one ending). */
+  const steerable = () => !!(flowRef && !flowRef.stub && S.hold !== 'crisis' && !S.finishing);
   async function pickFeeling(id) {
     if (id === 'other') {
       const { openEmotionPicker } = await import('../emotion-picker.js');
@@ -892,15 +1143,18 @@ export default function hushfold(app, params = {}) {
       return;
     }
     const e = await setFeeling(id);
+    if (S.left) return;
     panel?.update();
-    if (e) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name, family: e.family }), { interrupt: !subtitles.holding });
-    if (e && flowRef && !flowRef.stub) flowRef.setEmotion?.(flowEmotion(id, e.family));
+    // after something heavy: no acknowledgement line (it would joke, or talk over the support line)
+    if (e && !gentle()) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name, family: e.family }), { interrupt: !subtitles.holding });
+    if (e && steerable()) flowRef.setEmotion?.(flowEmotion(id, e.family));
   }
   async function pickIntention(id) {
     S.intention = id;
     panel?.update();
-    if (id === 'play') say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
-    if (id && flowRef && !flowRef.stub) flowRef.setIntention?.(id);
+    // after something heavy the choice is noted, without the playful "just play" line
+    if (id === 'play' && !gentle()) say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
+    if (id && steerable()) flowRef.setIntention?.(id);
   }
 
   function backClose(token) {
@@ -946,16 +1200,32 @@ export default function hushfold(app, params = {}) {
       nudgeT = later(() => { if (quiet()) say(lines.pick(mallowId, 'nudge')); }, 3200);
     }
   }
+  /**
+   * Fetch, in idle time, the modules the next taps need (the overlay, the panel; with Flow the
+   * director, the first two worlds and the garden), so an open session never finds them gone after
+   * a new deploy. Failing to fetch them is that case: move to the newer deploy when it is safe.
+   */
+  function warmModules() {
+    if (S.left) return;
+    const flow = ent.has('paid') ? [
+      import('../../hushfold/flow/director.js'),
+      import('../../hushfold/flow/registry.js').then((m) => { m.registry.prefetch?.('static-storm'); m.registry.prefetch?.('luminous-ocean'); }),
+      import('../../hushfold/garden-install.js').then((m) => { installMod ||= m; }),
+    ] : [];
+    Promise.all([preloadInput(), import('../../hushfold/side-panel.js'), ...flow]).catch(() => app.staleCode?.());
+  }
   async function resumePendingTell() {
     const p = app.state.pendingTell;
     app.state.pendingTell = null;
-    if (!p || Date.now() - p.at > 30 * 60 * 1000 || !ent.has('paid')) return false;
+    if (!p || Date.now() - p.at > 30 * 60 * 1000) return false;
+    // they asked for something gentle after a care or distress disclosure: support stays up, with or
+    // without a plan (back from the plans page without buying, the visit is still a gentle one)
+    if (p.gentle) { noteSafety(p.gentle); S.careSaid = true; }
+    if (!ent.has('paid')) return false;
     S.invited = true;
     showTell(true);
     if (p.gentle) {
-      // they asked for something gentle after a care or distress disclosure: support stays up, no words in it
-      noteSafety(p.gentle);
-      S.careSaid = true;
+      // ...and the gentle world they chose plays, with no words in it
       later(() => startFlow({ emotion: p.emotion, intention: p.intention || 'calm', input: null, worldId: p.worldId || null }), 700);
       return true;
     }
@@ -973,25 +1243,47 @@ export default function hushfold(app, params = {}) {
     async enter() {
       document.body.classList.add('hf-active');
       world.dim(false);
-      world.showMallow(true);
       theme();
-      stage = createStage({ fx: world.fx, tagRoot: root, reducedMotion: () => prefs.reducedMotion(), lowStim: () => !!prefs.get('lowStim'), onReadThought: readThought,
+      stage = createStage({ fx: world.fx, tagRoot: root, reducedMotion: () => prefs.reducedMotion(), lowStim: () => lowStimNow(), onReadThought: readThought,
         keepOut: () => { const b = stageMallow?.bodyRect?.(); return b?.height ? { left: b.left, right: b.left + b.width, top: b.top, bottom: b.top + b.height } : null; } });
-      // MallowTouch (W2) behind the same stage calls: opt-in while it is checked (?touch=1 on the
-      // development host, or prefs.mallowTouch); the approved rig otherwise
-      const qsTouch = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).get('touch') === '1';
-      if (qsTouch || prefs.get('mallowTouch') === true) {
+      // MallowTouch (W2), the squeezable Mallow, is the stage's Mallow for everyone (owner P9), behind the
+      // same stage calls; the approved rig is the fallback (it failed to load in 5 s, or prefs.mallowTouch
+      // is false; ?touch=0 on the development host). The classic rig goes at once, before the import, so
+      // only one Mallow is ever on screen.
+      const dev = ['localhost', '127.0.0.1'].includes(location.hostname), qs = new URLSearchParams(location.search);
+      if (!(dev && qs.get('touch') === '0') && prefs.get('mallowTouch') !== false) {
+        world.showMallow(false);
+        world.releaseMallow?.();
+        rigReleased = true;
+        let wait = 0;
         try {
           const { MallowTouch } = await import('../../mallows/touch/mallow-touch.js');
           if (S.left) return;
-          touchBox = h('div', { class: 'hf-touch', 'aria-hidden': 'true' });
+          // (no aria-hidden: its root is the focusable role=button that carries the squeeze instructions)
+          touchBox = h('div', { class: 'hf-touch' });
           world.fx.before(touchBox);
-          touchMt = new MallowTouch(touchBox, { id: mallowId, bindPointer: false, reducedMotion: prefs.reducedMotion(), lowStim: !!prefs.get('lowStim'),
+          touchMt = new MallowTouch(touchBox, { id: mallowId, bindPointer: false, quality: (dev && qs.get('tier')) || 'auto',
+            // 'system' follows the OS setting live; the person's own choice wins otherwise
+            reducedMotion: prefs.get('motion') === 'system' ? undefined : prefs.reducedMotion(), lowStim: lowStimNow(),
             audio: prefs.get('sound') ? app.audio : null, haptic: (k) => app.haptic(k) });
-          world.showMallow(false);
-        } catch (e) { console.warn('[hushfold] MallowTouch unavailable; using the rig', e); touchMt = null; touchBox?.remove(); touchBox = null; }
+          // placed before it is ready, it starts exactly where the layout puts it (no entrance glide)
+          stageMallow = createStageMallow(world, { touch: touchMt });
+          layout();
+          await Promise.race([touchMt.loaded, new Promise((_, no) => { wait = setTimeout(() => no(new Error('not ready after 5 s')), 5000); })]);
+        } catch (e) {
+          if (S.left) return;
+          console.warn('[hushfold] MallowTouch unavailable; using the rig', e?.message || e);
+          try { touchMt?.destroy(); } catch { /* already gone */ }
+          touchMt = null; touchBox?.remove(); touchBox = null; stageMallow = null;
+        } finally { clearTimeout(wait); }
+        if (S.left) return;
       }
-      stageMallow = createStageMallow(world, { touch: touchMt });
+      if (!touchMt) world.showMallow(true);
+      stageMallow ||= createStageMallow(world, { touch: null });
+      // something heavy earlier in this page session (Settings and back, the plans page and back…): the
+      // visit is still a gentle one from the first squeeze, support stays close, and the calm line is not said twice
+      const kept = app.state.hfSafety;
+      if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; noteSafety(kept); S.careSaid = true; }
       router = createInputRouter({
         el: world.fx, mallow: stageMallow, thoughts: stage.thoughts,
         onEmpty: (r) => { if (r.type === 'down') stage.ripple(r.x, r.y, M().colours.glow); },
@@ -1000,28 +1292,40 @@ export default function hushfold(app, params = {}) {
       stageMallow.on('touch', onMallowTouch);
       layout();
       // the Mallow first (squeezable within the first second), then its realm
-      const rigP = showMallow(mallowId);
+      // (after something heavy earlier in the visit: no hop, and the attentive face)
+      const rigP = showMallow(mallowId, { entrance: !gentle() });
       rigP.then(() => { if (!S.left) requestAnimationFrame(() => world.setRealm(M().realm, { crossfadeMs: 900 })); });
       await rigP;
       if (S.left) return;
-      stageMallow.setStage('neutral', { quiet: true });
+      stageMallow.setStage(gentle() ? CARE_FACE : 'neutral', { quiet: true });
       addEventListener('resize', onResize);
       visualViewport?.addEventListener('resize', onResize);
       document.addEventListener('keydown', onKey);
       offPrefs = prefs.onChange((k, v) => {
+        if (k === 'lowStim') applyCalm();
         if (!touchMt) return;
-        if (k === 'lowStim') touchMt.setLowStim(!!v);
+        // (the value now, never undefined: MallowTouch.setReducedMotion reads undefined as "not reduced")
         if (k === 'motion') touchMt.setReducedMotion(prefs.reducedMotion());
         if (k === 'sound') touchMt.setAudio(v ? app.audio : null);
       });
       // QA hooks on the development host only (Playwright sweeps, the other workstreams' labs)
-      if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+      if (dev) {
         window.__hushfold = { subtitles, mallow: stageMallow, stage, router, spawnThought, openTell, startFlow, get flow() { return flowRef; }, get panel() { return panel; }, get worldThought() { return worldThought; },
-          get overlay() { return overlay; }, get layers() { return { ...layer }; }, touch: touchMt, safeForUpdate: () => view.safeForUpdate(), layout, resumableNow, onOffer, S };
+          get overlay() { return overlay; }, get layers() { return { ...layer }; }, get touch() { return touchMt; }, safeForUpdate: () => view.safeForUpdate(), layout, resumableNow, onOffer, S };
       }
+      // the code the next steps need, fetched while the stage is quiet (a newer deploy can't strand it)
+      idle(() => warmModules());
+      // back from Another Angle: support stays close after something heavy there (said once, by Zuzu)
+      if (params.safety?.level) { if (params.safety.level === 'crisis') S.crisisSpoken = true; noteSafety(params.safety); S.careSaid = true; }
+      // (a crisis earlier in the visit whose calm line was never said: it is said now, once nothing covers the stage)
+      speakCrisis();
       if (await resumePendingTell()) return;
       if (params.flow?.worldId && ent.has('paid')) {
         S.invited = true; showTell(true);
+        // the feeling and intention chosen in Another Angle carry on (its words as a Thought Mallow: owner P15)
+        if (params.flow.emotion) await setFeeling(params.flow.emotion, { quiet: true });
+        if (S.left) return;
+        if (params.flow.intention) S.intention = params.flow.intention;
         startFlow({ worldId: params.flow.worldId, emotion: S.emotion, intention: S.intention });
         return;
       }
@@ -1029,6 +1333,8 @@ export default function hushfold(app, params = {}) {
     },
     leave() {
       S.left = true;
+      offerCtl?.abort();
+      if (forgetOnHide) { document.removeEventListener('visibilitychange', forgetOnHide); forgetOnHide = null; }
       if (window.__hushfold?.subtitles === subtitles) delete window.__hushfold;
       for (const t of timers) clearTimeout(t);
       timers.clear();
@@ -1047,11 +1353,22 @@ export default function hushfold(app, params = {}) {
       router?.destroy();
       stage?.destroy();
       stageMallow?.destroy();
-      if (touchMt) { try { touchMt.destroy(); } catch (e) { console.warn(e); } touchMt = null; touchBox?.remove(); touchBox = null; }
+      if (touchMt) {
+        try { touchMt.destroy(); } catch (e) { console.warn(e); }
+        touchMt = null; touchBox?.remove(); touchBox = null;
+      }
       if (S.photos) import('../../v3/photos.js').then((m) => m.photoSession.release()).catch(() => {});
       // hand the persistent stage back exactly as the classic scenes expect it
       world.setLayerSize(null);
       world.showMallow(true);
+      world.realm?.pause?.(false);
+      if (gentle()) world.setLowStim?.(!!prefs.get('lowStim'));
+      // ...with a rig on it again: the person's own Mallow (not a world's host), without a hop. The
+      // scene that follows (express, plans, the classic home, settings…) calls the shared stage at once
+      // and may never call setMallow itself; one that does (garden, Another Angle, rituals) swaps it.
+      // (world.setMallow sets the rig synchronously; its art loads after)
+      const own = MALLOWS[homeMallow] ? homeMallow : mallowId;
+      if (rigReleased && !world.rig) world.setMallow(own, { entrance: false, interactive: true }).catch((e) => console.warn('[hushfold] rig', e?.message || e));
       world.fx.replaceChildren();
       world.fx.classList.remove('live');
       world.dim(false);
@@ -1068,6 +1385,8 @@ export default function hushfold(app, params = {}) {
     },
     safeForUpdate() {
       if (overlay?.dirty) return false;
+      // a garden offer waiting for its answer, or the installation playing
+      if (document.querySelector('.hm-offer.is-in') || document.body.classList.contains('hm-installing')) return false;
       if (subtitles.holding) return false;
       if (sheets.length || S.pendingResume) return false;
       // someone who went to call a helpline comes back to the same screen, Support pill and all
