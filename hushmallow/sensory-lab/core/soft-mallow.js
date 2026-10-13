@@ -83,6 +83,7 @@ export class SoftMallow extends MallowRig {
     this.soft.settleNow();
     this._pos = new Float32Array(this.soft.n * 2);
     this._shade = new Float32Array(this.soft.n);
+    this._cnt = null;   // per-vertex triangle counts, sized to the new mesh on first use
     this._uvQ = null;
   }
 

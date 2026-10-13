@@ -58,9 +58,14 @@ const rootEl = document.documentElement;
 let hostTheme = rootEl.getAttribute('data-theme');
 // An explicit Dark/Light wins over the host, but only up to 3 host overrides per
 // choice: a host that keeps re-applying its own theme is never fought for long.
+// (the allowance refills after 5 quiet seconds, so an occasional host change never wins for good)
 let themeBudget = 3;
+let lastHostWrite = 0;
 const themeObserver = new MutationObserver(() => {
   hostTheme = rootEl.getAttribute('data-theme');   // only host writes reach here (ours are discarded below)
+  const now = performance.now();
+  if (now - lastHostWrite > 5000) themeBudget = 3;
+  lastHostWrite = now;
   const t = prefs.get('theme');
   if ((t === 'dark' || t === 'light') && hostTheme !== t && themeBudget > 0) { themeBudget--; applyTheme(); }
 });

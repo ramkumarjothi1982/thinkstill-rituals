@@ -80,14 +80,19 @@ export class SoundEngine {
   _resume() {
     const c = this.ctx;
     if (!c || c.state === 'running' || c.state === 'closed' || document.hidden) return;
-    this.resuming = inGesture();
-    const t0 = performance.now();
-    c.resume().then(() => {
-      this.resuming = false;
-      // voices queued before this gesture (where the browser can't tell us about
-      // gestures) are stale: drop them rather than play them all at once
-      for (const v of [...this.live]) if (v.born < t0 - 50) v.kill?.();
-    }, () => { this.resuming = false; this.stopAll(); });
+    // the cutoff is fixed by the first resume attempt of this suspension; later
+    // attempts while it is pending (pointerup, touchend, click…) don't move it
+    if (!this.pending) {
+      this.pending = true;
+      this.cut = performance.now();
+      this.resuming = inGesture();
+      c.resume().then(() => {
+        this.pending = false; this.resuming = false;
+        // voices queued before this gesture (where the browser can't tell us about
+        // gestures) are stale: drop them rather than play them all at once
+        for (const v of [...this.live]) if (v.born < this.cut - 50) v.kill?.();
+      }, () => { this.pending = false; this.resuming = false; this.stopAll(); });
+    } else if (inGesture()) this.resuming = true;
   }
 
   get ready() {
@@ -115,7 +120,7 @@ export class SoundEngine {
 
   _visibility() {
     if (!this.ctx) return;
-    if (document.hidden) { this.stopAll(); this.ctx.suspend().catch(() => {}); } else this.ctx.resume().catch(() => {});
+    if (document.hidden) { this.stopAll(); this.ctx.suspend().catch(() => {}); } else if (!this.muted) this.ctx.resume().catch(() => {});
   }
 
   _ok(key) {

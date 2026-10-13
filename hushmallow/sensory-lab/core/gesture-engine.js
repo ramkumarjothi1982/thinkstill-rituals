@@ -23,10 +23,9 @@
 // Positions are whatever units the caller uses (CSS px in the lab).
 
 export const GESTURE_DEFAULTS = {
-  TAP_MS: 280,          // a typical quick tap (still presses up to HOLD_MS also count, so slow taps get an answer)
   TAP_SLOP: 12,         // max travel for a tap / hold
   DOUBLE_MS: 320,       // second tap within this → doubletap
-  HOLD_MS: 480,         // rest this long → hold
+  HOLD_MS: 480,         // rest this long → hold (any still press shorter than this is a tap)
   HOLD_BREAK: 26,       // travel that turns a hold into a drag
   DRAG_SLOP: 9,         // travel that starts a drag
   STROKE_PATH: 150,     // min path length before back-and-forth counts as stroking

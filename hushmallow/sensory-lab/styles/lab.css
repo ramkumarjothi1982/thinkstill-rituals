@@ -191,7 +191,8 @@ button, .card, .chip, .icon-btn, .seg button, .pills button { touch-action: mani
 .sheet-scrim.on { opacity: 1; }
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 11; max-width: 560px; margin: 0 auto; background: var(--glass-strong);
   border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 18px var(--gutter) calc(var(--safe-bottom) + 22px);
-  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); transform: translateY(100%); transition: transform var(--t-med) var(--ease-out); max-height: 80vh; overflow-y: auto; }
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); transform: translateY(100%); transition: transform var(--t-med) var(--ease-out); max-height: 80vh; overflow-y: auto;
+  scroll-padding-bottom: calc(var(--safe-bottom) + 92px); /* tabbing never leaves a control under the sticky Done */ }
 .sheet.on { transform: none; }
 .sheet h3 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2); margin: 0 0 12px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 0; border-top: 1px solid var(--line); }

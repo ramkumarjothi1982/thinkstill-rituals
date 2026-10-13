@@ -88,18 +88,20 @@ export function openSheet(root, title, content) {
     if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
     if (e.key === 'Tab') {
       // keep keyboard focus inside the sheet while it is open
-      const f = [...sheet.querySelectorAll('button, input, select, [tabindex="0"]')].filter((el) => !el.disabled && el.tabIndex >= 0 && el.offsetParent !== null);
+      const f = tabbable();
       if (!f.length) return;
-      const first = f[0], last = f[f.length - 1];
-      if (e.shiftKey && (document.activeElement === first || !sheet.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && (document.activeElement === last || !sheet.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+      const i = f.indexOf(document.activeElement);
+      if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); }
     }
   };
+  const tabbable = () => [...sheet.querySelectorAll('button, input, select, [tabindex]')]
+    .filter((el) => !el.disabled && el.tabIndex >= 0 && el.offsetParent !== null);
   scrim.addEventListener('click', close);
   sheet.append(h('h3', {}, title), content(close), h('button', { class: 'done', type: 'button', onclick: close }, 'Done'));
   root.append(scrim, sheet);
   document.addEventListener('keydown', esc);
-  requestAnimationFrame(() => { scrim.classList.add('on'); sheet.classList.add('on'); sheet.querySelector('button, input')?.focus({ preventScroll: true }); });
+  requestAnimationFrame(() => { scrim.classList.add('on'); sheet.classList.add('on'); tabbable()[0]?.focus({ preventScroll: true }); });
   return close;
 }
 
