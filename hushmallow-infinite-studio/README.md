@@ -94,18 +94,29 @@ pending approval.
 
 | Time | Beat |
 |---|---|
-| 0–1.8 s | Sleepy Noomi on the moonlit shore (approved face, slow breathing, a drifting "z"); **ME TRYING TO SLEEP AT 2 AM...** |
-| 1.48 s | A tiny twinkle: the memory arrives |
-| 1.80 s | **Eyes snap wide open**: jolt and stretch, "!", camera punch-in with shake |
-| 2.30 / 2.47 s | Comedic double blink, then a suspicious side-glance |
-| 3.05–4.6 s | Three thoughts pop out of Noomi's head (tail dots first). Noomi's eyes chase each one. Worry, then sweat |
-| 5.0–7.0 s | The minis join. The thoughts orbit faster and faster. Eyes dart, the body trembles, the camera rolls, the cove gets agitated, the vignette closes in |
+| 0–1 s | Sleepy Noomi on the moonlit shore (the approved face, slow visible breathing, a drifting "z"); **ME TRYING TO SLEEP AT 2 AM...** is already on the cover frame |
+| 0.97 s | A tiny twinkle above Noomi's head: the memory arrives |
+| 1.09 s | Still asleep, the smile falls and the brows knit |
+| 1.27 s | One eye cracks open |
+| 1.55 s | **Eyes snap wide open**: a gasp, a jolt and stretch, a big "!", camera punch-in with shake |
+| 1.9–2.75 s | Deadpan stare, then a comic "blink… blink" and a suspicious side-glance |
+| 3.05–4.4 s | Three thoughts pop out of Noomi's head (tail dots first, words after the bubble lands). Eyes chase each one, flinches, sweat drop |
+| 4.35 s | The hook caption clears for the spiral |
+| 5.0–7.0 s | Glyph minis join. The thoughts spiral faster and faster. Eye darts, panting, a soft-body shiver, a wide wobbly grimace. Camera roll, a darker and colder grade, the cove's mist rolls in |
 | 7.0 s | Noomi closes its eyes |
-| 7.2–8.7 s | **One huge inhale**: stretches tall and rises, brows lift. The thoughts slow down and drift away |
-| 8.7–9.0 s | Puffed-cheek pause (a beat, not a breath-hold cue) |
-| 9.0–10.2 s | **Long exhale**: squishes wide with jelly wobble. A circle of calm rolls out, the tide ripples, the thoughts dissolve into glowing dust. The cove stills, the aurora unfurls, the light turns warm |
-| 10.3 / 10.48 s | **Squash-and-release**: flat squish, tall stretch, elastic settle |
-| 11.3 s | Eyes open halfway with a tiny peaceful smile |
-| 12.3 s | Small sleepy blink. **Give your feelings somewhere soft to land.** |
-| 13.4 s | Logo pillow and **hushmallow.com** land |
-| 13.95–15 s | Noomi drifts back to sleep. The final pose matches frame 0, so the clip loops softly |
+| 7.15–8.35 s | **One deep inhale**: fills with air, stretches tall, brows lift, the camera leans in, the thoughts slow and drift away |
+| 8.55–10.35 s | **A long sighing exhale**: squishes wide, the camera opens out. A ring of calm rolls out and blows each thought into glowing dust as it reaches it. The tide ripples and stills, the aurora unfurls, the moonlight turns warm |
+| 10.35–10.95 s | **Squeeze-and-release**: a soft squash, then an elastic stretch and jelly settle |
+| 11.45 s | The approved face dissolves into open eyes: soft happy crescents and a tiny smile |
+| 12.05 s | Slow sleepy blink. **Give your feelings somewhere soft to land.** |
+| 12.95 s | The hushmallow logo pillow and **hushmallow.com** land and hold to the end |
+| 13.6–15 s | A drowsy droop, then Noomi falls back asleep. The final framing and pose match frame 0, so the clip loops |
+
+## Review process
+
+The render went through a six-lens review panel (character fidelity,
+animation craft, typography and brand, cinematography, story and comedy,
+technical artifacts). Every finding was checked against cited frames and
+fixed in the source. The soundtrack went through its own build, adversarial
+QA and refine pass. `render/verify.mjs` re-checks the delivery spec on every
+render and refuses a file that is older than its sources.

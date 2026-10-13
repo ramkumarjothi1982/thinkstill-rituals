@@ -248,10 +248,10 @@ function buildPlan(log) {
       }
 
       case 'dissolve': // each thought loses its words → glassy chime (the cloud of sparkles is added below)
-        E(t, 'fx', 'chime', { intensity: 0.35, pitch: [st(3), 1, st(-5)][clamp(c.id, 0, 2)], pan: (bubblePan[c.id] || 0) * 0.8 }, 0.19);
+        E(t, 'fx', 'chime', { intensity: 0.35, pitch: [st(3), 1, st(-5)][clamp(c.id, 0, 2)], pan: (bubblePan[c.id] || 0) * 0.8 }, 0.135);
         break;
       case 'dissolveMini':
-        E(t, 'fx', 'chime', { intensity: 0.25, pitch: { 10: st(7), 11: st(5), 12: st(-2), 13: st(3) }[c.id] || 1, pan: (miniPan[c.id] || 0) * 0.8 }, 0.13);
+        E(t, 'fx', 'chime', { intensity: 0.25, pitch: { 10: st(7), 11: st(5), 12: st(-2), 13: st(3) }[c.id] || 1, pan: (miniPan[c.id] || 0) * 0.8 }, 0.09);
         break;
 
       // The squash-and-release must read on a phone speaker (nothing below ~350 Hz survives), so
@@ -298,7 +298,7 @@ function buildPlan(log) {
     const age = t - d0;
     const level = Math.exp(-age / 0.75);
     const f = sparkleNotes[Math.floor(rnd() * sparkleNotes.length)] * (rnd() < 0.15 ? 0.5 : 1);
-    S(t, 'ping', { f, rise: 1.012 + 0.01 * rnd(), peak: 0.011 * (0.5 + 0.5 * rnd()) * (0.25 + 0.75 * level),
+    S(t, 'ping', { f, rise: 1.012 + 0.01 * rnd(), peak: 0.0095 * (0.5 + 0.5 * rnd()) * (0.25 + 0.75 * level),
       decay: rr(0.14, 0.32), pan: rr(-0.85, 0.85), send: 0.45 });
     t += lerp(0.035, 0.11, age / 1.95) * rr(0.6, 1.4);
   }
