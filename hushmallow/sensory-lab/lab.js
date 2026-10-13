@@ -17,21 +17,24 @@ const root = document.getElementById('lab');
 const prefs = new Prefs();
 const sound = new SoundEngine({ volume: prefs.get('volume'), muted: !prefs.get('sound') });
 
-// Phase 1 is tuned on Boppo. ?mallow=<id> previews another Mallow (untuned).
+// Phase 1 is tuned on Boppo. Other Mallows can be previewed (untuned) from
+// Settings, or locally with ?mallow=<id>.
 const PHASE1_MALLOW = 'boppo';
 const askMallow = (params.get('mallow') || '').toLowerCase();
-const mallowId = MALLOW_IDS.includes(askMallow) ? askMallow : PHASE1_MALLOW;
-const preview = mallowId !== PHASE1_MALLOW;
+const validMallow = (id) => (MALLOW_IDS.includes(id) ? id : null);
+let mallowId = validMallow(askMallow) || validMallow(prefs.get('mallow')) || PHASE1_MALLOW;
 
 const qParam = params.get('quality');
 let quality = ['high', 'medium', 'low'].includes(qParam) ? qParam : initialTier(prefs.get('quality'));
 
 const ctx = {
-  prefs, sound, mallowId, preview,
+  prefs, sound,
+  get mallowId() { return mallowId; },
+  get preview() { return mallowId !== PHASE1_MALLOW; },
   get quality() { return quality; },
   companion: null,
   setCompanion(c) { ctx.companion = c; lab.companion = c; },
-  navigate(path) { location.hash = '#' + path; },
+  navigate(path) { go(path.replace(/^\/+/, '') || 'home'); },
   openSettings: () => settings(),
   monitor: null,
   log: (e) => { lab.events.push({ ...e, t: Math.round(performance.now()) }); if (lab.events.length > 200) lab.events.shift(); },
@@ -48,7 +51,20 @@ if (!qParam && prefs.get('quality') === 'auto') {
   });
 }
 
-function applyTheme() { document.documentElement.dataset.theme = prefs.get('theme'); }
+// Theme: 'system' leaves the root alone, so the device setting (or a theme the
+// hosting page sets on the root) decides; 'dark' / 'light' override it.
+const rootEl = document.documentElement;
+let hostTheme = rootEl.getAttribute('data-theme');
+let ownTheme = null;
+new MutationObserver(() => {
+  const t = rootEl.getAttribute('data-theme');
+  if (t !== ownTheme) hostTheme = t;          // changed by the host, not by us
+}).observe(rootEl, { attributes: true, attributeFilter: ['data-theme'] });
+function applyTheme() {
+  const t = prefs.get('theme');
+  ownTheme = t === 'dark' || t === 'light' ? t : hostTheme;
+  if (ownTheme) rootEl.setAttribute('data-theme', ownTheme); else rootEl.removeAttribute('data-theme');
+}
 applyTheme();
 prefs.onChange((k, v) => {
   if (k === 'sound' || k === '*') sound.setMuted(!prefs.get('sound'));
@@ -63,6 +79,7 @@ prefs.onChange((k, v) => {
 // ------------------------------------------------------------------ home --
 function home() {
   const m = MALLOWS[mallowId];
+  const preview = ctx.preview;
   const screen = h('section', { class: 'screen home', 'aria-label': 'Sensory Lab' });
   const inner = h('div', { class: 'home-inner' });
   const hero = h('div', { class: 'hero', role: 'img', 'aria-label': `${m.name}, ready to be touched` });
@@ -108,17 +125,40 @@ function settings() {
       row('Haptics', onOff('haptics', 'Haptics'), 'Android only; iPhone needs the app'),
       row('Motion', segmented([['system', 'System'], ['reduced', 'Reduced'], ['full', 'Full']], prefs.get('motion'), (v) => prefs.set('motion', v), 'Motion')),
       row('Responses', segmented([['gentle', 'Gentle'], ['balanced', 'Balanced'], ['playful', 'Playful']], prefs.get('style'), (v) => prefs.set('style', v), 'Response style')),
-      row('Theme', segmented([['dark', 'Dark'], ['light', 'Light']], prefs.get('theme'), (v) => prefs.set('theme', v), 'Theme')),
+      row('Theme', segmented([['system', 'System'], ['dark', 'Dark'], ['light', 'Light']], prefs.get('theme'), (v) => prefs.set('theme', v), 'Theme')),
+      row('Mallow', mallowPicker(close), 'Boppo is tuned; the others are untuned previews'),
       row('Quality', segmented([['auto', 'Auto'], ['high', 'High'], ['medium', 'Med'], ['low', 'Low']], prefs.get('quality'), (v) => prefs.set('quality', v), 'Quality'), `Running: ${quality}`),
-      row('Lab settings', h('button', { class: 'btn-quiet', type: 'button', onclick: () => { prefs.reset(); location.reload(); } }, 'Reset'), 'Stored only in this browser'));
+      row('Lab settings', h('button', { class: 'btn-quiet', type: 'button', onclick: () => {
+        prefs.reset();
+        mallowId = PHASE1_MALLOW;
+        quality = initialTier('auto');
+        close();
+        route(lab.route);
+      } }, 'Reset'), 'Stored only in this browser'));
   });
 }
 
+function mallowPicker(close) {
+  const sel = h('select', { id: 'lab-mallow', class: 'select', 'aria-label': 'Mallow',
+    onchange: (e) => {
+      mallowId = e.target.value;
+      prefs.set('mallow', mallowId);
+      close();
+      route(lab.route);
+    } },
+  ...MALLOW_IDS.map((id) => h('option', { value: id, selected: id === mallowId }, MALLOWS[id].name + (id === PHASE1_MALLOW ? '' : ' (preview)'))));
+  return sel;
+}
+
 // ---------------------------------------------------------------- router --
+// Routes are plain hash tokens (#touchtalk, #softbody, #home): hosted previews
+// pass only a bare token through to the page. navigate() routes directly and
+// mirrors the token into the hash for deep links and the back button.
 let current = null;
 let token = 0;
-async function route() {
-  const id = location.hash.replace(/^#\/?/, '').split('?')[0];
+let echo = null;
+const fromHash = () => location.hash.replace(/^#\/?/, '').split(/[?&=]/)[0] || 'home';
+async function route(id = fromHash()) {
   const my = ++token;
   current?.unmount();
   current = null;
@@ -130,7 +170,19 @@ async function route() {
   current = mod.mount(root, ctx);
   lab.route = id;
 }
-addEventListener('hashchange', route);
+function go(id) {
+  if (fromHash() !== id) {
+    echo = id;
+    try { location.hash = id; } catch { echo = null; }
+  }
+  route(id);
+}
+addEventListener('hashchange', () => {
+  const id = fromHash();
+  if (echo === id) { echo = null; return; }   // our own navigate() already routed
+  echo = null;
+  route(id);
+});
 
 // test / debugging handle (development lab only)
 const lab = globalThis.__lab = { prefs, sound, ctx, companion: null, route: null, events: [], quality: () => quality };

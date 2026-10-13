@@ -15,14 +15,19 @@ export const DEFAULTS = Object.freeze({
   volume: 0.7,
   haptics: true,
   motion: 'system',        // system | reduced | full
-  theme: 'dark',           // dark | light
+  theme: 'system',         // system (follow the device / host) | dark | light
   quality: 'auto',         // auto | high | medium | low
   style: 'balanced',       // gentle | balanced | playful
   showMesh: false,
 });
 
+// Touching localStorage can itself throw (blocked site data, sandboxed frames).
+function defaultStorage() {
+  try { return globalThis.localStorage ?? null; } catch { return null; }
+}
+
 export class Prefs {
-  constructor(storage = globalThis.localStorage, key = PREFS_KEY) {
+  constructor(storage = defaultStorage(), key = PREFS_KEY) {
     this.storage = storage;
     this.key = key;
     this.listeners = new Set();
