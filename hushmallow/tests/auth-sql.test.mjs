@@ -19,8 +19,8 @@ const tables = [...all.matchAll(/create table if not exists public\.(\w+)\s*\(([
 const policies = [...all.matchAll(/create policy (\w+) on public\.(\w+)\s+for (select|insert|update|delete) to (\w+)([\s\S]*?);/g)].map((m) => ({ name: m[1], table: m[2], cmd: m[3], role: m[4], body: m[5] }));
 const functions = [...all.matchAll(/create or replace function ([\w.]+)\(\)([\s\S]*?)\$(\w*)\$[\s\S]*?\$\3\$;/g)].map((m) => ({ name: m[1], head: m[2] }));
 
-test('migrations run in order 0001 … 0008 and each is one transaction', () => {
-  assert.deepEqual(files, ['0001_foundation.sql', '0002_profiles.sql', '0003_sync_consents.sql', '0004_preferences.sql', '0005_library.sql', '0006_consent_withdrawal.sql', '0007_delete_my_account.sql', '0008_backfill_profiles.sql']);
+test('migrations run in order 0001 … 0009 and each is one transaction', () => {
+  assert.deepEqual(files, ['0001_foundation.sql', '0002_profiles.sql', '0003_sync_consents.sql', '0004_preferences.sql', '0005_library.sql', '0006_consent_withdrawal.sql', '0007_delete_my_account.sql', '0008_backfill_profiles.sql', '0009_row_cap_upserts.sql']);
   files.forEach((f, i) => {
     const s = strip(readFileSync(`${dir}/${f}`, 'utf8'));
     assert.match(s, /^\s*begin;/, `${f} begins a transaction`);

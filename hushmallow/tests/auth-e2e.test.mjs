@@ -96,7 +96,7 @@ test('config.toml: the production templates, each with its subject; links only t
     assert.equal(links.length, 1, `${id}: one link`);
     // always the Site URL's own /auth/callback: a token in an email can only ever reach the production app
     // (never a redirect_to that some allow-listed preview or a loopback address asked for)
-    assert.match(links[0], /^\{\{ \.SiteURL \}\}\/auth\/callback\?token_hash=\{\{ \.TokenHash \}\}&type=(email|recovery|email_change)$/, `${id}: ${links[0]}`);
+    assert.match(links[0], /^\{\{ \.SiteURL \}\}\/auth\/callback\?token_hash=\{\{ \.TokenHash \}\}&amp;type=(email|recovery|email_change)$/, `${id}: ${links[0]}`);
     assert.doesNotMatch(html, /RedirectTo/, `${id}: never {{ .RedirectTo }}`);
   }
   // the spec expects the same subjects and the fake renders the same files
