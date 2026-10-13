@@ -19,10 +19,12 @@ test('panel source: Another Angle link first in the links, Drift on beside Stay,
   // Drift on sits next to Stay longer and calls next()
   assert.match(src, /h\('div', \{ class: 'hf-actions' \}, pauseBtn, finishBtn, stayBtn, driftBtn, favBtn\)/);
   assert.match(src, /kind === 'next'\) \{ if \(flow\?\.next\?\.\(\) !== false\) \{ api\.close\(\); return; \} \}/);
-  assert.match(src, /driftBtn\.disabled = !\(world && \(st\.nextId \|\| st\.complete\)\) \|\| locked;/);
-  // Stay shows the director's staying state (not a toggle: un-staying needs stay(false), B1)
+  // (H2/H3: exactly the director's state.canNext; an older director without it: a next or a complete world)
+  assert.match(src, /const canNext = typeof st\.canNext === 'boolean' \? st\.canNext : !!\(st\.nextId \|\| st\.complete\);/);
+  assert.match(src, /driftBtn\.disabled = !\(world && canNext\) \|\| locked;/);
+  // Stay shows the director's staying state, and is a toggle now the director has stay(false) (B1)
   assert.match(src, /stayBtn\.setAttribute\('aria-pressed', String\(!!st\.staying\)\);/);
-  assert.doesNotMatch(src, /flow\??\.stay\??\.?\(false\)/, 'no un-stay call until the director has one');
+  assert.match(src, /kind === 'stay'\) flow\?\.stay\?\.\(!st\.staying\);/);
   // the title falls back to the scene's world title
   assert.match(src, /const title = st\.title \?\? s\.worldTitle;/);
   // the crisis lock is checked before the flow is touched (side-panel.js used to call flow.resume() directly)

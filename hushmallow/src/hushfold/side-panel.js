@@ -17,8 +17,9 @@
 // Every Hushflow action goes to the `flow` object (the W4 director API, or the
 // shell's stub): setEmotion, setIntention, setAutoFlow, stay, next (Drift on),
 // pause/resume, finish, plus favourite worlds through src/engine/flow-store.js.
-// Stay longer shows aria-pressed from state.staying; it is not a toggle yet
-// (un-staying needs the director's stay(false); next() would melt).
+// Stay longer is a toggle with aria-pressed from state.staying (stay(false) un-stays
+// without melting). Drift on is enabled exactly when state.canNext (next() would melt now).
+// 'Now: …' is the world's title (state.title, else the scene's worldTitle).
 
 import { h } from '../app/ui.js';
 import { PLANS } from '../app/entitlements.js';
@@ -106,7 +107,8 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
     const st = flow.state || {};
     app.haptic('light');
     if (kind === 'pause') { if (onPause?.()) { api.update(); return; } if (isPaused(st)) flow?.resume?.(); else flow?.pause?.(); }
-    else if (kind === 'stay') flow?.stay?.();
+    // Stay longer is a toggle: staying, a second tap lets the world drift on again by itself (no melt now)
+    else if (kind === 'stay') flow?.stay?.(!st.staying);
     // the melt plays on the stage (on phones the sheet holds the world still), so the panel steps aside, as for
     // Finish; the director's next() says false when there is nowhere to drift yet, and then the panel stays
     else if (kind === 'next') { if (flow?.next?.() !== false) { api.close(); return; } }
@@ -154,7 +156,11 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       for (const b of [pauseBtn, stayBtn, finishBtn]) b.disabled = !world && !stub;
       favBtn.disabled = !world && !stub;
       if (locked) { pauseBtn.disabled = true; stayBtn.disabled = true; }
-      driftBtn.disabled = !(world && (st.nextId || st.complete)) || locked;
+      // exactly when the director's next() would melt now (canNext: false after the ocean, owner P1, and while
+      // safety holds the world; on a paused world it resumes and melts); an older director without it: a next or a
+      // complete world
+      const canNext = typeof st.canNext === 'boolean' ? st.canNext : !!(st.nextId || st.complete);
+      driftBtn.disabled = !(world && canNext) || locked;
       stayBtn.setAttribute('aria-pressed', String(!!st.staying));
       angleLink.hidden = !(s.angle ?? ent.has('ultra'));
       const pz = pausedNow() ?? isPaused(st);
