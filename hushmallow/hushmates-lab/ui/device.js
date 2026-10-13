@@ -5,11 +5,12 @@
 import { h, icon } from './dom.js';
 import { Atmosphere } from './atmosphere.js';
 import { springCurve, reducedMotion, CSS_EASE } from './motion.js';
-import { SCREENS } from './screens/index.js';
 
 export class Device {
-  constructor(root, client, { name, onScreen } = {}) {
+  constructor(root, client, { name, onScreen, screens, start = 'home' } = {}) {
     this.root = root;
+    this.screens = screens;
+    this.startScene = start;
     this.client = client;
     this.name = name;
     this.onScreen = onScreen;
@@ -17,6 +18,7 @@ export class Device {
     this.current = null;
     this.prefs = { textSize: 1, safetyNoteSeen: false };
     this.memory = {};
+    this.env = {};                       // set by the host (the lab says where Mallow perspectives come from)
     root.classList.add('hm-device');
     const atmoEl = h('div');
     this.atmo = new Atmosphere(atmoEl);
@@ -31,9 +33,8 @@ export class Device {
 
   get state() { return this.client.state; }
 
-  start() {
-    const me = this.state.me;
-    this.go(me?.profile ? 'home' : 'welcome', {}, { replace: true, transition: 'none' });
+  start(name = this.startScene, params = {}) {
+    this.go(typeof name === 'function' ? name(this.state) : name, params, { replace: true, transition: 'none' });
   }
 
   /**
@@ -43,7 +44,7 @@ export class Device {
   go(name, params = {}, { replace = false, back = false, transition } = {}) {
     if (this.current && !replace && !back) this.history.push({ name: this.current.name, params: this.current.params });
     const prev = this.current;
-    const view = SCREENS[name](this, params);
+    const view = this.screens[name](this, params);
     const el = h('section', { class: `hm-screen hm-screen--${name}`, dataset: { screen: name } }, view.el);
     this.screenHost.append(el);
     this.closeSheet();
@@ -95,7 +96,7 @@ export class Device {
       if (this._sheet) return;            // never rebuild behind an open sheet
       const scroller = cur.el.querySelector('.hm-scroll');
       const top = scroller?.scrollTop || 0;
-      const fresh = SCREENS[cur.name](this, { ...cur.params, refresh: true });
+      const fresh = this.screens[cur.name](this, { ...cur.params, refresh: true });
       cur.view.destroy?.();
       cur.el.replaceChildren(fresh.el);
       cur.view = fresh;

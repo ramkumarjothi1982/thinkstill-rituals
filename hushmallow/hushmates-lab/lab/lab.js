@@ -1,15 +1,18 @@
-// Hushmates Lab: two simulated people, two devices, one local demonstration
-// service. Everything here is lab scaffolding (labelled as such on screen):
-// the guide reads the service directly to tick off the demo steps, which a
-// real client could never do.
+// Hushmates Lab · the Feeling Relay. One author phone, one catcher phone that
+// can be any of six test identities, and a control room (guide, dev clock,
+// Mallow perspective source, safety desk). Everything here is lab scaffolding,
+// labelled as such: the guide reads the service directly to tick off steps,
+// which a real client could never do.
 
-import { HushmatesService } from '../core/service.js';
-import { seedDemo } from '../core/seed.js';
+import { RelayService } from '../core/relay.js';
+import { seedRelay, RELAY_IDENTITIES } from '../core/relay-seed.js';
+import { libraryProvider, demoProvider, anotherAngleProvider, chain } from '../core/perspectives.js';
 import { LocalNetwork } from '../net/local-network.js';
-import { HushmatesClient } from '../client/client.js';
+import { RelayClient } from '../client/relay-client.js';
 import { Device } from '../ui/device.js';
+import { SCREENS, startScene, connectRelay } from '../ui/relay/index.js';
 
-const STORE = 'hushmates-lab:v1';
+const STORE = 'hushmates-relay-lab:v1';
 const $ = (sel, root = document) => root.querySelector(sel);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const store = {
@@ -18,73 +21,118 @@ const store = {
   clear() { try { localStorage.removeItem(STORE); } catch { /* ignore */ } },
 };
 
-const PEOPLE = [
-  { key: 'moon', device: 'Device A', name: 'MoonMallow' },
-  { key: 'cloud', device: 'Device B', name: 'CloudMallow' },
-];
+const AUTHOR = 'moon';
+const CATCHERS = ['cloud', 'star', 'fern', 'dream', 'pebble', 'ember'];
+const NAME = Object.fromEntries(RELAY_IDENTITIES.map((p) => [p.key, p.pseudonym]));
 
-const LINES = {
-  moon: 'I’ve had a difficult day at work.',
-  cloud: 'That sounds tough. Would you like to talk about what happened?',
+// The demonstration's words. A person operating the lab types (or inserts)
+// each perspective by hand: nothing here is generated.
+const FEELINGS = {
+  relay: { text: 'My friend hasn’t replied. I think they’re avoiding me.', label: 'worry' },
+  fallback: { text: 'I keep replaying something awkward I said in a meeting.', label: 'worry' },
+};
+const SUGGESTED = {
+  cloud: 'Maybe they’ve had a really full week and meant to reply when they had more energy.',
+  star: 'Another possibility could be that they read it on the go and forgot it was still unanswered.',
+  fern: 'Could there be another explanation, like them worrying about saying the wrong thing?',
+  dream: 'Maybe the silence says more about their week than about how they feel about you.',
+  pebble: 'Another possibility: they might be going through something of their own right now, and it isn’t about you at all.',
 };
 
 // ------------------------------------------------------------- boot --
-const saved = new URLSearchParams(location.search).has('fresh') ? null : store.get();
+const params = new URLSearchParams(location.search);
+const saved = params.has('fresh') ? null : store.get();
+const clock = { offset: saved?.offset || 0 };
+const config = { source: saved?.config?.source || 'demo', angleUrl: saved?.config?.angleUrl || 'http://127.0.0.1:8790' };
+const flags = saved?.flags || {};
+const now = () => Date.now() + clock.offset;
+
+function makeProvider() {
+  if (config.source === 'library') return libraryProvider();
+  if (config.source === 'angle') {
+    const base = config.angleUrl.replace(/\/$/, '');
+    const session = async () => (await (await fetch(`${base}/v1/session`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ device_id: 'hushmates-relay-lab-0001' }) })).json()).token;
+    return chain(anotherAngleProvider({ baseUrl: base, session, timeoutMs: 20000 }), libraryProvider());
+  }
+  return demoProvider();
+}
+
+// what the phones say about Mallow perspectives in this lab (the product copy says "AI service")
+const MALLOW_NOTE = {
+  demo: 'In this lab no AI key is configured: you’ll get a canned demo line, labelled as one.',
+  library: 'In this lab it comes from the Reframe library (rule-based, not AI), labelled as such.',
+  angle: 'In this lab it comes from a local Another Angle server, labelled AI-generated only if that server runs a real model.',
+};
+
 let service;
 let tokens;
-let flags;
 if (saved?.state && saved.tokens) {
-  service = new HushmatesService({ state: saved.state });
+  service = new RelayService({ state: saved.state, now, provider: makeProvider() });
   tokens = saved.tokens;
-  flags = saved.flags || {};
 } else {
-  service = seedDemo(new HushmatesService());
-  tokens = { moon: service.signInTestAccount('moon'), cloud: service.signInTestAccount('cloud') };
-  flags = {};
+  service = seedRelay(new RelayService({ now, provider: makeProvider() }));
+  tokens = Object.fromEntries(RELAY_IDENTITIES.map((p) => [p.key, service.signInTestAccount(p.key)]));
+  service.s.profiles[accId(AUTHOR)].onboarded = false;         // the author meets Hushmates from the start
 }
+function accId(key) { return Object.values(service.s.accounts).find((a) => a.key === key)?.id; }
+
 let saveTimer = 0;
-const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set({ state: service.toJSON(), tokens, flags }), 200); };
+const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set({ state: service.toJSON(), tokens, offset: clock.offset, config, flags }), 200); };
 service.onPersist = persist;
 persist();
 
 const net = new LocalNetwork(service);
 const devices = {};
-const ids = () => Object.fromEntries(Object.entries(service.s.accounts).map(([id, a]) => [a.key, id]));
+const lab = $('.lab');
 
-for (const person of PEOPLE) {
-  const link = net.link(person.key);
-  const client = new HushmatesClient(link, tokens[person.key]);
-  const root = $(`#device-${person.key}`);
+function mount(key, host) {
+  const root = document.createElement('div');
+  root.className = 'lab-device';
+  root.dataset.who = key;
+  host.append(root);
+  const link = net.link(key);
+  const client = new RelayClient(link, tokens[key]);
   const device = new Device(root, client, {
-    name: person.key,
-    onScreen: (screen, data) => {
-      if (screen === 'find') flags[`${person.key}Find`] = true;
-      if (screen === 'find:results' && data.names.includes('CloudMallow') && person.key === 'moon') flags.moonSawCloud = true;
-      if (screen === 'hushspace') flags[`${person.key}InHs`] = true;
-      persist();
-      renderGuide();
-    },
+    name: key, screens: SCREENS, start: startScene,
+    onScreen: (screen, data) => { onSignal(key, screen, data); },
   });
-  devices[person.key] = { ...person, link, client, device, root };
-  client.on(() => { renderBadges(); renderGuide(); });
-  const netBtn = $(`[data-net="${person.key}"]`);
-  netBtn.addEventListener('click', () => {
-    link.setOnline(!link.online);
-    netBtn.setAttribute('aria-pressed', String(!link.online));
-    netBtn.querySelector('span').textContent = link.online ? 'Online' : 'Offline';
-  });
+  connectRelay(device);
+  device.env.mallowNote = MALLOW_NOTE[config.source];
+  const d = { key, link, client, device, root, started: false };
+  devices[key] = d;
+  client.on(() => { renderBadges(); scheduleGuide(); });
+  return d;
+}
+async function start(d) {
+  if (d.started) return;
+  d.started = true;
+  await d.client.start().catch(() => {});
+  d.device.start(startScene);
 }
 
+// --------------------------------------------------- the two phones --
+mount(AUTHOR, $('#device-author'));
+const select = $('#catcher-select');
+for (const k of CATCHERS) select.append(new Option(NAME[k], k));
+let catcher = CATCHERS.includes(flags.catcher) ? flags.catcher : 'cloud';
+select.value = catcher;
+async function showCatcher(key) {
+  catcher = key;
+  flags.catcher = key;
+  select.value = key;
+  if (!devices[key]) mount(key, $('#device-catcher'));
+  for (const k of CATCHERS) if (devices[k]) devices[k].root.hidden = k !== key;
+  await start(devices[key]);
+  syncNet();
+  persist();
+}
+select.addEventListener('change', () => showCatcher(select.value));
 
-// ------------------------------------------------------- view switch --
-const lab = $('.lab');
-function setView(key) {
-  lab.dataset.view = key;
-  document.querySelectorAll('[data-view-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.viewBtn === key)));
+function setView(view) {
+  lab.dataset.view = view;
+  document.querySelectorAll('[data-view-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.viewBtn === view)));
 }
 document.querySelectorAll('[data-view-btn]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.viewBtn)));
-setView('moon');
-// "One phone": the real, single-phone experience; "Two phones": both people side by side
 const layoutBtn = $('#layout-toggle');
 function setLayout(single) {
   lab.dataset.layout = single ? 'single' : 'pair';
@@ -93,101 +141,239 @@ function setLayout(single) {
   layoutBtn.title = single ? 'Show both phones side by side' : 'Show one phone at a time';
 }
 layoutBtn.addEventListener('click', () => setLayout(lab.dataset.layout !== 'single'));
-setLayout(new URLSearchParams(location.search).get('layout') === 'single');
+setLayout(params.get('layout') === 'single');
+
+function phoneOf(which) { return which === 'author' ? devices[AUTHOR] : devices[catcher]; }
+function syncNet() {
+  for (const which of ['author', 'catcher']) {
+    const d = phoneOf(which);
+    const b = $(`[data-net="${which}"]`);
+    if (!d || !b) continue;
+    b.setAttribute('aria-pressed', String(!d.link.online));
+    b.querySelector('span').textContent = d.link.online ? 'Online' : 'Offline';
+  }
+}
+document.querySelectorAll('[data-net]').forEach((b) => b.addEventListener('click', () => {
+  const d = phoneOf(b.dataset.net);
+  d.link.setOnline(!d.link.online);
+  syncNet();
+}));
 
 function renderBadges() {
-  for (const d of Object.values(devices)) {
-    const n = d.client.state.hushmates.filter((x) => x.open && !x.muted).reduce((a, x) => a + x.unread, 0)
-      + d.client.state.invitations.filter((i) => i.direction === 'received' && i.status === 'pending').length;
-    document.querySelectorAll(`[data-badge="${d.key}"]`).forEach((b) => { b.textContent = n ? String(n) : ''; b.hidden = !n; });
-  }
+  const n = devices[AUTHOR]?.client.state.me?.homeUnseen || 0;
+  document.querySelectorAll('[data-badge="author"]').forEach((b) => { b.textContent = n ? String(n) : ''; b.hidden = !n; });
 }
 
-// ------------------------------------------------------------- guide --
-const conv = () => Object.values(service.s.conversations).find((c) => {
-  const k = ids();
-  return c.members.includes(k.moon) && c.members.includes(k.cloud);
-});
-const same = (a, b) => a.replace(/[’']/g, "'").trim() === b.replace(/[’']/g, "'").trim();
-const sentBy = (key, line) => {
-  const c = conv(); if (!c) return false;
-  return (service.s.messages[c.id] || []).some((m) => m.from === ids()[key] && same(m.body, line));
-};
-const inviteFromMoon = () => Object.values(service.s.invitations).filter((i) => i.from === ids().moon && i.to === ids().cloud);
-
-const STEPS = [
-  { who: 'moon', title: 'MoonMallow opens Hushmates and selects “Find a Hushmate”', hint: 'Create the identity (Device A), then tap Find a Hushmate.', done: () => flags.moonFind },
-  { who: 'moon', title: 'MoonMallow discovers CloudMallow’s opt-in card', hint: 'CloudMallow opted into discovery; DreamMallow didn’t and never appears.', done: () => flags.moonSawCloud },
-  { who: 'moon', title: 'MoonMallow sends a private companionship request', hint: 'Invite → Send private invitation.', done: () => inviteFromMoon().some((i) => ['pending', 'accepted'].includes(i.status)) },
-  { who: 'cloud', title: 'CloudMallow accepts', hint: 'Device B: Invitations → Accept.', done: () => inviteFromMoon().some((i) => i.status === 'accepted') },
-  { who: 'both', title: 'Both enter their dedicated Hushspace', hint: 'Open our Hushspace (B); My Hushmates → CloudMallow (A).', done: () => flags.moonInHs && flags.cloudInHs },
-  { who: 'moon', title: `MoonMallow: “${LINES.moon}”`, fill: 'moon', done: () => sentBy('moon', LINES.moon) },
-  { who: 'cloud', title: `CloudMallow: “${LINES.cloud}”`, fill: 'cloud', done: () => sentBy('cloud', LINES.cloud) },
-  { who: 'moon', title: 'MoonMallow selects “Another Perspective”, and CloudMallow sees it', hint: 'Tap “You · Share a preference” at the top of the Hushspace.',
-    done: () => conv()?.intent[ids().moon] === 'perspective' && devices.cloud.client.state.hushmates.some((x) => x.intent.theirs === 'perspective') },
-  { who: 'moon', title: 'MoonMallow puts the Hushspace on quiet mode', hint: '⋯ → Quiet mode for this Hushspace.', done: () => !!conv()?.quiet[ids().moon] },
-  { who: 'moon', title: 'MoonMallow blocks CloudMallow; new messages are refused', hint: '⋯ → Block. Then try sending as CloudMallow, bypassing the interface.',
-    done: () => service.s.blocks.some((b) => b.by === ids().moon && b.who === ids().cloud) && flags.refusedAfterBlock },
-];
-
-const guideList = $('#guide-steps');
-const bypassOut = $('#bypass-result');
-function renderGuide() {
-  let next = -1;
-  const items = STEPS.map((s, i) => {
-    const ok = !!s.done();
-    if (!ok && next < 0) next = i;
-    const li = document.createElement('li');
-    li.className = `guide-step ${ok ? 'is-done' : ''} ${next === i ? 'is-next' : ''}`;
-    li.innerHTML = `<span class="guide-step__n" aria-hidden="true">${ok ? '✓' : i + 1}</span><div><p class="guide-step__who"></p><p class="guide-step__title"></p><p class="guide-step__hint"></p></div>`;
-    li.querySelector('.guide-step__who').textContent = s.who === 'both' ? 'Both devices' : s.who === 'moon' ? 'Device A · MoonMallow' : 'Device B · CloudMallow';
-    li.querySelector('.guide-step__title').textContent = s.title;
-    li.querySelector('.guide-step__hint').textContent = s.hint || '';
-    if (ok) li.setAttribute('aria-label', `Done: ${s.title}`);
-    if (s.fill && !ok) {
-      const b = document.createElement('button');
-      b.className = 'guide-btn'; b.type = 'button'; b.textContent = 'Type it for me';
-      b.addEventListener('click', () => fillComposer(s.fill));
-      li.querySelector('div').append(b);
-    }
-    return li;
-  });
-  guideList.replaceChildren(...items);
-  const done = STEPS.filter((s) => s.done()).length;
-  $('#guide-progress').textContent = `${done} of ${STEPS.length}`;
-  $('#guide-bar').style.setProperty('--p', `${(done / STEPS.length) * 100}%`);
-  $('#bypass').disabled = !conv();
+// ---------------------------------------------------------- dev clock --
+const clockEl = $('#clock');
+const fmtClock = new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+function renderClock() {
+  const ahead = clock.offset;
+  const label = ahead < 60e3 ? 'real time' : ahead < 3600e3 ? `+${Math.round(ahead / 60e3)} min` : `+${(ahead / 3600e3).toFixed(ahead % 3600e3 ? 1 : 0)} h`;
+  clockEl.textContent = `Service time: ${fmtClock.format(new Date(now()))} · ${label}`;
 }
-
-function fillComposer(key) {
-  const d = devices[key];
-  setView(key);
-  const ta = d.root.querySelector('[data-test="composer"]');
-  if (!ta) { d.device.toast('Open the Hushspace first.'); return null; }
-  ta.value = LINES[key];
-  ta.dispatchEvent(new Event('input', { bubbles: true }));
-  ta.focus();
-  return ta;
+async function advance(ms) {
+  clock.offset = ms === 0 ? 0 : clock.offset + ms;
+  service.tick();
+  persist();
+  renderClock();
+  await Promise.all(Object.values(devices).filter((d) => d.started).map((d) => d.client.refreshAll().catch(() => {})));
+  scheduleGuide();
 }
+document.querySelectorAll('[data-advance]').forEach((b) => b.addEventListener('click', () => advance(Number(b.dataset.advance))));
+$('#clock-reset').addEventListener('click', () => advance(0));
+setInterval(() => { service.tick(); renderClock(); }, 1000);
+renderClock();
 
-// Prove enforcement is server-side: send as CloudMallow straight through the
-// network, ignoring what the interface allows.
-$('#bypass').addEventListener('click', async () => {
-  const c = conv();
-  if (!c) return;
-  bypassOut.hidden = false;
-  bypassOut.textContent = 'Sending as CloudMallow directly to the service…';
+// ------------------------------------------- Mallow perspective source --
+const sourceStatus = $('#source-status');
+const angleRow = $('#angle-row');
+const angleUrl = $('#angle-url');
+angleUrl.value = config.angleUrl;
+function renderSource(extra = '') {
+  document.querySelectorAll('input[name="source"]').forEach((r) => { r.checked = r.value === config.source; });
+  angleRow.hidden = config.source !== 'angle';
+  const used = service.s.daily[new Date(now()).toISOString().slice(0, 10)]?.global || 0;
+  const what = { demo: 'Canned demo lines (labelled “demo example, not live AI”).', library: 'Reframe library (labelled “not AI”).', angle: 'Another Angle first, then the Reframe library if it can’t answer.' }[config.source];
+  sourceStatus.textContent = `${what} Provider calls this session: ${service.providerCalls}. Mallow perspectives today: ${used}. ${extra}`;
+}
+document.querySelectorAll('input[name="source"]').forEach((r) => r.addEventListener('change', () => {
+  config.source = r.value;
+  service.provider = makeProvider();
+  for (const d of Object.values(devices)) d.device.env.mallowNote = MALLOW_NOTE[config.source];
+  persist();
+  renderSource();
+  if (config.source === 'angle') checkAngle();
+}));
+angleUrl.addEventListener('change', () => { config.angleUrl = angleUrl.value.trim() || 'http://127.0.0.1:8790'; service.provider = makeProvider(); persist(); renderSource(); });
+async function checkAngle() {
   try {
-    await devices.cloud.link.request('sendMessage', tokens.cloud, { conversationId: c.id, body: 'Are you still there?', clientId: `bypass-${Date.now().toString(36)}` });
-    bypassOut.dataset.tone = 'ok';
-    bypassOut.textContent = 'Accepted: the Hushspace is still open, so the service let it through. Block first, then try again.';
-  } catch (e) {
-    bypassOut.dataset.tone = 'refused';
-    bypassOut.textContent = `Refused by the service (${e.code}): ${e.message}`;
-    if (service.s.blocks.some((b) => b.by === ids().moon && b.who === ids().cloud)) { flags.refusedAfterBlock = true; persist(); }
+    const hl = await (await fetch(`${config.angleUrl.replace(/\/$/, '')}/v1/health`)).json();
+    const live = hl.provider === 'anthropic' && hl.configured?.provider_key;
+    renderSource(`Server says: provider “${hl.provider}”, ${live ? 'a real model: answers are labelled AI-generated.' : 'not a real model: answers are labelled demo.'}`);
+  } catch {
+    renderSource('Couldn’t reach it (is the local harness running, and does it allow this origin?). Asking a Mallow will fall back to the Reframe library, labelled.');
   }
-  renderGuide();
-});
+}
+$('#angle-check').addEventListener('click', checkAngle);
+renderSource();
+
+// ---------------------------------------------------------- safety desk --
+const modLink = net.link('mod');
+const modList = $('#mod-list');
+async function renderMod() {
+  let list = [];
+  try { list = (await modLink.request('modListReports', tokens.mod, {})).reports; } catch { /* offline */ }
+  if (!list.length) { modList.replaceChildren(Object.assign(document.createElement('p'), { className: 'lab-small', textContent: 'No reports. Report a feeling (catcher) or a perspective (author) to see the human review queue.' })); return; }
+  modList.replaceChildren(...list.slice(0, 6).map((r) => {
+    const row = document.createElement('div');
+    row.className = `lab-mod-row${r.status === 'open' ? ' is-open' : ''}`;
+    const t = document.createElement('p');
+    t.textContent = `${r.urgent ? 'Priority · ' : ''}${r.kind === 'feeling' ? 'Feeling' : 'Perspective'} · ${r.reason} · ${r.status}`;
+    row.append(t);
+    if (r.status === 'open') {
+      const acts = r.kind === 'feeling' ? [['resume-feeling', 'Resume'], ['remove-feeling', 'Remove']] : [['dismiss', 'Dismiss'], ['remove-perspective', 'Remove']];
+      for (const [action, label] of acts) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'guide-btn'; b.textContent = label;
+        b.addEventListener('click', async () => { try { await modLink.request('modResolve', tokens.mod, { id: r.id, action }); } catch { /* shown by state */ } renderMod(); scheduleGuide(); });
+        row.append(b);
+      }
+    }
+    return row;
+  }));
+}
+
+// ----------------------------------------------------------- the guide --
+const norm = (s) => String(s || '').replace(/[’']/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+function journeyFor(kind) {
+  const id = flags[`${kind}Id`];
+  if (id && service.s.journeys[id]) return service.s.journeys[id];
+  const j = Object.values(service.s.journeys).filter((x) => x.owner === accId(AUTHOR) && norm(x.text) === norm(FEELINGS[kind].text)).sort((a, b) => b.createdAt - a.createdAt)[0];
+  if (j) { flags[`${kind}Id`] = j.id; persist(); }
+  return j || null;
+}
+const humansOn = (j) => (j ? Object.values(service.s.reframes).filter((r) => r.journeyId === j.id) : []);
+const gaveOn = (j, key) => humansOn(j).some((r) => r.author === accId(key));
+
+const SCENARIOS = {
+  relay: {
+    lede: 'MoonMallow releases a feeling; five different people catch it in turn, each offering a possibility; it comes home with five ways of seeing it.',
+    steps: () => {
+      const j = journeyFor('relay');
+      return [
+        { who: 'author', title: `MoonMallow releases “${FEELINGS.relay.text}”`, hint: 'Phone A: (welcome) → Write a feeling → the words → Worry → Review → Release.', fill: 'feeling', done: !!j },
+        ...['cloud', 'star', 'fern', 'dream', 'pebble'].map((k, i) => ({
+          who: k, title: `${NAME[k]} catches it and offers perspective ${i + 1} of 5`,
+          hint: `Phone B: choose ${NAME[k]} → Catch → Look up → Catch this feeling → write → Add my perspective.`, words: SUGGESTED[k], fill: 'reframe',
+          done: gaveOn(j, k),
+        })),
+        { who: 'service', title: 'The fifth perspective sends it home', hint: 'No sixth person can take a slot: holds are capped by the slots left.', done: !!j && j.status !== 'travelling' },
+        { who: 'author', title: 'MoonMallow watches it come home', hint: 'Phone A: Returned → the feeling. The orb returns and unfolds into five perspectives.', done: !!j && j.seenReturn },
+        { who: 'author', title: 'MoonMallow keeps a perspective (and can let one go)', hint: 'Tap “Keep this” on any perspective.', done: !!j && Object.values(j.choices || {}).some((v) => v === true) },
+        { who: 'ember', title: 'EmberMallow looks: the full feeling never reaches a sixth person', hint: 'Phone B: choose EmberMallow → Catch → Look up.', done: !!flags.emberAfterFull },
+      ];
+    },
+  },
+  fallback: {
+    lede: 'Nobody catches this one. MoonMallow allowed a Mallow perspective; after 30 minutes they can ask for one. It is labelled, never counted as a person, and generated at most once.',
+    steps: () => {
+      const j = journeyFor('fallback');
+      const f = j ? service.s.fallbacks[j.id] : null;
+      return [
+        { who: 'author', title: `MoonMallow releases “${FEELINGS.fallback.text}” and allows a Mallow perspective`, hint: 'Phone A: Write a feeling → turn on “If nobody catches my feeling, let a Mallow offer a perspective” → Release.', fill: 'feeling-fallback', done: !!j && j.allowFallback },
+        { who: 'clock', title: 'Nobody catches it: move the clock on 30 minutes', hint: 'Use “+30 min” in the dev clock below.', done: !!j && (!!j.fallbackOfferedAt || !!f) },
+        { who: 'author', title: 'MoonMallow opens the journey and asks the Mallow', hint: 'Phone A: Journeys → the feeling → Ask Loomi. (Shows what processing it needs first.)', done: !!f },
+        { who: 'service', title: 'The Mallow perspective arrives, labelled with its real source', hint: 'Still “0 of 5 perspectives found”: a Mallow never counts as a person.', done: !!f && f.status !== 'pending' },
+        { who: 'clock', title: 'Move the clock on 24 hours: it comes home with what it collected', hint: 'Use “+24 h”.', done: !!j && j.status !== 'travelling' },
+        { who: 'author', title: 'MoonMallow opens what came back', hint: 'Phone A: Returned → the feeling.', done: !!j && j.seenReturn },
+      ];
+    },
+  },
+};
+let scenario = flags.scenario === 'fallback' ? 'fallback' : 'relay';
+const guideList = $('#guide-steps');
+let guideQueued = false;
+function scheduleGuide() { if (guideQueued) return; guideQueued = true; requestAnimationFrame(() => { guideQueued = false; renderGuide(); }); }
+function whoLabel(w) {
+  if (w === 'author') return 'Phone A · MoonMallow';
+  if (w === 'service') return 'The service';
+  if (w === 'clock') return 'Dev clock';
+  return `Phone B · ${NAME[w]}`;
+}
+function renderGuide() {
+  document.querySelectorAll('[data-scenario]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.scenario === scenario)));
+  $('.lab-guide__lede').textContent = SCENARIOS[scenario].lede;
+  const steps = SCENARIOS[scenario].steps();
+  let next = -1;
+  guideList.replaceChildren(...steps.map((s, i) => {
+    if (!s.done && next < 0) next = i;
+    const li = document.createElement('li');
+    li.className = `guide-step${s.done ? ' is-done' : ''}${next === i ? ' is-next' : ''}`;
+    const n = Object.assign(document.createElement('span'), { className: 'guide-step__n', textContent: s.done ? '✓' : String(i + 1) });
+    n.setAttribute('aria-hidden', 'true');
+    const box = document.createElement('div');
+    box.append(Object.assign(document.createElement('p'), { className: 'guide-step__who', textContent: whoLabel(s.who) }),
+      Object.assign(document.createElement('p'), { className: 'guide-step__title', textContent: s.title }),
+      Object.assign(document.createElement('p'), { className: 'guide-step__hint', textContent: s.hint || '' }));
+    if (s.words && !s.done) box.append(Object.assign(document.createElement('p'), { className: 'guide-step__words', textContent: `Suggested words (written for the lab, not generated): “${s.words}”` }));
+    if (s.fill && !s.done && next === i) {
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'guide-btn', textContent: 'Type it for me' });
+      b.addEventListener('click', () => fill(s));
+      box.append(b);
+    }
+    li.append(n, box);
+    if (s.done) li.setAttribute('aria-label', `Done: ${s.title}`);
+    return li;
+  }));
+  const done = steps.filter((s) => s.done).length;
+  $('#guide-progress').textContent = `${done} of ${steps.length}`;
+  $('#guide-bar').style.setProperty('--p', `${(done / steps.length) * 100}%`);
+  renderSource();
+  renderMod();
+}
+document.querySelectorAll('[data-scenario]').forEach((t) => t.addEventListener('click', () => { scenario = t.dataset.scenario; flags.scenario = scenario; persist(); renderGuide(); }));
+
+/** Lab-only help: put the suggested words into the open text box (the operator still presses the button). */
+async function fill(step) {
+  if (step.fill.startsWith('feeling')) {
+    setView('author');
+    const d = devices[AUTHOR];
+    const words = step.fill === 'feeling-fallback' ? FEELINGS.fallback : FEELINGS.relay;
+    if (!d.root.querySelector('[data-test="feeling-text"]')) {
+      if (d.device.current?.name !== 'release') d.device.go('release', { compose: true }, { replace: true });
+      else d.root.querySelector('[data-test="start-feeling"]')?.click();
+      await wait(400);
+    }
+    type(d.root.querySelector('[data-test="feeling-text"]'), words.text);
+    const chip = d.root.querySelector(`[data-test="label-${words.label}"]`);
+    if (chip && chip.getAttribute('aria-pressed') !== 'true') chip.click();
+    if (step.fill === 'feeling-fallback') {
+      const sw = d.root.querySelector('[data-test="allow-fallback"]');
+      if (sw && sw.getAttribute('aria-checked') !== 'true') sw.click();
+    }
+    return;
+  }
+  setView('catcher');
+  if (catcher !== step.who) await showCatcher(step.who);
+  const box = devices[step.who].root.querySelector('[data-test="reframe-text"]');
+  if (!box) { devices[step.who].device.toast('Catch the feeling first, then I can type the suggested words.'); return; }
+  type(box, step.words);
+}
+function type(el, text) {
+  if (!el) return;
+  el.value = text;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.focus({ preventScroll: true });
+}
+
+function onSignal(key, name, data) {
+  if (name === 'catch:result' && key === 'ember') {
+    const j = journeyFor('relay');
+    if (j && humansOn(j).length >= 5 && norm(data?.text) !== norm(FEELINGS.relay.text)) { flags.emberAfterFull = true; persist(); }
+  }
+  scheduleGuide();
+}
 
 $('#reset').addEventListener('click', () => { store.clear(); location.href = location.pathname; });
 $('#guide-toggle').addEventListener('click', () => {
@@ -197,118 +383,174 @@ $('#guide-toggle').addEventListener('click', () => {
 });
 $('#guide-close').addEventListener('click', () => { lab.classList.remove('guide-open'); $('#guide-toggle').setAttribute('aria-expanded', 'false'); });
 
-// --------------------------------------------------------- autoplay --
-// Drives the real interface (real clicks, real service calls), slowly
-// enough to watch. Used by the "Play the demo" button and the screenshot tool.
-const pace = { ms: 700 };
-async function el(key, sel, timeout = 4000) {
+// ------------------------------------------------------------ autoplay --
+// Drives the real interface (real taps, real service calls), slowly enough
+// to watch. The scene contract (data-test hooks) is listed in docs/SCENES.md.
+const pace = { ms: 650 };
+async function find(key, sel, timeout = 6000) {
   const root = devices[key].root;
   const t0 = performance.now();
   for (;;) {
     const found = root.querySelector(sel);
-    if (found && !found.disabled) return found;
-    if (performance.now() - t0 > timeout) throw new Error(`autoplay: ${key} ${sel} not found`);
-    await wait(60);
+    if (found && !found.disabled && found.offsetParent !== null) return found;
+    if (performance.now() - t0 > timeout) throw new Error(`autoplay: ${NAME[key]} could not find ${sel}`);
+    await wait(80);
   }
 }
-async function tap(key, sel) { setView(key); const e = await el(key, sel); e.scrollIntoView({ block: 'center', behavior: 'instant' }); await wait(pace.ms / 2); e.click(); await wait(pace.ms); }
-async function toScreen(key, name) {
-  const d = devices[key].device;
-  if (d.current?.name === name) return;
-  d.history = []; d.go('home', {}, { back: true }); await wait(pace.ms / 2);
+async function tap(key, sel, timeout) {
+  setView(key === AUTHOR ? 'author' : 'catcher');
+  const e = await find(key, sel, timeout);
+  // bring it into view inside the phone only (never scroll the lab page)
+  const scroller = e.closest('.hm-scroll');
+  if (scroller) {
+    const r = e.getBoundingClientRect(); const box = scroller.getBoundingClientRect();
+    if (r.top < box.top || r.bottom > box.bottom) scroller.scrollTop += r.top - box.top - box.height / 2 + r.height / 2;
+  }
+  await wait(pace.ms / 2);
+  e.click();
+  await wait(pace.ms);
 }
-
-// The scene contract (data-test hooks) every scene keeps, so the demo can be
-// played through the real interface: see docs/SCENES.md.
-const RUN = [
-  async () => {
-    const d = devices.moon.device;
-    if (d.current?.name === 'welcome') await tap('moon', '[data-test="create-identity"]');
-    for (let i = 0; i < 8 && d.current?.name === 'identity'; i++) {
-      const save = devices.moon.root.querySelector('[data-test="save-identity"]');
-      if (save && !save.disabled) { await tap('moon', '[data-test="save-identity"]'); await wait(pace.ms * 2); break; }
-      await tap('moon', '[data-test="id-next"]');
+async function go(key, place) {
+  const d = devices[key].device;
+  if (d.current?.name === place) return;
+  const nav = devices[key].root.querySelector(`[data-test="nav-${place}"]`);
+  if (nav && nav.offsetParent !== null) { nav.click(); await wait(pace.ms); return; }
+  d.history = [];
+  d.go(place, {}, { replace: true });
+  await wait(pace.ms);
+}
+async function welcomeThrough(key) {
+  const d = devices[key].device;
+  for (let i = 0; i < 6 && d.current?.name === 'welcome'; i++) {
+    const enter = devices[key].root.querySelector('[data-test="welcome-enter"]');
+    if (enter && enter.offsetParent !== null) {
+      const age = devices[key].root.querySelector('[data-test="welcome-adult"]');
+      if (age && age.getAttribute('aria-checked') !== 'true') { age.click(); await wait(pace.ms / 2); }
+      await tap(key, '[data-test="welcome-enter"]');
+      await wait(pace.ms);
+      break;
     }
-    await toScreen('moon', 'home');
-    await tap('moon', '[data-test="go-find"]');
+    await tap(key, '[data-test="welcome-next"]');
+  }
+}
+async function releaseFeeling(words, allowFallback) {
+  await welcomeThrough(AUTHOR);
+  await go(AUTHOR, 'release');
+  await tap(AUTHOR, '[data-test="start-feeling"]');
+  type(await find(AUTHOR, '[data-test="feeling-text"]'), words.text);
+  await wait(pace.ms);
+  await tap(AUTHOR, `[data-test="label-${words.label}"]`);
+  if (allowFallback) await tap(AUTHOR, '[data-test="allow-fallback"]');
+  await tap(AUTHOR, '[data-test="review-feeling"]');
+  await tap(AUTHOR, '[data-test="release-submit"]');
+  await find(AUTHOR, '[data-test="release-sent"]', 12000);
+  await wait(pace.ms * 2);
+}
+async function giveAs(key) {
+  setView('catcher');
+  await showCatcher(key);
+  await wait(pace.ms);
+  await go(key, 'catch');
+  await tap(key, '[data-test="find-feeling"]');
+  await tap(key, '[data-test="catch-feeling"]', 9000);
+  type(await find(key, '[data-test="reframe-text"]'), SUGGESTED[key]);
+  await wait(pace.ms);
+  await tap(key, '[data-test="reframe-submit"]');
+  await find(key, '[data-test="reframe-after"]', 12000);
+  await wait(pace.ms * 2);
+}
+const PLAY = {
+  relay: async () => {
+    if (!journeyFor('relay')) await releaseFeeling(FEELINGS.relay, false);
+    for (const k of ['cloud', 'star', 'fern', 'dream', 'pebble']) if (!gaveOn(journeyFor('relay'), k)) await giveAs(k);
+    const j = journeyFor('relay');
+    if (j && !j.seenReturn) {
+      await go(AUTHOR, 'returned');
+      await tap(AUTHOR, `[data-test="returned-${j.id}"]`);
+      await find(AUTHOR, '[data-test="homecoming-ready"]', 16000);
+      await wait(pace.ms * 2);
+    }
+    if (j && !Object.values(j.choices).some((v) => v === true)) await tap(AUTHOR, '[data-test="perspective"] [data-test="keep"]');
+    if (!flags.emberAfterFull) {
+      await showCatcher('ember');
+      await go('ember', 'catch');
+      await tap('ember', '[data-test="find-feeling"]');
+      await wait(pace.ms * 2);
+    }
   },
-  async () => {
-    setView('moon');
-    const pick = await el('moon', '[data-test="pick-CloudMallow"]').catch(() => null);
-    if (pick && !devices.moon.root.querySelector('[data-test="card-CloudMallow"]')) await tap('moon', '[data-test="pick-CloudMallow"]');
-    await el('moon', '[data-test="card-CloudMallow"]');
-    await wait(pace.ms);
+  fallback: async () => {
+    if (!journeyFor('fallback')) await releaseFeeling(FEELINGS.fallback, true);
+    const j = journeyFor('fallback');
+    if (!j.fallbackOfferedAt && !service.s.fallbacks[j.id]) { await advance(30 * 60e3); await wait(pace.ms * 2); }
+    if (!service.s.fallbacks[j.id]) {
+      await go(AUTHOR, 'journeys');
+      await tap(AUTHOR, `[data-test="journey-${j.id}"]`);
+      await tap(AUTHOR, '[data-test="ask-mallow"]');
+      await tap(AUTHOR, '[data-test="confirm"]');
+      await find(AUTHOR, '[data-test="mallow-ready"], [data-test="mallow-failed"]', 25000);
+      await wait(pace.ms * 3);
+    }
+    if (j.status === 'travelling') { await advance(24 * 3600e3); await wait(pace.ms * 2); }
+    if (!j.seenReturn) {
+      await go(AUTHOR, 'returned');
+      await tap(AUTHOR, `[data-test="returned-${j.id}"]`);
+      await find(AUTHOR, '[data-test="homecoming-ready"]', 16000);
+    }
   },
-  async () => { await tap('moon', '[data-test="invite-CloudMallow"]'); await tap('moon', '[data-test="send-invite"]'); await wait(pace.ms * 2.5); },
-  async () => {
-    await toScreen('cloud', 'home'); await tap('cloud', '[data-test="go-invitations"]');
-    await tap('cloud', '[data-test="received-MoonMallow"] [data-test="accept"]');
-    await el('cloud', '[data-test="composer"]', 8000);       // the shared moment flows into the Hushspace
-    await wait(pace.ms);
-  },
-  async () => {
-    await toScreen('moon', 'home');
-    await tap('moon', '[data-test="hushmate-CloudMallow"]');
-    await el('moon', '[data-test="composer"]', 8000);
-    await wait(pace.ms);
-  },
-  async () => { await el('moon', '[data-test="composer"]'); fillComposer('moon'); await wait(pace.ms); await tap('moon', '[data-test="send"]'); },
-  async () => { setView('cloud'); await wait(pace.ms); await el('cloud', '[data-test="composer"]'); fillComposer('cloud'); await wait(pace.ms); await tap('cloud', '[data-test="send"]'); },
-  async () => { setView('moon'); await wait(pace.ms); await tap('moon', '[data-test="intent-mine"]'); await tap('moon', '[data-test="intent-perspective"]'); await wait(pace.ms); setView('cloud'); await wait(pace.ms * 1.5); },
-  async () => { await tap('moon', '[data-test="hs-more"]'); await tap('moon', '[data-test="quiet-toggle"]'); await wait(pace.ms); devices.moon.device.closeSheet(); await wait(pace.ms * 1.5); },
-  async () => {
-    await tap('moon', '[data-test="hs-more"]'); await tap('moon', '[data-test="block"]'); await tap('moon', '[data-test="confirm"]');
-    await wait(pace.ms * 1.5); setView('cloud'); await wait(pace.ms); $('#bypass').click(); await wait(pace.ms);
-  },
-];
-async function runStep(n) { await RUN[n - 1](); renderGuide(); }
+};
 let playing = false;
-$('#play').addEventListener('click', async () => {
+async function play(which = scenario) {
   if (playing) return;
   playing = true;
   $('#play').disabled = true;
-  try {
-    for (let i = 0; i < STEPS.length; i++) if (!STEPS[i].done()) await runStep(i + 1);
-  } catch (e) { console.warn(e.message); }
+  try { await PLAY[which](); } catch (e) { console.warn(e.message); }
   playing = false;
   $('#play').disabled = false;
-});
-
-// Fixtures (lab only): put the service into a known state through the
-// service itself, then let both phones catch up. Used by QA and scene work.
-async function fixture(name) {
-  const k = ids();
-  const tm = tokens.moon, tc = tokens.cloud;
-  if (!service.s.profiles[k.moon]) {
-    service.saveProfile(tm, { pseudonym: 'MoonMallow', avatar: 'noomi', interests: ['Work & study', 'Everyday stress'], style: 'gentle', availability: 'evenings' });
-  }
-  let convId = conv()?.id || null;
-  if (['invited', 'connected', 'chatting'].includes(name) && !convId) {
-    let inv = Object.values(service.s.invitations).find((i) => i.from === k.moon && i.to === k.cloud && i.status === 'pending');
-    if (!inv) inv = service.s.invitations[service.sendInvitation(tm, { handle: service.me(tc).profile.handle }).id];
-    if (name !== 'invited') convId = service.respondToInvitation(tc, { id: inv.id, accept: true }).conversationId;
-  }
-  if (name === 'chatting' && convId && !(service.s.messages[convId] || []).length) {
-    service.sendMessage(tm, { conversationId: convId, body: LINES.moon, clientId: 'fixture-moon-1' });
-    service.sendMessage(tc, { conversationId: convId, body: LINES.cloud, clientId: 'fixture-cloud-1' });
-    service.setIntent(tm, { conversationId: convId, intent: 'perspective' });
-  }
-  await Promise.all(Object.values(devices).map((d) => d.client.refreshAll().catch(() => {})));
-  return { conversationId: convId };
+  renderGuide();
 }
-function show(key, screen, params = {}) {
-  setView(key);
+$('#play').addEventListener('click', () => play());
+
+// ------------------------------------------------- fixtures (QA only) --
+// Put the service into a known state through the service itself, then let
+// the phones catch up. Used for screenshots and scene work.
+async function fixture(name) {
+  const T = tokens;
+  service.s.profiles[accId(AUTHOR)].onboarded = true;
+  const rel = (kind, extra = {}) => journeyFor(kind) || service.submitFeeling(T[AUTHOR], { text: FEELINGS[kind].text, label: FEELINGS[kind].label, clientId: `fx-${kind}-0001`, ...extra }).journey && journeyFor(kind);
+  const giveN = (j, n) => {
+    for (const k of ['cloud', 'star', 'fern', 'dream', 'pebble'].slice(0, n)) {
+      if (gaveOn(j, k)) continue;
+      const { offer } = service.findFeeling(T[k]);
+      if (!offer) continue;
+      service.catchFeeling(T[k], { holdId: offer.holdId });
+      service.submitReframe(T[k], { holdId: offer.holdId, text: SUGGESTED[k], clientId: `fx-${k}-${j.id.slice(-6)}` });
+    }
+  };
+  if (name === 'travelling') rel('relay');
+  if (name === 'three') giveN(rel('relay'), 3);
+  if (name === 'home') giveN(rel('relay'), 5);
+  if (name === 'fallback-available' || name === 'fallback-ready') {
+    const j = rel('fallback', { allowFallback: true });
+    if (!j.fallbackOfferedAt) { clock.offset += 31 * 60e3; service.tick(); }
+    if (name === 'fallback-ready') await service.askMallow(T[AUTHOR], { journeyId: j.id }).catch(() => {});
+  }
+  if (name === 'offer') { rel('relay'); }
+  persist();
+  await Promise.all(Object.values(devices).filter((d) => d.started).map((d) => d.client.refreshAll().catch(() => {})));
+  renderClock();
+  scheduleGuide();
+  return { relay: journeyFor('relay')?.id, fallback: journeyFor('fallback')?.id };
+}
+function show(key, screen, p = {}) {
+  setView(key === AUTHOR ? 'author' : 'catcher');
   const d = devices[key].device;
   d.history = [];
-  d.go(screen, params, { transition: 'none' });
+  d.go(screen, p, { transition: 'none' });
 }
 
-// start the devices only once everything above exists
-await Promise.all(Object.values(devices).map((d) => d.client.start().catch(() => {})));
-for (const d of Object.values(devices)) {
-  if (d.client.state.me) d.device.start();
-  else d.device.go('deleted', {}, { replace: true });
-}
+// ---------------------------------------------------------------- go --
+await start(devices[AUTHOR]);
+await showCatcher(catcher);
 renderBadges();
 renderGuide();
-window.__lab = { service, devices, flags, setView, setLayout, runStep, fixture, show, pace, steps: () => STEPS.map((s) => !!s.done()), ready: true };
+window.__lab = { service, devices, flags, tokens, setView, setLayout, showCatcher, play, fixture, show, advance, pace, accId, journeyFor, ready: true };

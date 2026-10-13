@@ -1,15 +1,13 @@
 // DOM helpers for the Hushmates interface.
 // Text from people is only ever inserted as text nodes (never innerHTML).
 
-import { STYLES, AVAILABILITY, STATUSES, INTENTS } from '../core/config.js';
-
 export function h(tag, attrs = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
     if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k === 'class') el.className = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'style' && typeof v === 'object') for (const [p, val] of Object.entries(v)) { if (val == null) continue; if (p.startsWith('--')) el.style.setProperty(p, val); else el.style[p] = val; }
     else if (k === 'dataset') Object.assign(el.dataset, v);
     else if (v === true) el.setAttribute(k, '');
     else el.setAttribute(k, String(v));
@@ -42,6 +40,15 @@ const P = {
   bellOff: 'M3 3l18 18M9 21h6M18 14V10a6 6 0 00-9.7-4.7M6 9.8V14l-2 3h12',
   eyeOff: 'M3 3l18 18M10.6 6.1A9.8 9.8 0 0112 6c5 0 9 6 9 6a17 17 0 01-2.6 3.2M6.6 6.6C4.3 8.1 3 12 3 12s4 6 9 6a9 9 0 004.4-1.1M9.9 9.9a3 3 0 004.2 4.2',
   pause: 'M9 5v14M15 5v14',
+  orb: 'M12 20a8 8 0 100-16 8 8 0 000 16zM9 9.5a3.5 3.5 0 013-1.5',
+  catch: 'M5 11a7 7 0 0014 0M12 4v7M9 8l3 3 3-3',
+  path: 'M5 19c3 0 3-5 7-5s4-5 7-5M5 19h.01M19 9h.01',
+  home: 'M4 11l8-6 8 6M6 9.5V19h12V9.5',
+  share: 'M12 4v11M7.5 8.5 12 4l4.5 4.5M6 13v6h12v-6',
+  sound: 'M5 9v6h3l5 4V5L8 9zM16.5 9a4 4 0 010 6',
+  mute: 'M5 9v6h3l5 4V5L8 9zM17 10l4 4M21 10l-4 4',
+  clock: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2',
+  star: 'M12 4c.6 3.4 1.6 4.6 5 5.4-3.4.8-4.4 2-5 5.4-.6-3.4-1.6-4.6-5-5.4 3.4-.8 4.4-2 5-5.4zM18.5 15c.3 1.6.8 2.2 2.5 2.5-1.7.3-2.2.9-2.5 2.5-.3-1.6-.8-2.2-2.5-2.5 1.7-.3 2.2-.9 2.5-2.5z',
   download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   refresh: 'M20 11a8 8 0 10-2.3 5.7M20 5v6h-6',
@@ -69,18 +76,8 @@ export function icon(name, label) {
   return svg;
 }
 
-export const styleLabel = (id) => STYLES.find((s) => s.id === id)?.label || '';
-export const availabilityLabel = (id) => AVAILABILITY.find((s) => s.id === id)?.label || '';
-export const statusOf = (id) => STATUSES.find((s) => s.id === id) || STATUSES[0];
-export const intentOf = (id) => INTENTS.find((s) => s.id === id) || null;
-
 export function testTag() {
   return h('span', { class: 'kit-testtag', title: 'A simulated account used for testing the prototype' }, 'Test identity');
-}
-
-export function statusPill(status) {
-  const s = statusOf(status);
-  return h('span', { class: `kit-status kit-status--${s.id}` }, h('i', { 'aria-hidden': 'true' }), s.label);
 }
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
@@ -94,14 +91,19 @@ export function fmtDay(t) {
   if (diff === 1) return 'Yesterday';
   return dayFmt.format(d);
 }
-export function fmtWhen(t) {
-  const diff = Date.now() - t;
+/** "just now", "12 min ago", "3 h ago" measured on the service's clock (the lab's dev clock can run ahead). */
+export function fmtAgo(t, now = Date.now()) {
+  const diff = Math.max(0, now - t);
   if (diff < 60e3) return 'just now';
   if (diff < 3600e3) return `${Math.floor(diff / 60e3)} min ago`;
   if (diff < 86400e3) return `${Math.floor(diff / 3600e3)} h ago`;
   return fmtDay(t);
 }
-export function fmtUntil(t) {
-  const days = Math.ceil(Math.max(0, t - Date.now()) / 86400e3);
-  return days <= 1 ? 'today' : `in ${days} days`;
+/** A gentle span of time: "about 23 hours", "12 minutes", "under a minute". */
+export function fmtSpan(ms) {
+  const m = Math.max(0, Math.round(ms / 60e3));
+  if (m < 1) return 'under a minute';
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'}`;
+  const hrs = Math.round(m / 60);
+  return hrs >= 24 ? `${Math.round(hrs / 24)} day${hrs >= 36 ? 's' : ''}` : `about ${hrs} hour${hrs === 1 ? '' : 's'}`;
 }

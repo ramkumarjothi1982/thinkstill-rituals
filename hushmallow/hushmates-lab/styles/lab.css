@@ -1,6 +1,6 @@
 /* Hushmates Lab chrome (testing scaffolding only): a light, landing-page
    frame around the phones. Everything inside a phone is styles/world.css
-   and styles/scenes/*.css. */
+   and styles/relay*.css. */
 
 html, body { margin: 0; min-height: 100%; }
 body { background: #FFF8F3; color: #1F1640; font: 400 15px/1.5 "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -47,7 +47,12 @@ body { background: #FFF8F3; color: #1F1640; font: 400 15px/1.5 "Nunito Sans", -a
 .lab-net[aria-pressed="true"] i { background: #FF8A5C; }
 .lab-phone__frame { position: relative; height: min(844px, calc(100dvh - 130px)); min-height: 580px; border-radius: 52px; padding: 10px;
   background: linear-gradient(160deg, #FFFFFF, #F4EEFF 60%, #FFFFFF); box-shadow: 0 50px 90px -40px rgba(70,40,140,.45), 0 0 0 1px rgba(31,22,64,.06), inset 0 0 0 1px rgba(255,255,255,.9); }
-.lab-phone__screen { position: relative; height: 100%; border-radius: 43px; overflow: hidden; box-shadow: 0 0 0 1px rgba(31,22,64,.06); }
+.lab-phone__screen { position: relative; height: 100%; border-radius: 43px; overflow: hidden; box-shadow: 0 0 0 1px rgba(31,22,64,.06); background: var(--hm-cream); }
+.lab-device { position: absolute; inset: 0; }
+.lab-device[hidden] { display: none; }
+.lab-who select { min-height: 30px; max-width: 150px; padding: 0 28px 0 12px; border: 0; border-radius: 999px; appearance: none; font: 800 13px var(--hm-ui); color: var(--hm-ink); cursor: pointer;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231F1640' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center / 14px;
+  box-shadow: 0 0 0 1.5px rgba(31,22,64,.14) inset, 0 6px 14px -10px rgba(31,22,64,.5); }
 
 /* the guide: a white glass card */
 .lab-guide { position: sticky; top: 92px; max-height: calc(100dvh - 112px); overflow: auto; border-radius: 34px; padding: 26px 24px 22px;
@@ -90,8 +95,32 @@ body { background: #FFF8F3; color: #1F1640; font: 400 15px/1.5 "Nunito Sans", -a
 /* one phone at a time (desktop "One phone" toggle, and every phone screen) */
 .lab[data-layout="single"] .lab-stage { grid-template-columns: 390px minmax(300px, 350px); }
 .lab[data-layout="single"] .lab-switch { display: flex; }
-.lab[data-layout="single"][data-view="moon"] .lab-phone[data-who="cloud"],
-.lab[data-layout="single"][data-view="cloud"] .lab-phone[data-who="moon"] { display: none; }
+.lab[data-layout="single"][data-view="author"] .lab-phone[data-who="catcher"],
+.lab[data-layout="single"][data-view="catcher"] .lab-phone[data-who="author"] { display: none; }
+
+/* control room */
+.lab-tabs { display: flex; gap: 4px; padding: 4px; margin: 0 0 14px; border-radius: 999px; background: rgba(31,22,64,.06); }
+.lab-tabs button { flex: 1; min-height: 36px; border: 0; border-radius: 999px; background: transparent; font: 700 12.5px var(--hm-ui); color: var(--hm-ink-2); white-space: nowrap; padding: 0 8px; }
+.lab-tabs button[aria-selected="true"] { background: #fff; color: var(--hm-ink); box-shadow: 0 6px 16px -10px rgba(31,22,64,.5); }
+.guide-step__words { font: 500 italic 13px/1.45 var(--hm-body); color: var(--hm-ink-2); margin-top: 6px !important; padding: 8px 10px; border-radius: 12px; background: rgba(244,240,251,.9); }
+.lab-box-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px !important; }
+.lab-tagline { font: 700 10.5px/1 var(--hm-ui); letter-spacing: .05em; text-transform: uppercase; color: var(--hm-ink-3); }
+.lab-clock { font: 700 14px/1.3 var(--hm-ui); color: var(--hm-ink); }
+.lab-chipset { display: flex; flex-wrap: wrap; gap: 6px; }
+.lab-chipset .guide-btn { margin-top: 6px; min-height: 34px; padding: 0 12px; }
+.lab-small { margin-top: 8px !important; font: 400 12.5px/1.45 var(--hm-body); color: var(--hm-ink-3); }
+.lab-radios { display: grid; gap: 8px; margin-top: 4px; }
+.lab-radios label { display: flex; gap: 10px; align-items: flex-start; font: 400 13px/1.4 var(--hm-body); color: var(--hm-ink-2); cursor: pointer; }
+.lab-radios input { margin: 3px 0 0; accent-color: #6A3FD1; width: 16px; height: 16px; flex: none; }
+.lab-radios b { color: var(--hm-ink); font-family: var(--hm-ui); }
+.lab-url { display: flex; gap: 6px; margin-top: 8px; }
+.lab-url input { flex: 1; min-width: 0; min-height: 36px; border: 0; border-radius: 999px; padding: 0 12px; font: 600 12.5px var(--hm-ui); color: var(--hm-ink); background: #fff; box-shadow: 0 0 0 1.5px rgba(31,22,64,.13) inset; }
+.lab-url .guide-btn { margin: 0; min-height: 36px; }
+.lab-mod { display: grid; gap: 6px; }
+.lab-mod-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-radius: 14px; background: #fff; }
+.lab-mod-row p { flex: 1 1 100%; font: 700 12.5px/1.35 var(--hm-ui); color: var(--hm-ink-2); }
+.lab-mod-row.is-open p { color: var(--hm-ink); }
+.lab-mod-row .guide-btn { margin: 0; min-height: 32px; padding: 0 12px; font-size: 12px; }
 
 @media (max-width: 1240px) {
   .lab-stage { grid-template-columns: repeat(2, minmax(330px, 390px)); }
@@ -116,7 +145,7 @@ body { background: #FFF8F3; color: #1F1640; font: 400 15px/1.5 "Nunito Sans", -a
   .lab-guide-btn { padding: 0 12px; font-size: 12.5px; min-height: 38px; }
   .lab-stage { display: block; padding: 0; }
   .lab-phone { gap: 0; }
-  .lab[data-view="moon"] .lab-phone[data-who="cloud"], .lab[data-view="cloud"] .lab-phone[data-who="moon"] { display: none; }
+  .lab[data-view="author"] .lab-phone[data-who="catcher"], .lab[data-view="catcher"] .lab-phone[data-who="author"] { display: none; }
   .lab-phone__label { padding: 0 12px; min-height: 30px; font-size: 11.5px; background: rgba(255,250,246,.92); box-shadow: 0 1px 0 rgba(31,22,64,.06); }
   .lab-phone__label .lab-notif { display: none; }
   .lab-net { height: 24px; font-size: 11px; padding: 0 9px; }

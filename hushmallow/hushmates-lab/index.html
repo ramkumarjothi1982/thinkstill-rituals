@@ -6,80 +6,110 @@
 <meta name="theme-color" content="#FFF8F3">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>Hushmates Lab</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' http://127.0.0.1:8790 http://localhost:8790; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Hushmates Lab · Feeling Relay</title>
 <link rel="icon" href="assets/art/mascot.webp">
 <link rel="preload" href="assets/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles/fonts.css">
 <link rel="stylesheet" href="styles/world.css">
+<link rel="stylesheet" href="styles/relay.css">
+<link rel="stylesheet" href="styles/relay-scenes.css">
 <link rel="stylesheet" href="styles/lab.css">
-<link rel="stylesheet" href="styles/scenes/welcome.css">
-<link rel="stylesheet" href="styles/scenes/identity.css">
-<link rel="stylesheet" href="styles/scenes/home.css">
-<link rel="stylesheet" href="styles/scenes/find.css">
-<link rel="stylesheet" href="styles/scenes/invitations.css">
-<link rel="stylesheet" href="styles/scenes/hushspace.css">
-<link rel="stylesheet" href="styles/scenes/settings.css">
 </head>
 <body>
-<div class="lab" data-view="moon" data-layout="pair">
+<div class="lab" data-view="author" data-layout="pair">
   <div class="lab-orbs" aria-hidden="true"><i class="lab-orb lab-orb--a"></i><i class="lab-orb lab-orb--b"></i><i class="lab-orb lab-orb--c"></i></div>
   <header class="lab-bar">
     <div class="lab-brand"><img src="assets/art/hushmallow-logo.webp" alt="hushmallow" width="1200" height="201"><span>Hushmates <b>Lab</b></span></div>
-    <p class="lab-flag"><span class="lab-flag-dot" aria-hidden="true"></span>Prototype · simulated test identities · local demo service, not a real backend</p>
+    <p class="lab-flag"><span class="lab-flag-dot" aria-hidden="true"></span>Prototype · seven simulated test identities · in-page demo service, not a real backend</p>
     <div class="lab-switch" role="group" aria-label="Which phone to show">
-      <button type="button" data-view-btn="moon" aria-pressed="true">MoonMallow <em data-badge="moon" hidden></em></button>
-      <button type="button" data-view-btn="cloud" aria-pressed="false">CloudMallow <em data-badge="cloud" hidden></em></button>
+      <button type="button" data-view-btn="author" aria-pressed="true">Author <em data-badge="author" hidden></em></button>
+      <button type="button" data-view-btn="catcher" aria-pressed="false">Catcher</button>
     </div>
     <button type="button" class="lab-layout-btn" id="layout-toggle" aria-pressed="false" title="Show one phone at a time">One phone</button>
-    <button type="button" class="lab-guide-btn" id="guide-toggle" aria-expanded="false" aria-controls="guide">Demo guide</button>
+    <button type="button" class="lab-guide-btn" id="guide-toggle" aria-expanded="false" aria-controls="guide">Control room</button>
   </header>
 
   <main class="lab-stage">
-    <section class="lab-phone" data-who="moon" aria-label="Phone A, signed in as the test identity MoonMallow">
+    <section class="lab-phone" data-who="author" aria-label="Phone A: the author, test identity MoonMallow">
       <div class="lab-phone__label">
         <span><b>Phone A</b> · MoonMallow <small>test identity</small></span>
-        <em data-badge="moon" class="lab-notif" hidden></em>
-        <button type="button" class="lab-net" data-net="moon" aria-pressed="false" title="Simulate losing the connection"><i aria-hidden="true"></i><span>Online</span></button>
+        <em data-badge="author" class="lab-notif" hidden></em>
+        <button type="button" class="lab-net" data-net="author" aria-pressed="false" title="Simulate losing the connection"><i aria-hidden="true"></i><span>Online</span></button>
       </div>
-      <div class="lab-phone__frame"><div class="lab-phone__screen" id="device-moon"></div></div>
+      <div class="lab-phone__frame"><div class="lab-phone__screen" id="device-author"></div></div>
     </section>
 
-    <section class="lab-phone" data-who="cloud" aria-label="Phone B, signed in as the test identity CloudMallow">
+    <section class="lab-phone" data-who="catcher" aria-label="Phone B: a catcher (choose the test identity)">
       <div class="lab-phone__label">
-        <span><b>Phone B</b> · CloudMallow <small>test identity</small></span>
-        <em data-badge="cloud" class="lab-notif" hidden></em>
-        <button type="button" class="lab-net" data-net="cloud" aria-pressed="false" title="Simulate losing the connection"><i aria-hidden="true"></i><span>Online</span></button>
+        <span><b>Phone B</b> ·
+          <label class="lab-who"><span class="sr-only">Signed in as</span>
+            <select id="catcher-select" data-test="catcher-select"></select></label>
+          <small>test identity</small></span>
+        <button type="button" class="lab-net" data-net="catcher" aria-pressed="false" title="Simulate losing the connection"><i aria-hidden="true"></i><span>Online</span></button>
       </div>
-      <div class="lab-phone__frame"><div class="lab-phone__screen" id="device-cloud"></div></div>
+      <div class="lab-phone__frame"><div class="lab-phone__screen" id="device-catcher"></div></div>
     </section>
 
     <aside class="lab-guide" id="guide" aria-labelledby="guide-title">
       <div class="lab-guide__head">
-        <h2 id="guide-title" tabindex="-1">First <em>demonstration</em></h2>
-        <button type="button" class="lab-guide__close" id="guide-close" aria-label="Close guide">×</button>
+        <h2 id="guide-title" tabindex="-1">Control <em>room</em></h2>
+        <button type="button" class="lab-guide__close" id="guide-close" aria-label="Close the control room">×</button>
       </div>
-      <p class="lab-guide__lede">Two people, two phones, one private Hushspace. Use the phones yourself; each step ticks itself off from the real state.</p>
-      <div class="lab-progress"><div id="guide-bar" class="lab-progress__bar"></div><span id="guide-progress">0 of 10</span></div>
+      <p class="lab-guide__lede">Six people, one feeling, five perspectives. You operate every test identity by hand; each step ticks itself off from the service’s real state.</p>
+
+      <div class="lab-tabs" role="tablist" aria-label="Demonstration">
+        <button type="button" role="tab" id="tab-relay" aria-selected="true" aria-controls="panel-relay" data-scenario="relay">1 · Five perspectives</button>
+        <button type="button" role="tab" id="tab-fallback" aria-selected="false" aria-controls="panel-fallback" data-scenario="fallback">2 · Mallow fallback</button>
+      </div>
+      <div class="lab-progress"><div id="guide-bar" class="lab-progress__bar"></div><span id="guide-progress">0 of 0</span></div>
       <ol class="guide-steps" id="guide-steps"></ol>
-      <div class="lab-guide__box">
-        <p><b>Server-side check.</b> Send as CloudMallow straight to the service, skipping the interface:</p>
-        <button type="button" class="guide-btn" id="bypass" disabled>Try sending as CloudMallow anyway</button>
-        <p class="lab-bypass" id="bypass-result" role="status" hidden></p>
-      </div>
       <div class="lab-guide__actions">
-        <button type="button" class="guide-btn guide-btn--primary" id="play">Play the demo</button>
+        <button type="button" class="guide-btn guide-btn--primary" id="play">Play this scenario</button>
         <button type="button" class="guide-btn" id="reset">Reset demo</button>
       </div>
+
+      <section class="lab-guide__box" aria-labelledby="clock-title">
+        <p class="lab-box-title" id="clock-title"><b>Dev clock</b> <span class="lab-tagline">lab only</span></p>
+        <p class="lab-clock" id="clock" role="status">—</p>
+        <div class="lab-chipset">
+          <button type="button" class="guide-btn" data-advance="300000">+5 min</button>
+          <button type="button" class="guide-btn" data-advance="1800000" data-test="clock-30">+30 min</button>
+          <button type="button" class="guide-btn" data-advance="10800000">+3 h</button>
+          <button type="button" class="guide-btn" data-advance="86400000" data-test="clock-24">+24 h</button>
+          <button type="button" class="guide-btn" id="clock-reset">Back to now</button>
+        </div>
+        <p class="lab-small">Moves the in-page service’s clock (holds, the 30-minute Mallow offer, the 24-hour return). Real time keeps running too.</p>
+      </section>
+
+      <section class="lab-guide__box" aria-labelledby="source-title">
+        <p class="lab-box-title" id="source-title"><b>Mallow perspective source</b></p>
+        <div class="lab-radios" role="radiogroup" aria-labelledby="source-title">
+          <label><input type="radio" name="source" value="demo" checked> <span><b>Canned demo example</b> · labelled “demo example, not live AI”. No AI key is configured in this lab.</span></label>
+          <label><input type="radio" name="source" value="library"> <span><b>Reframe library</b> · the existing rule-based Reframe engine; labelled “not AI”.</span></label>
+          <label><input type="radio" name="source" value="angle"> <span><b>Another Angle server</b> · Account 1’s Reframe service, run locally. Labelled AI only if it reports a real model with a key.</span></label>
+        </div>
+        <div class="lab-url" id="angle-row" hidden>
+          <input id="angle-url" type="url" value="http://127.0.0.1:8790" aria-label="Another Angle server address" spellcheck="false">
+          <button type="button" class="guide-btn" id="angle-check">Check</button>
+        </div>
+        <p class="lab-small" id="source-status" role="status"></p>
+      </section>
+
+      <section class="lab-guide__box" aria-labelledby="mod-title">
+        <p class="lab-box-title" id="mod-title"><b>Safety desk</b> <span class="lab-tagline">SafetyTeam · moderator test identity</span></p>
+        <div id="mod-list" class="lab-mod"></div>
+      </section>
+
       <details class="lab-guide__about">
         <summary>What’s real and what’s simulated</summary>
         <ul>
-          <li><b>Real:</b> the rules (consent, limits, blocking, text rules, rate limits, moderation access) run in the service and are covered by automated tests, including forged requests.</li>
-          <li><b>Real:</b> each phone talks to the service only through a network layer with latency, offline mode and lost replies.</li>
-          <li><b>Simulated:</b> the service runs inside this page and saves to this browser. Sign-in is simulated for labelled test identities. No Supabase, no server, no real people.</li>
-          <li><b>Also seeded:</b> StarMallow and FernMallow (discoverable test identities nobody is operating) and DreamMallow (hidden; never appears in Find).</li>
+          <li><b>Real:</b> the relay’s rules (five distinct people, never the author, one each, atomic expiring holds, no repeat exposure, idempotent writes, rate limits, the opt-in Mallow fallback with one generation per feeling, budgets, reports) run in the service and are covered by automated tests, including forged requests.</li>
+          <li><b>Real:</b> each phone reaches the service only through a network layer with latency, offline mode and lost replies.</li>
+          <li><b>Simulated:</b> the service runs inside this page and saves to this browser. Sign-in is simulated for seven labelled test identities. No Supabase, no server, no real people. Every perspective is typed by the person operating the lab.</li>
+          <li><b>Not live AI:</b> no AI key is configured. Mallow perspectives come from a labelled canned example, the Reframe library, or a local Another Angle server in mock mode, and are labelled as such.</li>
         </ul>
       </details>
     </aside>
