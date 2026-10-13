@@ -28,19 +28,20 @@ export const DEBOUNCE_MS = 4000;
 export const VISIBLE_EVERY_MS = 60_000;
 
 export function startAutoSync({ auth, store, prefs, win = globalThis, doc = globalThis.document, debounceMs = DEBOUNCE_MS, now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
-  let quiet = 0, timer = 0, running = null, again = false, stopped = false, lastRun = 0;
+  let quiet = 0, timer = 0, running = null, again = false, stopped = false, paused = false, lastRun = 0;
   const state = { last: null, error: null, running: false, settings: null, library: null };
   const listeners = new Set();
   const emit = () => { for (const fn of [...listeners]) { try { fn({ ...state }); } catch (e) { console.warn('[autosync]', e); } } };
   const quietly = (fn) => { quiet++; try { return fn(); } finally { quiet--; } };
   const signedIn = () => auth?.status?.() === 'signed-in';
+  const halted = () => stopped || paused;
 
   function markPrefsDirty() {
     try { const m = store.get('auth.sync', null) || {}; if (!m.prefsDirty) quietly(() => store.set('auth.sync', { ...m, prefsDirty: true })); } catch { /* storage refused */ }
   }
 
   async function syncNow() {
-    if (stopped || !signedIn()) return { ok: false, skipped: true };
+    if (halted() || !signedIn()) return { ok: false, skipped: true };
     if (running) { again = true; return running; }
     clearTimer(timer); timer = 0;
     state.running = true; emit();
@@ -56,12 +57,12 @@ export function startAutoSync({ auth, store, prefs, win = globalThis, doc = glob
     })();
     try { return await running; } finally {
       running = null;
-      if (again && !stopped) { again = false; schedule(); }
+      if (again && !halted()) { again = false; schedule(); }
     }
   }
 
   function schedule(ms = debounceMs) {
-    if (stopped) return;
+    if (halted()) return;
     if (running) { again = true; return; }
     clearTimer(timer);
     timer = setTimer(() => { timer = 0; syncNow(); }, ms);
@@ -71,22 +72,22 @@ export function startAutoSync({ auth, store, prefs, win = globalThis, doc = glob
   // (a switch known to be off since the last run costs nothing: no request until it is turned on,
   // here on the account screen, which runs syncNow itself, or the next visibility / online check)
   const offPrefs = prefs?.onChange?.((k) => {
-    if (quiet || stopped || !(k in PREF_COLUMNS) || state.settings === false) return;
+    if (quiet || halted() || !(k in PREF_COLUMNS) || state.settings === false) return;
     markPrefsDirty();
     if (running) again = true; else schedule();
   });
   // a favourite, a Memory Garden tool or the Hushflow pause changed here
   const offStore = store?.onWrite?.((k) => {
-    if (quiet || stopped || !LIBRARY_KEYS.includes(k) || state.library === false) return;
+    if (quiet || halted() || !LIBRARY_KEYS.includes(k) || state.library === false) return;
     if (running) again = true; else schedule();
   });
 
   const onVisible = () => {
-    if (stopped) return;
+    if (halted()) return;
     if (doc?.visibilityState === 'hidden') { if (timer) { clearTimer(timer); timer = 0; syncNow(); } return; }
     if (now() - lastRun >= VISIBLE_EVERY_MS) schedule(250);
   };
-  const onOnline = () => { if (!stopped) schedule(500); };
+  const onOnline = () => { if (!halted()) schedule(500); };
   doc?.addEventListener?.('visibilitychange', onVisible);
   win?.addEventListener?.('online', onOnline);
 
@@ -96,6 +97,18 @@ export function startAutoSync({ auth, store, prefs, win = globalThis, doc = glob
     /** Run now if something is waiting. */
     flush() { if (timer) { clearTimer(timer); timer = 0; return syncNow(); } return Promise.resolve({ ok: true, idle: true }); },
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    /**
+     * Before a sign-out, a deletion or "Remove this device's data": nothing new
+     * starts, and the promise resolves once a sync already running has finished
+     * (its local writes then land in a sealed store and are dropped).
+     */
+    pause() {
+      paused = true; again = false; clearTimer(timer); timer = 0;
+      return running ? running.then(() => undefined, () => undefined) : Promise.resolve();
+    },
+    /** After a deletion that failed: carry on as before. */
+    resume() { if (!stopped) paused = false; },
+    get paused() { return paused; },
     stop() {
       stopped = true; clearTimer(timer); timer = 0;
       offPrefs?.(); offStore?.();

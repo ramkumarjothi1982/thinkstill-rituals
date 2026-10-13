@@ -16,9 +16,15 @@
 //     enter(hash)                            reload into the signed-in account's namespace
 //     signOut({ removeLocal })               local sign-out, session cleanup, reload as guest
 //     resend({ email }) / sendReset({ email })  neutral answers, 60 s cooldown
-//     reauthenticate() → emails a code; updatePassword({ password, nonce })
+//     updatePassword({ current, password })  checks the CURRENT password with an isolated
+//                         client first, then changes it; { ok:false, needsCode } when Supabase wants
+//                         reauthentication (a session over 24 h old): the 6-digit code is on its way,
+//                         and updatePassword({ current, password, nonce }) finishes it
+//     reauthenticate()    emails a new code (60 s cooldown)
 //     deleteAccount()   server rows + the auth user (delete_my_account RPC), this device's copy, reload as guest
 //     removeDeviceData()  this account's things on this device only
+//     addQuiescer({ pause, resume })  the opt-in sync, paused (and waited for) before a sign-out,
+//                         a deletion or "Remove this device's data"; the account's store is sealed then
 //     profile.get/update/touch, consents.get/set, sync.* (opt-in gated)
 //     signInWithProvider('google')           a hook: off until the provider is configured (no button yet)
 //   Every failure is { ok: false, error: friendlyError(…) } (src/auth/errors.js).
@@ -37,8 +43,8 @@
 // outside the configured project's origin. Realtime, Storage and Functions
 // are never used.
 
-import { friendlyError, checkEmail, checkPassword } from './errors.js';
-import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, MARKER_KEY } from './namespace.js';
+import { friendlyError, errorCode, checkEmail, checkPassword } from './errors.js';
+import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY } from './namespace.js';
 import * as S from './sync.js';
 import { FLOW_KEYS } from '../engine/flow-store.js';
 import { GARDEN_KEY } from '../engine/garden.js';
@@ -51,6 +57,10 @@ export const VENDOR = Object.freeze({
 export const COOLDOWN_MS = 60_000;
 export const VERIFY_EVERY_MS = 60_000;
 export const TOUCH_EVERY_MS = 6 * 60 * 60 * 1000;
+/** How long a checked current password counts for the emailed-code step of the same change. */
+export const VERIFIED_MS = 10 * 60 * 1000;
+/** The most a sign-out or deletion waits for a sync already running. */
+export const QUIESCE_MS = 5000;
 /** Providers ready for a sign-in button. Google: set true once it is configured in Supabase (Auth → Providers). */
 export const PROVIDERS = Object.freeze({ google: false });
 const NOTICE_KEY = 'hm2:auth.notice';
@@ -103,6 +113,25 @@ export function createSupabaseClient(lib, config, { storage } = {}) {
   return lib.createClient(config.url, config.key, { auth, global: { fetch: guardedFetch(new URL(config.url).origin) } });
 }
 
+let isoSeq = 0;
+/**
+ * A throwaway supabase-js client that shares nothing with this page's
+ * session: no persistence, no refresh timer, no URL detection, its own
+ * in-memory storage and its own storage key (so its own lock, and never the
+ * "multiple clients on one storage key" clash). It checks the current
+ * password before a change, and ends a session a link replaced, without ever
+ * touching the signed-in session or the account's namespace.
+ */
+export function createIsolatedClient(lib, config) {
+  const mem = new Map();
+  const storage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => { mem.set(k, String(v)); }, removeItem: (k) => { mem.delete(k); } };
+  const storageKey = `hm-isolated-${++isoSeq}-${Math.random().toString(36).slice(2, 10)}`;
+  return lib.createClient(config.url, config.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, flowType: 'pkce', storage, storageKey },
+    global: { fetch: guardedFetch(new URL(config.url).origin) },
+  });
+}
+
 /** The site's root (where index.html lives), from any page of it (the app or /auth/callback/). */
 export function siteRoot(loc = globalThis.location) {
   const path = String(loc.pathname || '/').replace(/auth\/callback\/?(?:index\.html)?$/, '').replace(/[^/]*$/, '');
@@ -150,6 +179,8 @@ export function createAuth({
   let settled = false;        // dropped or switching: the page is about to reload
   let lastVerify = 0;
   let consents = null;
+  let verified = null;        // { uid, at }: the current password was checked for this change
+  const quiescers = new Set();   // { pause() → Promise, resume() }: the opt-in sync (src/auth/boot.js)
   const listeners = new Set();
   const emit = (event) => { const snap = { status, user: user && { ...user }, event }; for (const fn of [...listeners]) { try { fn(snap); } catch (e) { console.warn('[auth]', e); } } };
   const fail = (error) => ({ ok: false, error });
@@ -206,6 +237,23 @@ export function createAuth({
   }
   function switchTo(reason) { settled = true; onReload({ reason, urgent: false, hash: '#home' }); }
 
+  /**
+   * Before a sign-out, a deletion or "Remove this device's data": seal the
+   * account's namespace (src/auth/namespace.js: nothing more is written into
+   * it from this page) and pause the opt-in sync, waiting (at most QUIESCE_MS)
+   * for a sync already running to finish.
+   */
+  async function quiesce(uid) {
+    sealAccount(uid);
+    const waits = [...quiescers].map((q) => Promise.resolve().then(() => q.pause?.()).catch(() => {}));
+    await Promise.race([Promise.all(waits), new Promise((r) => setTimeout(r, QUIESCE_MS))]);
+  }
+  /** A deletion that failed: the account carries on as before. */
+  function unquiesce(uid) {
+    unsealAccount(uid);
+    for (const q of quiescers) { try { q.resume?.(); } catch { /* carry on */ } }
+  }
+
   /** Ask the server whether this session is still real (a deleted account, a revoked session). */
   async function verify(force = false) {
     if (!enabled || mode !== 'account' || settled) return status;
@@ -218,8 +266,12 @@ export function createAuth({
         const st = Number(error.status) || 0;
         const dead = ['user_not_found', 'session_not_found', 'bad_jwt', 'refresh_token_not_found', 'session_expired'].includes(error.code) || error.name === 'AuthSessionMissingError' || st === 401 || st === 403;
         if (dead) {
+          // the account itself is gone (deleted on another device): its copy here goes too
+          const gone = error.code === 'user_not_found';
+          if (gone) await quiesce(bootUid);
           try { await c.auth.signOut({ scope: 'local' }); } catch { /* the session is gone either way */ }
           removeSupabaseKeys(ls, config.storageKey);
+          if (gone) removeAccountData(ls, bootUid);
         }
       } else if (data?.user) {
         const u = toUser(data.user);
@@ -304,6 +356,43 @@ export function createAuth({
   async function gate(c, uid, kind) {
     const k = consents || await getConsents(c, uid);
     if (!k[kind]?.on) throw codeErr('sync_off');
+  }
+
+  /**
+   * Whether `password` is this account's password: a sign-in for its email on
+   * an isolated client (createIsolatedClient: its own memory, storage key and
+   * lock, nothing persisted, no refresh), whose short-lived session is signed
+   * out again at once with scope 'local' — never 'global', which would end the
+   * person's real session on every device.
+   */
+  async function checkCurrentPassword(email, password, uid) {
+    let iso = null, opened = false;
+    try {
+      iso = createIsolatedClient(await loader({ doc }), config);
+      const { data, error } = await iso.auth.signInWithPassword({ email, password });
+      if (error) return fail(friendlyError(error, 'current'));
+      opened = !!data?.session;
+      if (data?.user?.id?.toLowerCase() !== uid) return fail(friendlyError({ code: 'password_mismatch' }, 'current'));
+      return { ok: true };
+    } catch (e) {
+      return fail(friendlyError(e, 'current'));
+    } finally {
+      if (opened) { try { await iso.auth.signOut({ scope: 'local' }); } catch { /* it ends with the password change, or on its own */ } }
+    }
+  }
+
+  /** /auth/callback: a new password for the recovery session the link opened (and only for that account). */
+  async function setRecoveryPassword(password, recoveryUid) {
+    try {
+      const c = await ensureClient();
+      const { data } = await c.auth.getSession();
+      const sid = data?.session?.user?.id?.toLowerCase() || null;
+      if (!sid || !isUid(recoveryUid) || sid !== String(recoveryUid).toLowerCase()) return fail(friendlyError({ code: 'not_signed_in' }, 'password'));
+      const { error } = await c.auth.updateUser({ password });
+      if (error) return fail(friendlyError(error, 'password'));
+      notice('password-updated');
+      return { ok: true };
+    } catch (e) { return fail(friendlyError(e, 'password')); }
   }
 
   const api = {
@@ -391,10 +480,12 @@ export function createAuth({
       intent = 'signout';
       settled = true;
       const uid = bootUid || pendingUid;
+      if (uid) await quiesce(uid);   // a sync in flight lands in a sealed store: nothing is written after this
+      if (removeLocal && uid) removeAccountData(ls, uid);
       try { const c = await ensureClient(); await c.auth.signOut({ scope: 'local' }); } catch { /* offline: the tokens still go below */ }
       removeSupabaseKeys(ls, config.storageKey);
-      if (removeLocal && uid) removeAccountData(ls, uid);
-      consents = null; user = null; status = 'guest';
+      if (removeLocal && uid) removeAccountData(ls, uid);   // once more, right before the reload
+      consents = null; user = null; status = 'guest'; verified = null;
       notice('signed-out');
       emit('signed-out');
       onReload({ reason: 'signed-out', urgent: true, hash: '#home' });
@@ -433,50 +524,100 @@ export function createAuth({
       });
     },
 
-    /** Secure password change, step 1: email a one-time code to the account's address. */
+    /** Emails a new 6-digit reauthentication code to the account's address (a password change on an older session). */
     async reauthenticate() {
+      const wait = cooldownLeft('reauth');
+      if (wait > 0) return { ok: false, error: friendlyError({ status: 429 }, 'reauth'), cooldownMs: wait };
       return asOwner('reauth', async ({ c }) => {
         const { error } = await c.auth.reauthenticate();
-        return error ? fail(friendlyError(error, 'reauth')) : { ok: true };
+        if (error) return fail(friendlyError(error, 'reauth'));
+        startCooldown('reauth');
+        return { ok: true, cooldownMs: COOLDOWN_MS };
       });
     },
 
     /**
-     * Step 2 (or the recovery link's new password): { password, nonce } where
-     * nonce is the emailed code. A recovery session (from /auth/callback) needs no code.
+     * Change the password, with real reauthentication for every session.
+     *   { current, password }  the CURRENT password is checked first with a
+     *        sign-in on an isolated client (never this page's session), then
+     *        updateUser({ password }). When Supabase answers
+     *        reauthentication_needed (secure password change on a session over
+     *        24 hours old) the 6-digit code is emailed and the answer is
+     *        { ok:false, needsCode:true, email, error } — nothing has changed yet.
+     *   { current, password, nonce }  the emailed code: updateUser({ password, nonce }).
+     *   /auth/callback (passive): { password, recoveryUid } — the recovery
+     *        session the link just opened, and only that one.
+     * A wrong current password reads "That password doesn’t match."
      */
-    async updatePassword({ password, nonce } = {}) {
+    async updatePassword({ password, current, nonce, recoveryUid } = {}) {
       const bad = checkPassword(password);
       if (bad) return fail(bad);
       if (!enabled) return fail(friendlyError({ code: 'not_signed_in' }, 'password'));
-      try {
-        const c = await ensureClient();
+      if (passive) return setRecoveryPassword(password, recoveryUid);
+      return asOwner('password', async ({ c, uid }) => {
+        const code = String(nonce ?? '').replace(/\D+/g, '');
         const { data } = await c.auth.getSession();
-        if (!data?.session) return fail(friendlyError({ code: 'not_signed_in' }, 'password'));
-        if (mode === 'account' && data.session.user?.id?.toLowerCase() !== bootUid) { reconcile('mismatch'); return fail(friendlyError({ code: 'not_signed_in' }, 'password')); }
-        const attrs = { password };
-        const code = String(nonce ?? '').replace(/\s+/g, '');
-        if (code) attrs.nonce = code;
-        const { error } = await c.auth.updateUser(attrs);
-        if (error) return fail(friendlyError(error, 'password'));
+        const email = data?.session?.user?.email || user?.email || null;
+        if (!email) return fail(friendlyError({ code: 'not_signed_in' }, 'password'));
+        if (current != null && current !== '' && String(current) === String(password)) return fail(friendlyError({ code: 'same_password' }, 'password'));
+        const fresh = !!verified && verified.uid === uid && now() - verified.at < VERIFIED_MS;
+        if (!code || !fresh) {
+          if (!current) return fail(friendlyError({ code: 'current_needed' }, 'current'));
+          const ok = await checkCurrentPassword(email, String(current), uid);
+          if (!ok.ok) { verified = null; return ok; }
+          verified = { uid, at: now() };
+        }
+        const { error } = await c.auth.updateUser(code ? { password, nonce: code } : { password });
+        if (error) {
+          if (!code && ['reauthentication_needed', 'reauth_nonce_missing'].includes(errorCode(error))) {
+            const sent = await c.auth.reauthenticate();
+            if (sent.error) return fail(friendlyError(sent.error, 'reauth'));
+            startCooldown('reauth');
+            return { ok: false, needsCode: true, email, error: friendlyError({ code: 'reauthentication_needed' }, 'password') };
+          }
+          return fail(friendlyError(error, 'password'));
+        }
+        verified = null;
         notice('password-updated');
         return { ok: true };
-      } catch (e) { return fail(friendlyError(e, 'password')); }
+      });
+    },
+
+    /**
+     * Ends a session this page no longer holds (the one an email link just
+     * replaced on this browser) on the server: an isolated client, scope
+     * 'local', so only that one session ends. Best effort.
+     */
+    async endDetachedSession({ access_token: at, refresh_token: rt } = {}) {
+      if (!enabled || typeof at !== 'string' || typeof rt !== 'string' || !at || !rt) return { ok: false };
+      try {
+        const iso = createIsolatedClient(await loader({ doc }), config);
+        const { error } = await iso.auth.setSession({ access_token: at, refresh_token: rt });
+        if (error) return { ok: false };
+        const out = await iso.auth.signOut({ scope: 'local' });
+        return { ok: !out?.error };
+      } catch { return { ok: false }; }
     },
 
     /** Deletes the account: every row it owns and its sign-in (server), then this device's copy. */
     async deleteAccount() {
       const r = await asOwner('delete', async ({ c, uid }) => {
         intent = 'delete';
+        settled = true;        // nothing drops or reloads on its own while this runs
+        await quiesce(uid);    // no sync starts, one already running finishes, nothing more is written here
         const { data, error } = await c.rpc('delete_my_account');
-        if (error) { intent = null; return fail(friendlyError(error, 'delete')); }
-        settled = true;
+        if (error) {
+          intent = null; settled = false; unquiesce(uid);
+          reconcile('check');
+          return fail(friendlyError(error, 'delete'));
+        }
         removeAccountData(ls, uid);
         try { await c.auth.signOut({ scope: 'local' }); } catch { /* the user no longer exists */ }
         removeSupabaseKeys(ls, config.storageKey);
-        consents = null; user = null; status = 'guest';
+        consents = null; user = null; status = 'guest'; verified = null;
         notice('deleted');
         emit('deleted');
+        removeAccountData(ls, uid);   // once more, right before the reload: nothing that slipped in survives
         onReload({ reason: 'deleted', urgent: true, hash: '#home' });
         return { ok: true, deleted: data ?? null };
       });
@@ -484,15 +625,20 @@ export function createAuth({
     },
 
     /** "Remove this device's data": this account's things on this device (the server copy stays). */
-    removeDeviceData() {
-      if (mode !== 'account') return { ok: false };
+    async removeDeviceData() {
+      if (mode !== 'account' || settled) return { ok: false };
+      intent = 'device-data';
+      settled = true;
+      await quiesce(bootUid);
       const n = removeAccountData(ls, bootUid);
       safe(() => ls.setItem(`hm2:u:${bootUid}:${MARKER_KEY}`, JSON.stringify({ v: 1, createdAt: now(), guestChoice: 'cleared', choiceAt: now() })));
       notice('device-cleared');
-      settled = true;
       onReload({ reason: 'device-cleared', urgent: true, hash: '#account' });
       return { ok: true, removed: n };
     },
+
+    /** The opt-in sync (src/auth/boot.js): paused and waited for before a sign-out or deletion. Returns an unsubscribe. */
+    addQuiescer(q) { if (q && typeof q.pause === 'function') quiescers.add(q); return () => quiescers.delete(q); },
 
     /**
      * The guest's things on this device that this account said "Not now" to
@@ -544,7 +690,7 @@ export function createAuth({
         return asOwner('profile', async ({ c, uid }) => {
           const { error } = await c.from('profiles').update({ last_seen_at: new Date(now()).toISOString() }).eq('user_id', uid);
           if (error) return fail(friendlyError(error, 'profile'));
-          safe(() => ls.setItem(key, String(now())));
+          if (!settled && !isSealed(uid)) safe(() => ls.setItem(key, String(now())));   // never after a sign-out or deletion began
           return { ok: true };
         });
       },

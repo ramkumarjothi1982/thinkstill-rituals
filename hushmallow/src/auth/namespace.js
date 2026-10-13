@@ -24,6 +24,7 @@
 // Pure: every function takes the Storage it works on, so Node tests run it
 // on a fake localStorage.
 import { createStore, PREFIX } from '../engine/storage.js';
+import { DEFAULTS as PREF_DEFAULTS } from '../app/prefs.js';
 import { mergeFavourites, mergeGarden } from './sync.js';
 
 /** Keys whose guest copy merges into an account copy that already exists (applyGuestChoice 'keep'). */
@@ -44,10 +45,23 @@ export const INTERNAL_KEYS = Object.freeze(['rotation', 'hushfold.rotation', 'hu
  * (after "Remove this device's data") | null (still to ask).
  */
 export const MARKER_KEY = 'auth.local';
+/** Preferences the app sets by itself (the intro seen, the Mallow last shown): not a reason to ask about guest things. */
+export const AUTO_PREFS = Object.freeze(['seenIntro', 'mallow']);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUid = (s) => typeof s === 'string' && UUID_RE.test(s);
 export const accountPrefix = (uid) => `${ACCOUNT_PREFIX}${String(uid).toLowerCase()}:`;
 const isDeviceKey = (k) => DEVICE_KEYS.includes(k);
+
+// Sealed accounts: from the moment a sign-out, a deletion or "Remove this
+// device's data" starts on this page, nothing more is written into that
+// account's namespace through its store (a sync still in flight, a scene
+// saving a favourite): what is removed stays removed. The page reloads next.
+const SEALED = new Set();
+/** Stop every write into this account's namespace from this page (src/auth/client.js, before a sign-out or deletion). */
+export function sealAccount(uid) { if (isUid(uid)) SEALED.add(uid.toLowerCase()); }
+/** A deletion that failed: the account carries on as before. */
+export function unsealAccount(uid) { if (isUid(uid)) SEALED.delete(uid.toLowerCase()); }
+export const isSealed = (uid) => isUid(uid) && SEALED.has(uid.toLowerCase());
 
 const keysOf = (ls) => {
   const out = [];
@@ -107,15 +121,19 @@ export function createNamespacedStore({ ns, backend = 'auto' } = {}) {
   // the opt-in sync (src/auth/autosync.js) hears which keys this page wrote
   const writes = new Set();
   const wrote = (k) => { for (const fn of [...writes]) { try { fn(k); } catch (e) { console.warn('[store]', e); } } };
+  const sealed = () => isSealed(ns.uid);
   return {
     namespace: ns,
     get persistent() { return acct.persistent; },
+    /** True once a sign-out or deletion has started on this page: writes are dropped. */
+    get sealed() { return sealed(); },
     get: (k, fallback = null) => pick(k).get(k, fallback),
-    set: (k, v) => { const r = pick(k).set(k, v); wrote(k); return r; },
-    remove: (k) => { const r = pick(k).remove(k); wrote(k); return r; },
+    set: (k, v) => { if (sealed()) return false; const r = pick(k).set(k, v); wrote(k); return r; },
+    remove: (k) => { if (sealed()) return undefined; const r = pick(k).remove(k); wrote(k); return r; },
     /** fn(key) after every set / remove through this store (not other tabs). Returns an unsubscribe. */
     onWrite(fn) { writes.add(fn); return () => writes.delete(fn); },
     clearAll() {
+      if (sealed()) return;
       const marker = acct.get(MARKER_KEY, null);
       acct.clearAll();
       for (const k of DEVICE_KEYS) device.remove(k);
@@ -132,8 +150,21 @@ export function guestKeys(ls) {
     .filter((k) => k && !isDeviceKey(k) && !k.startsWith('__probe__') && !k.startsWith('auth.'));
 }
 
-/** Whether the guest has anything worth asking about (not only rotation bags). */
-export function guestHasData(ls) { return guestKeys(ls).some((k) => !INTERNAL_KEYS.includes(k)); }
+/**
+ * Preferences a person chose (not the defaults, not what the app sets by
+ * itself): a brand-new visitor's automatic hm2:prefs is not "guest things".
+ */
+export function prefsChosen(raw) {
+  let p = null;
+  try { p = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return false; }
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return false;
+  return Object.keys(p).some((k) => Object.prototype.hasOwnProperty.call(PREF_DEFAULTS, k) && !AUTO_PREFS.includes(k) && p[k] !== PREF_DEFAULTS[k]);
+}
+
+/** Whether the guest has anything worth asking about (not only rotation bags or automatic preferences). */
+export function guestHasData(ls) {
+  return guestKeys(ls).some((k) => !INTERNAL_KEYS.includes(k) && (k !== 'prefs' || prefsChosen(getRaw(ls, PREFIX + k))));
+}
 
 export function readMarker(ls, uid) {
   try { const m = JSON.parse(getRaw(ls, accountPrefix(uid) + MARKER_KEY) || 'null'); return m && typeof m === 'object' && m.v === 1 ? m : null; } catch { return null; }

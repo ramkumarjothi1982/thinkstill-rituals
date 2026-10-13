@@ -10,6 +10,12 @@
 // history or in a referrer), the page sends no referrer, and the only place
 // it ever sends the person afterwards is this site's own app (#account or
 // #home: no URL is taken from the link, so there is no open redirect).
+// Shared browsers: the page belongs to no account. The link decides whose
+// session comes next (a reset link for B while A is signed in here works for
+// B), and the session this browser held before is ended on the server with
+// scope 'local' (that one session only), so nothing is left signed in by
+// accident. The app then boots into the new account's own namespace; A's
+// things stay in A's.
 // The pure parts (parseCallback, returnUrl) are tested in Node.
 
 import { friendlyError, callbackError, checkPassword, passwordStrength } from './errors.js';
@@ -187,8 +193,8 @@ export async function run({ href = START_HREF } = {}) {
     import('./public-config.js'), import('./config.js'), import('./namespace.js'),
   ]);
   const config = resolveAuthConfig({ published: PUBLISHED });
-  const ns = config.enabled ? bootNamespace({ config, ls: localStorage }) : null;
-  mallowArt(ns);
+  // only for the Mallow's look: whose session the link opens is the link's business, not this browser's
+  mallowArt(config.enabled ? bootNamespace({ config, ls: localStorage }) : null);
   if (!config.enabled) {
     say('Accounts aren’t on here', 'This version of hushmallow doesn’t use accounts. Everything still works on this device.', 'idle');
     body(openApp('home'));
@@ -200,44 +206,87 @@ export async function run({ href = START_HREF } = {}) {
 
   say('One moment', p.type === 'recovery' ? 'Checking your reset link…' : 'Confirming it’s you…', 'busy');
   const { createAuth } = await import('./client.js');
-  const auth = createAuth({ config, ns, passive: true, onReload: () => {} });
+  const auth = createCallbackAuth(createAuth, config);
   let c;
   try { c = await auth.ensureClient(); } catch (e) { failed(friendlyError(e, 'callback'), p.next); return { state: 'error' }; }
-
-  let recovery = false, emailChange = false;
-  if (p.kind === 'token') {
-    const { data, error } = await c.auth.verifyOtp({ token_hash: p.tokenHash, type: p.type });
-    if (error) { failed(friendlyError(error, 'callback'), p.next); return { state: 'error', code: error.code || null }; }
-    recovery = p.type === 'recovery';
-    emailChange = p.type === 'email_change';
-    // secure email change: the first of the two addresses confirmed, the other still to come
-    if (emailChange && !data?.session) {
-      say('One more step', 'Thank you. Now open the link we sent to your other email address to finish the change.', 'idle');
-      body(openApp(p.next));
-      return { state: 'email-change-half' };
-    }
-  } else {
-    const { data, error } = await c.auth.exchangeCodeForSession(p.code);
-    if (error) { failed(friendlyError(error, 'callback'), p.next); return { state: 'error', code: error.code || error.name || null }; }
-    recovery = data?.redirectType === 'recovery';
+  const r = await openLink({ auth, c, p });
+  if (!r.ok) { failed(r.error, p.next); return { state: 'error', code: r.code || null }; }
+  // the session this browser held before is being ended; the page waits for it (briefly) before leaving
+  const settledEnd = () => Promise.race([r.ended, new Promise((ok) => setTimeout(ok, 2500))]);
+  if (r.kind === 'email-change-half') {
+    say('One more step', 'Thank you. Now open the link we sent to your other email address to finish the change.', 'idle');
+    body(openApp(p.next));
+    return { state: 'email-change-half' };
   }
-
-  if (recovery) {
+  if (r.kind === 'recovery') {
     say('Choose a new password', 'You’re nearly back in. Pick something you’ll remember.', 'idle');
     let done = null;
-    const finished = new Promise((r) => { done = r; });
+    const finished = new Promise((ok) => { done = ok; });
     body(passwordForm({
       onSubmit: async (password) => {
-        const r = await auth.updatePassword({ password });
-        if (r.ok) { arrived('password-updated', p.next, 'All set', 'Your new password is saved and you’re signed in.'); done({ state: 'recovered' }); }
-        return r;
+        const u = await auth.updatePassword({ password, recoveryUid: r.uid });
+        if (u.ok) { await settledEnd(); arrived('password-updated', p.next, 'All set', 'Your new password is saved and you’re signed in.'); done({ state: 'recovered', uid: r.uid }); }
+        return u;
       },
     }));
     return finished;
   }
-  if (emailChange) { arrived('email-changed', p.next, 'Email updated', 'Your new email address is confirmed.'); return { state: 'email-changed' }; }
+  await settledEnd();
+  if (r.kind === 'email-changed') { arrived('email-changed', p.next, 'Email updated', 'Your new email address is confirmed.'); return { state: 'email-changed', uid: r.uid }; }
   arrived('verified', p.next, 'You’re in', 'Your email is confirmed. Welcome to hushmallow.');
-  return { state: 'verified' };
+  return { state: 'verified', uid: r.uid };
+}
+
+/** No account: the callback page never belongs to the namespace this browser booted into. */
+export const CALLBACK_NS = Object.freeze({ mode: 'guest', uid: null });
+
+/**
+ * The client the callback page uses: passive (it never reloads or drops
+ * anything itself) and tied to no account. On a shared browser someone else
+ * may be signed in here, and the link, not this browser, decides whose
+ * session comes next. (extra: Node tests pass their doubles.)
+ */
+export function createCallbackAuth(createAuth, config, extra = {}) {
+  return createAuth({ config, ns: CALLBACK_NS, passive: true, onReload: () => {}, ...extra });
+}
+
+/** The session supabase-js holds on this browser right now (tokens only), or null. */
+async function heldSession(c) {
+  try {
+    const { data } = await c.auth.getSession();
+    const s = data?.session;
+    return s?.access_token && s?.refresh_token ? { access_token: s.access_token, refresh_token: s.refresh_token } : null;
+  } catch { return null; }
+}
+
+/**
+ * The link's work, without the page (tests/auth-callback-flow.test.mjs runs
+ * it): verifyOtp for a token_hash, exchangeCodeForSession for a code. When a
+ * session comes of it, the session this browser held before (another
+ * account's, or an older one of the same account) is ended on the server with
+ * scope 'local' (auth.endDetachedSession: that one session, never the
+ * person's other devices).
+ *   → { ok: true, kind: 'verified' | 'recovery' | 'email-changed' | 'email-change-half', uid, ended }
+ *   | { ok: false, error, code }
+ */
+export async function openLink({ auth, c, p }) {
+  const before = await heldSession(c);
+  let kind = 'verified', session = null;
+  if (p.kind === 'token') {
+    const { data, error } = await c.auth.verifyOtp({ token_hash: p.tokenHash, type: p.type });
+    if (error) return { ok: false, error: friendlyError(error, 'callback'), code: error.code || null };
+    session = data?.session || null;
+    if (p.type === 'recovery') kind = 'recovery';
+    else if (p.type === 'email_change') kind = session ? 'email-changed' : 'email-change-half';   // secure email change: one address of two
+  } else if (p.kind === 'code') {
+    const { data, error } = await c.auth.exchangeCodeForSession(p.code);
+    if (error) return { ok: false, error: friendlyError(error, 'callback'), code: error.code || error.name || null };
+    session = data?.session || null;
+    if (data?.redirectType === 'recovery') kind = 'recovery';
+  } else return { ok: false, error: friendlyError({ code: 'invalid_link' }, 'callback'), code: 'invalid_link' };
+  const uid = String(session?.user?.id || '').toLowerCase() || null;
+  const ended = before && session && before.refresh_token !== session.refresh_token ? auth.endDetachedSession(before) : Promise.resolve({ ok: true, none: true });
+  return { ok: true, kind, uid, ended };
 }
 
 if (IS_PAGE) {
