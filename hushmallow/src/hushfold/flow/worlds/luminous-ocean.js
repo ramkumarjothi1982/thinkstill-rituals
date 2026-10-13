@@ -1501,7 +1501,19 @@ export function create(ctx) {
     // (A thought the layer draws — one handle, one place — stays where it hung until the midpoint, then is at home.)
     // (a thought the layer draws — one handle, one place — fades out where it hung, is moved home at the midpoint
     // while unseen, and fades in there: never a jump in plain sight)
-    if (rm) tS.vis = melt.rmFrom && thought && !thought.draw ? (k < 0.5 ? 1 - smoothstep(0.32, 0.5, k) : smoothstep(0.5, 0.68, k)) : 1;
+    // (however far a slow frame carries k: it is drawn unseen where it hung for at least one frame, moved home on the
+    // next frame past the midpoint — drawn unseen there too — and only then fades in: never seen in the frame it moves,
+    // nor its words, nor fading on the frame before)
+    if (rm) {
+      if (melt.rmFrom && thought && !thought.draw) {
+        if (!melt.rmMoved) {
+          tS.vis = k < 0.5 ? 1 - smoothstep(0.32, 0.5, k) : 0;
+          if (k >= 0.5 && melt.rmDark) { melt.rmMoved = true; melt.rmIn = k; }
+          melt.rmDark = tS.vis <= 0;
+        }
+        if (melt.rmMoved) tS.vis = k <= melt.rmIn ? 0 : smoothstep(melt.rmIn, melt.rmIn + 0.18, k);
+      } else tS.vis = 1;
+    }
     hero.floatK = rm ? k : smoothstep(0.15, 0.9, k);
     const done = k >= 1 && (riseDone || late >= MELT_LATE) && (!thought || !tS.from) && bubbles.every((b) => !b.from);
     if (done) { melt = null; hyNow = hyTarget; hero.floatK = 1; arriveAt = 1.6; tS.vis = 1; }
@@ -1709,7 +1721,7 @@ export function create(ctx) {
       const k = easeInOut(tS.glide);
       sx = lerp(tS.from.x, tS.from.tx ?? plan.home.x, k); sy = lerp(tS.from.y, tS.from.ty ?? plan.home.y, k);
       tS.surf = lerp(tS.from.scale ?? 1, 1, k);
-    } else if (melt?.rmFrom && melt.k < 0.5 && !thought.draw) { sx = melt.rmFrom.x; sy = melt.rmFrom.y; tS.surf = melt.rmFrom.scale; }
+    } else if (melt?.rmFrom && !melt.rmMoved && !thought.draw) { sx = melt.rmFrom.x; sy = melt.rmFrom.y; tS.surf = melt.rmFrom.scale; }
     else if (tS.rmCold && tS.rmCold.t < RM_FADE_SEC) { sx = tS.rmCold.x; sy = tS.rmCold.y; tS.surf = tS.rmCold.scale; }
     // a re-home (landing, a new layout) glides from where it was last shown — its size too
     if (tS.surfShown > 0 && !tS.from) {
