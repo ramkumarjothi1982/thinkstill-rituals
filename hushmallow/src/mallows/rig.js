@@ -223,6 +223,8 @@ export class MallowRig {
   /** emotion: preset id | {presetId: weight}; intensity 0..1 */
   setEmotion(emotion, intensity = 0.7, opts = {}) {
     const mix = typeof emotion === 'string' ? { [emotion]: 1 } : { ...emotion };
+    // a heavy visit's floor: a plain "no feeling" (the shared stage handing a new rig its neutral) is the attentive face
+    if (stageFloor && !opts.stage && !Object.entries(mix).some(([k, w]) => k !== 'neutral' && w > 0)) return this.setStage(stageFloor, opts);
     this.mix = mix;
     this.intensity = Number.isFinite(+intensity) ? clamp(+intensity, 0, 1) : 0.7;
     this.stage = opts.stage || null;

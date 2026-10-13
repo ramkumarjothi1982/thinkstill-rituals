@@ -21,7 +21,8 @@
 
 import { h } from '../ui.js';
 import { MALLOWS, MALLOW_IDS, loadMallowAssets } from '../../mallows/registry.js';
-import { addTicker, removeTicker } from '../../mallows/rig.js';
+import { addTicker, removeTicker, setStageFloor } from '../../mallows/rig.js';
+import { rememberVisitSafety, recallVisitSafety } from '../visit-safety.js';
 import { openSupport } from './support.js';
 import { createSubtitles } from '../../hushfold/subtitles.js';
 import { createLines, SHARED_LINES, flowEmotion } from '../../hushfold/lines.js';
@@ -59,6 +60,8 @@ const CARE_FACE = 'concerned';
 const GENTLE_WORLDS = [['luminous-ocean', 'Somewhere calm, with Loomi'], ['static-storm', 'Glitzi’s storm, taken slowly']];
 // more words later in a visit that already had support: a short, plain acknowledgement (the full care line was said)
 const CARE_AGAIN = 'Thank you for telling me. I’m right here.';
+// back from the plans page without a plan: the words they typed are offered back (in memory only, never stored)
+const RETELL = 'No rush. Your words are still here, if you’d like to tell me again.';
 // Thought Mallows on the home stage (owner P8): at most 3, and 2 below 360 px wide; one in a world (owner P7)
 const thoughtCap = (inWorld = false) => (inWorld ? 1 : innerWidth < 360 ? 2 : 3);
 
@@ -1166,6 +1169,8 @@ export default function hushfold(app, params = {}) {
     if (r.level === 'crisis') S.crisis = true;
     else S.care = true;
     keepSafety();
+    // every Mallow on screen from here on — this stage's, a world's host, the plans page's — keeps the attentive face
+    setStageFloor(CARE_FACE);
     root.classList.add('hf-heavy');   // (the panel's "No plan yet · See plans" steps aside)
     clearTimeout(inviteT); timers.delete(inviteT);
     clearNudge();
@@ -1264,13 +1269,15 @@ export default function hushfold(app, params = {}) {
     if (worldMode && !S.finishing) onFinished();
   }
   /**
-   * The visit's level outlives the scene for the page session, in memory only (no words, nothing
-   * stored): back from Settings, the plans page, the garden or a ritual, support is still close and
-   * the visit is still a gentle one (no jokes, no invitations, no world after a crisis).
+   * The visit's level outlives the scene for the page session (no words): back from Settings, the plans page, the
+   * garden or a ritual, support is still close and the visit is still a gentle one (no jokes, no invitations, no world
+   * after a crisis). It outlives a reload in this tab too (visit-safety.js: the level only, for this tab, 12 h at most),
+   * so a reload never greets playfully after something heavy.
    */
   function keepSafety() {
     if (S.level === 'none') return;
     app.state.hfSafety = { level: S.level, category: S.category, crisisSpoken: S.crisisSpoken };
+    rememberVisitSafety(app.state.hfSafety);
   }
 
   // ---------------------------------------------------- telling --
@@ -1294,10 +1301,13 @@ export default function hushfold(app, params = {}) {
     // after something heavy the Mallow listens with its attentive, concerned face
     stageMallow.setStage(gentle() ? CARE_FACE : 'listening', { quiet: true });
     root.classList.add('hf-typing');
-    overlay = inputMod.openInput({
+    // (the words offered back after the plans page: the overlay opens with them, their feeling too)
+    const again = retell && !gentle() ? retell : null;
+    let ov = null;
+    ov = overlay = inputMod.openInput({
       app, root, prompt: prompt || 'Want to tell me?',
       mallow: { id: mallowId, name: M().name, glow: M().colours.glow },
-      emotion: S.emotion, intention: S.intention, hasPlan: ent.has('paid'),
+      emotion: S.emotion || again?.emotion || null, intention: S.intention || again?.intention || null, hasPlan: ent.has('paid'), text: again?.text || '',
       // something heavy earlier in this visit: the Support chip is there from the start, and no plan offer
       heavy: gentle(),
       face: (f) => stageMallow.setEmotion(f, 0.6, { quiet: true }),
@@ -1310,6 +1320,8 @@ export default function hushfold(app, params = {}) {
       onClose: (reason, meta = {}) => {
         overlay = null;
         popLayer('overlay');
+        // the words offered back go once sent; closed unsent they stay as the person left them (none: gone)
+        if (retell) retell = reason === 'submit' ? null : (ov?.text?.trim() ? { ...retell, text: ov.text } : null);
         root.classList.remove('hf-typing');
         if (S.left) return;
         noteSafety(meta.safety);
@@ -1831,6 +1843,8 @@ export default function hushfold(app, params = {}) {
     // they asked for something gentle after a care or distress disclosure: support stays up, with or
     // without a plan (back from the plans page without buying, the visit is still a gentle one)
     if (p.gentle) { noteSafety(p.gentle); S.careSaid = true; }
+    // no plan after all (Back from the plans page): a warm line, and their words offered back to tell again
+    if (!ent.has('paid') && p.input?.text && !gentle()) { offerRetell(p); return true; }
     if (!ent.has('paid')) return false;
     S.invited = true;
     showTell(true);
@@ -1844,6 +1858,27 @@ export default function hushfold(app, params = {}) {
     if (p.input?.text) warmWorld({ emotion: p.emotion, intention: p.intention });
     later(() => afterTell({ text: p.input?.text || '', emotion: p.emotion, intention: p.intention, safety: p.input?.safety?.detail || { level: 'none' }, input: p.input }), 700);
     return true;
+  }
+
+  /**
+   * Free tier, back from the plans page without buying: the words they typed come back with them (held in this scene's
+   * memory only, as app.state.pendingTell held them for the plans page; never stored) — a short warm line and "Tell me
+   * again", which opens the overlay with the same words (so does the Tell pill). "Just play" lets them go.
+   */
+  let retell = null;   // { text, emotion, intention } while offered back
+  function offerRetell(p) {
+    retell = { text: p.input.text, emotion: p.emotion || null, intention: p.intention || null };
+    S.invited = true;
+    showTell(true);
+    later(async () => {
+      if (!retell || S.left || overlay || worldMode || gentle()) return;
+      const v = await subtitles.choice(RETELL, [{ label: 'Tell me again', value: 'tell', primary: true, onPick: () => openTell('retell') }, { label: 'Just play', value: 'play' }],
+        { who: M().name, colour: M().colours.glow, timeoutMs: 16000, transient: true });
+      if (S.left) return;
+      S.lastLineAt = now();
+      if (v === 'tell') openTell('retell');
+      else if (v === 'play' && !gentle()) { retell = null; S.intention ||= 'play'; say(lines.pick(mallowId, 'justPlay')); }
+    }, 900);
   }
 
   /**
@@ -1870,6 +1905,10 @@ export default function hushfold(app, params = {}) {
     get flow() { return flowRef; },
     async enter() {
       document.body.classList.add('hf-active');
+      // something heavy earlier in this visit (in this page session, or before a reload in this tab: the level kept
+      // for it, never the words): the Mallow is on its attentive face from its very first frame
+      const kept = app.state.hfSafety || recallVisitSafety();
+      if (kept?.level) setStageFloor(CARE_FACE);
       world.dim(false);
       theme();
       // the Thought Mallows (W2's ThoughtLayer, loaded lazily) keep off the Mallow (room for its hop) and inside the
@@ -1913,7 +1952,6 @@ export default function hushfold(app, params = {}) {
       stageMallow ||= createStageMallow(world, { touch: null });
       // something heavy earlier in this page session (Settings and back, the plans page and back…): the
       // visit is still a gentle one from the first squeeze, support stays close, and the calm line is not said twice
-      const kept = app.state.hfSafety;
       if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; noteSafety(kept); S.careSaid = true; }
       router = createInputRouter({
         el: world.fx, mallow: stageMallow, thoughts: stage.thoughts,

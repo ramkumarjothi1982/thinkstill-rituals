@@ -159,6 +159,10 @@ test('face r1: a heavy visit\'s floor — every stage lands on concerned, a new 
     assert.equal(rig.stage, 'concerned', 'the plans page\'s curious face lands on concerned');
     rig.setStage('comforting', { quiet: true });
     assert.equal(rig.stage, 'concerned', 'the support sheet\'s heart eyes too');
+    // the shared stage hands a new rig its plain neutral once its art has loaded (world.setMallow): the attentive face
+    rig.setStage('neutral');
+    rig.setEmotion({ neutral: 1 }, 0.7, { instant: true });
+    assert.equal(rig.stage, 'concerned', 'a plain neutral lands on concerned');
     // a plain emotion (a ritual's mix) keeps its expression, held inside the limits
     rig.setEmotion({ happy: 1 }, 0.9, { quiet: true });
     assert.equal(rig.hushed, true);

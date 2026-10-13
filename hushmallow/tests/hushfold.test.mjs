@@ -815,7 +815,7 @@ test('H1 r3: the visit stays gentle across scenes (memory only) and when the pla
   // the level (no words) is kept in app.state for the page session whenever it rises or the calm line is said
   const keep = fnBody(scene, 'function keepSafety() {', '// ---------------------------------------------------- telling');
   assert.match(keep, /app\.state\.hfSafety = \{ level: S\.level, category: S\.category, crisisSpoken: S\.crisisSpoken \};/);
-  assert.doesNotMatch(keep, /text|words|input|localStorage|sessionStorage|store\./, 'only the level, never the words, and never stored');
+  assert.doesNotMatch(keep, /text|words|input|localStorage|sessionStorage|store\./, 'only the level, never the words (kept for the tab through visit-safety.js, never in the store)');
   assert.match(fnBody(scene, 'function noteSafety(r) {', 'function safetyHold('), /else S\.care = true;\s*keepSafety\(\);/);
   // ...and applied again on enter, before the router takes a single squeeze, without repeating the calm line
   const enter = fnBody(scene, 'async enter() {', 'leave() {');
