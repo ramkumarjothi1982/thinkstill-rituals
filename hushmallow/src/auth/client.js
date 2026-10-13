@@ -36,7 +36,10 @@
 // namespace the page booted into (reconcile()): gone → the page drops to
 // guest calmly at the next safe moment (guest things were never touched);
 // another account → it reloads into that account's namespace. Offline keeps
-// the session. Data calls always filter by the booted account's id and check
+// the session. A deletion, "Sign out and remove my things" or "Remove this
+// phone's data" writes a device-level tombstone first (src/auth/namespace.js
+// writeWipe): every other page of that account on this device stops writing
+// at once, removes what it wrote and reloads (onWipe). Data calls always filter by the booted account's id and check
 // the live session belongs to it; Row Level Security enforces the same.
 //
 // THE network: supabase-js is given one fetch function, netFetch below, that refuses any URL
@@ -44,7 +47,7 @@
 // are never used.
 
 import { friendlyError, errorCode, checkEmail, checkPassword } from './errors.js';
-import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY } from './namespace.js';
+import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY, writeWipe, wipedSince, honourWipe, settleWipe, wipeKey, WIPE_RELOAD } from './namespace.js';
 import * as S from './sync.js';
 import { FLOW_KEYS } from '../engine/flow-store.js';
 import { GARDEN_KEY } from '../engine/garden.js';
@@ -182,6 +185,8 @@ export function createAuth({
   let verified = null;        // { uid, at }: the current password was checked for this change
   const quiescers = new Set();   // { pause() → Promise, resume() }: the opt-in sync (src/auth/boot.js)
   const listeners = new Set();
+  /** This page may no longer write into the account's namespace (a removal started here, or on another page of this device). */
+  const sealedHere = (uid = bootUid) => isSealed(uid) || (!!uid && uid === bootUid && wipedSince(ls, bootUid, ns?.wipeId));
   const emit = (event) => { const snap = { status, user: user && { ...user }, event }; for (const fn of [...listeners]) { try { fn(snap); } catch (e) { console.warn('[auth]', e); } } };
   const fail = (error) => ({ ok: false, error });
 
@@ -238,6 +243,26 @@ export function createAuth({
   function switchTo(reason) { settled = true; onReload({ reason, urgent: false, hash: '#home' }); }
 
   /**
+   * Another page of this device wrote a tombstone for the account this page
+   * booted into (it deleted the account, signed out removing its things, or
+   * removed this phone's copy): this page's namespace is sealed at once (its
+   * later writes are dropped), what it wrote before it heard is removed when
+   * the copy is to go, the sync pauses, and the page reloads at the next
+   * calm moment with the matching notice.
+   */
+  function onWipe() {
+    if (mode !== 'account') return;
+    const w = honourWipe(ls, bootUid, ns.wipeId);
+    if (!w) return;
+    for (const q of quiescers) Promise.resolve().then(() => q.pause?.()).catch(() => {});
+    if (['signout', 'delete', 'device-data'].includes(intent)) return;   // this page's own flow reloads it
+    if (w.reason !== 'device-data') { status = 'expired'; user = null; consents = null; }
+    settled = true;
+    emit(w.reason === 'device-data' ? 'wiped' : 'expired');
+    onReload({ reason: WIPE_RELOAD[w.reason], urgent: false, hash: '#home' });
+  }
+
+  /**
    * Before a sign-out, a deletion or "Remove this device's data": seal the
    * account's namespace (src/auth/namespace.js: nothing more is written into
    * it from this page) and pause the opt-in sync, waiting (at most QUIESCE_MS)
@@ -270,7 +295,11 @@ export function createAuth({
         if (dead) {
           // the account itself is gone (deleted on another device): its copy here goes too
           const gone = error.code === 'user_not_found';
-          if (gone) await quiesce(bootUid);
+          if (gone) {
+            // every other page of this account on this device stops too (unless one already said so)
+            if (!wipedSince(ls, bootUid, ns.wipeId)) writeWipe(ls, bootUid, 'deleted', now());
+            await quiesce(bootUid);
+          }
           try { await c.auth.signOut({ scope: 'local' }); } catch { /* the session is gone either way */ }
           removeSupabaseKeys(ls, config.storageKey);
           if (gone) removeAccountData(ls, bootUid);
@@ -286,7 +315,10 @@ export function createAuth({
 
   if (enabled && !passive) {
     // another tab signed in or out: the persisted session changed under us
-    win.addEventListener?.('storage', (e) => { if (e.key == null || e.key === config.storageKey) reconcile('storage'); });
+    win.addEventListener?.('storage', (e) => {
+      if (mode === 'account' && (e.key == null || e.key === wipeKey(bootUid))) onWipe();
+      if (e.key == null || e.key === config.storageKey) reconcile('storage');
+    });
     doc?.addEventListener?.('visibilitychange', () => {
       if (doc.visibilityState !== 'visible') return;
       reconcile('visible');
@@ -317,6 +349,7 @@ export function createAuth({
     const u = toUser(session?.user);
     if (!u) return fail(friendlyError({}, 'signin'));
     pendingUid = u.id;
+    settleWipe(ls, u.id, now());   // signed in here again after its copy was removed: anything left of it goes first
     const s = settleNamespace(ls, u.id, now());
     return { ok: true, signedIn: true, uid: u.id, needsGuestChoice: s.needsChoice, keepIntent: true };
   }
@@ -482,6 +515,8 @@ export function createAuth({
       intent = 'signout';
       settled = true;
       const uid = bootUid || pendingUid;
+      // removing my things: the tombstone first, so every other page of this account here stops writing too
+      if (removeLocal && uid) writeWipe(ls, uid, 'signed-out', now());
       if (uid) await quiesce(uid);   // a sync in flight lands in a sealed store: nothing is written after this
       if (removeLocal && uid) removeAccountData(ls, uid);
       try { const c = await ensureClient(); await c.auth.signOut({ scope: 'local' }); } catch { /* offline: the tokens still go below */ }
@@ -613,6 +648,7 @@ export function createAuth({
           reconcile('check');
           return fail(friendlyError(error, 'delete'));
         }
+        writeWipe(ls, uid, 'deleted', now());   // first: every other page of this account on this device stops writing too
         removeAccountData(ls, uid);
         try { await c.auth.signOut({ scope: 'local' }); } catch { /* the user no longer exists */ }
         removeSupabaseKeys(ls, config.storageKey);
@@ -631,6 +667,7 @@ export function createAuth({
       if (mode !== 'account' || settled) return { ok: false };
       intent = 'device-data';
       settled = true;
+      writeWipe(ls, bootUid, 'device-data', now());   // first: every other page of this account on this device stops writing too
       await quiesce(bootUid);
       const n = removeAccountData(ls, bootUid);
       safe(() => ls.setItem(`hm2:u:${bootUid}:${MARKER_KEY}`, JSON.stringify({ v: 1, createdAt: now(), guestChoice: 'cleared', choiceAt: now() })));
@@ -653,7 +690,7 @@ export function createAuth({
     },
     /** "Bring in this phone's guest things": copies them into this account's namespace (local only), then reloads. */
     importGuestData() {
-      if (mode !== 'account' || settled) return { ok: false };
+      if (mode !== 'account' || settled || sealedHere()) return { ok: false };
       const r = applyGuestChoice(ls, bootUid, 'keep', now());
       notice('guest-kept');
       settled = true;
@@ -692,7 +729,7 @@ export function createAuth({
         return asOwner('profile', async ({ c, uid }) => {
           const { error } = await c.from('profiles').update({ last_seen_at: new Date(now()).toISOString() }).eq('user_id', uid);
           if (error) return fail(friendlyError(error, 'profile'));
-          if (!settled && !isSealed(uid)) safe(() => ls.setItem(key, String(now())));   // never after a sign-out or deletion began
+          if (!settled && !sealedHere(uid)) safe(() => ls.setItem(key, String(now())));   // never after a sign-out or deletion began (on any page here)
           return { ok: true };
         });
       },

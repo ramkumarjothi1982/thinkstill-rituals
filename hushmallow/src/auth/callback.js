@@ -20,6 +20,7 @@
 
 import { friendlyError, callbackError, checkPassword, passwordStrength } from './errors.js';
 import { createAuthMallow, pickMallow } from './mallow.js';
+import { settleWipe } from './namespace.js';
 
 export const OTP_TYPES = Object.freeze(['signup', 'email', 'recovery', 'email_change', 'invite', 'magiclink']);
 export const NEXT = Object.freeze(['account', 'home']);
@@ -260,16 +261,17 @@ async function heldSession(c) {
 }
 
 /**
- * The link's work, without the page (tests/auth-callback-flow.test.mjs runs
- * it): verifyOtp for a token_hash, exchangeCodeForSession for a code. When a
+ * The link's work, without the page (tests/auth-client.test.mjs runs it):
+ * verifyOtp for a token_hash, exchangeCodeForSession for a code. When a
  * session comes of it, the session this browser held before (another
  * account's, or an older one of the same account) is ended on the server with
  * scope 'local' (auth.endDetachedSession: that one session, never the
- * person's other devices).
+ * person's other devices), and an account whose copy on this device was
+ * removed before (src/auth/namespace.js tombstones) starts clean here.
  *   → { ok: true, kind: 'verified' | 'recovery' | 'email-changed' | 'email-change-half', uid, ended }
  *   | { ok: false, error, code }
  */
-export async function openLink({ auth, c, p }) {
+export async function openLink({ auth, c, p, ls = (() => { try { return globalThis.localStorage; } catch { return null; } })() }) {
   const before = await heldSession(c);
   let kind = 'verified', session = null;
   if (p.kind === 'token') {
@@ -285,6 +287,7 @@ export async function openLink({ auth, c, p }) {
     if (data?.redirectType === 'recovery') kind = 'recovery';
   } else return { ok: false, error: friendlyError({ code: 'invalid_link' }, 'callback'), code: 'invalid_link' };
   const uid = String(session?.user?.id || '').toLowerCase() || null;
+  if (uid && ls) { try { settleWipe(ls, uid); } catch { /* the app's boot settles it */ } }
   const ended = before && session && before.refresh_token !== session.refresh_token ? auth.endDetachedSession(before) : Promise.resolve({ ok: true, none: true });
   return { ok: true, kind, uid, ended };
 }

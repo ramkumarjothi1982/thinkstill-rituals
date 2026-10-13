@@ -17,7 +17,7 @@
 
 import PUBLISHED from './public-config.js';
 import { resolveAuthConfig } from './config.js';
-import { bootNamespace, createNamespacedStore, settleNamespace, needsGuestChoice, readPersistedSession, readMarker, guestHasData } from './namespace.js';
+import { bootNamespace, createNamespacedStore, settleNamespace, needsGuestChoice, readPersistedSession, readMarker, guestHasData, cleanupWipes, honourWipe, wipedSince, wipeKey, WIPE_RELOAD } from './namespace.js';
 import { createStore } from '../engine/storage.js';
 
 const AUTH_PARAMS = ['code', 'token_hash', 'error_code', 'error_description'];
@@ -46,9 +46,13 @@ export function authBoot({ loc = globalThis.location, ls = safe(() => globalThis
   if (!config.enabled) return { config, ns: Object.freeze({ mode: 'off', uid: null }), store: createStore(), forwarding: false, deepLink: null, guestChoice: false, notice: null };
   const fwd = callbackForward(loc.href);
   if (fwd) { loc.replace(fwd); return { config, ns: Object.freeze({ mode: 'off', uid: null }), store: createStore({ backend: 'memory' }), forwarding: true, deepLink: null, guestChoice: false, notice: null }; }
+  // an account whose copy here was deleted or removed (on any page of this device) leaves nothing behind
+  if (ls) safe(() => cleanupWipes(ls, readPersistedSession(ls, config.storageKey)?.uid || null));
   const ns = bootNamespace({ config, ls });
-  const store = createNamespacedStore({ ns });
-  const guestChoice = ns.mode === 'account' && ls ? settleNamespace(ls, ns.uid).needsChoice : false;
+  const store = createNamespacedStore({ ns, ls });
+  // booted while another tab is removing this account's copy: nothing is written, not even the marker
+  const sealedAtBoot = ns.mode === 'account' && !!safe(() => wipedSince(ls, ns.uid, ns.wipeId), false);
+  const guestChoice = ns.mode === 'account' && ls && !sealedAtBoot ? settleNamespace(ls, ns.uid).needsChoice : false;
   const deepLink = /^#account(?:$|[?&/])/.test(loc.hash || '') ? 'account' : null;
   const notice = safe(() => ss?.getItem(NOTICE_KEY));
   if (notice) safe(() => ss.removeItem(NOTICE_KEY));
@@ -74,10 +78,17 @@ export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, 
   let real = null, loading = null;
   const listeners = new Set();
   // before (or without) the full client: another tab signing in or out changes which
-  // namespace this page belongs to, so it reloads at the next calm moment
+  // namespace this page belongs to, so it reloads at the next calm moment; another
+  // tab deleting this account or removing its copy here seals this page's namespace
+  // at once and removes what it wrote (src/auth/namespace.js honourWipe)
   if (enabled && typeof onReload === 'function') {
     win?.addEventListener?.('storage', (e) => {
-      if (real || (e.key != null && e.key !== config.storageKey)) return;
+      if (real) return;
+      if (ns.mode === 'account' && (e.key == null || e.key === wipeKey(ns.uid))) {
+        const w = safe(() => honourWipe(ls, ns.uid, ns.wipeId));
+        if (w) { onReload({ reason: WIPE_RELOAD[w.reason], urgent: false, hash: '#home' }); return; }
+      }
+      if (e.key != null && e.key !== config.storageKey) return;
       const uid = safe(() => readPersistedSession(ls, config.storageKey)?.uid) || null;
       if (uid !== (ns.uid || null)) onReload({ reason: uid ? 'account-changed' : 'expired', urgent: false, hash: '#home' });
     });

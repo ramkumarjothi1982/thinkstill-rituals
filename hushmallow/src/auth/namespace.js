@@ -21,6 +21,13 @@
 // From the moment a sign-out, a deletion or "Remove this device's data"
 // starts, the account's namespace is sealed (sealAccount): its store drops
 // every write, so nothing in flight can put the account's things back.
+// Every page on the device honours it, not only the one that started it: a
+// device-level tombstone (hm2:auth.wipe:<uid>, writeWipe) is written first,
+// and any page that booted into that account before it was written drops its
+// writes from then on (wipedSince), removes what slipped in (honourWipe, on
+// the storage event) and reloads; the next boot removes anything left
+// (cleanupWipes). A plain sign-out or an expired session writes no tombstone:
+// the account keeps its copy for its next sign-in.
 // Sign-in and sign-out reload the page into the right namespace. The first
 // time an account is used on this device it is asked once whether to keep
 // this device's guest things with it (a local copy, nothing is uploaded).
@@ -38,6 +45,8 @@ const MERGE = Object.freeze({
 });
 
 export const ACCOUNT_PREFIX = `${PREFIX}u:`;
+/** Device-level tombstones, one per account: hm2:auth.wipe:<uid> (see writeWipe). */
+export const WIPE_PREFIX = `${PREFIX}auth.wipe:`;
 export const DEVICE_KEYS = Object.freeze(['entitlement', 'beyond.device', 'beyond.session', 'beyond.invite', 'sound', 'haptics']);
 /** Account-level, but only bookkeeping: on their own they are not "guest things" worth asking about. */
 export const INTERNAL_KEYS = Object.freeze(['rotation', 'hushfold.rotation', 'hushflow.rotation', 'hushfold.lines', 'beyond.seen', 'beyond.visits']);
@@ -66,6 +75,7 @@ export function sealAccount(uid) { if (isUid(uid)) SEALED.add(uid.toLowerCase())
 export function unsealAccount(uid) { if (isUid(uid)) SEALED.delete(uid.toLowerCase()); }
 export const isSealed = (uid) => isUid(uid) && SEALED.has(uid.toLowerCase());
 
+const safeLocalStorage = () => { try { return globalThis.localStorage || null; } catch { return null; } };
 const keysOf = (ls) => {
   const out = [];
   try { for (let i = 0; i < ls.length; i++) { const k = ls.key(i); if (k != null) out.push(k); } } catch { /* blocked */ }
@@ -96,12 +106,21 @@ export function readPersistedSession(ls, storageKey) {
   return { uid: user.id.toLowerCase(), email: typeof user.email === 'string' ? user.email : null, expiresAt: Number(s.expires_at) || 0, hasRefresh };
 }
 
-/** Which namespace this page boots into. config: resolveAuthConfig()'s result. */
-export function bootNamespace({ config, ls }) {
+/**
+ * Which namespace this page boots into. config: resolveAuthConfig()'s result.
+ * An account's namespace remembers the tombstone it booted with (wipeId), so
+ * a later one seals it. A boot that lands while another tab is still
+ * removing this very account's copy (its tombstone is pending and less than
+ * WIPE_GRACE_MS old: the session is about to go) boots sealed (removing): it
+ * writes nothing, and reloads once the session has gone.
+ */
+export function bootNamespace({ config, ls, now = Date.now() }) {
   if (!config?.enabled) return Object.freeze({ mode: 'off', uid: null, prefix: PREFIX });
   const s = readPersistedSession(ls, config.storageKey);
   if (!s) return Object.freeze({ mode: 'guest', uid: null, prefix: PREFIX });
-  return Object.freeze({ mode: 'account', uid: s.uid, prefix: accountPrefix(s.uid), email: s.email });
+  const w = readWipe(ls, s.uid);
+  const removing = wipeUnderway(w, now);
+  return Object.freeze({ mode: 'account', uid: s.uid, prefix: accountPrefix(s.uid), email: s.email, wipeId: removing ? null : (w?.id ?? null), removing });
 }
 
 /**
@@ -112,23 +131,25 @@ export function bootNamespace({ config, ls }) {
  *            clearAll() empties this account's namespace and the device keys
  *            (the guest's things and other accounts are left alone)
  */
-export function createNamespacedStore({ ns, backend = 'auto' } = {}) {
+export function createNamespacedStore({ ns, backend = 'auto', ls = backend && typeof backend === 'object' ? backend : safeLocalStorage() } = {}) {
   if (!ns || ns.mode === 'off') return createStore({ backend });
   if (ns.mode === 'guest') {
-    const s = createStore({ backend, protect: [ACCOUNT_PREFIX] });
+    // a guest's "Delete everything on this phone" leaves other accounts and the tombstones alone
+    const s = createStore({ backend, protect: [ACCOUNT_PREFIX, WIPE_PREFIX] });
     return Object.assign(s, { namespace: ns });
   }
-  const device = createStore({ backend, protect: [ACCOUNT_PREFIX] });
+  const device = createStore({ backend, protect: [ACCOUNT_PREFIX, WIPE_PREFIX] });
   const acct = createStore({ backend, prefix: ns.prefix });
   const pick = (k) => (isDeviceKey(k) ? device : acct);
   // the opt-in sync (src/auth/autosync.js) hears which keys this page wrote
   const writes = new Set();
   const wrote = (k) => { for (const fn of [...writes]) { try { fn(k); } catch (e) { console.warn('[store]', e); } } };
-  const sealed = () => isSealed(ns.uid);
+  // sealed on this page, or by a tombstone another page wrote since this one booted
+  const sealed = () => isSealed(ns.uid) || wipedSince(ls, ns.uid, ns.wipeId);
   return {
     namespace: ns,
     get persistent() { return acct.persistent; },
-    /** True once a sign-out or deletion has started on this page: writes are dropped. */
+    /** True once a sign-out, a deletion or "Remove this device's data" has started (on any page of this device since this one booted): writes are dropped. */
     get sealed() { return sealed(); },
     get: (k, fallback = null) => pick(k).get(k, fallback),
     set: (k, v) => { if (sealed()) return false; const r = pick(k).set(k, v); wrote(k); return r; },
@@ -227,6 +248,112 @@ export function applyGuestChoice(ls, uid, choice, now = Date.now()) {
   const m = readMarker(ls, uid);
   writeMarker(ls, uid, { createdAt: m?.createdAt || now, guestChoice: choice, choiceAt: now });
   return { copied };
+}
+
+// ---------------------------------------------------------- tombstones --
+/**
+ * Why an account's copy on this device is being removed:
+ *   deleted      the account was deleted (here, or found deleted on the server)
+ *   signed-out   "Sign out and remove my things from this phone"
+ *   device-data  "Remove this phone's data" (the account stays signed in here)
+ */
+export const WIPE_REASONS = Object.freeze(['deleted', 'signed-out', 'device-data']);
+/** The reload reason another page passes on when it hears a tombstone (main.js shows the matching notice). */
+export const WIPE_RELOAD = Object.freeze({ deleted: 'deleted-elsewhere', 'signed-out': 'removed-elsewhere', 'device-data': 'cleared-elsewhere' });
+/** How long a pending tombstone means "a removal is under way right now" to a boot into that same account. */
+export const WIPE_GRACE_MS = 2 * 60 * 1000;
+export const wipeKey = (uid) => `${WIPE_PREFIX}${String(uid).toLowerCase()}`;
+const newWipeId = () => {
+  try { if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID(); } catch { /* below */ }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+};
+
+/** The tombstone for uid on this device: { v, id, at, reason, pending } or null. */
+export function readWipe(ls, uid) {
+  if (!ls || !isUid(uid)) return null;
+  try {
+    const w = JSON.parse(getRaw(ls, wipeKey(uid)) || 'null');
+    return w && w.v === 1 && typeof w.id === 'string' && WIPE_REASONS.includes(w.reason) ? w : null;
+  } catch { return null; }
+}
+
+/**
+ * Written FIRST, before any of the account's keys are removed, with a new id
+ * each time: every page that booted into this account before it is sealed
+ * from then on. pending: the copy here still has to go wherever the account
+ * is not signed in again (deleted, signed-out). "Remove this phone's data"
+ * removes it at once and stays signed in, so it is never pending.
+ */
+export function writeWipe(ls, uid, reason, now = Date.now()) {
+  if (!ls || !isUid(uid) || !WIPE_REASONS.includes(reason)) return null;
+  const w = { v: 1, id: newWipeId(), at: now, reason, pending: reason !== 'device-data' };
+  try { ls.setItem(wipeKey(uid), JSON.stringify(w)); return w; } catch { return null; }
+}
+
+/** True when uid's tombstone is not the one this page booted with (seenId): a removal began since. */
+export function wipedSince(ls, uid, seenId) {
+  if (!ls || !isUid(uid)) return false;
+  const w = readWipe(ls, uid);
+  return !!w && w.id !== (seenId ?? null);
+}
+
+/** A pending tombstone young enough that its removal may still be running in another tab. */
+export function wipeUnderway(w, now = Date.now()) {
+  const at = Number(w?.at) || 0;
+  return !!w?.pending && Math.abs(now - at) < WIPE_GRACE_MS;
+}
+
+/**
+ * Another page wrote a tombstone for the account this page booted into
+ * (seenId: the one it booted with): seal this page's namespace at once (its
+ * later writes are dropped) and, when the copy is to go, remove whatever this
+ * page wrote before it heard. Returns the tombstone, or null when there is
+ * nothing new.
+ */
+export function honourWipe(ls, uid, seenId) {
+  const w = readWipe(ls, uid);
+  if (!w || w.id === (seenId ?? null)) return null;
+  sealAccount(uid);
+  if (w.pending) removeAccountData(ls, uid);
+  return w;
+}
+
+/**
+ * The account signs in on this device again (a sign-in, a link on
+ * /auth/callback): the cleanup its tombstone still owed is done now, and the
+ * tombstone stops asking for it (the same id: pages that booted with it stay
+ * open). Returns the number of keys removed.
+ */
+export function settleWipe(ls, uid, now = Date.now()) {
+  const w = readWipe(ls, uid);
+  if (!w?.pending) return 0;
+  const n = removeAccountData(ls, uid);
+  try { ls.setItem(wipeKey(uid), JSON.stringify({ ...w, pending: false, settledAt: now })); } catch { /* the next boot tries again */ }
+  return n;
+}
+
+/**
+ * At boot, before the namespace is chosen: every account whose tombstone
+ * still asks for it loses whatever is left of its copy on this device
+ * (anything a page wrote before it heard). The account this page is signed
+ * in as is left to bootNamespace while its removal is under way; an older
+ * pending tombstone for it is settled (it signed in again some other way).
+ * Returns the uids cleaned.
+ */
+export function cleanupWipes(ls, sessionUid = null, now = Date.now()) {
+  const out = [];
+  for (const k of keysOf(ls)) {
+    if (!k.startsWith(WIPE_PREFIX)) continue;
+    const uid = k.slice(WIPE_PREFIX.length);
+    const w = readWipe(ls, uid);
+    if (!w?.pending) continue;
+    if (uid === sessionUid) {
+      if (!wipeUnderway(w, now)) { settleWipe(ls, uid, now); out.push(uid); }
+      continue;
+    }
+    if (removeAccountData(ls, uid) > 0) out.push(uid);
+  }
+  return out;
 }
 
 /** Every account namespace on this device (uids). */

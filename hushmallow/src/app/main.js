@@ -75,14 +75,18 @@ const authSafeNow = () => {
   const top = stack[stack.length - 1]?.name;
   return CALM_SCENES.includes(top) || (top === 'home' && safeToUpdate());
 };
+// what this page says when it did not ask for the reload itself: an expired session, or another tab
+// of this device that deleted the account, signed out removing its things, or removed this phone's copy
+const LATER_NOTICE = { expired: 'expired', 'deleted-elsewhere': 'deleted', 'removed-elsewhere': 'signed-out', 'cleared-elsewhere': 'device-cleared' };
 app.auth = createAuthHandle(AUTH, {
   onReload: ({ urgent, hash, reason }) => {
     authReload = { hash };
+    const kind = LATER_NOTICE[reason];
     if (urgent || authSafeNow()) {
-      // an expired session: the calm line shows once, after the reload
-      if (reason === 'expired') { try { sessionStorage.setItem('hm2:auth.notice', 'expired'); } catch { /* no line then */ } }
+      // the calm line shows once, after the reload
+      if (kind) { try { sessionStorage.setItem('hm2:auth.notice', kind); } catch { /* no line then */ } }
       reloadForAuth();
-    } else if (reason === 'expired') toast(NOTICE_TEXT.expired, 4200);   // say it now; the reload waits for a calm moment
+    } else if (kind) toast(NOTICE_TEXT[kind], 4200);   // say it now; the reload waits for a calm moment
   },
 });
 async function checkVersion() {
