@@ -281,32 +281,74 @@ export function createAuth({
     for (const q of quiescers) { try { q.resume?.(); } catch { /* carry on */ } }
   }
 
-  /** Ask the server whether this session is still real (a deleted account, a revoked session). */
+  /**
+   * The session this page's account holds in storage right now, read without
+   * supabase-js: { at, exp } — or null when it is gone or is now ANOTHER
+   * account's (another tab of this browser signed in, or opened a link).
+   */
+  function ownSession(uid = bootUid) {
+    const p = readPersistedSession(ls, config.storageKey);
+    if (!p || p.uid !== uid) return null;
+    let s = null;
+    try { s = JSON.parse(ls.getItem(config.storageKey) || 'null'); } catch { return null; }
+    if (s?.currentSession) s = s.currentSession;
+    return { at: typeof s?.access_token === 'string' ? s.access_token : null, exp: Number(s?.expires_at) || 0 };
+  }
+  /** supabase-js's keys go only while they hold this account's session (or none): never another tab's newer one. */
+  function clearOwnKeys(uid = bootUid) {
+    const p = readPersistedSession(ls, config.storageKey);
+    if (p && p.uid !== uid) return 0;
+    return removeSupabaseKeys(ls, config.storageKey);
+  }
+  /**
+   * GET /auth/v1/user with exactly this access token, through the guarded
+   * fetch. Not supabase-js's getUser(): on "session not found" it removes
+   * whatever session is in storage at that moment, which on a shared browser
+   * can already be someone else's (another tab just opened B's link and
+   * ended this page's session). → { user } | { dead, code } | { status }
+   */
+  async function userCheck(at) {
+    const f = guardedFetch(new URL(config.url).origin);
+    const res = await f(`${String(config.url).replace(/\/+$/, '')}/auth/v1/user`, { method: 'GET', headers: { apikey: config.key, authorization: `Bearer ${at}`, accept: 'application/json' } });
+    let body = null;
+    try { body = await res.json(); } catch { /* no body */ }
+    if (res.ok) return { user: body };
+    const code = String(body?.error_code || body?.code || '');
+    const dead = ['user_not_found', 'session_not_found', 'bad_jwt', 'refresh_token_not_found', 'session_expired'].includes(code) || res.status === 401 || res.status === 403;
+    return { dead, code, status: res.status };
+  }
+
+  /**
+   * Ask the server whether this session is still real (a deleted account, a
+   * revoked session). Only the session that was refused is ever cleared here,
+   * and only while it is still the one in storage.
+   */
   async function verify(force = false) {
     if (!enabled || mode !== 'account' || settled) return status;
     if (!force && now() - lastVerify < VERIFY_EVERY_MS) return status;
     lastVerify = now();
     try {
       const c = await ensureClient();
-      const { data, error } = await c.auth.getUser();
-      if (error) {
-        const st = Number(error.status) || 0;
-        const dead = ['user_not_found', 'session_not_found', 'bad_jwt', 'refresh_token_not_found', 'session_expired'].includes(error.code) || error.name === 'AuthSessionMissingError' || st === 401 || st === 403;
-        if (dead) {
+      await c.auth.getSession();   // supabase-js refreshes an expiring token here (under its lock, guarded)
+      const own = ownSession();
+      // gone, or another account's now (reconcile below decides); an expired token that could not be refreshed: offline, it stays
+      if (own?.at && own.exp * 1000 > now()) {
+        const r = await userCheck(own.at);
+        if (r.user) {
+          const u = toUser(r.user);
+          if (u?.id === bootUid) user = { ...user, ...u };
+        } else if (r.dead) {
           // the account itself is gone (deleted on another device): its copy here goes too
-          const gone = error.code === 'user_not_found';
+          const gone = r.code === 'user_not_found';
           if (gone) {
             // every other page of this account on this device stops too (unless one already said so)
             if (!wipedSince(ls, bootUid, ns.wipeId)) writeWipe(ls, bootUid, 'deleted', now());
             await quiesce(bootUid);
           }
-          try { await c.auth.signOut({ scope: 'local' }); } catch { /* the session is gone either way */ }
-          removeSupabaseKeys(ls, config.storageKey);
+          // the refused session is dead on the server already: it only leaves storage, and only if it is still there
+          if (ownSession()?.at === own.at) removeSupabaseKeys(ls, config.storageKey);
           if (gone) removeAccountData(ls, bootUid);
         }
-      } else if (data?.user) {
-        const u = toUser(data.user);
-        if (u?.id === bootUid) user = { ...user, ...u };
       }
     } catch { /* offline or the library could not load: the session stays */ }
     reconcile('verified');
@@ -519,8 +561,10 @@ export function createAuth({
       if (removeLocal && uid) writeWipe(ls, uid, 'signed-out', now());
       if (uid) await quiesce(uid);   // a sync in flight lands in a sealed store: nothing is written after this
       if (removeLocal && uid) removeAccountData(ls, uid);
-      try { const c = await ensureClient(); await c.auth.signOut({ scope: 'local' }); } catch { /* offline: the tokens still go below */ }
-      removeSupabaseKeys(ls, config.storageKey);
+      // supabase-js signs out whatever session is in storage: only while it is still this account's
+      // (another tab may have signed someone else in on this browser since this page booted)
+      if (!uid || ownSession(uid)) { try { const c = await ensureClient(); await c.auth.signOut({ scope: 'local' }); } catch { /* offline: the tokens still go below */ } }
+      if (uid) clearOwnKeys(uid); else removeSupabaseKeys(ls, config.storageKey);
       if (removeLocal && uid) removeAccountData(ls, uid);   // once more, right before the reload
       consents = null; user = null; status = 'guest'; verified = null;
       notice('signed-out');
@@ -650,8 +694,10 @@ export function createAuth({
         }
         writeWipe(ls, uid, 'deleted', now());   // first: every other page of this account on this device stops writing too
         removeAccountData(ls, uid);
-        try { await c.auth.signOut({ scope: 'local' }); } catch { /* the user no longer exists */ }
-        removeSupabaseKeys(ls, config.storageKey);
+        // the user no longer exists, so its sessions are gone on the server; its tokens leave this browser
+        // (never another account's that another tab put here meanwhile)
+        if (ownSession(uid)) { try { await c.auth.signOut({ scope: 'local' }); } catch { /* the user no longer exists */ } }
+        clearOwnKeys(uid);
         consents = null; user = null; status = 'guest'; verified = null;
         notice('deleted');
         emit('deleted');
