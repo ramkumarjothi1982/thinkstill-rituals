@@ -274,3 +274,8 @@
 /* moments without a dock: lift the Mallow off the bottom edge */
 .rl-scene:is([data-state="launch"], [data-state="passing"], [data-state="looking"]) .rl-stage { padding-bottom: calc(34px + var(--hm-safe-bottom)); }
 .rl-home-scroll.is-unfolding .rl-home-list > * { opacity: 0; }
+
+/* share output and data export (shown in a sheet) */
+.rl-share-out { display: grid; gap: 12px; justify-items: center; }
+.rl-share-img { width: min(100%, 260px); height: auto; border-radius: 22px; box-shadow: 0 30px 60px -36px rgba(70,40,140,.6); -webkit-touch-callout: default; user-select: auto; }
+.rl-export { max-height: 40vh; overflow: auto; margin: 0; padding: 12px 14px; border-radius: 16px; background: #F6F2FC; font: 500 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--hm-ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }

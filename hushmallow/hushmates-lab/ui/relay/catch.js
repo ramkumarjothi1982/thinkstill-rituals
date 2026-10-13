@@ -253,7 +253,7 @@ export function catchScene(dev) {
     requestAnimationFrame(() => {
       const scroller = body.querySelector('.rl-writing');
       const title = scroller?.querySelector('.kit-title');
-      if (scroller && title && scroller.scrollHeight > scroller.clientHeight + 40) scroller.scrollTop = title.offsetTop - 6;
+      if (scroller && title && scroller.clientHeight < 460 && scroller.scrollHeight > scroller.clientHeight + 40) scroller.scrollTop = title.offsetTop - 6;
       if (err) error.scrollIntoView({ block: 'center' });
     });
   }

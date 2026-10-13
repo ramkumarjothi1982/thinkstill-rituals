@@ -45,22 +45,24 @@ export function share(dev, { id } = {}) {
         h('p', {}, 'Nothing is posted anywhere from here. The picture never includes your words or anyone’s perspective: only light, the number of perspectives, and (if you like) the feeling’s name.')),
       j.label ? sentenceSwitch({ label: 'Show the feeling’s name', checked: opts.label, test: 'share-label', onChange: (on) => { opts.label = on; chip.hidden = !on; } }) : null,
       h('div', { class: 'rl-actions' },
-        h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'share-save' }, onclick: () => save() }, icon('download'), 'Save the picture to this device'),
+        h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'share-save' }, onclick: () => save() }, icon('download'), 'Make the picture'),
         h('p', { class: 'kit-note rl-center' }, 'You decide if and where to post it.'))));
 
   async function save() {
-    try {
-      const blob = await render(j, { ...opts, line });
-      const url = URL.createObjectURL(blob);
-      const a = h('a', { href: url, download: 'hushmates-journey.png' });
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-      dev.toast('Saved to this device. Nothing was uploaded.');
-    } catch {
+    let url;
+    try { url = URL.createObjectURL(await render(j, { ...opts, line })); } catch {
       dev.toast('Couldn’t make the picture here. Please try again.', { tone: 'warn' });
+      return;
     }
+    // shown, not downloaded: works everywhere (some hosts block script downloads), and nothing is uploaded
+    dev.sheet({
+      title: 'Your picture',
+      body: h('div', { class: 'rl-share-out' },
+        h('img', { src: url, alt: 'Your journey as a picture: an orb of light with its petals, the feeling’s name and the Hushmallow end card', class: 'rl-share-img', dataset: { test: 'share-image' } }),
+        h('p', { class: 'kit-note rl-center' }, 'Press and hold the picture (or right-click it) to save it. It was made on this device; nothing was uploaded or posted.')),
+      actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
+      onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
+    });
   }
   return { el, mood: 'warm', destroy() { orb.destroy(); } };
 }

@@ -76,11 +76,17 @@ export function you(dev) {
   async function exportData() {
     const data = await dev.run(() => c.api('exportMyData'));
     if (!data) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-    const a = h('a', { href: url, download: 'my-hushmates-data.json' });
-    document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-    dev.toast('Downloaded to this device.');
+    const text = JSON.stringify(data, null, 2);
+    const pre = h('pre', { class: 'rl-export', tabindex: '0', dataset: { test: 'export-json' } }, text);
+    const copy = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'export-copy' }, onclick: () => {
+      navigator.clipboard?.writeText(text).then(() => dev.toast('Copied.'), () => selectAll()) ?? selectAll();
+    } }, 'Copy my data');
+    const selectAll = () => { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); dev.toast('Selected: copy it with your device’s copy command.'); };
+    dev.sheet({
+      title: 'Your Hushmates data',
+      body: h('div', { class: 'kit-stack' }, h('p', { class: 'hm-sheet-text' }, 'Your feelings and what came back, and the perspectives you gave. Other people never appear in it.'), pre),
+      actions: [copy, h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', onclick: () => dev.closeSheet() }, 'Close')],
+    });
   }
   async function deleteAll() {
     const ok = await dev.confirm({ title: 'Delete your Hushmates data?', text: 'Every feeling you released and every perspective you gave is deleted, and you’re signed out of Hushmates. This can’t be undone.', confirmLabel: 'Delete everything', danger: true });

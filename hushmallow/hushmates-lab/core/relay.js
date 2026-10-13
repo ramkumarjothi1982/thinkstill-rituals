@@ -554,7 +554,8 @@ export class RelayService {
       // the provider's words meet the same standard as a person's (kind, no diagnosis, no contact details)
       const fit = clean && screenReframe(clean, { minChars: 1, maxChars: 600 }).ok;
       if (fit) {
-        Object.assign(f, { status: 'ready', text: clean, mallow: MALLOW_IDS.includes(r.mallow) ? r.mallow : mallow, source: ['ai', 'library', 'demo'].includes(r.source) ? r.source : 'demo', model: r.model || null, at: this.now() });
+        Object.assign(f, { status: 'ready', text: clean, mallow,   // the Mallow the person asked, whatever the provider picked
+           source: ['ai', 'library', 'demo'].includes(r.source) ? r.source : 'demo', model: r.model || null, at: this.now() });
         j.events.push({ type: 'mallow-perspective', at: this.now() });
       } else {
         Object.assign(f, { status: 'failed', reason: r?.reason === 'timeout' ? 'timeout' : 'unavailable' });   // the feeling still comes home
