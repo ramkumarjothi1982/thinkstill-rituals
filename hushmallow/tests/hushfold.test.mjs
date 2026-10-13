@@ -92,12 +92,14 @@ const PROBE = {
     "I'm being bullied at school", 'she slapped me', 'my mum beats me', 'my ex is stalking me'],
   concern: ['he hurt me', "I can't cope", 'I feel hopeless', 'I want to hurt him', "I'm going to kill him", 'I feel worthless', 'I wish I could sleep forever',
     "there's no point anymore", "what's the point anymore", "I don't see a way out", 'I want the pain to stop', 'I hate my life and want out',
-    "I'm going to jump", 'I keep thinking about death', "I don't see a way out of this."],
+    "I'm going to jump", 'I keep thinking about death', "I don't see a way out of this.",
+    // final QA (13 Oct 2026): self-hatred keeps support close (it was listed as none here; the W3 review probe had it as concern)
+    'I hate myself'],
   none: ['this deadline is killing me', 'my feet are killing me', 'I want to end it with him', 'I could kill him', "I'm dying to see the new film",
     "I'd rather die than go to that party", 'I nearly died laughing', 'the traffic was murder', 'my phone died', 'I killed it at the gym', 'I want to die of boredom',
     'I took all my pills on time', 'this job is a nightmare', 'my boss embarrassed me today', "I'm so angry at my sister", 'I want to end this meeting',
     'I want to kill this bug in my code', 'I shot my shot', 'we killed the presentation', "I'm going to end it with my boyfriend tonight", "I'd kill for a coffee",
-    'That joke killed me', 'I hate myself',
+    'That joke killed me',
     // near-misses of the round-3 phrases
     "I'm taking my life back", 'I took my life into my own hands', "I'm thinking of dying my hair purple", "I've been cutting carbs", 'I keep cutting my fringe too short',
     "I've been cutting back on coffee", "I'm done with living in London", 'I could sleep forever after that run', "there's no point in arguing with him",
