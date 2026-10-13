@@ -575,6 +575,10 @@ export default function hushfold(app, params = {}) {
     if (hold) { S.hold = 'care'; try { flowRef?.pause?.({ reason: 'safety' }); } catch (e) { console.warn(e); } }
     // a world started fresh over a held one (care, then a calm world): nothing is paused any more
     else if (!flowRef?.state?.paused) pausedPill.hidden = true;
+    // a world's first arrival: its host's place on the world's floor is planned at once (the world lays itself out
+    // round it), but it sets off from beside the person's words only once they have faded out of its way (heroWaitsForWords)
+    const cold = !d?.from;
+    if (cold) stageMallow?.holdPlace?.(true);
     // each world has its own Mallow (Glitzi hosts the Static Storm); after a melt the host already took the
     // stage halfway through it ('host'), so this is the first world's, or a melt whose 'host' never came
     if (d?.mallow && MALLOWS[d.mallow] && d.mallow !== mallowId) {
@@ -584,6 +588,7 @@ export default function hushfold(app, params = {}) {
       showMallow(mallowId, { entrance: !d.from && !prefs.reducedMotion(), soft: true });
     }
     layout();
+    if (cold) heroWaitsForWords();
     // a world's name, once, in story type, ahead of its first line (not while it waits under its veil)
     if (d?.title && !d.from && !hold) subtitles.say({ text: d.title, kind: 'title' }, { first: true });
     if (panel?.isOpen) holdWorld(true);
@@ -594,6 +599,33 @@ export default function hushfold(app, params = {}) {
    * Halfway through a melt (the director's 'host', owner P2): the incoming world's Mallow takes the stage,
    * as a soft cross-fade with a small hop (never a pop). onWorld then finds it already there.
    */
+  /**
+   * A world's first arrival on a small phone: the person's words, shown beside their Mallow at home, are where the
+   * world's host is about to stand (larger and lower on the world's floor). The host's place is already planned
+   * (restRect reports it, so the world and the ThoughtLayer keep off it: the layer hides a driven thought's words while
+   * the hero covers every place round it); the host sets off only once the words have faded out — it never walks over
+   * them while they can be seen. Nothing in the way, or nothing to wait for: it goes at once (and never waits > 0.9 s).
+   */
+  const WORDS_OUT_MS = 230;   // .tm-tag's fade-out (.2 s) and a frame
+  function wordsInHeroWay() {
+    const L = stage?.thoughts, K = mallowAvoidRect();
+    if (!L?.tagRect || !K) return false;
+    return (L.list || []).some((t) => overlaps(L.tagRect(t), K));
+  }
+  function heroWaitsForWords() {
+    if (!stageMallow?.placeHeld) return;
+    if (!wordsInHeroWay()) { stageMallow.holdPlace(0); return; }
+    const t0 = now();
+    let clearAt = 0;
+    const tick = () => {
+      if (!stageMallow?.placeHeld) return;
+      if (!worldMode || S.finishing) { stageMallow.holdPlace(0); return; }
+      if (wordsInHeroWay()) clearAt = 0; else clearAt ||= now();
+      if ((clearAt && now() - clearAt >= WORDS_OUT_MS) || now() - t0 > 900) { stageMallow.holdPlace(0); return; }
+      later(tick, 30);
+    };
+    later(tick, 30);
+  }
   function hostMallow(id) {
     if (S.left || !worldMode || S.finishing || !MALLOWS[id] || id === mallowId) return;
     homeMallow ||= mallowId;
@@ -603,6 +635,8 @@ export default function hushfold(app, params = {}) {
   }
   function endWorldMode() {
     // the stage is the Hushfold's again: no float left over from the water, the realm draws again
+    // (a host still waiting for the words to clear its way goes now: it is going home)
+    stageMallow?.holdPlace?.(0);
     stageMallow?.float?.({ lift: 0, tilt: 0 });
     world.realm?.pause?.(false);
     worldMode = false;

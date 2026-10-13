@@ -156,6 +156,14 @@ export function createStageMallow(world, { touch = null } = {}) {
 
 /** The same interface over a W2 MallowTouch instance. */
 function touchAdapter(t, world = null) {
+  // a place the shell has planned but holds back for a moment (holdPlace): restRect() reports it at once — what the
+  // worlds and the keep-outs plan round — while the body stays where it is until the hold ends, then goes there
+  let held = false, pending = null, holdT = 0;
+  const releasePlace = () => {
+    clearTimeout(holdT); holdT = 0; held = false;
+    const p = pending; pending = null;
+    if (p) t.place({ x: p.cx, y: p.cy, size: p.size });
+  };
   return {
     kind: 'touch',
     /** MallowTouch tracks several pointers (two-finger stretch): the router routes both. */
@@ -190,11 +198,25 @@ function touchAdapter(t, world = null) {
       const g = t.goalSt, v = t.view;
       if (!t.ready || !g || !v || !(v.w > 1)) return null;
       const r = t.container?.getBoundingClientRect?.() || { left: v.left || 0, top: v.top || 0 };
-      const P = (t.baseSize || 0) * (g.s || 1), w = P * (t.aspect || 1);
+      // (a place held back: where it is going, as place({size}) will put it — the size clamped as MallowTouch clamps it)
+      const base = t.baseSize || 0;
+      const P = pending ? Math.min(3 * base, Math.max(0.2 * base, pending.size)) : base * (g.s || 1), w = P * (t.aspect || 1);
       if (!(P > 0)) return null;
-      const cx = r.left + (g.x ?? v.w / 2), cy = r.top + (g.y ?? v.h * 0.52);
+      const cx = r.left + (pending ? pending.cx : g.x ?? v.w / 2), cy = r.top + (pending ? pending.cy : g.y ?? v.h * 0.52);
       return { left: cx - w / 2, top: cy - P / 2, width: w, height: P, right: cx + w / 2, bottom: cy + P / 2, cx, cy };
     },
+    /**
+     * Hold the body where it is for a moment while its next place is already planned: holdPlace(true) starts a hold
+     * (fit() then only plans: restRect() reports the place, the body stays — at most 1.5 s), holdPlace(ms) ends it
+     * that many ms from now, holdPlace(0) ends it now. Ending it sends the body to the last place fit() asked for.
+     */
+    holdPlace(v = true) {
+      if (v === true) { held = true; clearTimeout(holdT); holdT = setTimeout(releasePlace, 1500); return; }
+      const ms = Number(v) || 0;
+      if (!held) return;
+      if (ms > 0) { clearTimeout(holdT); holdT = setTimeout(releasePlace, ms); } else releasePlace();
+    },
+    get placeHeld() { return held; },
     hitTest: (x, y) => t.hitTest(x, y),
     pointer: (e) => t.pointer(e),
     /** ctrl + wheel over the body (a desktop trackpad pinch) stretches it. */
@@ -206,11 +228,11 @@ function touchAdapter(t, world = null) {
      * layout; the container covers the viewport at 0,0). MallowTouch sizes it against its
      * own measured view, so a fit made before it is ready lands at the right size at once.
      */
-    fit({ cx, cy, size }) { t.place({ x: cx, y: cy, size }); },
+    fit({ cx, cy, size }) { if (held) { pending = { cx, cy, size }; return; } t.place({ x: cx, y: cy, size }); },
     get pressed() { return !!(t.pressed ?? t.state?.pressed); },
     // MallowTouch.on() chains (returns itself); the stage wants an unsubscribe
     on: (ev, fn) => { t.on(ev, fn); return () => t.off?.(ev, fn); },
-    destroy: () => {},
+    destroy: () => { clearTimeout(holdT); holdT = 0; held = false; pending = null; },
   };
 }
 
