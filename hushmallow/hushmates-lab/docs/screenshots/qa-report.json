@@ -1,79 +1,153 @@
 {
-  "mobile-390x844": {
-    "scenes": 20,
-    "played": {
-      "relay": {
-        "progress": "10 of 10",
-        "seconds": 56,
-        "notTicked": []
-      },
-      "fallback": {
-        "progress": "6 of 6",
-        "seconds": 17,
-        "notTicked": []
+  "sizes": {
+    "mobile-390x844": {
+      "audit": {},
+      "errors": [],
+      "played": {
+        "relay": {
+          "progress": "10 of 10",
+          "seconds": 67,
+          "notTicked": []
+        },
+        "fallback": {
+          "progress": "6 of 6",
+          "seconds": 24,
+          "notTicked": []
+        },
+        "partial": {
+          "progress": "5 of 5",
+          "seconds": 38,
+          "notTicked": []
+        }
       }
     },
-    "errors": []
-  },
-  "mobile-375x812": {
-    "scenes": 20,
-    "played": {
-      "relay": {
-        "progress": "10 of 10",
-        "seconds": 56,
-        "notTicked": []
-      },
-      "fallback": {
-        "progress": "6 of 6",
-        "seconds": 17,
-        "notTicked": []
+    "mobile-375x812": {
+      "audit": {},
+      "errors": [],
+      "played": {
+        "relay": {
+          "progress": "10 of 10",
+          "seconds": 67,
+          "notTicked": []
+        },
+        "fallback": {
+          "progress": "6 of 6",
+          "seconds": 24,
+          "notTicked": []
+        },
+        "partial": {
+          "progress": "5 of 5",
+          "seconds": 38,
+          "notTicked": []
+        }
       }
     },
-    "errors": []
-  },
-  "mobile-320x568": {
-    "scenes": 20,
-    "played": {
-      "relay": {
-        "progress": "10 of 10",
-        "seconds": 56,
-        "notTicked": []
-      },
-      "fallback": {
-        "progress": "6 of 6",
-        "seconds": 17,
-        "notTicked": []
+    "mobile-320x568": {
+      "audit": {},
+      "errors": [],
+      "played": {
+        "relay": {
+          "progress": "10 of 10",
+          "seconds": 66,
+          "notTicked": []
+        },
+        "fallback": {
+          "progress": "6 of 6",
+          "seconds": 24,
+          "notTicked": []
+        },
+        "partial": {
+          "progress": "5 of 5",
+          "seconds": 38,
+          "notTicked": []
+        }
       }
     },
-    "errors": []
-  },
-  "desktop-1280x860": {
-    "scenes": 20,
-    "played": {
-      "relay": {
-        "progress": "10 of 10",
-        "seconds": 57,
-        "notTicked": []
-      },
-      "fallback": {
-        "progress": "6 of 6",
-        "seconds": 18,
-        "notTicked": []
+    "tablet-768x1024": {
+      "audit": {},
+      "errors": [],
+      "played": {
+        "relay": {
+          "progress": "10 of 10",
+          "seconds": 68,
+          "notTicked": []
+        },
+        "fallback": {
+          "progress": "6 of 6",
+          "seconds": 25,
+          "notTicked": []
+        },
+        "partial": {
+          "progress": "5 of 5",
+          "seconds": 38,
+          "notTicked": []
+        }
       }
     },
+    "desktop-1280x860": {
+      "audit": {},
+      "errors": [],
+      "played": {
+        "relay": {
+          "progress": "10 of 10",
+          "seconds": 68,
+          "notTicked": []
+        },
+        "fallback": {
+          "progress": "6 of 6",
+          "seconds": 25,
+          "notTicked": []
+        },
+        "partial": {
+          "progress": "5 of 5",
+          "seconds": 38,
+          "notTicked": []
+        }
+      }
+    }
+  },
+  "keyboard": {
+    "order": [
+      "label-worry",
+      "label-sadness",
+      "label-anger",
+      "label-joy",
+      "label-loneliness",
+      "label-confusion",
+      "label-frustration",
+      "label-excitement",
+      "share-consent",
+      "privacy-link",
+      "allow-fallback",
+      "fallback-details",
+      "release-submit"
+    ],
+    "focusVisibleEverywhere": true,
+    "consentBySpace": true,
+    "releasedWithEnter": true,
     "errors": []
   },
-  "desktop-1280x860-single": {
-    "scenes": 20,
+  "reducedMotion": {
+    "welcomeBeatsStayPut": true,
+    "longAnimationsDuringRelease": [],
+    "releasedQuickly": true,
+    "errors": []
+  },
+  "reduced": {
     "played": {
       "relay": {
         "progress": "10 of 10",
-        "seconds": 57,
+        "seconds": 24,
         "notTicked": []
       },
       "fallback": {
         "progress": "6 of 6",
-        "seconds": 17,
+        "seconds": 9,
+        "notTicked": []
+      },
+      "partial": {
+        "progress": "5 of 5",
+        "seconds": 13,
         "notTicked": []
       }
     },

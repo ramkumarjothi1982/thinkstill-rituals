@@ -119,7 +119,24 @@ demonstrations through the interface, releases a feeling with the keyboard
 alone, checks reduced motion really reduces motion, repeats the demonstrations
 with reduced motion, and fails on any console error. Results of the last run are below and in `docs/screenshots/qa-report.json`.
 
-_The latest run’s results are recorded at the end of the 2.0 work (see below)._
+**Latest run (this commit's code):**
+
+| Check | Result |
+|---|---|
+| Relay tests | 124 pass, 0 fail, 0 skipped (the optional live Another Angle checks ran against a local harness in mock mode) |
+| Archived v1 tests | 32 pass |
+| Scenes × sizes | 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024, 1280 × 860: no layout-audit findings (overflow, off-screen or clipped text, covered controls, small targets, tiny text, dock room) |
+| Scenario A (five people) | every guide step ticked at all five sizes (10 of 10) |
+| Scenario B (nobody, Mallow fallback) | every step ticked at all five sizes (6 of 6); the Mallow perspective shown as “A Mallow perspective · Automatically generated” with the lab tag “Reframe library (rule-based)” |
+| Scenario C (two people, then expiry) | every step ticked at all five sizes (5 of 5); “2 Hushmates caught it before it came home.” |
+| Keyboard | a feeling released with Tab, typing, Space and Enter; focus visible on every stop |
+| Reduced motion | no long animations during the release, the welcome doesn't advance on its own, all three scenarios complete |
+| Console | no errors or warnings in any run |
+
+The audit itself was checked against planted defects (it flags overflow,
+off-screen and clipped text, covered controls and small targets). Screenshots
+from this run are in `docs/screenshots/` (390 × 844 unless named), with the
+share picture export and video frames.
 
 ## What's real, what's simulated
 
