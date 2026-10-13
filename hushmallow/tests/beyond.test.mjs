@@ -570,9 +570,10 @@ test('mechanics answer real touch: a pointer sequence on each one is handled wit
 test('the beyond module is gated like src/ultra (only through loadUltra)', () => {
   assert.match(read('src/app/entitlements.js'), /import\('\.\.\/beyond\/another-angle\.js'\)/);
   assert.match(read('src/app/scenes/angle.js'), /loadUltra\(app\.ent\)/);
-  // nothing outside src/beyond (and the settings privacy rows) imports it
+  // nothing outside src/beyond (and the settings privacy rows) imports it; the main-screen Tell loads only the pure
+  // text checks of grief.js (death and loss go to the gentle path), lazily, never the experience
   const offenders = [];
-  const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.startsWith('src/beyond/')) { const s = read(p); if (/['"]\.\.?\/(?:\.\.\/)*beyond\/(?!consent\.js|endpoint\.js)/.test(s) && !/src\/app\/entitlements\.js$/.test(p)) offenders.push(p); } } };
+  const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.startsWith('src/beyond/')) { const s = read(p); if (/['"]\.\.?\/(?:\.\.\/)*beyond\/(?!consent\.js|endpoint\.js|grief\.js)/.test(s) && !/src\/app\/entitlements\.js$/.test(p)) offenders.push(p); } } };
   walk('src');
   assert.deepEqual(offenders, []);
   assert.ok(existsSync(`${root}src/beyond/angle-client.js`));
@@ -715,8 +716,9 @@ test('G1: the approved consent, privacy and delete wording, word for word, where
   // line 4 on the delete sheet
   const del = src.slice(src.indexOf('function confirmDelete()'), src.indexOf('export function saveTesterCode'));
   assert.match(del, /PROVIDER_DELETE\)/);
-  // the plans page sentence
-  assert.ok(read('src/app/scenes/plans.js').includes(APPROVED.plans));
+  // the plans page sentence (src/app/privacy.js, shown by the plans page while Another Angle is live)
+  assert.ok(read('src/app/privacy.js').includes(APPROVED.plans));
+  assert.match(read('src/app/scenes/plans.js'), /plansBeyondNote\(\)/);
   // "AI" and the provider's name only on the consent card, the privacy sheet and the delete sheet (all in consent.js)
   for (const f of ['another-angle.js', 'lines.js', 'authored.js', 'angle-client.js', 'styles.js', 'vocab.js', 'endpoint.js']) {
     const strings = read(`src/beyond/${f}`).match(/'[^'\n]*'|`[^`]*`/g) || [];
