@@ -829,12 +829,17 @@ async function deleteAccount() {
   await waitView(p, 'account');
   check(await uidOf(p) === S.uidB, 'signed in as the second account');
   // a second tab of the same account sits in the Memory Garden (not a calm scene: its reload waits); round-2 review
+  // a paid plan on this phone (device-level) so the Memory Garden really opens and stays open (a free plan sends it to Plans)
+  const planBefore = await p.evaluate(() => localStorage.getItem('hm2:entitlement'));
+  await p.evaluate(() => localStorage.setItem('hm2:entitlement', JSON.stringify({ tier: 'paid', source: 'native', since: Date.now() - 86400000 })));
   const t1 = await newPage(p.context(), 'delete-tab1-garden');
   await t1.goto(`${SITE}/?n=${++loads}#home`); await appReady(t1);
   await star(t1, 'luminous-ocean');
   await t1.evaluate(() => window.__hush.go('garden'));
   await t1.waitForFunction(() => location.hash === '#garden', null, { timeout: 30000 });
+  await sleep(1500);   // and it stays there
   check(await uidOf(t1) === S.uidB && (await lsKeys(t1)).some((k) => k.startsWith(`hm2:u:${S.uidB}:`)), 'a second tab of the same account is open in the Memory Garden, with things of its own');
+  check(await t1.evaluate(() => location.hash) === '#garden', 'it stays in the Memory Garden (a paid plan on this phone)');
   await tapView(p, '[data-act="delete"]', 'delete');
   await shot(p, 'delete-01-explained-390');
   await fill(p, 'confirm', 'nope');
@@ -881,6 +886,7 @@ async function deleteAccount() {
   check(navT1 && await status(t1) === 'guest' && leftT1.length === 0, 'it reloads as a guest when it comes home, and nothing of the deleted account is left on the device', JSON.stringify({ navT1, leftT1 }));
   await shot(t1, 'delete-03-second-tab-guest-390');
   await t1.close();
+  await p.evaluate((v) => { if (v == null) localStorage.removeItem('hm2:entitlement'); else localStorage.setItem('hm2:entitlement', v); }, planBefore);   // the phone's plan as it was
 }
 
 async function unconfirmed() {
