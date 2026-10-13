@@ -108,7 +108,7 @@ In Pocket Hush the Mallow appears in its own Hushfold realm by default
 | `node --test hushmallow/sensory-lab/tests/*.test.mjs` | **45 / 45 pass** |
 | `node hushmallow/sensory-lab/tests/e2e-phase2.cjs` (Chromium; seven Mallows, Comfort DNA, every Pocket Hush moment at 390×844, plus 320×568 and 1280×860 layouts) | **231 / 231 pass** (`docs/phase2/e2e-phase2.json`) |
 | `node hushmallow/sensory-lab/tests/e2e.cjs` (Phase 1 suite, five viewports, updated for Phase 2 behaviour) | **308 / 308 pass** (`docs/phase1/e2e-results.json`) |
-| Both browser suites against the published bundle (an imitation of the viewer's frame) | **STAGED_RESULT** |
+| Both browser suites against the published bundle (an imitation of the viewer's frame) | **231 / 231 and 308 / 308 pass** |
 | Main app tests (`node --test hushmallow/tests/*.test.mjs`) | **69 / 69 pass** (unchanged; this folder isn't in their scope) |
 
 New unit tests cover Comfort DNA (defaults, validation, sanitising
