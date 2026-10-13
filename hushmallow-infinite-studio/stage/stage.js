@@ -189,7 +189,7 @@ class Stage {
 
     // 3. tremble offset (body only) for the Mallow layers
     const tr = d.tremble || 0;
-    const jx = tr * (Math.sin(t * 47.0) * 0.6 + Math.sin(t * 31.3) * 0.4) * 1.8;
+    const jx = tr * (Math.sin(t * 47.0) * 0.6 + Math.sin(t * 31.3) * 0.4) * 3.5;
     const jy = tr * Math.sin(t * 39.7) * 0.6;
 
     // 4. thought bubbles behind the Mallow
@@ -260,7 +260,9 @@ class Stage {
     L.setTransform(1, 0, 0, 1, 0, 0);
     L.globalCompositeOperation = 'source-over';
     L.clearRect(0, 0, OUT_W, OUT_H);
-    L.setTransform(M.translate(jx, jy));
+    const inf = d.inflate || 1;
+    const cxm = A.CX, base = A.BASE;
+    L.setTransform(M.translate(jx, jy).translate(cxm, base).scale(inf).translate(-cxm, -base));
     L.imageSmoothingQuality = 'high';
     L.drawImage(A.canvas, 0, 0, WORLD_W, WORLD_H);
     // silhouette-based rim light (crescent on the light-facing edge)

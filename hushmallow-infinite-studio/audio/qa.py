@@ -49,6 +49,14 @@ def loudness(wav):
             'true_peak_dbtp': num(r'Peak:\s+(-?[\d.]+) dBFS')}
 
 
+def momentary(wav):
+    """EBU R128 momentary loudness (400 ms window) every 100 ms: {window end time: LUFS}."""
+    err = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-loglevel', 'verbose', '-i', str(wav), '-af', 'ebur128',
+                          '-f', 'null', '-'], capture_output=True, text=True).stderr
+    return {round(float(m.group(1)), 1): float(m.group(2))
+            for m in re.finditer(r't:\s*([\d.]+)\s+TARGET:-?\d+ LUFS\s+M:\s*(-?[\d.]+)', err)}
+
+
 def probe(wav):
     out = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'stream=sample_rate,channels,codec_name,duration_ts,duration',
                           '-of', 'json', str(wav)], check=True, capture_output=True, text=True).stdout
@@ -91,14 +99,15 @@ def db(x):
     return round(float(20 * np.log10(max(x, 1e-12))), 1)
 
 
-def section_stats(st, mono_hp_band, a, b):
+def section_stats(st, mono_hp_band, a, b, mom=None):
     i0, i1 = int(a * SR), int(b * SR)
     seg = st[i0:i1]
     rms = np.sqrt(np.mean(seg ** 2))
     band = np.sqrt(np.mean(mono_hp_band[i0:i1] ** 2))
     mono = seg.mean(axis=1)
     return {'from': a, 'to': b, 'rms_dbfs': db(rms), 'peak_dbfs': db(np.max(np.abs(seg))),
-            'band_2_5k_db_rel': round(db(band) - db(np.sqrt(np.mean(mono ** 2))), 1)}
+            'band_2_5k_db_rel': round(db(band) - db(np.sqrt(np.mean(mono ** 2))), 1),
+            'momentary_max_lufs': max([v for t, v in (mom or {}).items() if a + 0.4 <= t <= b + 1e-6] or [None], key=lambda v: -999 if v is None else v)}
 
 
 def waveform_png(wav, cues, out, dur):
@@ -173,6 +182,7 @@ def main():
 
     info = probe(wav)
     loud = loudness(wav)
+    mom = momentary(wav)
     report = {
         'file': str(wav),
         'format': {'codec': info.get('codec_name'), 'sample_rate': int(info['sample_rate']), 'channels': info['channels'],
@@ -182,8 +192,8 @@ def main():
         'onsets': {'tolerance_ms': TOL_MS, 'graded_count': len(graded), 'all_pass': bool(all(o['pass'] for o in graded)),
                    'max_abs_error_ms': float(np.max(np.abs(errs))) if len(errs) else None,
                    'mean_error_ms': round(float(np.mean(errs)), 1) if len(errs) else None, 'cues': onsets},
-        'sections': {name: section_stats(st, band, a, b) for name, a, b in SECTIONS},
-        'fine_sections': {name: section_stats(st, band, a, b) for name, a, b in FINE},
+        'sections': {name: section_stats(st, band, a, b, mom) for name, a, b in SECTIONS},
+        'fine_sections': {name: section_stats(st, band, a, b, mom) for name, a, b in FINE},
         'edges': {'first_33ms_rms_dbfs': db(np.sqrt(np.mean(st[:int(0.033 * SR)] ** 2))),
                   'last_10ms_peak_dbfs': db(np.max(np.abs(st[-480:])))},
     }

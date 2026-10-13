@@ -51,6 +51,29 @@ export function track(keys, t) {
   return keys[keys.length - 1][1];
 }
 
+/** Monotone cubic spline through [[t, v], ...] (Fritsch–Carlson): flows
+ *  through keys without stopping and never overshoots between them. */
+export function spline(keys, t) {
+  const n = keys.length;
+  if (t <= keys[0][0]) return keys[0][1];
+  if (t >= keys[n - 1][0]) return keys[n - 1][1];
+  let i = 0;
+  while (t > keys[i + 1][0]) i++;
+  const d = (k) => (keys[k + 1][1] - keys[k][1]) / (keys[k + 1][0] - keys[k][0]);
+  const tan = (k) => {
+    if (k === 0) return d(0);
+    if (k === n - 1) return d(n - 2);
+    const a = d(k - 1), b = d(k);
+    if (a * b <= 0) return 0;
+    return (3 * (keys[k + 1][0] - keys[k - 1][0])) / ((2 * keys[k + 1][0] - keys[k][0] - keys[k - 1][0]) / a + (keys[k + 1][0] - 2 * keys[k - 1][0] + keys[k][0]) / b);
+  };
+  const [t0, v0] = keys[i], [t1, v1] = keys[i + 1];
+  const h = t1 - t0, u = (t - t0) / h;
+  const m0 = tan(i) * h, m1 = tan(i + 1) * h;
+  const u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * v0 + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * v1 + (u3 - u2) * m1;
+}
+
 /** Smooth value noise in [-1, 1] (deterministic, for handheld camera etc.). */
 export function noise1(x, seed = 0) {
   const h = (n) => { const s = Math.sin(n * 127.1 + seed * 311.7) * 43758.5453; return (s - Math.floor(s)) * 2 - 1; };

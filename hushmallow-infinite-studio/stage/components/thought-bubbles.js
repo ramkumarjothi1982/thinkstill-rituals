@@ -161,7 +161,7 @@ class Bubble {
       s.size = s.text ? R.range(3.5, 6.5) : R.range(4, 8);
       s.tw = R.range(0, TAU);
       s.hue = R();
-      s.delay = R.range(0, 0.35) + (s.text ? 0 : 0.12);
+      s.delay = R.range(0, 0.1) + (s.text ? 0 : 0.04);   // born where the letters were
     }
     this.samples = samples;
   }
@@ -285,7 +285,7 @@ export class ThoughtField {
     // --- the bubble
     const tb = ta - (it.mini ? 0 : 0.21);
     if (tb < 0) return;
-    const shellA = 1 - smoothstep(dAt - 0.12, dAt + 0.22, t);
+    const shellA = 1 - smoothstep(dAt - 0.02, dAt + 0.16, t);
     if (shellA > 0.004) {
       const sp = springStep(tb, it.mini ? 3.2 : 2.5, 0.36);
       const wob = wobble(tb, 3.4, 5.5);
@@ -296,6 +296,19 @@ export class ThoughtField {
       const sc = sp * depthS * breathe * swell * orbitShrink;
       const sx = sc * (1 + 0.14 * wob), sy = sc * (1 - 0.14 * wob);
       const st = this.o.stress ? this.o.stress(t) : 0;
+      const w = Math.abs(track(this.o.orbit.speed, t)) * p.om;
+      if (w > 1.2) {
+        const k = smoothstep(1.2, 3.2, w);
+        for (const [lag, al] of [[0.022, 0.2], [0.044, 0.1]]) {
+          const q = this._place(it, t - lag, head);
+          ctx.save();
+          ctx.translate(q.x, q.y);
+          ctx.scale(sx, sy);
+          ctx.globalAlpha = al * k * shellA * depthA;
+          ctx.drawImage(it.body, -it.body.width / 2, -it.body.height / 2);
+          ctx.restore();
+        }
+      }
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(wob * 0.06 + Math.sin(t * 1.3 + it.i) * 0.02);
@@ -307,7 +320,7 @@ export class ThoughtField {
         glowDot(ctx, 0, 0, Math.max(it.w, it.h) * 0.85, '255,140,200', 0.22 * st * (0.6 + 0.4 * pulse));
       }
       ctx.drawImage(it.body, -it.body.width / 2, -it.body.height / 2);
-      const textA = 1 - smoothstep(dAt - 0.3, dAt + 0.02, t);
+      const textA = 1 - smoothstep(dAt - 0.04, dAt + 0.1, t);   // words hold until the break
       if (textA > 0.004) {
         ctx.globalAlpha *= textA * clamp((tb - 0.06) / 0.12);
         ctx.drawImage(it.text, -it.text.width / 2, -it.text.height / 2);
@@ -316,19 +329,20 @@ export class ThoughtField {
     }
     // --- dissolve particles
     const td = t - dAt;
-    if (td > -0.08 && td < 4) {
+    if (td > 0 && td < 4) {
       const dep = depthS;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       for (const q of it.samples) {
-        const tq = td + 0.08 - q.delay;
+        const tq = td - q.delay;
         if (tq < 0 || tq > q.life) continue;
         const u = tq / q.life;
         // eased drift: burst outward, then float up and slow down
         const k = 1 - Math.exp(-tq * 1.6);
         const x = p.x + q.x * dep + q.vx * k * 1.2 + Math.sin(tq * 1.7 + q.tw) * 10;
         const y = p.y + q.y * dep + q.vy * k * 1.6 - tq * tq * 9;
-        const a = Math.sin(Math.PI * Math.min(1, u * 1.15)) * (0.65 + 0.35 * Math.sin(tq * 7 + q.tw));
+        // born at full glow (the bubble breaks into light), then fades out
+        const a = smoothstep(0, 0.08, tq) * (1 - smoothstep(0.5, 1, u)) * (0.65 + 0.35 * Math.sin(tq * 7 + q.tw));
         const col = q.hue < 0.45 ? '255,236,190' : q.hue < 0.8 ? '214,200,255' : '190,232,255';
         const r = q.size * (1 - u * 0.5);
         glowDot(ctx, x, y, r * 2.6, col, 0.3 * a);

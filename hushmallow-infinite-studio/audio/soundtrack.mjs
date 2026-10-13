@@ -1,6 +1,7 @@
 // Hushmallow Infinite Studio — original soundtrack for a cue log.
 //
 //   node audio/soundtrack.mjs <cues.json> <out.wav>
+//   debug: --raw mix.f32 (also dump the un-normalised mix)  --mute engine,synth,ticks,crickets,swirl,pad,bed
 //
 // Renders the full soundtrack (48 kHz stereo, pcm_s24le, exactly `duration`
 // seconds) from the cue log written by `node render/render.mjs --dry`.
@@ -34,7 +35,12 @@
 // (high-pass, high-shelf cut, low-pass, soft compressor, limiter). Its two
 // DynamicsCompressors delay the signal by 2 × 6 ms, so every source is
 // scheduled LAT = 12 ms early; the audible onset then lands on the cue time
-// (QA measures it: audio/qa.py).
+// (QA measures it: audio/qa.py). A 1 s pre-roll is rendered and discarded so
+// the bed, crickets and reverb are already alive at frame 0 (0.3 s fade-in).
+//
+// Determinism: same cues.json → bit-identical WAV. Math.random is seeded, Voice
+// self-disposal (main-thread timing) is disabled, and node inputs are kept at
+// ≤ 2 connections so Chromium's summing order cannot vary (see renderInPage).
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -151,11 +157,12 @@ function buildPlan(log) {
       case 'bubble': { // a thought bubble pops in: round squishy "bloop", one pentatonic step higher each time
         const i = clamp(c.id, 0, 2);
         // Higher pitches read louder, so trims step down as the pitch steps up. The layers are
-        // flammed by a few ms (heard as one "bloop", but their peaks no longer stack).
-        E(t, 'fx', 'bubble', { intensity: 1, note: [0, 2, 4][i], pan: c.pan }, [1.2, 1.07, 0.85][i]);
-        S(t + 0.004, 'noiseHit', { filter: 'lowpass', f: 1900, f1: 380, sweep: 0.06, a: 0.003, d: 0.07, peak: 0.036, q: 1.2, pan: c.pan });
-        S(t + 0.010, 'blip', { f: 230 * st([0, 4, 9][i]), f1: 470 * st([0, 4, 9][i]), glide: 0.035, a: 0.005, d: 0.15, peak: 0.045, pan: c.pan, lp: 1800 });
-        E(t + 0.018, 'mallow', 'tap', { intensity: 0.5, pan: c.pan, pitch: [1, st(3), st(7)][i] }, [0.85, 0.85, 0.76][i]);
+        // flammed by a few ms (heard as one "bloop", but their peaks no longer stack); the
+        // music-box note has the crispest attack, so it leads, exactly on the frame.
+        E(t, 'mallow', 'tap', { intensity: 0.5, pan: c.pan, pitch: [1, st(3), st(7)][i] }, [0.66, 0.66, 0.58][i]);
+        S(t + 0.006, 'noiseHit', { filter: 'lowpass', f: 1900, f1: 380, sweep: 0.06, a: 0.003, d: 0.07, peak: 0.036, q: 1.2, pan: c.pan });
+        E(t + 0.012, 'fx', 'bubble', { intensity: 1, note: [0, 2, 4][i], pan: c.pan }, [1.05, 0.95, 0.76][i]);
+        S(t + 0.024, 'blip', { f: 230 * st([0, 4, 9][i]), f1: 470 * st([0, 4, 9][i]), glide: 0.035, a: 0.005, d: 0.15, peak: 0.045, pan: c.pan, lp: 1800 });
         break;
       }
 
@@ -313,11 +320,11 @@ function buildPlan(log) {
       const it = items[k];
       it.gain.push(r4(A * om * (0.3 + 0.7 * Math.pow(front, 2.5)) * (mini ? 0.75 : 1)));
       it.pan.push(r4(clamp(0.75 * Math.cos(a) * om + (hx / 420) * (1 - om), -1, 1)));
-      it.fc.push(Math.round(clamp(fBase * (mini ? 1.2 : 1) * (1 + 0.15 * Math.sin(a)), 200, 2200)));
+      it.fc.push(Math.round(clamp(fBase * (mini ? 1.12 : 1) * (1 + 0.15 * Math.sin(a)), 200, 2000)));
     });
     tension.gain.push(r4(0.011 * Math.pow(anx, 1.6)));
     tension.freq.push(r4(N.G3 * st(1.0 * anx)));
-    muffle.push(Math.round(lerp(2800, 1000, smoothstep(close, close + 0.35, t))));
+    muffle.push(Math.round(lerp(2400, 1000, smoothstep(close, close + 0.35, t))));
   }
   const swirl = { ...sw, n, items: items.map((it, k) => ({ ...it, q: homes[k][2] ? 2.0 : 1.6, offset: r4(rr(0, 2.5)) })), tension, muffle };
 
@@ -761,7 +768,7 @@ async function main() {
   const rawPath = flag('--raw');                 // debug: also dump the un-normalised mix (f32le, 48 kHz stereo)
   const mute = (flag('--mute') || '').split(',').filter(Boolean); // debug: engine,synth,ticks,crickets,swirl,pad,bed
   const [cuesPath, outPath] = args;
-  if (!cuesPath || !outPath) { console.error('usage: node audio/soundtrack.mjs <cues.json> <out.wav> [--raw mix.f32]'); process.exit(2); }
+  if (!cuesPath || !outPath) { console.error('usage: node audio/soundtrack.mjs <cues.json> <out.wav> [--raw mix.f32] [--mute group,…]'); process.exit(2); }
   const log = JSON.parse(fs.readFileSync(cuesPath, 'utf8'));
   if (!Array.isArray(log.cues) || !Array.isArray(log.curves)) throw new Error('cues.json needs { cues, curves }');
   const plan = buildPlan(log);

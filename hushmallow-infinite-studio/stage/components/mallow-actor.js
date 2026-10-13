@@ -28,7 +28,26 @@ export class MallowActor extends MallowRig {
     await a.loaded;
     a._directed = true;
     a._resize();
+    a._installRestFade();
     return a;
+  }
+
+  // The rig shows the untouched approved art whenever the face is at rest,
+  // fading it IN softly but cutting it OUT in one frame when the face moves.
+  // That cut is invisible under a big action (eyes popping open) but shows on
+  // a subtle one. restFade (seconds) lets a shot fade the approved art out
+  // instead; 0 keeps the rig's own hard cut.
+  _installRestFade() {
+    let shown = this.restMix ?? 1;
+    this.restFade = 0;
+    Object.defineProperty(this, 'restMix', {
+      configurable: true,
+      get: () => shown,
+      set: (raw) => {
+        if (raw >= shown || !this.restFade) shown = raw;
+        else shown = Math.max(raw, shown - (this._dt || 1 / 60) / this.restFade);
+      },
+    });
   }
 
   _resize() {

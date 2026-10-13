@@ -5,17 +5,18 @@
 //                         pings, eyes SNAP open (camera punch-in), double blink
 //   3–7 s    OVERTHINKING thoughts pop from Noomi's head; eyes chase them;
 //                         orbit accelerates; tremble, sweat, cold vignette
-//   7–12 s   HUSHMALLOW   eyes close; one huge inhale (stretch), puffed hold,
-//                         long exhale (squish) — thoughts slow, dissolve into
+//   7–12 s   HUSHMALLOW   eyes close; one huge inhale (stretch, camera leans in),
+//                         a soft crest, a longer sighing exhale (squish, camera
+//                         opens out) — thoughts slow, drift off and break into
 //                         glowing dust; the cove stills, aurora, warm moonlight;
-//                         elastic squish-and-release; eyes open, tiny smile
+//                         gentle squeeze-and-release; eyes open, tiny smile
 //   12–15 s  ENDING       blink + sleepy smile; "Give your feelings somewhere
 //                         soft to land."; hushmallow.com + logo; Noomi drifts
 //                         back to sleep (pose matches frame 0 for a soft loop)
 //
 // Every value here is creative direction; the engines do the animation.
 
-import { clamp, lerp, smoothstep, smootherstep, springStep, wobble, ease, track, fbm, TAU, rgba, mixHex, makeCanvas } from '../stage/components/anim.js';
+import { clamp, lerp, smoothstep, smootherstep, springStep, wobble, ease, track, spline, fbm, TAU, rgba, mixHex, makeCanvas } from '../stage/components/anim.js';
 import { ThoughtField } from '../stage/components/thought-bubbles.js';
 import { Caption, BRAND } from '../stage/components/captions.js';
 import { Bokeh } from '../stage/components/bokeh.js';
@@ -32,25 +33,29 @@ const meta = {
 // ------------------------------------------------------------- beats --
 const B = {
   hookIn: 0.04,
-  ping: 1.48,
-  startle: 1.8,
+  nuzzle: 0.8,                 // sleepy settle
+  ping: 1.22,                  // the memory twinkles above Noomi's head
+  stir: 1.34,                  // still asleep: the smile falls, brows knit
+  peek: 1.52,                  // one eye cracks open
+  antic: 1.72,                 // tiny compress before the take
+  startle: 1.8,                // eyes SNAP open
   blink1: 2.3, blink2: 2.47,
   glance: 2.62,
   b1: 3.05, b2: 3.72, b3: 4.4,
   sweat: 4.55,
-  orbitStart: 5.0, orbitFull: 5.8,
+  orbitStart: 5.0, orbitFull: 5.5,
   minis: [5.2, 5.45, 5.7, 5.95],
-  peak: 6.75,
+  panic: 6.0,
   close: 7.0,
-  inhale: 7.2, hold: 8.72, exhale: 9.0, exhaleEnd: 10.2,
-  squish: 10.3, release: 10.48,
-  relaxed: 10.75,
-  open: 11.3,
+  inhale: 7.15, crest: 8.35, exhale: 8.55, exhaleEnd: 10.35,
+  squish: 10.35, release: 10.7, relaxed: 10.95,
+  open: 11.45,
   blink3: 12.3,
   endLine: 12.4,
   url: 13.4,
-  sleep: 13.95,
+  droop: 13.6, sleep: 13.95, sleepEnd: 14.25,
 };
+const POP = 0.21;              // tail dots → bubble shell pop delay (thought-bubbles.js)
 
 // ------------------------------------------------------------- poses --
 // Raw rig parameters (absolute). Anything omitted = Noomi's approved rest.
@@ -58,7 +63,8 @@ const B = {
 const BREATH = { breath: 7, breathRate: 0 };
 const P = {
   sleep: { ...BREATH, blush: 1.1 },
-  peek: { ...BREATH, eyeOpen: 0.3, wink: 1, closedCurve: 1, browAlpha: 0.35, browY: 0.3, mouthSmile: 0.45, blush: 1.05 },
+  stir: { ...BREATH, eyeOpen: 0, closedCurve: 0.15, browAlpha: 0.55, browTilt: 0.6, browY: 0.1, mouthSmile: 0.05, mouthWidth: 0.85, blush: 1.0 },
+  peek: { ...BREATH, eyeOpen: 0.3, wink: 1, closedCurve: 0.6, browAlpha: 0.6, browTilt: 0.5, browY: 0.3, mouthSmile: 0, mouthWidth: 0.8, blush: 1.0 },
   startle: { ...BREATH, eyeOpen: 1.38, eyeScale: 1.16, irisScale: 0.62, sparkle: 1.0, browAlpha: 1, browY: 1.15, browTilt: 0.35,
     mouthSmile: -0.25, mouthRound: 1, mouthOpen: 0.6, mouthWidth: 0.55, blush: 0.95 },
   stare: { ...BREATH, eyeOpen: 1.3, eyeScale: 1.13, irisScale: 0.72, browAlpha: 1, browY: 0.82, browTilt: 0.2,
@@ -75,45 +81,57 @@ const P = {
     mouthSmile: 0.05, mouthWidth: 0.8, blush: 1.0 },
   inhale: { ...BREATH, eyeOpen: 0, closedCurve: 0.6, browAlpha: 0.55, browY: 0.9, browTilt: 0.15,
     mouthSmile: 0, mouthRound: 1, mouthOpen: 0.32, squashBias: -0.12, float: 0.3, blush: 1.25 },
-  hold: { ...BREATH, eyeOpen: 0, closedCurve: 0.6, browAlpha: 0.55, browY: 0.95, browTilt: 0.12,
-    mouthSmile: 0, mouthRound: 1, mouthOpen: 0.2, squashBias: -0.14, float: 0.34, blush: 1.35 },
+  crest: { ...BREATH, eyeOpen: 0, closedCurve: 0.7, browAlpha: 0.45, browY: 0.85, browTilt: 0.12,
+    mouthSmile: 0.25, mouthRound: 0.7, mouthOpen: 0.16, squashBias: -0.14, float: 0.34, blush: 1.35 },
   exhale: { ...BREATH, eyeOpen: 0, closedCurve: 0.85, browAlpha: 0, browY: 0.0, browTilt: 0.3,
-    mouthSmile: 0.25, mouthRound: 1, mouthOpen: 0.5, cheekPuff: 0, squashBias: 0.14, float: 0, blush: 1.4 },
+    mouthSmile: 0.25, mouthRound: 1, mouthOpen: 0.5, squashBias: 0.14, float: 0, blush: 1.4 },
   exhaleTail: { ...BREATH, eyeOpen: 0, closedCurve: 1, browAlpha: 0, mouthSmile: 0.6, mouthRound: 0.45, mouthOpen: 0.12,
     squashBias: 0.05, blush: 1.35 },
+  squish: { ...BREATH, eyeOpen: 0, closedCurve: 1, mouthSmile: 0.5, mouthRound: 0.3, mouthOpen: 0.05, squashBias: 0.22, blush: 1.45 },
   relaxed: { ...BREATH, blush: 1.35 },
   peace: { ...BREATH, eyeOpen: 0.45, lidTop: 0, lidBot: 0.5, closedCurve: -1, irisScale: 1.12, sparkle: 1.2,
     mouthSmile: 0.55, mouthWidth: 0.6, blush: 1.6 },
+  sleepy: { ...BREATH, eyeOpen: 0.3, lidTop: 0.45, lidBot: 0.4, closedCurve: -1, irisScale: 1.1, sparkle: 1.1,
+    mouthSmile: 0.5, mouthWidth: 0.6, blush: 1.55 },
   peaceShut: { ...BREATH, eyeOpen: 0, lidBot: 0.5, closedCurve: -1, mouthSmile: 0.55, mouthWidth: 0.6, blush: 1.5 },
   sleepEnd: { ...BREATH, blush: 1.3 },
 };
 
 const POSES = [
-  [-99, P.sleep], [B.ping + 0.12, P.peek], [B.startle, P.startle], [2.15, P.stare], [B.b1 - 0.05, P.worry], [B.b3, P.fret],
-  [6.0, P.panic], [B.close, P.close], [B.inhale, P.inhale], [B.hold, P.hold], [B.exhale, P.exhale],
-  [9.75, P.exhaleTail], [B.relaxed, P.relaxed], [B.open, P.peace], [B.sleep, P.peaceShut], [B.sleep + 0.3, P.sleepEnd],
+  [-99, P.sleep], [B.stir, P.stir], [B.peek, P.peek], [B.startle, P.startle], [2.15, P.stare],
+  [B.b1 - 0.05, P.worry], [B.b3, P.fret], [B.panic, P.panic], [B.close, P.close],
+  [B.inhale, P.inhale], [B.crest, P.crest], [B.exhale, P.exhale], [10.0, P.exhaleTail],
+  [B.squish, P.squish], [B.release, P.relaxed],
+  [B.open, { ...P.peace, eyeOpen: 0.32 }], [B.open + 0.25, P.peace],
+  [B.blink3, P.peaceShut], [B.blink3 + 0.26, P.peace],              // slow, sleepy blink
+  [B.droop, P.sleepy], [B.sleep, P.peaceShut], [B.sleepEnd, P.sleepEnd],
 ];
 
 // breath signal s(t) ∈ [-1, 1]  (+ = inhaled: taller & narrower)
+const sleepBreath = (t) => 0.45 * Math.sin(TAU * 0.42 * t + 0.4);
+function pant(t) {
+  // quickening, visible anxious breathing (≈3 % of height)
+  const u = clamp((t - 3) / 4);
+  const ph = TAU * (1.6 * (t - 3) + 0.7 * u * (t - 3));        // 1.6 → 3.0 Hz
+  return 0.37 + 0.3 * Math.sin(ph) * (0.45 + 0.55 * smoothstep(3, 6, t));
+}
 function breathSignal(t) {
-  if (t < B.startle) return 0.22 * Math.sin(TAU * 0.34 * t + 0.4);
+  if (t < B.startle) return sleepBreath(t);
   if (t < 3.0) {
-    const gasp = springStep(t - B.startle, 3.2, 0.5);       // sharp gasp in
-    const base = 0.22 * Math.sin(TAU * 0.34 * B.startle + 0.4);
-    return lerp(base, 0.55, gasp) - 0.18 * smoothstep(2.2, 3.0, t);
+    const gasp = springStep(t - B.startle, 3.2, 0.5);        // sharp gasp in
+    return lerp(sleepBreath(B.startle), 0.55, gasp) - 0.18 * smoothstep(2.2, 3.0, t);
   }
-  if (t < B.close) {
-    // shallow, quickening anxious breathing
-    const f = lerp(1.4, 2.4, smoothstep(3, 7, t));
-    const ph = TAU * (1.4 * (t - 3) + 0.5 * (f - 1.4) * (t - 3));
-    return 0.37 + 0.12 * Math.sin(ph) * (0.6 + 0.4 * smoothstep(3, 6, t));
+  if (t < B.close) return pant(t);
+  if (t < B.inhale) return lerp(pant(B.close), -0.12, ease.inOutSine(clamp((t - B.close) / (B.inhale - B.close))));
+  if (t < B.crest) return lerp(-0.12, 1, ease.inOutSine(clamp((t - B.inhale) / (B.crest - B.inhale))));
+  if (t < B.exhale) return 1 - 0.03 * smoothstep(B.crest, B.exhale, t);       // a soft crest, not a hold
+  if (t < B.exhaleEnd) {
+    const u = clamp((t - B.exhale) / (B.exhaleEnd - B.exhale));
+    return lerp(0.97, -0.78, 1 - Math.pow(1 - ease.inOutSine(u), 1.5));      // a long sigh
   }
-  if (t < B.inhale) return lerp(0.37, -0.12, ease.inOutSine(clamp((t - B.close) / 0.2)));
-  if (t < B.hold) return lerp(-0.12, 1, ease.inOutSine(clamp((t - B.inhale) / (B.hold - B.inhale))));
-  if (t < B.exhale) return 1 + 0.015 * Math.sin((t - B.hold) * 40);
-  if (t < B.exhaleEnd) return lerp(1, -0.78, ease.outCubic(clamp((t - B.exhale) / (B.exhaleEnd - B.exhale))));
-  if (t < 11.0) return lerp(-0.78, 0, ease.inOutSine(clamp((t - B.exhaleEnd) / 0.8)));
-  return 0.16 * Math.sin(TAU * 0.24 * (t - 11.0));
+  if (t < B.release) return lerp(-0.78, -0.62, smoothstep(B.exhaleEnd, B.release, t));
+  if (t < 11.2) return lerp(-0.62, 0, ease.inOutSine(clamp((t - B.release) / (11.2 - B.release))));
+  return 0.36 * Math.sin(TAU * 0.3 * (t - 11.2));
 }
 
 // --------------------------------------------------------- the layers --
@@ -131,10 +149,17 @@ const END = new Caption({
 let field, bokeh, endcard, actor, realm, stageRef;
 const fired = new Set();
 let lastPose = null;
+let headLag = null;             // thoughts trail the head with follow-through
+let lastDart = -1;
 
 function fireOnce(key, t, at, fn) {
   if (t >= at && !fired.has(key)) { fired.add(key); fn(); }
 }
+
+const ORBIT_SPEED = [[0, 0], [B.orbitStart, 0], [5.5, 1.0], [6.1, 2.4], [6.7, 3.8], [7.0, 4.0], [7.4, 2.6], [7.9, 1.0], [8.35, 0.25], [8.6, 0]];
+const ANX = [[0, 0], [4.6, 0], [5.6, 0.35], [6.95, 1], [7.25, 0.2], [8.0, 0]];
+const TREMBLE = [[0, 0], [B.b3, 0], [B.panic, 0.4], [6.9, 1], [B.close, 1], [7.25, 0]];
+const warmOf = (t) => smootherstep(B.exhale + 0.1, 11.8, t);
 
 async function setup(stage) {
   stageRef = stage;
@@ -155,12 +180,12 @@ async function setup(stage) {
     ],
     orbit: {
       start: B.orbitStart, full: B.orbitFull, rx: 196, ry: 84, cy: -182,
-      expand: (t) => 1 + 0.4 * smootherstep(B.close, B.hold, t),
-      lift: (t) => -92 * smootherstep(B.close, B.hold, t),
-      speed: [[0, 0], [B.orbitStart, 0], [B.orbitFull, 0.95], [6.4, 1.7], [6.95, 2.7], [7.4, 1.7], [8.0, 0.55], [8.8, 0.12], [9.2, 0]],
+      expand: (t) => 1 + 0.25 * smootherstep(B.close, B.crest, t),
+      lift: (t) => -55 * smootherstep(B.close, B.crest, t),
+      speed: ORBIT_SPEED,
     },
     dissolve: { at: B.exhale + 0.08, stagger: 0.11 },
-    stress: (t) => track([[0, 0], [4.3, 0], [5.3, 0.45], [6.9, 1], [7.3, 0.3], [8.4, 0]], t),
+    stress: (t) => track([[0, 0], [4.3, 0], [5.3, 0.45], [6.9, 1], [7.3, 0.3], [8.2, 0]], t),
   });
   bokeh = new Bokeh();
   endcard = new EndCard({ appearAt: B.url, y: 575, gap: 64 });
@@ -171,40 +196,37 @@ async function setup(stage) {
 
 // ---------------------------------------------------------- camera --
 function camera(t) {
-  // zoom / focus keyframes (focus in world px; frame centre looks at focus)
-  const zoom = track([
-    [-9, 1.16], [0, 1.16], [B.startle - 0.02, 1.2, ease.inOutSine],
-    [3.0, 1.26], [3.6, 1.0, ease.inOutCubic], [5.0, 1.03], [6.95, 1.15, ease.inOutSine],
-    [B.inhale, 1.15], [B.hold, 1.03, ease.inOutSine], [B.exhale, 1.03], [11.6, 1.0, ease.inOutSine],
-    [15, 1.075, ease.inOutSine],
+  // zoom / focus keys (focus in world px; the frame centre looks at focus).
+  // A monotone spline flows through the keys; the inhale pushes in and the
+  // exhale opens out, so the camera breathes with Noomi.
+  const zoom = spline([
+    [-9, 1.16], [0, 1.16], [1.78, 1.2], [2.75, 1.26], [3.3, 1.0], [4.8, 1.02], [6.95, 1.15],
+    [B.inhale, 1.12], [B.crest, 1.17], [B.exhale, 1.17], [B.exhaleEnd, 1.02], [11.6, 1.0], [15, 1.075],
   ], t);
-  const fy = track([
-    [-9, 792], [0, 792], [B.startle, 800], [3.0, 820], [3.6, 735, ease.inOutCubic], [5.0, 738],
-    [6.95, 772, ease.inOutSine], [B.inhale, 772], [B.hold, 712, ease.inOutSine], [B.exhale, 712],
-    [11.6, 690, ease.inOutSine], [15, 716, ease.inOutSine],
+  const fy = spline([
+    [-9, 792], [0, 792], [1.78, 800], [2.75, 820], [3.3, 735], [4.8, 737], [6.95, 772],
+    [B.inhale, 770], [B.crest, 745], [B.exhale, 745], [B.exhaleEnd, 700], [11.6, 690], [15, 716],
   ], t);
-  // punch-in on the startle: fast spring with overshoot, settles into "stare"
-  const punch = t >= B.startle ? springStep(t - B.startle, 2.4, 0.38) * (1 - smoothstep(2.9, 3.55, t)) : 0;
+  // punch-in on the startle: fast spring with overshoot, released before thought 1 pops
+  const punch = t >= B.startle ? springStep(t - B.startle, 2.4, 0.38) * (1 - smoothstep(2.65, 3.3, t)) : 0;
   let z = zoom + 0.1 * punch;
   let y = fy + 34 * punch;
   // orbit-feel drift + handheld shake as the thoughts spiral
-  const anx = track([[0, 0], [4.6, 0], [5.6, 0.35], [6.95, 1], [7.25, 0.2], [8.0, 0]], t);
+  const anx = track(ANX, t);
   const x = 360 + Math.sin(t * 1.3) * 7 * anx + fbm(t * 3.1, 2) * 9 * anx;
   y += fbm(t * 2.7, 5) * 7 * anx;
-  const roll = (-1.9 * Math.PI / 180) * track([[0, 0], [5.2, 0], [6.95, 1, ease.inOutSine], [B.inhale, 1], [B.hold, 0, ease.inOutSine]], t)
+  const roll = (-1.9 * Math.PI / 180) * track([[0, 0], [5.2, 0], [6.95, 1, ease.inOutSine], [B.inhale, 1], [B.crest, 0, ease.inOutSine]], t)
     + fbm(t * 2.2, 9) * 0.006 * anx;
   // startle shake (decaying)
   const ts = t - B.startle;
   const shake = ts > 0 ? Math.exp(-ts * 9) * 11 : 0;
   const ox = shake * Math.sin(ts * 71), oy = shake * Math.cos(ts * 53) * 0.6;
-  // exhale "whoomp": the camera eases back with the release
-  const ex = t > B.exhale ? Math.exp(-(t - B.exhale) * 3.2) * Math.sin((t - B.exhale) * 9) * 0.012 : 0;
-  return { zoom: z - ex, x, y, roll, ox, oy, bgDepth: 0.55 };
+  return { zoom: z, x, y, roll, ox, oy, bgDepth: 0.55 };
 }
 
 // ----------------------------------------------------------- grade --
 function grade(t) {
-  const warm = smootherstep(B.exhale + 0.1, 11.8, t);
+  const warm = warmOf(t);
   const night = 1 - warm;
   const anx = track([[0, 0], [4.6, 0], [6.95, 1], [7.4, 0.3], [8.4, 0]], t);
   const fadeIn = 1 - smoothstep(0, 0.22, t);
@@ -222,7 +244,7 @@ function grade(t) {
 }
 
 function light(t) {
-  const warm = smootherstep(B.exhale + 0.1, 11.8, t);
+  const warm = warmOf(t);
   const anx = track([[0, 0], [4.6, 0], [6.95, 1], [7.4, 0.3], [8.4, 0]], t);
   return {
     rim: { color: mixHex('#cfc4ff', '#ffe3b4', warm), amount: lerp(0.55, 0.75, warm), width: 9, dx: 0.62, dy: -0.78, soft: 2.5 },
@@ -234,8 +256,8 @@ function light(t) {
 
 // ------------------------------------------------------- realm mood --
 function realmMood(t) {
-  const agit = track([[-9, 0.08], [B.startle, 0.08], [2.2, 0.3], [4.0, 0.5], [6.95, 0.92], [B.inhale, 0.92], [8.5, 0.15], [B.exhale, 0.05]], t);
-  const heavy = track([[-9, 0.12], [4.0, 0.2], [6.95, 0.42], [B.inhale, 0.42], [8.6, 0.1], [B.exhale, 0.05]], t);
+  const agit = track([[-9, 0.08], [B.startle, 0.08], [2.2, 0.3], [4.0, 0.5], [6.95, 0.92], [B.inhale, 0.92], [8.2, 0.15], [B.exhale, 0.05]], t);
+  const heavy = track([[-9, 0.12], [4.0, 0.2], [6.95, 0.42], [B.inhale, 0.42], [8.3, 0.1], [B.exhale, 0.05]], t);
   const clar = track([[-9, 0.62], [4.0, 0.42], [6.95, 0.18], [B.inhale, 0.2], [B.exhale, 0.55], [11, 0.95]], t);
   const warmth = track([[-9, 0.3], [6.95, 0.22], [B.exhale, 0.3], [11.2, 0.9]], t);
   const tf = smootherstep(B.exhale - 0.1, 11.6, t);
@@ -245,7 +267,9 @@ function realmMood(t) {
 // ------------------------------------------------------- eye targets --
 function gaze(t, head) {
   // returns [lookX, lookY] or null (eyes closed / free)
-  if (t < B.startle || t >= B.close) return null;
+  if (t < B.peek) return null;
+  if (t < B.startle) return [0.35, -0.25];             // the cracked eye peeks at the twinkle
+  if (t >= B.close) return null;
   if (t < B.glance) return [0.12, -0.42];              // wide stare, up at the memory
   if (t < B.b1 + 0.2) return [-0.62, -0.3];            // suspicious glance toward where thought 1 appears
   const items = field.positions(t, head);
@@ -254,25 +278,34 @@ function gaze(t, head) {
     const e = actor.eyeMid;
     return [clamp((p.x - e.x) / 120, -1, 1), clamp((p.y - e.y) / 210, -0.55, 0.6)];
   };
-  // newest bubble wins for its first 0.55 s (reading it)
+  // newest bubble wins for its first 0.6 s (reading it)
   const newest = items.reduce((a, b) => (b.appearAt > a.appearAt ? b : a));
   if (t < B.orbitStart + 0.3) {
     if (t - newest.appearAt < 0.6) return toLook(newest);
-    // re-read an older thought, alternating
     const older = items.filter((p) => p !== newest);
     const k = Math.floor((t - B.b1) / 0.42);
     return toLook(older.length ? older[k % older.length] : newest);
   }
-  // darting: switch targets faster and faster
+  // darting: faster and faster; every third switch flicks down/away, and the
+  // head turns a touch with the eyes
   const rate = lerp(4, 7.5, smoothstep(5.3, 6.9, t));
   const k = Math.floor((t - B.orbitStart) * rate + Math.sin(t * 3) * 0.3);
-  const pick = items[(k * 5 + 3) % items.length];
-  return toLook(pick);
+  let look;
+  if (k % 3 === 2) look = [k % 2 ? 0.55 : -0.55, 0.4];
+  else look = toLook(items[(k * 5 + 3) % items.length]);
+  if (k !== lastDart) { lastDart = k; actor.impulse({ tilt: 0.03 * Math.sign(look[0] || 1) }); }
+  return look;
 }
 
 // ---------------------------------------------------------- direct --
 function direct(t, dt, stage, info = {}) {
+  // thoughts follow the head with a little lag (follow-through, not glued on)
   const head = actor.headTop;
+  if (!headLag) headLag = { ...head };
+  headLag.x += (head.x - headLag.x) * 0.2;
+  headLag.y += (head.y - headLag.y) * 0.2;
+  const anchor = { x: headLag.x, y: headLag.y };
+
   // pose (springs do the transitions)
   let pose = POSES[0][1];
   for (const [at, p] of POSES) if (t >= at) pose = p;
@@ -282,47 +315,63 @@ function direct(t, dt, stage, info = {}) {
   const rm = realmMood(t);
   realm.setMood(rm.mood).transform(rm.transform);
 
+  // the stir is subtle: fade the approved rest art out instead of cutting
+  actor.restFade = t >= B.stir - 0.05 && t < B.peek ? 0.22 : 0;
+
   if (!info.preroll) {
-    // z's while asleep (pre-roll spawns one so frame 0 already has a z drifting)
     fireOnce('z0', t, 0.35, () => actor.particles.spawn('z', 0, 1));
+    fireOnce('nuzzle', t, B.nuzzle, () => actor.impulse({ squash: 0.12, tilt: 0.02 }));
     fireOnce('ping', t, B.ping, () => stage.cue(B.ping, 'ping'));
-    fireOnce('peek', t, B.ping + 0.12, () => { actor.vel.eyeOpen = 6; stage.cue(B.ping + 0.12, 'peek'); });
+    fireOnce('stir', t, B.stir, () => stage.cue(B.stir, 'stir'));
+    fireOnce('peek', t, B.peek, () => { actor.val.eyeOpen = 0.24; actor.vel.eyeOpen = 0; stage.cue(B.peek, 'peek'); });
+    fireOnce('antic', t, B.antic, () => actor.impulse({ squash: 0.25 }));
     fireOnce('startle', t, B.startle, () => {
       actor.val.eyeOpen = 1.05; actor.vel.eyeOpen = 22;          // eyes POP open
       actor.val.eyeScale = 1.0; actor.vel.eyeScale = 6;
       actor.val.wink = 0; actor.vel.wink = 0;
-      actor.val.mouthSmile = -0.2; actor.val.mouthRound = 0.75; actor.val.mouthOpen = 0.3; actor.vel.mouthOpen = 12;   // gasp with the eyes
+      // the mouth gasps WITH the eyes (no lingering smile)
+      actor.val.mouthSmile = -0.15; actor.vel.mouthSmile = 0;
+      actor.val.mouthRound = 0.75; actor.vel.mouthRound = 0;
+      actor.val.mouthOpen = 0.3; actor.vel.mouthOpen = 12;
       actor.val.browAlpha = 1;
-      actor.impulse({ squash: -1.05, hop: 0.2 });
+      actor.impulse({ squash: -0.85, hop: 0.2 });
       actor.burst('exclaim', 1).burst('moon', 6);
       stage.cue(B.startle, 'startle');
     });
     fireOnce('blink1', t, B.blink1, () => { actor.blinkNow(); stage.cue(B.blink1, 'blink'); });
     fireOnce('blink2', t, B.blink2, () => { actor.blinkNow(); stage.cue(B.blink2, 'blink'); });
     fireOnce('glance', t, B.glance, () => stage.cue(B.glance, 'glance'));
+    // an escalating flinch as each thought lands
+    fireOnce('flinch1', t, B.b1 + POP, () => actor.impulse({ squash: 0.15, lean: -0.12 }));
+    fireOnce('flinch2', t, B.b2 + POP, () => actor.impulse({ squash: 0.22, lean: 0.12 }));
+    fireOnce('flinch3', t, B.b3 + POP, () => actor.impulse({ squash: 0.35 }));
     fireOnce('sweat', t, B.sweat, () => stage.cue(B.sweat, 'sweat'));
-    fireOnce('fret', t, B.b3, () => actor.impulse({ squash: 0.35 }));
-    fireOnce('panic', t, 6.0, () => { actor.impulse({ squash: 0.45, shear: 0.25 }); stage.cue(6.0, 'panic'); });
-    fireOnce('close', t, B.close, () => { actor.vel.eyeOpen = -26; actor.impulse({ squash: 0.3 }); stage.cue(B.close, 'close'); });
-    fireOnce('inhale', t, B.inhale, () => { actor.impulse({ squash: -0.32 }); stage.cue(B.inhale, 'inhale', { dur: B.hold - B.inhale }); });
-    fireOnce('hold', t, B.hold, () => stage.cue(B.hold, 'hold'));
+    fireOnce('panic', t, B.panic, () => { actor.impulse({ squash: 0.45, shear: 0.25 }); stage.cue(B.panic, 'panic'); });
+    fireOnce('close', t, B.close, () => { actor.vel.eyeOpen = -26; actor.impulse({ squash: 0.12 }); stage.cue(B.close, 'close'); });
+    fireOnce('inhale', t, B.inhale, () => { actor.impulse({ squash: -0.06 }); stage.cue(B.inhale, 'inhale', { dur: B.crest - B.inhale }); });
     fireOnce('exhale', t, B.exhale, () => {
-      actor.impulse({ squash: 0.85 });
+      actor.impulse({ squash: 0.18 });
       actor.val.browAlpha = Math.min(actor.val.browAlpha, 0.15); actor.vel.browAlpha = -8;
       realm.pulse('ripple', 0.5, 0.79);
       stage.cue(B.exhale, 'exhale', { dur: B.exhaleEnd - B.exhale });
     });
-    fireOnce('squish', t, B.squish, () => { actor.impulse({ squash: 0.95 }); stage.cue(B.squish, 'squish'); });
+    fireOnce('squish', t, B.squish, () => stage.cue(B.squish, 'squish', { dur: B.release - B.squish }));
     fireOnce('release', t, B.release, () => {
-      actor.impulse({ squash: -1.15, shear: 0.32, tilt: 0.04 });
+      actor.impulse({ squash: -0.4, shear: 0.12 });
       actor.burst('moon', 8);
       stage.cue(B.release, 'release');
     });
-    fireOnce('open', t, B.open, () => { actor.val.eyeOpen = 0.32; actor.vel.eyeOpen = 5; actor.val.closedCurve = -0.9; actor.impulse({ squash: 0.22 }); actor.burst('moon', 5); realm.pulse('success', 0.5, 0.78); stage.cue(B.open, 'open'); });
-    fireOnce('blink3', t, B.blink3, () => { actor.blinkNow(); actor.impulse({ squash: 0.25 }); stage.cue(B.blink3, 'blink', { soft: true }); });
+    fireOnce('open', t, B.open, () => {
+      actor.val.closedCurve = -0.9;
+      actor.impulse({ squash: 0.15 });
+      actor.burst('moon', 5);
+      realm.pulse('success', 0.5, 0.78);
+      stage.cue(B.open, 'open');
+    });
+    fireOnce('blink3', t, B.blink3, () => { actor.impulse({ squash: 0.12 }); stage.cue(B.blink3, 'blink', { soft: true, dur: 0.26 }); });
     fireOnce('endline', t, B.endLine, () => stage.cue(B.endLine, 'endline'));
     fireOnce('url', t, B.url, () => stage.cue(B.url, 'chime'));
-    fireOnce('sleep', t, B.sleep, () => { actor.vel.eyeOpen = -20; actor.impulse({ squash: 0.3 }); stage.cue(B.sleep, 'sleep'); });
+    fireOnce('sleep', t, B.sleep, () => { actor.impulse({ squash: 0.2 }); stage.cue(B.sleep, 'sleep'); });
     fireOnce('z1', t, 14.25, () => actor.particles.spawn('z', 0, 1));
   } else if (t > -1.6 && !fired.has('zpre')) {
     fired.add('zpre');
@@ -330,7 +379,7 @@ function direct(t, dt, stage, info = {}) {
   }
 
   // gaze
-  const g = gaze(t, head);
+  const g = gaze(t, anchor);
   if (g) actor.look(g[0], g[1]);
   else if (t >= B.open && t < B.sleep) actor.look(0, 0.08);       // peaceful: softly at the viewer
   else actor.look(0, 0);
@@ -338,34 +387,48 @@ function direct(t, dt, stage, info = {}) {
   const cam = camera(t);
   const lt = light(t);
   const gr = grade(t);
-  const tremble = track([[0, 0], [B.b3, 0], [6.0, 0.4], [6.9, 1], [B.close, 1], [7.25, 0]], t);
+  const tremble = track(TREMBLE, t);
+  const warmK = warmOf(t);
+  // the inhale fills Noomi with air (a soft volume swell, not just a stretch)
+  const inflate = 1 + (t >= B.inhale && t < B.exhaleEnd + 0.6 ? 0.055 * Math.max(0, breathSignal(t)) : 0);
 
-  const warmK = smootherstep(B.exhale + 0.1, 11.8, t);
   return {
     audio: {
-      anx: +track([[0, 0], [4.6, 0], [5.6, 0.35], [6.95, 1], [7.25, 0.2], [8.0, 0]], t).toFixed(4),
-      orbit: +track(field.o.orbit.speed, t).toFixed(4),
+      anx: +track(ANX, t).toFixed(4),
+      orbit: +track(ORBIT_SPEED, t).toFixed(4),
       warm: +warmK.toFixed(4),
       agitation: +rm.mood.agitation.toFixed(4), heaviness: +rm.mood.heaviness.toFixed(4),
       clarity: +rm.mood.clarity.toFixed(4), warmth: +rm.mood.warmth.toFixed(4),
       transform: +rm.transform.toFixed(4), tremble: +tremble.toFixed(4),
+      breath: +breathSignal(t).toFixed(4),
     },
-    camera: cam, light: lt, grade: gr, tremble,
+    camera: cam, light: lt, grade: gr, tremble, inflate,
     shadowAlpha: 0.55,
     groundGlow: { color: mixHex('#9c86f0', '#ffcf9a', smoothstep(B.exhale, 11.5, t)), amount: lerp(0.1, 0.22, smoothstep(B.exhale, 11.5, t)) },
-    drawBack: (ctx) => field.drawBack(ctx, t, actor.headTop),
-    drawFront: (ctx) => { drawSweat(ctx, t); drawPing(ctx, t); drawExhaleWave(ctx, t); field.drawFront(ctx, t, actor.headTop); },
+    drawBack: (ctx) => field.drawBack(ctx, t, anchor),
+    drawFront: (ctx) => { drawSweat(ctx, t); drawPing(ctx, t); drawExhaleWave(ctx, t); field.drawFront(ctx, t, anchor); },
     drawForeground: (ctx, tt, c) => bokeh.draw(ctx, t, c, smoothstep(B.exhale, 11.5, t)),
     drawOverlay: (ctx) => { HOOK.draw(ctx, t); END.draw(ctx, t); endcard.draw(ctx, t); },
   };
 }
 
-// breath is driven per substep: phase = asin(s(t)), amplitude pinned
+// per substep: the breath (phase = asin(s(t)), amplitude pinned), a soft-body
+// shiver while overwhelmed, and lid guards so lids never linger half-shut
 function substep(t, dt) {
   const s = clamp(breathSignal(t), -1, 1);
   actor.val.breath = 7; actor.vel.breath = 0;
   actor.val.breathRate = 0; actor.vel.breathRate = 0;
   actor.breathPhase = Math.asin(s);
+  const tr = track(TREMBLE, t);
+  if (tr > 0.01) {
+    actor.body.shear += 0.01 * tr * Math.sin(TAU * 9 * t);
+    actor.body.squash += 0.008 * tr * Math.sin(TAU * 11 * t + 1);
+  }
+  // the rig blends the closed-lid line and the open lash between ~2–30 %
+  // openness, which reads as a flat "-_-" squint; skip through that zone
+  const tgt = actor.target.eyeOpen, v = actor.val.eyeOpen;
+  if (t > 0 && tgt <= 0.02 && v > 0 && v < 0.22) { actor.val.eyeOpen = 0; actor.vel.eyeOpen = 0; }
+  else if (t > 0 && tgt >= 0.25 && v < 0.22) { actor.val.eyeOpen = 0.24; actor.vel.eyeOpen = Math.max(0, actor.vel.eyeOpen); }
 }
 
 // ----------------------------------------------------- small effects --
