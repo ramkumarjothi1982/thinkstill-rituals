@@ -125,3 +125,32 @@ test('first world: a confident reading of the words steers it when no feeling wa
   assert.match(after, /if \(emotion\) spoken = say\(lines\.pick\(mallowId, 'ack'/);
   assert.match(scene, /return m\.suggestedFeelings\?\.\(reading\)\?\.\[0\] \|\| null;/);
 });
+
+test('a death, a loss or harm told inside a world: no Resume pill, no ▶ or panel Resume; quiet ends it, calm melts', async () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const fn = (a, b) => scene.slice(scene.indexOf(a), scene.indexOf(b, scene.indexOf(a) + a.length));
+  // loss (grief.js: concern 'loss'; a wish to follow is care) and every care-level disclosure take the world away
+  assert.match(scene, /const takesWorldAway = \(r\) => !!r && \(r\.category === 'loss' \|\| r\.level === 'care'\);/);
+  assert.match(fn('function noteSafety(r) {', 'function noteNoResume('), /^function noteSafety\(r\) \{\s*noteNoResume\(r\);/, 'sticky, even when the level does not rise');
+  assert.match(fn('async function afterTell(', 'async function wordsFeeling('), /noteSafety\(safety\);\s*noteNoResume\(safety\);/);
+  // the quiet hold: no pill, nothing resumes it but the calm world asked for
+  assert.match(fn('function onPaused(on) {', 'function resumeFlow()'), /if \(on && \(S\.hold === 'crisis' \|\| S\.hold === 'quiet'\)\) \{ pausedPill\.hidden = true;/);
+  assert.match(fn('function resumeFlow() {', 'let worldMode'), /if \(S\.hold === 'crisis' \|\| S\.hold === 'quiet'\) \{ panel\?\.update\(\); return; \}/);
+  assert.match(scene, /locked: S\.hold === 'crisis' \|\| S\.hold === 'quiet' \}\),/, 'the panel\'s Pause/Resume, Stay longer and Drift on are locked');
+  assert.match(fn('async function careBeat(', 'async function careAgain('), /S\.hold = S\.noResume \? 'quiet' : 'care'; if \(S\.hold === 'quiet'\) pausedPill\.hidden = true;/);
+  const choice = fn('async function careChoice(', 'function calmTheWorld(');
+  assert.match(choice, /if \(S\.hold === 'care' \|\| S\.hold === 'quiet'\) \{ S\.hold = null; pausedPill\.hidden = true; \}/, 'the calm world, asked for, plays unheld');
+  assert.match(choice, /\} else if \(S\.hold === 'quiet' && worldMode\) \{[\s\S]*?endQuietWorld\(\);/, 'staying quietly (or no answer) ends the world quietly');
+  assert.match(fn('function endQuietWorld() {', 'function safetyHold('), /flowRef\.finish\?\.\(\{ reason: 'safety' \}\);[\s\S]*?if \(worldMode && !S\.finishing\) onFinished\(\);/);
+  // only calm worlds are offered, and a charged world is never offered to pick up in a gentle visit
+  assert.match(fn('async function gentleWorld()', 'async function careBeat('), /\(!S\.noResume \|\| registry\.get\(id\)\?\.calm === true\)/);
+  assert.match(fn('async function resumableNow()', 'function resumeSaved()'), /if \(gentle\(\) && registry\.get\(p\.worldId\)\?\.calm !== true\) return null;/);
+  // distress alone keeps owner P4's Resume
+  assert.match(scene, /S\.hold = S\.noResume \? 'quiet' : 'care';/);
+  // a Tell opened inside a world never pre-presses a feeling chosen for an earlier Tell
+  const open = fn('function openTellNow(prompt) {', 'async function afterTell(');
+  assert.match(open, /emotion: again\?\.emotion \|\| null, intention:/);
+  assert.doesNotMatch(open, /emotion: S\.emotion/);
+  const { SHARED_LINES } = await import('../src/hushfold/lines.js');
+  assert.deepEqual(SHARED_LINES.careAsk, ['We can stay here quietly. Or somewhere calm, if you’d like.'], 'neutral after a death or abuse (minor 7a)');
+});

@@ -673,7 +673,7 @@ test('H1: worlds pause the realm and end with a real fade; nothing cheery after 
   assert.match(end, /showMallow\(mallowId, \{ entrance: !gentle\(\) \}\)/);
   // nothing the world queued plays after it has gone; a care hold ends with it
   assert.match(end, /subtitles\.clear\(\{ keepHeld: true \}\);/);
-  assert.match(end, /if \(S\.hold === 'care'\) S\.hold = null;/);
+  assert.match(end, /if \(S\.hold === 'care' \|\| S\.hold === 'quiet'\) S\.hold = null;/);
   const fin = fnBody(scene, 'function onFinished() {', 'function onFlowError(');
   assert.match(fin, /world\.realm\?\.pause\?\.\(false\)/);
   assert.match(fin, /S\.finishing = true;\s*(\/\/[^\n]*\n\s*if \(crisisLine\)[^\n]*\n\s*)?subtitles\.clear\(\{ keepHeld: true \}\);/);
@@ -730,13 +730,14 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   // (H2: the director's own safety pause, which also holds a world that is still loading)
   assert.match(hold, /flowRef\.setAutoFlow\?\.\(false\); flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
   // care or distress typed in a running world, sent or not: it pauses, Resume allowed (owner P4)
-  assert.match(hold, /\} else if \(running && !S\.hold\) \{[\s\S]*?S\.hold = 'care';[\s\S]*?flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
+  // (care, P4: with Resume; after a death, a loss or harm done to the person: quietly, no Resume — final main polish)
+  assert.match(hold, /\} else if \(running && !S\.hold\) \{[\s\S]*?S\.hold = S\.noResume \? 'quiet' : 'care';[\s\S]*?flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
   // only a world actually on its way is held on arrival, and a start that brings none leaves no hold behind
   assert.match(hold, /if \(starting && !worldMode\) S\.holdOnWorld = /);
   assert.match(fnBody(scene, 'async function startFlow(', 'function warmWorld()'), /finally \{[\s\S]*?if \(!--starting && !worldMode\) S\.holdOnWorld = null;/);
   // a resume from anywhere (the panel's own Resume too) ends a care hold, and takes the "Paused" line with it
   const paused = fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()');
-  assert.match(paused, /if \(!on && S\.hold === 'care'\) S\.hold = null;/);
+  assert.match(paused, /if \(!on && \(S\.hold === 'care' \|\| S\.hold === 'quiet'\)\) S\.hold = null;/);
   assert.match(paused, /if \(!on && pausedLine\) \{ pausedLine = null; subtitles\.clear\(\{ keepHeld: true \}\); \}/);
   // a world that fails to start after something heavy gets the quiet line, never the "squish" joke
   assert.match(fnBody(scene, 'function onFlowError(d) {', 'async function onOffer('), /say\(gentle\(\) \? SHARED_LINES\.careQuiet : SHARED_LINES\.stub\[0\]\)/);
@@ -753,11 +754,12 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   assert.match(fnBody(scene, 'function onWorld(d) {', 'function endWorldMode()'), /if \(!overlay\) endCrisisWorld\(\);/);
   assert.doesNotMatch(scene.replace(endCrisis, ''), /flowRef\?\.finish\?\.\(\)/, 'every crisis ending goes through endCrisisWorld');
   // care in a world: careBeat pauses first (the care regex above needs no block before await careBeat)
-  assert.match(fnBody(scene, 'async function careBeat(', 'async function startFlow('), /^async function careBeat\(\{ emotion, intention, safety \}\) \{\s*\/\/[^\n]*\n\s*if \(worldMode && flowRef && !flowRef\.stub\) \{ S\.hold = 'care';/);
+  assert.match(fnBody(scene, 'async function careBeat(', 'async function startFlow('), /^async function careBeat\(\{ emotion, intention, safety \}\) \{\s*(?:\/\/[^\n]*\n\s*)+if \(worldMode && flowRef && !flowRef\.stub\) \{ S\.hold = S\.noResume \? 'quiet' : 'care';/);
   // no resume while held for a crisis: the pill, the subtitle play button, Space, the panel
-  assert.match(fnBody(scene, 'function resumeFlow() {', 'let worldMode'), /if \(S\.hold === 'crisis'\) \{ panel\?\.update\(\); return; \}/);
-  assert.match(scene, /onPause: \(\) => \{ if \(S\.hold === 'crisis'\) \{ panel\?\.update\(\); return true; \}/);
-  assert.match(fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()'), /if \(on && S\.hold === 'crisis'\) \{ pausedPill\.hidden = true;/);
+  // (and held quietly after a death, a loss or harm done to the person: final main polish)
+  assert.match(fnBody(scene, 'function resumeFlow() {', 'let worldMode'), /if \(S\.hold === 'crisis' \|\| S\.hold === 'quiet'\) \{ panel\?\.update\(\); return; \}/);
+  assert.match(scene, /onPause: \(\) => \{ if \(S\.hold === 'crisis' \|\| S\.hold === 'quiet'\) \{ panel\?\.update\(\); return true; \}/);
+  assert.match(fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()'), /if \(on && \(S\.hold === 'crisis' \|\| S\.hold === 'quiet'\)\) \{ pausedPill\.hidden = true;/);
   assert.match(scene, /say: \(lines, o\) => \{ if \(S\.hold === 'crisis'[^)]*\) return Promise\.resolve\(null\);/);
   assert.match(scene, /choice: \(prompt, options, o\) => \(S\.hold === 'crisis'[^?]*\? Promise\.resolve\(null\)/);
   // a gentle world never carries the earlier words; after a crisis nothing starts a world (owner P3)
