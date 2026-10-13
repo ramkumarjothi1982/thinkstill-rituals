@@ -277,5 +277,5 @@
 
 /* share output and data export (shown in a sheet) */
 .rl-share-out { display: grid; gap: 12px; justify-items: center; }
-.rl-share-img { width: min(100%, 260px); height: auto; border-radius: 22px; box-shadow: 0 30px 60px -36px rgba(70,40,140,.6); -webkit-touch-callout: default; user-select: auto; }
+.rl-share-img { width: auto; max-width: min(100%, 260px); max-height: min(44vh, 460px); height: auto; border-radius: 22px; box-shadow: 0 30px 60px -36px rgba(70,40,140,.6); -webkit-touch-callout: default; user-select: auto; }
 .rl-export { max-height: 40vh; overflow: auto; margin: 0; padding: 12px 14px; border-radius: 16px; background: #F6F2FC; font: 500 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--hm-ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
