@@ -835,6 +835,10 @@ export function create(ctx) {
           if (cr(ax, ay, bx, by, px, py) * cr(ax, ay, bx, by, qx, qy) < 0 && cr(px, py, qx, qy, ax, ay) * cr(px, py, qx, qy, bx, by) < 0) { if (Math.abs(p - q) <= near) { v = Infinity; break; } far = true; }
         }
         if (far && v < Infinity) v += 100;
+        // (and the order across the screen kept: of two cards clearly side by side, the one on the left never takes the
+        // slot clearly to the right of the other's — their ways would cross, and one would pass the thought on its way)
+        const dc = cards[a].x - cards[b].x, ds = slots[sa].x - slots[sb].x;
+        if (dc * ds < 0 && Math.abs(dc) > 24 && Math.abs(ds) > 24) v += 3000;
       }
       memo.set(key, v);
       return v;
@@ -1406,6 +1410,7 @@ export function create(ctx) {
     if (melt.lin != null && dt > 0 && lin > melt.lin) { const r = (lin - melt.lin) / dt; melt.rate = melt.rate ? melt.rate + (r - melt.rate) * 0.25 : r; }
     melt.lin = lin;
     const left = melt.rate > 0 ? (1 - lin) / melt.rate : Infinity;
+    melt.left = left;
     // (the thought, behind its time, goes up to twice its own pace to be home by then)
     const pace = (g, T) => Math.max(1 / T, Math.min(2 / T, (1 - g) / Math.max(0.2, left - 0.2)));
     // (and the planned queue of glides runs on a clock up to 1.25× quicker — every glide alike, so the way they keep clear
@@ -1448,8 +1453,10 @@ export function create(ctx) {
         let hold = false;
         if (b.route) {
           routeAt(b.route, glideEase(g1), mpt);
-          // (as near as it may pass: squeezed to its smallest, 5 px clear — the squeeze below makes it that small as it goes by)
-          if (thought && tS.alpha * tS.vis > 0.2) { const g0 = Math.hypot(b.gx - tS.sx, b.gy - tS.sy), gN = Math.hypot(mpt.x - tS.sx, mpt.y - tS.sy); if (gN < tS.r * tS.surf + 0.31 * b.target.D + 5 && gN < g0) hold = true; }
+          // (as near as it may pass: squeezed to its smallest, 5 px clear — the squeeze below makes it that small as it goes by;
+          // and only while the thought is still on its way: once it is home its place is planned round, and a bubble whose
+          // card hung beside that place never waits there for it to move)
+          if (thought && tS.alpha * tS.vis > 0.2 && tS.from && tS.glide < 1) { const g0 = Math.hypot(b.gx - tS.sx, b.gy - tS.sy), gN = Math.hypot(mpt.x - tS.sx, mpt.y - tS.sy); if (gN < tS.r * tS.surf + 0.31 * b.target.D + 5 && gN < g0) hold = true; }
           // (one ahead that has come to rest floats on the water now: the two keep apart there as everything afloat does)
           if (b.leads) for (const [L] of b.leads) { if (L.from && L.alpha > 0.2 && Math.hypot(mpt.x - L.gx, mpt.y - L.gy) < (L.D + b.D) / 2 + OCEAN.BUBBLE_GAP) { hold = true; break; } }
         }
@@ -1460,7 +1467,7 @@ export function create(ctx) {
       // moment where it is) — and never in the sky: a bubble only ever settles with its waterline below the horizon
       const onWater = b.gy + 0.3 * b.D > hyNow + 3;
       if (b.glide >= 1 && riseDone && onWater && (Math.hypot(b.gx - b.target.x, b.gy - b.target.y) < 4 || b.wait > 0.6)) settleBubble(b);
-      else if (late >= MELT_LATE - 0.5) settleBubble(b);            // (the deadline: it comes to rest where it is)
+      else if (late >= MELT_LATE - 0.5) settleBubble(b, true);      // (the deadline: it comes to rest where it is)
     }
     // the thought sets off once the melt has passed it, and glides home on its own clock
     const thReady = !thought || !tS.from || rm || Math.min(mask(tS.from.x, tS.from.y), mask(tS.from.x, tS.from.y + (tS.r + 30))) >= 0.95;
@@ -1498,15 +1505,18 @@ export function create(ctx) {
     };
     let end = 0;
     for (const b of bubbles) if (b.from && !b.still && !b.away) end = Math.max(end, start(b) + (b.T || GLIDE_SEC));
-    return clamp(end / Math.max(0.5, left - 0.3), 1, 1.25);
+    return clamp(end / Math.max(0.5, left - 0.5), 1, 1.25);
   }
   const MELT_LATE = 2.5;                                    // s: the ocean's own melt ends at most this long after the director's
   /**
    * A bubble that glided down from its postcard settles on the water exactly where it is (physics from here: no pop) —
    * on the water, never above the horizon (the deadline can settle one still on its way: its waterline goes on the water).
    */
-  function settleBubble(b) {
+  function settleBubble(b, deadline = false) {
     const t = b.target;
+    // (at the deadline, one still up in the sky — it never set off — fades where it hangs and takes its turn later: it is
+    // never dropped onto the water)
+    if (deadline && (!b.go || b.gy + 0.3 * b.D < hyNow - 4)) b.away = true;
     if (b.away) { b.from = null; b.state = 'leave'; b.leaveK = 0; b.target = { x: b.gx, y: b.gy, D: b.D }; return; }
     const gy = Math.max(b.gy, hyNow + 3 - 0.3 * b.D);
     unproject(cam, b.gx, gy + 0.3 * b.D, wo);
@@ -2113,8 +2123,9 @@ export function create(ctx) {
     }
     vx += rep.x; vy += rep.y;
     // (the director's melt is over: down onto the water, never hovering in the sky)
-    if (melt && melt.k >= 1 && b.go) { const lim = hyNow + 4 - 0.3 * b.D; if (b.gy < lim) vy = Math.max(vy, Math.min(VG, (lim - b.gy) * 6)); }
-    const v = Math.hypot(vx, vy), cap = VG * 1.15;
+    // (and in its last moment it is already on its way down: below the horizon as the melt ends)
+    if (melt && b.go && (melt.k >= 1 || melt.left < 0.35)) { const lim = hyNow + 4 - 0.3 * b.D; if (b.gy < lim) vy = Math.max(vy, Math.min(VG, (lim - b.gy) * 6)); }
+    const v = Math.hypot(vx, vy), cap = Math.min(VG * 1.15, 238);       // (never more than 8 px a 1/30 s step)
     if (v > cap) { vx *= cap / v; vy *= cap / v; }
     b.gx += vx * dt; b.gy += vy * dt;
     // (the edges are firm: a glide is pressed along them, never past them)

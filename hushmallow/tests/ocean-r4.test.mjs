@@ -39,6 +39,8 @@ const MELTS = [
   { tag: '390×844, 7 photos, completed storm', W: 390, H: 844, n: 7, cards: [[3, 76, 345, 78, 78], [4, 195, 343, 78, 56], [5, 309, 343, 78, 78], [6, 61, 258, 78, 61], [0, 150, 262, 62, 78], [1, 236, 262, 56, 78], [2, 322, 258, 78, 56]], th: [105, 440], heroA: [79.4, 526.3, 310.6, 747], heroB: [82.8, 493, 303.7, 732.5] },
   { tag: '375×812, 7 photos', W: 375, H: 812, n: 7, cards: [[5, 93, 340, 74, 74], [6, 203, 341, 74, 58], [0, 316, 341, 58, 74], [1, 66, 260, 53, 74], [2, 151, 260, 74, 53], [3, 234, 260, 74, 74], [4, 316, 260, 74, 53]], th: [101, 421], heroA: [76.1, 506.1, 298.9, 718.7], heroB: [82.3, 475.4, 291.9, 703.2] },
   { tag: '390×844, the seven-Mallow fallback', W: 390, H: 844, n: 7, cards: [[5, 92, 351, 62, 78], [6, 208, 358, 62, 78], [0, 331, 353, 62, 78], [1, 71, 267, 62, 78], [2, 169, 268, 62, 78], [3, 252, 267, 62, 78], [4, 331, 267, 62, 78]], th: [105, 440], heroA: [79.4, 526.3, 310.6, 747], heroB: [84.6, 493.9, 303.5, 731.6] },
+  // (the hero a few px further left than measured — the narrow side's slots once all went to the other side: a queue of six)
+  { tag: '390×844, the seven-Mallow fallback, the hero 6 px further left', W: 390, H: 844, n: 7, cards: [[5, 92, 351, 62, 78], [6, 208, 358, 62, 78], [0, 331, 353, 62, 78], [1, 71, 267, 62, 78], [2, 169, 268, 62, 78], [3, 252, 267, 62, 78], [4, 331, 267, 62, 78]], th: [105, 440], heroA: [73.4, 518.3, 304.6, 739], heroB: [78.6, 485.9, 297.5, 723.6] },
   { tag: '320×568, 7 photos', W: 320, H: 568, n: 7, cards: [[0, 173, 244, 62, 79], [1, 262, 244, 57, 79]], th: [86, 255], heroA: [81.4, 342.1, 238.6, 492.2], heroB: [85.8, 321.8, 233.7, 482.5] },
 ];
 
@@ -158,6 +160,18 @@ test('play (review r4): bubbles never stack or cover the thought — swells sent
       assert.ok(stepMax <= 10, `${tag}: a floating bubble jumped ${stepMax.toFixed(1)} px in one frame`);
       assert.equal(w.metrics.bubbles + w.metrics.waiting, n, `${tag}: every photo is still there`);
     } finally { D.destroy(); dom.restore(); }
+  }
+});
+
+// ------------------------------------------------------------------ slots --
+test('slots (review r4): the two sides of the hero stay about even — a hero a few px wider never sends every slot to one side', async () => {
+  const { planOcean } = await import('../src/hushfold/flow/worlds/ocean-rules.js');
+  for (const [l, t, r, b] of [[79.4, 526.3, 310.6, 747], [73.4, 508.3, 304.6, 739], [85.4, 526.3, 316.6, 747], [73.4, 526.3, 316.6, 747]]) {
+    const p = planOcean({ W: 390, H: 844, band: { x: 0, y: 76, w: 390, h: 143 }, mallow: { left: l, top: t, right: r, bottom: b, width: r - l, height: b - t }, n: 7, textW: 190, plate: { w: 209, h: 59 } });
+    const cx = (l + r) / 2, nL = p.slots.filter((q) => q.x < cx).length, nR = p.slots.length - nL;
+    assert.equal(p.slots.length, 7, `hero ${l}–${r}: ${p.slots.length} slots`);
+    assert.ok(Math.abs(nL - nR) <= 1, `hero ${l}–${r}: ${nL} slots on the left, ${nR} on the right`);
+    for (const q of p.slots) assert.ok(q.D >= 28 && q.x - q.D / 2 >= 19.9 && q.x + q.D / 2 <= 370.1, `slot ${JSON.stringify(q)}`);
   }
 });
 
