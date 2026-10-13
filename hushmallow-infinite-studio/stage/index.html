@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=720, initial-scale=1">
+<title>Hushmallow Studio Stage</title>
+<style>
+  html, body { margin: 0; background: #05040f; overflow: hidden; }
+  /* world containers: the approved engines render here at the stage's CSS
+     size; they're hidden underneath the composed output canvas */
+  .world { position: absolute; left: 0; top: 0; width: 720px; height: 1280px; overflow: hidden; }
+  #realm-host, #rig-host { visibility: hidden; }
+  #out { position: absolute; left: 0; top: 0; width: 720px; height: 1280px; z-index: 5; }
+  #hud { position: absolute; z-index: 9; left: 8px; top: 8px; color: #cdc6ea; font: 12px ui-monospace, monospace; }
+</style>
+</head>
+<body>
+  <div id="realm-host" class="world"></div>
+  <div id="rig-host" class="world"></div>
+  <canvas id="out" width="1080" height="1920"></canvas>
+  <div id="hud"></div>
+  <script type="module" src="./stage.js"></script>
+</body>
+</html>

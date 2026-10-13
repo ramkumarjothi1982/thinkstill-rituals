@@ -1,0 +1,5 @@
+node_modules/
+*.f32
+# render scratch: stills, review sheets, frame dumps, intermediates
+output/*
+!output/cues.json
