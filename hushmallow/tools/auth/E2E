@@ -1,0 +1,4 @@
+# Append a line here on a claude/** branch to run .github/workflows/hushmallow-auth-e2e.yml:
+# the isolated sign-in end-to-end check on a LOCAL Supabase stack on the GitHub runner
+# (never the production project). Results: the run's summary and its "hushmallow-auth-e2e" artifact.
+2026-10-13 first run (stage 3: the E2E suite)

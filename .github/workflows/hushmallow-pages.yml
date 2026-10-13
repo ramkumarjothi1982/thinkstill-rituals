@@ -26,6 +26,8 @@ on:
       - 'hushmallow/tools/build-site.sh'
       - 'hushmallow/tools/site/**'
       - 'hushmallow/tools/auth/**'                      # the auth tests run the local fake of Supabase
+      - '!hushmallow/tools/auth/E2E'                    # only triggers hushmallow-auth-e2e.yml
+      - 'hushmallow/supabase/**'                        # the auth tests read the migrations, rls_check, templates and config.toml
       - 'hushmallow/tools/hires/**'                     # hires.test reads its patch and data
       - 'hushmallow/docs/V3_SKILLS.md'                  # garden.test / v3.test read these
       - 'hushmallow/docs/V3_CORRECTIONS.md'
@@ -43,6 +45,8 @@ on:
       - 'hushmallow/tools/build-site.sh'
       - 'hushmallow/tools/site/**'
       - 'hushmallow/tools/auth/**'                      # the auth tests run the local fake of Supabase
+      - '!hushmallow/tools/auth/E2E'                    # only triggers hushmallow-auth-e2e.yml
+      - 'hushmallow/supabase/**'                        # the auth tests read the migrations, rls_check, templates and config.toml
       - 'hushmallow/tools/hires/**'                     # hires.test reads its patch and data
       - 'hushmallow/docs/V3_SKILLS.md'                  # garden.test / v3.test read these
       - 'hushmallow/docs/V3_CORRECTIONS.md'
