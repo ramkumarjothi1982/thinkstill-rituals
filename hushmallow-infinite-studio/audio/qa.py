@@ -7,12 +7,21 @@ Writes to <outdir>:
   waveform.png     ffmpeg showwavespic + cue markers / labels / time grid (PIL)
   spectrogram.png  ffmpeg showspectrumpic (log frequency, with legend)
   report.json      EBU R128 loudness (integrated, LRA, true peak), per-cue onset
-                   error for the transient cues, per-section RMS and 2-5 kHz share
+                   error for the transient cues, per-section RMS and 2-5 kHz share,
+                   and the mix checks: phone-band contrast per cue, event and
+                   segment loudness (full range and phone-simulated), low-end
+                   share in the warm section, start / end of file
 
 Onset detection (per cue): 600 Hz high-pass (FFT) -> 2 ms RMS envelope -> the
 largest peak in [cue-50 ms, cue+120 ms] (clipped before the next transient
 cue) -> the onset is where the rise into that peak crosses 20 % of the way
 from the preceding valley to the peak. Error = onset - cue time.
+
+Phone model: a 350 Hz high-pass (phone speakers play little below ~350-400 Hz).
+Phone contrast = RMS of the high-passed mix over [cue, cue+150 ms] vs the
+150 ms before the cue, in dB (a bubble pop measures about +9 dB).
+Phone-simulated loudness = EBU R128 momentary loudness after a 4-pole 350 Hz
+high-pass.
 Requires numpy, Pillow and ffmpeg/ffprobe on PATH.
 """
 import json
@@ -29,9 +38,22 @@ TRANSIENT = ('startle', 'bubble', 'mini', 'blink', 'squish', 'release', 'chime')
 ALSO = ('ping', 'tail')        # measured too, reported separately (not in the pass/fail set)
 TOL_MS = 33.3                  # one frame at 30 fps
 SECTIONS = [('hook', 0.0, 3.0), ('overthinking', 3.0, 7.0), ('hushmallow', 7.0, 12.0), ('ending', 12.0, 15.0)]
-FINE = [('night (0-1.45)', 0.0, 1.45), ('startle+blinks (1.75-2.7)', 1.75, 2.7), ('bubbles (3.0-4.8)', 3.0, 4.8),
-        ('swirl peak (6.2-7.0)', 6.2, 7.0), ('inhale (7.2-8.7)', 7.2, 8.7), ('exhale+dissolve (9.0-10.2)', 9.0, 10.2),
-        ('warm calm (11.6-13.3)', 11.6, 13.3), ('chime (13.4-14.4)', 13.4, 14.4), ('fade (14.4-15)', 14.4, 15.0)]
+PHONE_HP = 350.0
+
+
+def story_segments(cues, dur):
+    """Story beats (from the cue log) -> analysis windows [(name, from, to)]."""
+    t = lambda typ, d=None: min([c['t'] for c in cues if c['type'] == typ] or [d])
+    last = lambda typ, d=None: max([c['t'] for c in cues if c['type'] == typ] or [d])
+    ping, startle, close = t('ping', 1.4), t('startle', 1.8), t('close', 7.0)
+    b0, m1 = t('bubble', 3.2), last('mini', 6.0)
+    inhale, hold, exhale = t('inhale', close + 0.2), t('hold', close + 1.7), t('exhale', close + 2.0)
+    squish, release, opn, chime = t('squish', exhale + 1.3), last('release', exhale + 1.5), t('open', exhale + 2.3), t('chime', dur - 1.6)
+    seg = [('night', 0.0, ping - 0.05), ('startle', startle - 0.05, startle + 0.9), ('bubbles', b0 - 0.3, b0 + 1.6),
+           ('spiral', m1 + 0.2, close), ('inhale', inhale, hold), ('exhale', exhale, exhale + 1.2),
+           ('squash+release', squish - 0.05, release + 0.5), ('calm', opn + 0.3, chime - 0.1), ('chime', chime, min(dur - 0.6, chime + 1.0)),
+           ('fade', dur - 0.6, dur)]
+    return [(n, round(a, 3), round(b, 3)) for n, a, b in seg if b - a > 0.2]
 
 
 def decode(wav):
@@ -49,9 +71,10 @@ def loudness(wav):
             'true_peak_dbtp': num(r'Peak:\s+(-?[\d.]+) dBFS')}
 
 
-def momentary(wav):
+def momentary(wav, pre=''):
     """EBU R128 momentary loudness (400 ms window) every 100 ms: {window end time: LUFS}."""
-    err = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-loglevel', 'verbose', '-i', str(wav), '-af', 'ebur128',
+    af = (pre + ',' if pre else '') + 'ebur128'
+    err = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-loglevel', 'verbose', '-i', str(wav), '-af', af,
                           '-f', 'null', '-'], capture_output=True, text=True).stderr
     return {round(float(m.group(1)), 1): float(m.group(2))
             for m in re.finditer(r't:\s*([\d.]+)\s+TARGET:-?\d+ LUFS\s+M:\s*(-?[\d.]+)', err)}
@@ -61,6 +84,18 @@ def probe(wav):
     out = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'stream=sample_rate,channels,codec_name,duration_ts,duration',
                           '-of', 'json', str(wav)], check=True, capture_output=True, text=True).stdout
     return json.loads(out)['streams'][0]
+
+
+def lowpass(x, fc):
+    X = np.fft.rfft(x)
+    f = np.fft.rfftfreq(len(x), 1 / SR)
+    w = np.clip((fc * 1.15 - f) / (fc * 0.15), 0, 1)
+    return np.fft.irfft(X * w, len(x))
+
+
+def rms(x, a, b):
+    s = x[int(a * SR):int(b * SR)]
+    return float(np.sqrt(np.mean(s ** 2) + 1e-30))
 
 
 def highpass(x, fc):
@@ -97,6 +132,15 @@ def onset(env, tc, t_next):
 
 def db(x):
     return round(float(20 * np.log10(max(x, 1e-12))), 1)
+
+
+def segment_loudness(wav, a, b, pre=''):
+    """EBU R128 integrated loudness of [a, b] (optionally after a pre-filter)."""
+    af = (pre + ',' if pre else '') + 'ebur128'
+    err = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-ss', str(a), '-to', str(b), '-i', str(wav), '-af', af,
+                          '-f', 'null', '-'], capture_output=True, text=True).stderr
+    m = re.search(r'I:\s+(-?[\d.]+) LUFS', err[err.rfind('Summary:'):])
+    return float(m.group(1)) if m else None
 
 
 def section_stats(st, mono_hp_band, a, b, mom=None):
@@ -183,6 +227,33 @@ def main():
     info = probe(wav)
     loud = loudness(wav)
     mom = momentary(wav)
+    phone_pre = f'highpass=f={PHONE_HP:g}:poles=2,highpass=f={PHONE_HP:g}:poles=2'
+    mom_phone = momentary(wav, phone_pre)
+
+    # --- mix checks
+    phone = highpass(mono, PHONE_HP)
+    contrast = []
+    for c in cues:
+        if c['type'] in TRANSIENT + ('ping', 'open'):
+            tc = c['t']
+            contrast.append({'type': c['type'] + ('(soft)' if c.get('soft') else ''), 'cue_s': tc,
+                             'phone_contrast_db': round(db(rms(phone, tc, tc + 0.15)) - db(rms(phone, tc - 0.15, tc)), 1),
+                             'full_contrast_db': round(db(rms(mono, tc, tc + 0.15)) - db(rms(mono, tc - 0.15, tc)), 1)})
+    first_t = lambda typ, d: min([c['t'] for c in cues if c['type'] == typ] or [d])
+    mmax = lambda M, a, b: max([v for t, v in M.items() if a <= t <= b] or [None], key=lambda v: -999 if v is None else v)
+    events = {}
+    for name, a, b in [('startle', first_t('startle', 1.8), first_t('startle', 1.8) + 0.6),
+                       ('squash+release', first_t('squish', 10.3), max([c['t'] for c in cues if c['type'] == 'release'] or [10.5]) + 0.6),
+                       ('chime', first_t('chime', 13.4), first_t('chime', 13.4) + 1.0)]:
+        events[name] = {'momentary_max_lufs': mmax(mom, a + 0.1, b), 'phone_momentary_max_lufs': mmax(mom_phone, a + 0.1, b)}
+    o, ch = first_t('open', 11.3), first_t('chime', 13.4)
+    wa, wb = o, min(ch, o + 2.0)                     # warm section: eyes open -> chime (<= 2 s)
+    lo = lowpass(mono, 200)
+    warm = {'from': wa, 'to': wb, 'share_below_200hz': round(rms(lo, wa, wb) ** 2 / rms(mono, wa, wb) ** 2, 3),
+            'below_200hz_rms_dbfs': db(rms(lo, wa, wb)), 'above_350hz_rms_dbfs': db(rms(phone, wa, wb)),
+            'whole_piece_share_below_200hz': round(rms(lo, 0, dur) ** 2 / rms(mono, 0, dur) ** 2, 3)}
+    segments = {n: {'from': a, 'to': b, 'integrated_lufs': segment_loudness(wav, a, b),
+                    'phone_integrated_lufs': segment_loudness(wav, a, b, phone_pre)} for n, a, b in story_segments(cues, dur)}
     report = {
         'file': str(wav),
         'format': {'codec': info.get('codec_name'), 'sample_rate': int(info['sample_rate']), 'channels': info['channels'],
@@ -193,9 +264,12 @@ def main():
                    'max_abs_error_ms': float(np.max(np.abs(errs))) if len(errs) else None,
                    'mean_error_ms': round(float(np.mean(errs)), 1) if len(errs) else None, 'cues': onsets},
         'sections': {name: section_stats(st, band, a, b, mom) for name, a, b in SECTIONS},
-        'fine_sections': {name: section_stats(st, band, a, b, mom) for name, a, b in FINE},
-        'edges': {'first_33ms_rms_dbfs': db(np.sqrt(np.mean(st[:int(0.033 * SR)] ** 2))),
-                  'last_10ms_peak_dbfs': db(np.max(np.abs(st[-480:])))},
+        'fine_sections': {name: section_stats(st, band, a, b, mom) for name, a, b in story_segments(cues, dur)},
+        'mix': {'phone_highpass_hz': PHONE_HP, 'contrast': contrast, 'events': events,
+                'phone_integrated_lufs': segment_loudness(wav, 0, dur, phone_pre), 'warm_section': warm,
+                'story_segments': segments},
+        'edges': {'first_5ms_rms_dbfs': db(rms(st, 0, 0.005)), 'first_33ms_rms_dbfs': db(np.sqrt(np.mean(st[:int(0.033 * SR)] ** 2))),
+                  'first_100ms_rms_dbfs': db(rms(st, 0, 0.1)), 'last_10ms_peak_dbfs': db(np.max(np.abs(st[-480:])))},
     }
     (outdir / 'report.json').write_text(json.dumps(report, indent=1))
     waveform_png(wav, cues, outdir / 'waveform.png', dur)

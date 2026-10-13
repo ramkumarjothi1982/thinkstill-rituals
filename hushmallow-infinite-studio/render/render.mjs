@@ -3,7 +3,7 @@
 //   node render/render.mjs                         full render → output/<id>.mp4
 //   node render/render.mjs --stills 0,54,120       PNG stills only → output/stills/
 //   node render/render.mjs --dry                   cue log + audio curves only → output/cues.json
-//   options: --video my-brain-at-2am  --seed 20261013  --no-audio  --crf 16
+//   options: --video my-brain-at-2am  --seed 20261013  --no-audio  --crf 17  --out <dir>
 //
 // Pipeline: static server (repo root) → headless Chromium (Playwright) loads
 // stage/index.html → each frame is stepped deterministically and returned as
@@ -19,7 +19,8 @@ import { startServer } from './serve.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const OUT = path.join(ROOT, 'output');
+const argOut = (() => { const i = process.argv.indexOf('--out'); return i >= 0 ? process.argv[i + 1] : null; })();
+const OUT = argOut ? path.resolve(argOut) : path.join(ROOT, 'output');
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : d; };

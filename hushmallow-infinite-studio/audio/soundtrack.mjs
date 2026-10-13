@@ -36,7 +36,8 @@
 // DynamicsCompressors delay the signal by 2 × 6 ms, so every source is
 // scheduled LAT = 12 ms early; the audible onset then lands on the cue time
 // (QA measures it: audio/qa.py). A 1 s pre-roll is rendered and discarded so
-// the bed, crickets and reverb are already alive at frame 0 (0.3 s fade-in).
+// the bed, crickets and reverb are already alive at frame 0 (the fade-in starts
+// at -12 dB and opens fully by 0.3 s, so frame 0 is the night, not silence).
 //
 // Determinism: same cues.json → bit-identical WAV. Math.random is seeded, Voice
 // self-disposal (main-thread timing) is disabled, and node inputs are kept at
@@ -177,11 +178,11 @@ function buildPlan(log) {
 
       case 'startle': // THE comedic beat: cartoon eye-pop ON the frame + Noomi's surprise + a tiny boing
         // still the loudest gesture of the piece, but ~4 LU above the mix, not a stinger
-        S(t, 'blip', { f: 340, f1: 1500, glide: 0.045, a: 0.0015, h: 0.012, d: 0.055, peak: 0.07, lp: 4200, send: 0.12 });
+        S(t, 'blip', { f: 340, f1: 1500, glide: 0.045, a: 0.0015, h: 0.012, d: 0.055, peak: 0.066, lp: 4200, send: 0.12 });
         S(t, 'blip', { type: 'triangle', f: 170, f1: 750, glide: 0.045, a: 0.0015, h: 0.012, d: 0.06, peak: 0.034, lp: 1800 });
-        S(t + 0.02, 'blip', { type: 'triangle', f: 235, f1: 440, glide: 0.07, a: 0.006, d: 0.42, peak: 0.035, lp: 1600, send: 0.15,
+        S(t + 0.02, 'blip', { type: 'triangle', f: 330, f1: 660, glide: 0.07, a: 0.006, d: 0.42, peak: 0.035, lp: 2000, send: 0.15,
           vib: { rate: 14, cents: 70, decay: 0.4 } });
-        E(t, 'mallow', 'surprise', { intensity: 0.9 }, 0.33);
+        E(t, 'mallow', 'surprise', { intensity: 0.9, pitch: st(4) }, 0.27);   // a third up: the glide sits in the phone band
         break;
 
       case 'blink':
@@ -210,18 +211,20 @@ function buildPlan(log) {
         const i = clamp(c.id, 0, 2);
         // Higher pitches read louder, so trims step down as the pitch steps up. The layers are
         // flammed by a few ms (heard as one "bloop", but their peaks no longer stack); the
-        // music-box note has the crispest attack, so it leads, exactly on the frame.
-        E(t, 'mallow', 'tap', { intensity: 0.5, pan: c.pan, pitch: [1, st(3), st(7)][i] }, [0.66, 0.66, 0.58][i]);
+        // music-box note has the crispest attack, so it leads, exactly on the frame. The ringing
+        // music box carries the level; the short chirp and the low blip are kept light so the pop
+        // is not just a peak for the limiter to shave off (it has to read on a phone).
+        E(t, 'mallow', 'tap', { intensity: 0.5, pan: c.pan, pitch: [1, st(3), st(7)][i] }, [0.74, 0.74, 0.65][i]);
         S(t + 0.006, 'noiseHit', { filter: 'lowpass', f: 1900, f1: 380, sweep: 0.06, a: 0.003, d: 0.07, peak: 0.036, q: 1.2, pan: c.pan });
-        E(t + 0.012, 'fx', 'bubble', { intensity: 1, note: [0, 2, 4][i], pan: c.pan }, [1.05, 0.95, 0.76][i]);
-        S(t + 0.024, 'blip', { f: 230 * st([0, 4, 9][i]), f1: 470 * st([0, 4, 9][i]), glide: 0.035, a: 0.005, d: 0.15, peak: 0.045, pan: c.pan, lp: 1800 });
+        E(t + 0.012, 'fx', 'bubble', { intensity: 1, note: [0, 2, 4][i], pan: c.pan }, [0.84, 0.76, 0.61][i]);
+        S(t + 0.024, 'blip', { f: 230 * st([0, 4, 9][i]), f1: 470 * st([0, 4, 9][i]), glide: 0.035, a: 0.005, d: 0.15, peak: 0.03, pan: c.pan, lp: 1800 });
         break;
       }
 
       case 'mini': { // small glyph bubbles (?, !, …, ?!): smaller, higher blips — escalation
         const i = clamp(c.id - 10, 0, 3);
-        E(t, 'fx', 'bubble', { intensity: 0.8, note: 5 + i, pan: c.pan }, [1.5, 1.42, 1.34, 1.25][i]);
-        S(t + 0.012, 'bell', { f: [N.G6, N.A6, N.C7, N.D7][i], peak: 0.016, decay: 0.25, partials: 'celesta', pan: c.pan, send: 0.2 });
+        E(t, 'fx', 'bubble', { intensity: 0.8, note: 5 + i, pan: c.pan }, [1.2, 1.14, 1.07, 1.0][i]);
+        S(t + 0.012, 'bell', { f: [N.G6, N.A6, N.C7, N.D7][i], peak: 0.026, decay: 0.4, partials: 'celesta', pan: c.pan, send: 0.2 });
         break;
       }
 
@@ -233,17 +236,17 @@ function buildPlan(log) {
       case 'inhale': { // one deep, slow inhale; cut cleanly at the puffed-cheek hold
         const hold = first('hold')?.t ?? t + (c.dur || 1.5);
         const dur = clamp(c.dur || 1.5, 1, 3);
-        E(t, 'fx', 'breathe-in', { duration: dur, intensity: 0.7 }, 0.38, { at: hold - 0.1, fade: 0.14 });
-        S(t, 'air', { dur: hold - t + 0.06, a: hold - t - 0.12, r: 0.16, f0: 750, f1: 1600, q: 0.9, peak: 0.07, width: 0.25, send: 0.2 });
+        E(t, 'fx', 'breathe-in', { duration: dur, intensity: 0.7 }, 0.3, { at: hold - 0.1, fade: 0.14 });
+        S(t, 'air', { dur: hold - t + 0.06, a: hold - t - 0.12, r: 0.16, f0: 750, f1: 1600, q: 0.9, peak: 0.056, width: 0.25, send: 0.2 });
         break;
       }
 
       case 'exhale': { // long exhale + the soft circle of calm rolling out
         const dur = clamp((c.dur || 1.2) + 0.3, 1, 3);
-        E(t, 'fx', 'breathe-out', { duration: dur, intensity: 0.7 }, 0.26);
-        E(t, 'mallow', 'press', { intensity: 0.4 }, 0.27);           // the body squishes wide (soft)
-        E(t + 0.05, 'mallow', 'sigh', { intensity: 0.35 }, 0.24);
-        S(t, 'air', { dur: dur + 0.2, a: 0.12, r: dur, f0: 1300, f1: 420, q: 0.7, peak: 0.07, width: 0.65, send: 0.3 });
+        E(t, 'fx', 'breathe-out', { duration: dur, intensity: 0.7 }, 0.22);
+        E(t, 'mallow', 'press', { intensity: 0.4 }, 0.24);           // the body squishes wide (soft)
+        E(t + 0.05, 'mallow', 'sigh', { intensity: 0.35 }, 0.2);
+        S(t, 'air', { dur: dur + 0.2, a: 0.12, r: dur, f0: 1300, f1: 420, q: 0.7, peak: 0.056, width: 0.65, send: 0.3 });
         break;
       }
 
@@ -258,19 +261,20 @@ function buildPlan(log) {
       // the gesture itself lives in the mids: Noomi's squeeze / release an octave up, a band-passed
       // squelch and a mid boing. The low thud / sub-boing only add weight on headphones.
       case 'squish': // satisfying squash: squelch sweeping down + the squeezed glide, held until the release
-        // the squeezed glide is held, then cut just before the release: a beat of anticipation
-        E(t, 'mallow', 'squeeze', { intensity: 0.7, pitch: 2 }, 0.2,
-          releaseT && releaseT > t + 0.12 ? { at: releaseT - 0.07, fade: 0.04 } : null);
-        S(t, 'noiseHit', { filter: 'bandpass', f: 2000, f1: 650, sweep: 0.1, a: 0.004, d: 0.16, peak: 0.12, q: 1.8 });  // wet squelch
-        S(t, 'blip', { f: 900, f1: 450, glide: 0.08, a: 0.003, d: 0.14, peak: 0.08, lp: 2400 });                          // the "squish" vowel
+        // the squeezed glide is held (≤ 0.22 s), then cut before the release: a short beat of
+        // anticipation, so the release pops out of near-silence
+        E(t, 'mallow', 'squeeze', { intensity: 0.7, pitch: 2 }, 0.17,
+          releaseT && releaseT > t + 0.12 ? { at: Math.min(releaseT - 0.07, t + 0.22), fade: 0.04 } : null);
+        S(t, 'noiseHit', { filter: 'bandpass', f: 2000, f1: 650, sweep: 0.1, a: 0.004, d: 0.16, peak: 0.104, q: 1.8 }); // wet squelch
+        S(t, 'blip', { f: 900, f1: 450, glide: 0.08, a: 0.003, d: 0.14, peak: 0.069, lp: 2400 });                         // the "squish" vowel
         S(t + 0.006, 'blip', { f: 215, f1: 118, glide: 0.09, a: 0.004, d: 0.16, peak: 0.04, lp: 1200 });                 // low thud (headphones)
         break;
       case 'release': // … and elastic release: stretch pop + springy boing, jelly wobble
-        E(t, 'mallow', 'release', { intensity: 0.7, pitch: 2 }, 0.3);
-        S(t, 'blip', { f: 620, f1: 1250, glide: 0.035, a: 0.002, d: 0.06, peak: 0.08, lp: 3000, send: 0.1 });
-        S(t, 'blip', { type: 'triangle', f: 420, f1: 840, glide: 0.07, a: 0.004, d: 0.45, peak: 0.034, lp: 2600, send: 0.2,
+        E(t, 'mallow', 'release', { intensity: 0.7, pitch: 2 }, 0.26);
+        S(t, 'blip', { f: 620, f1: 1250, glide: 0.035, a: 0.002, d: 0.06, peak: 0.07, lp: 3000, send: 0.1 });
+        S(t, 'blip', { type: 'triangle', f: 420, f1: 840, glide: 0.07, a: 0.004, d: 0.45, peak: 0.029, lp: 2600, send: 0.2,
           vib: { rate: 7.5, cents: 85, decay: 0.5 } });
-        S(t, 'blip', { f: 210, f1: 420, glide: 0.07, a: 0.004, d: 0.4, peak: 0.02, lp: 1200, vib: { rate: 7.5, cents: 85, decay: 0.5 } });
+        S(t, 'blip', { f: 210, f1: 420, glide: 0.07, a: 0.004, d: 0.4, peak: 0.017, lp: 1200, vib: { rate: 7.5, cents: 85, decay: 0.5 } });
         break;
 
       case 'open': // eyes open halfway, tiny peaceful smile: warm, content glide + a tiny celesta smile on the frame
@@ -280,14 +284,14 @@ function buildPlan(log) {
         break;
 
       case 'chime': // logo pillow + hushmallow.com: the soothing closing chime, let it ring
-        E(t, 'mallow', 'success', { intensity: 0.55 }, 0.34);   // gentle: clearly below the startle, also on a phone
+        E(t, 'mallow', 'success', { intensity: 0.55 }, 0.3);   // gentle: clearly below the startle, also on a phone
         break;
 
       case 'sleep': // drifting back to sleep, under the chime
         E(t, 'mallow', 'sigh', { intensity: 0.3 }, 0.7);
         break;
 
-      default: break; // sweat, hold, close, endline: carried by the beds (see below), no discrete sound
+      default: break; // sweat, hold, close, endline (and any other cue type): carried by the beds, no discrete sound
     }
   }
 
@@ -379,9 +383,9 @@ function buildPlan(log) {
     const calm = smoothstep(close, close + 0.8, t);
     // level: builds with speed × anxiety; from close on it follows the speed alone (anx held)
     const drive = t < close ? Math.pow(sp, 1.15) * (0.4 + 0.6 * anx) : Math.pow(sp, 0.85) * (0.4 + 0.6 * anxAtClose);
-    const A = 0.075 * drive * (1 - 0.15 * calm);
+    const A = 0.085 * drive * (1 - 0.15 * calm);
     const om = smoothstep(ORB.start, ORB.full, t);
-    const fBase = 450 * Math.pow(1750 / 450, Math.pow(sp, 0.8)) * (1 - 0.15 * calm);
+    const fBase = 450 * Math.pow(1600 / 450, Math.pow(sp, 0.8)) * (1 - 0.15 * calm);
     homes.forEach(([hx, hy, mini], k) => {
       const base = Math.atan2((hy - ORB.cy) / ORB.ry, hx / ORB.rx);
       const a = base + (ang[i] - angAtStart) * (mini ? 1.35 : 1);
@@ -394,7 +398,7 @@ function buildPlan(log) {
     });
     // an undertone only (≈ -4 dB under the whooshes); after close it relaxes over the inhale instead of snapping off
     const tAnx = t < close ? anx : Math.max(anx, anxAtClose * Math.exp(-(t - close) / 0.6));
-    tension.gain.push(r4(0.007 * Math.pow(tAnx, 1.6)));
+    tension.gain.push(r4(0.005 * Math.pow(tAnx, 1.6)));
     tension.freq.push(r4(N.G3 * st(1.0 * tAnx)));
     muffle.push(Math.round(lerp(2400, 1200, smoothstep(close, close + 0.8, t))));
   }
@@ -406,7 +410,7 @@ function buildPlan(log) {
   const pad = {
     t0: exhale.t, dt: 0.02, hp: 170,
     notes: [[N.C3, 0.3], [N.G3, 0.45], [N.D4, 0.45], [N.E4, 0.55], [N.G4, 0.4], [N.C5, 0.35], [N.E5, 0.2]],
-    peak: 0.0152, env: [], lp: [],
+    peak: 0.0136, env: [], lp: [],
   };
   for (let t = pad.t0; t <= DUR + 1e-9; t += pad.dt) {
     const up = smoothstep(pad.t0, pad.t0 + 1.9, t);
@@ -429,7 +433,7 @@ function buildPlan(log) {
     // bed level: present but low; dips a little under the swirl peak, settles lower in the calm ending
     // (the calm must be softer than the spiral: emotional progression)
     level: [[-PRE, 1.0], [startle + 0.2, 1.0], [firstBubble - 0.06, 0.88], [ORB.start + 0.4, 0.85], [close - 0.1, 0.7],
-      [exhale.t - 0.4, 0.85], [open + 0.2, 0.72], [DUR - 1.0, 0.72]],
+      [exhale.t - 0.4, 0.85], [open + 0.2, 0.64], [DUR - 1.0, 0.64]],
   };
 
   return {
