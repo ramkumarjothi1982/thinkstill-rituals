@@ -1,1 +1,155 @@
-/* find scene (being rebuilt) */
+/* Find a Hushmate (prefix fd-): the landing page's Meet stage, for people.
+   A tinted room per person, their living Mallow on a pillow, a giant
+   watermark of their pseudonym, peeking neighbours, then their card and a
+   tray of faces. No borders: hairline insets and long lilac shadows. */
+
+.fd-scroll { display: flex; flex-direction: column; padding-top: 2px; }
+
+/* -------------------------------------------------------- top bar -- */
+.fd-filter { position: relative; }
+.fd-filter-dot { position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--hm-hot); box-shadow: 0 0 0 2.5px #fff; }
+
+.fd-active { align-self: center; display: flex; align-items: center; gap: 8px; max-width: 100%; min-height: 44px; margin: 0 0 12px; padding: 0 4px 0 15px; border-radius: 999px;
+  background: rgba(255,255,255,.8); box-shadow: 0 0 0 1px rgba(31,22,64,.08) inset, 0 10px 24px -18px rgba(31,22,64,.4); font: 700 13.5px/1.25 var(--hm-ui); color: var(--hm-ink-2); }
+.fd-active[hidden] { display: none; }
+.fd-active > .kit-ico { width: 16px; height: 16px; flex: none; color: var(--hm-ink-3); }
+.fd-active-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-active-clear { flex: none; min-height: 44px; padding: 0 13px; border-radius: 999px; font: 800 13.5px/1 var(--hm-ui); color: var(--hm-ink);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(31,22,64,.3); }
+
+/* ---------------------------------------------------------- stage -- */
+.fd-stage { position: relative; }
+.fd-room { position: relative; width: 100%; aspect-ratio: 1 / .92; border-radius: 34px; overflow: hidden; isolation: isolate; container-type: inline-size;
+  background-color: #EAF3FF; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  box-shadow: 0 0 0 1px rgba(31,22,64,.05) inset, 0 34px 64px -38px rgba(70,40,140,.45);
+  transition: background-color .8s var(--hm-ease); }
+/* soft daylight from above, so the tint reads as a lit room, not a flat panel */
+.fd-room::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(110% 70% at 50% -6%, rgba(255,255,255,.75), rgba(255,255,255,0) 62%),
+              radial-gradient(90% 50% at 50% 108%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%); }
+.fd-glow { position: absolute; left: 6%; right: 6%; top: 10%; bottom: 0; z-index: 0; border-radius: 50%; pointer-events: none; color: rgba(255,244,200,.55);
+  background: radial-gradient(closest-side, currentColor, rgba(255,255,255,0)); transition: color .8s var(--hm-ease); }
+.fd-ghost { position: absolute; left: 50%; top: 5%; z-index: 0; transform: translateX(-50%); white-space: nowrap; pointer-events: none;
+  font-family: var(--hm-display); font-variation-settings: "SOFT" 100, "WONK" 0; font-style: italic; font-weight: 600; letter-spacing: -.04em; line-height: 1;
+  font-size: clamp(40px, calc(186cqi / var(--fd-len, 8)), 25cqi); opacity: .09; transition: color .6s var(--hm-ease); }
+.fd-ghost > span { display: inline-block; padding: 0 .08em; }
+
+/* the people: one centre slot, or a pair once an invitation is on its way */
+.fd-slot { position: absolute; left: 50%; bottom: 11%; width: 52%; z-index: 2; transform: translateX(-50%);
+  transition: left .9s var(--hm-ease), width .9s var(--hm-ease), opacity .5s var(--hm-ease); }
+.fd-slot-m { position: relative; z-index: 1; display: block; }
+.fd-slot .fd-pillow.kit-pillow { left: -18%; right: -18%; bottom: -15%; height: 34%; z-index: 0; }
+.fd-me { left: 31%; width: 30%; opacity: 0; pointer-events: none; }
+.fd-room.is-pair .fd-me { opacity: 1; pointer-events: auto; }
+.fd-room.is-pair .fd-fig { left: 69%; width: 30%; }
+.fd-you { position: absolute; left: 50%; bottom: -13%; z-index: 2; transform: translateX(-50%); padding: 5px 10px; border-radius: 999px; background: #fff;
+  font: 800 11px/1 var(--hm-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--hm-ink-2); box-shadow: 0 8px 18px -10px rgba(31,22,64,.45); }
+.fd-room.is-loading .fd-fig { opacity: .35; }
+
+.fd-room .kit-arc.fd-arc { z-index: 1; opacity: 0; transition: opacity .6s var(--hm-ease); }
+.fd-room.is-pair .kit-arc.fd-arc { opacity: 1; transition-delay: .45s; }
+.fd-light { z-index: 6; }
+
+/* peeking neighbours: further back, lower, at the edges */
+.fd-peek { position: absolute; bottom: 12%; width: 14%; z-index: 1; opacity: .5; border-radius: 40%; transition: opacity .3s, transform .35s var(--hm-ease); }
+.fd-peek .mw-face { width: 100% !important; }
+.fd-peek--l { left: 3%; }
+.fd-peek--r { right: 3%; }
+.fd-room.is-pair .fd-peek { opacity: 0; pointer-events: none; }
+@media (hover: hover) { .fd-peek:hover { opacity: .92; transform: translateY(-4px); } }
+
+.fd-arrow.kit-round { position: absolute; top: 46%; margin-top: -22px; z-index: 3; }
+.fd-arrow--l { left: 10px; }
+.fd-arrow--l .kit-ico { transform: rotate(180deg); }
+.fd-arrow--r { right: 10px; }
+.fd-room.is-instant .fd-slot, .fd-room.is-instant .kit-arc, .fd-room.is-instant .fd-peek { transition: none; }
+
+.fd-foot { min-height: 56px; display: flex; align-items: center; justify-content: center; padding: 10px 0 4px; text-align: center; }
+.fd-tip { font: 700 13px/1.35 var(--hm-ui); letter-spacing: .02em; color: var(--hm-ink-3); }
+.fd-foot .kit-hint { max-width: 100%; text-align: left; line-height: 1.3; }
+
+/* ----------------------------------------------------------- card -- */
+.fd-card-zone { position: relative; }
+.fd-card { container-type: inline-size; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  padding: 24px 20px 20px; border-radius: 30px; background: rgba(255,255,255,.84);
+  box-shadow: 0 0 0 1px rgba(31,22,64,.06) inset, 0 30px 60px -36px rgba(70,40,140,.42);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.fd-name { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; max-width: 100%; outline: none; }
+.fd-name-text { min-width: 0; max-width: 100%; overflow-wrap: anywhere; color: var(--hm-ink);
+  font-family: var(--hm-display); font-variation-settings: "SOFT" 100, "WONK" 0; font-weight: 540; letter-spacing: -.03em; line-height: 1.02;
+  font-size: clamp(26px, calc(176cqi / var(--fd-len, 10)), 44px); }
+.fd-meta { font: 700 14.5px/1.45 var(--hm-ui); color: var(--hm-ink-2); max-width: 24em; text-wrap: balance; }
+.fd-talk { width: 100%; display: grid; justify-items: center; gap: 9px; margin-top: 6px; }
+.fd-talk .kit-label { color: var(--fd-deep, var(--hm-ink-3)); }
+.fd-talk .kit-tags { justify-content: center; }
+.fd-talk .kit-tags li { font-size: 13.5px; padding: 10px 13px; }
+.fd-talk .kit-tags li.is-shared { box-shadow: 0 0 0 1.5px currentColor inset; }
+.fd-common { display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1.3 var(--hm-ui); color: var(--hm-ink-3); }
+.fd-common .kit-ico { width: 15px; height: 15px; flex: none; color: var(--fd-deep, var(--hm-ink-3)); }
+.fd-act { width: 100%; display: grid; justify-items: center; gap: 8px; margin-top: 10px; }
+.fd-act .kit-btn { max-width: 100%; }
+.fd-invite { padding: 0 22px; }
+.fd-invite-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kit-btn.fd-sent[disabled] { opacity: 1; color: var(--fd-deep); background: var(--fd-tint); box-shadow: 0 0 0 1.5px rgba(31,22,64,.06) inset; }
+.fd-act-note { font: 500 14px/1.45 var(--hm-body); color: var(--hm-ink-2); }
+.fd-paused { display: inline-flex; align-items: center; justify-content: center; gap: 10px; max-width: 100%; min-height: 54px; padding: 10px 20px; border-radius: 999px;
+  background: rgba(31,22,64,.05); font: 700 15px/1.3 var(--hm-ui); color: var(--hm-ink-2); text-align: left; }
+.fd-paused .kit-ico { width: 18px; height: 18px; flex: none; color: var(--hm-ink-3); }
+
+/* empty and error: a sleepy Mallow and a few calm words */
+.fd-quiet { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 0 8px; }
+.fd-quiet .kit-btn { margin-top: 8px; }
+
+/* ----------------------------------------------------------- tray -- */
+.fd-tray-wrap { display: grid; gap: 12px; margin-top: 28px; }
+.fd-tray-wrap[hidden] { display: none; }
+.fd-tray { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.fd-pick { position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; width: calc((100% - 16px) / 3); max-width: 112px; min-height: 44px;
+  padding: 12px 4px 11px; border-radius: 24px; transition: background-color .25s, transform .25s var(--hm-ease), box-shadow .25s; }
+.fd-pick .mw-face { width: 50px !important; transition: transform .35s var(--hm-ease); }
+.fd-pick-name { max-width: 100%; font: 700 13px/1.2 var(--hm-ui); color: var(--hm-ink-2); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fd-pick[aria-pressed="true"] { background: #fff; box-shadow: 0 0 0 2px var(--fd-ring) inset, 0 12px 24px -16px rgba(31,22,64,.45); }
+.fd-pick[aria-pressed="true"] .mw-face { transform: scale(1.1) translateY(-2px); }
+.fd-pick[aria-pressed="true"] .fd-pick-name { color: var(--hm-ink); }
+.fd-pick:active { transform: scale(.96); }
+@media (hover: hover) {
+  .fd-pick:hover { background: rgba(31,22,64,.04); transform: translateY(-3px); }
+  .fd-pick[aria-pressed="true"]:hover { background: #fff; }
+}
+.fd-pick-badge { position: absolute; top: 8px; right: calc(50% - 38px); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: #fff; color: var(--fd-ring); box-shadow: 0 6px 12px -6px rgba(31,22,64,.5), 0 0 0 1px rgba(31,22,64,.06); }
+.fd-pick-badge .kit-ico { width: 13px; height: 13px; }
+
+/* ----------------------------------------------------------- more -- */
+.fd-more { display: grid; justify-items: center; gap: 10px; margin-top: 26px; text-align: center; }
+.kit-hint.fd-hidden { max-width: 100%; min-height: 44px; border-radius: 22px; text-align: left; line-height: 1.35; cursor: pointer; }
+.kit-hint.fd-hidden[hidden] { display: none; }
+.fd-hidden-link { color: var(--hm-ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(31,22,64,.35); white-space: nowrap; }
+.fd-code .kit-ico { width: 18px; height: 18px; }
+.fd-note { max-width: 25em; }
+
+/* ---------------------------------------------------------- sheets -- */
+.fd-sheet-pair { position: relative; width: 214px; height: 100px; }
+.fd-sheet-face { position: absolute; bottom: 0; z-index: 1; }
+.fd-sheet-face--l { left: 4px; }
+.fd-sheet-face--r { right: 4px; }
+.fd-sheet-pair .kit-arc.fd-sheet-arc { left: 13%; width: 74%; top: 2%; height: 44%; z-index: 0; }
+.fd-fgroup { display: grid; gap: 10px; }
+.fd-fgroup + .fd-fgroup { margin-top: 22px; }
+.fd-fnote { font: 500 14px/1.45 var(--hm-body); color: var(--hm-ink-2); margin-top: -4px; }
+.fd-code-label { display: block; margin: 18px 0 8px; }
+.fd-code-field input { text-transform: uppercase; letter-spacing: .08em; }
+.fd-code-field input::placeholder { text-transform: none; letter-spacing: .04em; }
+.fd-code-field + .kit-error { margin-top: 8px; }
+.fd-code-note { margin-top: 12px; }
+
+/* ---------------------------------------------------- small phones -- */
+@container hmd (max-width: 350px) {
+  .fd-room { border-radius: 28px; }
+  .fd-card { padding: 20px 16px 18px; border-radius: 26px; }
+  .fd-meta { font-size: 14px; }
+  .fd-pick { padding: 10px 2px 10px; border-radius: 20px; }
+  .fd-pick .mw-face { width: 44px !important; }
+  .fd-pick-name { font-size: 12.5px; }
+}

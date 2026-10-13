@@ -1,1 +1,212 @@
-/* home scene (being rebuilt) */
+/* Home (ho-): a little world. My Mallow on a pillow in the middle, my
+   Hushmates floating around me on glowing arcs, an invitation bubble when
+   one arrives, then one ink pill and a quiet row of text links. */
+
+.ho-top { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 64px; padding: calc(10px + var(--hm-safe-top)) var(--hm-gutter) 2px; }
+.ho-logo { width: 104px; height: auto; flex: none; }
+.ho-status { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 12px 0 16px; border-radius: 999px; min-width: 0;
+  background: rgba(255,255,255,.92); box-shadow: var(--hm-shadow-pill), 0 0 0 1px rgba(31,22,64,.05) inset;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: transform .25s var(--hm-ease), box-shadow .25s var(--hm-ease); }
+.ho-status-pill { white-space: nowrap; }
+.ho-status-paused { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #F4F0FB; color: var(--hm-ink-2); }
+.ho-status-paused .kit-ico { width: 12px; height: 12px; }
+.ho-status-chev { display: inline-grid; color: var(--hm-ink-3); }
+.ho-status-chev .kit-ico { width: 14px; height: 14px; transform: rotate(90deg); }
+@media (hover: hover) { .ho-status:hover { transform: translateY(-1px); box-shadow: 0 14px 28px -14px rgba(31,22,64,.45), 0 0 0 1px rgba(31,22,64,.06) inset; } }
+.ho-status:active { transform: scale(.97); }
+
+.ho-scroll { display: flex; flex-direction: column; align-items: stretch; padding-top: 10px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 12px); mask-image: linear-gradient(180deg, transparent 0, #000 12px); }
+.ho-head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.ho-title { max-width: 12em; }
+
+.ho-notice { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 12px 16px; border-radius: 18px; text-align: left;
+  background: rgba(255,255,255,.86); box-shadow: 0 0 0 1px rgba(31,22,64,.06) inset, 0 18px 36px -26px rgba(70,40,140,.4);
+  font: 600 13.5px/1.45 var(--hm-ui); color: var(--hm-ink); }
+.ho-notice .kit-ico { width: 18px; height: 18px; flex: none; color: var(--hm-violet); margin-top: 1px; }
+
+/* ------------------------------------------------------------ the world -- */
+.ho-world { position: relative; margin: 8px calc(var(--hm-gutter) * -1) 0; }
+.ho-stage { position: relative; width: 100%; aspect-ratio: 1 / .9; }
+.ho-stage-glow { position: absolute; left: 16%; right: 16%; top: 20%; bottom: -4%; border-radius: 50%; pointer-events: none; transition: background .8s; }
+/* a soft pool of light the circle stands in */
+.ho-orbit { position: absolute; left: -6%; right: -6%; top: 14%; bottom: -8%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255,255,255,.62), rgba(255,255,255,.28) 55%, rgba(255,255,255,0)); }
+.ho-arcs { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.ho-arcs .kit-arc.ho-arc { opacity: .8; transition: opacity .6s var(--hm-ease); }
+.ho-arc path { vector-effect: non-scaling-stroke; }
+.ho-arcs .kit-arc.ho-arc--ghost { opacity: .5; }
+.ho-arc--ghost path:first-of-type { stroke-dasharray: 1 7; stroke-width: 2.4; opacity: .8; }
+.ho-arc--ghost path:last-of-type { display: none; }
+.kit-pillow.ho-pillow { left: 15%; right: 15%; bottom: 1%; height: 17.5%; z-index: 2; }
+.ho-me { position: absolute; left: 32%; width: 36%; bottom: 12.5%; z-index: 3; }
+.ho-me-in { display: block; }
+
+.ho-slot { position: absolute; z-index: 4; transition: left .8s var(--hm-ease), top .8s var(--hm-ease), width .8s var(--hm-ease); }
+.ho-slot--2 { z-index: 2; }
+.ho-ghost { z-index: 1; pointer-events: none; transition: none; }
+
+/* a Hushmate: a real button around a living Mallow */
+.ho-mate { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%; border-radius: 30px; }
+.ho-mate-fig { position: relative; display: block; width: 100%; transition: transform .35s var(--hm-ease); }
+.ho-mate-glow { position: absolute; inset: -16% -16% -6%; border-radius: 50%; pointer-events: none; opacity: .9; }
+.ho-mate .mw { position: relative; z-index: 1; }
+.ho-mate-dot { position: absolute; z-index: 3; top: -2%; right: -6%; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 999px;
+  background: var(--hm-hot); color: #fff; font: 800 12.5px/24px var(--hm-ui); text-align: center;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.96), 0 8px 18px -8px rgba(255,111,181,.9); }
+.ho-mate-moon { position: absolute; z-index: 3; top: -4%; left: -8%; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: #fff; color: var(--hm-violet); box-shadow: 0 8px 18px -10px rgba(31,22,64,.45), 0 0 0 1px rgba(31,22,64,.05) inset; }
+.ho-mate-moon .kit-ico { width: 14px; height: 14px; }
+.ho-mate-name { position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 5px; max-width: 31cqi; padding: 6px 10px 6px 11px; border-radius: 999px;
+  background: rgba(255,255,255,.95); box-shadow: var(--hm-shadow-pill); font: 700 12.5px/1.1 var(--hm-ui); color: var(--hm-ink); white-space: nowrap; }
+.ho-mate-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ho-test { position: absolute; z-index: 3; bottom: 2%; right: -6%; font: 800 8.5px/1 var(--hm-ui); letter-spacing: .07em; text-transform: uppercase; color: var(--hm-ink-3);
+  padding: 4px 6px; border-radius: 999px; background: rgba(255,255,255,.96); box-shadow: 0 6px 14px -8px rgba(31,22,64,.45), 0 0 0 1px rgba(31,22,64,.06) inset; }
+.ho-invite-face .ho-test { bottom: -5px; right: auto; left: 50%; transform: translateX(-50%); }
+@media (hover: hover) { .ho-mate:hover .ho-mate-fig { transform: translateY(-5px) scale(1.04); } }
+.ho-mate:active .ho-mate-fig { transform: scale(.95); }
+.ho-mate:focus-visible { outline-offset: 6px; border-radius: 26px; }
+
+/* a free place in the circle */
+.ho-room { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; border-radius: 30px; color: var(--hm-violet); }
+.ho-room-ring { position: relative; display: grid; place-items: center; width: 84%; aspect-ratio: 1; border-radius: 50%; margin-top: 4%;
+  background: radial-gradient(closest-side, rgba(255,255,255,.82), rgba(255,255,255,.35) 80%, rgba(255,255,255,0));
+  transition: transform .35s var(--hm-ease), background-color .3s; }
+.ho-room-dots { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; animation: ho-turn 80s linear infinite; }
+.ho-room-dots circle { fill: none; stroke: rgba(142,107,255,.62); stroke-width: 2.8; stroke-linecap: round; stroke-dasharray: .01 5.55; }
+.ho-room .kit-ico { position: relative; width: 24px; height: 24px; }
+.ho-room-label { font: 700 12.5px/1.25 var(--hm-ui); color: var(--hm-ink-2); text-align: center; max-width: 8.5em; text-wrap: balance; }
+.ho-room:not(.is-first) { opacity: .58; }
+.ho-room:not(.is-first) .kit-ico { width: 20px; height: 20px; }
+@media (hover: hover) { .ho-room:hover .ho-room-ring { transform: translateY(-4px) scale(1.05); } .ho-room:hover { opacity: 1; } }
+.ho-room:active .ho-room-ring { transform: scale(.94); }
+@keyframes ho-turn { to { transform: rotate(360deg); } }
+
+/* an invitation floats in as a bubble */
+.ho-invite-zone { position: absolute; z-index: 5; top: 2.5%; right: 4%; width: 50%; display: flex; justify-content: flex-end; }
+.ho-invite { position: relative; display: flex; align-items: center; gap: 10px; max-width: 100%; padding: 9px 14px 10px 9px; border-radius: 22px 22px 22px 8px;
+  background: #fff; text-align: left; box-shadow: 0 18px 40px -18px rgba(31,22,64,.42), 0 0 0 1px rgba(31,22,64,.04);
+  animation: ho-bob 5.2s ease-in-out infinite; transition: box-shadow .25s var(--hm-ease); }
+.ho-invite-face { position: relative; flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: #F7F1FF; }
+.ho-invite-text { display: grid; gap: 2px; min-width: 0; font: 600 12.5px/1.3 var(--hm-ui); color: var(--hm-ink-2); }
+.ho-invite-text strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 560 italic 15.5px/1.15 var(--hm-display); font-variation-settings: "SOFT" 100; color: var(--hm-ink); }
+.ho-invite-spark { position: absolute; top: -3px; right: -3px; width: 13px; height: 13px; border-radius: 50%; background: var(--hm-hot); box-shadow: 0 0 0 3px #fff; }
+@media (hover: hover) { .ho-invite:hover { box-shadow: 0 22px 44px -18px rgba(31,22,64,.5), 0 0 0 4px rgba(205,184,255,.45); } }
+.ho-invite:active { transform: scale(.97); }
+@keyframes ho-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* my name under my Mallow */
+.ho-me-meta { position: relative; z-index: 2; display: grid; justify-items: center; margin-top: -2px; }
+.ho-me-name { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 10px; padding: 0 var(--hm-gutter);
+  font: 520 italic clamp(23px, 6.6cqi, 27px)/1.1 var(--hm-display); font-variation-settings: "SOFT" 100; letter-spacing: -.012em; color: var(--hm-ink); }
+.ho-me-name-text { min-width: 0; overflow-wrap: anywhere; }
+.ho-me-tag { display: contents; }
+.ho-edit { margin-top: -2px; font-size: 14.5px; color: var(--hm-ink-2); text-decoration: underline; text-decoration-color: rgba(31,22,64,.22); text-underline-offset: 4px; }
+
+.ho-find { align-self: center; width: 100%; max-width: 360px; margin-top: 12px; }
+.ho-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 4px; margin-top: 16px; }
+.ho-link { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 9px; border-radius: 999px;
+  font: 700 14.5px/1.1 var(--hm-ui); color: var(--hm-ink-2); transition: color .2s, background-color .2s; }
+.ho-link .kit-ico { width: 17px; height: 17px; color: var(--hm-ink-3); transition: color .2s; }
+@media (hover: hover) { .ho-link:hover { color: var(--hm-ink); background: rgba(255,255,255,.6); } .ho-link:hover .kit-ico { color: var(--hm-violet); } }
+.ho-link:active { transform: scale(.97); }
+.ho-link-faces { display: inline-flex; align-items: center; }
+.ho-link-faces.is-faces .mw-face { width: 19px !important; }
+.ho-link-faces.is-faces .mw-face + .mw-face { margin-left: -8px; }
+.ho-link-faces .mw-face-img { filter: drop-shadow(0 3px 4px rgba(31,22,64,.18)); }
+.ho-link-faces .kit-ico path { fill: none; }
+.ho-link-count { min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px; background: var(--hm-hot); color: #fff; font: 800 11px/19px var(--hm-ui); text-align: center; }
+.ho-line { align-self: center; text-align: center; max-width: 23em; margin-top: 12px; color: var(--hm-ink-2); }
+
+/* the status sheet: three big radio rows, then the sentence switch */
+.ho-sheet-text { margin-top: -2px; }
+.ho-radios { display: grid; gap: 8px; margin: 16px 0 14px; }
+.ho-radio { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 66px; padding: 12px 14px 12px 18px; border-radius: 22px; text-align: left;
+  background: rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(31,22,64,.08) inset; transition: box-shadow .25s var(--hm-ease), transform .25s var(--hm-ease), background-color .25s; }
+.ho-radio[aria-checked="true"] { background: #fff; box-shadow: 0 0 0 2px var(--hm-ink) inset, 0 16px 30px -20px rgba(31,22,64,.5); }
+@media (hover: hover) { .ho-radio:hover { transform: translateY(-1px); box-shadow: 0 0 0 1.5px rgba(31,22,64,.18) inset, 0 12px 24px -18px rgba(31,22,64,.4); }
+  .ho-radio[aria-checked="true"]:hover { box-shadow: 0 0 0 2px var(--hm-ink) inset, 0 16px 30px -20px rgba(31,22,64,.5); } }
+.ho-radio:active { transform: scale(.985); }
+.ho-radio-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; background: #4CCB8A; box-shadow: 0 0 0 5px rgba(76,203,138,.18); }
+.ho-radio--quiet .ho-radio-dot { background: #A57BFF; box-shadow: 0 0 0 5px rgba(165,123,255,.18); }
+.ho-radio--break .ho-radio-dot { background: #B9AED6; box-shadow: 0 0 0 5px rgba(185,174,214,.28); }
+.ho-radio-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ho-radio-text strong { font: 800 16px/1.25 var(--hm-ui); color: var(--hm-ink); }
+.ho-radio-text span { font: 500 14px/1.4 var(--hm-body); color: var(--hm-ink-2); }
+.ho-radio-check { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--hm-ink); color: #FFF8F3;
+  opacity: 0; transform: scale(.5); transition: opacity .2s, transform .35s var(--hm-ease); }
+.ho-radio-check .kit-ico { width: 16px; height: 16px; }
+.ho-radio[aria-checked="true"] .ho-radio-check { opacity: 1; transform: none; }
+
+@container hmd (max-width: 350px) {
+  .ho-radio { min-height: 60px; padding: 10px 12px 10px 16px; gap: 12px; }
+  .ho-radio-text span { font-size: 13.5px; }
+  .ho-top { min-height: 56px; padding-top: calc(6px + var(--hm-safe-top)); }
+  .ho-logo { width: 94px; }
+  .ho-status { padding: 0 10px 0 13px; gap: 6px; }
+  .ho-scroll { padding-top: 2px; }
+  .ho-head { gap: 6px; }
+  .ho-title { font-size: 24px; }
+  .ho-stage { aspect-ratio: 1 / .78; }
+  .ho-me-meta { margin-top: -10px; }
+  .ho-me-name { font-size: 22px; }
+  .ho-edit { margin-top: -6px; }
+  .ho-find { margin-top: 4px; }
+  .ho-invite-zone { width: 52%; right: 3%; top: 2%; }
+  .ho-invite { gap: 8px; padding: 7px 10px 8px 7px; }
+  .ho-invite-face { width: 38px; height: 38px; }
+  .ho-invite-face .mw-face { width: 34px !important; }
+  .ho-invite-text { font-size: 11.5px; }
+  .ho-invite-text strong { font-size: 14.5px; }
+  .ho-mate-name { font-size: 11.5px; padding: 5px 8px 5px 9px; }
+  .ho-room-label { font-size: 11.5px; }
+  .ho-link { font-size: 14px; padding: 0 8px; }
+}
+
+/* ---------------------------------------------------- All Hushmates (hl-) -- */
+.hl-scroll { padding-top: 8px; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 12px); mask-image: linear-gradient(180deg, transparent 0, #000 12px); }
+.hl-head { display: grid; justify-items: center; gap: 8px; text-align: center; margin: 2px 0 10px; }
+.hl-cluster { position: relative; display: flex; justify-content: center; align-items: flex-end; gap: 2px; height: 64px; }
+.hl-rows { margin: 0 -8px; }
+.kit-rows.hl-rows > * + * { box-shadow: none; }
+.hl-row { position: relative; display: flex; align-items: center; gap: 14px; width: 100%; min-height: 80px; padding: 12px 8px; text-align: left; border-radius: 22px;
+  transition: background-color .25s var(--hm-ease), transform .25s var(--hm-ease); }
+.hl-row + .hl-row::before { content: ""; position: absolute; top: 0; left: 84px; right: 8px; height: 1px; background: var(--hm-line); pointer-events: none; }
+@media (hover: hover) { .hl-row:hover { background: rgba(255,255,255,.62); } .hl-row:hover .hl-chev { transform: translateX(3px); color: var(--hm-ink); } }
+.hl-row:active { transform: scale(.985); }
+.hl-face { position: relative; flex: none; display: grid; place-items: center; width: 62px; height: 60px; }
+.hl-face::before { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: radial-gradient(closest-side, var(--hl-glow, #EFE3FF), rgba(255,255,255,0)); }
+.hl-face .mw-face { position: relative; }
+.hl-test { position: absolute; z-index: 2; bottom: -3px; left: 50%; transform: translateX(-50%); font: 800 8.5px/1 var(--hm-ui); letter-spacing: .07em;
+  text-transform: uppercase; color: var(--hm-ink-3); padding: 3px 6px; border-radius: 999px; background: rgba(255,255,255,.96);
+  box-shadow: 0 6px 14px -8px rgba(31,22,64,.45), 0 0 0 1px rgba(31,22,64,.06) inset; }
+.hl-moon { position: absolute; top: -2px; left: -2px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--hm-violet);
+  box-shadow: 0 6px 14px -8px rgba(31,22,64,.5), 0 0 0 1px rgba(31,22,64,.05) inset; }
+.hl-moon .kit-ico { width: 12px; height: 12px; }
+.hl-text { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.hl-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font: 560 21px/1.12 var(--hm-display); font-variation-settings: "SOFT" 100; letter-spacing: -.01em; color: var(--hm-ink); }
+.hl-name > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.hl-sub { display: flex; align-items: center; gap: 7px; font: 600 13.5px/1.35 var(--hm-ui); color: var(--hm-ink-2); }
+.hl-sub i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #4CCB8A; }
+.hl-sub--quiet i { background: #A57BFF; }
+.hl-sub--break i { background: #B9AED6; }
+.hl-sub--intent i { background: linear-gradient(135deg, #FF8CC6, #9C7BFF 60%, #6FC8FF); }
+.hl-sub--closed i { background: rgba(31,22,64,.22); }
+.hl-end { flex: none; display: flex; align-items: center; gap: 8px; }
+.hl-unread { min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--hm-hot); color: #fff; font: 800 12.5px/26px var(--hm-ui); text-align: center;
+  box-shadow: 0 8px 16px -8px rgba(255,111,181,.85); }
+.hl-unread--muted { background: rgba(31,22,64,.1); color: var(--hm-ink-2); box-shadow: none; }
+.hl-chev { display: inline-grid; color: var(--hm-ink-3); transition: transform .25s var(--hm-ease), color .2s; }
+.hl-chev .kit-ico { width: 18px; height: 18px; }
+.hl-line { text-align: center; max-width: 22em; margin: 18px auto 0; color: var(--hm-ink-2); }
+.hl-closed { margin-top: 30px; }
+.hl-closed .hl-row { min-height: 68px; }
+.hl-closed .hl-face { opacity: .55; filter: saturate(.5); width: 50px; height: 48px; }
+.hl-closed .hl-name { font-size: 18px; color: var(--hm-ink-2); }
+.hl-empty { display: grid; justify-items: center; text-align: center; gap: 10px; padding-top: 6px; }
+.hl-empty-stage { position: relative; width: 210px; aspect-ratio: 1 / .78; }
+.hl-empty-stage .kit-glow { inset: 0 4% 6%; }
+.hl-empty-stage .kit-pillow { left: 4%; right: 4%; bottom: 2%; height: 26%; }
+.hl-empty-m { position: absolute; left: 24%; width: 52%; bottom: 14%; z-index: 2; }
+.hl-empty .kit-btn { margin-top: 8px; }
