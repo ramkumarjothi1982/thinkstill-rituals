@@ -32,9 +32,13 @@
 // Screens that go deeper get a history entry of their own (app.pushLayer),
 // so Back steps back through them before leaving the scene.
 //
-// Entry points for the coordinator (Settings row, side panel link):
-//   mountAccountRow(app, el)   fills `el` with one Settings row (nothing when sign-in is off)
+// Entry points:
+//   mountAccountRow(app, el)   fills `el` with one Settings row (nothing when sign-in is off);
+//                              Settings → Privacy uses it (the side panel deliberately has no account link)
 //   openAccount(app, params)   opens this scene (params.view: 'signin' | 'create' | …)
+//   emailParts(text)           an address that breaks after "@" first, then a dot, never mid-word
+// An arrival (params.arrived, with params.notice from main.js) is said on the account card's lede
+// the first time it shows, never as a toast over the card (ARRIVALS, carriesArrival).
 import { h, iconBtn, toast } from '../ui.js';
 import { type, fitLabel } from '../../ui/type.js';
 import { brandTagline } from '../../brand.js';
