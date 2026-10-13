@@ -14,6 +14,7 @@
 import { MallowRig } from '../../src/mallows/rig.js';
 import { REACTIONS } from '../../src/mallows/reactions.js';
 import { SoftBody, alphaMask } from './softbody.js';
+import { tuneMaterial, LOOKS } from './materials.js';
 import { MeshRenderer } from './mesh-renderer.js';
 import { deformationFace } from './expression-engine.js';
 import { clamp, approach } from './math.js';
@@ -43,6 +44,12 @@ export class SoftMallow extends MallowRig {
     this.faceState = { squeeze: 0, stretch: 0, wobble: 0, closedEyes: this.mallow.face.eyeStyle === 'closed' };
     this.showMesh = false;
     this._settled = true;
+    // Comfort DNA hooks: animation speed (time scale), motion intensity (impulse
+    // scale), breath inflation and per-experience face overrides
+    this.speed = 1;
+    this.motionScale = 1;
+    this.inflate = 0; this.inflateTarget = 0;
+    this.faceOverride = { set: {}, min: {} };
     this.canvas.setAttribute('role', 'img');
     this.canvas.style.touchAction = 'none';
     // know when the rig re-rendered its skin, so the texture is re-uploaded only then
@@ -75,12 +82,14 @@ export class SoftMallow extends MallowRig {
     this._resize();
   }
 
+  _mat() { return tuneMaterial(this.material, this.id, { reducedMotion: this.opts.reducedMotion }); }
+
   _buildBody() {
     const m = this.mallow, Q = QUALITY[this.quality];
     const [bx0, by0, bx1, by1] = m.bodyBox;
-    this.soft = new SoftBody({ width: bx1 - bx0, height: by1 - by0, cols: Q.grid, rows: Q.grid, inside: this._mask, material: this.material, substeps: Q.substeps });
-    if (this.opts.reducedMotion) this._calm();
+    this.soft = new SoftBody({ width: bx1 - bx0, height: by1 - by0, cols: Q.grid, rows: Q.grid, inside: this._mask, material: this._mat(), substeps: Q.substeps });
     this.soft.settleNow();
+    this._cheekV = clamp(((m.face.cheeks?.L?.[1] ?? (by0 + (by1 - by0) * 0.62)) - by0) / (by1 - by0), 0, 1);
     this._pos = new Float32Array(this.soft.n * 2);
     this._shade = new Float32Array(this.soft.n);
     this._cnt = null;   // per-vertex triangle counts, sized to the new mesh on first use
@@ -97,17 +106,18 @@ export class SoftMallow extends MallowRig {
       uv[k * 2 + 1] = (by0 + s.v[k] * (by1 - by0)) * q / th;
     }
     this._uvQ = q;
+    // the material's highlight sits on the upper-left of the body, in texture space
+    const bw = bx1 - bx0, bh = by1 - by0;
+    this.renderer?.setLook(LOOKS[this.material], [(bx0 + bw * 0.3) * q / tw, (by0 + bh * 0.24) * q / th], [bw * 0.17 * q / tw, bh * 0.1 * q / th]);
     return uv;
   }
-
-  _calm() { this.soft.mat = { ...this.soft.mat, damping: this.soft.mat.damping * 2 + 4 }; }
 
   // --------------------------------------------------------- public API --
   setMaterial(id) {
     this.material = id;
     if (!this.soft) return;
-    this.soft.setMaterial(id);
-    if (this.opts.reducedMotion) this._calm();
+    this.soft.setMaterial(this._mat());
+    if (this.renderer) this.renderer.setUv(this._uv());   // refreshes the look too
   }
 
   setQuality(q) {
@@ -121,8 +131,43 @@ export class SoftMallow extends MallowRig {
 
   setReducedMotion(b) {
     super.setReducedMotion(b);
-    if (this.soft) { this.soft.setMaterial(this.material); if (b) this._calm(); }
+    if (this.soft) this.soft.setMaterial(this._mat());
   }
+
+  /** Animation speed (0.6..1.4): scales the whole rig clock, physics included. */
+  setSpeed(k) { this.speed = clamp(+k || 1, 0.6, 1.4); }
+
+  /** Motion intensity (0.3..1.4): scales impulses from touches and reactions. */
+  setMotionScale(k) { this.motionScale = clamp(+k || 1, 0.3, 1.4); }
+
+  /** Breath inflation 0..1 (≈ +7% size at 1), eased. */
+  setInflate(v) { this.inflateTarget = clamp(v, -0.5, 1); }
+
+  /**
+   * Per-experience face overrides: `set` replaces targets, `min` raises them
+   * (e.g. { min: { glow: 0.8 } } while a light rests on the Mallow).
+   */
+  setFaceOverride(o = {}) { this.faceOverride = { set: o.set || {}, min: o.min || {} }; }
+
+  /** Closed-eyed Mallows open their eyes for a moment to look at a finger. */
+  peek(x, y, dur = 1.1) {
+    if (!this.ready) return;
+    if (x != null) this.lookAtScreen(x, y);
+    if (this.mallow.face.eyeStyle !== 'closed') return;
+    this.overlays = this.overlays.filter((o) => o.kind !== 'peek');
+    this.overlays.push({ start: this.time, dur, params: { eyeOpen: 0.72, lidTop: 0.18, closedCurve: 0.2, browTilt: -0.25, mouthSmile: 1 }, kind: 'peek' });   // a friendly look, not a worried one
+  }
+
+  react(kind, opts = {}) {
+    const b = this.body, k = this.motionScale;
+    if (!this.ready || k === 1) return super.react(kind, opts);
+    const v0 = { squashV: b.squashV, leanV: b.leanV, shearV: b.shearV, tiltV: b.tiltV, hopV: b.hopV };
+    super.react(kind, opts);
+    for (const key of Object.keys(v0)) b[key] = v0[key] + (b[key] - v0[key]) * k;
+    return this;
+  }
+
+  _tick(dt, now) { super._tick(dt * this.speed, now); }
 
   /** Screen (CSS px in the container) → soft-body local px. */
   toLocal(x, y) {
@@ -153,7 +198,7 @@ export class SoftMallow extends MallowRig {
   poke(x, y, strength = 1) {
     if (!this.soft) return;
     const [lx, ly] = this.toLocal(x, y);
-    this.soft.poke(lx, ly, strength * (this.opts.reducedMotion ? 0.4 : 1));
+    this.soft.poke(lx, ly, strength * this.motionScale * (this.opts.reducedMotion ? 0.4 : 1));
     this._unsettle();
   }
 
@@ -164,7 +209,7 @@ export class SoftMallow extends MallowRig {
   release(id, vx = 0, vy = 0) {
     if (!this.soft) return 0;
     const S = this._S || this.S;
-    const k = this.opts.reducedMotion ? 0.3 : 1;
+    const k = (this.opts.reducedMotion ? 0.3 : 1) * this.motionScale;
     this._unsettle();
     return this.soft.release(id, vx / S * k, vy / S * k);
   }
@@ -221,6 +266,9 @@ export class SoftMallow extends MallowRig {
       const sqFace = REACTIONS[this.id]?.squeezeFace || REACTIONS._shared.squeezeFace;
       deformationFace(goal, this.faceState, sqFace);
     }
+    const fo = this.faceOverride;
+    for (const k in fo.set) if (k in goal) goal[k] = fo.set[k];
+    for (const k in fo.min) if (k in goal) goal[k] = Math.max(goal[k], fo.min[k]);
     return goal;
   }
 
@@ -248,7 +296,10 @@ export class SoftMallow extends MallowRig {
     const breath = Math.sin(this.breathPhase) * 0.014 * v.breath * (rm ? 0.5 : 1);
     const lean = b.lean * bodyH * 0.55 + b.shear * bodyH * 0.18;
     const fl = s.mat.float + (rm ? 0.5 : 1) * Math.sin(this.time * 0.9) * 0.012 * (s.mat.float > 0 ? 1.6 : 0);
-    s.setPose({ squash: b.squash, breath, lean, float: fl, squeeze: Math.abs(sq.c) > 1e-3 ? { c: sq.c * 0.6, ax: sq.ax, ay: sq.ay, px: sq.px } : null });
+    this.inflate = approach(this.inflate, this.inflateTarget, 0.25, dt);
+    s.setPose({ squash: b.squash, breath, lean, float: fl, inflate: this.inflate * 0.07,
+      droop: v.droop, cheekPuff: v.cheekPuff, cheekV: this._cheekV,
+      squeeze: Math.abs(sq.c) > 1e-3 ? { c: sq.c * 0.6, ax: sq.ax, ay: sq.ay, px: sq.px } : null });
     s.step(dt);
     // face follows the shape
     const M = s.metrics();
@@ -324,6 +375,7 @@ export class SoftMallow extends MallowRig {
     try {
       this.renderer.draw(this.skin, this._skinDrawn, P, this._shade);
       ctx.drawImage(this.renderer.canvas, 0, 0, W, H);
+      if (this.id === 'glitzi' && b.glitchBurst > 0) this._glitchSlices(ctx, oy, bodyH * S, S);
     } catch (err) {
       // never let one bad frame stop the shared rig loop: drop to Canvas 2D, then to the standard rig
       this._renderFailed(err);
@@ -332,13 +384,27 @@ export class SoftMallow extends MallowRig {
     if (this.opts.particles) this.particles.draw(ctx, { lift, S });
   }
 
+  // Glitzi's signature: short horizontal slices of the body jump sideways, like
+  // the production rig's strip glitch (never strobing: the rig limits bursts)
+  _glitchSlices(ctx, oy, hScreen, S) {
+    const src = this.renderer.canvas, r = src.width / this.W;
+    const b = this.body, bandH = hScreen * 0.07;
+    for (const [row, dir] of b.burstRows) {
+      const y = oy - hScreen + row * hScreen - bandH / 2;
+      const dx = dir * b.glitchBurst * 4 * S * 7;
+      if (y + bandH < 0 || y > this.H) continue;
+      ctx.clearRect(0, y, this.W, bandH);
+      ctx.drawImage(src, 0, Math.max(0, y * r), src.width, bandH * r, dx, Math.max(0, y), this.W, bandH);
+    }
+  }
+
   _renderFailed(err) {
     console.warn('[sensory-lab] mesh rendering failed, falling back', err);
     const was = this.renderer;
     if (was.mode === 'webgl') {
       this.prefer = '2d';
       this.renderer = new MeshRenderer({ prefer: '2d' });
-      this.renderer.setMesh(this.soft.tri, this._uv());
+      this.renderer.setMesh(this.soft.tri, this._uv());   // _uv() also sets the look
       this._resize();
     } else {
       this.renderer = null;    // _render() uses the production rig's strip warp from now on

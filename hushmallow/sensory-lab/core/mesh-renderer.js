@@ -19,12 +19,19 @@ void main() {
 const FS = `
 precision mediump float;
 uniform sampler2D uTex; varying vec2 vUv; varying float vShade;
+uniform float uShadeK; uniform float uGloss; uniform float uHaze; uniform vec2 uHi; uniform vec2 uHiR;
 void main() {
   vec4 c = texture2D(uTex, vUv);
   // premultiplied colour: brighten (stretch) or deepen (squash) without touching alpha
-  float s = vShade;
+  float s = vShade * uShadeK;
   vec3 rgb = s > 0.0 ? mix(c.rgb, vec3(c.a), s * 0.35) : c.rgb * (1.0 + s * 0.45);
-  gl_FragColor = vec4(rgb, c.a);
+  // wet highlight pinned to the body (texture space), so it rides the wobble
+  if (uGloss > 0.0) {
+    vec2 d = (vUv - uHi) / uHiR;
+    rgb += vec3(c.a) * exp(-dot(d, d) * 2.2) * uGloss * (0.55 + max(s, 0.0));
+  }
+  rgb = mix(rgb, vec3(c.a), uHaze);
+  gl_FragColor = vec4(min(rgb, vec3(c.a)), c.a);
 }`;
 
 export class MeshRenderer {
@@ -64,6 +71,8 @@ export class MeshRenderer {
       this.loc = {
         aPos: gl.getAttribLocation(prog, 'aPos'), aUv: gl.getAttribLocation(prog, 'aUv'), aShade: gl.getAttribLocation(prog, 'aShade'),
         uRes: gl.getUniformLocation(prog, 'uRes'), uTex: gl.getUniformLocation(prog, 'uTex'),
+        uShadeK: gl.getUniformLocation(prog, 'uShadeK'), uGloss: gl.getUniformLocation(prog, 'uGloss'), uHaze: gl.getUniformLocation(prog, 'uHaze'),
+        uHi: gl.getUniformLocation(prog, 'uHi'), uHiR: gl.getUniformLocation(prog, 'uHiR'),
       };
       this.bPos = gl.createBuffer(); this.bUv = gl.createBuffer(); this.bShade = gl.createBuffer(); this.bIdx = gl.createBuffer();
       this.tex = gl.createTexture();
@@ -80,6 +89,14 @@ export class MeshRenderer {
       this.gl = null;
       this.canvas = document.createElement('canvas');
     }
+  }
+
+  /**
+   * Material look. look: {shade, gloss, haze}; hi / hiR: highlight centre and radii in texture space.
+   * (The Canvas 2D fallback draws the plain art.)
+   */
+  setLook(look = {}, hi = [0.35, 0.3], hiR = [0.16, 0.1]) {
+    this.look = { shade: look.shade ?? 1, gloss: look.gloss ?? 0, haze: look.haze ?? 0, hi, hiR };
   }
 
   /** Static mesh topology: triangle indices and per-vertex texture coords. */
@@ -135,6 +152,9 @@ export class MeshRenderer {
     }
     gl.uniform1i(L.uTex, 0);
     gl.uniform2f(L.uRes, this.w, this.h);
+    const lk = this.look || { shade: 1, gloss: 0, haze: 0, hi: [0.35, 0.3], hiR: [0.16, 0.1] };
+    gl.uniform1f(L.uShadeK, lk.shade); gl.uniform1f(L.uGloss, lk.gloss); gl.uniform1f(L.uHaze, lk.haze);
+    gl.uniform2f(L.uHi, lk.hi[0], lk.hi[1]); gl.uniform2f(L.uHiR, lk.hiR[0], lk.hiR[1]);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bPos);
     gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(L.aPos);

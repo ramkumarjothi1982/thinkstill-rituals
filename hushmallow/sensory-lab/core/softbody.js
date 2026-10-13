@@ -152,10 +152,13 @@ export class SoftBody {
    */
   setPose(p = {}) {
     const P = this.pose;
-    const sq = p.squash || 0, br = p.breath || 0;
+    const sq = p.squash || 0, br = p.breath || 0, inf = p.inflate || 0;
     P.squash = sq;
-    P.sy = (1 - sq) * (1 + br);
-    P.sx = (1 + sq * 0.62) * (1 - br * 0.6);
+    P.sy = (1 - sq) * (1 + br) * (1 + inf);
+    P.sx = (1 + sq * 0.62) * (1 - br * 0.6) * (1 + inf);
+    P.droop = clamp(p.droop || 0, 0, 1.2);
+    P.puff = p.cheekPuff || 0;
+    P.puffV = p.cheekV ?? 0.62;
     P.lean = p.lean || 0;
     P.float = (p.float ?? this.mat.float) * this.H;
     const s = p.squeeze;
@@ -177,10 +180,15 @@ export class SoftBody {
     const P = this.pose, n = this.n;
     const { rx, ry, v, gx, gy } = this;
     const pr = this.press;
+    const dr = P.droop || 0, pf = P.puff || 0, pv = P.puffV ?? 0.62;
     for (let k = 0; k < n; k++) {
       const vm = v[k];
-      let x = rx[k] * P.sx * (1 + P.squash * 0.32 * Math.sin(Math.PI * vm));
-      let y = ry[k] * P.sy;
+      // the rig's width profile: squash bulges the middle, droop sags the base,
+      // puffed cheeks swell around cheek height
+      const bulge = P.squash * 0.32 * Math.sin(Math.PI * vm) + dr * 0.07 * vm * vm - dr * 0.03 * (1 - vm)
+        + (pf ? pf * 0.045 * Math.exp(-((vm - pv) ** 2) / 0.012) : 0);
+      let x = rx[k] * P.sx * (1 + bulge);
+      let y = ry[k] * P.sy * (1 - dr * 0.06 * (1 - vm));
       x += P.lean * (1 - vm) * (1 - vm);
       if (P.mat) {
         const dx = x - P.px, dy = y, M = P.mat;

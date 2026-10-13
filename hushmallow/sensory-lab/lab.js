@@ -11,26 +11,37 @@ import { SoundEngine } from './core/sound-engine.js';
 import { Companion } from './core/companion.js';
 import { initialTier, FrameMonitor, NEXT_TIER } from './core/perf.js';
 import { MALLOWS, MALLOW_IDS } from '../src/mallows/registry.js';
+import { ComfortDNA } from './core/comfort-dna.js';
+import { LocalComfortStore } from './adapters/comfort-store.js';
+import { MATERIALS } from './core/materials.js';
+import { pocketById } from './features/pocket/catalog.js';
 
 const params = new URLSearchParams(location.search);
 const root = document.getElementById('lab');
 const prefs = new Prefs();
 const sound = new SoundEngine({ volume: prefs.get('volume'), muted: !prefs.get('sound') });
+const dna = await new ComfortDNA(new LocalComfortStore()).load();
 
-// Phase 1 is tuned on Boppo. Other Mallows can be previewed (untuned) from
-// Settings, or locally with ?mallow=<id> (the query string never reaches a hosted preview).
-const PHASE1_MALLOW = 'boppo';
+// Which Mallow: ?mallow=<id> locally (the query string never reaches a hosted
+// preview), else the Comfort DNA favourite, else the last one picked, else Boppo.
+const DEFAULT_MALLOW = 'boppo';
 const askMallow = (params.get('mallow') || '').toLowerCase();
 const validMallow = (id) => (MALLOW_IDS.includes(id) ? id : null);
-let mallowId = validMallow(askMallow) || validMallow(prefs.get('mallow')) || PHASE1_MALLOW;
+const chosenMallow = () => (dna.enabled ? dna.get('favouriteMallow') : validMallow(prefs.get('mallow'))) || DEFAULT_MALLOW;
+let mallowId = validMallow(askMallow) || chosenMallow();
 
 const qParam = params.get('quality');
 let quality = ['high', 'medium', 'low'].includes(qParam) ? qParam : initialTier(prefs.get('quality'));
 
 const ctx = {
-  prefs, sound,
+  prefs, sound, dna,
   get mallowId() { return mallowId; },
-  get preview() { return mallowId !== PHASE1_MALLOW; },
+  /** Switch Mallow: remembered as the favourite when personalisation is on. */
+  setMallow(id) {
+    if (!validMallow(id)) return;
+    mallowId = id;
+    if (dna.enabled) dna.set('favouriteMallow', id); else prefs.set('mallow', id);
+  },
   get quality() { return quality; },
   companion: null,
   setCompanion(c) { ctx.companion = c; lab.companion = c; },
@@ -82,13 +93,21 @@ prefs.onChange((k, v) => {
   if (k === 'volume' || k === '*') sound.setVolume(prefs.get('volume'));
   if (k === 'theme' || k === '*') { themeBudget = 3; applyTheme(); }
   if (k === 'motion' || k === '*') ctx.companion?.setReducedMotion(prefs.reducedMotion());
-  if (k === 'style' || k === '*') ctx.companion?.setStyle(prefs.get('style'));
   if (k === 'showMesh') ctx.companion?.setShowMesh(v);
   if (k === 'quality') {
     if (v === 'auto') { quality = initialTier('auto'); ctx.companion?.rig.setQuality(quality); startMonitor(); }
     else { quality = v; ctx.companion?.rig.setQuality(v); if (ctx.monitor) ctx.monitor.enabled = false; }
   }
 });
+
+// Comfort DNA changes reach a live Mallow straight away
+dna.onChange((what) => {
+  const t = dna.tuning();
+  sound.setParts({ voice: t.voice, fx: t.touchSounds });
+  ctx.companion?.applyTuning(t);
+  if (what === 'enabled' || what === 'favouriteMallow' || what === 'reset' || what === '*') mallowId = validMallow(askMallow) || chosenMallow();
+});
+sound.setParts({ voice: dna.tuning().voice, fx: dna.tuning().touchSounds });
 
 // Audio may only start from a real user gesture. Touch pointerdown does not
 // count (pointerup / touchend / click / keydown do), so unlock on those too.
@@ -99,26 +118,42 @@ for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) {
 // ------------------------------------------------------------------ home --
 function home() {
   const m = MALLOWS[mallowId];
-  const preview = ctx.preview;
   const screen = h('section', { class: 'screen home', 'aria-label': 'Sensory Lab' });
+  const offers = dna.suggestions(3);
   const inner = h('div', { class: 'home-inner' });
   const hero = h('div', { class: 'hero', role: 'img', 'aria-label': `${m.name}, ready to be touched` });
   inner.append(
     h('div', { class: 'brand' },
       h('h1', {}, 'Hushmallow ', h('span', {}, 'Sensory Lab')),
       h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
-        h('span', { class: 'pill' }, preview ? `${m.name} · untuned preview` : 'Phase 1 preview'),
+        h('span', { class: 'pill' }, 'Phase 2 preview'),
         iconBtn('settings', 'Settings', () => settings()))),
     hero,
     h('div', { class: 'hero-cap' }, h('h2', {}, m.name), h('p', {}, 'Touch me. Go on, I’m soft.')),
+    offers.length ? h('p', { class: 'section-label' }, 'For you') : null,
+    offers.length ? h('div', { class: 'offers' }, ...offers.map(offer)) : null,
     h('p', { class: 'section-label' }, 'Experiences'),
     h('div', { class: 'cards' }, ...EXPERIENCES.map(card)),
     h('p', { class: 'foot' }, 'Development preview. Not part of the Hushmallow app yet. Nothing here is saved anywhere except this browser.'));
   screen.append(inner);
   root.append(screen);
   const c = new Companion(hero, { mallowId, material: prefs.get('material'), quality, sound, prefs, rig: { fit: 0.62, baseline: 0.9 } });
+  c.applyTuning(dna.tuning());
   ctx.setCompanion(c);
   return { unmount() { c.destroy(); ctx.setCompanion(null); screen.remove(); } };
+}
+
+// A familiar thing to come back to, with an honest reason
+function offer(it) {
+  const why = { favourite: 'Favourite', often: 'You use this often', helps: 'You said this helps' }[it.reason];
+  let title = '', go = () => {};
+  if (it.kind === 'pocket') { const p = pocketById(it.id); title = p ? p.title : it.id; go = () => ctx.navigate(`/pocket-${it.id}`); }
+  else if (it.kind === 'softbody') {
+    title = `${MALLOWS[it.mallow]?.name || MALLOWS[mallowId].name} as ${MATERIALS[it.material]?.label || it.material}`;
+    go = () => { prefs.set('material', it.material); if (it.mallow) ctx.setMallow(it.mallow); ctx.navigate('/softbody'); };
+  }
+  return h('button', { class: 'offer', type: 'button', 'data-offer': it.kind + ':' + (it.id || it.material), onclick: go },
+    h('span', { class: 't' }, title), h('span', { class: 'd' }, why));
 }
 
 function card(e) {
@@ -144,14 +179,14 @@ function settings() {
       row('Volume', vol),
       row('Haptics', onOff('haptics', 'Haptics'), 'Android only; iPhone needs the app'),
       row('Motion', segmented([['system', 'System'], ['reduced', 'Reduced'], ['full', 'Full']], prefs.get('motion'), (v) => prefs.set('motion', v), 'Motion')),
-      row('Responses', segmented([['gentle', 'Gentle'], ['balanced', 'Balanced'], ['playful', 'Playful']], prefs.get('style'), (v) => prefs.set('style', v), 'Response style')),
       row('Theme', segmented([['system', 'System'], ['dark', 'Dark'], ['light', 'Light']], prefs.get('theme'),
         (v) => { if (prefs.get('theme') === v) { themeBudget = 3; applyTheme(); } else prefs.set('theme', v); }, 'Theme')),
-      h('div', { class: 'row stack' }, h('span', { class: 'lbl' }, 'Mallow', h('span', { class: 'sub' }, 'Boppo is tuned; the others are untuned previews')), mallowPicker(close)),
+      h('div', { class: 'row stack' }, h('span', { class: 'lbl' }, 'Mallow', h('span', { class: 'sub' }, dna.enabled ? 'Remembered as your favourite' : 'Personalisation is off, so this is for now only')), mallowPicker(close)),
+      row('Comfort DNA', h('button', { class: 'btn-quiet', type: 'button', onclick: () => { close(); ctx.navigate('/comfort-dna'); } }, 'Open'), 'What your Mallow remembers'),
       row('Quality', segmented([['auto', 'Auto'], ['high', 'High'], ['medium', 'Med'], ['low', 'Low']], prefs.get('quality'), (v) => prefs.set('quality', v), 'Quality'), `Running: ${quality}`),
       row('Lab settings', h('button', { class: 'btn-quiet', type: 'button', onclick: () => {
         prefs.reset();
-        mallowId = PHASE1_MALLOW;
+        mallowId = validMallow(askMallow) || chosenMallow();
         quality = initialTier('auto');
         startMonitor();
         close();
@@ -167,8 +202,7 @@ function mallowPicker(close) {
       'aria-label': id === mallowId ? MALLOWS[id].name : `Switch to ${MALLOWS[id].name}`,
       onclick: () => {
         if (id === mallowId) return;
-        mallowId = id;
-        prefs.set('mallow', id);
+        ctx.setMallow(id);
         close();
         reroute();
       },
@@ -194,12 +228,15 @@ async function route(id = fromHash()) {
   current?.unmount();
   current = null;
   root.replaceChildren();
-  const e = byId(id);
+  // #pocket-<mode> opens a Pocket Hush mode directly (one tap from anywhere that links it)
+  const mode = id.startsWith('pocket-') && pocketById(id.slice(7)) ? id.slice(7) : null;
+  const e = byId(mode ? 'pocket-hush' : id);
   if (!e || !e.load) { current = home(); lab.route = 'home'; return; }
   const mod = await e.load();
   if (my !== token) return;
-  current = mod.mount(root, ctx);
+  current = mod.mount(root, ctx, { mode });
   lab.route = id;
+  dna.record({ kind: 'experience', id: e.id });
 }
 function go(id) {
   if (fromHash() !== id) {
@@ -216,5 +253,5 @@ addEventListener('hashchange', () => {
 });
 
 // test / debugging handle (development lab only)
-const lab = globalThis.__lab = { prefs, sound, ctx, companion: null, route: null, events: [], quality: () => quality };
+const lab = globalThis.__lab = { prefs, sound, dna, ctx, companion: null, route: null, events: [], quality: () => quality };
 route();

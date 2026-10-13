@@ -30,10 +30,10 @@ export class ExpressionDirector {
 
   setRest(e) { this.rest = e; }
 
-  /** Show `mix` at intensity `i` for `hold` seconds (Infinity = until clear()). */
-  play(mix, i = 0.6, hold = 1.2) {
+  /** Show `mix` at intensity `i` for `hold` seconds (Infinity = until clear()). extra: absolute rig params. */
+  play(mix, i = 0.6, hold = 1.2, extra = null) {
     if (!mix) return;
-    this.cur = { mix, i, until: this.t + (Number.isFinite(hold) ? hold : 1e9) };
+    this.cur = { mix, i, extra, until: this.t + (Number.isFinite(hold) ? hold : 1e9) };
     this._apply();
   }
 
@@ -48,9 +48,9 @@ export class ExpressionDirector {
 
   _apply() {
     const want = this.cur || this.rest || { mix: { neutral: 1 }, i: 0 };
-    if (this.applied && sameMix(this.applied.mix, want.mix) && Math.abs(this.applied.i - want.i) < 0.02) return;
-    this.applied = { mix: want.mix, i: want.i };
-    this.rig.setEmotion(want.mix, want.i);
+    if (this.applied && sameMix(this.applied.mix, want.mix) && Math.abs(this.applied.i - want.i) < 0.02 && this.applied.extra === want.extra) return;
+    this.applied = { mix: want.mix, i: want.i, extra: want.extra };
+    this.rig.setEmotion(want.mix, want.i, want.extra ? { extra: want.extra } : {});
   }
 }
 

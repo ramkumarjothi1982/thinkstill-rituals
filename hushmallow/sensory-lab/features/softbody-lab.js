@@ -18,8 +18,18 @@ export function mount(root, ctx) {
     meshBtn.setAttribute('aria-pressed', String(on));
     s.companion.setShowMesh(on);
   }, { 'aria-pressed': String(!!ctx.prefs.get('showMesh')) });
+  // ★ keeps this Mallow-and-material squishy in Comfort DNA favourites
+  const fav = () => ({ kind: 'softbody', mallow: ctx.mallowId, material: mat });
+  const starBtn = h('button', { type: 'button', class: 'chip', 'aria-label': 'Keep this squishy as a favourite',
+    'aria-pressed': String(!!ctx.dna?.isFavourite(fav())), hidden: !ctx.dna?.enabled,
+    onclick: () => {
+      const on = ctx.dna.toggleFavourite(fav());
+      starBtn.setAttribute('aria-pressed', String(on));
+      s.feedback.show(on ? 'Kept in favourites' : 'Removed from favourites');
+    } }, '★ Keep');
   const s = stageScreen(root, ctx, { title: 'SoftBody Lab', subtitle: MATERIALS[mat].label, material: mat, extraButtons: [meshBtn] });
   const c = s.companion;
+  ctx.dna?.record({ kind: 'softbody', mallow: ctx.mallowId, material: mat });
   const blurb = h('p', { class: 'blurb' }, MATERIALS[mat].blurb);
   const sub = s.screen.querySelector('.title small');
   const chips = h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Material' },
@@ -29,6 +39,8 @@ export function mount(root, ctx) {
         mat = id;
         ctx.prefs.set('material', id);
         c.setMaterial(id);
+        ctx.dna?.record({ kind: 'softbody', mallow: ctx.mallowId, material: id });
+        starBtn.setAttribute('aria-pressed', String(!!ctx.dna?.isFavourite(fav())));
         for (const b of chips.children) b.setAttribute('aria-checked', String(b.dataset.material === id));
         blurb.textContent = MATERIALS[id].blurb;
         sub.textContent = MATERIALS[id].label;
@@ -41,7 +53,8 @@ export function mount(root, ctx) {
   const actions = h('div', { class: 'chips', role: 'group', 'aria-label': 'Squish without touch' },
     holdButton('Squish', () => c.act('squeezeStart'), () => c.act('squeezeEnd')),
     h('button', { type: 'button', class: 'chip', onclick: () => c.act('stretch') }, 'Stretch'),
-    h('button', { type: 'button', class: 'chip', onclick: () => c.act('tap') }, 'Poke'));
+    h('button', { type: 'button', class: 'chip', onclick: () => c.act('tap') }, 'Poke'),
+    starBtn);
   s.bottom.append(blurb, chips, actions);
   const edges = () => {
     const max = chips.scrollWidth - chips.clientWidth;

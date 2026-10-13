@@ -17,7 +17,6 @@ export const DEFAULTS = Object.freeze({
   motion: 'system',        // system | reduced | full
   theme: 'system',         // system (follow the device / host) | dark | light
   quality: 'auto',         // auto | high | medium | low
-  style: 'balanced',       // gentle | balanced | playful
   showMesh: false,
 });
 

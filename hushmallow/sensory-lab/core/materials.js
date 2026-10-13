@@ -53,3 +53,37 @@ export const MATERIALS = {
 export const MATERIAL_IDS = Object.keys(MATERIALS);
 
 export function getMaterial(id) { return MATERIALS[id] || MATERIALS.marshmallow; }
+
+// How each material *looks* in the mesh shader (core/mesh-renderer.js):
+//   shade  how strongly squashing deepens / stretching thins the colour
+//   gloss  strength of a wet highlight that rides on the body (jelly, mochi)
+//   haze   airy lightening (cloud) — a few percent, never a wash-out
+export const LOOKS = {
+  marshmallow: { shade: 1, gloss: 0, haze: 0.04 },
+  jelly: { shade: 0.8, gloss: 0.55, haze: 0 },
+  mochi: { shade: 1.2, gloss: 0.18, haze: 0.02 },
+  cloud: { shade: 0.6, gloss: 0, haze: 0.14 },
+  pillow: { shade: 1.6, gloss: 0, haze: 0.03 },
+};
+
+// Each Mallow's own softness, layered over the chosen material (multipliers).
+// Same material, different character: Blubi is the squishiest, Glitzi pushes
+// back a little, Noomi recovers like someone waking up slowly.
+export const MALLOW_FEEL = {
+  boppo: { goalK: 1.1, damping: 0.85, stretch: 1, dent: 1 },
+  pipzi: { goalK: 1.2, damping: 0.8, stretch: 0.95, dent: 0.9 },
+  blubi: { goalK: 0.75, damping: 1.1, stretch: 1.1, dent: 1.25 },
+  glitzi: { goalK: 1.25, damping: 1, stretch: 0.85, dent: 0.8 },
+  zuzu: { goalK: 0.95, damping: 0.72, stretch: 1.05, dent: 1 },
+  loomi: { goalK: 0.8, damping: 1.25, stretch: 1.05, dent: 1.1 },
+  noomi: { goalK: 0.7, damping: 1.35, stretch: 1, dent: 1.3 },
+};
+
+/** The physics constants for a material as felt by a particular Mallow. */
+export function tuneMaterial(id, mallowId, { reducedMotion = false } = {}) {
+  const base = getMaterial(id), f = MALLOW_FEEL[mallowId] || {};
+  const m = { ...base };
+  for (const k of ['goalK', 'damping', 'stretch', 'dent']) if (f[k]) m[k] = base[k] * f[k];
+  if (reducedMotion) m.damping = m.damping * 2 + 4;
+  return m;
+}

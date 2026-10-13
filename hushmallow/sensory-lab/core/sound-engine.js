@@ -38,6 +38,8 @@ export class SoundEngine {
     this.live = new Set();
     this.lastAt = new Map();
     this.noteIdx = 0;
+    this.voiceOn = true;   // the Mallow's little voice
+    this.fxOn = true;      // touch / material sounds
     this._vis = () => this._visibility();
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this._vis);
   }
@@ -111,6 +113,12 @@ export class SoundEngine {
       this.stopAll();
       setTimeout(() => { if (this.muted && this.ctx?.state === 'running') this.ctx.suspend().catch(() => {}); }, 120);
     }
+  }
+
+  /** Comfort DNA: switch the Mallow's voice and the touch sounds independently. */
+  setParts({ voice, fx } = {}) {
+    if (voice != null) this.voiceOn = !!voice;
+    if (fx != null) this.fxOn = !!fx;
   }
 
   setVolume(v) {
@@ -197,7 +205,7 @@ export class SoundEngine {
   // ------------------------------------------------------ material sounds --
   /** Finger poke / tap on the surface. */
   poke(mat, intensity = 0.6, pan = 0) {
-    if (!this._ok('poke')) return;
+    if (!this.fxOn || !this._ok('poke')) return;
     const S = mat.sound, v = this._voice(0.3, { pan }), t = v.t;
     const f = 300 * S.pitch * (0.9 + intensity * 0.3);
     this._tone(v, t, { f0: f * 1.6, f1: f * 0.7, dur: 0.16 + S.wet * 0.08, peak: 0.1 + intensity * 0.06, a: 0.004, vib: S.wet * 0.04, vibRate: 14 });
@@ -207,7 +215,7 @@ export class SoundEngine {
 
   /** Compression: a soft "fwumph" whose depth follows how hard it was squeezed. */
   squish(mat, amount = 0.5, pan = 0) {
-    if (!this._ok('squish')) return;
+    if (!this.fxOn || !this._ok('squish')) return;
     const S = mat.sound, v = this._voice(0.5, { pan }), t = v.t;
     const a = clamp(amount, 0.1, 1);
     this._noise(v, t, { dur: 0.22 + a * 0.2, f0: 900 * S.pitch, f1: 220 * S.pitch, q: 0.7 + S.wet, peak: (0.05 + 0.09 * a) * S.squish, a: 0.03 });
@@ -217,7 +225,7 @@ export class SoundEngine {
 
   /** Release: the spring back. Bigger stretch → bigger, wobblier boing. */
   release(mat, strength = 0.5, pan = 0) {
-    if (!this._ok('release')) return;
+    if (!this.fxOn || !this._ok('release')) return;
     const S = mat.sound, v = this._voice(0.8, { pan }), t = v.t;
     const s = clamp(strength, 0.05, 1);
     const f = 260 * S.pitch;
@@ -228,7 +236,7 @@ export class SoundEngine {
 
   /** Landing on the floor. */
   impact(mat, strength = 0.5) {
-    if (!this._ok('impact')) return;
+    if (!this.fxOn || !this._ok('impact')) return;
     const S = mat.sound, v = this._voice(0.4), t = v.t;
     const s = clamp(strength, 0.1, 1);
     this._tone(v, t, { f0: 150 * S.pitch, f1: 70, dur: 0.18 + 0.1 * s, peak: 0.12 * s, a: 0.004 });
@@ -238,7 +246,7 @@ export class SoundEngine {
 
   /** The last little sigh as the material comes to rest. */
   settle(mat) {
-    if (!this._ok('settle')) return;
+    if (!this.fxOn || !this._ok('settle')) return;
     const S = mat.sound, v = this._voice(0.6), t = v.t;
     this._tone(v, t, { f0: 330 * S.pitch, f1: 300 * S.pitch, dur: 0.4, peak: 0.03, a: 0.05 });
     v.end(t + 0.6);
@@ -248,7 +256,7 @@ export class SoundEngine {
    * Continuous stretch creak. Returns {update(amount 0..1, speed), end()}.
    */
   stretch(mat) {
-    if (!this.ready) return NOOP;
+    if (!this.ready || !this.fxOn) return NOOP;
     const c = this.ctx, S = mat.sound, v = this._voice(10), t = v.t;
     const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
     o.type = S.wet > 0.5 ? 'sine' : 'triangle';
@@ -286,7 +294,7 @@ export class SoundEngine {
 
   /** Continuous soft brushing for strokes. Returns {update(speed 0..1), end()}. */
   brush() {
-    if (!this.ready) return NOOP;
+    if (!this.ready || !this.fxOn) return NOOP;
     const c = this.ctx, v = this._voice(10), t = v.t;
     const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
     n.buffer = this.noise || this._noiseBuffer(0.25); n.loop = true; f.type = 'bandpass'; f.frequency.value = 1200; f.Q.value = 0.7; g.gain.value = 0;
@@ -317,7 +325,7 @@ export class SoundEngine {
    * Notes come from the Mallow's own scale and step around it, so repeated taps make melodies, not repeats.
    */
   voice(mallowId, kind = 'tap', intensity = 0.6) {
-    if (!this._ok('voice:' + kind)) return null;
+    if (!this.voiceOn || !this._ok('voice:' + kind)) return null;
     const V = VOICES[mallowId] || VOICES.boppo;
     const v = this._voice(1.6), t = v.t;
     const I = clamp(intensity, 0, 1);
@@ -357,6 +365,82 @@ export class SoundEngine {
     }
     v.end(t + 1.6);
     return true;
+  }
+
+  // ------------------------------------------------------ Pocket Hush --
+  /** A breath: 'in' swells and brightens, 'out' sighs down. dur in seconds. */
+  breath(phase = 'in', dur = 4, intensity = 0.6, mallowId = 'loomi') {
+    if (!this.fxOn || !this._ok('breath')) return;
+    const V = VOICES[mallowId] || VOICES.loomi;
+    const v = this._voice(dur + 1), t = v.t, I = clamp(intensity, 0, 1);
+    const inhale = phase === 'in';
+    this._noise(v, t, { dur: dur + 0.4, f0: inhale ? 260 : 950, f1: inhale ? 950 : 240, q: 0.9, peak: 0.02 + 0.03 * I, a: dur * (inhale ? 0.7 : 0.15) });
+    this._tone(v, t, { f0: V.root * 0.5, f1: V.root * (inhale ? 0.5 * st(2) : 0.5), dur: dur + 0.6, type: 'sine', peak: 0.018 + 0.02 * I, a: dur * (inhale ? 0.6 : 0.2) });
+    v.end(t + dur + 1);
+  }
+
+  /** A soft bell on the Mallow's scale (step 0..9). */
+  chime(mallowId = 'boppo', step = 0, intensity = 0.5) {
+    if (!this.fxOn || !this._ok('chime' + step)) return;
+    const V = VOICES[mallowId] || VOICES.boppo;
+    const f = V.root * st(V.scale[step % 5] + 12 * Math.floor(step / 5));
+    const v = this._voice(2), t = v.t, pk = 0.035 + 0.04 * clamp(intensity, 0, 1);
+    this._tone(v, t, { f0: f, dur: 1.6, type: 'sine', peak: pk, a: 0.005 });
+    this._tone(v, t, { f0: f * 2.76, dur: 0.7, type: 'sine', peak: pk * 0.28, a: 0.003 });
+    this._tone(v, t, { f0: f * 5.4, dur: 0.35, type: 'sine', peak: pk * 0.12, a: 0.002 });
+    v.end(t + 1.8);
+  }
+
+  /** A bubble or lantern letting go: a soft upward "bloop". pitch ≈ 0.7..1.4 */
+  bubble(pitch = 1) {
+    if (!this.fxOn || !this._ok('bubble')) return;
+    const v = this._voice(0.5), t = v.t, f = 420 * clamp(pitch, 0.5, 2);
+    this._tone(v, t, { f0: f, f1: f * 2.6, dur: 0.12, type: 'sine', peak: 0.07, a: 0.004 });
+    this._tone(v, t + 0.06, { f0: f * 2, f1: f * 2.2, dur: 0.22, type: 'sine', peak: 0.025, a: 0.01 });
+    v.end(t + 0.5);
+  }
+
+  /** Quiet ambient bed on the Mallow's root. Returns {update(level 0..1), end()}. */
+  pad(mallowId = 'loomi') {
+    if (!this.ready || !this.fxOn) return NOOP;
+    const V = VOICES[mallowId] || VOICES.loomi;
+    const c = this.ctx, v = this._voice(600), t = v.t;
+    const g = c.createGain(); g.gain.value = 0;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; f.Q.value = 0.4;
+    g.connect(f); f.connect(v.out);
+    const oscs = [V.root * 0.25, V.root * 0.25 * st(7), V.root * 0.5 * 1.003].map((hz, i) => {
+      const o = c.createOscillator(); o.type = i === 2 ? 'triangle' : 'sine'; o.frequency.value = hz;
+      const og = c.createGain(); og.gain.value = i === 2 ? 0.25 : 0.5; o.connect(og); og.connect(g); o.start(t);
+      v.nodes.push(o, og); v.srcs.push(o); return o;
+    });
+    const lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 180;
+    lfo.connect(lg); lg.connect(f.frequency); lfo.start(t); v.srcs.push(lfo); v.nodes.push(lfo, lg, g, f);
+    let alive = true;
+    const handle = {
+      update: (level) => { if (alive) g.gain.setTargetAtTime(this.muted ? 0 : 0.035 * clamp(level, 0, 1), c.currentTime, 0.8); },
+      end: () => {
+        if (!alive) return; alive = false;
+        const now = c.currentTime; g.gain.setTargetAtTime(0, now, 0.6);
+        for (const o of [...oscs, lfo]) { try { o.stop(now + 3); } catch { /* ignore */ } }
+        v.end(now + 3);
+      },
+    };
+    handle.update(1);
+    v.kill = handle.end;
+    return handle;
+  }
+
+  /** A short closing motif in the Mallow's own scale: 'bright' rises, 'rest' settles. */
+  motif(mallowId = 'boppo', kind = 'bright') {
+    if (!this.voiceOn || !this._ok('motif')) return;
+    const V = VOICES[mallowId] || VOICES.boppo;
+    const steps = kind === 'rest' ? [4, 2, 0] : [0, 2, 4, 7];
+    const v = this._voice(3), t = v.t;
+    steps.forEach((n, i) => {
+      const f = V.root * st(V.scale[n % 5] + 12 * Math.floor(n / 5));
+      this._tone(v, t + i * (kind === 'rest' ? 0.32 : 0.16), { f0: f, dur: kind === 'rest' ? 1.1 : 0.7, type: 'sine', peak: 0.05, a: 0.01 });
+    });
+    v.end(t + 3);
   }
 
   stopAll() { for (const v of [...this.live]) v.kill?.(); }

@@ -228,6 +228,31 @@ test('each Mallow answers the same gesture in its own way', () => {
   assert.ok(new Set(tags).size >= 5, tags.join());
 });
 
+test('every Mallow authors every gesture with real reactions, presets and voices', async () => {
+  const { REACTIONS } = await import('../../src/mallows/reactions.js');
+  const { PRESETS } = await import('../../src/mallows/expressions.js');
+  const VOICE_KINDS = ['tap', 'giggle', 'surprise', 'boing', 'content', 'coo', 'hum', 'grumble'];
+  const KEYS = ['tap', 'tickle', 'doubletap', 'holdstart', 'holdlong', 'holdend', 'strokeslow', 'strokefast', 'strokeend',
+    'dragstart', 'release', 'fling', 'squeezestart', 'squeezesoft', 'squeezehard', 'rest'];
+  const ids = ['glitzi', 'blubi', 'zuzu', 'boppo', 'pipzi', 'loomi', 'noomi'];
+  for (const id of ids) {
+    const p = PROFILES[id];
+    assert.ok(p, id);
+    for (const k of KEYS) assert.ok(p[k], `${id} authors ${k}`);
+    const all = KEYS.filter((k) => k !== 'rest').flatMap((k) => (Array.isArray(p[k]) ? p[k] : [p[k]]));
+    for (const r of all) {
+      if (r.react) assert.ok(REACTIONS[id]?.[r.react] || REACTIONS._shared[r.react], `${id}: reaction ${r.react} exists`);
+      for (const preset of Object.keys(r.mix || {})) assert.ok(PRESETS[preset], `${id}: preset ${preset} exists`);
+      if (r.voice) assert.ok(VOICE_KINDS.includes(r.voice), `${id}: voice ${r.voice}`);
+      assert.ok(r.tag, `${id}: every answer is tagged`);
+    }
+    for (const mix of Object.values(p.rest)) for (const preset of Object.keys(mix)) assert.ok(PRESETS[preset], `${id}: rest preset ${preset}`);
+  }
+  // distinct characters: no two Mallows give the same answers to the core gestures
+  const sig = (id) => ['holdstart', 'strokeslow', 'fling', 'squeezehard'].map((k) => PROFILES[id][k].tag + JSON.stringify(PROFILES[id][k].mix)).join('|');
+  assert.equal(new Set(ids.map(sig)).size, ids.length);
+});
+
 test('gentle style removes jumps and softens; playful amplifies', () => {
   const g = new Personality('boppo', { style: 'gentle' });
   const r = g.respond('doubletap', {});

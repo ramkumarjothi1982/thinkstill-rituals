@@ -52,6 +52,7 @@ export class Companion {
     this.strokeSnd = null;
     this.stretchSnd = null;
     this.nextNuzzle = 0;
+    this.restOverride = null;   // an experience can set the resting face ({mix, i}), e.g. calm for a quiet moment
     this.lastT = 0;
     this.ready = this.rig.softReady;
     this.rig.on('impact', ({ strength }) => { if (strength > 0.15) this.sound.impact(this.mat(), strength); });
@@ -82,7 +83,7 @@ export class Companion {
     this.lastT = t;
     this.gestures.tick(t);
     this.persona.tick(dt);
-    if (!this.hold && !this.drag && !this.sq && !this.stroking) this.director.setRest(this.persona.restExpression());
+    if (!this.hold && !this.drag && !this.sq && !this.stroking) this.director.setRest(this.restOverride || this.persona.restExpression());
     this.director.tick(dt);
     this._tickWheel(t);
     this._tickHold(dt, t);
@@ -100,7 +101,7 @@ export class Companion {
   /** Apply a personality response. */
   _apply(r) {
     if (!r) return;
-    if (r.mix) this.director.play(r.mix, r.i ?? 0.6, r.hold ?? 1.2);
+    if (r.mix) this.director.play(r.mix, r.i ?? 0.6, r.hold ?? 1.2, r.extra || null);
     if (r.react) this.rig.react(r.react);
     if (r.voice) this.sound.voice(this.id, r.voice, r.i ?? 0.6);
   }
@@ -116,7 +117,7 @@ export class Companion {
         break;
       case 'tap': {
         const r = this.persona.respond('tap', d);
-        rig.lookAtScreen(d.x, d.y);
+        rig.peek(d.x, d.y);   // looks at the finger (closed-eyed Mallows open their eyes for it)
         rig.poke(d.x, d.y, 0.9 * (r?.poke ?? 1));
         this.sound.poke(this.mat(), 0.6, this._pan(d.x));
         this._apply(r);
@@ -126,6 +127,7 @@ export class Companion {
       }
       case 'doubletap': {
         const r = this.persona.respond('doubletap', d);
+        rig.peek(d.x, d.y, 1.4);
         rig.poke(d.x, d.y, 1.2);
         this._apply(r);
         this._haptic('pop');
@@ -180,6 +182,7 @@ export class Companion {
         this.director.clear();
         if (d.converted) break;
         this.sound.release(this.mat(), clamp(stretch * 2.5 + (d.fling ? 0.3 : 0), 0.1, 1), this._pan(d.x));
+        if (stretch > 0.12) this._materialFx();
         const r = this.persona.respond('dragend', d);
         this._apply(r);
         this._haptic(d.fling ? 'pop' : 'soft');
@@ -235,6 +238,7 @@ export class Companion {
         this.sq = null;
         this.director.clear();
         this.sound.release(this.mat(), clamp(peak * 1.6, 0.15, 1));
+        if (peak > 0.2) this._materialFx();
         const r = this.persona.respond('squeezeend', { peak });
         this._apply(r);
         this._haptic('soft');
@@ -243,6 +247,24 @@ export class Companion {
       }
       default: break;
     }
+  }
+
+  // each material lets go in its own way: jelly ripples, cloud and pillow puff
+  _materialFx() {
+    const fx = { jelly: { kind: 'ring', n: 1 }, cloud: { kind: 'puff', n: 3 }, pillow: { kind: 'puff', n: 2 } }[this.rig.material];
+    if (fx && this.rig.opts.particles) this.rig.particles.burst(fx);
+  }
+
+  /**
+   * Comfort DNA tuning (all optional): { style, speed, motion, voice, touchSounds }.
+   * speed / motion are multipliers; voice / touchSounds switch the Mallow's voice and the material sounds.
+   */
+  applyTuning(t = {}) {
+    if (t.style) this.persona.setStyle(t.style);
+    if (t.speed != null) this.rig.setSpeed(t.speed);
+    if (t.motion != null) this.rig.setMotionScale(t.motion);
+    if (t.voice != null || t.touchSounds != null) this.sound.setParts?.({ voice: t.voice, fx: t.touchSounds });
+    this.tuning = { ...(this.tuning || {}), ...t };
   }
 
   _pan(x) { return clamp((x - this.rig.W / 2) / (this.rig.W / 2), -1, 1) * 0.5; }
