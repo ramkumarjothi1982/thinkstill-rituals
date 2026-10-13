@@ -484,8 +484,9 @@ export default function hushfold(app, params = {}) {
           thoughts: gentle() || !layer ? null : stage.thoughts, ticker: stage.worldTicker, subtitleBand: () => bandPx || null,
           subtitles: flowSubtitles, photos, words, prefs: flowPrefs, store, safeRect,
           // the person's thought keeps out from under an open garden offer, its card and its chip (on a small phone
-          // there is no place for the card clear of a thought in mid-sky: the thought gives way, gently)
-          keepOut: () => installMod?.installAvoidRects?.() || [],
+          // there is no place for the card clear of a thought in mid-sky: the thought gives way, gently) — and from
+          // where the card will show, from the moment the installation has placed it (installKeepOut)
+          keepOut: () => installKeepOut(),
         });
         if (!f || typeof f.start !== 'function') throw new Error('director returned no flow');
         f.setAutoFlow?.(!!prefs.get('autoFlow'));
@@ -575,6 +576,10 @@ export default function hushfold(app, params = {}) {
     if (hold) { S.hold = 'care'; try { flowRef?.pause?.({ reason: 'safety' }); } catch (e) { console.warn(e); } }
     // a world started fresh over a held one (care, then a calm world): nothing is paused any more
     else if (!flowRef?.state?.paused) pausedPill.hidden = true;
+    // a world's first arrival: its host's place on the world's floor is planned at once (the world lays itself out
+    // round it), but it sets off from beside the person's words only once they have faded out of its way (heroWaitsForWords)
+    const cold = !d?.from;
+    if (cold) stageMallow?.holdPlace?.(true);
     // each world has its own Mallow (Glitzi hosts the Static Storm); after a melt the host already took the
     // stage halfway through it ('host'), so this is the first world's, or a melt whose 'host' never came
     if (d?.mallow && MALLOWS[d.mallow] && d.mallow !== mallowId) {
@@ -584,6 +589,7 @@ export default function hushfold(app, params = {}) {
       showMallow(mallowId, { entrance: !d.from && !prefs.reducedMotion(), soft: true });
     }
     layout();
+    if (cold) heroWaitsForWords();
     // a world's name, once, in story type, ahead of its first line (not while it waits under its veil)
     if (d?.title && !d.from && !hold) subtitles.say({ text: d.title, kind: 'title' }, { first: true });
     if (panel?.isOpen) holdWorld(true);
@@ -594,6 +600,33 @@ export default function hushfold(app, params = {}) {
    * Halfway through a melt (the director's 'host', owner P2): the incoming world's Mallow takes the stage,
    * as a soft cross-fade with a small hop (never a pop). onWorld then finds it already there.
    */
+  /**
+   * A world's first arrival on a small phone: the person's words, shown beside their Mallow at home, are where the
+   * world's host is about to stand (larger and lower on the world's floor). The host's place is already planned
+   * (restRect reports it, so the world and the ThoughtLayer keep off it: the layer hides a driven thought's words while
+   * the hero covers every place round it); the host sets off only once the words have faded out — it never walks over
+   * them while they can be seen. Nothing in the way, or nothing to wait for: it goes at once (and never waits > 0.9 s).
+   */
+  const WORDS_OUT_MS = 230;   // .tm-tag's fade-out (.2 s) and a frame
+  function wordsInHeroWay() {
+    const L = stage?.thoughts, K = mallowAvoidRect();
+    if (!L?.tagRect || !K) return false;
+    return (L.list || []).some((t) => overlaps(L.tagRect(t), K));
+  }
+  function heroWaitsForWords() {
+    if (!stageMallow?.placeHeld) return;
+    if (!wordsInHeroWay()) { stageMallow.holdPlace(0); return; }
+    const t0 = now();
+    let clearAt = 0;
+    const tick = () => {
+      if (!stageMallow?.placeHeld) return;
+      if (!worldMode || S.finishing) { stageMallow.holdPlace(0); return; }
+      if (wordsInHeroWay()) clearAt = 0; else clearAt ||= now();
+      if ((clearAt && now() - clearAt >= WORDS_OUT_MS) || now() - t0 > 900) { stageMallow.holdPlace(0); return; }
+      later(tick, 30);
+    };
+    later(tick, 30);
+  }
   function hostMallow(id) {
     if (S.left || !worldMode || S.finishing || !MALLOWS[id] || id === mallowId) return;
     homeMallow ||= mallowId;
@@ -603,6 +636,8 @@ export default function hushfold(app, params = {}) {
   }
   function endWorldMode() {
     // the stage is the Hushfold's again: no float left over from the water, the realm draws again
+    // (a host still waiting for the words to clear its way goes now: it is going home)
+    stageMallow?.holdPlace?.(0);
     stageMallow?.float?.({ lift: 0, tilt: 0 });
     world.realm?.pause?.(false);
     worldMode = false;
@@ -711,9 +746,19 @@ export default function hushfold(app, params = {}) {
     } catch (e) { console.warn('[garden] onOffer', e); } finally {
       try { flow?.hold?.('offer', false); } catch { /* gone */ }
       if (offerCtl === ctl) offerCtl = null;
+      cardWait(false);
       installSubtitles.resume();
-      if (root.classList.contains('hf-install-quiet')) { root.classList.remove('hf-install-quiet'); if (!S.left) layout(); }
-      if (!S.left) app.applyUpdateIfSafe?.();
+      // the person's thought may have risen into the quiet subtitle band to make way for the card: the band's ▶ pill and
+      // the stage's bounds come back once it has left it again (the world takes it back down at once; 3 s at most), as
+      // the lines do (installSubtitles.resume) — never over it
+      const t0 = now();
+      const quietOff = () => {
+        if (S.left || offerCtl != null) return;   // (a new offer has the band now)
+        if (thoughtInBand() && now() - t0 < 3000) { later(quietOff, 60); return; }
+        if (root.classList.contains('hf-install-quiet')) { root.classList.remove('hf-install-quiet'); layout(); }
+        app.applyUpdateIfSafe?.();
+      };
+      quietOff();
     }
   }
   /**
@@ -782,8 +827,67 @@ export default function hushfold(app, params = {}) {
     if (S.left) return;
     const ph = e?.detail?.phase;
     if (ph === 'start') { root.classList.add('hf-install-quiet'); layout(); }
-    if (ph === 'card') { try { installMod?.relayoutInstall?.(); } catch { /* gone */ } }
+    if (ph === 'card') { try { installMod?.relayoutInstall?.(); } catch { /* gone */ } cardWaitsForThought(); }
+    if (ph === 'end') cardWait(false);
   };
+  /**
+   * The installation's card where it shows (garden-install places it as the installation starts and shows it at 2.6 s —
+   * 0.75 s with reduced motion), from its placing until it goes: its layout box, and the charm that rises 60 px over a
+   * full card. (installAvoidRects has it only once it can be seen: not before, nor in the first frames of its fade-in.)
+   * Null when there is none, or once it is going.
+   */
+  function plannedCardRect() {
+    const c = typeof document !== 'undefined' ? document.querySelector('.hm-install-card:not(.is-out)') : null;
+    if (!c?.isConnected) return null;
+    const w = c.offsetWidth, h = c.offsetHeight;
+    if (!(w > 0 && h > 0)) return null;
+    const lift = c.classList.contains('is-compact') || c.classList.contains('is-tight') ? 0 : 60, l = c.offsetLeft, t = c.offsetTop;
+    return { left: l, top: t - lift, right: l + w, bottom: t + h, width: w, height: h + lift };
+  }
+  /**
+   * What the person's thought keeps clear of (the director's keepOut): the open offer, card and chip, and the card to
+   * come — with KEEP_PAD px to spare, so the words as drawn (they trail their thought and sway a few px with it) stay
+   * clear of the edge too, not only the place the world plans for them.
+   */
+  const KEEP_PAD = 10;
+  function installKeepOut() {
+    const shown = installMod?.installAvoidRects?.() || [], planned = plannedCardRect();
+    return (planned ? [...shown, planned] : shown).map((r) => ({ left: r.left - KEEP_PAD, top: r.top - KEEP_PAD, right: r.right + KEEP_PAD, bottom: r.bottom + KEEP_PAD }));
+  }
+  /**
+   * The card is about to show: if the person's thought (its body or its words) is still under where it shows — it has
+   * been making way since the installation began, but a finger may hold it, or a reduced-motion card comes sooner —
+   * the card stays unseen (body.hf-card-wait) until the thought is clear of it, then fades in as it would have
+   * (at most 0.9 s later). The card is never seen over the person's words.
+   */
+  let cardWaiting = false;
+  function cardWait(on) {
+    cardWaiting = !!on;
+    if (typeof document !== 'undefined') document.body.classList.toggle('hf-card-wait', cardWaiting);
+  }
+  const cardOverThought = () => {
+    const c = plannedCardRect();
+    if (!c) return false;
+    const pad = { left: c.left - 4, top: c.top - 4, right: c.right + 4, bottom: c.bottom + 4 };
+    return (stage?.thoughts.rects() || []).some((r) => overlaps(pad, r));
+  };
+  function cardWaitsForThought() {
+    cardWait(true);
+    if (!cardOverThought()) { cardWait(false); return; }
+    const t0 = now();
+    const tick = () => {
+      if (!cardWaiting) return;
+      if (!cardOverThought() || now() - t0 > 900 || !document.querySelector('.hm-install-card:not(.is-out)')) { cardWait(false); return; }
+      later(tick, 30);
+    };
+    later(tick, 30);
+  }
+  /** The person's thought is in the subtitle band (it may rise into it while the installation keeps the lines quiet). */
+  function thoughtInBand() {
+    const b = worldMode ? flowRef?.subtitleBand?.() : null;
+    if (!b || !(b.h > 0)) return false;
+    return (stage?.thoughts.rects() || []).some((r) => r.top < b.y + b.h && r.bottom > b.y);
+  }
   /** The offer's own life (garden-install's 'hm:offer'): folded into its chip, the world may drift on again; unfolded, it holds. */
   const onOfferPhase = (e) => {
     const ph = e?.detail?.phase;
@@ -803,10 +907,34 @@ export default function hushfold(app, params = {}) {
    * after, but only if it was the one that paused them (the person's own ⏸ stays pressed).
    */
   let installPaused = false;
-  const installSubtitles = {
-    pause() { installPaused = !subtitles.paused; subtitles.clear({ keepHeld: true }); subtitles.pause(); },
-    resume() { if (installPaused) { installPaused = false; subtitles.resume(); } },
-  };
+  const installSubtitles = ((shown) => {
+    // (the lines as the installation sees them: when it gives them back, they come back once the person's thought has
+    // left the subtitle band — it may have risen into the quiet band to make way for the card — as long as the card is
+    // up, and 3 s at most after it. A pause asked for meanwhile, a second installation's, finds them not paused yet:
+    // so it is that installation's own pause, and its resume brings them back.)
+    let back = 0, gen = 0;
+    const subtitles = {
+      get paused() { return shown.paused && !back; },
+      clear: (o) => shown.clear(o),
+      pause() { back = 0; shown.pause(); },
+      resume() {
+        const g = back = ++gen;
+        let freeAt = 0;
+        const go = () => {
+          if (back !== g) return;
+          const inst = installing();
+          if (!inst) freeAt ||= now();
+          if (!S.left && thoughtInBand() && (inst || now() - freeAt < 3000)) { later(go, 60); return; }
+          back = 0; shown.resume();
+        };
+        go();
+      },
+    };
+    return {
+      pause() { installPaused = !subtitles.paused; subtitles.clear({ keepHeld: true }); subtitles.pause(); },
+      resume() { if (installPaused) { installPaused = false; subtitles.resume(); } },
+    };
+  })(subtitles);
 
   // ------------------------------------------------- the Mallow --
   /**

@@ -129,6 +129,11 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 .hushfold.hf-tight .hf-subctl { display: none; }
 /* the garden installation pauses the lines for its moment: that is not the person's pause, so no ▶ pill (and the card has the room) */
 .hushfold.hf-install-quiet .hf-subctl { visibility: hidden !important; pointer-events: none !important; }
+/* the garden card waits, unseen and untouchable, while the person's thought is still under it; then it comes in as it
+   would have (the shell's cardWaitsForThought: at most 0.9 s) */
+body.hf-card-wait .hm-install-card { opacity: 0 !important; pointer-events: none !important; }
+body.hf-card-wait .hm-install:not(.is-reduced) .hm-install-card { transform: translateY(16px) scale(.97) !important; }
+body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; }
 .hf-subctl.idle { opacity: 0.5; }
 .hf-subs.bright .hf-subctl { background: rgba(14, 10, 36, 0.74); opacity: 0.92; }
 .hf-subs.bright .hf-subctl.idle { opacity: 0.7; }

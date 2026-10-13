@@ -45,7 +45,8 @@
 //   * On its way (flying out of the hero, tossed, gliding to a new home, still easing to its depth) a
 //     thought's words wait hidden and fade in at its resting place. Words that must change place fade out
 //     where they are, then fade in at the new place — no plate is ever seen flying or sliding over faces
-//     or other words.
+//     or other words. A thought a world drives whose words have nowhere clear round it (the world's hero has
+//     come over every side) shows no words until a place is clear again: never on the hero or a face.
 //   * Bodies: a gentle push keeps footprints apart; a boxed-in thought may glide a short way
 //     (≤ max(56 px, 0.9 P)); the bounds and the hero are hard limits — for siblings pulled free too.
 //   * Loneliness drifts away from the hero, never toward it (only directions that open the gap between
@@ -82,6 +83,9 @@ const ROPE_N = 7;
 // how long words that change place stay hidden: their fade out (.tm-tag's .2 s opacity ease; they fade in
 // over .45 s) is done before they move
 const HOP_S = 0.24;
+// how long the place for a world-driven thought's hidden words must stay clear before they come back (no flicker at the
+// edge of clear)
+const HOST_CLEAR_S = 0.2;
 let styled = false;
 
 function injectStyle() {
@@ -1955,6 +1959,20 @@ export class ThoughtLayer {
       if (!tg || tg.mode < 2) continue;
       tg.wait = tg.mode === 2 && this._hard(this._candRect(th, tg, tg.ci, true), th, -1) > 0;
     }
+    // a world drives it and nowhere round it is clear for its words — the hero it floats beside has come over every
+    // place they could go (a cold start: the world's host, larger than the person's own Mallow, lands where the words
+    // were, with the thought still waiting beside it): they wait, hidden, and come back once a place is clear and has
+    // stayed clear a moment. Never shown on the hero or a face; never flickering at the edge of clear. (Words that show
+    // stay while what touches them is only a brush of a face's envelope, as a resting plate does.)
+    for (const th of list) {
+      const tg = this.tags.get(th);
+      if (!tg) continue;
+      if (tg.mode !== 1 || !th.driven || !tg.w || tg.pi < 0) { tg.hostWait = false; tg.clearT = 0; continue; }
+      const h0 = this._hard(this._candRect(th, tg, tg.ci), th, tg.pi);
+      const clear = h0 - this._hob + this._hobDeep <= 0;
+      if (!clear && (!tg.shown || this._core > 0)) { tg.hostWait = true; tg.clearT = 0; }
+      else if (tg.hostWait) { tg.clearT = clear ? (tg.clearT || 0) + dt : 0; if (tg.clearT >= HOST_CLEAR_S) tg.hostWait = false; }
+    }
     const dpr = this._view.dprTag || 1;
     for (const th of list) {
       const tg = this.tags.get(th);
@@ -2018,7 +2036,7 @@ export class ThoughtLayer {
       // (and words hidden a moment ago that are wanted back somewhere else wait until their fade-out has run: they come in
       // there unseen, never jumping there while half seen)
       const away = !tg.shown && !gone && Math.abs(tg.tx - tg.x) + Math.abs(tg.ty - tg.y) > 2;
-      const show = th.ov.appear > 0.35 && !th._leaving && !tg.wait && !(tg.hop > 0) && !tg.refit && !(tg.unseen > 0) && !held && tg.mode < 2 && !early && !away;
+      const show = th.ov.appear > 0.35 && !th._leaving && !tg.wait && !tg.hostWait && !(tg.hop > 0) && !tg.refit && !(tg.unseen > 0) && !held && tg.mode < 2 && !early && !away;
       if (tg.unseen > 0 && !(tg.hop > 0)) tg.unseen--;
       // (coming in, they start where they rest — never from where they faded out)
       if (show && !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; tg.kx = NaN; }

@@ -46,6 +46,8 @@ Line 1 stays true only while the Anthropic organisation is not enrolled in the D
 | Harm to others (P13) | Support first as `concern`; idioms such as "I could kill him" stay ordinary |
 | Another Angle entry (P14) | Side-panel link for Beyond; Flow sees it as an invitation to the plans page |
 | Prefill words into Another Angle (P15) | Yes, local only, sent only after consent and Send |
+| Garden card on a small phone (H23 r2b, 2026-10-13) | The Thought Mallow makes way from the moment the card is placed and may rise into the subtitle band while the installation keeps the lines quiet; the lines and the band's ▶ pill come back only once it has left the band; the card is never seen over the thought or its words |
+| A world's first arrival (H23 r2b, 2026-10-13) | The host sets off once the person's words have faded out of its way (0.9 s at most); a world's thought shows no words while the hero covers every place round it |
 
 ## Still open for the owner
 

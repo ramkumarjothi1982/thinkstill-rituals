@@ -157,7 +157,8 @@ test('Garden offer and card: kept off the thought (where it is, and where it is 
   const phase = fnBody(scene, 'const onInstallPhase = (e) => {', '/** The offer\'s own life');
   assert.match(phase, /if \(ph === 'start'\) \{ root\.classList\.add\('hf-install-quiet'\); layout\(\); \}/);
   assert.match(phase, /if \(ph === 'card'\) \{ try \{ installMod\?\.relayoutInstall\?\.\(\); \}/);
-  assert.match(offer, /installSubtitles\.resume\(\);\s*if \(root\.classList\.contains\('hf-install-quiet'\)\) \{ root\.classList\.remove\('hf-install-quiet'\); if \(!S\.left\) layout\(\); \}/);
+  // (r2b: the ▶ pill and the stage's bounds come back once the thought has left the band it may have risen into)
+  assert.match(offer, /installSubtitles\.resume\(\);[\s\S]*if \(thoughtInBand\(\) && now\(\) - t0 < 3000\) \{ later\(quietOff, 60\); return; \}\s*if \(root\.classList\.contains\('hf-install-quiet'\)\) \{ root\.classList\.remove\('hf-install-quiet'\); layout\(\); \}/);
   const enter = fnBody(scene, 'async enter() {', 'leave() {');
   assert.match(enter, /addEventListener\('hm:install', onInstallPhase\);/);
   assert.match(fnBody(scene, 'leave() {', 'get blockBack()'), /removeEventListener\('hm:install', onInstallPhase\);/);
@@ -166,7 +167,9 @@ test('Garden offer and card: kept off the thought (where it is, and where it is 
   // while it plays, the thought may rise into the free band (its words with it)...
   assert.match(fnBody(scene, 'function layout() {', 'let resizeT'), /if \(root\.classList\.contains\('hf-install-quiet'\) && !ov\?\.height\) thoughtBounds\.top = Math\.min\(thoughtBounds\.top, topB \+ 10\);/);
   // ...and the world keeps the person's thought out from under the offer, its card and its chip (director keepOut)
-  assert.match(fnBody(scene, 'function getFlow() {', '/** The world paused or resumed'), /keepOut: \(\) => installMod\?\.installAvoidRects\?\.\(\) \|\| \[\],/);
+  // (r2b: and from where the card will show, from the moment it is placed — installKeepOut)
+  assert.match(fnBody(scene, 'function getFlow() {', '/** The world paused or resumed'), /keepOut: \(\) => installKeepOut\(\),/);
+  assert.match(fnBody(scene, 'function installKeepOut() {', '\n  }\n'), /const shown = installMod\?\.installAvoidRects\?\.\(\) \|\| \[\], planned = plannedCardRect\(\);/);
 });
 
 // --------------------------------------------------------- phone sheet --
