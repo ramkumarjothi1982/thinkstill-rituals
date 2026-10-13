@@ -17,7 +17,7 @@
 
 import PUBLISHED from './public-config.js';
 import { resolveAuthConfig } from './config.js';
-import { bootNamespace, createNamespacedStore, settleNamespace, needsGuestChoice } from './namespace.js';
+import { bootNamespace, createNamespacedStore, settleNamespace, needsGuestChoice, readPersistedSession } from './namespace.js';
 import { createStore } from '../engine/storage.js';
 
 const AUTH_PARAMS = ['code', 'token_hash', 'error_code', 'error_description'];
@@ -67,11 +67,20 @@ export const NOTICE_TEXT = Object.freeze({
   'device-cleared': 'This device’s copy of your things is removed.',
 });
 
-export function createAuthHandle(boot, { onReload, onExpired } = {}) {
+export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, ls = safe(() => globalThis.localStorage) } = {}) {
   const { config, ns } = boot;
   const enabled = !!config.enabled && !boot.forwarding;
   let real = null, loading = null;
   const listeners = new Set();
+  // before (or without) the full client: another tab signing in or out changes which
+  // namespace this page belongs to, so it reloads at the next calm moment
+  if (enabled && typeof onReload === 'function') {
+    win?.addEventListener?.('storage', (e) => {
+      if (real || (e.key != null && e.key !== config.storageKey)) return;
+      const uid = safe(() => readPersistedSession(ls, config.storageKey)?.uid) || null;
+      if (uid !== (ns.uid || null)) onReload({ reason: uid ? 'account-changed' : 'expired', urgent: false, hash: '#home' });
+    });
+  }
   const handle = {
     enabled,
     config,

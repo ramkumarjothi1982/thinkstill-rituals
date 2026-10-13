@@ -214,3 +214,24 @@ test('storage.js protect: clearAll leaves protected prefixes, get/set unaffected
   plain.clearAll();
   assert.deepEqual(ls.keys(), ['other'], 'without protect: as before');
 });
+
+test('a guest page hears another tab sign in (and an account page hears it sign out) without loading supabase-js', () => {
+  const published = { enabled: true, url: 'http://localhost:8203', key: 'sb_publishable_hushmallow_local_dev_only', mode: 'dev' };
+  const loc = { hostname: 'localhost', protocol: 'http:', search: '', hash: '', href: 'http://localhost:8202/', replace() {} };
+  const handlers = [];
+  const win = { addEventListener: (t, fn) => { if (t === 'storage') handlers.push(fn); } };
+  const ls = memoryStorage();
+  const reloads = [];
+  const guest = createAuthHandle(authBoot({ loc, ls, ss: memoryStorage(), published }), { onReload: (r) => reloads.push(r), win, ls });
+  assert.equal(guest.status(), 'guest');
+  handlers[0]({ key: 'hm2:prefs' });
+  assert.equal(reloads.length, 0, 'other keys are ignored');
+  ls.setItem('sb-localhost-auth-token', session(A));
+  handlers[0]({ key: 'sb-localhost-auth-token' });
+  assert.deepEqual(reloads.pop(), { reason: 'account-changed', urgent: false, hash: '#home' });
+  const acct = createAuthHandle(authBoot({ loc, ls, ss: memoryStorage(), published }), { onReload: (r) => reloads.push(r), win, ls });
+  assert.equal(acct.status(), 'signed-in');
+  ls.removeItem('sb-localhost-auth-token');
+  handlers[1]({ key: 'sb-localhost-auth-token' });
+  assert.equal(reloads.pop().reason, 'expired');
+});
