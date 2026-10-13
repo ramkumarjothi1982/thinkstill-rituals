@@ -282,6 +282,42 @@ for (const reducedMotion of [false, true]) {
   });
 }
 
+test('ocean 320×568, a cold start whose glide home passes beside the hero coming to rest: it lands where it is shown — no sideways throw', async () => {
+  // (as seen at 320: the thought waits beside the person's Mallow at home, the host glides to the ocean's place, and the
+  // thought's way down to its home runs along the hero's side — the keep-out holds it off the hero all the way, and in
+  // the landing frame that push must not be added a second time to the place it lands at)
+  const W = 320, H = 568, h = layerThought({ x: 263, y: 477, z: 0.45, r: 24 });
+  const A = [37, 249, 222, 424], B = [87, 321, 233, 476], hero = {};
+  const at = (k) => { const q = A.map((v, i) => v + (B[i] - v) * k); Object.assign(hero, { left: q[0], top: q[1], right: q[2], bottom: q[3], width: q[2] - q[0], height: q[3] - q[1], cx: (q[0] + q[2]) / 2, cy: (q[1] + q[3]) / 2 }); };
+  at(0);
+  const dom = installFakeDom(W, H);
+  const { createHushflow } = await import('../src/hushfold/flow/director.js');
+  const D = createHushflow({
+    worldEl: dom.el(), fxEl: dom.el(), mallow: fakeMallow(hero), thoughts: layerOf(h), subtitles,
+    photos: { n: 4, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }) },
+    registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(),
+  });
+  try {
+    await D.start({ worldId: 'luminous-ocean', emotion: 'embarrassed', intention: 'calm' });
+    let p = drawn(h), worst = 0, landStep = null, pushed = 0, was = true;
+    for (let i = 0; i < 60 * 7; i++) {
+      if (i >= 6 && i <= 36) at((i - 6) / 30);
+      D.debug.step(1 / 60);
+      const q = drawn(h), j = Math.hypot(q.x - p.x, q.y - p.y), t = D.world.debug.thought;
+      worst = Math.max(worst, j);
+      pushed = Math.max(pushed, Math.abs(t.koX) + Math.abs(t.koY));
+      if (was && !t.from) landStep = j;
+      was = !!t.from; p = q;
+    }
+    assert.ok(pushed > 20, `the keep-out held it off the hero on its way (push ${pushed.toFixed(1)} px)`);
+    assert.ok(landStep != null, 'it landed on the water');
+    assert.ok(landStep < 3, `the landing frame moves it ${landStep.toFixed(1)} px`);
+    assert.ok(worst < 12, `largest step ${worst.toFixed(1)} px`);
+    const e = h.extent({});
+    assert.ok(!(e.right > hero.left + 2 && e.left < hero.right - 2 && e.bottom > hero.top + 2 && e.top < hero.bottom), 'it ends off the hero');
+  } finally { D.destroy(); dom.restore(); }
+});
+
 test('ocean, reduced motion, a cold start: the thought fades out where it was, then in at home (never seen jumping)', async () => {
   const h = layerThought({ x: 322, y: 276, z: 0.2 });
   const run = await play('luminous-ocean', h, { reducedMotion: true, photos: { n: 4, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }) } });

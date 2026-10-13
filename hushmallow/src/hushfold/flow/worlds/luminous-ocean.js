@@ -1651,6 +1651,9 @@ export function create(ctx) {
     // from where it has come down to (its home), the swells take over — exactly where it is, no pop
     unproject(cam, tS.sx, tS.sy + tS.r * tS.surf * 0.55, wo);
     tS.x = wo.x; tS.z = Math.max(cam.Z0, wo.z); tS.vx = tS.vz = 0; tS.yb = tS.vb = 0; tS.dP = 1; tS.vzP = 0;
+    // (that place already has the hero keep-out's push in it — where it was shown, beside the hero — so the push is
+    // spent: kept on as well, it would be added twice and throw the thought sideways by it in the landing frame)
+    tS.koX = tS.koY = 0;
     tS.snapOff = true;
     splash(tS.sx, tS.sy + tS.r * tS.surf * 0.55, tS.r * 2 * tS.surf);
     // a soft settle as it meets the water (never 'appear': it is the same thought, arriving)
@@ -1729,7 +1732,8 @@ export function create(ctx) {
       if (Math.abs(tS.surfShown - tS.surf) < 0.004) tS.surfShown = 0;
       else { const k = tS.surfShown / tS.surf; sy += tS.r * tS.surf * 0.55 * (1 - k); tS.surf = tS.surfShown; }
     }
-    if (tS.snapOff) { tS.offX = tS.sx - sx; tS.offY = tS.sy - sy; tS.snapOff = false; }
+    // (from where it was shown: the keep-out's push, added after this, is part of that already)
+    if (tS.snapOff) { tS.offX = tS.sx - sx - tS.koX; tS.offY = tS.sy - sy - tS.koY; tS.snapOff = false; }
     if (tS.offX || tS.offY) { const d = Math.exp(-dt / 0.45); tS.offX *= d; tS.offY *= d; if (Math.abs(tS.offX) + Math.abs(tS.offY) < 0.3) tS.offX = tS.offY = 0; }
     const bx = sx, by = sy;
     sx += tS.offX; sy += tS.offY;
