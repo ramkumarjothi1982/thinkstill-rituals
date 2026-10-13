@@ -42,6 +42,7 @@ const CSS = `
 .bx-tag.piece { padding: 0 6px; font: 750 calc(15px * var(--bx-k))/1.22 var(--hf-ff-voice); color: #3a1d04; text-shadow: 0 1px 0 rgba(255, 246, 225, 0.6); }
 /* the blame, carried on its own amber weight (return_responsibility): two balanced lines at most */
 .bx-tag.piece.slab { padding: 0 4px; line-height: 1.2; color: #3a1a02; }
+.bx-tag.piece.slab.inbowl { font-size: calc(13px * var(--bx-k)); line-height: 1.18; padding: 0 2px; }
 /* a card whose name has gone (open_interpretations: the first guess, once it is one possibility among the others) */
 .bx-tag.card.untitled .bx-card-title { display: none; }
 .bx-tag.card.guess { justify-items: start; text-align: left; }
@@ -57,6 +58,9 @@ const CSS = `
 
 /* a played scene steps back while its perspective is told */
 .beyond.bx-recede .bx-tag { opacity: 0 !important; }
+/* while a mechanic is on stage the subtitle band jumps to its new place instead of gliding there: a glide (as the
+   dock's pill goes) would sweep its control pill over the scene's labels (review r4) */
+.beyond.bx-onstage .hf-subs { transition: none; }
 
 /* consent: a calm card above Zuzu (who stays squeezable underneath) */
 .bx-consent { position: fixed; z-index: 4; left: 16px; right: 16px; top: calc(var(--safe-top, 0px) + 66px); margin: 0 auto; max-width: 520px; box-sizing: border-box;

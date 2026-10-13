@@ -103,12 +103,44 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
     h('p', { class: 'bx-lead' },
       'Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.'),
     h('ul', { class: 'bx-points' },
-      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen, with the app’s language and a random number for each request. A feedback tap sends which button and what kind of angle it was, never your words. Never your photos.'),
+      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen and what kind they were. Each request also carries the app’s language, a one-off random code and this phone’s session code. A feedback tap sends which button and what kind of angle it was, never your words. Never your photos.'),
       h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair. Never your name or account.'),
       h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention, ` ${PROVIDER_SAFETY_HOLD}`),
       h('li', {}, h('b', {}, 'Anthropic’s use. '), PROVIDER_USE),
       therapy ? notTherapy(app, 'li') : null),
     h('p', { class: 'bx-small' }, 'You can change your mind any time in Settings, and delete this phone’s Another Angle data there.'));
+}
+
+/** The notice's bottom edge the cue covers: the 'More below' pill (34px) and the fade above it. */
+export const CUE_COVER = 44;
+/**
+ * Where 'More below' scrolls to: the first line of the notice that isn't fully clear of the cue lands at
+ * the top edge, so following the cue shows every line whole, the opening of each point
+ * included; never a fixed step that clips a line at the top or leaves one under the pill. A line that
+ * already starts at the top (a point taller than the view) moves on by a view's height less the cue.
+ */
+export function nextNoticeStop(scroll) {
+  const max = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+  const step = Math.max(40, scroll.clientHeight - CUE_COVER);
+  try {
+    const view = scroll.getBoundingClientRect();
+    const top = view.top + (scroll.clientTop || 0);
+    const cut = top + scroll.clientHeight - CUE_COVER;
+    const range = document.createRange();
+    const walk = document.createTreeWalker(scroll, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      if (!n.textContent.trim()) continue;
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) {
+        if (r.height < 4 || r.bottom <= cut + 1) continue;
+        // the first line the cue hides (whole or in part): it goes to the top edge (the line before it then sits
+        // wholly above the edge, never a sliver of it), unless it is already there
+        const dy = Math.floor(r.top - top) - 1;
+        return Math.min(max, scroll.scrollTop + (dy > 8 ? dy : step));
+      }
+    }
+  } catch { /* no layout here: the plain step */ }
+  return Math.min(max, scroll.scrollTop + step);
 }
 
 /**
@@ -136,7 +168,7 @@ export function openConsent({ app, root = document.body, onDecide, support = nul
   const title = h('h2', { class: 'bx-title', id: `${uid}-t`, tabindex: '-1' }, 'Before Zuzu looks at your words');
   const scroll = h('div', { class: 'bx-scroll', id: `${uid}-d`, tabindex: '0', 'aria-label': 'The notice' }, noticeBody(app));
   const more = h('button', { type: 'button', class: 'bx-more', hidden: true, 'aria-label': 'Show more of the notice', onclick: () => {
-    scroll.scrollBy({ top: Math.max(60, scroll.clientHeight * 0.8), behavior: reduced ? 'auto' : 'smooth' });
+    scroll.scrollTo({ top: nextNoticeStop(scroll), behavior: reduced ? 'auto' : 'smooth' });
   } }, 'More below', h('span', { class: 'bx-more-arrow', 'aria-hidden': 'true' }, '↓'));
   const el = h('section', { class: `bx-consent hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': `${uid}-t`, 'aria-describedby': `${uid}-d`, 'data-bx': 'consent' },
     title,

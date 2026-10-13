@@ -174,3 +174,75 @@ test('B2: the safety check still comes first (a loss with a crisis in it is cris
   const after = src.slice(src.indexOf('async function afterTell('), src.indexOf('function firstLook('));
   assert.ok(after.indexOf("if (S.level === 'crisis')") < after.indexOf('startAngle('), 'crisis before any angle (and before grief)');
 });
+
+// ------------------------------------------------------------------ B3 --
+test('B3: the notice names every field a request carries; the overlay clause names the feeling and the help', () => {
+  const src = read('src/beyond/consent.js');
+  const sent = src.match(/'What’s sent\. '\), '([^']+)'/)[1];
+  for (const must of [/the lines you’ve seen and what kind they were/, /the app’s language/, /a one-off random code/, /this phone’s session code/, /never your words/, /Never your photos/]) assert.match(sent, must);
+  assert.doesNotMatch(sent, /random number/, 'request_id is a code of letters and digits, not a number');
+  const aa = read('src/beyond/another-angle.js');
+  assert.match(aa, /const SERVER_CLAUSE = 'Only these words, and the feeling and help you pick, go to our secure server for a new perspective, never photos\.';/);
+  // the delete sheet keeps the approved line saying the provider's copy is outside this delete
+  assert.match(src, /h\('p', \{ class: 'bx-sheet-copy', style: \{ marginTop: '10px' \} \}, PROVIDER_DELETE\)/);
+});
+
+test('B3: following "More below" lands the first hidden line at the top, never a fixed 80% step', async () => {
+  const { nextNoticeStop, CUE_COVER } = await import('../src/beyond/consent.js');
+  assert.equal(CUE_COVER, 44);
+  const src = read('src/beyond/consent.js');
+  assert.match(src, /scroll\.scrollTo\(\{ top: nextNoticeStop\(scroll\)/);
+  assert.doesNotMatch(src, /clientHeight \* 0\.8/);
+  // without a layout (no DOM here) it falls back to a view less the cue, clamped at the end
+  const fake = { scrollHeight: 746, clientHeight: 149, scrollTop: 0, clientTop: 0, getBoundingClientRect: () => ({ top: 0 }) };
+  assert.equal(nextNoticeStop(fake), 149 - 44);
+  assert.equal(nextNoticeStop({ ...fake, scrollTop: 700 }), 746 - 149);
+});
+
+// ------------------------------------------------------------------ B1 --
+test('B1: open_interpretations: every bud waits in the ring slot it keeps; the column is laid out once per screen', () => {
+  const src = read('src/beyond/mechanics/open-interpretations.js');
+  assert.doesNotMatch(src, /-Math\.PI \+ 0\.22 \+ i \* 0\.6/, 'no clustered closed angles');
+  assert.match(src, /buds\.forEach\(\(b, i\) => \{ const a = slotAngle\(i \+ 1\);/, 'buds take slots 1-3 in every phase');
+  assert.match(src, /const a = slotAngle\(0\);/, 'the first guess takes slot 0 once it lets go');
+  // the slots: four even places, the guess's upper right
+  const slot = (k) => -Math.PI / 2 + (k * 2 * Math.PI) / 4 + Math.PI / 4;
+  assert.deepEqual([0, 1, 2, 3].map((k) => Math.round((slot(k) * 180) / Math.PI)), [-45, 45, 135, 225]);
+  // one card for the guess's name and words, on the ring too (no separate tag under the thought)
+  assert.doesNotMatch(src, /guessL|tags\.words/);
+  // rows are made once per screen size, again only when a card grows; at least 8px apart
+  assert.match(src, /const key = `\$\{innerWidth\}x\$\{innerHeight\}`;/);
+  assert.match(src, /if \(key !== colKey \|\| grew\)/);
+  assert.match(src, /clamp\(\(A\.h - sum\) \/ ROWS\.length, 8, 26\)/);
+});
+
+test('B1: return_responsibility: fixed bowl names, a slab that sits in its bowl, side bowls clearly below the top pair', () => {
+  const src = read('src/beyond/mechanics/return-responsibility.js');
+  assert.match(src, /kind: 'label', colour: PLACE_COLOURS\[i\], priority: 3, fixed: true, group: 'bowls'/);
+  assert.match(src, /s\.hy = p\.y \+ slab\.hh \* \(G\.top\[s\.place\] \? 0\.3 : -0\.3\)/, 'seated away from the name');
+  assert.match(src, /slab\.w = inBowl \? Math\.min\(G\.pr \* 2 \+ 6,/, 'no wider than its bowl');
+  assert.match(src, /yTop \+ below \+ 22 \+ lh \+ G\.name/, 'a side bowl sits below the top pair, its name and a clear gap');
+  // the geometry the formula makes: a side name's gap to its own bowl's rim (7px) is far smaller than to anything above
+  const pr = 43, lh = 30, name = pr * 0.32 + 7, below = Math.max(pr * 0.52, 0.8 * (3 * 15.4 + 12));
+  const yTop = 0, ySide = yTop + below + 22 + lh + name;
+  const ownRimGap = name - pr * 0.32;
+  const aboveGap = (ySide - name - lh) - (yTop + below);
+  assert.ok(Math.abs(ownRimGap - 7) < 0.01);
+  assert.ok(aboveGap >= 2 * ownRimGap + 8, `above ${aboveGap} vs own ${ownRimGap}`);
+  assert.match(read('src/beyond/styles.js'), /\.bx-tag\.piece\.slab\.inbowl \{ font-size: calc\(13px \* var\(--bx-k\)\)/);
+});
+
+test('B1: a tag returns to its object once nothing is in the way; the band never glides over a scene on stage', () => {
+  assert.match(read('src/beyond/mechanics/kit.js'), /if \(prevCost <= bestCost \+ 18 && !\(bestHit === 0 && prevHit === 0\)\)/);
+  assert.match(read('src/beyond/styles.js'), /\.beyond\.bx-onstage \.hf-subs \{ transition: none; \}/);
+  assert.match(read('src/beyond/another-angle.js'), /root\.classList\.toggle\('bx-onstage', !!mech\);/);
+});
+
+test('B1: the browser gate drags the slab into every bowl, checks one and two buds open, and gives bowl names no slack', () => {
+  const gate = read('tools/beyond/angle-gate.cjs');
+  assert.match(gate, /for \(let k = 0; k < 4; k\+\+\) \{/);
+  assert.match(gate, /await check\(`slab in \$\{q\.names\[k\]\}`\);/);
+  assert.match(gate, /await check\(`\$\{4 - p\.buds\.length\} of 3 open`\);/);
+  assert.match(gate, /const slack = t\.group === 'bowls' \? 0 : 2;/);
+  assert.match(gate, /v: 2, choice/, 'the notice version since G1');
+});

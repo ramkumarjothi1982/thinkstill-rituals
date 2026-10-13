@@ -738,7 +738,7 @@ test('G1: the consent card says what the client really sends (every request body
   assert.deepEqual(Object.keys(fb.body).sort(), ['interaction_type', 'mallow_character', 'prompt_version', 'rating', 'reasoning_pattern']);
   // …and each is told: words, feeling, kind of help, lines seen, language, request number; the session's code, version, device type, invite code
   for (const [field, words] of [['text', /your words/i], ['emotion', /the feeling/], ['intention', /the kind of help you pick/], ['previous_angles', /the lines you’ve seen/],
-    ['locale', /the app’s language/], ['request_id', /a random number for each request/]]) assert.match(sent, words, `${field} is told`);
+    ['locale', /the app’s language/], ['request_id', /a one-off random code/]]) assert.match(sent, words, `${field} is told`);
   assert.match(sent, /A feedback tap sends which button and what kind of angle it was, never your words/);
   assert.match(kept, /a random code for this phone, its version and device type \(and any invite code\)/);
   assert.doesNotMatch(JSON.stringify(srv.calls.map((x) => x.body)), /photo|image|data:/i);

@@ -53,7 +53,7 @@ const worse = (a, b) => (LEVELS.indexOf(b) > LEVELS.indexOf(a) ? b : a);
 const CARE_MIX = { sad: 0.4, calm: 0.4, curious: 0.2 };
 const CARE_EXTRA = { mouthSmile: 0.08, mouthOpen: 0.04, tears: 0, fxRain: 0, fxHeart: 0, leanBias: 0.2 };
 /** What the compact input's privacy note says once sharing is on (the dictation hint around it stays). */
-const SERVER_CLAUSE = 'Only these words go to our secure server for a new perspective, never photos.';
+const SERVER_CLAUSE = 'Only these words, and the feeling and help you pick, go to our secure server for a new perspective, never photos.';
 /** How long a perspective may take before Zuzu's own angle plays instead (the server's single attempt, about 15 s). */
 const ANGLE_BUDGET_MS = 18000;
 /** The look of the person's Thought Mallow when no feeling was chosen: the kind of thought it is. */
@@ -184,6 +184,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (onStage && vh < 700) B = Math.min(B, clamp(vh * 0.155, 80, 130));
     const corner = vh < 700 && onStage && !two && !ov?.height && !consentCard;
     root.classList.toggle('bx-corner', corner);
+    // (the subtitle band never glides across a scene that is on stage: styles.js)
+    root.classList.toggle('bx-onstage', !!mech);
     // (20px from the screen's edges: room for the system's own gestures)
     if (corner) root.style.setProperty('--bx-corner', `${Math.round(B * 1.16 + 20 + 8)}px`);
     if (two) B *= 0.86;

@@ -12,6 +12,10 @@
 // Every layout check also proves each named label sits nearest its own object (a bowl, the guess, a bud) and
 // never moved past its tie (review r3, blocking 1).
 //
+// Review r4: return_responsibility drags the slab (their words) into each of the four bowls in turn and checks
+// the layout with it in each; open_interpretations checks it with one and with two of the three buds open; a
+// bowl's name must be strictly nearer its own bowl than any other (no slack).
+//
 // Exit code 1 when any check fails. Slow on SwiftShader (≈40 s a mechanic); run one browser job at a time.
 const fs = require('fs');
 const path = require('path');
@@ -76,7 +80,9 @@ const layoutCheck = (page) => page.evaluate(() => {
     const own = edge(t.rect, t.ox, t.oy);
     for (const m of ties) {
       if (m.group !== t.group || (Math.abs(m.ox - t.ox) < 1 && Math.abs(m.oy - t.oy) < 1)) continue;
-      if (edge(t.rect, m.ox, m.oy) + 2 < own) { bad.push(`label nearer another object: ${(t.title || t.text).slice(0, 26)} (own ${Math.round(own)}px, other ${Math.round(edge(t.rect, m.ox, m.oy))}px)`); break; }
+      // (a bowl's name has no slack at all: it must be nearer its own bowl than any other; review r4)
+      const slack = t.group === 'bowls' ? 0 : 2;
+      if (edge(t.rect, m.ox, m.oy) + slack < own || (!slack && edge(t.rect, m.ox, m.oy) <= own)) { bad.push(`label nearer another object: ${(t.title || t.text).slice(0, 26)} (own ${Math.round(own)}px, other ${Math.round(edge(t.rect, m.ox, m.oy))}px)`); break; }
     }
   }
   return bad;
@@ -85,10 +91,22 @@ const layoutCheck = (page) => page.evaluate(() => {
 const aiOnScreen = (page) => page.evaluate(() => { const out = []; const walk = (n) => { for (const c of n.childNodes) { if (c.nodeType === 3) { if (/\bAI\b/.test(c.textContent) && c.parentElement && !c.parentElement.closest('.bx-consent, .bx-notice')) out.push(c.textContent.slice(0, 60)); } else if (c.nodeType === 1 && !['SCRIPT', 'STYLE'].includes(c.tagName)) walk(c); } }; walk(document.body); return out; });
 
 // ------------------------------------------------------------------ play --
-async function play(page, cdp, id) {
+async function play(page, cdp, id, check = async () => {}) {
   const pr = () => page.evaluate(() => window.__angle.mech?.probe?.());
   const settled = () => page.evaluate(() => !!window.__angle.mech?.settled);
   const A = await page.evaluate(() => window.__angle.area);
+  if (id === 'return_responsibility') {
+    // the slab first, into each bowl in turn (from the pile, then from bowl to bowl), the layout checked each time
+    for (let k = 0; k < 4; k++) {
+      const p = await pr();
+      if (!p?.slab) break;
+      await drag(cdp, { x: p.slab.x - p.slab.w * 0.3, y: p.slab.y + 4 }, p.bowls[k], { steps: 26, ms: 40 });
+      await sleep(1600);
+      const q = await pr();
+      if (q.places[k] < 1) await check(`slab not taken into bowl ${k} (${q.names[k]})`, true);
+      else await check(`slab in ${q.names[k]}`);
+    }
+  }
   for (let round = 0; round < 16 && !(await settled()); round++) {
     const p = await pr();
     if (!p) break;
@@ -96,7 +114,12 @@ async function play(page, cdp, id) {
     else if (id === 'shrink_projection') await drag(cdp, { x: p.big.x, y: p.big.y - p.big.r * 0.4 }, { x: p.big.x, y: p.big.y + p.big.r * 0.6 }, { steps: 30, ms: 60 });
     else if (id === 'return_responsibility') { if (!p.stones.length) { await sleep(800); continue; } const s = p.stones[p.stones.length - 1]; await drag(cdp, s, s.heaviest ? p.bowls[1] : p.bowls[round % p.bowls.length]); }
     else if (id === 'reveal_spectrum') { if (p.phase === 'reveal') await drag(cdp, { x: p.x0 + 6, y: p.y }, { x: p.x1 - 6, y: p.y }, { steps: 24, ms: 35 }); else await drag(cdp, p.thought, { x: (p.x0 + p.x1) / 2 + 20, y: p.thought.y }); }
-    else if (id === 'open_interpretations') { if (!p.buds.length) { await sleep(800); continue; } await hold(cdp, p.buds[0], 1300); }
+    else if (id === 'open_interpretations') {
+      if (!p.buds.length) { await sleep(800); continue; }
+      await hold(cdp, p.buds[0], 1300);
+      // one of three open, then two: every line is clear of the other buds and lines while the rest are closed
+      if (p.buds.length > 1) { await sleep(1400); await check(`${4 - p.buds.length} of 3 open`); continue; }
+    }
     else if (id === 'separate_one') await drag(cdp, p.one, { x: A.x + 30, y: A.y + A.h * 0.4 }, { steps: 24, ms: 40 });
     else if (id === 'let_loop_drift') await hold(cdp, p.stone, 4500);
     else if (id === 'assemble_step') { if (!p.pieces.length) { await sleep(800); continue; } const pc = p.pieces[0]; await drag(cdp, pc, p.treads[pc.i] || p.treads[0]); }
@@ -126,7 +149,8 @@ async function openPage(browser, { route, authored = false }) {
     if (u.endsWith('/v1/feedback')) return r.fulfill({ status: 202, headers: cors, body: '{"status":"ok"}' });
     return r.fulfill({ status: 200, headers: cors, body: JSON.stringify(route()) });
   });
-  await page.addInitScript(() => { try { localStorage.setItem('hm2:beyond.consent', JSON.stringify({ v: 1, choice: 'yes', at: '2026-10-12' })); } catch {} });
+  // (the notice is at version 2 since G1: an older choice asks again)
+  await page.addInitScript((choice) => { try { localStorage.setItem('hm2:beyond.consent', JSON.stringify({ v: 2, choice, at: '2026-10-13' })); } catch {} }, authored ? 'no' : 'yes');
   await page.goto(authored ? BASE : `${BASE}?angleDev=8799`);
   await page.waitForFunction(() => window.__hush && window.__hush.world && window.__hushfold, null, { timeout: 120000 });
   await page.evaluate(async () => { if (!window.__hush.ent.has('ultra')) await window.__hush.ent.purchase('ultra'); });
@@ -163,7 +187,8 @@ const shot = (page, name) => (SHOTS ? page.screenshot({ path: path.join(SHOTS, `
         await sleep(1800);
         await shot(page, `a-${id}-${W}-1-start`);
         problems.push(...(await layoutCheck(page)).map((p) => `start: ${p}`));
-        if (!(await play(page, cdp, id))) problems.push('did not land through touch');
+        const midCheck = async (what, failed = false) => { if (failed) { problems.push(what); return; } await shot(page, `a-${id}-${W}-1m-${what.replace(/\W+/g, '-')}`); problems.push(...(await layoutCheck(page)).map((p) => `${what}: ${p}`)); };
+        if (!(await play(page, cdp, id, midCheck))) problems.push('did not land through touch');
         await sleep(700);
         await shot(page, `a-${id}-${W}-2-landed`);
         problems.push(...(await layoutCheck(page)).map((p) => `landed: ${p}`));
@@ -196,7 +221,8 @@ const shot = (page, name) => (SHOTS ? page.screenshot({ path: path.join(SHOTS, `
       await sleep(1800);
       await shot(page, `${id}-${W}-1-start`);
       problems.push(...(await layoutCheck(page)).map((p) => `start: ${p}`));
-      if (!(await play(page, cdp, id))) problems.push('did not land through touch');
+      const midCheck = async (what, failed = false) => { if (failed) { problems.push(what); return; } await shot(page, `${id}-${W}-1m-${what.replace(/\W+/g, '-')}`); problems.push(...(await layoutCheck(page)).map((p) => `${what}: ${p}`)); };
+      if (!(await play(page, cdp, id, midCheck))) problems.push('did not land through touch');
       await sleep(700);
       await shot(page, `${id}-${W}-2-landed`);
       problems.push(...(await layoutCheck(page)).map((p) => `landed: ${p}`));
