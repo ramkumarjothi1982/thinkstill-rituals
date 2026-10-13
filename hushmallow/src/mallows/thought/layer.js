@@ -46,7 +46,9 @@
 //     thought's words wait hidden and fade in at its resting place. Words that must change place fade out
 //     where they are, then fade in at the new place — no plate is ever seen flying or sliding over faces
 //     or other words. A thought a world drives whose words have nowhere clear round it (the world's hero has
-//     come over every side) shows no words until a place is clear again: never on the hero or a face.
+//     come over every side) takes fewer lines and a wider look, as a resting plate does; still nowhere, its
+//     words wait, hidden, until a place is clear — or, after 0.9 s, show at the best place found that is on
+//     nothing itself: never on the hero, a face or other words, never hidden for good.
 //   * Bodies: a gentle push keeps footprints apart; a boxed-in thought may glide a short way
 //     (≤ max(56 px, 0.9 P)); the bounds and the hero are hard limits — for siblings pulled free too.
 //   * Loneliness drifts away from the hero, never toward it (only directions that open the gap between
@@ -65,10 +67,11 @@
 //   relayout()                       plan the stage again now (the host moved its bounds or its hero)
 //   { textScale: () => k }           the person's text size: the words' font and plates grow with it
 //   th.opacity = a                   a world's fade (0 … 1): body, siblings, rope and words
-//   plateFor(th, {lines, maxW, r})   the words plate a world plans round, measured as the tag will be drawn
-//                                    ({w, h, rows, text, below}); with th.labelFit = {lines, maxW} and
+//   plateFor(th, {lines, maxW, r, z}) the words plate a world plans round, measured as the tag will be drawn
+//                                    ({w, h, rows, text, below, above, gap}); with th.labelFit = {lines, maxW} and
 //                                    th.labelSide written while it drives the thought, the tag is that plate,
-//                                    on that side (whenever that place is clear)
+//                                    on that side (whenever that place is clear; with nowhere clear for it a
+//                                    moment, fewer of its lines — then it waits, hidden, never on the hero)
 //   wordsKeepOut()                   the rect the words keep off (the hero, with the layer's margin), or null
 //   tagRect(th)                      where its words are shown now (the plate alone), or null while hidden
 //   .tm-tag sits at z-index var(--tm-z, 1): under the host's sheets and panels; a host may set --tm-z
@@ -86,6 +89,12 @@ const HOP_S = 0.24;
 // how long the place for a world-driven thought's hidden words must stay clear before they come back (no flicker at the
 // edge of clear)
 const HOST_CLEAR_S = 0.2;
+// how long a world-driven thought's words may find nowhere clear at their budget before they take fewer lines (a hero
+// passing by, a melt's host swap: not a reason to lose words for the rest of the world)
+const HOST_BLOCK_S = 0.25;
+// how long they wait, hidden, for a clear place before they show at the best place there is — never on the hero, a face
+// or other words; only brushing a face's room to move
+const HOST_GIVE_S = 0.9;
 let styled = false;
 
 function injectStyle() {
@@ -481,7 +490,7 @@ export class ThoughtLayer {
    * DOM). The tag keeps showing what it showed. A host that writes th.labelFit = { lines, maxW } and th.labelSide
    * while it drives the thought (x / y) gets this very plate, on that side whenever that place is clear (_tags).
    */
-  plateFor(th, { lines = 3, maxW = null, r = null } = {}) {
+  plateFor(th, { lines = 3, maxW = null, r = null, z: zAt = null } = {}) {
     const tg = this.tags.get(th);
     if (!tg || typeof document === 'undefined') return null;
     const W = typeof innerWidth === 'number' ? innerWidth : this._env.view.W;
@@ -490,7 +499,8 @@ export class ThoughtLayer {
     const e = this._fit(th, tg, Math.max(1, lines | 0), mw, W, 3);
     if (prev && prev !== e) this._applyFit(tg, prev);
     if (!(e?.w > 0)) return null;
-    const z = Math.max(th.zGoal || 0, th.zFloor || 0);
+    // (z: the depth the host will draw it at, when it writes th.z itself — else the stage's)
+    const z = zAt != null && Number.isFinite(+zAt) ? clamp(+zAt) : Math.max(th.zGoal || 0, th.zFloor || 0);
     const rr = Number.isFinite(+r) && +r > 0 ? +r : th.r * th.scale;
     const bh = rr * (1 - 0.5 * z) * (1 - 0.16 * (th.style?.motion?.shrink || 0) * 0.7);
     // (its body is drawn a little off its handle where it rests — sinking, or higher when far — as _extent finds it)
@@ -498,7 +508,10 @@ export class ThoughtLayer {
     // everything it draws at rest at that size (body, siblings, effects, prop: _predict), offsets from the handle
     const p = this._predict(th), k = rr / Math.max(1e-6, th.r * th.scale);
     const extent = { x0: -((p.l - 2) * k + 2), y0: dy - ((p.t - 2) * k + 2), x1: (p.r - 2) * k + 2, y1: dy + (p.b - 2) * k + 2 };
-    return { w: e.w, h: e.h, rows: e.rows || e.lines, lines: e.lines, maxW: e.mw, text: e.text, below: dy + bh + 2 + 14 + 8 * (1 - z), edge: this._edgeFor(W), extent };
+    // (the gap _anchors keeps between what it draws and its words; above: how far over its handle the plate's bottom sits
+    // when its words go above — over everything it draws there)
+    const gap = 14 + 8 * (1 - z);
+    return { w: e.w, h: e.h, rows: e.rows || e.lines, lines: e.lines, maxW: e.mw, text: e.text, below: dy + bh + 2 + gap, above: -(extent.y0 + 2) + gap, gap, edge: this._edgeFor(W), extent };
   }
   /** Where a thought's words are shown now — the plate itself, not its thought (client px) — or null while hidden. */
   tagRect(th) {
@@ -796,7 +809,9 @@ export class ThoughtLayer {
     for (const th of this.thoughts) {
       if (!th.driven) th.zFloor = zf;
       const tg = this.tags.get(th);
-      if (tg) { tg.drop = 0; this._fitLevel(th, tg, W); }
+      // (a thought a world drives keeps the step it took for the world's stage: the home stage's level is not its place —
+      // planned again under a pause or a panel, it must not come back at a budget the world had no room for)
+      if (tg) { if (!th.driven) tg.drop = 0; this._fitLevel(th, tg, W); }
     }
   }
   // one level fuller, in place: every home stays where it is (the thoughts shrink, the plates narrow)
@@ -1546,10 +1561,13 @@ export class ThoughtLayer {
   // the words a tag shows at its budget now: lines and plate width from the stage's level, its depth
   // (as it is going to be) and its own step down when nothing was clear at full budget
   _fitLevel(th, tg, W) {
-    // (a world that drives the thought and planned its words plate with plateFor: exactly that plate)
+    // (a world that drives the thought and planned its words plate with plateFor: exactly that plate — a world planning
+    // its stage again, or asking for another plate, or letting go of it, gives its words their whole budget again)
     const F = this._hostFit(th);
+    if (F !== (tg.fitOf ?? null)) { if (tg.fitOf !== undefined) tg.drop = 0; tg.fitOf = F; }
     let lines, mw, minWords = 3;
-    if (F) { lines = F.lines | 0; mw = Math.max(40, Math.round(F.maxW)); }
+    // (fewer lines than it asked for only when nowhere round the thought was clear for that plate: _tags)
+    if (F) { lines = Math.max(1, (F.lines | 0) - tg.drop); mw = Math.max(40, Math.round(F.maxW)); }
     else {
       lines = Math.max(1, tagLines(Math.max(th.zGoal, th.zFloor), this.crowd) - tg.drop);
       // (the last step, only on a packed stage with nowhere clear: two words on a narrower plate, not three)
@@ -1777,6 +1795,8 @@ export class ThoughtLayer {
     const K = this._tenv.K, l = r[0], t = r[1] + Math.min(0, d), rr = r[2], b = r[3] + Math.max(0, d), m = 4;
     let h0 = 0, h3 = 0, core = 0;
     if (K) { h0 += overA(l, t, rr, b, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); h3 += overA(l - m, t - m, rr + m, b + m, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); core += overA(l, t, rr, b, K.left, K.top, K.right, K.bottom); }
+    // (_hk: what of it is on the hero, with the margin it keeps — words a world drives never show there, however long they waited)
+    this._hk = h0;
     const ob = this._ob, n = this._obN;
     // (_hobDeep: what covers a face or a free sibling by more than a 2 px brush of its envelope)
     let hob = 0, deep = 0;
@@ -1859,6 +1879,13 @@ export class ThoughtLayer {
     if (i === this._nPlaced) this._nPlaced++;
     return i;
   }
+  // would a world-driven thought's words at candidate c have to wait, hidden (hostWait's rule below): the place is not
+  // clear — on the hero, other words, or more than a brush into a face's room to move — and the words are not showing
+  // yet, or the place is on something itself
+  _hostBlocked(th, tg, c) {
+    const h0 = this._hard(this._candRect(th, tg, c), th, -1);
+    return h0 - this._hob + this._hobDeep > 0 && (!tg.shown || this._core > 0);
+  }
   // which side of the body a wide place is on (for the rope)
   _wideSide(th, tg) {
     const half = tg.g[7];
@@ -1925,7 +1952,7 @@ export class ThoughtLayer {
         // where arriving thoughts will rest must be clear too, or it looks now, before anyone sees it)
         const h0 = this._hard(r, th, -1, !tg.arrived);
         if (h0 - this._hob + this._hobDeep > 0) continue;
-        tg.done = true; tg.live = true; tg.pi = this._placeR(r, this._nPlaced, th);
+        tg.done = true; tg.live = true; tg.blockT = 0; tg.pi = this._placeR(r, this._nPlaced, th);
       }
     }
     // the others look for the best clear place (a kept one stays, even on something soft: once a thought
@@ -1945,6 +1972,25 @@ export class ThoughtLayer {
         }
         // still nowhere: a wider look round it
         if (this._bestHard > 0 && mode === 0) { const hc = this._bestHard, bc = this._bestBad, wx = tg.wx, wy = tg.wy, cw = this._searchWide(th, tg, -1); if (this._bestBad < bc) c = cw; else { tg.wx = wx; tg.wy = wy; this._bestHard = hc; this._bestBad = bc; } }
+        // a world drives it and its words would have to wait, hidden, for want of a clear place round it (the world's hero
+        // has come over every side; the plate it asked for has no room on this screen): once that has lasted a moment, the
+        // same step a resting plate takes — fewer lines (a shorter plate), then a wider look round it — before they wait
+        if (mode === 1 && th.driven) {
+          let bad = this._hostBlocked(th, tg, c);
+          tg.blockT = bad ? (tg.blockT || 0) + dt : 0;
+          if (bad && tg.blockT >= HOST_BLOCK_S) {
+            // (words showing fade out first and change unseen — _fitLevel's refit — then this goes on, a frame later)
+            while (bad && tg.lines > 1 && !tg.refit) {
+              tg.drop++; this._fitLevel(th, tg, W);
+              if (tg.refit) break;
+              c = this._search(th, tg, -1); bad = this._hostBlocked(th, tg, c);
+            }
+            if (bad && !tg.refit) {
+              const hc = this._bestHard, bc = this._bestBad, wx = tg.wx, wy = tg.wy, cw = this._searchWide(th, tg, -1);
+              if (!this._hostBlocked(th, tg, cw) || this._bestBad < bc) c = cw; else { tg.wx = wx; tg.wy = wy; this._bestHard = hc; this._bestBad = bc; }
+            }
+          }
+        }
         // nowhere clear either: a resting plate does not swap one covered place for another no better than
         // half as covered (two such places would take turns, the words sliding to and fro across the stage)
         if (this._bestHard > 0 && this._bestBad > 0.5 * b00) { c = ci0; tg.wx = wx0; tg.wy = wy0; this._bestHard = h00; this._bestBad = b00; }
@@ -1959,19 +2005,28 @@ export class ThoughtLayer {
       if (!tg || tg.mode < 2) continue;
       tg.wait = tg.mode === 2 && this._hard(this._candRect(th, tg, tg.ci, true), th, -1) > 0;
     }
-    // a world drives it and nowhere round it is clear for its words — the hero it floats beside has come over every
-    // place they could go (a cold start: the world's host, larger than the person's own Mallow, lands where the words
-    // were, with the thought still waiting beside it): they wait, hidden, and come back once a place is clear and has
-    // stayed clear a moment. Never shown on the hero or a face; never flickering at the edge of clear. (Words that show
-    // stay while what touches them is only a brush of a face's envelope, as a resting plate does.)
+    // a world drives it and nowhere round it is clear for its words, even with fewer of them — the hero it floats beside
+    // has come over every place they could go (a cold start: the world's host, larger than the person's own Mallow, lands
+    // where the words were, with the thought still waiting beside it): they wait, hidden, and come back once a place is
+    // clear and has stayed clear a moment. Never shown on the hero or a face; never flickering at the edge of clear. (Words
+    // that show stay while what touches them is only a brush of a face's envelope, as a resting plate does.) And never
+    // hidden for good: once they have waited HOST_GIVE_S, they show at the best place found (its fewest lines, the wider
+    // look) as long as that place is on nothing itself — not the hero with its margin, a face, other words — only brushing
+    // a face's room to move.
     for (const th of list) {
       const tg = this.tags.get(th);
       if (!tg) continue;
-      if (tg.mode !== 1 || !th.driven || !tg.w || tg.pi < 0) { tg.hostWait = false; tg.clearT = 0; continue; }
+      if (tg.mode !== 1 || !th.driven || !tg.w || tg.pi < 0) { tg.hostWait = false; tg.clearT = 0; tg.waitT = 0; tg.fairT = 0; if (tg.mode !== 1 || !th.driven) tg.blockT = 0; continue; }
       const h0 = this._hard(this._candRect(th, tg, tg.ci), th, tg.pi);
       const clear = h0 - this._hob + this._hobDeep <= 0;
-      if (!clear && (!tg.shown || this._core > 0)) { tg.hostWait = true; tg.clearT = 0; }
+      if (!clear && (!tg.shown || this._core > 0)) { if (!tg.hostWait) tg.waitT = 0; tg.hostWait = true; tg.clearT = 0; }
       else if (tg.hostWait) { tg.clearT = clear ? (tg.clearT || 0) + dt : 0; if (tg.clearT >= HOST_CLEAR_S) tg.hostWait = false; }
+      // (that place, too, must have stayed so a moment: a hero flickering over it never lets them in)
+      tg.fairT = this._hk <= 0 && this._core <= 0 ? (tg.fairT || 0) + dt : 0;
+      if (tg.hostWait) {
+        tg.waitT = (tg.waitT || 0) + dt;
+        if (tg.waitT >= HOST_GIVE_S && tg.fairT >= HOST_CLEAR_S) tg.hostWait = false;
+      } else tg.waitT = 0;
     }
     const dpr = this._view.dprTag || 1;
     for (const th of list) {
