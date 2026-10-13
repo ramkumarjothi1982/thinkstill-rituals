@@ -580,7 +580,10 @@ test('photo tray: a full tray renders no stray "null", and counts in copy are wo
 
 test('back: a popped layer token goes to the scene, which closes that layer only', () => {
   const main = read('src/app/main.js');
-  assert.match(main, /const t = layers\.pop\(\); try \{ const close = current\?\.blockBack; if \(typeof close === 'function'\) close\(t\);/);
+  // (QA-around: the layer stack lives in src/app/layers.js; a sheet's own entry closes that sheet first)
+  assert.match(main, /const t = layers\.onPop\(\);[\s\S]{0,400}if \(t\) \{ closeLayerOnBack\(t, \{ sheets, scene: current \}\); return; \}/);
+  const layers = read('src/app/layers.js');
+  assert.match(layers, /try \{ const close = scene\?\.blockBack; if \(typeof close === 'function'\) close\(t\); \}/);
   const scene = read('src/app/scenes/hushfold.js');
   assert.match(scene, /return \(token\) => backClose\(token\)/);
   assert.match(scene, /layer\[k\] = 0;   \/\/ its history entry is spent/);

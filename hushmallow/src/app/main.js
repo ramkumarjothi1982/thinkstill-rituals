@@ -11,7 +11,8 @@ import { createRecommender } from '../engine/recommend.js';
 import { createWorld } from './world.js';
 import { RITUALS } from '../data/rituals.js';
 import { AVAILABLE } from '../rituals/index.js';
-import { toast } from './ui.js';
+import { toast, createSheetHistory, setSheetHistory } from './ui.js';
+import { createLayers, closeLayerOnBack } from './layers.js';
 import { newerVersion, moveTo } from './update.js';
 import { docTitle } from '../brand.js';
 
@@ -143,8 +144,10 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
     if (OPTIONAL_SCENES[name]) { toast(OPTIONAL_SCENES[name], 3200); return null; }
     throw new Error(`Scene ${name} has no default export`);
   }
-  layers.length = 0;
-  pendingPush.clear();
+  // a scene change closes every sheet still open (Back closes the newest first; this is the safety net
+  // for a scene that moves on by itself), stepping back over their entries before the next one is pushed
+  if (layers.popMany(sheets.closeAll())) { await popsSettled(); if (seq !== goSeq) return null; }
+  layers.forget();
   try { await current?.leave?.(); } catch (e) { console.warn(e); }
   sceneEl.replaceChildren();
   const view = mod.default(app, params);
@@ -162,43 +165,35 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
 };
 app.back = () => history.back();
 
-// Transient layers (the Hushfold's input, side panel, reader) get a history
-// entry of their own, so Back closes them first, even on the root scene.
-// pushLayer() → token; popLayer(token) removes the entry when the layer
-// closes another way (✕, Escape, send). On Back the scene's blockBack(token)
-// gets the token of the entry that was just consumed and closes that layer
-// only (it must not call popLayer for it). app.go() forgets them (they
-// become plain duplicates).
-const layers = [];
-let layerSeq = 0, ignorePops = 0;
-const popWaiters = [];
-const popsSettled = () => (ignorePops ? new Promise((r) => { popWaiters.push(r); setTimeout(r, 400); }) : null);
-// A layer that opens while another's history.back() is still in flight (the panel closing as the
-// overlay opens, in one tap) waits for that pop to land, or its new entry would be the one popped.
-const pendingPush = new Map();   // token → push()
-app.pushLayer = () => {
-  const t = ++layerSeq;
-  layers.push(t);
-  const push = () => { if (ignorePops && !pendingPush.has(t)) return; pendingPush.delete(t); history.pushState({ i: stack.length - 1, layer: t }, '', location.hash); };
-  if (!ignorePops) push();
-  else { pendingPush.set(t, push); popWaiters.push(() => pendingPush.get(t)?.()); setTimeout(() => pendingPush.get(t)?.(), 500); }
-  return t;
-};
-app.popLayer = (t) => {
-  const k = layers.lastIndexOf(t);
-  if (k < 0) return;
-  layers.splice(k, 1);
-  if (pendingPush.delete(t)) return;   // its entry was never pushed: nothing to step back over
-  ignorePops++; history.back();
-};
+// Transient layers (the Hushfold's input, side panel, reader, the account's
+// deeper screens, every sheet) get a history entry of their own, so Back
+// closes them first, even on the root scene (src/app/layers.js).
+// app.pushLayer() → token; app.popLayer(token) removes the entry when the
+// layer closes another way (✕, Escape, send). On Back the scene's
+// blockBack(token) gets the token of the entry that was just consumed and
+// closes that layer only (it must not call popLayer for it). Sheets
+// (openSheet in ui.js) take part by themselves: Back on a sheet's entry
+// closes that sheet before the scene hears of it, and a scene change closes
+// the sheets still open. app.go() forgets the other layers (they become
+// plain duplicates).
+const layers = createLayers({ history, index: () => stack.length - 1, here: () => location.hash });
+const popsSettled = () => layers.settled();
+// every sheet's own entry (src/app/ui.js); a scene that asks for a layer as it opens a sheet owns that sheet's entry
+const sheets = createSheetHistory({ push: () => layers.push(), pop: (t) => layers.popMany([t]) });
+setSheetHistory(sheets);
+app.pushLayer = () => { const t = layers.push(); sheets.claim(t); return t; };
+app.popLayer = (t) => { layers.popMany([t]); };
 
 window.addEventListener('popstate', (e) => {
-  if (ignorePops > 0) { ignorePops--; if (!ignorePops) popWaiters.splice(0).forEach((r) => r()); return; }
-  // Back consumed the newest layer's entry: the scene closes the layer that owns that
-  // token, without stepping history back again (so two open layers take two Backs)
-  if (layers.length) { const t = layers.pop(); try { const close = current?.blockBack; if (typeof close === 'function') close(t); } catch (err) { console.warn(err); } return; }
+  const t = layers.onPop();
+  if (t === 'ours') return;   // one of our own steps back landing
+  // Back consumed the newest layer's entry: a sheet's closes that sheet; else the scene closes the
+  // layer that owns that token, without stepping history back again (so two open layers take two Backs)
+  if (t) { closeLayerOnBack(t, { sheets, scene: current }); return; }
   const i = e.state?.i ?? 0;
-  if (current?.blockBack) { history.pushState({ i: stack.length - 1 }, '', location.hash); current.blockBack(); return; }
+  // the scene keeps Back for itself (a ritual asks first): its entry comes back, under its own name
+  // (location.hash already names the entry Back went to)
+  if (current?.blockBack) { history.pushState({ i: stack.length - 1 }, '', `#${stack[stack.length - 1]?.name || 'home'}`); current.blockBack(); return; }
   stack.length = Math.max(1, i + 1);
   const entry = stack[stack.length - 1] || { name: 'home', params: {} };
   app.go(entry.name, entry.params, { fromPop: true });
@@ -261,7 +256,9 @@ function afterAuthBoot() {
   const said = AUTH.notice ? noticeText(AUTH.notice, AUTH.ns) : null;   // an arrival names the account (shortened)
   if (said) setTimeout(() => toast(said, 3600), 500);
   // /#account (an email link, a bookmark) opens the account over the Hushfold, so Back comes home;
-  // a first sign-in on this device opens it too, to ask once about this device's guest things
+  // a first sign-in on this device opens it too, to ask once about this device's guest things.
+  // Deep links: #account is the only one honoured (sign-in builds only); any other hash
+  // (#garden, #settings, #plans, #angle…) opens the Hushfold, on purpose (docs/AUTH.md).
   if (AUTH.deepLink === 'account' || AUTH.guestChoice) app.go('account', { arrived: AUTH.notice || null });
   // signed in: supabase-js loads after the first screen, checks the session with the server,
   // then keeps in step only what the person opted into on the account screen (src/auth/autosync.js)
