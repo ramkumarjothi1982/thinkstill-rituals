@@ -408,7 +408,9 @@ async function r2screens(H) {
       while (tw.nextNode()) { const rg = document.createRange(); rg.selectNodeContents(tw.currentNode); for (const x of rg.getClientRects()) if (x.width > 0) tops.add(Math.round(x.top)); }
       const lede = document.getElementById('hm-account-lede').getBoundingClientRect();
       const box = s.parentElement.getBoundingClientRect();
-      return { text: s.textContent, lines: tops.size, inside: box.left >= lede.left - 1 && box.right <= lede.right + 1, tail: s.parentElement.textContent };
+      // the full stop sits inside the address's last piece (emailParts' tail), so it never wraps alone
+      const tail = s.querySelector('.hm-account-tail')?.textContent || '';
+      return { text: s.textContent.slice(0, s.textContent.length - tail.length), lines: tops.size, inside: box.left >= lede.left - 1 && box.right <= lede.right + 1, tail: s.parentElement.textContent };
     });
     check(addr.text === email && addr.lines === 1 && addr.inside && addr.tail === `${email}.`, `${w}: "Enter the code": the address stays on one line, with its full stop`, JSON.stringify(addr));
     await shot(p, `r2-04-code-lede-${w}`);

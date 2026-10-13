@@ -33,9 +33,12 @@
 /* an address stays in one piece: it moves to the next line whole, and only an address wider than the card breaks (at its <wbr>s after "@" and dots) */
 .hm-account-strong { display: inline-block; max-width: 100%; overflow-wrap: break-word; }
 .hm-account-strong strong { color: var(--text-1); font-weight: 700; }
+/* the "." or "," after an address sits inside its last piece (emailParts' tail), so it never wraps alone; it reads as the lede's own text */
+.hm-account-strong .hm-account-tail { color: var(--text-2); font-weight: var(--type-body-weight); }
 /* the word to type for Delete account: plainly the thing to type */
 .hm-account-word { color: var(--text-1); font-weight: 800; letter-spacing: .01em; }
 .hm-account .hm-auth-lede { overflow-wrap: break-word; }   /* an email breaks at its <wbr>s first */
+.hm-account [data-since] { text-wrap: balance; }   /* "With hushmallow since" / "13 Oct 2026.", never a lone "2026." */
 
 /* quiet text buttons (forgot password, switch screens) */
 .hm-auth-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 10px; border: 0; background: none;
