@@ -246,7 +246,9 @@ export function createAuth({
   async function quiesce(uid) {
     sealAccount(uid);
     const waits = [...quiescers].map((q) => Promise.resolve().then(() => q.pause?.()).catch(() => {}));
-    await Promise.race([Promise.all(waits), new Promise((r) => setTimeout(r, QUIESCE_MS))]);
+    let timer = 0;
+    await Promise.race([Promise.all(waits), new Promise((r) => { timer = setTimeout(r, QUIESCE_MS); })]);
+    clearTimeout(timer);
   }
   /** A deletion that failed: the account carries on as before. */
   function unquiesce(uid) {
