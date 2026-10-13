@@ -139,11 +139,14 @@ test('client: a lost response followed by a retry never duplicates the message',
   const r = await moon.sendMessage(cid, 'did this arrive?');
   assert.equal(r.ok, false);
   assert.equal(w.svc.s.messages[cid].length, 1);        // it did arrive
+  // the realtime catch-up can reconcile the lost send before anyone retries (then the outbox is already
+  // empty); either way, retrying must never create a second copy
   const item = moon.state.conversations[cid].outbox[0];
-  await moon.retry(cid, item.clientId);
+  if (item) await moon.retry(cid, item.clientId);
   await settle();
   assert.equal(w.svc.s.messages[cid].length, 1);
   assert.equal(moon.state.conversations[cid].messages.length, 1);
+  assert.equal(moon.state.conversations[cid].outbox.length, 0);
 });
 
 test('client: after a network interruption the other device catches up in order', async () => {
