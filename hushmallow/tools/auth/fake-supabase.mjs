@@ -19,13 +19,23 @@
 //        tables need the matching consent; withdrawing consent deletes them.
 // Test control (this fake only): GET /__fake/outbox, POST /__fake/reset,
 //        POST /__fake/config, POST /__fake/revoke, POST /__fake/delete-user,
-//        GET /__fake/state.
+//        POST /__fake/age-sessions, GET /__fake/state.
 // Emails are never sent: they land in the outbox with their token_hash,
-// confirmation URL and one-time code, which tests read.
+// confirmation URL and one-time code, which tests read. Each one is also
+// rendered from the real templates in supabase/templates/ (the ones the
+// owner pastes into production and the local Supabase stack sends) and
+// served by a small Mailpit-compatible API under /__fake/mailpit/api/v1/
+// (GET messages, GET message/<ID>, DELETE messages), so
+// tests/e2e/auth.e2e.mjs reads mail the same way here as from Mailpit in CI.
+// Config for that dry run (POST /__fake/config): recentLoginMs: 86400000
+// (Supabase Auth asks for the reauthentication code only when the session is
+// over 24 hours old), singleToken: true (a new link replaces the previous one
+// of its kind, as in Supabase Auth).
 import http from 'node:http';
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 const b64u = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const now = () => Date.now();
@@ -42,9 +52,26 @@ export const TABLES = Object.freeze({
 });
 const SYNCED = Object.entries(TABLES).filter(([, t]) => t.consent).map(([n]) => n);
 
+/** The email each kind of message uses (supabase/templates/, as in config.toml). */
+export const TEMPLATE_FILES = Object.freeze({ signup: 'confirmation.html', recovery: 'recovery.html', magiclink: 'magic_link.html', email_change: 'email_change.html', reauthentication: 'reauthentication.html' });
+const TEMPLATE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../supabase/templates');
+const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/**
+ * A template rendered the way Supabase Auth fills it ({{ .Name }} → vars.Name,
+ * HTML-escaped); the subject is the one named on the file's first line.
+ */
+export function renderTemplate(kind, vars) {
+  const file = TEMPLATE_FILES[kind];
+  if (!file) return { subject: '', html: '' };
+  const src = readFileSync(join(TEMPLATE_DIR, file), 'utf8');
+  const subject = (/Subject:\s*([^\n]*?)\s*-->/.exec(src) || [])[1] || '';
+  const html = src.replace(/\{\{\s*\.([A-Za-z]+)\s*\}\}/g, (_, k) => escHtml(vars[k] ?? ''));
+  return { subject, html };
+}
+
 export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirectAllow = null, log = false } = {}) {
   const secret = randomBytes(32);
-  const cfg = { autoconfirm: false, securePasswordChange: true, recentLoginMs: 0, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, down: false };
+  const cfg = { autoconfirm: false, securePasswordChange: true, recentLoginMs: 0, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, down: false, singleToken: false, reuseIntervalMs: 10_000 };
   let users, sessions, refresh, tokens, codes, outbox, rows, lastSend;
   function reset() {
     users = new Map();      // id → user
@@ -114,10 +141,16 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
     const tokenHash = (flow ? 'pkce_' : '') + createHash('sha224').update(raw).digest('hex');
     const otp = String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
     const type = kind === 'reauthentication' ? 'reauthentication' : kind;
+    // like Supabase Auth, which keeps one confirmation and one recovery token per user
+    if (cfg.singleToken) {
+      const slot = (t) => (t === 'signup' ? 'confirm' : t === 'recovery' || t === 'magiclink' ? 'recovery' : t);
+      for (const t of tokens.values()) if (t.uid === u.id && !t.used && slot(t.type) === slot(type)) t.used = true;
+    }
     tokens.set(tokenHash, { uid: u.id, type, email, exp: now() + 3600_000, used: false, flow, otp });
     const rt = allowedRedirect(redirectTo);
     const confirmationUrl = `http://${host}/auth/v1/verify?token=${tokenHash}&type=${type}&redirect_to=${encodeURIComponent(rt)}`;
-    const msg = { to: email, kind, token_hash: tokenHash, token: otp, redirect_to: rt, confirmation_url: confirmationUrl, at: now() };
+    const { subject, html } = renderTemplate(kind, { RedirectTo: rt, TokenHash: tokenHash, Token: otp, SiteURL: siteUrl, Email: u.email, NewEmail: email, ConfirmationURL: confirmationUrl });
+    const msg = { id: b64u(randomBytes(9)), to: email, kind, subject, html, token_hash: tokenHash, token: otp, redirect_to: rt, confirmation_url: confirmationUrl, at: now() };
     outbox.push(msg);
     if (kind === 'reauthentication') u.reauthNonce = { otp, exp: now() + 300_000 };
     return msg;
@@ -230,7 +263,7 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
     }
     if (log) console.log(`[fake] ${req.method} ${url.pathname}${url.search ? url.search.replace(/(token|code|token_hash|refresh_token)=[^&]+/g, '$1=…') : ''}`);
     try {
-      if (url.pathname.startsWith('/__fake/')) return control(url, body, send);
+      if (url.pathname.startsWith('/__fake/')) return control(url, body, send, req.method);
       if (cfg.down) return send(503, { message: 'down' });
       const apikey = req.headers.apikey;
       // like Supabase's gateway: email links (GET /auth/v1/verify) are opened without an API key
@@ -305,8 +338,10 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
         if (cfg.failRefresh || !r) return gerr(400, 'refresh_token_not_found', 'Invalid Refresh Token: Refresh Token Not Found');
         const s = sessions.get(r.sid);
         if (!s || s.revoked || !users.has(s.uid)) return gerr(400, 'refresh_token_not_found', 'Invalid Refresh Token: Refresh Token Not Found');
-        if (r.used) return gerr(400, 'refresh_token_already_used', 'Invalid Refresh Token: Already Used');
-        r.used = true;
+        // like Supabase Auth's refresh_token_reuse_interval (10 s): a token used a moment ago (a
+        // page that reloaded mid-refresh, two tabs at once) still gets the session's tokens
+        if (r.used && now() - r.usedAt > cfg.reuseIntervalMs) return gerr(400, 'refresh_token_already_used', 'Invalid Refresh Token: Already Used');
+        if (!r.used) { r.used = true; r.usedAt = now(); }
         return send(200, issue(r.sid));
       }
       if (grant === 'pkce') {
@@ -506,12 +541,26 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
     return perr(405, 'PGRST117', 'Unsupported HTTP method');
   }
 
-  function control(url, body, send) {
+  // the parts of Mailpit's API (https://mailpit.axllent.org/docs/api-v1/) tests/e2e/auth.e2e.mjs reads
+  const mailpitSummary = (m) => ({ ID: m.id, MessageID: `${m.id}@fake-supabase`, Read: false, From: { Name: 'hushmallow (fake)', Address: 'admin@email.com' }, To: [{ Name: '', Address: m.to }], Cc: [], Bcc: [], ReplyTo: [], Subject: m.subject, Created: new Date(m.at).toISOString(), Tags: [], Size: m.html.length, Attachments: 0, Snippet: m.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) });
+  function mailpit(p, method, send) {
+    if (p === 'api/v1/messages' && method === 'DELETE') { outbox.length = 0; return send(200, 'ok'); }
+    if (p === 'api/v1/messages') { const list = [...outbox].reverse(); return send(200, { total: list.length, unread: list.length, count: list.length, messages_count: list.length, start: 0, tags: [], messages: list.map(mailpitSummary) }); }
+    const m = /^api\/v1\/message\/([A-Za-z0-9_-]+)$/.exec(p);
+    if (m) { const msg = outbox.find((x) => x.id === m[1]); return msg ? send(200, { ...mailpitSummary(msg), Date: new Date(msg.at).toISOString(), Text: msg.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), HTML: msg.html, Inline: [], Attachments: [] }) : send(404, 'message not found'); }
+    return send(404, 'not found');
+  }
+  const userOf = (b) => (b?.uid ? users.get(String(b.uid).toLowerCase()) : [...users.values()].find((x) => x.email === String(b?.email || '').toLowerCase()));
+
+  function control(url, body, send, method = 'GET') {
     const p = url.pathname.slice('/__fake/'.length);
+    if (p.startsWith('mailpit/')) return mailpit(p.slice('mailpit/'.length), method, send);
     if (p === 'outbox') { const to = url.searchParams.get('to'); return send(200, to ? outbox.filter((m) => m.to === to.toLowerCase()) : outbox); }
     if (p === 'reset') { reset(); return send(200, { ok: true }); }
     if (p === 'config') { Object.assign(cfg, body || {}); return send(200, cfg); }
-    if (p === 'revoke') { const u = [...users.values()].find((x) => x.email === String(body?.email || '').toLowerCase()); if (u) for (const s of sessions.values()) if (s.uid === u.id) s.revoked = true; return send(200, { ok: !!u }); }
+    if (p === 'revoke') { const u = userOf(body); if (u) for (const s of sessions.values()) if (s.uid === u.id) s.revoked = true; return send(200, { ok: !!u }); }
+    // as if the user's sessions had been created `hours` ago (Supabase Auth's 24-hour rule for the reauthentication code)
+    if (p === 'age-sessions') { const u = userOf(body); const ms = Math.max(0, Number(body?.hours) || 0) * 3600_000; let n = 0; if (u) for (const s of sessions.values()) if (s.uid === u.id && !s.revoked) { s.createdAt -= ms; n++; } return send(200, { ok: !!u, sessions: n }); }
     if (p === 'delete-user') {
       const u = [...users.values()].find((x) => x.email === String(body?.email || '').toLowerCase());
       if (u) { users.delete(u.id); for (const t of Object.keys(TABLES)) rows[t] = rows[t].filter((r) => r.user_id !== u.id); for (const s of sessions.values()) if (s.uid === u.id) s.revoked = true; }
@@ -521,6 +570,8 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
       return send(200, {
         users: [...users.values()].map((u) => ({ id: u.id, email: u.email, confirmed: !!u.confirmedAt })),
         sessions: [...sessions.values()].filter((s) => !s.revoked).length,
+        sessionsByUser: [...sessions.values()].filter((s) => !s.revoked && users.has(s.uid)).reduce((o, s) => ({ ...o, [s.uid]: (o[s.uid] || 0) + 1 }), {}),
+        liveSessions: [...sessions.entries()].filter(([, s]) => !s.revoked && users.has(s.uid)).map(([sid]) => sid),
         rows: Object.fromEntries(Object.entries(rows).map(([t, list]) => [t, list.map((r) => ({ ...r }))])),
       });
     }
