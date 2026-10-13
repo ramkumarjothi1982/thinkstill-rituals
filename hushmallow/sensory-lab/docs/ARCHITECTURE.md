@@ -1,0 +1,156 @@
+# Sensory Lab architecture
+
+One shared sensory engine with thin experiences on top. The modules form a
+one-way dependency graph with no cycles:
+
+```
+features/*  ──▶ features/stage-screen ──▶ core/companion
+                                              ├─▶ core/soft-mallow ──▶ src/mallows/rig.js (production, read-only)
+                                              │        ├─▶ core/softbody ──▶ core/materials
+                                              │        ├─▶ core/mesh-renderer
+                                              │        ├─▶ core/expression-engine (deformationFace)
+                                              │        └─▶ adapters/rig-adapter (contract check)
+                                              ├─▶ core/gesture-engine
+                                              ├─▶ core/personality
+                                              ├─▶ core/expression-engine (ExpressionDirector)
+                                              └─▶ src/engine/haptics.js (production, read-only)
+lab.js ──▶ core/prefs, core/sound-engine, core/perf, features/registry
+```
+
+`core/math.js` is a leaf that everything may use. Only `soft-mallow`,
+`mesh-renderer`, `gesture-engine` (the `bindGestures` part), `companion` and
+`sound-engine` touch the DOM or Web Audio. Everything else runs in Node and is
+unit tested there.
+
+## How a squeeze happens
+
+1. **Gesture Engine.** Two pointers go down, so `squeezestart` fires; as they
+   move, `squeeze {amount, angle}` fires.
+2. **Companion.** It calls `SoftMallow.setSqueeze(amount, angle)`, plays a
+   squish sound at amount thresholds with a light haptic, and asks
+   `Personality.respond('squeezestart')` for a face.
+3. **SoftMallow.** Each frame it combines the rig's own body motion (hop,
+   squash beat, breathing, lean) with the squeeze into the soft body's *pose*,
+   steps the physics, and reads back the metrics (squash, stretch, wobble).
+4. **deformationFace().** It blends that Mallow's authored `squeezeFace`
+   (from `src/mallows/reactions.js`) into the rig's facial targets in
+   proportion to the measured compression. The face springs there through the
+   rig's existing parameter springs.
+5. **Rendering.** The rig renders its skin as before: the approved art plus
+   the animated face. SoftMallow then maps that skin through the deformed
+   mesh in WebGL, with lighting per vertex from the area change, and
+   composites it with the shadow, aura and particles.
+6. **Release.** On `squeezeend`, the squeeze is removed, the material springs
+   back with its own overshoot and damping, a release "boing" plays at the
+   squeeze's peak strength, and the personality chooses a reaction (`release`,
+   `success`, …).
+
+## Public APIs
+
+### Gesture Engine: `core/gesture-engine.js`
+- `new GestureRecognizer(emit, opts?)`: a pure state machine.
+  `down/move/up(id, x, y, tMs, onBody)`, `cancel(id, t)`, `tick(t)`.
+- Events: `contact, tap{streak, interval, steady}, doubletap, holdstart,
+  holding{dur}, holdend, dragstart, drag{dx,dy,vx,vy}, dragend{fling,
+  converted}, strokestart, stroke{speed}, strokeend, squeezestart,
+  squeeze{amount, angle}, squeezeend`.
+- `bindGestures(el, {hitTest, onGesture, onWheel?, onHover?, options?})`
+  returns `{recognizer, tick(), dispose()}`. It uses Pointer Events, pointer
+  capture, cancels iOS scrolling and the long-press menu, and uses one
+  processing clock for events and ticks.
+- Rules: a tap is emitted straight away, and a second tap within 320 ms
+  upgrades it to `doubletap`. A hold is resting for 480 ms. Moving more than
+  26 px turns a hold into a drag. Back-and-forth motion (path longer than
+  2.3× the net movement), or sweeping onto the body from outside, is a
+  stroke. A second finger turns any single-finger gesture into a squeeze.
+
+### SoftBody Physics Engine: `core/softbody.js`, `core/materials.js`
+- `new SoftBody({width, height, cols, rows, inside(u,v), material, substeps})`
+  builds an XPBD triangle mesh over the silhouette.
+- `setPose({squash, breath, lean, float, squeeze:{c, ax, ay, px}})` sets the
+  intended shape. Links and areas measure deviation from the pose.
+- `step(dt)`: 4–8 substeps with distance, bending and area constraints,
+  shape memory, finger grabs, and floor friction.
+- Interaction: `grab(id,x,y)`, `moveGrab(id,x,y)` (rubber-band limit),
+  `release(id, flingX, flingY)` returns the stretch amount, `poke(x,y,s)`,
+  `brush(x,y,vx,vy)`, `setPress(x,y,depth)`, `impulse(vx,vy)`.
+- `metrics()` returns `{squash, widen, offset, energy, area, top, bottom}`.
+- `MATERIALS`: marshmallow, jelly, mochi, cloud, pillow. Each is a set of
+  physical constants (shape stiffness, damping, compliances, gravity,
+  stretch limit, volume, dent, float) plus a sound profile.
+
+### SoftMallow (rig + physics): `core/soft-mallow.js`
+- `new SoftMallow(container, {id, material, quality, renderer, ...MallowRig opts})`
+- `softReady` resolves once the soft body is built.
+- Screen-space methods: `poke`, `grab`, `moveGrab`, `release`, `brush`,
+  `setPress`, `setSqueeze(amount, angle, cx)`, `lookAtScreen`, `hitTest`,
+  `toLocal`.
+- Settings: `setMaterial`, `setQuality('high'|'medium'|'low')`,
+  `setReducedMotion`, and `showMesh` (draws the wireframe).
+- It keeps the full MallowRig API (`setEmotion`, `react`, `setStage`…) and
+  adds the events `impact {strength}` and `settle`.
+
+### Character Personality Engine: `core/personality.js`
+- `new Personality(mallowId, {seed, style})`, with style `gentle`,
+  `balanced` or `playful`.
+- `respond(gesture, data)` returns `{react, mix, i, hold, voice, poke, tag}`
+  or `null`.
+- `tick(dt)` decays the mood. `restExpression()` returns the resting face
+  from the Mallow's mood.
+- `PROFILES`: per-Mallow overrides of a shared behaviour table. These cover
+  tap variants, the streak thresholds for giggles and dizziness, groove on a
+  steady rhythm, and answers to hold, stroke, fling and squeeze.
+- It's deterministic (seeded PRNG), never gives the same tap answer twice
+  in a row, makes no AI calls, and never claims to read the person's feelings.
+
+### Expression Engine: `core/expression-engine.js`
+- `ExpressionDirector(rig)`: `setRest({mix,i})`, `play(mix, i, holdSecs)`,
+  `clear()`, `tick(dt)`. It drives `rig.setEmotion` only when the face
+  actually changes.
+- `deformationFace(goal, {squeeze, stretch, wobble, closedEyes}, squeezeFace)`:
+  a pure function that adjusts the face from the body's shape.
+
+### Sound Engine: `core/sound-engine.js`
+- `new SoundEngine({volume, muted})`. Call `unlock()` from a user gesture;
+  nothing plays before that. Also `setMuted`, `setVolume`, `stopAll`,
+  `dispose`, `debug()`.
+- Material one-shots: `poke`, `squish`, `release`, `impact`, `settle`.
+- Continuous sounds return `{update, end}`: `stretch(mat)` and `brush()`.
+- `voice(mallowId, kind, intensity)`, where kind is `tap`, `giggle`,
+  `surprise`, `boing`, `content`, `coo`, `hum` or `grumble`. Each Mallow uses
+  the same root note and scale as its kit in `src/engine/audio.js`.
+- It is synthesised in Web Audio with no files. It has a lowpass and
+  compressor master, caps voices, rate-limits, disconnects every node, and
+  suspends when the page is hidden.
+
+### Sensory Preferences Engine (Phase 1 subset): `core/prefs.js`
+- `new Prefs(storage?, key?)`: `get`, `set` (known keys only), `all`,
+  `reset`, `onChange`, `reducedMotion()`.
+- It uses the key `hm.sensorylab.v1`. Comfort DNA (Phase 2) extends this
+  store and adds the persistence adapter interface.
+
+### Performance: `core/perf.js`
+- `initialTier(pref)` picks the starting quality from the device (pointer
+  type, cores, memory). `FrameMonitor` drops a tier when the 75th-percentile
+  frame time stays above 24 ms. It never steps back up mid-session.
+- Tiers: high is a 14×14 grid with 8 substeps and DPR 2; medium is 11×11,
+  6 substeps, DPR 1.5; low is 8×8, 4 substeps, DPR 1. WebGL is used with a
+  Canvas 2D textured-triangle fallback.
+
+### Not built yet (later phases)
+These are planned modules: Environment Engine (Phase 3), Effects Engine
+(Phase 3, which will expand the rig's ParticleField), Keepsake Renderer
+(Phase 4), and Connection Interface (Phase 5).
+
+## Integration
+
+These are the points that will change when the lab joins the main app:
+
+| Seam | Today (lab) | Later (main app) |
+|---|---|---|
+| Rig internals | `SoftMallow` subclasses `MallowRig`. The contract is listed in `adapters/rig-adapter.js` and checked at construction. | Keep the subclass, or move the mesh stage into `rig.js` as an option. Either way it's one file. |
+| Preferences | `core/prefs.js` → localStorage `hm.sensorylab.v1` | A persistence adapter for Supabase, owned by Claude 1's auth (Phase 2 defines the interface and draft table). |
+| Sound | Its own `SoundEngine` with lab settings | Share the main app's sound on/off and volume preference through an adapter. |
+| Haptics | `src/engine/haptics.js`, gated by the lab's setting | The same module. |
+| Navigation | Hash router in `lab.js` | The main app's scene router. Features already export `mount(root, ctx)` / `unmount()`. |
+| Entitlements | `features/registry.js` → `tier` (metadata only) | The main app's `entitlements.js`, with server-side verification. |
