@@ -12,6 +12,13 @@
 // With sign-in on (src/auth/), "nothing you type leaves this phone" would not
 // be true (the email and the optional name typed on the account screens are
 // kept with the account), so About names what an account keeps instead.
+//
+// About opens with what is written in advance (aboutIntro). Once Another Angle
+// is live, the perspectives Zuzu shows there are prepared by the outside
+// service, so that sentence names the exception too, from the same
+// angleLive(endpoint) as the privacy lines: both change in the same release.
+// This page never names the service, the company or the technology behind it
+// (that belongs on Another Angle's consent card, privacy sheet and delete sheet).
 
 import { resolveEndpoint } from '../beyond/endpoint.js';
 
@@ -30,6 +37,17 @@ export function angleLive(endpoint = resolveEndpoint()) { return !!endpoint; }
 /** The Plans page's Beyond note for this build. */
 export function plansBeyondNote({ endpoint = resolveEndpoint() } = {}) {
   return angleLive(endpoint) ? PLANS_BEYOND_NOTE.live : PLANS_BEYOND_NOTE.local;
+}
+
+/**
+ * Settings → About's first sentence (or two): what is written in advance. Live,
+ * the perspectives Another Angle prepares are named as the one exception.
+ * Plain text; Settings marks the brand in it.
+ */
+export function aboutIntro({ endpoint = resolveEndpoint(), beyond = 'hushmallow Beyond' } = {}) {
+  return angleLive(endpoint)
+    ? `Every Mallow line, world and ritual in hushmallow is written in advance, except the perspectives Another Angle prepares in ${beyond} after you say yes. Feelings are matched with fixed word lists: you always choose what fits.`
+    : 'Every Mallow line, world and ritual in hushmallow is written in advance, and feelings are matched with fixed word lists: you always choose what fits.';
 }
 
 /**

@@ -45,6 +45,42 @@ globalThis.requestAnimationFrame ||= (fn) => setTimeout(fn, 0);
 const text = (n) => (typeof n === 'string' ? n : n.nodeType === 3 ? n.textContent : (n.children || []).map(text).join(''));
 const classes = (n) => (n?.attrs?.class || '').split(/\s+/).filter(Boolean);
 
+// ------------------------------------------------------------------ 1 --
+test('About: the written-in-advance sentence comes from privacy.js and names Another Angle\'s perspectives once it is live', async () => {
+  const P = await import('../src/app/privacy.js');
+  const { resolveEndpoint } = await import('../src/beyond/endpoint.js');
+  const LIVE = 'https://hushmallow-another-angle.vibyfy-chat.workers.dev';
+  // not live (this branch's ANGLE_ENDPOINT may be empty): the sentence as it always read
+  const local = P.aboutIntro({ endpoint: null });
+  assert.equal(local, 'Every Mallow line, world and ritual in hushmallow is written in advance, and feelings are matched with fixed word lists: you always choose what fits.');
+  // live: the exception, in plain words, in the same release as the privacy lines (one angleLive(endpoint))
+  const live = P.aboutIntro({ endpoint: LIVE });
+  assert.equal(live, 'Every Mallow line, world and ritual in hushmallow is written in advance, except the perspectives Another Angle prepares in hushmallow Beyond after you say yes. Feelings are matched with fixed word lists: you always choose what fits.');
+  assert.equal(P.aboutIntro({ endpoint: LIVE, beyond: 'Beyond' }).includes('prepares in Beyond after you say yes'), true, 'the plan name Settings passes');
+  // the same switch as the privacy lines: both change together, from the endpoint
+  for (const endpoint of [null, LIVE]) {
+    assert.equal(P.aboutIntro({ endpoint }).includes('except the perspectives'), P.angleLive(endpoint));
+    assert.equal(P.aboutPrivacy({ endpoint }).includes('The one exception is Another Angle'), P.angleLive(endpoint));
+  }
+  // with no argument: this build's resolveEndpoint(), like aboutPrivacy()
+  assert.equal(P.aboutIntro(), P.aboutIntro({ endpoint: resolveEndpoint() }));
+  // the technology and the company are named only on the consent card, privacy sheet and delete sheet, never here
+  for (const endpoint of [null, LIVE]) for (const signIn of [false, true]) {
+    const about = `${P.aboutIntro({ endpoint })} ${P.aboutPrivacy({ endpoint, signIn })}`;
+    assert.doesNotMatch(about, /\bAI\b|Anthropic|\bmodels?\b|Claude/i, about);
+  }
+  // Settings uses it (and keeps no copy of the sentence), with the brand marked
+  const settings = read('src/app/scenes/settings.js');
+  assert.match(settings, /\.\.\.withBrand\(aboutIntro\(\{ beyond: PLANS\.ultra\?\.name \|\| 'hushmallow Beyond' \}\)\)/);
+  assert.doesNotMatch(settings, /'Every Mallow line|' is written in advance/, 'no copy of its own');
+  const { withBrand } = await import('../src/ui/type.js');
+  const parts = withBrand(live);
+  assert.equal(parts.map(text).join(''), live, 'the words unchanged');
+  const marks = parts.filter((p) => typeof p !== 'string');
+  assert.equal(marks.length, 2, 'hushmallow, and hushmallow Beyond');
+  for (const m of marks) { assert.deepEqual(classes(m), ['brand-name']); assert.equal(text(m), 'hushmallow'); }
+});
+
 // ------------------------------------------------------------------ 2 --
 test('account: the full stop after an address is glued to its last piece, never alone on a line', async () => {
   const { emailParts } = await import('../src/app/scenes/account.js');

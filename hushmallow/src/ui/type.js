@@ -118,6 +118,11 @@ export function brandMark(text = brandName, attrs = {}) {
   return h('span', { class: 'brand-name', translate: 'no', ...attrs }, text);
 }
 
+/** Plain copy with every "hushmallow" in it marked as the brand (brandMark). For h(…, ...withBrand(text)). */
+export function withBrand(text) {
+  return String(text).split(new RegExp(`\\b(${brandName})\\b`)).filter(Boolean).map((part) => (part === brandName ? brandMark(part) : part));
+}
+
 /** The approved logo artwork. tone 'light' for dark grounds, 'ink' for light.
  *  width: px number or any CSS length; the attributes reserve the 1540×289
  *  aspect ratio so nothing shifts when it loads. `sizes` (for srcset) is the
