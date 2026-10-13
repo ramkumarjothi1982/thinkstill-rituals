@@ -65,6 +65,7 @@ export const NOTICE_TEXT = Object.freeze({
   'password-updated': 'Your new password is saved.',
   'email-changed': 'Your new email address is confirmed.',
   'device-cleared': 'This device’s copy of your things is removed.',
+  'guest-kept': 'This device’s guest things are with your account here now.',
 });
 
 export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, ls = safe(() => globalThis.localStorage) } = {}) {
@@ -102,6 +103,29 @@ export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, 
       return loading;
     },
     onChange(fn) { listeners.add(fn); const off = real?.onChange(fn); return () => { listeners.delete(fn); off?.(); }; },
+    /** The opt-in sync while the app runs (src/auth/autosync.js), once start() has run; null for guests. */
+    autosync: null,
+    /**
+     * Signed in: load the client, check the session with the server, then
+     * keep whatever the person opted into in step (src/auth/autosync.js).
+     * Resolves the client. Guests: nothing loads; resolves null.
+     */
+    start({ store, prefs } = {}) {
+      if (!enabled || ns.mode !== 'account') return Promise.resolve(null);
+      if (!starting) {
+        starting = handle.load().then(async (a) => {
+          await a.init();
+          if (a.status() === 'signed-in' && store && prefs) {
+            const m = await import('./autosync.js');
+            handle.autosync = m.startAutoSync({ auth: a, store, prefs });
+            handle.autosync.syncNow().catch(() => {});
+          }
+          return a;
+        }).catch((e) => { starting = null; throw e; });
+      }
+      return starting;
+    },
   };
+  let starting = null;
   return handle;
 }

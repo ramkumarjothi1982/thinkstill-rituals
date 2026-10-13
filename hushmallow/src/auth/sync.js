@@ -189,6 +189,54 @@ export function mergeProgress(local, remote) {
   return remote.savedAt > local.savedAt ? remote : local;
 }
 
+// ----------------------------------------------- three-way (with a base) --
+// The base is what this device and the account agreed on at the last sync
+// (ids and a time only, kept in this account's namespace under auth.sync).
+// Without it (the first sync on a device) the merges are unions. With it, a
+// world un-starred or a tool let go on either side since then stays gone,
+// instead of coming back from the other side.
+
+/** Favourite ids: kept when both sides have them, or when the side that has them added them since the base. */
+export function mergeFavourites3(local, remote, base) {
+  if (!Array.isArray(base)) return mergeFavourites(local, remote);
+  const L = (local || []).filter(isWorld), R = (remote || []).filter(isWorld);
+  const inL = new Set(L), inR = new Set(R), inB = new Set(base.filter(isWorld));
+  const keep = (id) => (inL.has(id) && inR.has(id)) || !inB.has(id);
+  return [...new Set([...L, ...R])].filter(keep).slice(0, MAX_FAVOURITES);
+}
+
+/** Memory Garden: the same rule by tool id; a tool on both sides merges as mergeGarden does. */
+export function mergeGarden3(local, remote, baseIds) {
+  const merged = mergeGarden(local, remote);
+  if (!Array.isArray(baseIds)) return merged;
+  const a = local?.skills || {}, b = remote?.skills || {}, inB = new Set(baseIds.filter(isSkill));
+  const skills = {};
+  for (const [id, e] of Object.entries(merged.skills)) if ((a[id] && b[id]) || !inB.has(id)) skills[id] = e;
+  return { v: 1, skills };
+}
+
+/**
+ * Hushflow pause: the newer one; a pause that was there at the base and is
+ * now gone on one side (finished or let go there) is gone, unless the other
+ * side paused again since (its savedAt is after the base).
+ */
+export function mergeProgress3(local, remote, baseAt) {
+  if (!Number.isFinite(baseAt) || baseAt <= 0) return mergeProgress(local, remote);
+  if (local && remote) return mergeProgress(local, remote);
+  const only = local || remote;
+  if (!only) return null;
+  return only.savedAt > baseAt ? only : null;
+}
+
+/** The base to remember after a sync: ids and one time, nothing else. */
+export function libraryBase({ favourites = [], garden = null, progress = null } = {}) {
+  return {
+    favourites: (favourites || []).filter(isWorld).slice(0, MAX_FAVOURITES),
+    garden: Object.keys(garden?.skills || {}).filter(isSkill).slice(0, MAX_SKILLS),
+    progressAt: progress && Number.isFinite(progress.savedAt) ? progress.savedAt : null,
+  };
+}
+
 /** Every column name sync may ever write, per table (tests compare these with the SQL). */
 export const SYNC_COLUMNS = Object.freeze({
   preferences: Object.freeze(['user_id', ...Object.values(PREF_COLUMNS)]),

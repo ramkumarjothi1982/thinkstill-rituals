@@ -29,7 +29,12 @@ export const ACCOUNT_PREFIX = `${PREFIX}u:`;
 export const DEVICE_KEYS = Object.freeze(['entitlement', 'beyond.device', 'beyond.session', 'beyond.invite', 'sound', 'haptics']);
 /** Account-level, but only bookkeeping: on their own they are not "guest things" worth asking about. */
 export const INTERNAL_KEYS = Object.freeze(['rotation', 'hushfold.rotation', 'hushflow.rotation', 'hushfold.lines', 'beyond.seen', 'beyond.visits']);
-/** Per account, on this device: { v, createdAt, guestChoice: 'keep'|'fresh'|'none'|null, choiceAt }. */
+/**
+ * Per account, on this device: { v, createdAt, guestChoice, choiceAt }.
+ * guestChoice: 'keep' | 'fresh' (the "Not now" answer: the account screen
+ * offers to bring them in later) | 'none' (nothing to ask about) | 'cleared'
+ * (after "Remove this device's data") | null (still to ask).
+ */
 export const MARKER_KEY = 'auth.local';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUid = (s) => typeof s === 'string' && UUID_RE.test(s);
@@ -91,12 +96,17 @@ export function createNamespacedStore({ ns, backend = 'auto' } = {}) {
   const device = createStore({ backend, protect: [ACCOUNT_PREFIX] });
   const acct = createStore({ backend, prefix: ns.prefix });
   const pick = (k) => (isDeviceKey(k) ? device : acct);
+  // the opt-in sync (src/auth/autosync.js) hears which keys this page wrote
+  const writes = new Set();
+  const wrote = (k) => { for (const fn of [...writes]) { try { fn(k); } catch (e) { console.warn('[store]', e); } } };
   return {
     namespace: ns,
     get persistent() { return acct.persistent; },
     get: (k, fallback = null) => pick(k).get(k, fallback),
-    set: (k, v) => pick(k).set(k, v),
-    remove: (k) => pick(k).remove(k),
+    set: (k, v) => { const r = pick(k).set(k, v); wrote(k); return r; },
+    remove: (k) => { const r = pick(k).remove(k); wrote(k); return r; },
+    /** fn(key) after every set / remove through this store (not other tabs). Returns an unsubscribe. */
+    onWrite(fn) { writes.add(fn); return () => writes.delete(fn); },
     clearAll() {
       const marker = acct.get(MARKER_KEY, null);
       acct.clearAll();

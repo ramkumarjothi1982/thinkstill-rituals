@@ -258,9 +258,10 @@ function afterAuthBoot() {
   // /#account (an email link, a bookmark) opens the account over the Hushfold, so Back comes home;
   // a first sign-in on this device opens it too, to ask once about this device's guest things
   if (AUTH.deepLink === 'account' || AUTH.guestChoice) app.go('account', { arrived: AUTH.notice || null });
-  // signed in: supabase-js loads after the first screen and checks the session with the server
+  // signed in: supabase-js loads after the first screen, checks the session with the server,
+  // then keeps in step only what the person opted into on the account screen (src/auth/autosync.js)
   if (AUTH.ns.mode === 'account') {
-    const start = () => app.auth.load().then((a) => a.init()).catch((e) => console.warn('[auth]', e?.code || e?.message || e));
+    const start = () => app.auth.start({ store, prefs }).catch((e) => console.warn('[auth]', e?.code || e?.message || e));
     if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2500 }); else setTimeout(start, 1200);
   }
 }

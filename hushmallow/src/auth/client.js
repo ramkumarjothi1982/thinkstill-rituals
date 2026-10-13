@@ -38,7 +38,7 @@
 // are never used.
 
 import { friendlyError, checkEmail, checkPassword } from './errors.js';
-import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, MARKER_KEY } from './namespace.js';
+import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, MARKER_KEY } from './namespace.js';
 import * as S from './sync.js';
 import { FLOW_KEYS } from '../engine/flow-store.js';
 import { GARDEN_KEY } from '../engine/garden.js';
@@ -487,11 +487,30 @@ export function createAuth({
     removeDeviceData() {
       if (mode !== 'account') return { ok: false };
       const n = removeAccountData(ls, bootUid);
-      safe(() => ls.setItem(`hm2:u:${bootUid}:${MARKER_KEY}`, JSON.stringify({ v: 1, createdAt: now(), guestChoice: 'fresh', choiceAt: now() })));
+      safe(() => ls.setItem(`hm2:u:${bootUid}:${MARKER_KEY}`, JSON.stringify({ v: 1, createdAt: now(), guestChoice: 'cleared', choiceAt: now() })));
       notice('device-cleared');
       settled = true;
       onReload({ reason: 'device-cleared', urgent: true, hash: '#account' });
       return { ok: true, removed: n };
+    },
+
+    /**
+     * The guest's things on this device that this account said "Not now" to
+     * at its first sign-in here: true when there are some to bring in.
+     */
+    get guestDataWaiting() {
+      if (mode !== 'account') return false;
+      const m = readMarker(ls, bootUid);
+      return !!m && m.guestChoice === 'fresh' && guestHasData(ls);
+    },
+    /** "Bring in this phone's guest things": copies them into this account's namespace (local only), then reloads. */
+    importGuestData() {
+      if (mode !== 'account' || settled) return { ok: false };
+      const r = applyGuestChoice(ls, bootUid, 'keep', now());
+      notice('guest-kept');
+      settled = true;
+      onReload({ reason: 'guest-kept', urgent: true, hash: '#account' });
+      return { ok: true, ...r };
     },
 
     profile: {
@@ -556,8 +575,9 @@ export function createAuth({
       async pushPreferences(prefsAll) {
         return asOwner('sync', async ({ c, uid }) => {
           await gate(c, uid, 'settings');
-          const { error } = await c.from('preferences').upsert({ user_id: uid, ...S.prefsToRow(prefsAll) }, { onConflict: 'user_id' });
-          return error ? fail(friendlyError(error, 'sync')) : { ok: true };
+          const { data, error } = await c.from('preferences').upsert({ user_id: uid, ...S.prefsToRow(prefsAll) }, { onConflict: 'user_id' }).select('user_id,updated_at').maybeSingle();
+          if (error) return fail(friendlyError(error, 'sync'));
+          return { ok: true, updatedAt: own(data, uid)[0]?.updated_at || null };
         });
       },
       async pullPreferences() {
@@ -566,7 +586,7 @@ export function createAuth({
           const { data, error } = await c.from('preferences').select('*').eq('user_id', uid).maybeSingle();
           if (error) return fail(friendlyError(error, 'sync'));
           const r = own(data, uid)[0];
-          return { ok: true, prefs: r ? S.rowToPrefs(r) : null };
+          return { ok: true, prefs: r ? S.rowToPrefs(r) : null, updatedAt: r?.updated_at || null };
         });
       },
       async pushLibrary({ favourites, garden, progress } = {}) {
@@ -613,42 +633,77 @@ export function createAuth({
       },
       /**
        * Brings this device and the account together, for whatever the person
-       * opted into: settings (the account's copy wins the first time on a
-       * device, this device's after that) and the library (favourites and
-       * Memory Garden merged, the newer Hushflow pause wins). store: app.store.
+       * opted into (store: app.store, prefs: app.prefs).
+       *   settings  the newer side wins, by the server's own clock: the
+       *             account's copy when another device changed it since this
+       *             one last synced (and nothing changed here), else this
+       *             device's (meta.prefsDirty is set by src/auth/autosync.js
+       *             when a setting changes here). First time on a device: the
+       *             account's copy, if there is one.
+       *   library   favourites, Memory Garden and the Hushflow pause merged
+       *             three ways against what both sides had at the last sync
+       *             (sync.js mergeFavourites3 / mergeGarden3 / mergeProgress3),
+       *             so a removal on either side stays removed.
+       * A switch that is off forgets its bookkeeping (turning it on again
+       * starts from this device). opts.quietly(fn) runs the local writes
+       * (autosync uses it so its own writes are not taken for changes).
        */
-      async syncNow(store, prefs) {
+      async syncNow(store, prefs, { quietly = (fn) => fn() } = {}) {
         const r = await api.consents.get();
         if (!r.ok) return r;
-        const out = { ok: true, settings: false, library: false };
-        const meta = store.get('auth.sync', null) || {};
+        const out = { ok: true, settings: false, library: false, applied: [], changed: [] };
+        const meta = { ...(store.get('auth.sync', null) || {}) };
+        const t = (iso) => { const v = Date.parse(iso || ''); return Number.isFinite(v) ? v : 0; };
         if (r.consents.settings.on && prefs) {
-          if (!meta.prefsAt) {
-            const pulled = await api.sync.pullPreferences();
-            if (!pulled.ok) return pulled;
-            for (const [k, v] of Object.entries(pulled.prefs || {})) if (prefs.get(k) !== v) prefs.set(k, v);
+          const pulled = await api.sync.pullPreferences();
+          if (!pulled.ok) return pulled;
+          const serverAt = t(pulled.updatedAt), seen = Number(meta.prefsServerAt) || 0;
+          if (pulled.prefs && serverAt > seen && !meta.prefsDirty) {
+            quietly(() => { for (const [k, v] of Object.entries(pulled.prefs)) if (prefs.get(k) !== v) { prefs.set(k, v); out.applied.push(k); } });
+            meta.prefsServerAt = serverAt;
+          } else if (!pulled.prefs || meta.prefsDirty || !seen) {
+            const pushed = await api.sync.pushPreferences(prefs.all());
+            if (!pushed.ok) return pushed;
+            meta.prefsServerAt = t(pushed.updatedAt) || serverAt || now();
+            out.changed.push('preferences');
           }
-          const pushed = await api.sync.pushPreferences(prefs.all());
-          if (!pushed.ok) return pushed;
+          delete meta.prefsDirty;
           meta.prefsAt = now(); out.settings = true;
-        }
+        } else { delete meta.prefsServerAt; delete meta.prefsDirty; delete meta.prefsAt; }
         if (r.consents.library.on) {
           const pulled = await api.sync.pullLibrary();
           if (!pulled.ok) return pulled;
+          const base = meta.library && typeof meta.library === 'object' ? meta.library : null;
           const favRec = store.get(FLOW_KEYS.favourites, null);
           const localFav = favRec?.v === 1 && Array.isArray(favRec.ids) ? favRec.ids : [];
-          const favourites = S.mergeFavourites(localFav, pulled.favourites);
-          const garden = S.mergeGarden(store.get(GARDEN_KEY, null), pulled.garden);
-          const localProg = store.get(FLOW_KEYS.progress, null);
-          const progress = S.mergeProgress(localProg?.v === 1 ? localProg : null, pulled.progress);
-          store.set(FLOW_KEYS.favourites, { v: 1, ids: favourites });
-          store.set(GARDEN_KEY, garden);
-          if (progress && progress !== localProg) store.set(FLOW_KEYS.progress, progress);
-          const pushed = await api.sync.pushLibrary({ favourites, garden, progress });
-          if (!pushed.ok) return pushed;
+          const localGarden = store.get(GARDEN_KEY, null);
+          const localProgRec = store.get(FLOW_KEYS.progress, null);
+          const localProg = localProgRec?.v === 1 ? localProgRec : null;
+          const favourites = S.mergeFavourites3(localFav, pulled.favourites, base?.favourites);
+          const garden = S.mergeGarden3(localGarden, pulled.garden, base?.garden);
+          const progress = S.mergeProgress3(localProg, pulled.progress, base?.progressAt);
+          const same = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
+          quietly(() => {
+            if (!same(favourites, localFav)) { store.set(FLOW_KEYS.favourites, { v: 1, ids: favourites }); out.applied.push(FLOW_KEYS.favourites); }
+            if (!same(S.gardenToRows(garden), S.gardenToRows(localGarden))) { store.set(GARDEN_KEY, garden); out.applied.push(GARDEN_KEY); }
+            if (progress !== localProg) {
+              if (progress) store.set(FLOW_KEYS.progress, progress); else store.remove(FLOW_KEYS.progress);
+              out.applied.push(FLOW_KEYS.progress);
+            }
+          });
+          const upload = {};
+          if (!same(favourites, pulled.favourites)) upload.favourites = favourites;
+          if (!same(S.gardenToRows(garden), S.gardenToRows(pulled.garden))) upload.garden = garden;
+          if (!same(S.progressToRow(progress), S.progressToRow(pulled.progress))) upload.progress = progress;
+          if (Object.keys(upload).length) {
+            const pushed = await api.sync.pushLibrary(upload);
+            if (!pushed.ok) return pushed;
+            out.changed.push(...Object.keys(upload));
+          }
+          meta.library = S.libraryBase({ favourites, garden, progress });
           meta.libraryAt = now(); out.library = true;
-        }
-        store.set('auth.sync', meta);
+        } else { delete meta.library; delete meta.libraryAt; }
+        quietly(() => store.set('auth.sync', meta));
         return out;
       },
     },
