@@ -141,6 +141,56 @@ for (const [W, H, from] of [[390, 844, 'beside'], [320, 568, 'beside'], [390, 84
   });
 }
 
+// H2/H3 review r2: a finger carries the layer's thought onto Glitzi (into the hero's keep-out) and lets go there. While it
+// is held the layer draws it under the finger; the storm follows what is drawn (it never holds its own place for it
+// elsewhere), so letting go never snaps it back: it eases out of the keep-out from where it is seen.
+for (const [W, H] of [[390, 844], [320, 568]]) {
+  test(`storm ${W}×${H}: dragged onto Glitzi and let go, the thought travels on from where it was drawn — no snap back (≤ STEP_PX a frame)`, async () => {
+    const r = W < 360 ? 32 : 38;
+    const h = layerThought({ x: W * 0.3, y: H * 0.4, r });
+    // the layer's carry: under a finger the handle moves itself after the world's step, towards the finger (with a lag)
+    const finger = { on: false, x: 0, y: 0 };
+    h.hitTest = (x, y) => Math.hypot(x - h.x, y - h.y) < h.r * 1.2;
+    h.pressed = false;
+    h.pointer = (e) => { if (e.type === 'down') { finger.on = true; h.pressed = true; } if (e.type === 'up' || e.type === 'cancel') { finger.on = false; h.pressed = false; } finger.x = e.x; finger.y = e.y; return true; };
+    const run = await play('static-storm', h, { W, H, photos: { n: 4, draw: () => ({ w: 1, h: 1 }), size: (i, k, s) => ({ w: Math.round(s * 0.78), h: Math.round(s) }) } });
+    try {
+      const { D, hero } = run;
+      for (let i = 0; i < 60 * 5; i++) D.debug.step(1 / 60);   // at its place in the storm
+      const drawnPos = [];
+      const layerFrame = () => {
+        if (finger.on) {
+          const dx = finger.x - h.x, dy = finger.y - h.y, d = Math.hypot(dx, dy), lag = 0.6 * r;
+          const k = d > lag ? (d - lag) / d : 0.35;
+          h.x += dx * k; h.y += dy * k;
+        }
+        drawnPos.push({ x: h.x, y: h.y, held: finger.on });
+      };
+      // carry it from where it is down onto Glitzi's head, in 40 frames, and hold it there 30 frames
+      const x0 = h.x, y0 = h.y, x1 = hero.left + hero.width * 0.4, y1 = hero.top + hero.height * 0.3;
+      let t = 1000;
+      D.pointer({ type: 'down', id: 7, x: x0, y: y0, t, pointerType: 'touch' });
+      for (let i = 1; i <= 70; i++) {
+        const k = Math.min(1, i / 40);
+        t += 1000 / 60;
+        D.pointer({ type: 'move', id: 7, x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k + (i % 2) * 0.3, t, pointerType: 'touch' });
+        D.debug.step(1 / 60); layerFrame();
+      }
+      const atUp = drawnPos[drawnPos.length - 1];
+      assert.ok(Math.hypot(atUp.x - x1, atUp.y - y1) < 0.6 * r + 2, `held, it is drawn under the finger (${Math.round(atUp.x)}, ${Math.round(atUp.y)} vs ${Math.round(x1)}, ${Math.round(y1)})`);
+      D.pointer({ type: 'up', id: 7, x: x1, y: y1, t: t + 16, pointerType: 'touch' });
+      const from = drawnPos.length - 1;
+      for (let i = 0; i < 60 * 6; i++) { D.debug.step(1 / 60); layerFrame(); }
+      let worst = 0, at = -1;
+      for (let i = from + 1; i < drawnPos.length; i++) { const a = drawnPos[i - 1], b = drawnPos[i], d = Math.hypot(b.x - a.x, b.y - a.y); if (d > worst) { worst = d; at = i - from; } }
+      assert.ok(worst <= 10.5, `after letting go the largest step is ${worst.toFixed(1)} px (frame ${at} after the finger left); STEP_PX is 10`);
+      // and it does come off Glitzi again, to its place
+      const e = h.extent({}), top = hero.top - Math.max(12, hero.height * 0.12);
+      assert.ok(!(e.right > hero.left + 2 && e.left < hero.right - 2 && e.bottom > top + 2 && e.top < hero.bottom), `6 s later it is off Glitzi (${Math.round(h.x)}, ${Math.round(h.y)})`);
+    } finally { run.done(); }
+  });
+}
+
 test('storm 320×568: the shell\'s garden card below the thought (ctx.keepOut) moves it up out of the way — into the quiet band if that is the only room — gently, on screen', async () => {
   const W = 320, H = 568, hero = heroBox(W, H);
   const h = layerThought({ x: 86, y: 237, r: 32 });

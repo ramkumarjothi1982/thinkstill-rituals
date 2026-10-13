@@ -66,6 +66,8 @@ const BAND_ATT = 0.3, BAND_FEATHER = 24;
 // back over YIELD_BACK_SEC once the card lets go); the screen edges and the hero's keep-out push it at most KEEP_PX;
 // and what is shown never steps more than STEP_PX a frame unless a finger carries it.
 // On its way to its planned place (at most JOURNEY_SEC) it does not give way to postcards: they make way for it.
+// A thought its layer draws (W2's ThoughtMallow) is carried by its layer under a finger: the storm then follows
+// where it is drawn (nothing pushes it while it is held), and when the finger lets go it travels on from there.
 const YIELD_PX = 6, KEEP_PX = 10, STEP_PX = 10, YIELD_BACK_SEC = 2.5, JOURNEY_SEC = 4;
 
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
@@ -160,6 +162,7 @@ export function create(ctx) {
   const tYield = { x: 0, y: 0 };      // how far its rest place has given way to postcards (and edges) it could not move
   let tYieldHit = false;              // pressed on this frame (the give-way drifts back only once nothing presses)
   const tShown = { x: 0, y: 0, ok: false };   // where it was last shown (the step guard's reference)
+  const tPut = { x: 0, y: 0, wob: 0, ok: false };   // what the storm last wrote to the handle (its bob included)
   let tTakenAt = 0;                   // when the storm took this thought (its keep-out eases in from there)
   let tJourney = -1;                  // when it set off for its planned place (-1: it is there): postcards make way
                                       // for it on the way rather than push it back (its words then sit as planned)
@@ -238,6 +241,7 @@ export function create(ctx) {
       seededFor = thought;
       const hx = thought.x, hy = thought.y;
       if (Number.isFinite(hx) && Number.isFinite(hy) && (hx || hy)) { tSpring.set(hx, hy); tShown.x = hx; tShown.y = hy; tShown.ok = true; }
+      tPut.ok = false;
       tTakenAt = elapsed;
     }
     // (a new plan: the thought's place is the planned one again — and if it is not there yet, it travels there)
@@ -483,7 +487,8 @@ export function create(ctx) {
       if (tr.n < 28) tr.n++; else tr.head = (tr.head + 1) % 28;
       if (f.onThought) {
         try { thought?.pointer?.(s); } catch { /* optional */ }
-        tSpring.to(s.x, s.y);
+        // (a thought its layer draws is carried by its layer: the storm follows where it is drawn, updateThought)
+        if (!layerDrawn()) tSpring.to(s.x, s.y);
         if (k > 0) { tCharge = Math.min(1.3, tCharge + 0.25 * k * Math.hypot(s.x - x0, s.y - y0) / U); tWobble.kick(0.25 * k); tFizz = Math.min(1, tFizz + 0.3 * k); }
       }
       if (k > 0) {
@@ -508,7 +513,12 @@ export function create(ctx) {
     }
     if (s.type === 'up' || s.type === 'cancel') {
       if (f.line) endLine(f, true);
-      if (f.onThought) { tSpring.to(restX(), restY()); try { thought?.pointer?.(s); thought?.react?.('release'); } catch { /* optional */ } }
+      if (f.onThought) {
+        // (a thought its layer carried goes on from where it is drawn now: the step guard eases it home from there)
+        if (layerDrawn() && tPut.ok && Number.isFinite(thought.x) && Number.isFinite(thought.y)) tSpring.set(thought.x, thought.y - tPut.wob);
+        tSpring.to(restX(), restY());
+        try { thought?.pointer?.(s); thought?.react?.('release'); } catch { /* optional */ }
+      }
       f.on = false; f.id = -1; f.onThought = false; f.pulse.on = false; f.tracker.end();
       liftAt = elapsed;
       if (!fingers.some((q) => q.on)) stopGroundHold();
@@ -847,6 +857,10 @@ export function create(ctx) {
   function restX() { return clamp(tAnchor.x + tYield.x, EDGE + tR, Math.max(EDGE + tR, W - EDGE - tR)); }
   function restY() { return clamp(tAnchor.y + tYield.y, EDGE + tR, Math.max(EDGE + tR, H - EDGE - tR)); }
   const carried = () => fingers.some((f) => f.on && f.onThought);
+  /** W2's ThoughtMallow on its ThoughtLayer (it is drawn there, and a finger carries it there); not the 2D placeholder. */
+  const layerDrawn = () => !!thought && typeof thought.extent === 'function';
+  /** Held under a finger and carried by its own layer: the storm follows it (it never pushes it out of the finger). */
+  const heldByLayer = () => carried() && layerDrawn();
   /** Close enough to its rest place to count as there (its journey over). */
   function arrivedAt(x, y) { return Math.hypot(x - restX(), y - restY()) <= Math.max(6, 0.4 * tR); }
   /**
@@ -867,7 +881,7 @@ export function create(ctx) {
    * (so the spring does not pull it straight back out).
    */
   function keepThoughtIn(dt) {
-    if (!thought) return;
+    if (!thought || heldByLayer()) return;
     const B = liveShape?.body, x = tSpring.x, y = tSpring.y;
     const bx0 = B ? x + B.x0 : x - tR, bx1 = B ? x + B.x1 : x + tR, by0 = B ? y + B.y0 : y - tR, by1 = B ? y + B.y1 : y + tR;
     let mx = 0, my = 0;
@@ -916,13 +930,25 @@ export function create(ctx) {
   }
 
   function updateThought(dt, now) {
+    // where its layer really drew it (it may have moved it: a finger carrying it): the step guard's reference, and —
+    // while a finger holds it — the storm's own place for it, so the finger letting go never snaps it back to a
+    // place the storm kept for it meanwhile (the hero's keep-out, a postcard): it travels on from where it is seen
+    // (not while it melts away: the incoming world may be writing it then)
+    const held = heldByLayer();
+    if (thought && tPut.ok && layerDrawn() && !(outroK > 0)) {
+      const dx = thought.x, dy = thought.y - tPut.wob;
+      if (Number.isFinite(dx) && Number.isFinite(dy)) {
+        tShown.x = dx; tShown.y = dy; tShown.ok = true;
+        if (held) tSpring.set(dx, dy);
+      }
+    }
     if (!carried() && dt > 0) {
       // its rest place drifts back to the planned one once nothing presses on it
       if (!tYieldHit) { const k = Math.exp(-dt / YIELD_BACK_SEC); tYield.x *= k; tYield.y *= k; }
       tSpring.to(restX(), restY());
     }
     tYieldHit = false;
-    tSpring.update(dt);
+    if (!held) tSpring.update(dt);
     if (dt > 0) keepThoughtIn(dt);
     const wob = tWobble.update(dt);
     const local = field.local(tSpring.x, tSpring.y, 2.5);
@@ -954,6 +980,7 @@ export function create(ctx) {
       }
       tShown.x = nx; tShown.y = ny; tShown.ok = true;
       thought.x = nx; thought.y = ny + wob * 3; thought.scale = tDrawS;
+      tPut.x = nx; tPut.y = ny + wob * 3; tPut.wob = wob * 3; tPut.ok = true;
       // its words hang under it, as the storm plans them
       thought.labelSide = 'below';
       const st = thought.state || (thought.state = {});
@@ -1079,7 +1106,7 @@ export function create(ctx) {
    */
   function thoughtYields(dt) {
     if (!(plan?.thought || liveShape)) return;
-    if (journeying()) return;
+    if (journeying() || heldByLayer()) return;
     const x0 = tSpring.x, y0 = tSpring.y;
     for (let it = 0; it < 2; it++) for (const c of cards) {
       if (c.alpha < 0.35) continue;
