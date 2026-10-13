@@ -127,6 +127,8 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
   transition: opacity 360ms var(--hf-ease), transform 360ms var(--hf-ease); }
 .hf-subctl.is-hidden { opacity: 0; transform: translateY(-4px); pointer-events: none !important; visibility: hidden; }
 .hushfold.hf-tight .hf-subctl { display: none; }
+/* the garden installation pauses the lines for its moment: that is not the person's pause, so no ▶ pill (and the card has the room) */
+.hushfold.hf-install-quiet .hf-subctl { visibility: hidden !important; pointer-events: none !important; }
 .hf-subctl.idle { opacity: 0.5; }
 .hf-subs.bright .hf-subctl { background: rgba(14, 10, 36, 0.74); opacity: 0.92; }
 .hf-subs.bright .hf-subctl.idle { opacity: 0.7; }
