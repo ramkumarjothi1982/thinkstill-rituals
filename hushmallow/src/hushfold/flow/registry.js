@@ -121,6 +121,8 @@ const STATIC_STORM = {
   },
   playtest: { results: [], note: 'Not yet playtested with real users.' },
   status: STATUS.PLAYABLE,
+  // a gentle session (after something heavy was shared) never plays it: charge, glitches and bolts
+  calm: false,
   fits: {
     emotions: { angry: 1, frustrated: 1, restless: 0.9, overwhelmed: 0.75, anxious: 0.6, other: 0.5, sad: 0.2, lonely: 0.15 },
     intentions: { calm: 1, steady: 0.8, play: 0.7, 'let-go': 0.6, distract: 0.5 },
@@ -215,6 +217,11 @@ const LUMINOUS_OCEAN = {
   },
   playtest: { results: [], note: 'Built 12 Oct; browser-checked with CDP touch (Chromium/SwiftShader). Not yet playtested with real users or on a phone.' },
   status: STATUS.PLAYABLE,
+  // the one world a gentle session plays (no words, no charge: open water at its own pace)
+  calm: true,
+  // (owner P1) nothing follows it yet: it ends with 'Stay as long as you like' and Finish, never a
+  // melt back into the storm. Drop this once a third world exists.
+  final: true,
   fits: {
     emotions: { anxious: 1, overwhelmed: 1, sad: 0.8, lonely: 0.8, restless: 0.7, frustrated: 0.7, angry: 0.6, other: 0.6 },
     intentions: { 'let-go': 1, calm: 0.9, distract: 0.8, steady: 0.7, play: 0.6 },
@@ -273,22 +280,25 @@ export function hash01(s) {
 /**
  * Pick the next world. Deterministic: the same state always gives the same
  * answer. Rules, in order:
- *   1. only playable worlds that suit the feeling × intention, never the current one;
+ *   0. nothing follows a `final` world (owner P1: the ocean, until a third world exists);
+ *   1. only playable worlds that suit the feeling × intention, never the current one —
+ *      and in a gentle session (`gentle: true`) only `calm` ones;
  *   2. never one of the last 3 played (if that leaves none, the one played longest ago);
  *   3. a rotation bag per `${emotion}|${intention}`: every suitable world plays once before any repeats;
  *   4. favourites first, then the current world's authored next[] links, then the best fit,
  *      then hash(seed | sessionCount | id).
  * state: { current, emotion, intention, history: [ids, oldest first], favourites: [ids], bags: {key: [ids]},
- *          seed, sessionCount, exclude: [ids] }
+ *          seed, sessionCount, exclude: [ids], gentle }
  * Returns { id | null, bags (updated copy), key, reason: 'fresh' | 'relaxed' | 'none' }.
  */
 export function selectNext(list, state = {}) {
-  const { current = null, emotion = null, intention = null, history = [], favourites = [], bags = {}, seed = 0, sessionCount = 0, exclude = [] } = state;
+  const { current = null, emotion = null, intention = null, history = [], favourites = [], bags = {}, seed = 0, sessionCount = 0, exclude = [], gentle = false } = state;
   const key = `${emotion || 'any'}|${intention || 'any'}`;
   const fav = new Set(favourites);
   const out = { ...bags };
   const cur = list.find((e) => e.id === current) || null;
-  const pool = list.filter((e) => isPlayable(e) && e.id !== current && !exclude.includes(e.id) && fitScore(e, emotion, intention) > 0);
+  if (cur?.final) return { id: null, bags: out, key, reason: 'none' };
+  const pool = list.filter((e) => isPlayable(e) && e.id !== current && !exclude.includes(e.id) && fitScore(e, emotion, intention) > 0 && (!gentle || e.calm === true));
   if (!pool.length) return { id: null, bags: out, key, reason: 'none' };
   const recent = history.slice(-3);
   let candidates = pool.filter((e) => !recent.includes(e.id));

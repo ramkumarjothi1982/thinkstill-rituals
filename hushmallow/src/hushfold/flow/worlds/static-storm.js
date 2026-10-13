@@ -147,6 +147,12 @@ export function create(ctx) {
   const tSpring = new Spring2(0, 0, { stiffness: 30, damping: 8 });
   const tWobble = new Wobble();
   let tAnchor = { x: 0, y: 0 }, tCharge = clamp(q0 + 0.2, 0.6, 1.2), tTension = 0.7, tSettledShown = false, tFizz = 0, tScale = 1, tR = 34, tLabelW = 300;
+  let seededFor = null;               // the handle tSpring was last seeded from (its own position, once)
+  let tDrawS = 0;                     // the scale written to the handle (eased in from its own size)
+  let tSoftQ = -1;                    // the last soften() level sent (0.05 steps)
+  const tWrote = { x: 0, y: 0 };      // the handle's position as of its layer's last drawing
+  let liveShape = null;               // W2's drawn thought (offsets from tWrote), per frame — null for the placeholder
+  const liveR = {}, liveRects = [];
   let ropeGrads = null;               // rope colours fading out inside the subtitle band (cached per layout)
   const tTracker = new AngleTracker();
 
@@ -214,6 +220,13 @@ export function create(ctx) {
     const T = plan.thought;
     if (T) { tR = T.r; tAnchor = { x: T.x, y: T.y }; tLabelW = T.labelW; }
     else { tR = clamp(U * 0.085, 26, 44); tAnchor = { x: W * 0.27, y: plan.zone.y + plan.zone.h * 0.5 }; tLabelW = Math.min(300, W - 64); }
+    // a thought that is already somewhere (the person's Thought Mallow beside their Mallow) glides from
+    // there to its place in the storm, rather than appearing there
+    if (thought && seededFor !== thought) {
+      seededFor = thought;
+      const hx = thought.x, hy = thought.y;
+      if (Number.isFinite(hx) && Number.isFinite(hy) && (hx || hy)) tSpring.set(hx, hy);
+    }
     if (!tSpring.x && !tSpring.y) tSpring.set(tAnchor.x, tAnchor.y);
     else tSpring.to(tAnchor.x, tAnchor.y);
     layoutCards();
@@ -829,10 +842,22 @@ export function create(ctx) {
       if (l) ctx.say(l, { who: 'glitzi', kind: 'dialogue' });
     }
     if (thought) {
-      thought.x = tSpring.x; thought.y = tSpring.y + wob * 3; thought.scale = tScale;
+      // a handle with its own size (W2's ThoughtMallow: r, CSS px) is drawn at the storm's radius tR; its
+      // scale eases there from the size it came in with (no pop). Without r (the placeholder) it is tScale.
+      const goal = (tScale * tR) / (thought.r > 0 ? thought.r : tR);
+      if (!(tDrawS > 0)) tDrawS = Number.isFinite(thought.scale) && thought.scale > 0 ? thought.scale : goal;
+      tDrawS += (goal - tDrawS) * (1 - Math.exp(-dt / 0.35));
+      if (Math.abs(goal - tDrawS) < 1e-3) tDrawS = goal;
+      // (where the handle was when its layer last drew it: liveThoughtShape()'s reference)
+      tWrote.x = thought.x; tWrote.y = thought.y;
+      thought.x = tSpring.x; thought.y = tSpring.y + wob * 3; thought.scale = tDrawS;
+      // its words hang under it, as the storm plans them
+      thought.labelSide = 'below';
       const st = thought.state || (thought.state = {});
       st.tension = tTension; st.charge = clamp(qLocal); st.calm = thoughtSettle.settled ? 1 : clamp(1 - qLocal); st.distance = 0;
-      try { thought.soften?.(clamp(1 - qLocal)); } catch { /* optional */ }
+      // (in 0.05 steps: a new level only when it really changes)
+      const sq = Math.round(clamp(1 - qLocal) * 20) / 20;
+      if (sq !== tSoftQ) { tSoftQ = sq; try { thought.soften?.(sq); } catch { /* optional */ } }
     }
   }
 
@@ -887,6 +912,7 @@ export function create(ctx) {
     // words, neighbours keep their gap, none enters Glitzi (with hop room), the subtitle band or a
     // screen edge; and if a dragged thought is pressed against cards with nowhere for them to go,
     // the thought gives way (it slides round them)
+    liveShape = liveThoughtShape();
     for (const c of cards) clearOfThought(c);
     // (a few relaxation passes: the hard limits — edges, band, Glitzi — inside the loop, so a card
     // pushed against an edge pushes its neighbour rather than back into it)
@@ -896,8 +922,31 @@ export function create(ctx) {
     }
     if (thought && cards.length) thoughtYields();
   }
+  /**
+   * W2's ThoughtLayer draws the thought itself: what it really covers is its extent() (body, siblings,
+   * effects, a belief's prop) and, for its words, the layer's rect for it (matched by id: body and tag
+   * together). Offsets from where the handle was when the layer drew it; null for a handle without
+   * extent() (the 2D placeholder: the storm's own plan describes it exactly).
+   */
+  function liveThoughtShape() {
+    if (!thought || typeof thought.extent !== 'function') return null;
+    let e = null;
+    try { e = thought.extent(liveR); } catch { e = null; }
+    if (!e || !(e.right - e.left > 2) || !(e.bottom - e.top > 2)) return null;
+    const hx = tWrote.x, hy = tWrote.y;
+    let w = null;
+    try { const rs = ctx.thoughtLayer?.rects?.(liveRects); w = (rs && thought.id != null && rs.find((q) => q.id === thought.id)) || null; } catch { w = null; }
+    const body = { x0: e.left - hx, y0: e.top - hy, x1: e.right - hx, y1: e.bottom - hy };
+    const all = w ? { x0: Math.min(w.left, e.left) - hx, y0: Math.min(w.top, e.top) - hy, x1: Math.max(w.right, e.right) - hx, y1: Math.max(w.bottom, e.bottom) - hy } : body;
+    return { body, all };
+  }
   /** The Thought Mallow's body circle (with its crackle) as {x, y, r}, and its words plate rect where it is now. */
   function thoughtShape() {
+    if (liveShape) {
+      const ax = tSpring.x, ay = tSpring.y + tWobble.v * 3, B = liveShape.body, A = liveShape.all;
+      const r = Math.max(B.x1 - B.x0, B.y1 - B.y0) / 2 + 4;
+      return { x: ax + (B.x0 + B.x1) / 2, y: ay + (B.y0 + B.y1) / 2, r, plate: { x0: ax + A.x0, y0: ay + A.y0, x1: ax + A.x1, y1: ay + A.y1 } };
+    }
     const T = plan.thought, dx = tSpring.x - T.x, dy = tSpring.y - T.y, P = T.R.plate;
     return { x: tSpring.x, y: tSpring.y, r: tR * 1.32 + 4, plate: { x0: P.x0 + dx, y0: P.y0 + dy, x1: P.x1 + dx, y1: P.y1 + dy } };
   }
@@ -914,7 +963,7 @@ export function create(ctx) {
   }
   const dir = { x: 0, y: 0 };
   function clearOfThought(c) {
-    if (!thought || !plan?.thought) return;
+    if (!thought || !(plan?.thought || liveShape)) return;
     const T = thoughtShape();
     const m = circleHit(c, T.x, T.y, T.r, dir);
     if (m > 0) nudgeCard(c, dir.x * m, dir.y * m);
@@ -922,7 +971,7 @@ export function create(ctx) {
   }
   /** Last word: a card still pressed into the thought (or its words) moves the thought instead. */
   function thoughtYields() {
-    if (!plan?.thought) return;
+    if (!(plan?.thought || liveShape)) return;
     for (let it = 0; it < 2; it++) for (const c of cards) {
       if (c.alpha < 0.35) continue;
       const T = thoughtShape();
@@ -1493,8 +1542,10 @@ export function create(ctx) {
     prepare,
     get backCanvas() { return realm?.canvas || null; },
     enter({ from } = {}) {
+      seededFor = null;           // (from where the thought is now, not where it was while the storm was built)
       layout();
-      try { thought?.react?.('appear'); } catch { /* optional */ }
+      // a thought already on screen (W2's ThoughtLayer, fully appeared) only notices the storm; a new one appears
+      try { thought?.react?.(thought?.ov?.appear >= 1 ? 'notice' : 'appear'); } catch { /* optional */ }
       const intro = ctx.entry.dialogue?.intro;
       if (intro && !from) introAt = 3.8;
     },
@@ -1542,7 +1593,7 @@ export function create(ctx) {
       try { mallow?.react?.('nod'); } catch { /* optional */ }
       if (lines2 && !paused) { introAt = -1; ctx.say(lines2, { who: 'glitzi', kind: 'dialogue' }); }
     },
-    setThought(h) { thought = h; if (prepared) layout(); },
+    setThought(h) { if (h !== thought) { tDrawS = 0; tSoftQ = -1; } thought = h; if (prepared) layout(); },
     /**
      * Client rects to keep subtitles off (all hard): the Thought Mallow with its words
      * plate, every postcard, and fingers outside the subtitle band (a finger passing
@@ -1551,7 +1602,11 @@ export function create(ctx) {
     avoid() {
       const out = [];
       const band = plan?.band;
-      if (thought && plan?.thought) {
+      if (thought && liveShape) {
+        // W2's layer draws it: where it really is, with its words
+        const ax = tSpring.x, ay = tSpring.y + tWobble.v * 3, A = liveShape.all;
+        out.push({ x: ax + A.x0, y: ay + A.y0, w: A.x1 - A.x0, h: A.y1 - A.y0, kind: 'thought' });
+      } else if (thought && plan?.thought) {
         const T = plan.thought, dx = tSpring.x - T.x, dy = tSpring.y - T.y;
         const x0 = Math.min(T.R.body.x0, T.R.plate.x0) + dx, x1 = Math.max(T.R.body.x1, T.R.plate.x1) + dx;
         out.push({ x: x0, y: T.R.top + dy, w: x1 - x0, h: T.R.bottom - T.R.top, kind: 'thought' });
