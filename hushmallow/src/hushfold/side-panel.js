@@ -17,8 +17,9 @@
 // Every Hushflow action goes to the `flow` object (the W4 director API, or the
 // shell's stub): setEmotion, setIntention, setAutoFlow, stay, next (Drift on),
 // pause/resume, finish, plus favourite worlds through src/engine/flow-store.js.
-// Stay longer shows aria-pressed from state.staying; it is not a toggle yet
-// (un-staying needs the director's stay(false); next() would melt).
+// Stay longer is a toggle with aria-pressed from state.staying (stay(false) un-stays
+// without melting). Drift on is enabled exactly when state.canNext (next() would melt now).
+// 'Now: …' is the world's title (state.title, else the scene's worldTitle).
 
 import { h } from '../app/ui.js';
 import { PLANS } from '../app/entitlements.js';
@@ -67,6 +68,15 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
   const angleLink = link('sparkle', 'Another Angle', () => { api.close(); if (onAngle) onAngle(); else app.go('angle'); }, 'With Zuzu, a fresh side to something real');
   angleLink.hidden = true;
 
+  // (in a world the Hushflow section — Pause, Finish, Stay longer, Drift on — comes first: on a phone's sheet it is
+  // what the person opened the panel for, and it must not wait below the fold)
+  const flowSec = h('section', { class: 'p-flow' },
+    h('h3', {}, 'Hushflow'),
+    resumeBtn,
+    h('div', { class: 'hf-actions' }, pauseBtn, finishBtn, stayBtn, driftBtn, favBtn),
+    h('label', { class: 'hf-toggle' }, h('span', { class: 't' }, 'Auto-flow', h('small', {}, 'The next world begins by itself when one is complete.')), auto),
+    flowNote);
+  const intentSec = h('section', {}, h('h3', {}, 'What would help?'), intentWrap);
   const el = h('aside', { class: 'hf-panel hf-ui', role: 'dialog', 'aria-modal': 'false', 'aria-label': 'Feelings and worlds', 'aria-hidden': 'true', 'data-hf': 'panel', inert: '' },
     h('div', { class: 'p-head' }, h('h2', {}, 'Your Hushfold'), closeBtn),
     h('div', { class: 'p-body' },
@@ -76,13 +86,8 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
           h('div', { class: 'who' }, mallowImg, h('div', {}, mallowName, mallowTitle)),
           h('button', { class: 'hf-btn', type: 'button', 'aria-label': 'Next Mallow', onclick: () => onMallow?.(1) }, hfIcon('next')))),
       h('section', {}, h('h3', {}, 'How are you feeling?'), feelWrap),
-      h('section', {}, h('h3', {}, 'What would help?'), intentWrap),
-      h('section', {},
-        h('h3', {}, 'Hushflow'),
-        resumeBtn,
-        h('div', { class: 'hf-actions' }, pauseBtn, finishBtn, stayBtn, driftBtn, favBtn),
-        h('label', { class: 'hf-toggle' }, h('span', { class: 't' }, 'Auto-flow', h('small', {}, 'The next world begins by itself when one is complete.')), auto),
-        flowNote),
+      intentSec,
+      flowSec,
       h('section', {}, h('div', { class: 'hf-links' },
         angleLink,
         link('garden', 'Memory Garden', () => go('garden'), 'The skills you chose to keep'),
@@ -106,7 +111,8 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
     const st = flow.state || {};
     app.haptic('light');
     if (kind === 'pause') { if (onPause?.()) { api.update(); return; } if (isPaused(st)) flow?.resume?.(); else flow?.pause?.(); }
-    else if (kind === 'stay') flow?.stay?.();
+    // Stay longer is a toggle: staying, a second tap lets the world drift on again by itself (no melt now)
+    else if (kind === 'stay') flow?.stay?.(!st.staying);
     // the melt plays on the stage (on phones the sheet holds the world still), so the panel steps aside, as for
     // Finish; the director's next() says false when there is nowhere to drift yet, and then the panel stays
     else if (kind === 'next') { if (flow?.next?.() !== false) { api.close(); return; } }
@@ -151,10 +157,20 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       const world = !!st.worldId;
       const stub = flow ? !!flow.stub : !(await flowAvailable());
       const locked = !!s.locked;
+      // in a world the Hushflow actions lead the panel; at home they follow the feelings and intentions again
+      const bodyEl = flowSec.parentNode;
+      if (bodyEl && typeof bodyEl.prepend === 'function' && typeof intentSec.after === 'function') {
+        if (world && bodyEl.firstChild !== flowSec) bodyEl.prepend(flowSec);
+        else if (!world && intentSec.nextSibling !== flowSec) intentSec.after(flowSec);
+      }
       for (const b of [pauseBtn, stayBtn, finishBtn]) b.disabled = !world && !stub;
       favBtn.disabled = !world && !stub;
       if (locked) { pauseBtn.disabled = true; stayBtn.disabled = true; }
-      driftBtn.disabled = !(world && (st.nextId || st.complete)) || locked;
+      // exactly when the director's next() would melt now (canNext: false after the ocean, owner P1, and while
+      // safety holds the world; on a paused world it resumes and melts); an older director without it: a next or a
+      // complete world
+      const canNext = typeof st.canNext === 'boolean' ? st.canNext : !!(st.nextId || st.complete);
+      driftBtn.disabled = !(world && canNext) || locked;
       stayBtn.setAttribute('aria-pressed', String(!!st.staying));
       angleLink.hidden = !(s.angle ?? ent.has('ultra'));
       const pz = pausedNow() ?? isPaused(st);

@@ -418,6 +418,7 @@ test('recovery link (token_hash) gives a recovery session that may set a new pas
   const c = await cb.ensureClient();
   const r = await openLink({ auth: cb, c, p: parseCallback(`http://localhost:8202/auth/callback?token_hash=${m.token_hash}&type=recovery`) });
   assert.equal(r.ok, true); assert.equal(r.kind, 'recovery'); assert.equal(r.uid, uid);
+  assert.equal(r.email, 'ana@example.com', 'the page names the account the link signed in');
   assert.equal((await cb.updatePassword({ password: 'after-reset-123' })).error.code, 'not_signed_in', 'only for the account the link opened');
   assert.equal((await cb.updatePassword({ password: 'after-reset-123', recoveryUid: uid })).ok, true);
   const again = await c.auth.verifyOtp({ token_hash: m.token_hash, type: 'recovery' });

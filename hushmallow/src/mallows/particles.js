@@ -122,16 +122,21 @@ export class ParticleField {
         break;
       }
       case 'puff': {
+        // a sigh's breath: soft wisps that leave from beside the face (at mouth height, just past the body's
+        // side) and drift out and up — never a flat disc over the face
         const mo = this.rig.mallow.face.mouth;
         const pos = this.face(mo.x, mo.y);
-        Object.assign(p, { x: pos.x + rand(-8, 8), y: pos.y, vx: rand(-15, 15), vy: -rand(20, 40), life: rand(1, 1.6),
-          size: g.w * rand(0.06, 0.1), col: 'rgba(255,255,255,0.7)', drag: 0.8 });
+        const side = i % 2 ? 1 : -1, r = g.w * rand(0.035, 0.055);
+        Object.assign(p, { x: g.cx + side * (g.w * 0.5 + r * 1.2), y: pos.y + rand(-0.04, 0.04) * g.h, vx: side * rand(10, 22) * sp, vy: -rand(14, 26) * sp,
+          life: rand(1, 1.5), size: r, col: 'rgba(255,255,255,0.42)', drag: 0.9, wisp: true });
         break;
       }
       case 'steam': {
+        // an angry Mallow's steam: soft, feathered wisps that rise off the top of the head and fade (never a
+        // flat, hard-edged disc beside it)
         const side = Math.random() < 0.5 ? -1 : 1;
         Object.assign(p, { x: g.cx + side * g.w * 0.38, y: g.top + g.h * 0.1, vx: side * rand(10, 30), vy: -rand(40, 80) * sp,
-          life: rand(0.8, 1.2), size: g.w * rand(0.06, 0.1), col: 'rgba(255,255,255,0.75)', drag: 0.8 });
+          life: rand(0.8, 1.2), size: g.w * rand(0.06, 0.1), col: 'rgba(255,255,255,0.5)', drag: 0.8, wisp: true });
         break;
       }
       case 'z': {
@@ -141,7 +146,8 @@ export class ParticleField {
       }
       case 'question': case 'exclaim': case 'note': {
         if (this.list.some((q) => q.kind === kind)) return;
-        Object.assign(p, { x: g.cx + g.w * (kind === 'note' ? rand(-0.5, 0.5) : 0.42), y: g.top, vy: kind === 'note' ? -30 : -6,
+        // (the ? and ! sit just off the head's top corner, clear of the face)
+        Object.assign(p, { x: g.cx + g.w * (kind === 'note' ? rand(-0.5, 0.5) : 0.5), y: g.top - (kind === 'note' ? 0 : g.h * 0.04), vy: kind === 'note' ? -30 : -6,
           life: kind === 'note' ? 1.6 : 1.4, size: g.w * 0.14, col: kind === 'exclaim' ? '#ffd84a' : '#ffffff', drag: 0.5, wob: rand(0, 6) });
         break;
       }
@@ -292,8 +298,16 @@ export class ParticleField {
           break;
         }
         case 'puff': case 'steam': case 'dust': case 'cloud': {
-          ctx.fillStyle = p.col;
           const r = p.size * (0.6 + t * 0.8);
+          if (p.wisp) {
+            // a soft, feathered breath (no hard edge)
+            const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+            gr.addColorStop(0, p.col); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gr;
+            ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.fill();
+            break;
+          }
+          ctx.fillStyle = p.col;
           ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.fill();
           if (p.kind === 'cloud') { ctx.beginPath(); ctx.arc(p.x + r * 0.8, p.y + r * 0.2, r * 0.7, 0, TAU); ctx.arc(p.x - r * 0.8, p.y + r * 0.2, r * 0.7, 0, TAU); ctx.fill(); }
           break;

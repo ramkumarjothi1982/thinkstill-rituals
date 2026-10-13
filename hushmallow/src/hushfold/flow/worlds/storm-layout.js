@@ -74,22 +74,38 @@ export function placeSlots(n, s, obs, area, gap = LAYOUT.CARD_GAP) {
 
 /**
  * The Thought Mallow's footprint at (x, y) with body radius r: its body (with the crackle
- * round it) and its words plate below (text up to labelW px, one or two lines).
+ * round it) and its words plate below (text up to labelW px, one or two lines) — or, when the
+ * layer that draws the words measured the plate (P = { w, h, below }: ThoughtLayer.plateFor),
+ * exactly that plate, hanging where the layer hangs it.
  */
-export function thoughtRects(x, y, r, labelW, lines, textW, W) {
+export function thoughtRects(x, y, r, labelW, lines, textW, W, P = null) {
   const L = LAYOUT;
-  const plateW = Math.min(textW, labelW) + 2 * L.LABEL_PAD_X, plateH = lines * L.LABEL_LINE + 2 * L.LABEL_PAD_Y;
-  const px0 = clamp(x - plateW / 2, L.EDGE, Math.max(L.EDGE, W - L.EDGE - plateW));
+  const plateW = P ? P.w : Math.min(textW, labelW) + 2 * L.LABEL_PAD_X, plateH = P ? P.h : lines * L.LABEL_LINE + 2 * L.LABEL_PAD_Y;
+  const py0 = P ? y + P.below : y + r * 0.98 + 8;
+  // (centred under the body, held on the screen as the layer holds it)
+  const edge = P && Number.isFinite(P.edge) ? P.edge : L.EDGE;
+  const px0 = clamp(x - plateW / 2, edge, Math.max(edge, W - edge - plateW));
   const body = { x0: x - r * 1.35, y0: y - r * 1.35, x1: x + r * 1.35, y1: y + r * 1.25 };
-  const plate = { x0: px0, y0: y + r * 0.98 + 8, x1: px0 + plateW, y1: y + r * 0.98 + 8 + plateH };
+  // (and what the layer draws of it there — effects included — as the storm keeps postcards off it in play: the circle
+  // round that box, 4 px out)
+  const E = P?.extent;
+  if (E && E.x1 > E.x0 && E.y1 > E.y0) {
+    const cx = x + (E.x0 + E.x1) / 2, cy = y + (E.y0 + E.y1) / 2, rc = Math.max(E.x1 - E.x0, E.y1 - E.y0) / 2 + 4;
+    body.x0 = Math.min(body.x0, cx - rc); body.y0 = Math.min(body.y0, cy - rc); body.x1 = Math.max(body.x1, cx + rc); body.y1 = Math.max(body.y1, cy + rc);
+  }
+  const plate = { x0: px0, y0: py0, x1: px0 + plateW, y1: py0 + plateH };
   const all = { x0: Math.min(body.x0, plate.x0), y0: body.y0, x1: Math.max(body.x1, plate.x1), y1: plate.y1 };
   return { body, plate, all, top: body.y0, bottom: plate.y1 };
 }
 
 /**
  * plan = planStormLayout({ W, H, safe:{x,y,w,h}, band:{x,y,w,h}, mallow:{left,top,right,bottom,width,height}|null,
- *                          n, thought: { textW } | null })
- *   → { s, slots:[{x,y}], thought:{ name, x, y, r, labelW, lines, R }|null, zone, band, mrect, floorBot, score }
+ *                          n, thought: { textW, plate?, keep? } | null })
+ *   → { s, slots:[{x,y}], thought:{ name, x, y, r, labelW, lines, R, fit }|null, zone, band, mrect, floorBot, score }
+ * thought.plate(maxW, lines, r) → { w, h, below, rows } | null: the words plate as the layer that draws them measures
+ * it (one source of truth: ThoughtLayer.plateFor) — the plan is then laid round that very plate, and thought.fit
+ * ({ lines, maxW }) is the budget to ask the layer for (th.labelFit). thought.keep {x0,y0,x1,y1}: where the layer's
+ * words may never go (its hero keep-out); no plate is planned there.
  */
 export function planStormLayout({ W, H, safe, band, mallow = null, n = 0, thought = null, allowShort = true }) {
   const L = LAYOUT, U = Math.min(W, H);
@@ -110,16 +126,45 @@ export function planStormLayout({ W, H, safe, band, mallow = null, n = 0, though
     const tw = thought.textW || 0;
     const r0 = clamp(U * 0.085, 26, 44), r1 = Math.max(22, r0 * 0.82);
     const wide = Math.min(300, W - 64);
+    // the words plate as the layer measures it, for a text budget (two lines at most) and body radius
+    // (two lines when they fit; else one — the start of the words, cut at a word and marked "…": a tap reads them all)
+    const measured = typeof thought.plate === 'function' ? (labelW, r, lines = 2) => {
+      let P = null;
+      try { P = thought.plate(Math.round(labelW + 2 * L.LABEL_PAD_X), lines, r); } catch { P = null; }
+      return P && P.w > 0 && P.h > 0 && Number.isFinite(P.below) ? { ...P, budget: lines } : null;
+    } : null;
+    const keep = thought.keep && thought.keep.x1 > thought.keep.x0 && thought.keep.y1 > thought.keep.y0 ? thought.keep : null;
     const add = (name, x, anchor, labelW, r, penalty, lo = zTop, hi = zBot, floor = floorBot) => {
-      const lines = tw > labelW ? 2 : 1;
-      const plateH = lines * L.LABEL_LINE + 2 * L.LABEL_PAD_Y;
-      const below = 0.98 * r + 8 + plateH;
-      const y = anchor === 'top' ? lo + r * 1.35 : anchor === 'mid' ? (lo + hi) / 2 - (below - 1.35 * r) / 2 : hi - below;
-      const R = thoughtRects(x, y, r, labelW, lines, tw, W);
-      if (R.top < zTop - 0.5 || R.bottom > floor + 0.5) return;
-      if (R.all.x0 < L.EDGE - 0.5 || R.all.x1 > W - L.EDGE + 0.5) return;
-      if (mrect && R.all.y1 > mrect.y0 && R.all.x1 > mrect.x0 && R.all.x0 < mrect.x1) return;
-      cands.push({ name, x, y, r, labelW, lines, R, penalty });
+      if (!measured) return place(name, x, anchor, labelW, r, penalty, lo, hi, floor, null);
+      // the layer's plate: two lines if they fit here, else one (a small penalty: fewer of the words show)
+      if (place(name, x, anchor, labelW, r, penalty, lo, hi, floor, measured(labelW, r, 2))) return true;
+      return place(`${name}-1`, x, anchor, labelW, r, penalty + 1.5, lo, hi, floor, measured(labelW, r, 1));
+    };
+    const place = (name, x, anchor, labelW, r, penalty, lo, hi, floor, P) => {
+      if (measured && !P) return false;
+      const lines = P ? Math.max(1, P.rows || 1) : tw > labelW ? 2 : 1;
+      const plateH = P ? P.h : lines * L.LABEL_LINE + 2 * L.LABEL_PAD_Y;
+      const below = (P ? P.below : 0.98 * r + 8) + plateH;
+      // (the words never go where the layer keeps them off: a plate that would, sits higher, over it)
+      let hiW = hi;
+      if (keep && anchor !== 'top') {
+        const pe = P && Number.isFinite(P.edge) ? P.edge : L.EDGE;
+        const pw = P ? P.w : Math.min(tw, labelW) + 2 * L.LABEL_PAD_X, px0 = clamp(x - pw / 2, pe, Math.max(pe, W - pe - pw));
+        if (px0 + pw > keep.x0 && px0 < keep.x1) hiW = Math.min(hi, keep.y0 - 1);
+      }
+      // (how far above its centre the thought reaches: its body, or what the layer draws of it)
+      const up = -thoughtRects(x, 0, r, labelW, lines, tw, W, P).top;
+      const y = anchor === 'top' ? lo + up : anchor === 'mid' ? (lo + hiW) / 2 - (below - up) / 2 : hiW - below;
+      const R = thoughtRects(x, y, r, labelW, lines, tw, W, P);
+      if (R.top < zTop - 0.5 || R.bottom > floor + 0.5) return false;
+      // (the body keeps 20 px from the screen's sides; the words as near as the layer holds them)
+      if (R.body.x0 < L.EDGE - 0.5 || R.body.x1 > W - L.EDGE + 0.5) return false;
+      const pe = P && Number.isFinite(P.edge) ? P.edge : L.EDGE;
+      if (R.plate.x0 < pe - 0.5 || R.plate.x1 > W - pe + 0.5) return false;
+      if (mrect && R.all.y1 > mrect.y0 && R.all.x1 > mrect.x0 && R.all.x0 < mrect.x1) return false;
+      if (keep && R.plate.y1 > keep.y0 && R.plate.y0 < keep.y1 && R.plate.x1 > keep.x0 && R.plate.x0 < keep.x1) return false;
+      cands.push({ name, x, y, r, labelW, lines, R, penalty, fit: P ? { lines: P.budget, maxW: Math.round(labelW + 2 * L.LABEL_PAD_X), edge: P.edge } : null });
+      return true;
     };
     if (landscape && mb) {
       const lw = mb.left - 12 - L.EDGE;
@@ -138,8 +183,8 @@ export function planStormLayout({ W, H, safe, band, mallow = null, n = 0, though
     }
     if (!cands.length) {
       // nothing fits cleanly (a tiny window): small, straight under the band
-      const r = r1, lines = tw > wide ? 2 : 1, y = zTop + r * 1.35;
-      cands.push({ name: 'fallback', x: W / 2, y, r, labelW: wide, lines, R: thoughtRects(W / 2, y, r, wide, lines, tw, W), penalty: 9 });
+      const r = r1, P = measured ? measured(wide, r, 1) : null, lines = P ? Math.max(1, P.rows || 1) : tw > wide ? 2 : 1, y = zTop + r * 1.35;
+      cands.push({ name: 'fallback', x: W / 2, y, r, labelW: wide, lines, R: thoughtRects(W / 2, y, r, wide, lines, tw, W, P), penalty: 9, fit: P ? { lines: P.budget, maxW: Math.round(wide + 2 * L.LABEL_PAD_X), edge: P.edge } : null });
     }
   } else cands.push(null);
   // short portrait screens: fewer postcards at once, never below SHORT_S (the rest wait their turn)

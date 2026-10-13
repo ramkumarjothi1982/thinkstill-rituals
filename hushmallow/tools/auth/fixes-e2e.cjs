@@ -21,6 +21,16 @@
 //             server, the first tab moves out of A's namespace, A's things stay A's.
 // deleterace  delete account while a sync is mid-pull (the fake holds the
 //             request): nothing of the deleted account is left on the device.
+// xtab        round 2 (blocking): two tabs of the same account; tab 1 sits in
+//             the Memory Garden (not a calm scene: its reload waits) while tab
+//             2 deletes the account (390×844), signs out removing its things
+//             (320×568) or removes this phone's data (390×844). Tab 1's later
+//             writes never land, and nothing of the account survives tab 1's
+//             reload (the device-level tombstone, src/auth/namespace.js).
+// r2screens   round 2 polish: the home Mallow picker shows the Mallow actually
+//             greeting you; "That password doesn't match." sits under Current;
+//             the "Enter the code" lede keeps the address in one piece; an
+//             arrival and the guest question name the account; 390 and 320.
 // Prints one line per check; screenshots in --out (default /tmp/claude-0/hf/auth/fixes).
 const { createRequire } = require('module');
 const { chromium } = createRequire('/opt/node-tools/node_modules/')('playwright');
@@ -255,6 +265,153 @@ async function shared(H) {
   await ctx.close();
 }
 
+// ================================================================= xtab ==
+const nsKeys = (p, uid) => p.evaluate((u) => Object.keys(localStorage).filter((k) => k.startsWith(`hm2:u:${u}:`)).sort(), uid);
+async function xtab(H) {
+  // a paid plan on this phone (device-level), so the Memory Garden really opens and stays open
+  const GUEST = { 'hm2:prefs': JSON.stringify({ seenIntro: true, textScale: 1.25 }), 'hm2:hushfold.favourites': JSON.stringify({ v: 1, ids: ['quiet-lake'] }), 'hm2:entitlement': JSON.stringify({ tier: 'paid', source: 'native', since: Date.now() - 86_400_000 }) };
+  for (const [variant, w, h] of [['delete', 390, 844], ['signout-remove', 320, 568], ['device-data', 390, 844]]) {
+    const tag = `${variant}-${w}`;
+    const email = `xtab.${variant}@example.com`, pw = 'gentle-moon-42';
+    await makeAccount(email, pw);
+    const ctx = await H.ctx(w, h);
+    const t1 = await H.page(ctx, `xtab-${tag}-tab1`);
+    await t1.goto(`${SITE}/version.json`);
+    await t1.evaluate((g) => { localStorage.clear(); for (const [k, v] of Object.entries(g)) localStorage.setItem(k, v); }, GUEST);
+    await openAccount(t1);
+    const r = await signInUi(t1, email, pw);
+    if (r === 'choice') await tapNav(t1, '[data-act="fresh"]');
+    await waitView(t1, 'account');
+    const uid = await uidOf(t1);
+    await t1.evaluate((ver) => import(`/v/${ver}/src/engine/flow-store.js`).then((f) => f.toggleFavouriteWorld(window.__hush.store, 'static-storm')), VER);
+    await t1.evaluate(() => window.__hush.prefs.set('subtitleSpeed', 1.25));
+    // tab 1 goes to the Memory Garden: not a calm scene, so a reload asked for there waits
+    await t1.evaluate(() => window.__hush.go('garden'));
+    await t1.waitForFunction(() => location.hash === '#garden' && document.querySelector('.hg-head'), null, { timeout: 30000 });
+    await sleep(1500);
+    const had = await nsKeys(t1, uid);
+    const inGarden = await t1.evaluate(() => location.hash === "#garden" && !!document.querySelector(".hg-head"));
+    check(had.length >= 3 && inGarden, `${tag}: tab 1 is signed in, with things of its own, in the Memory Garden`, JSON.stringify({ inGarden, had }));
+    // tab 2, the same account, does it through the screens
+    const t2 = await H.page(ctx, `xtab-${tag}-tab2`);
+    await openAccount(t2);
+    await waitView(t2, 'account');
+    check(await uidOf(t2) === uid, `${tag}: tab 2 is the same account`);
+    if (variant === 'delete') {
+      await tap(t2, '[data-act="delete"]'); await waitView(t2, 'delete');
+      await fill(t2, 'confirm', 'delete');
+      await tapNav(t2, '[data-act="delete-confirm"]');
+    } else if (variant === 'signout-remove') {
+      await tap(t2, '[data-act="signout"]'); await waitView(t2, 'signout');
+      await tapNav(t2, '[data-act="signout-remove"]');
+    } else {
+      await tap(t2, '[data-act="device-data"]'); await waitView(t2, 'device-data');
+      await tapNav(t2, '[data-act="device-data-confirm"]');
+    }
+    await sleep(1500);
+    const wipe = await t1.evaluate((u) => JSON.parse(localStorage.getItem(`hm2:auth.wipe:${u}`) || 'null'), uid);
+    const after2 = await nsKeys(t1, uid);
+    // what tab 1 had that must be gone (device-data: tab 2 reloads into the same account and may write its own new keys, e.g. prefs)
+    const gone = (keys) => !keys.some((k) => /:(hushfold\.favourites|journey|garden)$/.test(k));
+    const reason = { delete: 'deleted', 'signout-remove': 'signed-out', 'device-data': 'device-data' }[variant];
+    check(wipe?.reason === reason && wipe.pending === (variant !== 'device-data') && (variant === 'device-data' ? gone(after2) : after2.length === 0),
+      `${tag}: tab 2 wrote the device-level tombstone (${reason}) and removed the copy`, JSON.stringify({ wipe, after2 }));
+    // tab 1, still in the garden, has heard: what it writes now goes nowhere
+    const still = await t1.evaluate(() => ({ hash: location.hash, sealed: window.__hush.store.sealed, toast: document.querySelector("body > .toast")?.textContent || "" }));
+    await t1.evaluate((ver) => import(`/v/${ver}/src/engine/flow-store.js`).then((f) => { f.toggleFavouriteWorld(window.__hush.store, 'luminous-ocean'); window.__hush.prefs.set('textScale', 1.12); window.__hush.store.set('journey', [{ at: Date.now(), families: ['worry'] }]); }), VER);
+    const late = await nsKeys(t1, uid);
+    const lateScale = await t1.evaluate((u) => JSON.parse(localStorage.getItem(`hm2:u:${u}:prefs`) || '{}').textScale ?? null, uid);
+    const lateOk = variant === 'device-data' ? gone(late) && lateScale !== 1.12 : late.length === 0;
+    check(still.hash === '#garden' && still.sealed === true && lateOk, `${tag}: tab 1, still in the garden, is sealed: a favourite, a setting and a journey entry written now never land`, JSON.stringify({ still, late }));
+    await shot(t1, `xtab-01-${tag}-tab1-garden-after`);
+    // tab 1 comes home: the reload it was waiting for
+    const reloaded = t1.waitForNavigation({ timeout: 30000 }).then(() => true, () => false);
+    await t1.evaluate(() => window.__hush.go('home')).catch(() => {});
+    const nav = await reloaded;
+    await appReady(t1);
+    await sleep(2500);
+    const mode = await t1.evaluate(() => window.__hush.auth.namespace.mode);
+    const left = await nsKeys(t1, uid);
+    if (variant === 'device-data') {
+      check(nav && mode === 'account' && left.every((k) => !/(favourites|journey|garden)$/.test(k)) && JSON.parse((await t1.evaluate((u) => localStorage.getItem(`hm2:u:${u}:auth.local`), uid)) || '{}').guestChoice === 'cleared', `${tag}: tab 1 reloads still signed in, with none of the removed things and the "cleared" marker kept`, JSON.stringify({ nav, mode, left }));
+      await t1.evaluate((ver) => import(`/v/${ver}/src/engine/flow-store.js`).then((f) => f.toggleFavouriteWorld(window.__hush.store, 'cosy-cave')), VER);
+      check((await nsKeys(t1, uid)).includes(`hm2:u:${uid}:hushfold.favourites`), `${tag}: after its reload tab 1 writes again (a page that boots after the tombstone is not sealed by it)`);
+    } else {
+      check(nav && mode === 'guest' && left.length === 0, `${tag}: tab 1 reloads as a guest and nothing of the account is left on the device`, JSON.stringify({ nav, mode, left }));
+      const g = await t1.evaluate(() => ({ favs: localStorage.getItem('hm2:hushfold.favourites'), prefs: JSON.parse(localStorage.getItem('hm2:prefs') || '{}').textScale }));
+      check(g.favs === GUEST['hm2:hushfold.favourites'] && g.prefs === 1.25, `${tag}: the guest’s things are untouched`, JSON.stringify(g));
+    }
+    check(/deleted|signed out|removed/i.test(still.toast), `${tag}: tab 1 says what happened at once, in the garden (one calm line; the reload waits for home)`, still.toast);
+    await shot(t1, `xtab-02-${tag}-tab1-after-reload`);
+    await ctx.close();
+  }
+}
+
+// ============================================================ r2screens ==
+async function r2screens(H) {
+  for (const [w, h] of [[390, 844], [320, 568]]) {
+    const email = w === 390 ? 'ana@example.com' : 'bo@example.com', pw = 'gentle-moon-42', pwNew = 'quiet-harbour-77';
+    await makeAccount(email, pw);
+    const ctx = await H.ctx(w, h);
+    const p = await H.page(ctx, `r2-${w}`);
+    await p.goto(`${SITE}/version.json`);
+    // a guest with a starred world (so the guest question is asked) and no Mallow chosen yet
+    await p.evaluate(() => { localStorage.clear(); localStorage.setItem('hm2:prefs', JSON.stringify({ seenIntro: true })); localStorage.setItem('hm2:hushfold.favourites', JSON.stringify({ v: 1, ids: ['quiet-lake'] })); });
+    await openAccount(p);
+    const r = await signInUi(p, email, pw);
+    check(r === 'choice', `${w}: signed in on a phone with guest things: the question`, r);
+    const lede = await p.evaluate(() => document.getElementById('hm-account-lede')?.textContent || '');
+    check(lede.startsWith(`You’re signed in as ${email}.`), `${w}: the guest question names the account it is about`, lede);
+    await shot(p, `r2-01-guest-choice-names-account-${w}`);
+    await tapNav(p, '[data-act="fresh"]');
+    await waitView(p, 'account');
+    const local = email.split("@")[0], masked = `${local.slice(0, local.length > 2 ? 2 : 1)}…@example.com`;   // src/auth/namespace.js maskEmail
+    const toast = await p.waitForFunction(() => document.querySelector('body > .toast')?.textContent || '', null, { timeout: 8000 }).then((x) => x.jsonValue(), () => '');
+    check(toast === `You’re signed in as ${masked}.`, `${w}: the arrival names the account, shortened`, toast);
+    // the home Mallow: nobody has picked one, so the one greeting you is the stage's (the time of day)
+    await p.waitForFunction(() => window.__account?.mallow, null, { timeout: 20000 });
+    const hm = await p.evaluate(() => ({ checked: document.querySelector('.hm-account-mallows [aria-checked="true"]')?.dataset.mallow, above: window.__account.mallow.id, stage: window.__hush.world?.mallowId, hint: document.getElementById(document.querySelector('.hm-account-mallows')?.getAttribute('aria-describedby'))?.textContent || '' }));
+    check(hm.checked && hm.checked === hm.above && hm.above === hm.stage && /is greeting you for now\. Until you pick one, it changes with the time of day\./.test(hm.hint), `${w}: the picker rings the Mallow that is actually greeting you (the one above the card and on the Hushfold), and says it follows the time of day`, JSON.stringify(hm));
+    await p.evaluate(() => document.querySelector('.hm-account-mallows')?.scrollIntoView({ block: 'center' }));
+    await sleep(300);
+    await shot(p, `r2-02-home-mallow-unchosen-${w}`);
+    const other = hm.checked === 'zuzu' ? 'loomi' : 'zuzu';
+    await tap(p, `.hm-account-mallows [data-mallow="${other}"]`);
+    await sleep(400);
+    const hm2 = await p.evaluate(() => ({ checked: document.querySelector('.hm-account-mallows [aria-checked="true"]')?.dataset.mallow, above: window.__account.mallow.id, pref: window.__hush.prefs.get('mallow'), hint: document.getElementById(document.querySelector('.hm-account-mallows')?.getAttribute('aria-describedby'))?.textContent || '' }));
+    check(hm2.checked === other && hm2.above === other && hm2.pref === other && /greets you here and on the Hushfold\./.test(hm2.hint), `${w}: picking one: ringed, above the card, kept for the Hushfold`, JSON.stringify(hm2));
+    // Change password: a wrong current password, said right under Current
+    await tap(p, '[data-act="password"]'); await waitView(p, 'password');
+    await fill(p, 'current', 'not-my-password'); await fill(p, 'password', pwNew);
+    await tap(p, '[data-act="password-submit"]');
+    await p.waitForFunction(() => document.querySelector('[data-auth-view] .hm-auth-error')?.textContent, null, { timeout: 30000 }).catch(async (e) => { await shot(p, `FAILED-r2-mismatch-${w}`); throw e; });
+    const where = await p.evaluate(() => {
+      const err = document.querySelector('[data-auth-view] .hm-auth-error');
+      const cur = document.querySelector('[data-field="current"]');
+      const curInput = cur.querySelector('input');
+      return { text: err.textContent, inCurrent: cur.contains(err), afterHint: err.previousElementSibling?.classList.contains('hm-auth-hint'), beforeForgot: !!err.nextElementSibling?.classList.contains('hm-account-forgot'), invalid: curInput.getAttribute('aria-invalid'), described: curInput.getAttribute('aria-describedby').includes(err.id), gap: Math.round(err.getBoundingClientRect().top - curInput.getBoundingClientRect().bottom) };
+    });
+    check(where.text === 'That password doesn’t match.' && where.inCurrent && where.afterHint && where.beforeForgot && where.invalid === 'true' && where.described && where.gap < 60, `${w}: "That password doesn’t match." sits right under Current password, before "Forgot your password?"`, JSON.stringify(where));
+    await shot(p, `r2-03-password-mismatch-under-current-${w}`);
+    // a session over 24 hours old: the code step; its lede keeps the address in one piece
+    await post('/__fake/age-sessions', { email, hours: 25 });
+    await fill(p, 'current', pw); await fill(p, 'password', pwNew);
+    await tap(p, '[data-act="password-submit"]');
+    await p.waitForFunction(() => /Enter the code/.test(document.getElementById('hm-account-title')?.textContent || ''), null, { timeout: 30000 }).catch(async (e) => { await shot(p, `FAILED-r2-code-${w}`); throw new Error(`${e.message.split('\n')[0]} on ${await p.evaluate(() => document.getElementById('hm-account-title')?.textContent + ' | ' + [...document.querySelectorAll('.hm-auth-error')].map((x) => x.textContent).join(' '))}`); });
+    const addr = await p.evaluate(() => {
+      const s = document.querySelector('#hm-account-lede .hm-account-strong strong');
+      const rg = document.createRange(); rg.selectNodeContents(s);
+      const tops = new Set([...rg.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top)));
+      const lede = document.getElementById('hm-account-lede').getBoundingClientRect();
+      const box = s.parentElement.getBoundingClientRect();
+      return { text: s.textContent, lines: tops.size, inside: box.left >= lede.left - 1 && box.right <= lede.right + 1, tail: s.parentElement.textContent };
+    });
+    check(addr.text === email && addr.lines === 1 && addr.inside && addr.tail === `${email}.`, `${w}: "Enter the code": the address stays on one line, with its full stop`, JSON.stringify(addr));
+    await shot(p, `r2-04-code-lede-${w}`);
+    await ctx.close();
+  }
+}
+
 // =========================================================== deleterace ==
 async function deleterace(H) {
   const email = 'del.race@example.com', pw = 'gentle-moon-42';
@@ -316,7 +473,7 @@ async function main() {
     },
   };
   try {
-    for (const [name, fn] of [['guestkeys', guestkeys], ['mallow', mallow], ['shared', shared], ['deleterace', deleterace]]) {
+    for (const [name, fn] of [['guestkeys', guestkeys], ['mallow', mallow], ['shared', shared], ['deleterace', deleterace], ['xtab', xtab], ['r2screens', r2screens]]) {
       if (ONLY && ONLY !== name) continue;
       try { await fn(H); } catch (e) { check(false, `${name}: stopped early: ${String(e?.message || e).split('\n')[0]}`); }
     }

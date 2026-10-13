@@ -67,6 +67,36 @@ export function greeting(name) {
   return n ? `Hi, ${n.length > 24 ? `${n.slice(0, 23)}…` : n}` : null;
 }
 
+/** The Hushfold's Mallow for the hour when nobody has picked one (the same hours as src/app/scenes/hushfold.js). */
+export function mallowForHour(hour = new Date().getHours()) {
+  const hr = Number(hour) || 0;
+  if (hr >= 21 || hr < 6) return 'noomi';
+  if (hr < 11) return 'boppo';
+  if (hr < 17) return 'pipzi';
+  return 'loomi';
+}
+
+/**
+ * The Mallow greeting this person right now, picked the way the Hushfold
+ * picks it: an explicit pick this visit (app.state.homeMallow), then the one
+ * last chosen on this device (prefs.mallow), else the one on the stage (the
+ * time of day). One chain for the Mallow above the card and the picker.
+ * → { id, chosen } (chosen: false while it still follows the time of day)
+ */
+export function homeMallow({ ids, statePick = null, prefsPick = null, onStage = null, hour } = {}) {
+  const ok = (m) => typeof m === 'string' && ids.includes(m);
+  if (ok(statePick)) return { id: statePick, chosen: true };
+  if (ok(prefsPick)) return { id: prefsPick, chosen: true };
+  if (ok(onStage)) return { id: onStage, chosen: false };
+  const t = mallowForHour(hour);
+  return { id: ok(t) ? t : ids[0], chosen: false };
+}
+
+/** The line under the picker. */
+export function homeMallowLine(name, chosen) {
+  return chosen ? `${name} greets you here and on the Hushfold.` : `${name} is greeting you for now. Until you pick one, it changes with the time of day.`;
+}
+
 /** The keyboard's height from the visual viewport (iPhone: the layout viewport does not shrink). */
 export function keyboardInset({ innerHeight, vvHeight, vvOffsetTop = 0 }) {
   const kb = Math.round((Number(innerHeight) || 0) - (Number(vvHeight) || 0) - (Number(vvOffsetTop) || 0));

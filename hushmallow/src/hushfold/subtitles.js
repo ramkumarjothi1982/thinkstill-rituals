@@ -17,7 +17,7 @@
 // createSubtitles({root, prefs, avoid, bounds, reducedMotion, backdrop, brightHint, onControl, onBand}) →
 //   { say(lines, {who, hold, id, kind:'dialogue'|'discovery'|'title', colour, interrupt, first}) → Promise<boolean>,
 //     choice(prompt, [{label, value, primary, onPick}], {who, timeoutMs, transient}) → Promise<value|null>,
-//     pause, resume, replay, skip, setSpeed, clear({keepHeld}), suspend, unsuspend, layout, destroy,
+//     pause, resume, replay, skip, setSpeed, clear({keepHeld}), drop(match), suspend, unsuspend, layout, destroy,
 //     get busy, get holding, get paused, get suspended, get speed, el }
 // suspend(): while the person types, nothing shows; a held discovery or a
 // choice waits (parked) and comes back on unsuspend(); passing chatter is dropped.
@@ -403,6 +403,31 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       ctl.classList.remove('holding'); showCtl(false); watch(false);
       if (!suspended) next();
       if (!cur && !queue.length) release();
+    },
+    /**
+     * Let go of the lines and choices match(opts) picks — held ones too (a world that has melted away takes its
+     * discovery line and its Continue with it): queued or parked ones resolve false (choices null) at once; the
+     * one showing fades out, then the queue carries on. Everything else stays as it is. True when one was dropped.
+     */
+    drop(match) {
+      if (typeof match !== 'function' || destroyed) return false;
+      const pick = (it) => { try { return !!match(it?.opts || {}); } catch { return false; } };
+      let any = false;
+      for (let i = queue.length - 1; i >= 0; i--) if (pick(queue[i])) { const [it] = queue.splice(i, 1); it.resolve(it.choice ? null : false); any = true; }
+      if (parked && pick(parked.item)) { parked.item.resolve(parked.item.choice ? null : false); parked = null; any = true; }
+      if (cur && pick(cur.item)) {
+        any = true;
+        const mine = cur;
+        clearTimeout(mine.timer); mine.timer = 0;
+        chipsEl.hidden = true; chipsEl.replaceChildren(); ctl.classList.remove('holding');
+        if (mine.phase !== 'out') {
+          mine.phase = 'out';
+          // (the pill goes with it unless another line follows)
+          if (!queue.length && !paused) { clearTimeout(hideCtlTimer); ctl.classList.add('idle', 'is-hidden'); }
+          fadeOut(mine.lineEl, () => { if (cur === mine) finish(mine.item.choice ? null : false); });
+        }
+      }
+      return any;
     },
     /** While the person types: nothing shows; held lines and choices wait, chatter is dropped. */
     suspend() {

@@ -173,6 +173,8 @@ const when = (t) => { try { return new Date(t).toLocaleDateString('en-GB', { wee
 export default function gardenScene(app, params = {}) {
   ensureCss();
   const { world, prefs, ent, store } = app;
+  // signed in, the account's sync may keep the garden with it too (src/auth): never claim 'only on this device' then
+  const deviceOnly = () => app.auth?.status?.() !== 'signed-in';
   const reduced = () => prefs?.reducedMotion?.() ?? false;
   const lowStim = () => !!prefs?.get?.('lowStim');
   const mallowId = (MALLOWS[app.state?.homeMallow] && app.state.homeMallow) || (MALLOWS[prefs?.get?.('mallow')] && prefs.get('mallow')) || 'noomi';
@@ -254,7 +256,7 @@ export default function gardenScene(app, params = {}) {
       crestPts[i * 2] = x; crestPts[i * 2 + 1] = lerp(curve(u), seatY, k);
     }
     field.style.top = `${Math.round(crest - 10)}px`;
-    captionEl.textContent = readOnly() && n ? 'Everything you kept is still here to read.' : n ? 'Tap a charm to open it again.' : 'Kept only on this device.';
+    captionEl.textContent = readOnly() && n ? 'Everything you kept is still here to read.' : n ? 'Tap a charm to open it again.' : deviceOnly() ? 'Kept only on this device.' : 'Kept on this phone, and with your account if its sync is on.';
     buildPlants(items, M, bottom);
     buildBackground();
     buildAmbient();
@@ -791,7 +793,7 @@ export default function gardenScene(app, params = {}) {
       endEl.querySelector('.btn')?.focus();
     };
     const endKids = () => [
-      entry ? h('p', { class: 'hg-small', style: { margin: '0 0 12px' } }, `Kept on ${when(entry.savedAt)}. It lives only on this device.`) : null,
+      entry ? h('p', { class: 'hg-small', style: { margin: '0 0 12px' } }, `Kept on ${when(entry.savedAt)}. ${deviceOnly() ? 'It lives only on this device.' : 'It lives on this phone, and with your account if its sync is on.'}`) : null,
       entry ? h('button', { class: 'hg-forget', type: 'button', onclick: forget }, 'Forget this') : null,
     ].filter(Boolean);
     endEl = h('div', { class: 'hg-end' }, ...endKids());

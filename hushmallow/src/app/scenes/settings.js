@@ -44,6 +44,11 @@ export default function settings(app) {
   // Another Angle (W8): share-my-words switch, the notice, Tester code and "Delete my Another Angle data", only
   // where they mean something: with the server on, for hushmallow Beyond; and for anyone with its data still here
   // (then only Delete, unless Beyond is on)
+  // Accounts (optional sign-in): one row at the top of Privacy, only when this build has sign-in on
+  const signIn = !!app.auth?.enabled;
+  const signedIn = signIn && app.auth.status() === 'signed-in';
+  const accountRow = h('div');
+  if (signIn) import('./account.js').then((m) => m.mountAccountRow(app, accountRow)).catch(() => {});
   const angleRows = h('div');
   Promise.all([import('../../beyond/consent.js'), import('../../beyond/endpoint.js')]).then(([c, a]) => {
     const endpoint = a.resolveEndpoint();
@@ -71,6 +76,7 @@ export default function settings(app) {
       sw('lowStim', 'Low stimulation', 'Softer visuals and fewer sparkles'),
 
       section('Privacy'),
+      accountRow,
       sw('saveHistory', 'Remember what I played', 'Rituals and worlds, how they felt and where you paused. Never your words or photos.'),
       sw('saveWords', 'Keep my saved angles', `${PLANS.ultra?.name || 'hushmallow Beyond'} only. Stored on this phone, never uploaded.`),
       angleRows,
@@ -83,7 +89,7 @@ export default function settings(app) {
       section('About'),
       h('p', { style: type('body', { color: 'var(--text-2)', margin: '8px 0 0' }) },
         'Every Mallow line, world and ritual in ', h('span', { class: 'brand-name' }, 'hushmallow'), ' is written in advance, and feelings are matched with fixed word lists: you always choose what fits. Nothing you type or add leaves this phone. The one exception is Another Angle in ',
-        PLANS.ultra?.name || 'hushmallow Beyond', ': only after you say yes, your words go to our server, where an outside service prepares the perspectives you see. It’s a wellbeing app, not a medical service.'),
+        PLANS.ultra?.name || 'hushmallow Beyond', ': only after you say yes, your words go to our server, where an outside service prepares the perspectives you see. It’s a wellbeing app, not a medical service.', signIn ? ' An account is optional. If you sign in and switch on sync, your settings and favourites are kept with your account; never your words, feelings or photos.' : ''),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
       h('p', { style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0' }) }, `Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`),
       // developer tools: not part of the published site
@@ -93,7 +99,7 @@ export default function settings(app) {
           h('button', { class: 'btn ghost block', onclick: () => app.go('classic') }, 'Classic home (QA)')) : null));
 
   function confirmClear() {
-    const s = openSheet({ title: 'Delete everything?', body: h('p', { style: type('body', { margin: 0, color: 'var(--text-2)' }) }, 'This removes your favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.'),
+    const s = openSheet({ title: 'Delete everything?', body: h('p', { style: type('body', { margin: 0, color: 'var(--text-2)' }) }, signedIn ? 'This removes this account’s favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.' : 'This removes your favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.'),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { const keep = app.store.get('entitlement', null); app.store.clearAll(); if (keep) app.store.set('entitlement', keep); prefs.reset(); rec.clearAll(); s.close(); toast('Deleted'); app.go('home'); } }, 'Delete')) });
   }

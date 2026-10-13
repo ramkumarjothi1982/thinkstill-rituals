@@ -17,6 +17,8 @@ import { createPrefs, DEFAULTS } from '../src/app/prefs.js';
 import { createEntitlements } from '../src/app/entitlements.js';
 import { favouriteWorlds, loadProgress, FLOW_KEYS } from '../src/engine/flow-store.js';
 import { readGarden, GARDEN_KEY } from '../src/engine/garden.js';
+import { journeyEntries } from '../src/engine/journey.js';
+import { playedSet } from '../src/engine/played.js';
 import { consentState, STORE_KEYS } from '../src/beyond/consent.js';
 import { createAngleClient } from '../src/beyond/angle-client.js';
 import { memoryStorage, supabaseLib, fakeDom } from './helpers/auth-env.mjs';
@@ -38,6 +40,10 @@ function readAll(store, ls) {
     consent: consentState(store),
     device: createAngleClient({ store, endpoint: null }).deviceId(),
     tier: createEntitlements({ store }).tier(),
+    journey: journeyEntries(store).map((e) => `${e.id}:${e.felt}:${(e.families || []).join('+')}`),
+    played: [...playedSet(store)],
+    flowRotation: store.get('hushflow.rotation', null)?.sessionCount ?? null,   // src/hushfold/flow/director.js reads it this way
+    invite: store.get(STORE_KEYS.invite, null),                                // src/beyond/angle-client.js reads it this way
     sound: JSON.parse(ls.getItem('hm2:sound') || 'null'),       // src/engine/audio.js reads it raw
     haptics: JSON.parse(ls.getItem('hm2:haptics') || 'null'),   // src/engine/haptics.js reads it raw
   };
@@ -49,7 +55,11 @@ const EXPECTED = {
   garden: ['slowing-down'],
   consent: 'yes',
   device: DEVICE_ID,
-  tier: 'plus',
+  tier: 'paid',
+  journey: ['r-001:lighter:worry'],
+  played: ['r-001'],
+  flowRotation: 3,
+  invite: 'tester-invite-01',
   sound: { enabled: false, volume: 0.35 },
   haptics: false,
 };
@@ -122,7 +132,7 @@ test('sign in → “Not now” → the account’s page → sign out: the guest
   assert.equal(seen.consent, 'unasked', 'Another Angle consent is a person’s choice: asked again');
   assert.equal(seen.prefs.textScale, DEFAULTS.textScale);
   assert.equal(seen.device, DEVICE_ID, 'the device code is the phone’s (device-level)');
-  assert.equal(seen.tier, 'plus', 'the plan is the phone’s (device-level)');
+  assert.equal(seen.tier, 'paid', 'the plan is the phone’s (device-level)');
   // the account uses the app: its writes land in its own namespace
   createPrefs(a.store).set('textScale', 1.12);
   a.store.set(FLOW_KEYS.favourites, { v: 1, ids: ['quiet-lake'] });

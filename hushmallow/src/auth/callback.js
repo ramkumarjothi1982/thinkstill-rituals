@@ -20,6 +20,7 @@
 
 import { friendlyError, callbackError, checkPassword, passwordStrength } from './errors.js';
 import { createAuthMallow, pickMallow } from './mallow.js';
+import { settleWipe, maskEmail } from './namespace.js';
 
 export const OTP_TYPES = Object.freeze(['signup', 'email', 'recovery', 'email_change', 'invite', 'magiclink']);
 export const NEXT = Object.freeze(['account', 'home']);
@@ -170,6 +171,9 @@ function passwordForm({ onSubmit }) {
   return form;
 }
 
+/** " as an…@example.com": which account the link signed in, said on arrival (a link can sign in someone you didn't expect). */
+const as = (email) => { const m = maskEmail(email); return m ? ` as ${m}` : ''; };
+
 function arrived(kind, next, title, line) {
   try { sessionStorage.setItem(NOTICE_KEY, kind); } catch { /* the app just won't say it */ }
   say(title, line, 'happy');
@@ -225,15 +229,16 @@ export async function run({ href = START_HREF } = {}) {
     body(passwordForm({
       onSubmit: async (password) => {
         const u = await auth.updatePassword({ password, recoveryUid: r.uid });
-        if (u.ok) { await settledEnd(); arrived('password-updated', p.next, 'All set', 'Your new password is saved and you’re signed in.'); done({ state: 'recovered', uid: r.uid }); }
+        if (u.ok) { await settledEnd(); arrived('password-updated', p.next, 'All set', `Your new password is saved and you’re signed in${as(r.email)}.`); done({ state: 'recovered', uid: r.uid }); }
         return u;
       },
     }));
     return finished;
   }
   await settledEnd();
+  await auth.keepLinkSession?.(r.uid);   // the app boots into the link's account, even if another tab wrote over it meanwhile
   if (r.kind === 'email-changed') { arrived('email-changed', p.next, 'Email updated', 'Your new email address is confirmed.'); return { state: 'email-changed', uid: r.uid }; }
-  arrived('verified', p.next, 'You’re in', 'Your email is confirmed. Welcome to hushmallow.');
+  arrived('verified', p.next, 'You’re in', `Your email is confirmed. You’re signed in${as(r.email)}.`);
   return { state: 'verified', uid: r.uid };
 }
 
@@ -260,16 +265,17 @@ async function heldSession(c) {
 }
 
 /**
- * The link's work, without the page (tests/auth-callback-flow.test.mjs runs
- * it): verifyOtp for a token_hash, exchangeCodeForSession for a code. When a
+ * The link's work, without the page (tests/auth-client.test.mjs runs it):
+ * verifyOtp for a token_hash, exchangeCodeForSession for a code. When a
  * session comes of it, the session this browser held before (another
  * account's, or an older one of the same account) is ended on the server with
  * scope 'local' (auth.endDetachedSession: that one session, never the
- * person's other devices).
- *   → { ok: true, kind: 'verified' | 'recovery' | 'email-changed' | 'email-change-half', uid, ended }
+ * person's other devices), and an account whose copy on this device was
+ * removed before (src/auth/namespace.js tombstones) starts clean here.
+ *   → { ok: true, kind: 'verified' | 'recovery' | 'email-changed' | 'email-change-half', uid, email, ended }
  *   | { ok: false, error, code }
  */
-export async function openLink({ auth, c, p }) {
+export async function openLink({ auth, c, p, ls = (() => { try { return globalThis.localStorage; } catch { return null; } })() }) {
   const before = await heldSession(c);
   let kind = 'verified', session = null;
   if (p.kind === 'token') {
@@ -285,8 +291,12 @@ export async function openLink({ auth, c, p }) {
     if (data?.redirectType === 'recovery') kind = 'recovery';
   } else return { ok: false, error: friendlyError({ code: 'invalid_link' }, 'callback'), code: 'invalid_link' };
   const uid = String(session?.user?.id || '').toLowerCase() || null;
+  if (uid && ls) { try { settleWipe(ls, uid); } catch { /* the app's boot settles it */ } }
+  // kept in this page's memory: put back if another tab of this browser writes over it while this page works
+  if (session) auth.holdLinkSession?.(session);
   const ended = before && session && before.refresh_token !== session.refresh_token ? auth.endDetachedSession(before) : Promise.resolve({ ok: true, none: true });
-  return { ok: true, kind, uid, ended };
+  const email = typeof session?.user?.email === 'string' ? session.user.email : null;
+  return { ok: true, kind, uid, email, ended };
 }
 
 if (IS_PAGE) {

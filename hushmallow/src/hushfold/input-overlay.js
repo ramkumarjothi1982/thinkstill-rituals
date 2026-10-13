@@ -45,7 +45,8 @@ let mods = null, modsNow = null;
 /** interpret + safety + emotions, loaded on first use (kept out of the first second). */
 export function loadInputModules() {
   mods ||= Promise.all([import('../engine/interpret.js'), import('../engine/safety.js'), import('../data/emotions.js')])
-    .then(([interpretMod, safety, emotions]) => (modsNow = { interpret: interpretMod.interpret, checkText: safety.checkText, legacySafety: safety.legacySafety, getEmotion: emotions.getEmotion }));
+    .then(([interpretMod, safety, emotions]) => (modsNow = { interpret: interpretMod.interpret, suggestedFeelings: interpretMod.suggestedFeelings,
+      checkText: safety.checkText, legacySafety: safety.legacySafety, getEmotion: emotions.getEmotion }));
   return mods;
 }
 
@@ -212,8 +213,9 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     const t = ta.value;
     reading = t.trim() ? m.interpret(t) : null;
     safety = t.trim() ? m.checkText(t) : { level: 'none', category: null };
-    // only confident matches are highlighted (typo-tolerant guesses stay quiet)
-    suggested = (reading?.emotions || []).filter((e) => e.confidence >= 0.6).slice(0, 3).map((e) => e.id);
+    // only confident matches are highlighted (typo-tolerant guesses stay quiet), and never a positive feeling for
+    // words that carry a safety cue: then nothing is suggested at all
+    suggested = m.suggestedFeelings ? m.suggestedFeelings(reading) : (reading?.emotions || []).filter((e) => e.confidence >= 0.6).slice(0, 3).map((e) => e.id);
     for (const id of suggested) if (!cached.has(id)) cached.set(id, m.getEmotion(id)?.name || id);
     report(safety);
     if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }

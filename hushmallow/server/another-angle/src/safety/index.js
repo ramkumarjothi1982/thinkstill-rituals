@@ -10,7 +10,9 @@
 // finally hit me" → "he hit me"); the more serious result wins, and a
 // second-pass match that a negation in its own clause governs ("I don't
 // necessarily want to really die", "at no point did he actually hit me", "it
-// isn't that he really hit me") does not count. FILLERS, SECOND_PASS,
+// isn't that he really hit me", "no one at home is actually in danger") does
+// not count; a double negation or a past view does not govern it ("not a day
+// goes by that I don't want to actually die"). FILLERS, SECOND_PASS,
 // fillerFreeCopy and the scope block below are kept identical to the app's
 // (test/safety-fillers.test.js compares them).
 
@@ -68,8 +70,9 @@ const F = String.raw;
 export const FILLERS = Object.freeze({
   // Removed wherever another word follows them (never at the end of a clause,
   // where the lexicon's lookaheads may read them). 'just' stays between a
-  // negation and a denial: "it's not just that he hit me" says that he did.
-  free: F`(?<!\b(?:not|[a-z]+n't|dont|didnt|doesnt|isnt|wasnt|arent|werent|aint|wont|cant) )just|just(?! (?:that|like|as if|as though)\b)|finally|finaly|actually|really|realy|rly|literally|basically|totally|honestly|genuinely|always|sometimes|often|also|then|still|kinda|sorta|even(?! (?:though|so)\b)|(?<!\bfor )ever(?! (?:again|since|after)\b)|(?<!\b(?:a|an|the|what|this|that|these|those|any|some|every|which|my|your|his|her|our|their|no|one|same|its) )(?:kind|sort) of`,
+  // negation and a denial: "it's not just that he hit me" says that he did,
+  // and so do "that doesn't just mean" and "I'm not just saying".
+  free: F`(?<!\b(?:not|[a-z]+n't|dont|didnt|doesnt|isnt|wasnt|arent|werent|aint|wont|cant) )just|just(?! (?:that|like|as if|as though|mean|means|meant|saying|say|said|because|cos|coz)\b)|finally|finaly|actually|really|realy|rly|literally|basically|totally|honestly|genuinely|always|sometimes|often|also|then|still|kinda|sorta|even(?! (?:though|so)\b)|(?<!\bfor )ever(?! (?:again|since|after)\b)|(?<!\b(?:a|an|the|what|this|that|these|those|any|some|every|which|my|your|his|her|our|their|no|one|same|its) )(?:kind|sort) of`,
   // Removed only straight after a subject, a helper verb or 'to' ("he
   // already hit me", "want to seriously hurt him"): the lexicon reads them
   // after a phrase ("taking my life seriously", "over already").
@@ -145,16 +148,28 @@ export function fillerFreeCopy(tidied) {
 }
 
 // Words for the scope of a negation (SECOND_PASS below; the same on both sides).
-const NEG_WORDS = F`not|never|no|nor|cannot|[a-z]+n't|dont|didnt|doesnt|wont|wouldnt|cant|couldnt|shouldnt|isnt|wasnt|arent|werent|aint|hasnt|havent|hadnt|mustnt`;
+const NEG_WORDS = F`not|never|no|nor|cannot|[a-z]+n't|dont|didnt|doesnt|wont|wouldnt|cant|couldnt|shouldnt|isnt|wasnt|arent|werent|aint|hasnt|havent|hadnt|mustnt|dnt|dont't|doesnt't|didnt't`;
 const AUX_WORDS = F`am|is|are|was|were|be|been|being|do|does|did|would|will|could|can|should|might|must|may|shall|has|have|had`;
 const ADV_WORDS = F`necessarily|truly|personally|exactly|particularly|definitely|certainly|really|actually|honestly|seriously|genuinely|totally|completely|entirely|literally|usually|normally|currently|technically|specifically|consciously|deliberately|intentionally|ever|even|quite|so|too|yet|at all`;
-const PERSON_WORDS = F`${FILLERS.subject}|anyone|anybody|everyone|everybody|people`;
+// Who can be a subject: the fillers' people, 'anyone', 'people', and family
+// and friends in the plural ("my kids", "the baby").
+const PERSON_WORDS = F`${FILLERS.subject}|anyone|anybody|everyone|everybody|people|(?:my|our|his|her|their|your|the|[a-z]+'s) (?:kids|children|parents|friends|brothers|sisters|sons|daughters|siblings|cousins|grandparents|family|flatmates|housemates|roommates|classmates|neighbou?rs|baby|babies)`;
+// A word in a noun phrase or after a preposition: never a helper, a
+// negation, a pronoun, a joiner or a verb of knowing or saying.
+const WORD = F`(?:(?!(?:${AUX_WORDS}|${NEG_WORDS}|i|he|she|we|they|you|it|me|him|us|them|and|or|but|if|when|that|who|which|because|so|to|of|for|about|than|then|what|why|how|where|want|wants|wanna|know|knows|think|thinks|say|says|said|tell|tells|told)\b)[a-z]+(?:'s)?)`;
+// Where someone is: 'here', 'at home', 'on the trip', 'around me', 'at my mum's house'.
+const LOC = F`(?:here|there|nearby|around (?:here|me|us|him|her|them)|(?:at|in|on|near|from|inside|outside|with|around) (?:(?:the|my|our|his|her|their|your|this|that|a|an) )?${WORD}(?: ${WORD})?)`;
+// A noun phrase: 'my kids', 'the baby', 'my little brother' (never "it's", "that's").
+const NP = F`(?:(?:my|our|his|her|their|your|the|this|that|these|those|both|all|some|most|many|(?!(?:it|that|there|what|he|she|who|here|where|how|this)'s)[a-z]+'s) ${WORD}(?: ${WORD})?)`;
+const HELPERS = F`${AUX_WORDS}|going to|gonna|about to|still|also`;
 
 // Kept identical to the app's SECOND_PASS (compared by test/safety-fillers.test.js).
 /**
- * @type {Readonly<{ guards: readonly string[], negation: string, npi: string, clauseBreak: string, openEnd: string,
- *   scopeNegation: string, person: string, between: string, tight: string, negSubjectGap: string, inversion: string,
- *   frame: string, stance: string, firstPerson: string, unless: string, carry: string }>}
+ * @type {Readonly<{ guards: readonly string[], negation: string, npi: string, clauseBreak: string, openEnd: string, viewEnd: string,
+ *   frontOnly: string, scopeNegation: string, person: string, subject: string, helper: string, helperLead: string, predicate: string, self: string,
+ *   tight: string, negSubjectGap: string, inversion: string, frame: string, because: string, stance: string, firstPerson: string,
+ *   clauseStart: string, believe: string, shock: string, outer: string, unless: string, until: string, wish: string, pastNeg: string,
+ *   carry: string }>}
  */
 export const SECOND_PASS = Object.freeze({
   // Idioms that only need blanking once fillers are gone: 'she just hit me up'
@@ -184,53 +199,98 @@ export const SECOND_PASS = Object.freeze({
     F`\b(?:stop existing|not exist(?:ing)?|cease to exist|stop being alive)(?= (?:online|on (?:social media|socials|the internet|instagram|insta|tiktok|twitter|facebook|snapchat|whatsapp|discord)|in (?:the|this|that|our|my) (?:group|chat|office|class|team))\b)`,
   ]),
   // Negation words inside a match (masked to see whether it steps over one).
-  negation: F`\b(?:not|never|no|nobody|noone|nothing|none|nowhere|neither|nor|cannot|[a-z]+n't|dont|didnt|doesnt|wont|cant|isnt|wasnt|arent|werent|hasnt|havent|hadnt|shouldnt|wouldnt|couldnt|mustnt|aint)\b`,
+  negation: F`\b(?:not|never|no|nobody|noone|nothing|none|nowhere|neither|nor|cannot|[a-z]+n't|dont|didnt|doesnt|wont|cant|isnt|wasnt|arent|werent|hasnt|havent|hadnt|shouldnt|wouldnt|couldnt|mustnt|aint|dnt)\b`,
   // A match that starts 'anyone' or 'who' is worded for a negation before it
   // ("I don't think anyone would ever really notice if I was gone"), so no
   // negation before it governs it.
   npi: F`^(?:anyone|anybody|any one|anything|who)\b`,
   // Where a clause ends in the tidied text: . ! ? ; … and every comma, and
-  // before 'but', 'because', 'cos', 'and I' and 'so' + a subject.
-  clauseBreak: F`(?:[!?;…]|\.(?!\d))+|,|\b(?:but|because|cos|coz)\b|\band(?= i\b)|\bso(?= (?:${PERSON_WORDS})(?![\w-]))`,
+  // before 'but', 'and I', 'so' + a subject, and 'because' / 'cos' (but not
+  // "it's not because", which denies what follows it).
+  clauseBreak: F`(?:[!?;…]|\.(?!\d))+|,|\bbut\b|(?<!\b(?:not|isn'?t|isnt|wasn'?t|wasnt|ain'?t|aint)(?: (?:really|actually|honestly|necessarily|entirely|totally|simply|purely|literally|even))* )\b(?:because|cos|coz|cuz)\b|\band(?= i\b)|\bso(?= (?:${PERSON_WORDS})(?![\w-]))`,
   // ...unless the comma or dots went with a filler after one of these
-  // ("he... finally hit me", "I don't, like, really want to die").
+  // ("he... finally hit me", "I don't, like, really want to die")...
   openEnd: F`(?:^|[^\w'])(?:${FILLERS.subject}|${FILLERS.helper}|${NEG_WORDS}|wanna|gonna|gotta)\s*$`,
+  // ...or a filler set off by commas went after a view ("I don't think, like,
+  // I want to really die" reads as "I don't think I want to really die")...
+  viewEnd: F`(?:^|[^\w'])(?:think|believe|reckon|suppose|guess|mean|say|saying|said|doubt)\s*$`,
+  // ...or the comma comes after a fronted negation alone ("never, not once,
+  // has he").
+  frontOnly: F`^[\s,.…—–-]*(?:(?:never(?: once| ever)?|not (?:once|ever|even once|one (?:single )?time|a single time)|at no (?:point|time|stage)|in no way|by no means|under no circumstances|ever|once)[\s,.…—–-]*)+$`,
   // The negations a clause can hold: fronted ones that can come before a
   // helper and its subject ("at no point did he"), negative subjects ("no one
   // is"), denials without a negation word ("I doubt", "it's a lie that") and
   // the plain ones.
   scopeNegation: F`(?<fronted>\b(?:at no (?:point|time|stage)|in no way|under no circumstances|by no means|not (?:once|one (?:single )?time|a single time|even once|ever)|never(?: once| ever)?|no (?:way|chance)|nor)\b)|(?<negsubj>\b(?:no[- ]?one|nobody|nothing|none|neither)\b(?: of (?:us|you|them|these|those|(?:my|the|his|her|their|our) [a-z]+)\b)?)|(?<denial>(?<!\b(?:no|don'?t|dont|do not|never|without(?: a| any)?|beyond(?: a| any)?) )\bdoubt(?:s|ed)?\b|\ba (?:total |complete |big )?lie\b|\b(?:untrue|false)\b(?= that\b))|(?<plain>\b(?:${NEG_WORDS}|nowhere)\b)`,
-  // A subject: of the match when it starts with one, or the last one between
-  // the negation and the match.
+  // A match that starts with its own subject ("he hit me").
   person: F`(?<![\w'])(?:${PERSON_WORDS})(?![\w-])`,
-  // What may stand between that subject and the match: helpers and adverbs.
-  between: F`^(?:'(?:s|d|ll|m|re|ve))?(?: (?:${AUX_WORDS}|${ADV_WORDS}|going to|gonna|about to|still|also))*\s*$`,
+  // Otherwise the match's subject stands straight before it, with only helpers
+  // and adverbs after it: a person ("I don't think he would"), a person and
+  // where they are ("anyone at home is"), or a noun phrase ("the kids are");
+  // the last two only before a helper (helper, helperLead).
+  subject: F`(?<![\w'])(?:(?<person>${PERSON_WORDS})(?![\w-])(?<loc>(?: ${LOC})?)|(?<np>${NP}))(?<aux>(?:'(?:s|d|ll|m|re|ve))?(?: (?:${HELPERS}|${ADV_WORDS}))*)\s*$`,
+  helper: F`^'(?:s|d|ll|m|re|ve)|\b(?:${AUX_WORDS})\b`,
+  helperLead: F`^(?:'(?:s|d|ll|m|re|ve)|(?:${AUX_WORDS})\b)`,
+  predicate: F`^(?:'(?:s|d|ll|m|re|ve)|(?:${AUX_WORDS}|want|wants|wanted|wanna|wish|wishes|wished|need|needs|needed|hope|hopes|hoped|mean|means|meant|plan|plans|planned|planning|try|tries|tried|trying|going|gonna|ready|about)\b)`,
+  self: F`^(?:i|we)(?![\w-])`,
   // With no subject in between, what may stand between a negation and the
   // match ("I don't necessarily want to really die")...
   tight: F`^(?: (?:${ADV_WORDS}|${AUX_WORDS}|have to|got to|want|wants|wanted|wanting|wanna|wish|wishes|wished|need|needs|needed|mean|means|meant|intend|intends|intended|plan|plans|planned|planning|try|tries|tried|trying|going|gonna|gotta|to|ready|about|hope|hoped|feel|felt|like|seem|seems|seemed))*\s*$`,
-  // ...or a negative subject and the match ("nobody here is", "none of us
-  // are"; never "nobody else is", which says someone is).
-  negSubjectGap: F`^(?: (?:here|there|around|today|tonight|now|right now|in (?:here|there|(?:my|the|this|our|his|her|their) [a-z]+)|of (?:us|you|them|these|those|(?:my|the|his|her|their|our) [a-z]+)|${ADV_WORDS}|${AUX_WORDS}))*\s*$`,
+  // ...or between a negative subject and the match: where they are, a short
+  // relative clause, helpers ("nobody here is", "no one at home is", "no one
+  // I know is", "nobody who lives here is", "none of us are"; never "nobody
+  // else is", which says someone is), when the match is what the negative
+  // subject does or is (predicate: never "no one at home life isn't worth
+  // living").
+  negSubjectGap: F`^(?: (?:${LOC}|(?:(?:who|that) )?(?:i|we|you) (?:know|love|care about|live with|work with)|(?:who|that) (?:lives?|lived|works?|worked|stays?|stayed|goes|went|is|was|are|were)|today|tonight|now|right now|of (?:us|you|them|these|those|(?:my|the|his|her|their|our) [a-z]+)|${ADV_WORDS}|${AUX_WORDS}))*\s*$`,
   // A fronted negation, then a helper, then the subject ("never in my life
-  // has he", "not one time has he", "in no way did he").
-  inversion: F`^(?: (?:in|on|at|during|for|of|over|since|throughout|after|all|my|his|her|their|our|your|the|this|that|these|those|whole|entire|life|lives|relationship|marriage|years?|months?|weeks?|days?|nights?|times?|once|single|one|two|three|four|five|ten|twenty|[0-9]+|a|an|so|far|yet|ever|even|again))*? (?:${AUX_WORDS})\s*$`,
+  // has he", "never in all the time we've been together has he", "not one
+  // time has he", "in no way did he"); never across a view or a joiner
+  // ("never did I think he would").
+  inversion: F`^,?(?: (?!(?:${NEG_WORDS}|think|thinks|thought|know|knows|knew|believe|believed|say|says|said|told|realised|realized|imagined|expected|guessed|feel|felt|and|but|or|so|because|if|when|where|why|how|what|then)\b)[a-z0-9']+,?){0,12}? (?:${AUX_WORDS})\s*$`,
   // Denials straight before the subject, whoever says them: "it's not like",
   // "it isn't that", "it's not true that", "there's no chance", "no way",
-  // "it's a lie that", "it's false that".
-  frame: F`^(?:not (?:like|that|as if|as though|true|the case)|(?:is|was|are|were|ai)n'?t (?:like|that|as if|as though|true|the case)|no (?:way|chance)(?: in hell)?|a (?:total |complete |big )?lie|untrue|false)(?: that)?(?: (?:${ADV_WORDS}))*\s*$`,
-  // ...and views, in the first person only (firstPerson): "I don't think",
-  // "I didn't say", "I'm not saying", "I'm not sure", "I can't say", "I doubt"
-  // (never "I can't believe", "the police didn't believe").
-  stance: F`^(?:(?:not|never|don'?t|dont|didn'?t|didnt|doesn'?t|doesnt|wouldn'?t|wouldnt|won'?t|wont)(?: (?:${ADV_WORDS}))? (?:think|believe|reckon|mean|say|said|claim(?:ed)?|suggest(?:ed)?|suppose|imagine|expect|feel like)|not (?:(?:${ADV_WORDS}) )?(?:saying|suggesting|claiming|implying|sure|certain|convinced)|(?:can'?t|cant|cannot|couldn'?t|couldnt) say|doubt(?:s|ed)?)(?: that)?(?: (?:${ADV_WORDS}))*\s*$`,
+  // "it's a lie that", "it's false that", "that doesn't mean".
+  frame: F`^(?:not (?:like|that|as if|as though|true|the case)|(?:is|was|are|were|ai)n'?t (?:like|that|as if|as though|true|the case)|no (?:way|chance)(?: in hell)?|a (?:total |complete |big )?lie|untrue|false|(?:does|do|did)(?:n'?t| not)(?: (?:${ADV_WORDS}))? mean)(?: that)?(?: (?:${ADV_WORDS}))*\s*$`,
+  // "It's not because I want to die" denies it in the first person only ("it's
+  // not because he hits me" says he does).
+  because: F`^(?:not|(?:is|was|ai)n'?t)(?: (?:${ADV_WORDS}))* (?:because|cos|coz|cuz)(?: (?:${ADV_WORDS}))*\s*$`,
+  // ...and views, in the first person (firstPerson) or with no subject at the
+  // start of a clause (clauseStart): "I don't think", "I don't want you to
+  // think", "I didn't say", "I'm not saying", "I'm not trying to say", "I
+  // don't mean to say", "I'm not telling you", "please don't think", "not
+  // saying", "I'm not sure", "I can't say", "I doubt". A view of what one
+  // thinks or believes is in the present only ("I didn't think he would hurt
+  // me" says he did); never "I can't believe", "the police didn't believe".
+  stance: F`^(?:(?:don'?t|dont|do not|doesn'?t|doesnt|does not|wouldn'?t|wouldnt|would not)(?: (?:${ADV_WORDS}))? (?:think|believe|reckon|suppose|imagine|expect|guess|feel like)|(?:not|never|don'?t|dont|do not|doesn'?t|doesnt|does not|didn'?t|didnt|did not|wouldn'?t|wouldnt|would not|won'?t|wont)(?: (?:${ADV_WORDS}))? (?:mean|meant|say|said|claim(?:ed)?|suggest(?:ed)?|imply|implied)(?: to (?:say|suggest|imply|sound like))?|(?:don'?t|dont|do not|didn'?t|didnt|did not)(?: (?:${ADV_WORDS}))? want (?:you|people|anyone|anybody|everyone|everybody|them|him|her|(?:my|the|his|her|their|our) [a-z]+) to (?:think|believe|assume|imagine|worry)|not (?:(?:${ADV_WORDS}) )?(?:saying|suggesting|claiming|implying|sure|certain|convinced)|not (?:(?:${ADV_WORDS}) )?(?:trying|going|meaning) to (?:say|suggest|claim|imply|make out)|not (?:(?:${ADV_WORDS}) )?telling (?:you|anyone|anybody|people|them|him|her|everyone|my [a-z]+)|(?:can'?t|cant|cannot|couldn'?t|couldnt) say|doubts?)(?: that)?(?: (?:${ADV_WORDS}))*\s*$`,
   firstPerson: F`(?:^|[^\w'])(?:i|we)(?:'(?:m|d|ll|ve|re))?(?: (?:do|does|did|would|will|am|is|are|was|were|have|had|just|still|also|like|${ADV_WORDS}))*\s*$`,
-  // ...unless it goes on to say it did happen, or who it is true of, within
-  // four words: "he never hurt me until last year", "he'd never hit me
-  // before", "never hit me again", "I've never wanted to die more than now",
-  // "no one is in danger except me".
-  unless: F`^(?:[^\w']+[\w']+){0,3}?[^\w']+(?:before|until|till|again|more than|so much|this much|as much as|except|apart from|other than|besides|but (?:me|us|him|her|them|my))\b`,
+  clauseStart: F`^[\s,.;:!?…—–-]*(?:(?:please|pls|plz|and|but|so|just|honestly|look|listen|ok|okay|um|uh|well)[\s,]+)*$`,
+  // "I still don't believe he hit me" is shock that he did, not a denial
+  // (shock is read in the tidied clause, where 'still' has not been removed).
+  believe: F`\bbeliev`,
+  shock: F`\bstill (?:just )?(?:don'?t|dont|do not) (?:really |honestly )?believe\b`,
+  // A negation inside a clause after an outer one is a double negation, and
+  // tells it: "not a day goes by that I don't", "I can't remember a day I
+  // didn't", "there isn't a night I don't".
+  outer: F`\b(?:not|never) (?:a|one|a single) (?:day|night|morning|moment|minute|hour|week|time)\b|\bno (?:day|night|moment|morning)\b|\b(?:can'?t|cant|cannot|couldn'?t|couldnt|don'?t|dont|do not) (?:remember|recall|think of) (?:a|one|the last|any) (?:day|night|time|moment|morning)\b|\bthere(?:'s| is| was|'s been| has been| have been) (?:not|never|no)(?: (?:a|one|a single))? (?:day|night|time|moment|morning)\b|\bthere (?:isn'?t|isnt|wasn'?t|wasnt|hasn'?t been|hasnt been) (?:a|one|a single) (?:day|night|time|moment|morning)\b|\b(?:hardly|barely|scarcely) (?:a|any|one) (?:day|night|time|moment)\b`,
+  // A governed match still counts when, within four words after it, the
+  // sentence says it did happen, how much, or who it is true of: "...hurt me
+  // again", "I've never wanted to die more than now / like I do tonight / so
+  // badly / the way I do now", "it's not like he hit me hard", "no one is in
+  // danger except me / but me / but my mum", "I'm not saying he really hit
+  // me, but he did", "I don't want to really die but I do" (never "any more
+  // than you do", "so much as", "but my mum thinks so").
+  unless: F`^(?:[^\w']+[\w']+){0,3}?[^\w']+(?:again|(?<!\bany )more|so much(?! as\b)|this much|that much|as much as|(?:like|the way) (?:i|we|you|he|she|they) (?:do|does|did|am|is|are|was|were|have|has|had)|(?:so|this|that|too|very) bad(?:ly)?|as bad(?:ly)? as|badly|(?:so |that |too |very )?hard|every (?:day|night|time|week)|all the time|except|apart from|other than|but (?:me|us|him|her|them)|but (?:my|his|her|their|our|the) ${WORD}(?: (?:and (?:my |his |her |their |our |the )?)?${WORD})?(?=\s*(?:$|[^\w\s']))|but (?:(?:i|he|she|they|we|it|you|part of me|some of me|my ${WORD}) )?(?:still )?(?:do|does|did|has|have|had|was|were|is|am|would|will)(?: (?:too|anyway|sometimes|now|though|still|again))?(?=\s*(?:$|[^\w\s'])))(?![\w'])`,
+  // ...and before / until / till say it happened after all ("he never hurt me
+  // until last year", "I never wanted to die until now"), but not after a wish
+  // in the present ("I don't want to die before I see my kids grow up", "I
+  // never want to die before my mum does"): see wish and pastNeg.
+  until: F`^(?:[^\w']+[\w']+){0,3}?[^\w']+(?:before|until|till|til)(?![\w'])`,
+  wish: F`\b(?:want|wants|wanna|wish|wishes|hope|hopes)\b`,
+  pastNeg: F`(?:^|[^\w'])(?:didn'?t|didnt|hadn'?t|hadnt|wasn'?t|wasnt|weren'?t|werent|(?:did|had|was|were) not)$`,
   // (straight after a comma or as 'but me' too: "he never really hurt me,
   // until last year", "no one is in danger but me")
-  carry: F`^\s*,?\s*(?:until|till|before|but (?:me|us|him|her|them|my))\b`,
+  carry: F`^\s*,?\s*(?:until|till|til|before|but (?:me|us|him|her|them|my|his|her|their|our|the|i|he|she|they|we|it|you|part|some|still|do|does|did|has|have|had|was|were|is|am|would|will))(?![\w'])`,
 });
 
 const SECOND = {
@@ -244,60 +304,95 @@ const SECOND = {
 //
 // A second-pass match does not count, at any level, when a negation in its
 // own clause governs it. Clauses: the tidied text split at . ! ? ; … and
-// commas, and before 'but', 'because', 'cos', 'and I' and 'so' + a subject
-// (a comma or dots that only set off a filler inside a clause, as in "he...
-// finally hit me" or "I don't, like, really want to die", and dots of
-// hesitation after a subject, as in "I... don't think", do not split it).
+// commas, and before 'but', 'and I', 'so' + a subject and 'because' / 'cos'
+// (not after "it's not": "it's not because I want to die" is one thought). A
+// comma or dots that only set off a filler ("he... finally hit me", "I
+// don't, like, really want to die", "I don't think, like, I want to die"),
+// dots of hesitation after a subject ("I... don't think") and the commas of
+// a fronted negation ("never, not once, has he") do not split a clause.
 // In that clause a negation governs the match when:
 //   - only helpers, adverbs and verbs such as 'want to' stand between them
-//     ("I don't necessarily want to really die"), or it is the match's own
-//     subject ("no one here is really in danger", "none of us are");
-//   - it is fronted before the match's subject ("at no point did he
-//     actually hit me", "never in my life has he", "not one time has he");
-//   - or it denies what follows it, straight before the subject ("it isn't
-//     that he really hit me", "there's no chance he would", "it's a lie
-//     that"), and in the first person when it is someone's view ("I don't
-//     think", "I'm not saying", "I doubt"; never "the police didn't believe
-//     he really hit me").
+//     ("I don't necessarily want to really die");
+//   - it is the match's own subject, with where they are or who they are
+//     ("no one at home is really in danger", "no one I know is", "none of
+//     the people at the party are");
+//   - it is fronted before a helper and the match's subject ("at no point
+//     did he actually hit me", "never in my life has he");
+//   - or it denies what follows it, straight before the subject: whoever says
+//     it ("it isn't that he really hit me", "there's no chance he would",
+//     "that doesn't mean I want to die"), in the first person ("it's not
+//     because I want to die"), or as the speaker's view ("I don't think the
+//     kids are really in danger", "I don't want you to think I want to die",
+//     "please don't think", "I doubt anyone here is").
 // Anything else in between, above all a new subject with its own verb,
 // starts a thought the negation does not reach, and the match counts ("I
 // don't know why I want to really die", "I can't stop thinking I want to
 // actually die", "I don't think anyone knows he always hits me", "it's not
-// just that he actually hit me"). So do matches worded for a negation before
-// them ('anyone would notice if I was gone') and negations the phrase spells
-// out itself ("don't feel safe", "nobody would miss me"). A match that only
-// fits by stepping over a negation ("he never really hurt me") is governed
-// too. A governed match counts again when before / until / till / again,
-// a comparison or an exception comes within four words after it in its
-// clause, or before / until / till straight after a comma ("he never really
-// hurt me until last year", "...hurt me again", "..., until last year", "I've
-// never wanted to really die more than now", "no one is actually in danger
-// except me", "...but me").
+// just that he actually hit me"). So do a double negation ("not a day goes
+// by that I don't want to actually die"), a past view ("I didn't think I'd
+// ever want to actually die"), matches worded for a negation before them
+// ('anyone would notice if I was gone') and negations the phrase spells out
+// itself ("don't feel safe", "nobody would miss me"). A match that only fits
+// by stepping over a negation ("he never really hurt me") is governed too.
+// A governed match counts again when, within four words after it in its
+// clause, the sentence says it did happen, how much, or who it is true of
+// ("...hurt me again", "I've never wanted to really die more than now / like
+// I do tonight", "it's not like he hit me hard", "no one is actually in
+// danger except me / but me"), or says before / until / till, except after a
+// wish in the present ("he never really hurt me until last year" counts; "I
+// don't want to actually die before I see my kids grow up" does not).
+// Only the nearest negations, a few words back, are looked at, so long text
+// stays cheap.
 const SCOPE = {
   negation: new RegExp(SECOND_PASS.negation, 'gi'),
   npi: new RegExp(SECOND_PASS.npi, 'i'),
   clauseBreak: new RegExp(SECOND_PASS.clauseBreak, 'gi'),
   openEnd: new RegExp(SECOND_PASS.openEnd, 'i'),
+  viewEnd: new RegExp(SECOND_PASS.viewEnd, 'i'),
+  frontOnly: new RegExp(SECOND_PASS.frontOnly, 'i'),
   token: new RegExp(SECOND_PASS.scopeNegation, 'gi'),
   anyToken: new RegExp(SECOND_PASS.scopeNegation, 'i'),
-  person: new RegExp(SECOND_PASS.person, 'gi'),
   leadPerson: new RegExp(`^${SECOND_PASS.person}`, 'i'),
-  between: new RegExp(SECOND_PASS.between, 'i'),
+  subject: new RegExp(SECOND_PASS.subject, 'i'),
+  helper: new RegExp(SECOND_PASS.helper, 'i'),
+  helperLead: new RegExp(SECOND_PASS.helperLead, 'i'),
+  predicate: new RegExp(SECOND_PASS.predicate, 'i'),
+  self: new RegExp(SECOND_PASS.self, 'i'),
   tight: new RegExp(SECOND_PASS.tight, 'i'),
   negSubjectGap: new RegExp(SECOND_PASS.negSubjectGap, 'i'),
   inversion: new RegExp(SECOND_PASS.inversion, 'i'),
   frame: new RegExp(SECOND_PASS.frame, 'i'),
+  because: new RegExp(SECOND_PASS.because, 'i'),
   stance: new RegExp(SECOND_PASS.stance, 'i'),
   firstPerson: new RegExp(SECOND_PASS.firstPerson, 'i'),
+  clauseStart: new RegExp(SECOND_PASS.clauseStart, 'i'),
+  believe: new RegExp(SECOND_PASS.believe, 'i'),
+  shock: new RegExp(SECOND_PASS.shock, 'i'),
+  outer: new RegExp(SECOND_PASS.outer, 'gi'),
+  anyOuter: new RegExp(SECOND_PASS.outer, 'i'),
   unless: new RegExp(SECOND_PASS.unless, 'i'),
+  until: new RegExp(SECOND_PASS.until, 'i'),
+  wish: new RegExp(SECOND_PASS.wish, 'i'),
+  pastNeg: new RegExp(SECOND_PASS.pastNeg, 'i'),
   carry: new RegExp(SECOND_PASS.carry, 'i'),
   hesitation: /^(?:\.{2,}|…)+$/,
   pause: /\s*(?:\.{2,}|…|—|–|--)+\s*/g,
+  // how far back a negation can reach (characters of its clause), and how
+  // many of the nearest ones are looked at for each match
+  reach: 200,
+  nearest: 6,
   /** @type {Map<RegExp, RegExp>} */
   sticky: new Map(),
   /** @type {Map<RegExp, RegExp>} */
   global: new Map(),
 };
+
+/** @typedef {{ start: number, end: number, norm: string, idx: Int32Array, tokens: RegExpMatchArray[], outers: number[] }} Clause */
+/** @typedef {{ neg: string, gap: string }} Governor */
+/**
+ * @typedef {{ clause: Int32Array, map: number[] | null, tidied: string, text: string, hasNegation: boolean,
+ *   clauses: Map<number, Clause>, governors: Map<string, Governor | null> }} Scope
+ */
 
 /**
  * One step of fillerFreeCopy that also keeps, for every character, its index
@@ -345,6 +440,15 @@ export function fillerFreeCopyMapped(tidied) {
 }
 
 /**
+ * The text just before `a` (from a space, so no word is cut).
+ * @param {string} s @param {number} a
+ */
+function tailBefore(s, a) {
+  const from = a > 64 ? s.lastIndexOf(' ', a - 64) : 0;
+  return s.slice(from < 0 ? 0 : from, a);
+}
+
+/**
  * The clause of every character of the copy, counted in the tidied text.
  * @param {string} tidied @param {string} copy @param {number[]} map
  */
@@ -352,19 +456,25 @@ function clausesOf(tidied, copy, map) {
   const kept = new Uint8Array(tidied.length);
   for (let i = 0; i < copy.length; i++) if (copy[i] !== ' ') kept[map[i]] = 1;
   const cut = new Uint8Array(tidied.length);
+  let last = 0;
   for (const b of tidied.matchAll(SCOPE.clauseBreak)) {
     const k = b.index ?? 0;
     let removed = true;
     for (let j = k; j < k + b[0].length; j++) if (kept[j]) { removed = false; break; }
     // punctuation that went with a filler, and dots of hesitation, are inside a
     // clause when what comes before is a subject, a helper, a negation or 'to'
-    // ("he... finally hit me", "I... don't think he would")
+    // ("he... finally hit me", "I... don't think he would"), and punctuation
+    // that went with a filler after a view too ("I don't think, like, I")
     if (removed || SCOPE.hesitation.test(b[0])) {
       let a = k;
       while (removed && a > 0 && !kept[a - 1]) a--;
-      if (SCOPE.openEnd.test(tidied.slice(0, a))) continue;
+      const before = tailBefore(tidied, a);
+      if (SCOPE.openEnd.test(before) || (removed && SCOPE.viewEnd.test(before))) continue;
     }
+    // "never, not once, has he": the commas of a fronted negation
+    if (b[0] === ',' && SCOPE.frontOnly.test(tidied.slice(last, k))) continue;
     cut[k] = 1;
+    last = k;
   }
   const of = new Int32Array(tidied.length);
   for (let i = 0, id = 0; i < tidied.length; i++) of[i] = (id += cut[i]);
@@ -374,73 +484,205 @@ function clausesOf(tidied, copy, map) {
 }
 
 /**
- * The clauses of the copy of `tidied`, or one clause for all of it if the
- * mapped copy is not `copy` (it always is; the tests check it).
+ * The clauses of the copy of `tidied` (one clause for all of it if the
+ * mapped copy is not `copy`; it always is, and the tests check it).
  * @param {string} tidied @param {string} copy
+ * @returns {Scope}
  */
 function scopeOf(tidied, copy) {
   const { text, map } = fillerFreeCopyMapped(tidied);
-  return text === copy ? clausesOf(tidied, text, map) : new Int32Array(copy.length);
+  const same = text === copy;
+  return {
+    clause: same ? clausesOf(tidied, text, map) : new Int32Array(copy.length), map: same ? map : null, tidied,
+    text: '', hasNegation: false, clauses: new Map(), governors: new Map(),
+  };
 }
 
 /**
- * Whether the negation `n` (in `head`, the match's clause up to the match)
- * governs the match `found`.
- * @param {string} head @param {RegExpMatchArray} n @param {string} found
+ * Start `ctx` on `text` (the copy, or the copy with some spans blanked).
+ * @param {Scope} ctx @param {string} text
  */
-function governs(head, n, found) {
-  const g = n.groups || {};
-  const ns = n.index ?? 0;
-  const ne = ns + n[0].length;
-  const gap = head.slice(ne);
-  // the match's subject: its own first word, or the last one before it
-  let sp = -1;
-  let se = -1;
-  if (SCOPE.leadPerson.test(found)) sp = se = head.length;
-  else for (const s of gap.matchAll(SCOPE.person)) { sp = ne + (s.index ?? 0); se = sp + s[0].length; }
-  if (sp < 0) return (g.negsubj ? SCOPE.negSubjectGap : SCOPE.tight).test(gap);
-  if (!SCOPE.between.test(head.slice(se))) return false;
-  if (g.fronted && SCOPE.inversion.test(head.slice(ne, sp))) return true;
-  const pre = head.slice(ns, sp);
-  if (g.negsubj) return false;
-  if (SCOPE.frame.test(pre)) return true;
-  return SCOPE.stance.test(pre) && SCOPE.firstPerson.test(head.slice(0, ns));
+function useText(ctx, text) {
+  if (ctx.text === text) return;
+  ctx.text = text;
+  ctx.hasNegation = SCOPE.anyToken.test(text);
+  ctx.clauses = new Map();
+  ctx.governors = new Map();
 }
 
 /**
- * Whether a negation in the match's own clause governs it.
- * @param {string} text @param {RegExpExecArray} m @param {() => Int32Array} scope
+ * The clause of `text` at `pos`: where it starts and ends, its words with
+ * dots and dashes read as a space ("never... has he"), its negations and
+ * where its double negations end. Worked out once per clause.
+ * @param {Scope} ctx @param {string} text @param {number} pos
+ * @returns {Clause}
  */
-function negatedInClause(text, m, scope) {
-  if (!SCOPE.anyToken.test(text.slice(0, m.index))) return false;
-  const clause = scope();
-  const c = clause[m.index];
-  let cs = m.index;
-  while (cs > 0 && clause[cs - 1] === c) cs--;
-  // dots and dashes of hesitation read as a space ("never... has he")
-  const head = text.slice(cs, m.index).replace(SCOPE.pause, ' ');
-  SCOPE.token.lastIndex = 0;
-  for (const n of head.matchAll(SCOPE.token)) if (governs(head, n, m[0])) return true;
-  return false;
-}
-
-/**
- * before / until / till / again, a comparison or an exception within four
- * words after the match, in its clause (or straight after a comma, or 'but
- * me'): "he never really hurt me until last year", "...except me".
- * @param {string} text @param {RegExpExecArray} m @param {() => Int32Array} scope
- */
-function happenedAfter(text, m, scope) {
-  const end = m.index + m[0].length;
-  if (!SCOPE.unless.test(text.slice(end))) return false;
-  const clause = scope();
-  let q = end;
-  while (q < text.length && clause[q] === clause[end - 1]) q++;
-  if (SCOPE.carry.test(text.slice(q))) {
-    const next = clause[q];
-    while (q < text.length && clause[q] === next) q++;
+function clauseAt(ctx, text, pos) {
+  useText(ctx, text);
+  const c = ctx.clause[pos] ?? 0;
+  const known = ctx.clauses.get(c);
+  if (known) return known;
+  let start = pos;
+  while (start > 0 && ctx.clause[start - 1] === c) start--;
+  let end = pos;
+  while (end < text.length && ctx.clause[end] === c) end++;
+  const raw = text.slice(start, end);
+  const idx = new Int32Array(raw.length + 1);
+  let norm = '';
+  let last = 0;
+  for (const p of raw.matchAll(SCOPE.pause)) {
+    const k = p.index ?? 0;
+    for (let j = last; j < k; j++) idx[j] = norm.length + j - last;
+    norm += raw.slice(last, k);
+    for (let j = k; j < k + p[0].length; j++) idx[j] = norm.length;
+    norm += ' ';
+    last = k + p[0].length;
   }
-  return SCOPE.unless.test(text.slice(end, q));
+  for (let j = last; j <= raw.length; j++) idx[j] = norm.length + j - last;
+  norm += raw.slice(last);
+  const tokens = ctx.hasNegation ? [...norm.matchAll(SCOPE.token)] : [];
+  const outers = ctx.hasNegation ? [...norm.matchAll(SCOPE.outer)].map((o) => (o.index ?? 0) + o[0].length) : [];
+  const clause = { start, end, norm, idx, tokens, outers };
+  ctx.clauses.set(c, clause);
+  return clause;
+}
+
+/**
+ * The subject of the match `found` in `head` (its clause up to the match):
+ * its own first word, or what stands straight before it.
+ * @param {string} head @param {string} found
+ */
+function subjectOf(head, found) {
+  if (SCOPE.leadPerson.test(found)) return { start: head.length, lead: true, self: SCOPE.self.test(found) };
+  const sp = head.length > 120 ? head.indexOf(' ', head.length - 120) : 0;
+  const from = sp < 0 ? head.length : sp;
+  const s = SCOPE.subject.exec(head.slice(from));
+  const g = (s && s.groups) || {};
+  // a noun phrase, or a person and where they are, only before a helper
+  if (!s || ((g.np || g.loc) && !SCOPE.helper.test(g.aux || '') && !SCOPE.helperLead.test(found))) return { start: -1, lead: false, self: false };
+  return { start: from + (s.index ?? 0), lead: false, self: SCOPE.self.test(g.person || '') };
+}
+
+/**
+ * Whether the negation `n`, at `ns` in `at.head`, governs the match.
+ * @param {RegExpMatchArray} n @param {number} ns
+ * @param {{ head: string, found: string, subj: { start: number, lead: boolean, self: boolean }, outerEnd: number, cut: boolean, shock: () => boolean }} at
+ */
+function governs(n, ns, at) {
+  const { head, subj } = at;
+  const g = n.groups || {};
+  const ne = ns + n[0].length;
+  // "not a day goes by that I don't…": a double negation tells it
+  if (at.outerEnd >= 0 && at.outerEnd <= ns) return false;
+  const gap = head.slice(ne);
+  if (g.negsubj) return !subj.lead && SCOPE.predicate.test(at.found) && SCOPE.negSubjectGap.test(gap);
+  if (subj.start < ne) return SCOPE.tight.test(gap);
+  if (g.fronted && SCOPE.inversion.test(head.slice(ne, subj.start))) return true;
+  const pre = head.slice(ns, subj.start);
+  if (SCOPE.frame.test(pre)) return true;
+  if (SCOPE.because.test(pre)) return subj.self;
+  if (!SCOPE.stance.test(pre)) return false;
+  const before = head.slice(0, ns);
+  if (!SCOPE.firstPerson.test(before) && (at.cut || !SCOPE.clauseStart.test(before))) return false;
+  return !(SCOPE.believe.test(pre) && at.shock());
+}
+
+/**
+ * The negation in the match's own clause that governs it, if any: the
+ * nearest few, within reach.
+ * @param {string} text @param {RegExpExecArray} m @param {() => Scope} scope
+ * @returns {Governor | null}
+ */
+function governor(text, m, scope) {
+  const ctx = scope();
+  useText(ctx, text);
+  if (!ctx.hasNegation) return null;
+  // several rules can match the same words
+  const key = `${m.index}:${m[0]}`;
+  const known = ctx.governors.get(key);
+  if (known !== undefined) return known;
+  const gov = findGovernor(ctx, text, m);
+  ctx.governors.set(key, gov);
+  return gov;
+}
+
+/**
+ * @param {Scope} ctx @param {string} text @param {RegExpExecArray} m
+ * @returns {Governor | null}
+ */
+function findGovernor(ctx, text, m) {
+  const cl = clauseAt(ctx, text, m.index);
+  const hn = cl.idx[m.index - cl.start] ?? 0;
+  const first = cl.tokens[0];
+  if (!first || (first.index ?? 0) + first[0].length > hn) return null;
+  let from = 0;
+  if (hn > SCOPE.reach) {
+    const sp = cl.norm.indexOf(' ', hn - SCOPE.reach);
+    from = sp < 0 || sp > hn ? hn : sp;
+  }
+  const head = cl.norm.slice(from, hn);
+  let outerEnd = -1;
+  for (const e of cl.outers) if (e <= hn) outerEnd = e - from;
+  const at = {
+    head, found: m[0], subj: subjectOf(head, m[0]), outerEnd, cut: from > 0,
+    shock: () => !!ctx.map && SCOPE.shock.test(ctx.tidied.slice(ctx.map[cl.start] ?? 0, ctx.map[m.index] ?? 0)),
+  };
+  /** @type {[RegExpMatchArray, number][]} */
+  const near = [];
+  for (let i = cl.tokens.length - 1; i >= 0 && near.length < SCOPE.nearest; i--) {
+    const n = cl.tokens[i];
+    const ns = (n.index ?? 0) - from;
+    if (ns + n[0].length > head.length) continue;
+    if (ns < 0) break;
+    near.push([n, ns]);
+  }
+  for (let k = 0; k < near.length; k++) {
+    const [n, ns] = near[k];
+    if (!governs(n, ns, at)) continue;
+    // ...unless an earlier negation in turn denies that one ("it's not that I
+    // don't want to die", "that doesn't mean I don't", "never have I not";
+    // never one said twice in a row, "I never never want to")
+    const inner = head.slice(ns);
+    const outerAt = { ...at, head: head.slice(0, ns), found: inner, subj: subjectOf(head.slice(0, ns), inner), shock: () => false };
+    if (near.slice(k + 1).some(([o, os]) => /\S/.test(head.slice(os + o[0].length, ns)) && governs(o, os, outerAt))) continue;
+    return { neg: head.slice(Math.max(0, ns - 6), ns + n[0].length), gap: head.slice(ns + n[0].length) };
+  }
+  return null;
+}
+
+/**
+ * A double negation before the match in its clause ("not a day goes by
+ * that he doesn't…"), for a match that steps over its own negation.
+ * @param {string} text @param {RegExpExecArray} m @param {() => Scope} scope
+ */
+function outerBefore(text, m, scope) {
+  if (!SCOPE.anyOuter.test(text.slice(Math.max(0, m.index - 4 * SCOPE.reach), m.index))) return false;
+  const ctx = scope();
+  const cl = clauseAt(ctx, text, m.index);
+  const hn = cl.idx[m.index - cl.start] ?? 0;
+  return cl.outers.some((e) => e <= hn && e >= hn - SCOPE.reach);
+}
+
+/**
+ * Whether the sentence goes on to say it did happen, how much, or who it is
+ * true of, within four words after the match in its clause (or straight
+ * after a comma, or as 'but me'): "he never really hurt me until last year",
+ * "...again", "...except me". Before / until / till do not count after a
+ * wish in the present ("I don't want to die before 30").
+ * @param {string} text @param {RegExpExecArray} m @param {() => Scope} scope @param {Governor} gov
+ */
+function happenedAfter(text, m, scope, gov) {
+  const end = m.index + m[0].length;
+  const rest = text.slice(end, end + 160);
+  if (!SCOPE.unless.test(rest) && !SCOPE.until.test(rest) && !SCOPE.carry.test(rest)) return false;
+  const ctx = scope();
+  let q = clauseAt(ctx, text, end - 1).end;
+  const carried = q < text.length ? SCOPE.carry.exec(text.slice(q, q + 40)) : null;
+  if (carried) q = clauseAt(ctx, text, q + carried[0].length - 1).end;
+  const after = text.slice(end, q);
+  if (SCOPE.unless.test(after)) return true;
+  if (!SCOPE.until.test(after)) return false;
+  return SCOPE.pastNeg.test(gov.neg) || !SCOPE.wish.test(`${gov.gap} ${m[0]}`);
 }
 
 /**
@@ -449,27 +691,30 @@ function happenedAfter(text, m, scope) {
  * negation masked out: "he never hurt me" fits '<person> <any word> hurt
  * me'). A negation the phrase itself spells out ("don't feel safe", "nobody
  * would miss me") is the phrase, not a denial of it.
- * @param {RegExp} re @param {string} text @param {RegExpExecArray} m @param {() => Int32Array} scope
+ * @param {RegExp} re @param {string} text @param {RegExpExecArray} m @param {() => Scope} scope
  */
 function leansOnNegation(re, text, m, scope) {
-  let leans = false;
+  /** @type {Governor | null} */
+  let gov = null;
   SCOPE.negation.lastIndex = 0;
-  if (SCOPE.negation.test(m[0])) {
+  const inner = SCOPE.negation.exec(m[0]);
+  SCOPE.negation.lastIndex = 0;
+  if (inner) {
     const end = m.index + m[0].length;
     const masked = text.slice(0, m.index) + m[0].replace(SCOPE.negation, (w) => 'x'.repeat(w.length)) + text.slice(end);
     let y = SCOPE.sticky.get(re);
     if (!y) SCOPE.sticky.set(re, (y = new RegExp(re.source, 'iy')));
     y.lastIndex = m.index;
-    leans = y.test(masked);
+    if (y.test(masked) && !outerBefore(text, m, scope)) gov = { neg: m[0].slice(0, (inner.index ?? 0) + inner[0].length), gap: '' };
   }
-  if (!leans && !SCOPE.npi.test(m[0])) leans = negatedInClause(text, m, scope);
-  return leans && !happenedAfter(text, m, scope);
+  if (!gov && !SCOPE.npi.test(m[0])) gov = governor(text, m, scope);
+  return !!gov && !happenedAfter(text, m, scope, gov);
 }
 
 /**
  * The first match of any of `regexes` in the copy that does not lean on a
  * negation, or null.
- * @param {RegExp[]} regexes @param {string} text @param {() => Int32Array} scope
+ * @param {RegExp[]} regexes @param {string} text @param {() => Scope} scope
  */
 function secondPassHit(regexes, text, scope) {
   for (const re of regexes) {
@@ -504,9 +749,9 @@ export function checkSafety(text) {
   const copy = fillerFreeCopy(t);
   if (copy === t) return first;
   // the clauses of the copy, worked out once and only when a match needs them
-  /** @type {Int32Array | null} */
-  let clauses = null;
-  const scope = () => clauses || (clauses = scopeOf(t, copy));
+  /** @type {Scope | null} */
+  let scoped = null;
+  const scope = () => scoped || (scoped = scopeOf(t, copy));
   const second = classify(copy, (regexes, s) => secondPassHit(regexes, s, scope), SECOND.guards, first.level);
   return RANK[second.level] > RANK[first.level] ? second : first;
 }

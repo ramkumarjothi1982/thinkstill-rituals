@@ -571,3 +571,135 @@ export const SCOPE_ROWS = [
   ['i took like a million photos', 'none'],
   ["i don't rly want to actually die", 'none'],
 ];
+
+// Review round 4: the scope of a negation, continued. [text, level in the
+// app], read on the server as SCOPE_ROWS are. Every probe of the review and
+// of the brief, and the edge cases found on the way.
+export const SCOPE_ROUND4 = [
+  // a denial whoever says it ('that doesn't mean'), a view with an object or
+  // none at all, and views worded as telling or trying to say: no new flag
+  ["that doesn't mean i want to actually die", 'none'],
+  ["it doesn't mean i want to really die", 'none'],
+  ["being sad doesn't mean i want to really die", 'none'],
+  ["just because i'm sad doesn't mean i want to actually die", 'none'],
+  ["i don't want you to think i want to actually die", 'none'],
+  ["i don't want people to think i want to actually die", 'none'],
+  ["please don't think i want to really die", 'none'],
+  ["don't think i want to actually die, i'm just tired", 'none'],
+  ["i'm not telling you i want to actually die", 'none'],
+  ["i'm not trying to say i want to actually die", 'none'],
+  ["i don't mean to say i want to actually die", 'none'],
+  ["not saying i want to actually die but i'm so tired", 'none'],
+  ["i don't mean to sound like i want to really die", 'none'],
+  // ...but 'just' after the negation says it is so, and more
+  ["that doesn't just mean i want to actually die", 'crisis'],
+  ["i'm not just saying i want to actually die", 'crisis'],
+  // ...and never a view of something else, or a request to keep it quiet
+  ["doesn't matter i want to actually die", 'crisis'],
+  ["it doesn't help that he actually hit me", 'care'],
+  ["don't tell anyone i want to actually die", 'crisis'],
+  ["please don't tell my mum i really want to die", 'crisis'],
+  ["i don't want you to know i really want to die", 'crisis'],
+  ["i don't want people to know he actually hit me", 'care'],
+  ["i don't mean to sound dramatic i want to really die", 'crisis'],
+  ['not gonna lie i want to actually die', 'crisis'],
+  ['not going to lie i want to really die', 'crisis'],
+  // a negative subject with where they are or who they are, and a view of a
+  // noun phrase or of 'anyone here' before a helper: no new flag
+  ['no one at home is actually in danger', 'none'],
+  ["he's drunk but no one at home is actually in danger", 'none'],
+  ['nobody at school is actually in danger', 'none'],
+  ['no one on the trip is really in danger', 'none'],
+  ['nobody around me is really in danger', 'none'],
+  ['no one i know is actually in danger', 'none'],
+  ['nobody who lives here is actually in danger', 'none'],
+  ['none of the people at the party are really in danger', 'none'],
+  ["i don't think anyone here is really in danger", 'none'],
+  ["i don't think anyone at home is really in danger", 'none'],
+  ['i doubt anyone here is actually in danger', 'none'],
+  ["i don't think my kids are actually in danger", 'none'],
+  ["i don't think my friends are actually in danger", 'none'],
+  ["i don't think my parents are actually in danger", 'none'],
+  ["i don't think the kids are really in danger", 'none'],
+  ["i don't think the baby is really in danger", 'none'],
+  ["i don't think the kids want to really die", 'none'],
+  // ...but a negative subject with its own verb does not reach a new one
+  ['nobody at home knows i want to really die', 'crisis'],
+  ['no one at school cares that i really want to die', 'crisis'],
+  ['no one i know believes he really hit me', 'care'],
+  ["i don't think my mum knows he really hit me", 'care'],
+  // a wish in the present with before / until is not a report; 'but my', 'any
+  // more than', 'so much as' and 'besides' are no exception or comparison
+  ["i don't want to actually die before i see my kids grow up", 'none'],
+  ["i don't want to actually die before 30", 'none'],
+  ["i don't want to really die until i'm old", 'none'],
+  ["i don't want to really die until i've seen japan", 'none'],
+  ["i really don't wanna like die before my wedding", 'none'],
+  ['i never want to actually die before my mum does', 'none'],
+  ["i don't want to actually die before", 'none'],
+  ["i don't want to actually die but my brain won't stop", 'none'],
+  ["i don't want to really die but my head is a mess", 'none'],
+  ['no one is really in danger but my mum thinks so', 'none'],
+  ["i don't want to really die any more than you do", 'none'],
+  ["i don't want to actually die so much as i want to sleep", 'none'],
+  ["i don't want to actually die besides i have kids", 'none'],
+  // ...while after a past negation, or an intention, they tell it; so do 'but
+  // my mum' at the end and 'except'
+  ['i never wanted to actually die until last year', 'crisis'],
+  ["i didn't want to actually die until i met him", 'crisis'],
+  ['i never wanted to really die before', 'crisis'],
+  ["i'm not going to actually end it until after christmas", 'crisis'],
+  ['nobody in my house is actually in danger but my mum', 'crisis'],
+  ['nobody here is really in danger but my mum and dad', 'crisis'],
+  ['no one in my family is really in danger except my little sister', 'crisis'],
+  ["i don't think he would ever really hurt me again", 'concern'],
+  ["i'm not saying he really hit me, but he did", 'care'],
+  ["it doesn't mean he really hit me but he did", 'care'],
+  ["i don't want to really die but i do", 'crisis'],
+  ["i don't want to actually die but part of me does", 'crisis'],
+  ["i don't want to actually die but i'm so tired", 'none'],
+  // a negative subject reaches only what it does or is
+  ['nobody here wanted to actually die', 'none'],
+  ['no one at home life is really worth living', 'none'],
+  // 'it's not because' is one thought, and denies it in the first person only
+  ["it's not because i want to actually die, i'm just tired", 'none'],
+  ["it's not because he always hits me", 'care'],
+  ["it's not because he actually hit me that i left", 'care'],
+  // comparisons that say it is worse now, double negations, and a past view
+  ["i've never wanted to actually die like i do tonight", 'crisis'],
+  ["i've never wanted to actually die so badly", 'crisis'],
+  ["i've never wanted to actually die this badly", 'crisis'],
+  ['i have never wanted to really die as badly as i do now', 'crisis'],
+  ["i've never wanted to actually die the way i do now", 'crisis'],
+  ['never in my life have i wanted to really die so badly', 'crisis'],
+  ['never have i ever wanted to actually die more', 'crisis'],
+  ["not a day goes by that i don't want to actually die", 'crisis'],
+  ["i can't remember a day i didn't want to actually die", 'crisis'],
+  ["there isn't a day i don't want to really die", 'crisis'],
+  ["that doesn't mean i don't want to really die", 'crisis'],
+  ["it's not that i don't want to really die, i'm scared to", 'crisis'],
+  ["i'm not saying i don't want to actually die", 'crisis'],
+  ['never have i not wanted to really die', 'crisis'],
+  ["i don't know why i don't want to really die", 'none'],
+  ['i never never want to actually die', 'none'],
+  ["i didn't think i'd ever want to actually die", 'crisis'],
+  ["i didn't think i would want to really die", 'crisis'],
+  ['never thought i would really want to die', 'crisis'],
+  ["i didn't think he would actually hurt me but he did", 'concern'],
+  ["i didn't think he would really hurt me", 'concern'],
+  ["i didn't believe he really hit me at first", 'care'],
+  // polish: a long fronted negation and its commas, shock, 'hard'
+  ["never in all the time we've been together has he actually hit me", 'none'],
+  ['never, not once, has he actually hit me', 'none'],
+  ["i still don't believe he actually hit me", 'care'],
+  ["it's not like he actually hit me hard", 'care'],
+  // decided: commas round a filler after a view do not split it (as "I don't
+  // think I want to really die"); 'dnt' is a negation; "I'm not sure" stays a
+  // denial, as the round-2 negation frames have it
+  ["i don't think, like, i want to really die", 'none'],
+  ['i dnt want to actually die', 'none'],
+  ["i'm not sure i want to really die", 'none'],
+  // the brief's probe: none because the lexicon has no rule for "he'd hit me"
+  // or "he never hit me" (nothing for the second pass to find)
+  ["he'd never really hit me before", 'none'],
+];

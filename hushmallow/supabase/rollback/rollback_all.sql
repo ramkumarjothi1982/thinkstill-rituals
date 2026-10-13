@@ -1,4 +1,4 @@
--- hushmallow · ROLLBACK of migrations 0001–0008
+-- hushmallow · ROLLBACK of migrations 0001–0009
 --
 -- Removes everything the hushmallow migrations created: the RPC, the
 -- triggers (including on_auth_user_created on auth.users), the six tables
