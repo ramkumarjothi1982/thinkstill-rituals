@@ -258,8 +258,15 @@ export default function hushfold(app, params = {}) {
   function mallowAvoidRect() {
     const b = stageMallow?.bodyRect?.() || world.bodyRect();
     if (!b || !b.height) return null;
-    // room for a hop and the particles above the head
-    return { left: b.left, right: b.left + b.width, top: b.top - Math.max(18, b.height * 0.14), bottom: b.top + b.height + 6 };
+    // room for a hop and the particles above the head — round where the Mallow rests (its place, steady while it
+    // breathes, squashes or hops inside that room: what keeps off it does not flicker with it), and round the live body
+    // too when that reaches further (a stretch, a glide on its way)
+    const o = stageMallow?.restRect?.();
+    const rest = o && o.height > 0 ? { left: o.left, right: o.right, top: o.top - Math.max(18, o.height * 0.14), bottom: o.bottom + 6 } : null;
+    const live = rest ? { left: b.left - 4, right: b.left + b.width + 4, top: b.top - 4, bottom: b.top + b.height + 6 }
+      : { left: b.left, right: b.left + b.width, top: b.top - Math.max(18, b.height * 0.14), bottom: b.top + b.height + 6 };
+    if (!rest) return live;
+    return { left: Math.min(rest.left, live.left), right: Math.max(rest.right, live.right), top: Math.min(rest.top, live.top), bottom: Math.max(rest.bottom, live.bottom) };
   }
 
   /** The Thought Mallows on stage that are not drifting off (oldest first). */
@@ -427,7 +434,8 @@ export default function hushfold(app, params = {}) {
   };
   const safeRect = () => {
     const top = (topEl.getBoundingClientRect().bottom || 60) + 8;
-    const b = stageMallow?.bodyRect?.();
+    // (where the Mallow rests, not where its live body is this frame: the worlds plan round it)
+    const b = stageMallow?.restRect?.() || stageMallow?.bodyRect?.();
     const bottom = b?.height ? Math.max(top + 160, b.top - 14) : innerHeight * 0.62;
     return { x: 20, y: top, w: innerWidth - 40, h: bottom - top };
   };
@@ -617,7 +625,7 @@ export default function hushfold(app, params = {}) {
     layout();
     // the person's thought comes back beside their Mallow, near again (the world had it far out on the water)
     const back = stage?.thoughts.primary;
-    if (back && !back.leaving) { try { back.moveHome(thoughtHome); back.closer?.(0); back.labelSide = null; } catch (e) { console.warn(e); } }
+    if (back && !back.leaving) { try { back.moveHome(thoughtHome); back.closer?.(0); back.labelSide = null; back.labelFit = null; } catch (e) { console.warn(e); } }
     panel?.update();
   }
   /**

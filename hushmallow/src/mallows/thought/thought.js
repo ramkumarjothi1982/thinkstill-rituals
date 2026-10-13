@@ -31,6 +31,9 @@
 //   labelSide 'below' | 'above' | 'left' | 'right' | null: where the host would like
 //             the words (a hint the layer honours unless that side covers the hero, a
 //             face or other words).
+//   labelFit  { lines, maxW } | null: the words plate a world planned round (measured with
+//             ThoughtLayer.plateFor): while the world drives the thought the tag is that
+//             plate, on labelSide whenever that is clear.
 //   opacity   0 … 1, a world's fade (the ocean's surfacing): the layer fades the body,
 //             its siblings, rope and words by it; it eases back to 1 a second after the
 //             last write.
@@ -110,7 +113,7 @@ export class ThoughtMallow {
     this._scale = o.scale > 0 ? +o.scale : 1; this._scaleT = -9;
     this._z = clamp(o.z ?? 0); this.zGoal = this._z; this._zT = -9;
     this.zFloor = 0;              // the layer may hold it a little farther when the stage is full
-    this._rot = 0; this._rotT = -9; this.labelSide = null;
+    this._rot = 0; this._rotT = -9; this.labelSide = null; this.labelFit = null;
     this._op = 1; this._opT = -9;  // a world's fade (opacity), and the clock of its last write
     this.off = { x: 0, y: 0 };    // its own life on top of the anchor (bob, tremble, sink, drift)
     this._sink = 0; this._drift = { x: 0, y: 0 }; this._driftDir = { x: 1, y: 0 };

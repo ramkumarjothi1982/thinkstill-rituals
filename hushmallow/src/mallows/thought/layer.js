@@ -22,7 +22,9 @@
 // again. A tap reads all of them (onRead(th), or a small built-in reader, laid
 // clear of the thought). A soft rope tethers the tag to its thought; the tag
 // trails with a little spring and tilts at most 4° while it moves (at rest it
-// sits on whole device pixels, untilted). Keyboard on a focused tag: Enter reads,
+// sits on whole device pixels, untilted). With reduced motion the words never move
+// in plain sight: they follow their thought exactly, and to change place (a side, a
+// world's melt) or plate they fade out, move unseen and fade in (fades are kept). Keyboard on a focused tag: Enter reads,
 // holding Space squeezes, the arrow keys move it, Shift + an arrow strokes it.
 //
 // Layout (W2b review r3, final round):
@@ -62,6 +64,12 @@
 //   relayout()                       plan the stage again now (the host moved its bounds or its hero)
 //   { textScale: () => k }           the person's text size: the words' font and plates grow with it
 //   th.opacity = a                   a world's fade (0 … 1): body, siblings, rope and words
+//   plateFor(th, {lines, maxW, r})   the words plate a world plans round, measured as the tag will be drawn
+//                                    ({w, h, rows, text, below}); with th.labelFit = {lines, maxW} and
+//                                    th.labelSide written while it drives the thought, the tag is that plate,
+//                                    on that side (whenever that place is clear)
+//   wordsKeepOut()                   the rect the words keep off (the hero, with the layer's margin), or null
+//   tagRect(th)                      where its words are shown now (the plate alone), or null while hidden
 //   .tm-tag sits at z-index var(--tm-z, 1): under the host's sheets and panels; a host may set --tm-z
 
 import { ThoughtMallow, createThought, PT, PUFF_K, siblingHome } from './thought.js';
@@ -99,6 +107,7 @@ function injectStyle() {
 .tm-tag.tm-calm{border-color:rgba(255,231,166,.4)}
 .tm-tag:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .tm-tag.tm-hidden{opacity:0!important;pointer-events:none!important}
+.tm-tag.tm-wfade,.tm-tag.tm-on.tm-wfade{transition:border-color .6s ease}
 .tm-read{position:fixed;z-index:12;left:16px;right:16px;margin:0 auto;max-width:440px;top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box;
   padding:18px 20px 14px;border-radius:22px;border:1px solid rgba(255,255,255,.2);background:#110c2c;
   color:#fbf8ff;box-shadow:0 20px 50px rgba(3,1,14,.55)}
@@ -107,7 +116,7 @@ function injectStyle() {
 .tm-read button{display:block;width:100%;min-height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fbf8ff;
   font:650 16px/1 var(--ff-ui,"HM Manrope",system-ui,sans-serif);cursor:pointer}
 @media (max-width:360px){.tm-tag{font-size:calc(16px * var(--tm-k,1));max-width:min(210px,calc(100vw - 28px));padding:6px 11px 7px}}
-@media (prefers-reduced-motion:reduce){.tm-tag,.tm-tag.tm-on{transition:none}}
+@media (prefers-reduced-motion:reduce){.tm-tag{transition:opacity .2s ease}.tm-tag.tm-on{transition:opacity .45s ease}.tm-tag.tm-wfade,.tm-tag.tm-on.tm-wfade{transition:none}}
 `;
   document.head.appendChild(st);
 }
@@ -457,6 +466,53 @@ export class ThoughtLayer {
   get roominess() { return this.room ?? Infinity; }
   /** The tag element of a thought (the Hushfold reads its size). */
   tagOf(th) { return this.tags.get(th)?.el || null; }
+  /**
+   * The words plate a host plans round (a world laying out its stage) — one source of truth for its size: for a
+   * budget { lines, maxW } (maxW: the plate's outer width, CSS px; default the stage's roomiest plate), the size the
+   * tag of `th` takes, measured exactly as it is drawn (the voice face, the person's text size, the padding, the
+   * excerpt rule), how many rows it really uses, and how far below the thought's centre its top hangs when its body
+   * is drawn at radius r (default its own size), and how near the screen's side the layer holds it (edge):
+   * { w, h, rows, lines, maxW, text, below, edge, extent } — extent: what the thought itself draws at rest at that
+   * size (body, siblings, effects, prop), as offsets from its handle. Null without a tag (no
+   * DOM). The tag keeps showing what it showed. A host that writes th.labelFit = { lines, maxW } and th.labelSide
+   * while it drives the thought (x / y) gets this very plate, on that side whenever that place is clear (_tags).
+   */
+  plateFor(th, { lines = 3, maxW = null, r = null } = {}) {
+    const tg = this.tags.get(th);
+    if (!tg || typeof document === 'undefined') return null;
+    const W = typeof innerWidth === 'number' ? innerWidth : this._env.view.W;
+    const mw = Math.max(40, Math.round(Number.isFinite(+maxW) && +maxW > 0 ? +maxW : this._tagMax(W, 0)));
+    const prev = tg.cur;
+    const e = this._fit(th, tg, Math.max(1, lines | 0), mw, W, 3);
+    if (prev && prev !== e) this._applyFit(tg, prev);
+    if (!(e?.w > 0)) return null;
+    const z = Math.max(th.zGoal || 0, th.zFloor || 0);
+    const rr = Number.isFinite(+r) && +r > 0 ? +r : th.r * th.scale;
+    const bh = rr * (1 - 0.5 * z) * (1 - 0.16 * (th.style?.motion?.shrink || 0) * 0.7);
+    // (its body is drawn a little off its handle where it rests — sinking, or higher when far — as _extent finds it)
+    const dy = th._ext?.init ? th._ext.ry : (th._sink || 0) - z * 0.45 * th.r;
+    // everything it draws at rest at that size (body, siblings, effects, prop: _predict), offsets from the handle
+    const p = this._predict(th), k = rr / Math.max(1e-6, th.r * th.scale);
+    const extent = { x0: -((p.l - 2) * k + 2), y0: dy - ((p.t - 2) * k + 2), x1: (p.r - 2) * k + 2, y1: dy + (p.b - 2) * k + 2 };
+    return { w: e.w, h: e.h, rows: e.rows || e.lines, lines: e.lines, maxW: e.mw, text: e.text, below: dy + bh + 2 + 14 + 8 * (1 - z), edge: this._edgeFor(W), extent };
+  }
+  /** Where a thought's words are shown now — the plate itself, not its thought (client px) — or null while hidden. */
+  tagRect(th) {
+    const tg = this.tags.get(th);
+    if (!tg || !tg.w || !tg.shown || this.hidden || this.paused) return null;
+    return { left: tg.x - tg.w / 2, top: tg.y, right: tg.x + tg.w / 2, bottom: tg.y + tg.h, width: tg.w, height: tg.h, id: th.id };
+  }
+  /** The rect the words keep off (the hero, with the margin _hard keeps), client px; null when there is none. */
+  wordsKeepOut() {
+    const K = this.keepOut ? this.keepOut() : this._mtKeep && this.mt?.ready ? this.mt.bodyRect() : null;
+    if (!K || !(K.right > K.left) || !(K.bottom > K.top)) return null;
+    return { left: K.left - 4, top: K.top - 4, right: K.right + 4, bottom: K.bottom + 4 };
+  }
+  /** The budget a world asked for while it drives this thought (th.labelFit), or null. */
+  _hostFit(th) {
+    const F = th.driven ? th.labelFit : null;
+    return F && F.lines > 0 && F.maxW > 0 ? F : null;
+  }
 
   /** Show all of a thought's words (laid clear of the thought itself). */
   read(th) {
@@ -825,9 +881,11 @@ export class ThoughtLayer {
   // the screen and the stage a plate is held on (the same limits _candRect clamps to): set from the env
   _plateFrame(env) {
     const T = this._tenv, W = env.view.W, H = env.view.H, B = env.bounds;
-    T.edge = W < 360 ? 12 : 16; T.W = W; T.yMin = Math.max(T.edge, B.top); T.yMax = Math.min(H - T.edge, B.bottom + 2);
+    T.edge = this._edgeFor(W); T.W = W; T.yMin = Math.max(T.edge, B.top); T.yMax = Math.min(H - T.edge, B.bottom + 2);
     return T;
   }
+  // how close to the screen's side a plate may come (CSS px)
+  _edgeFor(W) { return W < 360 ? 12 : 16; }
   // where the runtime will show a plate that wants to sit at (l, t): held on the screen and the stage as
   // _candRect holds it (into out [l, t, r, b]); returns how far that moved it. The planner scores this rect —
   // where the words will really be — so a planned place is clear by the rule they are kept by.
@@ -1482,11 +1540,28 @@ export class ThoughtLayer {
   // the words a tag shows at its budget now: lines and plate width from the stage's level, its depth
   // (as it is going to be) and its own step down when nothing was clear at full budget
   _fitLevel(th, tg, W) {
-    const lines = Math.max(1, tagLines(Math.max(th.zGoal, th.zFloor), this.crowd) - tg.drop);
-    // (the last step, only on a packed stage with nowhere clear: two words on a narrower plate, not three)
-    const last = tg.drop >= 3 && this.crowd + tg.drop >= 6;
-    return this._fit(th, tg, lines, last ? this._tagMax(W, 4) - 26 : this._tagMax(W, Math.min(4, this.crowd + tg.drop)), W, last ? 2 : 3);
+    // (a world that drives the thought and planned its words plate with plateFor: exactly that plate)
+    const F = this._hostFit(th);
+    let lines, mw, minWords = 3;
+    if (F) { lines = F.lines | 0; mw = Math.max(40, Math.round(F.maxW)); }
+    else {
+      lines = Math.max(1, tagLines(Math.max(th.zGoal, th.zFloor), this.crowd) - tg.drop);
+      // (the last step, only on a packed stage with nowhere clear: two words on a narrower plate, not three)
+      const last = tg.drop >= 3 && this.crowd + tg.drop >= 6;
+      mw = last ? this._tagMax(W, 4) - 26 : this._tagMax(W, Math.min(4, this.crowd + tg.drop)); minWords = last ? 2 : 3;
+    }
+    // a world asking for its plate, or letting go of it, while the words show: they fade out where they are, change
+    // unseen, and come back — never re-flowing or resizing in plain sight (the stage's own steps change in place)
+    const cur = tg.cur, host = !!F;
+    if (cur && (host || tg.byHost) && !(cur.lines === lines && cur.maxW === mw && cur.W === W) && (tg.shown || tg.hop > 0)) {
+      if (!(tg.hop > 0)) tg.hop = HOP_S;
+      tg.refit = true;
+      return cur;
+    }
+    tg.refit = false; tg.byHost = host;
+    return this._fit(th, tg, lines, mw, W, minWords);
   }
+
   // measured once per budget (lines × width × view) and kept: switching back costs no layout
   _fit(th, tg, lines, maxW, W, minWords = 3) {
     const C = tg.fits;
@@ -1497,13 +1572,15 @@ export class ThoughtLayer {
       if (e.w > 0) { if (C.length >= 8) C.shift(); C.push(e); }
       return e;
     }
-    if (tg.cur !== e) {
-      tg.cur = e;
-      if (tg.text !== e.text) { tg.words.textContent = e.text; tg.text = e.text; }
-      tg.el.style.maxWidth = `${e.mw}px`; tg.el.style.width = e.cssW ? `${e.cssW}px` : '';
-      tg.w = e.w; tg.h = e.h; tg.lines = e.lines; tg.maxW = e.mw;
-    }
+    if (tg.cur !== e) this._applyFit(tg, e);
     return e;
+  }
+  // show a measured budget on the tag (its words, plate width and size)
+  _applyFit(tg, e) {
+    tg.cur = e;
+    if (tg.text !== e.text) { tg.words.textContent = e.text; tg.text = e.text; }
+    tg.el.style.maxWidth = `${e.mw}px`; tg.el.style.width = e.cssW ? `${e.cssW}px` : '';
+    tg.w = e.w; tg.h = e.h; tg.lines = e.lines; tg.maxW = e.mw;
   }
 
   // The words for a budget: all of them when they fit `lines` at `maxW`, otherwise the most leading
@@ -1572,7 +1649,7 @@ export class ThoughtLayer {
       for (let i = 0; i < 16 && w < mw && wd.offsetHeight > n * lh + 2; i++) { w = Math.min(mw, w + 8); el.style.width = `${w}px`; }
       cssW = w;
     }
-    const e = { lines, maxW, W, mw, text, cssW, minWords, w: el.offsetWidth, h: el.offsetHeight };
+    const e = { lines, maxW, W, mw, text, cssW, minWords, rows: Math.max(1, n), w: el.offsetWidth, h: el.offsetHeight };
     tg.cur = e; tg.text = text; tg.w = e.w || tg.w; tg.h = e.h || tg.h; tg.lines = lines; tg.maxW = mw;
     return e;
   }
@@ -1824,6 +1901,12 @@ export class ThoughtLayer {
       for (const th of list) {
         const tg = this.tags.get(th);
         if (!tg || tg.mode !== mode || !tg.w) continue;
+        // (a world that drives the thought and planned its plate there: its side — slid nowhere — whenever that is clear)
+        const want = this._hostFit(th) ? SIDE_NAMES.indexOf(th.labelSide) : -1;
+        if (want >= 0 && want !== tg.ci) {
+          const h0 = this._hard(this._candRect(th, tg, want), th, -1, !tg.arrived);
+          if (h0 - this._hob + this._hobDeep <= 0) tg.ci = want;
+        }
         const r = this._candRect(th, tg, tg.ci);
         // (a brush of a face's motion envelope — itself a pixel wider than the face goes — is not a cover:
         // an overlap no more than 2 px deep is let be, so a resting plate never flickers for it)
@@ -1879,12 +1962,14 @@ export class ThoughtLayer {
       // over the faces and words between while they can be seen
       // (a wider place that moves is a new place too)
       const wideMoved = tg.ci >= NC && Math.abs(tg.wx - tg.wxShown) + Math.abs(tg.wy - tg.wyShown) > 6;
-      if (tg.ciShown !== tg.ci || wideMoved) { if (tg.ciShown != null && tg.shown && tg.mode < 2 && !env.rm) tg.hop = HOP_S; tg.ciShown = tg.ci; tg.wxShown = tg.wx; tg.wyShown = tg.wy; }
+      // (with reduced motion too: the words are never seen jumping — they fade out, move unseen, fade in)
+      if (tg.ciShown !== tg.ci || wideMoved) { if (tg.ciShown != null && tg.shown && tg.mode < 2) tg.hop = HOP_S; tg.ciShown = tg.ci; tg.wxShown = tg.wx; tg.wyShown = tg.wy; }
       // (and words that hide — their thought set off for a new home, a world took them — fade out where
       // they were, never carried over the others while they fade)
       if (tg.fade > 0) tg.fade -= dt;
-      if (tg.hop > 0) { tg.hop -= dt; tg.vx = tg.vy = 0; if (tg.hop <= 0) { tg.x = tg.tx; tg.y = tg.ty; tg.fade = 0; } }
-      else if (tg.fade > 0 && !env.rm) { tg.vx = tg.vy = 0; }
+      // (moved at the end of the hop, still unseen: they come in at the new place a frame later, never in the frame they move)
+      if (tg.hop > 0) { tg.hop -= dt; tg.vx = tg.vy = 0; if (tg.hop <= 0) { tg.x = tg.tx; tg.y = tg.ty; tg.fade = 0; tg.unseen = 1; } }
+      else if (tg.fade > 0) { tg.vx = tg.vy = 0; }
       else if (env.rm || !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; }
       else {
         // a little spring lag: the words trail their thought
@@ -1912,7 +1997,13 @@ export class ThoughtLayer {
       const holding = !tg.arrived && tg.mode < 2 && (tg.blocked || crowded);
       tg.firstWait = holding ? (tg.firstWait || 0) + dt : tg.arrived ? 0 : tg.firstWait || 0;
       const early = holding && tg.firstWait < 1.6;
-      const show = th.ov.appear > 0.35 && !th._leaving && !tg.wait && !(tg.hop > 0) && tg.mode < 2 && !early;
+      // (words that are away — a hop, a new plate — never come back while a world is fading their thought: they would be
+      // caught half seen by its fade; they come in once it is whole again, at most 1.5 s later)
+      const worldFading = (th.opacity ?? 1) < 0.999;
+      tg.fadeWait = !tg.shown && worldFading ? (tg.fadeWait || 0) + dt : 0;
+      const held = !tg.shown && worldFading && tg.fadeWait < 1.5;
+      const show = th.ov.appear > 0.35 && !th._leaving && !tg.wait && !(tg.hop > 0) && !tg.refit && !(tg.unseen > 0) && !held && tg.mode < 2 && !early;
+      if (tg.unseen > 0 && !(tg.hop > 0)) tg.unseen--;
       // (coming in, they start where they rest — never from where they faded out)
       if (show && !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; tg.kx = NaN; }
       if (show !== tg.shown) { tg.shown = show; tg.el.classList.toggle('tm-on', show); if (!show) tg.fade = HOP_S; }
@@ -1921,9 +2012,12 @@ export class ThoughtLayer {
       if (travel !== tg.travel) { tg.travel = travel; tg.el.classList.toggle('tm-travel', travel); }
       const calm = th.look.relief > 0.55;
       if (calm !== tg.calm) { tg.calm = calm; tg.el.classList.toggle('tm-calm', calm); }
-      // a world's fade reaches the words too (in steps of 5 %: no style write per frame)
+      // a world's fade reaches the words too (in steps of 5 %: no style write per frame) — exactly, with no CSS ease of
+      // its own on top: a world that moves its thought once it has faded out moves its words unseen too
       const oq = Math.round(clamp(th.opacity ?? 1) * 20);
       if (oq !== tg.opQ) { tg.opQ = oq; tg.el.style.setProperty('--tm-o', String(oq / 20)); }
+      const wf = (th.opacity ?? 1) < 0.999;
+      if (wf !== !!tg.wfade) { tg.wfade = wf; tg.el.classList.toggle('tm-wfade', wf); }
       // the tag's top edge carries the thought's light
       const tq = Math.round(th.look.tintK * 4);
       if (tq !== tg.tintQ) { tg.tintQ = tq; const t = tintAt(th.style.tint, 0, th.look.tintK, {}); tg.el.style.setProperty('--tm-tint', rgba(t.light, 0.55)); tg.el.style.setProperty('--tm-wash', rgba(t.mid, 0.16)); this.ropes.get(th).colour = rgba(t.light, 0.8); }
