@@ -671,7 +671,7 @@ test('H1: worlds pause the realm and end with a real fade; nothing cheery after 
   assert.match(end, /if \(S\.hold === 'care'\) S\.hold = null;/);
   const fin = fnBody(scene, 'function onFinished() {', 'function onFlowError(');
   assert.match(fin, /world\.realm\?\.pause\?\.\(false\)/);
-  assert.match(fin, /S\.finishing = true;\s*subtitles\.clear\(\{ keepHeld: true \}\);/);
+  assert.match(fin, /S\.finishing = true;\s*(\/\/[^\n]*\n\s*if \(crisisLine\)[^\n]*\n\s*)?subtitles\.clear\(\{ keepHeld: true \}\);/);
   assert.match(scene, /say: \(lines, o\) => \{ if \(S\.hold === 'crisis' \|\| S\.finishing\) return Promise\.resolve\(null\);/);
   assert.match(fin, /if \(S\.crisis\) \{[^}]*\} else if \(gentle\(\)\) say\(SHARED_LINES\.careQuiet\); else say\(lines\.pick\(mallowId, 'finished'\)/);
   // the director keeps its reveal opacity inline: only !important lets Finish fade instead of cut
@@ -738,8 +738,14 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   assert.match(scene, /subtitles\.replay = \(\) => \{ if \(S\.hold === 'crisis' && !S\.crisisSpoken\) return; replayLine\(\); \};/);
   // crisis sent, or the overlay closed after it: the world ends quietly (owner P3)
   const after = fnBody(scene, 'async function afterTell(', 'async function gentleWorld(');
-  assert.match(after, /safety\?\.level === 'crisis'\) \{[\s\S]*?if \(worldMode\) flowRef\?\.finish\?\.\(\);/);
-  assert.match(scene, /if \(S\.level === 'crisis' && worldMode\) flowRef\?\.finish\?\.\(\);/);
+  assert.match(after, /safety\?\.level === 'crisis'\) \{[\s\S]*?if \(worldMode\) endCrisisWorld\(\);/);
+  assert.match(scene, /if \(S\.level === 'crisis' && worldMode\) endCrisisWorld\(\);/);
+  // ...through finish(), and a director that sent no 'finish' event still leaves the stage
+  const endCrisis = fnBody(scene, 'function endCrisisWorld() {', 'function keepSafety()');
+  assert.match(endCrisis, /try \{ flowRef\?\.finish\?\.\(\); \} catch/);
+  assert.match(endCrisis, /if \(worldMode && !S\.finishing\) onFinished\(\);/);
+  assert.match(fnBody(scene, 'function onWorld(d) {', 'function endWorldMode()'), /if \(!overlay\) endCrisisWorld\(\);/);
+  assert.doesNotMatch(scene.replace(endCrisis, ''), /flowRef\?\.finish\?\.\(\)/, 'every crisis ending goes through endCrisisWorld');
   // care in a world: careBeat pauses first (the care regex above needs no block before await careBeat)
   assert.match(fnBody(scene, 'async function careBeat(', 'async function startFlow('), /^async function careBeat\(\{ emotion, intention, safety \}\) \{\s*\/\/[^\n]*\n\s*if \(worldMode && flowRef && !flowRef\.stub\) \{ S\.hold = 'care';/);
   // no resume while held for a crisis: the pill, the subtitle play button, Space, the panel
@@ -773,4 +779,31 @@ test('H1: back from Another Angle, panel state, and the modules warmed for a new
   assert.match(enter, /idle\(\(\) => warmModules\(\)\)/);
   assert.match(fnBody(scene, 'function warmModules()', 'async function resumePendingTell()'), /\.catch\(\(\) => app\.staleCode\?\.\(\)\)/);
   assert.match(scene, /if \(d\?\.kind === 'load'\) app\.staleCode\?\.\(\);/);
+});
+
+test('H1 r3: the one calm crisis line comes after a crisis-ended world has gone, whole, in the home Mallow\'s voice', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const speak = fnBody(scene, 'function speakCrisis() {', 'function endCrisisWorld()');
+  // never while a world is on the stage or fading out: endWorldMode clears the stage's lines
+  assert.match(speak, /if \(!S\.crisis \|\| S\.crisisSpoken \|\| S\.left \|\| overlay \|\| sheets\.length \|\| worldMode \|\| S\.finishing\) return;\s*S\.crisisSpoken = true;/);
+  // ...and the visit remembers that it was said
+  assert.match(speak, /S\.crisisSpoken = true;\s*keepSafety\(\);/);
+  const fin = fnBody(scene, 'function onFinished() {', 'function onFlowError(');
+  // once, and the line comes in onFinished's later() only after endWorldMode() has run
+  assert.match(fin, /if \(S\.finishing\) return;\s*\/\/[^\n]*\n\s*S\.finishing = true;/);
+  const cb = fin.slice(fin.indexOf('later(() => {'));
+  assert.ok(cb.indexOf('endWorldMode();') > 0 && cb.indexOf('endWorldMode();') < cb.indexOf('speakCrisis();'), 'speakCrisis after endWorldMode');
+  assert.match(cb, /if \(S\.crisis\) \{ speakCrisis\(\); \}/);
+  // a calm line already showing when a world arrived under it (and ended) is said again, whole
+  assert.match(fin, /if \(crisisLine\) \{ crisisLine = null; S\.crisisSpoken = false; \}\s*subtitles\.clear\(\{ keepHeld: true \}\);/);
+  // endWorldMode puts the person's own Mallow back before anything is said (no line attributed to the host)
+  const end = fnBody(scene, 'function endWorldMode() {', 'function onFinished()');
+  assert.ok(end.indexOf('worldMode = false;') > 0 && end.indexOf('S.finishing = false;') > 0);
+  assert.ok(end.indexOf('subtitles.clear({ keepHeld: true });') < end.indexOf('if (homeMallow) { mallowId = homeMallow;'));
+  // the other callers still say it once nothing covers the stage (a sheet closing, the overlay closing, Send)
+  assert.match(fnBody(scene, 'function afterSheet() {', 'let flowP = null'), /speakCrisis\(\);/);
+  // a world that is ending is never held by the phone sheet (the director still reads 'paused' after finish)
+  const hold = fnBody(scene, 'function holdWorld(on) {', '// ----------------------------------------------- saved progress');
+  assert.match(hold, /if \(held \|\| !worldMode \|\| S\.finishing \|\|/);
+  assert.match(hold, /if \(!worldMode \|\| S\.finishing \|\| !flowRef\) return;/);
 });

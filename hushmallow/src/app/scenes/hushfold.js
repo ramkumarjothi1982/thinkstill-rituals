@@ -425,7 +425,8 @@ export default function hushfold(app, params = {}) {
       // held at once under its veil (no host, no title, no lines), and ended quietly as soon as the
       // overlay is closed (owner P3)
       S.hold = 'crisis';
-      try { flowRef?.setAutoFlow?.(false); flowRef?.pause?.(); if (!overlay) flowRef?.finish?.(); } catch (e) { console.warn(e); }
+      try { flowRef?.setAutoFlow?.(false); flowRef?.pause?.(); } catch (e) { console.warn(e); }
+      if (!overlay) endCrisisWorld();
       panel?.update();
       return;
     }
@@ -469,8 +470,11 @@ export default function hushfold(app, params = {}) {
   }
   function onFinished() {
     if (S.left) return;
+    if (S.finishing) return;
     // from here the world says nothing more: what it had queued goes (a held line or a choice stays)
     S.finishing = true;
+    // (a calm line cut short by a world that arrived under it is said again, whole, once the world has gone)
+    if (crisisLine) { crisisLine = null; S.crisisSpoken = false; }
     subtitles.clear({ keepHeld: true });
     // the realm underneath runs again as the world's last frame melts away over it
     world.realm?.pause?.(false);
@@ -481,10 +485,10 @@ export default function hushfold(app, params = {}) {
     later(() => {
       endWorldMode();
       document.body.classList.remove('hf-world-leaving');
-      // after a crisis nothing new is said (its one calm line comes when the sheet closes); after care,
-      // no cheery goodbye: the attentive face and a quiet line
+      // after a crisis no goodbye: the one calm line, now that the world has gone (or when the sheet
+      // over it closes); after care, no cheery goodbye: the attentive face and a quiet line
       if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
-      if (S.crisis) { /* quiet */ } else if (gentle()) say(SHARED_LINES.careQuiet); else say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
+      if (S.crisis) { speakCrisis(); } else if (gentle()) say(SHARED_LINES.careQuiet); else say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
       app.applyUpdateIfSafe?.();
     }, 1250);
   }
@@ -713,12 +717,38 @@ export default function hushfold(app, params = {}) {
     try { touchMt?.setLowStim(lowStimNow()); } catch (e) { console.warn(e); }
     if (gentle()) world.setLowStim?.(true);
   }
-  /** After a crisis: one calm line, once, when neither the overlay nor a sheet covers the stage. */
+  /**
+   * After a crisis: one calm line, once, when neither the overlay nor a sheet covers the stage, and
+   * no world is on it. A world held for the crisis ends first (owner P3): its fade-out clears the
+   * world's lines, so the calm line comes after it has gone (onFinished), whole and in the voice of
+   * the person's own Mallow, never the world's host.
+   */
+  let crisisLine = null;   // the calm line while it is showing
   function speakCrisis() {
-    if (!S.crisis || S.crisisSpoken || S.left || overlay || sheets.length) return;
+    if (!S.crisis || S.crisisSpoken || S.left || overlay || sheets.length || worldMode || S.finishing) return;
     S.crisisSpoken = true;
+    keepSafety();
     stageMallow.setStage(CARE_FACE, { quiet: true });
-    say(SHARED_LINES.support, { interrupt: !subtitles.holding });
+    const p = crisisLine = say(SHARED_LINES.support, { interrupt: !subtitles.holding });
+    p.then(() => { if (crisisLine === p) crisisLine = null; });
+  }
+  /**
+   * A crisis typed in a world: the world ends quietly now (owner P3). A director that did not say
+   * so (no 'finish' event) still leaves the stage, so the calm line is never kept waiting.
+   */
+  function endCrisisWorld() {
+    if (!worldMode || S.finishing) return;
+    try { flowRef?.finish?.(); } catch (e) { console.warn(e); }
+    if (worldMode && !S.finishing) onFinished();
+  }
+  /**
+   * The visit's level outlives the scene for the page session, in memory only (no words, nothing
+   * stored): back from Settings, the plans page, the garden or a ritual, support is still close and
+   * the visit is still a gentle one (no jokes, no invitations, no world after a crisis).
+   */
+  function keepSafety() {
+    if (S.level === 'none') return;
+    app.state.hfSafety = { level: S.level, category: S.category, crisisSpoken: S.crisisSpoken };
   }
 
   // ---------------------------------------------------- telling --
@@ -762,7 +792,7 @@ export default function hushfold(app, params = {}) {
         if (S.left) return;
         noteSafety(meta.safety);
         // a crisis typed in a world (sent or not): the world it paused ends quietly now (owner P3)
-        if (S.level === 'crisis' && worldMode) flowRef?.finish?.();
+        if (S.level === 'crisis' && worldMode) endCrisisWorld();
         // crisis words typed in the last moment before closing: the urgent sheet still opens, once
         if (meta.safety?.level === 'crisis' && !meta.supportShown && reason !== 'submit') openSupportSheet({ urgent: true });
         showTell(true);
@@ -794,8 +824,8 @@ export default function hushfold(app, params = {}) {
     if (intention) S.intention = intention;
     if (safety?.level === 'crisis') {
       // no Thought Mallow, no world that transforms the words; support stays one tap away.
-      // A world that was playing ends quietly (owner P3)
-      if (worldMode) flowRef?.finish?.();
+      // A world that was playing ends quietly (owner P3); the calm line follows once it has gone
+      if (worldMode) endCrisisWorld();
       stageMallow.setStage(CARE_FACE);
       // more words later in the same visit get a calm answer, never silence (the crisis line is said once)
       if (S.crisisSpoken) say(SHARED_LINES.supportConcern, { interrupt: !subtitles.holding });
@@ -1021,7 +1051,8 @@ export default function hushfold(app, params = {}) {
   let held = null;   // { wantPaused } while the sheet holds a world
   function holdWorld(on) {
     if (on) {
-      if (held || !worldMode || !flowRef || flowRef.stub || !panelSheet()) return;
+      // (a world that is ending is not held: the director still reads 'paused' after finish())
+      if (held || !worldMode || S.finishing || !flowRef || flowRef.stub || !panelSheet()) return;
       const st = flowRef.state || {};
       if (st.phase === 'finished') return;
       held = { wantPaused: !!st.paused };
@@ -1033,7 +1064,7 @@ export default function hushfold(app, params = {}) {
     const want = held.wantPaused;
     held = null;
     document.body.classList.remove('hf-world-held');
-    if (!worldMode || !flowRef) return;
+    if (!worldMode || S.finishing || !flowRef) return;
     const st = flowRef.state || {};
     if (st.phase === 'finished') return;
     if (want) { if (st.paused) onPaused(true); else { try { flowRef.pause?.(); } catch (e) { console.warn(e); } } }
