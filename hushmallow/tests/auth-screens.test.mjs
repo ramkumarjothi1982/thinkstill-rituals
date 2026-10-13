@@ -328,3 +328,24 @@ test('the account scene: every screen, the right autocomplete, entry points, and
   // nothing in the scene or the CSS is smaller than the 13 px reading floor
   for (const m of css.matchAll(/font(?:-size)?:[^;{}]*?\b(\d+(?:\.\d+)?)px/g)) assert.ok(+m[1] >= 13, m[0]);
 });
+
+test('the home Mallow: one chain for the picker and the Mallow above the card, the way the Hushfold picks it', async () => {
+  const { MALLOW_IDS } = await import('../src/mallows/registry.js');
+  const ids = [...MALLOW_IDS];
+  assert.deepEqual([0, 5, 6, 10, 11, 16, 17, 20, 21, 23].map((hr) => VM.mallowForHour(hr)), ['noomi', 'noomi', 'boppo', 'boppo', 'pipzi', 'pipzi', 'loomi', 'loomi', 'noomi', 'noomi']);
+  // nobody has picked one: the Mallow on the stage (the time of day), said honestly
+  assert.deepEqual(VM.homeMallow({ ids, onStage: 'pipzi' }), { id: 'pipzi', chosen: false });
+  assert.deepEqual(VM.homeMallow({ ids, hour: 22 }), { id: 'noomi', chosen: false }, 'no stage yet: the hour, never a Blubi fallback');
+  assert.equal(VM.homeMallowLine('Pipzi', false), 'Pipzi is greeting you for now. Until you pick one, it changes with the time of day.');
+  // a pick this visit wins, then the one this device last chose; the stage only follows them
+  assert.deepEqual(VM.homeMallow({ ids, statePick: 'zuzu', prefsPick: 'loomi', onStage: 'pipzi' }), { id: 'zuzu', chosen: true });
+  assert.deepEqual(VM.homeMallow({ ids, prefsPick: 'loomi', onStage: 'pipzi' }), { id: 'loomi', chosen: true });
+  assert.deepEqual(VM.homeMallow({ ids, statePick: 'nope', prefsPick: 'also-nope', onStage: 'boppo' }), { id: 'boppo', chosen: false });
+  assert.equal(VM.homeMallowLine('Loomi', true), 'Loomi greets you here and on the Hushfold.');
+  // the scene uses this chain for both, and the account's own pick only fills a device that has none
+  const src = readFileSync(`${ROOT}src/app/scenes/account.js`, 'utf8');
+  assert.match(src, /createAuthMallow\(mallowEl, \{ id: shownMallow\(\)\.id/);
+  assert.match(src, /const now = shownMallow\(\);/);
+  assert.match(src, /p\.profile\.homeMallow && !shownMallow\(\)\.chosen/);
+  assert.doesNotMatch(src, /pickMallow\(/, 'no second chain');
+});

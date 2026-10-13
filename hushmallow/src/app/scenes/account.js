@@ -39,7 +39,7 @@ import { h, iconBtn, toast } from '../ui.js';
 import { type } from '../../ui/type.js';
 import { brandTagline } from '../../brand.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
-import { createAuthMallow, pickMallow } from '../../auth/mallow.js';
+import { createAuthMallow } from '../../auth/mallow.js';
 import { checkEmail, checkPassword, friendlyError, passwordStrength, MESSAGES } from '../../auth/errors.js';
 import * as VM from '../../auth/view-model.js';
 
@@ -97,6 +97,8 @@ export default function account(app, params = {}) {
   const clearTimers = () => { for (const t of timers) { clearTimeout(t); clearInterval(t); } timers.clear(); };
   /** The full sign-in API (loaded once; supabase-js itself loads at the first server call). */
   const api = () => (client ? Promise.resolve(client) : auth.load().then((c) => (client = c)));
+  /** The Mallow greeting this person now, chosen the way the Hushfold chooses it (src/auth/view-model.js homeMallow). */
+  const shownMallow = () => VM.homeMallow({ ids: MALLOW_IDS, statePick: app.state?.homeMallow, prefsPick: app.prefs?.get?.('mallow'), onStage: app.world?.mallowId });
 
   // ------------------------------------------------------------- frame --
   const backBtn = iconBtn('back', 'Back', () => goBack());
@@ -454,8 +456,9 @@ export default function account(app, params = {}) {
     });
     nameForm.form.classList.add('hm-account-inline');
 
-    // home Mallow
-    const current = pickMallow(MALLOW_IDS, acct.profile?.homeMallow, app.prefs.get('mallow'));
+    // home Mallow: the one greeting this person now (the same chain as the Mallow above the card and the Hushfold)
+    const now = shownMallow();
+    const current = now.id;
     const picker = h('div', { class: 'hm-account-mallows', role: 'radiogroup', 'aria-label': 'Home Mallow' },
       ...MALLOW_IDS.map((id) => {
         const m = MALLOWS[id];
@@ -471,7 +474,7 @@ export default function account(app, params = {}) {
         });
         return b;
       }));
-    const pickedName = h('p', { class: 'hm-auth-hint', id: uid('mallow') }, `${MALLOWS[current].name} greets you here and on the Hushfold.`);
+    const pickedName = h('p', { class: 'hm-auth-hint', id: uid('mallow') }, VM.homeMallowLine(MALLOWS[current].name, now.chosen));
     picker.setAttribute('aria-describedby', pickedName.id);
 
     // the two opt-in switches
@@ -540,7 +543,8 @@ export default function account(app, params = {}) {
       if (since && sinceEl) sinceEl.textContent = `With hushmallow since ${since}.`;
       const nameInput = bodyEl.querySelector('[data-field="displayName"] input');
       if (nameInput && !nameInput.value && p.profile.displayName) nameInput.value = p.profile.displayName;
-      if (p.profile.homeMallow && p.profile.homeMallow !== mallow?.id && !app.prefs.get('mallow')) pickHome(p.profile.homeMallow, rows.picker, { save: false });
+      // the account's home Mallow (chosen on another device) comes here only while this device has not chosen one
+      if (p.profile.homeMallow && !shownMallow().chosen) pickHome(p.profile.homeMallow, rows.picker, { save: 'here' });
     }
     if (k.ok) {
       acct.consents = k.consents;
@@ -586,15 +590,16 @@ export default function account(app, params = {}) {
     say(statusEl.textContent);
   }
 
+  /** save: true (a pick here: this device and the account), 'here' (the account's own pick, now on this device too). */
   function pickHome(id, picker, { save = true } = {}) {
     if (!MALLOWS[id]) return;
     for (const b of picker.querySelectorAll('[data-mallow]')) { const on = b.dataset.mallow === id; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; }
     const hintEl = picker.parentElement?.querySelector(`#${picker.getAttribute('aria-describedby')}`);
-    if (hintEl) hintEl.textContent = `${MALLOWS[id].name} greets you here and on the Hushfold.`;
+    if (hintEl) hintEl.textContent = VM.homeMallowLine(MALLOWS[id].name, true);
     mallow?.setId(id);
-    if (!save) return;
     app.state.homeMallow = id;
     app.prefs.set('mallow', id);
+    if (save !== true) return;
     app.haptic?.('light');
     api().then((a) => a.profile.update({ homeMallow: id })).then((r) => { if (r?.ok) acct.profile = { ...(acct.profile || {}), homeMallow: id }; }).catch(() => {});
   }
@@ -836,7 +841,7 @@ export default function account(app, params = {}) {
       if (left) return;
       el.style.visibility = '';
       const prefs = app.prefs;
-      mallow = createAuthMallow(mallowEl, { id: pickMallow(MALLOW_IDS, prefs.get('mallow'), app.state?.homeMallow, app.world?.mallowId), reducedMotion: reduced(), lowStim: !!prefs.get('lowStim') });
+      mallow = createAuthMallow(mallowEl, { id: shownMallow().id, reducedMotion: reduced(), lowStim: !!prefs.get('lowStim') });
       lastStatus = auth?.enabled ? auth.status() : 'off';
       if (auth?.enabled && auth.status() === 'signed-in') api().catch(() => {});
       const first = VM.initialView({ enabled: !!auth?.enabled, status: lastStatus, pendingGuestChoice: !!auth?.pendingGuestChoice, view: params.view });
