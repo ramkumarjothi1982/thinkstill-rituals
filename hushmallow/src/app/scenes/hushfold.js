@@ -135,7 +135,9 @@ export default function hushfold(app, params = {}) {
     reducedMotion: () => prefs.reducedMotion(),
     // (in a world the lines keep to the band the world keeps clear for them; over the phone sheet, the strip above it)
     bounds: () => ({ top: bandTop(), bottom: Math.min(dockTop(), panelTop()) - 12, left: 0, right: stageRight() }),
-    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), ...(flowRef?.avoid?.() || []), overlay?.rect?.(),
+    // (in a world's first seconds, where the person's thought is going too: a title card placed while it travels from
+    // beside their Mallow is never left over it, or its words, once it lands — the ocean's cold start at 390)
+    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), thoughtRestRect(), ...(flowRef?.avoid?.() || []), overlay?.rect?.(),
       ...(installMod?.installAvoidRects?.() || [])].filter(Boolean),
     // what is behind the band (the realm, a world's back and front layers): sampled once per line for the scrim
     backdrop: () => [...document.querySelectorAll('#world canvas, #fx-layer canvas.hf-front')],
