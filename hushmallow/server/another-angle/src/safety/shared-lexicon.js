@@ -225,6 +225,17 @@ export const HARM_LEXICON = {
       R`\b(?:not|never) safe (?:at home|with (?:him|her|them))\b`,
       R`\b(?:scared|afraid|frightened|terrified) (?:to go home|of (?:him|her|them|my (?:partner|boyfriend|girlfriend|husband|wife|dad|father|mum|mom|mother|stepdad|stepmum|stepmom|ex))(?!'s|\w))`,
       R`\bfear for my (?:life|safety)\b`,
+      // added 13 Oct 2026, final QA: plain statements of being in danger ("I'm not safe", "i'm not safe here",
+      // "I'm afraid he'll hurt me"); never 'not safe to drive', 'the bridge is not safe' or 'is it safe'
+      R`\b(?:i'?m|i am|im)(?: (?:really|just|so|actually|honestly|truly|genuinely|still|probably|definitely))? not (?:really |actually |even )?safe\b(?! (?:to (?:drive|ride|cycle|fly|swim|ski|operate|use|be left (?:alone )?(?:with|near|around) (?:cake|chocolate|sweets|snacks|food|biscuits|crisps|pizza|a credit card|my card|money))|behind the wheel|on (?:the )?roads?|on (?:a|my|the) (?:bike|bicycle|scooter|skateboard|motorway)|(?:around|near|with) (?:cake|chocolate|sweets|snacks|biscuits|crisps|pizza|food|desserts?|ice cream|a buffet|buffets|scissors|a glue gun|a credit card|my credit card|my card|money)|in (?:a|the|any|my) kitchen|from (?:relegation|the drop|elimination|spoilers|the sack))\b)`,
+      R`\b(?:i'?m|i am|im|i feel|i'?m feeling|i am feeling|i always feel|i often feel) (?:so |really |very |completely |totally )?unsafe\b(?! (?:to (?:drive|ride|cycle|swim)|driving|cycling|on (?:the )?roads?)\b)`,
+      R`\b(?:not|never) feel(?:ing)? safe\b`,
+      R`\b(?:don'?t|do not|dont) think (?:i'?m|i am|im) safe\b(?! to\b)`,
+      R`\b(?:scared|afraid|frightened|terrified|petrified|worried) for my (?:life|safety)\b`,
+      R`\b(?:scared|afraid|frightened|terrified|petrified|worried) (?:that )?${HURTER}(?: \w+)?(?:'ll| will| is going to|'s going to| is gonna|'s gonna| might| may| would|'d| could)(?: (?:really|actually|seriously|try to|try and|end up|come and|come back and))? (?:hurt me|harm me|hit me\b(?! (?:up|back (?:with|later|tomorrow|soon|about|on|when))\b)|attack me\b(?! (?:in|during) (?:(?:a|the|every) )?(?:debates?|comments|reviews?|interviews?)\b)|beat me\b(?! (?:at|in|to)\b)|strangle me|choke me|stab me|punch me|kick me\b(?! (?:out|off)\b)|slap me|shove me)\b`,
+      // 'kill me' only from a partner or an unnamed 'he'/'she'/'they' ("scared my mum will kill me when she sees my grades" stays none)
+      R`\b(?:scared|afraid|frightened|terrified|petrified) (?:that )?(?:he|she|they|someone|somebody|my (?:partner|boyfriend|girlfriend|husband|wife|ex|ex-?(?:partner|boyfriend|girlfriend|husband|wife)|fianc[eé]e?))(?:'ll| will| is going to|'s going to| is gonna|'s gonna| might| may| would|'d| could)(?: (?:really|actually|seriously|try to|try and|end up|come and|come back and))? kill me\b`,
+      R`\b(?:scared|afraid|frightened|terrified|petrified) (?:of )?what ${HURTER}(?:'ll| will| might| may| would|'d| could| is going to|'s going to| is gonna|'s gonna) do to me\b`,
     ],
   },
 };
