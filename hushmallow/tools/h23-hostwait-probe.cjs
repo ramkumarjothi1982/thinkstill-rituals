@@ -10,6 +10,7 @@
 //   arrival  Tell (angry) → the storm's arrival: the thought's step per frame, words never on Glitzi's face.
 //   card     storm → slowing discovery → Keep → the Memory Garden card: never seen over the thought or its words.
 //   raf      storm + ocean: the app's requestAnimationFrame callbacks per frame (Q15: one).
+//   sheet    storm → ocean, then the panel's sheet opened and closed: frames the words are seen on Loomi.
 // Prints one JSON line ("RESULT {...}") and writes screenshots + JSON to out (default the system temp dir).
 // Playwright from /opt/node-tools; Chromium at /opt/pw-browsers/chromium (never playwright install). Touch via CDP.
 const { createRequire } = require('module');
@@ -128,12 +129,13 @@ async function typeAndSend(o, text) {
 }
 /** The words as seen on the hero: frames (seen > 0.15) on its face / its live body; when first seen; hidden after. */
 function wordsOnHero(frames, from) {
-  const out = { face: 0, body: 0, firstSeen: null, hiddenAfter: 0, frames: 0, maxLines: null, faceAt: [] };
-  let seen = false;
+  const out = { face: 0, body: 0, firstSeen: null, hiddenAfter: 0, gapMax: 0, frames: 0, maxLines: null, faceAt: [] };
+  let seen = false, gapFrom = null;
   for (const f of frames) {
     if (f.t < from) continue;
     out.frames++;
     const vis = f.tag && f.tag.op > 0.15 && !f.pz;
+    if (!vis && !f.pz) { gapFrom ??= f.t; out.gapMax = Math.max(out.gapMax, Math.round(f.t - gapFrom)); } else gapFrom = null;
     if (vis) {
       if (!seen) { seen = true; out.firstSeen = +(f.t - from).toFixed(0); }
       if (ov(f.tag.r, f.face)) { out.face++; if (out.faceAt.length < 4) out.faceAt.push({ t: +(f.t - from).toFixed(0), tag: f.tag.r, face: f.face }); }
@@ -284,6 +286,29 @@ async function scenCard(o) {
   if (overBody || overWords) fail('the card seen over the thought', res.notes.card);
   return fr;
 }
+async function scenSheet(o) {
+  // the ocean (after the storm), then the panel's sheet opened and closed: frames the words are seen on Loomi
+  const { page } = o;
+  await toStorm(o);
+  await sleep(2500);
+  await meltToOcean(o);
+  await sleep(3500);
+  await shot(o, '02-ocean');
+  await startRec(page);
+  const t0 = await page.evaluate(() => performance.now());
+  await tapSel(o, '[data-hf=panel-handle]');
+  await sleep(1500);
+  await shot(o, '03-sheet');
+  await tapSel(o, '.hf-panel [aria-label="Close panel"]');
+  await sleep(2500);
+  await shot(o, '04-closed');
+  const fr = await takeRec(page);
+  const w = wordsOnHero(fr, t0);
+  res.notes.sheet = w;
+  if (w.face) fail('words seen on Loomi\'s face with the sheet', w.faceAt);
+  if (w.body) fail('words seen on Loomi\'s body with the sheet (polish: the hero glides through them while they fade)', { frames: w.body });
+  return fr;
+}
 async function rafCount(page, ms) {
   await page.evaluate(() => { window.__hwRafStats.frames.clear(); window.__hwRafStats.on = true; });
   await sleep(ms);
@@ -308,7 +333,7 @@ async function scenRaf(o) {
   let frames = [];
   try {
     await boot(o);
-    frames = await ({ pause: scenPause, first: scenFirst, arrival: scenArrival, card: scenCard, raf: scenRaf }[SCEN])(o);
+    frames = await ({ pause: scenPause, first: scenFirst, arrival: scenArrival, card: scenCard, raf: scenRaf, sheet: scenSheet }[SCEN])(o);
   } catch (e) {
     fail('exception', String(e.stack || e));
     try { await shot(o, 'zz-fail'); } catch { /* */ }
