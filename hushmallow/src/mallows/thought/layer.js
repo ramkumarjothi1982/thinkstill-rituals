@@ -525,6 +525,16 @@ export class ThoughtLayer {
     if (!K || !(K.right > K.left) || !(K.bottom > K.top)) return null;
     return { left: K.left - 4, top: K.top - 4, right: K.right + 4, bottom: K.bottom + 4 };
   }
+  /**
+   * A home-stage plate cut to its first words on one line that has not tried a second line at this level yet — on a stage
+   * of its own (with others the plan's places are theirs: a taller plate would move them).
+   */
+  _mayRaise(th, tg) {
+    const words = th._words || [];
+    if (th.driven || tg.up || tg.upTried || tg.drop || !tg.arrived || tg.cur?.lines !== 1 || words.length <= 3 || tg.text === words.join(' ')) return false;
+    for (const o of this.thoughts) if (o !== th && !o._leaving) return false;
+    return true;
+  }
   /** The budget a world asked for while it drives this thought (th.labelFit), or null. */
   _hostFit(th) {
     const F = th.driven ? th.labelFit : null;
@@ -753,7 +763,6 @@ export class ThoughtLayer {
     this._lastPlan = best;
     return best;
   }
-
   // a thought left: the stage grows back where it stands (the roomiest level at which everyone still fits)
   _regrow() {
     const env = this._envNow(nowMs()), cur = this.crowd;
@@ -811,7 +820,7 @@ export class ThoughtLayer {
       const tg = this.tags.get(th);
       // (a thought a world drives keeps the step it took for the world's stage: the home stage's level is not its place —
       // planned again under a pause or a panel, it must not come back at a budget the world had no room for)
-      if (tg) { if (!th.driven) tg.drop = 0; this._fitLevel(th, tg, W); }
+      if (tg) { if (!th.driven) { tg.drop = 0; tg.up = 0; tg.upTried = false; } this._fitLevel(th, tg, W); }
     }
   }
   // one level fuller, in place: every home stays where it is (the thoughts shrink, the plates narrow)
@@ -1569,7 +1578,8 @@ export class ThoughtLayer {
     // (fewer lines than it asked for only when nowhere round the thought was clear for that plate: _tags)
     if (F) { lines = Math.max(1, (F.lines | 0) - tg.drop); mw = Math.max(40, Math.round(F.maxW)); }
     else {
-      lines = Math.max(1, tagLines(Math.max(th.zGoal, th.zFloor), this.crowd) - tg.drop);
+      // (tg.up: one more line, found clear where its words rest — _tags — while nothing has had to step down)
+      lines = Math.max(1, tagLines(Math.max(th.zGoal, th.zFloor), this.crowd) - tg.drop + (tg.drop ? 0 : tg.up || 0));
       // (the last step, only on a packed stage with nowhere clear: two words on a narrower plate, not three)
       const last = tg.drop >= 3 && this.crowd + tg.drop >= 6;
       mw = last ? this._tagMax(W, 4) - 26 : this._tagMax(W, Math.min(4, this.crowd + tg.drop)); minWords = last ? 2 : 3;
@@ -1955,7 +1965,16 @@ export class ThoughtLayer {
         // where arriving thoughts will rest must be clear too, or it looks now, before anyone sees it)
         const h0 = this._hard(r, th, -1, !tg.arrived);
         if (h0 - this._hob + this._hobDeep > 0) continue;
-        tg.done = true; tg.live = true; tg.blockT = 0; tg.pi = this._placeR(r, this._nPlaced, th);
+        // (at rest where it is, and showing only the first few of the person's words on one line — "I'm so angry my…" on a
+        // 320 px home stage, where the plan keeps its thoughts far: a second line, once, when that plate is clear there too)
+        let rr = r;
+        if (mode === 0 && this._mayRaise(th, tg)) {
+          tg.up = 1; tg.upTried = true; this._fitLevel(th, tg, W);
+          const r2 = this._candRect(th, tg, tg.ci);
+          if (this._hard(r2, th, -1, false) - this._hob + this._hobDeep > 0) { tg.up = 0; this._fitLevel(th, tg, W); rr = this._candRect(th, tg, tg.ci); this._hard(rr, th, -1, false); }
+          else rr = r2;
+        }
+        tg.done = true; tg.live = true; tg.blockT = 0; tg.pi = this._placeR(rr, this._nPlaced, th);
       }
     }
     // the others look for the best clear place (a kept one stays, even on something soft: once a thought
@@ -1972,6 +1991,13 @@ export class ThoughtLayer {
         while (this._bestHard > 0 && mode === 0 && tg.drop < (this.crowd >= 3 ? 3 : 2)) {
           tg.drop++; this._fitLevel(th, tg, W);
           c = this._search(th, tg, -1);
+        }
+        // at rest, clear, and showing only the first few of the person's words on one line ("I'm so angry my…" on a
+        // 320 px home stage, where the plan keeps its thoughts far): a second line, once, where that is clear too
+        if (mode === 0 && this._bestHard <= 0 && this._mayRaise(th, tg)) {
+          tg.up = 1; tg.upTried = true; this._fitLevel(th, tg, W);
+          const c2 = this._search(th, tg, -1);
+          if (this._bestHard > 0) { tg.up = 0; this._fitLevel(th, tg, W); c = this._search(th, tg, -1); } else c = c2;
         }
         // still nowhere: a wider look round it
         if (this._bestHard > 0 && mode === 0) { const hc = this._bestHard, bc = this._bestBad, wx = tg.wx, wy = tg.wy, cw = this._searchWide(th, tg, -1); if (this._bestBad < bc) c = cw; else { tg.wx = wx; tg.wy = wy; this._bestHard = hc; this._bestBad = bc; } }
