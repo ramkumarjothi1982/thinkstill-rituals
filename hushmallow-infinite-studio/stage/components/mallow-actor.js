@@ -91,6 +91,12 @@ export class MallowActor extends MallowRig {
     return this;
   }
 
+  /** The same kick, but delivered over `dur` seconds (soft onset, no jolt). */
+  impulseOver(params, dur = 0.15) {
+    (this._pending ||= []).push({ params, dur, left: dur });
+    return this;
+  }
+
   burst(kind, n, opts = {}) { this.particles.burst({ kind, n }, opts); return this; }
 
   /** Advance one frame (rig springs + body physics + particles + render). */
@@ -100,6 +106,17 @@ export class MallowActor extends MallowRig {
     this.blink.next = 1e9;
     if (this.sacc) { this.sacc.next = 1e9; this.sacc.x = 0; this.sacc.y = 0; }
     if (this.pointerLook) this.pointerLook.t = this.time;   // keep directed gaze alive
+    if (this._pending?.length) {
+      for (const q of this._pending) {
+        const k = Math.min(dt, q.left) / q.dur;
+        q.left -= dt;
+        const scaled = {};
+        for (const [key, v] of Object.entries(q.params)) scaled[key] = v * k;
+        delete scaled.hop;
+        this.impulse(scaled);
+      }
+      this._pending = this._pending.filter((q) => q.left > 1e-6);
+    }
     this._tick(dt, this.time + dt);
     return this;
   }

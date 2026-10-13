@@ -240,9 +240,9 @@ function buildPlan(log) {
 
       case 'exhale': { // long exhale + the soft circle of calm rolling out
         const dur = clamp((c.dur || 1.2) + 0.3, 1, 3);
-        E(t, 'fx', 'breathe-out', { duration: dur, intensity: 0.7 }, 0.31);
-        E(t, 'mallow', 'press', { intensity: 0.4 }, 0.33);           // the body squishes wide (soft)
-        E(t + 0.05, 'mallow', 'sigh', { intensity: 0.35 }, 0.3);
+        E(t, 'fx', 'breathe-out', { duration: dur, intensity: 0.7 }, 0.26);
+        E(t, 'mallow', 'press', { intensity: 0.4 }, 0.27);           // the body squishes wide (soft)
+        E(t + 0.05, 'mallow', 'sigh', { intensity: 0.35 }, 0.24);
         S(t, 'air', { dur: dur + 0.2, a: 0.12, r: dur, f0: 1300, f1: 420, q: 0.7, peak: 0.07, width: 0.65, send: 0.3 });
         break;
       }
@@ -260,26 +260,27 @@ function buildPlan(log) {
       case 'squish': // satisfying squash: squelch sweeping down + the squeezed glide, held until the release
         // the squeezed glide is held, then cut just before the release: a beat of anticipation
         E(t, 'mallow', 'squeeze', { intensity: 0.7, pitch: 2 }, 0.2,
-          releaseT && releaseT > t + 0.12 ? { at: releaseT - 0.08, fade: 0.05 } : null);
-        S(t, 'noiseHit', { filter: 'bandpass', f: 1800, f1: 600, sweep: 0.11, a: 0.003, d: 0.12, peak: 0.08, q: 1.5 });
-        S(t, 'blip', { f: 215, f1: 118, glide: 0.09, a: 0.004, d: 0.16, peak: 0.058, lp: 1200 });
+          releaseT && releaseT > t + 0.12 ? { at: releaseT - 0.07, fade: 0.04 } : null);
+        S(t, 'noiseHit', { filter: 'bandpass', f: 2000, f1: 650, sweep: 0.1, a: 0.004, d: 0.16, peak: 0.12, q: 1.8 });  // wet squelch
+        S(t, 'blip', { f: 900, f1: 450, glide: 0.08, a: 0.003, d: 0.14, peak: 0.08, lp: 2400 });                          // the "squish" vowel
+        S(t + 0.006, 'blip', { f: 215, f1: 118, glide: 0.09, a: 0.004, d: 0.16, peak: 0.04, lp: 1200 });                 // low thud (headphones)
         break;
       case 'release': // … and elastic release: stretch pop + springy boing, jelly wobble
-        E(t, 'mallow', 'release', { intensity: 0.7, pitch: 2 }, 0.32);
+        E(t, 'mallow', 'release', { intensity: 0.7, pitch: 2 }, 0.3);
         S(t, 'blip', { f: 620, f1: 1250, glide: 0.035, a: 0.002, d: 0.06, peak: 0.08, lp: 3000, send: 0.1 });
-        S(t, 'blip', { type: 'triangle', f: 420, f1: 840, glide: 0.07, a: 0.004, d: 0.5, peak: 0.05, lp: 2600, send: 0.2,
+        S(t, 'blip', { type: 'triangle', f: 420, f1: 840, glide: 0.07, a: 0.004, d: 0.45, peak: 0.034, lp: 2600, send: 0.2,
           vib: { rate: 7.5, cents: 85, decay: 0.5 } });
-        S(t, 'blip', { f: 210, f1: 420, glide: 0.07, a: 0.004, d: 0.4, peak: 0.026, lp: 1200, vib: { rate: 7.5, cents: 85, decay: 0.5 } });
+        S(t, 'blip', { f: 210, f1: 420, glide: 0.07, a: 0.004, d: 0.4, peak: 0.02, lp: 1200, vib: { rate: 7.5, cents: 85, decay: 0.5 } });
         break;
 
       case 'open': // eyes open halfway, tiny peaceful smile: warm, content glide + a tiny celesta smile on the frame
-        E(t, 'mallow', 'comfort', { intensity: 0.3, pitch: 2 }, 0.35);
-        S(t, 'bell', { f: N.G5, peak: 0.02, decay: 0.7, partials: 'celesta', send: 0.4, lp: 5000 });
-        S(t + 0.11, 'bell', { f: N.C6, peak: 0.015, decay: 0.8, partials: 'celesta', send: 0.45, lp: 5000 });
+        E(t, 'mallow', 'comfort', { intensity: 0.3, pitch: 2 }, 0.25);
+        S(t, 'bell', { f: N.G5, peak: 0.024, decay: 0.7, partials: 'celesta', send: 0.4, lp: 5000 });
+        S(t + 0.11, 'bell', { f: N.C6, peak: 0.018, decay: 0.8, partials: 'celesta', send: 0.45, lp: 5000 });
         break;
 
       case 'chime': // logo pillow + hushmallow.com: the soothing closing chime, let it ring
-        E(t, 'mallow', 'success', { intensity: 0.55 }, 0.38);   // gentle: clearly below the startle
+        E(t, 'mallow', 'success', { intensity: 0.55 }, 0.34);   // gentle: clearly below the startle, also on a phone
         break;
 
       case 'sleep': // drifting back to sleep, under the chime
@@ -405,7 +406,7 @@ function buildPlan(log) {
   const pad = {
     t0: exhale.t, dt: 0.02, hp: 170,
     notes: [[N.C3, 0.3], [N.G3, 0.45], [N.D4, 0.45], [N.E4, 0.55], [N.G4, 0.4], [N.C5, 0.35], [N.E5, 0.2]],
-    peak: 0.0175, env: [], lp: [],
+    peak: 0.0152, env: [], lp: [],
   };
   for (let t = pad.t0; t <= DUR + 1e-9; t += pad.dt) {
     const up = smoothstep(pad.t0, pad.t0 + 1.9, t);
@@ -425,9 +426,10 @@ function buildPlan(log) {
     realm: 'moonmilk-cove', fadeIn: 0.8, mood,
     // sparse music-box events of the bed only in the quiet stretches (before the ping, after the eyes open)
     tickWindows: [[-0.9, ping - 0.75], [open + 0.25, chimeT - 0.8]],
-    // bed level: present but low; dips a little under the swirl peak, rises in the warm ending
+    // bed level: present but low; dips a little under the swirl peak, settles lower in the calm ending
+    // (the calm must be softer than the spiral: emotional progression)
     level: [[-PRE, 1.0], [startle + 0.2, 1.0], [firstBubble - 0.06, 0.88], [ORB.start + 0.4, 0.85], [close - 0.1, 0.7],
-      [exhale.t - 0.4, 0.85], [open + 0.2, 0.9], [DUR - 1.0, 0.9]],
+      [exhale.t - 0.4, 0.85], [open + 0.2, 0.72], [DUR - 1.0, 0.72]],
   };
 
   return {

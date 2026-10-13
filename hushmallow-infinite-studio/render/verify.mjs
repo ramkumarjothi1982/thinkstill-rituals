@@ -37,6 +37,24 @@ if (a) {
   };
 }
 
+// staleness: the MP4 must be newer than every source file that shapes it
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+let newestSrc = 0, newestName = '';
+for (const dir of ['videos', 'stage', 'audio', 'render']) {
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) walk(f);
+      else if (/\.(m?js|html|py)$/.test(e.name) && !/verify\.mjs$/.test(e.name)) {
+        const m = fs.statSync(f).mtimeMs;
+        if (m > newestSrc) { newestSrc = m; newestName = path.relative(ROOT, f); }
+      }
+    }
+  };
+  if (fs.existsSync(path.join(ROOT, dir))) walk(path.join(ROOT, dir));
+}
+const fresh = fs.statSync(file).mtimeMs >= newestSrc;
+
 const checks = {
   'video codec h264 (High)': v?.codec_name === 'h264' && /High/.test(v?.profile || ''),
   'pixel format yuv420p': v?.pix_fmt === 'yuv420p',
@@ -48,6 +66,7 @@ const checks = {
   'audio length matches video': a ? Math.abs(parseFloat(a.duration) - parseFloat(v.duration)) < 0.05 : false,
   'faststart (moov first)': faststart,
   'decodes with zero errors': decodeErrors === '',
+  'rendered from the current source': fresh,
 };
 if (loud) {
   checks['loudness -16 ±1.5 LUFS'] = loud.integratedLUFS != null && Math.abs(loud.integratedLUFS + 16) <= 1.5;
@@ -59,6 +78,7 @@ const report = {
   video: v && { codec: v.codec_name, profile: v.profile, pix_fmt: v.pix_fmt, size: `${v.width}x${v.height}`, fps: v.r_frame_rate, frames: Number(v.nb_read_frames), duration: v.duration, color: [v.color_primaries, v.color_transfer, v.color_space].join('/') },
   audio: a && { codec: a.codec_name, rate: a.sample_rate, channels: a.channels, duration: a.duration, bitrate: a.bit_rate },
   loudness: loud, checks, decodeErrors: decodeErrors || null,
+  source: probe.format.tags?.comment || null, newestSource: fresh ? null : newestName,
 };
 fs.writeFileSync(path.join(path.dirname(file), 'verify.json'), JSON.stringify(report, null, 2));
 for (const [k, ok] of Object.entries(checks)) console.log(`${ok ? 'PASS' : 'FAIL'}  ${k}`);

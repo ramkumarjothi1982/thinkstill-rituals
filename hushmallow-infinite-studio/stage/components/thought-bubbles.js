@@ -275,6 +275,8 @@ export class ThoughtField {
       }
     }
     if (o.topSafe) y = Math.max(y, o.topSafe(t) + (it.h || 0) * 0.5);
+    // front-layer plates keep clear air above the Mallow's crown
+    if (!it.mini && z > 0 && it.h) y = Math.min(y, head.y - it.h * 0.45 - 14);
     // stress jitter
     const st = o.stress ? o.stress(t) : 0;
     // (kept tiny: the brand avoids shaking text)
@@ -298,7 +300,7 @@ export class ThoughtField {
         if (o.mini || t < o.spec.appearAt + 0.21) continue;
         const q = this._place(o, t, head);
         const d = Math.max(Math.abs(p.x - q.x) / ((o.w + it.w) * 0.5), Math.abs(p.y - q.y) / ((o.h + it.h) * 0.5));
-        depthA *= smoothstep(0.9, 1.2, d);
+        depthA *= smoothstep(1.0, 1.4, d);   // never reads as punctuation beside a plate
       }
     }
     // --- tail dots (head → bubble), fade once the orbit takes over

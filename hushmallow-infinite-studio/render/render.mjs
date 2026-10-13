@@ -12,7 +12,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { startServer } from './serve.mjs';
@@ -32,6 +32,16 @@ const CRF = opt('crf', '16');
 const LIMIT = opt('frames', null);
 
 fs.mkdirSync(OUT, { recursive: true });
+
+// provenance: which source produced this file (verify.mjs checks staleness)
+function sourceStamp() {
+  try {
+    const sha = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+    const dirty = execFileSync('git', ['status', '--porcelain', '--', '.'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\n').some((l) => l.trim() && !/output\//.test(l));
+    return `hushmallow-infinite-studio ${VIDEO} @ ${sha}${dirty ? '-dirty' : ''}`;
+  } catch { return `hushmallow-infinite-studio ${VIDEO}`; }
+}
 
 function log(...a) { console.log('[render]', ...a); }
 
@@ -101,7 +111,7 @@ async function main() {
       '-y', '-hide_banner', '-loglevel', 'error',
       '-f', 'image2pipe', '-framerate', String(info.fps), '-c:v', 'png', '-i', '-',
       '-c:v', 'libx264', '-preset', 'slow', '-crf', String(CRF), '-tune', 'film',
-      '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.2',
+      '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.2', '-g', '30', '-keyint_min', '30',
       '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
       '-vf', 'scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p',
       '-r', String(info.fps), '-movflags', '+faststart', silent,
@@ -136,7 +146,8 @@ async function main() {
       '-y', '-hide_banner', '-loglevel', 'error', '-i', silent, '-i', wav,
       '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy',
       '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2',
-      '-t', String(info.duration), '-movflags', '+faststart', final,
+      '-t', String(info.duration), '-metadata', `comment=${sourceStamp()}`, '-metadata', `title=${info.title}`,
+      '-movflags', '+faststart', final,
     ]);
     log('wrote', final, `in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
   } finally {

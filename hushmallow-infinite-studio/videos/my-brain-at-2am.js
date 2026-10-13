@@ -32,7 +32,7 @@ const meta = {
 
 // ------------------------------------------------------------- beats --
 const B = {
-  hookIn: -0.25,
+  hookIn: -0.6,
   nuzzle: 0.55,                // sleepy settle
   ping: 0.97,                  // the memory twinkles above Noomi's head
   stir: 1.09,                  // still asleep: the smile falls, brows knit
@@ -103,6 +103,7 @@ const POSES = [
   [B.b1 - 0.05, P.worry], [B.b3, P.fret], [B.panic, P.panic], [B.close, P.close],
   [B.inhale, P.inhale], [B.crest, P.crest], [B.exhale, P.exhale], [10.0, P.exhaleTail],
   [B.squish, P.squish], [B.release, P.relaxed],
+  [B.open - 0.35, { ...P.relaxed, closedCurve: 0.85 }],            // leave rest softly before the eyes open
   [B.open, { ...P.peace, eyeOpen: 0.32 }], [B.open + 0.25, P.peace],
   [B.blink3, P.peaceShut], [B.blink3 + 0.26, P.peace],              // slow, sleepy blink
   [B.droop, P.sleepy], [B.sleep, P.sleepShut], [B.sleepEnd, P.sleepEnd],
@@ -203,15 +204,15 @@ function camera(t) {
   // A monotone spline flows through the keys; the inhale pushes in and the
   // exhale opens out, so the camera breathes with Noomi.
   const zoom = spline([
-    [-9, 1.06], [0, 1.06], [B.startle - 0.02, 1.2], [2.7, 1.26], [3.55, 1.0], [4.8, 1.02], [6.95, 1.15],
+    [-9, 1.06], [0, 1.06], [B.startle - 0.02, 1.2], [2.7, 1.26], [3.8, 1.0], [4.8, 1.02], [6.95, 1.15],
     [B.inhale, 1.12], [B.crest, 1.17], [B.exhale, 1.17], [B.exhaleEnd, 1.02], [11.6, 1.0], [15, 1.06],
   ], t);
   const fy = spline([
-    [-9, 770], [0, 770], [B.startle - 0.02, 800], [2.7, 820], [3.55, 735], [4.8, 737], [6.95, 772],
+    [-9, 770], [0, 770], [B.startle - 0.02, 800], [2.7, 820], [3.8, 735], [4.8, 737], [6.95, 772],
     [B.inhale, 770], [B.crest, 745], [B.exhale, 745], [B.exhaleEnd, 700], [11.6, 690], [15, 770],
   ], t);
   // punch-in on the startle: fast spring with overshoot, released before thought 1 pops
-  const punch = t >= B.startle ? springStep(t - B.startle, 2.4, 0.38) * (1 - smoothstep(2.65, 3.3, t)) : 0;
+  const punch = t >= B.startle ? springStep(t - B.startle, 2.4, 0.38) * (1 - smoothstep(2.6, 3.6, t)) : 0;
   let z = zoom + 0.1 * punch;
   let y = fy + 34 * punch;
   // orbit-feel drift + handheld shake as the thoughts spiral
@@ -326,14 +327,14 @@ function direct(t, dt, stage, info = {}) {
   realm.setMood(rm.mood).transform(rm.transform);
 
   // the stir is subtle: fade the approved rest art out instead of cutting
-  actor.restFade = t >= B.stir - 0.05 && t < B.peek ? 0.22 : 0;
+  actor.restFade = (t >= B.stir - 0.05 && t < B.peek) || (t >= B.open - 0.4 && t < B.open + 0.05) ? 0.25 : 0;
 
   if (!info.preroll) {
     fireOnce('z0', t, 0.35, () => actor.particles.spawn('z', 0, 1));
     fireOnce('nuzzle', t, B.nuzzle, () => actor.impulse({ squash: 0.12, tilt: 0.02 }));
     fireOnce('ping', t, B.ping, () => stage.cue(B.ping, 'ping'));
     fireOnce('stir', t, B.stir, () => stage.cue(B.stir, 'stir'));
-    fireOnce('peek', t, B.peek, () => { actor.val.eyeOpen = 0.24; actor.vel.eyeOpen = 0; stage.cue(B.peek, 'peek'); });
+    fireOnce('peek', t, B.peek, () => { actor.val.eyeOpen = 0.3; actor.vel.eyeOpen = 0; stage.cue(B.peek, 'peek'); });
     fireOnce('antic', t, B.antic, () => actor.impulse({ squash: 0.25 }));
     fireOnce('startle', t, B.startle, () => {
       actor.val.eyeOpen = 1.05; actor.vel.eyeOpen = 22;          // eyes POP open
@@ -359,10 +360,10 @@ function direct(t, dt, stage, info = {}) {
     fireOnce('flinch3', t, B.b3 + POP, () => actor.impulse({ squash: 0.35 }));
     fireOnce('sweat', t, B.sweat, () => stage.cue(B.sweat, 'sweat'));
     fireOnce('panic', t, B.panic, () => { actor.impulse({ squash: 0.45, shear: 0.25 }); stage.cue(B.panic, 'panic'); });
-    fireOnce('close', t, B.close, () => { actor.vel.eyeOpen = -26; actor.impulse({ squash: 0.12 }); stage.cue(B.close, 'close'); });
+    fireOnce('close', t, B.close, () => { actor.vel.eyeOpen = -26; actor.impulseOver({ squash: 0.12 }, 0.12); stage.cue(B.close, 'close'); });
     fireOnce('inhale', t, B.inhale, () => { actor.impulse({ squash: -0.06 }); stage.cue(B.inhale, 'inhale', { dur: B.crest - B.inhale }); });
     fireOnce('exhale', t, B.exhale, () => {
-      actor.impulse({ squash: 0.18 });
+      actor.impulseOver({ squash: 0.18 }, 0.15);
       actor.val.browAlpha = Math.min(actor.val.browAlpha, 0.15); actor.vel.browAlpha = -8;
       realm.pulse('ripple', 0.5, 0.79);
       stage.cue(B.exhale, 'exhale', { dur: B.exhaleEnd - B.exhale });
@@ -376,21 +377,20 @@ function direct(t, dt, stage, info = {}) {
     });
     fireOnce('squish', t, B.squish, () => stage.cue(B.squish, 'squish', { dur: B.release - B.squish }));
     fireOnce('release', t, B.release, () => {
-      actor.impulse({ squash: -0.4, shear: 0.12 });
+      actor.impulseOver({ squash: -0.4, shear: 0.12 }, 0.15);
       actor.burst('moon', 8);
       stage.cue(B.release, 'release');
     });
     fireOnce('open', t, B.open, () => {
-      actor.val.closedCurve = -0.9;
-      actor.impulse({ squash: 0.15 });
+      actor.impulseOver({ squash: 0.15 }, 0.12);
       actor.burst('moon', 5);
       realm.pulse('success', 0.5, 0.78);
       stage.cue(B.open, 'open');
     });
-    fireOnce('blink3', t, B.blink3, () => { actor.impulse({ squash: 0.12 }); stage.cue(B.blink3, 'blink', { soft: true, dur: 0.26 }); });
+    fireOnce('blink3', t, B.blink3, () => { actor.impulseOver({ squash: 0.12 }, 0.15); stage.cue(B.blink3, 'blink', { soft: true, dur: 0.26 }); });
     fireOnce('endline', t, B.endLine, () => stage.cue(B.endLine, 'endline'));
     fireOnce('url', t, B.url, () => stage.cue(B.url, 'chime'));
-    fireOnce('sleep', t, B.sleep, () => { actor.impulse({ squash: 0.2 }); stage.cue(B.sleep, 'sleep'); });
+    fireOnce('sleep', t, B.sleep, () => { actor.impulseOver({ squash: 0.2 }, 0.15); stage.cue(B.sleep, 'sleep'); });
     fireOnce('z1', t, 14.25, () => actor.particles.spawn('z', 0, 1));
   } else if (t > -1.6 && !fired.has('zpre')) {
     fired.add('zpre');
@@ -446,12 +446,12 @@ function substep(t, dt) {
   // the rig blends the closed-lid line and the open lash between ~2–30 %
   // openness, which reads as a flat "-_-" squint; skip through that zone
   const tgt = actor.target.eyeOpen, v = actor.val.eyeOpen;
-  if (t > 0 && tgt <= 0.02 && v > 0 && v < 0.22) {
+  if (t > 0 && tgt <= 0.02 && v > 0 && v < 0.3) {
     actor.val.eyeOpen = 0; actor.vel.eyeOpen = 0;
     // shut lids take their closed curve at once (no flat "— —" in between)
     actor.val.closedCurve = actor.target.closedCurve; actor.vel.closedCurve = 0;
   }
-  else if (t > 0 && tgt >= 0.25 && v < 0.22) { actor.val.eyeOpen = 0.24; actor.vel.eyeOpen = Math.max(0, actor.vel.eyeOpen); }
+  else if (t > 0 && tgt >= 0.25 && v < 0.3) { actor.val.eyeOpen = 0.3; actor.vel.eyeOpen = Math.max(0, actor.vel.eyeOpen); }
 }
 
 // ----------------------------------------------------- small effects --
