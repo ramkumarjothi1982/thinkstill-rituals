@@ -17,6 +17,7 @@ import { createFakeSupabase } from '../tools/auth/fake-supabase.mjs';
 import { createAuth } from '../src/auth/client.js';
 import { resolveAuthConfig } from '../src/auth/config.js';
 import { bootNamespace } from '../src/auth/namespace.js';
+import { openLink, createCallbackAuth, parseCallback } from '../src/auth/callback.js';
 import { memoryStorage, supabaseLib, fakeDom, until } from './helpers/auth-env.mjs';
 
 let fake, config;
@@ -108,4 +109,30 @@ test('A’s page deletes its account after another tab put B’s session here: o
   assert.equal(ls.getItem(config.storageKey), bSession, 'B’s session is untouched');
   assert.equal(await userOk(bToken), 200);
   assert.deepEqual(ls.keys().filter((k) => k.startsWith(`hm2:u:${uidA}:`)), [], 'A’s copy is gone');
+});
+
+test('the other way round: A’s page writes its refreshed session over B’s a moment after B’s link stored it; the link’s page puts B’s back and the new password is saved', async () => {
+  const { ls, a } = await sharedBrowser();
+  const aSession = ls.getItem(config.storageKey);
+  // B asks for a reset elsewhere; the link opens in a second tab of this browser
+  await realFetch(`${config.url}/auth/v1/recover`, { method: 'POST', headers: { apikey: config.key, 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) });
+  const m = await until(() => fake.lastEmail('bo@example.com', 'recovery'));
+  const cb = createCallbackAuth(createAuth, config, { ls, ss: memoryStorage(), loader: async () => supabaseLib(), storage: ls, ...fakeDom() });
+  live.push(cb);
+  const c = await cb.ensureClient();
+  const r = await openLink({ auth: cb, c, p: parseCallback(`http://localhost:8202/auth/callback?token_hash=${m.token_hash}&type=recovery`), ls });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  await r.ended;
+  // tab 1 (A's page) had a refresh in flight before it heard: its save lands over B's session
+  ls.setItem(config.storageKey, aSession);
+  const u = await cb.updatePassword({ password: 'after-reset-123', recoveryUid: r.uid });
+  assert.equal(u.ok, true, JSON.stringify(u));
+  assert.equal(JSON.parse(ls.getItem(config.storageKey)).user.email, 'bo@example.com', 'B’s session is back in storage');
+  const t = await realFetch(`${config.url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: config.key, 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', password: 'after-reset-123' }) });
+  assert.equal(t.status, 200, 'B signs in with the new password');
+  // and the arrival check does the same for a confirmation link
+  ls.setItem(config.storageKey, aSession);
+  assert.equal(await cb.keepLinkSession(r.uid), true);
+  assert.equal(JSON.parse(ls.getItem(config.storageKey)).user.email, 'bo@example.com');
+  assert.equal(await a.keepLinkSession(r.uid), false, 'only the link’s own page holds a link’s session');
 });

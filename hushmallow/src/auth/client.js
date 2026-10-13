@@ -231,8 +231,11 @@ export function createAuth({
     emit(event);
   }
 
+  // this page no longer owns the stored session (gone, or another account's): supabase-js stops refreshing it from here
+  const letGo = () => { try { client?.auth.stopAutoRefresh(); } catch { /* not started */ } };
   function drop(event) {
     settled = true;
+    letGo();
     status = 'expired';
     user = null;
     consents = null;
@@ -240,7 +243,7 @@ export function createAuth({
     try { onExpired({ reason: 'expired' }); } catch (e) { console.warn('[auth]', e); }
     onReload({ reason: 'expired', urgent: false, hash: '#home' });
   }
-  function switchTo(reason) { settled = true; onReload({ reason, urgent: false, hash: '#home' }); }
+  function switchTo(reason) { settled = true; letGo(); onReload({ reason, urgent: false, hash: '#home' }); }
 
   /**
    * Another page of this device wrote a tombstone for the account this page
@@ -459,12 +462,29 @@ export function createAuth({
   }
 
   /** /auth/callback: a new password for the recovery session the link opened (and only for that account). */
+  /**
+   * /auth/callback: the session the link just opened is kept in this page's
+   * memory (holdLinkSession), and put back in storage if another tab of this
+   * browser wrote over it while the link was opening (that tab's own refresh
+   * landing a moment late, before it heard the new session). True when the
+   * stored session is the link's account's.
+   */
+  let linkSession = null;
+  async function keepLinkSession(uid) {
+    const want = String(uid || '').toLowerCase();
+    if (!isUid(want)) return false;
+    const c = await ensureClient();
+    const { data } = await c.auth.getSession();
+    if (data?.session?.user?.id?.toLowerCase() === want) return true;
+    if (!linkSession || linkSession.uid !== want) return false;
+    const { data: d2, error } = await c.auth.setSession({ access_token: linkSession.at, refresh_token: linkSession.rt });
+    return !error && d2?.session?.user?.id?.toLowerCase() === want;
+  }
+
   async function setRecoveryPassword(password, recoveryUid) {
     try {
       const c = await ensureClient();
-      const { data } = await c.auth.getSession();
-      const sid = data?.session?.user?.id?.toLowerCase() || null;
-      if (!sid || !isUid(recoveryUid) || sid !== String(recoveryUid).toLowerCase()) return fail(friendlyError({ code: 'not_signed_in' }, 'password'));
+      if (!isUid(recoveryUid) || !(await keepLinkSession(recoveryUid))) return fail(friendlyError({ code: 'not_signed_in' }, 'password'));
       const { error } = await c.auth.updateUser({ password });
       if (error) return fail(friendlyError(error, 'password'));
       notice('password-updated');
@@ -679,6 +699,17 @@ export function createAuth({
         return { ok: !out?.error };
       } catch { return { ok: false }; }
     },
+
+    /** /auth/callback only: keep the session a link just opened (memory only, this page). */
+    holdLinkSession(session) {
+      if (!passive) return false;
+      const uid = String(session?.user?.id || '').toLowerCase();
+      if (!isUid(uid) || typeof session?.access_token !== 'string' || typeof session?.refresh_token !== 'string') return false;
+      linkSession = { uid, at: session.access_token, rt: session.refresh_token };
+      return true;
+    },
+    /** /auth/callback only: make sure the stored session is still the link's (put back if another tab wrote over it). */
+    keepLinkSession: (uid) => (passive ? keepLinkSession(uid).catch(() => false) : Promise.resolve(false)),
 
     /** Deletes the account: every row it owns and its sign-in (server), then this device's copy. */
     async deleteAccount() {

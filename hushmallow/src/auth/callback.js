@@ -236,6 +236,7 @@ export async function run({ href = START_HREF } = {}) {
     return finished;
   }
   await settledEnd();
+  await auth.keepLinkSession?.(r.uid);   // the app boots into the link's account, even if another tab wrote over it meanwhile
   if (r.kind === 'email-changed') { arrived('email-changed', p.next, 'Email updated', 'Your new email address is confirmed.'); return { state: 'email-changed', uid: r.uid }; }
   arrived('verified', p.next, 'You’re in', `Your email is confirmed. You’re signed in${as(r.email)}.`);
   return { state: 'verified', uid: r.uid };
@@ -291,6 +292,8 @@ export async function openLink({ auth, c, p, ls = (() => { try { return globalTh
   } else return { ok: false, error: friendlyError({ code: 'invalid_link' }, 'callback'), code: 'invalid_link' };
   const uid = String(session?.user?.id || '').toLowerCase() || null;
   if (uid && ls) { try { settleWipe(ls, uid); } catch { /* the app's boot settles it */ } }
+  // kept in this page's memory: put back if another tab of this browser writes over it while this page works
+  if (session) auth.holdLinkSession?.(session);
   const ended = before && session && before.refresh_token !== session.refresh_token ? auth.endDetachedSession(before) : Promise.resolve({ ok: true, none: true });
   const email = typeof session?.user?.email === 'string' ? session.user.email : null;
   return { ok: true, kind, uid, email, ended };
