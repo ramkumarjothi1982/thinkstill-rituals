@@ -413,7 +413,16 @@ function visibleRect(el) {
 const OBSTACLES = '.hf-sub, .hf-chips:not([hidden]), .hf-subctl:not(.is-hidden), .hf-read';
 function obstacleRects() {
   if (typeof document === 'undefined') return [];
-  return [...document.querySelectorAll(OBSTACLES)].map(visibleRect).filter(Boolean);
+  // (a line still fading in counts already: what is placed now must not end up under it a moment later)
+  return [...document.querySelectorAll(OBSTACLES)].map((e) => (e.matches('.hf-sub') ? shownRect(e) : visibleRect(e))).filter(Boolean);
+}
+/** Like visibleRect, whatever its opacity (a line arriving or leaving still has its place). */
+function shownRect(el) {
+  if (!el?.isConnected || el.hidden) return null;
+  const r = el.getBoundingClientRect();
+  if (!(r.width > 0 && r.height > 0)) return null;
+  const cs = getComputedStyle(el);
+  return cs.visibility === 'hidden' || cs.display === 'none' ? null : r;
 }
 /**
  * What the caller says must stay clear (a world's postcards and Thought Mallow, a reserved band): rects or a function
@@ -428,6 +437,8 @@ function extraRects(avoid) {
     if (o && r.hard) o.hard = true;
     // (a world's decoration — its postcards and photo bubbles — may lie under an offer rather than the Mallow)
     if (o && (r.kind === 'card' || r.kind === 'bubble')) o.decor = true;
+    // (the world's subtitle band in its free time: an offer may lie in it when nothing outside it is clear)
+    if (o && r.kind === 'band') o.band = true;
     return o;
   }).filter(Boolean);
 }
@@ -493,7 +504,9 @@ function freeSpans(y0, y1, xL, xR, obstacles) {
  * the body but off the face; else the smallest form against the face's edge
  * with the most room.
  * apply(form) sets the form; lift(form) is how far a part (the card's charm)
- * rises above the box. Returns { form, left, top, w, h } (top of the box).
+ * rises above the box. Returns { form, left, top, w, h, tier } (top of the box; tier: 'clear' of everything, 'band' —
+ * in the subtitle band's free time —, 'decor' — over a world's postcards or bubbles —, 'face' — over the body, off the
+ * face — or 'squeezed').
  */
 function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, lift = () => 0, extra = [] }) {
   const fr = screenFrame();
@@ -512,7 +525,7 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
   const cx = geom ? geom.body.cx : fr.W / 2;
   const size = (form) => { apply(form); return { w: el.offsetWidth || 300, h: (el.offsetHeight || 120) + lift(form), lift: lift(form) }; };
   const leftFor = (w) => clamp(cx - w / 2, 16, Math.max(16, fr.W - 16 - w));
-  const tryIn = (list, obs = obstacles) => {
+  const tryIn = (list, obs = obstacles, tier = 'clear') => {
     for (const form of forms) {
       const { w, h, lift: l } = size(form);
       for (const [y0, y1, anchor, sideLeft] of list) {
@@ -524,18 +537,20 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
           // level with the body's middle, in the free span nearest to it
           const want = geom.body.top + geom.body.height * 0.5 - (h - l) / 2 - l;
           const best = spans.map(([s, e]) => [s, e, clamp(want, s, e - h)]).sort((a, b) => Math.abs(a[2] - want) - Math.abs(b[2] - want))[0];
-          return { form, left, top: best[2] + l, w, h: h - l, region: 'side' };
+          return { form, left, top: best[2] + l, w, h: h - l, region: 'side', tier };
         }
         const span = anchor === 'top' ? spans[0] : spans[spans.length - 1];
         const top = (anchor === 'top' ? span[0] : span[1] - h) + l;
-        return { form, left, top, w, h: h - l, region: anchor === 'top' ? 'below' : 'above' };
+        return { form, left, top, w, h: h - l, region: anchor === 'top' ? 'below' : 'above', tier };
       }
     }
     return null;
   };
   // the clear of everything first; then still clear of the whole body (with room for its hop), the lines and the
   // person's thought, lying over a world's postcards or bubbles if it must; only then over the body, off the face
-  let p = tryIn(regions.clear) || tryIn(regions.clear, obstacles.filter((o) => !o.decor)) || tryIn(regions.face);
+  // (in between: in the subtitle band's free time, which a line coming takes back — the offer then steps aside or folds)
+  let p = tryIn(regions.clear) || tryIn(regions.clear, obstacles.filter((o) => !o.band), 'band')
+    || tryIn(regions.clear, obstacles.filter((o) => !o.decor), 'decor') || tryIn(regions.face, obstacles, 'face');
   if (!p) {
     const form = forms[forms.length - 1];
     const { w, h, lift: l } = size(form);
@@ -545,7 +560,7 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
       top = roomBelow >= roomAbove ? geom.face.bottom + 8 : geom.face.top - 8 - h;
     } else top = fr.bottomLimit - h;
     top = clamp(top, fr.ins.top + 8, Math.max(fr.ins.top + 8, fr.H - fr.ins.bottom - 8 - h)) + l;
-    p = { form, left: leftFor(w), top, w, h: h - l, region: 'squeezed' };
+    p = { form, left: leftFor(w), top, w, h: h - l, region: 'squeezed', tier: 'squeezed' };
   }
   apply(p.form);
   return p;
@@ -666,9 +681,16 @@ function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, ge
   place();
   requestAnimationFrame(() => requestAnimationFrame(() => b.classList.add('is-in')));
   let ttlT = 0;
+  // a line coming onto it (a corner in the subtitle band's free time): it moves to another free corner, or waits unseen
+  // until the line has gone — the lines keep their band; and a chip waiting for a corner tries again as the lines change
+  const stopBand = onBandChange(() => {
+    if (chip.gone) return;
+    const r = b.getBoundingClientRect();
+    if (b.classList.contains('is-blocked') || obstacleRects().some((o) => hits(r, o, 4))) place();
+  });
   const chip = { el: b, gone: false, __place: place, close(instant = false) {
     if (chip.gone) return;
-    chip.gone = true; clearTimeout(ttlT); stopLeave();
+    chip.gone = true; clearTimeout(ttlT); stopLeave(); stopBand();
     if (openChip === chip) openChip = null;
     b.classList.remove('is-in'); b.classList.add('is-out');
     const rm = () => { b.remove(); c.destroy(); };
@@ -719,7 +741,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     document.body.append(el);
     openOffer = el;
 
-    let form = null, charm = null, rect = null, folded = false, foldT = 0, done = false;
+    let form = null, charm = null, rect = null, folded = false, foldT = 0, done = false, tier = null;
     const apply = (f) => {
       el.classList.toggle('is-compact', f === 'compact');
       el.classList.toggle('is-bar', f === 'bar');
@@ -731,6 +753,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       const p = placeBox(el, { forms: ['full', 'compact', 'bar'], apply, kind: 'offer', geom, extra: extraRects(avoid) });
       el.style.left = `${Math.round(p.left)}px`; el.style.top = `${Math.round(p.top)}px`;
       rect = { left: p.left, top: p.top, right: p.left + p.w, bottom: p.top + p.h };
+      tier = p.tier;
       if (p.form !== form) {
         form = p.form;
         charm?.destroy();
@@ -766,7 +789,13 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     const stopLeave = onSceneLeave(() => close(false));
     const stopBand = onBandChange(() => {
       if (done || folded || !rect) return;
-      if (obstacleRects().concat(extraRects(avoid)).some((o) => hits(rect, o, 4))) geom = place();
+      if (!obstacleRects().concat(extraRects(avoid)).some((o) => hits(rect, o, 4))) return;
+      // a line came onto it (it lay in the subtitle band's free time, on a small phone): if the only place left is over
+      // the Mallow, it folds into its chip instead — it never jumps onto the hero's head (the chip waits for a free corner)
+      const was = tier;
+      geom = place();
+      const off = (t) => t === 'clear' || t === 'band' || t === 'decor';
+      if (off(was) && !off(tier)) fold(true);
     });
     const onResize = () => { if (!folded) geom = place(); };
     addEventListener('resize', onResize);

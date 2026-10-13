@@ -140,7 +140,8 @@ export default function hushfold(app, params = {}) {
     // (in a world's first seconds, where the person's thought is going too: a title card placed while it travels from
     // beside their Mallow is never left over it, or its words, once it lands — the ocean's cold start at 390)
     avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), thoughtRestRect(), ...(flowRef?.avoid?.() || []), overlay?.rect?.(),
-      ...(installMod?.installAvoidRects?.() || [])].filter(Boolean),
+      // (an offer lying in the band's free time gives the band back: it steps aside or folds when the line comes)
+      ...(installMod?.installAvoidRects?.() || []).filter((r) => !inWorldBand(r))].filter(Boolean),
     // what is behind the band (the realm, a world's back and front layers): sampled once per line for the scrim
     backdrop: () => [...document.querySelectorAll('#world canvas, #fx-layer canvas.hf-front')],
     brightHint: () => !worldMode && BRIGHT_REALMS.has(world.realmId),
@@ -828,11 +829,23 @@ export default function hushfold(app, params = {}) {
     // lines meanwhile, and the lines keep off the card once they come back — never over the thought or its words)
     const inst = installing(), world = flowRef?.avoid?.() || [];
     const things = inst ? world.filter((r) => r?.kind !== 'card' && r?.kind !== 'bubble') : world;
+    // (the world's subtitle band is the lines': the offer keeps off it while a line or a choice is up; in its free time
+    // ({ kind: 'band' }) it may lie in it when nothing outside it is clear — on a small phone the only place clear of the
+    // hero, its words and the bubbles — and when a line comes the line keeps its band: the offer steps aside, or folds
+    // into its chip rather than onto the Mallow)
+    const band = worldMode && !panelSheet() && !inst ? flowRef?.subtitleBand?.() : null;
     // (the panel or the phone sheet and the overlay are never covered, not even by the folded chip with no corner free: hard)
-    return [...things, worldMode && !panelSheet() && !inst ? flowRef?.subtitleBand?.() : null, ...(stage?.thoughts.rects() || []),
+    return [...things, band && (linesUp() ? band : { ...band, kind: 'band' }), ...(stage?.thoughts.rects() || []),
       thoughtRestRect(), hard(overlay?.rect?.()), hard(panelRect()), landingFace()].filter(Boolean);
   }
   const hard = (r) => (r && r.bottom > r.top && r.right > r.left ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.right - r.left, height: r.bottom - r.top, hard: true } : null);
+  /** A line or a choice is showing (or going) on the stage now. */
+  const linesUp = () => typeof document !== 'undefined' && !!document.querySelector('.hf-subs .hf-sub, .hf-subs .hf-chips:not([hidden])');
+  /** An offer, card or chip lying in the world's subtitle band (in its free time): the lines never step round it. */
+  function inWorldBand(r) {
+    const b = worldMode && !panelSheet() ? flowRef?.subtitleBand?.() : null;
+    return !!(b && b.h > 0 && r && r.top >= b.y - 4 && r.bottom <= b.y + b.h + 4);
+  }
   /** Is the garden installation (its portal and card) on stage now? */
   const installing = () => typeof document !== 'undefined' && !!document.querySelector('.hm-install, .hm-install-card');
   /**

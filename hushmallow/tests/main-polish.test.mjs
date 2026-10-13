@@ -154,3 +154,24 @@ test('a death, a loss or harm told inside a world: no Resume pill, no ▶ or pan
   const { SHARED_LINES } = await import('../src/hushfold/lines.js');
   assert.deepEqual(SHARED_LINES.careAsk, ['We can stay here quietly. Or somewhere calm, if you’d like.'], 'neutral after a death or abuse (minor 7a)');
 });
+
+test('320×568: the folded offer lies in the subtitle band\'s free time, never on the hero; a line takes the band back', () => {
+  const gi = read('src/hushfold/garden-install.js');
+  const box = gi.slice(gi.indexOf('function placeBox('), gi.indexOf('let openCard = null'));
+  // clear of everything; then in the band's free time; then over a world's decoration; only then over the body
+  const order = ["tryIn(regions.clear)", "obstacles.filter((o) => !o.band), 'band')", "obstacles.filter((o) => !o.decor), 'decor')", "tryIn(regions.face, obstacles, 'face')"].map((k) => box.indexOf(k));
+  assert.ok(order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])), JSON.stringify(order));
+  assert.match(gi, /if \(o && r\.kind === 'band'\) o\.band = true;/);
+  // a line comes onto it: if the only place left is over the Mallow, it folds into its chip instead
+  const offer = gi.slice(gi.indexOf('export function offerSave('), gi.indexOf('function note('));
+  assert.match(offer, /const off = \(t\) => t === 'clear' \|\| t === 'band' \|\| t === 'decor';\s*if \(off\(was\) && !off\(tier\)\) fold\(true\);/);
+  // the chip moves off a line too (or waits unseen), and a line still fading in already counts
+  const chip = gi.slice(gi.indexOf('function showChip('), gi.indexOf('function hideChip('));
+  assert.match(chip, /const stopBand = onBandChange\(\(\) => \{[\s\S]*?if \(b\.classList\.contains\('is-blocked'\) \|\| obstacleRects\(\)\.some\(\(o\) => hits\(r, o, 4\)\)\) place\(\);/);
+  assert.match(chip, /stopLeave\(\); stopBand\(\);/);
+  assert.match(gi, /e\.matches\('\.hf-sub'\) \? shownRect\(e\) : visibleRect\(e\)/);
+  // the shell: the band is the lines' while one is up; free otherwise; and the lines never step round an offer in it
+  const scene = read('src/app/scenes/hushfold.js');
+  assert.match(scene, /band && \(linesUp\(\) \? band : \{ \.\.\.band, kind: 'band' \}\)/);
+  assert.match(scene, /\.\.\.\(installMod\?\.installAvoidRects\?\.\(\) \|\| \[\]\)\.filter\(\(r\) => !inWorldBand\(r\)\)/);
+});
