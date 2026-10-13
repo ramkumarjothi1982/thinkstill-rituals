@@ -12,7 +12,7 @@ import { THOUGHT_PATTERNS } from '../src/ultra/frameworks.js';
 import { authoredScene, sceneParts, exactPhrase, chunkStep, candidatePatterns, sameWords, secondPerson, FACT_ASK, GUESS_ASK } from '../src/beyond/authored.js';
 import { createAngleClient, resolveEndpoint, makeDeviceId, PATHS } from '../src/beyond/angle-client.js';
 import { consentState, setConsent, withdrawConsent, deleteAngleData, hasAngleData, noteFeedback, lessWanted, STORE_KEYS, CONSENT_VERSION, PROVIDER_RETENTION, RETENTION_PLACEHOLDER,
-  saveTesterCode } from '../src/beyond/consent.js';
+  PROVIDER_SAFETY_HOLD, PROVIDER_USE, PROVIDER_DELETE, saveTesterCode } from '../src/beyond/consent.js';
 import * as LINES from '../src/beyond/lines.js';
 import { MECHANIC_MODULES } from '../src/beyond/mechanics/index.js';
 import { createStore } from '../src/engine/storage.js';
@@ -443,9 +443,13 @@ test('the consent notice says it plainly (the one place automated processing is 
   assert.match(card, /'More below'/);
   // the Settings sheet carries the same notice, "Not therapy" included
   assert.match(src, /noticeBody\(app, \{ compact: true, therapy: true \}\)/);
-  // the provider's retention is a marked placeholder until the owner confirms it
-  assert.equal(PROVIDER_RETENTION, '');
+  // the provider's retention: the owner's approved text once the server is on (before that, a marked placeholder)
   assert.match(RETENTION_PLACEHOLDER, /^\[Owner to confirm before launch:/);
+  if (ANGLE_ENDPOINT) {
+    assert.ok(PROVIDER_RETENTION.length > 0, 'the retention line is filled in when the server is on');
+    assert.notEqual(PROVIDER_RETENTION, RETENTION_PLACEHOLDER);
+    assert.doesNotMatch(PROVIDER_RETENTION, /Owner to confirm|\[|\]/);
+  }
   // nowhere else in Another Angle does the experience name the technology
   const mechFiles = readdirSync(`${root}src/beyond/mechanics`).map((n) => `mechanics/${n}`);
   for (const f of ['another-angle.js', 'lines.js', 'authored.js', 'angle-client.js', 'styles.js', 'vocab.js', ...mechFiles]) {
@@ -678,7 +682,90 @@ test('mechanics drive the person’s living Thought Mallow (W2) when the scene h
   assert.ok(drawn > 100);
 });
 
-// ------------------------------------------------------- the client seam (B4) --
+// ----------------------------------------- go-live (G1) and the client seam (B4) --
+// The owner's approved wording (docs/integration/DECISIONS.md, 12 Oct 2026), compared with the apostrophes
+// made straight: the app writes them typographically (’), the decision record plainly (').
+const APPROVED = {
+  retention: "Anthropic doesn't use your words to train its AI. It usually deletes them within 30 days.",
+  safetyHold: 'If its automatic safety checks flag a message as breaking its rules, Anthropic can keep it for up to 2 years. It also keeps anything the law requires it to.',
+  use: "Anthropic uses your words only to prepare your perspective, to keep its service safe, and where the law requires. It isn't sent your account or photos, but it sees anything you type, names included.",
+  remove: "Anthropic's copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can't delete it sooner from here.",
+  plans: 'Another Angle asks first, then sends only the words you choose to our secure server. Never your photos.',
+};
+const plain = (t) => String(t).replace(/[‘’]/g, "'");
+
+test('G1: the approved consent, privacy and delete wording, word for word, where the owner placed it', () => {
+  assert.equal(plain(PROVIDER_RETENTION), APPROVED.retention);
+  assert.equal(plain(PROVIDER_SAFETY_HOLD), APPROVED.safetyHold);
+  assert.equal(plain(PROVIDER_USE), APPROVED.use);
+  assert.equal(plain(PROVIDER_DELETE), APPROVED.remove);
+  const src = read('src/beyond/consent.js');
+  const body = src.slice(src.indexOf('function noticeBody('), src.indexOf('export function openConsent'));
+  // line 1 straight after "The provider receives your words to prepare the perspective.", then lines 2 and 3 (card and sheet share noticeBody)
+  assert.match(body, /'The provider receives your words to prepare the perspective\. ', retention, ` \$\{PROVIDER_SAFETY_HOLD\}`\)/);
+  assert.match(body, /PROVIDER_USE\)/);
+  assert.match(src, /noticeBody\(app\)\)/, 'the card');
+  assert.match(src, /noticeBody\(app, \{ compact: true, therapy: true \}\)/, 'the privacy sheet');
+  // line 4 on the delete sheet
+  const del = src.slice(src.indexOf('function confirmDelete()'), src.indexOf('export function saveTesterCode'));
+  assert.match(del, /PROVIDER_DELETE\)/);
+  // the plans page sentence
+  assert.ok(read('src/app/scenes/plans.js').includes(APPROVED.plans));
+  // "AI" and the provider's name only on the consent card, the privacy sheet and the delete sheet (all in consent.js)
+  for (const f of ['another-angle.js', 'lines.js', 'authored.js', 'angle-client.js', 'styles.js', 'vocab.js', 'endpoint.js']) {
+    const strings = read(`src/beyond/${f}`).match(/'[^'\n]*'|`[^`]*`/g) || [];
+    for (const x of strings) assert.doesNotMatch(x, /\bAI\b|Anthropic/, `${f}: ${x.slice(0, 60)}`);
+  }
+  // a newer notice asks again
+  assert.ok(CONSENT_VERSION >= 2);
+});
+
+test('G1: the consent card says what the client really sends (every request body, re-checked)', async () => {
+  const src = read('src/beyond/consent.js');
+  const sent = src.match(/'What’s sent\. '\), '([^']+)'/)[1];
+  const kept = src.match(/'What’s kept\. '\),[^\n]*?' stores nothing you write[^']*'/)[0];
+  // what really goes out, from the client itself (a fake server records every body)
+  const srv = fakeServer({ angle: OK });
+  const store = memStore();
+  saveTesterCode(store, '  tester-1  ');
+  const c = createAngleClient({ store, endpoint: EP, fetchImpl: srv.fetch });
+  const r = await c.angle({ text: 'Nobody likes me.', emotion: 'sadness', intention: 'calm', previous: [{ ...GOOD }] });
+  await c.feedback('helped', r.scene);
+  const [session, angle, fb] = srv.calls;
+  assert.deepEqual(Object.keys(session.body).sort(), ['app_version', 'device_id', 'invite', 'platform']);
+  assert.equal(session.body.invite, 'tester-1', 'the tester code, trimmed');
+  assert.deepEqual(Object.keys(angle.body).sort(), ['consent', 'emotion', 'intention', 'locale', 'previous_angles', 'request_id', 'text']);
+  assert.deepEqual(Object.keys(fb.body).sort(), ['interaction_type', 'mallow_character', 'prompt_version', 'rating', 'reasoning_pattern']);
+  // …and each is told: words, feeling, kind of help, lines seen, language, request number; the session's code, version, device type, invite code
+  for (const [field, words] of [['text', /your words/i], ['emotion', /the feeling/], ['intention', /the kind of help you pick/], ['previous_angles', /the lines you’ve seen/],
+    ['locale', /the app’s language/], ['request_id', /a random number for each request/]]) assert.match(sent, words, `${field} is told`);
+  assert.match(sent, /A feedback tap sends which button and what kind of angle it was, never your words/);
+  assert.match(kept, /a random code for this phone, its version and device type \(and any invite code\)/);
+  assert.doesNotMatch(JSON.stringify(srv.calls.map((x) => x.body)), /photo|image|data:/i);
+});
+
+test('G1: the endpoint is the production Worker on its own allow-listed host (no other workers.dev address in src)', () => {
+  if (!ANGLE_ENDPOINT) return;
+  const u = new URL(ANGLE_ENDPOINT);
+  assert.equal(u.protocol, 'https:');
+  assert.deepEqual(ANGLE_ALLOWED_HOSTS, [u.hostname]);
+  assert.equal(resolveEndpoint({ loc: { hostname: 'ramkumarjothi1982.github.io', protocol: 'https:', search: '' } }), ANGLE_ENDPOINT);
+  // on localhost ?angleDev still points at a local mock (the only way to test it from a sandbox)
+  assert.equal(resolveEndpoint({ loc: { hostname: 'localhost', protocol: 'http:', search: '?angleDev=8790' } }), 'http://localhost:8790');
+  const hits = [];
+  const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (/\.(js|mjs|html|css|json)$/.test(n)) read(p).split('\n').forEach((l, i) => { if (/workers\.dev/.test(l)) hits.push(`${p}:${i + 1}`); }); } };
+  walk('src');
+  assert.equal(hits.length, 2, hits.join(', '));
+  assert.ok(hits.every((h) => h.startsWith('src/app/config.js:')), hits.join(', '));
+  assert.doesNotMatch(read('src/app/config.js'), /staging/);
+});
+
+test('G1: Settings shows the Another Angle rows with the server on only for Beyond, or wherever its data is still kept', () => {
+  const src = read('src/app/scenes/settings.js');
+  assert.match(src, /const live = !!endpoint && ent\.has\('ultra'\);/);
+  assert.match(src, /if \(live \|\| c\.hasAngleData\(app\.store\)\) c\.mountAngleSettings\(app, angleRows, \{ endpoint: live \? endpoint : null \}\);/);
+});
+
 test('B4: the compact input has no photos and says where the words go; Back closes a sheet before the input', () => {
   const src = read('src/beyond/another-angle.js');
   const open = src.slice(src.indexOf('function openTellNow()'), src.indexOf('async function afterTell('));

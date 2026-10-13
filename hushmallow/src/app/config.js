@@ -18,14 +18,19 @@ export function testPurchasesAllowed(loc = globalThis.location) {
 }
 
 // Another Angle (hushmallow Beyond) — our own server (server/another-angle),
-// the only place the app sends anything. Empty = Zuzu's authored angles only,
-// worked out on the phone (nothing is sent, the consent screen never shows).
-// To switch it on, put the Worker's https address here (no trailing slash) and
-// its host in ANGLE_ALLOWED_HOSTS, and change the plans copy that says the
-// words stay on the phone (tests/beyond.test.mjs holds the two together).
-export const ANGLE_ENDPOINT = '';
-/** Hosts ANGLE_ENDPOINT may point at (https only), e.g. 'hushmallow-another-angle.<subdomain>.workers.dev'. */
-export const ANGLE_ALLOWED_HOSTS = [];
+// the only place the app sends anything, and only after the person taps
+// Accept on its consent card. Switched on 12 Oct 2026 with the owner's
+// approval (docs/integration/DECISIONS.md): the production Cloudflare Worker,
+// deployed from main by .github/workflows/another-angle.yml, which accepts
+// only the app's own origin. Whenever it can't be reached (before its first
+// deploy, offline, a timeout), Zuzu's authored angles play on the phone after
+// the app's own safety check. Development: ?angleDev=<port> on localhost
+// (src/beyond/endpoint.js). To switch the server off, empty both lines (the
+// consent card then never shows) and change the plans copy back; the tests in
+// tests/beyond.test.mjs and tests/brand.test.mjs follow the endpoint.
+export const ANGLE_ENDPOINT = 'https://hushmallow-another-angle.vibyfy-chat.workers.dev';
+/** The only hosts ANGLE_ENDPOINT may point at (https, no path tricks): the production Worker. */
+export const ANGLE_ALLOWED_HOSTS = ['hushmallow-another-angle.vibyfy-chat.workers.dev'];
 
 /** Shown at the bottom of Settings so a tester can tell which version has loaded. */
 export const BUILD = '2026-10-12 · the Hushfold slice (high-res Mallows, MallowTouch)';

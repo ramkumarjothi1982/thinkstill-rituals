@@ -97,11 +97,10 @@ export default function plans(app, params = {}) {
       rest.length ? h('details', { class: 'invite-more' },
         h('summary', {}, h('span', {}, 'Everything included')),
         h('ul', { class: 'invite-list' }, ...rest.map(benefit))) : null,
-      // What ships today: Another Angle's angles are authored and run on the
-      // phone. When the Beyond server client (W8) is switched on, this note
-      // changes in the same release to the wording agreed with its consent
-      // screen (who processes the words, and that nothing is kept).
-      beyond ? h('p', { class: 'invite-note' }, 'Another Angle works on this phone: what you type stays here.') : null,
+      // Another Angle sends words to our server (src/app/config.js ANGLE_ENDPOINT), only after its consent
+      // card: the owner's approved sentence (docs/integration/DECISIONS.md, 12 Oct 2026). Who processes the
+      // words and how long they are kept is told on the consent card itself, the one place it is described.
+      beyond ? h('p', { class: 'invite-note' }, 'Another Angle asks first, then sends only the words you choose to our secure server. Never your photos.') : null,
       action(p));
   }
 

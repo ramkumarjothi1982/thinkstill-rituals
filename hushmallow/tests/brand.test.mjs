@@ -507,11 +507,19 @@ test('toasts and bubbles: centred toasts, dialogue never below 19px, calm under 
   assert.doesNotMatch(read('src/app/ui.js'), /classList\.add\('sr-only'\)/);
 });
 
-test('privacy copy matches what ships: Another Angle runs on the phone in this build', () => {
-  // no customer string in the plans screen or Another Angle claims a server
-  // until the Beyond server client is switched on (W8 changes this test with it)
-  for (const p of ['src/app/scenes/plans.js', 'src/ultra/another-angle.js']) {
-    for (const { text } of lexJs(read(p)).strings) assert.doesNotMatch(text, /\bserver\b|secure server|beyond your phone/i, `${p}: "${text.slice(0, 80)}"`);
+test('privacy copy matches what ships: the plans page says what Another Angle does with the words, server on or off', async () => {
+  const { ANGLE_ENDPOINT } = await import('../src/app/config.js');
+  // the classic dock-card ritual (src/ultra), the authored fallback, never claims a server: it runs on the phone
+  for (const { text } of lexJs(read('src/ultra/another-angle.js')).strings) assert.doesNotMatch(text, /\bserver\b|secure server|beyond your phone/i, `src/ultra/another-angle.js: "${text.slice(0, 80)}"`);
+  const plans = read('src/app/scenes/plans.js');
+  if (ANGLE_ENDPOINT) {
+    // the server is on (G1): the owner's approved sentence, and nothing says the words stay on the phone
+    assert.doesNotMatch(plans, /what you type stays here/);
+    assert.ok(plans.includes('Another Angle asks first, then sends only the words you choose to our secure server. Never your photos.'));
+    // no customer string in the plans page names the provider or the technology (only the consent card, the privacy and delete sheets do)
+    for (const { text } of lexJs(plans).strings) assert.doesNotMatch(text, /Anthropic|\bAI\b|language model/, `plans.js: "${text.slice(0, 80)}"`);
+  } else {
+    for (const { text } of lexJs(plans).strings) assert.doesNotMatch(text, /\bserver\b|secure server|beyond your phone/i, `plans.js: "${text.slice(0, 80)}"`);
+    assert.match(plans, /Another Angle works on this phone: what you type stays here\./);
   }
-  assert.match(read('src/app/scenes/plans.js'), /Another Angle works on this phone: what you type stays here\./);
 });

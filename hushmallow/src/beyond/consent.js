@@ -26,17 +26,22 @@ export const STORE_KEYS = Object.freeze({
   // the server asked for a tester code (and which code it refused): no new session is asked for until the code changes
   inviteNeeded: 'beyond.inviteNeeded',
 });
-/** Bump when the notice changes in a way people should read again. */
-export const CONSENT_VERSION = 1;
+/** Bump when the notice changes in a way people should read again (2: the provider's real retention, 12 Oct 2026). */
+export const CONSENT_VERSION = 2;
 
 /**
- * How long the outside provider keeps what it receives. Left empty on purpose:
- * the owner must confirm the current figure at privacy.claude.com (Anthropic's
- * privacy centre) before launch — see server/another-angle/README.md, "What is
- * logged, and what is kept". While empty, the notice shows a clearly marked
- * placeholder instead of a number.
+ * How long the outside provider keeps what it receives: the owner's approved wording (12 Oct 2026,
+ * docs/integration/DECISIONS.md line 1, checked against Anthropic's Commercial Terms and its API
+ * data-retention docs). It stays true only while the Anthropic organisation is not in the Development
+ * Partner Program and has no retention override. Shown after "The provider receives your words to
+ * prepare the perspective." While it is empty, the notice shows the marked placeholder instead.
  */
-export const PROVIDER_RETENTION = '';
+export const PROVIDER_RETENTION = 'Anthropic doesn’t use your words to train its AI. It usually deletes them within 30 days.';
+/** The owner's approved wording (DECISIONS.md lines 2 and 3), on the consent card and the privacy sheet. */
+export const PROVIDER_SAFETY_HOLD = 'If its automatic safety checks flag a message as breaking its rules, Anthropic can keep it for up to 2 years. It also keeps anything the law requires it to.';
+export const PROVIDER_USE = 'Anthropic uses your words only to prepare your perspective, to keep its service safe, and where the law requires. It isn’t sent your account or photos, but it sees anything you type, names included.';
+/** The owner's approved wording (DECISIONS.md line 4), on the delete-data sheet. */
+export const PROVIDER_DELETE = 'Anthropic’s copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can’t delete it sooner from here.';
 export const RETENTION_PLACEHOLDER = '[Owner to confirm before launch: how long Anthropic keeps what it receives, from privacy.claude.com.]';
 
 export function consentState(store) {
@@ -98,9 +103,10 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
     h('p', { class: 'bx-lead' },
       'Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.'),
     h('ul', { class: 'bx-points' },
-      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen. A feedback tap sends which button and what kind of angle it was, never your words. Never your photos.'),
+      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen, with the app’s language and a random number for each request. A feedback tap sends which button and what kind of angle it was, never your words. Never your photos.'),
       h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair. Never your name or account.'),
-      h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention),
+      h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention, ` ${PROVIDER_SAFETY_HOLD}`),
+      h('li', {}, h('b', {}, 'Anthropic’s use. '), PROVIDER_USE),
       therapy ? notTherapy(app, 'li') : null),
     h('p', { class: 'bx-small' }, 'You can change your mind any time in Settings, and delete this phone’s Another Angle data there.'));
 }
@@ -213,7 +219,9 @@ export function mountAngleSettings(app, el, { endpoint = null } = {}) {
   function confirmDelete() {
     const s = openSheet({
       title: 'Delete your Another Angle data?',
-      body: h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, any tester code, your sharing choice and your feedback. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
+      body: h('div', {},
+        h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, any tester code, your sharing choice and your feedback. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
+        h('p', { class: 'bx-sheet-copy', style: { marginTop: '10px' } }, PROVIDER_DELETE)),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { deleteAngleData(store); s.close(); toast('Deleted'); mountAngleSettings(app, el, { endpoint }); } }, 'Delete')),
     });
