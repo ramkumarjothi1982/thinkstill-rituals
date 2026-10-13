@@ -235,3 +235,19 @@ test('a guest page hears another tab sign in (and an account page hears it sign 
   handlers[1]({ key: 'sb-localhost-auth-token' });
   assert.equal(reloads.pop().reason, 'expired');
 });
+
+test('a brand-new visitor is not asked about "guest things": automatic or default preferences do not count', async () => {
+  const { prefsChosen, AUTO_PREFS } = await import('../src/auth/namespace.js');
+  const { DEFAULTS } = await import('../src/app/prefs.js');
+  assert.deepEqual([...AUTO_PREFS], ['seenIntro', 'mallow']);
+  // what a first visit leaves: the defaults, the intro seen, the Mallow shown, the raw sound switch
+  const fresh = memoryStorage({ 'hm2:prefs': JSON.stringify({ ...DEFAULTS, seenIntro: true, mallow: 'zuzu' }), 'hm2:sound': JSON.stringify({ enabled: true, volume: 0.6 }), 'hm2:hushfold.lines': '{"v":1}' });
+  assert.equal(guestHasData(fresh), false);
+  assert.equal(settleNamespace(fresh, A).needsChoice, false, 'no question for a first visit');
+  assert.equal(prefsChosen('not json'), false);
+  assert.equal(prefsChosen(JSON.stringify({ unknownKey: 5 })), false);
+  // a setting the person chose is worth asking about
+  assert.equal(prefsChosen(JSON.stringify({ ...DEFAULTS, textScale: 1.25 })), true);
+  assert.equal(guestHasData(memoryStorage({ 'hm2:prefs': JSON.stringify({ ...DEFAULTS, haptics: false }) })), true);
+  assert.equal(guestHasData(memoryStorage({ 'hm2:hushfold.favourites': JSON.stringify({ v: 1, ids: ['static-storm'] }) })), true);
+});

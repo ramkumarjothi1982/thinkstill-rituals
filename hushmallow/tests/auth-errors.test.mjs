@@ -61,6 +61,26 @@ test('mapping: limits, network, server, links, codes, sessions', () => {
   assert.equal(friendlyError(null), null);
 });
 
+test('the current password before a change: every “no” reads “That password doesn’t match.”; limits and the network keep their own words', () => {
+  for (const e of [api('invalid_credentials'), api('user_not_found'), api('invalid_grant'), api('email_not_confirmed'), { status: 400, message: 'Invalid login credentials' }, { code: 'password_mismatch' }]) {
+    const f = friendlyError(e, 'current');
+    assert.equal(f.code, 'password_mismatch', JSON.stringify(e));
+    assert.equal(f.message, 'That password doesn’t match.');
+    assert.equal(f.field, 'current');
+  }
+  assert.equal(MESSAGES.password_mismatch, 'That password doesn’t match.');
+  assert.doesNotMatch(MESSAGES.password_mismatch, /lock|attempt|account|email/i, 'no lockout wording, nothing about the account');
+  assert.equal(friendlyError({ status: 429 }, 'current').code, 'rate_limited', 'a limit is a limit, not a mismatch');
+  assert.doesNotMatch(friendlyError({ status: 429 }, 'current').message, /lock/i);
+  assert.equal(friendlyError(new TypeError('Failed to fetch'), 'current').code, 'network');
+  assert.equal(friendlyError({ status: 503 }, 'current').code, 'server');
+  assert.equal(friendlyError({ code: 'current_needed' }, 'current').field, 'current');
+  // the code step after reauthentication_needed
+  assert.equal(friendlyError(api('reauthentication_needed'), 'password').code, 'code_needed');
+  assert.equal(friendlyError(api('reauthentication_not_valid'), 'password').code, 'code_wrong');
+  assert.equal(friendlyError(api('same_password', 422), 'password').code, 'password_same');
+});
+
 test('callback ?error= / #error= parameters', () => {
   assert.equal(callbackError({ error: 'access_denied', error_code: 'otp_expired', error_description: 'Email link is invalid or has expired' }).code, 'link_expired');
   assert.equal(callbackError({ error: 'access_denied' }).code, 'link_expired');

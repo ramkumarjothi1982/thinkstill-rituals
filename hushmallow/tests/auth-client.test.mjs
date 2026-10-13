@@ -6,7 +6,8 @@ import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createFakeSupabase } from '../tools/auth/fake-supabase.mjs';
-import { createAuth, guardedFetch } from '../src/auth/client.js';
+import { createAuth, guardedFetch, createIsolatedClient } from '../src/auth/client.js';
+import { openLink, createCallbackAuth, parseCallback } from '../src/auth/callback.js';
 import { resolveAuthConfig } from '../src/auth/config.js';
 import { bootNamespace, createNamespacedStore, readMarker } from '../src/auth/namespace.js';
 import { createPrefs } from '../src/app/prefs.js';
@@ -24,7 +25,7 @@ before(async () => {
   config = resolveAuthConfig({ published: { enabled: true, url: `http://localhost:${port}`, key: 'sb_publishable_hushmallow_local_dev_only', mode: 'dev' }, loc, session: memoryStorage() });
 });
 after(async () => { for (const a of live) await retire(a); await fake.close(); });
-beforeEach(() => { fake.reset(); Object.assign(fake.cfg, { autoconfirm: false, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, securePasswordChange: true }); });
+beforeEach(() => { fake.reset(); Object.assign(fake.cfg, { autoconfirm: false, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, securePasswordChange: true, recentLoginMs: 86_400_000, singleToken: false }); });
 
 /** One "page load": a client for whatever namespace this device's storage boots into. */
 function page(ls, ss = memoryStorage(), extra = {}) {
@@ -38,6 +39,16 @@ function page(ls, ss = memoryStorage(), extra = {}) {
 }
 async function retire(auth) { try { const c = await auth.ensureClient(); c.auth.stopAutoRefresh(); } catch { /* never loaded */ } }
 const mail = (email, kind) => until(() => fake.lastEmail(email, kind));
+const fakeState = () => fetch(`${fake.url}/__fake/state`).then((r) => r.json());
+const agePost = (body) => fetch(`${fake.url}/__fake/age-sessions`, { method: 'POST', body: JSON.stringify(body) }).then((r) => r.json());
+/** The password grant straight at the fake: whether these credentials sign in (status); the session it opens is closed again. */
+async function canSignIn(email, password) {
+  const r = await fetch(`${fake.url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: config.key, 'content-type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  const j = await r.json().catch(() => ({}));
+  if (j.access_token) await fetch(`${fake.url}/auth/v1/logout?scope=local`, { method: 'POST', headers: { apikey: config.key, authorization: `Bearer ${j.access_token}` } });
+  return r.status;
+}
+const sidOf = (ls) => { try { return JSON.parse(Buffer.from(JSON.parse(ls.getItem(config.storageKey)).access_token.split('.')[1], 'base64url').toString()).session_id; } catch { return null; } };
 
 async function signedUp(ls, email = 'ana@example.com', password = 'gentle-moon-42') {
   const p = page(ls);
@@ -295,23 +306,88 @@ test('delete account: server rows and the auth user go, then this device’s cop
   await retire(p.auth);
 });
 
-test('secure password change: a code is emailed; without it or with a wrong one nothing changes', async () => {
+test('password change on a fresh session: the CURRENT password is checked (wrong → “That password doesn’t match.”), the right one changes it, no code', async () => {
   const ls = memoryStorage();
-  await signedUp(ls);
+  const uid = await signedUp(ls);
   const p = page(ls);
   await p.auth.init();
-  assert.equal((await p.auth.updatePassword({ password: 'brand-new-pass-7' })).error.code, 'code_needed');
-  assert.equal((await p.auth.reauthenticate()).ok, true);
+  const sid = sidOf(ls), held = ls.getItem(config.storageKey), sbKeys = ls.keys().filter((k) => k.startsWith('sb-')).sort().join();
+  assert.ok(sid);
+  const none = await p.auth.updatePassword({ password: 'brand-new-pass-7' });
+  assert.equal(none.error.code, 'current_needed', 'the current password is asked for every time');
+  const wrong = await p.auth.updatePassword({ current: 'not-my-password', password: 'brand-new-pass-7' });
+  assert.equal(wrong.ok, false);
+  assert.equal(wrong.error.code, 'password_mismatch');
+  assert.equal(wrong.error.message, 'That password doesn’t match.');
+  assert.equal(wrong.error.field, 'current');
+  assert.doesNotMatch(wrong.error.message, /lock|attempt|account|exist/i, 'no lockout wording, nothing about the account');
+  assert.equal(fake.lastEmail('ana@example.com', 'reauthentication'), null, 'no code is ever emailed on a fresh session');
+  assert.equal(ls.getItem(config.storageKey), held, 'the check never touched this page’s session');
+  assert.equal(await canSignIn('ana@example.com', 'brand-new-pass-7'), 400, 'a wrong current password changes nothing');
+  assert.equal((await p.auth.updatePassword({ current: 'gentle-moon-42', password: 'gentle-moon-42' })).error.code, 'password_same');
+  const ok = await p.auth.updatePassword({ current: 'gentle-moon-42', password: 'brand-new-pass-7' });
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  assert.equal(fake.lastEmail('ana@example.com', 'reauthentication'), null, 'still no code');
+  const st = await fakeState();
+  assert.deepEqual(st.liveSessions, [sid], 'this page’s session is the only one alive: the check’s own session was signed out (scope local), the real one was not');
+  assert.equal(sidOf(ls), sid, 'still the same session on this page');
+  assert.equal(p.auth.status(), 'signed-in');
+  assert.equal(await p.auth.verify(true), 'signed-in', 'and the server agrees it is alive');
+  assert.equal(p.events.reloads.length, 0, 'nothing reloads');
+  assert.equal(ls.keys().filter((k) => k.startsWith('sb-')).sort().join(), sbKeys, 'the isolated check left nothing in this browser’s storage');
+  assert.deepEqual(ls.keys().filter((k) => k.startsWith('hm-isolated')), []);
+  assert.equal(await canSignIn('ana@example.com', 'brand-new-pass-7'), 200);
+  assert.equal(await canSignIn('ana@example.com', 'gentle-moon-42'), 400);
+  assert.equal(fake.users.get(uid).reauthNonce ?? null, null);
+  await retire(p.auth);
+});
+
+test('password change on a session over 24 hours old: Supabase wants the emailed code; a wrong code is refused, the right one works', async () => {
+  const ls = memoryStorage();
+  const uid = await signedUp(ls);
+  const p = page(ls);
+  await p.auth.init();
+  const sid = sidOf(ls);
+  assert.equal((await agePost({ uid, hours: 25 })).sessions, 1);
+  const wrongCurrent = await p.auth.updatePassword({ current: 'not-my-password', password: 'quiet-harbour-77' });
+  assert.equal(wrongCurrent.error.code, 'password_mismatch', 'the current password comes first here too');
+  assert.equal(fake.lastEmail('ana@example.com', 'reauthentication'), null, 'and a wrong one sends no code');
+  const first = await p.auth.updatePassword({ current: 'gentle-moon-42', password: 'quiet-harbour-77' });
+  assert.equal(first.ok, false);
+  assert.equal(first.needsCode, true, JSON.stringify(first));
+  assert.equal(first.email, 'ana@example.com');
   const m = await mail('ana@example.com', 'reauthentication');
   assert.match(m.token, /^\d{6}$/);
-  assert.equal((await p.auth.updatePassword({ password: 'brand-new-pass-7', nonce: '000000' })).error.code, 'code_wrong');
-  assert.equal((await p.auth.updatePassword({ password: 'short', nonce: m.token })).error.code, 'password_short');
-  assert.equal((await p.auth.updatePassword({ password: 'brand-new-pass-7', nonce: ` ${m.token} ` })).ok, true);
+  assert.deepEqual((await fakeState()).liveSessions, [sid], 'the isolated check’s session is already gone (scope local) and the real one stays');
+  assert.equal(await canSignIn('ana@example.com', 'quiet-harbour-77'), 400, 'nothing changed before the code');
+  const wrongCode = await p.auth.updatePassword({ current: 'gentle-moon-42', password: 'quiet-harbour-77', nonce: m.token === '000000' ? '111111' : '000000' });
+  assert.equal(wrongCode.error.code, 'code_wrong');
+  assert.equal(await canSignIn('ana@example.com', 'quiet-harbour-77'), 400, 'a wrong code is refused by the server');
+  assert.equal(await canSignIn('ana@example.com', 'gentle-moon-42'), 200);
+  assert.equal(p.auth.cooldownLeft('reauth') > 0, true, 'a new code waits for the cooldown');
+  assert.equal((await p.auth.reauthenticate()).error.code, 'rate_limited');
+  const ok = await p.auth.updatePassword({ current: 'gentle-moon-42', password: 'quiet-harbour-77', nonce: ` ${m.token} ` });
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  assert.equal(await canSignIn('ana@example.com', 'quiet-harbour-77'), 200);
+  assert.equal(await canSignIn('ana@example.com', 'gentle-moon-42'), 400);
+  assert.equal(p.auth.status(), 'signed-in');
   await retire(p.auth);
-  const q = page(memoryStorage());
-  assert.equal((await q.auth.signIn({ email: 'ana@example.com', password: 'gentle-moon-42' })).ok, false);
-  assert.equal((await q.auth.signIn({ email: 'ana@example.com', password: 'brand-new-pass-7' })).ok, true);
-  await retire(q.auth);
+});
+
+test('the isolated client: its own memory and storage key, nothing persisted, never this page’s storage', async () => {
+  const ls = memoryStorage();
+  await signedUp(ls);
+  const before = JSON.stringify(ls.dump());
+  const a = createIsolatedClient(supabaseLib(), config), b = createIsolatedClient(supabaseLib(), config);
+  assert.notEqual(a.auth.storageKey, b.auth.storageKey, 'each check has its own key (and lock)');
+  assert.notEqual(a.auth.storageKey, config.storageKey);
+  assert.equal(a.auth.persistSession, false);
+  assert.equal(a.auth.autoRefreshToken, false);
+  assert.equal(a.auth.detectSessionInUrl, false);
+  const r = await a.auth.signInWithPassword({ email: 'ana@example.com', password: 'gentle-moon-42' });
+  assert.equal(r.error, null);
+  await a.auth.signOut({ scope: 'local' });
+  assert.equal(JSON.stringify(ls.dump()), before, 'this page’s storage is exactly as it was');
 });
 
 test('forgot password and resend: the same neutral answer for any email, then a 60 s cooldown', async () => {
@@ -333,18 +409,57 @@ test('forgot password and resend: the same neutral answer for any email, then a 
 
 test('recovery link (token_hash) gives a recovery session that may set a new password without a code', async () => {
   const ls = memoryStorage();
-  await signedUp(ls);
+  const uid = await signedUp(ls);
   const p = page(memoryStorage());
   await p.auth.sendReset({ email: 'ana@example.com' });
   const m = await mail('ana@example.com', 'recovery');
-  const cb = page(ls, memoryStorage(), { passive: true });   // the /auth/callback page
-  const c = await cb.auth.ensureClient();
-  const v = await c.auth.verifyOtp({ token_hash: m.token_hash, type: 'recovery' });
-  assert.equal(v.error, null);
-  assert.equal((await cb.auth.updatePassword({ password: 'after-reset-123' })).ok, true);
+  const cb = createCallbackAuth(createAuth, config, { ls, ss: memoryStorage(), loader: async () => supabaseLib(), storage: ls, ...fakeDom() });   // the /auth/callback page
+  live.push(cb);
+  const c = await cb.ensureClient();
+  const r = await openLink({ auth: cb, c, p: parseCallback(`http://localhost:8202/auth/callback?token_hash=${m.token_hash}&type=recovery`) });
+  assert.equal(r.ok, true); assert.equal(r.kind, 'recovery'); assert.equal(r.uid, uid);
+  assert.equal((await cb.updatePassword({ password: 'after-reset-123' })).error.code, 'not_signed_in', 'only for the account the link opened');
+  assert.equal((await cb.updatePassword({ password: 'after-reset-123', recoveryUid: uid })).ok, true);
   const again = await c.auth.verifyOtp({ token_hash: m.token_hash, type: 'recovery' });
   assert.equal(again.error?.code, 'otp_expired', 'a link works once');
-  await retire(p.auth); await retire(cb.auth);
+  assert.equal(await canSignIn('ana@example.com', 'after-reset-123'), 200);
+  await retire(p.auth); await retire(cb);
+});
+
+test('a shared browser: B’s reset link while A is signed in here works for B; A’s session ends (scope local); A’s things stay A’s', async () => {
+  const ls = memoryStorage();
+  const uidB = await signedUp(memoryStorage(), 'bo@example.com');
+  const uidA = await signedUp(ls, 'ana@example.com');
+  const a = page(ls);
+  await a.auth.init();
+  createPrefs(a.store).set('textScale', 1.25);   // A's own setting on this browser
+  toggleFavouriteWorld(a.store, 'static-storm');
+  const sidA = sidOf(ls);
+  // B (elsewhere) asks for a reset; the link is opened in this same browser
+  await page(memoryStorage()).auth.sendReset({ email: 'bo@example.com' });
+  const m = await mail('bo@example.com', 'recovery');
+  const cb = createCallbackAuth(createAuth, config, { ls, ss: memoryStorage(), loader: async () => supabaseLib(), storage: ls, ...fakeDom() });
+  live.push(cb);
+  const c = await cb.ensureClient();
+  const r = await openLink({ auth: cb, c, p: parseCallback(`http://localhost:8202/auth/callback?token_hash=${m.token_hash}&type=recovery`) });
+  assert.equal(r.ok, true); assert.equal(r.kind, 'recovery'); assert.equal(r.uid, uidB, 'the link decides whose session this is');
+  const saved = await cb.updatePassword({ password: 'bo-after-reset-9', recoveryUid: r.uid });
+  assert.equal(saved.ok, true, JSON.stringify(saved));
+  assert.equal((await r.ended).ok, true, 'A’s session was ended on the server');
+  const st = await fakeState();
+  assert.equal(st.liveSessions.includes(sidA), false, 'A’s session on this browser is gone');
+  assert.equal(st.sessionsByUser[uidA] || 0, 0);
+  assert.equal(await canSignIn('bo@example.com', 'bo-after-reset-9'), 200, 'B can sign in with the new password');
+  assert.equal(await canSignIn('ana@example.com', 'gentle-moon-42'), 200, 'A’s password is untouched');
+  // the next page boots into B's namespace, and A's things are still A's
+  const next = page(ls);
+  assert.equal(next.ns.uid, uidB);
+  assert.deepEqual(favouriteWorlds(next.store), [], 'B sees none of A’s things');
+  assert.equal(createPrefs(next.store).get('textScale'), 1);
+  assert.equal(JSON.parse(ls.getItem(`hm2:u:${uidA}:prefs`)).textScale, 1.25, 'A’s copy stays for A');
+  // and a recovery for the wrong account is refused outright
+  assert.equal((await cb.updatePassword({ password: 'nope-nope-99', recoveryUid: uidA })).ok, false);
+  await retire(a.auth); await retire(cb); await retire(next.auth);
 });
 
 test('the fetch handed to supabase-js reaches only the project', async () => {

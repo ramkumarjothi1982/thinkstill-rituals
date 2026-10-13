@@ -1,0 +1,35 @@
+// A realistic snapshot of the localStorage keys TODAY's app keeps for a
+// guest (no account), byte for byte as today's code writes them. Shared by
+// tests/auth-guest-keys.test.mjs (Node) and tests/e2e/auth.e2e.mjs (the
+// browser, CI and dry run): coordinator decision 3, guests keep today's data.
+import { DEFAULTS } from '../../src/app/prefs.js';
+
+export const GUEST_DEVICE_ID = 'Qm9vcHBvLWRldmljZS0xMjM0';   // makeDeviceId's shape: 22+ base64url characters
+
+/** { 'hm2:<key>': '<raw string>' } for a guest, timestamps relative to `now`. */
+export function todayGuestKeys(now = Date.now()) {
+  return {
+    'hm2:prefs': JSON.stringify({ ...DEFAULTS, textScale: 1.25, subtitleSpeed: 1.25, motion: 'reduced', haptics: false, mallow: 'zuzu', seenIntro: true }),
+    'hm2:hushfold.favourites': JSON.stringify({ v: 1, ids: ['static-storm', 'luminous-ocean'] }),
+    'hm2:hushfold.progress': JSON.stringify({ v: 1, savedAt: now - 3600_000, worldId: 'static-storm', idx: 1, sequence: ['luminous-ocean', 'static-storm'], step: 0.4, emotion: 'anxious', intention: 'calm', mallow: 'zuzu', seed: 12345 }),
+    'hm2:hushfold.rotation': JSON.stringify({ v: 1, bags: { worlds: ['static-storm'] } }),
+    'hm2:hushfold.lines': JSON.stringify({ v: 1, seen: ['hello'] }),
+    'hm2:garden': JSON.stringify({ v: 1, skills: { 'slowing-down': { savedAt: now - 86_400_000, lastPractised: now - 7200_000, practised: 3, fromWorld: 'static-storm', mallow: 'glitzi' } } }),
+    'hm2:beyond.consent': JSON.stringify({ v: 1, choice: 'yes', at: '2026-10-01' }),
+    'hm2:beyond.device': JSON.stringify(GUEST_DEVICE_ID),
+    'hm2:beyond.session': JSON.stringify({ token: 'angle-session-token', exp: now + 3600_000, endpoint: null }),
+    'hm2:beyond.feedback': JSON.stringify({ reframe: { helped: 2 } }),
+    'hm2:beyond.seen': 'true',
+    'hm2:beyond.visits': '4',
+    'hm2:entitlement': JSON.stringify({ tier: 'plus', source: 'native', since: now - 30 * 86_400_000 }),
+    'hm2:sound': JSON.stringify({ enabled: false, volume: 0.35 }),
+    'hm2:haptics': 'false',
+  };
+}
+
+/**
+ * Keys today's app itself rewrites as it runs, with or without accounts (the
+ * Hushfold's line bookkeeping when it greets): compared by presence only
+ * in the browser, where the real Hushfold runs.
+ */
+export const APP_REWRITES = Object.freeze(['hm2:hushfold.lines']);
