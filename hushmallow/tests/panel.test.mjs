@@ -19,10 +19,12 @@ test('panel source: Another Angle link first in the links, Drift on beside Stay,
   // Drift on sits next to Stay longer and calls next()
   assert.match(src, /h\('div', \{ class: 'hf-actions' \}, pauseBtn, finishBtn, stayBtn, driftBtn, favBtn\)/);
   assert.match(src, /kind === 'next'\) \{ if \(flow\?\.next\?\.\(\) !== false\) \{ api\.close\(\); return; \} \}/);
-  assert.match(src, /driftBtn\.disabled = !\(world && \(st\.nextId \|\| st\.complete\)\) \|\| locked;/);
-  // Stay shows the director's staying state (not a toggle: un-staying needs stay(false), B1)
+  // (H2/H3: exactly the director's state.canNext; an older director without it: a next or a complete world)
+  assert.match(src, /const canNext = typeof st\.canNext === 'boolean' \? st\.canNext : !!\(st\.nextId \|\| st\.complete\);/);
+  assert.match(src, /driftBtn\.disabled = !\(world && canNext\) \|\| locked;/);
+  // Stay shows the director's staying state, and is a toggle now the director has stay(false) (B1)
   assert.match(src, /stayBtn\.setAttribute\('aria-pressed', String\(!!st\.staying\)\);/);
-  assert.doesNotMatch(src, /flow\??\.stay\??\.?\(false\)/, 'no un-stay call until the director has one');
+  assert.match(src, /kind === 'stay'\) flow\?\.stay\?\.\(!st\.staying\);/);
   // the title falls back to the scene's world title
   assert.match(src, /const title = st\.title \?\? s\.worldTitle;/);
   // the crisis lock is checked before the flow is touched (side-panel.js used to call flow.resume() directly)
@@ -162,5 +164,30 @@ test('panel: a crisis hold (locked) disables Pause/Resume, Stay and Drift on, an
     assert.equal(q.btn('Resume').disabled, false);
     q.btn('Resume').click(); await q.settle();
     assert.deepEqual(q.calls, ['resume']);
+  } finally { dom.restore(); }
+});
+
+test('panel (H2/H3): Drift on is exactly the director\'s canNext; Stay longer toggles with stay(false)', async () => {
+  const dom = installPanelDom();
+  try {
+    // after the ocean (owner P1) or while safety holds the world: a next id or a complete world is not enough
+    const after = await makePanel({ flowState: { worldId: 'luminous-ocean', complete: true, nextId: null, canNext: false } });
+    assert.equal(after.btn('Drift on').disabled, true);
+    const held = await makePanel({ flowState: { worldId: 'static-storm', nextId: 'luminous-ocean', paused: true, reason: 'safety', canNext: false } });
+    assert.equal(held.btn('Drift on').disabled, true, 'held for safety: nothing drifts on');
+    // a paused world the person paused: next() resumes and melts, so Drift on is there
+    const paused = await makePanel({ flowState: { worldId: 'static-storm', nextId: 'luminous-ocean', paused: true, canNext: true } });
+    assert.equal(paused.btn('Drift on').disabled, false);
+    paused.panel.open(); paused.btn('Drift on').click(); await paused.settle();
+    assert.deepEqual(paused.calls, ['next']);
+    // Stay longer: on, then off again (no melt)
+    const stays = [];
+    const s = await makePanel({ flowState: { worldId: 'static-storm', staying: false, canNext: true } });
+    s.flow.stay = (on) => { stays.push(on); s.flow.state = { ...s.flow.state, staying: !!on }; };
+    s.btn('Stay longer').click(); await s.settle();
+    assert.equal(s.btn('Stay longer').getAttribute('aria-pressed'), 'true');
+    s.btn('Stay longer').click(); await s.settle();
+    assert.deepEqual(stays, [true, false]);
+    assert.equal(s.btn('Stay longer').getAttribute('aria-pressed'), 'false');
   } finally { dom.restore(); }
 });

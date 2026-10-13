@@ -114,6 +114,8 @@ export function interpret(text) {
   // the full level is kept in safety.detail for new callers)
   const check = checkText(raw);
   out.safety = { ...legacySafety(check), detail: { level: check.level, category: check.category } };
+  // (the words say someone hurt them: the feeling suggestions stay quiet about positive feelings, see suggestedFeelings)
+  out.hurtCue = HURT_CUE.test(pre);
 
   const index = INDEX || buildIndex();
   const found = new Map();
@@ -193,6 +195,23 @@ export function interpret(text) {
   out.acknowledgement = acknowledge(out);
   return out;
 }
+
+/**
+ * The feelings worth highlighting as suggestions for an interpret() reading: ids of the confident matches
+ * (≥ min), most confident first, at most `max`. Words with a safety cue in them (crisis, care or distress)
+ * never get a positive feeling suggested — "relieved" beside "he hit me", "happy" beside "done with life" —
+ * and when the reading has one, nothing is suggested at all (the person names it, if they want to).
+ */
+export function suggestedFeelings(reading, { min = 0.6, max = 3 } = {}) {
+  const list = (reading?.emotions || []).filter((e) => e.confidence >= min);
+  const level = reading?.safety?.detail?.level || reading?.safety?.level || 'none';
+  // (words about being hurt by someone count as a cue here even when the safety detector reads none —
+  // "glad he finally hit me so I could leave": no "joy" is highlighted for them)
+  if ((level !== 'none' || reading?.hurtCue) && list.some((e) => (getEmotion(e.id)?.valence ?? 0) > 0)) return [];
+  return list.slice(0, max).map((e) => e.id);
+}
+// being hurt by someone (for the suggestion guard only; safety routing is the detector's)
+const HURT_CUE = /\b(?:hit|hits|hitting|beat|beats|beating|beaten|slapped|slaps|punched|punches|kicked|kicks|choked|chokes|strangled|shoved|pushed|hurt|hurts|hurting|abused|abuses|abusing|raped|assaulted|attacked|threatened|threatens)\s+(?:me|us|my\s+(?:kid|kids|child|children|son|daughter|mum|mom|dad|sister|brother))\b/i;
 
 function acknowledge(r) {
   const names = r.emotions.filter((e) => e.confidence >= 0.5).slice(0, 2).map((e) => (getEmotion(e.id).phrase || getEmotion(e.id).name).toLowerCase());

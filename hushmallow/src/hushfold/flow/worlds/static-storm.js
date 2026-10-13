@@ -61,6 +61,18 @@ const ROPE_N = 6;
 const PLASMA_A_MAX = 0.66, FRESH_WHITE_MAX = 0.5;
 const TM_NORM = 1 / (1 - Math.exp(-1.6 * 1.4));   // the shoulder reaches PLASMA_A_MAX at A = 1.4
 const BAND_ATT = 0.3, BAND_FEATHER = 24;
+// The person's Thought Mallow moves continuously whatever presses on it (px per 1/60 s, scaled by the frame's dt):
+// a postcard it cannot push aside makes it give way at most YIELD_PX a frame (its rest place goes with it and drifts
+// back over YIELD_BACK_SEC once the card lets go); the screen edges and the hero's keep-out push it at most KEEP_PX;
+// and what is shown never steps more than STEP_PX a frame unless a finger carries it.
+// On its way to its planned place (at most JOURNEY_SEC) it does not give way to postcards: they make way for it.
+// A thought its layer draws (W2's ThoughtMallow) is carried by its layer under a finger: the storm then follows
+// where it is drawn (nothing pushes it while it is held), and when the finger lets go it travels on from there.
+const YIELD_PX = 6, KEEP_PX = 10, STEP_PX = 10, YIELD_BACK_SEC = 2.5, JOURNEY_SEC = 4;
+// px the planned words plate keeps clear of where the ThoughtLayer keeps words off (its hero keep-out), beyond its margin
+const WORDS_SLACK = 12;
+// the most its rest place gives way to postcards (px, at least; or 0.7 of its radius): past that the postcards give
+const GIVE_MIN = 16;
 
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
 const rgbaHex = (h, a) => `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${a})`;
@@ -151,6 +163,15 @@ export function create(ctx) {
   let tDrawS = 0;                     // the scale written to the handle (eased in from its own size)
   let tSoftQ = -1;                    // the last soften() level sent (0.05 steps)
   const tWrote = { x: 0, y: 0 };      // the handle's position as of its layer's last drawing
+  const tYield = { x: 0, y: 0 };      // how far its rest place has given way to the edges, the hero, the band and what the shell keeps out
+  const tGive = { x: 0, y: 0 };       // …and to postcards it could not move (at most GIVE_MIN or 0.7 tR: past that, they give)
+  let tYieldHit = false;              // pressed on this frame (the give-way drifts back only once nothing presses)
+  let tGiveHit = false;
+  const tShown = { x: 0, y: 0, ok: false };   // where it was last shown (the step guard's reference)
+  const tPut = { x: 0, y: 0, wob: 0, ok: false };   // what the storm last wrote to the handle (its bob included)
+  let tTakenAt = 0;                   // when the storm took this thought (its keep-out eases in from there)
+  let tJourney = -1;                  // when it set off for its planned place (-1: it is there): postcards make way
+                                      // for it on the way rather than push it back (its words then sit as planned)
   let liveShape = null;               // W2's drawn thought (offsets from tWrote), per frame — null for the placeholder
   const liveR = {}, liveRects = [];
   let ropeGrads = null;               // rope colours fading out inside the subtitle band (cached per layout)
@@ -179,15 +200,25 @@ export function create(ctx) {
     if (!str) return 0;
     try { measureG ||= makeCanvas(4, 4).getContext('2d'); measureG.font = ctx.font(px, weight); return measureG.measureText(str).width; } catch { return str.length * px * 0.55; }
   }
-  function mallowBox() {
-    const r = mallow?.rect?.();
+  /** Glitzi's box: where it rests when the shell can say (steady while it breathes and hops: the plan and its key), else its live box. */
+  function mallowBox(live = false) {
+    const r = (!live && mallow?.restRect?.()) || mallow?.rect?.();
     if (!r || !(r.height > 20) || !(r.width > 20)) return null;
     const left = r.left ?? r.x, top = r.top ?? r.y;
     return { left, top, right: r.right ?? left + r.width, bottom: r.bottom ?? top + r.height, width: r.width, height: r.height };
   }
   function planLayout() {
     const tok = thought ? (thought.token || words?.token || '') : '';
-    return planStormLayout({ W, H, safe: ctx.safe, band: ctx.band, mallow: mallowBox(), n: Math.min(7, photos?.n || 0), thought: thought ? { textW: textWidth(tok) } : null });
+    // the words plate is the one W2's ThoughtLayer will draw (one source of truth: it measures it, for each budget
+    // the plan tries, and draws exactly that plate once asked to — thought.labelFit), and it never goes where the
+    // layer keeps words off (its hero keep-out). The 2D placeholder draws the storm's own plate.
+    const layer = layerDrawn() ? ctx.thoughtLayer : null;
+    const plate = layer?.plateFor ? (maxW, lines, r) => layer.plateFor(thought, { lines, maxW, r }) : null;
+    // (with room to spare — WORDS_SLACK px — for the hero's live hops past its rest, the thought's bob and wobble and
+    // the words' anchor holding its furthest reach: a plate planned at the very edge would be brushed and hop sides)
+    let keep = null;
+    try { const k = plate ? layer.wordsKeepOut?.() : null; if (k) keep = { x0: k.left - WORDS_SLACK / 2, y0: k.top - WORDS_SLACK, x1: k.right + WORDS_SLACK / 2, y1: k.bottom }; } catch { keep = null; }
+    return planStormLayout({ W, H, safe: ctx.safe, band: ctx.band, mallow: mallowBox(), n: Math.min(7, photos?.n || 0), thought: thought ? { textW: textWidth(tok), plate, keep } : null });
   }
 
   // the shell may move or resize the hero Mallow after the world enters (its 720 ms glide):
@@ -225,10 +256,15 @@ export function create(ctx) {
     if (thought && seededFor !== thought) {
       seededFor = thought;
       const hx = thought.x, hy = thought.y;
-      if (Number.isFinite(hx) && Number.isFinite(hy) && (hx || hy)) tSpring.set(hx, hy);
+      if (Number.isFinite(hx) && Number.isFinite(hy) && (hx || hy)) { tSpring.set(hx, hy); tShown.x = hx; tShown.y = hy; tShown.ok = true; }
+      tPut.ok = false;
+      tTakenAt = elapsed;
     }
+    // (a new plan: the thought's place is the planned one again — and if it is not there yet, it travels there)
+    tYield.x = 0; tYield.y = 0; tGive.x = 0; tGive.y = 0;
     if (!tSpring.x && !tSpring.y) tSpring.set(tAnchor.x, tAnchor.y);
-    else tSpring.to(tAnchor.x, tAnchor.y);
+    else tSpring.to(restX(), restY());
+    tJourney = thought && !arrivedAt(tSpring.x, tSpring.y) ? elapsed : -1;
     layoutCards();
     placeHint();
     ropeGrads = null;
@@ -467,7 +503,8 @@ export function create(ctx) {
       if (tr.n < 28) tr.n++; else tr.head = (tr.head + 1) % 28;
       if (f.onThought) {
         try { thought?.pointer?.(s); } catch { /* optional */ }
-        tSpring.to(s.x, s.y);
+        // (a thought its layer draws is carried by its layer: the storm follows where it is drawn, updateThought)
+        if (!layerDrawn()) tSpring.to(s.x, s.y);
         if (k > 0) { tCharge = Math.min(1.3, tCharge + 0.25 * k * Math.hypot(s.x - x0, s.y - y0) / U); tWobble.kick(0.25 * k); tFizz = Math.min(1, tFizz + 0.3 * k); }
       }
       if (k > 0) {
@@ -492,7 +529,12 @@ export function create(ctx) {
     }
     if (s.type === 'up' || s.type === 'cancel') {
       if (f.line) endLine(f, true);
-      if (f.onThought) { tSpring.to(tAnchor.x, tAnchor.y); try { thought?.pointer?.(s); thought?.react?.('release'); } catch { /* optional */ } }
+      if (f.onThought) {
+        // (a thought its layer carried goes on from where it is drawn now: the step guard eases it home from there)
+        if (layerDrawn() && tPut.ok && Number.isFinite(thought.x) && Number.isFinite(thought.y)) tSpring.set(thought.x, thought.y - tPut.wob);
+        tSpring.to(restX(), restY());
+        try { thought?.pointer?.(s); thought?.react?.('release'); } catch { /* optional */ }
+      }
       f.on = false; f.id = -1; f.onThought = false; f.pulse.on = false; f.tracker.end();
       liftAt = elapsed;
       if (!fingers.some((q) => q.on)) stopGroundHold();
@@ -827,8 +869,140 @@ export function create(ctx) {
     }
   }
 
+  /** Where the thought rests now: its planned place, moved by what it had to give way to (on screen). */
+  function restX() { return clamp(tAnchor.x + tYield.x + tGive.x, EDGE + tR, Math.max(EDGE + tR, W - EDGE - tR)); }
+  function restY() { return clamp(tAnchor.y + tYield.y + tGive.y, EDGE + tR, Math.max(EDGE + tR, H - EDGE - tR)); }
+  const carried = () => fingers.some((f) => f.on && f.onThought);
+  /** W2's ThoughtMallow on its ThoughtLayer (it is drawn there, and a finger carries it there); not the 2D placeholder. */
+  const layerDrawn = () => !!thought && typeof thought.extent === 'function';
+  /** Held under a finger and carried by its own layer: the storm follows it (it never pushes it out of the finger). */
+  const heldByLayer = () => carried() && layerDrawn();
+  /**
+   * How far (px, ≥ 0) the words plate the layer was asked for (plan.thought.fit) would reach into where the layer keeps
+   * words off (its hero keep-out, with WORDS_SLACK / 2 to spare) with the thought at (x, y) — the plate hangs under it
+   * as planned. While it is clear the layer keeps the words there; past it they would hop above the thought. 0 without
+   * a measured plan.
+   */
+  let wkAt = -1, wkRect = null;
+  // how much lower than planned the layer really hangs the plate (its anchor holds the body's furthest reach — a squash,
+  // a slosh — for a while): learnt from what it draws while the words hang below, held at its largest, easing off
+  let tPlateErr = 0;
+  // (QA: what has moved its rest place, in total — the keep-outs, and postcards it gave way to)
+  const yieldBy = { keepX: 0, keepY: 0, cardsX: 0, cardsY: 0 };
+  function plateIntrusion(x, y) {
+    const T = plan?.thought;
+    if (!T?.fit || !thought) return 0;
+    if (wkAt !== elapsed) { wkAt = elapsed; try { wkRect = ctx.thoughtLayer?.wordsKeepOut?.() || null; } catch { wkRect = null; } }
+    const K = wkRect;
+    if (!K) return 0;
+    const P = T.R.plate, w = P.x1 - P.x0, pe = T.fit.edge ?? EDGE, px0 = clamp(x - w / 2, pe, Math.max(pe, W - pe - w));
+    if (px0 + w <= K.left || px0 >= K.right) return 0;
+    const bottom = y + (P.y1 - T.y) + tPlateErr, top = K.top - WORDS_SLACK / 2;
+    return bottom > top && y + (P.y0 - T.y) < K.bottom ? bottom - top : 0;
+  }
+  function learnPlate(dt) {
+    const T = plan?.thought;
+    tPlateErr = Math.max(0, tPlateErr - dt * 2);
+    if (!T?.fit || !liveShape?.plate) return;
+    const A = liveShape.plate, B = liveShape.body;
+    // (only while the words hang below the body)
+    if (!(A.y0 > B.y1 - 4)) return;
+    const err = A.y1 - (T.R.plate.y1 - T.y);
+    if (err > tPlateErr) tPlateErr = Math.min(24, err);
+  }
+  /** Close enough to its rest place to count as there (its journey over). */
+  function arrivedAt(x, y) { return Math.hypot(x - restX(), y - restY()) <= Math.max(6, 0.4 * tR); }
+  /**
+   * On its way to its planned place (from beside the person's Mallow, or to a new plan's place) for at most
+   * JOURNEY_SEC: the postcards it meets swing aside for it (clearOfThought) rather than push it back — its words
+   * sit where the plan put them only once it is there, so on the way they may cross a postcard's row.
+   */
+  function journeying() {
+    if (tJourney < 0) return false;
+    if (carried() || elapsed - tJourney > JOURNEY_SEC || arrivedAt(tSpring.x, tSpring.y)) { tJourney = -1; return false; }
+    return true;
+  }
+  /**
+   * The person's thought stays on the screen, out of the subtitle band and off Glitzi: its body (the layer's live
+   * box, else the storm's own radius) inside the edges and below the band, clear of the hero's live box with room for
+   * a hop, and — with its words — clear of what the shell keeps out (ctx.keepOut: its open garden offer and card). A
+   * push from any of them moves it at most KEEP_PX a frame, and — once it is at its place — its rest place with it
+   * (so the spring does not pull it straight back out).
+   */
+  function keepThoughtIn(dt) {
+    if (!thought || heldByLayer()) return;
+    const B = liveShape?.body, x = tSpring.x, y = tSpring.y;
+    const bx0 = B ? x + B.x0 : x - tR, bx1 = B ? x + B.x1 : x + tR, by0 = B ? y + B.y0 : y - tR, by1 = B ? y + B.y1 : y + tR;
+    let mx = 0, my = 0;
+    // what the shell has open over the stage (its garden offer and card) is kept clear of the thought and its words:
+    // out the shortest way
+    const A = liveShape?.all;
+    const ox0 = A ? x + A.x0 : bx0, ox1 = A ? x + A.x1 : bx1, oy0 = A ? y + A.y0 : by0, oy1 = A ? y + A.y1 : by1;
+    const keep = ctx.keepOut?.() || [];
+    for (const r of keep) {
+      const l = r.left ?? r.x, t = r.top ?? r.y, rr = r.right ?? (l + (r.width ?? r.w ?? 0)), bb = r.bottom ?? (t + (r.height ?? r.h ?? 0));
+      if (!(rr > l && bb > t)) continue;
+      const qx0 = ox0 + mx, qx1 = ox1 + mx, qy0 = oy0 + my, qy1 = oy1 + my;
+      if (!(qx1 > l && qx0 < rr && qy1 > t && qy0 < bb)) continue;
+      const up = qy1 - t + 4, down = bb - qy0 + 4, left = qx1 - l + 4, right = rr - qx0 + 4, k = Math.min(up, down, left, right);
+      if (k === up) my -= up; else if (k === down) my += down; else if (k === left) mx -= left; else mx += right;
+    }
+    const m = mallowBox(true);
+    if (m) {
+      const T = m.top - Math.max(12, m.height * 0.12);
+      const ax0 = bx0 + mx, ax1 = bx1 + mx, ay0 = by0 + my, ay1 = by1 + my;
+      if (ax1 > m.left && ax0 < m.right && ay1 > T && ay0 < m.bottom) {
+        // out the shortest way: up over the head, else to the nearer side (never down into the floor)
+        const up = ay1 - T, left = ax1 - m.left, right = m.right - ax0, k = Math.min(up, left, right);
+        if (k === up) my -= up; else if (k === left) mx -= left; else mx += right;
+      }
+    }
+    // its words plate, hanging under it as planned, stays clear of where the layer keeps words off (else they hop
+    // above it, where the postcards hang): up, out of the way
+    { const k = plateIntrusion(x + mx, y + my); if (k > 0) my -= k; }
+    // its body never enters the subtitle band (the director keeps that slot clear for every line) — unless the shell
+    // has something open that it must keep clear of (its garden card: the lines are quiet meanwhile, and on a small
+    // phone the band is the only room left above the card)
+    const band = plan?.band || ctx.band;
+    if (!keep.length && band && band.h > 0 && by0 + my < band.y + band.h + 2 && by1 + my > band.y) my = band.y + band.h + 2 - by0;
+    // ...and last, whatever moved it, its body stays on the screen
+    if (bx1 - bx0 < W - 2 * EDGE) { if (bx0 + mx < EDGE) mx = EDGE - bx0; else if (bx1 + mx > W - EDGE) mx = W - EDGE - bx1; }
+    if (by1 - by0 < H - 2 * EDGE) { if (by0 + my < EDGE) my = EDGE - by0; else if (by1 + my > H - EDGE) my = H - EDGE - by1; }
+    if (!mx && !my) return;
+    // (eased in over the first half second after the storm takes it: it starts exactly where it was)
+    const cap = KEEP_PX * Math.max(dt, 1 / 240) * 60 * clamp((elapsed - tTakenAt) / 0.5, 0.03, 1), d = Math.hypot(mx, my);
+    if (d > cap) { mx *= cap / d; my *= cap / d; }
+    tSpring.sx.x += mx; tSpring.sy.x += my;
+    if (mx * tSpring.sx.v < 0) tSpring.sx.v = 0;
+    if (my * tSpring.sy.v < 0) tSpring.sy.v = 0;
+    // (on its way to its planned place — clear of all of these by plan — it only slides round them: its rest place
+    // stays the planned one, so it does not end up wherever the hero's edge happened to send it)
+    if (!carried() && !journeying()) { tYield.x += mx; tYield.y += my; tSpring.to(restX(), restY()); yieldBy.keepX += mx; yieldBy.keepY += my; }
+    tYieldHit = true;
+  }
+
   function updateThought(dt, now) {
-    tSpring.update(dt);
+    // where its layer really drew it (it may have moved it: a finger carrying it): the step guard's reference, and —
+    // while a finger holds it — the storm's own place for it, so the finger letting go never snaps it back to a
+    // place the storm kept for it meanwhile (the hero's keep-out, a postcard): it travels on from where it is seen
+    // (not while it melts away: the incoming world may be writing it then)
+    const held = heldByLayer();
+    if (thought && tPut.ok && layerDrawn() && !(outroK > 0)) {
+      const dx = thought.x, dy = thought.y - tPut.wob;
+      if (Number.isFinite(dx) && Number.isFinite(dy)) {
+        tShown.x = dx; tShown.y = dy; tShown.ok = true;
+        if (held) tSpring.set(dx, dy);
+      }
+    }
+    if (!carried() && dt > 0) {
+      // its rest place drifts back to the planned one once nothing presses on it
+      if (!tYieldHit) { const k = Math.exp(-dt / YIELD_BACK_SEC); tYield.x *= k; tYield.y *= k; }
+      if (!tGiveHit) { const k = Math.exp(-dt / YIELD_BACK_SEC); tGive.x *= k; tGive.y *= k; }
+      tSpring.to(restX(), restY());
+    }
+    tYieldHit = false; tGiveHit = false;
+    if (!held) tSpring.update(dt);
+    if (dt > 0) keepThoughtIn(dt);
     const wob = tWobble.update(dt);
     const local = field.local(tSpring.x, tSpring.y, 2.5);
     const qLocal = clamp(0.35 * local + 0.75 * tCharge, 0, 1.3);
@@ -850,9 +1024,20 @@ export function create(ctx) {
       if (Math.abs(goal - tDrawS) < 1e-3) tDrawS = goal;
       // (where the handle was when its layer last drew it: liveThoughtShape()'s reference)
       tWrote.x = thought.x; tWrote.y = thought.y;
-      thought.x = tSpring.x; thought.y = tSpring.y + wob * 3; thought.scale = tDrawS;
-      // its words hang under it, as the storm plans them
-      thought.labelSide = 'below';
+      // (what is shown never steps more than STEP_PX a frame unless a finger carries it: travel, give-way and
+      // keep-out together; the spring is where it is shown)
+      let nx = tSpring.x, ny = tSpring.y;
+      if (tShown.ok && !carried() && dt > 0) {
+        const dx = nx - tShown.x, dy = ny - tShown.y, d = Math.hypot(dx, dy), cap = STEP_PX * dt * 60;
+        if (d > cap) { const k = cap / d; nx = tShown.x + dx * k; ny = tShown.y + dy * k; tSpring.sx.x = nx; tSpring.sy.x = ny; tSpring.sx.v *= k; tSpring.sy.v *= k; }
+      }
+      tShown.x = nx; tShown.y = ny; tShown.ok = true;
+      thought.x = nx; thought.y = ny + wob * 3; thought.scale = tDrawS;
+      tPut.x = nx; tPut.y = ny + wob * 3; tPut.wob = wob * 3; tPut.ok = true;
+      // its words hang under it, as the storm plans them — the very plate the layer measured for the plan (melting
+      // away, the storm lets go of them: the next world places its words its own way)
+      if (!(outroK > 0)) { thought.labelSide = 'below'; thought.labelFit = plan?.thought?.fit || null; }
+      else if (thought.labelFit && thought.labelFit === plan?.thought?.fit) thought.labelFit = null;
       const st = thought.state || (thought.state = {});
       st.tension = tTension; st.charge = clamp(qLocal); st.calm = thoughtSettle.settled ? 1 : clamp(1 - qLocal); st.distance = 0;
       // (in 0.05 steps: a new level only when it really changes)
@@ -913,14 +1098,17 @@ export function create(ctx) {
     // screen edge; and if a dragged thought is pressed against cards with nowhere for them to go,
     // the thought gives way (it slides round them)
     liveShape = liveThoughtShape();
+    learnPlate(dt);
     for (const c of cards) clearOfThought(c);
     // (a few relaxation passes: the hard limits — edges, band, Glitzi — inside the loop, so a card
     // pushed against an edge pushes its neighbour rather than back into it)
+    // (the thought is in the loop too: a card a neighbour pushes back towards the thought is pushed off it again, so
+    // the person's thought gives way only to a card truly boxed in — its place stays the planned one)
     for (let it = 0; it < 3; it++) {
       if (cards.length > 1) separateCards();
-      for (const c of cards) keepClear(c);
+      for (const c of cards) { if (it) clearOfThought(c); keepClear(c); }
     }
-    if (thought && cards.length) thoughtYields();
+    if (thought && cards.length) thoughtYields(dt);
   }
   /**
    * W2's ThoughtLayer draws the thought itself: what it really covers is its extent() (body, siblings,
@@ -934,18 +1122,28 @@ export function create(ctx) {
     try { e = thought.extent(liveR); } catch { e = null; }
     if (!e || !(e.right - e.left > 2) || !(e.bottom - e.top > 2)) return null;
     const hx = tWrote.x, hy = tWrote.y;
-    let w = null;
-    try { const rs = ctx.thoughtLayer?.rects?.(liveRects); w = (rs && thought.id != null && rs.find((q) => q.id === thought.id)) || null; } catch { w = null; }
+    const L = ctx.thoughtLayer;
     const body = { x0: e.left - hx, y0: e.top - hy, x1: e.right - hx, y1: e.bottom - hy };
+    // its words: the plate itself where the layer shows it (not the box round the thought and its words — postcards
+    // hang beside the body above the words, as planned); a layer without tagRect gives the box round both
+    let t = null;
+    try { t = typeof L?.tagRect === 'function' ? L.tagRect(thought) : null; } catch { t = null; }
+    if (t) {
+      const plate = { x0: t.left - hx, y0: t.top - hy, x1: t.right - hx, y1: t.bottom - hy };
+      return { body, plate, all: { x0: Math.min(plate.x0, body.x0), y0: Math.min(plate.y0, body.y0), x1: Math.max(plate.x1, body.x1), y1: Math.max(plate.y1, body.y1) } };
+    }
+    if (typeof L?.tagRect === 'function') return { body, plate: null, all: body };
+    let w = null;
+    try { const rs = L?.rects?.(liveRects); w = (rs && thought.id != null && rs.find((q) => q.id === thought.id)) || null; } catch { w = null; }
     const all = w ? { x0: Math.min(w.left, e.left) - hx, y0: Math.min(w.top, e.top) - hy, x1: Math.max(w.right, e.right) - hx, y1: Math.max(w.bottom, e.bottom) - hy } : body;
-    return { body, all };
+    return { body, plate: all, all };
   }
   /** The Thought Mallow's body circle (with its crackle) as {x, y, r}, and its words plate rect where it is now. */
   function thoughtShape() {
     if (liveShape) {
-      const ax = tSpring.x, ay = tSpring.y + tWobble.v * 3, B = liveShape.body, A = liveShape.all;
+      const ax = tSpring.x, ay = tSpring.y + tWobble.v * 3, B = liveShape.body, A = liveShape.plate;
       const r = Math.max(B.x1 - B.x0, B.y1 - B.y0) / 2 + 4;
-      return { x: ax + (B.x0 + B.x1) / 2, y: ay + (B.y0 + B.y1) / 2, r, plate: { x0: ax + A.x0, y0: ay + A.y0, x1: ax + A.x1, y1: ay + A.y1 } };
+      return { x: ax + (B.x0 + B.x1) / 2, y: ay + (B.y0 + B.y1) / 2, r, plate: A ? { x0: ax + A.x0, y0: ay + A.y0, x1: ax + A.x1, y1: ay + A.y1 } : null };
     }
     const T = plan.thought, dx = tSpring.x - T.x, dy = tSpring.y - T.y, P = T.R.plate;
     return { x: tSpring.x, y: tSpring.y, r: tR * 1.32 + 4, plate: { x0: P.x0 + dx, y0: P.y0 + dy, x1: P.x1 + dx, y1: P.y1 + dy } };
@@ -967,27 +1165,56 @@ export function create(ctx) {
     const T = thoughtShape();
     const m = circleHit(c, T.x, T.y, T.r, dir);
     if (m > 0) nudgeCard(c, dir.x * m, dir.y * m);
-    pushOutOfRect(c, T.plate, 3);
+    if (T.plate) pushOutOfRect(c, T.plate, 3);
   }
-  /** Last word: a card still pressed into the thought (or its words) moves the thought instead. */
-  function thoughtYields() {
+  /**
+   * Last word: a card still pressed into the thought (or its words) moves the thought instead — eased: at most
+   * YIELD_PX a frame, and its rest place goes with it (the spring does not pull it back into the card; it drifts
+   * home once the card lets go).
+   */
+  function thoughtYields(dt) {
     if (!(plan?.thought || liveShape)) return;
+    if (journeying() || heldByLayer()) return;
+    const x0 = tSpring.x, y0 = tSpring.y;
     for (let it = 0; it < 2; it++) for (const c of cards) {
       if (c.alpha < 0.35) continue;
       const T = thoughtShape();
-      let m = circleHit(c, T.x, T.y, T.r + 0.5, dir), mx = -dir.x * m, my = -dir.y * m;
+      // (a card clearOfThought has just set against the thought only touches it: it must still be pressed in, by more
+      // than a pixel, to move the thought — else every touching card would walk it away a little each frame)
+      let m = circleHit(c, T.x, T.y, T.r - 1, dir), mx = -dir.x * m, my = -dir.y * m;
       if (!(m > 0)) {
         // the words plate against the card's box
         const hw = halfW(c) + 3, hh = halfH(c) + 3, P = T.plate;
+        if (!P) continue;
         if (c.x + hw <= P.x0 || c.x - hw >= P.x1 || c.y + hh <= P.y0 || c.y - hh >= P.y1) continue;
-        const left = P.x1 - (c.x - hw), right = c.x + hw - P.x0, up = P.y1 - (c.y - hh), down = c.y + hh - P.y0;
-        const k = Math.min(left, right, up, down);
-        mx = k === left ? -left : k === right ? right : 0; my = k === up ? -up : k === down ? down : 0;
+        // (up or down only: the plate is nearly as wide as a small phone and the layer holds it on the screen, so sending
+        // the thought sideways would not move its words off the card — it would only take it away from its place)
+        const up = P.y1 - (c.y - hh), down = c.y + hh - P.y0;
+        mx = 0; my = up < down ? -up : down;
       }
       tSpring.sx.x += mx; tSpring.sy.x += my;
       if (mx * tSpring.sx.v < 0) tSpring.sx.v = 0;
       if (my * tSpring.sy.v < 0) tSpring.sy.v = 0;
     }
+    let dx = tSpring.x - x0, dy = tSpring.y - y0;
+    // (never down so far that its words plate would reach where the layer keeps words off: they would hop above it)
+    if (dy > 0) { const k0 = plateIntrusion(x0 + dx, y0 + dy); if (k0 > 0) dy = Math.max(0, dy - k0); }
+    const d = Math.hypot(dx, dy);
+    if (!(d > 0.01)) { tSpring.sx.x = x0 + dx; tSpring.sy.x = y0 + dy; return; }
+    const cap = YIELD_PX * Math.max(dt, 1 / 240) * 60, k = d > cap ? cap / d : 1;
+    tSpring.sx.x = x0 + dx * k; tSpring.sy.x = y0 + dy * k;
+    // (its rest place gives way with it — but never more than GIVE_MAX from where it was planned: a postcard the wind
+    // keeps pressing on it then gives way itself, rather than walking the person's thought across the sky)
+    if (!carried()) {
+      const gx = tGive.x + dx * k, gy = tGive.y + dy * k, g = Math.hypot(gx, gy), max = Math.max(GIVE_MIN, 0.7 * tR), q = g > max ? max / g : 1;
+      const ax = gx * q - tGive.x, ay = gy * q - tGive.y;
+      yieldBy.cardsX += ax; yieldBy.cardsY += ay;
+      tGive.x += ax; tGive.y += ay;
+      // (and the thought itself goes no further than its rest place did)
+      if (q < 1) { tSpring.sx.x = x0 + ax; tSpring.sy.x = y0 + ay; }
+      tSpring.to(restX(), restY());
+    }
+    tGiveHit = true;
   }
 
   /** Move a hanging card (and its rope end, without adding velocity). */
@@ -1615,10 +1842,12 @@ export function create(ctx) {
       for (const f of fingers) if (f.on && !(band && f.y < band.y + band.h)) out.push({ x: f.x - 60, y: f.y - 60, w: 120, h: 120, kind: 'finger' });
       return out;
     },
+    /** Where the person's thought rests now (client px): its planned place, moved by what it has had to give way to. */
+    get thoughtRest() { return thought && plan ? { x: restX(), y: restY() } : null; },
     /** The subtitle slot this world keeps clear (client px): the director's reserved band. */
     subtitleBand() { const b = plan?.band || ctx.band; return b ? { x: b.x, y: b.y, w: b.w, h: b.h } : null; },
     /** QA: the layout chosen for this screen. */
-    get layoutPlan() { return plan ? { s: plan.s, thought: plan.thought ? { name: plan.thought.name, x: plan.thought.x, y: plan.thought.y, r: plan.thought.r, labelW: plan.thought.labelW, lines: plan.thought.lines } : null, zone: plan.zone, band: plan.band, slots: plan.slots.length } : null; },
+    get layoutPlan() { return plan ? { s: plan.s, thought: plan.thought ? { name: plan.thought.name, x: plan.thought.x, y: plan.thought.y, r: plan.thought.r, labelW: plan.thought.labelW, lines: plan.thought.lines, plate: { ...plan.thought.R.plate }, fit: plan.thought.fit ? { ...plan.thought.fit } : null } : null, zone: plan.zone, band: plan.band, slots: plan.slots.length } : null; },
     serialize() {
       return {
         v: 1, seed: ctx.seed, progress: Math.round((complete ? 1 : p) * 1000) / 1000, complete,
@@ -1651,9 +1880,11 @@ export function create(ctx) {
     destroy() {
       holds.charge?.stop(); stopGroundHold();
       realm?.destroy(); realm = null;
+      // (the words plate it asked for goes with it)
+      try { if (thought && thought.labelFit && thought.labelFit === plan?.thought?.fit) thought.labelFit = null; } catch { /* a handle without it */ }
     },
     /** QA hooks. */
-    debug: { brightTimes: () => Array.from(bright.slice(0, Math.min(brightN, 8))), get brightCount() { return brightN; }, get field() { return field; }, get cards() { return cards; }, get allCards() { return allCards; }, get waiting() { return waiting.slice(); }, get hint() { return { ...hint }; }, get realm() { return realm; }, get lines() { return lines; }, get fingers() { return fingers; }, thoughtPos: () => ({ x: tSpring.x, y: tSpring.y, r: tR }) },
+    debug: { brightTimes: () => Array.from(bright.slice(0, Math.min(brightN, 8))), get brightCount() { return brightN; }, get field() { return field; }, get cards() { return cards; }, get allCards() { return allCards; }, get waiting() { return waiting.slice(); }, get hint() { return { ...hint }; }, get realm() { return realm; }, get lines() { return lines; }, get fingers() { return fingers; }, thoughtPos: () => ({ x: tSpring.x, y: tSpring.y, r: tR }), get yieldBy() { return { ...yieldBy, plateErr: tPlateErr }; } },
   };
   return api;
 }

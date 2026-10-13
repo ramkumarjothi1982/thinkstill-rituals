@@ -182,6 +182,19 @@ function touchAdapter(t, world = null) {
     bodyRect: () => t.bodyRect(),
     /** The same box as bodyRect() (MallowTouch.rect(); the Hushflow worlds call it rect()). */
     rect: () => (typeof t.rect === 'function' ? t.rect() : t.bodyRect()),
+    /**
+     * The body box where the shell put it (its place and size, fit()), without its breath, squash, hops or a glide
+     * still on its way: steady while the live body (bodyRect) moves — what layouts and keep-outs are planned round.
+     */
+    restRect() {
+      const g = t.goalSt, v = t.view;
+      if (!t.ready || !g || !v || !(v.w > 1)) return null;
+      const r = t.container?.getBoundingClientRect?.() || { left: v.left || 0, top: v.top || 0 };
+      const P = (t.baseSize || 0) * (g.s || 1), w = P * (t.aspect || 1);
+      if (!(P > 0)) return null;
+      const cx = r.left + (g.x ?? v.w / 2), cy = r.top + (g.y ?? v.h * 0.52);
+      return { left: cx - w / 2, top: cy - P / 2, width: w, height: P, right: cx + w / 2, bottom: cy + P / 2, cx, cy };
+    },
     hitTest: (x, y) => t.hitTest(x, y),
     pointer: (e) => t.pointer(e),
     /** ctrl + wheel over the body (a desktop trackpad pinch) stretches it. */
