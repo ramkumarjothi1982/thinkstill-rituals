@@ -176,12 +176,14 @@ class Stage {
     F.imageSmoothingEnabled = true;
     F.imageSmoothingQuality = 'high';
     const bleed = 40;
+    if (cam.bgBlur > 0.05) F.filter = `blur(${cam.bgBlur.toFixed(2)}px)`;
     F.drawImage(R.canvas, 0, 0, WORLD_W, WORLD_H);
     // bleed guard for roll/shake: mirror-free extension using edge stretch
     F.drawImage(R.canvas, 0, 0, 2, R.canvas.height, -bleed, 0, bleed, WORLD_H);
     F.drawImage(R.canvas, R.canvas.width - 2, 0, 2, R.canvas.height, WORLD_W, 0, bleed, WORLD_H);
     F.drawImage(R.canvas, 0, R.canvas.height - 2, R.canvas.width, 2, 0, WORLD_H, WORLD_W, bleed);
     F.drawImage(R.canvas, 0, 0, R.canvas.width, 2, 0, -bleed, WORLD_W, bleed);
+    F.filter = 'none';
 
     F.setTransform(M);
     // 2. contact shadow + soft ground glow under the Mallow
@@ -214,10 +216,14 @@ class Stage {
     const g = d.grade;
     const grain = g.grain;
     if (g.glow && g.glow.followMoon) {
-      // the cove's moon sits at (0.70 W, 0.285 H) of the world (moonmilk-cove.js)
+      // the cove's moon sits at (0.70 W, 0.285 H) of the world, radius
+      // max(26, min(0.17 W, 0.088 H)) (moonmilk-cove.js build())
       const mp = bgM.transformPoint(new DOMPoint(WORLD_W * 0.7, WORLD_H * 0.285));
+      const mr = Math.max(26, Math.min(WORLD_W * 0.17, WORLD_H * 0.088)) * Math.hypot(bgM.a, bgM.b);
       g.glow = { ...g.glow, x: mp.x, y: mp.y };
+      if (g.moonCore) g.moonCore = { ...g.moonCore, x: mp.x, y: mp.y, r: mr * (g.moonCore.scale ?? 1.04) };
     }
+    this.lastGrade = g;   // (debug/QA: inspect what the grade received)
     this.grade.apply(O, this.frameC, { ...g, grain: 0, frame: this.frameIndex });
     if (d.drawOverlay) d.drawOverlay(O, t);
     if (grain > 0) this.grade.apply(O, this.out, { grain, frame: this.frameIndex, bloom: 0, vignette: 0, grainOnly: true });

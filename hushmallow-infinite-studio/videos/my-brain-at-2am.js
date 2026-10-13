@@ -32,7 +32,7 @@ const meta = {
 
 // ------------------------------------------------------------- beats --
 const B = {
-  hookIn: 0.04,
+  hookIn: -0.25,
   nuzzle: 0.8,                 // sleepy settle
   ping: 1.22,                  // the memory twinkles above Noomi's head
   stir: 1.34,                  // still asleep: the smile falls, brows knit
@@ -180,7 +180,7 @@ async function setup(stage) {
       { glyph: '?!', appearAt: B.minis[3], home: [-250, -262], size: 36 },
     ],
     orbit: {
-      start: B.orbitStart, full: B.orbitFull, rx: 196, ry: 84, cy: -182,
+      start: B.orbitStart, full: B.orbitFull, rx: 196, ry: 76, cy: -200,
       expand: (t) => 1 + 0.25 * smootherstep(B.close, B.crest, t),
       lift: (t) => -55 * smootherstep(B.close, B.crest, t),
       speed: ORBIT_SPEED,
@@ -202,11 +202,11 @@ function camera(t) {
   // A monotone spline flows through the keys; the inhale pushes in and the
   // exhale opens out, so the camera breathes with Noomi.
   const zoom = spline([
-    [-9, 1.16], [0, 1.16], [1.78, 1.2], [2.75, 1.26], [3.3, 1.0], [4.8, 1.02], [6.95, 1.15],
+    [-9, 1.06], [0, 1.06], [1.78, 1.2], [2.7, 1.26], [3.55, 1.0], [4.8, 1.02], [6.95, 1.15],
     [B.inhale, 1.12], [B.crest, 1.17], [B.exhale, 1.17], [B.exhaleEnd, 1.02], [11.6, 1.0], [15, 1.075],
   ], t);
   const fy = spline([
-    [-9, 792], [0, 792], [1.78, 800], [2.75, 820], [3.3, 735], [4.8, 737], [6.95, 772],
+    [-9, 770], [0, 770], [1.78, 800], [2.7, 820], [3.55, 735], [4.8, 737], [6.95, 772],
     [B.inhale, 770], [B.crest, 745], [B.exhale, 745], [B.exhaleEnd, 700], [11.6, 690], [15, 716],
   ], t);
   // punch-in on the startle: fast spring with overshoot, released before thought 1 pops
@@ -223,7 +223,9 @@ function camera(t) {
   const ts = t - B.startle;
   const shake = ts > 0 ? Math.exp(-ts * 9) * 11 : 0;
   const ox = shake * Math.sin(ts * 71), oy = shake * Math.cos(ts * 53) * 0.6;
-  return { zoom: z, x, y, roll, ox, oy, bgDepth: 0.55 };
+  // shallow depth of field: the painted world softens as the lens pushes in
+  const bgBlur = lerp(1.0, 2.6, clamp((z - 1) / 0.35));
+  return { zoom: z, x, y, roll, ox, oy, bgDepth: 0.55, bgBlur };
 }
 
 // ----------------------------------------------------------- grade --
@@ -231,17 +233,17 @@ function grade(t) {
   const warm = warmOf(t);
   const night = 1 - warm;
   const anx = track([[0, 0], [4.6, 0], [6.95, 1], [7.4, 0.3], [8.4, 0]], t);
-  const fadeIn = 1 - smoothstep(0, 0.22, t);
   const fadeOut = smoothstep(14.5, 15.0, t);
   return {
-    bloom: lerp(0.3, 0.38, warm), bloomRadius: 16,
-    tint: { top: mixHex('#5f4fd0', '#6a3fd8', anx), bottom: '#2a1f78', amount: (0.3 + 0.12 * anx) * night + 0.06, bottomK: 0.8 },
-    warm: { top: '#ffbf72', bottom: '#ffa0b4', amount: 0.4 * warm, bottomK: 0.6 },
-    glow: { followMoon: true, x: 790, y: 330, r: 820, color: mixHex('#b3a6ff', '#ffd9a6', warm), amount: lerp(0.08, 0.3, warm) },
-    base: `contrast(${lerp(1.1, 1.07, warm).toFixed(3)}) saturate(${lerp(1.0, 1.12, warm).toFixed(3)})`,
-    vignette: lerp(0.5, 0.42, warm) + 0.24 * anx, vignetteCy: 0.56,
+    bloom: lerp(0.3, 0.36, warm), bloomRadius: 16,
+    tint: { top: mixHex('#5f4fd0', '#3d3aa8', anx), bottom: '#2a1f78', amount: (0.3 + 0.12 * anx) * (1 - 0.55 * warm) + 0.06, bottomK: 0.8 },
+    warm: { top: '#ffbf72', bottom: '#ffb877', amount: 0.32 * warm, bottomK: 0.9 },
+    moonCore: { color: '#fff1d6', amount: 0.72 * smoothstep(B.exhale + 0.4, 11.2, t), scale: 1.02 },
+    glow: { followMoon: true, x: 790, y: 330, r: 440, color: mixHex('#b3a6ff', '#ffc77e', warm), amount: lerp(0.08, 0.14, warm) },
+    base: `brightness(${(1 - 0.12 * anx - 0.06 * warm).toFixed(3)}) contrast(${lerp(1.1, 1.2, warm).toFixed(3)}) saturate(${(lerp(1.0, 1.12, warm) - 0.12 * anx).toFixed(3)})`,
+    vignette: 0.5 + 0.42 * anx, vignetteCy: 0.56, vignetteInner: lerp(0.28, 0.2, anx),
     grain: 0.042,
-    fade: { color: '#06040f', amount: Math.max(fadeIn * 0.22, fadeOut * 0.12) },
+    fade: { color: '#06040f', amount: fadeOut * 0.12 },
   };
 }
 
@@ -249,9 +251,9 @@ function light(t) {
   const warm = warmOf(t);
   const anx = track([[0, 0], [4.6, 0], [6.95, 1], [7.4, 0.3], [8.4, 0]], t);
   return {
-    rim: { color: mixHex('#cfc4ff', '#ffe3b4', warm), amount: lerp(0.55, 0.75, warm), width: 9, dx: 0.62, dy: -0.78, soft: 2.5 },
+    rim: { color: mixHex('#cfc4ff', '#ffc98a', warm), amount: lerp(0.55, 0.75, warm), width: 13, dx: 0.62, dy: -0.78, soft: 2.5 },
     halo: { color: mixHex(mixHex('#7f6cff', '#ff6fc0', anx * 0.8), '#ffcf8f', warm), amount: lerp(0.32, 0.46, warm) + 0.1 * anx, blur: 30 },
-    shade: { key: mixHex('#ece8ff', '#fff0d8', warm), keyAmount: lerp(0.1, 0.14, warm), fill: mixHex('#4a3fa0', '#5a2f78', warm),
+    shade: { key: mixHex('#ece8ff', '#ffd59a', warm), keyAmount: lerp(0.1, 0.24, warm), fill: mixHex('#4a3fa0', '#5a2f78', warm),
       amount: lerp(0.18, 0.2, warm), occlusion: 0.22, dx: 0.62, dy: -0.78 },
   };
 }
@@ -259,9 +261,9 @@ function light(t) {
 // ------------------------------------------------------- realm mood --
 function realmMood(t) {
   const agit = track([[-9, 0.08], [B.startle, 0.08], [2.2, 0.3], [4.0, 0.5], [6.95, 0.92], [B.inhale, 0.92], [8.2, 0.15], [B.exhale, 0.05]], t);
-  const heavy = track([[-9, 0.12], [4.0, 0.2], [6.95, 0.42], [B.inhale, 0.42], [8.3, 0.1], [B.exhale, 0.05]], t);
-  const clar = track([[-9, 0.62], [4.0, 0.42], [6.95, 0.18], [B.inhale, 0.2], [B.exhale, 0.55], [11, 0.95]], t);
-  const warmth = track([[-9, 0.3], [6.95, 0.22], [B.exhale, 0.3], [11.2, 0.9]], t);
+  const heavy = track([[-9, 0.12], [4.0, 0.24], [6.95, 0.68], [B.inhale, 0.68], [8.3, 0.12], [B.exhale, 0.05]], t);
+  const clar = track([[-9, 0.8], [1.8, 0.78], [4.0, 0.42], [6.95, 0.18], [B.inhale, 0.2], [B.exhale, 0.55], [11, 0.95]], t);
+  const warmth = track([[-9, 0.3], [6.95, 0.22], [B.exhale, 0.3], [11.2, 0.6]], t);
   const tf = smootherstep(B.exhale - 0.1, 11.6, t);
   return { mood: { agitation: agit, heaviness: heavy, clarity: clar, warmth }, transform: tf };
 }

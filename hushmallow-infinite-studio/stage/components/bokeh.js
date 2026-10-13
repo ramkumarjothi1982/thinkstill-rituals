@@ -53,7 +53,7 @@ export class Bokeh {
       const x = W / 2 + (o.x * W - W / 2) * zoomK + Math.sin(t * o.sp + o.ph) * 26 + px;
       const y = H / 2 + (o.y * H - H / 2) * zoomK + Math.cos(t * o.sp * 0.8 + o.ph) * 18 + py;
       const r = o.r * zoomK * (1 + 0.05 * Math.sin(t * 0.7 + o.ph));
-      ctx.globalAlpha = o.a * (0.8 + 0.2 * Math.sin(t * 0.9 + o.ph * 2));
+      ctx.globalAlpha = 1.5 * o.a * (0.8 + 0.2 * Math.sin(t * 0.9 + o.ph * 2));
       ctx.drawImage(this.tinted, x - r, y - r, r * 2, r * 2);
     }
     ctx.restore();

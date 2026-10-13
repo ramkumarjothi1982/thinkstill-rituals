@@ -91,11 +91,24 @@ export class Grade {
       dst.fillRect(0, 0, W, H);
     }
 
+    // --- moon core: re-light the disc (the realm's warm haze washes it out)
+    if (p.moonCore && p.moonCore.amount > 0.003) {
+      dst.globalCompositeOperation = 'screen';
+      const { x, y, r, color, amount } = p.moonCore;
+      const mg = dst.createRadialGradient(x, y, 0, x, y, r);
+      mg.addColorStop(0, rgba(color, amount));
+      mg.addColorStop(0.72, rgba(color, amount * 0.85));
+      mg.addColorStop(0.9, rgba(color, amount * 0.3));
+      mg.addColorStop(1, rgba(color, 0));
+      dst.fillStyle = mg;
+      dst.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+
     // --- vignette
     if (p.vignette > 0) {
       dst.globalCompositeOperation = 'multiply';
       const cx = W / 2, cy = H * (p.vignetteCy ?? 0.55);
-      const vg = dst.createRadialGradient(cx, cy, H * 0.28, cx, cy, H * 0.78);
+      const vg = dst.createRadialGradient(cx, cy, H * (p.vignetteInner ?? 0.28), cx, cy, H * 0.78);
       vg.addColorStop(0, 'rgba(255,255,255,1)');
       vg.addColorStop(0.6, `rgba(${lerp(255, 120, p.vignette) | 0},${lerp(255, 100, p.vignette) | 0},${lerp(255, 170, p.vignette) | 0},1)`);
       vg.addColorStop(1, `rgba(${lerp(255, 40, p.vignette) | 0},${lerp(255, 30, p.vignette) | 0},${lerp(255, 70, p.vignette) | 0},1)`);
