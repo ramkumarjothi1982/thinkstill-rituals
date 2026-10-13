@@ -3,7 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { world, connect } from './helpers.mjs';
-import { LocalNetwork } from '../net/local-network.js';
+import { LocalNetwork } from '../../net/local-network.js';
+import { CLIENT_METHODS, MODERATOR_METHODS } from '../core/service.js';
 import { HushmatesClient } from '../client/client.js';
 
 const settle = (ms = 40) => new Promise((r) => setTimeout(r, ms));
@@ -14,7 +15,7 @@ const rejectsCode = async (p, code) => {
 
 function lab() {
   const w = world();
-  const net = new LocalNetwork(w.svc, { latency: [1, 4] });
+  const net = new LocalNetwork(w.svc, { latency: [1, 4], methods: [...CLIENT_METHODS, ...MODERATOR_METHODS] });
   return { ...w, net };
 }
 
