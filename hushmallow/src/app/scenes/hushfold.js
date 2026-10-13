@@ -26,7 +26,7 @@ import { requireEntitlement } from '../entitlements.js';
 import { createStage, createStageMallow } from '../../hushfold/stage.js';
 import { createInputRouter } from '../../hushfold/input-router.js';
 import { hfIcon } from '../../hushfold/icons.js';
-import { loadProgress } from '../../engine/flow-store.js';
+import { loadProgress, clearProgress } from '../../engine/flow-store.js';
 
 // the realms whose daylight needs a deeper subtitle scrim (a fallback for the per-line sample)
 const BRIGHT_REALMS = new Set(['sunpop-orchard', 'blue-drift', 'moonmilk-cove']);
@@ -476,6 +476,8 @@ export default function hushfold(app, params = {}) {
     // (a calm line cut short by a world that arrived under it is said again, whole, once the world has gone)
     if (crisisLine) { crisisLine = null; S.crisisSpoken = false; }
     subtitles.clear({ keepHeld: true });
+    // after a crisis nothing that invites play is kept either: no choice, no Paused pill, nothing to resume
+    if (S.crisis) { subtitles.clear(); pausedPill.hidden = true; forgetProgress(); }
     // the realm underneath runs again as the world's last frame melts away over it
     world.realm?.pause?.(false);
     // the closing line is for the stage: the panel steps aside so it is seen
@@ -702,6 +704,13 @@ export default function hushfold(app, params = {}) {
     if (level === 'crisis') {
       S.hold = 'crisis';
       if (running) { try { flowRef.setAutoFlow?.(false); flowRef.pause?.(); } catch (e) { console.warn(e); } }
+      // nothing invites play or offers to resume after a crisis: no Paused pill, and every line and
+      // choice still showing goes, a parked careBeat choice too (it resolves as no choice)
+      pausedPill.hidden = true;
+      subtitles.clear();
+      // and nothing to pick up later: a world saved on pause (or when the tab hides while the person
+      // is away, calling someone) is forgotten, so a reload never asks to carry on
+      forgetProgress();
     } else if (running && !S.hold) {
       // care or distress typed in a running world, sent or not: it waits under its veil with the
       // Paused pill, and Resume stays theirs (owner P4); careBeat pauses it too when it is sent
@@ -712,6 +721,15 @@ export default function hushfold(app, params = {}) {
     // a world on its way (startFlow in flight) is held the moment it arrives
     if (starting && !worldMode) S.holdOnWorld = level === 'crisis' || S.holdOnWorld === 'crisis' ? 'crisis' : level;
     panel?.update();
+  }
+  /** After a crisis the visit keeps no world to resume: cleared now and after any later hidden-tab save. */
+  let forgetOnHide = null;
+  function forgetProgress() {
+    try { clearProgress(store); } catch (e) { console.warn(e); }
+    if (forgetOnHide || typeof document === 'undefined') return;
+    // the director saves when the tab hides; clear after it, on the next turn
+    forgetOnHide = () => { if (document.hidden && S.hold === 'crisis') setTimeout(() => { try { clearProgress(store); } catch {} }, 0); };
+    document.addEventListener('visibilitychange', forgetOnHide);
   }
   /** Low stimulation while the Support pill is up (owner P5): squeezing stays, the sparkles go. */
   const lowStimNow = () => !!prefs.get('lowStim') || gentle();
@@ -1316,6 +1334,7 @@ export default function hushfold(app, params = {}) {
     leave() {
       S.left = true;
       offerCtl?.abort();
+      if (forgetOnHide) { document.removeEventListener('visibilitychange', forgetOnHide); forgetOnHide = null; }
       if (window.__hushfold?.subtitles === subtitles) delete window.__hushfold;
       for (const t of timers) clearTimeout(t);
       timers.clear();
