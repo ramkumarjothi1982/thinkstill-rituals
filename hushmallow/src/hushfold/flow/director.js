@@ -316,7 +316,7 @@ export function createHushflow(opts = {}) {
       now: () => t,
       font: (px, weight) => fontPx(px, weight),
       fontsReady: (groups, ms) => fontsReady(groups, ms),
-      say(lines, o = {}) { if (!subtitles?.say || paused || phase === 'finished') return Promise.resolve(); return Promise.resolve(subtitles.say(lines, { who: entry.mallow?.id, ...o })).catch(() => {}); },
+      say(lines, o = {}) { if (!subtitles?.say || paused || phase === 'finished') return Promise.resolve(); return Promise.resolve(subtitles.say(lines, { who: entry.mallow?.id, world: entry.id, ...o })).catch(() => {}); },
       discover: (id, evidence) => discover(inst, id, evidence),
       /**
        * While this world melts in: how far the melt has reached at a client point (0 = still the
@@ -635,6 +635,8 @@ export function createHushflow(opts = {}) {
   }
 
   // ------------------------------------------------------- discovery --
+  /** Is this world the one on stage (not melting away; or the one melting in)? */
+  const onStage = (inst) => !!inst && ((inst === cur && !(melt && melt.from === inst)) || (!!melt && melt.to === inst));
   function discover(inst, id, evidence = {}) {
     if (!session || destroyed || (inst !== cur && inst !== inc)) return false;
     // nothing is found under the veil or after the end
@@ -649,14 +651,16 @@ export function createHushflow(opts = {}) {
     discoveryPending++;
     const lines = def.lines || [];
     const done = lines.length && subtitles?.say
-      ? Promise.resolve(subtitles.say(lines, { kind: 'discovery', hold: true, id: `discovery:${id}`, who: inst.entry.mallow?.id, interrupt: true, first: true })).catch(() => {})
+      ? Promise.resolve(subtitles.say(lines, { kind: 'discovery', hold: true, id: `discovery:${id}`, who: inst.entry.mallow?.id, world: inst.id, interrupt: true, first: true })).catch(() => {})
       : Promise.resolve();
     const sess = session;
     done.finally(() => {
       discoveryPending = Math.max(0, discoveryPending - 1);
       // (no offer once finished, in a gentle session or while safety holds the world — owner P3/P4; it is not
       // marked offered, so a later discovery of the same tool can still offer it once support is gone)
-      if (skillId && sess === session && !sess.offered.has(skillId) && !offersHushed() && !destroyed) {
+      // (nor once its world has melted away or is melting away: its offer would come over the next world's host —
+      // it is not marked offered either; a world melting in may offer its own)
+      if (skillId && sess === session && !sess.offered.has(skillId) && !offersHushed() && !destroyed && onStage(inst)) {
         sess.offered.add(skillId);
         emit('offer', { skillId, worldId: inst.id, discoveryId: id });
       }
@@ -679,7 +683,7 @@ export function createHushflow(opts = {}) {
       if (over()) return;
       if (can && subtitles?.choice) {
         choiceOpen = inst;
-        Promise.resolve(subtitles.choice(d.complete || 'Stay, or drift on?', [{ label: 'Stay', value: 'stay' }, { label: 'Drift on', value: 'next' }]))
+        Promise.resolve(subtitles.choice(d.complete || 'Stay, or drift on?', [{ label: 'Stay', value: 'stay' }, { label: 'Drift on', value: 'next' }], { world: inst.id }))
           .then((v) => { if (choiceOpen === inst) choiceOpen = null; if (cur !== inst) return; if (v === 'next') api.next(); else if (v === 'stay') api.stay(); })
           .catch(() => {});
       } else if (d.completeStay || d.complete) inst.ctx.say([can ? d.complete : (d.completeStay || d.complete)], { kind: 'dialogue' });

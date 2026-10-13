@@ -81,7 +81,9 @@ test('H3 CSS: the placeholder tag is gone; .tm-tag sits at z 1 and steps back wh
 // ------------------------------------------------------------------ H2 --
 test('H2: the band, the host halfway through the melt (a soft cross-fade, never on a timer), its art loaded at k 0', () => {
   const flow = fnBody(scene, 'function getFlow() {', '/** The world paused or resumed');
-  assert.match(flow, /f\.on\?\.\('melt', \(d\) => \{ if \(d\?\.k === 0 && MALLOWS\[d\.mallow\]\) loadMallowAssets\(d\.mallow\)/);
+  // (review r2: the melt's start also takes the melting world's lines with it — onMeltBegins, tests/h23-r3)
+  assert.match(flow, /f\.on\?\.\('melt', \(d\) => \{ if \(d\?\.k === 0\) onMeltBegins\(d\);/);
+  assert.match(fnBody(scene, 'function onMeltBegins(d) {', 'function onFinished() {'), /if \(MALLOWS\[d\?\.mallow\]\) loadMallowAssets\(d\.mallow\)/);
   assert.match(flow, /f\.on\?\.\('host', \(d\) => hostMallow\(d\?\.mallow\)\);/);
   assert.match(scene, /bandPx = Math\.round\(band\);/);
   const host = fnBody(scene, 'function hostMallow(id) {', 'function endWorldMode()');

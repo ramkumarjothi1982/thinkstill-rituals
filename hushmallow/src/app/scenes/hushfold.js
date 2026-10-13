@@ -488,7 +488,7 @@ export default function hushfold(app, params = {}) {
         for (const ev of ['stay', 'complete', 'autoflow']) f.on?.(ev, () => { panel?.update(); if (ev === 'complete') app.applyUpdateIfSafe?.(); });
         // the incoming host's art starts loading as the melt begins; halfway, the host takes the stage (owner P2).
         // (an event, never a timer: a paused melt does not move, and neither does its host)
-        f.on?.('melt', (d) => { if (d?.k === 0 && MALLOWS[d.mallow]) loadMallowAssets(d.mallow).catch(() => {}); panel?.update(); });
+        f.on?.('melt', (d) => { if (d?.k === 0) onMeltBegins(d); panel?.update(); });
         f.on?.('host', (d) => hostMallow(d?.mallow));
         // a paused world holds its thoughts still where they are drawn (a safety pause lets them drift off first)
         f.on?.('pause', (d) => { if (d?.reason !== 'safety') stage?.freeze(true); onPaused(true); });
@@ -543,6 +543,8 @@ export default function hushfold(app, params = {}) {
     S.holdOnWorld = null;
     worldMode = true;
     S.worldAt = now();
+    // (a world entered again is on stage again: its offers are its own)
+    if (d?.id && d.id === S.meltedFrom) S.meltedFrom = null;
     // a touch on the person's Thought Mallow goes to the world, which carries it and hands it on itself
     router.setWorld((r) => flowRef?.pointer?.(r), { thoughts: true });
     root.classList.add('hf-world');
@@ -618,6 +620,17 @@ export default function hushfold(app, params = {}) {
     if (back && !back.leaving) { try { back.moveHome(thoughtHome); back.closer?.(0); back.labelSide = null; } catch (e) { console.warn(e); } }
     panel?.update();
   }
+  /**
+   * A melt begins: the incoming host's art starts loading, and the world melting away takes what it was still saying
+   * with it — its passing lines and what it held for a tap (a discovery's line and its Continue): the next world's
+   * host never speaks behind them, and the old world's garden offer never comes over the new host (onOffer).
+   */
+  function onMeltBegins(d) {
+    if (MALLOWS[d?.mallow]) loadMallowAssets(d.mallow).catch(() => {});
+    if (!d?.from) return;
+    S.meltedFrom = d.from;
+    subtitles.drop?.((o) => o?.world === d.from);
+  }
   function onFinished() {
     if (S.left) return;
     if (S.finishing) return;
@@ -666,6 +679,8 @@ export default function hushfold(app, params = {}) {
    */
   async function onOffer({ skillId, worldId } = {}) {
     if (S.left || S.crisis || gentle()) return;
+    // (an offer from a world that has melted away, or is melting away, is that world's: never over the next host)
+    if (worldId && worldId === S.meltedFrom) return;
     let install;
     try { install = installMod ||= await import('../../hushfold/garden-install.js'); } catch (e) { console.warn('[garden]', e?.message); app.staleCode?.(); return; }
     let host = null;
