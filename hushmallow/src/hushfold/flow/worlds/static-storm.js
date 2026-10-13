@@ -61,6 +61,12 @@ const ROPE_N = 6;
 const PLASMA_A_MAX = 0.66, FRESH_WHITE_MAX = 0.5;
 const TM_NORM = 1 / (1 - Math.exp(-1.6 * 1.4));   // the shoulder reaches PLASMA_A_MAX at A = 1.4
 const BAND_ATT = 0.3, BAND_FEATHER = 24;
+// The person's Thought Mallow moves continuously whatever presses on it (px per 1/60 s, scaled by the frame's dt):
+// a postcard it cannot push aside makes it give way at most YIELD_PX a frame (its rest place goes with it and drifts
+// back over YIELD_BACK_SEC once the card lets go); the screen edges and the hero's keep-out push it at most KEEP_PX;
+// and what is shown never steps more than STEP_PX a frame unless a finger carries it.
+// On its way to its planned place (at most JOURNEY_SEC) it does not give way to postcards: they make way for it.
+const YIELD_PX = 6, KEEP_PX = 10, STEP_PX = 10, YIELD_BACK_SEC = 2.5, JOURNEY_SEC = 4;
 
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
 const rgbaHex = (h, a) => `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${a})`;
@@ -151,6 +157,12 @@ export function create(ctx) {
   let tDrawS = 0;                     // the scale written to the handle (eased in from its own size)
   let tSoftQ = -1;                    // the last soften() level sent (0.05 steps)
   const tWrote = { x: 0, y: 0 };      // the handle's position as of its layer's last drawing
+  const tYield = { x: 0, y: 0 };      // how far its rest place has given way to postcards (and edges) it could not move
+  let tYieldHit = false;              // pressed on this frame (the give-way drifts back only once nothing presses)
+  const tShown = { x: 0, y: 0, ok: false };   // where it was last shown (the step guard's reference)
+  let tTakenAt = 0;                   // when the storm took this thought (its keep-out eases in from there)
+  let tJourney = -1;                  // when it set off for its planned place (-1: it is there): postcards make way
+                                      // for it on the way rather than push it back (its words then sit as planned)
   let liveShape = null;               // W2's drawn thought (offsets from tWrote), per frame — null for the placeholder
   const liveR = {}, liveRects = [];
   let ropeGrads = null;               // rope colours fading out inside the subtitle band (cached per layout)
@@ -225,10 +237,14 @@ export function create(ctx) {
     if (thought && seededFor !== thought) {
       seededFor = thought;
       const hx = thought.x, hy = thought.y;
-      if (Number.isFinite(hx) && Number.isFinite(hy) && (hx || hy)) tSpring.set(hx, hy);
+      if (Number.isFinite(hx) && Number.isFinite(hy) && (hx || hy)) { tSpring.set(hx, hy); tShown.x = hx; tShown.y = hy; tShown.ok = true; }
+      tTakenAt = elapsed;
     }
+    // (a new plan: the thought's place is the planned one again — and if it is not there yet, it travels there)
+    tYield.x = 0; tYield.y = 0;
     if (!tSpring.x && !tSpring.y) tSpring.set(tAnchor.x, tAnchor.y);
-    else tSpring.to(tAnchor.x, tAnchor.y);
+    else tSpring.to(restX(), restY());
+    tJourney = thought && !arrivedAt(tSpring.x, tSpring.y) ? elapsed : -1;
     layoutCards();
     placeHint();
     ropeGrads = null;
@@ -492,7 +508,7 @@ export function create(ctx) {
     }
     if (s.type === 'up' || s.type === 'cancel') {
       if (f.line) endLine(f, true);
-      if (f.onThought) { tSpring.to(tAnchor.x, tAnchor.y); try { thought?.pointer?.(s); thought?.react?.('release'); } catch { /* optional */ } }
+      if (f.onThought) { tSpring.to(restX(), restY()); try { thought?.pointer?.(s); thought?.react?.('release'); } catch { /* optional */ } }
       f.on = false; f.id = -1; f.onThought = false; f.pulse.on = false; f.tracker.end();
       liftAt = elapsed;
       if (!fingers.some((q) => q.on)) stopGroundHold();
@@ -827,8 +843,87 @@ export function create(ctx) {
     }
   }
 
+  /** Where the thought rests now: its planned place, moved by what it had to give way to (on screen). */
+  function restX() { return clamp(tAnchor.x + tYield.x, EDGE + tR, Math.max(EDGE + tR, W - EDGE - tR)); }
+  function restY() { return clamp(tAnchor.y + tYield.y, EDGE + tR, Math.max(EDGE + tR, H - EDGE - tR)); }
+  const carried = () => fingers.some((f) => f.on && f.onThought);
+  /** Close enough to its rest place to count as there (its journey over). */
+  function arrivedAt(x, y) { return Math.hypot(x - restX(), y - restY()) <= Math.max(6, 0.4 * tR); }
+  /**
+   * On its way to its planned place (from beside the person's Mallow, or to a new plan's place) for at most
+   * JOURNEY_SEC: the postcards it meets swing aside for it (clearOfThought) rather than push it back — its words
+   * sit where the plan put them only once it is there, so on the way they may cross a postcard's row.
+   */
+  function journeying() {
+    if (tJourney < 0) return false;
+    if (carried() || elapsed - tJourney > JOURNEY_SEC || arrivedAt(tSpring.x, tSpring.y)) { tJourney = -1; return false; }
+    return true;
+  }
+  /**
+   * The person's thought stays on the screen, out of the subtitle band and off Glitzi: its body (the layer's live
+   * box, else the storm's own radius) inside the edges and below the band, clear of the hero's live box with room for
+   * a hop, and — with its words — clear of what the shell keeps out (ctx.keepOut: its open garden offer and card). A
+   * push from any of them moves it at most KEEP_PX a frame, and — once it is at its place — its rest place with it
+   * (so the spring does not pull it straight back out).
+   */
+  function keepThoughtIn(dt) {
+    if (!thought) return;
+    const B = liveShape?.body, x = tSpring.x, y = tSpring.y;
+    const bx0 = B ? x + B.x0 : x - tR, bx1 = B ? x + B.x1 : x + tR, by0 = B ? y + B.y0 : y - tR, by1 = B ? y + B.y1 : y + tR;
+    let mx = 0, my = 0;
+    // what the shell has open over the stage (its garden offer and card) is kept clear of the thought and its words:
+    // out the shortest way
+    const A = liveShape?.all;
+    const ox0 = A ? x + A.x0 : bx0, ox1 = A ? x + A.x1 : bx1, oy0 = A ? y + A.y0 : by0, oy1 = A ? y + A.y1 : by1;
+    const keep = ctx.keepOut?.() || [];
+    for (const r of keep) {
+      const l = r.left ?? r.x, t = r.top ?? r.y, rr = r.right ?? (l + (r.width ?? r.w ?? 0)), bb = r.bottom ?? (t + (r.height ?? r.h ?? 0));
+      if (!(rr > l && bb > t)) continue;
+      const qx0 = ox0 + mx, qx1 = ox1 + mx, qy0 = oy0 + my, qy1 = oy1 + my;
+      if (!(qx1 > l && qx0 < rr && qy1 > t && qy0 < bb)) continue;
+      const up = qy1 - t + 4, down = bb - qy0 + 4, left = qx1 - l + 4, right = rr - qx0 + 4, k = Math.min(up, down, left, right);
+      if (k === up) my -= up; else if (k === down) my += down; else if (k === left) mx -= left; else mx += right;
+    }
+    const m = mallowBox();
+    if (m) {
+      const T = m.top - Math.max(12, m.height * 0.12);
+      const ax0 = bx0 + mx, ax1 = bx1 + mx, ay0 = by0 + my, ay1 = by1 + my;
+      if (ax1 > m.left && ax0 < m.right && ay1 > T && ay0 < m.bottom) {
+        // out the shortest way: up over the head, else to the nearer side (never down into the floor)
+        const up = ay1 - T, left = ax1 - m.left, right = m.right - ax0, k = Math.min(up, left, right);
+        if (k === up) my -= up; else if (k === left) mx -= left; else mx += right;
+      }
+    }
+    // its body never enters the subtitle band (the director keeps that slot clear for every line) — unless the shell
+    // has something open that it must keep clear of (its garden card: the lines are quiet meanwhile, and on a small
+    // phone the band is the only room left above the card)
+    const band = plan?.band || ctx.band;
+    if (!keep.length && band && band.h > 0 && by0 + my < band.y + band.h + 2 && by1 + my > band.y) my = band.y + band.h + 2 - by0;
+    // ...and last, whatever moved it, its body stays on the screen
+    if (bx1 - bx0 < W - 2 * EDGE) { if (bx0 + mx < EDGE) mx = EDGE - bx0; else if (bx1 + mx > W - EDGE) mx = W - EDGE - bx1; }
+    if (by1 - by0 < H - 2 * EDGE) { if (by0 + my < EDGE) my = EDGE - by0; else if (by1 + my > H - EDGE) my = H - EDGE - by1; }
+    if (!mx && !my) return;
+    // (eased in over the first half second after the storm takes it: it starts exactly where it was)
+    const cap = KEEP_PX * Math.max(dt, 1 / 240) * 60 * clamp((elapsed - tTakenAt) / 0.5, 0.03, 1), d = Math.hypot(mx, my);
+    if (d > cap) { mx *= cap / d; my *= cap / d; }
+    tSpring.sx.x += mx; tSpring.sy.x += my;
+    if (mx * tSpring.sx.v < 0) tSpring.sx.v = 0;
+    if (my * tSpring.sy.v < 0) tSpring.sy.v = 0;
+    // (on its way to its planned place — clear of all of these by plan — it only slides round them: its rest place
+    // stays the planned one, so it does not end up wherever the hero's edge happened to send it)
+    if (!carried() && !journeying()) { tYield.x += mx; tYield.y += my; tSpring.to(restX(), restY()); }
+    tYieldHit = true;
+  }
+
   function updateThought(dt, now) {
+    if (!carried() && dt > 0) {
+      // its rest place drifts back to the planned one once nothing presses on it
+      if (!tYieldHit) { const k = Math.exp(-dt / YIELD_BACK_SEC); tYield.x *= k; tYield.y *= k; }
+      tSpring.to(restX(), restY());
+    }
+    tYieldHit = false;
     tSpring.update(dt);
+    if (dt > 0) keepThoughtIn(dt);
     const wob = tWobble.update(dt);
     const local = field.local(tSpring.x, tSpring.y, 2.5);
     const qLocal = clamp(0.35 * local + 0.75 * tCharge, 0, 1.3);
@@ -850,7 +945,15 @@ export function create(ctx) {
       if (Math.abs(goal - tDrawS) < 1e-3) tDrawS = goal;
       // (where the handle was when its layer last drew it: liveThoughtShape()'s reference)
       tWrote.x = thought.x; tWrote.y = thought.y;
-      thought.x = tSpring.x; thought.y = tSpring.y + wob * 3; thought.scale = tDrawS;
+      // (what is shown never steps more than STEP_PX a frame unless a finger carries it: travel, give-way and
+      // keep-out together; the spring is where it is shown)
+      let nx = tSpring.x, ny = tSpring.y;
+      if (tShown.ok && !carried() && dt > 0) {
+        const dx = nx - tShown.x, dy = ny - tShown.y, d = Math.hypot(dx, dy), cap = STEP_PX * dt * 60;
+        if (d > cap) { const k = cap / d; nx = tShown.x + dx * k; ny = tShown.y + dy * k; tSpring.sx.x = nx; tSpring.sy.x = ny; tSpring.sx.v *= k; tSpring.sy.v *= k; }
+      }
+      tShown.x = nx; tShown.y = ny; tShown.ok = true;
+      thought.x = nx; thought.y = ny + wob * 3; thought.scale = tDrawS;
       // its words hang under it, as the storm plans them
       thought.labelSide = 'below';
       const st = thought.state || (thought.state = {});
@@ -920,7 +1023,7 @@ export function create(ctx) {
       if (cards.length > 1) separateCards();
       for (const c of cards) keepClear(c);
     }
-    if (thought && cards.length) thoughtYields();
+    if (thought && cards.length) thoughtYields(dt);
   }
   /**
    * W2's ThoughtLayer draws the thought itself: what it really covers is its extent() (body, siblings,
@@ -969,9 +1072,15 @@ export function create(ctx) {
     if (m > 0) nudgeCard(c, dir.x * m, dir.y * m);
     pushOutOfRect(c, T.plate, 3);
   }
-  /** Last word: a card still pressed into the thought (or its words) moves the thought instead. */
-  function thoughtYields() {
+  /**
+   * Last word: a card still pressed into the thought (or its words) moves the thought instead — eased: at most
+   * YIELD_PX a frame, and its rest place goes with it (the spring does not pull it back into the card; it drifts
+   * home once the card lets go).
+   */
+  function thoughtYields(dt) {
     if (!(plan?.thought || liveShape)) return;
+    if (journeying()) return;
+    const x0 = tSpring.x, y0 = tSpring.y;
     for (let it = 0; it < 2; it++) for (const c of cards) {
       if (c.alpha < 0.35) continue;
       const T = thoughtShape();
@@ -988,6 +1097,12 @@ export function create(ctx) {
       if (mx * tSpring.sx.v < 0) tSpring.sx.v = 0;
       if (my * tSpring.sy.v < 0) tSpring.sy.v = 0;
     }
+    const dx = tSpring.x - x0, dy = tSpring.y - y0, d = Math.hypot(dx, dy);
+    if (!(d > 0.01)) return;
+    const cap = YIELD_PX * Math.max(dt, 1 / 240) * 60, k = d > cap ? cap / d : 1;
+    tSpring.sx.x = x0 + dx * k; tSpring.sy.x = y0 + dy * k;
+    if (!carried()) { tYield.x += dx * k; tYield.y += dy * k; tSpring.to(restX(), restY()); }
+    tYieldHit = true;
   }
 
   /** Move a hanging card (and its rope end, without adding velocity). */
@@ -1615,6 +1730,8 @@ export function create(ctx) {
       for (const f of fingers) if (f.on && !(band && f.y < band.y + band.h)) out.push({ x: f.x - 60, y: f.y - 60, w: 120, h: 120, kind: 'finger' });
       return out;
     },
+    /** Where the person's thought rests now (client px): its planned place, moved by what it has had to give way to. */
+    get thoughtRest() { return thought && plan ? { x: restX(), y: restY() } : null; },
     /** The subtitle slot this world keeps clear (client px): the director's reserved band. */
     subtitleBand() { const b = plan?.band || ctx.band; return b ? { x: b.x, y: b.y, w: b.w, h: b.h } : null; },
     /** QA: the layout chosen for this screen. */

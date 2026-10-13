@@ -44,6 +44,8 @@
 // The world writes x, y, scale and state every frame. If the handle has draw(),
 // the world draws it into its front layer (the 2D placeholder); without draw()
 // the world only positions it and W2's ThoughtLayer renders it on its own layer.
+// keepOut: () => [client rects] (optional): what the person's thought keeps out of besides the hero
+// (the shell's open garden offer and card); worlds read it as ctx.keepOut() and move the thought aside, eased.
 //
 // Shell contract (all additive; every older call keeps working):
 //   start({ …, gentle })    a gentle session (after care) plays only calm worlds; setGentle(b) switches it
@@ -81,6 +83,7 @@ const ROTATION_KEY = 'hushflow.rotation';   // which worlds were played (ids onl
 const VEIL = 0.2;
 const MAX_POINTERS = 4;
 const NOOP_HOLD = Object.freeze({ update() {}, stop() {}, active: false });
+const NO_RECTS = Object.freeze([]);
 const WATCHDOG_MS = 250;          // no shared-loop tick for this long (visible, playing) → our own rAF
 // quality governor: step down after SLOW_SEC of frames over SLOW_MS; step back up after
 // FAST_SEC of frames under FAST_MS (frames during melts and world builds are not counted)
@@ -132,6 +135,8 @@ export function createHushflow(opts = {}) {
   const ticker = opts.ticker === false ? null : (opts.ticker?.add ? opts.ticker : { add: addTicker, remove: removeTicker });
   let thoughtOne = opts.thought ?? null;          // an explicit primary handle
   let thoughtsSrc = opts.thoughts ?? null;        // a ThoughtLayer or an array of handles
+  // what the person's thought keeps out of besides the hero (the shell's open garden offer and its card): client rects
+  const keepOutFn = typeof opts.keepOut === 'function' ? opts.keepOut : null;
   const kv = opts.store && typeof opts.store.get === 'function' ? opts.store : memoryStore();
   const audio = opts.audio ?? app?.audio ?? null;
   const hapticFn = opts.haptic ?? app?.haptic ?? null;
@@ -301,6 +306,8 @@ export function createHushflow(opts = {}) {
       get thoughts() { return thoughtList(thoughtsSrc, thoughtOne); },
       /** W2's ThoughtLayer itself, when one was given (it renders the thoughts on its own layer). */
       get thoughtLayer() { return thoughtsSrc && !Array.isArray(thoughtsSrc) ? thoughtsSrc : null; },
+      /** Client rects the person's thought keeps out of besides the hero (the shell's open garden offer and card); [] if none. */
+      keepOut() { if (!keepOutFn) return NO_RECTS; try { const r = keepOutFn(); return Array.isArray(r) ? r : NO_RECTS; } catch { return NO_RECTS; } },
       get reduced() { return reducedMotion(); }, get lowStim() { return lowStim(); },
       get emotion() { return session?.emotion || null; }, get intention() { return session?.intention || null; },
       get intensity() { return session?.intensity ?? 0.6; }, get input() { return session?.input || null; },

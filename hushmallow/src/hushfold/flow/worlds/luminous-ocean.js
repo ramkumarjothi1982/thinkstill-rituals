@@ -72,6 +72,9 @@ const STILL_RELEASE = 0.35;             // a resting finger lets its swell go af
 const TAP_PX = 10, TAP_SEC = 0.34;
 const RISE_SEC = 3;                     // the horizon rises 0.655H → 0.44H after the melt's midpoint
 const GLIDE_SEC = 2.2;                  // a bubble / the thought glides from where it hung down onto the water
+const COLD_GLIDE_SEC = 1.6;             // a cold start: the thought already on screen glides from there onto the water
+const RM_FADE_SEC = 0.3;                // …or, with reduced motion, fades out where it was, then in at home
+const ARRIVE_STEP = 9;                  // px per 1/60 s at most while it arrives (the hero coming to rest on it slides it off)
 const HINT_AT = 5.5, HINT_SEC = 3.6;
 const FLICK_U = 0.2, LONG_U = 0.6;
 const GOLD_SEC = 10;                    // the storm's seed swells keep their gold crest light this long (the melt itself takes 5 s)
@@ -199,7 +202,7 @@ export function create(ctx) {
   const rings = new Rings(14);       // taps, landings, lifts (front)
   // floaters
   const tS = { x: 0, z: 0, vx: 0, vz: 0, yb: 0, vb: 0, sx: 0, sy: 0, r: 30, s: 0.5, alpha: 0, landK: 1, from: null, labelY: 0, labelYT: 0, labelX: 0, labelXT: 0, side: 'above', labelW: 0, labelFade: -1, plateW: 0, plateH: 0, calm: 0.4, tension: 0.5, outD: 0, outU: 0, rot: 0, surf: 1, landed: true,
-    offX: 0, offY: 0, koX: 0, koY: 0, koFor: 0, vis: 1, dP: 1, vzP: 0, surfShown: 0 };
+    offX: 0, offY: 0, koX: 0, koY: 0, koFor: 0, vis: 1, dP: 1, vzP: 0, surfShown: 0, shownOp: 0 };
   const bubbles = [];                // { i, x, z, vx, vz, yb, vb, rot, rv, D, sx, sy, alpha, state, lift, glowAge, morph, from, landK, waitIdx }
   let waiting = [];                  // photo indices waiting below the surface
   let riseClock = 0, slotsAll = null; // (slotsAll: the near slots and the far row, for this layout)
@@ -366,7 +369,8 @@ export function create(ctx) {
     if (!first) {
       reslot(false);
       if (melt) rerouteMelt();
-      if (!everTouched && thought && tS.landK >= 1 && !tS.from && !melt && cam) { const a = tS.alpha; thoughtHome(); tS.alpha = a; tS.snapOff = a > 0.05; }
+      // (its size eases from the one shown, as its place does: no pop when the new home is nearer or further)
+      if (!everTouched && thought && tS.landK >= 1 && !tS.from && !melt && cam) { const a = tS.alpha, s0 = tS.surf; thoughtHome(); tS.alpha = a; tS.snapOff = a > 0.05; if (a > 0.05 && s0 > 0) tS.surfShown = s0; }
       else if (thought && tS.landK >= 1 && !tS.from && !melt && cam && tS.alpha > 0.05) {
         // the hero moved (a turned phone, the shell's new layout): if the thought's place on the water is now on it, the
         // thought glides back into its home's column at the same distance (never pushed out to the horizon by it)
@@ -1213,6 +1217,7 @@ export function create(ctx) {
     rowsN = low() ? ROWS_LOW : ROWS;
     // melt in: the horizon rises from the storm's line after the midpoint; things land on the water
     if (melt) meltStep(dt);
+    else if (thought && (tS.from || tS.rmCold)) coldArrival(dt);
     // camera inputs ease (a layout change glides, never jumps)
     const e = 1 - Math.exp(-dt / 0.35);
     camHome += (plan.homeY - camHome) * e; camWater += (plan.waterY - camWater) * e;
@@ -1494,7 +1499,9 @@ export function create(ctx) {
     // reduced motion: the two worlds' front layers cross-fade with an overlap (compositor), so the storm's thought where it
     // hung and the ocean's at home are each half there at the midpoint — the person's words never leave the screen.
     // (A thought the layer draws — one handle, one place — stays where it hung until the midpoint, then is at home.)
-    if (rm) tS.vis = 1;
+    // (a thought the layer draws — one handle, one place — fades out where it hung, is moved home at the midpoint
+    // while unseen, and fades in there: never a jump in plain sight)
+    if (rm) tS.vis = melt.rmFrom && thought && !thought.draw ? (k < 0.5 ? 1 - smoothstep(0.32, 0.5, k) : smoothstep(0.5, 0.68, k)) : 1;
     hero.floatK = rm ? k : smoothstep(0.15, 0.9, k);
     const done = k >= 1 && (riseDone || late >= MELT_LATE) && (!thought || !tS.from) && bubbles.every((b) => !b.from);
     if (done) { melt = null; hyNow = hyTarget; hero.floatK = 1; arriveAt = 1.6; tS.vis = 1; }
@@ -1567,6 +1574,65 @@ export function create(ctx) {
     b.from = null; b.route = null; b.state = 'float'; if (!(b.fade != null && b.fade < 1)) b.alpha = 1;
     splash(b.gx, gy + b.D * 0.32, t.D);
   }
+  /**
+   * A cold start with the person's thought already on screen (beside their Mallow at home): it is the same thought,
+   * arriving. It glides from where it was down onto its home on the water (the melt's glide, on its own clock), its
+   * size easing from what was drawn; with reduced motion it fades out where it was, then in at home (never both at
+   * once, never a jump in plain sight).
+   */
+  function coldArrival(dt) {
+    if (tS.rmCold) {
+      const c = tS.rmCold;
+      if (c.t < RM_FADE_SEC) { c.t = Math.min(RM_FADE_SEC, c.t + dt); tS.vis = 1 - smoothstep(0, RM_FADE_SEC, c.t); return; }
+      // out of sight, it comes in at its home only once the hero has come to rest and the sea has re-planned (2.5 s at
+      // most): never seen where the hero's arrival puts it for a moment, nor sliding from there
+      c.wait = (c.wait || 0) + dt;
+      if (!c.inT && (pendingRect || boxMoved(restBox(), layoutRest, RELAYOUT_TOL) || c.wait < 0.35) && c.wait < 2.5) { tS.vis = 0; return; }
+      c.inT = (c.inT || 0) + dt;
+      tS.vis = smoothstep(0, RM_FADE_SEC, c.inT);
+      if (c.inT >= RM_FADE_SEC) { tS.rmCold = null; tS.vis = 1; }
+      return;
+    }
+    if (tS.glide <= 0) {
+      // it sets off once the hero has come to rest where the shell puts it for the world (a cold start begins while the
+      // shell is still moving it there, and the sea re-plans after that), so the glide goes once, straight to its home;
+      // meanwhile it stays where it is drawn (2.5 s at most)
+      tS.from.wait = (tS.from.wait || 0) + dt;
+      const settling = !!pendingRect || boxMoved(restBox(), layoutRest, RELAYOUT_TOL) || tS.from.wait < 0.35;
+      if (settling && tS.from.wait < 2.5) return;
+      tS.labelFade = 0; tS.from.tx = plan.home.x; tS.from.ty = plan.home.y;
+    }
+    tS.glide = Math.min(1, tS.glide + dt / COLD_GLIDE_SEC);
+    // (it lands at its home: if that moved on its way, once the glide has caught it up — 1.5 s at most)
+    if (tS.glide >= 1) {
+      tS.from.late = (tS.from.late || 0) + dt;
+      if (Math.abs(tS.from.tx - plan.home.x) + Math.abs(tS.from.ty - plan.home.y) < 1.5 || tS.from.late > 1.5) land();
+    }
+  }
+  /**
+   * The person's thought, already on screen (beside their Mallow at home, or just made there), comes onto the water
+   * from where it is drawn: it glides (or, resumed, eases to where it was left), and with reduced motion it fades out
+   * there and in at home — rather than appearing at home in one frame.
+   */
+  function arrive(keep = false) {
+    tS.rmCold = null;
+    const at = drawnAt(thought);
+    if (!at) return;
+    tS.shownOp = 1;                          // (it is on screen there now)
+    if (reduced()) { tS.rmCold = { x: at.x, y: at.y, scale: at.scale, t: 0 }; tS.alpha = 1; tS.vis = 1; tS.sx = at.x; tS.sy = at.y; }
+    else if (keep) { tS.sx = at.x; tS.sy = at.y; tS.snapOff = true; tS.alpha = 1; tS.surfShown = at.scale; }
+    else {
+      tS.from = { x: at.x, y: at.y, scale: at.scale, labelW: at.labelW };
+      tS.landK = 0; tS.glide = 0; tS.alpha = 1; tS.landed = false; tS.sx = at.x; tS.sy = at.y; tS.surf = at.scale;
+    }
+  }
+  /** Where a thought handle is drawn now, as the ocean writes it (its depth lift and shrink taken out); null if nowhere. */
+  function drawnAt(th) {
+    if (!th || !Number.isFinite(th.x) || !Number.isFinite(th.y) || !(th.x || th.y)) return null;
+    const z = Number.isFinite(th.z) ? clamp(th.z) : 0, r = th.r > 0 ? th.r : tS.r;
+    return { x: th.x, y: th.y - (th.r > 0 ? 0.45 * th.r * z : 0), scale: (r * (th.scale ?? 1) * (1 - 0.5 * z)) / tS.r, labelW: th.labelW || plan.textMax };
+  }
+
   function land() {
     tS.landed = true; tS.from = null; tS.landK = 1;
     tS.surfShown = tS.surf;                  // (its size eases from the glide's to the water's perspective: no pop)
@@ -1644,6 +1710,7 @@ export function create(ctx) {
       sx = lerp(tS.from.x, tS.from.tx ?? plan.home.x, k); sy = lerp(tS.from.y, tS.from.ty ?? plan.home.y, k);
       tS.surf = lerp(tS.from.scale ?? 1, 1, k);
     } else if (melt?.rmFrom && melt.k < 0.5 && !thought.draw) { sx = melt.rmFrom.x; sy = melt.rmFrom.y; tS.surf = melt.rmFrom.scale; }
+    else if (tS.rmCold && tS.rmCold.t < RM_FADE_SEC) { sx = tS.rmCold.x; sy = tS.rmCold.y; tS.surf = tS.rmCold.scale; }
     // a re-home (landing, a new layout) glides from where it was last shown — its size too
     if (tS.surfShown > 0 && !tS.from) {
       tS.surfShown += (tS.surf - tS.surfShown) * (1 - Math.exp(-dt / 0.4));
@@ -1658,6 +1725,15 @@ export function create(ctx) {
     // never over the hero: it floats beyond it
     keepThoughtOut(dt, bx, by, sx, sy, rr, tS.landK >= 1 && !tS.from);
     sx += tS.koX; sy += tS.koY;
+    // (while it arrives — a cold start's wait and glide, a reduced-motion fade — it never jumps in plain sight: when the
+    // hero comes to rest on it, the keep-out slides it off at ARRIVE_STEP px a 60th of a second at most)
+    // (seen on the last frame and on this one: a fade's move while it is out of sight is its own)
+    const op = tS.alpha * tS.vis;
+    if ((tS.from || tS.rmCold) && op > 0.05 && tS.shownOp > 0.05 && (tS.sx || tS.sy)) {
+      const m = ARRIVE_STEP * dt * 60, dx = sx - tS.sx, dy = sy - tS.sy, d = Math.hypot(dx, dy);
+      if (d > m) { sx = tS.sx + (dx / d) * m; sy = tS.sy + (dy / d) * m; }
+    }
+    tS.shownOp = op;
     tS.sx = sx; tS.sy = sy;
     tS.alpha = Math.min(1, tS.alpha + dt / (tS.from ? 0.01 : 0.9));
     // its words: above it while there is sky, else beside it, else below — never into the hero
@@ -1672,6 +1748,10 @@ export function create(ctx) {
     const target = clamp(baseTension * (1 - relief) + 0.28 * chopK - 0.04 * clamp(dist - 1, 0, 3), 0.12, 0.95);
     tS.tension = clamp(lerp(tS.tension, target, 1 - Math.exp(-dt / 1.2)));
     tS.calm = clamp(1 - tS.tension);
+    // (the handle is the ocean's to move only once it has entered: the first frame drawn while it is prepared —
+    // under the storm, or with the person's thought still at home — never moves the thought on screen, and an
+    // arrival starts from where that thought really is)
+    if (!entered) return;
     // depth for W2's ThoughtLayer (its words budget and tag follow z), with its own depth shrink and lift
     // taken back out, so a layer-drawn thought is exactly the ocean's projection: tS.r × tS.surf, at (sx, sy)
     const tz = clamp((dist - 1) / (OCEAN.CAP - 1));
@@ -3128,8 +3208,10 @@ export function create(ctx) {
         hero.floatK = 0;
         if (thought) {
           const keep = restored?.thought ? { x: tS.x, z: tS.z } : null;
-          thoughtHome(); tS.from = null; tS.landK = 1; tS.alpha = 0;
+          thoughtHome(); tS.from = null; tS.landK = 1; tS.alpha = 0; tS.rmCold = null;
           if (keep) { tS.x = keep.x; tS.z = keep.z; }       // resumed: it is where it was left
+          // (the person's thought already on screen, beside their Mallow: it arrives from there)
+          arrive(!!keep);
         }
         initBubbles(null);
         if (restored?.photos) for (const ps of restored.photos) { const b = bubbles.find((q) => q.i === ps.i); if (b) { b.z = clamp(+ps.d || 1, -0.5, OCEAN.CAP) * cam.Z0; b.x = +ps.x || b.x; b.cap = 400; } }
@@ -3183,7 +3265,11 @@ export function create(ctx) {
       const had = !!thought;
       thought = h;
       if (prepared) layout(false);
-      if (h && !had && cam) { thoughtHome(); tS.from = null; tS.landK = 1; tS.alpha = 0; captureBase(); tS.tension = baseTension; }
+      if (h && !had && cam) {
+        thoughtHome(); tS.from = null; tS.landK = 1; tS.alpha = 0; captureBase(); tS.tension = baseTension;
+        // (a thought that comes to a playing sea — the world's first, or new words — arrives from where it is drawn)
+        if (entered && !melt) arrive(false);
+      }
     },
     /** Client rects to keep subtitles off: the thought with its words, the bubbles, fingers outside the band. */
     avoid() {
