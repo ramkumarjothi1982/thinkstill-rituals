@@ -792,9 +792,11 @@ export default function hushfold(app, params = {}) {
     // lines meanwhile, and the lines keep off the card once they come back — never over the thought or its words)
     const inst = installing(), world = flowRef?.avoid?.() || [];
     const things = inst ? world.filter((r) => r?.kind !== 'card' && r?.kind !== 'bubble') : world;
+    // (the panel or the phone sheet and the overlay are never covered, not even by the folded chip with no corner free: hard)
     return [...things, worldMode && !panelSheet() && !inst ? flowRef?.subtitleBand?.() : null, ...(stage?.thoughts.rects() || []),
-      thoughtRestRect(), overlay?.rect?.(), panelRect(), landingFace()].filter(Boolean);
+      thoughtRestRect(), hard(overlay?.rect?.()), hard(panelRect()), landingFace()].filter(Boolean);
   }
+  const hard = (r) => (r && r.bottom > r.top && r.right > r.left ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.right - r.left, height: r.bottom - r.top, hard: true } : null);
   /** Is the garden installation (its portal and card) on stage now? */
   const installing = () => typeof document !== 'undefined' && !!document.querySelector('.hm-install, .hm-install-card');
   /**
@@ -824,14 +826,21 @@ export default function hushfold(app, params = {}) {
   function watchInstall(on) {
     clearInterval(installWatch); installWatch = 0;
     if (!on || S.left) return;
-    let last = 0;
+    let last = 0, bodyTry = 0;
     installWatch = setInterval(() => {
       if (S.left) { watchInstall(false); return; }
       const mine = installMod?.installAvoidRects?.() || [];
       if (!mine.length) { if (!offerCtl) watchInstall(false); return; }
       if (now() - last < 600) return;
       const th = [...(stage?.thoughts.rects() || []), thoughtRestRect()].filter(Boolean);
-      if (!mine.some((r) => th.some((t) => overlaps(r, t)))) return;
+      if (!mine.some((r) => th.some((t) => overlaps(r, t)))) {
+        // (placed over the Mallow's body because nothing else was free then — a line was up, the thought on its way:
+        // it tries again for a clear place every 2 s while it lies there; placeBox keeps it where it is if none is free)
+        const b = stageMallow?.bodyRect?.();
+        const body = b?.height ? { left: b.left, top: b.top, right: b.left + b.width, bottom: b.top + b.height } : null;
+        if (!body || now() - bodyTry < 2000 || !mine.some((r) => overlaps(r, body))) return;
+        bodyTry = now();
+      }
       last = now();
       installMod.relayoutInstall?.();
     }, 200);

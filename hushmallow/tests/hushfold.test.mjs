@@ -710,7 +710,7 @@ test('H1: the garden offer goes through garden-install with a live face, avoid r
   // the glide is the stage spring (a hop or the storm's tremble is not one), and the offer avoids where it lands
   const landing = fnBody(scene, 'function landingFace() {', 'function onOffer(');
   assert.match(landing, /const st = touchMt\?\.st, g = touchMt\?\.goalSt;/);
-  assert.match(fnBody(scene, 'function offerAvoid() {', 'function panelRect()'), /panelRect\(\), landingFace\(\)\]\.filter\(Boolean\)/);
+  assert.match(fnBody(scene, 'function offerAvoid() {', 'function panelRect()'), /hard\(panelRect\(\)\), landingFace\(\)\]\.filter\(Boolean\)/);
   assert.match(scene, /\.\.\.\(installMod\?\.installAvoidRects\?\.\(\) \|\| \[\]\)/);
 });
 
