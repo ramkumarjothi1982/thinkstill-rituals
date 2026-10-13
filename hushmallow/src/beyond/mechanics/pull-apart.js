@@ -16,7 +16,8 @@ import { MECHANIC_LINES } from '../lines.js';
 export const id = 'pull_apart';
 
 export function mount(ctx) {
-  const L = MECHANIC_LINES[id];
+  // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
+  const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;
   const rm = () => ctx.reducedMotion();
   let resolve;

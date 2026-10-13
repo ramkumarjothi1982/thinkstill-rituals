@@ -92,7 +92,7 @@ test('B2.2: someone else’s anger at them is mind reading, never their own fair
 
 test('B2.3: a loss is never a thinking error: no mechanic, no fact/assumption split, an authored validating pair', () => {
   for (const text of ['My grandad died last month and I can’t stop crying.', 'I miss my dog so much since he died.', 'My mum passed away and I feel empty.',
-    'My dad passed last year and Christmas is hard.', 'Since my nan died I can’t concentrate.', 'We had to have our cat put down yesterday.',
+    'My dad passed away last year and Christmas is hard.', 'Since my nan died I can’t concentrate.', 'We had to have our cat put down yesterday.',
     'I lost my best friend to cancer in the spring.', 'It was my granddad’s funeral today.', 'I’ve been grieving for months.', 'My friend’s mum died and I don’t know what to say.']) {
     assert.ok(bereavement(text), text);
     const s = authoredScene(text);
@@ -116,15 +116,15 @@ test('B2.3: a loss is never a thinking error: no mechanic, no fact/assumption sp
   }
 });
 
-test('B2.3: grief in the orchestrator: no request, no Thought Mallow, nothing playful, support close', () => {
+test('B2.3: grief in the orchestrator: no Thought Mallow, no mechanic, nothing playful, support close (r5: the server may answer it)', () => {
   const src = read('src/beyond/another-angle.js');
   const start = src.slice(src.indexOf('async function startAngle('), src.indexOf('async function waitingLines('));
-  assert.ok(start.indexOf('bereavement(S.text)') > 0 && start.indexOf('bereavement(S.text)') < start.indexOf('client.angle('), 'a loss is caught before any request');
+  assert.ok(start.indexOf('bereavement(S.text)') > 0 && start.indexOf('bereavement(S.text)') < start.indexOf('client.angle('), 'a loss goes to griefMode before the angle request');
   assert.ok(start.indexOf('bereavement(S.text)') < start.indexOf('spawnThought()'), 'and before the Thought Mallow');
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
   assert.match(grief, /S\.grief = true; S\.keepSupport = true/);
   assert.match(grief, /supportPill\.hidden = false/);
-  assert.doesNotMatch(grief, /client\.|startAngle|playScene|setStage\('playful'\)/);
+  assert.doesNotMatch(grief, /startAngle|playScene|spawnThought|loadMechanic|setStage\('playful'\)/);
   assert.match(src, /if \(S\.grief\) return;/, 'no playful squeeze lines after a loss');
   assert.match(src, /const heavy = S\.crisis \|\| S\.care \|\| S\.grief;/, 'Finish says the calm lines');
   // its lines hold the brand rule and the one-short-sentence rule

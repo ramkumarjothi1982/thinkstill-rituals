@@ -28,10 +28,12 @@ import { checkText } from '../engine/safety.js';
 import { hfIcon } from '../hushfold/icons.js';
 import { ensureBeyondCss } from './styles.js';
 import {
-  WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, MECHANIC_LINES, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
-  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, pick,
+  WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
+  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, mechanicLines, pick,
 } from './lines.js';
-import { authoredScene, sceneParts, candidatePatterns, bereavement, griefScene } from './authored.js';
+import { authoredScene, sceneParts, candidatePatterns, bereavement, griefScene, feelingOf, feelingGuard, framesAsGuess } from './authored.js';
+import { serverGrief } from './grief.js';
+import { FEELING_LOOK } from './feelings.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
 import { createAngleClient, resolveEndpoint, TIMEOUTS } from './angle-client.js';
 import { RATINGS, MECHANICS } from './vocab.js';
@@ -155,7 +157,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     dpr = Math.min(2, devicePixelRatio || 1);
     W = innerWidth; H = innerHeight;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    if (S.phase === 'playing' && S.scene) { const L = MECHANIC_LINES[S.scene.mechanic] || {}; S.band = measureBand([L.hint, L.hint2, L.hint3, L.slow, L.done]); }
+    if (S.phase === 'playing' && S.scene) { const L = mechanicLines(S.scene.mechanic, S.scene); S.band = measureBand([L.hint, L.hint2, L.hint3, L.slow, L.done]); }
     mech?.tags?.remeasure?.();
     layout();
   }
@@ -593,6 +595,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     for (const e of [input?.emotions?.[0], reading?.emotions?.[0]]) {
       if (e && typeof e.id === 'string' && (e.confidence ?? 0) >= READING_SURE && familyOf(e.id) !== 'none') return e.id;
     }
+    // a feeling said plainly looks like that feeling ("I feel so alone" is lonely, never "anxious")
+    let f = null;
+    try { f = feelingOf(text); } catch { f = null; }
+    if (f && FEELING_LOOK[f.kind]) return FEELING_LOOK[f.kind];
     let p = null;
     try { p = candidatePatterns(text)[0] || null; } catch { p = null; }
     return PATTERN_LOOK[p] || 'anxiety';
@@ -664,20 +670,47 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     say(SAFETY.concern, { interrupt: !subs?.holding });
   }
   /**
-   * A loss (lines.js GRIEF): Zuzu says the validating pair and stays close; support is one tap away, nothing
-   * playful follows, and there is no "another angle" or feedback to give. Nothing is sent for it.
+   * A loss (grief.js): no Thought Mallow, no mechanic, nothing playful, support one tap away, and no "another
+   * angle" or feedback to give. Zuzu answers gently: with sharing on, the server's two lines (grief is a case
+   * its prompt answers with warmth and no task), else the authored pair (lines.js GRIEF). `scene` is a server
+   * scene that already reads as grief (`asked`: the server has answered already); without one, and with
+   * sharing on, the words are sent once here.
    */
-  async function griefMode(scene) {
+  async function griefMode({ scene = null, asked = false } = {}) {
     const seq = ++S.seq;
     S.grief = true; S.keepSupport = true; S.phase = 'support';
-    S.scene = scene;
     keepCtl?.abort();
     dropThought(); endMechanic(true); dismissCompanion();
     supportPill.hidden = false;
     careFace();
     dockShow({ finish: true, tell: true });
     subs?.clear();
-    await say(scene.subtitle_line_1, { mallow: 'zuzu', interrupt: true });
+    // first, that they said it (and, with sharing on, while the server answers: never the lines about "another side")
+    const heard = say(GRIEF.heard, { mallow: 'zuzu', interrupt: true });
+    if (!scene && !asked && serverMode()) {
+      const res = await Promise.race([
+        client.angle({ text: S.text, emotion: S.emotion, intention: S.intention, previous: [] }).catch(() => ({ status: 'error', reason: 'exception' })),
+        sleep(devBudget || ANGLE_BUDGET_MS).then(() => ({ status: 'error', reason: 'timeout' })),
+      ]);
+      if (S.left || seq !== S.seq) return;
+      if (res?.status === 'crisis') { crisisMode(); return; }
+      if (res?.status === 'care') { careMode(); return; }
+      // (its two lines, unless one of them would read the loss as a guess or send it to be checked)
+      if (res?.status === 'ok' && res.scene?.subtitle_line_1 && res.scene?.subtitle_line_2 && !framesAsGuess(res.scene.subtitle_line_1) && !framesAsGuess(res.scene.subtitle_line_2)) scene = res.scene;
+      else {
+        // never "safe" by default: without the server's answer the app's own check runs again
+        const again = checkText(S.text);
+        if (again.level === 'crisis') { crisisMode(); return; }
+        if (again.level === 'care') { careMode(); return; }
+      }
+    }
+    // only the two lines are used: the server's own mechanic never plays for a loss
+    if (!scene) scene = griefScene(S.text, { emotion: S.emotion });
+    else scene = { ...scene, grief: true, mechanic: null };
+    S.scene = scene;
+    await heard;
+    if (S.left || seq !== S.seq) return;
+    await say(scene.subtitle_line_1, { mallow: 'zuzu' });
     if (S.left || seq !== S.seq) return;
     await sleep(rmOn() ? 400 : 1000);
     await say(scene.subtitle_line_2, { mallow: 'zuzu' });
@@ -705,14 +738,18 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
 
   /** The words → a Thought Mallow → (server or authored) scene → its mechanic. */
   async function startAngle({ another = false } = {}) {
-    // someone has died: no Thought Mallow, no mechanic, no request for an angle (grief isn't a thought to fix)
-    if (bereavement(S.text)) return griefMode(griefScene(S.text, { emotion: S.emotion }));
+    // someone has died: no Thought Mallow and no mechanic (grief isn't a thought to fix); with sharing on the
+    // server still answers it, gently (griefMode)
+    if (bereavement(S.text)) return griefMode();
     const seq = ++S.seq;
     S.phase = 'waiting';
     dockShow({});
     if (!another || !thought) spawnThought();
     zt?.setStage('curious');
-    zt?.setEmotion({ curious: 0.65, playful: 0.35 }, 0.7, { quiet: true });
+    // a feeling said plainly gets Zuzu's attentive face, never a playful one
+    let feel = null;
+    try { feel = feelingOf(S.text); } catch { feel = null; }
+    if (feel) careFace(); else zt?.setEmotion({ curious: 0.65, playful: 0.35 }, 0.7, { quiet: true });
     const started = now();
     waitingLines(seq);
     // the request (only with consent) and a cinematic minimum beat, together
@@ -732,8 +769,13 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (res.status === 'crisis') { crisisMode(); return; }
       if (res.status === 'care') { careMode(); return; }
       if (res.status === 'unclear') { subs?.clear(); dropThought(); unclear(); return; }
-      if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) scene = res.scene;
-      else { offline = true; hint = res.hint?.reasoning_pattern || null; invited = res.reason === 'invite'; }
+      // the server read a loss the words didn't name the app's way ("since Mum passed"): its lines, gently, no mechanic
+      if (res.status === 'ok' && res.scene && serverGrief(res.scene)) { griefMode({ scene: framesAsGuess(res.scene.subtitle_line_1) || framesAsGuess(res.scene.subtitle_line_2) ? null : res.scene, asked: true }); return; }
+      if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) {
+        // a feeling said plainly is never pulled apart into "what happened" and "what your mind added", whoever wrote it
+        scene = feelingGuard(res.scene, S.text, { emotion: S.emotion, exclude });
+        if (scene.exhausted) { await noMoreAngles(); return; }
+      } else { offline = true; hint = res.hint?.reasoning_pattern || null; invited = res.reason === 'invite'; }
     }
     if (!scene) {
       // never "safe" by default: a fallback, a non-200, a timeout or an error runs the app's own check again
@@ -760,10 +802,14 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function waitingLines(seq) {
     // Zuzu's line first, then (early, once) what is happening, in the Hushfold's own words; then the rest in turn
     let i = 0, w = 0, n = 0;
+    // a feeling said plainly is never met with "What else could be true?"
+    let feel = null;
+    try { feel = feelingOf(S.text); } catch { feel = null; }
+    const lines = feel ? FEELING.waiting : WAITING, long = feel ? FEELING.waitingLong : WAITING_LONG;
     while (!S.left && seq === S.seq && S.phase === 'waiting') {
       const narrate = n === 1 || (n > 2 && n % 3 === 0);
-      if (narrate) await say(pick(WAITING_LONG, i++), { who: null, colour: null });
-      else await say(pick(WAITING, w++), { mallow: 'zuzu' });
+      if (narrate) await say(pick(long, i++), { who: null, colour: null });
+      else await say(pick(lines, w++), { mallow: 'zuzu' });
       n++;
       if (S.phase !== 'waiting' || seq !== S.seq) break;
       await sleep(rmOn() ? 300 : 700);
@@ -778,9 +824,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.phase = 'playing';
     subs?.clear();
     let mod;
-    try { mod = await loadMechanic(scene.mechanic); } catch (e) { console.warn('[another angle] mechanic', e?.message); mod = await loadMechanic('pull_apart'); scene.mechanic = 'pull_apart'; }
+    // (a mechanic that can't load hands over to one that fits the scene: a feeling never falls back to pull_apart)
+    const fallback = scene.feeling ? 'assemble_step' : 'pull_apart';
+    try { mod = await loadMechanic(scene.mechanic); } catch (e) { console.warn('[another angle] mechanic', e?.message); mod = await loadMechanic(fallback); scene.mechanic = fallback; }
     if (S.left || seq !== S.seq) return;
-    const L = MECHANIC_LINES[scene.mechanic];
+    const L = mechanicLines(scene.mechanic, scene);
     const from = thought ? { x: thought.x, y: thought.y, r: thought.r } : null;
     if (from) S.lastThought = { ...from };
     // the Thought Mallow hands over to the mechanic where it sits: the same living jelly takes over there (a
@@ -791,7 +839,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.look = look;
     const [tl, td] = tintFor(look);
     const ctx = {
-      g, area: () => area, from, scene, parts, text: S.text, emotion: look, tags: makeTags(root, { bounds: () => area, announce: announceSoon }),
+      g, area: () => area, from, scene, parts, lines: L, text: S.text, emotion: look, tags: makeTags(root, { bounds: () => area, announce: announceSoon }),
       reducedMotion: rmOn, lowStim: lowOn,
       // the person's Thought Mallow in the mechanic: the same living jelly (W2) they watched while Zuzu explored
       thought: (o = {}) => new ThoughtBody({ text: S.text, emotion: look, intensity: 0.7, light: tl, deep: td, reducedMotion: rmOn(), lowStim: lowOn(), rmFn: rmOn,
@@ -834,10 +882,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     failNote = null;
     if (S.left || seq !== S.seq) return;
     if (!mech || mech.failed) {
-      // pull_apart once (every scene has a fact and an assumption), else straight to the perspective
+      // pull_apart once (every scene has a fact and an assumption; a feeling's is assemble_step), else straight to the perspective
       endMechanic(true);
       S.shown.pop();
-      if (scene.mechanic !== 'pull_apart') { scene.mechanic = 'pull_apart'; return playScene(scene, seq); }
+      if (scene.mechanic !== fallback) { scene.mechanic = fallback; return playScene(scene, seq); }
       S.shown.push(scene);
       return reveal(scene, seq, { played: false });
     }
@@ -864,7 +912,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function reveal(scene, seq, { played = true } = {}) {
     S.phase = 'reveal';
     dockShow({});
-    const L = MECHANIC_LINES[scene.mechanic];
+    const L = mechanicLines(scene.mechanic, scene);
     subs.clear();
     if (played) await say(L.done, { mallow: 'zuzu' });
     if (S.left || seq !== S.seq) return;
@@ -874,7 +922,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (S.left || seq !== S.seq) return;
     zt?.setStage('transforming');
     ct?.setStage('curious');
-    await subs.say({ text: 'A new perspective', kind: 'title' }, {});
+    await subs.say({ text: scene.feeling ? FEELING.title : 'A new perspective', kind: 'title' }, {});
     if (S.left || seq !== S.seq) return;
     await say(scene.subtitle_line_1, { mallow: lead });
     if (S.left || seq !== S.seq) return;
@@ -891,7 +939,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function exploreLine(scene, id) {
     const p = EXPLORE.find((x) => x.id === id);
     if (!p) return null;
-    if (p.field === 'friend') return FRIEND_LINES[scene.reasoning_pattern] || FRIEND_LINES.fact_vs_assumption;
+    if (p.field === 'friend') return scene.feeling ? FEELING.friend : FRIEND_LINES[scene.reasoning_pattern] || FRIEND_LINES.fact_vs_assumption;
     const v = scene[p.field];
     if (p.field === 'known_fact') return [v || EXPLORE_EMPTY.known_fact, scene.possible_assumption].filter(Boolean);
     return v || EXPLORE_EMPTY[p.field];
@@ -899,12 +947,14 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function explore(scene, seq) {
     S.phase = 'explore';
     const lead = scene.mallow_character || 'zuzu';
-    let remaining = EXPLORE.slice();
+    // a feeling is never fact-checked: no "What do you actually know?", no "another explanation"
+    let remaining = scene.feeling ? EXPLORE.filter((p) => FEELING.explore.includes(p.id)) : EXPLORE.slice();
     let first = true;
     while (remaining.length && !S.left && seq === S.seq) {
       const opts = remaining.slice(0, 2).map((p) => ({ label: p.label, value: p.id }));
       opts.push({ label: 'That’s enough', value: 'enough' });
-      const v = await choose(first ? EXPLORE_ASK : EXPLORE_MORE, opts, { mallow: 'zuzu' });
+      // (a feeling is never something to "test")
+      const v = await choose(scene.feeling ? (first ? FEELING.exploreAsk : FEELING.exploreMore) : (first ? EXPLORE_ASK : EXPLORE_MORE), opts, { mallow: 'zuzu' });
       first = false;
       if (S.left || seq !== S.seq) return;
       if (v == null || v === 'enough') break;
@@ -1189,7 +1239,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
         S.text = text; S.emotion = emotion; S.shown = []; S.used = [];
         S.look = firstLook({ emotion, text });
         const sc = authoredScene(text, { emotion });
-        if (sc.grief) return griefMode(sc);
+        if (sc.grief) return griefMode();
         if (mechanic && MECHANICS.includes(mechanic)) { sc.mechanic = mechanic; sc.interaction_type = mechanic; }
         spawnThought();
         const seq = ++S.seq;

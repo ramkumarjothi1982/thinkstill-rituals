@@ -45,6 +45,8 @@ export const SAFETY = Object.freeze({
  * "another angle", nothing playful; a validating pair, Zuzu close by, and support one tap away.
  */
 export const GRIEF = Object.freeze({
+  /** first, whoever answers (with sharing on, said while the server answers) */
+  heard: 'Thank you for telling me.',
   /** a loss named in the words ("my grandad died", "since he died") */
   loss: ['Missing them this much makes sense.', 'Grief isn’t a thought to fix.'],
   /** grieving, a funeral, without a loss named */
@@ -53,6 +55,72 @@ export const GRIEF = Object.freeze({
   options: [{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'See support', value: 'support' }, { label: 'Finish', value: 'finish' }],
   squeeze: 'Take all the time you need.',
 });
+
+/**
+ * A feeling said plainly ("I feel empty", "I can't stop crying", "I'm so tired of everything"). A feeling is
+ * real, and it is the fact: never "what your mind added", never "one way to read it", never something to
+ * check. Zuzu says it counts and offers one small, kind step (feelings.js reads the kind).
+ */
+export const FEELING = Object.freeze({
+  /** line 1 with the kind step, per kind of feeling */
+  first: Object.freeze({
+    low: 'What you’re feeling is real, and it counts.',
+    heavy: 'That sounds like a lot to carry.',
+    lonely: 'Feeling this alone is real, and it’s hard.',
+    anxious: 'That anxious feeling is real, and it’s a lot to carry.',
+    guilty: 'Guilt can sit heavy, and the feeling is real.',
+    tired: 'Being this tired of everything is real, and it’s a lot.',
+    crying: 'Tears like these are real, and they’re allowed.',
+    angry: 'That anger is real, and it counts.',
+  }),
+  /** the two subtitle lines per mechanic (assemble_step's line 1 is `first`) */
+  pairs: Object.freeze({
+    assemble_step: ['What you’re feeling is real, and it counts.', 'One small, kind thing for yourself is plenty for now.'],
+    soften_harshness: ['A feeling this heavy deserves gentleness, not a verdict.', 'You can be as kind to yourself as you’d be to a friend.'],
+    separate_one: ['This feeling is real, and it’s taking up a lot of room.', 'There’s still more to you than this one feeling.'],
+  }),
+  /** one small, kind step per kind (assemble_step's pieces, and "Is there one useful action?") */
+  steps: Object.freeze({
+    low: 'Make a warm drink and sit somewhere comfy for a few minutes.',
+    heavy: 'Make a warm drink and sit somewhere comfy for a few minutes.',
+    lonely: 'Send one short message to someone you like, just to say hi.',
+    anxious: 'Put both feet on the floor and breathe out slowly, three times.',
+    guilty: 'Say to yourself what you’d say to a friend who felt this.',
+    tired: 'Pick one thing that can wait until tomorrow, and let it wait.',
+    crying: 'Have a glass of water and wrap up in something soft.',
+    angry: 'Step away for a minute and let your shoulders drop.',
+  }),
+  known: 'What you know is how you feel, and that’s real.',
+  /** while Zuzu prepares it (never "What else could be true?"), and the title over the two lines */
+  waiting: ['I hear you.', 'Let’s be gentle with this one.', 'Take a breath with me.'],
+  waitingLong: ['Zuzu is finding something kind.', 'Still here, taking it gently…'],
+  title: 'Something kind',
+  friend: 'You’d probably tell a friend their feeling makes sense, and to go gently.',
+  /** the mechanics' own lines for a feeling (over MECHANIC_LINES): no "verdict", no "every time", no "lesson" */
+  mechanics: Object.freeze({
+    assemble_step: { hint: 'Here’s one small, kind step, in pieces. Put it together.', done: 'One kind step. That’s all it needs to be.', labels: { step: 'One kind step' } },
+    soften_harshness: {
+      hint: 'That feeling has sharp edges. Stroke it slowly, the way you’d comfort a friend.',
+      hint2: 'Slower. Gentle strokes soothe it.', hint3: 'Stroke slowly round the edge, where it’s sharpest.',
+      assist: 'Soothe it', done: 'Gentler now. The feeling still counts.', labels: { core: 'Still you' },
+    },
+    separate_one: {
+      hint: 'This feeling has spread over everything. Lift it out on its own.',
+      done: 'It’s real. And there’s more to you than this feeling.', labels: { one: 'This feeling', rest: 'The rest of you' },
+    },
+  }),
+  /** what's offered after a feeling's perspective: never "What do you actually know?" or "another explanation" */
+  explore: Object.freeze(['friend', 'action']),
+  exploreAsk: 'Anything that might help?',
+  exploreMore: 'Anything else that might help?',
+});
+
+/** A mechanic's lines for a scene: a feeling's own over the mechanic's (MECHANIC_LINES), else the mechanic's. */
+export function mechanicLines(mechanic, scene = null) {
+  const base = MECHANIC_LINES[mechanic] || {};
+  const own = scene?.feeling ? FEELING.mechanics[mechanic] : null;
+  return own ? { ...base, ...own, labels: { ...(base.labels || {}), ...(own.labels || {}) } } : base;
+}
 
 /** Narration (no speaker), once a visit, when the server is open only to invited testers; Zuzu's own angle follows. */
 export const INVITE = Object.freeze({

@@ -654,7 +654,9 @@ test('soften: a slow straight stroke across the shell softens it as surely as on
 test('a mechanic that stops is never a dead end (pull_apart, then the perspective itself)', () => {
   const src = read('src/beyond/another-angle.js');
   assert.match(src, /catch \(e\) \{ mechFailed\(e\); \}/);
-  assert.match(src, /if \(!mech \|\| mech\.failed\)[\s\S]{0,260}scene\.mechanic = 'pull_apart'[\s\S]{0,120}reveal\(scene, seq, \{ played: false \}\)/);
+  // (pull_apart, or assemble_step for a feeling: a feeling never falls back to a fact/assumption split)
+  assert.match(src, /const fallback = scene\.feeling \? 'assemble_step' : 'pull_apart';/);
+  assert.match(src, /if \(!mech \|\| mech\.failed\)[\s\S]{0,320}scene\.mechanic = fallback[\s\S]{0,120}reveal\(scene, seq, \{ played: false \}\)/);
 });
 
 test('mechanics drive the person’s living Thought Mallow (W2) when the scene hands one in (review r3, polish 1)', async () => {

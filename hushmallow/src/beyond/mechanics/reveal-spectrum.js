@@ -15,7 +15,8 @@ const BINS = 28;
 const LEFT = '#5a4a9e', MID = '#b48cff', RIGHT = '#ffd98a';
 
 export function mount(ctx) {
-  const L = MECHANIC_LINES[id];
+  // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
+  const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;
   const rm = () => ctx.reducedMotion();
   let resolve;

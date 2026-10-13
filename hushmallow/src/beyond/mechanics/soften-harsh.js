@@ -18,7 +18,8 @@ const SPIKES = 14;
 const STEEL = '#8a90bd', ICE = '#d7dcff';
 
 export function mount(ctx) {
-  const L = MECHANIC_LINES[id];
+  // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
+  const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;
   const rm = () => ctx.reducedMotion();
   let resolve;

@@ -23,7 +23,8 @@ const HOLD_S = 0.55;
 const BUD = ['#9fe8ff', '#b9a6ff', '#ffc0e6'];
 
 export function mount(ctx) {
-  const L = MECHANIC_LINES[id];
+  // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
+  const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;
   const rm = () => ctx.reducedMotion();
   let resolve;

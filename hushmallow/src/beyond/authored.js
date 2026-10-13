@@ -14,8 +14,10 @@
 
 import { detectPatterns, splitThought, matchScenarios, buildNextSteps, buildAngles } from '../ultra/reframe-engine.js';
 import { GENERAL } from '../ultra/frameworks.js';
-import { PATTERNS, PATTERN_INTERACTION, PATTERN_TO_AUTHORED, AUTHORED_TO_PATTERN, PATTERN_MALLOWS, mallowFor } from './vocab.js';
-import { AUTHORED_PAIRS, AUTHORED_ALT, GRIEF } from './lines.js';
+import { PATTERNS, PATTERN_INTERACTION, INTERACTION_PATTERN, PATTERN_TO_AUTHORED, AUTHORED_TO_PATTERN, PATTERN_MALLOWS, mallowFor } from './vocab.js';
+import { AUTHORED_PAIRS, AUTHORED_ALT, GRIEF, FEELING } from './lines.js';
+import { bereavement, passedAlone } from './grief.js';
+import { feelingStatement, feelingClause } from './feelings.js';
 
 // strong cues the authored habits don't name (practical problems, fair anger, replaying)
 const CUES = {
@@ -33,31 +35,11 @@ export function fairAnger(text) {
   return CUES.valid_anger.test(String(text ?? '').replace(ANGRY_AT_ME, ' '));
 }
 /**
- * A loss: someone (or a pet) has died. Grief is not a thought to fix, so it never plays a mechanic or a
- * fact/assumption split ("What your mind added: I can't stop crying"); Zuzu says an authored, validating
- * pair instead and keeps support close (griefScene). Never "my phone died", "my boss gives me grief",
- * "my dad nearly died" or "my son passed his test".
+ * A loss (someone, or a pet, has died: grief.js reads only the words a person uses for a death, never
+ * 'passed' alone or "lost my mum's ring"). Grief is not a thought to fix: never a mechanic or a
+ * fact/assumption split; Zuzu answers gently (griefScene) and, with sharing on, the server may answer it.
  */
-const KIN = `(?:mum|mom|mam|mummy|mommy|mother|dad|daddy|father|parents?|step-?(?:dad|mum|mom|father|mother)|grandma|grandmother|grandad|granddad|grandpa|grandfather|grandparents?|nan|nana|nanna|gran|granny|sister|brother|sibling|twin|son|daughter|child|baby|kid|husband|wife|partner|boyfriend|girlfriend|fianc[eé]e?|friend|best friend|bestie|mate|uncle|aunt|auntie|cousin|niece|nephew|godmother|godfather|colleague|teacher|neighbou?r)`;
-const PET = `(?:dog|cat|puppy|kitten|pet|horse|pony|rabbit|bunny|hamster|guinea pig|budgie|parrot|bird|tortoise|ferret)`;
-/** 'passed' as a death ('my dad passed last year'), never 'passed his test' or 'passed me in the corridor'. */
-const PASSED = `passed(?: away| on\\b|(?=\\s*(?:$|[.,!?;:…]))|(?= (?:last|this|recently|suddenly|yesterday|earlier|peacefully|in (?:the night|his sleep|her sleep|their sleep|hospital|january|february|march|april|may|june|july|august|september|october|november|december|\\d)|a (?:week|month|year|few|couple)|(?:two|three|four|five|six|several|a few) (?:days|weeks|months|years)|and\\b|when\\b|before\\b)))`;
-const LOSS = [
-  new RegExp(`\\b(?:my|our|his|her|their) (?:(?:best|dear|beloved|little|big|old|older|younger|baby|twin|late|lovely) )?(?:${KIN}|${PET})s?(?:['’]s (?:${KIN}|${PET}))? (?:(?:has|had|have|just|suddenly|finally|recently|sadly) )*(?:died|${PASSED}|is dead|was killed|got killed|was put down|was put to sleep|had to be put down)`, 'iu'),
-  new RegExp(`\\b(?:since|after|when|before|until) (?:he|she|they|my (?:${KIN}|${PET})) (?:died|${PASSED})`, 'iu'),
-  new RegExp(`\\b(?:he|she|they) died (?:last|this|on|in|a|two|three|four|five|six|several|few|over|yesterday|recently|suddenly)\\b`, 'iu'),
-  new RegExp(`\\blost my (?:(?:best|dear|little|big|old|baby|twin|lovely) )?${KIN}\\b(?! (?:in the|at the|on the)\\b)`, 'iu'),
-  new RegExp(`\\b(?:my|our|his|her|their) (?:${KIN}|${PET})['’]s (?:death|passing)\\b`, 'iu'),
-  new RegExp(`\\b(?:my|our|his|her|their) ${PET} (?:was |were |got |being |had to be )?put (?:down|to sleep)\\b`, 'iu'),
-];
-const GRIEVING = /\b(?:passed away|funeral|bereave\w*|grieving|grief|in mourning|mourning)\b/iu;
-const NOT_A_LOSS = /\b(?:give|gives|giving|gave|getting|get|got) (?:me|us|him|her|them|you) (?:so much |a lot of |some |such )?grief\b|\bgood grief\b|\b(?:nearly|almost|could have|could['’]ve|would have|would['’]ve|might have|didn['’]?t|did not|never|haven['’]?t|has not|hasn['’]?t) (?:died|passed)\b/giu;
-/** 'loss' (someone or a pet died: "Missing them…"), 'grief' (grieving, a funeral), or null. */
-export function bereavement(text) {
-  const t = String(text ?? '').replace(NOT_A_LOSS, ' ');
-  if (LOSS.some((re) => re.test(t))) return 'loss';
-  return GRIEVING.test(t) ? 'grief' : null;
-}
+export { bereavement };
 const EMOTION_DEFAULT = {
   anger: 'valid_anger', frustration: 'valid_anger', resentment: 'valid_anger', irritation: 'valid_anger',
   anxiety: 'catastrophising', worry: 'catastrophising', fear: 'catastrophising', dread: 'catastrophising',
@@ -164,6 +146,8 @@ function split(text) {
   try { pieces = splitThought(text); } catch { pieces = []; }
   // a verdict on themselves ("I’m a horrible mother") is never "what happened": it is what the mind added
   pieces = pieces.map((p) => (p.guess !== 'interpretation' && HARSH.test(String(p.text || '')) ? { ...p, guess: 'interpretation' } : p));
+  // a feeling of their own ("I feel empty", "I can’t stop crying") is what is so, never what the mind added
+  pieces = pieces.map((p) => (feelingClause(p.text) && !HARSH.test(String(p.text || '')) ? { ...p, guess: 'fact', feeling: true } : p));
   const factP = pieces.find((p) => p.guess === 'fact') || (pieces.length > 1 ? pieces.find((p) => p.guess === 'unsure') : null);
   const lastP = pieces.length > 1 ? pieces[pieces.length - 1] : null;
   const guessP = pieces.find((p) => p.guess === 'interpretation' && p !== factP && readsAsGuess(p.text)) || (lastP && lastP !== factP && readsAsGuess(lastP.text) ? lastP : null);
@@ -180,6 +164,7 @@ function split(text) {
 const SELF_NOW = /^(?:(?:and|but|so|now|still) )?(?:i|i['’]ve|i['’]m|i am|i have|i had|i was|i feel|i felt|i keep|i can['’]?t|i cannot|i don['’]?t|i didn['’]?t|i haven['’]?t|i hadn['’]?t|i wasn['’]?t|i still|i just|i've)\b/iu;
 function readsAsGuess(piece) {
   const p = String(piece || '');
+  if (feelingClause(p) && !HARSH.test(p)) return false;
   if (!SELF_NOW.test(p)) return true;
   return MINDY.test(p) || FUTURE.test(p) || EXTREME.test(p) || HARSH.test(p);
 }
@@ -206,6 +191,9 @@ const ANXIOUS = new Set(['anxiety', 'worry', 'fear', 'dread', 'panic', 'stress',
 
 /** Candidate patterns for this text, most fitting first (deterministic). */
 export function candidatePatterns(text, { emotion = null, hint = null, scenario = null } = {}) {
+  // a feeling said plainly: only the mechanics that acknowledge it (never a fact/assumption split)
+  const feel = feelingOf(text);
+  if (feel) return feelingOrder(feel.kind, hint).map((m) => INTERACTION_PATTERN[m]);
   const out = [];
   const add = (p) => { if (p && PATTERNS.includes(p) && !out.includes(p)) out.push(p); };
   let found = [];
@@ -327,6 +315,10 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   const t = String(text ?? '');
   // someone has died: never a mechanic or a fact/assumption split (the orchestrator plays griefScene gently)
   if (bereavement(t)) return griefScene(t, { emotion });
+  // a feeling said plainly ("I feel empty", "I feel sad since my sister moved away"): acknowledged, with one
+  // small kind step (feelingScene), never a reading of what happened
+  const feel = feelingOf(t);
+  if (feel) return feelingScene(t, feel.kind, { emotion, exclude, hint });
   let scenario = GENERAL;
   // a situation is trusted only on a real match (two keywords, or a phrase), never on one stray word
   try { const m = matchScenarios(t, { limit: 1 })[0]; scenario = m && m.score >= 2 ? m.scenario : GENERAL; } catch { scenario = GENERAL; }
@@ -465,6 +457,9 @@ const bare = (q) => String(q || '').replace(/[.!?…]+$/u, '').trim();
 function ownFactPair(fact, guess, allGuess, t) {
   const f = bare(fact), g = bare(guess), all = bare(t);
   const fits = (q) => !!q && q.length <= LINE_QUOTE;
+  // a feeling is real, never "what happened" to be read one way or another; with nothing guessed beside it,
+  // another scene comes first
+  if (feelingClause(f)) return fits(f) && fits(g) && !sameWords(f, g) ? [`“${f}” is real.`, `“${g}” is one way to read it.`] : null;
   if (fits(f) && fits(g) && !sameWords(f, g)) return [`“${f}” is what happened.`, `“${g}” is one way to read it.`];
   if (allGuess && fits(all)) return [`“${all}” is one way to read what happened.`, 'What you know for sure is probably smaller than this thought.'];
   if (fits(g) && !sameWords(g, f)) return ['What happened is one thing.', `“${g}” is one way to read it.`];
@@ -506,6 +501,98 @@ export function griefScene(text, { emotion = null } = {}) {
     known_fact: '', possible_assumption: '', alternative_angle: '', practical_next_step: '',
     subtitle_line_1: l1, subtitle_line_2: l2, safety_status: 'ok',
     authored_pattern: null, angle_id: null, alt_id: null, scenario_id: null,
+  };
+}
+
+/**
+ * A feeling of their own, said plainly: the whole message is feelings ("I feel empty", "I can’t stop
+ * crying", feelings.js), or feelings and what happened, with nothing read into it ("I feel sad since my
+ * sister moved away", "My sister moved away and I feel sad"): no one's mind read, no verdict, nothing feared
+ * ahead, no habit the engine names, no situation the library knows better. → { kind } or null.
+ */
+export function feelingOf(text) {
+  const t = String(text ?? '').trim();
+  if (!t || fairAnger(t) || HARSH.test(t)) return null;
+  const plain = feelingStatement(t);
+  if (plain) return plain;
+  // 'passed' alone after a person, with no exam or pride in the words: answered gently, never as a death and
+  // never as a game ("“My dad passed last year” is what happened" would make light of a death)
+  if (passedAlone(t)) return { kind: 'heavy' };
+  let pieces = [];
+  try { pieces = splitThought(t); } catch { pieces = []; }
+  const feels = pieces.filter((p) => feelingClause(p.text));
+  if (!feels.length || pieces.some((p) => !feelingClause(p.text) && p.guess === 'interpretation')) return null;
+  const said = t.replace(/\b(?:tired|sick|fed up|done) (?:of|with) (?:everything|it all)\b/giu, ' ');
+  if (MINDY.test(said) || FUTURE.test(said) || EXTREME.test(said) || BLAME.test(said) || CUES.rumination.test(said) || CUES.practical_problem.test(said)) return null;
+  try { if (detectPatterns(t).length) return null; } catch { return null; }
+  try { const m = matchScenarios(t, { limit: 1 })[0]; if (m && m.score >= 2) return null; } catch { /* none */ }
+  return { kind: feelingClause(feels[0].text) || 'low' };
+}
+
+/**
+ * The mechanics a feeling plays, in the order "Show me another angle" walks (each acknowledges the feeling:
+ * a small kind step, a gentle stroke, the feeling lifted out from the rest of them). Never pull_apart, never
+ * a reading of what happened.
+ */
+export const FEELING_ORDER = Object.freeze({
+  low: ['assemble_step', 'soften_harshness', 'separate_one'],
+  heavy: ['assemble_step', 'soften_harshness', 'separate_one'],
+  lonely: ['assemble_step', 'soften_harshness', 'separate_one'],
+  crying: ['assemble_step', 'soften_harshness', 'separate_one'],
+  anxious: ['assemble_step', 'separate_one', 'soften_harshness'],
+  tired: ['assemble_step', 'separate_one', 'soften_harshness'],
+  guilty: ['soften_harshness', 'assemble_step', 'separate_one'],
+  angry: ['assemble_step', 'soften_harshness', 'separate_one'],
+});
+function feelingOrder(kind, hint = null) {
+  const order = [...(FEELING_ORDER[kind] || FEELING_ORDER.low)];
+  // the server's hint leads only when it is one of these (its pull_apart never is)
+  const h = hint ? PATTERN_INTERACTION[hint] : null;
+  if (h && order.includes(h)) { order.splice(order.indexOf(h), 1); order.unshift(h); }
+  return order;
+}
+/** Lines that would frame a feeling as a guess about what happened, or send it to be checked. */
+const FRAMES_A_FEELING = /what (?:your|the) mind (?:added|adds|might be adding)|one way to read|is what happened|the part that (?:actually )?happened|check (?:one|a|the) facts?|instead of guessing|what do you actually know|what did you actually see/i;
+/** A line that would read what happened as a guess or send it to be checked (never said over a feeling or a loss). */
+export const framesAsGuess = (line) => FRAMES_A_FEELING.test(String(line || ''));
+/** The mechanics a feeling may play, whoever chose them (fair anger's own line too, for an angry feeling). */
+const FEELING_PLAYS = new Set(['assemble_step', 'soften_harshness', 'separate_one']);
+/**
+ * A server scene for a feeling said plainly (feelingOf): its lines play when they never frame the feeling as
+ * a guess, but on one of the feeling's own mechanics (never pull_apart's "What your mind added" or a first
+ * guess), with one small step; lines that would fact-check it give way to the authored feeling scene.
+ * Any other scene or words: unchanged.
+ */
+export function feelingGuard(scene, text, { emotion = null, exclude = [] } = {}) {
+  if (!scene || scene.source !== 'server') return scene;
+  const feel = feelingOf(text);
+  if (!feel) return scene;
+  if ([scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step].some((l) => FRAMES_A_FEELING.test(String(l || '')))) {
+    return feelingScene(text, feel.kind, { emotion, exclude });
+  }
+  const plays = FEELING_PLAYS.has(scene.mechanic) || (feel.kind === 'angry' && scene.mechanic === 'find_boundary');
+  // (only the mechanic the client plays changes: the pattern and interaction stay the server's for its records)
+  return { ...scene, feeling: feel.kind, mechanic: plays ? scene.mechanic : 'assemble_step', practical_next_step: scene.practical_next_step || FEELING.steps[feel.kind] || FEELING.steps.low };
+}
+
+/** A feeling's scene (feelingStatement): in the server's shape, with `feeling` set to its kind. */
+export function feelingScene(text, kind = 'low', { emotion = null, exclude = [], hint = null } = {}) {
+  const order = feelingOrder(kind, hint);
+  const fresh = order.find((m) => !exclude.includes(INTERACTION_PATTERN[m]));
+  const mechanic = fresh || order[0];
+  const pair = FEELING.pairs[mechanic];
+  const l1 = mechanic === 'assemble_step' ? (FEELING.first[kind] || pair[0]) : pair[0];
+  return {
+    source: 'authored', feeling: kind,
+    reasoning_pattern: INTERACTION_PATTERN[mechanic], interaction_type: mechanic, mechanic,
+    // a gentle Mallow for low, lonely and tearful feelings; Zuzu for the rest (nobody bouncy)
+    mallow_character: ['low', 'lonely', 'crying', 'heavy'].includes(kind) ? 'blubi' : 'zuzu',
+    emotion: emotion || null, situation_type: null,
+    known_fact: FEELING.known, possible_assumption: '', alternative_angle: '',
+    practical_next_step: FEELING.steps[kind] || FEELING.steps.low,
+    subtitle_line_1: l1, subtitle_line_2: pair[1], safety_status: 'ok',
+    authored_pattern: null, angle_id: null, alt_id: null, scenario_id: null,
+    ...(fresh ? {} : { exhausted: true }),
   };
 }
 
@@ -565,6 +652,8 @@ export function sceneParts(text, scene = {}) {
   if (!harsh) { try { const big = detectPatterns(t).find((f) => f.pattern.id === 'big-label'); harsh = big ? wholeLabel(t, big.matches[0].text) : ''; } catch { /* none */ } }
   // no harsh word of their own: the scene's (a server's assumption), or their words when short, else an authored name for it
   if (!harsh) harsh = (server && firstWhole(scene.possible_assumption, 70)) || (g0 && g0.length <= 48 ? g0 : '') || (t.length <= 48 ? t : '') || HARSH_NAME;
+  // a feeling's plate (soften) carries the feeling as they said it, never a name for a verdict
+  if (scene?.feeling) harsh = excerpt(t, WORDS_MAX);
 
   // the heaviest weight: the blame as they put it ("it's my fault"), else the part their mind added
   const bm = BLAME_PHRASE.exec(t);

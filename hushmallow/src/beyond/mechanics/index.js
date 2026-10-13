@@ -5,7 +5,8 @@
 //                  assist(), avoid() → rects, done: Promise<{moves, ms, …}>,
 //                  settled (getter), destroy() }
 //   ctx: { g (2D context, CSS px), area() → {x, y, w, h}, from: {x, y, r},
-//          scene, parts: {excerpt, fact, guess, harsh, steps}, text, emotion,
+//          scene, parts: {excerpt, fact, guess, harsh, steps}, lines (lines.js mechanicLines: the
+//          scene's own, a feeling's over the mechanic's), text, emotion,
 //          tags (kit.makeTags), reducedMotion(), lowStim(), hint(line),
 //          choose(prompt, options) → Promise<value>, haptic(kind), fx(name, opts),
 //          progress(0..1), kick() }
