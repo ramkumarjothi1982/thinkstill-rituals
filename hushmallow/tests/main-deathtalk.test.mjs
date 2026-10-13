@@ -1,0 +1,33 @@
+// The main screen's Tell reads death and loss talk too (input-overlay readSafety with lossAware):
+// a death is never made into a Thought Mallow or a playful world. Another Angle keeps its own grief path.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { checkText } from '../src/engine/safety.js';
+import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
+
+const m = { checkText };
+await loadGrief();
+const level = (t, aware = true) => readSafety(m, t, aware).level;
+
+test('death and loss talk is concern on the main screen, never none', () => {
+  for (const t of ['My dad died last week', 'my dads dead and i miss him', 'We lost Dad in March.', 'my cat was put to sleep today',
+    'My son died in Fortnite', 'my nan has dementia and doesnt know who i am', 'the funeral is on friday']) assert.equal(level(t), 'concern', t);
+});
+test('a wish to follow the one who died is care', () => {
+  for (const t of ['My nan died and I want to be with her', 'my mum died and i just want to join her']) assert.equal(level(t), 'care', t);
+});
+test('it never lowers what the safety check found, and ordinary words stay ordinary', () => {
+  assert.equal(level('I want to die'), 'crisis');
+  assert.equal(level('he finally hit me'), 'care');
+  for (const t of ['my phone died', 'My boss embarrassed me in front of everyone today', 'I failed my exam and feel stupid']) assert.equal(level(t), 'none', t);
+});
+test('without lossAware (Another Angle) the reading is exactly checkText', () => {
+  for (const t of ['My dad died last week', 'My nan died and I want to be with her', 'I want to die']) assert.deepEqual(readSafety(m, t, false), checkText(t));
+});
+test('the Hushfold opens its Tell with lossAware, and the overlay reads it on typing, on Send and on close', () => {
+  const hf = readFileSync(new URL('../src/app/scenes/hushfold.js', import.meta.url), 'utf8');
+  const ov = readFileSync(new URL('../src/hushfold/input-overlay.js', import.meta.url), 'utf8');
+  assert.match(hf, /lossAware: true/);
+  assert.equal((ov.match(/(?<!function )readSafety\((?:m|modsNow), (?:t|ta\.value), lossAware\)/g) || []).length, 3);
+});

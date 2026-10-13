@@ -1351,6 +1351,8 @@ export default function hushfold(app, params = {}) {
       emotion: S.emotion || again?.emotion || null, intention: S.intention || again?.intention || null, hasPlan: ent.has('paid'), text: again?.text || '',
       // something heavy earlier in this visit: the Support chip is there from the start, and no plan offer
       heavy: gentle(),
+      // a death or a loss in the words is never made into a Thought Mallow or a playful world: the gentle path
+      lossAware: true,
       face: (f) => stageMallow.setEmotion(f, 0.6, { quiet: true }),
       onLayout: () => layout(),
       // the level is the scene's the moment it is seen, whether or not anything is sent
