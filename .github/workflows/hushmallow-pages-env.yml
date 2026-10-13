@@ -1,0 +1,87 @@
+# Sets the two public sign-in values on the Cloudflare Pages project
+# "hushmallow" for both Production and Preview, then reads them back. Run on
+# request (edit hushmallow/tools/infra/PAGES_ENV on a work branch).
+#
+# Only SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are touched. Both are public
+# by design (Supabase's publishable key is meant to ship in the browser; row
+# level security protects the data). No secret key, service-role key or
+# database password is ever set here. Every other project setting (build,
+# domains, branches, other variables, bindings) is left as it is, and the job
+# fails if anything else in the deployment configs changed.
+name: hushmallow pages env
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['hushmallow/tools/infra/PAGES_ENV']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hushmallow-pages-env
+  cancel-in-progress: false
+
+env:
+  PROJECT: hushmallow
+  # project hushmallow1 (Sydney, ref igbxbfuaoybfzsroxuln)
+  SUPABASE_URL: https://igbxbfuaoybfzsroxuln.supabase.co
+  SUPABASE_PUBLISHABLE_KEY: sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw
+
+jobs:
+  set:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Refuse anything that is not the Sydney project's public values
+        run: |
+          set -euo pipefail
+          [ "$SUPABASE_URL" = "https://igbxbfuaoybfzsroxuln.supabase.co" ] || { echo "::error::wrong Supabase project"; exit 1; }
+          case "$SUPABASE_PUBLISHABLE_KEY" in
+            sb_publishable_*) ;;
+            *) echo "::error::only a publishable key may be set here"; exit 1 ;;
+          esac
+
+      - name: Set and verify (Production + Preview)
+        env:
+          CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          tok="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '[:space:]')"; acct="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '[:space:]')"
+          [ -n "$tok" ] && [ -n "$acct" ] || { echo "::error::Cloudflare secrets missing"; exit 1; }
+          echo "::add-mask::$tok"; echo "::add-mask::$acct"
+          base="https://api.cloudflare.com/client/v4/accounts/$acct/pages/projects/$PROJECT"
+          get() { curl -sS -m 30 -H "Authorization: Bearer $tok" "$base"; }
+          # everything in deployment_configs except the two variables this job owns
+          others() { jq -S '.result.deployment_configs | map_values(.env_vars |= ((. // {}) | del(.SUPABASE_URL, .SUPABASE_PUBLISHABLE_KEY)))'; }
+
+          get > before.json
+          jq -e '.success == true' before.json >/dev/null || { jq -c '{success, errors}' before.json; echo "::error::could not read the project"; exit 1; }
+          echo "Before: production vars $(jq -c '.result.deployment_configs.production.env_vars // {} | keys' before.json), preview vars $(jq -c '.result.deployment_configs.preview.env_vars // {} | keys' before.json)"
+          others < before.json > before-others.json
+
+          body="$(jq -n --arg u "$SUPABASE_URL" --arg k "$SUPABASE_PUBLISHABLE_KEY" '
+            { SUPABASE_URL: { type: "plain_text", value: $u },
+              SUPABASE_PUBLISHABLE_KEY: { type: "plain_text", value: $k } } as $v
+            | { deployment_configs: { production: { env_vars: $v }, preview: { env_vars: $v } } }')"
+          curl -sS -m 30 -X PATCH -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' --data "$body" "$base" > patch.json
+          jq -e '.success == true' patch.json >/dev/null || { jq -c '{success, errors}' patch.json; echo "::error::Cloudflare refused the update (the token may lack Pages edit access)"; exit 1; }
+
+          get > after.json
+          for envname in production preview; do
+            u="$(jq -r --arg e "$envname" '.result.deployment_configs[$e].env_vars.SUPABASE_URL.value // empty' after.json)"
+            k="$(jq -r --arg e "$envname" '.result.deployment_configs[$e].env_vars.SUPABASE_PUBLISHABLE_KEY.value // empty' after.json)"
+            [ "$u" = "$SUPABASE_URL" ] || { echo "::error::$envname SUPABASE_URL not set"; exit 1; }
+            [ "$k" = "$SUPABASE_PUBLISHABLE_KEY" ] || { echo "::error::$envname SUPABASE_PUBLISHABLE_KEY not set"; exit 1; }
+            echo "$envname: SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY set"
+          done
+          others < after.json > after-others.json
+          if ! diff -u before-others.json after-others.json; then
+            echo "::error::other deployment settings changed; review the diff above"; exit 1
+          fi
+          echo "No other deployment setting changed."
+          jq -c '{name: .result.name, production_branch: .result.production_branch, domains: .result.domains, build: .result.build_config}' after.json

@@ -17,6 +17,8 @@ The owner approved the consent wording and asked for Another Angle to go live wi
 4. Delete-data sheet:
    > Anthropic's copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can't delete it sooner from here.
 
+The app shows these lines with typographic apostrophes (’) in place of the straight ones above; the words are the same.
+
 Line 1 stays true only while the Anthropic organisation is not enrolled in the Development Partner Program and has no retention override; the owner should confirm this once in the Anthropic Console. "AI" and the provider's name appear only on the consent card, the privacy sheet and the delete sheet (brand language rule).
 
 **Plans page sentence** (replaces "nothing leaves this phone" for Beyond):
