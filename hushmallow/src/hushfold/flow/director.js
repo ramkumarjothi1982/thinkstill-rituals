@@ -316,7 +316,10 @@ export function createHushflow(opts = {}) {
       now: () => t,
       font: (px, weight) => fontPx(px, weight),
       fontsReady: (groups, ms) => fontsReady(groups, ms),
-      say(lines, o = {}) { if (!subtitles?.say || paused || phase === 'finished') return Promise.resolve(); return Promise.resolve(subtitles.say(lines, { who: entry.mallow?.id, world: entry.id, ...o })).catch(() => {}); },
+      // (only a world on stage speaks: one melting away — its intro, a line on a timer — or one gone, or one prepared but
+      // not yet melting in, says nothing; its host is leaving or not there, and its line would come under its name over
+      // the next world's host)
+      say(lines, o = {}) { if (!subtitles?.say || paused || phase === 'finished' || !speaks(inst)) return Promise.resolve(); return Promise.resolve(subtitles.say(lines, { who: entry.mallow?.id, world: entry.id, ...o })).catch(() => {}); },
       discover: (id, evidence) => discover(inst, id, evidence),
       /**
        * While this world melts in: how far the melt has reached at a client point (0 = still the
@@ -637,10 +640,13 @@ export function createHushflow(opts = {}) {
   // ------------------------------------------------------- discovery --
   /** Is this world the one on stage (not melting away; or the one melting in)? */
   const onStage = (inst) => !!inst && ((inst === cur && !(melt && melt.from === inst)) || (!!melt && melt.to === inst));
+  /** May this world speak (a line, a discovery)? On stage — or melting in, from its enter() on (the melt begins with it). */
+  const speaks = (inst) => onStage(inst) || (!!inst && inst === inc && inst.entered);
   function discover(inst, id, evidence = {}) {
     if (!session || destroyed || (inst !== cur && inst !== inc)) return false;
-    // nothing is found under the veil or after the end
-    if (paused || phase === 'finished') return false;
+    // nothing is found under the veil or after the end — nor in a world melting away (its line would come under its
+    // host's name over the next world's; its offer could never follow)
+    if (paused || phase === 'finished' || !speaks(inst)) return false;
     if (session.discoveries.has(id)) return false;
     session.discoveries.add(id);
     const def = inst.entry.discoveries?.[id] || {};
