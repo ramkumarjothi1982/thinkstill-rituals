@@ -1405,7 +1405,7 @@ export default function hushfold(app, params = {}) {
     layout();
   }
 
-  async function afterTell({ text, emotion, intention, safety, input }) {
+  async function afterTell({ text, emotion, intention, safety, input, reading = null }) {
     S.pendingResume = false;
     // safety comes first, before anything else is decided (with or without a plan)
     noteSafety(safety);
@@ -1452,10 +1452,16 @@ export default function hushfold(app, params = {}) {
       stageMallow.setStage('curious', { quiet: true });
       if (!emotion) spoken = say(lines.pick(mallowId, 'thought'));
     }
-    const go = () => startFlow({ emotion: emotion || S.emotion, intention: intention || S.intention, input, safety });
+    // no feeling tapped: a confident reading of the words (the overlay's own highlighted suggestion) still steers the
+    // world — "I'm so angry…" reaches the Static Storm — without choosing the feeling for the person: no chip is pressed
+    // for them, no feeling is acknowledged that they did not pick, and it is never kept as theirs (S.emotion)
+    const heard = !emotion && !gentle() ? await wordsFeeling(reading) : null;
+    if (S.left) return;
+    const steer = emotion || heard || S.emotion;
+    const go = () => startFlow({ emotion: steer, intention: intention || S.intention, input, safety });
     if (worldMode) { go(); return; }
     // the world loads during the beat (its director, code and host art), so it is ready when the beat ends
-    warmWorld({ emotion: emotion || S.emotion, intention: intention || S.intention });
+    warmWorld({ emotion: steer, intention: intention || S.intention });
     // a beat with the Thought Mallow in the Hushfold (the line read to the end) before the first world melts in
     if (text) {
       const minBeat = new Promise((r) => later(r, prefs.reducedMotion() ? 1200 : 2400));
@@ -1465,6 +1471,14 @@ export default function hushfold(app, params = {}) {
     } else await go();
   }
 
+  /**
+   * The feeling the words themselves suggest, confidently (interpret.js suggestedFeelings: the chip the overlay
+   * highlights), or null: nothing confident, or words with a safety cue. Only ever steers a world's choice.
+   */
+  async function wordsFeeling(reading) {
+    if (!reading?.emotions?.length) return null;
+    try { const m = await import('../../engine/interpret.js'); return m.suggestedFeelings?.(reading)?.[0] || null; } catch { return null; }
+  }
   /** The world a gentle choice plays, named for what it is (a calm one first, once it is playable). */
   async function gentleWorld() {
     try {

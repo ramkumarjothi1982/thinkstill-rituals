@@ -102,3 +102,26 @@ test('subtitles: the control pill steps out with the line in the gap between two
   assert.match(css, /\.hf-subctl\.gap \{ opacity: 0 !important;[^}]*pointer-events: none !important;/);
   assert.doesNotMatch(css.match(/\.hf-subctl\.gap \{[^}]*\}/)[0], /visibility/, 'it keeps its focus (a held line\'s Continue)');
 });
+
+test('first world: a confident reading of the words steers it when no feeling was tapped (never chosen for the person)', async () => {
+  const { interpret, suggestedFeelings } = await import('../src/engine/interpret.js');
+  const { flowEmotion } = await import('../src/hushfold/lines.js');
+  const { registry } = await import('../src/hushfold/flow/registry.js');
+  const { getEmotion } = await import('../src/data/emotions.js');
+  const world = (t) => { const s = suggestedFeelings(interpret(t))[0] || null; const fe = s ? flowEmotion(s, getEmotion(s)?.family) : null; return registry.select({ emotion: fe, intention: null, gentle: false, favourites: [] })?.id; };
+  assert.equal(world('I\'m so angry my boss ignored me again'), 'static-storm', 'an angry Tell reaches Glitzi\'s storm');
+  assert.equal(world('I am furious at my sister'), 'static-storm');
+  assert.equal(world('I\'m worried about tomorrow'), 'luminous-ocean');
+  assert.equal(registry.select({ emotion: null })?.id, 'luminous-ocean', 'no reading: as before');
+  const scene = read('src/app/scenes/hushfold.js');
+  const after = scene.slice(scene.indexOf('async function afterTell('), scene.indexOf('async function gentleWorld('));
+  // after the safety branches (care, crisis and loss take their own paths) and only when nothing was tapped
+  assert.ok(after.indexOf('const heard = !emotion && !gentle() ? await wordsFeeling(reading) : null;') > after.indexOf("if (!ent.has('paid'))"));
+  assert.match(after, /const steer = emotion \|\| heard \|\| S\.emotion;/);
+  assert.match(after, /startFlow\(\{ emotion: steer,/);
+  assert.match(after, /warmWorld\(\{ emotion: steer,/);
+  // the reading is never made the person's feeling: no setFeeling, no acknowledgement, no S.emotion
+  assert.doesNotMatch(after, /setFeeling\(heard|S\.emotion = heard|emotion: heard/);
+  assert.match(after, /if \(emotion\) spoken = say\(lines\.pick\(mallowId, 'ack'/);
+  assert.match(scene, /return m\.suggestedFeelings\?\.\(reading\)\?\.\[0\] \|\| null;/);
+});
