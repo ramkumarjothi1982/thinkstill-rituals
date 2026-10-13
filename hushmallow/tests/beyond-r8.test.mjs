@@ -110,12 +110,10 @@ test('r8.1: a server scene that frames words without a marker plays on a kind me
       assert.ok(!framed(s), `${t} (${name}) → ${s.mechanic}: ${s.subtitle_line_1} | ${s.subtitle_line_2}`);
       assert.ok(!FRAMING_MECHANICS.has(s.mechanic), `${t} (${name}) → ${s.mechanic}`);
       assert.equal(s.possible_assumption || '', '', `${t} (${name})`);
-      // a framing stub's lines never play: the authored kind (or feeling) lines do
-      if (name !== 'shrinkKind') assert.equal(s.source, 'authored', `${t} (${name})`);
+      // a framing stub's lines never play: the authored kind (or feeling) lines do (review r9: even kind lines on a
+      // framing reading or mechanic, shrinkKind, and every realistic paraphrase, STUBS.realistic*)
+      assert.equal(s.source, 'authored', `${t} (${name})`);
     }
-    // a server scene with kind lines on a framing mechanic keeps its lines, as for a feeling, on a kind step
-    const k = played(t, STUBS.shrinkKind).scene;
-    assert.ok(k.feeling && !FRAMING_MECHANICS.has(k.mechanic) && !framed(k), `${t} → ${k.mechanic}`);
   }
 });
 

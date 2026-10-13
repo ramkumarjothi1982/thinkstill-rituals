@@ -22,7 +22,8 @@ export function testPurchasesAllowed(loc = globalThis.location) {
 // Accept on its consent card. Switched on 12 Oct 2026 with the owner's
 // approval (docs/integration/DECISIONS.md): the production Cloudflare Worker,
 // deployed from main by .github/workflows/another-angle.yml, which accepts
-// only the app's own origin. Whenever it can't be reached (before its first
+// only the app's own origins (wrangler.toml ALLOWED_ORIGINS: app.hushmallow.com,
+// hushmallow.pages.dev, ramkumarjothi1982.github.io; docs/FRAMER.md). Whenever it can't be reached (before its first
 // deploy, offline, a timeout), Zuzu's authored angles play on the phone after
 // the app's own safety check. Development: ?angleDev=<port> on localhost
 // (src/beyond/endpoint.js). To switch the server off, empty both lines (the

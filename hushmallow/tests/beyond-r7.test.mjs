@@ -197,11 +197,15 @@ test('r7.C: a server scene beside a harm word never plays a framing mechanic, it
     assert.equal(framed.source, 'authored', text);
     assert.ok(KIND_STEPS.has(framed.mechanic) && framed.feeling, text);
     for (const line of said(framed)) assert.doesNotMatch(line, FRAMING, `${text} → ${line}`);
-    // its own kind lines may stay, on a kind step, with nothing guessed and no "another explanation"
-    const moved = harmGuard(server({ mechanic: 'open_interpretations', known_fact: '', possible_assumption: '', alternative_angle: '', subtitle_line_1: 'That sounds like a rough morning.', subtitle_line_2: 'One small thing could help.' }), text);
+    // (review r9) a framing reading or mechanic never says its own lines, however kind they are
+    const kindLines = { known_fact: '', possible_assumption: '', alternative_angle: '', subtitle_line_1: 'That sounds like a rough morning.', subtitle_line_2: 'One small thing could help.' };
+    assert.equal(harmGuard(server({ mechanic: 'open_interpretations', ...kindLines }), text).source, 'authored', text);
+    // a reading that keeps them (replaying, a practical problem): its own kind lines may stay, on a kind step, with
+    // nothing guessed and no "another explanation"
+    const moved = harmGuard(server({ reasoning_pattern: 'rumination', interaction_type: 'let_loop_drift', mechanic: 'let_loop_drift', ...kindLines }), text);
     assert.equal(moved.source, 'server', text);
     assert.equal(moved.mechanic, 'assemble_step', text);
-    const kind = harmGuard(server({ mechanic: 'soften_harshness', known_fact: '', possible_assumption: '', alternative_angle: '', subtitle_line_1: 'That sounds like a rough morning.', subtitle_line_2: 'One small thing could help.' }), text);
+    const kind = harmGuard(server({ reasoning_pattern: 'practical_problem', interaction_type: 'soften_harshness', mechanic: 'soften_harshness', ...kindLines }), text);
     assert.equal(kind.source, 'server', text);
     assert.equal(kind.mechanic, 'soften_harshness', text);
     assert.ok(kind.feeling && kind.guarded, text);

@@ -19,7 +19,7 @@ import { AUTHORED_PAIRS, AUTHORED_ALT, ANGER_PAIRS, GRIEF, FEELING, KIND, EVENT_
 import { deathTalk } from './grief.js';
 import { bagWords, gentleRoute, framingAllowed, FRAMING_MECHANICS, framesAsGuess } from './backstop.js';
 import { feelingStatement, feelingClause, feelingOpens } from './feelings.js';
-import { HARSH, clauses, markerKinds, guessClause } from './markers.js';
+import { HARSH, ownLabel, clauses, markerKinds, guessClause } from './markers.js';
 
 // strong cues the authored habits don't name (practical problems, fair anger, replaying)
 const CUES = {
@@ -87,8 +87,12 @@ const STEP_KINDS_FOR = {
   mind_reading: ['check', 'talk', 'wait'], fact_vs_assumption: ['check', 'wait', 'talk'], overgeneralisation: ['check', 'act'],
   all_or_nothing: ['check', 'act'],
 };
-/** Patterns whose habit angle (quoting the words) beats the situation's own angle. */
-const KIT_FIRST = new Set(['self_criticism', 'all_or_nothing', 'overgeneralisation', 'catastrophising']);
+/**
+ * Patterns whose habit angle (quoting the words) beats the situation's own angle (mind reading too, review r9: a
+ * situation's "They might be pointing out fixes…" invents what nobody said; "“…” is a guess about what's going on
+ * inside someone else" quotes the clause they typed).
+ */
+const KIT_FIRST = new Set(['self_criticism', 'all_or_nothing', 'overgeneralisation', 'catastrophising', 'mind_reading']);
 /** Situations about one's own slip; never used when someone else did the harm. */
 const SELF_CAUSED = new Set(['awkward-moment', 'mistake-judged', 'past-regret']);
 /** Situations whose boundary steps fit fair anger. */
@@ -232,7 +236,7 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
   // everywhere in ordinary speech: always/never only counts when it is the subject: "Nobody likes me")
   for (const f of found) if (f.pattern.id !== 'always-never') maybe(AUTHORED_TO_PATTERN[f.pattern.id]);
   // a harsh label of their own the engine's list doesn't name ("I’m a horrible mother") is that habit too
-  if (HARSH.test(text)) maybe('self_criticism');
+  if (ownLabel(text)) maybe('self_criticism');
   if (CUES.practical_problem.test(text)) add('practical_problem');
   if (strong) add('overgeneralisation');
   if (scenario && scenario !== GENERAL) for (const id of scenario.likelyPatterns || []) maybe(AUTHORED_TO_PATTERN[id]);
@@ -258,7 +262,7 @@ function angerOrder(text, hint = null) {
   if (CUES.rumination.test(text)) out.push('rumination');
   // (only a clause with a marker of its own reads into the wrong: "and now everyone thinks I'm useless")
   if (guess && M.has('mind') && OTHERS.test(guess)) out.push('mind_reading');
-  if (guess && M.size && !HARSH.test(guess)) out.push('fact_vs_assumption');
+  if (guess && M.size && !ownLabel(guess)) out.push('fact_vs_assumption');
   if (M.has('label') || M.has('should')) out.push('self_criticism');
   out.push('personalisation', 'practical_problem');
   if (hint && out.includes(hint)) { out.splice(out.indexOf(hint), 1); out.unshift(hint); }
@@ -395,7 +399,7 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   const ownPair = pattern === 'valid_anger' || pattern === 'rumination' || (anger && !!ANGER_PAIRS[pattern]);
   if (anger && ANGER_PAIRS[pattern]) [l1, l2] = ANGER_PAIRS[pattern];
   // (a harsh label the engine's own list doesn't name, "I’m a horrible mother", still gets the label's angles)
-  const harshAt = authoredId === 'big-label' ? HARSH.exec(t) : null;
+  const harshAt = authoredId === 'big-label' ? ownLabel(t) : null;
   const hit = authoredId ? detected.find((f) => f.pattern.id === authoredId) || (harshAt ? { pattern: { id: 'big-label' }, matches: [{ text: harshAt[0], index: harshAt.index }] } : null) : null;
   const fromKit = () => {
     if (!hit || !GENERAL.patternKit[authoredId]) return false;
@@ -507,6 +511,8 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
     angle_id: angleId,
     alt_id: altId,
     scenario_id: scenario.id,
+    // (a wrong done to them: the mechanics say a stated event's own lines, never "weight on one thought")
+    ...(anger ? { wrong: true } : {}),
     ...(exhausted ? { exhausted: true } : {}),
   };
   // the last word: a scene that would still frame words without a marker plays as an acknowledging one
@@ -563,7 +569,7 @@ export function ownStep(pattern, t, { fact, guess, allGuess }) {
   if (pattern === 'practical_problem') return (PRACTICAL_STEPS.find(([re]) => re.test(t)) || [])[1] || '';
   if (['fact_vs_assumption', 'mind_reading', 'catastrophising', 'personalisation'].includes(pattern) && q(g)) return `Check one fact about “${g}”, instead of guessing.`;
   if (pattern === 'self_criticism') {
-    const hit = HARSH.exec(t);
+    const hit = ownLabel(t);
     const label = hit ? wholeLabel(t, hit[0]) : '';
     if (q(label)) return `Try saying what happened, instead of “${bare(label)}”.`;
   }
@@ -650,7 +656,9 @@ export function feelingGuard(scene, text, { emotion = null, exclude = [] } = {})
   if (!scene || scene.source !== 'server') return scene;
   const feel = feelingOf(text);
   if (!feel) return scene;
-  if ([scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact, scene.possible_assumption].some(framesAsGuess)) {
+  // (review r9: without a marker of their own, only a reading that keeps them may say its own lines, SERVER_KEEPS)
+  if ([scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact, scene.possible_assumption].some(framesAsGuess)
+    || (!framingAllowed(text) && !serverLinesKeep(scene, text))) {
     return feelingScene(text, feel.kind, { emotion, exclude });
   }
   const plays = FEELING_PLAYS.has(scene.mechanic) && scene.mechanic !== 'return_responsibility' || (feel.kind === 'angry' && scene.mechanic === 'find_boundary');
@@ -659,12 +667,14 @@ export function feelingGuard(scene, text, { emotion = null, exclude = [] } = {})
 }
 
 /**
- * The backstop for any scene (a server's, or one forced by the lab) played for words with a death or harm word:
- * the fact-vs-guess framing is never used. Death talk and the 'gentle' route never get here (the orchestrator
- * plays them gently); for the rest, a server scene keeps its lines when none of them frames the words as a guess,
- * but plays on a kind-step mechanic (assemble_step, soften_harshness, separate_one) with a feeling's safe lines and
- * prompts (`feeling` set, `guarded`); lines that frame them, or an authored framing scene, give way to the
- * authored kind-step scene.
+ * The gate for any scene (a server's, or one forced by the lab) played for words with no interpretive marker of their
+ * own, or beside a bag word: the fact-vs-guess framing is never used. Death talk and the 'gentle' route never get here
+ * (the orchestrator plays them gently). A server scene keeps its own lines only when its reading is one that keeps them
+ * (SERVER_KEEPS: fair anger, a practical problem, replaying; review r9 made this an allowlist by reading), its mechanic
+ * frames nothing and none of its said lines frames the words or excuses a wrong done to them; it then plays on a
+ * mechanic that acknowledges (beside a bag word, a kind step with a feeling's safe lines and prompts: `feeling` set,
+ * `guarded`). Every other server scene, and an authored framing scene, gives way to the authored kind-step scene.
+ * With a marker, a server scene plays with only the marked clause as the guess (onlyTheClause).
  */
 export function guessGuard(scene, text, { emotion = null, exclude = [] } = {}) {
   if (!scene || scene.grief) return scene;
@@ -680,8 +690,9 @@ export function guessGuard(scene, text, { emotion = null, exclude = [] } = {}) {
     if (framesScene(scene) || (bagWords(text) && !scene.feeling)) return kindScene();
     return scene;
   }
-  // a server scene whose lines frame them: the authored kind scene, with its own lines
-  if (framesLines(scene)) return kindScene();
+  // a server scene whose reading frames them (whatever its lines say), or whose lines frame them or excuse a wrong
+  // done to them: the authored kind scene, with its own lines (review r9: an allowlist by reading, SERVER_KEEPS)
+  if (!serverLinesKeep(scene, text)) return kindScene();
   // its kind lines stay (as for a feeling): on a mechanic that acknowledges on its own lines (fair anger's line, a
   // step, replaying, its weight put back), else on a kind step with the kind lines (never a framing mechanic, a
   // label's "harsh verdict" or "every time")
@@ -695,7 +706,34 @@ export function guessGuard(scene, text, { emotion = null, exclude = [] } = {}) {
 }
 /** (the r7 name) */
 export const harmGuard = guessGuard;
-const framesLines = (scene) => [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact, scene.possible_assumption, scene.alternative_angle].some(framesAsGuess);
+/**
+ * The server's readings whose own lines may play for words with no interpretive marker of their own (review r9): fair
+ * anger, a practical problem, replaying. Every other reading (fact versus assumption, mind reading, the worst case,
+ * always / never, all or nothing, a verdict on themselves, "you might be one part of it") reads the words as a guess
+ * whatever its lines say, so the authored kind or feeling scene plays instead.
+ */
+export const SERVER_KEEPS = Object.freeze(new Set(['valid_anger', 'practical_problem', 'rumination']));
+/** A line that excuses what someone did to them ("Is it possible she was just curious?", "Maybe he didn't mean it"). */
+const EXCUSES = /\b(?:maybe|perhaps|possibly|is it possible|it[’']?s possible|could it be|might have|may have|could have|might not have|didn[’']?t mean|did not mean|never meant|wasn[’']?t trying|was just|were just|was only|were only|under (?:a lot of )?pressure|(?:a )?bad day|stressed|didn[’']?t think|didn[’']?t realise|didn[’']?t realize|didn[’']?t know|didn[’']?t notice|not personal|nothing personal|their own (?:stuff|reasons|issues|problems)|(?:his|her|their) side|another side|meant well|good intentions|benefit of the doubt|curious|by accident|accidentally|misunderstand\w*|misread\w*)\b/iu;
+/** Someone did something to them (fair anger, or a stated hurt): a line beside it never excuses the act. */
+const wrongDone = (text) => fairAnger(text) || eventKind(text) === 'hurt';
+/**
+ * True when a server scene's own lines may play for words with no interpretive marker: its reading keeps them
+ * (SERVER_KEEPS), its mechanic frames nothing, none of its lines frames the words, and beside a wrong done to them
+ * none of its lines excuses the act.
+ */
+export function serverLinesKeep(scene, text) {
+  if (!scene) return false;
+  // (personalisation, only for blame they put on themselves: "it's my fault" is theirs to re-weigh, on return_responsibility)
+  const blame = scene.reasoning_pattern === 'personalisation' && BLAME.test(String(text ?? '')) && !fairAnger(text);
+  if (!SERVER_KEEPS.has(scene.reasoning_pattern) && !blame) return false;
+  if (FRAMING_MECHANICS.has(scene.mechanic) || FRAMING_MECHANICS.has(scene.interaction_type)) return false;
+  // (only the lines that are said: a kept scene's assumption and "another explanation" are never shown)
+  const said = [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact];
+  if (said.some(framesAsGuess)) return false;
+  if (wrongDone(text) && said.some((l) => EXCUSES.test(String(l || '')))) return false;
+  return true;
+}
 /**
  * True when a scene would frame the person's words as a fact and a guess: its mechanic, a mechanic's own framing
  * lines (an overgeneralisation's "every time", a label's "harsh verdict"), or a line of it.
@@ -719,10 +757,22 @@ function onlyTheClause(scene, text) {
   const own = contentWords(clause).filter((w) => !fact.has(w)).length ? contentWords(clause).filter((w) => !fact.has(w)) : contentWords(clause);
   const about = (s) => contentWords(s).some((w) => own.includes(w));
   const quotesElse = (line) => framesAsGuess(line) && [...String(line || '').matchAll(/[“"]([^”"]+)[”"]/gu)].some((q) => !about(q[1]));
+  // (review r9) beside fair anger, a line that excuses the wrong and is not about the clause ("Maybe they didn't
+  // notice.", "Is it possible she was just curious?") never plays: only the clause is read another way
+  const l1 = scene.subtitle_line_1, l2 = scene.subtitle_line_2;
+  const excuses = (line) => !!line && fairAnger(text) && EXCUSES.test(String(line)) && !about(line);
   const badGuess = !!scene.possible_assumption && !about(scene.possible_assumption);
-  const badLines = quotesElse(scene.subtitle_line_1) || quotesElse(scene.subtitle_line_2);
-  if (!badGuess && !badLines) return scene;
+  const badLines = quotesElse(l1) || quotesElse(l2) || excuses(l1) || excuses(l2);
+  if (excuses(scene.alternative_angle)) scene = { ...scene, alternative_angle: '' };
+  // (review r9) "what you know" never carries the guess: a known_fact with the clause's own words in it gives way to
+  // the stated event (or, with none, to what they told)
+  const badKnown = !!scene.known_fact && about(scene.known_fact);
+  if (!badGuess && !badLines && !badKnown) return scene;
   const out = { ...scene };
+  if (badKnown) {
+    const f = split(text).fact;
+    out.known_fact = f && !sameWords(f, clause) && f.replace(/[.!?…]+$/u, '').length <= QUOTE_MAX ? `What you know: “${f.replace(/[.!?…]+$/u, '')}”.` : KNOWN_TOLD;
+  }
   if (badGuess) out.possible_assumption = `What your mind might be adding: “${clause.replace(/[.!?…]+$/u, '')}”.`;
   if (badLines) {
     const pair = out.reasoning_pattern === 'fact_vs_assumption' ? ownFactPair(split(text).fact, clause, false, text) : null;
@@ -760,6 +810,8 @@ export function feelingScene(text, kind = 'low', { emotion = null, exclude = [],
 }
 
 /* (A harsh label of their own: markers.js HARSH.) */
+/** A phrase of theirs that only stands inside someone else's view ("thinks I am useless"). */
+const VIEWED = (t, phrase) => { const i = String(t).indexOf(phrase); return i >= 0 && !ownLabel(String(t).slice(Math.max(0, i - 60), i + phrase.length)); };
 /** The blame the person put on themselves, as typed ("it's my fault"), for the heaviest weight. */
 const BLAME_PHRASE = /(?:\b(?:it['’]?s|it is|it was|that['’]?s|that was|this is|was)\s+)?(?:all\s+)?\b(?:my fault|on me|because of me|my own fault|down to me|i ruined it|i let (?:them|everyone|the team|her|him) down)\b/iu;
 
@@ -813,10 +865,11 @@ export function sceneParts(text, scene = {}) {
   if (guess && sameWords(guess, fact)) guess = '';
   const factAsk = !fact, guessAsk = !guess;
 
-  // (the whole label as typed: "I’m a terrible person", never "I’m a terrible")
-  const harshHit = HARSH.exec(t);
+  // (the whole label as typed: "I’m a terrible person", never "I’m a terrible"; only a label of their own, never
+  // "I am useless" lifted out of "Everyone at work thinks I am useless")
+  const harshHit = ownLabel(t);
   let harsh = harshHit ? wholeLabel(t, harshHit[0]) : '';
-  if (!harsh) { try { const big = detectPatterns(t).find((f) => f.pattern.id === 'big-label'); harsh = big ? wholeLabel(t, big.matches[0].text) : ''; } catch { /* none */ } }
+  if (!harsh) { try { const big = detectPatterns(t).find((f) => f.pattern.id === 'big-label'); harsh = big && ownLabel(big.matches[0].text) && !VIEWED(t, big.matches[0].text) ? wholeLabel(t, big.matches[0].text) : ''; } catch { /* none */ } }
   // no harsh word of their own: the scene's (a server's assumption), or their words when short, else an authored name for it
   if (!harsh) harsh = (server && firstWhole(scene.possible_assumption, 70)) || (g0 && g0.length <= 48 ? g0 : '') || (t.length <= 48 ? t : '') || HARSH_NAME;
   // a feeling's (or a stated event's) plate (soften) carries their words as they said them, never a name for a verdict

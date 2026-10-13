@@ -338,17 +338,25 @@ test('r5.2: the orchestrator never fact-checks a feeling: its explore prompts, f
 
 test('r5.2: a server scene for a feeling never plays as "What your mind added" either (feelingGuard)', () => {
   const server = (o) => ({ source: 'server', reasoning_pattern: 'fact_vs_assumption', interaction_type: 'pull_apart', mechanic: 'pull_apart', mallow_character: 'zuzu', emotion: 'sadness', situation_type: 'other', known_fact: 'You feel empty.', possible_assumption: '', alternative_angle: '', practical_next_step: '', subtitle_line_1: 'Feeling empty is real, and it deserves care.', subtitle_line_2: 'One small comfort could be enough for today.', safety_status: 'ok', ...o });
-  // its own kind lines play, on the feeling's mechanic, with a small step; its pattern stays its own (for its records)
-  const g = feelingGuard(server(), 'I feel empty');
+  // (review r9) a reading that frames the words (fact versus assumption, here on pull_apart) never says its own lines,
+  // however kind they are: the feeling's own authored scene plays
+  const f = feelingGuard(server(), 'I feel empty');
+  assert.equal(f.source, 'authored');
+  assert.equal(f.feeling, 'low');
+  assert.equal(f.subtitle_line_1, FEELING.first.low);
+  // a reading that keeps them (replaying, a practical problem, fair anger): its own kind lines play, on the feeling's
+  // mechanic, with a small step; its pattern stays its own (for its records)
+  const keep = (o) => server({ reasoning_pattern: 'rumination', interaction_type: 'let_loop_drift', mechanic: 'let_loop_drift', ...o });
+  const g = feelingGuard(keep(), 'I feel empty');
   assert.equal(g.mechanic, 'assemble_step');
   assert.equal(g.feeling, 'low');
   assert.equal(g.source, 'server');
   assert.equal(g.subtitle_line_1, 'Feeling empty is real, and it deserves care.');
-  assert.equal(g.interaction_type, 'pull_apart');
+  assert.equal(g.interaction_type, 'let_loop_drift');
   assert.equal(g.practical_next_step, FEELING.steps.low);
-  assert.equal(feelingGuard(server({ practical_next_step: 'Wrap up warm.' }), 'I feel empty').practical_next_step, 'Wrap up warm.');
+  assert.equal(feelingGuard(keep({ practical_next_step: 'Wrap up warm.' }), 'I feel empty').practical_next_step, 'Wrap up warm.');
   // a mechanic of the feeling's own stays
-  assert.equal(feelingGuard(server({ mechanic: 'soften_harshness' }), 'I feel guilty').mechanic, 'soften_harshness');
+  assert.equal(feelingGuard(keep({ reasoning_pattern: 'practical_problem', mechanic: 'soften_harshness', interaction_type: 'soften_harshness' }), 'I feel guilty').mechanic, 'soften_harshness');
   assert.equal(feelingGuard(server({ mechanic: 'open_interpretations' }), 'I feel so alone').mechanic, 'assemble_step');
   // lines that would fact-check the feeling give way to Zuzu's own feeling scene (the mock server's placeholder does)
   for (const l1 of ['What happened is the part that actually happened.', '“I feel empty” is one way to read what happened.', 'Check one fact about how you feel.']) {

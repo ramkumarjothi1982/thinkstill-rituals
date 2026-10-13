@@ -24,7 +24,7 @@
 //
 // Pure ES module, no DOM. Deterministic.
 
-import { norm, blankOrdinary } from './death-words.js';
+import { norm, blankOrdinary, PERSON, PET } from './death-words.js';
 import { deathTalk, livingLoss } from './grief.js';
 import { hasMarker } from './markers.js';
 
@@ -41,7 +41,14 @@ export const BAG = new RegExp(`\\b(?:${[
   'overdose', 'overdosed', 'miscarriage', 'miscarried', 'stillborn', 'still born', 'suicide', 'suicidal', 'assault', 'assaulted', 'attack', 'attacked',
   'abused', 'abuse', 'raped', 'rape', 'stabbed', 'drowned', 'run over', 'hit by a car', 'hit by a train', 'hit by a bus', 'ambulance', 'paramedics',
   'a and e', 'a&e', 'resus', 'missing', 'rip',
-].map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')).join('|')})(?![\\p{L}\\p{N}])`, 'iu');
+  // (review r9) misspelt deaths, and the phrasings deathTalk missed: a misspelt or unusual death is never framed
+  'ded', 'dided', 'diied', 'dieed', 'diedd', 'dide', 'deid', 'diead', 'dieing', 'dyin', 'deaded', 'six feet under', 'put to sleep', 'no longer with us', 'with us anymore', 'with us any more',
+  'is no more', 'hit by a lorry', 'hit by a truck', 'hit by a van', 'hit by a motorbike', 'hit by a tram', 'knocked down', 'pregnancy', 'heaven', 'rainbow bridge', 'vet',
+].map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')).join('|')}|${[
+  // a person (or pet) word beside "dyed" ("my best friend dyed"), "put him down", "first christmas without", "would have been … birthday"
+  `(?:${PERSON}|${PET})s?\\s+(?:[a-z]+\\s+){0,2}dyed`, 'put\\s+(?:him|her|them|it)\\s+(?:down|to\\s+sleep)', 'first\\s+[a-z]+(?:\\s+day)?\\s+without',
+  'would\\s+(?:have|ve|of)\\s+(?:been|turned)\\s+(?:[a-z0-9]+\\s+){0,3}(?:birthday|anniversary|bday|\\d+)',
+].join('|')})(?![\\p{L}\\p{N}])`, 'iu');
 /** Lower case, every apostrophe out, hyphens as spaces (no idiom is ever blanked here). */
 const bagText = (text) => String(text ?? '').normalize('NFKC').toLowerCase().replace(/[‘’ʼ`´']/gu, '').replace(/[‐‑-]/gu, ' ').replace(/\s+/gu, ' ');
 export const bagWords = (text) => BAG.test(bagText(text));
@@ -113,8 +120,24 @@ const FRAMES = new RegExp([
   'somewhere in between', 'most things live',
   // another meaning for what happened ("the paper might have been unusually tough", "it might go better than expected")
   "\\b(?:might|may|could) (?:have been|have had|be a one|go better|turn out|have lots of)\\b", 'lots of causes', 'information about', 'final score', 'nobody in particular',
-  'judgement on your worth', 'one view of you', 'a numbers problem', 'their opinion', 'final verdict', 'a few seconds out of', 'set a ceiling', 'measure the worth',
+  'judgement on your worth', 'one view of you', 'a numbers problem', 'their opinion', 'final verdict', 'a few seconds out of', 'set a ceiling', 'measure the worth', "don[’']?t measure\\b",
   "doesn[’']?t (?:actually )?say anything about you",
+  // (review r9) the authored library's other readings ("People often go quiet when…", "There might be a more ordinary
+  // explanation…", "Hindsight makes past choices look obvious"), the mechanics' own ("Now slide the thought to where it
+  // really sits.", "That’s a lot of weight on one thought."), and the server's paraphrases of each framing
+  '\\boften\\b', '\\busually\\b', "\\b(?:people|they|managers|messages|comments|feeds|exams|some people)\\s+(?:\\w+\\s+)?(?:often|usually|sometimes|tend)\\b", 'tends? to\\b',
+  'most (?:people|jobs|of us|common)', 'lots of (?:people|workplaces|applicants|uncertainty|causes)', 'a lot of plans', 'hindsight', 'highlight reels?', '\\bbrains? (?:are|is)\\b',
+  '\\bhabits?\\b', 'old scripts', 'explanations?', 'forecasts?', 'predict\\w*', 'not a promise', "hasn[’']?t happened", 'has not happened', 'really sits', 'on one thought',
+  "\\b(?:thoughts?|feelings?) (?:aren[’']?t|are not|isn[’']?t|is not) (?:always )?(?:facts?|the truth|true)\\b",
+  '\\b(?:maybe|perhaps)\\s+(?:they|he|she|someone|somebody|people|your|it|its|it[’\']s|that|this|there|nobody|no one|the|everyone)\\b',
+  "\\b(?:is it possible|it[’']?s possible|could it be|could (?:this|that|it|there) be|is there (?:another|a different|any other))\\b",
+  '\\b(?:really|actually|definitely|necessarily) true\\b', '\\bhow (?:do|can|could) you (?:know|be sure)\\b', '\\bevidence\\b', '\\bfor sure\\b',
+  '\\bfill(?:ing|s)? in (?:the )?(?:blanks|gaps)\\b', '\\b(?:your|the) (?:mind|brain) (?:is|might|may|could|can|will|picked|adds|added|fills|filled|jumps|jumped|tells|told|says|said|goes|went|wants|likes|loves|tends|has|plays|makes|made|reads|read|sees|saw|races)\\b', '\\bunder (?:a lot of )?pressure\\b', "\\bdidn[’']?t mean (?:to|it)\\b", '\\bjust curious\\b',
+  '\\bthink it through\\b', "\\bdidn[’']?t (?:notice|know what to say|realise|realize|see it)\\b", '\\b(?:is|are) (?:a |the )?facts?\\b', '\\bthe facts\\b', '\\bcoincidence\\b',
+  '\\bmean (?:many|lots of|a lot of|different|so many|all sorts of) things\\b', '\\bread(?:ing)? (?:minds|their mind|his mind|her mind|into)\\b', '\\bmind[- ]?read\\w*', '\\bjump\\w* to conclusions\\b',
+  '\\bwhole story\\b', '\\bwhat are the odds\\b', '\\bas bad as it (?:seems|feels|looks)\\b', '\\banxiety talking\\b', "\\b(?:not (?:be |even )?|isn[’']?t |wasn[’']?t )about you\\b", '\\bnot every\\b',
+  '\\bthinking about themselves\\b', '\\btrying to protect you\\b', '\\banother (?:way|reason|side|view|possibility|story)\\b', '\\bother (?:reasons?|possibilit\\w+|ways? to)\\b',
+  '\\bdifferent (?:reason|way to see|story)\\b', '\\bmore to (?:it|the story)\\b',
 ].join('|'), 'iu');
 export const framesAsGuess = (line) => FRAMES.test(String(line || ''));
 
@@ -123,5 +146,7 @@ const REFRAMES = /\?|\b(?:should|try|instead|actually|maybe|perhaps|possible|pos
 /** A line the gentle path may say (a server's grief answer): it frames nothing, asks nothing, reframes nothing. */
 export function acknowledges(line) {
   const l = String(line || '').trim();
-  return !!l && l.length <= 120 && !framesAsGuess(l) && !REFRAMES.test(l);
+  // (review r9: a server's "… isn't a thought to fix" frames nothing: the negated phrase alone never counts)
+  const said = l.replace(/\b(?:isn[’']?t|is not|aren[’']?t|are not|not)\s+(?:a|an)\s+(?:thought|problem|puzzle)\s+to\s+(?:fix|solve|sort out)\b/giu, ' ');
+  return !!l && l.length <= 120 && !framesAsGuess(l) && !REFRAMES.test(said);
 }

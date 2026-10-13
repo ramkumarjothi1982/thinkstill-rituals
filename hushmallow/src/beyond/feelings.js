@@ -131,7 +131,7 @@ const MORE_THAN_A_FEELING = /\b(?:if|what if|will|won['’]?t|wont|going to|gonn
 /** What may open a feeling's context ("about the exam", "of the operation", "thinking about tomorrow"). */
 const CONTEXT_OPEN = /^(?:for|about|over|since|after|at|in|around|from|with|without|of|by|because of|ever since|all through|ahead of|before|thinking about|just thinking about|when i think (?:about|of)|at the thought of|whenever i think (?:about|of))\s+(.+)$/iu;
 /** Little time words between a feeling and its context ("I feel anxious all the time about work"). */
-const CONTEXT_LEAD = /^(?:(?:all the time|so much|again|today|tonight|lately|recently|constantly|every day|all day|right now|at the moment|still|really|a lot|these days|most days|honestly)[,\s]+)+/iu;
+const CONTEXT_LEAD = /^(?:(?:all the time|so much|again|today|tonight|lately|recently|constantly|every day|all day|right now|at the moment|still|really|a lot|these days|most days|honestly)(?:[,\s]+|$))+/iu;
 
 /**
  * { kind } when every clause of the message is a feeling of their own, said plainly ("I feel empty",

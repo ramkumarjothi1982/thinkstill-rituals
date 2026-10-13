@@ -70,6 +70,19 @@ const layoutCheck = (page) => page.evaluate(() => {
   }
   for (const e of document.querySelectorAll('#scene *')) { if (!e.offsetParent || e.closest('.sr-only')) continue; if (![...e.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim())) continue; const fs = parseFloat(getComputedStyle(e).fontSize); if (fs < 13) bad.push(`text ${fs}px: ${e.textContent.trim().slice(0, 20)}`); }
   if (document.documentElement.scrollWidth > innerWidth) bad.push('sideways scroll');
+  // (review r9) assemble_step: each piece's words sit on its own pill (a pill drawn past the play area while its words
+  // are clamped inside it is two things, not one)
+  const pr = A?.mech?.probe?.();
+  if (pr?.all) {
+    for (const e of document.querySelectorAll('.bx-tag.piece')) {
+      if (parseFloat(getComputedStyle(e).opacity) <= 0.1) continue;
+      const own = pr.all.find((q) => q.text === e.textContent);
+      if (!own) continue;
+      const b = e.getBoundingClientRect();
+      const dx = Math.abs(b.left + b.width / 2 - own.x), dy = Math.abs(b.top + b.height / 2 - own.y);
+      if (dx > 6 || dy > 6) bad.push(`piece words off their pill by ${Math.round(Math.max(dx, dy))}px: ${e.textContent.slice(0, 26)}`);
+    }
+  }
   // ownership: a label that names an object is nearer its own object than any other of its kind, and stays within its tie
   const ties = A?.mech?.tags?.ties?.() || [];
   const edge = (r, x, y) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));

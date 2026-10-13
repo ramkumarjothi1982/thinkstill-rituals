@@ -166,10 +166,14 @@ export const FEELING = Object.freeze({
   exploreMore: 'Anything else that might help?',
 });
 
-/** A mechanic's lines for a scene: a feeling's own over the mechanic's (MECHANIC_LINES), else the mechanic's. */
+/**
+ * A mechanic's lines for a scene: a feeling's own over the mechanic's (MECHANIC_LINES), else the mechanic's. A wrong
+ * done to them (fair anger's scenes, `wrong`: review r9) uses a stated event's own, never "weight on one thought".
+ */
 export function mechanicLines(mechanic, scene = null) {
   const base = MECHANIC_LINES[mechanic] || {};
-  const own = scene?.feeling ? (EVENT_KINDS.has(scene.feeling) ? KIND.mechanics[mechanic] : FEELING.mechanics[mechanic]) || KIND.mechanics[mechanic] : null;
+  const own = scene?.feeling ? (EVENT_KINDS.has(scene.feeling) ? KIND.mechanics[mechanic] : FEELING.mechanics[mechanic]) || KIND.mechanics[mechanic]
+    : scene?.wrong ? KIND.mechanics[mechanic] || null : null;
   return own ? { ...base, ...own, labels: { ...(base.labels || {}), ...(own.labels || {}) } } : base;
 }
 

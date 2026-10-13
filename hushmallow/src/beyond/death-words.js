@@ -36,6 +36,8 @@ export const PERSON = [
   'uncle', 'aunt', 'auntie', 'aunty', 'cousin', 'niece', 'nephew', 'godmother', 'godfather', 'godson', 'goddaughter', 'grandson', 'granddaughter', 'grandchild', 'grandchildren', 'grandkid',
   'friend', 'best friend', 'bestie', 'bff', 'mate', 'best mate', 'pal', 'buddy', 'flatmate', 'housemate', 'roommate', 'classmate', 'colleague', 'coworker', 'co worker', 'boss', 'teacher',
   'neighbou?r', 'coach', 'mentor', 'carer', 'patient', 'boy', 'girl', 'little one', 'man', 'woman', 'guy', 'lady', 'person', 'someone', 'somebody', 'family', 'loved one', 'soulmate', 'soul mate',
+  // (review r9) what people call their own ("my missus passed", "my da passed", "my pops passed", "my granda died")
+  'missus', 'mrs', 'fella', 'lad', 'lass', 'da', 'ma', 'mammy', 'pappy', 'pops', 'gramps', 'granda', 'grampa', 'gramma', 'grandpop', 'bairn', 'other half', 'love of my life',
 ].join('|');
 /** Pets (a pet's death is a death). */
 export const PET = [
@@ -60,7 +62,8 @@ const DEV_AUX = '(?:(?:is|was|has|had|s|just|completely|totally|finally|already|
  * "the driver of the car died" are deaths).
  */
 const CLAUSE_START = '(?:^|[.!?;,:]\\s*|\\b(?:and|but|so|then|because|cos|coz|now|when|after|before|until|as|since|while|if|think|guess|reckon|that|plus|also|again|just|ugh|lol|omg)\\s+)';
-const DEV_SUBJ = `${CLAUSE_START}(?:(?:my|our|his|her|their|your|the|this|that|its)\\s+(?:(?!(?:${'guy|man|woman|lady|driver|person|boy|girl|kid|child|baby|someone|somebody|passenger|people|family|friend|mum|dad|mom|brother|sister|son|daughter|husband|wife|nan|grandad|grandma|dog|cat|in|on|of|at|with|by|from|inside|behind|under'})\\b)[a-z]+\\s+){0,2})?(?:${DEVICE})`;
+// (a gadget's part right after it, "phone battery died", is still the gadget: review r9)
+const DEV_SUBJ = `${CLAUSE_START}(?:(?:my|our|his|her|their|your|the|this|that|its)\\s+(?:(?!(?:${'guy|man|woman|lady|driver|person|boy|girl|kid|child|baby|someone|somebody|passenger|people|family|friend|mum|dad|mom|brother|sister|son|daughter|husband|wife|nan|grandad|grandma|dog|cat|in|on|of|at|with|by|from|inside|behind|under'})\\b)[a-z]+\\s+){0,2})?(?:${DEVICE})(?:\\s+(?:${DEVICE}))?`;
 
 /**
  * The ordinary idioms: unambiguous, cheap, and never a person. Blanked before any death or harm word is read.

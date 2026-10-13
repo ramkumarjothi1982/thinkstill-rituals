@@ -568,6 +568,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
         root.classList.remove('hf-typing');
         if (S.left) return;
         noteSafety(meta.safety);
+        supportObs?.disconnect(); supportObs = null;
         subs?.unsuspend();
         if (reason !== 'submit') {
           // death talk that wants to follow the one who died, typed and closed: care, as sending it would be
@@ -610,6 +611,21 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function noteFollow() {
     S.follow = true;
     noteSafety({ level: 'care', category: 'death-follow' });
+    keepTypingSupport();
+  }
+  /**
+   * While typing, an escalation this file reads (not the lexicon's) still shows the overlay's Support chip, as the
+   * lexicon's care does (review r9): the chip is kept visible while the overlay re-reads the words.
+   */
+  let supportObs = null;
+  function keepTypingSupport() {
+    const btn = overlay?.el?.querySelector?.('button.support');
+    if (!btn) return;
+    btn.hidden = false;
+    supportObs?.disconnect();
+    if (typeof MutationObserver !== 'function') return;
+    supportObs = new MutationObserver(() => { if (btn.hidden && S.level !== 'none') btn.hidden = false; });
+    supportObs.observe(btn, { attributes: true, attributeFilter: ['hidden'] });
   }
 
   async function afterTell({ text, emotion, intention, input = null, reading = null, safety: seen = null }) {
@@ -704,7 +720,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear();
     await say(lines, { interrupt: true });
     if (S.left || S.phase !== 'support') return;
+    // (review r9) the choice's "See support" carries support while it is up: never the dock's pill beside it
+    dockShow({ finish: true, support: false });
     const v = await choose(SAFETY.careAsk, SAFETY.careOptions);
+    if (S.left) return;
+    dockShow({ finish: true });
     if (v === 'support') openSupportSheet();
   }
   /**
@@ -877,6 +897,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // a feeling said plainly (or words beside a harm word) is never met with "What else could be true?"
     let feel = null;
     try { feel = feelingOf(S.text) || (framingAllowed(S.text) ? null : { kind: 'low' }); } catch { feel = null; }
+    // (review r9) while the server is asked nothing frames the words yet: it may still answer them as a loss
+    if (serverMode()) feel ||= { kind: 'low' };
     const lines = feel ? FEELING.waiting : WAITING, long = feel ? FEELING.waitingLong : WAITING_LONG;
     while (!S.left && seq === S.seq && S.phase === 'waiting') {
       const narrate = n === 1 || (n > 2 && n % 3 === 0);
@@ -997,7 +1019,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const lead = scene.mallow_character || 'zuzu';
     if (lead !== 'zuzu') { await bringCompanion(lead); await sleep(rmOn() ? 200 : 700); }
     if (S.left || seq !== S.seq) return;
-    zt?.setStage('transforming');
+    // (review r9) beside a bag word or after something heavy: Zuzu's attentive face, never the transforming grin
+    const quiet = S.noPlay || S.level !== 'none';
+    if (quiet) careFace(); else zt?.setStage('transforming');
     ct?.setStage('curious');
     await subs.say({ text: scene.feeling ? FEELING.title : 'A new perspective', kind: 'title' }, {});
     if (S.left || seq !== S.seq) return;
@@ -1006,7 +1030,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     await sleep(rmOn() ? 400 : 1000);          // a natural pause between the two lines
     await say(scene.subtitle_line_2, { mallow: lead, hold: true });
     if (S.left || seq !== S.seq) return;
-    zt?.setStage('neutral'); ct?.setStage('neutral');
+    if (quiet) careFace(); else zt?.setStage('neutral');
+    ct?.setStage('neutral');
     // the played scene has said what it had to: it fades away, so what follows reads on the open sky
     await endMechanic();
     if (S.left || seq !== S.seq) return;

@@ -29,6 +29,14 @@
 // session request of the network's daily allowance.
 
 import { BUILD } from '../app/config.js';
+
+/** The build's version for /v1/session: its date and the slice's short name ("2026-10-12 · the Hushfold slice"), never cut mid-word (review r9). */
+export function appVersion(build = BUILD) {
+  const parts = String(build || '').split(/\s+·\s+/u);
+  const short = (parts[1] || '').replace(/\s*\(.*$/u, '').trim();
+  const v = short ? `${parts[0]} · ${short}` : parts[0];
+  return v.length <= 40 ? v : parts[0].slice(0, 40);
+}
 import { resolveEndpoint } from './endpoint.js';
 import { STORE_KEYS } from './consent.js';
 import { validateScene, previousAngles, PATTERNS } from './vocab.js';
@@ -114,7 +122,7 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
     session = null;
     // the server asked for a tester code and the stored one has not changed since: no request
     if (inviteNeeded()) { sessionReason = 'invite'; return null; }
-    const body = { device_id: deviceId(), platform: platform || (globalThis.webkit?.messageHandlers?.hushStore || globalThis.HushNative ? 'ios' : 'web'), app_version: String(BUILD || '').slice(0, 40) };
+    const body = { device_id: deviceId(), platform: platform || (globalThis.webkit?.messageHandlers?.hushStore || globalThis.HushNative ? 'ios' : 'web'), app_version: appVersion() };
     const invite = storedInvite();
     if (invite) body.invite = invite;
     const r = await post(PATHS.session, body, { timeout: timeouts.session });

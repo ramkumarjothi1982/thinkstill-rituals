@@ -225,9 +225,10 @@ test('authored path: four angles for the brief’s examples, never cut, never no
     assert.ok(!scenes.some((s) => s.reasoning_pattern === 'overgeneralisation' && !s.feeling), `${t}: ${seen.join(', ')}`);
   }
   assert.equal(authoredScene('Nobody likes me.').subtitle_line_1, 'A word like “nobody” is powerful, but it’s rarely exactly true.');
-  // "another angle" for mind-reading words: the label, not the sentence
+  // "another angle" for mind-reading words: never a self-label lifted out of someone else's view (review r9: "I am
+  // boring" is what they fear the friend thinks, not a verdict they put on themselves)
   const second = authoredScene('My friend must think I am boring company.', { exclude: ['mind_reading'] });
-  assert.equal(second.subtitle_line_1, '“I am boring” squashes a whole person into one word.');
+  assert.doesNotMatch(`${second.subtitle_line_1} ${second.subtitle_line_2}`, /“I am boring”|squashes a whole person/);
 });
 
 test('steps: second person in Zuzu’s voice, and cut at a sentence end before anything else', () => {

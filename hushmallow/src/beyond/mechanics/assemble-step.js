@@ -71,14 +71,40 @@ export function mount(ctx) {
     GEO.maxH = maxH;
     return GEO;
   }
+  /**
+   * Where each waiting piece sits in the pile (review r9): rows from each piece's own height (a three-line piece takes
+   * more room than a one-line one), squeezed (gaps first, then the top margin) until the pile fits the play area, and
+   * never past its bottom, so a piece's words (clamped to the area) always sit on its own pill.
+   */
+  const PILE = new Map();
+  function pile(G) {
+    const A = G.A;
+    const rows = [];
+    for (let r = 0; r < pieces.length; r++) { const b = pieces.find((x) => startRow[x.i] === r); if (b) rows.push(b); }
+    let total = 0;
+    for (const b of rows) total += G.sizes[b.i].h;
+    let top = SHORT_ ? Math.max(A.h * 0.16, (wordsTag.h || 32) + 10) : A.h * 0.16;
+    let gap = 14;
+    const room = A.h - 6;
+    if (top + total + gap * (rows.length - 1) > room) gap = Math.max(4, (room - top - total) / Math.max(1, rows.length - 1));
+    if (top + total + gap * (rows.length - 1) > room) top = Math.max(4, room - total - gap * (rows.length - 1));
+    let y = A.y + top;
+    for (const b of rows) {
+      const h = G.sizes[b.i].h;
+      PILE.set(b, clamp(y + h / 2, A.y + h / 2, A.y + A.h - h / 2));
+      y += h + gap;
+    }
+    return PILE;
+  }
   function homes() {
     const G = geo();
     if (phase === 'pieces') { thought.hx = G.top.x; thought.hy = Math.max(G.A.y + R * 1.2, G.top.y - G.top.h / 2 - R * 2.2); }
     else { thought.hx = G.top.x; thought.hy = G.top.y - G.top.h / 2 - R * 0.98; }
+    const P = pile(G);
     for (const b of pieces) {
       if (b.press) continue;
       if (b.slot >= 0) { const tr = G.treads[b.slot]; b.hx = tr.x; b.hy = tr.y; }
-      else { const row = startRow[b.i]; b.hx = G.A.x + Math.max(G.sizes[b.i].w / 2 + 10, G.A.w * 0.26); b.hy = G.A.y + (SHORT_ ? Math.max(G.A.h * 0.16, (wordsTag.h || 32) + 10) : G.A.h * 0.16) + row * (G.maxH + 14) + G.maxH / 2; }
+      else { b.hx = G.A.x + Math.max(G.sizes[b.i].w / 2 + 10, G.A.w * 0.26); b.hy = P.get(b); }
     }
   }
   homes();
@@ -222,7 +248,8 @@ export function mount(ctx) {
       return AL.end();
     },
     get settled() { return phase === 'standing'; },
-    probe: () => { const G = geo(); return { pieces: pieces.filter((b) => b.slot < 0).map((b) => ({ x: b.x, y: b.y, i: b.i, row: startRow[b.i] })), treads: G.treads.map((q) => ({ x: q.x, y: q.y })), phase, steps: ctx.parts.steps }; },
+    // (all: every piece where it is drawn, with its own words: the gate checks each piece's words sit on its own pill)
+    probe: () => { const G = geo(); return { pieces: pieces.filter((b) => b.slot < 0).map((b) => ({ x: b.x, y: b.y, i: b.i, row: startRow[b.i] })), all: pieces.map((b) => ({ x: b.x, y: b.y, i: b.i, w: G.sizes[b.i].w * b.scale, h: G.sizes[b.i].h * b.scale, text: ctx.parts.steps[b.i] })), treads: G.treads.map((q) => ({ x: q.x, y: q.y })), phase, steps: ctx.parts.steps }; },
     destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
   };
 }

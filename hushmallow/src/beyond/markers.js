@@ -35,6 +35,26 @@ import { feelingOpens, feelingSpan, feelingContext } from './feelings.js';
 /** A harsh label the person puts on themselves (read on the words as typed, apostrophes either way). */
 export const HARSH = /\b(?:i['’]?m|i am|i feel like)(?: (?:so|such|a|an|just|completely|totally|really|basically|the|absolute|total|complete|utter|utterly|literally|actually|massive|huge|biggest))* (?:stupid|an? idiot|idiot|a failure|failure|a loser|loser|useless|terrible|pathetic|worthless|hopeless|incompetent|a disaster|disaster|a mess|mess|a joke|joke|a fraud|fraud|a burden|burden|awful|horrible|rubbish|selfish|lazy|disgusting|unlovable|not good enough|not enough|too much|dumb|thick|clueless|(?:an? )?bad (?:person|friend|mum|mom|mother|dad|father|parent|daughter|son|sister|brother|partner|wife|husband|girlfriend|boyfriend|human|employee|student|teacher|colleague))\b/iu;
 
+/** What makes a label someone else's view, not theirs ("Everyone at work thinks I am useless", "he called me stupid"). */
+const VIEW_BEFORE = /\b(?:thinks?|thought|says?|said|believes?|believed|reckons?|reckoned|decided|knows?|assumes?|assumed|tells?\s+(?:me|everyone|people|them)|told\s+(?:me|everyone|people|them)|calls?\s+me|called\s+me|sees\s+me\s+as|saw\s+me\s+as|treats?\s+me\s+(?:like|as)|makes?\s+me\s+feel\s+like|acts?\s+like)\s+(?:that\s+)?(?:(?:i|im|i[’']m|i\s+am|i\s+was|i[’']?ve\s+been)\s+)?$/iu;
+/** …unless the one who thinks it is them ("I think I'm useless", "I just know I'm a failure"). */
+const SELF_VIEW = /(?:^|[^\p{L}])i\s+(?:(?:just|really|honestly|do|kind\s+of|sort\s+of|actually|genuinely)\s+)*(?:think|thought|believe|believed|reckon|know|knew|decided|feel|felt)\s+(?:that\s+)?(?:(?:i|im|i[’']m|i\s+am|i\s+was|i[’']?ve\s+been)\s+)?$/iu;
+/**
+ * A harsh label the person puts on themselves (HARSH), never one they say someone else holds ("everyone thinks I'm
+ * useless" reads a mind, it is not their own verdict: review r9). → the match, or null.
+ */
+export function ownLabel(text) {
+  const s = String(text ?? '');
+  const re = new RegExp(HARSH.source, 'giu');
+  for (const m of s.matchAll(re)) {
+    const before = s.slice(Math.max(0, m.index - 60), m.index);
+    // ("thinks I'm useless": the "I'm" is inside the match, so what stands before it decides)
+    if (VIEW_BEFORE.test(before) && !SELF_VIEW.test(before)) continue;
+    return Object.assign([m[0]], { index: m.index, input: s });
+  }
+  return null;
+}
+
 /** Lower case, every apostrophe out ("doesn’t" → "doesnt", "I’m" → "im", "she'll" → "shell"), single spaces. */
 const flat = (s) => String(s ?? '').normalize('NFKC').toLowerCase().replace(/[‘’ʼ`´']/gu, '').replace(/[‐‑-]/gu, ' ').replace(/\s+/gu, ' ').trim();
 
@@ -120,7 +140,7 @@ function readClause(clause) {
   for (const re of MIND) { const m = re.exec(n); if (m && notSelf(n, m)) { kinds.add('mind'); break; } }
   if (OVER.some((re) => re.test(n)) || alwaysNever(n)) kinds.add('over');
   if (CATA.some((re) => re.test(n))) kinds.add('cata');
-  if (HARSH.test(String(raw)) || LABEL.test(n)) kinds.add('label');
+  if (ownLabel(raw) || (LABEL.test(n) && (!VIEW_BEFORE.test(n.slice(0, LABEL.exec(n).index)) || SELF_VIEW.test(n.slice(0, LABEL.exec(n).index))))) kinds.add('label');
   if (SHOULD.test(n)) kinds.add('should');
   return out;
 }
