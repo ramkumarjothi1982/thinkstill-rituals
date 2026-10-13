@@ -46,6 +46,8 @@ export const HARM_LEXICON = {
     R`\boverdos(?:e|ed|ing) on (?:chocolate|sugar|sweets|candy|cake|carbs|cheese|pizza|ice cream|coffee|netflix|tv|telly|tik ?tok|social media|cuteness|christmas|rom-?coms|anime)\b`,
     R`\bsuicide squad\b`,
     R`\b(?:die|died) laughing\b`,
+    // breathless with laughter, not panic (added 13 Oct 2026, final QA: 'laughing so hard I can't breathe')
+    R`\b(?:laugh(?:ing|ed)?|crying laughing|cry-laughing|giggling|lol|lmao|haha\w*)(?: so (?:hard|much))?(?: (?:that|lol|haha))?(?: i)? (?:can'?t|cannot|couldn'?t) breathe\b`,
   ],
   crisis: [
     // 'my self' as two words too (review 12 Oct: 'i want to kill my self')
@@ -103,6 +105,8 @@ export const HARM_LEXICON = {
     R`\b(?:no one|nobody|no-one|noone) (?:would|will|'?d|is going to|is gonna) (?:even |really |ever )?(?:care|notice|mind|miss me) if i (?:died|die|was gone|were gone|disappeared|disappear|wasn'?t here|weren'?t here|was dead|were dead|killed myself)\b(?! (?:my|her|his|their) hair\b)`,
     // cutting as self-harm, never cutting carbs, costs, onions or hair
     R`\b(?:been |started |start |keep |kept |still |went back to |gone back to |back to |stopped )cutting(?: again\b| my ?self\b(?! (?:off|out|short|loose|free|some slack)\b)| my (?:arms?|legs?|wrists?|skin|thighs?|stomach|body)\b|\s*(?:[.!?,;]|$))`,
+    // 'Cutting again. I hate myself.' at the start of a sentence (added 13 Oct 2026, final QA; the server's rule)
+    R`(?:^|[.!?;]\s*)cutting (?:my ?self )?again\b`,
     R`\bdone with (?:life\b(?! (?:admin|insurance|coaching|lessons)\b)|being alive\b|existing\b|living\b(?! (?:in|with|here|there|at|on|near|abroad|together|apart|out of)\b))`,
     R`\b(?:hope|wish|want|pray) (?:that )?i (?:never|don'?t|do not|won'?t) wake(?: up)?\b(?! up\b)(?! (?:until|till|before|early|at|in time|on time|(?:this|that|so|as) (?:early|late))\b)`,
     R`\b(?:have|got|'ve got|saved|saving|stockpiled|stockpiling|collected|collecting) (?:up )?(?:the |my |enough |all (?:the |my )?)?(?:pills|tablets|meds|medication|painkillers) (?:ready|saved up|stockpiled|lined up|to (?:do it|end it|take them all))\b(?! for (?:the|my|a|our|your|work|school|holiday|travel|trip|journey|flight|morning|bed|breakfast|mum|mom|dad|grandma|grandad)\b)`,
@@ -225,6 +229,17 @@ export const HARM_LEXICON = {
       R`\b(?:not|never) safe (?:at home|with (?:him|her|them))\b`,
       R`\b(?:scared|afraid|frightened|terrified) (?:to go home|of (?:him|her|them|my (?:partner|boyfriend|girlfriend|husband|wife|dad|father|mum|mom|mother|stepdad|stepmum|stepmom|ex))(?!'s|\w))`,
       R`\bfear for my (?:life|safety)\b`,
+      // added 13 Oct 2026, final QA: plain statements of being in danger ("I'm not safe", "i'm not safe here",
+      // "I'm afraid he'll hurt me"); never 'not safe to drive', 'the bridge is not safe' or 'is it safe'
+      R`\b(?:i'?m|i am|im)(?: (?:really|just|so|actually|honestly|truly|genuinely|still|probably|definitely))? not (?:really |actually |even )?safe\b(?! (?:to (?:drive|ride|cycle|fly|swim|ski|operate|use|be left (?:alone )?(?:with|near|around) (?:cake|chocolate|sweets|snacks|food|biscuits|crisps|pizza|a credit card|my card|money))|behind the wheel|on (?:the )?roads?|on (?:a|my|the) (?:bike|bicycle|scooter|skateboard|motorway)|(?:around|near|with) (?:cake|chocolate|sweets|snacks|biscuits|crisps|pizza|food|desserts?|ice cream|a buffet|buffets|scissors|a glue gun|a credit card|my credit card|my card|money)|in (?:a|the|any|my) kitchen|from (?:relegation|the drop|elimination|spoilers|the sack))\b)`,
+      R`\b(?:i'?m|i am|im|i feel|i'?m feeling|i am feeling|i always feel|i often feel) (?:so |really |very |completely |totally )?unsafe\b(?! (?:to (?:drive|ride|cycle|swim)|driving|cycling|on (?:the )?roads?)\b)`,
+      R`\b(?:not|never) feel(?:ing)? safe\b`,
+      R`\b(?:don'?t|do not|dont) think (?:i'?m|i am|im) safe\b(?! to\b)`,
+      R`\b(?:scared|afraid|frightened|terrified|petrified|worried) for my (?:life|safety)\b`,
+      R`\b(?:scared|afraid|frightened|terrified|petrified|worried) (?:that )?${HURTER}(?: \w+)?(?:'ll| will| is going to|'s going to| is gonna|'s gonna| might| may| would|'d| could)(?: (?:really|actually|seriously|try to|try and|end up|come and|come back and))? (?:hurt me|harm me|hit me\b(?! (?:up|back (?:with|later|tomorrow|soon|about|on|when))\b)|attack me\b(?! (?:in|during) (?:(?:a|the|every) )?(?:debates?|comments|reviews?|interviews?)\b)|beat me\b(?! (?:at|in|to)\b)|strangle me|choke me|stab me|punch me|kick me\b(?! (?:out|off)\b)|slap me|shove me)\b`,
+      // 'kill me' only from a partner or an unnamed 'he'/'she'/'they' ("scared my mum will kill me when she sees my grades" stays none)
+      R`\b(?:scared|afraid|frightened|terrified|petrified) (?:that )?(?:he|she|they|someone|somebody|my (?:partner|boyfriend|girlfriend|husband|wife|ex|ex-?(?:partner|boyfriend|girlfriend|husband|wife)|fianc[eé]e?))(?:'ll| will| is going to|'s going to| is gonna|'s gonna| might| may| would|'d| could)(?: (?:really|actually|seriously|try to|try and|end up|come and|come back and))? kill me\b`,
+      R`\b(?:scared|afraid|frightened|terrified|petrified) (?:of )?what ${HURTER}(?:'ll| will| might| may| would|'d| could| is going to|'s going to| is gonna|'s gonna) do to me\b`,
     ],
   },
 };
@@ -328,6 +343,28 @@ export const CONCERN_LEXICON = [
   R`\b(?:won'?t|will not) be (?:here|around) (?:much longer|for (?:much )?longer|for long|tomorrow|any ?more)\b`,
   R`\bmy life (?:is|feels) (?:so |completely |totally |just )?empty\b`,
   R`\b(?:don'?t|do not|can'?t) trust myself (?:not to|around|with|alone|any ?more)\b`,
+  // added 13 Oct 2026, final QA: self-hatred ("I hate myself", "I really hate myself", "I'm a failure and I hate me");
+  // never "I'd hate myself if I missed it", 'I hate meetings' or 'they hate me'
+  R`\bi(?:'ve| have| had)? (?:(?:really|just|so|honestly|truly|genuinely|literally|actually|absolutely|completely|totally|fucking|fkn|bloody|kind of|kinda|sometimes|still|always|do|now|often|secretly|deeply|properly) )*(?:hate|hated|loathe|loathed|despise|despised|detest|detested) (?:my ?self|me|who i (?:am|was|have become|'ve become)|everything about (?:me|my ?self))\b`,
+  R`\bhating (?:my ?self|who i am)\b`,
+  R`\bself[- ]?(?:hatred|hate|loathing)\b`,
+  // purging ("I made myself throw up"); never 'made myself a sandwich', 'made myself sick with worry'
+  R`\b(?:made|make|makes|making|forced|force|forces|forcing) my ?self (?:to )?(?:throw up|vomit|puke|be sick|sick|purge|gag)\b(?! (?:with|from|of|by|over|about|worrying|thinking|laughing|stressing|overthinking|crying|eating|drinking|running|spinning)\b)`,
+  R`\b(?:throw|throws|throwing|threw|thrown) up (?:on purpose|deliberately|intentionally|after (?:every|each) (?:meal|time i eat)|everything i eat|to (?:lose weight|get rid of (?:it|the food|what i ate)))\b`,
+  R`\b(?:been|keep|kept|started|start|still|back to|went back to|gone back to|i'?m|i am|im) purging\b(?! (?:my|the|our|old|files|emails|clothes|wardrobe|inbox|photos|stuff|things|junk|data|cache|toys|books)\b)`,
+  R`\b(?:stick|stuck|sticking|put|putting) my fingers? down my throat\b`,
+  R`\bbulimi\w*`,
+  // "I'm all alone and I can't take it" (the person themselves, or no one named); never 'take it with me',
+  // 'take it back', 'take this job' or 'not that you can't take it'
+  R`(?:^|[.!?,;:…] *|\b(?:i|and|but|so|just|honestly|really|seriously|literally|simply|actually|truly|still)(?: (?:just|really|honestly|seriously|literally|simply|actually|truly|still))? )(?:can'?t|cannot|can not) (?:take|bear) (?:it|this|any of (?:it|this))(?= *(?:$|[.,!?;:…)]|and\b|but\b|so\b|any ?more\b|any longer\b|much (?:longer|more)\b|no more\b|i'?m\b|im\b|i (?:just|really|feel|can'?t|don'?t|need|want)\b|honestly\b|lately\b|like this\b))`,
+  R`(?:^|[.!?,;:…] *|\b(?:i|and|but|so|just|honestly|really|seriously|literally|simply|actually|truly|still)(?: (?:just|really|honestly|seriously|literally|simply|actually|truly|still))? )(?:can'?t|cannot|can not) (?:handle|stand|cope with) (?:it|this|life|any of (?:it|this)) (?:any ?more|any longer)\b`,
+  // panic ("I'm having a panic attack", "I can't breathe I'm panicking"); 'panic' about a deadline may be concern too
+  R`\b(?:panic|anxiety) attacks?\b`,
+  R`\b(?:i'?m|i am|im)(?: (?:really|so|literally|actually|totally|completely|just|kind of|kinda|properly|seriously|still|always))* panick?ing\b`,
+  R`\b(?:i'?m|i am|im) (?:starting|beginning|going|about) to panic\b`,
+  R`\b(?:keep|kept|been|can'?t stop|cannot stop) panick?ing\b`,
+  R`\b(?:hyperventilating|hyperventilated|hyperventilate)\b`,
+  R`\b(?:can'?t|cannot|can not) breathe\b(?! (?:(?:properly )?through|out of|in (?:this|that|here|there|the|these|those)|with (?:this|that|the|my|a|these) (?:mask|cold|nose|blocked|hay ?fever|smoke|heat|dust)|for (?:laughing|laughter|the smoke)|from (?:laughing|laughter)|lol|lmao|haha\w*|underwater|under water)\b)`,
 ];
 
 /**
