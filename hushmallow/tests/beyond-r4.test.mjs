@@ -197,13 +197,14 @@ test('B3: the notice names every field a request carries; the overlay clause nam
 
 test('B3: following "More below" lands the first hidden line at the top, never a fixed 80% step', async () => {
   const { nextNoticeStop, CUE_COVER } = await import('../src/beyond/consent.js');
-  assert.equal(CUE_COVER, 44);
+  // (the pill has its own row under the notice: it covers nothing, the angle-polish QA)
+  assert.equal(CUE_COVER, 0);
   const src = read('src/beyond/consent.js');
   assert.match(src, /scroll\.scrollTo\(\{ top: nextNoticeStop\(scroll\)/);
   assert.doesNotMatch(src, /clientHeight \* 0\.8/);
   // without a layout (no DOM here) it falls back to a view less the cue, clamped at the end
   const fake = { scrollHeight: 746, clientHeight: 149, scrollTop: 0, clientTop: 0, getBoundingClientRect: () => ({ top: 0 }) };
-  assert.equal(nextNoticeStop(fake), 149 - 44);
+  assert.equal(nextNoticeStop(fake), 149);
   assert.equal(nextNoticeStop({ ...fake, scrollTop: 700 }), 746 - 149);
 });
 
