@@ -1,10 +1,12 @@
-// Integration H2 + H3, review round 2b: the person's words are never shown on the hero.
+// Integration H2 + H3, review round 2b: the person's words are never shown on the hero, nor under the Memory Garden card.
 //  * The Luminous Ocean as the first world on a small phone (320×568): its host (Loomi) stands larger and lower on the
 //    world's floor than the person's Mallow stood at home, right where the thought's words were. The ThoughtLayer never
 //    shows a world-driven thought's words while the hero covers every place round it (they wait, hidden, and come back
 //    once a place has been clear a moment), and the shell's host sets off only once the words have faded out of its way
 //    (its place is planned at once — restRect — while the body waits: stage.js holdPlace).
-// The real ThoughtLayer and the real ocean, through the director, in a stand-in DOM that lays the tags out as Chromium
+//  * The Memory Garden card over the Static Storm at 320×568 (below): the thought makes way from the card's placing, and
+//    the card is never seen over it or its words.
+// The real ThoughtLayer and the real worlds, through the director, in a stand-in DOM that lays the tags out as Chromium
 // does (the metrics of tests/thought-layout.test.mjs), at the geometry measured in the browser at 320×568.
 // Run: node --test hushmallow/tests/h23-r4-clear.test.mjs
 import { test } from 'node:test';
@@ -287,5 +289,106 @@ test('shell: a world\'s first arrival holds its host\'s place until the words ar
   assert.match(wait, /now\(\) - t0 > 900/, 'never waits more than 0.9 s');
   assert.match(fnBody(scene, 'function wordsInHeroWay() {', '\n  }\n'), /L\.tagRect\(t\), K\)/, 'the words as shown, against the hero keep-out (which has the planned place in it)');
   assert.match(fnBody(scene, 'function endWorldMode() {', '\n  }\n'), /stageMallow\?\.holdPlace\?\.\(0\);/, 'finishing lets a waiting host go');
+});
+
+// ---------------------------------------------------------------- the Memory Garden card over the storm, 320×568 --
+//  * The installation places its card as it starts and shows it 2.6 s later. On a small phone there is no place for it
+//    clear of the thought, so the thought makes way — from the moment the card is placed (the shell's installKeepOut:
+//    the card to come is in the director's keepOut while still unseen), not once it is already fading in over the
+//    words; and if the thought is still under it when it is due (a finger holds it, a reduced-motion card comes at
+//    0.75 s), the card waits unseen (cardWaitsForThought, ≤ 0.9 s). Whenever the card can be seen, neither the
+//    thought's body nor its words are under it.
+const heroOf = (W, H) => {
+  const B = Math.min(W * 0.58, H * 0.27, 300), bottom = Math.min(H * 0.885, H - 76);
+  const b = box(W / 2 - B / 2, bottom - B, W / 2 + B / 2, bottom);
+  return { b, keep: { left: b.left, right: b.right, top: b.top - Math.max(18, B * 0.14), bottom: b.bottom + 6 }, mallow: { rect: () => b, bodyRect: () => b, restRect: () => b, react() {}, setEmotion() {}, lookAt() {}, float() {} } };
+};
+async function stormCard({ early = true, wait = true, cardAt = 2.6, reducedMotion = false } = {}) {
+  VIEW.W = 320; VIEW.H = 568;
+  const hero = heroOf(320, 568);
+  const bounds = { left: 10, right: 310, top: 188, bottom: 534 };
+  const L = new ThoughtLayer({ bounds: () => bounds, keepOut: () => hero.keep, reducedMotion, tagRoot: document.body });
+  const th = L.add({ text: 'My brother read my messages again and I am so angry I could scream.', emotion: 'angry', intensity: 0.75, r: 32 }, { from: { x: 256, y: hero.b.top + 30 }, home: { x: 256, y: hero.b.top + 30 } });
+  for (let i = 0; i < 90; i++) L.frame(1 / 60);
+  // the card: its rect (planned from the installation's start) and how much of it is seen (from cardAt)
+  const card = { rect: null, op: 0, shownAt: -1 };
+  const keepOut = () => {
+    if (!card.rect) return [];
+    // (before: the shell kept the thought clear of the card only once it could be seen, and to its very edge; now also
+    // while it is planned, with 10 px to spare — installKeepOut's KEEP_PAD)
+    if (!early) return card.op < 0.05 ? [] : [card.rect];
+    const p = 10, r = card.rect;
+    return [{ left: r.left - p, top: r.top - p, right: r.right + p, bottom: r.bottom + p }];
+  };
+  const D = createHushflow({
+    worldEl: new El('div'), fxEl: new El('div'), mallow: hero.mallow, thoughts: L, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} },
+    safeRect: () => ({ x: 20, y: 68, w: 280, h: Math.max(160, hero.b.top - 14 - 68) }), subtitleBand: () => 118,
+    photos: { n: 7, draw: () => ({ w: 1, h: 1 }), size: (i, k, s) => ({ w: Math.round(s * 0.78), h: Math.round(s) }) },
+    registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion, keepOut,
+  });
+  await D.start({ worldId: 'static-storm', emotion: 'angry', intention: 'calm' });
+  for (let i = 0; i < 60 * 8; i++) { D.debug.step(1 / 60); L.frame(1 / 60); }
+  const tg = L.tags.get(th);
+  const P = D.world.layoutPlan.thought.plate;
+  // where garden-install puts the card at 320 (measured: 280 × 150, from just above the words down over Glitzi's head)
+  card.rect = box(20, Math.round(P.y0) - 22, 300, Math.round(P.y0) - 22 + 150);
+  // (the installation has the lines quiet: the shell lets the thoughts float up to just under the top bar meanwhile)
+  bounds.top = 70;
+  const frames = [];
+  let t = 0, waitFrom = -1;
+  const over = () => (L.rects() || []).some((r) => hit(box(card.rect.left - 4, card.rect.top - 4, card.rect.right + 4, card.rect.bottom + 4), r));
+  for (let i = 0; i < 60 * 6; i++) {
+    t += 1 / 60;
+    if (t >= cardAt && card.shownAt < 0) {
+      if (!wait) card.shownAt = t;
+      else { if (waitFrom < 0) waitFrom = t; if (!over() || t - waitFrom > 0.9) card.shownAt = t; }
+    }
+    // (.hm-install-card's fade in: opacity .6 s cubic-bezier(.22,1,.36,1) — a quick rise; .45 s ease with reduced motion)
+    if (card.shownAt >= 0) { const k = Math.min(1, (t - card.shownAt) / (reducedMotion ? 0.45 : 0.6)); card.op = 1 - (1 - k) ** 3; }
+    D.debug.step(1 / 60); L.frame(1 / 60);
+    const e = th.extent({});
+    frames.push({ t, op: card.op, body: box(e.left, e.top, e.right, e.bottom), tag: tg.shown ? L.tagRect(th) : null });
+  }
+  return { D, L, th, frames, card, done() { D.destroy(); L.destroy(); } };
+}
+const underCard = (run) => run.frames.filter((f) => f.op > 0.15 && (hit(f.body, run.card.rect) || hit(f.tag, run.card.rect)))
+  .map((f) => ({ t: +f.t.toFixed(2), op: +f.op.toFixed(2), body: hit(f.body, run.card.rect), words: hit(f.tag, run.card.rect) }));
+
+for (const reducedMotion of [false, true]) {
+  test(`storm 320×568${reducedMotion ? ', reduced motion' : ''}: the garden card is never seen over the thought or its words — it makes way while the card is still planned`, async () => {
+    const run = await stormCard({ reducedMotion, cardAt: reducedMotion ? 0.75 : 2.6 });
+    try {
+      const u = underCard(run);
+      assert.equal(u.length, 0, `frames with the card seen over the thought: ${JSON.stringify(u.slice(0, 4))}`);
+      assert.ok(run.frames.at(-1).op > 0.99, 'the card shows');
+      const late = run.card.shownAt - (reducedMotion ? 0.75 : 2.6);
+      assert.ok(late <= 0.91, `and not much later than due (${late.toFixed(2)} s)`);
+      assert.ok(run.frames.every((f) => f.body.top >= 0), 'the thought stays on the screen');
+    } finally { run.done(); }
+  });
+}
+
+test('storm 320×568, the case: kept clear only once the card is seen (before r2b), the card fades in over the words', async () => {
+  const run = await stormCard({ early: false, wait: false });
+  try {
+    assert.ok(underCard(run).length > 0, 'the old way showed the card over the thought (this harness sees the failure)');
+  } finally { run.done(); }
+});
+
+test('shell: the thought makes way for the card from its placing, the card waits unseen while the thought is under it, the lines wait for the thought to leave the band', () => {
+  const scene = read('src/app/scenes/hushfold.js'), css = read('src/ui/hushfold.css');
+  assert.match(scene, /keepOut: \(\) => installKeepOut\(\),/, 'the director keeps the thought clear of the card to come');
+  assert.match(fnBody(scene, 'function installKeepOut() {', '\n  }\n'), /r\.left - KEEP_PAD, top: r\.top - KEEP_PAD/, 'with room to spare');
+  assert.match(scene, /const KEEP_PAD = 10;/);
+  const planned = fnBody(scene, 'function plannedCardRect() {', '\n  }\n');
+  assert.match(planned, /\.hm-install-card:not\(\.is-out\)/);
+  assert.match(planned, /if \(!c\?\.isConnected\) return null;/, 'from its placing until it goes — also in the first frames of its fade-in, before installAvoidRects sees it');
+  assert.match(fnBody(scene, 'const onInstallPhase = (e) => {', '\n  };\n'), /if \(ph === 'card'\) \{[^\n]*cardWaitsForThought\(\);/);
+  assert.match(fnBody(scene, 'function cardWaitsForThought() {', '\n  }\n'), /now\(\) - t0 > 900/, 'never waits more than 0.9 s');
+  assert.match(css, /body\.hf-card-wait \.hm-install-card \{ opacity: 0 !important; pointer-events: none !important; \}/);
+  const subs = fnBody(scene, 'const installSubtitles = ((shown) => {', '\n  })(subtitles);');
+  assert.match(subs, /thoughtInBand\(\) && \(inst \|\| now\(\) - freeAt < 3000\)\) \{ later\(go, 60\); return; \}\s*back = 0; shown\.resume\(\);/, 'the lines wait while the thought is in the band');
+  assert.match(subs, /get paused\(\) \{ return shown\.paused && !back; \}/, 'lines on their way back are not paused for a second installation: its pause is its own');
+  assert.match(subs, /pause\(\) \{ back = 0; shown\.pause\(\); \}/, 'a pause cancels lines on their way back');
 });
 
