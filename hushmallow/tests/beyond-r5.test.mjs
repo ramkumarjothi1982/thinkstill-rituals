@@ -1,7 +1,7 @@
 // Another Angle (hushmallow Beyond), review round 5 (13 Oct 2026): the grief gate and feelings said plainly.
-//   1. bereavement() reads only a death the person names (a person or a pet): never "lost my mum's ring",
-//      "lost my dad's car keys", "my son passed and I'm so proud" or "my daughter passed! she got into uni".
-//      When it fires, Zuzu answers gently and, with sharing on, the server answers it (no task, no mechanic).
+//   1. (r7) deathTalk() reads any death or loss word, recall first (beyond-r7.test.mjs); this round's losses all
+//      still fire, and of its "not a loss" probes the idioms stay ordinary while the rest now take the gentle path,
+//      whose lines never assume anyone died. Zuzu answers gently and, with sharing on, the server answers it.
 //   2. A feeling said plainly ("I feel empty", "I can't stop crying") is real, and it is the fact: never
 //      "what your mind added", never "one way to read what happened", never told to check a fact.
 // Run: node --test hushmallow/tests/
@@ -10,8 +10,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { authoredScene, sceneParts, candidatePatterns, bereavement, griefScene, feelingOf, feelingScene, feelingGuard, framesAsGuess, FEELING_ORDER } from '../src/beyond/authored.js';
-import { serverGrief, passedAlone } from '../src/beyond/grief.js';
+import { authoredScene, sceneParts, candidatePatterns, deathTalk, gentleScene, feelingOf, feelingScene, feelingGuard, framesAsGuess, FEELING_ORDER } from '../src/beyond/authored.js';
+import { serverGrief } from '../src/beyond/grief.js';
 import { feelingStatement, feelingClause, FEELING_LOOK } from '../src/beyond/feelings.js';
 import { GRIEF, FEELING, MECHANIC_LINES, mechanicLines, EXPLORE } from '../src/beyond/lines.js';
 import { checkText } from '../src/engine/safety.js';
@@ -99,26 +99,36 @@ const NOT_LOSSES = [
   'I lost my dog yesterday, he slipped his lead in the woods.', 'I lost my mum to dementia, she doesn’t know who I am.',
 ];
 
-test('r5.1: a death the person names is a bereavement (a person or a pet; died, passed away, lost my…, RIP, a grave, a pet put down)', () => {
+test('r5.1 (r7): every death the person names is death talk (a person or a pet; died, passed away, lost my…, RIP, a grave, a pet put down)', () => {
   assert.ok(LOSSES.length >= 30);
-  for (const [text, kind] of LOSSES) assert.equal(bereavement(text), kind, text);
+  for (const [text, kind] of LOSSES) {
+    assert.ok(deathTalk(text), text);
+    if (kind === 'grief') assert.equal(deathTalk(text), 'grief', text);
+  }
 });
 
-test('r5.1: nothing else is: "lost my mum’s ring", "passed" alone, objects, idioms, imagined, nearly, gone somewhere', () => {
+/** Of this round's "not a loss" probes, the unambiguous idioms (death-words.js): still never death talk. */
+const IDIOMS = [
+  'I lost my mum’s ring and she’ll be furious with me.', 'I lost my dad’s car keys and he’s going to kill me.', 'my daughter passed! she got into uni', 'My son passed his driving test and I didn’t.',
+  'My brother passed his exams and I feel like the failure of the family.', 'My sister passed me in the corridor and didn’t say hi.', 'My mum passed her driving test at 50!', 'Grandad passed out at dinner.',
+  'My mum passed on the message but nobody listened.', 'My friend passed on my CV to her manager.', 'I lost my keys again.', 'I lost my temper with my son.', 'I lost my dad’s watch that he gave me.',
+  'My phone died in the middle of the call.', 'The battery died on the way home.', 'My baby monitor died in the night.', 'My dad’s car died on the motorway.', 'My boss gives me grief about everything.',
+  'Good grief, what a week.', 'If you don’t revise it’s your funeral.', 'I made a grave mistake at work.', 'RIP my phone, it fell in the bath.', 'I nearly died of embarrassment.', 'I died laughing at the meeting.',
+  'My mum is dead set on me becoming a doctor.', 'My brother killed it at karaoke.', 'Dead tired after work today.', 'My brother is dead keen on football.', 'My dad’s gone to work and I’m alone with the baby.',
+];
+test('r5.1 (r7): the idioms stay ordinary; every other "not a loss" probe is death talk now, and its lines never say anyone died', () => {
   assert.ok(NOT_LOSSES.length >= 30);
-  for (const text of NOT_LOSSES) assert.equal(bereavement(text), null, text);
-});
-
-test('r5.1: a false alarm never says someone died (no grief lines, no "Missing them"), and the scene is an ordinary one', () => {
+  for (const text of IDIOMS) { assert.ok(NOT_LOSSES.includes(text), text); assert.equal(deathTalk(text), null, text); }
   for (const text of NOT_LOSSES) {
     for (const { scene } of rounds(text)) {
-      assert.notEqual(scene.grief, true, text);
       // (their own words quoted back are theirs: only Zuzu's own words are read here)
-      for (const line of said(scene)) assert.doesNotMatch(line.replace(/“[^”]*”/gu, '“…”'), /Missing them|Grief isn|Loss is heavy|died|passed away|death|funeral/i, `${text} → ${line}`);
+      for (const line of said(scene)) assert.doesNotMatch(line.replace(/“[^”]*”/gu, '“…”'), /Missing them|Grief isn|Loss is heavy|died|passed away|death|funeral|grief|missing/i, `${text} → ${line}`);
     }
+    if (deathTalk(text)) assert.equal(authoredScene(text).grief, true, text);
   }
-  // the review's four, each its own ordinary scene with a mechanic
-  for (const text of NOT_LOSSES.slice(0, 4)) assert.ok(authoredScene(text).mechanic, text);
+  // the review's four: a ring, the keys, an exam: ordinary scenes with a mechanic (and the proud son, death talk now, gentle)
+  for (const text of [NOT_LOSSES[0], NOT_LOSSES[1], NOT_LOSSES[3]]) assert.ok(authoredScene(text).mechanic, text);
+  assert.equal(authoredScene(NOT_LOSSES[2]).grief, true);
 });
 
 test('r5.1: a loss still never plays a mechanic or a fact/assumption split, and its lines never name a death themselves', () => {
@@ -135,8 +145,8 @@ test('r5.1: a loss still never plays a mechanic or a fact/assumption split, and 
     // never a death quoted back: the lines name no one and no way of dying
     for (const line of [s.subtitle_line_1, s.subtitle_line_2]) assert.doesNotMatch(line, /died|dead|passed|killed|funeral|grave|your (?:mum|dad|nan|grandad|dog|cat)/i, line);
   }
-  assert.deepEqual(griefScene('My grandad died.').subtitle_line_1, GRIEF.loss[0]);
-  assert.deepEqual(griefScene('I’m going to a funeral tomorrow.').subtitle_line_1, GRIEF.grief[0]);
+  assert.deepEqual(gentleScene('My grandad died.').subtitle_line_1, GRIEF.loss[0]);
+  assert.deepEqual(gentleScene('I’m going to a funeral tomorrow.').subtitle_line_1, GRIEF.grief[0]);
   // a loss with a crisis in it is crisis first (the app's own check runs before any grief)
   assert.equal(checkText('My mum died and I want to die too.').level, 'crisis');
 });
@@ -150,20 +160,21 @@ test('r5.1: grief in the orchestrator: gentle first, the server may answer with 
   // with sharing on, one request; crisis and care from the server still route; a fallback runs the app's check again
   assert.match(grief, /if \(!scene && !asked && serverMode\(\)\) \{[\s\S]*client\.angle\(\{ text: S\.text, emotion: S\.emotion, intention: S\.intention, previous: \[\] \}\)/);
   assert.equal((grief.match(/client\.angle\(/g) || []).length, 1, 'one request at most');
-  // the server's lines are never said over a loss when they would read it as a guess
-  assert.match(grief, /!framesAsGuess\(res\.scene\.subtitle_line_1\) && !framesAsGuess\(res\.scene\.subtitle_line_2\)\) scene = res\.scene;/);
+  // the server's lines are said over death talk only when it answered with grief or a loss (r7), and never when they
+  // would read it as a guess
+  assert.match(grief, /res\?\.status === 'ok' && serverGrief\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && res\.scene\?\.subtitle_line_1 && res\.scene\?\.subtitle_line_2 && !framesAsGuess\(res\.scene\.subtitle_line_1\) && !framesAsGuess\(res\.scene\.subtitle_line_2\)\) scene = res\.scene;/);
   assert.match(grief, /sleep\(devBudget \|\| ANGLE_BUDGET_MS\)/);
   assert.match(grief, /res\?\.status === 'crisis'\) \{ crisisMode\(\); return; \}/);
   assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\); return; \}/);
   assert.match(grief, /const again = checkText\(S\.text\);/);
   // the server's two lines (or the authored pair); never its mechanic
-  assert.match(grief, /if \(!scene\) scene = griefScene\(S\.text, \{ emotion: S\.emotion \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
+  assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
   assert.match(grief, /await say\(scene\.subtitle_line_1, \{ mallow: 'zuzu' \}\);[\s\S]*await say\(scene\.subtitle_line_2, \{ mallow: 'zuzu' \}\);/);
   // startAngle: a loss goes to griefMode (no Thought Mallow); a server scene that reads as grief plays gently too
   const start = src.slice(src.indexOf('async function startAngle('), src.indexOf('async function waitingLines('));
-  assert.match(start, /if \(bereavement\(S\.text\)\) return griefMode\(\);/);
-  assert.ok(start.indexOf('bereavement(S.text)') < start.indexOf('spawnThought()'));
-  assert.match(start, /if \(res\.status === 'ok' && res\.scene && serverGrief\(res\.scene, S\.text\)\) \{ griefMode\(\{ scene: framesAsGuess\(res\.scene\.subtitle_line_1\) \|\| framesAsGuess\(res\.scene\.subtitle_line_2\) \? null : res\.scene, asked: true \}\); return; \}/);
+  assert.match(start, /if \(gentleRoute\(S\.text\)\) return griefMode\(\);/);
+  assert.ok(start.indexOf('gentleRoute(S.text)') < start.indexOf('spawnThought()'));
+  assert.match(start, /if \(res\.status === 'ok' && res\.scene && serverGrief\(res\.scene, S\.text, \{ heavy: heavyWords \}\)\) \{ griefMode\(\{ scene: framesAsGuess\(res\.scene\.subtitle_line_1\) \|\| framesAsGuess\(res\.scene\.subtitle_line_2\) \? null : res\.scene, asked: true \}\); return; \}/);
   assert.equal(framesAsGuess('What happened is the part that actually happened.'), true);
   assert.equal(framesAsGuess('A year is not a deadline for missing your dad.'), false);
   // the gentle lines
@@ -171,24 +182,20 @@ test('r5.1: grief in the orchestrator: gentle first, the server may answer with 
   for (const l of [GRIEF.heard, ...GRIEF.loss, ...GRIEF.grief, GRIEF.ask, GRIEF.squeeze]) assert.doesNotMatch(l, /\bAI\b|angle|reframe|fact|guess|mind/i, l);
 });
 
-test('r5.1: "passed" alone after a person is never read as a death, and never played as a game either', () => {
+test('r5.1 (r7): "passed" after a person is death talk (gentle, never a game); an exam passed or someone passing by is not', () => {
   for (const text of ['My dad passed last year.', 'My dad passed last year and Christmas is hard.', 'Since Mum passed I can’t sleep.', 'My grandad passed in March.']) {
-    assert.equal(bereavement(text), null, text);
-    assert.equal(passedAlone(text), true, text);
+    assert.equal(deathTalk(text), 'loss', text);
     const s = authoredScene(text);
-    assert.equal(s.grief, undefined, text);
-    assert.equal(s.feeling, 'heavy', text);
+    assert.equal(s.grief, true, text);
+    assert.equal(s.mechanic, null, text);
     assert.equal(s.subtitle_line_1, 'That sounds like a lot to carry.', text);
-    for (const { scene } of rounds(text)) {
-      assert.ok(FEELING_MECHANICS.includes(scene.mechanic), `${text} → ${scene.mechanic}`);
-      for (const line of said(scene)) assert.doesNotMatch(line, /died|death|Missing them|Grief|what happened|one way to read|check one fact/i, `${text} → ${line}`);
-    }
+    for (const line of said(s)) assert.doesNotMatch(line, /died|death|Missing them|Grief|what happened|one way to read|check one fact/i, `${text} → ${line}`);
   }
-  // an exam, a result, being proud, passing someone by: an ordinary scene
-  for (const text of ['My son passed and I’m so proud but I failed again.', 'my daughter passed! she got into uni', 'My son passed his driving test and I didn’t.',
+  // an exam, a result, passing someone by: an ordinary scene
+  for (const text of ['my daughter passed! she got into uni', 'My son passed his driving test and I didn’t.',
     'My sister passed me in the corridor and didn’t say hi.', 'My brother passed his exams and I feel like the failure of the family.', 'My mum passed her driving test at 50!']) {
-    assert.equal(passedAlone(text), false, text);
-    assert.notEqual(authoredScene(text).feeling, 'heavy', text);
+    assert.equal(deathTalk(text), null, text);
+    assert.notEqual(authoredScene(text).grief, true, text);
   }
 });
 
@@ -292,15 +299,16 @@ test('r5.2: inside a longer message a feeling is what is so, never the guess (ow
 
 test('r5.2: the orchestrator never fact-checks a feeling: its explore prompts, friend line, mechanic lines and fallback', () => {
   const src = read('src/beyond/another-angle.js');
-  assert.match(src, /let remaining = scene\.feeling \? EXPLORE\.filter\(\(p\) => FEELING\.explore\.includes\(p\.id\)\) : EXPLORE\.slice\(\);/);
+  // (r7: and words beside a death or harm word, the backstop, get the same)
+  assert.match(src, /const gentle = !!scene\.feeling \|\| !framingAllowed\(S\.text\);\s*let remaining = gentle \? EXPLORE\.filter\(\(p\) => FEELING\.explore\.includes\(p\.id\)\) : EXPLORE\.slice\(\);/);
   assert.deepEqual(EXPLORE.filter((p) => FEELING.explore.includes(p.id)).map((p) => p.label), ['What would you tell a friend?', 'Is there one useful action?']);
-  assert.match(src, /if \(p\.field === 'friend'\) return scene\.feeling \? FEELING\.friend :/);
-  assert.match(src, /choose\(scene\.feeling \? \(first \? FEELING\.exploreAsk : FEELING\.exploreMore\)/, 'never "Want to test it?"');
+  assert.match(src, /if \(p\.field === 'friend'\) return scene\.feeling \|\| !framingAllowed\(S\.text\) \? FEELING\.friend :/);
+  assert.match(src, /choose\(gentle \? \(first \? FEELING\.exploreAsk : FEELING\.exploreMore\)/, 'never "Want to test it?"');
   assert.match(src, /if \(feel\) careFace\(\); else zt\?\.setEmotion\(\{ curious: 0\.65, playful: 0\.35 \}/, 'no playful face for a feeling');
   for (const l of [FEELING.exploreAsk, FEELING.exploreMore]) assert.doesNotMatch(l, /test|check|know/i, l);
   assert.match(src, /const L = mechanicLines\(scene\.mechanic, scene\);/);
   assert.match(src, /lines: L,/, 'the mechanic gets the scene’s own lines');
-  assert.match(src, /const fallback = scene\.feeling \? 'assemble_step' : 'pull_apart';/);
+  assert.match(src, /const gentle = !!scene\.feeling \|\| !framingAllowed\(S\.text\);\s*const fallback = gentle \? 'assemble_step' : 'pull_apart';/);
   assert.match(src, /if \(f && FEELING_LOOK\[f\.kind\]\) return FEELING_LOOK\[f\.kind\];/, 'the thought looks like the feeling');
   for (const f of ['soften-harsh.js', 'separate-one.js', 'assemble-step.js']) assert.match(read(`src/beyond/mechanics/${f}`), /const L = ctx\.lines \|\| MECHANIC_LINES\[id\];/, f);
   // a feeling's own lines: no verdict, no lesson, no "every time", no other times
@@ -345,7 +353,7 @@ test('r5.2: a server scene for a feeling never plays as "What your mind added" e
   assert.equal(feelingGuard(other, 'My sister ignored me at the party, she must hate me.'), other);
   assert.equal(feelingGuard({ ...other, source: 'authored' }, 'I feel empty').source, 'authored');
   const src = read('src/beyond/another-angle.js');
-  assert.match(src, /scene = feelingGuard\(res\.scene, S\.text, \{ emotion: S\.emotion, exclude \}\);/);
+  assert.match(src, /scene = harmGuard\(feelingGuard\(res\.scene, S\.text, \{ emotion: S\.emotion, exclude \}\), S\.text, \{ emotion: S\.emotion, exclude \}\);/);
 });
 
 // a 2D context that accepts every call, and tags without DOM (as in beyond.test.mjs)

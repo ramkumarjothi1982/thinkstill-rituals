@@ -1,5 +1,7 @@
 // Another Angle (hushmallow Beyond), review round 6 (13 Oct 2026): the grief gate both ways, and feelings with a
-// contraction after "I".
+// contraction after "I". (Round 7 replaced the precise gate with deathTalk, recall first: every loss below still
+// fires; of the "not a loss" probes the idioms stay ordinary and the rest take the gentle path, which never assumes
+// anyone died. beyond-r7.test.mjs and tests/probes/death-talk.mjs hold the new tables.)
 //   1. A death said with the contraction stuck to the person ("my dad's dead", "Mum's died", "our cat's been put
 //      down", "my husband's passed"), about a boy, a girl or an ex, as "the death of my father", "losing my dad
 //      was…", "watching my grandma die" or "since my dad dying" is a loss: never a game. Someone dying now ("my dad
@@ -15,8 +17,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { authoredScene, sceneParts, bereavement, feelingOf, feelingGuard, fairAnger, FEELING_ORDER } from '../src/beyond/authored.js';
-import { serverGrief, passedAlone, livingLoss } from '../src/beyond/grief.js';
+import { authoredScene, sceneParts, deathTalk, feelingOf, feelingGuard, fairAnger, FEELING_ORDER } from '../src/beyond/authored.js';
+import { serverGrief, livingLoss } from '../src/beyond/grief.js';
+import { GRIEF } from '../src/beyond/lines.js';
 import { feelingClause, feelingOpens, feelingStatement } from '../src/beyond/feelings.js';
 import { FEELING } from '../src/beyond/lines.js';
 
@@ -86,7 +89,7 @@ const NOT_LOSSES = [
 
 test('r6.1: a death with the contraction stuck to the person, a boy / girl / ex, "the death of", "losing", "watching … die", "since … dying" is a loss', () => {
   assert.ok(LOSSES.length >= 60);
-  for (const text of LOSSES) assert.equal(bereavement(text), 'loss', text);
+  for (const text of LOSSES) assert.equal(deathTalk(text), 'loss', text);
 });
 
 test('r6.1: every round of a loss is grief: never a mechanic, a fact/assumption split, or a line that frames it as a guess', () => {
@@ -103,57 +106,58 @@ test('r6.1: every round of a loss is grief: never a mechanic, a fact/assumption 
   }
 });
 
-test('r6.2: nothing else is a loss: an "is" or "has" before an idiom, someone dying now, a death feared, a friendship, someone alive', () => {
+/** Of the "not a loss" probes, the unambiguous idioms (death-words.js): never death talk. */
+const IDIOMS = [
+  'My dad\'s dead keen on golf.', 'My mum\'s dead against it.', 'My brother\'s dead clever.', 'My dog\'s dead cute.', 'My sister\'s dead good at maths.', 'My dad\'s died his hair blue.',
+  'My phone\'s died.', 'My boy\'s killed it at football.', 'My mum\'s passed her driving test!', 'My son\'s passed his exams.', 'My son\'s passed!', 'My girl\'s passed out on the sofa.',
+  'My dad\'s dead tired.', 'My boyfriend\'s dead to me.', 'My ex is dead to me.', 'My friend\'s dad\'s car died.', 'My dad\'s been dead set on it.', 'My boy died laughing.',
+  'My husband\'s passed the bar exam.', 'My little boy\'s passed his swimming test.', 'My girl passed her exam!', 'My dad has passed his test.', 'My mum has passed out.', 'My grandad\'s gone to bed.',
+  'My mum\'s dying to meet you.', 'My nan is dying to meet you.', 'I\'m dying to see my mum.', 'My mum will be the death of me.', 'I\'m losing my mind.', 'Losing my temper with my kids.', 'I lost my dad\'s ring.',
+];
+test('r6.2 (r7): the idioms are never death talk; every other probe is, and its lines never say anyone died or that this is grief', () => {
   assert.ok(NOT_LOSSES.length >= 60);
-  for (const text of NOT_LOSSES) assert.equal(bereavement(text), null, text);
-  // and no line ever says someone died, or that this is grief
+  for (const text of IDIOMS) { assert.ok(NOT_LOSSES.includes(text), text); assert.equal(deathTalk(text), null, text); }
   for (const text of NOT_LOSSES) {
+    if (deathTalk(text)) {
+      const s = authoredScene(text);
+      assert.equal(s.grief, true, text);
+      assert.equal(s.mechanic, null, text);
+    }
     for (const { scene } of rounds(text)) {
-      assert.notEqual(scene.grief, true, text);
-      for (const line of said(scene)) assert.doesNotMatch(line.replace(/“[^”]*”/gu, '“…”'), /Missing them|Grief isn|Loss is heavy|died|passed away|death|funeral/i, `${text} → ${line}`);
+      for (const line of said(scene)) assert.doesNotMatch(line.replace(/“[^”]*”/gu, '“…”'), /Missing them|Grief isn|Loss is heavy|died|passed away|death|funeral|grief|missing/i, `${text} → ${line}`);
     }
   }
 });
 
-test('r6.2: "lost my <someone> when…" is a death only when what follows can be one', () => {
-  for (const text of ['I lost my dad when he was 52.', 'I lost my mum when I was 12.', 'I lost my nan when she had a stroke.', 'I lost my brother while I was at uni.', 'I lost my dog when he ran into the road.', 'I lost my mum when she got sick.'])
-    assert.equal(bereavement(text), 'loss', text);
-  for (const text of ['I lost my sister when she moved to Spain.', 'I lost my dad when he remarried.', 'I lost my dad when he went to prison.', 'I lost my mum when she got remarried.', 'I lost my brother when he left.', 'I lost my sister when she started seeing him.'])
-    assert.equal(bereavement(text), null, text);
+test('r6.2 (r7): "lost my <someone>" is death talk whatever follows (the gentle lines are true when they moved away too)', () => {
+  for (const text of ['I lost my dad when he was 52.', 'I lost my mum when I was 12.', 'I lost my nan when she had a stroke.', 'I lost my brother while I was at uni.', 'I lost my dog when he ran into the road.', 'I lost my mum when she got sick.',
+    'I lost my sister when she moved to Spain.', 'I lost my dad when he remarried.', 'I lost my dad when he went to prison.', 'I lost my mum when she got remarried.', 'I lost my brother when he left.', 'I lost my sister when she started seeing him.']) {
+    assert.equal(deathTalk(text), 'loss', text);
+    const s = authoredScene(text);
+    assert.equal(s.mechanic, null, text);
+    assert.deepEqual([s.subtitle_line_1, s.subtitle_line_2], GRIEF.loss, text);
+  }
 });
 
-test('r6.2: someone still alive but going (dementia, drink) is answered gently, never a game and never a death', () => {
+test('r6.2 (r7): someone still alive but going (dementia, drink) is answered gently, never a game', () => {
   for (const text of ['I lost my mum to dementia, she doesn’t know who I am.', 'I lost my mum to dementia.', 'I’m losing my dad to drink.', 'My nan has Alzheimer’s and doesn’t recognise me.', 'My grandad doesn’t know who I am any more.']) {
-    assert.equal(bereavement(text), null, text);
-    assert.equal(livingLoss(text), true, text);
-    assert.equal(feelingOf(text)?.kind, 'heavy', text);
+    assert.ok(deathTalk(text) || livingLoss(text), text);
     const all = rounds(text);
-    assert.equal(all[0].scene.subtitle_line_1, FEELING.first.heavy, text);
-    for (const { scene } of all) {
-      assert.ok(FEELING_ORDER.heavy.includes(scene.mechanic), `${text} → ${scene.mechanic}`);
-      for (const line of said(scene)) assert.doesNotMatch(line, FACT_CHECK, `${text} → ${line}`);
-    }
+    assert.equal(all.length, 1, text);
+    assert.equal(all[0].scene.grief, true, text);
+    assert.equal(all[0].scene.mechanic, null, text);
+    for (const line of said(all[0].scene)) assert.doesNotMatch(line, FACT_CHECK, `${text} → ${line}`);
   }
-  // a death named beside it is a loss; a friend who "doesn't know me" is not a living loss
-  assert.equal(bereavement('I lost my mum to dementia last year and the funeral was in May.'), 'loss');
-  assert.equal(bereavement('I lost my nan to Alzheimer’s and she died in March.'), 'loss');
   assert.equal(livingLoss('My boyfriend doesn’t know me at all.'), false);
   assert.equal(livingLoss('I lost my keys to the house.'), false);
 });
 
-test('r6.2: "\'s passed" (has passed) is a loss with nothing passed and no exam or pride; the past "passed" alone stays gentle', () => {
-  for (const text of ['My husband\'s passed.', 'My mum\'s passed.', 'Dad\'s passed.', 'My dog has passed.']) assert.equal(bereavement(text), 'loss', text);
-  for (const text of ['My son\'s passed!', 'My son\'s passed his exams.', 'My girl\'s passed out on the sofa.', 'My husband\'s passed the bar exam.']) {
-    assert.equal(bereavement(text), null, text);
-    assert.equal(passedAlone(text), false, text);
-  }
-  // the contraction is read by passedAlone too ("Mum's tragically passed" is a loss before it gets there)
-  assert.equal(passedAlone('My dad passed last year.'), true);
-  assert.equal(passedAlone('Since Mum’s passed I can’t sleep.'), true);
-  assert.equal(bereavement('My dad passed last year.'), null);
+test('r6.2 (r7): "\'s passed" (has passed) is death talk; passing an exam, passing out or "passed!" is not', () => {
+  for (const text of ['My husband\'s passed.', 'My mum\'s passed.', 'Dad\'s passed.', 'My dog has passed.', 'My dad passed last year.', 'Since Mum’s passed I can’t sleep.']) assert.equal(deathTalk(text), 'loss', text);
+  for (const text of ['My son\'s passed!', 'My son\'s passed his exams.', 'My girl\'s passed out on the sofa.', 'My husband\'s passed the bar exam.']) assert.equal(deathTalk(text), null, text);
 });
 
-test('r6.2: a server loss scene plays gently when the words name a death the app left to it (never a lost job or a phone)', () => {
+test('r6.2 (r7): a server loss scene plays gently for death talk (it sees the whole context), never for a lost job or a phone', () => {
   const sc = (o) => ({ source: 'server', situation_type: 'loss', emotion: 'sadness', ...o });
   assert.equal(serverGrief(sc(), 'My nan passed in May and the house is so quiet.'), true);
   assert.equal(serverGrief(sc(), 'Since Grandad passed I can’t sleep.'), true);
@@ -161,13 +165,14 @@ test('r6.2: a server loss scene plays gently when the words name a death the app
   assert.equal(serverGrief(sc(), 'I lost my job today.'), false);
   assert.equal(serverGrief(sc(), 'My phone died and I lost my job.'), false);
   assert.equal(serverGrief(sc(), 'My son passed his test and I feel left behind.'), false);
-  assert.equal(serverGrief(sc(), 'I’m scared my dad will die.'), false);
-  assert.equal(serverGrief(sc(), 'He died in the game and I lost the match.'), false);
+  // (death talk now: the server's own loss answer is its reading of the whole context)
+  assert.equal(serverGrief(sc(), 'I’m scared my dad will die.'), true);
+  assert.equal(serverGrief(sc(), 'He died in the game and I lost the match.'), true);
   assert.equal(serverGrief(sc({ situation_type: 'other' }), 'My nan passed in May.'), false);
   assert.equal(serverGrief(sc({ source: 'authored' }), 'My nan passed in May.'), false);
   assert.equal(serverGrief(sc()), false);
   const src = read('src/beyond/another-angle.js');
-  assert.match(src, /serverGrief\(res\.scene, S\.text\)/);
+  assert.match(src, /serverGrief\(res\.scene, S\.text, \{ heavy: heavyWords \}\)/);
 });
 
 // ------------------------------------------------------------- 3. feelings --
@@ -255,7 +260,7 @@ test('r6.3: with the mock server, "I\'m feeling really low." gives way to the fe
 // --------------------------------------------------------------- 4. notice --
 test('r6.4: the notice says the language and request code ride on an angle request only, and feedback names the Mallow and the version', () => {
   const src = read('src/beyond/consent.js');
-  assert.match(src, /Each angle request also carries the app’s language and a one-off random code, and every request carries this phone’s session code\./);
+  assert.match(src, /Each angle request also carries the app’s language and a one-off random code, and every angle and feedback request carries this phone’s session code\./);
   assert.match(src, /A feedback tap sends which button, which Mallow and what kind of angle it was \(and its version\), never your words\./);
   const client = read('src/beyond/angle-client.js');
   // (what the notice says is what the client sends)

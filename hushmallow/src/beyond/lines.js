@@ -35,22 +35,29 @@ export const SAFETY = Object.freeze({
   care: ['That sounds like something that shouldn’t have happened.', 'This one deserves real support, not a new angle.'],
   careAsk: 'I’m staying right here. Want to see who can help?',
   careOptions: [{ label: 'See support', value: 'support', primary: true }, { label: 'Just squeeze Zuzu', value: 'squeeze' }],
+  /** death talk that also wants to be with, join or follow the one who died (grief.js deathEscalation): the care path */
+  follow: ['What you just said matters, and I’m glad you told me.', 'This deserves real support, from someone who can be with you now.'],
   concern: 'That sounds heavy. Support is right there if you want it.',
   /** Finishing after crisis or care: calm, no jokes, no "another look". */
   finish: ['Go gently.', 'Support is one tap away whenever you need it.'],
 });
 
 /**
- * Someone (or a pet) has died. Grief is not a thought to fix: no mechanic, no "what your mind added", no
- * "another angle", nothing playful; a validating pair, Zuzu close by, and support one tap away.
+ * The gentle path (review round 7): death talk (grief.js deathTalk), and any words with a death or harm word that
+ * are not ordinary (backstop.js). These words fire on a game, a near miss or an imagined death too, so every line
+ * here is true whether or not someone died: it never names or implies a death, grief, a loss, "them", or missing
+ * someone. No mechanic, no "what your mind added", no "another angle", nothing playful; Zuzu close and quiet,
+ * support one tap away. Nothing here speaks of grief or of missing someone: only the server (which sees the whole
+ * context) may answer that way, in its own two lines.
  */
 export const GRIEF = Object.freeze({
   /** first, whoever answers (with sharing on, said while the server answers) */
   heard: 'Thank you for telling me.',
-  /** a loss named in the words ("my grandad died", "since he died") */
-  loss: ['Missing them this much makes sense.', 'Grief isn’t a thought to fix.'],
-  /** grieving, a funeral, without a loss named */
-  grief: ['Loss is heavy, and it makes sense that this hurts.', 'Grief isn’t a thought to fix.'],
+  /** death talk that names a death or a loss ('loss'), or a funeral, a grave, grieving ('grief') */
+  loss: ['That sounds like a lot to carry.', 'There’s nothing to fix here. We can just be with it.'],
+  grief: ['That sounds really heavy.', 'There’s nothing to fix here. We can just be with it.'],
+  /** something heavy with a harm word in it (a hospital, an accident) and no death talk */
+  heavy: ['That sounds like a lot to hold.', 'Nothing needs fixing right now. I’m right here.'],
   ask: 'I’m right here. Squeeze me whenever you like.',
   options: [{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'See support', value: 'support' }, { label: 'Finish', value: 'finish' }],
   squeeze: 'Take all the time you need.',
@@ -209,6 +216,15 @@ export const AUTHORED_PAIRS = Object.freeze({
   practical_problem: ['This is a real problem, and real problems have next steps.', 'What’s the smallest one you could take this week?'],
   self_criticism: ['That’s a harsh word for one moment.', 'You can own what happened without making it who you are.'],
   valid_anger: ['Being angry about this makes sense.', 'What would you want to say, ask for or protect, if you chose to respond?'],
+});
+
+/**
+ * Fair anger at something someone did (review r7): the wrong is the fact, so the scenes after the boundary one
+ * acknowledge it (its weight put back with whoever did it, one step to protect yourself), never "one way to read it".
+ */
+export const ANGER_PAIRS = Object.freeze({
+  personalisation: ['What they did is theirs to carry, not yours.', 'You can put their part of it back where it belongs.'],
+  practical_problem: ['Something wrong happened, and you get to choose what you do next.', 'What’s one small step that would protect you next time?'],
 });
 
 /** Authored "another explanation" where a situation's own angles could soften a real wrong. */

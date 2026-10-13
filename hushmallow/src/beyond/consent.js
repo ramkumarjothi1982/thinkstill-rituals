@@ -103,7 +103,7 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
     h('p', { class: 'bx-lead' },
       'Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.'),
     h('ul', { class: 'bx-points' },
-      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen and what kind they were. Each angle request also carries the app’s language and a one-off random code, and every request carries this phone’s session code. A feedback tap sends which button, which Mallow and what kind of angle it was (and its version), never your words. Never your photos.'),
+      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen and what kind they were. Each angle request also carries the app’s language and a one-off random code, and every angle and feedback request carries this phone’s session code. A feedback tap sends which button, which Mallow and what kind of angle it was (and its version), never your words. Never your photos.'),
       h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair. Never your name or account.'),
       h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention, ` ${PROVIDER_SAFETY_HOLD}`),
       h('li', {}, h('b', {}, 'Anthropic’s use. '), PROVIDER_USE),

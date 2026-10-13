@@ -1,301 +1,223 @@
-// Another Angle: is this a bereavement? (someone, or a pet, has died)
+// Another Angle: death talk, read for recall (review round 7, the coordinator's design decision).
 //
-//   bereavement(text) → 'loss' (a death the person names) | 'grief' (grieving, a funeral, a grave) | null
+//   deathTalk(text)       → 'loss' (a death or a loss named: died, dead, passed, lost Dad, put to sleep, a
+//                           miscarriage, terminal, didn't make it…) | 'grief' (grieving, a funeral, a grave,
+//                           condolences…) | null
+//   wantsToFollow(text)   → true when the words say they want to be with, join or follow someone, or can't (or
+//                           don't want to) go on, be here or live without them
+//   deathEscalation(text) → deathTalk and wantsToFollow together: the CARE support path, nothing sent
+//   serverGrief(scene, text) → a server answer that reads as grief or a loss (its two lines play gently)
 //
-// Grief is not a thought to fix: a bereavement never plays a mechanic or a fact/assumption split. It is
-// also never inferred. Only the words a person uses for a death count, and only about a person or a pet:
-//   died, passed away, passed on (never "passed on the message"), is dead, was killed, each also with the
-//   contraction stuck to the person ("my dad's dead", "Mum's died", "Dad's been dead a year", "our cat's been
-//   put down", "my husband's passed"), "lost my mum" (never "lost my mum's ring", "lost my dad in the
-//   supermarket", "lost my sister when she moved to Spain", or a pet that ran off or slipped its lead),
-//   "the death of my father", "losing my dad was…", "watching my grandma die", "since my dad dying", "my late
-//   husband", "since he died", "she's gone now" (a person, never "gone to work"), RIP, the anniversary of a
-//   death, a pet put down; and, for 'grief', a funeral, a grave, grieving, mourning, bereaved.
-// Never 'passed' alone in the past ("My son passed and I'm so proud", "my daughter passed! she got into uni";
-// "my dad passed last year" is answered gently instead, passedAlone), never "my phone died", "it's your
-// funeral", "turning in his grave", "my boss put me down", never someone dying now ("my dad is dying",
-// "dying to see you"), never "lost my mum to dementia" without a death named (she is still alive), and never
-// a death imagined ("what if my mum died", "I dreamt my dad died") or one that nearly happened ("my dad
-// nearly died").
+// Three rounds of reading only a "real" death never converged, and a miss is far worse than a false alarm: a
+// death read as a thought got a fact-versus-guess game. So any death or loss word about anyone or anything alive
+// fires, with or without its apostrophe ("my dads dead", "mums dead"), and only a short list of unambiguous
+// idioms is set aside (death-words.js: a phone that died, "dead tired", "dying to", "killing it", "it's your
+// funeral", "lost my keys", "passed my test"). A game, a film, a near miss or an imagined death is never set
+// aside: the gentle path it falls to (lines.js GRIEF) never assumes anyone died, so it is true for all of them.
 //
 // Pure ES module, no DOM. Deterministic.
 
-/** Family: "lost my <one of these>" is a death in its own right ("I lost my mum last year"). */
-const FAMILY = 'mum|mom|mam|mummy|mommy|mama|mother|dad|daddy|papa|father|parents?|step-?(?:dad|mum|mom|father|mother|son|daughter|brother|sister)|'
-  + 'grandma|grandmother|grandad|granddad|grandpa|grandfather|grandparents?|great-?(?:grandma|grandmother|grandad|granddad|grandpa|grandfather|aunt|uncle)|'
-  + 'nan|nana|nanna|nanny|gran|granny|sister|brother|sibling|twin|son|daughter|child|baby|kid|husband|wife|uncle|aunt|auntie|aunty|cousin|niece|nephew|'
-  + 'little (?:boy|girl|one)|baby (?:boy|girl)|'
-  + 'godmother|godfather|godson|goddaughter|grandson|granddaughter|grandchild|(?:mother|father|sister|brother|son|daughter)-in-law|in-laws?';
-/**
- * Close people whose "loss" can also mean a friendship or a relationship ended: a death needs its own word
- * ("my boy died", "my ex died"; never "lost my girl", "lost my ex").
- */
-const CLOSE = 'partner|boyfriend|girlfriend|fianc[eé]e?|friend|best friend|bestie|mate|flatmate|housemate|colleague|teacher|neighbou?r|classmate|coach|mentor|carer|'
-  + 'boy|girl|ex-?(?:husband|wife|partner|boyfriend|girlfriend)|ex';
-const PET = 'dog|doggy|doggo|cat|kitty|puppy|pup|kitten|pet|horse|pony|rabbit|bunny|hamster|guinea pig|gerbil|budgie|parrot|bird|tortoise|turtle|ferret|goldfish|fish|rat|snake|lizard|hen|chicken';
-const WHO = `(?:${FAMILY}|${CLOSE}|${PET})`;
-/** What can stand before the person ("my little brother", "my best friend"). */
-const ADJ = '(?:(?:best|dear|dearest|beloved|little|big|old|older|younger|elder|eldest|youngest|baby|twin|lovely|sweet|only|first|other|step|half|darling|wonderful|amazing|gorgeous|precious|poor)\\s+)*';
-/** The parents and grandparents people call by name ("Mum died", "since Grandad passed away"). */
-const BARE = '(?:mum|mom|mam|mummy|mommy|mama|dad|daddy|papa|grandad|granddad|grandpa|grandma|granny|gran|nan|nana|nanna|nanny)';
-/**
- * A name after the person ("my best friend Sam"): only a capitalised word counts (checked in code, the
- * regexes are case-insensitive), and it is tried last, so "my baby monitor died" is never "my baby (Monitor)".
- */
-const NAME = '(?:,?\\s+(?<nm>[A-Za-z][A-Za-z’\'-]*),?)??';
-/** "my dad", "our cat", "my friend's mum", "my best friend Sam", "my brother and sister". */
-const SUBJ = `\\b(?:my|our|his|her|their)\\s+${ADJ}${WHO}s?(?:['’]s\\s+${ADJ}${WHO}s?)?(?:\\s+and\\s+(?:my\\s+|our\\s+)?${ADJ}${WHO}s?)?${NAME}`;
-const BARE_SUBJ = `(?<!\\b(?:the|a|an|this|that|your|no|any|some|every)\\s)\\b${BARE}(?:\\s+and\\s+(?:${BARE}|my\\s+${WHO}))?`;
-/** Between the person and what follows: a space, or the contraction stuck to them ("my dad's dead", "Mum's died"). */
-const J = '(?:\\s+|(?=[\'’]s\\b))';
-/** Little words between the person and the verb ("has", "just", "suddenly", "both"). */
-const AUX = '(?:(?:has|had|have|just|suddenly|finally|recently|sadly|tragically|unexpectedly|both|all|also|then|eventually|peacefully|quietly|actually|already|not\\s+long)\\s+)*';
-/** "passed on" as a death, never "passed on the message / my CV / her love of baking". */
-const PASSED_ON = 'passed\\s+on\\b(?!\\s+(?:the(?!\\s+\\d)|a|an|his|her|my|their|our|your|its|this|that|these|those|it|them|him|me|us|you|some|any|what|news|word|messages?|info\\w*|details?|notes?|to|from|through|by|down|everything|something|anything|nothing|bad|good)\\b)';
-/** What can follow "dead" when it means a death ("dead.", "dead and…", "dead a year now", "dead two years"). */
-const DEAD_END = '(?=\\s*(?:$|[.,!?;:…)—–-]|(?:and|now|since|for|but|so|because|after|though|already|too|nearly|almost|over|a\\s+(?:year|month|week|while|long\\s+time|few|couple|decade)|(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|several|many|\\d+)\\s+(?:years?|months?|weeks?|days?|decades?)|years|months|weeks|ages)\\b))';
-const KILLED = 'killed\\b(?!\\s+(?:off|it|in\\s+(?:a|the|my|his|her)\\s+(?:game|match|level|round|film|movie|show|episode|book)))';
-/** What a person or a pet's death is called after them (and "'s died", "'s been killed": the contraction is "has"). */
-const DEATH = `(?:${AUX}(?:died\\b|passed\\s+away\\b|${PASSED_ON}|(?:is|was|are|were|['’]s|has\\s+been|have\\s+been|had\\s+been|['’]s\\s+been)\\s+(?:(?:now|sadly|long|really)\\s+)?(?:dead${DEAD_END}|no\\s+longer\\s+with\\s+us\\b)|(?:was|were|got|had\\s+been|has\\s+been)\\s+${KILLED})`
-  + `|['’]s\\s+${AUX}(?:died\\b|passed\\s+away\\b|${PASSED_ON}|been\\s+${KILLED}))`;
-const GONE_NOW = `(?:is|['’]s|has|was)\\s+(?:(?:really|truly|finally|just)\\s+)?gone\\s+(?:now|forever|for\\s+good)\\b`;
-/**
- * A death's cause after "lost my friend to…" (a close person: the death itself has to be named). Dementia
- * and Alzheimer's are not here: "I lost my mum to dementia" is often said while she is alive (FADING).
- */
-const CAUSE = 'cancer|covid|coronavirus|suicide|illness|sepsis|leuka?emia|pneumonia|heart failure|organ failure|a (?:long )?illness|an? (?:accident|overdose|heart attack|stroke|crash|tumou?r|infection|disease|aneurysm|brain tumou?r)';
-const FADING = 'dementia|alzheimer[\'’]?s';
-/** A death named in so many words ("lost my mum to dementia… she died in May"), never a phone's or a plant's. */
-const DEATH_WORD = /(?<!\b(?:phone|battery|laptop|computer|car|plants?|tv|telly|ipad|tablet|console|printer|fridge|router|wifi|charger|game|app|engine)(?:['’]s)?\s(?:(?:has|had|just|finally)\s)?)\b(?:died|dead|passed\s+(?:away|on)|death|funeral|buried|killed)\b/iu;
-const PET_NAMED = `(?:${PET})s?${NAME}`;
-/** Fiction and games, where "he died" is a story. */
-const FICTION = /\b(?:game|games|gaming|film|movie|show|episode|series|book|novel|character|level|fortnite|minecraft|zombies?|anime|manga|tv|telly|netflix)\b/iu;
+import { norm, blankOrdinary, PERSON, PET, BARE, ADJ, THING } from './death-words.js';
 
-const LOSS = [
-  // "my grandad died", "our cat was killed", "my friend's mum passed away", "my dad's dead", "my dog's died",
-  // "my uncle, who died"
-  new RegExp(`${SUBJ}(?:,?\\s+(?:who|that))?${J}${DEATH}`, 'giu'),
-  // "My grandmother, who I was close to, died last week", "my nan who I loved so much passed away"
-  new RegExp(`${SUBJ},\\s[^,.!?]{1,60},\\s+${AUX}(?:died|passed\\s+away)\\b`, 'giu'),
-  new RegExp(`${SUBJ}\\s+(?:who|whom)\\s+[^,.!?]{1,50}?\\s+${AUX}(?:died|passed\\s+away)\\b`, 'giu'),
-  // "Mum died in May", "since Grandad passed away", "Mum and Dad both died", "Mum's died", "Dad's been dead a year"
-  new RegExp(`${BARE_SUBJ}${J}${DEATH}`, 'giu'),
-  // "since he died", "when she passed away", "ever since my dog died"
-  new RegExp(`\\b(?:since|after|when|before|until|till|the\\s+day|the\\s+night|the\\s+year|now\\s+that)\\s+(?:he|she)\\s+${AUX}(?:died|passed\\s+away|${PASSED_ON})`, 'giu'),
-  // "my late husband"
-  new RegExp(`\\bmy\\s+late\\s+${ADJ}(?:${FAMILY}|${CLOSE}|${PET})\\b`, 'giu'),
-  // "my dad's death", "Mum's passing", "the anniversary of his death", "her death anniversary"
-  new RegExp(`(?:${SUBJ}|\\b${BARE})['’]s\\s+(?:death|passing)\\b`, 'giu'),
-  new RegExp(`\\banniversary\\s+of\\s+(?:(?:my|our|his|her|their)\\s+)?(?:${ADJ}(?:${WHO}|${BARE})['’]s\\s+)?(?:death|passing|funeral)\\b|\\b(?:death|passing)\\s+anniversary\\b|\\banniversary\\s+of\\s+(?:losing|the\\s+day\\s+(?:i|we)\\s+lost)\\s+(?:my|our|him|her|them)\\b`, 'giu'),
-  // "since losing my mum", "after losing our dog"
-  new RegExp(`\\b(?:since|after|anniversary\\s+of|grief\\s+(?:of|from|over|after)|grieving)\\s+losing\\s+(?:my|our)\\s+${ADJ}(?:${FAMILY}|${PET})s?\\b(?!['’])`, 'giu'),
-  // "my dog was put to sleep", "our cat's been put down", "we had to have our cat put down", "we had to put our
-  // dog down", "the vet put him down"
-  new RegExp(`\\b(?:my|our|his|her|their|the)\\s+${ADJ}${PET_NAMED}(?:\\s+(?:was|were|got|had\\s+to\\s+be|has\\s+been|had\\s+been|have\\s+been)|['’]s\\s+(?:just\\s+)?been)\\s+put\\s+(?:down|to\\s+sleep)\\b`, 'giu'),
-  new RegExp(`\\b(?:had|have|having|got|getting)\\s+(?:to\\s+have\\s+)?(?:my|our|his|her|their|the)\\s+${ADJ}${PET_NAMED}\\s+put\\s+(?:down|to\\s+sleep)\\b`, 'giu'),
-  new RegExp(`\\b(?:had\\s+to|have\\s+to|decided\\s+to|chose\\s+to|agreed\\s+to|vets?|we|they)\\s+(?:had\\s+to\\s+)?(?:put|putting)\\s+(?:my|our|his|her|their|the)\\s+${ADJ}${PET_NAMED}\\s+(?:down|to\\s+sleep)\\b(?!\\s+(?:on|onto|in|into|for|gently|so|while|next|beside|by|at)\\b)`, 'giu'),
-  new RegExp('\\bvets?\\s+(?:had\\s+to\\s+|has\\s+|have\\s+)?put\\s+(?:him|her|them|it)\\s+(?:down|to\\s+sleep)\\b', 'giu'),
-  // "we buried our dog", "my brother took his own life", "she killed herself"
-  new RegExp(`\\bburied\\s+(?:my|our|his|her|their)\\s+${ADJ}${WHO}s?\\b(?!['’])`, 'giu'),
-  new RegExp(`(?:${SUBJ}|\\b${BARE}|\\b(?:he|she))\\s+(?:${AUX})(?:took\\s+(?:his|her|their)\\s+own\\s+life|killed\\s+(?:himself|herself|themselves|themself))\\b`, 'giu'),
-  // a baby lost before or at birth
-  /\b(?:stillborn|still\s+birth|stillbirth|miscarri(?:ed|age|ages)|lost\s+(?:the|our|my)\s+(?:baby|pregnancy))\b/giu,
-  // "after the death of my father", "since the death of Mum"
-  new RegExp(`\\bdeath\\s+of\\s+(?:(?:my|our)\\s+${ADJ}${WHO}s?|${BARE})\\b(?!\\s+(?:[\\w’'-]+\\s+){0,3}?(?:would|will|could|might)\\b)`, 'giu'),
-  // "since my dad dying", "after our dog dying", "I'm not over my mum dying", "my dad dying was the worst thing"
-  // (never "my dad is dying", "my mum's dying", "dying to see you", or a death feared: "scared of my dad dying")
-  new RegExp(`\\b(?:since|after|over|from)\\s+(?:my|our)\\s+${ADJ}${WHO}s?\\s+dying\\b(?!\\s+(?:to|for)\\b)`, 'giu'),
-  new RegExp(`(?:^|[.!?…]\\s*|\\b(?:and|but|so|because|cos)\\s+)(?:my|our)\\s+${ADJ}${WHO}s?\\s+dying(?:\\s+(?:of\\s+\\w+|so\\s+young|suddenly|like\\s+that|in\\s+(?:hospital|my\\s+arms|(?:19|20)\\d\\d)|last\\s+(?:year|month|week|night)))?\\s+(?:was|has\\s+been|had|changed|broke|hit|left|made|ruined|destroyed|still\\s+(?:hurts|haunts))\\b`, 'giu'),
-  // "I wish my dad hadn't died", "if only she hadn't passed away" (a death regretted is a death)
-  new RegExp(`\\b(?:wish(?:ed)?|if\\s+only)\\s+(?:that\\s+)?(?:${SUBJ}|he|she|${BARE})\\s+(?:hadn['’]?t|had\\s+not|had\\s+never|never)\\s+(?:\\w+\\s+)?(?:died|passed\\s+away|been\\s+killed)\\b`, 'giu'),
-];
-/** Someone dying now, not a death ("I'm watching my mum die", "I keep losing my dad to it"). */
-const NOW = '(?<!(?:\\b(?:am|is|are|be|been|being|keep|keeps|kept)|[\'’](?:m|re|s))\\s+(?:(?:slowly|really|just|gradually|already|still|basically)\\s+)?)';
-/** …or one still ahead ("losing my mum would break me", "watching him die would kill me"). */
-const AHEAD = '(?!\\s+(?:[\\w’\'-]+\\s+){0,3}?(?:would|will|could|might|scares|terrifies|frightens|worries)\\b)';
-/** "watching my grandma die was the worst thing", "I watched him die", "I saw my dog die" (never in a story or a game). */
-const WATCHED_DIE = new RegExp(`\\b(?:watched|saw|seen|had\\s+to\\s+watch|${NOW}(?:watching|seeing))\\s+(?:(?:my|our)\\s+${ADJ}${WHO}s?|him|her|them)\\s+(?:(?:slowly|suddenly|finally|peacefully)\\s+)?(?:die|pass\\s+away|take\\s+(?:his|her|their)\\s+last\\s+breath)\\b(?!\\s+(?:inside|laughing|a\\s+little|of\\s+(?:embarrassment|laughter|shame|boredom|cringe)))${AHEAD}`, 'giu');
-/**
- * "Losing my dad was the hardest thing" (a family member or a pet; never "losing my temper", "losing my mum's
- * ring", someone dying now: "I'm losing my mum", one feared ahead: "losing my mum would break me", or a close
- * person's "losing" alone, which can be a friendship).
- */
-const LOSING = new RegExp(`${NOW}\\blosing\\s+(?:my|our)\\s+${ADJ}(?:${FAMILY}|${PET})s?\\b(?!['’])(?!\\s+to\\s+(?:${FADING}|drink|drugs|addiction|the\\s+bottle)\\b)${AHEAD}`, 'giu');
-/**
- * "My husband's passed", "Grandad has passed" (the perfect, with nothing passed and no exam, result or pride in
- * the words: "My son's passed his test", "my daughter has passed!" never are).
- */
-const PASSED_GUARD = '(?!\\s+(?:away|on|out|over|by|through|up|down|round|around|along|it|the|a|an|his|her|their|my|your|our|its|me|him|them|us|everything|all|every|both|with|without|first|second|third|ok|okay|fine|easily|comfortably|well)\\b)';
-const HAS_PASSED = new RegExp(`(?:${SUBJ}|${BARE_SUBJ})(?:['’]s|\\s+(?:has|have))\\s+(?:now\\s+)?${AUX}passed\\b${PASSED_GUARD}`, 'giu');
-/** "she died last week", "he died in his sleep", "she's died", "she died and I wasn't there" (never in a story or a game). */
-const PRONOUN_DIED = new RegExp(`\\b(?:he|she)(?:\\s+|['’]s\\s+)${AUX}(?:died|passed\\s+away)\\b(?=\\s*(?:$|[.,!?;:…]|(?:last|this|on|in|at|a|an|two|three|four|five|six|seven|eight|nine|ten|several|few|over|yesterday|today|recently|suddenly|before|peacefully|alone|and|when|while|after|of|from|years?|months?|weeks?|days?|so|without|holding|surrounded)\\b))`, 'giu');
-/** "I can't believe she's dead" (never in a story, a game, or about a gadget). */
-const PRONOUN_DEAD = new RegExp(`\\b(?:he|she)(?:['’]s|\\s+is|\\s+was)\\s+(?:(?:now|really|actually|sadly)\\s+)?(?:dead${DEAD_END}|no\\s+longer\\s+with\\s+us\\b)`, 'giu');
-const GADGET = /\b(?:phone|battery|laptop|computer|tablet|ipad|console|charger|car|engine|plants?|flowers?|tree|torch|remote|controller)\b/iu;
-/** "she was put to sleep" about a pet named in the words. */
-const PRONOUN_PUT = /\b(?:he|she|they|it)\s+(?:was|were|got|had\s+to\s+be|has\s+been|had\s+been)\s+put\s+(?:down|to\s+sleep)\b/giu;
+const WHO = `(?:${PERSON}|${PET})`;
+/** "he", "she's", "my dad", "our cat", "the baby", "Mum", "my best friend's mum". */
+const REF = `(?:\\b(?:he|she|they|hes|shes|theyre|theyve|theyd|hed|shed)\\b|\\b(?:(?:my|our|his|her|their|your|the|a)\\s+)?${ADJ}(?:${WHO})(?:s|es)?\\b|\\b(?:${BARE})s?\\b)`;
+/** Little words between the person and the verb. */
+const AUX = '(?:(?:is|was|has|had|have|s|are|re|ve|d|just|sadly|recently|finally|peacefully|suddenly|unexpectedly|tragically|quietly|also|both|all|then|now|already|been|forever|actually|really|truly|totally|completely|eventually|not\\s+long)\\s+)*';
+/** What may follow "her" when it stands for a person, not "her keys" ("lost her in March", "lost her."). */
+const FOLLOW = '(?=\\s*(?:$|[.,!?;:…)—–]|(?:and|to|in|at|when|while|last|this|that|on|yesterday|today|recently|suddenly|so|but|too|forever|before|after|during|years?|months?|weeks?|days?|a|an|one|two|three|four|five|six|seven|eight|nine|ten|early|young|now|already|just|unexpectedly|tragically|then|as|over|for|i|we|its|it|the|because|cos|like|aged?|from|through|without)\\b))';
+/** Names are only capitalised words, never these. */
+const NOT_NAMES = /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December|Christmas|Easter|Summer|Winter|Spring|Autumn|Twitter|Facebook|Instagram|TikTok|Netflix|Me|My|Our|The|This|That|It|To|Bank|Phone|Just|Really|Honestly|Who|Which|What|When|And|But|So|Is|Was|Has|Had|Liverpool|Arsenal|Chelsea|Everton|United|City|England|Scotland|Wales|Ireland|France|Spain|Fortnite|Minecraft|Roblox|Xbox|God|Jesus|Him|Her|Them|Again|Today|Tonight|Now|Everything|Everyone|Everybody|Nobody|Nothing|Something|Someone|Anything|Ten|One|Two|Three|Four|Five|Time|Life|Yesterday|Week|Year|Month|Weekend|Day|Night|Morning|Lunch|Dinner|Breakfast|Tea|Money|Love|Hope|Work|School|Uni|College|Class|Exam|Test|Summer|Moment|Chance|Pain|Fear|Feeling|Anger|Worry|Storm|Rain|Snow|Sun|Battery|Signal|Wifi|Internet|Train|Bus|Car|Coffee|Food|Milk|Party|Show|Match|Game|Season|Term|Holiday|Deadline|He|She|They|We|You|I|Im|Its|Hes|Shes|Theyre|Mum|Dad|Mom|Nan|Gran|Grandad|Grandma|Here|There|Then|Why|How|If|Oh|Well|Yes|No|Sorry|Please|Thanks|Ok|Okay)$/u;
+
+/** "put down" that is a nap, a floor or a bed, never a death ("put him down for a nap", "put her down on the sofa"). */
+const PUT_TAIL = '(?!\\s+(?:on\\s+(?:the|a|an|my|his|her|their|our|top|its|it|to)|onto|in\\s+(?:the|a|his|her|their|my|its|our)\\s+(?:bed|cot|crate|basket|cage|box|hutch|kennel|room|garden|pen|car)|into|for|gently|next|beside|by|at\\s+(?:the|my|his|her|their)|so\\s+(?:i|we|he|she|they)|while|carefully|quickly|again|the|a|my)\\b)';
+/** "she was put to sleep", "the vet put him down", "he had to be put down": only with a pet named in the words. */
+const PET_PUT = new RegExp(`\\b(?:put|putting|puts)\\s+(?:him|her|it|them)\\s+(?:down|to\\s+sleep)\\b${PUT_TAIL}|\\b(?:been|be|being|was|were|got|get|getting|is|s)\\s+put\\s+(?:down|to\\s+sleep)\\b${PUT_TAIL}|\\bput\\s+to\\s+sleep\\b|\\bpts\\b`, 'iu');
 const PET_WORD = new RegExp(`\\b(?:${PET})s?\\b`, 'iu');
-/** "passed away" about someone, wherever it stands ("my nan, who I was so close to, passed away"), never a gadget's. */
-const PASSED_AWAY = /(?<!\b(?:phone|battery|laptop|computer|car|plants?|tv|telly|ipad|tablet|console|printer|fridge|router|wifi|charger|game|app)\s(?:(?:has|had|just|finally)\s)?)\bpassed\s+away\b/giu;
-/**
- * "when / while" after "lost my sister" is a death only when what follows can be one ("when I was 12", "when
- * she was 50", "when he had a stroke"), never "when she moved to Spain" or "when he remarried".
- */
-const WHEN_OK = 'was|were|had|got\\s+(?:ill|sick|cancer|covid|hit|knocked)|died|passed|fell|caught|collapsed|suffered|developed|went\\s+into\\s+(?:hospital|labour|labor|surgery|intensive\\s+care)|took\\s+(?:his|her|their)\\s+own|lost\\s+(?:his|her|their)\\s+(?:battle|fight)|only|just|gave\\s+birth|ran\\s+(?:into\\s+(?:the\\s+)?(?:road|street|traffic)|out\\s+(?:into|in\\s+front))';
-const WHEN = `(?:when|while)\\b(?!\\s+(?:he|she|they)\\s+(?!(?:${WHEN_OK})\\b))`;
-/**
- * "lost my mum" (a family member or a pet), followed only by what can follow a death: never "lost my mum's ring",
- * and never "lost my sister when she moved away" (what the rest says is read too: NOT_DEATH_CONTEXT).
- */
-const LOST = new RegExp(`\\blost\\s+(?:my|our)\\s+${ADJ}(?:${FAMILY}|${PET})s?\\b(?!['’])(?=\\s*(?:$|[.,!?;:…)—–-]|(?:to\\s+(?:${CAUSE})|in\\s+(?:(?:19|20)\\d\\d|january|february|march|april|may|june|july|august|september|october|november|december|the\\s+(?:spring|summer|autumn|winter|night|end)|(?:the|a|an)\\s+(?:(?:car|road|train|plane|bike|motorbike|motorcycle|house|terrible|awful|tragic|freak)\\s+)?(?:war|accident|crash|fire|attack|pandemic|tsunami|earthquake|flood|collision|shooting|explosion))|${WHEN}|last|this|one|two|three|four|five|six|seven|eight|nine|ten|several|a\\s+(?:few|couple|year|month|week)|years?|months?|weeks?|days?|recently|suddenly|unexpectedly|yesterday|today|and|but|so|during|before|at\\s+(?:\\d+|the\\s+age|age|birth)|as\\s+a|too|young|early|forever|for\\s+(?:ever|good))\\b))`, 'giu');
-const LOST_CLOSE = new RegExp(`${NOW}\\b(?:lost|losing)\\s+(?:my|our)\\s+${ADJ}(?:${CLOSE})${NAME}\\s+(?:to\\s+(?:${CAUSE})|in\\s+(?:a|the)\\s+(?:(?:car|road|train|plane|bike|motorbike|motorcycle)\\s+)?(?:crash|accident|fire|attack|shooting|explosion))\\b`, 'giu');
-/** "lost my mum to dementia": a loss only when a death is also named (she may well be alive: "she doesn't know me"). */
-const LOST_FADING = new RegExp(`\\b(?:lost|losing)\\s+(?:my|our)\\s+${ADJ}(?:${FAMILY}|${CLOSE}|${PET})s?${NAME}\\s+to\\s+(?:${FADING})\\b`, 'giu');
-/**
- * Missing, estranged, left or still alive, not dead: "lost my dog" and then "he ran off", "he slipped his lead",
- * "I've put posters up"; "lost my sister when she moved to Spain"; "lost my dad, he remarried and stopped
- * calling"; "lost my mum to dementia, she doesn't know who I am". (Subject-anchored where an ordinary griever
- * could say the same words about someone else: "my friends stopped calling", "I just want her to come back".)
- */
-const NOT_DEATH_CONTEXT = new RegExp([
-  '\\b(?:ran\\s+(?:off|away)|run\\s+(?:off|away)|running\\s+away|went\\s+missing|gone\\s+missing|is\\s+missing|was\\s+missing|still\\s+missing|can[\'’]?t\\s+find|cannot\\s+find|couldn[\'’]?t\\s+find|looking\\s+for|search\\w*\\s+for|found\\s+(?:him|her|them)|argument|fight|row|fell\\s+out|falling\\s+out|stopped\\s+talking|not\\s+talking|cut\\s+me\\s+off|blocked\\s+me|estranged|disowned|no\\s+contact|divorc\\w*|broke\\s+up|split\\s+up|dumped|cheated|left\\s+(?:me|us|home)|walked\\s+out|moved\\s+(?:out|away|abroad)|(?:won[\'’]?t|doesn[\'’]?t|didn[\'’]?t|isn[\'’]?t|hasn[\'’]?t|haven[\'’]?t|wouldn[\'’]?t)\\s+(?:speak\\w*|talk\\w*|spoken|reply\\w*|answer\\w*)|ignor\\w*\\s+me|hates?\\s+me|kicked\\s+(?:me|us)\\s+out|in\\s+the\\s+(?:crowd|shop|supermarket|store|mall|park|station|airport|queue|playground|market))\\b',
-  // a pet that is missing, not dead
-  '\\b(?:posters?|flyers?|leaflets?|microchip\\w*|slipped\\s+(?:his|her|its|their|the)\\s+(?:lead|collar|harness|leash)|got\\s+out\\s+of\\s+the\\s+(?:garden|house|yard|car|flat)|jumped\\s+(?:over\\s+)?the\\s+fence)\\b',
-  '\\b(?:he|she|they|it)\\s+(?:(?:just|must\\s+have|has|had|somehow)\\s+)?escaped\\b',
-  '\\b(?:he|she|they|it)\\s+(?:came|has\\s+come|have\\s+come|[\'’]s\\s+come)\\s+(?:back|home)\\b',
-  // someone who left, moved or started again elsewhere
-  '\\b(?:he|she|they)\\s+(?:(?:just|then|finally|eventually|suddenly|has|had|have|went\\s+and)\\s+)?(?:moved\\s+(?:to|in\\s+with|out|away|abroad|back|countries|country|house)|emigrated|relocated|remarried|got\\s+(?:remarried|a\\s+new\\s+(?:wife|husband|partner|family|girlfriend|boyfriend))|stopped\\s+(?:calling|visiting|replying|texting|ringing|speaking|seeing|coming|talking))\\b',
-  '\\b(?:his|her|their)\\s+new\\s+(?:wife|husband|family|partner|girlfriend|boyfriend)\\b',
-  // still alive
-  '\\b(?:he|she|they)(?:[\'’]s|[\'’]re|\\s+is|\\s+are)\\s+(?:still\\s+)?(?:alive|around|out\\s+there|living)\\b',
-  '\\b(?:he|she|they)\\s+(?:still\\s+)?lives?\\s+(?:in|with|abroad|nearby|near|down|up|round|across|far|on|over|alone)\\b',
-  '\\b(?:doesn[\'’]?t|does\\s+not|didn[\'’]?t|can[\'’]?t|cannot|couldn[\'’]?t|no\\s+longer|won[\'’]?t)\\s+(?:even\\s+)?(?:know|recogni[sz]e|remember)\\s+(?:me|who|us|my\\s+name)\\b',
-].join('|'), 'iu');
-/** "she's gone now" / "my nan is gone now" about a person, unless they went somewhere. */
-const GONE = [
-  new RegExp(`${SUBJ}${J}${GONE_NOW}`, 'giu'),
-  new RegExp(`${BARE_SUBJ}\\s*${GONE_NOW}`, 'giu'),
-  new RegExp(`\\b(?:he|she)(?:['’]s|\\s+is|\\s+has)\\s+(?:(?:really|truly|finally|just)\\s+)?gone\\s+(?:now|forever|for\\s+good)\\b`, 'giu'),
+/** A death or a loss, named ('loss'). Each is read on the normed words with the ordinary idioms blanked. */
+const LOSS_WORDS = [
+  // die, died, dying, dead, death, deceased (and "dide", "dieing")
+  /\b(?:die|dies|died|dide|diedd|dying|dieing|dyin|dead|deaths?|deceased|decesed|deseased|deceaced|fatal|fatally|perished|slain)\b/iu,
+  // passed away (and its misspellings), passing away, his passing
+  /\b(?:pass(?:ed|es|ing|d)?|past|pased|passt)\s+(?:away|awy|awat|awya|aways|awaay|awya)\b/iu,
+  new RegExp(`(?:\\b(?:his|her|their)|${REF})\\s+passing\\b|\\bpassing\\s+of\\s+(?:(?:my|our|his|her|their|the)\\s+)?${ADJ}(?:${WHO}|${BARE})`, 'iu'),
+  // passed on (never "passed on the message / my CV / her love of baking")
+  /\bpassed\s+on\b(?!\s+(?:the(?!\s+\d)|a|an|his|her|my|their|our|your|its|this|that|these|those|it|them|him|me|us|you|some|any|what|news|word|messages?|info\w*|details?|notes?|to|from|through|by|down|everything|something|anything|nothing|bad|good)\b)/iu,
+  // "my dad passed last year", "Mum's passed", "she passed in her sleep" (an exam passed is an idiom, blanked)
+  new RegExp(`${REF}\\s+${AUX}passed\\b`, 'iu'),
+  // killed, murdered, suicide, took his own life, drowned
+  /\b(?:killed|murdered|murder|suicide|drowned|overdosed|euthani[sz]ed|euthanasia)\b/iu,
+  /\btook\s+(?:his|her|their|my|your)\s+own\s+life\b|\b(?:killed|hanged|hung|shot)\s+(?:himself|herself|themselves|themself)\b/iu,
+  // lost / losing my dad, our baby, a friend, Dad (never "lost my dad's ring")
+  new RegExp(`\\b(?:lost|losing|lose|loses)\\s+(?:(?:my|our|his|her|their|your|the|a|an|another|both|two|three|all)\\s+)?${ADJ}(?:${WHO})(?:s|es)?\\b(?!\\s+(?:${THING})\\b)`, 'iu'),
+  new RegExp(`\\b(?:lost|losing|lose)\\s+(?:him|them|her${FOLLOW})\\b`, 'iu'),
+  // the loss of my mum, sorry for your loss, since our loss
+  new RegExp(`\\bloss\\s+of\\s+(?:(?:my|our|his|her|their|your|a|an|the)\\s+)?${ADJ}(?:${WHO}|${BARE})(?:s|es)?\\b(?!\\s+(?:${THING})\\b)|\\bsorry\\s+for\\s+(?:your|their|his|her|the)\\s+loss\\b|\\b(?:since|after|before|grieving|grieve|through|with|over|following)\\s+(?:my|our|the|this|his|her|their)\\s+loss\\b`, 'iu'),
+  // she's gone, he's gone now, my mum's gone, they're gone (never gone to work: an idiom, blanked)
+  new RegExp(`${REF}\\s+${AUX}gone\\b(?!\\s+(?:and\\s+(?:done|got|bought|made|said|told|ruined|broken|lost|messed|eaten)|to(?!\\s+(?:heaven|a\\s+better\\s+place|be\\s+with|sleep|rest|god|jesus|the\\s+angels|the\\s+rainbow\\s+bridge))|out|home|off|back|away|abroad|on|in(?!\\s+(?:peace|(?:his|her|their)\\s+sleep))|into|with|by|past|ahead|along|up|down|over|through|round|around|for|missing\\s+from|already\\s+to)\\b)`, 'iu'),
+  // no longer with us, in heaven, the rainbow bridge, earned his wings
+  /\bno\s+longer\s+(?:with\s+us|here|around|alive|living|with\s+me)\b|\bnot\s+with\s+us\s+any\s*more\b|\b(?:isnt|is\s+not|arent|not|no\s+longer)\s+alive\b/iu,
+  /\b(?:in|to|up\s+in|into)\s+heaven\b|\bheaven\s+(?:gained|has\s+gained)\b|\brainbow\s+bridge\b|\bearned\s+(?:his|her|their)\s+wings\b|\bgained\s+(?:an|another|a\s+new)\s+angel\b|\bangel\s+baby\b|\b(?:passed|crossed)\s+over\b|\bin\s+a\s+better\s+place\b|\b(?:laid|lay|laying)\s+(?:him|her|them|\w+)\s+to\s+rest\b|\bresting\s+in\s+peace\b|\bwatching\s+(?:over|down\s+on)\s+(?:me|us)\b/iu,
+  // a pet put down or put to sleep: "we had to put our dog down", "the vet put her to sleep" (pronoun or passive:
+  // with a pet named in the words; PET_PUT below)
+  new RegExp(`\\b(?:put|putting|puts|had|have|having|get|got)\\s+(?:(?:to\\s+have|to)\\s+)?(?:(?:my|our|the|his|her|their)\\s+)?${ADJ}(?:${PET})s?\\s+(?:put\\s+)?(?:down|to\\s+sleep)\\b${PUT_TAIL}`, 'iu'),
+  // a baby lost before or at birth
+  /\b(?:miscarri(?:ed|age|ages)|miscarrage|miscarage|misscarriage|misscarried|stillborn|still\s+born|stillbirth|still\s+birth|ectopic|tfmr)\b/iu,
+  // dying soon: terminal, hospice, life support, end of life, didn't make it, weeks to live
+  /\bterminal(?:ly)?\s+(?:ill|illness|cancer|diagnosis|condition|disease|brain|tumou?r|stage|prognosis)\b|\b(?:is|s|was|its|are|now|been|went|gone|turned|as)\s+terminal\b|\bhospice\b|\blife\s+support\b|\bend\s+of\s+(?:life|(?:his|her|their)\s+life)\b|\bpalliative\b|\b(?:days|weeks|months|hours)\s+(?:left\s+)?to\s+live\b/iu,
+  new RegExp(`${REF}\\s+(?:(?:is|s|are|re|was|were|might|may|probably|likely)\\s+)*(?:did\\s+not|didnt|never|not|isnt|arent|wasnt|wont|will\\s+not|might\\s+not|may\\s+not|mightnt|couldnt|could\\s+not)\\s+(?:going\\s+to\\s+|gonna\\s+)?(?:make\\s+it|survive|pull\\s+through|wake\\s+up)\\b(?!\\s+(?:to\\s+(?:the\\s+)?(?:party|work|school|class|meeting|match|game|gym|shop|shops|interview|concert|gig|show|wedding|bus|train|station|airport|final|finals|team|squad|cut|end|top|club|pub|cinema|event|lesson|practice|training)|in\\s+time|on\\s+time|into\\s+(?:the|my|his|her)\\s+(?:team|squad|final|uni|college|school|club|band)|home\\s+for|back\\s+(?:in\\s+time|for)|for\\s+(?:the|my|his|her)|until|till|before\\s+(?:10|11|noon|lunch)|through\\s+(?:the\\s+)?(?:interview|audition|trials?|round|first|second|qualif\\w*|exam|test|week|day|shift|meeting)))`, 'iu'),
+  // my late husband
+  new RegExp(`\\b(?:my|our|his|her|their|your)\\s+late\\s+${ADJ}(?:${WHO})\\b`, 'iu'),
+  // a widow, an orphan
+  /\b(?:widow|widowed|widower|orphan|orphaned)\b/iu,
 ];
-const WENT_SOMEWHERE = /\b(?:left|leaving|leave|moved|walked\s+out|split|broke\s+up)\b|\bgone\s+(?:to|out|home|away|off|back|abroad|travelling|traveling|on)\b|\bwent\s+(?:to|out|home|away|off|back)\b|\b(?:on\s+holiday|on\s+a\s+trip|at\s+work|to\s+work|to\s+school|to\s+uni|abroad)\b/iu;
-const SOMEONE = new RegExp(`\\b(?:${WHO}|${BARE})\\b`, 'iu');
-/** RIP about someone: "RIP Grandad", "RIP to my dog", "Nana, rest in peace" (never "RIP my phone", "rip it up"). */
+/** Grieving, a funeral, a grave, condolences ('grief' when no death is named). */
+const GRIEF_WORDS = [
+  /\b(?:grief|griefs|griefstricken|grief\s+stricken|greif|greiving|grieving|grieve|grieves|grieved|mourn|mourning|mourned|mourns|mourner|mourners|bereaved|bereavement|berevement|bereavment|condolences?|condolances?|sympathy\s+card)\b/iu,
+  /\b(?:funerals?|funral|funerel|funreal|grave|graves|graveside|gravestone|graveyard|headstone|cemetery|cemetary|cemetry|crematorium|cremated|cremation|burial|buried|bury|burying|coffin|casket|hearse|obituary|eulogy|memorial\s+service|urn)\b/iu,
+  new RegExp(`\\b(?:his|her|their|(?:${WHO}|${BARE})s?)\\s+ashes\\b|\\bscatter\\w*\\s+(?:the\\s+|(?:his|her|their|my|our)\\s+)?(?:[a-z]+\\s+)?ashes\\b|\\bashes\\s+(?:of|were|are|scattered)\\b`, 'iu'),
+  /\b(?:at|after|to|for|before|from)\s+(?:the|his|her|their|(?:my|our)\s+[a-z]+s)\s+wake\b(?!\s+up)/iu,
+];
+/** RIP about someone ("RIP Grandad", "RIP to my dog", "Nana RIP", "rest in peace"), never "RIP my phone" (blanked). */
 const RIP = [
-  new RegExp(`\\bR\\.?I\\.?P\\.?(?=\\s+(?:(?:to|my|our|dear|sweet|little|lovely|beautiful|darling|baby|big)\\s+)*(?:${WHO}|${BARE})\\b)`, 'giu'),
-  new RegExp(`\\brest\\s+in\\s+peace\\b(?=[^.!?]*\\b(?:${WHO}|${BARE})\\b)|\\b(?:${WHO}|${BARE})\\b[^.!?]{0,30}\\brest\\s+in\\s+peace\\b|\\b(?:${WHO}|${BARE})[,\\s]+R\\.?I\\.?P\\b`, 'giu'),
-  // "RIP Sarah" (a capitalised name, never "RIP Monday" or "RIP Twitter")
-  /\bR\.?I\.?P\.?,?\s+(?<nm>[A-Z][a-z]+)\b/gu,
+  /\bRIP\b/u,
+  new RegExp(`\\brip\\b(?=\\s+(?:(?:to|my|our|dear|sweet|little|lovely|beautiful|darling|baby|big|old)\\s+)*(?:${WHO}|${BARE})\\b)|\\b(?:${WHO}|${BARE})s?[,\\s]+rip\\b`, 'iu'),
+  new RegExp(`\\brest\\s+in\\s+peace\\b|\\b(?:fly\\s+high|rest\\s+easy|sleep\\s+tight)\\s+(?:(?:my|our|little|sweet|baby|beautiful)\\s+)*(?:angel|${WHO}|${BARE})\\b`, 'iu'),
 ];
-const NOT_NAMES = /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December|Christmas|Easter|Summer|Winter|Spring|Autumn|Twitter|Facebook|Instagram|TikTok|Netflix|Me|My|Our|The|This|That|It|To|Bank|Phone|Just|Really|Honestly|Who|Which|What|When|And|But|So|Is|Was|Has|Had)$/u;
-/** Words for grieving itself, without a death named. */
-const GRIEVING = /\b(?:funerals?|bereave\w*|grieving|griev(?:e|es|ed)\s+(?:for|over)|grief|in\s+mourning|mourning|cemetery|crematorium|eulogy|memorial\s+service|condolences|graveside|gravestone|headstone)\b/giu;
-const GRAVE = new RegExp(`\\b(?:visit\\w*|went\\s+to|go\\s+to|going\\s+to|been\\s+to|at|by|beside|tend\\w*|clean\\w*|laid|lay|put|left|leave|flowers\\s+(?:on|for|at))\\s+(?:(?:the|his|her|their|my|our)\\s+)?(?:${ADJ}(?:${WHO}|${BARE})['’]s\\s+)?graves?\\b|\\bscatter\\w*\\s+(?:(?:the|his|her|their|my|our)\\s+)?(?:${ADJ}(?:${WHO}|${BARE})['’]s\\s+)?ashes\\b`, 'giu');
-/** Idioms and near misses, set aside before anything is read. */
-const NOT_A_LOSS = new RegExp([
-  '\\b(?:give|gives|giving|gave|get|gets|getting|got|take|takes|taking|took|cause|causes|causing|caused)\\s+(?:me\\s+|us\\s+|him\\s+|her\\s+|them\\s+|you\\s+|myself\\s+)?(?:(?:so\\s+much|a\\s+lot\\s+of|some|such|no\\s+end\\s+of|loads\\s+of|any|the|a\\s+load\\s+of|real|serious)\\s+)?grief\\b(?:\\s+(?:from|about|over|for)\\b)?',
-  '\\bgood\\s+grief\\b', '\\bc(?:o|a)me\\s+to\\s+grief\\b', '\\bgrief\\s+from\\b',
-  // nearly happened, or didn't (but "not long died" is British for "died recently")
-  '\\b(?:nearly|almost|could\\s+have|could[\'’]ve|would\\s+have|would[\'’]ve|might\\s+have|might[\'’]ve|should\\s+have|should[\'’]ve|didn[\'’]?t|did\\s+not|never|haven[\'’]?t|have\\s+not|has\\s+not|hasn[\'’]?t|not|isn[\'’]?t|wasn[\'’]?t)(?!\\s+long\\b)\\s+(?:\\w+\\s+)?(?:died|passed\\s+away|passed\\s+on|(?:been\\s+|got\\s+|get\\s+)?killed|been\\s+put\\s+down|dead)\\b',
-  // "she died her hair" (dyed), "died in my dream"
-  '\\bdied\\s+(?:my|her|his|their|our|your)\\s+hair\\b',
-  '\\bdied\\s+(?:laughing|of\\s+(?:embarrassment|shame|laughter|boredom|cringe|fright)|inside|a\\s+little)\\b',
-  '\\bdead\\s+(?:to\\s+me|set|tired|serious|against|on|keen|right|wrong|good|nice|funny|proud|excited|strict|easy|hard|bored|chuffed|lucky)\\b',
-  '\\b(?:turning|spinning|rolling|turn|spin|roll|turns|spins|rolls|turned|spun|rolled)\\s+(?:over\\s+)?in\\s+(?:his|her|their|my|your)\\s+graves?\\b',
-  '\\b(?:take|taking|took|takes)\\s+(?:it|this|that|them|the\\s+secret|my\\s+secret|the\\s+truth)\\s+to\\s+(?:the|my|his|her|their)\\s+grave\\b',
-  '\\bone\\s+foot\\s+in\\s+the\\s+grave\\b', '\\bdig\\w*\\s+(?:my|your|his|her|their|our)\\s+own\\s+graves?\\b',
-  '\\bgrave(?:ly)?\\s+(?:mistake|error|concern|concerns|danger|doubts?|situation|consequences|risk|news|voice|face|look|tone|matter|warning|injustice)\\b',
-  '\\b(?:it[\'’]?s|its|it\\s+is|it\\s+was|that[\'’]?s|that\\s+is)\\s+(?:your|his|her|their|my)\\s+(?:own\\s+)?funeral\\b',
-  '\\bR\\.?I\\.?P\\.?\\s+(?:off|it|them|that|this|up|my\\s+(?:phone|bank|wallet|weekend|plans|social|sleep|diet|money|savings|car|laptop|screen))\\b',
-  '\\brip(?:ped|ping|s)?\\s+(?:off|it|up|out|open|apart|through)\\b',
-].join('|'), 'giu');
-/** A death imagined, feared or dreamt in the same clause ("what if my mum died", "I dreamt my dad died"). */
-const IMAGINED = /\b(?:if|imagine|imagining|in\s+case|as\s+if|as\s+though|suppose|supposing|pretend\w*|dream\w*|nightmare\w*|scared|afraid|frightened|terrified|worried|worry|worrying|fear\w*|thought\s+of|idea\s+of|prospect\s+of|possibility\s+of|can['’]?t\s+imagine|wish(?:ed)?|hope)\b/iu;
-const CLAUSE_JOIN = /\b(?:since|because|cos|after|and|but|so|though|although|while|when|now)\b|[,;:—–]/u;
+/** A capitalised name beside a death ("We lost Sam in May", "RIP Sarah", "Tom passed away"). */
+const NAMED = [
+  new RegExp(`\\b[Ll]ost\\s+(?<nm>[A-Z][a-z]+)${FOLLOW}`, 'u'),
+  /\b(?<nm>[A-Z][a-z]+)s?\s+(?:(?:has|had|is|was|just|sadly)\s+)*(?:passed|gone)\b(?!\s+(?:to|out|home|off|back|away|my|his|her|the|a|an|me|us|it|them|him|by|through)\b)/u,
+];
 
-/** True when the match at `index` is imagined or feared within its own clause. */
-function imagined(t, index) {
-  const start = Math.max(t.lastIndexOf('.', index - 1), t.lastIndexOf('!', index - 1), t.lastIndexOf('?', index - 1)) + 1;
-  const parts = t.slice(start, index).split(CLAUSE_JOIN);
-  if (IMAGINED.test(parts[parts.length - 1] || '')) return true;
-  // …or told as a dream after it ("my cat died in my dream")
-  const end = t.slice(index).search(/[.!?]/u);
-  return /\bin\s+(?:my|a|the|last\s+night['’]?s|his|her)\s+(?:dream|nightmare)s?\b/iu.test(end < 0 ? t.slice(index) : t.slice(index, index + end));
-}
-/** A match of `re` (global) in `t` that is stated, not imagined; a name it carries is a capitalised name. */
-function stated(re, t, { ownImagined = false } = {}) {
-  re.lastIndex = 0;
-  for (const m of t.matchAll(re)) {
-    const nm = m.groups?.nm;
-    if (nm && (!/^\p{Lu}/u.test(nm) || NOT_NAMES.test(nm))) continue;
-    if (!ownImagined && imagined(t, m.index)) continue;
-    return true;
-  }
-  return false;
+/** True when `re` matches `t` with a name (if it carries one) that really is a name. */
+function hit(re, t) {
+  const m = re.exec(t);
+  if (!m) return false;
+  const nm = m.groups?.nm;
+  return !nm || !NOT_NAMES.test(nm);
 }
 
-/** 'loss' (someone or a pet died: "Missing them…"), 'grief' (grieving, a funeral, a grave), or null. */
-export function bereavement(text) {
-  const raw = String(text ?? '').replace(/\s+/g, ' ');
+/**
+ * 'loss' when a death or a loss is named, 'grief' for grieving, a funeral or a grave without one, else null.
+ * Fires on any of these words about anyone or anything alive; only the idioms in death-words.js are set aside.
+ */
+export function deathTalk(text) {
+  const raw = norm(text);
   if (!/\p{L}/u.test(raw)) return null;
-  // a regret ("I wish my dad hadn't died") says the death happened: its "wish" is not an imagined death
-  if (stated(LOSS[LOSS.length - 1], raw, { ownImagined: true })) return 'loss';
-  const t = raw.replace(NOT_A_LOSS, ' ');
-  if (LOSS.slice(0, -1).some((re) => stated(re, t))) return 'loss';
-  if (!ACHIEVED.test(t) && stated(HAS_PASSED, t)) return 'loss';
-  if (!FICTION.test(t) && stated(WATCHED_DIE, t)) return 'loss';
-  if (!FICTION.test(t) && stated(PRONOUN_DIED, t)) return 'loss';
-  if (!FICTION.test(t) && !GADGET.test(t) && stated(PRONOUN_DEAD, t)) return 'loss';
-  if (PET_WORD.test(t) && stated(PRONOUN_PUT, t)) return 'loss';
-  if (SOMEONE.test(t) || /\b(?:he|she|who)\b/iu.test(t)) { if (stated(PASSED_AWAY, t)) return 'loss'; }
-  if (!NOT_DEATH_CONTEXT.test(t) && (stated(LOST, t) || stated(LOSING, t))) return 'loss';
-  if (stated(LOST_CLOSE, t)) return 'loss';
-  if (DEATH_WORD.test(t) && stated(LOST_FADING, t)) return 'loss';
-  if (!WENT_SOMEWHERE.test(t) && !NOT_DEATH_CONTEXT.test(t) && (GONE.slice(0, 2).some((re) => stated(re, t)) || (SOMEONE.test(t) && stated(GONE[2], t)))) return 'loss';
-  if (RIP.some((re) => stated(re, t))) return 'loss';
-  if (stated(GRAVE, t) || stated(GRIEVING, t)) return 'grief';
+  const t = blankOrdinary(raw);
+  if (LOSS_WORDS.some((re) => re.test(t)) || NAMED.some((re) => hit(re, t)) || RIP.slice(0, 2).some((re) => re.test(t))) return 'loss';
+  if (PET_WORD.test(t) && PET_PUT.test(t)) return 'loss';
+  if (GRIEF_WORDS.some((re) => re.test(t)) || RIP[2].test(t)) return 'grief';
   return null;
 }
 
 /**
- * A server scene about a death: a loss, read as grief, or a loss beside a death named in the words about
- * someone (the server may call it 'sadness' for "my nan passed in May, and the house is so quiet", which the
- * app's own reading leaves to the server). Its two lines play gently; its mechanic never does. A lost job, a
- * lost match, a phone that died or a death only feared is never one.
+ * Someone still alive but going, or gone in another way ("my nan has dementia", "my grandad doesn't know who I am
+ * any more"): no death word, but never a game either. Read for recall: dementia or Alzheimer's anywhere, or
+ * someone who no longer knows them. The gentle path's lines are true for it (backstop.js gentleRoute).
  */
-const GRIEF_EMOTIONS = new Set(['grief', 'mourning', 'bereft']);
-const SERVER_DEATH = new RegExp(`${DEATH_WORD.source}|\\bpassed\\b${PASSED_GUARD}|\\bput\\s+to\\s+sleep\\b`, 'iu');
-export function serverGrief(scene, text = '') {
-  if (scene?.source !== 'server' || scene.situation_type !== 'loss') return false;
-  if (GRIEF_EMOTIONS.has(String(scene.emotion || '').toLowerCase())) return true;
-  const t = String(text ?? '').replace(/\s+/g, ' ').replace(NOT_A_LOSS, ' ');
-  return !FICTION.test(t) && !IMAGINED.test(t) && SOMEONE.test(t) && SERVER_DEATH.test(t);
-}
-
-/**
- * 'passed' alone after a person ("My dad passed last year", "since Mum passed"): never read as a death (it may
- * be an exam), but never a game either. With nothing in the words about an exam, a result or being proud, the
- * authored path answers it gently without naming a death (authored.js feelingOf → kind 'heavy'); with
- * sharing on, the server reads it.
- */
-const PASSED_ALONE = new RegExp(`(?:${SUBJ}|${BARE_SUBJ})(?:\\s+|['’]s\\s+)${AUX}passed\\b${PASSED_GUARD}`, 'giu');
-const ACHIEVED = /\b(?:proud|happy|pleased|thrilled|delighted|chuffed|relieved|congrat\w*|well\s+done|exams?|tests?|driving|grades?|results?|uni|university|college|school|got\s+into|got\s+in|distinction|merit|scholarship|qualif\w*|certificate|course|module|level|gcses?|a-levels?|degree|class|audition|trial|probation|assessment|inspection|mot)\b|!/iu;
-export function passedAlone(text) {
-  const t = String(text ?? '').replace(/\s+/g, ' ');
-  return !ACHIEVED.test(t) && stated(PASSED_ALONE, t);
-}
-
-/**
- * Someone still alive but going, or gone in another way ("I lost my mum to dementia, she doesn't know who I am",
- * "I'm losing my dad to drink", "my nan has Alzheimer's and doesn't recognise me"): never read as a death
- * (bereavement is null), and never a game either: the authored path answers it gently (authored.js feelingOf →
- * kind 'heavy'); with sharing on, the server reads it.
- */
-const LIVING_LOSS = [
-  new RegExp(`\\b(?:lost|losing)\\s+(?:my|our)\\s+${ADJ}(?:${FAMILY}|${CLOSE})s?${NAME}\\s+to\\s+(?:${FADING}|drink|drugs|alcohol|addiction|the\\s+bottle|gambling)\\b`, 'giu'),
-  new RegExp(`(?:${SUBJ}|${BARE_SUBJ})(?:\\s+|['’]s\\s+)(?:(?:has|had|got|was\\s+diagnosed\\s+with|is\\s+living\\s+with)\\s+)(?:early[\\s-]+onset\\s+)?(?:${FADING})\\b`, 'giu'),
-  new RegExp(`(?:${SUBJ}|${BARE_SUBJ}|\\b(?:he|she))\\s+(?:(?:just|really|even|now|sometimes|often)\\s+)?(?:doesn['’]?t|does\\s+not|can['’]?t|cannot|no\\s+longer)\\s+(?:even\\s+)?(?:know\\s+who\\s+i\\s+am|recogni[sz]e\\s+me|remember\\s+(?:me|my\\s+name|who\\s+i\\s+am))\\b`, 'giu'),
-];
+const LIVING_LOSS = /\b(?:dementia|alzheimers?|alzheimer)\b|\b(?:doesnt|does\s+not|didnt|did\s+not|cant|cannot|can\s+not|no\s+longer|wont|will\s+not|couldnt)\s+(?:even\s+|really\s+)?(?:know\s+who\s+(?:i\s+am|we\s+are)|know\s+(?:me|us)\s+any\s*more|recogni[sz]e\s+(?:me|us)|remember\s+(?:me|us|who\s+i\s+am|my\s+name|our\s+names))\b/iu;
 export function livingLoss(text) {
-  const t = String(text ?? '').replace(/\s+/g, ' ');
-  return LIVING_LOSS.some((re) => stated(re, t));
+  return LIVING_LOSS.test(norm(text));
+}
+
+// ----------------------------------------------------------------- escalation --
+/** "him", "her", "them" standing for the person (never "her family", "them at the funeral"). */
+const PRON_TAIL = '(?=\\s*(?:$|[.,!?;:…)—–]|(?:again|now|forever|soon|so|too|already|right\\s+now|tonight|in\\s+heaven|up\\s+there|wherever|where|on\\s+the\\s+other\\s+side|and|but|because|cos|i|im|so\\s+much|more\\s+than\\s+anything|one\\s+day|someday|someway|somehow|instead|properly|there|here|that|its|it|please|honestly|really|just|anymore|any\\s+more|like|or)\\b))';
+/** "my dad", "Mum", "Sam": a person after "be with", "join", "without" (checked against who died, below). */
+const OBJ_PERSON = `(?:(?:my|our|his|her|their)\\s+)?${ADJ}(?<who>${WHO}|${BARE})s?\\b|\\b(?<nm>[A-Z][a-z]+)\\b`;
+/** What says it is about the one who died wherever they are ("again", "in heaven", "up there"). */
+const AFTER = /^\s+(?:again|forever|in\s+heaven|up\s+there|wherever|where\s+(?:he|she|they|hes|shes|theyre)|on\s+the\s+other\s+side|once\s+and\s+for\s+all)\b/iu;
+const WANT = '(?:want|wanna|wanted|need|needed|long|longing|wish\\s+i\\s+could|wish\\s+i\\s+was|wish\\s+i\\s+were|wish\\s+id\\s+be|would\\s+rather|id\\s+rather|ready|cant\\s+wait|just\\s+want|only\\s+want|going|gonna|will|ill|could|should|time|yearn|yearning|desperate|have)';
+/** Who died, by the word the person used for them ("my nan died" → nan), so "be with my nan" means her. */
+const DECEASED = [
+  new RegExp(`(?<who>${WHO}|${BARE})s?\\s+${AUX}(?:died|dide|dead|passed|gone|killed|murdered|drowned|no\\s+longer|not\\s+with|in\\s+heaven|put\\s+(?:down|to\\s+sleep)|didnt\\s+make\\s+it)\\b`, 'giu'),
+  new RegExp(`\\b(?:lost|losing|loss\\s+of|death\\s+of|funeral\\s+of|since|after)\\s+(?:(?:my|our|his|her|their|the)\\s+)?${ADJ}(?<who>${WHO}|${BARE})s?\\b`, 'giu'),
+  /\b(?<nm>[A-Z][a-z]+)s?\s+(?:(?:has|had|is|was|just|sadly)\s+)*(?:died|dead|passed|gone|killed)\b/gu,
+  /\b(?:lost|RIP|rip)\s+(?<nm>[A-Z][a-z]+)\b/gu,
+];
+const FOLLOW_RES = [
+  // be with / go and be with / be where they are
+  new RegExp(`\\b${WANT}\\s+(?:to\\s+)?(?:go\\s+(?:and\\s+)?|just\\s+)?(?:be|go|get|belong|lie|rest)\\s+(?:back\\s+)?with\\s+(?:(?:him|her|them)${PRON_TAIL}|(?:${OBJ_PERSON}))`, 'giu'),
+  /\b(?:belong|be|go|get|want\s+to\s+be|need\s+to\s+be)\s+(?:back\s+)?with\s+(?:him|her|them)\s+(?:again|forever|in\s+heaven|up\s+there|soon)\b/giu,
+  // join / follow them
+  new RegExp(`\\b${WANT}\\s+(?:to\\s+)?(?:go\\s+(?:and\\s+)?|just\\s+)?join\\s+(?:(?:him|her|them)${PRON_TAIL}|(?:${OBJ_PERSON}))`, 'giu'),
+  /\b(?:want|wanna|need|wish\s+i\s+could|going|gonna|will|ill|could|should|just|ready|cant\s+wait|id|i\s+would|i\s+could)\s+(?:to\s+)?(?:just\s+)?follow\s+(?:him|her|them)(?=\s*(?:$|[.,!?;:…]|(?:now|soon|there|wherever|too|into\s+(?:the\s+)?(?:dark|darkness|grave|ground|next|death)|to\s+(?:heaven|the\s+other\s+side)|and|but|i|so)\b))/giu,
+  // go where she is (never "where she is buried"), go to her, go with him, go too
+  /\b(?:go|be|get|want\s+to\s+go|want\s+to\s+be)\s+(?:to\s+)?where(?:ver)?\s+(?:he|she|they|hes|shes|theyre)\b(?!(?:\s+(?:is|are|s|re|was|were|has\s+been|have\s+been|is\s+now|lies|lay))?\s+(?:buried|laid|resting|scattered|cremated|kept|from|working|living|staying))/giu,
+  new RegExp(`\\b${WANT}\\s+(?:to\\s+)?go\\s+(?:to|with)\\s+(?:him|her|them)${PRON_TAIL}`, 'giu'),
+  /\b(?:wish|wished)\s+(?:that\s+)?(?:i|id|i\s+had|i\s+could|i\s+could\s+have|i\s+couldve|i\s+would\s+have|i\s+wouldve)\s+(?:have\s+)?(?:gone|went|go|died|left|been\s+taken|been\s+killed)\s+(?:with|instead\s+of|alongside)\s+(?:him|her|them|\w+)\b|\bshould\s+(?:have|ve|of)\s+(?:gone|died)\s+with\s+(?:him|her|them)\b/giu,
+  /\b(?:want|wanna|wanted|need|ready)\s+to\s+(?:go|die|leave|come)\s+(?:too|as\s+well|with\s+(?:him|her|them))\b|\btake\s+me\s+(?:with\s+(?:him|her|them|you)|too|instead|as\s+well)\b|\bwhy\s+didnt\s+(?:he|she|they|god)\s+take\s+me\b/giu,
+  // it should have been me
+  /\b(?:it\s+)?should\s+(?:have|ve|of)\s+been\s+me\b|\bwish\s+(?:it\s+)?(?:was|were|had\s+been)\s+me\b|\bwhy\s+(?:wasnt|couldnt)\s+it\s+(?:have\s+been\s+|be\s+)?me\b/giu,
+  // can't / don't want to go on, be here or live without them; what's the point without her
+  new RegExp(`\\b(?:cant|cannot|can\\s+not|dont\\s+want\\s+to|do\\s+not\\s+want\\s+to|dont\\s+wanna|dont\\s+know\\s+how\\s+to|dont\\s+know\\s+if\\s+i\\s+can|no\\s+point(?:\\s+in)?|whats\\s+the\\s+point(?:\\s+(?:of|in))?|what\\s+is\\s+the\\s+point(?:\\s+(?:of|in))?|theres\\s+no\\s+point(?:\\s+in)?|there\\s+is\\s+no\\s+point(?:\\s+in)?|no\\s+reason\\s+to|not\\s+worth|dont\\s+see\\s+the\\s+point(?:\\s+(?:of|in))?|cant\\s+see\\s+the\\s+point(?:\\s+(?:of|in))?|wont|will\\s+not|refuse\\s+to|how\\s+(?:can|do|am)\\s+i\\s+(?:supposed\\s+to\\s+)?|why\\s+(?:should|would)\\s+i)\\s+(?:(?:go(?:ing)?\\s+on(?:\\s+living)?|carry(?:ing)?\\s+on|keep(?:ing)?\\s+going|be(?:ing)?\\s+here|be(?:ing)?\\s+alive|stay(?:ing)?\\s+alive|stay(?:ing)?|liv(?:e|ing)|exist(?:ing)?|surviv(?:e|ing)|do(?:ing)?\\s+(?:life|this|it|anything|any\\s+of\\s+this)|fac(?:e|ing)\\s+(?:life|this|it|anything|the\\s+world|tomorrow|another\\s+day|the\\s+future)|breath(?:e|ing)|get(?:ting)?\\s+up|wak(?:e|ing)\\s+up|bother(?:ing)?|try(?:ing)?|life|anything|everything|it|this|any\\s+more|anymore|here|now)\\s+)?(?:any\\s*more\\s+)?without\\s+(?:(?:him|her|them)(?=\\s*(?:$|[.,!?;:…]|(?:here|around|in\\s+my\\s+life|by\\s+my\\s+side|with\\s+me|any\\s*more|now|and|so|but|i|its|it|to|anyway|though|really|honestly|either|at\\s+all|beside\\s+me|there|in\\s+it|in\\s+the\\s+world|alive)\\b))|(?:${OBJ_PERSON}))`, 'giu'),
+  /\blife\s+(?:is|isnt|feels|seems|has\s+been|would\s+be|will\s+be)\s+(?:so\s+|just\s+|completely\s+)?(?:pointless|meaningless|empty|not\s+worth\s+(?:it|living)|worthless|nothing|over)\s+without\b|\bno\s+life\s+without\b|\bnothing\s+(?:left\s+)?to\s+live\s+for\b|\bno\s+reason\s+to\s+(?:live|go\s+on|be\s+here|keep\s+going)\b/giu,
+  // soon: "I'll be with him soon", "not long till I'm with her"
+  /\b(?:ill|i\s+will|im\s+going\s+to|i\s+am\s+going\s+to|im\s+gonna|i\s+hope\s+(?:i|ill)|cant\s+wait\s+to|not\s+long\s+(?:until|till|til)\s+(?:i|im))\s+(?:be\s+with|see|join|meet|hold|be\s+back\s+with)\s+(?:him|her|them|\w+)\s+(?:again\s+)?soon\b|\bnot\s+long\s+(?:until|till|til)\s+(?:i|im)\s+(?:with|beside)\s+(?:him|her|them)\b/giu,
+  // reunited with them
+  /\b(?:want|wanna|wish|cant\s+wait|long|ready|need|hope|going)\s+(?:to\s+)?(?:be\s+)?reunit(?:e|ed)\s+with\b/giu,
+];
+
+/** Who died, by the words used for them (lower-case person words, and names as typed). */
+function deceased(t, cased) {
+  const out = new Set();
+  for (const re of DECEASED) {
+    re.lastIndex = 0;
+    for (const m of (re.flags.includes('i') ? t : cased).matchAll(re)) {
+      if (m.groups?.who) out.add(m.groups.who.toLowerCase());
+      if (m.groups?.nm && !NOT_NAMES.test(m.groups.nm)) out.add(m.groups.nm.toLowerCase());
+    }
+  }
+  return out;
+}
+/**
+ * True when the words say they want to be with, join or follow someone, or can't (or don't want to) go on,
+ * be here or live without them. "Be with my mum" counts only when Mum is the one who died, or with "again",
+ * "in heaven" or "up there"; "be with her" counts unless it is a plan with the living ("at the funeral", "this
+ * weekend"). Read only beside death talk (deathEscalation).
+ */
+export function wantsToFollow(text) {
+  const cased = blankOrdinary(norm(text));
+  const t = cased.toLowerCase();
+  if (!/\p{L}/u.test(t)) return false;
+  const gone = deceased(t, cased);
+  for (const re of FOLLOW_RES) {
+    re.lastIndex = 0;
+    const src = re.source.includes('(?<nm>') ? cased : t;
+    for (const m of src.matchAll(re)) {
+      const who = m.groups?.who?.toLowerCase(), nm = m.groups?.nm;
+      if (!who && !nm) return true;
+      // (a name is a capitalised word as typed, never "be with friends")
+      if (nm && (NOT_NAMES.test(nm) || !/^\p{Lu}/u.test(nm))) continue;
+      const name = (who || nm).toLowerCase();
+      // "my other cat" is never the one who died
+      if (/\bother\b/iu.test(m[0])) continue;
+      // "without my dad" always counts; "be with my dad" / "join my dad" only when he is the one who died, or "again"
+      const after = src.slice(m.index + m[0].length);
+      if (/without\s+/iu.test(m[0]) || gone.has(name) || AFTER.test(after)) return true;
+    }
+  }
+  return false;
+}
+/** Death talk that also says they want to follow the one who died: the CARE support path (nothing is sent). */
+export function deathEscalation(text) {
+  return !!deathTalk(text) && wantsToFollow(text);
+}
+
+// --------------------------------------------------------------- the server --
+const GRIEF_EMOTIONS = new Set(['grief', 'mourning', 'bereft', 'heartache', 'anticipatory-grief']);
+/**
+ * A server answer that reads as grief or a loss: for death talk, a scene about a loss or a grieving feeling (the
+ * server sees the whole context); for other words, a loss scene beside a grieving feeling or a heavy harm word
+ * the ordinary idioms don't explain (backstop.js). Its two lines play gently; its mechanic never does. A lost
+ * job, a lost match or a phone that died is never one.
+ */
+export function serverGrief(scene, text = '', { heavy = null } = {}) {
+  if (scene?.source !== 'server') return false;
+  const loss = scene.situation_type === 'loss';
+  const griefEmotion = GRIEF_EMOTIONS.has(String(scene.emotion || '').toLowerCase());
+  if (deathTalk(text)) return loss || griefEmotion;
+  return loss && (griefEmotion || !!heavy?.(text));
 }

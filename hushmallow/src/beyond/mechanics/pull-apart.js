@@ -12,10 +12,14 @@
 
 import { drawGlow, clamp, lerp, dist, approach, rgba, mix, LIGHT, Motes, blinkAt, Timers, RectList, thoughtFor, familyOf, W2_TINT, WARM_FAMILIES } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
+import { framingAllowed } from '../backstop.js';
 
 export const id = 'pull_apart';
 
 export function mount(ctx) {
+  // the backstop (backstop.js): never the fact-vs-guess framing beside a death or harm word, whoever chose this
+  // mechanic (the orchestrator's playScene then hands over to a kind step)
+  if (!framingAllowed(ctx.text)) throw new Error(`${id}: never for these words`);
   // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
   const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;

@@ -31,8 +31,9 @@ import {
   WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
   FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, mechanicLines, pick,
 } from './lines.js';
-import { authoredScene, sceneParts, candidatePatterns, bereavement, griefScene, feelingOf, feelingGuard, framesAsGuess } from './authored.js';
-import { serverGrief } from './grief.js';
+import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, harmGuard } from './authored.js';
+import { deathEscalation, serverGrief } from './grief.js';
+import { harmRoute, gentleRoute, framingAllowed, framesAsGuess } from './backstop.js';
 import { FEELING_LOOK } from './feelings.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
 import { createAngleClient, resolveEndpoint, TIMEOUTS } from './angle-client.js';
@@ -65,6 +66,8 @@ const PATTERN_LOOK = Object.freeze({
 });
 /** A word-reading (never decisive) only colours the thought when it is this sure, and only with a troubled feeling. */
 const READING_SURE = 0.7;
+/** A harm word no ordinary idiom explains (a server loss scene beside one reads as grief: grief.js serverGrief). */
+const heavyWords = (t) => harmRoute(t) === 'gentle';
 /** Authored visits (sharing said "Not now") after which the invitation mentions sharing again, gently. */
 const SHARE_AGAIN_EVERY = 4;
 
@@ -585,6 +588,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     noteSafety(checkText(S.text));
     if (S.level === 'crisis') { crisisMode(); return; }
     if (S.level === 'care') { careMode(); return; }
+    // death talk that wants to be with, join or follow the one who died (grief.js, never the safety lexicon):
+    // the care path, nothing sent, no game
+    if (deathEscalation(S.text)) { careMode({ lines: SAFETY.follow }); return; }
     if (S.level === 'concern') S.keepSupport = true;
     if (!S.text || !hasWords(S.text)) { unclear(); return; }
     startAngle({ another: false });
@@ -645,7 +651,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear();
     say(SAFETY.crisis, { hold: true, interrupt: true });
   }
-  async function careMode() {
+  async function careMode({ lines = SAFETY.care } = {}) {
     S.care = true; S.keepSupport = true; S.level = worse(S.level, 'care'); S.phase = 'support';
     S.seq++;
     keepCtl?.abort();
@@ -655,7 +661,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (S.careSaid) return;
     S.careSaid = true;
     subs?.clear();
-    await say(SAFETY.care, { interrupt: true });
+    await say(lines, { interrupt: true });
     if (S.left || S.phase !== 'support') return;
     const v = await choose(SAFETY.careAsk, SAFETY.careOptions);
     if (v === 'support') openSupportSheet();
@@ -670,13 +676,17 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     say(SAFETY.concern, { interrupt: !subs?.holding });
   }
   /**
-   * A loss (grief.js): no Thought Mallow, no mechanic, nothing playful, support one tap away, and no "another
-   * angle" or feedback to give. Zuzu answers gently: with sharing on, the server's two lines (grief is a case
-   * its prompt answers with warmth and no task), else the authored pair (lines.js GRIEF). `scene` is a server
-   * scene that already reads as grief (`asked`: the server has answered already); without one, and with
-   * sharing on, the words are sent once here.
+   * The gentle path (death talk, grief.js; or a harm word no idiom explains, backstop.js): no Thought Mallow, no
+   * mechanic, nothing playful, support one tap away, and no "another angle" or feedback to give. Zuzu answers
+   * gently: with sharing on, the server's two lines only when its answer reads as grief or a loss (serverGrief:
+   * it sees the whole context), else the authored pair (lines.js GRIEF), which never assumes anyone died. An
+   * ordinary server scene never plays here (never a fact-vs-guess game for death talk). `scene` is a server scene
+   * that already reads as grief (`asked`: the server has answered already); without one, and with sharing on, the
+   * words are sent once here.
    */
   async function griefMode({ scene = null, asked = false } = {}) {
+    // (wanting to follow the one who died is care, whichever way it got here: nothing more is sent)
+    if (deathEscalation(S.text)) { careMode({ lines: SAFETY.follow }); return; }
     const seq = ++S.seq;
     S.grief = true; S.keepSupport = true; S.phase = 'support';
     keepCtl?.abort();
@@ -695,8 +705,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (S.left || seq !== S.seq) return;
       if (res?.status === 'crisis') { crisisMode(); return; }
       if (res?.status === 'care') { careMode(); return; }
-      // (its two lines, unless one of them would read the loss as a guess or send it to be checked)
-      if (res?.status === 'ok' && res.scene?.subtitle_line_1 && res.scene?.subtitle_line_2 && !framesAsGuess(res.scene.subtitle_line_1) && !framesAsGuess(res.scene.subtitle_line_2)) scene = res.scene;
+      // (its two lines only when it reads them as grief or a loss, and neither reads the words as a guess or sends
+      // them to be checked; an ordinary scene's lines and mechanic never play for death talk)
+      if (res?.status === 'ok' && serverGrief(res.scene, S.text, { heavy: heavyWords }) && res.scene?.subtitle_line_1 && res.scene?.subtitle_line_2 && !framesAsGuess(res.scene.subtitle_line_1) && !framesAsGuess(res.scene.subtitle_line_2)) scene = res.scene;
       else {
         // never "safe" by default: without the server's answer the app's own check runs again
         const again = checkText(S.text);
@@ -705,7 +716,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       }
     }
     // only the two lines are used: the server's own mechanic never plays for a loss
-    if (!scene) scene = griefScene(S.text, { emotion: S.emotion });
+    if (!scene) scene = gentleScene(S.text, { emotion: S.emotion });
     else scene = { ...scene, grief: true, mechanic: null };
     S.scene = scene;
     await heard;
@@ -738,17 +749,17 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
 
   /** The words → a Thought Mallow → (server or authored) scene → its mechanic. */
   async function startAngle({ another = false } = {}) {
-    // someone has died: no Thought Mallow and no mechanic (grief isn't a thought to fix); with sharing on the
-    // server still answers it, gently (griefMode)
-    if (bereavement(S.text)) return griefMode();
+    // death talk (any death or loss word, recall first), someone alive but going, or a harm word no idiom
+    // explains: no Thought Mallow and no mechanic; with sharing on the server still answers it, gently (griefMode)
+    if (gentleRoute(S.text)) return griefMode();
     const seq = ++S.seq;
     S.phase = 'waiting';
     dockShow({});
     if (!another || !thought) spawnThought();
     zt?.setStage('curious');
-    // a feeling said plainly gets Zuzu's attentive face, never a playful one
+    // a feeling said plainly (or words beside a harm word) gets Zuzu's attentive face, never a playful one
     let feel = null;
-    try { feel = feelingOf(S.text); } catch { feel = null; }
+    try { feel = feelingOf(S.text) || (framingAllowed(S.text) ? null : { kind: 'low' }); } catch { feel = null; }
     if (feel) careFace(); else zt?.setEmotion({ curious: 0.65, playful: 0.35 }, 0.7, { quiet: true });
     const started = now();
     waitingLines(seq);
@@ -770,10 +781,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (res.status === 'care') { careMode(); return; }
       if (res.status === 'unclear') { subs?.clear(); dropThought(); unclear(); return; }
       // the server read a loss the words didn't name the app's way ("since Mum passed"): its lines, gently, no mechanic
-      if (res.status === 'ok' && res.scene && serverGrief(res.scene, S.text)) { griefMode({ scene: framesAsGuess(res.scene.subtitle_line_1) || framesAsGuess(res.scene.subtitle_line_2) ? null : res.scene, asked: true }); return; }
+      if (res.status === 'ok' && res.scene && serverGrief(res.scene, S.text, { heavy: heavyWords })) { griefMode({ scene: framesAsGuess(res.scene.subtitle_line_1) || framesAsGuess(res.scene.subtitle_line_2) ? null : res.scene, asked: true }); return; }
       if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) {
-        // a feeling said plainly is never pulled apart into "what happened" and "what your mind added", whoever wrote it
-        scene = feelingGuard(res.scene, S.text, { emotion: S.emotion, exclude });
+        // a feeling said plainly is never pulled apart into "what happened" and "what your mind added", whoever
+        // wrote it; nor are words beside a death or harm word (the backstop: a kind step instead)
+        scene = harmGuard(feelingGuard(res.scene, S.text, { emotion: S.emotion, exclude }), S.text, { emotion: S.emotion, exclude });
         if (scene.exhausted) { await noMoreAngles(); return; }
       } else { offline = true; hint = res.hint?.reasoning_pattern || null; invited = res.reason === 'invite'; }
     }
@@ -802,9 +814,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function waitingLines(seq) {
     // Zuzu's line first, then (early, once) what is happening, in the Hushfold's own words; then the rest in turn
     let i = 0, w = 0, n = 0;
-    // a feeling said plainly is never met with "What else could be true?"
+    // a feeling said plainly (or words beside a harm word) is never met with "What else could be true?"
     let feel = null;
-    try { feel = feelingOf(S.text); } catch { feel = null; }
+    try { feel = feelingOf(S.text) || (framingAllowed(S.text) ? null : { kind: 'low' }); } catch { feel = null; }
     const lines = feel ? FEELING.waiting : WAITING, long = feel ? FEELING.waitingLong : WAITING_LONG;
     while (!S.left && seq === S.seq && S.phase === 'waiting') {
       const narrate = n === 1 || (n > 2 && n % 3 === 0);
@@ -817,6 +829,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   }
 
   async function playScene(scene, seq) {
+    // the backstop, where every scene plays (authored, server, the lab's): beside a death or harm word, never the
+    // fact-vs-guess framing; a kind-step scene with a feeling's safe lines instead
+    if (!framingAllowed(S.text)) scene = harmGuard(scene, S.text, { emotion: S.emotion });
     S.scene = scene;
     S.shown.push(scene);
     if (scene.angle_id) S.used.push(scene.angle_id);
@@ -825,7 +840,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear();
     let mod;
     // (a mechanic that can't load hands over to one that fits the scene: a feeling never falls back to pull_apart)
-    const fallback = scene.feeling ? 'assemble_step' : 'pull_apart';
+    const gentle = !!scene.feeling || !framingAllowed(S.text);
+    const fallback = gentle ? 'assemble_step' : 'pull_apart';
     try { mod = await loadMechanic(scene.mechanic); } catch (e) { console.warn('[another angle] mechanic', e?.message); mod = await loadMechanic(fallback); scene.mechanic = fallback; }
     if (S.left || seq !== S.seq) return;
     const L = mechanicLines(scene.mechanic, scene);
@@ -939,7 +955,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function exploreLine(scene, id) {
     const p = EXPLORE.find((x) => x.id === id);
     if (!p) return null;
-    if (p.field === 'friend') return scene.feeling ? FEELING.friend : FRIEND_LINES[scene.reasoning_pattern] || FRIEND_LINES.fact_vs_assumption;
+    if (p.field === 'friend') return scene.feeling || !framingAllowed(S.text) ? FEELING.friend : FRIEND_LINES[scene.reasoning_pattern] || FRIEND_LINES.fact_vs_assumption;
     const v = scene[p.field];
     if (p.field === 'known_fact') return [v || EXPLORE_EMPTY.known_fact, scene.possible_assumption].filter(Boolean);
     return v || EXPLORE_EMPTY[p.field];
@@ -947,14 +963,16 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function explore(scene, seq) {
     S.phase = 'explore';
     const lead = scene.mallow_character || 'zuzu';
-    // a feeling is never fact-checked: no "What do you actually know?", no "another explanation"
-    let remaining = scene.feeling ? EXPLORE.filter((p) => FEELING.explore.includes(p.id)) : EXPLORE.slice();
+    // a feeling, or words beside a death or harm word, are never fact-checked: no "What do you actually know?",
+    // no "another explanation", never "Want to test it?"
+    const gentle = !!scene.feeling || !framingAllowed(S.text);
+    let remaining = gentle ? EXPLORE.filter((p) => FEELING.explore.includes(p.id)) : EXPLORE.slice();
     let first = true;
     while (remaining.length && !S.left && seq === S.seq) {
       const opts = remaining.slice(0, 2).map((p) => ({ label: p.label, value: p.id }));
       opts.push({ label: 'That’s enough', value: 'enough' });
       // (a feeling is never something to "test")
-      const v = await choose(scene.feeling ? (first ? FEELING.exploreAsk : FEELING.exploreMore) : (first ? EXPLORE_ASK : EXPLORE_MORE), opts, { mallow: 'zuzu' });
+      const v = await choose(gentle ? (first ? FEELING.exploreAsk : FEELING.exploreMore) : (first ? EXPLORE_ASK : EXPLORE_MORE), opts, { mallow: 'zuzu' });
       first = false;
       if (S.left || seq !== S.seq) return;
       if (v == null || v === 'enough') break;

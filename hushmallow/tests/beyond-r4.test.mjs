@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { authoredScene, sceneParts, candidatePatterns, bereavement, griefScene, wholeLabel, fairAnger } from '../src/beyond/authored.js';
+import { authoredScene, sceneParts, candidatePatterns, deathTalk, gentleScene, wholeLabel, fairAnger } from '../src/beyond/authored.js';
 import { AUTHORED_PAIRS, GRIEF } from '../src/beyond/lines.js';
 import { checkText } from '../src/engine/safety.js';
 
@@ -90,37 +90,39 @@ test('B2.2: someone else’s anger at them is mind reading, never their own fair
   }
 });
 
-test('B2.3: a loss is never a thinking error: no mechanic, no fact/assumption split, an authored validating pair', () => {
+test('B2.3 (r7): a loss is never a thinking error: no mechanic, no fact/assumption split, a gentle pair that assumes nothing', () => {
   for (const text of ['My grandad died last month and I can’t stop crying.', 'I miss my dog so much since he died.', 'My mum passed away and I feel empty.',
     'My dad passed away last year and Christmas is hard.', 'Since my nan died I can’t concentrate.', 'We had to have our cat put down yesterday.',
     'I lost my best friend to cancer in the spring.', 'It was my granddad’s funeral today.', 'I’ve been grieving for months.', 'My friend’s mum died and I don’t know what to say.']) {
-    assert.ok(bereavement(text), text);
+    assert.ok(deathTalk(text), text);
     const s = authoredScene(text);
     assert.equal(s.grief, true, text);
     assert.equal(s.mechanic, null, text);
     assert.notEqual(s.interaction_type, 'pull_apart', text);
     assert.equal(s.known_fact, '', text);
     assert.equal(s.possible_assumption, '', text);
-    assert.equal(s.subtitle_line_2, 'Grief isn’t a thought to fix.', text);
-    assert.ok([GRIEF.loss[0], GRIEF.grief[0]].includes(s.subtitle_line_1), text);
+    // (r7: the authored lines never assume a death: only the server may answer with grief)
+    assert.ok([GRIEF.loss, GRIEF.grief].some(([a, b]) => a === s.subtitle_line_1 && b === s.subtitle_line_2), text);
+    assert.doesNotMatch(`${s.subtitle_line_1} ${s.subtitle_line_2}`, /Missing them|Grief isn|grief|loss|died|them\b/i, text);
     // whatever the round, never a game
     for (const { scene } of rounds(text)) assert.equal(scene.mechanic, null, text);
   }
-  assert.equal(authoredScene('My grandad died last month and I can’t stop crying.').subtitle_line_1, 'Missing them this much makes sense.');
-  assert.deepEqual(griefScene('It was the funeral today.').subtitle_line_1, GRIEF.grief[0]);
-  // not a loss
-  for (const text of ['My phone died in the middle of the call.', 'My boss gives me grief about everything.', 'Good grief, what a week.', 'My dad nearly died in a car crash.',
-    'My son passed his driving test and I didn’t.', 'My plants died while I was away.', 'I lost my keys again.', 'The battery died on the way home.']) {
-    assert.equal(bereavement(text), null, text);
+  assert.equal(authoredScene('My grandad died last month and I can’t stop crying.').subtitle_line_1, GRIEF.loss[0]);
+  assert.deepEqual(gentleScene('It was the funeral today.').subtitle_line_1, GRIEF.grief[0]);
+  // not death talk (r7: "my dad nearly died" and "my plants died" are death talk now, and the gentle lines are true for them)
+  for (const text of ['My phone died in the middle of the call.', 'My boss gives me grief about everything.', 'Good grief, what a week.',
+    'My son passed his driving test and I didn’t.', 'I lost my keys again.', 'The battery died on the way home.']) {
+    assert.equal(deathTalk(text), null, text);
     assert.notEqual(authoredScene(text).grief, true, text);
   }
+  for (const text of ['My dad nearly died in a car crash.', 'My plants died while I was away.']) assert.equal(authoredScene(text).grief, true, text);
 });
 
 test('B2.3: grief in the orchestrator: no Thought Mallow, no mechanic, nothing playful, support close (r5: the server may answer it)', () => {
   const src = read('src/beyond/another-angle.js');
   const start = src.slice(src.indexOf('async function startAngle('), src.indexOf('async function waitingLines('));
-  assert.ok(start.indexOf('bereavement(S.text)') > 0 && start.indexOf('bereavement(S.text)') < start.indexOf('client.angle('), 'a loss goes to griefMode before the angle request');
-  assert.ok(start.indexOf('bereavement(S.text)') < start.indexOf('spawnThought()'), 'and before the Thought Mallow');
+  assert.ok(start.indexOf('gentleRoute(S.text)') > 0 && start.indexOf('gentleRoute(S.text)') < start.indexOf('client.angle('), 'a loss goes to griefMode before the angle request');
+  assert.ok(start.indexOf('gentleRoute(S.text)') < start.indexOf('spawnThought()'), 'and before the Thought Mallow');
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
   assert.match(grief, /S\.grief = true; S\.keepSupport = true/);
   assert.match(grief, /supportPill\.hidden = false/);

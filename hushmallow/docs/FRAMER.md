@@ -74,10 +74,13 @@ how long Anthropic keeps what it receives (the owner's approved wording,
 stores no words. "Not now", no connection or a server that can't be reached
 all play Zuzu's own angles, written in advance and worked out on the phone.
 
-Inside Framer the app still runs in its own frame, from its own origin
-(`ramkumarjothi1982.github.io`), and that is the only origin the server
-accepts: a copy hosted anywhere else (a `*.framer.website` page, or a page with
-no origin) is refused, and Another Angle there plays Zuzu's own angles. The app
+Inside Framer the app still runs in its own frame, from its own origin. The
+production server accepts only the app's own origins (`ALLOWED_ORIGINS` in
+[`server/another-angle/wrangler.toml`](../server/another-angle/wrangler.toml)):
+`https://app.hushmallow.com`, `https://hushmallow.pages.dev` and
+`https://ramkumarjothi1982.github.io`. A copy hosted anywhere else (a
+`*.framer.website` page, or a page with no origin) is refused, and Another
+Angle there plays Zuzu's own angles. The app
 otherwise only loads its own files from wherever it's hosted: no analytics, no
 font service (HM Nunito Sans, HM Manrope and HM Fraunces are bundled in
 `assets/fonts/`, and they load inside the frame from the app's own origin, so
