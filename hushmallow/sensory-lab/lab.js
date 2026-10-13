@@ -56,10 +56,16 @@ if (!qParam && prefs.get('quality') === 'auto') startMonitor();
 // hosting page sets on the root) decides; 'dark' / 'light' override it.
 const rootEl = document.documentElement;
 let hostTheme = rootEl.getAttribute('data-theme');
+let reasserts = [];
 const themeObserver = new MutationObserver(() => {
   hostTheme = rootEl.getAttribute('data-theme');   // only host writes reach here (ours are discarded below)
   const t = prefs.get('theme');
-  if ((t === 'dark' || t === 'light') && hostTheme !== t) applyTheme();   // an explicit choice wins
+  if ((t === 'dark' || t === 'light') && hostTheme !== t) {
+    // an explicit choice wins, but never fight a host that keeps re-applying its own theme
+    const now = performance.now();
+    reasserts = reasserts.filter((x) => now - x < 1000);
+    if (reasserts.length < 3) { reasserts.push(now); applyTheme(); }
+  }
 });
 themeObserver.observe(rootEl, { attributes: true, attributeFilter: ['data-theme'] });
 function applyTheme() {
@@ -147,14 +153,15 @@ function settings() {
         startMonitor();
         close();
         reroute();
-      } }, 'Reset'), 'Stored only in this browser'));
+      } }, 'Reset'), prefs.persistent ? 'Stored only in this browser' : 'Not saved: this browser blocks storage'));
   });
 }
 
 function mallowPicker(close) {
-  const wrap = h('div', { class: 'pills', role: 'radiogroup', 'aria-label': 'Mallow' },
+  const wrap = h('div', { class: 'pills', role: 'group', 'aria-label': 'Mallow' },
     ...MALLOW_IDS.map((id) => h('button', {
-      type: 'button', role: 'radio', 'aria-checked': String(id === mallowId), 'data-mallow': id,
+      type: 'button', 'aria-pressed': String(id === mallowId), 'data-mallow': id,
+      'aria-label': id === mallowId ? MALLOWS[id].name : `Switch to ${MALLOWS[id].name}`,
       onclick: () => {
         if (id === mallowId) return;
         mallowId = id;

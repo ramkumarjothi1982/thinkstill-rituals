@@ -106,8 +106,6 @@ async function touchtalk(browser, vp) {
   if (vp.touch) await page.touchscreen.tap(face.x, face.y); else await page.mouse.click(face.x, face.y);
   const afterTap = { offset: await peak };
   check(vp, 'tap recognised', (await events(page)).includes('tap'));
-  const audio = await page.evaluate(() => __lab.sound.debug());
-  check(vp, 'first touch on the Mallow starts sound', audio.state === 'running', JSON.stringify(audio));
   check(vp, 'tap dents the soft body', afterTap.offset > 0.01, `offset ${afterTap.offset.toFixed(3)}`);
   const look = await page.evaluate(() => __lab.companion.rig.pointerLook);
   check(vp, 'Mallow looks toward the finger', look && look.x < 0, JSON.stringify(look));
@@ -343,7 +341,45 @@ async function lifecycle(browser, vp) {
   await ctx.close();
 }
 
+// First-touch audio, tested honestly: a fresh browser WITHOUT the autoplay override,
+// and no page.evaluate() before the tap (Playwright's evaluate counts as a user
+// gesture). Readiness and coordinates come from the page's own console.
+async function audioGesture(quiet, vp) {
+  const ctx = await quiet.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1.5, hasTouch: vp.touch, isMobile: vp.touch });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+  await page.addInitScript(() => {
+    try { localStorage.setItem('hm.sensorylab.v1', JSON.stringify({ quality: 'medium' })); } catch { /* ignore */ }
+    const iv = setInterval(() => {
+      const r = window.__lab?.companion?.rig;
+      if (!r?.soft) return;
+      clearInterval(iv);
+      console.log('LAB-READY ' + JSON.stringify({ cx: r.CX, base: r.BASE, h: r.soft.H * r.S, active: navigator.userActivation ? navigator.userActivation.hasBeenActive : null, state: window.__lab.sound.debug().state }));
+    }, 100);
+  });
+  const ready = page.waitForEvent('console', { predicate: (m) => m.text().startsWith('LAB-READY'), timeout: 20000 });
+  await page.goto(`${BASE}#/touchtalk`);
+  const info = JSON.parse((await ready).text().slice('LAB-READY '.length));
+  check(vp, 'audio test is meaningful (no user activation before the tap)', info.active === false, JSON.stringify(info));
+  check(vp, 'no audio before the first touch', info.state === 'none', info.state);
+  await page.waitForTimeout(600);
+  const x = info.cx, y = info.base - info.h * 0.5;
+  if (vp.touch) {
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+  } else await page.mouse.click(x, y);
+  await page.waitForTimeout(1200);
+  const after = await page.evaluate(() => ({ state: __lab.sound.debug().state, tap: __lab.events.some((e) => e.type === 'tap') }));
+  check(vp, 'the first real tap on the Mallow starts sound', after.state === 'running' && after.tap, JSON.stringify(after));
+  check(vp, 'audio gesture test: no page errors', !errors.length, errors.join(' | '));
+  await ctx.close();
+}
+
 (async () => {
+  const quiet = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
   const only = process.env.VP;
   for (const vp of VIEWPORTS.filter((v) => !only || v.name.includes(only))) {
@@ -351,8 +387,10 @@ async function lifecycle(browser, vp) {
     for (const fn of [lifecycle, touchtalk, softbody]) {
       try { await fn(browser, vp); } catch (e) { check(vp.name, `${fn.name} crashed`, false, e.message.split('\n')[0]); }
     }
+    try { await audioGesture(quiet, vp); } catch (e) { check(vp.name, 'audioGesture crashed', false, e.message.split('\n')[0]); }
   }
   await browser.close();
+  await quiet.close();
   const fail = results.filter((r) => !r.ok);
   fs.writeFileSync(path.join(OUT, only ? `e2e-results-${only}.json` : 'e2e-results.json'), JSON.stringify({ when: new Date().toISOString(), passed: results.length - fail.length, failed: fail.length, results }, null, 1));
   console.log(`\n${results.length - fail.length}/${results.length} checks passed`);

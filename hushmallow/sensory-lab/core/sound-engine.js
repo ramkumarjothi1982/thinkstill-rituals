@@ -42,8 +42,9 @@ export class SoundEngine {
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this._vis);
   }
 
-  /** Call from a user gesture. Safe to call often. */
+  /** Call from a user gesture. Safe to call often; does nothing while muted or outside a gesture. */
   unlock() {
+    if (this.muted || !inGesture()) return;
     if (this.ctx) { this._resume(); return; }
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!AC) return;
@@ -73,8 +74,12 @@ export class SoundEngine {
   _resume() {
     const c = this.ctx;
     if (!c || c.state === 'running' || c.state === 'closed' || document.hidden) return;
-    this.resuming = true;
-    c.resume().then(() => { this.resuming = false; }, () => { this.resuming = false; this.stopAll(); });
+    this.resuming = inGesture();
+    const t0 = performance.now();
+    c.resume().then(() => {
+      this.resuming = false;
+      if (performance.now() - t0 > 400) this.stopAll();   // anything queued that long ago is stale: drop it
+    }, () => { this.resuming = false; this.stopAll(); });
   }
 
   get ready() {
@@ -84,6 +89,7 @@ export class SoundEngine {
 
   setMuted(b) {
     this.muted = !!b;
+    if (!this.muted) this.unlock();   // un-muting happens from a tap, which may start audio
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(t);
@@ -363,3 +369,11 @@ export class SoundEngine {
 }
 
 const NOOP = { update() {}, end() {} };
+
+// Browsers only start audio from a user gesture (touch *pointerdown* and wheel
+// don't count). Where the browser can tell us, skip unlock attempts outside one
+// so nothing is created suspended and queued.
+function inGesture() {
+  const ua = globalThis.navigator?.userActivation;
+  return ua ? ua.isActive : true;
+}

@@ -22,6 +22,7 @@
   --glyph-b: rgba(143, 227, 255, 0.14);
   --seg-track: rgba(127, 127, 160, 0.16);
   --mesh: rgba(255, 255, 255, 0.55);
+  --mallow-glow: transparent;   /* each stage sets its Mallow's own glow colour inline */
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -51,10 +52,6 @@
     --chip-on: #2a1d3d;
     --chip-on-text: #fff7ef;
     --scrim: rgba(42, 29, 61, 0.28);
-  --glyph-a: rgba(181, 101, 10, 0.16);
-  --glyph-b: rgba(40, 140, 190, 0.12);
-  --seg-track: rgba(42, 29, 61, 0.07);
-  --mesh: rgba(42, 29, 61, 0.45);
     --glyph-a: rgba(181, 101, 10, 0.16);
     --glyph-b: rgba(40, 140, 190, 0.12);
     --seg-track: rgba(42, 29, 61, 0.07);
@@ -199,10 +196,11 @@ button, .card, .chip, .icon-btn, .seg button, .pills button { touch-action: mani
 .sheet h3 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2); margin: 0 0 12px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .row.stack { flex-direction: column; align-items: stretch; }
+.row:not(.stack) > :last-child { margin-left: auto; }   /* a control that wraps stays right-aligned */
+.pills button[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-text); border-color: transparent; }
 .pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .pills button { border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); border-radius: var(--r-pill);
   padding: 7px 12px; min-height: 38px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
-.pills button[aria-checked="true"] { background: var(--chip-on); color: var(--chip-on-text); border-color: transparent; }
 .row:first-of-type { border-top: 0; }
 .row label, .row .lbl { font-size: 15px; }
 .row .sub { display: block; color: var(--text-3); font-size: var(--fs-micro); }
@@ -218,6 +216,11 @@ input[type="range"] { width: 140px; accent-color: var(--accent); }
   .topbar .title b { font-size: 15px; }
   .icon-btn { width: 40px; height: 40px; }
   .tb-right { gap: 6px; }
+}
+@media (min-width: 600px) {
+  /* room to centre the title on the screen (and so on the Mallow) */
+  .topbar .title { position: absolute; left: 50%; transform: translateX(-50%); max-width: calc(100% - 360px);
+    top: calc(var(--safe-top) + 12px); height: 44px; display: flex; flex-direction: column; justify-content: center; }
 }
 @media (min-width: 900px) {
   .hero { height: 400px; }

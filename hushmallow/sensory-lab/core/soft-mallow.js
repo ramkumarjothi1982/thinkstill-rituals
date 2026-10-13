@@ -64,8 +64,10 @@ export class SoftMallow extends MallowRig {
       const data = x.getImageData(0, 0, c.width, c.height).data;
       this._mask = alphaMask(data, c.width, c.height, m.bodyBox);
     } catch {
-      // pixels unreadable (e.g. an opaque-origin sandbox): a rounded body shape is close enough
+      // pixels unreadable (e.g. an opaque-origin sandbox): a rounded body shape is close
+      // enough, and WebGL can't upload such art either, so draw the mesh with Canvas 2D
       this._mask = (u, v) => ((u - 0.5) / 0.52) ** 2 + ((v - 0.52) / 0.54) ** 2 < 1;
+      this.prefer = '2d';
     }
     this._buildBody();
     this.renderer = new MeshRenderer({ prefer: this.prefer });
@@ -318,10 +320,29 @@ export class SoftMallow extends MallowRig {
     }
     this._shadeMesh();
     if (this._uvQ !== this.q) this.renderer.setUv(this._uv());
-    this.renderer.draw(this.skin, this._skinDrawn, P, this._shade);
-    ctx.drawImage(this.renderer.canvas, 0, 0, W, H);
+    try {
+      this.renderer.draw(this.skin, this._skinDrawn, P, this._shade);
+      ctx.drawImage(this.renderer.canvas, 0, 0, W, H);
+    } catch (err) {
+      // never let one bad frame stop the shared rig loop: drop to Canvas 2D, then to the standard rig
+      this._renderFailed(err);
+    }
     if (this.showMesh) this._drawMesh(ctx);
     if (this.opts.particles) this.particles.draw(ctx, { lift, S });
+  }
+
+  _renderFailed(err) {
+    console.warn('[sensory-lab] mesh rendering failed, falling back', err);
+    const was = this.renderer;
+    if (was.mode === 'webgl') {
+      this.prefer = '2d';
+      this.renderer = new MeshRenderer({ prefer: '2d' });
+      this.renderer.setMesh(this.soft.tri, this._uv());
+      this._resize();
+    } else {
+      this.renderer = null;    // _render() uses the production rig's strip warp from now on
+    }
+    was.dispose();
   }
 
   // light term per vertex from the local area change (squash deepens, stretch brightens)
@@ -341,7 +362,11 @@ export class SoftMallow extends MallowRig {
   _drawMesh(ctx) {
     const P = this._pos, T = this.soft.tri;
     ctx.save();
-    const col = getComputedStyle(this.canvas).getPropertyValue('--mesh').trim() || 'rgba(255,255,255,0.55)';
+    if (!this._meshCol || this.time - this._meshColT > 0.5) {   // theme can change; re-read twice a second
+      this._meshCol = getComputedStyle(this.canvas).getPropertyValue('--mesh').trim() || 'rgba(255,255,255,0.55)';
+      this._meshColT = this.time;
+    }
+    const col = this._meshCol;
     ctx.lineWidth = 0.75;
     ctx.strokeStyle = col;
     ctx.beginPath();

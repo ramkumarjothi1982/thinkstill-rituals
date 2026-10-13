@@ -56,7 +56,19 @@ export function segmented(options, value, onChange, label) {
     onclick: () => { for (const b of btns) b.setAttribute('aria-checked', String(b === btn(v))); onChange(v); },
   }, text));
   const btn = (v) => btns[options.findIndex((o) => o[0] === v)];
+  // radio-group keyboard pattern: one tab stop, arrow keys move and select
+  const sync = () => { for (const b of btns) b.tabIndex = b.getAttribute('aria-checked') === 'true' ? 0 : -1; };
+  wrap.addEventListener('click', () => requestAnimationFrame(sync));
+  wrap.addEventListener('keydown', (e) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const i = btns.indexOf(document.activeElement);
+    const next = btns[(i + step + btns.length) % btns.length];
+    next.focus(); next.click();
+  });
   wrap.append(...btns);
+  sync();
   return wrap;
 }
 

@@ -32,6 +32,12 @@ export class Prefs {
     this.key = key;
     this.listeners = new Set();
     this.data = { ...DEFAULTS, ...this._load() };
+    this.persistent = this._probe();
+  }
+
+  /** Can settings actually be saved here? (false in private modes / blocked storage) */
+  _probe() {
+    try { const k = this.key + ':probe'; this.storage.setItem(k, '1'); this.storage.removeItem(k); return true; } catch { return false; }
   }
 
   _load() {
