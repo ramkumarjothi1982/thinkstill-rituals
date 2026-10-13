@@ -27,10 +27,14 @@
 // served by a small Mailpit-compatible API under /__fake/mailpit/api/v1/
 // (GET messages, GET message/<ID>, DELETE messages), so
 // tests/e2e/auth.e2e.mjs reads mail the same way here as from Mailpit in CI.
-// Config for that dry run (POST /__fake/config): recentLoginMs: 86400000
-// (Supabase Auth asks for the reauthentication code only when the session is
-// over 24 hours old), singleToken: true (a new link replaces the previous one
-// of its kind, as in Supabase Auth).
+// Like Supabase Auth by default: secure password change asks for the
+// reauthentication code only on a session over 24 hours old (recentLoginMs:
+// 86400000; POST /__fake/age-sessions makes a session that old; 0 = always
+// ask), a password change signs out every other session of the user and
+// voids its outstanding email links, and GET /user for a deleted user answers
+// user_not_found. Config for the E2E dry run (POST /__fake/config):
+// singleToken: true (a new link replaces the previous one of its kind, as in
+// Supabase Auth).
 import http from 'node:http';
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -71,8 +75,8 @@ export function renderTemplate(kind, vars) {
 
 export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirectAllow = null, log = false } = {}) {
   const secret = randomBytes(32);
-  const cfg = { autoconfirm: false, securePasswordChange: true, recentLoginMs: 0, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, down: false, singleToken: false, reuseIntervalMs: 10_000 };
-  let users, sessions, refresh, tokens, codes, outbox, rows, lastSend;
+  const cfg = { autoconfirm: false, securePasswordChange: true, recentLoginMs: 86_400_000, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, down: false, singleToken: false, reuseIntervalMs: 10_000, restDelayMs: 0, restDelayTables: null };
+  let users, sessions, refresh, tokens, codes, outbox, rows, lastSend, pending = 0;
   function reset() {
     users = new Map();      // id → user
     sessions = new Map();   // id → { uid, createdAt, revoked, recovery, aal }
@@ -270,7 +274,12 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
       const open = req.method === 'GET' && url.pathname === '/auth/v1/verify';
       if (!open && (!apikey || !/^sb_publishable_|^eyJ/.test(apikey))) return send(401, { message: 'No API key found in request', hint: 'No `apikey` request header or url param was found.' });
       if (url.pathname.startsWith('/auth/v1/')) return await authRoute(req, url, body, send, gerr, res, cors);
-      if (url.pathname.startsWith('/rest/v1/')) return restRoute(req, url, body, send, perr);
+      if (url.pathname.startsWith('/rest/v1/')) {
+        // tests: a slow network for the tables (a sync still in flight while something else happens)
+        const table = url.pathname.slice('/rest/v1/'.length);
+        if (cfg.restDelayMs > 0 && !table.startsWith('rpc/') && (!cfg.restDelayTables || cfg.restDelayTables.includes(table))) { pending++; try { await new Promise((r) => setTimeout(r, cfg.restDelayMs)); } finally { pending--; } }
+        return restRoute(req, url, body, send, perr);
+      }
       return send(404, { message: 'not found' });
     } catch (e) {
       console.error('[fake] error', e);
@@ -289,10 +298,11 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
     const p = verifyJwt(tok);
     if (!p) return { err: [401, 'bad_jwt', 'invalid JWT: unable to parse or verify signature'] };
     if (p.exp < sec()) return { err: [401, 'bad_jwt', 'invalid JWT: token is expired'] };
-    const s = sessions.get(p.session_id);
-    if (!s || s.revoked) return { err: [403, 'session_not_found', 'Session from session_id claim in JWT does not exist'] };
+    // like Supabase Auth (maybeLoadUserOrSession): the user first, then the session
     const u = users.get(p.sub);
     if (!u) return { err: [403, 'user_not_found', 'User from sub claim in JWT does not exist'] };
+    const s = sessions.get(p.session_id);
+    if (!s || s.revoked) return { err: [403, 'session_not_found', 'Session from session_id claim in JWT does not exist'] };
     return { u, s, sid: p.session_id, claims: p };
   }
 
@@ -438,6 +448,10 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
           a.u.salt = b64u(randomBytes(8));
           a.u.pw = hashPw(b.password, a.u.salt);
           a.u.updatedAt = now();
+          // like Supabase Auth (User.UpdatePassword): every other session of the user ends, its email links stop working
+          for (const [sid, s] of sessions) if (s.uid === a.u.id && sid !== a.sid) s.revoked = true;
+          for (const t of tokens.values()) if (t.uid === a.u.id) t.used = true;
+          a.u.reauthNonce = null;
         }
         if (typeof b.email === 'string' && b.email.toLowerCase() !== a.u.email) mail('email_change', a.u, { email: b.email.toLowerCase(), redirectTo: url.searchParams.get('redirect_to') });
         if (b.data && typeof b.data === 'object') a.u.meta = { ...a.u.meta, ...b.data };
@@ -580,6 +594,8 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
 
   return {
     server, cfg, reset,
+    /** Table requests held by restDelayMs right now (tests wait for a sync to be mid-flight). */
+    get pending() { return pending; },
     get outbox() { return outbox; },
     get rows() { return rows; },
     get users() { return users; },
