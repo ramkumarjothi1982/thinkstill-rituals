@@ -247,7 +247,7 @@ function testerCodeRow(app) {
   let current = '';
   try { const v = store.get(STORE_KEYS.invite, ''); current = typeof v === 'string' ? v : ''; } catch { current = ''; }
   const field = h('input', { id, type: 'text', class: 'search bx-invite', maxlength: '64', autocomplete: 'off', autocapitalize: 'none', autocorrect: 'off',
-    spellcheck: 'false', enterkeyhint: 'done', placeholder: 'Only if you were given one', 'aria-describedby': `${id}-n` });
+    spellcheck: 'false', enterkeyhint: 'done', placeholder: 'Your code', 'aria-describedby': `${id}-n` });
   field.value = current;
   const save = () => {
     const code = saveTesterCode(store, field.value);

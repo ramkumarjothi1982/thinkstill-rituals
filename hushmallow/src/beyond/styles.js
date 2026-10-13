@@ -113,7 +113,7 @@ const CSS = `
 .bx-sheet-copy { margin: 0; font: var(--type-body, 500 17px/1.5 var(--hf-ff-voice)); color: var(--text-2, #cdc6ea); }
 /* Settings → Tester code: the field (16px: iOS never zooms) and Save on one row, wrapping on a narrow phone */
 .bx-invite-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
-.bx-invite-row input.bx-invite { flex: 1 1 180px; min-width: 0; width: auto; font-size: max(16px, 1em); }
+.bx-invite-row input.bx-invite { flex: 1 1 140px; min-width: 0; width: auto; font-size: max(16px, 1em); }
 .bx-invite-row .btn { flex: none; min-height: 48px; }
 
 .bx-consent .bx-title { font-size: calc(clamp(22px, 6.4vw, 28px) * var(--bx-k)); line-height: 1.12; }
