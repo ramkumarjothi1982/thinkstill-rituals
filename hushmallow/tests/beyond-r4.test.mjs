@@ -127,7 +127,8 @@ test('B2.3: grief in the orchestrator: no Thought Mallow, no mechanic, nothing p
   assert.match(grief, /S\.grief = true; S\.keepSupport = true/);
   assert.match(grief, /supportPill\.hidden = false/);
   assert.doesNotMatch(grief, /startAngle|playScene|spawnThought|loadMechanic|setStage\('playful'\)/);
-  assert.match(src, /if \(S\.grief\) return;/, 'no playful squeeze lines after a loss');
+  // (r8: nor after any word of the backstop's bag)
+  assert.match(src, /if \(S\.grief \|\| S\.noPlay\) return;/, 'no playful squeeze lines after a loss');
   assert.match(src, /const heavy = S\.crisis \|\| S\.care \|\| S\.grief;/, 'Finish says the calm lines');
   // its lines hold the brand rule and the one-short-sentence rule
   for (const l of [...GRIEF.loss, ...GRIEF.grief, GRIEF.ask, GRIEF.squeeze]) { assert.ok(l.length <= 60, l); assert.doesNotMatch(l, /\bAI\b|angle|reframe/i, l); }
@@ -140,7 +141,8 @@ test('B2.4: the first angle is never the bare fact/assumption pair; it uses thei
     if (first.scene.grief) continue;
     assert.ok(!(first.scene.subtitle_line_1 === BARE[0] && first.scene.subtitle_line_2 === BARE[1]), `${text} → the bare pair first`);
   }
-  const chest = rounds('My chest felt tight today and I’m sure something terrible is going to happen.')[0].scene;
+  // (r8: the forecast's own scene comes first; the fact-and-guess round still quotes their own fact and guess)
+  const chest = rounds('My chest felt tight today and I’m sure something terrible is going to happen.').map((r) => r.scene).find((x) => x.mechanic === 'pull_apart');
   assert.equal(chest.subtitle_line_1, '“My chest felt tight today” is what happened.');
   assert.equal(chest.subtitle_line_2, '“something terrible is going to happen” is one way to read it.');
 });

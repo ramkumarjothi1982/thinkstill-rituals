@@ -15,7 +15,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import * as P from './probes/death-talk.mjs';
-import { deathTalk, wantsToFollow, deathEscalation, serverGrief, livingLoss } from '../src/beyond/grief.js';
+import { deathTalk, wantsToFollow, deathEscalation, serverGrief, serverLoss, livingLoss } from '../src/beyond/grief.js';
 import { harmWords, harmRoute, framingAllowed, gentleRoute, FRAMING_MECHANICS, framesAsGuess } from '../src/beyond/backstop.js';
 import { authoredScene, sceneParts, gentleScene, feelingOf, harmGuard, ownFactPair, ownStep, fairAnger, angerSplit, FEELING_ORDER } from '../src/beyond/authored.js';
 import { GRIEF, SAFETY, FEELING, MECHANIC_LINES, mechanicLines } from '../src/beyond/lines.js';
@@ -43,7 +43,8 @@ const said = (s) => [s.subtitle_line_1, s.subtitle_line_2, s.known_fact, s.possi
 const FRAMING = /what your mind|mind might be adding|one way to read|is what happened|still an open question|open question|check one fact|instead of guessing|what did you actually|what might it mean|another explanation|facts are still unclear|worst case|want to test/i;
 /** What a gentle line may never name or imply. */
 const ASSUMES = /\b(?:died|dies|dead|death|grief|griev\w*|loss|lost|losing|them|they|miss\w*|passed|gone|funeral|heaven|sorry for|in peace)\b|Missing them|Grief isn/i;
-const KIND_STEPS = new Set(['assemble_step', 'soften_harshness', 'separate_one']);
+// (r8: return_responsibility too, for something someone did to them: "What someone else did is theirs to carry")
+const KIND_STEPS = new Set(['assemble_step', 'soften_harshness', 'separate_one', 'return_responsibility']);
 
 // -------------------------------------------------------------------- A. recall --
 test('r7.A: the review’s misses, false alarms and 100+ more are death talk (apostrophes optional, misspellings too)', () => {
@@ -116,11 +117,15 @@ test('r7.B: death talk always plays the gentle scene: no mechanic, no game, no f
 test('r7.B: a server answer plays its two lines for death talk only when it reads as grief or a loss; an ordinary scene never does', () => {
   const mock = (o) => ({ source: 'server', situation_type: 'other', emotion: 'worry', reasoning_pattern: 'fact_vs_assumption', mechanic: 'pull_apart', interaction_type: 'pull_apart',
     subtitle_line_1: 'What you wrote is the part that actually happened.', subtitle_line_2: 'What it means is still a question, not an answer.', ...o });
+  const kind = { subtitle_line_1: 'That sounds so hard.', subtitle_line_2: 'You can miss him as much as you need to.' };
   for (const text of P.REVIEW_MISSES) {
     // the mock server's ordinary pull_apart scene: never its lines, never its game (authored gentle lines instead)
     assert.equal(serverGrief(mock(), text), false, text);
-    assert.equal(serverGrief(mock({ situation_type: 'loss' }), text), true, text);
-    assert.equal(serverGrief(mock({ emotion: 'grief' }), text), true, text);
+    assert.equal(serverLoss(mock({ situation_type: 'loss' }), text), true, text);
+    assert.equal(serverLoss(mock({ emotion: 'grief' }), text), true, text);
+    // (r8) a loss answer's lines are said only when both acknowledge; the mock's framing pair never is
+    assert.equal(serverGrief(mock({ situation_type: 'loss' }), text), false, text);
+    assert.equal(serverGrief(mock({ situation_type: 'loss', ...kind }), text), true, text);
   }
   const src = read('src/beyond/another-angle.js');
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
@@ -128,7 +133,7 @@ test('r7.B: a server answer plays its two lines for death talk only when it read
   assert.equal((grief.match(/client\.angle\(/g) || []).length, 1);
   assert.match(grief, /res\?\.status === 'crisis'\) \{ crisisMode\(\); return; \}/);
   assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\); return; \}/);
-  assert.match(grief, /serverGrief\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && res\.scene\?\.subtitle_line_1 && res\.scene\?\.subtitle_line_2 && !framesAsGuess\(res\.scene\.subtitle_line_1\) && !framesAsGuess\(res\.scene\.subtitle_line_2\)\) scene = res\.scene;\s*else \{[\s\S]*const again = checkText\(S\.text\);/);
+  assert.match(grief, /serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && griefLinesOk\(res\.scene\)\) scene = res\.scene;\s*else \{[\s\S]*const again = checkText\(S\.text\);/);
   assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
   assert.doesNotMatch(grief, /spawnThought|playScene|loadMechanic|startAngle|setStage\('playful'\)|WAITING\b/);
   assert.match(grief, /careFace\(\);/, 'Zuzu’s attentive face');
@@ -163,7 +168,7 @@ test('r7.C: the backstop reads a broad harm set (the review’s misses and 30 mo
   }
 });
 
-test('r7.C: ordinary apart from the word ("lost my keys", "my phone died") → the kind steps; anything heavier → the gentle path', () => {
+test('r7.C (r8): ordinary apart from the word ("lost my keys", "my phone died") → the kind steps; death talk → the gentle path; the rest → kind', () => {
   for (const text of P.BACKSTOP_KIND) {
     assert.equal(harmRoute(text), 'kind', text);
     assert.equal(gentleRoute(text), false, text);
@@ -171,9 +176,12 @@ test('r7.C: ordinary apart from the word ("lost my keys", "my phone died") → t
     assert.ok(all.length > 1, text);
     for (const { scene } of all) { assert.ok(KIND_STEPS.has(scene.mechanic), `${text} → ${scene.mechanic}`); assert.ok(scene.guarded || scene.feeling, text); }
   }
+  // (r8, the coordinator's rule 2: death talk goes to the gentle path, any other bag word to the kind mechanics)
   for (const text of P.BACKSTOP.filter((t) => !P.BACKSTOP_KIND.includes(t))) {
-    assert.equal(gentleRoute(text), true, text);
-    assert.equal(authoredScene(text).grief, true, text);
+    const gentle = !!deathTalk(text) || livingLoss(text);
+    assert.equal(gentleRoute(text), gentle, text);
+    assert.equal(!!authoredScene(text).grief, gentle, text);
+    if (!gentle) for (const { scene } of rounds(text)) assert.ok(KIND_STEPS.has(scene.mechanic) && scene.feeling, `${text} → ${scene.mechanic}`);
   }
   // no harm word at all: the framing stays for an ordinary guess
   assert.equal(framingAllowed('My sister ignored me at the party, she must hate me.'), true);
@@ -190,20 +198,26 @@ test('r7.C: a server scene beside a harm word never plays a framing mechanic, it
     assert.ok(KIND_STEPS.has(framed.mechanic) && framed.feeling, text);
     for (const line of said(framed)) assert.doesNotMatch(line, FRAMING, `${text} → ${line}`);
     // its own kind lines may stay, on a kind step, with nothing guessed and no "another explanation"
-    const kind = harmGuard(server({ mechanic: 'open_interpretations', subtitle_line_1: 'That sounds like a rough morning.', subtitle_line_2: 'One small thing could help.' }), text);
+    const moved = harmGuard(server({ mechanic: 'open_interpretations', known_fact: '', possible_assumption: '', alternative_angle: '', subtitle_line_1: 'That sounds like a rough morning.', subtitle_line_2: 'One small thing could help.' }), text);
+    assert.equal(moved.source, 'server', text);
+    assert.equal(moved.mechanic, 'assemble_step', text);
+    const kind = harmGuard(server({ mechanic: 'soften_harshness', known_fact: '', possible_assumption: '', alternative_angle: '', subtitle_line_1: 'That sounds like a rough morning.', subtitle_line_2: 'One small thing could help.' }), text);
     assert.equal(kind.source, 'server', text);
-    assert.equal(kind.mechanic, 'assemble_step', text);
+    assert.equal(kind.mechanic, 'soften_harshness', text);
     assert.ok(kind.feeling && kind.guarded, text);
     assert.equal(kind.possible_assumption, '', text);
     assert.equal(kind.alternative_angle, '', text);
   }
-  // an ordinary text keeps the server's scene untouched
-  const plain = server();
+  // an ordinary text with a marker keeps the server's scene untouched when its guess is the marker's clause (r8)…
+  const plain = server({ possible_assumption: 'That she hates you.' });
   assert.equal(harmGuard(plain, 'My sister ignored me at the party, she must hate me.'), plain);
+  // …and when it reads something else of theirs as the guess, only the clause is the guess
+  assert.equal(harmGuard(server(), 'My sister ignored me at the party, she must hate me.').possible_assumption, 'What your mind might be adding: “she must hate me”.');
   const src = read('src/beyond/another-angle.js');
   // every scene passes the backstop where it plays; explore and the fallback mechanic follow it
-  assert.match(src, /async function playScene\(scene, seq\) \{[\s\S]{0,400}if \(!framingAllowed\(S\.text\)\) scene = harmGuard\(scene, S\.text, \{ emotion: S\.emotion \}\);/);
-  assert.match(src, /scene = harmGuard\(feelingGuard\(res\.scene, S\.text, \{ emotion: S\.emotion, exclude \}\), S\.text, \{ emotion: S\.emotion, exclude \}\);/);
+  // (r8: the gate runs on every scene where it plays, framingAllowed inside it)
+  assert.match(src, /async function playScene\(scene, seq\) \{[\s\S]{0,500}scene = guessGuard\(scene, S\.text, \{ emotion: S\.emotion \}\);/);
+  assert.match(src, /scene = guessGuard\(feelingGuard\(res\.scene, S\.text, \{ emotion: S\.emotion, exclude \}\), S\.text, \{ emotion: S\.emotion, exclude \}\);/);
   assert.match(src, /const gentle = !!scene\.feeling \|\| !framingAllowed\(S\.text\);\s*let remaining = gentle \? EXPLORE\.filter/);
   assert.match(src, /choose\(gentle \? \(first \? FEELING\.exploreAsk : FEELING\.exploreMore\) : \(first \? EXPLORE_ASK : EXPLORE_MORE\)/);
   assert.deepEqual(FEELING.explore, ['friend', 'action'], 'never "What do you actually know?" or "another explanation"');
@@ -257,7 +271,7 @@ test('r7.D: death talk that wants to be with, join or follow the one who died is
 test('r7.D: in the orchestrator, the care path comes before anything is sent (support pill, no game, its own calm lines)', () => {
   const src = read('src/beyond/another-angle.js');
   const after = src.slice(src.indexOf('async function afterTell('), src.indexOf('function firstLook('));
-  assert.match(after, /noteSafety\(seen\);\s*noteSafety\(checkText\(S\.text\)\);\s*if \(S\.level === 'crisis'\) \{ crisisMode\(\); return; \}\s*if \(S\.level === 'care'\) \{ careMode\(\); return; \}[\s\S]{0,260}if \(deathEscalation\(S\.text\)\) \{ careMode\(\{ lines: SAFETY\.follow \}\); return; \}/);
+  assert.match(after, /noteSafety\(seen\);\s*noteSafety\(checkText\(S\.text\)\);\s*if \(S\.level === 'crisis'\) \{ crisisMode\(\); return; \}\s*if \(S\.level === 'care'\) \{ careMode\(\); return; \}[\s\S]{0,260}if \(deathEscalation\(S\.text\)\) \{ noteFollow\(\); careMode\(\{ lines: SAFETY\.follow \}\); return; \}/);
   assert.ok(after.indexOf('deathEscalation(S.text)') < after.indexOf('startAngle('), 'before any angle (nothing is sent)');
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
   assert.ok(grief.indexOf('deathEscalation(S.text)') >= 0 && grief.indexOf('deathEscalation(S.text)') < grief.indexOf('client.angle('), 'griefMode checks it too, before its one request');
@@ -266,7 +280,7 @@ test('r7.D: in the orchestrator, the care path comes before anything is sent (su
   assert.match(care, /dropThought\(\); endMechanic\(true\); dismissCompanion\(\);/);
   assert.match(care, /dockShow\(\{ finish: true \}\);/);
   assert.match(care, /await say\(lines, \{ interrupt: true \}\);/);
-  assert.match(src, /supportPill\.hidden = !\(S\.keepSupport \|\| S\.care \|\| S\.crisis\);/, 'the support pill shows on care');
+  assert.match(src, /supportPill\.hidden = !\(S\.keepSupport \|\| S\.care \|\| S\.crisis\)(?: \|\| !support)?;/, 'the support pill shows on care');
   for (const l of SAFETY.follow) { assert.doesNotMatch(l, /\bAI\b|angle|squish|squeez|fun\b|died|death|grief|loss/i, l); assert.ok(l.length <= 70, l); }
 });
 
@@ -324,8 +338,8 @@ test('r7.E3: "I keep feeling sick with dread" and "I feel sick about tomorrow" a
       assert.doesNotMatch(JSON.stringify(mechanicLines(scene.mechanic, scene)), /The worst case/, text);
     }
   }
-  // a named event beside it stays its own scene (a practical problem), as before
-  assert.equal(feelingOf('I feel anxious about tomorrow’s interview.'), null);
+  // (r8: a feeling about any noun is a feeling, "tomorrow's interview" too)
+  assert.equal(feelingOf('I feel anxious about tomorrow’s interview.')?.kind, 'anxious');
 });
 
 test('r7.E4: FRAMER.md names every origin the production server accepts (wrangler.toml), never "the only origin"', () => {

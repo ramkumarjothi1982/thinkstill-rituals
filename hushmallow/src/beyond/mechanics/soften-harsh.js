@@ -12,12 +12,16 @@
 
 import { drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, tintFor, TAU, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
+import { framingAllowed } from '../backstop.js';
 
 export const id = 'soften_harshness';
 const SPIKES = 14;
 const STEEL = '#8a90bd', ICE = '#d7dcff';
 
 export function mount(ctx) {
+  // the gate (backstop.js, review r8): its own lines read the words as a harsh verdict, so only with an interpretive marker of their
+  // own; a feeling's or a stated event's kind lines (ctx.scene.feeling) may always play
+  if (!ctx.scene?.feeling && !framingAllowed(ctx.text)) throw new Error(`${id}: never for these words`);
   // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
   const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;

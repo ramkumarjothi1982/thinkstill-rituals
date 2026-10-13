@@ -51,11 +51,16 @@ export const ADJ = '(?:(?:best|dear|dearest|beloved|little|big|old|older|younger
 export const THING = 'rings?|watch|watches|keys?|car|number|phone|wallet|purse|necklace|bracelet|earrings?|letters?|photos?|pictures?|cards?|money|bag|coat|jacket|hat|scarf|glasses|books?|present|gift|trust|respect|address|recipe|stuff|things|house|home|shoes?|charger|bike|tickets?|passport|jumper|toys?|teddy|blanket|lead|collar|leash|harness|ball|bowl|teeth|tooth|weight|fat|bump|blues|number|details|password|clothes|socks|dummy|bottle|mittens|gloves|homework|work|notes|email|message|texts?|voice|attention|interest|patience|approval|love|support|money|savings|job|business|shop|seat|place|spot';
 
 /** Gadgets and things that "die" or are "dead" without anyone dying (a pet mouse is never one of them). */
-const DEVICE = 'phones?|mobiles?|iphones?|androids?|laptops?|batter(?:y|ies)|cars?|chargers?|consoles?|controllers?|headphones|earbuds|airpods|ipads?|tablets?|computers?|pcs?|tvs?|telly|tellies|torch(?:es)?|remotes?|kindle|xbox|playstation|ps\\d|switch|router|wifi|internet|engines?|keyboards?|screens?|watch|fitbit|cameras?|speakers?|alarms?|clocks?|printers?|fridges?|freezers?|kettles?|toasters?|microwaves?|bulbs?|lights?|lamps?|signal|connection|servers?|apps?|games?|vapes?|ereaders?|smartwatch|monitor|hoover|vacuum|boiler|heating|fan|radio';
-/** Little words between a gadget and "died" ("my phone has just died", "my laptop is completely dead"). */
-const DEV_AUX = '(?:(?:is|was|has|had|have|s|just|completely|finally|totally|already|now|keeps|always|went|gone|been|literally|basically|actually|properly|on|about|nearly|almost)\\s+)*';
-/** "my phone", "the battery", "my mums old car", a gadget at the start of a sentence ("Phone died.") */
-const DEV_SUBJ = `(?:\\b(?:my|our|his|her|their|your|the|this|that|its)\\s+(?:[a-z]+\\s+){0,2}|^\\s*|[.!?;]\\s+)(?:${DEVICE})`;
+const DEVICE = 'baby\\s+monitors?|phones?|mobiles?|iphones?|androids?|laptops?|batter(?:y|ies)|cars?|chargers?|consoles?|controllers?|headphones|earbuds|airpods|ipads?|tablets?|computers?|pcs?|tvs?|telly|tellies|torch(?:es)?|remotes?|kindle|xbox|playstation|ps\\d|switch|router|wifi|internet|engines?|keyboards?|screens?|watch|fitbit|cameras?|speakers?|alarms?|clocks?|printers?|fridges?|freezers?|kettles?|toasters?|microwaves?|bulbs?|lights?|lamps?|signal|connection|servers?|apps?|games?|vapes?|ereaders?|smartwatch|monitor|hoover|vacuum|boiler|heating|fan|radio';
+/** Little words between a gadget and "died" ("my phone has just died", "my laptop is dead"): never a person's words. */
+const DEV_AUX = '(?:(?:is|was|has|had|s|just|completely|totally|finally|already|literally|now)\\s+){0,2}';
+/**
+ * The gadget as the subject, at the start of a clause ("my phone died", "and then the battery died", "Phone died."):
+ * one owner's word at most before it ("my mums car"), never a preposition or a person ("the guy in the car died",
+ * "the driver of the car died" are deaths).
+ */
+const CLAUSE_START = '(?:^|[.!?;,:]\\s*|\\b(?:and|but|so|then|because|cos|coz|now|when|after|before|until|as|since|while|if|think|guess|reckon|that|plus|also|again|just|ugh|lol|omg)\\s+)';
+const DEV_SUBJ = `${CLAUSE_START}(?:(?:my|our|his|her|their|your|the|this|that|its)\\s+(?:(?!(?:${'guy|man|woman|lady|driver|person|boy|girl|kid|child|baby|someone|somebody|passenger|people|family|friend|mum|dad|mom|brother|sister|son|daughter|husband|wife|nan|grandad|grandma|dog|cat|in|on|of|at|with|by|from|inside|behind|under'})\\b)[a-z]+\\s+){0,2})?(?:${DEVICE})`;
 
 /**
  * The ordinary idioms: unambiguous, cheap, and never a person. Blanked before any death or harm word is read.
@@ -66,7 +71,7 @@ export const ORDINARY = [
   new RegExp(`${DEV_SUBJ}\\s+${DEV_AUX}(?:die|dies|died|dying|dead|deaded|dyin)\\b`, 'giu'),
   new RegExp(`\\bdead\\s+(?:${DEVICE})\\b`, 'giu'),
   // "dead" as a word for "very" or a place
-  /\bdead\s+(?:tired|easy|set|end|ends|on|serious|seriously|keen|against|right|wrong|good|nice|funny|cute|clever|lucky|excited|bored|boring|busy|proud|chuffed|centre|center|heat|weight|giveaway|ringer|zone|cert|certain|sure|slow|fast|straight|ahead|quiet|posh|happy|chuffed|jealous|annoying|hard|simple|cheap|expensive|brilliant|popular)\b/giu,
+  /\bdead\s+(?:tired|easy|set|end|ends|on(?!\s+(?:arrival|the\s+scene|impact))|serious|seriously|keen|against|right|wrong|good|nice|funny|cute|clever|lucky|excited|bored|boring|busy|proud|chuffed|centre|center|heat|weight|giveaway|ringer|zone|cert|certain|sure|slow|fast|straight|ahead|quiet|posh|happy|chuffed|jealous|annoying|hard|simple|cheap|expensive|brilliant|popular)\b/giu,
   /\bdead\s+to\s+(?:me|him|her|them|us|the\s+world)\b/giu, /\bdead\s+of\s+(?:night|winter)\b/giu, /\bdead\s+in\s+the\s+water\b/giu,
   /\bdrop\s+dead\s+(?:gorgeous|beautiful|handsome|stunning)\b/giu, /\bover\s+my\s+dead\s+body\b/giu,
   // "dying to" (can't wait), "dying for a coffee", "died laughing", "died of embarrassment", dyed hair
@@ -85,16 +90,18 @@ export const ORDINARY = [
   // "it's your funeral"
   /\b(?:its|it\s+is|thats|that\s+is|it\s+was|itll\s+be)\s+(?:your|his|her|their|my)\s+(?:own\s+)?funeral\b/giu,
   // lost a thing, a game or one's way (never a person or a pet)
-  /\b(?:lost|lose|losing|loses)\s+(?:(?:my|the|his|her|our|their|a|an|your|all|some|any|so\s+much|track\s+of)\s+)?(?:keys?|phone|wallet|purse|job|temper|mind|way|voice|game|games|match|matches|bet|argument|race|appetite|count|track|sleep|focus|patience|nerve|bearings|footing|balance|signal|connection|money|cash|card|bag|ticket|passport|glasses|ring|watch|earrings?|necklace|homework|notes|place|marbles|plot|head|cool|shit|faith|hope|confidence|motivation|interest|touch|contact|followers|subscribers|points|data|files?|work|progress|internet|wifi|weight|pounds|kilos|stone|hair|sight|hearing|grip|streak|lead|deposit|luggage|suitcase|charger|umbrella|coat|jacket|shoes?|sock|socks|password|login|account|license|licence|tv|remote|chance|opportunity|job|contract|deal|case|vote|election|final|semi\s+final|title|cup|trophy|toss|rag|nerves|bottle|edge|spark|appetite|virginity|baby\s+teeth|tooth|teeth|essays?|coursework|assignments?|documents?|photos|pictures|videos|receipts?|parcels?|it)\b/giu,
+  /\b(?:lost|lose|losing|loses)\s+(?:(?:my|the|his|her|our|their|a|an|your|all|some|any|so\s+much|track\s+of)\s+)?(?:keys?|phone|wallet|purse|job|temper|mind|way|voice|game|games|match|matches|bet|argument|race|appetite|count|track|sleep|focus|patience|nerve|bearings|footing|balance|signal|connection|money|cash|card|bag|ticket|passport|glasses|ring|watch|earrings?|necklace|homework|notes|place|marbles|plot|head|cool|shit|faith|hope|confidence|motivation|interest|touch|contact|followers|subscribers|points|data|files?|work|progress|internet|wifi|weight|pounds|kilos|stone|hair|sight|hearing|grip|streak|lead|deposit|luggage|suitcase|charger|umbrella|coat|jacket|shoes?|sock|socks|password|login|account|license|licence|tv|remote|chance|opportunity|job|contract|deal|case|vote|election|final|semi\s+final|title|cup|trophy|toss|rag|nerves|bottle|edge|spark|appetite|virginity|baby\s+teeth|tooth|teeth|essays?|coursework|assignments?|documents?|photos|pictures|videos|receipts?|parcels?)\b/giu,
+  /\blost\s+it\b(?!\s+(?:at|in|after|before|when|last|this|yesterday|early|on|during|again\s+at)\b)/giu,
   // a person's thing ("lost my mum's ring", "lost my dad's car keys": the apostrophe is out, "mums ring")
   /\b(?:lost|lose|losing)\s+(?:my|our|his|her|their|your|the|a)\s+(?:[a-z]+\s+){0,2}(?:rings?|watch|keys?|car|number|phone|wallet|purse|necklace|bracelet|earrings?|letters?|photos?|pictures?|cards?|bag|coat|jacket|hat|scarf|glasses|books?|present|gift|trust|respect|address|recipe|stuff|things|shoes?|charger|bike|tickets?|passport|jumper|toys?|teddy|blanket|lead|collar|leash|harness|ball|bowl|teeth|tooth|password|clothes|socks|dummy|bottle|mittens|gloves|homework|notes|email|texts?|savings)\b/giu,
-  /\blost\s+to\b/giu, /\blost\s+(?:\d+|one|two|three|nil|by)\b/giu, /\b(?:got|get|getting|gets)\s+lost\b/giu, /\bget\s+lost\b/giu,
+  /\blost\s+to\s+(?:the\s+(?:other\s+(?:team|side)|reds|blues|away\s+team|home\s+team|favourites)|them|us|a\s+(?:better|stronger)\s+(?:team|side|player)|\d)/giu, /\blost\s+(?:\d+|one|two|three|nil|by)\b/giu, /\b(?:got|get|getting|gets)\s+lost\b/giu, /\bget\s+lost\b/giu,
   /\blost\s+(?:in\s+thought|for\s+words|cause)\b/giu, /\b(?:feel|feels|felt|feeling|am|im|seem|seems|so|bit|totally|completely|really)\s+(?:so\s+|really\s+|a\s+bit\s+|completely\s+|totally\s+|kind\s+of\s+|kinda\s+)*lost\b/giu,
   // "passed my test", "passed out", "passed me the salt", "she passed!" (an exam's joy)
   /\bpass(?:ed|es|ing)?\s+(?:my|his|her|their|our|your|the|a|an|all|every|both)?\s*(?:[a-z]+\s+)?(?:test|tests|exam|exams|driving|theory|grade|grades|gcses?|a\s+levels?|degree|course|module|interview|audition|assessment|inspection|mot|probation|trials?|maths|english|science|history|quiz)\b/giu,
-  /\bpass(?:ed|es|ing)?\s+(?:out|by|over\s+(?:it|this|that)|through|round|around|along|me|us|him|her|them|it|the\s+(?:ball|time|salt|message|parcel|buck|controller|phone)|with\s+(?:flying|a\s+distinction|distinction|merit|honours)|first\s+time)\b/giu,
+  // (never "passed out", "passed by" or "passed on the weekend": each can hide a death, "my brother passed out and never woke up")
+  /\bpass(?:ed|es|ing)?\s+(?:over\s+(?:it|this|that)|round|around|along|me|us|it|(?:him|her|them)\s+(?:the|a|an|my|his|her|some)|the\s+(?:ball|salt|parcel|buck|controller|phone)|with\s+(?:flying|a\s+distinction|distinction|merit|honours)|first\s+time)\b/giu,
   /\bpassed\s*!/giu,
-  /\bpass(?:ed|es|ing)?\s+on\s+(?:the(?!\s+\d)|a|an|his|her|my|their|our|your|its|this|that|these|those|it|them|him|me|us|you|some|any|what|news|word|messages?|info\w*|details?|notes?|to|from|through|by|down|everything|something|anything|nothing|bad|good)\b/giu,
+  /\bpass(?:ed|es|ing)?\s+on\s+(?:(?:the|a|an|his|her|my|their|our|your|that|this|some|any)\s+)?(?:messages?|news|word|info\w*|details?|notes?|tips?|advice|cold|bug|virus|flu|germs|recipe|genes?|baton|torch|invite|invitation|offer|job|chance|opportunity|deal|idea|feedback|request|link|number|email|letter|card|cv|resume|love\s+of)\b/giu,
   // a grave idiom, a burial idiom
   /\bgrave(?:ly)?\s+(?:mistake|error|concern|concerns|danger|doubts?|situation|consequences|risk|warning|injustice|news|matter|tone|voice|face|look)\b/giu,
   /\b(?:turn|turns|turning|turned|spin|spins|spinning|spun|roll|rolls|rolling|rolled)\s+(?:over\s+)?in\s+(?:his|her|their|my|your)\s+graves?\b/giu,

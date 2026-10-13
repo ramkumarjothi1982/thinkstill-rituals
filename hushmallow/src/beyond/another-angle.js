@@ -31,9 +31,9 @@ import {
   WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
   FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, mechanicLines, pick,
 } from './lines.js';
-import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, harmGuard } from './authored.js';
-import { deathEscalation, serverGrief } from './grief.js';
-import { harmRoute, gentleRoute, framingAllowed, framesAsGuess } from './backstop.js';
+import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, guessGuard } from './authored.js';
+import { deathEscalation, serverLoss, griefLinesOk } from './grief.js';
+import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess } from './backstop.js';
 import { FEELING_LOOK } from './feelings.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
 import { createAngleClient, resolveEndpoint, TIMEOUTS } from './angle-client.js';
@@ -66,8 +66,10 @@ const PATTERN_LOOK = Object.freeze({
 });
 /** A word-reading (never decisive) only colours the thought when it is this sure, and only with a troubled feeling. */
 const READING_SURE = 0.7;
-/** A harm word no ordinary idiom explains (a server loss scene beside one reads as grief: grief.js serverGrief). */
-const heavyWords = (t) => harmRoute(t) === 'gentle';
+/** A harm word no ordinary idiom explains (a server loss scene beside one reads as grief: grief.js serverLoss). */
+const heavyWords = (t) => heavyHarm(t);
+/** How long the words rest before the draft is read again while typing (as the overlay's own safety reading). */
+const DRAFT_MS = 260;
 /** Authored visits (sharing said "Not now") after which the invitation mentions sharing again, gently. */
 const SHARE_AGAIN_EVERY = 4;
 
@@ -88,6 +90,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     scene: null, shown: [], used: [], crisis: false, care: false, keepSupport: false, kept: false,
     // the most serious safety level seen in this visit (typed and closed, reworded before Send, or sent): it counts, not only the words sent
     level: 'none', category: null, concernSaid: false,
+    // (review r8) follow: death talk that wanted to follow the one who died was seen (typed, closed or sent: care, for
+    // the visit); noPlay: a bag word or death talk was seen (no playful line for the visit); heavyDraft: while typing
+    follow: false, noPlay: false, heavyDraft: false,
     touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9, band: 0,
   };
   const timers = new Set();
@@ -418,7 +423,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.squeezes++;
     // after something heavy, squeezing stays and the playful lines go
     if (overlay || S.phase === 'typing' || S.level !== 'none' || S.crisis || S.care) return;
-    if (S.grief) return;
+    // (death talk, or any word of the backstop's bag, earlier in the visit: squeezing stays, the playful lines go)
+    if (S.grief || S.noPlay) return;
     // an occasional line, never a running commentary (and never over a perspective)
     if (['arrive', 'invite', 'squeeze', 'end'].includes(S.phase) && !subs?.busy && now() - S.lastLineAt > 9000 && S.squeezes % 3 === 1) say(pick(ZUZU_SQUEEZE, S.squeezes));
   }
@@ -458,12 +464,13 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   }
 
   // ---------------------------------------------------------- dock --
-  function dockShow({ assist = null, tell = false, finish: fin = false } = {}) {
+  function dockShow({ assist = null, tell = false, finish: fin = false, support = true } = {}) {
     assistBtn.hidden = !assist;
     if (assist) { assistLabel.textContent = assist; assistBtn.setAttribute('aria-label', `${assist} (instead of touch)`); }
     tellPill.hidden = !tell;
     finishPill.hidden = !fin;
-    supportPill.hidden = !(S.keepSupport || S.care || S.crisis);
+    // (support: false only while a choice of its own offers support: never the same control twice)
+    supportPill.hidden = !(S.keepSupport || S.care || S.crisis) || !support;
     layout();
   }
 
@@ -547,31 +554,62 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       support: (o) => openSupportSheet(o), trackSheet: (sh) => trackSheet(sh),
       // something heavy earlier in this visit: the overlay's Support chip is there from the start
       heavy: S.level !== 'none',
-      face: (f) => { if (S.level === 'none') zt?.setEmotion(f, 0.6, { quiet: true }); },
+      face: (f) => { if (S.level === 'none' && !S.heavyDraft) zt?.setEmotion(f, 0.6, { quiet: true }); },
       onLayout: () => layout(),
       // the level is the scene's the moment it is seen, whether or not anything is sent
       onSafety: (r) => noteSafety(r),
       onSubmit: (r) => { afterTell(r); },
       onClose: (reason, meta = {}) => {
+        // (what was typed, sent or not: read before the overlay goes)
+        const typed = String(overlay?.text ?? '');
         overlay = null;
+        clearTimeout(draftT); draftT = 0;
         const t = layer.overlay; layer.overlay = 0; if (t) app.popLayer?.(t);
         root.classList.remove('hf-typing');
         if (S.left) return;
         noteSafety(meta.safety);
         subs?.unsuspend();
         if (reason !== 'submit') {
+          // death talk that wants to follow the one who died, typed and closed: care, as sending it would be
+          readDraft(typed);
           // crisis or care typed and closed without sending: exactly what sending them would have done (nothing is sent)
           if (S.level === 'crisis') crisisMode({ sheetShown: !!meta.supportShown });
           else if (S.level === 'care') careMode();
           else if (S.level === 'concern') concernNote();
-          else { S.phase = 'invite'; zt?.setStage('curious'); dockShow({ tell: true }); }
+          // death talk typed and closed: a quiet word, support close, never a playful line (nothing is sent)
+          else if (gentleRoute(typed)) gentleNote();
+          else { S.phase = 'invite'; if (S.noPlay) careFace(); else zt?.setStage('curious'); dockShow({ tell: true }); }
         }
         layout();
       },
     });
     layer.overlay = app.pushLayer?.() || 0;
+    // the draft is read while typing too (as the overlay reads crisis and care): an escalation is care the moment it
+    // is seen, and death talk turns Zuzu's face attentive
+    const ta = overlay?.el?.querySelector?.('textarea');
+    ta?.addEventListener('input', () => { clearTimeout(draftT); draftT = setTimeout(() => { draftT = 0; if (overlay) readDraft(overlay.text); }, DRAFT_MS); });
+    if (S.text) readDraft(S.text);
     dockShow({});
     layout();
+  }
+  let draftT = 0;
+  /**
+   * Words seen while typing, on close, or sent: death talk that wants to follow the one who died raises the visit to
+   * care (and stays: rewording never undoes it); death talk or any bag word ends the playful lines for the visit.
+   */
+  function readDraft(text) {
+    const t = String(text ?? '');
+    if (S.left || !hasWords(t)) return;
+    if (deathEscalation(t)) noteFollow();
+    if (gentleRoute(t) || bagWords(t)) {
+      S.noPlay = true;
+      if (!S.heavyDraft) { S.heavyDraft = true; careFace(); }
+    }
+  }
+  /** Death talk that wants to follow the one who died, seen: care for the rest of the visit (grief.js deathEscalation). */
+  function noteFollow() {
+    S.follow = true;
+    noteSafety({ level: 'care', category: 'death-follow' });
   }
 
   async function afterTell({ text, emotion, intention, input = null, reading = null, safety: seen = null }) {
@@ -584,13 +622,16 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.shown = []; S.used = []; S.kept = false; S.explored = 0;
     // the app's own safety check first, always (never dependent on the server); and the visit's level
     // counts, not only the words sent (crisis or care typed earlier and reworded before Send still means no angle)
+    // (care seen earlier in the visit, the lexicon's or an escalation typed and reworded before Send, still holds)
     noteSafety(seen);
     noteSafety(checkText(S.text));
     if (S.level === 'crisis') { crisisMode(); return; }
     if (S.level === 'care') { careMode(); return; }
     // death talk that wants to be with, join or follow the one who died (grief.js, never the safety lexicon):
-    // the care path, nothing sent, no game
-    if (deathEscalation(S.text)) { careMode({ lines: SAFETY.follow }); return; }
+    // the care path, nothing sent, no game (and care for the rest of the visit)
+    if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
+    // death talk or any word of the backstop's bag: no playful line for the rest of the visit
+    readDraft(S.text);
     if (S.level === 'concern') S.keepSupport = true;
     if (!S.text || !hasWords(S.text)) { unclear(); return; }
     startAngle({ another: false });
@@ -651,7 +692,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear();
     say(SAFETY.crisis, { hold: true, interrupt: true });
   }
-  async function careMode({ lines = SAFETY.care } = {}) {
+  async function careMode({ lines = S.follow ? SAFETY.follow : SAFETY.care } = {}) {
     S.care = true; S.keepSupport = true; S.level = worse(S.level, 'care'); S.phase = 'support';
     S.seq++;
     keepCtl?.abort();
@@ -666,6 +707,19 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const v = await choose(SAFETY.careAsk, SAFETY.careOptions);
     if (v === 'support') openSupportSheet();
   }
+  /**
+   * Death talk typed and closed without sending: support close for the visit, a quiet word once, never a playful
+   * line or face (nothing is sent; the gentle path's own line, true whether or not anyone died).
+   */
+  function gentleNote() {
+    S.grief = true; S.keepSupport = true; S.noPlay = true;
+    S.phase = 'invite';
+    careFace();
+    dockShow({ tell: true });
+    if (S.gentleSaid) return;
+    S.gentleSaid = true;
+    say(GRIEF.closed, { mallow: 'zuzu', interrupt: !subs?.holding });
+  }
   /** Something heavy (not care or crisis) typed and closed without sending: support close, said once, quietly. */
   function concernNote() {
     S.phase = 'invite';
@@ -678,21 +732,23 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   /**
    * The gentle path (death talk, grief.js; or a harm word no idiom explains, backstop.js): no Thought Mallow, no
    * mechanic, nothing playful, support one tap away, and no "another angle" or feedback to give. Zuzu answers
-   * gently: with sharing on, the server's two lines only when its answer reads as grief or a loss (serverGrief:
-   * it sees the whole context), else the authored pair (lines.js GRIEF), which never assumes anyone died. An
+   * gently: with sharing on, the server's two lines only when its answer reads as grief or a loss (serverLoss: it
+   * sees the whole context) and both lines acknowledge (griefLinesOk), else the authored pair (lines.js GRIEF), which
+   * never assumes anyone died. An
    * ordinary server scene never plays here (never a fact-vs-guess game for death talk). `scene` is a server scene
    * that already reads as grief (`asked`: the server has answered already); without one, and with sharing on, the
    * words are sent once here.
    */
   async function griefMode({ scene = null, asked = false } = {}) {
     // (wanting to follow the one who died is care, whichever way it got here: nothing more is sent)
-    if (deathEscalation(S.text)) { careMode({ lines: SAFETY.follow }); return; }
+    if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
     const seq = ++S.seq;
-    S.grief = true; S.keepSupport = true; S.phase = 'support';
+    S.grief = true; S.keepSupport = true; S.noPlay = true; S.phase = 'support';
     keepCtl?.abort();
     dropThought(); endMechanic(true); dismissCompanion();
     supportPill.hidden = false;
     careFace();
+    // (while the choice below is up, its chips carry support and Finish: the dock never offers them twice)
     dockShow({ finish: true, tell: true });
     subs?.clear();
     // first, that they said it (and, with sharing on, while the server answers: never the lines about "another side")
@@ -705,9 +761,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (S.left || seq !== S.seq) return;
       if (res?.status === 'crisis') { crisisMode(); return; }
       if (res?.status === 'care') { careMode(); return; }
-      // (its two lines only when it reads them as grief or a loss, and neither reads the words as a guess or sends
-      // them to be checked; an ordinary scene's lines and mechanic never play for death talk)
-      if (res?.status === 'ok' && serverGrief(res.scene, S.text, { heavy: heavyWords }) && res.scene?.subtitle_line_1 && res.scene?.subtitle_line_2 && !framesAsGuess(res.scene.subtitle_line_1) && !framesAsGuess(res.scene.subtitle_line_2)) scene = res.scene;
+      // (its two lines only when it reads them as grief or a loss, and both acknowledge: nothing framed as a guess,
+      // nothing to check, no question, no reframe (grief.js griefLinesOk); an ordinary scene never plays for death talk)
+      if (res?.status === 'ok' && serverLoss(res.scene, S.text, { heavy: heavyWords }) && griefLinesOk(res.scene)) scene = res.scene;
       else {
         // never "safe" by default: without the server's answer the app's own check runs again
         const again = checkText(S.text);
@@ -726,8 +782,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     await sleep(rmOn() ? 400 : 1000);
     await say(scene.subtitle_line_2, { mallow: 'zuzu' });
     if (S.left || seq !== S.seq) return;
+    dockShow({ tell: true, support: false });
     const v = await choose(GRIEF.ask, GRIEF.options, { mallow: 'zuzu' });
     if (S.left || seq !== S.seq) return;
+    dockShow({ finish: true, tell: true });
     if (v === 'support') { openSupportSheet(); return; }
     if (v === 'finish') { finish(); return; }
     if (v === 'squeeze') {
@@ -780,12 +838,14 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (res.status === 'crisis') { crisisMode(); return; }
       if (res.status === 'care') { careMode(); return; }
       if (res.status === 'unclear') { subs?.clear(); dropThought(); unclear(); return; }
-      // the server read a loss the words didn't name the app's way ("since Mum passed"): its lines, gently, no mechanic
-      if (res.status === 'ok' && res.scene && serverGrief(res.scene, S.text, { heavy: heavyWords })) { griefMode({ scene: framesAsGuess(res.scene.subtitle_line_1) || framesAsGuess(res.scene.subtitle_line_2) ? null : res.scene, asked: true }); return; }
+      // the server read a loss the words didn't name the app's way ("since Mum passed"): gently, no mechanic, its two
+      // lines only when both acknowledge (grief.js griefLinesOk), else the authored gentle lines
+      if (res.status === 'ok' && res.scene && serverLoss(res.scene, S.text, { heavy: heavyWords })) { griefMode({ scene: griefLinesOk(res.scene) ? res.scene : null, asked: true }); return; }
       if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) {
         // a feeling said plainly is never pulled apart into "what happened" and "what your mind added", whoever
-        // wrote it; nor are words beside a death or harm word (the backstop: a kind step instead)
-        scene = harmGuard(feelingGuard(res.scene, S.text, { emotion: S.emotion, exclude }), S.text, { emotion: S.emotion, exclude });
+        // wrote it; words without an interpretive marker, or beside a bag word, never get the framing either (the
+        // gate: a kind step instead, with the authored kind lines when the server's would frame them)
+        scene = guessGuard(feelingGuard(res.scene, S.text, { emotion: S.emotion, exclude }), S.text, { emotion: S.emotion, exclude });
         if (scene.exhausted) { await noMoreAngles(); return; }
       } else { offline = true; hint = res.hint?.reasoning_pattern || null; invited = res.reason === 'invite'; }
     }
@@ -829,9 +889,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   }
 
   async function playScene(scene, seq) {
-    // the backstop, where every scene plays (authored, server, the lab's): beside a death or harm word, never the
-    // fact-vs-guess framing; a kind-step scene with a feeling's safe lines instead
-    if (!framingAllowed(S.text)) scene = harmGuard(scene, S.text, { emotion: S.emotion });
+    // the gate, where every scene plays (authored, server, the lab's): without an interpretive marker of their own,
+    // or beside a bag word, never the fact-vs-guess framing (a kind step with its own lines instead); with one, only
+    // the clause that carries it is the guess
+    scene = guessGuard(scene, S.text, { emotion: S.emotion });
     S.scene = scene;
     S.shown.push(scene);
     if (scene.angle_id) S.used.push(scene.angle_id);
@@ -955,7 +1016,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function exploreLine(scene, id) {
     const p = EXPLORE.find((x) => x.id === id);
     if (!p) return null;
-    if (p.field === 'friend') return scene.feeling || !framingAllowed(S.text) ? FEELING.friend : FRIEND_LINES[scene.reasoning_pattern] || FRIEND_LINES.fact_vs_assumption;
+    if (p.field === 'friend') {
+      // (without a marker of their own, only a friend line that frames nothing: fair anger's own, else a feeling's)
+      const own = FRIEND_LINES[scene.reasoning_pattern] || FRIEND_LINES.fact_vs_assumption;
+      return scene.feeling || (!framingAllowed(S.text) && framesAsGuess(own)) ? FEELING.friend : own;
+    }
     const v = scene[p.field];
     if (p.field === 'known_fact') return [v || EXPLORE_EMPTY.known_fact, scene.possible_assumption].filter(Boolean);
     return v || EXPLORE_EMPTY[p.field];
@@ -1035,7 +1100,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear();
     endMechanic(); dismissCompanion(); dropThought();
     later(() => layout(), 480);
-    zt?.setStage('playful');
+    // (never the playful face beside a bag word or after something heavy)
+    if (S.noPlay || S.level !== 'none') careFace(); else zt?.setStage('playful');
     dockShow({ tell: true, finish: true });
     say(FEEDBACK.squeeze, { mallow: 'zuzu' });
   }
@@ -1111,15 +1177,17 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear();
     const heavy = S.crisis || S.care || S.grief;
     dockShow({});
-    if (heavy) careFace(); else zt?.setStage('comforting');
-    if (!rmOn() && !heavy) zt?.react('hop');
+    if (heavy || S.noPlay) careFace(); else zt?.setStage('comforting');
+    if (!rmOn() && !heavy && !S.noPlay) zt?.react('hop');
     const lines = heavy ? SAFETY.finish : END.finish;
     await say(lines[0], { mallow: 'zuzu' });
     if (S.left) return;
     await say(lines[1], { mallow: 'zuzu' });
     if (S.left) return;
-    // the Hushfold may keep support close after something heavy (it reads params.safety when it supports it)
-    app.go('home', S.level !== 'none' ? { safety: { level: S.level } } : {});
+    // the Hushfold keeps support close after something heavy (it reads params.safety): after the gentle path too, so
+    // "Support is one tap away" holds there (its Support pill, the attentive face, no playful opening)
+    const level = S.level !== 'none' ? S.level : S.grief ? 'concern' : 'none';
+    app.go('home', level !== 'none' ? { safety: { level } } : {});
   }
 
   // ------------------------------------------------------- the view --
@@ -1204,6 +1272,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       timers.clear();
       clearTimeout(resizeT);
       clearTimeout(heardT);
+      clearTimeout(draftT);
       removeEventListener('resize', onResize);
       visualViewport?.removeEventListener('resize', onResize);
       offPrefs?.();

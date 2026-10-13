@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { authoredScene, sceneParts, deathTalk, feelingOf, feelingGuard, fairAnger, FEELING_ORDER } from '../src/beyond/authored.js';
-import { serverGrief, livingLoss } from '../src/beyond/grief.js';
+import { serverGrief, livingLoss, serverLoss } from '../src/beyond/grief.js';
 import { GRIEF } from '../src/beyond/lines.js';
 import { feelingClause, feelingOpens, feelingStatement } from '../src/beyond/feelings.js';
 import { FEELING } from '../src/beyond/lines.js';
@@ -109,9 +109,10 @@ test('r6.1: every round of a loss is grief: never a mechanic, a fact/assumption 
 /** Of the "not a loss" probes, the unambiguous idioms (death-words.js): never death talk. */
 const IDIOMS = [
   'My dad\'s dead keen on golf.', 'My mum\'s dead against it.', 'My brother\'s dead clever.', 'My dog\'s dead cute.', 'My sister\'s dead good at maths.', 'My dad\'s died his hair blue.',
-  'My phone\'s died.', 'My boy\'s killed it at football.', 'My mum\'s passed her driving test!', 'My son\'s passed his exams.', 'My son\'s passed!', 'My girl\'s passed out on the sofa.',
+  // (r8: "My girl's passed out on the sofa." and "My mum has passed out." are death talk now: "passed out" is never blanked)
+  'My phone\'s died.', 'My boy\'s killed it at football.', 'My mum\'s passed her driving test!', 'My son\'s passed his exams.', 'My son\'s passed!',
   'My dad\'s dead tired.', 'My boyfriend\'s dead to me.', 'My ex is dead to me.', 'My friend\'s dad\'s car died.', 'My dad\'s been dead set on it.', 'My boy died laughing.',
-  'My husband\'s passed the bar exam.', 'My little boy\'s passed his swimming test.', 'My girl passed her exam!', 'My dad has passed his test.', 'My mum has passed out.', 'My grandad\'s gone to bed.',
+  'My husband\'s passed the bar exam.', 'My little boy\'s passed his swimming test.', 'My girl passed her exam!', 'My dad has passed his test.', 'My grandad\'s gone to bed.',
   'My mum\'s dying to meet you.', 'My nan is dying to meet you.', 'I\'m dying to see my mum.', 'My mum will be the death of me.', 'I\'m losing my mind.', 'Losing my temper with my kids.', 'I lost my dad\'s ring.',
 ];
 test('r6.2 (r7): the idioms are never death talk; every other probe is, and its lines never say anyone died or that this is grief', () => {
@@ -152,27 +153,30 @@ test('r6.2 (r7): someone still alive but going (dementia, drink) is answered gen
   assert.equal(livingLoss('I lost my keys to the house.'), false);
 });
 
-test('r6.2 (r7): "\'s passed" (has passed) is death talk; passing an exam, passing out or "passed!" is not', () => {
-  for (const text of ['My husband\'s passed.', 'My mum\'s passed.', 'Dad\'s passed.', 'My dog has passed.', 'My dad passed last year.', 'Since Mum’s passed I can’t sleep.']) assert.equal(deathTalk(text), 'loss', text);
-  for (const text of ['My son\'s passed!', 'My son\'s passed his exams.', 'My girl\'s passed out on the sofa.', 'My husband\'s passed the bar exam.']) assert.equal(deathTalk(text), null, text);
+test('r6.2 (r7): "\'s passed" (has passed) is death talk; passing an exam or "passed!" is not (r8: "passed out" is, it can hide a death)', () => {
+  for (const text of ['My husband\'s passed.', 'My mum\'s passed.', 'Dad\'s passed.', 'My dog has passed.', 'My dad passed last year.', 'Since Mum’s passed I can’t sleep.', 'My girl\'s passed out on the sofa.']) assert.equal(deathTalk(text), 'loss', text);
+  for (const text of ['My son\'s passed!', 'My son\'s passed his exams.', 'My husband\'s passed the bar exam.']) assert.equal(deathTalk(text), null, text);
 });
 
 test('r6.2 (r7): a server loss scene plays gently for death talk (it sees the whole context), never for a lost job or a phone', () => {
+  // (r8: serverLoss reads the scene; serverGrief also needs both lines to acknowledge, below)
   const sc = (o) => ({ source: 'server', situation_type: 'loss', emotion: 'sadness', ...o });
-  assert.equal(serverGrief(sc(), 'My nan passed in May and the house is so quiet.'), true);
-  assert.equal(serverGrief(sc(), 'Since Grandad passed I can’t sleep.'), true);
-  assert.equal(serverGrief(sc({ emotion: 'grief' }), ''), true, 'grief itself, whatever the words');
-  assert.equal(serverGrief(sc(), 'I lost my job today.'), false);
-  assert.equal(serverGrief(sc(), 'My phone died and I lost my job.'), false);
-  assert.equal(serverGrief(sc(), 'My son passed his test and I feel left behind.'), false);
+  assert.equal(serverLoss(sc(), 'My nan passed in May and the house is so quiet.'), true);
+  assert.equal(serverLoss(sc(), 'Since Grandad passed I can’t sleep.'), true);
+  assert.equal(serverLoss(sc({ emotion: 'grief' }), ''), true, 'grief itself, whatever the words');
+  assert.equal(serverLoss(sc(), 'I lost my job today.'), false);
+  assert.equal(serverLoss(sc(), 'My phone died and I lost my job.'), false);
+  assert.equal(serverLoss(sc(), 'My son passed his test and I feel left behind.'), false);
   // (death talk now: the server's own loss answer is its reading of the whole context)
-  assert.equal(serverGrief(sc(), 'I’m scared my dad will die.'), true);
-  assert.equal(serverGrief(sc(), 'He died in the game and I lost the match.'), true);
-  assert.equal(serverGrief(sc({ situation_type: 'other' }), 'My nan passed in May.'), false);
-  assert.equal(serverGrief(sc({ source: 'authored' }), 'My nan passed in May.'), false);
-  assert.equal(serverGrief(sc()), false);
+  assert.equal(serverLoss(sc(), 'I’m scared my dad will die.'), true);
+  assert.equal(serverLoss(sc(), 'He died in the game and I lost the match.'), true);
+  assert.equal(serverLoss(sc({ situation_type: 'other' }), 'My nan passed in May.'), false);
+  assert.equal(serverLoss(sc({ source: 'authored' }), 'My nan passed in May.'), false);
+  assert.equal(serverLoss(sc()), false);
+  assert.equal(serverGrief(sc({ subtitle_line_1: 'The house is so quiet without her.', subtitle_line_2: 'You can miss her as much as you need to.' }), 'My nan passed in May.'), true);
+  assert.equal(serverGrief(sc({ subtitle_line_1: 'That’s a guess about what’s going on inside someone else.', subtitle_line_2: 'Guesses can be right, and they can be wrong.' }), 'My nan passed in May.'), false);
   const src = read('src/beyond/another-angle.js');
-  assert.match(src, /serverGrief\(res\.scene, S\.text, \{ heavy: heavyWords \}\)/);
+  assert.match(src, /serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\)/);
 });
 
 // ------------------------------------------------------------- 3. feelings --

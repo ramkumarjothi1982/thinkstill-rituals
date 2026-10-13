@@ -24,6 +24,8 @@ const KINDS = {
   tired: 'tired|exhausted|drained|worn out|burnt out|burned out|knackered|shattered|done|fed up|run down|wiped out|spent|sick of everything|tired of everything|sick and tired',
   crying: 'like crying|like i (?:could|want to|might|need to) cry|like (?:bursting into|breaking into) tears|tearful',
   angry: 'angry|frustrated|irritated|annoyed|cross|grumpy|irritable|resentful|bitter|wound up|mad',
+  // (last, so "sick with dread" and "sick about tomorrow" are read as anxious first; a body's feeling reads as 'low')
+  body: 'sick|nauseous|queasy|dizzy|faint|light headed|lightheaded|breathless|clammy|sweaty|achy|weak|wobbly|trembly|unwell|ill|poorly|tight|knotted|jittery|hot|cold|shivery',
 };
 /** "so", "really", "a bit"… before a feeling word. */
 const INTENS = '(?:(?:so|really|very|quite|a bit|a little|kind of|kinda|sort of|pretty|totally|completely|incredibly|super|extremely|absolutely|just|too|that|rather|deeply|utterly|properly|a lot|more|even more|horribly|awfully|terribly|weirdly|strangely|constantly|always|still|all|honestly|genuinely|literally|actually)\\s+)*';
@@ -46,7 +48,7 @@ const STATE_KINDS = {
   low: 'empty|numb|sad|down|low|flat|miserable|heartbroken|gutted|upset|hurt|depressed|hopeless|unhappy|teary|tearful|emotional|struggling|not (?:ok|okay|alright|all right|coping|doing (?:well|great|good|ok|okay))|a mess inside|in pieces|falling apart|broken inside|'
     + 'jealous|envious|insecure|helpless|powerless|stuck(?! (?:in (?:traffic|a (?:lift|queue|jam))|on|at|with|behind|inside|outside|here|there))|trapped|disappointed|humiliated',
   lonely: 'alone|lonely|isolated|so alone|all alone|on my own|by myself|rejected',
-  anxious: 'anxious|worried|nervous|scared|frightened|afraid|terrified|panicking|panicky|on edge|tense|stressed|stressed out|overwhelmed|uneasy|shaking|restless|freaking out|in a panic|a nervous wreck|frazzled|sick with nerves|sick with worry',
+  anxious: 'anxious|worried|nervous|scared|frightened|afraid|terrified|panicking|panicky|on edge|tense|stressed|stressed out|overwhelmed|uneasy|shaking|restless|freaking out|in a panic|a nervous wreck|frazzled|sick with nerves|sick with worry|sick with dread|dreading|in dread|so nervous',
   guilty: 'guilty|ashamed|embarrassed',
   tired: 'tired|exhausted|drained|worn out|burnt out|burned out|knackered|shattered|done|fed up|run down|wiped out|spent|sick and tired|so tired|over it',
   crying: 'crying|in tears|sobbing|tearful',
@@ -54,7 +56,7 @@ const STATE_KINDS = {
 };
 const kindOf = (word, table) => {
   const w = String(word || '').toLowerCase().replace(/[‘’]/g, "'");
-  for (const [kind, list] of Object.entries(table)) if (new RegExp(`^(?:${list.replace(/’/g, "'")})$`, 'iu').test(w)) return kind;
+  for (const [kind, list] of Object.entries(table)) if (new RegExp(`^(?:${list.replace(/’/g, "'")})$`, 'iu').test(w)) return kind === 'body' ? 'low' : kind;
   return null;
 };
 const FEEL_RE = new RegExp(`${LEAD}${FEEL_HEAD}\\s+${INTENS}(?<w>${ALL_WORDS})(?:\\s*(?:,|and|or|but also|&)\\s*${INTENS}(?:${ALL_WORDS}))*`, 'iu');
@@ -100,11 +102,36 @@ export function feelingOpens(piece) {
   const p = tidy(piece).replace(/^["“(]+/u, '');
   return !!feelingClause(p) || FEEL_OPEN.test(p);
 }
+/**
+ * How much of `piece` the feeling itself takes (characters from the start), or 0. What follows may still carry a
+ * thought of its own ("I'm scared I'll fail": the feeling is real, "I'll fail" is a forecast).
+ */
+export function feelingSpan(piece) {
+  const p = tidy(piece).replace(/^["“(]+/u, '');
+  const lead = String(piece ?? '').length - String(piece ?? '').trimStart().replace(/^["“(]+/u, '').length;
+  for (const re of [...FORMS.map(([r]) => r), FEEL_OPEN]) { const m = re.exec(p); if (m) return lead + m.index + m[0].length; }
+  return 0;
+}
+/** What may follow a feeling and stay part of it (its context, a little time word): never a thought of its own. */
+export function feelingContext(rest) {
+  const r = String(rest ?? '').trim().replace(/[.!?…]+$/u, '').replace(CONTEXT_LEAD, '').trim();
+  if (!r || !/\p{L}/u.test(r)) return true;
+  const ctx = CONTEXT_OPEN.exec(r);
+  return !!ctx && !MORE_THAN_A_FEELING.test(ctx[1]);
+}
 /** Feelings people bring that are not hard ones: the backstop never answers these with a kind step. */
 const GLAD = /^(?:ok|okay|fine|good|great|better|happy|amazing|fantastic|wonderful|excited|proud|calm|relaxed|grateful|thankful|loved|blessed|lucky|hopeful|relieved|content|peaceful|free|alive|strong|brilliant|awesome|incredible|safe|seen|heard|understood|ready|well|much|so)$/iu;
 
-/** Things in the words that make a message more than a feeling (something that happened, a guess, a verdict, a plan). */
-const MORE_THAN_A_FEELING = /\b(?:because|cos|when|if|what if|will|won['’]?t|going to|gonna|tomorrow|next|should|shouldn['’]?t|must|always|never|everyone|everybody|nobody|no one|he|she|they|them|him|her|his|their|boss|manager|friend|friends|mum|mom|dad|partner|sister|brother|family|teacher|colleague|work|school|exam|test|interview|deadline|said|told|did|didn['’]?t|made|make|ignored|left|like a (?:failure|loser|burden|fraud|joke|idiot)|my fault|hate|hates)\b/iu;
+/**
+ * What makes a feeling's context more than a feeling (review r8: only someone's mind, a verdict or a forecast).
+ * A bare time or event noun never does: "I feel sick about the exam", "I'm nervous about the interview", "I'm
+ * terrified of the operation", "I'm dreading Monday" are feelings, whatever the noun.
+ */
+const MORE_THAN_A_FEELING = /\b(?:if|what if|will|won['’]?t|wont|going to|gonna|should|shouldn['’]?t|must|always|never|everyone|everybody|nobody|no one|hate|hates|thinks?|my fault|ruin\w*|disaster|worst|like a (?:failure|loser|burden|fraud|joke|idiot))\b|\b(?:i|she|he|they|it|we|you|that|this|there)['’]?ll\b/iu;
+/** What may open a feeling's context ("about the exam", "of the operation", "thinking about tomorrow"). */
+const CONTEXT_OPEN = /^(?:for|about|over|since|after|at|in|around|from|with|without|of|by|because of|ever since|all through|ahead of|before|thinking about|just thinking about|when i think (?:about|of)|at the thought of|whenever i think (?:about|of))\s+(.+)$/iu;
+/** Little time words between a feeling and its context ("I feel anxious all the time about work"). */
+const CONTEXT_LEAD = /^(?:(?:all the time|so much|again|today|tonight|lately|recently|constantly|every day|all day|right now|at the moment|still|really|a lot|these days|most days|honestly)[,\s]+)+/iu;
 
 /**
  * { kind } when every clause of the message is a feeling of their own, said plainly ("I feel empty",
@@ -136,12 +163,14 @@ function wholeFeeling(clause) {
   }
   // a little context that names nothing more than the feeling ("I feel guilty for saying no", "I feel numb
   // since the breakup", "I feel lonely at uni"): no one else's mind, no verdict, nothing ahead
-  for (const [re, kind] of FORMS) {
+  // (review r8: "I feel sick about the exam", "I'm dreading Monday", "I feel anxious all the time about work")
+  for (const [re, kind] of [...FORMS, [BARE_RE, (m) => kindOf(m.groups?.w, KINDS) || kindOf(m.groups?.w, STATE_KINDS)]]) {
     const m = re.exec(c);
     if (!m) continue;
-    const rest = c.slice(m.index + m[0].length).trim().replace(/[.!?…]+$/u, '');
-    const ctx = /^(?:for|about|over|since|after|at|in|around|from|with|without|because of|ever since|all through)\s+(.+)$/iu.exec(rest);
-    if (ctx && rest.split(/\s+/).length <= 8 && !MORE_THAN_A_FEELING.test(ctx[1]) && !/\b(?:after|since)\s+(?:he|she|they|my|i)\b/iu.test(rest)) return kind(m) || 'low';
+    const rest = c.slice(m.index + m[0].length).trim().replace(/[.!?…]+$/u, '').replace(CONTEXT_LEAD, '');
+    // (dreading takes its object straight: "I'm dreading tomorrow")
+    const ctx = CONTEXT_OPEN.exec(rest) || (/dread/iu.test(m[0]) && rest ? [rest, rest] : null);
+    if (ctx && rest.split(/\s+/).length <= 9 && !MORE_THAN_A_FEELING.test(ctx[1]) && !/\b(?:after|since)\s+(?:he|she|they|my|i)\b/iu.test(rest)) return kind(m) || 'low';
   }
   // what may stand beside a feeling as a clause of its own ("…and I don't know why")
   if (ALONGSIDE.test(c)) return 'alongside';

@@ -217,11 +217,12 @@ test('authored path: four angles for the brief’s examples, never cut, never no
     }
     assert.ok(seen.length >= 2, `${text}: ${seen.join(', ')}`);
   }
-  // overgeneralisation only when "always", "never", "nobody", "everyone"… is really the claim
+  // overgeneralisation only when "always", "never", "nobody", "everyone"… is really the claim (r8: a stated event may
+  // still play separate_one, but on its kind lines, never "one moment" or "every time")
   for (const t of ['My boss embarrassed me in front of everyone.', 'My friend invited everyone except me.']) {
-    const seen = [];
-    for (let i = 0; i < 6; i++) { const s = authoredScene(t, { exclude: seen }); if (s.exhausted) break; seen.push(s.reasoning_pattern); }
-    assert.ok(!seen.includes('overgeneralisation'), `${t}: ${seen.join(', ')}`);
+    const seen = [], scenes = [];
+    for (let i = 0; i < 6; i++) { const s = authoredScene(t, { exclude: seen }); if (s.exhausted) break; seen.push(s.reasoning_pattern); scenes.push(s); }
+    assert.ok(!scenes.some((s) => s.reasoning_pattern === 'overgeneralisation' && !s.feeling), `${t}: ${seen.join(', ')}`);
   }
   assert.equal(authoredScene('Nobody likes me.').subtitle_line_1, 'A word like “nobody” is powerful, but it’s rarely exactly true.');
   // "another angle" for mind-reading words: the label, not the sentence
@@ -247,7 +248,8 @@ const SERVER_BOSS = { ...V.validateScene({
   interaction_type: 'pull_apart', mallow_character: 'zuzu', subtitle_line_1: 'What your boss did may have been unfair.', subtitle_line_2: 'What matters now is whether to raise it privately.', safety_status: 'ok',
 }), source: 'server' };
 test('a server scene personalises the mechanics (known_fact, possible_assumption, alternative_angle, the step)', async () => {
-  const text = 'My boss embarrassed me in front of everyone.';
+  // (r8: the fact-and-guess mechanics play only for words with an interpretive marker of their own)
+  const text = 'My boss embarrassed me in front of everyone and now everyone thinks less of me.';
   const p = sceneParts(text, SERVER_BOSS);
   assert.equal(p.fact, SERVER_BOSS.known_fact);
   assert.equal(p.guess, SERVER_BOSS.possible_assumption);
@@ -582,7 +584,8 @@ test('safety seen while typing counts, sent or not (review r2, blocking 1)', () 
   assert.match(src, /onSafety:\s*\(r\)\s*=>\s*noteSafety\(r\)/);
   assert.match(src, /onClose:\s*\(reason, meta = \{\}\)\s*=>[\s\S]{0,400}noteSafety\(meta\.safety\)/);
   // closed without sending: crisis and care do what sending them would have done (and nothing is sent)
-  assert.match(src, /if \(reason !== 'submit'\) \{[\s\S]{0,240}S\.level === 'crisis'\) crisisMode[\s\S]{0,80}S\.level === 'care'\) careMode/);
+  // (r8: the typed words are read first: an escalation typed and closed is care too)
+  assert.match(src, /if \(reason !== 'submit'\) \{[\s\S]{0,160}readDraft\(typed\);[\s\S]{0,240}S\.level === 'crisis'\) crisisMode[\s\S]{0,80}S\.level === 'care'\) careMode/);
   // the visit's level decides before any request (reworded before Send still means no angle)
   assert.match(src, /noteSafety\(seen\);\s*noteSafety\(checkText\(S\.text\)\);\s*if \(S\.level === 'crisis'\) \{ crisisMode\(\); return; \}\s*if \(S\.level === 'care'\) \{ careMode\(\); return; \}/);
   // after something heavy: no playful squeeze lines, and the Support pill stays

@@ -61,7 +61,51 @@ export const GRIEF = Object.freeze({
   ask: 'I’m right here. Squeeze me whenever you like.',
   options: [{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'See support', value: 'support' }, { label: 'Finish', value: 'finish' }],
   squeeze: 'Take all the time you need.',
+  /** typed and closed without sending (review r8): said once, quietly; nothing is sent and nothing plays */
+  closed: 'I’m right here, whenever you want to say more.',
 });
+
+/**
+ * A stated event, or something someone did to them, with no interpretive marker in their words (review r8, the
+ * flipped default): it really happened. Never "one way to read it", never "what your mind added", never something to
+ * check: the acknowledging mechanics, with lines that treat it as real ('event': something happened; 'hurt':
+ * someone did something to them).
+ */
+export const KIND = Object.freeze({
+  first: Object.freeze({
+    event: 'What happened is real, and it makes sense that it’s on your mind.',
+    hurt: 'What happened to you is real, and it counts.',
+  }),
+  pairs: Object.freeze({
+    assemble_step: ['What happened is real, and it makes sense that it’s on your mind.', 'One small, kind thing for yourself is plenty for now.'],
+    soften_harshness: ['Something this hard deserves gentleness.', 'You can be as kind to yourself as you’d be to a friend.'],
+    separate_one: ['This is real, and it’s taking up a lot of room.', 'There’s still more to you than this one thing.'],
+    return_responsibility: ['What someone else did is theirs to carry, not yours.', 'You can put their part of it back where it belongs.'],
+  }),
+  steps: Object.freeze({
+    event: 'Do one small, kind thing for yourself today, even a little one.',
+    hurt: 'Tell one person you trust what happened.',
+  }),
+  /** the mechanics' own lines for a stated event (over MECHANIC_LINES): no "thought", "verdict", "every time" or "lesson" */
+  mechanics: Object.freeze({
+    assemble_step: { hint: 'Here’s one small, kind step, in pieces. Put it together.', done: 'One kind step. That’s all it needs to be.', labels: { step: 'One kind step' } },
+    soften_harshness: {
+      hint: 'This one has sharp edges. Stroke it slowly, the way you’d comfort a friend.',
+      hint2: 'Slower. Gentle strokes soothe it.', hint3: 'Stroke slowly round the edge, where it’s sharpest.',
+      assist: 'Soothe it', done: 'Gentler now. It still counts.', labels: { core: 'Still you' },
+    },
+    separate_one: {
+      hint: 'This has spread over everything. Lift it out on its own.',
+      done: 'It’s real. And there’s more to you than this.', labels: { one: 'This', rest: 'The rest of you' },
+    },
+    return_responsibility: {
+      hint: 'That’s a lot of weight to hold. Move each piece to where it belongs.',
+      assist: 'Move a piece', done: 'Your part is still yours. The rest can go back.',
+    },
+  }),
+});
+/** The kinds a stated event plays as (feelingScene with one of these reads KIND, not FEELING). */
+export const EVENT_KINDS = Object.freeze(new Set(['event', 'hurt']));
 
 /**
  * A feeling said plainly ("I feel empty", "I can't stop crying", "I'm so tired of everything"). A feeling is
@@ -125,7 +169,7 @@ export const FEELING = Object.freeze({
 /** A mechanic's lines for a scene: a feeling's own over the mechanic's (MECHANIC_LINES), else the mechanic's. */
 export function mechanicLines(mechanic, scene = null) {
   const base = MECHANIC_LINES[mechanic] || {};
-  const own = scene?.feeling ? FEELING.mechanics[mechanic] : null;
+  const own = scene?.feeling ? (EVENT_KINDS.has(scene.feeling) ? KIND.mechanics[mechanic] : FEELING.mechanics[mechanic]) || KIND.mechanics[mechanic] : null;
   return own ? { ...base, ...own, labels: { ...(base.labels || {}), ...(own.labels || {}) } } : base;
 }
 

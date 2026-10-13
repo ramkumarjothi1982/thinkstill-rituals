@@ -15,15 +15,16 @@
 import { detectPatterns, splitThought, matchScenarios, buildNextSteps, buildAngles } from '../ultra/reframe-engine.js';
 import { GENERAL } from '../ultra/frameworks.js';
 import { PATTERNS, PATTERN_INTERACTION, INTERACTION_PATTERN, PATTERN_TO_AUTHORED, AUTHORED_TO_PATTERN, PATTERN_MALLOWS, mallowFor } from './vocab.js';
-import { AUTHORED_PAIRS, AUTHORED_ALT, ANGER_PAIRS, GRIEF, FEELING } from './lines.js';
+import { AUTHORED_PAIRS, AUTHORED_ALT, ANGER_PAIRS, GRIEF, FEELING, KIND, EVENT_KINDS, MECHANIC_LINES } from './lines.js';
 import { deathTalk } from './grief.js';
-import { harmRoute, gentleRoute, framingAllowed, FRAMING_MECHANICS, framesAsGuess } from './backstop.js';
+import { bagWords, gentleRoute, framingAllowed, FRAMING_MECHANICS, framesAsGuess } from './backstop.js';
 import { feelingStatement, feelingClause, feelingOpens } from './feelings.js';
+import { HARSH, clauses, markerKinds, guessClause } from './markers.js';
 
 // strong cues the authored habits don't name (practical problems, fair anger, replaying)
 const CUES = {
   rumination: /\b(?:replay\w*|keep (?:thinking|going over|going back to|coming back to)|can'?t stop (?:thinking|replaying|going over)|over and over|round and round|going round in circles)\b/i,
-  valid_anger: /\b(?:unfair|furious|fuming|livid|seething|rude|disrespect\w*|took (?:the |all the )?credit|shouted at|yelled at|humiliat\w*|so angry|really angry|angry (?:at|with|that|about)|cancell?ed on me(?: again)?|lied to me|went behind my back|talked over me|interrupt\w* me|embarrassed me|belittled me|made fun of me|mocked me|put me down|undermin\w* me)\b/i,
+  valid_anger: /\b(?:unfair|furious|fuming|livid|seething|rude|disrespect\w*|took (?:the |all the )?credit|shouted at|yelled at|humiliat\w*|so angry|really angry|angry (?:at|with|that|about)|cancell?ed on me(?: again)?|lied to me|went behind my back|talked over me|interrupt\w* me|embarrassed me|belittled me|made fun of (?:me|my)|mocked (?:me|my)|put me down|undermin\w* me|cheated on me|cheating on me|stole (?:my|from me)|stolen (?:my|from me)|nicked my|blamed me|blames me|called me (?:(?:a|an|so|really|such a) )?(?:stupid|fat|ugly|lazy|useless|names|thick|dumb|weird|pathetic|worthless|selfish|crazy|mental|psycho|liar|idiot|loser|failure|disappointment|freak|joke|slut|slag|bitch|cow|drama queen|attention seeker|dramatic|overdramatic|sensitive|\w+)|laughed at me|read my (?:diary|messages|texts|phone|journal|emails?|letters?|notes|private)|went through my (?:phone|messages|things|stuff|bag|room|diary)|told (?:everyone|people|the whole \w+|my \w+) (?:my|about my)|broke (?:his|her|their|a|the|another) promise|dropped me|ghosted me|talked about me behind my back|(?:talking|talked|gossip\w*) (?:about me )?behind my back|refus(?:es|ed|ing) to|never paid me back|didn['’]?t pay me back|bullied me|bully(?:ing)? me|threatened me|pushed me|excluded me|dumped me|lied about me|spread (?:rumou?rs|lies)|stood me up|forgot my birthday|snapped at me|insulted me|criticised me in front)\b/i,
   practical_problem: /\b(?:deadline|interview|rent|bills?|overdraft|debt|promot\w*|appraisal|job hunt\w*|exam (?:is|on|next|tomorrow)|how do i|what do i do|what should i do|need to (?:decide|sort|fix|find|choose)|too much to do|due (?:on|by|in|tomorrow|today|tonight|next|this|first thing)|essays?|assignments?|coursework|dissertation|homework|(?:haven['’]?t|have not|not even) started)\b/i,
 };
 /**
@@ -47,19 +48,15 @@ export function fairAnger(text) {
  */
 export { deathTalk, framesAsGuess };
 /**
- * A clause that reads someone's mind, forecasts or judges: beside fair anger, only such a clause may be "the guess"
- * ("everyone thinks I'm useless"). The wrong itself ("My boss embarrassed me in front of everyone") is the fact.
+ * Fair anger in two: the wrong (the fact) and, when there is one, the clause with an interpretive marker
+ * (markers.js: "everyone thinks I'm useless") that reads into it (the guess). The wrong itself ("My boss embarrassed
+ * me in front of everyone") is never the guess.
  */
-const INTERPRETS = /\b(?:thinks?|thought\s+(?:i|i['’]?m|me)|must\s+(?:think|hate|be|feel)|probably|i\s+bet|reckons?|(?:everyone|everybody|they|people)\s+(?:now\s+)?(?:knows?|hates?|saw|laughed|believes?|sees)|(?:nobody|no\s+one)\s+(?:likes|cares|wants|respects|believes)|hates?\s+me|(?:doesn|don|didn)['’]?t\s+(?:like|care|want|respect)|will|won['’]?t|going\s+to|gonna|never|always|forever|ruin\w*)\b/iu;
-/** Fair anger in two: the wrong (the fact) and, when there is one, the clause that reads into it (the guess). */
 export function angerSplit(text) {
   const t = String(text ?? '');
-  const clauses = sentences(t).flatMap((x) => x.replace(/[.!?…]+["”’)]*$/u, '')
-    .split(/\s*(?:[,;:]|\band\s+now\b|\bso\s+now\b|\band\s+(?=(?:now\s+)?(?:everyone|everybody|nobody|no\s+one|they|he|she|people|i\s+(?:bet|think|reckon)|it\s+(?:means|must))\b)|\bso\s+(?=(?:everyone|everybody|nobody|they|he|she|people)\b))\s*/iu))
-    .map((c) => c.trim()).filter((c) => /\p{L}/u.test(c));
-  const reads = (c) => INTERPRETS.test(c) || HARSH.test(c);
-  const g = clauses.find(reads), f = clauses.find((c) => !reads(c));
-  return { fact: f ? exactPhrase(t, f) : '', guess: g ? exactPhrase(t, g) : '' };
+  const cl = clauses(t);
+  const g = cl.find((c) => c.kinds.size), f = cl.find((c) => !c.kinds.size);
+  return { fact: f ? exactPhrase(t, f.text) : '', guess: g ? exactPhrase(t, g.guess) : '' };
 }
 const EMOTION_DEFAULT = {
   anger: 'valid_anger', frustration: 'valid_anger', resentment: 'valid_anger', irritation: 'valid_anger',
@@ -161,34 +158,17 @@ export function excerpt(text, max = 60) {
 
 const sentences = (s) => String(s).match(/[^.!?…]+(?:[.!?…]+["”’)]*|$)/gu)?.map((x) => x.trim()).filter(Boolean) || [];
 
-/** The person's words split (by the authored engine) into "what happened" and "what my mind added", as exact phrases. */
-function split(text) {
-  let pieces = [];
-  try { pieces = splitThought(text); } catch { pieces = []; }
-  // a verdict on themselves ("I’m a horrible mother") is never "what happened": it is what the mind added
-  pieces = pieces.map((p) => (p.guess !== 'interpretation' && HARSH.test(String(p.text || '')) ? { ...p, guess: 'interpretation' } : p));
-  // a feeling of their own ("I feel empty", "I can’t stop crying", "I’m feeling unsafe") is what is so, never
-  // what the mind added (feelingOpens: a feeling word the list doesn't name still opens as one)
-  pieces = pieces.map((p) => (feelingOpens(p.text) && !HARSH.test(String(p.text || '')) ? { ...p, guess: 'fact', feeling: true } : p));
-  const factP = pieces.find((p) => p.guess === 'fact') || (pieces.length > 1 ? pieces.find((p) => p.guess === 'unsure') : null);
-  const lastP = pieces.length > 1 ? pieces[pieces.length - 1] : null;
-  const guessP = pieces.find((p) => p.guess === 'interpretation' && p !== factP && readsAsGuess(p.text)) || (lastP && lastP !== factP && readsAsGuess(lastP.text) ? lastP : null);
-  const fact = factP ? exactPhrase(text, factP.text) : '';
-  const guess = guessP && guessP !== factP ? exactPhrase(text, guessP.text) : '';
-  return { fact, guess, pieces };
-}
-
 /**
- * A piece the engine was unsure of, taken as "what my mind added" only when it reads like one: about someone
- * else, ahead in time, a verdict or an extreme. What the person says about themselves, now ("I haven’t started",
- * "I can’t stop crying", "I feel empty"), is something that happened, never their mind's addition.
+ * The person's words split into "what happened" and "what my mind added", as exact phrases (review r8): only a
+ * clause with an interpretive marker (markers.js) is ever the guess, and only the part of it that carries the marker
+ * ("I'm worried I'll fail" → "I'll fail"); the stated event, or the feeling, is the fact.
  */
-const SELF_NOW = /^(?:(?:and|but|so|now|still) )?(?:i|i['’]ve|i['’]m|i am|i have|i had|i was|i feel|i felt|i keep|i can['’]?t|i cannot|i don['’]?t|i didn['’]?t|i haven['’]?t|i hadn['’]?t|i wasn['’]?t|i still|i just|i've)\b/iu;
-function readsAsGuess(piece) {
-  const p = String(piece || '');
-  if (feelingOpens(p) && !HARSH.test(p)) return false;
-  if (!SELF_NOW.test(p)) return true;
-  return MINDY.test(p) || FUTURE.test(p) || EXTREME.test(p) || HARSH.test(p);
+function split(text) {
+  const cl = clauses(text);
+  const g = cl.find((c) => c.kinds.size);
+  const f = cl.find((c) => !c.kinds.size) || (g?.feeling ? { text: g.feeling } : null);
+  const pieces = cl.map((c) => ({ text: c.guess, guess: c.kinds.size ? 'interpretation' : 'fact', ...(c.feeling ? { feeling: c.feeling } : {}) }));
+  return { fact: f ? exactPhrase(text, f.text) : '', guess: g ? exactPhrase(text, g.guess) : '', pieces };
 }
 
 /** "always", "never", or "nobody" / "everyone" as the subject of the sentence ("Nobody likes me"), not "in front of everyone". */
@@ -220,7 +200,9 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
   // back with them, one step), and the guess scenes only for a clause that really reads into it
   if (fairAnger(text)) return angerOrder(text, hint);
   const out = [];
-  const add = (p) => { if (p && PATTERNS.includes(p) && !out.includes(p)) out.push(p); };
+  // (review r8) the guess scenes only for the marker they need; every other scene acknowledges what was said
+  const add = (p) => { if (p && PATTERNS.includes(p) && !out.includes(p) && (!GUESS_PATTERNS.has(p) || fits(p))) out.push(p); };
+  const M = framingAllowed(text) ? markerKinds(text) : new Set();
   let found = [];
   try { found = detectPatterns(text); } catch { found = []; }
   const has = (id) => found.some((f) => f.pattern.id === id);
@@ -228,18 +210,20 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
   const strong = !!always && always.matches.some((m) => strongAlways(text, m));
   // the fallbacks below only offer a scene that can make sense for these words (a scene that doesn't fit
   // is never played to fill a gap: when the fitting ones run out, Zuzu says so)
-  const fits = (p) => {
-    if (p === 'mind_reading') return OTHERS.test(text) && (MINDY.test(text) || has('mind-reading'));
+  function fits(p) {
+    // (the guess scenes: only with the interpretive marker each one reads into, markers.js)
+    if (p === 'fact_vs_assumption') return M.size > 0;
+    if (p === 'mind_reading') return M.has('mind') && OTHERS.test(text);
+    if (p === 'overgeneralisation') return M.has('over') && strong;
+    if (p === 'self_criticism') return M.has('label') || M.has('should');
+    if (p === 'catastrophising') return M.has('cata');
+    if (p === 'all_or_nothing') return M.has('over') || M.has('cata') || M.has('label');
     if (p === 'personalisation') return (BLAME.test(text) || has('spotlight-on-me')) && !fairAnger(text);
     if (p === 'valid_anger') return fairAnger(text) || ANGRY.has(emotion);
     if (p === 'rumination') return CUES.rumination.test(text) || LOOPY.has(emotion) || /\bwhat if\b/i.test(text);
-    if (p === 'overgeneralisation') return strong;
-    if (p === 'self_criticism') return HARSH.test(text) || has('big-label') || has('should-rules');
-    if (p === 'catastrophising') return FUTURE.test(text) || has('worst-case-jump') || has('future-reading') || ANXIOUS.has(emotion);
-    if (p === 'all_or_nothing') return EXTREME.test(text) || has('all-or-nothing') || has('only-the-bad-bit') || has('shrinking-the-good');
     if (p === 'practical_problem') return CUES.practical_problem.test(text) || (!!scenario && scenario !== GENERAL && !fairAnger(text)) || ['overwhelm', 'stress'].includes(emotion);
-    return true;
-  };
+    return false;
+  }
   const maybe = (p) => { if (p && fits(p)) add(p); };
   if (hint) add(hint);
   if (CUES.rumination.test(text)) add('rumination');
@@ -253,18 +237,29 @@ export function candidatePatterns(text, { emotion = null, hint = null, scenario 
   if (strong) add('overgeneralisation');
   if (scenario && scenario !== GENERAL) for (const id of scenario.likelyPatterns || []) maybe(AUTHORED_TO_PATTERN[id]);
   if (emotion && EMOTION_DEFAULT[emotion]) maybe(EMOTION_DEFAULT[emotion]);
+  // (the scene each marker reads into comes before the general fact-and-guess one)
+  if (M.has('mind')) maybe('mind_reading');
+  if (M.has('label') || M.has('should')) maybe('self_criticism');
+  if (M.has('cata')) maybe('catastrophising');
+  if (M.has('over')) maybe('overgeneralisation');
   for (const p of ROTATION) maybe(p);
+  // the general fact-and-guess scene follows the ones each marker reads into (unless the server hinted it)
+  const fva = out.indexOf('fact_vs_assumption');
+  const last = Math.max(...['mind_reading', 'self_criticism', 'catastrophising', 'overgeneralisation'].map((p) => out.indexOf(p)));
+  if (fva >= 0 && last > fva && hint !== 'fact_vs_assumption') { out.splice(fva, 1); out.splice(last, 0, 'fact_vs_assumption'); }
   return out;
 }
 
 /** Fair anger's scenes, in the order "Show me another angle" walks (never fact-vs-guess on the wrong itself). */
 function angerOrder(text, hint = null) {
   const { guess } = angerSplit(text);
+  const M = framingAllowed(text) ? markerKinds(text) : new Set();
   const out = ['valid_anger'];
   if (CUES.rumination.test(text)) out.push('rumination');
-  if (guess && OTHERS.test(guess) && MINDY.test(guess)) out.push('mind_reading');
-  if (guess && !HARSH.test(guess)) out.push('fact_vs_assumption');
-  if (HARSH.test(text)) out.push('self_criticism');
+  // (only a clause with a marker of its own reads into the wrong: "and now everyone thinks I'm useless")
+  if (guess && M.has('mind') && OTHERS.test(guess)) out.push('mind_reading');
+  if (guess && M.size && !HARSH.test(guess)) out.push('fact_vs_assumption');
+  if (M.has('label') || M.has('should')) out.push('self_criticism');
   out.push('personalisation', 'practical_problem');
   if (hint && out.includes(hint)) { out.splice(out.indexOf(hint), 1); out.unshift(hint); }
   return out;
@@ -308,9 +303,11 @@ function kitThought(kitId, text, hit, pieces) {
   if (!m) return '';
   if (LABEL_KITS.has(kitId)) { const w = wholeLabel(text, m); return w && words(w) <= 5 ? w : ''; }
   if (CLAUSE_KITS.has(kitId)) {
-    const clause = pieces.map((p) => exactPhrase(text, p.text)).find((c) => c && c.toLowerCase().includes(m.toLowerCase()));
+    // (only the clause with the marker of this kind: "“she must hate me” is a guess", never the stated event)
+    const clause = exactPhrase(text, guessClause(text, [kitId === 'mind-reading' ? 'mind' : 'cata'])) || '';
     const c = String(clause || '').replace(/[\s.,;:!?…]+$/u, '');
-    return c && words(c) <= 9 ? c : '';
+    void pieces;
+    return c && words(c) <= 9 && markerKinds(c).has(kitId === 'mind-reading' ? 'mind' : 'cata') ? c : '';
   }
   return '';
 }
@@ -351,17 +348,16 @@ function linesFrom(text, pattern) {
  */
 export function authoredScene(text, { emotion = null, exclude = [], usedAngles = [], hint = null } = {}) {
   const t = String(text ?? '');
-  // death talk, or a harm word no ordinary idiom explains ("my mum's in hospital"): the gentle path (gentleScene:
-  // no mechanic, no fact/assumption split, nothing assumed), which the orchestrator plays
-  const route = harmRoute(t);
+  // death talk, or someone alive but going: the gentle path (gentleScene: no mechanic, no fact/assumption split,
+  // nothing assumed), which the orchestrator plays
   if (gentleRoute(t)) return gentleScene(t, { emotion });
-  // a feeling said plainly ("I feel empty", "I feel sad since my sister moved away"): acknowledged, with one
-  // small kind step (feelingScene), never a reading of what happened
+  // a feeling said plainly ("I feel empty", "I feel sick about the exam"): acknowledged, with one small kind step
+  // (feelingScene), never a reading of what happened
   const feel = feelingOf(t);
   if (feel) return feelingScene(t, feel.kind, { emotion, exclude, hint });
-  // a harm word only inside an ordinary idiom ("I lost my keys and my boss thinks I'm useless"): the kind-step
-  // mechanics with a feeling's safe lines, never a fact-vs-guess game (the backstop)
-  if (route === 'kind') return feelingScene(t, fairAnger(t) ? 'angry' : 'low', { emotion, exclude, hint, guarded: true });
+  // any word of the backstop's bag ("I lost my keys and my boss thinks I'm useless", "my mum's in hospital"): the
+  // kind-step mechanics with their own safe lines, never a fact-vs-guess game
+  if (bagWords(t)) return feelingScene(t, fairAnger(t) ? 'angry' : eventKind(t), { emotion, exclude, hint, guarded: true });
   let scenario = GENERAL;
   // a situation is trusted only on a real match (two keywords, or a phrase), never on one stray word
   try { const m = matchScenarios(t, { limit: 1 })[0]; scenario = m && m.score >= 2 ? m.scenario : GENERAL; } catch { scenario = GENERAL; }
@@ -370,8 +366,15 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   let detected = [];
   try { detected = detectPatterns(t); } catch { detected = []; }
   const cands = candidatePatterns(t, { emotion, hint, scenario });
-  // every scene that fits these words has been shown: say so (exhausted), never play one that doesn't fit
+  // every scene that fits these words has been shown: the acknowledging ones for a stated event follow (review r8),
+  // then Zuzu says so (exhausted), never playing one that doesn't fit
   const fresh = cands.find((p) => !exclude.includes(p));
+  // (no fitting scene, or every one shown, and no marker of their own: the acknowledging ones for a stated event
+  // follow; fair anger keeps to its own three)
+  if (!cands.length || (!fresh && !framingAllowed(t) && !fairAnger(t))) {
+    const kind = feelingScene(t, eventKind(t), { emotion, exclude, hint, guarded: true });
+    if (!cands.length || !kind.exhausted) return kind;
+  }
   const exhausted = !fresh;
   const pattern = fresh || cands[0] || 'fact_vs_assumption';
   const authoredId = PATTERN_TO_AUTHORED[pattern];
@@ -477,7 +480,14 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   else if (emotion && ANGRY.has(emotion) && allowed.includes('glitzi')) mallow = 'glitzi';
   else if (lead && allowed.includes(lead) && lead !== 'zuzu') mallow = lead;
 
-  return {
+  // (review r8) without an interpretive marker of their own, nothing here frames the words: a step or an angle that
+  // would ("Check one fact…", "They might…") gives way to an acknowledging one
+  if (!framingAllowed(t)) {
+    if (framesAsGuess(step)) step = secondPerson(GENERAL.nextSteps.find((x) => x.kind === 'act')?.text || KIND.steps.event);
+    if (framesAsGuess(l1) || framesAsGuess(l2)) [l1, l2] = framesAsGuess(AUTHORED_PAIRS[pattern][0]) || framesAsGuess(AUTHORED_PAIRS[pattern][1]) ? [l1, l2] : AUTHORED_PAIRS[pattern];
+    alternative = framesAsGuess(alternative) ? '' : alternative;
+  }
+  const scene = {
     source: 'authored',
     reasoning_pattern: pattern,
     interaction_type: PATTERN_INTERACTION[pattern],
@@ -499,6 +509,18 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
     scenario_id: scenario.id,
     ...(exhausted ? { exhausted: true } : {}),
   };
+  // the last word: a scene that would still frame words without a marker plays as an acknowledging one
+  if (!framingAllowed(t) && framesScene(scene)) return feelingScene(t, fairAnger(t) ? 'angry' : eventKind(t), { emotion, exclude, hint, guarded: true });
+  return scene;
+}
+
+/** The guess scenes: each needs an interpretive marker of its own in the words (markers.js). */
+const GUESS_PATTERNS = new Set(['fact_vs_assumption', 'mind_reading', 'catastrophising', 'overgeneralisation', 'all_or_nothing', 'self_criticism']);
+/** Someone else did something to them ("my sister ignored me", "they left me out", "he took my seat"). */
+const HURT_ACT = /\b(?:he|she|they|someone|somebody|people|everyone|(?:my|our|the|his|her|their|a)\s+(?:\w+\s+)?(?:mum|mom|dad|sister|brother|friend|friends|boss|manager|colleague|coworker|teacher|partner|boyfriend|girlfriend|husband|wife|ex|flatmate|housemate|roommate|neighbour|neighbor|coach|landlord|family|cousin|aunt|uncle|nan|grandad|son|daughter|kids?|team|mate|mates|classmates?|group))\s+(?:\w+\s+){0,2}?(?:\w+ed|stole|broke|took|told|said|left|hit|made|gave|threw|kept|sent|let|went|forgot|blocked|ghosted|dumped|shut|cut|wrote|spoke|put|ran|drove|sold|spent|kicked|bit)\s+(?:me|my|us|our|on\s+me|at\s+me|to\s+me|about\s+me|over\s+me)\b/iu;
+/** A stated event: something someone did to them ('hurt'), or something that happened ('event'). */
+export function eventKind(text) {
+  return HURT_ACT.test(String(text ?? '')) ? 'hurt' : 'event';
 }
 
 /** The longest of their words a subtitle line quotes (characters, without the end punctuation). */
@@ -602,6 +624,9 @@ export const FEELING_ORDER = Object.freeze({
   tired: ['assemble_step', 'separate_one', 'soften_harshness'],
   guilty: ['soften_harshness', 'assemble_step', 'separate_one'],
   angry: ['assemble_step', 'soften_harshness', 'separate_one'],
+  // a stated event (review r8): it happened; someone did it ('hurt': its weight goes back with them too)
+  event: ['assemble_step', 'soften_harshness', 'separate_one'],
+  hurt: ['assemble_step', 'return_responsibility', 'soften_harshness'],
 });
 function feelingOrder(kind, hint = null) {
   const order = [...(FEELING_ORDER[kind] || FEELING_ORDER.low)];
@@ -611,8 +636,10 @@ function feelingOrder(kind, hint = null) {
   return order;
 }
 /* (A line that frames what was said as a guess, or sends it to be checked: backstop.js framesAsGuess.) */
-/** The mechanics a feeling may play, whoever chose them (fair anger's own line too, for an angry feeling). */
-const FEELING_PLAYS = new Set(['assemble_step', 'soften_harshness', 'separate_one']);
+/** The mechanics a feeling or a stated event may play, whoever chose them (fair anger's own line too). */
+const FEELING_PLAYS = new Set(['assemble_step', 'soften_harshness', 'separate_one', 'return_responsibility']);
+/** …and the ones that acknowledge on their own lines whatever the words (a server's kind choice stays). */
+const KIND_PLAYS = new Set(['assemble_step', 'find_boundary', 'return_responsibility', 'let_loop_drift']);
 /**
  * A server scene for a feeling said plainly (feelingOf): its lines play when they never frame the feeling as
  * a guess, but on one of the feeling's own mechanics (never pull_apart's "What your mind added" or a first
@@ -623,12 +650,12 @@ export function feelingGuard(scene, text, { emotion = null, exclude = [] } = {})
   if (!scene || scene.source !== 'server') return scene;
   const feel = feelingOf(text);
   if (!feel) return scene;
-  if ([scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step].some(framesAsGuess)) {
+  if ([scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact, scene.possible_assumption].some(framesAsGuess)) {
     return feelingScene(text, feel.kind, { emotion, exclude });
   }
-  const plays = FEELING_PLAYS.has(scene.mechanic) || (feel.kind === 'angry' && scene.mechanic === 'find_boundary');
+  const plays = FEELING_PLAYS.has(scene.mechanic) && scene.mechanic !== 'return_responsibility' || (feel.kind === 'angry' && scene.mechanic === 'find_boundary');
   // (only the mechanic the client plays changes: the pattern and interaction stay the server's for its records)
-  return { ...scene, feeling: feel.kind, mechanic: plays ? scene.mechanic : 'assemble_step', practical_next_step: scene.practical_next_step || FEELING.steps[feel.kind] || FEELING.steps.low };
+  return { ...scene, feeling: feel.kind, mechanic: plays ? scene.mechanic : 'assemble_step', possible_assumption: '', alternative_angle: '', practical_next_step: scene.practical_next_step || FEELING.steps[feel.kind] || FEELING.steps.low };
 }
 
 /**
@@ -639,38 +666,92 @@ export function feelingGuard(scene, text, { emotion = null, exclude = [] } = {})
  * prompts (`feeling` set, `guarded`); lines that frame them, or an authored framing scene, give way to the
  * authored kind-step scene.
  */
-export function harmGuard(scene, text, { emotion = null, exclude = [] } = {}) {
-  if (!scene || scene.grief || framingAllowed(text)) return scene;
-  const kind = scene.feeling || feelingOf(text)?.kind || (fairAnger(text) ? 'angry' : 'low');
-  const lines = [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step];
-  if (lines.some(framesAsGuess) || (scene.source !== 'server' && !scene.feeling)) return feelingScene(text, kind, { emotion, exclude, guarded: true });
+export function guessGuard(scene, text, { emotion = null, exclude = [] } = {}) {
+  if (!scene || scene.grief) return scene;
+  // an interpretive marker of their own: the framing may play, but only that clause is the guess (a server's
+  // reading of the stated event as the guess gives way to the clause, and its lines to the authored ones)
+  if (framingAllowed(text)) return scene.source === 'server' ? onlyTheClause(scene, text) : scene;
+  const kind = scene.feeling || feelingOf(text)?.kind || (fairAnger(text) ? 'angry' : eventKind(text));
+  // (fair anger gets its own scenes, the wrong as the fact: find_boundary, its weight put back, one step)
+  const kindScene = () => (fairAnger(text) && !bagWords(text) && !scene.feeling ? authoredScene(text, { emotion, exclude }) : feelingScene(text, kind, { emotion, exclude, guarded: true }));
+  if (scene.source !== 'server') {
+    // an authored scene that doesn't frame them (fair anger's line, a practical step, replaying, its own blame) stays;
+    // beside a bag word only the kind steps' own lines play
+    if (framesScene(scene) || (bagWords(text) && !scene.feeling)) return kindScene();
+    return scene;
+  }
+  // a server scene whose lines frame them: the authored kind scene, with its own lines
+  if (framesLines(scene)) return kindScene();
+  // its kind lines stay (as for a feeling): on a mechanic that acknowledges on its own lines (fair anger's line, a
+  // step, replaying, its weight put back), else on a kind step with the kind lines (never a framing mechanic, a
+  // label's "harsh verdict" or "every time")
+  const keep = KIND_PLAYS.has(scene.mechanic) && !bagWords(text);
   return {
-    ...scene, feeling: kind, guarded: true,
-    mechanic: FEELING_PLAYS.has(scene.mechanic) ? scene.mechanic : 'assemble_step',
+    ...scene, ...(keep ? {} : { feeling: kind }), guarded: true,
+    mechanic: keep || FEELING_PLAYS.has(scene.mechanic) ? scene.mechanic : 'assemble_step',
     possible_assumption: '', alternative_angle: '',
-    practical_next_step: scene.practical_next_step || FEELING.steps[kind] || FEELING.steps.low,
+    practical_next_step: scene.practical_next_step || (EVENT_KINDS.has(kind) ? KIND.steps[kind] : FEELING.steps[kind]) || FEELING.steps.low,
   };
 }
-/** True when a scene would frame the person's words as a fact and a guess (its mechanic or a line of it). */
+/** (the r7 name) */
+export const harmGuard = guessGuard;
+const framesLines = (scene) => [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step, scene.known_fact, scene.possible_assumption, scene.alternative_angle].some(framesAsGuess);
+/**
+ * True when a scene would frame the person's words as a fact and a guess: its mechanic, a mechanic's own framing
+ * lines (an overgeneralisation's "every time", a label's "harsh verdict"), or a line of it.
+ */
 export function framesScene(scene) {
-  return !!scene && (FRAMING_MECHANICS.has(scene.mechanic) || [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step].some(framesAsGuess));
+  if (!scene) return false;
+  if (FRAMING_MECHANICS.has(scene.mechanic)) return true;
+  if (!scene.feeling && ['separate_one', 'soften_harshness'].includes(scene.mechanic)) return true;
+  return [scene.subtitle_line_1, scene.subtitle_line_2, scene.practical_next_step].some(framesAsGuess);
 }
+/**
+ * A server scene for words with a marker: only the marker's clause is the guess. Its assumption keeps its own words
+ * when it is about that clause, else the clause itself; a line that quotes something else of theirs as a guess gives
+ * way to the authored pair for the pattern.
+ */
+function onlyTheClause(scene, text) {
+  const clause = guessClause(text);
+  if (!clause) return scene;
+  // (the clause's own words: those the stated event shares, "everyone" in "in front of everyone", never count)
+  const fact = new Set(contentWords(split(text).fact));
+  const own = contentWords(clause).filter((w) => !fact.has(w)).length ? contentWords(clause).filter((w) => !fact.has(w)) : contentWords(clause);
+  const about = (s) => contentWords(s).some((w) => own.includes(w));
+  const quotesElse = (line) => framesAsGuess(line) && [...String(line || '').matchAll(/[“"]([^”"]+)[”"]/gu)].some((q) => !about(q[1]));
+  const badGuess = !!scene.possible_assumption && !about(scene.possible_assumption);
+  const badLines = quotesElse(scene.subtitle_line_1) || quotesElse(scene.subtitle_line_2);
+  if (!badGuess && !badLines) return scene;
+  const out = { ...scene };
+  if (badGuess) out.possible_assumption = `What your mind might be adding: “${clause.replace(/[.!?…]+$/u, '')}”.`;
+  if (badLines) {
+    const pair = out.reasoning_pattern === 'fact_vs_assumption' ? ownFactPair(split(text).fact, clause, false, text) : null;
+    [out.subtitle_line_1, out.subtitle_line_2] = pair || AUTHORED_PAIRS[out.reasoning_pattern] || [out.subtitle_line_1, out.subtitle_line_2];
+  }
+  return out;
+}
+const STOP = new Set(['that', 'this', 'with', 'they', 'them', 'their', 'what', 'just', 'have', 'been', 'your', 'mine', 'about', 'from', 'will', 'would', 'into', 'were', 'when', 'then', 'than', 'because', 'might', 'could', 'should', 'there', 'here', 'really', 'still', 'only', 'even', 'some', 'something', 'thing']);
+const contentWords = (s) => (String(s || '').toLowerCase().replace(/[‘’']/g, '').match(/\p{L}{4,}/gu) || []).filter((w) => !STOP.has(w)).map((w) => w.replace(/(?:ing|ed|s)$/u, '').replace(/e$/u, ''));
 
 /** A feeling's scene (feelingStatement): in the server's shape, with `feeling` set to its kind. */
 export function feelingScene(text, kind = 'low', { emotion = null, exclude = [], hint = null, guarded = false } = {}) {
   const order = feelingOrder(kind, hint);
   const fresh = order.find((m) => !exclude.includes(INTERACTION_PATTERN[m]));
   const mechanic = fresh || order[0];
-  const pair = FEELING.pairs[mechanic];
-  const l1 = mechanic === 'assemble_step' ? (FEELING.first[kind] || pair[0]) : pair[0];
+  // (a stated event's own lines: it happened, it counts; a feeling's: it is real)
+  const event = EVENT_KINDS.has(kind);
+  const pairs = event || !FEELING.pairs[mechanic] ? KIND.pairs : FEELING.pairs;
+  const firsts = event ? KIND.first : FEELING.first;
+  const pair = pairs[mechanic];
+  const l1 = mechanic === 'assemble_step' ? (firsts[kind] || pair[0]) : pair[0];
   return {
     source: 'authored', feeling: kind,
     reasoning_pattern: INTERACTION_PATTERN[mechanic], interaction_type: mechanic, mechanic,
     // a gentle Mallow for low, lonely and tearful feelings; Zuzu for the rest (nobody bouncy)
     mallow_character: ['low', 'lonely', 'crying', 'heavy'].includes(kind) ? 'blubi' : 'zuzu',
     emotion: emotion || null, situation_type: null,
-    known_fact: FEELING.known, possible_assumption: '', alternative_angle: '',
-    practical_next_step: FEELING.steps[kind] || FEELING.steps.low,
+    known_fact: event ? '' : FEELING.known, possible_assumption: '', alternative_angle: '',
+    practical_next_step: (event ? KIND.steps[kind] : FEELING.steps[kind]) || FEELING.steps.low,
     subtitle_line_1: l1, subtitle_line_2: pair[1], safety_status: 'ok',
     authored_pattern: null, angle_id: null, alt_id: null, scenario_id: null,
     ...(guarded ? { guarded: true } : {}),
@@ -678,7 +759,7 @@ export function feelingScene(text, kind = 'low', { emotion = null, exclude = [],
   };
 }
 
-const HARSH = /\b(?:i['’]?m|i am|i feel like)(?: (?:so|such|a|an|just|completely|totally|really|basically|the|absolute|total|complete|utter|utterly|literally|actually|massive|huge|biggest))* (?:stupid|an? idiot|idiot|a failure|failure|a loser|loser|useless|terrible|pathetic|worthless|hopeless|incompetent|a disaster|disaster|a mess|mess|a joke|joke|a fraud|fraud|a burden|burden|awful|horrible|rubbish|selfish|lazy|disgusting|unlovable|not good enough|not enough|too much|dumb|thick|clueless|(?:an? )?bad (?:person|friend|mum|mom|mother|dad|father|parent|daughter|son|sister|brother|partner|wife|husband|girlfriend|boyfriend|human|employee|student|teacher|colleague))\b/iu;
+/* (A harsh label of their own: markers.js HARSH.) */
 /** The blame the person put on themselves, as typed ("it's my fault"), for the heaviest weight. */
 const BLAME_PHRASE = /(?:\b(?:it['’]?s|it is|it was|that['’]?s|that was|this is|was)\s+)?(?:all\s+)?\b(?:my fault|on me|because of me|my own fault|down to me|i ruined it|i let (?:them|everyone|the team|her|him) down)\b/iu;
 
@@ -738,13 +819,15 @@ export function sceneParts(text, scene = {}) {
   if (!harsh) { try { const big = detectPatterns(t).find((f) => f.pattern.id === 'big-label'); harsh = big ? wholeLabel(t, big.matches[0].text) : ''; } catch { /* none */ } }
   // no harsh word of their own: the scene's (a server's assumption), or their words when short, else an authored name for it
   if (!harsh) harsh = (server && firstWhole(scene.possible_assumption, 70)) || (g0 && g0.length <= 48 ? g0 : '') || (t.length <= 48 ? t : '') || HARSH_NAME;
-  // a feeling's plate (soften) carries the feeling as they said it, never a name for a verdict
+  // a feeling's (or a stated event's) plate (soften) carries their words as they said them, never a name for a verdict
   if (scene?.feeling) harsh = excerpt(t, WORDS_MAX);
 
   // the heaviest weight: the blame as they put it ("it's my fault"), else the part their mind added
   const bm = BLAME_PHRASE.exec(t);
   // (fair anger: the wrong itself, to be put back with whoever did it)
-  const weight = bm ? excerpt(bm[0].trim(), 44) : anger ? (f0 && f0.length <= 44 ? f0 : '') : g0 && !sameWords(g0, f0) && g0.length <= 44 ? g0 : '';
+  // (something someone did to them: what they did, to be put back with them)
+  const hurt = scene?.feeling === 'hurt' || scene?.feeling === 'angry';
+  const weight = bm ? excerpt(bm[0].trim(), 44) : anger || hurt ? (f0 && f0.length <= 44 ? f0 : hurt && t.length <= 44 ? t : '') : g0 && !sameWords(g0, f0) && g0.length <= 44 ? g0 : '';
 
   // mind reading: the scene's own other explanation first (a server's whole sentence; an authored one only when
   // it reads the other person), then the authored possibilities (three, all different, each about them)

@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { authoredScene, sceneParts, candidatePatterns, deathTalk, gentleScene, feelingOf, feelingScene, feelingGuard, framesAsGuess, FEELING_ORDER } from '../src/beyond/authored.js';
-import { serverGrief } from '../src/beyond/grief.js';
+import { serverGrief, serverLoss } from '../src/beyond/grief.js';
 import { feelingStatement, feelingClause, FEELING_LOOK } from '../src/beyond/feelings.js';
 import { GRIEF, FEELING, MECHANIC_LINES, mechanicLines, EXPLORE } from '../src/beyond/lines.js';
 import { checkText } from '../src/engine/safety.js';
@@ -110,7 +110,8 @@ test('r5.1 (r7): every death the person names is death talk (a person or a pet; 
 /** Of this round's "not a loss" probes, the unambiguous idioms (death-words.js): still never death talk. */
 const IDIOMS = [
   'I lost my mum’s ring and she’ll be furious with me.', 'I lost my dad’s car keys and he’s going to kill me.', 'my daughter passed! she got into uni', 'My son passed his driving test and I didn’t.',
-  'My brother passed his exams and I feel like the failure of the family.', 'My sister passed me in the corridor and didn’t say hi.', 'My mum passed her driving test at 50!', 'Grandad passed out at dinner.',
+  'My brother passed his exams and I feel like the failure of the family.', 'My sister passed me in the corridor and didn’t say hi.', 'My mum passed her driving test at 50!',
+  // (r8: "Grandad passed out at dinner." is death talk now: the "passed out" blank could hide a death)
   'My mum passed on the message but nobody listened.', 'My friend passed on my CV to her manager.', 'I lost my keys again.', 'I lost my temper with my son.', 'I lost my dad’s watch that he gave me.',
   'My phone died in the middle of the call.', 'The battery died on the way home.', 'My baby monitor died in the night.', 'My dad’s car died on the motorway.', 'My boss gives me grief about everything.',
   'Good grief, what a week.', 'If you don’t revise it’s your funeral.', 'I made a grave mistake at work.', 'RIP my phone, it fell in the bath.', 'I nearly died of embarrassment.', 'I died laughing at the meeting.',
@@ -162,7 +163,8 @@ test('r5.1: grief in the orchestrator: gentle first, the server may answer with 
   assert.equal((grief.match(/client\.angle\(/g) || []).length, 1, 'one request at most');
   // the server's lines are said over death talk only when it answered with grief or a loss (r7), and never when they
   // would read it as a guess
-  assert.match(grief, /res\?\.status === 'ok' && serverGrief\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && res\.scene\?\.subtitle_line_1 && res\.scene\?\.subtitle_line_2 && !framesAsGuess\(res\.scene\.subtitle_line_1\) && !framesAsGuess\(res\.scene\.subtitle_line_2\)\) scene = res\.scene;/);
+  // (r8: both lines must acknowledge, grief.js griefLinesOk)
+  assert.match(grief, /res\?\.status === 'ok' && serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && griefLinesOk\(res\.scene\)\) scene = res\.scene;/);
   assert.match(grief, /sleep\(devBudget \|\| ANGLE_BUDGET_MS\)/);
   assert.match(grief, /res\?\.status === 'crisis'\) \{ crisisMode\(\); return; \}/);
   assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\); return; \}/);
@@ -174,7 +176,7 @@ test('r5.1: grief in the orchestrator: gentle first, the server may answer with 
   const start = src.slice(src.indexOf('async function startAngle('), src.indexOf('async function waitingLines('));
   assert.match(start, /if \(gentleRoute\(S\.text\)\) return griefMode\(\);/);
   assert.ok(start.indexOf('gentleRoute(S.text)') < start.indexOf('spawnThought()'));
-  assert.match(start, /if \(res\.status === 'ok' && res\.scene && serverGrief\(res\.scene, S\.text, \{ heavy: heavyWords \}\)\) \{ griefMode\(\{ scene: framesAsGuess\(res\.scene\.subtitle_line_1\) \|\| framesAsGuess\(res\.scene\.subtitle_line_2\) \? null : res\.scene, asked: true \}\); return; \}/);
+  assert.match(start, /if \(res\.status === 'ok' && res\.scene && serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\)\) \{ griefMode\(\{ scene: griefLinesOk\(res\.scene\) \? res\.scene : null, asked: true \}\); return; \}/);
   assert.equal(framesAsGuess('What happened is the part that actually happened.'), true);
   assert.equal(framesAsGuess('A year is not a deadline for missing your dad.'), false);
   // the gentle lines
@@ -200,12 +202,17 @@ test('r5.1 (r7): "passed" after a person is death talk (gentle, never a game); a
 });
 
 test('r5.1: a server scene reads as grief only when it says so (a loss, read as grief)', () => {
-  assert.equal(serverGrief({ source: 'server', situation_type: 'loss', emotion: 'grief' }), true);
-  assert.equal(serverGrief({ source: 'server', situation_type: 'loss', emotion: 'Mourning' }), true);
-  assert.equal(serverGrief({ source: 'server', situation_type: 'loss', emotion: 'disappointment' }), false, 'a lost job is not a death');
-  assert.equal(serverGrief({ source: 'server', situation_type: 'work', emotion: 'grief' }), false);
-  assert.equal(serverGrief({ source: 'authored', situation_type: 'loss', emotion: 'grief' }), false);
-  assert.equal(serverGrief(null), false);
+  assert.equal(serverLoss({ source: 'server', situation_type: 'loss', emotion: 'grief' }), true);
+  assert.equal(serverLoss({ source: 'server', situation_type: 'loss', emotion: 'Mourning' }), true);
+  assert.equal(serverLoss({ source: 'server', situation_type: 'loss', emotion: 'disappointment' }), false, 'a lost job is not a death');
+  assert.equal(serverLoss({ source: 'server', situation_type: 'work', emotion: 'grief' }), false);
+  assert.equal(serverLoss({ source: 'authored', situation_type: 'loss', emotion: 'grief' }), false);
+  assert.equal(serverLoss(null), false);
+  // (r8) its two lines are said only when both acknowledge: never a question, a reframe or a guess
+  const kind = { subtitle_line_1: 'That sounds so hard.', subtitle_line_2: 'You loved them, and that love is still here.' };
+  assert.equal(serverGrief({ source: 'server', situation_type: 'loss', emotion: 'grief', ...kind }), true);
+  assert.equal(serverGrief({ source: 'server', situation_type: 'loss', emotion: 'grief' }), false, 'no lines');
+  assert.equal(serverGrief({ source: 'server', situation_type: 'loss', emotion: 'grief', ...kind, subtitle_line_2: 'Can you think of one time it went differently?' }), false);
 });
 
 // --------------------------------------------------------------- 2. feelings --
@@ -225,7 +232,8 @@ const FEELINGS = [
   ['I feel disappointed in myself', 'low'], ['I feel sick with nerves', 'anxious'],
 ];
 const NOT_FEELINGS = [
-  'I feel like everyone hates me.', 'I feel like a failure.', 'I feel anxious about tomorrow’s interview.', 'I feel like nobody cares about me.', 'I’m a terrible person.',
+  // (r8: "I feel anxious about tomorrow’s interview." is a feeling now: a feeling about any noun is a feeling)
+  'I feel like everyone hates me.', 'I feel like a failure.', 'I feel like nobody cares about me.', 'I’m a terrible person.',
   'I feel guilty because she must hate me now.', 'Nobody likes me.', 'I’m useless.', 'I feel like I’ll never be good enough.', 'I’m so angry with my boss.',
   'I feel tired because my boss gives me too much work.', 'I feel lonely since my friends stopped inviting me.', 'I feel like a burden.', 'Everyone thinks I’m boring and I feel sad.',
   'My sister ignored me at the party, she must hate me.', 'I have three essays due on Monday and I haven’t started.',
@@ -302,7 +310,8 @@ test('r5.2: the orchestrator never fact-checks a feeling: its explore prompts, f
   // (r7: and words beside a death or harm word, the backstop, get the same)
   assert.match(src, /const gentle = !!scene\.feeling \|\| !framingAllowed\(S\.text\);\s*let remaining = gentle \? EXPLORE\.filter\(\(p\) => FEELING\.explore\.includes\(p\.id\)\) : EXPLORE\.slice\(\);/);
   assert.deepEqual(EXPLORE.filter((p) => FEELING.explore.includes(p.id)).map((p) => p.label), ['What would you tell a friend?', 'Is there one useful action?']);
-  assert.match(src, /if \(p\.field === 'friend'\) return scene\.feeling \|\| !framingAllowed\(S\.text\) \? FEELING\.friend :/);
+  // (r8: a feeling always gets the feeling's friend line; without a marker, any friend line that frames does too)
+  assert.match(src, /return scene\.feeling \|\| \(!framingAllowed\(S\.text\) && framesAsGuess\(own\)\) \? FEELING\.friend : own;/);
   assert.match(src, /choose\(gentle \? \(first \? FEELING\.exploreAsk : FEELING\.exploreMore\)/, 'never "Want to test it?"');
   assert.match(src, /if \(feel\) careFace\(\); else zt\?\.setEmotion\(\{ curious: 0\.65, playful: 0\.35 \}/, 'no playful face for a feeling');
   for (const l of [FEELING.exploreAsk, FEELING.exploreMore]) assert.doesNotMatch(l, /test|check|know/i, l);
@@ -353,7 +362,7 @@ test('r5.2: a server scene for a feeling never plays as "What your mind added" e
   assert.equal(feelingGuard(other, 'My sister ignored me at the party, she must hate me.'), other);
   assert.equal(feelingGuard({ ...other, source: 'authored' }, 'I feel empty').source, 'authored');
   const src = read('src/beyond/another-angle.js');
-  assert.match(src, /scene = harmGuard\(feelingGuard\(res\.scene, S\.text, \{ emotion: S\.emotion, exclude \}\), S\.text, \{ emotion: S\.emotion, exclude \}\);/);
+  assert.match(src, /scene = guessGuard\(feelingGuard\(res\.scene, S\.text, \{ emotion: S\.emotion, exclude \}\), S\.text, \{ emotion: S\.emotion, exclude \}\);/);
 });
 
 // a 2D context that accepts every call, and tags without DOM (as in beyond.test.mjs)
