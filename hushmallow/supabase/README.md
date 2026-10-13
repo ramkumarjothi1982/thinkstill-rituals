@@ -50,7 +50,8 @@ Every function has `search_path = ''` and schema-qualified names.
 | 6 | `migrations/0006_consent_withdrawal.sql` | turning a switch off (or deleting the consent row) deletes what that switch synced |
 | 7 | `migrations/0007_delete_my_account.sql` | `public.delete_my_account()`: no arguments, deletes the **caller's** rows and the caller's `auth.users` row (cascading to Supabase Auth's identities and sessions); executable by `authenticated` only |
 | 8 | `migrations/0008_backfill_profiles.sql` | adds a profile for every account created before step 2 (safe to re-run any time) |
-| ✓ | `tests/rls_check.sql` | proves the isolation (below). Run it after step 8, and again after any change. |
+| 9 | `migrations/0009_row_cap_upserts.sql` | the 64-row cap counts only new rows, so saving the same 64 favourites or tools again (every sync does) is never refused. **If you already ran 0001–0008, run just this one.** |
+| ✓ | `tests/rls_check.sql` | proves the isolation (below). Run it after step 9, and again after any change. |
 
 Every migration is wrapped in a transaction and is safe to run again (it
 replaces policies, functions and triggers; it never drops data).
@@ -61,14 +62,15 @@ Paste and run. It creates two throwaway accounts directly in `auth.users`
 (`rls-check-…@example.invalid`; Supabase Auth sends no email for rows
 written this way), acts as each with `role authenticated` and
 `request.jwt.claims` exactly as the Data API does, then as `anon`, and checks
-34 things: RLS forced and no anon privileges on every table, the right owner
+35 things: RLS forced and no anon privileges on every table, the right owner
 and `search_path` on every function, the sign-up trigger, that A can never
 read, create, change or delete B's rows (and the reverse), that nothing syncs
-without consent and consent is time-stamped, that free text is refused, that
+without consent and consent is time-stamped, that free text is refused, that the
+64-row cap allows re-saving the same 64 but not a 65th, that
 withdrawing consent deletes the synced rows, and that `delete_my_account()`
 removes only the caller. It then **rolls everything back on purpose**, so
 nothing is left. The result is one column: a `PASS`/`FAIL` line per check and
-`ALL 34 CHECKS PASSED. …` at the end. Any `FAIL`: do not switch sign-in on.
+`ALL 35 CHECKS PASSED. …` at the end. Any `FAIL`: do not switch sign-in on.
 
 (The same files are checked by `tools/auth/sql-check.sh` on a throwaway
 local PostgreSQL with a small Supabase stand-in, and by the CI end-to-end
@@ -130,4 +132,4 @@ Backups), switch sign-in off in the app (remove `SUPABASE_URL` /
 If the SQL editor's role is not allowed to drop the trigger on `auth.users`,
 the script leaves it in place doing nothing (sign-ups keep working) and says
 so; delete it in Dashboard → Database → Triggers and run the script again.
-To return, run the migrations again from `0001`, then `0008`.
+To return, run the migrations again from `0001` to `0009`.

@@ -149,6 +149,26 @@ begin
     total := total + 1; if not ok then fails := fails + 1; end if;
     report := report || format('%s  free text is refused in the progress sequence (%s)', case when ok then 'PASS' else 'FAIL' end, state);
 
+    -- the 64-row cap counts new rows only (0009): saving the same 64 again, as every sync does, works; a 65th does not
+    begin
+      insert into public.favourite_worlds (user_id, world_id, position)
+        select a, 'cap-world-' || g, g from generate_series(1, 63) g;   -- 64 with static-storm
+      insert into public.favourite_worlds (user_id, world_id, position)
+        select a, w.world_id, w.position from public.favourite_worlds w where w.user_id = a
+        on conflict (user_id, world_id) do update set position = excluded.position;
+      select count(*) into n from public.favourite_worlds where user_id = a;
+      ok := n = 64; state := format('%s kept, the same 64 saved again', n);
+      begin
+        insert into public.favourite_worlds (user_id, world_id) values (a, 'cap-world-65');
+        ok := false; state := state || ', a 65th accepted';
+      exception when others then ok := ok and sqlstate = '23514'; state := state || ', a 65th refused (' || sqlstate || ')';
+      end;
+      delete from public.favourite_worlds where user_id = a and world_id like 'cap-world-%';
+    exception when others then ok := false; state := sqlstate || ' ' || sqlerrm;
+    end;
+    total := total + 1; if not ok then fails := fails + 1; end if;
+    report := report || format('%s  at most 64 favourites: re-saving them all works, a 65th is refused (%s)', case when ok then 'PASS' else 'FAIL' end, state);
+
     -- as B ------------------------------------------------------------
     execute 'reset role';
     perform set_config('request.jwt.claims', claims_b, true);

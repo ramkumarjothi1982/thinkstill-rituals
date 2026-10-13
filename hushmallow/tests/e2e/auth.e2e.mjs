@@ -38,18 +38,25 @@
 //   sync        both opt-in switches: rows appear (consent time-stamped by the server), later changes follow,
 //               withdrawing deletes them, the phone keeps its own copy
 //   refresh     wait past the access token's expiry (jwt_expiry 120 s): still signed in, the next call works
-//   password    change password with reauthentication (the emailed 6-digit code). Supabase Auth checks the
-//               code only for sessions over 24 hours old ("recently signed in" otherwise): first a fresh
-//               session shows that rule, then the session is aged past it in the local database and a
-//               wrong code is refused, the right one works
+//   guestkeys   coordinator decision 3: a snapshot of today's guest keys boots in the real app as a guest,
+//               then sign in → "Not now" → the account → sign out: every guest key byte-identical, unmoved
+//   password    real reauthentication for every session: the CURRENT password first, checked with a sign-in
+//               on an isolated client that is signed out again with scope local. A session from today: a
+//               wrong current password is refused ("That password doesn't match."), the right one changes
+//               it at once with no code, the page's own session stays alive. A session aged past 24 hours
+//               in the local database: Supabase asks for reauthentication, the emailed 6-digit code is
+//               required, a wrong code is refused, the right one works
 //   signout     every supabase-js key removed; the guest's things back; the account's copy kept apart
 //   reset       forgot password → the reset email → its link on a small phone → a new password → signed in there →
 //               signed in here with it
 //   expiry      the session is ended on the server: the page drops to guest calmly, guest things untouched
 //   people      a second account on the same browser: none of the first account's things; with A's token
 //               PostgREST returns nothing of B's and refuses to write B's rows; anon gets nothing
-//   delete      delete account (typed confirmation) → the auth user and every row gone, sign-in fails,
-//               this device's copy wiped, the other account and the guest untouched
+//   shared      B's reset link opened in a second tab while A is signed in on the same browser: B's new
+//               password is saved, A's session there ends on the server, the first tab leaves A's namespace
+//   delete      delete account (typed confirmation) with a sync started just before → the auth user and
+//               every row gone, sign-in fails, this device's copy wiped (and still wiped seconds later), the
+//               other account and the guest untouched
 //   unconfirmed sign in before confirming → "Please confirm your email first" → send the link again
 import { createRequire } from 'node:module';
 import { execFile } from 'node:child_process';
@@ -57,6 +64,7 @@ import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { classifyKey, keyLabel } from '../../src/auth/config.js';
+import { todayGuestKeys, APP_REWRITES } from '../helpers/guest-snapshot.mjs';
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost']);
 const isLocalUrl = (u, protocols = ['http:', 'https:']) => {
@@ -532,53 +540,131 @@ async function refresh() {
 
 async function password() {
   const p = S.phone;
-  // 1. A session signed in under 24 hours ago counts as "recently signed in" for Supabase Auth's
-  //    secure password change: the server does not check the emailed code then (documented
-  //    behaviour). Seen here so docs/AUTH.md and the owner's checklist describe the real server.
+  const current = S.passA || PASS1;
+  // 1. a session signed in today: the CURRENT password is checked first; no code is asked for
   await tapView(p, '[data-act="password"]', 'password');
+  const pa = await p.evaluate(() => ({ cur: document.querySelector('[data-auth-view] input[name="current"]')?.autocomplete, nw: document.querySelector('[data-auth-view] input[name="password"]')?.autocomplete, user: document.querySelector('[data-auth-view] input[name="username"]')?.autocomplete, forgot: !!document.querySelector('[data-act="forgot-current"]'), code: !!document.querySelector('[data-auth-view] input[name="code"]') }));
+  check(pa.cur === 'current-password' && pa.nw === 'new-password' && pa.user === 'username' && pa.forgot && !pa.code, 'Change password asks for the current password and the new one (no code first); forgot-password one tap away', JSON.stringify(pa));
+  const sid = jwtPayload((await sessionOf(p))?.access_token)?.session_id;
   let seen = await mail.seen(A);
-  await tap(p, '[data-act="send-code"]');
-  await p.waitForSelector('[data-auth-view="password"] input[name="code"]', { timeout: 30000 });
-  const m0 = await mail.next(A, seen, 'reauthentication');
-  if (!m0?.code) throw new Error('no reauthentication code (fresh session)');
-  await fill(p, 'code', m0.code === '000000' ? '111111' : '000000'); await fill(p, 'password', PASSX);
+  await fill(p, 'current', 'not-my-password'); await fill(p, 'password', PASSX);
   await tap(p, '[data-act="password-submit"]');
-  await p.waitForFunction(() => document.querySelector('[data-auth-view] .hm-auth-error')?.textContent || document.querySelector('[data-auth-view]')?.dataset.authView !== 'password', null, { timeout: 30000 });
-  const freshAccepted = (await canSignIn(A, PASSX)) === 200;
-  check(freshAccepted, 'a session under 24 hours old: Supabase Auth changes the password without checking the code (its "recently signed in" rule; see docs/AUTH.md)', freshAccepted ? 'accepted, as documented' : `refused: ${await errText(p)}`);
-  if (freshAccepted) S.passA = PASSX;
-  if (await viewOf(p) === 'password') await p.goBack().catch(() => {});
+  await p.waitForFunction(() => document.querySelector('[data-auth-view] .hm-auth-error')?.textContent, null, { timeout: 30000 });
+  const e1 = await errText(p);
+  check(e1 === 'That password doesn’t match.' && (await canSignIn(A, PASSX)) === 400, 'a session from today, a wrong current password: "That password doesn’t match." and nothing changes', e1);
+  await shot(p, 'password-01-wrong-current-390');
+  await fill(p, 'current', current);
+  await tap(p, '[data-act="password-submit"]');
   await waitView(p, 'account');
-  // 2. Older sessions must give the code: age this session past the window in the local
-  //    database, then refresh so the page holds the aged session's next token
+  const okX = await canSignIn(A, PASSX), okCur = await canSignIn(A, current);
+  check(okX === 200 && okCur === 400, 'the right current password: the new one works at once, the old one no longer does', `${okX}/${okCur}`);
+  S.passA = okX === 200 ? PASSX : current;
+  const none = await mail.next(A, seen, 'reauthentication', 4000);
+  check(!none, 'no code is emailed on a session signed in today');
+  check(UUID.test(String(sid)) && await db.sessionAlive(sid) && await status(p) === 'signed-in', 'this page’s own session is alive: the check’s sign-in was ended with scope local, never global', String(sid));
+  // 2. a session aged past Auth's 24-hour window (local database only), then refreshed so the page holds its next token
   await db.ageSessions(S.uidA, 25);
   const refreshed = await p.evaluate(() => window.__hush.auth.load().then((a) => a.ensureClient()).then((c) => c.auth.refreshSession()).then((r) => !!r.data?.session && !r.error));
   check(refreshed, 'the session is aged past Auth\'s 24-hour window (local database only) and refreshed');
   await tapView(p, '[data-act="password"]', 'password');
   await sleep(1200);   // Auth sends one of these a second at most here (config.toml max_frequency)
   seen = await mail.seen(A);
-  await tap(p, '[data-act="send-code"]');
+  await fill(p, 'current', S.passA); await fill(p, 'password', PASS2);
+  await tap(p, '[data-act="password-submit"]');
   await p.waitForSelector('[data-auth-view="password"] input[name="code"]', { timeout: 30000 });
   const m = await mail.next(A, seen, 'reauthentication');
-  check(!!m?.code && /^\d{6}$/.test(m.code) && m.subject === SUBJECTS.reauthentication, 'a 6-digit code is emailed first (supabase/templates/reauthentication.html)', m ? `${m.subject}` : 'no email');
+  check(!!m?.code && /^\d{6}$/.test(m.code) && m.subject === SUBJECTS.reauthentication, 'a session over 24 hours old: Supabase asks for reauthentication; a 6-digit code is emailed (supabase/templates/reauthentication.html)', m ? `${m.subject}` : 'no email');
   if (!m?.code) throw new Error('no reauthentication code');
   check(await p.getAttribute('[data-auth-view] input[name="code"]', 'autocomplete') === 'one-time-code', 'the code field is autocomplete=one-time-code');
-  const wrongCode = m.code === '000000' ? '111111' : '000000';
-  await fill(p, 'code', wrongCode); await fill(p, 'password', PASS2);
-  await tap(p, '[data-act="password-submit"]');
+  check((await canSignIn(A, PASS2)) === 400, 'nothing changes before the code');
+  await fill(p, 'code', m.code === '000000' ? '111111' : '000000');
+  await tap(p, '[data-act="code-submit"]');
   await p.waitForFunction(() => document.querySelector('[data-auth-view] .hm-auth-error')?.textContent || document.querySelector('[data-auth-view]')?.dataset.authView !== 'password', null, { timeout: 30000 });
   const refused = /code didn’t work/.test(await errText(p));
-  check(refused && (await canSignIn(A, PASS2)) === 400, 'a session over 24 hours old: a wrong code is refused by the server ("That code didn’t work") and the password stays as it was', await errText(p));
-  await shot(p, 'password-01-wrong-code-390');
+  check(refused && (await canSignIn(A, PASS2)) === 400, 'a wrong code is refused by the server ("That code didn’t work") and the password stays as it was', await errText(p));
+  await shot(p, 'password-02-wrong-code-390');
   if (refused) {
     await fill(p, 'code', m.code);
-    await tap(p, '[data-act="password-submit"]');
+    await tap(p, '[data-act="code-submit"]');
     await waitView(p, 'account');
   }
-  const before = S.passA || PASS1;
-  const okNew = await canSignIn(A, PASS2), okOld = await canSignIn(A, before);
+  const okNew = await canSignIn(A, PASS2), okOld = await canSignIn(A, S.passA);
   check(okNew === 200 && okOld === 400, 'the right code: the new password works, the old one no longer does', `${okNew}/${okOld}`);
-  S.passA = okNew === 200 ? PASS2 : before;
+  S.passA = okNew === 200 ? PASS2 : S.passA;
+}
+
+/** Coordinator decision 3: today's guest keys, byte for byte, through a sign-in that chose "Not now". */
+async function guestKeys() {
+  const ctx = await newCtx(390, 844);
+  const g = await newPage(ctx, 'guestkeys');
+  const snap = todayGuestKeys(Date.now());
+  const want = Object.fromEntries(Object.entries(snap).sort());
+  // the phone's own keys (src/auth/namespace.js DEVICE_KEYS) follow whoever uses it while an account is signed in
+  const DEVICE = ['hm2:entitlement', 'hm2:beyond.device', 'hm2:beyond.session', 'hm2:beyond.invite', 'hm2:sound', 'hm2:haptics'];
+  const keysNow = () => g.evaluate(() => Object.fromEntries(Object.keys(localStorage).filter((k) => k.startsWith('hm2:') && !k.startsWith('hm2:u:')).sort().map((k) => [k, localStorage.getItem(k)])));
+  const same = async (label, { device = true } = {}) => {
+    const got = await keysNow();
+    const changed = Object.keys({ ...want, ...got }).filter((k) => (!device && DEVICE.includes(k) ? false : APP_REWRITES.includes(k) ? !(k in got) : got[k] !== want[k]));
+    const added = Object.keys(got).filter((k) => !(k in want));
+    return check(!changed.length && !added.length, label, JSON.stringify({ changed, added }));
+  };
+  await g.goto(`${SITE}/version.json`);
+  await g.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, snap);
+  await g.goto(`${SITE}/`); await appReady(g);
+  await sleep(3000);
+  const reads = await g.evaluate((ver) => Promise.all([import(`/v/${ver}/src/engine/flow-store.js`), import(`/v/${ver}/src/engine/garden.js`), import(`/v/${ver}/src/beyond/consent.js`)]).then(([f, gd, c]) => ({ status: window.__hush.auth.status(), favs: f.favouriteWorlds(window.__hush.store), garden: Object.keys(gd.readGarden(window.__hush.store).skills), consent: c.consentState(window.__hush.store), textScale: window.__hush.prefs.get('textScale') })), VER);
+  check(reads.status === 'guest' && reads.favs.join() === 'static-storm,luminous-ocean' && reads.garden.join() === 'slowing-down' && reads.consent === 'yes' && reads.textScale === 1.25, 'today’s guest keys boot in the built app (sign-in on): read exactly as before', JSON.stringify(reads));
+  await same('after boot: every guest key byte-identical, nothing moved or added');
+  await openAccount(g);
+  const r = await signInUi(g, A, S.passA || PASS1);
+  check(r === 'choice', 'signing in on a phone with guest things asks once', r);
+  await same('signed in, before answering: no guest key touched');
+  await tapNav(g, '[data-act="fresh"]');
+  await waitView(g, 'account');
+  check(await g.evaluate(() => window.__hush.auth.namespace.mode) === 'account', '“Not now”: the account’s own namespace');
+  await same('in the account: the guest’s own keys are untouched (the phone’s sound / haptics follow the person using it)', { device: false });
+  await signOutUi(g);
+  await sleep(2500);
+  check(await status(g) === 'guest', 'signed out: a guest again');
+  await same('after sign-in → “Not now” → sign-out: every guest key byte-identical and unmoved');
+  await shot(g, 'guestkeys-01-guest-again-390');
+  await ctx.close();
+}
+
+/** B's reset link opened in a second tab while A is signed in on the same browser. */
+async function shared() {
+  const ctx = await newCtx(390, 844);
+  const t1 = await newPage(ctx, 'tab1-a');
+  await openAccount(t1);
+  const r = await signInUi(t1, A, S.passA);
+  if (r === 'choice') await tapNav(t1, '[data-act="fresh"]');
+  await waitView(t1, 'account');
+  check(await uidOf(t1) === S.uidA, 'tab 1: A is signed in on this browser');
+  const sidA = jwtPayload((await sessionOf(t1))?.access_token)?.session_id;
+  const seen = await mail.seen(B);
+  await sleep(1200);
+  const rec = await http(`/auth/v1/recover?redirect_to=${encodeURIComponent(`${SITE}/auth/callback`)}`, { method: 'POST', body: { email: B } });
+  const m = await mail.next(B, seen, 'recovery');
+  check([200, 204].includes(rec.status) && !!m?.link, 'B asks for a reset elsewhere; the email arrives', `${rec.status} ${m?.subject || 'no email'}`);
+  if (!m?.link) throw new Error('no reset email for B');
+  const t2 = await newPage(ctx, 'tab2-b-reset');
+  const left = t1.waitForNavigation({ timeout: 90000 }).then(() => true, () => false);
+  await t2.goto(m.link);
+  await t2.waitForSelector('#hm-new-password', { timeout: 45000 });
+  await t2.fill('#hm-new-password', PASS3);
+  await tap(t2, '#hm-auth-body button[type=submit]');
+  await t2.waitForFunction(() => /All set/.test(document.getElementById('hm-auth-title')?.textContent || '') || document.querySelector('.hm-auth-error')?.textContent, null, { timeout: 45000 });
+  const res = await t2.evaluate(() => ({ title: document.getElementById('hm-auth-title').textContent, err: document.querySelector('.hm-auth-error')?.textContent || '' }));
+  await shot(t2, 'shared-01-b-reset-while-a-signed-in-390');
+  check(res.title === 'All set' && !res.err, 'B’s reset link works on a browser where A is signed in: "All set"', JSON.stringify(res));
+  check((await canSignIn(B, PASS3)) === 200 && (await canSignIn(A, S.passA)) === 200, 'B signs in with the new password; A’s password is untouched');
+  S.passB = PASS3;
+  check(UUID.test(String(sidA)) && !(await db.sessionAlive(sidA)), 'A’s session on this browser was ended on the server (scope local)', String(sidA));
+  check(await left, 'tab 1 hears the change and leaves A’s namespace');
+  await appReady(t1);
+  const fa = await favs(t1);
+  check(await uidOf(t1) !== S.uidA && !fa.includes('luminous-ocean'), 'tab 1 now shows none of A’s things', JSON.stringify({ uid: await uidOf(t1), favs: fa }));
+  await ctx.close();
 }
 
 async function signout() {
@@ -737,7 +823,7 @@ async function people() {
 async function deleteAccount() {
   const p = S.phone;
   await openAccount(p);
-  const r = await signInUi(p, B, PASS1);
+  const r = await signInUi(p, B, S.passB || PASS1);
   if (r !== 'nav') throw new Error(`signing B in again went to ${r}`);
   await waitView(p, 'account');
   check(await uidOf(p) === S.uidB, 'signed in as the second account');
@@ -747,6 +833,8 @@ async function deleteAccount() {
   check(await p.evaluate(() => document.querySelector('[data-act="delete-confirm"]').disabled), 'Delete: the button waits for the typed word');
   await fill(p, 'confirm', 'delete');
   check(await p.evaluate(() => !document.querySelector('[data-act="delete-confirm"]').disabled), 'typing "delete" enables it');
+  // a sync starts just before the tap (the race the first review found): the deletion waits for it and seals the namespace
+  await p.evaluate(() => { try { window.__hush.auth.autosync?.syncNow(); } catch { /* not started */ } });
   await tapNav(p, '[data-act="delete-confirm"]');
   const toast = await toastText(p);
   const keys = await lsKeys(p);
@@ -765,6 +853,9 @@ async function deleteAccount() {
   const again = await grant(B, PASS1);
   check(again.status === 400, 'signing in as the deleted account fails', `${again.status} ${again.json?.error_code || ''}`);
   check(d.localB === 0 && d.sb === 0, 'on this device: the deleted account\'s copy and every supabase-js key are gone', JSON.stringify({ localB: d.localB, sb: d.sb }));
+  await sleep(3000);
+  const later = (await lsKeys(p)).filter((k) => k.startsWith(`hm2:u:${S.uidB}:`) || k.startsWith('sb-'));
+  check(later.length === 0, 'and still gone a few seconds later (nothing written back by a sync in flight)', JSON.stringify(later));
   const ra = await db.rows(S.uidA);
   check(d.localA > 0 && d.guest === 'static-storm' && ra.user === 1 && ra.favourites.includes('static-storm'), 'the other account (here and on the server) and the guest\'s things are untouched', JSON.stringify({ localA: d.localA, guest: d.guest, serverA: ra.favourites }));
   await shot(p, 'delete-02-guest-again-390');
@@ -818,6 +909,7 @@ async function main() {
     await section('guest', guest);
     await section('callback', callbackErrors);
     await section('signup', signup, ['guest']);
+    await section('guestkeys', guestKeys, ['a']);
     await section('signin', signin, ['a']);
     await section('sync', sync, ['aSignedIn']);
     await section('refresh', refresh, ['aSignedIn']);
@@ -826,6 +918,7 @@ async function main() {
     await section('reset', reset, ['a']);
     await section('expiry', expiry, ['aSignedInAgain']);
     await section('people', people, ['aSignedIn']);
+    await section('shared', shared, ['b']);
     await section('delete', deleteAccount, ['b']);
     await section('unconfirmed', unconfirmed, ['guest']);
     current = 'console';

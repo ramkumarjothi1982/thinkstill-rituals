@@ -131,6 +131,33 @@ test('the home Mallow: reduced motion nods instead of hopping; without a rig, a 
   assert.equal(pickMallow(['blubi', 'zuzu'], undefined), 'blubi');
 });
 
+test('the home Mallow: { instant } shows the concerned face from the very next frame, with no reaction left playing', async () => {
+  globalThis.document ??= { createElement: () => ({ className: '', style: {} }) };
+  const faces = [];
+  const rigModule = Promise.resolve({
+    MallowRig: class {
+      constructor() { this.ready = false; this.overlays = []; this.body = { grounded: true, hopV: 0 }; this.loaded = Promise.resolve().then(() => { this.ready = true; }); }
+      setEmotion(mix, i, o) { faces.push({ mix: Object.keys(mix).sort().join('+'), instant: !!o?.instant, smile: o?.extra?.mouthSmile ?? null }); }
+      react(k) { this.overlays.push({ kind: k }); if (k === 'success') { this.body.grounded = false; this.body.hopV = 1.2; } }
+      destroy() {}
+    },
+  });
+  const holder = fakeHolder(); holder.classList.owner = holder;
+  const m = createAuthMallow(holder, { id: 'zuzu', rigModule, registry: REG });
+  await m.ready;
+  assert.equal(faces[0].instant, true, 'it arrives already wearing the screen’s face');
+  m.mood('happy');
+  assert.deepEqual(m.rig.overlays.map((o) => o.kind), ['success'], 'a success reaction is playing (and a hop rising)');
+  m.mood('concerned', { instant: true });
+  assert.equal(holder.dataset.mood, 'concerned');
+  assert.deepEqual(m.rig.overlays, [], 'no smile left over from the reaction');
+  assert.equal(m.rig.body.hopV, 0, 'no hop still rising');
+  assert.deepEqual(faces.at(-1), { mix: 'anxious+sad', instant: true, smile: -0.25 }, 'the concerned face at once (springs skipped)');
+  m.mood('happy', { instant: true });
+  assert.equal(faces.at(-1).instant, false, 'happy is never instant: it always arrives with its gentle reaction');
+  m.destroy();
+});
+
 // ------------------------------------------------------- three-way merges --
 test('favourites: a removal on either side since the last sync stays removed; additions on both sides stay', () => {
   assert.deepEqual(mergeFavourites3(['a', 'b'], ['c'], undefined), ['a', 'b', 'c'], 'first sync on a device: union');
@@ -280,6 +307,18 @@ test('the account scene: every screen, the right autocomplete, entry points, and
   assert.match(src, /Not touched/);
   assert.match(src, /app\.pushLayer/, 'deeper screens get a history entry (Back steps back)');
   assert.doesNotMatch(src, /innerHTML|html:/, 'no HTML strings: every text is a text node');
+  // Change password: the current password first (an isolated check), a code only when Supabase asks
+  const pw = src.slice(src.indexOf('V.password = '), src.indexOf("V.signout = "));
+  assert.match(pw, /name: 'current', label: 'Current password', autocomplete: 'current-password'/);
+  assert.match(pw, /updatePassword\(\{ current: v\.current, password: v\.password \}\)/);
+  assert.match(pw, /if \(r\.needsCode\)/, 'the code step only when the server wants it');
+  assert.match(pw, /Forgot your password\?/, 'forgot-password one tap away');
+  assert.doesNotMatch(src, /Email me a code|'send-code'/, 'no always-ask-for-a-code step');
+  // Delete account and Remove this phone's data: a sombre Mallow from the first frame
+  assert.match(src, /const SOMBRE = \['delete', 'device-data'\]/);
+  assert.match(src, /mood\(v\.mood \|\| 'idle', \{ instant: sombre\(\) \}\)/);
+  assert.match(src, /if \(m === 'happy' && sombre\(\)\) return;/, 'a late happy from an earlier screen is ignored there');
+  assert.match(src, /h\('strong', \{ class: 'hm-account-word'/, 'the word to type stands out');
   const main = readFileSync(`${ROOT}src/app/main.js`, 'utf8');
   assert.match(main, /account: \(\) => import\('\.\/scenes\/account\.js'\)/);
   assert.match(main, /app\.auth\.start\(\{ store, prefs \}\)/, 'signed in: the session check, then the opt-in sync');

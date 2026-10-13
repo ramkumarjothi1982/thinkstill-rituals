@@ -119,8 +119,11 @@ export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, 
           await a.init();
           if (a.status() === 'signed-in' && store && prefs) {
             const m = await import('./autosync.js');
-            handle.autosync = m.startAutoSync({ auth: a, store, prefs });
-            handle.autosync.syncNow().catch(() => {});
+            const sync = m.startAutoSync({ auth: a, store, prefs });
+            handle.autosync = sync;
+            // a sign-out, a deletion or "Remove this device's data" pauses it and waits for a run in flight
+            a.addQuiescer?.({ pause: () => sync.pause(), resume: () => sync.resume() });
+            sync.syncNow().catch(() => {});
           }
           return a;
         }).catch((e) => { starting = null; throw e; });
