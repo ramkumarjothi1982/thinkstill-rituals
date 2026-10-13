@@ -19,7 +19,7 @@
 //   13.5 eyes drift shut; warmth eases back into the night; the hook returns → loop
 
 import { SoftBody } from '../stage2/softbody.js';
-import { Face, specFromRig } from '../stage2/face.js';
+import { Face, specFromRig, specFromDerived } from '../stage2/face.js';
 import { TextBlock, LogoCard } from '../stage2/type.js';
 import { loadImage, silhouette } from '../stage2/stage.js';
 import { MALLOWS } from '../../hushmallow/src/mallows/registry.js';
@@ -29,8 +29,9 @@ const meta = { id: 'my-brain-at-2am-v2', title: 'My Brain at 2 AM', fps: 30, dur
 
 // ------------------------------------------------------------ assets --
 const ASSET = {
-  pristine: '../../hushmallow/assets/source/hires/noomi.webp',      // approved artwork (owner-supplied hi-res)
-  clean: '../assets/noomi/noomi-clean.png',                          // same artwork, painted face removed
+  source: '../../hushmallow/assets/source/hires/noomi.webp',        // approved artwork (owner-supplied hi-res)
+  pristine: '../assets/noomi/noomi-art.png',                         // the same pixels, cropped to the body (tools/derive_noomi_hires.py)
+  clean: '../assets/noomi/noomi-clean.png',                          // same artwork, painted face removed (identical outside the face)
   normal: '../assets/noomi/noomi-normal.png',
   face: '../assets/noomi/noomi-face.json',
   faceMeasured: '../stage2/noomi-face-measured.json',            // fitted to the approved painted arcs
@@ -89,9 +90,9 @@ const warmAt = (t) => spline([[0, 0], [9.25, 0], [11.4, 1], [13.6, 1], [14.95, 0
 const hop = new Hops().add(T.take, T.land, 165);                       // art px
 const sTrack = new Track(0, { f: 3, z: 0.8 })
   .to(T.antic, 0.07, { f: 4.5, z: 0.75 })                              // the dream flinch: sinks
-  .to(T.take, -0.28, { f: 6.0, z: 0.5 })                               // jolt: shoots up, stretched
-  .to(0.60, -0.05, { f: 3.2, z: 0.85 })                                // rounds out in the air
-  .to(0.84, -0.09, { f: 3.5, z: 0.9 })                                 // falling stretch
+  .to(T.take, -0.26, { f: 6.0, z: 0.5 })                               // jolt: shoots up, stretched
+  .to(0.53, -0.02, { f: 4.5, z: 0.75 })                                // rounds out toward the apex
+  .to(0.80, -0.09, { f: 3.5, z: 0.9 })                                 // falling stretch
   .to(T.land, 0, { f: 9, z: 1 })                                       // impact → impulses below
   .to(T.b[0] + 0.42, 0.05, { f: 5, z: 0.7 })                           // cringe at the first thought
   .to(T.b[0] + 0.9, 0, { f: 2.2, z: 0.8 })
@@ -101,7 +102,7 @@ const sTrack = new Track(0, { f: 3, z: 0.8 })
   .to(T.exhale, 0.04, { f: 1.05, z: 0.42 })                             // exhale: melts wide, elastic
   .to(11.0, 0, { f: 0.9, z: 0.9 });
 const sKicks = new Impulses()
-  .kick(T.land, 0.31, 3.0, 0.24)                                       // heavy jelly landing
+  .kick(T.land, 0.27, 3.0, 0.24)                                       // heavy jelly landing
   .kick(T.exhale + 0.12, 0.08, 1.5, 0.3);                              // the plop of letting go
 const swayKicks = new Impulses().kick(T.land, 0.06, 2.1, 0.2).kick(T.exhale + 0.2, 0.04, 1.3, 0.3);
 const inflTrack = new Track(0)
@@ -140,8 +141,8 @@ const BUB = [
   { lines: ['Why did I', 'do that?'], slot: -Math.PI / 2 },
 ];
 const ORBIT = { cx: 540, cy: 600, rx: 270, ry: 132 };
-const PHASE = [[0, 0], [3.0, 0], [5.5, 0.26], [6.2, 0.75], [7.0, 1.85], [7.5, 2.35], [8.9, 2.72], [9.8, 2.84], [15, 2.84]];
-const RADIUS = [[0, 1], [7.4, 1], [8.9, 0.86], [9.3, 0.9], [10.5, 1.3], [15, 1.3]];
+const PHASE = [[0, 0], [3.0, 0], [5.5, 0.26], [6.2, 0.8], [7.0, 2.15], [7.5, 2.7], [8.9, 3.05], [9.8, 3.18], [15, 3.18]];
+const RADIUS = [[0, 1], [7.4, 1], [8.9, 0.95], [9.3, 0.97], [10.5, 1.3], [15, 1.3]];
 const HEAD = [540, 790];        // where thoughts emerge (behind the top of the head)
 
 function bubbleAt(i, t) {
@@ -159,8 +160,11 @@ function bubbleAt(i, t) {
   const wob = 0.09 * ring(t - tb, 2.8, 0.28) + spin * 0.035 * Math.sin(t * 17 + i * 2);
   const grow = spring(t - tb, 2.3, 0.48);
   const scale = lerp(0.12, 1, grow) * (0.9 + 0.1 * depth) * (1 + 0.12 * smoothstep(0, 0.55, dis));
-  const alpha = smoothstep(tb, tb + 0.16, t) * (1 - smoothstep(0, 0.55, dis)) * (0.84 + 0.16 * (depth * 0.5 + 0.5)) * lerp(1, 0.86, smoothstep(7.4, 8.6, t));
-  return { x: lerp(HEAD[0], ox, k), y: lerp(HEAD[1], oy, k), depth, scale, squash: [1 + wob, 1 - wob], alpha, stress: spin * 0.7, th };
+  const alpha = smoothstep(tb, tb + 0.16, t) * (1 - smoothstep(0.12, 0.6, dis)) * (0.84 + 0.16 * (depth * 0.5 + 0.5)) * lerp(1, 0.86, smoothstep(7.4, 8.6, t));
+  // dissolving: the words go first, then the glass turns to warm light and scatters into motes
+  const glowUp = smoothstep(-0.05, 0.22, dis) * (1 - smoothstep(0.3, 0.6, dis));
+  const textAlpha = 1 - smoothstep(-0.08, 0.2, dis);
+  return { x: lerp(HEAD[0], ox, k), y: lerp(HEAD[1], oy, k), depth, scale, squash: [1 + wob, 1 - wob], alpha, stress: spin * 0.7, th, glowUp, textAlpha };
 }
 
 // warm motes the thoughts dissolve into (fixed per bubble)
@@ -256,11 +260,14 @@ function bubbleCanvas(lines) {
 }
 
 async function setup(stage) {
-  const pristine = await loadImage(new URL(ASSET.pristine, import.meta.url).href);
-  const clean = (await tryImage(ASSET.clean)) || (await tryImage('../output/dev/dev-clean.png'));
+  // derived assets share one pixel space (the cropped body); without them, fall back to the raw source + rest face only
+  const derived = await tryImage(ASSET.pristine);
+  const pristine = derived || await loadImage(new URL(ASSET.source, import.meta.url).href);
+  const clean = derived ? await tryImage(ASSET.clean) : null;
   hasClean = !!clean;
-  const normal = await tryImage(ASSET.normal);
-  const faceJson = (await tryJSON(ASSET.face))?.spec ? await tryJSON(ASSET.face) : await tryJSON(ASSET.faceMeasured);
+  const normal = derived ? await tryImage(ASSET.normal) : null;
+  const derivedFace = derived ? await tryJSON(ASSET.face) : null;
+  const faceJson = derivedFace ? { spec: specFromDerived(derivedFace, MALLOWS.noomi.face) } : await tryJSON(ASSET.faceMeasured);
   sil = silhouette(pristine);
   faceCanvas = document.createElement('canvas');
   faceCanvas.width = pristine.width; faceCanvas.height = pristine.height;
@@ -341,7 +348,7 @@ function state(t, stage) {
     const bt = bubbleTex[i];
     const item = {
       x: b.x, y: b.y, hw: bt.hw, hh: bt.hh, scale: b.scale, squash: b.squash, rot: 0, radius: Math.min(bt.hh, 64),
-      alpha: b.alpha, textAlpha: 1, textTex: bt.tex, tint: mix3([0.92, 0.91, 1.0], [0.86, 0.88, 0.98], cold), edge: [0.9, 0.92, 1.0], stress: b.stress,
+      alpha: b.alpha, textAlpha: b.textAlpha, glowUp: b.glowUp, textTex: bt.tex, tint: mix3([0.92, 0.91, 1.0], [0.86, 0.88, 0.98], cold), edge: [0.9, 0.92, 1.0], stress: b.stress,
     };
     (b.depth < 0 ? back : front).push(item);
   });

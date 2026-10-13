@@ -77,7 +77,7 @@ export class SoftBody {
       // horizontal: area-ish preserving, water-balloon bulge, spreading base
       const sxBase = Math.pow(1 / Math.max(0.35, 1 - s), 0.58) * (1 + 0.5 * inf);
       const bulge = s * 0.3 * Math.sin(Math.PI * Math.pow(hc, 0.85)) + inf * 0.1 * Math.sin(Math.PI * hc);
-      const spread = s > 0 ? s * 0.16 * Math.pow(1 - hc, 3) : s * 0.05 * Math.pow(1 - hc, 2);
+      const spread = s > 0 ? s * 0.11 * Math.pow(1 - hc, 3) : s * 0.05 * Math.pow(1 - hc, 2);
       const sx = sxBase * (1 + bulge + spread);
       const bendX = lean * H * hc * hc + sway * H * 0.1 * Math.pow(hc, 1.5);
       const bendSlope = 2 * lean * hc + sway * 0.15 * Math.pow(hc, 0.5);

@@ -1,147 +1,156 @@
 # hushmallow Infinite Studio — Phase 1: Video 1
 
-**"My Brain at 2 AM"**: 15 s · 1080 × 1920 (9:16) · 30 fps · H.264 + AAC
+**"My Brain at 2 AM" — v2**: 15 s · 1080 × 1920 (9:16) · 30 fps · H.264 + AAC · loops seamlessly
 
 This folder holds **one** fully rendered short and the source that reproduces it
-exactly. It is the approval gate before any generator is built. There is no
-dashboard, no batch mode and no "infinite engine" here yet.
+exactly. It is the approval gate before any generator is built: there is no
+dashboard, no batch mode, no templates and no "infinite engine" here.
+
+v1 was not approved. v2 replaces its whole execution — renderer, character
+animation, face, story treatment, cinematography and score. v1 is kept only for
+comparison (see the end of this file).
 
 | File | What it is |
 |---|---|
-| `output/my-brain-at-2am.mp4` | **The deliverable**: H.264 High 4.2, yuv420p, BT.709, 1080×1920, 30 fps, 450 frames, 15.000 s; AAC 48 kHz stereo 192 kb/s; faststart; −16 LUFS integrated, −1.8 dBTP true peak; the source commit is stamped in its metadata |
-| `output/poster.jpg` | A still from 5.0 s (the three thoughts) |
-| `output/my-brain-at-2am.soundtrack.wav` | The mixed soundtrack (48 kHz / 24-bit) |
-| `output/cues.json` | Every timed story event plus the per-frame curves the soundtrack is built from |
-| `output/qa/` | `verify.json` (delivery spec, all checks pass), `audio-report.json` (loudness and per-cue sync: every hit within 6.6 ms of its frame), `audio-waveform.png`, `storyboard-contact-sheet.jpg` |
+| `output/v2/my-brain-at-2am-v2.mp4` | **The deliverable** (spec and loudness in `output/v2/verify.json`) |
+| `output/v2/poster.jpg` | Cover still |
+| `output/v2/my-brain-at-2am-v2.soundtrack.wav` | The mixed soundtrack (48 kHz / 24-bit) |
+| `output/v2/cues.json` | Every timed story event + the per-frame curves the soundtrack is built from |
+| `output/v2/compare/` | v1 vs v2 at the same story beats, 1:1 pixel crops and a sharpness measurement |
+| `output/v2/qa/` | Filmstrips (frame-by-frame motion), loop-seam check, audio waveform/spectrogram with cue markers |
+| `output/asset-qa/` | Before/after crops proving the face-line removal on the hi-res artwork |
 
-## What you're looking at
+## The story (beat sheet)
 
-Nothing in the video is a stock animation or a generic character:
+| Time | Beat |
+|---|---|
+| 0.0 s | Noomi asleep on a mirror-still moonlit lake, the approved face exactly as painted, breathing slowly. **ME TRYING TO SLEEP AT 2 AM...** is already on the cover frame |
+| 0.26 s | A dream flinch: the body sinks a little, the eyes squeeze, the smile drops |
+| **0.40 s** | **The memory hits** — eyes snap wide (pin-prick pupils), a gasp, and the whole body jolts up out of the water: a stretched launch that rounds out in the air (a hypnic jerk) |
+| 0.98 s | Heavy jelly landing: the base squashes first and the wave travels up the body and rebounds; rings roll across the lake and wobble the reflection |
+| 1.4–2.6 s | Wide-eyed aftermath: "bip… bip" double blink, glances left and right, cheeks flush, shallow panting, a clock that won't stop ticking |
+| 3.0 s | **That awkward conversation.** rises in glass from behind Noomi's head — Noomi reads it… and cringes (eyes squeezed, body shrinks, blush flares) |
+| 4.0 s | **Did I say something weird?** — worried brows, a wobbly mouth |
+| 5.0 s | **Why did I do that?** — a guilty look down |
+| 5.6–7.0 s | The three thoughts orbit faster and faster; the eyes chase them; a shiver; clouds swallow the moon, the lake turns choppy, the light goes cold, the camera creeps in |
+| 7.0 s | Squeeze… and let go: the swirl stops dead |
+| 7.4–8.9 s | **One huge, slow inhale** — the body swells tall and lifts, the thoughts are drawn close |
+| 9.2–11 s | **A long exhale** — the body melts into a luxurious elastic squash, a calm ring spreads over the water, the breath carries the thoughts away: each one's words fade, it turns to warm light and scatters into motes. Clouds part, the moon warms, the lake stills to a mirror, Noomi glows softly from within |
+| 11.7 s | Eyes open softly — a first glance up at the warm moon, then at us, with a tiny peaceful smile |
+| 11.9 s | **Give your feelings somewhere soft to land.** |
+| 12.6 s | The approved hushmallow logo (untouched, on a light plate) + **hushmallow.com** |
+| 12.8 s | A slow, content blink |
+| 13.5–15 s | Eyes drift shut, the warmth eases back into night, the hook returns — and frame 449 flows into frame 0 |
 
-* **Noomi is the app's own living Mallow rig** (`hushmallow/src/mallows/rig.js`),
-  drawn from the approved artwork (`hushmallow/assets/mallows/noomi.png` and the
-  face-cleaned `assets/rig/noomi-body.png`). Its eyes, lids, brows, mouth and
-  cheeks are animated by the rig's spring system. Its soft body squashes,
-  stretches, bulges and wobbles through the rig's strip-warp physics. Whenever
-  the face is at rest, the rig cross-fades back to the untouched approved art.
-* **The world is Noomi's own realm, the Moonmilk Cove**
-  (`hushmallow/src/world/realms/moonmilk-cove.js`): moon, lighthouse, tide,
-  clouds, aurora and dream bubbles. Its mood axes (agitation, heaviness,
-  clarity, warmth) and its "transform" are driven by the story.
-* **The sound is the app's own procedural audio engine**
-  (`hushmallow/src/engine/audio.js`): Noomi's sound kit plus the Moonmilk Cove
-  ambience, rendered offline and layered with original synthesised textures.
-  No samples, no music library, no paid services.
-* **Type** is Fredoka, the app's display face (SIL OFL, `hushmallow/assets/fonts`).
-  The **logo** is the approved wordmark, untouched, on a soft light "pillow"
-  plate. The approved file is black-on-white and no reversed version exists, so
-  it isn't inverted.
+## How Noomi is animated
 
-The live app is **not modified**. Every engine file is imported read-only from
-`../hushmallow/`, and nothing in this folder ships with the Pages deploy (it
-only publishes `hushmallow/`).
+* **Sharp because it's the source, not an upscale.** The body is the owner-supplied
+  1254 × 1254 approved artwork (`hushmallow/assets/source/hires/noomi.webp`), drawn at
+  ≈ 0.56× — every on-screen pixel is a *downsample* of the painting. The low-res
+  439 px sprite v1 used is not used at all.
+* **The face, removed once and rebuilt procedurally.** `tools/derive_noomi_hires.py`
+  removes the painted eyes/mouth (and their glows) from the hi-res art — pixels outside
+  the edit mask are bit-identical — and measures every painted stroke
+  (`assets/noomi/noomi-face.json`). The face is then drawn every sub-frame at the
+  painting's own resolution (`stage2/face.js`): glossy navy "gummy" tubes using the
+  measured Bézier centrelines, widths, core/upper/lower colours, highlight offset and
+  glow; open eyes follow the approved app rig's design (sclera, navy galaxy iris,
+  lash line). When the face is at rest the untouched painting itself is shown
+  (start and end of the loop); the procedural neutral face matches it to within
+  anti-aliasing (`stage2/dev/rest-test.html`).
+* **A deformable soft body.** The art is the texture of a 96 × 96 mesh
+  (`stage2/softbody.js`). Six degrees of freedom drive it: volume-preserving
+  squash/stretch with a water-balloon bulge and a spreading base, breath inflation,
+  lean, a lateral jelly mode, a decaying rim ripple and lift. Each vertex reads the
+  body state at `t − lag·height`, so impacts travel up the body as a wave.
+* **Physics as closed-form functions of time** (`stage2/motion.js`): damped springs,
+  impulse responses, ballistic hops and blink curves are evaluated analytically, so
+  any instant is exact. That gives true motion blur (3–16 sub-frames per frame,
+  more where something moves fast, 0.4 shutter) and a mathematically seamless loop.
+* **Lit as it moves** (`stage2/renderer.js`): the body is relit relative to the art's
+  own baked lighting (so the approved colours hold at rest): highlights slide as it
+  bends, squeezed fluff brightens, the moon rims it, the large-scale form comes
+  from the derived normal map, and the scene light shifts cold → warm with the story.
+
+## The world and the camera
+
+WebGL2, rendered headless in Chromium: a procedural night sky (gradient, a textured
+moon, moonlit stratus, twinkling stars, two hazy ridges) over a lake that mirrors
+the sky and Noomi, with perspective ripple rings, a slow swell and a moon glitter
+path; frosted glass thought bubbles (blurred-scene refraction, lit rim, sheen);
+HDR compositing, gentle bloom, an art-preserving tone shoulder, split-tone grade,
+vignette and fine grain. Everything that moves on its own is periodic over 15 s.
+The camera only ever drifts: a slow push-in during the spiral, an easing back on
+the breath, a soft follow on the jump — no shakes, no roll, no flashes.
+
+## Sound
+
+All original and procedural (`audio/soundtrack-v2.mjs` on the shared offline
+renderer in `audio/soundtrack.mjs`): the project's own Hushmallow sound engine
+(Noomi's voice gestures, ritual fx, the moonmilk-cove night bed) plus synthesised
+foley, every sound tied to an on-screen event — the eye-pop and rubbery boing on
+the take, a water plip on take-off, a heavy wet landing (flump, squelch, water
+bloop, a wobbling tail), blink "bips", the cringe squeak, glass bubbles with
+rising tings, orbit whooshes panned to each thought, a tension tone and a clock
+that speeds up then stops dead, the inhale/exhale, the squash-and-release, glass
+chimes and sparkles as the thoughts dissolve, a light warm pad, Noomi's content
+glide and the closing chime. Crickets and the sleeping breath run across the loop
+seam. Mastered to −16 LUFS, true peak ≤ −1.5 dBTP. No samples, no music library,
+no paid services.
 
 ## Regenerate it
 
-Requirements: Node 22+, ffmpeg 6+ (with libx264 and AAC). Chromium comes with Playwright.
+Requirements: Node 22+, ffmpeg 6+ (libx264, AAC), Python 3 with NumPy, OpenCV, SciPy
+and Pillow (only to re-derive the assets). Chromium comes with Playwright.
 
 ```bash
 cd hushmallow-infinite-studio
-npm install                      # Playwright 1.56.1
-npx playwright install chromium  # skip if a matching Chromium is already installed
-node render/render.mjs           # → output/my-brain-at-2am.mp4  (≈5 min on 4 cores)
+npm install                                        # Playwright 1.56.1
+python3 -I tools/derive_noomi_hires.py             # (optional) re-derive assets/noomi/* — deterministic, ~100 s
+node render/render.mjs --video my-brain-at-2am-v2 --out output/v2   # ≈25 min on 4 CPU cores (software WebGL)
+node render/verify.mjs output/v2/my-brain-at-2am-v2.mp4             # spec, playback, loudness, freshness
+python3 tools/compare.py output/my-brain-at-2am.mp4 output/v2/my-brain-at-2am-v2.mp4 output/v2/compare
 ```
 
 Useful variations:
 
 ```bash
-node render/render.mjs --stills 0,54,3.5s,10s   # PNG stills only → output/stills/
-node render/render.mjs --dry                    # cue log only → output/cues.json
-node render/render.mjs --no-audio               # video track only
-node render/render.mjs --remux                  # new soundtrack from cues.json, muxed onto the existing video pass (~6 s)
-node render/verify.mjs output/my-brain-at-2am.mp4   # spec + playback + loudness + freshness checks
-node audio/soundtrack.mjs output/cues.json output/my-brain-at-2am.soundtrack.wav
-node render/serve.mjs                           # open the stage in a browser (add &play=1)
+node render/render.mjs --video my-brain-at-2am-v2 --stills 0,15,3.5s --out output/v2   # PNG stills
+node render/render.mjs --video my-brain-at-2am-v2 --dry --out output/v2                 # cue log only
+node render/render.mjs --video my-brain-at-2am-v2 --remux --out output/v2               # re-score onto the existing video pass
+node audio/soundtrack-v2.mjs output/v2/cues.json out.wav                                # soundtrack only
+python3 tools/filmstrip.py output/v2/my-brain-at-2am-v2.mp4 0 1.6 strip.jpg            # consecutive frames
+node render/serve.mjs   # then open /hushmallow-infinite-studio/stage2/index.html?video=my-brain-at-2am-v2&play=1
 ```
 
-Renders are deterministic: the same seed (`--seed`, default `20261013`) gives
-the same frames.
+Renders are deterministic (seeded; every frame is a pure function of time).
 
-## How it works
+## Layout
 
 ```
-render/render.mjs
-  ├─ render/serve.mjs              static server rooted at the repo (engines load read-only)
-  ├─ headless Chromium → stage/index.html?video=my-brain-at-2am
-  │    stage/components/clock.js   virtual time, seeded randomness, parked rAF (load first)
-  │    stage/stage.js              per frame: direct → simulate → compose → PNG
-  │      ├─ realm-backdrop.js      Moonmilk Cove, stepped with realm.debug.frame(dt)
-  │      ├─ mallow-actor.js        MallowRig subclass: hi-res face skin, directed gaze/blinks,
-  │      │                         pose() raw params, impulse() soft-body kicks, anchors
-  │      ├─ thought-bubbles.js     pop → read → accelerating orbit → dissolve into star dust
-  │      ├─ captions.js            Fredoka captions, ink outline, gentle reveals
-  │      ├─ endcard.js             approved logo on a pillow plate + hushmallow.com
-  │      ├─ bokeh.js               foreground out-of-focus orbs (parallax depth)
-  │      └─ grade.js               bloom, scene grade, moon glow, vignette, grain
-  │    videos/my-brain-at-2am.js   the direction: beats, poses, gaze, camera, grade, cues
-  ├─ ffmpeg  PNG frames → libx264 (CRF 17, yuv420p, BT.709)
-  ├─ audio/soundtrack.mjs          cues.json → offline Web Audio render → loudness-normalised WAV
-  └─ ffmpeg  mux → AAC 192 kb/s, faststart
+render/render.mjs          headless Chromium → frames (raw RGBA for stage2) → ffmpeg H.264 → score → AAC mux
+stage2/                    v2 stage: gl.js (WebGL2 helpers), renderer.js (all passes), softbody.js,
+                           motion.js, face.js, type.js (captions + logo card), stage.js (runtime)
+stage2/dev/                face-test.html (expression sheet), rest-test.html (painting vs procedural face)
+videos/my-brain-at-2am-v2.js   the direction: timing, body/face/camera/light/palette tracks, bubbles, cues
+assets/noomi/              derived from the approved hi-res art (see tools/derive_noomi_hires.py)
+audio/soundtrack-v2.mjs    cue → sound plan for v2;  audio/soundtrack.mjs  shared offline renderer + mastering
+tools/                     derive_noomi_hires.py, compare.py, filmstrip.py, shot.mjs, timing.mjs
+stage/, videos/my-brain-at-2am.js   v1 (not approved), kept for comparison
 ```
 
-The stage, the components and the cue-driven soundtrack are written to be
-reused. A new video is a new file in `videos/` with its own `meta`, `setup`,
-`direct` and `substep`. Turning that into an automated generator is Phase 2,
-pending approval.
+## Safety
 
-## Sound
+The live app is **not modified**. Approved engine files and art are read-only
+inputs from `../hushmallow/`; nothing in this folder is part of the Cloudflare
+Pages deploy (it publishes `hushmallow/` only, and only from `main`). No paid
+APIs or external services are used.
 
-All sound is original and procedural: Noomi's own sound kit and the Moonmilk
-Cove ambience from the app's audio engine, rendered offline. A few synthesised
-textures are layered on top. There's no music bed, only story sound:
+---
 
-* night ambience (waves, a warm hum), soft crickets, and a quiet wooden
-  tick-tock that comes back during the overthinking and speeds up with it
-* a delicate music-box twinkle when the memory arrives, a "pip?" when one eye
-  cracks open, then the comedic take: a cartoon eye-pop, Noomi's surprise
-  glide and a tiny boing, with "bip… bip" for the double blink
-* thought-bubble "bloops" (tail-dot blips first), higher blips for the minis,
-  and a swirl that follows the actual orbit, panned with each passing thought
-* one deep breath: Noomi's breathe-in, then a longer breathe-out with a sigh
-* glassy chimes and star-dust sparkles as the thoughts dissolve, under a warm
-  pad that opens with the light
-* a satisfying squish (a squelch and the squeeze glide) and an elastic release
-  (a stretch pop, a jelly boing and the release glide)
-* a content glide when the eyes open, a celesta tink for the sleepy blink, and
-  Noomi's success chime as the logo lands, fading to silence at 15.0 s
+## v1 (not approved) — kept for reference
 
-## Beat sheet
-
-| Time | Beat |
-|---|---|
-| 0–1 s | Sleepy Noomi on the moonlit shore (the approved face, slow visible breathing, a drifting "z"); **ME TRYING TO SLEEP AT 2 AM...** is already on the cover frame |
-| 0.97 s | A tiny twinkle above Noomi's head: the memory arrives |
-| 1.09 s | Still asleep, the smile falls and the brows knit |
-| 1.27 s | One eye cracks open |
-| 1.55 s | **Eyes snap wide open**: a gasp, a jolt and stretch, a big "!", camera punch-in with shake |
-| 1.9–2.75 s | Deadpan stare, then a comic "blink… blink" and a suspicious side-glance |
-| 3.05–4.4 s | Three thoughts pop out of Noomi's head (tail dots first, words after the bubble lands). Eyes chase each one, flinches, sweat drop |
-| 4.35 s | The hook caption clears for the spiral |
-| 5.0–7.0 s | Glyph minis join. The thoughts spiral faster and faster. Eye darts, panting, a soft-body shiver, a wide wobbly grimace. Camera roll, a darker and colder grade, the cove's mist rolls in |
-| 7.0 s | Noomi closes its eyes |
-| 7.15–8.35 s | **One deep inhale**: fills with air, stretches tall, brows lift, the camera leans in, the thoughts slow and drift away |
-| 8.55–10.35 s | **A long sighing exhale**: squishes wide, the camera opens out. A ring of calm rolls out and blows each thought into glowing dust as it reaches it. The tide ripples and stills, the aurora unfurls, the moonlight turns warm |
-| 10.35–10.95 s | **Squeeze-and-release**: a soft squash, then an elastic stretch and jelly settle |
-| 11.45 s | The approved face dissolves into open eyes: soft happy crescents and a tiny smile |
-| 12.05 s | Slow sleepy blink. **Give your feelings somewhere soft to land.** |
-| 12.95 s | The hushmallow logo pillow and **hushmallow.com** land and hold to the end |
-| 13.6–15 s | A drowsy droop, then Noomi falls back asleep. The final framing and pose match frame 0, so the clip loops |
-
-## Review process
-
-The render went through a six-lens review panel (character fidelity,
-animation craft, typography and brand, cinematography, story and comedy,
-technical artifacts). Every finding was checked against cited frames and
-fixed in the source. The soundtrack went through its own build, adversarial
-QA and refine pass. `render/verify.mjs` re-checks the delivery spec on every
-render and refuses a file that is older than its sources.
+`output/my-brain-at-2am.mp4` was the first attempt: the app's 439 px rig on the
+Moonmilk Cove realm, rendered through a 2D canvas stage (`stage/`,
+`videos/my-brain-at-2am.js`, `audio/soundtrack.mjs`). Regenerate it with
+`node render/render.mjs` (defaults to v1).

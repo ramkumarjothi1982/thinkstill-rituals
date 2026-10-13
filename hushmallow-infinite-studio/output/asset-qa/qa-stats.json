@@ -1,0 +1,8 @@
+{
+ "maxAbsDiffOutsideMask": 0,
+ "changedPixels": 155504,
+ "editMaskPixels": 173344,
+ "resynthesizedPixels": 70681,
+ "alphaIdentical": true,
+ "maxAbsDiffInsideMask": 239
+}

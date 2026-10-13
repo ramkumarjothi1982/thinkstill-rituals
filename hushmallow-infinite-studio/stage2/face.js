@@ -38,6 +38,44 @@ export function specFromRig(rigFace, k, ox, oy) {
   };
 }
 
+/**
+ * Face spec from tools/derive_noomi_hires.py measurements (art px of noomi-clean.png):
+ * the closed eyes / mouth are the skeleton-fitted quadratic Béziers of the painted
+ * strokes; open-eye size follows the approved rig ratio (36/44 of the closed half-width);
+ * brows (expression-only, not in the painting) come from the rig, placed over each eye.
+ */
+export function specFromDerived(j, rigFace, k = 2.70) {
+  const eye = (e, side) => {
+    const { p0, c, p1 } = e.bezier;
+    const inner = side === 'L' ? p1 : p0, outer = side === 'L' ? p0 : p1;
+    const x = (p0[0] + p1[0]) / 2, y = (p0[1] + p1[1]) / 2;
+    const midY = 0.25 * p0[1] + 0.5 * c[1] + 0.25 * p1[1];
+    const re = rigFace.eyes[side];
+    return {
+      x, y, hw: (p1[0] - p0[0]) / 2, sag: midY - y, lw: e.coreWidth,
+      tilt: (inner[1] - outer[1]) / 2,           // inner corner lower (+) / higher (−) than the outer
+      cxOff: c[0] - x,                            // the painted arc is not perfectly symmetric
+      r: e.openEyeSocket.rx, irisR: re.irisR * k, irisOff: [re.irisOff[0] * k, re.irisOff[1] * k],
+    };
+  };
+  const L = eye(j.eyeL, 'L'), R = eye(j.eyeR, 'R');
+  const brow = (b, e, re) => {
+    const dx = e.x - re.x * k, dy = e.y - re.y * k;   // rig brows keep their offset from the rig eye
+    const P = (q) => [q[0] * k + dx, q[1] * k + dy];
+    return { p0: P(b.p0), c: P(b.c), p1: P(b.p1), lw: b.lw * k };
+  };
+  const m = j.mouth.bezier;
+  const mx = (m.p0[0] + m.p1[0]) / 2, my = (m.p0[1] + m.p1[1]) / 2;
+  return {
+    line: rigFace.line,
+    eyes: { L, R },
+    brows: { L: brow(rigFace.brows.L, L, rigFace.eyes.L), R: brow(rigFace.brows.R, R, rigFace.eyes.R) },
+    mouth: { x: mx, y: my, w: m.p1[0] - m.p0[0], sag: 0.25 * m.p0[1] + 0.5 * m.c[1] + 0.25 * m.p1[1] - my, lw: j.mouth.coreWidth, cxOff: m.c[0] - mx, tilt: (m.p1[1] - m.p0[1]) / 2 },
+    cheeks: { L: [...j.cheeks.L.center, j.cheeks.L.radius], R: [...j.cheeks.R.center, j.cheeks.R.radius], colour: rigFace.cheeks.colour },
+    colors: j.eyeL.colors,
+  };
+}
+
 // ---------------------------------------------------------------- tubes --
 function sampleCubic(p0, c0, c1, p1, n = 40) {
   const pts = [];
@@ -95,9 +133,9 @@ function fillPoly(ctx, poly) {
 }
 
 const TUBE = {   // sampled from the approved painted arcs (cross-section, top → bottom)
-  glow: 'rgba(8,112,255,0.72)', shadow: 'rgba(0,10,60,0.12)',
-  rim: [0, 6, 42], top: [1, 50, 140],
-  spec: 'rgba(125,188,255,0.95)', bead: 'rgba(190,220,255,0.9)',
+  glow: 'rgba(0,144,253,0.8)', shadow: 'rgba(0,10,60,0.1)', under: 'rgba(255,255,255,0.2)',
+  core: '#01185c', upper: '#0633a1', lower: '#010f4a', edge: '#000a38',   // measured: core · 7 px inside the upper edge · lower edge
+  spec: 'rgba(90,150,245,0.95)', bead: 'rgba(190,220,255,0.9)',   // measured highlight #457eea–#72a8f9, ~0.28 w above the centre
 };
 
 /**
@@ -128,6 +166,15 @@ function tube(ctx, tmp, pts, lw, alpha = 1, opts = {}) {
     ctx.filter = `blur(${(lw * 0.26).toFixed(1)}px)`;
     ctx.globalAlpha = alpha * (opts.glow ?? 1);
     ctx.drawImage(tmp, 0, 0, bw, bh, x0 - pad, y0 - pad, bw, bh);
+    // the soft light band the painting has under each stroke (convex side)
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, bw, bh);
+    g.translate(pad - x0, pad - y0);
+    g.fillStyle = TUBE.under;
+    fillPoly(g, tubeOutline(pts, wfn, 1.0, -0.55));
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.filter = `blur(${(lw * 0.3).toFixed(1)}px)`;
+    ctx.drawImage(tmp, 0, 0, bw, bh, x0 - pad, y0 - pad, bw, bh);
     ctx.filter = 'none';
     ctx.globalAlpha = alpha;
   }
@@ -137,12 +184,26 @@ function tube(ctx, tmp, pts, lw, alpha = 1, opts = {}) {
   fillPoly(ctx, tubeOutline(pts, wfn, 1.1, -0.05));
   ctx.restore();
   // 2 body: layered fills approximate a lit cylinder (light from above)
-  // fine concentric bands, dark rim → lit upper core (reads as a smooth cylinder at screen size)
-  const BANDS = 9;
-  for (let k = 0; k < BANDS; k++) {
-    const u = k / (BANDS - 1), c = (i) => Math.round(TUBE.rim[i] + (TUBE.top[i] - TUBE.rim[i]) * Math.pow(u, 1.4));
-    ctx.fillStyle = `rgb(${c(0)},${c(1)},${c(2)})`;
-    fillPoly(ctx, tubeOutline(pts, wfn, 1 - 0.76 * u, 0.17 * u));
+  // body: the measured core navy, a lighter band hugging the upper (concave) edge, a darker
+  // lower edge — soft gradients, clipped to the stroke (rendered in a temp layer)
+  {
+    const g = tmp.getContext('2d');
+    const bw = Math.ceil(x1 - x0 + pad * 2), bh = Math.ceil(y1 - y0 + pad * 2);
+    if (tmp.width < bw || tmp.height < bh) { tmp.width = Math.max(tmp.width, bw); tmp.height = Math.max(tmp.height, bh); }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, bw, bh);
+    g.translate(pad - x0, pad - y0);
+    g.fillStyle = TUBE.edge; fillPoly(g, tubeOutline(pts, wfn, 1.0, 0));
+    g.globalCompositeOperation = 'source-atop';
+    g.filter = `blur(${(lw * 0.06).toFixed(1)}px)`;
+    g.fillStyle = TUBE.core; fillPoly(g, tubeOutline(pts, wfn, 0.86, 0.02));
+    g.filter = `blur(${(lw * 0.1).toFixed(1)}px)`;
+    g.fillStyle = TUBE.upper; fillPoly(g, tubeOutline(pts, wfn, 0.42, 0.24));
+    g.fillStyle = TUBE.lower; fillPoly(g, tubeOutline(pts, wfn, 0.34, -0.3));
+    g.filter = 'none';
+    g.globalCompositeOperation = 'source-over';
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(tmp, 0, 0, bw, bh, x0 - pad, y0 - pad, bw, bh);
   }
   // 3 specular: a thin bright line along the top edge, fading toward the ends
   if ((opts.spec ?? 1) > 0.01) {
@@ -155,10 +216,10 @@ function tube(ctx, tmp, pts, lw, alpha = 1, opts = {}) {
       const w0 = wfn((i - 1) / (n - 1)), w1 = wfn(s);
       ctx.strokeStyle = TUBE.spec;
       ctx.globalAlpha = alpha * a * (opts.spec ?? 1);
-      ctx.lineWidth = lw * 0.085;
+      ctx.lineWidth = lw * 0.07;
       ctx.beginPath();
-      ctx.moveTo(pts[i - 1][0] + N[i - 1][0] * w0 * 0.3, pts[i - 1][1] + N[i - 1][1] * w0 * 0.3);
-      ctx.lineTo(pts[i][0] + N[i][0] * w1 * 0.3, pts[i][1] + N[i][1] * w1 * 0.3);
+      ctx.moveTo(pts[i - 1][0] + N[i - 1][0] * w0 * 0.28, pts[i - 1][1] + N[i - 1][1] * w0 * 0.28);
+      ctx.lineTo(pts[i][0] + N[i][0] * w1 * 0.28, pts[i][1] + N[i][1] * w1 * 0.28);
       ctx.stroke();
     }
     // highlight beads near the round ends
@@ -190,13 +251,15 @@ function eyeGeom(e, side, P) {
   const slant = P.lidSlant * ry * 0.3 * oc;
   const xin = ex + inner * hw, xout = ex - inner * hw;
   const yCorner = lerp(yC, ey, oc);
-  const yin = yCorner + slant, yout = yCorner - slant * 0.6;
+  const tilt = (e.tilt || 0) * (1 - oc);
+  const yin = yCorner + slant + tilt, yout = yCorner - slant * 0.6 - tilt;
+  const cxo = (e.cxOff || 0) * (1 - oc);           // closed arc: the painted control point
   const oTop = clamp(o * (1 - P.lidTop), 0, 1.45);
   const oBot = clamp(o * (1 - P.lidBot), 0, 1.45);
   const qUp = lerp(yC + 2 * sagC, ey - ry * 1.86, oTop);
   const qLo = lerp(yC + 2 * sagC, ey + ry * 2.1, oBot);
   const c = (x0, y0, x1, y1, qy, sl) => {
-    const qx = (x0 + x1) / 2;
+    const qx = (x0 + x1) / 2 + cxo;
     return [[x0 + (qx - x0) * 2 / 3, y0 + (qy - y0) * 2 / 3 + sl * (x0 === xin ? 1 : -0.5)],
       [x1 + (qx - x1) * 2 / 3, y1 + (qy - y1) * 2 / 3 + sl * (x1 === xin ? 1 : -0.5)]];
   };

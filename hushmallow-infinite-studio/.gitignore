@@ -2,9 +2,20 @@ node_modules/
 *.f32
 # render scratch (stills, review sheets, frame dumps, intermediate passes)
 output/*
-# the deliverables
+# v1 deliverables (not approved; kept for comparison)
 !output/my-brain-at-2am.mp4
 !output/my-brain-at-2am.soundtrack.wav
 !output/cues.json
 !output/poster.jpg
 !output/qa/
+# v2 deliverables
+!output/v2/
+output/v2/*
+!output/v2/my-brain-at-2am-v2.mp4
+!output/v2/my-brain-at-2am-v2.soundtrack.wav
+!output/v2/cues.json
+!output/v2/verify.json
+!output/v2/poster.jpg
+!output/v2/compare/
+!output/v2/qa/
+!output/asset-qa/

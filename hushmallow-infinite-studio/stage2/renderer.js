@@ -46,7 +46,12 @@ vec2 screenToWorld(vec2 sp) {
 
 // water surface displacement: ripple rings (in perspective) + slow swell + agitation chop
 const WATER = `
-uniform float uTime; uniform float uAgitation;
+uniform float uTime; uniform float uAgitation; uniform float uLoop;
+// everything that moves on its own is periodic over the loop, so frame N-1 flows into frame 0
+float loopA() { return 6.2831853 * uTime / uLoop; }
+float scrollNoise(vec2 p, vec2 vel) {
+  return mix(vnoise(p - vel * uTime), vnoise(p - vel * (uTime - uLoop)), uTime / uLoop);
+}
 uniform vec4 uRip[8]; uniform float uRipN;     // x, y(world), t-since, amp
 vec2 waterDisp(vec2 w, float depth, out float crest) {
   float persp = 0.13 + depth / 700.;
@@ -65,7 +70,7 @@ vec2 waterDisp(vec2 w, float depth, out float crest) {
     disp += q / max(dist, 1e-3) * wave * 17.0;
     crest += max(0., wave) * 0.55 + abs(wave) * 0.1;
   }
-  float sw = vnoise(vec2(w.x * 0.004, w.y * 0.11 - uTime * 0.35)) - 0.5;
+  float sw = scrollNoise(vec2(w.x * 0.004, w.y * 0.11), vec2(0., 0.35)) - 0.5;
   float n1 = vnoise(vec2(w.x * 0.03, w.y * 0.12 - uTime * 1.3)) - 0.5;
   float n2 = vnoise(vec2(w.x * 0.017 + 9., w.y * 0.07 + uTime * 0.9)) - 0.5;
   disp += vec2(sw * 1.5, sw * 4.0) * (0.5 + 0.5 * smoothstep(400., 0., depth));
@@ -119,7 +124,10 @@ void main() {
   if (albedo.a < 0.002) discard;
   vec3 col = pow(albedo.rgb / max(albedo.a, 1e-4), vec3(2.2));   // sRGB art → linear light
   vec3 n0 = domeNormal(vUv);
-  if (uHasNormal > 0.5) { vec3 nm = texture(uNormal, vUv).xyz * 2. - 1.; nm.y = -nm.y; n0 = normalize(mix(n0, nm, 0.7)); }
+  // the derived normal map gives the true body shape (bevel, front bulge, top dimple); only its
+  // large-scale form is used (coarse mip): the painting already carries the fine fluff, and
+  // relighting every bump would double it (crinkly, grey)
+  if (uHasNormal > 0.5) { vec3 nm = texture(uNormal, vUv, 3.5).xyz * 2. - 1.; n0 = normalize(mix(n0, nm, 0.6)); }   // OpenGL convention (G = +Y up)
   // deformation tilts the surface: highlights slide as the body bends
   vec3 n = normalize(n0 + vec3(vBend * 0.55, 0., 0.) + vec3(0., (vComp - 1.) * 0.25, 0.));
   vec3 L = normalize(uLightDir);
@@ -171,7 +179,8 @@ vec3 sky(vec2 w, out float discOut) {
   vec3 c = mix(uHorizon, uHigh, smoothstep(0.0, 0.42, h));
   c = mix(c, uZenith, smoothstep(0.38, 1.0, h));
   // low haze over the far water
-  float hz = fbm(vec2(w.x * 0.0016 + uTime * 0.01, w.y * 0.008));
+  float la = loopA();
+  float hz = fbm(vec2(w.x * 0.0016 + 0.1 * cos(la), w.y * 0.008 + 0.05 * sin(la)));
   c = mix(c, uHaze, smoothstep(0.32, 0.0, h) * (0.3 + 0.3 * hz));
 
   vec2 mp = uMoon.xy; float mr = uMoon.z;
@@ -180,7 +189,7 @@ vec3 sky(vec2 w, out float discOut) {
   vec2 g = floor(w / 7.0);
   float s = hash12(g);
   float star = step(0.9972, s) * smoothstep(0.18, 0.7, h) * smoothstep(mr * 2.5, mr * 6.0, d);
-  float tw = 0.6 + 0.4 * sin(uTime * (0.7 + 1.8 * hash12(g + 7.)) + s * 40.);
+  float tw = 0.6 + 0.4 * sin(la * floor(2. + 7. * hash12(g + 7.)) + s * 40.);
   vec2 f = fract(w / 7.0) - 0.5 - (vec2(hash12(g + 3.), hash12(g + 5.)) - 0.5) * 0.5;
   float sz = 0.16 + 0.14 * hash12(g + 11.);
   c += vec3(0.85, 0.88, 1.0) * star * tw * smoothstep(sz, 0.0, length(f)) * uStars * 1.4;
@@ -199,9 +208,9 @@ vec3 sky(vec2 w, out float discOut) {
   float cl = 0.;
   vec3 cloud = uCloudDark;
   if (uClouds > 0.002) {
-    vec2 cp = vec2(w.x * 0.0016 + uTime * 0.012, w.y * 0.0085);
+    vec2 cp = vec2(w.x * 0.0016 + 0.17 * cos(la), w.y * 0.0085 + 0.03 * sin(la));
     cp += vec2(1.1, 0.35) * (vec2(fbm(cp * vec2(0.7, 1.3) + 7.0), fbm(cp * vec2(0.9, 1.1) + 2.3)) - 0.5);
-    float n = fbm(cp) * (0.75 + 0.5 * vnoise(vec2(w.x * 0.0009 - uTime * 0.006, 4.0)));
+    float n = fbm(cp) * (0.75 + 0.5 * vnoise(vec2(w.x * 0.0009 - 0.09 * cos(la), 4.0 + 0.09 * sin(la))));
     float band = smoothstep(0.12, 0.42, h) * smoothstep(0.95, 0.62, h);
     cl = smoothstep(0.66 - 0.32 * uClouds, 0.92 - 0.26 * uClouds, n) * band * min(1., uClouds * 1.6);
     // thin edges near the moon light up (silver lining); thick cores stay dusky
@@ -251,7 +260,7 @@ void main() {
   // moon glitter path: only when the surface is broken up
   float mx = (uMoon.x - uSkyCam.x) * uSkyCam.z + uRes.x * 0.5;  // moon's screen x
   float colw = 16. + depth * 0.22;
-  float glit = vnoise(vec2(w.x * 0.06, w.y * 0.4 - uTime * 0.8));
+  float glit = scrollNoise(vec2(w.x * 0.06, w.y * 0.4), vec2(0., 0.8));
   float streak = exp(-pow((sp.x - mx - disp.x * 0.6) / colw, 2.)) * smoothstep(0.45, 0.9, glit);
   col += uHaloCol * streak * (0.04 + 0.4 * uAgitation) * uMoonGlow * exp(-depth / 900.);
   // ripple crests catch the moonlight
@@ -331,6 +340,7 @@ const GLASS_FS = `
 in vec2 vLocal; in vec2 vScreen;
 uniform vec4 uRect; uniform float uRadius; uniform float uAlpha; uniform float uTextAlpha;
 uniform sampler2D uBlur; uniform sampler2D uText; uniform vec3 uTint; uniform vec3 uEdge; uniform float uStress;
+uniform float uGlowUp;   // dissolving: the glass turns to warm light
 out vec4 frag;
 float sdRound(vec2 p, vec2 b, float r) { vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
 void main() {
@@ -353,8 +363,9 @@ void main() {
   vec2 tuv = vLocal / (uRect.zw * 2.) + 0.5;
   vec4 txt = texture(uText, vec2(tuv.x, tuv.y));
   vec3 col = mix(glass, txt.rgb / max(txt.a, 1e-3), txt.a * uTextAlpha);
+  col = mix(col, vec3(1.35, 1.12, 0.82), uGlowUp * 0.7 * (0.6 + 0.4 * smoothstep(-uRect.w, 0., d)));
   float a = inside * uAlpha;
-  vec3 halo = uEdge * glow * uAlpha;
+  vec3 halo = (uEdge + vec3(1.4, 1.0, 0.6) * uGlowUp * 2.5) * glow * uAlpha;
   // soft contact shadow beneath (darkens what is behind, outside the glass)
   float shd = exp(-max(sdRound(vLocal - vec2(0., 10.), uRect.zw, uRadius), 0.) / 18.) * (1. - inside) * 0.22 * uAlpha;
   frag = vec4(col * a + halo * (1. - a), a + (glow * 0.6 + shd) * uAlpha * (1. - a));
@@ -531,7 +542,7 @@ export class Renderer {
         uRect: [b.x, b.y, b.hw, b.hh], uScale: b.scale, uSquash: b.squash || [1, 1], uRot: b.rot || 0,
         uRadius: b.radius, uAlpha: b.alpha, uTextAlpha: b.textAlpha,
         uBlur: { tex: blurTex, unit: 0 }, uText: { tex: b.textTex, unit: 1 },
-        uTint: b.tint || [0.93, 0.92, 1.0], uEdge: b.edge || [1, 1, 1], uStress: b.stress || 0,
+        uTint: b.tint || [0.93, 0.92, 1.0], uEdge: b.edge || [1, 1, 1], uStress: b.stress || 0, uGlowUp: b.glowUp || 0,
       });
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
@@ -564,7 +575,7 @@ export class Renderer {
     const rip = new Float32Array(32);
     const list = (S.world.ripples || []).slice(0, 8);
     list.forEach((r, i) => rip.set([r.x, r.y, r.age, r.amp], i * 4));
-    setUniforms(this.gl, prog, { uTime: S.t, uAgitation: S.world.agitation, uRipN: list.length });
+    setUniforms(this.gl, prog, { uTime: S.t, uAgitation: S.world.agitation, uRipN: list.length, uLoop: S.world.loop || 15 });
     this.gl.uniform4fv(prog.u.uRip, rip);
   }
 
