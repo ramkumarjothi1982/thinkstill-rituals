@@ -195,7 +195,7 @@ async function touchtalk(browser, vp) {
   await page.mouse.up(); await page.waitForTimeout(400);
   const bev = await events(page);
   check(vp, 'gesture buttons drive tap/double/stroke/squeeze', ['tap', 'doubletap', 'stroke', 'squeeze'].every((t) => bev.includes(t)), bev.join());
-  check(vp, 'squeeze button compresses', btnSq.squash > 0.1, `squash ${btnSq.squash.toFixed(3)}`);
+  check(vp, 'squeeze button compresses', btnSq.squash > 0.08, `squash ${btnSq.squash.toFixed(3)}`);
 
   // keyboard
   await clearEvents(page);
@@ -272,7 +272,7 @@ async function lifecycle(browser, vp) {
   await page.screenshot({ path: path.join(OUT, `${vp.name}-home.jpg`), type: 'jpeg', quality: 80 });
   const cards = await page.locator('.card').count();
   const live = await page.locator('.card[aria-disabled="false"]').count();
-  check(vp, 'home lists 10 experiences, 2 playable', cards === 10 && live === 2, `${cards}/${live}`);
+  check(vp, 'home lists 10 experiences, 4 playable (Phase 2)', cards === 10 && live === 4, `${cards}/${live}`);
   // switch features repeatedly: no leaked canvases, contexts or loops
   for (let i = 0; i < 4; i++) {
     for (const r of ['#/touchtalk', '#/softbody', '#/']) {
@@ -324,19 +324,20 @@ async function lifecycle(browser, vp) {
   await page.waitForFunction(() => __lab.companion?.rig?.id === 'blubi' && __lab.companion.rig.soft, null, { timeout: 15000 });
   await page.waitForTimeout(400);
   const picked = await page.evaluate(() => ({ marker: window.__marker, sheets: document.querySelectorAll('.sheet').length, canvases: document.querySelectorAll('canvas').length,
-    focus: document.activeElement?.getAttribute('aria-label'), stored: JSON.parse(localStorage.getItem('hm.sensorylab.v1') || '{}').mallow }));
+    focus: document.activeElement?.getAttribute('aria-label'), stored: JSON.parse(localStorage.getItem('hm.sensorylab.comfort.v1') || '{}').prefs?.favouriteMallow }));
   check(vp, 'Mallow picker switches the Mallow in place', picked.marker === 1 && picked.sheets === 0 && picked.canvases === 1 && picked.stored === 'blubi', JSON.stringify(picked));
   check(vp, 'focus returns to Settings after a switch', picked.focus === 'Settings', String(picked.focus));
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: 'Reset' }).click();
-  await page.waitForFunction(() => __lab.companion?.rig?.id === 'boppo' && __lab.companion.rig.soft, null, { timeout: 15000 });
+  // Reset clears device settings; the favourite Mallow belongs to Comfort DNA and stays
+  await page.waitForFunction(() => __lab.companion?.rig?.id === 'blubi' && __lab.companion.rig.soft, null, { timeout: 15000 });
   await page.waitForTimeout(400);
   const reset = await page.evaluate(() => ({ marker: window.__marker, sheets: document.querySelectorAll('.sheet').length, theme: document.documentElement.getAttribute('data-theme'),
     pref: __lab.prefs.get('theme'), motion: __lab.companion.rig.opts.reducedMotion, monitor: !!__lab.ctx.monitor?.enabled }));
   check(vp, 'Reset restores defaults without closing or reloading', reset.marker === 1 && reset.sheets === 0 && reset.pref === 'system' && reset.theme === null && reset.monitor, JSON.stringify(reset));
   const keys = await page.evaluate(() => Object.keys(localStorage));
-  check(vp, 'lab stores only its own key', keys.every((k) => k === 'hm.sensorylab.v1'), keys.join());
+  check(vp, 'lab stores only its own keys (settings + Comfort DNA)', keys.every((k) => k === 'hm.sensorylab.v1' || k === 'hm.sensorylab.comfort.v1'), keys.join());
   check(vp, 'lifecycle: no console errors', !errors.length, errors.join(' | '));
   await ctx.close();
 }

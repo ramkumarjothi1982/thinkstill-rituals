@@ -45,6 +45,8 @@ export default {
         if (s > step) { step = s; sound.chime(api.mallowId, s + 2, 0.4); }
         if (warmth >= 1) done = true;
       },
+      get warmth() { return warmth; },
+      orb,
       done: () => done,
       ending(why) {
         orb.moveTo(api.body().cx, api.body().top - 20);

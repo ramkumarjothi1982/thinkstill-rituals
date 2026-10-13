@@ -163,6 +163,22 @@ body {
 .dna-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
 .btn-quiet.danger { color: var(--danger); border-color: var(--danger); }
 
+/* Chrome over a Hushfold realm follows the realm's brightness, not the page
+   theme: scoped token overrides, so every component stays on tokens. */
+.screen[data-backdrop="dark"] {
+  --text-1: #f7f3ff; --text-2: #e4defa; --text-3: #b9b0dc; --ink-0: #0a0818;
+  --chrome: rgba(16, 12, 40, 0.52); --chrome-line: rgba(255, 255, 255, 0.18);
+  --glass: rgba(20, 16, 48, 0.6); --glass-strong: rgba(16, 12, 40, 0.86); --line: rgba(255, 255, 255, 0.1); --line-strong: rgba(255, 255, 255, 0.22);
+  --chip-on: #ffd98a; --chip-on-text: #23140a;
+}
+.screen[data-backdrop="light"] {
+  --text-1: #2a1d3d; --text-2: #4a3a60; --text-3: #6f5f86; --ink-0: #fff7ef;
+  --chrome: rgba(255, 255, 255, 0.62); --chrome-line: rgba(42, 29, 61, 0.12);
+  --glass: rgba(255, 255, 255, 0.62); --glass-strong: rgba(255, 250, 245, 0.92); --line: rgba(42, 29, 61, 0.1); --line-strong: rgba(42, 29, 61, 0.2);
+  --chip-on: #2a1d3d; --chip-on-text: #fff7ef;
+}
+.screen[data-backdrop] .topbar .title b, .screen[data-backdrop] .topbar .title small { text-shadow: 0 1px 10px var(--ink-0); }
+
 /* ---------------------------------------------------------- pocket hush -- */
 .pocket .brand { justify-content: flex-start; }
 .pocket .brand h1 { flex: 1; font-size: 21px; }

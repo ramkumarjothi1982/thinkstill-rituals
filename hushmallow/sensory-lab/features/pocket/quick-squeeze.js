@@ -40,8 +40,9 @@ export default {
     return {
       tick() {
         const m = rig.metrics();
-        if (active && m) peak = Math.max(peak, m.squash);
+        if (active && m) peak = Math.max(peak, m.squash, rig.faceState.squeeze * 0.3);
       },
+      get count() { return count; },
       done: () => done,
       ending(why) {
         // melt flat, then pop back

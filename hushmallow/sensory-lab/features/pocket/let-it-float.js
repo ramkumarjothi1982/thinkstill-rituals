@@ -66,6 +66,7 @@ export default {
       ending() {
         return { mix: { relieved: 0.7, calm: 0.3 }, i: 0.65, reaction: 'sigh', motif: 'rest', line: 'rest', caption: 'All floated away.' };
       },
+      items,
       stop() { for (const f of items) f.gone = true; },
     };
   },

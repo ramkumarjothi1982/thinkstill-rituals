@@ -170,6 +170,8 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
   companion.restOverride = { mix: { calm: 0.5, comforted: 0.5 }, i: 0.35 };
   mode = mod.start(api);
   api.hint(mod.hint, 3200);
+  // test / debugging handle (development lab only)
+  if (globalThis.__lab) globalThis.__lab.moment = { id, variant, api, get mode() { return mode; }, get t() { return t; }, get ended() { return ended; } };
 
   const loop = (now) => {
     raf = 0;
@@ -233,6 +235,7 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
   return {
     unmount() {
       closed = true;
+      if (globalThis.__lab?.moment?.api === api) globalThis.__lab.moment = null;
       cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', vis);
       for (const [ev, fn] of [['pointerdown', onDown], ['pointermove', onMove], ['pointerup', onUp], ['pointercancel', onUp]]) s.screen.removeEventListener(ev, fn, true);

@@ -5,7 +5,7 @@
 import { h, icon, iconBtn, feedbackChip } from '../lab-ui.js';
 import { Companion } from '../core/companion.js';
 import { MALLOWS } from '../../src/mallows/registry.js';
-import { mountRealm } from '../../src/world/realm.js';
+import { mountRealm, REALMS } from '../../src/world/realm.js';
 
 /**
  * opts: title, subtitle, material, extraButtons, onEvent(e), plus for moments:
@@ -38,6 +38,8 @@ export function stageScreen(root, ctx, { title, subtitle, material, extraButtons
     h('div', { class: 'title' }, h('b', {}, title), h('small', {}, subtitle || m.name)),
     h('div', { class: 'tb-right' }, ...extraButtons, soundBtn, settings ? iconBtn('settings', 'Settings', () => ctx.openSettings()) : null));
   const bottom = h('footer', { class: 'bottom' });
+  // chrome over a realm takes the realm's brightness, not the page theme (readable on any world)
+  if (realmId) screen.dataset.backdrop = backdropTone(realmId);
   screen.append(wrap, tint, stage, top, bottom);
   root.append(screen);
   const fb = feedbackChip(screen);
@@ -104,6 +106,12 @@ export function stageScreen(root, ctx, { title, subtitle, material, extraButtons
       screen.remove();
     },
   };
+}
+
+function backdropTone(realmId) {
+  const sky = REALMS[realmId]?.palette.sky || '#000000';
+  const n = parseInt(sky.replace('#', ''), 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.04 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.3 ? 'light' : 'dark';
 }
 
 function hexA(hex, a) {

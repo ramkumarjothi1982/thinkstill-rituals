@@ -104,6 +104,7 @@ export class ComfortDNA {
 
   set(k, v) {
     if (!valid(k, v)) return false;
+    if (JSON.stringify(v) === JSON.stringify(this.chosen(k))) return true;   // unchanged: nothing to save
     if (JSON.stringify(v) === JSON.stringify(DEFAULT_PREFS[k])) delete this.data.prefs[k];
     else this.data.prefs[k] = clone(v);
     this._commit(k);

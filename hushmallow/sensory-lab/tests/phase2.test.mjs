@@ -106,6 +106,9 @@ test('reset, delete everything, and isolation of stores and keys', async () => {
   assert.equal(dna.history().length, 1, 'reset keeps history (it has its own delete)');
   await dna.deleteAll();
   assert.equal(store.value, null, 'store cleared');
+  dna.set('favouriteMallow', DEFAULT_PREFS.favouriteMallow);
+  await flush();
+  assert.equal(store.value, null, 'setting a value that is already in place writes nothing');
   assert.equal(dna.history().length, 0);
   // two people / two stores never share anything
   const a = await fresh(), b = await fresh();

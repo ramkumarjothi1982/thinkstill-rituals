@@ -49,6 +49,8 @@ export default {
           if (breaths >= BREATHS) { done = true; api.hint('', 1); } else begin('in');
         }
       },
+      get phase() { return phase; },
+      get breaths() { return breaths; },
       done: () => done,
       ending(why) {
         rig.setInflate(0);

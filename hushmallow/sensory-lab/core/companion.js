@@ -173,16 +173,25 @@ export class Companion {
         rig.lookAtScreen(d.x, d.y);
         this.drag.speed = Math.hypot(d.vx, d.vy);
         if (d.dy > 30 && !this.drag.squished) { this.drag.squished = true; this.sound.squish(this.mat(), 0.5); }
+        // pressing down is the single-touch squeeze: the whole body squashes onto the floor
+        if (!this.sq && rig.soft) {
+          const bodyH = rig.soft.H * (rig._S || rig.S);
+          const press = clamp(Math.max(0, d.dy) / bodyH, 0, 0.8);
+          if (press > 0.02 || this.drag.press) rig.setSqueeze(press * 0.95);
+          this.drag.press = Math.max(this.drag.press || 0, press);
+        }
         break;
       case 'dragend': {
         if (!this.drag) break;
         const stretch = rig.release(1, d.fling ? d.vx : 0, d.fling ? d.vy : 0);
+        const pressed = this.drag.press || 0;
+        if (pressed) rig.setSqueeze(0);
         this.stretchSnd?.end(); this.stretchSnd = null;
         this.drag = null;
         this.director.clear();
         if (d.converted) break;
-        this.sound.release(this.mat(), clamp(stretch * 2.5 + (d.fling ? 0.3 : 0), 0.1, 1), this._pan(d.x));
-        if (stretch > 0.12) this._materialFx();
+        this.sound.release(this.mat(), clamp(Math.max(stretch * 2.5, pressed * 1.4) + (d.fling ? 0.3 : 0), 0.1, 1), this._pan(d.x));
+        if (stretch > 0.12 || pressed > 0.2) this._materialFx();
         const r = this.persona.respond('dragend', d);
         this._apply(r);
         this._haptic(d.fling ? 'pop' : 'soft');
