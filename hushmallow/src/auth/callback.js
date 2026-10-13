@@ -201,10 +201,16 @@ export async function run({ href = START_HREF } = {}) {
 
   let recovery = false, emailChange = false;
   if (p.kind === 'token') {
-    const { error } = await c.auth.verifyOtp({ token_hash: p.tokenHash, type: p.type });
+    const { data, error } = await c.auth.verifyOtp({ token_hash: p.tokenHash, type: p.type });
     if (error) { failed(friendlyError(error, 'callback'), p.next); return { state: 'error', code: error.code || null }; }
     recovery = p.type === 'recovery';
     emailChange = p.type === 'email_change';
+    // secure email change: the first of the two addresses confirmed, the other still to come
+    if (emailChange && !data?.session) {
+      say('One more step', 'Thank you. Now open the link we sent to your other email address to finish the change.', 'idle');
+      body(openApp(p.next));
+      return { state: 'email-change-half' };
+    }
   } else {
     const { data, error } = await c.auth.exchangeCodeForSession(p.code);
     if (error) { failed(friendlyError(error, 'callback'), p.next); return { state: 'error', code: error.code || error.name || null }; }

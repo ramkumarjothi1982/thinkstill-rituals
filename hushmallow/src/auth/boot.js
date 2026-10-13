@@ -78,7 +78,7 @@ export function createAuthHandle(boot, { onReload, onExpired } = {}) {
     namespace: ns,
     status: () => (real ? real.status() : !enabled ? 'off' : ns.mode === 'account' ? 'signed-in' : 'guest'),
     user: () => (real ? real.user() : ns.mode === 'account' ? { id: ns.uid, email: ns.email || null } : null),
-    get pendingGuestChoice() { return real ? real.pendingGuestChoice : (ns.mode === 'account' && needsGuestChoice(globalThis.localStorage, ns.uid)); },
+    get pendingGuestChoice() { return real ? real.pendingGuestChoice : (ns.mode === 'account' && !!safe(() => needsGuestChoice(globalThis.localStorage, ns.uid), false)); },
     get loaded() { return !!real; },
     /** The full sign-in API (src/auth/client.js), imported on first use. */
     load() {

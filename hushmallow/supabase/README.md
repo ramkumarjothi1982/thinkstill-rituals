@@ -74,6 +74,16 @@ nothing is left. The result is one column: a `PASS`/`FAIL` line per check and
 on a throwaway local PostgreSQL with a small Supabase stand-in, and in CI on
 a real local Supabase stack. Neither ever touches the project.)
 
+## Email templates
+
+`templates/` holds the five templates to paste into Authentication → Emails →
+Templates (subject in each file's first line). Every link is
+`{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…`, which opens
+`/auth/callback` on whichever site asked for it (production or a preview)
+and works on any device; the reauthentication email carries the 6-digit
+`{{ .Token }}` the app asks for before a password change. The rest of the
+dashboard settings are in `../docs/AUTH.md`.
+
 ## Backfill
 
 Accounts created before `0002` ran have no profile. `0008_backfill_profiles.sql`

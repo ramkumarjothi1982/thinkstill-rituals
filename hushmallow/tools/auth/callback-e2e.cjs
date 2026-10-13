@@ -62,14 +62,14 @@ async function main() {
   check(su.ok && su.needsConfirmation, 'sign up asks to check email', JSON.stringify(su));
   const m1 = await lastMail(email, 'signup');
   check(m1 && m1.redirect_to === `${SITE}/auth/callback`, 'the email returns to /auth/callback', m1?.redirect_to);
-  const link1 = `${m1.redirect_to}?token_hash=${m1.token_hash}&type=signup`;   // the recommended template: {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=signup
+  const link1 = `${m1.redirect_to}?token_hash=${m1.token_hash}&type=email`;   // exactly supabase/templates/confirmation.html: {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email
 
   const laptop = await browser.newContext(ctxOpts);   // the email opened on another device
   let c = await newPage(laptop, 'laptop');
   const navs = [];
   c.on('framenavigated', (f) => { if (f === c.mainFrame()) navs.push(f.url()); });
   const resp = await c.goto(link1);
-  check(resp.status() === 200, '/auth/callback?… is served (after Pages’ 308 to /auth/callback/)', `${resp.status()} ${resp.url().replace(/token_hash=[^&]+/, 'token_hash=…')}`);
+  check(resp.status() === 200 && resp.request().redirectedFrom()?.url().startsWith(`${SITE}/auth/callback?`), '/auth/callback?… is served (after Pages’ 308 to /auth/callback/, query kept)', `${resp.status()} ${resp.url().replace(/token_hash=[^&]+/, 'token_hash=…')}`);
   const h = resp.headers();
   check(h['cache-control'] === 'no-store' && h['referrer-policy'] === 'no-referrer' && h['x-frame-options'] === 'DENY' && /frame-ancestors 'none'/.test(h['content-security-policy'] || ''), '/auth/* headers: no-store, no-referrer, DENY, frame-ancestors none');
   await c.waitForFunction(() => document.querySelector('#hm-auth-title')?.textContent === 'You’re in', null, { timeout: 30000 });
