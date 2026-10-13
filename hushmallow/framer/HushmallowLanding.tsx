@@ -3646,9 +3646,10 @@ const CSS = `
 .hm-squish:active { cursor:grabbing; }
 
 /* nav */
-.hm-nav { position:relative; z-index:50; width:100%; font-family:var(--ui); }
-.hm-nav.is-fixed { position:fixed; top:0; left:0; right:0; transition:background-color .35s var(--ease), box-shadow .35s var(--ease), backdrop-filter .35s; }
-.hm-nav.is-scrolled { background:rgba(255,248,243,.78); backdrop-filter:saturate(1.6) blur(18px); -webkit-backdrop-filter:saturate(1.6) blur(18px); box-shadow:0 1px 0 rgba(31,22,64,.07); }
+/* the nav always carries its own light background, so it stays readable whatever the page behind it is */
+.hm-nav { position:relative; z-index:50; width:100%; font-family:var(--ui); color:var(--ink); background:rgba(255,250,246,.97); backdrop-filter:saturate(1.6) blur(18px); -webkit-backdrop-filter:saturate(1.6) blur(18px); box-shadow:0 1px 0 rgba(31,22,64,.06); }
+.hm-nav.is-fixed { position:fixed; top:0; left:0; right:0; padding-top:env(safe-area-inset-top, 0px); transition:background-color .35s var(--ease), box-shadow .35s var(--ease); }
+.hm-nav.is-scrolled { background:rgba(255,250,246,.94); box-shadow:0 1px 0 rgba(31,22,64,.08), 0 10px 30px -18px rgba(31,22,64,.35); }
 .hm-nav-in { max-width:1240px; margin:0 auto; padding:0 var(--gutter, 40px); height:76px; display:flex; align-items:center; gap:24px; }
 .hm-nav-logo { display:flex; align-items:center; flex:none; min-height:44px; border-radius:10px; }
 .hm-nav-logo img { width:172px; height:auto; }
