@@ -1,1 +1,2 @@
 2026-10-13 probe the live deployment before adding sign-in
+2026-10-13 probe the branch preview's /auth/callback after the sign-in merge
