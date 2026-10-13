@@ -25,6 +25,19 @@ longer write a deleted or signed-out account's things back; a reset link
 works on a browser where someone else is signed in; the 64-row cap allows
 re-saving (SQL `0009`).
 
+Round 3 (the second independent review): deleting the account, "Sign out
+and remove my things" and "Remove this phone's data" now clear this
+device's copy even when **another tab of the same account** is open in a
+scene that is not calm (a device-level tombstone every page honours, below);
+the home Mallow picker shows the Mallow actually greeting you; an arrival
+names the account it signed in; "That password doesn't match." sits under
+Current password; an address in a lede stays in one piece; today's guest
+snapshot uses a real plan tier and pins every guest key. Found while
+re-running the E2E dry run: on a shared browser, a page checking its own
+session at the moment another tab opened someone else's link could clear
+(and end on the server) the *other* account's new session; a page now only
+ever clears its own session (below, "Shared browsers").
+
 ## Project
 
 | | |
@@ -56,7 +69,7 @@ re-saving (SQL `0009`).
 | `src/auth/autosync.js` | the opt-in sync while the app runs (never decides consent itself) |
 | `supabase/` | migrations 0001–0009, rollback, `tests/rls_check.sql`, email templates, README; `config.toml` = the **local** stack for the CI E2E only (never a hosted project) |
 | `tools/auth/` | `fake-supabase.mjs` (test double; renders the real templates and answers a Mailpit-style API), `pages-serve.mjs` (Cloudflare-Pages-like static server), `callback-e2e.cjs`, `screens-e2e.cjs` and `fixes-e2e.cjs` (browser proofs against the fake), `sql-check.sh` + `pg-supabase-shim.sql` (SQL on a throwaway local PostgreSQL), `e2e-stack-env.mjs` (the local stack's public values for CI), `E2E` (append a line to run the CI E2E) |
-| `tests/auth-*.test.mjs` | node tests (config, namespaces, errors + callback parsing, the client with the real supabase-js against the fake, two-device sync, the screens' logic and the Mallow, static SQL, the E2E's own safety and plumbing, races with a sync in flight (`auth-quiesce`), today's guest keys (`auth-guest-keys`, snapshot in `tests/helpers/guest-snapshot.mjs`)) |
+| `tests/auth-*.test.mjs` | node tests (two pages of one account and the device-level tombstone (`auth-wipe`), config, namespaces, errors + callback parsing, the client with the real supabase-js against the fake, two-device sync, the screens' logic and the Mallow, static SQL, the E2E's own safety and plumbing, races with a sync in flight (`auth-quiesce`), today's guest keys (`auth-guest-keys`, snapshot in `tests/helpers/guest-snapshot.mjs`)) |
 | `tests/e2e/auth.e2e.mjs` | the isolated end-to-end check (CI: a local Supabase stack; dry run: the fake) |
 | `.github/workflows/hushmallow-auth-e2e.yml` | runs it on a GitHub runner (below) |
 
@@ -95,6 +108,7 @@ re-saving (SQL `0009`).
 |---|---|
 | `hm2:<key>` (guest; also everything when sign-in is off) | the guest's things, exactly as before accounts |
 | `hm2:u:<uid>:<key>` (each account) | `prefs` (all settings, `seenIntro` and the home Mallow included), `hushfold.favourites`, `hushfold.progress`, `hushfold.rotation`, `hushflow.rotation`, `hushfold.lines`, `garden`, `journey`, `played`, `rotation`, `ultra.sealedPredictions`, `beyond.consent`, `beyond.feedback`, `beyond.seen`, `beyond.visits`, `auth.local` (this account on this device: created, guest-data answer `keep` / `fresh` ("Not now") / `none` / `cleared`), `auth.sync` (the sync's bookkeeping: the server time of the last settings sync, whether a setting changed here since, and the ids both sides had at the last library sync; ids and times only), `auth.touchedAt` |
+| `hm2:auth.wipe:<uid>` (**device-level**, one per account) | the tombstone written when that account's copy here is removed (`{ v, id, at, reason: deleted \| signed-out \| device-data, pending }`; ids and times only), below. A guest's "Delete everything on this phone" leaves it |
 | `hm2:<key>` whoever is signed in (**device-level**) | `entitlement` (the plan belongs to the device / App Store account, test purchases included), `beyond.device` (Another Angle's random device code: the server's daily allowance is per device), `beyond.session` (the server session bound to that code), `beyond.invite` (tester invite code), `sound`, `haptics` (the engines' raw switches: they mirror the settings of whoever is using the phone, rewritten from that person's `prefs` at boot exactly as today's app does, so a guest's own values come back from the guest's `hm2:prefs` at the guest's next boot) |
 | supabase-js's own | `sb-<ref>-auth-token`, `…-code-verifier`, `…-flow-…`, `…-user`: removed on sign-out and deletion |
 
@@ -139,9 +153,41 @@ it in the built app.
   account's copy is removed, and removed once more right before the reload.
   A deletion the server refuses unseals and resumes. (Round 1 found a sync
   in flight writing `hm2:u:<deleted uid>:auth.sync` back.)
-* **An account deleted on another device**: the next server check answers
-  `user_not_found`; this device drops to guest and removes that account's
-  copy too. An account only signed out elsewhere keeps its copy.
+* **…on every page of this device, not only the one that did it** (round
+  2 found a second tab of the same account, sitting in the Memory Garden,
+  writing into the deleted account's namespace until its deferred reload,
+  and nothing ever removing those keys). Before anything is removed,
+  `deleteAccount()`, `signOut({ removeLocal: true })`, `removeDeviceData()`
+  and the "deleted elsewhere" check write a **device-level tombstone**,
+  `hm2:auth.wipe:<uid>`, with a new id (`writeWipe`). Then:
+  * every store of that account compares the tombstone it booted with
+    (`ns.wipeId`) on each write: a newer one means the write is dropped, at
+    once, even before the page hears the storage event (`wipedSince`);
+  * a page that hears the event (`client.js` `onWipe`, or `boot.js` before
+    supabase-js has loaded) seals itself, removes what it wrote before it
+    heard (when the copy is to go), pauses its sync and reloads at its next
+    calm moment, saying so at once ("Your account is deleted…", "You're
+    signed out…", "This device's copy of your things is removed.");
+  * the next boot (`authBoot` → `cleanupWipes`) removes anything left of an
+    account whose tombstone is still *pending*; a boot that lands while
+    another tab is still removing that very account's copy (pending and
+    under 2 minutes old) boots sealed and writes nothing, not even the
+    once-only question's marker;
+  * signing that account in again on this device (a sign-in here, or a
+    link on `/auth/callback`) settles the tombstone first (`settleWipe`:
+    anything left goes, the tombstone stops asking, same id), so its new
+    copy is kept from then on, across later plain sign-outs.
+  "Remove this phone's data" is never pending (the account stays signed in
+  and its "cleared" marker stays); pages that boot after the tombstone are
+  not sealed by it. A plain sign-out and an expired session write **no**
+  tombstone: the account keeps its copy for its next sign-in.
+* **An account deleted on another device**: if this page asks the server
+  while its access token is still valid, the answer is `user_not_found`:
+  this device writes the tombstone, drops to guest and removes that
+  account's copy. Once the access token has expired, supabase-js's refresh
+  fails with `refresh_token_not_found` instead, which reads exactly like a
+  session ended elsewhere, so the page drops to guest and **keeps** the copy
+  (see Known limits). An account only signed out elsewhere keeps its copy.
 * Settings' **"Delete everything on this phone"** in an account empties that
   account's namespace and the device keys (Settings puts the plan back); in
   guest mode it leaves every account namespace alone.
@@ -234,7 +280,14 @@ on the scene names the screen; deeper screens get a history entry, so Back
 | `off` / `expired` | sign-in off in this build / the session ended |
 
 **The home Mallow** (`src/auth/mallow.js`, the same on `/auth/callback`):
-the account's home Mallow (else the Hushfold's, else Blubi), alive. Moods:
+the Mallow greeting this person now, picked exactly as the Hushfold picks it
+(`view-model.js` `homeMallow`: this visit's pick, then this device's last
+choice, `prefs.mallow`, else the Mallow on the stage, i.e. the time of
+day), alive; the picker on the account card rings that same Mallow and,
+until one is picked, says "Pipzi is greeting you for now. Until you pick
+one, it changes with the time of day." The account's own home Mallow
+(chosen on another device) is used only on a device that has not chosen
+one. Moods:
 idle; **away** (eyes shut in two soft arcs while a password field has
 focus); busy (waiting for the server); **happy** (one soft hop on success,
 then idle); **concerned** (worried brows, a flat mouth, no tears) after an
@@ -256,6 +309,15 @@ zoom), targets ≥ 44 px; emails break at `@` or `.`; keyboard-safe on iPhone
 the keyboard is scrolled into the visible part; a field already in sight
 never moves); an offline pill; works at 320×568 at text size 1.25 and at
 1280×800 (the card stays phone-sized).
+**Naming the account**: an arrival says which account it signed in, shortened
+for anyone nearby ("You're signed in as an…@example.com.", the toast after
+the reload and the `/auth/callback` page), and "Keep this phone's things?"
+names it in full: a link, or a shared phone, that signed in someone other
+than expected is plain at once. A field's error sits right under that field
+(Change password: "That password doesn't match." under Current password,
+above "Forgot your password?"); others just above the buttons. An email in a
+lede stays in one piece with its punctuation (it moves to the next line
+whole and breaks at "@" or a dot only when wider than the card).
 Every failure is `{ ok: false, error: { code, message, field, kind } }` with a
 friendly message (never the server's text; sign-in failures read the same
 for a wrong password and an unknown email; sign-up, resend and reset always
@@ -287,6 +349,35 @@ the browser held before is ended on the server with scope `local`
 then boots into B's own namespace, another open tab leaves A's namespace,
 and A's things stay in A's namespace for A's next sign-in. `openLink()`
 holds the link's work, so Node tests run it.
+
+**A page only ever clears its own session** (round 3). While B's link is
+being opened in tab 2, A's page in tab 1 may be checking its session; tab 2
+ends A's session on the server, so A's check (already on the wire with A's
+token) is refused. supabase-js's `getUser()` reacts to "session not found"
+by removing whatever session is stored at that moment, which is B's by
+then, and A's page used to sign out (on the server) whatever session was
+stored: B's new password then failed with "Sign in first" (seen in 2 of 3
+E2E dry runs). Now `verify()` asks `GET /auth/v1/user` itself, with exactly
+the token it read from storage, and clears that session only while it is
+still the one stored (`ownSession`); `signOut()` and `deleteAccount()` call
+supabase-js's sign-out only while the stored session is still the
+account's own, and never remove another account's keys (`clearOwnKeys`).
+`tests/auth-session-race.test.mjs` makes the other tab's write at the exact
+moment A's request is on the wire (3 of its first 4 tests fail on the
+previous client).
+
+**…and the link's page keeps hold of the session it opened.** A trace of a
+remaining dry-run failure showed the other direction: A's page had a token
+refresh in flight when tab 2 stored B's session, heard about B only ~0.5 s
+later (localStorage reaches other tabs asynchronously), and its save landed
+over B's session. `/auth/callback` now keeps the session the link opened in
+its own memory (`holdLinkSession`) and puts it back if it was overwritten,
+before it sets a new password and before it sends the person into the app
+(`keepLinkSession`); and a page that hears that the stored session is gone
+or another account's stops supabase-js's auto refresh at once. (The dry
+run's 20 s access tokens, shorter than supabase-js's 90 s refresh margin,
+make every call refresh and so widen this window enormously; with
+production's hour-long tokens a page refreshes about once an hour.)
 
 ## Supabase dashboard settings (owner)
 
@@ -468,7 +559,10 @@ the local database (each section says why if it cannot run):
 * **delete**: a sync started just before the tap; typed confirmation → auth
   user, sessions and every row gone, sign-in fails, this device's copy and
   `sb-` keys gone (and still gone seconds later), the other account (here
-  and on the server) and the guest untouched.
+  and on the server) and the guest untouched; a second tab of the same
+  account, open in the Memory Garden all along (a paid plan on the phone),
+  is sealed at once (its favourite, setting and journey entry never land)
+  and leaves nothing of the account after its reload.
 * **unconfirmed**: "Please confirm your email first" → send the link again.
 * no page or console errors from the site (the stack's expected 4xx
   refusals aside).
@@ -495,6 +589,23 @@ on the real stack is the evidence.
 Everything here ran in this sandbox against the **local fake** of Supabase
 (`tools/auth/fake-supabase.mjs`) and a throwaway PostgreSQL 16, never
 production and never Supabase itself.
+* Round 3: `node --test hushmallow/tests/*.test.mjs`: **548 of 548**. New:
+  `auth-wipe` (9: two pages of one account on one Storage, the real
+  supabase-js against the fake, simulated storage events; tab 2 deletes /
+  signs out removing / removes this phone's data while tab 1 writes late
+  and a write slips in, then a fresh boot: no `hm2:u:<uid>:` key left;
+  device-data keeps its marker and writes again after the reload; a plain
+  sign-out writes no tombstone; the pre-load handle; a boot mid-removal; a
+  sign-in again settles it; and the old behaviour for contrast (without
+  the tombstone the late writes survive)); in `auth-screens` the home
+  Mallow chain and the account named on arrival; `auth-guest-keys` with a
+  real plan tier and journey, played, the Hushflow rotation and the invite
+  code pinned. 8 of the 9 `auth-wipe` tests fail with `writeWipe` disabled.
+  `auth-session-race` (5: A's check refused while B's session lands in
+  storage, B untouched here and on the server; A's own refused session
+  still leaves; A's sign-out and A's deletion with B's session stored; A's
+  late save over B's session, which the link's page puts back before the
+  new password and before the arrival).
 * `node --test hushmallow/tests/*.test.mjs`: **532 of 532** (round 2). New
   this round: `auth-quiesce` (9: delete, sign-out with and without removing,
   "Remove this device's data" while a sync is mid-pull, a refused deletion,
@@ -515,6 +626,17 @@ production and never Supabase itself.
 * Browser, on the **built** site (an `HM_AUTH_MODE=dev` build in
   `/tmp/claude-0/hf/auth/site`, served by `tools/auth/pages-serve.mjs` on
   8202 the way Pages serves it; the fake on 8203; the dev tree on 8201):
+  * Round 3 (`/tmp/claude-0/hf/auth/r2fix/`): `fixes-e2e.cjs` **74 of 74**
+    (new `xtab`: tab 1 in the Memory Garden while tab 2 deletes the account
+    at 390×844, signs out removing at 320×568, removes this phone's data at
+    390×844: tab 1 sealed, its late favourite / setting / journey entry
+    never land, nothing of the account after its reload, the guest's things
+    untouched, one calm line at once; new `r2screens` at 390×844 and
+    320×568: the picker, the mismatch under Current, the code lede's
+    address on one line, the account named on arrival and in the question);
+    `callback-e2e.cjs` **42 of 42**; `screens-e2e.cjs` flows **49 of 49**,
+    people **14 of 14**, gallery **62 of 62**; the E2E spec dry run on a
+    CI-mode build (`HM_AUTH_MODE=ci`, the fake's 20 s access tokens): **101 of 101, four runs in a row** after the two session fixes ("Shared browsers", above); before them the `shared` section failed in 3 of 6 untraced runs (traced and root-caused). The new delete-section check (a second tab in the Memory Garden) passes in every run.
   * `tools/auth/callback-e2e.cjs`: 41 of 41.
   * `tools/auth/screens-e2e.cjs --part flows`: 49 of 49 by touch (CDP),
     including Change password: a wrong current password ("That password
@@ -555,8 +677,10 @@ the Settings row is wired.
 15. Delete account (type `delete`): Authentication → Users no longer lists it; no rows remain for it; "Your account is deleted…"; the app is a guest again with the guest's things.
 16. Offline (aeroplane mode) on the account card: a calm pill; a switch says it can't reach hushmallow and stays as it was.
 17. On a preview (`*.hushmallow.pages.dev`): sign up; the email's button opens **production's** `https://app.hushmallow.com/auth/callback` (by design, coordinator decision 1: one-time tokens only ever reach the production app, never a preview) and confirms there; then sign in on the preview with the confirmed account. The same for a reset link asked for on a preview: the new password is set on production.
-19. As a guest who has used the app before (favourites, a Memory Garden tool, settings, Another Angle): open the version with sign-in on; everything is exactly where it was. Sign in, answer "Not now", sign out: still exactly where it was.
 18. Authentication → URL Configuration: the Site URL is exactly `https://app.hushmallow.com` (no trailing slash), so the links in step 7 read `…com/auth/callback?…`, not `…com//auth/callback?…`.
+19. As a guest who has used the app before (favourites, a Memory Garden tool, settings, Another Angle): open the version with sign-in on; everything is exactly where it was. Sign in, answer "Not now", sign out: still exactly where it was.
+20. Two tabs: signed in, open the app in a second tab and leave it in the Memory Garden. In the first tab, Delete account. The second tab says "Your account is deleted…" at once; star a world there (nothing is kept); go back to the Hushfold: it reloads as a guest. In the browser's storage (DevTools → Application → Local Storage) no `hm2:u:<your id>:` key is left. The same with "Sign out and remove my things from this phone".
+21. Arrivals name the account: after signing in, and on the page a confirmation link opens, the line reads "You're signed in as yo…@yourdomain."; the "Keep this phone's things?" question shows your full address.
 
 ## Known limits
 
@@ -568,7 +692,8 @@ the Settings row is wired.
 * Settings' "Delete everything on this phone" in an account empties this account's copy here; with a sync switch on, what is kept with the account comes back at the next sync (the account still has it). Turning the switch off first deletes it there too.
 * The browser proofs drive a stand-in keyboard (`visualViewport`); a physical iPhone has not been tried.
 * The current-password check is one more sign-in for the account: it counts towards Supabase's sign-in rate limit (per IP) and stamps `last_sign_in_at`. If its immediate sign-out cannot reach the server (the network drops at that moment), that short session stays on the server until Supabase ends it (the password change itself ends every other session); nobody holds its tokens (memory only).
-* Settings' "Delete everything on this phone" as a guest leaves every account's namespace on the phone (by design: those are other people's things); an account deleted on another device leaves its copy only until this phone next checks with the server (then it goes).
+* Settings' "Delete everything on this phone" as a guest leaves every account's namespace on the phone (by design: those are other people's things).
+* **An account deleted on another device can leave its copy on this one.** This phone removes it only when it asks the server while its access token is still valid (the answer is then `user_not_found`). Once the access token has expired (an hour by default), supabase-js's refresh fails with `refresh_token_not_found`, exactly as for a session ended elsewhere: the phone drops to guest calmly and keeps the copy, as it does for any signed-out account, until that account signs in here again (it cannot: it no longer exists) or someone removes it (Settings' "Delete everything on this phone" while signed in to it is no longer possible, so in practice it stays until the browser's data is cleared). Nothing of it reaches the server or another account; it is this device's own copy (settings, favourites, Memory Garden ids, journey with feeling families). The tombstone covers every tab of the device that did the deleting, not other devices.
 * With sign-in off, guests still load the small sign-in boot modules (`boot.js`, `config.js`, `namespace.js` and `sync.js`'s merge helpers, about 35 KB, no network); supabase-js itself never loads for them.
 * Email links always open the production app (`{{ .SiteURL }}/auth/callback`), also when the email was asked for on a preview (see the templates above).
 
@@ -577,7 +702,7 @@ the Settings row is wired.
 The screens are ready to wire (stage 2); nothing in Settings or the side
 panel was changed here.
 * **Settings row**: in `src/app/scenes/settings.js`, an empty `h('div')` at the top of the Privacy section filled with
-  `import('./account.js').then((m) => m.mountAccountRow(app, rowEl))`: "Sign in or create an account · Optional…" / "Your account · Signed in as …" with one button; renders nothing when sign-in is off.
+  `if (app.auth?.enabled) import('./account.js').then((m) => m.mountAccountRow(app, rowEl))` (guarded, so a build with sign-in off loads nothing extra on a Settings visit): "Sign in or create an account · Optional…" / "Your account · Signed in as …" with one button; renders nothing when sign-in is off.
 * **Side panel link**: `import('../app/scenes/account.js').then((m) => m.openAccount(app))`, shown only when `app.auth.enabled`; `openAccount(app, { view: 'signin' })` or `{ view: 'create' }` opens a guest's screen directly.
 * **Settings "Delete everything on this phone"** copy: in an account it deletes that account's copy on this phone (not the guest's, not other accounts'); consider "Delete this account's things on this phone" when `app.auth.status() === 'signed-in'`, and see the known limit about sync above. As a guest it deletes the guest's things only (other accounts' copies stay); say so in the row's line.
 * The opt-in sync needs no wiring: `main.js` starts it (`app.auth.start`) and it hears `app.prefs` and `app.store` writes.
