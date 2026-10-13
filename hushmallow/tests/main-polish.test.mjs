@@ -175,3 +175,23 @@ test('320×568: the folded offer lies in the subtitle band\'s free time, never o
   assert.match(scene, /band && \(linesUp\(\) \? band : \{ \.\.\.band, kind: 'band' \}\)/);
   assert.match(scene, /\.\.\.\(installMod\?\.installAvoidRects\?\.\(\) \|\| \[\]\)\.filter\(\(r\) => !inWorldBand\(r\)\)/);
 });
+
+test('Noomi\'s concerned stage is attentive: eyes open, brows soft, no doze — from the expressions data, not the rig', async () => {
+  const E = await import('../src/mallows/expressions.js');
+  const { MALLOWS } = await import('../src/mallows/registry.js');
+  const s = E.STAGES.concerned;
+  const noomi = E.resolveExpression(MALLOWS.noomi, s.mix, s.intensity, s.extra);
+  assert.ok(noomi.eyeOpen >= 0.6, `eyes open (${noomi.eyeOpen})`);
+  assert.ok(noomi.browAlpha > 0.5, 'brows seen');
+  assert.equal(noomi.fxZzz, 0); assert.equal(noomi.yawnCycle, 0);
+  assert.ok(noomi.blush <= 1, 'the blush down');
+  assert.ok(noomi.mouthSmile <= 0.2 && noomi.mouthOpen <= 0.1, 'no grin');
+  // the stage limits hold it as before (the resting face for this Mallow is the reference)
+  const lim = E.stageLimits('concerned');
+  const g = E.applyStageLimits({ ...noomi, mouthSmile: 1, eyeOpen: 1.4 }, lim, noomi);
+  assert.ok(g.mouthSmile <= 0.2 && g.eyeOpen <= 1);
+  // everyone else's concerned face is unchanged by Noomi's own
+  const without = { ...s.extra }; delete without.byMallow;
+  for (const id of Object.keys(MALLOWS).filter((m) => m !== 'noomi')) assert.deepEqual(E.resolveExpression(MALLOWS[id], s.mix, s.intensity, s.extra), E.resolveExpression(MALLOWS[id], s.mix, s.intensity, without), id);
+  assert.doesNotMatch(read('src/mallows/rig.js'), /byMallow/, 'no rig change');
+});
