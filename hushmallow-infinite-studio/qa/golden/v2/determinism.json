@@ -1,0 +1,131 @@
+{
+ "schema": "hm-golden-determinism/1",
+ "reference": "cold: legacy flags, one fresh page per frame, ascending order (the goldens)",
+ "runs": [
+  {
+   "name": "cold-repeat",
+   "desc": "second browser process, fresh page per frame, descending order",
+   "frames": 16,
+   "identical": 16,
+   "maxAbs": 0,
+   "detail": []
+  },
+  {
+   "name": "warm-shuffled",
+   "desc": "one page, seeded shuffle: 7, 0, 10.5, 8.9, 3.2, 1.1, 6.5, 14.9, 0.4, 0.6, 4.5, 12.8, 0.2, 11.9, 0.98, 9.6",
+   "frames": 16,
+   "identical": 13,
+   "maxAbs": 10,
+   "detail": [
+    {
+     "t": 6.5,
+     "identical": false,
+     "maxAbs": 5,
+     "differing": 626,
+     "differingPixels": 445
+    },
+    {
+     "t": 4.5,
+     "identical": false,
+     "maxAbs": 7,
+     "differing": 1034,
+     "differingPixels": 692
+    },
+    {
+     "t": 12.8,
+     "identical": false,
+     "maxAbs": 10,
+     "differing": 119,
+     "differingPixels": 84
+    }
+   ]
+  },
+  {
+   "name": "sequential",
+   "desc": "one page, frames 0–18 consecutively like render/render.mjs, then frame 6 re-rendered",
+   "frames": 5,
+   "identical": 5,
+   "maxAbs": 0,
+   "detail": []
+  },
+  {
+   "name": "history-cause",
+   "desc": "one page: frame 18, then the face's scratch canvas (Face.tmp) is cleared, then frame 135 (differs when warm, see warm-shuffled)",
+   "frames": 1,
+   "identical": 1,
+   "maxAbs": 0,
+   "detail": []
+  },
+  {
+   "name": "flags: unsafe-swiftshader",
+   "desc": "fresh page per frame, legacy flags + --enable-unsafe-swiftshader",
+   "frames": 3,
+   "identical": 3,
+   "maxAbs": 0,
+   "detail": [],
+   "flags": [
+    "--enable-unsafe-swiftshader"
+   ],
+   "msPerFrameInclSetup": 4004
+  },
+  {
+   "name": "flags: angle-vulkan+unsafe-swiftshader (recommended)",
+   "desc": "fresh page per frame, legacy flags + --use-angle=vulkan --enable-unsafe-swiftshader",
+   "frames": 3,
+   "identical": 3,
+   "maxAbs": 0,
+   "detail": [],
+   "flags": [
+    "--use-angle=vulkan",
+    "--enable-unsafe-swiftshader"
+   ],
+   "msPerFrameInclSetup": 4143
+  },
+  {
+   "name": "flags: angle-swiftshader+unsafe-swiftshader (PHASE2-PLAN WP-01)",
+   "desc": "fresh page per frame, legacy flags + --use-angle=swiftshader --enable-unsafe-swiftshader",
+   "frames": 3,
+   "identical": 0,
+   "maxAbs": 24,
+   "detail": [
+    {
+     "t": 0,
+     "identical": false,
+     "maxAbs": 7,
+     "differing": 184380,
+     "differingPixels": 104307
+    },
+    {
+     "t": 3.2,
+     "identical": false,
+     "maxAbs": 21,
+     "differing": 76883,
+     "differingPixels": 52887
+    },
+    {
+     "t": 9.6,
+     "identical": false,
+     "maxAbs": 24,
+     "differing": 60825,
+     "differingPixels": 43589
+    }
+   ],
+   "flags": [
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader"
+   ],
+   "msPerFrameInclSetup": 15056
+  }
+ ],
+ "findings": {
+  "runToRun": "bit-identical across browser processes (SwiftShader is deterministic)",
+  "renderOrder": "HISTORY-DEPENDENT: 3/16 frames differ (max 10/255) when another frame was rendered before in the same page; 5/5 sequential-start frames match",
+  "cause": "the face's scratch canvas (stage2/face.js Face.tmp): tube glows clear only their own bw×bh corner, and a blurred drawImage with a fractional offset reads stale texels from earlier, larger strokes just past it; clearing Face.tmp between frames restores the cold result exactly",
+  "flags": {
+   "--enable-unsafe-swiftshader": "3/3 bit-identical, max 0/255, 4004 ms/frame incl. page setup",
+   "--use-angle=vulkan --enable-unsafe-swiftshader": "3/3 bit-identical, max 0/255, 4143 ms/frame incl. page setup",
+   "--use-angle=swiftshader --enable-unsafe-swiftshader": "0/3 bit-identical, max 24/255, 15056 ms/frame incl. page setup"
+  }
+ },
+ "pixelTolerance": 0
+}

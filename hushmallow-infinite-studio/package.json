@@ -1,11 +1,24 @@
 {
   "name": "hushmallow-infinite-studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Hushmallow Infinite Studio — Phase 1: one hand-directed video rendered from the approved Mallow rig.",
+  "description": "Hushmallow Infinite Studio \u2014 premium vertical short videos starring the approved Mallows. Phase 1 (v2) is frozen; Phase 2 builds the generator.",
   "type": "module",
+  "engines": {
+    "node": ">=22.2"
+  },
   "scripts": {
-    "render": "node render/render.mjs",
+    "test": "node --test --test-reporter=spec \"tests/guard/**/*.test.mjs\" \"tests/unit/**/*.test.mjs\" \"tests/parity/**/*.test.mjs\"",
+    "test:guard": "node --test --test-reporter=spec \"tests/guard/**/*.test.mjs\"",
+    "test:unit": "node --test --test-reporter=spec \"tests/unit/**/*.test.mjs\"",
+    "test:parity": "node --test --test-reporter=spec \"tests/parity/**/*.test.mjs\"",
+    "test:golden": "node --test --test-reporter=spec --test-timeout=1800000 \"tests/golden/**/*.test.mjs\"",
+    "lib:validate": "node cli/hm.mjs lib validate",
+    "hm": "node cli/hm.mjs",
+    "heavy": "node render/lib/heavy-lock.mjs",
+    "render": "node render/lib/heavy-lock.mjs --shared --label legacy-render -- node render/render.mjs",
+    "bench:probe": "node render/lib/heavy-lock.mjs --exclusive --label bench-probe -- node tools/timing.mjs",
+    "derive": "node render/lib/heavy-lock.mjs --exclusive --label derive -- python3 -I",
     "preview": "node render/serve.mjs"
   },
   "dependencies": {

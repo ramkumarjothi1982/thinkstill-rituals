@@ -10,6 +10,12 @@ v1 was not approved. v2 replaces its whole execution — renderer, character
 animation, face, story treatment, cinematography and score. v1 is kept only for
 comparison (see the end of this file).
 
+> **Phase 2 is under way** (`docs/PHASE2-PLAN.md`). v2 is approved and **frozen**:
+> its files are hash-locked in `qa/golden/v2/frozen.sha256` and tagged
+> `v2-approved`. Phase 2 forks them and never edits them. Before you change anything, read
+> `docs/CONVENTIONS.md` (paths, the heavy-job lock, `hm` commands, tests,
+> goldens) and `docs/OWNER-DECISIONS.md`. Run `npm test` before you hand work in.
+
 | File | What it is |
 |---|---|
 | `output/v2/my-brain-at-2am-v2.mp4` | **The deliverable**: H.264 High 4.2, yuv420p, BT.709, 1080×1920, 30 fps, 450 frames, 15.000 s; AAC 48 kHz stereo; faststart; −16 LUFS, −2 dBTP; 34.6 MB (all checks in `output/v2/verify.json`) |

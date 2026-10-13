@@ -21,3 +21,7 @@ output/v2/*
 !output/v2/qa/
 !output/asset-qa/
 __pycache__/
+# Phase 2: batch runs are rebuilt from specs (PHASE2-PLAN file layout)
+runs/
+# golden PNG frames live in /home/user/hm-work/golden/v2/frames (hashes in qa/golden/v2/frames.sha256)
+qa/golden/v2/frames/

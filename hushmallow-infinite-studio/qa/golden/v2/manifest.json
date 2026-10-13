@@ -1,0 +1,295 @@
+{
+ "schema": "hm-golden-v2/1",
+ "video": "my-brain-at-2am-v2",
+ "title": "My Brain at 2 AM",
+ "fps": 30,
+ "duration": 15,
+ "seed": 20261013,
+ "source": {
+  "frozenTree": "8d0627dfee6d28ad4359d1f2210a24128f8e6cda1b36a46e19b48782d1827ce4",
+  "frozenManifest": "qa/golden/v2/frozen.sha256",
+  "appTree": "1bef9b971ea73e33a4a2522ad8f2dd7d125f99c895ed1ec229ca0d4e8e04342c",
+  "gitHead": "d9d459b866a937e56c41feef660eab25b05655d2",
+  "approvedMp4": {
+   "file": "output/v2/my-brain-at-2am-v2.mp4",
+   "sha256": "7d28467c04437465bb4ec451faf31e64de2f62ee5355937e0623f4e898b76134"
+  }
+ },
+ "environment": {
+  "chromium": "141.0.7390.37",
+  "webgl": {
+   "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+   "vendor": "Google Inc. (Google)",
+   "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+  },
+  "playwright": "1.56.1",
+  "node": "v22.22.0",
+  "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+  "flags": [
+   "--disable-gpu-vsync",
+   "--disable-frame-rate-limit",
+   "--force-color-profile=srgb",
+   "--font-render-hinting=none"
+  ],
+  "viewport": "1080x1920@1",
+  "url": "stage2/index.html?video=my-brain-at-2am-v2&seed=20261013"
+ },
+ "counts": {
+  "frames": 450,
+  "centreStates": 450,
+  "subframeStates": 1991,
+  "states": 2441,
+  "extraStates": 5,
+  "cues": 30
+ },
+ "tolerance": {
+  "state": 1e-9,
+  "stateRule": "|a − b| ≤ 1e-9 · max(1, |a|, |b|); mesh hashes, sub-frame counts, cue log and curves exact",
+  "pixel": 0,
+  "pixelRule": "max per-channel |Δ| on 0..255 RGBA of a cold render (fresh page per frame); 0 = bit-identical"
+ },
+ "approvedMatch": {
+  "cues": true,
+  "curves": true,
+  "plan": true
+ },
+ "framesDir": "/home/user/hm-work/golden/v2/frames",
+ "frames": [
+  {
+   "t": 0,
+   "i": 0,
+   "subframes": 3,
+   "file": "golden-00.000s.png",
+   "png": "a8d7eae1db4b3d36184116e9e22fdaa7ddc05e870fdef1ddd76c014f58a0be3b",
+   "rgba": "9e8d17f974d3bae7ec6719f883633906dfa985fb52fa3e15e7b1a18bb015cbbc",
+   "psnrVsApprovedMp4": {
+    "y": 46.75065,
+    "u": 53.347655,
+    "v": 54.343482,
+    "average": 48.104556
+   }
+  },
+  {
+   "t": 0.2,
+   "i": 6,
+   "subframes": 3,
+   "file": "golden-00.200s.png",
+   "png": "44d8879860df0297e896e3d1461f5f88a697865be9494d7011c8e9c2c3e8f49f",
+   "rgba": "55832197fba267ad73382346fb6d4a78862c076e272ef268748c2e4f2db06172",
+   "psnrVsApprovedMp4": {
+    "y": 44.725997,
+    "u": 52.405373,
+    "v": 53.178686,
+    "average": 46.159278
+   }
+  },
+  {
+   "t": 0.4,
+   "i": 12,
+   "subframes": 4,
+   "file": "golden-00.400s.png",
+   "png": "8916c059c870b6f7256cf715aadfdb7def56aa0b9a716e92f3bc5161b1d65d31",
+   "rgba": "70fc187f9ac8bc44a1ca0bcdc43abcd89d46ba12cafe6f0354939ba238883932",
+   "psnrVsApprovedMp4": {
+    "y": 44.705237,
+    "u": 52.376617,
+    "v": 53.145332,
+    "average": 46.137784
+   }
+  },
+  {
+   "t": 0.6,
+   "i": 18,
+   "subframes": 8,
+   "file": "golden-00.600s.png",
+   "png": "b83bdbc4b7350b4857d1ac8f6b28235bb5719044a0e3ef726a9b9276c31f3e35",
+   "rgba": "55a4164af8d70ba4e16426a640f81ce8976943717019f33c7ec2572c53a6a456",
+   "psnrVsApprovedMp4": {
+    "y": 44.552317,
+    "u": 52.147222,
+    "v": 53.315913,
+    "average": 45.992162
+   }
+  },
+  {
+   "t": 0.98,
+   "i": 29.4,
+   "subframes": 4,
+   "file": "golden-00.980s.png",
+   "png": "99dfe8b05eca2ce75030f0a4fc664f679ac0bbc0a9ffd9721f4c34b74aef5d13",
+   "rgba": "afca88f433ca9bc9848bb436b4a3bb43eea1119273d66150a8f32ac9d80cae9d",
+   "psnrVsApprovedMp4": null
+  },
+  {
+   "t": 1.1,
+   "i": 33,
+   "subframes": 9,
+   "file": "golden-01.100s.png",
+   "png": "22ba119d046a604101448ddf98084f9c0c6f67fca5c0fff0bb666b149ac5c6e0",
+   "rgba": "c8b89e8113bc57b7f2b1fcd5b173f6dfb8f8f3ec6b677aae437418ded13f8bee",
+   "psnrVsApprovedMp4": {
+    "y": 44.512338,
+    "u": 51.80845,
+    "v": 52.705301,
+    "average": 45.920978
+   }
+  },
+  {
+   "t": 3.2,
+   "i": 96,
+   "subframes": 12,
+   "file": "golden-03.200s.png",
+   "png": "4a11e0cd3f4d6e14597cb318a3996f27a3961ced8342f5996f46af4629df10a3",
+   "rgba": "c5baaa93f2cdf673cf5c1ace5c0fbc3799212ead87ceac68baa9e92ab96b009b",
+   "psnrVsApprovedMp4": {
+    "y": 44.734269,
+    "u": 52.41482,
+    "v": 53.354818,
+    "average": 46.173051
+   }
+  },
+  {
+   "t": 4.5,
+   "i": 135,
+   "subframes": 3,
+   "file": "golden-04.500s.png",
+   "png": "35aad7900ac6ba2ed8d0cd14bbab9c0d58a9ad327d3da84c55461ceb8d5fc552",
+   "rgba": "035501a7af3c9fbf20a37c4159db548e6e880364ff326b86cb1df0aadcee386a",
+   "psnrVsApprovedMp4": {
+    "y": 44.463496,
+    "u": 52.203135,
+    "v": 53.545911,
+    "average": 45.918606
+   }
+  },
+  {
+   "t": 6.5,
+   "i": 195,
+   "subframes": 4,
+   "file": "golden-06.500s.png",
+   "png": "ba914e7f7023a938c6e27f55042eb2426e036b7e2dc5fd3385338b28feb554b2",
+   "rgba": "9f1f4d898579237130b414f3f0b08375370546cc20fd3b3cce815bb17a0021d6",
+   "psnrVsApprovedMp4": {
+    "y": 44.394532,
+    "u": 52.497078,
+    "v": 53.958605,
+    "average": 45.876498
+   }
+  },
+  {
+   "t": 7,
+   "i": 210,
+   "subframes": 12,
+   "file": "golden-07.000s.png",
+   "png": "c89bf4290b2498dd5a5ee0d9f53842995dc116dde57b080bf5d4865ed9cf2f90",
+   "rgba": "7a2f5f2e0dd1c9e81461fc967b9597af472ea0206f89cd81180774e70ce01b03",
+   "psnrVsApprovedMp4": {
+    "y": 48.427982,
+    "u": 54.530934,
+    "v": 55.54068,
+    "average": 49.735939
+   }
+  },
+  {
+   "t": 8.9,
+   "i": 267,
+   "subframes": 3,
+   "file": "golden-08.900s.png",
+   "png": "fa27305af2cf0f397ed500fb26d7c2a33d893c80cf64dcc168a51842aad23f96",
+   "rgba": "74dc6448b37e065aacdfface8ecb1f2b7c99531a599e0755097cf3c99c864b24",
+   "psnrVsApprovedMp4": {
+    "y": 44.458436,
+    "u": 51.137352,
+    "v": 52.53405,
+    "average": 45.834548
+   }
+  },
+  {
+   "t": 9.6,
+   "i": 288,
+   "subframes": 3,
+   "file": "golden-09.600s.png",
+   "png": "d2115f29cff9919e87a2f5876ed63666f2383082d5dfeea221b06ad2bdd204f5",
+   "rgba": "389018aac8399c3cd822c271ae9f8d99d63e3d60614cf58f16d4fb63a1c84390",
+   "psnrVsApprovedMp4": {
+    "y": 44.582663,
+    "u": 50.963671,
+    "v": 51.86681,
+    "average": 45.912921
+   }
+  },
+  {
+   "t": 10.5,
+   "i": 315,
+   "subframes": 3,
+   "file": "golden-10.500s.png",
+   "png": "c60d630a2b923bab8db72a2e6ed7013b17741bb48ff4ceb249f919aef7420ab9",
+   "rgba": "6ceb41a2831f85bd8e2c9af35fbacbeda35afc6919952342964ee3b5bd690b0e",
+   "psnrVsApprovedMp4": {
+    "y": 44.774463,
+    "u": 52.038356,
+    "v": 51.876524,
+    "average": 46.138603
+   }
+  },
+  {
+   "t": 11.9,
+   "i": 357,
+   "subframes": 3,
+   "file": "golden-11.900s.png",
+   "png": "dba65b815d9db177caaa3817a7287bdb1b946954bd565319fa617198cdaa67dd",
+   "rgba": "2e9162d7bcf2950addc583e67605200684d20fa58a697d6edd41e38869e80b2e",
+   "psnrVsApprovedMp4": {
+    "y": 44.764679,
+    "u": 52.901237,
+    "v": 52.995375,
+    "average": 46.207596
+   }
+  },
+  {
+   "t": 12.8,
+   "i": 384,
+   "subframes": 3,
+   "file": "golden-12.800s.png",
+   "png": "0c75414d2ca2c61403e4c417a0ca65e04167f0217874ed43c4bfa180e26baed4",
+   "rgba": "d3d2453be44c13cb77941456dfee8bef6c7f35a275d489e27d6ab0cd421b7934",
+   "psnrVsApprovedMp4": {
+    "y": 45.199351,
+    "u": 53.185226,
+    "v": 53.37002,
+    "average": 46.634693
+   }
+  },
+  {
+   "t": 14.9,
+   "i": 447,
+   "subframes": 3,
+   "file": "golden-14.900s.png",
+   "png": "76be0276848ae854738708d212076edcf58135fd7f82ecccdb88faaa0b7dc42f",
+   "rgba": "2695c26900042624137aada61f9168400bba2c572f03bf07e490d4bdcdb2f6a0",
+   "psnrVsApprovedMp4": {
+    "y": 44.302232,
+    "u": 50.738432,
+    "v": 51.640789,
+    "average": 45.637638
+   }
+  }
+ ],
+ "files": {
+  "state.ndjson.gz": "7c319015502ea117e8f4ce9dc8c9b3c8c48dcdccf099fec4902140f77721b887",
+  "mesh-hashes.json": "51b7efab62c0174dfa165c5ff715c6d64cc64cef262e911016941a9882e4a4a3",
+  "subframes.json": "68ec284187ce5f9ef1bd47ff7b9fd1bcb37883921cdff4181b29203b95189bfc",
+  "cues.json": "9eb2f98479be38a50d72f9a66151de9fc536df61da1309ab119add1a3bd6de37",
+  "curves.json": "3f7bc38f1040a260e2e2245bc0f19fc49c98c2edb27ba967b217843cf697ad33",
+  "plan-v2.json": "70c41687553965b045ffaffe42783669126da8760a5d9c7cc31f6cd7fa439a3e",
+  "frames.sha256": "e099837078eff50a190cf7939a0bd5d9a74276d18c57d7d941218ee369b7c53e",
+  "determinism.json": "4aa2d34e179626113800ef933153eb3077980b7b29494ed0eeba7f76a9eb3b59",
+  "sequential-frames.json": "0b3a6ddd0a9ebbc64695e73df3dec34c9ce6087c5a80e51d3f4149d546247c16"
+ },
+ "sequential": {
+  "file": "sequential-frames.json",
+  "coldGoldensMatching": "15/15",
+  "maxAbsVsCold": 0,
+  "h264BitIdenticalToApproved": true
+ }
+}

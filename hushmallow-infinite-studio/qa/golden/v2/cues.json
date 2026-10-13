@@ -1,0 +1,149 @@
+{
+ "video": "my-brain-at-2am-v2",
+ "title": "My Brain at 2 AM",
+ "fps": 30,
+ "duration": 15,
+ "cues": [
+  {
+   "t": 0,
+   "type": "scene",
+   "loop": 15
+  },
+  {
+   "t": 0.26,
+   "type": "flinch"
+  },
+  {
+   "t": 0.4,
+   "type": "take"
+  },
+  {
+   "t": 0.42,
+   "type": "lift_off"
+  },
+  {
+   "t": 0.98,
+   "type": "land",
+   "amp": 1
+  },
+  {
+   "t": 1.18,
+   "type": "ripple",
+   "amp": 0.4
+  },
+  {
+   "t": 1.42,
+   "type": "blink"
+  },
+  {
+   "t": 1.66,
+   "type": "blink"
+  },
+  {
+   "t": 1.85,
+   "type": "glance",
+   "pan": -0.5
+  },
+  {
+   "t": 2.2,
+   "type": "glance",
+   "pan": 0.5
+  },
+  {
+   "t": 3,
+   "type": "thought",
+   "i": 0,
+   "pan": -0.6872759477770158
+  },
+  {
+   "t": 4,
+   "type": "thought",
+   "i": 1,
+   "pan": 0.6757017519344146
+  },
+  {
+   "t": 5,
+   "type": "thought",
+   "i": 2,
+   "pan": 0.19836938591454242
+  },
+  {
+   "t": 3.42,
+   "type": "wince"
+  },
+  {
+   "t": 5.6,
+   "type": "spin_up",
+   "until": 6.98
+  },
+  {
+   "t": 6.98,
+   "type": "squeeze"
+  },
+  {
+   "t": 7.42,
+   "type": "inhale",
+   "dur": 1.4800000000000004
+  },
+  {
+   "t": 8.9,
+   "type": "crest"
+  },
+  {
+   "t": 9.2,
+   "type": "exhale",
+   "dur": 1.9
+  },
+  {
+   "t": 9.32,
+   "type": "release"
+  },
+  {
+   "t": 9.42,
+   "type": "dissolve",
+   "i": 0,
+   "pan": 0.6659556418089744
+  },
+  {
+   "t": 9.62,
+   "type": "dissolve",
+   "i": 1,
+   "pan": -0.6983828355928032
+  },
+  {
+   "t": 9.82,
+   "type": "dissolve",
+   "i": 2,
+   "pan": -0.02889566776191856
+  },
+  {
+   "t": 9.5,
+   "type": "warm_bloom"
+  },
+  {
+   "t": 11.7,
+   "type": "eyes_open"
+  },
+  {
+   "t": 11.9,
+   "type": "tagline"
+  },
+  {
+   "t": 12.6,
+   "type": "logo"
+  },
+  {
+   "t": 12.8,
+   "type": "blink",
+   "soft": true
+  },
+  {
+   "t": 13.5,
+   "type": "drift"
+  },
+  {
+   "t": 14.66,
+   "type": "loop"
+  }
+ ]
+}
