@@ -267,7 +267,7 @@ const SCENARIOS = {
     steps: () => {
       const j = journeyFor('relay');
       return [
-        { who: 'author', title: `MoonMallow releases “${FEELINGS.relay.text}”`, hint: 'Phone A: (welcome) → Write a feeling → the words → Worry → Review → Release.', fill: 'feeling', done: !!j },
+        { who: 'author', title: `MoonMallow releases “${FEELINGS.relay.text}”`, hint: 'Phone A: (welcome) → write the words → Worry → tick “Share anonymously…” → Release into Hushfold.', fill: 'feeling', done: !!j },
         ...['cloud', 'star', 'fern', 'dream', 'pebble'].map((k, i) => ({
           who: k, title: `${NAME[k]} catches it and offers perspective ${i + 1} of 5`,
           hint: `Phone B: choose ${NAME[k]} → Catch → Look up → Catch this feeling → write → Add my perspective.`, words: SUGGESTED[k], fill: 'reframe',
@@ -275,28 +275,44 @@ const SCENARIOS = {
         })),
         { who: 'service', title: 'The fifth perspective sends it home', hint: 'No sixth person can take a slot: holds are capped by the slots left.', done: !!j && j.status !== 'travelling' },
         { who: 'author', title: 'MoonMallow watches it come home', hint: 'Phone A: Returned → the feeling. The orb returns and unfolds into five perspectives.', done: !!j && j.seenReturn },
-        { who: 'author', title: 'MoonMallow keeps a perspective (and can let one go)', hint: 'Tap “Keep this” on any perspective.', done: !!j && Object.values(j.choices || {}).some((v) => v === true) },
+        { who: 'author', title: 'MoonMallow keeps a perspective (and can let one go)', hint: 'Tap “Keep this perspective” on any of them.', done: !!j && Object.values(j.choices || {}).some((v) => v === true) },
         { who: 'ember', title: 'EmberMallow looks: the full feeling never reaches a sixth person', hint: 'Phone B: choose EmberMallow → Catch → Look up.', done: !!flags.emberAfterFull },
       ];
     },
   },
   fallback: {
-    lede: 'Nobody catches this one. MoonMallow allowed a Mallow perspective; after 30 minutes they can ask for one. It is labelled, never counted as a person, and generated at most once.',
+    lede: 'Nobody catches this one. MoonMallow allowed a Mallow perspective; after 30 minutes they can ask their own Mallow for one. It is labelled automatically generated, never counted as a person, and generated at most once. The lab tag says whether it was a live AI response or a canned development example.',
     steps: () => {
       const j = journeyFor('fallback');
       const f = j ? service.s.fallbacks[j.id] : null;
       return [
-        { who: 'author', title: `MoonMallow releases “${FEELINGS.fallback.text}” and allows a Mallow perspective`, hint: 'Phone A: Write a feeling → turn on “If nobody catches my feeling, let a Mallow offer a perspective” → Release.', fill: 'feeling-fallback', done: !!j && j.allowFallback },
+        { who: 'author', title: `MoonMallow releases “${FEELINGS.fallback.text}” and allows a Mallow perspective`, hint: 'Phone A: write the words → Worry → tick “Share anonymously…” → turn on “Let a Mallow offer another perspective…” → Release into Hushfold.', fill: 'feeling-fallback', done: !!j && j.allowFallback },
         { who: 'clock', title: 'Nobody catches it: move the clock on 30 minutes', hint: 'Use “+30 min” in the dev clock below.', done: !!j && (!!j.fallbackOfferedAt || !!f) },
-        { who: 'author', title: 'MoonMallow opens the journey and asks the Mallow', hint: 'Phone A: Journeys → the feeling → Ask Loomi. (Shows what processing it needs first.)', done: !!f },
-        { who: 'service', title: 'The Mallow perspective arrives, labelled with its real source', hint: 'Still “0 of 5 perspectives found”: a Mallow never counts as a person.', done: !!f && f.status !== 'pending' },
-        { who: 'clock', title: 'Move the clock on 24 hours: it comes home with what it collected', hint: 'Use “+24 h”.', done: !!j && j.status !== 'travelling' },
-        { who: 'author', title: 'MoonMallow opens what came back', hint: 'Phone A: Returned → the feeling.', done: !!j && j.seenReturn },
+        { who: 'author', title: 'MoonMallow opens the journey and asks Noomi', hint: 'Phone A: My journeys → the feeling → Ask Noomi. The orb goes to Noomi, who thinks, squeezes it and unfolds a perspective.', done: !!f },
+        { who: 'service', title: 'The Mallow perspective arrives, labelled with its real source', hint: 'Still “0 of 5 human perspectives”: a Mallow never counts as a person. The yellow lab tag says “canned example” unless a live test key answered.', done: !!f && f.status !== 'pending' },
+        { who: 'clock', title: 'Move the clock on 24 hours: it comes home', hint: 'Use “+24 h”.', done: !!j && j.status !== 'travelling' },
+        { who: 'author', title: 'MoonMallow opens what came back', hint: 'Phone A: Returned → the feeling. “No one caught it this time”, the Mallow’s perspective shown on its own, and Send it out again / Keep it with me / Let it go.', done: !!j && j.seenReturn },
+      ];
+    },
+  },
+  partial: {
+    lede: 'Two people catch this one, then the day runs out. It comes home with exactly two human perspectives: nothing is invented to fill the other three places.',
+    steps: () => {
+      const j = journeyFor('partial');
+      return [
+        { who: 'author', title: `MoonMallow releases “${FEELINGS.partial.text}”`, hint: 'Phone A: write the words → Frustration → tick “Share anonymously…” → Release into Hushfold.', fill: 'feeling-partial', done: !!j },
+        ...['cloud', 'star'].map((k, i) => ({
+          who: k, title: `${NAME[k]} catches it and offers perspective ${i + 1}`,
+          hint: `Phone B: choose ${NAME[k]} → Catch → Look up → Catch this feeling → write → Add my perspective.`, words: SUGGESTED_PARTIAL[k], fill: 'reframe-partial',
+          done: gaveOn(j, k),
+        })),
+        { who: 'clock', title: 'Nobody else catches it: move the clock on 24 hours', hint: 'Use “+24 h”. It comes home with what it has.', done: !!j && j.status !== 'travelling' },
+        { who: 'author', title: 'MoonMallow opens what came back: 2 of 5 human perspectives', hint: 'Phone A: Returned → the feeling. “2 Hushmates caught it before it came home.” Two petals, two perspectives.', done: !!j && j.seenReturn },
       ];
     },
   },
 };
-let scenario = flags.scenario === 'fallback' ? 'fallback' : 'relay';
+let scenario = ['fallback', 'partial'].includes(flags.scenario) ? flags.scenario : 'relay';
 const guideList = $('#guide-steps');
 let guideQueued = false;
 function scheduleGuide() { if (guideQueued) return; guideQueued = true; requestAnimationFrame(() => { guideQueued = false; renderGuide(); }); }
@@ -344,10 +360,9 @@ async function fill(step) {
   if (step.fill.startsWith('feeling')) {
     setView('author');
     const d = devices[AUTHOR];
-    const words = step.fill === 'feeling-fallback' ? FEELINGS.fallback : FEELINGS.relay;
+    const words = step.fill === 'feeling-fallback' ? FEELINGS.fallback : step.fill === 'feeling-partial' ? FEELINGS.partial : FEELINGS.relay;
     if (!d.root.querySelector('[data-test="feeling-text"]')) {
-      if (d.device.current?.name !== 'release') d.device.go('release', { compose: true }, { replace: true });
-      else d.root.querySelector('[data-test="start-feeling"]')?.click();
+      d.device.go('release', { compose: true }, { replace: true });
       await wait(400);
     }
     type(d.root.querySelector('[data-test="feeling-text"]'), words.text);
@@ -396,7 +411,8 @@ async function find(key, sel, timeout = 6000) {
   const root = devices[key].root;
   const t0 = performance.now();
   for (;;) {
-    const found = root.querySelector(sel);
+    // never the scene that is leaving (it is inert while a transition plays)
+    const found = [...root.querySelectorAll(sel)].find((e) => !e.closest('[inert], .is-leaving'));
     if (found && !found.disabled && found.offsetParent !== null) return found;
     if (performance.now() - t0 > timeout) throw new Error(`autoplay: ${NAME[key]} could not find ${sel}`);
     await wait(80);
@@ -406,7 +422,7 @@ async function tap(key, sel, timeout) {
   setView(key === AUTHOR ? 'author' : 'catcher');
   const e = await find(key, sel, timeout);
   // bring it into view inside the phone only (never scroll the lab page)
-  const scroller = e.closest('.hm-scroll');
+  const scroller = e.closest('.hm-scroll, .hf-scroll');
   if (scroller) {
     const r = e.getBoundingClientRect(); const box = scroller.getBoundingClientRect();
     if (r.top < box.top || r.bottom > box.bottom) scroller.scrollTop += r.top - box.top - box.height / 2 + r.height / 2;
@@ -423,6 +439,7 @@ async function go(key, place) {
   d.history = [];
   d.go(place, {}, { replace: true });
   await wait(pace.ms);
+  while (devices[key].root.querySelector('.is-leaving')) await wait(100);
 }
 async function welcomeThrough(key) {
   const d = devices[key].device;
@@ -432,6 +449,7 @@ async function welcomeThrough(key) {
       const age = devices[key].root.querySelector('[data-test="welcome-adult"]');
       if (age && age.getAttribute('aria-checked') !== 'true') { age.click(); await wait(pace.ms / 2); }
       await tap(key, '[data-test="welcome-enter"]');
+      for (let k = 0; k < 40 && (d.current?.name === 'welcome' || devices[key].root.querySelector('.is-leaving')); k++) await wait(100);
       await wait(pace.ms);
       break;
     }
@@ -441,24 +459,34 @@ async function welcomeThrough(key) {
 async function releaseFeeling(words, allowFallback) {
   await welcomeThrough(AUTHOR);
   await go(AUTHOR, 'release');
-  await tap(AUTHOR, '[data-test="start-feeling"]');
+  if (!devices[AUTHOR].root.querySelector('[data-test="feeling-text"]')) { devices[AUTHOR].device.go('release', { compose: true }, { replace: true }); await wait(pace.ms); }
+  while (devices[AUTHOR].root.querySelector('.is-leaving')) await wait(100);
   type(await find(AUTHOR, '[data-test="feeling-text"]'), words.text);
   await wait(pace.ms);
   await tap(AUTHOR, `[data-test="label-${words.label}"]`);
-  if (allowFallback) await tap(AUTHOR, '[data-test="allow-fallback"]');
-  await tap(AUTHOR, '[data-test="review-feeling"]');
+  const consent = await find(AUTHOR, '[data-test="share-consent"]');
+  if (consent.getAttribute('aria-checked') !== 'true') await tap(AUTHOR, '[data-test="share-consent"]');
+  const sw = devices[AUTHOR].root.querySelector('[data-test="allow-fallback"]');
+  if (sw && (sw.getAttribute('aria-checked') === 'true') !== !!allowFallback) await tap(AUTHOR, '[data-test="allow-fallback"]');
   await tap(AUTHOR, '[data-test="release-submit"]');
-  await find(AUTHOR, '[data-test="release-sent"]', 12000);
+  await find(AUTHOR, '[data-test="release-sent"]', 15000);
   await wait(pace.ms * 2);
 }
-async function giveAs(key) {
+/** Catch `kind`'s feeling as `key`: anything else offered first is let float past (a real choice). */
+async function giveAs(key, kind = 'relay', words = SUGGESTED[key]) {
   setView('catcher');
   await showCatcher(key);
   await wait(pace.ms);
   await go(key, 'catch');
-  await tap(key, '[data-test="find-feeling"]');
+  for (let tries = 0; ; tries++) {
+    await tap(key, '[data-test="find-feeling"], [data-test="look-again"], [data-test="catch-another"]');
+    await find(key, '[data-test="catch-feeling"]', 9000);
+    const offered = devices[key].root.querySelector('[data-test="offer-text"]')?.textContent || '';
+    if (norm(offered).includes(norm(FEELINGS[kind].text)) || tries >= 3) break;
+    await tap(key, '[data-test="float-past"]');
+  }
   await tap(key, '[data-test="catch-feeling"]', 9000);
-  type(await find(key, '[data-test="reframe-text"]'), SUGGESTED[key]);
+  type(await find(key, '[data-test="reframe-text"]'), words);
   await wait(pace.ms);
   await tap(key, '[data-test="reframe-submit"]');
   await find(key, '[data-test="reframe-after"]', 12000);
@@ -490,11 +518,21 @@ const PLAY = {
     if (!service.s.fallbacks[j.id]) {
       await go(AUTHOR, 'journeys');
       await tap(AUTHOR, `[data-test="journey-${j.id}"]`);
-      await tap(AUTHOR, '[data-test="ask-mallow"]');
-      await tap(AUTHOR, '[data-test="confirm"]');
+      await tap(AUTHOR, '[data-test="ask-mallow"]', 9000);
       await find(AUTHOR, '[data-test="mallow-ready"], [data-test="mallow-failed"]', 25000);
       await wait(pace.ms * 3);
     }
+    if (j.status === 'travelling') { await advance(24 * 3600e3); await wait(pace.ms * 2); }
+    if (!j.seenReturn) {
+      await go(AUTHOR, 'returned');
+      await tap(AUTHOR, `[data-test="returned-${j.id}"]`);
+      await find(AUTHOR, '[data-test="homecoming-ready"]', 16000);
+    }
+  },
+  partial: async () => {
+    if (!journeyFor('partial')) await releaseFeeling(FEELINGS.partial, false);
+    for (const k of ['cloud', 'star']) if (!gaveOn(journeyFor('partial'), k)) await giveAs(k, 'partial', SUGGESTED_PARTIAL[k]);
+    const j = journeyFor('partial');
     if (j.status === 'travelling') { await advance(24 * 3600e3); await wait(pace.ms * 2); }
     if (!j.seenReturn) {
       await go(AUTHOR, 'returned');
@@ -507,6 +545,7 @@ let playing = false;
 async function play(which = scenario) {
   if (playing) return;
   playing = true;
+  if (which !== scenario && SCENARIOS[which]) { scenario = which; flags.scenario = which; persist(); renderGuide(); }
   $('#play').disabled = true;
   try { await PLAY[which](); } catch (e) { console.warn(e.message); }
   playing = false;

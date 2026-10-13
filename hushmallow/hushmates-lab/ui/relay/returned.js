@@ -15,7 +15,7 @@ import { Orb, fly, centreIn } from '../orb.js';
 import { play } from '../sound.js';
 import { wait, reducedMotion, CSS_EASE, rise } from '../motion.js';
 import { brandBar, dock, top, feelChip, feelColour, lights, reportSheet, errorText } from './common.js';
-import { room, stage, handsOf, Speech, line, swapLine, put, privacySheet } from './parts.js';
+import { room, stage, handsOf, Speech, line, swapLine, put, privacySheet, labSourceTag } from './parts.js';
 import { humanProgress } from './journeys.js';
 
 const homeList = (state) => state.journeys.filter((j) => j.status === 'returned' || j.status === 'released')
@@ -181,8 +181,7 @@ export function homecoming(dev, { id, refresh } = {}) {
   }
 
   function sourceLine(p) {
-    const lab = dev.env?.lab && p.kind === 'mallow' && p.source !== 'ai'
-      ? h('span', { class: 'hf-lab-tag', dataset: { test: 'lab-source' } }, `Lab · ${({ library: 'Reframe library (rule-based)', demo: 'canned example' })[p.source] || p.source}`) : null;
+    const lab = p.kind === 'mallow' ? labSourceTag(dev, p.source) : null;
     return h('p', { class: 'hf-slide-src', dataset: { test: 'persp-source' } },
       p.kind === 'human' ? h('i', { class: 'hf-src-dot', style: { '--dot': MALLOWS[p.mallow]?.body || '#A07BFF' }, 'aria-hidden': 'true' }) : face(p.mallow, { size: 22 }),
       h('span', {}, p.label), lab);

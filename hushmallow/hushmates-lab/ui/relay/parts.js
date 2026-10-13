@@ -146,6 +146,16 @@ export function privacySheet(dev) {
   });
 }
 
+/**
+ * Lab only: where a Mallow perspective really came from, so testers can tell a
+ * live AI response from a canned development example. Never shown to consumers.
+ */
+const LAB_SOURCES = { ai: 'live AI response (test key)', library: 'Reframe library (rule-based)', demo: 'canned example' };
+export function labSourceTag(dev, source) {
+  if (!dev.env?.lab) return null;
+  return h('span', { class: `hf-lab-tag hf-lab-tag--${source === 'ai' ? 'live' : 'canned'}`, dataset: { test: 'lab-source', source } }, `Lab · ${LAB_SOURCES[source] || source}`);
+}
+
 /** Choose a mood colour for the room's light while words arrive (a label's colour). */
 export function lightRoom(el, colour) {
   if (colour) el.style.setProperty('--room-feel', colour);

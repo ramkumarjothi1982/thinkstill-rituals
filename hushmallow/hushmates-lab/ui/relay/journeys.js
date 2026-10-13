@@ -16,7 +16,7 @@ import { play } from '../sound.js';
 import { wait, reducedMotion, rise, CSS_EASE } from '../motion.js';
 import { PERSPECTIVE_LABELS } from '../../core/relay-config.js';
 import { brandBar, dock, top, feelChip, feelColour, lights, errorText, supportBody } from './common.js';
-import { room, stage, handsOf, Speech, line, swapLine, put } from './parts.js';
+import { room, stage, handsOf, Speech, line, swapLine, put, labSourceTag } from './parts.js';
 
 export const humanProgress = (j) => `${j.humanCount} of ${j.of} human perspective${j.of === 1 ? '' : 's'}`;
 
@@ -172,7 +172,7 @@ export function journey(dev, { id } = {}) {
   }
 
   function showPerspective(reveal, item, animate) {
-    const lab = dev.env?.lab && item.source !== 'ai' ? h('span', { class: 'hf-lab-tag', dataset: { test: 'lab-source' } }, `Lab · ${({ library: 'Reframe library (rule-based)', demo: 'canned example' })[item.source] || item.source}`) : null;
+    const lab = labSourceTag(dev, item.source);
     reveal.dataset.test = 'mallow-ready';
     put(reveal,
       h('h2', { class: 'hf-line hf-line--sm hf-reveal-line' }, 'Your Mallow found another way to see it.'),

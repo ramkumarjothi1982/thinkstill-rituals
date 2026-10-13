@@ -386,3 +386,13 @@
 .hf-pick.is-locked .hf-pick-text { font: 500 13.5px/1.45 var(--hm-body); color: var(--hm-ink-3); }
 .hf-progress { height: 8px; border-radius: 4px; background: rgba(31,22,64,.1); overflow: hidden; }
 .hf-progress-bar { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, #B583FF, #FF6FB5); transition: width .2s linear; }
+.hf-lab-tag--live { color: #0B5D3B; background: #DDF7E9; box-shadow: 0 0 0 1px #7DD3A8 inset; }
+@container rls (max-height: 600px) {
+  .hf-welcome .hf-figure { --fig: clamp(84px, 26cqi, 120px); }
+  .hf-welcome .hf-above { min-height: 56px; }
+  .hf-welcome-orb { min-height: 76px; }
+  .hf-welcome-orb .orb { --orb-size: clamp(56px, 18cqi, 80px); }
+  .hf-welcome .hf-scroll { gap: 10px; padding-top: 4px; }
+  .hf-welcome .hf-stage { padding-bottom: 14px; }
+  .hf-welcome .hf-copy--beats { min-height: 6.5em; }
+}
