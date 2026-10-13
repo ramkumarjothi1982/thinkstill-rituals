@@ -1,8 +1,9 @@
 // Safety pre-check, second pass: filler words between the person and the
 // verb ("he finally hit me"). Mirrors the app's src/engine/safety.js and its
-// tests/safety-fillers.test.mjs; the probe table is shared with the app
-// (hushmallow/tests/safety-fillers.probes.mjs) when the app is in this
-// checkout, and a core set below always runs.
+// tests/safety-fillers.test.mjs. The probe table is the app's
+// (hushmallow/tests/safety-fillers.probes.mjs), kept here as a byte-for-byte
+// copy (./safety-fillers.probes.mjs) so a server-only checkout runs it too;
+// when the app is in the checkout the two are compared.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -13,8 +14,8 @@ import { EXTRA_LEXICON } from '../src/safety/extra-lexicon.js';
 
 const RANK = { none: 0, concern: 1, care: 2, crisis: 3 };
 const APP_PROBES = new URL('../../../tests/safety-fillers.probes.mjs', import.meta.url);
+const PROBES = new URL('./safety-fillers.probes.mjs', import.meta.url);
 const APP_SAFETY = new URL('../../../src/engine/safety.js', import.meta.url);
-const noApp = !existsSync(APP_PROBES) && 'app probes not in this checkout';
 const copyOf = (/** @type {string} */ t) => fillerFreeCopy(tidyForSafety(t));
 
 test('fillers: the cases this started from are caught, and the everyday ones are not', () => {
@@ -47,8 +48,13 @@ test('fillers: the cases this started from are caught, and the everyday ones are
   assert.equal(checkSafety('he never hurt me').level, checkSafetyFirstPass('he never hurt me').level);
 });
 
-test('fillers: the shared probe table (positives match their words without fillers; negatives stay none)', { skip: noApp }, async () => {
-  const P = await import(APP_PROBES.href);
+test('fillers: the probe table here is the app\'s, byte for byte', { skip: !existsSync(APP_PROBES) && 'app not in this checkout' }, () => {
+  assert.equal(readFileSync(PROBES, 'utf8'), readFileSync(APP_PROBES, 'utf8'),
+    'copy hushmallow/tests/safety-fillers.probes.mjs to server/another-angle/test/safety-fillers.probes.mjs');
+});
+
+test('fillers: the shared probe table (positives match their words without fillers; negatives stay none)', async () => {
+  const P = await import(PROBES.href);
   let n = 0;
   for (const [group, text, plain] of P.POSITIVE) {
     const g = P.GROUPS[group];
@@ -68,14 +74,21 @@ test('fillers: the shared probe table (positives match their words without fille
   for (const [t, level] of P.NEGATIONS_TODAY) assert.deepEqual(checkSafety(t), checkSafetyFirstPass(t), `${t} (${level} in the app)`);
   // words the server already flags without fillers get that same level with them
   for (const [t, plain] of P.AS_WITHOUT_FILLERS) assert.equal(checkSafety(t).level, checkSafety(plain).level, `${t} {${copyOf(t)}}`);
+  // a negation before or inside the phrase: exactly as the first pass has it (review round 2)
+  for (const t of P.NEGATION_SWEEP) {
+    const r = checkSafety(t);
+    assert.deepEqual(r, checkSafetyFirstPass(t), `${t} → ${r.level} {${copyOf(t)}}`);
+    assert.deepEqual(r, referenceCheck(t), t);
+  }
+  assert.ok(P.NEGATION_SWEEP.length >= 1000, `sweep: ${P.NEGATION_SWEEP.length}`);
 });
 
 test('fillers: the server and the app agree (same word lists, same copy, server at least as careful)', { skip: !existsSync(APP_SAFETY) && 'app not in this checkout' }, async () => {
   const app = await import(APP_SAFETY.href);
   assert.deepEqual(FILLERS, app.FILLERS);
   assert.deepEqual(SECOND_PASS, app.SECOND_PASS);
-  const P = existsSync(APP_PROBES) ? await import(APP_PROBES.href) : { POSITIVE: [], NEGATIVE: [], NEGATIVE_APP_ONLY: [] };
-  const texts = [...P.POSITIVE.flatMap((/** @type {string[]} */ [, a, b]) => [a, b]), ...P.NEGATIVE, ...P.NEGATIVE_APP_ONLY,
+  const P = await import(PROBES.href);
+  const texts = [...P.POSITIVE.flatMap((/** @type {string[]} */ [, a, b]) => [a, b]), ...P.NEGATIVE, ...P.NEGATIVE_APP_ONLY, ...P.NEGATION_SWEEP,
     'honestly he, like, just keeps on hitting me', 'I keep on wanting to die', "he didn't even really hurt me", 'what kind of pills are these'];
   for (const t of texts) {
     assert.equal(fillerFreeCopy(tidyForSafety(t)), app.fillerFreeCopy(app.tidyForSafety(t)), t);
@@ -136,10 +149,8 @@ test('fillers: the first pass is the original pre-check, rebuilt from the lexico
       if (/[a-z] [a-z]/i.test(s)) texts.add(s);
     }
   }
-  if (existsSync(APP_PROBES)) {
-    const P = await import(APP_PROBES.href);
-    for (const t of [...P.POSITIVE.flatMap((/** @type {string[]} */ [, a, b]) => [a, b]), ...P.NEGATIVE, ...P.NEGATIVE_APP_ONLY, ...P.AS_WITHOUT_FILLERS.flat()]) texts.add(t);
-  }
+  const P = await import(PROBES.href);
+  for (const t of [...P.POSITIVE.flatMap((/** @type {string[]} */ [, a, b]) => [a, b]), ...P.NEGATIVE, ...P.NEGATIVE_APP_ONLY, ...P.AS_WITHOUT_FILLERS.flat()]) texts.add(t);
   assert.ok(texts.size > 300, `texts: ${texts.size}`);
   for (const t of texts) {
     const ref = referenceCheck(t);

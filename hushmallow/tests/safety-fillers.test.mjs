@@ -12,7 +12,7 @@ import { checkText, checkTextFirstPass, fillerFreeCopy, tidyForSafety, FILLERS, 
 import { interpret } from '../src/engine/interpret.js';
 import { checkSafety as classicCheck } from '../src/ultra/reframe-engine.js';
 import { HARM_LEXICON, HARM_COPY, CONCERN_LEXICON, HARM_OTHERS_LEXICON } from '../src/data/safety-lexicon.js';
-import { GROUPS, POSITIVE, NEGATIVE, NEGATIVE_APP_ONLY, NEGATIONS_TODAY, NEGATED_BUT_HAPPENED, AS_WITHOUT_FILLERS } from './safety-fillers.probes.mjs';
+import { GROUPS, POSITIVE, NEGATIVE, NEGATIVE_APP_ONLY, NEGATIONS_TODAY, NEGATED_BUT_HAPPENED, AS_WITHOUT_FILLERS, NEGATION_CLAUSES, NEGATION_FRAMES, NEGATION_SWEEP } from './safety-fillers.probes.mjs';
 
 const RANK = { none: 0, concern: 1, care: 2, crisis: 3 };
 const copyOf = (t) => fillerFreeCopy(tidyForSafety(t));
@@ -80,6 +80,64 @@ test('fillers: a negation is never removed or stepped over', () => {
   assert.equal(checkText('no one would honestly even notice if I was gone').level, 'crisis');
   // unless the sentence goes on to say it did happen
   for (const [t, level] of NEGATED_BUT_HAPPENED) assert.equal(checkText(t).level, level, t);
+});
+
+test('fillers: the negation sweep — no new flag for a negated sentence, at any level (review round 2)', () => {
+  // every clause flags on its own, so the sweep means something
+  for (const c of NEGATION_CLAUSES) assert.notEqual(checkText(c).level, 'none', c);
+  assert.ok(NEGATION_SWEEP.length >= NEGATION_FRAMES.length * NEGATION_CLAUSES.length, `rows: ${NEGATION_SWEEP.length}`);
+  for (const t of NEGATION_SWEEP) {
+    const r = checkText(t);
+    assert.deepEqual(r, checkTextFirstPass(t), `${t} → ${r.level} (${r.matched}) {${copyOf(t)}}`);
+    assert.deepEqual(r, referenceCheck(t), t);
+  }
+  // a bare negation straight before the phrase denies it, crisis included…
+  for (const t of ["i don't want to actually die", 'i would never want to really die', "i don't want to seriously hurt him", "i'm not going to really end it"]) {
+    assert.equal(checkText(t).level, 'none', t);
+  }
+  // …but not a phrase that starts with its own subject, or one worded for a
+  // negation before it, and never a negation the phrase spells out itself
+  assert.equal(checkText("i can't, he keeps on hitting me").level, 'care');
+  assert.equal(checkText('i cant he keeps on hitting me').level, 'care');
+  assert.equal(checkText("didn't he actually hit me last week?").level, 'care');
+  assert.equal(checkText("I can't really go on").level, 'crisis');
+  assert.equal(checkText("I honestly don't even want to exist").level, 'crisis');
+  assert.equal(checkText('nobody would ever really miss me').level, 'crisis');
+  assert.equal(checkText("he won't even let me see my friends").level, 'care');
+  // a denial is weighed only straight before the phrase or its subject
+  assert.equal(checkText("I don't know why he always hits me").level, 'care');
+  assert.equal(checkText("I don't think anyone knows he always hits me").level, 'care');
+  assert.equal(checkText("I can't believe he actually hit me").level, 'care');
+  assert.equal(checkText("it's not true, he really hit me").level, 'care');
+  assert.equal(checkText('no way! he actually hit me').level, 'care');
+  assert.equal(checkText("I don't know, I want to actually die").level, 'crisis');
+  assert.equal(checkText("It's not that I'm sad, I just want to actually die").level, 'crisis');
+});
+
+test('fillers: hurting, punctuation around a filler, and "be like" (review round 2 polish)', () => {
+  for (const t of ['they keep on hurting me', 'they started hurting me', 'he started to hurt me', 'my stepdad keeps on hurting me']) {
+    assert.deepEqual([checkText(t).level, checkText(t).category], ['care', 'violence'], t);
+  }
+  for (const [t, c] of [
+    ['they keep on hurting me', 'they hurts me'],
+    ['he started to hurt me', 'he hurts me'],
+    ["she's started hitting me", 'she hits me'],
+    ['he has started to hit me', 'he hits me'],
+    ['my back keeps on hurting me', 'my back hurts me'],
+    ['he... finally hit me', 'he hit me'],
+    ['he (finally) hit me', 'he hit me'],
+    ['he—finally—hit me', 'he hit me'],
+    ['he finally, hit me', 'he hit me'],
+    ['i want to… really die', 'i want to die'],
+    ['i want to really, really die', 'i want to die'],
+    ['i want to just really, really die', 'i want to die'],
+    ['I would rather be like dead', 'I would rather be dead'],
+    ['I wish I could disappear like forever', 'I wish I could disappear forever'],
+    ['I want to be like him', 'I want to be like him'],
+    ['he never... really hit me', 'he never... hit me'],
+    ["he didn't (actually) hit me", "he didn't (actually) hit me"],
+    ['he said... honestly, it was fine', 'he said... honestly, it was fine'],
+  ]) assert.equal(copyOf(t), c, t);
 });
 
 test('fillers: the copy only drops fillers (and reads "keeps hitting" as "hits")', () => {

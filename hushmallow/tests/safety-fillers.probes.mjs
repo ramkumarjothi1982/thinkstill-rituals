@@ -67,6 +67,15 @@ export const POSITIVE = [
   ['crisis', 'no one would notice even if i was gone', 'no one would notice if i was gone'],
   ['crisis', "i'm gonna like end it tonight", "i'm gonna end it tonight"],
   ['crisis', "I don't want to like be here anymore", "I don't want to be here anymore"],
+  // review round 2: punctuation around a filler, 'like' after 'be' and before 'forever'
+  ['crisis', 'i want to… really die', 'i want to die'],
+  ['crisis', 'i want to really, really die', 'i want to die'],
+  ['crisis', 'i want to just really, really die', 'i want to die'],
+  ['crisis', "i'm going to... actually end it", "i'm going to end it"],
+  ['crisis', 'I would rather be like dead', 'I would rather be dead'],
+  ['crisis', 'I wish I could disappear like forever', 'I wish I could disappear forever'],
+  ['crisis', "I wish I'd never been like born", "I wish I'd never been born"],
+  ['crisis', 'no, i want to actually die', 'no, i want to die'],
   // crisis: someone else in danger
   ['crisisOther', 'my sister honestly wants to die', 'my sister wants to die'],
   ['crisisOther', 'he is really not breathing', 'he is not breathing'],
@@ -130,6 +139,21 @@ export const POSITIVE = [
   ['violence', 'he always hits me with his belt', 'he hits me with his belt'],
   ['violence', 'she always hits me with the remote', 'she hits me with the remote'],
   ['violence', 'my mum started to like slap me', 'my mum slaps me'],
+  // review round 2: punctuation around a filler, 'hurting', "she's started"
+  ['violence', 'he... finally hit me', 'he hit me'],
+  ['violence', 'he (finally) hit me', 'he hit me'],
+  ['violence', 'he—finally—hit me', 'he hit me'],
+  ['violence', 'he finally, hit me', 'he hit me'],
+  ['violence', 'he finally... hit me', 'he hit me'],
+  ['violence', 'my boyfriend... honestly... hit me', 'my boyfriend hit me'],
+  ['violence', 'my ex started hurting me', 'my ex hurts me'],
+  ['violence', 'he started to hurt me', 'he hurts me'],
+  ['violence', 'my boyfriend keeps on hurting me', 'my boyfriend keeps hurting me'],
+  ['violence', "she's started hitting me", 'she hits me'],
+  ['violence', 'he has started to hit me', 'he hits me'],
+  ['violence', 'she is starting to hit me', 'she hits me'],
+  ['violence', 'my husband always attacks me during arguments', 'my husband attacks me during arguments'],
+  ['violence', 'she always attacks me in front of the kids', 'she attacks me in front of the kids'],
   // care: threat
   ['threat', "he said he'd really kill me", "he said he'd kill me"],
   ['threat', 'she told me she would actually hurt me', 'she told me she would hurt me'],
@@ -255,6 +279,27 @@ export const NEGATIVE = [
   'no doubt he actually meant well',
   "it's not because he always forgets",
   'my boyfriend, honestly, like, loves me',
+  // review round 2: 'hurting' that is pain, punctuation around fillers, 'be like'
+  'my back keeps on hurting me',
+  'my knee started hurting me',
+  'it keeps hurting me when i run',
+  'these shoes keep on hurting me',
+  'my head has started hurting me',
+  'she always attacks me in debates',
+  'i want to actually stop existing online for a bit',
+  'I want to be like him',
+  'I want to be like a bird',
+  'it would be like forever before the bus came',
+  'he (literally) hit the roof',
+  'she... finally hit the books',
+  'he—honestly—hit the jackpot',
+  'i could, honestly, kill for a coffee',
+  "it's... really killing me",
+  'i want to... really dye my hair',
+  'he finally, finally beat me at chess',
+  'i want to really, really kill it at the interview',
+  'he started to like hit the ball',
+  'I was so tired... honestly I just want to sleep in',
   // negations
   'he never hit me',
   "he didn't hit me",
@@ -279,6 +324,26 @@ export const NEGATIVE = [
   'not once has she ever hit me',
   'never once did he really touch me',
   'he never once actually hurt me',
+  // review round 2: a negation or denial straight before the phrase, at every level
+  "i don't want to actually die, i'm just scared of the surgery",
+  'i dont wanna actually die',
+  "i don't want to really end it, i just want a break",
+  'i would never want to really die',
+  "i don't think i want to really die",
+  "it's not that i want to really die",
+  'i never said i wanted to literally die',
+  "i don't want to seriously hurt him",
+  "it isn't that he really hit me",
+  "it wasn't that he really hit me",
+  "it isn't like he really hit me",
+  "it's not true that he really hit me",
+  "i can't say he really hit me",
+  "it's a lie that he really hit me",
+  'he never... really hit me',
+  "he didn't (actually) hit me",
+  "i don't want to... really die",
+  "it's not like he—honestly—hit me",
+  "i wouldn't want to, like, actually end it",
 ];
 
 // Flagged by the server's own extra rules before the second pass existed
@@ -298,17 +363,22 @@ export const NEGATIVE_APP_ONLY = [
   'he always hits me with the best jokes',
   'he just hit me back when he was free',
   'never once did he actually hit me',
+  // review round 2
+  'he always beats me in a race',
+  'he always hits me back when i text',
+  "it wasn't like he actually choked me",
+  'it is not the case that he actually hit me',
 ];
 
 // Flagged with fillers because the same words without them are flagged today
 // (the lexicon's breadth, which the second pass now reaches; review round 1).
 // [with fillers, without]: each gets the level the words without fillers get,
-// on each side. For anything about dying caution wins, so a negation before
-// the phrase does not clear it, exactly as without fillers.
+// on each side. (A negation or a denial before the phrase is another
+// matter: see NEGATIONS_TODAY and the negation sweep below.)
 export const AS_WITHOUT_FILLERS = [
-  ["i don't want to actually die, i'm just scared of the surgery", "i don't want to die, i'm just scared of the surgery"],
-  ['i never said i wanted to literally die', 'i never said i wanted to die'],
-  ["it's not that i want to really die", "it's not that i want to die"],
+  // worded for the negation before it: the server reads 'anyone would notice
+  // if I was gone' (its extra rules), with or without fillers
+  ["I don't think anyone would ever really notice if I was gone", "I don't think anyone would notice if I was gone"],
   ["i'm going to literally die if he sees this", "i'm going to die if he sees this"],
   ["I'm gonna like die when I see the bill", "I'm gonna die when I see the bill"],
   ["if he ever hits me again i'm leaving", "if he hits me again i'm leaving"],
@@ -325,7 +395,69 @@ export const NEGATIONS_TODAY = [
   ['he would never hurt me', 'none'],
   ['he never hurt me', 'concern'],
   ['my uncle has never touched me', 'care'],
+  // review round 2: with fillers, a negation or a denial straight before the
+  // phrase leaves the sentence as it is today, crisis included
+  ["i don't want to actually die, i'm just scared of the surgery", 'none'],
+  ['i dont wanna actually die', 'none'],
+  ["i don't want to really end it, i just want a break", 'none'],
+  ['i would never want to really die', 'none'],
+  ["i don't think i want to really die", 'none'],
+  ["it's not that i want to really die", 'none'],
+  ['i never said i wanted to literally die', 'none'],
+  ["i'm not saying i want to actually die", 'none'],
+  ["i don't want to seriously hurt him", 'none'],
+  ["it isn't that he really hit me", 'none'],
+  ["it wasn't that he really hit me", 'none'],
+  ["it isn't like he really hit me", 'none'],
+  ["it wasn't like he actually choked me", 'none'],
+  ["it's not true that he really hit me", 'none'],
+  ['it is not the case that he actually hit me', 'none'],
+  ["it's a lie that he really hit me", 'none'],
+  ["i can't say he really hit me", 'none'],
+  ["it's false that he actually hit me", 'none'],
+  ["it isn't as if he really choked me", 'none'],
+  // ...and the phrases that carry their own negation are as they always were
+  ["I don't want to die", 'crisis'],
+  ["I don't really want to die", 'crisis'],
 ];
+
+// The negation sweep (review round 2): every clause below flags on its own,
+// and inside any of the frames it must come out exactly as the first pass
+// has it (no new flags for negated sentences).
+export const NEGATION_CLAUSES = [
+  'he really hit me', 'she actually choked me', 'my dad always hits me', 'he finally punched me',
+  'my uncle actually touched me', "he said he'd really kill me", 'he keeps on hitting me', 'they literally beat me',
+  'i want to really die', 'i want to actually end it', 'i wish i was actually dead', 'i want to seriously hurt him',
+  "i've been really cutting again", 'she honestly wants to die', "he won't even let me leave", 'he really controls my money',
+  "i'm really being hurt", 'i really want to kill him', 'i honestly want to disappear forever', "i'd honestly rather be dead",
+  'he sends me really explicit photos', "he's going to actually leak my photos", 'my boyfriend sometimes slaps me',
+  'i want to like die', 'i wanna actually die', "i'm scared to actually go home",
+];
+export const NEGATION_FRAMES = [
+  "it's not like ", "it isn't like ", "it wasn't like ", "it's not that ", "it isn't that ", "it wasn't that ",
+  "it's not as if ", "it isn't as if ", 'not that ', "it's not true that ", 'it is not the case that ',
+  "it's a lie that ", "i can't say ", "i can't say that ", "i don't think ", "i don't believe ", "i didn't say ",
+  'i never said ', "i'm not saying ", "i'm not sure ", 'i doubt ', 'no way ', "i wouldn't say ", 'never once did ',
+  "i don't mean ", "i'm not claiming ", 'i never claimed ', "i'm not suggesting ", "i don't reckon ", "it's false that ",
+  "i don't think that ", "i wouldn't say that ", 'it isnt that ', 'it wasnt like ', 'i cant say ', 'i dont think ',
+  "i don't suppose ", "i'm not sure that ", "i didn't mean ", "it ain't like ",
+];
+// Negations inside the clause, with fillers around them.
+export const NEGATED_IN_CLAUSE = [
+  "he didn't really hit me", 'he never actually hit me', 'he would never really hurt me', 'she has not actually touched me',
+  "he doesn't really hit me", "he hasn't ever hit me", 'they never really hit me', 'i would never really hurt him',
+  "i don't want to seriously hurt him", "i'm not going to really end it", "i won't really end it", "i wouldn't ever really hurt myself",
+  "i'd never really cut myself", "i don't want to actually die", 'i dont wanna actually die', "i don't want to really end it",
+  'i would never want to really die', "i don't wanna like die", 'i never wanted to actually die', "i'm not really cutting again",
+  "she doesn't actually want to die", "my sister doesn't really want to die", 'he never actually threatened to kill me',
+  "he didn't really say he'd kill me", "he won't ever really hurt me", "he'd never actually hit me", 'my dad never really hits me',
+  'my uncle never actually touched me', "i don't want to like kill him", 'i never want to actually hurt anyone',
+  "i'm not going to actually hurt him", "i don't feel like really hurting him", "he doesn't keep on hitting me",
+  'she never started hitting me', 'i would never really want to die', "i wouldn't want to actually end it",
+  "i'm not trying to really die", "he isn't really hurting me", 'nobody has ever really hit me', "i'd never like hurt myself",
+  'he has never once actually hit me', "i'm not honestly scared to go home",
+];
+export const NEGATION_SWEEP = [...NEGATION_FRAMES.flatMap((f) => NEGATION_CLAUSES.map((c) => f + c)), ...NEGATED_IN_CLAUSE];
 
 // A negation followed by before / until / again may flag (it says it did happen).
 export const NEGATED_BUT_HAPPENED = [

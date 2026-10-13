@@ -7,7 +7,9 @@
 //
 // Two passes, as in the app (13 Oct 2026): the original check, unchanged,
 // then the same guards and rules on a copy without filler words ("he
-// finally hit me" → "he hit me"); the more serious result wins. FILLERS,
+// finally hit me" → "he hit me"); the more serious result wins, and a
+// second-pass match that leans on a negation or a denial ("I don't want to
+// really die", "it isn't that he really hit me") does not count. FILLERS,
 // SECOND_PASS and fillerFreeCopy are kept identical to the app's
 // (test/safety-fillers.test.js compares them).
 
@@ -74,10 +76,10 @@ export const FILLERS = Object.freeze({
   // Filler 'like' only straight after a subject and before a verb ("he like
   // hit me"), never 'I like him', 'feel like', 'like that' or 'would like to'.
   likeNot: F`me|you|him|her|them|us|it|its|this|that|these|those|a|an|the|my|your|his|our|their|to|when|how|what|i|he|she|they|we|someone|somebody|anyone|anybody|everyone|everybody|people|being|so|no|nothing|anything|everything|any|some|myself|yourself|himself|herself|themselves`,
-  // 'keeps hitting me', 'started to punch me' → 'hits me', 'punches me'
+  // 'keeps hitting me', 'started to punch me', 'keeps on hurting me' → 'hits me', 'punches me', 'hurts me'
   // (the violence rules list these forms).
-  force: { hit: 'hits', punch: 'punches', kick: 'kicks', slap: 'slaps', choke: 'chokes', strangle: 'strangles', beat: 'beats', shove: 'shoves', smack: 'smacks', attack: 'attacks', grab: 'grabs' },
-  forceIng: { hitting: 'hit', punching: 'punch', kicking: 'kick', slapping: 'slap', choking: 'choke', strangling: 'strangle', beating: 'beat', shoving: 'shove', smacking: 'smack', attacking: 'attack', grabbing: 'grab' },
+  force: { hit: 'hits', hurt: 'hurts', punch: 'punches', kick: 'kicks', slap: 'slaps', choke: 'chokes', strangle: 'strangles', beat: 'beats', shove: 'shoves', smack: 'smacks', attack: 'attacks', grab: 'grabs' },
+  forceIng: { hitting: 'hit', hurting: 'hurt', punching: 'punch', kicking: 'kick', slapping: 'slap', choking: 'choke', strangling: 'strangle', beating: 'beat', shoving: 'shove', smacking: 'smack', attacking: 'attack', grabbing: 'grab' },
   // 'I keep wanting to die', 'I've started wishing I was dead' → 'want', 'wish'
   wishIng: { wanting: 'want', wishing: 'wish', hoping: 'hope', praying: 'pray' },
 });
@@ -85,6 +87,10 @@ export const FILLERS = Object.freeze({
 const FORCE_BASE = Object.keys(FILLERS.force).join('|');
 const FORCE_ING = Object.keys(FILLERS.forceIng).join('|');
 const COMMA_FILLER = `${FILLERS.free}|${FILLERS.positional}|like`;
+// Punctuation that can set a filler off: 'he... finally hit me', 'he
+// (finally) hit me', 'he—finally—hit me', 'he finally, hit me'.
+const LEAD = F`(?:\.{2,}|…|—|–|--|\()`;
+const TRAIL = F`(?:,|\.{2,}|…|—|–|--|\))`;
 /** @param {string} ing */
 const forceFromIng = (ing) => FILLERS.force[FILLERS.forceIng[ing.toLowerCase()]];
 /** @type {[RegExp, string | ((m: string, ...groups: string[]) => string)][]} */
@@ -92,15 +98,25 @@ const FILLER_STEPS = [
   // ", like, " / ", honestly, " standing alone between commas, and chains of
   // them (", honestly, like, ")
   [new RegExp(F`\s*,\s*(?:${COMMA_FILLER})(?:\s*,\s*(?:${COMMA_FILLER}))*\s*,\s*`, 'gi'), ' '],
+  // ...or set off by other punctuation straight after a subject, a helper or
+  // 'to' ("he... finally hit me", "he (finally) hit me", "he finally, hit
+  // me", "I want to really, really die")
+  [new RegExp(F`(?<=(?:^|[\s,(])(?:${FILLERS.subject}|${FILLERS.helper}))(?:\s*${LEAD}\s*(?:${COMMA_FILLER})(?:\s+(?:${COMMA_FILLER}))*\s*${TRAIL}?|(?:\s+(?:${COMMA_FILLER}))+\s*${TRAIL})\s*(?=[a-z0-9'])`, 'gi'), ' '],
   [new RegExp(F`\b(?:${FILLERS.free}) (?=[a-z0-9'])`, 'gi'), ''],
   [new RegExp(F`(?<=(?:^|[\s,])(?:${FILLERS.subject}|${FILLERS.helper}) )(?:${FILLERS.positional}) (?=[a-z0-9'])`, 'gi'), ''],
   [new RegExp(F`(?<=(?:^|[\s,])(?:${FILLERS.subject}) )like (?!(?:${FILLERS.likeNot})\b)(?=[a-z])`, 'gi'), ''],
   // ...and straight after 'to' ("I want to like die", "I wanna like end it");
   // 'I want to like him' and 'I'd like to' stay.
   [new RegExp(F`(?<=\b(?:to|wanna|gonna|gotta) )like (?!(?:${FILLERS.likeNot})\b)(?=[a-z])`, 'gi'), ''],
+  // ...after 'be' ("I'd rather be like dead", "never been like born") and
+  // before 'forever' ("disappear like forever"); 'be like him' stays.
+  [new RegExp(F`(?<=\b(?:be|been|being) )like (?!(?:${FILLERS.likeNot})\b)(?=[a-z])`, 'gi'), ''],
+  [/(?<=[a-z] )like (?=for ?ever\b)/gi, ''],
   // 'keep on hurting me' → 'keep hurting me' (the lexicon knows 'keeps hurting', 'keep cutting')
   [/\b(keep|keeps|kept|keeping) on (?=[a-z]+ing\b)/gi, '$1 '],
   [new RegExp(F`\b(?:keep|keeps|kept|keeping|start|starts|started|starting|began|begun) (${Object.keys(FILLERS.wishIng).join('|')})\b`, 'gi'), (_, ing) => FILLERS.wishIng[ing.toLowerCase()]],
+  // "she's started hitting me", 'he has started to hit me' → 'she started hitting me'
+  [new RegExp(F`(?<=[a-z])(?:'s|'ve|'re|'m| has| have| had| is| are| was| were| am)(?= (?:start|starts|started|starting|began|begun) (?:to (?:${FORCE_BASE})|(?:${FORCE_ING})) me\b)`, 'gi'), ''],
   [new RegExp(F`\b(?:keep|keeps|kept|keeping) (${FORCE_ING})(?= me\b)`, 'gi'), (_, ing) => forceFromIng(ing)],
   [new RegExp(F`\b(?:start|starts|started|starting|began|begun) (?:to (${FORCE_BASE})|(${FORCE_ING}))(?= me\b)`, 'gi'),
     (_, base, ing) => (base ? FILLERS.force[base.toLowerCase()] : forceFromIng(ing))],
@@ -118,13 +134,13 @@ export function fillerFreeCopy(tidied) {
   return c.replace(/ {2,}/g, ' ').trim();
 }
 
-/** @type {Readonly<{ guards: readonly string[], negation: string, denial: string, unless: string }>} */
+/** @type {Readonly<{ guards: readonly string[], negation: string, bare: string, denial: string, npi: string, unless: string }>} */
 export const SECOND_PASS = Object.freeze({
   // Idioms that only need blanking once fillers are gone: 'she just hit me up'
   // is a message, not a blow. (The first pass is left exactly as it was.)
   guards: Object.freeze([
     F`\b(?:hit|hits|hitting) (?:me|us) up\b(?! (?:against|the (?:side|back|front|head|face)|side|round|around|across)\b)`,
-    F`\b(?:hit|hits) (?:me|us) back (?:with (?:an?|the|some|my|his|her|their) (?:answer|reply|response|quote|price|update|decision|text|message|email|call|date)|later|tomorrow|soon|about|on (?:this|that|it)|when (?:you|u|he|she|they|we|i)(?:'re|'s|'m|'ve)?(?: (?:are|is|am|was|were|have|has|had|get|gets|got|find|finds))? (?:free|ready|done|back|home|sure|able|out|a chance|a minute|a moment|a sec|the chance|time)|when (?:you|u|he|she|they|we|i) (?:can|know|knows|hear|hears|decide|decides))\b`,
+    F`\b(?:hit|hits) (?:me|us) back (?:with (?:an?|the|some|my|his|her|their) (?:answer|reply|response|quote|price|update|decision|text|message|email|call|date)|later|tomorrow|soon|about|on (?:this|that|it)|when (?:you|u|he|she|they|we|i)(?:'re|'s|'m|'ve)?(?: (?:are|is|am|was|were|have|has|had|get|gets|got|find|finds))? (?:free|ready|done|back|home|sure|able|out|a chance|a minute|a moment|a sec|the chance|time)|when (?:you|u|he|she|they|we|i) (?:can|know|knows|hear|hears|decide|decides|text|texts|message|messages|dm|dms|email|emails))\b`,
     // words, not blows: 'he always hits me with the truth', 'she really hit me
     // with the best advice' (never 'with a belt', 'with the remote')
     F`\b(?:hit|hits|hitting) (?:me|us) with (?:(?:the|a|an|some|his|her|their|this|that|these|those) )?(?:(?:best|worst|same|latest|usual|big|hard|brutal|honest|cold|harsh|awful|terrible|funniest|weirdest) )?(?:truth|news|facts|advice|jokes?|puns?|questions?|compliments?|comebacks?|reality check|bombshell|details|ideas?|request|proposal|quote|update|offer|bill|deadline|feedback|gossip|memes?)\b`,
@@ -136,16 +152,33 @@ export const SECOND_PASS = Object.freeze({
     F`\b(?:die|dies|died) (?:my|her|his|their|your|our) (?:hair|fringe|roots|beard|eyebrows)\b`,
     // games and group chats: 'he always beats me at tennis', 'she literally
     // kicked me out of the group chat'
-    F`\b(?:beat|beats|beating|beaten) (?:me|us) (?:at|in) (?:chess|tennis|table tennis|ping pong|cards|poker|football|golf|squash|badminton|basketball|netball|scrabble|monopoly|mario kart|fifa|games?|video games|everything|running|races?|the race|arm wrestling|pool|darts|bowling|quizzes|trivia|maths|math|exams?|tests?)\b`,
+    F`\b(?:beat|beats|beating|beaten) (?:me|us) (?:at|in) (?:(?:a|the) )?(?:chess|tennis|table tennis|ping pong|cards|poker|football|golf|squash|badminton|basketball|netball|scrabble|monopoly|mario kart|fifa|games?|video games|everything|running|races?|arm wrestling|pool|darts|bowling|quizzes|trivia|maths|math|exams?|tests?)\b`,
+    // words, not blows: 'she always attacks me in debates' (never in arguments
+    // or meetings, where it can be a blow)
+    F`\b(?:attack|attacks|attacked|attacking) (?:me|us) (?:in|during) (?:(?:a|the|every) )?(?:debates?|comments|reviews?|interviews?)\b`,
     F`\b(?:kick|kicks|kicked|kicking) (?:me|us) (?:out of|off) (?:the |our |my |a |his |her |their )?(?:group chat|group|chat|game|team|class|lesson|club|band|server|discord|call|meeting|squad|match|league|course|whatsapp|channel)\b`,
+    // leaving a group or the internet, not life: 'I want to actually stop
+    // existing online for a bit' (the shared rule's own exception, for the
+    // server's extra rule)
+    F`\b(?:stop existing|not exist(?:ing)?|cease to exist|stop being alive)(?= (?:online|on (?:social media|socials|the internet|instagram|insta|tiktok|twitter|facebook|snapchat|whatsapp|discord)|in (?:the|this|that|our|my) (?:group|chat|office|class|team))\b)`,
   ]),
   negation: F`\b(?:not|never|no|nobody|noone|nothing|none|nowhere|neither|nor|cannot|[a-z]+n't|dont|didnt|doesnt|wont|cant|isnt|wasnt|arent|werent|hasnt|havent|hadnt|shouldnt|wouldnt|couldnt|mustnt|aint)\b`,
-  // Words that deny what follows them: "it's not like he really hit me",
-  // "I don't think he'd ever really hurt me", "not once has he ever hit me"
-  // (but never "I can't believe he actually hit me", "nobody knows he always
-  // hits me", "no doubt he actually hit me" or "it's not because he always
-  // hits me", which tell it).
-  denial: F`(?:\bnot (?:like|that|as if|as though|saying|sure)|\b(?:don'?t|do not|didn'?t|did not|never|wouldn'?t|would not|can'?t say|cannot say) (?:think|believe|reckon|mean|say|said|claim|suppose|imagine|expect|feel like)|(?<!\b(?:no|don'?t|do not|never|without(?: a| any)?|beyond(?: a| any)?) )\bdoubt|\bno way|\b(?:never|not) once (?:did|does|do|has|had|have|was|were|would|will))(?: that)?\s*$`,
+  // A negation straight before a match denies it: "I don't want to really
+  // die", "I would never want to really die", "I don't want to seriously hurt
+  // him". (A match that starts with its own subject is not denied this way:
+  // "I can't, he keeps hitting me", "didn't he actually hit me?")
+  bare: F`\b(?:not|never|cannot|[a-z]+n't|dont|didnt|doesnt|wont|wouldnt|cant|couldnt|shouldnt|isnt|wasnt|arent|werent|aint|hasnt|havent|hadnt|mustnt)\s*$`,
+  // Words that deny what follows them, with or without its subject: "it's
+  // not like he really hit me", "it isn't that he really hit me", "it's not
+  // true that…", "I can't say he really hit me", "I don't think I want to
+  // really die", "not once has he ever hit me" (but never "I can't believe
+  // he actually hit me", "nobody knows he always hits me", "no doubt he
+  // actually hit me" or "it's not because he always hits me", which tell it).
+  denial: F`(?:\bnot (?:like|that|as if|as though|saying|suggesting|claiming|implying|sure|true|the case)|\b(?:is|was|are|were|ai)n'?t (?:like|that|as if|as though|true|the case)|\b(?:untrue|false) that|\ba (?:total |complete |big )?lie|\b(?:don'?t|do not|didn'?t|did not|never|wouldn'?t|would not) (?:think|believe|reckon|mean|say|said|claim(?:ed)?|suggest(?:ed)?|suppose|imagine|expect|feel like)|\b(?:can'?t|cannot|can not|couldn'?t) say|(?<!\b(?:no|don'?t|do not|never|without(?: a| any)?|beyond(?: a| any)?) )\bdoubt|\bno way|\b(?:never|not) once (?:did|does|do|has|had|have|was|were|would|will))(?: that)?(?: (?:${FILLERS.subject})(?:'(?:s|d|ll|m|re|ve))?(?: (?:am|is|are|was|were|would|will|could|should|might|has|have|had|do|does|did|can))?)?\s*$`,
+  // A match that starts 'anyone' or 'who' is worded for a negation before it
+  // ("I don't think anyone would ever really notice if I was gone"), so
+  // neither of the above denies it.
+  npi: F`^(?:anyone|anybody|any one|anything|who)\b`,
   // ...unless the sentence goes on to say it did happen: "he never hurt me
   // until last year", "he'd never hit me before", "never hit me again".
   unless: F`^[^.!?;]*?\b(?:before|until|till|again)\b`,
@@ -154,7 +187,10 @@ export const SECOND_PASS = Object.freeze({
 const SECOND = {
   guards: compile([...HARM_LEXICON.idiomGuards, ...EXTRA_LEXICON.idiomGuards, ...SECOND_PASS.guards], 'gi'),
   negation: new RegExp(SECOND_PASS.negation, 'gi'),
+  bare: new RegExp(SECOND_PASS.bare, 'i'),
   denial: new RegExp(SECOND_PASS.denial, 'i'),
+  npi: new RegExp(SECOND_PASS.npi, 'i'),
+  subject: new RegExp(F`^(?:${FILLERS.subject})\b`, 'i'),
   unless: new RegExp(SECOND_PASS.unless, 'i'),
   /** @type {Map<RegExp, RegExp>} */
   sticky: new Map(),
@@ -163,19 +199,23 @@ const SECOND = {
 };
 
 /**
- * Whether a second-pass match leans on a negation: it steps over one (the
- * match still fits with the negation masked out: "he never hurt me" fits
- * '<person> <any word> hurt me'), or a denial comes straight before it.
- * A negation the phrase itself spells out ("don't feel safe", "nobody would
- * miss me") is the phrase, not a denial of it.
- * @param {RegExp} re @param {string} text @param {RegExpExecArray} m @param {boolean} denials
+ * Whether a second-pass match leans on a negation, at every level: it steps
+ * over one (the match still fits with the negation masked out: "he never
+ * hurt me" fits '<person> <any word> hurt me'), a bare negation comes
+ * straight before it ("I don't want to really die"), or a denial does ("it
+ * isn't that he really hit me"). A negation the phrase itself spells out
+ * ("don't feel safe", "nobody would miss me") is the phrase, not a denial
+ * of it.
+ * @param {RegExp} re @param {string} text @param {RegExpExecArray} m
  */
-function leansOnNegation(re, text, m, denials) {
+function leansOnNegation(re, text, m) {
   const end = m.index + m[0].length;
-  let leans = denials && SECOND.denial.test(text.slice(0, m.index));
+  const before = text.slice(0, m.index);
+  let leans = !SECOND.npi.test(m[0])
+    && (SECOND.denial.test(before) || (SECOND.bare.test(before) && !SECOND.subject.test(m[0])));
   SECOND.negation.lastIndex = 0;
   if (!leans && SECOND.negation.test(m[0])) {
-    const masked = text.slice(0, m.index) + m[0].replace(SECOND.negation, (w) => 'x'.repeat(w.length)) + text.slice(end);
+    const masked = before + m[0].replace(SECOND.negation, (w) => 'x'.repeat(w.length)) + text.slice(end);
     let y = SECOND.sticky.get(re);
     if (!y) SECOND.sticky.set(re, (y = new RegExp(re.source, 'iy')));
     y.lastIndex = m.index;
@@ -184,12 +224,8 @@ function leansOnNegation(re, text, m, denials) {
   return leans && !SECOND.unless.test(text.slice(end));
 }
 
-/** @param {RegExp[]} regexes @param {string} text @param {string} level */
-function secondPassHit(regexes, text, level) {
-  // A denial ("I don't think…") is only weighed for harm done by someone
-  // else; for anything about dying, caution wins ("I don't think anyone would
-  // ever really notice if I was gone").
-  const denials = level !== 'crisis';
+/** @param {RegExp[]} regexes @param {string} text */
+function secondPassHit(regexes, text) {
   for (const re of regexes) {
     if (!re.test(text)) continue; // the usual case, and as cheap as the first pass
     let g = SECOND.global.get(re);
@@ -197,7 +233,7 @@ function secondPassHit(regexes, text, level) {
     g.lastIndex = 0;
     for (let m = g.exec(text); m; m = g.exec(text)) {
       if (!m[0]) { g.lastIndex++; continue; }
-      if (!leansOnNegation(re, text, m, denials)) return true;
+      if (!leansOnNegation(re, text, m)) return true;
     }
   }
   return false;
@@ -242,7 +278,7 @@ const RANK = { none: 0, concern: 1, care: 2, crisis: 3 };
  * filler-free copy. `floor`: the second pass only looks for levels above what
  * the first pass already found (anything else could not change the result).
  * @param {string} t
- * @param {(regexes: RegExp[], text: string, level: string) => boolean} hitIn
+ * @param {(regexes: RegExp[], text: string) => boolean} hitIn
  * @param {RegExp[]} guards
  * @param {SafetyResult['level']} [floor]
  * @returns {SafetyResult}
@@ -251,12 +287,12 @@ function classify(t, hitIn, guards, floor = 'none') {
   for (const re of guards) t = t.replace(re, (m) => ' '.repeat(m.length));
   let self = t;
   for (const re of RULES.otherSpans) self = self.replace(re, (m) => ' '.repeat(m.length));
-  if (hitIn(RULES.crisis, self, 'crisis')) return { level: 'crisis', category: 'self-harm' };
-  if (hitIn(RULES.crisisOther, t, 'crisis')) return { level: 'crisis', category: 'someone-in-danger' };
+  if (hitIn(RULES.crisis, self)) return { level: 'crisis', category: 'self-harm' };
+  if (hitIn(RULES.crisisOther, t)) return { level: 'crisis', category: 'someone-in-danger' };
   if (RANK[floor] >= RANK.care) return { level: 'none', category: null };
-  for (const [category, regexes] of RULES.care) if (hitIn(regexes, t, 'care')) return { level: 'care', category };
+  for (const [category, regexes] of RULES.care) if (hitIn(regexes, t)) return { level: 'care', category };
   if (RANK[floor] >= RANK.concern) return { level: 'none', category: null };
-  if (hitIn(RULES.concern, t, 'concern')) return { level: 'concern', category: 'distress' };
+  if (hitIn(RULES.concern, t)) return { level: 'concern', category: 'distress' };
   return { level: 'none', category: null };
 }
 
