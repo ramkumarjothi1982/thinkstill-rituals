@@ -242,6 +242,28 @@ test('ThoughtLayer.plateFor: the plate measured for a budget is the plate drawn 
 });
 
 for (const reducedMotion of [false, true]) {
+  test(`ThoughtLayer${reducedMotion ? ', reduced motion' : ''}: words hidden for a moment and wanted back at a new place come back only once their fade-out has run — never moved while the stylesheet still shows them`, () => {
+    VIEW.W = 390; VIEW.H = 844;
+    const L = new ThoughtLayer({ bounds: () => ({ left: 10, right: 380, top: 96, bottom: 760 }), keepOut: () => null, reducedMotion, tagRoot: document.body });
+    const th = L.add({ text: TEXT, emotion: 'embarrassed', intensity: 0.6, r: 38 }, { x: 200, y: 360 });
+    for (let i = 0; i < 60; i++) L.frame(1 / 60);
+    const tg = L.tags.get(th), frames = [];
+    const rec = () => frames.push({ dt: 1 / 60, op: tg.shown && !L.hidden ? (tg.opQ ?? 20) / 20 : 0, wf: !!tg.wfade, tc: { x: tg.x, y: tg.y + tg.h / 2 } });
+    // a world drives it; its words show
+    for (let i = 0; i < 40; i++) { th.x = 200; th.y = 360; L.frame(1 / 60); rec(); }
+    assert.ok(tg.shown, 'its words show');
+    // for three frames it is on its way (its words hide), then the world has it again — 150 px lower
+    th.letGo(); th.moveHome({ x: 200, y: 510 });
+    for (let i = 0; i < 3; i++) { L.frame(1 / 60); rec(); }
+    for (let i = 0; i < 90; i++) { th.x = 200; th.y = 510; L.frame(1 / 60); rec(); }
+    const { worst, at } = worstStep(frames, seenOps(frames));
+    assert.ok(worst <= 12, `largest step of the words while seen ${worst.toFixed(1)} px (${JSON.stringify(at)})`);
+    assert.ok(tg.shown && Math.abs(tg.y - th.y) < 140, 'they show again beside it at its new place');
+    L.destroy();
+  });
+}
+
+for (const reducedMotion of [false, true]) {
   test(`ThoughtLayer${reducedMotion ? ', reduced motion' : ''}: a world lets go of the thought and the shell sends it home — its words never show at the new home while the body is still held where the world left it, nor jump to it as it sets off`, () => {
     VIEW.W = 390; VIEW.H = 844;
     const L = new ThoughtLayer({ bounds: () => ({ left: 10, right: 380, top: 96, bottom: 760 }), keepOut: () => null, reducedMotion, tagRoot: document.body });

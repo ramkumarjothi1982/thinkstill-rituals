@@ -577,6 +577,8 @@ export class ThoughtLayer {
     if (!Number.isFinite(dt)) { const n = nowMs(); dt = this._lastT ? (n - this._lastT) / 1000 : 1 / 60; this._lastT = n; }
     dt = clamp(dt, 0, 0.05);
     if (this.paused) return false;
+    // (the shared loop's clock, seconds: the stylesheet's fades run in real time, whatever dt the frame was clamped to)
+    this._tSec = Number.isFinite(t) ? t : null;
     const t0 = nowMs();
     this._frames++;
     if (this._frames % 90 === 0) this._measureView();
@@ -1871,6 +1873,10 @@ export class ThoughtLayer {
   // keeps its side and waits, hidden, while that is on the hero or a face. Resting plates are placed
   // first, held ones next.
   _tags(dt, env) {
+    // the real time since the last frame, as the stylesheet's fades see it (the shared loop's clock; without one — Node,
+    // a lab stepping frames — the frame's own dt)
+    const tS = this._tSec, rdt = tS != null && this._tPrev != null ? clamp(tS - this._tPrev, 0, 0.5) : dt;
+    this._tPrev = tS;
     const W = env.view.W, list = this.thoughts, T = this._plateFrame(env);
     T.K = this._keep();
     for (const th of list) {
@@ -1968,9 +1974,15 @@ export class ThoughtLayer {
       // (and words that hide — their thought set off for a new home, a world took them — fade out where
       // they were, never carried over the others while they fade)
       if (tg.fade > 0) tg.fade -= dt;
-      // (moved at the end of the hop, still unseen: they come in at the new place a frame later, never in the frame they move)
-      if (tg.hop > 0) { tg.hop -= dt; tg.vx = tg.vy = 0; if (tg.hop <= 0) { tg.x = tg.tx; tg.y = tg.ty; tg.fade = 0; tg.unseen = 1; } }
-      else if (tg.fade > 0) { tg.vx = tg.vy = 0; }
+      // (what the stylesheet shows of them now — its fades run in real time: out .2 s, in .45 s, none under a world's
+      // fade — so hidden words move only once that is nothing, on a slow frame or a fast one alike)
+      if (tg.wfade) tg.seen = tg.shown ? (tg.opQ ?? 20) / 20 : 0;
+      else tg.seen = tg.shown ? Math.min(1, (tg.seen || 0) + rdt / 0.45) : Math.max(0, (tg.seen || 0) - rdt / 0.2);
+      const gone = tg.seen <= 0.02;
+      // (moved at the end of the hop, still unseen: they come in at the new place a frame later, never in the frame they
+      // move — and the hop lasts until their fade-out has run)
+      if (tg.hop > 0) { tg.hop -= dt; tg.vx = tg.vy = 0; if (tg.hop <= 0) { if (gone) { tg.x = tg.tx; tg.y = tg.ty; tg.fade = 0; tg.unseen = 1; } else tg.hop = 1e-4; } }
+      else if (tg.fade > 0 || (!tg.shown && !gone)) { tg.vx = tg.vy = 0; }
       else if (env.rm || !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; }
       else {
         // a little spring lag: the words trail their thought
@@ -2003,7 +2015,10 @@ export class ThoughtLayer {
       const worldFading = (th.opacity ?? 1) < 0.999;
       tg.fadeWait = !tg.shown && worldFading ? (tg.fadeWait || 0) + dt : 0;
       const held = !tg.shown && worldFading && tg.fadeWait < 1.5;
-      const show = th.ov.appear > 0.35 && !th._leaving && !tg.wait && !(tg.hop > 0) && !tg.refit && !(tg.unseen > 0) && !held && tg.mode < 2 && !early;
+      // (and words hidden a moment ago that are wanted back somewhere else wait until their fade-out has run: they come in
+      // there unseen, never jumping there while half seen)
+      const away = !tg.shown && !gone && Math.abs(tg.tx - tg.x) + Math.abs(tg.ty - tg.y) > 2;
+      const show = th.ov.appear > 0.35 && !th._leaving && !tg.wait && !(tg.hop > 0) && !tg.refit && !(tg.unseen > 0) && !held && tg.mode < 2 && !early && !away;
       if (tg.unseen > 0 && !(tg.hop > 0)) tg.unseen--;
       // (coming in, they start where they rest — never from where they faded out)
       if (show && !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; tg.kx = NaN; }
