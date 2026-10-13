@@ -70,19 +70,32 @@ removes only the caller. It then **rolls everything back on purpose**, so
 nothing is left. The result is one column: a `PASS`/`FAIL` line per check and
 `ALL 34 CHECKS PASSED. …` at the end. Any `FAIL`: do not switch sign-in on.
 
-(The same files are checked on every change by `tools/auth/sql-check.sh`
-on a throwaway local PostgreSQL with a small Supabase stand-in, and in CI on
-a real local Supabase stack. Neither ever touches the project.)
+(The same files are checked by `tools/auth/sql-check.sh` on a throwaway
+local PostgreSQL with a small Supabase stand-in, and by the CI end-to-end
+check on a real local Supabase stack, which runs this file with psql and
+stops on any `FAIL`. Neither ever touches the project.)
 
 ## Email templates
 
 `templates/` holds the five templates to paste into Authentication → Emails →
 Templates (subject in each file's first line). Every link is
-`{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…`, which opens
-`/auth/callback` on whichever site asked for it (production or a preview)
-and works on any device; the reauthentication email carries the 6-digit
+`{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=…`: it always
+opens the production app's `/auth/callback` (so a one-time token can never
+be sent to a preview or any other address a request names), and works on
+any device. The Site URL must therefore be exactly `https://app.hushmallow.com`,
+with no trailing slash. The reauthentication email carries the 6-digit
 `{{ .Token }}` the app asks for before a password change. The rest of the
 dashboard settings are in `../docs/AUTH.md`.
+
+## `config.toml` (local stack only)
+
+`config.toml` is for the Supabase CLI's **local** stack that the CI
+end-to-end check starts on a GitHub runner
+(`.github/workflows/hushmallow-auth-e2e.yml`): the same migrations, the same
+templates, confirmations and secure password change on, 120-second access
+tokens. It names no hosted project and nothing here is ever linked or
+pushed: production is set up only by hand, as above. See
+`../docs/AUTH.md` ("The isolated E2E").
 
 ## Backfill
 
