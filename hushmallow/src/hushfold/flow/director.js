@@ -831,6 +831,9 @@ export function createHushflow(opts = {}) {
       emit('loop', { mode: 'ticker', reason: 'recovered' });
     }
     if (!paused && !hidden && !destroyed) step(Math.min(0.05, dt > 1 ? dt / 1000 : dt));
+    // (and once more after the frame's work: a frame whose world and stage take longer than WATCHDOG_MS — a slow phone,
+    // a GC pause — is a live loop still; the watchdog's probe for the next frame must not take it for a dead one)
+    lastTickAt = nowMs();
   }
   function loop(ts) {
     raf = 0;
@@ -1164,7 +1167,8 @@ export function createHushflow(opts = {}) {
       get governor() { return { level: qLevel, slowSec, fastSec, upBackoff, quiet: govQuiet }; },
       /** Which loop drives the director: the Mallow rig's shared ticker, its own rAF, or none. */
       get loop() { return loopMode === 'ticker' ? 'rig-ticker' : loopMode; },
-      step: (dtSec = 1 / 60) => step(dtSec, dtSec * 1000),
+      // (a host stepping frames by hand is the loop: the watchdog never starts a second one alongside it)
+      step: (dtSec = 1 / 60) => { lastTickAt = nowMs(); step(dtSec, dtSec * 1000); lastTickAt = nowMs(); },
       /** Freeze the loop without a veil (QA: step frames by hand). */
       freeze(on = true) { frozen = !!on; if (frozen) stopLoop(); else startLoop(); },
       setQuality(level) { qLevel = clamp(level, 0, 3) | 0; applySize(); },

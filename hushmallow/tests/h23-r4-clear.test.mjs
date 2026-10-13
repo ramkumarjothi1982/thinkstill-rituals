@@ -6,6 +6,7 @@
 //    (its place is planned at once — restRect — while the body waits: stage.js holdPlace).
 //  * The Memory Garden card over the Static Storm at 320×568 (below): the thought makes way from the card's placing, and
 //    the card is never seen over it or its words.
+//  * The director's watchdog never takes one long frame of the shared loop for a dead loop (last).
 // The real ThoughtLayer and the real worlds, through the director, in a stand-in DOM that lays the tags out as Chromium
 // does (the metrics of tests/thought-layout.test.mjs), at the geometry measured in the browser at 320×568.
 // Run: node --test hushmallow/tests/h23-r4-clear.test.mjs
@@ -392,3 +393,32 @@ test('shell: the thought makes way for the card from its placing, the card waits
   assert.match(subs, /pause\(\) \{ back = 0; shown\.pause\(\); \}/, 'a pause cancels lines on their way back');
 });
 
+test('director: a frame whose work takes longer than the watchdog\'s 250 ms is still the shared loop — no second loop starts', async () => {
+  const { STATUS } = await import('../src/hushfold/flow/registry.js');
+  const made = [];
+  const slowWorld = {
+    id: 'slow', title: 'slow', status: STATUS.PLAYABLE, fits: { emotions: { other: 1 }, intentions: {} }, next: [], dialogue: {}, discoveries: {}, palette: { sky: '#111', deep: '#000' },
+    load: async () => ({
+      create(ctx) {
+        const w = { ctx, slow: false, prepare: async () => {}, enter() {}, pointer() {}, serialize() { return { v: 1 }; }, restore() {}, pause() {}, resume() {}, destroy() {},
+          frame() { if (w.slow) { w.slow = false; const t0 = performance.now(); while (performance.now() - t0 < 320) { /* one long frame */ } } },
+          get progress() { return 0; }, get complete() { return false; }, get metrics() { return {}; } };
+        made.push(w);
+        return w;
+      },
+    }),
+  };
+  const tk = { fns: new Set(), add(fn) { tk.fns.add(fn); }, remove(fn) { tk.fns.delete(fn); }, tick(dt = 1 / 60) { for (const f of tk.fns) f(dt); } };
+  const D = createHushflow({ worldEl: new El('div'), fxEl: new El('div'), registry: createRegistry([slowWorld]), ticker: tk, store: memStore() });
+  try {
+    await D.start({ worldId: 'slow' });
+    assert.equal(D.debug.loop, 'rig-ticker');
+    const loops = [];
+    D.on('loop', (e) => loops.push(e.mode));
+    made[0].slow = true;
+    tk.tick();                                   // one 320 ms frame
+    // the shared loop goes on ticking (a slow phone: 25 frames a second)
+    for (let i = 0; i < 8; i++) { await new Promise((r) => setTimeout(r, 40)); loops.push(D.debug.loop); tk.tick(); }
+    assert.ok(!loops.includes('raf'), `still one loop, the shared one, all along (${loops.join(' ')})`);
+  } finally { D.destroy(); }
+});
