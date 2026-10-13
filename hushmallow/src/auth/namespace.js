@@ -24,6 +24,14 @@
 // Pure: every function takes the Storage it works on, so Node tests run it
 // on a fake localStorage.
 import { createStore, PREFIX } from '../engine/storage.js';
+import { mergeFavourites, mergeGarden } from './sync.js';
+
+/** Keys whose guest copy merges into an account copy that already exists (applyGuestChoice 'keep'). */
+const favIds = (r) => (r && r.v === 1 && Array.isArray(r.ids) ? r.ids : []);
+const MERGE = Object.freeze({
+  'hushfold.favourites': (mine, guest) => ({ v: 1, ids: mergeFavourites(favIds(mine), favIds(guest)) }),
+  garden: (mine, guest) => mergeGarden(mine, guest),
+});
 
 export const ACCOUNT_PREFIX = `${PREFIX}u:`;
 export const DEVICE_KEYS = Object.freeze(['entitlement', 'beyond.device', 'beyond.session', 'beyond.invite', 'sound', 'haptics']);
@@ -157,8 +165,10 @@ export function needsGuestChoice(ls, uid) {
 
 /**
  * The person's answer: 'keep' copies this device's guest things into the
- * account's namespace (only keys the account does not have yet; the guest
- * keeps its own copy), 'fresh' starts the account empty. Asked once.
+ * account's namespace (keys the account does not have yet; favourites and
+ * the Memory Garden merge with the account's own; the guest keeps its own
+ * copy), 'fresh' ("Not now") starts the account empty. Asked once; the
+ * account screen can bring them in later (client.importGuestData, 'keep').
  * Returns { copied }.
  */
 export function applyGuestChoice(ls, uid, choice, now = Date.now()) {
@@ -168,8 +178,16 @@ export function applyGuestChoice(ls, uid, choice, now = Date.now()) {
     const to = accountPrefix(uid);
     for (const k of guestKeys(ls)) {
       const raw = getRaw(ls, PREFIX + k);
-      if (raw == null || getRaw(ls, to + k) != null) continue;
-      try { ls.setItem(to + k, raw); copied++; } catch { /* storage full: keep going */ }
+      if (raw == null) continue;
+      const mine = getRaw(ls, to + k);
+      let next = mine == null ? raw : null;
+      // favourites and the Memory Garden come together (a later "Bring them in" after "Not now");
+      // anything else the account already has stays the account's
+      if (mine != null && MERGE[k]) {
+        try { const m = JSON.stringify(MERGE[k](JSON.parse(mine), JSON.parse(raw))); if (m !== mine) next = m; } catch { next = null; }
+      }
+      if (next == null) continue;
+      try { ls.setItem(to + k, next); copied++; } catch { /* storage full: keep going */ }
     }
   }
   const m = readMarker(ls, uid);

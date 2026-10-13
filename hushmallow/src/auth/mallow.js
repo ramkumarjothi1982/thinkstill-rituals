@@ -22,7 +22,7 @@ const FACE = Object.freeze({
   busy: { mix: { curious: 0.7, hopeful: 0.3 }, intensity: 0.55 },
   happy: { mix: { happy: 0.7, excited: 0.3 }, intensity: 0.8 },
   // worried brows, a small flat mouth, no tears or rain
-  concerned: { mix: { sad: 0.5, anxious: 0.3, curious: 0.2 }, intensity: 0.5, extra: { tears: 0, wet: 0, fxRain: 0 } },
+  concerned: { mix: { anxious: 0.6, sad: 0.4 }, intensity: 0.7, extra: { tears: 0, wet: 0, fxRain: 0, mouthSmile: -0.25 } },
 });
 const HAPPY_MS = 1700;
 
