@@ -505,7 +505,7 @@ production and never Supabase itself.
   for the link's account only and a reset link on a shared browser; plus
   checks in `auth-errors`, `auth-screens`, `auth-namespace`, `auth-sql`.
 * `tests/e2e/auth.e2e.mjs` dry-run against the fake on the built site:
-  **97 of 97** (round 2; sections guest, callback, signup, guestkeys,
+  **97 of 97**, twice in a row (round 2; sections guest, callback, signup, guestkeys,
   signin, sync, refresh, password, signout, reset, expiry, people, shared,
   delete, unconfirmed). **The CI run on a local Supabase stack is the
   coordinator's; its results are not in yet.**
@@ -524,7 +524,7 @@ production and never Supabase itself.
   * `--part people`: 14 of 14. `--part gallery`: 62 of 62 (every screen at
     390×844, 375×812, 320×568, 320×568 at text size 1.25 and 1280×800;
     reduced motion).
-  * `tools/auth/fixes-e2e.cjs` (new): 38 of 38: today's guest keys in the
+  * `tools/auth/fixes-e2e.cjs` (new): 39 of 39: today's guest keys in the
     real app; Delete account and Remove this phone's data tapped while the
     arrival reaction plays, concerned from the first frame (rig mouth ≤ 0,
     no reaction) at 390×844 and 320×568, full and reduced motion, the notice
