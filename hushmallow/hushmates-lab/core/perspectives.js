@@ -66,62 +66,77 @@ export function demoProvider() {
 }
 
 // ------------------------------------------- Account 1's Another Angle --
-// Chip words the server accepts (see its README: emotion).
-const EMOTION = { worry: 'anxious', sadness: 'sad', anger: 'angry', joy: 'something-else', loneliness: 'lonely', confusion: 'overwhelmed', frustration: 'frustrated', excitement: 'restless' };
+// The relay's eight labels are all ids in the server's emotion taxonomy.
+const EMOTION = { worry: 'worry', sadness: 'sadness', anger: 'anger', joy: 'joy', loneliness: 'loneliness', confusion: 'confusion', frustration: 'frustration', excitement: 'excitement' };
 
 /**
  * @param {object} o
  *   baseUrl    the Another Angle deployment (e.g. https://another-angle.example.workers.dev)
  *   session    async () => bearer token (POST /v1/session with the service's own device id or service entitlement)
  *   fetch      fetch implementation (server-side in production)
- *   timeoutMs  per-request deadline
+ *   timeoutMs  one deadline for the whole answer: health, session, request and body
  */
 export function anotherAngleProvider({ baseUrl, session, fetch: doFetch = globalThis.fetch, timeoutMs = 30000 } = {}) {
+  const base = String(baseUrl || '').replace(/\/$/, '');
   let token = null;
-  let live = null;     // is the server using the real model? (its mock provider writes placeholders)
-  const isLive = async () => {
-    if (live !== null) return live;
+  const timeout = (signal, ms) => new Promise((resolve) => {
+    const t = setTimeout(() => resolve({ timedOut: true }), ms);
+    signal?.addEventListener?.('abort', () => { clearTimeout(t); resolve({ timedOut: true }); }, { once: true });
+  });
+  /** Is the server running the real model right now? Asked for every answer (one cheap GET per feeling, at most),
+   *  never cached, so a redeploy to the mock provider can't be labelled AI. → true | false | null (unknown) */
+  const isLive = async (signal) => {
     try {
-      const h = await (await doFetch(`${baseUrl.replace(/\/$/, '')}/v1/health`)).json();
-      live = h?.provider === 'anthropic' && !!h?.configured?.provider_key;
-    } catch { live = false; }
-    return live;
+      const res = await doFetch(`${base}/v1/health`, { signal });
+      if (!res.ok) return null;
+      const h = await res.json();
+      return h?.provider === 'anthropic' && !!h?.configured?.provider_key;
+    } catch { return null; }
   };
-  const call = async (body) => {
-    if (!token) token = await session();
-    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
-    const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
-    try {
-      return await doFetch(`${baseUrl.replace(/\/$/, '')}/v1/angle`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-        signal: ctl?.signal,
-      });
-    } finally { if (timer) clearTimeout(timer); }
+  const call = async (body, signal) => {
+    if (!token) {
+      const t = await Promise.race([session(), timeout(signal, timeoutMs)]);
+      if (!t || t.timedOut) throw new Error('session timeout');
+      token = t;
+    }
+    return doFetch(`${base}/v1/angle`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+      signal,
+    });
   };
-  return async ({ text, label, requestId }) => {
-    if (!baseUrl || !session) return { status: 'unavailable', reason: 'unconfigured' };
+  const answer = async ({ text, label, requestId }, signal) => {
+    if (!base || !session) return { status: 'unavailable', reason: 'unconfigured' };
     const body = { consent: true, text, emotion: EMOTION[label] || 'something-else', intention: 'steady', locale: 'en-GB', ...(requestId ? { request_id: requestId } : {}) };
     let res;
-    try {
-      res = await call(body);
-      if (res.status === 401) { token = null; res = await call(body); }   // one fresh session, once
-    } catch {
-      return { status: 'unavailable', reason: 'network' };
-    }
-    if (res.status === 429) return { status: 'unavailable', reason: 'limit' };
-    if (!res.ok) return { status: 'unavailable', reason: `http-${res.status}` };
     let data;
-    try { data = await res.json(); } catch { return { status: 'unavailable', reason: 'bad-json' }; }
-    if (data.status === 'crisis' || data.status === 'care') return { status: 'support' };
+    try {
+      res = await call(body, signal);
+      if (res.status === 401) { token = null; res = await call(body, signal); }   // one fresh session, once
+      if (res.status === 429) return { status: 'unavailable', reason: 'limit' };
+      if (!res.ok) return { status: 'unavailable', reason: `http-${res.status}` };
+      data = await res.json();                                                   // the deadline covers the body too
+    } catch {
+      return { status: 'unavailable', reason: signal?.aborted ? 'timeout' : 'network' };
+    }
+    if (data.status === 'crisis' || data.status === 'care') return { status: 'support', level: data.status, support: data.support || null };
     if (data.status !== 'ok' || !data.scene) return { status: 'unavailable', reason: data.fallback?.reason || 'fallback' };
-    const s = data.scene;
-    const line = [s.subtitle_line_1, s.subtitle_line_2].filter(Boolean).join(' ') || s.alternative_angle;
+    const sc = data.scene;
+    const line = [sc.subtitle_line_1, sc.subtitle_line_2].filter(Boolean).join(' ') || sc.alternative_angle;
     if (!line) return { status: 'unavailable', reason: 'empty' };
-    // only a real model answer is labelled AI-generated; the mock provider is a demo
-    const ai = await isLive();
-    return { status: 'ok', text: line, mallow: s.mallow_character, source: ai ? 'ai' : 'demo', model: `${data.prompt_version || 'another-angle'}${ai ? '' : ':mock'}` };
+    // only a real model answer is labelled AI-generated; the mock provider is a demo; unknown is not shown at all
+    const ai = await isLive(signal);
+    if (ai === null) return { status: 'unavailable', reason: 'provenance-unknown' };
+    return { status: 'ok', text: line, mallow: sc.mallow_character, source: ai ? 'ai' : 'demo', model: `${data.prompt_version || 'another-angle'}${ai ? '' : ':mock'}` };
+  };
+  return async (args) => {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = setTimeout(() => ctl?.abort(), timeoutMs);
+    try {
+      const out = await Promise.race([answer(args, ctl?.signal), timeout(ctl?.signal, timeoutMs + 50)]);
+      return out?.timedOut ? { status: 'unavailable', reason: 'timeout' } : out;
+    } finally { clearTimeout(timer); ctl?.abort(); }
   };
 }
 

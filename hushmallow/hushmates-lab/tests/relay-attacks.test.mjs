@@ -135,7 +135,7 @@ test('Another Angle adapter: AI-labelled only when the server runs the real mode
     assert.equal(r.mallow, 'zuzu');
     const sent = JSON.parse(s.calls.find((c) => c.url.endsWith('/v1/angle')).init.body);
     assert.equal(sent.consent, true);
-    assert.equal(sent.emotion, 'anxious');
+    assert.equal(sent.emotion, 'worry');   // a taxonomy id the server accepts
     assert.deepEqual(Object.keys(sent).sort(), ['consent', 'emotion', 'intention', 'locale', 'text']);   // nothing about the person
   }
 });

@@ -37,6 +37,7 @@ const MESSAGES = {
   'fallback-off': 'You chose not to have a Mallow offer a perspective on this feeling.',
   'fallback-not-yet': 'A Mallow perspective becomes available if nobody catches your feeling for a while.',
   'fallback-budget': 'Mallows are resting for today. Your feeling keeps travelling and will still come home.',
+  'fallback-held': 'A Mallow can’t offer a perspective while this feeling is with our safety team.',
 };
 const fail = (code, message) => { throw new RelayError(code, message); };
 
@@ -75,6 +76,8 @@ export class RelayService {
     this.onPersist = null;
     this.inflight = new Map();      // journeyId → Promise (Mallow perspective dedupe)
     this.providerCalls = 0;         // observable for tests and the lab
+    // a generation that was in flight when the process stopped never finishes: say so
+    for (const f of Object.values(this.s.fallbacks)) if (f.status === 'pending') Object.assign(f, { status: 'failed', reason: 'interrupted' });
   }
 
   get clientMethods() { return [...CLIENT_METHODS, ...MODERATOR_METHODS]; }
@@ -89,13 +92,15 @@ export class RelayService {
   _id(prefix) { return `${prefix}_${this._rand(14)}`; }
   _save() { this.onPersist?.(this.s); }
   _audit(actor, action, detail = {}) { this.s.audit.push({ id: this._id('aud'), at: this.now(), actor, action, ...detail }); }
-  _rate(accId, kind, max, windowMs) {
+  /** Check one or more allowances together; only when all have room is the attempt recorded in each. */
+  _rate(accId, ...rules) {
+    if (typeof rules[0] === 'string') rules = [rules];          // _rate(acc, kind, max, windowMs)
     const t = this.now();
     const bucket = (this.s.rate[accId] ||= {});
-    const list = (bucket[kind] || []).filter((x) => t - x < windowMs);
-    if (list.length >= max) { bucket[kind] = list; fail('rate-limited'); }
-    list.push(t);
-    bucket[kind] = list;
+    const lists = rules.map(([kind, , windowMs]) => (bucket[kind] || []).filter((x) => t - x < windowMs));
+    rules.forEach(([kind], i) => { bucket[kind] = lists[i]; });
+    if (rules.some(([, max], i) => lists[i].length >= max)) fail('rate-limited');
+    rules.forEach(([kind], i) => { lists[i].push(t); bucket[kind] = lists[i]; });
   }
   _day() { return new Date(this.now()).toISOString().slice(0, 10); }
   _emit(accId, event) {
@@ -136,6 +141,7 @@ export class RelayService {
     return () => set.delete(fn);
   }
   _blocked(a, b) { return this.s.blocks.some((x) => (x.by === a && x.who === b) || (x.by === b && x.who === a)); }
+  _blockedBy(by, who) { return this.s.blocks.some((x) => x.by === by && x.who === who); }
 
   // ------------------------------------------------------------ profile --
   me(token) {
@@ -150,6 +156,7 @@ export class RelayService {
       travelling: mine.filter((j) => j.status === 'travelling').length,
       homeUnseen: mine.filter((j) => j.status === 'returned' && !j.seenReturn).length,
       activeHold: this._activeHoldOf(acc.id)?.id || null,
+      now: this.now(),                                   // the service clock (the lab's dev clock may run ahead)
     };
   }
 
@@ -181,7 +188,7 @@ export class RelayService {
     for (const j of Object.values(this.s.journeys)) {
       if (j.status !== 'travelling') continue;
       if (j.expiresAt <= t) { this._return(j, 'expired'); touched.add(j.owner); continue; }
-      if (j.allowFallback && !j.fallbackOfferedAt && this._humans(j).length === 0 && t - j.createdAt >= this.L.fallbackAfterMs) {
+      if (!j.fallbackOfferedAt && this._askable(j)) {
         j.fallbackOfferedAt = t;
         j.events.push({ type: 'mallow-offer', at: t });
         touched.add(j.owner);
@@ -193,22 +200,23 @@ export class RelayService {
   // ------------------------------------------------------------ release --
   submitFeeling(token, { text, label = null, mallow, allowFallback = false, clientId } = {}) {
     const acc = this._actor(token);
-    if (acc.state !== 'active') fail('account-inactive');
     if (typeof clientId !== 'string' || !/^[a-z0-9_-]{8,64}$/i.test(clientId)) fail('invalid');
-    const dupe = Object.values(this.s.journeys).find((j) => j.owner === acc.id && j.clientId === clientId);
-    if (dupe) return { status: 'released', journey: this._journeyView(dupe, acc.id), duplicate: true };
     if (label != null && !LABEL_IDS.includes(label)) fail('invalid');
     const screen = screenFeeling(text, { minChars: this.L.feelingMinChars, maxChars: this.L.feelingMaxChars });
-    if (!screen.ok) {
-      // a safety concern is answered with support, never circulated, never stored
-      if (screen.code === 'support') return { status: 'support', level: screen.level, support: screen.support };
-      fail(`feeling-${screen.code}`, screen.message);
+    // a safety concern is answered with support first, whatever else is true: never circulated, never stored
+    if (!screen.ok && screen.code === 'support') return { status: 'support', level: screen.level, support: screen.support };
+    if (!screen.ok) fail(`feeling-${screen.code}`, screen.message);
+    const dupe = Object.values(this.s.journeys).find((j) => j.owner === acc.id && j.clientId === clientId);
+    if (dupe) {
+      // a replay must be the same words; a reused id with different words is a client bug, not a release
+      if (dupe.status === 'deleted' || dupe.text !== screen.text) fail('invalid', 'This was sent before with different words. Please try again.');
+      return { status: 'released', journey: this._journeyView(dupe, acc.id), duplicate: true };
     }
+    if (acc.state !== 'active') fail('account-inactive');
     this.tick();
     const travelling = Object.values(this.s.journeys).filter((j) => j.owner === acc.id && j.status === 'travelling').length;
     if (travelling >= this.L.maxActiveJourneys) fail('too-many-active');
-    this._rate(acc.id, 'submit-h', this.L.submissionsPerHour, 3600e3);
-    this._rate(acc.id, 'submit-d', this.L.submissionsPerDay, 86400e3);
+    this._rate(acc.id, ['submit-h', this.L.submissionsPerHour, 3600e3], ['submit-d', this.L.submissionsPerDay, 86400e3]);
     const t = this.now();
     const j = {
       id: this._id('jr'), owner: acc.id, clientId, text: screen.text, label,
@@ -275,9 +283,10 @@ export class RelayService {
     this.tick();
     const h = typeof holdId === 'string' ? this.s.holds[holdId] : undefined;
     if (!h || h.user !== acc.id) fail('not-found');
+    if (live && acc.state !== 'active') fail('account-inactive');
     if (live && !this._holdLive(h)) fail(h.status === 'expired' ? 'hold-expired' : 'not-available');
     const j = this.s.journeys[h.journeyId];
-    if (live && (!j || j.status !== 'travelling')) { this._endHold(h, 'voided'); this._save(); fail('not-available'); }
+    if (live && (!j || j.status !== 'travelling' || j.paused || this._blockedBy(j.owner, acc.id))) { this._endHold(h, 'voided'); this._save(); fail('not-available'); }
     return { acc, h, j };
   }
 
@@ -297,7 +306,11 @@ export class RelayService {
     const acc = this._actor(token);
     if (typeof clientId !== 'string' || !/^[a-z0-9_-]{8,64}$/i.test(clientId)) fail('invalid');
     const dupe = Object.values(this.s.reframes).find((r) => r.author === acc.id && r.clientId === clientId);
-    if (dupe) return this._afterReframe(dupe, acc.id, true);
+    if (dupe) {
+      const held = typeof holdId === 'string' ? this.s.holds[holdId] : undefined;
+      if (held && held.user === acc.id && held.journeyId !== dupe.journeyId) fail('invalid', 'Please try again.');
+      return this._afterReframe(dupe, acc.id, true);
+    }
     const { h, j } = this._myHold(token, holdId);
     if (h.status !== 'caught') fail('invalid', 'Catch the feeling first.');
     if (j.owner === acc.id) fail('forbidden');
@@ -308,7 +321,9 @@ export class RelayService {
     if (!screen.ok) fail(`reframe-${screen.code}`, screen.message);
     this._rate(acc.id, 'reframe', this.L.reframesPerHour, 3600e3);
     const t = this.now();
-    const r = { id: this._id('pv'), journeyId: j.id, author: acc.id, slot: humans.length + 1, text: screen.text, clientId, at: t, mallow: this.s.profiles[acc.id].mallow, hiddenForOwner: false, removed: false };
+    // if this person has blocked the author, their words still fill the slot (ending the hold would tell
+    // them whose feeling it is) but are never shown to the person they blocked
+    const r = { id: this._id('pv'), journeyId: j.id, author: acc.id, slot: humans.length + 1, text: screen.text, clientId, at: t, mallow: this.s.profiles[acc.id].mallow, hiddenForOwner: this._blockedBy(acc.id, j.owner), removed: false };
     this.s.reframes[r.id] = r;
     this._endHold(h, 'used');
     j.lastProgressAt = t;
@@ -381,28 +396,35 @@ export class RelayService {
 
   _fallbackView(j) {
     const f = this.s.fallbacks[j.id];
-    if (f) return { status: f.status, mallow: f.mallow, source: f.source || null, reason: f.reason || null, superseded: f.status === 'ready' && this._humans(j).length >= this.L.perspectivesPerFeeling };
+    if (f) {
+      const v = { status: f.status, mallow: f.mallow, source: f.source || null, reason: f.reason || null, superseded: f.status === 'ready' && this._humans(j).length >= this.L.perspectivesPerFeeling };
+      if (f.support && !f.hidden) v.support = structuredClone(f.support);       // the provider's safety gate spoke: show support
+      return v;
+    }
     if (!j.allowFallback) return { status: 'off' };
+    if (j.paused || j.returnReason === 'removed') return { status: 'held' };    // under human review: nothing goes to a provider
     if (this._humans(j).length > 0) return { status: 'not-needed' };            // a person caught it: humans first
     if (this._askable(j)) return { status: 'available', mallow: FALLBACK_MALLOW[j.label || 'none'] };
     return { status: 'waiting', availableAt: j.createdAt + this.L.fallbackAfterMs };
   }
+  /** May a Mallow be asked? Opt-in, after the wait, nobody has caught it, nothing under review, owner in good standing. */
   _askable(j) {
     const t = this.now();
-    return j.allowFallback && !this.s.fallbacks[j.id] && this._humans(j).length < this.L.perspectivesPerFeeling
-      && (t - j.createdAt >= this.L.fallbackAfterMs) && this._humans(j).length === 0 && (j.status === 'travelling' || j.status === 'returned');
+    return j.allowFallback && !this.s.fallbacks[j.id] && this._humans(j).length === 0
+      && !j.paused && j.returnReason !== 'removed' && this.s.accounts[j.owner]?.state === 'active'
+      && (t - j.createdAt >= this.L.fallbackAfterMs) && (j.status === 'travelling' || j.status === 'returned');
   }
 
   _journeyView(j, viewer) {
     const humans = this._humans(j).filter((r) => !r.removed);
     const home = j.status !== 'travelling';
-    const f = this.s.fallbacks[j.id];
+    const shownMallow = this._collection(j).find((x) => x.kind === 'mallow') || null;
     return {
       id: j.id, status: j.status, text: j.text, label: j.label, mallow: j.mallow, allowFallback: j.allowFallback,
       createdAt: j.createdAt, expiresAt: j.expiresAt, returnedAt: j.returnedAt, returnReason: j.returnReason,
       paused: j.paused, humanCount: humans.length, of: this.L.perspectivesPerFeeling,
       petals: humans.map((r) => ({ slot: r.slot, mallow: r.mallow })),          // the orb's luminous layers, no words
-      mallowPetal: f && f.status === 'ready' ? { mallow: f.mallow, source: f.source } : null,
+      mallowPetal: shownMallow ? { mallow: shownMallow.mallow, source: shownMallow.source } : null,   // only while it is really in the collection
       events: j.events.map((e) => ({ ...e })),                                   // privacy-conscious: no people in it
       fallback: this._fallbackView(j),
       // perspectives are revealed when the feeling comes home; a Mallow's (if asked for) straight away
@@ -416,7 +438,7 @@ export class RelayService {
     this.tick();
     const mine = Object.values(this.s.journeys).filter((j) => j.owner === acc.id && j.status !== 'deleted')
       .sort((a, b) => b.createdAt - a.createdAt);
-    return { journeys: mine.map((j) => this._journeyView(j, acc.id)) };
+    return { journeys: mine.map((j) => this._journeyView(j, acc.id)), now: this.now() };
   }
   getJourney(token, { journeyId } = {}) { const { acc, j } = this._mine(token, journeyId); return this._journeyView(j, acc.id); }
 
@@ -448,6 +470,8 @@ export class RelayService {
     j.text = '';
     j.releasedAt = this.now();
     for (const p of this._collection(j)) if (j.choices[p.id] !== true) this._forget(j, p);
+    const f = this.s.fallbacks[j.id];
+    if (f && j.choices[f.id] !== true) { f.hidden = true; if (f.status === 'pending') Object.assign(f, { status: 'failed', reason: 'withdrawn' }); }
     this._changed([acc.id], 'journeys', j.id);
     this._save();
     return this._journeyView(j, acc.id);
@@ -457,12 +481,17 @@ export class RelayService {
     if (confirm !== 'DELETE') fail('invalid');
     if (j.status === 'travelling') this._return(j, 'withdrawn');
     for (const r of this._humans(j)) { r.text = ''; r.removed = true; }
-    const f = this.s.fallbacks[j.id];
-    if (f) { f.text = ''; f.hidden = true; }
+    this._wipeFallback(j);
     j.text = ''; j.status = 'deleted'; j.events = []; j.choices = {};
     this._changed([acc.id], 'journeys', j.id);
     this._save();
     return { deleted: true };
+  }
+  _wipeFallback(j) {
+    const f = this.s.fallbacks[j.id];
+    if (!f) return;
+    Object.assign(f, { text: '', hidden: true, support: null });
+    if (f.status === 'pending') Object.assign(f, { status: 'failed', reason: 'withdrawn' });   // a late answer is dropped
   }
   _forget(j, p) {
     if (p.kind === 'human') { const r = this.s.reframes[p.id]; if (r) r.hiddenForOwner = true; }
@@ -480,6 +509,8 @@ export class RelayService {
     const existing = this.s.fallbacks[j.id];
     if (existing) { if (this.inflight.has(j.id)) await this.inflight.get(j.id); return this._journeyView(j, acc.id); }
     if (!j.allowFallback) fail('fallback-off');
+    if (acc.state !== 'active') fail('account-inactive');
+    if (j.paused || j.returnReason === 'removed') fail('fallback-held');
     if (!this._askable(j)) fail('fallback-not-yet');
     // budgets: per person per day and the whole service per day
     const day = this._day();
@@ -492,24 +523,41 @@ export class RelayService {
     this.s.fallbacks[j.id] = f;           // reserved before the call: a second request can never start another
     this._save();
     const run = (async () => {
-      // defence in depth: text is re-checked; flagged text never reaches a provider
+      // defence in depth: text is re-checked; flagged or held text never reaches a provider
       const screen = screenFeeling(j.text, { maxChars: this.L.feelingMaxChars });
-      if (!screen.ok || !this.provider) {
-        Object.assign(f, { status: 'failed', reason: !screen.ok ? 'safety' : 'unconfigured' });
+      if (!screen.ok || j.paused || !this.provider) {
+        Object.assign(f, { status: 'failed', reason: !this.provider && screen.ok && !j.paused ? 'unconfigured' : 'safety' });
         return;
       }
+      let r;
       try {
         this.providerCalls += 1;
-        const r = await this.provider({ text: j.text, label: j.label, mallow, maxTokens: this.L.fallbackMaxOutputTokens });
-        const clean = r && r.status === 'ok' ? normaliseText(r.text) : '';
-        if (clean && charCount(clean) <= 600) {
-          Object.assign(f, { status: 'ready', text: clean, mallow: MALLOW_IDS.includes(r.mallow) ? r.mallow : mallow, source: ['ai', 'library', 'demo'].includes(r.source) ? r.source : 'demo', model: r.model || null, at: this.now() });
-          j.events.push({ type: 'mallow-perspective', at: this.now() });
-        } else {
-          Object.assign(f, { status: 'failed', reason: r?.status === 'support' ? 'safety' : 'unavailable' });
-        }
+        let timer;
+        const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve({ status: 'unavailable', reason: 'timeout' }), this.L.fallbackTimeoutMs); });
+        try { r = await Promise.race([this.provider({ text: j.text, label: j.label, mallow, maxTokens: this.L.fallbackMaxOutputTokens }), deadline]); }
+        finally { clearTimeout(timer); }
       } catch {
-        Object.assign(f, { status: 'failed', reason: 'unavailable' });   // the feeling still comes home
+        r = { status: 'unavailable', reason: 'error' };
+      }
+      // the person may have let go of it, deleted it, or left while we waited: a late answer is dropped
+      if (this.s.fallbacks[j.id] !== f || f.hidden || f.status !== 'pending' || j.status === 'deleted' || j.status === 'released') {
+        Object.assign(f, { status: 'failed', reason: f.reason || 'withdrawn', text: '' });
+        return;
+      }
+      if (r?.status === 'support') {
+        // the provider's safety gate saw danger the rules missed: stop the journey, bring support, ask a person to look
+        Object.assign(f, { status: 'failed', reason: 'safety', support: r.support || null });
+        this._holdForSafety(j, 'The Mallow provider’s safety check flagged this feeling.');
+        return;
+      }
+      const clean = r && r.status === 'ok' ? normaliseText(r.text) : '';
+      // the provider's words meet the same standard as a person's (kind, no diagnosis, no contact details)
+      const fit = clean && screenReframe(clean, { minChars: 1, maxChars: 600 }).ok;
+      if (fit) {
+        Object.assign(f, { status: 'ready', text: clean, mallow: MALLOW_IDS.includes(r.mallow) ? r.mallow : mallow, source: ['ai', 'library', 'demo'].includes(r.source) ? r.source : 'demo', model: r.model || null, at: this.now() });
+        j.events.push({ type: 'mallow-perspective', at: this.now() });
+      } else {
+        Object.assign(f, { status: 'failed', reason: r?.reason === 'timeout' ? 'timeout' : 'unavailable' });   // the feeling still comes home
       }
     })();
     this.inflight.set(j.id, run);
@@ -517,6 +565,18 @@ export class RelayService {
     this._changed([acc.id], 'journeys', j.id);
     this._save();
     return this._journeyView(j, acc.id);
+  }
+
+  /** Pause a feeling, end anyone's hold on it, and put it in front of a person on the safety team. */
+  _holdForSafety(j, details) {
+    j.paused = true;
+    for (const h of this._liveHolds(j.id)) this._endHold(h, 'voided');
+    const rep = {
+      id: this._id('rep'), at: this.now(), by: 'system', kind: 'feeling', journeyId: j.id, perspectiveId: null, reason: 'safety', details,
+      subject: j.owner, status: 'open', notes: [], urgent: true, evidence: { feeling: j.text },
+    };
+    this.s.reports[rep.id] = rep;
+    this._audit('system', 'report.created', { report: rep.id, kind: 'feeling', reason: 'safety' });
   }
 
   // -------------------------------------------------- reports and blocks --
@@ -545,10 +605,15 @@ export class RelayService {
     if (!h || h.user !== acc.id) fail('not-found');
     const j = this.s.journeys[h.journeyId];
     if (!j) fail('not-found');
+    const mineOnIt = Object.values(this.s.reports).filter((x) => x.kind === 'feeling' && x.journeyId === j.id && x.by === acc.id);
+    const open = mineOnIt.find((x) => x.status === 'open');
+    if (open) { if (this._holdLive(h)) this._endHold(h, 'reported'); this._save(); return { received: true, reportId: open.id, expectation: this._expectation(open) }; }
     const rep = this._report(acc, { kind: 'feeling', journeyId: j.id, reason, details });
     if (this._holdLive(h)) this._endHold(h, 'reported');
-    const reporters = new Set(Object.values(this.s.reports).filter((x) => x.kind === 'feeling' && x.journeyId === j.id).map((x) => x.by));
-    if (reporters.size >= this.L.reportsToPause || reason === 'safety') {
+    // a moderator already looked at this person's report on this feeling: a new one waits for review, it can't pause it alone
+    const answered = mineOnIt.length > 0;
+    const reporters = new Set(Object.values(this.s.reports).filter((x) => x.kind === 'feeling' && x.journeyId === j.id && x.status === 'open' && x.by !== 'system').map((x) => x.by));
+    if (!answered && (reporters.size >= this.L.reportsToPause || reason === 'safety')) {
       j.paused = true;
       for (const x of this._liveHolds(j.id)) this._endHold(x, 'voided');
     }
@@ -584,7 +649,11 @@ export class RelayService {
       r.hiddenForOwner = true;
     }
     if (!other || other === acc.id) fail('not-found');
-    if (!this._blocked(acc.id, other)) this.s.blocks.push({ by: acc.id, who: other, at: this.now() });
+    if (!this._blockedBy(acc.id, other)) this.s.blocks.push({ by: acc.id, who: other, at: this.now() });
+    // from now on: nothing of theirs reaches you, including words already written on your other feelings,
+    // and any feeling of yours they are holding drifts on (they are not told why)
+    for (const h of Object.values(this.s.holds)) if (this._holdLive(h) && h.user === other && this.s.journeys[h.journeyId]?.owner === acc.id) this._endHold(h, 'voided');
+    for (const r of Object.values(this.s.reframes)) if (r.author === other && this.s.journeys[r.journeyId]?.owner === acc.id) r.hiddenForOwner = true;
     this._save();
     return { blocked: true };
   }
@@ -615,8 +684,7 @@ export class RelayService {
       if (j.owner !== acc.id || j.status === 'deleted') continue;
       if (j.status === 'travelling') this._return(j, 'withdrawn');
       for (const r of this._humans(j)) { r.text = ''; r.removed = true; }
-      const f = this.s.fallbacks[j.id];
-      if (f) { f.text = ''; f.hidden = true; }
+      this._wipeFallback(j);
       j.text = ''; j.status = 'deleted'; j.events = []; j.choices = {};
     }
     // perspectives this person gave leave the collections they were in
@@ -658,7 +726,15 @@ export class RelayService {
     else if (action === 'resume-feeling' && j) { j.paused = false; r.status = 'no-action'; }
     else if (action === 'remove-feeling' && j) { j.paused = true; if (j.status === 'travelling') this._return(j, 'removed'); r.status = 'actioned'; }
     else if (action === 'remove-perspective' && r.perspectiveId) { const x = this.s.reframes[r.perspectiveId]; if (x) x.removed = true; r.status = 'actioned'; }
-    else if (action === 'restrict-user' && r.subject) { const a = this.s.accounts[r.subject]; if (a && a.role !== 'moderator') a.state = 'restricted'; r.status = 'actioned'; }
+    else if (action === 'restrict-user' && r.subject) {
+      const a = this.s.accounts[r.subject];
+      if (a && a.role !== 'moderator') {
+        a.state = 'restricted';
+        if (this.s.profiles[a.id]) this.s.profiles[a.id].catching = false;
+        for (const h of Object.values(this.s.holds)) if (h.user === a.id && this._holdLive(h)) this._endHold(h, 'voided');
+      }
+      r.status = 'actioned';
+    }
     else fail('invalid');
     if (note) r.notes.push({ by: mod.id, at: this.now(), text: normaliseText(note).slice(0, 1000) });
     this._audit(mod.id, 'mod.resolve', { report: id, action });

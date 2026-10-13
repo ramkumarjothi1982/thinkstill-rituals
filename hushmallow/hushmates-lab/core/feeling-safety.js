@@ -6,13 +6,36 @@
 // safety layer, and the interface says so.
 
 import { checkSafety } from '../../src/ultra/reframe-engine.js';
+import { HARM_COPY } from '../../src/ultra/frameworks.js';
 import { checkMessage, normaliseText, charCount } from './text-policy.js';
+
+// Every rule reads a compatibility-normalised copy (NFKC), so full-width or
+// stylised letters and digits ("ｅｎｄ ｉｔ", "０７７００") can't slip past;
+// the person's own words are stored as they wrote them.
+const probeOf = (text) => text.normalize('NFKC');
+
+// Hushmates' own additions to the app's safety lexicon, kept here so the main
+// app's Reframe engine is reused unchanged. Words that mean someone may be in
+// danger right now: never released to strangers, never sent to an AI provider.
+const EXTRA_CRISIS = [
+  /\b(?:took|taken|swallowed|necked)\b[^.!?]{0,30}\b(?:pills|tablets|paracetamol|ibuprofen|painkillers|sleeping pills|an overdose)\b/i,
+  /\boverdos(?:e|ed|ing)\b/i,
+  /\bno point (?:in )?(?:going on|living|carrying on|being here|being alive)\b/i,
+  /\b(?:cut|cutting|burn|burning|hurt|hurting|harm|harming)\s+(?:my\s*self|myself|my (?:arms?|wrists?|legs?|thighs?|skin))\b/i,
+  /\b(?:don'?t|do not) want to (?:be here|wake up|exist|be alive) any ?more\b/i,
+];
+function extraCrisis(probe) {
+  if (!EXTRA_CRISIS.some((re) => re.test(probe.replace(/[’‘]/g, "'")))) return null;
+  return { reframeAppropriate: false, level: 'crisis', title: HARM_COPY.crisis.title, message: HARM_COPY.crisis.message, resources: HARM_COPY.crisis.resources, stillHere: HARM_COPY.stillHere };
+}
+const safetyOf = (probe) => { const s = checkSafety(probe); return s.reframeAppropriate ? (extraCrisis(probe) || s) : s; };
 
 const IDENTIFYING = [
   /\b\d{1,5}\s+[A-Za-z][A-Za-z ]{1,30}\s(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|close|way|crescent|place|court)\b/i,   // street address
-  /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/,                                    // UK postcode
-  /\b\d{5}(?:-\d{4})?\b(?=.*\b(?:zip|postcode|post code)\b)/i,                 // US ZIP when called one
-  /\b(?:my|our)\s+(?:full\s+)?name\s+is\b/i,
+  /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/i,                                   // UK postcode (any case)
+  /\b\d{5}(?:-\d{4})?\b(?=.*\b(?:zip|postcode|post code)\b)/i,                 // "90210 is my zip"
+  /\b(?:zip|post\s?code)(?:\s+code)?\b[^\d\n]{0,12}\d{5}(?:-\d{4})?\b/i,          // "my zip code is 90210"
+  /\b(?:my|our)\s+(?:full\s+|real\s+)?name(?:\s+is|\s*['’]s)\b/i,                // "my name is", "my name’s"
 ];
 
 const UNKIND = [
@@ -49,7 +72,8 @@ export function screenFeeling(input, { minChars = 3, maxChars = 500 } = {}) {
   if (!text) return fail('empty', 'Write a thought or a feeling first.');
   if (charCount(text) < minChars) return fail('too-short', 'Tell us a little more, even a few words.');
   if (charCount(text) > maxChars) return fail('too-long', `Feelings can be up to ${maxChars} characters. Try the heart of it.`);
-  const safety = checkSafety(text);
+  const probe = probeOf(text);
+  const safety = safetyOf(probe);
   if (!safety.reframeAppropriate) {
     // never released to strangers and never sent to an AI provider
     return fail('support', safety.message || 'This sounds really heavy.', {
@@ -57,13 +81,13 @@ export function screenFeeling(input, { minChars = 3, maxChars = 500 } = {}) {
       support: { title: safety.title, message: safety.message, resources: safety.resources, stillHere: safety.stillHere },
     });
   }
-  const rules = checkMessage(text, { maxChars });
+  const rules = checkMessage(probe, { maxChars });
   if (!rules.ok) {
     const msg = rules.code === 'money' ? rules.message
       : 'Please leave out contact details, links and anything that could identify you or someone else. Other people will read this.';
     return fail(rules.code, msg);
   }
-  if (IDENTIFYING.some((re) => re.test(text))) {
+  if (IDENTIFYING.some((re) => re.test(probe))) {
     return fail('identifying', 'Please leave out names, addresses and anything that could identify you or someone else.');
   }
   return { ok: true, text };
@@ -79,15 +103,17 @@ export function screenReframe(input, { minChars = 8, maxChars = 280, earlier = [
   if (!text) return fail('empty', 'Write a possibility first.');
   if (charCount(text) < minChars) return fail('too-short', 'Add a few more words so it can help.');
   if (charCount(text) > maxChars) return fail('too-long', `Perspectives can be up to ${maxChars} characters. Short and kind works best.`);
-  if (!checkSafety(text).reframeAppropriate) {
+  const probe = probeOf(text);
+  if (!safetyOf(probe).reframeAppropriate) {
     return fail('unsafe', 'This perspective can’t be passed on. If someone is in danger, please contact local emergency services.');
   }
-  if (UNKIND.some((re) => re.test(text))) return fail('unkind', 'That might land as harsh. Offer a possibility, not a verdict.');
-  if (DIAGNOSIS.some((re) => re.test(text))) return fail('diagnosis', 'Please don’t diagnose anyone. Offer another way of seeing it instead.');
-  const rules = checkMessage(text, { maxChars });
+  if (UNKIND.some((re) => re.test(probe))) return fail('unkind', 'That might land as harsh. Offer a possibility, not a verdict.');
+  if (DIAGNOSIS.some((re) => re.test(probe))) return fail('diagnosis', 'Please don’t diagnose anyone. Offer another way of seeing it instead.');
+  const rules = checkMessage(probe, { maxChars });
   if (!rules.ok) return fail(rules.code, rules.code === 'money' ? rules.message : 'Perspectives can’t include contact details, links or usernames.');
+  if (IDENTIFYING.some((re) => re.test(probe))) return fail('identifying', 'Please leave out names, addresses and anything that could identify you or someone else.');
   if (earlier.some((e) => similarity(e, text) >= threshold)) {
     return fail('too-similar', 'Someone has already offered something very close to this. Could you see it another way?');
   }
-  return { ok: true, text, nudges: CERTAINTY.test(text) ? ['certainty'] : [] };
+  return { ok: true, text, nudges: CERTAINTY.test(probe) ? ['certainty'] : [] };
 }

@@ -23,6 +23,7 @@ export const RELAY = {
   fallbackPerPersonPerDay: 5,         // Mallow perspectives a person can ask for per day
   fallbackGlobalPerDay: 500,          // whole-service ceiling (cost guard), on top of the provider's own caps
   fallbackMaxOutputTokens: 300,       // passed to the provider
+  fallbackTimeoutMs: 45e3,            // a provider that hasn't answered by then has failed (the feeling still comes home)
   fairnessPool: 3,                    // pick at random among the N longest-waiting eligible feelings
   reportsToPause: 2,                  // independent reports pause a feeling for human review
   similarity: 0.8,                    // a perspective this close to an earlier one is asked to rephrase

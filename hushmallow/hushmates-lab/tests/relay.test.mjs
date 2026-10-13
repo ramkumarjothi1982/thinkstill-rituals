@@ -377,3 +377,20 @@ test('deleting your data withdraws your feelings and the perspectives you gave',
   w.svc.deleteMyData(w.T.moon, { confirm: 'DELETE' });
   assert.ok(!json(w.svc.s).includes('avoiding me'));
 });
+
+test('a Mallow perspective that breaks the perspective rules is never shown (provider output is screened too)', async () => {
+  const w = world({ provider: async ({ mallow }) => ({ status: 'ok', text: 'You are just being dramatic, get over it.', mallow, source: 'ai' }) });
+  const id = w.release('moon', { allowFallback: true }).journey.id;
+  w.advance(31 * 60e3);
+  const j = await w.svc.askMallow(w.T.moon, { journeyId: id });
+  assert.equal(j.fallback.status, 'failed');
+  assert.equal(j.collection.length, 0);
+});
+
+test('a restricted person who writes crisis words is still answered with support', () => {
+  const w = world();
+  const cloud = Object.values(w.svc.s.accounts).find((a) => a.key === 'cloud');
+  cloud.state = 'restricted';
+  const r = w.svc.submitFeeling(w.T.cloud, { text: 'I want to end it all', clientId: cid('f') });
+  assert.equal(r.status, 'support');
+});
