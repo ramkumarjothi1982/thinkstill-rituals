@@ -11,7 +11,11 @@
 // no framing ever (authored or server) and no playful line; death talk (grief.js) goes to the gentle path, the rest
 // to the kind mechanics.
 //
-//   bagWords(text)       → true when any whole word or phrase of the bag is in the words
+//   bagWords(text)       → true when any whole word or phrase of the bag is in the words, the structural loss backstop
+//                          fires (lossNear), or death talk does (grief.js deathTalk, its phrase families included)
+//   lossNear(text)       → (review r10) a person or a pet word within four words of a loss cue ("covid took my grandad",
+//                          "my sister is in the ground now"), or a heartbeat lost at a scan: a bag hit
+//   ordinaryOnly(text)   → (review r10) the only bag words are ordinary idioms ("I passed my driving test!"): neutral lines
 //   harmWords(text)      → bagWords (the r7 name)
 //   harmRoute(text)      → null (no bag word) | 'gentle' (death talk, someone alive but going) | 'kind' (the rest)
 //   heavyHarm(text)      → a harm word no ordinary idiom explains (a server loss scene beside one reads as grief)
@@ -51,7 +55,87 @@ export const BAG = new RegExp(`\\b(?:${[
 ].join('|')})(?![\\p{L}\\p{N}])`, 'iu');
 /** Lower case, every apostrophe out, hyphens as spaces (no idiom is ever blanked here). */
 const bagText = (text) => String(text ?? '').normalize('NFKC').toLowerCase().replace(/[‘’ʼ`´']/gu, '').replace(/[‐‑-]/gu, ' ').replace(/\s+/gu, ' ');
-export const bagWords = (text) => BAG.test(bagText(text));
+
+// ------------------------------------------------------------ the structural loss backstop (review r10) --
+// Lists alone never converged (euphemisms, slang, a disease or an accident as the subject, a pregnancy lost), so a
+// shape counts too: a person or a pet word within four words (either side) of a word that a loss is told with. It
+// only ever takes the framing (and the playful lines) away, so a false alarm costs little; a miss costs a death read
+// as a guess. No idiom is set aside here either.
+/** A person or a pet ("my nan", "our dog", "grandad", "the baby", "mums"); and him / her / them, only beside one. */
+const WHO_WORD = new RegExp(`\\b(?:${PERSON}|${PET})(?:s|es)?\\b`, 'giu');
+const PRONOUN = /\b(?:him|her|them)\b/giu;
+/** The words a loss is told with (the coordinator's list, review r10), as whole words or phrases. */
+const LOSS_CUES = [
+  'took', 'taken', 'went', 'gone', 'left us', 'goodbye', 'goodbyes', 'rest', 'resting', 'laid', 'ground', 'angel', 'angels', 'heaven', 'heartbeat',
+  'scan', 'unresponsive', 'found', 'succumbed', 'departed', 'croaked', 'snuffed', 'bucket', 'clogs', 'farm', 'shiva', 'sitting', 'buried', 'ashes',
+  'urn', 'hospital', 'shuffled', 'never came', 'never come', 'isnt coming', 'is not coming', 'not coming back', 'never coming back', 'isnt around',
+  'is not around', 'arent around', 'no longer', 'anymore', 'any more', 'last time', 'would have been', 'wouldve been', 'would of been',
+  'anniversary', 'without',
+];
+const CUE = new RegExp(`\\b(?:${LOSS_CUES.map((w) => w.replace(/ /g, '\\s+')).join('|')})\\b`, 'giu');
+/** "birthday" is a cue only beside "would have been" ("today would have been my nans birthday"). */
+const WOULD_HAVE_BEEN = /\bwould\s+(?:have|ve|of)\s+been\b|\bwouldve\s+been\b/iu;
+const BIRTHDAY = /\b(?:birthday|bday)\b/giu;
+/** A pregnancy lost at a scan: no heartbeat, the heartbeat lost, a scan with "no" or "without" (no person needed). */
+const NO_HEARTBEAT = /\b(?:no|without\s+a|lost\s+(?:the|its|his|her|their|a|our\s+babys|the\s+babys|babys))\s+heartbeat\b|\bheartbeat\s+(?:had\s+)?(?:stopped|gone)\b/iu;
+const NEAR = 4;
+/**
+ * A wrong someone did that is told with a cue word ("took credit for my work", "went through my phone", "went behind my
+ * back"): the cue is explained by the wrong, so fair anger keeps its own scenes (find_boundary). Nothing else is set aside.
+ */
+const WRONG_CUES = /\btook\s+(?:the\s+|all\s+the\s+|all\s+)?credit\b|\bwent\s+behind\s+(?:my|our|his|her|their)\s+backs?\b|\bwent\s+through\s+(?:all\s+)?(?:my|our)\s+(?:phone|messages|texts|things|stuff|bag|room|diary|journal|emails?|drawers?|pockets?|private\s+\w+|laptop|wallet|purse|notes|letters)\b/giu;
+/**
+ * A cue word in a sense no loss is told in (measured on ordinary worries, review r10): a time it took ("took ages to
+ * reply"), a thing taken ("took my phone"), left out ("went without me"), a mood ("went quiet"), an everyday place ("went
+ * to the cinema"), "found out", "the rest of", "sitting next to", a forgotten anniversary. Only these cue words go; the
+ * person stays, so any other cue beside them still counts ("went to work and never came home").
+ */
+const CUE_ASIDE = new RegExp([
+  '\\btook\\s+(?:ages|forever|so\\s+long|too\\s+long|longer|a\\s+(?:long\\s+|little\\s+|short\\s+)?(?:time|while)|hours|minutes|days|weeks|months|\\d+\\s+[a-z]+|an?\\s+(?:hour|minute|day|week|month|age|second|look|photo|picture|selfie|break|nap|shower|bath|walk))\\b',
+  '\\btook\\s+(?:my|our|his|her|their|the)\\s+(?:phone|charger|seat|place|spot|stuff|things|food|clothes|jumper|hoodie|book|pen|money|keys?|car|bike|turn|side|ideas?|photo|picture|bag|lunch|chips|sweets|snacks|drink|homework|notes|laptop|tablet|ipad|controller|remote|headphones|earbuds|room|bed|bus|train|advice)\\b',
+  '\\bwithout\\s+(?:me|us|asking|telling|warning|permission|a\\s+word|knocking|thinking|looking)\\b',
+  '\\bwent\\s+(?:all\\s+)?(?:quiet|silent|red|mad|crazy|ballistic|mental|off\\s+on\\s+one|on\\s+and\\s+on|on\\s+about|off\\s+at\\s+me|shopping|clubbing)\\b',
+  '\\bwent\\s+to\\s+(?:the\\s+|a\\s+|an\\s+|my\\s+|his\\s+|her\\s+|their\\s+|our\\s+)?(?:cinema|movies|pictures|shops?|supermarket|park|pub|bar|club|party|gym|school|college|uni|university|work|office|beach|match|game|concert|gig|festival|restaurant|cafe|town|city|library|zoo|pool|meeting|toilet|loo|bathroom|kitchen|class|lesson|practice|training|interview|dentist|mall|prom|disco|sleepover|bowling)\\b',
+  '\\bfound\\s+out\\b', '\\b(?:the\\s+)?rest\\s+of\\b', '\\bsitting\\s+(?:next\\s+to|with|beside|by\\s+me|on|at|in|there|here|alone|around|together|opposite)\\b',
+  '\\bforgot\\s+(?:about\\s+)?(?:our|my|the|his|her|their)\\s+(?:wedding\\s+)?anniversary\\b',
+].join('|'), 'giu');
+/** Each word's index for a character offset (the words of `t`). */
+function wordAt(t) {
+  const starts = [...t.matchAll(/[\p{L}\p{N}&]+/gu)].map((m) => m.index);
+  return (i) => { let lo = 0, hi = starts.length - 1, k = 0; while (lo <= hi) { const mid = (lo + hi) >> 1; if (starts[mid] <= i) { k = mid; lo = mid + 1; } else hi = mid - 1; } return k; };
+}
+const spans = (t, re, at) => [...t.matchAll(re)].map((m) => [at(m.index), at(m.index + m[0].length - 1)]);
+/**
+ * True when a person or a pet word (or him / her / them, with one named) sits within four words of a loss cue, or
+ * the words tell of a heartbeat lost at a scan. A bag hit (bagWords): no framing anywhere, and no playful line.
+ */
+export function lossNear(text) {
+  // (a wrong told with a cue word, or a cue word in a sense no loss is told in, is taken out: it neither counts nor
+  // stands between a person and another cue, "my dog went to the park and never came back")
+  const t = bagText(text).replace(WRONG_CUES, ' ').replace(CUE_ASIDE, ' ');
+  if (NO_HEARTBEAT.test(t) || (/\bscan\b/iu.test(t) && /\b(?:no|without)\b/iu.test(t))) return true;
+  const at = wordAt(t);
+  const who = spans(t, WHO_WORD, at);
+  if (!who.length) return false;
+  who.push(...spans(t, PRONOUN, at));
+  const cues = spans(t, CUE, at);
+  if (WOULD_HAVE_BEEN.test(t)) cues.push(...spans(t, BIRTHDAY, at));
+  return who.some(([a, b]) => cues.some(([c, d]) => Math.max(0, c - b, a - d) <= NEAR));
+}
+/**
+ * The backstop: any word or phrase of the bag, the structural loss backstop (lossNear), or death talk itself
+ * (grief.js: its phrase families are the bag's too).
+ */
+export const bagWords = (text) => BAG.test(bagText(text)) || lossNear(text) || !!deathTalk(text);
+/**
+ * Words whose only bag words are ordinary idioms ("I passed my driving test!", "lost my keys", "my phone died", "killed
+ * it"): nothing hard is told, so a stated event's lines are neutral (authored.js eventKind 'neutral'), never "Something
+ * this hard deserves gentleness". Still a bag hit: no framing, nothing playful.
+ */
+export function ordinaryOnly(text) {
+  if (!BAG.test(bagText(text)) || lossNear(text) || deathTalk(text) || livingLoss(text)) return false;
+  return !BAG.test(bagText(blankOrdinary(norm(text))));
+}
 /** (the r7 name for the backstop's words) */
 export const harmWords = bagWords;
 

@@ -132,7 +132,8 @@ test('r7.B: a server answer plays its two lines for death talk only when it read
   // one request at most, crisis and care still route, a fallback re-runs the app's own check, then the authored lines
   assert.equal((grief.match(/client\.angle\(/g) || []).length, 1);
   assert.match(grief, /res\?\.status === 'crisis'\) \{ crisisMode\(\); return; \}/);
-  assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\); return; \}/);
+  // (review r10: the server's care for death talk is said gently, SAFETY.careGentle)
+  assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\{ lines: S\.follow \? SAFETY\.follow : SAFETY\.careGentle \}\); return; \}/);
   assert.match(grief, /serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && griefLinesOk\(res\.scene\)\) scene = res\.scene;\s*else \{[\s\S]*const again = checkText\(S\.text\);/);
   assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
   assert.doesNotMatch(grief, /spawnThought|playScene|loadMechanic|startAngle|setStage\('playful'\)|WAITING\b/);

@@ -780,7 +780,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       ]);
       if (S.left || seq !== S.seq) return;
       if (res?.status === 'crisis') { crisisMode(); return; }
-      if (res?.status === 'care') { careMode(); return; }
+      // (review r10) the server's care for death talk is said gently, assuming nothing: never "shouldn't have happened"
+      if (res?.status === 'care') { careMode({ lines: S.follow ? SAFETY.follow : SAFETY.careGentle }); return; }
       // (its two lines only when it reads them as grief or a loss, and both acknowledge: nothing framed as a guess,
       // nothing to check, no question, no reframe (grief.js griefLinesOk); an ordinary scene never plays for death talk)
       if (res?.status === 'ok' && serverLoss(res.scene, S.text, { heavy: heavyWords }) && griefLinesOk(res.scene)) scene = res.scene;

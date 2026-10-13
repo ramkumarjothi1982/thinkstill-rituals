@@ -37,6 +37,8 @@ export const SAFETY = Object.freeze({
   careOptions: [{ label: 'See support', value: 'support', primary: true }, { label: 'Just squeeze Zuzu', value: 'squeeze' }],
   /** death talk that also wants to be with, join or follow the one who died (grief.js deathEscalation): the care path */
   follow: ['What you just said matters, and I’m glad you told me.', 'This deserves real support, from someone who can be with you now.'],
+  /** (review r10) the server's care answer for death talk: gentle, assuming nothing (never "shouldn't have happened") */
+  careGentle: ['That sounds like a lot to carry.', 'Support is here if you want it.'],
   concern: 'That sounds heavy. Support is right there if you want it.',
   /** Finishing after crisis or care: calm, no jokes, no "another look". */
   finish: ['Go gently.', 'Support is one tap away whenever you need it.'],
@@ -75,6 +77,7 @@ export const KIND = Object.freeze({
   first: Object.freeze({
     event: 'What happened is real, and it makes sense that it’s on your mind.',
     hurt: 'What happened to you is real, and it counts.',
+    neutral: 'Thank you for telling me what happened.',
   }),
   pairs: Object.freeze({
     assemble_step: ['What happened is real, and it makes sense that it’s on your mind.', 'One small, kind thing for yourself is plenty for now.'],
@@ -85,6 +88,25 @@ export const KIND = Object.freeze({
   steps: Object.freeze({
     event: 'Do one small, kind thing for yourself today, even a little one.',
     hurt: 'Tell one person you trust what happened.',
+    neutral: 'Do one small, kind thing for yourself today, even a little one.',
+  }),
+  /**
+   * (review r10) words whose only bag words are ordinary idioms ("I passed my driving test!", "lost my keys", "my phone
+   * died"): nothing hard was told, so nothing calls it hard; true for good news and for a bad day alike
+   */
+  neutral: Object.freeze({
+    pairs: Object.freeze({
+      assemble_step: ['Thank you for telling me what happened.', 'Whatever it brings up, one small, kind thing for yourself is plenty.'],
+      separate_one: ['That’s one thing that happened.', 'There’s more to you than this one thing.'],
+      soften_harshness: ['However it feels, you can go gently with yourself.', 'You can be as kind to yourself as you’d be to a friend.'],
+    }),
+    mechanics: Object.freeze({
+      separate_one: { hint: 'Lift this one thing out on its own.', done: 'There. One thing, and there’s more to you than it.', labels: { one: 'This', rest: 'The rest of you' } },
+      soften_harshness: {
+        hint: 'Stroke it slowly, the way you’d comfort a friend.', hint2: 'Slower. Gentle strokes.', hint3: 'Stroke slowly round the edge.',
+        assist: 'Soothe it', done: 'Gentle. That’s all it needs.', labels: { core: 'Still you' },
+      },
+    }),
   }),
   /** the mechanics' own lines for a stated event (over MECHANIC_LINES): no "thought", "verdict", "every time" or "lesson" */
   mechanics: Object.freeze({
@@ -105,7 +127,7 @@ export const KIND = Object.freeze({
   }),
 });
 /** The kinds a stated event plays as (feelingScene with one of these reads KIND, not FEELING). */
-export const EVENT_KINDS = Object.freeze(new Set(['event', 'hurt']));
+export const EVENT_KINDS = Object.freeze(new Set(['event', 'hurt', 'neutral']));
 
 /**
  * A feeling said plainly ("I feel empty", "I can't stop crying", "I'm so tired of everything"). A feeling is
@@ -172,7 +194,8 @@ export const FEELING = Object.freeze({
  */
 export function mechanicLines(mechanic, scene = null) {
   const base = MECHANIC_LINES[mechanic] || {};
-  const own = scene?.feeling ? (EVENT_KINDS.has(scene.feeling) ? KIND.mechanics[mechanic] : FEELING.mechanics[mechanic]) || KIND.mechanics[mechanic]
+  const own = scene?.feeling ? (scene.feeling === 'neutral' ? KIND.neutral.mechanics[mechanic] || KIND.mechanics[mechanic]
+    : EVENT_KINDS.has(scene.feeling) ? KIND.mechanics[mechanic] : FEELING.mechanics[mechanic]) || KIND.mechanics[mechanic]
     : scene?.wrong ? KIND.mechanics[mechanic] || null : null;
   return own ? { ...base, ...own, labels: { ...(base.labels || {}), ...(own.labels || {}) } } : base;
 }

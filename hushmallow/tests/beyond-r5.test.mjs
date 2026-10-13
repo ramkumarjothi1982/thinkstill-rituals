@@ -167,7 +167,8 @@ test('r5.1: grief in the orchestrator: gentle first, the server may answer with 
   assert.match(grief, /res\?\.status === 'ok' && serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && griefLinesOk\(res\.scene\)\) scene = res\.scene;/);
   assert.match(grief, /sleep\(devBudget \|\| ANGLE_BUDGET_MS\)/);
   assert.match(grief, /res\?\.status === 'crisis'\) \{ crisisMode\(\); return; \}/);
-  assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\); return; \}/);
+  // (review r10: the server's care for death talk is said gently, SAFETY.careGentle)
+  assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\{ lines: S\.follow \? SAFETY\.follow : SAFETY\.careGentle \}\); return; \}/);
   assert.match(grief, /const again = checkText\(S\.text\);/);
   // the server's two lines (or the authored pair); never its mechanic
   assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);

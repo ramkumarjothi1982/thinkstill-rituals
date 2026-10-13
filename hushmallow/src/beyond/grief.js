@@ -18,6 +18,11 @@
 // funeral", "lost my keys", "passed my test"). A game, a film, a near miss or an imagined death is never set
 // aside: the gentle path it falls to (lines.js GRIEF) never assumes anyone died, so it is true for all of them.
 //
+// Review r10 added the phrase families the round-3 review found outside every list (a disease or an accident as the
+// subject, "kicked the bucket", "no heartbeat", "laid to rest", "ODd", "went peacefully", "shiva", "would have been mums
+// 60th"…) and, for escalation, "I'd like to be with him", "thinking of joining her", "without her, what's the point";
+// "can't go on" counts only where it says living goes on (never "go on holiday", "carry on working").
+//
 // Pure ES module, no DOM. Deterministic.
 
 import { norm, blankOrdinary, PERSON, PET, BARE, ADJ, THING } from './death-words.js';
@@ -44,6 +49,16 @@ const PUT_TO_SLEEP = /\b(?:was|were|been|be|being|got|get|getting|is|s|are|re)\s
 const PASS_NOT = 'cold|colds|flu|fever|headache|migraine|pain|ache|anxiety|panic|attack|attacks|mood|nausea|sickness|bug|virus|cough|rash|worry|worries|fear|fears|urge|urges|craving|cravings|wave|feeling|feelings|stress|period|cramps|test|tests|exam|exams|application|applications|proposal|motion|bill|request|deadline|time|turn|moment|chance|storm|day|days|week|weeks|month|months|year|years|weekend|summer|holiday|car|van|bike|phone|order|parcel|package|plan|idea|vote|appeal|claim|case|interview|audition|trial|trials|inspection|mot|driving|theory|assessment|probation|grade|grades|course|module|degree|essay|paper|work|project|code|build|review|stone|stones|kidney|gallstone|results?|loan|mortgage|visa|check|checks|medical|exams|gcses?|a|the|an|this|that|first|last|own';
 /** What may follow "passed" when something else is passed ("passed the ball", "passed me the salt", "passed through"). */
 const PASS_OBJ = 'the|a|an|my|his|her|their|our|your|its|me|us|him|them|it|this|that|these|those|all|every|both|some|any|round|around|over|through|along|across|into|onto|with|first|second|third|easily|comfortably|well|on\\s+(?:the|a|an|my|his|her|their|our|your)\\s+(?:message|messages|news|word|info|details|note|notes|tip|tips|advice|cold|bug|virus|flu|baton|torch|invite|offer|job|chance|deal|idea|feedback|request|link|number|email|letter|card|cv)';
+/** What takes someone ("covid took my grandad", "the accident took my brother", "God took him home": review r10). */
+const KILLERS = [
+  'diseases?', 'illness', 'sickness', 'accident', 'crash', 'car\\s+crash', 'war', 'covid(?:\\s+19)?', 'corona(?:virus)?', 'virus', 'cancer', 'leuk(?:a)?emia',
+  'lymphoma', 'tumou?r', 'stroke', 'heart\\s+attack', 'heart\\s+failure', 'sepsis', 'pneumonia', 'flu', 'dementia', 'alzheimers?', 'mnd',
+  'motor\\s+neuron(?:e)?\\s+disease', 'cot\\s+death', 'sids', 'suicide', 'overdose', 'drugs', 'heroin', 'alcohol', 'addiction', 'sea', 'fire',
+  'flood', 'bomb', 'aids', 'hiv', 'tb', 'malaria', 'ebola', 'meningitis', '(?:kidney|liver|organ)\\s+failure', 'complications', 'death', 'god',
+  'the\\s+lord', 'jesus', 'heaven', 'the\\s+angels',
+].join('|');
+/** "would have been mums 60th", "his fortieth" (an ordinal; never "would have been my first time"). */
+const ORDINALS = '(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)?(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth)|(?:twentieth|thirtieth|fortieth|fiftieth|sixtieth|seventieth|eightieth|ninetieth|hundredth)';
 /** A death or a loss, named ('loss'). Each is read on the normed words with the ordinary idioms blanked. */
 const LOSS_WORDS = [
   // die, died, dying, dead, death, deceased (and "dide", "dieing", "diied", "dided", "ded": review r9)
@@ -64,7 +79,7 @@ const LOSS_WORDS = [
   /\blost\s+(?:his|her|their)\s+(?:own\s+)?(?:life|lives|battle|fight|long\s+battle|brave\s+battle|brave\s+fight)\b/iu,
   // a heart that stopped, breathing that stopped, found unresponsive, never woke up (someone named before it)
   new RegExp(`(?:\\b(?:${WHO}|${BARE})s?|\\b(?:his|her|their))\\s+heart\\s+(?:just\\s+|suddenly\\s+)?(?:stopped|gave\\s+(?:out|up)|failed)\\b`, 'iu'),
-  new RegExp(`${REF}\\s+(?:(?!(?:i|we|you|me)\\b)[a-z]+\\s+){0,4}?(?:stopped\\s+breathing|was\\s+found\\s+unresponsive|found\\s+unresponsive|never\\s+woke\\s+up|didnt\\s+wake\\s+up|did\\s+not\\s+wake\\s+up|never\\s+came\\s+home|never\\s+made\\s+it\\s+(?:home|out|back))\\b`, 'iu'),
+  new RegExp(`${REF}\\s+(?:(?!(?:i|we|you|me)\\b)[a-z]+\\s+){0,4}?(?:stopped\\s+breathing|was\\s+found\\s+unresponsive|found\\s+unresponsive|never\\s+woke\\s+up|didnt\\s+wake\\s+up|did\\s+not\\s+wake\\s+up|never\\s+came\\s+(?:home|back)|never\\s+made\\s+it\\s+(?:home|out|back))\\b`, 'iu'),
   // run over, jumped from a bridge, in front of a train
   new RegExp(`(?:${REF}|\\b(?:${PET})s?)\\s+(?:(?!(?:i|we|you)\\b)[a-z]+\\s+){0,3}?(?:was|were|got|been|has\\s+been|had\\s+been|is)\\s+run\\s+over\\b|\\bran\\s+over\\s+(?:my|our|the|his|her|their)\\s+${ADJ}(?:${WHO})`, 'iu'),
   /\b(?:jumped|threw\s+(?:himself|herself|themselves))\s+(?:off|from|in\s+front\s+of|under)\s+(?:a|the)\s+(?:bridge|building|roof|cliff|train|tube|tower|car\s+park|balcony|motorway|lorry|bus)\b|\bin\s+front\s+of\s+a\s+train\b/iu,
@@ -117,6 +132,41 @@ const LOSS_WORDS = [
   new RegExp(`${REF}\\s+(?:who|that|i|we|ive|id)\\s+(?:[a-z]+\\s+){0,4}?(?:is|s|has|have|are)\\s+${AUX}gone\\b(?!\\s+(?:to(?!\\s+(?:heaven|a\\s+better\\s+place|be\\s+with|sleep|rest|god))|out|home|off|back|away|abroad|on|into|with|up|down|for|shopping|quiet|silent|mad|viral)\\b)`, 'iu'),
   // "my pops passed", "my missus passed last week" (any word for them; a test or an application passed is not one)
   new RegExp(`\\b(?:my|our)\\s+(?:(?!(?:${PASS_NOT})\\b)[a-z]+\\s+){1,2}?${AUX}passed\\b(?!\\s+(?:${PASS_OBJ})\\b)`, 'iu'),
+  // ---- (review r10) the phrase families the round-3 review found outside every list --
+  // "covid took my grandad", "cancer took my mum last year", "the accident took my brother", "it took him in the end"
+  new RegExp(`\\b(?:${KILLERS})\\s+(?:has\\s+|have\\s+|had\\s+|finally\\s+|eventually\\s+|cruelly\\s+|then\\s+)*(?:took|takes|taken|claimed|stole)\\s+(?:(?:(?:my|our|his|her|their)\\s+)?${ADJ}(?:${WHO}|${BARE})s?\\b|(?:him|her|them)\\b)`, 'iu'),
+  new RegExp(`\\bit\\s+(?:has\\s+|finally\\s+|eventually\\s+)*(?:took|taken)\\s+(?:(?:(?:my|our)\\s+)?${ADJ}(?:${WHO}|${BARE})s?|him|her|them)\\b(?=\\s*(?:$|[.,!?;:…)—–]|(?:in\\s+the\\s+end|from\\s+(?:us|me)|away|last|this|in\\s+(?:the\\s+night|his\\s+sleep|her\\s+sleep|\\d{4}|january|february|march|april|may|june|july|august|september|october|november|december)|on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|and|but|so|too)\\b))`, 'iu'),
+  new RegExp(`${REF}\\s+${AUX}(?:was\\s+|were\\s+|got\\s+)?(?:taken|claimed)\\s+(?:from\\s+us\\s+)?by\\s+(?:${KILLERS})\\b`, 'iu'),
+  // no heartbeat at the scan, the heartbeat lost
+  /\b(?:no|without\s+a|lost\s+(?:the|its|his|her|their|a|our\s+babys|the\s+babys|babys)|couldnt\s+find\s+(?:a|the))\s+heartbeat\b|\bheartbeat\s+(?:had\s+)?stopped\b/iu,
+  // laid to rest, kicked the bucket, popped his clogs, snuffed it, bought the farm, shuffled off (this mortal coil)
+  /\blaid\s+to\s+rest\b|\bkick(?:ed|s|ing)?\s+the\s+bucket\b(?!\s+(?:over|of|across|down|away|into|out|off)\b)|\bpop(?:ped|s|ping)?\s+(?:his|her|their|my|your)\s+clogs\b|\bsnuff(?:ed|s)?\s+it\b(?!\s+out\b)|\bb(?:ought|uys|uy)\s+the\s+farm\b(?!\s+(?:next\s+door|down\s+the|across|from|nearby|opposite|over\s+the)\b)|\bshuffled\s+off\b(?!\s+(?:to|home|down|into|towards|back|out|up|in|with|for)\b)|\bmortal\s+coil\b/iu,
+  // "my nan croaked", "she succumbed to her injuries", "departed this life", "the dearly departed"
+  new RegExp(`${REF}\\s+${AUX}croaked\\b(?!\\s+(?:out|a|an|the|at|that|something|hello|hi|his|her|my|back)\\b)|\\bcroaked\\s+it\\b`, 'iu'),
+  new RegExp(`${REF}\\s+${AUX}succumbed\\b(?!\\s+to\\s+(?:the\\s+)?(?:temptation|peer\\s+pressure|pressure|the\\s+urge|urge|sleep|exhaustion|boredom|charm|my\\s+charm|tiredness|hunger|cravings?)\\b)|\\bsuccumbed\\s+to\\s+(?:(?:his|her|their|the|its|a|an)\\s+)?(?:[a-z]+\\s+){0,2}?(?:injuries|injury|wounds|illness|cancer|covid|disease|infection|sepsis|pneumonia|tumou?r|condition|battle|stroke|virus|complications)\\b`, 'iu'),
+  /\bdeparted\s+(?:this\s+(?:life|world|earth)|us|from\s+us)\b|\bdearly\s+departed\b/iu,
+  // "my friend ODd", "my friend od d", "she OD'd on heroin" (after the apostrophe is out: never "he's odd")
+  new RegExp(`(?:\\b(?:he|she|they)\\b|\\b(?:(?:my|our|his|her|their|your|the|a)\\s+)?${ADJ}(?:${WHO})(?:s|es)?\\b|\\b(?:${BARE})s?\\b)\\s+(?:(?:just|has|had|have|nearly|almost|accidentally|then)\\s+)?(?:od|odd|oded|odded|od\\s+d|odd\\s+d|o\\s+d\\s+d)\\b(?!\\s+(?:one|ones|man|woman|guy|job|jobs|things?|bits?|socks?|sock|way|looks?|feeling|behaviou?r|habits?|number|numbers|moments?|time|times|days?|person|people|kid|ideas?|sense|bit|occasion|couple)\\b)`, 'iu'),
+  // (review r10) "my dog went to the park and never came back": a few more words between
+  new RegExp(`${REF}\\s+(?:(?!(?:i|we|you|me)\\b)[a-z]+\\s+){0,7}?never\\s+(?:came|come|made\\s+it)\\s+(?:home|back)\\b`, 'iu'),
+  // found him unresponsive (words between); never came out of hospital
+  /\bfound\s+(?:[a-z]+\s+){0,4}?unresponsive\b/iu,
+  /\b(?:went|go|gone|taken|rushed|admitted)\s+(?:in|into|to)\s+(?:the\s+)?(?:hospital|hospice|icu|intensive\s+care)\b.{0,60}?\bnever\s+(?:came|come|made\s+it)\s+(?:out|home|back)\b/iu,
+  // "dad went peacefully in the night", "my grandma went last night", "he went in his sleep"
+  new RegExp(`${REF}\\s+${AUX}went\\s+(?:so\\s+)?(?:peacefully|quietly|suddenly|overnight|in\\s+(?:his|her|their|the)\\s+sleep|in\\s+the\\s+night|last\\s+night|this\\s+morning|early\\s+this\\s+morning)\\b(?!\\s+(?:to|with|for|out|on\\s+a|shopping|clubbing|dancing|camping|swimming|running|home)\\b)(?!\\s+and\\s+(?:loved|enjoyed|had|said|got|came|met|saw|bought|told|brought|found|danced|ate|drank|won|lost|played)\\b)`, 'iu'),
+  // isn't around any more, isn't coming home, an angel now, resting now, at rest, in the ground, shiva
+  new RegExp(`${REF}\\s+(?:(?:is|s|are|re|was)\\s+)?(?:isnt|is\\s+not|arent|are\\s+not|aint|not|wasnt|no\\s+longer)\\s+(?:really\\s+|even\\s+)?around\\s+any\\s*more\\b`, 'iu'),
+  new RegExp(`${REF}\\s+(?:(?:is|s|are|re)\\s+)?(?:isnt|is\\s+not|arent|are\\s+not|wont\\s+be|wont\\s+ever\\s+be|will\\s+never\\s+be|never|not|never\\s+ever)\\s+(?:ever\\s+)?coming\\s+(?:home|back)\\b(?!\\s+(?:tonight|today|tomorrow|until|till|til|for|this|from|in\\s+time|early|late|on|at|after|before|soon|yet|again\\s+(?:tonight|today))\\b)`, 'iu'),
+  /\bup\s+(?:with|among|in)\s+the\s+stars\b|\b(?:a|our|my)\s+(?:little\s+)?star\s+(?:in\s+the\s+sky\s+)?now\b|\b(?:shining|twinkling|looking)\s+down\s+(?:on|at)\s+(?:us|me)\b|\bangel\s+now\b|\b(?:became|become|becomes|is\s+now|s\s+now|now)\s+an?\s+angel\b|\bour\s+(?:little\s+)?angel\s+(?:in\s+heaven|in\s+the\s+sky|above)\b/iu,
+  new RegExp(`${REF}\\s+${AUX}(?:resting\\s+(?:now|peacefully|in\\s+peace)|(?:now\\s+)?at\\s+rest)\\b`, 'iu'),
+  new RegExp(`${REF}\\s+${AUX}(?:(?:lies|lying|laid|lay|put|buried)\\s+)?in\\s+the\\s+ground\\b|\\bput\\s+(?:him|her|them)\\s+in\\s+the\\s+ground\\b`, 'iu'),
+  /\b(?:sit|sat|sitting|sits|observing|observe|observed|keeping|kept)\s+shiva\b|\bshiva\s+(?:for|house|week|minyan|call)\b/iu,
+  // "today would have been mums 60th", "would have been his 40th"
+  new RegExp(`\\bwould\\s+(?:have|ve|of)\\s+(?:been|turned)\\s+(?:(?:(?:my|our|his|her|their)\\s+)?${ADJ}(?:${WHO}|${BARE})s|his|her|their)\\s+(?:\\d+(?:st|nd|rd|th)?|${ORDINALS})\\b`, 'iu'),
+  // said goodbye … for the last time
+  new RegExp(`\\b(?:said|say|saying|says)\\s+(?:(?:our|my|their|his|her|a)\\s+)?goodbyes?\\s+(?:to\\s+(?:(?:(?:my|our|the|his|her|their)\\s+)?${ADJ}(?:${WHO}|${BARE})s?|him|her|them)\\s+)?(?:(?!to\\b)[a-z]+\\s+){0,3}?for\\s+the\\s+(?:very\\s+)?(?:last|final)\\s+time\\b`, 'iu'),
+  // "my mum lost the fight", "she lost her fight"
+  new RegExp(`${REF}\\s+${AUX}lost\\s+(?:the|her|his|their)\\s+(?:long\\s+|brave\\s+|short\\s+|hard\\s+)?(?:fight|battle)\\b(?!\\s+(?:to\\s+(?:keep|stay|get|win|be)|over|about|with\\s+(?:me|us|him|her|them|the\\s+council)|at|in\\s+(?:court|the\\s+(?:ring|cage|playground)))\\b)`, 'iu'),
 ];
 /** Grieving, a funeral, a grave, condolences ('grief' when no death is named). */
 const GRIEF_WORDS = [
@@ -186,7 +236,7 @@ const PRON_TAIL = '(?=\\s*(?:$|[.,!?;:…)—–]|(?:again|now|forever|soon|so|t
 const OBJ_PERSON = `(?:(?:my|our|his|her|their)\\s+)?${ADJ}(?<who>${WHO}|${BARE})s?\\b(?!\\s+(?:${WHO}|${BARE}|kids|children|family|grave|graves|house|home|room|things|stuff|ashes|wishes|memory|memories|funeral|side|stone|bench|plot|photos?|clothes|bed|chair)s?\\b)|\\b(?<nm>[A-Z][a-z]+)\\b`;
 /** What says it is about the one who died wherever they are ("again", "in heaven", "up there"). */
 const AFTER = /^\s+(?:again|forever|in\s+heaven|up\s+there|wherever|where\s+(?:he|she|they|hes|shes|theyre)|on\s+the\s+other\s+side|once\s+and\s+for\s+all)\b/iu;
-const WANT = '(?:keep\\s+wanting|want|wants|wanting|wanna|wanted|need|needs|needed|long|longing|wish\\s+i\\s+could|wish\\s+i\\s+was|wish\\s+i\\s+were|wish\\s+id\\s+be|would\\s+rather|id\\s+rather|rather|ready|cant\\s+wait|just\\s+want|only\\s+want|going|gonna|will|ill|could|should|time|yearn|yearning|desperate|have|part\\s+of\\s+me\\s+wants|all\\s+i\\s+want\\s+is|all\\s+i\\s+wanna\\s+do\\s+is)';
+const WANT = '(?:would\\s+like|id\\s+like|would\\s+love|id\\s+love|(?:would|id|i\\s+would)\\s+(?:give|do)\\s+anything|keep\\s+wanting|want|wants|wanting|wanna|wanted|need|needs|needed|long|longing|wish\\s+i\\s+could|wish\\s+i\\s+was|wish\\s+i\\s+were|wish\\s+id\\s+be|would\\s+rather|id\\s+rather|rather|ready|cant\\s+wait|just\\s+want|only\\s+want|going|gonna|will|ill|could|should|time|yearn|yearning|desperate|have|part\\s+of\\s+me\\s+wants|all\\s+i\\s+want\\s+is|all\\s+i\\s+wanna\\s+do\\s+is)';
 /** The verbs that say someone died (past: never "dying", never "might not make it"). */
 /** "gone" as a death, never "gone to pieces", "gone to Spain", "gone out" (review r9, the pronoun linking). */
 const GONE = 'gone(?!\\s+(?:to(?!\\s+(?:heaven|a\\s+better\\s+place|be\\s+with|sleep|rest|god|jesus|the\\s+angels|the\\s+rainbow\\s+bridge))|out|home|off|back|away|abroad|on|into|with|up|down|for|shopping|quiet|silent|mad|viral|missing|bald|grey|gray|wrong|crazy|through|over|round|around|past|ahead|along|by|in(?!\\s+(?:peace|(?:his|her|their)\\s+sleep)))\\b)';
@@ -202,15 +252,20 @@ const DECEASED = [
 ];
 /** "he died", "she passed", "they're gone": the one who died is the person named just before (review r9). */
 const PRON_DEATH = new RegExp(`\\b(?<pron>he|she|they|hes|shes|theyre|theyve|theyd|hed|shed)\\s+${AUX}(?:${GONE_VERB})\\b`, 'giu');
+/**
+ * Where "go on", "carry on" and "keep going" say living goes on (review r10): the end of a clause, or before "without
+ * <them>", "like this", "any more", "living", "with life" (never "go on holiday", "carry on working", "keep going to …").
+ */
+const GO_ON_END = `(?=\\s*(?:$|[.,!?;:…)—–])|\\s+(?:like\\s+this|like\\s+that|any\\s*more|living|with\\s+(?:life|my\\s+life|this\\s+life|it\\s+all|everything)|without\\s+(?:him|her|them|(?:my|our)\\s+[a-z]+|(?:${BARE})s?)\\b|(?:and|but|so|because|cos|coz|or)\\b(?!\\s+on\\b)|(?:i|im|ive|id|its|it|honestly|really)\\s*(?:$|[.,!?;:…])|now\\s*(?:$|[.,!?;:…])|(?:i|im|ive|id)\\b))`;
 const FOLLOW_RES = [
   // be with / go and be with / be where they are
-  new RegExp(`\\b${WANT}\\s+(?:to\\s+)?(?:go\\s+(?:and\\s+)?|just\\s+)?(?:be|go|get|belong|lie|rest)\\s+(?:back\\s+)?with\\s+(?:(?:him|her|them)${PRON_TAIL}|(?:${OBJ_PERSON}))`, 'giu'),
+  new RegExp(`\\b${WANT}\\s+(?:to\\s+)?(?:go\\s+(?:and\\s+)?|just\\s+)?(?:be|go|get|belong|lie|rest)\\s+(?:back\\s+)?(?:(?:up\\s+)?there\\s+|up\\s+in\\s+heaven\\s+|in\\s+heaven\\s+)?with\\s+(?:(?:him|her|them)${PRON_TAIL}|(?:${OBJ_PERSON}))`, 'giu'),
   /\b(?:belong|be|go|get|want\s+to\s+be|need\s+to\s+be)\s+(?:back\s+)?with\s+(?:him|her|them)\s+(?:again|forever|in\s+heaven|up\s+there|soon)\b/giu,
   // join / follow them
   new RegExp(`\\b${WANT}\\s+(?:to\\s+)?(?:go\\s+(?:and\\s+)?|just\\s+)?join\\s+(?:(?:him|her|them)${PRON_TAIL}|(?:${OBJ_PERSON}))`, 'giu'),
   /\b(?:want|wanna|need|wish\s+i\s+could|going|gonna|will|ill|could|should|just|ready|cant\s+wait|id|i\s+would|i\s+could)\s+(?:to\s+)?(?:just\s+)?follow\s+(?:him|her|them)(?=\s*(?:$|[.,!?;:…]|(?:now|soon|there|wherever|too|into\s+(?:the\s+)?(?:dark|darkness|grave|ground|next|death)|to\s+(?:heaven|the\s+other\s+side)|and|but|i|so)\b))/giu,
   // go where she is (never "where she is buried"), go to her, go with him, go too
-  /\b(?:go|be|get|want\s+to\s+go|want\s+to\s+be)\s+(?:to\s+)?where(?:ver)?\s+(?:he|she|they|hes|shes|theyre)\b(?!(?:\s+(?:is|are|s|re|was|were|has\s+been|have\s+been|is\s+now|lies|lay|used\s+to))?\s+(?:buried|laid|resting|scattered|cremated|kept|from|working|living|staying|grew\s+up|lived|worked|went|loved|liked|played|was\s+born|born|came\s+from|studied|met|go|live|work|walk|walked|sat|sit))/giu,
+  /\b(?:go|be|get|want\s+to\s+go|want\s+to\s+be)\s+(?:to\s+)?where(?:ver)?\s+(?:he|she|they|hes|shes|theyre)\b(?!\s+(?:used\s+to|use\s+to|would|always|often|once|usually|loved\s+to|liked\s+to|took|takes|showed)\b)(?!(?:\s+(?:is|are|s|re|was|were|has\s+been|have\s+been|is\s+now|lies|lay|used\s+to))?\s+(?:buried|laid|resting|scattered|cremated|kept|from|working|living|staying|grew\s+up|lived|worked|went|loved|liked|played|was\s+born|born|came\s+from|studied|met|go|live|work|walk|walked|sat|sit))/giu,
   new RegExp(`\\b${WANT}\\s+(?:to\\s+)?go\\s+(?:to|with)\\s+(?:him|her|them)${PRON_TAIL}`, 'giu'),
   /\b(?:wish|wished|wishing|wishes)\s+(?:that\s+)?(?:i|id|i\s+had|i\s+could|i\s+could\s+have|i\s+couldve|i\s+would\s+have|i\s+wouldve)\s+(?:have\s+)?(?:gone|went|go|died|left|been\s+taken|been\s+killed)\s+(?:with|instead\s+of|alongside)\s+(?:him|her|them|\w+)\b|\bshould\s+(?:have|ve|of)\s+(?:gone|died)\s+with\s+(?:him|her|them)\b/giu,
   /\b(?:want|wanna|wanted|need|ready)\s+to\s+(?:go|die|leave|come)\s+(?:too|as\s+well|with\s+(?:him|her|them))\b|\btake\s+me\s+(?:with\s+(?:him|her|them|you)|too|instead|as\s+well)\b|\bwhy\s+didnt\s+(?:he|she|they|god)\s+take\s+me\b/giu,
@@ -218,7 +273,8 @@ const FOLLOW_RES = [
   /\b(?:it\s+)?should\s+(?:have|ve|of)\s+been\s+me\b|\bwish\s+(?:it\s+)?(?:was|were|had\s+been)\s+me\b|\bwhy\s+(?:wasnt|couldnt)\s+it\s+(?:have\s+been\s+|be\s+)?me\b/giu,
   // can't / don't want to go on, be here or live without them; what's the point without her
   new RegExp(`\\b(?:cant|cannot|can\\s+not|dont\\s+want\\s+to|do\\s+not\\s+want\\s+to|dont\\s+wanna|dont\\s+know\\s+how\\s+to|dont\\s+know\\s+if\\s+i\\s+can|no\\s+point(?:\\s+in)?|whats\\s+the\\s+point(?:\\s+(?:of|in))?|what\\s+is\\s+the\\s+point(?:\\s+(?:of|in))?|theres\\s+no\\s+point(?:\\s+in)?|there\\s+is\\s+no\\s+point(?:\\s+in)?|no\\s+reason\\s+to|not\\s+worth|dont\\s+see\\s+the\\s+point(?:\\s+(?:of|in))?|cant\\s+see\\s+the\\s+point(?:\\s+(?:of|in))?|wont|will\\s+not|refuse\\s+to|how\\s+(?:can|do|am)\\s+i\\s+(?:supposed\\s+to\\s+)?|why\\s+(?:should|would)\\s+i)\\s+(?:(?:go(?:ing)?\\s+on(?:\\s+living)?|carry(?:ing)?\\s+on|keep(?:ing)?\\s+going|be(?:ing)?\\s+here|be(?:ing)?\\s+alive|stay(?:ing)?\\s+alive|stay(?:ing)?|liv(?:e|ing)|exist(?:ing)?|surviv(?:e|ing)|do(?:ing)?\\s+(?:life|this|it|anything|any\\s+of\\s+this)|fac(?:e|ing)\\s+(?:life|this|it|anything|the\\s+world|tomorrow|another\\s+day|the\\s+future)|breath(?:e|ing)|get(?:ting)?\\s+up|wak(?:e|ing)\\s+up|bother(?:ing)?|try(?:ing)?|life|anything|everything|it|this|any\\s+more|anymore|here|now)\\s+)?(?:any\\s*more\\s+)?without\\s+(?:(?:him|her|them)(?=\\s*(?:$|[.,!?;:…]|(?:here|around|in\\s+my\\s+life|by\\s+my\\s+side|with\\s+me|any\\s*more|now|and|so|but|i|its|it|to|anyway|though|really|honestly|either|at\\s+all|beside\\s+me|there|in\\s+it|in\\s+the\\s+world|alive)\\b))|(?:${OBJ_PERSON}))`, 'giu'),
-  /\blife\s+(?:is|isnt|feels|seems|has\s+been|would\s+be|will\s+be)\s+(?:so\s+|just\s+|completely\s+)?(?:pointless|meaningless|empty|not\s+worth\s+(?:it|living)|worthless|nothing|over)\s+without\b|\bno\s+life\s+without\b|\bnothing\s+(?:left\s+)?to\s+live\s+for\b|\bno\s+reason\s+to\s+(?:live|go\s+on|be\s+here|keep\s+going)\b/giu,
+  /\blife\s+(?:is|isnt|feels|seems|has\s+been|would\s+be|will\s+be)\s+(?:so\s+|just\s+|completely\s+)?(?:pointless|meaningless|empty|not\s+worth\s+(?:it|living)|worthless|nothing|over)\s+without\b|\bno\s+life\s+without\b|\bnothing\s+(?:left\s+)?to\s+live\s+for\b|\bno\s+reason\s+to\s+(?:live|be\s+here)\b/giu,
+  new RegExp(`\\bno\\s+reason\\s+to\\s+(?:go\\s+on|carry\\s+on|keep\\s+going)${GO_ON_END}`, 'giu'),
   // soon: "I'll be with him soon", "not long till I'm with her"
   /\b(?:ill|i\s+will|im\s+going\s+to|i\s+am\s+going\s+to|im\s+gonna|i\s+hope\s+(?:i|ill)|cant\s+wait\s+to|not\s+long\s+(?:until|till|til)\s+(?:i|im))\s+(?:be\s+with|see|join|meet|hold|be\s+back\s+with)\s+(?:him|her|them|\w+)\s+(?:again\s+)?soon\b|\bnot\s+long\s+(?:until|till|til)\s+(?:i|im)\s+(?:with|beside)\s+(?:him|her|them)\b/giu,
   // reunited with them
@@ -232,9 +288,21 @@ const FOLLOW_RES = [
   /\bpart\s+of\s+me\s+(?:just\s+)?(?:wants|wanted|would\s+like|wishes|needs)\s+to\s+(?:go|die|leave|follow|join|be\s+with|be\s+where|go\s+with|go\s+too)\b/giu,
   /\b(?:go\s+to\s+sleep|sleep|close\s+my\s+eyes|fall\s+asleep|lie\s+down)\s+and\s+(?:just\s+)?(?:be\s+with|see|join|wake\s+up\s+(?:with|next\s+to)|never\s+wake\s+up|not\s+wake\s+up)\b/giu,
   /\b(?:follow|join|see|be\s+with|meet|hold)\s+(?:him|her|them)\s+(?:again\s+)?soon\b/giu,
-  /\b(?:dont|do\s+not|dont\s+wanna|cant|cannot|no\s+longer\s+want\s+to)\s+(?:want\s+to\s+)?(?:be\s+here|be\s+alive|go\s+on|carry\s+on|keep\s+going|live|exist|stay\s+alive|wake\s+up)\b(?!\s+(?:with|at|in|for|on|alone|by\s+myself|tonight|there|like\s+this\s+at)\b)/giu,
+  /\b(?:dont|do\s+not|dont\s+wanna|cant|cannot|no\s+longer\s+want\s+to)\s+(?:want\s+to\s+)?(?:be\s+here|be\s+alive|live|exist|stay\s+alive|wake\s+up)\b(?!\s+(?:with|at|in|for|on|alone|by\s+myself|tonight|there|like\s+this\s+at)\b)/giu,
+  // (review r10) "can't go on", "can't carry on like this", "can't keep going without her": only at the end of a clause
+  // or before these, never before a noun or another verb ("go on holiday", "carry on working", "keep going to the park")
+  new RegExp(`\\b(?:dont|do\\s+not|dont\\s+wanna|cant|cannot|can\\s+not|no\\s+longer\\s+want\\s+to)\\s+(?:want\\s+to\\s+)?(?:go\\s+on|carry\\s+on|keep\\s+going)${GO_ON_END}`, 'giu'),
   // (review r9) go to heaven to see her, see him in heaven, be in heaven with them
   new RegExp(`\\b${WANT}\\s+(?:to\\s+)?(?:just\\s+)?(?:go|get|be|going|went)\\s+(?:up\\s+)?(?:to|in|into)\\s+heaven\\b|\\bsee\\s+(?:him|her|them|${OBJ_PERSON})\\s+(?:again\\s+)?(?:in|up\\s+in)\\s+heaven\\b`, 'giu'),
+  // (review r10) "thinking of joining her", "I want to hold her in heaven", "without her, what's the point", "nothing left
+  // for me here without him", "can't imagine living without him", "live in a world without him", "be buried with her"
+  new RegExp(`\\bthinking\\s+(?:of|about)\\s+(?:just\\s+)?(?:joining|going\\s+to|going\\s+with|being\\s+with|following)\\s+(?:(?:him|her|them)${PRON_TAIL}|(?:${OBJ_PERSON}))`, 'giu'),
+  new RegExp(`\\b${WANT}\\s+(?:to\\s+)?(?:just\\s+)?[a-z]+\\s+(?:him|her|them|${OBJ_PERSON})\\s+(?:again\\s+)?(?:in|up\\s+in)\\s+heaven\\b`, 'giu'),
+  new RegExp(`\\bwithout\\s+(?:him|her|them|${OBJ_PERSON})\\s*[,.…—–-]*\\s*(?:(?:whats|what\\s+is|wheres)\\s+the\\s+point|(?:theres|there\\s+is|i\\s+see|i\\s+dont\\s+see|i\\s+cant\\s+see)\\s+(?:no|the)\\s+point|no\\s+point|(?:i|im)\\s+(?:just\\s+)?(?:cant|cannot|dont\\s+want\\s+to|dont\\s+wanna|wont)\\s+(?:go\\s+on|carry\\s+on|keep\\s+going|live|be\\s+here|exist|do\\s+(?:this|it|life)|be\\s+alive|survive|breathe)|(?:im|i\\s+am)\\s+nothing|(?:i\\s+have|ive\\s+got|theres|there\\s+is)\\s+nothing|life\\s+(?:is|feels|seems|isnt)\\s+(?:so\\s+|just\\s+)?(?:pointless|meaningless|empty|nothing|not\\s+worth|worth\\s+nothing)|nothing\\s+matters)`, 'giu'),
+  /\bnothing\s+(?:left\s+)?(?:for\s+me\s+)?(?:here\s+)?(?:now\s+)?without\s+(?:him|her|them|(?:my|our)\s+[a-z]+)\b|\b(?:im|i\s+am|i\s+feel)\s+(?:like\s+)?nothing\s+without\s+(?:him|her|them|(?:my|our)\s+[a-z]+)\b/giu,
+  new RegExp(`\\b(?:cant|cannot|can\\s+not|couldnt|could\\s+not|dont\\s+know\\s+how\\s+(?:i\\s+can|to))\\s+(?:even\\s+)?imagine\\s+(?:living|life|going\\s+on|carrying\\s+on|being\\s+here|being\\s+alive|existing|a\\s+life|my\\s+life|the\\s+rest\\s+of\\s+my\\s+life|another\\s+day)\\s+without\\s+(?:him|her|them|${OBJ_PERSON})`, 'giu'),
+  new RegExp(`(?<!\\blearn(?:ing|ed|t|s)?\\s+(?:how\\s+)?to\\s+)\\b(?:live|living|exist|existing|be|stay)\\s+in\\s+a\\s+world\\s+without\\s+(?:him|her|them|${OBJ_PERSON})`, 'giu'),
+  new RegExp(`\\b${WANT}\\s+(?:to\\s+)?(?:just\\s+)?(?:be\\s+)?buried\\s+(?:with|alongside)\\s+(?:(?:him|her|them)${PRON_TAIL}|(?:${OBJ_PERSON}))`, 'giu'),
   // want to see him again (never "I'll see her again one day", never someone alive: read beside who died)
   new RegExp(`\\b(?:want|wants|wanna|wanted|need|needs|long|longing|desperate|ready|cant\\s+wait|just\\s+want|really\\s+want|keep\\s+wanting)\\s+(?:to\\s+)?(?:just\\s+)?see\\s+(?:(?:him|her|them)|${OBJ_PERSON})\\s+again\\b`, 'giu'),
 ];
