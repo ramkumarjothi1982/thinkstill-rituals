@@ -749,12 +749,37 @@ export default function hushfold(app, params = {}) {
       // after a crisis no goodbye: the one calm line, now that the world has gone (or when the sheet
       // over it closes); after care, no cheery goodbye: the attentive face and a quiet line
       if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
-      let bye = null;
-      if (S.crisis) { speakCrisis(); } else if (gentle()) bye = say(SHARED_LINES.careQuiet); else bye = say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
-      // (the chip comes back in a corner once the closing line has been said, and the thought is home: 8 s at most)
-      Promise.resolve(bye).then(() => later(() => holdOffer(false), 300));
+      const goodbye = () => {
+        if (S.left || worldMode || S.finishing) return;
+        let bye = null;
+        if (S.crisis) { speakCrisis(); } else if (gentle()) bye = say(SHARED_LINES.careQuiet); else bye = say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
+        // (the chip comes back in a corner once the closing line has been said, and the thought is home: 8 s at most)
+        Promise.resolve(bye).then(() => later(() => holdOffer(false), 300));
+      };
       later(() => holdOffer(false), 8000);
       app.applyUpdateIfSafe?.();
+      // The closing line is placed knowing where the person's thought comes to rest: it is on its way home from the
+      // world (planned again once the Mallow has landed, 780 ms), its words waiting until it is there. Placed before
+      // that, the line went where the words were about to fade in, and then had to jump away mid-read. So it waits
+      // until the thought is home with its words showing (the lines keep clear of them from the first frame), 1.8 s at
+      // most; with no thought on the stage (or after a crisis: the one calm line, at once) it is said now.
+      const L = stage?.thoughts, home = L?.primary;
+      if (S.crisis || !home || home.leaving || typeof L?.tagRect !== 'function') { goodbye(); return; }
+      const t0 = now();
+      let still = 0;
+      const atRest = () => {
+        if (home.leaving || !(L.list || []).includes?.(home)) return true;
+        const d = Math.hypot((home.x ?? 0) - (home.home?.x ?? home.x ?? 0), (home.y ?? 0) - (home.home?.y ?? home.y ?? 0));
+        return d < 4 && !!L.tagRect(home);
+      };
+      const wait = () => {
+        if (S.left || worldMode || S.finishing) return;
+        // (after the re-plan, and home with its words on two looks in a row, 90 ms apart)
+        still = now() - t0 >= 820 && atRest() ? still + 1 : 0;
+        if (still >= 2 || now() - t0 >= 1800) { goodbye(); return; }
+        later(wait, 90);
+      };
+      later(wait, 90);
     }, 1250);
   }
   /** A world's goodbye holds the garden offer folded (garden-install's holdInstall); one hold at a time, always let go. */
@@ -1455,8 +1480,18 @@ export default function hushfold(app, params = {}) {
         if (reason !== 'submit') {
           stageMallow.setStage(gentle() ? CARE_FACE : 'neutral', { quiet: true });
           speakCrisis();
+          // a death, a loss or harm done to the person typed in a running world and closed without sending: the world is
+          // held quietly (no pill, nothing resumes it), so the same gentle beat as after Send follows — the support line,
+          // then stay here quietly (the world ends quietly) or somewhere calm (careBeat → careChoice) — never left frozen
+          // under its veil with nothing offered. One beat at a time (a Tell opened over its choice parks it, then it is back)
+          if (!S.crisis && S.hold === 'quiet' && worldMode && flowRef && !flowRef.stub) {
+            if (!S.quietBeat) {
+              S.careSaid = true;
+              const beat = S.quietBeat = careBeat({ emotion: null, intention: null, safety: { level: S.level, category: S.category } })
+                .catch((e) => console.warn(e)).finally(() => { if (S.quietBeat === beat) S.quietBeat = null; });
+            }
           // care or distress typed and closed without sending: support stays close, said once, quietly
-          if (!S.crisis && gentle() && !S.careSaid) { S.careSaid = true; say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding }); }
+          } else if (!S.crisis && gentle() && !S.careSaid) { S.careSaid = true; say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding }); }
           app.applyUpdateIfSafe?.();
         }
       },
@@ -1900,9 +1935,9 @@ export default function hushfold(app, params = {}) {
     try {
       const { registry } = await import('../../hushfold/flow/registry.js');
       if (!registry.playable(p.worldId)) return null;
-      // (a gentle visit plays only calm worlds: a charged one is never offered to pick up — after a death, a loss or
-      // harm done to the person, that would replay it)
-      if (gentle() && registry.get(p.worldId)?.calm !== true) return null;
+      // (after a death, a loss or harm done to the person a charged world is never offered to pick up: that would replay
+      // it — S.noResume. After distress alone Resume stays theirs, owner P4: the director picks it up, gently)
+      if (S.noResume && registry.get(p.worldId)?.calm !== true) return null;
       return { worldId: p.worldId, title: registry.get(p.worldId)?.title || null, savedAt: p.savedAt };
     } catch { return null; }
   }

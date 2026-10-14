@@ -140,7 +140,7 @@ test('director: start({gentle:true}) picks the calm ocean, even when the storm i
   } finally { dom.restore(); }
 });
 
-test('director: a saved storm resumed in a gentle session enters the ocean fresh — no restore(), not complete, resumed:false, nothing of the storm carried over', async () => {
+test('director: a saved storm picked up in a gentle session is the storm itself, gently (Resume stays theirs after distress, owner P4); a calm world started instead opens fresh — no restore(), not complete, resumed:false, nothing of the storm carried over', async () => {
   const { saveProgress } = await import('../src/engine/flow-store.js');
   const dom = installFakeDom();
   const made = [];
@@ -160,21 +160,38 @@ test('director: a saved storm resumed in a gentle session enters the ocean fresh
     D.on('world', (e) => worldEv.push(e));
     let completes = 0;
     D.on('complete', () => completes++);
+    // picked up (the shell offers it only when the visit allows: never after a crisis, a death, a loss or harm done to
+    // the person — hushfold.js resumableNow): the saved storm itself, restored, and the session stays gentle
     const st = await D.start({ resume: true, gentle: true });
     assert.ok(st);
-    assert.equal(D.state.worldId, 'ocean', 'a gentle session never plays the saved storm');
-    assert.equal(oc.restores, undefined, 'the storm’s saved state never reaches the ocean');
-    assert.equal(sc.restores, undefined);
-    assert.equal(D.state.complete, false, 'the ocean opens fresh, not complete');
-    assert.equal(worldEv.length, 1);
-    assert.equal(worldEv[0].resumed, false, "'world' says it was not resumed");
-    assert.deepEqual(D.state.discoveries, [], 'no discoveries carried over from the storm');
-    assert.equal(D.state.emotion, 'angry', 'the person’s own feeling still carries over');
-    assert.notEqual(oc.ctx.seed, 4242, 'the ocean gets its own seed, not the storm’s');
-    for (let i = 0; i < 40; i++) D.debug.step(1 / 60);
+    assert.equal(D.state.worldId, 'storm', 'the saved world the person asked to pick up');
+    assert.equal(sc.restores?.length, 1, 'restored');
+    assert.equal(oc.restores, undefined);
+    assert.equal(worldEv[0].resumed, true);
+    assert.equal(D.state.gentle, true, 'still a gentle session: calm worlds only from here, no Memory Garden offers');
+    D.destroy();
+
+    // a calm world started instead (the gentle choice "somewhere calm"), with the storm saved: it opens fresh
+    const sc1 = {}, oc1 = {};
+    const store1 = memStore();
+    savedStorm(store1);
+    const { D: D1 } = await mk(dom, [world('storm', { ctl: sc1 }), world('ocean', { calm: true, ctl: oc1 })], { store: store1 });
+    const ev1 = [];
+    D1.on('world', (e) => ev1.push(e));
+    D1.on('complete', () => completes++);
+    await D1.start({ emotion: 'angry', intention: 'calm', gentle: true });
+    assert.equal(D1.state.worldId, 'ocean', 'a gentle start of its own never plays the storm');
+    assert.equal(oc1.restores, undefined, 'the storm’s saved state never reaches the ocean');
+    assert.equal(sc1.restores, undefined);
+    assert.equal(D1.state.complete, false, 'the ocean opens fresh, not complete');
+    assert.equal(ev1.length, 1);
+    assert.equal(ev1[0].resumed, false, "'world' says it was not resumed");
+    assert.deepEqual(D1.state.discoveries, [], 'no discoveries carried over from the storm');
+    assert.notEqual(oc1.ctx.seed, 4242, 'the ocean gets its own seed, not the storm’s');
+    for (let i = 0; i < 40; i++) D1.debug.step(1 / 60);
     assert.equal(completes, 0, 'no completion fires straight after the world enters');
     // (what it saves now is the ocean, with a sequence of its own)
-    const rec = D.debug.persisted.progress;
+    const rec = D1.debug.persisted.progress;
     assert.equal(rec.worldId, 'ocean');
     assert.deepEqual(rec.sequence, ['ocean']);
 
@@ -207,7 +224,7 @@ test('director: a saved storm resumed in a gentle session enters the ocean fresh
   } finally { for (const d of made) d.destroy(); dom.restore(); }
 });
 
-test('director: the real Luminous Ocean, entered gentle from a saved complete Static Storm, is not complete and plays its intro', async () => {
+test('director: the real Luminous Ocean, entered gentle while a complete Static Storm is saved, is not complete and plays its intro', async () => {
   const { saveProgress } = await import('../src/engine/flow-store.js');
   const dom = installFakeDom();
   const made = [];
@@ -216,7 +233,7 @@ test('director: the real Luminous Ocean, entered gentle from a saved complete St
     const store = memStore();
     saveProgress(store, {
       worldId: 'static-storm', idx: 0, sequence: ['static-storm'], step: 1, emotion: 'angry', intention: 'calm', mallow: 'glitzi', seed: 99,
-      // (what the shell's 'Pick up where you left off' finds after a finished storm; the ocean's restore() would accept it)
+      // (a finished storm's save; the ocean's restore() would accept it)
       state: { w: { v: 1, seed: 99, progress: 1, complete: true, discoveries: ['slowing', 'stillness'], thought: { q: 0, settled: true }, elapsed: 60 }, d: ['slowing', 'stillness'], o: [], i: 0.7, c: 1 },
     });
     const said = [];
@@ -225,7 +242,8 @@ test('director: the real Luminous Ocean, entered gentle from a saved complete St
     D.on('world', (e) => ev.push(e));
     let completes = 0;
     D.on('complete', () => completes++);
-    await D.start({ resume: true, gentle: true });
+    // (the gentle choice "somewhere calm" with the storm saved; picking the storm up would be the storm itself)
+    await D.start({ emotion: 'angry', intention: 'calm', worldId: 'luminous-ocean', gentle: true });
     assert.equal(D.state.worldId, 'luminous-ocean');
     assert.equal(ev[0].resumed, false);
     assert.equal(D.state.complete, false, 'the ocean is not complete');

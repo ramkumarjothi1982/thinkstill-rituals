@@ -48,8 +48,9 @@
 // (the shell's open garden offer and card); worlds read it as ctx.keepOut() and move the thought aside, eased.
 //
 // Shell contract (all additive; every older call keeps working):
-//   start({ …, gentle })    a gentle session (after care) plays only calm worlds; setGentle(b) switches it
-//                           for this session only (never saved). state.gentle, ctx.gentle.
+//   start({ …, gentle })    a gentle session (after care) plays only calm worlds — but start({ resume: true }) picks
+//                           up the saved world itself, gently (the shell offers it only when the visit allows);
+//                           setGentle(b) switches it for this session only (never saved). state.gentle, ctx.gentle.
 //   pause({ reason })       reason 'safety' (care in a world, owner P4): Resume stays allowed, no Memory Garden
 //                           offers while it holds, a queued Drift on is dropped. Asked for while the first world
 //                           still loads, the world enters paused (never steps, no lines, no ambience) and
@@ -493,11 +494,14 @@ export function createHushflow(opts = {}) {
     const resuming = !!(prev?.worldId && registry.playable(prev.worldId));
     const gentleOn = !!(gentle ?? gentleWant);
     let id = resuming ? prev.worldId : worldId;
-    // a gentle session plays only calm worlds, whatever was asked for or saved
-    if (id && gentleOn && registry.get(id)?.calm !== true) id = null;
-    // Restore only into the world that was saved. When a gentle session swaps a saved storm for the ocean, the
-    // ocean starts fresh (its own seed, intro and progress; not complete): nothing of the storm's save (state,
-    // seed, discoveries, offers, sequence) carries into it, and 'world' says resumed:false.
+    // a gentle session plays only calm worlds, whatever was asked for — except the saved world the person asked to pick
+    // up (resume): after care or distress Resume stays theirs (owner P4), and the shell never offers a charged one after a
+    // crisis, a death, a loss or harm done to the person (hushfold.js resumableNow, S.noResume). The session stays gentle:
+    // calm worlds only from there, and no Memory Garden offers.
+    if (id && gentleOn && registry.get(id)?.calm !== true && !resuming) id = null;
+    // Restore only into the world that was saved. When a world other than the saved one is entered, it starts fresh
+    // (its own seed, intro and progress; not complete): nothing of the save (state, seed, discoveries, offers,
+    // sequence) carries into it, and 'world' says resumed:false.
     const restoring = resuming && id === prev.worldId;
     const pst = restoring && prev.state && typeof prev.state === 'object' ? prev.state : {};
     persist.sessionCount = (persist.sessionCount || 0) + 1;

@@ -142,9 +142,11 @@ test('a death, a loss or harm told inside a world: no Resume pill, no ▶ or pan
   assert.match(choice, /if \(S\.hold === 'care' \|\| S\.hold === 'quiet'\) \{ S\.hold = null; pausedPill\.hidden = true; \}/, 'the calm world, asked for, plays unheld');
   assert.match(choice, /\} else if \(S\.hold === 'quiet' && worldMode\) \{[\s\S]*?endQuietWorld\(\);/, 'staying quietly (or no answer) ends the world quietly');
   assert.match(fn('function endQuietWorld() {', 'function safetyHold('), /flowRef\.finish\?\.\(\{ reason: 'safety' \}\);[\s\S]*?if \(worldMode && !S\.finishing\) onFinished\(\);/);
-  // only calm worlds are offered, and a charged world is never offered to pick up in a gentle visit
+  // only calm worlds are offered, and a charged world is never offered to pick up after a loss or harm done to them
+  // (distress alone keeps its Resume, owner P4 — the follow-up: S.noResume, not gentle())
   assert.match(fn('async function gentleWorld()', 'async function careBeat('), /\(!S\.noResume \|\| registry\.get\(id\)\?\.calm === true\)/);
-  assert.match(fn('async function resumableNow()', 'function resumeSaved()'), /if \(gentle\(\) && registry\.get\(p\.worldId\)\?\.calm !== true\) return null;/);
+  assert.match(fn('async function resumableNow()', 'function resumeSaved()'), /if \(S\.noResume && registry\.get\(p\.worldId\)\?\.calm !== true\) return null;/);
+  assert.doesNotMatch(fn('async function resumableNow()', 'function resumeSaved()'), /gentle\(\)/);
   // distress alone keeps owner P4's Resume
   assert.match(scene, /S\.hold = S\.noResume \? 'quiet' : 'care';/);
   // a Tell opened inside a world never pre-presses a feeling chosen for an earlier Tell
@@ -164,7 +166,9 @@ test('320×568: the folded offer lies in the subtitle band\'s free time, never o
   assert.match(gi, /if \(o && r\.kind === 'band'\) o\.band = true;/);
   // a line comes onto it: if the only place left is over the Mallow, it folds into its chip instead
   const offer = gi.slice(gi.indexOf('export function offerSave('), gi.indexOf('function note('));
-  assert.match(offer, /const off = \(t\) => t === 'clear' \|\| t === 'band' \|\| t === 'decor';\s*if \(off\(was\) && !off\(tier\)\) fold\(true\);/);
+  // (in place() itself, the follow-up: whatever places it again — the band's watch, the shell's relayout, a resize)
+  assert.match(offer, /const offBody = \(t\) => t === 'clear' \|\| t === 'band' \|\| t === 'decor';/);
+  assert.match(offer, /if \(prev && !folded && offBody\(was\) && !offBody\(p\.tier\)\) \{\s*if \(wasForm\) apply\(wasForm\);[\s\S]*?fold\(true, \{ quick: true \}\);/);
   // the chip moves off a line too (or waits unseen), and a line still fading in already counts
   const chip = gi.slice(gi.indexOf('function showChip('), gi.indexOf('function hideChip('));
   assert.match(chip, /const stopBand = onBandChange\(\(\) => \{[\s\S]*?if \(b\.classList\.contains\('is-blocked'\) \|\| obstacleRects\(\)\.some\(\(o\) => hits\(r, o, 4\)\)\) place\(\);/);
@@ -211,7 +215,8 @@ test('subtitle scrim: a bright spot behind it (the daytime sun) is found and dee
   assert.equal(hotSpot(img((i, j) => (j < 5 ? cloud : sky))), null, 'a cloud band across the box is not a spot');
   assert.equal(hotSpot(null), null);
   const css = read('src/ui/hushfold.css');
-  assert.match(css, /radial-gradient\(circle at var\(--hf-hot-x, 50%\) var\(--hf-hot-y, 50%\)/);
+  // (the follow-up: its own layer, a little larger than the scrim's pill, placed in px from the line's box)
+  assert.match(css, /\.hf-sub::after \{[^}]*radial-gradient\(circle at calc\(var\(--hf-hot-cx, 50%\) \+ 36px\) calc\(var\(--hf-hot-cy, 50%\) \+ 26px\)/);
 });
 
 test('the garden installation never lies on the person\'s words: the ripple beside them, the flight round them, each tag cut out', () => {
