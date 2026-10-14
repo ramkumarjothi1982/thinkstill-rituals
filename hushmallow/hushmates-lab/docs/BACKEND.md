@@ -89,6 +89,30 @@ Postgres (schema hushmates: tables; schema hushmates_api: the only callable func
   and after every action). Supabase Realtime can come later; nothing depends
   on it.
 
+## One Hushmallow login, later
+
+Today the only sign-in is Hushmates' own, isolated Supabase Auth project. Nothing
+is connected to the production Hushmallow login.
+
+The pieces that let one Hushmallow account reach Hushmates later, with no second
+account:
+- A member is linked to sign-in *identities*, `(issuer, subject)`
+  (`hushmates.identities`), never to one provider's user id.
+- The gateway's verifier takes a list of issuers (`createVerifier({ issuers })`),
+  each with its own keys (`supabase/functions/_shared/jwt.js`).
+
+To add the main login (each step needs the owner's approval):
+1. Add its issuer (its JWKS address, and `provider: 'hushmallow'`) to the
+   verifier in `supabase/functions/hushmates/index.ts`. If it isn't a Supabase
+   login, give the issuer its own role and audience rules. Today every issuer
+   must send `role: authenticated`.
+2. Add a "link" method. A person signed in with both proves it once, and a
+   second identity row points at the same member.
+3. A new person signing in with the main login gets a member on first use, under
+   whatever invitation or eligibility rule applies then.
+4. `ownIssuers` stays limited to Hushmates' own project. Deleting Hushmates data
+   never deletes the main Hushmallow account.
+
 ## The gateway's HTTP API
 
 `/functions/v1/hushmates/…` (on the dev stack, the same path on localhost):

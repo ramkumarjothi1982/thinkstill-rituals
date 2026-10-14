@@ -4,20 +4,26 @@
 > **Hushmates — Send a feeling. See it differently.**
 > ONE FEELING. FIVE HUMAN PERSPECTIVES. BACK TO YOU.
 
-**Status: a playable prototype, waiting for the owner's approval. Nothing is
-integrated with or deployed to production.**
+**Status: Phase 2, the real backend, built and tested locally. Nothing is
+deployed, and nothing touches production.** Staging needs the owner's
+Supabase account (`docs/STAGING.md`); launch needs the owner's final approval
+(`docs/READINESS.md`).
 
-There are two experiences, kept strictly apart (`docs/ACCESS.md`):
-- **The customer app** (`app/`): invitation, welcome, Release, Catch, My
-  journeys, Returned, You & safety, Your data. It is served by the Hushmates
-  server (`server/`), which signs people in by invitation and keeps every rule
-  on the server. Its production build (`tools/build-app.mjs`) contains nothing
-  for developers, and is refused if it would.
+There are three experiences, kept strictly apart (`docs/ACCESS.md`):
+- **The customer app** (`app/`): sign in with an email code, an invitation the
+  first time (with a name and 18+), then Release, Catch, My journeys, Returned,
+  You & safety, Your data. Everything goes through one Supabase Edge Function
+  (`supabase/functions/hushmates`) to Postgres, where every rule lives
+  (`supabase/migrations`). Its production build (`tools/build-app.mjs`) contains
+  nothing for developers, and is refused if it would.
+- **The safety desk** (`staff/`): for moderators only (enforced on the server).
+  They read reports and decide, and everything they do is logged.
 - **The lab** (`index.html`, `lab/`): the Control room, scenarios A/B/C, two
   test phones, seven simulated test identities, a dev clock and an in-page
-  demonstration service. It is for developers and authorised testers only. A
-  development server shows it only with a tester key, and a production server
-  has no lab at all.
+  demonstration service. It is for developers and authorised testers only, on a
+  development host with a tester key; production has no lab at all.
+
+The backend is described in `docs/BACKEND.md`, its costs in `docs/COSTS.md`.
 
 Neither touches production: no production data, no real backend, nothing
 deployed. `tools/build-site.sh` copies only `src/` and selected `assets/`, so this
@@ -36,20 +42,29 @@ never presented or counted as a person.
 
 ## Run it
 
-**The customer app** (as customers get it):
+**Everything, on this machine** (Postgres, a local copy of Supabase Auth, the Edge Function's
+code, the app, the safety desk, the scheduler; no email is sent and nothing is deployed):
 
 ```bash
-# from the repository root (the folder that contains hushmallow/)
-node hushmallow/hushmates-lab/tools/build-app.mjs           # → hushmallow/hushmates-lab/dist/app (scanned)
-HUSHMATES_INVITES="CODE-ONE,CODE-TWO" node hushmallow/hushmates-lab/server/main.mjs --mode production --port 8080
-# open http://127.0.0.1:8080/app/ and join with an invitation code
+cd hushmallow/hushmates-lab && npm install                # dev-only: the Postgres driver
+# a local Postgres 16 (HUSHMATES_PG, default postgres://postgres@127.0.0.1:54329)
+node server/dev-stack.mjs                                 # prints invitations and, as they're asked for, sign-in codes
+# open http://127.0.0.1:8090/app/  ·  the safety desk: http://127.0.0.1:8090/staff/
+node server/admin.mjs invite --count 3                    # more invitations (also: settings, set, ops, revoke, member)
+```
+
+**The production files** (what a static host would serve):
+
+```bash
+node tools/build-app.mjs          # → dist/app and dist/staff (scanned); add --supabase-url/--anon-key for a project
+node server/main.mjs --mode production --port 8080
 ```
 
 **The lab** (developers and testers):
 
 ```bash
-# a development server: the app at /app/, and the lab at the /lab/?key=… address it prints
-HUSHMATES_TESTER_KEY="<at least 16 characters>" node hushmallow/hushmates-lab/server/main.mjs --mode development --port 8090
+# the local stack with the lab at the /lab/?key=… address it prints
+HUSHMATES_TESTER_KEY="<at least 16 characters>" node server/dev-stack.mjs
 
 # or, on your own machine only, the lab as a plain page
 python3 -m http.server 8000
@@ -116,7 +131,11 @@ costs money and needs approval.
 ## Test it
 
 ```bash
-node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # relay, access control, build, your data
+cd hushmallow/hushmates-lab
+node --test tests/*.test.mjs                 # everything: the reference engine, the real database (differential,
+                                             # races, access), sign-in, the Mallow, access control, build, the app's link
+node tools/app-shots.mjs <out-dir>           # end to end in Chromium on the whole local stack, many accounts at once
+node tools/sync-edge.mjs --check             # the Edge Function's shared copies match their sources
 node --test hushmallow/hushmates-lab/v1-messaging/tests/*.test.mjs    # 32 (archived v1)
 node hushmallow/hushmates-lab/tools/app-shots.mjs <out-dir>           # the customer app: screens + content audit
 node hushmallow/hushmates-lab/tools/shots.cjs <out-dir> http://localhost:8000   # the lab: interface QA
@@ -174,49 +193,48 @@ share picture export and video frames.
 
 ## What's real, what's simulated
 
-| Real (enforced, tested) | Simulated / mocked |
+| Real (built, and tested locally against real Postgres) | Not yet real |
 |---|---|
-| Every relay rule, in `core/relay.js`, behind the Hushmates server's API (an allow-list of methods, JSON only, origin checks) | The server keeps state in memory or one JSON file; production needs Postgres (`RELAY.md` §5). In the lab the service runs in the page |
-| Sign-in by single-use invitation, adult confirmation recorded by the server, HttpOnly cookie sessions; the lab only for a tester key, on development servers | Invitation codes stand in for real accounts until Supabase Auth; the lab's seven test identities exist only in the lab (`testMode`) |
-| Consent: recorded, enforced by the service, required for circulation and resends; contributors' share consent | |
-| Per-viewer views: nobody sees who wrote what; words are sealed until home | |
-| Screening (shared Reframe safety lexicon plus Hushmates rules), support instead of release, before consent | Crisis resources are the app's existing copy, to be reviewed per region |
-| Holds, expiry, fairness, idempotency, rate limits, budgets, resend limits | Time: a dev clock moves the service's clock |
-| The Mallow fallback logic: opt-in, 30 minutes, one generation, caching, labels, budgets, safety handling, the separate section | **No live AI.** Mallow perspectives are a labelled canned example, the Reframe library, or Another Angle in mock mode |
-| Reports, the moderator queue and its actions, blocking, Your data (a summary and a privacy-safe file), deletion | Moderators join with a staff invitation; the safety desk interface exists only in the lab; no staffing, no notifications |
-| The interface: every scene, motion and sound; the share picture and video, made on the device | Push notifications ("tell me when it comes home" is only a saved preference); posting a share story is left to the person |
+| Every rule in Postgres functions with row locks and constraints: at most five people, no self-catch, one live hold, no duplicates, the 30-minute Mallow and the 24-hour homecoming by the scheduler, accurate counts. Differential-tested against the reference engine `core/relay.js` | **Supabase itself.** The same code runs against a local Postgres 16, a local copy of Supabase Auth's endpoints and the Edge Function code under Node. Staging needs the owner's account (`docs/STAGING.md`) |
+| Sign-in by email code, invitation (hashed, expiring, use-limited, rate-limited) and 18+; the same account on any device; identities ready for a future Hushmallow login | **Email delivery.** The local copy prints codes; real people need a custom SMTP provider (owner's approval) |
+| RLS on every table with no grants: browsers reach nothing directly. Words encrypted (AES-256-GCM) before they reach the database | |
+| The Mallow from Hushmates' own library, fitted to the words, the label and the Mallow's voice; AI behind a server-side switch with monthly AUD caps, daily limits and an atomic budget hold | **AI is off** (no provider configured, A$0 cap), as the owner asked |
+| Reports, automatic pausing, blocking, withdrawal, restricted accounts; the safety desk for moderators, with an activity log | A written escalation procedure and clinical review (`docs/READINESS.md`) |
+| Export and deletion (words, account and sign-in); retention by schedule | |
+| Crisis support with Australian services, reviewed wording pending | |
+| | Changes reach the app by polling every 20 s; Realtime and push notifications later |
 
 ## Where things are
 
 ```
-app/         the customer app: index.html, app.js (one person, one device, the Hushmates server)
-server/      server.mjs (production and development modes, invitations, sessions, API, lab gate), app-files.mjs (what the app may load), main.mjs
-core/        relay.js (the rules, server-side), relay-rules.js (tuning, server-only), relay-config.js (labels and shown limits, shared),
-             feeling-safety.js, text-policy.js, perspectives.js (providers, server-only), relay-seed.js (lab test identities)
-net/         local-network.js: the lab's simulated network (latency, offline, lost replies, allow-list)
-client/      relay-client.js: one person's view of the relay; http-link.js: the app's link to the server
+app/         the customer app: index.html, app.js (sign-in, invitation, then the scenes), config.json (where the backend is)
+staff/       the safety desk: index.html, desk.js, desk-guide.js (decisions and urgent guidance)
+client/      supabase-auth.js (email-code sign-in), functions-link.js (the link to the Edge Function), relay-client.js (one person's view)
+supabase/    migrations/ (schema, rules, the API), functions/hushmates (the Edge Function entry), functions/_shared (gateway, JWT,
+             field encryption, the Mallow, Another Angle adapter, vendored shared code), config.toml, local/ (the Auth copy's tables)
+server/      dev-stack.mjs (everything locally), auth-emulator.mjs (local copy of Supabase Auth), server.mjs (static host; dev routes),
+             admin.mjs (invitations, settings, ops), migrate.mjs, pg-db.mjs, app-files.mjs (what each page may load), main.mjs
+core/        relay.js (the reference engine), feeling-safety.js (screening, crisis support), perspectives.js (the Mallow library),
+             relay-config.js, relay-messages.js, export-format.js, text-policy.js, relay-rules.js, relay-seed.js (lab identities)
 ui/          device.js, orb.js, sky.js, sound.js, mallow.js, atmosphere.js, motion.js, kit.js, dom.js
-ui/relay/    the scenes: invite, welcome, release, support, catch, journeys, returned (homecoming), share (+ share-render), you,
-             your-data, away; parts.js (room, stage, thought cloud, speech, consent row, privacy details), common.js (dock, header, sheets)
-styles/      world.css (landing-page tokens and kit), relay.css (orb, sky, dock), hushfold.css (the 2.0 rooms), relay-scenes.css, app.css, lab.css
-lab/         lab.js: the two phones, control room, guide, autoplay, fixtures; lab-notes.js: notes for testers inside the phones
-tests/       relay, attacks, 2.0 rules, the adversarial reviews, access control, build, your data, audit fixes
-tools/       build-app.mjs (the customer build and its scan), app-shots.mjs (customer QA), shots.cjs (lab QA), preview.mjs
-docs/        ACCESS.md (the two experiences), RELAY.md (architecture, Supabase plan, costs), SAFETY_AND_PRIVACY.md, SCENES.md, screenshots/
-v1-messaging/  the superseded private-messaging prototype (archived; its tests still pass)
+ui/relay/    the scenes: sign-in, invite, welcome, release, support, catch, journeys, returned (homecoming), share, you, your-data, away
+styles/      world.css, relay.css, hushfold.css, relay-scenes.css, app.css, staff.css, lab.css
+lab/, net/   the lab (developers and testers only)
+tests/       the reference engine, the real database (differential, races, access), sign-in, the Mallow, ops, access control,
+             build, the app's link, and the regression tests from each independent review
+tools/       build-app.mjs (app and desk builds, scan, deploy config), app-shots.mjs (end to end), sync-edge.mjs, shots.cjs (lab QA)
+docs/        BACKEND.md, STAGING.md, READINESS.md, COSTS.md, ACCESS.md, RELAY.md, SAFETY_AND_PRIVACY.md, SCENES.md, screenshots/
+v1-messaging/  the superseded private-messaging prototype (archived)
 ```
 
 ## Boundaries kept
 
 - Nothing in the existing Hushmallow app was changed:
-  - the main app's Reframe engine (`src/ultra`) is imported read-only;
-  - no production auth, Supabase tables or policies, Cloudflare settings or Framer
-    publication were touched;
-  - Account 1's branch and its Another Angle service were only read, and run
-    locally.
-- No secrets in the browser, no paid AI calls, no live secrets configured. The
-  proposed pilot keeps the service-role key and any provider credentials inside
-  one Edge Function, and enforces ownership, concurrency and contribution rules
-  in Postgres (`docs/RELAY.md` §5).
-- **Next step needs approval:** production integration (a new Supabase project,
-  Edge Function, auth, and the Another Angle service agreement).
+  - the main app's Reframe engine (`src/ultra`) is used read-only (and copied byte for byte next to the Edge Function);
+  - no production Supabase project, auth, tables or policies were touched, and Hushmates' sign-in is a separate, isolated project;
+  - no Cloudflare settings or Framer publication were touched;
+  - Account 1's Another Angle service was only read. Its adapter is written but never called (AI off, nothing configured).
+- No secrets in the browser (the build refuses them). The data keys live only in the Edge Function's secrets. No paid
+  services, AI calls or email providers were used; nothing was deployed.
+- **Next steps need the owner:** a staging Supabase project and the deploy (`docs/STAGING.md`), an email provider,
+  the legal, privacy and clinical reviews (`docs/READINESS.md`), and the final approval for launch.
