@@ -1,3 +1,29 @@
 /* Hushbeat Symphony — feature styles (owned by the hushbeat engineer from hand-over).
    Linked after lab.css in index.html, so equal-specificity rules win over the shared ones.
    Every selector starts with .hushbeat; element classes use hb-, custom properties --hb-. */
+
+/* the one glass row of controls, centred under the Mallow */
+.hushbeat .hb-row { max-width: min(560px, 100%); justify-content: center; }
+.hushbeat .chip svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.hushbeat .hb-buttons { display: inline-flex; align-items: center; gap: 6px; }
+
+/* the gesture tray: wraps on tall screens, one scrolling row on short ones */
+.hushbeat .hb-tray { max-width: min(560px, 100%); }
+.hushbeat .hb-tray[hidden] { display: none; }
+
+/* Close plays the cadence; the screen fades from 300 ms over 420 ms */
+.hushbeat.hb-leaving { opacity: 0; transition: opacity 420ms var(--ease-out) 300ms; pointer-events: none; }
+
+@media (max-width: 360px) {
+  .hushbeat .hb-hint .hb-long { display: none; }
+  /* icon-only chips (the label stays as aria-label and title) */
+  .hushbeat .hb-buttons { width: 40px; padding: 0; justify-content: center; }
+  .hushbeat .hb-buttons span { display: none; }
+}
+@media (max-height: 600px) {
+  .hushbeat .hb-hint { display: none; }
+  .hushbeat .hb-tray { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; border-radius: var(--r-pill); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hushbeat.hb-leaving { transition-duration: 300ms; }
+}

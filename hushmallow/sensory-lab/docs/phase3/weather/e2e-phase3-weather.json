@@ -1,0 +1,518 @@
+{
+ "when": "2026-10-14T14:17:38.421Z",
+ "part": null,
+ "passed": 85,
+ "failed": 0,
+ "results": [
+  {
+   "scope": "weather:open",
+   "name": "opens from the home card: rig ready, one realm canvas, .wx-back after it in the wrap",
+   "ok": true,
+   "detail": "{\"realm\":1,\"back\":1,\"order\":[\"hushfold-realm\",\"wx-back\"],\"radios\":8,\"checked\":\"rain\",\"chips\":[\"Catch the rain\"],\"title\":\"Weather Weaver\",\"sub\":\"Rain · Raindrop Lagoon\",\"rig\":true,\"debug\":{\"state\":\"live\",\"weather\":\"rain\",\"realmId\":\"raindrop-lagoon\",\"progress\":0,\"resolved\":false,\"metrics\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0,\"onBody\":false,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"light\":0,\"intensity\":1}},\"label\":\"Weather Weaver with Blubi. Keys 1 to 8 choose the weather, arrow keys shape it, hold W to weave. Touch Blubi to talk.\",\"sr\":true,\"hint\":\"true\"}"
+  },
+  {
+   "scope": "weather:open",
+   "name": "eight weather radios, Rain chosen (Blubi's lagoon), a \"Catch the rain\" chip",
+   "ok": true,
+   "detail": "{\"realm\":1,\"back\":1,\"order\":[\"hushfold-realm\",\"wx-back\"],\"radios\":8,\"checked\":\"rain\",\"chips\":[\"Catch the rain\"],\"title\":\"Weather Weaver\",\"sub\":\"Rain · Raindrop Lagoon\",\"rig\":true,\"debug\":{\"state\":\"live\",\"weather\":\"rain\",\"realmId\":\"raindrop-lagoon\",\"progress\":0,\"resolved\":false,\"metrics\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0,\"onBody\":false,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"light\":0,\"intensity\":1}},\"label\":\"Weather Weaver with Blubi. Keys 1 to 8 choose the weather, arrow keys shape it, hold W to weave. Touch Blubi to talk.\",\"sr\":true,\"hint\":\"true\"}"
+  },
+  {
+   "scope": "weather:open",
+   "name": "title, subtitle, stage label, announcer, hint hidden from screen readers",
+   "ok": true,
+   "detail": "{\"realm\":1,\"back\":1,\"order\":[\"hushfold-realm\",\"wx-back\"],\"radios\":8,\"checked\":\"rain\",\"chips\":[\"Catch the rain\"],\"title\":\"Weather Weaver\",\"sub\":\"Rain · Raindrop Lagoon\",\"rig\":true,\"debug\":{\"state\":\"live\",\"weather\":\"rain\",\"realmId\":\"raindrop-lagoon\",\"progress\":0,\"resolved\":false,\"metrics\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0,\"onBody\":false,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"light\":0,\"intensity\":1}},\"label\":\"Weather Weaver with Blubi. Keys 1 to 8 choose the weather, arrow keys shape it, hold W to weave. Touch Blubi to talk.\",\"sr\":true,\"hint\":\"true\"}"
+  },
+  {
+   "scope": "weather:open",
+   "name": "debug() is plain JSON with state, weather, realm, progress and metrics",
+   "ok": true,
+   "detail": "{\"state\":\"live\",\"weather\":\"rain\",\"realmId\":\"raindrop-lagoon\",\"progress\":0,\"resolved\":false,\"metrics\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0,\"onBody\":false,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"light\":0,\"intensity\":1}}"
+  },
+  {
+   "scope": "weather:open",
+   "name": "opens from #weather too (the entry weather of the home realm)",
+   "ok": true,
+   "detail": "{\"w\":\"rain\",\"realm\":\"raindrop-lagoon\",\"backdrop\":\"dark\"}"
+  },
+  {
+   "scope": "weather:open",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:storm",
+   "name": "Storm in the Static Storm: a heavy bank drawn, agitation capped at 0.32",
+   "ok": true,
+   "detail": "{\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":0.72,\"wet\":0.045,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0,\"onBody\":false,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"light\":0,\"intensity\":0.72},\"mood\":{\"agitation\":0.32,\"heaviness\":0.7,\"clarity\":0.15,\"warmth\":0.25},\"realm\":\"static-storm\",\"puffs\":6}"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "a swipe across the bank opens it: coverage falls, clear and progress rise",
+   "ok": true,
+   "detail": "{\"coverage\":0.679,\"clear\":0.321,\"rainLevel\":0.72,\"wet\":0.399,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0,\"onBody\":false,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"light\":1,\"intensity\":0.72}"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "the gap fires the realm \"clear\" pulse (through the gate)",
+   "ok": true,
+   "detail": "[{\"t\":15670.199999999255,\"kind\":\"clear\",\"ok\":true}]"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "the realm follows: heaviness falls and clarity rises (target mood)",
+   "ok": true,
+   "detail": "{\"before\":{\"agitation\":0.32,\"heaviness\":0.7,\"clarity\":0.15,\"warmth\":0.25},\"after\":{\"agitation\":0.32,\"heaviness\":0.433124173597004,\"clarity\":0.45131141690660825,\"warmth\":0.4006557084533041}}"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "Glitzi reacts to the gap in character",
+   "ok": true,
+   "detail": "[{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"arrive-stars-nod\",\"react\":\"nod\"},{\"t\":2.57,\"type\":\"hit-body\",\"tag\":\"glitzi-drip-huff\",\"react\":\"flick\"},{\"t\":4.23,\"type\":\"light-through\",\"tag\":\"light-through\",\"react\":null},{\"t\":5.53,\"type\":\"gap\",\"tag\":\"glitzi-gap-pretend\",\"react\":\"gasp\"}]"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "light reaches the Mallow through the gap",
+   "ok": true,
+   "detail": "{\"light\":1}"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "input isolation: the Companion saw no drag or stroke from the swipes",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "a strike: realm bolt on the far horizon, away from the Mallow, and Glitzi delights",
+   "ok": true,
+   "detail": "{\"ev\":[{\"t\":8.32,\"type\":\"strike\",\"x\":290,\"y\":553,\"k\":0}],\"pulses\":[{\"t\":27218.300000000745,\"kind\":\"strike\",\"ok\":true}],\"log\":[\"arrive-stars-nod\",\"glitzi-drip-huff\",\"light-through\",\"glitzi-gap-pretend\",\"glitzi-drip-huff\",\"glitzi-strike-delight\"],\"W\":390}"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "\"Part the clouds\" (held) parts them from the centre",
+   "ok": true,
+   "detail": "0 → 0.456"
+  },
+  {
+   "scope": "weather:storm",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:rain",
+   "name": "a still finger in the sky grows a glass bead that gathers drops",
+   "ok": true,
+   "detail": "{\"orbs\":[{\"x\":85,\"y\":257,\"n\":6,\"state\":\"held\"}],\"level\":1,\"front\":{\"frames\":42,\"drawn\":{\"puffs\":4,\"drops\":9,\"beads\":1,\"ribbons\":0,\"stars\":0,\"embers\":0,\"crests\":0},\"backDpr\":1,\"front\":false,\"frontActive\":false,\"realm\":\"raindrop-lagoon\",\"reduced\":false,\"quality\":\"low\"}}"
+  },
+  {
+   "scope": "weather:rain",
+   "name": "let go in the deck: the bead rises as light (\"success\" pulse) and the rain thins",
+   "ok": true,
+   "detail": "{\"level\":0.825,\"ev\":[\"bead\",\"sheltered\",\"hit-body\",\"land-water\",\"merge\",\"bead-up\"],\"pulses\":[{\"t\":4622.60000000149,\"kind\":\"success\",\"ok\":true}],\"progress\":0.20588235294117652}"
+  },
+  {
+   "scope": "weather:rain",
+   "name": "no Companion gestures from the weather touch",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "scope": "weather:rain",
+   "name": "a swipe sweeps the drops and leans the rain",
+   "ok": true,
+   "detail": "0.48360805024100295"
+  },
+  {
+   "scope": "weather:rain",
+   "name": "\"Catch the rain\" shelters the Mallow, then the bead goes up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:rain",
+   "name": "Blubi reacts to the rain in character (arrival, drips)",
+   "ok": true,
+   "detail": "[\"blubi-home-rain-hop\",\"blubi-drip-blush\",\"blubi-sheltered-melt\"]"
+  },
+  {
+   "scope": "weather:rain",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:resolve",
+   "name": "swipes alone resolve the storm",
+   "ok": true,
+   "detail": "4 swipes"
+  },
+  {
+   "scope": "weather:resolve",
+   "name": "Storm resolves: caption, Glitzi's line, the lead chip becomes Again, the clouds drift off",
+   "ok": true,
+   "detail": "{\"cap\":\"The storm passed.\",\"line\":\"“Pfft. I was not worried. Not even slightly.” Glitzi\",\"chips\":[\"Again\"],\"p\":1,\"t\":0.30929494887683284,\"drift\":true,\"tags\":[\"glitzi-home-resolved\"]}"
+  },
+  {
+   "scope": "weather:resolve",
+   "name": "the resolve beat: Glitzi's home weather resolves with its own celebration",
+   "ok": true,
+   "detail": "[\"glitzi-home-resolved\"]"
+  },
+  {
+   "scope": "weather:resolve",
+   "name": "Again: progress 0, a fresh bank, the lead chip back, the mood target back to base",
+   "ok": true,
+   "detail": "{\"chips\":[\"Part the clouds\"],\"mood\":{\"agitation\":0.32,\"heaviness\":0.7,\"clarity\":0.15,\"warmth\":0.25}}"
+  },
+  {
+   "scope": "weather:resolve",
+   "name": "Rain resolves when the rain is caught (≤ 0.15): the caption, Again, the deck drifts off",
+   "ok": true,
+   "detail": "{\"cap\":\"The rain eased.\",\"realm\":\"static-storm\",\"drift\":true,\"sr\":\"Rain at the Static Storm. Hold to catch it.\"}"
+  },
+  {
+   "scope": "weather:resolve",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:motion",
+   "name": "reduced motion: the front is a fade; env, layer and sims are reduced",
+   "ok": true,
+   "detail": "{\"mode\":\"fade\",\"layer\":true,\"sims\":true,\"env\":true}"
+  },
+  {
+   "scope": "weather:motion",
+   "name": "the mood targets are the same as with full motion",
+   "ok": true,
+   "detail": "{\"want\":{\"agitation\":0.7,\"heaviness\":0.7,\"clarity\":0.15,\"warmth\":0.25},\"got\":{\"agitation\":0.7,\"heaviness\":0.7,\"clarity\":0.15,\"warmth\":0.25},\"focus\":0}"
+  },
+  {
+   "scope": "weather:motion",
+   "name": "a live Motion change applies without remounting",
+   "ok": true,
+   "detail": "{\"layer\":false,\"sims\":false,\"planner\":false,\"screens\":1}"
+  },
+  {
+   "scope": "weather:motion",
+   "name": "hidden: frames and sim time freeze; the held bead is let go; paused",
+   "ok": true,
+   "detail": "{\"h0\":{\"f\":85,\"t\":4.149899999999994,\"held\":0,\"state\":\"paused\",\"active\":0},\"h1\":{\"f\":85,\"t\":4.149899999999994}}"
+  },
+  {
+   "scope": "weather:motion",
+   "name": "visible again: the first frames advance sim time by a frame or two, not the gap",
+   "ok": true,
+   "detail": "{\"h1\":{\"f\":85,\"t\":4.149899999999994},\"h2\":{\"t\":4.166599999999995,\"state\":\"live\"}}"
+  },
+  {
+   "scope": "weather:motion",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:dial",
+   "name": "each pick settles in pickRealm's realm (Boppo: home Sunpop; night skies go to the cove and back)",
+   "ok": true,
+   "detail": "[[\"wind\",\"sunpop-orchard\"],[\"fog\",\"sunpop-orchard\"],[\"rain\",\"sunpop-orchard\"],[\"storm\",\"sunpop-orchard\"],[\"moonlight\",\"moonmilk-cove\"],[\"starlight\",\"moonmilk-cove\"],[\"warm\",\"moonmilk-cove\"],[\"sunshine\",\"sunpop-orchard\"]]"
+  },
+  {
+   "scope": "weather:dial",
+   "name": "the realm is told moodFor(weather, 0) (within the throttle)",
+   "ok": true,
+   "detail": "[[\"wind\",0],[\"fog\",0],[\"rain\",0],[\"storm\",0],[\"moonlight\",0],[\"starlight\",0],[\"warm\",0],[\"sunshine\",0]]"
+  },
+  {
+   "scope": "weather:dial",
+   "name": "the dial and the subtitle follow every pick",
+   "ok": true,
+   "detail": "[\"Wind · Sunpop Orchard\",\"Fog · Sunpop Orchard\",\"Rain · Sunpop Orchard\",\"Storm · Sunpop Orchard\",\"Moonlight · Moonmilk Cove\",\"Starlight · Moonmilk Cove\",\"Warm glow · Moonmilk Cove\",\"Sunshine · Sunpop Orchard\"]"
+  },
+  {
+   "scope": "weather:dial",
+   "name": "there is always a realm canvas, through every front",
+   "ok": true,
+   "detail": "0 frames without one"
+  },
+  {
+   "scope": "weather:dial",
+   "name": "five quick picks end on the last one, with at most one realm swap",
+   "ok": true,
+   "detail": "{\"sw0\":2,\"sw1\":{\"swaps\":2,\"realm\":\"sunpop-orchard\"}}"
+  },
+  {
+   "scope": "weather:dial",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:keys",
+   "name": "digit 4 from the stage chooses Rain (Loomi stays in the Blue Drift)",
+   "ok": true,
+   "detail": "{\"w\":\"rain\",\"realm\":\"blue-drift\"}"
+  },
+  {
+   "scope": "weather:keys",
+   "name": "ArrowRight in the dial selects Storm and moves focus (one tab stop)",
+   "ok": true,
+   "detail": "{\"w\":\"storm\",\"focus\":\"storm\",\"tab\":[\"storm\"]}"
+  },
+  {
+   "scope": "weather:keys",
+   "name": "an arrow key on the stage pushes the nearest cloud",
+   "ok": true,
+   "detail": "0 → 380"
+  },
+  {
+   "scope": "weather:keys",
+   "name": "R is Again: Storm starts over",
+   "ok": true,
+   "detail": "{\"w\":\"storm\",\"sr\":\"Storm again.\"}"
+  },
+  {
+   "scope": "weather:keys",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:exit",
+   "name": "close: fades (leaving, inert) and returns home",
+   "ok": true,
+   "detail": "{\"leaving\":\"leaving\",\"inert\":true}"
+  },
+  {
+   "scope": "weather:exit",
+   "name": "close: no weather canvases, screen, realm or handle left; home's Mallow untouched",
+   "ok": true,
+   "detail": "{\"wx\":0,\"handle\":null,\"canvases\":1,\"rest\":null,\"face\":\"{\\\"set\\\":{},\\\"min\\\":{}}\",\"inflate\":0}"
+  },
+  {
+   "scope": "weather:exit",
+   "name": "escape: fades (leaving, inert) and returns home",
+   "ok": true,
+   "detail": "{\"leaving\":\"leaving\",\"inert\":true}"
+  },
+  {
+   "scope": "weather:exit",
+   "name": "escape: no weather canvases, screen, realm or handle left; home's Mallow untouched",
+   "ok": true,
+   "detail": "{\"wx\":0,\"handle\":null,\"canvases\":1,\"rest\":null,\"face\":\"{\\\"set\\\":{},\\\"min\\\":{}}\",\"inflate\":0}"
+  },
+  {
+   "scope": "weather:exit",
+   "name": "listeners (window, document, prefs, Comfort DNA) back to the baseline",
+   "ok": true,
+   "detail": "{\"base\":{\"l\":20,\"prefs\":1,\"dna\":1,\"store\":\"[\\\"hm.sensorylab.comfort.v1\\\",\\\"hm.sensorylab.v1\\\"]\"},\"now\":{\"l\":20,\"prefs\":1,\"dna\":1,\"store\":\"[\\\"hm.sensorylab.comfort.v1\\\",\\\"hm.sensorylab.v1\\\"]\"}}"
+  },
+  {
+   "scope": "weather:exit",
+   "name": "nothing new in storage (no weather history)",
+   "ok": true,
+   "detail": "{\"base\":\"[\\\"hm.sensorylab.comfort.v1\\\",\\\"hm.sensorylab.v1\\\"]\",\"now\":\"[\\\"hm.sensorylab.comfort.v1\\\",\\\"hm.sensorylab.v1\\\"]\"}"
+  },
+  {
+   "scope": "weather:exit",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:phone",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:phone",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:phone",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:phone",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:phone",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:phone",
+   "name": "the chosen radio is in view; both bottom rows 50 px",
+   "ok": true,
+   "detail": "{\"inView\":true,\"rows\":[50,50],\"sw\":340,\"cw\":340}"
+  },
+  {
+   "scope": "weather:layout:phone",
+   "name": "the baseline is the same for Rain and Storm",
+   "ok": true,
+   "detail": "700.0"
+  },
+  {
+   "scope": "weather:layout:phone",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:small",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:small",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:small",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:small",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:small",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:small",
+   "name": "the chosen radio is in view; both bottom rows 50 px",
+   "ok": true,
+   "detail": "{\"inView\":true,\"rows\":[50,50],\"sw\":340,\"cw\":290}"
+  },
+  {
+   "scope": "weather:layout:small",
+   "name": "the baseline is the same for Rain and Storm",
+   "ok": true,
+   "detail": "424.0"
+  },
+  {
+   "scope": "weather:layout:small",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:desktop",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:desktop",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:desktop",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:desktop",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:desktop",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:desktop",
+   "name": "the chosen radio is in view; both bottom rows 50 px",
+   "ok": true,
+   "detail": "{\"inView\":true,\"rows\":[50,50],\"sw\":340,\"cw\":340}"
+  },
+  {
+   "scope": "weather:layout:desktop",
+   "name": "the baseline is the same for Rain and Storm",
+   "ok": true,
+   "detail": "716.0"
+  },
+  {
+   "scope": "weather:layout:desktop",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:land",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:land",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:land",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:land",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:land",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:layout:land",
+   "name": "the chosen radio is in view; both bottom rows 50 px",
+   "ok": true,
+   "detail": "{\"inView\":true,\"rows\":[50,50],\"sw\":340,\"cw\":340}"
+  },
+  {
+   "scope": "weather:layout:land",
+   "name": "the baseline is the same for Rain and Storm",
+   "ok": true,
+   "detail": "246.0"
+  },
+  {
+   "scope": "weather:layout:land",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}
