@@ -102,7 +102,7 @@ const CSS = `
 }
 .bx-points b { color: #fff; font-weight: 800; }
 .bx-todo { display: inline; padding: 1px 6px; border-radius: 6px; border: 1.5px dashed #ffc35c; background: rgba(255, 195, 92, 0.12); color: #ffe2a6; font-weight: 700; }
-.bx-link { display: inline-flex; align-items: center; min-height: 44px; margin: -10px 0 -12px; padding: 0 4px 0 0; border: 0; background: none; color: #ffd6ea; font: 700 calc(15px * var(--bx-k))/1.2 var(--hf-ff-ui); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.bx-link { display: inline-flex; align-items: flex-end; min-height: 44px; margin: -23px 0 0; padding: 0 4px 0 0; border: 0; background: none; color: #ffd6ea; font: 700 calc(15px * var(--bx-k))/1.2 var(--hf-ff-ui); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .bx-small { margin: 0; font: 550 calc(13px * var(--bx-k))/1.4 var(--hf-ff-ui); color: #cdc6ea; }
 .bx-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 .bx-actions { gap: 12px; }

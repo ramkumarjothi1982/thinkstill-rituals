@@ -306,6 +306,18 @@ const M = {
 };
 export const MALLOW_LINES = M;
 export const SHARED_LINES = SHARED;
+/**
+ * (owner decision 'Ask when unsure', 14 Oct 2026) The words might be about a death or a loss and nothing reads one for
+ * sure (grief.js unsureLoss): before any Thought Mallow is made or any world starts, the Mallow asks once, attentive,
+ * nothing playful. "Yes, it is" is the gentle path (as a loss named would be); "Something else" carries on as usual;
+ * no answer within `ms`, or Back, stays here quietly. Another Angle's Zuzu asks the same (src/beyond/lines.js LOSS_CHECK).
+ */
+export const LOSS_CHECK = Object.freeze({
+  ask: 'I want to get this right. Is this about losing someone?',
+  yes: 'Yes, it is',
+  no: 'Something else',
+  ms: 20000,
+});
 
 const SQUEEZE_KINDS = new Set(['squeeze', 'release', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle']);
 const FIRST_KIND = { squeeze: 'hold', press: 'hold', stretch: 'hold', massage: 'hold', stroke: 'hold', jiggle: 'hold', release: 'hold', tap: 'tap', doubleTap: 'tap', flick: 'flick' };

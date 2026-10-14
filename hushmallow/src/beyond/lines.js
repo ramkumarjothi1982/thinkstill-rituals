@@ -68,6 +68,19 @@ export const GRIEF = Object.freeze({
 });
 
 /**
+ * (owner decision 'Ask when unsure', 14 Oct 2026) The words might be about a death or a loss and nothing reads one for
+ * sure (backstop.js unsureLoss): before anything is sent, framed or played, Zuzu asks once, attentive. "Yes, it is" is
+ * the gentle path; "Something else" carries on as usual; no answer within `ms`, or Back, stays here quietly. The main
+ * screen's Mallow asks the same (src/hushfold/lines.js LOSS_CHECK).
+ */
+export const LOSS_CHECK = Object.freeze({
+  ask: 'I want to get this right. Is this about losing someone?',
+  yes: 'Yes, it is',
+  no: 'Something else',
+  ms: 20000,
+});
+
+/**
  * A stated event, or something someone did to them, with no interpretive marker in their words (review r8, the
  * flipped default): it really happened. Never "one way to read it", never "what your mind added", never something to
  * check: the acknowledging mechanics, with lines that treat it as real ('event': something happened; 'hurt':

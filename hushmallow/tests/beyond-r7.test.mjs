@@ -135,13 +135,14 @@ test('r7.B: a server answer plays its two lines for death talk only when it read
   // (review r10: the server's care for death talk is said gently, SAFETY.careGentle)
   assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\{ lines: S\.follow \? SAFETY\.follow : SAFETY\.careGentle \}\); return; \}/);
   assert.match(grief, /serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && griefLinesOk\(res\.scene\)\) scene = res\.scene;\s*else \{[\s\S]*const again = checkText\(S\.text\);/);
-  assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
+  assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion, kind: told \|\| \(griefFeeling\(S\.emotion\) \? 'grief' : null\) \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
   assert.doesNotMatch(grief, /spawnThought|playScene|loadMechanic|startAngle|setStage\('playful'\)|WAITING\b/);
   assert.match(grief, /careFace\(\);/, 'Zuzu’s attentive face');
   // startAngle sends death talk (and the gentle route) to griefMode before any Thought Mallow or request
   const start = src.slice(src.indexOf('async function startAngle('), src.indexOf('async function waitingLines('));
-  assert.ok(start.indexOf('if (gentleRoute(S.text)) return griefMode();') >= 0);
-  assert.ok(start.indexOf('gentleRoute(S.text)') < start.indexOf('spawnThought()') && start.indexOf('gentleRoute(S.text)') < start.indexOf('client.angle('));
+  // (review r12: lossRoute, every way to the gentle path the main screen reads too)
+  assert.ok(start.indexOf("if (route === 'gentle') return griefMode();") >= 0);
+  assert.ok(start.indexOf('lossRoute(S.text') < start.indexOf('spawnThought()') && start.indexOf('lossRoute(S.text') < start.indexOf('client.angle('));
 });
 
 // ----------------------------------------------------------------- C. the backstop --
@@ -206,10 +207,11 @@ test('r7.C: a server scene beside a harm word never plays a framing mechanic, it
     const moved = harmGuard(server({ reasoning_pattern: 'rumination', interaction_type: 'let_loop_drift', mechanic: 'let_loop_drift', ...kindLines }), text);
     assert.equal(moved.source, 'server', text);
     assert.equal(moved.mechanic, 'assemble_step', text);
+    // (review r12) …but never a practical problem's beside a bag word ("real problems have next steps" for a death): the
+    // kind steps' own scene
     const kind = harmGuard(server({ reasoning_pattern: 'practical_problem', interaction_type: 'soften_harshness', mechanic: 'soften_harshness', ...kindLines }), text);
-    assert.equal(kind.source, 'server', text);
-    assert.equal(kind.mechanic, 'soften_harshness', text);
-    assert.ok(kind.feeling && kind.guarded, text);
+    assert.equal(kind.source, 'authored', text);
+    assert.ok(KIND_STEPS.has(kind.mechanic) && kind.feeling, text);
     assert.equal(kind.possible_assumption, '', text);
     assert.equal(kind.alternative_angle, '', text);
   }

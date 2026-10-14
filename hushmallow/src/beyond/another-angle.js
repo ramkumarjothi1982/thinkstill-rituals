@@ -29,11 +29,11 @@ import { hfIcon } from '../hushfold/icons.js';
 import { ensureBeyondCss } from './styles.js';
 import {
   WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
-  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, mechanicLines, pick,
+  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, LOSS_CHECK, mechanicLines, pick,
 } from './lines.js';
 import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, guessGuard } from './authored.js';
 import { deathEscalation, serverLoss, griefLinesOk } from './grief.js';
-import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess } from './backstop.js';
+import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess, lossRoute, griefFeeling } from './backstop.js';
 import { FEELING_LOOK } from './feelings.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
 import { createAngleClient, resolveEndpoint, TIMEOUTS } from './angle-client.js';
@@ -124,7 +124,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   let W2 = null;                                // W2's Thought Mallow + its renderer, for the mechanics (null: the kit's jelly)
   let area = { x: 16, y: 160, w: 358, h: 360 };
   const ripples = [];
-  const layer = { overlay: 0 };
+  const layer = { overlay: 0, lossCheck: 0 };
   // Sheets opened here (support, urgent support, the overlay's A–Z list) get a history entry of their own,
   // newer than the compact input beneath them, so Back closes the sheet first (as in the Hushfold shell)
   const sheets = [];   // { token, sheet, seen, obs, done }
@@ -159,7 +159,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function backClose(token) {
     const sh = token ? sheets.find((r) => r.token === token) : sheets[sheets.length - 1];
     if (sh) { sh.token = 0; sh.sheet.close('back'); return; }
-    if (overlay && (!token || token === layer.overlay || !sheets.length)) { layer.overlay = 0; overlay.close('back'); }
+    if (overlay && (!token || token === layer.overlay || !sheets.length)) { layer.overlay = 0; overlay.close('back'); return; }
+    // (the check-in "Is this about losing someone?": Back lets it go, and Zuzu stays here quietly)
+    if (layer.lossCheck && (!token || token === layer.lossCheck)) { layer.lossCheck = 0; subs?.drop((o) => o.lossCheck); }
   }
 
   function resize() {
@@ -622,7 +624,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
    */
   function serverCareLines() {
     if (S.follow) return SAFETY.follow;
-    return gentleRoute(S.text) || bagWords(S.text) ? SAFETY.careGentle : SAFETY.care;
+    return S.lossSaid || gentleRoute(S.text) || bagWords(S.text) || lossRoute(S.text, { emotion: S.emotion }) ? SAFETY.careGentle : SAFETY.care;
   }
   /** Death talk that wants to follow the one who died, seen: care for the rest of the visit (grief.js deathEscalation). */
   function noteFollow() {
@@ -776,7 +778,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
    * that already reads as grief (`asked`: the server has answered already); without one, and with sharing on, the
    * words are sent once here.
    */
-  async function griefMode({ scene = null, asked = false } = {}) {
+  async function griefMode({ scene = null, asked = false, told = null } = {}) {
     // (wanting to follow the one who died is care, whichever way it got here: nothing more is sent)
     if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
     const seq = ++S.seq;
@@ -810,7 +812,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       }
     }
     // only the two lines are used: the server's own mechanic never plays for a loss
-    if (!scene) scene = gentleScene(S.text, { emotion: S.emotion });
+    if (!scene) scene = gentleScene(S.text, { emotion: S.emotion, kind: told || (griefFeeling(S.emotion) ? 'grief' : null) });
     else scene = { ...scene, grief: true, mechanic: null };
     S.scene = scene;
     await heard;
@@ -845,9 +847,20 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
 
   /** The words → a Thought Mallow → (server or authored) scene → its mechanic. */
   async function startAngle({ another = false } = {}) {
-    // death talk (any death or loss word, recall first), someone alive but going, or a harm word no idiom
-    // explains: no Thought Mallow and no mechanic; with sharing on the server still answers it, gently (griefMode)
-    if (gentleRoute(S.text)) return griefMode();
+    // death talk (any death or loss word, recall first), someone alive but going, a person beside a strong loss cue (as
+    // on the main screen), or a grief-family feeling they chose: no Thought Mallow and no mechanic; with sharing on the
+    // server still answers it, gently (griefMode)
+    const route = lossRoute(S.text, { emotion: S.emotion });
+    if (route === 'gentle') return griefMode();
+    // not sure (owner decision 'Ask when unsure'): Zuzu asks first, before anything is sent, framed or played; asked once
+    // for these words in the visit ("Show me another angle" never asks again)
+    if (route === 'ask' && !another && S.lossChecked !== S.text) {
+      const v = await askAboutLoss();
+      if (S.left) return;
+      if (v === 'yes') { S.lossChecked = S.text; S.lossSaid = true; S.noPlay = true; return griefMode({ told: 'loss' }); }
+      if (v !== 'else') { quietAfterAsk(); return; }
+      S.lossChecked = S.text;
+    }
     const seq = ++S.seq;
     S.phase = 'waiting';
     dockShow({});
@@ -909,6 +922,33 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (invited && !S.inviteSaid) { S.inviteSaid = true; S.offlineSaid = true; scene.inviteNote = true; }
     else if (offline && serverMode() && !S.offlineSaid) { S.offlineSaid = true; scene.offlineNote = true; }
     await playScene(scene, seq);
+  }
+  /**
+   * (owner decision 'Ask when unsure', 14 Oct 2026) "Is this about losing someone?", once, with Zuzu's attentive face:
+   * nothing is sent to the server before the answer, no Thought Mallow, nothing playful. The chips are real buttons in the
+   * subtitles' row (announced with the line). → 'yes' | 'else' | null (no answer within LOSS_CHECK.ms, Back, or a new Tell).
+   */
+  async function askAboutLoss() {
+    const seq = ++S.seq;
+    S.phase = 'asking';
+    careFace();
+    dockShow({});
+    layer.lossCheck = app.pushLayer?.() || 0;
+    try {
+      const v = await choose(LOSS_CHECK.ask, [{ label: LOSS_CHECK.yes, value: 'yes' }, { label: LOSS_CHECK.no, value: 'else' }],
+        { mallow: 'zuzu', timeoutMs: LOSS_CHECK.ms, transient: true, lossCheck: true, interrupt: true });
+      return seq === S.seq ? v : null;
+    } finally {
+      const t = layer.lossCheck; layer.lossCheck = 0; if (t) app.popLayer?.(t);
+    }
+  }
+  /** The check-in let go (no answer, Back, a new Tell): Zuzu stays here quietly, Tell close by, nothing sent or made. */
+  function quietAfterAsk() {
+    if (S.left || overlay || S.phase !== 'asking') return;
+    S.phase = 'invite';
+    careFace();
+    dockShow({ tell: true });
+    layout();
   }
   async function waitingLines(seq) {
     // Zuzu's line first, then (early, once) what is happening, in the Hushfold's own words; then the rest in turn
@@ -1347,14 +1387,14 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     },
     /** Back closes the newest layer first: a sheet (the urgent one included), then the compact input. */
     get blockBack() {
-      if (!overlay && !sheets.length) return null;
+      if (!overlay && !sheets.length && !layer.lossCheck) return null;
       return (token) => backClose(token);
     },
     safeForUpdate() {
       if (overlay?.dirty || consentCard || sheets.length) return false;
       if (subs?.holding) return false;
       if (S.crisis || S.care || !supportPill.hidden) return false;
-      return !['waiting', 'playing', 'reveal', 'explore', 'feedback', 'typing'].includes(S.phase);
+      return !['waiting', 'playing', 'reveal', 'explore', 'feedback', 'typing', 'asking'].includes(S.phase);
     },
   };
   let offPrefs = null;
@@ -1364,6 +1404,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     return {
       S, get subs() { return subs; }, get mech() { return mech; }, get mechId() { return mechId; }, get area() { return area; },
       get zuzu() { return zAd; }, get companion() { return compAd; }, get overlay() { return overlay; }, get consent() { return consentCard; },
+      get thought() { return thought; },
       openTell, layout, serverMode, endpoint,
       /** Play a scene directly (lab): an authored scene for `text`, optionally forcing the mechanic. */
       async play(text, { mechanic = null, emotion = null } = {}) {

@@ -18,6 +18,10 @@
 //   strongLoss(text)     → (review r11) lossNear with the strong cues only (taken from us, a killer that got them, a
 //                          heartbeat, unresponsive, buried, an angel, heaven, never woke, couldn't save…): the main
 //                          screen's backstop (input-overlay readSafety), where a false alarm costs the support beat
+//   unsureLoss(text)     → (owner decision 'Ask when unsure', 14 Oct 2026) nothing above reads a loss, but a person, a pet
+//                          or a pregnancy sits beside a softer loss cue: both screens ask "Is this about losing someone?"
+//   griefFeeling(id)     → a grief-family feeling chosen (grief, mourning, bereft, heartache, heartbreak, anticipatory grief)
+//   lossRoute(text, {emotion}) → 'gentle' | 'ask' | null: how a Tell reaches the gentle path on both screens
 //   ordinaryOnly(text)   → (review r10) the only bag words are ordinary idioms ("I passed my driving test!"): neutral lines
 //   harmWords(text)      → bagWords (the r7 name)
 //   harmRoute(text)      → null (no bag word) | 'gentle' (death talk, someone alive but going) | 'kind' (the rest)
@@ -31,7 +35,7 @@
 //
 // Pure ES module, no DOM. Deterministic.
 
-import { norm, blankOrdinary, PERSON, PET, KILLERS, ORDINALS } from './death-words.js';
+import { norm, blankOrdinary, PERSON, PET, BARE, THING, KILLERS, ORDINALS } from './death-words.js';
 import { deathTalk, livingLoss } from './grief.js';
 import { hasMarker } from './markers.js';
 
@@ -50,7 +54,7 @@ export const BAG = new RegExp(`\\b(?:${[
   'a and e', 'a&e', 'resus', 'missing', 'rip',
   // (review r9) misspelt deaths, and the phrasings deathTalk missed: a misspelt or unusual death is never framed
   'ded', 'dided', 'diied', 'dieed', 'diedd', 'dide', 'deid', 'diead', 'dieing', 'dyin', 'deaded', 'six feet under', 'put to sleep', 'no longer with us', 'with us anymore', 'with us any more',
-  'is no more', 'hit by a lorry', 'hit by a truck', 'hit by a van', 'hit by a motorbike', 'hit by a tram', 'knocked down', 'pregnancy', 'heaven', 'rainbow bridge', 'vet',
+  'is no more', 'hit by a lorry', 'hit by a truck', 'hit by a van', 'hit by a motorbike', 'hit by a tram', 'knocked down', 'pregnancy', 'heaven', 'rainbow bridge', 'vet', 'vets',
   // (review r11) the illness named as the subject ("covid got my grandad", "the virus got him"), and the slang
   'covid', 'covid 19', 'corona', 'coronavirus', 'virus', 'bit the dust', 'carked it', 'karked it', 'copped it', 'met his maker', 'met her maker', 'breathed his last',
   'breathed her last', 'pushing up daisies', 'pushing up the daisies',
@@ -106,12 +110,18 @@ const CUE_ASIDE = new RegExp([
   // (review r11) "went to bed without saying goodnight", "left the room without saying goodbye" (someone alive, in a mood)
   '\\bwithout\\s+(?:even\\s+)?(?:saying|a)\\s+(?:goodbye|goodnight|good\\s+night|night|bye|hello|hi|hey|a\\s+word|anything|thanks|thank\\s+you|sorry)\\b',
   '\\bwent\\s+(?:all\\s+)?(?:quiet|silent|red|mad|crazy|ballistic|mental|off\\s+on\\s+one|on\\s+and\\s+on|on\\s+about|off\\s+at\\s+me|shopping|clubbing)\\b',
-  '\\bwent\\s+to\\s+(?:the\\s+|a\\s+|an\\s+|my\\s+|his\\s+|her\\s+|their\\s+|our\\s+)?(?:cinema|movies|pictures|shops?|supermarket|park|pub|bar|club|party|gym|school|college|uni|university|work|office|beach|match|game|concert|gig|festival|restaurant|cafe|town|city|library|zoo|pool|meeting|toilet|loo|bathroom|kitchen|class|lesson|practice|training|interview|dentist|mall|prom|disco|sleepover|bowling)\\b',
+  '\\bwent\\s+(?:out\\s+)?(?:to|for)\\s+(?:the\\s+|a\\s+|an\\s+|my\\s+|his\\s+|her\\s+|their\\s+|our\\s+|some\\s+)?(?:cinema|movies|pictures|shops?|shopping|supermarket|park|pub|bar|club|party|gym|school|college|uni|university|work|office|beach|match|game|concert|gig|festival|restaurant|cafe|town|city|library|zoo|pool|meeting|toilet|loo|bathroom|kitchen|class|classes|lesson|lessons|practice|training|interview|dentist|mall|prom|disco|sleepover|bowling|lunch|dinner|breakfast|brunch|tea|coffee|drinks?|a\\s+drink|a\\s+walk|a\\s+run|a\\s+meal|a\\s+curry|a\\s+pizza|nandos|mcdonalds|the\\s+pictures|church|mass|the\\s+mosque|mosque|temple|the\\s+match|football|rugby|netball|swimming|dancing|holiday|camp|the\\s+doctors?|the\\s+gp|hers|his|theirs|someone\\s+elses|a\\s+friends|her\\s+friends|his\\s+friends)\\b',
+  // (review r12) a thing of theirs found ("my friend found my old diary"): never a person found
+  '\\bfound\\s+(?:my|our|his|her|their|the|a|an|some|all\\s+my)\\s+(?:old\\s+|secret\\s+|new\\s+|private\\s+|hidden\\s+|little\\s+)?(?:diary|diaries|journal|phone|messages|texts|letters?|notes?|stuff|things|keys|wallet|purse|bag|book|books|photos?|pictures?|card|cards|present|presents|gift|gifts|homework|drawings?|search\\s+history|browser\\s+history|history|vape|cigarettes|stash|toys?|ball|charger|money|receipts?|tickets?|passport|ring|watch|necklace|earrings?|glasses|shoes?|coat|jumper|hoodie|clothes|sweets|chocolate|snacks|socks|account|instagram|tiktok|finsta|blog|poems?|song|songs|videos?|browser|laptop|tablet|ipad|games?|report|results?|grades?|essay|exam|test)\\b',
   '\\bfound\\s+out\\b', '\\b(?:the\\s+)?rest\\s+of\\b', '\\bsitting\\s+(?:next\\s+to|with|beside|by\\s+me|on|at|in|there|here|alone|around|together|opposite)\\b',
   '\\bforgot\\s+(?:about\\s+)?(?:our|my|the|his|her|their)\\s+(?:wedding\\s+)?anniversary\\b',
+  // (review r12) someone alive and busy, or off with someone else: "resting after her shift", "said goodbye to everyone but me",
+  // "is never around any more"
+  '\\bresting\\s+(?:after|before|from|on|in|up|at)\\s+(?:her|his|their|the|a|my|work|bed|home)\\b', '\\bgoodbyes?\\s+to\\s+(?:everyone|everybody|all\\s+of\\s+them|the\\s+(?:class|team|group|others))\\b',
+  '\\b(?:is|s|are|re)\\s+never\\s+(?:around|home|here|in|about|there)\\s+any\\s*more\\b',
   // (review r11) went out, home, upstairs, to bed, off with, round to ("my girlfriend went out with her friends tonight");
   // "anymore" closing "want to be my friend anymore", "like me anymore" (someone alive, cooling off)
-  '\\bwent\\s+(?:out|home|upstairs|downstairs|up\\s+to\\s+(?:bed|her\\s+room|his\\s+room|their\\s+room)|to\\s+bed|to\\s+sleep\\s+for\\s+the\\s+night|off\\s+with|out\\s+with|round\\s+to|over\\s+to|back\\s+to\\s+(?:work|school|bed|uni|college|the\\s+office))\\b',
+  '\\bwent\\s+(?:out|home(?!\\s+to\\s+(?:be\\s+with|jesus|god|the\\s+lord|glory|heaven|(?:his|her|their)\\s+(?:maker|saviour|savior|lord)))|upstairs|downstairs|up\\s+to\\s+(?:bed|her\\s+room|his\\s+room|their\\s+room)|to\\s+bed|to\\s+sleep\\s+for\\s+the\\s+night|off\\s+with|out\\s+with|round\\s+to|over\\s+to|back\\s+to\\s+(?:work|school|bed|uni|college|the\\s+office))\\b',
   '\\b(?:want|wants|wanna|wanted)\\s+to\\s+be\\s+(?:my|our)\\s+(?:best\\s+)?(?:friend|mate|bestie|girlfriend|boyfriend|partner)s?\\s+any\\s*more\\b',
   '\\b(?:like|likes|liked|love|loves|care\\s+about|cares\\s+about|want|wants|need|needs|trust|trusts|talk\\s+to|talks\\s+to|text|texts|call|calls|invite|invites|fancy|fancies|rate|rates)\\s+(?:me|us)\\s+any\\s*more\\b',
 ].join('|'), 'giu');
@@ -200,7 +210,8 @@ const SCAN_NO = /\bscans?\b(?:\s+[a-z]+){0,5}?\s+(?:no|without)\b(?!\s+(?:proble
  */
 export function strongLoss(text) {
   const raw = blankOrdinary(norm(text)).toLowerCase();
-  const t = raw.replace(WRONG_CUES, ' ').replace(CUE_ASIDE, ' ').replace(STRONG_ASIDE, ' ').replace(/\s+/gu, ' ');
+  // (review r12) a person's thing is never the person: "the fire got my dads car" names a car
+  const t = raw.replace(WRONG_CUES, ' ').replace(CUE_ASIDE, ' ').replace(STRONG_ASIDE, ' ').replace(OWNED_THING, ' ').replace(/\s+/gu, ' ');
   if (!/\p{L}/u.test(t)) return false;
   if (NO_HEARTBEAT.test(t) || SCAN_NO.test(t)) return true;
   const at = wordAt(t);
@@ -209,6 +220,113 @@ export function strongLoss(text) {
   who.push(...spans(t, PRONOUN, at));
   return near(who, spans(t, STRONG_CUE, at));
 }
+/** A person's or a pet's thing ("my dads car", "our dogs lead"): the owner's word goes, the thing stays. */
+const OWNED_THING = new RegExp(`\\b(?:${PERSON}|${PET})s\\s+(?=(?:${THING})\\b)`, 'giu');
+
+// ------------------------------------------------- not sure: ask (owner decision 'Ask when unsure', 14 Oct 2026) --
+// Five semantic reviews kept finding new ways to say that someone died, and no word list catches them all. So when the
+// words name a person, a pet or a pregnancy and carry any softer loss cue, but nothing above reads a death or a loss,
+// the app is not sure: it asks ("Is this about losing someone?") instead of guessing. A false alarm costs one tap.
+/** A pregnancy or a baby: "the scan", "at 8 weeks", "the bleeding started", "no heartbeat", "I miscarried". */
+const PREG_WORD = /\b(?:pregnan(?:cy|cies|t)|bab(?:y|ys|ies)|scans?|weeks?|bleeding|bled|heartbeat|miscarr\w*)\b/giu;
+/**
+ * The softer loss cues (the owner's broad list, on purpose): gone, went, left, let … go, with us, here any more, any
+ * longer, isn't here, never got to, won't see, here to see me, (never) recovered, breathing, found, lost, without, took,
+ * taken, got / won / beat (something that is not a person did it), that was it, the end, the other side, cross over,
+ * join them, be with them, heaven, God, the Lord, Jesus, glory, an angel, wings, at rest, peaceful(ly), the vet, the
+ * doctors, hospital, intensive care, life support, war, viable, terminate, stopped growing, "it was over", "grandas
+ * away", asleep, the last time, goodbye.
+ */
+const SOFT = new RegExp([
+  '\\bgone\\b', '\\bwent\\b', '\\bleft\\b', '\\blet\\s+(?:[a-z]+\\s+){1,3}?go\\b(?!\\s+(?:of|out|outside|off|first|on\\s+the))', '\\b(?:not|isnt|arent|wasnt|werent|no\\s+longer)\\s+(?:here\\s+)?with\\s+us\\b',
+  '\\bhere\\s+any\\s*more\\b', '\\bany\\s+longer\\b', '\\b(?:isnt|is\\s+not|not|arent|wasnt|aint)\\s+(?:even\\s+|really\\s+)?(?:here|there|around)\\b',
+  '\\bnever\\s+(?:got|get|gets|had\\s+the\\s+chance|got\\s+the\\s+chance)\\s+to\\b', '\\b(?:wont|will\\s+not|will\\s+never|wont\\s+ever|never\\s+will|cant|cannot)\\s+(?:ever\\s+)?(?:see|get\\s+to\\s+see|be\\s+(?:there|here|at|around)|meet|hold|hear|walk\\s+me|watch|know|come\\s+to)\\b',
+  '\\b(?:didnt|did\\s+not|never)\\s+(?:see|reach|make\\s+it\\s+to|live\\s+to\\s+see|get\\s+to\\s+see)\\s+(?:his|her|their)\\b', '\\bmoved\\s+on\\b(?!\\s+(?:to|from))',
+  '\\bup\\s+(?:there|above|in\\s+the\\s+(?:sky|stars|clouds))\\b', '\\b(?:in|among|with)\\s+the\\s+(?:stars|clouds)\\b',
+  '\\b(?:here|there|around|alive)\\s+to\\s+(?:see|watch|meet|hear|hold)\\b', '\\brecovered\\b', '\\bbreathing\\b', '\\bfound\\b', '\\blost\\b', '\\bwithout\\b', '\\btook\\b', '\\btaken\\b',
+  '\\bthat\\s+was\\s+(?:it|that)\\b', '\\b(?:at|near|to|till|until)\\s+the\\s+(?:very\\s+)?end\\b(?!\\s+of)', '\\bthe\\s+end\\s*(?:$|[.,!?;:…])', '\\bother\\s+side\\b(?!\\s+of)',
+  '\\bcross(?:ed|es|ing)?\\s+over\\b(?!\\s+(?:the\\s+(?:road|street|bridge|river|line|border|field|car\\s+park)|to\\s+(?:the\\s+)?(?:road|street|other\\s+side\\s+of)))',
+  `\\bjoin(?:ed|s|ing)?\\s+(?:him|her|them|(?:(?:my|our|his|her|their)\\s+)?(?:[a-z]+\\s+)?(?:${PERSON}|${BARE}|${PET})s?)\\b`,
+  `\\bbe\\s+with\\s+(?:him|her|them|(?:(?:my|our|his|her|their)\\s+)?(?:[a-z]+\\s+)?(?:${PERSON}|${BARE}|${PET})s?)\\b`,
+  `\\b(?:is|s|are|re)\\s+with\\s+(?:(?:my|our|his|her|their)\\s+)?(?:${PERSON}|${BARE})s?\\s+now\\b`,
+  '\\bheavens?\\b', '\\b(?:with|to|by|in|home\\s+to|meet|met|before)\\s+(?:god|the\\s+lord|jesus|his\\s+maker|her\\s+maker)\\b', '\\b(?:god|the\\s+lord|jesus)\\s+(?:took|has\\s+(?:taken|him|her)|called|wanted|needed|has\\s+got)\\b',
+  '\\bgods\\s+(?:arms|hands|house|garden|side|kingdom)\\b', '\\bglory\\b', '\\bangels?\\b', '\\bwings\\b', '\\b(?:at|to|laid\\s+to|now\\s+at|finally\\s+at|eternal|her|his|their)\\s+rest\\b(?!\\s+of)',
+  '\\brest(?:ing)?\\s+(?:now|peacefully|in\\s+peace|easy|with)\\b', '\\bpeaceful(?:ly)?\\b', '\\bvets?\\b', '\\bdoctors?\\b', '\\bhospitals?\\b', '\\bintensive\\s+care\\b', '\\bicu\\b', '\\blife\\s+support\\b',
+  '\\bwars?\\b', '\\bviable\\b', '\\bterminat(?:e|ed|es|ing|ion)\\b', '\\bstopped\\s+(?:growing|developing)\\b',
+  '\\b(?:it|all|everything|its|it\\s+was|it\\s+is|it\\s+had\\s+been)\\s+(?:was\\s+|is\\s+|s\\s+)?over\\b(?=\\s*(?:$|[.,!?;:…]|(?:and|but|so|then|by|within|before|after|when|in\\s+(?:a|minutes|seconds|hours|days))\\b))',
+  `\\b(?:${PERSON}|${BARE}|${PET})s\\s+away\\b`, '\\b(?:is|s|was|are|has\\s+gone|had\\s+gone|gone|slipped|passed)\\s+away\\b(?!\\s+(?:on|for|at|in|with|until|till|til|this|next|from|to|travelling|traveling|working|abroad|again))',
+  '\\basleep\\b', '\\blast\\s+time\\b', '\\bgoodbyes?\\b', '\\b(?:never|didnt|did\\s+not)\\s+(?:came|come)\\s+(?:back|home)\\b',
+  '\\b(?:no\\s+longer|not|isnt|arent|wasnt)\\s+(?:in\\s+(?:any\\s+)?pain|suffering|hurting)(?:\\s+any\\s*more)?\\b',
+].join('|'), 'giu');
+/** The softer cues' everyday senses, taken out first (on top of CUE_ASIDE and WRONG_CUES). */
+const SOFT_ASIDE = new RegExp([
+  // left a room, a group, early, for work, someone on read; went well or badly
+  '\\bleft\\s+(?:me|us|him|her|them)\\s+on\\s+(?:read|seen|delivered)\\b', '\\bleft\\s+(?:me|us)\\s+out\\b',
+  '\\bleft\\s+(?:the|a|our|my|his|her|their)\\s+(?:room|house|flat|party|chat|group|group\\s+chat|table|game|server|class|lesson|meeting|office|building|pub|club|bar|kitchen|car|bus|train|dishes|washing|lights?|door|window|tap|oven|message|note|comment|review|voicemail|bag|coat|keys|phone|team|band|job|company|course)\\b',
+  '\\bleft\\s+(?:early|late|for\\s+(?:work|school|uni|college|the\\s+(?:airport|station|office|day))|work|school|uni|college|home|the\\s+country|town|it|them|everything|without)\\b', '\\bleft\\s+(?:out|behind\\s+(?:at|in))\\b',
+  '\\bwent\\s+(?:so\\s+|really\\s+|pretty\\s+)?(?:well|badly|wrong|fine|ok|okay|great|smoothly|alright|to\\s+plan)\\b', '\\bwent\\s+(?:on|and|ahead|along|away\\s+(?:for|on|to))\\b',
+  // took me out, took my side, took part; taken to school
+  '\\btook\\s+(?:me|us|him|her|them)\\s+(?:to|out|home|for|round|shopping|swimming|bowling|back)\\b', '\\btook\\s+(?:my|his|her|their|our)\\s+side\\b', '\\btook\\s+(?:part|over|off|up|on|out|after|the\\s+(?:last|bigger|best|first|lead|piss|mick|blame))\\b',
+  '\\btaken\\s+(?:to|into|for)\\s+(?:school|work|the\\s+(?:park|cinema|shops|zoo|beach|match|pub))\\b',
+  // without me, goodbye at the station, goodbye to everyone, the last time I saw, asleep on the sofa
+  '\\bgoodbyes?\\s+(?:at|to)\\s+(?:the\\s+)?(?:station|airport|door|gate|gates|school|bus\\s+stop|everyone|everybody|all|the\\s+class|the\\s+team)\\b',
+  '\\b(?:fell|falls|falling|was|is|s|were|are)\\s+asleep\\s+(?:on|in|at|during|while|watching|reading|in\\s+front|before|after|again|early|on\\s+the)\\b', '\\b(?:fast|sound)\\s+asleep\\b',
+  // found out, found it, found a, found that
+  '\\bfound\\s+(?:out|it|that|a|an|some|this|these|them\\s+(?:a|an|some)|time|the\\s+time|my\\s+way|our\\s+way|him\\s+(?:a|an|some))\\b', '\\b(?:found|find|finds)\\s+(?:me|us|him|her|them)\\s+(?:annoying|funny|boring|weird|cute|attractive|irritating|hard|easy)\\b',
+  // war idioms, a gadget lost, heaven idioms, chicken wings, the doctors for a check-up
+  '\\b(?:at\\s+war\\s+with|war\\s+of\\s+words|price\\s+war|tug\\s+of\\s+war|flame\\s+war|star\\s+wars|war\\s+(?:film|films|movie|movies|game|games|documentary|museum|history|stories|story|hammer)|world\\s+war\\s+(?:one|two|1|2|i|ii)\\s+(?:homework|project|essay|topic|lesson|history))\\b',
+  '\\b(?:chicken|hot|buffalo|bbq|spicy|angel)\\s+wings\\b|\\bgives\\s+you\\s+wings\\b', '\\b(?:thank|thanks|good|for)\\s+heavens?\\b|\\bheavens?\\s+(?:knows|forbid|sake|above|help)\\b|\\bseventh\\s+heaven\\b|\\b(?:is|was|s|pure|absolute|sheer|like)\\s+(?:pure\\s+|absolute\\s+|sheer\\s+)?heaven\\b',
+  '\\b(?:such|what|absolute|total|real|proper|little|been|being|like)\\s+(?:an?\\s+)?angel\\b(?!\\s+(?:now|in\\s+heaven|above|watching|up\\s+there|in\\s+the\\s+sky))',
+  '\\b(?:any\\s+longer\\s+than|took\\s+any\\s+longer|wait\\s+any\\s+longer|stay\\s+any\\s+longer)\\b', '\\bthe\\s+other\\s+side\\s+of\\s+the\\b',
+  '\\b(?:it|everything|all)\\s+(?:was\\s+|is\\s+|s\\s+)?over\\s+(?:the\\s+)?(?:top|there|here|nothing|again|soon)\\b',
+].join('|'), 'giu');
+/** Nothing is wrong: a check-up, a minor op, all clear, doing well, a new baby (the medical cues go). */
+const BENIGN = /\b(?:check\s*ups?|checkups?|minor\s+op\w*|routine\s+\w+|all\s+clear|(?:is|was|s|are|were)\s+(?:fine|ok|okay|alright|all\s+right|home\s+now|on\s+the\s+mend|recovering|doing\s+(?:well|fine|ok|okay|better|great))|on\s+the\s+mend|recovering\s+(?:well|nicely|fine)|getting\s+better|fully\s+recovered|(?:knee|hip|ankle|wrist|shoulder|back|eye|tooth|wisdom\s+tooth|foot|hand)\s+op(?:eration)?|for\s+(?:a|an|her|his|their|my|our)\s+(?:op|operation|scan|jab|jabs|injection|vaccination|vaccinations|x\s*ray|appointment|test|tests|check|blood\s+test|booster)|having\s+(?:a|her|his|their|our)\s+baby|had\s+(?:a|her|his|their|our)\s+baby|gave\s+birth|new\s+baby|newborn|baby\s+(?:shower|scan\s+(?:went|was|is)\s+(?:fine|great|good|perfect))|visiting\s+(?:hours|time)|nurse\s+at|works?\s+(?:at|in)\s+(?:the\s+|a\s+)?(?:hospital|vets?|surgery)|is\s+a\s+(?:doctor|vet|nurse))\b/iu;
+const MEDICAL_SOFT = /^(?:vets?|doctors?|hospitals?|intensive\s+care|icu|life\s+support|recovered|breathing)$/iu;
+/** Who did the winning or the beating, never a person or a team ("my brother beat me at chess", "we won"). */
+const BEAT_SUBJECT_NOT = new RegExp(`^(?:i|im|ive|we|you|he|she|they|it|its|who|that|which|this|there|everyone|everybody|someone|somebody|nobody|people|us|me|and|or|but|just|also|team|side|club|united|city|rovers|school|class|(?:${PERSON}|${PET})(?:s|es)?)$`, 'iu');
+function beatCues(t, at) {
+  const out = [];
+  for (const m of t.matchAll(/\b([a-z0-9]+)\s+(?:(?:has|had|finally|eventually|then|in\s+the\s+end|sadly)\s+)*(?:won|beat|got)\b/giu)) {
+    if (BEAT_SUBJECT_NOT.test(m[1]) || GOT_SUBJECT_NOT.test(m[1])) continue;
+    out.push([at(m.index + m[0].length - 1), at(m.index + m[0].length - 1)]);
+  }
+  return out;
+}
+/** How many words apart a person (or a pregnancy word) and a softer cue may sit. */
+const NEAR_SOFT = 6;
+/**
+ * (owner decision 'Ask when unsure') True when nothing reads a death or a loss (deathTalk, livingLoss, strongLoss), but the
+ * words name a person, a pet or a pregnancy and carry a softer loss cue near it: the app asks, it never guesses.
+ */
+export function unsureLoss(text) {
+  if (!/\p{L}/u.test(String(text ?? ''))) return false;
+  if (deathTalk(text) || livingLoss(text) || strongLoss(text)) return false;
+  const raw = blankOrdinary(norm(text)).toLowerCase();
+  const t = raw.replace(WRONG_CUES, ' ').replace(CUE_ASIDE, ' ').replace(SOFT_ASIDE, ' ').replace(OWNED_THING, ' ').replace(/\s+/gu, ' ');
+  const at = wordAt(t);
+  const who = [...spans(t, WHO_WORD, at), ...spans(t, PREG_WORD, at)];
+  if (!who.length) return false;
+  who.push(...spans(t, PRONOUN, at));
+  const benign = BENIGN.test(t);
+  const cues = [...t.matchAll(SOFT)].filter((m) => !(benign && MEDICAL_SOFT.test(m[0].trim()))).map((m) => [at(m.index), at(m.index + m[0].length - 1)]);
+  cues.push(...beatCues(t, at));
+  return cues.some(([c, d]) => who.some(([a, b]) => Math.max(0, c - b, a - d) <= NEAR_SOFT));
+}
+/** The feelings that are a loss whatever the words say (the A–Z list's grief family): chosen, they always count as one. */
+export const GRIEF_FEELINGS = Object.freeze(new Set(['grief', 'mourning', 'bereft', 'heartache', 'heartbreak', 'anticipatory-grief']));
+export const griefFeeling = (emotion) => GRIEF_FEELINGS.has(String(emotion ?? '').trim().toLowerCase());
+/**
+ * How a Tell reaches the gentle path, on both screens (owner decision 'Ask when unsure'): 'gentle' (a grief-family
+ * feeling chosen, death talk, someone alive but going, or a person beside a strong loss cue), 'ask' (unsureLoss: the
+ * check-in, "Is this about losing someone?"), or null. Crisis, care and a wish to follow the one who died come first,
+ * read by the caller.
+ */
+export function lossRoute(text, { emotion = null } = {}) {
+  if (griefFeeling(emotion) || deathTalk(text) || livingLoss(text) || strongLoss(text)) return 'gentle';
+  return unsureLoss(text) ? 'ask' : null;
+}
+
 /**
  * The backstop: any word or phrase of the bag, the structural loss backstop (lossNear, and the main screen's strongLoss:
  * Another Angle is never less careful than the main screen), or death talk itself (grief.js: its families are the bag's).

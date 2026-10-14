@@ -136,7 +136,7 @@ export const ORDINARY = [
   /\b(?:take|takes|taking|took)\s+(?:it|this|that|them|the\s+secret|my\s+secret|the\s+truth|that\s+secret)\s+to\s+(?:the|my|his|her|their)\s+grave\b/giu,
   /\bone\s+foot\s+in\s+the\s+grave\b/giu, /\bdig\w*\s+(?:my|your|his|her|their|our)\s+own\s+graves?\b/giu,
   /\bbury\s+the\s+hatchet\b/giu, /\b(?:bury|buries|buried|burying)\s+(?:my|his|her|their|your|our)\s+(?:face|head|nose|hands|feelings)\b/giu,
-  /\bburied\s+(?:in|under)\s+(?:work|paperwork|emails?|homework|snow|sand|blankets?|duvets?|laundry|washing|deadlines|admin|assignments|notifications|messages|marking)\b/giu,
+  /\bburied\s+(?:in|under)\s+(?:(?:her|his|their|my|our|the)\s+)?(?:work|paperwork|emails?|homework|snow|sand|blankets?|duvets?|laundry|washing|deadlines|admin|assignments|notifications|messages|marking|revision|revising|exams?|exam\s+prep|coursework|essays?|books|studying|study|studies|reading|notes|textbooks?|uni\s+work|schoolwork|school\s+work|projects?|dissertation|thesis|applications?|bills|cushions|pillows|leaves)\b/giu,
   // "grief" for hassle, "good grief"
   /\b(?:give|gives|giving|gave|get|gets|getting|got|take|takes|taking|took|cause|causes|caused|causing)\s+(?:me|us|him|her|them|you|myself)?\s*(?:(?:so\s+much|a\s+lot\s+of|some|such|no\s+end\s+of|loads\s+of|any|the|a\s+load\s+of|real|serious)\s+)*grief\b/giu,
   /\bgood\s+grief\b/giu, /\bc[oa]me\s+to\s+grief\b/giu, /\bgrief\s+(?:from|off)\s+(?:my|the|his|her|their)\s+(?:boss|manager|teacher|work|school|colleagues?|neighbou?rs?|landlord)\b/giu,

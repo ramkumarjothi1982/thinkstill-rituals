@@ -25,7 +25,7 @@ import { addTicker, removeTicker, setStageFloor } from '../../mallows/rig.js';
 import { rememberVisitSafety, recallVisitSafety } from '../visit-safety.js';
 import { openSupport } from './support.js';
 import { createSubtitles } from '../../hushfold/subtitles.js';
-import { createLines, SHARED_LINES, flowEmotion } from '../../hushfold/lines.js';
+import { createLines, SHARED_LINES, LOSS_CHECK, flowEmotion } from '../../hushfold/lines.js';
 import { requireEntitlement } from '../entitlements.js';
 import { createStage, createStageMallow } from '../../hushfold/stage.js';
 import { createInputRouter } from '../../hushfold/input-router.js';
@@ -1184,6 +1184,7 @@ export default function hushfold(app, params = {}) {
     clearNudge();
     if (overlay) return;                                     // they are typing: no chatter
     if (gentle()) return;                                    // after something heavy: squeezing stays, the jokes go
+    if (S.asking) return;                                    // (asking whether it is about a loss: the same, while it waits)
     const t = now();
     if (!S.firstTouchAt) {
       S.firstTouchAt = t;
@@ -1497,6 +1498,22 @@ export default function hushfold(app, params = {}) {
     // stage with or without a plan. No jokes, no Thought Mallow made of it, nothing starts by itself:
     // support first, then they choose whether anything plays (the plans page only if they ask to play)
     if (safety?.level === 'care' || safety?.level === 'concern') { S.told = true; S.careSaid = true; await careBeat({ emotion, intention, safety }); return; }
+    // not sure the words are about a loss (owner decision 'Ask when unsure'): the Mallow asks first; "Yes, it is" is
+    // exactly the loss path above, "Something else" carries on, no answer (or Back) stays here quietly
+    if (safety?.unsure) {
+      const v = await askAboutLoss();
+      if (S.left) return;
+      if (v === 'yes') {
+        const loss = { level: 'concern', category: 'loss' };
+        noteSafety(loss);
+        S.careSaid = true;
+        await careBeat({ emotion, intention, safety: loss });
+        return;
+      }
+      if (v !== 'else') { stageMallow.setStage(gentle() ? CARE_FACE : 'neutral', { quiet: true }); return; }
+      // (answered: the plans page and back never asks again)
+      if (input?.safety?.detail) input.safety.detail.unsure = false;
+    }
     if (!ent.has('paid')) {
       // D4: the Thought Mallow and Hushflow are part of hushmallow Flow. The words wait in memory only.
       app.state.pendingTell = { input, emotion, intention, at: Date.now() };
@@ -1532,6 +1549,25 @@ export default function hushfold(app, params = {}) {
     } else await go();
   }
 
+  /**
+   * (owner decision 'Ask when unsure', 14 Oct 2026) "Is this about losing someone?", once, before any Thought Mallow is
+   * made or any world starts: the Mallow attentive, nothing playful (squeezing stays quiet while it waits). Real buttons
+   * in the subtitles' chip row (announced with the line). → 'yes' | 'else' | null (no answer within LOSS_CHECK.ms, Back,
+   * or a new Tell opened).
+   */
+  async function askAboutLoss() {
+    S.told = true;
+    S.asking = true;
+    stageMallow.setStage(CARE_FACE, { quiet: true });
+    pushLayer('lossCheck');
+    try {
+      return await subtitles.choice(LOSS_CHECK.ask, [{ label: LOSS_CHECK.yes, value: 'yes' }, { label: LOSS_CHECK.no, value: 'else' }],
+        { who: M().name, colour: M().colours.glow, timeoutMs: LOSS_CHECK.ms, transient: true, lossCheck: true, interrupt: !subtitles.holding });
+    } finally {
+      S.asking = false;
+      popLayer('lossCheck');
+    }
+  }
   /**
    * The feeling the words themselves suggest, confidently (interpret.js suggestedFeelings: the chip the overlay
    * highlights), or null: nothing confident, or words with a safety cue. Only ever steers a world's choice.
@@ -1927,10 +1963,11 @@ export default function hushfold(app, params = {}) {
     const sh = token ? sheets.find((r) => r.token === token) : (!token && sheets.length ? sheets[sheets.length - 1] : null);
     if (sh) { sh.token = 0; sh.sheet.close('back'); return; }
     const owner = token ? Object.keys(layer).find((k) => layer[k] === token) : null;
-    const k = owner || (overlay ? 'overlay' : readEl ? 'read' : panel?.isOpen ? 'panel' : null);
+    const k = owner || (overlay ? 'overlay' : readEl ? 'read' : panel?.isOpen ? 'panel' : layer.lossCheck ? 'lossCheck' : null);
     if (!k) return;
     layer[k] = 0;   // its history entry is spent: closing must not step back again
-    if (k === 'overlay') overlay?.close('back');
+    if (k === 'lossCheck') subtitles.drop((o) => o.lossCheck);
+    else if (k === 'overlay') overlay?.close('back');
     else if (k === 'read') closeRead();
     else panel?.close();
   }
@@ -2207,7 +2244,7 @@ export default function hushfold(app, params = {}) {
      * history again (its entry is already gone).
      */
     get blockBack() {
-      if (!overlay && !readEl && !panel?.isOpen && !sheets.length) return null;
+      if (!overlay && !readEl && !panel?.isOpen && !sheets.length && !layer.lossCheck) return null;
       return (token) => backClose(token);
     },
     safeForUpdate() {

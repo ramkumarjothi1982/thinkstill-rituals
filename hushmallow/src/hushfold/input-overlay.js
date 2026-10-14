@@ -63,15 +63,21 @@ export function lossIn(t) {
  * care; any other death or loss talk is concern (the gentle path: support close, no Thought Mallow, nothing
  * playful), and so is a person beside a strong loss cue (grief.js strongLoss, review r11: "a drunk driver took my
  * brother from us", "the fire took both my grandparents"; never the weak cues, a false alarm here opens the support
- * beat). Never lowers what checkText found.
+ * beat), and so is a grief-family feeling they chose (`emotion`: grief, mourning, bereft, heartache, heartbreak,
+ * anticipatory grief), whatever the words say. Not sure (owner decision 'Ask when unsure', 14 Oct 2026: a person or a
+ * pet beside a softer loss cue, grief.js unsureLoss): level none with `unsure: true`, and the scene asks "Is this about
+ * losing someone?" before anything is made of the words. Never lowers what checkText found.
  */
-export function readSafety(m, t, lossAware) {
+export function readSafety(m, t, lossAware, { emotion = null } = {}) {
   const r = m.checkText(t);
   if (!lossAware || !griefNow || r.level === 'crisis' || r.level === 'care') return r;
   try {
     if (griefNow.deathEscalation(t)) return { level: 'care', category: 'unsafe', matched: null };
     if (r.level !== 'none') return r;
-    if (griefNow.deathTalk(t) || griefNow.livingLoss?.(t) || griefNow.strongLoss?.(t)) return { level: 'concern', category: 'loss', matched: null };
+    const route = griefNow.lossRoute ? griefNow.lossRoute(t, { emotion })
+      : (griefNow.deathTalk(t) || griefNow.livingLoss?.(t) || griefNow.strongLoss?.(t) ? 'gentle' : null);
+    if (route === 'gentle') return { level: 'concern', category: 'loss', matched: null };
+    if (route === 'ask') return { ...r, unsure: true };
   } catch { /* the plain reading stands */ }
   return r;
 }
@@ -351,7 +357,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     if (lossAware) await loadGrief();
     const t = ta.value.trim();
     reading = t ? m.interpret(t) : null;
-    safety = t ? readSafety(m, t, lossAware) : { level: 'none', category: null };
+    // (a grief-family feeling chosen counts as a loss, words or not)
+    safety = t || chosenEmotion ? readSafety(m, t, lossAware, { emotion: chosenEmotion }) : { level: 'none', category: null };
     report(safety);
     if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }
     const intensity = reading?.emotions?.length ? reading.intensity : 0.6;
@@ -360,7 +367,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     for (const e of reading?.emotions || []) if (e.confidence >= 0.6 && emotions.length < 4 && !emotions.some((x) => x.id === e.id)) emotions.push({ id: e.id, confidence: e.confidence, intensity: e.intensity ?? intensity });
     // the express shape every later scene already reads
     const input = { text: t, emotions, intensity, contexts: reading?.contexts || [], desires: reading?.desires || [],
-      safety: { ...m.legacySafety(safety), detail: { level: safety.level, category: safety.category } }, intention: chosenIntention, source: 'hushfold' };
+      safety: { ...m.legacySafety(safety), detail: { level: safety.level, category: safety.category, ...(safety.unsure ? { unsure: true } : {}) } }, intention: chosenIntention, source: 'hushfold' };
     if (app) app.state.input = input;
     close('submit');
     onSubmit?.({ text: t, emotion: chosenEmotion, intention: chosenIntention, reading, safety, input });
