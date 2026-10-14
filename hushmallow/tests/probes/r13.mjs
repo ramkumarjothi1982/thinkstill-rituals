@@ -137,13 +137,14 @@ export const SEM_B5_WORRIES = [
 // ------------------------------------------------- the semantic review's polish and proofs --
 /**
  * Polish: the possessive "brown bread" (item 6), "I've never felt so stupid" (item 6: angerUnsaid; the route is the question),
- * the safety gap (item 4: care), and two lexicon cares the review noted (pre-existing, the lexicon's, unchanged here).
+ * the safety gap (item 4: care), and two lexicon cares the review noted (pre-existing, the lexicon's, unchanged here; the
+ * lexicon-gaps pass of 14 Oct 2026 made "beat me at fifa" a game, never a blow: the question's ordinary route).
  */
 export const SEM_POLISH = [
   ["my uncle's brown bread", 'gentle'],
   ["my boss shouted at me in front of everyone and I've never felt so stupid", 'ordinary'],
   ["my best friend killed himself and I keep thinking about doing the same", 'care'],
-  ["my brother beat me at fifa again", 'care'],
+  ["my brother beat me at fifa again", 'ordinary'],
   ["my ex is spreading lies about me", 'care'],
 ];
 /** The proofs' phrasings (fragments as quoted): no longer false alarms, never gentle. */
@@ -196,12 +197,12 @@ export const UI_AT_PEACE = [
 ];
 /**
  * Out of scope (the owner's lexicon pass; the lexicons stay as they are): the lexicon reads these. A lexicon change may move
- * them to care, never to the gentle path.
+ * them to care, never to the gentle path (the lexicon-gaps pass of 14 Oct 2026: "beat me at chess" is a game, ordinary).
  */
 export const UI_LEXICON = [
   ["he touched me inappropriately", 'ordinary'],
   ["he touched me and I felt scared", 'ordinary'],
-  ["my brother beat me at chess", 'care'],
+  ["my brother beat me at chess", 'ordinary'],
 ];
 /** The browser review's proofs (its Tells, verbatim). */
 export const UI_PROVEN = [

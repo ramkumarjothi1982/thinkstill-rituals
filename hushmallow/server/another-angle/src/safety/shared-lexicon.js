@@ -19,6 +19,21 @@ const PEOPLE = R`(?:she|he|they|someone|somebody|my (?:best |close |little |big 
 const HURTER = R`(?:he|she|they|someone|somebody|my (?:partner|boyfriend|girlfriend|husband|wife|ex|dad|father|mum|mom|mother|stepdad|step-dad|stepmum|stepmom|step-mum|brother|sister|uncle|aunt|auntie|grandad|grandma|cousin|boss|teacher|coach|flatmate|roommate|carer|son|daughter))`;
 // 'living' as in 'living in London' is not being alive.
 const LIVING = R`living\b(?! (?:in|with|here|there|near|at|on|together|abroad|alone|by|next|apart|off|a|an|the|my|our)\b)`;
+// (added 14 Oct 2026, lexicon gaps) After 'beat me': a game, a contest or a race is never a blow ('beat me at chess', 'beat
+// me in the final', 'beat me to it', 'beat me on points', 'beat me again at fifa', 'beat me fair and square', 'beat me by two
+// goals', 'beat me 6-2'), but the body, a place, a time or the harm itself after at / in / to / on still is ('beat me in the
+// face', 'on the head', 'in front of my kids', 'to a pulp', 'at home', 'in the kitchen', 'on sunday').
+const BEAT_GAME = R`(?!(?: again| easily| so easily| twice| comfortably)? (?:at|in|to|on)\b(?! (?:(?:the|my|his|her|their|our|a) )?(?:face|head|stomach|belly|chest|ribs|back|legs?|arms?|eyes?|mouth|nose|jaw|body|neck|throat|kidneys|groin|privates|bum|bottom|front of|fights?|pulp|death|within an inch|unconscious|ground|floor|home|night|bed|car|bus|train|tube|street|road|kitchen|bedroom|bathroom|garage|garden|house|flat|room|hallway|toilets?|alley|playground|park|school|work|(?:(?:mon|tues|wednes|thurs|fri|satur|sun)days?|christmas|birthday)\b(?! (?:at|in)\b))\b)| fair and square\b| by (?:(?:a|one|two|three|four|five|ten|\d+) )?(?:points?|goals?|seconds?|minutes?|shots?|strokes?|frames?|sets?|games?|votes?|marks?|runs?|wickets?|laps?|lengths?|metres|meters|miles?|a mile|a lot)\b| \d+ ?[-–:] ?\d+)`;
+// Someone else not breathing, now (crisisOther): a person, a baby, a stranger where they are ('the man next to me isn't
+// breathing', 'a woman on the street is not breathing').
+const BREATHER = R`(?:${PEOPLE}|(?:my|our|the|this|a) (?:baby|newborn|toddler|man|woman|boy|girl|guy|lady|person)|my (?:grandpa|granddad|grandmother|grandfather|stepdad|step-dad|stepmum|stepmom|fianc[eé]e?))(?: (?:next to|beside|near|behind|opposite|outside|across from|on|in|at) (?:me|us|(?:the|my|our|a|this) \w+(?: \w+)?))?`;
+// A negative subject that governs the danger clause itself, for the idiom guard of a negated danger ('nobody is', 'nobody's',
+// 'no one at home is', 'none of us are', 'no members of my family are', 'no one I know is'); never 'nobody else is', which
+// says someone is, nor 'no one but me is'.
+const NOBODY = R`\b(?:no[- ]?one|noone|nobody|none|neither|no (?:\w+ )?(?:members?|people|persons?|kids|children|adults|staff|students|pupils|residents|passengers|guests|workers|employees|relatives|family|friends|neighbou?rs|civilians))(?: of (?:us|you|them|these|those|(?:(?:my|our|the|his|her|their|your|this|that|these|those) )?\w+(?: \w+)?))?(?: (?:here|there|nearby|at home|around (?:here|me|us)|(?:at|in|on|from|inside|outside|near|with) (?:(?:my|our|the|his|her|their|your|this|that|a) )?\w+(?: \w+)?|(?:who|that) (?:lives?|lived|works?|worked|stays?|stayed|is|was|are|were) (?:here|there|with (?:me|us)|at home|nearby)|(?:i|we|you) (?:know|love|care about|live with|work with)))?(?: (?:now|right now|today|tonight|currently))?`;
+// ...unless the sentence goes straight on to say who is ('no one is in danger except me', 'apart from my mum', 'but me',
+// 'but my mum and dad', 'but she might be'; never 'but my mum thinks so').
+const BUT_ME = R`,? (?:except|apart from|other than|besides)(?: for)? (?:me|us|him|her|them|my|his|her|their|our|the|[a-z]+'s)\b|,? but (?:me|us|him|her|them)\b|,? but (?:my|his|her|their|our|the) \w+(?: (?:and (?:my |his |her |their |our |the )?)?\w+)?(?= *(?:$|[.,!?;…]))|,? but (?:i|he|she|they|we|it|you|my \w+) (?:still )?(?:is|am|are|was|were|could be|might be|may be|will be|would be)\b`;
 
 export const HARM_LEXICON = {
   idiomGuards: [
@@ -48,6 +63,13 @@ export const HARM_LEXICON = {
     R`\b(?:die|died) laughing\b`,
     // breathless with laughter, not panic (added 13 Oct 2026, final QA: 'laughing so hard I can't breathe')
     R`\b(?:laugh(?:ing|ed)?|crying laughing|cry-laughing|giggling|lol|lmao|haha\w*)(?: so (?:hard|much))?(?: (?:that|lol|haha))?(?: i)? (?:can'?t|cannot|couldn'?t) breathe\b`,
+    // added 14 Oct 2026, lexicon gaps: a clearly negated danger, where the negation is the subject of the danger clause
+    // itself ('nobody is in danger', 'no members of my family are actually in danger', 'none of us are in danger'), unless
+    // it goes on to say who is ('no one is in danger except me'); never 'no one knows I'm in danger', 'nobody else is in
+    // danger' or 'no one can help, my sister is in danger'
+    R`${NOBODY}(?:'s|'re| is| are) in (?:immediate |real |serious )?danger\b(?!${BUT_ME})`,
+    // a pet or a thing touching, not a person ('my cat keeps touching me with her paw')
+    R`\b(?:it|this|that|(?:my|the|our|his|her|a) (?:cat|dog|kitten|puppy|pet|label|tag)) (?:keeps|kept|keep|won'?t stop|wont stop|will not stop|doesn'?t stop|does not stop|never stops) touching me\b`,
   ],
   crisis: [
     // 'my self' as two words too (review 12 Oct: 'i want to kill my self')
@@ -163,8 +185,13 @@ export const HARM_LEXICON = {
     R`\b(?:threatening|threatens|threatened) to (?:jump|hang|overdose|cut|drown)\b(?! (?:in|into|on|at|ship|the queue|ties|me off)\b)`,
     R`\b(?:cuts|cutting|burns|burning|starves|starving|punishes|punishing|harms) (?:himself|herself|themselves|themself)\b(?! (?:a|an|some|off|free|loose|short|out)\b)`,
     R`\b${PEOPLE}(?:'s| is| has| have| had| was)? (?:just )?(?:overdosed|taken an overdose|took an overdose)\b`,
+    // (a clearly negated danger, 'nobody is in danger', is blanked by an idiom guard: NOBODY, 14 Oct 2026)
     R`\b(?:is|are|am|'s|'re|'m) in (?:immediate |real |serious )?danger\b(?! of)`,
-    R`\b(?:he|she|they|someone|somebody) (?:is|are|'s|'re) not breathing\b`,
+    // someone else not breathing, now (contractions added 14 Oct 2026, lexicon gaps): 'she's not breathing', 'my dad isn't
+    // breathing', 'he is not breathing properly', 'my baby has stopped breathing', 'he just stopped breathing', 'she stopped
+    // breathing, help'; never the speaker ("I'm not breathing properly because of my cold"), 'not breathing a word' or
+    // 'breathing down my neck'. A plain past 'my baby stopped breathing' is how a death is told (the loss readings have it).
+    R`\b${BREATHER}(?:(?:'s|'re| is| are)(?: still)? not| (?:isn'?t|aren'?t|isnt|arent|not)|(?:'s|'ve| has| have)(?: just| suddenly)? stopped| just stopped| stopped(?= breathing\b[.,!?]* *(?:help|please|what (?:do|should|can) i do|i don'?t know what to do|right now|just now|call)\b)) breathing\b(?! (?:a word|a sigh|down|through|out of|into|fire|new life|life into|the same|heavily|heavy|hard|loudly|loud|so (?:hard|heavily|loud|loudly|much|fast)|exercises?|techniques?)\b)`,
   ],
   care: {
     abuse: [
@@ -177,13 +204,24 @@ export const HARM_LEXICON = {
       R`\bgroomed me\b`,
       R`\b(?:my )?(?:uncle|step-?dad|step-?father|step-?brother|cousin|teacher|coach|tutor|neighbou?r|grandad|granddad|grandpa|babysitter|carer|(?:mum|mom|dad)'?s (?:boyfriend|girlfriend|partner|friend)|family friend|boss|priest|doctor)(?: \w+){0,2} (?:touches|touched|keeps touching|kept touching|is touching|tries to touch|tried to touch|gropes|groped) me\b(?! on the (?:shoulder|arm|back|hand) (?:to|and said|when|as|for)\b)`,
       R`\btouched me (?:without|when i|even though|after i)\b`,
+      // unwanted sexual touching, whoever does it (added 14 Oct 2026, lexicon gaps): 'he touched me inappropriately',
+      // 'someone touched me there', 'she touches me under my clothes', 'groped me without asking', 'inappropriately touched
+      // me', 'he felt me up', 'he made me touch him', 'he keeps touching me'; never an ordinary touch ('touched me on the
+      // shoulder to get my attention', 'the film really touched me', 'touched me deeply', 'touched me under my chin', 'his
+      // letter touched me there and then', 'made me touch base', 'keeps touching me to annoy me'; a pet or a thing: the idiom guards)
+      R`\b(?:touch(?:es|ed|ing)?|grop(?:e|es|ed|ing)|fondl(?:e|es|ed|ing)) me (?:inappropriately|(?:down )?there\b(?! and then\b)|in (?:places|private places|my private|an? (?:sexual|inappropriate|wrong) way|(?:a way|ways)(?: that)? i (?:didn'?t|did not|don'?t|do not|didnt|dont) (?:like|want))|where i (?:didn'?t|did not|don'?t|do not|didnt|dont|never) (?:want|wanted|like|liked)|without (?:asking|permission|my (?:permission|consent)|consent)|between my (?:legs|thighs)|under my\b(?! (?:chin|nose|eyes?|arms?|armpits?|feet|foot|umbrella|desk)\b)|on my (?:private|privates|breasts?|boobs|bum|bottom|butt|arse|ass|thighs?|crotch|genitals|chest)\b)`,
+      R`\binappropriately (?:touch(?:es|ed|ing)?|grop(?:es|ed|ing)|fondl(?:es|ed|ing)) me\b`,
+      R`\b(?:feel|feels|felt|feeling) me up\b|\bfondl(?:e|es|ed|ing) me\b`,
+      R`\b(?:made|makes|make|making|forced|forces|force|forcing|got|gets) me (?:to )?touch (?:him\b|(?:his|her) (?:private (?:parts|area)|privates|penis|dick|cock|willy|crotch|genitals|bits|breasts?|boobs|chest|body)\b|(?:her|them)(?= *(?:$|[.,!?;…]|(?:and|there|down there|again|when|while|under|but|or|so|in (?:bed|my|his|her|the (?:car|bathroom|bedroom)))\b)))`,
+      R`\b(?:keeps|kept|keep|won'?t stop|wont stop|will not stop|doesn'?t stop|does not stop|never stops) touching me\b(?! on the (?:shoulder|arm|back|hand) (?:to|and said|when|as|for)\b| to (?:annoy|wind|bug|irritate|tease|get my attention)\b)`,
       R`\bforced me\b`,
       R`\bwon'?t let me (?:leave|go out|see (?:my )?(?:friends|family)|have (?:my own )?money|work|have my phone)\b`,
       R`\bcontrols? (?:all )?(?:of )?my (?:money|phone|messages|life|food)\b`,
       R`\b(?:goes|went|keeps going) through my phone\b`,
     ],
     violence: [
-      R`\b(?:he|she|they|my (?:partner|boyfriend|girlfriend|husband|wife|ex|dad|father|mum|mom|mother|stepdad|stepmum|stepmom|brother|sister|boss|teacher|flatmate|roommate|son|daughter)|someone|somebody)(?: has| had)? (?:hit|hits|punched|punches|kicked|kicks|slapped|slaps|choked|chokes|strangled|strangles|beat|beats|shoved|shoves|smacked|smacks|attacked|attacks|grabbed|grabs) me\b`,
+      // ('beat me' at a game, in a contest or a race is never a blow: BEAT_GAME, 14 Oct 2026, lexicon gaps)
+      R`\b(?:he|she|they|my (?:partner|boyfriend|girlfriend|husband|wife|ex|dad|father|mum|mom|mother|stepdad|stepmum|stepmom|brother|sister|boss|teacher|flatmate|roommate|son|daughter)|someone|somebody)(?: has| had)? (?:(?:hit|hits|punched|punches|kicked|kicks|slapped|slaps|choked|chokes|strangled|strangles|shoved|shoves|smacked|smacks|attacked|attacks|grabbed|grabs) me\b|beat(?:s|en)? me\b${BEAT_GAME})`,
       R`\bbeat(?:s|en)? me up\b`,
       // added 12 Oct 2026, safety verification: being hurt, now or again and again
       R`\b${HURTER}(?: \w+)? (?:hurts|keeps hurting|kept hurting|is hurting|'s hurting|has been hurting|'s been hurting) me\b`,
@@ -236,7 +274,7 @@ export const HARM_LEXICON = {
       R`\b(?:not|never) feel(?:ing)? safe\b`,
       R`\b(?:don'?t|do not|dont) think (?:i'?m|i am|im) safe\b(?! to\b)`,
       R`\b(?:scared|afraid|frightened|terrified|petrified|worried) for my (?:life|safety)\b`,
-      R`\b(?:scared|afraid|frightened|terrified|petrified|worried) (?:that )?${HURTER}(?: \w+)?(?:'ll| will| is going to|'s going to| is gonna|'s gonna| might| may| would|'d| could)(?: (?:really|actually|seriously|try to|try and|end up|come and|come back and))? (?:hurt me|harm me|hit me\b(?! (?:up|back (?:with|later|tomorrow|soon|about|on|when))\b)|attack me\b(?! (?:in|during) (?:(?:a|the|every) )?(?:debates?|comments|reviews?|interviews?)\b)|beat me\b(?! (?:at|in|to)\b)|strangle me|choke me|stab me|punch me|kick me\b(?! (?:out|off)\b)|slap me|shove me)\b`,
+      R`\b(?:scared|afraid|frightened|terrified|petrified|worried) (?:that )?${HURTER}(?: \w+)?(?:'ll| will| is going to|'s going to| is gonna|'s gonna| might| may| would|'d| could)(?: (?:really|actually|seriously|try to|try and|end up|come and|come back and))? (?:hurt me|harm me|hit me\b(?! (?:up|back (?:with|later|tomorrow|soon|about|on|when))\b)|attack me\b(?! (?:in|during) (?:(?:a|the|every) )?(?:debates?|comments|reviews?|interviews?)\b)|beat me\b${BEAT_GAME}|strangle me|choke me|stab me|punch me|kick me\b(?! (?:out|off)\b)|slap me|shove me)\b`,
       // 'kill me' only from a partner or an unnamed 'he'/'she'/'they' ("scared my mum will kill me when she sees my grades" stays none)
       R`\b(?:scared|afraid|frightened|terrified|petrified) (?:that )?(?:he|she|they|someone|somebody|my (?:partner|boyfriend|girlfriend|husband|wife|ex|ex-?(?:partner|boyfriend|girlfriend|husband|wife)|fianc[eé]e?))(?:'ll| will| is going to|'s going to| is gonna|'s gonna| might| may| would|'d| could)(?: (?:really|actually|seriously|try to|try and|end up|come and|come back and))? kill me\b`,
       R`\b(?:scared|afraid|frightened|terrified|petrified) (?:of )?what ${HURTER}(?:'ll| will| might| may| would|'d| could| is going to|'s going to| is gonna|'s gonna) do to me\b`,
