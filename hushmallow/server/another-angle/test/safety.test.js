@@ -210,7 +210,7 @@ test('review round 2, further variants: fillers, urges, vanishing, jumping, coer
     assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'self-harm' }, s);
   }
   for (const s of ['My friend is going to jump off the bridge', 'My friend says she is going to jump']) assert.equal(checkSafety(s).level, 'crisis', s);
-  for (const [s, cat] of [["He made me do things I didn't want to", 'abuse'], ['A man touched me on the bus', 'harassment'], ['He rubbed himself against me on the train', 'harassment'], ['My dad beats my mum', 'violence'], ['My stepdad hits my mum', 'violence'], ["They said they'd share my nudes", 'threat']]) {
+  for (const [s, cat] of [["He made me do things I didn't want to", 'abuse'], ['A man touched me on the bus', 'harassment'], ['He rubbed himself against me on the train', 'abuse' /* the shared lexicon's touching rules since 14 Oct 2026 (lexicon gaps r4): still care, abuse helpline first */], ['My dad beats my mum', 'violence'], ['My stepdad hits my mum', 'violence'], ["They said they'd share my nudes", 'threat']]) {
     assert.deepEqual(checkSafety(s), { level: 'care', category: cat }, s);
   }
   for (const s of [
