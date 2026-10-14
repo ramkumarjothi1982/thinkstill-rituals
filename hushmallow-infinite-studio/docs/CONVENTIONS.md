@@ -106,6 +106,8 @@ Commands (`hm help` prints the live list with one line each):
 - WP-01 (render farm): `hm render`, `hm status`, `hm doctor`.
 - WP-02 (performance pass): `hm bench` (exclusive lock, median of 3), `hm bench gate` (G-PIXEL on the 16 golden times; `--steps both` runs every feature's own gate, switched off alone and on alone), `hm proof` (6 full-quality stills); `hm render --profile exact|final|draft`.
 - WP-03 (composer) has no `hm` command of its own: `hm spec compile` runs it (G-DIR, G-COST), and `hm render composer/t01-v2` renders the composed golden T01 through runtime v3. Contracts: `docs/ARCHITECTURE.md`.
+- WP-04 (score generaliser): `hm score <job dir | cues.json>` (the generic score `audio/score.mjs`, `--compat v2-score` for the byte-identical approved soundtrack, `--check` for the G-AUDIO numbers), `hm remux <job dir>` (re-score a render with new audio-only slots; the video is copied). A farm job whose direction names `meta.score: 'hm-score'` is scored and muxed loop-aware by `render/mux.mjs`; the composer still writes `'soundtrack-v2'` until the owner's M0 listening pass (`docs/m0/audio/README.md`).
+- WP-05 (QA suite and gallery): `hm qa <target>` (every gate; `report.json` in `<dir>/qa`), `hm qa fixtures` (v2 passes every gate, each fault fixture fails exactly its own gate), `hm qa gallery` (static, offline review gallery with the `decisions.json` export). Gates, thresholds and fixtures: `docs/QA.md`, `qa/gates/thresholds.json`.
 - WP-06 (planner): `hm lib validate` (extended: the story library, then the planner inputs), `hm lib coverage`, `hm plan`, `hm spec new`, `hm spec show`, `hm spec seal`, `hm spec check`, `hm spec compile`, `hm approve`, `hm reject`, `hm export`.
 - WP-07 (asset derivation) has no `hm` command yet: run `python3 -I tools/derive/derive_mallow.py --mallow <id>` and `python3 -I tools/derive/asset_qa.py --mallow <id>`; both take the exclusive heavy lock themselves.
 
@@ -114,15 +116,16 @@ Commands (`hm help` prints the live list with one line each):
 ```
 tests/unit/         fast, pure (no browser)                      npm run test:unit     = hm test unit
 tests/guard/        safety rails (frozen, app, wall clock, writes) npm run test:guard    = hm test guard
-tests/parity/       re-sample in Chromium vs goldens (≈ 1–2 min) npm run test:parity   = hm test parity
+tests/parity/       Chromium vs goldens, the score (≈ 3.5 min)   npm run test:parity   = hm test parity
 tests/property/     planner invariants over 1k–10k specs (≈ 2 min) npm run test:property = hm test property
-tests/golden/       pixel goldens + render farm, heavy (≈ 5 min)  npm run test:golden   = hm test golden
+tests/golden/       pixel goldens, render farm, QA on v2 (≈ 6 min) npm run test:golden   = hm test golden
 tests/derive/       tools/derive Python unittest (≈ 2.5 min)      npm run test:derive   = hm test derive
 tests/smoke/  tests/determinism/                                  (from WP-24 and WP-26)
 npm test            guard + unit + parity + property: run before handing in any package (= node cli/hm.mjs test)
 ```
 
 - Parity opt-ins (WP-03): `HM_PARITY_FULL=1` renders all 16 golden frames through the composer (default 4, ≈ 100 s for 16); `HM_PARITY_SEQUENTIAL=1` renders all 450 frames in order against the sequential golden (≈ 25 min). Run both after any change to `engine/` or `composer/` that may move pixels, and at every merge of such a change.
+- QA opt-in (WP-05): `HM_QA_FIXTURES=1` adds the fault-fixture suite to `tests/golden/qa-suite.test.mjs` (every fixture fails exactly its own gate; ≈ 7 min, plus about 15 min the first time to build missing fixtures in `WORK/qa-fixtures`). Run it after any change to `qa/`.
 - Files are named `*.test.mjs`. Tests that render take the heavy lock themselves (shared), so running them directly is safe too.
 - Tests never touch the network, the app or the frozen files. Temp directories come from `mkWorkTemp()`.
 - The suites are defined once, in `cli/commands/test.mjs`; the npm scripts are aliases. `hm` runs inside the write jail, so a test that writes outside the studio fails with `EROFS`.

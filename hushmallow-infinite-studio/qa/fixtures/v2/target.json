@@ -1,0 +1,13 @@
+{
+  "schema": "hm-qa-target/1",
+  "label": "v2-approved",
+  "description": "The approved v2 master, \"My Brain at 2 AM\" (frozen output/v2). It must pass every gate (WP-05 acceptance).",
+  "video": "../../../output/v2/my-brain-at-2am-v2.mp4",
+  "spec": "spec.production.json",
+  "direction": "../../../specs/golden/t01-v2.direction.json",
+  "cues": "../../../output/v2/cues.json",
+  "evidence": "render-evidence.json",
+  "legacy": "my-brain-at-2am-v2",
+  "score": "soundtrack-v2",
+  "plan": "../../golden/v2/plan-v2.json"
+}

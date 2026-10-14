@@ -3,13 +3,18 @@
 // The score is chosen from the direction's meta.score (never from its id, R3)
 // and rendered from the dry run's cues.json (the only source of curves, R12).
 // Each score id maps to the script that renders it; the frozen v2 score is
-// audio/soundtrack-v2.mjs, run unchanged as the approved render ran it. WP-04
-// adds its generalised score here.
+// audio/soundtrack-v2.mjs, run unchanged as the approved render ran it; WP-04's
+// generalised score is audio/score.mjs ('hm-score'), which also writes
+// score-plan.json beside score.wav (the plan qa/gates reads).
 //
 // Mux: the video stream is copied; audio is AAC 192 kb/s, 48 kHz stereo; the
 // file is cut to the direction's duration, gets faststart and the provenance
 // stamp in its comment tag, exactly as render/render.mjs assembled the
-// approved master.
+// approved master. A circular score (score-plan.json says so) is muxed
+// loop-aware instead (audio/loop-aac.mjs muxLoop: the loop encoded with its own
+// audio around it, the edit list presenting exactly the duration, the seam and
+// A/V sync verified), because a plain AAC encode puts a click back where the
+// MP4 loops (R7).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,6 +24,7 @@ import { STUDIO } from './lib/paths.mjs';
 /** meta.score → script (studio-relative) taking <cues.json> <out.wav>. */
 export const SCORES = Object.freeze({
   'soundtrack-v2': 'audio/soundtrack-v2.mjs',
+  'hm-score': 'audio/score.mjs',
 });
 
 function runNode(script, args, log) {
@@ -48,6 +54,14 @@ export async function muxJob(jobDir, job, { audio = true, stamp = '', log = cons
   const video = path.join(jobDir, 'video.mp4'), wav = path.join(jobDir, 'score.wav');
   const out = path.join(jobDir, 'final.mp4'), part = `${out}.part.mp4`;
   const meta = ['-metadata', `comment=${stamp}`, '-metadata', `title=${job.info.title || job.direction}`];
+  const planFile = path.join(jobDir, 'score-plan.json');
+  if (audio && fs.existsSync(planFile) && JSON.parse(fs.readFileSync(planFile, 'utf8')).circular) {
+    const { muxLoop } = await import('../audio/loop-aac.mjs');
+    const r = muxLoop({ video, wav, out: part, duration: job.info.duration, metadata: meta });
+    fs.renameSync(part, out);
+    log(`muxed ${path.basename(out)} (video + loop-aware AAC score: seam step ${r.stepDbfs} dBFS, click ${r.clickDbfs} dBFS, lag ${r.lag})`);
+    return out;
+  }
   const args = audio
     ? ['-y', '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', video, '-i', wav,
       '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2',

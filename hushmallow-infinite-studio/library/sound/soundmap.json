@@ -1,0 +1,234 @@
+{
+  "schema": "hm-soundmap/1",
+  "$doc": "The score's sound map (WP-04, audio/score.mjs). reference: the key every tonal note is written in (v2's C5 major pentatonic, audio/soundtrack.mjs N); notes are transposed to the Mallow's kit by scale degree (audio/pitch.mjs). kits: the app's Mallow kits (hushmallow/src/engine/audio.js KITS: root Hz, scale semitones, gesture speed), copied here so Node can plan without the page; the render page re-checks every value against the engine and fails on any difference (audio/render-offline.mjs), and tests/unit/audio-pitch.test.mjs checks them against the app source. mallows: kit and home bed per Mallow (registry realm), plus the Mallow's own sound pack. realms: the engine bed (REALM_BEDS id) and the layers each time of day adds; 'default' is the explicit entry for any time of day not listed. cues: the legacy cue type -> recipe map, used only for cue logs that carry no move ownership (the frozen v2 route); a composed direction names each cue's recipe in its move (composer/moves, cues: {type: {recipe}}). kits[].voice: the tonal content of the kit's own voice, transcribed from the engine (src names the lines): note = the components of one kit note relative to its pitch (f0 at the onset, f1 where its glide lands, glide seconds, relative level, vib = vibrato depth in cents when there is one; static partials omitted); success.events = the closing phrase the logo plays (MO-CLOSE): dt seconds (times the kit speed unless unscaled, plus 'plus' unscaled seconds), deg = the kit scale degree of its base pitch, part note|accent, comps relative to the base (base = clamp(D(deg) x mult) when given). audio/score.mjs models the phrase for the closing-contour rule; tests/parity/audio-score.test.mjs traces the engine's oscillators and holds this table to them.",
+  "version": "1.1.0",
+  "reference": {"kit": "noomi", "root": 523.25, "scale": [0, 2, 4, 7, 9], "source": "audio/soundtrack.mjs N (C major pentatonic, Noomi's key)"},
+  "kits": {
+    "glitzi": {
+      "root": 466.16,
+      "scale": [0, 3, 5, 7, 10],
+      "speed": 0.85,
+      "name": "Bb4 minor pentatonic",
+      "voice": {
+        "src": "audio.js L506-523 (note, accent), L804-807 (GESTURES.success)",
+        "note": [{"f0": 1, "f1": 1.07, "glide": 0.022, "level": 1}],
+        "success": {
+          "events": [
+            {"dt": 0, "deg": 0, "part": "note"},
+            {"dt": 0.11, "deg": 2, "part": "note"},
+            {"dt": 0.22, "deg": 4, "part": "note"},
+            {
+              "dt": 0.3,
+              "deg": 4,
+              "part": "accent",
+              "comps": [{"f0": 2.2, "f1": 0.6, "glide": 0.09, "level": 1}],
+              "doc": "fm zap: carrier 2.2f gliding to 0.6f in 90 ms"
+            }
+          ]
+        }
+      }
+    },
+    "blubi": {
+      "root": 698.46,
+      "scale": [0, 2, 4, 7, 9],
+      "speed": 1,
+      "name": "F5 major pentatonic",
+      "voice": {
+        "src": "audio.js L468-470 (droplet), L551-564 (note, accent), L804-807",
+        "note": [{"f0": 1.15, "f1": 0.575, "glide": 0.045, "level": 1}],
+        "success": {
+          "events": [
+            {"dt": 0, "deg": 0, "part": "note"},
+            {"dt": 0.11, "deg": 2, "part": "note"},
+            {"dt": 0.22, "deg": 4, "part": "note"},
+            {
+              "dt": 0.3,
+              "deg": 4,
+              "part": "accent",
+              "comps": [{"f0": 1.5, "f1": 0.75, "glide": 0.045, "level": 1}],
+              "doc": "a droplet at 1.5f (x rnd 0.96-1.04), dropping an octave in 45 ms like every Blubi note"
+            }
+          ]
+        }
+      }
+    },
+    "zuzu": {
+      "root": 392,
+      "scale": [0, 2, 3, 7, 8],
+      "speed": 1.15,
+      "name": "G4 Hirajoshi",
+      "voice": {
+        "src": "audio.js L583-598 (note, accent), L804-807",
+        "note": [{"f0": 1, "f1": 1, "glide": 0, "level": 1}],
+        "success": {
+          "events": [
+            {"dt": 0, "deg": 0, "part": "note"},
+            {"dt": 0.11, "deg": 2, "part": "note"},
+            {"dt": 0.22, "deg": 4, "part": "note"},
+            {
+              "dt": 0.3,
+              "deg": 4,
+              "part": "accent",
+              "comps": [{"f0": 1, "f1": 1.12, "glide": 0.35, "level": 1, "vib": 30}, {"f0": 1.5, "f1": 1.34, "glide": 0.35, "level": 0.7, "vib": 30}],
+              "doc": "two swelling sines: f rising to 1.12f, 1.5f falling to 1.34f (peaks 0.05 and 0.035), each with a +-30 cent vibrato (vib)"
+            }
+          ]
+        },
+        "noteDoc": "triangle with a 6.2 Hz +-40 cent vibrato: periodic, not a glide"
+      }
+    },
+    "boppo": {
+      "root": 329.63,
+      "scale": [0, 2, 4, 7, 9],
+      "speed": 0.9,
+      "name": "E4 major pentatonic",
+      "voice": {
+        "src": "audio.js L473-475 (pop), L617-629 (note, accent), L804-807",
+        "note": [{"f0": 0.8, "f1": 1, "glide": 0.035, "level": 1}],
+        "success": {
+          "events": [
+            {"dt": 0, "deg": 0, "part": "note"},
+            {"dt": 0.11, "deg": 2, "part": "note"},
+            {"dt": 0.22, "deg": 4, "part": "note"},
+            {
+              "dt": 0.3,
+              "deg": 4,
+              "part": "accent",
+              "base": {"mult": 2, "clamp": [700, 1400]},
+              "comps": [{"f0": 1, "f1": 0.27, "glide": 0.03, "level": 1}],
+              "doc": "cork pop at clamp(2f, 700, 1400) (x rnd 0.95-1.05) gliding to 0.27x in 30 ms"
+            }
+          ]
+        }
+      }
+    },
+    "pipzi": {
+      "root": 783.99,
+      "scale": [0, 2, 4, 7, 9],
+      "speed": 0.7,
+      "name": "G5 major pentatonic",
+      "voice": {
+        "src": "audio.js L649-679 (note; special success)",
+        "note": [{"f0": 1, "f1": 1, "glide": 0, "level": 1}],
+        "success": {
+          "events": [
+            {"dt": 0, "deg": 0, "part": "note", "unscaled": true},
+            {"dt": 0.08, "deg": 2, "part": "note", "unscaled": true},
+            {"dt": 0.16, "deg": 4, "part": "note", "unscaled": true},
+            {"dt": 0.24, "deg": 5, "part": "note", "unscaled": true}
+          ],
+          "doc": "Pipzi's own success: four spark bells every 80 ms (not speed-scaled), then air grains (noise); no accent"
+        }
+      }
+    },
+    "loomi": {
+      "root": 196,
+      "scale": [0, 2, 4, 7, 9],
+      "speed": 1.6,
+      "name": "G3 major pentatonic",
+      "voice": {
+        "src": "audio.js L683-697 (note, accent), L804-807",
+        "note": [{"f0": 1, "f1": 1, "glide": 0, "level": 1}, {"f0": 2, "f1": 2, "glide": 0, "level": 0.25}],
+        "success": {
+          "events": [
+            {"dt": 0, "deg": 0, "part": "note"},
+            {"dt": 0.11, "deg": 2, "part": "note"},
+            {"dt": 0.22, "deg": 4, "part": "note"},
+            {
+              "dt": 0.3,
+              "deg": 4,
+              "part": "accent",
+              "base": {"mult": 1, "clamp": [150, 400]},
+              "comps": [{"f0": 1, "f1": 1, "glide": 0, "level": 1}, {"f0": 0.5, "f1": 0.5, "glide": 0, "level": 0.25}],
+              "doc": "low bell at clamp(f, 150, 400), static partials"
+            }
+          ]
+        }
+      }
+    },
+    "noomi": {
+      "root": 523.25,
+      "scale": [0, 2, 4, 7, 9],
+      "speed": 1.3,
+      "name": "C5 major pentatonic",
+      "voice": {
+        "src": "audio.js L717-731 (note, accent), L804-807",
+        "note": [{"f0": 1, "f1": 1, "glide": 0, "level": 1}],
+        "success": {
+          "events": [
+            {"dt": 0, "deg": 0, "part": "note"},
+            {"dt": 0.11, "deg": 2, "part": "note"},
+            {"dt": 0.22, "deg": 4, "part": "note"},
+            {
+              "dt": 0.3,
+              "deg": 4,
+              "part": "accent",
+              "base": {"mult": 2, "clamp": [700, 2100]},
+              "comps": [{"f0": 1, "f1": 1, "glide": 0, "level": 1}],
+              "doc": "celesta bell at clamp(2f, 700, 2100)"
+            },
+            {
+              "dt": 0.3,
+              "plus": 0.11,
+              "deg": 4,
+              "part": "accent",
+              "base": {"mult": 2, "clamp": [700, 2100]},
+              "comps": [{"f0": 1.5, "f1": 1.5, "glide": 0, "level": 1}],
+              "doc": "and a fifth above it 110 ms later"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "mallows": {
+    "glitzi": {"kit": "glitzi", "bed": "static-storm"},
+    "blubi": {"kit": "blubi", "bed": "raindrop-lagoon"},
+    "zuzu": {"kit": "zuzu", "bed": "spiral-observatory"},
+    "boppo": {"kit": "boppo", "bed": "sunpop-orchard"},
+    "pipzi": {"kit": "pipzi", "bed": "spark-festival"},
+    "loomi": {"kit": "loomi", "bed": "blue-drift"},
+    "noomi": {"kit": "noomi", "bed": "moonmilk-cove", "pack": "library/sound/noomi.json"}
+  },
+  "realms": {
+    "moonmilk-cove": {
+      "bed": "moonmilk-cove",
+      "tods": {
+        "late-night": {"layers": {"crickets": {"voices": [[4150, -0.55, 0.64, 3], [3880, 0.6, 0.83, 4]], "amp": 0.0065}}},
+        "night": {"layers": {"crickets": {"voices": [[4150, -0.55, 0.64, 3], [3880, 0.6, 0.83, 4]], "amp": 0.0065}}},
+        "default": {"layers": {}}
+      }
+    },
+    "static-storm": {"bed": "static-storm", "tods": {"default": {"layers": {}}}},
+    "raindrop-lagoon": {"bed": "raindrop-lagoon", "tods": {"default": {"layers": {}}}},
+    "spiral-observatory": {"bed": "spiral-observatory", "tods": {"default": {"layers": {}}}},
+    "sunpop-orchard": {"bed": "sunpop-orchard", "tods": {"default": {"layers": {}}}},
+    "spark-festival": {"bed": "spark-festival", "tods": {"default": {"layers": {}}}},
+    "blue-drift": {"bed": "blue-drift", "tods": {"default": {"layers": {}}}}
+  },
+  "cues": {
+    "scene": "composer/scene",
+    "flinch": "v2/flinch",
+    "take": "v2/take",
+    "lift_off": "v2/lift_off",
+    "land": "v2/land",
+    "ripple": "v2/ripple",
+    "blink": "v2/blink",
+    "glance": "v2/glance",
+    "thought": "v2/thought",
+    "wince": "v2/wince",
+    "spin_up": "v2/spin_up",
+    "squeeze": "v2/squeeze",
+    "inhale": "v2/inhale",
+    "crest": "v2/crest",
+    "exhale": "v2/exhale",
+    "release": "v2/release",
+    "dissolve": "v2/dissolve",
+    "warm_bloom": "v2/warm_bloom",
+    "eyes_open": "v2/eyes_open",
+    "tagline": "v2/tagline",
+    "logo": "v2/logo",
+    "drift": "v2/drift",
+    "loop": "v2/loop"
+  }
+}

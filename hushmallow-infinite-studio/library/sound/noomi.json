@@ -1,0 +1,11 @@
+{
+  "schema": "hm-mallow-sound/1",
+  "$doc": "Noomi's sound pack (WP-04). Noomi is the reference performer: her kit is the reference key (C5 major pentatonic), so transposition is the identity and every v2 recipe plays exactly as approved. octave: the register of the score's tonal notes relative to the reference (null = the octave of the kit root nearest C5; see audio/pitch.mjs). recipes: per-recipe overrides for this Mallow ({recipeId: replacementRecipeId}); none for Noomi. Other Mallows' packs arrive with their waves (WP-35, WP-46, WP-56).",
+  "id": "noomi",
+  "version": "1.0.0",
+  "status": "approved",
+  "evidence": "approved v2 'My Brain at 2 AM' (OWNER-DECISIONS D12)",
+  "kit": "noomi",
+  "octave": null,
+  "recipes": {}
+}

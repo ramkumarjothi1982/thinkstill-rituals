@@ -20,8 +20,10 @@ comparison (see the end of this file).
 > `node cli/hm.mjs help` lists every command: so far the render farm (`hm render`,
 > `hm status`, `hm doctor`, WP-01), the quality profiles and benchmarks
 > (`hm render --profile exact|final|draft`, `hm bench`, `hm bench gate`,
-> `hm proof`, WP-02) and the planner (`hm plan`, `hm spec …`, `hm approve`,
-> `hm reject`, `hm export`, WP-06); the generic asset derivation lives in
+> `hm proof`, WP-02), the planner (`hm plan`, `hm spec …`, `hm approve`,
+> `hm reject`, `hm export`, WP-06), the generic score (`hm score`, `hm remux`,
+> WP-04) and the QA gates with the review gallery (`hm qa`, `hm qa fixtures`,
+> `hm qa gallery`, WP-05; `docs/QA.md`); the generic asset derivation lives in
 > `tools/derive/` (WP-07). The composer (`composer/`, WP-03) turns a spec into a
 > `direction.json` rendered by runtime v3: `hm render composer/t01-v2` renders
 > the approved v2 rebuilt from `specs/golden/t01-v2.json`, bit-identical to v2.

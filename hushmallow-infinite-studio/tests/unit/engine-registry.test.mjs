@@ -46,7 +46,7 @@ test('runtimes: v2 wraps a v2-contract module; v3 renders a composer direction (
 });
 
 test('the score is chosen from meta.score, not from the direction id', async () => {
-  assert.deepEqual(Object.keys(SCORES), ['soundtrack-v2']);
+  assert.deepEqual(Object.keys(SCORES), ['soundtrack-v2', 'hm-score']);
   await assert.rejects(scoreJob('/nonexistent', { direction: 'my-brain-at-2am-v2', info: { score: 'other' } }), /names score "other", which has no renderer/);
 });
 

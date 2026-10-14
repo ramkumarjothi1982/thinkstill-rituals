@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hushmallow review</title>
+<!--
+  Review gallery v1 (WP-05). Built by gallery/build.mjs, which inlines the
+  batch's data below; everything else is in this file and the media/ folder
+  beside it, so the page opens offline from the file system. Decisions stay in
+  this browser (localStorage) until exported as decisions.json.
+-->
+<style>
+:root {
+  --bg: #f6f4f9; --panel: #ffffff; --ink: #1d1a2b; --muted: #6b6680; --line: #e3dfee; --accent: #5b4bd6;
+  --pass: #1f8a5b; --warn: #b7791f; --fail: #c2413b; --na: #8a8699; --chip: #f0edf7;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #12101b; --panel: #1b1828; --ink: #ece9f6; --muted: #a29db8; --line: #2d2940; --accent: #9d8fff;
+    --pass: #43c48a; --warn: #e3a84b; --fail: #f07068; --na: #8d89a0; --chip: #252136; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+header h1 { font-size: 17px; margin: 0; }
+header .meta { color: var(--muted); font-size: 12px; }
+header .grow { flex: 1; }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { background: var(--chip); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button[aria-pressed="true"] { outline: 2px solid var(--accent); }
+main { max-width: 1400px; margin: 0 auto; padding: 16px; display: grid; gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 18px; }
+.card > div { min-width: 0; }
+@media (max-width: 860px) { .card { grid-template-columns: minmax(0, 1fr); padding: 12px; } }
+@media (max-width: 600px) { header { position: static; } main { padding: 12px 8px; } }
+.card h2 { margin: 0 0 4px; font-size: 16px; overflow-wrap: anywhere; }
+video { width: 100%; border-radius: 10px; background: #000; display: block; }
+.vlabel { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
+.s-pass { color: var(--pass); } .s-warn { color: var(--warn); } .s-fail { color: var(--fail); } .s-na, .s-not-run, .s-incomplete { color: var(--na); }
+.gates { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.gates button { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: transparent; border: 1px solid currentColor; }
+.checks { background: var(--chip); border-radius: 10px; padding: 8px 12px; margin: 6px 0 10px; font-size: 12.5px; display: none; }
+.checks.open { display: block; }
+.checks div { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+.checks div:last-child { border-bottom: 0; }
+table.spec { border-collapse: collapse; width: 100%; font-size: 12.5px; margin: 8px 0; }
+table.spec td { border-top: 1px solid var(--line); padding: 4px 6px; vertical-align: top; overflow-wrap: anywhere; }
+table.spec td:first-child { color: var(--muted); white-space: nowrap; width: 110px; }
+.arts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin: 8px 0; }
+.arts a { display: block; text-decoration: none; color: var(--muted); font-size: 11.5px; }
+.arts img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: #000; }
+details { margin: 8px 0; }
+summary { cursor: pointer; font-weight: 600; }
+.qlist { display: grid; gap: 4px; margin-top: 6px; font-size: 13px; }
+.qlist label { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.decide { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 8px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.reasons label { font-size: 12.5px; }
+textarea { width: 100%; min-height: 48px; background: var(--chip); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+code.cmd { display: block; background: var(--chip); border-radius: 8px; padding: 6px 8px; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+.muted { color: var(--muted); }
+.warnbox { color: var(--fail); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Review</h1>
+  <span class="meta" id="meta"></span>
+  <span class="grow"></span>
+  <span class="row" id="filters"></span>
+  <label class="meta">reviewer <input id="by" size="10" value="owner"></label>
+  <button class="primary" id="export">Export decisions.json</button>
+</header>
+<main id="items"></main>
+<script id="gallery-data" type="application/json">/*__GALLERY_DATA__*/null</script>
+<script>
+(() => {
+  'use strict';
+  const data = JSON.parse(document.getElementById('gallery-data').textContent) || { items: [], reasons: [] };
+  const KEY = `hm-gallery:${data.batch || data.title}`;
+  const store = {
+    load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } },
+    save(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* private window: decisions live until export */ } },
+  };
+  const state = store.load();
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') n.className = v; else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else if (v !== null && v !== undefined) n.setAttribute(k, v);
+    }
+    for (const c of kids.flat()) if (c !== null && c !== undefined) n.append(c.nodeType ? c : document.createTextNode(String(c)));
+    return n;
+  };
+  const statusOf = (it) => (it.qa.pass === true ? (it.qa.warnings.length ? 'warn' : 'pass') : it.qa.pass === false ? 'fail' : 'incomplete');
+  const shQuote = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+
+  document.getElementById('title').textContent = data.title;
+  document.title = `${data.title} - Hushmallow review`;
+  const counts = data.items.reduce((m, it) => ((m[statusOf(it)] = (m[statusOf(it)] || 0) + 1), m), {});
+  document.getElementById('meta').textContent = `${data.items.length} videos - ${Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(', ')} - built ${data.generatedAt.slice(0, 16).replace('T', ' ')}`;
+
+  let filter = 'all';
+  const filters = document.getElementById('filters');
+  for (const f of ['all', 'fail', 'warn', 'pass', 'incomplete', 'undecided']) {
+    filters.append(el('button', { 'aria-pressed': String(f === filter), onclick: (e) => { filter = f; [...filters.children].forEach((b) => b.setAttribute('aria-pressed', String(b === e.target))); render(); } }, f));
+  }
+
+  function decisionOf(key) { return (state[key] ||= { verdict: null, reasons: [], note: '', checklist: {} }); }
+
+  function commands(it, d) {
+    if (!it.commands.approve) return 'no spec: approve / reject need the variant\'s spec.json';
+    if (d.verdict === 'approve') return `${it.commands.approve}${d.note ? ` --note ${shQuote(d.note)}` : ''}`;
+    if (d.verdict === 'reject') return `node cli/hm.mjs reject ${it.id} --reason ${d.reasons.join(',') || '<reason>'}${d.note ? ` --note ${shQuote(d.note)}` : ''}`;
+    return `${it.commands.approve}\n${it.commands.reject}`;
+  }
+
+  function card(it) {
+    const d = decisionOf(it.key);
+    const st = statusOf(it);
+    const left = el('div', {},
+      it.media.preview ? el('video', { src: it.media.preview.file, controls: '', loop: '', preload: 'metadata', playsinline: '', poster: it.media.poster || null }) : el('div', { class: 'muted' }, 'no preview'),
+      el('div', { class: 'vlabel' }, it.media.preview ? `preview (${(it.media.preview.bytes / 1048576).toFixed(1)} MB, ${it.media.preview.source})` : ''),
+      it.media.seam ? [el('div', { class: 'vlabel' }, 'the loop seam, played twice (last 1.5 s, first 1.5 s, twice)'), el('video', { src: it.media.seam, controls: '', loop: '', preload: 'metadata' })] : null,
+      it.media.sideBySide ? [el('div', { class: 'vlabel' }, 'side by side with the approved v2'), el('video', { src: it.media.sideBySide, controls: '', loop: '', preload: 'metadata' })] : null,
+    );
+    const checksBox = el('div', { class: 'checks' });
+    const gates = el('div', { class: 'gates' }, it.gates.map((g) => el('button', {
+      class: `s-${g.status}`, title: g.reason || '',
+      onclick: () => {
+        checksBox.replaceChildren(...[el('strong', {}, g.id), g.reason ? el('div', {}, g.reason) : null,
+          ...g.checks.map((c) => el('div', {}, el('span', { class: `s-${c.status}` }, c.status.toUpperCase()), ` ${c.name}${c.reportOnly ? ' (reported only)' : ''}: ${c.detail || ''}`))].filter(Boolean));
+        checksBox.classList.toggle('open', checksBox.dataset.gate !== g.id || !checksBox.classList.contains('open'));
+        checksBox.dataset.gate = g.id;
+      },
+    }, `${g.status === 'pass' ? 'PASS' : g.status === 'warn' ? 'WARN' : g.status === 'fail' ? 'FAIL' : 'N/A'} ${g.id}`)));
+    const spec = el('table', { class: 'spec' }, it.spec.map(([k, v]) => el('tr', {}, el('td', {}, k), el('td', {}, String(v)))));
+    const arts = el('div', { class: 'arts' }, [['contactSheet', 'contact sheet (every 0.5 s)'], ['gagStrip', 'gag filmstrip'], ['ritualStrip', 'ritual filmstrip'],
+      ['waveform', 'waveform + cue markers'], ['seamPair', 'seam: last | first | diff'], ['logo', 'logo: video | probe'], ['safezone', 'safe-zone finding']]
+      .filter(([k]) => it.media[k]).map(([k, label]) => el('a', { href: it.media[k], target: '_blank', rel: 'noopener' }, el('img', { src: it.media[k], alt: label, loading: 'lazy' }), label)));
+    const neigh = it.neighbours.length
+      ? el('div', { class: 'muted' }, 'nearest in the ledger: ', it.neighbours.map((n) => `${n.id} (${n.near}/${n.compared} anchors close, mean Hamming ${n.meanHamming?.toFixed(1)})`).join('; '))
+      : el('div', { class: 'muted' }, 'nearest in the ledger: none in the last 14 days');
+    const qlist = el('div', { class: 'qlist' }, it.checklist.map((q, k) => el('label', {}, `${k + 1}. ${q}`,
+      el('select', { onchange: (e) => { d.checklist[k + 1] = e.target.value || undefined; store.save(state); } },
+        ['', 'strong', 'good', 'adequate', 'weak'].map((v) => { const o = el('option', { value: v }, v || '-'); if (d.checklist[k + 1] === v) o.selected = true; return o; })))));
+    const cmd = el('code', { class: 'cmd' }, commands(it, d));
+    const warnbox = el('div', { class: 'warnbox' });
+    const refresh = () => {
+      cmd.textContent = commands(it, d);
+      warnbox.textContent = d.verdict === 'reject' && !d.reasons.length ? 'a rejection needs at least one reason code'
+        : d.verdict === 'approve' && it.qa.pass !== true ? `QA is ${it.qa.status}: export refuses a video whose QA report does not pass` : '';
+      store.save(state);
+    };
+    const verdict = el('div', { class: 'row' }, ['approve', 'reject', 'undecided'].map((v) => el('label', {},
+      (() => { const r = el('input', { type: 'radio', name: `v-${it.key}`, value: v, onchange: () => { d.verdict = v === 'undecided' ? null : v; refresh(); } }); if ((d.verdict || 'undecided') === v) r.checked = true; return r; })(), ` ${v}`)));
+    const reasons = el('div', { class: 'row reasons' }, data.reasons.map((r) => el('label', {},
+      (() => { const c = el('input', { type: 'checkbox', onchange: (e) => { d.reasons = e.target.checked ? [...new Set([...d.reasons, r])] : d.reasons.filter((x) => x !== r); refresh(); } }); if (d.reasons.includes(r)) c.checked = true; return c; })(), ` ${r}`)));
+    const note = el('textarea', { placeholder: 'note (optional)', oninput: (e) => { d.note = e.target.value; refresh(); } });
+    note.value = d.note || '';
+    const right = el('div', {},
+      el('h2', {}, it.id), it.label !== it.id ? el('div', { class: 'muted' }, it.label) : null, el('span', { class: `badge s-${st}` }, `QA ${it.qa.status.toUpperCase()}`), ' ',
+      el('span', { class: 'muted' }, `${it.qa.failed.length ? `failed: ${it.qa.failed.join(', ')}. ` : ''}${it.qa.pending.length ? `not run: ${it.qa.pending.join(', ')}. ` : ''}${it.qa.seconds ? `QA ${it.qa.seconds} s` : ''}`),
+      gates, checksBox, spec, neigh, arts,
+      el('details', {}, el('summary', {}, 'AUDIT-v2 checklist (ten questions)'), qlist),
+      el('div', { class: 'decide' }, el('strong', {}, 'Decision'), verdict, el('div', { class: 'muted' }, 'reason codes (a reject needs one; codes flag cells for re-tuning)'), reasons, note, warnbox,
+        el('div', { class: 'muted' }, 'or record it from the studio directly:'), cmd),
+    );
+    refresh();
+    return el('section', { class: 'card', id: it.key }, left, right);
+  }
+
+  function render() {
+    const box = document.getElementById('items');
+    box.replaceChildren(...data.items.filter((it) => filter === 'all' || (filter === 'undecided' ? !decisionOf(it.key).verdict : statusOf(it) === filter)).map(card));
+  }
+
+  document.getElementById('export').addEventListener('click', () => {
+    const by = document.getElementById('by').value.trim() || 'owner';
+    const decisions = data.items.filter((it) => decisionOf(it.key).verdict).map((it) => {
+      const d = decisionOf(it.key);
+      return { id: it.id, batch: it.batch, fingerprint: it.fingerprint, verdict: d.verdict, reasons: d.reasons, note: d.note || '',
+        checklist: Object.fromEntries(Object.entries(d.checklist).filter(([, v]) => v)),
+        video: it.video, qa: { status: it.qa.status, report: it.qa.report, reportSha256: it.qa.reportSha256 } };
+    });
+    const bad = decisions.filter((d) => d.verdict === 'reject' && !d.reasons.length);
+    if (bad.length) { alert(`A rejection needs at least one reason code: ${bad.map((d) => d.id).join(', ')}`); return; }
+    const out = { schema: data.decisionsSchema, batch: data.batch, title: data.title, by, exportedAt: new Date().toISOString(), reasonCodes: data.reasons, decisions };
+    const a = el('a', { href: URL.createObjectURL(new Blob([`${JSON.stringify(out, null, 1)}\n`], { type: 'application/json' })), download: 'decisions.json' });
+    document.body.append(a); a.click(); a.remove();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

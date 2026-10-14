@@ -63,6 +63,26 @@ Source: `docs/PHASE2-PLAN.md`, sections "Open questions for the owner" and "CONF
 | **Options** | (a) Accept the calibrated values as the brand's limits. (b) Keep the plan's values for new content and exempt only the v2 golden (a per-spec waiver recorded in the spec). (c) Per-value: e.g. keep the stretch at 1.4 for Noomi's pack only and restore 1.3 elsewhere. For G-JOLT: tick an extremes sheet for intensity 0.8 and 1.0 (WP-13 builds the sheets), or collapse the range to the v2 point until then. |
 | **Consequences** | WP-13 (cells and extremes sheets), WP-21–WP-23 (new moves are judged by these values), WP-05 (QA gates share some of them), WP-06 (planner sampling ranges). |
 
+### Q6. QA limits calibrated on the approved v2 (WP-05)
+
+| | |
+|---|---|
+| **Status** | open: raised by WP-05 and its review (Wave D integration, 2026-10-14). The calibrated values below are in force (tagged `provisional` in `qa/gates/thresholds.json`, the plan's value kept as the warn band) until the owner or WP-27 answers. |
+| **Needed by** | WP-15 (the first review batch), and in any case before WP-27 refits the thresholds on 12 or more approved videos. |
+| **Why it matters** | Five plan limits would fail the approved v2 itself, so WP-05 set the fail limit at or beyond what v2 measures and kept the plan's value as a warning. Every future video is passed by these values. **Thought-card text** (glass) ≥ 1.8:1 (plan 4.5:1; v2's cards measure 2.19:1). **Cards over the Mallow** ≤ 25 % (plan 15 %; v2 21.8 %) and **over the face** ≤ 8 % (plan 5 %; v2 5.7 %). **Skin grade** (G-FINAL:fidelity): hue shift fails at 30° (plan 10°; v2's cold and warm relight reaches 22.4°) and chroma at 0.45–1.6× (plan 0.8–1.2×; v2 0.55–1.42×), so a body recoloured by about 20° only warns. **Logo SSIM** ≥ 0.95 (plan 0.995; v2 0.988 against a canvas LogoCard probe without the post-processing). Separately, the plan's rest-probe fidelity check (identity post, dE2000 mean ≤ 1.0) is not built: it needs an engine probe mode (WP-10). |
+| **Options** | (a) Accept the calibrated values as the brand's limits. (b) Keep the plan's values for new content and exempt only the approved v2 (a per-video waiver). (c) Per value: e.g. accept the card coverage but restore the 10° hue limit once the rest probes exist and judge the relight there. |
+| **Consequences** | WP-05 (`qa/gates/thresholds.json`), WP-10 (rest probes), WP-12 (glass card ink and alpha), WP-15 and WP-27 (batch QA and the refit). |
+
+### Q7. When new videos switch to the generic score (WP-04)
+
+| | |
+|---|---|
+| **Status** | open: raised by WP-04 and its review (Wave D integration, 2026-10-14). Default in force: every composed direction keeps `meta.score: 'soundtrack-v2'` (`composer/compose.js`), so nothing renders with the generic score until the owner answers. |
+| **Needed by** | the M0 gate (the A/B listening pass in `docs/m0/audio/README.md`), before the first M1 render. |
+| **Why it matters** | The generic score (`audio/score.mjs`, `'hm-score'`) fixes R7, R10 and R11 and voices each Mallow in its own kit and realm. It also makes musical changes the owner has not heard: hit sync moves kit gestures up to 0.3 s earlier and softens answer notes (Pipzi's 4-bell run now leads 240 ms into the logo; Glitzi and Boppo move their take sounds), MO-CLOSE is lifted into the phone band (≥ 600 Hz), and a loop is delivered as 256 kb/s AAC with an MP4 edit list hiding 1 s of pre-roll (192 kb/s plain mux in v2). A player that ignores edit lists would play that score 1.02 s late. |
+| **Options** | (a) Switch new directions to `'hm-score'` after the listening pass (the golden T01 keeps `'soundtrack-v2'`). (b) Switch per Mallow as each kit is approved by ear. (c) Keep `'soundtrack-v2'` until the banned-recipe lint gaps found in the WP-04 review are closed. |
+| **Consequences** | WP-04 (score defaults, bitrate), WP-01 (`render/mux.mjs` loop mux), WP-13 onward (every new direction's sound), WP-25/WP-27 (delivery checks on the uploaded file). |
+
 ## Decided defaults (the owner may still overrule them)
 
 These came out of the plan synthesis. They count as settled unless the owner says otherwise.

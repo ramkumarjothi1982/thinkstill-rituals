@@ -1,0 +1,379 @@
+{
+  "schema": "hm-qa-thresholds/1",
+  "$doc": "Every QA threshold in one place (read by qa/gates/*.py and qa/gates/*.mjs). A value marked provisional was calibrated on the approved v2 alone (output/v2/my-brain-at-2am-v2.mp4, sha256 7d28467c...); its 'v2' field is what v2 measures and 'plan' is PHASE2-PLAN's value. Warn bands sit between the plan value and the calibrated limit. All provisional values are refitted after M2 on >= 12 approved videos plus the fixtures (WP-27); every change is logged in docs/QA.md.",
+  "calibration": {
+    "source": "approved v2: output/v2/my-brain-at-2am-v2.mp4 (sha256 7d28467c04437465bb4ec451faf31e64de2f62ee5355937e0623f4e898b76134)",
+    "crossCheck": "WP-02 final-profile render of the same film (/home/user/hm-work/wp02r2/renders/final-4/final.mp4) and the DRAFT-marked draft render (/home/user/hm-work/wp02r2/renders/draft-2/final.mp4)",
+    "date": "2026-10-14",
+    "refit": "WP-27 (Batch A and QA threshold recalibration)"
+  },
+  "gates": {
+    "G-FINAL:delivery": {
+      "codec": "h264",
+      "profile": "High",
+      "pixFmt": "yuv420p",
+      "color": "bt709/bt709/bt709",
+      "size": [
+        1080,
+        1920
+      ],
+      "fps": "30/1",
+      "durationTol": 0.03,
+      "audioCodec": "aac",
+      "audioRate": 48000,
+      "audioChannels": 2,
+      "avLengthTol": 0.025
+    },
+    "G-FINAL:determinism": {
+      "frames": 3,
+      "draftFrames": 0
+    },
+    "G-FINAL:flash": {
+      "blockGrid": [
+        34,
+        60
+      ],
+      "changeMin": 0.1,
+      "areaMin": 0.25,
+      "darkerMax": 0.8,
+      "maxFlashes": 0,
+      "red": {
+        "change": 20,
+        "maxFlashes": 0
+      },
+      "pattern": {
+        "every": 2,
+        "size": [
+          270,
+          480
+        ],
+        "tiles": [
+          4,
+          3
+        ],
+        "minCyclesPerTile": 3,
+        "peakShare": 0.35,
+        "amplitude": 0.05,
+        "areaMin": 0.25,
+        "minPairs": 5,
+        "phaseMove": 0.3,
+        "maxMovingFrames": 3,
+        "provisional": true
+      },
+      "plan": "zero transitions of >= 10 % over >= 25 % of the frame with the darker state < 0.8; saturated red: zero; moving stripes > 25 % of the frame with > 5 pairs fail",
+      "provisional": false,
+      "v2": {
+        "flashes": 0,
+        "maxShareChanging10pct": 0.133,
+        "maxMeanBlockDelta": 0.051
+      }
+    },
+    "G-FINAL:seam": {
+      "quietFactor": 1.15,
+      "plan": "seam <= max(1.15 x median consecutive |delta| over quiet frames, p90 of all consecutive |delta|); also inside the face box",
+      "v2": {
+        "seam": 1.886,
+        "limit": 4.279,
+        "faceSeam": 2.435,
+        "faceLimit": 9.999
+      }
+    },
+    "G-DRAFT:safezone": {
+      "every": 3,
+      "pad": 120,
+      "level": 40,
+      "intrudeFraction": 0.5,
+      "sustainFrames": 2,
+      "zones": {
+        "rightRail": [
+          900,
+          700,
+          1080,
+          1500
+        ],
+        "bottom": [
+          0,
+          1500,
+          1080,
+          1920
+        ],
+        "leftMargin": [
+          0,
+          180,
+          60,
+          1500
+        ],
+        "rightMargin": [
+          1020,
+          180,
+          1080,
+          700
+        ],
+        "top": [
+          0,
+          0,
+          1080,
+          180
+        ]
+      },
+      "plan": "key text inside x 60-1020, y 180-1250; right rail (x > 900, y 700-1500) clear; nothing below y 1500",
+      "provisional": true,
+      "shift": 16,
+      "persist": 0.7,
+      "periodic": 0.6
+    },
+    "G-DRAFT:readability": {
+      "every": 3,
+      "pad": 10,
+      "alphaMin": 0.9,
+      "kernel": 25,
+      "level": 30,
+      "ringInner": 4,
+      "ringOuter": 12,
+      "minContrast": {
+        "overlay": {
+          "fail": 4.5,
+          "plan": 4.5,
+          "v2": 9.46
+        },
+        "glass": {
+          "fail": 1.8,
+          "warn": 4.5,
+          "plan": 4.5,
+          "v2": 2.19,
+          "provisional": true,
+          "note": "the approved v2's thought cards render their ink lighter than #1b1d57 (measured fill luminance 0.105) on frosted glass: 2.19:1 at the ring's p10"
+        }
+      },
+      "plan": "text contrast >= 4.5:1, glyph fill against a dilated background ring"
+    },
+    "G-DRAFT:layout": {
+      "silhouetteMargin": 24,
+      "propCoverMallow": {
+        "fail": 0.25,
+        "warn": 0.15,
+        "plan": 0.15,
+        "v2": 0.218,
+        "provisional": true
+      },
+      "propCoverFace": {
+        "fail": 0.08,
+        "warn": 0.05,
+        "plan": 0.05,
+        "v2": 0.057,
+        "provisional": true
+      },
+      "every": 3,
+      "provisional": true,
+      "plan": "Mallow silhouette at least 24 px from the frame edges; props cover <= 15 % of the Mallow and <= 5 % of the face box",
+      "v2": {
+        "marginPx": 127.6
+      }
+    },
+    "G-FINAL:fidelity": {
+      "every": 2,
+      "minKept": 0.5,
+      "grade": {
+        "sustainFrames": 15,
+        "hueShiftDeg": {
+          "fail": 30,
+          "warn": 10,
+          "plan": 10,
+          "v2": 22.4,
+          "provisional": true
+        },
+        "lightnessRatio": {
+          "fail": [
+            0.7,
+            1.35
+          ],
+          "warn": [
+            0.75,
+            1.25
+          ],
+          "plan": [
+            0.7,
+            1.35
+          ],
+          "v2": [
+            0.796,
+            1.042
+          ]
+        },
+        "chromaRatio": {
+          "fail": [
+            0.45,
+            1.6
+          ],
+          "warn": [
+            0.8,
+            1.2
+          ],
+          "plan": [
+            0.8,
+            1.2
+          ],
+          "v2": [
+            0.552,
+            1.424
+          ],
+          "provisional": true
+        }
+      },
+      "sharpness": {
+        "sigma": [
+          0.7,
+          1.6
+        ],
+        "window": 7,
+        "stillPx": 2,
+        "fail": 0.6,
+        "warn": 0.7,
+        "v2": 0.835,
+        "provisional": true,
+        "v2StillMin": 0.699,
+        "finalProfile": 0.842,
+        "note": "median over still frames of (render DoG energy / pristine DoG energy at the same scale), contrast-normalised; the upscaled-sprite fixture measures 0.457"
+      },
+      "restFade": {
+        "fail": 1.5,
+        "plan": 1.5,
+        "v2": 1.003
+      },
+      "magnification": {
+        "fail": 1.0,
+        "plan": 1.0
+      }
+    },
+    "G-FINAL:figure-ground": {
+      "every": 3,
+      "inset": 20,
+      "ring": 40,
+      "ringGap": 6,
+      "sustainFrames": 15,
+      "dE": {
+        "fail": 8,
+        "warn": 12
+      },
+      "provisional": true,
+      "plan": "dE between the body and a 40 px surrounding ring >= 8 (fail) or >= 12 (warn), calibrated on v2",
+      "v2": 41.58
+    },
+    "G-FINAL:realm-likeness": {
+      "every": 3,
+      "moodMin": 0.6,
+      "baseMax": 0.25,
+      "dE": {
+        "fail": 14,
+        "warn": 10
+      },
+      "provisional": true,
+      "plan": "9x16 Lab grid against reference stills at matching mood; mean dE <= 10 (warn), <= 14 (fail)",
+      "v2": "0 by construction (the reference is v2); final profile 0.04-0.05, re-encoded fixtures 0.35-0.43"
+    },
+    "G-FINAL:logo": {
+      "ssim": {
+        "fail": 0.95,
+        "warn": 0.995,
+        "plan": 0.995,
+        "provisional": true,
+        "v2": 0.9883,
+        "finalProfile": 0.9897,
+        "reencodedFixtures": 0.985
+      },
+      "colourDE": {
+        "fail": 3.0,
+        "warn": 2.0,
+        "provisional": true,
+        "v2": 1.08,
+        "reencodedFixtures": 1.4
+      },
+      "plan": "logo at full alpha: SSIM >= 0.995 against a reference LogoCard probe rendered with the same post-processing"
+    },
+    "G-FINAL:brand-marks": {
+      "every": 15,
+      "search": 3,
+      "present": 0.6
+    },
+    "G-FINAL:allowlist": {
+      "assetPrefixes": [
+        "hushmallow-infinite-studio/assets/",
+        "hushmallow/assets/"
+      ]
+    },
+    "G-AUDIO": {
+      "loudness": {
+        "target": -16,
+        "tol": 0.5
+      },
+      "truePeak": {
+        "fail": -1.5
+      },
+      "lra": {
+        "fail": 10
+      },
+      "sync": {
+        "loudMs": 20,
+        "quietMs": 45,
+        "globalMs": 20,
+        "searchMs": [
+          -60,
+          120
+        ],
+        "minRiseDb": 10.0,
+        "minGraded": 4,
+        "provisional": true,
+        "graded": "transient cues only: loud take, land, thought, release, eyes_open, logo; quiet blink, wince, lift_off (qa/gates/audio.py)",
+        "v2": {
+          "globalOffsetMs": 0,
+          "graded": 12,
+          "outside": 0
+        }
+      },
+      "seam": {
+        "stepDbfs": -60,
+        "rmsDb": 3,
+        "windowMs": 10,
+        "legacy": {
+          "soundtrack-v2": {
+            "stepDbfs": -24,
+            "v2": -31.3,
+            "note": "R7: the frozen v2 score ends at 0.7 and restarts from 0, so its wrap steps; WP-04's circular render fixes it for new scores, which must meet stepDbfs"
+          }
+        },
+        "provisional": true
+      },
+      "gap": {
+        "lufs": -50,
+        "seconds": 1.0
+      },
+      "hum": {
+        "fail": -24,
+        "v2": -26.1
+      },
+      "tonal": {
+        "last": 3,
+        "toleranceCents": 50
+      },
+      "bannedRecipes": [
+        "ringtone",
+        "alarm",
+        "heartbeat",
+        "messenger-pop",
+        "jump-scare"
+      ]
+    },
+    "G-DUPES": {
+      "anchorsHeld": 5,
+      "hamming": 10,
+      "coverMin": 14,
+      "days": 14,
+      "lastPosts": 30,
+      "plan": "held for review if >= 5 of 7 anchors are within Hamming 10 of any video in the 14-day ledger; cover >= 14 from each of the last 30 posts",
+      "provisional": true
+    },
+    "G-COST": {
+      "warnOver": 0.3
+    }
+  }
+}
