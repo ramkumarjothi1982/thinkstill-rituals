@@ -142,9 +142,11 @@ test('a death, a loss or harm told inside a world: no Resume pill, no ▶ or pan
   assert.match(choice, /if \(S\.hold === 'care' \|\| S\.hold === 'quiet'\) \{ S\.hold = null; pausedPill\.hidden = true; \}/, 'the calm world, asked for, plays unheld');
   assert.match(choice, /\} else if \(S\.hold === 'quiet' && worldMode\) \{[\s\S]*?endQuietWorld\(\);/, 'staying quietly (or no answer) ends the world quietly');
   assert.match(fn('function endQuietWorld() {', 'function safetyHold('), /flowRef\.finish\?\.\(\{ reason: 'safety' \}\);[\s\S]*?if \(worldMode && !S\.finishing\) onFinished\(\);/);
-  // only calm worlds are offered, and a charged world is never offered to pick up in a gentle visit
+  // only calm worlds are offered, and a charged world is never offered to pick up after a loss or harm done to them
+  // (distress alone keeps its Resume, owner P4 — the follow-up: S.noResume, not gentle())
   assert.match(fn('async function gentleWorld()', 'async function careBeat('), /\(!S\.noResume \|\| registry\.get\(id\)\?\.calm === true\)/);
-  assert.match(fn('async function resumableNow()', 'function resumeSaved()'), /if \(gentle\(\) && registry\.get\(p\.worldId\)\?\.calm !== true\) return null;/);
+  assert.match(fn('async function resumableNow()', 'function resumeSaved()'), /if \(S\.noResume && registry\.get\(p\.worldId\)\?\.calm !== true\) return null;/);
+  assert.doesNotMatch(fn('async function resumableNow()', 'function resumeSaved()'), /gentle\(\)/);
   // distress alone keeps owner P4's Resume
   assert.match(scene, /S\.hold = S\.noResume \? 'quiet' : 'care';/);
   // a Tell opened inside a world never pre-presses a feeling chosen for an earlier Tell

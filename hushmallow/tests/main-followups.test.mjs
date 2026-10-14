@@ -82,3 +82,33 @@ test('"moved" and "touched" are feelings only when the words say so', () => {
     assert.ok(interpret(t).emotions.some((e) => e.id === id && e.confidence >= 0.6), `${t} reads ${id}`);
   }
 });
+
+// ------------------------------------------------------------- 1. a world held quietly after a closed Tell --
+const scene = read('src/app/scenes/hushfold.js');
+const fnOf = (a, b) => scene.slice(scene.indexOf(a), scene.indexOf(b, scene.indexOf(a) + a.length));
+
+test('abuse or a death typed in a running world and the Tell closed without Send: the same gentle beat as after Send, never frozen', () => {
+  const close = fnOf('onClose: (reason, meta = {}) => {', 'pushLayer(\'overlay\');');
+  // held quietly (no pill, nothing resumes it): the support line, then stay here quietly or somewhere calm (careBeat → careChoice)
+  assert.match(close, /if \(!S\.crisis && S\.hold === 'quiet' && worldMode && flowRef && !flowRef\.stub\) \{\s*if \(!S\.quietBeat\) \{/);
+  assert.match(close, /S\.quietBeat = careBeat\(\{ emotion: null, intention: null, safety: \{ level: S\.level, category: S\.category \} \}\)/);
+  // (one beat at a time; it lets go once done)
+  assert.match(close, /\.finally\(\(\) => \{ if \(S\.quietBeat === beat\) S\.quietBeat = null; \}\)/);
+  // only when it was not sent (a Send has afterTell's own beat), and never after a crisis (the world ends quietly then)
+  assert.ok(close.indexOf("if (reason !== 'submit') {") < close.indexOf('S.quietBeat = careBeat('));
+  // and careChoice ends a quietly held world quietly on "stay" or no answer, or melts into the calm world asked for
+  const choice = fnOf('async function careChoice(', 'function calmTheWorld(');
+  assert.match(choice, /\} else if \(S\.hold === 'quiet' && worldMode\) \{[\s\S]*?endQuietWorld\(\);/);
+  assert.match(choice, /if \(worldMode && flowRef && !flowRef\.stub && !S\.finishing\) \{ calmTheWorld\(gw\.worldId\); return; \}/);
+});
+
+// ----------------------------------------------------------------------- 7. Resume only after S.noResume --
+test('Resume is hidden only after a loss or a care-level disclosure (S.noResume), not after distress alone', async () => {
+  const body = fnOf('async function resumableNow()', 'function resumeSaved()');
+  assert.match(body, /if \(S\.noResume && registry\.get\(p\.worldId\)\?\.calm !== true\) return null;/);
+  assert.doesNotMatch(body, /gentle\(\)/);
+  assert.match(body, /\|\| S\.crisis\) return null;/, 'never after a crisis');
+  // the director picks up the saved world itself when asked, gently: what the panel offers is what plays
+  const dir = read('src/hushfold/flow/director.js');
+  assert.match(dir, /if \(id && gentleOn && registry\.get\(id\)\?\.calm !== true && !resuming\) id = null;/);
+});

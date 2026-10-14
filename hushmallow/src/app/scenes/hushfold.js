@@ -1454,8 +1454,18 @@ export default function hushfold(app, params = {}) {
         if (reason !== 'submit') {
           stageMallow.setStage(gentle() ? CARE_FACE : 'neutral', { quiet: true });
           speakCrisis();
+          // a death, a loss or harm done to the person typed in a running world and closed without sending: the world is
+          // held quietly (no pill, nothing resumes it), so the same gentle beat as after Send follows — the support line,
+          // then stay here quietly (the world ends quietly) or somewhere calm (careBeat → careChoice) — never left frozen
+          // under its veil with nothing offered. One beat at a time (a Tell opened over its choice parks it, then it is back)
+          if (!S.crisis && S.hold === 'quiet' && worldMode && flowRef && !flowRef.stub) {
+            if (!S.quietBeat) {
+              S.careSaid = true;
+              const beat = S.quietBeat = careBeat({ emotion: null, intention: null, safety: { level: S.level, category: S.category } })
+                .catch((e) => console.warn(e)).finally(() => { if (S.quietBeat === beat) S.quietBeat = null; });
+            }
           // care or distress typed and closed without sending: support stays close, said once, quietly
-          if (!S.crisis && gentle() && !S.careSaid) { S.careSaid = true; say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding }); }
+          } else if (!S.crisis && gentle() && !S.careSaid) { S.careSaid = true; say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding }); }
           app.applyUpdateIfSafe?.();
         }
       },
@@ -1864,9 +1874,9 @@ export default function hushfold(app, params = {}) {
     try {
       const { registry } = await import('../../hushfold/flow/registry.js');
       if (!registry.playable(p.worldId)) return null;
-      // (a gentle visit plays only calm worlds: a charged one is never offered to pick up — after a death, a loss or
-      // harm done to the person, that would replay it)
-      if (gentle() && registry.get(p.worldId)?.calm !== true) return null;
+      // (after a death, a loss or harm done to the person a charged world is never offered to pick up: that would replay
+      // it — S.noResume. After distress alone Resume stays theirs, owner P4: the director picks it up, gently)
+      if (S.noResume && registry.get(p.worldId)?.calm !== true) return null;
       return { worldId: p.worldId, title: registry.get(p.worldId)?.title || null, savedAt: p.savedAt };
     } catch { return null; }
   }
