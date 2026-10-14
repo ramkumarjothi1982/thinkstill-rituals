@@ -32,6 +32,8 @@ import { resolveProfile } from '../render/profiles.js';
 import { LakeWorld } from '../worlds/lake.js';
 import { MESH_VS, MESH_FS, BLUR_FS, COPY_FS, BRIGHT_FS, GLASS_VS, GLASS_FS, PART_VS, PART_FS, postFS, ACC_FS } from './glsl-v2.js';
 import { renderFrameExact, renderSubExact } from './frame-exact.js';
+import { renderFrameFast } from './frame-fast.js';
+import { FacePass } from './passes/face.js';
 
 /** The design space of the approved v2 (and the default of every direction). */
 export const DESIGN_W = 1080, DESIGN_H = 1920;
@@ -113,6 +115,10 @@ export class Renderer {
     // direction asked for to the texture it got, for introspection (golden probes)
     this.texCache = new Map();
     this.textTex = new Map();
+    // the fast pipeline and its passes (profile features; none in the exact profile)
+    const f = profile.features;
+    this.facePass = f.faceCache ? new FacePass(this, { fast: false }) : null;
+    this.fastPipeline = !!this.facePass;
   }
 
   setMallow({ artImg, pristineImg, faceCanvas, normalImg, cols = 96, rows = 96 }) {
@@ -141,6 +147,7 @@ export class Renderer {
     for (const t of new Set([this.artTex, this.pristineTex, this.faceTex, this.normalTex])) if (t) gl.deleteTexture(t);
     this.mesh?.dispose();
     this.reflMesh?.dispose();
+    this.facePass?.dispose();
     this.artTex = this.pristineTex = this.faceTex = this.normalTex = this.faceCanvas = this.mesh = this.reflMesh = null;
   }
 
@@ -188,6 +195,7 @@ export class Renderer {
   renderFrame(subStates, center, overlayCanvas) {
     for (const S of subStates) assertNoRoll(S.cam);
     assertNoRoll(center.cam);
-    renderFrameExact(this, subStates, center, overlayCanvas);
+    if (this.fastPipeline) renderFrameFast(this, subStates, center, overlayCanvas);
+    else renderFrameExact(this, subStates, center, overlayCanvas);
   }
 }

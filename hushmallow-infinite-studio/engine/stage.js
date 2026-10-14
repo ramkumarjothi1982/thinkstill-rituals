@@ -262,6 +262,9 @@ export class Stage {
    */
   prime(a, k = 0) {
     if (this.clockFrames !== 0) throw new Error('prime() must run in a fresh page, before any frame');
+    // with the face cache the face canvas is a pure function of each frame's own parameters:
+    // nothing to replay, only the virtual clock to advance
+    if (this.profile.features.faceCache) k = 0;
     const from = Math.max(0, a - k);
     while (this.clockFrames < from) this.stepClock();
     let dirty = false;

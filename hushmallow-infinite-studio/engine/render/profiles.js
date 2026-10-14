@@ -20,6 +20,7 @@
 /** The optimisation features, in the order the performance pass landed them. */
 export const FEATURES = Object.freeze({
   overlaySkip: 'P2: an overlay with nothing drawn on it is neither cleared again, uploaded nor composited',
+  faceCache: 'P3: the face is drawn once per frame from quantised parameters; per sub-frame only while it moves > 1.5 px',
 });
 
 const ALL = Object.keys(FEATURES);
