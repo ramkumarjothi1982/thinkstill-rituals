@@ -1,6 +1,6 @@
-# Hushmallow Sensory Lab (Hushmallow 2.0, development preview)
+# hushmallow Sensory Lab (hushmallow 2.0, development preview)
 
-This is a standalone browser lab for the ten Hushmallow 2.0 companion and
+This is a standalone browser lab for the ten hushmallow 2.0 companion and
 sensory experiences. It runs separately from the production app: it isn't
 linked from `index.html`, it has no auth, payments, network calls or AI calls,
 and it doesn't change any file outside `hushmallow/sensory-lab/`.

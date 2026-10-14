@@ -1,0 +1,3 @@
+/* Hushfold Weather Weaver — feature styles (owned by the weather engineer from hand-over).
+   Linked after lab.css in index.html, so equal-specificity rules win over the shared ones.
+   Every selector starts with .weather; element classes use wx-, custom properties --wx-. */

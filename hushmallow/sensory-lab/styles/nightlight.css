@@ -1,0 +1,3 @@
+/* Mallow Nightlight — feature styles (owned by the nightlight engineer from hand-over).
+   Linked after lab.css in index.html, so equal-specificity rules win over the shared ones.
+   Every selector starts with .nightlight; element classes use nl-, custom properties --nl-. */

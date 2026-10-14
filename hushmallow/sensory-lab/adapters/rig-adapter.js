@@ -13,9 +13,11 @@ export const RIG_CONTRACT = {
     'setEmotion', 'react', 'lookAt', 'setReducedMotion', 'describe', 'destroy', 'on', '_emit'],
   // state SoftMallow reads
   fields: ['mallow', 'opts', 'canvas', 'ctx', 'skin', 'sctx', 'body', 'val', 'particles', 'loaded',
-    'S', 'CX', 'BASE', 'W', 'H', 'dpr', 'q', 'time', 'breathPhase'],
+    'S', 'CX', 'BASE', 'W', 'H', 'dpr', 'q', 'time', 'breathPhase', 'overlays', 'intensity'],
   // body sub-fields used as the soft body's pose
-  body: ['squash', 'lean', 'shear', 'tilt', 'hop', 'hopV', 'grounded', 'spin'],
+  // (+ the velocities nudge() writes and the Glitzi burst state, Phase 3)
+  body: ['squash', 'lean', 'shear', 'tilt', 'hop', 'hopV', 'grounded', 'spin',
+    'squashV', 'leanV', 'shearV', 'tiltV', 'glitchBurst', 'burstRows'],
 
   /** Returns the list of missing members (and warns once) so a rig change is caught early. */
   check(rig) {

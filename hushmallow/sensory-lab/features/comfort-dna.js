@@ -5,7 +5,7 @@
 
 import { h, iconBtn, segmented } from '../lab-ui.js';
 import { Companion } from '../core/companion.js';
-import { PALETTES, COMFORTS } from '../core/comfort-dna.js';
+import { PALETTES, COMFORTS, describeTune } from '../core/comfort-dna.js';
 import { MALLOWS, MALLOW_IDS } from '../../src/mallows/registry.js';
 import { REALMS, REALM_IDS } from '../../src/world/realm.js';
 import { MATERIALS } from '../core/materials.js';
@@ -106,7 +106,7 @@ export function mount(root, ctx) {
             h('span', { class: 'dot', style: { background: col } }), label))), 'Glows, light and floating things'),
         stack('Behind your Mallow', pills([['auto', 'Automatic'], ['stage', 'Plain stage'], ...REALM_IDS.map((id) => [id, REALMS[id].name.replace(/^The /, '')])],
           (v) => v === dna.chosen('environment'), (v) => dna.set('environment', v), 'Environment'),
-        'Automatic: Pocket Hush in your Mallow\'s own realm, a plain stage elsewhere')),
+        'Automatic: your Mallow\'s own world where an experience has one; a plain stage elsewhere')),
       section('What helps',
         stack('Pick any', pills(COMFORTS.map((c) => [c, COMFORT_LABELS[c]]), (v) => dna.chosen('comfort').includes(v), (v) => {
           const cur = dna.chosen('comfort');
@@ -116,7 +116,7 @@ export function mount(root, ctx) {
         favs.length
           ? h('ul', { class: 'dna-list' }, ...favs.map((f) => h('li', {}, h('span', {}, describe(f)),
             h('button', { type: 'button', class: 'btn-quiet', 'aria-label': `Remove ${describe(f)}`, onclick: () => { dna.toggleFavourite(f); render(); } }, 'Remove'))))
-          : h('p', { class: 'dna-empty' }, 'Nothing kept yet. Tap ★ Keep in SoftBody Lab or at the end of a Pocket Hush moment.')),
+          : h('p', { class: 'dna-empty' }, 'Nothing kept yet. Tap ★ Keep in SoftBody Lab, at the end of a Pocket Hush moment, or in Hushbeat.')),
       section('Learning',
         row('Learn from what I use', segmented([[true, 'On'], [false, 'Off']], view.learning === 'on', (v) => { dna.setLearning(v); render(); }, 'Learn from what I use'),
           'Counts which moments and materials you open. Never what you feel or type.'),
@@ -129,7 +129,7 @@ export function mount(root, ctx) {
         h('div', { class: 'dna-actions' },
           h('button', { type: 'button', class: 'btn-quiet', id: 'dna-reset', onclick: () => { dna.resetPreferences(); render(); mountPreview(); } }, 'Reset my settings'),
           twoStep('Delete everything', 'Tap again to delete', async () => { await dna.deleteAll(); render(); mountPreview(); })),
-        h('p', { class: 'dna-empty' }, 'Hushmallow is a companion, not therapy. Comfort DNA never stores what you feel, and nothing here leaves this browser.')),
+        h('p', { class: 'dna-empty' }, 'hushmallow is a companion, not therapy. Comfort DNA never stores what you feel, and nothing here leaves this browser.')),
     );
     hero.hidden = false;
   }
@@ -137,6 +137,7 @@ export function mount(root, ctx) {
   function describe(it) {
     if (it.kind === 'pocket') return pocketById(it.id)?.title || it.id;
     if (it.kind === 'softbody') return `${MALLOWS[it.mallow]?.name || 'Your Mallow'} as ${MATERIALS[it.material]?.label || it.material}`;
+    if (it.kind === 'hushbeat') return describeTune(it);
     return it.id;
   }
 

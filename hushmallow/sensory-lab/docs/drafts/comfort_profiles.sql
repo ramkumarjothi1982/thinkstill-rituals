@@ -1,4 +1,4 @@
--- DRAFT: Comfort DNA storage for Hushmallow. For review only.
+-- DRAFT: Comfort DNA storage for hushmallow. For review only.
 -- NOT APPLIED to any database. Do not run against production (project
 -- "hushmallow1") until authentication, the privacy policy and this schema are
 -- approved. Owner of production Supabase: Claude Account 1.

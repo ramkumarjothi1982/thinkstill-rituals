@@ -1,4 +1,4 @@
-// Hushmallow Sensory Lab — standalone development shell.
+// hushmallow Sensory Lab — standalone development shell.
 //
 // Not the production app: no auth, no payments, no network. It imports the
 // main app's Mallow rig, art and design tokens read-only, and keeps its own
@@ -11,7 +11,7 @@ import { SoundEngine } from './core/sound-engine.js';
 import { Companion } from './core/companion.js';
 import { initialTier, FrameMonitor, NEXT_TIER } from './core/perf.js';
 import { MALLOWS, MALLOW_IDS } from '../src/mallows/registry.js';
-import { ComfortDNA } from './core/comfort-dna.js';
+import { ComfortDNA, tuneTitle } from './core/comfort-dna.js';
 import { LocalComfortStore } from './adapters/comfort-store.js';
 import { MATERIALS } from './core/materials.js';
 import { pocketById } from './features/pocket/catalog.js';
@@ -34,6 +34,18 @@ let visitMallow = null;   // a "For you" suggestion's Mallow: until the next ret
 const currentMallow = () => validMallow(askMallow) || visitMallow || chosenMallow();
 let mallowId = currentMallow();
 
+let handoff = null;       // a "For you" tune for Hushbeat: read once, by the next route
+const takeHandoff = () => { const v = handoff; handoff = null; return v; };
+
+// Companions a screen adds beside its own (a duet partner, never ctx.companion):
+// device and Comfort DNA changes reach them too; tier maps the lab quality to theirs.
+const extras = new Map();   // Companion → tier(q)
+const companions = () => [ctx.companion, ...extras.keys()].filter(Boolean);
+function setQualityAll(q) {
+  ctx.companion?.rig.setQuality(q);
+  for (const [c, tier] of extras) if (c !== ctx.companion) c.rig.setQuality(tier(q));
+}
+
 const qParam = params.get('quality');
 let quality = ['high', 'medium', 'low'].includes(qParam) ? qParam : initialTier(prefs.get('quality'));
 
@@ -50,6 +62,8 @@ const ctx = {
   get quality() { return quality; },
   companion: null,
   setCompanion(c) { ctx.companion = c; lab.companion = c; },
+  /** Register an extra live Companion (a duet partner). tier(q): its quality for lab tier q. Returns remove(). */
+  addCompanion(c, { tier = (q) => q } = {}) { extras.set(c, tier); return () => { extras.delete(c); }; },
   navigate(path) { go(path.replace(/^\/+/, '') || 'home'); },
   openSettings: () => settings(),
   monitor: null,
@@ -63,7 +77,7 @@ function startMonitor() {
     if (!next) { ctx.monitor.enabled = false; return; }
     console.info(`[sensory-lab] frames ~${p75.toFixed(1)} ms → quality ${next}`);
     quality = next;
-    ctx.companion?.rig.setQuality(next);
+    setQualityAll(next);
   });
 }
 if (!qParam && prefs.get('quality') === 'auto') startMonitor();
@@ -93,23 +107,27 @@ function applyTheme() {
   themeObserver.takeRecords();   // our own write is not a host change
 }
 applyTheme();
+// Listener order: lab.js registers its prefs.onChange and dna.onChange listeners
+// here, at start-up, so they run before any feature's. A feature that overrides
+// tuning or motion (Nightlight's night tuning and Movement) re-applies its
+// override in its own listener.
 prefs.onChange((k, v) => {
   if (k === 'sound' || k === '*') sound.setMuted(!prefs.get('sound'));
   if (k === 'volume' || k === '*') sound.setVolume(prefs.get('volume'));
   if (k === 'theme' || k === '*') { themeBudget = 3; applyTheme(); }
-  if (k === 'motion' || k === '*') ctx.companion?.setReducedMotion(prefs.reducedMotion());
-  if (k === 'showMesh') ctx.companion?.setShowMesh(v);
+  if (k === 'motion' || k === '*') for (const c of companions()) c.setReducedMotion(prefs.reducedMotion());
+  if (k === 'showMesh') for (const c of companions()) c.setShowMesh(v);
   if (k === 'quality') {
-    if (v === 'auto') { quality = initialTier('auto'); ctx.companion?.rig.setQuality(quality); startMonitor(); }
-    else { quality = v; ctx.companion?.rig.setQuality(v); if (ctx.monitor) ctx.monitor.enabled = false; }
+    if (v === 'auto') { quality = initialTier('auto'); setQualityAll(quality); startMonitor(); }
+    else { quality = v; setQualityAll(v); if (ctx.monitor) ctx.monitor.enabled = false; }
   }
 });
 
-// Comfort DNA changes reach a live Mallow straight away
+// Comfort DNA changes reach every live Mallow straight away
 dna.onChange((what) => {
   const t = dna.tuning();
   sound.setParts({ voice: t.voice, fx: t.touchSounds });
-  ctx.companion?.applyTuning(t);
+  for (const c of companions()) c.applyTuning(t);
   if (what === 'enabled' || what === 'favouriteMallow' || what === 'reset' || what === '*') mallowId = currentMallow();
 });
 sound.setParts({ voice: dna.tuning().voice, fx: dna.tuning().touchSounds });
@@ -124,22 +142,22 @@ for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) {
 function home() {
   const m = MALLOWS[mallowId];
   const screen = h('section', { class: 'screen home', 'aria-label': 'Sensory Lab' });
-  const offers = dna.suggestions(3);
+  const offers = dna.suggestions(3).map(offer).filter(Boolean);
   const inner = h('div', { class: 'home-inner' });
   const hero = h('div', { class: 'hero', role: 'img', 'aria-label': `${m.name}, ready to be touched` });
   inner.append(
     h('div', { class: 'brand' },
-      h('h1', {}, 'Hushmallow ', h('span', {}, 'Sensory Lab')),
+      h('h1', {}, 'hushmallow ', h('span', {}, 'Sensory Lab')),
       h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
         h('span', { class: 'pill' }, 'Phase 2 preview'),
         iconBtn('settings', 'Settings', () => settings()))),
     hero,
     h('div', { class: 'hero-cap' }, h('h2', {}, m.name), h('p', {}, 'Touch me. Go on, I’m soft.')),
     offers.length ? h('p', { class: 'section-label' }, 'For you') : null,
-    offers.length ? h('div', { class: 'offers' }, ...offers.map(offer)) : null,
+    offers.length ? h('div', { class: 'offers' }, ...offers) : null,
     h('p', { class: 'section-label' }, 'Experiences'),
     h('div', { class: 'cards' }, ...EXPERIENCES.map(card)),
-    h('p', { class: 'foot' }, 'Development preview. Not part of the Hushmallow app yet. Nothing here is saved anywhere except this browser.'));
+    h('p', { class: 'foot' }, 'Development preview. Not part of the hushmallow app yet. Nothing here is saved anywhere except this browser.'));
   screen.append(inner);
   root.append(screen);
   const c = new Companion(hero, { mallowId, material: prefs.get('material'), quality, sound, prefs, rig: { fit: 0.62, baseline: 0.9 } });
@@ -148,15 +166,18 @@ function home() {
   return { unmount() { c.destroy(); if (ctx.companion === c) ctx.setCompanion(null); screen.remove(); } };
 }
 
-// A familiar thing to come back to, with an honest reason
+// A familiar thing to come back to, with an honest reason (null for a kind this shell can't open)
 function offer(it) {
-  const why = { favourite: 'Favourite', often: 'You use this often', helps: 'You said this helps' }[it.reason];
+  let why = { favourite: 'Favourite', often: 'You use this often', helps: 'You said this helps' }[it.reason];
   let title = '', go = () => {};
   if (it.kind === 'pocket') { const p = pocketById(it.id); title = p ? p.title : it.id; go = () => ctx.navigate(`/pocket-${it.id}`); }
   else if (it.kind === 'softbody') {
     title = `${MALLOWS[it.mallow]?.name || MALLOWS[mallowId].name} as ${MATERIALS[it.material]?.label || it.material}`;
     go = () => { prefs.set('material', it.material); if (validMallow(it.mallow)) { visitMallow = it.mallow; mallowId = it.mallow; } ctx.navigate('/softbody'); };
-  }
+  } else if (it.kind === 'hushbeat') {
+    title = tuneTitle(it); why = 'Favourite';
+    go = () => { if (validMallow(it.mallow)) { visitMallow = mallowId = it.mallow; } handoff = it; ctx.navigate('/hushbeat'); };
+  } else return null;
   return h('button', { class: 'offer', type: 'button', 'data-offer': it.kind + ':' + (it.id || it.material), onclick: go },
     h('span', { class: 't' }, title), h('span', { class: 'd' }, why));
 }
@@ -231,6 +252,7 @@ let echo = null;
 const fromHash = () => location.hash.replace(/^#\/?/, '').split(/[?&=]/)[0] || 'home';
 async function route(id = fromHash()) {
   const my = ++token;
+  const ho = takeHandoff();   // only the route that follows an offer's click may use it
   current?.unmount();
   current = null;
   root.replaceChildren();
@@ -243,7 +265,7 @@ async function route(id = fromHash()) {
   }
   const mod = await e.load();
   if (my !== token) return;
-  current = mod.mount(root, ctx, { mode });
+  current = mod.mount(root, ctx, { mode, handoff: e.id === 'hushbeat' ? ho : null });
   lab.route = id;
   dna.record({ kind: 'experience', id: e.id });
 }
@@ -262,5 +284,5 @@ addEventListener('hashchange', () => {
 });
 
 // test / debugging handle (development lab only)
-const lab = globalThis.__lab = { prefs, sound, dna, ctx, companion: null, route: null, events: [], quality: () => quality };
+const lab = globalThis.__lab = { prefs, sound, dna, ctx, companion: null, companions, stage: null, route: null, events: [], quality: () => quality };
 route();

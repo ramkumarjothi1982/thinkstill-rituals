@@ -6,6 +6,10 @@
 // reduced motion), no allocations per frame beyond small arrays, and the loop
 // stops while the page is hidden. The pure physics for floating things
 // (Floater.step) is exported for tests.
+//
+// Phase 3 adds the shared photosafe limiter (FlashGate), cached glow sprites
+// (glowSprite, LRU of 32), the light/dark surface helpers, and EffectsLayer
+// options for owner-driven layers (manual render, placement, DPR cap).
 
 import { clamp, lerp, TAU } from './math.js';
 
@@ -14,26 +18,36 @@ const DENSITY = { high: 1, medium: 0.7, low: 0.45 };
 export class EffectsLayer {
   /**
    * @param {HTMLElement} parent  positioned element to cover
-   * @param {{quality?:string, reducedMotion?:boolean}} [o]
+   * @param {{quality?:string, reducedMotion?:boolean, manual?:boolean, before?:Node|null, dprCap?:number,
+   *          className?:string, zIndex?:string}} [o]
+   *   manual: no own rAF or visibility listener; the owner calls render(dt) from its loop.
+   *   before: insert the canvas before this child of `parent` (default: append).
+   *   zIndex: '' leaves stacking to the CSS and DOM order.
    */
   constructor(parent, o = {}) {
+    const { manual = false, before = null, dprCap = 2, className = 'fx-layer', zIndex = '2' } = o;
     this.parent = parent;
+    this.manual = !!manual;
+    this.dprCap = dprCap > 0 ? dprCap : 2;
     this.canvas = document.createElement('canvas');
-    this.canvas.className = 'fx-layer';
+    this.canvas.className = className;
     this.canvas.setAttribute('aria-hidden', 'true');
-    Object.assign(this.canvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', zIndex: '2' });
-    parent.append(this.canvas);
+    Object.assign(this.canvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', zIndex });
+    if (before) parent.insertBefore(this.canvas, before); else parent.append(this.canvas);
     this.ctx = this.canvas.getContext('2d');
     this.items = new Set();
     this.reduced = !!o.reducedMotion;
     this.density = (DENSITY[o.quality] ?? 0.8) * (this.reduced ? 0.4 : 1);
     this.t = 0;
     this._raf = 0;
+    this._list = [];        // reused snapshot of items per frame
+    this._drawn = false;    // something is on the canvas
     this._resize = this._resize.bind(this);
     this.ro = new ResizeObserver(this._resize);
     this.ro.observe(parent);
     this._resize();
     this._loop = this._loop.bind(this);
+    if (this.manual) return;
     this._vis = () => { if (!document.hidden) this._kick(); };
     document.addEventListener('visibilitychange', this._vis);
     this._kick();
@@ -45,12 +59,20 @@ export class EffectsLayer {
 
   _resize() {
     const r = this.parent.getBoundingClientRect();
-    const dpr = Math.min(2, devicePixelRatio || 1);
+    const dpr = Math.min(this.dprCap, devicePixelRatio || 1);
     this.W = Math.max(1, r.width); this.H = Math.max(1, r.height); this.dpr = dpr;
     this.canvas.width = Math.round(this.W * dpr); this.canvas.height = Math.round(this.H * dpr);
+    this._drawn = false;    // resizing clears the bitmap
   }
 
-  _kick() { if (!this._raf && !this.destroyed) this._raf = requestAnimationFrame(this._loop); }
+  /** Backing-store DPR cap (quality changes); resizes only when it changes. */
+  setDprCap(k) {
+    if (k === this.dprCap || !(k > 0)) return;
+    this.dprCap = k;
+    this._resize();
+  }
+
+  _kick() { if (!this.manual && !this._raf && !this.destroyed) this._raf = requestAnimationFrame(this._loop); }
 
   _loop(now) {
     this._raf = 0;
@@ -58,23 +80,40 @@ export class EffectsLayer {
     this._raf = requestAnimationFrame(this._loop);
     const dt = Math.min(0.05, (now - (this._last || now)) / 1000);
     this._last = now;
+    this.render(dt);
+  }
+
+  /** One frame: step and draw every item (dt in seconds). An empty layer clears once, then costs nothing. */
+  render(dt) {
+    if (this.destroyed) return;
     this.t += dt;
     const g = this.ctx;
+    if (!this.items.size) {
+      if (this._drawn) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, this.canvas.width, this.canvas.height); this._drawn = false; }
+      return;
+    }
     g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     g.clearRect(0, 0, this.W, this.H);
-    for (const it of [...this.items]) {
+    const list = this._list;
+    list.length = 0;
+    for (const it of this.items) list.push(it);   // snapshot: items added while stepping start next frame
+    for (let i = 0; i < list.length; i++) {
+      const it = list[i];
       if (it.step(dt, this) === false) { this.items.delete(it); continue; }
       it.draw(g, this);
     }
+    list.length = 0;
+    this._drawn = true;
   }
 
   destroy() {
     this.destroyed = true;
     cancelAnimationFrame(this._raf);
     this.ro.disconnect();
-    document.removeEventListener('visibilitychange', this._vis);
+    if (this._vis) document.removeEventListener('visibilitychange', this._vis);
     this.canvas.remove();
     this.items.clear();
+    this._list.length = 0;
   }
 }
 
@@ -83,6 +122,102 @@ export function rgba(hex, a) {
   const n = parseInt(hex.replace('#', ''), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${clamp(a, 0, 1).toFixed(3)})`;
 }
+
+/** 'light' | 'dark' surface under `el`: the screen's backdrop, else <html data-theme>, else the device scheme. */
+export function surfaceTone(el) {
+  const b = el?.closest?.('.screen')?.dataset?.backdrop;
+  if (b === 'light' || b === 'dark') return b;
+  const t = globalThis.document?.documentElement?.getAttribute('data-theme');
+  if (t === 'light' || t === 'dark') return t;
+  try { return globalThis.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; } catch { return 'dark'; }
+}
+
+/** Glows add light on dark surfaces; on light ones 'lighter' washes out to white, so paint over instead. */
+export const glowBlend = (tone) => (tone === 'light' ? 'source-over' : 'lighter');
+
+// ------------------------------------------------------------ flash gate --
+/**
+ * The one photosafe limiter (Phase 3): at most `max` bright events per
+ * `windowMs`, plus an optional minimum gap per kind. `bright` lists the kinds
+ * that count against the window (null = every kind). Refusals are logged too.
+ */
+export class FlashGate {
+  constructor({ max = 3, windowMs = 1000, gaps = null, bright = null, now = () => performance.now() } = {}) {
+    Object.assign(this, { max, windowMs, gaps, bright, now });
+    this._times = [];             // allowed bright times still inside the window, oldest first
+    this._last = new Map();       // kind → last allowed time
+    this._log = Array.from({ length: 32 }, () => ({ t: 0, kind: '', ok: false }));
+    this._logN = 0;
+  }
+
+  allow(kind = 'bright', nowMs = this.now()) {
+    let ok = true;
+    const gap = this.gaps && Object.hasOwn(this.gaps, kind) ? this.gaps[kind] : 0;
+    if (gap > 0 && this._last.has(kind) && nowMs - this._last.get(kind) < gap) ok = false;
+    const bright = this.bright === null || this.bright.includes(kind), ts = this._times;
+    while (ts.length && nowMs - ts[0] >= this.windowMs) ts.shift();
+    if (ok && bright && ts.length >= this.max) ok = false;
+    if (ok) { this._last.set(kind, nowMs); if (bright) ts.push(nowMs); }
+    const e = this._log[this._logN++ % 32];
+    e.t = nowMs; e.kind = kind; e.ok = ok;
+    return ok;
+  }
+
+  /** Bright events allowed in the last windowMs. */
+  get count() {
+    const t = this.now();
+    let c = 0;
+    for (const x of this._times) if (t - x < this.windowMs) c++;
+    return c;
+  }
+
+  /** Copy of the last 32 decisions, oldest first: [{t, kind, ok}]. */
+  get log() {
+    const n = Math.min(32, this._logN), out = [];
+    for (let i = this._logN - n; i < this._logN; i++) out.push({ ...this._log[i % 32] });
+    return out;
+  }
+}
+
+// ----------------------------------------------------------- glow sprites --
+const SPRITES = new Map();   // key → canvas, oldest first (LRU of 32)
+const SPRITE_CAP = 32;
+
+/**
+ * A radial glow of radius r (CSS px), drawn once at `dpr` and cached.
+ * Draw with g.drawImage(s, x − r, y − r, 2r, 2r) and globalAlpha.
+ * rim: a faint dark ring at 0.92 r so glows stay visible on light backdrops.
+ */
+export function glowSprite(hex, r, { dpr = 1, rim = false, core = 1 } = {}) {
+  const R = Math.max(1, Math.round(r));
+  const key = `${hex}|${R}|${dpr}|${rim}|${core}`;
+  let s = SPRITES.get(key);
+  if (s) { SPRITES.delete(key); SPRITES.set(key, s); return s; }   // most recently used last
+  s = document.createElement('canvas');
+  const px = Math.max(2, Math.ceil(2 * R * dpr));
+  s.width = px; s.height = px;
+  const g = s.getContext('2d');
+  if (g) {
+    const k = px / (2 * R);
+    g.setTransform(k, 0, 0, k, 0, 0);
+    const gr = g.createRadialGradient(R, R, 0, R, R, R);
+    gr.addColorStop(0, rgba(hex, core)); gr.addColorStop(0.35, rgba(hex, 0.45 * core)); gr.addColorStop(1, rgba(hex, 0));
+    g.fillStyle = gr; g.beginPath(); g.arc(R, R, R, 0, TAU); g.fill();
+    if (rim) { g.strokeStyle = 'rgba(26,20,64,0.18)'; g.lineWidth = 1.5; g.beginPath(); g.arc(R, R, R * 0.92, 0, TAU); g.stroke(); }
+  }
+  SPRITES.set(key, s);
+  if (SPRITES.size > SPRITE_CAP) SPRITES.delete(SPRITES.keys().next().value);   // still drawable by anyone holding it
+  return s;
+}
+
+/** Empty the sprite cache and release the bitmaps (every Phase 3 feature calls this on unmount). */
+export function clearGlowSprites() {
+  for (const s of SPRITES.values()) { s.width = 0; s.height = 0; }
+  SPRITES.clear();
+}
+
+/** Number of cached sprites (tests). */
+export const glowSpriteCount = () => SPRITES.size;
 
 // -------------------------------------------------------------- glow orb --
 /** A warm light the person moves around; leaves a soft trail. */

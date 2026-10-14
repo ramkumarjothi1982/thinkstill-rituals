@@ -277,7 +277,7 @@ async function lifecycle(browser, vp) {
   await page.screenshot({ path: path.join(OUT, `${vp.name}-home.jpg`), type: 'jpeg', quality: 80 });
   const cards = await page.locator('.card').count();
   const live = await page.locator('.card[aria-disabled="false"]').count();
-  check(vp, 'home lists 10 experiences, 4 playable (Phase 2)', cards === 10 && live === 4, `${cards}/${live}`);
+  check(vp, 'home lists 10 experiences, 7 playable (Phase 3)', cards === 10 && live === 7, `${cards}/${live}`);
   // switch features repeatedly: no leaked canvases, contexts or loops
   for (let i = 0; i < 4; i++) {
     for (const r of ['#/touchtalk', '#/softbody', '#/']) {

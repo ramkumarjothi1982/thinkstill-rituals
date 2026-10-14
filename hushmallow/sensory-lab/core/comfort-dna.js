@@ -15,8 +15,9 @@
 // authentication exists. This module never touches storage directly.
 
 import { REALM_IDS } from '../../src/world/realm.js';
-import { MALLOW_IDS } from '../../src/mallows/registry.js';
+import { MALLOWS, MALLOW_IDS } from '../../src/mallows/registry.js';
 import { MATERIAL_IDS } from './materials.js';
+import { hash } from './math.js';
 
 export const POCKET_MODES = ['quick-squeeze', 'soft-breath', 'gentle-glow', 'let-it-float', 'quiet-moment'];
 export const COMFORTS = ['squeeze', 'hold', 'stroke', 'breathe', 'glow', 'float', 'quiet'];
@@ -49,6 +50,14 @@ export const DEFAULT_PREFS = Object.freeze({
 const SPEED = { slower: 0.82, natural: 1, livelier: 1.14 };
 const MOTION = { soft: 0.6, normal: 1, bouncy: 1.25 };
 const BREATH = { slower: { inhale: 5, exhale: 7 }, natural: { inhale: 4, exhale: 6 }, livelier: { inhale: 3.5, exhale: 5 } };
+export { BREATH };
+export const PACES = ['slower', 'natural', 'livelier'];
+
+// Hushbeat tunes: up to 48 tokens of step (2, base 32), kind (n note | b bass | h hum; upper case = the friend),
+// degree + 7 (base 32) and velocity or length (1–9). Encoded by Hushbeat; validated here.
+export const HUSHBEAT_MOTIF_RE = /^(?:[0-7][0-9a-v][nbhNBH][0-9a-l][1-9]){1,48}$/;
+// favourites kept per kind: tunes never push out Pocket or SoftBody favourites
+export const FAV_CAP = { hushbeat: 6, other: 12 };
 
 /** Colour palettes for glows, light and floating things. `mallow` = the Mallow's own colours. */
 export const PALETTES = {
@@ -66,7 +75,37 @@ const valid = (k, v) => {
   return typeof rule === 'function' ? rule(v) : rule.includes(v);
 };
 
-export const itemKey = (it) => (it.kind === 'softbody' ? `softbody:${it.mallow || '*'}:${it.material}` : `${it.kind}:${it.id}`);
+export const itemKey = (it) => (it.kind === 'softbody' ? `softbody:${it.mallow || '*'}:${it.material}`
+  : it.kind === 'hushbeat' ? `hushbeat:${it.mallow}:${it.friend || '-'}:${it.pace || 'natural'}:${hash(it.motif || '').toString(36)}`
+  : `${it.kind}:${it.id}`);
+
+/** Order kept; at most FAV_CAP.hushbeat tunes and FAV_CAP.other of everything else (a list without tunes is just slice(0, 12)). */
+export function capFavourites(list) {
+  let hb = 0, other = 0;
+  return list.filter((f) => f && (f.kind === 'hushbeat' ? ++hb <= FAV_CAP.hushbeat : ++other <= FAV_CAP.other));
+}
+
+/** Notes (not bass or hum) in a tune's motif; 0 for a missing or invalid motif. */
+export function motifNotes(motif) {
+  if (typeof motif !== 'string' || !HUSHBEAT_MOTIF_RE.test(motif)) return 0;
+  let n = 0;
+  for (let i = 2; i < motif.length; i += 5) if (motif[i] === 'n' || motif[i] === 'N') n++;
+  return n;
+}
+
+const mallowName = (id) => (Object.hasOwn(MALLOWS, id) ? MALLOWS[id].name : 'Your Mallow');
+
+/** 'Boppo & Loomi tune' | 'Boppo tune' */
+export function tuneTitle(it) {
+  const friend = it.friend && it.friend !== it.mallow && Object.hasOwn(MALLOWS, it.friend) ? ` & ${MALLOWS[it.friend].name}` : '';
+  return `${mallowName(it.mallow)}${friend} tune`;
+}
+
+/** 'Boppo & Loomi tune · 14 notes · Natural' | 'Boppo tune · Natural' */
+export function describeTune(it) {
+  const n = motifNotes(it.motif), pace = PACES.includes(it.pace) ? it.pace : 'natural';
+  return `${tuneTitle(it)}${n ? ` · ${n} note${n === 1 ? '' : 's'}` : ''} · ${pace[0].toUpperCase()}${pace.slice(1)}`;
+}
 
 export class ComfortDNA {
   /**
@@ -120,7 +159,7 @@ export class ComfortDNA {
     const i = this.data.favourites.findIndex((f) => itemKey(f) === k);
     if (i >= 0) this.data.favourites.splice(i, 1);
     else this.data.favourites.unshift(cleanItem(it));
-    this.data.favourites = this.data.favourites.filter(Boolean).slice(0, 12);
+    this.data.favourites = capFavourites(this.data.favourites.filter(Boolean));
     this._commit('favourites');
     return i < 0;
   }
@@ -249,6 +288,12 @@ function cleanItem(it) {
   if (it.kind === 'softbody' && MATERIAL_IDS.includes(it.material)) return { kind: 'softbody', id: 'softbody', material: it.material, ...(MALLOW_IDS.includes(it.mallow) ? { mallow: it.mallow } : {}) };
   if (it.kind === 'experience' && typeof it.id === 'string' && /^[a-z][a-z-]{0,31}$/.test(it.id)) return { kind: 'experience', id: it.id };
   if (it.kind === 'mallow' && MALLOW_IDS.includes(it.id)) return { kind: 'mallow', id: it.id };
+  if (it.kind === 'hushbeat' && MALLOW_IDS.includes(it.mallow)) return {
+    kind: 'hushbeat', id: 'hushbeat', mallow: it.mallow,
+    ...(MALLOW_IDS.includes(it.friend) && it.friend !== it.mallow ? { friend: it.friend } : {}),
+    pace: PACES.includes(it.pace) ? it.pace : 'natural',
+    ...(typeof it.motif === 'string' && HUSHBEAT_MOTIF_RE.test(it.motif) ? { motif: it.motif } : {}),
+  };
   return null;
 }
 
@@ -259,7 +304,7 @@ export function sanitize(raw) {
   d.enabled = raw.enabled !== false;
   d.learn = raw.learn === true;
   for (const [k, v] of Object.entries(raw.prefs || {})) if (valid(k, v)) d.prefs[k] = clone(v);
-  d.favourites = (Array.isArray(raw.favourites) ? raw.favourites : []).map(cleanItem).filter(Boolean).slice(0, 12);
+  d.favourites = capFavourites((Array.isArray(raw.favourites) ? raw.favourites : []).map(cleanItem).filter(Boolean));
   for (const h of Object.values(raw.history || {})) {
     const it = cleanItem(h);
     if (it && Number.isFinite(h.n) && Number.isFinite(h.last)) d.history[itemKey(it)] = { ...it, n: Math.max(0, h.n | 0), last: h.last };

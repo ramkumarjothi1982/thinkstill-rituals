@@ -20,6 +20,7 @@ const FS = `
 precision mediump float;
 uniform sampler2D uTex; varying vec2 vUv; varying float vShade;
 uniform float uShadeK; uniform float uGloss; uniform float uHaze; uniform vec2 uHi; uniform vec2 uHiR;
+uniform vec3 uGrade;   // colour grade (multiplies premultiplied rgb; must always be set: unset = black)
 void main() {
   vec4 c = texture2D(uTex, vUv);
   // premultiplied colour: brighten (stretch) or deepen (squash) without touching alpha
@@ -31,13 +32,14 @@ void main() {
     rgb += vec3(c.a) * exp(-dot(d, d) * 2.2) * uGloss * (0.55 + max(s, 0.0));
   }
   rgb = mix(rgb, vec3(c.a), uHaze);
-  gl_FragColor = vec4(min(rgb, vec3(c.a)), c.a);
+  gl_FragColor = vec4(min(rgb, vec3(c.a)) * uGrade, c.a);
 }`;
 
 export class MeshRenderer {
   constructor({ prefer = 'webgl' } = {}) {
     this.canvas = document.createElement('canvas');
     this.mode = '2d';
+    this.grade = [1, 1, 1];
     if (prefer === 'webgl') this._initGL();
     if (this.mode === '2d') this.ctx = this.canvas.getContext('2d');
     this.canvas.addEventListener('webglcontextlost', (e) => {
@@ -72,7 +74,7 @@ export class MeshRenderer {
         aPos: gl.getAttribLocation(prog, 'aPos'), aUv: gl.getAttribLocation(prog, 'aUv'), aShade: gl.getAttribLocation(prog, 'aShade'),
         uRes: gl.getUniformLocation(prog, 'uRes'), uTex: gl.getUniformLocation(prog, 'uTex'),
         uShadeK: gl.getUniformLocation(prog, 'uShadeK'), uGloss: gl.getUniformLocation(prog, 'uGloss'), uHaze: gl.getUniformLocation(prog, 'uHaze'),
-        uHi: gl.getUniformLocation(prog, 'uHi'), uHiR: gl.getUniformLocation(prog, 'uHiR'),
+        uHi: gl.getUniformLocation(prog, 'uHi'), uHiR: gl.getUniformLocation(prog, 'uHiR'), uGrade: gl.getUniformLocation(prog, 'uGrade'),
       };
       this.bPos = gl.createBuffer(); this.bUv = gl.createBuffer(); this.bShade = gl.createBuffer(); this.bIdx = gl.createBuffer();
       this.tex = gl.createTexture();
@@ -98,6 +100,9 @@ export class MeshRenderer {
   setLook(look = {}, hi = [0.35, 0.3], hiR = [0.16, 0.1]) {
     this.look = { shade: look.shade ?? 1, gloss: look.gloss ?? 0, haze: look.haze ?? 0, hi, hiR };
   }
+
+  /** Colour grade [r, g, b] (0..1 each), applied in the shader. The Canvas 2D path ignores it (the rig uses a CSS filter). */
+  setGrade(rgb) { this.grade = rgb; }
 
   /** Static mesh topology: triangle indices and per-vertex texture coords. */
   setMesh(tri, uv) {
@@ -155,6 +160,8 @@ export class MeshRenderer {
     const lk = this.look || { shade: 1, gloss: 0, haze: 0, hi: [0.35, 0.3], hiR: [0.16, 0.1] };
     gl.uniform1f(L.uShadeK, lk.shade); gl.uniform1f(L.uGloss, lk.gloss); gl.uniform1f(L.uHaze, lk.haze);
     gl.uniform2f(L.uHi, lk.hi[0], lk.hi[1]); gl.uniform2f(L.uHiR, lk.hiR[0], lk.hiR[1]);
+    const g = this.grade;
+    gl.uniform3f(L.uGrade, g[0], g[1], g[2]);   // always: an unset vec3 is 0 and draws the Mallow black
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bPos);
     gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(L.aPos);

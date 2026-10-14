@@ -9,6 +9,8 @@
 //     shape, so squeezing narrows the eyes and puffs the cheeks (each Mallow's
 //     authored `squeezeFace`), stretching widens the eyes and rounds the
 //     mouth, and wobbling adds a flustered open mouth. Pure function.
+//  3. FaceMixer (Phase 3): several owners (a base look, a mode, a passing
+//     event) share the rig's one face override without fighting over it.
 
 import { clamp, lerp } from './math.js';
 
@@ -89,4 +91,80 @@ export function deformationFace(goal, s, squeezeFace) {
     goal.blush = lerp(goal.blush, Math.max(goal.blush, 1.8), wb);
   }
   return goal;
+}
+
+/**
+ * Combines face overrides from several owners into the one { set, min } object
+ * installed on the rig (rig.setFaceOverride). `set`: the latest owner in the
+ * list wins; `min`: the highest floor over all owners. Unknown owners are
+ * appended (highest priority). A feature that uses a FaceMixer never calls
+ * rig.setFaceOverride itself; apply() writes in place, without allocating.
+ */
+export class FaceMixer {
+  constructor(rig, owners = ['base', 'mode', 'event']) {
+    this.rig = rig;
+    this.layers = [];           // [{ owner, set, min }] lowest priority first
+    this._by = new Map();       // owner → layer
+    for (const o of owners) this._layer(o);
+    this._out = { set: {}, min: {} };
+    this._dirty = false;
+    this._installed = true;
+    rig.setFaceOverride(this._out);
+  }
+
+  _layer(owner) {
+    let l = this._by.get(owner);
+    if (!l) { l = { owner, set: {}, min: {} }; this._by.set(owner, l); this.layers.push(l); }
+    return l;
+  }
+
+  _put(bag, key, v) {
+    if (v == null) { if (key in bag) { delete bag[key]; this._dirty = true; } return; }
+    if (bag[key] !== v) { bag[key] = v; this._dirty = true; }
+  }
+
+  /** Owner's absolute value for a face param (v == null removes it). */
+  set(owner, key, v) { this._put(this._layer(owner).set, key, v); return this; }
+
+  /** Owner's floor for a face param (v == null removes it). */
+  min(owner, key, v) { this._put(this._layer(owner).min, key, v); return this; }
+
+  /** Drop everything one owner asked for. */
+  release(owner) {
+    const l = this._by.get(owner);
+    if (!l) return this;
+    for (const k in l.set) { delete l.set[k]; this._dirty = true; }
+    for (const k in l.min) { delete l.min[k]; this._dirty = true; }
+    return this;
+  }
+
+  /** Write the combination into the installed override. Returns false (and does nothing) when nothing changed. */
+  apply() {
+    if (!this._dirty) return false;
+    const { set, min } = this._out;
+    for (const k in set) delete set[k];
+    for (const k in min) delete min[k];
+    for (let i = 0; i < this.layers.length; i++) {
+      const l = this.layers[i];
+      for (const k in l.set) set[k] = l.set[k];
+      for (const k in l.min) min[k] = k in min ? Math.max(min[k], l.min[k]) : l.min[k];
+    }
+    if (!this._installed) { this.rig.setFaceOverride(this._out); this._installed = true; }   // after clear()
+    this._dirty = false;
+    return true;
+  }
+
+  /** Release every owner and hand the rig a fresh, empty override. */
+  clear() {
+    for (const l of this.layers) this.release(l.owner);
+    const { set, min } = this._out;
+    for (const k in set) delete set[k];
+    for (const k in min) delete min[k];
+    this._dirty = false;
+    this._installed = false;
+    this.rig.setFaceOverride({});
+  }
+
+  /** The installed { set, min } (read only). */
+  get out() { return this._out; }
 }

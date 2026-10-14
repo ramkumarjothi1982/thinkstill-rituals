@@ -246,6 +246,18 @@ export const PROFILES = {
 
 export function profileFor(id) { return { ...BASE, ...(PROFILES[id] || {}) }; }
 
+// Gentle style: no jumps, no jolts (shared by Weather, Hushbeat and Nightlight).
+export const GENTLE_REACT = Object.freeze({ hop: 'nod', doubleTap: 'nod', celebrate: 'nod', flick: 'tap', shiver: 'tap', glitchBurst: 'tap' });
+const NO_JUMP = { hop: 'nod', doubleTap: 'nod', celebrate: 'nod' };
+
+/** A rig reaction made calmer: gentle → GENTLE_REACT; reduced (only) → no jumps. Falsy kinds pass through. */
+export function softened(kind, { gentle = false, reduced = false } = {}) {
+  if (!kind) return kind;
+  if (gentle) return Object.hasOwn(GENTLE_REACT, kind) ? GENTLE_REACT[kind] : kind;   // own keys only (never 'toString'…)
+  if (reduced) return Object.hasOwn(NO_JUMP, kind) ? NO_JUMP[kind] : kind;
+  return kind;
+}
+
 export class Personality {
   /**
    * @param {string} mallowId
@@ -260,9 +272,11 @@ export class Personality {
     this.last = {};        // gesture → last variant index
     this.history = [];     // recent tags (max 12)
     this.count = 0;
+    this.filter = null;    // (out, gesture, d) → response | null, after the style (e.g. Nightlight's night filter)
   }
 
   setStyle(s) { this.style = s; }
+  setFilter(fn) { this.filter = typeof fn === 'function' ? fn : null; }
 
   /** Advance mood decay. dt in seconds. */
   tick(dt) {
@@ -337,9 +351,11 @@ export class Personality {
     if (!r) return null;
     this.count++;
     const out = this._styled({ ...r });
-    this.history.push(out.tag);
+    const res = this.filter ? this.filter(out, gesture, d) : out;
+    if (!res) return null;
+    this.history.push(res.tag);
     if (this.history.length > 12) this.history.shift();
-    return out;
+    return res;
   }
 
   _pick(key, variants) {
@@ -354,8 +370,8 @@ export class Personality {
   _styled(r) {
     if (this.style === 'gentle') {
       r.i = (r.i ?? 0.6) * 0.7;
-      if (r.react === 'hop' || r.react === 'doubleTap' || r.react === 'celebrate') r.react = 'nod';
-      if (r.react === 'flick' || r.react === 'shiver' || r.react === 'glitchBurst') r.react = 'tap';
+      const k = softened(r.react, { gentle: true });
+      if (k !== r.react) r.react = k;     // only mapped kinds are written (no new keys)
       if (r.voice === 'giggle') r.voice = 'coo';
       r.poke = (r.poke ?? 1) * 0.6;
     } else if (this.style === 'playful') {

@@ -26,6 +26,9 @@ export const QUALITY = {
   low: { grid: 8, substeps: 4, dpr: 1 },
 };
 
+// a closed-eyed Mallow's look at a finger: friendly, not worried (an experience can swap it via peekParams)
+export const DEFAULT_PEEK = Object.freeze({ eyeOpen: 0.72, lidTop: 0.18, closedCurve: 0.2, browTilt: -0.25, mouthSmile: 1 });
+
 export class SoftMallow extends MallowRig {
   /**
    * @param {HTMLElement} container
@@ -50,6 +53,9 @@ export class SoftMallow extends MallowRig {
     this.motionScale = 1;
     this.inflate = 0; this.inflateTarget = 0;
     this.faceOverride = { set: {}, min: {} };
+    // Phase 3 hooks (all neutral by default): render cap, render counter, peek look, colour grade
+    this.frameCap = null; this._acc = 0; this.renders = 0; this.peekParams = null; this.grade = [1, 1, 1];
+    this._tickEv = { dt: 0 }; this._noRender = false; this._gradeMean = 1;
     this.canvas.setAttribute('role', 'img');
     this.canvas.style.touchAction = 'none';
     // know when the rig re-rendered its skin, so the texture is re-uploaded only then
@@ -80,6 +86,7 @@ export class SoftMallow extends MallowRig {
     this.renderer = new MeshRenderer({ prefer: this.prefer });
     this.renderer.setMesh(this.soft.tri, this._uv());
     this._resize();
+    this._applyGrade();
   }
 
   _mat() { return tuneMaterial(this.material, this.id, { reducedMotion: this.opts.reducedMotion }); }
@@ -150,12 +157,57 @@ export class SoftMallow extends MallowRig {
   setFaceOverride(o = {}) { this.faceOverride = { set: o.set || {}, min: o.min || {} }; }
 
   /** Closed-eyed Mallows open their eyes for a moment to look at a finger. */
-  peek(x, y, dur = 1.1) {
+  peek(x, y, dur = 1.1, params = this.peekParams) {
     if (!this.ready) return;
     if (x != null) this.lookAtScreen(x, y);
     if (this.mallow.face.eyeStyle !== 'closed') return;
-    this.overlays = this.overlays.filter((o) => o.kind !== 'peek');
-    this.overlays.push({ start: this.time, dur, params: { eyeOpen: 0.72, lidTop: 0.18, closedCurve: 0.2, browTilt: -0.25, mouthSmile: 1 }, kind: 'peek' });   // a friendly look, not a worried one
+    this.overlay('peek', params || DEFAULT_PEEK, dur);
+  }
+
+  /** Timed face overlay (attack / hold / release, like a reaction's): replaces any overlay of the same kind. */
+  overlay(kind, params, dur) {
+    if (!this.ready) return this;
+    this.overlays = this.overlays.filter((o) => o.kind !== kind);
+    this.overlays.push({ start: this.time, dur, params, kind });
+    return this;
+  }
+
+  /** Body impulses in react() units, scaled by motion intensity (a quarter with reduced motion; no hop). */
+  nudge({ lean = 0, squash = 0, shear = 0, tilt = 0, hop = 0 } = {}) {
+    const b = this.body, rm = this.opts.reducedMotion, k = this.motionScale * (rm ? 0.25 : 1);
+    b.leanV += lean * 4 * k; b.squashV += squash * 6 * k; b.shearV += shear * 5 * k; b.tiltV += tilt * 60 * k;
+    if (hop > 0 && b.grounded && !rm) { b.hopV = Math.sqrt(2 * 9.8 * hop * 0.14) * this.motionScale; b.grounded = false; b.squash += 0.06; }
+    this._unsettle();
+    return this;
+  }
+
+  /** The body on screen (CSS px in the container); same maths as Pocket Hush api.body(). */
+  bodyRect(out = {}) {
+    const S = this._S || this.S, soft = this.soft;
+    const [bx0, by0, bx1, by1] = this.mallow.bodyBox;
+    const hh = (soft ? soft.H : by1 - by0) * S, ww = (soft ? soft.W : bx1 - bx0) * S;
+    const bottom = this.BASE - (this._lift || 0);
+    out.cx = this.CX; out.top = bottom - hh; out.bottom = bottom; out.mid = bottom - hh / 2;
+    out.w = ww; out.h = hh; out.W = this.W; out.H = this.H;
+    return out;
+  }
+
+  /** Render cap: null = every frame (default), 0 = paused (the last frame stays), n = at most n renders a second. */
+  setFrameCap(fps) { this.frameCap = fps == null || !Number.isFinite(+fps) ? null : Math.max(0, +fps); }
+
+  /** Colour grade [r, g, b] (0..1 each; identity [1, 1, 1]): the mesh shader with WebGL, CSS brightness otherwise. */
+  setGrade(rgb) {
+    const g = this.grade;
+    for (let i = 0; i < 3; i++) { const v = +rgb?.[i]; g[i] = Number.isFinite(v) ? clamp(v, 0, 1) : 1; }
+    this._applyGrade();
+  }
+
+  _applyGrade() {
+    const g = this.grade, r = this.renderer, gl = r?.mode === 'webgl';
+    if (gl) r.setGrade(g);
+    // the 2-D mesh and the strip fallback get brightness only (no temperature)
+    const mean = gl ? 1 : (g[0] + g[1] + g[2]) / 3;
+    if (mean !== this._gradeMean) { this._gradeMean = mean; this.canvas.style.filter = mean === 1 ? '' : `brightness(${mean.toFixed(3)})`; }
   }
 
   react(kind, opts = {}) {
@@ -167,7 +219,16 @@ export class SoftMallow extends MallowRig {
     return this;
   }
 
-  _tick(dt, now) { super._tick(dt * this.speed, now); }
+  _tick(dt, now) {
+    if (this.frameCap === 0) { this._acc = 0; return; }
+    this._acc += dt;
+    if (this.frameCap && this._acc < 1 / this.frameCap - 0.004) return;
+    const step = this._acc; this._acc = 0;
+    this._tickEv.dt = step; this._emit('tick', this._tickEv);   // raw dt, before the update; reused object
+    const n = Math.max(1, Math.ceil(step / 0.05));              // physics stays real time and stable
+    for (let i = 0; i < n; i++) { this._noRender = i < n - 1; super._tick(step / n * this.speed, now); }
+    this._noRender = false;
+  }
 
   /** Screen (CSS px in the container) → soft-body local px. */
   toLocal(x, y) {
@@ -318,6 +379,8 @@ export class SoftMallow extends MallowRig {
   }
 
   _render() {
+    if (this._noRender) return;   // a capped frame's earlier physics substeps
+    this.renders++;
     if (!this.soft || !this.renderer) { super._render(); return; }
     this._skinDrawn = false;
     this._renderSkin();
@@ -410,6 +473,7 @@ export class SoftMallow extends MallowRig {
       this.renderer = null;    // _render() uses the production rig's strip warp from now on
     }
     was.dispose();
+    this._applyGrade();
   }
 
   // light term per vertex from the local area change (squash deepens, stretch brightens)

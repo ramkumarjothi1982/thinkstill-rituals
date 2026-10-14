@@ -24,10 +24,20 @@ const P = {
   star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   hand: '<path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12M11 11V4.5a1.5 1.5 0 0 1 3 0V12M14 11.5V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-4.6-2.2L3.2 14.6a1.5 1.5 0 0 1 2.3-1.9L8 15"/>',
+  note: '<path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="16" r="2"/>',
+  replay: '<path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/>',
+  stop: '<rect x="7" y="7" width="10" height="10" rx="2"/>',
+  friend: '<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10.5" r="2.5"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M14 19a4 4 0 0 1 7 0"/>',
+  sliders: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
 };
 
+/** Any 24-px stroke paths in the lab's icon wrapper (for a feature's own icon table). */
+export function svgIcon(paths) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths || ''}</svg>`;
+}
+
 export function icon(name) {
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${P[name] || ''}</svg>`;
+  return svgIcon(P[name]);
 }
 
 export function iconBtn(name, label, onClick, attrs = {}) {
@@ -50,7 +60,39 @@ export function feedbackChip(parent) {
   };
 }
 
-/** Segmented single-choice control. */
+/**
+ * Screen-reader announcements (visually hidden live region). Within gapMs of the
+ * last spoken message only the newest pending text is kept, spoken when the gap
+ * ends. Each message is cleared, then set 30 ms later, so a repeat is announced again.
+ */
+export function announcer(parent, { gapMs = 0 } = {}) {
+  const el = h('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
+  parent.append(el);
+  const log = [];
+  let last = -Infinity, pending = '', gapT = 0, setT = 0;
+  const speak = (text) => {
+    gapT = 0; pending = ''; last = performance.now();
+    el.textContent = '';
+    clearTimeout(setT);
+    setT = setTimeout(() => { el.textContent = text; }, 30);
+    log.push(text); if (log.length > 10) log.shift();
+  };
+  return {
+    el,
+    say(text) {
+      text = text == null ? '' : String(text);
+      if (!text) return;
+      const wait = last + gapMs - performance.now();
+      if (wait <= 0 && !gapT) { speak(text); return; }
+      pending = text;
+      if (!gapT) gapT = setTimeout(() => speak(pending), Math.max(0, wait));
+    },
+    destroy() { clearTimeout(gapT); clearTimeout(setT); gapT = 0; pending = ''; el.remove(); },
+    get log() { return log.slice(); },
+  };
+}
+
+/** Segmented single-choice control. el.set(v) selects without calling onChange. */
 export function segmented(options, value, onChange, label) {
   const wrap = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': label });
   const btns = options.map(([v, text]) => h('button', {
@@ -74,6 +116,12 @@ export function segmented(options, value, onChange, label) {
   });
   wrap.append(...btns);
   sync();
+  wrap.set = (v) => {
+    const b = btn(v);
+    if (!b) return;   // unknown value: keep the current choice
+    for (const x of btns) x.setAttribute('aria-checked', String(x === b));
+    sync();
+  };
   return wrap;
 }
 

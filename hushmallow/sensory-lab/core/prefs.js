@@ -18,6 +18,8 @@ export const DEFAULTS = Object.freeze({
   theme: 'system',         // system (follow the device / host) | dark | light
   quality: 'auto',         // auto | high | medium | low
   showMesh: false,
+  musicVisualOnly: false,  // Hushbeat: show the music without sound
+  nightlight: null,        // Mallow Nightlight settings object; read through its cleanNight(), always write a new object
 });
 
 // Touching localStorage can itself throw (blocked site data, sandboxed frames).

@@ -27,15 +27,18 @@ export const VOICES = {
 };
 
 const st = (s) => Math.pow(2, s / 12);
-const MAX_VOICES = 24;
+export const MAX_VOICES = 24;
 const MIN_GAP = 0.04;
 
 export class SoundEngine {
   constructor({ volume = 0.7, muted = false } = {}) {
     this.volume = volume;
     this.muted = muted;
+    this.trim = 1;          // session trim on top of the volume (Nightlight); 1 elsewhere
+    this.resting = false;   // rest(): stay suspended across visibility changes until the next gesture
     this.ctx = null;
     this.live = new Set();
+    this._evicted = new WeakSet();   // voices _room() already killed (they fade for a moment)
     this.lastAt = new Map();
     this.noteIdx = 0;
     this.voiceOn = true;   // the Mallow's little voice
@@ -47,13 +50,14 @@ export class SoundEngine {
   /** Call from a user gesture. Safe to call often; does nothing while muted or outside a gesture. */
   unlock() {
     if (this.muted || !inGesture()) return;
+    this.resting = false;
     if (this.ctx) { this._resume(); return; }
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!AC) return;
     try { this.ctx = new AC({ latencyHint: 'interactive' }); } catch { try { this.ctx = new AC(); } catch { return; } }
     const c = this.ctx;
     this.master = c.createGain();
-    this.master.gain.value = this.muted ? 0 : this.volume;
+    this.master.gain.value = this._gain();
     const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6500; lp.Q.value = 0.5;
     const comp = c.createDynamicsCompressor();
     comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = 0.006; comp.release.value = 0.2;
@@ -108,7 +112,7 @@ export class SoundEngine {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(t);
-    this.master.gain.setTargetAtTime(this.muted ? 0 : this.volume, t, 0.04);
+    this.master.gain.setTargetAtTime(this._gain(), t, 0.04);
     if (this.muted) {
       this.stopAll();
       setTimeout(() => { if (this.muted && this.ctx?.state === 'running') this.ctx.suspend().catch(() => {}); }, 120);
@@ -123,12 +127,28 @@ export class SoundEngine {
 
   setVolume(v) {
     this.volume = clamp(+v || 0, 0, 1);
-    if (this.ctx && !this.muted) this.master.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.04);
+    if (this.ctx && !this.muted) this.master.gain.setTargetAtTime(this._gain(), this.ctx.currentTime, 0.04);
   }
+
+  /** Session trim (0..1) on top of the volume; NaN or no value gives 1. */
+  setTrim(k) {
+    const n = k == null ? NaN : +k;
+    this.trim = Number.isNaN(n) ? 1 : clamp(n, 0, 1);
+    if (this.ctx && !this.muted) this.master.gain.setTargetAtTime(this._gain(), this.ctx.currentTime, 0.08);
+  }
+
+  /** Stop everything and suspend; stays suspended (even on becoming visible) until the next unlock(). */
+  rest() {
+    this.resting = true;
+    this.stopAll();
+    if (this.ctx?.state === 'running') this.ctx.suspend().catch(() => {});
+  }
+
+  _gain() { return this.muted ? 0 : this.volume * this.trim; }
 
   _visibility() {
     if (!this.ctx) return;
-    if (document.hidden) { this.stopAll(); this.ctx.suspend().catch(() => {}); } else if (!this.muted) this.ctx.resume().catch(() => {});
+    if (document.hidden) { this.stopAll(); this.ctx.suspend().catch(() => {}); } else if (!this.muted && !this.resting) this.ctx.resume().catch(() => {});
   }
 
   _ok(key) {
@@ -136,17 +156,40 @@ export class SoundEngine {
     const t = this.ctx.currentTime;
     if (t - (this.lastAt.get(key) ?? -1) < MIN_GAP) return false;
     this.lastAt.set(key, t);
-    if (this.live.size >= MAX_VOICES) { const [old] = this.live; old.kill?.(); }
+    this._room();
     return true;
   }
 
+  /** Make room under the voice cap: kill the oldest voice without `keep` (the
+   *  oldest of all if every voice keeps), never one this already killed.
+   *  Direct _voice() users call this first. */
+  _room() {
+    if (this.live.size < MAX_VOICES) return;
+    let pick = null;
+    for (const v of this.live) {
+      if (this._evicted.has(v)) continue;
+      if (!v.keep) { pick = v; break; }
+      pick ||= v;
+    }
+    if (!pick) return;
+    this._evicted.add(pick);
+    pick.kill?.();
+  }
+
   // ----------------------------------------------------------- primitives --
-  _voice(dur, { pan = 0 } = {}) {
-    const c = this.ctx, out = c.createGain();
+  // dest: where the voice goes instead of the bus (a feature sub-bus that ends in
+  // the bus); send: reverb amount (1 direct, 0 none, else a per-voice gain);
+  // keep: long-lived (beds, held layers), evicted last by _room().
+  _voice(dur, { pan = 0, dest = null, send = 1, keep = false } = {}) {
+    const c = this.ctx, out = c.createGain(), to = dest || this.bus;
     const p = c.createStereoPanner ? c.createStereoPanner() : null;
-    if (p) { p.pan.value = clamp(pan, -1, 1); out.connect(p); p.connect(this.bus); p.connect(this.verbSend); }
-    else { out.connect(this.bus); }
-    const v = { out, nodes: [out, p].filter(Boolean), srcs: [], t: c.currentTime + 0.005, born: performance.now() };
+    let sg = null;
+    if (p) {
+      p.pan.value = clamp(pan, -1, 1); out.connect(p); p.connect(to);
+      if (send === 1) p.connect(this.verbSend);
+      else if (send > 0) { sg = c.createGain(); sg.gain.value = send; p.connect(sg); sg.connect(this.verbSend); }
+    } else { out.connect(to); }
+    const v = { out, nodes: [out, p, sg].filter(Boolean), srcs: [], t: c.currentTime + 0.005, born: performance.now(), keep: !!keep };
     v.kill = () => {
       const t = c.currentTime;
       out.gain.cancelScheduledValues(t); out.gain.setTargetAtTime(0, t, 0.02);
@@ -466,7 +509,11 @@ export class SoundEngine {
   }
 
   /** Debug counters: `live` must return to 0 shortly after sounds stop. */
-  debug() { return { state: this.ctx?.state || 'none', live: this.live.size, muted: this.muted, volume: this.volume }; }
+  debug() {
+    let keep = 0;
+    for (const v of this.live) if (v.keep) keep++;
+    return { state: this.ctx?.state || 'none', live: this.live.size, muted: this.muted, volume: this.volume, trim: this.trim, resting: this.resting, keep };
+  }
 
   _noiseBuffer(secs) {
     const c = this.ctx, n = Math.floor(c.sampleRate * secs), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
@@ -483,6 +530,43 @@ export class SoundEngine {
 }
 
 const NOOP = { update() {}, end() {} };
+
+/**
+ * A Companion's `sound` option with its own character (Hushbeat, Nightlight).
+ * An explicit object, never Object.create. fx scales the touch sounds (0 = none)
+ * and is read at call time; `skip` silences named ones; voice(id, kind, i) maps
+ * a voice to [kind, i] or null (silent); voice null forwards unchanged. The
+ * global voice / touch-sound switches stay with lab.js, so setParts is a no-op.
+ */
+export function soundFacade(sound, { fx = 1, voice = null, skip = [] } = {}) {
+  let k = Math.max(0, +fx || 0), map = typeof voice === 'function' ? voice : null;
+  const off = (name) => k === 0 || skip.includes(name);
+  const wrap = (h) => ({ update: (a, b) => h.update(a * k, b), end: () => h.end() });   // stretch(amount, speed) · brush(speed)
+  return {
+    unlock() { sound.unlock(); },
+    get ready() { return sound.ready; },
+    get muted() { return sound.muted; },
+    setParts() {},
+    poke(mat, i = 0.6, pan) { if (!off('poke')) sound.poke(mat, i * k, pan); },
+    squish(mat, a = 0.5, pan) { if (!off('squish')) sound.squish(mat, a * k, pan); },
+    release(mat, s = 0.5, pan) { if (!off('release')) sound.release(mat, s * k, pan); },
+    impact(mat, s = 0.5) { if (!off('impact')) sound.impact(mat, s * k); },
+    settle(mat) { if (!off('settle')) sound.settle(mat); },
+    stretch(mat) { return off('stretch') ? NOOP : wrap(sound.stretch(mat)); },
+    brush() { return off('brush') ? NOOP : wrap(sound.brush()); },
+    voice(id, kind, i = 0.6) {
+      if (!map) return sound.voice(id, kind, i);
+      const r = map(id, kind, i);
+      return r ? sound.voice(id, r[0], r[1]) : null;
+    },
+    setFx(v) { k = Math.max(0, +v || 0); },
+    setVoice(fn) { map = typeof fn === 'function' ? fn : null; },
+    get fx() { return k; },
+  };
+}
+
+/** A Companion that moves and feels but makes no sound of its own (Hushbeat: the music is its voice). */
+export const quietSound = (sound) => soundFacade(sound, { fx: 0, voice: () => null });
 
 // Browsers only start audio after a user gesture (touch *pointerdown* and wheel
 // don't count). navigator.userActivation.isActive is true for a few seconds after

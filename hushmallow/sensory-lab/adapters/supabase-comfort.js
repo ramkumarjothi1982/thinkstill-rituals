@@ -39,5 +39,5 @@ export class SupabaseComfortStore {
     if (error) throw error;
   }
 
-  describe() { return { where: 'Your Hushmallow account', synced: true, persistent: true }; }
+  describe() { return { where: 'Your hushmallow account', synced: true, persistent: true }; }
 }

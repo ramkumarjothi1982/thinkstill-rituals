@@ -1,0 +1,901 @@
+{
+ "when": "2026-10-14T11:41:24.413Z",
+ "part": null,
+ "passed": 148,
+ "failed": 0,
+ "results": [
+  {
+   "scope": "shared:stage",
+   "name": "the handle has wrap (.stage-wrap, first in the screen), env and companion; a plain stage has no realm",
+   "ok": true,
+   "detail": "{\"has\":true,\"wrap\":\"stage-wrap\",\"wrapFirst\":true,\"env\":true,\"realm\":null,\"envRealm\":null,\"canvas\":false,\"ds\":null,\"comp\":true,\"stage\":true,\"list\":1,\"stages\":1,\"partner\":null}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "solo: companions [lead], stages [stage], partner null",
+   "ok": true,
+   "detail": "{\"has\":true,\"wrap\":\"stage-wrap\",\"wrapFirst\":true,\"env\":true,\"realm\":null,\"envRealm\":null,\"canvas\":false,\"ds\":null,\"comp\":true,\"stage\":true,\"list\":1,\"stages\":1,\"partner\":null}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "a chosen realm lives in env: canvas in wrap, data-realm, light chrome, geo",
+   "ok": true,
+   "detail": "{\"same\":true,\"id\":\"blue-drift\",\"canvas\":\"blue-drift\",\"inWrap\":true,\"ds\":\"blue-drift\",\"back\":\"light\",\"tone\":\"light\",\"horizon\":0.57,\"groundY\":0.8399999999999999,\"base\":0.8399999999999999,\"q\":\"low\",\"low\":false,\"p\":0}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "the realm is mounted as before (groundY = rig baseline, quality low, no low stimulation, p 0)",
+   "ok": true,
+   "detail": "{\"same\":true,\"id\":\"blue-drift\",\"canvas\":\"blue-drift\",\"inWrap\":true,\"ds\":\"blue-drift\",\"back\":\"light\",\"tone\":\"light\",\"horizon\":0.57,\"groundY\":0.8399999999999999,\"base\":0.8399999999999999,\"q\":\"low\",\"low\":false,\"p\":0}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "a live Motion change reaches the realm and the Mallow",
+   "ok": true,
+   "detail": "{\"a\":{\"env\":true,\"realm\":true,\"rig\":true},\"b\":{\"env\":false,\"realm\":false,\"rig\":false}}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "Escape: home, realm gone, __lab.stage cleared, 1 canvas",
+   "ok": true,
+   "detail": "{\"stage\":null,\"realms\":0,\"canvases\":1}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "__lab.stage is the newest handle; stageLabel and the sound option reach the lead",
+   "ok": true,
+   "detail": "{\"isStage\":true,\"label\":\"Probe with Boppo\",\"sound\":true,\"wrap\":\"stage-wrap\",\"env\":true}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "onLayout: { W, H, floor, baseline, fit, band, topBottom, bottomTop } match the screen",
+   "ok": true,
+   "detail": "{\"n\":1,\"L\":{\"W\":390,\"H\":844,\"floor\":708.9599999999999,\"baseline\":0.8399999999999999,\"fit\":0.64,\"band\":612.9599999999999,\"topBottom\":56,\"bottomTop\":828},\"tb\":56,\"bt\":828,\"base\":0.8399999999999999,\"fit\":0.64,\"sw\":390,\"sh\":844,\"realm\":\"spark-festival\",\"ds\":\"spark-festival\"}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "the backdrop realm goes through env",
+   "ok": true,
+   "detail": "{\"n\":1,\"L\":{\"W\":390,\"H\":844,\"floor\":708.9599999999999,\"baseline\":0.8399999999999999,\"fit\":0.64,\"band\":612.9599999999999,\"topBottom\":56,\"bottomTop\":828},\"tb\":56,\"bt\":828,\"base\":0.8399999999999999,\"fit\":0.64,\"sw\":390,\"sh\":844,\"realm\":\"spark-festival\",\"ds\":\"spark-festival\"}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "keys runs first (down and up); true skips the built-in",
+   "ok": true,
+   "detail": "{\"keys\":[\"d:down\",\"d:up\",\"enter:down\",\"enter:up\"],\"ev\":[\"tap\"],\"chip\":\"\",\"gest\":[\"tap\"]}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "feedback: false keeps the chip quiet; onGesture sees act()",
+   "ok": true,
+   "detail": "{\"keys\":[\"d:down\",\"d:up\",\"enter:down\",\"enter:up\"],\"ev\":[\"tap\"],\"chip\":\"\",\"gest\":[\"tap\"]}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "a touch plays through the sound option and reaches onGesture",
+   "ok": true,
+   "detail": "{\"snd\":{\"unlock\":1,\"poke\":1,\"voice\":1},\"gest\":[\"contact\",\"tap\"]}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "partner: stageLabel, the same sound, and onLayout after setPartner",
+   "ok": true,
+   "detail": "{\"label\":\"Probe with Glitzi\",\"sound\":true,\"more\":true}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "partner gestures reach onGesture",
+   "ok": true,
+   "detail": "[\"tap\"]"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "unmount: __lab.stage cleared, partner unregistered, realm and screen gone",
+   "ok": true,
+   "detail": "{\"stage\":null,\"labN\":0,\"ctxC\":null,\"root\":0,\"realms\":0,\"n\":4}"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "no key listener left behind",
+   "ok": true,
+   "detail": "4 → 4"
+  },
+  {
+   "scope": "shared:stage",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:pocket",
+   "name": "a Pocket Hush moment mounts its realm (canvas.hushfold-realm, data-realm, light chrome on Sunpop)",
+   "ok": true,
+   "detail": "{\"moment\":true,\"ds\":\"sunpop-orchard\",\"back\":\"light\",\"canvas\":\"sunpop-orchard\",\"n\":1,\"env\":true}"
+  },
+  {
+   "scope": "shared:pocket",
+   "name": "S squeezes in the moment",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:pocket",
+   "name": "Escape closes the moment to the picker; realm and __lab.stage gone",
+   "ok": true,
+   "detail": "{\"picker\":true,\"realms\":0,\"stage\":null}"
+  },
+  {
+   "scope": "shared:pocket",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "setPartner('loomi') returns the partner; the same id again returns it; never ctx.companion",
+   "ok": true,
+   "detail": "{\"ok\":true,\"same\":true,\"notCtx\":true}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "two ready rigs, each canvas inside its own stage",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[0,195],\"rb\":[195,390],\"ba\":{\"l\":35.35348784547139,\"r\":159.6465121545286,\"t\":583.6509564186616,\"b\":708.9599999999999},\"bb\":{\"l\":232.66197735199137,\"r\":352.33802264800863,\"t\":578.8166621124943,\"b\":708.9599999999999},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.8399999999999999,\"baseB\":0.8399999999999999,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "duet markup: data-layout duet, .lead, .stage.partner after the lead (tabindex 0, application, label)",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[0,195],\"rb\":[195,390],\"ba\":{\"l\":35.35348784547139,\"r\":159.6465121545286,\"t\":583.6509564186616,\"b\":708.9599999999999},\"bb\":{\"l\":232.66197735199137,\"r\":352.33802264800863,\"t\":578.8166621124943,\"b\":708.9599999999999},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.8399999999999999,\"baseB\":0.8399999999999999,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "no overlap: stages side by side, each body inside its own stage",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[0,195],\"rb\":[195,390],\"ba\":{\"l\":35.35348784547139,\"r\":159.6465121545286,\"t\":583.6509564186616,\"b\":708.9599999999999},\"bb\":{\"l\":232.66197735199137,\"r\":352.33802264800863,\"t\":578.8166621124943,\"b\":708.9599999999999},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.8399999999999999,\"baseB\":0.8399999999999999,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "one baseline for both; still one realm",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[0,195],\"rb\":[195,390],\"ba\":{\"l\":35.35348784547139,\"r\":159.6465121545286,\"t\":583.6509564186616,\"b\":708.9599999999999},\"bb\":{\"l\":232.66197735199137,\"r\":352.33802264800863,\"t\":578.8166621124943,\"b\":708.9599999999999},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.8399999999999999,\"baseB\":0.8399999999999999,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "Enter on the partner stage taps the partner (partner: true)",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":true}]"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "Enter on the lead stage taps the lead",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":false}]"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "a held H ends on the Mallow that started it",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":true},{\"type\":\"tap\",\"partner\":false},{\"type\":\"hold\",\"partner\":true},{\"type\":\"holdend\",\"partner\":true}]"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "motion, Comfort DNA tuning and quality reach the partner",
+   "ok": true,
+   "detail": "{\"m1\":[true,true],\"m2\":[false,false],\"sp\":[0.82,0.82],\"q1\":[\"medium\",\"medium\"],\"q2\":[\"low\",\"low\"]}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "setPartner(null) removes the partner: its stage and canvas, data-layout, .lead, the registration",
+   "ok": true,
+   "detail": "{\"rm\":{\"r0\":null,\"destroyed\":true,\"partner\":null,\"pst\":0,\"layout\":null,\"lead\":false,\"comps\":1,\"labN\":1,\"stages\":1,\"canv\":2,\"cw\":390,\"focus\":true},\"lead0\":{\"cw\":390,\"canv\":2}}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "the lead gets the full stage back, with focus",
+   "ok": true,
+   "detail": "{\"rm\":{\"r0\":null,\"destroyed\":true,\"partner\":null,\"pst\":0,\"layout\":null,\"lead\":false,\"comps\":1,\"labN\":1,\"stages\":1,\"canv\":2,\"cw\":390,\"focus\":true},\"lead0\":{\"cw\":390,\"canv\":2}}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "Escape from a duet: home with 1 Companion and 1 canvas",
+   "ok": true,
+   "detail": "{\"labN\":1,\"canv\":1,\"stage\":null}"
+  },
+  {
+   "scope": "shared:duet:phone",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "setPartner('loomi') returns the partner; the same id again returns it; never ctx.companion",
+   "ok": true,
+   "detail": "{\"ok\":true,\"same\":true,\"notCtx\":true}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "two ready rigs, each canvas inside its own stage",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[0,160],\"rb\":[160,320],\"ba\":{\"l\":29.007990027053445,\"r\":130.99200997294656,\"t\":338.1823232153121,\"b\":441},\"bb\":{\"l\":190.9021352631724,\"r\":289.0978647368276,\"t\":334.2157227589697,\"b\":441},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.7764084507042254,\"baseB\":0.7764084507042254,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "duet markup: data-layout duet, .lead, .stage.partner after the lead (tabindex 0, application, label)",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[0,160],\"rb\":[160,320],\"ba\":{\"l\":29.007990027053445,\"r\":130.99200997294656,\"t\":338.1823232153121,\"b\":441},\"bb\":{\"l\":190.9021352631724,\"r\":289.0978647368276,\"t\":334.2157227589697,\"b\":441},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.7764084507042254,\"baseB\":0.7764084507042254,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "no overlap: stages side by side, each body inside its own stage",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[0,160],\"rb\":[160,320],\"ba\":{\"l\":29.007990027053445,\"r\":130.99200997294656,\"t\":338.1823232153121,\"b\":441},\"bb\":{\"l\":190.9021352631724,\"r\":289.0978647368276,\"t\":334.2157227589697,\"b\":441},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.7764084507042254,\"baseB\":0.7764084507042254,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "one baseline for both; still one realm",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[0,160],\"rb\":[160,320],\"ba\":{\"l\":29.007990027053445,\"r\":130.99200997294656,\"t\":338.1823232153121,\"b\":441},\"bb\":{\"l\":190.9021352631724,\"r\":289.0978647368276,\"t\":334.2157227589697,\"b\":441},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.7764084507042254,\"baseB\":0.7764084507042254,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "Enter on the partner stage taps the partner (partner: true)",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":true}]"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "Enter on the lead stage taps the lead",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":false}]"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "a held H ends on the Mallow that started it",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":true},{\"type\":\"tap\",\"partner\":false},{\"type\":\"hold\",\"partner\":true},{\"type\":\"holdend\",\"partner\":true}]"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "motion, Comfort DNA tuning and quality reach the partner",
+   "ok": true,
+   "detail": "{\"m1\":[true,true],\"m2\":[false,false],\"sp\":[0.82,0.82],\"q1\":[\"medium\",\"medium\"],\"q2\":[\"low\",\"low\"]}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "setPartner(null) removes the partner: its stage and canvas, data-layout, .lead, the registration",
+   "ok": true,
+   "detail": "{\"rm\":{\"r0\":null,\"destroyed\":true,\"partner\":null,\"pst\":0,\"layout\":null,\"lead\":false,\"comps\":1,\"labN\":1,\"stages\":1,\"canv\":2,\"cw\":320,\"focus\":true},\"lead0\":{\"cw\":320,\"canv\":2}}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "the lead gets the full stage back, with focus",
+   "ok": true,
+   "detail": "{\"rm\":{\"r0\":null,\"destroyed\":true,\"partner\":null,\"pst\":0,\"layout\":null,\"lead\":false,\"comps\":1,\"labN\":1,\"stages\":1,\"canv\":2,\"cw\":320,\"focus\":true},\"lead0\":{\"cw\":320,\"canv\":2}}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "Escape from a duet: home with 1 Companion and 1 canvas",
+   "ok": true,
+   "detail": "{\"labN\":1,\"canv\":1,\"stage\":null}"
+  },
+  {
+   "scope": "shared:duet:small",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "setPartner('loomi') returns the partner; the same id again returns it; never ctx.companion",
+   "ok": true,
+   "detail": "{\"ok\":true,\"same\":true,\"notCtx\":true}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "two ready rigs, each canvas inside its own stage",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[200,640],\"rb\":[640,1080],\"ba\":{\"l\":279.77197257439695,\"r\":560.228027425603,\"t\":439.6513888421083,\"b\":722.4},\"bb\":{\"l\":724.9808719737241,\"r\":995.0191280262759,\"t\":428.7432375871668,\"b\":722.4},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.84,\"baseB\":0.84,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "duet markup: data-layout duet, .lead, .stage.partner after the lead (tabindex 0, application, label)",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[200,640],\"rb\":[640,1080],\"ba\":{\"l\":279.77197257439695,\"r\":560.228027425603,\"t\":439.6513888421083,\"b\":722.4},\"bb\":{\"l\":724.9808719737241,\"r\":995.0191280262759,\"t\":428.7432375871668,\"b\":722.4},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.84,\"baseB\":0.84,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "no overlap: stages side by side, each body inside its own stage",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[200,640],\"rb\":[640,1080],\"ba\":{\"l\":279.77197257439695,\"r\":560.228027425603,\"t\":439.6513888421083,\"b\":722.4},\"bb\":{\"l\":724.9808719737241,\"r\":995.0191280262759,\"t\":428.7432375871668,\"b\":722.4},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.84,\"baseB\":0.84,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "one baseline for both; still one realm",
+   "ok": true,
+   "detail": "{\"n\":2,\"labN\":2,\"layout\":\"duet\",\"lead\":true,\"pClass\":\"stage partner\",\"ptab\":\"0\",\"prole\":\"application\",\"plabel\":\"Loomi. Tap, double tap, hold, stroke, drag to stretch, or pinch to squeeze. Keys: Enter tap, D double tap, H hold, P stroke, S squeeze, T stretch.\",\"after\":true,\"ra\":[200,640],\"rb\":[640,1080],\"ba\":{\"l\":279.77197257439695,\"r\":560.228027425603,\"t\":439.6513888421083,\"b\":722.4},\"bb\":{\"l\":724.9808719737241,\"r\":995.0191280262759,\"t\":428.7432375871668,\"b\":722.4},\"canvA\":true,\"canvB\":true,\"ready\":true,\"ids\":[\"boppo\",\"loomi\"],\"baseA\":0.84,\"baseB\":0.84,\"realms\":1}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "Enter on the partner stage taps the partner (partner: true)",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":true}]"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "Enter on the lead stage taps the lead",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":false}]"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "a held H ends on the Mallow that started it",
+   "ok": true,
+   "detail": "[{\"type\":\"tap\",\"partner\":true},{\"type\":\"tap\",\"partner\":false},{\"type\":\"hold\",\"partner\":true},{\"type\":\"holdend\",\"partner\":true}]"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "motion, Comfort DNA tuning and quality reach the partner",
+   "ok": true,
+   "detail": "{\"m1\":[true,true],\"m2\":[false,false],\"sp\":[0.82,0.82],\"q1\":[\"medium\",\"medium\"],\"q2\":[\"low\",\"low\"]}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "setPartner(null) removes the partner: its stage and canvas, data-layout, .lead, the registration",
+   "ok": true,
+   "detail": "{\"rm\":{\"r0\":null,\"destroyed\":true,\"partner\":null,\"pst\":0,\"layout\":null,\"lead\":false,\"comps\":1,\"labN\":1,\"stages\":1,\"canv\":2,\"cw\":1280,\"focus\":true},\"lead0\":{\"cw\":1280,\"canv\":2}}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "the lead gets the full stage back, with focus",
+   "ok": true,
+   "detail": "{\"rm\":{\"r0\":null,\"destroyed\":true,\"partner\":null,\"pst\":0,\"layout\":null,\"lead\":false,\"comps\":1,\"labN\":1,\"stages\":1,\"canv\":2,\"cw\":1280,\"focus\":true},\"lead0\":{\"cw\":1280,\"canv\":2}}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "Escape from a duet: home with 1 Companion and 1 canvas",
+   "ok": true,
+   "detail": "{\"labN\":1,\"canv\":1,\"stage\":null}"
+  },
+  {
+   "scope": "shared:duet:desktop",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:rig",
+   "name": "bodyRect equals the harness geo()",
+   "ok": true,
+   "detail": "{\"b\":{\"cx\":195,\"top\":458.3419128373232,\"bottom\":708.9599999999999,\"mid\":583.6509564186616,\"w\":248.58604861811443,\"h\":250.6180871626767,\"W\":390,\"H\":844},\"g\":{\"cx\":195,\"base\":708.9599999999999,\"top\":458.3419128373232,\"bottom\":708.9599999999999,\"mid\":583.6509564186616,\"w\":248.58604861811443,\"h\":250.6180871626767,\"W\":390,\"H\":844,\"ox\":0,\"oy\":0}}"
+  },
+  {
+   "scope": "shared:rig",
+   "name": "nudge({ lean: 1 }) changes body.leanV (by 4·k) and returns the rig",
+   "ok": true,
+   "detail": "{\"d\":4,\"k\":1,\"ret\":true}"
+  },
+  {
+   "scope": "shared:rig",
+   "name": "setFrameCap(10): at most 13 renders a second (and still rendering)",
+   "ok": true,
+   "detail": "{\"rps\":9.999333377771089,\"fps\":52.663155789594406}"
+  },
+  {
+   "scope": "shared:rig",
+   "name": "setFrameCap(0) pauses renders",
+   "ok": true,
+   "detail": "{\"rps\":0,\"fps\":58.74265716774462}"
+  },
+  {
+   "scope": "shared:rig",
+   "name": "setFrameCap(null) restores the rate (a render on almost every frame)",
+   "ok": true,
+   "detail": "{\"capped\":{\"rps\":9.999333377771089,\"fps\":52.663155789594406},\"back\":{\"rps\":31.598736050562685,\"fps\":31.598736050562685}}"
+  },
+  {
+   "scope": "shared:rig",
+   "name": "setGrade([0.5, 0.5, 0.5]) roughly halves the rig's mean luminance (webgl)",
+   "ok": true,
+   "detail": "{\"a\":{\"n\":53808,\"mean\":0.5583982755088768,\"mode\":\"webgl\",\"filter\":\"\",\"renders\":166},\"b\":{\"n\":53828,\"mean\":0.2788847283093593,\"mode\":\"webgl\",\"filter\":\"\",\"renders\":169},\"ratio\":0.4994369440973066}"
+  },
+  {
+   "scope": "shared:rig",
+   "name": "setGrade([1, 1, 1]) restores it",
+   "ok": true,
+   "detail": "{\"c\":{\"n\":53895,\"mean\":0.5586480132167473,\"mode\":\"webgl\",\"filter\":\"\",\"renders\":172},\"back1\":1.0004472393967243}"
+  },
+  {
+   "scope": "shared:rig",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:sound",
+   "name": "sound.debug() has trim 1, resting false and keep 0 (no context before a gesture)",
+   "ok": true,
+   "detail": "{\"state\":\"none\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}"
+  },
+  {
+   "scope": "shared:sound",
+   "name": "a tap: the context runs and voices play",
+   "ok": true,
+   "detail": "{\"state\":\"running\",\"live\":2,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}"
+  },
+  {
+   "scope": "shared:sound",
+   "name": "the tap's voices end (live 0 within 3.5 s)",
+   "ok": true,
+   "detail": "{\"ok\":true,\"ms\":112,\"d\":{\"state\":\"running\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}}"
+  },
+  {
+   "scope": "shared:sound",
+   "name": "setTrim shows in debug (0.5; NaN gives 1)",
+   "ok": true,
+   "detail": "{\"a\":0.5,\"b\":1,\"c\":1}"
+  },
+  {
+   "scope": "shared:sound",
+   "name": "rest() suspends and shows resting; a tap wakes it",
+   "ok": true,
+   "detail": "{\"r1\":{\"state\":\"suspended\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":0},\"r2\":{\"state\":\"running\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}}"
+  },
+  {
+   "scope": "shared:sound",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:bed",
+   "name": "wanted, but before a gesture: no bed and no context",
+   "ok": true,
+   "detail": "{\"alive\":false,\"state\":\"none\"}"
+  },
+  {
+   "scope": "shared:bed",
+   "name": "after a click the bed is built (one keep voice)",
+   "ok": true,
+   "detail": "{\"alive\":true,\"wanted\":true,\"builds\":1,\"levels\":{\"rain\":0.8,\"wind\":0.6,\"pad\":1},\"snd\":{\"state\":\"running\",\"live\":1,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":1},\"keep\":[600]}"
+  },
+  {
+   "scope": "shared:bed",
+   "name": "mute kills it (not alive, 0 live voices)",
+   "ok": true,
+   "detail": "{\"alive\":false,\"snd\":{\"state\":\"suspended\",\"live\":0,\"muted\":true,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}}"
+  },
+  {
+   "scope": "shared:bed",
+   "name": "no rebuild while muted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:bed",
+   "name": "unmute rebuilds it",
+   "ok": true,
+   "detail": "{\"alive\":true,\"wanted\":true,\"builds\":2,\"levels\":{\"rain\":0.8,\"wind\":0.6,\"pad\":1},\"snd\":{\"state\":\"running\",\"live\":1,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":1}}"
+  },
+  {
+   "scope": "shared:bed",
+   "name": "destroy(): live voices back to 0",
+   "ok": true,
+   "detail": "{\"ok\":true,\"ms\":517,\"d\":{\"state\":\"running\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}}"
+  },
+  {
+   "scope": "shared:bed",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "a claimed pointer: moves, then one up with velocity",
+   "ok": true,
+   "detail": "{\"log\":[[\"move\",35,24],[\"move\",40,45],[\"move\",45,51],[\"move\",50,39],[\"move\",55,54],[\"move\",60,52],[\"move\",65,51],[\"move\",70,59],[\"up\",70,59]],\"seen\":[],\"active\":0}"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "a claimed pointer never reaches the Companion",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "a claim on the body: the Companion sees nothing (no contact, no tap)",
+   "ok": true,
+   "detail": "{\"log\":[[\"up\",640,0]],\"seen\":[],\"ev\":[]}"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "an unclaimed body tap reaches the Companion; watchPresses only sees the down (on body)",
+   "ok": true,
+   "detail": "{\"log\":[],\"seen\":[\"contact\",\"tap\"],\"ev\":[\"tap\"],\"wp\":[\"down\"]}"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "watchPresses (ms 300): an off-body press fires 300 ms after its down, then releases on up",
+   "ok": true,
+   "detail": "{\"late\":{\"wp\":[\"down\",\"press:897\"],\"pressing\":1,\"after\":300.5},\"done\":{\"wp\":[\"down\",\"press:897\",\"release\"],\"pressing\":0,\"seen\":[\"contact\"]}}"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "watchPresses is passive: the Companion still saw the pointer",
+   "ok": true,
+   "detail": "[\"contact\"]"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "watchPresses: a quick off-body tap is onTap; one moved past the slop is nothing",
+   "ok": true,
+   "detail": "{\"tp\":[\"down\",\"tap:897\"],\"mv\":[\"down\"]}"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "blur releases an active press",
+   "ok": true,
+   "detail": "{\"wp\":[\"down\",\"press:897\",\"release\"],\"pressing\":0}"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "blur cancels a claimed pointer",
+   "ok": true,
+   "detail": "{\"log\":[[\"move\",40,39],[\"cancel\"]],\"active\":0}"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "after dispose() nothing is routed or watched",
+   "ok": true,
+   "detail": "{\"log\":[],\"wp\":[]}"
+  },
+  {
+   "scope": "shared:pointer:desktop",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "a claimed pointer: moves, then one up with velocity",
+   "ok": true,
+   "detail": "{\"log\":[[\"move\",35,45],[\"move\",40,83],[\"move\",45,114],[\"move\",50,100],[\"move\",55,94],[\"move\",60,86],[\"move\",65,81],[\"move\",70,79],[\"up\",70,79]],\"seen\":[],\"active\":0}"
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "a claimed pointer never reaches the Companion",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "a claim on the body: the Companion sees nothing (no contact, no tap)",
+   "ok": true,
+   "detail": "{\"log\":[[\"up\",195,0]],\"seen\":[],\"ev\":[]}"
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "an unclaimed body tap reaches the Companion; watchPresses only sees the down (on body)",
+   "ok": true,
+   "detail": "{\"log\":[],\"seen\":[\"contact\",\"tap\"],\"ev\":[\"tap\"],\"wp\":[\"down\"]}"
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "watchPresses (ms 300): an off-body press fires 300 ms after its down, then releases on up",
+   "ok": true,
+   "detail": "{\"late\":{\"wp\":[\"down\",\"press:370\"],\"pressing\":1,\"after\":300.5},\"done\":{\"wp\":[\"down\",\"press:370\",\"release\"],\"pressing\":0,\"seen\":[\"contact\"]}}"
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "watchPresses is passive: the Companion still saw the pointer",
+   "ok": true,
+   "detail": "[\"contact\"]"
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "watchPresses: a quick off-body tap is onTap; one moved past the slop is nothing",
+   "ok": true,
+   "detail": "{\"tp\":[\"down\",\"tap:370\"],\"mv\":[\"down\"]}"
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "after dispose() nothing is routed or watched",
+   "ok": true,
+   "detail": "{\"log\":[],\"wp\":[]}"
+  },
+  {
+   "scope": "shared:pointer:phone",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "baseline at home: 1 canvas, 1 Companion, no stage handle",
+   "ok": true,
+   "detail": "{\"listeners\":{\"window\":{\"pointerup\":2,\"touchend\":2,\"click\":2,\"keydown\":1,\"hashchange\":1,\"mousemove\":1,\"pointerdown\":1,\"touchstart\":1,\"touchcancel\":1,\"mousedown\":1,\"mouseup\":1,\"auxclick\":1,\"dblclick\":1,\"contextmenu\":1},\"document\":{\"visibilitychange\":3},\"total\":20},\"timers\":{},\"raf\":{\"/hushmallow/sensory-lab/core/companion.js\":1,\"/hushmallow/src/mallows/rig.js\":1},\"audio\":1,\"prefsL\":1,\"dnaL\":1,\"canvases\":1,\"screens\":1,\"comps\":1,\"stage\":null,\"sprites\":0,\"handles\":[],\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true},\"prefs\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: back in TouchTalk the trim is 1",
+   "ok": true,
+   "detail": "1"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: after a tap nothing rests; persona filter, frame cap, grade and peek are neutral",
+   "ok": true,
+   "detail": "{\"route\":\"touchtalk\",\"resting\":false,\"state\":\"running\",\"filter\":null,\"cap\":null,\"grade\":[1,1,1],\"peek\":null,\"trim\":1}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: 0 live voices within 3.5 s at home",
+   "ok": true,
+   "detail": "{\"ok\":true,\"ms\":3,\"d\":{\"state\":\"running\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: 1 canvas and 1 screen on home; 1 Companion; no stage or feature handles",
+   "ok": true,
+   "detail": "{\"listeners\":{\"window\":{\"pointerup\":2,\"touchend\":2,\"click\":2,\"keydown\":1,\"hashchange\":1,\"mousemove\":1,\"pointerdown\":1,\"touchstart\":1,\"touchcancel\":1,\"mousedown\":1,\"mouseup\":1,\"auxclick\":1,\"dblclick\":1,\"contextmenu\":1},\"document\":{\"visibilitychange\":3},\"total\":20},\"timers\":{},\"raf\":{\"/hushmallow/src/mallows/rig.js\":1,\"/hushmallow/sensory-lab/core/companion.js\":1},\"audio\":1,\"prefsL\":1,\"dnaL\":1,\"canvases\":1,\"screens\":1,\"comps\":1,\"stage\":null,\"sprites\":0,\"handles\":[],\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true},\"prefs\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: window and document listeners back to the baseline (20)",
+   "ok": true,
+   "detail": "{}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: prefs and Comfort DNA listeners back to the baseline",
+   "ok": true,
+   "detail": "{\"base\":[1,1],\"now\":[1,1]}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: timers back to the baseline (no interval, no timeout beyond home's)",
+   "ok": true,
+   "detail": "{\"extra\":[],\"base\":{},\"now\":{}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: no animation loop left running (pending rAF by file within home's)",
+   "ok": true,
+   "detail": "{\"base\":{\"/hushmallow/sensory-lab/core/companion.js\":1,\"/hushmallow/src/mallows/rig.js\":1},\"now\":{\"/hushmallow/src/mallows/rig.js\":1,\"/hushmallow/sensory-lab/core/companion.js\":1}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: one AudioContext; glow sprites released",
+   "ok": true,
+   "detail": "{\"audio\":1,\"sprites\":0}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 1: device prefs and sound switches unchanged",
+   "ok": true,
+   "detail": "{\"base\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"},\"now\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"},\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: back in TouchTalk the trim is 1",
+   "ok": true,
+   "detail": "1"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: after a tap nothing rests; persona filter, frame cap, grade and peek are neutral",
+   "ok": true,
+   "detail": "{\"route\":\"touchtalk\",\"resting\":false,\"state\":\"running\",\"filter\":null,\"cap\":null,\"grade\":[1,1,1],\"peek\":null,\"trim\":1}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: 0 live voices within 3.5 s at home",
+   "ok": true,
+   "detail": "{\"ok\":true,\"ms\":1,\"d\":{\"state\":\"running\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: 1 canvas and 1 screen on home; 1 Companion; no stage or feature handles",
+   "ok": true,
+   "detail": "{\"listeners\":{\"window\":{\"pointerup\":2,\"touchend\":2,\"click\":2,\"keydown\":1,\"hashchange\":1,\"mousemove\":1,\"pointerdown\":1,\"touchstart\":1,\"touchcancel\":1,\"mousedown\":1,\"mouseup\":1,\"auxclick\":1,\"dblclick\":1,\"contextmenu\":1},\"document\":{\"visibilitychange\":3},\"total\":20},\"timers\":{},\"raf\":{\"/hushmallow/src/mallows/rig.js\":1,\"/hushmallow/sensory-lab/core/companion.js\":1},\"audio\":1,\"prefsL\":1,\"dnaL\":1,\"canvases\":1,\"screens\":1,\"comps\":1,\"stage\":null,\"sprites\":0,\"handles\":[],\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true},\"prefs\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: window and document listeners back to the baseline (20)",
+   "ok": true,
+   "detail": "{}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: prefs and Comfort DNA listeners back to the baseline",
+   "ok": true,
+   "detail": "{\"base\":[1,1],\"now\":[1,1]}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: timers back to the baseline (no interval, no timeout beyond home's)",
+   "ok": true,
+   "detail": "{\"extra\":[],\"base\":{},\"now\":{}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: no animation loop left running (pending rAF by file within home's)",
+   "ok": true,
+   "detail": "{\"base\":{\"/hushmallow/sensory-lab/core/companion.js\":1,\"/hushmallow/src/mallows/rig.js\":1},\"now\":{\"/hushmallow/src/mallows/rig.js\":1,\"/hushmallow/sensory-lab/core/companion.js\":1}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: one AudioContext; glow sprites released",
+   "ok": true,
+   "detail": "{\"audio\":1,\"sprites\":0}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 2: device prefs and sound switches unchanged",
+   "ok": true,
+   "detail": "{\"base\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"},\"now\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"},\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: back in TouchTalk the trim is 1",
+   "ok": true,
+   "detail": "1"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: after a tap nothing rests; persona filter, frame cap, grade and peek are neutral",
+   "ok": true,
+   "detail": "{\"route\":\"touchtalk\",\"resting\":false,\"state\":\"running\",\"filter\":null,\"cap\":null,\"grade\":[1,1,1],\"peek\":null,\"trim\":1}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: 0 live voices within 3.5 s at home",
+   "ok": true,
+   "detail": "{\"ok\":true,\"ms\":1,\"d\":{\"state\":\"running\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":0}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: 1 canvas and 1 screen on home; 1 Companion; no stage or feature handles",
+   "ok": true,
+   "detail": "{\"listeners\":{\"window\":{\"pointerup\":2,\"touchend\":2,\"click\":2,\"keydown\":1,\"hashchange\":1,\"mousemove\":1,\"pointerdown\":1,\"touchstart\":1,\"touchcancel\":1,\"mousedown\":1,\"mouseup\":1,\"auxclick\":1,\"dblclick\":1,\"contextmenu\":1},\"document\":{\"visibilitychange\":3},\"total\":20},\"timers\":{},\"raf\":{\"/hushmallow/src/mallows/rig.js\":1,\"/hushmallow/sensory-lab/core/companion.js\":1},\"audio\":1,\"prefsL\":1,\"dnaL\":1,\"canvases\":1,\"screens\":1,\"comps\":1,\"stage\":null,\"sprites\":0,\"handles\":[],\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true},\"prefs\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: window and document listeners back to the baseline (20)",
+   "ok": true,
+   "detail": "{}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: prefs and Comfort DNA listeners back to the baseline",
+   "ok": true,
+   "detail": "{\"base\":[1,1],\"now\":[1,1]}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: timers back to the baseline (no interval, no timeout beyond home's)",
+   "ok": true,
+   "detail": "{\"extra\":[],\"base\":{},\"now\":{}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: no animation loop left running (pending rAF by file within home's)",
+   "ok": true,
+   "detail": "{\"base\":{\"/hushmallow/sensory-lab/core/companion.js\":1,\"/hushmallow/src/mallows/rig.js\":1},\"now\":{\"/hushmallow/src/mallows/rig.js\":1,\"/hushmallow/sensory-lab/core/companion.js\":1}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: one AudioContext; glow sprites released",
+   "ok": true,
+   "detail": "{\"audio\":1,\"sprites\":0}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "round 3: device prefs and sound switches unchanged",
+   "ok": true,
+   "detail": "{\"base\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"},\"now\":{\"sound\":true,\"volume\":0.7,\"motion\":\"system\",\"theme\":\"system\",\"quality\":\"low\",\"haptics\":true,\"material\":\"marshmallow\",\"mallow\":\"boppo\"},\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true}}"
+  },
+  {
+   "scope": "shared:isolation",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "suites": {
+  "weather": "missing",
+  "hushbeat": "missing",
+  "nightlight": "missing"
+ }
+}

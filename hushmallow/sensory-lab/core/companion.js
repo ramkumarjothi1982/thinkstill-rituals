@@ -28,6 +28,7 @@ export class Companion {
    * @param {import('./sound-engine.js').SoundEngine} o.sound
    * @param {import('./prefs.js').Prefs} o.prefs
    * @param {(e:{type:string, tag?:string, label:string})=>void} [o.onEvent]
+   * @param {(type:string, d:object, c:Companion)=>void} [o.onGesture]  raw gesture hook, after the Companion's own handling
    * @param {object} [o.rig]  extra MallowRig options (fit, baseline…)
    */
   constructor(stage, o) {
@@ -107,7 +108,10 @@ export class Companion {
   }
 
   // ---------------------------------------------------------- gestures --
-  handle(type, d = {}) {
+  /** Every gesture (pointer, wheel, act(), buttons) lands here; o.onGesture sees it after the Companion has. */
+  handle(type, d = {}) { this._handle(type, d); this.o.onGesture?.(type, d, this); }
+
+  _handle(type, d = {}) {
     const rig = this.rig;
     this._wasActive = true;
     switch (type) {
