@@ -3,7 +3,8 @@
     python3 -I tools/perf/video_metrics.py <video.mp4> [<video2.mp4> …] [--face x0,y0,x1,y1] [--json out.json]
 
 With exactly two videos it also reports the second's relative change against the first
-(within2pct: every seam and flash number within 2 %, the same flash count).
+(within2pct: every seam and flash number within 2 %, the face-box seam numbers too when
+--face is given, the same flash count and the same seam pass/fail).
 
 The definitions follow PHASE2-PLAN's G-FINAL gates (WP-05 owns the gates
 themselves; this is the measurement WP-02 needs to compare two profiles):
@@ -113,13 +114,15 @@ if __name__ == '__main__':
 
         def rel(x, y):
             return 0.0 if x == y else (y - x) / x if x else float('inf')
-        keys = [('seam', 'seam'), ('seam', 'median'), ('seam', 'quietMedian'), ('seam', 'p90'),
-                ('flash', 'maxShareChanging10pct'), ('flash', 'maxMeanBlockDelta')]
+        seams = ['seam', 'seamFace'] if face else ['seam']      # G-FINAL checks the seam inside the face box too
+        keys = [(g, k) for g in seams for k in ('seam', 'median', 'quietMedian', 'p90')] + \
+               [('flash', 'maxShareChanging10pct'), ('flash', 'maxMeanBlockDelta')]
         change = {f'{g}.{k}': round(rel(a[g][k], b[g][k]), 5) for g, k in keys}
+        passEqual = all(a[g]['pass'] == b[g]['pass'] for g in seams)
         res.append({'compare': f'{b["video"]} against {a["video"]}', 'relativeChange': change,
                     'flashCountEqual': a['flash']['count'] == b['flash']['count'],
-                    'seamPassEqual': a['seam']['pass'] == b['seam']['pass'],
-                    'within2pct': all(abs(v) <= 0.02 for v in change.values()) and a['flash']['count'] == b['flash']['count']})
+                    'seamPassEqual': passEqual,
+                    'within2pct': all(abs(v) <= 0.02 for v in change.values()) and a['flash']['count'] == b['flash']['count'] and passEqual})
     print(json.dumps(res, indent=1))
     if out:
         json.dump(res, open(out, 'w'), indent=1)
