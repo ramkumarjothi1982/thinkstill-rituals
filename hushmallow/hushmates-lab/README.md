@@ -194,6 +194,7 @@ with the keyboard alone and checks reduced motion.
 | Builds | app 71 files, desk 20; comments stripped, every module parses, scan clean, secret keys refused |
 | Edge Function copies | `tools/sync-edge.mjs --check`: the shared files match their sources (also a test) |
 | Archived v1 tests | 32 pass |
+| Lab QA (`tools/shots.cjs`, `docs/screenshots/qa-report.json`) | 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024 and 1280 × 860: no layout-audit findings; scenarios A (10 of 10), B (6 of 6) and C (5 of 5) ticked at every size; a feeling released with the keyboard alone, focus visible on every stop; reduced motion holds, and all three scenarios complete with it; no console errors |
 Earlier screenshots are kept for comparison: Phase 1's customer app in
 `docs/screenshots/customer/` and the lab's scenes in `docs/screenshots/`
 (390 × 844 unless named), with the share picture export and video frames.
