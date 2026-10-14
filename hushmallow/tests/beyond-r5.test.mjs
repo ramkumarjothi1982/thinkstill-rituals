@@ -160,7 +160,8 @@ test('r5.1: grief in the orchestrator: gentle first, the server may answer with 
   assert.match(grief, /const heard = say\(GRIEF\.heard, \{ mallow: 'zuzu', interrupt: true \}\);/);
   assert.doesNotMatch(grief, /WAITING|waitingLines|spawnThought|playScene|loadMechanic|startAngle|setStage\('playful'\)/);
   // with sharing on, one request; crisis and care from the server still route; a fallback runs the app's check again
-  assert.match(grief, /if \(!scene && !asked && serverMode\(\)\) \{[\s\S]*client\.angle\(\{ text: S\.text, emotion: S\.emotion, intention: S\.intention, previous: \[\] \}\)/);
+  // (final round 4: never when the safety net holds the words, `local`: grief.js keepLocal)
+  assert.match(grief, /if \(!scene && !asked && serverMode\(\)(?: && !local)?\) \{[\s\S]*client\.angle\(\{ text: S\.text, emotion: S\.emotion, intention: S\.intention, previous: \[\] \}\)/);
   assert.equal((grief.match(/client\.angle\(/g) || []).length, 1, 'one request at most');
   // the server's lines are said over death talk only when it answered with grief or a loss (r7), and never when they
   // would read it as a guess

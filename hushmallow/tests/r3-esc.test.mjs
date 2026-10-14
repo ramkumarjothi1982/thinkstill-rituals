@@ -133,7 +133,8 @@ test('rule 1 on the main screen: care with its own gentle line, the Support pill
   const beat = between(HF, 'async function careBeat(', 'async function careAgain(');
   assert.match(beat, /safety\?\.category === 'suicide-loss' \? SHARED_LINES\.supportLoss/);
   const choice = between(HF, 'async function careChoice(', 'function calmTheWorld(');
-  const no = choice.indexOf("if (S.deathCare) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }");
+  // (final round 4: and the gentle path the safety net held, S.supportFirst)
+  const no = choice.indexOf("if (S.deathCare || S.supportFirst) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }");
   assert.ok(no > 0 && no < choice.indexOf('await gentleWorld('), 'before any world is looked up');
   // the flag is sticky for the visit (read on every level seen, raised or not), and restored with the visit's category
   assert.match(between(HF, 'function noteSafety(r) {', 'function noteNoResume('), /^function noteSafety\(r\) \{\s*noteNoResume\(r\);\s*if \(DEATH_CARE\.has\(r\?\.category\)\) S\.deathCare = true;/);

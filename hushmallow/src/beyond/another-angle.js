@@ -36,7 +36,7 @@ import {
 } from './lines.js';
 import { firstStep, answerKey, questionClock, goodbye } from './angle-first.js';
 import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, guessGuard } from './authored.js';
-import { deathEscalation, suicideDeath, serverLoss, griefLinesOk } from './grief.js';
+import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal } from './grief.js';
 import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess, lossRoute, griefFeeling } from './backstop.js';
 import { FEELING_LOOK } from './feelings.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
@@ -106,6 +106,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // answer it opens empty); unsure: the words carry a softer loss cue (lossRoute 'ask'); beOnly (r2-angle item 5): "Just be
     // with it" for words where nothing heavy was seen, a quiet path of its own (never the grief path's support or goodbye)
     answers: new Map(), keepWords: false, unsure: false, beOnly: false,
+    // (final round 4) held: the gentle path's words stay on the phone (grief.js keepLocal: a first-person clause with a death,
+    // ending, absence or afterlife word after the death); nothing is sent for them
+    held: false,
     touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9, band: 0,
   };
   const timers = new Set();
@@ -828,7 +831,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear();
     // first, that they said it (and, with sharing on, while the server answers: never the lines about "another side")
     const heard = say(GRIEF.heard, { mallow: 'zuzu', interrupt: true });
-    if (!scene && !asked && serverMode()) {
+    // (final round 4, the safety net) after the death, any first-person clause with a death, ending, absence or afterlife word
+    // (grief.js keepLocal): nothing is sent; the authored gentle lines, support close, as without a server answer (S.held)
+    const local = !scene && !asked && serverMode() && keepLocal(S.text);
+    if (local) S.held = true;
+    if (!scene && !asked && serverMode() && !local) {
       const res = await Promise.race([
         client.angle({ text: S.text, emotion: S.emotion, intention: S.intention, previous: [] }).catch(() => ({ status: 'error', reason: 'exception' })),
         sleep(devBudget || ANGLE_BUDGET_MS).then(() => ({ status: 'error', reason: 'timeout' })),

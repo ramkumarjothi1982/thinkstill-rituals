@@ -7,7 +7,7 @@
 // Keep it in step with another-angle.js: each step below names the function it mirrors.
 
 import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
-import { deathEscalation, suicideDeath, serverLoss, griefLinesOk } from '../../src/beyond/grief.js';
+import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal } from '../../src/beyond/grief.js';
 import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm, lossRoute, griefFeeling } from '../../src/beyond/backstop.js';
 import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, BE_WITH, END, mechanicLines } from '../../src/beyond/lines.js';
 import { firstStep, ASK_BEFORE_ANGLE } from '../../src/beyond/angle-first.js';
@@ -98,7 +98,7 @@ function drawn(scene, parts, L) {
  * is care on the gentle path with nothing sent (grief.js suicideFuture); a grief-family feeling with no words is gentle.
  */
 export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else', asks = ASK_BEFORE_ANGLE, said = null } = {}) {
-  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0, grief: false, beOptions: null, finishLevel: 'none', finishLines: null };
+  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0, grief: false, beOptions: null, finishLevel: 'none', finishLines: null, held: false };
   const S = { level: 'none', follow: false, suicide: false, noPlay: false, grief: false, care: false, crisis: false, heavyDraft: false, shown: [], used: [] };
   const say = (l) => { for (const x of [l].flat()) if (x) R.said.push(String(x)); };
   const note = (r) => { if (r?.level && LEVELS.indexOf(r.level) > LEVELS.indexOf(S.level)) S.level = r.level; };
@@ -135,7 +135,10 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     S.grief = true; S.noPlay = true;
     R.faces.push('attentive');
     say(GRIEF.heard);
-    if (!scene && !asked && server) {
+    // (final round 4, the safety net: grief.js keepLocal) a first-person clause with a death, ending, absence or afterlife word:
+    // nothing sent, the authored gentle lines (R.held)
+    R.held = !scene && !asked && !!server && keepLocal(text);
+    if (!scene && !asked && server && !R.held) {
       const res = ask([]);
       if (res.status === 'crisis') return crisis();
       if (res.status === 'care') return care(S.follow ? SAFETY.follow : SAFETY.careGentle);

@@ -16,6 +16,9 @@ import { fileURLToPath } from 'node:url';
 
 import * as P from './probes/r9.mjs';
 import * as P8 from './probes/r8.mjs';
+import { SEE_AGAIN_LONGING } from './probes/r4.mjs';
+/** (final round 4, the check of integ/final-r3, polish) the bare "I want to see him again" is longing: grief, never care. */
+const LONGING = new Set(SEE_AGAIN_LONGING);
 import { deathTalk, deathEscalation, wantsToFollow, stillAlive, serverLoss, griefLinesOk } from '../src/beyond/grief.js';
 import { bagWords, framingAllowed, gentleRoute, framesAsGuess, acknowledges, heavyHarm, FRAMING_MECHANICS } from '../src/beyond/backstop.js';
 import { markerKinds, hasMarker, ownLabel } from '../src/beyond/markers.js';
@@ -80,7 +83,7 @@ test('r9 probe table: every probe of both round-2 reviews takes its route (verba
   for (const t of P.SEM_FEELINGS) check(t, (r) => r === 'feeling', 'feeling');
   for (const t of P.SEM_ANGER) check(t, (r) => r === (P.SEM_ANGER_ROUTES[t] || 'anger'), P.SEM_ANGER_ROUTES[t] || 'anger');
   for (const t of P.SEM_MARKERS) check(t, (r) => r === 'guess', 'guess');
-  for (const t of [...P.SEM_FOLLOW_POS, ...P.SEM_FOLLOW_POS2, ...P.UI_FOLLOW]) check(t, (r) => want.follow.includes(r), 'follow');
+  for (const t of [...P.SEM_FOLLOW_POS, ...P.SEM_FOLLOW_POS2, ...P.UI_FOLLOW]) check(t, (r) => (LONGING.has(t) ? r === 'gentle' : want.follow.includes(r)), LONGING.has(t) ? 'gentle (longing, final round 4)' : 'follow');
   for (const t of [...P.SEM_FOLLOW_NEG, ...P.SEM_FOLLOW_NEG2, ...P.ALIVE, ...P.NOT_FOLLOW_R9]) check(t, (r) => r !== 'follow' && r !== 'care', 'never care');
   for (const t of P.NOT_DEATH_R9) { n++; assert.equal(deathTalk(t), null, t); }
   assert.ok(n >= 540, `${n} probes`);
@@ -223,7 +226,8 @@ test('r9 S3: wanting to follow the one who died is care, however it is said (wis
   for (const t of [...P.SEM_FOLLOW_POS, ...P.SEM_FOLLOW_POS2, ...P.UI_FOLLOW]) {
     const lv = checkText(t).level;
     if (lv === 'crisis' || lv === 'care') continue;
-    assert.equal(deathEscalation(t), true, t);
+    // (final round 4) the bare "I want to see him again" is longing, grief (the check's polish)
+    assert.equal(deathEscalation(t), !LONGING.has(t), t);
   }
   // the wish named before the death: the pronoun or "who" links to the person named just before
   for (const t of ['i want to be with my dad, he died last year', 'I want to be with my son who passed away', 'I want to be with my dad, who died last year', 'I want to join my wife, she died last spring.']) assert.equal(wantsToFollow(t), true, t);

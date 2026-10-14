@@ -464,7 +464,7 @@ const FOLLOW_RES = [
   // it should have been me
   /\b(?:it\s+)?should\s+(?:have|ve|of)\s+been\s+me\b|\bwish\s+(?:it\s+)?(?:was|were|had\s+been)\s+me\b|\bwhy\s+(?:wasnt|couldnt)\s+it\s+(?:have\s+been\s+|be\s+)?me\b/giu,
   // can't / don't want to go on, be here or live without them; what's the point without her
-  new RegExp(`\\b(?:cant|cannot|can\\s+not|dont\\s+want\\s+to|do\\s+not\\s+want\\s+to|dont\\s+wanna|dont\\s+know\\s+how\\s+to|dont\\s+know\\s+if\\s+i\\s+can|no\\s+point(?:\\s+in)?|whats\\s+the\\s+point(?:\\s+(?:of|in))?|what\\s+is\\s+the\\s+point(?:\\s+(?:of|in))?|theres\\s+no\\s+point(?:\\s+in)?|there\\s+is\\s+no\\s+point(?:\\s+in)?|no\\s+reason\\s+to|not\\s+worth|dont\\s+see\\s+the\\s+point(?:\\s+(?:of|in))?|cant\\s+see\\s+the\\s+point(?:\\s+(?:of|in))?|wont|will\\s+not|refuse\\s+to|how\\s+(?:can|do|am)\\s+i\\s+(?:supposed\\s+to\\s+)?|why\\s+(?:should|would)\\s+i)\\s+(?:(?:go(?:ing)?\\s+on(?:\\s+living)?|carry(?:ing)?\\s+on|keep(?:ing)?\\s+going|be(?:ing)?\\s+here|be(?:ing)?\\s+alive|stay(?:ing)?\\s+alive|stay(?:ing)?|liv(?:e|ing)|exist(?:ing)?|surviv(?:e|ing)|do(?:ing)?\\s+(?:life|this|it|anything|any\\s+of\\s+this)|fac(?:e|ing)\\s+(?:life|this|it|anything|the\\s+world|tomorrow|another\\s+day|the\\s+future)|breath(?:e|ing)|get(?:ting)?\\s+up|wak(?:e|ing)\\s+up|bother(?:ing)?|try(?:ing)?|life|anything|everything|it|this|any\\s+more|anymore|here|now)\\s+)?(?:any\\s*more\\s+)?without\\s+(?:(?:him|her|them)(?=\\s*(?:$|[.,!?;:…]|(?:here|around|in\\s+my\\s+life|by\\s+my\\s+side|with\\s+me|any\\s*more|now|and|so|but|i|its|it|to|anyway|though|really|honestly|either|at\\s+all|beside\\s+me|there|in\\s+it|in\\s+the\\s+world|alive)\\b))|(?:${OBJ_PERSON}))`, 'giu'),
+  new RegExp(`\\b(?:cant|cannot|can\\s+not|dont\\s+want\\s+to|do\\s+not\\s+want\\s+to|dont\\s+wanna|dont\\s+know\\s+if\\s+i\\s+can|no\\s+point(?:\\s+in)?|whats\\s+the\\s+point(?:\\s+(?:of|in))?|what\\s+is\\s+the\\s+point(?:\\s+(?:of|in))?|theres\\s+no\\s+point(?:\\s+in)?|there\\s+is\\s+no\\s+point(?:\\s+in)?|no\\s+reason\\s+to|not\\s+worth|dont\\s+see\\s+the\\s+point(?:\\s+(?:of|in))?|cant\\s+see\\s+the\\s+point(?:\\s+(?:of|in))?|wont|will\\s+not|refuse\\s+to|how\\s+(?:can|do|am)\\s+i\\s+(?:supposed\\s+to\\s+)?|why\\s+(?:should|would)\\s+i)\\s+(?:(?:go(?:ing)?\\s+on(?:\\s+living)?|carry(?:ing)?\\s+on|keep(?:ing)?\\s+going|be(?:ing)?\\s+here|be(?:ing)?\\s+alive|stay(?:ing)?\\s+alive|stay(?:ing)?|liv(?:e|ing)|exist(?:ing)?|surviv(?:e|ing)|do(?:ing)?\\s+(?:life|this|it|anything|any\\s+of\\s+this)|fac(?:e|ing)\\s+(?:life|this|it|anything|the\\s+world|tomorrow|another\\s+day|the\\s+future)|breath(?:e|ing)|get(?:ting)?\\s+up|wak(?:e|ing)\\s+up|bother(?:ing)?|try(?:ing)?|life|anything|everything|it|this|any\\s+more|anymore|here|now)\\s+)?(?:any\\s*more\\s+)?without\\s+(?:(?:him|her|them)(?=\\s*(?:$|[.,!?;:…]|(?:here|around|in\\s+my\\s+life|by\\s+my\\s+side|with\\s+me|any\\s*more|now|and|so|but|i|its|it|to|anyway|though|really|honestly|either|at\\s+all|beside\\s+me|there|in\\s+it|in\\s+the\\s+world|alive)\\b))|(?:${OBJ_PERSON}))`, 'giu'),
   /\blife\s+(?:is|isnt|feels|seems|has\s+been|would\s+be|will\s+be)\s+(?:so\s+|just\s+|completely\s+)?(?:pointless|meaningless|empty|not\s+worth\s+(?:it|living)|worthless|nothing|over)\s+without\b|\bno\s+life\s+without\b|\bnothing\s+(?:left\s+)?to\s+live\s+for\b|\bno\s+reason\s+to\s+(?:live|be\s+here)\b/giu,
   new RegExp(`\\bno\\s+reason\\s+to\\s+(?:go\\s+on|carry\\s+on|keep\\s+going)${GO_ON_END}`, 'giu'),
   // soon: "I'll be with him soon", "not long till I'm with her"
@@ -501,11 +501,16 @@ const FOLLOW_RES = [
   new RegExp(`\\b(?:thinking\\s+(?:about|of)|thought\\s+(?:about|of)|think\\s+(?:about|of)|want\\s+to|wanna|wanted\\s+to|going\\s+to|gonna|could|might|should|ill|i\\s+will|tempted\\s+to|feel\\s+like|considering|keep\\s+wanting\\s+to|ready\\s+to|need\\s+to)\\s+(?:just\\s+|maybe\\s+|actually\\s+|really\\s+|seriously\\s+)?(?:doing|do)\\s+(?:the\\s+same(?:\\s+thing)?(?:\\s+as\\s+(?:him|her|them))?|it\\s+too|that\\s+too|it\\s+as\\s+well|that\\s+as\\s+well|what\\s+(?:he|she|they)\\s+did)${SAME_END}`, 'giu'),
   // (askall-angle item 4) "join him", "join her", "join them" after a death or a suicide word (the pronoun the one who died)
   new RegExp(`\\b(?:join|joining|joined)\\s+(?:him|her|them)${PRON_TAIL}`, 'giu'),
-  // want to see him again (never "I'll see her again one day", never someone alive: read beside who died)
-  new RegExp(`\\b(?:want|wants|wanna|wanted|need|needs|long|longing|desperate|ready|cant\\s+wait|just\\s+want|really\\s+want|keep\\s+wanting)\\s+(?:to\\s+)?(?:just\\s+)?see\\s+(?:(?:him|her|them)|${OBJ_PERSON})\\s+again\\b`, 'giu'),
+  // (final round 4: the bare "I want to see him again" is longing, grief, the check's polish; "again soon", "in heaven" stay above)
 ];
 /** Typos in the wish ("i want to b with him", "I want too be with her", "be wit him"), read as meant. */
-const FOLLOW_TYPOS = [[/\b(to|wanna|gonna|ill|could|would|just|cant\s+wait\s+to)\s+b\b/giu, '$1 be'], [/\b(want|wanna|need|wish|wished|wishing|ready|going|have|long)\s+too\s+(?=(?:be|b|go|join|see|follow|die|lie|sleep|rest)\b)/giu, '$1 to '], [/\bbe\s+wit\b/giu, 'be with']];
+const FOLLOW_TYPOS = [[/\b(to|wanna|gonna|ill|could|would|just|cant\s+wait\s+to)\s+b\b/giu, '$1 be'], [/\b(want|wanna|need|wish|wished|wishing|ready|going|have|long)\s+too\s+(?=(?:be|b|go|join|see|follow|die|lie|sleep|rest)\b)/giu, '$1 to '], [/\bbe\s+wit\b/giu, 'be with'],
+  // (final round 4) a letter dropped or swapped in the wish or the verb: "be wiht her", "dont wana live", "i cnt go on", "want to dei"
+  [/\b(?:wiht|wtih|whit|wiv)\b/giu, 'with'], [/\b(?:wana|wnna|wanan|wanaa)\b/giu, 'wanna'], [/\b(?:wnat|wnt|watn|wamt)\b/giu, 'want'],
+  [/\b(?:cnt|cnat|carnt|cannt)\b/giu, 'cant'], [/\b(?:dnt|dotn|dontt)\b/giu, 'dont'],
+  [/\b(to|wanna|gonna|ll|ill|will|could|would|just|should|might|and)\s+(?:dei+|diee+|dii+e)\b/giu, '$1 die'],
+  [/\b(cant|dont|to|wanna|not|never|or)\s+(?:liev|lvie|liv|lve|livee)\b/giu, '$1 live'], [/\bbe\s+hear\b/giu, 'be here'],
+  [/\b(?:myslef|mysefl|mysef|my\s+slef|mysel)\b/giu, 'myself']];
 /**
  * Death talk only about someone still alive (dying, in a hospice, on life support, in intensive care, not expected to
  * survive): never a wish to follow. Present and future only (review r9: "my dad's dying", "she could die any day",
@@ -745,9 +750,19 @@ const TYPOS_ACT = [[/\b(think|thinking|thought|talk|talking)\s+(?:bout|abt|abut|
 //     (a noose, a rope, a gun or a rifle, pills, blades) held, got, kept, bought, looked at, looked up or thought about (never
 //     "his gun licence papers", "my pills for my blood pressure"), or a bridge, a cliff, the tracks looked at or gone to; sleeping
 //     forever, not waking up. After any death named (deathTalk, a person or a pet) it is care (deathEscalation).
+// (3) (final round 4, the check of integ/final-r3) eight more clause SHAPES in selfEnding, never phrases: a first-person conditional
+//     absence ("it would be easier if I wasn't here", "everyone's better off if I'm gone"); happier / better / at peace dead; asking
+//     to die or be taken ("please let me die", "let me go to him", "I want god to take me", "I hope I don't make it to christmas");
+//     a wish, an intent or a rumination and an act that ends a life ("drive off a cliff", "crash my car", "walk into the sea",
+//     "jump", "stop my heart"); going where they went, and "go there" after heaven; the grave or the ground with them; wishing I'd
+//     died instead, too or first; and typos in the wish and the verb ("wiht", "wana", "cnt", "dei"). A condition about being seen
+//     ("I'll die if he sees me like this") is no wish, and neither are the check's three grief statements: the one who died's
+//     medicine kept in a drawer (KEEPSAKE), "I want to see him again" (longing), "I don't know how to live without her".
+// (4) (final round 4) the safety net, keepLocal (below deathCare): not care, but nothing leaves the phone.
 
 /** A third-person reflexive, and the ways it is typed. */
-const SELF3 = '(?:himself|herself|themselves|themself|themselfs|hisself|himslef|herslef|theirselves|his\\s+self|her\\s+self)';
+// (final round 4) and with the space ("killed him self", "hung them self")
+const SELF3 = '(?:himself|herself|themselves|themself|themselfs|hisself|himslef|herslef|theirselves|his\\s+self|her\\s+self|him\\s+self|them\\s+self|them\\s+selves|their\\s+selves)';
 /** What a self-harm verb with a reflexive never means: "killed himself laughing", "shot himself in the foot", "hung himself upside down". */
 const SELF3_NOT = '(?!\\s+(?:laughing|working|trying|if|at\\s+(?:the\\s+)?(?:gym|work|office)|to\\s+(?:get|make|finish|pay|please|impress|keep|help|save|win)|in\\s+the\\s+(?:foot|feet)|upside\\s+down|off\\s+the\\s+(?:monkey\\s+bars|climbing\\s+frame|bars)|over\\s+(?:it|this|that|nothing|the\\s+(?:exam|exams|job|project|house|deadline|wedding))|for\\s+(?:nothing|us|them|work|that|this|the\\s+(?:team|business|family|job)))\\b)';
 /** Someone else as the subject: a pronoun, a person or a pet word (REF, "a girl from my school"), the small words that may follow it. */
@@ -787,6 +802,9 @@ const SUICIDE_RES = [
   new RegExp(`\\b(?:found|find|discovered|saw)\\s+(?:him|her|them|${REF})\\s+(?:[a-z]+\\s+){0,2}?(?:hanging|hanged|hung)\\b(?!\\s+(?:out|around|about|up|over|upside|off\\s+the|on\\s+(?:the\\s+)?(?:phone|sofa|swing|bars|monkey\\s+bars|climbing\\s+frame|line|washing)|from\\s+the\\s+(?:monkey\\s+bars|climbing\\s+frame|tree\\s+swing)|with)\\b)`, 'iu'),
   new RegExp(`${SUBJ3}\\s+(?:was\\s+|were\\s+)found\\s+hanging\\b(?!\\s+(?:out|around|about|with)\\b)`, 'iu'),
   /\b(?:slit|slashed|cut|slitting|cutting)\s+(?:his|her|their)\s+(?:own\s+)?(?:wrists?|throat)\b/iu,
+  // (final round 4) "died by his own hand", "went by her own hand", "his death was by his own hand" (a death word just before it:
+  // never "built the shed by his own hand")
+  /\b(?:died|dead|death|deaths|went|gone|passed(?:\s+away)?|ended\s+it(?:\s+all)?|ended\s+(?:his|her|their)\s+(?:own\s+)?li(?:fe|ves)|took\s+(?:his|her|their)\s+(?:own\s+)?li(?:fe|ves)|killed|perished|lost\s+(?:his|her|their)\s+li(?:fe|ves))\s+(?:(?:was|were|is|sadly|last\s+year|in\s+\d{4})\s+)?(?:by|at)\s+(?:his|her|their)\s+own\s+hands?\b/iu,
 ];
 /** "OD'd" as typed: od'd, OD'd, O.D.'d, od'ed (the apostrophe says it); and with it taken out, only in capitals (ODd, ODed). */
 const RAW_OD = /(?<![\p{L}\p{N}])[Oo]\.?\s?[Dd]\.?\s?['’ʼ`´]\s?(?:d|ed|D|ED|ing)\b/u;
@@ -856,13 +874,69 @@ const HOLD_V = '(?:have|has|had|got|get|getting|gotten|keep|keeps|kept|keeping|h
 const LOOK_V = '(?:look(?:ing|ed|s)?\\s+(?:at|up|over|down\\s+at|into)|star(?:e|ed|es|ing)\\s+(?:at|down\\s+at)|gaz(?:e|ed|ing)\\s+at|think(?:ing)?\\s+(?:about|of)|thought\\s+(?:about|of)|dream(?:ing|t|ed)?\\s+(?:about|of)|research(?:ed|ing)?|googl(?:e|ed|ing)|search(?:ed|ing)?(?:\\s+for)?|read(?:ing)?\\s+(?:about|up\\s+on)|been\\s+(?:to|going\\s+to)|go(?:ing)?\\s+(?:back\\s+)?to|went\\s+(?:back\\s+)?to|keep\\s+going\\s+to|stood\\s+(?:on|at|by)|stand(?:ing)?\\s+(?:on|at|by)|walk(?:ed|ing)?\\s+(?:to|along|up\\s+to)\\s+the\\s+edge\\s+of|drove\\s+to|driving\\s+to|sat\\s+(?:on|by)|sitting\\s+(?:on|by)|climb(?:ed|ing)?|how\\s+to\\s+(?:tie|make|get|use|load|buy))';
 /** Sleeping forever, not waking up. */
 const SLEEP = '(?:(?:want|wanna|wanted|wish|wished|hope|hoping|just\\s+want|would\\s+like|id\\s+like|need|rather|could|cant\\s+wait)\\s+(?:to\\s+|i\\s+(?:could\\s+)?)?(?:just\\s+)?(?:(?:go\\s+to\\s+)?sleep|fall\\s+asleep|close\\s+my\\s+eyes|lie\\s+down|drift\\s+off)\\s+(?:and\\s+(?:just\\s+)?(?:never|not|wouldnt|didnt|dont)\\s+wake(?:\\s+up)?|forever|for\\s+ever|for\\s+good)\\b|(?:hope|hoping|wish|pray|praying)\\s+(?:that\\s+)?(?:i|id)\\s+(?:dont|do\\s+not|wont|will\\s+not|never|wouldnt|didnt|could\\s+not|couldnt)\\s+wake\\s+up\\b)';
+// ---- (final round 4) the check's eight clause shapes (/tmp/claude-0/hf/check-r3.json blocking item 1) --
+/** Better, easier, happier, kinder… (said of everyone, of it, of life) when the self is absent. */
+const BETTER = '(?:easier|better(?:\\s+off)?|happier|kinder|simpler|calmer|lighter|best|for\\s+the\\s+best|a\\s+relief|fairer)';
+/** (1) "if I wasn't here / around / alive", "if I was dead / gone", "if I just disappeared", "if I didn't exist". */
+const IF_ABSENT = '\\bif\\s+(?:only\\s+)?(?:(?:im|i\\s+am|i\\s+was|i\\s+were|i\\s+m)\\s+(?:just\\s+|already\\s+|simply\\s+|finally\\s+)?(?:dead|gone|not\\s+(?:here|around|alive|living|in\\s+the\\s+picture)|no\\s+longer\\s+(?:here|around|alive))|i\\s+(?:wasnt|werent|was\\s+not|were\\s+not|wasnt\\s+even|werent\\s+even|am\\s+not)\\s+(?:here|around|alive|living|in\\s+(?:the|this)\\s+(?:picture|world))|i\\s+(?:just\\s+|simply\\s+)?(?:died|disappeared|vanished|went\\s+away|was\\s+never\\s+born|wasnt\\s+born|never\\s+existed|didnt\\s+exist|stopped\\s+existing|didnt\\s+wake\\s+up|never\\s+woke\\s+up|ended\\s+it|left\\s+for\\s+good))\\b';
+/** Who it would be better for: it, everyone, they, the family, life, things. */
+const FOR_WHOM = '\\b(?:it|itd|itll|its|everyone|everyones|everybody|everybodys|they|theyd|theyll|people|life|things|everything|the\\s+(?:world|family|kids)|my\\s+(?:family|kids|mum|dad|mom|wife|husband|friends|partner|children))\\b';
+/** (4) An act that ends a life (after a wish, an intent, a rumination): drive off or into, crash the car, walk into the sea, jump… */
+const ENDING_ACT = '(?:(?:driv(?:e|ing)|drove|steer(?:ing)?|swerv(?:e|ing))\\s+(?:(?:my|the|a|his|her)\\s+car\\s+|it\\s+)?(?:off\\s+(?:a|the)\\s+(?:cliff|bridge|edge|road|pier|motorway|flyover|multi\\s*storey)|into\\s+(?:a|the|an|oncoming)\\s+(?:[a-z]+\\s+)?(?:wall|tree|river|sea|lake|canal|lorry|truck|bus|train|traffic|bridge|barrier|post|pillar|ditch|cliff|water|oncoming)|in\\s+front\\s+of\\s+(?:a|the)\\s+(?:[a-z]+\\s+)?(?:lorry|truck|bus|train|car|traffic))'
+  + '|crash(?:ing)?\\s+(?:(?:my|the|a|his|her)\\s+car|(?:my|the)\\s+(?:van|bike|motorbike)|into\\s+(?:a|the|something|something|anything))'
+  + '|(?:walk(?:ing)?|step(?:ping)?|wad(?:e|ing)|swim(?:ming)?|go(?:ing)?)\\s+(?:out\\s+)?(?:into|in\\s+front\\s+of|under|off)\\s+(?:(?:a|the)\\s+)?(?:sea|ocean|river|lake|canal|water|loch|waves|traffic|road|train|bus|lorry|truck|car|cliff|bridge|edge|tracks)'
+  + `|jump(?:ing)?(?=${END1_BODY}|\\s+(?:off|from|in\\s+front|under|into\\s+(?:the\\s+)?(?:sea|river|water|lake|canal|traffic)|out\\s+of\\s+(?:a|the|my)\\s+window|to\\s+my\\s+death))`
+  + '|stop(?:ping)?\\s+my\\s+(?:own\\s+)?(?:heart|breathing)|(?:drown|hang|shoot|gas|poison|starve|throw)(?:ing)?\\s+myself|overdos(?:e|ing)|swallow(?:ing)?\\s+(?:all|everything|them\\s+all|the\\s+lot)|slit(?:ting)?\\s+my|cut(?:ting)?\\s+my\\s+(?:wrists|throat)|lie\\s+down\\s+on\\s+the\\s+(?:tracks|road|line|motorway))';
+/** (4) …the wish, intent or rumination before it ("I want to", "I'm going to", "I keep thinking about", "thinking of"). */
+const ACT_WISH = '(?:want|wanna|wanted|going|gonna|keep\\s+thinking\\s+(?:about|of)|keep\\s+imagining|thinking\\s+(?:about|of)|think\\s+(?:about|of)|thought\\s+(?:about|of)|tempted|considering|contemplating|planning|plan|ready|might|could|will|ll|would|d|should|feel\\s+like|urge|dream(?:ing|t)?\\s+(?:about|of)|imagin(?:e|ing)|fantasi[sz](?:e|ing)|close\\s+to|about|need|wish\\s+i\\s+could|have\\s+to)';
+/** (5) Where they went ("go where he went", "be wherever she's gone"; never "where he went to school", "on holiday"). */
+const WHERE_WENT = '\\bwhere(?:ver)?\\s+(?:(?:he|she|they)\\s+(?:went|has\\s+gone|have\\s+gone|is\\s+gone|are\\s+gone|has\\s+gone\\s+to|went\\s+to)|(?:hes|shes|theyve|theyre)\\s+gone)\\b(?!\\s+(?:on|to\\s+(?:school|uni|university|college|work|the\\s+(?:shops|gym|pub|park|office))|for\\s+(?:work|school|holidays?|lunch)|every|each|as\\s+a|growing\\s+up|when\\s+(?:he|she|they)\\s+(?:was|were)\\s+(?:little|young|a\\s+kid|small)))';
+/** (6) In the grave, the ground ("lie in the grave with him", "be in the ground with her", "rest in the ground beside her"). */
+const IN_GRAVE = `(?:in\\s+(?:the|a|his|her|their|my)\\s+(?:grave|ground|coffin|earth|tomb|plot)|under\\s+the\\s+(?:ground|earth|soil|dirt)|six\\s+feet\\s+under)(?:\\s+(?:with|next\\s+to|beside|alongside|near)\\s+(?:him|her|them|(?:my|our)\\s+[a-z]+)|(?=${END1_BODY}|\\s+(?:too|now|forever|already|soon|instead)\\b))`;
+/** (7) "wish I'd died instead", "wish I had died first", "wish I'd died too" (never "wish I had gone to see her"). */
+const DIED_TAIL = '(?:instead|too|first|as\\s+well|with\\s+(?:him|her|them)|not\\s+(?:him|her|them)|in\\s+(?:his|her|their)\\s+place|before\\s+(?:him|her|them)|alongside\\s+(?:him|her|them))';
+/** A wish before the grave, where they went, or up there. */
+const WISH5 = '(?:(?:want|wanna|need|wish\\s+i\\s+could|would\\s+like|d\\s+like|ready|long|cant\\s+wait|just\\s+want|have|going|gonna|ll|will|could|should|would|might|d|rather|belong|deserve)\\s+(?:is\\s+)?(?:to\\s+)?)?(?:just\\s+)?';
+/** (3) What takes me: god, death, heaven, "it" ("I want god to take me", "I pray god takes me too", "god please take me now"). */
+const TAKER = '(?:god|jesus|the\\s+lord|lord|death|heaven|the\\s+angels|the\\s+universe|someone|something|it|cancer)';
+const TAKE_TAIL = `(?=${END1_BODY}|\\s+(?:too|with\\s+(?:him|her|them|you)|instead|now|away|already|soon|as\\s+well|to\\s+(?:him|her|them|heaven|be\\s+with)|home\\s+to|home(?=${END1_BODY})|please|tonight|next|first|in\\s+my\\s+sleep)\\b)`;
+/** (1, 2, 3) "I'll die IF HE SEES me like this": a condition about being seen or found out, never a wish (after the modal DIE). */
+const DIE_IF_SEEN = /^\s+(?:if|when)\s+(?:he|she|they|someone|somebody|anyone|anybody|everyone|everybody|people|my\s+[a-z]+|the\s+[a-z]+|[a-z]+s\s+[a-z]+)\s+(?:ever\s+|actually\s+|really\s+)?(?:sees?|saw|finds?\s+out|found\s+out|hears?|heard|knows?|reads?|catches|caught|notices?|looks?\s+at|asks?|says?|tells?|texts?|calls?|laughs?|walks?\s+in|comes?\s+in|turns?\s+up|shows?\s+up)\b/iu;
+/**
+ * (the check's polish) The one who died's own medicine kept in a place is a keepsake, never the means ("I keep her pills in a
+ * drawer"; never "all her pills", "the pills ready", "her pills just in case").
+ */
+const KEEPSAKE = /\b(?:keep|keeps|kept|keeping|still\s+(?:have|got|keep)|have\s+still\s+got|have|got)\s+(?:his|her|their|(?:my\s+)?(?:mums|moms|dads|nans|grandads|grandmas|grandpas|husbands|wifes|sons|daughters|brothers|sisters|partners))\s+(?:old\s+)?(?:pills|tablets|meds|medication|medicine|inhalers?|prescriptions?)\s+(?:in|on|under|by|at|beside|inside|next\s+to)\s+(?:a|the|my|his|her|their|our)\s+(?:[a-z]+\s+)?(?:drawer|drawers|cupboard|cabinet|bag|box|shelf|bathroom|kitchen|room|bedroom|wardrobe|handbag|car|tin|tub|basket|side|bedside|dresser|chest|cabinet)\b(?!\s+(?:for|in\s+case|just\s+in\s+case|ready|to|so|until|till|because))/giu;
+
 const SELF_RES = [
+  // (final round 4, shape 1) a first-person conditional absence: "it would be easier if I wasn't here", "everyone's better off if
+  // I'm gone", "if I was gone they'd be happier" (a "not" before BETTER turns it: `lead`)
+  { re: new RegExp(`(?<lead>${FOR_WHOM}(?:\\s+[a-z]+){0,5}?\\s+${BETTER})\\b(?:\\s+[a-z]+){0,4}?\\s+${IF_ABSENT}`, 'giu'), turned: true, lead: true },
+  { re: new RegExp(`${IF_ABSENT}(?:\\s+[a-z]+){0,3}?\\s+(?<lead>${FOR_WHOM}(?:\\s+[a-z]+){0,4}?\\s+${BETTER})\\b`, 'giu'), turned: true, lead: true },
+  // (shape 2) "I'd be happier dead", "I'd honestly be better dead", "I'd be more at peace dead"
+  { re: new RegExp(`\\b${I1}\\s+(?<gap>${GAP1})(?:be\\s+|d\\s+be\\s+|would\\s+be\\s+|will\\s+be\\s+|ll\\s+be\\s+)?(?:so\\s+|much\\s+|a\\s+lot\\s+|far\\s+|way\\s+)?(?:happier|better(?:\\s+off)?|easier|safer|freer|calmer|lighter|more\\s+(?:at\\s+peace|peaceful|content))\\s+(?:dead|gone|in\\s+the\\s+ground|in\\s+(?:a|the|my)\\s+grave|six\\s+feet\\s+under|not\\s+(?:here|alive|around))\\b`, 'giu'), turned: true },
+  // (shape 3) asking to die or be taken: "please let me die", "let me go to him", "god take me", "I hope I don't make it to christmas"
+  { re: new RegExp(`\\blet\\s+me\\s+(?:just\\s+)?(?:die|go(?=${END1_BODY}|\\s+(?:to|with)\\s+(?:him|her|them|heaven)\\b)|be\\s+with\\s+(?:him|her|them)|join\\s+(?:him|her|them)|follow\\s+(?:him|her|them)|rest(?=${END1_BODY})|sleep\\s+forever|be\\s+gone|end\\s+it|not\\s+wake\\s+up|stop\\s+breathing)`, 'giu'), turned: true },
+  { re: new RegExp(`\\b(?:please|god|lord|jesus|just|come\\s+and|come|why\\s+(?:not|cant|couldnt|wont|didnt)\\s+(?:you|it|god|he|she|they))\\s+(?:please\\s+|just\\s+)?take\\s+me${TAKE_TAIL}`, 'giu'), turned: true },
+  { re: new RegExp(`\\b${TAKER}\\s+(?:will\\s+|would\\s+|could\\s+|can\\s+|to\\s+|would\\s+just\\s+|just\\s+|please\\s+|comes?\\s+(?:and\\s+)?|came\\s+and\\s+|has\\s+to\\s+|needs\\s+to\\s+|should\\s+|gets?\\s+)?(?:take|takes|took|taking|claim|claims)\\s+me${TAKE_TAIL}`, 'giu'), turned: true },
+  { re: new RegExp(`\\b(?:hope|hoping|pray|praying|wish|wishing)\\s+(?:that\\s+)?(?:i|id)\\s+(?:dont|do\\s+not|wont|will\\s+not|never|dont\\s+ever|wouldnt|didnt|cant)\\s+(?:make\\s+it(?=${END1_BODY}|\\s+(?:to|through|past|until|till|til|another|much|long|out)\\b)|wake\\s+up|see\\s+(?:another|the\\s+(?:morning|next|new|end|spring|summer|winter)|tomorrow|christmas|next\\s+(?:year|week|month|christmas|birthday|spring)|my\\s+next|(?:the\\s+)?new\\s+year)|last\\s+(?:the|much|long|another|until|till)|survive|get\\s+through\\s+(?:the|this|another|tonight)|live\\s+(?:to|through|past|much|long|another))`, 'giu'), turned: false },
+  { re: /\b(?:hope|hoping|pray|praying)\s+(?:that\s+)?(?:i|id)\s+(?:just\s+|would\s+just\s+|d\s+just\s+|will\s+|ll\s+)?(?:die|drop\s+dead|pass\s+away|stop\s+breathing|go\s+(?:soon|too|next))\b/giu, turned: true },
+  // (shape 4) a wish, an intent or a rumination, and an act that ends a life: "I want to drive off a cliff", "I keep thinking about
+  // driving into a wall", "I'm going to jump", "I want to stop my heart"
+  { re: new RegExp(`\\b${I1}\\s+(?<gap>${GAP1})${ACT_WISH}\\s+(?:to\\s+)?(?:just\\s+)?${ENDING_ACT}`, 'giu'), turned: true },
+  // (shape 5) "I want to go where he went", "I'm going where he went", "I need to be wherever she's gone"; "go there" after heaven
+  { re: new RegExp(`\\b${I1}\\s+(?<gap>${GAP1})${WISH5}(?:go|going|be|get|head|heading|follow\\s+(?:him|her|them)|join\\s+(?:him|her|them))\\s+(?:to\\s+|back\\s+to\\s+|up\\s+to\\s+|out\\s+to\\s+)?${WHERE_WENT}`, 'giu'), turned: true },
+  { re: new RegExp(`\\b(?:in|to|up\\s+in|into)\\s+heaven\\b[^.!?]{0,80}?\\b${I1}\\s+(?<gap>${GAP1})${WISH5}(?:go|be|get|going|join\\s+(?:him|her|them))\\s+(?:up\\s+)?there\\b(?![^.!?]*\\b(?:one\\s+day|some\\s*day|eventually|when\\s+my\\s+time\\s+comes|when\\s+im\\s+old)\\b)`, 'giu'), turned: true },
+  // (shape 6) "I want to be in the ground with her", "I want to lie in the grave with him", "all I want is to be in the grave"
+  { re: new RegExp(`\\b${I1}\\s+(?<gap>${GAP1})${WISH5}(?:lie|lay|be|rest|sleep|lying|laying|resting|buried|go|get|belong)\\s+(?:down\\s+)?(?:with\\s+(?:him|her|them)\\s+)?${IN_GRAVE}`, 'giu'), turned: true },
+  // (shape 7) "I wish I'd died instead", "I wish I had died first", "wish it had been me that died"
+  { re: new RegExp(`\\bwish\\s+(?:that\\s+)?(?:i|id|i\\s+had|i\\s+could\\s+have|i\\s+couldve|it\\s+(?:was|were|had\\s+been)\\s+me\\s+(?:that|who))\\s+(?:had\\s+)?(?:have\\s+)?(?:(?:died|been\\s+(?:taken|killed))(?:\\s+${DIED_TAIL})?|(?:gone|been\\s+the\\s+one)\\s+${DIED_TAIL})\\b`, 'giu'), turned: false },
   // a wish, an intent or a modal before dying, being dead, ending it (TURNED in its clause: not a wish)
   { re: new RegExp(`\\b${I1}\\s+(?<gap>${GAP1})(?:want|wanna|wish|need|just\\s+want)\\s+(?:it\\s+all|everything|it|my\\s+life|life)\\s+to\\s+(?:just\\s+)?(?:end|stop|be\\s+over)${END1}`, 'giu'), turned: true },
   { re: new RegExp(`\\b${I1}\\s+(?<gap>${GAP1})${DIE}`, 'giu'), turned: true, die: true },
   { re: new RegExp(`\\b(?:ill|id|i\\s+will|i\\s+would|i\\s+shall)\\s+(?<gap>${ADV1})${DIE_CORE}`, 'giu'), turned: true, die: true },
   // "wish I was dead", "should have been me", "should have died too"
-  { re: /\bwish\s+(?:i|id)\s+(?:was|were|had|could\s+have|couldve)\s+(?:been\s+)?(?:dead|died|gone|taken|killed)\b|\bi\s+should\s+(?:have|ve|of)\s+died\b/giu, turned: false },
+  { re: /\bwish\s+(?:i|id)\s+(?:was|were|had|could\s+have|couldve)\s+(?:been\s+)?(?:dead|died|killed|(?:gone|taken)(?=\s*(?:$|[.,!?;:…)—–]|(?:too|instead|first|with|as\s+well|not)\b)))\b|\bi\s+should\s+(?:have|ve|of)\s+died\b/giu, turned: false },
   // going on, negated: "I can't go on", "I don't think I'll be here much longer", "no reason for me to stay alive", "done living"
   { re: new RegExp(`\\b${NOT_ON}\\s+${SMALL}(?<on>${GO_ON})`, 'giu'), subject: true },
   // being next, my turn
@@ -917,12 +991,18 @@ export function selfEnding(text, { suicide = false } = {}) {
   if (!/\p{L}/u.test(t)) return false;
   for (const [re, to] of TYPOS_ACT) t = t.replace(re, to);
   for (const [re, to] of FOLLOW_TYPOS) t = t.replace(re, to);
+  // (final round 4, the check's polish) the one who died's medicine kept in a drawer is a keepsake
+  t = t.replace(KEEPSAKE, ' ');
   for (const r of SELF_RES) {
     r.re.lastIndex = 0;
     for (const m of t.matchAll(r.re)) {
       // (a fear, a "don't" or a "never" in its clause turns it around, unless after a suicide: then a fear is care too)
-      if (r.turned && !suicide && TURNED.test(`${clauseBefore(t.slice(0, m.index))} ${m.groups?.gap || ''}`)) continue;
+      if (r.turned && !suicide && TURNED.test(`${clauseBefore(t.slice(0, m.index))} ${m.groups?.gap || ''}${r.lead ? ` ${m.groups?.lead || ''}` : ''}`)) continue;
       if (r.means && OWN_MEDS.test(m[0])) continue;
+      // (final round 4) "I'll die if he sees me like this": a condition about being seen, never a wish
+      if (r.die && DIE_IF_SEEN.test(t.slice(m.index + m[0].length))) continue;
+      // (final round 4, the check's polish) "I don't know how to live without her": grief, how to go on without them
+      if (r.subject && /^(?:dont|do\s+not|didnt)\s+know\s+how\b/iu.test(m[0]) && /^\s+without\b/iu.test(t.slice(m.index + m[0].length))) continue;
       if (r.notThird && m.groups?.pre && THIRD_BEFORE.test(m.groups.pre)) continue;
       if (r.subject) {
         const who = lastSubject(t.slice(0, m.index));
@@ -969,7 +1049,8 @@ export function followsTheAct(text) {
   let t = cased.toLowerCase();
   for (const [re, to] of TYPOS_ACT) t = t.replace(re, to);
   const suicide = named || SUICIDE_DEATH.test(t) || SUICIDE_OD.test(cased);
-  if (MEANS.some((re) => re.test(t)) || NO_POINT.test(t) || SLEEP_FOREVER.test(t) || DIED_INSTEAD.test(t)) return true;
+  const kept = t.replace(KEEPSAKE, ' ');
+  if (MEANS.some((re) => re.test(kept)) || NO_POINT.test(t) || SLEEP_FOREVER.test(t) || DIED_INSTEAD.test(t)) return true;
   for (const a of ACTS) {
     if (a.suicideOnly && !suicide) continue;
     a.re.lastIndex = 0;
@@ -1016,6 +1097,103 @@ export function deathCare(text) {
   if (deathEscalation(text)) return 'follow';
   if (suicideDeath(text)) return 'suicide';
   return null;
+}
+
+// ------------------------------------------------- (final round 4) the safety net for what leaves the phone --
+// The clause shapes above are care. Whatever they miss still must not leave the phone: on the gentle path (a death recognised),
+// ANY first-person clause with a death, ending, absence or afterlife word keeps the words local (keepLocal): Another Angle sends
+// nothing (the authored gentle lines, support close), and the main screen's gentle path shows its Support pill and offers no
+// world ("support first; the world can wait"). It is NOT care, and a broad bag on purpose: a false positive only means the model
+// is not asked; a miss is a wish to die sent away. The one who died is taken out first ("he died", "my dad is dead", "his grave",
+// "watched her die"), so the death itself never fires it; then each clause with a first-person word (or none: "want to die") is
+// read for the bag (NET), its everyday uses taken out first (NET_ORDINARY: "at the end", "over the weekend", "live with my nan").
+/** Someone else's death in the words, taken out before the net reads them (never "where he went": that is the wish). */
+const THEIR_DEATH = [
+  new RegExp(`(?<!\\bwhere(?:ver)?\\s)(?:${REF}|\\b(?:${PET})s?|\\b(?:hell|shell|theyll|everyone|everybody|someone|somebody|anyone|it|its))\\s+(?:(?:who|that|which)\\s+)?(?:(?:is|was|s|has|had|have|are|were|re|ve|d|ll|just|sadly|recently|finally|peacefully|suddenly|now|already|been|really|actually|also|then|eventually|tragically|will|would|could|might|may|is\\s+going\\s+to|going\\s+to|gonna|not|never|hadnt|hasnt|didnt|wont|wouldnt|isnt|wasnt)\\s+)*(?:die|dies|died|dide|di+e+d+|dead|dying|passed(?:\\s+away)?|pased(?:\\s+away)?|gone|killed|murdered|drowned|in\\s+heaven|at\\s+peace|in\\s+the\\s+ground|buried|cremated|no\\s+longer\\s+(?:here|with\\s+us|around|alive)|not\\s+(?:here|around|alive)\\s+any\\s*more|slipped\\s+away|left\\s+us|taken|ended\\s+(?:his|her|their)\\s+li(?:fe|ves))\\b`, 'giu'),
+  new RegExp(`\\b(?:his|her|their|(?:${WHO}|${BARE})s)\\s+(?:own\\s+)?(?:death|dying|passing|funeral|grave|graveside|headstone|ashes|body|coffin|last\\s+(?:breath|days?|moments?|words?|hours?))\\b|\\b(?:the\\s+)?(?:death|loss|passing|funeral|grave)\\s+of\\s+(?:(?:my|our|his|her|their|the)\\s+)?${ADJ}(?:${WHO}|${BARE})s?\\b`, 'giu'),
+  // (a relative clause on the one who died: "the man I married died", "the coach who taught me to swim died", "someone I love died")
+  new RegExp(`(?:${REF}|\\b(?:everyone|everybody|someone|somebody|anyone|the\\s+(?:one|person)))\\s+(?:who|that|whom|i|we)\\s+(?:[a-z0-9]+\\s+){0,5}?(?:(?:has|had|is|was|just)\\s+)*(?:die|dies|died|dead|passed(?:\\s+away)?|gone)\\b`, 'giu'),
+  new RegExp(`\\b(?:watch|watched|watching|saw|see|seeing|seen|held|hold|holding|helped|help|let|found|find|finding|left|heard)\\s+(?:him|her|them|${REF})\\s+(?:[a-z]+\\s+){0,2}?(?:die|died|dying|dead|go|pass|passed|slip\\s+away)\\b`, 'giu'),
+  new RegExp(`\\b(?:kill|killed|killing|took|take|taken|claimed)\\s+(?:him|her|them|${REF})\\b`, 'giu'),
+];
+/** Someone else's act that ends a life, said without a suicide word ("my brother walked into the sea and never came back"). */
+const THEIR_ACT = /\b(?:walked|swam|went|waded|drove|driven|stepped|ran)\s+(?:out\s+)?(?:into|in\s+front\s+of|off|under)\s+(?:the|a)\s+(?:sea|ocean|river|lake|water|loch|canal|traffic|cliff|bridge|train|bus|lorry|truck)\b/iu;
+/** Where a clause ends: punctuation, or a joining word ("so" only before a new subject). */
+const NET_CUT = /[.,!?;:…—–()"]+|\b(?:and|but|because|cos|coz|then|when|while|since|after|before|until|till|though|although|or|as|plus|if|whereas|so(?=\s+(?:i|im|ive|id|ill|it|its|we|now|that|then)\b))\b/giu;
+/** A first-person clause: a first-person word, or no subject at all ("want to die", "please let me go", "life has no meaning"). */
+const NET_FIRST = /\b(?:i|im|ive|id|ill|me|myself|mine|my\s+(?:life|own|turn|time|future|way|body|end|days|soul|self))\b/iu;
+const NET_SUBJECTLESS = /^\s*(?:(?:just|honestly|really|maybe|probably|literally|sometimes|still|please|now|tbh|ngl|lol|oh|god|lord|all)\s+)*(?:want|wanna|wants|wish|need|cant|cannot|dont|let|take|hope|pray|ready|thinking|keep|gonna|going|feel|would|should|could|might|rather|better|easier|happier|nothing|no|whats|theres|there|life|everything|its|it|part|done|tired|sick|fed|considering|planning|time)\b/iu;
+/** The everyday uses of the bag's words, taken out of a clause before it is read. */
+const NET_ORDINARY = new RegExp([
+  '\\b(?:in|at|by|towards|toward|near|till|until|to|from|on)\\s+the\\s+(?:very\\s+)?end\\b', '\\bend(?:ed|s|ing)?\\s+up\\b', '\\bweekends?\\b',
+  '\\bthe\\s+end\\s+of\\s+(?:the|this|that|my|his|her|their|our|a|an)\\b',
+  '\\b(?:get|gets|got|getting|gotten)\\s+over\\b', '\\bover\\s+(?:it|this|that|him|her|them|and\\s+over|again|night|christmas|easter|summer)\\b',
+  '\\b(?:came|come|comes|coming|went|go|going|pop|popped|stay|stayed|staying|slept|hand|handed|turn|turned|think|thought|thinking|look|looked|looking|talk|talked|fall|fell|knock|knocked|run|ran|read)\\s+over\\b',
+  '\\b(?:over|around|round)\\s+(?:the|this|that|my|his|her|their|our|a|an|there|here|to|at|for|again|town|\\d+)\\b', '\\bmoved\\s+on\\b',
+  '\\b(?:come|came|coming|over|in|from|out\\s+of|get|got|right|up|down|round)\\s+here\\b', '\\bhere\\s+(?:is|are|s|was|we|you|and\\s+there)\\b', '\\bheres\\b',
+  '\\blive\\s+(?:with|in|at|near|nearby|next\\s+door|on|abroad|alone|together|stream\\w*|music|show|gig|tv|chat|feed)\\b', '\\bliving\\s+(?:room|with|in|at|near|arrangements?|wage|abroad)\\b',
+  '\\bgone\\s+(?:to|out|home|back|off|on|for|through|into|up|down|over|round|around|quiet|crazy|mad|wrong|by|past)\\b',
+  '\\b(?:join|joined|joining)\\s+(?:a|the|an|my|our|in|up|us)\\b', '\\bfollow(?:ed|ing|s)?\\s+(?:up|the|a|my|his|her|their|it|that|this|through|on|instructions|advice)\\b',
+  '\\btake\\s+me\\s+(?:to|home|back|out|a|ages|forever|shopping|long|years|in|under|round|around|through|up|down|for|on)\\b',
+  '\\b(?:on|off|to|onto|from|across|near|above|below)\\s+the\\s+ground\\b', '\\bground\\s+(?:floor|beef|coffee|rules?|work|zero)\\b', '\\bcommon\\s+ground\\b',
+  '\\b(?:do|doing)\\s+it\\s+(?:for|again|together|properly|right|justice|alone|without|with|all|every|now\\s+and)\\b',
+  '\\bfollow(?:ed|ing|s)?\\s+(?:in\\s+(?:his|her|their)\\s+footsteps|(?:him|her|them)\\s+on)\\b', '\\bjoin(?:ed|ing|s)?\\s+(?:(?:him|her|them)\\s+(?:at|in|for|on|to)|(?:his|her|their)\\s+(?!(?:soon|now|again|forever|there)\\b)[a-z]+)\\b',
+  '\\b(?:used|use)\\s+to\\s+(?:live|take\\s+me|go|be)\\b', '\\blive\\s+(?:for|up\\s+to|again|the\\s+way|like|on\\s+(?:through|in))\\b', '\\b(?:keep|kept|keeping|keeps)\\s+(?:his|her|their|the)\\s+(?:memory|name|spirit|legacy|garden|traditions?)\\s+(?:alive|going)\\b',
+  '\\b(?:visit\\w*|went\\s+to|go\\s+to|going\\s+to|been\\s+to|tend\\w*|clean\\w*|flowers\\s+(?:on|at)|at)\\s+(?:the|a)\\s+grave\\b', '\\bnothing\\s+(?:more|else)\\s+(?:that\\s+)?(?:they|the\\s+[a-z]+|anyone|we|he|she)\\s+could\\s+(?:do|have\\s+done)\\b',
+  '\\b(?:gun|rifle|shotgun)\\s+(?:licen[cs]es?|papers|permit|club|range|safe|cabinet)\\b', '\\bdie\\s+trying\\b',
+].join('|'), 'giu');
+/** The bag: a death, ending, absence or afterlife word (each read in a first-person clause, its everyday uses out). */
+const NET = new RegExp([
+  // dying, dead, death, killing, and their typos
+  '\\b(?:die|dies|died|dying|dead|death|deaths|dei+|diee+|dide|di+e+d+|ded|deaded|dieing|dyin|suicid\\w*|sucid\\w*|kill|killing|overdose|overdosing|od)\\b',
+  // alive, living, existing; gone; not here / around any more; the end; over
+  '\\b(?:alive|live|lives|living|exist|existing|survive|surviving|gone)\\b',
+  '\\b(?:be|being|been|stay|staying|wasnt|werent|not|no\\s+longer|anymore|without\\s+me)\\s+(?:[a-z]+\\s+)?(?:here|around)\\b', '\\b(?:here|around)\\s+(?:any\\s*more|much\\s+longer|for\\s+(?:much\\s+)?long|without)\\b',
+  '\\b(?:end|ending|ended|ends)\\b', '\\b(?:it|its|it\\s+is|this|everything|it\\s+all|all\\s+of\\s+(?:this|it)|life|my\\s+life)\\s+(?:to\\s+)?(?:be\\s+|is\\s+|was\\s+|s\\s+|feels\\s+|will\\s+be\\s+|would\\s+be\\s+|all\\s+)?over\\b',
+  // following them: join, follow, take me, heaven, the grave, the ground, where they went, up there
+  '\\b(?:join|joining|follow|following)\\b', '\\btake\\s+me\\b', '\\b(?:heaven|grave|graves|coffin|afterlife|the\\s+other\\s+side|rainbow\\s+bridge|the\\s+angels|ground)\\b',
+  '\\bwhere(?:ver)?\\s+(?:(?:he|she|they)\\s+(?:went|is|are|has\\s+gone|have\\s+gone)|(?:hes|shes|theyre|theyve)\\s+(?:gone|now))\\b(?!\\s+(?:buried|laid|resting|scattered|cremated|lying|kept))', '\\b(?:go|get|be)\\s+(?:up\\s+)?there\\b(?!\\s+for\\b)', '\\bup\\s+there\\b',
+  // an act or a means: jump, crash, drive into or off, the sea, a river, a bridge, the train, pills, a rope, the engine running
+  '\\bjump\\w*\\b(?!\\s+(?:in\\s+the\\s+(?:car|shower|pool)|on\\s+(?:a|the)\\s+(?:plane|train|bus|call|bed|trampoline)|at\\s+(?:the|every)\\s+(?:chance|noise|sound)|for\\s+joy|up\\s+and\\s+down|to\\s+conclusions|into\\s+(?:bed|work|it)|back|ship|the\\s+queue|rope|start))',
+  '\\bcrash\\w*\\s+(?:my|the|into|it|myself)\\b', '\\b(?:drive|driving|drove|driven)\\s+(?:(?:my|the|a)\\s+car\\s+)?(?:off|into|in\\s+front\\s+of|under|over\\s+(?:the|a)\\s+(?:edge|cliff))\\b',
+  '\\b(?:into|in|under|off|to)\\s+(?:the|a)\\s+(?:sea|ocean|river|lake|canal|water|loch|waves|tide)\\b',
+  '\\b(?:bridges?|cliffs?|cliff\\s+edge|the\\s+edge|rooftops?|ledge|train\\s+tracks|railway\\s+(?:line|tracks?)|tracks|multi\\s*storey|tower\\s+block)\\b', '\\b(?:in\\s+front\\s+of|under|onto)\\s+(?:a|the)\\s+(?:train|bus|lorry|truck)\\b',
+  '\\b(?:pills|tablets|paracetamol|painkillers|meds|rope|ropes|noose|gun|rifle|shotgun|knife|knives|blades?|razor|poison|charcoal|hose\\s*pipe|exhaust|fumes|carbon\\s+monoxide|engine\\s+running|car\\s+running)\\b',
+  // sleeping forever, not waking up; disappearing; wanting out
+  '\\bsleep\\w*\\s+(?:forever|for\\s+ever|for\\s+good|and\\s+(?:never|not))\\b', '\\b(?:want|wanna|need|wish\\s+i\\s+could|just\\s+want)\\s+(?:to\\s+)?(?:just\\s+)?(?:sleep|go\\s+to\\s+sleep|fall\\s+asleep|close\\s+my\\s+eyes|lie\\s+down)\\b(?!\\s+(?:in|on|at|with|next|beside|tonight|properly|well|better|through|a\\s+bit|for\\s+(?:a|an)\\s+(?:bit|while|hour|week|day|month|year)|for\\s+(?:a\\s+)?(?:few|couple)))',
+  '\\bnever\\s+(?:to\\s+)?(?:wake|woke|waking)\\b', '\\b(?:not|dont|wouldnt|wont|didnt|never)\\s+(?:want\\s+to\\s+)?wake\\s+up\\b(?!\\s+(?:early|at|before|in\\s+time|on\\s+time|the|my|him|her|them|for))',
+  '\\b(?:disappear\\w*|vanish\\w*|fade\\s+away|cease\\s+to\\s+exist|stop\\s+existing)\\b',
+  '\\b(?:want|wanna|need|get|getting|ready)\\s+(?:to\\s+get\\s+)?out\\b(?=\\s*(?:$|[.,!?;:…]|of\\s+(?:here|this|life|it\\s+all|everything|this\\s+world)|now|for\\s+good|already|forever))', '\\bway\\s+out\\b', '\\b(?:bow|opt|tap|clock|check)(?:ing)?\\s+out\\b(?=\\s*(?:$|[.,!?;:…]|early|for\\s+good|now|of\\s+(?:life|this)))',
+  // nothing left, no future, no point, no meaning, giving up, ready to go, doing it
+  '\\bnothing\\s+(?:left|more)\\b', '\\bfuture\\b', '\\b(?:no|any|the|whats\\s+the|what\\s+is\\s+the)\\s+point\\b', '\\b(?:pointless|meaningless|hopeless|worthless)\\b', '\\bno\\s+(?:meaning|reason|purpose|hope|way\\s+forward)\\b',
+  '\\b(?:give|giving|gave|given)\\s+up\\b', '\\bhad\\s+enough\\b', '\\b(?:tired|sick)\\s+of\\s+(?:life|living|everything|it\\s+all|being\\s+here|this)\\b', '\\bdone\\s+with\\s+(?:life|everything|it\\s+all|this|living)\\b',
+  '\\b(?:cant|cannot|dont|not|no\\s+(?:reason|point)|how\\s+(?:do|can|am)\\s+i|why\\s+(?:should|would)\\s+i|wont|unable)\\s+(?:[a-z]+\\s+){0,3}?(?:(?:go(?:ing)?\\s+on|carry(?:ing)?\\s+on|keep(?:ing)?\\s+going)(?=\\s*(?:$|[.,!?;:…]|any\\s*more|anymore|without|like\\s+(?:this|that)|living|with\\s+(?:life|this|it)|now|alone|much\\s+longer))|cope|do\\s+this)\\b',
+  '\\bready\\s+to\\s+(?:go|die|leave|be\\s+with|join|see\\s+(?:him|her|them))\\b', '\\bim\\s+ready\\b(?=\\s*(?:$|[.,!?;:…]|now))', '\\b(?:do|doing)\\s+it\\b',
+].join('|'), 'iu');
+/** (the bag's water, never the ashes scattered or a swim) */
+const NET_WATER_NOT = /\b(?:ashes|scatter\w*|swim\w*|paddl\w*|holiday|boat|fishing|beach|surf\w*)\b/iu;
+/**
+ * (final round 4) The safety net: true when the words have a first-person clause with a death, ending, absence or afterlife word
+ * (the one who died taken out first), or tell of someone walking into the sea or driving off a cliff. Read only on the gentle path,
+ * beside a recognised death (another-angle.js griefMode: nothing sent; input-overlay.js readSafety: `supportFirst`, no world).
+ */
+export function keepLocal(text) {
+  let t = blankOrdinary(norm(text)).toLowerCase();
+  if (!/\p{L}/u.test(t)) return false;
+  for (const [re, to] of TYPOS_ACT) t = t.replace(re, to);
+  for (const [re, to] of FOLLOW_TYPOS) t = t.replace(re, to);
+  if (THEIR_ACT.test(t)) return true;
+  const water = NET_WATER_NOT.test(t);
+  for (const re of THEIR_DEATH) t = t.replace(re, ' ');
+  return t.split(NET_CUT).some((c) => {
+    if (!c || !(NET_FIRST.test(c) || NET_SUBJECTLESS.test(c))) return false;
+    const rest = c.replace(NET_ORDINARY, ' ');
+    const m = NET.exec(rest);
+    if (!m) return false;
+    // (water beside ashes or a swim is a place they go, never the sea walked into: read the rest of the clause for another word)
+    if (/^(?:into|in|under|off|to)\s/u.test(m[0]) && water) return NET.test(rest.replace(m[0], ' '));
+    return true;
+  });
 }
 
 // --------------------------------------------------------------- the server --

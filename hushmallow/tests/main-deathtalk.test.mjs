@@ -58,7 +58,8 @@ test('r11: readSafety reads strongLoss only after crisis, care and escalation, a
   const ov = readFileSync(new URL('../src/hushfold/input-overlay.js', import.meta.url), 'utf8');
   // (review r12: through grief.js lossRoute, deathTalk, livingLoss and strongLoss as before, a grief-family feeling, and
   // the check-in's 'ask'; the r11 reading stands as the fallback)
-  assert.match(ov, /if \(r\.level !== 'none'\) return r;\n\s+const route = griefNow\.lossRoute \? griefNow\.lossRoute\(t, \{ emotion \}\)\n\s+: \(griefNow\.deathTalk\(t\) \|\| griefNow\.livingLoss\?\.\(t\) \|\| griefNow\.strongLoss\?\.\(t\) \? 'gentle' : null\);\n\s+if \(route === 'gentle'\) return \{ level: 'concern', category: 'loss', matched: null \};/);
+  // (final round 4: the lexicon's concern beside a death, and the gentle path, carry `supportFirst` when the safety net holds the words)
+  assert.match(ov, /if \(r\.level !== 'none'\) return r\.level === 'concern' && griefNow\.deathTalk\(t\) && held\(\) \? \{ \.\.\.r, supportFirst: true \} : r;\n\s+const route = griefNow\.lossRoute \? griefNow\.lossRoute\(t, \{ emotion \}\)\n\s+: \(griefNow\.deathTalk\(t\) \|\| griefNow\.livingLoss\?\.\(t\) \|\| griefNow\.strongLoss\?\.\(t\) \? 'gentle' : null\);\n\s+if \(route === 'gentle'\) return \{ level: 'concern', category: 'loss', matched: null, \.\.\.\(held\(\) \? \{ supportFirst: true \} : \{\}\) \};/);
   assert.equal(level('I want to die'), 'crisis');
   assert.equal(level('my brother died and Id like to be with him'), 'care');
 });

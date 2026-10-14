@@ -1,0 +1,254 @@
+// Final round 4 (the independent check of integ/final-r3 931fbb0, score 6: /tmp/claude-0/hf/check-r3.json).
+//
+//   1. blocking item 1: the check's eight clause SHAPES in grief.js selfEnding (a conditional absence; happier / better dead; asking
+//      to die or be taken; a wish, an intent or a rumination and an act that ends a life; going where they went, "go there" after
+//      heaven; the grave or the ground with them; wishing I'd died instead; typos in the wish and the verb): the check's 35 and this
+//      unit's own 30 are care on both screens with 0 requests; false care on 60 grief negatives this unit wrote stays ≤ 3/60
+//   2. blocking item 2: "killed him self", "hung them self" (SELF3), "died by his own hand" (suicideDeath): care, 0 requests
+//   3. blocking item 3: the speaker's everyday sayings inside a figurative frame ("I'm dead lol", "I died when he said that", "I
+//      killed myself laughing", "I'll die if he sees me like this") are no death talk (death-words.js whoDied): the ordinary question
+//   4. the structural safety net (grief.js keepLocal): on the gentle path, after the death, any first-person clause with a death,
+//      ending, absence or afterlife word keeps the words on the phone: Another Angle sends nothing (the authored gentle lines), and
+//      the main screen's gentle path shows its Support pill and offers no world (readSafety `supportFirst`): never care
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { checkText } from '../src/engine/safety.js';
+import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
+import * as GR from '../src/beyond/grief.js';
+import { whoDied, norm, blankOrdinary } from '../src/beyond/death-words.js';
+import { lossRoute } from '../src/beyond/backstop.js';
+import { SAFETY, GRIEF } from '../src/beyond/lines.js';
+import { DEATH_CARE } from '../src/app/scenes/hushfold.js';
+import { visit, STUBS, ALL_SCENE_STUBS } from './probes/r10-replay.mjs';
+import * as P from './probes/r4.mjs';
+
+await loadGrief();
+const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i + a.length); assert.ok(i >= 0 && j > i, `${a} … ${b}`); return src.slice(i, j); };
+const AA = read('src/beyond/another-angle.js');
+const HF = read('src/app/scenes/hushfold.js');
+const IO = read('src/hushfold/input-overlay.js');
+const STUB_NAMES = ['none', ...ALL_SCENE_STUBS, 'care', 'crisis', 'error'];
+const mainRead = (t) => readSafety({ checkText }, t, true);
+const isCare = (r) => r.level === 'care' || r.level === 'crisis';
+/** Another Angle, every server answer: care (or crisis), 0 requests, no question, no mechanic, no scene. */
+function angleCare(t) {
+  for (const s of STUB_NAMES) {
+    const R = visit(t, { server: STUBS[s] || null });
+    assert.ok(['care', 'follow', 'crisis'].includes(R.route), `${t} @${s}: ${R.route}`);
+    assert.deepEqual([R.requests, R.asked, R.mechanics.length, R.scenes.length], [0, false, 0, 0], `${t} @${s}`);
+  }
+}
+/** Both screens: care, a care grief.js made carries DEATH_CARE (no world), and Another Angle sends nothing. */
+function careBoth(t) {
+  const r = mainRead(t);
+  assert.ok(isCare(r), `${t}: main ${r.level}/${r.category}`);
+  if (r.level === 'care') assert.ok(DEATH_CARE.has(r.category), `${t}: ${r.category}`);
+  angleCare(t);
+}
+
+// ------------------------------------------------------------------------- blocking item 1 --
+test('blocking 1: the check\'s 35 misses, verbatim, are care on both screens with 0 requests (every server answer)', () => {
+  assert.equal(P.CHECK_ESC_ALL.length, 35);
+  for (const t of P.CHECK_ESC_ALL) {
+    assert.equal(GR.deathCare(t), 'follow', t);
+    careBoth(t);
+  }
+  // each shape on its own (the clause rule reads the shape, after any death)
+  for (const t of P.CHECK_ESC.absent) assert.equal(GR.selfEnding(t), true, t);
+  for (const t of [...P.CHECK_ESC.asking, ...P.CHECK_ESC.act, ...P.CHECK_ESC.where]) assert.equal(GR.selfEnding(t) || GR.wantsToFollow(t), true, t);
+  // the typos are read as meant
+  for (const t of P.CHECK_ESC.typo) assert.equal(GR.deathEscalation(t), true, t);
+  // "my son died and i'm going to jump": the lexicon's concern (distress) no longer wins over the self ending
+  assert.deepEqual(mainRead("my son died and i'm going to jump"), { level: 'care', category: 'death-follow', matched: null });
+});
+
+test('blocking 1: this unit\'s own 30 (one wording each, written before they were run) are care on both screens with 0 requests', () => {
+  assert.equal(P.OWN_ESC.length, 30);
+  assert.equal(new Set(P.OWN_ESC).size, 30);
+  for (const t of P.OWN_ESC) {
+    assert.equal(GR.deathCare(t), 'follow', t);
+    careBoth(t);
+  }
+});
+
+test('blocking 1: the wish TURNED around is still no wish, and no shape reads past a condition or a plan', () => {
+  for (const t of [
+    "my dad died and it wouldn't be better if i wasn't here", "my dad died and i don't want to drive into the river", "my mum died and i don't want god to take me",
+    "my dad died and i would never go where he went", 'my nan died and i hope i make it to christmas', "my dad died and i'll die if he sees me like this",
+    'my dad died and i want to drive into town to see my aunt', 'my brother died and i want to jump on a plane home', 'my mum died and she used to take me to church',
+    'my dad died and he took me fishing every summer', "my grandad died and i wish i had gone to see him more", 'my mum died and i want to go where she went on holiday every year',
+    'my nan died and i want to be there for my grandad', 'my dad is in heaven and i want to go there one day', 'my aunt died and my uncle said he would take me in',
+    'my wife died and i want to visit where she is buried',
+  ]) assert.equal(GR.deathCare(t), null, t);
+});
+
+test('blocking 1, the polish: false care on grief stays low (0 of this unit\'s 60, 0 of the check\'s three from grief.js)', () => {
+  assert.equal(P.OWN_GRIEF_60.length, 60);
+  const care = P.OWN_GRIEF_60.filter((t) => GR.deathCare(t) || isCare(mainRead(t)));
+  console.log('r4 false care on 60 grief negatives:', care.length, JSON.stringify(care));
+  assert.ok(care.length <= 3, care.join(' | '));
+  assert.equal(care.length, 0, care.join(' | '));
+  for (const t of P.CHECK_FALSE_CARE) {
+    assert.equal(GR.deathCare(t), null, t);
+    assert.deepEqual([mainRead(t).level, mainRead(t).category], ['concern', 'loss'], t);
+    assert.equal(visit(t, { server: STUBS.grief }).route, 'gentle', t);
+  }
+  // the earlier rounds' bare "I want to see him again" is the same longing: gentle on both screens (with sharing on, sent as any grief)
+  for (const t of P.SEE_AGAIN_LONGING) {
+    assert.equal(GR.deathCare(t), null, t);
+    assert.equal(mainRead(t).level, 'concern', t);
+    assert.deepEqual([visit(t, { server: STUBS.grief }).route, visit(t, { server: STUBS.grief }).requests], ['gentle', 1], t);
+  }
+  // …while "again soon", "in heaven" stay care
+  for (const t of ['my wife died and I want to see her again soon', 'my grandad died and I want to see him again in heaven']) assert.equal(GR.deathCare(t), 'follow', t);
+  // the lexicon's two (crisis) stay the lexicon's: the safety lexicons are another unit's
+  for (const t of P.CHECK_LEXICON_CARE) assert.equal(checkText(t).level, 'crisis', t);
+  // and every negative is the gentle path on both screens, never the question (a death is named)
+  for (const t of P.OWN_GRIEF_60) {
+    assert.equal(lossRoute(t), 'gentle', t);
+    assert.equal(visit(t, { server: STUBS.grief }).route, 'gentle', t);
+  }
+});
+
+// ------------------------------------------------------------------------- blocking item 2 --
+test('blocking 2: "killed him self", "died by his own hand" are a suicide named: care, gently, 0 requests on both screens', () => {
+  for (const t of [...P.CHECK_SUICIDE, ...P.OWN_SUICIDE]) {
+    assert.equal(GR.suicideDeath(t), true, t);
+    assert.deepEqual(mainRead(t), { level: 'care', category: 'suicide-loss', matched: null }, t);
+    angleCare(t);
+    assert.deepEqual(visit(t, { server: STUBS.grief }).careLines, SAFETY.careGentle, t);
+  }
+  for (const t of P.OWN_SUICIDE_NEG) assert.equal(GR.suicideDeath(t), false, t);
+  // the reflexive with the space keeps the earlier exceptions ("killed him self laughing", "shot him self in the foot")
+  for (const t of ['he killed him self laughing at that', 'my brother shot him self in the foot at paintball']) assert.equal(GR.suicideDeath(t), false, t);
+});
+
+// ------------------------------------------------------------------------- blocking item 3 --
+test('blocking 3: the speaker\'s everyday sayings (the check\'s 14 and this unit\'s 15) get the ordinary question, never gentle', () => {
+  assert.equal(P.CHECK_IDIOMS.length, 14);
+  assert.equal(P.OWN_IDIOMS.length, 15);
+  for (const t of [...P.CHECK_IDIOMS, ...P.OWN_IDIOMS]) {
+    assert.equal(GR.deathTalk(t, { sure: true }), null, t);
+    assert.notEqual(lossRoute(t), 'gentle', t);
+    assert.equal(GR.deathCare(t), null, t);
+    const r = mainRead(t);
+    assert.equal(r.level, 'none', `${t}: main ${r.level}/${r.category}`);
+    for (const s of ['none', 'grief', 'pull']) {
+      const R = visit(t, { server: STUBS[s] || null, answer: null });
+      assert.deepEqual([R.asked, R.question, R.requestsBeforeAnswer, R.requests], [true, 'choice', 0, 0], `${t} @${s}`);
+    }
+  }
+  // "I'll die if he sees me like this" is a condition, never the self ending
+  assert.equal(GR.selfEnding("i'll die if he sees me like this"), false);
+  assert.equal(GR.selfEnding("my dad died and i'll die if he sees me like this"), false);
+});
+
+test('blocking 3: a real disclosure or a wish still counts (the lexicon\'s crisis or care, or the gentle path), never an everyday saying', () => {
+  const who = (t) => whoDied(blankOrdinary(norm(t)), 'loss');
+  // ("I tried to kill myself" is the lexicon's alone: "kill" is no weak death word)
+  for (const t of P.SELF_REAL_ESC.filter((x) => !/tried/u.test(x))) assert.equal(who(t), 'self', t);
+  assert.equal(mainRead('I nearly killed myself last year').level, 'crisis');
+  assert.equal(mainRead('I tried to kill myself').level, 'crisis');
+  assert.equal(mainRead('I want to die').level, 'crisis');
+  assert.equal(mainRead('I feel like dying').level, 'concern');
+  // a wish is never a saying, whatever the frame; nor is a feeling ("I feel dead inside"), nor a frame-less near death
+  for (const t of ['i want to die lol', 'i feel dead inside', 'i nearly died last year', 'i nearly died when my appendix burst', "i'm dying", 'i want to die haha']) assert.equal(who(t), 'self', t);
+  // the frames
+  for (const t of P.CHECK_IDIOMS) assert.notEqual(who(t), 'self', t);
+});
+
+// ------------------------------------------------------------------------- item 4: the safety net --
+test('item 4: the check\'s borderline wishes and the sea are the gentle path with NOTHING sent (every server answer), never care', () => {
+  for (const t of [...P.CHECK_BORDERLINE, ...P.CHECK_SEA]) {
+    assert.equal(GR.keepLocal(t), true, t);
+    assert.equal(GR.deathCare(t), null, `${t}: never care`);
+    for (const s of STUB_NAMES) {
+      const R = visit(t, { server: STUBS[s] || null });
+      // (held: what sharing would have sent stays on the phone; with sharing off nothing is sent anyway)
+      assert.deepEqual([R.route, R.requests, R.held], ['gentle', 0, !!STUBS[s]], `${t} @${s}`);
+      // the authored gentle lines (lines.js GRIEF via gentleScene), support close (GRIEF.ask offers it)
+      assert.ok(R.said.includes(GRIEF.heard[0] ?? GRIEF.heard) || R.said.some((l) => [GRIEF.heard].flat().includes(l)), `${t}: heard`);
+      assert.equal(R.scenes[0]?.source === 'server', false, `${t}: never the server's lines`);
+    }
+    // the main screen: still the gentle path (concern), the Support pill (careBeat), and no world (supportFirst)
+    const r = mainRead(t);
+    assert.equal(r.level, 'concern', t);
+    assert.equal(r.supportFirst, true, t);
+  }
+});
+
+test('item 4: ordinary deaths are untouched: the gentle path, and Another Angle with sharing on asks the server as before', () => {
+  for (const t of P.ORDINARY_DEATHS) {
+    assert.equal(GR.keepLocal(t), false, t);
+    assert.deepEqual(mainRead(t), { level: 'concern', category: 'loss', matched: null }, t);
+    const R = visit(t, { server: STUBS.grief });
+    assert.deepEqual([R.route, R.requests, R.held], ['gentle', 1, false], t);
+    assert.equal(R.scenes[0].source, 'server', t);
+  }
+  // the net's count on this unit's 60 grief negatives: held local (not sent), never care
+  const held = P.OWN_GRIEF_60.filter((t) => GR.keepLocal(t));
+  console.log('r4 safety net on 60 grief negatives (kept local, not care):', held.length, JSON.stringify(held));
+  assert.ok(held.length <= 6, held.join(' | '));
+  for (const t of held) assert.deepEqual([visit(t, { server: STUBS.grief }).requests, GR.deathCare(t)], [0, null], t);
+  // the one who died is taken out first: their death never fires it ("he's gone", "his grave", "watched her die")
+  for (const t of ["my best mate died and i can't believe he's gone", 'my mum died and i went to her grave today', 'my nan died and i watched her die in hospital',
+    'my dad died and i keep thinking about the day he died', 'cancer killed my mum and i miss her', 'my grandma died and i wish i had been there at the end',
+    'my mum died and i want to scatter her ashes in the sea', 'my dad died and i went over to my aunts', 'my nan died and i live with my grandad now']) assert.equal(GR.keepLocal(t), false, t);
+  // everything the check called borderline, in other words, is held too
+  for (const t of ['my wife died and i just want it all to be over', 'my dad died and i give up', 'my mum died and i cant do this anymore', 'my son died and theres no point',
+    'my dad died and i want to be with him in heaven someday', 'my husband died and i keep driving past the bridge', 'my nan died and i just want to sleep and not wake up',
+    'my dad died and part of me wants to disappear', 'my dad died and nothing matters, nothing left', 'my dad died and i dont see the point of anything']) assert.equal(GR.keepLocal(t), true, t);
+});
+
+test('item 4 in Another Angle: griefMode reads the net before anything is sent (and the replay mirrors it)', () => {
+  const grief = between(AA, 'async function griefMode(', 'const heavySeen = ');
+  const at = grief.indexOf('const local = !scene && !asked && serverMode() && keepLocal(S.text);');
+  assert.ok(at > 0 && at < grief.indexOf('client.angle('), 'before the request');
+  assert.match(grief, /if \(!scene && !asked && serverMode\(\) && !local\) \{/);
+  // nothing sent: the authored gentle lines play as without a server answer, support close (the Support pill, GRIEF.ask)
+  assert.ok(grief.indexOf('if (!scene) scene = gentleScene(') > at);
+  assert.match(grief, /supportPill\.hidden = false;/);
+  assert.match(AA, /import \{[^}]*\bkeepLocal\b[^}]*\} from '\.\/grief\.js';/);
+  // still never care: the net is read after the care rules and changes no level
+  assert.ok(grief.indexOf('if (deathEscalation(S.text))') < at && grief.indexOf('if (suicideDeath(S.text))') < at);
+});
+
+test('item 4 on the main screen: supportFirst offers no world (not even somewhere calm) and keeps the Support pill, without care', () => {
+  // readSafety marks it, at the gentle path's level (concern), never care; the lexicon's concern beside a death too
+  assert.match(IO, /if \(route === 'gentle'\) return \{ level: 'concern', category: 'loss', matched: null, \.\.\.\(held\(\) \? \{ supportFirst: true \} : \{\}\) \};/);
+  assert.deepEqual(mainRead('my dad died and i wish i could just disappear'), { ...checkText('my dad died and i wish i could just disappear'), supportFirst: true });
+  // seen while typing at the same level, it still reaches the scene (report)
+  assert.match(between(IO, 'function report(r) {', 'let supportShown'), /const first = !!r\.supportFirst && !worst\.supportFirst && r\.level !== 'none';/);
+  // the scene: sticky for the visit, and careChoice offers no world before any is looked up (careBeat already showed the pill)
+  assert.match(between(HF, 'function noteSafety(r) {', 'function noteNoResume('), /if \(r\?\.supportFirst\) S\.supportFirst = true;/);
+  const choice = between(HF, 'async function careChoice(', 'function calmTheWorld(');
+  const no = choice.indexOf("if (S.deathCare || S.supportFirst) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }");
+  assert.ok(no > 0 && no < choice.indexOf('await gentleWorld('), 'before any world is looked up');
+  assert.match(between(HF, 'async function careBeat(', 'async function careAgain('), /supportPill\.hidden = false;/);
+  // and the gentle path's level is never raised by it
+  for (const t of P.CHECK_BORDERLINE) assert.ok(!isCare(mainRead(t)), t);
+});
+
+// ------------------------------------------------------------------------- rules, not phrases --
+test('rules, not phrases: no test sentence is written into grief.js or death-words.js', () => {
+  const code = ['src/beyond/grief.js', 'src/beyond/death-words.js'].map(read).join('\n').split('\n').filter((l) => !/^\s*(?:\/\/|\/?\*)/.test(l)).join('\n').toLowerCase();
+  for (const t of [...P.CHECK_ESC_ALL, ...P.OWN_ESC, ...P.CHECK_IDIOMS, ...P.OWN_IDIOMS, ...P.CHECK_BORDERLINE, ...P.CHECK_SUICIDE]) {
+    assert.ok(!code.includes(norm(t).toLowerCase()), `not pinned as a phrase: ${t}`);
+  }
+});
+
+test('the new rules stay cheap: 2,000 characters built to make them work hard take a few ms', () => {
+  const median = (xs) => xs.sort((a, b) => a - b)[xs.length >> 1];
+  for (const seed of ['i i i i ', 'it would be better it would be ', 'if i if i was ', 'wherever wherever where he ', 'god god take take me ', 'everyone would be so much better off if ',
+    'i keep thinking about driving ', 'hope i dont hope i ', 'in heaven and i want to go ', "i'm dead lol i'm dying haha ", 'let me let me let me ', 'over over here here not ']) {
+    const t = seed.repeat(Math.ceil(2000 / seed.length)).slice(0, 2000);
+    for (const f of [GR.keepLocal, GR.selfEnding]) {
+      f(t);
+      const xs = [];
+      for (let i = 0; i < 7; i++) { const t0 = performance.now(); f(t); xs.push(performance.now() - t0); }
+      assert.ok(median(xs) < 40, `${f.name} ${seed}: ${median(xs).toFixed(1)} ms`);
+    }
+  }
+});

@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import * as P from './probes/r10.mjs';
+import { SEE_AGAIN_LONGING } from './probes/r4.mjs';
 import { visit, STUBS, SCENE_STUBS } from './probes/r10-replay.mjs';
 import { deathTalk, deathEscalation, suicideDeath } from '../src/beyond/grief.js';
 import { bagWords, lossNear, ordinaryOnly, framingAllowed, framesAsGuess, acknowledges, FRAMING_MECHANICS } from '../src/beyond/backstop.js';
@@ -138,6 +139,8 @@ test('r10.5: escalation: the review’s positives (and the coordinator’s "go o
     for (const s of ['none', 'pull', 'grief']) {
       probes++;
       const R = visit(t, { server: STUBS[s] });
+      // (final round 4, the check's polish) the bare "I want to see her again" is longing: the gentle path, never care
+      if (SEE_AGAIN_LONGING.includes(t)) { assert.equal(R.route, 'gentle', `[${s}] ${t}`); continue; }
       assert.ok(['follow', 'care', 'crisis'].includes(R.route), `[${s}] ${t} → ${R.route} (esc=${deathEscalation(t)}, lexicon=${checkText(t).level})`);
       assert.equal(R.requests, 0, t);
     }
