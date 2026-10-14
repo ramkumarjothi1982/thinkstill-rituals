@@ -4,15 +4,20 @@ The performance pass on *My Brain at 2 AM* v2: 15 s, 450 frames, 1080×1920, on 
 
 ## Farm wall clock (the acceptance numbers)
 
-Each render used 1 worker under the exclusive heavy lock. The wall clock covers everything: compile, render, master encode (x264 QP 15, running alongside the render), score, mux and preview.
+Each render used 1 worker under the exclusive heavy lock, except `exact-1` and `exact-2`, which used 2 workers. The wall clock covers everything: compile, render, master encode (x264 QP 15, running alongside the render), score, mux and preview.
 
 | Render | Profile | Code | Wall clock | Segments (render) | Notes |
 |---|---|---|---|---|---|
 | `final-1` | final | P2–P8 (`9708a32` + draft/proof) | 758.6 s (12.64 min) | 674.0 s | preview transcode ~64 s; over the 12 min limit, so P4b, P5b and the preview preset followed |
-| `final-2` | final | all steps (`db877bc`) | **607.0 s (10.12 min)** | 562.2 s | preview ~23 s |
-| `draft-1` | draft | all steps | **95.1 s** | 84.0 s | 540×960, 450 sub-frames |
-| `proof-2` | proof | all steps | **14.7 s** | — | 6 stills, page setup included |
-| `exact-1` | exact | all steps | 1359.6 s | — | **2 workers**; 450/450 frames identical to `qa/golden/v2/sequential-frames.json` |
+| `final-2` | final | all steps, round 1 (`db877bc`) | 607.0 s (10.12 min) | 562.2 s | preview ~23 s |
+| `final-3` | final | round 2 HEAD (`93ea10b`) | 651.1 s (10.85 min) | 604.4 s | a slow period of the machine (see the benches below) |
+| `final-4` | final | round 2 HEAD (engine of `93ea10b`) | **572.1 s (9.54 min)** | 526.8 s | video stream byte-identical to `final-3` |
+| `draft-1` | draft | round 1 | 95.1 s | 84.0 s | 540×960, 450 sub-frames |
+| `draft-2` | draft | round 2 HEAD | **88.7 s** | 79.4 s | 540×960, 450 sub-frames |
+| `proof-2` | proof | round 1 | 14.7 s | — | 6 stills, page setup included |
+| `proof-3` | proof | round 2 HEAD | **13.3 s** | — | |
+| `exact-1` | exact | round 1 | 1359.6 s | — | **2 workers**; 450/450 frames identical to `qa/golden/v2/sequential-frames.json` |
+| `exact-2` | exact | round 2 HEAD | 1341.2 s | — | **2 workers**; 450/450 identical; video stream byte-identical to `exact-1` |
 
 The exact profile's single-worker figure is the P1 `hm bench` number: 24.73 min, without the encoder.
 
@@ -40,10 +45,18 @@ The sample is 6 windows of 8 consecutive frames. Since P6 it holds 3.08 sub-fram
 | P8 engine flags (re-run of P7 code) | 1290.4 | 418.5 | 148 | 580.7 s (9.68 min) | -0.9 % | 1290 / 1258 / 1306 | 17 | 20.1 | 364.1 | 79.2 | 111.8 | 127.3 | 195.4 | 100.2 | 27.8 | 40.8 | 79.4 | 6.5 | 6.1 |
 | P4b worldPasses | 1147.6 | 372.2 | 148 | 516.4 s (8.61 min) | -11.1 % | 1158 / 1141 / 1148 | 17.2 | 21.8 | 181.2 | 82.5 | 116.2 | 133.6 | 201.2 | 104.8 | 29.4 | 43.4 | 88 | 7.1 | 7 |
 | P5b tightPasses | 1032.8 | 335 | 148 | 464.8 s (7.75 min) | -10.0 % | 1027 / 1033 / 1060 | 18.8 | 22 | 187.5 | 54.3 | 118.8 | 68.9 | 211.2 | 91.2 | 32.1 | 45.2 | 90.8 | 7.1 | 7.1 |
+| round 2: HEAD 93ea10b, run A (14:22) | 1070.9 | 347.3 | 148 | 481.9 s (8.03 min) | 3.7 % | 1072 / 1071 / 1054 | 17.5 | 20.8 | 186.5 | 52.9 | 119.9 | 69.5 | 203.5 | 93.6 | 30.6 | 44.5 | 89.8 | 6.9 | 5.9 |
+| round 2: round 1 tip 9a3a111 re-run (15:10) | 1021.5 | 331.3 | 148 | 459.7 s (7.66 min) | -4.6 % | 1022 / 1082 / 1019 | 17.7 | 21.7 | 187 | 51.3 | 120.3 | 69.3 | 204.4 | 93.6 | 31.1 | 43.8 | 91.3 | 6.8 | 6.8 |
+| round 2: HEAD 93ea10b, run B (15:16) | 1006.8 | 326.5 | 148 | 453.1 s (7.55 min) | -1.4 % | 1007 / 1019 / 997 | 18.2 | 21 | 183 | 48.8 | 112.5 | 63.1 | 200 | 84.2 | 29 | 42.1 | 84.9 | 6.6 | 5.7 |
 
-The `P8 candidate flags` row is the three neutral flags combined (`--num-raster-threads=4 --disable-gpu-driver-bug-workarounds --use-cmd-decoder=passthrough`). It is not adopted: it is no faster than the engine flags beyond run-to-run noise.
+Notes on particular rows:
+
+- **`P8 candidate flags`** is the three neutral flags combined (`--num-raster-threads=4 --disable-gpu-driver-bug-workarounds --use-cmd-decoder=passthrough`). It is not adopted: it is no faster than the engine flags beyond run-to-run noise.
+- **The three round-2 rows** were measured on the same day. Round 2's fixes change no render work outside the 21 rest frames.
+  - Run A of HEAD fell in a slow period of the machine, the same period as `final-3`.
+  - Round 1's tip re-run and HEAD's run B, measured back to back, agree within noise (1021.5 against 1006.8 ms/frame).
 
 Sources:
 
-- Results: `/home/user/hm-work/wp02/bench/*.json`.
+- Results: `/home/user/hm-work/wp02/bench/*.json` (round 1) and `/home/user/hm-work/wp02r2/bench/*.json` (round 2).
 - Table: `node tools/perf/bench-table.mjs <label=file> …`.

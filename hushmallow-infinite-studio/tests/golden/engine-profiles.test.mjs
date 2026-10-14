@@ -1,4 +1,4 @@
-// Quality profiles on the engine (WP-02, heavy: ≈ 9 min).
+// Quality profiles on the engine (WP-02, heavy: ≈ 6 min, the feature matrix ≈ 4 of them).
 //
 // The exact profile's bit-identity with the goldens is tests/golden/engine-v2-frames
 // (the default profile is exact). Here:

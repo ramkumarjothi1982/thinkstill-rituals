@@ -1,12 +1,12 @@
 {
- "schema": "wp02-m0/1",
+ "schema": "wp02-m0/2",
  "finalVsExact": {
-  "command": "hm bench gate --a golden --b final --min-psnr 45 --min-face-ssim-mean 0.995 --min-face-ssim-min 0.98 --save-png --label wp02-final-vs-golden",
+  "command": "hm bench gate --a golden --b final --min-psnr 45 --min-face-ssim-mean 0.995 --min-face-ssim-min 0.98 --save-png --label wp02r2-final-vs-golden",
   "summary": {
    "minPsnr": 51.906053579683146,
-   "meanPsnr": 53.69212122751362,
+   "meanPsnr": 53.69223684190051,
    "minFacePsnr": 46.7483510402601,
-   "meanFaceSsim": 0.9990587156668361,
+   "meanFaceSsim": 0.9990587637380512,
    "minFaceSsim": 0.998654422921908,
    "identical": 0,
    "maxAbs": 55
@@ -20,7 +20,7 @@
    {
     "name": "face-box SSIM mean >= 0.995",
     "pass": true,
-    "value": 0.9990587156668361
+    "value": 0.9990587637380512
    },
    {
     "name": "face-box SSIM min >= 0.98",
@@ -31,11 +31,11 @@
   "rows": [
    {
     "t": 0,
-    "psnr": 54.18547163792114,
-    "facePsnr": 59.038953421196474,
-    "faceSsim": 0.9995584247303714,
+    "psnr": 54.186994562108964,
+    "facePsnr": 59.072219143024924,
+    "faceSsim": 0.9995589822763103,
     "maxAbs": 28,
-    "differingShare": 0.16722608024691357,
+    "differingShare": 0.1671995563271605,
     "box": [
      250,
      855,
@@ -241,11 +241,11 @@
    },
    {
     "t": 14.9,
-    "psnr": 54.22850997818653,
-    "facePsnr": 58.79956477800668,
-    "faceSsim": 0.9995462886248565,
+    "psnr": 54.228836884188965,
+    "facePsnr": 58.81618792136857,
+    "faceSsim": 0.9995465002183598,
     "maxAbs": 29,
-    "differingShare": 0.1662205825617284,
+    "differingShare": 0.16620900848765433,
     "box": [
      251,
      856,
@@ -256,7 +256,7 @@
   ]
  },
  "exactVsGolden": {
-  "command": "hm bench gate --a golden --b exact --label wp02-exact-vs-golden",
+  "command": "hm bench gate --a golden --b exact --identical --label wp02r2-head-exact-vs-golden",
   "summary": {
    "minPsnr": "Infinity",
    "meanPsnr": "Infinity",
@@ -265,9 +265,323 @@
    "minFaceSsim": 1,
    "identical": 16,
    "maxAbs": 0
-  }
+  },
+  "checks": [
+   {
+    "name": "bit-identical on every frame",
+    "pass": true,
+    "value": "16/16"
+   }
+  ]
  },
- "exactSequential": "hm render my-brain-at-2am-v2 --profile exact --workers 2: frame hashes vs qa/golden/v2/sequential-frames.json 450/450 identical",
+ "stepGates": {
+  "command": "hm bench gate --steps both --label wp02r2-steps-head",
+  "pass": true,
+  "steps": [
+   {
+    "feature": "overlaySkip",
+    "mode": "off",
+    "a": "final [-overlaySkip] (faceCache+faceFastGlow+worldFast+fgAccum+adaptiveFloor+meshNormalTex+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "identical": true,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": "Infinity",
+     "minFacePsnr": "Infinity",
+     "minFaceSsim": 1,
+     "identical": 16
+    }
+   },
+   {
+    "feature": "faceCache",
+    "mode": "off",
+    "a": "final [-faceCache] (overlaySkip+worldFast+fgAccum+adaptiveFloor+meshNormalTex+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 55.11466420766926,
+     "minFacePsnr": 46.984971634134574,
+     "minFaceSsim": 0.9990056049425026,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "faceFastGlow",
+    "mode": "off",
+    "a": "final [-faceFastGlow] (overlaySkip+faceCache+worldFast+fgAccum+adaptiveFloor+meshNormalTex+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 55.47792387485369,
+     "minFacePsnr": 47.48419557167317,
+     "minFaceSsim": 0.9990579266088858,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "worldFast",
+    "mode": "off",
+    "a": "final [-worldFast] (overlaySkip+faceCache+faceFastGlow+fgAccum+adaptiveFloor+meshNormalTex+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 64.9893018388356,
+     "minFacePsnr": 84.76030103503516,
+     "minFaceSsim": 0.9999990281872052,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "fgAccum",
+    "mode": "off",
+    "a": "final [-fgAccum] (overlaySkip+faceCache+faceFastGlow+worldFast+adaptiveFloor+meshNormalTex+worldPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 48,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 54.772615159098066,
+     "minFacePsnr": 61.640046410348745,
+     "minFaceSsim": 0.999682049111249,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "adaptiveFloor",
+    "mode": "off",
+    "a": "final [-adaptiveFloor] (overlaySkip+faceCache+faceFastGlow+worldFast+fgAccum+meshNormalTex+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 45,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 62.04510446871453,
+     "minFacePsnr": 60.18779067187828,
+     "minFaceSsim": 0.9996780699911229,
+     "identical": 10
+    }
+   },
+   {
+    "feature": "meshNormalTex",
+    "mode": "off",
+    "a": "final [-meshNormalTex] (overlaySkip+faceCache+faceFastGlow+worldFast+fgAccum+adaptiveFloor+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 54.62856715534032,
+     "minFacePsnr": 55.37186156668422,
+     "minFaceSsim": 0.9991035394964828,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "worldPasses",
+    "mode": "off",
+    "a": "final [-worldPasses] (overlaySkip+faceCache+faceFastGlow+worldFast+fgAccum+adaptiveFloor+meshNormalTex+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 67.45948106972973,
+     "minFacePsnr": 84.76030103503516,
+     "minFaceSsim": 0.9999995285273685,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "tightPasses",
+    "mode": "off",
+    "a": "final [-tightPasses] (overlaySkip+faceCache+faceFastGlow+worldFast+fgAccum+adaptiveFloor+meshNormalTex+worldPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 48,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 96.06926599778072,
+     "minFacePsnr": 89.88859605467981,
+     "minFaceSsim": 0.9999999736285057,
+     "identical": 10
+    }
+   },
+   {
+    "feature": "overlaySkip",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+overlaySkip] (overlaySkip)",
+    "thresholds": {
+     "identical": true,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": "Infinity",
+     "minFacePsnr": "Infinity",
+     "minFaceSsim": 1,
+     "identical": 16
+    }
+   },
+   {
+    "feature": "faceCache",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+faceCache] (faceCache)",
+    "thresholds": {
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 62.028955303658506,
+     "minFacePsnr": 53.189338652358785,
+     "minFaceSsim": 0.999734476173017,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "faceFastGlow",
+    "mode": "on",
+    "a": "exact [+faceCache] (faceCache)",
+    "b": "exact [+faceCache,+faceFastGlow] (faceCache+faceFastGlow)",
+    "thresholds": {
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 56.883348755150635,
+     "minFacePsnr": 47.518284136506644,
+     "minFaceSsim": 0.9990592540146779,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "worldFast",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+worldFast] (worldFast)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 68.46036898009265,
+     "minFacePsnr": 86.97318905633188,
+     "minFaceSsim": 0.9999992163699901,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "fgAccum",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+fgAccum] (fgAccum)",
+    "thresholds": {
+     "psnr": 48,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 53.618032441323706,
+     "minFacePsnr": 61.684380184052415,
+     "minFaceSsim": 0.9996821651216947,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "adaptiveFloor",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+adaptiveFloor] (adaptiveFloor)",
+    "thresholds": {
+     "psnr": 45,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 62.29063264415463,
+     "minFacePsnr": 60.08412973317205,
+     "minFaceSsim": 0.9996775779779059,
+     "identical": 10
+    }
+   },
+   {
+    "feature": "meshNormalTex",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+meshNormalTex] (meshNormalTex)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 58.70138214022056,
+     "minFacePsnr": 55.365835987086044,
+     "minFaceSsim": 0.9991042086666545,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "worldPasses",
+    "mode": "on",
+    "a": "exact [+worldFast] (worldFast)",
+    "b": "exact [+worldFast,+worldPasses] (worldFast+worldPasses)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 67.45481805003935,
+     "minFacePsnr": 84.54955077419869,
+     "minFaceSsim": 0.9999992846188579,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "tightPasses",
+    "mode": "on",
+    "a": "exact [+fgAccum] (fgAccum)",
+    "b": "exact [+fgAccum,+tightPasses] (fgAccum+tightPasses)",
+    "thresholds": {
+     "psnr": 48,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": "Infinity",
+     "minFacePsnr": "Infinity",
+     "minFaceSsim": 1,
+     "identical": 16
+    }
+   }
+  ]
+ },
  "restTest": {
   "command": "node render/lib/write-jail.mjs -- node tools/perf/rest-test.mjs",
   "result": {
@@ -281,17 +595,21 @@
     "meanDiff": 1.0221513423348285,
     "faceBoxMeanDiff": 2.0789812713476836
    },
-   "final": {
+   "finalCrossfade": {
+    "meanDiff": 1.017170464876887,
+    "faceBoxMeanDiff": 2.0688505299192324
+   },
+   "finalRest": {
     "meanDiff": 1.017170464876887,
     "faceBoxMeanDiff": 2.0688505299192324
    }
   }
  },
  "videoMetrics": {
-  "command": "python3 -I tools/perf/video_metrics.py exact-1/final.mp4 final-2/final.mp4",
+  "command": "python3 -I tools/perf/video_metrics.py exact-2/final.mp4 final-3/final.mp4 --face 250,855,825,1239",
   "result": [
    {
-    "video": "/home/user/hm-work/wp02/renders/exact-1/final.mp4",
+    "video": "/home/user/hm-work/wp02r2/renders/exact-2/final.mp4",
     "frames": 450,
     "seam": {
      "seam": 1.9079,
@@ -305,13 +623,21 @@
      "count": 0,
      "maxShareChanging10pct": 0.12794,
      "maxMeanBlockDelta": 0.04971
+    },
+    "seamFace": {
+     "seam": 2.3675,
+     "median": 3.311,
+     "quietMedian": 2.1674,
+     "p90": 8.2446,
+     "limit": 8.2446,
+     "pass": true
     }
    },
    {
-    "video": "/home/user/hm-work/wp02/renders/final-2/final.mp4",
+    "video": "/home/user/hm-work/wp02r2/renders/final-3/final.mp4",
     "frames": 450,
     "seam": {
-     "seam": 1.9066,
+     "seam": 1.9076,
      "median": 2.4179,
      "quietMedian": 1.8085,
      "p90": 4.3088,
@@ -322,15 +648,27 @@
      "count": 0,
      "maxShareChanging10pct": 0.12794,
      "maxMeanBlockDelta": 0.04969
+    },
+    "seamFace": {
+     "seam": 2.3711,
+     "median": 3.3266,
+     "quietMedian": 2.1733,
+     "p90": 8.2552,
+     "limit": 8.2552,
+     "pass": true
     }
    },
    {
-    "compare": "/home/user/hm-work/wp02/renders/final-2/final.mp4 against /home/user/hm-work/wp02/renders/exact-1/final.mp4",
+    "compare": "/home/user/hm-work/wp02r2/renders/final-3/final.mp4 against /home/user/hm-work/wp02r2/renders/exact-2/final.mp4",
     "relativeChange": {
-     "seam.seam": -0.00068,
+     "seam.seam": -0.00016,
      "seam.median": -0.00198,
      "seam.quietMedian": -0.0021,
      "seam.p90": -0.00072,
+     "seamFace.seam": 0.00152,
+     "seamFace.median": 0.00471,
+     "seamFace.quietMedian": 0.00272,
+     "seamFace.p90": 0.00129,
      "flash.maxShareChanging10pct": 0.0,
      "flash.maxMeanBlockDelta": -0.0004
     },
@@ -341,10 +679,12 @@
   ]
  },
  "renders": {
-  "final-1 (P2-P8)": "758.6 s wall",
-  "final-2 (all steps)": "607.0 s wall",
-  "draft-1": "95.1 s wall",
-  "proof-2": "14.7 s wall",
-  "exact-1 (2 workers)": "1359.6 s wall"
+  "final-3 (round 2 HEAD, run A, 1 worker)": "651.1 s wall, segments 604.4 s",
+  "final-4 (round 2 HEAD, run B, 1 worker)": "572.1 s wall, segments 526.8 s; video stream byte-identical to final-3",
+  "draft-2 (round 2 HEAD, 1 worker)": "88.7 s wall",
+  "proof-3 (round 2 HEAD)": "13.3 s wall",
+  "exact-2 (round 2 HEAD, 2 workers)": "1341.2 s wall; frame hashes vs qa/golden/v2/sequential-frames.json 450/450 identical",
+  "final-2 (round 1, 1 worker)": "607.0 s wall",
+  "final-1 (P2-P8, 1 worker)": "758.6 s wall"
  }
 }
