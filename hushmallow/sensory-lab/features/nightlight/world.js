@@ -140,10 +140,14 @@ export class WorldLayer {
     this.paints = 0; this.bakes = 0; this.fallbacks = 0;
     this._timers = new Set();
     this._resizeT = 0;
+    this._stilling = null;       // the live Environment while it settles into its still (goStill is idempotent)
+    this._stillT = 0;
     this._sample = null;
   }
 
   get isLive() { return !!this.env?.realm; }
+  /** The live realm is settling into its still (it closes when the cross-fade ends). */
+  get stilling() { return !!this._stilling && this._stilling === this.env; }
   /** The realm the scene asks for (null: the plain night). */
   get realmId() { return this.scene ? this.scene.realmId : null; }
   get dpr() { return stillDpr(this.quality); }
@@ -247,6 +251,7 @@ export class WorldLayer {
   /** Close the live window: its current frame becomes the next still (0.8 s), then the realm is destroyed. */
   goStill() {
     if (!this.isLive) return false;
+    if (this.stilling) return true;   // already settling: one snapshot, one cross-fade (a caller may ask every frame)
     const raw = this.env.snapshot({ dpr: this.dpr });
     const env = this.env;
     if (!raw || isBlank(raw)) { this._closeLive(); return this._repaint(STILL_S); }
@@ -256,7 +261,11 @@ export class WorldLayer {
     this.painted = this.scene.mood ? { ...this.scene.mood } : null;
     this.plain = false;
     this._bake(slot);
-    this._show(i, STILL_S, () => { if (this.env === env) this._closeLive(); });
+    this._stilling = env;
+    this._show(i, STILL_S);
+    // its own timer: a repaint meanwhile (a resize, a new Light) clears the cross-fade timers, never this close
+    clearTimeout(this._stillT);
+    this._stillT = setTimeout(() => { this._stillT = 0; if (!this.destroyed && this.env === env) this._closeLive(); }, STILL_S * 1000 + 60);
     return true;
   }
 
@@ -287,7 +296,7 @@ export class WorldLayer {
 
   destroy() {
     this.destroyed = true;
-    clearTimeout(this._resizeT);
+    clearTimeout(this._resizeT); clearTimeout(this._stillT);
     this._clearTimers();
     this.env?.destroy();
     this.env = null;
@@ -361,6 +370,7 @@ export class WorldLayer {
   }
 
   _closeLive() {
+    clearTimeout(this._stillT); this._stillT = 0; this._stilling = null;
     this.env?.destroy();
     this.env = null;
     this.gradeEl.remove();

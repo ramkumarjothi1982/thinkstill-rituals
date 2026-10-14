@@ -33,6 +33,8 @@ connected), `features/comfort-dna.js` (screen).
 | `environment` | auto / stage / one of the seven realms | auto | backdrop (auto = Pocket Hush in the Mallow's own realm, plain stage elsewhere) |
 | `comfort` | any of squeeze, hold, stroke, breathe, glow, float, quiet | none | "For you" offers, Pocket Hush order, Surprise Me weights |
 
+Phase 3 reads the same choices: Weather Weaver, Hushbeat and Nightlight use the favourite Mallow, responses, animation speed, movement, voice, touch sounds, colours and environment (Nightlight picks a night-capable world; Weather Weaver always needs a world).
+
 Only values that differ from the defaults are stored. Volume, sound on/off,
 haptics, reduced motion, theme and quality are device settings in
 `core/prefs.js`, not personalisation; the volume slider appears in both
@@ -59,7 +61,18 @@ places but is one setting.
   values, unknown materials, free-form ids, a wrong version and malformed
   history are dropped. If the data can't be read at all, the profile starts
   empty; a damaged profile never stops the lab from opening.
-- **Favourites:** up to 12. Keeping a 13th drops the oldest.
+- **Favourites:** up to 12 (moments, materials), plus up to 6 Hushbeat tunes.
+  Keeping a 13th of the first kind drops the oldest. Hushbeat refuses a 7th
+  tune and says so, rather than dropping one silently.
+- **Kept Hushbeat tunes** store only the Mallow (and a friend Mallow), the
+  breath pace and a short code of note steps (`HUSHBEAT_MOTIF_RE`: at most 48
+  tokens of scale degree, timing and role). Nothing else, and nothing typed.
+- **What "Touch sounds" silences:** every lab sound effect and ambience
+  (material sounds, chimes, bubbles, breath, the Pocket Hush pad, Weather
+  Weaver's weather bed and one-shots). Sound that has its own control ignores
+  it and follows Mute, Volume and that control: Hushbeat's music (Visual only)
+  and Nightlight's night bed (its Sound chip and volume). "Mallow voice"
+  silences the Mallow's voice and motifs everywhere.
 - **Suggestions don't change choices:** opening a "For you" suggestion with
   another Mallow uses that Mallow for that visit only; the favourite stays.
 

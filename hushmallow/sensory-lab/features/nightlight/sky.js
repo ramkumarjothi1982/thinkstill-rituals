@@ -231,13 +231,15 @@ export class NightSky {
       g.globalAlpha = a;
       g.drawImage(ts, s.x * W - s.r, s.y * H - s.r, s.r * 2, s.r * 2);
     }
-    // fireflies
-    const fs = glowSprite(this.ffHex, 9);
+    // fireflies: a soft glow with a small warm point at its heart, so each reads as a firefly, not a smudge
+    const fs = glowSprite(this.ffHex, 9), fc = glowSprite(this.ffHex, 3);
     for (const f of this.fireflies) {
       if (f.a <= 0.004) continue;
       const a = f.a * (0.55 + 0.45 * this.stars) * 0.7 * (1 + GLINT.k * f.glint);
       g.globalAlpha = clamp(a, 0, 1);
       g.drawImage(fs, f.x - 9, f.y - 9, 18, 18);
+      g.globalAlpha = clamp(a * 0.85, 0, 1);
+      g.drawImage(fc, f.x - 3, f.y - 3, 6, 6);
     }
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';

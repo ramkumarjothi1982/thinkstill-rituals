@@ -293,6 +293,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       chipEl = h('button', { type: 'button', class: 'chip nl-chip', 'data-chip': kind, onclick: () => ctx.sound.unlock() }, COPY.chips.soundBack);
     }
     if (chipEl) { chipSlot.append(chipEl); if (hadFocus) chipEl.focus({ preventScroll: true }); }
+    status.dataset.chip = kind || '';   // narrow screens shorten the status text beside a long chip (styles)
   }
   let statusKey = '';
   function updateStatus() {
@@ -302,7 +303,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     statusKey = key;
     const t = clock.endsAt == null ? null : clockText(clock.endsAt);
     stFull.textContent = t == null ? COPY.status.none : state === 'fading' ? COPY.status.fading(t) : COPY.status.until(t);
-    stTime.textContent = t == null ? COPY.status.none : t;
+    stTime.textContent = t == null ? COPY.status.none : COPY.status.until(t);   // the short form, beside a chip on narrow screens
     subEl.textContent = land ? COPY.subtitleShort(MODES[mode].name, t) : COPY.subtitle(MODES[mode].name, name);
     setChip(wantedChip());
   }
@@ -531,6 +532,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     if (sheet || dead || leaving || ended) return;
     wakeChrome();
     pacer.touch();
+    s.screen.classList.add('nl-sheet-open');   // the caption steps aside (and in landscape the chrome the panel would cut)
     sheet = openNightSheet(s.screen, {
       state: () => ({ settings: S, labReduced: ctx.prefs.reducedMotion(), wakeSupported: wake.supported, wakeFailed,
         soundOn: ctx.prefs.get('sound') !== false, endsAt: clock.endsAt, fading: state === 'fading' }),
@@ -540,6 +542,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       turnSoundOn: () => { ctx.prefs.set('sound', true); ctx.sound.unlock(); },
       onClosed: ({ byUser }) => {
         sheet = null;
+        s.screen.classList.remove('nl-sheet-open');
         if (tempSliding) { tempSliding = false; if (!dead && !leaving) repaintMood(true); }   // closed mid-slide: the world still takes the Light
         lastInput = performance.now();   // a full 8 s of awake chrome after the sheet
         if (byUser && !dead && !leaving && settingsBtn.isConnected) settingsBtn.focus({ preventScroll: true });

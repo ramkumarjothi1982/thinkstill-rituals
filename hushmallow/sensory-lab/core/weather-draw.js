@@ -470,15 +470,17 @@ export function drawConstellations(g, stars, sp, o) {
   if (!stars || stars.amount <= 0.01 || o.alpha <= 0.004) return 0;
   const T = sp.tint, shape = stars.style.shape, closed = shape === 'polygon' || shape === 'ring';
   let lines = 0;
-  g.strokeStyle = T.starCss; g.lineWidth = 1; g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = T.starCss; g.lineCap = 'round'; g.lineJoin = 'round';
   for (let s = 0; s < 3; s++) {
     const m = stars.members(s, MEMBERS);
     if (m < 2) continue;
-    g.globalAlpha = 0.26 * stars.style.dim * o.alpha * stars.amount;
     g.beginPath();
     for (let k = 0; k < m; k++) { const i = MEMBERS[k]; if (k) g.lineTo(stars.x[i], stars.y[i]); else g.moveTo(stars.x[i], stars.y[i]); }
     if (closed && m > 2) g.closePath();
-    g.stroke();
+    // a soft glow under a fine line: the Mallow's constellation has to read over a busy painted sky
+    const a = stars.style.dim * o.alpha * stars.amount;
+    g.lineWidth = 3.5; g.globalAlpha = 0.1 * a; g.stroke();
+    g.lineWidth = 1.2; g.globalAlpha = 0.46 * a; g.stroke();
     lines++;
   }
   const gs = glowSprite(T.star, 64, o.go);
@@ -513,7 +515,7 @@ export function drawStars(g, stars, sp, o, which = 2) {
       if (a <= 0.01) continue;
       const x = stars.x[i], y = stars.y[i];
       if (!pass) {
-        const L = held || b > 1.15, R = L ? 14 : 8;
+        const L = held || b > 1.15 || stars.st[i] === 3, R = L ? 14 : 8;   // held, bright, or placed in a constellation
         g.globalAlpha = clamp(a * b * 0.75, 0, 1);
         g.drawImage(L ? big : small, x - R, y - R, 2 * R, 2 * R);
         n++;

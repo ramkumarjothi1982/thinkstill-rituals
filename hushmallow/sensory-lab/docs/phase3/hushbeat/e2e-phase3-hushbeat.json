@@ -1,6 +1,6 @@
 {
- "when": "2026-10-14T19:15:51.206Z",
- "part": "hushbeat:scene,hushbeat:replay",
+ "when": "2026-10-14T20:05:33.678Z",
+ "part": "hushbeat:replay",
  "passed": 585,
  "failed": 0,
  "results": [
@@ -593,102 +593,6 @@
    "detail": ""
   },
   {
-   "scope": "hushbeat:rapid",
-   "name": "40 taps in 2 s: live voices ≤ 24, music voices ≤ the low-tier cap",
-   "ok": true,
-   "detail": "{\"live\":6,\"voices\":6,\"cap\":10}"
-  },
-  {
-   "scope": "hushbeat:rapid",
-   "name": "every note in Zuzu's key; nothing sounding together forms a semitone or tritone",
-   "ok": true,
-   "detail": "{\"n\":15,\"ghosts\":26,\"clashes\":[]}"
-  },
-  {
-   "scope": "hushbeat:rapid:duet",
-   "name": "E9 duet: 40 alternating taps in 2 s: live voices ≤ 24, music voices ≤ the low-tier cap",
-   "ok": true,
-   "detail": "{\"live\":13,\"voices\":10,\"cap\":10}"
-  },
-  {
-   "scope": "hushbeat:rapid:duet",
-   "name": "E9 duet: both play, all in Zuzu's key (the friend plays in the lead's), they harmonise, nothing clashes",
-   "ok": true,
-   "detail": "{\"n\":22,\"slots\":[11,11],\"harmony\":17,\"clashes\":[]}"
-  },
-  {
-   "scope": "hushbeat:rapid",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:rapid:two-point",
-   "name": "E9 two thumbs on two Mallows, 20 bursts in 2 s: both play every burst or nearly, live voices ≤ 24, music voices ≤ the cap",
-   "ok": true,
-   "detail": "{\"sl\":[12,12],\"mx3\":{\"live\":5,\"voices\":5,\"cap\":10}}"
-  },
-  {
-   "scope": "hushbeat:rapid:two-point",
-   "name": "E9 two thumbs: every note in Zuzu's key, they harmonise, nothing sounding together clashes",
-   "ok": true,
-   "detail": "{\"n\":24,\"harmony\":12,\"clashes\":[]}"
-  },
-  {
-   "scope": "hushbeat:rapid:two-point",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:quietmode",
-   "name": "E12 muted: a tap still makes its note event and its bead (the light carries it), no voice",
-   "ok": true,
-   "detail": "{\"notes\":1,\"voices\":0,\"ready\":false,\"beads\":2}"
-  },
-  {
-   "scope": "hushbeat:quietmode",
-   "name": "E12 unmuting during a hum brings the hum back (reconcile)",
-   "ok": true,
-   "detail": "{\"pad\":true,\"voices\":1}"
-  },
-  {
-   "scope": "hushbeat:quietmode",
-   "name": "E13 Visual only: 30 gestures make their music events and no sound at all; the subtitle says so",
-   "ok": true,
-   "detail": "{\"sub\":\"Noomi · Visual only\",\"v1\":{\"notes\":25,\"heard\":0,\"pad\":true,\"live\":0,\"beads\":5},\"maxV\":0}"
-  },
-  {
-   "scope": "hushbeat:quietmode",
-   "name": "E13 Visual only: the singing mouth opens on its notes, and the role captions repeat (the sound is off), at most every 1.5 s",
-   "ok": true,
-   "detail": "{\"mouth\":0.35,\"roles\":[{\"text\":\"Note\",\"t\":20025},{\"text\":\"Note\",\"t\":21543}],\"gaps\":[1518]}"
-  },
-  {
-   "scope": "hushbeat:quietmode",
-   "name": "E13 Visual only: Replay performs the take silently (replaying, the Mallow pokes, no voice); Keep keeps it",
-   "ok": true,
-   "detail": "{\"vr\":{\"state\":\"replaying\",\"voices\":0,\"live\":0,\"pokes\":1},\"vk\":{\"kept\":1,\"pressed\":\"true\"}}"
-  },
-  {
-   "scope": "hushbeat:quietmode",
-   "name": "E13 Visual only survives a reload",
-   "ok": true,
-   "detail": "{\"sub\":\"Noomi · Visual only\",\"attached\":false,\"visual\":true}"
-  },
-  {
-   "scope": "hushbeat:quietmode",
-   "name": "switching back to Music reattaches the sound",
-   "ok": true,
-   "detail": "{\"sub\":\"Noomi\",\"attached\":true}"
-  },
-  {
-   "scope": "hushbeat:quietmode",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
    "scope": "hushbeat:hidden",
    "name": "hidden: every layer released, players idle, scheduler stopped, breath let go",
    "ok": true,
@@ -744,78 +648,6 @@
   },
   {
    "scope": "hushbeat:exit",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "E15: Keep stores a sanitised tune (lead, pace, motif; no friend) and shows \"Kept\", pressed; the Pocket favourite stays",
-   "ok": true,
-   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Kept\",\"keepPressed\":\"true\",\"tray\":false,\"targets\":null},\"chip\":\"Kept\",\"favs\":[{\"kind\":\"hushbeat\",\"id\":\"hushbeat\",\"mallow\":\"boppo\",\"pace\":\"natural\",\"motif\":\"00n5602n7705n9507n66\"},{\"kind\":\"pocket\",\"id\":\"soft-breath\"}]}"
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "E15: a second tap removes it (\"Removed\")",
-   "ok": true,
-   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"chip\":\"Removed\",\"favs\":[{\"kind\":\"pocket\",\"id\":\"soft-breath\"}]}"
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "K keeps it again",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "E15: Keep is hidden while personalisation is off (and back when it is on)",
-   "ok": true,
-   "detail": "{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null}"
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "E15: home \"For you\" shows \"Boppo tune · Favourite\"",
-   "ok": true,
-   "detail": "[{\"text\":\"Boppo tuneFavourite\",\"data\":\"hushbeat:hushbeat\"},{\"text\":\"Soft BreathFavourite\",\"data\":\"pocket:soft-breath\"}]"
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "E15: opening it shows Play it (Replay hidden) with Kept pressed, and nothing plays by itself for 2.5 s",
-   "ok": true,
-   "detail": "{\"c\":{\"playIt\":true,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Kept\",\"keepPressed\":\"true\",\"tray\":false,\"targets\":null},\"log\":0,\"live\":0,\"best\":4,\"pace\":\"natural\",\"scheduler\":{\"running\":false,\"pending\":0}}"
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "E15: Play it plays the tune (the Mallow sings it back), then goes away",
-   "ok": true,
-   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Stop\",\"replayPressed\":\"true\",\"keep\":true,\"keepLabel\":\"Kept\",\"keepPressed\":\"true\",\"tray\":false,\"targets\":null},\"state\":\"replaying\"}"
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "all four notes of the kept tune",
-   "ok": true,
-   "detail": "4"
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "E15: the Comfort DNA screen describes it: \"Boppo tune · 4 notes · Natural\"",
-   "ok": true,
-   "detail": "Comfort DNA\nOn\n\nWhat your Mallow remembers about what you enjoy. This browser only.\n\nPERSONALISATION\nPersonalise my Mallow\nYour choices below shape every experience\nOn\nOff\nYOUR MALLOW\nFavourite\nGlitzi\nBlubi\nZuzu\nBoppo\nPipzi\nLoomi\nNoomi\nHOW IT RESPONDS\nResponses\nGentle: smaller, slower, no jumps\nGentle\nBalanced\nPlayful\nAnimation\nAlso sets the Soft Breath pace\nSlower\nNatural\nLivelier\nMovement\nHow mu"
-  },
-  {
-   "scope": "hushbeat:keep",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:keep:six",
-   "name": "E15: with six tunes kept, Keep refuses (\"Six tunes kept. Remove one in Sound and pace.\"); all seven favourites stay",
-   "ok": true,
-   "detail": "{\"chip\":\"Six tunes kept. Remove one in Sound and pace.\",\"n\":7,\"pressed\":\"false\"}"
-  },
-  {
-   "scope": "hushbeat:keep:six",
    "name": "no console errors",
    "ok": true,
    "detail": ""
@@ -3467,6 +3299,174 @@
    "detail": ""
   },
   {
+   "scope": "hushbeat:rapid",
+   "name": "40 taps in 2 s: live voices ≤ 24, music voices ≤ the low-tier cap",
+   "ok": true,
+   "detail": "{\"live\":5,\"voices\":5,\"cap\":10}"
+  },
+  {
+   "scope": "hushbeat:rapid",
+   "name": "every note in Zuzu's key; nothing sounding together forms a semitone or tritone",
+   "ok": true,
+   "detail": "{\"n\":15,\"ghosts\":26,\"clashes\":[]}"
+  },
+  {
+   "scope": "hushbeat:rapid:duet",
+   "name": "E9 duet: 40 alternating taps in 2 s: live voices ≤ 24, music voices ≤ the low-tier cap",
+   "ok": true,
+   "detail": "{\"live\":16,\"voices\":10,\"cap\":10}"
+  },
+  {
+   "scope": "hushbeat:rapid:duet",
+   "name": "E9 duet: both play, all in Zuzu's key (the friend plays in the lead's), they harmonise, nothing clashes",
+   "ok": true,
+   "detail": "{\"n\":21,\"slots\":[9,12],\"harmony\":18,\"clashes\":[]}"
+  },
+  {
+   "scope": "hushbeat:rapid",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:rapid:two-point",
+   "name": "E9 two thumbs on two Mallows, 20 bursts: every contact reaches its own stage, both play, live voices ≤ 24, music voices ≤ the cap",
+   "ok": true,
+   "detail": "{\"sl\":[11,11],\"gh\":[0,0],\"mx3\":{\"live\":3,\"voices\":3,\"cap\":10,\"contacts\":[20,20]},\"deliverMs\":161824}"
+  },
+  {
+   "scope": "hushbeat:rapid:two-point",
+   "name": "E9 two thumbs: every note in Zuzu's key, they harmonise, nothing sounding together clashes",
+   "ok": true,
+   "detail": "{\"n\":22,\"harmony\":11,\"clashes\":[]}"
+  },
+  {
+   "scope": "hushbeat:rapid:two-point",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E12 muted: a tap still makes its note event and its bead (the light carries it), no voice",
+   "ok": true,
+   "detail": "{\"notes\":1,\"voices\":0,\"ready\":false,\"beads\":2}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E12 unmuting during a hum brings the hum back (reconcile)",
+   "ok": true,
+   "detail": "{\"pad\":true,\"voices\":1}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E13 Visual only: 30 gestures make their music events and no sound at all; the subtitle says so",
+   "ok": true,
+   "detail": "{\"sub\":\"Noomi · Visual only\",\"v1\":{\"notes\":26,\"heard\":0,\"pad\":true,\"live\":0,\"beads\":5},\"maxV\":0}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E13 Visual only: the singing mouth opens on its notes, and the role captions repeat (the sound is off), at most every 1.5 s",
+   "ok": true,
+   "detail": "{\"mouth\":0.35,\"roles\":[{\"text\":\"Note\",\"t\":22856},{\"text\":\"Note\",\"t\":24379}],\"gaps\":[1523]}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E13 Visual only: Replay performs the take silently (replaying, the Mallow pokes, no voice); Keep keeps it",
+   "ok": true,
+   "detail": "{\"vr\":{\"state\":\"replaying\",\"voices\":0,\"live\":0,\"pokes\":1},\"vk\":{\"kept\":1,\"pressed\":\"true\"}}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E13 Visual only survives a reload",
+   "ok": true,
+   "detail": "{\"sub\":\"Noomi · Visual only\",\"attached\":false,\"visual\":true}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "switching back to Music reattaches the sound",
+   "ok": true,
+   "detail": "{\"sub\":\"Noomi\",\"attached\":true}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "E15: Keep stores a sanitised tune (lead, pace, motif; no friend) and shows \"Kept\", pressed; the Pocket favourite stays",
+   "ok": true,
+   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Kept\",\"keepPressed\":\"true\",\"tray\":false,\"targets\":null},\"chip\":\"Kept\",\"favs\":[{\"kind\":\"hushbeat\",\"id\":\"hushbeat\",\"mallow\":\"boppo\",\"pace\":\"natural\",\"motif\":\"00n5602n7705n9507n66\"},{\"kind\":\"pocket\",\"id\":\"soft-breath\"}]}"
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "E15: a second tap removes it (\"Removed\")",
+   "ok": true,
+   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"chip\":\"Removed\",\"favs\":[{\"kind\":\"pocket\",\"id\":\"soft-breath\"}]}"
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "K keeps it again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "E15: Keep is hidden while personalisation is off (and back when it is on)",
+   "ok": true,
+   "detail": "{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null}"
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "E15: home \"For you\" shows \"Boppo tune · Favourite\"",
+   "ok": true,
+   "detail": "[{\"text\":\"Boppo tuneFavourite\",\"data\":\"hushbeat:hushbeat\"},{\"text\":\"Soft BreathFavourite\",\"data\":\"pocket:soft-breath\"}]"
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "E15: opening it shows Play it (Replay hidden) with Kept pressed, and nothing plays by itself for 2.5 s",
+   "ok": true,
+   "detail": "{\"c\":{\"playIt\":true,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Kept\",\"keepPressed\":\"true\",\"tray\":false,\"targets\":null},\"log\":0,\"live\":0,\"best\":4,\"pace\":\"natural\",\"scheduler\":{\"running\":false,\"pending\":0}}"
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "E15: Play it plays the tune (the Mallow sings it back), then goes away",
+   "ok": true,
+   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Stop\",\"replayPressed\":\"true\",\"keep\":true,\"keepLabel\":\"Kept\",\"keepPressed\":\"true\",\"tray\":false,\"targets\":null},\"state\":\"replaying\"}"
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "all four notes of the kept tune",
+   "ok": true,
+   "detail": "4"
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "E15: the Comfort DNA screen describes it: \"Boppo tune · 4 notes · Natural\"",
+   "ok": true,
+   "detail": "Comfort DNA\nOn\n\nWhat your Mallow remembers about what you enjoy. This browser only.\n\nPERSONALISATION\nPersonalise my Mallow\nYour choices below shape every experience\nOn\nOff\nYOUR MALLOW\nFavourite\nGlitzi\nBlubi\nZuzu\nBoppo\nPipzi\nLoomi\nNoomi\nHOW IT RESPONDS\nResponses\nGentle: smaller, slower, no jumps\nGentle\nBalanced\nPlayful\nAnimation\nAlso sets the Soft Breath pace\nSlower\nNatural\nLivelier\nMovement\nHow mu"
+  },
+  {
+   "scope": "hushbeat:keep",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:keep:six",
+   "name": "E15: with six tunes kept, Keep refuses (\"Six tunes kept. Remove one in Sound and pace.\"); all seven favourites stay",
+   "ok": true,
+   "detail": "{\"chip\":\"Six tunes kept. Remove one in Sound and pace.\",\"n\":7,\"pressed\":\"false\"}"
+  },
+  {
+   "scope": "hushbeat:keep:six",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
    "scope": "hushbeat:replay",
    "name": "E14: Replay and Keep stay hidden until a take has 3 events",
    "ok": true,
@@ -3482,19 +3482,19 @@
    "scope": "hushbeat:replay",
    "name": "E14: the Mallow sings the take back: the same degrees in order, each on its soft-quantised beat (±3 ms)",
    "ok": true,
-   "detail": "{\"got\":[-2,0,2,-1,1],\"want\":[-2,0,2,-1,1],\"off\":[0,0,0,0,0],\"dropped\":0}"
+   "detail": "{\"got\":[-2,0,2,1],\"want\":[-2,0,2,1],\"off\":[0,0,0,0],\"dropped\":0}"
   },
   {
    "scope": "hushbeat:replay",
    "name": "E14: it performs the take (pokes where each note was played) and ends proud: its reaction, one realm success pulse, \"Replay finished\"",
    "ok": true,
-   "detail": "{\"pokes\":5,\"reacts\":[\"success\"],\"successes\":1,\"env\":[{\"t\":25222,\"kind\":\"success\",\"ok\":true}],\"chip\":\"Replay finished\",\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"state\":\"playing\"}"
+   "detail": "{\"pokes\":4,\"reacts\":[\"success\"],\"successes\":1,\"env\":[{\"t\":18985.5,\"kind\":\"success\",\"ok\":true}],\"chip\":\"Replay finished\",\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"state\":\"playing\"}"
   },
   {
    "scope": "hushbeat:replay",
    "name": "E14: R replays; Stop ends it within 200 ms (aria-pressed false, the tint lifts, no success)",
    "ok": true,
-   "detail": "{\"stopMs\":0.5,\"s2\":{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"last\":{\"kind\":\"replay\",\"slot\":0,\"t\":28.19889999999851,\"on\":false,\"stopped\":true},\"tint\":false}}"
+   "detail": "{\"stopMs\":0.6000000014901161,\"s2\":{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"last\":{\"kind\":\"replay\",\"slot\":0,\"t\":21.47039999999851,\"on\":false,\"stopped\":true},\"tint\":false}}"
   },
   {
    "scope": "hushbeat:replay",
@@ -3649,8 +3649,8 @@
    "id": "E15",
    "line": "Save favourite sound combinations",
    "blocks": [
-    "keep",
-    "duet"
+    "duet",
+    "keep"
    ],
    "checks": 15,
    "passed": 15
@@ -3743,9 +3743,8 @@
   }
  ],
  "merged": {
-  "kept": 568,
+  "kept": 577,
   "ran": [
-   "scene",
    "replay"
   ]
  }

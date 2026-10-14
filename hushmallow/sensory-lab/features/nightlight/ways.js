@@ -40,7 +40,7 @@ export const NIGHT_SCENES = Object.freeze({
   'moonmilk-cove': scene('moonmilk-cove', { maxHeavy: 0.3, texture: 'waves' }),
   'raindrop-lagoon': scene('raindrop-lagoon', { maxHeavy: 0.3, texture: 'waves' }),
   'spiral-observatory': scene('spiral-observatory', { mood: { clarity: 0.95 }, maxHeavy: 0.3, texture: 'air' }),   // dome open, one crisp galaxy
-  'spark-festival': scene('spark-festival', { mood: { heaviness: 0.3, clarity: 0.8 }, warmthCap: 0.5, maxHeavy: 0.42, texture: 'hush' }),   // after closing
+  'spark-festival': scene('spark-festival', { mood: { heaviness: 0.58, clarity: 0.8 }, warmthCap: 0.5, maxHeavy: 0.7, texture: 'hush' }),   // after closing: about half the lanterns still lit
   'static-storm': scene('static-storm', { mood: { agitation: 0, heaviness: 0.2, clarity: 0.85 }, warmthCap: 0.3, transform: 0.3, maxHeavy: 0.35, texture: 'hush' }),   // calmed
 });
 export const NIGHT_REALMS = Object.keys(NIGHT_SCENES);

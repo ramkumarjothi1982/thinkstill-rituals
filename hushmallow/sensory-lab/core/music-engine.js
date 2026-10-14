@@ -371,7 +371,9 @@ export class MusicEngine {
   }
 
   // each event's beat in the replay: soft-quantised 75 % toward its part's grid; a note that would land on top of
-  // the previous one of the same part (a chord roll's 16ths on an 8th grid) takes a finer grid, else its own beat
+  // the previous one of the same part (a chord roll's 16ths on an 8th grid) takes a finer grid, else it follows
+  // the previous note by the rate limit's gap (never before it: the previous one may have been quantised forward,
+  // and a note within 70 ms of it would only be a ghost)
   _replayGrid(list) {
     const prev = [null, null], gap = (MIN_GAP + 0.005) / this.clock.beatS;
     return list.map((e) => {
@@ -380,7 +382,7 @@ export class MusicEngine {
       if (e.kind !== 'n') return q;
       if (prev[slot] != null) {
         for (const d of [grid * 2, grid * 4]) { if (q - prev[slot] >= gap) break; q = softQuantise(e.beat, d, 0.75); }
-        if (q - prev[slot] < gap) q = Math.max(q, e.beat);
+        if (q - prev[slot] < gap) q = Math.max(e.beat, prev[slot] + gap);
       }
       prev[slot] = q;
       return q;

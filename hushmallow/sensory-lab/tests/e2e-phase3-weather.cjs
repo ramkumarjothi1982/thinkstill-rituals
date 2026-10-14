@@ -131,11 +131,16 @@ async function openWx(browser, vp, mallow, { prefs = {}, initScripts = [], hash 
 // settled: the weather is w, the planner has nothing left to do (a click changes the weather at once;
 // state and the front only update on the next frame) and the screen is live
 const settled = (page, w) => page.waitForFunction((w) => { const lw = __lab.weather; return lw?.weather === w && !lw.session.planner.busy && lw.state === 'live' && !lw.front; }, w, { timeout: T });
-/** A pointer drag through page px points, `ms` between moves (mouse). */
+/**
+ * A pointer drag through page px points, `ms` between moves (mouse). The first move is sent with the down: on
+ * a busy machine at a few frames a second, a first move that lands more than 220 ms after the down reads as a
+ * hold (a held finger), not a drag.
+ */
 async function drag(page, pts, ms = 16) {
   await page.mouse.move(pts[0][0], pts[0][1]);
-  await page.mouse.down();
-  for (let i = 1; i < pts.length; i++) { await page.mouse.move(pts[i][0], pts[i][1]); if (ms) await sleep(ms); }
+  await Promise.all([page.mouse.down(), page.mouse.move(pts[1][0], pts[1][1])]);
+  if (ms) await sleep(ms);
+  for (let i = 2; i < pts.length; i++) { await page.mouse.move(pts[i][0], pts[i][1]); if (ms) await sleep(ms); }
   await page.mouse.up();
 }
 const line = (x0, y0, x1, y1, n) => Array.from({ length: n + 1 }, (_, i) => [x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n]);
@@ -378,11 +383,13 @@ async function waveReach(page, scope) {
 }
 
 // --------------------------------------------------------- CDP touch pad --
+/** A CDP command that never answers (the renderer never acks an input) fails the block instead of hanging it. */
+const cdpSend = (cdp, method, params, ms = 20000) => Promise.race([cdp.send(method, params), sleep(ms).then(() => { throw new Error(`${method} got no answer in ${ms} ms`); })]);
 /** Fingers that stay down across awaits (H.touch plays one timed sequence; a held bead needs a wait on state). */
 async function touchPad(page) {
   const cdp = await page.context().newCDPSession(page);
   const down = new Map();
-  const send = (type) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [...down].map(([id, p]) => ({ x: p[0], y: p[1], id, radiusX: 4, radiusY: 4, force: 1 })) });
+  const send = (type) => cdpSend(cdp, 'Input.dispatchTouchEvent', { type, touchPoints: [...down].map(([id, p]) => ({ x: p[0], y: p[1], id, radiusX: 4, radiusY: 4, force: 1 })) });
   return {
     async down(x, y, id = 1) { down.set(id, [x, y]); await send('touchStart'); },
     /** A down with its first move travelling with it (a drag, not a hold; see tdrag). */
@@ -402,11 +409,19 @@ async function touchPad(page) {
  */
 async function tdrag(page, pts, ms = 0) {
   const cdp = await page.context().newCDPSession(page);
-  const ev = (type, p) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: p ? [{ x: p[0], y: p[1], id: 1, radiusX: 4, radiusY: 4, force: 1 }] : [] });
+  const ev = (type, p) => cdpSend(cdp, 'Input.dispatchTouchEvent', { type, touchPoints: p ? [{ x: p[0], y: p[1], id: 1, radiusX: 4, radiusY: 4, force: 1 }] : [] });
   try {
     await Promise.all([ev('touchStart', pts[0]), ev('touchMove', pts[1])]);
     for (let i = 2; i < pts.length - 1; i++) { await ev('touchMove', pts[i]); if (ms) await sleep(ms); }
     await Promise.all([ev('touchMove', pts[pts.length - 1]), ev('touchEnd')]);
+  } finally { await cdp.detach().catch(() => {}); }
+}
+/** A touch tap (CDP): the lift travels with the press, as a quick tap's does (a frame later would read as a hold). */
+async function ttap(page, x, y) {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await Promise.all([cdpSend(cdp, 'Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1, radiusX: 4, radiusY: 4, force: 1 }] }),
+      cdpSend(cdp, 'Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })]);
   } finally { await cdp.detach().catch(() => {}); }
 }
 /** Page scroll and the visual viewport: all must stay at 0 (and scale 1) while weather is touched. */
@@ -1617,7 +1632,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
       await settled(page, 'wind');
       await H.clearEvents(page);
       const e0 = await wx(page, () => __lab.weather.events.length);
-      await H.touch(page, [{ t: 0, points: [{ x: g.body.cx, y: g.body.mid, id: 1 }] }, { t: 60, points: [] }]);
+      await ttap(page, g.body.cx, g.body.mid);
       await page.waitForFunction(() => __lab.events.some((e) => e.type === 'tap'), null, { timeout: T }).catch(() => {});
       const tap = await wx(page, (e0) => ({ comp: __lab.events.map((e) => e.type), wx: __lab.weather.events.slice(e0).map((e) => e.type), active: __lab.weather.tools.active }), e0);
       check(`${scope}:mallow`, 'a touch tap on Loomi is TouchTalk: a Companion tap, no weather touch, no tool claimed (W7)', tap.comp.includes('tap') && !tap.wx.includes('touch') && tap.active === 0, JSON.stringify(tap));

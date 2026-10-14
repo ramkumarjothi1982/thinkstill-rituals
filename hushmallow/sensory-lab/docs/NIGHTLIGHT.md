@@ -64,21 +64,25 @@ Touches never extend the session.
   button (**Nightlight settings**) · Mute.
 - **Bottom** (a fixed height, so the Mallow is framed once and never jumps): the mode row (Moonlight · Breathe ·
   Sleepy · Drift · Quiet, a radio group dressed as chips, scrolling sideways with edge fades when narrow), and the
-  status row: "Until 23:30", "No timer" or "Fading · until 23:30" (the time only at 360 px and narrower), with at
-  most one chip: **Hold to breathe in** (Breathe), **Sound** (Quiet), **A little longer** (fading), or
+  status row: "Until 23:30", "No timer" or "Fading · until 23:30" (beside a chip it takes the short form
+  "Until 23:30" at 360 px and narrower, and beside the long sound-back chip on phones; at 320 px that chip has the
+  row to itself), with at most one chip: **Hold to breathe in** (Breathe), **Sound** (Quiet), **A little longer** (fading), or
   **Tap to bring the sound back** (the audio did not resume after the page was hidden). A newer need replaces the
   current chip until it is resolved.
 - **Landscape** (≤ 420 px tall, a bedside stand): one row. The status text hides and the time moves into the
   subtitle ("Moonlight · until 23:30"); the chip stays inline after the modes.
+- **The caption** ("A soft glow to rest by.") steps aside while the sheet is open: the scene is the preview.
 - **Night chrome** has no blur. It uses opaque night tokens on `.screen.nightlight` in either theme.
 
 ### The settings sheet (the sliders button)
 
 Every change previews live behind the sheet: its scrim is clear, so the world and the sky show the new light
 as the slider moves. In portrait it is a bottom sheet that keeps the sky in view; in landscape and on wide
-screens it is a side panel, so the Mallow itself stays in view beside it. The sheet is fully opaque, traps
-focus, closes on Done, the scrim or Escape, and hands focus back to the sliders button. The chrome stays awake
-while it is open.
+screens it is a side panel, so the Mallow itself stays in view beside it; in landscape the centred title and the
+mode row, which the panel would cut in half, step aside while it is open. The sheet is fully opaque, traps
+focus, closes on Done, the scrim or Escape, and hands focus back to the sliders button. Done stays at its foot as
+an opaque pill on an opaque strip the sheet's full width, so the rows scroll under it and never show through. The
+chrome stays awake while it is open.
 
 | Row | Choices | Notes |
 |---|---|---|
@@ -238,7 +242,9 @@ level, ended, hidden, leaving). **`NightBed(sound, { mallowId, texture, quality,
 ### `features/nightlight/world.js` and `sky.js`
 **`WorldLayer(wrap, { quality })`**: `resize(W, H, baseline)`, `setScene(scene, { instant })`,
 `setMood(partial, { force, instant })`, `setGrade(gain, { force })`, `setDrift(dx, dy)`, `goLive({ quality })`,
-`goStill()`, `sample()` → `{ lum, br }`, `debug()`, `destroy()`; `paintNightStage(W, H, dpr, opts)`.
+`goStill()` (idempotent: one snapshot and one 0.8 s cross-fade, then the live realm closes on its own timer, so a
+repaint meanwhile cannot keep it alive), `stilling`, `sample()` → `{ lum, br }`, `debug()`, `destroy()`;
+`paintNightStage(W, H, dpr, opts)`.
 **`NightSky(screen, { before, quality, motion, seed })`**: `configure(mix)`, `setLight`, `setLevels`,
 `setBody`, `setBreath`, `setHaloGain`, `attract(x, y)`, `setMotion`, `setQuality`, `frame(dt)`, `onGlint`,
 `debug()`, `destroy()`.
@@ -304,8 +310,9 @@ pacer, face mixer, modes, chrome, status, chips, sheet, visibility) and the end 
   change or the arrival; steady 15 / 24 / 15 / 20 / 10 by mode; fading ≤ 12, then 8 below world level 0.3;
   Movement Still ≤ 10; the low tier × 0.8, never below 8; 0 when hidden or ended. Physics stays in real time at
   any cap. These are targets to measure on devices, not claims.
-- **Live realm**: only in Drift's window, only on high and medium devices with Movement Gentle, never while fading.
-  Everywhere else the world is a painted still.
+- **Live realm**: only in Drift, only on high and medium devices with Movement Gentle, never while fading: for the
+  first 3 min and for 45 s after a touch, measured on the session clock (wall time), so a slow or throttled device
+  never keeps it longer, and a clock set back keeps its length. Everywhere else the world is a painted still.
 - **Hidden**: veiled at once; the rig, Companion, live realm and audio stop themselves; the wake lock lets go;
   timers are cleared. **Wake lock**: off unless the person turns it on; requested only while visible; let go when
   hidden (asked again on return), at the end, on exit and after an hour; a refusal is never retried.
@@ -352,9 +359,14 @@ tokens, no blur, no `!important`, 40 px controls, the viewport and reduced-motio
 **Browser** (`tests/e2e-phase3-nightlight.cjs`, on the shared harness; reports and screenshots in
 `docs/phase3/nightlight/`): `open` (E1), `moonlight` (E3), `sleepy` (E5), `mallows` (E28), `modes`, `exit`
 (and three-visit leaks), `sound` (E2, E7, E11), `fade` (E12, E13, E30), `background` (E16–E20), `wake` (E21),
-`press` (E4), `sheet` (the sheet, E8–E11 through it), `motion` (E14), `access` (E24, E25, E15), `theme` (E26),
-`scroll` (E27), `privacy` (E22), `isolation` (E29) and `layout` (E23 at all seven viewports: steady, asleep,
-the sheet, fading and the end view). Software GL runs slowly, so every wait is on state.
+`press` (E4, off-body press), `sheet` (the sheet, E8–E11 through it), `motion` (E14), `access` (E24, E25, E15),
+`theme` (E26), `scroll` (E27), `privacy` (E22), `isolation` (E29), `breathe` (E4 in full: two breaths, the
+period, the halo following the inflate, H and the chip, Less and Still), `drift` (E6 in full: the live realm's
+3 minutes and 45 s on clock time, fireflies, Less, Still drawing nothing) and `layout` (E23 at all seven
+viewports: steady, asleep, the sheet, fading and a live end with the sleeping Mallow above the card). Every night
+world is also shot at the default and the minimum brightness (`nightlight-phone-<mallow>[-min].jpg`), and each mode
+once (`nightlight-phone-mode-<mode>.jpg`). Each block's header in the file maps it to its brief line. Software GL
+runs slowly, so every wait is on state.
 
 ---
 
@@ -372,9 +384,9 @@ and nothing here counts as tested on a phone until it has been tried there:
 4. **Battery**: a 30-minute session per mode at default settings, compared with the home screen idle. Report only
    measured values.
 5. **A dark room at minimum screen brightness**: the chrome and the end card are readable; true black on OLED;
-   the colour temperature on the art; each night world at default and minimum brightness (spark-festival "after
-   closing" and the calmed static-storm may read as gloomy; `NIGHT_SCENES[id].ok = false` maps a world to
-   moonmilk-cove).
+   the colour temperature on the art; each night world at default and minimum brightness (reviewed in
+   simulation: spark-festival "after closing" now keeps about half its lanterns lit, heaviness 0.58; the calmed
+   static-storm keeps Glitzi's dimmed glitch lines; `NIGHT_SCENES[id].ok = false` maps a world to moonmilk-cove).
 6. **Landscape on a bedside stand**, the side-panel sheet, VoiceOver and TalkBack, and an older Android phone on
    the low tier (caps, Drift without a live window).
 7. **The night bed's level**: it is quiet by design (peak 0.035 × the 50 % trim); listen at night volume on a phone

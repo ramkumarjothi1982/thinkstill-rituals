@@ -1335,6 +1335,23 @@ test('U20 the five modes on a fake api: rests ≥ 0.62, Moonlight swell and limi
     f.run(c, 1);
     assert.equal(f.world.lives, 0, `no live window: ${why}`);
   }
+  // with the session clock (ms) the window is wall time: a slow device (little frame time) never keeps it longer
+  const wc = fakeScene('noomi'), wcc = startMode('drift', wc.api), T0 = 1.7e12;
+  wcc.tick(0.05, T0);
+  assert.equal(wc.world.isLive, true);
+  wcc.tick(0.05, T0 + (LIVE.firstS - 1) * 1000);
+  assert.equal(wc.world.isLive, true, 'inside the first 3 min of clock time');
+  assert.ok(Math.abs(wcc.liveLeft - 1) < 1e-6);
+  wcc.tick(0.05, T0 + LIVE.firstS * 1000 + 50);
+  assert.equal(wc.world.isLive, false, 'closed after 3 min of clock time, after only 0.15 s of frames');
+  wcc.event({ type: 'tap' });
+  wcc.tick(0.05, T0 + 200e3);
+  assert.equal(wc.world.isLive, true, 'a touch reopens it for 45 s of clock time');
+  wcc.tick(0.05, T0 + 200e3 - 3600e3);   // the clock is set back an hour: the window keeps its length
+  assert.ok(wcc.liveLeft <= LIVE.touchS + 1e-6 && wc.world.isLive);
+  wcc.tick(0.05, T0 + 200e3 - 3600e3 + (LIVE.touchS + 0.1) * 1000);
+  assert.equal(wc.world.isLive, false);
+  wcc.stop();
   const fail = fakeScene('noomi', { live: false }), fc = startMode('drift', fail.api);
   fail.run(fc, 1);
   dc.stop();
@@ -1618,6 +1635,13 @@ test('U24 stylesheet: every rule scoped to .nightlight, night tokens, no blur, n
   // range inputs: 40 px high, at most min(180 px, 46 vw) wide; every sheet choice ≥ 40 px
   const range = rules.find((r) => r.selectors.includes('.nightlight .nl-range')).body;
   assert.match(range, /height:\s*40px/); assert.match(range, /width:\s*min\(180px,\s*46vw\)/);
+  // the sticky Done: an opaque pill (::after) on an opaque strip the sheet's full width (::before), so rows scroll
+  // under it and never show through or beside it
+  const doneAfter = rules.find((r) => r.selectors.includes('.nightlight .sheet .done::after') && /inset:/.test(r.body)).body;
+  assert.match(doneAfter, /background:[^;]*var\(--nl-sheet\)/);
+  const doneStrip = rules.find((r) => r.selectors.includes('.nightlight .sheet .done::before') && /left:/.test(r.body)).body;
+  assert.match(doneStrip, /left:\s*calc\(-1 \* var\(--nl-pad\)\)/); assert.match(doneStrip, /bottom:\s*calc\(-1 \* var\(--nl-padb\)\)/);
+  assert.match(doneStrip, /var\(--nl-sheet\)/);
   const segBtn = rules.find((r) => r.selectors.includes('.nightlight .nl-seg button')).body;
   assert.match(segBtn, /min-width:\s*40px/); assert.match(segBtn, /min-height:\s*40px/);
   // the viewports: narrow (≤ 360), short landscape (≤ 420 tall, the time in the subtitle), the side panel

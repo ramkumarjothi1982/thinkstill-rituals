@@ -937,6 +937,22 @@ test('U12 take: segments after a gap, caps, best(), replay keeps order and degre
     assert.ok(!notesOf(R.events.slice(n), (e) => e.src === 'replay').length, 'nothing after stop');
   }
 
+  // a quick pair (≈ 80 ms apart) that soft quantising would fold back onto, or before, the note it follows: it
+  // follows by the rate limit's gap instead, so the replay keeps both, in order (it used to ghost the second)
+  {
+    const R = rig({ lead: 'boppo' }), pl = R.players[0], E = R.engine, gap = (MIN_GAP + 0.005) / R.clock.beatS;
+    const pair = [{ beat: 0, slot: 0, kind: 'n', deg: 0, vel: 0.7 }, { beat: 1.3, slot: 0, kind: 'n', deg: 2, vel: 0.7 },
+      { beat: 1.428, slot: 0, kind: 'n', deg: -1, vel: 0.7 }, { beat: 1.94, slot: 0, kind: 'n', deg: 1, vel: 0.7 }];
+    const q = E._replayGrid(pair);
+    for (let i = 1; i < q.length; i++) assert.ok(q[i] - q[i - 1] >= gap - 1e-9, `in order, ${gap.toFixed(3)} beat apart: ${q.map((x) => x.toFixed(3))}`);
+    const from = R.events.length;
+    pl.degree(1); R.time.advance(0.5);   // (a live note, so the clock and parts are running)
+    E.replay(pair);
+    R.time.advance(R.clock.barS * 3);
+    const rp = notesOf(R.events.slice(from), (e) => e.src === 'replay');
+    assert.deepEqual(rp.map((e) => e.deg), [0, 2, -1, 1], 'every note of the quick pair replayed, none a ghost');
+  }
+
   // codec
   const evs = [
     { beat: 0, slot: 0, kind: 'n', deg: -7, vel: 0.99 }, { beat: 0.25, slot: 1, kind: 'n', deg: 14, vel: 0.11 },

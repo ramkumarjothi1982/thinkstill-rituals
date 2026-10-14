@@ -76,6 +76,7 @@
   opacity: 0; transition: opacity 900ms ease; pointer-events: none; }
 .nightlight .nl-caption.on { opacity: 0.86; }
 .nightlight.nl-calm .nl-caption { transition-duration: 300ms; }
+.nightlight.nl-sheet-open .nl-caption { opacity: 0; }   /* the sheet is open: the scene is the preview, no words over it */
 
 /* the end view: near black, the sleeping Mallow where it was, a card that rests at 0.35 */
 .screen.nightlight.nl-end { background: #000; }
@@ -83,12 +84,15 @@
 .nightlight .nl-endcard { transition: opacity 600ms ease, transform 600ms ease; }
 .nightlight .nl-endcard.on { opacity: 0.35; }
 .nightlight .nl-endcard.on.lit { opacity: 1; }
+.nightlight .nl-endcard .end-cap { text-wrap: balance; }   /* "Nightlight finished / at 9:02 PM.", never a lone "PM." */
+.nightlight .nl-endcard .end-line { text-wrap: pretty; }
 
 /* the settings sheet: opaque night glass (no blur) over a clear scrim, so the scene behind it is a live
    preview of every change. Portrait: a bottom sheet that keeps the sky in view. Landscape and wide
    screens: a side panel, so the Mallow itself stays in view beside it (below). */
 .nightlight .sheet-scrim { background: transparent; }
-.nightlight .sheet { max-height: min(68vh, 640px); padding-left: 18px; padding-right: 18px; color: var(--text-1);
+.nightlight .sheet { --nl-pad: 18px; --nl-padb: calc(var(--safe-bottom) + 22px);
+  max-height: min(68vh, 640px); padding-left: var(--nl-pad); padding-right: var(--nl-pad); padding-bottom: var(--nl-padb); color: var(--text-1);
   background: var(--nl-sheet); border-color: var(--chrome-line); overscroll-behavior: contain; }
 .nightlight .sheet.on { transform: none; }
 .nightlight .sheet h3 { margin-bottom: 4px; }
@@ -114,15 +118,28 @@
 .nightlight .nl-row-stop > :last-child { margin-left: 0; }
 .nightlight .nl-foot { margin: 10px 0 0; color: var(--text-3); font-size: var(--fs-micro); line-height: 1.45; }
 .nightlight .nl-foot + .nl-foot { margin-top: 4px; }
-.nightlight .sheet .done { min-height: 48px; box-shadow: 0 -12px 16px 4px var(--nl-sheet); }
+/* Done stays at the foot of the sheet: an opaque pill on an opaque strip the full width of the sheet, so the
+   rows scroll under it and never show through or beside it */
+.nightlight .sheet .done { z-index: 1; min-height: 48px; background: transparent; box-shadow: none; }
+.nightlight .sheet .done::before, .nightlight .sheet .done::after { content: ''; position: absolute; z-index: -1; pointer-events: none; }
+.nightlight .sheet .done::before { left: calc(-1 * var(--nl-pad)); right: calc(-1 * var(--nl-pad)); top: -20px; bottom: calc(-1 * var(--nl-padb));
+  background: linear-gradient(rgba(11, 9, 32, 0), var(--nl-sheet) 20px); }
+.nightlight .sheet .done::after { inset: 0; border-radius: inherit; background: linear-gradient(var(--chip-on), var(--chip-on)), var(--nl-sheet); }
 /* less motion: the sheet fades in place instead of sliding */
 .nightlight.nl-calm .sheet, .nightlight.nl-calm .sheet.on { transform: none; transition: opacity 200ms ease; }
 .nightlight.nl-calm .sheet { opacity: 0; pointer-events: none; }
 .nightlight.nl-calm .sheet.on { opacity: 1; pointer-events: auto; }
 
+/* beside a chip, the status takes its short form ("Until 6:28 PM"): beside the long sound-back chip on phones,
+   beside any chip on narrow ones; at 320 px the sound-back chip has the row to itself */
+@media (max-width: 440px) {
+  .nightlight .nl-status[data-chip="soundBack"] .nl-st-full { display: none; }
+  .nightlight .nl-status[data-chip="soundBack"] .nl-st-time { display: inline; }
+}
 @media (max-width: 360px) {
-  .nightlight .nl-st-full { display: none; }
-  .nightlight .nl-st-time { display: inline; }
+  .nightlight .nl-status[data-chip]:not([data-chip=""]) .nl-st-full { display: none; }
+  .nightlight .nl-status[data-chip]:not([data-chip=""]) .nl-st-time { display: inline; }
+  .nightlight .nl-status[data-chip="soundBack"] .nl-st { display: none; }
 }
 /* landscape on a bedside stand: one row (modes, then the chip); the time moves into the subtitle */
 @media (max-height: 420px) {
@@ -136,13 +153,17 @@
 @media (min-width: 900px), (max-height: 420px) and (min-width: 540px) {
   .nightlight .sheet { top: 0; bottom: 0; left: auto; right: 0; width: min(380px, 42vw); max-width: none; max-height: none; margin: 0;
     border: 0; border-left: 1px solid var(--chrome-line); border-radius: var(--r-lg) 0 0 var(--r-lg);
-    padding: calc(var(--safe-top) + 14px) 16px calc(var(--safe-bottom) + 14px); transform: translateX(100%); }
+    --nl-pad: 16px; --nl-padb: calc(var(--safe-bottom) + 14px);
+    padding: calc(var(--safe-top) + 14px) var(--nl-pad) var(--nl-padb); transform: translateX(100%); }
   .nightlight .sheet.on { transform: none; }
   .nightlight.nl-calm .sheet { transform: none; }
 }
 @media (max-height: 420px) and (min-width: 540px) {
   .nightlight .sheet h3 { font-size: 18px; margin-bottom: 0; }
   .nightlight .nl-row { padding: 6px 0; }
+  /* the panel would cut the centred title and the mode row in half: they step aside while it is open
+     (the panel has its own heading; the Mallow stays in view beside it) */
+  .nightlight.nl-sheet-open .topbar .title, .nightlight.nl-sheet-open .bottom { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .screen.nightlight { transition-duration: 300ms; }

@@ -4,7 +4,7 @@ One shared sensory engine with thin experiences on top. The modules form a
 one-way dependency graph with no cycles:
 
 ```
-features/*  ──▶ features/stage-screen ──▶ core/companion
+features/*  ──▶ features/stage-screen ──▶ core/companion (one per stage; a second one in a duet)
                      │                        ├─▶ core/soft-mallow ──▶ src/mallows/rig.js (production, read-only)
                      │                        │        ├─▶ core/softbody ──▶ core/materials
                      │                        │        ├─▶ core/mesh-renderer
@@ -14,8 +14,15 @@ features/*  ──▶ features/stage-screen ──▶ core/companion
                      │                        ├─▶ core/personality
                      │                        ├─▶ core/expression-engine (ExpressionDirector)
                      │                        └─▶ src/engine/haptics.js (production, read-only)
-                     └─▶ src/world/realm.js (Hushfold realm backdrops, production, read-only)
+                     └─▶ core/environment ──▶ src/world/realm.js (Hushfold realms, production, read-only)
+                                         └─▶ core/effects (FlashGate)
 features/pocket-hush ──▶ core/effects, core/pocket-rules, features/pocket/* (one module per moment)
+features/weather     ──▶ core/weather + core/weather/* (pure sims), core/weather-draw, -layer, -mallow, -sound,
+                         features/weather/{tools,ui}; shared: environment, pointer-router, ambience, effects, FaceMixer
+features/hushbeat    ──▶ core/music-theory, -time, -engine (pure), core/music-kits, -audio, -fx,
+                         features/hushbeat/{player,performer,sheet,copy}; shared: sound-engine (voices, quietSound), effects, FaceMixer
+features/nightlight  ──▶ core/frame-pacer, core/screen-wake, features/nightlight/{session,settings,look,pacing,
+                         ways,modes,world,sky,bed,sheet,copy}; shared: environment (stills), ambience, sound-engine (facade, trim)
 lab.js ──▶ core/prefs, core/sound-engine, core/perf, features/registry,
            core/comfort-dna ──▶ adapters/comfort-store (local) | adapters/supabase-comfort (later, unused)
 ```
@@ -182,10 +189,69 @@ unit tested there.
   6 substeps, DPR 1.5; low is 8×8, 4 substeps, DPR 1. WebGL is used with a
   Canvas 2D textured-triangle fallback.
 
+### Phase 3 shared engine
+
+**Environment Engine: `core/environment.js`.** One Hushfold realm per
+container. `new Environment(wrap, {screen, quality, reducedMotion, gate})`,
+then `mount(realmId, {mood | emotion, intensity, transform, groundY})`,
+`remount`, `setMood(m)` (throttled: forwards at most every 200 ms unless an
+axis moves by 0.02 or more), `transform(p)`, `pulse(kind, pos)` (through a
+`FlashGate`: refused pulses are dropped, never converted), `setFocus`,
+`snapshot()`, `destroy()`, and the getters `realm`, `realmId`, `geo`, `tone`,
+`mood`, `log`. Also `REALM_GEO` (horizon, water, sun/moon anchors per realm,
+pinned to the production realm files by a test), `backdropTone`, `homeRealm`,
+`lightAnchor`, `pulseGate`, `paintRealm` (a still frame of a realm) and
+`isBlank`. Only this module calls `mountRealm`.
+
+**Pointer routing: `core/pointer-router.js`.** `routePointers(el, {claim})`
+claims off-body pointers in the capture phase before a Companion sees them
+(Weather Weaver's tools). `watchPresses(el, {onBody, ms, onPress, onRelease,
+onTap})` watches passively for still presses off the body (Hushbeat's and
+Nightlight's breath lead).
+
+**Ambient beds: `core/ambience.js`.** `noiseBuffer(ac, secs, colour)` and
+`AmbientBed(sound, {layers, pad, respectFx, tau, fadeIn})` with `set`,
+`setFreq`, `ramp`, `want`, `tick`, `end`. One kept voice; it rebuilds itself
+after mute, a hidden page or the voice cap ends it.
+
+**SoftMallow additions.** `bodyRect()`, `nudge({lean, squash, shear, tilt,
+hop})`, `setFrameCap(fps)` (null = uncapped, 0 = paused; physics stays real
+time through substeps), a `'tick'` event, `overlay(kind, params, dur)`,
+`peekParams`, `setGrade([r,g,b])` (drawn by the mesh renderer's `uGrade`).
+
+**Sound Engine additions.** `_voice(dur, {pan, dest, send, keep})`, a
+keep-aware voice cap (`_room()`), `setTrim(k)` and `rest()` (Nightlight's
+session volume and screen-lock rest), and `soundFacade(sound, {fx, voice,
+skip})` / `quietSound(sound)` for Companions whose own sounds should be
+scaled or silenced (Hushbeat, Nightlight).
+
+**Effects additions.** `FlashGate({max, windowMs, gaps, bright})` (the one
+photosafe limiter: at most 3 bright events a second per screen, realm and
+lab effects together), cached `glowSprite`s, `glowBlend(surfaceTone(el))`,
+and EffectsLayer options `manual`, `before`, `dprCap`, `className`, `zIndex`
+with a public `render(dt)`.
+
+**Character controls.** `FaceMixer(rig, owners)` merges face overrides from
+several owners (base, mode, event) into one object; `softened(kind, {gentle,
+reduced})` and `Personality.setFilter(fn)` keep reactions gentle where a
+feature needs it; `Companion` takes an `onGesture(type, d, companion)` hook.
+
+**Stage screen and lab shell.** `stageScreen` gains `sound`, `feedback`,
+`keys`, `onGesture`, `onLayout`, `stageLabel`, returns `wrap` and `env`, and
+has a duet API: `setPartner(mallowId | null, {quality, tier})`, `companions`,
+`stages`, `partner`. `ctx.addCompanion(c, {tier})` lets lab-wide settings
+reach a partner Companion. Kept Hushbeat tunes are handed to Hushbeat by the
+home offer.
+
+### Phase 3 experiences
+- **Hushfold Weather Weaver:** `docs/WEATHER.md`.
+- **Hushbeat Symphony:** `docs/HUSHBEAT.md`.
+- **Mallow Nightlight:** `docs/NIGHTLIGHT.md`.
+
 ### Not built yet (later phases)
-These are planned modules: the rest of the Environment Engine (weather and
-time of day, Phase 3), the rest of the Effects Engine (Phase 3), Keepsake
-Renderer (Phase 4), and Connection Interface (Phase 5).
+These are planned modules: the Keepsake Renderer (Phase 4, which can start
+from `Environment.snapshot()` and `paintRealm`) and the Connection Interface
+(Phase 5).
 
 ## Integration
 

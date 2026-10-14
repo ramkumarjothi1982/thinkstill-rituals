@@ -135,6 +135,9 @@ surface tone are polled once a second. Nothing allocates per frame.
   Events more than 50 ms late are dropped, never played late (a tune waits for a joining friend's body to be
   built, which would otherwise stall the main thread past that). A replay's notes carry their own tolerance,
   `REPLAY_LATE` 250 ms: one caught by a long frame still sounds, at once, so the tune keeps every note.
+  A replayed note is soft-quantised 75 % toward its Mallow's grid; one that would land within 70 ms of the note
+  before it takes a finer grid, else follows that note by the rate limit's gap (never before it: it would only
+  be a ghost; two quick notes used to lose one in the replay).
 - A touch is seen in the same frame; a scheduled event at `ev.t + outputLatency` when audible, else at `ev.t`.
 
 ### States
@@ -332,8 +335,9 @@ Serve the repository root first (`python3 -m http.server 8000`). Reports go to
 A full run writes about 70 screenshots, so pass a scratch folder and copy the ones worth keeping; the folder
 holds the last full report (585/585) and 43 curated screenshots (every viewport's solo, tray, row, picker,
 duet, sheet; every Mallow in its own world; the dark sheets; the bloom; replay; Play it; keyboard focus).
-Screenshots are taken as a touch user sees them: a stage the feature focused on arrival is blurred first
-(capturing a software-GL page also stalls it for hundreds of ms, so none is taken during a checked replay).
+Screenshots are taken as a touch user sees them: a stage the feature focused on arrival is blurred first, and CSS
+transitions are suspended for the capture (a slow software-GL page can leave a 140 ms transition pending for
+seconds). Capturing also stalls such a page for hundreds of ms, so none is taken during a checked replay.
 
 | Unit | Proves |
 |---|---|

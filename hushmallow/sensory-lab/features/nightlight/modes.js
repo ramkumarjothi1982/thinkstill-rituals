@@ -10,9 +10,11 @@
 // Every mode rests at intensity ≥ 0.62 (which keeps the rig's own idle hops
 // and sparks asleep), owns the face mixer's 'mode' layer, and returns
 // { tick(dt, t), event(e, ts), setMotion(m), stop() }. stop() releases what it
-// set and lets squeeze and inflate ease back to 0. `ts` is the event's wall
-// time in seconds (a hold is a human gesture: "held for 4 s" is real seconds);
-// without it the mode's frame clock stands in.
+// set and lets squeeze and inflate ease back to 0. `t` is the session clock in
+// ms (wall time, with the debug skew): Drift's live time is measured on it,
+// so a slow or hidden device never keeps the live realm longer. `ts` is the
+// event's wall time in seconds (a hold is a human gesture: "held for 4 s" is
+// real seconds). Without either, the mode's frame clock stands in.
 //
 // The api (features/nightlight.js): { id, ways, rig, companion, face, sky,
 // world, bed, pacer, limiter, moments, rand, look, levels, rules(), motion(),
@@ -340,16 +342,24 @@ const BUILD = {
     face.min('mode', 'float', api.id === 'loomi' || api.id === 'noomi' ? 0.3 : 0.2);
     sky.onGlint = () => api.bed?.chime();   // now and then a firefly's glint rings a soft bell (≥ 20 s apart)
     const pt = { x: 0, y: 0 };
-    let t = 0, liveUntil = LIVE.firstS, liveFailed = false, nextGaze = (8 + api.rand() * 7) * api.speedK(), gazeUntil = -1, gazeI = -1;
+    // the live realm's clock (s): the session clock when the screen passes it, else this mode's frame time
+    let t = 0, clockS = null, liveUntil = null, touched = false, liveFailed = false, nextGaze = (8 + api.rand() * 7) * api.speedK(), gazeUntil = -1, gazeI = -1;
     const ph = api.rand() * TAU;
     const liveOK = () => {
       const q = api.quality(), p = api.phase();
       return !liveFailed && api.rules().live && (q === 'high' || q === 'medium') && p !== 'fading' && p !== 'ended' && !!world.realmId && !world.plain;
     };
     return {
+      /** When the live realm turns back into a still, on that clock (s); `liveLeft` is the time left. */
       get liveUntil() { return liveUntil; },
-      tick(dt) {
+      get liveLeft() { return liveUntil == null || clockS == null ? null : Math.max(0, liveUntil - clockS); },
+      tick(dt, now) {
         t += dt;
+        const prev = clockS;
+        clockS = Number.isFinite(now) ? now / 1000 : t;
+        if (liveUntil == null) liveUntil = clockS + LIVE.firstS;                     // the first 3 min from entering Drift
+        else if (clockS < prev - 2) liveUntil -= prev - clockS;                      // the clock was set back: the live time keeps its length
+        if (touched) { touched = false; liveUntil = Math.max(liveUntil, clockS + LIVE.touchS); }
         const rules = api.rules();
         face.min('mode', 'glow', api.look.glow * 0.8 + api.warm());
         // its eyes follow a firefly for 2.5 s every 8–15 s
@@ -360,13 +370,13 @@ const BUILD = {
         if (gazeI >= 0 && t < gazeUntil && sky.firefly(gazeI, pt)) rig.lookAtScreen(pt.x, pt.y); else gazeI = -1;
         // the world slides ±6 px over two minutes
         if (rules.parallax) { const a = ph + TAU * t / 120; world.setDrift(6 * Math.sin(a), 2 * Math.sin(2 * a)); } else world.setDrift(0, 0);
-        // the live realm: the first 3 min, and 45 s after a touch
-        const want = liveOK() && t < liveUntil;
+        // the live realm: the first 3 min, and 45 s after a touch (wall time: never longer on a slow device)
+        const want = liveOK() && clockS < liveUntil;
         if (want && !world.isLive) { if (!world.goLive({ quality: api.quality() }) && world.W) liveFailed = true; }
         else if (!want && world.isLive) world.goStill();
       },
       event(e) {
-        if (TOUCHES.includes(e.type)) liveUntil = Math.max(liveUntil, t + LIVE.touchS);
+        if (TOUCHES.includes(e.type)) touched = true;   // the next frame keeps the realm live for 45 s more
         if (e.type === 'offtap' && Number.isFinite(e.x)) sky.attract(e.x, e.y);
       },
       setMotion() {},
