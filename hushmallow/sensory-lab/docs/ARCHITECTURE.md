@@ -241,7 +241,11 @@ feature needs it; `Companion` takes an `onGesture(type, d, companion)` hook.
 has a duet API: `setPartner(mallowId | null, {quality, tier})`, `companions`,
 `stages`, `partner`. `ctx.addCompanion(c, {tier})` lets lab-wide settings
 reach a partner Companion. Kept Hushbeat tunes are handed to Hushbeat by the
-home offer.
+home offer, and `ctx.openTune(tune, {play})` reopens a kept tune with the
+Mallow that made it. `openSheet(root, title, content, {onClose})` calls
+`onClose` once however the sheet closes, and a closing sheet stops taking
+taps while it fades. The screen publishes its chrome bands as
+`--band-top` / `--band-bottom` and in `onLayout`.
 
 ### Phase 3 experiences
 - **Hushfold Weather Weaver:** `docs/WEATHER.md`.

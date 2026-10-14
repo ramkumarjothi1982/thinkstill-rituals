@@ -156,7 +156,7 @@ function home() {
     h('div', { class: 'brand' },
       h('h1', {}, 'hushmallow ', h('span', {}, 'Sensory Lab')),
       h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
-        h('span', { class: 'pill' }, 'Phase 2 preview'),
+        h('span', { class: 'pill' }, 'Phase 3 preview'),
         iconBtn('settings', 'Settings', () => settings()))),
     hero,
     h('div', { class: 'hero-cap' }, h('h2', {}, m.name), h('p', {}, 'Touch me. Go on, I’m soft.')),
