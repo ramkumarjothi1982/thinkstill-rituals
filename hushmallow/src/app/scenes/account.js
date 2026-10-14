@@ -66,13 +66,19 @@ function ensureCss() {
  * never "example." / "com"), and only then after a dot, never mid-word. Each
  * half is a whole block that moves as one; inside it, a dot can break as a
  * last resort. The account card and the Settings row both use it.
+ * tail (a string or a node: the "." or "," that follows the address in a
+ * sentence) goes inside the last piece, so it can never wrap onto a line of
+ * its own: it stays glued to "…com" (no break opportunity between them).
  */
-export function emailParts(text) {
+export function emailParts(text, tail = null) {
+  const s = String(text);
   const dots = (t) => String(t).split(/(?<=\.)/).flatMap((part, i) => (i ? [h('wbr'), part] : [part]));
-  const whole = (t) => h('span', { style: { display: 'inline-block', maxWidth: '100%', overflowWrap: 'break-word' } }, ...dots(t));
-  const at = String(text).lastIndexOf('@');
-  if (at <= 0 || at === String(text).length - 1) return dots(text);
-  return [whole(String(text).slice(0, at + 1)), h('wbr'), whole(String(text).slice(at + 1))];
+  const whole = (t, end = null) => h('span', { style: { display: 'inline-block', maxWidth: '100%', overflowWrap: 'break-word' } }, ...dots(t), end);
+  const at = s.lastIndexOf('@');
+  const end = tail === '' ? null : tail;
+  // not an address ("your email"): plain text, the tail right after its last letter (no break before "." or ",")
+  if (at <= 0 || at === s.length - 1) return end == null ? dots(s) : [...dots(s), end];
+  return [whole(s.slice(0, at + 1)), h('wbr'), whole(s.slice(at + 1), end)];
 }
 
 /** Opens the account scene (for the side panel). params.view opens one screen directly. */
@@ -89,7 +95,9 @@ export function mountAccountRow(app, el) {
   // the address as on the account card: whole on its line, broken only after "@" or a dot if it must
   const addr = (email) => h('span', { translate: 'no', 'data-email': '', style: { display: 'inline-block', maxWidth: '100%', overflowWrap: 'break-word' } }, ...emailParts(email));
   const sub = signedIn ? (u.email ? ['Signed in as ', addr(u.email)] : ['Signed in']) : ['Optional. Everything works without one.'];
-  el.replaceChildren(h('div', { class: 'setting' },
+  // .setting-action (app.css): on a narrow row (320 px at text size 1.25) the button goes under the label,
+  // full width, instead of squeezing it ("Your / account", the address broken inside a word)
+  el.replaceChildren(h('div', { class: 'setting setting-action' },
     h('div', { class: 'grow', style: { ...type('row'), minWidth: 0 } }, label, h('small', { style: type('caption', { display: 'block', color: 'var(--text-3)', marginTop: '2px', overflowWrap: 'break-word' }) }, ...sub)),
     h('button', { class: 'btn', style: { minHeight: '44px' }, 'data-act': 'account-row', onclick: () => openAccount(app) }, signedIn ? 'Manage' : 'Sign in')));
 }
@@ -196,10 +204,10 @@ export default function account(app, params = {}) {
   const linkBtn = (label, onclick, act = null) => h('button', { type: 'button', class: 'hm-auth-link', 'data-act': act, onclick }, label);
   const hint = (text, cls = '') => h('p', { class: `hm-auth-hint ${cls}`.trim() }, text);
   // an email address stays in one piece (account.css: it moves to the next line whole); only one wider
-  // than the card breaks, after "@" or a dot, never mid-word. tail: the punctuation that follows it, kept with it
+  // than the card breaks, after "@" or a dot, never mid-word. tail: the punctuation that follows it, inside
+  // the address's last piece (emailParts), so a lone "." never wraps onto a line of its own
   const strong = (text, tail = '') => h('span', { class: 'hm-account-strong' },
-    h('strong', { translate: 'no' }, ...emailParts(text)),
-    tail ? h('span', { class: 'hm-account-tail' }, tail) : null);
+    h('strong', { translate: 'no' }, ...emailParts(text, tail ? h('span', { class: 'hm-account-tail' }, tail) : null)));
   /** A pill on one line when it fits, a shorter label when not, and balanced lines (never a lone word) as the last resort. */
   const fitPill = (b, ...shorter) => {
     if (!b?.isConnected) return;

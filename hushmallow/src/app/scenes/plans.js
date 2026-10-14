@@ -14,6 +14,16 @@ import { openSupport } from './support.js';
 import { plansBeyondNote } from '../privacy.js';
 
 const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
+// Lines that must not leave a word alone at 320 px (no-break spaces; app.css also
+// balances .invite-period): never "nothing is / charged" or "It’s / free →", and the
+// test-purchase note breaks only after a "·", never before one.
+export const SUPPORT_LINK = 'Need support right\u00a0now? It’s\u00a0free\u00a0→';
+/** The line under a plan's button: how it is billed (App Store) or that a test purchase is free. */
+export function periodNote({ native = false, period = 'monthly' } = {}) {
+  const yearly = period === 'yearly';
+  if (native) return `${yearly ? 'Billed once a year' : 'Billed monthly'} by the App Store. Cancel any\u00a0time.`;
+  return `Test\u00a0purchase\u00a0· ${yearly ? 'yearly' : 'monthly'}\u00a0· nothing\u00a0is\u00a0charged`;
+}
 const SVG = 'http://www.w3.org/2000/svg';
 
 // Flow's sigil: three soft swells (Hushflow); Beyond reuses Zuzu's spiral
@@ -51,9 +61,7 @@ export default function plans(app, params = {}) {
   let period = app.state.planPeriod === 'yearly' ? 'yearly' : 'monthly';
   const included = (id) => tier === id || (id === 'paid' && tier === 'ultra');
 
-  const periodNote = () => (ent.isNative
-    ? (period === 'yearly' ? 'Billed once a year by the App Store. Cancel any time.' : 'Billed monthly by the App Store. Cancel any time.')
-    : `Test purchase · ${period === 'yearly' ? 'yearly' : 'monthly'} · nothing is charged`);
+  const noteText = () => periodNote({ native: ent.isNative, period });
 
   // The App Store's own localised price for the chosen period, when the
   // native shell provides it (StoreKit Product.displayPrice through
@@ -64,14 +72,14 @@ export default function plans(app, params = {}) {
     return v ? `${v} ${period === 'yearly' ? 'a year' : 'a month'}` : '';
   };
   const notes = [];   // [plan, price element, period element]
-  const drawNotes = () => notes.forEach(([p, price, note]) => { price.textContent = priceLine(p); price.hidden = !price.textContent; note.textContent = periodNote(); });
+  const drawNotes = () => notes.forEach(([p, price, note]) => { price.textContent = priceLine(p); price.hidden = !price.textContent; note.textContent = noteText(); });
 
   const buttons = [], fits = [];
   function action(p) {
     if (included(p.id)) return h('div', { class: 'btn block invite-included', 'aria-disabled': 'true' }, '✓ Included in your plan');
     if (!ent.canPurchase) return h('div', { class: 'btn block', 'aria-disabled': 'true' }, 'Available in the app soon');
     const price = h('p', { class: 'invite-price', hidden: true });
-    const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, periodNote());
+    const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, noteText());
     notes.push([p, price, note]);
     const label = h('span', { class: 'invite-buy-label' }, `Step into ${p.name}`);
     const btn = h('button', { class: `btn block fit-one invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, label);
@@ -188,7 +196,7 @@ export default function plans(app, params = {}) {
           try { await ent.restore(); if (!gone) toast(ent.has('paid') ? 'Purchases restored' : 'Nothing to restore yet'); } catch { if (!gone) toast('Couldn’t reach the App Store just now. Try again in a moment.', 3200); }
           b.disabled = false;
         } }, 'Restore purchases'),
-        h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Need support right now? It’s free →'),
+        h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, SUPPORT_LINK),
         ent.isNative ? null : h('p', { class: 'test-note' }, ent.canPurchase
           ? 'Development build: purchases here are test purchases. Nothing is charged. In the App Store version, Apple handles payment and receipts.'
           : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'))));
