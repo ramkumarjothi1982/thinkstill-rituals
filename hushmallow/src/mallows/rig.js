@@ -1062,7 +1062,7 @@ export class MallowRig {
       ctx.restore();
       if (!drawn || ctx.isContextLost?.()) { this._skinBase = null; this.skinDirty = true; }
     }
-    if (!partial && !this.skinDirty) this._skinBase = { canvas: this.skin, ctx, w: this.skin.width, h: this.skin.height, q: this.q };
+    if (!partial && !this.skinDirty) { this._skinBase = { canvas: this.skin, ctx, w: this.skin.width, h: this.skin.height, q: this.q }; this._fullDraws = (this._fullDraws || 0) + 1; }
     this.skinVersion++;
     return true;
   }
@@ -1173,7 +1173,7 @@ export class MallowRig {
    *  transparent right after that full redraw is not on the body (it is dropped). About once a second in the 2D
    *  tiers, which show the skin as it is (tier A keeps its own texture). */
   verifySkin() {
-    if (!this.ready || this.destroyed || this.skinDirty || !this._skinBaseOk() || !this.assets) return true;
+    if (this._verifyOff || !this.ready || this.destroyed || this.skinDirty || !this._skinBaseOk() || !this.assets) return true;
     const cells = this._sentinels(), N = MASK_SIZE;
     const g = probeCtx();
     if (!cells.length || !g || g.isContextLost?.()) return true;
@@ -1185,15 +1185,21 @@ export class MallowRig {
       px = g.getImageData(0, 0, N, N).data;
     } catch { return true; }
     const gone = cells.filter(([i, j]) => px[4 * (j * N + i) + 3] < 128);
-    if (!gone.length) { this._verifyRedrew = 0; return true; }
-    if (this._verifyRedrew && this._verifyRedrew !== this.skinVersion) {
-      // transparent on the full drawing just made: a bad sentinel, not a lost skin
-      this._sent = cells.filter((c) => !gone.includes(c));
-      this._verifyRedrew = 0;
+    if (!gone.length) { this._verifyRedrew = 0; this._allGone = 0; return true; }
+    // a full drawing made since the last finding (partial redraws — Zuzu's spirals, every frame — never count)
+    const redrawn = !!this._verifyRedrew && this._verifyRedrew !== (this._fullDraws || 0);
+    if (gone.length < cells.length) {
+      // some cells transparent on a full drawing made since: bad sentinels, not a lost skin (dropped; at least one
+      // always stays, so the check never switches itself off)
+      if (redrawn) { this._sent = cells.filter((c) => !gone.includes(c)); this._verifyRedrew = 0; return true; }
+    } else if (redrawn && ++this._allGone >= 3) {
+      // a lost skin is transparent everywhere, so every sentinel gone is a loss — even a second one within the same
+      // interval — but three in a row straight after full drawings is the readback, not the skin: stop asking
+      this._verifyOff = true;
       return true;
     }
     this._skinBase = null; this.skinDirty = true;
-    this._verifyRedrew = this.skinVersion;
+    this._verifyRedrew = this._fullDraws || 0;
     return false;
   }
 

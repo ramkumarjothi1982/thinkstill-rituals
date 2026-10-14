@@ -17,7 +17,7 @@ function fakeCtx(canvas) {
     save() { rec.depth++; },
     restore() { rec.depth = Math.max(0, rec.depth - 1); },
     isContextLost() { return rec.lost; },
-    getImageData(x, y, w, h) { const d = new Uint8ClampedArray(4 * w * h); for (let i = 3; i < d.length; i += 4) d[i] = rec.alpha; return { data: d, width: w, height: h }; },
+    getImageData(x, y, w, h) { const d = new Uint8ClampedArray(4 * w * h); for (let i = 3; i < d.length; i += 4) { const k = (i - 3) / 4; d[i] = rec.alphaAt ? rec.alphaAt(k % w, Math.floor(k / w)) : rec.alpha; } return { data: d, width: w, height: h }; },
     clearRect(x, y, w, h) { rec.calls.push(['clearRect', x, y, w, h]); },
     clip() { rec.calls.push(['clip']); },
     drawImage(src) {
@@ -74,6 +74,8 @@ const clears = (rig) => rec(rig).calls.filter(([k]) => k === 'clearRect');
 const clearedAll = (rig) => clears(rig).some(([, x, y, w, h]) => x === 0 && y === 0 && w === rig.skin.width && h === rig.skin.height);
 const clipped = (rig) => clears(rig).length > 0 && !clearedAll(rig);
 const bodyDrawn = (rig) => rec(rig).calls.some(([k, src]) => k === 'drawImage' && src === rig.assets.body);
+// the readback probe is one shared canvas: every test starts with it reading the skin as whole
+const resetProbe = () => { for (const c of made) if (c.width === 64 && c.height === 64) { const r = c.getContext('2d').__rec; r.alpha = 255; r.alphaAt = null; } };
 
 test('skin: a full drawing first, then only the changed face parts (clipped)', async () => {
   const rig = await zuzu();
@@ -182,10 +184,63 @@ test('skin: verifySkin finds a body that silently went transparent and the next 
   assert.equal(rig.verifySkin(), false);
   assert.equal(frame(rig), true);
   assert.ok(isFull(rig) && clearedAll(rig), 'full after verifySkin found the body gone');
-  // still transparent right after that full redraw: those are not body pixels (dropped, no endless redraws)
+  // every sentinel gone again right after that full redraw: still a loss (a lost skin is transparent everywhere),
+  // redrawn in full again — but three in a row straight after full drawings is the readback, not the skin: the
+  // check stops asking (no endless redraws) and never drops every sentinel
+  assert.equal(rig.verifySkin(), false, 'second loss');
+  assert.ok(frame(rig) && isFull(rig));
+  assert.equal(rig.verifySkin(), false, 'third loss');
+  assert.ok(frame(rig) && isFull(rig));
+  assert.equal(rig.verifySkin(), true, 'the readback, not the skin: stop asking');
   assert.equal(rig.verifySkin(), true);
-  assert.equal(rig._sentinels().length, 0);
+  assert.ok(rig._sentinels().length > 0, 'the sentinels are never all dropped');
   assert.ok(frame(rig) && !isFull(rig), 'partial again');
+  rig.destroy();
+});
+
+test('skin: a second silent loss within one check interval is found again (verify review: never switched off)', async () => {
+  const rig = await zuzu();
+  rig.assets.mask = new Float32Array(64 * 64).fill(1);
+  resetProbe();
+  frame(rig); frame(rig);
+  const probe = () => made.find((c) => c.width === 64 && c.height === 64 && c.getContext('2d').__rec.calls.some(([k, src]) => k === 'drawImage' && src === rig.skin));
+  assert.equal(rig.verifySkin(), true);
+  const pg = probe().getContext('2d').__rec;
+  const n = rig._sentinels().length;
+  pg.alpha = 0;                                   // the first silent clear
+  assert.equal(rig.verifySkin(), false);
+  assert.ok(frame(rig) && isFull(rig), 'full redraw after the first');
+  for (let i = 0; i < 30; i++) frame(rig);        // half a second of partial frames (the spirals)
+  // the second silent clear, before the next check: found, redrawn in full, sentinels kept
+  assert.equal(rig.verifySkin(), false, 'the second loss is found');
+  assert.ok(frame(rig) && isFull(rig), 'full redraw after the second');
+  assert.equal(rig._sentinels().length, n, 'no sentinel dropped');
+  pg.alpha = 255;                                 // the skin is whole again
+  assert.equal(rig.verifySkin(), true);
+  assert.ok(frame(rig) && !isFull(rig), 'partial again');
+  // and a later loss is still found (the check is on)
+  pg.alpha = 0;
+  assert.equal(rig.verifySkin(), false, 'a later loss is still found');
+  rig.destroy();
+});
+
+test('skin: one sentinel transparent on a fresh full drawing is a bad sentinel (dropped); the others stay', async () => {
+  const rig = await zuzu();
+  rig.assets.mask = new Float32Array(64 * 64).fill(1);
+  resetProbe();
+  frame(rig); frame(rig);
+  assert.equal(rig.verifySkin(), true);
+  const probe = made.find((c) => c.width === 64 && c.height === 64 && c.getContext('2d').__rec.calls.some(([k, src]) => k === 'drawImage' && src === rig.skin));
+  const pg = probe.getContext('2d').__rec;
+  const sent = rig._sentinels(), [bi, bj] = sent[0];
+  pg.alphaAt = (i, j) => (i === bi && j === bj ? 0 : 255);
+  assert.equal(rig.verifySkin(), false, 'first: treated as a loss');
+  assert.ok(frame(rig) && isFull(rig));
+  assert.equal(rig.verifySkin(), true, 'still transparent on the fresh full drawing: a bad sentinel');
+  assert.equal(rig._sentinels().length, sent.length - 1);
+  assert.ok(!rig._sentinels().some(([i, j]) => i === bi && j === bj));
+  pg.alphaAt = null; pg.alpha = 0;
+  assert.equal(rig.verifySkin(), false, 'a real loss is still found');
   rig.destroy();
 });
 
