@@ -700,7 +700,12 @@ export default function hushfold(app, params = {}) {
       if (!S.quietBeat) later(() => { if (S.hold === 'quiet' && S.softHold && !S.quietBeat && !S.asking && !overlay) endQuietWorld(); }, 600);
     }
     if (d?.title && !d.from && !hold && !S.asking && !quietArrival) subtitles.say({ text: d.title, kind: 'title' }, { first: true });
-    if (!hold && !quietArrival && S.asking) { holdForAsk(true); foldWorld(true); }
+    // (its postcards fold away at once; it is held once its first frames have faded in — paused on its very first frame it
+    // would wait unseen, the realm frozen under the new host — so the person sees the world they chose waiting)
+    if (!hold && !quietArrival && S.asking) {
+      foldWorld(true);
+      later(() => { if (S.asking && worldMode && !S.finishing) { holdForAsk(true); stageMallow?.setStage?.(CARE_FACE, { quiet: true }); } }, prefs.reducedMotion() ? 420 : 800);
+    }
     if (panel?.isOpen) holdWorld(true);
     if (sheets.length) holdForSheet(true);
     panel?.update();
@@ -1143,15 +1148,16 @@ export default function hushfold(app, params = {}) {
       if (fade) fade.reveal(() => { if (bounce && touchMt?.id === id) touchMt.react('hop'); });
       else if (bounce) touchMt.react('hop');
       if (S.left || id !== mallowId) return touchMt.rig;
-      // (a new face on stage — a world's host halfway through a gentle melt — keeps the attentive face after something heavy)
-      if (softNow()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
+      // (a new face on stage — a world's host halfway through a gentle melt, or arriving under the question — keeps the
+      // attentive face after something heavy, or while it asks)
+      if (softNow() || S.asking) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
       theme(); layout();
       return touchMt.rig;
     }
     const rig = await world.setMallow(id, { entrance, interactive: true });
     if (S.left || id !== mallowId) return rig;
     stageMallow.attach(rig);
-    if (softNow()) stageMallow.setStage?.(CARE_FACE, { quiet: true });
+    if (softNow() || S.asking) stageMallow.setStage?.(CARE_FACE, { quiet: true });
     theme();
     layout();
     return rig;
@@ -1818,11 +1824,12 @@ export default function hushfold(app, params = {}) {
     S.told = true;
     softVisit();
     stage?.thoughts.release(900);
-    if (askHold && worldMode && flowRef && !flowRef.stub && !S.finishing && flowRef.state?.phase !== 'finished') {
+    if (worldMode && flowRef && !flowRef.stub && !S.finishing && flowRef.state?.phase !== 'finished') {
+      // (held already by the question — or not yet: a world that arrived under it, still fading in — it waits quietly now)
       askHold = null;
       S.hold = 'quiet'; S.softHold = true;
       pausedPill.hidden = true;
-      try { flowRef.setThoughts?.(null); } catch (e) { console.warn(e); }
+      try { flowRef.setThoughts?.(null); if (!flowRef.state?.paused) flowRef.pause?.(); } catch (e) { console.warn(e); }
       layout();
     } else {
       holdForAsk(false);

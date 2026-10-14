@@ -208,7 +208,7 @@ test('"Just be with it": nothing made of the words, one gentle line and one soft
   assert.match(be, /stage\?\.thoughts\.release\(900\);/, 'the thoughts on stage drift off softly');
   assert.doesNotMatch(be, /spawnThought|startFlow|careBeat|noteSafety|supportPill|SHARED_LINES\.support/, 'no Thought Mallow, no world, no support line, no Support pill');
   // in a world: it stays under its veil, held quietly (no Paused pill), the words never given to it
-  assert.match(be, /askHold = null;\s*S\.hold = 'quiet'; S\.softHold = true;\s*pausedPill\.hidden = true;\s*try \{ flowRef\.setThoughts\?\.\(null\); \}/);
+  assert.match(be, /askHold = null;\s*S\.hold = 'quiet'; S\.softHold = true;\s*pausedPill\.hidden = true;\s*try \{ flowRef\.setThoughts\?\.\(null\); if \(!flowRef\.state\?\.paused\) flowRef\.pause\?\.\(\); \}/);
   assert.match(be, /S\.quietBeat = softChoice\(\{ emotion, intention \}\)/);
   assert.doesNotMatch(be, /careChoice|Stay here quietly/, 'never the second choice');
   const soft = between(hf, 'async function softChoice(', 'function quietAfterAsk() {');

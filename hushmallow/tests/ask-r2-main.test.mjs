@@ -208,7 +208,12 @@ test('back from Another Angle: only a real safety level raises the visit; "Just 
 // ===================================================================================================== 3. races --
 test('(a) a world arriving under the question waits under its veil (never plays on under it), folded, with no title over it', () => {
   const ow = between(hf, 'function onWorld(d) {', 'function heroWaitsForWords() {');
-  assert.match(ow, /if \(!hold && !quietArrival && S\.asking\) \{ holdForAsk\(true\); foldWorld\(true\); \}/);
+  assert.match(ow, /if \(!hold && !quietArrival && S\.asking\) \{\s*foldWorld\(true\);\s*later\(\(\) => \{ if \(S\.asking && worldMode && !S\.finishing\) \{ holdForAsk\(true\);[^\n]*\}, prefs\.reducedMotion\(\) \? 420 : 800\);/);
+  // (its host arrives on the attentive face, as the question asks: never the storm's glare under it)
+  assert.match(ow, /holdForAsk\(true\); stageMallow\?\.setStage\?\.\(CARE_FACE, \{ quiet: true \}\);/);
+  assert.equal((hf.match(/if \(softNow\(\) \|\| S\.asking\) stageMallow\??\.setStage\?\.\(CARE_FACE, \{ quiet: true \}\);/g) || []).length, 2, 'showMallow, both stages');
+  // (answered in that first moment, "Just be with it" still holds it quietly: beWithIt pauses a world not yet held)
+  assert.match(between(hf, 'async function beWithIt(', 'async function softChoice('), /if \(!flowRef\.state\?\.paused\) flowRef\.pause\?\.\(\);/);
   assert.match(ow, /if \(d\?\.title && !d\.from && !hold && !S\.asking && !quietArrival\) subtitles\.say\(/);
   // the world's own pause and clears (and a world starting) never take the shell's question or soft chip with them
   assert.match(hf, /const isAsk = \(o\) => !!\(o\?\.ask \|\| o\?\.soft\);/);
