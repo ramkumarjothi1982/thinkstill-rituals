@@ -749,12 +749,37 @@ export default function hushfold(app, params = {}) {
       // after a crisis no goodbye: the one calm line, now that the world has gone (or when the sheet
       // over it closes); after care, no cheery goodbye: the attentive face and a quiet line
       if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
-      let bye = null;
-      if (S.crisis) { speakCrisis(); } else if (gentle()) bye = say(SHARED_LINES.careQuiet); else bye = say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
-      // (the chip comes back in a corner once the closing line has been said, and the thought is home: 8 s at most)
-      Promise.resolve(bye).then(() => later(() => holdOffer(false), 300));
+      const goodbye = () => {
+        if (S.left || worldMode || S.finishing) return;
+        let bye = null;
+        if (S.crisis) { speakCrisis(); } else if (gentle()) bye = say(SHARED_LINES.careQuiet); else bye = say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
+        // (the chip comes back in a corner once the closing line has been said, and the thought is home: 8 s at most)
+        Promise.resolve(bye).then(() => later(() => holdOffer(false), 300));
+      };
       later(() => holdOffer(false), 8000);
       app.applyUpdateIfSafe?.();
+      // The closing line is placed knowing where the person's thought comes to rest: it is on its way home from the
+      // world (planned again once the Mallow has landed, 780 ms), its words waiting until it is there. Placed before
+      // that, the line went where the words were about to fade in, and then had to jump away mid-read. So it waits
+      // until the thought is home with its words showing (the lines keep clear of them from the first frame), 1.8 s at
+      // most; with no thought on the stage (or after a crisis: the one calm line, at once) it is said now.
+      const L = stage?.thoughts, home = L?.primary;
+      if (S.crisis || !home || home.leaving || typeof L?.tagRect !== 'function') { goodbye(); return; }
+      const t0 = now();
+      let still = 0;
+      const atRest = () => {
+        if (home.leaving || !(L.list || []).includes?.(home)) return true;
+        const d = Math.hypot((home.x ?? 0) - (home.home?.x ?? home.x ?? 0), (home.y ?? 0) - (home.home?.y ?? home.y ?? 0));
+        return d < 4 && !!L.tagRect(home);
+      };
+      const wait = () => {
+        if (S.left || worldMode || S.finishing) return;
+        // (after the re-plan, and home with its words on two looks in a row, 90 ms apart)
+        still = now() - t0 >= 820 && atRest() ? still + 1 : 0;
+        if (still >= 2 || now() - t0 >= 1800) { goodbye(); return; }
+        later(wait, 90);
+      };
+      later(wait, 90);
     }, 1250);
   }
   /** A world's goodbye holds the garden offer folded (garden-install's holdInstall); one hold at a time, always let go. */

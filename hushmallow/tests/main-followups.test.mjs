@@ -131,3 +131,21 @@ test('320×568: a line coming into the band folds the offer lying there (whateve
   // a tap on the chip places it afresh (not folded again for where it was before)
   assert.match(offer, /geom = place\(\{ fresh: true \}\); reveal\(\);/);
 });
+
+// ------------------------------------------------------- 3. the goodbye's line, placed knowing where the thought rests --
+test('after Finish the closing line waits for the thought to come to rest with its words (1.8 s at most), so it is never moved mid-read', () => {
+  const fin = fnOf('function onFinished() {', '/** A world\'s goodbye holds the garden offer folded');
+  const cb = fin.slice(fin.indexOf('later(() => {'));
+  // the line itself is chosen as before (crisis: the one calm line; gentle: the quiet line; else the Mallow's goodbye)
+  assert.match(cb, /if \(S\.crisis\) \{ speakCrisis\(\); \} else if \(gentle\(\)\) bye = say\(SHARED_LINES\.careQuiet\); else bye = say\(lines\.pick\(mallowId, 'finished'\)/);
+  // ...said once the thought is home (after the 780 ms re-plan) with its words showing, two looks in a row, or at 1.8 s
+  assert.match(cb, /return d < 4 && !!L\.tagRect\(home\);/);
+  assert.match(cb, /still = now\(\) - t0 >= 820 && atRest\(\) \? still \+ 1 : 0;\s*if \(still >= 2 \|\| now\(\) - t0 >= 1800\) \{ goodbye\(\); return; \}/);
+  // at once with no thought on the stage, or after a crisis
+  assert.match(cb, /if \(S\.crisis \|\| !home \|\| home\.leaving \|\| typeof L\?\.tagRect !== 'function'\) \{ goodbye\(\); return; \}/);
+  // nothing is said into a new world or after leaving; the chip still comes back after the line (8 s at most)
+  assert.match(cb, /const goodbye = \(\) => \{\s*if \(S\.left \|\| worldMode \|\| S\.finishing\) return;/);
+  assert.match(cb, /Promise\.resolve\(bye\)\.then\(\(\) => later\(\(\) => holdOffer\(false\), 300\)\);/);
+  assert.match(cb, /later\(\(\) => holdOffer\(false\), 8000\);/);
+  assert.ok(cb.indexOf('endWorldMode();') < cb.indexOf('const goodbye'), 'after the world has gone');
+});
