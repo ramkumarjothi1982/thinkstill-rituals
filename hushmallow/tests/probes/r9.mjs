@@ -92,10 +92,14 @@ export const SEM_ORDINARY = [
   "I watched a film where the dog dies and cried", "the main character dies at the end of the book", "got killed in the game five times",
   "the plant I bought died", "I lost my keys and now everyone thinks I’m useless", "my phone died and she must think I’m ignoring her",
 ];
-/** …of which these go gentle (allowed: the gentle lines are true for them). Everything else goes kind. */
+/**
+ * …of which these go gentle (allowed: the gentle lines are true for them). Everything else goes kind. (r2-angle item 4: a game's,
+ * a film's or a book's death naming no one of their own is ordinary now, asked the one question first: "My character died in the
+ * game…", "a film where the dog dies", "the main character dies at the end of the book", "got killed in the game five times";
+ * "My son died in Fortnite" names someone of their own, so it stays gentle.)
+ */
 export const SEM_ORDINARY_GENTLE = [
-  'My son died in Fortnite and smashed his controller.', 'My character died in the game and I lost all my progress', 'I watched a film where the dog dies and cried',
-  'the main character dies at the end of the book', 'got killed in the game five times', 'the plant I bought died',
+  'My son died in Fortnite and smashed his controller.', 'the plant I bought died',
 ];
 /** Polish: a gadget's part right before "died" is still the gadget ("phone battery died"): no longer a false alarm. */
 export const NOT_DEATH_R9 = ['phone battery died at the concert lol', 'my phone battery died', 'and then the laptop battery died', 'she was put to sleep for her operation', 'my application passed', 'my mum passed the salt',

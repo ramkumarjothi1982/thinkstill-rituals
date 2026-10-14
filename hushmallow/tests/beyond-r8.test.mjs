@@ -82,7 +82,7 @@ function played(t, res) {
 test('r8 probe table: every probe of both reviews takes its route (all of them, with the counts)', () => {
   const lists = [
     [P.DEATH_MISSES, ['gentle']], [P.IDIOM_DEATHS, ['gentle']], [P.FEELINGS, ['feeling']], [P.FEELING_WITH_GUESS, ['guess']], [P.ANGER, ['anger']], [P.ANGER_WITH_GUESS, ['guess']],
-    [P.EVENTS, ['kind', 'feeling']], [P.GUESSES, ['guess']], [P.ILLNESS, ['kind']], [P.FALSE_ALARMS, ['gentle']], [P.GAME_CRASH, ['kind']],
+    [P.EVENTS, ['kind', 'feeling']], [P.GUESSES, ['guess']], [P.ILLNESS, ['kind']], [P.FALSE_ALARMS, ['gentle']], [P.STORY_FALSE_ALARMS, ['kind']], [P.GAME_CRASH, ['kind']],
     [P.FOLLOW, ['follow', 'crisis', 'care']], [P.NOT_FOLLOW, ['gentle']], [P.LEXICON.map(([t]) => t), ['crisis', 'care']],
   ];
   let n = 0;
@@ -93,7 +93,7 @@ test('r8 probe table: every probe of both reviews takes its route (all of them, 
 
 // ------------------------------------------------------------- 1. the flipped default --
 test('r8.1: without an interpretive marker nothing frames the words as a guess, in any round (events, wrongs, feelings, losses, bag words)', () => {
-  for (const item of [...P.EVENTS, ...P.ANGER, ...P.FEELINGS, ...P.ILLNESS, ...P.GAME_CRASH, ...P.DEATH_MISSES, ...P.IDIOM_DEATHS, ...P.FALSE_ALARMS, ...P.NOT_FOLLOW]) {
+  for (const item of [...P.EVENTS, ...P.ANGER, ...P.FEELINGS, ...P.ILLNESS, ...P.GAME_CRASH, ...P.DEATH_MISSES, ...P.IDIOM_DEATHS, ...P.FALSE_ALARMS, ...P.STORY_FALSE_ALARMS, ...P.NOT_FOLLOW]) {
     const t = text(item);
     assert.equal(framingAllowed(t), false, t);
     for (const s of rounds(t)) assert.ok(!framed(s), `${t} → ${s.mechanic}: ${s.subtitle_line_1} | ${s.subtitle_line_2}`);
@@ -347,8 +347,9 @@ test('r8 UI: death talk typed and closed gets a quiet word and support close, ne
   for (const l of [GRIEF.closed]) { assert.doesNotMatch(l, /\b(?:died|dead|death|grief|loss|lost|them|they|miss\w*|passed|gone)\b/i, l); assert.equal(framesAsGuess(l), false); }
   // Finish after the gentle path: the Hushfold gets a safety level, so its Support pill and attentive face are there
   const fin = src.slice(src.indexOf('async function finish('), src.indexOf('// ------------------------------------------------------- the view --'));
-  assert.match(fin, /const level = S\.level !== 'none' \? S\.level : S\.grief \? 'concern' : 'none';\s*app\.go\('home', level !== 'none' \? \{ safety: \{ level \} \} : \{\}\);/);
-  assert.match(fin, /const lines = heavy \? SAFETY\.finish : END\.finish;/);
+  // (r2-angle item 5: angle-first.js goodbye, pinned in tests/r2-angle.test.mjs: the grief path sends concern home)
+  assert.match(fin, /app\.go\('home', bye\.params\);/);
+  assert.match(fin, /const lines = bye\.lines === 'safety' \? SAFETY\.finish : END\.finish;/);
   // the gentle path never offers Finish or support twice (its chips carry them while the choice is up)
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
   assert.match(grief, /dockShow\(\{ tell: true, support: false \}\);\s*const v = await choose\(GRIEF\.ask, GRIEF\.options/);

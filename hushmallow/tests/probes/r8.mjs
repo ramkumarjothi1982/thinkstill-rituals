@@ -91,7 +91,12 @@ export const ILLNESS = [
   'my dad was in a coma', 'my mum is having chemo', 'the doctors found a tumour', 'my sister is in intensive care', 'my son was rushed to a and e', 'my cat is missing and I think she got hit',
 ];
 /** Polish: expected false alarms (the gentle lines are true for them); and a crash that is only a game. */
-export const FALSE_ALARMS = ['My character died in the game and I raged', 'the plant on my desk died', 'My son died in Fortnite and smashed his controller.'];
+export const FALSE_ALARMS = ['the plant on my desk died', 'My son died in Fortnite and smashed his controller.'];
+/**
+ * (r2-angle item 4, owner decision 'Ask before every world') a game's death that names no one of their own is ordinary words
+ * now (death-words.js): asked the one question first, never the gentle path, never framed (it is still a bag word).
+ */
+export const STORY_FALSE_ALARMS = ['My character died in the game and I raged'];
 export const GAME_CRASH = ['my game crashed and I lost all my progress'];
 
 /** Semantic review, blocking 6: wanting to be with or follow the one who died (each reached the gentle path). */

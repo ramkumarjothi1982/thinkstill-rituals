@@ -8,8 +8,12 @@
 //                         "dying to", "killing it", "it's your funeral", "lost my keys", "passed my test"…
 //   PERSON, PET, BARE, ADJ, THING   regex sources (apostrophe-free, case-insensitive)
 //
-// Recall first: these lists are wide on purpose, and the idioms are only the unambiguous, cheap ones. A game,
-// a film, a near miss or an imagined death is never set aside here: the gentle path is safe for all of them.
+// Recall first: these lists are wide on purpose, and the idioms are only the unambiguous, cheap ones. A near miss or an
+// imagined death is never set aside here: the gentle path is safe for them. (r2-angle item 4, owner decision 'Ask before
+// every world', 14 Oct 2026: every Tell that is not a detected loss is now asked one gentle question first, so death words
+// that describe a thing, a place, an event, a creature, a game, a film or a book are set aside too: "the battery in my car is
+// dead again", "I killed the spider in the bath", "my character died in the game", "we went to the cemetery on a school trip".
+// A person or a pet of their own in the words keeps them a death: "My son died in Fortnite", "our dead hamster".)
 //
 // Pure ES module, no DOM. Deterministic.
 
@@ -88,13 +92,23 @@ const QUIET_PLACE = 'party|pub|bar|club|town|city|village|place|shop|shops|stree
  * The ordinary idioms: unambiguous, cheap, and never a person. Blanked before any death or harm word is read.
  * (The 'lost' + thing idioms matter to the backstop: deathTalk only reads 'lost' beside a person or a pet.)
  */
+/** (r2-angle item 4) Small creatures and wild animals, never someone's pet unless the words say so ("our mouse", "my rat"). */
+const BUGS = 'spiders?|wasps?|flies|fly|bees?|ants?|mosquito(?:e?s)?|moths?|slugs?|snails?|bugs?|cockroach(?:es)?|roach(?:es)?|insects?|beetles?|worms?|maggots?|earwigs?|woodlice|woodlouse|centipedes?|ladybirds?|flea|fleas|ticks?|nits|lice';
+const CREATURE = `${BUGS}|mouse|mice|rats?|birds?|pigeons?|seagulls?|gulls?|crows?|magpies?|sparrows?|robins?|blackbirds?|starlings?|blue\\s+tits?|fox|foxes|badgers?|hedgehogs?|squirrels?|moles?|voles?|shrews?|deer|frogs?|toads?|jellyfish|crabs?|fish|seals?|whales?|dolphins?|pheasants?|rabbits?|bats?|newts?|lizards?|snakes?|owls?|ducks?|geese|goose|swans?`;
+/**
+ * (r2-angle item 4) Between a thing and "is dead": where it is or when ("the battery in my car is dead again", "the party last
+ * night was dead"). Never a person or a pet in it ("the battery in my dad's car" is still the battery; "the man in the car" is a
+ * person, never a thing: DEV_SUBJ and the place below never start at a person).
+ */
+const NOT_WHO = `(?!(?:${PERSON}|${PET})s?\\b)`;
+const WHERE_WHEN = `(?:\\s+(?:(?:in|on|of|for|from|at|inside|under)\\s+(?:(?:my|the|our|his|her|their|your|a|an|this|that)\\s+)?(?:[a-z]+s\\s+)?${NOT_WHO}[a-z]+|last\\s+(?:night|week|weekend|time|year)|yesterday|today|tonight|this\\s+(?:morning|afternoon|evening|week|weekend|year|time)|on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|again|already|now)){0,2}`;
 export const ORDINARY = [
-  // a gadget that died, a dead battery
-  new RegExp(`${DEV_SUBJ}\\s+${DEV_AUX}(?:die|dies|died|dying|dead|deaded|dyin)\\b`, 'giu'),
+  // a gadget that died, a dead battery (r2-angle item 4: "the battery in my car is dead again")
+  new RegExp(`${DEV_SUBJ}${WHERE_WHEN}\\s+${DEV_AUX}(?:die|dies|died|dying|dead|deaded|dyin)\\b`, 'giu'),
   // (review r11) a plant that died ("my plant died", "all my tomato plants are dead"), a place or a night that was dead
   // ("the party is dead", "the pub was dead"), "this traffic is murder", "the walking dead": never a person or a pet
   new RegExp(`${PLANT_SUBJ}\\s+${DEV_AUX}(?:die|dies|died|dying|dead|deaded|dyin)\\b`, 'giu'),
-  new RegExp(`\\b(?:the|this|that|our|my|tonights|todays)\\s+(?:${QUIET_PLACE})\\s+(?:is|was|s|are|were|went|has\\s+gone|had\\s+gone|has\\s+been|have\\s+been|seems|seemed|felt|feels|looks|looked)\\s+(?:(?:so|really|totally|completely|absolutely|pretty|well|proper|stone|kind\\s+of|kinda|a\\s+bit|bit)\\s+)*dead\\b|\\bdead\\s+in\\s+(?:here|there)\\b`, 'giu'),
+  new RegExp(`\\b(?:the|this|that|our|my|tonights|todays)\\s+(?:${QUIET_PLACE})${WHERE_WHEN}\\s+(?:is|was|s|are|were|went|has\\s+gone|had\\s+gone|has\\s+been|have\\s+been|seems|seemed|felt|feels|looks|looked)\\s+(?:(?:so|really|totally|completely|absolutely|pretty|well|proper|stone|kind\\s+of|kinda|a\\s+bit|bit)\\s+)*dead\\b|\\bdead\\s+in\\s+(?:here|there)\\b`, 'giu'),
   /\b(?:the|this|that|my)\s+(?:traffic|commute|journey|drive|queue|queues|weather|heat|motorway|m25|rush\s+hour|parking|hill|stairs|climb|workout|training|session|shift|week|exam|exams|revision|deadline|school\s+run|feet|back|legs|knees)\s+(?:is|was|s|are|were|has\s+been|will\s+be|gonna\s+be|is\s+going\s+to\s+be)\s+(?:(?:absolute|pure|sheer|total|literally|actual|bloody|just)\s+)*murder\b|\b(?:its|it\s+is|it\s+was)\s+(?:(?:absolute|pure|sheer|total|literally|bloody)\s+)*murder\s+(?:out\s+there|on\s+the\s+(?:roads|motorway|m25)|in\s+(?:here|this\s+heat|town|traffic))\b/giu,
   /\b(?:the\s+)?(?:walking|living)\s+dead\b|\bdead\s+on\s+my\s+feet\b|\bdead\s+man\s+walking\b/giu,
   new RegExp(`\\bdead\\s+(?:${DEVICE})\\b`, 'giu'),
@@ -148,11 +162,52 @@ export const ORDINARY = [
   /\b(?:app|computer|laptop|phone|game|website|site|system|server|pc|browser|tablet|ipad|xbox|playstation)\s+(?:has\s+|just\s+|keeps\s+|kept\s+)*crash\w*\b/giu, /\bcrash\s+(?:course|diet)\b|\bcrashed\s+out\b|\bcrashed\s+(?:on|at)\s+(?:the|my|a|his|her|their)\s+(?:sofa|couch|settee|floor|bed|mates|friends|place)\b/giu, /\b(?:sugar|market|stock\s+market)\s+crash\b/giu,
   /\b(?:by|on|happy)\s+accident\b/giu, /\b(?:feel|felt|feeling|feels)\s+(?:so\s+|really\s+|a\s+bit\s+)?attacked\b/giu,
   /\b(?:airport|bus|train|ferry|cruise|coach)\s+terminal\b|\bterminal\s+(?:\d+|one|two|three|four|five|building)\b/giu,
+  // ---- (r2-angle item 4, owner decision 'Ask before every world') the death words that describe a thing, a creature, a
+  // game or a topic: every such Tell is asked the one question now, so a false gentle path is the costlier mistake --
+  // a small creature or a wild animal found dead ("my cat brought a dead mouse in", "we found a dead bird in the garden"):
+  // never "the dead mouse" here (someone's pet mouse may be one: THE_CREATURE below), never "my/our <pet>"
+  new RegExp(`\\b(?:a|an|some|two|three|four|five|several|another|loads\\s+of|lots\\s+of|a\\s+few|a\\s+couple\\s+of|a\\s+load\\s+of)\\s+(?:(?:massive|huge|big|giant|tiny|little|small|baby|horrible|gross|disgusting|poor|squashed|rotting|stinky|smelly)\\s+)*dead\\s+(?:${CREATURE})\\b|\\b(?:a|an|some|two|three|another)\\s+(?:${CREATURE})\\s+(?:lying\\s+|lay\\s+)?dead\\b`, 'giu'),
+  // killing a creature or a game's monster ("I killed the spider in the bath", "squashed a wasp", "killed the zombies")
+  new RegExp(`\\b(?:killed|kill|kills|killing|squashed|squash|squashing|swatted|swat|swatting|stepped\\s+on|trod\\s+on|zapped|hoovered\\s+up)\\s+(?:a|an|the|that|this|some|all\\s+the|loads\\s+of|lots\\s+of|two|three|four|five|\\d+|another|every|a\\s+few|a\\s+couple\\s+of)\\s+(?:(?:massive|huge|big|giant|tiny|little|horrible|scary|hairy|stupid|annoying|nasty|last|final)\\s+)*(?:${BUGS}|zombies?|monsters?|dragons?|enem(?:y|ies)|aliens?|orcs?|goblins?|creepers?|mobs?|bots?|npcs?|weeds?|germs|bacteria)\\b`, 'giu'),
+  // a topic, a sport's or a history lesson's words ("the black death", "a dead rubber", "the dead sea", "day of the dead")
+  /\bblack\s+death\b|\bthe\s+dead\s+sea\b|\bday\s+of\s+the\s+dead\b|\bgrateful\s+dead\b|\bdead\s+poets?\b|\bred\s+dead(?:\s+redemption)?\b|\bdead\s+by\s+daylight\b|\bdead\s+(?:space|island|rising|pool|rubber|rubbers|ball|leg|arm|duck|wood|air|loss|cert|pixels?|links?|lock|bolt|letter|language|languages|stock|reckoning|silence|calm|stop)\b/giu,
+  // a thing buried ("we buried the time capsule at school", "the dog buried a bone"): never with someone ("…with him")
+  /\b(?:bury|buries|buried|burying)\s+(?:(?:a|an|the|our|my|his|her|their|some|its|all\s+the)\s+)?(?:(?:old|new|little|big|school|class|whole|secret)\s+)?(?:time\s+capsules?|treasure|treasure\s+chest|bones?|seeds?|bulbs?|balls?|toys?|keys|coins?|money|cables?|pipes?|wires?|acorns?|nuts|feet|toes|legs|lede|lead)\b(?!\s+with\s+(?:him|her|them))/giu,
 ];
+/** "the dead mouse under the sofa" is a creature unless someone's own is in the words ("our mouse", "my rat", the vet, a cage). */
+const THE_CREATURE = new RegExp(`\\b(?:the|that|this|these|those)\\s+(?:(?:massive|huge|big|giant|tiny|little|small|baby|horrible|gross|disgusting|poor|squashed|rotting|stinky|smelly)\\s+)*dead\\s+(?:${CREATURE})\\b`, 'giu');
+const OWN_CREATURE = new RegExp(`\\b(?:my|our|his|her|their|your)\\s+(?:(?:little|old|baby|pet|poor|lovely|sweet|beloved|darling|other)\\s+)*(?:${CREATURE}|pets?)\\b|\\b(?:vets?|cage|hutch|tank|aquarium|enclosure|vivarium)\\b`, 'iu');
+/**
+ * (r2-angle item 4) A game, a film, a book or a show: in words that name no one of their own (no "my son", "Mum", "our dog"),
+ * its death words are the story's ("my character died in the game", "I played a game where everyone dies", "my sim died in a
+ * fire", "I'm reading a book about the black death"). "My son died in Fortnite" names someone, so it stays a death.
+ */
+const FICTION = /\b(?:games?|gaming|gamer|video\s+games?|levels?|respawn\w*|characters?|sims?|avatars?|npcs?|fortnite|minecraft|roblox|warzone|call\s+of\s+duty|apex|valorant|elden\s+ring|dark\s+souls|zelda|pokemon|among\s+us|gta|films?|movies?|book|books|novels?|fiction|story|stories|tv\s+shows?|series|episodes?|soaps?|eastenders|corrie|coronation\s+street|emmerdale|hollyoaks|anime|manga|comics?|cartoons?|musical|dnd|dungeons\s+and\s+dragons|rpg|mmo|netflix|disney)\b/iu;
+/** Someone of their own: "my son", "our dog", "Mum", "Grandad" (a word for a parent or a grandparent on its own). */
+const OWN_SOMEONE = new RegExp(`\\b(?:my|our|his|her|their|your)\\s+${ADJ}(?:${PERSON}|${PET})(?:s|es)?\\b|\\b(?:${BARE})s?\\b`, 'iu');
+/** The death and loss words a story's words lose (and a cemetery visit's, below). */
+const STORY_DEATH = /\b(?:die|dies|died|dying|dead|death|deaths|killed|kills|kill|killing|murdered|murder|murders|perished|slain|drowned|funeral|grave|graves|buried|burial)\b/giu;
+/** (r2-angle item 4) A cemetery or a graveyard visited on a trip or for a project, naming no one of their own. */
+const CEMETERY = /\b(?:cemetery|cemetary|cemetry|graveyard|churchyard|catacombs?|crypt|tombs?|mausoleum|war\s+graves?)\b/giu;
+const ON_A_TRIP = /\b(?:school\s+trip|field\s+trip|class\s+trip|trip|history|project|homework|ghost\s+(?:tour|walk|hunt\w*)|tour|halloween|for\s+a\s+walk|walk(?:ed|ing)?\s+(?:through|past)|shortcut|short\s+cut|photography|photos\s+for|art\s+class|geocach\w*|sketch\w*)\b/iu;
 
-/** `t` (normed) with every ordinary idiom blanked out (a space each, so nothing joins across it). */
-export function blankOrdinary(t) {
+/**
+ * `t` (normed) with every ordinary idiom blanked out (a space each, so nothing joins across it). `stories: false` keeps a
+ * story's deaths and a cemetery trip (r2-angle item 4: a server's own loss reading beside them still plays gently).
+ */
+export function blankOrdinary(t, { stories = true } = {}) {
   let out = String(t ?? '');
   for (const re of ORDINARY) out = out.replace(re, ' ');
+  // (r2-angle item 4) "the dead mouse under the sofa", unless someone's own creature is in the words
+  if (!OWN_CREATURE.test(out)) out = out.replace(THE_CREATURE, ' ');
+  // a story's deaths, and a cemetery on a school trip, when the words name no one of their own (each sentence on its own)
+  if (stories && !OWN_SOMEONE.test(out)) {
+    out = out.replace(/[^.!?…]+[.!?…]*/gu, (sent) => {
+      let s = sent;
+      if (FICTION.test(s)) s = s.replace(STORY_DEATH, ' ');
+      if (ON_A_TRIP.test(s)) s = s.replace(CEMETERY, ' ');
+      return s;
+    });
+  }
   return out;
 }

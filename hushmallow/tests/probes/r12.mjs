@@ -117,8 +117,13 @@ export const ORDINARY_CHECK_IN = [
   'my dog ran away for an hour but we found him', 'my dog ran off in the park but we found him', 'my cat went missing for a day and came back',
   "my nan didn't hug me when I left, she must be upset with me",
 ];
-/** The gentle path by design (a game or a film death is never set aside, review r7). */
-export const R5_ORDINARY_GENTLE = ['my character died in the game again', 'my Sims family all died in a fire lol'];
+/**
+ * The gentle path by design (a game or a film death was never set aside, review r7). (r2-angle item 4, owner decision 'Ask before
+ * every world': none now; a game's death naming no one of their own is asked the one question first: R5_STORY_ORDINARY.)
+ */
+export const R5_ORDINARY_GENTLE = [];
+/** (r2-angle item 4) The round-5 review's game deaths: ordinary words now, asked first on both screens. */
+export const R5_STORY_ORDINARY = ['my character died in the game again', 'my Sims family all died in a fire lol'];
 
 // ----------------------------------------------------------------- the review's own probe sets, verbatim --
 
@@ -204,8 +209,8 @@ export const R5_ORDINARY = [
   'my car died on the motorway', 'my granny is the best cook in the world', 'my dad took me to the football', 'my mum is sitting her driving test tomorrow', 'my grandad said goodbye at the station',
   'my dog got my sandwich', 'my grandad got a puppy', 'my brother went quiet at dinner', 'my mum took ages to reply', 'my sister is buried in revision',
 ];
-// (by design these go gentle: a game or a film death is never set aside)
-export const R5_BY_DESIGN = ['my character died in the game again', 'my Sims family all died in a fire lol'];
+// (by design these went gentle: a game or a film death was never set aside; r2-angle item 4: asked first now, R5_STORY_ORDINARY)
+export const R5_BY_DESIGN = [];
 
 // ---------------------------------------------------------------- feelings --
 export const R5_FEELINGS = [
