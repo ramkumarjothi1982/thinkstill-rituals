@@ -22,7 +22,9 @@ safe, fictional words written for the demonstration.
 3. **Rules that don't stop at the obvious:**
    - The app's shared safety lexicon (the one Reframe uses) is reused unchanged,
      plus Hushmates' own additions for overdose, self-harm, "no point going on" and passive wishes
-     not to be here ("I just want to disappear", "sleep and never wake up").
+     not to be here ("I just want to disappear", "sleep and never wake up", "better off without me",
+     "a burden", "tired of being alive"). Crisis words win over abuse or bullying words in the same
+     feeling. The phrasings are in `tests/fixtures/mallow-probes.json`.
    - Every rule reads an NFKC-normalised copy, so stylised or full-width letters
      can't slip past.
    - Contact details, links, money requests, addresses, postcodes and ZIP codes,

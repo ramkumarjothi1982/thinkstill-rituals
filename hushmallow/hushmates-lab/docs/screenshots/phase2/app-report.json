@@ -87,7 +87,7 @@
     },
     {
       "ok": true,
-      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"1c90c135-0799-4e8b-aca7-6350f95d0aef\"}])"
+      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"d023d96f-8573-4c8a-bfa1-1c59d18c056d\"}])"
     },
     {
       "ok": true,
@@ -473,7 +473,6 @@
   "console": [
     "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
     "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-    "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
     "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
   ],
   "expected": [
@@ -489,5 +488,5 @@
     "error: Failed to load resource: the server responded with a status of 404 (Not Found)"
   ],
   "server": [],
-  "refreshed": 6
+  "refreshed": 5
 }

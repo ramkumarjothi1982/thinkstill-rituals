@@ -25,15 +25,51 @@ const EXTRA_CRISIS = [
   /\bno point (?:in )?(?:going on|living|carrying on|being here|being alive)\b/i,
   /\b(?:cut|cutting|burn|burning|hurt|hurting|harm|harming)\s+(?:my\s*self|myself|my (?:arms?|wrists?|legs?|thighs?|skin))\b/i,
   /\b(?:don'?t|do not) want to (?:be here|wake up|exist|be alive) any ?more\b/i,
-  // passive wishes not to be here (to be reviewed with the rest by a clinician: docs/READINESS.md)
-  /(?<!(?:don'?t|do not|never) )\b(?:want(?:ed)?|wanna|wish(?:ing)? (?:i|that i) could|would rather)(?: to)?(?: just)? (?:disappear|vanish|not exist|stop existing)\b/i,
-  /\b(?:sleep|go to sleep|fall asleep)\b[^.!?]{0,20}\b(?:never|not|n't) (?:ever )?wake up\b(?! (?:early|before|until|till|at|for|in time|on time))/i,
+  /\b(?:don'?t|do not|no longer) (?:want to|wanna) (?:be here|be alive|live|exist|wake up|go on|be around)\b/i,
+  /\bwanna (?:just )?die\b(?! (?:of|from|for|laughing))/i,
+  // Passive wishes not to be here, said many ways (the Columbia scale's first question among them), with
+  // everyday getaways, other people and alarms left out. All of it is for the clinical review
+  // (docs/READINESS.md), with the phrasings in tests/fixtures/mallow-probes.json.
+  /(?<!\b(?:kids|children|teenagers|teens|flatmates|housemates|roommates|husband|wife|partner|family|everyone|cats?|dogs?)(?: (?:all|just|always|really|both|often|usually))? )(?<!(?:don'?t|do not|never) )\b(?:want(?:ed)?|wanna|wish(?:ing)? (?:i|that i) (?:could|would)|(?:i'?d|would) rather)(?: to)?(?: just)? (?:disappear|vanish|fade away|not exist|stop existing|cease to exist|not be (?:here|around) any ?more|not be alive)\b(?! (?:to|on|into|off|from|under) (?:a |an |the |my |this |that )?(?:good )?(?:beach|holidays?|vacation|trip|island|bali|countryside|mountains|books?|(?:video )?games?|series|shows?|films?|duvet|studio|social media|instagram|tiktok|grid|(?:family )?group chat|job|work)\b(?![^.!?]*\b(?:forever|for good|never|not come back)\b)| for (?:a|the|one|a few|a couple of) (?:days?|weekend|weeks?|months?|bit)\b(?![^.!?]*\b(?:forever|for good|never|not come back)\b))/i,
+  /\bwish(?:ing)? (?:that )?i (?:didn'?t|did not|never) exist(?:ed)?\b|\bwish(?:ing)? (?:that )?i(?:'d| had| was| were)? never (?:been )?born\b|\b(?:wish (?:that )?i (?:was|were)|(?:want|wanna)(?: to)?(?: just)? be) gone(?=\s*(?:[.!?,;]|$|forever|for good|any ?more))|\bfeel(?:s|ing)? like (?:just )?(?:disappearing|vanishing|fading away)\b(?!\s+(?:to|for|on|into|from)\b)/i,
+  /(?<!(?:don'?t|do not|never) )\b(?:want(?:ed)?|wanna|wish(?:ing)? (?:i|that i) (?:could|would)|(?:would|'d) rather|(?:would|'d) (?:love|like) to)(?: to)?(?: just)? (?:sleep|go to sleep|fall asleep)\b[^.!?]{0,20}\b(?:never|not|and (?:just )?(?:don'?t|won'?t|wouldn'?t)) (?:ever )?wake up\b(?! (?:early|before|until|till|til\b|at\b(?! all\b)|in time|on time|for (?:once|work|school|ages|hours|\d)|all (?:day|night|weekend|morning)|(?:to|when) (?:an? |the |my |our |his |her )?(?:alarms?|baby|babies|kids?|children|dog|noise|drill|neighbou?r|emails?|phone|crying)))/i,
+  /\b(?:sleep|go to sleep|fall asleep|go to bed)\b[^.!?]{0,20}\b(?:hop(?:e|ing)|wish(?:ing)?|pray(?:ing)?) (?:that )?i (?:never|won'?t|don'?t|do not|will not|wouldn'?t) (?:ever )?wake up\b(?! (?:early|before|until|till|til\b|at\b(?! all\b)|in time|on time|for (?:once|work|school|ages|hours|\d)|all (?:day|night|weekend|morning)|(?:to|when) (?:an? |the |my |our |his |her )?(?:alarms?|baby|babies|kids?|children|dog|noise|drill|neighbou?r|emails?|phone|crying)))/i,
+  /(?<!(?:don'?t|do not|never) )\b(?:want(?:ed)?|wanna|wish(?:ing)? (?:i|that i) could|(?:i'?d|would) rather)(?: to)? (?:just )?(?:never|not) wake up\b(?! (?:early|before|until|till|til\b|at\b(?! all\b)|in time|on time|for (?:once|work|school|ages|hours|\d)|all (?:day|night|weekend|morning)|(?:to|when) (?:an? |the |my |our |his |her )?(?:alarms?|baby|babies|kids?|children|dog|noise|drill|neighbou?r|emails?|phone|crying)))/i,
+  /\b(?:hop(?:e|ing)|pray(?:ing)?|wish(?:ing)?) (?:that )?i (?:just )?(?:go to sleep|fall asleep|sleep|go to bed)\b[^.!?]{0,20}\b(?:never|not|don'?t|won'?t|wouldn'?t|do not|will not) (?:ever )?wake up\b(?! (?:early|before|until|till|til\b|at\b(?! all\b)|in time|on time|for (?:once|work|school|ages|hours|\d)|all (?:day|night|weekend|morning)|(?:to|when) (?:an? |the |my |our |his |her )?(?:alarms?|baby|babies|kids?|children|dog|noise|drill|neighbou?r|emails?|phone|crying)))/i,
+  /\b(?:wouldn'?t|would not) mind if i (?:didn'?t|did not|never) wake up\b/i,
+  /\bwish i (?:didn'?t|did not) have to wake up\b(?! (?:early|so early|at|for|before|on)\b)/i,
+  /\b(?:want(?:ed)? to|wanna|wish i could|(?:i'?d|would) rather) (?:just )?sleep forever\b/i,
+  /\bwish(?:ed|es|ing)? (?:that )?i (?:was|were|could be) dead\b/i,
+  /\bwish(?:ed|es|ing)? (?:that )?i(?: would|'?d| could) (?:just )?die\b/i,
+  /\b(?:i'?d|i would) (?:rather|sooner) (?:be dead|die)\b(?! (?:than|before|instead|of))/i,
+  /(?<!(?:don'?t|do not|never) )\b(?:want(?:ed)?|wish) (?:my life|it all) to (?:just )?(?:end|be over)\b(?! (?:well|soon|happily|nicely|on|with|so|in|at|before|for)\b)/i,
+  /\bwish (?:it all|my life|it would all)(?: would)?(?: just)? (?:end|be over|stop)\b/i,
+  /\b(?:want|wanna|wish i could|ready) to (?:just )?stop living\b(?! (?:in|with|for|like|at|on|under|off|out|paycheck|a|my|the|this|that|so|as)\b)/i,
+  /\btired of (?:being alive|living|existing|life)\b(?! (?:in|with|at|on|under|like|for|around|off|out|paycheck|admin|here|there|so|as|a|my|the|our|this|that|from|to)\b)/i,
+  /\bwhat(?:'?s| is) the (?:point|use) (?:of|in) (?:living|going on|being alive|being here|carrying on|life)\b(?! (?:about|with|like|insurance)\b)/i,
+  /\b(?:don'?t|do not) (?:even |really )?care (?:if|whether) i (?:live or die|die|wake up)\b/i,
+  /\bhope i (?:get hit by a (?:bus|car|truck)|don'?t wake up|never wake up|die)\b(?! (?:early|before|until|late|in time|on time|laughing|of))/i,
+  /\b(?:done with|given up on|giving up on) (?:life|living)\b(?! (?:in|with|at|admin|here|like|for|a|my|the|this|that)\b)/i,
+  // others better off without me, not missed, a burden
+  /\b(?:better off|happier|easier)\b[^.!?]{0,25}\bif i (?:(?:was|were) (?:gone|dead)|(?:wasn'?t|weren'?t|was not|were not) (?:here|around|alive))\b/i,
+  /\bbetter without me\b/i,
+  /\b(?:no ?one|nobody) would (?:even )?(?:miss me|care|notice)\b[^.!?]{0,15}\bif i (?:was gone|were gone|died|disappeared|wasn'?t (?:here|around)|was dead)\b/i,
+  /\b(?:i'?m|i am|i (?:just |always |really )?feel like) (?:just |such |only )?a burden\b/i,
 ];
 function extraCrisis(probe) {
   if (!EXTRA_CRISIS.some((re) => re.test(probe.replace(/[’‘]/g, "'")))) return null;
   return { reframeAppropriate: false, level: 'crisis', title: HARM_COPY.crisis.title, message: HARM_COPY.crisis.message, resources: HARM_COPY.crisis.resources, stillHere: HARM_COPY.stillHere };
 }
-const safetyOf = (probe) => { const s = checkSafety(probe); return s.reframeAppropriate ? (extraCrisis(probe) || s) : s; };
+// A care match (abuse, violence, bullying) never hides crisis words. "He hurt my arm" stays violence:
+// beside a care match, hurting a part of the body counts as self-harm only when "I" do it.
+const MY_BODY = /\b(?:cut|cutting|burn|burning|hurt|hurting|harm|harming)\s+my (?:arms?|wrists?|legs?|thighs?|skin)\b/gi;
+const I_HURT_MY_BODY = /\bI(?:'ve|'m|'d)?(?:\s+(?:have|am|was|keep|kept|started|start|been|just|sometimes|still|always|often|again|to))*\s+(?:cut|cutting|burn|burning|hurt|hurting|harm|harming)\s+my (?:arms?|wrists?|legs?|thighs?|skin)\b/i;
+const safetyOf = (probe) => {
+  const s = checkSafety(probe);
+  if (s.reframeAppropriate) return extraCrisis(probe) || s;
+  if (s.level === 'crisis') return s;
+  return (I_HURT_MY_BODY.test(probe) ? extraCrisis(probe) : extraCrisis(probe.replace(MY_BODY, ' '))) || s;
+};
 
 // Hushmates' own words for the support screen. The lexicon is the app's (Reframe's, reused
 // unchanged); its titles and messages talk about reframing, and its helplines are for the UK and

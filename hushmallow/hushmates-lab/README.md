@@ -184,7 +184,7 @@ with the keyboard alone and checks reduced motion.
 
 | Check | Result |
 |---|---|
-| All tests (`node --test tests/*.test.mjs`) | 309 pass, 0 fail, 2 skipped: the optional live Another Angle checks, which need that service's local harness (and would be billable against the real one) |
+| All tests (`node --test tests/*.test.mjs`) | 316 pass, 0 fail, 2 skipped: the optional live Another Angle checks, which need that service's local harness (and would be billable against the real one) |
 | On the real database | differential against the reference engine (8 seeds × 300 steps); eight race tests (twelve people for five places, duplicate sends, two devices, Mallow requests, a single-use invitation, overlapping scheduled jobs, blocking mid-write, finds during a catch); the AI budget hold under concurrent calls; RLS and access role by role; tokens forged, replayed or from a password sign-in refused; retention at each of its limits |
 | End to end, many accounts | 70 of 70 checks, 37 screens, 0 problems (`docs/screenshots/phase2/`, with `app-report.json`): |
 | | five people at once, and a sixth isn't offered it; two people; nobody, said plainly |
@@ -197,6 +197,7 @@ with the keyboard alone and checks reduced motion.
 | | keyboard only; the same account on a second device; download, and deletion (sign-in included; the other device is signed out) |
 | Every screen | no developer content, raw data, programming values or testing words, no sideways scrolling; no internal ids on any customer screen (the safety desk shows a labelled account reference for a team lead, by design). Every refused session (401) is accounted for: it follows a clock move that aged the session, or the test asked for it; the app refreshes and carries on |
 | Builds | app 71 files, desk 20; comments stripped, every module parses, scan clean, secret keys refused |
+| Safety screen and Mallow phrasings (`tests/fixtures/mallow-probes.json`) | every phrasing found by four adversarial rounds holds: 65 passive wishes not to be here get crisis support (and 6 more still do beside abuse or bullying); 26 everyday getaways, alarms and plain accounts of a death are released; household load gets load lines and never "your partner seems distant"; a death, harm at home, health, mood or money never get chores lines; harm and control never get distance lines; grief and pregnancy loss are recognised. Each Mallow case is asked of all seven Mallows, three times |
 | Edge Function copies | `tools/sync-edge.mjs --check`: the shared files match their sources (also a test) |
 | Archived v1 tests | 32 pass |
 | Lab QA (`tools/shots.cjs`, `docs/screenshots/qa-report.json`) | 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024 and 1280 × 860: no layout-audit findings; scenarios A (10 of 10), B (6 of 6) and C (5 of 5) ticked at every size; a feeling released with the keyboard alone, focus visible on every stop; reduced motion holds, and all three scenarios complete with it; no console errors |

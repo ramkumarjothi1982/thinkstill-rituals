@@ -127,27 +127,40 @@ const LABEL_KINDS = {
 const HEAVY_LABELS = ['worry', 'sadness', 'anger', 'loneliness', 'confusion', 'frustration'];
 // Hushmates themes. `cues` read the tidied, lower-cased words (straight apostrophes); `labels` are where they fit.
 // The work at home, said many ways. A partner or housemate who "never helps" or "does nothing to help"
-// counts however the sentence goes on; other ways of not helping ("isn't helping", "refuses to help"),
-// family members, and he/she/they only when a job at home is named. And none of it is about chores when
-// the words are about a death, harm at home, or help with health, mood or treatment (NOT_CHORES): those
-// never get chores lines.
+// counts however the sentence goes on; other ways of not helping ("isn't helping", "refuses to help")
+// only with the job right after; he/she/they and family only with a job at home named. None of it is
+// about chores when the words are about a death, harm at home, or health, mood or treatment
+// (NOT_CHORES): those never get chores lines. Every phrasing below is in tests/fixtures/mallow-probes.json.
 const HOME_WORDS = String.raw`(?:around the (?:house|flat|home|place)|around here|at home|the house|housework|house ?work|chores|cooking|cleaning|tidying|dishes|washing|laundry|ironing|hoover\w*|vacuum\w*|mopping|kitchen|shopping|food shop|groceries|bins|garden\w*|lawn|the dogs?|pets?|kids|children|child ?care|baby|babies|toddlers?|newborns?|twins|nappies|diapers|bedtime|bath ?time|school runs?|school forms|dinner|meals?|mental load|bills|rent|admin|paperwork|appointments)`;
+// parents or family helping with rent, bills or forms is about money or support, not the work at home
+const FAMILY_HOME_WORDS = HOME_WORDS.replace('|bills|rent|admin|paperwork|appointments', '');
+// the jobs themselves (not just a word from home life): what rules out "your partner seems distant" for any label
+const HOME_WORK = String.raw`(?:around the (?:house|flat|home|place)|housework|house ?work|chores|cooking|cleaning|tidying|dishes|washing|laundry|ironing|hoover\w*|vacuum\w*|mopping|child ?care|nappies|diapers|school runs?|mental load)`;
 const NEVER_HELPS = String.raw`(?:(?:never|doesn'?t|does not|won'?t|will not|don'?t|do not) (?:ever )?help(?:s)?|do(?:es)? nothing to help)`;
-const NOT_HELPING = String.raw`(?:${NEVER_HELPS}|(?:hasn'?t|isn'?t|refuses to|refused to|won'?t even) (?:ever )?help(?:s|ed|ing)?)`;
+const STOPPED_HELPING = String.raw`(?:hasn'?t|isn'?t|refuses to|refused to|won'?t even) (?:ever )?help(?:s|ed|ing)?`;
+const NOT_HELPING = String.raw`(?:${NEVER_HELPS}|${STOPPED_HELPING})`;
+const WITH_THE_JOB = String.raw`(?: me| us)?(?: out)?(?: at all| much)?(?: (?:with|around|at|in) (?:anything |everything |the |my |our )?(?:new |little |youngest |eldest |older |younger |two |three )?| )${HOME_WORDS}\b`;
 const HOUSEMATE = String.raw`my (?:partner|husband|wife|boyfriend|girlfriend|fiance\w*|flatmates?|housemates?|roommates?|kids|children)`;
-const HELP_AT_HOME = String.raw`(?:${HOUSEMATE} ${NEVER_HELPS}|${HOUSEMATE} ${NOT_HELPING}(?=[^.!?;]*?\b${HOME_WORDS}\b)|(?:he|she|they) ${NOT_HELPING}(?=\s*out\b|[^.!?;]*?\b${HOME_WORDS}\b)|my (?:family|parents|mum|mom|mam|dad|brothers?|sisters?|siblings|in-laws) ${NOT_HELPING}(?:(?: me| us)? (?:out )?(?:with|around|at) (?:anything |everything |the |my |our )?${HOME_WORDS}\b))`;
-const NOT_CHORES = /\b(?:panic\w*|anxi\w*|depress\w*|mental health|my mental|homesick\w*|feel less|disappear|hopeless|worthless|numb|so low|feel(?:ing)? low|(?:me )?when (?:i'?m|im|i am|i feel|i get) (?:sick|unwell|ill|low|down|sad|upset|struggling|anxious|crying|overwhelmed|scared|panicking)|therap\w*|counsell?\w*|meds|medication|tablets|pills|antidepressant\w*|eating disorder|self[- ]harm\w*|suicid\w*|feel (?:better|okay|ok|safe)|cope|coping|calm (?:me )?down|emotional\w*|griev\w*|grief|died|dying|passed away|funeral|miscarr\w*|stillb(?:orn|irth)\w*|lost (?:the|a|our) baby|illness|ill\b|my (?:illness|condition|pain|recovery)|chronic|long covid|cancer|chemo\w*|surgery|rehab|scream\w*|shout\w*|yell\w*|swear\w* at|hits? (?:me|us)|hurts? (?:me|us)|kicks?|threaten\w*|drunk|drinks|break(?:s|ing)? things|smash\w* things|take the kids|(?:scared|afraid|frightened) of (?:him|her|them)|checks my phone|who i can see|calls me (?:useless|lazy|stupid|worthless)|nothing without (?:him|her))\b/;
+const HELP_AT_HOME = String.raw`(?:${HOUSEMATE} ${NEVER_HELPS}|(?:${HOUSEMATE}|he|she|they) ${STOPPED_HELPING}${WITH_THE_JOB}|(?:he|she|they) ${NEVER_HELPS}(?=\s*out\b|[^.!?;]*?\b${HOME_WORDS}\b)|(?<=\b${HOME_WORDS}\b[^.!?;]{0,80})(?:he|she|they) ${NOT_HELPING}|my (?:family|parents|mum|mom|mam|dad|brothers?|sisters?|siblings|in-laws) ${NOT_HELPING}(?:(?: me| us)? (?:out )?(?:with|around|at) (?:anything |everything |the |my |our )?${FAMILY_HOME_WORDS}\b))`;
+// harm or control at home, done to the writer or someone in the family (not "I could scream")
+const HARM_AT_HOME = String.raw`(?:(?:scream|shout|yell)\w* at (?:me|us)|(?:screams|shouts|yells)\b|(?:get|gets|got|getting|being) (?:screamed|shouted|yelled) at|(?:he|she|they)(?: \w+)? (?:scream|shout|yell)\w*|swear\w* at (?:me|us)|hits? (?:me|us)|(?<!\b(?:it|this|that|what)(?: really| just| so)? )hurts? (?:me|us|my (?:mum|mom|mam|mother|dad|sister|brother|kids?|children|son|daughter|baby))|kicks? (?:me|us)|threaten\w*|drunk|drinks\b|break(?:s|ing)? things|smash\w* things|throw\w* (?:things|stuff|plates|cups)(?! (?:on|onto|around|all over|everywhere|in|into|down|away|out)\b)|punch\w* (?:me|us|walls?|the wall|holes|doors?)|push(?:es|ed|ing)? (?:me|us)(?! to\b)|grab\w* (?:me|us|my (?:arms?|wrists?|neck|throat|hair))(?! (?:a|an|some|the)\b)|beat\w* (?:me|us)(?! (?:to|at|why|how)\b)|(?:won'?t|doesn'?t|don'?t|will not|does not) let (?:me|us) eat|or (?:i|we) (?:don'?t|won'?t|do not) get (?:to eat|food|fed)|(?:says|tells me|calls me) (?:i'?m|im|i am) (?:so )?(?:useless|lazy|stupid|worthless|nothing|fat|ugly|crazy)|calls me (?:useless|lazy|stupid|worthless|names|fat|ugly)|puts? me down|controls? (?:what|who|where|how|when|everything)|tracks? my|goes through my|checks my phone|who i can see|eggshells|nothing without (?:him|her)|(?:scared|afraid|frightened) of (?:him|her|them)|(?:will|'ll|going to|gonna|threaten\w* to|tries? to) take the kids|take the kids (?:away|off me|from me))`;
+const NOT_CHORES = new RegExp(String.raw`\b(?:panic\w*|anxi\w*|depress(?!ing)\w*|mental health|my mental|homesick\w*|feel less\b(?! like\b)|(?:i|me)(?: \w+){0,3} disappear|hopeless|worthless|numb|so low|feel(?:ing)? low|(?:what(?:'?s| is) the|no|see(?:ing)? (?:the|any)) point (?:of|in) (?:anything|everything|it all|life|any of it)|(?:can'?t|cannot|don'?t|do not) see (?:a|any) way out|no way out|(?:me )?when (?:i'?m|im|i am|i feel|i get) (?:sick|unwell|ill|low|down|sad|upset|struggling|anxious|crying|overwhelmed|scared|panicking)|therap\w*|counsell?\w*|meds|medication|tablets|pills|antidepressant\w*|eating disorder|self[- ]harm\w*|suicid\w*|(?:help\w*|make\w*|made) (?:me |us )?(?:to )?(?:feel (?:any )?(?:better|okay|ok)|cope|calm (?:me )?down)|feel any better|feel safe|calm me down|emotional(?:ly)? (?:support\w*|abus\w*|neglect\w*)|griev\w*|grief|(?<!(?:machine|dishwasher|hoover|vacuum|fridge|freezer|boiler|oven|cooker|kettle|dryer|microwave|car|phone|laptop|battery|tv|telly) )died|dying(?! (?:for|to)\b)|passed away|funeral|miscarr\w*|stillb(?:orn|irth)\w*|lost (?:the|a|our) (?:baby|pregnancy)|illness|ill\b|unwell|my (?:illness|condition|pain|recovery|health|period)|in (?:\w+ )?(?:pain|agony)|migraines?|flare[- ]?ups?|strokes?|my disab(?:ility|ilities)|(?:i'?m|i am) disabled|wheelchair|physio\w*|injur(?:y|ies|ed)|diabet\w*|insulin|hospital|operation|diagnos\w*|symptoms?|chronic|long covid|cancer|chemo\w*|surgery|rehab)\b|${HARM_AT_HOME}`);
+const HARM_AT_HOME_RE = new RegExp(String.raw`\b${HARM_AT_HOME}`);
 // the words Reframe's own "partner seems distant" situation listens for (src/ultra/frameworks.js): a
-// partner described as cold, quiet, snappy or moody (not "I get snappy"), and the other signs of distance
-const PARTNER_DISTANT_WORDS = /\b(?:distant|withdrawn|far away|(?:he|she|they|partner|husband|wife|boyfriend|girlfriend)\b[^.!?;,]{0,25}?\b(?:cold|quiet|snappy|moody)|affection\w*|seems off|acting (?:off|weird|different)|pull(?:ing|ed) away|losing interest|falling out of love|doesn'?t seem interested|one-word answers|short with me|off with me|(?:barely|hardly|never|don'?t|won'?t) (?:talk|speak)\w*(?! about)|barely (?:looks|texts)\w*|not (?:talking|speaking)|on (?:their|his|her) phone|cold towards? me|doesn'?t (?:want to be with|want|love) me|spare room|going to (?:leave me|break up)|drifting)\b/;
+// partner described as cold, quiet, snappy or moody (not "I get snappy"), and the other signs of distance.
+// A partner on their phone is distance only when no work at home is named (PHONE_WORDS).
+const PARTNER_DISTANT_WORDS = /\b(?:distant|withdrawn|far away|(?:he|she|they|partner|husband|wife|boyfriend|girlfriend)\b[^.!?;,]{0,25}?\b(?:cold|quiet|snappy|moody)|affection\w*|seems off|acting (?:off|weird|different)|pull(?:ing|ed) away|losing interest|falling out of love|doesn'?t seem interested|one-word answers|short with me|off with me|(?:barely|hardly|never|don'?t|won'?t) (?:talk|speak)\w*(?! about)|barely (?:looks|texts)\w*|not (?:talking|speaking)|cold towards? me|doesn'?t (?:want to be with|want|love) me|spare room|going to (?:leave me|break up)|drifting)\b/;
+const PHONE_WORDS = /\bon (?:their|his|her) phone\b/;
 
 const THEMES = [
   { id: 'loss', labels: LABEL_IDS, tender: true,
     // a death only when it is someone's: "my phone died" and "dying to see her" are not grief
-    cues: [/\b(?:passed away|passed on|funeral|grief|griev\w*|bereave\w*)\b/g,
-      /\b(?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|friend|baby|aunt|auntie|uncle|cousin|dog|cat|pet|he|she|they|someone)\b[^.!?]{0,30}?\b(?:died|is dying|was dying|has died)\b/g,
-      /\blost (?:my|our) (?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|best friend|friend|baby|aunt|auntie|uncle|cousin|dog|cat|pet)\b/g,
-      /\b(?:miscarr\w*|stillb(?:orn|irth)\w*|lost (?:the|a) baby)\b/g],   // a pregnancy loss is a loss too
+    cues: [/\b(?:passed away|passed on|funeral|grief|griev\w*|bereave\w*|widow\w*|a death in the family)\b/g,
+      /\b(?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|boyfriend|girlfriend|fianc\w*|friend|baby|aunt|auntie|uncle|cousin|dog|cat|pet|he|she|they|someone)\b[^.!?]{0,30}?\b(?:died|is dying|was dying|has died|(?:was|were|got|been) killed|took (?:his|her|their) own life)\b/g,
+      /\b(?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|boyfriend|girlfriend|fianc\w*|friend|aunt|auntie|uncle|cousin|dog|cat|pet)'?s death\b|\bthe death of (?:my|our) (?:\w+ )?(?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|boyfriend|girlfriend|fianc\w*|friend|aunt|auntie|uncle|cousin|dog|cat|baby|pet)\b/g,
+      /\b(?:my|our) (?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|boyfriend|girlfriend|fianc\w*|friend|aunt|auntie|uncle|cousin|dog|cat) (?:has |had |just |sadly |recently )?passed(?! (?:out|over|by|through|around|round|me|us|him|them|his|her|their|my|our|the|a|an|all|both|it|with)\b)(?![^.!?]*\b(?:tests?|exams?|driving)\b)/g,
+      /\b(?:lost|losing) (?:my|our) (?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|boyfriend|girlfriend|fianc\w*|friend|aunt|auntie|uncle|cousin|dog|cat|best friend|baby|pet)\b(?! to (?:her|his|their)\b)/g,
+      /\b(?:miscarr\w*|stillb(?:orn|irth)\w*|ectopic|(?:lost|losing) (?:the|a|our) (?:baby|pregnancy))\b/g],   // a pregnancy loss is a loss too
     angles: [
       ['self-compassion', 'Missing someone this much can be a measure of how much they mattered. Grief doesn’t need to be tidied away or hurried along.'],
       ['context', 'Grief often comes in waves rather than a straight line. A hard day doesn’t undo the steadier ones, or mean you’re going backwards.'],
@@ -210,9 +223,10 @@ const THEMES = [
   // A partner who never helps at home isn't a partner who's distant, so the work at home rules that
   // situation out, unless the words describe distance too.
   { id: 'load', labels: ['frustration', 'anger', 'sadness'], notWithGrief: true, skipWhen: NOT_CHORES,
-    crowds: { ids: ['partner-distant'], unless: PARTNER_DISTANT_WORDS,
-      // for a label these lines don't serve, only when the words name the work at home
-      home: new RegExp(String.raw`\b(?:${HELP_AT_HOME}|${HOME_WORDS}|washing up|clean(?:ing|s)? up|tidy(?:ing)? up|pull(?:ing)? (?:their|his|her) weight)\b`) },
+    crowds: { ids: ['partner-distant'], unless: PARTNER_DISTANT_WORDS, unlessNoHits: PHONE_WORDS,
+      // for a label these lines don't serve: only the jobs themselves named, or a load cue beside a home word
+      home: new RegExp(String.raw`\b(?:${HELP_AT_HOME}|${HOME_WORK}|washing up|clean(?:ing|s)? up|tidy(?:ing)? up|pull(?:ing)? (?:their|his|her) weight)\b`),
+      near: new RegExp(String.raw`\b${HOME_WORDS}\b`) },
     cues: [new RegExp(String.raw`\b(?:flatmates?|housemates?|roommates?|chores|housework|house ?work|washing up|the dishes|the laundry|clean(?:ing|s)? up|tidy(?:ing)? up|do(?:ing)? everything|always end up (?:doing|cleaning|tidying|washing|paying|picking up)|nobody helps|no ?one helps|${HELP_AT_HOME}|does nothing (?:around (?:here|the (?:house|flat|home|place))|at home)|all the (?:cooking|cleaning|chores|housework|washing|laundry)|pull(?:ing)? (?:their|his|her) weight)\b`, 'g')],
     angles: [
       ['worry-partly-true', 'Your frustration might be pointing at something real: the load doesn’t feel shared. That’s worth saying out loud, kindly and plainly.'],
@@ -482,10 +496,11 @@ function candidatesFor(text, label) {
   const skipped = (th) => (grief && !th.tender && (th.notWithGrief || th.labels.every((l) => BRIGHT.has(l)))) || th.skipWhen?.test(probe);
   // situations a theme rules out when its words are there: for a label it serves, on any of its cues;
   // otherwise only when the words name it outright. Never when the words also describe that situation.
-  const crowded = new Set();
+  // harm or control at home, or a partner who has died: never "your partner seems distant" lines
+  const crowded = new Set(HARM_AT_HOME_RE.test(probe) || (grief && !PARTNER_DISTANT_WORDS.test(probe)) ? ['partner-distant'] : []);
   for (const th of THEMES) {
-    if (!th.crowds || th.crowds.unless.test(probe)) continue;
-    if ((fits(th) && !skipped(th) && hitsOf(th) > 0) || th.crowds.home.test(probe)) for (const id of th.crowds.ids) crowded.add(id);
+    if (!th.crowds || th.crowds.unless.test(probe) || (th.crowds.unlessNoHits?.test(probe) && !hitsOf(th))) continue;
+    if ((fits(th) && !skipped(th) && hitsOf(th) > 0) || th.crowds.home.test(probe) || (hitsOf(th) > 0 && th.crowds.near.test(probe))) for (const id of th.crowds.ids) crowded.add(id);
   }
   for (const th of THEMES) {
     if (!fits(th) || skipped(th)) continue;

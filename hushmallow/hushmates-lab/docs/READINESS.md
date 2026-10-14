@@ -115,7 +115,7 @@ These are questions for a lawyer, not conclusions:
 ## 3. 🩺 Clinical safety review (before launch)
 
 - The support screen's wording, and which lines appear for which kind of concern (crisis, someone in danger, abuse and violence, harassment, other).
-- The extra crisis rules Hushmates adds to the shared lexicon (`core/feeling-safety.js`: overdose, self-harm, "no point going on", "don't want to be here any more", and passive wishes such as "I just want to disappear" or "sleep and never wake up"), and what they miss. Test with a clinician's list of phrasings.
+- The extra crisis rules Hushmates adds to the shared lexicon (`core/feeling-safety.js`): overdose, self-harm, "no point going on", "don't want to be here any more", and passive wishes not to be here ("I just want to disappear", "sleep and never wake up", "I wish I'd never been born", "everyone would be better off without me", "I'm a burden", "tired of being alive"). Crisis words now win over abuse or bullying words in the same feeling. Every phrasing found so far, and the everyday sentences that must still be released, are in `tests/fixtures/mallow-probes.json`: start the clinician's list from there, and say what they miss. Known gaps left on purpose for that review: "I'd rather be dead" style idioms ("I'd rather die than…"), "thinking about dying" (also death anxiety), and the shared lexicon catching "the vet said she'd go to sleep and never wake up".
 - The Mallow library's rule that a death, harm at home, or health and mood never get "unfair load" lines (`NOT_CHORES` in `core/perspectives.js`), and whether it should be wider.
 - The escalation procedure (section 1) and the desk's urgent guidance.
 - The Mallow library's lines.
