@@ -25,7 +25,7 @@ import { addTicker, removeTicker, setStageFloor } from '../../mallows/rig.js';
 import { rememberVisitSafety, recallVisitSafety } from '../visit-safety.js';
 import { openSupport } from './support.js';
 import { createSubtitles } from '../../hushfold/subtitles.js';
-import { createLines, SHARED_LINES, LOSS_CHECK, flowEmotion } from '../../hushfold/lines.js';
+import { createLines, SHARED_LINES, PLAY_CHECK, flowEmotion } from '../../hushfold/lines.js';
 import { requireEntitlement } from '../entitlements.js';
 import { createStage, createStageMallow } from '../../hushfold/stage.js';
 import { createInputRouter } from '../../hushfold/input-router.js';
@@ -93,6 +93,39 @@ export function worldHeldLines() {
   };
 }
 
+/**
+ * What a Tell sent on the main screen does first (owner decision 'Ask before every world', 14 Oct 2026), in this order:
+ *   'crisis'  — crisis words: the calm line and support, nothing made of the words, any world ends quietly;
+ *   'carried' — ordinary words after care or distress was answered earlier in this visit: a short acknowledgement and the
+ *               quiet choice (no Thought Mallow, a world only if they ask);
+ *   'support' — care, distress, wanting to hurt someone, or a loss the words (or a chosen grief feeling) name: support
+ *               first, then the quiet choice — straight to the gentle path, never asked;
+ *   'ask'     — everything else: "Shall we play with this, or just be with it?" before any Thought Mallow, world or
+ *               plans page (a loss the lists are only unsure of, lossRoute 'ask', is asked the same: one question).
+ *   'play'    — the person already chose "Play with it" for these words (back from the plans page with a plan).
+ * `level` is the visit's (never lower than the words'); `carried`: care was answered earlier and these words are not heavy.
+ */
+export function tellRoute({ level = 'none', carried = false, chosen = null } = {}) {
+  if (level === 'crisis') return 'crisis';
+  if (carried && level !== 'none') return 'carried';
+  if (level === 'care' || level === 'concern') return 'support';
+  return chosen === 'play' ? 'play' : 'ask';
+}
+/**
+ * The person's answer to the question (subtitles.choice: 'play' | 'stay' | null), and where it was asked → what follows:
+ *   'play'  — the flow as it always was (a Thought Mallow of the words, then the world — or the world takes them);
+ *   'stay'  — "Just be with it": nothing made of the words, a gentle line, the quiet choice; in a world, it waits under
+ *             its veil meanwhile (staying ends it quietly, somewhere calm melts into the calm world);
+ *   'quiet' — no answer within PLAY_CHECK.ms, or Back: nothing is made of the words, the stage stays quiet (a world stays
+ *             paused, its Resume theirs) and the visit stays gentle from here;
+ *   'retold' — a new Tell opened over the question: it is asked again for those words, once they are sent.
+ */
+export function askOutcome(v, { telling = false } = {}) {
+  if (v === 'play') return 'play';
+  if (v === 'stay') return 'stay';
+  return telling ? 'retold' : 'quiet';
+}
+
 export default function hushfold(app, params = {}) {
   const { world, prefs, ent, store } = app;
   // explicit picks (Meet the Mallows, the panel switcher) win, then the last one chosen, then the time of day
@@ -108,6 +141,11 @@ export default function hushfold(app, params = {}) {
     // noResume: a death, a loss or harm done to the person was told this visit — the world they were in is never offered back
     noResume: false,
     worldAt: 0,   // when the world on stage now arrived (its first seconds: the person's thought is still on its way)
+    // soft: "Just be with it" was chosen, or the question was left unanswered (owner decision 'Ask before every world'):
+    // the rest of the visit stays gentle — no squeeze quips, invitations or playful lines, the attentive face — with no
+    // support line and no Support pill (nothing heavy was said). Kept for the page session, like the level (app.state).
+    soft: !!app.state.hfSoft,
+    asking: false,   // the question is showing ("Shall we play with this, or just be with it?")
   };
   const timers = new Set();
   const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); if (!S.left) fn(); }, ms); timers.add(t); return t; };
@@ -173,7 +211,7 @@ export default function hushfold(app, params = {}) {
   let touchMt = null, touchBox = null;   // the MallowTouch stage (W2), else the rig (the fallback)
   let rigReleased = false;               // the classic rig was let go for MallowTouch: leave() hands it back
   // each transient layer has its own history entry, so Back closes it first
-  const layer = { overlay: 0, panel: 0, read: 0 };
+  const layer = { overlay: 0, panel: 0, read: 0, ask: 0 };
   const pushLayer = (k) => { layer[k] = app.pushLayer?.() || 0; };
   const popLayer = (k) => { const t = layer[k]; layer[k] = 0; if (t) app.popLayer?.(t); };
   // Sheets opened from the Hushfold (support, the A–Z list) get a history entry too, newer than the
@@ -253,9 +291,10 @@ export default function hushfold(app, params = {}) {
 
   function dockTop({ ignorePaused = false } = {}) {
     const paused = !ignorePaused && !pausedPill.hidden;
-    if (tellBtn.classList.contains('is-hidden') && supportPill.hidden && !paused) return innerHeight - 24;
+    const away = (e) => e.hidden || e.classList.contains('is-hidden') || e.classList.contains('is-under');
+    if (away(tellBtn) && away(supportPill) && !paused) return innerHeight - 24;
     // (the Paused pill only appears with the rest of the dock, in its own row when it wraps)
-    const items = [tellBtn, supportPill, pausedPill].filter((e) => !e.hidden && !e.classList.contains('is-hidden') && (paused || e !== pausedPill));
+    const items = [tellBtn, supportPill, pausedPill].filter((e) => !away(e) && (paused || e !== pausedPill));
     const tops = items.map((e) => e.getBoundingClientRect()).filter((r) => r.height).map((r) => r.top);
     return tops.length ? Math.min(...tops) : innerHeight - 24;
   }
@@ -558,7 +597,8 @@ export default function hushfold(app, params = {}) {
     if (!on && pausedLine) { pausedLine = null; subtitles.clear({ keepHeld: true }); }
     // the sheet holding a world is not the person pausing it: no pill, no "Paused" line (nor a support or
     // A–Z sheet over it)
-    if (held || (on && sheetHold?.paused)) { panel?.update(); return; }
+    // (nor the question waiting over it: "Shall we play with this…" — holdForAsk)
+    if (held || (on && (sheetHold?.paused || askHold))) { panel?.update(); return; }
     // held for a crisis: the world only waits to end quietly (no pill, no line, nothing to resume); held quietly after a
     // death, a loss or harm done to the person: no pill either — it is never offered back (holdQuiet)
     if (on && (S.hold === 'crisis' || S.hold === 'quiet')) { pausedPill.hidden = true; layout(); panel?.update(); return; }
@@ -685,6 +725,7 @@ export default function hushfold(app, params = {}) {
     worldMode = false;
     S.finishing = false;
     if (S.hold === 'care' || S.hold === 'quiet') S.hold = null;
+    S.softHold = false; askHold = null;
     // a world line still queued (its intro after a few pauses) never plays after the world has gone
     pausedLine = null;
     subtitles.clear({ keepHeld: true });
@@ -698,7 +739,7 @@ export default function hushfold(app, params = {}) {
     stage?.freeze(false);
     pausedPill.hidden = true;
     // (after something heavy, the person's Mallow comes back without a hop)
-    if (homeMallow) { mallowId = homeMallow; homeMallow = null; theme(); showMallow(mallowId, { entrance: !gentle() }); world.setRealm(M().realm, { crossfadeMs: 1400 }); }
+    if (homeMallow) { mallowId = homeMallow; homeMallow = null; theme(); showMallow(mallowId, { entrance: !softNow() }); world.setRealm(M().realm, { crossfadeMs: 1400 }); }
     layout();
     // the person's thought comes back beside their Mallow, near again (the world had it far out on the water)
     const back = stage?.thoughts.primary;
@@ -748,11 +789,11 @@ export default function hushfold(app, params = {}) {
       document.body.classList.remove('hf-world-leaving');
       // after a crisis no goodbye: the one calm line, now that the world has gone (or when the sheet
       // over it closes); after care, no cheery goodbye: the attentive face and a quiet line
-      if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
+      if (softNow()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
       const goodbye = () => {
         if (S.left || worldMode || S.finishing) return;
         let bye = null;
-        if (S.crisis) { speakCrisis(); } else if (gentle()) bye = say(SHARED_LINES.careQuiet); else bye = say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
+        if (S.crisis) { speakCrisis(); } else if (softNow()) bye = say(SHARED_LINES.careQuiet); else bye = say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]);
         // (the chip comes back in a corner once the closing line has been said, and the thought is home: 8 s at most)
         Promise.resolve(bye).then(() => later(() => holdOffer(false), 300));
       };
@@ -794,7 +835,7 @@ export default function hushfold(app, params = {}) {
     if (d?.kind === 'load') app.staleCode?.();
     if (S.left || worldMode) return;
     // (after something heavy, no "squish" joke: the quiet line)
-    if (d?.kind === 'none' || d?.kind === 'start' || d?.kind === 'load') say(gentle() ? SHARED_LINES.careQuiet : SHARED_LINES.stub[0]);
+    if (d?.kind === 'none' || d?.kind === 'start' || d?.kind === 'load') say(softNow() ? SHARED_LINES.careQuiet : SHARED_LINES.stub[0]);
   }
   /**
    * A discovery offered for the Memory Garden (W5): garden-install owns the whole moment (offer →
@@ -1073,14 +1114,14 @@ export default function hushfold(app, params = {}) {
       else if (bounce) touchMt.react('hop');
       if (S.left || id !== mallowId) return touchMt.rig;
       // (a new face on stage — a world's host halfway through a gentle melt — keeps the attentive face after something heavy)
-      if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
+      if (softNow()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
       theme(); layout();
       return touchMt.rig;
     }
     const rig = await world.setMallow(id, { entrance, interactive: true });
     if (S.left || id !== mallowId) return rig;
     stageMallow.attach(rig);
-    if (gentle()) stageMallow.setStage?.(CARE_FACE, { quiet: true });
+    if (softNow()) stageMallow.setStage?.(CARE_FACE, { quiet: true });
     theme();
     layout();
     return rig;
@@ -1190,8 +1231,8 @@ export default function hushfold(app, params = {}) {
     theme();
     await showMallow(mallowId);
     world.setRealm(M().realm, { crossfadeMs: 1200 });
-    if (gentle()) {
-      // after something heavy: a new face, no jokey hello
+    if (softNow()) {
+      // after something heavy (or "Just be with it"): a new face, no jokey hello
       stageMallow.setStage(CARE_FACE, { quiet: true });
     } else {
       stageMallow.setStage('curious');
@@ -1208,8 +1249,8 @@ export default function hushfold(app, params = {}) {
     S.touches++; S.reactions++;
     clearNudge();
     if (overlay) return;                                     // they are typing: no chatter
-    if (gentle()) return;                                    // after something heavy: squeezing stays, the jokes go
-    if (S.asking) return;                                    // (asking whether it is about a loss: the same, while it waits)
+    if (softNow()) return;                                   // after something heavy, or "Just be with it": squeezing stays, the jokes go
+    if (S.asking) return;                                    // (asking whether to play with the words: the same, while it waits)
     const t = now();
     if (!S.firstTouchAt) {
       S.firstTouchAt = t;
@@ -1225,7 +1266,7 @@ export default function hushfold(app, params = {}) {
   }
   let nudgeT = 0;
   function clearNudge() { clearTimeout(nudgeT); timers.delete(nudgeT); }
-  const canInvite = () => !S.invited && !S.told && !S.crisis && !S.care && !gentle() && !overlay && !worldMode && !S.flowAsked;
+  const canInvite = () => !S.invited && !S.told && !S.crisis && !S.care && !softNow() && !overlay && !worldMode && !S.flowAsked;
   // someone who squeezed a few times and then just watches is invited too, once the stage is quiet
   let inviteT = 0;
   function scheduleInvite() {
@@ -1247,7 +1288,7 @@ export default function hushfold(app, params = {}) {
     const [l1, l2] = lines.invitation(mallowId);
     await say(l1);
     // (something heavy typed meanwhile, sent or not: the invitation goes)
-    if (S.left || overlay || S.told || gentle()) return;
+    if (S.left || overlay || S.told || softNow()) return;
     showTell(true);
     // "Tell me" opens the overlay inside the tap itself; an invitation never outlives typing (transient)
     const v = await subtitles.choice(l2, [{ label: 'Tell me', value: 'tell', primary: true, onPick: () => openTell('chip', l2) }, { label: 'Just play', value: 'play' }],
@@ -1255,8 +1296,14 @@ export default function hushfold(app, params = {}) {
     if (S.left) return;
     S.lastLineAt = now();
     if (v === 'tell') openTell('chip', l2);
-    else if (v === 'play' && !gentle()) { S.intention ||= 'play'; say(lines.pick(mallowId, 'justPlay')); }
+    else if (v === 'play' && !softNow()) { S.intention ||= 'play'; say(lines.pick(mallowId, 'justPlay')); }
     // ignored: nothing else. The Tell pill stays; they can play for as long as they like.
+  }
+  /** The dock's Support pill under the open Tell overlay (whose own Support chip is the one): stepped away, or back. */
+  function supportUnder(on) {
+    supportPill.classList.toggle('is-under', !!on);
+    supportPill.inert = !!on;
+    if (on) supportPill.setAttribute('aria-hidden', 'true'); else supportPill.removeAttribute('aria-hidden');
   }
   function showTell(on) {
     const was = !tellBtn.classList.contains('is-hidden');
@@ -1267,6 +1314,19 @@ export default function hushfold(app, params = {}) {
 
   // ------------------------------------------------------ safety --
   const gentle = () => S.level !== 'none';
+  /**
+   * A quiet visit: something heavy was seen (gentle()), or the person chose "Just be with it" or let the question go
+   * (S.soft). The Mallow's own playful chatter stays away for the rest of it (squeeze quips, invitations, hellos, the
+   * feeling and "just play" lines, the cheery goodbye) and its face stays attentive. Only gentle() brings support close.
+   */
+  const softNow = () => gentle() || !!S.soft;
+  function softVisit() {
+    if (S.soft || S.left) return;
+    S.soft = true;
+    app.state.hfSoft = true;
+    clearTimeout(inviteT); timers.delete(inviteT);
+    clearNudge();
+  }
   /**
    * The detector found something (while typing, sent or not, or on submit). It only rises:
    * from here the Support pill stays, invitations and squeeze chatter stop, the Mallow comforts,
@@ -1437,8 +1497,11 @@ export default function hushfold(app, params = {}) {
     panel?.close();
     closeRead();
     showTell(false);
+    // one Support control at a time (review P3, 320 px): while the overlay is open its own Support chip is the one — the
+    // dock's pill steps away under it (unseen, untouchable, out of the tab order) and comes back when it closes
+    supportUnder(true);
     // after something heavy the Mallow listens with its attentive, concerned face
-    stageMallow.setStage(gentle() ? CARE_FACE : 'listening', { quiet: true });
+    stageMallow.setStage(softNow() ? CARE_FACE : 'listening', { quiet: true });
     root.classList.add('hf-typing');
     // (the words offered back after the plans page: the overlay opens with them, their feeling too)
     const again = retell && !gentle() ? retell : null;
@@ -1468,6 +1531,7 @@ export default function hushfold(app, params = {}) {
         root.classList.remove('hf-typing');
         if (S.left) return;
         noteSafety(meta.safety);
+        supportUnder(false);
         // a crisis typed in a world (sent or not): the world it paused ends quietly now (owner P3)
         if (S.level === 'crisis' && worldMode) endCrisisWorld();
         // (one still loading for it never enters)
@@ -1478,7 +1542,7 @@ export default function hushfold(app, params = {}) {
         layout();
         subtitles.unsuspend();
         if (reason !== 'submit') {
-          stageMallow.setStage(gentle() ? CARE_FACE : 'neutral', { quiet: true });
+          stageMallow.setStage(softNow() ? CARE_FACE : 'neutral', { quiet: true });
           speakCrisis();
           // a death, a loss or harm done to the person typed in a running world and closed without sending: the world is
           // held quietly (no pill, nothing resumes it), so the same gentle beat as after Send follows — the support line,
@@ -1486,8 +1550,11 @@ export default function hushfold(app, params = {}) {
           // under its veil with nothing offered. One beat at a time (a Tell opened over its choice parks it, then it is back)
           if (!S.crisis && S.hold === 'quiet' && worldMode && flowRef && !flowRef.stub) {
             if (!S.quietBeat) {
-              S.careSaid = true;
-              const beat = S.quietBeat = careBeat({ emotion: null, intention: null, safety: { level: S.level, category: S.category } })
+              // (held quietly for "Just be with it", nothing heavy said: the quiet choice again, never the support line)
+              const soft = S.softHold && !gentle();
+              if (!soft) S.careSaid = true;
+              const beat = S.quietBeat = (soft ? careChoice({ emotion: null, intention: null, safety: null, soft: true })
+                : careBeat({ emotion: null, intention: null, safety: { level: S.level, category: S.category } }))
                 .catch((e) => console.warn(e)).finally(() => { if (S.quietBeat === beat) S.quietBeat = null; });
             }
           // care or distress typed and closed without sending: support stays close, said once, quietly
@@ -1501,7 +1568,7 @@ export default function hushfold(app, params = {}) {
     layout();
   }
 
-  async function afterTell({ text, emotion, intention, safety, input, reading = null }) {
+  async function afterTell({ text, emotion, intention, safety, input, reading = null, chosen = null }) {
     S.pendingResume = false;
     // safety comes first, before anything else is decided (with or without a plan)
     noteSafety(safety);
@@ -1514,6 +1581,7 @@ export default function hushfold(app, params = {}) {
     const fam = emotion ? await setFeeling(emotion, { quiet: true }) : null;
     if (S.left) return;
     if (intention) S.intention = intention;
+    // (the order is tellRoute's: crisis, carried, support, then the question — never a Thought Mallow without a choice)
     if (safety?.level === 'crisis') {
       // no Thought Mallow, no world that transforms the words; support stays one tap away.
       // A world that was playing ends quietly (owner P3); the calm line follows once it has gone
@@ -1529,29 +1597,26 @@ export default function hushfold(app, params = {}) {
     // ordinary words after care or distress was already answered in this visit: a short, plain acknowledgement
     // (not the whole support line again), and a world only if they ask for one; a world playing is not paused
     if (carried && gentle()) { S.told = true; await careAgain({ emotion, intention, safety }); return; }
-    // care (abuse, violence, threats…), distress, or wanting to hurt someone: the person stays on the
-    // stage with or without a plan. No jokes, no Thought Mallow made of it, nothing starts by itself:
+    // care (abuse, violence, threats…), distress, wanting to hurt someone, or a loss the words name: the person stays
+    // on the stage with or without a plan. No jokes, no Thought Mallow made of it, nothing starts by itself:
     // support first, then they choose whether anything plays (the plans page only if they ask to play)
     if (safety?.level === 'care' || safety?.level === 'concern') { S.told = true; S.careSaid = true; await careBeat({ emotion, intention, safety }); return; }
-    // not sure the words are about a loss (owner decision 'Ask when unsure'): the Mallow asks first; "Yes, it is" is
-    // exactly the loss path above, "Something else" carries on, no answer (or Back) stays here quietly
-    if (safety?.unsure) {
-      const v = await askAboutLoss();
+    // everything else (owner decision 'Ask before every world'): before any Thought Mallow, any world or the plans page,
+    // "Shall we play with this, or just be with it?" — a loss the lists are only unsure of is asked exactly this, once
+    if (tellRoute({ level: safety?.level || 'none', carried, chosen }) === 'ask') {
+      const out = askOutcome(await askPlay(), { telling: !!overlay });
       if (S.left) return;
-      if (v === 'yes') {
-        const loss = { level: 'concern', category: 'loss' };
-        noteSafety(loss);
-        S.careSaid = true;
-        await careBeat({ emotion, intention, safety: loss });
-        return;
-      }
-      if (v !== 'else') { stageMallow.setStage(gentle() ? CARE_FACE : 'neutral', { quiet: true }); return; }
-      // (answered: the plans page and back never asks again)
-      if (input?.safety?.detail) input.safety.detail.unsure = false;
+      if (out === 'stay') { await beWithIt({ emotion, intention }); return; }
+      if (out === 'quiet') { quietAfterAsk(); return; }
+      // (a new Tell opened over the question: those words are asked about once they are sent)
+      if (out === 'retold') { holdForAsk(false); return; }
+      // "Play with it": the flow exactly as it always was (a world that waited under its veil carries on, and takes them)
+      holdForAsk(false, { play: true });
     }
     if (!ent.has('paid')) {
       // D4: the Thought Mallow and Hushflow are part of hushmallow Flow. The words wait in memory only.
-      app.state.pendingTell = { input, emotion, intention, at: Date.now() };
+      // (chosen: they said "Play with it" — back with a plan, the words are not asked about again)
+      app.state.pendingTell = { input, emotion, intention, chosen: 'play', at: Date.now() };
       app.go('plans', { reason: 'tell' });
       return;
     }
@@ -1585,23 +1650,107 @@ export default function hushfold(app, params = {}) {
   }
 
   /**
-   * (owner decision 'Ask when unsure', 14 Oct 2026) "Is this about losing someone?", once, before any Thought Mallow is
-   * made or any world starts: the Mallow attentive, nothing playful (squeezing stays quiet while it waits). Real buttons
-   * in the subtitles' chip row (announced with the line). → 'yes' | 'else' | null (no answer within LOSS_CHECK.ms, Back,
-   * or a new Tell opened).
+   * (owner decision 'Ask before every world', 14 Oct 2026) "Shall we play with this, or just be with it?", once, before
+   * any Thought Mallow is made or any world starts or takes the words: the Mallow attentive (CARE_FACE: whatever touches
+   * it, never a grin), nothing playful — squeezing stays quiet while it waits. In a running world the world waits under
+   * its veil meanwhile (holdForAsk: no Paused pill, no "Paused" line — it is not the person pausing it). Two real buttons
+   * in the subtitles' chip row (46 px, announced with the line in its live region), its own Back layer.
+   * → 'play' | 'stay' | null (no answer within PLAY_CHECK.ms, Back, or a new Tell opened over it).
    */
-  async function askAboutLoss() {
+  async function askPlay() {
     S.told = true;
     S.asking = true;
     stageMallow.setStage(CARE_FACE, { quiet: true });
-    pushLayer('lossCheck');
+    // (first: the world's own passing lines go with its pause, never the question)
+    holdForAsk(true);
+    pushLayer('ask');
     try {
-      return await subtitles.choice(LOSS_CHECK.ask, [{ label: LOSS_CHECK.yes, value: 'yes' }, { label: LOSS_CHECK.no, value: 'else' }],
-        { who: M().name, colour: M().colours.glow, timeoutMs: LOSS_CHECK.ms, transient: true, lossCheck: true, interrupt: !subtitles.holding });
+      return await subtitles.choice(PLAY_CHECK.ask, [{ label: PLAY_CHECK.play, value: 'play', primary: true }, { label: PLAY_CHECK.stay, value: 'stay' }],
+        { who: M().name, colour: M().colours.glow, timeoutMs: PLAY_CHECK.ms, transient: true, ask: true, interrupt: !subtitles.holding });
     } finally {
       S.asking = false;
-      popLayer('lossCheck');
+      popLayer('ask');
     }
+  }
+  /**
+   * A running world waits under its veil while the question waits (review P3: it kept playing for 20 s). on: paused,
+   * unless it already was (the person's own Pause stays theirs). off: it carries on — only if this hold paused it and
+   * nothing else holds it now (a safety hold; the phone sheet or a sheet over it carries it on when it closes).
+   * { play: true }: "Play with it" — a world kept quietly for an earlier "Just be with it" plays on too.
+   */
+  let askHold = null;   // { paused: this hold paused it } while the question waits over a world
+  function holdForAsk(on, { play = false } = {}) {
+    if (on) {
+      if (askHold || !worldMode || S.finishing || !flowRef || flowRef.stub) return;
+      const st = flowRef.state || {};
+      if (st.phase === 'finished') return;
+      askHold = { paused: !st.paused };
+      if (askHold.paused) { try { flowRef.pause?.(); } catch (e) { console.warn(e); } }
+      panel?.update();
+      return;
+    }
+    const h0 = askHold;
+    askHold = null;
+    const soft = play && releaseSoftHold();
+    if (!(h0?.paused || soft) || !worldMode || S.finishing || !flowRef || flowRef.stub || S.hold) { panel?.update(); return; }
+    // (something else covers it now: it carries on when that lets go)
+    if (sheetHold) { sheetHold.paused = true; return; }
+    if (held) { held.wantPaused = false; return; }
+    const st = flowRef.state || {};
+    if (st.phase !== 'finished' && st.paused) { pausedPill.hidden = true; try { flowRef.resume?.(); } catch (e) { console.warn(e); } layout(); }
+    panel?.update();
+  }
+  /** The quiet hold of an earlier "Just be with it" in this world (S.softHold) is let go: true when there was one. */
+  function releaseSoftHold() {
+    const was = !!S.softHold && S.hold === 'quiet' && !S.noResume;
+    S.softHold = false;
+    if (was) S.hold = null;
+    return was;
+  }
+  /**
+   * "Just be with it": no Thought Mallow of the words and no world takes them. A gentle line that assumes nothing, then
+   * the quiet choice — stay here quietly, or somewhere calm — with no support line (the Support pill stays where it is:
+   * nothing heavy was said), and the visit stays gentle (softVisit). The thoughts on stage drift off softly. In a world:
+   * it stays under its veil, held quietly (no pill, S.softHold) — staying, or letting the choice go, ends it quietly;
+   * somewhere calm melts into the calm world (careChoice). One beat at a time (S.quietBeat: a Tell opened and closed
+   * over it brings the same choice back, never a second one).
+   */
+  async function beWithIt({ emotion, intention }) {
+    S.told = true;
+    softVisit();
+    stage?.thoughts.release(900);
+    if (askHold && worldMode && flowRef && !flowRef.stub && !S.finishing && flowRef.state?.phase !== 'finished') {
+      askHold = null;
+      S.hold = 'quiet'; S.softHold = true;
+      pausedPill.hidden = true;
+      try { flowRef.setThoughts?.(null); } catch (e) { console.warn(e); }
+      layout();
+    } else holdForAsk(false);
+    stageMallow.setStage(CARE_FACE, { quiet: true });
+    panel?.update();
+    await say(PLAY_CHECK.be, { interrupt: !subtitles.holding });
+    if (S.left || overlay || S.quietBeat) return;
+    const beat = S.quietBeat = careChoice({ emotion, intention, safety: null, soft: true })
+      .catch((e) => console.warn(e)).finally(() => { if (S.quietBeat === beat) S.quietBeat = null; });
+    await beat;
+  }
+  /**
+   * The question let go (no answer within PLAY_CHECK.ms, or Back): nothing is made of the words and nothing starts. The
+   * stage stays quiet (the Tell pill is there for more), the face attentive, and the visit gentle from here (review P3:
+   * never the smiling face and "Ooh… that's cosy" at the next squeeze). A world that waited stays paused, quietly — its
+   * Resume theirs (the Paused pill, no "Paused" line).
+   */
+  function quietAfterAsk() {
+    softVisit();
+    stageMallow.setStage(CARE_FACE, { quiet: true });
+    const h0 = askHold;
+    askHold = null;
+    const soft = releaseSoftHold();
+    if ((h0?.paused || soft) && worldMode && flowRef && !flowRef.stub && !S.finishing && !S.hold && flowRef.state?.paused && !held) {
+      pausedPill.hidden = false;
+      layout();
+    }
+    panel?.update();
   }
   /**
    * The feeling the words themselves suggest, confidently (interpret.js suggestedFeelings: the chip the overlay
@@ -1612,12 +1761,13 @@ export default function hushfold(app, params = {}) {
     try { const m = await import('../../engine/interpret.js'); return m.suggestedFeelings?.(reading)?.[0] || null; } catch { return null; }
   }
   /** The world a gentle choice plays, named for what it is (a calm one first, once it is playable). */
-  async function gentleWorld() {
+  async function gentleWorld({ calmOnly = false } = {}) {
     try {
       if (!(await flowAvailable())) return null;
       const { registry } = await import('../../hushfold/flow/registry.js');
-      // (after a death, a loss or harm done to the person: a calm world, or none — never a charged one, taken slowly or not)
-      const ok = (id) => registry.playable(id) && (!S.noResume || registry.get(id)?.calm === true);
+      // (after a death, a loss or harm done to the person, or "Just be with it": a calm world, or none — never a charged
+      // one, taken slowly or not)
+      const ok = (id) => registry.playable(id) && (!(S.noResume || calmOnly) || registry.get(id)?.calm === true);
       for (const [id, label] of GENTLE_WORLDS) if (ok(id)) return { worldId: id, label };
       const any = (registry.list || []).find((e) => ok(e.id));
       return any ? { worldId: any.id, label: `Play ${any.title}` } : null;
@@ -1654,32 +1804,38 @@ export default function hushfold(app, params = {}) {
     if (S.left || overlay || worldMode) return;
     await careChoice({ emotion, intention, safety });
   }
-  /** Stay here quietly (first), or a calm world because they ask for one: plan or no plan, never with their words. */
-  async function careChoice({ emotion, intention, safety }) {
-    const gw = await gentleWorld();
+  /**
+   * Stay here quietly (first), or a calm world because they ask for one: plan or no plan, never with their words.
+   * soft: after "Just be with it" (nothing heavy was said): a calm world only, played as a gentle session with no words.
+   */
+  async function careChoice({ emotion, intention, safety, soft = false }) {
+    const gw = await gentleWorld({ calmOnly: soft });
     if (S.left || overlay) return;
-    if (!gw) { say(SHARED_LINES.careQuiet); return; }
+    // (no world to offer: a world held quietly ends quietly, never left waiting under its veil)
+    if (!gw) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); else say(SHARED_LINES.careQuiet); return; }
     const v = await subtitles.choice(SHARED_LINES.careAsk[0],
       [{ label: 'Stay here quietly', value: 'stay', primary: true }, { label: gw.label, value: 'play' }],
       { who: M().name, colour: M().colours.glow, timeoutMs: 30000 });
     if (S.left) return;
+    // (the question asked for new words took the stage: what follows is its answer's, not this choice's)
+    if (v == null && S.asking) return;
     // a crisis seen while the choice waited: nothing plays from it (support stays, the calm line was said)
     if (v === 'play' && !S.crisis) {
       const calm = intention && intention !== 'let-go' ? intention : 'calm';
       if (!ent.has('paid')) {
         // D4: worlds open with hushmallow Flow. Only because they asked; their words are not carried
-        app.state.pendingTell = { input: null, emotion: emotion || S.emotion, intention: calm, worldId: gw.worldId, gentle: { level: S.level, category: S.category }, at: Date.now() };
+        app.state.pendingTell = { input: null, emotion: emotion || S.emotion, intention: calm, worldId: gw.worldId, gentle: { level: S.level, category: S.category, ...(soft ? { soft: true } : {}) }, at: Date.now() };
         app.go('plans', { reason: 'tell' });
         return;
       }
       // their choice: it plays, unheld (held quietly too: the calm world is the one thing a quiet hold resumes for)
-      if (S.hold === 'care' || S.hold === 'quiet') { S.hold = null; pausedPill.hidden = true; }
+      if (S.hold === 'care' || S.hold === 'quiet') { S.hold = null; S.softHold = false; pausedPill.hidden = true; }
       S.holdOnWorld = null;
       // in a world: a gentle session from here, and a melt into the calm world (or the calm world carries on)
       if (worldMode && flowRef && !flowRef.stub && !S.finishing) { calmTheWorld(gw.worldId); return; }
       // (a world still loading under a safety pause: their choice starts the calm one instead, unheld)
       if (starting && flowRef && !flowRef.stub) { try { flowRef.resume?.(); } catch (e) { console.warn(e); } }
-      startFlow({ emotion: emotion || S.emotion, intention: calm, input: null, safety, worldId: gw.worldId });
+      startFlow({ emotion: emotion || S.emotion, intention: calm, input: null, safety, worldId: gw.worldId, soft });
     } else if (S.hold === 'quiet' && worldMode) {
       // staying quietly (or the choice let go) in a world held after a death, a loss or harm done to them: the world
       // ends quietly — it never waits under its veil to be played again — and the quiet line follows it
@@ -1701,10 +1857,11 @@ export default function hushfold(app, params = {}) {
   }
 
   /** Start Hushflow (paid; enforced here as well as by the routes). Feeling ids map to the registry's. */
-  async function startFlow({ emotion = null, intention = null, input = null, safety = null, worldId = null, resume = false } = {}) {
+  async function startFlow({ emotion = null, intention = null, input = null, safety = null, worldId = null, resume = false, soft = false } = {}) {
     try { requireEntitlement(ent, 'paid'); } catch { app.go('plans', { reason: 'tell' }); return; }
-    // after something heavy a world never carries the earlier words (a gentle world has no Thought Mallow)
-    if (gentle()) wordsCur = null;
+    // after something heavy a world never carries the earlier words (a gentle world has no Thought Mallow); nor the calm
+    // world asked for after "Just be with it" (soft: a gentle session too — calm, its gentle lines, no garden offers)
+    if (gentle() || soft) wordsCur = null;
     // after a crisis nothing starts a world in this visit (owner P3)
     if (S.crisis) return;
     S.flowAsked = true;
@@ -1727,11 +1884,11 @@ export default function hushfold(app, params = {}) {
       const flow = await getFlow();
       if (S.left || S.crisis) return;
       // (a director made before something heavy still has the thoughts: a gentle start lets them go)
-      if (!flow.stub && gentle()) flow.setThoughts?.(null);
+      if (!flow.stub && (gentle() || soft)) flow.setThoughts?.(null);
       if (!flow.stub) { document.body.classList.add('hf-world-arriving'); if (!subtitles.holding) subtitles.clear(); }
       try {
         // gentle: after a care or distress disclosure (calm worlds only, no Memory Garden offers)
-        const started = flow.start({ emotion: fe, intention, intensity: input?.intensity ?? 0.6, input: input ? { text: input.text, safety: input.safety } : null, worldId, resume, gentle: gentle() });
+        const started = flow.start({ emotion: fe, intention, intensity: input?.intensity ?? 0.6, input: input ? { text: input.text, safety: input.safety } : null, worldId, resume, gentle: gentle() || soft });
         // something heavy typed before the director had this world: it enters held, never stepping
         if (S.holdOnWorld && !flow.stub) { try { flow.pause?.({ reason: 'safety' }); } catch (e) { console.warn(e); } }
         await started;
@@ -1963,8 +2120,8 @@ export default function hushfold(app, params = {}) {
     const e = id ? em.getEmotion(id) : null;
     S.emotion = e ? id : null;
     S.emotionName = e?.name || null;
-    // after something heavy the feeling is noted and the attentive face stays, whatever is named
-    if (gentle()) stageMallow.setStage(CARE_FACE, { quiet: true });
+    // after something heavy (or "Just be with it") the feeling is noted and the attentive face stays, whatever is named
+    if (softNow()) stageMallow.setStage(CARE_FACE, { quiet: true });
     else if (e) stageMallow.setEmotion(e.face, 0.6, { quiet });
     else stageMallow.setStage('neutral', { quiet: true });
     return e;
@@ -1982,14 +2139,14 @@ export default function hushfold(app, params = {}) {
     if (S.left) return;
     panel?.update();
     // after something heavy: no acknowledgement line (it would joke, or talk over the support line)
-    if (e && !gentle()) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name, family: e.family }), { interrupt: !subtitles.holding });
+    if (e && !softNow()) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name, family: e.family }), { interrupt: !subtitles.holding });
     if (e && steerable()) flowRef.setEmotion?.(flowEmotion(id, e.family));
   }
   async function pickIntention(id) {
     S.intention = id;
     panel?.update();
     // after something heavy the choice is noted, without the playful "just play" line
-    if (id === 'play' && !gentle()) say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
+    if (id === 'play' && !softNow()) say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
     if (id && steerable()) flowRef.setIntention?.(id);
   }
 
@@ -1998,10 +2155,11 @@ export default function hushfold(app, params = {}) {
     const sh = token ? sheets.find((r) => r.token === token) : (!token && sheets.length ? sheets[sheets.length - 1] : null);
     if (sh) { sh.token = 0; sh.sheet.close('back'); return; }
     const owner = token ? Object.keys(layer).find((k) => layer[k] === token) : null;
-    const k = owner || (overlay ? 'overlay' : readEl ? 'read' : panel?.isOpen ? 'panel' : layer.lossCheck ? 'lossCheck' : null);
+    const k = owner || (overlay ? 'overlay' : readEl ? 'read' : panel?.isOpen ? 'panel' : layer.ask ? 'ask' : null);
     if (!k) return;
     layer[k] = 0;   // its history entry is spent: closing must not step back again
-    if (k === 'lossCheck') subtitles.drop((o) => o.lossCheck);
+    // (the question: Back lets it go, as no answer would — nothing is made of the words)
+    if (k === 'ask') subtitles.drop((o) => o.ask);
     else if (k === 'overlay') overlay?.close('back');
     else if (k === 'read') closeRead();
     else panel?.close();
@@ -2017,7 +2175,7 @@ export default function hushfold(app, params = {}) {
 
   // -------------------------------------------------- the opening --
   // the opening lines only play into an untouched, quiet stage
-  const quiet = () => !S.touches && !S.told && !S.flowAsked && !worldMode && !overlay && !gentle();
+  const quiet = () => !S.touches && !S.told && !S.flowAsked && !worldMode && !overlay && !softNow();
   async function opening() {
     // back within this page session (from Settings, the garden, a ritual): the Tell pill, no "welcome back"
     const again = visitedThisSession;
@@ -2057,7 +2215,8 @@ export default function hushfold(app, params = {}) {
     if (!p || Date.now() - p.at > 30 * 60 * 1000) return false;
     // they asked for something gentle after a care or distress disclosure: support stays up, with or
     // without a plan (back from the plans page without buying, the visit is still a gentle one)
-    if (p.gentle) { noteSafety(p.gentle); S.careSaid = true; }
+    // (or a calm world after "Just be with it": the visit stays gentle, with nothing heavy to answer — soft)
+    if (p.gentle) { noteSafety(p.gentle); if (p.gentle.level && p.gentle.level !== 'none') S.careSaid = true; if (p.gentle.soft) softVisit(); }
     // no plan after all (Back from the plans page): a warm line, and their words offered back to tell again
     if (!ent.has('paid') && p.input?.text && !gentle()) { offerRetell(p); return true; }
     if (!ent.has('paid')) return false;
@@ -2065,13 +2224,14 @@ export default function hushfold(app, params = {}) {
     showTell(true);
     if (p.gentle) {
       // ...and the gentle world they chose plays, with no words in it
-      later(() => startFlow({ emotion: p.emotion, intention: p.intention || 'calm', input: null, worldId: p.worldId || null }), 700);
+      later(() => startFlow({ emotion: p.emotion, intention: p.intention || 'calm', input: null, worldId: p.worldId || null, soft: !!p.gentle.soft }), 700);
       return true;
     }
     // their words wait for this (no reload for a new deploy in between); their world starts loading now
     S.pendingResume = true;
     if (p.input?.text) warmWorld({ emotion: p.emotion, intention: p.intention });
-    later(() => afterTell({ text: p.input?.text || '', emotion: p.emotion, intention: p.intention, safety: p.input?.safety?.detail || { level: 'none' }, input: p.input }), 700);
+    // (they said "Play with it" before the plans page: chosen, so the words are not asked about again)
+    later(() => afterTell({ text: p.input?.text || '', emotion: p.emotion, intention: p.intention, safety: p.input?.safety?.detail || { level: 'none' }, input: p.input, chosen: p.chosen || null }), 700);
     return true;
   }
 
@@ -2177,13 +2337,13 @@ export default function hushfold(app, params = {}) {
       layout();
       // the Mallow first (squeezable within the first second), then its realm
       // (after something heavy earlier in the visit: no hop, and the attentive face)
-      const rigP = showMallow(mallowId, { entrance: !gentle() });
+      const rigP = showMallow(mallowId, { entrance: !softNow() });
       rigP.then(() => { if (!S.left) requestAnimationFrame(() => world.setRealm(M().realm, { crossfadeMs: 900 })); });
       await rigP;
       if (S.left) return;
       // the stage joins the shared loop after the hero (so a world in it sees this frame's Mallow)
       stage.start();
-      stageMallow.setStage(gentle() ? CARE_FACE : 'neutral', { quiet: true });
+      stageMallow.setStage(softNow() ? CARE_FACE : 'neutral', { quiet: true });
       addEventListener('resize', onResize);
       visualViewport?.addEventListener('resize', onResize);
       document.addEventListener('keydown', onKey);
@@ -2279,7 +2439,7 @@ export default function hushfold(app, params = {}) {
      * history again (its entry is already gone).
      */
     get blockBack() {
-      if (!overlay && !readEl && !panel?.isOpen && !sheets.length && !layer.lossCheck) return null;
+      if (!overlay && !readEl && !panel?.isOpen && !sheets.length && !layer.ask) return null;
       return (token) => backClose(token);
     },
     safeForUpdate() {
@@ -2287,6 +2447,8 @@ export default function hushfold(app, params = {}) {
       // a garden offer waiting for its answer, or the installation playing
       if (document.querySelector('.hm-offer.is-in') || document.body.classList.contains('hm-installing')) return false;
       if (subtitles.holding) return false;
+      // (the question waiting for its answer)
+      if (S.asking) return false;
       if (sheets.length || S.pendingResume) return false;
       // someone who went to call a helpline comes back to the same screen, Support pill and all
       if (S.crisis || S.care || gentle() || !supportPill.hidden) return false;

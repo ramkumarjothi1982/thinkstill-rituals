@@ -161,11 +161,39 @@ export function hotSpot(data, cols = 48, rows = 12) {
   }
   const spread = Math.sqrt(s2 / w);
   if (spread > 0.16) return null;
-  return { x: cx / cols, y: cy / rows, r: Math.max(0.05, spread * 2.2 + 0.03), a: 0.8 };
+  // (its core — the brightest tenth of its cells — and the sky round it — the median cell —, for hotAlpha)
+  const order = Array.from({ length: n }, (_, i) => i).sort((p, q) => L[p] - L[q]);
+  const px = (i) => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]];
+  const core = px(order[Math.max(0, n - 1 - Math.floor(hot * 0.1))]), sky = px(order[n >> 1]);
+  return { x: cx / cols, y: cy / rows, r: Math.max(0.05, spread * 2.2 + 0.03), a: 0.8, core, sky };
+}
+/**
+ * How much the deepening over a bright spot adds on top of the scrim's own `a` (both rgba(9, 6, 28, α), the browser
+ * blending in sRGB): just enough that the spot's core under both reads a touch darker than the sky round it under the
+ * scrim alone (`under`: its luminance, 0.7 of the sky's — at equal luminance a warm sun still shows through a navy
+ * scrim as a faint brown disc) — so the sun or the moon never shows through as a muddy disc, and the place over it is
+ * never much darker than the rest of the scrim (never a dark blot). At most `max`. Pure; unit-tested.
+ */
+export function hotAlpha(core, sky, a, { max = 0.8, under = 0.7 } = {}) {
+  if (!core || !sky || !(a >= 0) || a >= 1) return 0;
+  const over = ([r, g, b], k) => luminance(r + (SCRIM_RGB[0] - r) * k, g + (SCRIM_RGB[1] - g) * k, b + (SCRIM_RGB[2] - b) * k);
+  // (a spot no brighter than the sky round it needs nothing)
+  const sk = over(sky, a);
+  if (over(core, a) <= sk) return 0;
+  const want = sk * under;
+  // the total cover the core needs (between a and 1), then what the second layer adds to reach it: 1 − (1 − k)/(1 − a)
+  let lo = a, hi = 1;
+  for (let i = 0; i < 18; i++) { const k = (lo + hi) / 2; if (over(core, k) > want) lo = k; else hi = k; }
+  const t = 1 - (1 - hi) / (1 - a);
+  return Math.round(Math.min(max, Math.max(0, t)) * 100) / 100;
 }
 let sampler = null;
-/** Draw what is behind `rect` (client px) from the given canvases into a tiny canvas; → RGBA data or null. */
-function sampleBackdrop(rect, canvases) {
+/**
+ * Draw what is behind `rect` (client px) from the given canvases into a tiny canvas; → RGBA data or null. `full`: each
+ * layer that is partly faded (a realm still fading in as the Hushfold opens, a world melting) drawn as it will be, fully
+ * shown; `out.partial` says whether there was one.
+ */
+function sampleBackdrop(rect, canvases, { full = false, out = null } = {}) {
   try {
     if (!rect || rect.width < 4 || rect.height < 4 || !canvases?.length) return null;
     sampler ||= Object.assign(document.createElement('canvas'), { width: 48, height: 12 });
@@ -178,9 +206,10 @@ function sampleBackdrop(rect, canvases) {
       let a = 1;
       for (let el = c; el && el !== document.body; el = el.parentElement) { const o = +getComputedStyle(el).opacity; if (Number.isFinite(o)) a *= o; }
       if (a < 0.05) continue;
+      if (a < 0.97 && out) out.partial = true;
       const kx = c.width / cr.width, ky = c.height / cr.height;
       const sx = (rect.left - cr.left) * kx, sy = (rect.top - cr.top) * ky;
-      g.globalAlpha = Math.min(1, a);
+      g.globalAlpha = full ? 1 : Math.min(1, a);
       g.drawImage(c, sx, sy, rect.width * kx, rect.height * ky, 0, 0, 48, 12);
     }
     g.globalAlpha = 1;
@@ -294,6 +323,18 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     el.style.transform = `translateY(${y}px)`;
   }
 
+  /**
+   * A new line, just before its first paint (in the frame's rAF, after its last placing): what is behind it is sampled
+   * again where it now is, still with no fade (.fresh); from the next frame on a later look deepens in softly. One quick
+   * look follows at 160 ms (a realm drawing its first frames as the Hushfold opens), then rescrim's every 600 ms.
+   */
+  function settle(node) {
+    if (!node?.isConnected) return;
+    const key = sampleScrim(node);
+    if (cur?.lineEl === node) { cur.scrimKey = key; cur.scrimStill = 0; }
+    requestAnimationFrame(() => requestAnimationFrame(() => node.classList.remove('fresh')));
+    setTimeout(() => { if (!destroyed && cur?.lineEl === node && cur.phase !== 'out') rescrim(); }, 160);
+  }
   /** Deepen the scrim over a bright backdrop (once per line, and again in its first seconds: rescrim; cheap: 48×12 samples). */
   function adaptScrim(node) {
     if (!node) return;
@@ -313,28 +354,37 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   /** What is behind the line now → its scrim (and the deepening over a bright spot); a key of what was found. */
   function sampleScrim(node) {
     let a = brightHint() ? 0.8 : SCRIM_MIN;
-    const data = backdrop ? sampleBackdrop(node.getBoundingClientRect(), backdrop()) : null;
-    if (data) a = scrimFor(brightPixel(data));
+    // (what is behind it may still be fading in — the realm as the Hushfold opens —: it is read as it will be too, and
+    // the deeper scrim of the two is kept, so the first look, before the line is first painted, is already right)
+    const layers = backdrop ? backdrop() : null;
+    const seen = { partial: false };
+    const data = layers ? sampleBackdrop(node.getBoundingClientRect(), layers, { out: seen }) : null;
+    const whole = seen.partial ? sampleBackdrop(node.getBoundingClientRect(), layers, { full: true }) : null;
+    if (data) a = Math.max(scrimFor(brightPixel(data)), whole ? scrimFor(brightPixel(whole)) : 0);
     node.style.setProperty('--hf-scrim', String(a));
     el.classList.toggle('bright', a > 0.62);
     // a bright spot behind the scrim's whole box (its feathered rim reaches past the words): the scrim is deepened over it
     // (--hf-hot-*), so the daytime sun never shows through the dark as a muddy brown blob — wherever it lies under the
     // scrim, its rounded ends and rim included: the deepening is its own layer (.hf-sub::after), not cut to the scrim's
     // pill, placed in px from the line's own box (--hf-hot-cx / -cy)
-    let hs = null;
+    let hs = null, ha = 0;
     try {
       const r = node.getBoundingClientRect();
       const box = { left: r.left - 24, top: r.top - 14, width: r.width + 48, height: r.height + 30 };
-      const d2 = backdrop ? sampleBackdrop(box, backdrop()) : null;
+      const seen2 = { partial: false };
+      const d2 = layers ? sampleBackdrop(box, layers, { out: seen2 }) : null;
       hs = d2 ? hotSpot(d2) : null;
-      if (hs) {
+      if (!hs && seen2.partial) { const w2 = sampleBackdrop(box, layers, { full: true }); hs = w2 ? hotSpot(w2) : null; }
+      // (only as deep as the spot needs to read as the sky round it does: never a dark blot on a bright home)
+      ha = hs ? hotAlpha(hs.core, hs.sky, a, { max: hs.a }) : 0;
+      if (hs && ha > 0.02) {
         node.style.setProperty('--hf-hot-x', `${(hs.x * 100).toFixed(1)}%`);
         node.style.setProperty('--hf-hot-y', `${(hs.y * 100).toFixed(1)}%`);
         node.style.setProperty('--hf-hot-cx', `${Math.round(hs.x * box.width - 24)}px`);
         node.style.setProperty('--hf-hot-cy', `${Math.round(hs.y * box.height - 14)}px`);
         node.style.setProperty('--hf-hot-r', `${Math.round(hs.r * box.width)}px`);
-        node.style.setProperty('--hf-hot-a', String(hs.a));
-      }
+        node.style.setProperty('--hf-hot-a', String(ha));
+      } else hs = null;
     } catch { hs = null; }
     if (!hs) node.style.setProperty('--hf-hot-a', '0');
     // (what was found, coarsely: two looks in a row that agree end the looking)
@@ -343,7 +393,9 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
 
   function lineNode(line) {
     const kind = line.kind === 'discovery' || line.kind === 'title' ? line.kind : 'dialogue';
-    const node = h('div', { class: `hf-sub ${kind}` },
+    // (fresh: until it is first painted its scrim and its deepening take what is sampled at once, with no fade from the
+    // default — the first ~0.9 s never shows the sun or moon through a scrim still deepening: settle())
+    const node = h('div', { class: `hf-sub ${kind} fresh` },
       // the name in near-white; only the dot wears the Mallow's colour (contrast over bright realms)
       line.who ? h('div', { class: 'who', style: line.colour ? { '--hf-who': line.colour } : null }, line.who, h('span', { class: 'sr-only' }, ': ')) : null,
       h('p', { class: 'text' }, line.text));
@@ -374,8 +426,9 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     layout();
     adaptScrim(node);
     // ...and placed once more before it is first painted, now that it has its final width (adaptScrim) and the scene
-    // has answered a band it asked for: the line never shows first where it does not belong and then moves
-    requestAnimationFrame(() => { if (!destroyed && cur?.lineEl === node) { jumpNext = true; layout(); } });
+    // has answered a band it asked for: the line never shows first where it does not belong and then moves — and what is
+    // behind it where it now is, sampled again (its scrim and the deepening over a bright spot are right from its first frame)
+    requestAnimationFrame(() => { if (!destroyed && cur?.lineEl === node) { jumpNext = true; layout(); settle(node); } });
     watch(true);
     if (cur.holding) {
       cur.timer = 0;
@@ -443,6 +496,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     ctl.classList.add('is-hidden');
     layout();
     adaptScrim(node);
+    if (node) requestAnimationFrame(() => { if (!destroyed && cur === mine && mine.lineEl === node) { layout(); settle(node); } });
     watch(true);
     if (opts.timeoutMs > 0) cur.timer = setTimeout(() => choose(null), opts.timeoutMs);
     function choose(value) {

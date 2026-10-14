@@ -311,11 +311,30 @@ export const SHARED_LINES = SHARED;
  * sure (grief.js unsureLoss): before any Thought Mallow is made or any world starts, the Mallow asks once, attentive,
  * nothing playful. "Yes, it is" is the gentle path (as a loss named would be); "Something else" carries on as usual;
  * no answer within `ms`, or Back, stays here quietly. Another Angle's Zuzu asks the same (src/beyond/lines.js LOSS_CHECK).
+ * (Retired on the main screen by PLAY_CHECK below, which is asked for every ordinary Tell and so wherever this would
+ * be; kept, unused by the scene, as the words the two screens' check-ins were held to.)
  */
 export const LOSS_CHECK = Object.freeze({
   ask: 'I want to get this right. Is this about losing someone?',
   yes: 'Yes, it is',
   no: 'Something else',
+  ms: 20000,
+});
+/**
+ * (owner decision 'Ask before every world', 14 Oct 2026, after a fresh review showed word lists keep missing ways of
+ * telling a death) After every Tell whose words are ordinary — no crisis, care, distress or escalation, and no loss the
+ * words or a chosen grief feeling already name (those go to support or straight to the gentle path, as before) — and
+ * before any Thought Mallow is made or any world starts or takes the words, the Mallow asks this once: attentive,
+ * nothing playful. It replaces the loss check-in wherever both would apply (never two questions in a row). "Play with
+ * it" is the flow as it always was; "Just be with it" makes nothing of the words: `be`, then the quiet choice (stay here
+ * quietly, or somewhere calm), no support line, and the visit stays gentle; no answer within `ms`, or Back, stays here
+ * quietly. One extra tap for everyone.
+ */
+export const PLAY_CHECK = Object.freeze({
+  ask: 'Shall we play with this, or just be with it?',
+  play: 'Play with it',
+  stay: 'Just be with it',
+  be: 'Okay. Let’s just be with it for a while.',
   ms: 20000,
 });
 

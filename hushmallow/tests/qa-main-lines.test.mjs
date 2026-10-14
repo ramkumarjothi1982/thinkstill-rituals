@@ -34,7 +34,7 @@ test('lines r1: a showing line stays put while its place is free; a new line jum
   assert.match(lay, /if \(!placedOnce \|\| jumpNext \|\| Math\.abs\(y - lastY\) > 140\)/, 'a new line jumps (never glides in from the last line\'s place)');
   const show = subs.slice(subs.indexOf('  function showLine() {'), subs.indexOf('  function fadeOut('));
   assert.ok(show.indexOf('jumpNext = true;') < show.indexOf('layout();'));
-  assert.match(show, /requestAnimationFrame\(\(\) => \{ if \(!destroyed && cur\?\.lineEl === node\) \{ jumpNext = true; layout\(\); \} \}\);/);
+  assert.match(show, /requestAnimationFrame\(\(\) => \{ if \(!destroyed && cur\?\.lineEl === node\) \{ jumpNext = true; layout\(\); settle\(node\); \} \}\);/);
   // the title in story type wraps differently once its face arrives: the line is measured and placed again
   assert.match(subs, /new ResizeObserver\(resized\)/);
   assert.match(subs, /document\.fonts\?\.addEventListener\?\.\('loadingdone', onFonts\)/);

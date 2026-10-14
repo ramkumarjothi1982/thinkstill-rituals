@@ -1203,7 +1203,7 @@ export function create(ctx) {
       startHum();
     } else if (ev.lambdaU < FLICK_U && elapsed - lastDrip > 0.12) {
       lastDrip = elapsed; ctx.sound('drip', { intensity: 0.18, pitch: 1 + R() * 0.4, pan: clamp((f.x / W) * 2 - 1, -1, 1) });
-      if (!said.chop && !discovered.has('long-waves') && sea.chop(FLICK_U * U) > 0.05) { said.chop = true; say(ctx.entry.dialogue?.chop); }
+      if (!said.chop && !discovered.has('long-waves') && sea.chop(FLICK_U * U) > 0.05) { said.chop = true; say(line('chop')); }
     }
   }
   function tap(f, x, y) {
@@ -1344,8 +1344,8 @@ export function create(ctx) {
     drawFront(now, rm);
     audioAndMallow(dt, now);
 
-    if (introAt > 0) { introAt -= dt; if (introAt <= 0) { introAt = -1; if (!everTouched) say(ctx.entry.dialogue?.intro); } }
-    if (arriveAt > 0) { arriveAt -= dt; if (arriveAt <= 0) { arriveAt = -1; if (!said.arrive) { said.arrive = true; say(ctx.entry.dialogue?.arrive); } } }
+    if (introAt > 0) { introAt -= dt; if (introAt <= 0) { introAt = -1; if (!everTouched) say(line('intro')); } }
+    if (arriveAt > 0) { arriveAt -= dt; if (arriveAt <= 0) { arriveAt = -1; if (!said.arrive) { said.arrive = true; say(line('arrive')); } } }
     if (!everTouched && !melt && prepared) {
       hint.next -= dt;
       if (hint.next <= 0 && hint.shown < 2 && hint.age < 0) { hint.next = 10; placeHint('away'); if (hint.ok) { hint.age = 0; hint.shown++; } }
@@ -3208,6 +3208,11 @@ export function create(ctx) {
   }
 
   function say(lines) { if (lines && !paused) ctx.say(lines, { who: 'loomi', kind: 'dialogue' }); }
+  /** The sea's line for a moment: in a gentle session its gentle one where it has one (null: nothing said). */
+  function line(k) {
+    const d = ctx.entry.dialogue || {};
+    return ctx.gentle && d.gentle && k in d.gentle ? d.gentle[k] : d[k];
+  }
 
   function fireDiscovery(ev) {
     if (discovered.has(ev.id)) return;

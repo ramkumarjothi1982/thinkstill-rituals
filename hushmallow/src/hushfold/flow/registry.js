@@ -178,6 +178,9 @@ const LUMINOUS_OCEAN = {
     intro: ['Mm. Open water.', 'Take your time.'],
     arrive: ['Ahh. The storm became a sea.'],
     chop: ['Splashy.'],
+    // a gentle session (after a death, a loss or harm, or "Just be with it", and "Somewhere calm"): the sea opens quietly,
+    // never with a quip about the storm it came from, and keeps its playful asides to itself (no chop line)
+    gentle: { intro: ['Somewhere quiet.', 'Take all the time you need.'], arrive: ['It’s quieter here.', 'Take all the time you need.'], chop: null },
     drift: ['You can bring it closer too.', 'Your choice.'],
     complete: 'The sea’s rolling slowly now. Stay, or drift on?',
     completeStay: 'The sea’s rolling slowly now. Stay as long as you like.',

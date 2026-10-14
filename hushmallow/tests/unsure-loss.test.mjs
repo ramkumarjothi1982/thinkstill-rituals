@@ -301,31 +301,8 @@ test('the check-in’s words: the same question on both screens, two real choice
   assert.match(read('src/ui/hushfold.css'), /\.hf-chip \{ min-height: 46px;/);
 });
 
-test('the main screen: unsure words are asked about before any Thought Mallow, world or plans page; yes is the loss path, something else carries on, no answer stays quiet', () => {
-  const hf = read('src/app/scenes/hushfold.js');
-  const after = between(hf, 'async function afterTell(', 'async function askAboutLoss(');
-  const ask = after.indexOf('if (safety?.unsure) {');
-  assert.ok(ask > 0);
-  // crisis, care and distress (and the carried gentle visit) come first and route as now
-  assert.ok(after.indexOf("if (safety?.level === 'crisis')") < ask && after.indexOf('if (carried && gentle())') < ask && after.indexOf("if (safety?.level === 'care' || safety?.level === 'concern')") < ask);
-  // …and the question before the plans page, the Thought Mallow and any world
-  for (const later of ["if (!ent.has('paid'))", 'spawnThought(text', 'startFlow(', 'warmWorld(']) assert.ok(ask < after.indexOf(later), later);
-  const branch = after.slice(ask, after.indexOf("if (!ent.has('paid'))"));
-  assert.match(branch, /if \(v === 'yes'\) \{\s*const loss = \{ level: 'concern', category: 'loss' \};\s*noteSafety\(loss\);\s*S\.careSaid = true;\s*await careBeat\(\{ emotion, intention, safety: loss \}\);\s*return;\s*\}/);
-  assert.match(branch, /if \(v !== 'else'\) \{ stageMallow\.setStage\(gentle\(\) \? CARE_FACE : 'neutral', \{ quiet: true \}\); return; \}/);
-  assert.match(branch, /input\.safety\.detail\.unsure = false;/, 'answered: back from the plans page, never asked again');
-  // the question: the attentive face, the shared words, ~20 s, its own Back layer; squeezing stays quiet while it waits
-  const fn = between(hf, 'async function askAboutLoss(', 'async function wordsFeeling(');
-  assert.match(fn, /S\.asking = true;\s*stageMallow\.setStage\(CARE_FACE, \{ quiet: true \}\);\s*pushLayer\('lossCheck'\);/);
-  assert.match(fn, /subtitles\.choice\(LOSS_CHECK\.ask, \[\{ label: LOSS_CHECK\.yes, value: 'yes' \}, \{ label: LOSS_CHECK\.no, value: 'else' \}\],/);
-  assert.match(fn, /timeoutMs: LOSS_CHECK\.ms, transient: true, lossCheck: true/);
-  assert.match(fn, /finally \{\s*S\.asking = false;\s*popLayer\('lossCheck'\);/);
-  assert.match(hf, /if \(S\.asking\) return;\s+\/\/ \(asking whether it is about a loss/);
-  assert.match(hf, /if \(!overlay && !readEl && !panel\?\.isOpen && !sheets\.length && !layer\.lossCheck\) return null;/);
-  assert.match(hf, /if \(k === 'lossCheck'\) subtitles\.drop\(\(o\) => o\.lossCheck\);/);
-  // the other unit's functions are untouched by this one
-  for (const f of ['function safetyHold(', 'function onFinished(', 'function resumableNow(']) assert.ok(!between(hf, f, '\n  }').includes('lossCheck'), f);
-});
+// (the main screen's check-in is retired by the owner's 'Ask before every world', 14 Oct 2026: every ordinary Tell, unsure
+// ones included, is asked "Shall we play with this, or just be with it?" — tests/ask-every-world.test.mjs)
 
 test('Another Angle: Zuzu asks the same before anything is sent, framed or played; yes is griefMode, something else carries on, no answer stays quiet', () => {
   const aa = read('src/beyond/another-angle.js');
