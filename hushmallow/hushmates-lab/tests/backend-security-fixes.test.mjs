@@ -171,14 +171,19 @@ test('retention clears each kind of stored data at its limit, and not before (30
 
     // the decided report keeps its evidence for 90 days after the decision, then it goes
     assert.notDeepEqual((await evidence())[0].evidence, {}, 'evidence cleared too early');
-    await b.advance(60 * day);
+    await b.advance(58 * day);                                   // day 89 after the decision
+    await b.gw.retention();
+    assert.notDeepEqual((await evidence())[0].evidence, {}, 'evidence cleared before 90 days');
+    await b.advance(2 * day);                                    // day 91
     r = await b.gw.retention();
     assert.deepEqual(await evidence(), [{ evidence: {}, details_enc: '' }], 'resolved evidence outlived 90 days');
     assert.ok(r.evidenceCleared >= 1);
 
     // the activity log keeps a year
-    assert.ok(await count('select count(*)::int n from hushmates.audit_log') > 0, 'the log went before a year');
-    await b.advance(275 * day);
+    await b.advance(273 * day);                                  // day 364 for the first entries
+    await b.gw.retention();
+    assert.ok(await count("select count(*)::int n from hushmates.audit_log where at < hushmates.clock() - interval '300 days'") > 0, 'the log went before a year');
+    await b.advance(2 * day);                                    // day 366
     r = await b.gw.retention();
     assert.equal(await count("select count(*)::int n from hushmates.audit_log where at < hushmates.clock() - interval '365 days'"), 0, 'log entries outlived a year');
     assert.ok(r.auditDeleted > 0);

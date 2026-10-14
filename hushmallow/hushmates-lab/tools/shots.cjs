@@ -151,7 +151,7 @@ function audit(who) {
 (async () => {
   const [out = 'shots', base = 'http://localhost:8000'] = process.argv.slice(2);
   fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] }).catch(() => chromium.launch());
+  const browser = await chromium.launch({ executablePath: process.env.HUSHMATES_CHROMIUM || '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] }).catch(() => chromium.launch());
   const only = process.env.SIZES ? process.env.SIZES.split(',') : null;
   const report = { sizes: {} };
   const open = async (size, { reduced = false } = {}) => {

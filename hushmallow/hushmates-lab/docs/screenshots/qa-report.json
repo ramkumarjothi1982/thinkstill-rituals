@@ -11,7 +11,7 @@
         },
         "fallback": {
           "progress": "6 of 6",
-          "seconds": 24,
+          "seconds": 25,
           "notTicked": []
         },
         "partial": {
@@ -32,7 +32,7 @@
         },
         "fallback": {
           "progress": "6 of 6",
-          "seconds": 24,
+          "seconds": 25,
           "notTicked": []
         },
         "partial": {
@@ -69,7 +69,7 @@
       "played": {
         "relay": {
           "progress": "10 of 10",
-          "seconds": 69,
+          "seconds": 68,
           "notTicked": []
         },
         "fallback": {
@@ -90,7 +90,7 @@
       "played": {
         "relay": {
           "progress": "10 of 10",
-          "seconds": 68,
+          "seconds": 69,
           "notTicked": []
         },
         "fallback": {

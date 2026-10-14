@@ -338,14 +338,30 @@ test('library relevance: “help” means help at home only when the words say s
     ['frustration', 'The tablets the doctor gave me never help.'],
     ['frustration', 'My boyfriend doesn’t help when I’m having a panic attack, he just goes quiet.'],
   ]) for (const r of await picks(text, label)) assert.doesNotMatch(r.angleId, /^hm-load-/, `${r.mallow} · “${text}”: got ${r.angleId} “${r.text}”`);
-  // the work at home rules out "your partner is distant", whatever the label
-  for (const label of ['worry', 'confusion', 'frustration']) {
+  // the work at home, however it's put, gets load lines and rules out "your partner is distant", whatever the label
+  const AT_HOME = [
+    'My partner never helps with the kids.', 'I always end up doing everything and my partner just sits on the couch.',
+    'My husband doesn’t pull his weight.', 'Nobody helps and my partner just ignores the mess.', 'My partner never cleans up after himself.',
+    'My husband doesn’t help with anything around the house.', 'My wife doesn’t help with dinner, ever.', 'My husband won’t help unless I nag him.',
+    'He doesn’t help with anything around the house.', 'My family never helps with the cooking or cleaning, it’s all on me.', 'My kids never help me.',
+  ];
+  for (const text of AT_HOME) {
+    for (const label of ['frustration', 'sadness', null]) {
+      const got = (await picks(text, label)).map((r) => r.angleId);
+      assert.ok(!got.some((id) => /^pd-ang/.test(id)) && got.filter((id) => /^hm-load-/.test(id)).length >= got.length / 2, `${label} · “${text}”: ${got.join(', ')}`);
+    }
+  }
+  for (const label of ['worry', 'confusion']) {
     for (const r of await picks('My partner never helps with the kids.', label)) assert.doesNotMatch(r.angleId, /^pd-ang/, `${label} · ${r.mallow}: got ${r.angleId}`);
   }
-  // ...but not when the words say the partner is distant
-  for (const text of ['My partner has been so distant lately and she doesn’t help me understand what is wrong.', 'My partner and I barely talk now; he does nothing to help us feel close.']) {
+  // ...but not when the words say the partner is distant (Reframe's own words for it), helping or not
+  for (const text of [
+    'My partner has been so distant lately and she doesn’t help me understand what is wrong.', 'My partner and I barely talk now; he does nothing to help us feel close.',
+    'My wife helps with the kids but she’s been short with me for weeks.', 'My girlfriend has stopped helping me out and she’s always on her phone now.',
+    'My husband helps around the house but we never talk anymore.',
+  ]) {
     const got = (await picks(text, 'sadness')).map((r) => r.angleId);
-    assert.ok(got.some((id) => /^pd-ang/.test(id)) && !got.every((id) => /^hm-load-/.test(id)), `“${text}”: ${got.join(', ')}`);
+    assert.ok(got.some((id) => /^pd-ang/.test(id)), `“${text}”: ${got.join(', ')}`);
   }
 });
 
