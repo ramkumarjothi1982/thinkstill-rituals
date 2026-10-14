@@ -57,6 +57,12 @@ Five independent reviews kept finding new ways of saying someone died that the w
 - A grief-family feeling the person picks (Grief, Mourning, Heartache, …) always means the gentle path.
 - Crisis, care and the wish to follow someone who died still route to support first, as before.
 
+**Superseded the same day by "Ask before every world" (owner).** A further independent review wrote 80 new death phrasings and about half still reached a playful world without the question (for example "my dad's time came last week", "said bye to Pepper at the vets"). The owner chose to ask everyone instead:
+
+- After every Tell, before any Thought Mallow or world starts, the Mallow asks one gentle choice, "Shall we play with this, or just be with it?". Play carries on as before; "Just be with it" stays quiet (no Thought Mallow, no world), with the calm world on offer. One extra tap for everyone; a death is never played without the person choosing it.
+- Detected losses and a chosen grief-family feeling still go straight to the gentle path with no question; crisis, care and the wish to follow someone who died still route to support first.
+- Another Angle asks the same way before anything is sent or played (default taken on the owner's behalf; one constant switches it off).
+
 ## Defaults taken on the owner's behalf (2026-10-14)
 
 | Topic | Default |
