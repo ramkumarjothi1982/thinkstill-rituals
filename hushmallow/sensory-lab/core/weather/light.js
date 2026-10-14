@@ -6,7 +6,8 @@
 //              'rest' once after 0.8 s for the sun, 1 s for the moon), onBody
 //              (within 0.5·body.h of the Mallow; 'body-in' / 'body-out'),
 //              onWater, bask (seconds on the Mallow), dwell (builds only while
-//              resting, fastest on water or the Mallow) and, for the sun,
+//              resting where the person put it, fastest on water or the
+//              Mallow; the pool's own entry never counts) and, for the sun,
 //              painted: the overcast haze (a FieldGrid) burnt away along the
 //              pool's path, which stays clear.
 //   EmberField dim embers around the scene. A drag kindles those it passes,
@@ -38,6 +39,8 @@ export class LightPool extends SimBase {
     this.painted = 0;
     this.W = 390; this.H = 844; this.skyTop = 60; this.horizonY = 480; this.floorY = 700; this.water = null;
     this.anchor = [0.72 * 390, 0.25 * 844];
+    this.from = null;           // a one-off entry point instead of the anchor ([x, y] px)
+    this.moved = false;         // has the person moved it since the weather began?
     this._rested = false;
     this._placed = false;
   }
@@ -51,7 +54,7 @@ export class LightPool extends SimBase {
     const m = Math.min(this.W, this.H);
     this.r = this.kind === 'sun' ? Math.max(34, 0.11 * m) : Math.max(30, 0.1 * m);
     this.haze?.setRect(0, this.skyTop, this.W, this.floorY);
-    if (!this._placed) { this.place(...this.start()); this._placed = true; }
+    if (!this._placed) { this._place(...this.start()); this._placed = true; }
     else { this.tx = this._cx(this.tx); this.ty = this._cy(this.ty); }
     return this;
   }
@@ -65,22 +68,29 @@ export class LightPool extends SimBase {
   _cx(x) { return clamp(x, this.r * 0.5, this.W - this.r * 0.5); }
   _cy(y) { return clamp(y, this.skyTop + this.r * 0.5, this.floorY); }
 
-  /** Glide toward (x, y). */
-  to(x, y) { this.tx = this._cx(x); this.ty = this._cy(y); return this; }
-  /** Jump to (x, y) and stay. */
-  place(x, y) { this.x = this.tx = this._cx(x); this.y = this.ty = this._cy(y); this.vx = this.vy = 0; return this; }
+  /** Glide toward (x, y) (the person moving the light: rest and dwell count from now). */
+  to(x, y) { this.moved = true; return this._to(x, y); }
+  /** Jump to (x, y) and stay (the person putting the light there). */
+  place(x, y) { this.moved = true; return this._place(x, y); }
+  // the pool's own choreography (enter, leave, layout) never counts as being moved
+  _to(x, y) { this.tx = this._cx(x); this.ty = this._cy(y); return this; }
+  _place(x, y) { this.x = this.tx = this._cx(x); this.y = this.ty = this._cy(y); this.vx = this.vy = 0; return this; }
 
-  /** Enter: slide down the beam from the realm's sun or moon. */
+  /** Enter: slide down the beam from the realm's sun or moon (or from `from`, set once: a gap in the clouds). */
   enter(dir = 1) {
-    if (this.amount < 0.05) { this.place(this.anchor[0], this.anchor[1]); this.to(...this.start()); }
+    if (this.amount < 0.05) {
+      const f = this.from || this.anchor;
+      this._place(f[0], f[1]); this._to(...this.start());
+    }
+    this.from = null;
     return super.enter(dir);
   }
 
   /** Leave: fade back into the light it came from. */
-  leave(dir = 1) { this.to(this.anchor[0], this.anchor[1]); return super.leave(dir); }
+  leave(dir = 1) { this._to(this.anchor[0], this.anchor[1]); return super.leave(dir); }
 
   reset() {
-    this.rest = 0; this.bask = 0; this.dwell = 0; this.painted = 0; this.onBody = false; this._rested = false;
+    this.rest = 0; this.bask = 0; this.dwell = 0; this.painted = 0; this.onBody = false; this._rested = false; this.moved = false;
     this.haze?.fill(1);
     return this;
   }
@@ -98,7 +108,8 @@ export class LightPool extends SimBase {
     if (!Number.isFinite(this.x + this.y)) this.place(this.tx, this.ty);
     if (Math.hypot(this.vx, this.vy) < STILL) this.rest += dt;
     else { this.rest = 0; this._rested = false; }
-    if (!this._rested && this.rest >= this.restAt) { this._rested = true; this.emit('rest', this.x, this.y, this.height); }
+    // a pool the person has put somewhere: 'rest' once it has been still a moment, and dwell builds while it rests
+    if (!this._rested && this.moved && this.rest >= this.restAt) { this._rested = true; this.emit('rest', this.x, this.y, this.height); }
     this.height = clamp((this.horizonY - this.y) / Math.max(1, this.horizonY - this.skyTop), 0, 1);
     this.onWater = !!this.water && this.y >= this.water[0] && this.y <= this.water[1];
     if (body) {
@@ -107,8 +118,8 @@ export class LightPool extends SimBase {
       this.onBody = inB;
       if (inB && this.amount > 0.5) this.bask += dt;
     }
-    if (this.rest > 0.25 && this.amount > 0.5) this.dwell = Math.min(1, this.dwell + dt / (this.onWater || this.onBody ? 8 : 13));
-    if (this.haze && this.amount > 0.5) {
+    if (this.moved && this.rest > 0.25 && this.amount > 0.5) this.dwell = Math.min(1, this.dwell + dt / (this.onWater || this.onBody ? 8 : 13));
+    if (this.haze && this.moved && this.amount > 0.5) {
       this.haze.paint(px, py, this.x, this.y, this.r * 0.9, -Math.min(1, dt * 5));
       this.painted = clamp(1 - this.haze.mean(), 0, 1);
     }

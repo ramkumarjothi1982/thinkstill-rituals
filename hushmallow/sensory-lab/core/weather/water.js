@@ -7,7 +7,7 @@
 //              column with height ≥ 0.25 it emits 'arrive' (k = height;
 //              lastGold tells whether it was a warm swell); at the screen edge
 //              it emits 'shore'. Reduced motion: swells ×0.5 speed, ×0.4 height.
-//   Puddles    two perspective ellipses either side of the Mallow in dry
+//   Puddles    two perspective ellipses either side of the Mallow's base in dry
 //              realms: they appear once wet > 0.3 after rain and dry with τ 60 s.
 
 import { clamp, smoothstep } from '../math.js';
@@ -148,16 +148,22 @@ export class Puddles {
     this._shown = false;              // formed this time (stays shown while drying from 0.3 down)
   }
 
-  /** {floorY, body, W}: one puddle either side of the Mallow (x = cx ± ~1–1.2·body.w), kept on screen and off the Mallow. */
+  /**
+   * {floorY, body, W}: one puddle either side of the Mallow, just beyond its base (the right one a little
+   * further out). Kept on screen where there is room; on a narrow phone, where the Mallow fills most of the
+   * width, a puddle tucks behind its base and may run off the screen edge (up to 45 %) rather than vanish.
+   */
   resize({ floorY, body, W } = {}) {
     this.W = W || this.W;
     if (!body) return this;
-    const w = body.w, rx = 0.35 * w, ry = 0.06 * w, xs = [body.cx - 1.05 * w, body.cx + 1.2 * w];
+    const w = body.w, rx = 0.35 * w, ry = 0.06 * w, off = 0.5 * w + 0.55 * rx;
     for (let k = 0; k < 2; k++) {
-      const x = clamp(xs[k], rx + 4, this.W - rx - 4);
-      const clash = Math.abs(x - body.cx) < w * 0.5 + rx * 0.6;
+      const want = body.cx + (k ? off * 1.15 : -off);
+      const room = k ? this.W - rx - 4 >= want : want - rx - 4 >= 0;
+      const x = room ? want : clamp(want, rx * 0.55, this.W - rx * 0.55);
+      const under = Math.abs(x - body.cx) < w * 0.3;   // mostly under the Mallow: no puddle there
       this.e[4 * k] = x; this.e[4 * k + 1] = (floorY ?? body.bottom) - ry * 0.4;
-      this.e[4 * k + 2] = clash ? 0 : rx; this.e[4 * k + 3] = clash ? 0 : ry;
+      this.e[4 * k + 2] = under ? 0 : rx; this.e[4 * k + 3] = under ? 0 : ry;
     }
     return this;
   }

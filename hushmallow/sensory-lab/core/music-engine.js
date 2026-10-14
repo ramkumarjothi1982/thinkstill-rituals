@@ -25,8 +25,8 @@
 //                                        to live play (a voice that has not started by t never sounds)
 //   bend     {id, hz, glide, start?, end?: 'snap' (+ semi, deg, ring) | 'handoff'}
 //   duck     {id}                        −9 dB in 60 ms (a held glide also lets go)
-//   bassOn   {hz, semi, amount} · bassSet {hz?, semi?, amount?, glide} · bassBeat {accent} · bassOff {fade}
-//   padOn    {hzs[3], semis[3], level, bright, from} · padSet {hzs?, semis?, bright?, shimmer?, glide} · padOff {fade}
+//   bassOn   {hz, semi, amount, src?: 'replay'} · bassSet {hz?, semi?, amount?, glide} · bassBeat {accent} · bassOff {fade}
+//   padOn    {hzs[3], semis[3], level, bright, from, src?: 'replay'} · padSet {hzs?, semis?, bright?, shimmer?, glide} · padOff {fade}
 //   harmony  {a, b, interval} · bloom {on} · phraseEnd · replay {on, done?, stopped?}
 
 import { clamp } from './math.js';
@@ -105,6 +105,8 @@ export class MusicEngine {
 
   get parts() { return this._parts.filter(Boolean); }
   get replaying() { return !!this._replay; }
+  /** Some layer (a hum or a bass) is held right now (no allocation: read every frame). */
+  get holding() { const [a, b] = this._parts; return !!(a?.pad || a?.bass || b?.pad || b?.bass); }
 
   setQuality(q) { this.quality = CAPS[q] ? q : 'high'; this.caps = CAPS[this.quality]; }
   setGentle(b) { this.gentle = !!b; }
@@ -359,15 +361,29 @@ export class MusicEngine {
     this.take.cut();
     for (const p of this._parts) if (p) { p._padOff(t, 0.15, true); p._bassOff(t, 0.15, true); }
     const start = this.clock.nextGrid(t, 1);
-    const R = { list, i: 0, sb: Math.round(this.clock.at(start, this._at).beat), end: 0 };
-    for (const e of list) {
-      const p = this._parts[e.slot === 1 ? 1 : 0];
-      R.end = Math.max(R.end, softQuantise(e.beat, p.V.grid, 0.75) + (e.kind === 'n' ? 1 : Math.max(1, e.len || 1)));
-    }
+    const R = { list, q: this._replayGrid(list), i: 0, sb: Math.round(this.clock.at(start, this._at).beat), end: 0 };
+    list.forEach((e, i) => { R.end = Math.max(R.end, R.q[i] + (e.kind === 'n' ? 1 : Math.max(1, e.len || 1))); });
     this._replay = R;
     this._emit({ kind: 'replay', slot: 0, t, on: true });
     this._replayNext(R);
     return { stop: () => { if (this._replay === R) this._stopReplay(); } };
+  }
+
+  // each event's beat in the replay: soft-quantised 75 % toward its part's grid; a note that would land on top of
+  // the previous one of the same part (a chord roll's 16ths on an 8th grid) takes a finer grid, else its own beat
+  _replayGrid(list) {
+    const prev = [null, null], gap = (MIN_GAP + 0.005) / this.clock.beatS;
+    return list.map((e) => {
+      const slot = e.slot === 1 ? 1 : 0, grid = this._parts[slot]?.V.grid ?? 2;
+      let q = softQuantise(e.beat, grid, 0.75);
+      if (e.kind !== 'n') return q;
+      if (prev[slot] != null) {
+        for (const d of [grid * 2, grid * 4]) { if (q - prev[slot] >= gap) break; q = softQuantise(e.beat, d, 0.75); }
+        if (q - prev[slot] < gap) q = Math.max(q, e.beat);
+      }
+      prev[slot] = q;
+      return q;
+    });
   }
 
   _replayNext(R) {
@@ -376,8 +392,7 @@ export class MusicEngine {
       this.scheduler.at(this.clock.beatTime(R.sb + R.end), () => this._stopReplay(true), 'replay', () => this._stopReplay(true));
       return;
     }
-    const e = R.list[R.i], p = this._parts[e.slot === 1 ? 1 : 0];
-    const q = softQuantise(e.beat, p ? p.V.grid : 2, 0.75);
+    const e = R.list[R.i], q = R.q[R.i];
     const go = (x, late) => { R.i++; if (!late) this._replayEvent(R, e, q, x); this._replayNext(R); };
     this.scheduler.at(this.clock.beatTime(R.sb + q), (x) => go(x, false), 'replay', (x) => go(x, true));
   }
@@ -721,7 +736,7 @@ class Part {
     const f = bassHz(V, semi) * (up ? 2 : 1);
     this.bass = { semi, hz: f, up, amount: clamp(+amount || 0, 0, 1), sent: 0, lastT: t, t0: t, bar, owner, prev: semi, changeT: t, take: null };
     this.bass.sent = this.bass.amount;
-    e._emit({ kind: 'bassOn', slot: this.slot, t, hz: f, semi, amount: this.bass.amount });
+    e._emit({ kind: 'bassOn', slot: this.slot, t, hz: f, semi, amount: this.bass.amount, ...(owner !== 'live' ? { src: 'replay' } : {}) });
     if (owner === 'live') {
       e.take.barS = e.clock.barS;
       this.bass.take = e.take.add({ beat: e.clock.at(t, e._at).beat, slot: this.slot, kind: 'b', deg: nearestDeg(V.scale, semi), vel: 0.6, len: 1 }, t);
@@ -817,7 +832,7 @@ class Part {
     const semis = this._fit(voicePad(top, chord.tones), chord, t, top);
     const b = clamp(+bright || 0, 0, 1);
     this.pad = { semis, prev: semis, changeT: t, chord, bar, t0: t, level: PAD_LEVEL, bright: b, brightSent: b, brightT: t, owner, shimmer: false, shimBar: null, shimN: 0, take: null };
-    e._emit({ kind: 'padOn', slot: this.slot, t, hzs: semis.map((s) => hzOf(V, s)), semis: semis.slice(), level: PAD_LEVEL, bright: this.pad.bright, from: from ?? null });
+    e._emit({ kind: 'padOn', slot: this.slot, t, hzs: semis.map((s) => hzOf(V, s)), semis: semis.slice(), level: PAD_LEVEL, bright: this.pad.bright, from: from ?? null, ...(owner !== 'live' ? { src: 'replay' } : {}) });
     if (owner === 'live') {
       e.take.barS = e.clock.barS;
       this.pad.take = e.take.add({ beat: e.clock.at(t, e._at).beat, slot: this.slot, kind: 'h', deg: nearestDeg(V.scale, top), vel: 0.6, len: 1 }, t);

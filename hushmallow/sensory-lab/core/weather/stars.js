@@ -11,7 +11,8 @@
 //                       cluster at the fingertip (one per pointer, two at most).
 //                       Released away from the Mallow, 3 or more fly to a
 //                       constellation above it (3 kept; a 4th replaces the
-//                       oldest); near the Mallow they shower over it as a gift
+//                       oldest; each takes at most a third of the stars, the
+//                       rest drift home, so three can always be made); near the Mallow they shower over it as a gift
 //                       and drift home. Reduced motion: no twinkle, no orbit
 //                       swirl, and stars fade between places instead of flying.
 //   Events: 'gather' (k = cluster size), 'constellation' (k = n), 'gift' (k = n).
@@ -142,14 +143,14 @@ export class StarSwarm extends SimBase {
     return s;
   }
 
-  /** A finger sweeping through the sky at (x, y): free stars within 56 px join its cluster. Returns the cluster size. */
+  /** A finger sweeping through the sky at (x, y): loose stars (free, or drifting home) within 56 px join its cluster. Returns the cluster size. */
   sweep(id, x, y) {
     const s = this._cslot(id, true);
     if (s < 0) return 0;
     this.cx[s] = x; this.cy[s] = y;
     const r2 = GATHER_R * GATHER_R;
     for (let i = 0; i < this.n; i++) {
-      if (this.st[i] !== ST.FREE || this.a[i] < 0.5) continue;
+      if (!this._loose(i)) continue;
       const dx = this.x[i] - x, dy = this.y[i] - y;
       if (dx * dx + dy * dy >= r2) continue;
       this.st[i] = ST.CLUSTER; this.cl[i] = s; this.ft[i] = 0;
@@ -158,6 +159,37 @@ export class StarSwarm extends SimBase {
     }
     return this.cn[s];
   }
+
+  /**
+   * Pull the free star nearest (gx, gy) into cluster `id`, centred at (gx, gy): the "Gather stars"
+   * chip and the arrow keys stream stars to one point. Returns the cluster size, or −1 when none was free.
+   */
+  gatherOne(id, gx, gy) {
+    const s = this._cslot(id, true);
+    if (s < 0) return -1;
+    this.cx[s] = gx; this.cy[s] = gy;
+    let best = -1, bd = Infinity;
+    for (let i = 0; i < this.n; i++) {
+      if (!this._loose(i)) continue;
+      const d = (this.x[i] - gx) ** 2 + (this.y[i] - gy) ** 2;
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best < 0) return -1;
+    if (this.cn[s] >= this.perConstellation) return this.cn[s];   // enough for a constellation: no hoarding
+    this.st[best] = ST.CLUSTER; this.cl[best] = s; this.ft[best] = 0;
+    this.cn[s]++;
+    this.emit('gather', this.x[best], this.y[best], this.cn[s]);
+    return this.cn[s];
+  }
+
+  /** Move cluster `id` (its stars follow on their springs). */
+  moveCluster(id, x, y) { const s = this._cslot(id, false); if (s >= 0) { this.cx[s] = x; this.cy[s] = y; } return this; }
+
+  // a visible star that belongs to nothing (free, or drifting home) can be gathered
+  _loose(i) { return (this.st[i] === ST.FREE || this.st[i] === ST.HOME) && this.a[i] >= 0.5; }
+
+  /** Is star i held in a cluster right now (drawn on the front canvas)? */
+  held(i) { return this.st[i] === ST.CLUSTER; }
 
   /** A resting finger brightens its cluster. */
   hold(id, dt) { const s = this._cslot(id, false); if (s >= 0) this.cb[s] = Math.min(1, this.cb[s] + dt * 0.8); return this; }
@@ -183,7 +215,7 @@ export class StarSwarm extends SimBase {
       this.emit('gift', b.cx, b.top, n);
     } else if (n >= MIN_CONSTELLATION) {
       res.kind = 'constellation';
-      const site = this._site(), m = Math.min(n, MAX_CONSTELLATION);
+      const site = this._site(), m = Math.min(n, this.perConstellation);
       const slots = constellationShape(this.mallowId, m, this.kx[site], this.ky[site], this.kr, this._slots);
       let k = 0;
       for (let i = 0; i < this.n; i++) {
@@ -227,6 +259,9 @@ export class StarSwarm extends SimBase {
   }
 
   get constellations() { let k = 0; for (let s = 0; s < KEEP; s++) k += this.kOn[s]; return k; }
+
+  /** Stars per constellation: a third of the sky's stars (3–8), so all three can always be made on every tier. */
+  get perConstellation() { return clamp(Math.floor(this.n / KEEP), MIN_CONSTELLATION, MAX_CONSTELLATION); }
 
   /** The stars of constellation `site` in slot order (its lines join consecutive ones), into out (Int16Array). Returns the count. */
   members(site, out) {

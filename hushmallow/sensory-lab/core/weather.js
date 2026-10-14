@@ -222,7 +222,7 @@ export function transformFor(w, progress, resolved = false) {
 
 // ----------------------------------------------------------------- pulses --
 const PULSE = Object.freeze({
-  touch: 'tap', 'water-push': 'ripple', shore: 'tap', 'gust-water': 'ripple', 'splash-ground': 'tap', 'splash-body': null,
+  touch: 'tap', 'water-push': 'ripple', 'water-tap': 'ripple', 'moon-water': 'ripple', puddle: 'tap', shore: 'tap', 'gust-water': 'ripple', 'splash-ground': 'tap', 'splash-body': null,
   gap: 'clear', constellation: 'success', gift: 'success', kindle: 'tap', hearth: 'success',
 });
 const RESOLVE_PULSE = Object.freeze({ storm: 'clear', rain: 'clear', fog: 'clear', wind: 'clear', sunshine: 'success', moonlight: 'success', starlight: 'success', warm: 'success' });

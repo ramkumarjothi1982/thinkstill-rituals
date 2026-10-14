@@ -1,9 +1,10 @@
-// Unit tests for Hushbeat Symphony (spec-hushbeat.md §13): U1–U15, U17, U18.
+// Unit tests for Hushbeat Symphony (spec-hushbeat.md §13): U1–U18.
 // U15 covers the kits (core/music-kits.js) and the renderer (core/music-audio.js)
 // on the shared FakeAudioContext; the real-DSP listening checks (pitch, loudness,
-// clicks, bass band energy) are E10 in tests/e2e-phase3-hushbeat.cjs. U16
-// (music-fx) arrives with core/music-fx.js. Node only; seeded and deterministic
-// (fake clock and timers):
+// clicks, bass band energy) are E10 in tests/e2e-phase3-hushbeat.cjs. U16 covers
+// the light (core/music-fx.js: steps only, never drawing) and the performer and
+// scene (features/hushbeat/performer.js) on a fake rig and a fake Environment.
+// Node only; seeded and deterministic (fake clock and timers):
 //   node --test hushmallow/sensory-lab/tests/hushbeat.test.mjs
 
 import test from 'node:test';
@@ -29,6 +30,12 @@ import { DEFAULTS, Prefs } from '../core/prefs.js';
 import { collectStrings, lintCopy } from './lib/copy-lint.mjs';
 import { NETWORK, scanFiles } from './lib/static-scan.mjs';
 import { installAudioGlobals, FakeAudioContext, reaches } from './lib/fake-audio.mjs';
+import { FlashGate } from '../core/effects.js';
+import { PULSE_GAPS } from '../core/environment.js';
+import { NoteBead, BeadPool, BeatGlow, PhraseRibbon, HarmonyArc, BreathHalo, POOL, RIBBON, BEAD, GLOW_MAX, KICK_GAP } from '../core/music-fx.js';
+import { TRAITS, Performer, Scene, Cue, grooveStep } from '../features/hushbeat/performer.js';
+import { REACTIONS } from '../../src/mallows/reactions.js';
+import { PRESETS } from '../../src/mallows/expressions.js';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const mod = (a, n) => ((a % n) + n) % n;
@@ -1021,6 +1028,7 @@ test('releaseAll and dispose end every layer, phrase, queued note and timer', ()
   R.players[1].gesture('squeezestart', {});
   R.players[1].gesture('squeeze', { amount: 0.7 });
   R.time.advance(0.6);
+  assert.equal(R.engine.holding, true, 'a hum and a bass are held');
   R.players[0].gesture('strokestart', { x: 50, y: 150 });
   R.engine.replay([{ beat: 0, slot: 0, kind: 'n', deg: 1, vel: 0.6 }, { beat: 1, slot: 0, kind: 'n', deg: 2, vel: 0.6 }, { beat: 2, slot: 1, kind: 'n', deg: 3, vel: 0.6 }]);
   assert.ok(R.scheduler.pending > 0);
@@ -1039,6 +1047,7 @@ test('releaseAll and dispose end every layer, phrase, queued note and timer', ()
     assert.deepEqual({ bass, pad, phrase, bending }, { bass: 0, pad: 0, phrase: false, bending: false });
   }
   assert.deepEqual(R.players.map((p) => p.state), ['idle', 'idle']);
+  assert.equal(R.engine.holding, false);
   assert.equal(R.scheduler.pending, 0);
   assert.equal(R.time.timers, 0);
   const n = R.events.length;
@@ -1347,13 +1356,315 @@ test('U15 MusicAudio: rapid taps stay under the caps on every tier; dispose lets
   }
 });
 
+// ================================================================= U16 ==
+// A rig and Companion with just what the performer touches; every call is recorded.
+function fakeStage(id = 'boppo') {
+  const calls = { nudge: [], react: [], squeeze: [], press: [], poke: [], inflate: [], play: [], overlay: [], look: 0 };
+  const rig = {
+    id, ready: true, soft: {}, BASE: 600, W: 390, H: 844, faceOverride: { set: {}, min: {} }, calls,
+    setFaceOverride(o = {}) { this.faceOverride = { set: o.set || {}, min: o.min || {} }; },
+    bodyRect(out = {}) { Object.assign(out, { cx: 195, top: 400, bottom: 600, mid: 500, w: 220, h: 200, W: 390, H: 844 }); return out; },
+    nudge(m) { calls.nudge.push({ ...m }); return this; },
+    react(k) { calls.react.push(k); return this; },
+    setSqueeze(a) { calls.squeeze.push(a); },
+    setPress(x, y, d) { calls.press.push(d); },
+    poke(x, y) { calls.poke.push([x, y]); },
+    setInflate(v) { calls.inflate.push(v); },
+    overlay(k, p) { calls.overlay.push([k, p]); return this; },
+    lookAtScreen() { calls.look++; },
+  };
+  const companion = { rig, director: { play: (...a) => calls.play.push(a) }, restOverride: null, hold: null, sq: null, drag: null, stroking: false };
+  return { rig, companion, calls };
+}
+const csAt = (beat, meter = 4, level = 0.5) => ({ beat, bar: Math.floor(beat / meter), beatInBar: Math.floor(mod(beat, meter)), level });
+
+test('U16 the light: one FlashGate (≤ 3 bright a second, pulse gaps); beads swell over 0.3 s, rise (in place when reduced) and die; pools capped by tier', () => {
+  let T = 0;
+  const gate = new FlashGate({ max: 3, gaps: PULSE_GAPS, now: () => T });
+  const allowed = [];
+  for (let i = 0; i < 40; i++) { T = i * 50; if (gate.allow('bead', T)) allowed.push(T); }   // 40 bright beads in 2 s
+  for (const t of allowed) assert.ok(allowed.filter((x) => x > t - 1000 && x <= t).length <= 3, 'never more than 3 in any second');
+  assert.ok(allowed.length >= 6 && allowed.length <= 9, `${allowed.length}`);
+  T = 5000; assert.ok(gate.allow('success', T));
+  T = 5500; assert.equal(gate.allow('success', T), false, 'one success per 900 ms');
+  // a bead: seen at once (dim), full by 0.3 s, rising, gone at its life
+  const b = new NoteBead({ x: 100, y: 200, r: 12, a: 0.5, rise: 56, life: 1.2 });
+  assert.ok(b.alpha > 0 && b.alpha < 0.2, `seen at once, dim: ${b.alpha}`);
+  b.step(0.1);
+  assert.ok(b.alpha < 0.4, `still swelling at 0.1 s: ${b.alpha}`);
+  b.step(0.2);
+  assert.ok(b.alpha > 0.45, `full by 0.3 s: ${b.alpha}`);
+  assert.ok(b.y < 200, 'it rises');
+  let alive = true, t = 0.3;
+  while (alive && t < 3) { alive = b.step(0.05); t += 0.05; }
+  assert.equal(alive, false);
+  assert.ok(Math.abs(t - 1.2) < 0.06, `dies at its life: ${t}`);
+  const rb = new NoteBead({ x: 100, y: 200, r: 8, a: 0.4, reduced: true, drift: 9 });
+  for (let i = 0; i < 10; i++) rb.step(0.05);
+  assert.deepEqual([rb.x, rb.y], [100, 200], 'reduced motion: it fades in place');
+  const big = new NoteBead({ r: 40, a: 2 });
+  assert.ok(big.r <= BEAD.rMax && big.a <= BEAD.aMax, 'r ≤ 14 px, alpha ≤ 0.5');
+  // pools: per tier, 3 with reduced motion, shrinking but never growing back
+  for (const q of ['high', 'medium', 'low']) {
+    const pool = new BeadPool({ cap: POOL[q] });
+    for (let i = 0; i < 30; i++) pool.spawn({ x: i, y: 0, r: 6, a: 0.3 });
+    assert.equal(pool.alive, POOL[q], q);
+    pool.setReduced(true);
+    for (let i = 0; i < 30; i++) pool.spawn({ x: i, y: 0, r: 6, a: 0.3 });
+    assert.equal(pool.alive, POOL.reduced, `${q} reduced`);
+  }
+  const pool = new BeadPool({ cap: POOL.high });
+  pool.setCap(POOL.low); pool.setCap(POOL.high);
+  for (let i = 0; i < 30; i++) pool.spawn({ x: 0, y: 0 });
+  assert.equal(pool.alive, POOL.low, 'a pool shrinks, never grows back');
+  // a bright bead must pass the gate, else it shows at half strength; a small one is no bright event
+  T = 10000;
+  const g2 = new FlashGate({ max: 3, gaps: PULSE_GAPS, now: () => T });
+  const bp = new BeadPool({ cap: 12, gate: g2 });
+  const as = [];
+  for (let i = 0; i < 6; i++) as.push(bp.spawn({ r: 12, a: 0.5 }).a);
+  assert.deepEqual(as, [0.5, 0.5, 0.5, 0.25, 0.25, 0.25]);
+  assert.equal(bp.spawn({ r: 8, a: 0.5 }).a, 0.5);
+  // a bend stretches the note's bead upward (≤ 1.8×); the snap springs it back
+  const s1 = bp.spawn({ id: 7, hz: 440 });
+  bp.bend(7, 440 * 2 ** (4 / 12));
+  for (let i = 0; i < 10; i++) bp.step(0.02);
+  assert.ok(s1.stretch > 1.2 && s1.stretch <= 1.8, `${s1.stretch}`);
+  bp.unbend(7);
+  for (let i = 0; i < 10; i++) bp.step(0.03);
+  assert.ok(s1.stretch < 1.05);
+});
+
+test('U16 floor glow ≤ 0.18, swelling over ≥ 0.3 s at most every 0.6 s; the trail is a ring, 40 % shorter when reduced; arc and halo ease', () => {
+  const gl = new BeatGlow({});
+  gl.base = 1; gl.level = 1; gl.boost = 1.4;
+  assert.ok(gl.kick(1, 0.1));
+  assert.equal(gl.kick(1), false, `no second swell within ${KICK_GAP} s`);
+  let peakT = 0, peak = 0;
+  for (let t = 0; t < 2; t += 0.02) { gl.step(0.02); assert.ok(gl.alpha <= GLOW_MAX + 1e-9); if (gl.k > peak) { peak = gl.k; peakT = t; } }
+  assert.ok(peakT >= 0.26, `it rises over ≥ 0.3 s: ${peakT}`);
+  assert.ok(gl.kick(1), 'later it may swell again');
+  const r = new PhraseRibbon({ max: RIBBON.low });
+  for (let i = 0; i < 100; i++) { r.push(i * 5, 0); r.step(0.005); }
+  assert.equal(r.n, RIBBON.low);
+  const rr = new PhraseRibbon({ max: RIBBON.low, reduced: true });
+  for (let i = 0; i < 100; i++) rr.push(i * 5, 0);
+  assert.equal(rr.n, Math.round(RIBBON.low * 0.6), '40 % shorter with reduced motion');
+  r.end();
+  for (let i = 0; i < 30; i++) r.step(0.05);
+  assert.equal(r.n, 0, 'the trail fades after the finger lifts');
+  r.push(1, 1); r.push(1.5, 1);
+  assert.equal(r.n, 1, 'a tiny move is not a new point');
+  const arc = new HarmonyArc({});
+  arc.pulse(1);
+  let mx = 0, mt = 0;
+  for (let t = 0; t < 2; t += 0.02) { arc.step(0.02); if (arc.shown > mx) { mx = arc.shown; mt = t; } }
+  assert.ok(mx <= 0.5 && mt >= 0.25, `${mx} at ${mt}`);
+  arc.hold(true);
+  for (let i = 0; i < 100; i++) arc.step(0.05);
+  assert.ok(Math.abs(arc.shown - 0.32) < 0.01, 'a bloom holds a steady glow');
+  const h = new BreathHalo({});
+  h.place(0, 0, 100); h.set(1, 0.5);
+  for (let i = 0; i < 200; i++) h.step(0.05);
+  assert.ok(Math.abs(h.r - 108) < 0.5 && Math.abs(h.alpha - 0.5) < 0.01, 'the breath swells it by 8 %');
+  h.set(0, 0.15); h.step(0.1);
+  assert.ok(h.alpha > 0.3, 'its brightness eases over seconds, never snaps');
+});
+
+test('U16 TRAITS: every Mallow has its own groove, a singing face, real reactions and a resting face; grooves follow their beats', () => {
+  for (const id of MALLOW_IDS) {
+    const T = TRAITS[id];
+    assert.ok(T, id);
+    for (const k of ['entrance', 'proud', 'leave']) assert.ok(REACTIONS[id]?.[T[k]] || REACTIONS._shared[T[k]], `${id} ${k}: ${T[k]}`);
+    for (const m of [T.rest, T.proudMix].filter(Boolean)) for (const p of Object.keys(m)) assert.ok(PRESETS[p], `${id}: ${p}`);
+    assert.ok(T.sing.open > 0 && T.sing.open <= 1);
+    let moves = 0;
+    for (let b = 0; b < 16; b++) if (grooveStep(T.groove, csAt(b, MUSIC[id].meter), 1, {})) moves++;
+    assert.ok(moves > 0, `${id} moves`);
+  }
+  assert.equal(new Set(MALLOW_IDS.map((id) => TRAITS[id].groove)).size, 7, 'seven different grooves');
+  for (const st of ['hop', 'bounce']) for (let b = 0; b < 8; b++) assert.equal(grooveStep(st, csAt(b), 1, { gentle: true })?.hop ?? 0, 0, 'gentle never hops');
+  const lo = [];
+  for (let b = 0; b < 24; b++) if (grooveStep('lean', csAt(b, 3), 1)) lo.push(b);
+  assert.deepEqual(lo, [0, 6, 12, 18], 'Loomi leans once every 2 bars');
+  assert.equal(grooveStep('bob', csAt(1), 1).delay, 0.06, 'Glitzi bobs behind the beat');
+  assert.equal(Math.abs(grooveStep('tilt', csAt(1), 0).tilt), 0);
+  assert.equal(grooveStep('tilt', csAt(1), 1).tilt, -grooveStep('tilt', csAt(2), 1).tilt, 'Zuzu tilts left and right');
+});
+
+test('U16 performer: sings its notes at once, glows with a hum, grooves on beat crossings (not in reduced motion), performs a replay, rests, cleans up', () => {
+  let T = 50;
+  const now = () => T;
+  const { rig, companion, calls } = fakeStage('boppo');
+  const pool = new BeadPool({ cap: 12 });
+  const off = { x: 10, y: 20 };
+  const p = new Performer({ companion, slot: 0, pool, off, color: '#ff5ed0', tuning: { style: 'natural' }, now });
+  const fo = rig.faceOverride;
+  assert.deepEqual({ ...fo.set }, { breath: 0, bounce: 0, fxNote: 0 }, 'the music replaces the rig breathing, idle bounce and floating notes');
+  // a touch: a bead at the finger and the mouth open in the same call
+  p.apply({ kind: 'note', slot: 0, t: T, id: 1, vel: 0.8, x01: 0, y01: 0.5, src: 'live', immediate: true, hz: 440 }, T);
+  assert.ok(fo.min.mouthOpen > 0.5, `mouth ${fo.min.mouthOpen}`);
+  const bead = pool.beads.find((x) => x.alive);
+  assert.deepEqual([bead.x0, bead.y0], [195 + off.x, 500 + off.y]);
+  const still = csAt(0.1);
+  for (let i = 0; i < 60; i++) { T += 0.05; p.frame(T, 0.05, still, { playing: false }); }
+  assert.equal(fo.min.mouthOpen, undefined, 'the floor goes once the note has gone');
+  assert.ok(Math.abs(calls.inflate.at(-1) - 0.4) < 1e-9, 'it breathes: inflation = level × 0.8');
+  // a replayed note: sung from the mouth, poked where it was played
+  p.apply({ kind: 'note', slot: 0, t: T, id: 2, vel: 0.6, x01: 0.5, y01: 0.2, src: 'replay', hz: 440 }, T);
+  assert.deepEqual(calls.poke, [[195 + 0.5 * 220 * 0.42, 600 - 0.2 * 200]]);
+  // a hum: it glows, then lets go
+  p.apply({ kind: 'padOn', slot: 0, t: T, level: 0.8 }, T);
+  for (let i = 0; i < 40; i++) { T += 0.05; p.frame(T, 0.05, still, {}); }
+  assert.ok(fo.min.glow > 0.6, `glow ${fo.min.glow}`);
+  p.apply({ kind: 'padOff', slot: 0, t: T }, T);
+  for (let i = 0; i < 100; i++) { T += 0.05; p.frame(T, 0.05, still, {}); }
+  assert.equal(fo.min.glow, undefined);
+  // the groove: one nudge per beat crossing while playing
+  calls.nudge.length = 0;
+  let beat = 8;
+  const play = (n, o = { playing: true, barS: 2.5 }) => { for (let i = 0; i < n; i++) { T += 0.05; beat += 0.08; p.frame(T, 0.05, csAt(beat), o); } };
+  play(160);
+  assert.ok(calls.nudge.length >= 10 && calls.nudge.length <= 13, `≈ one per beat: ${calls.nudge.length} over 12.8 beats`);
+  assert.ok(p.debug().grooveLog.every((g) => Number.isInteger(g.beat)), 'on the beats');
+  assert.ok(calls.nudge.some((m) => m.hop > 0), 'Boppo hops');
+  p.suppress(1000);
+  const before = calls.nudge.length;
+  play(12);
+  assert.equal(calls.nudge.length, before, 'a reaction pauses it');
+  p.setReduced(true);
+  const r0 = calls.nudge.length;
+  play(80);
+  assert.equal(calls.nudge.length, r0, 'reduced motion: no groove');
+  assert.ok(Math.abs(calls.inflate.at(-1) - 0.2) < 1e-9, 'and half the inflation');
+  p.setReduced(false);
+  p.setTuning({ style: 'gentle' });
+  calls.nudge.length = 0;
+  play(80);
+  assert.ok(calls.nudge.length > 0 && calls.nudge.every((m) => !m.hop), 'gentle: no hops');
+  play(110, { playing: false, barS: 2.5 });   // eases out over 2 bars (5 s)
+  calls.nudge.length = 0;
+  play(80, { playing: false, barS: 2.5 });
+  assert.equal(calls.nudge.length, 0, 'listening: the groove has eased out');
+  // a replayed bass squeezes and a replayed hum presses in, never over a live touch
+  p.apply({ kind: 'bassOn', slot: 0, t: T, amount: 0.6, src: 'replay' }, T);
+  p.apply({ kind: 'bassOff', slot: 0, t: T }, T);
+  assert.deepEqual(calls.squeeze, [0.32, 0]);
+  companion.sq = {};
+  p.apply({ kind: 'bassOn', slot: 0, t: T, amount: 0.6, src: 'replay' }, T);
+  companion.sq = null;
+  assert.equal(calls.squeeze.length, 2, 'not while the person squeezes');
+  p.apply({ kind: 'bassOff', slot: 0, t: T }, T);
+  p.apply({ kind: 'padOn', slot: 0, t: T, level: 0.8, src: 'replay' }, T);
+  assert.equal(p.debug().performing.press, true);
+  p.apply({ kind: 'replay', slot: 0, t: T, on: false, done: true }, T);
+  assert.deepEqual(calls.press, [0.06, 0], 'let go when the replay ends');
+  // proud and goodbye, in character (softened when gentle)
+  p.proud();
+  assert.equal(calls.react.at(-1), 'success');
+  const pp = fakeStage('pipzi');
+  new Performer({ companion: pp.companion, pool, tuning: { style: 'gentle' }, now }).proud();
+  assert.equal(pp.calls.react.at(-1), 'nod', 'celebrate → nod when gentle');
+  const gz = fakeStage('glitzi'), pz = new Performer({ companion: gz.companion, pool, now });
+  pz.proud();
+  assert.deepEqual([gz.calls.react.at(-1), Object.keys(gz.calls.play[0][0])], ['tap', ['embarrassed', 'happy']], 'Glitzi: caught out');
+  pz.leave();
+  assert.equal(gz.calls.react.at(-1), 'tap');
+  const zr = fakeStage('zuzu'), pr = new Performer({ companion: zr.companion, pool, reduced: true, now });
+  pr.enter();
+  assert.equal(zr.calls.react.at(-1), 'nod', 'reduced motion maps reactions as gentle does (doubleTap → nod)');
+  const gr = fakeStage('glitzi');
+  new Performer({ companion: gr.companion, pool, reduced: true, now }).enter();
+  assert.equal(gr.calls.react.at(-1), 'tap', 'glitchBurst → tap');
+  // resting, hidden, unmount
+  p.rest(true);
+  assert.deepEqual(companion.restOverride.mix, TRAITS.boppo.rest);
+  p.rest(false);
+  assert.equal(companion.restOverride, null);
+  p.hush();
+  assert.equal(p.groove, 0);
+  p.destroy();
+  assert.deepEqual(rig.faceOverride, { set: {}, min: {} });
+  assert.equal(calls.inflate.at(-1), 0);
+});
+
+test('U16 scene: the realm warms and clears with the music, eases back, ≤ 1 mood send per 500 ms; a long hum transforms it; one ripple a bar; one success per replay through the shared gate', () => {
+  let T = 100;
+  const now = () => T;
+  const gate = new FlashGate({ max: 3, gaps: PULSE_GAPS, now: () => T * 1000 });
+  const sent = [], pulses = [], transforms = [];
+  const env = {
+    realm: {}, mood: { agitation: 0.1, heaviness: 0.3, clarity: 0.4, warmth: 0.4 },
+    setMood(m) { sent.push({ t: T, ...m }); return true; },
+    transform(x) { transforms.push(x); return true; },
+    pulse(kind) { const ok = gate.allow(kind, T * 1000); pulses.push({ kind, ok, t: T }); return ok; },
+  };
+  const { companion } = fakeStage('loomi');
+  const scene = new Scene({ env, gate, quality: 'high', now });
+  scene.layer = { W: 390, H: 844 };
+  const p = new Performer({ companion, pool: scene.pool, now });
+  scene.setPerformers([{ performer: p, color: '#a8f0ff', accent: '#ff7cf5' }]);
+  const quiet = { onsets1s: 0, bass: 0, pad: 0, bloom: false, harmony1s: 0 };
+  let beat = 0;
+  const run = (secs, st, o = {}) => {
+    for (let i = 0; i < Math.round(secs / 0.05); i++) { T += 0.05; beat += 0.06; scene.step(0.05); scene.frame(T, 0.05, csAt(beat, 3), st, { state: 'listening', groove: 0, ...o }); }
+  };
+  run(1, quiet);
+  assert.deepEqual(scene.start, env.mood, 'the realm\'s own mood is where it starts');
+  assert.equal(scene.debug().ringTarget, 0.25, 'listening: a faint ring');
+  run(8, { ...quiet, onsets1s: 6, bass: 0.8, pad: 0.8 }, { state: 'playing', groove: 1 });
+  const m = sent.at(-1);
+  assert.ok(m.clarity > 0.85 && m.warmth > 0.75 && m.heaviness < 0.15 && m.agitation <= 0.35, JSON.stringify(m));
+  for (let i = 1; i < sent.length; i++) assert.ok(sent[i].t - sent[i - 1].t >= 0.5 - 1e-9, 'one mood send per 500 ms at most');
+  assert.ok(scene.debug().ringTarget >= 0.49, 'playing: the ring up to 0.5');
+  assert.ok(transforms.at(-1) > 0.35 && transforms.at(-1) <= 0.5, `a long hum transforms the world toward 0.5: ${transforms.at(-1)}`);
+  run(20, quiet, { state: 'resting' });
+  const back = sent.at(-1);
+  for (const k of Object.keys(env.mood)) assert.ok(Math.abs(back[k] - env.mood[k]) < 0.02, `${k} eased back: ${back[k]}`);
+  assert.equal(scene.debug().ringTarget, 0.15, 'resting: dimmer');
+  assert.ok(transforms.at(-1) < 0.01);
+  for (let i = 0; i < 4; i++) { scene.apply({ kind: 'bassOn', slot: 0, t: T }); T += 0.3; beat += 0.36; scene.frame(T, 0.3, csAt(beat, 3), quiet, { state: 'playing' }); }
+  const rip = pulses.filter((x) => x.kind === 'ripple' && x.ok).length;
+  assert.ok(rip >= 1 && rip <= 2, `one ripple a bar at most: ${rip} over ${(1.44 / 3).toFixed(2)} bars`);
+  T += 2;
+  for (let i = 0; i < 3; i++) gate.allow('bead', T * 1000);   // beads have used this second's budget
+  scene.apply({ kind: 'replay', slot: 0, t: T, on: false, done: true });
+  run(0.5, quiet, { state: 'playing' });
+  assert.equal(pulses.filter((x) => x.kind === 'success' && x.ok).length, 0, 'the success waits for the budget');
+  run(1, quiet, { state: 'playing' });
+  assert.equal(pulses.filter((x) => x.kind === 'success' && x.ok).length, 1, 'then exactly one');
+  scene.apply({ kind: 'replay', slot: 0, t: T, on: false, stopped: true });
+  run(2, quiet, { state: 'playing' });
+  assert.equal(pulses.filter((x) => x.kind === 'success' && x.ok).length, 1, 'a stopped replay is no success');
+  scene.destroy();
+  assert.equal(scene.step(0.05), false, 'gone from the layer');
+});
+
+test('U16 cue: events wait for their moment (in arrival order); a full ring hands over the oldest at once', () => {
+  const c = new Cue(4), out = [];
+  const fn = (e) => out.push(e.id);
+  c.push({ id: 1 }, 1.0, fn); c.push({ id: 2 }, 0.5, fn); c.push({ id: 3 }, 2.0, fn);
+  c.drain(0.9, fn);
+  assert.deepEqual(out, [2]);
+  c.drain(1.5, fn);
+  assert.deepEqual(out, [2, 1]);
+  for (let i = 4; i <= 7; i++) c.push({ id: i }, 9, (e) => out.push(`early ${e.id}`));
+  assert.deepEqual(out, [2, 1, 'early 3']);
+  assert.equal(c.pending, 4);
+  c.clear();
+  assert.equal(c.pending, 0);
+});
+
 // ================================================================= U17 ==
-const NEW_FILES = ['../core/music-theory.js', '../core/music-time.js', '../core/music-engine.js', '../features/hushbeat/player.js', '../features/hushbeat/copy.js'].map(here);
+const NEW_FILES = ['../core/music-theory.js', '../core/music-time.js', '../core/music-engine.js', '../features/hushbeat/player.js', '../features/hushbeat/copy.js', '../features/hushbeat/performer.js'].map(here);
 const AUDIO_FILES = ['../core/music-kits.js', '../core/music-audio.js'].map(here);
+const FX_FILES = ['../core/music-fx.js'].map(here);
 const FEATURE_FILES = ['../features/hushbeat.js'].map(here);
 
 test('U17 no network, media or DOM in the pure modules; the copy has no therapy, treatment, streak or score words', () => {
-  assert.deepEqual(scanFiles([...NEW_FILES, ...AUDIO_FILES, ...FEATURE_FILES], { forbid: NETWORK }), []);
+  assert.deepEqual(scanFiles([...NEW_FILES, ...AUDIO_FILES, ...FX_FILES, ...FEATURE_FILES], { forbid: NETWORK }), []);
+  // the light draws on the canvases it is handed (plus one ring sprite each): no audio, storage, timers or loops
+  assert.deepEqual(scanFiles(FX_FILES, { forbid: [/\bwindow\b/, /AudioContext/, /\blocalStorage\b/, /\bsetInterval\b/, /\bsetTimeout\b/, /requestAnimationFrame/] }), []);
   assert.deepEqual(scanFiles(NEW_FILES, { forbid: [/\bdocument\b/, /\bwindow\b/, /AudioContext/, /\blocalStorage\b/, /\bsetInterval\b/] }), []);
   // the audio modules use the SoundEngine's context only: no context of their own, no DOM, no storage, no intervals
   assert.deepEqual(scanFiles(AUDIO_FILES, { forbid: [/\bdocument\b/, /\bwindow\b/, /new\s+\w*AudioContext/, /\.destination\b/, /\blocalStorage\b/, /\bsetInterval\b/] }), []);

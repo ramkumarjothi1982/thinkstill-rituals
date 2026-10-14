@@ -1,4 +1,5 @@
-// Unit tests for Mallow Nightlight (spec-nightlight.md §13): U1–U15, U17, U18.
+// Unit tests for Mallow Nightlight (spec-nightlight.md §13): U1–U15, U17, U18, plus U19–U21
+// (slice 2: the frame-clock timeline and moments, the five modes on a fake api, world helpers).
 // U16 (ScreenWake) arrives with core/screen-wake.js. Node only; every clock,
 // timer and random source is injected, so results are exact:
 //   node --test hushmallow/sensory-lab/tests/nightlight.test.mjs
@@ -23,7 +24,7 @@ import {
   SPEED_K, BreathPacer, SleepyScript, SLEEPY_KINDS, BIG_EVENTS, STRETCH, SPACING_S, TOUCH_QUIET_S, rampFor, LEAD_MIN_S,
 } from '../features/nightlight/pacing.js';
 import {
-  NIGHT_SCENES, NIGHT_REALMS, NIGHT_WAYS, NIGHT_SET, SLEEPY_PEEK, AROUSED, NIGHT_REACTS, NIGHT_VOICES, NIGHT_K, REST, PLAIN_SCENE,
+  NIGHT_SCENES, NIGHT_REALMS, NIGHT_WAYS, NIGHT_SET, SLEEPY_PEEK, AROUSED, NIGHT_REACTS, NIGHT_VOICES, NIGHT_K, NIGHT_I_FLOOR, REST, PLAIN_SCENE,
   FALLBACK_WORLD, FADE_HEAVY, nightWorld, nightMood, nightSet, nightFilter, nightVoice, restFor, peekFor, waysFor,
 } from '../features/nightlight/ways.js';
 import { COPY, clock, endTitle, pct } from '../features/nightlight/copy.js';
@@ -39,6 +40,9 @@ import { PARAM_NAMES } from '../../src/mallows/expressions.js';
 import { installAudioGlobals } from './lib/fake-audio.mjs';
 import { collectStrings, lintCopy } from './lib/copy-lint.mjs';
 import { NETWORK, scanFiles, filesUnder } from './lib/static-scan.mjs';
+import { MODES, TOUCHES, SWELL, LIVE, Timeline, Moments, startMode } from '../features/nightlight/modes.js';
+import { MARGIN, boxGround, stillDpr } from '../features/nightlight/world.js';
+import { FaceMixer } from '../core/expression-engine.js';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const MIN = 60e3;
@@ -639,7 +643,8 @@ test('U11 SleepyScript: seeded, spaced, uneven; touch, holdLong, motion and clos
   assert.equal(rampFor(10, true, 1), 180);                     // 0.4 × (600 − 200 − 15) = 154 → 180
   assert.ok(near(rampFor(30, true, 1), 0.4 * (1800 - 480 - 15)));      // 522 s
   assert.equal(rampFor(60, true, 1), 720);                           // capped
-  assert.equal(rampFor(60, true, 1.25), 720 / 1.25);
+  assert.equal(rampFor(60, true, 1.25), 720, 'animation speed never changes when drowsiness arrives');
+  assert.equal(rampFor(30, true, 1.25), rampFor(30, true, 1));
   assert.equal(rampFor(60, false, 1), 720);
 });
 
@@ -672,7 +677,8 @@ test('U12 nightFilter × 7 Mallows × every gesture × streaks 1–12 × 200 see
         assert.ok(r.voice == null || allowedVoices.includes(r.voice), `${id} ${g}: voice ${r.voice}`);
         if (r.mix) for (const k of AROUSED) assert.ok(!(r.mix[k] > 0), `${id} ${g}: ${k} at night`);
         assert.ok(r.poke <= 0.5 * (p.poke ?? 1) + 1e-12, `${id} ${g}: poke`);
-        assert.ok(near(r.i, p.i * NIGHT_K.i, 1e-12));
+        assert.ok(near(r.i, Math.max(NIGHT_I_FLOOR, (p.i ?? 0.6) * NIGHT_K.i), 1e-12));
+        assert.ok(r.i >= 0.6, `${id} ${g}: intensity ${r.i} would wake the rig's idle reactions`);
         if (Number.isFinite(p.hold)) assert.ok(near(r.hold, p.hold * NIGHT_K.hold, 1e-12));
         assert.ok(r.tag.startsWith('night-') && r.tag === `night-${p.tag}`);
         if (g === 'tap') tapTags[id].add(r.tag);
@@ -1005,7 +1011,7 @@ test('U17 shared contracts: Personality.setFilter, prefs.nightlight, SoundEngine
 
 // ================================================================= U18 ==
 const NL = here('../features/nightlight/');
-const PURE = ['session.js', 'settings.js', 'look.js', 'pacing.js', 'ways.js', 'copy.js'].map((f) => NL + f).concat(here('../core/frame-pacer.js'));
+const PURE = ['session.js', 'settings.js', 'look.js', 'pacing.js', 'ways.js', 'copy.js', 'modes.js'].map((f) => NL + f).concat(here('../core/frame-pacer.js'));
 const OWNED = [...new Set([...filesUnder(NL), here('../features/nightlight.js'), here('../core/frame-pacer.js'), here('../core/screen-wake.js')].filter((f) => existsSync(f)))];
 
 test('U18 static scan: no network, workers, notifications or setInterval; wake lock only in screen-wake.js; pure modules have no DOM', () => {
@@ -1016,4 +1022,209 @@ test('U18 static scan: no network, workers, notifications or setInterval; wake l
   // the scan itself works
   assert.equal(scanFiles([here('./lib/static-scan.mjs')], { forbid: [/\bfetch\s*\(/] }).length, 0);
   assert.ok(MALLOW_IDS.every((id) => Object.hasOwn(NIGHT_WAYS, id)), 'the pure modules import in Node and cover every Mallow');
+});
+
+// ================================================================= U19 ==
+/** A rig and a scene, faked just enough for the modes (records what they do). */
+function fakeScene(id = 'boppo', { motion = 'gentle', quality = 'medium', phase = 'steady', settings = {}, live = true } = {}) {
+  const log = [];
+  const rig = {
+    overlays: [], squeeze: { target: 0 }, inflateTarget: 0, peekParams: null, opts: { particles: true, reducedMotion: motion !== 'gentle' },
+    faceOverride: { set: {}, min: {} },
+    setFaceOverride(o) { this.faceOverride = { set: o.set || {}, min: o.min || {} }; },
+    overlay(kind, params, dur) { this.overlays = this.overlays.filter((o) => o.kind !== kind); this.overlays.push({ kind, params, dur }); log.push(['overlay', kind]); return this; },
+    react(kind) { log.push(['react', kind]); return this; },
+    nudge(o) { log.push(['nudge', o]); return this; },
+    peek(x, y, dur) { log.push(['peek', dur]); },
+    setSqueeze(v) { this.squeeze.target = v; },
+    setInflate(v) { this.inflateTarget = v; },
+    lookAtScreen(x, y) { log.push(['look', Math.round(x), Math.round(y)]); },
+    particles: { burst(spec) { log.push(['burst', spec.kind, spec.n]); } },
+  };
+  const world = {
+    isLive: false, realmId: 'moonmilk-cove', plain: false, W: 390, drift: [0, 0], lives: 0, stills: 0,
+    goLive() { if (!live) return false; this.isLive = true; this.lives++; return true; },
+    goStill() { if (this.isLive) { this.isLive = false; this.stills++; } return true; },
+    setDrift(x, y) { this.drift = [x, y]; },
+  };
+  const sky = { gain: 1, breath: null, attracted: null, setHaloGain(k) { this.gain = k; }, setBreath(b) { this.breath = b; }, attract(x, y) { this.attracted = [x, y]; }, pickFirefly: () => 0, firefly: (i, out) => { out.x = 100; out.y = 400; return true; } };
+  const pacer = { events: [], event(ms) { this.events.push(ms); } };
+  const limiter = new LightLimiter({ now: () => clockMs.t });
+  const clockMs = { t: 0 };
+  const face = new FaceMixer(rig, ['base', 'mode', 'event', 'fade']);
+  const S = { ...NIGHT_DEFAULTS, ...settings };
+  const companion = { restOverride: null };
+  const api = {
+    id, ways: waysFor(id), rig, companion, face, sky, world, pacer, limiter, look: { glow: 0.55 }, levels: { world: 1, mallow: 1 },
+    rand: (() => { let x = 0.37; return () => (x = (x * 9301 + 49297) % 233280 / 233280); })(),
+    rules: () => MOTION_RULES[motion], motion: () => motion, speedK: () => 1, timing: () => ({ inhale: 4, exhale: 6 }), quality: () => quality,
+    phase: () => phase, settings: () => S, warm: () => 0, light: () => ({ x: 270, y: 240 }), captions: [], caption(t) { this.captions.push(t); }, quiet: null, setQuiet(b) { this.quiet = b; },
+  };
+  api.moments = new Moments(api);
+  const run = (ctl, secs, dt = 1 / 20) => { for (let t = 0; t < secs; t += dt) { clockMs.t += dt * 1000; api.moments.step(dt); ctl.tick(dt); face.apply(); } };
+  return { api, rig, face, world, sky, pacer, log, run, clockMs, companion };
+}
+
+test('U19 Timeline and Moments: frame-clock callbacks; authored moments route pinned keys through the mixer and release their own layers only', () => {
+  const tl = new Timeline(), seen = [];
+  tl.add(0.5, () => seen.push('b')).add(0.2, () => seen.push('a')).add(2, () => seen.push('c'));
+  tl.step(0.1); assert.deepEqual(seen, []);
+  tl.step(0.5); assert.deepEqual(seen, ['a', 'b']);
+  tl.clear(); tl.step(5); assert.deepEqual(seen, ['a', 'b'], 'cleared callbacks never run');
+  assert.equal(tl.size, 0);
+
+  // Zuzu's answer swirl: spin is pinned by the night base (set), so it goes through 'evo:swirl'; spiralHue stays an overlay
+  const z = fakeScene('zuzu');
+  z.face.set('base', 'spin', 0.25); z.face.apply();
+  z.api.moments.play(NIGHT_WAYS.zuzu.answer);
+  z.face.apply();
+  assert.equal(z.face.out.set.spin, 0.5, 'the swirl wins over the pinned base spin while it plays');
+  const ov = z.rig.overlays.find((o) => o.kind === 'nl-swirl');
+  assert.ok(ov && !('spin' in ov.params) && ov.params.spiralHue === 0.3);
+  z.run({ tick() {} }, 2.5);
+  assert.equal(z.face.out.set.spin, 0.25, 'and the base comes back when it ends');
+
+  // Blubi's blush floor, replayed: the first release must not cut the second short
+  const b = fakeScene('blubi');
+  b.api.moments.play(NIGHT_WAYS.blubi.answer);   // min blush 2.2 for 1.8 s
+  b.run({ tick() {} }, 1.2);
+  b.api.moments.play(NIGHT_WAYS.blubi.answer);
+  b.run({ tick() {} }, 1.0);
+  assert.equal(b.face.out.min.blush, 2.2, 'still blushing: the replay owns the release');
+  b.run({ tick() {} }, 1.2);
+  assert.equal(b.face.out.min.blush, undefined);
+
+  // Pipzi's whisper sparks, Boppo's two soft bounces (never a hop), Noomi's sleepy peek, Glitzi's glow dream
+  const p = fakeScene('pipzi'); p.api.moments.play(NIGHT_WAYS.pipzi.answer);
+  assert.deepEqual(p.log.filter((e) => e[0] === 'burst'), [['burst', 'spark', 2]]);
+  const bo = fakeScene('boppo'); bo.api.moments.play(NIGHT_WAYS.boppo.greet); bo.run({ tick() {} }, 1.5);
+  assert.deepEqual(bo.log.filter((e) => e[0] === 'nudge').map((e) => e[1]), [{ squash: 0.15 }, { squash: 0.08 }], 'softer each time');
+  const still = fakeScene('boppo', { motion: 'still' }); still.api.moments.play(NIGHT_WAYS.boppo.greet); still.run({ tick() {} }, 1.5);
+  assert.equal(still.log.filter((e) => e[0] === 'nudge').length, 0, 'no body impulses with Movement Still');
+  const n = fakeScene('noomi'); n.api.moments.play(NIGHT_WAYS.noomi.stillHere);
+  assert.deepEqual(n.log.at(-1), ['peek', 1.4]);
+  const g = fakeScene('glitzi'); g.api.moments.play(NIGHT_WAYS.glitzi.dream); g.face.apply();
+  assert.ok(near(g.face.out.min.glow, 0.55 + 0.2));
+  // every moment asks the pacer for smooth frames while it plays
+  assert.ok(p.pacer.events.length === 1 && p.pacer.events[0] >= 300);
+  g.api.moments.clear(); g.face.apply();
+  assert.equal(g.face.out.min.glow, undefined, 'clear() drops every moment layer');
+});
+
+// ================================================================= U20 ==
+test('U20 the five modes on a fake api: rests ≥ 0.62, Moonlight swell and limiter, Breathe inflate by Movement, Sleepy stretch and asleep-in-hand, Drift window, Quiet silence; stop() releases', () => {
+  assert.deepEqual(Object.keys(MODES), MODES_ORDER);
+  for (const m of MODES_ORDER) {
+    assert.equal(MODES[m].name, COPY.modes[m].name);
+    assert.equal(MODES[m].cap, NIGHT_CAPS[m]);
+    const bed = MODES[m].bed;
+    assert.ok(bed.factor > 0 && bed.factor <= 1 && bed.pad >= 0 && bed.texture >= 0);
+    const f = fakeScene('boppo');
+    const ctl = startMode(m, f.api);
+    assert.equal(ctl.id, m);
+    assert.ok(f.companion.restOverride.i >= 0.62, `${m} rests at ${f.companion.restOverride.i}`);
+    f.run(ctl, 3);
+    ctl.stop(); f.face.apply();
+    assert.deepEqual(f.face.layers.find((l) => l.owner === 'mode').set, {}, `${m}: stop releases the mode layer`);
+    assert.equal(f.rig.inflateTarget, 0);
+    assert.equal(f.rig.squeeze.target, 0);
+  }
+  assert.equal(startMode('nonsense', fakeScene().api).id, 'moonlight');
+
+  // Moonlight: the glow floor follows the light; a tap swells (rising over 600 ms); a second tap inside 2 s only holds it longer
+  const mo = fakeScene('boppo'), ml = startMode('moonlight', mo.api);
+  mo.run(ml, 1);
+  const floor = mo.face.out.min.glow;
+  assert.ok(floor >= 0.55 * 0.88 - 1e-9 && floor <= 0.55 * 1.12 + 1e-9);
+  ml.event({ type: 'tap' });
+  mo.run(ml, 0.1); const g100 = mo.face.out.min.glow;
+  mo.run(ml, 0.6); const g700 = mo.face.out.min.glow;
+  assert.ok(g700 - g100 > 0.2, `${g100} → ${g700}`);
+  ml.event({ type: 'tap' });
+  assert.equal(mo.api.limiter.log.filter((e) => e.ok).length, 1, 'one brightening start');
+  assert.ok(mo.sky.gain > 1.2, 'the halo swells with the lamp');
+
+  // Breathe: inflate follows the level × Movement (Gentle 1, Less 0.4, Still 0); a press leads the inhale; captions for two cycles
+  for (const [motion, k] of [['gentle', 1], ['less', 0.4], ['still', 0]]) {
+    const f = fakeScene('blubi', { motion }), br = startMode('breathe', f.api);
+    let max = 0;
+    for (let i = 0; i < 200; i++) { f.run(br, 0.05); max = Math.max(max, f.rig.inflateTarget); }
+    assert.ok(k === 0 ? max === 0 : max > 0.9 * k && max <= k + 1e-9, `${motion}: inflate max ${max}`);
+    assert.equal(f.face.out.set.breath, 0, "the rig's own breathing bob stops");
+    if (motion === 'gentle') {
+      assert.deepEqual(f.api.captions.slice(0, 2), [COPY.captions.in, COPY.captions.out]);
+      br.event({ type: 'press' });
+      f.run(br, 1.5);
+      assert.ok(br.breath.leading && ['in', 'holdIn'].includes(br.breath.phase), 'a held press leads the inhale');
+      br.event({ type: 'pressend' });
+      f.run(br, 0.1);
+      assert.equal(br.breath.phase, 'out');
+    }
+  }
+
+  // Sleepy: a forced stretch ramps the squeeze down to −0.28 and back, its settle follows; Less turns it into a settle
+  const sl = fakeScene('boppo'), sc = startMode('sleepy', sl.api);
+  sc.script.force('stretch');
+  let min = 0, after = 0;
+  for (let i = 0; i < 120; i++) { sl.run(sc, 0.05); min = Math.min(min, sl.rig.squeeze.target); if (min < -0.27) after = Math.max(after, sl.rig.squeeze.target); }
+  assert.ok(min < -0.27 && after > 0, `stretch ${min}, settle ${after}`);
+  assert.ok(sl.log.some((e) => e[0] === 'overlay' && e[1] === 'nl-stretch'));
+  assert.ok(sl.log.some((e) => e[0] === 'react' && e[1] === 'sigh'), 'the settle ends with a sigh');
+  // a 4 s hold: asleep in your hand; a stroke makes it drowsier
+  sc.event({ type: 'hold' }); sl.run(sc, 4.2); sc.event({ type: 'holdend' });
+  assert.ok(sc.script.d >= 0.9);
+  sl.run(sc, 0.05);
+  assert.ok(sl.companion.restOverride.i > 0.75, 'the rest follows drowsiness');
+  const less = fakeScene('boppo', { motion: 'less' }), lc = startMode('sleepy', less.api);
+  lc.script.force('stretch');
+  let lmin = 0;
+  for (let i = 0; i < 60; i++) { less.run(lc, 0.05); lmin = Math.min(lmin, less.rig.squeeze.target); }
+  assert.equal(lmin, 0, 'no negative squeeze with Movement Less');
+  const st = fakeScene('boppo'), stc = startMode('sleepy', st.api);
+  stc.event({ type: 'stroke' }); const d0 = stc.script.d; st.run(stc, 5); stc.event({ type: 'strokeend' });
+  assert.ok(stc.script.d > d0 + 0.15, 'stroking: drowsier at 0.04/s');
+
+  // Drift: the live window opens on capable tiers, closes after 3 min, reopens for 45 s after a touch; never with Less or on low
+  const dr = fakeScene('noomi'), dc = startMode('drift', dr.api);
+  dr.run(dc, 0.2);
+  assert.equal(dr.world.isLive, true);
+  assert.ok(Math.abs(dr.world.drift[0]) <= 6 && Math.abs(dr.world.drift[1]) <= 2);
+  dr.run(dc, LIVE.firstS, 0.5);
+  assert.equal(dr.world.isLive, false, 'closed after the first 3 minutes');
+  dc.event({ type: 'offtap', x: 120, y: 500 });
+  assert.deepEqual(dr.sky.attracted, [120, 500]);
+  dr.run(dc, 0.5);
+  assert.equal(dr.world.isLive, true, 'a touch reopens it');
+  dr.run(dc, LIVE.touchS + 1, 0.5);
+  assert.equal(dr.world.isLive, false);
+  assert.ok(dr.face.out.min.float >= 0.3, "Noomi floats a little more in Drift");
+  for (const [o, why] of [[{ motion: 'less' }, 'Less'], [{ quality: 'low' }, 'low tier'], [{ phase: 'fading' }, 'fading']]) {
+    const f = fakeScene('noomi', o), c = startMode('drift', f.api);
+    f.run(c, 1);
+    assert.equal(f.world.lives, 0, `no live window: ${why}`);
+  }
+  const fail = fakeScene('noomi', { live: false }), fc = startMode('drift', fail.api);
+  fail.run(fc, 1);
+  dc.stop();
+  assert.equal(dr.world.isLive, false);
+  assert.deepEqual(dr.world.drift, [0, 0]);
+
+  // Quiet: silent unless the person asked for sound; stop() gives the voice back
+  const q = fakeScene('loomi'), qc = startMode('quiet', q.api);
+  assert.equal(q.api.quiet, true);
+  qc.stop();
+  assert.equal(q.api.quiet, false);
+  const q2 = fakeScene('loomi', { settings: { quietSound: true } }); startMode('quiet', q2.api);
+  assert.equal(q2.api.quiet, false);
+  assert.deepEqual(TOUCHES.includes('offtap') && SWELL.k === 0.4 && SWELL.riseS >= 0.6, true);
+});
+
+// ================================================================= U21 ==
+test('U21 world helpers: the overhanging box maps the ground line; still DPR per tier', () => {
+  assert.equal(MARGIN, 8);
+  const H = 844, base = 0.84;
+  const gy = boxGround(base, H);
+  assert.ok(near(-MARGIN + gy * (H + 2 * MARGIN), base * H), 'the ground stays exactly where the Mallow stands');
+  assert.equal(stillDpr('low'), 1);
+  assert.ok(stillDpr('medium') <= 1.25 && stillDpr('high') <= 1.5 && stillDpr('high') >= 1);
 });

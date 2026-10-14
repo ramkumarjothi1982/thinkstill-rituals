@@ -604,6 +604,13 @@ test('U11 water: a swell reaches the Mallow on time, ripples decay, puddles grow
   run((dt) => p.step(dt), DRY_TAU, 1 / 30);
   assert.ok(Math.abs(p.wet / w0 - Math.exp(-1)) < 0.01, 'dries with τ 60 s');
   for (let k = 0; k < 2; k++) assert.ok(p.e[4 * k] - p.e[4 * k + 2] >= 0 && p.e[4 * k] + p.e[4 * k + 2] <= 390, 'on screen');
+  // a phone-width Mallow (248 px of 390): the puddles tuck beside its base instead of vanishing (≤ 45 % off screen)
+  const pw = new Puddles().resize({ floorY: 700, body: { ...BODY, w: 248 }, W: 390 });
+  for (let k = 0; k < 2; k++) {
+    const x = pw.e[4 * k], rx = pw.e[4 * k + 2];
+    assert.ok(rx > 0 && Math.abs(x - 195) >= 248 * 0.3, `puddle ${k} beside the Mallow`);
+    assert.ok(x >= rx * 0.55 - 0.01 && x <= 390 - rx * 0.55 + 0.01, `puddle ${k} at most 45 % off screen`);
+  }
 });
 
 // ------------------------------------------------------------------ U12 --
@@ -659,6 +666,15 @@ test('U12 light pools: the sun is quicker than the moon, rest, painting, body an
   assert.equal(e.x, 281); assert.equal(e.y, 211);
   run((dt) => e.step(dt), 1.5);
   assert.ok(e.amount === 1 && Math.abs(e.x - e.start()[0]) < 2);
+  // nobody has moved it yet: its own entry never rests, dwells or burns haze (progress only from the person)
+  const evE = [];
+  e.emit = (type) => evE.push(type);
+  e.setAmount(1); run((dt) => e.step(dt, BODY), 3);
+  assert.ok(!e.moved && e.dwell === 0 && e.painted === 0 && !evE.includes('rest'), 'an untouched pool does nothing by itself');
+  e.to(e.x + 60, e.y); run((dt) => e.step(dt, BODY), 1.5);
+  assert.ok(e.moved && evE.includes('rest') && e.painted > 0, 'moved: it rests and burns haze');
+  e.reset();
+  assert.equal(e.moved, false, 'reset: untouched again');
 });
 
 // ------------------------------------------------------------------ U13 --
@@ -763,6 +779,27 @@ test('U13 stars: spaced placement at every viewport, gather within 56 px, conste
   rd.release(1); run((dt) => rd.step(dt), 0.35);
   const fl = []; for (let i = 0; i < rd.n; i++) if (rd.st[i] === 2) fl.push(i);
   assert.ok(fl.every((i) => rd.x[i] === rd.sx[i] && rd.y[i] === rd.sy[i]), 'jumped to the slot while faded');
+  // every tier can make all three: a constellation takes at most a third of the stars (3–8)
+  for (const tier of ['low', 'medium', 'high']) {
+    const t3 = new StarSwarm({ tier, seed: 6, mallowId: 'noomi' }).resize({ rect, avoid: [], body, W: 390 });
+    t3.setAmount(1); run((dt) => t3.step(dt), 0.5);
+    assert.ok(t3.perConstellation >= 3 && t3.perConstellation <= 8 && t3.perConstellation * 3 <= t3.n, `${tier}: ${t3.perConstellation} of ${t3.n}`);
+    for (let k = 0; k < 3; k++) {
+      let got = 0;
+      for (let tries = 0; tries < 20 && got < t3.perConstellation; tries++) { got = t3.gatherOne(50 + k, 195, 120); run((dt) => t3.step(dt), 0.05); }
+      assert.equal(t3.clusterSize(50 + k), t3.perConstellation, `${tier}: the gather point stops at a full constellation`);
+      assert.equal(t3.release(50 + k).kind, 'constellation', `${tier}: constellation ${k + 1}`);
+      run((dt) => t3.step(dt), 0.2);
+    }
+    assert.equal(t3.constellations, 3, `${tier}: all three made`);
+  }
+  // stars drifting home are loose: a sweep can take them again
+  const lh = new StarSwarm({ tier: 'medium', seed: 8, mallowId: 'zuzu' }).resize({ rect, avoid: [], body, W: 390 });
+  lh.setAmount(1); run((dt) => lh.step(dt), 0.5);
+  const j0 = 0;
+  assert.ok(lh.sweep(7, lh.x[j0], lh.y[j0]) >= 1); lh.release(7);   // one or two: they drift home
+  assert.equal(lh.st[j0], 5, 'drifting home');
+  assert.ok(lh.sweep(8, lh.x[j0], lh.y[j0]) >= 1 && lh.held(j0), 'gathered again while drifting home');
 });
 
 // ------------------------------------------------------------------ U14 --

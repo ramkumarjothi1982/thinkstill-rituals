@@ -263,6 +263,9 @@ export class RainField extends SimBase {
     this.endY[i] = this.horizonY + (this.floorY - this.horizonY) * z + (this.rand() - 0.5) * 10;
   }
 
+  /** Every drop in flight is gone at once (the rain → starlight morph: they become the stars). */
+  clearDrops() { this.on.fill(0); this.alive = 0; this._acc = 0; return this; }
+
   /** Live drop positions into out (x, y pairs; ≤ max), for the rain → starlight morph. Returns the count. */
   positions(out, max = out.length >> 1) {
     let k = 0;

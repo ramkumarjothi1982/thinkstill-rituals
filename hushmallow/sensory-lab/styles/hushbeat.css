@@ -5,20 +5,29 @@
 /* the one glass row of controls, centred under the Mallow */
 .hushbeat .hb-row { max-width: min(560px, 100%); justify-content: center; }
 .hushbeat .chip svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.hushbeat .hb-buttons { display: inline-flex; align-items: center; gap: 6px; }
+.hushbeat .hb-row .chip { display: inline-flex; align-items: center; gap: 6px; }
+.hushbeat .hb-row .chip[hidden] { display: none; }
+/* Replay, Keep and Play it arrive softly (the row only grows wider, so the Mallow is never re-framed) */
+.hushbeat .hb-row .hb-replay, .hushbeat .hb-row .hb-keep, .hushbeat .hb-row .hb-playit { animation: hb-in 320ms var(--ease-out) both; }
+.hushbeat .hb-keep[aria-pressed="true"] svg { fill: currentColor; }
+@keyframes hb-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* the gesture tray: wraps on tall screens, one scrolling row on short ones */
 .hushbeat .hb-tray { max-width: min(560px, 100%); }
 .hushbeat .hb-tray[hidden] { display: none; }
+
+/* replaying: the stage tint deepens a little while the Mallow sings the take back */
+.hushbeat .stage-tint { transition: opacity 600ms var(--ease-out); }
+.hushbeat.replaying .stage-tint { opacity: 0.7; }
 
 /* Close plays the cadence; the screen fades from 300 ms over 420 ms */
 .hushbeat.hb-leaving { opacity: 0; transition: opacity 420ms var(--ease-out) 300ms; pointer-events: none; }
 
 @media (max-width: 360px) {
   .hushbeat .hb-hint .hb-long { display: none; }
-  /* icon-only chips (the label stays as aria-label and title) */
-  .hushbeat .hb-buttons { width: 40px; padding: 0; justify-content: center; }
-  .hushbeat .hb-buttons span { display: none; }
+  /* icon-only chips (the label stays as aria-label and title); Replay keeps its word */
+  .hushbeat .hb-buttons, .hushbeat .hb-keep { width: 40px; padding: 0; justify-content: center; }
+  .hushbeat .hb-buttons span, .hushbeat .hb-keep span { display: none; }
 }
 @media (max-height: 600px) {
   .hushbeat .hb-hint { display: none; }

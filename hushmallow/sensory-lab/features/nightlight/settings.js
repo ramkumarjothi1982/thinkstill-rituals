@@ -134,8 +134,9 @@ export class NightSettings {
   constructor(prefs, dna = null, { setTimeout: st = globalThis.setTimeout, clearTimeout: ct = globalThis.clearTimeout, debounceMs = 400 } = {}) {
     this.prefs = prefs;
     this.dna = dna;
-    this._st = st;
-    this._ct = ct;
+    // called as plain functions: the browser's setTimeout refuses another `this` ("Illegal invocation")
+    this._st = (fn, ms) => st(fn, ms);
+    this._ct = (t) => ct(t);
     this.debounceMs = debounceMs;
     this._timer = null;
     this._dirty = false;

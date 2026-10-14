@@ -1,3 +1,101 @@
-/* Mallow Nightlight — feature styles (owned by the nightlight engineer from hand-over).
+/* Mallow Nightlight — feature styles (owned by the nightlight engineer).
    Linked after lab.css in index.html, so equal-specificity rules win over the shared ones.
    Every selector starts with .nightlight; element classes use nl-, custom properties --nl-. */
+
+/* Night tokens in either theme: opaque, calm chrome that stays readable at
+   minimum screen brightness (no backdrop blur at night). --nl-light and
+   --nl-chip-on follow the Light setting (look.js chromeTokens). */
+.screen.nightlight {
+  --text-1: #e9e3fa; --text-2: #cfc6ea; --text-3: #a79dcb; --ink-0: #000;
+  --chrome: rgba(8, 6, 22, 0.66); --chrome-line: rgba(255, 255, 255, 0.12);
+  --glass: rgba(10, 8, 26, 0.9); --glass-strong: rgba(10, 8, 26, 0.95);
+  --line: rgba(255, 255, 255, 0.1); --line-strong: rgba(255, 255, 255, 0.2);
+  --chip-on: var(--nl-chip-on, rgba(255, 214, 150, 0.24)); --chip-on-text: #fff1dc; --accent: #e8c690;
+  --seg-track: transparent; --mesh: rgba(255, 255, 255, 0.4);
+  color-scheme: dark;
+  background: #000;
+  transition: opacity 1.2s ease;
+}
+.nightlight .stage-wrap { background: #000; overflow: hidden; }
+.nightlight .stage-tint { display: none; }
+.nightlight .feedback { display: none; }   /* the announcer is the one live region */
+.nightlight .chips, .nightlight .chip, .nightlight .icon-btn, .nightlight .end-card, .nightlight .sheet {
+  backdrop-filter: none; -webkit-backdrop-filter: none; }
+.nightlight .topbar .title b, .nightlight .topbar .title small { text-shadow: 0 1px 10px #000; }
+.nightlight .icon-btn:focus-visible, .nightlight .chip:focus-visible, .nightlight .nl-modes button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; }
+.nightlight .stage:focus-visible { box-shadow: inset 0 0 0 2px rgba(232, 198, 144, 0.5); }   /* still visible, not a bright frame */
+
+/* arriving from black, leaving into black, and the veil while hidden (never a bright first frame) */
+.screen.nightlight.nl-entering { opacity: 0; }
+.screen.nightlight.nl-calm { transition-duration: 300ms; }
+.screen.nightlight.nl-unveil { transition: opacity 600ms ease; }   /* back from hidden: the levels are already right */
+.screen.nightlight.nl-leaving { opacity: 0; transition: opacity 500ms ease-in; pointer-events: none; }
+.screen.nightlight.nl-veiled { opacity: 0; transition: none; }
+
+/* chrome sleep: after 8 s the chrome fades (layout never moves); Close stays at 0.35 and tappable;
+   a tap on a faded control falls through to the stage */
+.nightlight .topbar > *, .nightlight .bottom { transition: opacity 1.2s ease; }
+.nightlight.nl-calm .topbar > *, .nightlight.nl-calm .bottom { transition-duration: 200ms; }
+.nightlight.nl-asleep .topbar > *, .nightlight.nl-asleep .bottom { opacity: 0; }
+.nightlight.nl-asleep .topbar > *, .nightlight.nl-asleep .bottom, .nightlight.nl-asleep .bottom > * { pointer-events: none; }
+.nightlight.nl-asleep .topbar > :first-child { opacity: 0.35; pointer-events: auto; }
+
+/* the bottom area has a fixed height, so the Mallow is framed once and never jumps */
+.nightlight .bottom { min-height: calc(var(--safe-bottom) + 116px); justify-content: flex-end; gap: 8px;
+  max-width: 560px; margin: 0 auto; padding-left: 12px; padding-right: 12px; }
+
+/* the mode row: a radiogroup dressed as chips; it scrolls sideways when narrow */
+.nightlight .nl-modes { flex: 0 1 auto; flex-wrap: nowrap; justify-content: flex-start; gap: 2px; padding: 3px; max-width: 100%; min-width: 0;
+  border-radius: var(--r-pill); background: var(--chrome); border: 1px solid var(--chrome-line);
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none; touch-action: pan-x; overscroll-behavior-x: contain; }
+.nightlight .nl-modes::-webkit-scrollbar { display: none; }
+.nightlight .nl-modes button { flex: none; min-height: 40px; padding: 9px 11px; font-size: 14px; font-weight: 600; color: var(--text-2);
+  border: 0; border-radius: var(--r-pill); background: transparent; white-space: nowrap; }
+.nightlight .nl-modes button[aria-checked="true"] { background: var(--chip-on); color: var(--chip-on-text); }
+.nightlight .nl-modes.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px); mask-image: linear-gradient(90deg, transparent, #000 24px); }
+.nightlight .nl-modes.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); }
+.nightlight .nl-modes.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent); }
+
+/* the status row: the end time, and at most one chip */
+.nightlight .nl-status { height: 40px; display: flex; align-items: center; justify-content: center; gap: 10px; max-width: 100%;
+  color: var(--text-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nightlight .nl-st { text-shadow: 0 1px 8px #000; }
+.nightlight .nl-st-time { display: none; }
+.nightlight .nl-chipslot { display: contents; }
+.nightlight .nl-chip, .nightlight .nl-chip.toggle { min-height: 40px; padding: 8px 14px; background: var(--chrome); color: var(--text-1);
+  border: 1px solid var(--chrome-line); }
+.nightlight .nl-chip[aria-pressed="true"], .nightlight .nl-chip.hold.active { background: var(--chip-on); color: var(--chip-on-text); border-color: transparent; }
+
+/* caption (aria-hidden: the announcer speaks instead) */
+.nightlight .nl-caption { position: absolute; left: 50%; top: calc(var(--safe-top) + 76px); transform: translateX(-50%); z-index: 3;
+  max-width: calc(100% - 40px); margin: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--text-1); text-shadow: 0 1px 12px #000;
+  opacity: 0; transition: opacity 900ms ease; pointer-events: none; }
+.nightlight .nl-caption.on { opacity: 0.86; }
+.nightlight.nl-calm .nl-caption { transition-duration: 300ms; }
+
+/* the end view: near black, the sleeping Mallow where it was, a card that rests at 0.35 */
+.screen.nightlight.nl-end { background: #000; }
+.nightlight .nl-snap { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.nightlight .nl-endcard { transition: opacity 600ms ease, transform 600ms ease; }
+.nightlight .nl-endcard.on { opacity: 0.35; }
+.nightlight .nl-endcard.on.lit { opacity: 1; }
+
+@media (max-width: 360px) {
+  .nightlight .nl-st-full { display: none; }
+  .nightlight .nl-st-time { display: inline; }
+}
+/* landscape on a bedside stand: one row (modes, then the chip); the time moves into the subtitle */
+@media (max-height: 420px) {
+  .nightlight .bottom { min-height: calc(var(--safe-bottom) + 56px); flex-direction: row; align-items: center; justify-content: center;
+    gap: 10px; padding-bottom: calc(var(--safe-bottom) + 8px); max-width: none; }
+  .nightlight .nl-status { height: auto; flex: none; }
+  .nightlight .nl-st { display: none; }
+  .nightlight .nl-caption { top: calc(var(--safe-top) + 60px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen.nightlight { transition-duration: 300ms; }
+  .nightlight .topbar > *, .nightlight .bottom { transition-duration: 200ms; }
+}

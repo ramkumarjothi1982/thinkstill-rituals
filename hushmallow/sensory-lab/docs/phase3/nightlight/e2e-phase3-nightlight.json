@@ -1,0 +1,668 @@
+{
+ "when": "2026-10-14T15:04:08.536Z",
+ "part": null,
+ "passed": 110,
+ "failed": 0,
+ "results": [
+  {
+   "scope": "nightlight:open",
+   "name": "from the home card: the session view with the rig ready",
+   "ok": true,
+   "detail": "{\"route\":\"nightlight\",\"view\":\"session\"}"
+  },
+  {
+   "scope": "nightlight:open",
+   "name": "a painted still is shown (two still canvases), the sky layer, no live realm outside Drift",
+   "ok": true,
+   "detail": "{\"route\":\"nightlight\",\"view\":\"session\",\"stills\":2,\"shown\":1,\"realms\":0,\"sky\":1,\"enter\":[{\"t\":1217.1000000014901,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\",\"lum\":0.01964320783350079,\"realm\":\"moonmilk-cove\",\"plain\":false,\"backdrop\":\"dark\",\"sr\":[\"Nightlight on with Noomi until 3:30 PM.\"]}"
+  },
+  {
+   "scope": "nightlight:open",
+   "name": "rose from black with an opacity transition",
+   "ok": true,
+   "detail": "{\"enter\":[{\"t\":1217.1000000014901,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\"}"
+  },
+  {
+   "scope": "nightlight:open",
+   "name": "Noomi's night world (moonmilk-cove), painted, not the fallback",
+   "ok": true,
+   "detail": "moonmilk-cove plain=false"
+  },
+  {
+   "scope": "nightlight:open",
+   "name": "the world is dark at default brightness (mean luminance ≤ 0.25)",
+   "ok": true,
+   "detail": "0.01964320783350079"
+  },
+  {
+   "scope": "nightlight:open",
+   "name": "night chrome tone and the start announcement",
+   "ok": true,
+   "detail": "[\"Nightlight on with Noomi until 3:30 PM.\"]"
+  },
+  {
+   "scope": "nightlight:open",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:open",
+   "name": "from #nightlight: Boppo in the cove, titled \"Nightlight\", subtitle \"Moonlight · Boppo\"",
+   "ok": true,
+   "detail": "{\"realm\":\"moonmilk-cove\",\"realms\":0,\"title\":\"Nightlight\",\"sub\":\"Moonlight · Boppo\"}"
+  },
+  {
+   "scope": "nightlight:open:hash",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:moonlight",
+   "name": "Moonlight: the glow floor ≥ 0.45 at defaults (0.55 × the ±12 % swell)",
+   "ok": true,
+   "detail": "{\"glow\":0.5802628941064172,\"halo\":{\"amount\":0.973,\"alpha\":0.391,\"gain\":1.028,\"breath\":0},\"mode\":\"moonlight\",\"look\":0.55}"
+  },
+  {
+   "scope": "nightlight:moonlight",
+   "name": "the halo is drawn (alpha > 0, full amount)",
+   "ok": true,
+   "detail": "{\"amount\":0.973,\"alpha\":0.391,\"gain\":1.028,\"breath\":0}"
+  },
+  {
+   "scope": "nightlight:moonlight",
+   "name": "a tap's glow is lower at +100 ms than at +700 ms (a swell, never a flash)",
+   "ok": true,
+   "detail": "0.609 → 0.996"
+  },
+  {
+   "scope": "nightlight:moonlight",
+   "name": "20 rapid taps: ≤ 1 brightening start per 2 s (limiter log)",
+   "ok": true,
+   "detail": "{\"starts\":2,\"gaps\":[2917.89999999851],\"refused\":9}"
+  },
+  {
+   "scope": "nightlight:moonlight",
+   "name": "Boppo: no hop overlay, body.hop 0, no pop or spark burst",
+   "ok": true,
+   "detail": "{\"hop\":0,\"kinds\":[\"nod\",\"nod\",\"nod\",\"nl-grin\",\"nod\",\"nod\",\"nod\"],\"parts\":0,\"tags\":[\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\",\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\"]}"
+  },
+  {
+   "scope": "nightlight:moonlight",
+   "name": "Boppo: tap tags are night tags",
+   "ok": true,
+   "detail": "[\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\",\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\"]"
+  },
+  {
+   "scope": "nightlight:moonlight",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:moonlight:pipzi",
+   "name": "Pipzi: no hop; its tap answer is whisper sparks only (every burst ≤ 2 sparks)",
+   "ok": true,
+   "detail": "{\"hop\":0,\"kinds\":[\"nod\"],\"bursts\":[{\"kind\":\"spark\",\"n\":2},{\"kind\":\"spark\",\"n\":2},{\"kind\":\"spark\",\"n\":2},{\"kind\":\"spark\",\"n\":2}]}"
+  },
+  {
+   "scope": "nightlight:moonlight:pipzi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:sleepy",
+   "name": "force('stretch'): the squeeze goes below −0.2, then a settle above 0, then back to 0",
+   "ok": true,
+   "detail": "{\"min\":-0.28,\"max\":0.12,\"back\":4124}"
+  },
+  {
+   "scope": "nightlight:sleepy",
+   "name": "force('blink') on Boppo: a heavy blink overlay (nl-blink)",
+   "ok": true,
+   "detail": "[\"sigh\",\"nl-blink\"]"
+  },
+  {
+   "scope": "nightlight:sleepy",
+   "name": "a 4.2 s hold: asleep in your hand (drowsiness ≥ 0.9)",
+   "ok": true,
+   "detail": "0.9"
+  },
+  {
+   "scope": "nightlight:sleepy",
+   "name": "Movement Less: no negative squeeze (the stretch became a settle), reduced motion on the rig",
+   "ok": true,
+   "detail": "{\"lessMin\":0,\"motion\":\"less\",\"reduced\":true}"
+  },
+  {
+   "scope": "nightlight:sleepy",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:sleepy:noomi",
+   "name": "Noomi's peek uses peekParams (half-open, sleepy)",
+   "ok": true,
+   "detail": "{\"o\":{\"eyeOpen\":0.38,\"lidTop\":0.4,\"closedCurve\":0.2,\"browTilt\":-0.1,\"mouthSmile\":0.7},\"pp\":{\"eyeOpen\":0.38,\"lidTop\":0.4,\"closedCurve\":0.2,\"browTilt\":-0.1,\"mouthSmile\":0.7}}"
+  },
+  {
+   "scope": "nightlight:sleepy:noomi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:sleepy:boppo-30s",
+   "name": "boppo: 30 s of Sleepy with taps: no hop, celebrate or idle overlays and no hop",
+   "ok": true,
+   "detail": "{\"seen\":[\"nod\",\"nl-grin\",\"nl-blink\",\"yawn\"],\"hop\":0}"
+  },
+  {
+   "scope": "nightlight:sleepy:boppo-30s",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:sleepy:pipzi-30s",
+   "name": "pipzi: 30 s of Sleepy with taps: no hop, celebrate or idle overlays and no hop",
+   "ok": true,
+   "detail": "{\"seen\":[\"nod\",\"nl-blink\",\"yawn\"],\"hop\":0}"
+  },
+  {
+   "scope": "nightlight:sleepy:pipzi-30s",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:mallows:noomi",
+   "name": "noomi: paints its night world (moonmilk-cove)",
+   "ok": true,
+   "detail": "{\"realm\":\"moonmilk-cove\",\"plain\":false,\"rest\":0.64,\"id\":\"noomi\",\"filter\":\"function\",\"want\":\"moonmilk-cove\"}"
+  },
+  {
+   "scope": "nightlight:mallows:noomi",
+   "name": "noomi: rests at intensity ≥ 0.6 (idle hops stay asleep) with the night filter installed",
+   "ok": true,
+   "detail": "{\"realm\":\"moonmilk-cove\",\"plain\":false,\"rest\":0.64,\"id\":\"noomi\",\"filter\":\"function\"}"
+  },
+  {
+   "scope": "nightlight:mallows:noomi",
+   "name": "noomi: a tap answers only with night overlays",
+   "ok": true,
+   "detail": "[\"peek\",\"yawn\"]"
+  },
+  {
+   "scope": "nightlight:mallows:noomi",
+   "name": "noomi: tap tags are night tags",
+   "ok": true,
+   "detail": "[\"night-tap-yawn\",\"night-tap-dreamy-smile\",\"night-tap-sleepy-peek\"]"
+  },
+  {
+   "scope": "nightlight:mallows:noomi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:mallows:loomi",
+   "name": "loomi: paints its night world (raindrop-lagoon)",
+   "ok": true,
+   "detail": "{\"realm\":\"raindrop-lagoon\",\"plain\":false,\"rest\":0.64,\"id\":\"loomi\",\"filter\":\"function\",\"want\":\"raindrop-lagoon\"}"
+  },
+  {
+   "scope": "nightlight:mallows:loomi",
+   "name": "loomi: rests at intensity ≥ 0.6 (idle hops stay asleep) with the night filter installed",
+   "ok": true,
+   "detail": "{\"realm\":\"raindrop-lagoon\",\"plain\":false,\"rest\":0.64,\"id\":\"loomi\",\"filter\":\"function\"}"
+  },
+  {
+   "scope": "nightlight:mallows:loomi",
+   "name": "loomi: a tap answers only with night overlays",
+   "ok": true,
+   "detail": "[\"peek\",\"nod\",\"nl-smile\"]"
+  },
+  {
+   "scope": "nightlight:mallows:loomi",
+   "name": "loomi: tap tags are night tags",
+   "ok": true,
+   "detail": "[\"night-tap-mm\",\"night-tap-small-smile\",\"night-tap-mm\"]"
+  },
+  {
+   "scope": "nightlight:mallows:loomi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:mallows:blubi",
+   "name": "blubi: paints its night world (raindrop-lagoon)",
+   "ok": true,
+   "detail": "{\"realm\":\"raindrop-lagoon\",\"plain\":false,\"rest\":0.64,\"id\":\"blubi\",\"filter\":\"function\",\"want\":\"raindrop-lagoon\"}"
+  },
+  {
+   "scope": "nightlight:mallows:blubi",
+   "name": "blubi: rests at intensity ≥ 0.6 (idle hops stay asleep) with the night filter installed",
+   "ok": true,
+   "detail": "{\"realm\":\"raindrop-lagoon\",\"plain\":false,\"rest\":0.64,\"id\":\"blubi\",\"filter\":\"function\"}"
+  },
+  {
+   "scope": "nightlight:mallows:blubi",
+   "name": "blubi: a tap answers only with night overlays",
+   "ok": true,
+   "detail": "[\"peek\",\"nod\",\"nl-snuggle\"]"
+  },
+  {
+   "scope": "nightlight:mallows:blubi",
+   "name": "blubi: tap tags are night tags",
+   "ok": true,
+   "detail": "[\"night-tap-aww\",\"night-tap-snuggle\",\"night-tap-aww\"]"
+  },
+  {
+   "scope": "nightlight:mallows:blubi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:mallows:zuzu",
+   "name": "zuzu: paints its night world (spiral-observatory)",
+   "ok": true,
+   "detail": "{\"realm\":\"spiral-observatory\",\"plain\":false,\"rest\":0.64,\"id\":\"zuzu\",\"filter\":\"function\",\"want\":\"spiral-observatory\"}"
+  },
+  {
+   "scope": "nightlight:mallows:zuzu",
+   "name": "zuzu: rests at intensity ≥ 0.6 (idle hops stay asleep) with the night filter installed",
+   "ok": true,
+   "detail": "{\"realm\":\"spiral-observatory\",\"plain\":false,\"rest\":0.64,\"id\":\"zuzu\",\"filter\":\"function\"}"
+  },
+  {
+   "scope": "nightlight:mallows:zuzu",
+   "name": "zuzu: a tap answers only with night overlays",
+   "ok": true,
+   "detail": "[\"nl-swirl\",\"nod\"]"
+  },
+  {
+   "scope": "nightlight:mallows:zuzu",
+   "name": "zuzu: tap tags are night tags",
+   "ok": true,
+   "detail": "[\"night-tap-what-if\",\"night-tap-ooh-what\",\"night-tap-wonder\"]"
+  },
+  {
+   "scope": "nightlight:mallows:zuzu",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:mallows:boppo",
+   "name": "boppo: paints its night world (moonmilk-cove)",
+   "ok": true,
+   "detail": "{\"realm\":\"moonmilk-cove\",\"plain\":false,\"rest\":0.64,\"id\":\"boppo\",\"filter\":\"function\",\"want\":\"moonmilk-cove\"}"
+  },
+  {
+   "scope": "nightlight:mallows:boppo",
+   "name": "boppo: rests at intensity ≥ 0.6 (idle hops stay asleep) with the night filter installed",
+   "ok": true,
+   "detail": "{\"realm\":\"moonmilk-cove\",\"plain\":false,\"rest\":0.64,\"id\":\"boppo\",\"filter\":\"function\"}"
+  },
+  {
+   "scope": "nightlight:mallows:boppo",
+   "name": "boppo: a tap answers only with night overlays",
+   "ok": true,
+   "detail": "[\"nod\",\"nl-grin\"]"
+  },
+  {
+   "scope": "nightlight:mallows:boppo",
+   "name": "boppo: tap tags are night tags",
+   "ok": true,
+   "detail": "[\"night-tap-oh\",\"night-tap-boop\",\"night-tap-oh\"]"
+  },
+  {
+   "scope": "nightlight:mallows:boppo",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:mallows:pipzi",
+   "name": "pipzi: paints its night world (spark-festival)",
+   "ok": true,
+   "detail": "{\"realm\":\"spark-festival\",\"plain\":false,\"rest\":0.64,\"id\":\"pipzi\",\"filter\":\"function\",\"want\":\"spark-festival\"}"
+  },
+  {
+   "scope": "nightlight:mallows:pipzi",
+   "name": "pipzi: rests at intensity ≥ 0.6 (idle hops stay asleep) with the night filter installed",
+   "ok": true,
+   "detail": "{\"realm\":\"spark-festival\",\"plain\":false,\"rest\":0.64,\"id\":\"pipzi\",\"filter\":\"function\"}"
+  },
+  {
+   "scope": "nightlight:mallows:pipzi",
+   "name": "pipzi: a tap answers only with night overlays",
+   "ok": true,
+   "detail": "[\"nod\"]"
+  },
+  {
+   "scope": "nightlight:mallows:pipzi",
+   "name": "pipzi: tap tags are night tags",
+   "ok": true,
+   "detail": "[\"night-tap-spark\",\"night-tap-hop\",\"night-tap-ooh\"]"
+  },
+  {
+   "scope": "nightlight:mallows:pipzi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:mallows:glitzi",
+   "name": "glitzi: paints its night world (static-storm)",
+   "ok": true,
+   "detail": "{\"realm\":\"static-storm\",\"plain\":false,\"rest\":0.64,\"id\":\"glitzi\",\"filter\":\"function\",\"want\":\"static-storm\"}"
+  },
+  {
+   "scope": "nightlight:mallows:glitzi",
+   "name": "glitzi: rests at intensity ≥ 0.6 (idle hops stay asleep) with the night filter installed",
+   "ok": true,
+   "detail": "{\"realm\":\"static-storm\",\"plain\":false,\"rest\":0.64,\"id\":\"glitzi\",\"filter\":\"function\"}"
+  },
+  {
+   "scope": "nightlight:mallows:glitzi",
+   "name": "glitzi: a tap answers only with night overlays",
+   "ok": true,
+   "detail": "[\"nl-one-eye\",\"nl-side-eye\"]"
+  },
+  {
+   "scope": "nightlight:mallows:glitzi",
+   "name": "glitzi: tap tags are night tags",
+   "ok": true,
+   "detail": "[\"night-tap-glitch\",\"night-tap-unimpressed\",\"night-tap-side-eye\"]"
+  },
+  {
+   "scope": "nightlight:mallows:glitzi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:mallows",
+   "name": "the seven Mallows answer with different night tap tags",
+   "ok": true,
+   "detail": "{\"noomi\":[\"night-tap-dreamy-smile\",\"night-tap-sleepy-peek\",\"night-tap-yawn\"],\"loomi\":[\"night-tap-mm\",\"night-tap-small-smile\"],\"blubi\":[\"night-tap-aww\",\"night-tap-snuggle\"],\"zuzu\":[\"night-tap-ooh-what\",\"night-tap-what-if\",\"night-tap-wonder\"],\"boppo\":[\"night-tap-boop\",\"night-tap-oh\"],\"pipzi\":[\"night-tap-hop\",\"night-tap-ooh\",\"night-tap-spark\"],\"glitzi\":[\"night-tap-glitch\",\"night-tap-side-eye\",\"night-tap-unimpressed\"]}"
+  },
+  {
+   "scope": "nightlight:modes:moonlight",
+   "name": "moonlight: starts with its rest (≥ 0.64), chip, sky mix and the radio checked",
+   "ok": true,
+   "detail": "{\"mode\":\"moonlight\",\"chip\":null,\"rest\":0.64,\"cfg\":{\"halo\":1,\"pool\":1,\"twinkles\":8,\"fireflies\":0,\"clouds\":0,\"animated\":true},\"quiet\":false,\"cap\":24,\"sub\":\"Moonlight · Blubi\",\"checked\":\"moonlight\"}"
+  },
+  {
+   "scope": "nightlight:modes:breathe",
+   "name": "breathe: starts with its rest (≥ 0.66), chip, sky mix and the radio checked",
+   "ok": true,
+   "detail": "{\"mode\":\"breathe\",\"chip\":\"breathe\",\"rest\":0.66,\"cfg\":{\"halo\":1,\"pool\":0.8,\"twinkles\":4,\"fireflies\":0,\"clouds\":0,\"animated\":true},\"quiet\":false,\"cap\":24,\"sub\":\"Breathing Together · Blubi\",\"checked\":\"breathe\"}"
+  },
+  {
+   "scope": "nightlight:modes:breathe",
+   "name": "Breathe: the Mallow inflates with the breath",
+   "ok": true,
+   "detail": "0.3590994681193205"
+  },
+  {
+   "scope": "nightlight:modes:sleepy",
+   "name": "sleepy: starts with its rest (≥ 0.62), chip, sky mix and the radio checked",
+   "ok": true,
+   "detail": "{\"mode\":\"sleepy\",\"chip\":null,\"rest\":0.62,\"cfg\":{\"halo\":0.6,\"pool\":0.6,\"twinkles\":6,\"fireflies\":3,\"clouds\":0,\"animated\":true},\"quiet\":false,\"cap\":24,\"sub\":\"Sleepy Companion · Blubi\",\"checked\":\"sleepy\"}"
+  },
+  {
+   "scope": "nightlight:modes:drift",
+   "name": "drift: starts with its rest (≥ 0.64), chip, sky mix and the radio checked",
+   "ok": true,
+   "detail": "{\"mode\":\"drift\",\"chip\":null,\"rest\":0.64,\"cfg\":{\"halo\":0.7,\"pool\":0.7,\"twinkles\":14,\"fireflies\":8,\"clouds\":3,\"animated\":true},\"quiet\":false,\"cap\":24,\"sub\":\"Ambient Drift · Blubi\",\"checked\":\"drift\"}"
+  },
+  {
+   "scope": "nightlight:modes:quiet",
+   "name": "quiet: starts with its rest (≥ 0.7), chip, sky mix and the radio checked",
+   "ok": true,
+   "detail": "{\"mode\":\"quiet\",\"chip\":\"sound\",\"rest\":0.7,\"cfg\":{\"halo\":0.8,\"pool\":0.6,\"twinkles\":0,\"fireflies\":0,\"clouds\":0,\"animated\":false},\"quiet\":true,\"cap\":24,\"sub\":\"Quiet Company · Blubi\",\"checked\":\"quiet\"}"
+  },
+  {
+   "scope": "nightlight:modes:quiet",
+   "name": "Quiet is silent by default (the facade is quiet); the sky is static",
+   "ok": true,
+   "detail": "{\"mode\":\"quiet\",\"chip\":\"sound\",\"rest\":0.7,\"cfg\":{\"halo\":0.8,\"pool\":0.6,\"twinkles\":0,\"fireflies\":0,\"clouds\":0,\"animated\":false},\"quiet\":true,\"cap\":24,\"sub\":\"Quiet Company · Blubi\",\"checked\":\"quiet\"}"
+  },
+  {
+   "scope": "nightlight:modes",
+   "name": "keys: 2 → Breathe; ↑ → brightness +10 % (announced)",
+   "ok": true,
+   "detail": "{\"k2\":\"breathe\",\"b0\":0.4,\"b\":0.5,\"sr\":\"Brightness 50 %.\"}"
+  },
+  {
+   "scope": "nightlight:modes",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:modes:drift",
+   "name": "Drift on a high-tier context: one live realm within the window",
+   "ok": true,
+   "detail": "{\"live\":true,\"realms\":1}"
+  },
+  {
+   "scope": "nightlight:modes:drift",
+   "name": "leaving Drift turns the live realm back into a still",
+   "ok": true,
+   "detail": "{\"live\":false,\"realms\":0,\"shown\":1}"
+  },
+  {
+   "scope": "nightlight:modes:drift",
+   "name": "Movement Less: no live window; fireflies stay under 12 px/s",
+   "ok": true,
+   "detail": "{\"live\":false,\"realms\":0,\"max\":8.53}"
+  },
+  {
+   "scope": "nightlight:modes:drift",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:exit",
+   "name": "a session record is written at start",
+   "ok": true,
+   "detail": "true"
+  },
+  {
+   "scope": "nightlight:exit",
+   "name": "Escape: the goodnight, then home",
+   "ok": true,
+   "detail": "leaving 726 ms"
+  },
+  {
+   "scope": "nightlight:exit",
+   "name": "nothing left behind: no handle, one canvas (home), no night canvases, trim 1, record cleared",
+   "ok": true,
+   "detail": "{\"nl\":null,\"canvases\":1,\"left\":0,\"trim\":1,\"rec\":null,\"filter\":null,\"cap\":null,\"grade\":[1,1,1]}"
+  },
+  {
+   "scope": "nightlight:exit",
+   "name": "the home Mallow is neutral (no filter, no cap, identity grade)",
+   "ok": true,
+   "detail": "{\"nl\":null,\"canvases\":1,\"left\":0,\"trim\":1,\"rec\":null,\"filter\":null,\"cap\":null,\"grade\":[1,1,1]}"
+  },
+  {
+   "scope": "nightlight:exit",
+   "name": "Close: home, record cleared",
+   "ok": true,
+   "detail": "{\"nl\":null,\"rec\":null}"
+  },
+  {
+   "scope": "nightlight:exit",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:leaks",
+   "name": "three visits: listeners on window and document back to baseline",
+   "ok": true,
+   "detail": "{\"base\":{\"window\":{\"pointerup\":2,\"touchend\":2,\"click\":2,\"keydown\":1,\"hashchange\":1,\"mousemove\":1,\"pointerdown\":1,\"touchstart\":1,\"touchcancel\":1,\"mousedown\":1,\"mouseup\":1,\"auxclick\":1,\"dblclick\":1,\"contextmenu\":1},\"document\":{\"visibilitychange\":3},\"total\":20},\"now\":{\"window\":{\"pointerup\":2,\"touchend\":2,\"click\":2,\"keydown\":1,\"hashchange\":1,\"mousemove\":1,\"pointerdown\":1,\"touchstart\":1,\"touchcancel\":1,\"mousedown\":1,\"mouseup\":1,\"auxclick\":1,\"dblclick\":1,\"contextmenu\":1},\"document\":{\"visibilitychange\":3},\"total\":20}}"
+  },
+  {
+   "scope": "nightlight:leaks",
+   "name": "no live Nightlight timers, no extra rAF",
+   "ok": true,
+   "detail": "{\"mine\":[],\"timers\":[0,0],\"rafExtra\":[]}"
+  },
+  {
+   "scope": "nightlight:leaks",
+   "name": "prefs and Comfort DNA listeners back to baseline; one canvas; no cached sprites left",
+   "ok": true,
+   "detail": "{\"base\":{\"listeners\":20,\"byType\":{\"window\":{\"pointerup\":2,\"touchend\":2,\"click\":2,\"keydown\":1,\"hashchange\":1,\"mousemove\":1,\"pointerdown\":1,\"touchstart\":1,\"touchcancel\":1,\"mousedown\":1,\"mouseup\":1,\"auxclick\":1,\"dblclick\":1,\"contextmenu\":1},\"document\":{\"visibilitychange\":3},\"total\":20},\"timers\":0,\"mine\":[],\"raf\":{\"/hushmallow/sensory-lab/core/companion.js\":1,\"/hushmallow/src/mallows/rig.js\":1},\"prefsL\":1,\"dnaL\":1,\"canvases\":1,\"sprites\":0},\"now\":{\"listeners\":20,\"byType\":{\"window\":{\"pointerup\":2,\"touchend\":2,\"click\":2,\"keydown\":1,\"hashchange\":1,\"mousemove\":1,\"pointerdown\":1,\"touchstart\":1,\"touchcancel\":1,\"mousedown\":1,\"mouseup\":1,\"auxclick\":1,\"dblclick\":1,\"contextmenu\":1},\"document\":{\"visibilitychange\":3},\"total\":20},\"timers\":0,\"mine\":[],\"raf\":{\"/hushmallow/src/mallows/rig.js\":1,\"/hushmallow/sensory-lab/core/companion.js\":1},\"prefsL\":1,\"dnaL\":1,\"canvases\":1,\"sprites\":0}}"
+  },
+  {
+   "scope": "nightlight:leaks",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\"}"
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":true,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\"}"
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · until 3:34 PM\",\"status\":\"flex\"}"
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "landscape: the time moves into the subtitle",
+   "ok": true,
+   "detail": "Moonlight · until 3:34 PM"
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

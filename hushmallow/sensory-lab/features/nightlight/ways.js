@@ -63,6 +63,13 @@ export const NIGHT_REACTS = Object.freeze(['nod', 'yawn', 'sigh', 'release']);
 export const NIGHT_VOICES = Object.freeze(['coo', 'hum', 'content']);
 /** Night strength: expression intensity, hold, poke, voice and touch-sound scales. */
 export const NIGHT_K = Object.freeze({ i: 0.8, hold: 1.2, poke: 0.5, voice: 0.5, touch: 0.6 });
+/**
+ * A response's intensity never goes below this at night: the rig wakes its own
+ * idle reactions (Boppo's hop, Pipzi's sparks, Glitzi's shards) whenever the
+ * intensity is under 0.6, and a tap's expression is held for over a second.
+ * The resting faces sit at 0.62 or more for the same reason (restFor).
+ */
+export const NIGHT_I_FLOOR = 0.62;
 /** The stretch styles (squeeze target; float and melt are per Mallow). */
 export const STRETCH_STYLES = Object.freeze({ tall: Object.freeze({ squeeze: -0.28 }), float: Object.freeze({ squeeze: -0.28, inflate: 0.6, float: 0.4 }), melt: Object.freeze({ squeeze: 0.25 }) });
 
@@ -278,7 +285,7 @@ function nightVoiceKind(w, kind) {
  *              anything else becomes nod for tap and double-tap gestures and nothing otherwise
  *   voices     coo, hum and content stay (grumble for Glitzi and Noomi); the rest become its night voice
  *   faces      a mix with any AROUSED preset becomes its nightMix
- *   strength   i × 0.8, hold × 1.2, poke × 0.5; tag 'night-' + tag
+ *   strength   i × 0.8 (never below 0.62), hold × 1.2, poke × 0.5; tag 'night-' + tag
  * Tap streaks (tickle, dizzy) pass through the same rules. Never mutates the
  * response it is given; `rand` (seeded per Mallow by default) picks from lists.
  */
@@ -297,7 +304,7 @@ export function nightFilter(mallowId, { rand = rng(hash(`night:${mallowId}`)) } 
       if (!o.voice) delete o.voice;
     }
     if (o.mix && AROUSED.some((k) => o.mix[k] > 0)) o.mix = w.nightMix;
-    o.i = (o.i ?? 0.6) * NIGHT_K.i;
+    o.i = Math.max(NIGHT_I_FLOOR, (o.i ?? 0.6) * NIGHT_K.i);
     if (o.hold != null) o.hold *= NIGHT_K.hold;
     o.poke = (o.poke ?? 1) * NIGHT_K.poke;
     o.tag = `night-${o.tag ?? 'touch'}`;

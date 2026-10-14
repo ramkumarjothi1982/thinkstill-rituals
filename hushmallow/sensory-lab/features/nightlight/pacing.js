@@ -51,6 +51,8 @@ export class BreathPacer {
 
   get level() { return this._level; }
   get phase() { return this._phase; }
+  /** The current phase's length in seconds (a led phase may be shorter than the schedule). */
+  get duration() { return this._dur; }
   /** The slow-down factor now (1 … slowTo). */
   get slow() { return 1 + (this.slowTo - 1) * Math.min(1, this.elapsed / this.slowOverS); }
   /** One unled cycle as now scheduled, in seconds. */
@@ -147,11 +149,16 @@ export const MIN_GAP_S = 1.2;   // a small moment (blink, peek, sigh, nod) waits
 export const DOUBLE_BLINK = 0.18;
 export const STAGES = Object.freeze([['drowsy', 0.35], ['settling', 0.6], ['dozing', 0.85], ['asleep', Infinity]]);
 
-/** How long drowsiness takes to reach 1: clamp(0.4 × planned steady seconds, 180, 720) / speedK; 600 s with No timer. */
-export function rampFor(minutes, fade, speedK = 1) {
+/**
+ * How long drowsiness takes to reach 1: clamp(0.4 × planned steady seconds, 180, 720); 600 s with No timer.
+ * The sleep arc follows the session length and the fade only. Animation speed changes tempo (breath,
+ * blink cadence, movement), never when drowsiness arrives (lead decision), so the third parameter is
+ * accepted for call compatibility and ignored.
+ */
+export function rampFor(minutes, fade, _speedK = 1) {
   if (!(minutes > 0)) return 600;
   const steady = minutes * 60 - fadeSeconds(minutes, fade) - ARRIVE_S;
-  return clamp(0.4 * steady, 180, 720) / Math.max(0.1, num(speedK, 1));
+  return clamp(0.4 * steady, 180, 720);
 }
 
 export class SleepyScript {
@@ -192,6 +199,9 @@ export class SleepyScript {
 
   /** Held for 4 s or more: asleep in your hand. */
   holdLong() { this._d = Math.max(this._d, 0.9); }
+
+  /** Stroking makes it drowsier: d rises by k (0.04 per second of stroke), never past 1. */
+  drowse(k) { this._d = clamp(this._d + Math.max(0, num(k, 0)), 0, 1); }
 
   /** Play `kind` on the next step, whatever the schedule (tests, debug). */
   force(kind) { if (SLEEPY_KINDS.includes(kind)) this._forced = kind; }
