@@ -27,6 +27,7 @@ import { createGL } from './gl.js';
 import { Renderer, DESIGN_W, DESIGN_H } from './renderer/index.js';
 import { resolveProfile } from './render/profiles.js';
 import { trackInk } from './render/overlay-ink.js';
+import { shutterDisplacement, STILL_PX } from './render/shutter.js';
 import { assetLog } from './runtime/asset-log.js';
 
 /** Sub-frame count used when a direction's subframes() returns garbage (R18). */
@@ -138,9 +139,24 @@ export class Stage {
   subframesAt(t) {
     const v = this.video;
     const N = v.subframes ? v.subframes(t, this) : (v.meta.subframes || 3);
-    if (Number.isFinite(N) && N >= 1 && N <= SUBFRAME_MAX) return N;
+    if (Number.isFinite(N) && N >= 1 && N <= SUBFRAME_MAX) return N > 1 && this.profile.features.adaptiveFloor && this.isStill(t) ? 1 : N;
     this.error('subframes', `subframes(${t}) returned ${N}; using ${SUBFRAME_FALLBACK}`, { t, value: String(N) });
     return SUBFRAME_FALLBACK;
+  }
+
+  /**
+   * P6 (adaptiveFloor): true when nothing moves STILL_PX output px or more
+   * between the two ends of the shutter (render/shutter.js); a still frame is
+   * rendered from one sample at its centre.
+   */
+  isStill(t) {
+    const r = this.renderer, sh = (this.video.meta.shutter ?? 0.5) / this.fps / 2;
+    if (r.mesh && (!this.stillStubs || this.stillStubs[0].data.length !== r.mesh.data.length)) {
+      const { cols, rows, stride, nVerts } = r.mesh;
+      this.stillStubs = [0, 1].map(() => ({ cols, rows, stride, nVerts, data: new Float32Array(nVerts * stride), upload() {} }));
+    }
+    const a = this.video.state(t - sh, this), b = this.video.state(t + sh, this);
+    return shutterDisplacement(a, b, { renderer: r, facePass: r.facePass, stubs: this.stillStubs }) < STILL_PX;
   }
 
   /** Advance the virtual clock by one frame interval (the same additions as an in-order render). */

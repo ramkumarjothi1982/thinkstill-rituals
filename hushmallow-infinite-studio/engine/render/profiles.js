@@ -24,6 +24,7 @@ export const FEATURES = Object.freeze({
   faceFastGlow: 'P3b: face glows blurred at 1/4 resolution, soft inner tube bands at 1/2; a face-box-sized texture (dirty rect)',
   worldFast: 'P4: world shader terms only where they can be non-zero; the water samples a once-rendered sky layer',
   fgAccum: 'P5: premultiplied foreground accumulation over the world, scissored passes, the reflection at 1/4 resolution',
+  adaptiveFloor: 'P6: one centred sample when nothing moves 2 px or more during the shutter',
 });
 
 /** Features that read another feature's output: dependent → base. */
