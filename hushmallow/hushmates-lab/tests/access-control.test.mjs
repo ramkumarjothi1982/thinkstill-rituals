@@ -391,6 +391,48 @@ test('live updates reach only the person they are about', async () => {
   } finally { await s.close(); }
 });
 
+test('sessions and live updates end when they should, and can’t pile up', async () => {
+  const s = await production();
+  try {
+    const open = async (cookie) => {
+      const ctrl = new AbortController();
+      const res = await fetch(`${s.base}/api/v1/events`, { headers: { cookie }, signal: ctrl.signal });
+      const reader = res.body.getReader();
+      const st = { ended: false, stop: () => ctrl.abort() };
+      (async () => { try { for (;;) { const { done } = await reader.read(); if (done) break; } } catch { /* aborted */ } st.ended = true; })();
+      return st;
+    };
+    const tick = () => new Promise((r) => setTimeout(r, 120));
+    // signing in again on the same device replaces its session; the old cookie is dead
+    const first = await join_(s.base, 'MEMBER-ONE', 'Moonbeam');
+    const again = await post(s.base, '/api/v1/session', { invite: 'MEMBER-ONE', name: 'Moonbeam', adult: true }, { cookie: first });
+    const second = jar(again);
+    assert.equal((await rpc(s.base, first, 'me')).status, 401, 'the replaced session still works');
+    assert.equal((await rpc(s.base, second, 'me')).status, 200);
+    // many sign-ins from many devices keep only a few sessions
+    for (let i = 0; i < 8; i++) await join_(s.base, 'MEMBER-ONE', 'Moonbeam');
+    const acc = Object.values(s.app.service.s.accounts).find((a) => s.app.service.s.profiles[a.id]?.pseudonym === 'Moonbeam');
+    assert.ok(Object.values(s.app.service.s.sessions).filter((id) => id === acc.id).length <= 5, 'sessions pile up for one account');
+    // one account can hold only a few live streams
+    const phone = await join_(s.base, 'MEMBER-ONE', 'Moonbeam');
+    const many = [];
+    for (let i = 0; i < 8; i++) many.push(await open(phone));
+    await tick();
+    assert.ok(many.filter((x) => x.ended).length >= 2, 'one account opened unlimited live streams');
+    // deleting your data on one device closes the streams on the others
+    const laptop = await join_(s.base, 'MEMBER-ONE', 'Moonbeam');
+    const watching = await open(phone);
+    await tick();
+    assert.equal(watching.ended, false);
+    const del = await post(s.base, '/api/v1/rpc/deleteMyData', { args: { confirm: 'DELETE' } }, { cookie: laptop });
+    assert.equal(del.status, 200);
+    await tick();
+    assert.equal(watching.ended, true, 'another device kept hearing about a deleted account');
+    assert.equal((await rpc(s.base, phone, 'me')).status, 401);
+    for (const x of many) x.stop();
+  } finally { await s.close(); }
+});
+
 test('the production build refuses files changed after it was built', () => {
   const copy = mkdtempSync(join(tmpdir(), 'hushmates-tamper-'));
   try {

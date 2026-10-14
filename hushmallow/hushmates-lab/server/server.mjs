@@ -92,7 +92,7 @@ export function createHushmatesServer({
     }, 250);
   };
   service.onPersist = persist;
-  const ticker = setInterval(() => { try { service.tick(); } catch (e) { log.error?.('tick failed', e); } }, 15e3);
+  const ticker = setInterval(() => { try { service.tick(); sweep(); } catch (e) { log.error?.('tick failed', e); } }, 15e3);
   ticker.unref?.();
 
   // ---------------------------------------------------------- helpers --
@@ -158,22 +158,35 @@ export function createHushmatesServer({
       req.on('error', reject);
     });
   }
-  const attempts = new Map();                                           // ip → [times] (invitation guesses)
-  function limited(req, max = 10, windowMs = 15 * 60e3) {
+  const attempts = new Map();                                           // ip → [times] of invitations that didn't match
+  const GUESSES = 10;
+  const GUESS_WINDOW_MS = 15 * 60e3;
+  const recent = (req) => {
     const ip = req.socket.remoteAddress || '?';
-    const t = now();
-    const list = (attempts.get(ip) || []).filter((x) => t - x < windowMs);
+    const list = (attempts.get(ip) || []).filter((x) => now() - x < GUESS_WINDOW_MS);
     attempts.set(ip, list);
-    if (list.length >= max) return true;
-    list.push(t);
-    return false;
+    return list;
+  };
+  const limited = (req) => recent(req).length >= GUESSES;
+  const missed = (req) => recent(req).push(now());
+  const streams = new Map();                                            // account id → Set({ res, token }) of open live-update streams
+  const STREAMS_PER_ACCOUNT = 6;                                        // a few devices and tabs, not a flood
+  const SESSIONS_PER_ACCOUNT = 5;
+  /** Close every open stream whose session has ended (signed out, deleted, idle), or all of one account's. */
+  function closeStreams({ accountId = null } = {}) {
+    for (const [acc, set] of streams) {
+      for (const st of set) if (acc === accountId || !service.s.sessions[st.token]) { set.delete(st); st.res.end(); }
+      if (!set.size) streams.delete(acc);
+    }
   }
-  const streams = new Map();                                            // service token → Set(res)
-  function endStreams(tok) { for (const r of streams.get(tok) || []) r.end(); streams.delete(tok); }
   function startSession(res, accountId) {
+    // one device holds one cookie: older sessions beyond a few are ended rather than left behind
+    const mine = [...sessions].filter(([, v]) => v.accountId === accountId).sort((a, b) => a[1].seenAt - b[1].seenAt);
+    for (const [key, v] of mine.slice(0, Math.max(0, mine.length - (SESSIONS_PER_ACCOUNT - 1)))) { service.endSession(v.token); sessions.delete(key); }
     const raw = token();
     const tok = service.issueSession(accountId);
     sessions.set(sha(raw), { token: tok, accountId, seenAt: now() });
+    closeStreams();
     persist();
     return cookie(SESSION_COOKIE, raw, { maxAge: SESSION_IDLE_MS / 1000 });
   }
@@ -181,8 +194,15 @@ export function createHushmatesServer({
     if (!s) return;
     service.endSession(s.token);
     sessions.delete(s.key);
-    endStreams(s.token);
+    closeStreams();
     persist();
+  }
+  /** Sessions idle too long are ended for good, and their streams closed. */
+  function sweep() {
+    let changed = false;
+    for (const [key, v] of sessions) if (now() - v.seenAt > SESSION_IDLE_MS || !service.s.sessions[v.token]) { service.endSession(v.token); sessions.delete(key); changed = true; }
+    closeStreams();
+    if (changed) persist();
   }
   const clear = () => cookie(SESSION_COOKIE, '', { maxAge: 0 });
 
@@ -192,6 +212,7 @@ export function createHushmatesServer({
       if (req.method === 'GET') { json(res, 200, { ok: true, signedIn: !!who(req) }); return; }
       if (!sameSite(req)) { json(res, 403, { ok: false, code: 'forbidden', message: 'That isn’t something you can do here.' }); return; }
       if (req.method === 'DELETE') { endSession(who(req)); json(res, 200, { ok: true, signedIn: false }, { 'Set-Cookie': clear() }); return; }
+      const before = who(req);                                          // signing in again on this device replaces its session
       if (req.method !== 'POST') { json(res, 405, { ok: false, code: 'invalid', message: 'That isn’t something you can do here.' }); return; }
       if (limited(req)) { json(res, 429, { ok: false, code: 'rate-limited', message: 'That’s a lot of tries. Please wait a little and try again.' }); return; }
       let form;
@@ -200,7 +221,7 @@ export function createHushmatesServer({
       const name = typeof form.name === 'string' ? form.name : '';
       if (form.adult !== true) { json(res, 400, { ok: false, code: 'invalid', message: 'Hushmates is for adults (18+) during the pilot.' }); return; }
       const inv = code && code.length <= 64 ? inviteBook.get(sha(code)) : null;
-      const wrong = () => json(res, 400, { ok: false, code: 'invalid', message: 'That invitation code and name don’t match an invitation. Please check them and try again.' });
+      const wrong = () => { missed(req); json(res, 400, { ok: false, code: 'invalid', message: 'That invitation code and name don’t match an invitation. Please check them and try again.' }); };
       if (!inv) { wrong(); return; }
       let accountId = inv.accountId;
       if (accountId) {
@@ -211,6 +232,7 @@ export function createHushmatesServer({
         try { accountId = service.createMember({ pseudonym: name, role: inv.role, adult: true }); } catch (e) { json(res, 400, { ok: false, code: 'invalid', message: e.message }); return; }
         Object.assign(inv, { accountId, nameHash: sha(name.trim().toLowerCase()), usedAt: now() });
       }
+      if (before) endSession(before);
       json(res, 200, { ok: true, signedIn: true }, { 'Set-Cookie': startSession(res, accountId) });
       return;
     }
@@ -224,12 +246,13 @@ export function createHushmatesServer({
       res.write(': hello\n\n');
       let unsub = () => {};
       try { unsub = service.subscribe(s.token, (ev) => res.write(`data: ${JSON.stringify({ type: ev.type, scope: ev.scope })}\n\n`)); } catch { res.end(); return; }
-      const set = streams.get(s.token) || new Set();
-      if (set.size >= 4) { const oldest = set.values().next().value; set.delete(oldest); oldest.end(); }   // a few tabs, not a flood
-      set.add(res); streams.set(s.token, set);
+      const set = streams.get(s.accountId) || new Set();
+      if (set.size >= STREAMS_PER_ACCOUNT) { const oldest = set.values().next().value; set.delete(oldest); oldest.res.end(); }
+      const entry = { res, token: s.token };
+      set.add(entry); streams.set(s.accountId, set);
       const beat = setInterval(() => res.write(': still here\n\n'), 25e3);
       beat.unref?.();
-      req.on('close', () => { clearInterval(beat); unsub(); set.delete(res); });
+      req.on('close', () => { clearInterval(beat); unsub(); set.delete(entry); });
       return;
     }
 
@@ -246,7 +269,7 @@ export function createHushmatesServer({
     try {
       const result = await service[method](s.token, args);
       const extra = {};
-      if (method === 'deleteMyData') { endSession(s); extra['Set-Cookie'] = clear(); }
+      if (method === 'deleteMyData') { endSession(s); closeStreams({ accountId: s.accountId }); sweep(); extra['Set-Cookie'] = clear(); }
       json(res, 200, { ok: true, result }, extra);
     } catch (e) {
       if (e?.name === 'RelayError') { json(res, STATUS[e.code] || 409, { ok: false, code: e.code, message: e.message }); return; }
@@ -307,7 +330,7 @@ export function createHushmatesServer({
 
   return {
     server, service, mode, hasLab: !!lab,
-    close() { clearInterval(ticker); for (const set of streams.values()) for (const r of set) r.end(); return new Promise((r) => server.close(r)); },
+    close() { clearInterval(ticker); for (const set of streams.values()) for (const st of set) st.res.end(); return new Promise((r) => server.close(r)); },
   };
 }
 
