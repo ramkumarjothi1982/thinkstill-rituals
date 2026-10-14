@@ -429,11 +429,11 @@ try {
   await kb.page.keyboard.press('Space');
   await shot(kb.page, '26-desktop-keyboard-invitation');
   for (let i = 0; i < 6; i++) { await kb.page.keyboard.press('Tab'); if (await kb.page.evaluate(() => document.activeElement?.dataset?.test === 'invite-join')) break; }
+  const ring = await kb.page.evaluate(() => { const el = document.activeElement; const s = el && getComputedStyle(el); return !!s && el.matches(':focus-visible') && (s.outlineStyle !== 'none' || s.boxShadow !== 'none'); });
+  check(ring, 'the focused control shows where focus is');
   await kb.page.keyboard.press('Enter');
   await hook(kb.page, 'welcome').waitFor({ timeout: 15000 });
   check(true, 'signing in and joining work with the keyboard alone');
-  const ring = await kb.page.evaluate(() => { const el = document.activeElement; const s = el && getComputedStyle(el); return !!s && (s.outlineStyle !== 'none' || s.boxShadow !== 'none'); });
-  check(ring, 'the focused control shows where focus is');
   await kb.ctx.close();
 
   // --------------------------------- 9. the author’s laptop: the same account --
@@ -444,7 +444,7 @@ try {
   await laptop.page.locator('[data-test^="returned-"]:visible').first().waitFor({ timeout: 20000 });
   const laptopSees = await shot(laptop.page, '27-desktop-same-account');
   check(laptopSees.includes('avoiding me') || (await laptop.page.locator('[data-test^="returned-"]').count()) >= 3, 'a new device has everything (no second invitation)');
-  await laptop.ctx.close();
+  // (the laptop stays open: the phone deletes everything below, and the laptop must notice)
 
   // --------------------------------------- 10. your data, then delete it all --
   await hook(page, 'open-you').click();
@@ -467,19 +467,26 @@ try {
   await page.locator('[data-test="deleted"]').waitFor({ timeout: 20000 });
   await shot(page, '30-deleted');
   check(!(await sql("select 1 from auth.users where email = 'author@example.com'")).length, 'deleting removed the sign-in');
+  // the laptop, still open, finds itself signed out at its next look (polling every 20 s), never showing deleted feelings
+  await hook(laptop.page, 'signin-email').waitFor({ timeout: 45000 }).then(() => check(true, 'another open device is signed out after the deletion'), () => check(false, 'another open device is signed out after the deletion'));
+  await shot(laptop.page, '31-desktop-after-deletion-elsewhere');
+  await laptop.page.reload();
+  await hook(laptop.page, 'signin-email').waitFor({ timeout: 20000 }).then(() => check(true, 'and stays signed out after a reload'), () => check(false, 'and stays signed out after a reload'));
+  await laptop.ctx.close();
   check(!(await sql("select 1 from hushmates.journeys j join hushmates.members m on m.id = j.owner where m.state = 'deleted' and j.text_enc <> ''")).length, 'deleting removed the words');
-  check((await call(members[0], 'myGifts')).gifts.length >= 1, 'other people’s own data is untouched');
+  // (perspectives others gave on the deleted feelings go with them, as the privacy notes say; everyone's own feelings stay)
+  check((await journeysOf(members[5])).length >= 1 && (await call(members[0], 'me')).profile.pseudonym === 'Cloudlet', 'other people’s own data is untouched');
 
   // ------------------------------------------------------ 11. small screens --
   const small = await device({ width: 320, height: 568 });
   await small.page.goto(`${base}/app/`);
   await hook(small.page, 'signin-email').waitFor();
-  await shot(small.page, '31-320-signin');
+  await shot(small.page, '32-320-signin');
   await signInUi(small.page, 'member1@example.com');
   await hook(small.page, 'nav-journeys').waitFor({ timeout: 20000 });
   await hook(small.page, 'nav-journeys').click();
   await settle(small.page, 1200);
-  await shot(small.page, '32-320-journeys');
+  await shot(small.page, '33-320-journeys');
   await small.ctx.close();
 
   // ---------------------------------- 12. the lab doesn't exist for a customer --

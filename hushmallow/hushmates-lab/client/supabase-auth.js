@@ -24,6 +24,7 @@ const FRESH_CODE_MS = 5 * 60e3;       // a code sent this recently can't have ex
 
 const WORDS = {
   network: 'You’re offline. Nothing was sent; try again when you’re back.',
+  slow: 'We didn’t hear back in time. Please try again in a moment.',
   'invalid-email': 'That email doesn’t look quite right. Please check it and try again.',
   'rate-limited': 'Too many codes asked for. Please wait a little and try again.',
   'too-many-tries': 'That’s a lot of tries. Please wait a little, then ask for a new code.',
@@ -147,8 +148,9 @@ export function createAuth({
         method: 'POST', headers, body: JSON.stringify(body ?? {}), cache: 'no-store', credentials: 'omit',
         signal: typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(timeoutMs) : undefined,
       });
-    } catch {
-      return { status: 0, data: null };                              // offline, or no answer in time
+    } catch (e) {
+      // offline (nothing went), or no answer in time (it may have arrived: never say "nothing was sent")
+      return { status: e?.name === 'TimeoutError' || e?.name === 'AbortError' ? -1 : 0, data: null };
     }
     let data = null;
     try { data = res.status === 204 ? {} : await res.json(); } catch { /* not JSON: judged by status alone */ }
@@ -170,6 +172,7 @@ export function createAuth({
 
   function sendFailure({ status, data }) {
     if (status === 0) return authError('network');
+    if (status === -1) return authError('slow');
     const code = serverCode(data);
     if (status === 429 || /rate_limit/.test(code)) return authError('rate-limited');
     if (code === 'captcha_failed') return authError('captcha');
@@ -177,14 +180,17 @@ export function createAuth({
     if (['otp_disabled', 'signup_disabled', 'email_provider_disabled', 'email_address_not_authorized'].includes(code)) return authError('not-open');
     return authError('error');
   }
-  function verifyFailure({ status, data }, email) {
+  function verifyFailure({ status, data }, email, sentAt = 0) {
     if (status === 0) return authError('network');
+    if (status === -1) return authError('slow');
     const code = serverCode(data);
     if (status === 429 || /rate_limit/.test(code)) return authError('too-many-tries');
     if (code === 'otp_invalid' || code === 'validation_failed') return authError('code-wrong');
     if (code === 'otp_expired') {
       // Supabase gives this one answer for a wrong code and an old one; a code asked for minutes ago is a typo
-      const recent = lastSent && lastSent.email === email && now() - lastSent.at < FRESH_CODE_MS;
+      // (the scene remembers when it asked, across a reload; this tab's memory doesn't survive one)
+      const at = lastSent?.email === email ? lastSent.at : Number(sentAt) || 0;
+      const recent = at > 0 && now() - at < FRESH_CODE_MS;
       return authError(recent ? 'code-wrong' : 'code-expired');
     }
     if (code === 'captcha_failed') return authError('captcha');
@@ -207,13 +213,13 @@ export function createAuth({
   }
 
   /** The code from the email → signed in. Spaces and dashes (from copying) don't matter. */
-  async function verifyCode(email, code) {
+  async function verifyCode(email, code, { sentAt = 0 } = {}) {
     const e = normaliseEmail(email);
     if (e.length > 254 || !EMAIL.test(e)) throw authError('invalid-email');
     const token = String(code ?? '').replace(/[\s-]+/g, '');
     if (!/^\d{6,10}$/.test(token)) throw authError('code-format');
     const r = await call('/verify', { body: { type: 'email', email: e, token } });
-    if (r.status < 200 || r.status >= 300) throw verifyFailure(r, e);
+    if (r.status < 200 || r.status >= 300) throw verifyFailure(r, e, sentAt);
     const next = sessionFrom(r.data);
     if (!next) throw authError('error');
     epoch += 1;
@@ -253,9 +259,10 @@ export function createAuth({
         clear();
         throw authError('not-signed-in');
       }
-      // a passing problem (offline, Supabase busy): the current token still works if it hasn't run out
-      if (cur && cur.expiresAt - now() > 5e3) return cur.accessToken;
-      throw authError(r.status === 0 ? 'network' : r.status === 429 ? 'rate-limited' : 'error');
+      // a passing problem (offline, Supabase busy): the current token still works if it hasn't run out,
+      // unless the gateway just refused it (forced): handing it back would only be refused again
+      if (!forced && cur && cur.expiresAt - now() > 5e3) return cur.accessToken;
+      throw authError(r.status === 0 ? 'network' : r.status === -1 ? 'slow' : r.status === 429 ? 'rate-limited' : 'error');
     };
     return typeof locks?.request === 'function' ? locks.request(SESSION_KEY, run) : run();
   }
@@ -279,8 +286,12 @@ export function createAuth({
 
   /** Sign out on this device (other devices stay signed in): forgotten here first, then ended on the server. */
   async function signOut() {
-    const token = cur ? await accessToken().catch(() => null) : null;
+    const snap = cur;
     clear();
+    if (!snap) return;
+    // only a token that still works can end the session on the server; an old one would need a refresh first
+    let token = snap.expiresAt - now() > 5e3 ? snap.accessToken : null;
+    if (!token) token = (await call('/token?grant_type=refresh_token', { body: { refresh_token: snap.refreshToken } })).data?.access_token || null;
     if (token) await call('/logout?scope=local', { bearer: token }).catch(() => {});
   }
 

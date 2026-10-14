@@ -96,13 +96,16 @@ export class FunctionsLink {
     if (typeof method !== 'string' || !/^[a-zA-Z]{1,40}$/.test(method)) throw failure('invalid', GENTLE);
     let token = await this._token(false);
     if (!token) throw this._signedOut();
+    const first = token;
     let r = await this._post(method, token, args);
     if (r.status === 401) {
       // the gateway didn't accept the token (it ran out, or was replaced): a fresh one, and one more try
       token = await this._token(true);
       if (!token) throw this._signedOut();
       r = await this._post(method, token, args);
-      if (r.status === 401) throw this._signedOut();
+      // Supabase Auth just accepted the session, so a second refusal is the gateway's trouble (say a
+      // moment's hiccup), not the person's: keep them signed in. An ended session fails the refresh above.
+      if (r.status === 401) throw token !== first ? failure('error', GENTLE) : this._signedOut();
     }
     if (r.status === 0) { this._status(false); throw failure('network', OFFLINE); }
     if (r.status === -1) throw failure('response-lost', LOST);

@@ -412,13 +412,14 @@ test('link: a token the gateway turns away is refreshed and the call tried once 
   assert.equal(signedOut.length, 0);
 });
 
-test('link: turned away twice means signed out: onSignedOut once, and plain words', async () => {
-  const { link, rpc, signedOut } = await linked({ gateway: { me: () => [401, { msg: 'Invalid JWT' }] } });
-  await assert.rejects(link.request('me'), (e) => humaneOnly(e, 'not-signed-in', 'You’ve been signed out. Please sign in again.'));
+test('link: turned away again with a freshly refreshed token is a passing problem: the session is kept', async () => {
+  // Supabase Auth just accepted the session, so the gateway's second refusal (say it couldn't fetch its
+  // keys for a moment) mustn't throw away a good session (review finding)
+  const { link, auth, rpc, signedOut } = await linked({ gateway: { me: () => [401, { msg: 'Invalid JWT' }] } });
+  await assert.rejects(link.request('me'), (e) => e.code === 'error' && /try again in a moment/.test(e.message));
   assert.equal(rpc('me').length, 2, 'one retry, no more');
-  assert.equal(signedOut.length, 1);
-  await assert.rejects(link.request('me'), (e) => e.code === 'not-signed-in');
-  assert.equal(signedOut.length, 1, 'said once');
+  assert.equal(signedOut.length, 0, 'a good session was thrown away');
+  assert.ok(auth.session(), 'the session was forgotten');
   // the gateway's own "not signed in" (e.g. the account was deleted) ends it the same way
   const other = await linked({ gateway: { me: () => [403, { ok: false, code: 'not-signed-in', message: 'Please sign in again.' }] } });
   await assert.rejects(other.link.request('me'), (e) => e.code === 'not-signed-in');

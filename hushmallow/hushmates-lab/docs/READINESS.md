@@ -67,6 +67,9 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
   - networks are kept only as keyed hashes, and only for rate limits.
 - ⚖️ A privacy policy and a collection notice (APP 5) in plain English, before launch.
 - ⚖️ AI stays off. Before turning it on, the consent wording must name the provider and that words go overseas (Another Angle → its model provider in the US): APP 8, cross-border disclosure.
+  Today the app says "your words stay with Hushmates" in four places, which is true only while AI is off:
+  `ui/relay/parts.js` (privacy notes), `ui/relay/release.js` and `ui/relay/returned.js` (two places).
+  Before AI is switched on, change those words and ask people's consent again.
 
 ### Web
 - ✅ The customer app and the desk are built from exactly what they import, with comments stripped. The build scans out developer content and refuses secret keys. A strict CSP connects to the Supabase project only, and every response carries protective headers.

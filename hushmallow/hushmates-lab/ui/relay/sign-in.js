@@ -12,7 +12,7 @@ import { MALLOWS } from '../mallows-data.js';
 import { room, stage, Speech, line, privacySheet, put, morph, focusHeading } from './parts.js';
 
 export const CODE_LENGTH = 6;
-const RESEND_AFTER_MS = 30e3;                  // a new code can be asked for 30 seconds after the last
+const RESEND_AFTER_MS = 60e3;                  // a new code can be asked for a minute after the last (Supabase's own limit)
 const PENDING_KEY = 'hushmates.signin';        // this tab only: the email a code was just sent to
 const PENDING_MS = 15 * 60e3;
 const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -187,7 +187,7 @@ export function signin(dev, params = {}) {
     syncCode();
     hideError();
     try {
-      await auth.verifyCode(s.email, s.code);
+      await auth.verifyCode(s.email, s.code, { sentAt: s.sentAt });
       pending.clear();
       if (!alive) return;
       st.mallow.cheer?.(0.2);
@@ -199,7 +199,7 @@ export function signin(dev, params = {}) {
       go.textContent = 'Continue';
       showError(e);
       speech.say(e?.code === 'code-expired' ? 'Let’s get you a fresh code.' : 'Let’s try that again.');
-      if (e?.code === 'code-expired') s.sentAt = 0;              // a new one can be asked for straight away
+      // (the wait for a new code keeps running: Supabase allows one a minute per address)
       syncCode();
       codeInput.setAttribute('aria-invalid', 'true');
       codeInput.focus({ preventScroll: true });

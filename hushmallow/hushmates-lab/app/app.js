@@ -76,8 +76,21 @@ function linkFor() {
     onSignedOut: () => { if (gone) return; ended = true; auth.forget(); boot().catch(() => resting(guest())); },
   });
   const request = link.request.bind(link);
+  // the membership ended while this device was open (the data was deleted on another device): stop
+  // here and start again, which finds the sign-in gone (or asks for an invitation), never a stale view
+  const membershipEnded = () => {
+    link.member = false;
+    current?.client.stop?.();
+    auth.accessToken({ force: true }).catch(() => null).finally(() => { if (!gone) { ended = true; boot().catch(() => resting(guest())); } });
+    return Object.assign(new Error('Please sign in again.'), { code: 'not-signed-in', human: true });
+  };
   link.request = async (method, token, args) => {
-    const result = await request(method, token, args);
+    let result;
+    try { result = await request(method, token, args); } catch (e) {
+      if (link.member && e?.code === 'invite-required') throw membershipEnded();
+      throw e;
+    }
+    if (link.member && method === 'me' && result?.needsInvite) throw membershipEnded();
     if (method === 'deleteMyData') {
       // the account is gone: this device forgets its session and stops asking for changes
       gone = true;
@@ -134,8 +147,15 @@ function boot() {
       resting(guest());                                        // couldn't reach Hushmates: not a sign-out
       return;
     }
-    if (me?.needsInvite) { invitation(link); return; }
+    if (me?.needsInvite) {
+      // a token can outlive its account (deleted on another device): check the sign-in itself still exists
+      await auth.accessToken({ force: true }).catch(() => null);
+      if (!auth.session()) { ended = false; door('signed-out'); return; }
+      invitation(link);
+      return;
+    }
     const client = new RelayClient(link, 'session');
+    link.member = true;
     try {
       await client.start();
     } catch (e) {
