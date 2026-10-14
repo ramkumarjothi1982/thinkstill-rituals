@@ -169,15 +169,18 @@ export function hotSpot(data, cols = 48, rows = 12) {
 }
 /**
  * How much the deepening over a bright spot adds on top of the scrim's own `a` (both rgba(9, 6, 28, α), the browser
- * blending in sRGB): just enough that the spot's core under both reads no lighter than the sky round it under the scrim
- * alone — so the sun or the moon never shows through as a muddy disc, and the place over it is never darker than the
- * rest of the scrim (never a dark blot). At most `max`. Pure; unit-tested.
+ * blending in sRGB): just enough that the spot's core under both reads a touch darker than the sky round it under the
+ * scrim alone (`under`: its luminance, 0.7 of the sky's — at equal luminance a warm sun still shows through a navy
+ * scrim as a faint brown disc) — so the sun or the moon never shows through as a muddy disc, and the place over it is
+ * never much darker than the rest of the scrim (never a dark blot). At most `max`. Pure; unit-tested.
  */
-export function hotAlpha(core, sky, a, { max = 0.8 } = {}) {
+export function hotAlpha(core, sky, a, { max = 0.8, under = 0.7 } = {}) {
   if (!core || !sky || !(a >= 0) || a >= 1) return 0;
   const over = ([r, g, b], k) => luminance(r + (SCRIM_RGB[0] - r) * k, g + (SCRIM_RGB[1] - g) * k, b + (SCRIM_RGB[2] - b) * k);
-  const want = over(sky, a);
-  if (over(core, a) <= want) return 0;
+  // (a spot no brighter than the sky round it needs nothing)
+  const sk = over(sky, a);
+  if (over(core, a) <= sk) return 0;
+  const want = sk * under;
   // the total cover the core needs (between a and 1), then what the second layer adds to reach it: 1 − (1 − k)/(1 − a)
   let lo = a, hi = 1;
   for (let i = 0; i < 18; i++) { const k = (lo + hi) / 2; if (over(core, k) > want) lo = k; else hi = k; }
