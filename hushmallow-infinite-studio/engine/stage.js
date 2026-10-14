@@ -159,7 +159,7 @@ export class Stage {
       this.stillStubs = [0, 1].map(() => ({ cols, rows, stride, nVerts, data: new Float32Array(nVerts * stride), upload() {} }));
     }
     const a = this.video.state(t - sh, this), b = this.video.state(t + sh, this);
-    return shutterDisplacement(a, b, { renderer: r, facePass: r.facePass, stubs: this.stillStubs }) < STILL_PX;
+    return shutterDisplacement(a, b, { renderer: r, stubs: this.stillStubs }) < STILL_PX;
   }
 
   /** Advance the virtual clock by one frame interval (the same additions as an in-order render). */

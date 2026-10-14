@@ -110,19 +110,25 @@ export class FaceQuantiser {
     return { P: q, key: `${coarse ? 'rest|' : ''}${idx.join(',')}` };
   }
 
-  /**
-   * How far the drawn face moves between two parameter sets, in art px: the
-   * largest displacement of its feature points (eye corners and lid curves,
-   * iris centres, mouth corners and middle, brow ends). An estimate in the
-   * spirit of the direction's own subframes() probe, used to decide whether a
-   * frame needs per-sub-frame face redraws.
-   */
+  /** How far the drawn face moves between two parameter sets, in art px (faceMotionArt). */
   motionArt(Pa, Pb) {
-    const a = featurePoints(this.spec, Pa), b = featurePoints(this.spec, Pb);
-    let d = 0;
-    for (let i = 0; i < a.length; i++) d = Math.max(d, Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]));
-    return d;
+    return faceMotionArt(this.spec, Pa, Pb);
   }
+}
+
+/**
+ * How far a face drawn from `spec` moves between two parameter sets, in art px:
+ * the largest displacement of its feature points (eye corners and lid curves,
+ * iris centres, mouth corners and middle, brow ends). An estimate in the spirit
+ * of the direction's own subframes() probe, used to decide whether a frame
+ * needs per-sub-frame face redraws (passes/face.js) and whether the shutter
+ * sees motion (render/shutter.js).
+ */
+export function faceMotionArt(spec, Pa, Pb) {
+  const a = featurePoints(spec, Pa), b = featurePoints(spec, Pb);
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d = Math.max(d, Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]));
+  return d;
 }
 
 /** Feature points of a face (art px), same count and order for any parameters. */

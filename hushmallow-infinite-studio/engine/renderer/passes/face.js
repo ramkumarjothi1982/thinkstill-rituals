@@ -18,7 +18,7 @@ import { captureFaces, FaceQuantiser, REST_FULL } from '../../face/cache.js';
 export const MOTION_PX = 1.5;
 
 /** Largest magnification of a deformed grid mesh: output px per art px over every cell edge. */
-function maxCellScale({ cols, rows, stride, data }, artSize) {
+export function maxCellScale({ cols, rows, stride, data }, artSize) {
   const ax = artSize[0] / cols, ay = artSize[1] / rows, ad = Math.hypot(ax, ay), rs = (cols + 1) * stride;
   let m = 0;
   for (let j = 0; j < rows; j++) {

@@ -15,10 +15,14 @@
 //   - glass bubbles: centre motion plus scale change times half-width, as the
 //     direction measures them,
 //   - particles: centre motion,
-//   - the face's own motion (blinks, looks, mouth), face/cache.js feature points.
+//   - the face's own motion (blinks, looks, mouth), face/cache.js feature points,
+//     scaled to output px by the largest magnification of the deformed mesh.
+//     Measured whether or not the face cache is on: without it the face is
+//     redrawn per sub-frame, and a single-sample frame would freeze a blink.
 // A change in the number of bubbles or particles counts as motion (Infinity).
 
-import { captureFaces } from '../face/cache.js';
+import { captureFaces, faceMotionArt } from '../face/cache.js';
+import { maxCellScale } from '../renderer/passes/face.js';
 
 export const STILL_PX = 2;     // below this, one centred sample is enough
 
@@ -39,15 +43,16 @@ const camPt = (S, x, y, scale) => [((x - S.cam.x) * S.cam.zoom) * scale, ((y - S
 
 /**
  * Shutter displacement (output px) between states a and b (the two ends of the
- * shutter). ctx: { renderer, facePass, stubs: [stubA, stubB] } — CPU-only meshes
- * in the renderer's grid layout.
+ * shutter). ctx: { renderer, stubs: [stubA, stubB] } — CPU-only meshes in the
+ * renderer's grid layout.
  */
-export function shutterDisplacement(a, b, { renderer: r, facePass, stubs }) {
+export function shutterDisplacement(a, b, { renderer: r, stubs }) {
   const k = r.scale;
-  let d = 0;
+  let d = 0, meshA = null;
   if (stubs && a.buildMesh && b.buildMesh && a.mallow?.bodyBox) {
     const pa = screenPoints(a, stubs[0], r.artSize, k), pb = screenPoints(b, stubs[1], r.artSize, k);
     for (let i = 0; i < pa.length; i += 2) d = Math.max(d, Math.hypot(pa[i] - pb[i], pa[i + 1] - pb[i + 1]));
+    meshA = stubs[0];                  // now holds a's deformed mesh
   }
   for (const key of ['bubblesBack', 'bubblesFront']) {
     const la = a[key] || [], lb = b[key] || [];
@@ -63,11 +68,11 @@ export function shutterDisplacement(a, b, { renderer: r, facePass, stubs }) {
     const [ax, ay] = camPt(a, qa[i].x, qa[i].y, k), [bx, by] = camPt(b, qb[i].x, qb[i].y, k);
     d = Math.max(d, Math.hypot(ax - bx, ay - by));
   }
-  if (facePass) {
+  if (meshA) {
     const fa = captureFaces(a)[0], fb = captureFaces(b)[0];
     if (fa && fb) {
-      const art = facePass.quantiser(fa.face).motionArt(fa.params, fb.params);
-      if (art > 0) d = Math.max(d, art * facePass.artToOutput(a));
+      const art = faceMotionArt(fa.face.spec, fa.params, fb.params);
+      if (art > 0) d = Math.max(d, art * (maxCellScale(meshA, r.artSize) * a.cam.zoom * k));   // = FacePass.artToOutput(a)
     }
   }
   return d;

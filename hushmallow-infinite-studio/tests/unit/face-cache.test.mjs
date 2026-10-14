@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FaceQuantiser, featurePoints, captureFaces, facePolicy, STEP_PX, REST_COARSE } from '../../engine/face/cache.js';
+import { FaceQuantiser, featurePoints, faceMotionArt, captureFaces, facePolicy, STEP_PX, REST_COARSE } from '../../engine/face/cache.js';
 import { NEUTRAL } from '../../engine/face/params.js';
 
 // a face spec shaped like Noomi's derived one (art px)
@@ -72,6 +72,7 @@ test('face cache: motion between poses (blink >> look jitter) and stable feature
   assert.ok(Q.motionArt(open, half) > 20, 'a half blink moves the lids tens of art px');
   assert.ok(Q.motionArt(open, { eyeOpen: 1, lookX: 0.001 }) < 0.1);
   assert.equal(Q.motionArt(open, open), 0);
+  assert.equal(faceMotionArt(SPEC, open, half), Q.motionArt(open, half), 'the quantiser measures with the shared estimate');
   assert.equal(featurePoints(SPEC, {}).length, featurePoints(SPEC, randomPose(rng(1))).length);
 });
 

@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { shutterDisplacement, STILL_PX } from '../../engine/render/shutter.js';
+import { facePolicy, faceMotionArt } from '../../engine/face/cache.js';
 
 const cols = 4, rows = 4, stride = 6, nVerts = (cols + 1) * (rows + 1);
 const stub = () => ({ cols, rows, stride, nVerts, data: new Float32Array(nVerts * stride), upload() {} });
@@ -46,6 +47,28 @@ test('glass bubbles: centre motion plus scale change times half-width; a bubble 
   assert.ok(Math.abs(shutterDisplacement(state({ bubbles: [b(100)] }), state({ bubbles: [b(104)] }), ctx()) - 4) < 1e-9);
   assert.ok(Math.abs(shutterDisplacement(state({ bubbles: [b(100, 1)] }), state({ bubbles: [b(100, 1.01)] }), ctx()) - 2) < 1e-9);
   assert.equal(shutterDisplacement(state(), state({ bubbles: [b(100)] }), ctx()), Infinity);
+});
+
+test('the face\'s own motion counts, with or without the face cache (a blink is never frozen into one sample)', () => {
+  const spec = {
+    eyes: {
+      L: { x: 30, y: 40, hw: 8, sag: 3, lw: 2, tilt: 0, cxOff: 0, r: 7, irisR: 4, irisOff: [0, 0] },
+      R: { x: 70, y: 40, hw: 8, sag: 3, lw: 2, tilt: 0, cxOff: 0, r: 7, irisR: 4, irisOff: [0, 0] },
+    },
+    brows: { L: { p0: [22, 28], c: [30, 25], p1: [38, 28], lw: 2 }, R: { p0: [62, 28], c: [70, 25], p1: [78, 28], lw: 2 } },
+    mouth: { x: 50, y: 60, w: 14, sag: 2, lw: 2, cxOff: 0, tilt: 0 },
+    cheeks: { L: [25, 55, 5], R: [75, 55, 5], colour: '#fca6fb' },
+  };
+  const face = { spec, draw(p) { if (facePolicy.capture) facePolicy.capture.push({ face: this, params: p }); return false; } };
+  const withFace = (params, opts) => ({ ...state(opts), drawFace: () => face.draw(params) });
+  const open = { eyeOpen: 1 }, shut = { eyeOpen: 1, blink: 1 };
+  assert.equal(shutterDisplacement(withFace(open), withFace(open), ctx()), 0);
+  // the 4×4 test grid maps 25 art px to 25 world px: art px = output px at zoom 1, scale 1
+  const blink = shutterDisplacement(withFace(open), withFace(shut), ctx());
+  assert.ok(Math.abs(blink - faceMotionArt(spec, open, shut)) < 1e-9 && blink > STILL_PX, `blink ${blink} px`);
+  assert.ok(Math.abs(shutterDisplacement(withFace(open), withFace(shut), ctx(0.5)) - blink / 2) < 1e-9, 'scaled to output px');
+  // the face pass no longer has to exist for this (the ctx has none)
+  assert.equal(ctx().facePass, null);
 });
 
 test('particles: centre motion; a change in their number counts as motion', () => {
