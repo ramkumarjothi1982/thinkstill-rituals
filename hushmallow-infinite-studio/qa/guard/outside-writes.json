@@ -1,0 +1,39 @@
+{
+  "schema": "hm-write-audit/2",
+  "since": "2026-10-14T00:47:08.488Z",
+  "armedBy": "WP-00 round 3",
+  "reason": "Round-3 re-arm (schema 2: adds the directory listing for deletion detection and the git config content check; narrows the git exemption to git's own data; replaces the blanket /tmp/node-compile-cache exemption with per-entry verification). Reviewed before arming: the audit under the new rules found 0 files written outside the studio and WORK since 2026-10-13T23:41:36.971Z; changed directories since then were /tmp (harness), /tmp/claude-0 (harness), /home/user (23:44, the round-2 demo probe removal) and the repo .git directory (index refresh). The round-2 incident (npm debug logs deleted from /root/.npm/_logs at 23:25) predates both baselines and is recorded in docs/wp/WP-00.md.",
+  "listing": {
+    "file": "listing-2026-10-14T00-47-08-488Z.json.gz",
+    "sha256": "cc54b87a873d8c196a58cb5b9f04f033127786ef249abfb01152e5af30ede705",
+    "dirs": 27684,
+    "entries": 220811,
+    "roots": [
+      "/",
+      "/dev/shm",
+      "/run/sandbox-telemetry"
+    ]
+  },
+  "gitConfig": {
+    "/home/user/thinkstill-rituals/.git/config": [
+      "branch.claude/hushmallow-phase-1-video-0ipvz6.merge=d3cda32dcab72542",
+      "branch.claude/hushmallow-phase-1-video-0ipvz6.remote=181fdd46fc4a7246",
+      "branch.main.merge=f921bd05e68b0374",
+      "branch.main.remote=181fdd46fc4a7246",
+      "core.bare=fcbcf165908dd18a",
+      "core.filemode=b5bea41b6c623f7c",
+      "core.logallrefupdates=b5bea41b6c623f7c",
+      "core.repositoryformatversion=5feceb66ffc86f38",
+      "gc.auto=5feceb66ffc86f38",
+      "remote.origin.fetch=94e48172e6ebd29c",
+      "remote.origin.url=25e8f08ac5ca6821"
+    ]
+  },
+  "previous": [
+    {
+      "since": "2026-10-13T23:41:36.971Z",
+      "armedBy": "WP-00",
+      "reason": "Initial baseline (WP-00 gap fix). Reviewed everything written outside the studio and WORK before this time: VM boot provisioning (07:49, 23:16), agent-harness state, package installs at environment setup, and scratch files of earlier agent sessions in /tmp/claude-0/*/*/scratchpad and /tmp/blubi_scratch. None is studio output; all predate the write audit."
+    }
+  ]
+}

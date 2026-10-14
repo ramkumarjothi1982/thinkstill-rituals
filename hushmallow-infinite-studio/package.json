@@ -8,18 +8,20 @@
     "node": ">=22.2"
   },
   "scripts": {
-    "test": "node --test --test-reporter=spec \"tests/guard/**/*.test.mjs\" \"tests/unit/**/*.test.mjs\" \"tests/parity/**/*.test.mjs\"",
-    "test:guard": "node --test --test-reporter=spec \"tests/guard/**/*.test.mjs\"",
-    "test:unit": "node --test --test-reporter=spec \"tests/unit/**/*.test.mjs\"",
-    "test:parity": "node --test --test-reporter=spec \"tests/parity/**/*.test.mjs\"",
-    "test:golden": "node --test --test-reporter=spec --test-timeout=1800000 \"tests/golden/**/*.test.mjs\"",
+    "test": "node cli/hm.mjs test guard unit parity",
+    "test:guard": "node cli/hm.mjs test guard",
+    "test:unit": "node cli/hm.mjs test unit",
+    "test:parity": "node cli/hm.mjs test parity",
+    "test:golden": "node cli/hm.mjs test golden",
     "lib:validate": "node cli/hm.mjs lib validate",
     "hm": "node cli/hm.mjs",
+    "guard": "node cli/hm.mjs guard",
     "heavy": "node render/lib/heavy-lock.mjs",
+    "jail": "node render/lib/write-jail.mjs",
     "render": "node render/lib/heavy-lock.mjs --shared --label legacy-render -- node render/render.mjs",
     "bench:probe": "node render/lib/heavy-lock.mjs --exclusive --label bench-probe -- node tools/timing.mjs",
     "derive": "node render/lib/heavy-lock.mjs --exclusive --label derive -- python3 -I",
-    "preview": "node render/serve.mjs"
+    "preview": "node render/lib/write-jail.mjs -- node render/serve.mjs"
   },
   "dependencies": {
     "playwright": "1.56.1"

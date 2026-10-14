@@ -11,7 +11,7 @@
 //   exclusive  benchmarks and golden captures: waits until every shared job
 //              is done and keeps new ones out until it finishes.
 //
-// CLI (exit code = the command's):
+// CLI (exit code = the command's; the command runs inside the write jail):
 //   node render/lib/heavy-lock.mjs --exclusive [--label txt] [--timeout s] -- <cmd> [args…]
 //   node render/lib/heavy-lock.mjs --shared [--weight N] [--label txt] [--timeout s] -- <cmd> [args…]
 //   node render/lib/heavy-lock.mjs --status [--json]
@@ -42,6 +42,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LOCK_DIR } from './paths.mjs';
+import { runJailed } from './write-jail.mjs';
 
 const BUSY = 75;                       // flock --conflict-exit-code (EX_TEMPFAIL)
 export const ENV_KEY = 'HM_HEAVY_LOCK';
@@ -273,15 +274,11 @@ async function cli(argv) {
     return e instanceof HeavyLockTimeout ? BUSY : 1;
   }
   if (!o.quiet && lease.waitedMs > 1000) console.error(`[heavy-lock] ${o.mode} acquired after ${(lease.waitedMs / 1000).toFixed(1)} s`);
-  const child = spawn(o.cmd[0], o.cmd.slice(1), { stdio: 'inherit', env: { ...process.env, [ENV_KEY]: lease.envValue } });
-  const forward = (sig) => () => child.kill(sig);
-  const handlers = ['SIGINT', 'SIGTERM', 'SIGHUP'].map((sig) => [sig, forward(sig)]);
-  for (const [sig, h] of handlers) process.on(sig, h);
-  const code = await new Promise((resolve) => {
-    child.once('error', (e) => { console.error(`[heavy-lock] cannot run ${o.cmd[0]}: ${e.message}`); resolve(127); });
-    child.once('exit', (c, sig) => resolve(c ?? 128 + (os.constants.signals[sig] || 0)));
-  });
-  for (const [sig, h] of handlers) process.off(sig, h);
+  // The command runs inside the write jail (render/lib/write-jail.mjs): every
+  // heavy job can write only to the studio and WORK. runJailed forwards
+  // SIGINT/SIGTERM/SIGHUP and passes the exit code through.
+  const code = await runJailed(o.cmd[0], o.cmd.slice(1), { env: { ...process.env, [ENV_KEY]: lease.envValue } })
+    .catch((e) => { console.error(`[heavy-lock] cannot run ${o.cmd[0]}: ${e.message}`); return 127; });
   await lease.release();
   return code;
 }

@@ -18,8 +18,10 @@ export const LEGACY_ARGS = Object.freeze(['--disable-gpu-vsync', '--disable-fram
  * Explicit software-WebGL opt-ins for R2, measured by the golden capture
  * (qa/golden/v2/determinism.json). Measured in WP-00: '--use-angle=vulkan
  * --enable-unsafe-swiftshader' is bit-identical to the legacy flags at the same
- * speed, so WP-01 should use it. The plan's '--use-angle=swiftshader' changes
- * pixels (up to 49/255) and is ~4x slower, so it must not be used.
+ * speed (3/3 frames, 4,143 vs 4,004 ms per frame), so WP-01 should use it. The
+ * plan's '--use-angle=swiftshader' changes pixels (0/3 frames identical, up to
+ * 24/255) and is about 3.7x slower (15,056 ms per frame), so it must not be used.
+ * All three: a fresh page per frame, frames 0, 3.2 and 9.6 s.
  */
 export const FLAG_VARIANTS = Object.freeze({
   'unsafe-swiftshader': ['--enable-unsafe-swiftshader'],

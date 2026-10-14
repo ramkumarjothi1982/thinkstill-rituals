@@ -7,12 +7,15 @@
 //   (also: npm run hm -- <command> …)
 //
 // Commands are auto-loaded from cli/commands/*.mjs (see cli/lib/registry.mjs
-// for the file-name convention and the module contract).
+// for the file-name convention and the module contract). Run as a program, hm
+// re-runs itself inside the write jail first (render/lib/write-jail.mjs), so
+// every command can write only to the studio and WORK.
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as paths from '../render/lib/paths.mjs';
 import { withHeavyLock, acquireHeavy } from '../render/lib/heavy-lock.mjs';
+import { confine } from '../render/lib/write-jail.mjs';
 import { discover, load, resolve, suggest } from './lib/registry.mjs';
 
 export const COMMANDS_DIR = fileURLToPath(new URL('./commands/', import.meta.url));
@@ -62,6 +65,7 @@ export async function main(argv, { commandsDir = COMMANDS_DIR } = {}) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await confine();
   main(process.argv.slice(2)).then((code) => { process.exitCode = code; }, (e) => {
     console.error(`hm: ${e.stack || e.message}`);
     process.exitCode = 1;

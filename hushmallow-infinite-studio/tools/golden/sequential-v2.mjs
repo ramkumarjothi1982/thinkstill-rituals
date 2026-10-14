@@ -22,6 +22,9 @@ import { flipRows, decodePNG, encodePNG } from '../../render/lib/png.mjs';
 import * as V2 from './v2-harness.mjs';
 import { readJSON, writeJSON } from './compare.mjs';
 import { diffStats } from './pixels.mjs';
+import { confine } from '../../render/lib/write-jail.mjs';
+
+await confine();                       // re-run inside the write jail: writes only to the studio and WORK
 
 const args = process.argv.slice(2);
 const N = Math.min(450, Number(args[args.indexOf('--frames') + 1]) || 450);

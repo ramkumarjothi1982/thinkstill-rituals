@@ -11,10 +11,12 @@ animation, face, story treatment, cinematography and score. v1 is kept only for
 comparison (see the end of this file).
 
 > **Phase 2 is under way** (`docs/PHASE2-PLAN.md`). v2 is approved and **frozen**:
-> its files are hash-locked in `qa/golden/v2/frozen.sha256` and tagged
+> its files are hash-locked in `qa/golden/v2/frozen.sha256` (plus
+> `frozen-local.sha256` for the git-ignored render artefacts) and tagged
 > `v2-approved`. Phase 2 forks them and never edits them. Before you change anything, read
-> `docs/CONVENTIONS.md` (paths, the heavy-job lock, `hm` commands, tests,
-> goldens) and `docs/OWNER-DECISIONS.md`. Run `npm test` before you hand work in.
+> `docs/CONVENTIONS.md` (paths, the write jail, the heavy-job lock, `hm`
+> commands, tests, goldens) and `docs/OWNER-DECISIONS.md`. Run `npm test` (or, without npm,
+> `node cli/hm.mjs test`) and `node cli/hm.mjs guard` before you hand work in.
 
 | File | What it is |
 |---|---|

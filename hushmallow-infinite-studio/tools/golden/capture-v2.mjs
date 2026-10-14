@@ -30,6 +30,9 @@ import * as V2 from './v2-harness.mjs';
 import { writeNdjsonGz, writeJSON, readJSON, compareDeep } from './compare.mjs';
 import { planV2 } from './plan-v2.mjs';
 import { diffStats, psnrAgainstVideo, shuffled } from './pixels.mjs';
+import { confine } from '../../render/lib/write-jail.mjs';
+
+await confine();                       // re-run inside the write jail: writes only to the studio and WORK
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : d; };

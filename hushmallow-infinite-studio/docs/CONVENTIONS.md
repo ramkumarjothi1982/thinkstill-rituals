@@ -13,7 +13,24 @@ These are the shared rails every work package builds on. They were set up in WP-
 | `GOLDEN_V2`, `WORK_GOLDEN_V2` | `qa/golden/v2` (small and committed) and `WORK/golden/v2` (large). |
 
 - Tools pass every output path they accept through `assertWritable(p)`. It refuses anything outside `STUDIO` and `WORK`, anything inside the app, and any frozen v2 path.
-- Temp files go in `mkWorkTemp(prefix)` under `WORK/tmp`, never the system `/tmp`.
+- Temp files go in `mkWorkTemp(prefix)` under `WORK/tmp`, never the system `/tmp`. Agents' own scratch files go there too, not in a harness scratchpad: the write audit (below) reports any file written outside the studio and `WORK`.
+
+### The write jail: `render/lib/write-jail.mjs`
+
+Studio jobs run in a private mount namespace where the kernel lets them write only to `STUDIO` and `WORK`. Everything else on the machine is read-only (`EROFS`), and so are the frozen v2 paths inside the studio. `/tmp` and `/var/tmp` are a private directory under `WORK/tmp`, removed when the job ends, and `/dev/shm` is a private tmpfs. Child processes such as Chromium, ffmpeg and python inherit all of it.
+
+| Entry point | How it is confined |
+|---|---|
+| `npm test`, `npm run test:*`, `npm run preview` | wrapped: `node render/lib/write-jail.mjs -- …` |
+| `node cli/hm.mjs …` (so `npm run hm`, `lib:validate`, `guard`) | `hm` re-runs itself in the jail (`await confine()`) |
+| `node render/lib/heavy-lock.mjs … -- <cmd>` (so `npm run render`, `bench:probe`, `derive`) | the lock runs `<cmd>` in the jail |
+| `tools/golden/{capture-v2,sequential-v2,freeze}.mjs` | `await confine()` as their first statement |
+
+- New entry scripts call `await confine()` first, or are started through the heavy-lock CLI or `npm run jail -- <cmd>`.
+- `node render/lib/write-jail.mjs --status` tells you whether you are inside.
+- `HM_JAIL=off` disables it, with a warning, on a machine without mount namespaces. The guards still apply.
+- It needs root (`CAP_SYS_ADMIN`), which the studio machine has. It is a guard rail against mistakes, not a security boundary.
+- git commits made inside the jail, for example in throw-away test repositories, need `-c commit.gpgsign=false`: the sandbox's signing helper lives in the host's `/tmp`.
 
 ## 2. The frozen v2
 
@@ -25,7 +42,12 @@ These paths are frozen (`paths.FROZEN`):
 - `render/render.mjs` and `render/verify.mjs`
 - `assets/noomi/` and `output/v2/`
 
-They are hash-locked in `qa/golden/v2/frozen.sha256` and tagged `v2-approved`.
+They are hash-locked and tagged `v2-approved`. The lock covers **every file on disk** under these paths, git-ignored ones included:
+
+- `qa/golden/v2/frozen.sha256` lists the files git tracks: 50 files, the same in every clone.
+- `qa/golden/v2/frozen-local.sha256` lists the files git does not track: the approved render's ignored video pass, `render.log` and `test.wav` in `output/v2/`.
+- Any other file that appears under a frozen path is reported as `added`, whether git ignores it or not.
+- In a linked worktree (`git worktree add`), git never checked out the local-only files, so they are listed as "not in this worktree" instead of missing. Edits and additions there still fail.
 
 - **Fork or copy; never edit.** WP-01 forks `stage2/` into `engine/`. WP-04 must also fork `audio/soundtrack.mjs`, for example into `audio/score.mjs` plus a shared module, even though the plan lists the file as edited (see `docs/wp/WP-00.md`).
 - `render/serve.mjs` is not frozen (WP-01 owns it). It must keep exporting `startServer(port)` and `REPO_ROOT`, because the frozen route imports them (`tests/guard/legacy-route.test.mjs`).
@@ -41,7 +63,7 @@ The machine has 4 cores and no GPU. Every heavy job runs inside the flock-based 
 | `--exclusive` | Benchmarks, golden captures and derivations: anything whose timing, or need for the whole machine, matters. It waits for running jobs and blocks new ones. |
 
 ```sh
-node render/lib/heavy-lock.mjs --exclusive -- node tools/bench.mjs …    # CLI wrapper; exit code passes through
+node render/lib/heavy-lock.mjs --exclusive -- node tools/bench.mjs …    # CLI wrapper: runs the command in the write jail; exit code passes through
 node render/lib/heavy-lock.mjs --shared --weight 2 -- python3 tools/derive/derive_mallow.py …
 node render/lib/heavy-lock.mjs --status                                 # or: hm lock status
 ```
@@ -81,6 +103,7 @@ export async function run(args, ctx) { /* return an exit code */ }   // ctx: { n
 Commands since WP-00:
 
 - `hm guard`
+- `hm test [guard] [unit] [parity] [golden]`
 - `hm lib validate`
 - `hm lock status`
 - `hm golden capture`
@@ -90,22 +113,54 @@ Commands since WP-00:
 ## 5. Tests: `node:test`, no dependencies
 
 ```
-tests/unit/         fast, pure (no browser)                      npm run test:unit
-tests/guard/        safety rails (frozen, app, wall clock, writes) npm run test:guard
-tests/parity/       re-sample in Chromium vs goldens (≈ 20 s)     npm run test:parity
-tests/golden/       pixel goldens, heavy (≈ 2 min)                npm run test:golden
+tests/unit/         fast, pure (no browser)                      npm run test:unit     = hm test unit
+tests/guard/        safety rails (frozen, app, wall clock, writes) npm run test:guard    = hm test guard
+tests/parity/       re-sample in Chromium vs goldens (≈ 20 s)     npm run test:parity   = hm test parity
+tests/golden/       pixel goldens, heavy (≈ 2 min)                npm run test:golden   = hm test golden
 tests/property/  tests/smoke/  tests/determinism/                 (from WP-06, WP-24 and WP-26)
-npm test            guard + unit + parity: run before handing in any package
+npm test            guard + unit + parity: run before handing in any package (= node cli/hm.mjs test)
 ```
 
 - Files are named `*.test.mjs`. Tests that render take the heavy lock themselves (shared), so running them directly is safe too.
 - Tests never touch the network, the app or the frozen files. Temp directories come from `mkWorkTemp()`.
+- The suites are defined once, in `cli/commands/test.mjs`; the npm scripts are aliases. `hm` runs inside the write jail, so a test that writes outside the studio fails with `EROFS`.
+- `node cli/hm.mjs test` is the npm-free form. npm itself (not studio code) writes bytecode for its own modules to `$TMPDIR/node-compile-cache` before it reads any studio setting; the write audit verifies each such entry (below), and plain `node` writes nothing outside.
+
+### The write audit: `render/lib/write-audit.mjs`
+
+`tests/guard/no-outside-writes.test.mjs` and `hm guard` look at the whole machine, against the committed baseline `qa/guard/outside-writes.json`. On every writable storage mount, each of these is a failure:
+
+- **written:** a file or symlink whose ctime is newer than the baseline;
+- **deleted:** a name that existed at arming and is gone. Arming records the names in every directory (`WORK/guard/listing-*.json.gz`, its sha256 in the baseline); directories changed since are compared with it;
+- **git config:** a key added, changed or removed in the repository's git config, except routine branch/remote keys. A key that can make git run a program (`core.hooksPath`, `alias.*`, `include.path`, …) is never routine.
+
+Not reported:
+
+- this studio or `WORK`;
+- another worktree of this repository, which its own guards check;
+- the data ordinary git commands write: `objects/`, `refs/`, `logs/`, `index`, `HEAD`, … (`GIT_INTERNALS`). The rest of the git directory is audited: `hooks/`, `info/`, `description`, and any unknown file;
+- `EXTERNAL_WRITERS`: a short list, each entry with a reason, of places the agent harness and the sandbox's boot provisioning write to (one entry, the harness's session directories, excuses removals only);
+- npm's own V8 compile cache, entry by entry: the file name must be Node's cache key for a module inside npm's installation and the header must hold that module's exact length and CRC32. Any other cache entry is a finding.
+
+An agent's scratchpad (`/tmp/claude-*/…/scratchpad`) is **not** exempt. When the audit fails:
+
+- delete stray files, and put scratch in `WORK/tmp`;
+- if the writer is not studio code, add an `EXTERNAL_WRITERS` entry with a reason;
+- or, after review, re-arm the baseline with `node cli/hm.mjs guard --arm --reason "<what was reviewed>"` and commit the file. Like re-freezing, this is a deliberate act.
 
 ## 6. Determinism
 
-- `engine/` and `composer/` never call `Math.random`, `Date.now` or `performance.now`. Use the seeded streams and the virtual clock. `tests/guard/no-wallclock.test.mjs` scans both directories, and they are listed in `determinism-scan.DETERMINISTIC_DIRS`.
-- The scanner ignores comments and allows assignments, which is how the virtual clock installs itself.
-- A real need (for example, the clock keeping the real timer for profiling) is opted out per line with `// hm-allow-wallclock: <reason>`. Every opt-out is listed in the test output.
+- `engine/` and `composer/` never read the wall clock or unseeded randomness. Use the seeded streams and the virtual clock. `tests/guard/no-wallclock.test.mjs` scans both directories, which are listed in `determinism-scan.DETERMINISTIC_DIRS`.
+- The scanner **parses** every file (Acorn, vendored in `render/lib/vendor/`), so identifier escapes are decoded, regex literals and divisions cannot be confused, and a file that does not parse is a finding. It judges the syntax tree:
+  - `Math`, `Date`, `performance`, `crypto` and `Temporal` are recognised **by name, on any receiver**: `window.window.Date.now()`, `frames.Math.random()`, `globalThis?.Math.random()`, `x['Ma'+'th'].random()` are all findings.
+  - **allowed:** any `Math` member except `random`; `new Date(<args>)`, `Date.UTC` and `Date.parse`; `crypto.subtle`; `typeof` and `instanceof` checks.
+  - **findings:** `Math.random`, `Date.now`, `new Date()`, `Date()`, any read of `performance`, `crypto.getRandomValues`/`randomUUID`, `Temporal.Now`, `process.hrtime`/`uptime`, `node:perf_hooks`, node:crypto's random functions; the object used as a value, by a computed key or by rest destructuring; the global object indexed by a computed key or passed to `Reflect`/`Object`; strings that spell a banned call; and every route from a string to code (`eval`, `Function`, `.constructor`, string timers, computed `import()`/`Worker`/`require`, `document.write`, `innerHTML`, `<script>` creation, `on*` attributes, `javascript:` URLs, `node:vm` and friends).
+  - Code that `engine/` and `composer/` import from elsewhere in the studio is scanned too. Imports of the frozen v2 and the live app are not followed (they are hash-locked); packages, URLs and files outside the studio cannot be imported.
+  - Load modules through constant specifiers, e.g. a table of `() => import('./moves/g-jolt.js')` thunks, so the guard can follow them. `stage2/stage.js`'s ``import(`../videos/${videoId}.js`)`` is a finding under these rules.
+- Comments are ignored and assignments are allowed, which is how the virtual clock installs itself (`Math.random = mulberry32(seed)`).
+- **There is no inline opt-out.** The only exceptions are the entries of `WALLCLOCK_ALLOWED` in `render/lib/determinism-scan.mjs` (empty today). Each one pins a file, an exact source line that occurs once in that file, and the findings it may produce, with a reason. An entry fails the guard when it is stale (no longer produces the finding), pending (its file does not exist: register it in the same change as the line) or ambiguous (the line occurs twice).
+  - Excusing a capture never excuses the handle: every binding declared on an excused line is watched, so each later use or export of it (`RealDate.now()`, `{ RealDate }`) is a finding of its own.
+  - The v1 clock's `realPerfNow` and `RealDate` captures are unused. WP-01 drops them, and the two `clock` properties that export them, when it inlines the clock as `engine/runtime/clock.js`; `tests/guard/no-wallclock.test.mjs` shows that the result has no findings.
 
 ## 7. Goldens: `qa/golden/v2/`
 
