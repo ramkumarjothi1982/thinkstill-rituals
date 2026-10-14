@@ -242,7 +242,7 @@ export function renderFrameFast(r, subStates, center, overlayCanvas) {
     r.accDirty = frameBox;
   }
   m?.begin('bloom');
-  bloom(r, T.accum, center.post);
+  bloom(r, T.accum, center.post, { eighth: r.profile.quality.bloomEighth });
   m?.end('bloom');
   finish(r, T.accum, center, overlayCanvas);
 }

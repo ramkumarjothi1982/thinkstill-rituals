@@ -71,7 +71,8 @@ export class Renderer {
     const W = this.outW, H = this.outH;
     const sz = (v, d) => Math.max(1, Math.round(v / d));
     this.fs = fullscreen(gl);
-    this.world = new LakeWorld(this, { fast: !!profile.features.worldFast });
+    const q = profile.quality;
+    this.world = new LakeWorld(this, { fast: !!profile.features.worldFast, octaves: q.worldOctaves, clouds: q.worldClouds });
     this.p = {
       mesh: program(gl, MESH_VS, profile.features.faceFastGlow || profile.features.meshNormalTex
         ? meshFS({ faceBox: !!profile.features.faceFastGlow, normalTex: !!profile.features.meshNormalTex }) : MESH_FS, 'mesh'),
@@ -120,7 +121,7 @@ export class Renderer {
     this.textTex = new Map();
     // the fast pipeline and its passes (profile features; none in the exact profile)
     const f = profile.features;
-    this.facePass = f.faceCache ? new FacePass(this, { fast: !!f.faceFastGlow }) : null;
+    this.facePass = f.faceCache ? new FacePass(this, { fast: !!f.faceFastGlow, glow: profile.quality.faceGlow }) : null;
     if (f.fgAccum) {
       // P5: the foreground of one sub-frame, its weighted sum, and the 1/4-res mirror image
       this.t.fg = target(gl, W, H, { hdr: true });

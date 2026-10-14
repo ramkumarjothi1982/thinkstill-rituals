@@ -10,6 +10,7 @@ hm render --list
   a fresh page for every video. Per-job options apply to each target.
 
   --profile <name>       quality profile: exact (default; bit-identical to the goldens) | final (production master)
+                         | draft (0.5 scale, 1 sub-frame, cut-down quality, DRAFT mark); stills: hm proof
                          (engine/render/profiles.js); the profile sets the defaults of --scale, --encoder, --mark, --preview
   --features <list>      feature overrides of the profile, e.g. -worldFast,+fgAccum (bisecting; part of the job key)
   --out <dir>            job directory, one target only (default runs/adhoc/<direction>-<key12>; same inputs → same dir)
@@ -20,7 +21,7 @@ hm render --list
   --scale <s>            render scale (default 1; the design space stays 1080x1920)
   --width <w> --height <h>  design size (default 1080x1920)
   --seed <n>             virtual-clock seed (default 20261013)
-  --encoder <name>       qp15 (default, segment-invariant) | crf16 (single-pass only)
+  --encoder <name>       qp15 (default, segment-invariant) | draft (x264 veryfast QP 20) | crf16 (single-pass only)
   --segment-frames <n>   frames per segment (default 90)
   --preroll <k>          frames of face history replayed before a segment that starts in a fresh page (default 1)
   --mark <text>          burn a corner mark, e.g. DRAFT or INTERNAL

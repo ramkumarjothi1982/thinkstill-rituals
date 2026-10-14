@@ -6,14 +6,22 @@
 //     >= 0.995 on average and >= 0.98 on every frame (PHASE2-PLAN QA gates);
 //   - the final profile's frames do not depend on render history: frames rendered
 //     out of order in one page equal the same frames rendered cold (what lets the
-//     farm start a segment anywhere without replaying the face).
+//     farm start a segment anywhere without replaying the face);
+//   - the draft profile renders at 540×960 within 26 dB of the exact golden (box-
+//     filtered to half size), and the proof profile's stills are the final
+//     profile's frames.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { GOLDEN_V2 } from '../../render/lib/paths.mjs';
 import { withHeavyLock } from '../../render/lib/heavy-lock.mjs';
+import { decodePNG, flipRows } from '../../render/lib/png.mjs';
 import { EngineSession } from '../../render/worker.mjs';
 import { gate } from '../../tools/perf/gate.mjs';
+import { psnr } from '../../tools/perf/metrics.mjs';
 
 const P = { direction: 'my-brain-at-2am-v2', width: 1080, height: 1920, scale: 1, seed: 20261013, profile: 'final' };
 
@@ -47,6 +55,59 @@ test('final profile: frames do not depend on render order (out of order in one p
         await fresh.close();
       }
     } finally {
+      sink.close();
+      await session.close();
+    }
+  });
+});
+
+/** RGBA 1080×1920 → 540×960, 2×2 box filter. */
+function halve(full) {
+  const half = Buffer.alloc(540 * 960 * 4);
+  for (let y = 0; y < 960; y++) {
+    for (let x = 0; x < 540; x++) {
+      for (let c = 0; c < 4; c++) {
+        const o = (2 * y * 1080 + 2 * x) * 4 + c;
+        half[(y * 540 + x) * 4 + c] = (full[o] + full[o + 4] + full[o + 4320] + full[o + 4324] + 2) >> 2;
+      }
+    }
+  }
+  return half;
+}
+
+test('draft renders at half size close to the exact frame; proof stills equal the final profile\'s frames', { timeout: 1800000 }, async (t) => {
+  const m = JSON.parse(fs.readFileSync(path.join(GOLDEN_V2, 'manifest.json'), 'utf8'));
+  const goldens = m.frames.filter((f) => [96, 315].includes(f.i));       // a bubble over the face; the glow act
+  await withHeavyLock({ mode: 'shared', label: 'test:golden draft + proof' }, async () => {
+    const session = await EngineSession.start();
+    let buf = null;
+    const take = (_, b) => { buf = Buffer.from(b); };
+    const sink = session.server.addSink(take, { bytes: 1080 * 1920 * 4 }), small = session.server.addSink(take, { bytes: 540 * 960 * 4 });
+    const grab = async (page, i, s = sink) => {
+      await page.evaluate((i) => window.__engine.render(i), i);
+      await page.evaluate((u) => window.__engine.readback(u), s.url(0));
+      await page.evaluate(() => window.__engine.flush());
+      return buf;
+    };
+    try {
+      const draft = await session.openPage({ ...P, profile: 'draft', scale: 0.5, mark: 'DRAFT' });
+      assert.deepEqual([draft.info.width, draft.info.height, draft.info.profile], [540, 960, 'draft']);
+      for (const g of goldens) {
+        const d = flipRows(await grab(draft.page, g.i, small), 540, 960);
+        const half = halve(decodePNG(fs.readFileSync(path.join(m.framesDir, g.file))).data);
+        const db = psnr(d, half, 540, 960, [0, 120, 540, 960]);          // below the DRAFT mark
+        t.diagnostic(`draft frame ${g.i}: ${db.toFixed(2)} dB against the exact golden at half size`);
+        assert.ok(db >= 26, `draft frame ${g.i}: ${db.toFixed(2)} dB against the exact golden at half size`);
+      }
+      await draft.page.close();
+      const proof = await session.openPage({ ...P, profile: 'proof' });
+      const final = await session.openPage(P);
+      for (const i of [96, 315]) {
+        const a = await grab(proof.page, i), b = await grab(final.page, i);
+        assert.ok(a.equals(b), `frame ${i}: the proof still differs from the final profile's frame`);
+      }
+    } finally {
+      small.close();
       sink.close();
       await session.close();
     }

@@ -58,6 +58,36 @@ test('farm: the profile supplies scale, encoder and mark defaults; explicit opti
   assert.equal(wantsPreview(exact, true), true);
 });
 
+test('profiles: draft cuts quality knobs and marks the frame; proof is final quality as stills', () => {
+  const d = resolveProfile('draft'), f = resolveProfile('final'), p = resolveProfile('proof');
+  assert.equal(d.scale, 0.5);
+  assert.deepEqual({ ...d.quality }, { subframes: 1, faceGlow: false, worldOctaves: 3, worldClouds: false, bloomEighth: false });
+  assert.equal(d.mark, 'DRAFT');
+  assert.equal(d.encoder, 'draft');
+  assert.equal(d.features.faceCache, true, 'the face once per frame comes from the cache');
+  for (const q of [resolveProfile('exact').quality, f.quality, p.quality]) {
+    assert.deepEqual({ ...q }, { subframes: null, faceGlow: true, worldOctaves: 5, worldClouds: true, bloomEighth: true });
+  }
+  assert.deepEqual({ ...p.features }, { ...f.features });
+  assert.equal(p.stills, 6);
+  assert.equal(p.encoder, null);
+  assert.equal(featureLabel(resolveProfile('draft', { features: '-worldFast' })), featureLabel(resolveProfile('final', { features: '-worldFast' })));
+});
+
+test('farm: the draft profile renders at half size with its encoder and mark; proof is not a video', async () => {
+  const { ENCODERS, x264Args } = await import('../../render/encode.mjs');
+  const d = jobParams({ direction: 'x', profile: 'draft' });
+  assert.deepEqual([d.scale, d.encoder, d.mark], [0.5, 'draft', 'DRAFT']);
+  assert.equal(ENCODERS.draft.segmentSafe, true);
+  const a = x264Args('draft');
+  assert.equal(a[a.indexOf('-preset') + 1], 'veryfast');
+  assert.equal(x264Args('qp15')[x264Args('qp15').indexOf('-preset') + 1], 'slow', 'the master encoder is unchanged');
+  assert.equal(wantsPreview(d, undefined), false);
+  assert.throws(() => jobParams({ direction: 'x', profile: 'proof' }), /stills, not a video/);
+  const { proofTimes } = await import('../../tools/proof.mjs');
+  assert.deepEqual(proofTimes(15), [1.25, 3.75, 6.25, 8.75, 11.25, 13.75]);
+});
+
 test('bench: sample specs', () => {
   assert.deepEqual(sampleFrames('windows', 450).length, 48);
   assert.deepEqual(sampleFrames('windows', 450).slice(0, 9), [0, 1, 2, 3, 4, 5, 6, 7, 75]);

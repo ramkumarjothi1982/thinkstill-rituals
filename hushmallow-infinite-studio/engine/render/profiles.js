@@ -7,6 +7,10 @@
 //   final  the production master: scale 1, every optimisation of WP-02's
 //          performance pass, x264 master + CRF 20 preview. Target <= 9 min per
 //          15 s on one worker, accepted <= 12.
+//   draft  review drafts: scale 0.5 (uRes stays in design space), 1 sub-frame,
+//          the face once per frame without glow blur, a 3-octave world without
+//          clouds, no 1/8 bloom, x264 veryfast, DRAFT mark. <= 3 min per 15 s.
+//   proof  6 full-quality stills (the final profile's settings), hm proof. <= 45 s.
 //
 // Every optimisation is a named feature, so each can be switched off on its
 // own: the per-step PSNR gates of WP-02 compare a profile with and without one
@@ -35,14 +39,32 @@ const ALL = Object.keys(FEATURES);
 const none = () => Object.fromEntries(ALL.map((f) => [f, false]));
 const all = () => Object.fromEntries(ALL.map((f) => [f, true]));
 
+/** Quality knobs beyond the features; every profile but draft renders at full quality. */
+const FULL_QUALITY = Object.freeze({
+  subframes: null,          // null: the direction's count (or the adaptive floor); a number: that many, always
+  faceGlow: true,           // the face tubes' blurred glow and light band
+  worldOctaves: 5,          // fbm octaves of the world shader (with worldFast)
+  worldClouds: true,        // the stratus layer (with worldFast)
+  bloomEighth: true,        // the wide 1/8-resolution bloom blur
+});
+const DRAFT_QUALITY = Object.freeze({ subframes: 1, faceGlow: false, worldOctaves: 3, worldClouds: false, bloomEighth: false });
+
 export const PROFILES = Object.freeze({
   exact: Object.freeze({
     name: 'exact', summary: 'approved v2 rules, bit-identical to the goldens (goldens and parity only)',
-    scale: 1, features: Object.freeze(none()), encoder: 'qp15', preview: null, mark: null,
+    scale: 1, features: Object.freeze(none()), quality: FULL_QUALITY, encoder: 'qp15', preview: null, mark: null, stills: null,
   }),
   final: Object.freeze({
     name: 'final', summary: 'production master: every WP-02 optimisation at full scale',
-    scale: 1, features: Object.freeze(all()), encoder: 'qp15', preview: 'crf20', mark: null,
+    scale: 1, features: Object.freeze(all()), quality: FULL_QUALITY, encoder: 'qp15', preview: 'crf20', mark: null, stills: null,
+  }),
+  draft: Object.freeze({
+    name: 'draft', summary: 'review draft: 0.5 scale, 1 sub-frame, no face glow, 3-octave world without clouds, no 1/8 bloom, DRAFT mark',
+    scale: 0.5, features: Object.freeze(all()), quality: DRAFT_QUALITY, encoder: 'draft', preview: null, mark: 'DRAFT', stills: null,
+  }),
+  proof: Object.freeze({
+    name: 'proof', summary: '6 full-quality stills (final settings), hm proof',
+    scale: 1, features: Object.freeze(all()), quality: FULL_QUALITY, encoder: null, preview: null, mark: null, stills: 6,
   }),
 });
 

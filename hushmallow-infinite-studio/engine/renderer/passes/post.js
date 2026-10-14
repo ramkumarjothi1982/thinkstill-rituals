@@ -7,8 +7,12 @@
 import { setUniforms, texture, updateTexture } from '../../gl.js';
 import { blur, copy } from './filters.js';
 
-/** Bloom from `src` (the accumulated HDR frame) into T.q2. */
-export function bloom(r, src, post) {
+/**
+ * Bloom from `src` (the accumulated HDR frame) into T.q2. eighth: the wide 1/8
+ * blur (off in the draft profile, whose bloom is the 1/4 blur at the same total
+ * weight, 0.7 + 0.6).
+ */
+export function bloom(r, src, post, { eighth = true } = {}) {
   const gl = r.gl, T = r.t;
   gl.useProgram(r.p.bright.p);
   T.q1.bind();
@@ -16,6 +20,7 @@ export function bloom(r, src, post) {
   r.fs.draw();
   blur(r, T.q1, T.q2, T.q1, 1.6);
   blur(r, T.q1, T.q2, T.q1, 3.2);
+  if (!eighth) { copy(r, T.q1, T.q2, 1.3); return; }
   copy(r, T.q1, T.e1);
   blur(r, T.e1, T.e2, T.e1, 2.5);
   copy(r, T.e1, T.q2, 0.6);

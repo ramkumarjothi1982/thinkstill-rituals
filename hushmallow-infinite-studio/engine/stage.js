@@ -139,7 +139,10 @@ export class Stage {
   subframesAt(t) {
     const v = this.video;
     const N = v.subframes ? v.subframes(t, this) : (v.meta.subframes || 3);
-    if (Number.isFinite(N) && N >= 1 && N <= SUBFRAME_MAX) return N > 1 && this.profile.features.adaptiveFloor && this.isStill(t) ? 1 : N;
+    if (Number.isFinite(N) && N >= 1 && N <= SUBFRAME_MAX) {
+      if (this.profile.quality.subframes) return this.profile.quality.subframes;      // draft: always that many
+      return N > 1 && this.profile.features.adaptiveFloor && this.isStill(t) ? 1 : N;
+    }
     this.error('subframes', `subframes(${t}) returned ${N}; using ${SUBFRAME_FALLBACK}`, { t, value: String(N) });
     return SUBFRAME_FALLBACK;
   }
