@@ -468,11 +468,14 @@ try {
   await shot(page, '30-deleted');
   check(!(await sql("select 1 from auth.users where email = 'author@example.com'")).length, 'deleting removed the sign-in');
   // the laptop, still open, finds itself signed out at its next look (polling every 20 s), never showing deleted feelings
+  // (its last requests are refused on purpose: the membership and the sign-in are gone)
+  probing = true;
   await hook(laptop.page, 'signin-email').waitFor({ timeout: 45000 }).then(() => check(true, 'another open device is signed out after the deletion'), () => check(false, 'another open device is signed out after the deletion'));
   await shot(laptop.page, '31-desktop-after-deletion-elsewhere');
   await laptop.page.reload();
   await hook(laptop.page, 'signin-email').waitFor({ timeout: 20000 }).then(() => check(true, 'and stays signed out after a reload'), () => check(false, 'and stays signed out after a reload'));
   await laptop.ctx.close();
+  probing = false;
   check(!(await sql("select 1 from hushmates.journeys j join hushmates.members m on m.id = j.owner where m.state = 'deleted' and j.text_enc <> ''")).length, 'deleting removed the words');
   // (perspectives others gave on the deleted feelings go with them, as the privacy notes say; everyone's own feelings stay)
   check((await journeysOf(members[5])).length >= 1 && (await call(members[0], 'me')).profile.pseudonym === 'Cloudlet', 'other people’s own data is untouched');
