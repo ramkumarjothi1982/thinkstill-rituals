@@ -85,13 +85,13 @@ If the two jobs are missing (the extensions weren't on at step 2), run the
 ## 5. Sign-in by email code
 
 Under *Authentication*:
-1. *Providers → Email*: enabled, with "Confirm email" on.
+1. *Providers → Email*: enabled, with "Confirm email" on. (The Edge Function also refuses any sign-in that wasn't by email code, so a password sign-up can't be used to reach someone's account.)
 2. *Email Templates → Magic Link*: replace the link with the code, so people type it in. For example:
    > **Your Hushmates code**
    > Your code is **{{ .Token }}**. It works for 10 minutes. If you didn't ask for it, you can ignore this email.
 3. *Settings*: email OTP expiry 600 seconds, length 6.
 4. *URL configuration*: the staging web address as the Site URL.
-5. *Rate limits*: keep the defaults or lower them.
+5. *Rate limits*: keep the defaults or lower them. One code per address a minute matches the app's "Send a new code" wait (`max_frequency` in `supabase/config.toml`).
 6. **Email sender.** Supabase's built-in sender only delivers to the project's team members' addresses, and only a few per hour. That's enough for staging with the team as testers.
    - 🛑 **Owner:** real testers outside the team need a custom SMTP provider. Choosing one and creating its account needs your approval; see `COSTS.md`.
 7. *Bot protection* (optional, free): Cloudflare Turnstile or hCaptcha. 🛑 Owner: a site key from your account.
@@ -182,6 +182,9 @@ Turning it off takes effect at once: `set ai '{"enabled": false}'`.
    ```
 7. In the dashboard's Table Editor, open `hushmates.journeys`: `text_enc` starts with `hmenc:v1:`. No one's words are readable there.
 8. On the first device, *You → Delete my data*: the account, its words and its sign-in are gone (*Authentication → Users*).
+9. Two things only a real project can show, before inviting anyone else:
+   - **How sign-ins are marked.** Decode an access token from step 1 (paste it into a JWT viewer you trust, or `node -e` with `Buffer.from(token.split('.')[1], 'base64url')`): its `amr` should name `otp`. If it names something else, the function will refuse every sign-in; tell the developer before going further.
+   - **Which header carries the caller's address.** Ask the function's logs (or a temporary log line) which of `x-forwarded-for`, `cf-connecting-ip` and `x-real-ip` holds the real address. If it isn't the last `x-forwarded-for` entry, set `HUSHMATES_CLIENT_IP_HEADER` to the right one (step 3).
 
 ## Undo
 

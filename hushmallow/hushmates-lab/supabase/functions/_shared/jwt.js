@@ -107,8 +107,12 @@ async function importJwks(set) {
 
 /**
  * @param {object} o
- *   issuers        [{ iss, provider, audience = 'authenticated', jwksUrl?, jwks?, hs256Secret?, algorithms? }]
+ *   issuers        [{ iss, provider, audience = 'authenticated', jwksUrl?, jwks?, hs256Secret?, algorithms?, methods? }]
  *                  `algorithms` can narrow what an issuer may use (default: what its keys allow)
+ *                  `methods`: how a person may have signed in (the token's `amr`), e.g. ['otp', 'magiclink'].
+ *                  Every method in the token must be one of these. Hushmates signs people in only by email
+ *                  code: a Supabase project also takes password sign-ups, and someone who registered a
+ *                  member's email with a password first must not get in with it.
  *   fetch, now     for tests
  *   leewaySeconds  clock difference tolerated on exp, nbf and iat
  *   jwksTtlMs      how long a fetched key set is trusted before fetching again
@@ -132,9 +136,13 @@ export function createVerifier({ issuers, fetch = globalThis.fetch, now = () => 
       allowed = allowed.filter((a) => c.algorithms.includes(a));
     }
     if (allowed.length === 0) throw new Error(`issuer ${c.iss} allows no algorithm its keys can check`);
+    if (c.methods !== undefined && (!Array.isArray(c.methods) || !c.methods.length || !c.methods.every((m) => typeof m === 'string' && m))) {
+      throw new Error(`issuer ${c.iss}: methods must be a list of sign-in methods`);
+    }
     byIss.set(c.iss, {
       iss: c.iss,
       provider: c.provider,
+      methods: c.methods ? new Set(c.methods) : null,
       audience: c.audience ?? 'authenticated',
       allowed: new Set(allowed),
       jwksUrl: c.jwksUrl || null,
@@ -242,6 +250,10 @@ export function createVerifier({ issuers, fetch = globalThis.fetch, now = () => 
     if (typeof claims.sub !== 'string' || !claims.sub || claims.sub.length > 255 || /[\u0000-\u001f\u007f]/.test(claims.sub)) refuse('sub');
     if (claims.role !== 'authenticated') refuse('role');
     if (claims.is_anonymous === true) refuse('anonymous');            // Hushmates needs a proven email, not a guest
+    if (c.methods) {
+      const amr = Array.isArray(claims.amr) ? claims.amr.map((x) => (typeof x === 'string' ? x : x?.method)) : [];
+      if (!amr.length || !amr.every((m) => typeof m === 'string' && c.methods.has(m))) refuse('method');
+    }
 
     return {
       iss: c.iss,

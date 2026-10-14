@@ -12,9 +12,12 @@ schemas = ["public", "graphql_public", "hushmates_api"]
 enable_signup = true
 [auth.email]
 enable_signup = true
-enable_confirmations = false
+# a password sign-up must prove the inbox first (and the Edge Function refuses password sign-ins anyway)
+enable_confirmations = true
 otp_length = 6
 otp_expiry = 600
+# one code per address a minute (the app's "Send a new code" waits the same)
+max_frequency = "60s"
 
 [functions.hushmates]
 # the function checks every token itself (and the scheduler's route carries none)

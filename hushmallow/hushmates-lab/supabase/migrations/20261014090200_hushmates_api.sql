@@ -12,10 +12,17 @@ language plpgsql security definer set search_path = '' as $$
 declare m hushmates.members; a jsonb := coalesce(p_args, '{}'); v jsonb;
 begin
   if jsonb_typeof(a) <> 'object' then a := '{}'; end if;
+  if p_issuer is null or p_subject is null or p_method is null then return hushmates.err('not-signed-in'); end if;
+  select mm.* into m from hushmates.identities i join hushmates.members mm on mm.id = i.member_id
+  where i.issuer = p_issuer and i.subject = p_subject;
+  -- a ceiling on how fast anyone can call at all, members or not (each action also has its own limits);
+  -- counted outside the call itself, so calls that fail count too
   begin
-    if p_issuer is null or p_subject is null or p_method is null then perform hushmates.fail('not-signed-in'); end if;
-    select mm.* into m from hushmates.identities i join hushmates.members mm on mm.id = i.member_id
-    where i.issuer = p_issuer and i.subject = p_subject;
+    perform hushmates.rate(coalesce(m.id::text, 'id:' || p_issuer || '|' || p_subject),
+      jsonb_build_array(jsonb_build_array('rpc', hushmates.lim('requestsPerMinute'), 60000)));
+  exception when sqlstate 'P0001' then return hushmates.err('rate-limited');
+  end;
+  begin
 
     if p_method = 'redeemInvite' then
       return hushmates.redeem_invite(p_issuer, p_subject, coalesce(p_ctx ->> 'provider', 'hushmates'), a, p_ctx);
@@ -25,8 +32,6 @@ begin
       perform hushmates.fail('invite-required', 'Please enter your invitation first.');
     end if;
     if m.state = 'deleted' then perform hushmates.fail('not-signed-in'); end if;
-    -- a ceiling on how fast anyone can call at all (each action also has its own limits)
-    perform hushmates.rate(m.id::text, jsonb_build_array(jsonb_build_array('rpc', hushmates.lim('requestsPerMinute'), 60000)));
     update hushmates.identities set last_seen_at = hushmates.clock()
     where issuer = p_issuer and subject = p_subject and (last_seen_at is null or last_seen_at < hushmates.clock() - interval '1 hour');
 
@@ -164,12 +169,39 @@ begin
   update hushmates.reports set evidence = '{}', details_enc = ''
   where status <> 'open' and resolved_at < v_t - make_interval(days => (s ->> 'evidenceDaysAfterResolution')::int) and evidence <> '{}';
   get diagnostics n2 = row_count;
+  -- a report nobody decided keeps its words for a limited time too
+  update hushmates.reports set evidence = '{}', details_enc = ''
+  where status = 'open' and at < v_t - make_interval(days => coalesce((s ->> 'openEvidenceDays')::int, 180)) and (evidence <> '{}' or details_enc <> '');
   delete from hushmates.audit_log where at < v_t - make_interval(days => (s ->> 'auditDays')::int);
   get diagnostics n3 = row_count;
   delete from hushmates.rate_events where at < v_t - make_interval(hours => (s ->> 'rateEventsHours')::int);
   get diagnostics n4 = row_count;
   delete from hushmates.usage_daily where day < (v_t - interval '7 days')::date;
   return jsonb_build_object('journeysCleared', n1, 'evidenceCleared', n2, 'auditDeleted', n3, 'rateEventsDeleted', n4);
+end $$;
+
+-- ------------------------------------------------------ ending sign-ins --
+/** The Edge Function ended this sign-in at the provider (or it isn't one of ours to end). */
+create or replace function hushmates_api.auth_deletion_done(p_issuer text, p_subject text) returns void
+language sql security definer set search_path = '' as $$
+  delete from hushmates.auth_deletions where issuer = p_issuer and subject = p_subject
+$$;
+
+/** Sign-ins still to end (the provider was unreachable): claimed for one retry each. */
+create or replace function hushmates_api.job_auth_deletions_claim(p_limit int default 20) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v jsonb;
+begin
+  with c as (
+    select issuer, subject from hushmates.auth_deletions
+    where attempts < 50 and (last_attempt_at is null or last_attempt_at < hushmates.clock() - interval '5 minutes')
+    order by created_at limit greatest(1, least(p_limit, 100)) for update skip locked
+  ), u as (
+    update hushmates.auth_deletions d set attempts = d.attempts + 1, last_attempt_at = hushmates.clock()
+    from c where d.issuer = c.issuer and d.subject = c.subject returning d.issuer, d.subject
+  )
+  select coalesce(jsonb_agg(jsonb_build_object('issuer', issuer, 'subject', subject)), '[]') into v from u;
+  return v;
 end $$;
 
 -- ------------------------------------------------------------ AI accounting --

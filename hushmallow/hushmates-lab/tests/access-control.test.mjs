@@ -155,7 +155,7 @@ test('production: server code, keys, tests, tools, docs and simulated data canâ€
   } finally { await s.close(); }
 });
 
-test('production build for a Supabase project: the page may connect to that project only, and a secret key is refused', () => {
+test('production build for a Supabase project: the page may connect to that project only, and a secret key is refused', async () => {
   const out = mkdtempSync(join(tmpdir(), 'hushmates-deploy-'));
   const jwt = (role) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ iss: 'supabase', ref: 'abcdefghijkl', role, iat: 1, exp: 2e9 })}.c2lnbmF0dXJlLW5vdC1jaGVja2Vk`;
   try {
@@ -165,6 +165,13 @@ test('production build for a Supabase project: the page may connect to that proj
     assert.match(html, /connect-src 'self' https:\/\/abcdefghijkl\.supabase\.co;/);
     const config = JSON.parse(readFileSync(join(out, 'app', 'app', 'config.json'), 'utf8'));
     assert.equal(config.supabaseUrl, 'https://abcdefghijkl.supabase.co');
+    // the production host's own header policy allows that project too (browsers apply both policies)
+    const host = createHushmatesServer({ mode: 'production', files: builtFiles(join(out, 'app')), log: quiet });
+    await new Promise((r) => host.server.listen(0, '127.0.0.1', r));
+    try {
+      const res = await fetch(`http://127.0.0.1:${host.server.address().port}/app/`);
+      assert.match(res.headers.get('content-security-policy'), /connect-src 'self' https:\/\/abcdefghijkl\.supabase\.co;/);
+    } finally { await host.close(); }
     for (const anonKey of [jwt('service_role'), 'sb_secret_abc123', '']) {
       assert.throws(() => build({ out: join(out, 'bad'), deploy: { supabaseUrl: 'https://abcdefghijkl.supabase.co', anonKey } }), /public/);
     }

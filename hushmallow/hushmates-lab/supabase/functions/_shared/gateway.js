@@ -47,7 +47,7 @@ const fail = (code, message) => { throw new GatewayError(code, message); };
  *   crypt     { encrypt, decrypt, mac, decryptDeep }  (supabase/functions/_shared/fieldcrypt.js)
  *   mallow    { perspective({ text, label, mallow, memberId, journeyId, recentAngles }) }  (supabase/functions/_shared/mallow.js)
  *   authAdmin { deleteUser({ issuer, subject }) }   ends the person's sign-in identity when they delete their data
- *   config    { allowedOrigins: [..], jobSecret, ownIssuers: [..] }
+ *   config    { allowedOrigins: [..], jobSecret, ownIssuers: [..], clientIpHeader? (e.g. 'cf-connecting-ip', once staging shows it's set by the platform) }
  */
 export function createGateway({ db, verifier, crypt, mallow, authAdmin = null, config = {}, log = console, now = () => Date.now() }) {
   let settingsCache = null;
@@ -139,14 +139,25 @@ export function createGateway({ db, verifier, crypt, mallow, authAdmin = null, c
     async deleteMyData(who, a) {
       const r = await rpc(who, 'deleteMyData', { confirm: a.confirm });
       mallow.forgetMember?.(r.memberId);                                // nothing of theirs stays cached here either
-      // the person's sign-in identity goes too (only identities this project issues; never another app's)
-      for (const id of r.identities || []) {
-        if (!authAdmin || !(config.ownIssuers || []).includes(id.issuer)) continue;
-        try { await authAdmin.deleteUser(id); } catch (e) { log.error?.('could not delete a sign-in identity', e?.message); }
-      }
+      // the person's sign-in identity goes too (only identities this project issues; never another app's);
+      // one the provider can't take now stays queued and the scheduler tries again until it's gone
+      for (const id of r.identities || []) await endSignIn(id);
       return { deleted: true };
     },
   };
+
+  async function endSignIn(id) {
+    if (!(config.ownIssuers || []).includes(id.issuer)) { await db.rpc('auth_deletion_done', { p_issuer: id.issuer, p_subject: id.subject }); return true; }
+    if (!authAdmin) return false;
+    try {
+      await authAdmin.deleteUser(id);
+      await db.rpc('auth_deletion_done', { p_issuer: id.issuer, p_subject: id.subject });
+      return true;
+    } catch (e) {
+      log.error?.('could not end a sign-in yet (it will be retried)', e?.message);
+      return false;
+    }
+  }
 
   async function details(text) {
     const note = normaliseText(text || '');
@@ -195,6 +206,9 @@ export function createGateway({ db, verifier, crypt, mallow, authAdmin = null, c
   /** The scheduler's minute: time's effects, then any Mallow perspectives waiting to be written. */
   async function tick({ batch = 10 } = {}) {
     const t = await db.rpc('job_tick', {});
+    // sign-ins of deleted accounts the provider couldn't end at the time
+    let signInsEnded = 0;
+    for (const id of (await db.rpc('job_auth_deletions_claim', { p_limit: 20 })) || []) if (await endSignIn(id)) signInsEnded += 1;
     let written = 0;
     for (;;) {
       const claimed = await db.rpc('job_mallow_claim', { p_limit: batch });
@@ -206,7 +220,7 @@ export function createGateway({ db, verifier, crypt, mallow, authAdmin = null, c
       }
       if (claimed.length < batch) break;
     }
-    return { ...t, mallowWritten: written };
+    return { ...t, mallowWritten: written, signInsEnded };
   }
 
   // ------------------------------------------------------------------ HTTP --
@@ -234,8 +248,11 @@ export function createGateway({ db, verifier, crypt, mallow, authAdmin = null, c
     const [x, y] = await Promise.all([crypt.mac(`job:${a}`), crypt.mac(`job:${b}`)]);
     return x === y;
   };
+  // the caller's network, for limits only: from a header the platform sets (config.clientIpHeader), or
+  // the last x-forwarded-for entry (the one the platform's own proxy appended; earlier ones the caller can write)
   const netOf = async (req) => {
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown';
+    const named = config.clientIpHeader ? req.headers.get(config.clientIpHeader)?.trim() : null;
+    const ip = named || req.headers.get('x-forwarded-for')?.split(',').map((x) => x.trim()).filter(Boolean).pop() || 'unknown';
     return (await crypt.mac(`net:${ip}`)).slice(0, 16);               // never stored as an address
   };
 

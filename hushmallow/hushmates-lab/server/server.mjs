@@ -48,6 +48,13 @@ export function createHushmatesServer({ mode = 'production', files, labFiles = n
   if (!(files instanceof Map) || !files.has('/app/index.html')) throw new Error('the app’s files are missing (build it first)');
   if (mode === 'production' && (labFiles || testerKey || auth || gateway)) throw new Error('a production host has no lab, no local sign-in and no API');
   const lab = mode === 'development' && typeof testerKey === 'string' && testerKey.length >= 16 && labFiles instanceof Map ? labFiles : null;
+  // a build for a Supabase project talks to that project (app/config.json): the header policy allows it too,
+  // as the page's own does (browsers apply both)
+  let backendOrigin = '';
+  try {
+    const url = files.get('/app/config.json') && JSON.parse(readFileSync(files.get('/app/config.json'), 'utf8')).supabaseUrl;
+    if (url) { const u = new URL(url); if (u.protocol === 'https:' || ['127.0.0.1', 'localhost'].includes(u.hostname)) backendOrigin = u.origin; }
+  } catch { /* no config, or not a URL: same origin only */ }
   const testers = new Map();                                            // sha(cookie) → until
 
   const headers = (res, extra = {}) => {
@@ -61,7 +68,7 @@ export function createHushmatesServer({ mode = 'production', files, labFiles = n
     if (secureCookies) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     for (const [k, v] of Object.entries(extra)) res.setHeader(k, v);
   };
-  const csp = (forLab) => `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'${forLab ? ' http://127.0.0.1:8790 http://localhost:8790' : ''}; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
+  const csp = (forLab) => `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'${backendOrigin ? ` ${backendOrigin}` : ''}${forLab ? ' http://127.0.0.1:8790 http://localhost:8790' : ''}; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
   const notHere = (res, head = false) => {
     headers(res, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'" });
     res.writeHead(404);

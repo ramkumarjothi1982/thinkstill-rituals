@@ -390,7 +390,8 @@ export class RelayService {
   _afterReframe(r, viewer, duplicate) {
     const j = this.s.journeys[r.journeyId];
     // after giving their own, a contributor sees how the others saw it (never who)
-    const earlier = j ? this._humans(j).filter((x) => x.slot < r.slot && !x.removed).map((x) => ({ slot: x.slot, text: x.text })) : [];
+    // (never one its owner hid, reported or blocked)
+    const earlier = j ? this._humans(j).filter((x) => x.slot < r.slot && !x.removed && !x.hiddenForOwner).map((x) => ({ slot: x.slot, text: x.text })) : [];
     // (a set-aside perspective answers exactly as a counted one would, so its writer can't tell)
     const homeward = !!j && (j.status !== 'travelling' || (!!r.setAside && r.slot >= this.L.perspectivesPerFeeling));
     return { slot: r.slot, homeward, earlier, duplicate, perspective: { id: r.id, text: r.text } };
@@ -867,6 +868,12 @@ export class RelayService {
     }
     // perspectives this person gave leave the collections they were in
     for (const r of Object.values(this.s.reframes)) if (r.author === acc.id) { r.text = ''; r.removed = true; }
+    // and their words leave the safety team's reports (the reports stay, wordless)
+    for (const rep of Object.values(this.s.reports)) {
+      if (rep.by === acc.id) rep.details = '';
+      if ((rep.kind === 'perspective' && rep.by === acc.id) || (rep.kind === 'feeling' && rep.subject === acc.id)) delete rep.evidence.feeling;
+      if (rep.kind === 'perspective' && (rep.subject === acc.id || (rep.by === acc.id && !this.s.reframes[rep.perspectiveId]))) delete rep.evidence.perspective;
+    }
     for (const h of Object.values(this.s.holds)) if (h.user === acc.id && this._holdLive(h)) this._endHold(h, 'voided');
     for (const [tok, id] of Object.entries(this.s.sessions)) if (id === acc.id) delete this.s.sessions[tok];
     acc.state = 'deleted';
@@ -893,7 +900,9 @@ export class RelayService {
     const r = this.s.reports[id];
     if (!r) fail('not-found');
     this._audit(mod.id, 'mod.view-report', { report: id });
-    return { ...structuredClone(r), subjectRef: r.subject };
+    // who reported it is never shown: the desk needs the words and the pattern, not the people
+    const { by, subject, notes, ...rest } = structuredClone(r);
+    return { ...rest, fromSystem: by === 'system', notes: notes.map(({ at, text }) => ({ at, text })), subjectRef: subject };
   }
   modResolve(token, { id, action, note = '' } = {}) {
     const mod = this._moderator(token);
@@ -903,7 +912,7 @@ export class RelayService {
     if (action === 'dismiss') r.status = 'no-action';
     else if (action === 'resume-feeling' && j) { j.paused = false; r.status = 'no-action'; }
     else if (action === 'remove-feeling' && j) { j.paused = true; if (j.status === 'travelling') this._return(j, 'removed'); r.status = 'actioned'; }
-    else if (action === 'remove-perspective' && r.perspectiveId) { const x = this.s.reframes[r.perspectiveId]; if (x) x.removed = true; r.status = 'actioned'; }
+    else if (action === 'remove-perspective' && r.perspectiveId) { const x = this.s.reframes[r.perspectiveId]; if (x) { x.removed = true; x.text = ''; } r.status = 'actioned'; }   // the report keeps its own copy
     else if (action === 'restrict-user' && r.subject) {
       const a = this.s.accounts[r.subject];
       if (a && a.role !== 'moderator') {

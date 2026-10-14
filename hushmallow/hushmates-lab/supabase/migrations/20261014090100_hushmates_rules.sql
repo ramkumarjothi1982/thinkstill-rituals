@@ -56,6 +56,8 @@ create or replace function hushmates.rate(p_subject text, p_rules jsonb) returns
 language plpgsql set search_path = '' as $$
 declare r jsonb; v_t timestamptz := hushmates.clock();
 begin
+  -- one count at a time per person: requests arriving together can't all pass the same check
+  perform pg_advisory_xact_lock(hashtextextended('hushmates:rate:' || p_subject, 0));
   for r in select * from jsonb_array_elements(p_rules) loop
     if (select count(*) from hushmates.rate_events e
         where e.subject = p_subject and e.kind = r ->> 0 and e.at > v_t - make_interval(secs => (r ->> 2)::numeric / 1000)) >= (r ->> 1)::int then
@@ -350,6 +352,8 @@ create or replace function hushmates.m_submit_feeling(m hushmates.members, a jso
 language plpgsql set search_path = '' as $$
 declare d hushmates.journeys; v_t timestamptz := hushmates.clock(); v_id uuid; v_allow boolean := coalesce((a ->> 'allowFallback')::boolean, false);
 begin
+  -- one release at a time per person, so two at once can't both pass the active-feelings count
+  perform 1 from hushmates.members where id = m.id for update;
   perform hushmates.actor(m);
   if not hushmates.client_id_ok(a ->> 'clientId') then perform hushmates.fail('invalid'); end if;
   if (a ->> 'consent') is distinct from 'true' then perform hushmates.fail('consent-required'); end if;
@@ -650,7 +654,8 @@ language sql stable set search_path = '' as $$
     -- a set-aside perspective answers exactly as a counted one would, so its writer can't tell
     'homeward', j.status <> 'travelling' or (r.set_aside and r.slot >= hushmates.lim('perspectivesPerFeeling')),
     'earlier', coalesce((select jsonb_agg(jsonb_build_object('slot', x.slot, 'text', x.text_enc) order by x.slot)
-                         from hushmates.perspectives x where x.journey_id = r.journey_id and not x.set_aside and x.slot < r.slot and not x.removed), '[]'),
+                         from hushmates.perspectives x where x.journey_id = r.journey_id and not x.set_aside and x.slot < r.slot and not x.removed
+                           and not x.hidden_for_owner), '[]'),     -- never one its owner hid, reported or blocked
     'duplicate', p_duplicate,
     'perspective', jsonb_build_object('id', r.id, 'text', r.text_enc))
   from hushmates.perspectives r join hushmates.journeys j on j.id = r.journey_id where r.id = p_perspective
@@ -995,9 +1000,20 @@ begin
   end loop;
   -- perspectives this person gave leave the collections they were in
   update hushmates.perspectives set text_enc = '', text_mac = null, removed = true where author = m.id;
+  -- and their words leave the safety team's reports: what they wrote when reporting, their own feeling
+  -- quoted in a report they made, and their words quoted in reports about them (the report stays, wordless)
+  update hushmates.reports set details_enc = '' where by_member = m.id and details_enc <> '';
+  update hushmates.reports set evidence = evidence - 'feeling'
+  where (kind = 'perspective' and by_member = m.id) or (kind = 'feeling' and subject = m.id);
+  update hushmates.reports set evidence = evidence - 'perspective'
+  where kind = 'perspective' and (subject = m.id
+    or (by_member = m.id and not exists (select 1 from hushmates.perspectives x where x.id = perspective_id)));   -- their Mallow's
   update hushmates.holds set status = 'voided', ended_at = hushmates.clock()
   where member_id = m.id and status in ('offered', 'caught') and expires_at > hushmates.clock();
   select coalesce(jsonb_agg(jsonb_build_object('issuer', issuer, 'subject', subject)), '[]') into v_ids from hushmates.identities where member_id = m.id;
+  -- their sign-ins are ended at the provider by the Edge Function; any it can't reach now are retried
+  insert into hushmates.auth_deletions (issuer, subject, created_at)
+  select issuer, subject, hushmates.clock() from hushmates.identities where member_id = m.id on conflict do nothing;
   delete from hushmates.identities where member_id = m.id;
   update hushmates.members set state = 'deleted', deleted_at = hushmates.clock(), pseudonym = 'A former Mallow', mallow = 'noomi', catching = false where id = m.id;
   perform hushmates.audit(m.id::text, 'account.deleted');
@@ -1013,6 +1029,9 @@ begin
   select member_id into v_member from hushmates.identities where issuer = p_issuer and subject = p_subject;
   if v_member is not null then return hushmates.me_view(v_member); end if;           -- already in: nothing to do
   if (a -> 'adult') is distinct from 'true'::jsonb then perform hushmates.fail('invalid', 'Hushmates is for adults (18+) during the pilot.'); end if;
+  -- one try at a time per person and per network, so guesses sent together can't all pass the count
+  perform pg_advisory_xact_lock(hashtextextended('hushmates:invite:' || v_who, 0));
+  perform pg_advisory_xact_lock(hashtextextended('hushmates:invite-net:' || v_net, 0));
   -- wrong codes are limited per person, and (more loosely: people share homes and campuses) per network
   select count(*) filter (where subject = v_who), count(*) filter (where subject = 'net:' || v_net) into v_wrong, v_wrong_net
   from hushmates.rate_events where kind = 'invite-wrong' and subject in (v_who, 'net:' || v_net) and at > v_t - interval '1 hour';
@@ -1057,15 +1076,16 @@ begin
   select * into r from hushmates.reports where id = hushmates.as_uuid(a ->> 'id');
   if r.id is null then perform hushmates.fail('not-found'); end if;
   perform hushmates.audit(m.id::text, 'mod.view-report', jsonb_build_object('report', r.id));
-  return jsonb_build_object('id', r.id, 'at', hushmates.ms(r.at), 'by', coalesce(r.by_member::text, 'system'), 'kind', r.kind, 'journeyId', r.journey_id,
-    'perspectiveId', r.perspective_id, 'reason', r.reason, 'details', r.details_enc, 'subject', r.subject, 'status', r.status, 'urgent', r.urgent,
+  -- who reported it is never shown: the desk needs the words and the pattern, not the people
+  return jsonb_build_object('id', r.id, 'at', hushmates.ms(r.at), 'fromSystem', r.by_member is null, 'kind', r.kind, 'journeyId', r.journey_id,
+    'perspectiveId', r.perspective_id, 'reason', r.reason, 'details', r.details_enc, 'status', r.status, 'urgent', r.urgent,
     'evidence', r.evidence, 'subjectRef', r.subject, 'isMallow', r.kind = 'perspective' and not exists (select 1 from hushmates.perspectives x where x.id = r.perspective_id),
     -- what the desk needs to see a pattern, without anyone's identity: earlier reports about the same person
     'subjectHistory', case when r.subject is null then null else jsonb_build_object(
       'reports', (select count(*) from hushmates.reports x where x.subject = r.subject and x.id <> r.id and x.at < r.at),
       'actioned', (select count(*) from hushmates.reports x where x.subject = r.subject and x.id <> r.id and x.at < r.at and x.status = 'actioned'),
       'restricted', (select state from hushmates.members where id = r.subject) = 'restricted') end,
-    'notes', coalesce((select jsonb_agg(jsonb_build_object('by', n.by_member, 'at', hushmates.ms(n.at), 'text', n.text_enc) order by n.at)
+    'notes', coalesce((select jsonb_agg(jsonb_build_object('at', hushmates.ms(n.at), 'text', n.text_enc) order by n.at)
       from hushmates.report_notes n where n.report_id = r.id), '[]'));
 end $$;
 
@@ -1089,7 +1109,7 @@ begin
       v_status := 'actioned';
     when 'remove-perspective' then
       if r.perspective_id is null then perform hushmates.fail('invalid'); end if;
-      update hushmates.perspectives set removed = true where id = r.perspective_id;
+      update hushmates.perspectives set removed = true, text_enc = '', text_mac = null where id = r.perspective_id;
       v_status := 'actioned';
     when 'restrict-user' then
       if r.subject is null then perform hushmates.fail('invalid'); end if;
@@ -1116,6 +1136,7 @@ begin
   perform hushmates.moderator(m);
   perform hushmates.audit(m.id::text, 'mod.view-audit');
   return jsonb_build_object('entries', coalesce((select jsonb_agg(x.e order by x.id) from (
-    select detail || jsonb_build_object('id', id, 'at', hushmates.ms(at), 'actor', actor, 'action', action) as e, id
+    -- accounts by a short reference only
+    select (detail - 'member') || jsonb_build_object('id', id, 'at', hushmates.ms(at), 'actor', case when actor ~ '^[0-9a-f-]{36}$' then left(actor, 8) else actor end, 'action', action) as e, id
     from hushmates.audit_log order by id desc limit 200) x), '[]'));
 end $$;

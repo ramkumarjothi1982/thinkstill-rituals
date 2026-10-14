@@ -1,100 +1,88 @@
-# Hushmates · Two experiences, strictly apart
+# Hushmates · Three experiences, strictly apart
 
-Hushmates now has two separate experiences, and the server keeps them apart.
-
-| | Customer experience | Developer experience |
-|---|---|---|
-| What it is | The app: invitation, welcome, Release, Catch, My journeys, Returned, You & safety, Your data | The lab: Control room, scenarios A/B/C, Phone A/B, test identities, dev clock, "Type it for me", safety desk, lab notes |
-| Where | `/app/` on a Hushmates server (`app/index.html`) | `/lab/` on a **development** server, for authorised testers only (`index.html`, `lab/`) |
-| Production build | `dist/app`, made by `tools/build-app.mjs` | Not built, not served, not present |
-| Who it talks to | The Hushmates server's API, as the signed-in member | An in-page simulated service with seven test identities, entirely inside the tester's browser |
+| | Customer app | Safety desk | Lab |
+|---|---|---|---|
+| What it is | Sign-in, invitation, welcome, Release, Catch, My journeys, Returned, You & safety, Your data | Reports, decisions, team notes, the activity log | Control room, scenarios A/B/C, Phone A/B, test identities, dev clock |
+| Where | `/app/` (`app/`) | `/staff/` (`staff/`) | `/lab/` on a **development** host, for authorised testers only (`index.html`, `lab/`) |
+| Production build | `dist/app` (`tools/build-app.mjs`) | `dist/staff` | Not built, not served, not present |
+| Who it talks to | Supabase Auth (email codes) and the Hushmates Edge Function, as the signed-in member | The same, as a moderator; the server checks the role on every call | An in-page simulated service with seven test identities, entirely inside the tester's browser |
 
 ## How the separation is enforced
 
-**On the server** (`server/server.mjs`), not by hiding buttons:
+**In the database** (`supabase/migrations`):
 
-- **Two modes.** `production` serves only the built app (the files in
-  `dist/app/manifest.json`, each checked against its hash at start-up) and the
-  API. It has no lab routes at all, and it refuses to start if given a lab or a
-  tester key. `development` adds the lab, but only for a tester.
-- **Only what the app loads.** The customer file list is worked out by
-  following the app's imports from `app/index.html` (`server/app-files.mjs`).
-  The server answers only for those exact paths. Every other path gets the same
-  plain "This page isn't here." page, so `/lab/` looks like any missing page.
-  Server code, tests, tools, docs, test data and the simulated network are
-  never in the list. Traversal tricks (`..`, `%2e%2e`, `%2f`, backslashes,
-  case changes) don't work, because a path is looked up, never joined.
-- **Testers.** The lab answers only to a tester key that whoever runs a
-  development server sets (`HUSHMATES_TESTER_KEY`, 16 characters or more).
-  The tester opens `/lab/?key=…` once. The server swaps the key for an HttpOnly,
-  SameSite=Strict cookie and redirects, so the key leaves the address bar. With
-  no key, a short key or a wrong key, there is no lab. A member's session
-  doesn't open it, and a tester's cookie opens no account.
-- **Members.** People join with a single-use invitation code, a name only they
-  see, and confirmation that they're 18 or over. The server checks all three
-  and records the adult confirmation. The session is an HttpOnly,
-  SameSite=Strict cookie (Secure in production). The server keeps the mapping
-  from that cookie to the internal session, so page scripts can't read either.
-  Coming back after signing out needs the same invitation code and the same
-  name. Guessing invitations is slowed to 10 wrong tries per 15 minutes. An
-  account keeps at most 5 sessions and 6 live-update streams. A device signing
-  in again replaces its own session, and idle sessions are swept.
-- **The API** (`/api/v1/rpc/<method>`) reaches only the methods a person may
-  use (`CLIENT_METHODS`). The safety-desk methods (`MODERATOR_METHODS`) check
-  the moderator role on the server. Test, account and internal methods
-  (`createTestAccount`, `signInTestAccount`, `seedRelay`, `createMember`,
-  `issueSession`, `tick`, anything starting `_`) can't be called. There is no
-  clock route.
-- **Changes from other sites are refused.** Every change needs a header that a
-  page on another site can't send, a JSON body, and (when the browser says) our
-  own origin and `Sec-Fetch-Site`.
-- **Errors.** The server returns the service's own words (written for people)
-  or one gentle line. Details stay in the server's log.
+- Every table is in schema `hushmates`, with row level security on and no grants
+  to anyone. Browsers (the `anon` and `authenticated` roles) can't read, write or
+  call anything, and the service role can't touch a table directly either.
+- The only door is `hushmates_api.rpc(issuer, subject, method, args)`, executable
+  by the service role alone, which the Edge Function uses. It finds the member
+  from the verified sign-in identity, and every method checks ownership and role
+  inside its own transaction. Asking for someone else's feeling, hold,
+  perspective or report answers "not found". The desk's methods answer
+  "forbidden" to anyone who isn't a moderator.
+- Words are stored encrypted (AES-256-GCM, by the Edge Function), so a database
+  export or a dashboard browse shows no one's feelings.
 
-**In the service** (`core/relay.js`):
+**In the Edge Function** (`supabase/functions/_shared/gateway.js`):
 
-- `testMode` must be set for test identities to exist (`createTestAccount`,
-  `signInTestAccount`, `seedRelay`). Only the lab and the tests set it, and the
-  server never does. A server refuses to start from saved state that holds test
-  identities or testing examples. As a second safeguard outside test mode, a
-  test identity can't sign in and its feelings never circulate. `me()` only
-  mentions test identities in the lab.
-- Fixed testing examples (`cannedExamples`) need `testMode` too. A canned
-  answer is treated as no answer, and one kept in old state is never shown or
-  exported. The label "Example for testing, not generated" lives only in the
-  server-side service.
-- Test controls can't bypass the rules. The lab's controls go through the same
-  service rules (consent, screening, holds, limits): "Type it for me" only fills
-  a text box, which is screened like any other. The dev clock and fixtures
-  touch only the lab's own in-page service. Nothing in the lab reaches a server.
+- Who is calling comes only from a verified Supabase access token: signature,
+  issuer, audience, expiry and role, and **how they signed in**. Only an email
+  code (`amr`: otp or magiclink) opens Hushmates, so a password sign-up for
+  someone else's email gets nothing.
+- Only allow-listed methods (`CLIENT_METHODS`, `MODERATOR_METHODS`). Test,
+  account and internal methods (`createTestAccount`, `seedRelay`, `mallowContext`,
+  the two-step internals, anything else) answer "not found". There is no clock
+  route; the scheduler's route needs its own secret.
+- Other sites: CORS answers only the app's own origins, a request from another
+  origin is refused, bodies must be JSON and small, and tokens travel as a Bearer
+  header (never a cookie), so another site's page can't act as anyone.
+- Errors carry the service's own words (written for people) or one gentle line.
+  Details stay in the function's log.
+
+**Members** sign in with an email code, then (the first time) an invitation code,
+a name only they see, and confirmation that they're 18 or over:
+
+- Invitation codes are stored only as keyed hashes. They are single use (or as set),
+  expire, and can be revoked. Wrong guesses are limited per person and per network.
+- The session (Supabase's access and refresh tokens) is kept in the browser's
+  storage, as supabase-js does. The app's strict Content Security Policy
+  (`script-src 'self'`) is what keeps other scripts from reading it.
+- A new device needs only a new code, and has everything (the account is on the
+  server). Deleting your data deletes the account's words and its sign-in.
+
+**Testers.** The lab answers only on a development host and only to a tester key
+set by whoever runs it (`HUSHMATES_TESTER_KEY`, 16 characters or more). The
+tester opens `/lab/?key=…` once; the host swaps the key for an HttpOnly,
+SameSite=Strict cookie and redirects. With no key, a short key or a wrong key,
+there is no lab. The tester cookie is not an account: the API still needs a real
+sign-in.
+
+**On the web host** (`server/server.mjs`): production serves only the built files
+(each checked against the build's hash), by lookup, never by joining a path onto
+the disk. Every other path, the lab, `/auth/`, `/functions/` and the old `/api/`
+included, is the same "This page isn't here." page. A production host refuses to
+start with a lab, a sign-in emulator or an API.
+
+**In the reference engine** (`core/relay.js`, which the lab runs in the page and the
+tests compare the database against): `testMode` must be set for test identities
+and canned examples to exist. Only the lab and the tests set it. The real backend
+has no test identities at all.
 
 **In the build** (`tools/build-app.mjs`):
 
-- `dist/app` holds exactly the files the app loads (68 today; a test pins the
-  list, so a stray import of server or lab code fails).
-- What ships has no comments: developers' notes stay in the source. Every
-  stripped module is checked to still parse.
-- Every built file is scanned as written, and again with split lines and
-  joined pieces read whole. The build is refused (and deleted) if it contains
-  lab or control-room words, test identities, simulated services, testing labels,
-  developer signals, server tuning, debug calls, local addresses, anything that
-  looks like a credential, or placeholders. A test plants each kind of content
-  and checks that the scan catches it.
-- Server-only code never ships: `core/relay.js`, `core/relay-rules.js` (hold
-  times, rate limits, budgets, review thresholds), `core/relay-seed.js`,
-  `core/perspectives.js`, `net/`, `lab/`.
+- `dist/app` and `dist/staff` hold exactly the files each page loads (a test pins
+  the app's list, so a stray import of server or lab code fails).
+- No comments ship; every stripped module is checked to still parse.
+- Every built file is scanned, and the build refused, for lab and control-room
+  words, test identities, testing labels, debug calls, local addresses, anything
+  that looks like a credential, and any signed key that isn't the public anon key.
+- For a Supabase project, `--supabase-url` and `--anon-key` write `config.json`
+  and allow the page (and the production host's header policy) to connect to
+  that project, and nowhere else.
 
-**In the interface:**
-
-- Lab-only notes (where a Mallow perspective came from, "test identity", the
-  crisis-resources review note) live in `lab/lab-notes.js`, which the
-  customer app never loads. Scenes leave an empty place (`hostNote`) that only
-  the lab fills.
-- Only words written for people reach the screen (`ui/dom.js` `humane`). A
-  browser, parsing or programming error becomes "Something went wrong. Please
-  try again in a moment."
-- "Your data" is a short, warm summary with **Download my data**. The file is
-  for the person's device and is never shown on screen (see below).
+**In the interface:** lab-only notes live in `lab/lab-notes.js`, which the
+customer app never loads. Only words written for people reach the screen
+(`ui/dom.js` `humane`).
 
 ## Your data
 
@@ -126,6 +114,8 @@ the feeling never learns of it: no place taken, no petal, no journey step,
 nothing in the author's file. A perspective the author hid themselves (by
 blocking, reporting or letting it go) leaves no count or petal either.
 
+Deleting everything removes the account's words (feelings, perspectives given, the Mallow's perspectives, the person's own report notes), the safety evidence about them, and their sign-in (`m_delete_my_data`; tested in `tests/backend-ops.test.mjs` and `tests/access-control.test.mjs`).
+
 Tests: `tests/your-data.test.mjs` (12). They cover the allow-list, both
 directions of privacy, sealing, removals, reports, blocks (including the
 set-aside case), who may export, the Mallow perspective, and plain words and
@@ -133,75 +123,53 @@ dates.
 
 ## What the tests prove
 
-`tests/access-control.test.mjs` (20) runs real servers over HTTP in both modes:
+`tests/access-control.test.mjs` (16) runs the production host and the whole local
+stack (real Postgres, the local copy of Supabase Auth, the Edge Function's code)
+over HTTP:
 
-- the lab, its files and test data are 404 in production for everyone, with
-  the tester key too, and look like any missing page;
-- server code, tests, tools and docs can't be fetched, however the path is
-  written;
-- with no session, everything is "not signed in";
-- joining needs a real invitation and adult confirmation, the cookie flags are
-  right, and no internal token reaches the page;
-- invitation guessing is slowed down;
-- an ordinary member can't reach the lab or any testing method;
-- the safety desk answers only to moderators;
-- the lab opens only for the tester key (and not at all without one), and the
-  tester cookie is not an account;
-- forged, leaked and signed-out cookies open nothing;
-- changes from other sites are refused;
-- consent, safety screening, privacy, Mallow timing and honest labels hold for
-  direct API calls;
-- deleting your data ends the session for good;
-- live updates reach only their person;
-- sessions and live updates end when they should, and can't pile up (a device
-  signing in again replaces its session, deleting your data closes every
-  device's live updates);
-- a server refuses saved lab state (test identities, testing examples);
-- a build changed after it was made is refused.
+- production: the app and the desk served with protective headers; no lab, no
+  sign-in emulation, no API, however asked; server code, keys and tools can't be
+  fetched, however the path is written; a deploy build connects only to its
+  Supabase project, and a secret key is refused; a build changed afterwards is
+  refused;
+- no token, a forged token (unsigned, signed with the public key, a real token
+  with its claims changed), an expired token: "please sign in again";
+- signed in but not invited: only "who am I" and "redeem an invitation"; real
+  codes only, adults only, single use;
+- invitation guessing slowed per person and per network, and a header can't
+  pretend to be another network;
+- a member can't reach the lab, any testing method, the scheduler or the desk's
+  methods; a safety-team invitation opens the desk;
+- other sites can't call the API;
+- consent, safety screening, encryption at rest and privacy hold for direct calls;
+- the same person on a new device has everything; deleting ends the sign-in.
 
-`tests/build.test.mjs` (7) checks the build: the file list, the scan, planted
-defects (including split and joined words, and SVG), the pinned list, and that
-stripping comments changes nothing else (strings, templates and regular
-expressions stay exactly as written). `tests/audit-fixes.test.mjs` (6) covers the
-developer-content audit's findings.
+Also: `backend-db-access` (role by role, no table or function reachable),
+`backend-auth` (36: the sign-in tokens, the encryption, the local Auth copy),
+`backend-review-fixes` (regressions from the independent reviews, including
+password sign-ins refused), `client-auth` and `client-review-fixes` (the app's
+sign-in and link), `build` (7), `your-data` (12), `audit-fixes` (6).
 
-`tools/app-shots.mjs` drives the customer app as customers get it: the
-production build on a production-mode server, with people joining by
-invitation. It photographs each screen and fails if any screen's visible text,
-labels or placeholders contain developer content, raw data, internal ids,
-programming values or testing words, or if there's any console error.
+`tools/app-shots.mjs` drives the production build in Chromium on the whole local
+stack with many accounts at once, and fails on developer content, raw data,
+internal ids or testing words on any screen, or any unexpected console error.
 
 ## Running them
 
 ```bash
-# the customer app, from the production build (nothing is deployed)
-node hushmallow/hushmates-lab/tools/build-app.mjs
-HUSHMATES_INVITES="CODE-ONE,CODE-TWO" node hushmallow/hushmates-lab/server/main.mjs --mode production --port 8080
-# → http://127.0.0.1:8080/app/  (/lab/ is "This page isn't here.")
-
-# a development server with the lab for testers
-HUSHMATES_TESTER_KEY="$(openssl rand -base64 24)" node hushmallow/hushmates-lab/server/main.mjs --mode development --port 8090
-# → the app at /app/; the lab at the /lab/?key=… address it prints
+cd hushmallow/hushmates-lab
+node --test tests/*.test.mjs                          # needs the local Postgres (docs/BACKEND.md)
+node server/dev-stack.mjs                             # everything locally; the lab only with HUSHMATES_TESTER_KEY
+node tools/build-app.mjs && node server/main.mjs --mode production --port 8080   # the production files
 ```
 
-The lab still works as a standalone page on a developer's own machine
-(`python3 -m http.server`, see the README). That serves the source tree, so
-use it only locally. The Hushmates server is the only way the app is meant to
-be served to anyone else.
+## Limits (need the owner before production)
 
-## Limits of this prototype (need approval before production)
-
-- **Sign-in.** Invitation codes stand in for real accounts. Production needs
-  Supabase Auth (`RELAY.md` §5); the server's design (HttpOnly session, API
-  allow-list, origin checks, no lab in production) carries over.
-- **State.** The server keeps state in memory, or in one JSON file
-  (`--state`). Production needs Postgres with the rules enforced there, as in
-  `RELAY.md` §5.
-- **Moderators** join with a staff invitation (`HUSHMATES_STAFF_INVITES`). The
-  safety desk interface exists only in the lab today, so a staff tool is still
-  to be built.
-- **`data-test` attributes.** They stay in the app's markup for automated
-  checks. They are invisible, and say nothing a person's own API replies don't
-  already say.
-- **Not tested here:** TLS, hosting, real email invitations and rate limiting
-  across several server instances.
+- The real Supabase project, Auth and Edge runtime are exercised only on staging
+  (`docs/STAGING.md`); locally they are the local Auth copy and the Edge
+  Function's code under Node.
+- The network used for invitation limits comes from the last `x-forwarded-for`
+  entry (or `HUSHMATES_CLIENT_IP_HEADER`); confirm on staging which header the
+  platform sets.
+- `data-test` attributes stay in the markup for automated checks; they are
+  invisible and say nothing a person's own answers don't.

@@ -65,7 +65,7 @@ export async function startDevStack({
   const issuer = `${origin}/auth/v1`;
 
   const auth = await createAuthEmulator({ pool, issuer, serviceKey: keys.serviceKey, anonKey, now, log: quiet ? {} : log });
-  const verifier = createVerifier({ issuers: [{ iss: issuer, provider: 'hushmates', audience: 'authenticated', jwks: auth.jwks }], now });
+  const verifier = createVerifier({ issuers: [{ iss: issuer, provider: 'hushmates', audience: 'authenticated', jwks: auth.jwks, methods: ['otp', 'magiclink'] }], now });
   const crypt = await createFieldCrypt({ keys: { [keys.dataKeyId]: keys.dataKey }, current: keys.dataKeyId, macKey: keys.macKey });
   const db = createPgDb(pool, moveDbClock ? { now } : {});     // tests move the database's clock with theirs
   const mallow = createMallowFor({ db, env: process.env, log, now });
@@ -74,7 +74,7 @@ export async function startDevStack({
     config: { allowedOrigins: [origin, `http://localhost:${port}`], jobSecret: keys.jobSecret, ownIssuers: [issuer] },
     authAdmin: { deleteUser: async ({ subject }) => {
       const res = await fetch(`${issuer}/admin/users/${subject}`, { method: 'DELETE', headers: { apikey: keys.serviceKey, authorization: `Bearer ${keys.serviceKey}` } });
-      if (!res.ok) throw new Error(`auth delete ${res.status}`);
+      if (!res.ok && res.status !== 404) throw new Error(`auth delete ${res.status}`);    // gone already is fine
     } },
   });
 

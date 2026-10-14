@@ -37,7 +37,7 @@ insert into hushmates.settings (key, value) values
    }'),
   ('mallow', '{ "available": true, "autoGenerate": true, "claimTimeoutMs": 120000 }'),
   ('ai', '{ "enabled": false, "monthlyCapAud": 0, "perMemberDaily": 3, "perDayGlobal": 200, "timeoutMs": 20000, "costPerCallAud": 0.06, "cacheTtlMs": 3600000 }'),
-  ('retention', '{ "returnedDays": 30, "evidenceDaysAfterResolution": 90, "auditDays": 365, "rateEventsHours": 48 }');
+  ('retention', '{ "returnedDays": 30, "evidenceDaysAfterResolution": 90, "openEvidenceDays": 180, "auditDays": 365, "rateEventsHours": 48 }');
 
 -- ------------------------------------------------------------------- people --
 create table hushmates.invites (
@@ -261,6 +261,17 @@ create table hushmates.ops_daily (                      -- counts of expensive o
   kind text not null,
   count bigint not null default 0,
   primary key (day, kind)
+);
+
+-- Sign-ins to end at the sign-in provider after someone deletes their data. The Edge Function ends
+-- them at once; any it couldn't (the provider down) are retried by the scheduler until they're gone.
+create table hushmates.auth_deletions (
+  issuer text not null,
+  subject text not null,
+  created_at timestamptz not null,
+  attempts int not null default 0,
+  last_attempt_at timestamptz,
+  primary key (issuer, subject)
 );
 
 -- ---------------------------------------------------------------- no access --

@@ -32,7 +32,9 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
   Losing the data key loses every stored feeling.
 
 ### Sign-in and accounts
-- ✅ Passwordless email code, invitation, 18+ confirmation. Invitations are hashed, use-limited, expiring and revocable. Wrong guesses are limited per person (10 an hour) and per network (30 an hour), and the network can't be faked with a header (tested).
+- ✅ Passwordless email code, invitation, 18+ confirmation. Invitations are hashed, use-limited, expiring and revocable. Wrong guesses are limited per person (10 an hour) and per network (30 an hour), counted one at a time so guesses sent together can't slip past (tested).
+- ✅ Only an email-code sign-in opens Hushmates. The Edge Function checks how the person signed in (the token's `amr`), so a password sign-up for someone else's email gets nothing (tested). 🟡 Confirm on staging that Supabase writes `otp` for an email code (`STAGING.md` step 10).
+- 🟡 The network used for those limits is the last `x-forwarded-for` entry, which the platform's proxy appends; a caller can only write earlier ones. Confirm on staging which header Supabase sets, and name it in `HUSHMATES_CLIENT_IP_HEADER` if there's a better one.
 - ✅ The same email on a new device reaches the same account and everything in it (tested). No usernames or passwords.
 - ✅ Identities are `(issuer, subject)` linked to a member. The main Hushmallow login can later be added as a second issuer, without a second account. It is not connected now: production Hushmallow auth is untouched.
 - 🟡 Supabase Auth itself (GoTrue). Locally, an emulator with the same endpoints is used (`server/auth-emulator.mjs`, local-only by design). Real Supabase Auth differs in details: rate limits, error codes, and email templates (the code must be put in the template, step 5).
@@ -58,7 +60,8 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
 
 ### Privacy and consent
 - ✅ Consent is explicit before a feeling travels, and separately for the Mallow fallback. The app and the export say who can receive or process what.
-- ✅ Download my data (a human summary plus a file) and delete my data: the account, words and sign-in are gone, and nobody else's data is touched (tested).
+- ✅ Download my data (a human summary plus a file) and delete my data. The account goes, with its words: feelings, the perspectives it gave, its Mallow's perspectives, its own report notes, and its words quoted in safety reports (the reports stay, wordless). Its sign-in goes too; if the sign-in provider can't be reached at that moment, the scheduler keeps trying. Nobody else's data is touched (tested).
+- ✅ Words a moderator removes are erased; the report keeps its own copy as evidence until retention clears it (90 days after a decision, 180 days for a report nobody decided).
 - ✅ Retention: unsaved feelings are cleared 30 days after they come home, resolved report evidence after 90 days, the audit log after 365 days, and rate-limit events after 48 hours. All of this is configurable.
 - ✅ Hushmates never claims absolute anonymity. Pseudonymous is the word, because:
   - Supabase holds the email address;

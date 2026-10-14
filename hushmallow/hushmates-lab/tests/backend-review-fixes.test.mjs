@@ -154,3 +154,15 @@ test('Another Angle: an "unclear" answer to real words is charged, and the Mallo
     assert.equal(arrivedAfterAbort, false, 'words reached the service after the Mallow gave up');
   } finally { await new Promise((r) => server.close(r)); }
 });
+
+// ---------------------------------------------------------------- the security review --
+test('sign-in: only an email-code sign-in opens Hushmates (a password sign-up for someone’s email gets nothing)', async () => {
+  const k = await ecKey('a');
+  const v = createVerifier({ issuers: [{ iss, provider: 'hushmates', jwks: { keys: [k.jwk] }, methods: ['otp', 'magiclink'] }], now: () => T });
+  const at = Math.floor(T / 1000);
+  assert.equal(await outcome(v, await sign(k, { ...claims, amr: [{ method: 'otp', timestamp: at }] })), 'ok');
+  assert.equal(await outcome(v, await sign(k, { ...claims, amr: [{ method: 'magiclink', timestamp: at }] })), 'ok');
+  for (const amr of [[{ method: 'password', timestamp: at }], [{ method: 'otp' }, { method: 'password' }], [], undefined, ['password'], [{ method: 'oauth' }]]) {
+    assert.equal(await outcome(v, await sign(k, { ...claims, amr })), 'refused (method)', JSON.stringify(amr));
+  }
+});
