@@ -1095,7 +1095,7 @@ language plpgsql set search_path = '' as $$
 begin
   perform hushmates.moderator(m);
   perform hushmates.audit(m.id::text, 'mod.view-audit');
-  return jsonb_build_object('entries', coalesce((select jsonb_agg(e order by e.id) from (
+  return jsonb_build_object('entries', coalesce((select jsonb_agg(x.e order by x.id) from (
     select detail || jsonb_build_object('id', id, 'at', hushmates.ms(at), 'actor', actor, 'action', action) as e, id
     from hushmates.audit_log order by id desc limit 200) x), '[]'));
 end $$;

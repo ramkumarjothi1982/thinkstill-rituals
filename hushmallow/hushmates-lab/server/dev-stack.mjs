@@ -29,7 +29,7 @@ import { createMallowFor } from '../supabase/functions/_shared/mallow-setup.js';
 
 export async function startDevStack({
   port = 8090, host = '127.0.0.1', pgUrl = process.env.HUSHMATES_PG || 'postgres://postgres@127.0.0.1:54329', database = 'hushmates_dev',
-  pool: givenPool = null, anonKey: givenAnonKey = null, moveDbClock = false,
+  pool: givenPool = null, anonKey: givenAnonKey = null, moveDbClock = false, files: givenFiles = null,
   testerKey = process.env.HUSHMATES_TESTER_KEY || null, invites = [], staffInvites = [], keysFile = join(LAB_ROOT, '.data', 'dev-keys.json'),
   now = () => Date.now(), tickMs = 15e3, log = console, quiet = false,
 } = {}) {
@@ -89,7 +89,8 @@ export async function startDevStack({
     }
   }
 
-  const files = new Map([...appFiles(), ...staffFiles()]);
+  // the source tree's app and desk, or (for end-to-end tests) a production build of them
+  const files = givenFiles || new Map([...appFiles(), ...staffFiles()]);
   const host_ = createHushmatesServer({ mode: 'development', files, labFiles: testerKey ? labFiles() : null, testerKey, auth, gateway, secureCookies: false, now, log });
   await new Promise((r) => host_.server.listen(port, host, r));
   const timer = setInterval(() => { gateway.tick().catch((e) => log.error?.('tick failed', e.message)); }, tickMs);
