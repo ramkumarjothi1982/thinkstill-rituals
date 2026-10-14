@@ -25,6 +25,9 @@ const EXTRA_CRISIS = [
   /\bno point (?:in )?(?:going on|living|carrying on|being here|being alive)\b/i,
   /\b(?:cut|cutting|burn|burning|hurt|hurting|harm|harming)\s+(?:my\s*self|myself|my (?:arms?|wrists?|legs?|thighs?|skin))\b/i,
   /\b(?:don'?t|do not) want to (?:be here|wake up|exist|be alive) any ?more\b/i,
+  // passive wishes not to be here (to be reviewed with the rest by a clinician: docs/READINESS.md)
+  /(?<!(?:don'?t|do not|never) )\b(?:want(?:ed)?|wanna|wish(?:ing)? (?:i|that i) could|would rather)(?: to)?(?: just)? (?:disappear|vanish|not exist|stop existing)\b/i,
+  /\b(?:sleep|go to sleep|fall asleep)\b[^.!?]{0,20}\b(?:never|not|n't) (?:ever )?wake up\b(?! (?:early|before|until|till|at|for|in time|on time))/i,
 ];
 function extraCrisis(probe) {
   if (!EXTRA_CRISIS.some((re) => re.test(probe.replace(/[’‘]/g, "'")))) return null;

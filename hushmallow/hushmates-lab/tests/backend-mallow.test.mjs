@@ -214,7 +214,8 @@ test('a provider’s safety verdict is support, never a perspective (and the lib
 });
 
 test('crisis or unsafe words: no perspective from anyone, and nothing is sent to a provider', async () => {
-  for (const text of ['I want to end it all', 'I took a load of paracetamol an hour ago and feel strange.', 'My partner hits me when he is angry.']) {
+  for (const text of ['I want to end it all', 'I took a load of paracetamol an hour ago and feel strange.', 'My partner hits me when he is angry.',
+    'I do everything at home and nobody cares, I just want to disappear.', 'I wish I could just disappear.', 'I want to go to sleep and never wake up.']) {
     const ai = fakeAi();
     let libraryCalls = 0;
     const library = async (a) => { libraryCalls += 1; return libraryProvider()(a); };
@@ -337,13 +338,28 @@ test('library relevance: “help” means help at home only when the words say s
     [null, 'I’ve tried breathing exercises but they don’t help.'],
     ['frustration', 'The tablets the doctor gave me never help.'],
     ['frustration', 'My boyfriend doesn’t help when I’m having a panic attack, he just goes quiet.'],
+    // a death, harm at home, or health and mood: never chores lines, however the help is put
+    ['sadness', 'My wife passed away and I’m doing all the cooking now, I miss her.'],
+    ['sadness', 'We lost our baby at 20 weeks and my husband isn’t helping.'],
+    ['sadness', 'My husband never helps since my miscarriage.'],
+    ['sadness', 'My mum never helps me at home, she just screams at me all the time.'],
+    ['anger', 'My dad doesn’t help at home, he just shouts at us and breaks things.'],
+    ['sadness', 'He refuses to help me leave, he says he’ll take the kids if I go.'],
+    ['sadness', 'I’m struggling with my mental health and my husband isn’t helping.'],
+    ['sadness', 'My girlfriend never helps me when I’m sick.'],
+    ['frustration', 'My medication does nothing to help.'],
   ]) for (const r of await picks(text, label)) assert.doesNotMatch(r.angleId, /^hm-load-/, `${r.mallow} · “${text}”: got ${r.angleId} “${r.text}”`);
+  // ...nor "your partner seems distant" after a loss
+  for (const r of await picks('My husband never helps since my miscarriage.', 'sadness')) assert.doesNotMatch(r.angleId, /^pd-ang/, `miscarriage · ${r.mallow}: got ${r.angleId}`);
   // the work at home, however it's put, gets load lines and rules out "your partner is distant", whatever the label
   const AT_HOME = [
     'My partner never helps with the kids.', 'I always end up doing everything and my partner just sits on the couch.',
     'My husband doesn’t pull his weight.', 'Nobody helps and my partner just ignores the mess.', 'My partner never cleans up after himself.',
     'My husband doesn’t help with anything around the house.', 'My wife doesn’t help with dinner, ever.', 'My husband won’t help unless I nag him.',
     'He doesn’t help with anything around the house.', 'My family never helps with the cooking or cleaning, it’s all on me.', 'My kids never help me.',
+    'My husband doesn’t help much.', 'My husband never helps so I have to do it all myself.', 'My husband never helps even when I ask.',
+    'My husband never helps in the kitchen.', 'My husband does nothing to help.', 'My husband never helps with the newborn.',
+    'My partner never helps with childcare.', 'My husband never helps with the dog.',
   ];
   for (const text of AT_HOME) {
     for (const label of ['frustration', 'sadness', null]) {
@@ -362,6 +378,11 @@ test('library relevance: “help” means help at home only when the words say s
   ]) {
     const got = (await picks(text, 'sadness')).map((r) => r.angleId);
     assert.ok(got.some((id) => /^pd-ang/.test(id)), `“${text}”: ${got.join(', ')}`);
+  }
+  // for a label the load lines don't serve, only the work at home named outright rules distance out
+  for (const label of ['worry', 'confusion', 'loneliness']) {
+    const got = (await picks('I do everything for my husband but he seems so far away lately.', label)).map((r) => r.angleId);
+    assert.ok(got.some((id) => /^pd-ang/.test(id)), `${label}: ${got.join(', ')}`);
   }
 });
 

@@ -115,7 +115,8 @@ These are questions for a lawyer, not conclusions:
 ## 3. 🩺 Clinical safety review (before launch)
 
 - The support screen's wording, and which lines appear for which kind of concern (crisis, someone in danger, abuse and violence, harassment, other).
-- The extra crisis rules Hushmates adds to the shared lexicon, and what they miss. Test with a clinician's list of phrasings.
+- The extra crisis rules Hushmates adds to the shared lexicon (`core/feeling-safety.js`: overdose, self-harm, "no point going on", "don't want to be here any more", and passive wishes such as "I just want to disappear" or "sleep and never wake up"), and what they miss. Test with a clinician's list of phrasings.
+- The Mallow library's rule that a death, harm at home, or health and mood never get "unfair load" lines (`NOT_CHORES` in `core/perspectives.js`), and whether it should be wider.
 - The escalation procedure (section 1) and the desk's urgent guidance.
 - The Mallow library's lines.
 - Whether to align with the National Safety and Quality Digital Mental Health Standards (ACSQHC).

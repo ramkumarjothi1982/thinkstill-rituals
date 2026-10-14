@@ -21,7 +21,8 @@ safe, fictional words written for the demonstration.
    restricted account.
 3. **Rules that don't stop at the obvious:**
    - The app's shared safety lexicon (the one Reframe uses) is reused unchanged,
-     plus Hushmates' own additions for overdose, self-harm and "no point going on".
+     plus Hushmates' own additions for overdose, self-harm, "no point going on" and passive wishes
+     not to be here ("I just want to disappear", "sleep and never wake up").
    - Every rule reads an NFKC-normalised copy, so stylised or full-width letters
      can't slip past.
    - Contact details, links, money requests, addresses, postcodes and ZIP codes,
