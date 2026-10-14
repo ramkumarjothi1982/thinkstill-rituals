@@ -40,7 +40,8 @@ test('lines r1: a showing line stays put while its place is free; a new line jum
   assert.match(subs, /document\.fonts\?\.addEventListener\?\.\('loadingdone', onFonts\)/);
   assert.match(subs, /sizeObs\?\.disconnect\(\);/);
   // the shell keeps the lines off where the storm is taking the thought too, in a world's first seconds
-  assert.match(read('src/app/scenes/hushfold.js'), /avoid: \(\) => \[mallowAvoidRect\(\), \.\.\.\(stage\?\.thoughts\.rects\(\) \|\| \[\]\), thoughtRestRect\(\),/);
+  // (unless the thought is folded away under the veil while the shell asks over a world: review r2 P3)
+  assert.match(read('src/app/scenes/hushfold.js'), /avoid: \(\) => \[mallowAvoidRect\(\), \.\.\.\(thoughtFolded \? \[\] : \[\.\.\.\(stage\?\.thoughts\.rects\(\) \|\| \[\]\), thoughtRestRect\(\)\]\),/);
 });
 
 test('targets r1: the main screen\'s controls are 44 px at least (subtitle pill and Continue, overlay close and mic, chips, plan)', () => {

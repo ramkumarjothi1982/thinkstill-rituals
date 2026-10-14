@@ -49,6 +49,11 @@ body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer >
    so nothing ever covers the Mallow lifted above the sheet; the back layer waits under its veil */
 /* (!important: the director keeps its reveal opacity inline) */
 body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transition: opacity 380ms ease !important; }
+/* the shell asking over a world (the question, or the soft chip after "Just be with it"): its postcards fold away under
+   the veil, so the lines and chips never sit over them; the person's own Thought Mallow stays (the lines keep clear of it) */
+body.hf-ask-fold #fx-layer > canvas.hf-front { opacity: 0 !important; transition: opacity 380ms ease !important; }
+/* (and, when even then the question has no room clear of it — a small phone — the person's thought steps back with them) */
+body.hf-ask-fold-thought #fx-layer > canvas.hf-stage, body.hf-ask-fold-thought .hushfold .tm-tag { opacity: 0 !important; pointer-events: none !important; transition: opacity 380ms ease !important; }
 
 /* ------------------------------------------------------------ top bar -- */
 .hf-top { position: fixed; z-index: 2; top: calc(var(--safe-top, 0px) + 12px); left: var(--hf-edge); right: var(--hf-edge);
@@ -98,11 +103,12 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
   background: rgba(9, 6, 28, var(--hf-scrim, 0.5)); filter: blur(12px); transition: background-color 360ms var(--hf-ease); }
 /* the deepening over a bright spot: its own layer in the scrim's own shape (the same pill, the same 12 px feather), so a
    sun or a moon under the pill's rounded end or its rim is deepened with it — and never past it: no dark blot hanging over
-   the pill on a bright home. Only as deep as the spot needs to read like the sky round it (hotAlpha, --hf-hot-a), soft to
-   its edge; placed in px from the line's box (--hf-hot-cx/-cy) */
+   the pill on a bright home. Only as deep as the spot needs to read like the sky round it, in its colour too (hotTint:
+   --hf-hot-a, --hf-hot-rgb — a warm sun never reads as a grey or olive disc), soft to its edge; placed in px from the
+   line's box (--hf-hot-cx/-cy) */
 .hf-sub::after { content: ''; position: absolute; z-index: -1; inset: -14px -24px -16px; border-radius: 999px; pointer-events: none;
-  background: radial-gradient(circle at calc(var(--hf-hot-cx, 50%) + 24px) calc(var(--hf-hot-cy, 50%) + 14px), rgba(9, 6, 28, var(--hf-hot-a, 0)) 0,
-    rgba(9, 6, 28, var(--hf-hot-a, 0)) calc(var(--hf-hot-r, 0px) * 0.75), rgba(9, 6, 28, 0) calc(var(--hf-hot-r, 0px) * 1.5));
+  background: radial-gradient(circle at calc(var(--hf-hot-cx, 50%) + 24px) calc(var(--hf-hot-cy, 50%) + 14px), rgba(var(--hf-hot-rgb, 9, 6, 28), var(--hf-hot-a, 0)) 0,
+    rgba(var(--hf-hot-rgb, 9, 6, 28), var(--hf-hot-a, 0)) calc(var(--hf-hot-r, 0px) * 0.75), rgba(var(--hf-hot-rgb, 9, 6, 28), 0) calc(var(--hf-hot-r, 0px) * 1.5));
   filter: blur(12px); }
 /* (found a moment late — the realm still drawing its first frames when the line came — it deepens in, never pops; a new
    line's first look, before it is first painted, takes at once: .fresh) */
@@ -131,11 +137,17 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 
 .hf-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; animation: hfSubIn 620ms var(--hf-ease) 160ms both; }
 .hf-subs.reduced .hf-chips { animation-name: hfFade; }
+.hf-subs.reduced .hf-chips.out { animation-name: hfFadeOut; }
 .hf-chip { min-height: 46px; padding: 0 20px; border-radius: 999px; border: 1px solid var(--hf-line-strong); background: var(--hf-glass); color: var(--text-1, #f7f3ff);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); font: var(--hf-font-button); cursor: pointer; transition: transform 140ms var(--hf-ease), background 180ms; }
 .hf-chip:active { transform: scale(0.96); }
 .hf-chip.primary { background: linear-gradient(180deg, #ffe6b0, var(--accent, #ffd98a) 55%, var(--accent-2, #ffb86b)); color: var(--text-on-accent, #23140a);
   border-color: transparent; box-shadow: 0 10px 28px rgba(255, 190, 90, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+/* the one optional chip after "Just be with it" ("Somewhere calm"): quieter than a choice, the same 46 px to tap; let go by
+   its clock, the chips fade out with their line (never a pop) */
+.hf-chip.soft { background: rgba(18, 13, 44, 0.46); border-color: rgba(255, 255, 255, 0.24); font-weight: 560; }
+.hf-subs.bright .hf-chip.soft { background: rgba(18, 13, 44, 0.72); }
+.hf-chips.out { animation: hfFadeOut 420ms var(--hf-ease) both; pointer-events: none !important; }
 
 /* the small ⏸ ↺ ⏭ pill + speed (every control here, the overlay's and the panel's: a 44 px hit area at least) */
 .hf-subctl { display: inline-flex; align-items: center; gap: 0; padding: 2px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1);
@@ -351,7 +363,7 @@ body.hf-world-held #fx-layer > canvas.hf-stage, body.hf-world-held .hushfold .tm
 @media (prefers-reduced-motion: reduce) {
   .hf-subs { transition: none; }
   .hf-sub, .hf-chips, .hf-input, .hf-read { animation-name: hfFade !important; }
-  .hf-sub.out, .hf-input.out { animation-name: hfFadeOut !important; }
+  .hf-sub.out, .hf-chips.out, .hf-input.out { animation-name: hfFadeOut !important; }
   .hf-panel { transition: opacity 240ms, visibility 0s linear 240ms; transform: none; opacity: 0; }
   .hf-panel.open { opacity: 1; transition: opacity 240ms, visibility 0s; }
 }

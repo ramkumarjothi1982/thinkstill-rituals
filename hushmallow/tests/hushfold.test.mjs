@@ -734,7 +734,7 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   assert.match(hold, /\} else if \(running && !S\.hold\) \{[\s\S]*?S\.hold = S\.noResume \? 'quiet' : 'care';[\s\S]*?flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
   // only a world actually on its way is held on arrival, and a start that brings none leaves no hold behind
   assert.match(hold, /if \(starting && !worldMode\) S\.holdOnWorld = /);
-  assert.match(fnBody(scene, 'async function startFlow(', 'function warmWorld()'), /finally \{[\s\S]*?if \(!--starting && !worldMode\) S\.holdOnWorld = null;/);
+  assert.match(fnBody(scene, 'async function startFlow(', 'function warmWorld()'), /finally \{[\s\S]*?if \(!--starting && !worldMode\) \{ S\.holdOnWorld = null;/);
   // a resume from anywhere (the panel's own Resume too) ends a care hold, and takes the "Paused" line with it
   const paused = fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()');
   assert.match(paused, /if \(!on && \(S\.hold === 'care' \|\| S\.hold === 'quiet'\)\) S\.hold = null;/);
@@ -776,7 +776,8 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
 test('H1: back from Another Angle, panel state, and the modules warmed for a new deploy', () => {
   const scene = read('src/app/scenes/hushfold.js');
   const enter = fnBody(scene, 'async enter() {', 'leave() {');
-  const safetyAt = enter.indexOf("if (params.safety?.level) { if (params.safety.level === 'crisis') S.crisisSpoken = true; noteSafety(params.safety); S.careSaid = true; }");
+  // (only a real level raises the visit, review r2 P2: a level of 'none', or a "Just be with it" there, never does)
+  const safetyAt = enter.indexOf("if (LEVELS.indexOf(params.safety?.level) > 0) { if (params.safety.level === 'crisis') S.crisisSpoken = true; noteSafety(params.safety); S.careSaid = true; }");
   assert.ok(safetyAt > 0 && safetyAt < enter.indexOf('await resumePendingTell()'));
   assert.match(enter, /if \(params\.flow\.emotion\) await setFeeling\(params\.flow\.emotion, \{ quiet: true \}\);/);
   assert.match(enter, /if \(params\.flow\.intention\) S\.intention = params\.flow\.intention;/);

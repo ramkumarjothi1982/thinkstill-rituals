@@ -239,7 +239,10 @@ export const STAGES = {
           mouthSmile: 0.15, mouthWave: 0, blush: 0.7, fxZzz: 0, float: 0, breathRate: 0.2 },
       } },
     // ...and it stays so whatever touches it (STAGE_LIMITS): a squeeze is a soft hug, never a grin
-    limits: 'hushed' },
+    limits: 'hushed',
+    // (what a screen reader hears: attentive, never "looks sad and loved" — this face also waits on an ordinary question,
+    // "Shall we play with this, or just be with it?", where sadness would be assumed for the person)
+    describe: 'is listening, attentive' },
   playful: { mix: { playful: 1 }, intensity: 0.75 },
   surprised: { mix: { surprised: 1 }, intensity: 0.8 },
   comforting: { mix: { loved: 0.5, calm: 0.5 }, intensity: 0.7, extra: { fxHeart: 0.15 } },
@@ -330,7 +333,10 @@ export function resolveExpression(mallow, mix, intensity = 0.7, extra = null) {
   return out;
 }
 
-export function describeExpression(mallow, mix, intensity) {
+export function describeExpression(mallow, mix, intensity, stage = null) {
+  // (a stage that says what it is for in its own words: STAGES[stage].describe)
+  const own = stage && STAGES[stage]?.describe;
+  if (own) return `${mallow.name} ${own}`;
   const parts = Object.entries(mix || {}).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]);
   if (!parts.length || parts[0][0] === 'neutral') return `${mallow.name} looks peaceful`;
   const level = intensity < 0.35 ? 'a little ' : intensity > 0.8 ? 'very ' : '';

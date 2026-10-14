@@ -132,7 +132,9 @@ test('H2: the full safety hold — the director\'s own safety pause (also while 
   assert.match(calm, /flowRef\.setGentle\?\.\(true\);/);
   assert.match(calm, /if \(flowRef\.state\?\.worldId === worldId\) \{ resumeFlow\(\); return; \}/);
   assert.match(calm, /if \(flowRef\.next\?\.\(\{ worldId \}\) === false\) resumeFlow\(\);/);
-  assert.match(fnBody(scene, 'async function careChoice(', 'function calmTheWorld('), /if \(worldMode && flowRef && !flowRef\.stub && !S\.finishing\) \{ calmTheWorld\(gw\.worldId\); return; \}/);
+  // (careChoice's "play" is playCalm's since review r2: the soft chip after "Just be with it" shares it)
+  assert.match(fnBody(scene, 'async function careChoice(', 'function calmTheWorld('), /playCalm\(\{ emotion, intention, worldId: gw\.worldId, safety, soft \}\);/);
+  assert.match(fnBody(scene, 'function playCalm(', 'function calmTheWorld('), /if \(worldMode && flowRef && !flowRef\.stub && !S\.finishing\) \{ calmTheWorld\(worldId\); return; \}/);
 });
 
 // ----------------------------------------------------------- leftovers --

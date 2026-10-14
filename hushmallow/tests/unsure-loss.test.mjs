@@ -295,7 +295,7 @@ test('the check-in’s words: the same question on both screens, two real choice
   for (const l of [LOSS_CHECK.ask, LOSS_CHECK.yes, LOSS_CHECK.no]) { assert.doesNotMatch(l, /\bAI\b|angle|reframe|died|death|dead/i, l); assert.ok(l.length <= 60, l); }
   // the chips are the subtitles' own buttons: real <button>s in a labelled group, the line in a live region, 46 px tall
   const subs = read('src/hushfold/subtitles.js');
-  assert.match(subs, /h\('button', \{ class: `hf-chip\$\{o\.primary \? ' primary' : ''\}`, type: 'button'/);
+  assert.match(subs, /h\('button', \{ class: `hf-chip\$\{o\.primary \? ' primary' : ''\}\$\{o\.soft \? ' soft' : ''\}`, type: 'button'/);
   assert.match(subs, /chipsEl\.setAttribute\('aria-label', prompt \|\| 'Choose'\);/);
   assert.match(subs, /const liveEl = h\('div', \{ class: 'hf-sublive', role: 'status', 'aria-live': 'polite'/);
   assert.match(read('src/ui/hushfold.css'), /\.hf-chip \{ min-height: 46px;/);

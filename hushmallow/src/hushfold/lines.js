@@ -325,17 +325,22 @@ export const LOSS_CHECK = Object.freeze({
  * telling a death) After every Tell whose words are ordinary — no crisis, care, distress or escalation, and no loss the
  * words or a chosen grief feeling already name (those go to support or straight to the gentle path, as before) — and
  * before any Thought Mallow is made or any world starts or takes the words, the Mallow asks this once: attentive,
- * nothing playful. It replaces the loss check-in wherever both would apply (never two questions in a row). "Play with
- * it" is the flow as it always was; "Just be with it" makes nothing of the words: `be`, then the quiet choice (stay here
- * quietly, or somewhere calm), no support line, and the visit stays gentle; no answer within `ms`, or Back, stays here
- * quietly. One extra tap for everyone.
+ * nothing playful. It replaces the loss check-in wherever both would apply (never two questions in a row). The two
+ * answers carry equal weight (the same chip style, "Play with it" first in reading order): nothing nudges towards play
+ * when the words might be about a loss. "Play with it" is the flow as it always was; "Just be with it" makes nothing of
+ * the words: `be` — one gentle line, never a second question — with one optional soft chip, `calm`, that fades after
+ * `calmMs` (at home staying is simply the default; in a world, the world ends quietly unless they tap it); no support
+ * line, and the visit stays gentle. No answer within `ms` (the clock waits while the page is hidden), or Back, stays
+ * here quietly and keeps the words for the next Tell. One extra tap for everyone.
  */
 export const PLAY_CHECK = Object.freeze({
   ask: 'Shall we play with this, or just be with it?',
   play: 'Play with it',
   stay: 'Just be with it',
   be: 'Okay. Let’s just be with it for a while.',
-  ms: 20000,
+  calm: 'Somewhere calm',
+  ms: 45000,
+  calmMs: 12000,
 });
 
 const SQUEEZE_KINDS = new Set(['squeeze', 'release', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle']);

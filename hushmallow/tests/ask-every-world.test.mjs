@@ -33,12 +33,14 @@ function route(t, { emotion = null, chosen = null, visit = 'none', careSaid = fa
 }
 
 // ------------------------------------------------------------------------------------------- the words --
-test('the question\'s words: short, kind, never assuming, no "AI"; two real choices, Play first; about 20 s', () => {
+test('the question\'s words: short, kind, never assuming, no "AI"; two real choices, Play first; about 45 s (review r2 P2)', () => {
   assert.equal(PLAY_CHECK.ask, 'Shall we play with this, or just be with it?');
   assert.equal(PLAY_CHECK.play, 'Play with it');
   assert.equal(PLAY_CHECK.stay, 'Just be with it');
-  assert.equal(PLAY_CHECK.ms, 20000);
-  for (const l of [PLAY_CHECK.ask, PLAY_CHECK.play, PLAY_CHECK.stay, PLAY_CHECK.be]) {
+  assert.equal(PLAY_CHECK.ms, 45000);
+  assert.equal(PLAY_CHECK.calm, 'Somewhere calm');
+  assert.equal(PLAY_CHECK.calmMs, 12000);
+  for (const l of [PLAY_CHECK.ask, PLAY_CHECK.play, PLAY_CHECK.stay, PLAY_CHECK.be, PLAY_CHECK.calm]) {
     assert.doesNotMatch(l, /\bAI\b|Hushmallow|died|death|dead|loss|losing|grief|sad|sorry|support|help/i, l);
     assert.ok(l.length <= 48, l);
   }
@@ -148,11 +150,11 @@ test('afterTell: crisis, carried, support, then the question — before the plan
   // the safety level of the visit is applied before any branch (unchanged)
   assert.ok(after.indexOf("if (LEVELS.indexOf(S.level) > LEVELS.indexOf(safety?.level || 'none'))") < at[0]);
   const branch = after.slice(ask, after.indexOf("if (!ent.has('paid'))"));
-  assert.match(branch, /const out = askOutcome\(await askPlay\(\), \{ telling: !!overlay \}\);/);
+  assert.match(branch, /const out = askOutcome\(await askPlay\(kept\), \{ telling: !!overlay \}\);/);
   assert.match(branch, /if \(out === 'stay'\) \{ await beWithIt\(\{ emotion, intention \}\); return; \}/);
   assert.match(branch, /if \(out === 'quiet'\) \{ quietAfterAsk\(\); return; \}/);
   assert.match(branch, /if \(out === 'retold'\) \{ holdForAsk\(false\); return; \}/);
-  assert.match(branch, /holdForAsk\(false, \{ play: true \}\);\s*\}/, 'Play: the world that waited carries on, and the flow is exactly as before');
+  assert.match(branch, /holdForAsk\(false, \{ play: true \}\);\s*endSoft\(\);\s*\}/, 'Play: the world that waited carries on, the quiet is over, and the flow is exactly as before');
   // the free tier: "Play with it" leads to the plans page with the choice kept, so back with a plan it is not asked twice
   assert.match(after, /app\.state\.pendingTell = \{ input, emotion, intention, chosen: 'play', at: Date\.now\(\) \};/);
   assert.match(between(hf, 'async function resumePendingTell() {', 'function offerRetell('), /afterTell\(\{ text: p\.input\?\.text \|\| '', [^\n]*chosen: p\.chosen \|\| null \}\)/);
@@ -161,14 +163,16 @@ test('afterTell: crisis, carried, support, then the question — before the plan
 });
 
 test('the question: attentive, nothing playful, real buttons in the live region, its own Back layer; a world waits under its veil', () => {
-  const fn = between(hf, 'async function askPlay() {', 'let askHold = null;');
+  const fn = between(hf, 'async function askPlay(words = null) {', 'let askHold = null;');
   assert.match(fn, /S\.told = true;\s*S\.asking = true;\s*stageMallow\.setStage\(CARE_FACE, \{ quiet: true \}\);/);
   // the world pauses first (its own passing lines go with the pause), then the question
   assert.ok(fn.indexOf('holdForAsk(true);') < fn.indexOf('subtitles.choice(PLAY_CHECK.ask'));
   assert.match(fn, /pushLayer\('ask'\);/);
-  assert.match(fn, /subtitles\.choice\(PLAY_CHECK\.ask, \[\{ label: PLAY_CHECK\.play, value: 'play', primary: true \}, \{ label: PLAY_CHECK\.stay, value: 'stay' \}\],/);
-  assert.match(fn, /timeoutMs: PLAY_CHECK\.ms, transient: true, ask: true, interrupt: !subtitles\.holding/);
-  assert.match(fn, /finally \{\s*S\.asking = false;\s*popLayer\('ask'\);/);
+  // (equal weight, coordinator default: neither chip is primary; "Play with it" first in reading order)
+  assert.match(fn, /subtitles\.choice\(PLAY_CHECK\.ask, \[\{ label: PLAY_CHECK\.play, value: 'play', onPick: pick\('play'\) \}, \{ label: PLAY_CHECK\.stay, value: 'stay', onPick: pick\('stay'\) \}\],/);
+  assert.doesNotMatch(fn, /primary/);
+  assert.match(fn, /timeoutMs: PLAY_CHECK\.ms, transient: true, ask: true, focus: true, waitHidden: true, interrupt: !subtitles\.holding/);
+  assert.match(fn, /finally \{\s*S\.asking = false;\s*popLayer\('ask'\);[\s\S]*?focusTell\(\);/);
   // squeezing stays quiet while it waits (and for the rest of a quiet visit)
   assert.match(hf, /if \(softNow\(\)\) return;\s+\/\/ after something heavy, or "Just be with it"[^\n]*\n\s*if \(S\.asking\) return;/);
   // Back lets it go, as no answer would; no reload while it waits
@@ -177,7 +181,7 @@ test('the question: attentive, nothing playful, real buttons in the live region,
   assert.match(between(hf, 'safeForUpdate() {', 'return view;'), /if \(S\.asking\) return false;/);
   // the subtitles' chips are real 46 px <button>s, announced through the live region (unchanged, shared with every choice)
   const subs = read('src/hushfold/subtitles.js');
-  assert.match(subs, /h\('button', \{ class: `hf-chip\$\{o\.primary \? ' primary' : ''\}`, type: 'button'/);
+  assert.match(subs, /h\('button', \{ class: `hf-chip\$\{o\.primary \? ' primary' : ''\}\$\{o\.soft \? ' soft' : ''\}`, type: 'button'/);
   assert.match(subs, /const liveEl = h\('div', \{ class: 'hf-sublive', role: 'status', 'aria-live': 'polite'/);
   assert.match(read('src/ui/hushfold.css'), /\.hf-chip \{ min-height: 46px;/);
 });
@@ -198,23 +202,32 @@ test('in a world: it pauses while the question waits (no Paused pill or line), P
   assert.match(between(hf, 'function endWorldMode() {', 'function onMeltBegins('), /S\.softHold = false; askHold = null;/);
 });
 
-test('"Just be with it": nothing made of the words, a gentle line, the quiet choice with no support line; in a world held quietly until they choose', () => {
+test('"Just be with it": nothing made of the words, one gentle line and one soft chip (never a second question), no support line; in a world held quietly until it goes', () => {
   const be = between(hf, 'async function beWithIt({ emotion, intention }) {', 'function quietAfterAsk() {');
   assert.match(be, /softVisit\(\);/);
   assert.match(be, /stage\?\.thoughts\.release\(900\);/, 'the thoughts on stage drift off softly');
   assert.doesNotMatch(be, /spawnThought|startFlow|careBeat|noteSafety|supportPill|SHARED_LINES\.support/, 'no Thought Mallow, no world, no support line, no Support pill');
   // in a world: it stays under its veil, held quietly (no Paused pill), the words never given to it
   assert.match(be, /askHold = null;\s*S\.hold = 'quiet'; S\.softHold = true;\s*pausedPill\.hidden = true;\s*try \{ flowRef\.setThoughts\?\.\(null\); \}/);
-  assert.match(be, /await say\(PLAY_CHECK\.be, \{ interrupt: !subtitles\.holding \}\);/);
-  assert.match(be, /S\.quietBeat = careChoice\(\{ emotion, intention, safety: null, soft: true \}\)/);
-  // the quiet choice: a calm world only (never "Glitzi's storm, taken slowly"), played as a gentle session with no words
+  assert.match(be, /S\.quietBeat = softChoice\(\{ emotion, intention \}\)/);
+  assert.doesNotMatch(be, /careChoice|Stay here quietly/, 'never the second choice');
+  const soft = between(hf, 'async function softChoice(', 'function quietAfterAsk() {');
+  // the one line with the one soft chip: a calm world only (never "Glitzi's storm, taken slowly"), fading after ~12 s
+  assert.match(soft, /const gw = await gentleWorld\(\{ calmOnly: true \}\);/);
+  assert.match(soft, /subtitles\.choice\(again \? null : PLAY_CHECK\.be, \[\{ label: PLAY_CHECK\.calm, value: 'calm', soft: true \}\],/);
+  assert.match(soft, /timeoutMs: PLAY_CHECK\.calmMs, transient: true, soft: true/);
+  assert.match(soft, /playCalm\(\{ emotion, intention, worldId: gw\.worldId, safety: null, soft: true \}\)/);
+  // let go: a world held quietly for it ends quietly (at home nothing more: staying is the default)
+  assert.match(soft, /if \(S\.hold === 'quiet' && S\.softHold && worldMode\) endQuietWorld\(\);/);
+  // the calm world, played as a gentle session with no words (careChoice's and the soft chip's alike)
   const choice = between(hf, 'async function careChoice({ emotion, intention, safety, soft = false }) {', 'function calmTheWorld(');
   assert.match(choice, /const gw = await gentleWorld\(\{ calmOnly: soft \}\);/);
-  assert.match(choice, /startFlow\(\{ emotion: emotion \|\| S\.emotion, intention: calm, input: null, safety, worldId: gw\.worldId, soft \}\);/);
+  assert.match(choice, /playCalm\(\{ emotion, intention, worldId: gw\.worldId, safety, soft \}\);/);
+  assert.match(choice, /startFlow\(\{ emotion: emotion \|\| S\.emotion, intention: calm, input: null, safety, worldId, soft \}\);/);
   assert.match(choice, /gentle: \{ level: S\.level, category: S\.category, \.\.\.\(soft \? \{ soft: true \} : \{\}\) \}/, 'the free tier: the plans page keeps it gentle');
   // stay (or no answer) ends a world held quietly; somewhere calm melts into the calm world (calmTheWorld), unheld
   assert.match(choice, /if \(S\.hold === 'care' \|\| S\.hold === 'quiet'\) \{ S\.hold = null; S\.softHold = false; pausedPill\.hidden = true; \}/);
-  assert.match(choice, /if \(worldMode && flowRef && !flowRef\.stub && !S\.finishing\) \{ calmTheWorld\(gw\.worldId\); return; \}/);
+  assert.match(choice, /if \(worldMode && flowRef && !flowRef\.stub && !S\.finishing\) \{ calmTheWorld\(worldId\); return; \}/);
   assert.match(choice, /\} else if \(S\.hold === 'quiet' && worldMode\) \{/);
   // (a question asked for new words over it takes the stage: its answer decides, never this choice's let-go)
   assert.match(choice, /if \(v == null && S\.asking\) return;/);
@@ -224,9 +237,10 @@ test('"Just be with it": nothing made of the words, a gentle line, the quiet cho
   const start = between(hf, 'async function startFlow(', 'async function warmWorld(');
   assert.match(start, /if \(gentle\(\) \|\| soft\) wordsCur = null;/);
   assert.match(start, /gentle: gentle\(\) \|\| soft \}\);/);
-  // a Tell opened and closed over the held world brings the quiet choice back — never the support line
+  // a Tell opened and closed over the held world brings the soft chip back, alone — never the support line
   const close = between(hf, 'onClose: (reason, meta = {}) => {', 'pushLayer(\'overlay\');');
   assert.match(close, /const soft = S\.softHold && !gentle\(\);\s*if \(!soft\) S\.careSaid = true;/);
+  assert.match(close, /soft \? softChoice\(\{ again: true \}\)/);
 });
 
 test('no answer, or Back: nothing made of the words, the stage stays quiet; a world that waited stays paused with its Resume theirs', () => {
@@ -264,7 +278,7 @@ test('the visit stays quiet after "Just be with it" or an unanswered question (r
 
 // --------------------------------------------------------------------------------------- P3: one Support --
 test('one Support control at a time while typing (review P3 at 320): the dock\'s pill steps away under the open overlay', () => {
-  const open = between(hf, 'function openTellNow(prompt) {', 'onSubmit: (r) => afterTell(r),');
+  const open = between(hf, 'function openTellNow(prompt) {', 'onSubmit: (r) => afterTell(');
   assert.ok(open.indexOf('supportUnder(true);') > 0 && open.indexOf('supportUnder(true);') < open.indexOf('overlay = inputMod.openInput('));
   const close = between(hf, 'onClose: (reason, meta = {}) => {', 'pushLayer(\'overlay\');');
   assert.ok(close.indexOf('supportUnder(false);') > close.indexOf('noteSafety(meta.safety);'));
@@ -335,12 +349,13 @@ test('the scrim is right from a line\'s first frame (no ~0.9 s muddy disc) and i
   assert.match(settle, /requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => node\.classList\.remove\('fresh'\)\)\);/);
   assert.match(settle, /setTimeout\([^\n]*rescrim\(\); \}, 160\);/);
   // a choice's prompt (the question itself) too
-  assert.match(between(subs, 'function showChoice() {', 'function choose(value) {'), /requestAnimationFrame\(\(\) => \{ if \(!destroyed && cur === mine && mine\.lineEl === node\) \{ layout\(\); settle\(node\); \} \}\);/);
+  assert.match(between(subs, 'function showChoice() {', 'function choose(value, {'), /requestAnimationFrame\(\(\) => \{ if \(!destroyed && cur === mine && mine\.lineEl === node\) \{ layout\(\); settle\(node\); \} \}\);/);
   // a realm still fading in is read as it will be, and the deeper scrim kept
   const ss = between(subs, 'function sampleScrim(node) {', 'function lineNode(line) {');
   assert.match(ss, /const whole = seen\.partial \? sampleBackdrop\(node\.getBoundingClientRect\(\), layers, \{ full: true \}\) : null;/);
   assert.match(ss, /a = Math\.max\(scrimFor\(brightPixel\(data\)\), whole \? scrimFor\(brightPixel\(whole\)\) : 0\);/);
-  assert.match(ss, /ha = hs \? hotAlpha\(hs\.core, hs\.sky, a, \{ max: hs\.a \}\) : 0;/);
+  // (in the sky's own colour since review r2: hotTint, ask-r2-main.test.mjs)
+  assert.match(ss, /const tint = hs \? hotTint\(hs\.core, hs\.sky, a, \{ max: hs\.a \}\) : null;\s*ha = tint \? tint\.a : 0;/);
   assert.match(subs, /g\.globalAlpha = full \? 1 : Math\.min\(1, a\);/);
   const css = read('src/ui/hushfold.css');
   assert.match(css, /\.hf-sub\.fresh, \.hf-sub\.fresh::before \{ transition: none; \}/);

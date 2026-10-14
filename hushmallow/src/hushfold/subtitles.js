@@ -16,11 +16,14 @@
 //
 // createSubtitles({root, prefs, avoid, bounds, reducedMotion, backdrop, brightHint, onControl, onBand}) →
 //   { say(lines, {who, hold, id, kind:'dialogue'|'discovery'|'title', colour, interrupt, first}) → Promise<boolean>,
-//     choice(prompt, [{label, value, primary, onPick}], {who, timeoutMs, transient}) → Promise<value|null>,
-//     pause, resume, replay, skip, setSpeed, clear({keepHeld}), drop(match), suspend, unsuspend, layout, destroy,
+//     choice(prompt, [{label, value, primary, onPick}], {who, timeoutMs, transient, focus, waitHidden}) → Promise<value|null>,
+//     pause, resume, replay, skip, setSpeed, clear({keepHeld, keep}), drop(match), suspend, unsuspend, layout, destroy,
 //     get busy, get holding, get paused, get suspended, get speed, el }
 // suspend(): while the person types, nothing shows; a held discovery or a
 // choice waits (parked) and comes back on unsuspend(); passing chatter is dropped.
+// A choice with `focus` takes the keyboard focus to its first chip when it shows (never out of a text field), so
+// keyboard and screen-reader users land on it; with `waitHidden` its timeout waits while the page is hidden (WCAG 2.2.1:
+// the person who looked away comes back to the same choice, with at least HIDDEN_BACK_MS still to answer it).
 
 import { h } from '../app/ui.js';
 import { hfIcon } from './icons.js';
@@ -29,6 +32,7 @@ export const SUBTITLE_SPEEDS = Object.freeze([0.75, 1, 1.25, 1.5]);
 export const normaliseSpeed = (s) => (SUBTITLE_SPEEDS.includes(+s) ? +s : 1);
 const OUT_MS = 420;   // fade out
 const GAP_MS = 220;   // the breath between two lines
+export const HIDDEN_BACK_MS = 15000;   // a choice that waited while the page was hidden: at least this long once it is seen again
 
 /** How long a line stays on screen, in ms. */
 export function readingMs(text, speed = 1) {
@@ -186,6 +190,31 @@ export function hotAlpha(core, sky, a, { max = 0.8, under = 0.7 } = {}) {
   for (let i = 0; i < 18; i++) { const k = (lo + hi) / 2; if (over(core, k) > want) lo = k; else hi = k; }
   const t = 1 - (1 - hi) / (1 - a);
   return Math.round(Math.min(max, Math.max(0, t)) * 100) / 100;
+}
+/**
+ * The deepening over a bright spot, coloured as well as dark (review r2 P3: on Boppo's home at 320 the sun under the pill's
+ * right end read murky olive-brown — a warm white under a navy scrim is a grey of another hue than the warm sky round it,
+ * however dark). The layer's colour and alpha that bring the spot's core under both layers to the colour the sky round it
+ * has under the scrim alone, a touch darker (`under`, per sRGB channel: ~0.7 of its luminance) — the least alpha that does
+ * it with a colour in range, at most `max`. → { a, rgb: [r, g, b] }, or null when nothing is needed. Both layers are blended
+ * the browser's way (sRGB). Pure; unit-tested.
+ */
+export function hotTint(core, sky, a, { max = 0.8, under = 0.86 } = {}) {
+  if (!core || !sky || !(a >= 0) || a >= 1) return null;
+  const mix = (p, k) => p.map((v, i) => v + (SCRIM_RGB[i] - v) * k);
+  const P = mix(core, a), Sk = mix(sky, a);
+  // (a spot no brighter than the sky round it needs nothing)
+  if (luminance(...P) <= luminance(...Sk)) return null;
+  const T = Sk.map((v) => v * under);
+  let t = 0;
+  for (let i = 0; i < 3; i++) {
+    if (P[i] > T[i]) t = Math.max(t, (P[i] - T[i]) / P[i]);              // (its colour no less than 0)
+    else if (T[i] > P[i]) t = Math.max(t, (T[i] - P[i]) / Math.max(1, 255 - P[i]));   // (...nor more than 255)
+  }
+  t = Math.min(max, t);
+  if (!(t > 0.02)) return null;
+  const rgb = P.map((p, i) => Math.round(Math.min(255, Math.max(0, (T[i] - p * (1 - t)) / t))));
+  return { a: Math.round(t * 100) / 100, rgb };
 }
 let sampler = null;
 /**
@@ -375,9 +404,12 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       const d2 = layers ? sampleBackdrop(box, layers, { out: seen2 }) : null;
       hs = d2 ? hotSpot(d2) : null;
       if (!hs && seen2.partial) { const w2 = sampleBackdrop(box, layers, { full: true }); hs = w2 ? hotSpot(w2) : null; }
-      // (only as deep as the spot needs to read as the sky round it does: never a dark blot on a bright home)
-      ha = hs ? hotAlpha(hs.core, hs.sky, a, { max: hs.a }) : 0;
+      // (only as deep as the spot needs to read as the sky round it does — in its colour too, never a grey or olive disc on
+      // a warm sky: hotTint — and never a dark blot on a bright home)
+      const tint = hs ? hotTint(hs.core, hs.sky, a, { max: hs.a }) : null;
+      ha = tint ? tint.a : 0;
       if (hs && ha > 0.02) {
+        node.style.setProperty('--hf-hot-rgb', tint.rgb.join(', '));
         node.style.setProperty('--hf-hot-x', `${(hs.x * 100).toFixed(1)}%`);
         node.style.setProperty('--hf-hot-y', `${(hs.y * 100).toFixed(1)}%`);
         node.style.setProperty('--hf-hot-cx', `${Math.round(hs.x * box.width - 24)}px`);
@@ -467,7 +499,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   function finish(result) {
     const item = cur?.item;
     cur = null;
-    chipsEl.hidden = true; chipsEl.replaceChildren();
+    chipsEl.hidden = true; chipsEl.replaceChildren(); chipsEl.classList.remove('out');
     ctl.classList.remove('holding');
     item?.resolve(result);
     next();
@@ -491,20 +523,51 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     if (node) lastLine = { text: prompt, who: opts.who, colour: opts.colour };
     chipsEl.setAttribute('aria-label', prompt || 'Choose');
     // onPick runs inside the tap itself (an iPhone keyboard only opens from a real gesture)
-    chipsEl.replaceChildren(...options.map((o) => h('button', { class: `hf-chip${o.primary ? ' primary' : ''}`, type: 'button', onclick: () => { try { o.onPick?.(); } catch (e) { console.warn(e); } choose(o.value); } }, o.label)));
+    chipsEl.replaceChildren(...options.map((o) => h('button', { class: `hf-chip${o.primary ? ' primary' : ''}${o.soft ? ' soft' : ''}`, type: 'button', onclick: () => { try { o.onPick?.(); } catch (e) { console.warn(e); } choose(o.value); } }, o.label)));
+    chipsEl.classList.remove('out');
     chipsEl.hidden = false;
     ctl.classList.add('is-hidden');
     layout();
     adaptScrim(node);
     if (node) requestAnimationFrame(() => { if (!destroyed && cur === mine && mine.lineEl === node) { layout(); settle(node); } });
     watch(true);
-    if (opts.timeoutMs > 0) cur.timer = setTimeout(() => choose(null), opts.timeoutMs);
-    function choose(value) {
+    // (keyboard and screen readers: the first chip has the focus — never taken out of a text field, where on iPhone it
+    // would drop the keyboard mid-sentence)
+    if (opts.focus) {
+      const a = document.activeElement;
+      if (!a || !(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) chipsEl.firstChild?.focus?.({ preventScroll: true });
+    }
+    if (mine.onVis) { document.removeEventListener?.('visibilitychange', mine.onVis); mine.onVis = null; }
+    if (opts.timeoutMs > 0) {
+      // (waitHidden: the clock stops while the page is hidden and starts again, with at least HIDDEN_BACK_MS, once it is seen)
+      let left = opts.timeoutMs, t0 = 0;
+      const arm = () => {
+        clearTimeout(mine.timer); mine.timer = 0;
+        if (opts.waitHidden && document.hidden) return;
+        t0 = performance.now();
+        mine.timer = setTimeout(() => choose(null, { faded: true }), left);
+      };
+      if (opts.waitHidden) {
+        const onVis = mine.onVis = () => {
+          if (cur !== mine || mine.phase === 'out' || mine.onVis !== onVis) { document.removeEventListener?.('visibilitychange', onVis); return; }
+          if (document.hidden) {
+            if (mine.timer) { clearTimeout(mine.timer); mine.timer = 0; left = Math.max(0, left - (performance.now() - t0)); }
+          } else if (!mine.timer) { left = Math.max(left, opts.hiddenBackMs ?? HIDDEN_BACK_MS); arm(); }
+        };
+        document.addEventListener?.('visibilitychange', onVis);
+      }
+      arm();
+    }
+    function choose(value, { faded = false } = {}) {
       if (cur !== mine || mine.phase === 'out') return;
       clearTimeout(mine.timer);
+      if (mine.onVis) { document.removeEventListener?.('visibilitychange', mine.onVis); mine.onVis = null; }
       mine.phase = 'out';
-      chipsEl.hidden = true;
-      fadeOut(mine.lineEl, () => { if (cur === mine) finish(value); });
+      // (let go by its clock, the chips fade out with the line — the soft chip after "Just be with it" fades, never pops;
+      // a tapped one goes at once)
+      if (faded) chipsEl.classList.add('out'); else chipsEl.hidden = true;
+      if (!mine.lineEl && faded) setTimeout(() => { if (cur === mine) finish(value); }, OUT_MS);
+      else fadeOut(mine.lineEl, () => { if (cur === mine) finish(value); });
     }
     cur.choose = choose;
   }
@@ -568,17 +631,26 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     /**
      * Remove everything now; pending promises resolve false (choices null).
      * keepHeld: held discoveries and non-transient choices stay (queued, or parked).
+     * keep(opts): what else stays — the one showing stays exactly as it is, on screen with its clock running (a world
+     * pausing under the shell's own question never takes the question with it).
      */
-    clear({ keepHeld = false } = {}) {
+    clear({ keepHeld = false, keep = null } = {}) {
+      const stays = (it) => { try { return !!(keep && it && keep(it.opts || {})); } catch { return false; } };
       const kept = [];
-      for (const it of queue.splice(0)) { if (keepHeld && keeper(it)) kept.push(it); else it.resolve(it.choice ? null : false); }
+      for (const it of queue.splice(0)) { if ((keepHeld && keeper(it)) || stays(it)) kept.push(it); else it.resolve(it.choice ? null : false); }
+      if (cur && cur.phase !== 'out' && stays(cur.item)) {
+        // (it stays on screen, untouched: only what was queued behind it is let go)
+        if (parked && !(keepHeld && keeper(parked.item)) && !stays(parked.item)) { parked.item.resolve(parked.item.choice ? null : false); parked = null; }
+        queue.push(...kept);
+        return;
+      }
       if (cur) {
         clearTimeout(cur.timer);
         const c = cur; cur = null;
         if (keepHeld && keeper(c.item)) { c.phase = 'in'; c.lineEl = null; kept.unshift({ ...c.item, resumeAt: c.i }); }
         else c.item.resolve(c.item.choice ? null : false);
       }
-      if (parked && !(keepHeld && keeper(parked.item))) { parked.item.resolve(parked.item.choice ? null : false); parked = null; }
+      if (parked && !(keepHeld && keeper(parked.item)) && !stays(parked.item)) { parked.item.resolve(parked.item.choice ? null : false); parked = null; }
       queue.push(...kept);
       liveEl.replaceChildren(); chipsEl.hidden = true; chipsEl.replaceChildren();
       ctl.classList.remove('holding'); showCtl(false); watch(false);
