@@ -95,6 +95,9 @@ const HOST_BLOCK_S = 0.25;
 // how long they wait, hidden, for a clear place before they show at the best place there is — never on the hero, a face
 // or other words; only brushing a face's room to move
 const HOST_GIVE_S = 0.9;
+// how long a world-driven thought's words, cut to fewer lines for a moment (a hero passing by, a melt's host swap), must
+// have shown clear before the line they gave up is tried again (doubled, to 8 s, each time it is lost again soon after)
+const RAISE_S = 0.8;
 let styled = false;
 
 function injectStyle() {
@@ -1895,6 +1898,31 @@ export class ThoughtLayer {
   // would a world-driven thought's words at candidate c have to wait, hidden (hostWait's rule below): the place is not
   // clear — on the hero, other words, or more than a brush into a face's room to move — and the words are not showing
   // yet, or the place is on something itself
+  /** A world-driven thought's words, cut to fewer lines a moment ago: one line back, once that larger plate is clear (_tags). */
+  _raiseHosted(th, tg, W, dt, clearNow) {
+    tg.raiseT = clearNow ? (tg.raiseT || 0) + dt : 0;
+    if (tg.raiseT < (tg.raiseWait || RAISE_S)) return false;
+    tg.raiseT = 0;
+    const F = this._hostFit(th);
+    if (!F) return false;
+    const lines = Math.max(1, (F.lines | 0) - (tg.drop - 1)), mw = Math.max(40, Math.round(F.maxW));
+    const e = tg.fits.find((q) => q.lines === lines && q.maxW === mw && q.W === W && q.minWords === 3);
+    if (!e || !(e.w > 0)) return false;
+    // (tried with that plate's size, then everything the search touched is put back as it was)
+    const sw = tg.w, sh = tg.h, wx = tg.wx, wy = tg.wy, hc = this._bestHard, bc = this._bestBad;
+    tg.w = e.w; tg.h = e.h;
+    // (its own place this frame is not in its way: placed[tg.pi])
+    const c2 = this._search(th, tg, tg.pi);
+    // (clear as the words' own wait reads clear: nothing on it but, at most, a brush of a face's room to move)
+    const h2 = this._hard(this._candRect(th, tg, c2), th, tg.pi);
+    const ok = h2 - this._hob + this._hobDeep <= 0;
+    tg.w = sw; tg.h = sh; tg.wx = wx; tg.wy = wy; this._bestHard = hc; this._bestBad = bc;
+    if (!ok) return false;
+    tg.drop--;
+    tg.sinceRaise = 0;
+    this._fitLevel(th, tg, W);
+    return true;
+  }
   _hostBlocked(th, tg, c) {
     const h0 = this._hard(this._candRect(th, tg, c), th, -1);
     return h0 - this._hob + this._hobDeep > 0 && (!tg.shown || this._core > 0);
@@ -2018,6 +2046,8 @@ export class ThoughtLayer {
               const hc = this._bestHard, bc = this._bestBad, wx = tg.wx, wy = tg.wy, cw = this._searchWide(th, tg, -1);
               if (!this._hostBlocked(th, tg, cw) || this._bestBad < bc) c = cw; else { tg.wx = wx; tg.wy = wy; this._bestHard = hc; this._bestBad = bc; }
             }
+            // (lost again soon after it came back: it waits longer before the next try)
+            if (tg.drop > 0 && (tg.sinceRaise ?? Infinity) < 2) { tg.raiseWait = Math.min(8, (tg.raiseWait || RAISE_S) * 2); tg.sinceRaise = Infinity; }
           }
         }
         // nowhere clear either: a resting plate does not swap one covered place for another no better than
@@ -2027,6 +2057,18 @@ export class ThoughtLayer {
         tg.ci = c; tg.live = true; tg.done = true;
         tg.pi = this._placeR(this._candRect(th, tg, c), this._nPlaced, th);
       }
+    }
+    // ...and the line a world-driven thought's words gave up comes back: a moment's block (a hero passing by, a melt's host
+    // swap) is not a reason to show fewer of the person's words for the rest of the world ("I'm so angry my boss…" on one
+    // line for the ocean's whole first seconds at 320). Once they have shown clear a while where they are, the plate one
+    // line larger — measured before, so nothing changes in sight to try it — is looked for round the thought; clear there
+    // too, it is taken (the words fade out, change unseen and come back: _fitLevel's refit). Never on the hero or a face.
+    for (const th of list) {
+      const tg = this.tags.get(th);
+      if (!tg || tg.mode !== 1 || !th.driven) continue;
+      if (tg.drop > 0) this._raiseHosted(th, tg, W, dt, tg.shown && tg.pi >= 0 && !tg.blocked && !tg.refit && !(tg.hop > 0) && !tg.hostWait);
+      else { tg.raiseT = 0; tg.raiseWait = 0; }
+      tg.sinceRaise = (tg.sinceRaise ?? Infinity) + dt;
     }
     // on its way: it keeps the side chosen for it, and waits (hidden, untouchable) while that is on the hero or a face
     for (const th of list) {
