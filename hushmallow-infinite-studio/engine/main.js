@@ -7,6 +7,8 @@
 //   scale              render scale (default 1): the output is round(w·scale) × round(h·scale)
 //   seed               seed of the virtual clock's Math.random (default 20261013, read by runtime/clock.js)
 //   mark               burn a corner mark with this text (e.g. DRAFT), see runtime/marks.js
+//   profile            quality profile, render/profiles.js (default exact)
+//   features           feature overrides of the profile, e.g. "-worldFast" (bisecting, PSNR gates)
 //   textKeys           'legacy' only for the R4 sensitivity test (stage2's key-only texture cache)
 //
 // window.__engine is the worker's API; window.__stage keeps the stage2 surface
@@ -18,6 +20,7 @@ import { Stage } from './stage.js';
 import { loadDirection } from './directions.js';
 import { Marks } from './runtime/marks.js';
 import { assetLog } from './runtime/asset-log.js';
+import { resolveProfile, featureLabel } from './render/profiles.js';
 
 const q = new URLSearchParams(location.search);
 const num = (k, d) => {
@@ -28,11 +31,13 @@ const num = (k, d) => {
 };
 
 const width = num('w', 1080), height = num('h', 1920), scale = num('scale', 1);
+const profile = resolveProfile(q.get('profile') || undefined, { features: q.get('features') });
 const stage = new Stage({
   canvas: document.getElementById('out'),
   width, height, scale,
   marks: q.get('mark') ? new Marks(q.get('mark')) : null,
   textKeys: q.get('textKeys') || 'content',
+  profile,
 });
 
 function describe(d) {
@@ -44,6 +49,7 @@ function describe(d) {
     id: m.id, title: m.title, runtime: m.runtime, score: m.score ?? null, meta: { ...m },
     fps: m.fps, duration: m.duration, frames: Math.round(m.duration * m.fps),
     design: [width, height], scale, width: stage.outW, height: stage.outH, seed: clock.seed,
+    profile: profile.name, features: featureLabel(profile),
   };
 }
 

@@ -18,10 +18,13 @@
 //   - prime(a, k) replays the face draws of the k frames before a, so a segment
 //     started in a fresh page reproduces the in-order render history (Face.tmp)
 //   - dispose() frees everything a direction created (R4)
+//   - WP-02: a quality profile (render/profiles.js) chooses the renderer's
+//     pipeline; setMeter() installs hm bench's per-pass timing hooks
 
 import { clock } from './runtime/clock.js';   // deterministic time + seeded randomness (first)
 import { createGL } from './gl.js';
-import { Renderer, DESIGN_W, DESIGN_H } from './renderer.js';
+import { Renderer, DESIGN_W, DESIGN_H } from './renderer/index.js';
+import { resolveProfile } from './render/profiles.js';
 import { assetLog } from './runtime/asset-log.js';
 
 /** Sub-frame count used when a direction's subframes() returns garbage (R18). */
@@ -66,16 +69,18 @@ export class Stage {
   /**
    * canvas: the output canvas (sized here); width/height: design space; scale:
    * render scale; marks: optional runtime/marks.js corner mark; textKeys: 'content'
-   * (default) or 'legacy' (stage2's key-only texture cache; sensitivity tests only).
+   * (default) or 'legacy' (stage2's key-only texture cache; sensitivity tests only);
+   * profile: a resolved render/profiles.js profile (default: exact).
    */
-  constructor({ canvas, width = DESIGN_W, height = DESIGN_H, scale = 1, marks = null, textKeys = 'content' } = {}) {
+  constructor({ canvas, width = DESIGN_W, height = DESIGN_H, scale = 1, marks = null, textKeys = 'content', profile = resolveProfile('exact') } = {}) {
     this.W = width; this.H = height; this.scale = scale;
     this.outW = Math.round(width * scale); this.outH = Math.round(height * scale);
+    this.profile = profile;
     this.canvas = canvas;
     canvas.width = this.outW; canvas.height = this.outH;
     canvas.style.width = `${this.outW}px`; canvas.style.height = `${this.outH}px`;
     this.gl = createGL(canvas);
-    this.renderer = new Renderer(this.gl, { width, height, scale, marks, textKeys });
+    this.renderer = new Renderer(this.gl, { width, height, scale, marks, textKeys, profile });
     this.overlay = document.createElement('canvas');
     this.overlay.width = this.outW; this.overlay.height = this.outH;
     this.octx = this.overlay.getContext('2d');
@@ -88,6 +93,17 @@ export class Stage {
     this.clockFrames = 0;            // how many frames the virtual clock has advanced
     this.px = null;
     this.upload = null;              // the frame upload in flight (readback)
+    this.meter = null;               // per-pass timing hooks (hm bench), see setMeter()
+  }
+
+  /**
+   * Install per-pass timing hooks { begin(name), end(name) } on the stage and
+   * the renderer (null removes them). Only hm bench does this: the engine itself
+   * never reads a clock, the hooks bring their own.
+   */
+  setMeter(meter) {
+    this.meter = meter;
+    this.renderer.meter = meter;
   }
 
   async init(video) {
@@ -146,16 +162,20 @@ export class Stage {
    * finish the GPU work); false → evaluate the states without rendering.
    */
   renderFrame(i, { capture = true } = {}) {
-    const fps = this.fps, t = i / fps;
+    const fps = this.fps, t = i / fps, m = this.meter;
     this.stepClock();
     // adaptive motion blur: more sub-frames when something moves fast
+    m?.begin('state');
     const N = this.subframesAt(t);
     this.lastSubframes = N;
     const subs = this.subStates(t, N);
     const center = this.video.state(t, this, { center: true });
+    m?.end('state');
     this.lastFrame = i;
     if (!capture) return null;
+    m?.begin('overlay.draw');
     const ov = this.video.overlay ? this.video.overlay(this.octx, t, this) : false;
+    m?.end('overlay.draw');
     this.renderer.renderFrame(subs, center, ov ? this.overlay : null);
     const g = this.gl;
     if (capture === 'none') { g.readPixels(0, 0, 1, 1, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4)); return null; }
