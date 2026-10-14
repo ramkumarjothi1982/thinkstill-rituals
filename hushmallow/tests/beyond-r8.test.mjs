@@ -19,7 +19,7 @@ import * as P from './probes/r8.mjs';
 import { deathTalk, deathEscalation, wantsToFollow, stillAlive, serverLoss, serverGrief, griefLinesOk, livingLoss } from '../src/beyond/grief.js';
 import { BAG, bagWords, framingAllowed, gentleRoute, harmRoute, framesAsGuess, acknowledges, FRAMING_MECHANICS } from '../src/beyond/backstop.js';
 import { clauses, markerKinds, hasMarker, guessClause, factClause } from '../src/beyond/markers.js';
-import { authoredScene, sceneParts, feelingOf, fairAnger, feelingGuard, guessGuard, framesScene, ownFactPair, ownStep, FACT_ASK, GUESS_ASK, eventKind } from '../src/beyond/authored.js';
+import { authoredScene, sceneParts, feelingOf, fairAnger, angerUnsaid, feelingGuard, guessGuard, framesScene, ownFactPair, ownStep, FACT_ASK, GUESS_ASK, eventKind } from '../src/beyond/authored.js';
 import { AUTHORED_PAIRS, MECHANIC_LINES, FRIEND_LINES, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, WAITING, FEELING, KIND, GRIEF, SAFETY, ANGER_PAIRS, AUTHORED_ALT, mechanicLines } from '../src/beyond/lines.js';
 import { GENERAL, SCENARIOS } from '../src/ultra/frameworks.js';
 import { checkText } from '../src/engine/safety.js';
@@ -161,9 +161,11 @@ test('r8.1: wrongs done to them are fair anger (the reviewer’s twenty): the wr
   for (const t of P.ANGER) {
     assert.equal(fairAnger(t), true, t);
     const all = rounds(t);
-    assert.equal(all[0].mechanic, 'find_boundary', t);
+    // (a wrong told with embarrassment, not anger, the angle-polish QA: the one moment lifted out first, never find_boundary)
+    const unsaid = angerUnsaid(t);
+    assert.equal(all[0].mechanic, unsaid ? 'separate_one' : 'find_boundary', t);
     for (const s of all) {
-      assert.ok(['find_boundary', 'return_responsibility', 'assemble_step'].includes(s.mechanic), `${t} → ${s.mechanic}`);
+      assert.ok((unsaid ? ['separate_one', 'return_responsibility', 'assemble_step', 'soften_harshness'] : ['find_boundary', 'return_responsibility', 'assemble_step']).includes(s.mechanic), `${t} → ${s.mechanic}`);
       assert.equal(s.possible_assumption, '', t);
       assert.ok(!framed(s), `${t} → ${s.subtitle_line_1}`);
     }
@@ -171,7 +173,7 @@ test('r8.1: wrongs done to them are fair anger (the reviewer’s twenty): the wr
   // a server answer that frames the wrong gives way to fair anger's own scenes (find_boundary first)
   for (const t of P.ANGER) for (const res of [STUBS.pullApart, STUBS.mindRead, STUBS.shrink]) {
     const s = played(t, res).scene;
-    assert.equal(s.mechanic, 'find_boundary', `${t} → ${s.mechanic}`);
+    assert.equal(s.mechanic, angerUnsaid(t) ? 'separate_one' : 'find_boundary', `${t} → ${s.mechanic}`);
     assert.ok(!framed(s), t);
   }
   // the explore prompts and waiting lines follow the gate: a feeling's, never "Want to test it?" or "What else could be true?"

@@ -118,13 +118,15 @@ test('authored scenes: valid, short, deterministic, quoting the person exactly',
 
 test('authored scenes fit the words: fair anger, replaying, mind-reading, self-criticism', () => {
   assert.equal(authoredScene('My manager took the credit for my idea again.').reasoning_pattern, 'valid_anger');
-  assert.equal(authoredScene('My boss embarrassed me in front of everyone.').reasoning_pattern, 'valid_anger');
+  assert.equal(authoredScene('My boss shouted at me in front of everyone.').reasoning_pattern, 'valid_anger');
+  // (embarrassment told, never anger: the angle-polish QA)
+  assert.notEqual(authoredScene('My boss embarrassed me in front of everyone.').reasoning_pattern, 'valid_anger');
   assert.equal(authoredScene('I keep replaying something embarrassing I said.').reasoning_pattern, 'rumination');
   assert.equal(authoredScene('He hasn’t replied for hours. He must be annoyed with me.').reasoning_pattern, 'mind_reading');
   assert.equal(authoredScene('I failed my exam. I’m useless.').reasoning_pattern, 'self_criticism');
   assert.equal(authoredScene('Nobody likes me.').reasoning_pattern, 'overgeneralisation');
   // a fair-anger step is a boundary, never "say something light"
-  assert.match(authoredScene('My boss embarrassed me in front of everyone.').practical_next_step, /limit|boundar|noted|say/i);
+  assert.match(authoredScene('My boss shouted at me in front of everyone.').practical_next_step, /limit|boundar|noted|say/i);
   // a self-directed thought is never told it is a guess about someone else's mind
   for (const t of ['I always mess things up.', 'I feel like a fraud at work.']) assert.ok(!candidatePatterns(t).includes('mind_reading'), t);
 });

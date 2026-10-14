@@ -14,7 +14,7 @@ import * as P from './probes/r10.mjs';
 import { visit, STUBS, SCENE_STUBS } from './probes/r10-replay.mjs';
 import { deathTalk, deathEscalation } from '../src/beyond/grief.js';
 import { bagWords, lossNear, ordinaryOnly, framingAllowed, framesAsGuess, acknowledges, FRAMING_MECHANICS } from '../src/beyond/backstop.js';
-import { authoredScene, fairAnger, angerAnswer, eventKind, candidatePatterns } from '../src/beyond/authored.js';
+import { authoredScene, fairAnger, angerAnswer, angerUnsaid, eventKind, candidatePatterns } from '../src/beyond/authored.js';
 import { SAFETY, KIND, FEELING, WAITING, ANGER_PAIRS, AUTHORED_PAIRS, MECHANIC_LINES } from '../src/beyond/lines.js';
 import { checkText } from '../src/engine/safety.js';
 import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
@@ -123,6 +123,9 @@ test('r10.4: fair anger beside a death or a bag word is never find_boundary or a
   for (const t of P.ANGER_STAYS) {
     probes++;
     assert.equal(fairAnger(t), true, t);
+    // (a wrong told with embarrassment, never anger: "My boss embarrassed me in front of everyone" is never answered as anger,
+    // the angle-polish QA; it is still a wrong, on a stated event's kind steps)
+    if (angerUnsaid(t)) { assert.equal(angerAnswer(t), false, t); assert.notEqual(authoredScene(t).mechanic, 'find_boundary', t); continue; }
     assert.equal(angerAnswer(t), true, t);
     assert.equal(authoredScene(t).mechanic, 'find_boundary', t);
   }

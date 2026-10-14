@@ -153,8 +153,10 @@ test('r11.6: fair anger beside a bag word or death talk: never find_boundary, an
     }
   }
   assert.equal(visit('my friend ODd last night and everyone blames me', { server: STUBS.anger }).route, 'gentle');
-  // fair anger with no bag word still looks like anger
-  assert.equal(candidatePatterns('My boss embarrassed me in front of everyone')[0], 'valid_anger');
+  // fair anger with no bag word still looks like anger (with no other feeling told: "embarrassed me" tells embarrassment, the
+  // angle-polish QA)
+  assert.equal(candidatePatterns('My boss shouted at me in front of everyone')[0], 'valid_anger');
+  assert.notEqual(candidatePatterns('My boss embarrassed me in front of everyone')[0], 'valid_anger');
 });
 
 // ---------------------------------------------------------------------------- escalation --

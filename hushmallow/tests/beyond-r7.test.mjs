@@ -17,8 +17,8 @@ import { fileURLToPath } from 'node:url';
 import * as P from './probes/death-talk.mjs';
 import { deathTalk, wantsToFollow, deathEscalation, serverGrief, serverLoss, livingLoss } from '../src/beyond/grief.js';
 import { harmWords, harmRoute, framingAllowed, gentleRoute, FRAMING_MECHANICS, framesAsGuess } from '../src/beyond/backstop.js';
-import { authoredScene, sceneParts, gentleScene, feelingOf, harmGuard, ownFactPair, ownStep, fairAnger, angerSplit, FEELING_ORDER } from '../src/beyond/authored.js';
-import { GRIEF, SAFETY, FEELING, MECHANIC_LINES, mechanicLines } from '../src/beyond/lines.js';
+import { authoredScene, sceneParts, gentleScene, feelingOf, harmGuard, ownFactPair, ownStep, fairAnger, angerSplit, angerUnsaid, FEELING_ORDER } from '../src/beyond/authored.js';
+import { GRIEF, SAFETY, FEELING, KIND, MECHANIC_LINES, mechanicLines } from '../src/beyond/lines.js';
 import { checkText } from '../src/engine/safety.js';
 import { MECHANIC_MODULES } from '../src/beyond/mechanics/index.js';
 
@@ -304,10 +304,13 @@ test('r7.E2: fair anger: the wrong is the fact, never the mind’s addition; onl
     const wrong = angerSplit(text).fact;
     assert.ok(wrong, text);
     const all = rounds(text);
+    // (a wrong told with embarrassment, not anger, the angle-polish QA: a stated event's kind steps, never anger's own)
+    const unsaid = angerUnsaid(text);
     for (const { scene, parts } of all) {
-      assert.ok(['find_boundary', 'return_responsibility', 'assemble_step'].includes(scene.mechanic), `${text} → ${scene.mechanic}`);
+      assert.ok((unsaid ? ['separate_one', 'return_responsibility', 'assemble_step', 'soften_harshness'] : ['find_boundary', 'return_responsibility', 'assemble_step']).includes(scene.mechanic), `${text} → ${scene.mechanic}`);
       assert.equal(scene.possible_assumption, '', `${text} → ${scene.possible_assumption}`);
-      assert.match(scene.known_fact, /^What you know(?: is what you told me)?: “/, text);
+      if (unsaid) assert.equal(scene.feeling, 'hurt', text);
+      else assert.match(scene.known_fact, /^What you know(?: is what you told me)?: “/, text);
       for (const line of said(scene)) assert.doesNotMatch(line, /one way to read|mind might be adding|what your mind|instead of guessing|open question/i, `${text} → ${line}`);
       assert.ok(parts.guessAsk, `${text}: nothing of theirs is the guess`);
     }
@@ -315,11 +318,12 @@ test('r7.E2: fair anger: the wrong is the fact, never the mind’s addition; onl
     const rr = all.find((r) => r.scene.mechanic === 'return_responsibility');
     assert.ok(rr, text);
     if (wrong.length <= 44) assert.equal(rr.parts.weight, wrong, text);
-    assert.equal(rr.scene.subtitle_line_1, 'What they did is theirs to carry, not yours.');
+    assert.equal(rr.scene.subtitle_line_1, unsaid ? KIND.pairs.return_responsibility[0] : 'What they did is theirs to carry, not yours.');
   }
-  const boss = authoredScene('My boss embarrassed me in front of everyone');
-  assert.equal(boss.known_fact, 'What you know: “My boss embarrassed me in front of everyone”.');
+  const boss = authoredScene('My boss shouted at me in front of everyone');
+  assert.equal(boss.known_fact, 'What you know: “My boss shouted at me in front of everyone”.');
   assert.equal(boss.possible_assumption, '');
+  assert.equal(authoredScene('My boss embarrassed me in front of everyone').possible_assumption, '');
   for (const [text, guess] of P.FAIR_ANGER_WITH_GUESS) {
     assert.equal(angerSplit(text).guess, guess, text);
     for (const { scene, parts } of rounds(text)) {

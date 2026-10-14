@@ -56,9 +56,10 @@ export function mount(ctx) {
     return b;
   });
   // the guess's name and its words are one card (two boxes stacked there could touch), in the column and on the
-  // ring alike: while the thought clutches it, the card reads "Your first guess" over its words, in the guess's
-  // own quarter (upper right); the name goes once it is one possibility among the others. The first guess
-  // carries their words, so no separate tag under the thought hangs where a lower possibility opens.
+  // ring alike: the card reads "Your first guess" over its words, in the guess's own quarter (upper right), reading
+  // away from the thought while it clutches it; once it is one possibility among the others it keeps its name and is
+  // centred like them (the QA sweep: a nameless left-aligned card read as something else). The first guess carries
+  // their words, so no separate tag under the thought hangs where a lower possibility opens.
   const tags = {
     guessW: ctx.tags.add(guessText, { kind: 'card', title: L.labels.guess, colour: LIGHT.guess[1], max: narrow ? rowMax : ringMax, group: 'meanings', cls: 'guess' }),
   };
@@ -69,7 +70,7 @@ export function mount(ctx) {
   const BL = new RectList(), AL = new RectList();
   // the column's rows (made once): the guess, then the three buds
   const ROWS = [guess, ...buds], ROW_TAGS = [tags.guessW, ...buds.map((b) => b.tag)], ROW_H = new Float32Array(ROWS.length);
-  let tight = false, untitled = false;
+  let tight = false, landed = false;
   // the column, laid out once per screen size (and again only when a row's card grows taller than its row)
   const ROW_Y = new Float32Array(ROWS.length);
   let colKey = '';
@@ -212,7 +213,7 @@ export function mount(ctx) {
     if (narrow) {
       // one column: every line beside its own bud (the first guess's label sits over its line while it is the only one)
       for (const b of buds) b.tag.at(b.x + b.r + 10, b.y, 'left', clamp((b.open - 0.6) * 2.5)).own(b.x, b.y);
-      if (phase !== 'closed' && !untitled) { untitled = true; tags.guessW.el.classList.add('untitled'); tags.guessW.invalidate(); }
+      if (phase !== 'closed' && !landed) { landed = true; tags.guessW.el.classList.remove('guess'); tags.guessW.invalidate(); }
       tags.guessW.at(guess.x + guess.r + 10, guess.y, 'left', 1).own(guess.x, guess.y);
       return true;
     }
@@ -221,7 +222,8 @@ export function mount(ctx) {
       const up = b.y < thought.y - R * 0.3;
       b.tag.at(b.x, up ? b.y - b.r * 1.08 - 4 : b.y + b.r * 1.08 + 4, up ? 'top' : 'bottom', clamp((b.open - 0.6) * 2.5)).own(b.x, b.y);
     }
-    if (phase !== 'closed' && !untitled) { untitled = true; tags.guessW.el.classList?.add('untitled'); tags.guessW.invalidate?.(); }
+    // (one possibility among the others now: centred like them, its name kept)
+    if (phase !== 'closed' && !landed) { landed = true; tags.guessW.el.classList?.remove('guess'); tags.guessW.invalidate?.(); }
     if (phase === 'closed') {
       // the card starts over the guess and reads away to the right, into the guess's own quarter
       tags.guessW.at(guess.x - guess.r * 0.6, guess.y - guess.r * 1.15 - 4, 'leftTop', 1).own(guess.x, guess.y);

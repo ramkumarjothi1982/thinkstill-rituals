@@ -111,8 +111,11 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
     h('p', { class: 'bx-small' }, 'You can change your mind any time in Settings, and delete this phone’s Another Angle data there.'));
 }
 
-/** The notice's bottom edge the cue covers: the 'More below' pill (34px) and the fade above it. */
-export const CUE_COVER = 44;
+/**
+ * The notice's bottom edge the cue covers: none (the 'More below' pill has its own row under the notice, so it never
+ * hides a line of it, the QA sweep's keyhole at 320x568).
+ */
+export const CUE_COVER = 0;
 /**
  * Where 'More below' scrolls to: the first line of the notice that isn't fully clear of the cue lands at
  * the top edge, so following the cue shows every line whole, the opening of each point
@@ -146,8 +149,11 @@ export function nextNoticeStop(scroll) {
 /**
  * The consent card inside the Another Angle scene: calm, above Zuzu (who stays
  * squeezable underneath), not a form. Resolves through onDecide('yes'|'no').
- * When the notice is taller than the card, a "More below" cue says so (and
- * scrolls it); "Not therapy" and the support link sit by the buttons, in view.
+ * On a short screen (700 px or less) it is a sheet from under the top bar to the
+ * bottom edge, Zuzu waiting out of sight below it, so the notice reads in a few steps.
+ * When the notice is taller than the card, a "More below" cue in its own row under
+ * it says so (and scrolls it), never over a line; "Not therapy" and the support link
+ * sit by the buttons, in view.
  */
 export function openConsent({ app, root = document.body, onDecide, support = null } = {}) {
   ensureBeyondCss();
@@ -167,7 +173,7 @@ export function openConsent({ app, root = document.body, onDecide, support = nul
   const notNow = h('button', { type: 'button', class: 'bx-choice bx-notnow', onclick: () => decide('no') }, 'Not now');
   const title = h('h2', { class: 'bx-title', id: `${uid}-t`, tabindex: '-1' }, 'Before Zuzu looks at your words');
   const scroll = h('div', { class: 'bx-scroll', id: `${uid}-d`, tabindex: '0', 'aria-label': 'The notice' }, noticeBody(app));
-  const more = h('button', { type: 'button', class: 'bx-more', hidden: true, 'aria-label': 'Show more of the notice', onclick: () => {
+  const more = h('button', { type: 'button', class: 'bx-more', 'aria-label': 'Show more of the notice', onclick: () => {
     scroll.scrollTo({ top: nextNoticeStop(scroll), behavior: reduced ? 'auto' : 'smooth' });
   } }, 'More below', h('span', { class: 'bx-more-arrow', 'aria-hidden': 'true' }, '↓'));
   const el = h('section', { class: `bx-consent hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': `${uid}-t`, 'aria-describedby': `${uid}-d`, 'data-bx': 'consent' },
@@ -177,12 +183,18 @@ export function openConsent({ app, root = document.body, onDecide, support = nul
     h('div', { class: 'bx-actions' }, notNow, accept),
     h('p', { class: 'bx-small bx-after' }, 'Not now: nothing is sent, Zuzu’s own angles.'));
   root.append(el);
-  // the cue shows while there is more of the notice below what fits (looked at on scroll, resize and as fonts land)
+  // the cue shows while there is more of the notice below what fits (looked at on scroll, resize and as fonts land): its
+  // row stays once the notice has needed it (at the end only the pill goes, so nothing jumps), and goes only when the
+  // whole notice fits with the row still there (then it fits without it too, so the two never take turns)
+  let needed = false;
   const cue = () => {
     if (done) return;
-    const left = scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop;
-    const show = left > 12;
-    if (more.hidden === show) more.hidden = !show;
+    const over = scroll.scrollHeight - scroll.clientHeight > 12;
+    if (over) needed = true;
+    const hide = !needed && !over;
+    if (more.hidden !== hide) more.hidden = hide;
+    const show = needed && scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop > 12;
+    more.classList.toggle('bx-end', needed && !show);
     el.classList.toggle('bx-has-more', show);
   };
   scroll.addEventListener('scroll', cue, { passive: true });

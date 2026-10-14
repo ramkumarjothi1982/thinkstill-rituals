@@ -190,7 +190,7 @@ test('(d) no positive feeling is suggested for words with a safety cue; ordinary
   // ordinary words: as before (confident matches, at most 3)
   assert.ok(suggestedFeelings(interpret('I am so relieved the exam is over')).includes('relief'));
   assert.ok(suggestedFeelings(interpret('I was fuming and gutted and so embarrassed')).length <= 3);
-  assert.match(read('src/hushfold/input-overlay.js'), /suggested = m\.suggestedFeelings \? m\.suggestedFeelings\(reading\) :/);
+  assert.match(read('src/hushfold/input-overlay.js'), /suggested = m\.suggestedFeelings \? m\.suggestedFeelings\(reading, \{ loss, level: safety\.level \}\) :/);
 });
 
 // ---------------------------------------------------------------- (h) rig --

@@ -59,6 +59,8 @@ const CARE_EXTRA = { mouthSmile: 0.08, mouthOpen: 0.04, tears: 0, fxRain: 0, fxH
 const SERVER_CLAUSE = 'Only these words, and the feeling and help you pick, go to our secure server for a new perspective, never photos.';
 /** How long a perspective may take before Zuzu's own angle plays instead (the server's single attempt, about 15 s). */
 const ANGLE_BUDGET_MS = 18000;
+/** At or below this height the consent notice is a sheet to the bottom edge (styles.js: @media (max-height: 700px)). */
+const CONSENT_SHEET_H = 700;
 /** The look of the person's Thought Mallow when no feeling was chosen: the kind of thought it is. */
 const PATTERN_LOOK = Object.freeze({
   valid_anger: 'anger', rumination: 'overthinking', catastrophising: 'anxiety', mind_reading: 'anxiety', fact_vs_assumption: 'anxiety',
@@ -186,7 +188,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     let B = clamp(Math.min(vw * 0.42, vh * 0.21), 96, 210);
     // plain play: Zuzu comes forward to be squeezed (after something heavy Zuzu stays its usual size, under the words)
     if (S.phase === 'squeeze') B = clamp(Math.min(vw * 0.6, vh * 0.34), 140, 320);
-    // while the notice is open Zuzu waits smaller beneath it (still squeezable), so more of the notice is in view
+    // while the notice is open Zuzu waits smaller beneath it (still squeezable), so more of the notice is in view; on a
+    // short screen the notice is a sheet to the bottom edge (styles.js) and Zuzu waits out of sight below it, coming back
+    // up once it closes (the QA sweep: a 146 px window between Zuzu and the top bar)
+    const sheetNotice = !!consentCard && vh <= CONSENT_SHEET_H;
     if (consentCard) B = clamp(vh * 0.105, 70, 116);
     const onStage = S.phase === 'playing' || (!!mech && !root.classList.contains('bx-recede'));
     // a short phone, while a mechanic is on stage: Zuzu sits a little smaller, down in the corner beside the
@@ -199,7 +204,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // (20px from the screen's edges: room for the system's own gestures)
     if (corner) root.style.setProperty('--bx-corner', `${Math.round(B * 1.16 + 20 + 8)}px`);
     if (two) B *= 0.86;
-    let cy = dockTop() - 14 - B / 2;
+    let cy = sheetNotice ? vh + B : dockTop() - 14 - B / 2;
     // Zuzu and the scene's Mallow stand together, centred (never a screen apart on a wide display)
     const spread = Math.min(vw * 0.36, B * 1.3);
     let cxZ = two ? vw / 2 - spread / 2 : vw / 2;
@@ -249,7 +254,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
 
   // ------------------------------------------------------- subtitles --
   const who = (id = 'zuzu') => { const m = MALLOWS[id] || ZUZU; return { who: m.name, colour: m.colours.glow }; };
-  const say = (text, opts = {}) => { if (!text || !subs) return Promise.resolve(false); S.lastLineAt = now(); return subs.say(text, { ...who(opts.mallow), ...opts }); };
+  // (a line that opens on their words in quotes starts with a capital: "“She must be angry with me” is a guess…"; the
+  // words inside stay as typed otherwise)
+  const capOpen = (t) => (typeof t === 'string' ? t.replace(/^([“"‘])(\p{Ll})/u, (m, q, c) => q + c.toUpperCase()) : t);
+  const say = (text, opts = {}) => { if (!text || !subs) return Promise.resolve(false); S.lastLineAt = now(); return subs.say(capOpen(text), { ...who(opts.mallow), ...opts }); };
   const choose = (prompt, options, opts = {}) => (subs ? subs.choice(prompt, options, { ...who(opts.mallow), ...opts }) : Promise.resolve(null));
   const announce = (t) => { live.textContent = ''; requestAnimationFrame(() => { live.textContent = t; }); };
   // what a mechanic shows (its cards, possibilities, bowls, pieces) is heard as it appears: gathered for a
