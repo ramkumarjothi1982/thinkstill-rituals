@@ -84,7 +84,9 @@ const MIND = [
   // into them (never a place or a plain fact: "she must be at work", "he must be fine")
   /\b(?:he|she|they|hes|shes|theyre|everyone|everybody)\s+(?:(?:really|probably|surely|just|obviously|clearly)\s+)?must\s+be\s+(?:(?:so|really|very|totally|completely|well|proper|pretty|quite|a\s+bit|kind\s+of|kinda|getting|feeling)\s+)*(?!(?:at|in|on|home|here|there|out|away|back|off|up|down|over|done|finished|the|a|an|my|his|her|their|our|your|it|that|this|ok|okay|fine|alright|right|joking|kidding|wrong|true|nice|lovely|great|happy|proud|pleased|relieved|excited)\b)[a-z]{3,}\b/u,
   // "she must have forgotten about me", "they must have been talking about me"
-  /\b(?:he|she|they|everyone|everybody)\s+(?:(?:really|probably|surely|just|obviously|clearly)\s+)?must\s+(?:have|ve|of)\s+(?:forgotten|forgot|been|done|decided|thought|got|gotten|stopped|lost\s+interest|moved\s+on|found|given\s+up|had\s+enough|seen|heard|noticed|meant|wanted|realised|realized|told|said)\b/u,
+  /\b(?:he|she|they|everyone|everybody)\s+(?:(?:really|probably|surely|just|obviously|clearly)\s+)?must\s+(?:have|ve|of)\s+(?:forgotten|forgot|been|done|decided|thought|got|gotten|stopped|lost\s+interest|moved\s+on|found|given\s+up|had\s+enough|seen|heard|noticed|meant|wanted|realised|realized|told|said|replaced|dumped|ditched|blocked|muted|unfollowed|chosen|picked|preferred|swapped|outgrown)\b/u,
+  // (review r12) "she must have a new best friend", "he must want something" (what someone has or wants, read into it)
+  /\b(?:he|she|they|everyone|everybody)\s+(?:(?:really|probably|surely|just|obviously|clearly)\s+)?must\s+(?:have|ve)\s+(?:a|an|another|someone|somebody)\s+(?:new|better|other|else)\b|\b(?:he|she|they)\s+(?:(?:really|probably|surely|just|obviously|clearly)\s+)?must\s+want\s+(?:something|me\s+(?:gone|out|to\s+\w+))\b/u,
   // "she obviously doesnt want to see me", "he probably finds me boring", "they clearly hate me"
   /\b(?:he|she|they|everyone|everybody)\s+(?:(?:so|just)\s+)?(?:obviously|clearly|probably|definitely|deffo|defo)\s+(?:doesnt|dont|does\s+not|do\s+not|isnt|arent|hates?|wants?|thinks?|cant|wont|likes?|prefers?|finds?|sees|regrets?)\b/u,
 ];
@@ -102,6 +104,8 @@ function alwaysNever(n) {
   for (const m of n.matchAll(/\b(?<pre>(?:have|has|had|ve|s|d)\s+)?(?<w0>always|never)\s+(?:(?:ever|even|really|just|actually|once|again)\s+)*(?<w>[a-z]+)/gu)) {
     const { pre, w0, w } = m.groups;
     if (pre || PAST.test(w) || /^(?:mind|forget|forgive|ending)$/u.test(w)) continue;
+    // (review r12) a wrong they tell, not a rule: "my partner never pays me back" (fair anger: authored.js valid_anger)
+    if (w0 === 'never' && /^pays?$/u.test(w) && /^\s+(?:me|us|it)\s+back\b/u.test(n.slice(m.index + m[0].length))) continue;
     if (w0 === 'always' && !ALWAYS_BAD.test(n)) continue;
     return true;
   }
@@ -119,6 +123,8 @@ const CATA = [
   // (review r11) "Im definitely getting fired", "Im going to be in so much trouble"
   /\b(?:definitely|probably|totally|deffo|defo|surely|basically|so|100%)\s+(?:getting|gonna\s+get|going\s+to\s+get|about\s+to\s+get)\s+(?:fired|sacked|dumped|kicked\s+out|told\s+off|expelled|excluded|suspended|rejected|left|laughed\s+at|shouted\s+at|in\s+trouble|the\s+sack)\b/u,
   /\b(?:im|i\s+am|ill|i\s+will|im\s+gonna|im\s+going\s+to|gonna|going\s+to|will)\s+(?:\w+\s+){0,2}?be\s+in\s+(?:so\s+much|big|real|serious|deep|such|massive|huge|loads\s+of|a\s+lot\s+of)\s+(?:of\s+)?trouble\b/u,
+  // (review r12) "I'm in so much trouble" (a forecast told as now)
+  /\b(?:im|i\s+am)\s+(?:so\s+|definitely\s+|probably\s+|totally\s+)?in\s+(?:so\s+much|big|real|serious|deep|such|massive|huge|loads\s+of|a\s+lot\s+of)\s+(?:of\s+)?trouble\b/u,
 ];
 /** Labels the person puts on themselves beyond HARSH ("I'm such a mess", "I hate myself"). */
 const LABEL = /\bi(?:m|\s+am)\s+such\s+an?\s+\w+|\bi\s+hate\s+myself\b|\bi(?:m|\s+am)\s+(?:(?:so|really|just|such|completely|totally|literally|actually)\s+)*(?:the\s+worst|a\s+disappointment|a\s+let\s+down|unlovable|not\s+good\s+enough|not\s+enough|too\s+much|boring|ugly|fat|weird|annoying|unlikeable|unlikable|unattractive|broken|damaged|clingy|needy|cringe|embarrassing|a\s+waste\s+of\s+space|the\s+problem|a\s+bad\s+\w+|a\s+terrible\s+\w+|an\s+awful\s+\w+|a\s+horrible\s+\w+)\b/u;

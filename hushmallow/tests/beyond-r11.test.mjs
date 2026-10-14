@@ -98,7 +98,8 @@ test('r11.3: a server care answer beside death talk or a bag word is SAFETY.care
   assert.deepEqual(visit('my boss always ignores me', { server: STUBS.care }).careLines, SAFETY.care);
   const src = read('src/beyond/another-angle.js');
   assert.match(src, /if \(res\.status === 'care'\) \{ careMode\(\{ lines: serverCareLines\(\) \}\); return; \}/);
-  assert.match(src, /return gentleRoute\(S\.text\) \|\| bagWords\(S\.text\) \? SAFETY\.careGentle : SAFETY\.care;/);
+  // (review r12: and a loss they confirmed at the check-in, or words the check-in would ask about, lossRoute)
+  assert.match(src, /return S\.lossSaid \|\| gentleRoute\(S\.text\) \|\| bagWords\(S\.text\) \|\| lossRoute\(S\.text, \{ emotion: S\.emotion \}\) \? SAFETY\.careGentle : SAFETY\.care;/);
 });
 
 // --------------------------------------------------------------- blocking 3: the main screen --

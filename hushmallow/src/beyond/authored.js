@@ -24,7 +24,7 @@ import { HARSH, ownLabel, clauses, markerKinds, guessClause } from './markers.js
 // strong cues the authored habits don't name (practical problems, fair anger, replaying)
 const CUES = {
   rumination: /\b(?:replay\w*|keep (?:thinking|going over|going back to|coming back to)|can'?t stop (?:thinking|replaying|going over)|over and over|round and round|going round in circles)\b/i,
-  valid_anger: /\b(?:unfair|furious|fuming|livid|seething|rude|disrespect\w*|took (?:the |all the )?credit|shouted at|yelled at|humiliat\w*|so angry|really angry|angry (?:at|with|that|about)|cancell?ed on me(?: again)?|lied to me|went behind my back|talked over me|interrupt\w* me|embarrassed me|belittled me|made fun of (?:me|my)|mocked (?:me|my)|put me down|undermin\w* me|cheated on me|cheating on me|stole (?:my|from me)|stolen (?:my|from me)|nicked my|blamed me|blames me|called me (?:(?:a|an|so|really|such a) )?(?:stupid|fat|ugly|lazy|useless|names|thick|dumb|weird|pathetic|worthless|selfish|crazy|mental|psycho|liar|idiot|loser|failure|disappointment|freak|joke|slut|slag|bitch|cow|drama queen|attention seeker|dramatic|overdramatic|sensitive|\w+)|laughed at me|read my (?:diary|messages|texts|phone|journal|emails?|letters?|notes|private)|went through my (?:phone|messages|things|stuff|bag|room|diary)|told (?:everyone|people|the whole \w+|my \w+) (?:my|about my)|broke (?:his|her|their|a|the|another) promise|dropped me|ghosted me|talked about me behind my back|(?:talking|talked|gossip\w*) (?:about me )?behind my back|refus(?:es|ed|ing) to|never paid me back|didn['’]?t pay me back|bullied me|bully(?:ing)? me|threatened me|pushed me|excluded me|dumped me|lied about me|spread (?:rumou?rs|lies)|stood me up|forgot my birthday|snapped at me|insulted me|criticised me in front)\b/i,
+  valid_anger: /\b(?:unfair|furious|fuming|livid|seething|rude|disrespect\w*|took (?:the |all the )?credit|shouted at|yelled at|humiliat\w*|so angry|really angry|angry (?:at|with|that|about)|cancell?ed on me(?: again)?|lied to me|went behind my back|talked over me|interrupt\w* me|embarrassed me|belittled me|made fun of (?:me|my)|mocked (?:me|my)|put me down|undermin\w* me|cheated on me|cheating on me|stole (?:my|from me)|stolen (?:my|from me)|nicked my|blamed me|blames me|called me (?:(?:a|an|so|really|such a) )?(?:stupid|fat|ugly|lazy|useless|names|thick|dumb|weird|pathetic|worthless|selfish|crazy|mental|psycho|liar|idiot|loser|failure|disappointment|freak|joke|slut|slag|bitch|cow|drama queen|attention seeker|dramatic|overdramatic|sensitive|\w+)|laughed at me|read my (?:diary|messages|texts|phone|journal|emails?|letters?|notes|private)|went through my (?:phone|messages|things|stuff|bag|room|diary)|told (?:everyone|people|the whole \w+|my \w+) (?:my|about my)|broke (?:his|her|their|a|the|another) promise|dropped me|ghosted me|talked about me behind my back|(?:talking|talked|gossip\w*) (?:about me )?behind my back|refus(?:es|ed|ing) to|never paid me back|never pays (?:me|us) back|never paying (?:me|us) back|(?:won['’]?t|will not|refuses to) pay (?:me|us) back|didn['’]?t pay me back|bullied me|bully(?:ing)? me|threatened me|pushed me|excluded me|dumped me|lied about me|spread (?:rumou?rs|lies)|stood me up|forgot my birthday|snapped at me|insulted me|criticised me in front)\b/i,
   practical_problem: /\b(?:deadline|interview|rent|bills?|overdraft|debt|promot\w*|appraisal|job hunt\w*|exam (?:is|on|next|tomorrow)|how do i|what do i do|what should i do|need to (?:decide|sort|fix|find|choose)|too much to do|due (?:on|by|in|tomorrow|today|tonight|next|this|first thing)|essays?|assignments?|coursework|dissertation|homework|(?:haven['’]?t|have not|not even) started)\b/i,
 };
 /**
@@ -71,14 +71,34 @@ export function ownAnger(text) {
   return false;
 }
 /** Embarrassment or shame, said ("I'm so ashamed") or the wrong's own word for it ("embarrassed me", "made a fool of me"). */
-const SHAME_SAID = /\b(?:embarrass(?:ed|ing|ment)|humiliat(?:ed|ing|ion)|ashamed|shamed|shameful|mortif(?:ied|ying)|cringe|cringing|made\s+a\s+fool\s+of\s+me|made\s+me\s+(?:look|feel)\s+(?:so\s+|really\s+)?(?:like\s+)?(?:a\s+|an\s+)?(?:fool|idiot|stupid|small|tiny|useless|worthless|pathetic|silly|thick|dumb))\b/iu;
+const SHAME_SAID = new RegExp([
+  '\\b(?:embarrass(?:ed|ing|ment)|humiliat(?:ed|ing|ion)|ashamed|shamed|shameful|mortif(?:ied|ying)|cringe|cringing|made\\s+a\\s+fool\\s+of\\s+me|made\\s+me\\s+(?:look|feel)\\s+(?:so\\s+|really\\s+)?(?:like\\s+)?(?:a\\s+|an\\s+)?(?:fool|idiot|stupid|small|tiny|useless|worthless|pathetic|silly|thick|dumb))\\b',
+  // (the Another Angle polish verifier) said the common ways: "I felt so stupid", "I felt like an idiot", "I felt tiny", "about
+  // two inches tall", "like dirt", "I wanted to disappear", "the floor to swallow me", "I went bright red", "couldn't look anyone
+  // in the eye"
+  "\\bi\\s+(?:felt|feel|was\\s+feeling|am\\s+feeling|m\\s+feeling|just\\s+felt|honestly\\s+felt)\\s+(?:so\\s+|really\\s+|very\\s+|just\\s+|completely\\s+|totally\\s+|utterly\\s+|such\\s+|pretty\\s+|a\\s+bit\\s+)*(?:like\\s+)?(?:a\\s+|an\\s+|such\\s+an?\\s+|a\\s+complete\\s+|a\\s+total\\s+|an\\s+absolute\\s+)?(?:stupid|idiot|fool|small|tiny|little|useless|worthless|pathetic|silly|thick|dumb|crushed|rubbish|dirt|nothing|loser|joke|invisible|exposed|awkward|about\\s+(?:two|2|an?|one)\\s+inch(?:es)?\\s+tall|(?:two|2)\\s+inch(?:es)?\\s+tall|an?\\s+inch\\s+tall)\\b",
+  '\\bi\\s+(?:just\\s+|really\\s+|honestly\\s+)?(?:wanted|want|wished|wish)\\s+(?:to\\s+(?:disappear|vanish|hide|die\\s+of\\s+embarrassment|sink\\s+(?:into|through)\\s+the\\s+floor)|the\\s+(?:floor|ground|earth)\\s+to\\s+(?:swallow|open\\s+up)|to\\s+crawl\\s+(?:into|under)\\s+a\\s+hole)\\b',
+  '\\bi\\s+(?:went|turned|was|go|turn)\\s+(?:so\\s+|really\\s+|completely\\s+)?(?:bright\\s+)?(?:red|scarlet|crimson|beetroot|pink|purple)\\b|\\bi\\s+blushed\\b',
+  "\\bi\\s+(?:could\\s*n[’']?t|could\\s+not|cant|can[’']?t|cannot)\\s+(?:even\\s+)?(?:look\\s+(?:anyone|anybody|them|him|her|people|my\\s+\\w+)\\s+in\\s+the\\s+eyes?|face\\s+(?:anyone|anybody|them|people|going\\s+back))\\b",
+].join('|'), 'iu');
+/**
+ * Hurt said the common ways (the Another Angle polish verifier): "I cried", "I just wanted to cry", "I burst into tears", "it
+ * stung", "I felt crushed": a feeling of their own that is not anger.
+ */
+const HURT_SAID = new RegExp([
+  "\\bi\\s+(?:just\\s+|then\\s+|actually\\s+|literally\\s+|nearly\\s+|almost\\s+)?(?:cried|was\\s+crying|started\\s+crying|burst\\s+(?:into\\s+tears|out\\s+crying)|broke\\s+down|was\\s+in\\s+tears|ended\\s+up\\s+(?:crying|in\\s+tears)|went\\s+home\\s+(?:and\\s+)?cried|could\\s+(?:have|ve)\\s+cried|(?:just\\s+|really\\s+)?wanted\\s+to\\s+cry|want\\s+to\\s+cry|was\\s+close\\s+to\\s+tears)\\b",
+  '\\b(?:it|that|this|which|what\\s+(?:he|she|they)\\s+said)\\s+(?:really\\s+|actually\\s+|properly\\s+|still\\s+)?stung\\b',
+  '\\bi\\s+(?:felt|feel|was|am|m)\\s+(?:so\\s+|really\\s+|just\\s+|completely\\s+|totally\\s+)*(?:crushed|gutted|devastated|heartbroken|upset|wounded)\\b',
+].join('|'), 'iu');
 /**
  * A feeling of their own in the words that is not anger: embarrassment or shame (SHAME_SAID), hurt ("it really hurt",
  * "that was hurtful"), or any feeling they say they have that is not anger ("I feel so small", "I'm gutted").
  */
 function feelingNotAnger(text) {
   const t = String(text ?? '');
-  if (SHAME_SAID.test(t) || /\bhurt(?:ful|s|ing)?\b/iu.test(t)) return true;
+  // (apostrophes out first: "couldn’t" and "couldn't" read the same)
+  const plain = t.replace(/[‘’ʼ`´']/gu, '');
+  if (SHAME_SAID.test(t) || SHAME_SAID.test(plain) || HURT_SAID.test(plain) || /\bhurt(?:ful|s|ing)?\b/iu.test(t)) return true;
   let parts = [];
   try { parts = clauses(t).map((c) => c.text); } catch { parts = [t]; }
   return parts.some((p) => { const k = feelingClause(p); return !!k && k !== 'angry'; });
@@ -668,8 +688,9 @@ export function ownStep(pattern, t, { fact, guess, allGuess }) {
  * angle to show; an authored pair that is true whether or not anyone died (lines.js GRIEF). The orchestrator
  * plays it gently and keeps support close.
  */
-export function gentleScene(text, { emotion = null } = {}) {
-  const kind = deathTalk(text) || 'heavy';
+export function gentleScene(text, { emotion = null, kind: told = null } = {}) {
+  // (`kind`: what they told us it is, "Yes, it is" a loss, or a grief-family feeling chosen: 'loss' / 'grief')
+  const kind = deathTalk(text) || (GRIEF[told] ? told : null) || 'heavy';
   const [l1, l2] = GRIEF[kind] || GRIEF.heavy;
   return {
     source: 'authored', grief: true, gentle: kind, reasoning_pattern: null, interaction_type: null, mechanic: null,
@@ -772,7 +793,7 @@ export function guessGuard(scene, text, { emotion = null, exclude = [] } = {}) {
   if (speaksAnger(scene) && angerUnsaid(text, emotion)) scene = authoredScene(text, { emotion, exclude: [...exclude, 'valid_anger'] });
   // an interpretive marker of their own: the framing may play, but only that clause is the guess (a server's
   // reading of the stated event as the guess gives way to the clause, and its lines to the authored ones)
-  if (framingAllowed(text)) return scene.source === 'server' ? onlyTheClause(scene, text) : scene;
+  if (framingAllowed(text)) return scene.source === 'server' ? noGriefLines(onlyTheClause(scene, text), text) : scene;
   const kind = scene.feeling || feelingOf(text)?.kind || (angerAnswer(text, { emotion }) ? 'angry' : eventKind(text));
   // (fair anger gets its own scenes, the wrong as the fact: find_boundary, its weight put back, one step)
   // (a wrong told with another feeling than anger: the server's own acknowledging mechanic leads, "lift this one moment
@@ -788,6 +809,9 @@ export function guessGuard(scene, text, { emotion = null, exclude = [] } = {}) {
   // a server scene whose reading frames them (whatever its lines say), or whose lines frame them or excuse a wrong
   // done to them: the authored kind scene, with its own lines (review r9: an allowlist by reading, SERVER_KEEPS)
   if (!serverLinesKeep(scene, text, { emotion })) return kindScene();
+  // (review r12) beside a bag word a server's practical-problem lines ("real problems have next steps") never play: a
+  // death read as a practical problem ("my father was taken by the sea") hears the kind steps' own lines
+  if (scene.reasoning_pattern === 'practical_problem' && bagWords(text)) return kindScene();
   // its kind lines stay (as for a feeling): on a mechanic that acknowledges on its own lines (fair anger's line, a
   // step, replaying, its weight put back), else on a kind step with the kind lines (never a framing mechanic, a
   // label's "harsh verdict" or "every time")
@@ -833,6 +857,16 @@ export function serverLinesKeep(scene, text, { emotion = null } = {}) {
   // (a server's grief pair tagged ordinary, for "my grandad is visiting next week")
   if (said.some((l) => GRIEF_LINE.test(String(l || ''))) && !lossSignal(text)) return false;
   return true;
+}
+/**
+ * (review r12) With a marker of their own a server scene keeps its lines (onlyTheClause), but never lines that speak of
+ * grief or of missing someone for words with no death or loss in them (a server's grief pair tagged ordinary, for "my dad
+ * is always working late"): the reading's own authored pair plays instead (AUTHORED_PAIRS).
+ */
+function noGriefLines(scene, text) {
+  if (!scene || ![scene.subtitle_line_1, scene.subtitle_line_2].some((l) => GRIEF_LINE.test(String(l || ''))) || lossSignal(text)) return scene;
+  const pair = AUTHORED_PAIRS[scene.reasoning_pattern] || AUTHORED_PAIRS.fact_vs_assumption;
+  return { ...scene, subtitle_line_1: pair[0], subtitle_line_2: pair[1] };
 }
 /**
  * A death or a loss in the words: death talk, someone alive but going, or a person beside a strong loss cue (strongLoss;

@@ -790,7 +790,8 @@ test('B4: the compact input has no photos and says where the words go; Back clos
   // every support sheet the scene opens is tracked (its own history entry), the urgent one included
   assert.doesNotMatch(src.replace(/const openSupportSheet = \(opts = \{\}\) => trackSheet\(openSupport\(app, opts\)\);/, ''), /[^.\w]openSupport\(app/);
   assert.match(src, /openSupportSheet\(\{ urgent: true \}\)/);
-  assert.match(src, /get blockBack\(\) \{\s*if \(!overlay && !sheets\.length\) return null;\s*return \(token\) => backClose\(token\);/);
+  // (review r12: and the check-in, "Is this about losing someone?", which Back lets go)
+  assert.match(src, /get blockBack\(\) \{\s*if \(!overlay && !sheets\.length && !layer\.lossCheck\) return null;\s*return \(token\) => backClose\(token\);/);
   const back = src.slice(src.indexOf('function backClose('), src.indexOf('function backClose(') + 400);
   assert.ok(back.indexOf('sheet.close(\'back\')') < back.indexOf('overlay.close(\'back\')'), 'the sheet first, then the input');
 });

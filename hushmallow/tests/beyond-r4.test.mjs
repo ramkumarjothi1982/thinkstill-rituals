@@ -125,8 +125,9 @@ test('B2.3 (r7): a loss is never a thinking error: no mechanic, no fact/assumpti
 test('B2.3: grief in the orchestrator: no Thought Mallow, no mechanic, nothing playful, support close (r5: the server may answer it)', () => {
   const src = read('src/beyond/another-angle.js');
   const start = src.slice(src.indexOf('async function startAngle('), src.indexOf('async function waitingLines('));
-  assert.ok(start.indexOf('gentleRoute(S.text)') > 0 && start.indexOf('gentleRoute(S.text)') < start.indexOf('client.angle('), 'a loss goes to griefMode before the angle request');
-  assert.ok(start.indexOf('gentleRoute(S.text)') < start.indexOf('spawnThought()'), 'and before the Thought Mallow');
+  // (review r12: lossRoute, gentleRoute and the strong cues and a grief-family feeling; 'ask' asks first)
+  assert.ok(start.indexOf('lossRoute(S.text') > 0 && start.indexOf('lossRoute(S.text') < start.indexOf('client.angle('), 'a loss goes to griefMode before the angle request');
+  assert.ok(start.indexOf('lossRoute(S.text') < start.indexOf('spawnThought()'), 'and before the Thought Mallow');
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
   assert.match(grief, /S\.grief = true; S\.keepSupport = true/);
   assert.match(grief, /supportPill\.hidden = false/);

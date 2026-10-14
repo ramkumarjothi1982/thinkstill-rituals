@@ -171,12 +171,14 @@ test('r5.1: grief in the orchestrator: gentle first, the server may answer with 
   assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\{ lines: S\.follow \? SAFETY\.follow : SAFETY\.careGentle \}\); return; \}/);
   assert.match(grief, /const again = checkText\(S\.text\);/);
   // the server's two lines (or the authored pair); never its mechanic
-  assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
+  // (review r12: with what they told the check-in, or a grief-family feeling, the loss or grief pair)
+  assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion, kind: told \|\| \(griefFeeling\(S\.emotion\) \? 'grief' : null\) \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
   assert.match(grief, /await say\(scene\.subtitle_line_1, \{ mallow: 'zuzu' \}\);[\s\S]*await say\(scene\.subtitle_line_2, \{ mallow: 'zuzu' \}\);/);
   // startAngle: a loss goes to griefMode (no Thought Mallow); a server scene that reads as grief plays gently too
   const start = src.slice(src.indexOf('async function startAngle('), src.indexOf('async function waitingLines('));
-  assert.match(start, /if \(gentleRoute\(S\.text\)\) return griefMode\(\);/);
-  assert.ok(start.indexOf('gentleRoute(S.text)') < start.indexOf('spawnThought()'));
+  // (review r12: through lossRoute, which reads gentleRoute and the strong cues and a grief-family feeling)
+  assert.match(start, /const route = lossRoute\(S\.text, \{ emotion: S\.emotion \}\);\s*if \(route === 'gentle'\) return griefMode\(\);/);
+  assert.ok(start.indexOf('lossRoute(S.text') < start.indexOf('spawnThought()'));
   assert.match(start, /if \(res\.status === 'ok' && res\.scene && serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\)\) \{ griefMode\(\{ scene: griefLinesOk\(res\.scene\) \? res\.scene : null, asked: true \}\); return; \}/);
   assert.equal(framesAsGuess('What happened is the part that actually happened.'), true);
   assert.equal(framesAsGuess('A year is not a deadline for missing your dad.'), false);

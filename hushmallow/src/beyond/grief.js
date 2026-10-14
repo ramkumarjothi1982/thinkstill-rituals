@@ -12,6 +12,8 @@
 //   serverGrief(scene, text) → a server answer that reads as grief or a loss (its two lines play gently)
 //   strongLoss(text)      → (re-exported from backstop.js, review r11) a person within four words of a strong loss cue:
 //                           the main screen's backstop (input-overlay readSafety reads it as concern / loss)
+//   unsureLoss(text), griefFeeling(id), lossRoute(text, {emotion}) → (re-exported from backstop.js; owner decision 'Ask when
+//                           unsure', 14 Oct 2026) not sure: both screens ask "Is this about losing someone?" (lossRoute 'ask')
 //
 // Three rounds of reading only a "real" death never converged, and a miss is far worse than a false alarm: a
 // death read as a thought got a fact-versus-guess game. So any death or loss word about anyone or anything alive
@@ -35,8 +37,9 @@
 
 import { norm, blankOrdinary, PERSON, PET, BARE, ADJ, THING, KILLERS, ORDINALS } from './death-words.js';
 import { acknowledges } from './backstop.js';
-// (review r11) the main screen's strong-cue loss backstop, read through grief.js (input-overlay loads only this module)
-export { strongLoss } from './backstop.js';
+// (review r11) the main screen's strong-cue loss backstop, read through grief.js (input-overlay loads only this module);
+// (owner decision 'Ask when unsure') and the check-in's reading, the grief-family feelings and the route both screens take
+export { strongLoss, unsureLoss, griefFeeling, lossRoute } from './backstop.js';
 
 const WHO = `(?:${PERSON}|${PET})`;
 /** "he", "she's", "my dad", "our cat", "the baby", "Mum", "my best friend's mum". */
@@ -58,11 +61,13 @@ const PUT_TO_SLEEP = /\b(?:was|were|been|be|being|got|get|getting|is|s|are|re)\s
 /** What "my … passed" never names (review r9: "my application passed", "my driving test passed"). */
 const PASS_NOT = 'cold|colds|flu|fever|headache|migraine|pain|ache|anxiety|panic|attack|attacks|mood|nausea|sickness|bug|virus|cough|rash|worry|worries|fear|fears|urge|urges|craving|cravings|wave|feeling|feelings|stress|period|cramps|test|tests|exam|exams|application|applications|proposal|motion|bill|request|deadline|time|turn|moment|chance|storm|day|days|week|weeks|month|months|year|years|weekend|summer|holiday|car|van|bike|phone|order|parcel|package|plan|idea|vote|appeal|claim|case|interview|audition|trial|trials|inspection|mot|driving|theory|assessment|probation|grade|grades|course|module|degree|essay|paper|work|project|code|build|review|stone|stones|kidney|gallstone|results?|loan|mortgage|visa|check|checks|medical|exams|gcses?|a|the|an|this|that|first|last|own';
 /** What may follow "passed" when something else is passed ("passed the ball", "passed me the salt", "passed through"). */
-const PASS_OBJ = 'the|a|an|my|his|her|their|our|your|its|me|us|him|them|it|this|that|these|those|all|every|both|some|any|round|around|over|through|along|across|into|onto|with|first|second|third|easily|comfortably|well|on\\s+(?:the|a|an|my|his|her|their|our|your)\\s+(?:message|messages|news|word|info|details|note|notes|tip|tips|advice|cold|bug|virus|flu|baton|torch|invite|offer|job|chance|deal|idea|feedback|request|link|number|email|letter|card|cv)';
+const PASS_OBJ = 'the|a|an|my|his|her|their|our|your|its|me|us|him|them|it|this|that|these|those|all|every|both|some|any|round|around|over|through|along|across|into|onto|with|first|second|third|easily|comfortably|well|to(?!\\s+(?:heaven|be\\s+with|the\\s+other\\s+side|god|the\\s+lord|jesus|glory|spirit|the\\s+angels|a\\s+better\\s+place))|on\\s+(?:the|a|an|my|his|her|their|our|your)\\s+(?:message|messages|news|word|info|details|note|notes|tip|tips|advice|cold|bug|virus|flu|baton|torch|invite|offer|job|chance|deal|idea|feedback|request|link|number|email|letter|card|cv)';
 /** Who a killer takes or gets: "my grandad", "both my grandparents", "him" (review r11). */
 const TAKEN_WHO = `(?:(?:(?:both|all|two|three|four)\\s+(?:of\\s+)?)?(?:(?:my|our|his|her|their)\\s+)?${ADJ}(?:${WHO}|${BARE})s?\\b|(?:him|her|them)\\b)`;
 /** …and who a killer "got" (never their things: "the fire got my dads car"). */
 const GOT_WHO = `(?:(?:(?:both|all|two|three|four)\\s+(?:of\\s+)?)?(?:(?:my|our|his|her|their)\\s+)?${ADJ}(?:${WHO}|${BARE})s?\\b(?!\\s+(?:${THING})\\b)|(?:him|her|them)\\b)`;
+/** (review r12) What takes a pet: "my rabbit was taken by a fox", "a fox got our chickens". */
+const PREDATORS = 'fox|foxes|hawk|hawks|eagle|owl|badger|badgers|coyote|coyotes|wolf|wolves|stoat|weasel|mink|dog|dogs|cat|cats|snake|bird\\s+of\\s+prey|buzzard|kite|heron|pike|otter|predator';
 /** A death or a loss, named ('loss'). Each is read on the normed words with the ordinary idioms blanked. */
 const LOSS_WORDS = [
   // die, died, dying, dead, death, deceased (and "dide", "dieing", "diied", "dided", "ded": review r9)
@@ -77,7 +82,7 @@ const LOSS_WORDS = [
   new RegExp(`${REF}\\s+${AUX}(?:passed|passd|passs+ed|pased|passt)\\b`, 'iu'),
   new RegExp(`${REF}\\s+${AUX}(?:deid|diead|dieed|dyied|dyed)\\b(?!\\s+(?:his|her|my|their|the|it|them|a|an|blue|red|pink|purple|green|black|blonde|blond|brown|grey|gray|white|orange)\\b)`, 'iu'),
   // killed, murdered, suicide, took his own life, drowned
-  /\b(?:killed|murdered|murder|suicide|drowned|overdosed|euthani[sz]ed|euthanasia)\b/iu,
+  /\b(?:killed|kiled|killd|kild|murdered|murder|suicide|drowned|overdosed|euthani[sz]ed|euthanasia)\b/iu,
   /\b(?:took|take|taken|taking|ended|end|ending)\s+(?:his|her|their|my|your)\s+(?:own\s+)?(?:life|lives)\b|\b(?:killed|hanged|hung|shot)\s+(?:himself|herself|themselves|themself)\b/iu,
   // "lost his life", "lost her battle with cancer"
   /\blost\s+(?:his|her|their)\s+(?:own\s+)?(?:life|lives|battle|fight|long\s+battle|brave\s+battle|brave\s+fight)\b/iu,
@@ -197,7 +202,63 @@ const LOSS_WORDS = [
   new RegExp(`${REF}\\s+(?:(?!(?:i|we|you|me)\\b)[a-z]+\\s+){0,6}?never\\s+(?:woke|awoke|woken)(?:\\s+up)?\\b(?!\\s+(?:me|us|him|her|them|in\\s+time|on\\s+time|early|before|until|till|once|all\\s+night|at\\s+all|for\\s+(?:school|work|a\\s+feed|feeds?|his\\s+bottle|her\\s+bottle)|during)\\b)`, 'iu'),
   // "the paramedics couldn't save him", "they couldn't save my brother" (never "couldn't save her a seat")
   new RegExp(`\\b(?:couldnt|could\\s+not|werent\\s+able\\s+to|were\\s+unable\\s+to|wasnt\\s+able\\s+to|was\\s+unable\\s+to|failed\\s+to)\\s+(?:save|revive|resuscitate)\\s+(?:him|her|them|${REF})(?!\\s+(?:a|an|any|some|enough|money|time|up|for|the\\s+(?:file|game|work|document|photos?|day|match)|my\\s+(?:file|game|work|document|photos?)|from\\s+(?:the\\s+)?(?:embarrassment|bullies|trouble|himself|herself|themselves|getting|being|detention|a\\s+telling\\s+off))\\b)`, 'iu'),
+  // ---- (review r12) the families the round-5 review found outside every list --
+  // a pet or a person let go beside the vet, the doctors, a hospital, intensive care, life support or "peacefully" ("we let our
+  // dog go peacefully at home", "we had to let him go at the vets", "the doctors said there was nothing more they could do
+  // and we let her go"; never "my boss let him go"; a bare "we had to let our dog go" is the check-in's: unsureLoss)
+  { test: (t) => LET_GO_WHO.test(t) && LET_GO_CARE.test(t) },
+  // "my mum isnt with us now", "grandad isnt with us any longer" (never "isnt with us this weekend", "on the trip")
+  new RegExp(`${REF}\\s+${AUX}(?:(?:is|s|are|re|was)\\s+)?(?:isnt|is\\s+not|arent|are\\s+not|wasnt|was\\s+not|aint|not|no\\s+longer)\\s+(?:really\\s+|sadly\\s+)?(?:here\\s+)?with\\s+us\\b(?=\\s*(?:$|[.,!?;:…)—–]|(?:now|any\\s*more|any\\s+longer|sadly|since|and|but|so|i|we|its|it)\\b))`, 'iu'),
+  // "my aunt went home to be with jesus", "my grandad went home to the lord", "she went home to glory"
+  /\b(?:went|gone|go|goes|going|called|taken)\s+home\s+to\s+(?:be\s+with\s+)?(?:jesus|god|the\s+lord|glory|heaven|(?:his|her|their)\s+(?:maker|saviour|savior|lord))\b/iu,
+  // "my old man pegged it last week" (never "pegged it down the road", "pegged it home")
+  new RegExp(`${REF}\\s+${AUX}pegged\\s+it\\b(?!\\s+(?:down|home|to|back|up|out|over|across|towards|round|around|along|into|off|after|for)\\b)`, 'iu'),
+  // "my auntie had a stroke and never recovered", "my nan never recovered from the fall" (a stroke, a fall, an accident or an
+  // operation in the words; "never came round", "never regained consciousness" on their own)
+  { test: (t) => NEVER_RECOVERED.test(t) && MEDICAL_EVENT.test(t) },
+  new RegExp(`${REF}\\s+(?:(?!(?:i|we|you|me)\\b)[a-z]+\\s+){0,6}?never\\s+(?:came\\s+round|came\\s+to|regained\\s+consciousness|woke\\s+from\\s+(?:the|his|her|their)\\s+coma)\\b`, 'iu'),
+  // "my horse had to be shot", "the dog had to be put out of his misery" (a pet named)
+  new RegExp(`\\b(?:${PET})s?\\s+(?:[a-z]+\\s+){0,3}?(?:had\\s+to\\s+be|has\\s+to\\s+be|needed\\s+to\\s+be|was|got|has\\s+been|had\\s+been)\\s+(?:shot|destroyed|put\\s+out\\s+of\\s+(?:his|her|its|their)\\s+misery)\\b|\\bput\\s+(?:him|her|it|them|(?:(?:my|our|the)\\s+)?(?:${PET})s?)\\s+out\\s+of\\s+(?:his|her|its|their)\\s+misery\\b`, 'iu'),
+  // "my brother didnt come home from the war"
+  new RegExp(`${REF}\\s+(?:(?!(?:i|we|you|me)\\b)[a-z]+\\s+){0,3}?(?:didnt|did\\s+not|never)\\s+(?:come|came|make\\s+it|made\\s+it)\\s+(?:home|back)\\s+from\\s+(?:the\\s+)?(?:war|wars|front|front\\s+line|army|navy|battle|fighting|afghanistan|iraq|ukraine|vietnam|falklands|tour)\\b`, 'iu'),
+  // "my stepdad wasnt breathing when we found him", "mum stopped breathing before the ambulance came"
+  /\b(?:wasnt|was\s+not|werent|were\s+not|not|had\s+stopped|stopped)\s+breathing\s+(?:when|by\s+the\s+time|before)\s+(?:we|i|they|the\s+(?:ambulance|paramedics|doctors?|nurses?))\s+(?:found|got\s+(?:to|there|home|back|in)|reached|arrived|came|come|turned\s+up)\b/iu,
+  // "my father was taken by the sea" (an article now), "my rabbit was taken by a fox", "a fox got our chickens"
+  new RegExp(`${REF}\\s+${AUX}(?:was\\s+|were\\s+|got\\s+)?(?:taken|claimed)\\s+(?:from\\s+us\\s+)?by\\s+(?:the\\s+|a\\s+|an\\s+)?(?:${KILLERS})\\b`, 'iu'),
+  new RegExp(`\\b(?:${PET})s?\\s+(?:was|were|got|has\\s+been|had\\s+been)\\s+(?:taken|killed|eaten|got|snatched|caught)\\s+by\\s+(?:a|an|the|some)\\s+(?:${PREDATORS})\\b|\\b(?:a|an|the|some)\\s+(?:${PREDATORS})\\s+(?:got|took|killed|ate|had|caught)\\s+(?:(?:all\\s+)?(?:of\\s+)?(?:my|our|the|his|her|their)\\s+)?${ADJ}(?:${PET})s?\\b`, 'iu'),
+  // "the tumour beat my dad in the end", "cancer won in the end" (never "my dad beat cancer", "the team won")
+  new RegExp(`\\b(?!(?:flu|sickness|war|fire|storm|god|heaven)\\b)(?:${KILLERS})\\s+(?:has\\s+|had\\s+|finally\\s+|eventually\\s+|in\\s+the\\s+end\\s+)*(?:won\\b(?!\\s+(?:the|a|an|my|his|her|their|our|me|us|him|them|it|\\d|first|second|best|gold|silver|bronze|again|over|by|on|at|against)\\b)|(?:beat|got\\s+the\\s+better\\s+of)\\s+${TAKEN_WHO})`, 'iu'),
+  // "the fire took everything including my dog"
+  new RegExp(`\\b(?:${KILLERS})\\s+(?:took|claimed|destroyed|got|killed)\\s+(?:everything|everyone|everybody|all\\s+of\\s+us|it\\s+all|all)\\s+(?:including|even|and|except)\\s+(?:(?:my|our|the|his|her|their)\\s+)?${ADJ}(?:${WHO}|${BARE})s?\\b`, 'iu'),
+  // "my nan had gone in the night", "he had gone by the time we got there", "she was gone before the ambulance arrived"
+  new RegExp(`(?:${REF}|\\b(?:he|she|they)\\b)\\s+${AUX}(?:was\\s+|were\\s+|had\\s+|has\\s+)?(?:already\\s+)?gone\\s+(?:in\\s+the\\s+night|overnight|in\\s+(?:his|her|their)\\s+sleep|by\\s+the\\s+time|before\\s+(?:the\\s+)?(?:ambulance|paramedics|doctors?|nurses?|we|i|help)|when\\s+(?:we|i|they)\\s+(?:got|arrived|found|came|went\\s+in))\\b`, 'iu'),
+  // "dad has gone to the other side", "the vet helped her cross over" (never "the other side of the room", "cross over the road")
+  /\b(?:gone|went|go|passed|crossed|cross)\s+(?:over\s+)?to\s+the\s+other\s+side\b(?!\s+of\b)|\b(?:help(?:ed|s)?\s+(?:him|her|them|it)\s+|time\s+to\s+|(?:he|she|they)\s+)cross(?:ed)?\s+over\b(?!\s+(?:the|a|to|into|onto|from)\b)/iu,
+  // "my grandad cashed in his chips", "my uncle is brown bread", "my baby boy grew his wings", "six foot under"
+  /\bcash(?:ed|es|ing)?\s+in\s+(?:his|her|their)\s+chips\b|\bsix\s+foot\s+under\b/iu,
+  // "our little girl only lived for three days", "he was too small to survive", "she never came out of surgery"
+  /\bonly\s+(?:lived|survived)\s+(?:for\s+)?(?:a|an|one|two|three|four|five|six|seven|a\s+few|few|\d+)\s+(?:minutes?|hours?|days?|weeks?|months?)\b|\btoo\s+(?:small|early|sick|weak|young|ill|premature|poorly|tiny)\s+to\s+(?:survive|live|make\s+it|pull\s+through)\b/iu,
+  /\bnever\s+(?:came|woke)\s+(?:out\s+of|up\s+from|round\s+from)\s+(?:the\s+|his\s+|her\s+|their\s+)?(?:surgery|operation|op|theatre|anaesthetic|anesthetic|coma)\b/iu,
+  new RegExp(`${REF}\\s+(?:is|s|was|are|re)\\s+brown\\s+bread\\b`, 'iu'),
+  /\b(?:grew|grown|gained|earned|got)\s+(?:his|her|their)\s+(?:angel\s+)?wings\b(?!\s+(?:at|in|from|with|for)\b)/iu,
+  // "my grandad had a massive heart attack and that was it"
+  new RegExp(`(?:${REF}|\\b(?:he|she|they)\\b)\\s+(?:[a-z]+\\s+){0,4}?(?:heart\\s+attack|cardiac\\s+arrest|stroke|aneurysm|brain\\s+bleed|collapsed)\\b.{0,60}?\\b(?:and\\s+(?:that|it)\\s+was\\s+(?:it|that)|(?:and\\s+)?(?:didnt|did\\s+not|never)\\s+(?:come|came|make\\s+it|made\\s+it)\\s+(?:home|back))\\b`, 'iu'),
+  // a pregnancy lost without the word: "the pregnancy was gone", "a chemical pregnancy", "the baby had stopped growing",
+  // "not pregnant anymore", "we had to end the pregnancy", "terminate for medical reasons", "the pregnancy wasn't viable",
+  // "I started bleeding at 8 weeks and it was over"
+  /\bchemical\s+pregnanc(?:y|ies)\b|\b(?:pregnancy|baby|babys\s+heartbeat|heartbeat)\s+(?:was|is|has|had|s)\s+(?:already\s+)?(?:gone|over|lost|ended)\b|\b(?:baby|babys|pregnancy|foetus|fetus|embryo|sac|babies)\s+(?:had\s+|has\s+|have\s+)?stopped\s+(?:growing|developing)\b/iu,
+  /\b(?:not|no\s+longer|isnt|wasnt|im\s+not|i\s+am\s+not)\s+pregnant\s+any\s*(?:more|longer)\b|\bno\s+longer\s+pregnant\b/iu,
+  /\b(?:end|ended|ending|terminate|terminated|terminating|lose|lost)\s+(?:the|our|my|her|this|a)\s+(?:wanted\s+|much\s+wanted\s+)?pregnancy\b|\bterminat(?:e|ed|ing|ion)\b(?:\s+[a-z]+){0,6}?\s+(?:for|on)\s+medical\s+(?:reasons|grounds)\b|\b(?:pregnancy|baby|it|foetus|fetus)\s+(?:wasnt|was\s+not|isnt|is\s+not|wouldnt\s+be|would\s+not\s+be|not)\s+viable\b|\bnon\s+viable\s+pregnancy\b/iu,
+  { test: (t) => /\b(?:bleeding|bled|bleed|cramping)\b/iu.test(t) && /\b(?:pregnan\w*|weeks?|scan|baby|babys)\b/iu.test(t) && /\b(?:it\s+was\s+(?:over|gone)|its\s+(?:over|gone)|it\s+had\s+gone|lost\s+(?:it|the\s+baby|our\s+baby|my\s+baby)|the\s+pregnancy\s+(?:was|had)\s+(?:gone|over|ended))\b/iu.test(t) },
 ];
+/** (review r12) Someone let go ("let him go", "let our dog go", "let her go") … */
+const LET_GO_WHO = new RegExp(`\\blet\\s+(?:him|her|them|(?:(?:my|our|the|his|her|their)\\s+)?${ADJ}(?:${WHO}|${BARE})s?)\\s+go\\b(?!\\s+(?:off|out|outside|in(?!\\s+(?:intensive\\s+care|icu|(?:the\\s+)?hospital|hospice|(?:my|our|his|her|their)\\s+arms|the\\s+end))|inside|home|to|back|of|first|early|on|with|for|free)\\b)`, 'iu');
+/** …beside the vet, the doctors, a hospital, intensive care or life support. */
+const LET_GO_CARE = /\b(?:vets?|doctors?|drs?|consultant|nurses?|hospital|hospice|intensive\s+care|icu|life\s+support|machines?|ventilator|peacefully|in\s+(?:my|our|his|her|their)\s+arms|nothing\s+more\s+(?:they|we|anyone)\s+could\s+do)\b/iu;
+/** "never recovered" (never "never recovered her confidence", "from the shock / the divorce") … */
+const NEVER_RECOVERED = /\bnever\s+(?:really\s+|fully\s+|properly\s+)?recovered\b(?!\s+(?:his|her|their|my|its|any|the\s+(?:money|cost|ball|data|files?)|from\s+(?:the\s+)?(?:shock|embarrassment|divorce|breakup|break\s+up|split|heartbreak|redundancy|setback|loss\s+of\s+(?:his|her|their)\s+job)))/iu;
+/** …beside a stroke, a fall, an accident or an operation. */
+const MEDICAL_EVENT = /\b(?:stroke|strokes|fall|fell|accident|crash|surgery|operation|op|heart\s+attack|coma|illness|infection|sepsis|pneumonia|covid|cancer|chemo|bleed|aneurysm|seizure|overdose|injuries|injury|fracture|broken\s+hip|hip|transplant)\b/iu;
 /** "since he went", "ever since my dad went", "after she went" (never "since she went to uni", "after he went out"). */
 const SINCE_WENT = new RegExp(`\\b(?:since|ever\\s+since|after|now\\s+that|now)\\s+(?:${REF})\\s+(?:has\\s+|had\\s+)?(?:went|gone)\\b(?!\\s+(?:to|out|away|off|on|home|back|abroad|into|with|in|travelling|traveling|shopping|for|up|down|over|round|around|through|quiet|missing|mad|upstairs|downstairs|and\\s+(?:got|bought|did|said|made))\\b)`, 'iu');
 /** Grieving, a funeral, a grave, condolences ('grief' when no death is named). */
@@ -221,9 +282,11 @@ const NAMED = [
 
 /** Didn't make it, didn't survive, couldn't be saved: read anywhere in a sentence that names a person or a pet. */
 const NOT_SURVIVE = /\b(?:did\s+not|didnt|never|not|wont|will\s+not|might\s+not|may\s+not|couldnt|could\s+not|isnt\s+going\s+to|is\s+not\s+going\s+to|arent\s+going\s+to|werent\s+able\s+to|wasnt\s+able\s+to)\s+(?:going\s+to\s+|gonna\s+)?(?:make\s+it(?=\s*(?:$|[.,!?;:…)—–]|(?:and|but|so|because|cos|after|despite|sadly|unfortunately|in\s+the\s+end|in\s+(?:hospital|surgery|theatre|intensive\s+care|the\s+(?:icu|ambulance|crash|accident|fire|hospital))|through\s+(?:the\s+)?(?:night|surgery|operation|op)|last\s+night|yesterday|today|this\s+(?:morning|time)|i|we|he|she|they|its|it|the|im|ive|now|either)\b))|survive|pull\s+through)\b|\b(?:couldnt|could\s+not|werent\s+able\s+to|were\s+unable\s+to|wasnt\s+able\s+to|was\s+unable\s+to)\s+(?:save|revive|resuscitate)\s+(?:him|her|them|the\s+baby|my|our|his|her)\b/iu;
+const SAVED_A_SEAT = /\bsave\s+(?:[a-z]+\s+){1,3}?(?:a|an|any|some)\s+(?:seat|place|spot|space|slice|bit|copy|piece|room)\b/giu;
 const NAMES_SOMEONE = new RegExp(`${REF}|\\b(?:${PET})s?\\b`, 'iu');
 function notSurvived(t) {
-  return (t.match(/[^.!?…]+/gu) || []).some((sent) => NOT_SURVIVE.test(sent) && NAMES_SOMEONE.test(sent.replace(/^\s*(?:i|we)\b/iu, ' ')));
+  // (never a seat saved: "I couldn't save my mum a seat")
+  return (t.match(/[^.!?…]+/gu) || []).some((sent) => NOT_SURVIVE.test(sent.replace(SAVED_A_SEAT, ' ')) && NAMES_SOMEONE.test(sent.replace(/^\s*(?:i|we)\b/iu, ' ')));
 }
 
 /** True when `re` matches `t` with a name (if it carries one) that really is a name. */

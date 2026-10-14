@@ -8,8 +8,8 @@
 
 import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
 import { deathEscalation, serverLoss, griefLinesOk } from '../../src/beyond/grief.js';
-import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm } from '../../src/beyond/backstop.js';
-import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, mechanicLines } from '../../src/beyond/lines.js';
+import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm, lossRoute, griefFeeling } from '../../src/beyond/backstop.js';
+import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, mechanicLines } from '../../src/beyond/lines.js';
 import { validateScene, PATTERNS } from '../../src/beyond/vocab.js';
 import { checkText } from '../../src/engine/safety.js';
 
@@ -85,9 +85,11 @@ function drawn(scene, parts, L) {
  * another angle" up to `walk` scenes. → { route, requests, said, drawn, mechanics, faces, scenes, noPlay, quips }
  * (route: crisis | care | follow | gentle | play | unclear | nomore; faces: 'attentive' | 'playful' | 'transforming';
  * quips: Zuzu's squeeze quips would still play; look: the Thought Mallow's first look, 'feeling:<kind>' or 'pattern:<id>').
+ * (review r12, the owner's 'Ask when unsure') `answer`: the person's answer to the check-in when it is asked ('yes', 'else',
+ * or null for no answer: route 'quiet'); R.asked says it was, R.requestsBeforeAnswer how many requests went first (none).
  */
-export function visit(text, { server = null, emotion = null, walk = 4 } = {}) {
-  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null };
+export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else' } = {}) {
+  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, requestsBeforeAnswer: 0 };
   const S = { level: 'none', follow: false, noPlay: false, grief: false, shown: [], used: [] };
   const say = (l) => { for (const x of [l].flat()) if (x) R.said.push(String(x)); };
   const note = (r) => { if (r?.level && LEVELS.indexOf(r.level) > LEVELS.indexOf(S.level)) S.level = r.level; };
@@ -110,7 +112,7 @@ export function visit(text, { server = null, emotion = null, walk = 4 } = {}) {
   if (!hasWords(text)) return done('unclear');
 
   // griefMode
-  const griefMode = ({ scene = null, asked = false } = {}) => {
+  const griefMode = ({ scene = null, asked = false, told = null } = {}) => {
     if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
     S.grief = true; S.noPlay = true;
     R.faces.push('attentive');
@@ -122,15 +124,24 @@ export function visit(text, { server = null, emotion = null, walk = 4 } = {}) {
       if (res.status === 'ok' && serverLoss(res.scene, text, { heavy: heavyHarm }) && griefLinesOk(res.scene)) scene = res.scene;
       else { const again = checkText(text); if (again.level === 'crisis') return crisis(); if (again.level === 'care') return care(); }
     }
-    scene = scene ? { ...scene, grief: true, mechanic: null } : gentleScene(text, { emotion });
+    scene = scene ? { ...scene, grief: true, mechanic: null } : gentleScene(text, { emotion, kind: told || (griefFeeling(emotion) ? 'grief' : null) });
     R.scenes.push(scene);
     say([scene.subtitle_line_1, scene.subtitle_line_2, GRIEF.ask, GRIEF.squeeze]);
     return done('gentle');
   };
 
   for (let k = 0; k < walk; k++) {
-    // startAngle
-    if (gentleRoute(text)) return griefMode();
+    // startAngle (lossRoute: death talk, someone alive but going, a strong loss cue, a grief-family feeling: gentle; not sure:
+    // the check-in, asked once, before anything is sent: askAboutLoss)
+    const route = lossRoute(text, { emotion });
+    if (route === 'gentle') return griefMode();
+    if (route === 'ask' && k === 0) {
+      R.asked = true; R.requestsBeforeAnswer = R.requests;
+      R.faces.push('attentive');
+      say(LOSS_CHECK.ask);
+      if (answer === 'yes') { S.noPlay = true; return griefMode({ told: 'loss' }); }
+      if (answer !== 'else') return done('quiet');
+    }
     let feel = null;
     try { feel = feelingOf(text) || (framingAllowed(text) ? null : { kind: 'low' }); } catch { feel = null; }
     R.faces.push(feel ? 'attentive' : 'playful');
@@ -142,7 +153,7 @@ export function visit(text, { server = null, emotion = null, walk = 4 } = {}) {
     if (res) {
       if (res.status === 'crisis') return crisis();
       // (serverCareLines, review r11)
-      if (res.status === 'care') return care(S.follow ? SAFETY.follow : gentleRoute(text) || bagWords(text) ? SAFETY.careGentle : SAFETY.care);
+      if (res.status === 'care') return care(S.follow ? SAFETY.follow : (R.asked && answer === 'yes') || gentleRoute(text) || bagWords(text) || lossRoute(text, { emotion }) ? SAFETY.careGentle : SAFETY.care);
       if (res.status === 'unclear') return done('unclear');
       if (res.status === 'ok' && res.scene && serverLoss(res.scene, text, { heavy: heavyHarm })) return griefMode({ scene: griefLinesOk(res.scene) ? res.scene : null, asked: true });
       if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) {

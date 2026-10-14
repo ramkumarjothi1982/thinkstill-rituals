@@ -29,7 +29,8 @@ test('the Hushfold opens its Tell with lossAware, and the overlay reads it on ty
   const hf = readFileSync(new URL('../src/app/scenes/hushfold.js', import.meta.url), 'utf8');
   const ov = readFileSync(new URL('../src/hushfold/input-overlay.js', import.meta.url), 'utf8');
   assert.match(hf, /lossAware: true/);
-  assert.equal((ov.match(/(?<!function )readSafety\((?:m|modsNow), (?:t|ta\.value), lossAware\)/g) || []).length, 3);
+  // (review r12: on Send with the feeling they chose, a grief-family one counting as a loss)
+  assert.equal((ov.match(/(?<!function )readSafety\((?:m|modsNow), (?:t|ta\.value), lossAware(?:, \{ emotion: chosenEmotion \})?\)/g) || []).length, 3);
 });
 
 // (review r11, the coordinator's decision for the main screen) every death phrasing the round-4 review found outside the
@@ -55,7 +56,9 @@ test('r11: the coordinator’s ordinary main-screen Tells stay none; fifty ordin
 });
 test('r11: readSafety reads strongLoss only after crisis, care and escalation, and only when the level is none', () => {
   const ov = readFileSync(new URL('../src/hushfold/input-overlay.js', import.meta.url), 'utf8');
-  assert.match(ov, /if \(r\.level !== 'none'\) return r;\n\s+if \(griefNow\.deathTalk\(t\) \|\| griefNow\.livingLoss\?\.\(t\) \|\| griefNow\.strongLoss\?\.\(t\)\) return \{ level: 'concern', category: 'loss', matched: null \};/);
+  // (review r12: through grief.js lossRoute, deathTalk, livingLoss and strongLoss as before, a grief-family feeling, and
+  // the check-in's 'ask'; the r11 reading stands as the fallback)
+  assert.match(ov, /if \(r\.level !== 'none'\) return r;\n\s+const route = griefNow\.lossRoute \? griefNow\.lossRoute\(t, \{ emotion \}\)\n\s+: \(griefNow\.deathTalk\(t\) \|\| griefNow\.livingLoss\?\.\(t\) \|\| griefNow\.strongLoss\?\.\(t\) \? 'gentle' : null\);\n\s+if \(route === 'gentle'\) return \{ level: 'concern', category: 'loss', matched: null \};/);
   assert.equal(level('I want to die'), 'crisis');
   assert.equal(level('my brother died and Id like to be with him'), 'care');
 });
