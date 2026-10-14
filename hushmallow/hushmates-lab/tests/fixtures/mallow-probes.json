@@ -1,102 +1,1116 @@
 {
-  "about": "Phrasings found by four rounds of adversarial review of the safety screen and the Mallow library (docs/READINESS.md, clinical review). tests/mallow-probes.test.mjs runs every one. Labels: null means no label chosen.",
-  "crisis": [
-    "I'd rather disappear.", "I'd rather not exist.", "Honestly I'd rather just not exist anymore.", "I'd rather not wake up.",
-    "I don't wanna be here anymore.", "I dont wanna live anymore", "I don't wanna wake up tomorrow.", "I don't wanna exist anymore", "I wanna die",
-    "I hope I go to sleep and don't wake up.", "I want to go to sleep and don't wake up.", "Every night I pray I go to sleep and won't wake up.",
-    "I want to sleep and never wake up at all.", "I want to sleep and not wake up for a very long time.", "I hope I don't wake up tomorrow.", "I hope I never wake up.",
-    "I want to never wake up.", "I wouldn't mind if I didn't wake up tomorrow.", "I wish I didn't have to wake up anymore.", "I want to sleep forever.",
-    "I wish I could sleep forever.", "I hope I die in my sleep.",
-    "I wish I didn't exist.", "I wish I'd never been born.", "I wish I had never been born.", "I wish I could cease to exist.", "I wish I would just disappear.",
-    "I just feel like disappearing.", "I wish I could just fade away.", "I want to not be here anymore.", "I wish I could just not be here anymore.",
-    "I wish I were gone.", "I just want to be gone.",
-    "They'd all be better off if I wasn't around.", "My family would be better off if I wasn't here.", "Everyone would be happier if I was gone.",
-    "The world would be better without me.", "Nobody would miss me if I was gone.", "No one would care if I died.", "Nobody would even notice if I disappeared.",
-    "I feel like a burden to my family.", "I'm just a burden to everyone.",
-    "I've wished I was dead lately.", "I keep wishing I was dead.", "I'd rather be dead.", "I wish I would just die.", "I want my life to end.", "I want my life to be over.",
-    "I want it all to end.", "I wish it would all just end.", "I want to stop living.", "I'm tired of being alive.", "I'm so tired of living.", "I'm tired of existing.",
-    "What's the point of living?", "What is the point in going on?", "I don't care if I live or die.", "I hope I get hit by a bus.", "I'm done with life.", "I've given up on life.",
-    "I just want to disappear.", "I wish I could just disappear.", "I want to vanish.", "I want to sleep and never wake up.", "I do everything at home and nobody cares, I just want to disappear."
+ "about": "Phrasings found by four rounds of adversarial review of the safety screen and the Mallow library (docs/READINESS.md, clinical review). tests/mallow-probes.test.mjs runs every one. Labels: null means no label chosen.",
+ "crisis": [
+  "I'd rather disappear.",
+  "I'd rather not exist.",
+  "Honestly I'd rather just not exist anymore.",
+  "I'd rather not wake up.",
+  "I don't wanna be here anymore.",
+  "I dont wanna live anymore",
+  "I don't wanna wake up tomorrow.",
+  "I don't wanna exist anymore",
+  "I wanna die",
+  "I hope I go to sleep and don't wake up.",
+  "I want to go to sleep and don't wake up.",
+  "Every night I pray I go to sleep and won't wake up.",
+  "I want to sleep and never wake up at all.",
+  "I want to sleep and not wake up for a very long time.",
+  "I hope I don't wake up tomorrow.",
+  "I hope I never wake up.",
+  "I want to never wake up.",
+  "I wouldn't mind if I didn't wake up tomorrow.",
+  "I wish I didn't have to wake up anymore.",
+  "I want to sleep forever.",
+  "I wish I could sleep forever.",
+  "I hope I die in my sleep.",
+  "I wish I didn't exist.",
+  "I wish I'd never been born.",
+  "I wish I had never been born.",
+  "I wish I could cease to exist.",
+  "I wish I would just disappear.",
+  "I just feel like disappearing.",
+  "I wish I could just fade away.",
+  "I want to not be here anymore.",
+  "I wish I could just not be here anymore.",
+  "I wish I were gone.",
+  "I just want to be gone.",
+  "They'd all be better off if I wasn't around.",
+  "My family would be better off if I wasn't here.",
+  "Everyone would be happier if I was gone.",
+  "The world would be better without me.",
+  "Nobody would miss me if I was gone.",
+  "No one would care if I died.",
+  "Nobody would even notice if I disappeared.",
+  "I feel like a burden to my family.",
+  "I'm just a burden to everyone.",
+  "I've wished I was dead lately.",
+  "I keep wishing I was dead.",
+  "I'd rather be dead.",
+  "I wish I would just die.",
+  "I want my life to end.",
+  "I want my life to be over.",
+  "I want it all to end.",
+  "I wish it would all just end.",
+  "I want to stop living.",
+  "I'm tired of being alive.",
+  "I'm so tired of living.",
+  "I'm tired of existing.",
+  "What's the point of living?",
+  "What is the point in going on?",
+  "I don't care if I live or die.",
+  "I hope I get hit by a bus.",
+  "I'm done with life.",
+  "I've given up on life.",
+  "I just want to disappear.",
+  "I wish I could just disappear.",
+  "I want to vanish.",
+  "I want to sleep and never wake up.",
+  "I do everything at home and nobody cares, I just want to disappear.",
+  "I'd give anything to fall asleep and never wake up.",
+  "Every night I hope to fall asleep and not wake up.",
+  "I pray to fall asleep and never wake up.",
+  "Honestly it'd be a relief to sleep and never wake up.",
+  "It'd be easier to just sleep and never wake up.",
+  "It would be so nice to go to sleep and not wake up.",
+  "I keep thinking it would be nice to sleep and never wake up.",
+  "Some days I'd be fine to go to sleep and not wake up.",
+  "I wish I'd fall asleep and never wake up.",
+  "Part of me wants to fall asleep and never wake up.",
+  "My daughter told me she wants to fall asleep and never wake up.",
+  "Part of me just wants to sleep and not wake up.",
+  "It would be easier to go to sleep and not wake up.",
+  "It would be nice to fall asleep and not wake up.",
+  "I wish I'd just fall asleep and not wake up.",
+  "I'm hoping I'll fall asleep and not wake up.",
+  "If I could just fall asleep and not wake up I would.",
+  "I'd give anything to just go to sleep and not wake up.",
+  "Some nights I pray to fall asleep and not wake up.",
+  "She keeps saying she wants to sleep and never wake up.",
+  "Every night I go to sleep hoping I won't wake up.",
+  "I wish I didn't have to wake up.",
+  "Sometimes I wish I didn't have to wake up.",
+  "I wish I didn't have to wake up at all.",
+  "I hope I don't wake up.",
+  "I go to bed and hope I don't wake up.",
+  "I hope I die soon.",
+  "I hope I don't wake up and have to do this all again.",
+  "I don't want to go on.",
+  "I don't want to go on anymore.",
+  "I don't wanna go on like this.",
+  "I don't wanna go on another day like this.",
+  "I don't want to go on this way.",
+  "I don't want to live like this.",
+  "I don't wanna live in this world anymore.",
+  "I don't want to live in a world without her.",
+  "I don't want to live with this pain.",
+  "I don't wanna live with myself after what I did.",
+  "I don't wanna be here at all.",
+  "I don't want to be here for much longer.",
+  "I don't want to be here at this point.",
+  "I don't wanna be around anymore.",
+  "I don't want to be around for much longer.",
+  "I don't want to wake up at all.",
+  "I don't want to wake up to another day.",
+  "I don't want to wake up early, I want to kill myself.",
+  "I hurt my arms last night.",
+  "I hurt my wrists.",
+  "I cut my arm.",
+  "I cut my wrists last night.",
+  "I cut my arms on bad days.",
+  "I cut my arms when I feel numb.",
+  "I've been cutting my arms on the weekends.",
+  "I keep hurting my arms.",
+  "I hurt my arms on purpose.",
+  "I hurt my arms to feel something.",
+  "I've been harming my arms.",
+  "I cut my arm on purpose last night.",
+  "I want to hang myself.",
+  "I'm going to hang myself.",
+  "I want to slit my wrists.",
+  "I want to jump off a bridge.",
+  "I'm going to jump in front of a train.",
+  "I want to shoot myself.",
+  "I'm going to take all my pills tonight.",
+  "I want to unalive myself.",
+  "I want to be dead.",
+  "I want to just die.",
+  "I don't deserve to live.",
+  "I'm going to hang myself tonight.",
+  "I've been thinking about hanging myself.",
+  "I'm going to jump off the roof.",
+  "I'm going to take all my tablets.",
+  "I'm going to unalive myself.",
+  "I just want to be dead.",
+  "I keep thinking about jumping off the balcony.",
+  "I want it all to end for good.",
+  "I wish it would all just stop.",
+  "I want it all to be over, I can't do this anymore.",
+  "I wish it would all stop forever.",
+  "I wish my life would stop.",
+  "What's the point of living in this world?",
+  "Life would go better without me in it.",
+  "My kids would be better without me.",
+  "What is the point of living like this?",
+  "What's the point of going on like this?",
+  "I just wanna die",
+  "I wish I could die from this pain",
+  "What's the point of going on living?",
+  "What's the point of living without her?",
+  "Everyone's better without me",
+  "I want to disappear under a train.",
+  "I've wanted to disappear for a few weeks now.",
+  "I have a plan to end it.",
+  "I want to OD.",
+  "I bought rope.",
+  "I relapsed and cut last night.",
+  "I'm ready to die.",
+  "I want to fucking die.",
+  "Thinking of downing all my meds tonight.",
+  "I want to drown myself.",
+  "I've been thinking about ending it all.",
+  "I want to disappear for an hour and never come back.",
+  "I want to disappear for a night and not come back."
+ ],
+ "crisisNotCare": [
+  "He hit me and I swallowed all my sleeping pills.",
+  "My boyfriend abused me and I took a load of pills tonight.",
+  "I get bullied every day and I've started cutting my arms.",
+  "I'm being bullied at school and I just want to disappear.",
+  "Kids at school bully me and some nights I wish I could go to sleep and not wake up.",
+  "I'm being harassed at work and I want to sleep and not wake up.",
+  "He hit me and I cut my wrist last night.",
+  "He abused me and I cut my arm on purpose.",
+  "He hit me and I want to cut my wrists.",
+  "I'm being bullied and I need to cut my arms.",
+  "My boyfriend is abusive and I can't stop cutting my arms."
+ ],
+ "careNotCrisis": [
+  "My dad hit me and hurt my arm.",
+  "My partner hurt my wrist when he grabbed me.",
+  "My brother kicked me and I hurt my leg.",
+  "She slapped me and I've hurt my arm.",
+  "He shoved me into the wall and I cut my arm on the door.",
+  "My boyfriend grabbed me and I hurt my wrist trying to get away.",
+  "He hit me and I hurt my arm.",
+  "My partner pushed me down the stairs and I hurt my leg."
+ ],
+ "released": [
+  "I just want to disappear to a beach for a week.",
+  "Honestly I want to disappear on holiday for a month and switch my phone off.",
+  "I want to vanish into the mountains for the weekend.",
+  "I wish I could just disappear to Bali after exams.",
+  "I want to disappear into a good book this weekend.",
+  "I want to disappear off social media for a bit.",
+  "Sometimes I want to vanish from the group chat, it's so noisy.",
+  "I wanted to stop existing on Instagram, so I deleted it.",
+  "I want to disappear from this job, it's draining.",
+  "My kids want to disappear into their phones every night.",
+  "My flatmates want to disappear whenever the bins need doing.",
+  "My husband and kids want to vanish the second dinner is over and I do all the dishes.",
+  "My teenagers just wanna disappear into their rooms after school.",
+  "The cat wanted to vanish under the bed when the vacuum came out.",
+  "I just want to sleep and not wake up to an alarm for once.",
+  "Just once I'd like to go to sleep and not wake up to the baby crying.",
+  "I want to go to sleep and not wake up to my neighbour's drill.",
+  "I wish I could sleep through winter and not wake up til spring.",
+  "I could sleep and not wake up all weekend, I'm so tired.",
+  "The doctors said Mum would go to sleep and not wake up, and that's what happened.",
+  "I want to sleep in and not wake up early tomorrow",
+  "I don't want to disappear from their lives",
+  "My keys disappear every morning",
+  "He wants to disappear on a solo holiday",
+  "I'd rather die than go to that party.",
+  "I'm tired of living with a flatmate who never cleans.",
+  "I wish I didn't have to wake up tomorrow, Mondays are the worst.",
+  "I wish I didn't have to wake up tomorrow.",
+  "I wish I didn't have to wake up every morning and go to work.",
+  "I wish I didn't have to wake up in the morning.",
+  "I wish I didn't have to wake up to an alarm.",
+  "I wish I didn't have to wake up and go to school.",
+  "I wish I didn't have to wake up today.",
+  "I wish I didn't have to wake up this early.",
+  "I wish I didnt have to wake up tomorrow lol",
+  "I hope I don't wake up the kids when I get home.",
+  "Night shift again, I hope I don't wake up my husband.",
+  "I hope I don't wake up the baby.",
+  "I hope I don't wake up with a cold tomorrow.",
+  "I hope I don't wake up with a migraine again.",
+  "I hope I don't wake up at 3am again.",
+  "I hope I don't wake up tomorrow with a migraine.",
+  "Getting in late, I hope I don't wake up everyone.",
+  "I hope I die doing what I love.",
+  "I hope I die doing something I love.",
+  "I hope I die peacefully when I'm old.",
+  "I hope I never wake up from this dream.",
+  "I don't wanna go on the school camp.",
+  "I don't wanna go on holiday with my in-laws.",
+  "I don't wanna live with my parents anymore.",
+  "I don't wanna live in Melbourne anymore.",
+  "I don't wanna be around people today.",
+  "I don't wanna be here at this party.",
+  "I don't wanna wake up at 6 for work again.",
+  "I don't wanna wake up early on a Saturday.",
+  "I don't wanna wake up for school tomorrow.",
+  "I don't want to go on the school camp.",
+  "I don't want to wake up early tomorrow.",
+  "I don't want to live in this city anymore.",
+  "I don't want to be around my family this Christmas.",
+  "I don't wanna go on another date with him.",
+  "I don't wanna go on stage tomorrow, I'm so nervous.",
+  "I don't wanna live with my mum anymore, we fight all the time.",
+  "I don't wanna live at home anymore.",
+  "I don't wanna be around anyone right now.",
+  "I don't wanna be here at work today.",
+  "I don't wanna wake up for uni on Monday.",
+  "I no longer want to live with my parents.",
+  "I hurt my arm at netball and can't play the final.",
+  "I hurt my leg at training and I'm gutted.",
+  "I hurt my wrist at the gym.",
+  "I cut my leg shaving and it won't stop bleeding.",
+  "I cut my arm on a fence at the farm.",
+  "I hurt my leg in the game on Saturday and now I can't run.",
+  "I really hurt my wrist when I fell over.",
+  "I cut my leg on a rock at the beach.",
+  "I burnt my arm cooking.",
+  "I hurt my arm and I'm so frustrated I can't climb.",
+  "I'm drowning myself in work this week.",
+  "I always shoot myself in the foot in job interviews.",
+  "I'm going to take all my meds on time this week.",
+  "I want to be dead honest with you.",
+  "I want to jump off the cliff into the sea on holiday.",
+  "We used to jump off the bridge into the river every summer.",
+  "Nobody wants to die alone.",
+  "He wants to die on that hill.",
+  "Mum has cancer and wants to die at home with us.",
+  "My son cut himself on a broken glass.",
+  "He cut himself shaving.",
+  "My daughter is cutting herself off from all her friends.",
+  "He is burning himself out at work.",
+  "I just want it all to be over and done with.",
+  "Moving house is a nightmare, I just want it all to be over and done with.",
+  "I wish it would all just stop for a minute.",
+  "I wish it would all stop for a bit.",
+  "I wish my life would just stop being so busy.",
+  "I don't wanna die alone.",
+  "I don't wanna die.",
+  "What's the point of going on dates if nobody wants anything serious?",
+  "What's the point of living together if we never see each other?",
+  "What's the point of living in Sydney if you can't afford it?",
+  "I wish I could just die of embarrassment.",
+  "The team played better without me today.",
+  "My ex is doing better without me.",
+  "What's the point of going on holiday if it rains the whole time?",
+  "What's the point of going on the trip if he's not coming?",
+  "I wanted to disappear when I forgot my lines in the play.",
+  "I wanted to disappear when my mum embarrassed me.",
+  "I wanted to vanish when the teacher read my essay out.",
+  "At parties I just want to disappear into the background.",
+  "I want to disappear into my room after school.",
+  "I want to disappear into my phone.",
+  "I wish I could disappear to Paris for a month.",
+  "I want to disappear into my bed all weekend.",
+  "I want to disappear into Minecraft for hours.",
+  "I just want to disappear for an hour.",
+  "Some days I just want to disappear for an hour without the kids.",
+  "I want to disappear for a few hours without the kids.",
+  "I wish I could disappear for the evening.",
+  "I want to vanish for a night and sleep in a hotel.",
+  "I just want to disappear for half an hour."
+ ],
+ "load": [
+  "I do all the housework and my partner does nothing.",
+  "My partner never helps with the kids.",
+  "My husband doesn't help around the house at all.",
+  "I always end up doing everything and my partner just sits on the couch.",
+  "Nobody helps and my partner just ignores the mess.",
+  "My partner never cleans up after himself.",
+  "My husband doesn't help with anything around the house.",
+  "My wife doesn't help with dinner, ever.",
+  "My husband won't help unless I nag him.",
+  "He doesn't help with anything around the house.",
+  "My family never helps with the cooking or cleaning, it's all on me.",
+  "My kids never help me.",
+  "My husband doesn't help much.",
+  "My husband never helps so I have to do it all myself.",
+  "My husband never helps even when I ask.",
+  "My husband never helps in the kitchen.",
+  "My husband does nothing to help.",
+  "My husband never helps with the newborn.",
+  "My partner never helps with childcare.",
+  "My husband never helps with the dog.",
+  "I could scream. I do all the housework and he does nothing.",
+  "It makes me want to scream, my flatmates never do the washing up.",
+  "I want to scream, I do everything in this house.",
+  "I'm sick of shouting at the kids to help with the chores.",
+  "I have to yell to get anyone in this house to do the dishes.",
+  "I always take the kids to swimming and football, my husband never helps.",
+  "I always have to take the kids to school, he never helps.",
+  "I take the kids to school, do the shopping and cook dinner, and he does nothing to help.",
+  "I can't cope with doing all the housework on my own.",
+  "It really hurts me that my husband never helps around the house.",
+  "All the emotional labour falls on me, my husband never helps.",
+  "It's so depressing that I do all the chores.",
+  "It's depressing coming home to a mess my flatmates left.",
+  "I feel less like a wife and more like a maid, I do all the housework.",
+  "I do the cooking and he never helps.",
+  "I do the school run every day and he never helps.",
+  "The kids, the cooking, the cleaning, he never helps.",
+  "The washing machine died and my husband won't help me with the laundry.",
+  "My husband seems to disappear whenever the washing up needs doing.",
+  "My husband never helps, he just sits on his phone all night.",
+  "My boyfriend is always on his phone and never does the dishes.",
+  "My partner isnt helping at all with the new baby.",
+  "My husband never helps with my disabled son.",
+  "My husband is always on his phone while I do the dishes.",
+  "I'm sick to death of doing all the housework."
+ ],
+ "neverLoad": [
+  [
+   "sadness",
+   "I take antidepressants but they don't help and I feel hopeless about getting better."
   ],
-  "crisisNotCare": [
-    "He hit me and I swallowed all my sleeping pills.", "My boyfriend abused me and I took a load of pills tonight.", "I get bullied every day and I've started cutting my arms.",
-    "I'm being bullied at school and I just want to disappear.", "Kids at school bully me and some nights I wish I could go to sleep and not wake up.",
-    "I'm being harassed at work and I want to sleep and not wake up."
+  [
+   "frustration",
+   "I keep going to therapy but they don't help."
   ],
-  "careNotCrisis": ["My dad hit me and hurt my arm.", "My partner hurt my wrist when he grabbed me."],
-  "released": [
-    "I just want to disappear to a beach for a week.", "Honestly I want to disappear on holiday for a month and switch my phone off.", "I want to vanish into the mountains for the weekend.",
-    "I wish I could just disappear to Bali after exams.", "I want to disappear into a good book this weekend.", "I want to disappear off social media for a bit.",
-    "Sometimes I want to vanish from the group chat, it's so noisy.", "I wanted to stop existing on Instagram, so I deleted it.", "I want to disappear from this job, it's draining.",
-    "My kids want to disappear into their phones every night.", "My flatmates want to disappear whenever the bins need doing.", "My husband and kids want to vanish the second dinner is over and I do all the dishes.",
-    "My teenagers just wanna disappear into their rooms after school.", "The cat wanted to vanish under the bed when the vacuum came out.",
-    "I just want to sleep and not wake up to an alarm for once.", "Just once I'd like to go to sleep and not wake up to the baby crying.", "I want to go to sleep and not wake up to my neighbour's drill.",
-    "I wish I could sleep through winter and not wake up til spring.", "I could sleep and not wake up all weekend, I'm so tired.",
-    "The doctors said Mum would go to sleep and not wake up, and that's what happened.",
-    "I want to sleep in and not wake up early tomorrow", "I don't want to disappear from their lives", "My keys disappear every morning", "He wants to disappear on a solo holiday",
-    "I'd rather die than go to that party.", "I'm tired of living with a flatmate who never cleans."
+  [
+   "sadness",
+   "My friends try to cheer me up but they don't help."
   ],
-  "load": [
-    "I do all the housework and my partner does nothing.", "My partner never helps with the kids.", "My husband doesn't help around the house at all.",
-    "I always end up doing everything and my partner just sits on the couch.", "Nobody helps and my partner just ignores the mess.", "My partner never cleans up after himself.",
-    "My husband doesn't help with anything around the house.", "My wife doesn't help with dinner, ever.", "My husband won't help unless I nag him.",
-    "He doesn't help with anything around the house.", "My family never helps with the cooking or cleaning, it's all on me.", "My kids never help me.",
-    "My husband doesn't help much.", "My husband never helps so I have to do it all myself.", "My husband never helps even when I ask.", "My husband never helps in the kitchen.",
-    "My husband does nothing to help.", "My husband never helps with the newborn.", "My partner never helps with childcare.", "My husband never helps with the dog.",
-    "I could scream. I do all the housework and he does nothing.", "It makes me want to scream, my flatmates never do the washing up.", "I want to scream, I do everything in this house.",
-    "I'm sick of shouting at the kids to help with the chores.", "I have to yell to get anyone in this house to do the dishes.",
-    "I always take the kids to swimming and football, my husband never helps.", "I always have to take the kids to school, he never helps.",
-    "I take the kids to school, do the shopping and cook dinner, and he does nothing to help.",
-    "I can't cope with doing all the housework on my own.", "It really hurts me that my husband never helps around the house.", "All the emotional labour falls on me, my husband never helps.",
-    "It's so depressing that I do all the chores.", "It's depressing coming home to a mess my flatmates left.", "I feel less like a wife and more like a maid, I do all the housework.",
-    "I do the cooking and he never helps.", "I do the school run every day and he never helps.", "The kids, the cooking, the cleaning, he never helps.",
-    "The washing machine died and my husband won't help me with the laundry.", "My husband seems to disappear whenever the washing up needs doing.",
-    "My husband never helps, he just sits on his phone all night.", "My boyfriend is always on his phone and never does the dishes.",
-    "My partner isnt helping at all with the new baby.", "My husband never helps with my disabled son.", "My husband is always on his phone while I do the dishes."
+  [
+   "sadness",
+   "My family doesn't help me when I feel low."
   ],
-  "neverLoad": [
-    ["sadness", "I take antidepressants but they don't help and I feel hopeless about getting better."], ["frustration", "I keep going to therapy but they don't help."],
-    ["sadness", "My friends try to cheer me up but they don't help."], ["sadness", "My family doesn't help me when I feel low."], [null, "I've tried breathing exercises but they don't help."],
-    ["frustration", "The tablets the doctor gave me never help."], ["frustration", "My boyfriend doesn't help when I'm having a panic attack, he just goes quiet."],
-    ["sadness", "My wife passed away and I'm doing all the cooking now, I miss her."], ["sadness", "We lost our baby at 20 weeks and my husband isn't helping."],
-    ["sadness", "My husband never helps since my miscarriage."], ["sadness", "My mum never helps me at home, she just screams at me all the time."],
-    ["anger", "My dad doesn't help at home, he just shouts at us and breaks things."], ["sadness", "He refuses to help me leave, he says he'll take the kids if I go."],
-    ["sadness", "I'm struggling with my mental health and my husband isn't helping."], ["sadness", "My girlfriend never helps me when I'm sick."], ["frustration", "My medication does nothing to help."],
-    ["sadness", "He pushed me because I didn't do the washing up."], [null, "My dad beats us if the chores aren't done."], ["anger", "My partner grabs my arm when I don't do the dishes right."],
-    [null, "My stepdad makes me do all the chores or I don't get to eat."], [null, "My dad hurts my mum when the chores aren't done."], [null, "My husband says I'm useless and makes me do all the housework."],
-    ["sadness", "My husband never helps and I've stopped seeing the point of anything."], ["frustration", "What's the point of anything, I do everything and nobody in this house cares."],
-    ["sadness", "I do all the chores and I can't see a way out."],
-    ["sadness", "My girlfriend isn't helping me feel any better about losing my job, she just watches TV at home."], ["sadness", "My wife isn't helping me through this, she just stays at home and ignores me."],
-    ["frustration", "My dad has dementia and he isn't helping himself, he keeps skipping meals."], ["sadness", "My mum is in hospital and she isn't helping herself, she won't eat her meals."],
-    ["frustration", "My parents won't help me with rent even though they promised."], ["sadness", "My parents don't help me with my bills and I'm struggling at uni."],
-    [null, "My husband never helps when I'm in pain."], ["sadness", "My husband never helps me since my stroke."], ["sadness", "My boyfriend never helps when I'm on my period and in agony."],
-    ["sadness", "My partner never helps me when I'm having a flare up."], [null, "My husband never helps when I have a migraine."], ["sadness", "I feel like my partner doesn't help me with my disability."], ["frustration", "My husband won't help me with my physio exercises after my knee op."],
-    [null, "My husband never helps around the house and he yells at me if dinner is late."], [null, "I do all the housework and still get shouted at."],
-    ["sadness", "My partner hasn't helped me get over my dad's death, he just carries on at home like normal."], ["sadness", "My husband hasn't helped me at all since my mum's death, he just sits at home."],
-    ["sadness", "Since my dad's death my wife isn't helping, she acts like nothing happened at home."], ["sadness", "My husband passed and now I do all the cooking for one."],
-    ["sadness", "Since losing my husband nobody helps me around the house."], ["sadness", "I'm a widow now and I have to do all the chores on my own."], ["sadness", "My husband doesn't help since I lost the pregnancy."]
+  [
+   null,
+   "I've tried breathing exercises but they don't help."
   ],
-  "noDistance": [
-    ["sadness", "My boyfriend tells me I'm nothing without him."], ["sadness", "My partner always puts me down and says I'm useless."], ["worry", "My boyfriend gets so angry that he punches walls."],
-    ["worry", "My partner gets really angry when he drinks and I walk on eggshells."], ["anger", "My husband controls what I wear and who I talk to."], ["worry", "My husband goes through my messages and tracks my location."],
-    ["anger", "My wife yells at me every night."], ["worry", "My boyfriend checks my phone and gets angry if I talk to other guys."],
-    ["sadness", "My husband never helps since my miscarriage."], ["sadness", "My boyfriend was killed in a crash and I still set the table for two."]
+  [
+   "frustration",
+   "The tablets the doctor gave me never help."
   ],
-  "distance": [
-    ["sadness", "My partner has been so distant lately and she doesn't help me understand what is wrong."], ["sadness", "My partner and I barely talk now; he does nothing to help us feel close."],
-    ["sadness", "My wife helps with the kids but she's been short with me for weeks."], ["sadness", "My girlfriend has stopped helping me out and she's always on her phone now."],
-    ["sadness", "My husband helps around the house but we never talk anymore."],
-    ["worry", "I do everything for my husband but he seems so far away lately."], ["confusion", "I do everything for my husband but he seems so far away lately."], ["loneliness", "I do everything for my husband but he seems so far away lately."],
-    ["loneliness", "Since the baby came my wife barely says a word to me."], ["worry", "My husband comes home, eats dinner and goes straight to bed without a word."],
-    ["sadness", "My boyfriend hardly notices me anymore, he just plays games after dinner."], ["worry", "My husband sleeps on the sofa since the twins were born."],
-    ["loneliness", "Since we had the kids my partner never wants to spend time with me."], ["sadness", "Since the baby arrived my husband feels like a stranger."],
-    ["worry", "My husband has stopped eating dinner with us and I'm worried something's wrong."], ["loneliness", "My husband sits in silence at dinner every night and I feel invisible."],
-    ["sadness", "My partner doesn't kiss me or hug me anymore, even at home."]
+  [
+   "frustration",
+   "My boyfriend doesn't help when I'm having a panic attack, he just goes quiet."
   ],
-  "grief": [
-    "My husband passed last month.", "My boyfriend died last week.", "My boyfriend was killed in a crash and I still set the table for two.", "My husband passed and now I do all the cooking for one.",
-    "Since losing my husband nobody helps me around the house.", "I'm a widow now and I have to do all the chores on my own.", "My husband doesn't help since I lost the pregnancy.",
-    "We lost the pregnancy at nine weeks and my husband acts like nothing happened.", "My husband died last month."
+  [
+   "sadness",
+   "My wife passed away and I'm doing all the cooking now, I miss her."
   ],
-  "notGrief": [["joy", "My son passed with distinction!"], ["joy", "My dad passed his test!"], ["worry", "My mum passed out at work today."]]
+  [
+   "sadness",
+   "We lost our baby at 20 weeks and my husband isn't helping."
+  ],
+  [
+   "sadness",
+   "My husband never helps since my miscarriage."
+  ],
+  [
+   "sadness",
+   "My mum never helps me at home, she just screams at me all the time."
+  ],
+  [
+   "anger",
+   "My dad doesn't help at home, he just shouts at us and breaks things."
+  ],
+  [
+   "sadness",
+   "He refuses to help me leave, he says he'll take the kids if I go."
+  ],
+  [
+   "sadness",
+   "I'm struggling with my mental health and my husband isn't helping."
+  ],
+  [
+   "sadness",
+   "My girlfriend never helps me when I'm sick."
+  ],
+  [
+   "frustration",
+   "My medication does nothing to help."
+  ],
+  [
+   "sadness",
+   "He pushed me because I didn't do the washing up."
+  ],
+  [
+   null,
+   "My dad beats us if the chores aren't done."
+  ],
+  [
+   "anger",
+   "My partner grabs my arm when I don't do the dishes right."
+  ],
+  [
+   null,
+   "My stepdad makes me do all the chores or I don't get to eat."
+  ],
+  [
+   null,
+   "My dad hurts my mum when the chores aren't done."
+  ],
+  [
+   null,
+   "My husband says I'm useless and makes me do all the housework."
+  ],
+  [
+   "sadness",
+   "My husband never helps and I've stopped seeing the point of anything."
+  ],
+  [
+   "frustration",
+   "What's the point of anything, I do everything and nobody in this house cares."
+  ],
+  [
+   "sadness",
+   "I do all the chores and I can't see a way out."
+  ],
+  [
+   "sadness",
+   "My girlfriend isn't helping me feel any better about losing my job, she just watches TV at home."
+  ],
+  [
+   "sadness",
+   "My wife isn't helping me through this, she just stays at home and ignores me."
+  ],
+  [
+   "frustration",
+   "My dad has dementia and he isn't helping himself, he keeps skipping meals."
+  ],
+  [
+   "sadness",
+   "My mum is in hospital and she isn't helping herself, she won't eat her meals."
+  ],
+  [
+   "frustration",
+   "My parents won't help me with rent even though they promised."
+  ],
+  [
+   "sadness",
+   "My parents don't help me with my bills and I'm struggling at uni."
+  ],
+  [
+   null,
+   "My husband never helps when I'm in pain."
+  ],
+  [
+   "sadness",
+   "My husband never helps me since my stroke."
+  ],
+  [
+   "sadness",
+   "My boyfriend never helps when I'm on my period and in agony."
+  ],
+  [
+   "sadness",
+   "My partner never helps me when I'm having a flare up."
+  ],
+  [
+   null,
+   "My husband never helps when I have a migraine."
+  ],
+  [
+   "sadness",
+   "I feel like my partner doesn't help me with my disability."
+  ],
+  [
+   "frustration",
+   "My husband won't help me with my physio exercises after my knee op."
+  ],
+  [
+   null,
+   "My husband never helps around the house and he yells at me if dinner is late."
+  ],
+  [
+   null,
+   "I do all the housework and still get shouted at."
+  ],
+  [
+   "sadness",
+   "My partner hasn't helped me get over my dad's death, he just carries on at home like normal."
+  ],
+  [
+   "sadness",
+   "My husband hasn't helped me at all since my mum's death, he just sits at home."
+  ],
+  [
+   "sadness",
+   "Since my dad's death my wife isn't helping, she acts like nothing happened at home."
+  ],
+  [
+   "sadness",
+   "My husband passed and now I do all the cooking for one."
+  ],
+  [
+   "sadness",
+   "Since losing my husband nobody helps me around the house."
+  ],
+  [
+   "sadness",
+   "I'm a widow now and I have to do all the chores on my own."
+  ],
+  [
+   "sadness",
+   "My husband doesn't help since I lost the pregnancy."
+  ],
+  [
+   "frustration",
+   "My wife hits the kids when she's stressed."
+  ],
+  [
+   "frustration",
+   "My husband smacks the kids too hard."
+  ],
+  [
+   "frustration",
+   "My partner beats the kids with a belt."
+  ],
+  [
+   "frustration",
+   "My husband is rough with the baby."
+  ],
+  [
+   null,
+   "My husband never helps me since I got sick."
+  ],
+  [
+   null,
+   "My husband never helps me now that I'm sick."
+  ],
+  [
+   null,
+   "My partner never helps me when I'm not well."
+  ],
+  [
+   null,
+   "My husband never helps me when I'm poorly."
+  ],
+  [
+   null,
+   "My husband never helps me since my heart attack."
+  ],
+  [
+   null,
+   "My husband never helps me since my accident."
+  ],
+  [
+   null,
+   "My husband never helps since I broke my leg."
+  ],
+  [
+   null,
+   "My husband never helps since I had covid."
+  ],
+  [
+   null,
+   "My husband never helps even though I'm on crutches."
+  ],
+  [
+   null,
+   "My husband never helps when my back is bad."
+  ],
+  [
+   null,
+   "My boyfriend never helps when I have bad cramps."
+  ],
+  [
+   null,
+   "My wife never helps when I have a flare."
+  ],
+  [
+   null,
+   "My partner never helps me on my bad days with my fibro."
+  ],
+  [
+   null,
+   "My husband lost his dad and now he doesn't help with anything at home."
+  ],
+  [
+   null,
+   "My wife lost her mum last year and she never helps with the kids anymore."
+  ],
+  [
+   null,
+   "Since we lost Dad my husband never helps with anything."
+  ]
+ ],
+ "noDistance": [
+  [
+   "sadness",
+   "My boyfriend tells me I'm nothing without him."
+  ],
+  [
+   "sadness",
+   "My partner always puts me down and says I'm useless."
+  ],
+  [
+   "worry",
+   "My boyfriend gets so angry that he punches walls."
+  ],
+  [
+   "worry",
+   "My partner gets really angry when he drinks and I walk on eggshells."
+  ],
+  [
+   "anger",
+   "My husband controls what I wear and who I talk to."
+  ],
+  [
+   "worry",
+   "My husband goes through my messages and tracks my location."
+  ],
+  [
+   "anger",
+   "My wife yells at me every night."
+  ],
+  [
+   "worry",
+   "My boyfriend checks my phone and gets angry if I talk to other guys."
+  ],
+  [
+   "sadness",
+   "My husband never helps since my miscarriage."
+  ],
+  [
+   "sadness",
+   "My boyfriend was killed in a crash and I still set the table for two."
+  ],
+  [
+   "sadness",
+   "My wife hits the kids when she's stressed."
+  ],
+  [
+   "worry",
+   "My wife hits the kids when she's stressed."
+  ],
+  [
+   "sadness",
+   "My husband smacks the kids too hard."
+  ],
+  [
+   "worry",
+   "My husband smacks the kids too hard."
+  ],
+  [
+   "sadness",
+   "My partner beats the kids with a belt."
+  ],
+  [
+   "worry",
+   "My partner beats the kids with a belt."
+  ],
+  [
+   "sadness",
+   "My husband is rough with the baby."
+  ],
+  [
+   "worry",
+   "My husband is rough with the baby."
+  ],
+  [
+   "sadness",
+   "My husband hurts the kids when he's angry."
+  ],
+  [
+   "worry",
+   "My husband hurts the kids when he's angry."
+  ],
+  [
+   "sadness",
+   "My husband is cruel to the kids."
+  ],
+  [
+   "worry",
+   "My husband is cruel to the kids."
+  ],
+  [
+   "sadness",
+   "I'm scared of how my husband treats the kids."
+  ],
+  [
+   "worry",
+   "I'm scared of how my husband treats the kids."
+  ],
+  [
+   "sadness",
+   "My partner gets aggressive with the kids."
+  ],
+  [
+   "worry",
+   "My partner gets aggressive with the kids."
+  ],
+  [
+   "sadness",
+   "My husband smacks the kids and says it's normal."
+  ],
+  [
+   "worry",
+   "My husband smacks the kids and says it's normal."
+  ],
+  [
+   "sadness",
+   "My boyfriend is so controlling."
+  ],
+  [
+   "worry",
+   "My boyfriend is so controlling."
+  ],
+  [
+   "sadness",
+   "My boyfriend is really controlling and gets jealous if I see my friends."
+  ],
+  [
+   "worry",
+   "My boyfriend is really controlling and gets jealous if I see my friends."
+  ],
+  [
+   "sadness",
+   "My husband is very controlling about money."
+  ],
+  [
+   "worry",
+   "My husband is very controlling about money."
+  ],
+  [
+   "sadness",
+   "My girlfriend gets violent when she's angry."
+  ],
+  [
+   "worry",
+   "My girlfriend gets violent when she's angry."
+  ],
+  [
+   "sadness",
+   "My husband gets aggressive when he's angry."
+  ],
+  [
+   "worry",
+   "My husband gets aggressive when he's angry."
+  ],
+  [
+   "sadness",
+   "My husband has a really bad temper and I'm scared when he gets angry."
+  ],
+  [
+   "worry",
+   "My husband has a really bad temper and I'm scared when he gets angry."
+  ],
+  [
+   "sadness",
+   "My boyfriend is scary when he's angry."
+  ],
+  [
+   "worry",
+   "My boyfriend is scary when he's angry."
+  ],
+  [
+   "sadness",
+   "My partner goes quiet for days and I'm scared of what he'll do."
+  ],
+  [
+   "worry",
+   "My partner goes quiet for days and I'm scared of what he'll do."
+  ],
+  [
+   "sadness",
+   "My boyfriend calls me horrible names when we argue."
+  ],
+  [
+   "worry",
+   "My boyfriend calls me horrible names when we argue."
+  ],
+  [
+   "sadness",
+   "My partner makes me feel worthless every day."
+  ],
+  [
+   "worry",
+   "My partner makes me feel worthless every day."
+  ],
+  [
+   "sadness",
+   "My boyfriend makes me feel stupid all the time."
+  ],
+  [
+   "worry",
+   "My boyfriend makes me feel stupid all the time."
+  ],
+  [
+   "sadness",
+   "My husband says no one else would ever want me."
+  ],
+  [
+   "worry",
+   "My husband says no one else would ever want me."
+  ],
+  [
+   "sadness",
+   "My girlfriend humiliates me in front of our friends."
+  ],
+  [
+   "worry",
+   "My girlfriend humiliates me in front of our friends."
+  ],
+  [
+   "sadness",
+   "My boyfriend takes my phone and reads all my messages."
+  ],
+  [
+   "worry",
+   "My boyfriend takes my phone and reads all my messages."
+  ],
+  [
+   "frustration",
+   "My husband isn't helping at all and the house is a mess."
+  ],
+  [
+   "frustration",
+   "My husband hasn't helped once since the baby was born."
+  ],
+  [
+   "frustration",
+   "My partner hasn't helped at all since the twins were born."
+  ],
+  [
+   "frustration",
+   "My wife isn't helping and I'm the one doing bedtime every night."
+  ],
+  [
+   "frustration",
+   "My husband refuses to help out, he says the house is my job."
+  ],
+  [
+   "frustration",
+   "My boyfriend refuses to help and expects dinner on the table every night."
+  ],
+  [
+   "frustration",
+   "My husband won't even help when the kids are sick."
+  ]
+ ],
+ "distance": [
+  [
+   "sadness",
+   "My partner has been so distant lately and she doesn't help me understand what is wrong."
+  ],
+  [
+   "sadness",
+   "My partner and I barely talk now; he does nothing to help us feel close."
+  ],
+  [
+   "sadness",
+   "My wife helps with the kids but she's been short with me for weeks."
+  ],
+  [
+   "sadness",
+   "My girlfriend has stopped helping me out and she's always on her phone now."
+  ],
+  [
+   "sadness",
+   "My husband helps around the house but we never talk anymore."
+  ],
+  [
+   "worry",
+   "I do everything for my husband but he seems so far away lately."
+  ],
+  [
+   "confusion",
+   "I do everything for my husband but he seems so far away lately."
+  ],
+  [
+   "loneliness",
+   "I do everything for my husband but he seems so far away lately."
+  ],
+  [
+   "loneliness",
+   "Since the baby came my wife barely says a word to me."
+  ],
+  [
+   "worry",
+   "My husband comes home, eats dinner and goes straight to bed without a word."
+  ],
+  [
+   "sadness",
+   "My boyfriend hardly notices me anymore, he just plays games after dinner."
+  ],
+  [
+   "worry",
+   "My husband sleeps on the sofa since the twins were born."
+  ],
+  [
+   "loneliness",
+   "Since we had the kids my partner never wants to spend time with me."
+  ],
+  [
+   "sadness",
+   "Since the baby arrived my husband feels like a stranger."
+  ],
+  [
+   "worry",
+   "My husband has stopped eating dinner with us and I'm worried something's wrong."
+  ],
+  [
+   "loneliness",
+   "My husband sits in silence at dinner every night and I feel invisible."
+  ],
+  [
+   "sadness",
+   "My partner doesn't kiss me or hug me anymore, even at home."
+  ]
+ ],
+ "grief": [
+  "My husband passed last month.",
+  "My boyfriend died last week.",
+  "My boyfriend was killed in a crash and I still set the table for two.",
+  "My husband passed and now I do all the cooking for one.",
+  "Since losing my husband nobody helps me around the house.",
+  "I'm a widow now and I have to do all the chores on my own.",
+  "My husband doesn't help since I lost the pregnancy.",
+  "We lost the pregnancy at nine weeks and my husband acts like nothing happened.",
+  "My husband died last month.",
+  "My husband lost his dad and now he doesn't help with anything at home.",
+  "My wife lost her mum last year and she never helps with the kids anymore.",
+  "Since we lost Dad my husband never helps with anything.",
+  "Since mum passed my husband hasn't been there for me at all.",
+  "My husband lost his mum in May and he's not been the same."
+ ],
+ "notGrief": [
+  [
+   "joy",
+   "My son passed with distinction!"
+  ],
+  [
+   "joy",
+   "My dad passed his test!"
+  ],
+  [
+   "worry",
+   "My mum passed out at work today."
+  ],
+  [
+   "sadness",
+   "I'm so scared of losing my mum, she's getting really frail."
+  ],
+  [
+   "worry",
+   "I'm worried about losing my dad, his health is getting worse."
+  ],
+  [
+   null,
+   "I'm scared of losing my dad."
+  ],
+  [
+   "worry",
+   "I'm terrified of losing my husband."
+  ],
+  [
+   "sadness",
+   "I feel like I'm losing my best friend, she never has time for me now."
+  ],
+  [
+   "sadness",
+   "I feel like I'm losing my girlfriend and I don't know how to fix it."
+  ],
+  [
+   "sadness",
+   "I lost my girlfriend because I was too jealous."
+  ],
+  [
+   "sadness",
+   "I lost my boyfriend to another girl."
+  ],
+  [
+   "joy",
+   "My son passed first time!"
+  ],
+  [
+   "joy",
+   "My daughter passed!!"
+  ],
+  [
+   "excitement",
+   "My boyfriend passed, so proud of him!"
+  ],
+  [
+   "sadness",
+   "My friend passed and I failed."
+  ]
+ ],
+ "danger": [
+  "My friend said she wants to die.",
+  "My boyfriend keeps saying he wants to die.",
+  "My friend is cutting herself.",
+  "My daughter has been cutting herself.",
+  "My sister said she doesn't want to live anymore.",
+  "My son told me he wants to hang himself.",
+  "My friend wants to die.",
+  "My husband says he wants to die.",
+  "My daughter says she wants to die.",
+  "My son started cutting himself.",
+  "My friend cuts herself.",
+  "My friend doesn't want to live anymore.",
+  "My dad said he wants to end his life.",
+  "My girlfriend is talking about ending her life.",
+  "My boyfriend abused me and now he says he wants to die.",
+  "My friend's being bullied and she says she wants to die."
+ ],
+ "clinicianCandidates": {
+  "about": "Not yet decided: phrasings a reviewer flagged as possible risk (or possible false alarms) that need a clinician's call. Not tested.",
+  "phrasings": [
+   "Falling asleep and never waking up sounds peaceful.",
+   "Honestly I'd be okay if I fell asleep and didn't wake up.",
+   "I bought rope.",
+   "I can't cope anymore. (released in every revision)",
+   "I can't do this anymore.",
+   "I can't keep going.",
+   "I can't take it anymore.",
+   "I could fall asleep and never wake up and nobody would notice.",
+   "I don't want to die, I'm scared of the surgery. (death/health anxiety; crisis at every revision via the lexicon)",
+   "I feel like a burden when I ask for help at work. (ambiguous: perceived burdensomeness; crisis at cc5de5b)",
+   "I feel like dying.",
+   "I feel like giving up. (released in every revision)",
+   "I get bullied every day and cutting my arms is the only thing that helps.",
+   "I have a plan to end it.",
+   "I just want it all to be over.",
+   "I just want it to be over.",
+   "I just want to disappear for a while. (ambiguous; crisis at fce9f05 and cc5de5b)",
+   "I just want to disappear for a while. (crisis in both revisions; ambiguous, clinician to decide)",
+   "I keep thinking about jumping off the balcony.",
+   "I relapsed and cut last night.",
+   "I think about dying all the time.",
+   "I wanna die, I just tripped in front of my crush. (hyperbole; crisis at cc5de5b, matching the lexicon's 'want to die')",
+   "I want everything to end.",
+   "I want to OD.",
+   "I want to drown myself.",
+   "I want to fucking die.",
+   "I want to give up on everything.",
+   "I want to go to sleep forever.",
+   "I wish I could go to sleep forever.",
+   "I wish I would never wake up.",
+   "I wish I'd never wake up.",
+   "I wouldn't care if I fell asleep and never woke up.",
+   "I'd be relieved if I went to sleep and didn't wake up.",
+   "I'm done with life, lol, Mondays. (jocular; crisis at cc5de5b by design)",
+   "I'm going to take all my tablets.",
+   "I'm not afraid to die anymore.",
+   "I'm ready to die.",
+   "I'm so done with everything. (released in every revision)",
+   "I've been cutting again.",
+   "I've been having dark thoughts. (released in every revision)",
+   "I've been thinking about ending things.",
+   "Life is pointless.",
+   "Maybe I should just die.",
+   "My friend said everyone would be better off without her.",
+   "My friend says she wishes she was dead.",
+   "My friend wants to disappear.",
+   "My mate said he doesn't want to be here anymore.",
+   "No one in my family would even notice if I was gone. (released in every revision)",
+   "Nobody in this house would notice if I disappeared. (released in every revision; the fixture's 'Nobody would notice if I disappeared.' is crisis at cc5de5b, but adding 'in this house/family' breaks the rule)",
+   "Part of me wants to die.",
+   "Part of me wants to disappear.",
+   "Sometimes I think about falling asleep and never waking up.",
+   "There's no reason for me to be here.",
+   "Thinking of downing all my meds tonight."
+  ]
+ }
 }

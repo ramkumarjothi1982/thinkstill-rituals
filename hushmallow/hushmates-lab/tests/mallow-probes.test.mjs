@@ -21,6 +21,10 @@ test('the safety screen: passive wishes not to be here are answered with crisis 
   assert.deepEqual(missed, []);
 });
 
+test('the safety screen: someone else in danger gets the "Someone might be in danger" screen', () => {
+  assert.deepEqual(P.danger.filter((t) => { const r = screen(t); return r.ok || r.level !== 'crisis' || !/danger/i.test(r.support?.title || ''); }), []);
+});
+
 test('the safety screen: crisis words beside abuse or bullying still get crisis support; a hurt arm stays care', () => {
   assert.deepEqual(P.crisisNotCare.filter((t) => screen(t).level !== 'crisis'), []);
   assert.deepEqual(P.careNotCrisis.filter((t) => { const r = screen(t); return r.ok || r.level !== 'care'; }), []);
