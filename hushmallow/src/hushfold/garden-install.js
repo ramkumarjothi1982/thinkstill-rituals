@@ -132,6 +132,10 @@ const CSS = `
   opacity: 0; transform: translateY(14px); transition: opacity .45s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.2,.9,.25,1), top .5s cubic-bezier(.22,1,.36,1), left .5s cubic-bezier(.22,1,.36,1); }
 .hm-offer.is-in { opacity: 1; transform: none; }
 .hm-offer.is-out, .hm-offer.is-folded { opacity: 0; transform: translateY(8px) scale(.97); transition-duration: .32s; pointer-events: none; }
+/* folded because a line came into the band it lay in: out of the line's way at once */
+.hm-offer.is-folded.is-quick, .hm-offer.is-reduced.is-folded.is-quick { transition: none; }
+/* placed again where sliding would pass over the Mallow's face: unseen for a frame, then it fades in there */
+.hm-offer.is-hop { transition: none !important; opacity: 0 !important; }
 .hm-offer.is-folded { visibility: hidden; transition: opacity .32s ease, transform .32s ease, visibility 0s linear .32s; }
 .hm-offer.is-reduced, .hm-offer.is-reduced.is-out, .hm-offer.is-reduced.is-folded { transform: none; transition: opacity .35s ease, visibility 0s linear .35s; }
 .hm-offer-head { display: flex; align-items: center; gap: 12px; text-align: left; }
@@ -750,12 +754,37 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       el.classList.toggle('is-bar', f === 'bar');
       t.textContent = f === 'bar' ? shortName : name;
     };
-    function place() {
+    // (clear of the body: in the clear, in the subtitle band's free time, or over a world's decoration)
+    const offBody = (t) => t === 'clear' || t === 'band' || t === 'decor';
+    function place({ fresh = false } = {}) {
       if (done) return;
       const geom = mallowGeom(origin, m, face);
+      const prev = fresh ? null : rect, was = fresh ? null : tier, wasForm = form;
       const p = placeBox(el, { forms: ['full', 'compact', 'bar'], apply, kind: 'offer', geom, extra: extraRects(avoid) });
+      // Placed again (a line came into the band it lay in, the layout moved, the panel opened…) and the only place left is
+      // over the Mallow, where it was clear of it: it folds into its chip instead — it never moves onto the hero's head
+      // (the chip waits for a free corner; a tap brings the choice back). Whatever placed it again: the band's own watch,
+      // the shell's relayout once the Mallow lands, a resize.
+      if (prev && !folded && offBody(was) && !offBody(p.tier)) {
+        if (wasForm) apply(wasForm);
+        // (quickly: a line coming into the band is fading in where it lay)
+        fold(true, { quick: true });
+        return geom;
+      }
+      const next = { left: p.left, top: p.top, right: p.left + p.w, bottom: p.top + p.h };
+      // Moving on screen: it slides there — unless the slide would pass over the face (the new form's size takes effect
+      // at once, its place eases in): then it hops, unseen for a frame and fading in where it now belongs.
+      const f = geom?.face;
+      const sweep = prev && { left: Math.min(prev.left, next.left), right: Math.max(prev.right, next.right),
+        top: Math.min(prev.top, next.top), bottom: Math.max(prev.bottom, next.bottom, Math.max(prev.top, next.top) + p.h) };
+      const hop = !!(sweep && f && el.classList.contains('is-in') && hits(sweep, f, 2) && !hits(next, f, 2)
+        && (Math.abs(prev.top - next.top) > 1 || Math.abs(prev.left - next.left) > 1 || p.form !== wasForm));
+      if (hop) {
+        el.classList.add('is-hop');
+        requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('is-hop')));
+      }
       el.style.left = `${Math.round(p.left)}px`; el.style.top = `${Math.round(p.top)}px`;
-      rect = { left: p.left, top: p.top, right: p.left + p.w, bottom: p.top + p.h };
+      rect = next;
       tier = p.tier;
       if (p.form !== form) {
         form = p.form;
@@ -773,15 +802,16 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
 
     // left alone, it folds into a chip in a corner (nothing is saved, nothing lost)
     const armFold = () => { clearTimeout(foldT); if (foldAfterMs > 0) foldT = setTimeout(fold, foldAfterMs); };
-    function fold(force = false) {
+    function fold(force = false, { quick = false } = {}) {
       if (done || folded) return;
       if (!force && el.contains(document.activeElement)) { armFold(); return; }
       folded = true;
+      el.classList.toggle('is-quick', !!quick);
       el.classList.remove('is-in'); el.classList.add('is-folded');
       offerEvent('fold', skillId);
       showChip({ text: `Keep “${shortName}”?`, label: `${name}. Show the choice to keep it in your Memory Garden.`, skillId, mallow: m.id, reduced, glow, geom, avoid,
         geomNow: () => mallowGeom(origin, m, face),
-        onTap: () => { if (done) return; folded = false; el.classList.remove('is-folded'); geom = place(); reveal(); armFold(); offerEvent('unfold', skillId); yes.focus({ preventScroll: true }); } });
+        onTap: () => { if (done) return; folded = false; el.classList.remove('is-folded'); geom = place({ fresh: true }); reveal(); armFold(); offerEvent('unfold', skillId); yes.focus({ preventScroll: true }); } });
     }
     armFold();
     el.addEventListener('pointerdown', armFold);
@@ -795,10 +825,8 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       if (!obstacleRects().concat(extraRects(avoid)).some((o) => hits(rect, o, 4))) return;
       // a line came onto it (it lay in the subtitle band's free time, on a small phone): if the only place left is over
       // the Mallow, it folds into its chip instead — it never jumps onto the hero's head (the chip waits for a free corner)
-      const was = tier;
+      // (place() folds it when the only place left is over the Mallow)
       geom = place();
-      const off = (t) => t === 'clear' || t === 'band' || t === 'decor';
-      if (off(was) && !off(tier)) fold(true);
     });
     const onResize = () => { if (!folded) geom = place(); };
     addEventListener('resize', onResize);

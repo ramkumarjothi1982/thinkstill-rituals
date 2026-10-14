@@ -166,7 +166,9 @@ test('320×568: the folded offer lies in the subtitle band\'s free time, never o
   assert.match(gi, /if \(o && r\.kind === 'band'\) o\.band = true;/);
   // a line comes onto it: if the only place left is over the Mallow, it folds into its chip instead
   const offer = gi.slice(gi.indexOf('export function offerSave('), gi.indexOf('function note('));
-  assert.match(offer, /const off = \(t\) => t === 'clear' \|\| t === 'band' \|\| t === 'decor';\s*if \(off\(was\) && !off\(tier\)\) fold\(true\);/);
+  // (in place() itself, the follow-up: whatever places it again — the band's watch, the shell's relayout, a resize)
+  assert.match(offer, /const offBody = \(t\) => t === 'clear' \|\| t === 'band' \|\| t === 'decor';/);
+  assert.match(offer, /if \(prev && !folded && offBody\(was\) && !offBody\(p\.tier\)\) \{\s*if \(wasForm\) apply\(wasForm\);[\s\S]*?fold\(true, \{ quick: true \}\);/);
   // the chip moves off a line too (or waits unseen), and a line still fading in already counts
   const chip = gi.slice(gi.indexOf('function showChip('), gi.indexOf('function hideChip('));
   assert.match(chip, /const stopBand = onBandChange\(\(\) => \{[\s\S]*?if \(b\.classList\.contains\('is-blocked'\) \|\| obstacleRects\(\)\.some\(\(o\) => hits\(r, o, 4\)\)\) place\(\);/);

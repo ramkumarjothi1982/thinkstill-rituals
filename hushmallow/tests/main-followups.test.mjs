@@ -112,3 +112,22 @@ test('Resume is hidden only after a loss or a care-level disclosure (S.noResume)
   const dir = read('src/hushfold/flow/director.js');
   assert.match(dir, /if \(id && gentleOn && registry\.get\(id\)\?\.calm !== true && !resuming\) id = null;/);
 });
+
+// ------------------------------------------------- 2. the More Room offer meets a line on a small phone (320×568) --
+test('320×568: a line coming into the band folds the offer lying there (whatever places it again), never onto the hero or across the face', () => {
+  const gi = read('src/hushfold/garden-install.js');
+  const offer = gi.slice(gi.indexOf('export function offerSave('), gi.indexOf('function note('));
+  const place = offer.slice(offer.indexOf('function place({ fresh = false } = {}) {'), offer.indexOf('let geom = place();'));
+  // in place() itself: the band's watch, the shell's relayout once the Mallow lands, a resize all go through it
+  assert.match(place, /const prev = fresh \? null : rect, was = fresh \? null : tier, wasForm = form;/);
+  assert.match(place, /if \(prev && !folded && offBody\(was\) && !offBody\(p\.tier\)\) \{\s*if \(wasForm\) apply\(wasForm\);[\s\S]*?fold\(true, \{ quick: true \}\);\s*return geom;/);
+  assert.ok(place.indexOf('fold(true, { quick: true })') < place.indexOf('el.style.left ='), 'it folds where it is: never moved first');
+  // (the band's watch no longer decides by itself)
+  assert.doesNotMatch(offer, /const off = \(t\) =>/);
+  // out of the line's way at once (the line fades in where it lay), and a move whose slide would cross the face hops
+  assert.match(gi, /\.hm-offer\.is-folded\.is-quick, \.hm-offer\.is-reduced\.is-folded\.is-quick \{ transition: none; \}/);
+  assert.match(gi, /\.hm-offer\.is-hop \{ transition: none !important; opacity: 0 !important; \}/);
+  assert.match(place, /const hop = !!\(sweep && f && el\.classList\.contains\('is-in'\) && hits\(sweep, f, 2\) && !hits\(next, f, 2\)/);
+  // a tap on the chip places it afresh (not folded again for where it was before)
+  assert.match(offer, /geom = place\(\{ fresh: true \}\); reveal\(\);/);
+});
