@@ -53,6 +53,16 @@ Source: `docs/PHASE2-PLAN.md`, sections "Open questions for the owner" and "CONF
 | **Options** | (a) Accept constant QP for masters: QP 15 (≈ 46 MB) or QP 16 (≈ 39 MB estimated, quality just below CRF 16). (b) Keep CRF 16: segments are rendered to a lossless or near-lossless intermediate and the master is one CRF 16 pass over the joined frames (more disk and one extra encode per video). (c) Keep CRF 16 per segment and drop the ≥ 60 dB segment criterion (visible-seam risk not measured). |
 | **Consequences** | WP-01 (`ENCODERS` default), WP-02 (profiles), WP-05 (the size check), and the disk budget in PHASE2-PLAN "Resources". |
 
+### Q5. G-DIR thresholds calibrated on the approved v2, and the G-JOLT extremes sheet (D2)
+
+| | |
+|---|---|
+| **Status** | open: raised by WP-03 and its review (Wave C integration, 2026-10-14). The calibrated values below are in force (marked provisional in `composer/validate.js` `THRESHOLDS` and pinned by a unit test) until the owner or WP-13 answers. |
+| **Needed by** | WP-13 (the tuning-matrix workflow and the M1 moves), before any cell other than the v2 point is approved. |
+| **Why it matters** | Five plan values would reject the approved v2 itself, so WP-03 loosened them to what v2 measures: **stretch** ≤ 1.4 (plan 1.3; v2 reaches 1.386; `library/mallows/noomi.json` `body.limits.stretchMax`); **R-BREATH exhale** ≥ 1.25× the inhale (plan 1.5×; v2 1.28×: 1.48 s in, 1.9 s out); **glass readability** at card alpha ≥ 0.75 (plan 0.9; depth dims v2's back cards to 0.84); **captions "fully clear at alpha ≥ 0.9"** for their reading time is a warning, not an error (v2's end card is clear for 1.95 of the 2.35 s its length asks); **glass cards on the right rail** are a warning (v2's second card crosses the rail for 0.72 s). Every future direction is judged by these values. Separately, the `G-JOLT × noomi` cell in `library/tuning-matrix.json` (mirroring `library/capabilities.json`) is `approved` with intensity range 0.8–1, but no extremes sheet exists (`evidence.extremesSheet: null`, flag `D2-extremes-sheet-pending`). D2 approves a cell only after the owner ticks its extremes sheet, so the planner can currently sample intensities the owner has not seen. |
+| **Options** | (a) Accept the calibrated values as the brand's limits. (b) Keep the plan's values for new content and exempt only the v2 golden (a per-spec waiver recorded in the spec). (c) Per-value: e.g. keep the stretch at 1.4 for Noomi's pack only and restore 1.3 elsewhere. For G-JOLT: tick an extremes sheet for intensity 0.8 and 1.0 (WP-13 builds the sheets), or collapse the range to the v2 point until then. |
+| **Consequences** | WP-13 (cells and extremes sheets), WP-21–WP-23 (new moves are judged by these values), WP-05 (QA gates share some of them), WP-06 (planner sampling ranges). |
+
 ## Decided defaults (the owner may still overrule them)
 
 These came out of the plan synthesis. They count as settled unless the owner says otherwise.

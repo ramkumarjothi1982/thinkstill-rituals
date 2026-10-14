@@ -18,9 +18,14 @@ comparison (see the end of this file).
 > commands, tests, goldens) and `docs/OWNER-DECISIONS.md`. Run `npm test` (or, without npm,
 > `node cli/hm.mjs test`) and `node cli/hm.mjs guard` before you hand work in.
 > `node cli/hm.mjs help` lists every command: so far the render farm (`hm render`,
-> `hm status`, `hm doctor`, WP-01) and the planner (`hm plan`, `hm spec …`,
-> `hm approve`, `hm reject`, `hm export`, WP-06); the generic asset derivation
-> lives in `tools/derive/` (WP-07).
+> `hm status`, `hm doctor`, WP-01), the quality profiles and benchmarks
+> (`hm render --profile exact|final|draft`, `hm bench`, `hm bench gate`,
+> `hm proof`, WP-02) and the planner (`hm plan`, `hm spec …`, `hm approve`,
+> `hm reject`, `hm export`, WP-06); the generic asset derivation lives in
+> `tools/derive/` (WP-07). The composer (`composer/`, WP-03) turns a spec into a
+> `direction.json` rendered by runtime v3: `hm render composer/t01-v2` renders
+> the approved v2 rebuilt from `specs/golden/t01-v2.json`, bit-identical to v2.
+> Its contracts are frozen in `docs/ARCHITECTURE.md`.
 
 | File | What it is |
 |---|---|

@@ -90,6 +90,9 @@ test('sequential golden: applies only at the golden parameters, and names mismat
   assert.deepEqual(part.mismatched, [92]);
   assert.equal(sequentialGoldenCheck({ ...job, params: { ...DEFAULTS, scale: 0.5 } }, ref), null);
   assert.equal(sequentialGoldenCheck({ ...job, direction: 'dev/text-a' }, ref), null);
+  // T01 composed through runtime v3 (WP-03) is held to the same frames
+  assert.equal(sequentialGoldenCheck({ ...job, direction: 'composer/t01-v2' }, ref).identical, 450);
+  assert.deepEqual(sequentialGoldenCheck({ ...job, direction: 'composer/t01-v2', frames: [90, 95] }, ref.slice(90, 95).map((h, i) => (i === 4 ? 'x' : h))).mismatched, [94]);
 });
 
 test('hm render: options parse; --list shows the registered (non-fixture) directions; hm status runs', () => {

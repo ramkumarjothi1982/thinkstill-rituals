@@ -53,6 +53,8 @@ export const DISK_WARN_GB = 5, DISK_REFUSE_GB = 3;
  */
 export const SEQUENTIAL_GOLDENS = Object.freeze({
   'my-brain-at-2am-v2': { file: 'qa/golden/v2/sequential-frames.json', params: { width: 1080, height: 1920, scale: 1, seed: 20261013, mark: null, textKeys: 'content', profile: 'exact', features: null } },
+  // the same film composed from specs/golden/t01-v2.json (WP-03) must reproduce the same frames
+  'composer/t01-v2': { file: 'qa/golden/v2/sequential-frames.json', params: { width: 1080, height: 1920, scale: 1, seed: 20261013, mark: null, textKeys: 'content', profile: 'exact', features: null } },
 });
 
 export const DEFAULTS = Object.freeze({

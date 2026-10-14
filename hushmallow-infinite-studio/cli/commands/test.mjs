@@ -12,7 +12,7 @@ export const SUITES = Object.freeze({
   guard: 'tests/guard/**/*.test.mjs',
   unit: 'tests/unit/**/*.test.mjs',
   parity: 'tests/parity/**/*.test.mjs',
-  property: 'tests/property/**/*.test.mjs', // planner invariants over 1k–10k planned specs (WP-06): ≈ 30 s
+  property: 'tests/property/**/*.test.mjs', // planner invariants over 1k–10k planned specs (WP-06), G-DIR on 1,000 through the real composer: ≈ 2 min
   golden: 'tests/golden/**/*.test.mjs',     // pixels: ≈ 5 min, not in the default set
   derive: 'tests/derive/**/*.test.mjs',     // tools/derive Python unittest suite (WP-07): ≈ 2.5 min, not in the default set
 });
