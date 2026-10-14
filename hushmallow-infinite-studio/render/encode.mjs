@@ -50,7 +50,10 @@ export const ENCODERS = Object.freeze({
     segmentSafe: true,
   },
   crf20: {
-    summary: 'x264 slow, CRF 20 preview copy (single pass from the master)',
+    // preset fast (WP-02, measured on v2's final master): 22.7 s instead of 61.6 s (slow, 2 threads),
+    // 46.46 dB against the master instead of 45.98, 9.8 MB instead of 10.7
+    summary: 'x264 fast, CRF 20 preview copy (single pass from the master)',
+    preset: 'fast',
     rate: ['-crf', '20'],
     x264: `keyint=${GOP}:min-keyint=${GOP}:scenecut=0:open-gop=0`,
     segmentSafe: false,

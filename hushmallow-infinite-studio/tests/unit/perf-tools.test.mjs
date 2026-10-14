@@ -84,6 +84,7 @@ test('farm: the draft profile renders at half size with its encoder and mark; pr
   const a = x264Args('draft');
   assert.equal(a[a.indexOf('-preset') + 1], 'veryfast');
   assert.equal(x264Args('qp15')[x264Args('qp15').indexOf('-preset') + 1], 'slow', 'the master encoder is unchanged');
+  assert.equal(x264Args('crf20')[x264Args('crf20').indexOf('-preset') + 1], 'fast', 'the preview copy');
   assert.equal(wantsPreview(d, undefined), false);
   assert.throws(() => jobParams({ direction: 'x', profile: 'proof' }), /stills, not a video/);
   const { proofTimes } = await import('../../tools/proof.mjs');

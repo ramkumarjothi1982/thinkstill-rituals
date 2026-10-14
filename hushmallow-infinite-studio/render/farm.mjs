@@ -376,7 +376,8 @@ export async function finishJob(jobDir, job, { audio: wantAudio = true, preview 
   }
   if (prov.assets.conflicts.length) throw new Error(`assets changed during the job: ${JSON.stringify(prov.assets.conflicts)}`);
   await muxJob(jobDir, job, { audio, stamp: stamp({ job, git: prov.git }), log });
-  if (preview) transcode(path.join(jobDir, 'final.mp4'), path.join(jobDir, 'preview.mp4'), { encoder: 'crf20', fps: job.info.fps });
+  // the preview runs after every render worker has finished: 4 x264 threads (still a fixed count)
+  if (preview) transcode(path.join(jobDir, 'final.mp4'), path.join(jobDir, 'preview.mp4'), { encoder: 'crf20', fps: job.info.fps, threads: 4 });
   writeJsonAtomic(path.join(jobDir, 'provenance.json'), { ...prov, verify, final: { file: 'final.mp4', sha256: sha256File(path.join(jobDir, 'final.mp4')) } });
   if (!keepSegments) for (const s of job.segments) fs.rmSync(segPaths(jobDir, s.k).mp4, { force: true });
   setState(jobDir, job, 'muxed', { final: 'final.mp4' });
