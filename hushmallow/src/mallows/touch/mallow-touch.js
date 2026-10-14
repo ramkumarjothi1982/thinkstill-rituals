@@ -33,6 +33,14 @@
 // At rest the mesh is the rest shape and the rig cross-fades in the untouched
 // approved artwork, so an idle Mallow is exactly the approved picture.
 //
+// Canvas loss. The browser may drop any canvas's pixels (a GPU process crash,
+// memory pressure: contextlost, then contextrestored with it blank). The rig
+// then redraws its whole skin (rig.js, _skinBaseOk) and in the 2D tiers —
+// which show the skin as it is — verifySkin() checks about once a second that
+// the body is still on it; the visible 2D canvas is redrawn whole on its next
+// frame (and replaced if it stays lost); tier A rebuilds its texture sources
+// when the skin canvas or the WebGL context comes back.
+//
 // Input. bindPointer:true (default): MallowTouch owns its container — its
 // full-size root takes every touch inside it (touches off the Mallow are
 // ignored, not passed through to elements underneath). For a shared screen use
@@ -43,7 +51,7 @@
 // to tap, arrow keys to pull.
 
 import { MALLOWS, maskAlpha } from '../registry.js';
-import { MallowRig, addTicker, removeTicker, prefersReducedMotion, facePartsSrc } from '../rig.js';
+import { MallowRig, addTicker, removeTicker, prefersReducedMotion, facePartsSrc, watchCanvas } from '../rig.js';
 import { SoftBody } from './softbody.js';
 import { TouchReader } from './gestures.js';
 import { MeshRenderer, coarseGrid, drawTriangleWarp, drawStripWarp } from './mesh-gl.js';
@@ -60,6 +68,8 @@ const STRETCH_GIVE = 0.7;      // share of a two-finger spread the body follows
 const WAIST_GAIN = 0.75;       // waist pull per unit of stretch past 1
 const REBOUND = 2.4;           // upward velocity (body heights/s) a full squeeze releases
 const SLIP_DELAY = 0.09;       // s: a slip reaction waits this long (a flick or lift cancels it)
+const VERIFY_EVERY = 1;        // s: the 2D tiers check that the skin still holds its body (rig.verifySkin)
+const LOST_WAIT = 2000;        // ms a lost 2D canvas may take to come back before it is replaced
 
 const hexRgb = (hex) => {
   const h = hex.replace('#', '');
@@ -101,6 +111,7 @@ export class MallowTouch {
     container.appendChild(root);
     this.c2d = this._canvas(2);
     this.ctx = this.c2d.getContext('2d');
+    this._watch2d();
     this._makeRing();
     this.rig = this._makeRig(this.id);
     this._tick = this._tick.bind(this);
@@ -193,6 +204,8 @@ export class MallowTouch {
     rig.geoOverride = () => this._geo;
     rig.faceOverride = (sx, sy) => this._facePoint(sx, sy);
     rig.on('emotion', () => { if (this.rig === rig) this._label(); });
+    // the skin canvas came back blank or is a new canvas: tier A re-binds its texture sources
+    rig.on('skin', () => { if (this.rig === rig) this._skinMoved = true; });
     return rig;
   }
 
@@ -296,7 +309,8 @@ export class MallowTouch {
       const r = new MeshRenderer(this.glCanvas, {
         strict: want === 'auto',
         onLost: () => { this._lostGL = true; this._applyTier('tri'); this._emit('tier', { tier: this.tier, reason: 'context-lost' }); },
-        onRestored: () => { this._lostGL = false; if (this.quality === 'gl' || this.quality === 'auto') { this._applyTier('gl'); this._emit('tier', { tier: this.tier, reason: 'restored' }); } },
+        // (whatever wiped the WebGL context may have wiped the 2D canvases its textures are made from: made again)
+        onRestored: () => { this._lostGL = false; this._skinMoved = true; if (this.quality === 'gl' || this.quality === 'auto') { this._applyTier('gl'); this._emit('tier', { tier: this.tier, reason: 'restored' }); } },
       });
       if (!r.ok) { r.destroy(); this.glCanvas.remove(); this.glCanvas = null; tier = 'tri'; } else {
         this.renderer = r;
@@ -656,6 +670,7 @@ export class MallowTouch {
     this.renderer?.destroy();
     this.renderer = null;
     this.rig.destroy();
+    this._unwatch2d?.();
     this.c2d.width = this.c2d.height = 0;
     this.root.remove();
   }
@@ -1155,8 +1170,14 @@ export class MallowTouch {
     const touching = this.reader.ptrs.size > 0;
     let changed = false;
     const gl = this.tier === 'gl';
+    // the skin canvas changed or came back blank (rig 'skin'), or the WebGL context did: tier A's sources again
+    if (this._skinMoved) { this._skinMoved = false; if (this.renderer) this._addGLBody(); }
+    // the 2D tiers show the skin as it is: now and then make sure its body is still there (a loss the browser
+    // did not announce); a lost one is redrawn whole in this frame
+    let skinGone = false;
+    if (!gl && this.time - (this._verifyT ?? -Infinity) >= VERIFY_EVERY) { this._verifyT = this.time; skinGone = rig.verifySkin?.() === false; }
     const due = gl ? this.time - (this._lastSkinT ?? -1) >= 0.03 || st.frames - this._lastSkinFrame > 1 : !touching || st.frames - this._lastSkinFrame > 1;
-    if (due || this._lastSkinFrame < st.frames - 1) {
+    if (due || skinGone || this._lastSkinFrame < st.frames - 1) {
       changed = rig.renderSkin();
       if (changed) { this._lastSkinFrame = st.frames; this._lastSkinT = this.time; }
     }
@@ -1180,6 +1201,8 @@ export class MallowTouch {
     const rimGoal = clamp(0.5 * T.depth + 0.9 * Math.max(0, T.stretch - 1) + 0.3 * T.jiggle, 0, 0.75) * (this.opts.lowStim ? 0.5 : 1);
     this._rim += (rimGoal - this._rim) * Math.min(1, dt * (rimGoal > this._rim ? 10 : 3));
     if (this._rim < 1e-3 && rimGoal === 0) this._rim = 0;
+    // (a lost visible 2D canvas draws nothing until it comes back, blank: then everything is drawn again)
+    const can2d = this._ensure2d();
     if (this.tier === 'gl' && this.renderer && !this.renderer.lost) {
       a = nowMs();
       st.uploadPx = changed ? this.renderer.updateTexture('hero', rig.skin, rig.skinRects || rig.skinRect) : 0;
@@ -1197,13 +1220,13 @@ export class MallowTouch {
       items.length = 0; items.push(it);
       for (const L of this._layers) if (L.gl) { try { L.gl(items, this.renderer, info); } catch (e) { console.error(e); } }
       this.renderer.draw(items, this._blobsFor());
-      this._draw2d(false);
+      if (can2d) this._draw2d(false);
       st.last.draw = nowMs() - a;
       st.drawMs = lerp(st.drawMs, st.last.draw, 0.1);
     } else {
       st.uploadMs = 0; st.uploadPx = 0;
       a = nowMs();
-      this._draw2d(true);
+      if (can2d) this._draw2d(true);
       st.last.draw = nowMs() - a;
       st.drawMs = lerp(st.drawMs, st.last.draw, 0.1);
     }
@@ -1266,8 +1289,48 @@ export class MallowTouch {
     return list;
   }
 
+  // the visible 2D canvas's loss and return: back, it is blank and its state reset (the next drawn frame clears
+  // and draws all of it)
+  _watch2d() {
+    this._unwatch2d?.();
+    this._c2dLost = false; this._c2dLostAt = 0;
+    this._unwatch2d = watchCanvas(this.c2d, () => { this._c2dLost = true; this._dirty = null; }, () => { this._c2dLost = false; this._c2dLostAt = 0; this._dirty = null; });
+  }
+
+  // Can the visible 2D canvas draw now? Not while its context is lost (waiting for the browser to give it back);
+  // one with no context, or still lost after LOST_WAIT, is replaced by a new canvas (at most every LOST_WAIT).
+  _ensure2d() {
+    // (isContextLost where the engine has it; else the contextlost / contextrestored events)
+    const g = this.ctx, api = typeof g?.isContextLost === 'function';
+    const lost = api ? !!g.isContextLost() : !!this._c2dLost;
+    if (api && !lost) this._c2dLost = false;
+    if (g && !lost) { this._c2dLostAt = 0; return true; }
+    const t = nowMs();
+    if (g && lost) {
+      if (!this._c2dLostAt) this._c2dLostAt = t;
+      if (t - this._c2dLostAt < LOST_WAIT) return false;
+    }
+    if (t - (this._c2dNewAt ?? -Infinity) < LOST_WAIT || !this.root) return false;
+    this._c2dNewAt = t;
+    this._new2d();
+    return !!this.ctx && !this.ctx.isContextLost?.();
+  }
+
+  _new2d() {
+    const old = this.c2d, c = this._canvas(2);
+    c.width = old?.width || Math.round(this.view.w * this.view.dpr);
+    c.height = old?.height || Math.round(this.view.h * this.view.dpr);
+    if (old) { old.remove?.(); try { old.width = 0; old.height = 0; } catch { /* gone */ } }
+    this.c2d = c;
+    this.ctx = c.getContext('2d');
+    this._dentGrad = null;
+    this._dirty = null;
+    this._watch2d();
+  }
+
   _clear2d(all) {
     const c = this.ctx, dpr = this.view.dpr;
+    if (!c) return;
     c.setTransform(1, 0, 0, 1, 0, 0);
     if (all || !this._dirty) c.clearRect(0, 0, this.c2d.width, this.c2d.height);
     else { const d = this._dirty; c.clearRect(d[0] * dpr, d[1] * dpr, (d[2] - d[0]) * dpr, (d[3] - d[1]) * dpr); }
@@ -1395,6 +1458,8 @@ function drawSoftBlob(ctx, x, y, rx, ry, colour, alpha, inner = 0) {
     // a colour-at-full then fade gradient; alpha is applied when drawing
     g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
     blobCache.set(key, c);
+    // a sprite the browser gave back blank (its context was lost) is made again on its next use
+    watchCanvas(c, () => {}, () => { if (blobCache.get(key) === c) blobCache.delete(key); });
   }
   ctx.save();
   ctx.globalAlpha = clamp(alpha, 0, 1);
