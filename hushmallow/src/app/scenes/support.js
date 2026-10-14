@@ -73,7 +73,7 @@ export function urgentCalls(region) {
 }
 
 // what someone did or is doing to them: Find A Helpline, which lists domestic-abuse services, comes first
-// ('unsafe' is not one of them: the main screen's grief reading uses it for a wish to follow someone who died)
+// ('death-follow' and 'suicide-loss', the grief readings' care, are not one of them either)
 const ABUSE_CATEGORIES = new Set(['abuse', 'violence', 'threat']);
 export const abuseFirst = (category) => ABUSE_CATEGORIES.has(category);
 /**

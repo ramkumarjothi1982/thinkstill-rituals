@@ -37,12 +37,15 @@ function main(t, emotion = null) {
 /** Another Angle's route (afterTell → startAngle → angle-first.js firstStep): the safety check and an escalation first. */
 function angle(t, emotion = null) {
   const c = checkText(t);
-  if (c.level === 'crisis' || c.level === 'care' || GR.deathEscalation(t)) return 'care';
+  // (r3-esc) a suicide named is care too, whatever the clause (another-angle.js afterTell suicideDeath)
+  if (c.level === 'crisis' || c.level === 'care' || GR.deathEscalation(t) || GR.suicideDeath(t)) return 'care';
   const step = firstStep(t, { emotion });
   if (step === 'gentle') return 'gentle';
   assert.equal(step, 'choice', `${t}: every other Tell is asked first`);
   return lossRoute(t, { emotion }) === 'ask' ? 'question' : 'ordinary';
 }
+/** (r3-esc) The reviews' phrasings that name a suicide, gentle until final round 3: care by design now (grief.js suicideDeath). */
+const R3_SUICIDE_CARE = new Set(["my mate's brother topped himself", 'my cousin offed himself last year']);
 const GROUPS = ['SEM_B1_COMMON', 'SEM_B1_EXOTIC', 'SEM_B2_REGRESSIONS', 'SEM_B3_RESEND', 'SEM_B4_ORDINARY', 'SEM_B5_WORRIES', 'SEM_POLISH', 'SEM_PROVEN', 'UI_B1', 'UI_EVERYDAY', 'UI_AT_PEACE', 'UI_LEXICON', 'UI_PROVEN'];
 const framed = (R) => R.scenes.some((s) => !s.grief && (FRAMING_MECHANICS.has(s.mechanic) || framesScene(s)));
 
@@ -52,7 +55,8 @@ test('probe table: every phrasing of both reviews takes its route under the new 
   for (const g of GROUPS) {
     const c = (counts[g] = { gentle: 0, question: 0, ordinary: 0, care: 0 });
     for (const [t, want] of P[g]) {
-      const [wm, wa] = Array.isArray(want) ? want : [want, want];
+      // (r3-esc, by design) a suicide named is care on both screens, whatever the clause: these two were gentle
+      const [wm, wa] = R3_SUICIDE_CARE.has(t) ? ['care', 'care'] : Array.isArray(want) ? want : [want, want];
       const got = [main(t), angle(t)];
       // (the lexicon's own reading may only ever move these to care: the owner's lexicon pass)
       if (g === 'UI_LEXICON') { assert.ok(got.every((r, i) => r === [wm, wa][i] || r === 'care'), `${t}: ${got}`); assert.ok(!got.includes('gentle'), t); }
@@ -75,7 +79,7 @@ test('no reviewer death phrasing is ever played without the person choosing it: 
         if (quiet.route === 'quiet') assert.deepEqual([quiet.requests, quiet.scenes.length, quiet.mechanics.length, quiet.question], [0, 0, 0, 'choice'], `${t} @${s}`);
         // "Just be with it": its own quiet path (r2-angle item 5), nothing sent, no mechanic, never framed
         const be = visit(t, { server: STUBS[s] || null, answer: 'be' });
-        assert.equal(be.route, be.asked ? 'be' : 'gentle', `${t} @${s}`);
+        assert.equal(be.route, be.asked ? 'be' : R3_SUICIDE_CARE.has(t) ? 'care' : 'gentle', `${t} @${s}`);
         assert.ok(be.mechanics.length === 0 && !framed(be), `${t} @${s}`);
         if (be.asked) assert.equal(be.requests, 0, `${t} @${s}: nothing sent`);
       }
@@ -118,14 +122,16 @@ test('item 4: doing what the one who died did, or joining them, is care (escalat
   // the review's own phrasing, and the pair the owner named
   assert.equal(main('my best friend killed himself and I keep thinking about doing the same'), 'care');
   assert.equal(main('my dad died and I want to do the same course he did'), 'gentle');
-  // the reading's shape the main screen relies on: care / unsafe, as every escalation
-  assert.deepEqual(readSafety({ checkText }, 'my brother died and I might join him', true), { level: 'care', category: 'unsafe', matched: null });
+  // the reading's shape the main screen relies on: care / death-follow, as every escalation (r3-esc: its own category, so the
+  // Hushfold offers no world beside it; it was 'unsafe')
+  assert.deepEqual(readSafety({ checkText }, 'my brother died and I might join him', true), { level: 'care', category: 'death-follow', matched: null });
 });
 
 // ------------------------------------------------------------------------------ item 5: recall --
 test('item 5: memorial, coroner, late <relation> (possessive too), nothing more they could do, put down, topped / offed, <ref>s time came: gentle with no question', () => {
   for (const t of P.RECALL_GENTLE) {
-    assert.deepEqual([main(t), angle(t)], ['gentle', 'gentle'], t);
+    // (r3-esc, by design) "topped himself", "offed himself" name a suicide: care on both screens now, never the gentle path
+    assert.deepEqual([main(t), angle(t)], R3_SUICIDE_CARE.has(t) ? ['care', 'care'] : ['gentle', 'gentle'], t);
     assert.equal(firstStep(t), 'gentle', t);
   }
   for (const t of P.RECALL_NOT) assert.notEqual(lossRoute(t), 'gentle', t);

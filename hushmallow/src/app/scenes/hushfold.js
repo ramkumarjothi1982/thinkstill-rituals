@@ -58,6 +58,10 @@ const LEVELS = ['none', 'concern', 'care', 'crisis'];
 const CARE_FACE = 'concerned';
 // what a gentle choice after a care or distress disclosure actually plays: a calm world when there is one, else named honestly
 const GENTLE_WORLDS = [['luminous-ocean', 'Somewhere calm, with Loomi'], ['static-storm', 'Glitzi’s storm, taken slowly']];
+// (r3-esc) the care grief.js reads (input-overlay readSafety): a suicide named ('suicide-loss'), or a wish to follow someone who
+// died or the self ending after a death ('death-follow'). Support only: the gentle line, the Support pill, and no world offered
+// for the rest of the visit, not even somewhere calm
+export const DEATH_CARE = new Set(['suicide-loss', 'death-follow']);
 // more words later in a visit that already had support: a short, plain acknowledgement (the full care line was said)
 const CARE_AGAIN = 'Thank you for telling me. I’m right here.';
 // back from the plans page without a plan: the words they typed are offered back (in memory only, never stored)
@@ -147,8 +151,9 @@ export default function hushfold(app, params = {}) {
     // level: the most serious thing typed this visit (sent or not). Anything above 'none' keeps the
     // Support pill up, stops invitations and squeeze chatter, and holds off update reloads
     level: 'none', category: null, crisisSpoken: false, pendingResume: false,
-    // noResume: a death, a loss or harm done to the person was told this visit — the world they were in is never offered back
-    noResume: false,
+    // noResume: a death, a loss or harm done to the person was told this visit — the world they were in is never offered back;
+    // (r3-esc) deathCare: a suicide named or a wish to follow someone who died was read (DEATH_CARE) — no world is offered at all
+    noResume: false, deathCare: false,
     worldAt: 0,   // when the world on stage now arrived (its first seconds: the person's thought is still on its way)
     // soft: "Just be with it" was chosen, or the question was left unanswered (owner decision 'Ask before every world'):
     // the rest of the visit stays gentle — no squeeze quips, invitations or playful lines, the attentive face — with no
@@ -1381,6 +1386,7 @@ export default function hushfold(app, params = {}) {
    */
   function noteSafety(r) {
     noteNoResume(r);
+    if (DEATH_CARE.has(r?.category)) S.deathCare = true;
     if (!r?.level || LEVELS.indexOf(r.level) <= LEVELS.indexOf(S.level)) return;
     S.level = r.level;
     S.category = r.category || null;
@@ -1607,7 +1613,7 @@ export default function hushfold(app, params = {}) {
                 .catch((e) => console.warn(e)).finally(() => { if (S.quietBeat === beat) S.quietBeat = null; });
             }
           // care or distress typed and closed without sending: support stays close, said once, quietly
-          } else if (!S.crisis && gentle() && !S.careSaid) { S.careSaid = true; say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding }); }
+          } else if (!S.crisis && gentle() && !S.careSaid) { S.careSaid = true; say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.category === 'suicide-loss' ? SHARED_LINES.supportLoss : S.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding }); }
           app.applyUpdateIfSafe?.();
         }
       },
@@ -1921,7 +1927,8 @@ export default function hushfold(app, params = {}) {
     supportPill.hidden = false;
     layout();
     stageMallow.setStage(CARE_FACE, { quiet: true });
-    const first = safety?.category === 'harm-others' ? SHARED_LINES.harmOthers : safety?.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern;
+    const first = safety?.category === 'harm-others' ? SHARED_LINES.harmOthers : safety?.category === 'suicide-loss' ? SHARED_LINES.supportLoss
+      : safety?.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern;
     await say(first, { interrupt: !subtitles.holding });
     if (S.left || overlay) return;
     await careChoice({ emotion, intention, safety });
@@ -1944,6 +1951,9 @@ export default function hushfold(app, params = {}) {
    * soft: after "Just be with it" (nothing heavy was said): a calm world only, played as a gentle session with no words.
    */
   async function careChoice({ emotion, intention, safety, soft = false }) {
+    // (r3-esc) after a suicide named or a wish to follow someone who died: no world is offered, not even somewhere calm (a world
+    // held quietly ends quietly); the Support pill stays
+    if (S.deathCare) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }
     const gw = await gentleWorld({ calmOnly: soft });
     if (S.left || overlay) return;
     // (no world to offer: a world held quietly ends quietly, never left waiting under its veil)

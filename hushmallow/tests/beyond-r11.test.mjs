@@ -153,7 +153,8 @@ test('r11.6: fair anger beside a bag word or death talk: never find_boundary, an
       assert.deepEqual(framings(R), [], `[${s}] ${t}`);
     }
   }
-  assert.equal(visit('my friend ODd last night and everyone blames me', { server: STUBS.anger }).route, 'gentle');
+  // (r3-esc, by design) an overdose named is care, gently, nothing sent (it was the gentle path)
+  assert.equal(visit('my friend ODd last night and everyone blames me', { server: STUBS.anger }).route, 'care');
   // fair anger with no bag word still looks like anger (with no other feeling told: "embarrassed me" tells embarrassment, the
   // angle-polish QA)
   assert.equal(candidatePatterns('My boss shouted at me in front of everyone')[0], 'valid_anger');

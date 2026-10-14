@@ -43,6 +43,8 @@ const SHARED = {
     'The support lines are free, and right here whenever you need them.',
   ],
   supportCare: ['That matters, and it isn’t yours to fix alone. Support is one tap away.'],
+  // (r3-esc) a suicide named (grief.js suicideDeath, category 'suicide-loss'): gentle, assuming nothing, nothing to fix; support close
+  supportLoss: ['Thank you for telling me. That’s a lot to carry.', 'Support is right here, whenever you want it.'],
   // distress words (can't cope, hopeless…): gentle, no jokes, support close by
   supportConcern: ['Thank you for telling me. Support is right here too, whenever you want it.'],
   // wanting to hurt someone: calm, no jokes, safety first (said as a sequence, like support)

@@ -39,7 +39,8 @@ function main(t, emotion = null) {
 /** Another Angle's route (afterTell → startAngle): the safety check and an escalation first, then lossRoute. */
 function angle(t, emotion = null) {
   const c = checkText(t);
-  if (c.level === 'crisis' || c.level === 'care' || GR.deathEscalation(t)) return 'care';
+  // (r3-esc) a suicide named is care too, whatever the clause (another-angle.js afterTell suicideDeath)
+  if (c.level === 'crisis' || c.level === 'care' || GR.deathEscalation(t) || GR.suicideDeath(t)) return 'care';
   const r = lossRoute(t, { emotion });
   return r === 'gentle' ? 'gentle' : r === 'ask' ? 'check-in' : 'ordinary';
 }
@@ -48,7 +49,9 @@ const DEATH_ALL = [...new Set([
   ...P.R5_DEATH.map(([, t]) => t), ...P.R5_B2.map(([, t]) => t), ...P.R5_COMMON_FRAMED, ...P.R5_EXOTIC_FRAMED, ...P.R5_QUOTED, ...P.R5_MAIN_MISS,
   ...P.R5_KIND, ...P.R5_PRACTICAL_SAID, ...P.R5_WENT_HOME, ...P.R5_R3_CROSS, ...P.R5_R3_DEATH, ...P.AP_PREGNANCY,
 ])];
-const expectedDeath = (t) => (P.R5_DEATH_CARE.includes(t) ? 'care' : P.R5_DEATH_CHECK_IN.includes(t) ? 'check-in' : 'gentle');
+/** (r3-esc, by design) the overdoses among the round-5 deaths name a suicide death word: care on both screens now (5 were gentle). */
+const R3_OVERDOSE_CARE = ['my brother ODed in his flat', "my friend od'd at a party", 'my friend ODd', 'my friend od d', 'my friend ODd last night and everyone blames me'];
+const expectedDeath = (t) => (P.R5_DEATH_CARE.includes(t) || R3_OVERDOSE_CARE.includes(t) ? 'care' : P.R5_DEATH_CHECK_IN.includes(t) ? 'check-in' : 'gentle');
 const WHO = new RegExp(`\\b(?:${PERSON}|${PET})(?:s|es)?\\b`, 'iu');
 const framed = (R) => R.scenes.some((s) => !s.grief && (FRAMING_MECHANICS.has(s.mechanic) || framesScene(s)));
 
@@ -139,7 +142,9 @@ test('r12 (a): every death probe of the round-5 review reaches the gentle path d
     for (const m of P.R5_R3_MARKERS) assert.deepEqual(both(t + m), ['gentle', 'gentle'], t + m);
   }
   for (const t of P.R5_DEATH_CHECK_IN) for (const m of P.R5_R3_MARKERS) assert.ok(['check-in', 'gentle', 'care'].includes(angle(t + m)) && angle(t + m) === main(t + m) || main(t + m) === 'care', t + m);
-  assert.deepEqual(tally, { gentle: DEATH_ALL.length - P.R5_DEATH_CHECK_IN.length - P.R5_DEATH_CARE.length, 'check-in': P.R5_DEATH_CHECK_IN.length, care: 3, neither: 0 });
+  assert.deepEqual(tally, { gentle: DEATH_ALL.length - P.R5_DEATH_CHECK_IN.length - P.R5_DEATH_CARE.length - R3_OVERDOSE_CARE.length, 'check-in': P.R5_DEATH_CHECK_IN.length, care: 3 + R3_OVERDOSE_CARE.length, neither: 0 });
+  // (r3-esc) every suicide death word among them is care, and only those (plus R5_DEATH_CARE)
+  assert.deepEqual(DEATH_ALL.filter((t) => GR.suicideDeath(t) && !P.R5_DEATH_CARE.includes(t)), R3_OVERDOSE_CARE);
   // of the review's 85 + 42 (its own tags): no common phrasing and no exotic one reaches neither
   const tagged = [...P.R5_DEATH, ...P.R5_B2];
   assert.deepEqual(tagged.filter(([, t]) => !['gentle', 'check-in', 'care'].includes(angle(t))), []);

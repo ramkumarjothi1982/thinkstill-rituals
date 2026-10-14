@@ -7,7 +7,7 @@
 // Keep it in step with another-angle.js: each step below names the function it mirrors.
 
 import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
-import { deathEscalation, serverLoss, griefLinesOk, suicideFuture } from '../../src/beyond/grief.js';
+import { deathEscalation, suicideDeath, serverLoss, griefLinesOk } from '../../src/beyond/grief.js';
 import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm, lossRoute, griefFeeling } from '../../src/beyond/backstop.js';
 import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, BE_WITH, END, mechanicLines } from '../../src/beyond/lines.js';
 import { firstStep, ASK_BEFORE_ANGLE } from '../../src/beyond/angle-first.js';
@@ -99,7 +99,7 @@ function drawn(scene, parts, L) {
  */
 export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else', asks = ASK_BEFORE_ANGLE, said = null } = {}) {
   const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0, grief: false, beOptions: null, finishLevel: 'none', finishLines: null };
-  const S = { level: 'none', follow: false, noPlay: false, grief: false, care: false, crisis: false, heavyDraft: false, shown: [], used: [] };
+  const S = { level: 'none', follow: false, suicide: false, noPlay: false, grief: false, care: false, crisis: false, heavyDraft: false, shown: [], used: [] };
   const say = (l) => { for (const x of [l].flat()) if (x) R.said.push(String(x)); };
   const note = (r) => { if (r?.level && LEVELS.indexOf(r.level) > LEVELS.indexOf(S.level)) S.level = r.level; };
   const ask = (prev) => { R.requests++; return clientShape(server(text, { previous: prev })); };
@@ -111,10 +111,10 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     return R;
   };
   // careMode, crisisMode
-  const care = (lines = S.follow ? SAFETY.follow : SAFETY.care) => { S.care = true; note({ level: 'care' }); R.careLines = lines; R.faces.push('attentive'); say(lines); say(SAFETY.careAsk); return done(S.follow ? 'follow' : 'care'); };
+  const care = (lines = S.follow ? SAFETY.follow : S.suicide ? SAFETY.careGentle : SAFETY.care) => { S.care = true; note({ level: 'care' }); R.careLines = lines; R.faces.push('attentive'); say(lines); say(SAFETY.careAsk); return done(S.follow ? 'follow' : 'care'); };
   const crisis = () => { S.crisis = true; note({ level: 'crisis' }); R.faces.push('attentive'); say(SAFETY.crisis); return done('crisis'); };
   // readDraft
-  const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) { S.noPlay = true; S.heavyDraft = true; } };
+  const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } else if (suicideDeath(t)) { S.suicide = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) { S.noPlay = true; S.heavyDraft = true; } };
 
   // afterTell: firstLook (no feeling chosen): a feeling's look, else the first candidate pattern's (review r11: never
   // 'valid_anger' beside a bag word, so the Thought Mallow and the mechanic are never tinted anger beside a loss)
@@ -124,12 +124,14 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
   if (S.level === 'crisis') return crisis();
   if (S.level === 'care') return care();
   if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
+  // (r3-esc) a suicide named, whatever the clause: care, said gently, nothing sent
+  if (suicideDeath(text)) { S.suicide = true; return care(SAFETY.careGentle); }
 
   // griefMode
   const griefMode = ({ scene = null, asked = false, told = null } = {}) => {
     if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
-    // (r2-angle item 1) a suicide death beside a first-person future: care, said gently, nothing sent
-    if (suicideFuture(text)) return care(SAFETY.careGentle);
+    // (r3-esc) a suicide named, whatever the clause: care, said gently, nothing sent
+    if (suicideDeath(text)) { S.suicide = true; return care(SAFETY.careGentle); }
     S.grief = true; S.noPlay = true;
     R.faces.push('attentive');
     say(GRIEF.heard);

@@ -59,8 +59,9 @@ export function lossIn(t) {
   try { return !!(griefNow.deathTalk(t) || griefNow.livingLoss?.(t) || griefNow.strongLoss?.(t)); } catch { return false; }
 }
 /**
- * The safety reading with loss talk added (lossAware): a death named with a wish to follow the one who died is
- * care; any other death or loss talk is concern (the gentle path: support close, no Thought Mallow, nothing
+ * The safety reading with loss talk added (lossAware): a death named with a wish to follow the one who died, or a first-person
+ * clause about the self ending after it, is care ('death-follow'), and so is a suicide named about anyone (r3-esc,
+ * 'suicide-loss': grief.js deathCare); any other death or loss talk is concern (the gentle path: support close, no Thought Mallow, nothing
  * playful), and so is a person beside a strong loss cue (grief.js strongLoss, review r11: "a drunk driver took my
  * brother from us", "the fire took both my grandparents"; never the weak cues, a false alarm here opens the support
  * beat), and so is a grief-family feeling they chose (`emotion`: grief, mourning, bereft, heartache, heartbreak,
@@ -72,7 +73,10 @@ export function readSafety(m, t, lossAware, { emotion = null } = {}) {
   const r = m.checkText(t);
   if (!lossAware || !griefNow || r.level === 'crisis' || r.level === 'care') return r;
   try {
-    if (griefNow.deathEscalation(t)) return { level: 'care', category: 'unsafe', matched: null };
+    // (r3-esc) a wish to follow someone who died, or the self ending after a death ('death-follow'); a suicide named, nothing
+    // more ('suicide-loss'): care, the scene says it gently and offers no world (hushfold.js careBeat / careChoice)
+    const dc = griefNow.deathCare ? griefNow.deathCare(t) : (griefNow.deathEscalation(t) ? 'follow' : null);
+    if (dc) return { level: 'care', category: dc === 'follow' ? 'death-follow' : 'suicide-loss', matched: null };
     if (r.level !== 'none') return r;
     const route = griefNow.lossRoute ? griefNow.lossRoute(t, { emotion })
       : (griefNow.deathTalk(t) || griefNow.livingLoss?.(t) || griefNow.strongLoss?.(t) ? 'gentle' : null);

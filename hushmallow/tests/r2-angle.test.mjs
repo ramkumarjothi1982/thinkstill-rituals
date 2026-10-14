@@ -41,7 +41,8 @@ function main(t, emotion = null) {
 /** Another Angle's route (afterTell → startAngle → firstStep): care | gentle | question | ordinary. */
 function angle(t, emotion = null) {
   const c = checkText(t);
-  if (c.level === 'crisis' || c.level === 'care' || GR.deathEscalation(t)) return 'care';
+  // (r3-esc) a suicide named is care too, whatever the clause (another-angle.js afterTell suicideDeath)
+  if (c.level === 'crisis' || c.level === 'care' || GR.deathEscalation(t) || GR.suicideDeath(t)) return 'care';
   const step = firstStep(t, { emotion });
   if (step === 'gentle') return 'gentle';
   assert.equal(step, 'choice', `${t}: every other Tell is asked first`);
@@ -61,14 +62,16 @@ test('item 1: every escalation phrasing of the semantic review, verbatim, is car
       assert.deepEqual([R.requests, R.asked, R.mechanics.length, R.scenes.length], [0, false, 0, 0], `${t} @${s}`);
     }
   }
-  // the main screen's reading has the shape every escalation has (care / unsafe)
-  assert.deepEqual(readSafety({ checkText }, P.SEM_ESC_POS[0], true), { level: 'care', category: 'unsafe', matched: null });
+  // the main screen's reading has the shape every escalation has (care / death-follow; r3-esc: its own category, it was 'unsafe')
+  assert.deepEqual(readSafety({ checkText }, P.SEM_ESC_POS[0], true), { level: 'care', category: 'death-follow', matched: null });
 });
 
 test('item 1: the rule is structural: this unit\'s own variants are care, their ordinary neighbours and the review\'s negatives never are', () => {
   for (const t of P.ESC_STRUCT_POS) assert.deepEqual([main(t), angle(t)], ['care', 'care'], t);
   for (const t of [...P.ESC_NEG, ...P.ESC_STRUCT_NEG]) {
     assert.equal(GR.deathEscalation(t), false, t);
+    // (r3-esc, by design) a negative that names a suicide is care on both screens now, with the gentle care lines: one
+    if (GR.suicideDeath(t)) { assert.equal(t, 'my uncle killed himself years ago and we still miss him'); assert.deepEqual([main(t), angle(t)], ['care', 'care'], t); continue; }
     assert.notEqual(main(t), 'care', t);
     assert.notEqual(angle(t), 'care', t);
   }
@@ -108,13 +111,15 @@ test('item 1: the gentle path never sends a suicide death beside a first-person 
       const R = visit(t, { server: STUBS[s] || null });
       assert.deepEqual([R.route, R.requests, R.careLines], ['care', 0, SAFETY.careGentle], `${t} @${s}`);
     }
-    // (the main screen sends nothing: its gentle path, support close)
-    assert.equal(main(t), 'gentle', t);
+    // (r3-esc, by design) the main screen too: care ('suicide-loss'), its gentle line, no world (it was the gentle path)
+    assert.equal(main(t), 'care', t);
+    assert.deepEqual(readSafety({ checkText }, t, true), { level: 'care', category: 'suicide-loss', matched: null }, t);
   }
-  // a suicide death with no future clause still goes gently (and with sharing on the server may answer it, as before)
+  // (r3-esc) a suicide death with no future clause is care too now, said gently, nothing sent (it went gently and was sent)
   assert.equal(GR.suicideFuture('my uncle killed himself years ago and we still miss him'), false);
+  assert.deepEqual((({ route, requests, careLines }) => [route, requests, careLines])(visit('my uncle killed himself years ago and we still miss him', { server: STUBS.grief })), ['care', 0, SAFETY.careGentle]);
   const grief = between(AA, 'async function griefMode(', 'const heavySeen = ');
-  assert.ok(grief.indexOf('if (suicideFuture(S.text)) { careMode({ lines: SAFETY.careGentle }); return; }') < grief.indexOf('client.angle('));
+  assert.ok(grief.indexOf('if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }') < grief.indexOf('client.angle('));
 });
 
 // ------------------------------------------------------------------------- 4. the weak death words --
@@ -127,8 +132,9 @@ test('item 4: death words about a thing, a place, an event, a game, a book or a 
     const R = visit(t, { answer: null });
     assert.deepEqual([R.route, R.question, R.requests], ['quiet', 'choice', 0], t);
   }
-  // a person or a pet of their own beside the same words stays gentle, with no question
-  for (const t of P.KEEP_GENTLE) assert.deepEqual([main(t), angle(t)], ['gentle', 'gentle'], t);
+  // a person or a pet of their own beside the same words stays gentle, with no question (r3-esc, by design: "my dad killed himself"
+  // names a suicide, so it is care on both screens now)
+  for (const t of P.KEEP_GENTLE) assert.deepEqual([main(t), angle(t)], t === 'my dad killed himself' ? ['care', 'care'] : ['gentle', 'gentle'], t);
 });
 
 test('item 4: every r12 / r13 death set keeps its route; only the two "by design" game deaths moved to the question', () => {

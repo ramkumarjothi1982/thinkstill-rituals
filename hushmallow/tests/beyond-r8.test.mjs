@@ -328,7 +328,7 @@ test('r8.5: escalation routes while typing, on close and on Send, and stays (rew
   assert.match(src, /function readDraft\(text\) \{[\s\S]{0,140}if \(deathEscalation\(t\)\) noteFollow\(\);/);
   // sticky: care for the visit, and its own lines from then on
   assert.match(src, /function noteFollow\(\) \{\s*S\.follow = true;\s*noteSafety\(\{ level: 'care', category: 'death-follow' \}\);/);
-  assert.match(src, /async function careMode\(\{ lines = S\.follow \? SAFETY\.follow : SAFETY\.care \} = \{\}\)/);
+  assert.match(src, /async function careMode\(\{ lines = S\.follow \? SAFETY\.follow : S\.suicide \? SAFETY\.careGentle : SAFETY\.care \} = \{\}\)/);
   // on Send: the visit's level first (care seen before still holds), then the words sent
   assert.match(src, /noteSafety\(checkText\(S\.text\)\);\s*if \(S\.level === 'crisis'\) \{ crisisMode\(\); return; \}\s*if \(S\.level === 'care'\) \{ careMode\(\); return; \}[\s\S]{0,260}if \(deathEscalation\(S\.text\)\) \{ noteFollow\(\); careMode\(\{ lines: SAFETY\.follow \}\); return; \}/);
   // noteSafety only raises the level (never lowered by rewording)

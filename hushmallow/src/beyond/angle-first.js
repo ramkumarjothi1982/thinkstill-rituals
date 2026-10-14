@@ -100,10 +100,13 @@ export function questionClock(ms, done, { doc = typeof document !== 'undefined' 
  * heavy was seen is not the grief path, so its goodbye is the ordinary one (lines 'end') and no safety level is sent home.
  * A visit that went quiet here ("Just be with it", the question let go, death words typed: S.noPlay) stays quiet at home
  * ({ soft: true }: the Hushfold's softVisit, no Support pill; its next Tell is still asked, and Play ends the quiet).
+ * (r3-esc) After a suicide named or a wish to follow someone who died, its category goes home too, so the Hushfold offers no
+ * world for the rest of the visit either (hushfold.js DEATH_CARE).
  */
-export function goodbye({ level = 'none', crisis = false, care = false, grief = false, noPlay = false } = {}) {
+export function goodbye({ level = 'none', crisis = false, care = false, grief = false, noPlay = false, category = null } = {}) {
   const heavy = !!(crisis || care || grief);
   const lv = level && level !== 'none' ? level : grief ? 'concern' : 'none';
-  const params = lv !== 'none' ? { safety: { level: lv } } : noPlay ? { soft: true } : {};
+  const dc = category === 'suicide-loss' || category === 'death-follow' ? { category } : {};
+  const params = lv !== 'none' ? { safety: { level: lv, ...dc } } : noPlay ? { soft: true } : {};
   return { heavy, lines: heavy ? 'safety' : 'end', params };
 }

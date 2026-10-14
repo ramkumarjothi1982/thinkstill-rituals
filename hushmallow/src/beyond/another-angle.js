@@ -36,7 +36,7 @@ import {
 } from './lines.js';
 import { firstStep, answerKey, questionClock, goodbye } from './angle-first.js';
 import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, guessGuard } from './authored.js';
-import { deathEscalation, serverLoss, griefLinesOk, suicideFuture } from './grief.js';
+import { deathEscalation, suicideDeath, serverLoss, griefLinesOk } from './grief.js';
 import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess, lossRoute, griefFeeling } from './backstop.js';
 import { FEELING_LOOK } from './feelings.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
@@ -97,8 +97,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // the most serious safety level seen in this visit (typed and closed, reworded before Send, or sent): it counts, not only the words sent
     level: 'none', category: null, concernSaid: false,
     // (review r8) follow: death talk that wanted to follow the one who died was seen (typed, closed or sent: care, for
-    // the visit); noPlay: a bag word or death talk was seen (no playful line for the visit); heavyDraft: while typing
-    follow: false, noPlay: false, heavyDraft: false,
+    // the visit); noPlay: a bag word or death talk was seen (no playful line for the visit); heavyDraft: while typing;
+    // (r3-esc) suicide: a suicide named was seen (care for the visit, its gentle lines)
+    follow: false, suicide: false, noPlay: false, heavyDraft: false,
     // (owner decision 'Ask before every world') answers: the gentle answers given for these words in this visit (angle-first.js
     // answerKey → 'be' | 'yes'; r2-angle item 2: "Another angle" is never remembered, every new Tell is asked again);
     // keepWords: the question was let go (no answer, Back), so the Tell opens with those words (r2-angle item 2: after any
@@ -626,6 +627,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const t = String(text ?? '');
     if (S.left || !hasWords(t)) return;
     if (deathEscalation(t)) noteFollow();
+    // (r3-esc) a suicide named, nothing more: care too, said gently (nothing sent)
+    else if (suicideDeath(t)) noteSuicide();
     if (gentleRoute(t) || bagWords(t)) {
       S.noPlay = true;
       if (!S.heavyDraft) { S.heavyDraft = true; careFace(); }
@@ -644,6 +647,15 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function noteFollow() {
     S.follow = true;
     noteSafety({ level: 'care', category: 'death-follow' });
+    keepTypingSupport();
+  }
+  /**
+   * (r3-esc) A suicide named about anyone (grief.js suicideDeath), seen: care for the rest of the visit, said gently and assuming
+   * nothing (SAFETY.careGentle), nothing sent. A suicide bereavement is a known risk, and a calm "support is here" costs nothing.
+   */
+  function noteSuicide() {
+    S.suicide = true;
+    noteSafety({ level: 'care', category: 'suicide-loss' });
     keepTypingSupport();
   }
   /**
@@ -681,6 +693,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // death talk that wants to be with, join or follow the one who died (grief.js, never the safety lexicon):
     // the care path, nothing sent, no game (and care for the rest of the visit)
     if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
+    // (r3-esc) a suicide named, whatever the clause: care, said gently, nothing sent (never the question, never the server)
+    if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }
     // death talk or any word of the backstop's bag: no playful line for the rest of the visit
     readDraft(S.text);
     if (S.level === 'concern') S.keepSupport = true;
@@ -745,7 +759,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear();
     say(SAFETY.crisis, { hold: true, interrupt: true });
   }
-  async function careMode({ lines = S.follow ? SAFETY.follow : SAFETY.care } = {}) {
+  async function careMode({ lines = S.follow ? SAFETY.follow : S.suicide ? SAFETY.careGentle : SAFETY.care } = {}) {
     S.care = true; S.keepSupport = true; S.level = worse(S.level, 'care'); S.phase = 'support';
     S.seq++;
     keepCtl?.abort();
@@ -799,9 +813,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function griefMode({ scene = null, asked = false, told = null } = {}) {
     // (wanting to follow the one who died is care, whichever way it got here: nothing more is sent)
     if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
-    // (r2-angle item 1) a death by suicide beside any first-person future ("my dad killed himself and I'm going to…"): never sent
-    // to the server; care, said gently and assuming nothing
-    if (suicideFuture(S.text)) { careMode({ lines: SAFETY.careGentle }); return; }
+    // (r3-esc) a suicide named, whatever the clause (r2-angle item 1 read only a first-person future beside it): never sent to
+    // the server; care, said gently and assuming nothing
+    if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }
     const seq = ++S.seq;
     S.grief = true; S.keepSupport = true; S.noPlay = true; S.phase = 'support';
     S.beOnly = false;

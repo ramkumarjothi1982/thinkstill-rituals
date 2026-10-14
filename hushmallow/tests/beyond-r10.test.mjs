@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import * as P from './probes/r10.mjs';
 import { visit, STUBS, SCENE_STUBS } from './probes/r10-replay.mjs';
-import { deathTalk, deathEscalation } from '../src/beyond/grief.js';
+import { deathTalk, deathEscalation, suicideDeath } from '../src/beyond/grief.js';
 import { bagWords, lossNear, ordinaryOnly, framingAllowed, framesAsGuess, acknowledges, FRAMING_MECHANICS } from '../src/beyond/backstop.js';
 import { authoredScene, fairAnger, angerAnswer, angerUnsaid, eventKind, candidatePatterns } from '../src/beyond/authored.js';
 import { SAFETY, KIND, FEELING, WAITING, ANGER_PAIRS, AUTHORED_PAIRS, MECHANIC_LINES } from '../src/beyond/lines.js';
@@ -118,7 +118,8 @@ test('r10.4: fair anger beside a death or a bag word is never find_boundary or a
       assert.deepEqual(playful(R), [], why);
     }
   }
-  assert.equal(visit('my friend ODd last night and everyone blames me').route, 'gentle');
+  // (r3-esc, by design) an overdose named ("ODd") is a suicide death word: care, gently, nothing sent (it was the gentle path)
+  assert.equal(visit('my friend ODd last night and everyone blames me').route, 'care');
   // fair anger with no bag word keeps its own scenes
   for (const t of P.ANGER_STAYS) {
     probes++;
@@ -239,7 +240,9 @@ test('r10.10: over-blocking: the forty ordinary worries all get their angle (rev
 test('r10.11: the main-screen Tell reads the new families too (grief.js through input-overlay readSafety)', async () => {
   await loadGrief();
   const level = (t) => readSafety({ checkText }, t, true).level;
-  for (const t of P.MAIN_CONCERN) { probes++; assert.equal(level(t), 'concern', t); }
+  // (r3-esc, by design) the one overdose among them ("my friend ODd…") is care now: a suicide death word, whatever the clause
+  for (const t of P.MAIN_CONCERN) { probes++; assert.equal(level(t), suicideDeath(t) ? 'care' : 'concern', t); }
+  assert.deepEqual(P.MAIN_CONCERN.filter((t) => suicideDeath(t)), ['my friend ODd last night and everyone blames me']);
   for (const t of P.MAIN_CARE) { probes++; assert.equal(level(t), 'care', t); }
   for (const t of P.MAIN_NONE) { probes++; assert.equal(level(t), 'none', t); }
 });
