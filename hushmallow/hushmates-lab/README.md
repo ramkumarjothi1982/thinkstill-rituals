@@ -155,9 +155,11 @@ with reduced motion, and fails on any console error. Results of the last run are
 
 | Check | Result |
 |---|---|
-| Relay tests | 124 pass, 0 fail, 0 skipped (the optional live Another Angle checks ran against a local harness in mock mode) |
+| Relay, access-control, build and your-data tests | 167 pass, 0 fail, 2 skipped (the optional live Another Angle checks, which need its local harness running) |
 | Archived v1 tests | 32 pass |
-| Scenes × sizes | 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024, 1280 × 860: no layout-audit findings (overflow, off-screen or clipped text, covered controls, small targets, tiny text, dock room) |
+| Customer app (`tools/app-shots.mjs`) | the production build on a production-mode server: 26 screens, from invitation to Your data, at 390 × 844, 320 × 568 and 1280 × 860; no developer content, raw data, internal ids, programming values or testing words on any screen; no console errors; `/lab/` and server files are 404 to a signed-in customer; the downloaded file has no other member's name or any internal id (`docs/screenshots/customer/`) |
+| Customer build | 68 files, comments stripped, every module still parses, scan clean |
+| Lab: scenes × sizes | 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024, 1280 × 860: no layout-audit findings (overflow, off-screen or clipped text, covered controls, small targets, tiny text, dock room) |
 | Scenario A (five people) | every guide step ticked at all five sizes (10 of 10) |
 | Scenario B (nobody, Mallow fallback) | every step ticked at all five sizes (6 of 6); the Mallow perspective shown as “A Mallow perspective · Automatically generated” with the lab tag “Reframe library (rule-based)” |
 | Scenario C (two people, then expiry) | every step ticked at all five sizes (5 of 5); “2 Hushmates caught it before it came home.” |
