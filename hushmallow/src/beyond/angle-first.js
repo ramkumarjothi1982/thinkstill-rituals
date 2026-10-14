@@ -97,10 +97,13 @@ export function questionClock(ms, done, { doc = typeof document !== 'undefined' 
 /**
  * (r2-angle item 5) What Finish says and sends home. Only crisis, care or the grief path (S.grief) are heavy: then "Go
  * gently." (lines 'safety') and the Hushfold keeps support close (params.safety); "Just be with it" for words where nothing
- * heavy was seen is not the grief path, so its goodbye is the ordinary one (lines 'end') and nothing is sent home ({}).
+ * heavy was seen is not the grief path, so its goodbye is the ordinary one (lines 'end') and no safety level is sent home.
+ * A visit that went quiet here ("Just be with it", the question let go, death words typed: S.noPlay) stays quiet at home
+ * ({ soft: true }: the Hushfold's softVisit, no Support pill; its next Tell is still asked, and Play ends the quiet).
  */
-export function goodbye({ level = 'none', crisis = false, care = false, grief = false } = {}) {
+export function goodbye({ level = 'none', crisis = false, care = false, grief = false, noPlay = false } = {}) {
   const heavy = !!(crisis || care || grief);
   const lv = level && level !== 'none' ? level : grief ? 'concern' : 'none';
-  return { heavy, lines: heavy ? 'safety' : 'end', params: lv !== 'none' ? { safety: { level: lv } } : {} };
+  const params = lv !== 'none' ? { safety: { level: lv } } : noPlay ? { soft: true } : {};
+  return { heavy, lines: heavy ? 'safety' : 'end', params };
 }

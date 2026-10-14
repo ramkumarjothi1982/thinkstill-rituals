@@ -198,8 +198,11 @@ test('item 5: "Just be with it" for ordinary words: its own quiet path; Finish g
     assert.deepEqual(R.beOptions, ['squeeze', 'finish'], `${t} @${s}`);
     assert.ok(!R.said.some((l) => GRIEF.loss.includes(l) || l === GRIEF.heard), R.said.join(' | '));
   }
-  // the real goodbye (another-angle.js finish reads angle-first.js goodbye): be alone → app.go('home', {})
+  // the real goodbye (another-angle.js finish reads angle-first.js goodbye): no safety level home after "Just be with it"
   assert.deepEqual(goodbye({ level: 'none', grief: false }), { heavy: false, lines: 'end', params: {} });
+  // a quiet visit ("Just be with it": S.noPlay) stays quiet at home: the Hushfold's softVisit, never a safety level
+  assert.deepEqual(goodbye({ level: 'none', grief: false, noPlay: true }), { heavy: false, lines: 'end', params: { soft: true } });
+  assert.deepEqual(goodbye({ level: 'none', grief: true, noPlay: true }), { heavy: true, lines: 'safety', params: { safety: { level: 'concern' } } });
   assert.deepEqual(goodbye({ level: 'none', grief: true }), { heavy: true, lines: 'safety', params: { safety: { level: 'concern' } } });
   assert.deepEqual(goodbye({ level: 'care', care: true }), { heavy: true, lines: 'safety', params: { safety: { level: 'care' } } });
   const fin = between(AA, 'async function finish() {', '// ------------------------------------------------------- the view --');
