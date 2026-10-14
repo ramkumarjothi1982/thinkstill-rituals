@@ -45,7 +45,7 @@
 //
 // Pure ES module, no DOM. Deterministic.
 
-import { norm, blankOrdinary, PERSON, PET, BARE, ADJ, THING, KILLERS, ORDINALS } from './death-words.js';
+import { norm, blankOrdinary, whoDied, PERSON, PET, BARE, ADJ, THING, KILLERS, ORDINALS } from './death-words.js';
 import { acknowledges } from './backstop.js';
 // (review r11) the main screen's strong-cue loss backstop, read through grief.js (input-overlay loads only this module);
 // (owner decision 'Ask when unsure') and the check-in's reading, the grief-family feelings and the route both screens take
@@ -89,8 +89,9 @@ const WITH_US_AWAY = '(?!(?:\\s+(?:now|right\\s+now|at\\s+the\\s+moment|today|to
 const BY_THE_TIME_UP = '(?!\\s+(?:i|we|they|he|she)\\s+(?:got\\s+up|woke|came\\s+down|got\\s+out\\s+of\\s+bed|got\\s+(?:home|back|in)\\s+from\\s+(?:school|work|uni|college|the\\s+shops|practice|training)))';
 /** A death or a loss, named ('loss'). Each is read on the normed words with the ordinary idioms blanked. */
 const LOSS_WORDS = [
-  // die, died, dying, dead, death, deceased (and "dide", "dieing", "diied", "dided", "ded": review r9)
-  /\b(?:die|dies|di+e+d+|dide|dided|dyde|ded|deaded|dying|dieing|dyin|dead|deaths?|deceased|decesed|deseased|deceaced|fatal|fatally|perished|slain)\b/iu,
+  // death, deceased (final round 3: die, died, dying, dead and their misspellings are the weak words, read by who died:
+  // death-words.js whoDied, in deathTalk below)
+  /\b(?:deaths?|deceased|decesed|deseased|deceaced|fatal|fatally|perished|slain)\b/iu,
   // passed away (and its misspellings), passing away, his passing
   /\b(?:pass(?:ed|es|ing|d)?|passs+ed|past|pased|passt)\s+(?:away|awy|awat|awya|aways|awaay|awya)\b/iu,
   new RegExp(`(?:\\b(?:his|her|their)|${REF})\\s+passing\\b|\\bpassing\\s+of\\s+(?:(?:my|our|his|her|their|the)\\s+)?${ADJ}(?:${WHO}|${BARE})`, 'iu'),
@@ -100,8 +101,8 @@ const LOSS_WORDS = [
   // idiom, blanked); "my dad deid", "my dad dyed", "my mom diead" (never "dyed her hair": blanked, or a colour)
   new RegExp(`${REF}\\s+${AUX}(?:passed|passd|passs+ed|pased|passt)\\b`, 'iu'),
   new RegExp(`${REF}\\s+${AUX}(?:deid|diead|dieed|dyied|dyed)\\b(?!\\s+(?:his|her|my|their|the|it|them|a|an|blue|red|pink|purple|green|black|blonde|blond|brown|grey|gray|white|orange)\\b)`, 'iu'),
-  // killed, murdered, suicide, took his own life, drowned
-  /\b(?:killed|kiled|killd|kild|murdered|murder|suicide|drowned|overdosed|euthani[sz]ed|euthanasia)\b/iu,
+  // suicide, took his own life (final round 3: killed, murdered and drowned are weak words, read by who died: deathTalk)
+  /\b(?:suicide|overdosed|euthani[sz]ed|euthanasia)\b/iu,
   /\b(?:took|take|taken|taking|ended|end|ending)\s+(?:his|her|their|my|your)\s+(?:own\s+)?(?:life|lives)\b|\b(?:killed|hanged|hung|shot|topped|offed)\s+(?:himself|herself|themselves|themself)\b/iu,
   // "lost his life", "lost her battle with cancer"
   /\blost\s+(?:his|her|their)\s+(?:own\s+)?(?:life|lives|battle|fight|long\s+battle|brave\s+battle|brave\s+fight)\b/iu,
@@ -323,7 +324,8 @@ const SINCE_WENT = new RegExp(`\\b(?:since|ever\\s+since|after|now\\s+that|now)\
 /** Grieving, a funeral, a grave, condolences ('grief' when no death is named). */
 const GRIEF_WORDS = [
   /\b(?:grief|griefs|griefstricken|grief\s+stricken|greif|greiving|grieving|grieve|grieves|grieved|mourn|mourning|mourned|mourns|mourner|mourners|bereaved|bereavement|berevement|bereavment|condolences?|condolances?|sympathy\s+card)\b/iu,
-  /\b(?:funerals?|funral|funerel|funreal|grave|graves|graveside|gravestone|graveyard|headstone|cemetery|cemetary|cemetry|crematorium|cremated|cremation|burial|buried|bury|burying|coffin|casket|hearse|obituary|eulogy|memorial\s+service|urn|coroners?|coroner)\b/iu,
+  // (final round 3: buried, bury and a cemetery or a graveyard are weak words, read by who died: deathTalk)
+  /\b(?:funerals?|funral|funerel|funreal|grave|graves|graveside|gravestone|headstone|crematorium|cremated|cremation|burial|coffin|casket|hearse|obituary|eulogy|memorial\s+service|urn|coroners?|coroner)\b/iu,
   // (askall-angle item 5) someone's memorial ("my sister's memorial is tomorrow", "her memorial"), never a war memorial or a
   // memorial park, hospital or cup
   new RegExp(`\\b(?:(?:${WHO}|${BARE})s|his|her|their)\\s+memorial\\b(?!\\s+(?:hospital|park|ground|grounds|stadium|hall|trophy|cup|match|game|library|lecture|prize|award|run|walk)\\b)|\\bmemorial\\s+(?:mass|gathering|celebration|for\\s+(?:my|our|his|her|him|them))\\b`, 'iu'),
@@ -359,23 +361,48 @@ function hit(re, t) {
   return !nm || !NOT_NAMES.test(nm);
 }
 
+/** "died a (slow) death": the dying itself, never a second death word ("that joke died a death", "my dog died a slow death"). */
+const DIED_A_DEATH = /\b((?:die|dies|died|dying)\s+)an?\s+(?:[a-z]+\s+){0,2}?death\b/giu;
 /**
  * 'loss' when a death or a loss is named, 'grief' for grieving, a funeral or a grave without one, else null.
- * Fires on any of these words about anyone or anything alive; only the idioms in death-words.js are set aside.
+ * The strong words fire about anyone (passed away, lost my mum, the funeral, RIP, a miscarriage, put to sleep, no longer with
+ * us…); only the idioms in death-words.js are set aside. (Final round 3, check-final item 2) The WEAK words (died / dies /
+ * dying / dead, killed, murdered, drowned, buried / bury, a cemetery or a graveyard) count by who died (death-words.js
+ * whoDied): a person or a pet always ("my mum died", "Pepper died", "the coach who taught me died", "we buried Biscuit"); a
+ * thing, an idea or a place never ("the plant on my desk died", "my motivation is dead", "the traffic killed me", "I buried
+ * myself in work", "the cemetery near my flat"). Someone unknown ("pepper died", "my sensei is dead") or themselves ("I nearly
+ * died") count only in the wide reading, the escalation reader's (a wish to follow the one who died, a miss there costs
+ * most); `sure: true` (the gentle path: backstop.js lossRoute, gentleRoute) leaves them out: they are asked the one question.
  */
-export function deathTalk(text, { stories = true } = {}) {
+export function deathTalk(text, { stories = true, sure = false } = {}) {
   const raw = norm(text);
   if (!/\p{L}/u.test(raw)) return null;
   // (r2-angle item 4: `stories: false` reads a game's, a film's or a book's deaths too, as before: serverLoss)
-  const t = blankOrdinary(raw, { stories });
+  const t = blankOrdinary(raw, { stories }).replace(DIED_A_DEATH, '$1');
   if (LOSS_WORDS.some((re) => re.test(t)) || NAMED.some((re) => hit(re, t)) || RIP.slice(0, 2).some((re) => re.test(t)) || notSurvived(t)) return 'loss';
   // (r2-angle item 1) "since mum OD'd": the apostrophe out, its capitals as typed ("ODd", "ODed"), never "odd"
   if (/\bOD(?:d|ed)\b/u.test(t)) return 'loss';
   // (a pet named, or the vet: "the vet put him to sleep this morning"; or anyone put to sleep, not for an operation)
   if ((PET_WORD.test(t) || /\bvets?\b/iu.test(t)) && PET_PUT.test(t)) return 'loss';
   if (PUT_TO_SLEEP.test(t)) return 'loss';
+  const counts = (who) => who === 'who' || (!sure && (who === 'unknown' || who === 'self'));
+  if (counts(whoDied(t, 'loss'))) return 'loss';
   if (GRIEF_WORDS.some((re) => re.test(t)) || RIP[2].test(t)) return 'grief';
+  if (counts(whoDied(t, 'grief'))) return 'grief';
   return null;
+}
+/**
+ * (final round 3) What the weak death words say when nothing else in the words is death talk: 'who' | 'unknown' | 'self' |
+ * 'thing' | null (death-words.js whoDied). backstop.js unsureLoss asks about 'unknown' ("Is this about losing someone?" with the
+ * question switched off); deathTalk(text, { sure: true }) reads only 'who'.
+ */
+export function weakDeath(text, { stories = true } = {}) {
+  const raw = norm(text);
+  if (!/\p{L}/u.test(raw)) return null;
+  const t = blankOrdinary(raw, { stories }).replace(DIED_A_DEATH, '$1');
+  const a = whoDied(t, 'loss'), b = whoDied(t, 'grief');
+  const rank = { who: 4, unknown: 3, self: 2, thing: 1 };
+  return (rank[b] || 0) > (rank[a] || 0) ? b : a;
 }
 
 /**

@@ -8,6 +8,9 @@
 //                         "dying to", "killing it", "it's your funeral", "lost my keys", "passed my test"…
 //   PERSON, PET, BARE, ADJ, THING   regex sources (apostrophe-free, case-insensitive)
 //
+//   whoDied(cased, which) → (final round 3) who died, by the shape of the clause, for the WEAK death words: 'who' | 'unknown' |
+//                         'self' | 'thing' | null (the rule at the end of this file; grief.js deathTalk reads it)
+//
 // Recall first: these lists are wide on purpose, and the idioms are only the unambiguous, cheap ones. A near miss or an
 // imagined death is never set aside here: the gentle path is safe for them. (r2-angle item 4, owner decision 'Ask before
 // every world', 14 Oct 2026: every Tell that is not a detected loss is now asked one gentle question first, so death words
@@ -208,6 +211,474 @@ export function blankOrdinary(t, { stories = true } = {}) {
       if (ON_A_TRIP.test(s)) s = s.replace(CEMETERY, ' ');
       return s;
     });
+  }
+  return out;
+}
+
+// ------------------------------------------------ the weak death words: who died (final round 3) --
+// Five rounds of growing idiom lists never converged: every new reviewer wrote a new everyday saying ("my sourdough starter
+// died", "my motivation is dead", "the traffic killed me", "I buried myself in work", "the cemetery near my flat has the best
+// trees"). So the default is reversed for the WEAK death words (died / dies / dying / dead, killed, murdered, drowned, buried /
+// bury, a cemetery or a graveyard): they are a death only when what died is a PERSON or a PET. The rule reads the shape of
+// the clause, not a phrase list:
+//   - who died: the SUBJECT of died / dies / dying / is dead / was killed / was buried (passive), found by walking back from the
+//     word over the little words ("has just", "is so", "was"), past what hangs after the subject (a place or a part: "the plant
+//     ON MY DESK died", "my enthusiasm FOR THE PROJECT died", "my friendship WITH SARAH died"), and past a relative clause ("the
+//     coach WHO TAUGHT ME TO SWIM died", "the man I MARRIED died", "my neighbour, WHO USED TO BRING US CAKES, died"); the OBJECT
+//     of killed / murdered / buried / drowned when one follows ("cancer killed MY DAD", "we buried BISCUIT", "the traffic killed
+//     ME", "I buried MYSELF in work"); the noun after "dead" / "dying" used before one ("my dead DOG"); and, for a cemetery or a
+//     graveyard, someone visited or lying there ("we visited MY GRANDAD at the cemetery").
+//   - what it is: a person or a pet noun ("mum", "the guy", "my coach", "our dog", "the cat next door"), he / she / him / her /
+//     himself / herself, "someone", "the one who…", they (unless what they stand for is plural things), a capitalised given
+//     name ("Pepper died", "We buried Biscuit") → 'who'; me / myself / us as the object ("killed me", "buried myself") → 'thing';
+//     I / we / you as the subject → 'self'; a thing, an idea, a place or a part of the body (the lists above and THING_WORDS
+//     below) → 'thing'; anything else (an unknown noun, "my sensei died", "pepper died" typed in lower case) → 'unknown'.
+// grief.js deathTalk reads a weak word as a death for 'who' only on the gentle path (lossRoute, gentleRoute); 'unknown' is the
+// question (lossRoute 'ask': the question already offers "Just be with it"), never the gentle path; a thing is no death at all
+// (lossRoute null). The escalation reader keeps 'unknown' and 'self' (a miss there costs most): deathTalk's wide reading.
+
+/** The weak loss words: the one who died is the subject (WEAK_DIE) or, when one follows, the object (WEAK_KILL). */
+const WEAK_DIE = /^(?:die|dies|di+e+d+|dide|dided|dyde|ded|deaded|dying|dieing|dyin|dead)$/u;
+const WEAK_KILL = /^(?:killed|kiled|killd|kild|murdered|murder|drowned)$/u;
+/** The weak grief words: buried / bury (as WEAK_KILL), a cemetery or a graveyard (CEMETERY_RULE). */
+const WEAK_BURY = /^(?:buried|bury|buries|burying)$/u;
+const WEAK_PLACE = /^(?:cemetery|cemetary|cemetry|cemeteries|graveyard|graveyards)$/u;
+
+/** More words for people (read only here, to say who died; the shared PERSON list stays as it is for the other readers). */
+const PERSON_MORE = [
+  'tutor', 'vicar', 'priest', 'pastor', 'reverend', 'imam', 'rabbi', 'minister', 'monk', 'nun', 'doctor', 'gp', 'nurse', 'midwife', 'surgeon',
+  'dentist', 'caregiver', 'babysitter', 'childminder', 'cleaner', 'singer', 'actor', 'actress', 'rapper', 'musician', 'artist', 'author', 'writer',
+  'poet', 'youtuber', 'streamer', 'influencer', 'celebrity', 'footballer', 'player', 'captain', 'athlete', 'student', 'pupil', 'schoolmate',
+  'schoolfriend', 'teammate', 'bandmate', 'workmate', 'lodger', 'landlord', 'landlady', 'tenant', 'client', 'customer', 'employee', 'manager',
+  'headteacher', 'headmaster', 'headmistress', 'principal', 'lecturer', 'professor', 'instructor', 'trainer', 'therapist', 'counsellor', 'counselor',
+  'guardian', 'stepmum', 'stepmom', 'stepdad', 'stepmother', 'stepfather', 'stepson', 'stepdaughter', 'stepbrother', 'stepsister', 'godparent',
+  'inlaws', 'penpal', 'crush', 'groom', 'bride', 'soldier', 'officer', 'policeman', 'policewoman', 'firefighter', 'fireman', 'driver', 'passenger',
+  'pilot', 'cyclist', 'pedestrian', 'biker', 'rider', 'victim', 'teenager', 'teen', 'adult', 'infant', 'elder', 'ancestor', 'relative', 'relation',
+  'member', 'folk', 'homie', 'bruv', 'bredrin', 'fam', 'gentleman', 'gent', 'sir', 'madam', 'mr', 'mrs', 'ms', 'dr', 'prince', 'princess', 'queen',
+  'king', 'president', 'pope', 'sweetheart', 'lover', 'fiance', 'fiancee', 'granddaughter', 'grandson', 'grandpop', 'grandmum', 'grandmom',
+  'everyone', 'everybody', 'someone', 'somebody', 'anyone', 'anybody', 'people', 'men', 'women', 'children', 'kids', 'twins', 'stranger', 'guys',
+  // the usual misspellings of family and friends ("my granmas dead", "my freind was kiled")
+  'granma', 'granmar', 'grandmar', 'gramma', 'grama', 'granmother', 'grandmom', 'granmom', 'granmum', 'granpa', 'granpar', 'grandpar', 'granpops',
+  'grandda', 'granda', 'gradma', 'gradpa', 'grandaddy', 'granddaddy', 'grandparants', 'grandparnets', 'freind', 'frend', 'firend', 'frined', 'freinds',
+  'bestfriend', 'bestfreind', 'bestie', 'bezzie', 'brotha', 'bruvva', 'bruva', 'sista', 'sistah', 'mumma', 'muma', 'mommy', 'mamma', 'farther', 'fahter',
+  'fater', 'mutha', 'muther', 'mothr', 'daugther', 'duaghter', 'daugter', 'neice', 'nefew', 'nephiew', 'cuzin', 'cuz', 'cousen', 'cozzie', 'anty', 'aunti',
+  'uncel', 'unkle', 'husbund', 'husban', 'hubbie', 'boyfreind', 'girlfreind', 'granson', 'grandaughter', 'granddaugther', 'parants', 'perents',
+  'grandfarther', 'grandmather', 'neighbor', 'nieghbour', 'naybor', 'collegue', 'coleague', 'teecher', 'techer',
+].join('|');
+/** More pets (and a pet's own words). */
+const PET_MORE = 'pooch|mutt|moggy|moggie|furbaby|pupper|bun|piggie|cavy|cavies|cockatoo|lovebird|iguana|tarantula|terrapin|alpaca|llama|stick\\s+insect|hermit\\s+crab|dogs|cats|kitties'
+  // (the breeds people call their own by: "Max, our old lab, died")
+  + '|lab|labrador|retriever|spaniel|terrier|collie|poodle|pug|beagle|husky|dachshund|westie|staffie|staffy|greyhound|whippet|lurcher|boxer|shihtzu|cockapoo|labradoodle|cavapoo|cavalier|corgi|chihuahua|rottweiler|alsatian|shepherd|tabby|siamese|persian|ragdoll|budgerigar|cockerel|rooster|bantam|gelding|mare|stallion|foal';
+/** Things, ideas, places and parts that "die" or are "dead" without anyone dying (the gadgets, plants and places above too). */
+const THING_WORDS = [
+  'motivation', 'enthusiasm', 'interest', 'passion', 'hope', 'hopes', 'dream', 'dreams', 'ambition', 'ambitions', 'confidence', 'spark', 'joy', 'romance',
+  'relationship', 'relationships', 'friendship', 'friendships', 'marriage', 'career', 'mood', 'joke', 'jokes', 'banter', 'idea', 'ideas', 'plan', 'plans',
+  'project', 'projects', 'trend', 'trends', 'fad', 'fashion', 'show', 'band', 'music', 'genre', 'streak', 'starter', 'sourdough', 'yeast', 'culture',
+  'kombucha', 'bread', 'garden', 'leaves', 'life', 'mojo', 'buzz', 'energy', 'appetite', 'libido', 'inspiration', 'creativity', 'faith', 'belief',
+  'beliefs', 'brain', 'braincells', 'cells', 'leg', 'legs', 'arm', 'arms', 'hand', 'hands', 'foot', 'feet', 'toe', 'toes', 'finger', 'fingers', 'knee',
+  'knees', 'back', 'face', 'eyes', 'ears', 'nerve', 'nerves', 'tooth', 'teeth', 'traffic', 'commute', 'heat', 'weather', 'week', 'day', 'evening',
+  'meeting', 'lecture', 'exam', 'exams', 'test', 'shift', 'workout', 'run', 'team', 'league', 'season', 'campaign', 'petition', 'bill', 'law', 'deal',
+  'contract', 'company', 'business', 'store', 'industry', 'economy', 'website', 'site', 'page', 'group', 'twitter', 'instagram', 'tiktok', 'facebook',
+  'snapchat', 'youtube', 'netflix', 'spotify', 'film', 'movie', 'book', 'novel', 'character', 'characters', 'sim', 'sims', 'avatar', 'account',
+  'conversation', 'conversations', 'chat', 'chats', 'convo', 'vibe', 'vibes', 'atmosphere', 'party', 'night', 'battery', 'batteries', 'everything',
+  'something', 'nothing', 'anything', 'stuff', 'things', 'thing', 'part', 'side', 'nobody', 'none', 'skin', 'hair', 'nails', 'cold', 'flu', 'virus',
+  'bug', 'cough', 'rumour', 'rumor', 'story', 'gossip', 'drama', 'tradition', 'language', 'art', 'craft', 'skill', 'skills', 'habit', 'habits',
+  'thread', 'post', 'posts', 'tweet', 'meme', 'memes', 'joke', 'tune', 'song', 'songs', 'album', 'franchise', 'series', 'scene', 'fandom', 'hobby',
+  'love life', 'social life', 'sex life', 'sense', 'humour', 'humor', 'soul', 'heart', 'feelings', 'feeling', 'emotions', 'excitement', 'patience',
+  'will', 'willpower', 'drive', 'focus', 'concentration', 'memory', 'imagination', 'sleep', 'diet', 'resolution', 'resolutions', 'cactus', 'aloe',
+].map((w) => w.replace(/ /g, '\\s+')).join('|');
+/** Small creatures and wild animals: a thing, never someone's pet unless the words say so ("our mouse", "my rat"). */
+const WILD = `${BUGS}|pigeons?|seagulls?|gulls?|crows?|magpies?|sparrows?|robins?|blackbirds?|starlings?|fox|foxes|badgers?|hedgehogs?|squirrels?|moles?|voles?|shrews?|deer|toads?|jellyfish|crabs?|seals?|whales?|dolphins?|pheasants?|bats?|newts?|owls?|geese|goose|swans?|zombies?|monsters?|dragons?|enem(?:y|ies)|aliens?|orcs?|goblins?|creepers?|mobs?|bots?|npcs?|weeds?|germs|bacteria`;
+const ONE_WHO = new RegExp(`^(?:${PERSON}|${PERSON_MORE}|${BARE})(?:s|es)?$`, 'u');
+const ONE_PET = new RegExp(`^(?:${PET}|${PET_MORE})(?:s|es)?$`, 'u');
+const ONE_THING = new RegExp(`^(?:${DEVICE}|${PLANT}|${QUIET_PLACE}|${THING_WORDS})$`, 'u');
+const ONE_WILD = new RegExp(`^(?:${WILD})$`, 'u');
+/** Plants that are also given names: capitalised, a name ("Ivy died", "our cat Poppy"). */
+const NAME_PLANT = /^(?:Ivy|Rose|Lily|Daisy|Poppy|Holly|Violet|Iris|Jasmine|Heather|Willow|Hazel|Fern|Olive|Sage|Basil|Rosemary|Lavender|Bramble|Clover|Blossom|Bluebell|Primrose|Marigold|Tulip|Peach|Cherry|Maple|Rowan|Ash|Aspen|Juniper|Myrtle|Petal|Pepper|Ginger|Mint|Cinnamon|Saffron)$/u;
+/** Animals that are pets and prey alike ("the cat killed the mouse"): someone's own only with "my", "our"… */
+const PREY = /^(?:mouse|mice|rats?|birds?|fish|fishes|rabbits?|frogs?|snakes?|lizards?|chickens?|hens?|ducks?|bunn(?:y|ies))$/u;
+/** The endings of words for ideas, never a given name ("Chivalry is dead", "Capitalism killed it", "Kindness died"). */
+const NOT_A_NAME_END = /(?:ism|isms|ness|tion|tions|sion|ment|ments|ship|hood|dom|acy|ology|ics|alry|ture|ware|craft|ing)$/u;
+/** Capitalised words that are not a given name. */
+const NOT_A_NAME = /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December|Christmas|Xmas|Easter|Halloween|Diwali|Eid|Hanukkah|Ramadan|Summer|Winter|Spring|Autumn|Fall|Twitter|Facebook|Instagram|TikTok|Tiktok|Netflix|Spotify|Snapchat|Discord|Reddit|Youtube|YouTube|Google|Apple|Samsung|Android|Iphone|Ipad|Xbox|Playstation|Nintendo|Switch|Steam|Fortnite|Minecraft|Roblox|Warzone|Pokemon|Zelda|Sims|God|Jesus|Lord|Allah|Christ|Satan|Covid|Corona|English|Maths|Math|Science|History|Geography|French|Spanish|German|Art|Music|Drama|Liverpool|Arsenal|Chelsea|Everton|United|City|Rovers|Spurs|England|Scotland|Wales|Ireland|Britain|France|Spain|Italy|Germany|America|London|Manchester|Birmingham|Leeds|Glasgow|Edinburgh|Cardiff|Belfast|Dublin|Brexit|Tesco|Asda|Aldi|Lidl|Primark|Amazon|Uber|Lol|Omg|Ok|Okay|Yeah|Yes|No|Oh|Ugh|Um|Hey|Hi|Hello|Well|So|And|But|Then|Now|Just|Really|Honestly|Basically|Literally|Apparently|Sadly|Today|Tonight|Yesterday|Tomorrow|Last|This|That|These|Those|The|A|An|My|Our|Your|His|Her|Their|Its|It|Some|All|Every|Each|Both|Half|Most|Many|Few|Everything|Nothing|Something|Anything|Everyone|Everybody|Nobody|Someone|Somebody|Anyone|Anybody|When|After|Before|Since|While|Because|If|As|Once|Until|Where|Why|How|What|Which|Who|Whose|Whom|Is|Was|Were|Are|Has|Had|Have|Do|Does|Did|Can|Could|Will|Would|Should|Might|May|Must|Not|Never|Still|Even|Only|Maybe|Perhaps|Also|Too|Very|So|Such|Here|There|Please|Sorry|Thanks|Thank|Dear|Happy|Sad|Poor|Little|Big|Old|New|First|Second|Third|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Part|Life|Time|Week|Year|Day|Night|Morning|Evening|Weekend|Month|Work|School|Uni|College|Home|Mum|Dad|Mom|Nan)$/u;
+
+/** The little words between who died and the weak word ("has just", "is so", "was found", "went", "kind of"), skipped. */
+const SKIP_BACK = new Set(('is was were are am be been being s re m isnt wasnt werent arent aint has had have ve d hasnt hadnt havent just sadly '
+  + 'recently finally also both all then now already forever actually really truly basically literally completely totally kind sort of kinda sorta '
+  + 'pretty so very practically nearly almost apparently probably definitely officially eventually went gone go goes going got get gets getting '
+  + 'look looks looked seems seemed seem feel feels felt become became becomes to want wants wanted wanna gonna need needs needed hope hoping might '
+  + 'may could would should will ll cant cannot wont didnt doesnt dont did does do never not still too ever even obviously clearly honestly properly '
+  + 'fully partly mostly half well proper stone clinically quite bit a little rather ultimately tragically suddenly unexpectedly peacefully keep keeps '
+  + 'kept keeping start starts started starting begin begins began beginning '
+  + 'quietly slowly gradually instantly immediately sadly unfortunately allegedly reportedly supposedly technically pretty way like lowkey highkey '
+  + 'officially legit legitimately properly fr deffo defo def surely certainly maybe perhaps possibly almost nearly long').split(' '));
+/** Where a clause starts (a clause boundary as a word). */
+const BOUNDARY = new Set(('and but so because cos coz cause then when whenever after before since until till til while although though if as once '
+  + 'where unless or plus whereas wherever nor yet whether why how what whatever').split(' '));
+/** Thinking, telling and feeling words: what follows them is a clause of its own ("I heard my uncle died", "Mum told me Gran died"). */
+const SAYING = new Set(('think thought thinks thinking believe believed believes know knew knows knowing heard hear hears hearing said say says '
+  + 'saying told tell tells telling realised realized realise realize realising realizing learned learnt learn learning guess guessed reckon reckoned '
+  + 'apparently seems seemed turns turned means meant news wish wished wishing hope hoped worried worry scared afraid sure glad sad shocked sorry upset '
+  + 'gutted devastated heartbroken angry annoyed mad crazy weird funny strange true possible unfair awful terrible horrible imagine imagined '
+  + 'remember remembered forget forgot pretend pretended dreamt dreamed feel felt feels feeling like found discovered noticed saw see seen watch '
+  + 'watched watching let letting made make makes').split(' '));
+/** Words that hang a place, a part or a time on what comes before them ("the plant ON my desk"). */
+const PREP = new Set(('of on in at from for with near behind under inside by about into around across outside beside over without than through '
+  + 'off opposite next onto upon among amongst towards toward past beyond within along against between below above underneath during').split(' '));
+const DET = new Set('the a an this that these those my our his her their your its some any every each no another whose'.split(' '));
+const QUANT = new Set('one two three four five six seven eight nine ten eleven twelve twenty both all half most many several few none lots loads lot rest majority couple dozen hundreds thousands millions'.split(' '));
+// ("hell", "shell": he'll and she'll with the apostrophe out, "scared he'll die")
+const PRONOUN_WHO = new Set('he she him hes shes hed shed hell shell himself herself themselves themself'.split(' '));
+const PRONOUN_THEY = new Set('they them theyre theyve theyd theyll'.split(' '));
+const PRONOUN_IT = new Set('it its itll itd'.split(' '));
+const PRONOUN_SELF = new Set('i im ive id ill me myself we us ourselves you youre youve youd youll yourself yourselves weve wed'.split(' '));
+const SUBJECT_PRONOUN = new Set('i we you he she they'.split(' '));
+const RELATIVE = new Set('who whom which that whos'.split(' '));
+/** Times and fillers: never a noun a relative clause hangs on ("last NIGHT my dog died", "omg my dog died"). */
+const TIME_FILLER = new Set(('yesterday today tonight tomorrow morning afternoon evening night nights week weeks weekend weekends year years month months '
+  + 'day days ago monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october '
+  + 'november december summer winter spring autumn christmas xmas easter birthday holiday holidays term half lol omg ugh um uh hey yeah yes no ok okay '
+  + 'well oh wow honestly basically literally sadly anyway anyways also just like time times moment minute hour hours tbh ngl fr idk imo lmao '
+  + 'lmfao rofl smh af rn atm btw x xx xxx ffs omfg jk tho though innit init').split(' '));
+const FUNCTION = new Set([...SKIP_BACK, ...BOUNDARY, ...PREP, ...DET, ...RELATIVE, ...PRONOUN_WHO, ...PRONOUN_THEY, ...PRONOUN_IT, ...PRONOUN_SELF]);
+
+/** The words of a sentence, case kept (`c`), lower case (`w`), where each starts, and whether a comma or a dash comes before it. */
+function tokens(sentence) {
+  const out = [];
+  let last = 0;
+  for (const m of sentence.matchAll(/[\p{L}\p{N}]+/gu)) {
+    const gap = sentence.slice(last, m.index);
+    out.push({ c: m[0], w: m[0].toLowerCase(), cut: /[,;:()"“”«»—–]/u.test(gap) });
+    last = m.index + m[0].length;
+  }
+  return out;
+}
+/** A clause boundary between word k-1 and word k ("and", a comma, "when", "I heard"). */
+// ("so" before a weak word or a little word is "very": "my motivation is SO dead")
+const cutBefore = (ws, k) => k <= 0 || ws[k].cut || (BOUNDARY.has(ws[k - 1].w) && !(ws[k - 1].w === 'so' && (SKIP_BACK.has(ws[k].w) || WEAK_DIE.test(ws[k].w))))
+  || (SAYING.has(ws[k - 1].w) && !/^(?:my|our|his|her|their|your|the|this|that|a|an|no)$/u.test(ws[k - 2]?.w || '')) // (never "my HOPE is dead")
+  || (ws[k - 1].w === 'out' && /^(?:found|find|finds|finding)$/u.test(ws[k - 2]?.w || ''));
+/** Lower-case words are names only as typed with a capital, never in a message written all in capitals. */
+const shouting = (s) => { const L = s.match(/\p{L}/gu) || []; return L.length > 6 && L.filter((ch) => /\p{Lu}/u.test(ch)).length / L.length > 0.6; };
+
+/**
+ * What one word is, as the one who died: 'who' (a person or a pet), 'thing', 'self', 'unknown', or null (not a noun at all).
+ * `k` its index in `ws`, `ctx` { ws, caps, all } (all: the whole message's words, for what "they" or "it" stands for).
+ */
+function kindOf(ws, k, ctx, { object = false } = {}) {
+  const t = ws[k];
+  if (!t) return null;
+  const w = t.w, prev = ws[k - 1]?.w || '';
+  if (PRONOUN_WHO.has(w)) return 'who';
+  if (PRONOUN_SELF.has(w)) return object ? 'thing' : 'self';
+  if (PRONOUN_THEY.has(w)) return theyAre(ctx, t);
+  if (PRONOUN_IT.has(w)) return itIs(ctx, t);
+  // "my little one", "a loved one", "the one I loved", "the one who…"
+  if (w === 'one') {
+    if (/^(?:little|loved|precious|special)$/u.test(prev)) return 'who';
+    return /^(?:the|that)$/u.test(prev) && (RELATIVE.has(ws[k + 1]?.w) || SUBJECT_PRONOUN.has(ws[k + 1]?.w)) ? 'who' : 'unknown';
+  }
+  if (w === 'half' && prev === 'other') return 'who';
+  if (w === 'love' && ws[k + 1]?.w === 'of' && ws[k + 3]?.w === 'life') return 'who';
+  if (w === 'law' && prev === 'in') return 'who';
+  // "my 3 year old", "our 6 month old" (a child)
+  if (w === 'old' && /^(?:year|years|yr|yrs|month|months|week|weeks|day)$/u.test(prev)) return 'who';
+  const named = !ctx.caps && /^\p{Lu}\p{Ll}+$/u.test(t.c) && !NOT_A_NAME.test(t.c) && !NOT_A_NAME_END.test(w);
+  if (named && NAME_PLANT.test(t.c)) return 'who';
+  if (ONE_WHO.test(w)) return 'who';
+  // a pet: "my rabbit", "the dog", "Pepper the cat"; "a rabbit", "some fish" are any creature (asked, never gentle)
+  if (ONE_PET.test(w)) {
+    if (/^(?:a|an|some|another|any|two|three|several|loads|lots)$/u.test(prev)) return 'unknown';
+    // (as the object of killed: "the cat killed the mouse" is prey; only "my mouse", "our rat" is someone's own)
+    if (object && PREY.test(w) && !/^(?:my|our|his|her|their|your)$/u.test(prev)) return 'unknown';
+    return 'who';
+  }
+  if (ONE_WILD.test(w)) return 'thing';
+  if (ONE_THING.test(w)) return 'thing';
+  if (FUNCTION.has(w) || TIME_FILLER.has(w)) return null;
+  // a given name: capitalised as typed (at the start of a sentence too: "Pepper died", "Tom passed"), never a thing word
+  if (named) return 'who';
+  return 'unknown';
+}
+/** What "they" stands for: the nearest person or pet before it, else the nearest plural thing, else people. */
+function theyAre(ctx, t) {
+  const all = ctx.all, at = all.indexOf(t);
+  for (let j = (at < 0 ? all.length : at) - 1; j >= 0; j--) {
+    const w = all[j].w;
+    if (FUNCTION.has(w) || TIME_FILLER.has(w)) continue;
+    if (ONE_WHO.test(w) || (ONE_PET.test(w) && !/^(?:a|an|some)$/u.test(all[j - 1]?.w || ''))) return 'who';
+    // a plural noun is what they are ("my tomatoes… they died"); a singular one is passed ("a car crash and they both died")
+    if (/s$/u.test(w) && !/ss$/u.test(w)) return ONE_THING.test(w) || ONE_WILD.test(w) ? 'thing' : 'unknown';
+  }
+  return 'who';
+}
+/** What "it" stands for: the nearest pet or thing before it ("we had a hamster and it died"); else nothing anyone named. */
+function itIs(ctx, t) {
+  const all = ctx.all, at = all.indexOf(t);
+  for (let j = (at < 0 ? all.length : at) - 1; j >= 0; j--) {
+    const w = all[j].w;
+    if (FUNCTION.has(w) || TIME_FILLER.has(w)) continue;
+    if (ONE_PET.test(w)) return 'who';
+    if (ONE_THING.test(w) || ONE_WILD.test(w)) return 'thing';
+  }
+  return 'unknown';
+}
+/** The best of several readings: someone beats unknown beats self beats a thing. */
+const RANK = { who: 4, unknown: 3, self: 2, thing: 1 };
+const best = (a, b) => ((RANK[b] || 0) > (RANK[a] || 0) ? b : a);
+
+/**
+ * The noun phrase that ends at word `j` (walking back): its head is word `j`, and it starts at its determiner ("my best
+ * friends dad", "the plant", "half my family"). → { head: j, start }
+ */
+function phraseBack(ws, j, stop) {
+  let s = j;
+  for (let k = j - 1; k >= Math.max(stop, j - 5); k--) {
+    const w = ws[k].w;
+    // (never across a comma, a dash or a clause boundary)
+    if (ws[k + 1].cut || BOUNDARY.has(w)) break;
+    if (DET.has(w) || QUANT.has(w)) { s = k; if (DET.has(w)) { if (QUANT.has(ws[k - 1]?.w || '') && k - 1 >= stop) s = k - 1; break; } continue; }
+    if (FUNCTION.has(w) || TIME_FILLER.has(w) || /ly$/u.test(w)) break;
+    s = k;
+  }
+  return { head: j, start: s };
+}
+/** Where someone is, not what they are ("in the icu", "on the ward", "at home"). */
+const LOCATIVE = /^(?:in|on|at|inside|near|under|behind|beside|outside|into|onto|across|around|through|next|opposite|upstairs|downstairs|by)$/u;
+/** What leaves someone dead, just before the word ("my brother was SHOT dead", "FOUND dead", "DROPPED dead"). */
+const RESULT = /^(?:brain|clinically|shot|found|struck|left|beaten|fell|fall|falls|drop|drops|dropped|pronounced|declared|presumed|feared|confirmed|stabbed|gunned|knocked|kicked|battered|bludgeoned|strangled|crushed|starved|frozen|burned|burnt|electrocuted|poisoned|mauled)$/u;
+/** The determiners that make the weak word a noun ("the dead", "a murder", "his dying"; never "its dead", "it's dead"). */
+const NOUN_DET = /^(?:the|a|an|his|her|their|my|our|your|some|any|every|each|another)$/u;
+/**
+ * Who died, as the subject of the weak word at `i`: walk back over the little words; past what hangs after the subject (a
+ * place, a part, a gerund: "the plant on my desk", "my hopes of getting into the team"); to the one a relative clause hangs on
+ * ("the coach who taught me", "the man I married", "the tree my grandad planted"). An empty clause ("…and died", ", died")
+ * takes the subject of the clause before it ("Grandad got ill and died"), past a ", who …," aside.
+ */
+function subjectOf(ws, i, ctx) {
+  let from = i;
+  while (from > 0 && !cutBefore(ws, from)) from--;
+  // a relative clause in the subject: the one it hangs on ("the coach who taught me to swim died", "my cat that I had died")
+  for (let k = from + 1; k < i; k++) {
+    if (!RELATIVE.has(ws[k].w) || cutBefore(ws, k)) continue;
+    const prev = ws[k - 1].w;
+    if (FUNCTION.has(prev) || TIME_FILLER.has(prev)) continue;
+    const head = headBack(ws, k - 1, from, ctx);
+    if (head == null) continue;
+    const kind = kindOf(ws, head, ctx);
+    return ws[k].w === 'who' || ws[k].w === 'whom' || ws[k].w === 'whos' ? best(kind, 'who') : kind;
+  }
+  // a relative clause without "who" or "that": "the bird WE HAD for ten years died", "the man I married died"
+  for (let k = from + 1; k < i; k++) {
+    if (!SUBJECT_PRONOUN.has(ws[k].w) || cutBefore(ws, k)) continue;
+    const prev = ws[k - 1].w;
+    if (FUNCTION.has(prev) || TIME_FILLER.has(prev) || /ly$/u.test(prev) || SAYING.has(prev)) continue;
+    const head = headBack(ws, k - 1, from, ctx);
+    if (head != null) return kindOf(ws, head, ctx) || 'unknown';
+  }
+  let j = i - 1;
+  // (and what makes someone dead: "shot dead", "found dead", "dropped dead", "brain dead"; never a noun after "my": "my HOPE is dead")
+  while (j >= from && (SKIP_BACK.has(ws[j].w) && !(j - 1 >= from && /^(?:my|our|his|her|their|your|the|this|that|a|an)$/u.test(ws[j - 1].w))
+    || ws[i].w === 'dead' && j === i - 1 && RESULT.test(ws[j].w))) j--;
+  // "the dead", "a murder", "his dying": the word is a noun (what follows "of" says who: "the murder of my brother")
+  if (j >= from && NOUN_DET.test(ws[j].w) && j === i - 1) {
+    if (/^(?:his|her|their)$/u.test(ws[j].w)) return 'who';
+    if (ws[i + 1]?.w === 'of') return objectOf(ws, i + 1, ctx) || 'unknown';
+    return ws[i].w === 'dead' || ws[i].w === 'dying' ? 'who' : 'unknown';
+  }
+  if (j < from) return (from === 0 ? laterSubject(ws, i, ctx) : null) ?? earlierSubject(ws, from, ctx);
+  if (ws[j].w === 'whose') return 'unknown';
+  // "dying", "dead", "die" right after a noun phrase, with no "is" or "has" between: that one ("I'm not over MY MUM dying",
+  // "watched MY DAD die", "found HIM dead"), never the noun a place hangs on before it
+  // (unless that noun is a place it hangs on: "my sister is IN THE ICU dying" is my sister)
+  if (/^(?:dying|dyin|dieing|dead|die)$/u.test(ws[i].w) && ws.slice(j + 1, i).every((t) => t.w === 'to' || RESULT.test(t.w))
+    && !LOCATIVE.test(ws[phraseBack(ws, j, from).start - 1]?.w || '')) {
+    const near = kindOf(ws, j, ctx);
+    if (near) return near;
+  }
+  const head = headBack(ws, j, from, ctx);
+  return head == null ? earlierSubject(ws, from, ctx) : kindOf(ws, head, ctx);
+}
+/** The head noun of the subject that ends at word `j` (see subjectOf), or null when there is none. */
+function headBack(ws, j, from, ctx, depth = 0) {
+  if (j < from || depth > 4) return null;
+  const w = ws[j].w;
+  const noun = SKIP_BACK.has(w) && /^(?:my|our|his|her|their|your|the|this|that|a|an)$/u.test(ws[j - 1]?.w || ''); // ("my HOPE")
+  if (FUNCTION.has(w) && !noun && !PRONOUN_WHO.has(w) && !PRONOUN_SELF.has(w) && !PRONOUN_THEY.has(w) && !PRONOUN_IT.has(w)) return null;
+  const { start } = phraseBack(ws, j, from);
+  // (a time is never who died, but a place may hang on it: "a boy IN MY YEAR died")
+  if (TIME_FILLER.has(w)) return PREP.has(ws[start - 1]?.w || '') && start - 1 > from ? headBack(ws, start - 2, from, ctx, depth + 1) : null;
+  const before = ws[start - 1]?.w;
+  if (start - 1 < from || before == null) return j;
+  // a place or a part hangs on the noun before it ("the plant ON my desk", "my friendship WITH Sarah"), and so may a gerund
+  // ("my hopes OF GETTING into the team"); "two of my friends", "one of our dogs" are the friends and the dogs
+  let p = start - 1;
+  // (a gerund between: "my dreams of BEING a dancer", "my hopes of GETTING into the team")
+  // (never a noun that ends in -ing: "on top of EVERYTHING my grandad died", "at the MEETING")
+  if (/ing$/u.test(ws[p].w) && (SKIP_BACK.has(ws[p].w) || kindOf(ws, p, ctx) === 'unknown') && p - 1 >= from && PREP.has(ws[p - 1].w)) p--;
+  if (PREP.has(ws[p].w)) {
+    if (ws[p].w === 'of' && QUANT.has(ws[p - 1]?.w || '')) return j;
+    // (a place said of the subject: "my sister IS in the icu dying", "my dad is STILL in hospital dying")
+    let q = p - 1;
+    while (q >= from && SKIP_BACK.has(ws[q].w) && !PREP.has(ws[q].w)) q--;
+    const h = headBack(ws, q, from, ctx, depth + 1);
+    return h == null ? j : h;
+  }
+  // a reduced relative clause: "the man I married died" (a subject pronoun after a noun), "the tree my grandad planted"
+  // (a noun phrase after a noun phrase), never a time or a filler before it ("last night my dog died", "omg my dog died")
+  if (SUBJECT_PRONOUN.has(w) || SUBJECT_PRONOUN.has(before)) {
+    const at = SUBJECT_PRONOUN.has(w) ? j : start - 1;
+    if (at - 1 >= from && !FUNCTION.has(ws[at - 1].w) && !TIME_FILLER.has(ws[at - 1].w) && !/ly$/u.test(ws[at - 1].w)) {
+      const h = headBack(ws, at - 1, from, ctx, depth + 1);
+      if (h != null) return h;
+    }
+    return j;
+  }
+  if (!FUNCTION.has(before) && !TIME_FILLER.has(before) && !/ly$/u.test(before) && DET.has(ws[start].w)) {
+    const { start: s2 } = phraseBack(ws, start - 1, from);
+    if (DET.has(ws[s2].w) && !PREP.has(ws[s2 - 1]?.w || '')) return headBack(ws, start - 1, from, ctx, depth + 1) ?? j;
+  }
+  return j;
+}
+/** "Grandad got ill and died": the subject of the clause before (its first noun phrase), past a ", who …," aside. */
+function earlierSubject(ws, from, ctx) {
+  let end = from, guard = 0;
+  while (end > 0 && guard++ < 4) {
+    let s = end - 1;
+    while (s > 0 && !cutBefore(ws, s)) s--;
+    // an aside that is a relative clause (", who used to bring us cakes,"), a time ("last year,") or an age ("my son, 19, died")
+    if (/^(?:who|whom|which|whose)$/u.test(ws[s].w) || TIME_FILLER.has(ws[s].w) && end - s <= 3
+      || ws.slice(s, end).every((t) => /^(?:\d+|aged?|years?|old|yrs?|months?)$/u.test(t.w))) { end = s; continue; }
+    const kind = firstNoun(ws, s, end, ctx);
+    // (an aside that says what they were: "Max, our old lab, died": the name before it)
+    if ((kind == null || kind === 'unknown') && s > 0 && ws[s].cut) { const before = earlierSubject(ws, s, ctx); return best(kind, before); }
+    return kind;
+  }
+  return null;
+}
+/** "killed in a crash, my cousin": the subject said after the clause (the first noun phrase after the next comma). */
+function laterSubject(ws, i, ctx) {
+  let s = i + 1;
+  while (s < ws.length && !ws[s].cut) s++;
+  if (s >= ws.length) return null;
+  let end = s + 1;
+  while (end < ws.length && !cutBefore(ws, end)) end++;
+  return firstNoun(ws, s, end, ctx);
+}
+/** The first noun phrase in words s..end-1: what it is (a person, a pet, a thing…), or null. */
+function firstNoun(ws, s, end, ctx) {
+  for (let k = s; k < end; k++) {
+    const w = ws[k].w;
+    if (SKIP_BACK.has(w) || TIME_FILLER.has(w) || BOUNDARY.has(w) || /ly$/u.test(w)) continue;
+    // (a place or a time first: "in March my grandad…", "at the vets our dog…")
+    if (PREP.has(w)) { k++; while (k < end && (DET.has(ws[k].w) || !FUNCTION.has(ws[k].w)) && !SKIP_BACK.has(ws[k].w)) k++; k--; continue; }
+    if (DET.has(w) || QUANT.has(w)) {
+      // the first noun of the phrase that is a person, a pet or a thing, else its last word ("my sourdough starter")
+      let last = null;
+      for (let m = k + 1; m < Math.min(end, k + 5) && !FUNCTION.has(ws[m].w) && !TIME_FILLER.has(ws[m].w); m++) {
+        const kind = kindOf(ws, m, ctx);
+        // ("my dads phone": the owner's word is not the head)
+        if (kind && kind !== 'unknown' && !(/s$/u.test(ws[m].w) && m + 1 < end && !FUNCTION.has(ws[m + 1].w))) return kind;
+        last = m;
+      }
+      return last == null ? null : kindOf(ws, last, ctx);
+    }
+    return kindOf(ws, k, ctx);
+  }
+  return null;
+}
+/** Who died, as the object of killed / murdered / buried / drowned (from word `i`, the verb): null when no object follows. */
+function objectOf(ws, i, ctx) {
+  let k = i + 1;
+  while (k < ws.length && !cutBefore(ws, k) && /^(?:just|finally|accidentally|nearly|almost|basically|literally|actually|really|totally|off|both|all)$/u.test(ws[k].w)) k++;
+  if (k >= ws.length || cutBefore(ws, k) && !(ws[i].w === 'of')) return null;
+  const w = ws[k].w;
+  if (PREP.has(w) && ws[i].w !== 'of') return null;
+  if (TIME_FILLER.has(w) || SKIP_BACK.has(w) && !DET.has(w)) return null;
+  if (PRONOUN_WHO.has(w) || PRONOUN_SELF.has(w) || PRONOUN_THEY.has(w) || PRONOUN_IT.has(w)) return kindOf(ws, k, ctx, { object: true });
+  // the noun phrase that follows: its head is its last noun ("my best friends dog"), "two of my friends" the friends
+  let end = k;
+  if (DET.has(w) || QUANT.has(w)) {
+    let m = k + 1;
+    while (m < ws.length && !cutBefore(ws, m) && (DET.has(ws[m].w) || QUANT.has(ws[m].w) || ws[m].w === 'of' && QUANT.has(ws[m - 1].w))) m++;
+    end = m;
+  }
+  let head = end;
+  for (let m = end; m < Math.min(ws.length, end + 4) && !cutBefore(ws, m) || m === end; m++) {
+    if (FUNCTION.has(ws[m]?.w) || TIME_FILLER.has(ws[m]?.w) || !ws[m]) break;
+    head = m;
+  }
+  // (a time or a little word is never what was killed or buried: "buried a week ago", "knocked down and killed and nobody cares")
+  if (!ws[head] || FUNCTION.has(ws[head].w) || TIME_FILLER.has(ws[head].w) || /^(?:week|day|month|year)s?$/u.test(ws[head].w)) return null;
+  return kindOf(ws, head, ctx, { object: true }) || 'unknown';
+}
+/** The noun after "dead" or "dying" used before one ("my dead dog", "the dying plant"), or null. */
+function nounAfter(ws, i, ctx) {
+  const n = ws[i + 1];
+  if (!n || cutBefore(ws, i + 1) || FUNCTION.has(n.w) || TIME_FILLER.has(n.w) || /ly$/u.test(n.w)) return null;
+  const prev = ws[i - 1]?.w || '';
+  if (prev && !DET.has(prev) && !QUANT.has(prev) && !PREP.has(prev) && !cutBefore(ws, i) && !/^(?:little|poor|old|sweet|beautiful|lovely)$/u.test(prev)) return null;
+  let head = i + 1;
+  while (head + 1 < ws.length && !cutBefore(ws, head + 1) && !FUNCTION.has(ws[head + 1].w) && !TIME_FILLER.has(ws[head + 1].w) && head < i + 3) head++;
+  return kindOf(ws, head, ctx) || 'unknown';
+}
+/**
+ * "dead" as a word for "very" ("he's dead weird", "she's dead lush", "it was dead quiet"): after "is" / "was" / "so", one word that
+ * is no noun anyone named and no time, then the end of the clause (never "he's dead now", "my dad is dead, sadly").
+ */
+function intensifier(ws, i, ctx) {
+  if (!/^(?:is|was|s|are|were|re|im|hes|shes|its|theyre|youre|thats|so|well|proper|be|been|looks|looked|seems|seemed|sounds|sounded)$/u.test(ws[i - 1]?.w || '')) return false;
+  const n = ws[i + 1];
+  if (!n || cutBefore(ws, i + 1) || FUNCTION.has(n.w) || TIME_FILLER.has(n.w) || /ly$/u.test(n.w) || /^\p{Lu}/u.test(n.c)) return false;
+  if (kindOf(ws, i + 1, ctx) !== 'unknown') return false;
+  const after = ws[i + 2];
+  return !after || cutBefore(ws, i + 2) || PREP.has(after.w) || /^(?:and|but|so|tbh|lol|honestly|though|tho|man|mate|innit|right|today|tonight|rn)$/u.test(after.w);
+}
+/** A cemetery or a graveyard: someone visited or lying there is a death ('who'); someone else beside it is unsure; else a place. */
+const VISIT = /^(?:visit|visits|visited|visiting|see|sees|seeing|saw|seen|flowers|talk|talked|talking|speak|spoke|speaking|chat|chatted|told|tell|where)$/u;
+const LIES = /^(?:is|s|lies|lie|lying|rests|resting|laid|buried|was)$/u;
+function cemetery(ws, i, ctx) {
+  // (no one named: a place, unless they were there themselves, "I cried at the cemetery": unsure, asked)
+  let out = ws.some((t) => /^(?:i|im|ive|id|me|we|us)$/u.test(t.w)) ? 'unknown' : 'thing';
+  for (let k = 0; k < ws.length; k++) {
+    if (k === i) continue;
+    const kind = kindOf(ws, k, ctx);
+    if (kind !== 'who' || PRONOUN_SELF.has(ws[k].w)) continue;
+    const back = ws.slice(Math.max(0, k - 3), k).map((t) => t.w);
+    if (back.some((w) => VISIT.test(w)) || LIES.test(ws[k + 1]?.w || '')) return 'who';
+    out = 'unknown';
+  }
+  return out;
+}
+/**
+ * (final round 3) The weak death words in `cased` (normed with norm(), idioms blanked, case kept), read by who died: 'who' (a
+ * person or a pet), 'unknown', 'self', 'thing', or null when there is no weak word. `which`: 'loss' (died, dead, killed…) or
+ * 'grief' (buried, a cemetery). The best reading wins: a person in any clause makes it a death.
+ */
+export function whoDied(cased, which = 'loss') {
+  const text = String(cased ?? '');
+  const caps = shouting(text);
+  const all = [];
+  const sentences = text.split(/[.!?…\n]+/u).map((s) => { const ws = tokens(s); all.push(...ws); return ws; });
+  let out = null;
+  for (const ws of sentences) {
+    const ctx = { ws, caps, all };
+    for (let i = 0; i < ws.length; i++) {
+      const w = ws[i].w;
+      let kind = null;
+      if (which === 'loss' && w === 'dead' && intensifier(ws, i, ctx)) continue;
+      if (which === 'loss' && WEAK_DIE.test(w)) {
+        kind = (w === 'dead' || w === 'dying') ? (nounAfter(ws, i, ctx) ?? subjectOf(ws, i, ctx)) : subjectOf(ws, i, ctx);
+      } else if ((which === 'loss' && WEAK_KILL.test(w)) || (which === 'grief' && WEAK_BURY.test(w))) {
+        const prev = ws.slice(Math.max(0, i - 3), i).map((t) => t.w).filter((x) => !/^(?:just|sadly|tragically|brutally|nearly|almost|also|then|finally|already)$/u.test(x));
+        // (passive only with a past participle: "my uncle WAS KILLED", "grandad IS BURIED"; never "we ARE BURYING my uncle")
+        const passive = /(?:ed|d)$/u.test(w) && /^(?:was|were|be|been|being|is|s|are|re|got|get|gets|getting|isnt|wasnt|werent)$/u.test(prev[prev.length - 1] || '');
+        kind = passive ? subjectOf(ws, i, ctx) : (objectOf(ws, i, ctx) ?? subjectOf(ws, i, ctx));
+      } else if (which === 'grief' && WEAK_PLACE.test(w)) {
+        kind = cemetery(ws, i, ctx);
+      } else continue;
+      out = best(out, kind || 'unknown');
+    }
   }
   return out;
 }

@@ -90,8 +90,13 @@ export const GUESSES = [
 export const ILLNESS = [
   'my dad was in a coma', 'my mum is having chemo', 'the doctors found a tumour', 'my sister is in intensive care', 'my son was rushed to a and e', 'my cat is missing and I think she got hit',
 ];
-/** Polish: expected false alarms (the gentle lines are true for them); and a crash that is only a game. */
-export const FALSE_ALARMS = ['the plant on my desk died', 'My son died in Fortnite and smashed his controller.'];
+/**
+ * Polish: expected false alarms (the gentle lines are true for them); and a crash that is only a game. (Final round 3: "the
+ * plant on my desk died" is a thing that died, no false alarm any more: THING_DIED, the kind path in Another Angle, the one
+ * question first on both screens; "My son died in Fortnite" names someone of their own, so it stays gentle.)
+ */
+export const FALSE_ALARMS = ['My son died in Fortnite and smashed his controller.'];
+export const THING_DIED = ['the plant on my desk died'];
 /**
  * (r2-angle item 4, owner decision 'Ask before every world') a game's death that names no one of their own is ordinary words
  * now (death-words.js): asked the one question first, never the gentle path, never framed (it is still a bag word).

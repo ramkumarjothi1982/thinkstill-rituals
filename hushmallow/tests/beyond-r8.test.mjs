@@ -82,7 +82,7 @@ function played(t, res) {
 test('r8 probe table: every probe of both reviews takes its route (all of them, with the counts)', () => {
   const lists = [
     [P.DEATH_MISSES, ['gentle']], [P.IDIOM_DEATHS, ['gentle']], [P.FEELINGS, ['feeling']], [P.FEELING_WITH_GUESS, ['guess']], [P.ANGER, ['anger']], [P.ANGER_WITH_GUESS, ['guess']],
-    [P.EVENTS, ['kind', 'feeling']], [P.GUESSES, ['guess']], [P.ILLNESS, ['kind']], [P.FALSE_ALARMS, ['gentle']], [P.STORY_FALSE_ALARMS, ['kind']], [P.GAME_CRASH, ['kind']],
+    [P.EVENTS, ['kind', 'feeling']], [P.GUESSES, ['guess']], [P.ILLNESS, ['kind']], [P.FALSE_ALARMS, ['gentle']], [P.THING_DIED, ['kind']], [P.STORY_FALSE_ALARMS, ['kind']], [P.GAME_CRASH, ['kind']],
     [P.FOLLOW, ['follow', 'crisis', 'care']], [P.NOT_FOLLOW, ['gentle']], [P.LEXICON.map(([t]) => t), ['crisis', 'care']],
   ];
   let n = 0;
@@ -93,7 +93,7 @@ test('r8 probe table: every probe of both reviews takes its route (all of them, 
 
 // ------------------------------------------------------------- 1. the flipped default --
 test('r8.1: without an interpretive marker nothing frames the words as a guess, in any round (events, wrongs, feelings, losses, bag words)', () => {
-  for (const item of [...P.EVENTS, ...P.ANGER, ...P.FEELINGS, ...P.ILLNESS, ...P.GAME_CRASH, ...P.DEATH_MISSES, ...P.IDIOM_DEATHS, ...P.FALSE_ALARMS, ...P.STORY_FALSE_ALARMS, ...P.NOT_FOLLOW]) {
+  for (const item of [...P.EVENTS, ...P.ANGER, ...P.FEELINGS, ...P.ILLNESS, ...P.GAME_CRASH, ...P.DEATH_MISSES, ...P.IDIOM_DEATHS, ...P.FALSE_ALARMS, ...P.THING_DIED, ...P.STORY_FALSE_ALARMS, ...P.NOT_FOLLOW]) {
     const t = text(item);
     assert.equal(framingAllowed(t), false, t);
     for (const s of rounds(t)) assert.ok(!framed(s), `${t} → ${s.mechanic}: ${s.subtitle_line_1} | ${s.subtitle_line_2}`);
