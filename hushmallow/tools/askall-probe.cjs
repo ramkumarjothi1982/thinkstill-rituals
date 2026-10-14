@@ -9,6 +9,8 @@
 //   be-storm  Tell (Angry) → Play → storm; a new Tell in the storm → it pauses → Just be with it → Somewhere calm (gentle melt)
 //   stay-storm the same → Stay here quietly (the storm ends quietly)
 //   ignore    Tell → the question, left 21 s → nothing made, quiet face, a squeeze says nothing, Tell still there
+//   back      Tell → the question → Back (history) closes it like no answer
+//   ignore-storm  storm → a new Tell → the question left 21 s → the storm stays paused with its Resume pill; Resume plays it
 //   death     a death typed (one Support control while typing at 320) → Send → gentle, no question
 //   crisis    crisis words → the urgent sheet, no question, nothing made
 //   care      care words → the support line and the quiet choice, no question
@@ -315,6 +317,33 @@ async function scenIgnore(o) {
   await shot(o, '01-after');
 }
 
+async function scenBack(o) {
+  const { page } = o;
+  await sleep(1000);
+  await typeTell(o, 'I keep thinking about the weekend');
+  await waitQuestion(o, 'back');
+  await page.goBack();
+  await sleep(1500);
+  const s = await state(page);
+  check(!s.asking && s.chips.length === 0 && s.thoughts === 0 && !s.world && s.soft, 'Back closed it: nothing made, quiet', s);
+  check(page.url().includes('index.html'), 'still on the Hushfold', page.url());
+}
+
+async function scenIgnoreStorm(o) {
+  const { page } = o;
+  await sleep(1000);
+  await toStorm(o);
+  await typeTell(o, 'my nan is not doing so well');
+  await waitQuestion(o, 'in-storm');
+  await sleep(21500);
+  const s = await state(page);
+  check(!s.asking && s.world?.paused && s.pausedPill && s.thoughts === 1 && s.soft, 'the storm stays paused, its Resume pill there, the new words not made', s);
+  await shot(o, '01-paused');
+  await tapSel(o, '.hf-pill.paused');
+  const ok = await waitFor(page, () => window.__hushfold.flow?.state?.phase === 'playing' && !window.__hushfold.flow.state.paused, null, 6000);
+  check(ok, 'Resume plays it again');
+}
+
 async function scenDeath(o) {
   const { page } = o;
   await sleep(1000);
@@ -410,7 +439,7 @@ async function scenScrim(o) {
     o = await open(browser, { dsf: SCEN === 'scrim' ? 2 : 1 });
     await boot(o);
     const S = { slice: scenSlice, 'be-home': scenBeHome, 'stay-home': (x) => scenBeHome(x, { stay: true }), 'be-storm': scenBeStorm, 'stay-storm': (x) => scenBeStorm(x, { stay: true }),
-      ignore: scenIgnore, death: scenDeath, crisis: scenCrisis, care: scenCare, scrim: scenScrim }[SCEN];
+      ignore: scenIgnore, back: scenBack, 'ignore-storm': scenIgnoreStorm, death: scenDeath, crisis: scenCrisis, care: scenCare, scrim: scenScrim }[SCEN];
     if (!S) throw new Error(`unknown scenario ${SCEN}`);
     await S(o);
   } catch (e) { fail('exception', String(e?.stack || e).slice(0, 600)); }
