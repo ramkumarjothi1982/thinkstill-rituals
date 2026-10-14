@@ -10,7 +10,9 @@
 // Boppo bounces, Pipzi sparks, Loomi barely blinks, Noomi dozes.
 //
 // Rules: 1.2 s between one-shot reactions (a minor beat such as a drip never
-// holds back a bigger one), 2.5–6 s per event type, 4 s between voices; the same tag never twice in a row; while the Mallow is
+// holds back a bigger one; a priority beat such as a gap, light reaching it or
+// shelter waits up to 2.5 s for its turn instead of being dropped), 2.5–6 s per
+// event type, 4 s between voices; the same tag never twice in a row; while the Mallow is
 // being touched only its gaze moves; strikes habituate (full, then half with
 // no hop, then a glance); the gentle style and reduced motion never hop,
 // celebrate or double-tap (softened(), core/personality.js), and gentle
@@ -36,7 +38,8 @@ export const COOL = Object.freeze({
   gust: 3, eddy: 4, revealed: 5, 'wave-arrive': 2.5, constellation: 3, gift: 3, kindle: 3, heat: 3, resolved: 2.5, front: 4, 'touch-wet': 3,
   snuggle: 2.5, lulled: 6, 'puddle-hop': 1.2, idle: 6,
 });
-const PRIORITY = new Set(['arrive', 'resolved', 'constellation', 'gift', 'gap', 'snuggle', 'bask-late', 'puddle-hop', 'resolved-after']);
+// beats that wait (one at a time, up to 2.5 s) for the 1.2 s gap instead of being dropped
+const PRIORITY = new Set(['arrive', 'resolved', 'constellation', 'gift', 'gap', 'light-through', 'sheltered', 'snuggle', 'bask-late', 'puddle-hop', 'resolved-after']);
 const NO_JUMP = new Set(['hop', 'doubleTap', 'celebrate']);
 // small, frequent beats (drips, gusts, swells…): they never hold back a bigger moment such as a strike
 const MINOR = new Set(['hit-body', 'gust', 'eddy', 'wave-arrive', 'kindle', 'touch-wet']);
@@ -93,7 +96,7 @@ const BASE = {
   'bask-late': R(null, { loved: 0.6, happy: 0.4 }, 0.6, 2, null, 'bask-late'),
   moonlit: R(null, { calm: 0.6, comforted: 0.4 }, 0.65, 3, 'hum', 'moonlit'),
   'moon-leave': R(null, { curious: 0.5, calm: 0.5 }, 0.4, 1.4, null, 'moon-look-after', { peekClosed: true }),
-  gust: R(null, { playful: 0.6, surprised: 0.4 }, 0.45, 1.2, null, 'gust-squint'),
+  gust: R(null, { playful: 0.6, surprised: 0.4 }, 0.45, 1.2, null, 'gust-look'),
   eddy: R(null, { playful: 0.6, curious: 0.4 }, 0.45, 1.2, null, 'eddy-look'),
   revealed: R(null, { curious: 0.5, happy: 0.5 }, 0.55, 1.6, 'coo', 'revealed', { peekClosed: true }),
   'wave-arrive': R(null, { happy: 0.6, playful: 0.4 }, 0.5, 1.2, null, 'wave-bob'),
@@ -106,8 +109,11 @@ const BASE = {
   snuggle: R('comfort', { comforted: 0.8, calm: 0.2 }, 0.6, 2, 'coo', 'snuggle'),
   lulled: R('yawn', { calm: 0.8, comforted: 0.2 }, 0.5, 2.4, null, 'rain-lulled', { fx: { kind: 'z', n: 1 } }),
   'puddle-hop': [R('hop', { happy: 0.7, playful: 0.3 }, 0.7, 1, 'giggle', 'puddle-hop'), R('hop', { playful: 0.6, excited: 0.4 }, 0.7, 1, 'giggle', 'puddle-hop-2')],
-  idle: null,
+  // 12–20 s without a weather touch: it looks over at the weather's lead element (closed eyes peek)
+  idle: [R(null, { curious: 0.6, happy: 0.4 }, 0.35, 1.4, null, 'idle-look', { peekClosed: true }), R(null, { curious: 0.7, calm: 0.3 }, 0.3, 1.4, null, 'idle-wonder', { peekClosed: true })],
 };
+// a strong gust (k > 0.6) across the body: a squint into the wind
+const GUST_STRONG = R(null, { playful: 0.5, surprised: 0.5 }, 0.5, 1.2, null, 'gust-squint', { face: { set: { lidTop: 0.42 }, dur: 0.7 } });
 
 /**
  * Per Mallow: loves, wary, home weather, closed eyes, constellation shape, bask / moonlit coupling,
@@ -252,6 +258,7 @@ function candidates(id, type, w, k) {
   if (type === 'front') {
     return F.wary.includes(w) ? [R(null, { curious: 0.8, surprised: 0.2 }, 0.3, 2, null, 'front-wary', { peekClosed: true })] : [BASE.front];
   }
+  if (type === 'gust' && k > 0.6 && !b.gust) return [GUST_STRONG];
   if (type === 'wave-arrive' && k > 0.7 && !b['wave-arrive']) return [R('hop', { playful: 0.6, excited: 0.4 }, 0.7, 1.2, 'giggle', 'wave-big-hop', { fx: { kind: 'drop', n: 6 } })];
   const own = b[`${type}-${w}`] || b[type];
   if (own) return Array.isArray(own) ? own : [own];
@@ -270,7 +277,7 @@ function pickVariant(list, mem, rnd) {
 /**
  * input: { mallowId, style ('gentle'|'balanced'|'playful'), reduced, weather, progress,
  *          event?: {type, x, y, k, vx, vy}, cond?: {t, dt, gaze, touch, pool, cluster, front, windAt, energy,
- *          lightOnBody, moonlit, bask, hearth, raining, touched}, body?: {cx, top, mid, w, h} }
+ *          lightOnBody, moonlit, bask, hearth, raining, heat, clusterN, touched}, body?: {cx, top, mid, w, h} }
  * mem: createMemory(), mutated. rnd: () → [0, 1). Returns a fresh array of actions.
  */
 export function decide(input, mem, rnd = Math.random) {
@@ -396,9 +403,12 @@ function condActions(input, c, mem, rnd, out, t, touched) {
   }
   // continuous face: glow from light on the body, moonlit breathing, basking, signature systems
   const light = clamp(c.lightOnBody ?? 0, 0, 1);
-  let glow = light * 0.9, blush = 0, float = 0, spin = 0, dart = 0, breathRate = null;
+  let glow = light * 0.9, blush = 0, float = 0, spin = 0, dart = 0, sparkle = 0, breathRate = null;
   if (c.bask) { glow = Math.max(glow, F.bask.glow); blush = 1.6; }
   if (c.hearth) { glow = Math.max(glow, 0.9); blush = Math.max(blush, 1.3); }
+  // Warm glow: glow and blush rise with the heat; Starlight: the eyes sparkle more as a cluster grows
+  if (w === 'warm') { const h = clamp(c.heat ?? 0, 0, 1); glow = Math.max(glow, 0.25 + 0.6 * h); blush = Math.max(blush, 0.4 + 0.9 * h); }
+  if (w === 'starlight' && c.clusterN > 0) sparkle = 1.2 + 0.1 * Math.min(8, c.clusterN);
   if (c.moonlit) { glow = Math.max(glow, F.moonlit.glow); breathRate = F.moonlit.breathRate; float = 0.3; }
   const e = clamp(c.energy ?? 0, 0, 1);
   if (id === 'zuzu' && w === 'wind') spin = 0.25 + 2.75 * e;
@@ -406,7 +416,8 @@ function condActions(input, c, mem, rnd, out, t, touched) {
   if (id === 'loomi' && w === 'wind') float = Math.max(float, 0.6 * e);
   const min = {};
   if (glow > 0.02) min.glow = +glow.toFixed(2);
-  if (blush) min.blush = blush;
+  if (blush) min.blush = +blush.toFixed(2);
+  if (sparkle) min.sparkle = +sparkle.toFixed(2);
   if (float > 0.02) min.float = +float.toFixed(2);
   if (spin) min.spin = +spin.toFixed(2);
   if (dart) min.gazeDart = dart;
@@ -490,7 +501,8 @@ export class WeatherReactor {
 
   /**
    * Continuous coupling, every frame: cond {gaze, touch, pool, cluster, front, windAt, energy,
-   * lightOnBody, moonlit, bask, hearth, raining} (a reused object; t, dt and touched are filled here).
+   * lightOnBody, moonlit, bask, hearth, raining, heat (Warm glow 0..1), clusterN (stars at the fingertip)}
+   * (a reused object; t, dt and touched are filled here).
    */
   conditions(cond, dt) {
     if (this.destroyed) return;

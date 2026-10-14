@@ -9,8 +9,10 @@
 //
 // Every mode rests at intensity ≥ 0.62 (which keeps the rig's own idle hops
 // and sparks asleep), owns the face mixer's 'mode' layer, and returns
-// { tick(dt, t), event(e), setMotion(m), stop() }. stop() releases what it
-// set and lets squeeze and inflate ease back to 0.
+// { tick(dt, t), event(e, ts), setMotion(m), stop() }. stop() releases what it
+// set and lets squeeze and inflate ease back to 0. `ts` is the event's wall
+// time in seconds (a hold is a human gesture: "held for 4 s" is real seconds);
+// without it the mode's frame clock stands in.
 //
 // The api (features/nightlight.js): { id, ways, rig, companion, face, sky,
 // world, bed, pacer, limiter, moments, rand, look, levels, rules(), motion(),
@@ -309,17 +311,17 @@ const BUILD = {
           else rig.setSqueeze(stretch.target * (s < R ? eis(s / R) : s < H ? 1 : 1 - eis((s - H) / STRETCH.release)));
         }
       },
-      event(e) {
+      event(e, ts = t) {
         switch (e.type) {
           case 'holdend':
-            if (holdAt != null && t - holdAt >= 4) script.holdLong();   // asleep in your hand
+            if (holdAt != null && ts - holdAt >= 4) script.holdLong();   // asleep in your hand
             holdAt = null;
             return;
           case 'strokeend': stroking = false; return;
           case 'stroke':   // one wake-up at the start; stroking itself makes it drowsier (0.04/s, in tick)
             if (!stroking) { stroking = true; script.touch(); endStretch(); }
             return;
-          case 'hold': holdAt = t; break;
+          case 'hold': holdAt = ts; break;
           case 'tap': case 'doubletap': case 'drag': case 'squeeze': break;
           default: return;   // release ends a touch; press and offtap are off the body: a look, not a touch
         }

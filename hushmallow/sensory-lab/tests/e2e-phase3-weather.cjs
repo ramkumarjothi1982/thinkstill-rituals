@@ -3,7 +3,8 @@
 //   python3 -m http.server 8000          # from the repository root
 //   node hushmallow/sensory-lab/tests/e2e-phase3-weather.cjs [outDir]
 //   PART=weather:open,weather:storm      (blocks: open, storm, rain, sun, moon, stars, wind, fog, warm, water, front, morph,
-//                                         resolve, motion, dial, keys, exit, layout; default all)
+//                                         resolve, motion, dial, keys, exit, sound, photo, dna, mallows, access, layout;
+//                                         default all)
 //
 // Also runs inside tests/e2e-phase3.cjs through run(browser, { out, only }).
 // Simulated input proves state, never smoothness: software GL can run at ~6 fps,
@@ -37,6 +38,21 @@
 //   exit    W14 (part): Close and Escape fade home; nothing left behind; listeners back to baseline
 //   layout  W13 (part): no overlap, on screen, targets ≥ 40 px, the Mallow between the bars, the
 //           chosen radio visible at 320 px, the same baseline for every weather
+//
+// Blocks (slice 4):
+//   sound   W11/W12: nothing before a gesture; one bed after a tap; drips and a rising note for a bead;
+//           one bed across a weather change; thunder after a cloud glow; Mute ≤ 500 ms, unmute ≤ 1.5 s;
+//           Touch sounds off silences bed and one-shots; hidden stops and suspends, visible rebuilds
+//           without a burst; Close leaves nothing playing; no AudioContext at all still works
+//   photo   W10: 10 s of Storm in the Static Storm with a strike and gaps, then a dark-to-bright realm
+//           change, through a 32×18 luminance probe (rises per second, rises within 250 ms, frame steps);
+//           realm pulses ≤ 2 bright a second and lab cloud glows ≥ 1 s apart
+//   dna     W16: a chosen world is home; the palette tints stars and moonlight; Slower is ×0.82; gentle
+//           has glows not bolts, agitation ≤ 0.30, no hops; personalisation off gives the defaults
+//   mallows W17: all seven start in their entry weather; each home weather arrives in character; the same
+//           strike reads differently on each Mallow
+//   access  labels, the radiogroup, the announcer's words; a held Enter on a chip resolves the weather,
+//           focus moves onto Again, a held key's repeats never press it, a fresh press does
 
 const path = require('path');
 const H = require('./lib/harness.cjs');
@@ -50,8 +66,8 @@ const T = 60000;   // state waits: generous for software GL
 const noErrors = (scope, errors) => check(scope, 'no console errors', !errors.length, errors.join(' | '));
 const wx = (page, fn, arg) => page.evaluate(fn, arg);
 /** Open #weather with a favourite Mallow and wait until the weather is live. */
-async function openWx(browser, vp, mallow, { prefs = {}, initScripts = [], hash = '#weather' } = {}) {
-  const r = await H.open(browser, vp, hash, { prefs, initScripts, comfort: H.comfort({ favouriteMallow: mallow }) });
+async function openWx(browser, vp, mallow, { prefs = {}, initScripts = [], hash = '#weather', dna = {}, dnaExtra = {} } = {}) {
+  const r = await H.open(browser, vp, hash, { prefs, initScripts, comfort: H.comfort({ favouriteMallow: mallow, ...dna }, dnaExtra) });
   await H.waitRig(r.page, { timeout: T });
   if (hash === '#weather') await r.page.waitForFunction(() => __lab.weather?.state === 'live', null, { timeout: T });
   return r;
@@ -80,6 +96,69 @@ async function resolvedView(page) {
   return page.evaluate(() => ({ cap: document.querySelector('.weather .wx-hint .wx-cap')?.textContent, line: document.querySelector('.weather .wx-hint .line')?.textContent,
     chips: [...document.querySelectorAll('.wx-actions button')].map((b) => b.textContent), p: __lab.weather.progress }));
 }
+
+// ------------------------------------------------------- photosafety probe --
+// spec §13 lumaProbe: every frame, the realm and weather canvases composited at 32×18; per frame the mean
+// relative luminance (0..1) of the whole frame and of each quadrant. Runs in the page; __probe.stop() → samples.
+function startProbe() {
+  const c = document.createElement('canvas');
+  c.width = 32; c.height = 18;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  const lin = new Float32Array(256);
+  for (let i = 0; i < 256; i++) { const v = i / 255; lin[i] = v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }
+  const out = [];
+  let on = true;
+  const frame = () => {
+    if (!on) return;
+    g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, 32, 18);
+    for (const s of ['.weather canvas.hushfold-realm', '.weather canvas.wx-back', '.weather canvas.wx-front']) {
+      const el = document.querySelector(s);
+      if (el && el.width) { try { g.drawImage(el, 0, 0, 32, 18); } catch { /* not ready */ } }
+    }
+    const d = g.getImageData(0, 0, 32, 18).data, q = [0, 0, 0, 0];
+    let L = 0;
+    for (let y = 0; y < 18; y++) {
+      for (let x = 0; x < 32; x++) {
+        const i = (y * 32 + x) * 4, l = 0.2126 * lin[d[i]] + 0.7152 * lin[d[i + 1]] + 0.0722 * lin[d[i + 2]];
+        L += l; q[(y >= 9 ? 2 : 0) + (x >= 16 ? 1 : 0)] += l;
+      }
+    }
+    out.push({ t: performance.now(), L: L / 576, q: q.map((v) => v / 144) });
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  window.__probe = { stop() { on = false; return out; } };
+}
+
+/**
+ * Flash statistics over probe samples, for the whole frame and each quadrant:
+ *   rise250  the largest rise over the lowest value of the previous 250 ms (≤ 0.2 allowed)
+ *   perSec   the most rises of more than 0.1 (rising edges) inside any 1 s (≤ 3 allowed)
+ *   step     the largest whole-frame rise from one frame to the next (≤ 0.1; at software-GL frame
+ *            rates one frame is longer than the spec's 100 ms, so this is the stricter reading)
+ */
+function flashStats(samples) {
+  const get = [(s) => s.L, (s) => s.q[0], (s) => s.q[1], (s) => s.q[2], (s) => s.q[3]];
+  let rise250 = 0, perSec = 0, step = 0;
+  for (let k = 0; k < get.length; k++) {
+    const f = get[k], rises = [];
+    let inRise = false;
+    for (let j = 1; j < samples.length; j++) {
+      let mn = f(samples[j - 1]);
+      for (let i = j - 2; i >= 0 && samples[j].t - samples[i].t <= 250; i--) mn = Math.min(mn, f(samples[i]));
+      const d = f(samples[j]) - mn;
+      rise250 = Math.max(rise250, d);
+      if (k === 0) step = Math.max(step, f(samples[j]) - f(samples[j - 1]));
+      if (d > 0.1 && !inRise) { rises.push(samples[j].t); inRise = true; } else if (d < 0.05) inRise = false;
+    }
+    perSec = Math.max(perSec, perWindow(rises, 1000));
+  }
+  const span = samples.length > 1 ? samples[samples.length - 1].t - samples[0].t : 0;
+  return { frames: samples.length, fps: +(span ? (samples.length - 1) / (span / 1000) : 0).toFixed(1), rise250: +rise250.toFixed(3), perSec, step: +step.toFixed(3),
+    maxL: +Math.max(...samples.map((s) => s.L)).toFixed(3), minL: +Math.min(...samples.map((s) => s.L)).toFixed(3) };
+}
+/** The most times (ms, ascending) inside any window of `ms`. */
+const perWindow = (times, ms) => times.reduce((m, t, i) => Math.max(m, times.slice(i).filter((u) => u < t + ms).length), 0);
 
 async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || H.only(`${SCOPE}:${b}`) } = {}) {
   // ------------------------------------------------------------------- W1 --
@@ -796,6 +875,260 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
       check(scope, 'Fog → Wind: the mist sinks to the floor and thins, revealing the new weather from the top', sinking && tops[tops.length - 1][1] > tops[0][1], JSON.stringify(tops));
       noErrors(`${scope}:loomi`, b.errors);
     } finally { await b.ctx.close(); }
+  });
+
+  // ------------------------------------------------------- W11/W12 sound --
+  if (only('sound')) await guard(`${SCOPE}:sound`, async (scope, own) => {
+    const { ctx, page, errors } = await openWx(browser, 'phone', 'blubi', { initScripts: [H.INIT.audioSpy] });
+    own(ctx);
+    const total = (p) => Object.values(p).reduce((a, b) => a + b, 0);
+    const s0 = await wx(page, () => ({ ctx: !!__lab.sound.ctx, made: __audio().created, bed: __lab.weather.sound }));
+    check(scope, 'a deep link makes no sound before a gesture: no AudioContext, no bed', !s0.ctx && s0.made === 0 && !s0.bed.alive && !total(s0.bed.played), JSON.stringify(s0));
+    const g = await wx(page, () => __lab.weather.geo());
+    await page.mouse.click(g.W * 0.12, g.skyTop + 40);   // a tap on the sky: a gesture
+    await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: T });
+    const s1 = await wx(page, () => ({ eng: __lab.sound.debug(), bed: __lab.weather.sound, ctxs: __audio().contexts }));
+    check(scope, 'after a tap: the bed is alive, one keep voice on the one AudioContext made inside the gesture',
+      s1.bed.alive && s1.eng.keep === 1 && s1.eng.live >= 1 && s1.ctxs.length === 1 && s1.ctxs[0].activation && s1.eng.state === 'running', JSON.stringify(s1));
+    check(scope, 'the low tier keeps rain and wind (and the pad); the rain hiss follows the falling rain', s1.bed.layers.join() === 'rain,wind' && s1.bed.levels.rain > 0.3 && s1.bed.levels.pad === 0, JSON.stringify(s1.bed));
+    // a bead: drips as it gathers, a rising note as it goes up into the cloud as light
+    const deckY = await wx(page, () => __lab.weather.sims.rain.deckY);
+    await page.mouse.move(g.body.cx - 110, deckY + 90);
+    await page.mouse.down();
+    await page.waitForFunction(() => __lab.weather.metrics().held === 1 && (__lab.weather.sound.played.drip || 0) >= 2, null, { timeout: T }).catch(() => {});
+    await page.mouse.move(g.body.cx - 110, deckY + 10, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForFunction(() => (__lab.weather.sound.played.rise || 0) >= 1, null, { timeout: 20000 }).catch(() => {});
+    const b = await wx(page, () => ({ played: __lab.weather.sound.played, ev: __lab.weather.events.map((e) => e.type) }));
+    check(scope, 'a bead plinks as drops merge (up the Mallow\'s scale) and rises as light with a soft upward note',
+      b.played.drip >= 2 && b.ev.includes('merge') && b.played.rise >= 1 && b.ev.includes('bead-up'), JSON.stringify(b.played));
+    // a weather change keeps the one bed, which follows the new weather
+    const b0 = await wx(page, () => __lab.weather.sound.builds);
+    await wx(page, () => __lab.weather.setWeather('storm', { instant: true }));
+    await settled(page, 'storm');
+    await sleep(600);
+    await wx(page, () => { const S = __lab.weather.sims.strikes; S.next = S.t + 0.05; });   // the next storm strike, now
+    await page.waitForFunction(() => (__lab.weather.sound.played.thunder || 0) >= 1, null, { timeout: T }).catch(() => {});
+    const s2 = await wx(page, () => ({ eng: __lab.sound.debug(), bed: __lab.weather.sound, realm: __lab.weather.realmId, ev: __lab.weather.events.map((e) => e.type) }));
+    const iStrike = s2.ev.findIndex((t) => t === 'strike' || t === 'glow'), iThunder = s2.ev.indexOf('thunder');
+    check(scope, 'Storm in the same lagoon: still the one bed, never rebuilt', s2.realm === 'raindrop-lagoon' && s2.eng.keep === 1 && s2.bed.builds === b0 && s2.bed.alive, JSON.stringify(s2.bed));
+    check(scope, 'soft thunder follows the cloud glow (0.4–1.2 s later)', iStrike >= 0 && iThunder > iStrike && s2.bed.played.thunder >= 1, JSON.stringify({ ev: s2.ev.slice(-10), played: s2.bed.played }));
+    // mute: every voice stops; unmute: the bed is back
+    await page.click('.weather .topbar button[aria-label="Mute sound"]');
+    const tm = Date.now();
+    const muted = await page.waitForFunction(() => __lab.sound.live.size === 0, null, { timeout: 5000, polling: 25 }).then(() => Date.now() - tm, () => -1);
+    check(scope, 'Mute: no live voices within 500 ms', muted >= 0 && muted <= 500, `${muted} ms`);
+    await page.click('.weather .topbar button[aria-label="Mute sound"]');
+    const tu = Date.now();
+    const back = await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: 10000, polling: 25 }).then(() => Date.now() - tu, () => -1);
+    check(scope, 'unmute: the bed is back within 1.5 s (with a fresh fade-in)', back >= 0 && back <= 1500, `${back} ms`);
+    // Touch sounds off: no bed and no one-shots (the Mallow's voice has its own switch)
+    await wx(page, () => __lab.dna.set('touchSounds', false));
+    await page.waitForFunction(() => !__lab.weather.sound.alive, null, { timeout: 10000 }).catch(() => {});
+    const p0 = await wx(page, () => __lab.weather.sound.played);
+    await page.mouse.click(g.W * 0.92, (g.water[0] + g.water[1]) / 2 + 30);   // a ripple on the water
+    await sleep(800);
+    const fx = await wx(page, () => ({ alive: __lab.weather.sound.alive, played: __lab.weather.sound.played, ev: __lab.weather.events.slice(-4).map((e) => e.type) }));
+    check(scope, 'Touch sounds off: the bed lets go and a touch on the water stays silent', !fx.alive && total(fx.played) === total(p0) && fx.ev.includes('water-tap'), JSON.stringify({ p0, fx }));
+    await wx(page, () => __lab.dna.set('touchSounds', true));
+    await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: 10000 }).catch(() => {});
+    check(scope, 'Touch sounds on again: the bed returns', await wx(page, () => __lab.weather.sound.alive));
+    // a hidden page: the engine stops the bed and suspends; nothing catches up in a burst on return
+    await H.setHidden(page, true);
+    await sleep(600);
+    const hd = await wx(page, () => ({ alive: __lab.weather.sound.alive, state: __lab.sound.debug().state, played: __lab.weather.sound.played, wstate: __lab.weather.state }));
+    await sleep(1500);
+    await H.setHidden(page, false);
+    await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: 15000 }).catch(() => {});
+    const vs = await wx(page, () => ({ alive: __lab.weather.sound.alive, state: __lab.sound.debug().state, played: __lab.weather.sound.played, keep: __lab.sound.debug().keep }));
+    check(scope, 'hidden: the bed stops and the audio suspends with the loop paused', !hd.alive && hd.state === 'suspended' && hd.wstate === 'paused', JSON.stringify(hd));
+    check(scope, 'visible again: one bed rebuilt, no burst of one-shots', vs.alive && vs.keep === 1 && vs.state === 'running' && total(vs.played) - total(hd.played) <= 2, JSON.stringify({ hd: hd.played, vs }));
+    // Close: the bed fades with the screen; nothing is left playing
+    await page.click('.weather .topbar button[aria-label="Close"]');
+    await page.waitForFunction(() => __lab.route === 'home', null, { timeout: T });
+    const tc = Date.now();
+    const gone = await page.waitForFunction(() => __lab.sound.live.size === 0, null, { timeout: 8000, polling: 50 }).then(() => Date.now() - tc, () => -1);
+    check(scope, 'Close: no live voices within 3.5 s of home (the bed fades over 0.6 s; the rest motif rings out)', gone >= 0 && gone <= 3500, `${gone} ms`);
+    noErrors(scope, errors);
+    // no Web Audio at all: everything still works, silently
+    const r = await openWx(browser, 'phone', 'loomi', { initScripts: [() => { delete window.AudioContext; delete window.webkitAudioContext; }] });
+    try {
+      const g2 = await wx(r.page, () => __lab.weather.geo());
+      await r.page.mouse.click(g2.W * 0.12, g2.skyTop + 40);
+      await drag(r.page, line(20, g2.skyTop + 80, g2.W - 20, g2.skyTop + 120, 12), 16);
+      await r.page.click('.wx-actions [data-action="water"]');
+      await sleep(1500);
+      const n = await wx(r.page, () => ({ ctx: __lab.sound.ctx, alive: __lab.weather.sound.alive, energy: __lab.weather.metrics().energy }));
+      check(`${scope}:no-audio`, 'with no AudioContext: no errors, no bed, the weather still answers', n.ctx === null && !n.alive && n.energy > 0, JSON.stringify(n));
+      noErrors(`${scope}:no-audio`, r.errors);
+    } finally { await r.ctx.close(); }
+  });
+
+  // --------------------------------------------------- W10 photosafety --
+  if (only('photo')) await guard(`${SCOPE}:photo`, async (scope, own) => {
+    const { ctx, page, errors } = await openWx(browser, 'phone', 'glitzi');
+    own(ctx);
+    await page.focus('.weather .stage');
+    await page.keyboard.press('Digit5');
+    await settled(page, 'storm');
+    await wx(page, () => __lab.weather.settle());
+    await sleep(400);
+    await wx(page, startProbe);
+    const t0 = await wx(page, () => performance.now());
+    // the worst case: a strike straight away (bolt, cloud glow, thunder), swipes that open gaps ('clear' pulses)
+    await wx(page, () => { const S = __lab.weather.sims.strikes; S.next = S.t + 0.3; });
+    const struck = await page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'strike'), null, { timeout: T }).then(() => true, () => false);
+    const g = await wx(page, () => __lab.weather.geo());
+    for (let k = 0; k < 3; k++) { const x = g.body.cx + (k - 1) * 30; await drag(page, line(x, g.skyTop + 6, x, g.body.top - 30, 8), 12); await sleep(250); }
+    await page.waitForFunction((t) => performance.now() - t > 10000, t0, { timeout: 30000, polling: 250 });
+    // then one realm change, dark to bright (Sunshine: the Sunpop Orchard)
+    await page.keyboard.press('Digit1');
+    await settled(page, 'sunshine');
+    await sleep(600);
+    const samples = await wx(page, () => window.__probe.stop());
+    const st = await wx(page, () => ({ pulses: __lab.weather.pulses, glows: __lab.weather.glows, ev: __lab.weather.events.map((e) => e.type), realm: __lab.weather.realmId }));
+    const f = flashStats(samples);
+    check(scope, 'the probe saw a storm strike and the realm change', f.frames >= 20 && st.realm === 'sunpop-orchard' && struck, JSON.stringify({ frames: f.frames, realm: st.realm, struck }));
+    check(scope, 'at most 3 luminance rises of more than 10 % a second (whole frame and each quadrant)', f.perSec <= 3, JSON.stringify(f));
+    check(scope, 'no rise of more than 20 % within 250 ms anywhere', f.rise250 <= 0.2, JSON.stringify(f));
+    check(scope, 'no whole-frame rise of more than 10 % from one frame to the next', f.step <= 0.1, JSON.stringify(f));
+    const bright = st.pulses.filter((p) => p.ok && ['success', 'burst', 'strike', 'clear'].includes(p.kind)).map((p) => p.t);
+    const glows = st.glows.filter((e) => e.ok && e.kind === 'glow').map((e) => e.t);
+    check(scope, 'realm: at most 2 bright pulses a second; lab: cloud glows at least 1 s apart', perWindow(bright, 1000) <= 2 && glows.every((t, i) => !i || t - glows[i - 1] >= 1000), JSON.stringify({ bright, glows }));
+    noErrors(scope, errors);
+  });
+
+  // ------------------------------------------------------ W16 Comfort DNA --
+  if (only('dna')) await guard(`${SCOPE}:dna`, async (scope) => {
+    // a chosen world is home; the palette tints the stars; Slower slows the ambient drift
+    let r = await openWx(browser, 'phone', 'boppo', { dna: { environment: 'moonmilk-cove', colours: 'rose', animationSpeed: 'slower' } });
+    try {
+      const s = await wx(r.page, async (LAB) => {
+        const { weatherTints } = await import(`${LAB}/core/weather-draw.js`);
+        const { REALMS } = await import('/hushmallow/src/world/realm.js');
+        const L = __lab.weather.layer;
+        return { id: __lab.companion.rig.id, w: __lab.weather.weather, realm: __lab.weather.realmId, star: L.sp.tint.star, moon: L.sp.tint.moon,
+          plain: weatherTints(REALMS[L.realmId].palette, L.tone, null), speed: __lab.weather.sims.clouds.speed, wind: __lab.weather.sims.wind.speed, planner: __lab.weather.session.planner.speed };
+      }, LAB);
+      check(`${scope}:chosen`, 'the favourite Mallow on stage, the chosen world as home (Moonlight in the Moonmilk Cove)', s.id === 'boppo' && s.realm === 'moonmilk-cove' && s.w === 'moonlight', JSON.stringify(s));
+      check(`${scope}:chosen`, 'the Comfort DNA palette tints the stars and the moonlight', s.star !== s.plain.star && s.moon !== s.plain.moon, JSON.stringify(s));
+      check(`${scope}:chosen`, 'Slower: ambient drift, wind and turns at ×0.82', s.speed === 0.82 && s.wind === 0.82 && s.planner === 0.82, JSON.stringify(s));
+      await H.shot(r.page, out, 'weather-phone-dna-rose');
+      noErrors(`${scope}:chosen`, r.errors);
+    } finally { await r.ctx.close(); }
+    // gentle: no bolts (a strike becomes a glow), agitation ≤ 0.30, no hops or celebrations
+    r = await openWx(browser, 'phone', 'glitzi', { dna: { responses: 'gentle' } });
+    try {
+      const sc = `${scope}:gentle`;
+      await r.page.focus('.weather .stage');
+      await r.page.keyboard.press('Digit5');
+      await settled(r.page, 'storm');
+      await wx(r.page, () => __lab.weather.settle());
+      await wx(r.page, () => { const S = __lab.weather.sims.strikes; S.next = S.t + 0.05; });
+      await r.page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'glow' || e.type === 'strike'), null, { timeout: T });
+      const st = await wx(r.page, () => ({ ev: __lab.weather.events.map((e) => e.type), pulses: __lab.weather.pulses.map((p) => p.kind), mood: __lab.weather.env.mood }));
+      await r.page.keyboard.press('Digit2');   // Wind, Glitzi's loved weather: a joyful arrival, softened
+      await settled(r.page, 'wind');
+      await sleep(1500);
+      const s = { ...st, log: await wx(r.page, () => __lab.weather.reactor.log) };
+      check(sc, 'gentle: the storm strike is a soft glow, never a bolt', s.ev.includes('glow') && !s.ev.includes('strike') && !s.pulses.includes('strike'), JSON.stringify({ ev: s.ev.slice(-8), pulses: s.pulses }));
+      check(sc, 'gentle: agitation stays at 0.30 or less', s.mood.agitation <= 0.3 + 1e-6, JSON.stringify(s.mood));
+      check(sc, 'gentle: no hops, celebrations or double taps', s.log.length > 0 && !s.log.some((e) => ['hop', 'celebrate', 'doubleTap', 'glitchBurst', 'shiver', 'flick'].includes(e.react)), JSON.stringify(s.log));
+      noErrors(sc, r.errors);
+    } finally { await r.ctx.close(); }
+    // personalisation off: the defaults (the Mallow's own world, balanced, its own colours)
+    r = await openWx(browser, 'phone', 'zuzu', { dna: { environment: 'moonmilk-cove', responses: 'gentle', colours: 'rose' }, dnaExtra: { enabled: false } });
+    try {
+      const s = await wx(r.page, async (LAB) => {
+        const { entryWeather, pickRealm } = await import(`${LAB}/core/weather.js`);
+        const { realmForMallow } = await import('/hushmallow/src/world/realm.js');
+        const id = __lab.companion.rig.id, home = realmForMallow(id).id, w = entryWeather(home);
+        return { id, realm: __lab.weather.realmId, w: __lab.weather.weather, want: { realm: pickRealm(w, { current: null, home }), w }, palette: __lab.weather.layer.palette, style: __lab.weather.reactor._in.style };
+      }, LAB);
+      check(`${scope}:off`, 'personalisation off: the Mallow\'s own world and entry weather, balanced style, its own colours',
+        s.realm === s.want.realm && s.w === s.want.w && s.palette === null && s.style === 'balanced', JSON.stringify(s));
+      noErrors(`${scope}:off`, r.errors);
+    } finally { await r.ctx.close(); }
+  });
+
+  // ---------------------------------------------------------- W17 Mallows --
+  if (only('mallows')) await guard(`${SCOPE}:mallows`, async (scope) => {
+    const tags = {};
+    for (const id of ['glitzi', 'blubi', 'zuzu', 'boppo', 'pipzi', 'loomi', 'noomi']) {
+      const r = await openWx(browser, 'phone', id);
+      try {
+        const sc = `${scope}:${id}`;
+        await r.page.waitForFunction(() => __lab.weather.reactor.log.some((e) => e.type === 'arrive'), null, { timeout: T });
+        const s = await wx(r.page, async (LAB) => {
+          const { entryWeather, pickRealm } = await import(`${LAB}/core/weather.js`);
+          const { homeRealm } = await import(`${LAB}/core/environment.js`);
+          const { FEEL } = await import(`${LAB}/core/weather-mallow.js`);
+          const me = __lab.companion.rig.id, home = homeRealm(__lab.dna, me), w = entryWeather(home);
+          return { me, w: __lab.weather.weather, realm: __lab.weather.realmId, want: { w, realm: pickRealm(w, { current: null, home }) }, homeW: FEEL[me].home,
+            arrive: __lab.weather.reactor.log.filter((e) => e.type === 'arrive').pop(), t: __lab.weather.reactor.t };
+        }, LAB);
+        check(sc, 'starts in its realm\'s entry weather', s.me === id && s.w === s.want.w && s.realm === s.want.realm, JSON.stringify(s));
+        let arrive = s.arrive;
+        if (s.homeW !== s.w) {   // its home weather (after the arrival cooldown)
+          await r.page.waitForFunction((t) => __lab.weather.reactor.t > t + 3, s.t, { timeout: T });
+          const n = await wx(r.page, () => __lab.weather.reactor.log.length);
+          await wx(r.page, (w) => __lab.weather.setWeather(w, { instant: true }), s.homeW);
+          await settled(r.page, s.homeW);
+          await r.page.waitForFunction((n) => __lab.weather.reactor.log.slice(n).some((e) => e.type === 'arrive'), n, { timeout: T }).catch(() => {});
+          arrive = await wx(r.page, () => __lab.weather.reactor.log.filter((e) => e.type === 'arrive').pop());
+        }
+        check(sc, `its home weather (${s.homeW}) arrives as a celebration in character`, !!arrive && arrive.tag.startsWith(`${id}-home-${s.homeW}`), JSON.stringify(arrive));
+        // the same event, read in character: a storm strike
+        await r.page.waitForFunction(() => __lab.weather.reactor.t - __lab.weather.reactor.mem.lastReact > 1.5, null, { timeout: T });
+        tags[id] = await wx(r.page, () => (__lab.weather.reactor.event('strike', { x: 40, y: 300 }).find((a) => a.type === 'react') || {}).tag || null);
+        await H.shot(r.page, out, `weather-phone-${id}-home`);
+        noErrors(sc, r.errors);
+      } finally { await r.ctx.close(); }
+    }
+    const distinct = new Set(Object.values(tags).filter(Boolean));
+    check(scope, 'the same strike reads differently on different Mallows (≥ 5 distinct reactions)', distinct.size >= 5, JSON.stringify(tags));
+  });
+
+  // --------------------------------------------------------- accessibility --
+  if (only('access')) await guard(`${SCOPE}:access`, async (scope, own) => {
+    const { ctx, page, errors } = await openWx(browser, 'phone', 'boppo');
+    own(ctx);
+    await settled(page, 'sunshine');
+    const a = await wx(page, () => {
+      const q = (s) => document.querySelector(s);
+      return {
+        stage: [q('.weather .stage').getAttribute('role'), q('.weather .stage').getAttribute('aria-label')], focus: document.activeElement === q('.weather .stage'),
+        dial: [q('.wx-dial').getAttribute('role'), q('.wx-dial').getAttribute('aria-label')],
+        radios: [...document.querySelectorAll('.wx-radio')].map((b) => [b.getAttribute('aria-label'), b.getAttribute('aria-checked'), b.tabIndex, b.title]),
+        group: [q('.wx-actions').getAttribute('role'), q('.wx-actions').getAttribute('aria-label')],
+        chips: [...document.querySelectorAll('.wx-actions button')].map((b) => [b.textContent, b.type, b.dataset.action]),
+        sr: [q('.weather .sr-only').getAttribute('role'), q('.weather .sr-only').getAttribute('aria-live')], hint: q('.weather .wx-hint').getAttribute('aria-hidden'),
+        said: __lab.weather.said,
+      };
+    });
+    check(scope, 'the stage is focused on arrival and labelled with the keys', a.focus && a.stage[0] === 'application' && /Keys 1 to 8 choose the weather, arrow keys shape it, hold W to weave\. Touch Boppo to talk\./.test(a.stage[1]), JSON.stringify(a.stage));
+    check(scope, 'the dial is one radiogroup "Weather": eight named radios, one tab stop on the chosen one',
+      a.dial.join() === 'radiogroup,Weather' && a.radios.length === 8 && a.radios.every((r) => r[0] && r[0] === r[3]) && a.radios.filter((r) => r[2] === 0).length === 1 && a.radios.find((r) => r[1] === 'true')[0] === 'Sunshine', JSON.stringify(a.radios));
+    check(scope, 'the alternatives are real buttons in a labelled group; the hint is hidden, the announcer speaks', a.group.join() === 'group,Weather actions' && a.chips.every((c) => c[1] === 'button') && a.sr.join() === 'status,polite' && a.hint === 'true', JSON.stringify(a));
+    check(scope, 'the announcer says where we are and what to do, about the world, never the person', a.said.includes('Sunshine at the Sunpop Orchard. Drag to move the warm light.') && !a.said.some((t) => /\b(you|your)\b/i.test(t)), JSON.stringify(a.said));
+    // keyboard: hold Enter on "Bring the sun" until golden hour
+    await page.focus('.wx-actions [data-action="lead"]');
+    await page.keyboard.down('Enter');
+    await page.waitForFunction(() => __lab.weather.resolved, null, { timeout: T * 2 });
+    await page.waitForFunction(() => document.querySelector('.wx-actions [data-action="again"]'), null, { timeout: T });
+    const f = await wx(page, () => ({ focus: document.activeElement?.dataset?.action || document.activeElement?.className, metrics: __lab.weather.metrics() }));
+    check(scope, 'held Enter on "Bring the sun" basks Boppo to golden hour; focus moves onto Again', f.focus === 'again', JSON.stringify(f));
+    for (let i = 0; i < 4; i++) { await page.keyboard.down('Enter'); await sleep(250); }   // the key is still down: these repeat
+    await page.keyboard.up('Enter');
+    await sleep(900);
+    check(scope, 'a held key\'s repeats never press Again', await wx(page, () => __lab.weather.resolved));
+    await page.keyboard.press('Enter');
+    const again = await page.waitForFunction(() => !__lab.weather.resolved && __lab.weather.progress < 0.5, null, { timeout: T }).then(() => true, () => false);
+    check(scope, 'a fresh Enter on Again plays the weather again', again);
+    await page.waitForFunction(() => __lab.weather.said.some((t) => t === 'Golden hour.') && __lab.weather.said.some((t) => t === 'Sunshine again.'), null, { timeout: 15000 }).catch(() => {});
+    const said = await wx(page, () => __lab.weather.said);
+    check(scope, 'the announcer read the caption and Again (at least 3 s apart, newest wins)', said.includes('Golden hour.') && said.includes('Sunshine again.'), JSON.stringify(said));
+    noErrors(scope, errors);
   });
 
   // ----------------------------------------------------------- W13 layout --

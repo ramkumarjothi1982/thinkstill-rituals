@@ -183,12 +183,15 @@ export const entryWeather = (realmId) => (Object.hasOwn(ENTRY, realmId) ? ENTRY[
 
 // ------------------------------------------------------------ mood recipe --
 const EMPTY = Object.freeze({});
+/** Agitation ceiling in the Static Storm (its own lightning starts above 0.33). */
+export const STATIC_AG = 0.32;
 
 /**
  * The realm mood for weather `w` at `progress` (0..1), written into `out` (no allocation).
  * live: { energy, turb, calm (wind field), height, painted (sun pool), hearth (0..1) }; missing → nominal.
  *   k = smoothstep(progress); every axis lerps base → resolved by k, then the live terms and the tweaks:
- *   static-storm storm agitation ≤ .32 (no auto bolts: the lab schedules strikes), spark rain/storm
+ *   static-storm agitation ≤ .32 in every weather (the realm draws its own bolts above .33, every 3–9 s;
+ *   there the only lightning is the lab's scheduled, photosafe storm strike), spark rain/storm
  *   heaviness ≤ .45 and warmth + .15 (the fair stays partly lit), gentle style agitation ≤ .30.
  */
 export function moodFor(w, progress, live = null, realmId = null, { gentle = false } = {}, out = {}) {
@@ -207,7 +210,7 @@ export function moodFor(w, progress, live = null, realmId = null, { gentle = fal
     h = lerp(b.heaviness * (1 - clamp(num(L.painted, 0), 0, 1)), r.heaviness, k);
   }
   if (W.id === 'warm') wa += 0.1 * clamp(num(L.hearth, 0), 0, 1);
-  if (realmId === 'static-storm' && W.id === 'storm') a = Math.min(a, 0.32);
+  if (realmId === 'static-storm') a = Math.min(a, STATIC_AG);
   if (realmId === 'spark-festival' && (W.id === 'rain' || W.id === 'storm')) { h = Math.min(h, 0.45); wa += 0.15; }
   if (gentle) a = Math.min(a, 0.3);
   out.agitation = clamp(a, 0, 1); out.heaviness = clamp(h, 0, 1); out.clarity = clamp(c, 0, 1); out.warmth = clamp(wa, 0, 1);

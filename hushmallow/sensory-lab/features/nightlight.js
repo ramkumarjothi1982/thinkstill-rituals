@@ -181,13 +181,13 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   };
   applyBase(0);
   let motionBase = 0.6;            // the night motion scale (≤ 0.6); the fade slows it further
+  let fadeMs = -1;                 // the motion scale the fade last applied
   const tune = () => {
     motionBase = Math.min(0.6, ctx.dna.tuning().motion);
     companion.applyTuning({ style: 'gentle', speed: SPEEDS[S.speed].rig, motion: motionBase });
     companion.setReducedMotion(motion !== 'gentle');
     fadeMs = -1;                   // the fade re-applies its own scale on the next frame
   };
-  let fadeMs = -1;
   tune();
 
   // ------------------------------------------------------------ light and levels --
@@ -356,6 +356,21 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     nightMood(nw, { temp: S.temp, heavy: st }, moodOut);
     world.setMood(moodOut, { force: true, instant });
   }
+  // particles (a sigh's puffs, whisper sparks, a moon mote) are drawn over the graded mesh, outside the
+  // shader's grade: each takes the Mallow's brightness as it is born (including the rig's own ambient
+  // emitters, which spawn inside its update), so none glows brighter than the Mallow at night. A wrapper on
+  // this rig's own particle field only; removed on unmount (the rig dies with the view anyway).
+  const field = rig.particles;
+  if (field && typeof field.spawn === 'function') {
+    const spawn = field.spawn;
+    field.spawn = function nightSpawn(...a) {
+      const before = this.list[this.list.length - 1];
+      const out = spawn.apply(this, a);
+      const p = this.list[this.list.length - 1];
+      if (p && p !== before && !p.nlGraded) { const g = look.mallowGrade; p.nlGraded = true; p.alpha = (p.alpha ?? 1) * (g[0] + g[1] + g[2]) / 3; }
+      return out;
+    };
+  }
   // one soft sigh as the world falls asleep (only on the frame clock: never caught up after being away)
   function sigh() {
     pacer.event(1800);
@@ -379,7 +394,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   };
   api.moments = new Moments(api);
   let ctl = startMode(mode, api);
-  const ctlEvent = (e) => { if (!dead && !leaving) ctl.event(e); };
+  const ctlEvent = (e) => { if (!dead && !leaving) ctl.event(e, performance.now() / 1000); };   // with its wall time (s)
 
   function setMode(m) {
     if (!Object.hasOwn(MODES, m) || leaving || dead) return;
@@ -597,7 +612,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     const paused = returnedAt > 0 && plan.on && !snd.ready && !snd.muted && !snd.resting && !!snd.ctx && pn - returnedAt > SOUND_BACK_MS;
     if (paused !== soundPaused) {
       soundPaused = paused;
-      if (paused) say(COPY.say.soundPaused);
+      if (paused) { say(COPY.say.soundPaused); wakeChrome(); }   // the chip must be seen (any tap brings the sound back)
       updateStatus();
     }
   }
@@ -777,6 +792,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       rig.setFrameCap(null);
       rig.setGrade([1, 1, 1]);
       rig.peekParams = null;
+      if (field && Object.hasOwn(field, 'spawn')) delete field.spawn;   // back to the field's own spawn
       face.clear();
       bed.destroy();
       ctx.sound.setTrim(1);
@@ -817,13 +833,17 @@ function endView(root, ctx, { endsAt, skipped = false, snap = null, snapBase = n
   }
   const sr = announcer(screen);
   sr.say(COPY.say.ended);
-  // nothing runs here: the audio rests (at once after a quiet end; after 2.2 s when the bed is still fading out)
+  // nothing runs here: the audio rests (at once after a quiet end, and 2.2 s later in every case: by then
+  // the bed has faded out, and a resume the engine started on becoming visible has settled; rest() only
+  // suspends a running context). A tap here resumes the audio (lab.js), so it re-arms the rest.
   let restT = 0;
   const rest = () => { restT = 0; if (![...ctx.sound.live].some((v) => !v.keep)) ctx.sound.rest(); };
-  if (skipped) rest(); else restT = setTimeout(rest, REST_AFTER_END_MS);
+  const restLater = () => { clearTimeout(restT); restT = setTimeout(rest, REST_AFTER_END_MS); };
+  if (skipped) rest();
+  restLater();
   // the card rests at 0.35; a touch or a key lifts it to full for 8 s
   let dimT = 0, raf = 0;
-  const lift = () => { card.classList.add('lit'); clearTimeout(dimT); dimT = setTimeout(() => card.classList.remove('lit'), CARD_DIM_MS); };
+  const lift = () => { card.classList.add('lit'); clearTimeout(dimT); dimT = setTimeout(() => card.classList.remove('lit'), CARD_DIM_MS); restLater(); };
   const key = (e) => { if (e.key === 'Escape') { e.preventDefault(); onDone(); return; } lift(); };
   screen.addEventListener('pointerdown', lift, { passive: true });
   document.addEventListener('keydown', key);

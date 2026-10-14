@@ -29,12 +29,18 @@ export const COPY = Object.freeze({
     target: 'Play on',
     row: 'Hushbeat controls',
     volume: 'Volume',
-    stage: (name) => `${name}. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. `
-      + 'Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.',
+    /** each stage's label; in a duet it adds G and Tab */
+    stage: (name, duet = false) => `${name}. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. `
+      + 'Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.'
+      + (duet ? ' G plays both together. Tab moves to the other Mallow.' : ''),
+    friend: 'Friend: invite another Mallow',
   }),
 
   // the feedback chip (role=status)
   say: Object.freeze({
+    /** a friend arrives / leaves (the subtitle changes too) */
+    joins: (name) => `${name} joins`,
+    alone: 'Playing alone',
     kept: 'Kept',
     removed: 'Removed',
     keepFull: 'Six tunes kept. Remove one in Sound and pace.',
@@ -46,6 +52,8 @@ export const COPY = Object.freeze({
   friend: Object.freeze({
     title: (lead) => `Who joins ${lead}?`,
     alone: 'Play alone',
+    /** a pill's label: 'Loomi, soft pads' (+ ', playing now' for the friend on stage) */
+    pill: (name, words, on = false) => `${name}, ${words}${on ? ', playing now' : ''}`,
   }),
 
   // two words for each Mallow's instrument (friend picker)
@@ -63,13 +71,18 @@ export const COPY = Object.freeze({
     visualOnly: 'Visual only',
     soundSub: 'Visual only: music as light and movement, no sound',
     pace: 'Breath pace',
+    paceSub: 'For this visit. Keep saves it with the tune.',
     paces: Object.freeze({ slower: 'Slower', natural: 'Natural', livelier: 'Livelier' }),
     answers: 'Friend answers',
+    answersSub: 'Your friend answers a tune or a chord',
     on: 'On',
     off: 'Off',
     tunes: 'Your tunes',
     play: 'Play',
     remove: 'Remove',
+    /** each tune's buttons say which tune they act on */
+    playTune: (tune) => `Play ${tune}`,
+    removeTune: (tune) => `Remove ${tune}`,
     tunesEmpty: 'Tap ★ Keep after you play to keep a tune here.',
     tunesOff: "Personalisation is off, so tunes can't be kept.",
     lab: 'Lab settings',

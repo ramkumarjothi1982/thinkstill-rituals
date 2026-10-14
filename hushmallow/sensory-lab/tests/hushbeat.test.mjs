@@ -1,4 +1,5 @@
-// Unit tests for Hushbeat Symphony (spec-hushbeat.md §13): U1–U18.
+// Unit tests for Hushbeat Symphony (spec-hushbeat.md §13): U1–U18, plus U19 (the duet and the
+// sheets: features/hushbeat/sheet.js helpers, the performers' glance and lean, the arc's light).
 // U15 covers the kits (core/music-kits.js) and the renderer (core/music-audio.js)
 // on the shared FakeAudioContext; the real-DSP listening checks (pitch, loudness,
 // clicks, bass band energy) are E10 in tests/e2e-phase3-hushbeat.cjs. U16 covers
@@ -34,6 +35,7 @@ import { FlashGate } from '../core/effects.js';
 import { PULSE_GAPS } from '../core/environment.js';
 import { NoteBead, BeadPool, BeatGlow, PhraseRibbon, HarmonyArc, BreathHalo, POOL, RIBBON, BEAD, GLOW_MAX, KICK_GAP } from '../core/music-fx.js';
 import { TRAITS, Performer, Scene, Cue, grooveStep } from '../features/hushbeat/performer.js';
+import { friendChoices, tierBelow, yourTunes, tuneItem, TIER_BELOW } from '../features/hushbeat/sheet.js';
 import { REACTIONS } from '../../src/mallows/reactions.js';
 import { PRESETS } from '../../src/mallows/expressions.js';
 
@@ -1655,8 +1657,83 @@ test('U16 cue: events wait for their moment (in arrival order); a full ring hand
   assert.equal(c.pending, 0);
 });
 
+// ================================================================= U19 ==
+test('U19 duet and sheets: the six friends with their words, the friend a tier lower, the newest six tunes, the take as a tune keeps its friend; glance, lean in, the arc\'s light', () => {
+  // the picker: the six others, each with the two words for its instrument and its colour
+  for (const id of MALLOW_IDS) {
+    const ch = friendChoices(id);
+    assert.equal(ch.length, 6);
+    assert.ok(!ch.some((c) => c.id === id), 'never the lead');
+    for (const c of ch) { assert.equal(c.words, COPY.soundWords[c.id]); assert.match(c.colour, /^#[0-9a-f]{6}$/i); }
+  }
+  assert.deepEqual(['high', 'medium', 'low', 'junk'].map(tierBelow), ['medium', 'low', 'low', 'low']);
+  assert.ok(Object.isFrozen(TIER_BELOW));
+  // Your tunes: the newest six, other favourites left out
+  const tune = (i) => ({ kind: 'hushbeat', id: 'hushbeat', mallow: 'boppo', pace: 'natural', motif: `00n${'89abcdefg'[i]}504n7508n65` });
+  const favs = [tune(0), { kind: 'pocket', id: 'soft-breath' }, tune(1), tune(2), tune(3), tune(4), tune(5), tune(6), null];
+  const yt = yourTunes(favs);
+  assert.equal(yt.length, 6);
+  assert.ok(yt.every((f) => f.kind === 'hushbeat'));
+  assert.equal(yt[0], favs[0], 'newest first');
+  assert.deepEqual(yourTunes(null), []);
+  // the take as a tune
+  const events = [{ beat: 0, slot: 0, kind: 'n', deg: 2, vel: 0.7 }, { beat: 1, slot: 1, kind: 'n', deg: 3, vel: 0.7 }, { beat: 2, slot: 0, kind: 'b', deg: 0, len: 2 }];
+  const a = tuneItem({ lead: 'boppo', friend: 'loomi', pace: 'livelier', events });
+  assert.equal(a.friend, 'loomi');
+  assert.equal(a.pace, 'livelier');
+  assert.match(a.motif, HUSHBEAT_MOTIF_RE);
+  assert.deepEqual(decodeMotif(a.motif).map((e) => [e.slot, e.kind, e.deg]), [[0, 'n', 2], [1, 'n', 3], [0, 'b', 0]]);
+  assert.equal(describeTune(a), 'Boppo & Loomi tune · 2 notes · Livelier');
+  assert.deepEqual(sanitize({ version: 1, favourites: [a] }).favourites[0], a, 'Comfort DNA keeps it exactly as made');
+  assert.equal(tuneItem({ lead: 'boppo', takeFriend: 'loomi', events }).friend, 'loomi', 'the friend left, its notes stay: still a duet');
+  assert.equal('friend' in tuneItem({ lead: 'boppo', takeFriend: 'loomi', events: events.filter((e) => e.slot === 0) }), false, 'a solo take is a solo tune');
+  assert.equal('friend' in tuneItem({ lead: 'boppo', friend: 'boppo', events }), false, 'never the lead itself');
+  assert.equal(tuneItem({ lead: 'boppo', pace: 'warp', events }).pace, 'natural');
+  assert.equal(tuneItem({ lead: 'nobody', events }), null);
+  assert.equal(tuneItem({ lead: 'boppo', events: [] }), null);
+  // copy: the duet stage label adds G and Tab; a pill names the friend playing now
+  assert.ok(COPY.aria.stage('Boppo', true).endsWith('G plays both together. Tab moves to the other Mallow.'));
+  assert.ok(!COPY.aria.stage('Boppo').includes(' G '));
+  assert.equal(COPY.friend.pill('Loomi', 'soft pads', true), 'Loomi, soft pads, playing now');
+  assert.equal(COPY.subtitle('Boppo', 'Loomi', true), 'Boppo & Loomi · Visual only');
+  // the duet's performers: they glance at each other, lean in on a bloom (the face only in reduced motion), the idle one watches
+  let T = 10;
+  const now = () => T, pool = new BeadPool({ cap: 8 });
+  const L = fakeStage('boppo'), F = fakeStage('loomi'), N = fakeStage('noomi');
+  const pl = new Performer({ companion: L.companion, slot: 0, pool, now }), pf = new Performer({ companion: F.companion, slot: 1, pool, now });
+  pl.glance({ x: 500, y: 480 }); pf.glance({ x: -200, y: 480 }); pl.glance(null);
+  assert.deepEqual([L.calls.look, F.calls.look], [1, 1]);
+  pl.leanIn(1); pf.leanIn(-1);
+  assert.ok(L.calls.nudge.at(-1).lean > 0 && F.calls.nudge.at(-1).lean < 0, 'toward each other');
+  assert.deepEqual(L.calls.play.at(-1)[0], { calm: 0.6, loved: 0.4 });
+  pf.setReduced(true); F.calls.nudge.length = 0; pf.leanIn(-1);
+  assert.equal(F.calls.nudge.length, 0, 'reduced motion: no lean');
+  assert.equal(F.calls.play.length, 2, 'the face still softens');
+  const pt = { x: 400, y: 470 };
+  pl.listen(pt); T += 1; pl.frame(T, 0.05, csAt(0.5), {});
+  assert.equal(L.calls.look, 2, 'the idle one looks across at the one playing');
+  pl.listen(null); T += 1; pl.frame(T, 0.05, csAt(0.6), {});
+  assert.equal(L.calls.look, 2);
+  // the scene: the arc comes with a friend in its light, follows a new friend, goes when alone; the lead keeps its light
+  const scene = new Scene({ now });
+  scene.setPerformers([{ performer: pl, color: '#aaaaaa' }]);
+  assert.equal(scene.arc, null);
+  const lead = scene.cast[0];
+  scene.setPerformers([{ performer: pl, color: '#aaaaaa' }, { performer: pf, color: '#88ccff' }]);
+  assert.equal(scene.arc.color, '#88ccff');
+  const pn = new Performer({ companion: N.companion, slot: 1, pool, now });
+  scene.setPerformers([{ performer: pl, color: '#aaaaaa' }, { performer: pn, color: '#ccbbff' }]);
+  assert.equal(scene.arc.color, '#ccbbff', 'a new friend: the arc takes its light');
+  assert.equal(scene.cast[0], lead, 'the lead keeps its light');
+  scene.setPerformers([{ performer: pl, color: '#aaaaaa' }]);
+  assert.equal(scene.arc, null);
+  assert.equal(scene.cast[0], lead);
+  for (const p of [pl, pf, pn]) p.destroy();
+  scene.destroy();
+});
+
 // ================================================================= U17 ==
-const NEW_FILES = ['../core/music-theory.js', '../core/music-time.js', '../core/music-engine.js', '../features/hushbeat/player.js', '../features/hushbeat/copy.js', '../features/hushbeat/performer.js'].map(here);
+const NEW_FILES = ['../core/music-theory.js', '../core/music-time.js', '../core/music-engine.js', '../features/hushbeat/player.js', '../features/hushbeat/copy.js', '../features/hushbeat/performer.js', '../features/hushbeat/sheet.js'].map(here);
 const AUDIO_FILES = ['../core/music-kits.js', '../core/music-audio.js'].map(here);
 const FX_FILES = ['../core/music-fx.js'].map(here);
 const FEATURE_FILES = ['../features/hushbeat.js'].map(here);

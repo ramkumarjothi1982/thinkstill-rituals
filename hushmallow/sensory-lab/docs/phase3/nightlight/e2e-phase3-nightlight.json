@@ -1,7 +1,7 @@
 {
- "when": "2026-10-14T15:04:08.536Z",
+ "when": "2026-10-14T17:00:12.925Z",
  "part": null,
- "passed": 110,
+ "passed": 173,
  "failed": 0,
  "results": [
   {
@@ -14,13 +14,13 @@
    "scope": "nightlight:open",
    "name": "a painted still is shown (two still canvases), the sky layer, no live realm outside Drift",
    "ok": true,
-   "detail": "{\"route\":\"nightlight\",\"view\":\"session\",\"stills\":2,\"shown\":1,\"realms\":0,\"sky\":1,\"enter\":[{\"t\":1217.1000000014901,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\",\"lum\":0.01964320783350079,\"realm\":\"moonmilk-cove\",\"plain\":false,\"backdrop\":\"dark\",\"sr\":[\"Nightlight on with Noomi until 3:30 PM.\"]}"
+   "detail": "{\"route\":\"nightlight\",\"view\":\"session\",\"stills\":2,\"shown\":1,\"realms\":0,\"sky\":1,\"enter\":[{\"t\":1067.3999999985099,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\",\"lum\":0.01964320783350079,\"realm\":\"moonmilk-cove\",\"plain\":false,\"backdrop\":\"dark\",\"sr\":[\"Nightlight on with Noomi until 5:24 PM.\"]}"
   },
   {
    "scope": "nightlight:open",
    "name": "rose from black with an opacity transition",
    "ok": true,
-   "detail": "{\"enter\":[{\"t\":1217.1000000014901,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\"}"
+   "detail": "{\"enter\":[{\"t\":1067.3999999985099,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\"}"
   },
   {
    "scope": "nightlight:open",
@@ -38,7 +38,7 @@
    "scope": "nightlight:open",
    "name": "night chrome tone and the start announcement",
    "ok": true,
-   "detail": "[\"Nightlight on with Noomi until 3:30 PM.\"]"
+   "detail": "[\"Nightlight on with Noomi until 5:24 PM.\"]"
   },
   {
    "scope": "nightlight:open",
@@ -62,31 +62,31 @@
    "scope": "nightlight:moonlight",
    "name": "Moonlight: the glow floor ≥ 0.45 at defaults (0.55 × the ±12 % swell)",
    "ok": true,
-   "detail": "{\"glow\":0.5802628941064172,\"halo\":{\"amount\":0.973,\"alpha\":0.391,\"gain\":1.028,\"breath\":0},\"mode\":\"moonlight\",\"look\":0.55}"
+   "detail": "{\"glow\":0.5818500018847651,\"halo\":{\"amount\":1,\"alpha\":0.391,\"gain\":1.029,\"breath\":0},\"mode\":\"moonlight\",\"look\":0.55}"
   },
   {
    "scope": "nightlight:moonlight",
    "name": "the halo is drawn (alpha > 0, full amount)",
    "ok": true,
-   "detail": "{\"amount\":0.973,\"alpha\":0.391,\"gain\":1.028,\"breath\":0}"
+   "detail": "{\"amount\":1,\"alpha\":0.391,\"gain\":1.029,\"breath\":0}"
   },
   {
    "scope": "nightlight:moonlight",
    "name": "a tap's glow is lower at +100 ms than at +700 ms (a swell, never a flash)",
    "ok": true,
-   "detail": "0.609 → 0.996"
+   "detail": "0.632 → 0.997"
   },
   {
    "scope": "nightlight:moonlight",
    "name": "20 rapid taps: ≤ 1 brightening start per 2 s (limiter log)",
    "ok": true,
-   "detail": "{\"starts\":2,\"gaps\":[2917.89999999851],\"refused\":9}"
+   "detail": "{\"starts\":2,\"gaps\":[2916.1999999955297],\"refused\":9}"
   },
   {
    "scope": "nightlight:moonlight",
    "name": "Boppo: no hop overlay, body.hop 0, no pop or spark burst",
    "ok": true,
-   "detail": "{\"hop\":0,\"kinds\":[\"nod\",\"nod\",\"nod\",\"nl-grin\",\"nod\",\"nod\",\"nod\"],\"parts\":0,\"tags\":[\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\",\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\"]}"
+   "detail": "{\"hop\":0,\"kinds\":[\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nl-grin\",\"nod\"],\"parts\":0,\"tags\":[\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\",\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\"]}"
   },
   {
    "scope": "nightlight:moonlight",
@@ -99,6 +99,12 @@
    "name": "no console errors",
    "ok": true,
    "detail": ""
+  },
+  {
+   "scope": "nightlight:moonlight:pipzi",
+   "name": "particles take the Mallow's brightness (graded alpha, never full bright at night)",
+   "ok": true,
+   "detail": "[{\"n\":46}]"
   },
   {
    "scope": "nightlight:moonlight:pipzi",
@@ -116,7 +122,7 @@
    "scope": "nightlight:sleepy",
    "name": "force('stretch'): the squeeze goes below −0.2, then a settle above 0, then back to 0",
    "ok": true,
-   "detail": "{\"min\":-0.28,\"max\":0.12,\"back\":4124}"
+   "detail": "{\"min\":-0.28,\"max\":0.12,\"back\":4105}"
   },
   {
    "scope": "nightlight:sleepy",
@@ -170,7 +176,7 @@
    "scope": "nightlight:sleepy:pipzi-30s",
    "name": "pipzi: 30 s of Sleepy with taps: no hop, celebrate or idle overlays and no hop",
    "ok": true,
-   "detail": "{\"seen\":[\"nod\",\"nl-blink\",\"yawn\"],\"hop\":0}"
+   "detail": "{\"seen\":[\"nod\",\"nl-blink\"],\"hop\":0}"
   },
   {
    "scope": "nightlight:sleepy:pipzi-30s",
@@ -410,7 +416,7 @@
    "scope": "nightlight:modes:breathe",
    "name": "Breathe: the Mallow inflates with the breath",
    "ok": true,
-   "detail": "0.3590994681193205"
+   "detail": "0.33073181185674344"
   },
   {
    "scope": "nightlight:modes:sleepy",
@@ -482,7 +488,7 @@
    "scope": "nightlight:exit",
    "name": "Escape: the goodnight, then home",
    "ok": true,
-   "detail": "leaving 726 ms"
+   "detail": "leaving 806 ms"
   },
   {
    "scope": "nightlight:exit",
@@ -650,16 +656,388 @@
    "scope": "nightlight:layout:land-small",
    "name": "the chosen mode is in view in the mode row",
    "ok": true,
-   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · until 3:34 PM\",\"status\":\"flex\"}"
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · until 5:28 PM\",\"status\":\"flex\"}"
   },
   {
    "scope": "nightlight:layout:land-small",
    "name": "landscape: the time moves into the subtitle",
    "ok": true,
-   "detail": "Moonlight · until 3:34 PM"
+   "detail": "Moonlight · until 5:28 PM"
   },
   {
    "scope": "nightlight:layout:land-small",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E2: deep link, 3 s idle: no AudioContext, the bed not alive",
+   "ok": true,
+   "detail": "{\"created\":0,\"bed\":{\"alive\":false,\"wanted\":true,\"on\":true,\"gain\":0,\"fade\":0,\"texture\":\"waves\",\"breathing\":false,\"builds\":0,\"chimes\":0,\"levels\":{\"texture\":0.4,\"pad\":0.6}}}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E2: after a real click the bed builds: its own texture (waves), peak ≤ 0.035",
+   "ok": true,
+   "detail": "{\"alive\":true,\"wanted\":true,\"on\":true,\"gain\":0.035,\"fade\":0.0089,\"texture\":\"waves\",\"breathing\":false,\"builds\":1,\"chimes\":0,\"levels\":{\"texture\":0.4,\"pad\":0.6}}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E2: it rises from silence over ≥ 3 s (master fade still under 0.5 after ~1 s)",
+   "ok": true,
+   "detail": "{\"early\":0.0089,\"later\":0.2389,\"ms\":915}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "Touch sounds off does not silence the night bed (C7)",
+   "ok": true,
+   "detail": "{\"alive\":true,\"fxOn\":false}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E11: Volume sets the trim (0.2); Volume 0 lets the bed go",
+   "ok": true,
+   "detail": "{\"tr\":0.2,\"off\":{\"alive\":false,\"trim\":0}}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E11: Volume 0 rests the audio 10 s after the last touch (suspended, resting)",
+   "ok": true,
+   "detail": "{\"state\":\"suspended\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":0,\"resting\":true,\"keep\":0}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E11: a tap brings the audio and the bed back",
+   "ok": true,
+   "detail": "{\"resting\":false,\"alive\":true}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E7: Quiet: the bed lets go, the Companion is silent, the Sound chip is offered",
+   "ok": true,
+   "detail": "{\"alive\":false,\"quiet\":true,\"chip\":\"sound\"}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E7: silent Quiet rests the audio within 11 s of the last touch",
+   "ok": true,
+   "detail": "true"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E7: Sound on: a faint pad only, touches and voice return",
+   "ok": true,
+   "detail": "{\"alive\":true,\"quiet\":false,\"pressed\":\"true\",\"lv\":{\"texture\":0,\"pad\":0.5}}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E7: Sound off again: the bed lets go within 3.5 s",
+   "ok": true,
+   "detail": "{\"alive\":false,\"quiet\":true,\"ms\":213}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "E7: Quiet idle: ≤ 10 × 3 × 1.3 + 2 renders in 3 s",
+   "ok": true,
+   "detail": "{\"renders\":22,\"cap\":8}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "Drift: a firefly's glint rings a soft bell",
+   "ok": true,
+   "detail": "{\"mode\":\"drift\",\"chimes\":1,\"alive\":true}"
+  },
+  {
+   "scope": "nightlight:sound",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E12: Timer 10: the status shows the local end time; a 200 s fade",
+   "ok": true,
+   "detail": "{\"full\":\"Until 5:09 PM\",\"want\":\"Until 5:09 PM\",\"span\":600000,\"fadeMs\":200000}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: into the fade: \"Fading · until\", the \"A little longer\" chip, announced",
+   "ok": true,
+   "detail": "{\"f0\":{\"state\":\"fading\",\"chip\":\"longer\"},\"f1\":{\"full\":\"Fading · until 5:09 PM\",\"sr\":[\"Nightlight on with Boppo until 5:09 PM.\",\"Fading out.\"]}}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: levels in (0, 1) that never rise; the bed is lower",
+   "ok": true,
+   "detail": "[{\"world\":0.9956,\"mallow\":1,\"sound\":0.9882,\"gain\":0.034587162631526905},{\"world\":0.9509,\"mallow\":1,\"sound\":0.8715,\"gain\":0.030501769127098094},{\"world\":0.9235,\"mallow\":1,\"sound\":0.8031,\"gain\":0.028108869066845905},{\"world\":0.9032,\"mallow\":1,\"sound\":0.7561,\"gain\":0.02646194093837962}]"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: \"A little longer\": endsAt + 10 min, back to steady, announced",
+   "ok": true,
+   "detail": "{\"endsAt\":1791998344543,\"state\":\"steady\",\"sr\":\"Ten more minutes.\",\"chip\":null}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: the light eases back up (not yet at +300 ms; there later)",
+   "ok": true,
+   "detail": "{\"l0\":0.8873,\"l1\":0.8921,\"l2\":0.9998,\"ms\":2503}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: deep in the fade it falls asleep: the asleep face (i 0.75), slower movement",
+   "ok": true,
+   "detail": "{\"fade\":{\"asleep\":true,\"step\":0.75,\"sighed\":true,\"eyeOpen\":0,\"blinkRate\":0.34,\"motionScale\":0.407,\"inflate\":0.606},\"rest\":{\"mix\":{\"calm\":0.75,\"exhausted\":0.25},\"i\":0.75},\"ms\":0.40654795268349003}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: Boppo's open eyes close (eyeOpen set toward 0), blinks slow",
+   "ok": true,
+   "detail": "{\"eye\":0,\"fade\":{\"asleep\":true,\"step\":0.75,\"sighed\":true,\"eyeOpen\":0,\"blinkRate\":0.34,\"motionScale\":0.407,\"inflate\":0.606}}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: one soft sigh as the world fell asleep; the world repainted heavier",
+   "ok": true,
+   "detail": "{\"reacts\":[\"sigh\"],\"step\":0.75,\"paints\":[1,2]}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: fading deep (world below 0.3): the frame cap drops to 8",
+   "ok": true,
+   "detail": "8 (during the sigh: 24)"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: a live end: the end view with the sleeping Mallow (snapshot), not skipped, focus on Again",
+   "ok": true,
+   "detail": "{\"state\":\"ended\",\"endsAt\":1792001180871,\"skipped\":false,\"snap\":true,\"line\":\"Soft bounce… softer… sleepy sunshine.\",\"sr\":[\"Nightlight finished.\"],\"resting\":false,\"lift\":\"translateY(-48px)\",\"view\":\"end\",\"skew\":4017896}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: only the snapshot canvas is left (no rig, realm, still or sky)",
+   "ok": true,
+   "detail": "[\"nl-snap\"]"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: the end card: the finish time (or morning) and a rest line in quotes, announced",
+   "ok": true,
+   "detail": "{\"cap\":\"Nightlight finished at 6:06 PM.\",\"line\":\"“Soft bounce… softer… sleepy sunshine.” Boppo\"}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: nothing runs: voices gone within 3.5 s, the audio rests after 2.2 s",
+   "ok": true,
+   "detail": "{\"state\":\"suspended\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":0,\"ms\":2243}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E13: the rAF probe counts ≤ 2 callbacks in 2 s",
+   "ok": true,
+   "detail": "0"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E30: Again: a fresh session (new deadline, new record)",
+   "ok": true,
+   "detail": "{\"ag\":{\"view\":\"session\",\"endsAt\":1792004786432,\"rec\":{\"v\":1,\"startedAt\":1792001186432,\"endsAt\":1792004786432,\"fadeFrom\":1792004306432,\"minutes\":60,\"fade\":true,\"mode\":\"moonlight\",\"extra\":0},\"state\":\"arriving\"},\"rec0\":\"{\\\"v\\\":1,\\\"startedAt\\\":1791997580871,\\\"endsAt\\\":1792001180871,\\\"fadeFrom\\\":1792000700871,\\\"minutes\\\":60,\\\"fade\\\":true,\\\"mode\\\":\\\"moonlight\\\",\\\"extra\\\":0}\"}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "Fade Off: a 10 s settle instead of the long fade",
+   "ok": true,
+   "detail": "10000"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "E30: Done: home, record cleared, trim 1",
+   "ok": true,
+   "detail": "{\"nl\":null,\"rec\":null,\"trim\":1}"
+  },
+  {
+   "scope": "nightlight:fade",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E16: hidden: veiled at once (opacity 0, no transition), the rig frozen, the audio suspended",
+   "ok": true,
+   "detail": "{\"veiled\":true,\"op\":\"0\",\"tr\":\"0s\",\"t\":[0.2007749999999999,0.2007749999999999],\"s\":\"suspended\"}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E16: back after 5 min: the same deadline; the shown levels ≤ the clock",
+   "ok": true,
+   "detail": "{\"endsAt\":1791998973586,\"shown\":{\"world\":1,\"mallow\":1,\"sound\":1},\"clock\":{\"world\":1,\"mallow\":1,\"sound\":1,\"u\":0},\"veiled\":true}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E16: the veil lifts with a 600 ms transition",
+   "ok": true,
+   "detail": "{\"cls\":\"screen nightlight nl-unveil\",\"tr\":\"0.6s\",\"veiled\":false}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E16: the bed rebuilds from silence (a new build, fading in)",
+   "ok": true,
+   "detail": "{\"alive\":true,\"wanted\":true,\"on\":true,\"gain\":0.035,\"fade\":0.0038,\"texture\":\"waves\",\"breathing\":false,\"builds\":2,\"chimes\":0,\"levels\":{\"texture\":0.4,\"pad\":0.6}}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E16: away more than 30 s: its \"still here\" sign (Noomi peeks)",
+   "ok": true,
+   "detail": "[\"peek\"]"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E18: pagehide veils, pageshow lifts; frozen and resumed while hidden stays veiled until visible",
+   "ok": true,
+   "detail": "{\"ph\":true,\"ps\":false,\"fz\":true,\"fr\":false}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E20: \"Tap to bring the sound back\" within 2 s, announced once, the chrome woken to show it",
+   "ok": true,
+   "detail": "{\"chip\":\"soundBack\",\"sr\":[\"Nightlight on with Noomi until 5:29 PM.\",\"Sound paused. Tap to bring it back.\"],\"asleep\":false}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E20: a real tap brings the sound and the bed back; the chip goes",
+   "ok": true,
+   "detail": "{\"chip\":null,\"alive\":true,\"ready\":true}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E17: hidden across the fade start: back fading, levels match the clock at once, no late sigh",
+   "ok": true,
+   "detail": "{\"fs\":{\"state\":\"fading\",\"shown\":{\"world\":0.1035,\"mallow\":0.6692,\"sound\":0.1597},\"clock\":{\"world\":0.09561802306423062,\"mallow\":0.6553823519705408,\"sound\":0.15471602781684024,\"u\":0.6066604166666667},\"sighed\":true},\"fsr\":[]}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E17: hidden across the end: the end view at once (skipped, no snapshot), focus on Again",
+   "ok": true,
+   "detail": "{\"d\":{\"state\":\"ended\",\"endsAt\":1791998973586,\"skipped\":true,\"snap\":false,\"line\":\"Moonmilk and slow breaths. Stay as long as you like.\",\"sr\":[\"Nightlight finished.\"],\"resting\":true,\"lift\":\"\",\"view\":\"end\",\"skew\":1845694},\"focus\":\"Again\"}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E17: quietly: no voice or motif, the audio resting",
+   "ok": true,
+   "detail": "{\"said\":[],\"s\":{\"state\":\"running\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":0}}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "E17: the audio context ends up suspended (even with a resume pending on return)",
+   "ok": true,
+   "detail": "{\"state\":\"suspended\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":0}"
+  },
+  {
+   "scope": "nightlight:background",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:background:reload",
+   "name": "E19: a reload mid-session resumes the same deadline and mode (no new start announcement)",
+   "ok": true,
+   "detail": "{\"a\":{\"endsAt\":1791998390507,\"mode\":\"drift\"},\"b\":{\"endsAt\":1791998390507,\"mode\":\"drift\",\"sr\":[]}}"
+  },
+  {
+   "scope": "nightlight:background:reload",
+   "name": "E19: a reload after the end (< 6 h) shows the end view, quietly",
+   "ok": true,
+   "detail": "{\"state\":\"ended\",\"endsAt\":1791997134217,\"skipped\":true,\"snap\":false,\"line\":\"Rest here as long as you like. The rain can wait.\",\"sr\":[\"Nightlight finished.\"],\"resting\":true,\"lift\":\"\",\"view\":\"end\",\"skew\":0}"
+  },
+  {
+   "scope": "nightlight:background:reload",
+   "name": "E19: a record left more than 5 s ago starts fresh",
+   "ok": true,
+   "detail": "{\"mode\":\"drift\",\"left\":1198630,\"sr\":[\"Nightlight on with Blubi until 5:19 PM.\"]}"
+  },
+  {
+   "scope": "nightlight:background:reload",
+   "name": "E19: a malformed record starts fresh",
+   "ok": true,
+   "detail": "{\"view\":\"session\",\"state\":\"arriving\"}"
+  },
+  {
+   "scope": "nightlight:background:reload",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:wake",
+   "name": "E21: no wake lock by default",
+   "ok": true,
+   "detail": "{\"w\":{\"requests\":0,\"releases\":0,\"held\":0},\"d\":{\"supported\":true,\"wanted\":false,\"held\":false,\"failed\":false,\"requests\":0}}"
+  },
+  {
+   "scope": "nightlight:wake",
+   "name": "E21: opted in: requested; let go when hidden (no request while hidden); asked again on return",
+   "ok": true,
+   "detail": "{\"b\":{\"w\":{\"requests\":1,\"releases\":0,\"held\":1},\"d\":{\"supported\":true,\"wanted\":true,\"held\":true,\"failed\":false,\"requests\":1}},\"c\":{\"w\":{\"requests\":1,\"releases\":1,\"held\":0},\"d\":{\"supported\":true,\"wanted\":true,\"held\":false,\"failed\":false,\"requests\":1}},\"d\":{\"w\":{\"requests\":2,\"releases\":1,\"held\":1},\"d\":{\"supported\":true,\"wanted\":true,\"held\":true,\"failed\":false,\"requests\":2}}}"
+  },
+  {
+   "scope": "nightlight:wake",
+   "name": "E21: let go at the end",
+   "ok": true,
+   "detail": "{\"requests\":2,\"releases\":2,\"held\":0}"
+  },
+  {
+   "scope": "nightlight:wake",
+   "name": "E21: a new session asks again (the setting persists); Escape lets it go",
+   "ok": true,
+   "detail": "{\"f\":{\"requests\":3,\"releases\":2,\"held\":1},\"g\":{\"requests\":3,\"releases\":3,\"held\":0}}"
+  },
+  {
+   "scope": "nightlight:wake",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:wake:unsupported",
+   "name": "E21: unsupported: supported false, nothing wanted, no errors",
+   "ok": true,
+   "detail": "{\"u\":{\"supported\":false,\"wanted\":false,\"held\":false,\"failed\":false,\"requests\":0},\"errors\":[]}"
+  },
+  {
+   "scope": "nightlight:wake:refused",
+   "name": "E21: a refusal switches Keep screen on back to Off (stored), never retried",
+   "ok": true,
+   "detail": "{\"d\":{\"supported\":true,\"wanted\":false,\"held\":false,\"failed\":true,\"requests\":1},\"s\":false,\"stored\":false}"
+  },
+  {
+   "scope": "nightlight:wake:refused",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:press",
+   "name": "E4: an off-body still press leads the in-breath while held; the Companion sees no hold",
+   "ok": true,
+   "detail": "{\"leading\":true,\"phase\":\"in\",\"ev\":[]}"
+  },
+  {
+   "scope": "nightlight:press",
+   "name": "E4: letting go breathes out",
+   "ok": true,
+   "detail": "{\"leading\":false,\"phase\":\"out\"}"
+  },
+  {
+   "scope": "nightlight:press",
+   "name": "E4: B held leads the breath too",
+   "ok": true,
+   "detail": "true"
+  },
+  {
+   "scope": "nightlight:press",
    "name": "no console errors",
    "ok": true,
    "detail": ""

@@ -24,6 +24,24 @@
 //   exit       Escape and Close: the goodnight, home, nothing left behind, record cleared, trim 1;
 //              three visits leak no listeners, timers, rAF, prefs or Comfort DNA listeners, canvases or sprites
 //   layout     phone, 320 × 568 and 568 × 320: no overlap, on screen, targets ≥ 40 px, the Mallow in its band
+//
+// Slice 3:
+//   sound      E2: no AudioContext and no bed before a gesture; after a real click the bed builds (≤ 0.035,
+//              rising over ≥ 3 s), with Touch sounds off too (SHARED C7). E11: Volume is the trim; 0 lets the
+//              bed go and rests the audio. E7: Quiet is silent and rests; its Sound chip brings a pad and takes
+//              it away; few renders while idle. Drift's bell rings on a glint
+//   fade       E12: the end time in the status row. E13: into the fade (status, chip, falling levels and bed),
+//              "A little longer" (+10 min, a rise over ≥ 2 s, announced), deep in the fade (asleep, eyes closed,
+//              slower, one sigh, heavier repaints), then a live end: the end view with the sleeping Mallow
+//              above the card, nothing running, the audio resting. E30: Again from black, Done home. Fade Off
+//   background E16: hidden mid-session (veiled, frozen, suspended), back after 5 min (same deadline, levels from
+//              the clock under the veil, the veil lifts with a transition, the bed rebuilds from silence, the
+//              "still here" sign). E17: hidden across the fade start (no late sigh) and across the end (the end
+//              view at once, quietly). E18: pagehide / pageshow and CDP freeze / resume. E19: reloads (resume,
+//              ended, left, malformed). E20: the audio will not resume → "Tap to bring the sound back"
+//   wake       E21: no wake lock by default; opted in: requested, let go when hidden, asked again on return,
+//              let go at the end and on exit; unsupported and refused are handled quietly
+//   press      E4 (part): an off-body still press leads the breath without the Companion seeing a hold
 
 const path = require('path');
 const H = require('./lib/harness.cjs');
@@ -58,6 +76,11 @@ async function openNl(browser, vp, mallow, { prefs = {}, initScripts = [], hash 
 async function ready(page) {
   await H.waitRig(page, { timeout: T });
   await page.waitForFunction(() => __lab.nightlight?.view === 'session' && __lab.nightlight.state !== 'booting' && !document.querySelector('.nightlight.nl-entering'), null, { timeout: T });
+}
+/** Wake the chrome (asleep after 8 s without input, its controls let taps fall through), as a person's first touch would. */
+async function wakeUi(page) {
+  await page.keyboard.press('Shift');
+  await page.waitForFunction(() => !document.querySelector('.nightlight.nl-asleep'), null, { timeout: 5000 });
 }
 /** Page px of the Mallow's middle. */
 async function bodyPoint(page) { const g = await H.geo(page); return { x: g.ox + g.cx, y: g.oy + g.mid }; }
@@ -146,16 +169,19 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         pf.burst = (spec, o) => { for (const x of [].concat(spec)) window.__bursts.push({ kind: x.kind, n: x.n }); return burst(spec, o); };
       });
       let hop = 0;
-      const kinds = new Set();
+      const kinds = new Set(), sparks = [];
       for (let i = 0; i < 4; i++) {
         await r2.page.mouse.click(q.x, q.y);
         for (let k = 0; k < 4; k++) {
-          const s = await nl(r2.page, () => { const r = __lab.companion.rig; return { hop: r.body.hop, kinds: r.overlays.map((o) => o.kind) }; });
+          const s = await nl(r2.page, () => { const r = __lab.companion.rig, g = r.grade; return { hop: r.body.hop, kinds: r.overlays.map((o) => o.kind), k: (g[0] + g[1] + g[2]) / 3, parts: r.particles.list.map((p) => ({ kind: p.kind, alpha: p.alpha, graded: !!p.nlGraded })) }; });   // graded as they are born, ambient ones too
           hop = Math.max(hop, s.hop); s.kinds.forEach((x) => kinds.add(x));
+          for (const pt of s.parts) sparks.push({ ...pt, k: s.k });
           await sleep(150);
         }
         await sleep(1000);
       }
+      check(`${scope}:pipzi`, "particles take the Mallow's brightness (graded alpha, never full bright at night)",
+        sparks.length > 0 && sparks.every((pt) => pt.graded && pt.alpha <= pt.k + 0.05 && pt.alpha < 0.95), JSON.stringify(sparks.filter((pt) => !(pt.graded && pt.alpha <= pt.k + 0.05 && pt.alpha < 0.95)).slice(0, 6).concat([{ n: sparks.length }])));
       const bursts = await nl(r2.page, () => window.__bursts);
       check(`${scope}:pipzi`, 'Pipzi: no hop; its tap answer is whisper sparks only (every burst ≤ 2 sparks)',
         hop === 0 && !kinds.has('hop') && !kinds.has('tap') && bursts.length >= 1 && bursts.every((b) => b.kind === 'spark' && b.n <= 2), JSON.stringify({ hop, kinds: [...kinds], bursts }));
@@ -399,6 +425,355 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
       } finally { await r.ctx.close(); }
     }
   });
+
+  // ================================================================ slice 3 --
+  // ----------------------------------------------------------- E2, E11, E7 --
+  if (only('sound')) await guard(`${SCOPE}:sound`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'noomi', { initScripts: [H.INIT.audioSpy] });
+    own(ctx);
+    await sleep(3000);   // idle on a deep link: nothing may sound before a gesture
+    const a = await nl(page, () => ({ created: __audio().created, bed: __lab.nightlight.bed.debug(), ready: __lab.sound.ready }));
+    check(scope, 'E2: deep link, 3 s idle: no AudioContext, the bed not alive', a.created === 0 && !a.bed.alive && !a.ready, JSON.stringify(a));
+    const p = await bodyPoint(page);
+    await page.mouse.click(p.x, p.y);
+    const b0 = await until(page, () => __lab.nightlight.bed.debug(), (d) => d.alive, 15000, 60);
+    const t0 = Date.now();
+    const early = b0.fade;
+    await sleep(900);
+    const b1 = await nl(page, () => __lab.nightlight.bed.debug());
+    check(scope, 'E2: after a real click the bed builds: its own texture (waves), peak ≤ 0.035', b0.alive && b0.texture === 'waves' && b0.gain > 0 && b0.gain <= 0.035, JSON.stringify(b0));
+    check(scope, 'E2: it rises from silence over ≥ 3 s (master fade still under 0.5 after ~1 s)', early < 0.3 && b1.fade > early && b1.fade < 0.5, JSON.stringify({ early, later: b1.fade, ms: Date.now() - t0 }));
+    // Touch sounds off: the bed has its own controls (SHARED C7)
+    await nl(page, () => __lab.sound.setParts({ fx: false }));
+    await sleep(1600);
+    const fx = await nl(page, () => ({ alive: __lab.nightlight.bed.alive, fxOn: __lab.sound.fxOn }));
+    check(scope, 'Touch sounds off does not silence the night bed (C7)', fx.alive && fx.fxOn === false, JSON.stringify(fx));
+    await nl(page, () => __lab.sound.setParts({ fx: true }));
+    // E11: Volume is the session trim; 0 lets the bed go and then rests the audio
+    await nl(page, () => __lab.nightlight.set('volume', 0.2));
+    const tr = await nl(page, () => __lab.sound.debug().trim);
+    await nl(page, () => __lab.nightlight.set('volume', 0));
+    const off = await until(page, () => ({ alive: __lab.nightlight.bed.alive, trim: __lab.sound.debug().trim }), (v) => !v.alive, 4000);
+    check(scope, 'E11: Volume sets the trim (0.2); Volume 0 lets the bed go', tr === 0.2 && !off.alive && off.trim === 0, JSON.stringify({ tr, off }));
+    const rest = await until(page, () => __lab.sound.debug(), (d) => d.resting, 16000, 250);
+    check(scope, 'E11: Volume 0 rests the audio 10 s after the last touch (suspended, resting)', rest.resting && rest.state === 'suspended', JSON.stringify(rest));
+    await nl(page, () => __lab.nightlight.set('volume', 0.5));
+    await page.mouse.click(p.x, p.y);   // the next gesture wakes it
+    const back = await until(page, () => ({ resting: __lab.sound.resting, alive: __lab.nightlight.bed.alive }), (v) => !v.resting && v.alive, 15000);
+    check(scope, 'E11: a tap brings the audio and the bed back', !back.resting && back.alive, JSON.stringify(back));
+    // E7: Quiet is silent and rests; its Sound chip brings a faint pad and takes it away again
+    await page.focus('.stage');
+    await page.keyboard.press('Digit5');
+    const q0 = await until(page, () => ({ alive: __lab.nightlight.bed.alive, quiet: __lab.nightlight.debug().quiet, chip: __lab.nightlight.debug().chip }), (v) => !v.alive, 4000);
+    check(scope, 'E7: Quiet: the bed lets go, the Companion is silent, the Sound chip is offered', !q0.alive && q0.quiet && q0.chip === 'sound', JSON.stringify(q0));
+    const qr = await until(page, () => __lab.sound.debug().resting, (v) => v, 16000, 250);
+    check(scope, 'E7: silent Quiet rests the audio within 11 s of the last touch', qr === true, `${qr}`);
+    await wakeUi(page);
+    await page.click('.nl-chip[data-chip="sound"]');
+    const q1 = await until(page, () => ({ alive: __lab.nightlight.bed.alive, quiet: __lab.nightlight.debug().quiet, pressed: document.querySelector('.nl-chip[data-chip="sound"]').getAttribute('aria-pressed'), lv: __lab.nightlight.bed.debug().levels }), (v) => v.alive, 15000);
+    check(scope, 'E7: Sound on: a faint pad only, touches and voice return', q1.alive && !q1.quiet && q1.pressed === 'true' && q1.lv.texture === 0 && q1.lv.pad > 0 && q1.lv.pad <= 0.5, JSON.stringify(q1));
+    await wakeUi(page);
+    await page.click('.nl-chip[data-chip="sound"]');
+    const tOff = Date.now();
+    const q2 = await until(page, () => ({ alive: __lab.nightlight.bed.alive, quiet: __lab.nightlight.debug().quiet }), (v) => !v.alive, 3500, 80);
+    check(scope, 'E7: Sound off again: the bed lets go within 3.5 s', !q2.alive && q2.quiet, JSON.stringify({ ...q2, ms: Date.now() - tOff }));
+    await sleep(3000);   // past the touch boost
+    const r0 = await nl(page, () => __lab.companion.rig.renders);
+    await sleep(3000);
+    const r1 = await nl(page, () => ({ renders: __lab.companion.rig.renders, cap: __lab.companion.rig.frameCap }));
+    check(scope, 'E7: Quiet idle: ≤ 10 × 3 × 1.3 + 2 renders in 3 s', r1.renders - r0 <= 41, JSON.stringify({ renders: r1.renders - r0, cap: r1.cap }));
+    // Drift: a firefly's glint rings a soft bell now and then
+    await page.focus('.stage');   // digits change mode only from the stage (the chip had focus)
+    await page.keyboard.press('Digit4');
+    const ch = await until(page, () => ({ ...__lab.nightlight.bed.debug(), mode: __lab.nightlight.mode }), (d) => d.chimes >= 1, 60000, 500);
+    check(scope, "Drift: a firefly's glint rings a soft bell", ch.mode === 'drift' && ch.chimes >= 1 && ch.alive, JSON.stringify({ mode: ch.mode, chimes: ch.chimes, alive: ch.alive }));
+    noErrors(scope, errors);
+  });
+
+  // ------------------------------------------------------- E12, E13, E30 --
+  if (only('fade')) await guard(`${SCOPE}:fade`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'boppo', { initScripts: [H.INIT.rafProbe], prefs: { nightlight: { minutes: 10 } } });
+    own(ctx);
+    const p = await bodyPoint(page);
+    await page.mouse.click(p.x, p.y);
+    await until(page, () => __lab.nightlight.bed.alive, (v) => v, 15000);
+    const st = await nl(page, () => {
+      const n = __lab.nightlight, c = n.clock, t = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(c.endsAt);
+      return { full: document.querySelector('.nl-st-full').textContent, want: `Until ${t}`, span: c.endsAt - c.startedAt, fadeMs: c.fadeMs };
+    });
+    check(scope, 'E12: Timer 10: the status shows the local end time; a 200 s fade', st.full === st.want && st.span === 600000 && st.fadeMs === 200000, JSON.stringify(st));
+    // into the fade
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.fadeFrom - c.now() + 30000); });
+    const f0 = await until(page, () => ({ state: __lab.nightlight.state, chip: __lab.nightlight.debug().chip }), (v) => v.state === 'fading' && v.chip === 'longer', 10000);
+    const samples = [];
+    for (let i = 0; i < 4; i++) { samples.push(await nl(page, () => ({ ...__lab.nightlight.debug().levels, gain: __lab.nightlight.bed.gain }))); await sleep(900); }
+    const f1 = await nl(page, () => ({ full: document.querySelector('.nl-st-full').textContent, sr: __lab.nightlight.debug().sr }));
+    const dec = samples.every((v, i) => i === 0 || (v.world <= samples[i - 1].world + 1e-9 && v.mallow <= samples[i - 1].mallow + 1e-9));
+    const last = samples.at(-1);
+    check(scope, 'E13: into the fade: "Fading · until", the "A little longer" chip, announced', f0.state === 'fading' && f0.chip === 'longer' && /^Fading · until /.test(f1.full) && f1.sr.includes('Fading out.'), JSON.stringify({ f0, f1 }));
+    check(scope, 'E13: levels in (0, 1) that never rise; the bed is lower', dec && last.world < 1 && last.world > 0 && last.world < samples[0].world && last.gain < 0.035, JSON.stringify(samples));
+    // "A little longer": +10 min, the light eases back up over ≥ 2 s
+    const e0 = await nl(page, () => __lab.nightlight.clock.endsAt);
+    await wakeUi(page);
+    await page.click('.nl-chip[data-chip="longer"]');
+    const t0 = Date.now();
+    const l0 = await nl(page, () => __lab.nightlight.debug().levels.world);
+    await sleep(Math.max(0, 300 - (Date.now() - t0)));
+    const l1 = await nl(page, () => __lab.nightlight.debug().levels.world);
+    const l2 = await until(page, () => __lab.nightlight.debug().levels.world, (v) => v > 0.999, 20000, 150);
+    const e1 = await nl(page, () => ({ endsAt: __lab.nightlight.clock.endsAt, state: __lab.nightlight.state, sr: __lab.nightlight.debug().sr.slice(-1)[0], chip: __lab.nightlight.debug().chip }));
+    check(scope, 'E13: "A little longer": endsAt + 10 min, back to steady, announced', e1.endsAt - e0 === 600000 && e1.state === 'steady' && e1.sr === 'Ten more minutes.' && e1.chip !== 'longer', JSON.stringify(e1));
+    check(scope, 'E13: the light eases back up (not yet at +300 ms; there later)', l1 < 0.98 && l2 > 0.999 && Date.now() - t0 >= 1900, JSON.stringify({ l0, l1, l2, ms: Date.now() - t0 }));
+    // deep in the fade: asleep, eyes closing, slower, one sigh, heavier repaints
+    await nl(page, () => {
+      const rig = __lab.companion.rig, react = rig.react.bind(rig);
+      window.__reacts = [];
+      rig.react = (k, o) => { window.__reacts.push(k); return react(k, o); };
+    });
+    const p0 = await nl(page, () => __lab.nightlight.world.debug().paints);
+    // a 60 min timer (a 480 s fade) leaves time to look at the deep fade before it ends (a timer change restarts from now)
+    await nl(page, () => __lab.nightlight.set('minutes', 60));
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.fadeFrom - c.now() + 0.93 * c.fadeMs); });
+    const deep = await until(page, () => { const d = __lab.nightlight.debug(); return { lv: d.levels, fade: d.fade, rest: __lab.companion.restOverride, eye: __lab.companion.rig.faceOverride.set.eyeOpen, ms: __lab.companion.rig.motionScale, cap: d.cap, paints: d.world.paints, reacts: window.__reacts.slice() }; },
+      (v) => v.lv.mallow < 0.12 && v.fade.sighed, 90000, 300);
+    check(scope, 'E13: deep in the fade it falls asleep: the asleep face (i 0.75), slower movement', deep.fade.asleep && deep.rest?.i === 0.75 && deep.ms < 0.6 && deep.ms >= 0.3 - 1e-9, JSON.stringify({ fade: deep.fade, rest: deep.rest, ms: deep.ms }));
+    check(scope, "E13: Boppo's open eyes close (eyeOpen set toward 0), blinks slow", deep.eye != null && deep.eye <= 0.05 && deep.fade.blinkRate != null && deep.fade.blinkRate < 0.4, JSON.stringify({ eye: deep.eye, fade: deep.fade }));
+    check(scope, 'E13: one soft sigh as the world fell asleep; the world repainted heavier', deep.reacts.filter((k) => k === 'sigh').length === 1 && deep.fade.step === 0.75 && deep.paints > p0, JSON.stringify({ reacts: deep.reacts, step: deep.fade.step, paints: [p0, deep.paints] }));
+    const capDeep = await until(page, () => __lab.companion?.rig?.frameCap ?? -1, (v) => v != null && v <= 8, 8000, 200);   // after the sigh's own boost
+    check(scope, 'E13: fading deep (world below 0.3): the frame cap drops to 8', capDeep === 8, `${capDeep} (during the sigh: ${deep.cap})`);
+    // a live end
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.endsAt - c.now() + 1000); });
+    await page.waitForFunction(() => __lab.nightlight?.view === 'end', null, { timeout: T });
+    const tEnd = Date.now();
+    const end = await nl(page, () => {
+      const d = __lab.nightlight.debug(), card = document.querySelector('.nl-endcard'), snap = document.querySelector('.nl-snap');
+      const cr = card.getBoundingClientRect();
+      return { d, canvases: [...document.querySelectorAll('canvas')].map((c) => c.className || 'rig'), focus: document.activeElement?.textContent,
+        cap: card.querySelector('.end-cap').textContent, line: card.querySelector('.end-line')?.textContent, cardTop: cr.top, snapLift: snap?.style.transform || '' };
+    });
+    check(scope, 'E13: a live end: the end view with the sleeping Mallow (snapshot), not skipped, focus on Again', end.d.view === 'end' && !end.d.skipped && end.d.snap && end.focus === 'Again', JSON.stringify(end.d));
+    check(scope, 'E13: only the snapshot canvas is left (no rig, realm, still or sky)', end.canvases.length === 1 && end.canvases[0] === 'nl-snap', JSON.stringify(end.canvases));
+    check(scope, 'E13: the end card: the finish time (or morning) and a rest line in quotes, announced', /^(Nightlight finished at .+\.|Good morning\.)$/.test(end.cap) && /^“.+” Boppo$/.test(end.line || '') && end.d.sr.includes('Nightlight finished.'), JSON.stringify({ cap: end.cap, line: end.line }));
+    const rest = await until(page, () => ({ s: __lab.sound.debug(), raf: __raf(2000).inWindow }), (v) => v.s.resting && v.s.live === 0, 6000, 200);
+    check(scope, 'E13: nothing runs: voices gone within 3.5 s, the audio rests after 2.2 s', rest.s.live === 0 && rest.s.resting && rest.s.state === 'suspended' && Date.now() - tEnd < 7000, JSON.stringify({ ...rest.s, ms: Date.now() - tEnd }));
+    await sleep(2100);
+    const raf = await nl(page, () => __raf(2000).inWindow);
+    check(scope, 'E13: the rAF probe counts ≤ 2 callbacks in 2 s', raf <= 2, `${raf}`);
+    await H.shot(page, out, 'nightlight-phone-end');
+    // E30: Again starts afresh from black; Done goes home
+    const rec0 = await nl(page, () => sessionStorage.getItem('hm.sensorylab.nightlight.session.v1'));
+    await page.click('.nl-endcard button.primary');
+    await ready(page);
+    const ag = await nl(page, () => ({ view: __lab.nightlight.view, endsAt: __lab.nightlight.clock.endsAt, rec: JSON.parse(sessionStorage.getItem('hm.sensorylab.nightlight.session.v1') || 'null'), state: __lab.nightlight.state }));
+    check(scope, 'E30: Again: a fresh session (new deadline, new record)', ag.view === 'session' && ag.rec && ag.rec.endsAt === ag.endsAt && ag.endsAt > (JSON.parse(rec0 || '{}').endsAt || 0), JSON.stringify({ ag, rec0 }));
+    // fade off: a 10 s settle
+    await nl(page, () => __lab.nightlight.set('fade', false));
+    const fo = await nl(page, () => __lab.nightlight.clock.fadeMs);
+    check(scope, 'Fade Off: a 10 s settle instead of the long fade', fo === 10000, `${fo}`);
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.endsAt - c.now() + 1000); });
+    await page.waitForFunction(() => __lab.nightlight?.view === 'end', null, { timeout: T });
+    await page.click('.nl-endcard button:not(.primary)');
+    await page.waitForFunction(() => __lab.route === 'home', null, { timeout: T });
+    const dn = await nl(page, () => ({ nl: __lab.nightlight, rec: sessionStorage.getItem('hm.sensorylab.nightlight.session.v1'), trim: __lab.sound.trim }));
+    check(scope, 'E30: Done: home, record cleared, trim 1', dn.nl === null && dn.rec === null && dn.trim === 1, JSON.stringify(dn));
+    noErrors(scope, errors);
+  });
+
+  // ------------------------------------------------- E16, E17, E18, E19, E20 --
+  if (only('background')) await guard(`${SCOPE}:background`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'noomi', { prefs: { nightlight: { minutes: 30 } } });
+    own(ctx);
+    const p = await bodyPoint(page);
+    await page.mouse.click(p.x, p.y);
+    await until(page, () => __lab.nightlight.bed.alive, (v) => v, 15000);
+    const e0 = await nl(page, () => __lab.nightlight.clock.endsAt);
+    // E16: hidden mid-session
+    await H.setHidden(page, true);
+    await sleep(300);
+    const h0 = await nl(page, () => ({ t: __lab.companion.rig.time, s: __lab.sound.debug().state, d: __lab.nightlight.debug(), op: getComputedStyle(document.querySelector('.screen.nightlight')).opacity, tr: getComputedStyle(document.querySelector('.screen.nightlight')).transitionDuration }));
+    await sleep(1000);
+    const h1 = await nl(page, () => __lab.companion.rig.time);
+    check(scope, 'E16: hidden: veiled at once (opacity 0, no transition), the rig frozen, the audio suspended', h0.d.veiled && h0.op === '0' && /^0s/.test(h0.tr) && h1 === h0.t && h0.s === 'suspended' && !h0.d.bed.alive, JSON.stringify({ veiled: h0.d.veiled, op: h0.op, tr: h0.tr, t: [h0.t, h1], s: h0.s }));
+    await nl(page, () => __lab.nightlight.skew(5 * 60e3));
+    await H.setHidden(page, false);
+    const v0 = await nl(page, () => { const n = __lab.nightlight, c = n.clock, lv = c.levels(c.now(), {}); return { endsAt: c.endsAt, shown: n.debug().levels, clock: lv, veiled: n.debug().veiled }; });
+    const v1 = await until(page, () => ({ cls: document.querySelector('.screen.nightlight').className, tr: getComputedStyle(document.querySelector('.screen.nightlight')).transitionDuration, veiled: __lab.nightlight.debug().veiled }), (v) => !v.veiled, 5000, 30);
+    check(scope, 'E16: back after 5 min: the same deadline; the shown levels ≤ the clock', v0.endsAt === e0 && v0.shown.world <= v0.clock.world + 1e-6 && v0.shown.mallow <= v0.clock.mallow + 1e-6, JSON.stringify(v0));
+    check(scope, 'E16: the veil lifts with a 600 ms transition', !v1.veiled && /nl-unveil/.test(v1.cls) && v1.tr.startsWith('0.6s'), JSON.stringify(v1));
+    const bb = await until(page, () => __lab.nightlight.bed.debug(), (d) => d.alive, 15000, 60);
+    check(scope, 'E16: the bed rebuilds from silence (a new build, fading in)', bb.alive && bb.builds >= 2 && bb.fade < 0.5, JSON.stringify(bb));
+    const sh = await until(page, () => __lab.nightlight.moments.played.slice(), (v) => v.includes('peek'), 6000);
+    check(scope, 'E16: away more than 30 s: its "still here" sign (Noomi peeks)', sh.includes('peek'), JSON.stringify(sh));
+    // E18: pagehide / pageshow, then CDP freeze / resume
+    await H.setHidden(page, true, { lifecycle: true });
+    const ph = await nl(page, () => __lab.nightlight.debug().veiled);
+    await H.setHidden(page, false, { lifecycle: true });
+    const ps = await until(page, () => __lab.nightlight.debug().veiled, (v) => !v, 5000, 40);
+    await H.setHidden(page, true);
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send('Page.setWebLifecycleState', { state: 'frozen' });
+    await sleep(600);
+    await cdp.send('Page.setWebLifecycleState', { state: 'active' });
+    const fz = await nl(page, () => __lab.nightlight.debug().veiled);
+    await H.setHidden(page, false);
+    const fr = await until(page, () => __lab.nightlight.debug().veiled, (v) => !v, 5000, 40);
+    check(scope, 'E18: pagehide veils, pageshow lifts; frozen and resumed while hidden stays veiled until visible', ph && !ps && fz && !fr, JSON.stringify({ ph, ps, fz, fr }));
+    // E20: the audio will not come back on its own → the chip, announced; a real tap brings it back
+    await H.setHidden(page, true);
+    await nl(page, () => { window.__resume = AudioContext.prototype.resume; AudioContext.prototype.resume = function () { return new Promise(() => {}); }; });
+    await H.setHidden(page, false);
+    await nl(page, () => __lab.nightlight.sleepChrome());   // even with the chrome asleep, the notice is shown
+    const sb = await until(page, () => ({ chip: __lab.nightlight.debug().chip, sr: __lab.nightlight.debug().sr.slice(-2), ready: __lab.sound.ready, asleep: !!document.querySelector('.nightlight.nl-asleep') }), (v) => v.chip === 'soundBack', 8000, 100);
+    check(scope, 'E20: "Tap to bring the sound back" within 2 s, announced once, the chrome woken to show it', sb.chip === 'soundBack' && sb.sr.includes('Sound paused. Tap to bring it back.') && !sb.ready && !sb.asleep, JSON.stringify(sb));
+    await nl(page, () => { AudioContext.prototype.resume = window.__resume; });
+    // a real tap where the chip is (any tap is the gesture that lets the audio run; asleep chrome lets it fall through)
+    const box = await page.locator('.nl-chip[data-chip="soundBack"]').boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    const sb2 = await until(page, () => ({ chip: __lab.nightlight.debug().chip, alive: __lab.nightlight.bed.alive, ready: __lab.sound.ready }), (v) => v.ready && v.alive && v.chip !== 'soundBack', 15000);
+    check(scope, 'E20: a real tap brings the sound and the bed back; the chip goes', sb2.ready && sb2.alive && sb2.chip !== 'soundBack', JSON.stringify(sb2));
+    // E17: hidden across the fade start: on return the levels match the clock, no late sigh
+    await nl(page, () => { const rig = __lab.companion.rig, react = rig.react.bind(rig); window.__reacts = []; rig.react = (k, o) => { window.__reacts.push(k); return react(k, o); }; });
+    await H.setHidden(page, true);
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.fadeFrom - c.now() + 0.6 * c.fadeMs); });
+    await H.setHidden(page, false);
+    const fs = await nl(page, () => { const n = __lab.nightlight, c = n.clock, lv = c.levels(c.now(), {}); return { state: n.state, shown: n.debug().levels, clock: lv, sighed: n.debug().fade.sighed }; });
+    await sleep(1500);
+    const fsr = await nl(page, () => window.__reacts.slice());
+    check(scope, 'E17: hidden across the fade start: back fading, levels match the clock at once, no late sigh',
+      fs.state === 'fading' && Math.abs(fs.shown.world - fs.clock.world) < 0.02 && Math.abs(fs.shown.mallow - fs.clock.mallow) < 0.02 && fs.sighed && !fsr.includes('sigh'), JSON.stringify({ fs, fsr }));
+    // E17: hidden across the end: the end view at once, quietly
+    await nl(page, () => { window.__said = []; const s = __lab.sound, v = s.voice.bind(s), m = s.motif.bind(s); s.voice = (...a) => { window.__said.push(['voice', a[1]]); return v(...a); }; s.motif = (...a) => { window.__said.push(['motif']); return m(...a); }; });
+    await H.setHidden(page, true);
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.endsAt - c.now() + 60000); });
+    await H.setHidden(page, false);
+    const en = await until(page, () => ({ d: __lab.nightlight.debug(), focus: document.activeElement?.textContent, card: getComputedStyle(document.querySelector('.nl-endcard') || document.body).transitionDuration }), (v) => v.d.view === 'end', 5000, 50);
+    await sleep(400);
+    const said = await nl(page, () => ({ said: window.__said, s: __lab.sound.debug() }));
+    check(scope, 'E17: hidden across the end: the end view at once (skipped, no snapshot), focus on Again', en.d.view === 'end' && en.d.skipped && !en.d.snap && en.focus === 'Again', JSON.stringify({ d: en.d, focus: en.focus }));
+    check(scope, 'E17: quietly: no voice or motif, the audio resting', !said.said.length && said.s.resting, JSON.stringify(said));
+    const sus = await until(page, () => __lab.sound.debug(), (v) => v.state === 'suspended', 5000, 150);
+    check(scope, 'E17: the audio context ends up suspended (even with a resume pending on return)', sus.state === 'suspended' && sus.resting, JSON.stringify(sus));
+    noErrors(scope, errors);
+
+    // E19: reloads
+    const r = await openNl(browser, 'phone', 'blubi', { prefs: { nightlight: { minutes: 20 } } });
+    try {
+      await nl(r.page, () => __lab.nightlight.setMode('drift'));
+      await sleep(400);
+      const a = await nl(r.page, () => ({ endsAt: __lab.nightlight.clock.endsAt, mode: __lab.nightlight.mode }));
+      await r.page.reload();
+      await ready(r.page);
+      const b = await nl(r.page, () => ({ endsAt: __lab.nightlight.clock.endsAt, mode: __lab.nightlight.mode, sr: __lab.nightlight.debug().sr }));
+      check(`${scope}:reload`, 'E19: a reload mid-session resumes the same deadline and mode (no new start announcement)', b.endsAt === a.endsAt && b.mode === 'drift' && !b.sr.some((x) => x.startsWith('Nightlight on')), JSON.stringify({ a, b }));
+      // (a reload resets the debug skew, so the ended session is a record whose deadline really passed)
+      await nl(r.page, () => { const k = 'hm.sensorylab.nightlight.session.v1', t = Date.now(); sessionStorage.setItem(k, JSON.stringify({ v: 1, startedAt: t - 21 * 60000, endsAt: t - 60000, fadeFrom: t - 60000 - 400000, minutes: 20, fade: true, mode: 'drift', extra: 0 })); });
+      await r.page.reload();
+      await r.page.waitForFunction(() => __lab.nightlight?.view, null, { timeout: T });
+      const c = await nl(r.page, () => __lab.nightlight.debug());
+      check(`${scope}:reload`, 'E19: a reload after the end (< 6 h) shows the end view, quietly', c.view === 'end' && c.skipped && !c.snap, JSON.stringify(c));
+      // left more than 5 s ago → fresh; a malformed record → fresh, no errors
+      await nl(r.page, () => { const k = 'hm.sensorylab.nightlight.session.v1', o = { v: 1, startedAt: Date.now() - 60000, endsAt: Date.now() + 600000, fadeFrom: Date.now() + 400000, minutes: 20, fade: true, mode: 'quiet', extra: 0, leftAt: Date.now() - 6000 }; sessionStorage.setItem(k, JSON.stringify(o)); });
+      await r.page.reload();
+      await ready(r.page);
+      const d = await nl(r.page, () => ({ mode: __lab.nightlight.mode, left: __lab.nightlight.clock.remaining(), sr: __lab.nightlight.debug().sr }));
+      check(`${scope}:reload`, 'E19: a record left more than 5 s ago starts fresh', d.mode !== 'quiet' && d.left > 19 * 60000 && d.sr.some((x) => x.startsWith('Nightlight on')), JSON.stringify(d));
+      await nl(r.page, () => sessionStorage.setItem('hm.sensorylab.nightlight.session.v1', '{"v":1,"startedAt":"soon","endsAt":null'));
+      await r.page.reload();
+      await ready(r.page);
+      const e = await nl(r.page, () => ({ view: __lab.nightlight.view, state: __lab.nightlight.state }));
+      check(`${scope}:reload`, 'E19: a malformed record starts fresh', e.view === 'session', JSON.stringify(e));
+      noErrors(`${scope}:reload`, r.errors);
+    } finally { await r.ctx.close(); }
+  });
+
+  // ------------------------------------------------------------------ E21 --
+  if (only('wake')) await guard(`${SCOPE}:wake`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'zuzu', { initScripts: [wakeStub] });
+    own(ctx);
+    await sleep(1500);
+    const a = await nl(page, () => ({ w: window.__wake, d: __lab.nightlight.debug().wake }));
+    check(scope, 'E21: no wake lock by default', a.w.requests === 0 && a.d.supported && !a.d.wanted, JSON.stringify(a));
+    await nl(page, () => __lab.nightlight.set('keepAwake', true));
+    const b = await until(page, () => ({ w: { ...window.__wake }, d: __lab.nightlight.debug().wake }), (v) => v.d.held, 3000, 50);
+    await H.setHidden(page, true);
+    await sleep(200);
+    const c = await nl(page, () => ({ w: { ...window.__wake }, d: __lab.nightlight.debug().wake }));
+    await H.setHidden(page, false);
+    const d = await until(page, () => ({ w: { ...window.__wake }, d: __lab.nightlight.debug().wake }), (v) => v.d.held, 3000, 50);
+    check(scope, 'E21: opted in: requested; let go when hidden (no request while hidden); asked again on return',
+      b.w.requests === 1 && b.d.held && c.w.releases === 1 && c.w.requests === 1 && !c.d.held && c.d.wanted && d.w.requests === 2 && d.d.held, JSON.stringify({ b, c, d }));
+    await nl(page, () => { const k = __lab.nightlight.clock; __lab.nightlight.skew(k.endsAt - k.now() + 1000); });
+    await page.waitForFunction(() => __lab.nightlight?.view === 'end', null, { timeout: T });
+    const e = await nl(page, () => ({ ...window.__wake }));
+    check(scope, 'E21: let go at the end', e.held === 0 && e.releases === 2, JSON.stringify(e));
+    await page.click('.nl-endcard button.primary');   // Again: the setting persists, so it asks again
+    await ready(page);
+    const f = await until(page, () => ({ ...window.__wake }), (v) => v.held === 1, 3000, 50);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => __lab.route === 'home', null, { timeout: T });
+    const g = await nl(page, () => ({ ...window.__wake }));
+    check(scope, 'E21: a new session asks again (the setting persists); Escape lets it go', f.requests === 3 && g.held === 0, JSON.stringify({ f, g }));
+    noErrors(scope, errors);
+
+    // unsupported: no wakeLock at all → quiet, no errors; refused → back to Off
+    const r = await openNl(browser, 'phone', 'zuzu', { initScripts: [() => { try { delete Navigator.prototype.wakeLock; } catch { /* ignore */ } }], prefs: { nightlight: { keepAwake: true } } });
+    try {
+      const u = await nl(r.page, () => __lab.nightlight.debug().wake);
+      check(`${scope}:unsupported`, 'E21: unsupported: supported false, nothing wanted, no errors', !u.supported && !u.wanted && !r.errors.length, JSON.stringify({ u, errors: r.errors }));
+    } finally { await r.ctx.close(); }
+    const r2 = await openNl(browser, 'phone', 'zuzu', { initScripts: [[wakeStub, true]] });
+    try {
+      await nl(r2.page, () => __lab.nightlight.set('keepAwake', true));
+      const x = await until(r2.page, () => ({ d: __lab.nightlight.debug().wake, s: __lab.nightlight.settings.keepAwake, stored: __lab.prefs.get('nightlight')?.keepAwake }), (v) => v.d.failed, 3000, 50);
+      check(`${scope}:refused`, 'E21: a refusal switches Keep screen on back to Off (stored), never retried', x.d.failed && !x.d.wanted && x.s === false && x.stored === false && x.d.requests === 1, JSON.stringify(x));
+      noErrors(`${scope}:refused`, r2.errors);
+    } finally { await r2.ctx.close(); }
+  });
+
+  // ------------------------------------------------------------- E4 (part) --
+  if (only('press')) await guard(`${SCOPE}:press`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'blubi');
+    own(ctx);
+    await nl(page, () => __lab.nightlight.setMode('breathe'));
+    await sleep(800);
+    const g = await H.geo(page);
+    const x = g.ox + Math.max(30, g.cx - g.w / 2 - 70), y = g.oy + g.mid;   // off the body, clear of the chrome
+    await H.clearEvents(page);
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await sleep(700);
+    const held = await nl(page, () => ({ leading: __lab.nightlight.breath.leading, phase: __lab.nightlight.breath.phase, ev: __lab.events.map((e) => e.type) }));
+    await page.mouse.up();
+    await sleep(250);
+    const let_ = await nl(page, () => ({ leading: __lab.nightlight.breath.leading, phase: __lab.nightlight.breath.phase }));
+    check(scope, 'E4: an off-body still press leads the in-breath while held; the Companion sees no hold', held.leading && ['in', 'holdIn'].includes(held.phase) && !held.ev.includes('hold'), JSON.stringify(held));
+    check(scope, 'E4: letting go breathes out', !let_.leading && let_.phase === 'out', JSON.stringify(let_));
+    // the chip and B lead too
+    await page.focus('.stage');
+    await page.keyboard.down('b');
+    await sleep(500);
+    const kb = await nl(page, () => __lab.nightlight.breath.leading);
+    await page.keyboard.up('b');
+    check(scope, 'E4: B held leads the breath too', kb === true, `${kb}`);
+    noErrors(scope, errors);
+  });
+}
+
+/** A navigator.wakeLock stub that records requests and releases (refuse: every request is refused). */
+function wakeStub(refuse) {
+  window.__wake = { requests: 0, releases: 0, held: 0 };
+  const sentinel = () => {
+    const L = new Set();
+    const s = { type: 'screen', released: false, addEventListener: (t, f) => L.add(f), removeEventListener: (t, f) => L.delete(f),
+      release() { if (!s.released) { s.released = true; window.__wake.releases++; window.__wake.held--; L.forEach((f) => f()); } return Promise.resolve(); } };
+    return s;
+  };
+  Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: () => {
+    window.__wake.requests++;
+    if (refuse) return Promise.reject(new DOMException('Not allowed', 'NotAllowedError'));
+    window.__wake.held++;
+    return Promise.resolve(sentinel());
+  } } });
 }
 
 module.exports = { run };

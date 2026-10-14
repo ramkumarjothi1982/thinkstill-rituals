@@ -54,7 +54,8 @@ const GAPS = { gust: 450, 'gust-water': 1000, 'moon-water': 1000, revealed: 1500
  * api: { sims: {clouds, deck, rain, strikes, sun, moon, stars, wind, mist, embers, waves, puddles},
  *        geo (live {W, H, skyTop, horizonY, floorY, water: [y0, y1] | null, waterBottom(x), body}),
  *        weather(), amount(w), fronting(), frontDrag(pxPerSec), locked(), onMallow(x, y), waterOn(),
- *        emit(type, x, y, k, vx, vy), reduced(), gentle(), ring(x, y), touched(w) }
+ *        emit(type, x, y, k, vx, vy), reduced(), gentle(), ring(x, y), touched(w),
+ *        flash(bank, x) (a cloud glow through the screen's lab glow gate; missing: straight to the bank) }
  */
 export function createTools(api) {
   const { clouds, deck, rain, strikes, sun, moon, stars, wind, mist, embers, waves, puddles } = api.sims;
@@ -64,6 +65,7 @@ export function createTools(api) {
   const gates = Object.create(null);
   const gate = (k) => { const t = now(); if (t - (gates[k] ?? -1e9) < GAPS[k]) return false; gates[k] = t; return true; };
   let activeAlt = null, clock = 0, wasWater = false;
+  const flash = api.flash || ((bank, x) => bank.flash(x));
 
   // ------------------------------------------------------------- tracks --
   const tracks = Array.from({ length: TRACKS }, (_, i) => {
@@ -219,7 +221,7 @@ export function createTools(api) {
         if (r === 'strike' || r === 'glow') {
           const f = rand() < 0.5 ? 0.08 + 0.22 * rand() : 0.7 + 0.22 * rand();   // never near the Mallow
           const x = f * geo.W;
-          clouds.flash(x);
+          flash(clouds, x);   // the lab's glow (≤ 1 a second across both banks); the strike and thunder still follow
           api.emit(r, x, r === 'strike' ? geo.horizonY : storm.y0, 0);
         } else if (r === 'thunder') api.emit('thunder', geo.W / 2, storm.y0, 0);
       }
@@ -584,5 +586,13 @@ export function createTools(api) {
       return false;
     },
     get active() { let n = 0; for (const t of tracks) if (t.on) n++; return n; },
+    /** How fast mist is being wiped now (0..1; a finger at rest 0.15, the chip's spiral 0.5), or -1 when it is not (the brush sound). */
+    wiping() {
+      let s = -1;
+      const t = now();
+      for (const tr of tracks) if (tr.on && tr.tool === fogTool && tr.kind === 'drag') s = Math.max(s, t - tr.tm > 120 ? 0.15 : clamp(Math.hypot(tr.vx, tr.vy) / 1400, 0.15, 1));
+      if (fogTool._alt) s = Math.max(s, 0.5);
+      return s;
+    },
   };
 }

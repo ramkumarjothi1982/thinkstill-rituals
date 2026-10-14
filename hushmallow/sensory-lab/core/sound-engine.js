@@ -148,7 +148,9 @@ export class SoundEngine {
 
   _visibility() {
     if (!this.ctx) return;
-    if (document.hidden) { this.stopAll(); this.ctx.suspend().catch(() => {}); } else if (!this.muted && !this.resting) this.ctx.resume().catch(() => {});
+    if (document.hidden) { this.stopAll(); this.ctx.suspend().catch(() => {}); }
+    // a rest() that arrives while this resume is still pending must win
+    else if (!this.muted && !this.resting) this.ctx.resume().then(() => { if (this.resting) this.ctx?.suspend().catch(() => {}); }, () => {});
   }
 
   _ok(key) {

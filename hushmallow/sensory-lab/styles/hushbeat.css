@@ -1,6 +1,10 @@
 /* Hushbeat Symphony — feature styles (owned by the hushbeat engineer from hand-over).
    Linked after lab.css in index.html, so equal-specificity rules win over the shared ones.
-   Every selector starts with .hushbeat; element classes use hb-, custom properties --hb-. */
+   Every selector starts with .hushbeat; element classes use hb-, custom properties --hb-.
+   The two sheets open inside the screen, so they take the realm's chrome tones and these rules. */
+
+/* top bar: the subtitle stays on one line ("Boppo & Loomi · Visual only") */
+.hushbeat .topbar .title small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* the one glass row of controls, centred under the Mallow */
 .hushbeat .hb-row { max-width: min(560px, 100%); justify-content: center; }
@@ -13,26 +17,86 @@
 @keyframes hb-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* the gesture tray: wraps on tall screens, one scrolling row on short ones */
-.hushbeat .hb-tray { max-width: min(560px, 100%); }
+.hushbeat .hb-tray { max-width: min(560px, 100%); align-items: center; }
 .hushbeat .hb-tray[hidden] { display: none; }
+/* a duet's target [Lead | Both | Friend] leads the tray; its own track sets it apart from the actions */
+.hushbeat .hb-target { flex: none; flex-wrap: nowrap; margin-right: 2px; }
+.hushbeat .seg button { min-height: 40px; }
 
 /* replaying: the stage tint deepens a little while the Mallow sings the take back */
 .hushbeat .stage-tint { transition: opacity 600ms var(--ease-out); }
 .hushbeat.replaying .stage-tint { opacity: 0.7; }
 
+/* a friend arrives or leaves: the stages and their light fade out over 160 ms and back over 280 ms
+   (opacity only: no canvas is resized frame by frame) */
+.hushbeat .stage, .hushbeat .fx-layer { transition: opacity 280ms var(--ease-out); }
+.hushbeat.hb-fading .stage, .hushbeat.hb-fading .fx-layer { opacity: 0; transition-duration: 160ms; }
+
 /* Close plays the cadence; the screen fades from 300 ms over 420 ms */
 .hushbeat.hb-leaving { opacity: 0; transition: opacity 420ms var(--ease-out) 300ms; pointer-events: none; }
 
+/* ------------------------------------------------------------ sheets -- */
+.hushbeat .hb-sheet .btn-quiet { min-height: 40px; }
+.hushbeat .hb-sheet .hb-volume { width: clamp(120px, 38vw, 200px); min-height: 40px; }
+/* a label and its control share the line while they fit; the sub-text wraps first */
+.hushbeat .hb-sheet .row:not(.stack) > .lbl { flex: 1 1 150px; min-width: 0; }
+.hushbeat .hb-sheet .row .sub { margin-top: 2px; line-height: 1.35; }
+.hushbeat .hb-sheet .seg { flex: none; }
+.hushbeat .hb-tunes { display: flex; flex-direction: column; gap: 6px; outline: none; }
+.hushbeat .hb-tune { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 6px 6px 12px; border-radius: var(--r-md); background: var(--seg-track); }
+.hushbeat .hb-tune-name { flex: 1 1 150px; min-width: 0; font-size: 14px; color: var(--text-1); }
+.hushbeat .hb-tune-acts { display: flex; gap: 6px; margin-left: auto; }
+.hushbeat .hb-empty { margin: 0; color: var(--text-3); font-size: var(--fs-small); }
+.hushbeat .hb-foot { margin: 12px 0 0; color: var(--text-3); font-size: var(--fs-micro); line-height: 1.45; }
+
+/* the friend picker: each Mallow with its colour and the two words for its instrument */
+.hushbeat .hb-friends { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.hushbeat .hb-friend { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 12px; text-align: left; cursor: pointer;
+  border-radius: var(--r-md); border: 1px solid var(--line-strong); background: transparent; color: var(--text-1); }
+.hushbeat .hb-friend[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-text); border-color: transparent; }
+.hushbeat .hb-friend-txt { min-width: 0; }
+.hushbeat .hb-friend b { display: block; font-size: 15px; font-weight: 600; }
+.hushbeat .hb-friend small { display: block; font-size: var(--fs-micro); color: var(--text-3); }
+.hushbeat .hb-friend[aria-pressed="true"] small { color: inherit; opacity: 0.75; }
+.hushbeat .hb-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px var(--line-strong); }
+.hushbeat .hb-alone { display: block; width: 100%; margin-top: 12px; min-height: 44px; }
+@media (min-width: 520px) {
+  .hushbeat .hb-friends { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* wide screens: a duet's tray (target + six chips) stays on one line */
+@media (min-width: 900px) {
+  .hushbeat .hb-tray { max-width: 720px; }
+}
+
+/* ------------------------------------------------------- narrow / short -- */
+/* phones: the hand (Buttons) is icon-only so the row with Friend, Replay and Keep fits on one line */
+@media (max-width: 440px) {
+  .hushbeat .hb-buttons { width: 40px; padding: 0; justify-content: center; }
+  .hushbeat .hb-buttons span { display: none; }
+}
 @media (max-width: 360px) {
   .hushbeat .hb-hint .hb-long { display: none; }
   /* icon-only chips (the label stays as aria-label and title); Replay keeps its word */
-  .hushbeat .hb-buttons, .hushbeat .hb-keep { width: 40px; padding: 0; justify-content: center; }
-  .hushbeat .hb-buttons span, .hushbeat .hb-keep span { display: none; }
+  .hushbeat .hb-keep, .hushbeat .hb-friend-btn { width: 40px; padding: 0; justify-content: center; }
+  .hushbeat .hb-keep span, .hushbeat .hb-friend-btn span { display: none; }
+  .hushbeat .hb-friend { padding: 8px 10px; gap: 8px; }
 }
 @media (max-height: 600px) {
   .hushbeat .hb-hint { display: none; }
   .hushbeat .hb-tray { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; border-radius: var(--r-pill); }
+  .hushbeat .bottom { gap: 8px; }
+}
+/* short landscape: the tray and the row share one line when they fit (the tray scrolls), so the Mallows keep their size */
+@media (max-height: 460px) and (min-aspect-ratio: 3/2) {
+  .hushbeat .bottom { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .hushbeat .hb-tray { flex: 1 1 260px; min-width: 0; }
+  .hushbeat .hb-row { flex: none; }
+}
+@media (max-height: 360px) {
+  .hushbeat .hb-buttons, .hushbeat .hb-keep, .hushbeat .hb-friend-btn { width: 40px; padding: 0; justify-content: center; }
+  .hushbeat .hb-buttons span, .hushbeat .hb-keep span, .hushbeat .hb-friend-btn span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hushbeat.hb-leaving { transition-duration: 300ms; }
+  .hushbeat .hb-row .hb-replay, .hushbeat .hb-row .hb-keep, .hushbeat .hb-row .hb-playit { animation-duration: 200ms; }
 }

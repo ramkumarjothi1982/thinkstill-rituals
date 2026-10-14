@@ -15,6 +15,14 @@
 // tune (a kept tune opens from home with Play it, and never plays by itself).
 // Close resolves the music home with a short cadence and a goodbye in character.
 //
+// Friend invites a second Mallow for this visit (the duet): it plays in the
+// lead's key on its own stage, notes close together harmonise, two hums bloom
+// into one chord, two basses sit a fifth or an octave apart, a phrase gets an
+// answer (Friend answers, in the sheet), and the two glance, blush and lean in.
+// The tray's Both target and G play them together with one finger; Tab moves
+// keyboard focus between the stages. ♪ opens "Sound and pace": Volume, Music |
+// Visual only, Breath pace, Friend answers, Your tunes, Lab settings.
+//
 // Built on the shared engine: stage-screen (a quiet Companion: the music is
 // its voice; its realm through s.env), the pointer router's watchPresses
 // (breath lead), one EffectsLayer whose first item is this screen's per-frame
@@ -22,16 +30,16 @@
 // realm and the light, and the music modules: core/music-time.js (breath
 // clock, scheduler, take, tune codec), core/music-engine.js (the conductor),
 // core/music-audio.js + music-kits.js (the sound), core/music-fx.js (the
-// light), features/hushbeat/player.js (gestures → music) and performer.js
-// (the Mallow and the scene).
+// light), features/hushbeat/player.js (gestures → music), performer.js
+// (the Mallow and the scene) and sheet.js (the two sheets).
 //
 // Nothing plays before a gesture (the SoundEngine refuses). Visual only
 // (prefs.musicVisualOnly) runs the identical music with the sound bus closed.
 
-import { h, icon, holdButton } from '../lab-ui.js';
+import { h, icon, iconBtn, holdButton, segmented } from '../lab-ui.js';
 import { stageScreen } from './stage-screen.js';
 import { quietSound } from '../core/sound-engine.js';
-import { BreathClock, Scheduler, encodeMotif, decodeMotif } from '../core/music-time.js';
+import { BreathClock, Scheduler, decodeMotif } from '../core/music-time.js';
 import { MusicEngine } from '../core/music-engine.js';
 import { MusicAudio } from '../core/music-audio.js';
 import { chordAt } from '../core/music-theory.js';
@@ -44,6 +52,7 @@ import { MALLOWS } from '../../src/mallows/registry.js';
 import { Player } from './hushbeat/player.js';
 import { Performer, Scene, Cue } from './hushbeat/performer.js';
 import { COPY } from './hushbeat/copy.js';
+import { openMusicSheet, openFriendPicker, tierBelow, tuneItem, yourTunes } from './hushbeat/sheet.js';
 
 export const meta = { id: 'hushbeat', title: COPY.meta };
 
@@ -54,6 +63,10 @@ const REST_S = 40;             // listening and untouched for this long: resting
 const ROLE_GAP_S = 1.5;        // Visual only names every role, at most this often
 const LEAVE_MS = [720, 800];   // the cadence plays, the screen fades from 300 ms over 420 ms, then home
 const REACTS = new Set(['tap', 'doubletap', 'holdend', 'dragend', 'squeezeend', 'strokeend']);   // the Companion reacts: the groove pauses
+const FADE_MS = [160, 60];     // a friend arrives or leaves: the stages fade out, re-lay out, a frame later fade in (280 ms, CSS)
+const PAN = 0.22;              // in a duet the lead sits a little left, the friend a little right
+const ACTIVE_S = 1.2;          // a Mallow played this recently is "being played" (the other one watches)
+const GLANCE_S = 1.2;          // the two glance at each other at most this often
 const perf = () => performance.now() / 1000;
 
 export function mount(root, ctx, { handoff = null } = {}) {
@@ -65,6 +78,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
   let state = 'listening';     // listening | playing | resting | replaying | leaving
   let gone = false, leaveT = 0, longT = 0, wasReady = false, wasStrong = null, qT = 0, rowT = 0, lastTouch = perf();
   let restAfter = REST_S, replayH = null, playItOn = false, rowSig = '', favSig = 0, keepItem = null;
+  let friend = null, takeFriend = null, entering = null, fadeT = 0, answers = true, trayTarget = 0, targetSeg = null, sheet = null, glanceT = -Infinity;
   const said = new Set();
   let saidT = -Infinity;
   const breaths = new Set();   // who leads the breath right now: 'key', 'chip', 'press:<pointerId>'
@@ -82,14 +96,17 @@ export function mount(root, ctx, { handoff = null } = {}) {
   const players = [];
 
   // ------------------------------------------------------------ stage --
+  // ♪ opens "Sound and pace" (Volume, Visual only, pace, answers, your tunes)
+  const musicBtn = iconBtn('note', COPY.sheet.title, () => openMusic(), { class: 'icon-btn hb-music', 'aria-haspopup': 'dialog' });
   const s = stageScreen(root, ctx, {
     title: COPY.title, subtitle: COPY.subtitle(M.name, null, visualOnly),
     backdrop: ctx.dna.environment('moment', lead),
-    settings: false, feedback: false, sound: quietSound(sound),
-    onExit: () => leave(), keys, onGesture, onLayout, stageLabel: COPY.aria.stage,
+    settings: false, feedback: false, sound: quietSound(sound), extraButtons: [musicBtn],
+    onExit: () => leave(), keys, onGesture, onLayout, stageLabel: (name) => COPY.aria.stage(name, !!friend),
   });
   s.screen.classList.add('hushbeat');
   const subtitle = s.screen.querySelector('.topbar .title small');
+  const retitle = () => { subtitle.textContent = COPY.subtitle(M.name, friend ? MALLOWS[friend].name : null, visualOnly); };
 
   const part0 = engine.part(0, lead);
   audio.setPart(0, part0);
@@ -115,13 +132,20 @@ export function mount(root, ctx, { handoff = null } = {}) {
   // ---------------------------------------------------------- controls --
   const hint = h('p', { class: 'hint hb-hint' },
     ...COPY.hint.flatMap(([b, rest], i) => [i ? ' · ' : '', h('b', {}, b), h('span', { class: 'hb-long' }, rest)]));
-  const act = (kind) => () => { if (state !== 'leaving') target().act(kind); };
+  // the tray's chips act on the target: the lead (solo), or in a duet the Mallow chosen in the
+  // target control [Lead | Both | Friend]; with Both every chip plays on both (the friend harmonises)
+  const chipTargets = () => (trayTarget === 'both' ? comps.slice() : [comps[trayTarget] || comps[0]]);
+  const act = (kind) => () => { if (state !== 'leaving') for (const c of chipTargets()) c.act(kind); };
+  const holding = { squeeze: [], hold: [] };   // who a held chip started on (it ends on the same Mallows)
+  const hold = (kind) => holdButton(COPY.chips[kind === 'squeeze' ? 'bass' : 'hum'],
+    () => { if (state === 'leaving') return; holding[kind] = chipTargets(); for (const c of holding[kind]) c.act(`${kind}Start`); },
+    () => { for (const c of holding[kind]) if (!c.destroyed) c.act(`${kind}End`); holding[kind] = []; });
   const tray = h('div', { class: 'chips wrap hb-tray', role: 'group', 'aria-label': COPY.aria.tray, hidden: true },
     h('button', { type: 'button', class: 'chip', onclick: act('tap') }, COPY.chips.note),
     h('button', { type: 'button', class: 'chip', onclick: act('double') }, COPY.chips.chord),
     h('button', { type: 'button', class: 'chip', onclick: act('stroke') }, COPY.chips.tune),
-    holdButton(COPY.chips.bass, act('squeezeStart'), () => target().act('squeezeEnd')),
-    holdButton(COPY.chips.hum, act('holdStart'), () => target().act('holdEnd')),
+    hold('squeeze'),
+    hold('hold'),
     holdButton(COPY.chips.breathe, () => breathIn('chip'), () => breathOut('chip')));
   const buttons = h('button', {
     type: 'button', class: 'chip hb-buttons', 'aria-pressed': 'false', title: COPY.chips.buttons, 'aria-label': COPY.chips.buttons,
@@ -137,7 +161,11 @@ export function mount(root, ctx, { handoff = null } = {}) {
   const playIt = h('button', { type: 'button', class: 'chip primary hb-playit', hidden: true, html: `${icon('note')}<span>${COPY.chips.playIt}</span>`, onclick: () => playKept() });
   const replayBtn = h('button', { type: 'button', class: 'chip hb-replay', 'aria-pressed': 'false', hidden: true, onclick: () => toggleReplay() });
   const keepBtn = h('button', { type: 'button', class: 'chip hb-keep', 'aria-pressed': 'false', hidden: true, onclick: () => keep() });
-  const row = h('div', { class: 'chips hb-row', role: 'group', 'aria-label': COPY.aria.row }, playIt, buttons, replayBtn, keepBtn);
+  const friendBtn = h('button', {
+    type: 'button', class: 'chip hb-friend-btn', 'aria-haspopup': 'dialog', 'aria-label': COPY.aria.friend, title: COPY.chips.friend,
+    html: `${icon('friend')}<span>${COPY.chips.friend}</span>`, onclick: () => openFriends(),
+  });
+  const row = h('div', { class: 'chips hb-row', role: 'group', 'aria-label': COPY.aria.row }, playIt, buttons, replayBtn, keepBtn, friendBtn);
   s.bottom.append(hint, tray, row);
   // a single-row tray (short screens) fades its edges while there is more to scroll
   const edges = () => {
@@ -146,6 +174,18 @@ export function mount(root, ctx, { handoff = null } = {}) {
     tray.classList.toggle('fade-r', max > 2 && tray.scrollLeft < max - 2);
   };
   tray.addEventListener('scroll', edges, { passive: true });
+
+  // in a duet the tray starts with the target control (rebuilt when the friend changes)
+  function syncTarget() {
+    targetSeg?.remove();
+    targetSeg = null;
+    if (!friend) { trayTarget = 0; return; }
+    if (trayTarget === 1 && !comps[1]) trayTarget = 0;
+    targetSeg = segmented([[0, M.name], ['both', COPY.chips.both], [1, MALLOWS[friend].name]], trayTarget, (v) => { trayTarget = v; }, COPY.aria.target);
+    targetSeg.classList.add('hb-target');
+    tray.prepend(targetSeg);
+    edges();
+  }
 
   // the lead, or the Mallow whose stage has keyboard focus
   function target() { const i = stages.indexOf(document.activeElement); return comps[i > 0 ? i : 0]; }
@@ -158,12 +198,15 @@ export function mount(root, ctx, { handoff = null } = {}) {
     for (let i = 0; i < stages.length; i++) { const r = stages[i].getBoundingClientRect(); offs[i].x = r.left - sr.left; offs[i].y = r.top - sr.top; }
   }
 
-  // a kept tune from home "For you": its pace is already set; its notes wait for Play it
+  // a kept tune from home "For you": its pace is already set and its friend joins (no hello: nothing
+  // sounds before Play it); its notes, the friend's included, wait for Play it
+  if (handoff?.friend) setFriend(handoff.friend, { greet: false, instant: true });
   const kept = decodeMotif(handoff?.motif);
   if (kept) {
     engine.take.load(kept);
     playItOn = !!engine.take.best();
     playIt.hidden = !playItOn;
+    if (playItOn && handoff.play === true) playKept();   // Play in Your tunes on another Mallow's screen: asked to hear it
   }
 
   // ----------------------------------------------------- input → music --
@@ -215,10 +258,138 @@ export function mount(root, ctx, { handoff = null } = {}) {
   function show(ev, due = ev.t) {
     if (gone) return;
     const at = perf();
-    if (ev.kind === 'harmony') { performers[ev.a]?.apply(ev, at, due); performers[ev.b]?.apply(ev, at, due); }
+    if (ev.kind === 'harmony') { performers[ev.a]?.apply(ev, at, due); performers[ev.b]?.apply(ev, at, due); glance(); }
     else performers[ev.slot]?.apply(ev, at, due);
     scene.apply(ev);
     if (ev.kind === 'replay' && !ev.on && ev.done) for (const p of performers) p.proud();
+    // two hums bloom into one chord: the two lean in toward each other
+    if (ev.kind === 'bloom' && ev.on && performers[1]) { performers[0].leanIn(1); performers[1].leanIn(-1); }
+  }
+
+  // ------------------------------------------------------------- duet --
+  // a Mallow's body middle in another stage's px (for looking across): reused points, by slot
+  const pts = [{ x: 0, y: 0 }, { x: 0, y: 0 }], rb = {};
+  function across(from, to) {
+    const c = comps[from], p = pts[to];
+    if (!c?.rig?.bodyRect) return null;
+    c.rig.bodyRect(rb);
+    p.x = offs[from].x + rb.cx - offs[to].x; p.y = offs[from].y + rb.mid - offs[to].y;
+    return p;
+  }
+  // the two look at each other (a friend arriving, a harmony), at most every 1.2 s
+  function glance() {
+    const t = perf();
+    if (!performers[1] || t - glanceT < GLANCE_S) return;
+    glanceT = t;
+    performers[0].glance(across(1, 0));
+    performers[1].glance(across(0, 1));
+  }
+
+  /**
+   * Invite a friend for this visit (or null: play alone). The stages fade out over 160 ms, the friend's
+   * stage joins beside the lead, and they fade back in (280 ms) while the friend makes its entrance; the
+   * two glance at each other and, with the Mallow voice on, the friend sings a quiet hello. A friend never
+   * changes the favourite Mallow. greet: false for a kept tune (nothing sounds before Play it);
+   * instant: no fade; then(): after the swap (a tune waiting for its friend to play).
+   */
+  function setFriend(id, { greet = true, instant = false, then = null } = {}) {
+    if (gone || state === 'leaving') return;
+    const next = typeof id === 'string' && id !== lead && Object.hasOwn(MALLOWS, id) ? id : null;
+    clearTimeout(fadeT);
+    if (next === friend) { s.screen.classList.remove('hb-fading'); if (then) whenReady(then); return; }
+    touched();
+    const swap = () => {
+      if (gone || state === 'leaving') return;
+      dropFriend();
+      if (next) addFriend(next, greet);
+      retitle();
+      for (let i = 0; i < stages.length; i++) stages[i].setAttribute('aria-label', COPY.aria.stage(MALLOWS[comps[i].id]?.name || '', !!friend));
+      syncTarget();
+      s.env.setQuality(realmTier());
+      rowSig = '';
+      syncRow();
+      s.feedback.show(friend ? COPY.say.joins(MALLOWS[friend].name) : COPY.say.alone);
+      if (then) whenReady(then);
+    };
+    if (instant) { swap(); return; }
+    s.screen.classList.add('hb-fading');
+    fadeT = setTimeout(() => {
+      swap();
+      fadeT = setTimeout(() => s.screen.classList.remove('hb-fading'), FADE_MS[1]);   // after the reframe
+    }, FADE_MS[0]);
+  }
+
+  function addFriend(id, greet) {
+    const c = s.setPartner(id, { quality: tierBelow(quality), tier: tierBelow });
+    if (!c) return;
+    friend = id; takeFriend = id;
+    const part1 = engine.part(1, id, { pan: PAN });
+    part0.pan = -PAN;
+    audio.setPart(1, part1);
+    players[1] = new Player(part1, { geo: geoOf(c), now: perf });
+    comps[1] = c; stages[1] = s.stages[1];
+    onLayout();
+    const FM = MALLOWS[id], fGlow = pal?.glow || FM.colours.glow, fAccent = pal?.soft || FM.colours.accent;
+    performers[1] = new Performer({ companion: c, slot: 1, pool: scene.pool, off: offs[1], color: fAccent, reduced, tuning, now: perf });
+    performers[1].setStrong(!!wasStrong);
+    scene.setPerformers([{ performer: performers[0], off: offs[0], color, accent }, { performer: performers[1], off: offs[1], color: fGlow, accent: fAccent }]);
+    entering = { greet: greet && tuning.voice !== false };   // the entrance waits for the friend's body (frame())
+  }
+
+  // the friend leaves: its layers fade (0.6 s), its light goes, its stage is removed
+  function dropFriend() {
+    if (!friend) return;
+    players[1]?.reset();
+    engine.removePart(1);
+    audio.setPart(1, null);
+    performers[1]?.destroy();
+    performers.length = 1; players.length = 1; comps.length = 1; stages.length = 1;
+    scene.setPerformers([{ performer: performers[0], off: offs[0], color, accent }]);
+    performers[0].listen(null);
+    part0.pan = 0;
+    holding.squeeze = holding.squeeze.filter((c) => c === comps[0]);
+    holding.hold = holding.hold.filter((c) => c === comps[0]);
+    friend = null; entering = null;
+    s.setPartner(null);
+  }
+
+  // fn once a joining friend is on stage (its body is built on the main thread, which would make the
+  // scheduler drop a tune's first notes as late), else at once
+  function whenReady(fn) {
+    if (!entering) { fn(); return; }
+    const prev = entering.then;
+    entering.then = prev ? () => { prev(); fn(); } : fn;
+  }
+
+  // the realm runs at low in a duet below the high tier (two soft bodies)
+  function realmTier() { return friend && quality !== 'high' ? 'low' : quality; }
+
+  /** G, or Both with Note: both Mallows play at once; the friend's note harmonises with the lead's. */
+  function together() {
+    if (!friend || state === 'leaving' || gone) return;
+    touched();
+    for (const c of comps) c.act('tap');
+  }
+
+  // per frame in a duet: the friend's entrance once its body is ready; the idle Mallow watches the one being played
+  const activeAt = [false, false];
+  function duetFrame(t) {
+    const fc = comps[1];
+    if (!fc || !performers[1]) return;
+    if (entering && fc.rig.ready && fc.rig.soft) {
+      const greetNow = entering.greet && state !== 'leaving', then = entering.then;
+      entering = null;
+      performers[1].enter();
+      glanceT = -Infinity;
+      glance();
+      if (greetNow) players[1].part.hello();
+      then?.();
+    }
+    for (let i = 0; i < 2; i++) {
+      const p = players[i], st = p.part.state;
+      activeAt[i] = p.state !== 'idle' || t - p.part.lastOnset() < ACTIVE_S || st.pad > 0 || st.bass > 0;
+    }
+    for (let i = 0; i < 2; i++) performers[i].listen(activeAt[1 - i] && !activeAt[i] ? across(1 - i, i) : null);
   }
 
   // the feedback chip names a role the first time it is used; with the sound off, every time (≤ 1 per 1.5 s)
@@ -237,9 +408,14 @@ export function mount(root, ctx, { handoff = null } = {}) {
     longT = setTimeout(() => { if (!gone) s.feedback.show(text); }, 1000);
   }
 
-  // digit keys play exact degrees; B (held) leads the breath; R replays (or stops); K keeps.
-  // Built-in keys reach the players through act().
+  // digit keys play exact degrees; B (held) leads the breath; R replays (or stops); K keeps; G plays
+  // both (duet). Built-in keys reach the players through act(), on the stage that has focus.
+  // While one of this screen's sheets is open, Escape closes it and stage keys do nothing.
   function keys(e, k, phase) {
+    if (sheet?.open) {
+      if (k === 'escape' && phase === 'down') sheet.close();
+      return true;
+    }
     if (state === 'leaving') return k !== 'escape';
     const ae = document.activeElement, onStage = !ae || ae === document.body || stages.includes(ae);
     const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
@@ -256,6 +432,10 @@ export function mount(root, ctx, { handoff = null } = {}) {
     }
     if (k === 'b' && plain) {
       if (phase === 'down') { if (!e.repeat) breathIn('key'); } else breathOut('key');
+      return true;
+    }
+    if (k === 'g' && plain && friend) {
+      if (phase === 'down' && !e.repeat) together();
       return true;
     }
     if ((k === 'r' || k === 'k') && plain) {
@@ -320,17 +500,74 @@ export function mount(root, ctx, { handoff = null } = {}) {
     syncRow();
   }
 
+  /**
+   * Your tunes → Play (a tap in the sheet): the tune plays at once. With the tune's own lead its friend
+   * joins first (or leaves) and its pace is set. Another Mallow's tune reopens Hushbeat with that Mallow
+   * once the lab offers ctx.openTune (change request); until then this Mallow sings it here.
+   */
+  function playTune(it) {
+    if (gone || state === 'leaving') return;
+    const events = decodeMotif(it?.motif);
+    if (!events) return;
+    if (it.mallow !== lead && typeof ctx.openTune === 'function') { ctx.openTune(it, { play: true }); return; }
+    const go = () => {
+      if (gone || state === 'leaving') return;
+      setPace(it.pace);
+      if (engine.replaying) { replayH?.stop(); replayH = null; }
+      engine.take.load(events);
+      playItOn = false;
+      playIt.hidden = true;
+      toggleReplay();
+    };
+    if (it.mallow === lead) setFriend(it.friend || null, { greet: false, then: go });
+    else go();
+  }
+
+  function removeTune(it) {
+    if (it && ctx.dna.isFavourite(it)) ctx.dna.toggleFavourite(it);
+    rowSig = '';
+    syncRow();
+  }
+
+  // the two sheets; focus goes back to the button that opened one
+  function opened(sh, from) {
+    sheet = sh;
+    const done = () => {
+      if (sheet === sh) sheet = null;
+      if (gone) return;
+      const ae = document.activeElement;
+      if (!ae || ae === document.body || sh.el?.contains(ae)) from.focus({ preventScroll: true });
+    };
+    return done;
+  }
+  function openMusic() {
+    if (gone || state === 'leaving' || sheet?.open) return;
+    let done = null;
+    const sh = openMusicSheet(s.screen, ctx, {
+      pace, setPace, duet: !!friend, answers, setAnswers,
+      tunes: () => (ctx.dna.enabled ? yourTunes(ctx.dna.favourites()) : null),
+      playTune, removeTune, onClosed: () => done?.(),
+    });
+    done = opened(sh, musicBtn);
+  }
+  function openFriends() {
+    if (gone || state === 'leaving' || sheet?.open) return;
+    let done = null;
+    const sh = openFriendPicker(s.screen, ctx, { lead, friend, onPick: (id) => setFriend(id), onClosed: () => done?.() });
+    done = opened(sh, friendBtn);
+  }
+
   function playKept() {
     if (!playItOn || state === 'leaving' || gone) return;
     playItOn = false;
     playIt.hidden = true;
-    toggleReplay();
+    sound.unlock();
+    whenReady(toggleReplay);   // a kept duet's friend may still be arriving
   }
 
-  // the take as a favourite (recomputed only when the take, the pace or the favourites change)
+  // the take as a favourite (recomputed only when the take, the friend, the pace or the favourites change)
   function currentItem() {
-    const best = engine.take.best();
-    return best ? { kind: 'hushbeat', id: 'hushbeat', mallow: lead, pace, motif: encodeMotif(best) } : null;
+    return tuneItem({ lead, friend, takeFriend, pace, events: engine.take.best() });
   }
 
   /** ★ Keep (toggle): saves the tune; refuses at six, so nothing kept is ever dropped silently. */
@@ -359,7 +596,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
     }
     const canKeep = has && !!ctx.dna.enabled && state !== 'leaving';
     if (keepBtn.hidden === canKeep) keepBtn.hidden = !canKeep;
-    const sig = canKeep ? `${T.length}|${T.prev?.length ?? 0}|${T.lastT}|${pace}|${favSig}` : '';
+    const sig = canKeep ? `${T.length}|${T.prev?.length ?? 0}|${T.lastT}|${pace}|${friend}|${favSig}` : '';
     if (sig === rowSig) return;
     rowSig = sig;
     keepItem = canKeep ? currentItem() : null;
@@ -394,6 +631,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
     wasReady = ready;
     for (let i = 0; i < players.length; i++) { const c = comps[i]; if (c && players[i]) players[i].watchdog(t, busy(c)); }
     cue.drain(t, show);
+    if (friend) duetFrame(t);
     const st = engine.stats(t);
     if (state === 'playing' && t - engine.lastMusicT > QUIET_S && !engine.holding) state = 'listening';
     if (state === 'listening' && t - lastTouch > restAfter) rest(true);
@@ -411,6 +649,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
       if (ctx.quality !== quality) setQuality(ctx.quality);
       const tn = surfaceTone(s.screen);
       if (tn !== tone) { tone = tn; scene.setTone(tn); }
+      if (!tray.hidden) edges();   // the tray's width follows the row and the viewport
     }
   }
   fx.add({ step(dt) { frame(dt); return true; }, draw() {} });
@@ -422,14 +661,14 @@ export function mount(root, ctx, { handoff = null } = {}) {
     audio.setQuality(q);
     fx.setDprCap(DPR[q] || 1);
     scene.setQuality(q);
-    s.env.setQuality(q);
+    s.env.setQuality(realmTier());
   }
 
   // -------------------------------------------------------- settings --
   function setVisual(b) {
     visualOnly = !!b;
     audio.setAttached(!visualOnly);
-    subtitle.textContent = COPY.subtitle(M.name, null, visualOnly);
+    retitle();
     if (visualOnly) s.feedback.show(COPY.say.soundOff);
   }
   function setPace(p) {
@@ -437,6 +676,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
     pace = p;
     clock.setTiming(BREATH[p]);
   }
+  function setAnswers(b) { answers = !!b; engine.setAnswers(answers); }
   const offPrefs = prefs.onChange((k) => {
     if (k === 'musicVisualOnly' || k === '*') { if (!!prefs.get('musicVisualOnly') !== visualOnly) setVisual(prefs.get('musicVisualOnly')); }
     if (k === 'motion' || k === '*') { reduced = prefs.reducedMotion(); fx.reduced = reduced; scene.setReduced(reduced); }
@@ -497,14 +737,17 @@ export function mount(root, ctx, { handoff = null } = {}) {
         scheduler: { running: scheduler.running, pending: scheduler.pending },
         players: players.map((p, i) => ({ slot: i, mallow: p.part.mallowId, state: p.state, ...p.part.state })),
         voices: audio.voices, live: sound.live.size, audible: audible(), visualOnly, muted: !!sound.muted,
-        friend: null, take: engine.take.length, best: best ? best.length : 0, replaying: engine.replaying,
+        friend, answers, target: trayTarget, sheet: sheet?.open ? (sheet.el?.getAttribute('aria-label') || 'sheet') : null,
+        take: engine.take.length, best: best ? best.length : 0, replaying: engine.replaying,
         flash1s: flash.count, groove: +Math.max(0, ...performers.map((p) => p.groove)).toFixed(3),
         quality, idle: +(t - lastTouch).toFixed(1), audio: audio.debug(), latency: audio.outputLatency(),
         performers: performers.map((p) => p.debug()), scene: scene.debug(), cue: cue.pending,
         controls: {
           playIt: !playIt.hidden, replay: !replayBtn.hidden, replayLabel: replayBtn.textContent, replayPressed: replayBtn.getAttribute('aria-pressed'),
           keep: !keepBtn.hidden, keepLabel: keepBtn.textContent, keepPressed: keepBtn.getAttribute('aria-pressed'),
+          tray: !tray.hidden, targets: targetSeg ? [...targetSeg.querySelectorAll('button')].map((b) => b.textContent) : null,
         },
+        duet: performers[1] ? { entering: !!entering, watching: performers.map((p) => !!p.watch), fading: s.screen.classList.contains('hb-fading'), stages: stages.length } : null,
       };
     },
     replay() { if (!engine.replaying) toggleReplay(); },
@@ -513,6 +756,11 @@ export function mount(root, ctx, { handoff = null } = {}) {
     playIt: playKept,
     setPace,
     setVisualOnly(b) { prefs.set('musicVisualOnly', !!b); },
+    setFriend(id, o) { setFriend(id, o); },
+    setAnswers,
+    together,
+    openMusic,
+    openFriends,
     /** Test seam: seconds untouched before resting (default 40). */
     setRestAfter(sec) { restAfter = Math.max(0.5, +sec || REST_S); },
   };
@@ -523,6 +771,8 @@ export function mount(root, ctx, { handoff = null } = {}) {
       gone = true;
       clearTimeout(leaveT);
       clearTimeout(longT);
+      clearTimeout(fadeT);
+      sheet?.close();
       scheduler.stop();
       engine.dispose();      // also stops a replay
       audio.dispose();
@@ -536,6 +786,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
       tray.removeEventListener('scroll', edges);
       offPrefs();
       offDna();
+      s.setPartner(null);
       if (globalThis.__lab?.hushbeat === handle) globalThis.__lab.hushbeat = null;
       s.unmount();
     },

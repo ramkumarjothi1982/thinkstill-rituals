@@ -18,7 +18,7 @@
 // feature's loop calls frame(dt, scene) with one scene object it mutates every
 // frame. While the page is hidden the loop stops, so the canvases freeze.
 
-import { EffectsLayer, Bloom, glowBlend } from './effects.js';
+import { EffectsLayer, Bloom, FlashGate, glowBlend } from './effects.js';
 import { smoothstep } from './math.js';
 import {
   buildSprites, freeSprites, weatherTints, drawClouds, drawShafts, drawRain, drawBeads, drawRings, drawAffordance, drawFront,
@@ -27,6 +27,18 @@ import {
 } from './weather-draw.js';
 
 export const DPR_CAP = Object.freeze({ high: 1.5, medium: 1.25, low: 1 });
+/** The lab's share of the photosafe budget (SHARED C6): cloud glows from either bank ≤ 1 a second; small blooms ≥ 1.2 s apart. */
+export const LAB_GLOW = Object.freeze({ max: 1, windowMs: 1000, bloomGap: 1200 });
+
+/**
+ * One gate per screen for the lab's own brightenings: allow('glow') for a cloud glow (the thunderheads'
+ * or the rain deck's, counted together), allow('bloom') for a bead's bloom. Realm pulses have their own
+ * gate (env.gate, 2 a second), so realm and lab together stay within 3 bright events a second.
+ * The resolve bloom (≥ 1.6 s, once per weather) does not ask.
+ */
+export function labGlowGate(now = () => performance.now()) {
+  return new FlashGate({ max: LAB_GLOW.max, windowMs: LAB_GLOW.windowMs, bright: ['glow'], gaps: { bloom: LAB_GLOW.bloomGap }, now });
+}
 const SHAFT_SLANT = 0.08;   // light falls a little from the left
 const HAZE_K = 0.35;        // the sun's overcast haze never covers more than this
 

@@ -41,7 +41,7 @@ export const COPY = Object.freeze({
 
   buttons: Object.freeze({
     close: 'Close', settings: 'Nightlight settings', again: 'Again', done: 'Done',
-    turnOn: 'Turn on', fadeNow: 'Fade out now',
+    turnOn: 'Turn on', fadeNow: 'Fade out now', exit: 'Close Nightlight',
   }),
 
   // the one live region (role=status)
@@ -70,7 +70,11 @@ export const COPY = Object.freeze({
       value: (pct) => `${pct} %`,
     }),
     light: Object.freeze({ label: 'Light', names: Object.freeze(['Moon', 'Soft', 'Warm', 'Candle', 'Ember']) }),
-    speed: Object.freeze({ label: 'Speed', names: Object.freeze({ slowest: 'Slowest', slow: 'Slow', natural: 'Natural' }) }),
+    speed: Object.freeze({
+      label: 'Speed',
+      sub: 'How slowly it breathes, blinks and moves.',
+      names: Object.freeze({ slowest: 'Slowest', slow: 'Slow', natural: 'Natural' }),
+    }),
     volume: Object.freeze({
       label: 'Volume',
       sub: 'Sound pauses when the screen locks or you switch apps.',
@@ -89,6 +93,7 @@ export const COPY = Object.freeze({
       on: 'On',
       off: 'Off',
       sub: (n) => `Light, sound and movement ease down over the last ${n} minutes`,
+      offSub: 'Light and sound go down in the last few seconds',
       needsTimer: 'Needs a timer',
     }),
     motion: Object.freeze({
@@ -104,6 +109,8 @@ export const COPY = Object.freeze({
       failed: 'Not available right now',
       unsupported: 'Your screen sleeps on its usual timer.',
     }),
+    // the last row: stop gently (hidden while already fading), or leave now with the goodnight
+    stop: 'Finish',
     // SHARED C7: the night bed has its own controls, so Touch sounds don't silence it
     soundNote: 'Night sounds follow Mute and this volume, not Touch sounds.',
   }),

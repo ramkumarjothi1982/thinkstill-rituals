@@ -29,6 +29,11 @@ import { REACTIONS } from '../../src/mallows/reactions.js';
 import { PRESETS } from '../../src/mallows/expressions.js';
 import { rng } from '../core/math.js';
 import { collectStrings, lintCopy } from './lib/copy-lint.mjs';
+import { installAudioGlobals, reaches } from './lib/fake-audio.mjs';
+import { SoundEngine, MAX_VOICES, VOICES } from '../core/sound-engine.js';
+import { noiseBuffer } from '../core/ambience.js';
+import { WeatherSound, bedLevels, padFor, LAYERS, TIER_LAYERS, GAPS, PAD, WIND_HZ } from '../core/weather-sound.js';
+import { labGlowGate, LAB_GLOW } from '../core/weather-layer.js';
 
 const LAB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(LAB, '..', 'src');
@@ -156,7 +161,10 @@ test('U5 every weather visibly changes its world, monotonically, within the real
           }
           prev = v;
           if (gentle) assert.ok(m.agitation <= 0.3 + 1e-9, `gentle ${w} ${r} agitation ≤ .30`);
-          if (r === 'static-storm' && w === 'storm') assert.ok(m.agitation * (1 - t) * (1 - t) <= 0.33, `static-storm never auto-bolts (p=${p})`);
+          if (r === 'static-storm') {   // its own bolts start above agitation·(1 − p) 0.33: whatever the weather and the wind, never
+            const windy = moodFor(w, p, { energy: 1, turb: 1, calm: 0, height: 0, painted: 0, hearth: 1 }, r, { gentle });
+            assert.ok(m.agitation <= 0.32 + 1e-9 && windy.agitation <= 0.32 + 1e-9, `static-storm never auto-bolts (${w}, p=${p})`);
+          }
           if (r === 'spark-festival' && (w === 'rain' || w === 'storm')) assert.ok(m.heaviness <= 0.45 + 1e-9, `the fair stays lit in ${w}`);
         }
       }
@@ -841,7 +849,7 @@ test('U14 warm glow: kindling along a path, monotonic heat, the hearth kindles b
 // ------------------------------------------------------------------ U15 --
 const SHARED_REACT = Object.keys(REACTIONS._shared).filter((k) => k !== 'squeezeFace');
 const validReact = (id, k) => k == null || SHARED_REACT.includes(k) || (k !== 'squeezeFace' && Object.hasOwn(REACTIONS[id] || {}, k));
-const ALL_EVENTS = EVENT_TYPES.filter((t) => t !== 'idle');
+const ALL_EVENTS = EVENT_TYPES;
 const fire = (input, mem, type, extra = {}) => decide({ ...input, event: { type, x: 120, y: 200, k: 0.8, vx: 300, vy: 0, ...extra } }, mem, rng(3));
 
 test('U15 the Mallow reacts in character, within the rules', () => {
@@ -986,6 +994,34 @@ test('U15 the Mallow reacts in character, within the rules', () => {
   assert.deepEqual(gz({ cluster: { x: 3, y: 3 }, front: { x: 4, y: 4 } }), { type: 'gaze', x: 3, y: 3 });
   assert.deepEqual(gz({}), { type: 'gaze', x: null, y: null });
   assert.ok(GAP === 1.2);
+  // priority beats wait for the gap instead of being dropped: light reaching it through a gap, shelter
+  for (const type of ['light-through', 'sheltered']) {
+    const pm = createMemory(), pin = { ...base, weather: type === 'sheltered' ? 'rain' : 'storm' };
+    fire({ ...pin, t: 40 }, pm, 'hit-body', { k: 1 });
+    fire({ ...pin, t: 40.2 }, pm, 'gap');
+    assert.ok(!fire({ ...pin, t: 40.4 }, pm, type).some((a) => a.type === 'react'), `${type} waits`);
+    assert.equal(pm.pending?.type, type, `${type} is kept, not dropped`);
+    const later = decide({ ...pin, cond: { t: 41.5, dt: 0.1 } }, pm, rng(2));
+    assert.ok(later.some((a) => a.type === 'react' && a.ev === type), `${type} plays once the gap allows`);
+  }
+  // a strong gust squints into the wind (a light one just looks); the body is brushed and leant either way
+  const gs = fire({ ...base, weather: 'wind' }, createMemory(), 'gust', { k: 0.9 });
+  assert.equal(gs.find((a) => a.type === 'face')?.set?.lidTop, 0.42);
+  assert.equal(gs.filter((a) => a.type === 'brush').length, 3); assert.ok(gs.find((a) => a.type === 'nudge').lean > 0);
+  assert.ok(!fire({ ...base, weather: 'wind' }, createMemory(), 'gust', { k: 0.4 }).some((a) => a.type === 'face'));
+  // Warm glow: glow and blush rise with the heat; Starlight: the eyes sparkle more as a cluster grows
+  const warmFace = (heat) => decide({ ...base, weather: 'warm', cond: { t: 1, heat } }, createMemory(), rng(1)).find((a) => a.type === 'face').min;
+  assert.ok(warmFace(1).glow > warmFace(0).glow + 0.5 && warmFace(1).blush > warmFace(0).blush + 0.8);
+  const starFace = (n) => decide({ ...base, weather: 'starlight', cond: { t: 1, clusterN: n, cluster: { x: 1, y: 1 } } }, createMemory(), rng(1)).find((a) => a.type === 'face')?.min || {};
+  assert.equal(starFace(0).sparkle, undefined); assert.ok(starFace(6).sparkle > starFace(2).sparkle && starFace(20).sparkle <= 2.0 + 1e-9);
+  // idle: a light look over at the weather's element (closed eyes peek), never while touched
+  for (const id of MALLOW_IDS) {
+    const ia = fire({ ...base, mallowId: id, weather: 'sunshine' }, createMemory(), 'idle', { x: 300, y: 120 });
+    const r = ia.find((a) => a.type === 'react');
+    assert.ok(r && r.i <= 0.4 && !r.react && /^idle/.test(r.tag), `${id} idle: ${JSON.stringify(r)}`);
+    assert.ok(ia.some((a) => a.type === 'gaze' && a.x === 300 && a.y === 120));
+    assert.equal(ia.some((a) => a.type === 'peek'), CLOSED_EYES.includes(id));
+  }
 });
 
 // ------------------------------------------------------------------ U16 --
@@ -1043,6 +1079,14 @@ test('U16 photosensitivity: slow glow rises, strikes ≥ 8 s apart and never gen
   for (const w of ['storm', 'rain', 'fog', 'wind']) assert.equal(pulseFor('resolved', 'blue-drift', { weather: w }), 'clear');
   for (const w of ['sunshine', 'moonlight', 'starlight', 'warm']) assert.equal(pulseFor('resolved', 'blue-drift', { weather: w }), 'success');
   assert.equal(pulseFor('touch', 'x'), 'tap'); assert.equal(pulseFor('nonsense', 'blue-drift'), null);
+  // the lab's share (SHARED C6): cloud glows from either bank ≤ 1 a second; bead blooms ≥ 1.2 s apart and outside that count
+  let t = 0;
+  const lab = labGlowGate(() => t), glowsAt = [], bloomsAt = [];
+  for (t = 0; t < 10000; t += 50) { if (lab.allow('glow', t)) glowsAt.push(t); if (lab.allow('bloom', t)) bloomsAt.push(t); }
+  for (let i = 1; i < glowsAt.length; i++) assert.ok(glowsAt[i] - glowsAt[i - 1] >= LAB_GLOW.windowMs, 'glows ≥ 1 s apart');
+  for (let i = 1; i < bloomsAt.length; i++) assert.ok(bloomsAt[i] - bloomsAt[i - 1] >= LAB_GLOW.bloomGap, 'blooms ≥ 1.2 s apart');
+  assert.ok(glowsAt.length >= 9 && bloomsAt.length >= 7, 'a bloom never uses up the glow budget');
+  assert.equal(LAB_GLOW.max + 2, 3, 'with the realm gate (2 a second): ≤ 3 bright events a second per screen');
 });
 
 // ------------------------------------------------------------------ U17 --
@@ -1107,4 +1151,130 @@ test('U18 module boundaries: every weather module imports in Node, weather.js im
   assert.equal(classify(tr({ x: 30, up: true, tUp: 80 }), 80), 'drag');
   assert.equal(POINTER.fling, 700); assert.ok(isFling(0, -700) && !isFling(400, 400));
   assert.ok(scatter(0, { x0: 0, y0: 0, x1: 0, y1: 0 }, [], 1, Math.random, new Float32Array(0)) === 0);
+});
+
+// ------------------------------------------------------------------ U19 --
+const flushT = () => new Promise((r) => setTimeout(r, 0));
+function holdVoice(snd) {   // a long filler voice with one running source
+  const v = snd._voice(10), o = snd.ctx.createOscillator();
+  o.connect(v.out); o.start(v.t); o.stop(v.t + 10); v.srcs.push(o); v.nodes.push(o); v.end(v.t + 10);
+  return v;
+}
+
+test('U19 sound: the bed follows the weather (Touch sounds, mute, tiers), one-shots are gated, thunder never cracks', async () => {
+  // bedLevels: one level per layer from the sims, the pad weighted by presence, all faded by the leaving screen
+  const L = {}, amt = { rain: 1 };
+  const inp = { amount: (w) => amt[w] || 0, weather: 'rain', progress: 0, warmth: 0.5, rain: 0.8, storm: 0, wind: 0.5, water: 1, waves: 0.2, mist: 0.3, fade: 1 };
+  assert.equal(bedLevels(inp, L), L, 'writes into out');
+  assert.deepEqual([L.rain, L.wind, L.rumble, L.air, L.pad], [0.8, 0.5, 0, 0.3, 0]);
+  assert.ok(Math.abs(L.lap - 0.5) < 1e-9, 'water present × (wave energy + 0.3)');
+  assert.equal(L.windHz, WIND_HZ[0] + (WIND_HZ[1] - WIND_HZ[0]) * 0.5, 'the wind band follows energy');
+  assert.equal(bedLevels({ ...inp, water: 0 }, {}).lap, 0, 'no lap without water');
+  assert.equal(bedLevels({ ...inp, progress: 1 }, {}).pad, 0.5, 'a settled rain hums');
+  const off = bedLevels({ ...inp, fade: 0 }, {});
+  for (const k of ['rain', 'wind', 'rumble', 'lap', 'air', 'pad']) assert.equal(off[k], 0, `${k} fades with the screen`);
+  assert.equal(padFor('storm', 0), 0, 'no pad in a raging storm'); assert.equal(padFor('wind', 1), 0.5);
+  assert.equal(padFor('sunshine', 0, 1), 1); assert.equal(padFor('moonlight', 0, 0), 0.4);
+  const half = bedLevels({ ...inp, amount: (w) => (w === 'sunshine' || w === 'storm' ? 0.5 : 0), weather: 'sunshine', warmth: 1 }, {});
+  assert.equal(half.pad, 0.5, 'a turn cross-fades the pad by presence');
+  assert.ok(Object.keys(LAYERS).every((k) => LAYERS[k].peak <= 0.045 && LAYERS[k].peak > 0) && PAD.peak === 0.035, 'quiet peaks');
+  assert.deepEqual([...TIER_LAYERS.low], ['rain', 'wind']);
+
+  const restore = installAudioGlobals({ active: false });
+  const s = new SoundEngine();
+  let now = 1000;
+  try {
+    const ws = new WeatherSound(s, 'blubi', { tier: 'medium', now: () => now });
+    // nothing exists before a gesture
+    ws.update(L, now); now += 200; ws.update(L, now);
+    assert.equal(ws.alive, false); assert.equal(s.ctx, null);
+    assert.ok(!ws.drip(0) && !ws.patter() && !ws.thunder() && !ws.chime(1) && !ws.pair() && !ws.wipe(true, 0.5) && !ws.rise(4) && !ws.shower());
+    assert.deepEqual(ws.debug().played, {});
+    // a gesture: the bed builds once its noise buffers exist, as one keep voice made through _room
+    restore.setActive(true); s.unlock(); await flushT();
+    const c = s.ctx;
+    let rooms = 0; const room = s._room.bind(s); s._room = () => { rooms++; room(); };
+    const adv = (ms) => { now += ms; c.advance(ms / 1000); };
+    const tick = async (lv = L, ms = 150) => { adv(ms); ws.update(lv, now); await flushT(); };
+    await tick(); await tick();
+    assert.ok(ws.alive && rooms === 1, `alive ${ws.alive}, rooms ${rooms}`);
+    const bed = [...s.live].find((v) => v.keep);
+    assert.ok(bed && reaches(bed.out, c.destination) && bed.dur === 600);
+    assert.deepEqual(ws.debug().layers, [...TIER_LAYERS.medium]);
+    const srcs = bed.srcs.filter((n) => n.kind === 'bufferSource');
+    assert.equal(srcs.length, 4, 'four noise layers on the medium tier');
+    const layer = (i) => { const [f] = srcs[i].outputs, [g] = f.outputs; return { f, g }; };
+    assert.deepEqual([layer(0).f.type, layer(0).f.frequency.value, layer(0).f.Q.value], ['bandpass', LAYERS.rain.f, LAYERS.rain.q]);
+    assert.equal(srcs[0].buffer, noiseBuffer(c, 4, 'pink')); assert.equal(srcs[2].buffer, noiseBuffer(c, 4, 'brown'));
+    assert.ok(Math.abs(layer(0).g.gain.value - 0.8 * LAYERS.rain.peak) < 1e-12, 'rain gain = level × peak');
+    assert.ok(bed.srcs.some((o) => o.kind === 'oscillator' && Math.abs(o.frequency.value - VOICES.blubi.root * 0.25) < 1e-9), "the pad sits on Blubi's root");
+    // levels ease with τ 0.6 s; the wind band follows energy
+    await tick({ ...L, rain: 0.2, windHz: 800 });
+    const ev = layer(0).g.gain.last('target');
+    assert.ok(ev && Math.abs(ev.v - 0.2 * LAYERS.rain.peak) < 1e-12 && ev.tau === 0.6, JSON.stringify(ev));
+    assert.equal(layer(1).f.frequency.last('target').v, 800);
+    // a cloud glow swells the rumble over 0.5 s; the level then eases back to what the clouds say
+    assert.ok(ws.rumble(1));
+    const rg = layer(2).g.gain, swell = rg.last('linear');
+    assert.ok(Math.abs(swell.v - 0.35 * LAYERS.rumble.peak) < 1e-12 && Math.abs(swell.t - c.currentTime - 0.5) < 1e-9);
+    const nT = rg.of('target').length;
+    await tick({ ...L, rumble: 0 });
+    assert.equal(rg.of('target').length, nT, 'left alone while it swells');
+    await tick({ ...L, rumble: 0 }, 500);
+    assert.equal(rg.last('target').v, 0, 'then back');
+    // one-shots: their own gates, the engine's _ok (→ _room) every time
+    rooms = 0;
+    assert.ok(ws.drip(3)); assert.ok(!ws.drip(4), 'drips ≤ 6 a second');
+    adv(GAPS.drip + 1); assert.ok(ws.drip(4)); assert.equal(rooms, 2);
+    assert.ok(ws.patter()); adv(200); assert.ok(!ws.patter(), 'drops on the Mallow ≤ 1 per 0.7 s'); adv(600); assert.ok(ws.patter());
+    assert.ok(ws.thunder(1)); adv(3000); assert.ok(!ws.thunder(1), 'thunder ≥ 6 s apart'); adv(3100); assert.ok(ws.thunder(0.6));
+    const th = [...s.live].filter((v) => v.dur === 2.8).pop();
+    const gains = th.nodes.filter((n) => n.kind === 'gain' && n !== th.out && n.gain.of('linear').length);
+    assert.equal(gains.length, 2, 'a swell and its roll');
+    for (const g of gains) {
+      const set = g.gain.of('set')[0], up = g.gain.of('linear')[0];
+      assert.ok(up.t - set.t >= 0.3 && up.v <= 0.06 * 0.6 + 1e-12, `attack ${up.t - set.t}, peak ${up.v}: never a crack`);
+    }
+    for (const k of ['splash', 'swish', 'swell', 'rise', 'shower']) { adv(1300); assert.ok(ws[k](0.5), k); assert.ok(!ws[k](0.5), `${k} gated`); }
+    adv(1000); assert.ok(ws.swell(0.5, 0, 'arrive') && !ws.swell(0.5, 0, 'arrive') && ws.swell(0.5), 'arrivals have their own gate');
+    // chimes share one gate (glints, kindles, tinks); the first light's pair always rings
+    adv(500);
+    let chimes = 0; const ch = s.chime.bind(s); s.chime = (...a) => { chimes++; ch(...a); };
+    assert.ok(ws.glint(3)); assert.ok(!ws.kindle(4) && !ws.tink(2)); assert.ok(ws.pair()); assert.equal(chimes, 3);
+    // Touch sounds off: no one-shots and the bed lets go; back on, it returns
+    s.setParts({ fx: false }); adv(2000);
+    assert.ok(!ws.drip(1) && !ws.splash(1) && !ws.swish(1) && !ws.swell(1) && !ws.glint(2) && !ws.pair() && !ws.wipe(true, 1));
+    await tick();
+    assert.equal(ws.alive, false, 'the bed follows Touch sounds (respectFx)');
+    s.setParts({ fx: true }); await tick(); assert.ok(ws.alive, 'and comes back');
+    // mute stops every voice; unmuting rebuilds the bed on the next update
+    const builds = ws.debug().builds;
+    s.setMuted(true); assert.equal(ws.alive, false);
+    await tick(); assert.equal(ws.alive, false, 'nothing while muted');
+    s.setMuted(false); await tick();
+    assert.ok(ws.alive && ws.debug().builds === builds + 1, 'rebuilt with a fresh fade-in');
+    // the voice cap evicts an elder one-shot, never the bed (keep)
+    adv(500);
+    while (s.live.size < MAX_VOICES) holdVoice(s);
+    const bedV = [...s.live].find((v) => v.keep);
+    assert.ok(ws.splash(0.5));
+    assert.ok(s.live.has(bedV) && ws.alive, 'the bed survives the cap');
+    s.stopAll(); c.advance(0.5); await tick();
+    // a quality change only ever sheds layers
+    ws.setTier('high'); assert.equal(ws.debug().tier, 'medium', 'never grows');
+    ws.setTier('low'); assert.deepEqual(ws.debug().layers, ['rain', 'wind']);
+    await tick(); assert.ok(ws.alive); assert.equal(ws.rumble(1), false, 'no rumble layer on the low tier');
+    // wiping owns one brush, following the speed; off ends it
+    let brushes = 0; const br = s.brush.bind(s); s.brush = () => { brushes++; return br(); };
+    assert.ok(ws.wipe(true, 0.2) && ws.wipe(true, 0.8)); assert.equal(brushes, 1); assert.ok(ws.debug().wiping);
+    ws.wipe(false); assert.equal(ws.debug().wiping, false);
+    // end: the bed fades out and nothing plays afterwards
+    ws.wipe(true, 0.5);
+    ws.end(0.5);
+    assert.ok(!ws.alive && !ws.bed.wanted && !ws.debug().wiping && ws.debug().ended);
+    assert.ok(!ws.drip(0) && !ws.pair() && !ws.thunder());
+    await tick(); assert.equal(ws.alive, false);
+    s.stopAll(); c.advance(2);
+    assert.ok(![...s.live].some((v) => v.keep), 'no bed voice left');
+  } finally { s.dispose(); restore(); }
 });

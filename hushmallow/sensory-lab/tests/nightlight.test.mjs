@@ -1,6 +1,6 @@
-// Unit tests for Mallow Nightlight (spec-nightlight.md §13): U1–U15, U17, U18, plus U19–U21
-// (slice 2: the frame-clock timeline and moments, the five modes on a fake api, world helpers).
-// U16 (ScreenWake) arrives with core/screen-wake.js. Node only; every clock,
+// Unit tests for Mallow Nightlight (spec-nightlight.md §13): U1–U18, plus U19–U22
+// (slice 2: the frame-clock timeline and moments, the five modes on a fake api, world helpers;
+// slice 3: the night sound facade, bedPlan and NightBed). Node only; every clock,
 // timer and random source is injected, so results are exact:
 //   node --test hushmallow/sensory-lab/tests/nightlight.test.mjs
 
@@ -37,12 +37,15 @@ import { REALM_GEO, lightAnchor } from '../core/environment.js';
 import { MALLOWS, MALLOW_IDS } from '../../src/mallows/registry.js';
 import { REALM_IDS } from '../../src/world/realm.js';
 import { PARAM_NAMES } from '../../src/mallows/expressions.js';
-import { installAudioGlobals } from './lib/fake-audio.mjs';
+import { installAudioGlobals, reaches } from './lib/fake-audio.mjs';
 import { collectStrings, lintCopy } from './lib/copy-lint.mjs';
 import { NETWORK, scanFiles, filesUnder } from './lib/static-scan.mjs';
 import { MODES, TOUCHES, SWELL, LIVE, Timeline, Moments, startMode } from '../features/nightlight/modes.js';
 import { MARGIN, boxGround, stillDpr } from '../features/nightlight/world.js';
 import { FaceMixer } from '../core/expression-engine.js';
+import { ScreenWake, WAKE_MAX_MS } from '../core/screen-wake.js';
+import { BED, TEXTURES, PAD_LP, padFreq, nightSound, bedPlan, NightBed } from '../features/nightlight/bed.js';
+import { VOICES } from '../core/sound-engine.js';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const MIN = 60e3;
@@ -970,6 +973,131 @@ test('U15 copy: no sleep, health, streak or score claims (one disclaimer); short
 });
 
 // ================================================================= U17 ==
+// ================================================================= U16 ==
+/** A document that can hide, and a navigator whose wake lock records requests (or refuses them). */
+function fakeDoc() {
+  const L = new Set();
+  return {
+    hidden: false,
+    addEventListener(t, fn) { if (t === 'visibilitychange') L.add(fn); },
+    removeEventListener(t, fn) { L.delete(fn); },
+    set(h) { this.hidden = h; for (const fn of [...L]) fn(); },
+    get listeners() { return L.size; },
+  };
+}
+function fakeNav({ reject = false, throws = false } = {}) {
+  const nav = { calls: 0, sentinels: [] };
+  nav.wakeLock = {
+    request(type) {
+      nav.calls++;
+      if (throws) throw new Error('SecurityError');
+      if (reject) return Promise.reject(new Error('NotAllowedError'));
+      const s = { type, released: false, L: new Set(),
+        release() { if (!this.released) { this.released = true; for (const fn of [...this.L]) fn(); } return Promise.resolve(); },
+        addEventListener(t, fn) { if (t === 'release') this.L.add(fn); }, removeEventListener(t, fn) { this.L.delete(fn); } };
+      nav.sentinels.push(s);
+      return Promise.resolve(s);
+    },
+  };
+  return nav;
+}
+const flush = () => new Promise((r) => setTimeout(r, 0));
+
+test('U16 ScreenWake: opt-in, only while visible, let go when hidden, asked again on return, one refusal, an hour at most', async () => {
+  const doc = fakeDoc(), nav = fakeNav(), tm = fakeTimers();
+  const w = new ScreenWake({ nav, doc, setTimeout: tm.setTimeout, clearTimeout: tm.clearTimeout });
+  assert.equal(w.supported, true);
+  assert.equal(w.wanted, false);
+  doc.set(true); doc.set(false); await flush();
+  assert.equal(nav.calls, 0, 'off by default: nothing is ever requested unasked');
+
+  // no request while hidden; the return to visible asks
+  doc.set(true);
+  w.want(true); await flush();
+  assert.equal(nav.calls, 0, 'no request while hidden');
+  assert.equal(w.wanted, true);
+  doc.set(false); await flush();
+  assert.equal(nav.calls, 1);
+  assert.equal(w.held, true);
+  w.want(true); await flush();
+  assert.equal(nav.calls, 1, 'one lock at a time');
+
+  // hidden lets go (and keeps wanting); visible asks again
+  doc.set(true); await flush();
+  assert.equal(w.held, false);
+  assert.equal(nav.sentinels[0].released, true, 'released when hidden');
+  assert.equal(w.wanted, true);
+  doc.set(false); await flush();
+  assert.equal(nav.calls, 2, 're-requested on return');
+  assert.equal(w.held, true);
+
+  // the browser lets go on its own; refresh() (pageshow / resume) asks again
+  nav.sentinels[1].release(); await flush();
+  assert.equal(w.held, false);
+  w.refresh(); await flush();
+  assert.equal(nav.calls, 3);
+  assert.equal(w.held, true);
+
+  // want(false): released, and visibility no longer asks
+  w.want(false); await flush();
+  assert.equal(w.held, false);
+  assert.equal(nav.sentinels[2].released, true);
+  doc.set(true); doc.set(false); await flush();
+  assert.equal(nav.calls, 3);
+
+  // an hour at most
+  w.want(true); await flush();
+  assert.equal(w.held, true);
+  tm.advance(WAKE_MAX_MS - 1);
+  assert.equal(w.wanted, true);
+  tm.advance(2); await flush();
+  assert.equal(w.wanted, false, 'released at maxMs');
+  assert.equal(w.held, false);
+  doc.set(true); doc.set(false); await flush();
+  assert.equal(nav.calls, 4, 'and not asked again after expiring');
+
+  // a request that resolves after the page was hidden is let go at once (the return asks again)
+  w.want(true); doc.set(true); await flush();
+  assert.equal(w.held, false);
+  assert.equal(nav.sentinels.at(-1).released, true);
+  doc.set(false); await flush();
+  assert.equal(w.held, true);
+
+  w.destroy();
+  assert.equal(doc.listeners, 0, 'destroy removes its listener');
+  assert.equal(w.held, false);
+  assert.equal(tm.pending, 0, 'and its timer');
+  w.want(true); await flush();
+  assert.equal(w.wanted, false, 'a destroyed wake never asks');
+
+  // a refusal: wanted false, onFail once, never retried in a loop
+  const doc2 = fakeDoc(), bad = fakeNav({ reject: true });
+  let fails = 0;
+  const w2 = new ScreenWake({ nav: bad, doc: doc2, onFail: () => fails++ });
+  w2.want(true); await flush();
+  assert.equal(w2.wanted, false);
+  assert.equal(w2.failed, true);
+  assert.equal(fails, 1);
+  doc2.set(true); doc2.set(false); w2.refresh(); await flush(); await flush();
+  assert.equal(bad.calls, 1, 'never retried');
+  assert.equal(fails, 1);
+  w2.destroy();
+  const w3 = new ScreenWake({ nav: fakeNav({ throws: true }), doc: fakeDoc(), onFail: () => fails++ });
+  w3.want(true); await flush();
+  assert.equal(w3.wanted, false); assert.equal(fails, 2, 'a request that throws counts as a refusal');
+  w3.destroy();
+
+  // unsupported: no throw, never wanted
+  for (const n of [{}, undefined, { wakeLock: {} }]) {
+    const u = new ScreenWake({ nav: n, doc: fakeDoc() });
+    assert.equal(u.supported, false);
+    assert.doesNotThrow(() => { u.want(true); u.refresh(); u.release(); });
+    assert.equal(u.wanted, false);
+    u.destroy();
+  }
+  assert.doesNotThrow(() => new ScreenWake({ nav: undefined, doc: undefined }).destroy(), 'no document either: still no throw');
+});
+
 test('U17 shared contracts: Personality.setFilter, prefs.nightlight, SoundEngine setTrim and rest', async () => {
   const p = new Personality('boppo', { seed: 3, style: 'gentle' });
   p.setFilter(() => null);
@@ -1011,7 +1139,7 @@ test('U17 shared contracts: Personality.setFilter, prefs.nightlight, SoundEngine
 
 // ================================================================= U18 ==
 const NL = here('../features/nightlight/');
-const PURE = ['session.js', 'settings.js', 'look.js', 'pacing.js', 'ways.js', 'copy.js', 'modes.js'].map((f) => NL + f).concat(here('../core/frame-pacer.js'));
+const PURE = ['session.js', 'settings.js', 'look.js', 'pacing.js', 'ways.js', 'copy.js', 'modes.js', 'bed.js'].map((f) => NL + f).concat(here('../core/frame-pacer.js'));
 const OWNED = [...new Set([...filesUnder(NL), here('../features/nightlight.js'), here('../core/frame-pacer.js'), here('../core/screen-wake.js')].filter((f) => existsSync(f)))];
 
 test('U18 static scan: no network, workers, notifications or setInterval; wake lock only in screen-wake.js; pure modules have no DOM', () => {
@@ -1217,6 +1345,32 @@ test('U20 the five modes on a fake api: rests ≥ 0.62, Moonlight swell and limi
   const q2 = fakeScene('loomi', { settings: { quietSound: true } }); startMode('quiet', q2.api);
   assert.equal(q2.api.quiet, false);
   assert.deepEqual(TOUCHES.includes('offtap') && SWELL.k === 0.4 && SWELL.riseS >= 0.6, true);
+
+  // slice 3 wiring: rests go through api.rest (the screen holds the asleep face over them during the fade);
+  // Breathe swells the bed's texture with each phase and its depth follows the fade; Drift's glints ring the bell
+  const w = fakeScene('blubi'), rests = [], swells = [], bells = [];
+  w.api.rest = (r) => rests.push(r);
+  w.api.bed = { breathe: (ph, secs) => swells.push([ph, secs]), chime: () => bells.push(1) };
+  let ik = 1;
+  w.api.inflateK = () => ik;
+  const wb = startMode('breathe', w.api);
+  assert.deepEqual(rests, [REST.breathe]);
+  assert.equal(w.companion.restOverride, null, 'the mode never sets the rest itself when the screen offers rest()');
+  let wmax = 0;
+  for (let i = 0; i < 300; i++) { w.run(wb, 0.05); wmax = Math.max(wmax, w.rig.inflateTarget); }
+  assert.ok(swells[0][0] === 'in' && near(swells[0][1], 4), 'the first in-breath swells over its own length');
+  assert.ok(swells.some(([ph]) => ph === 'out') && swells.every(([ph, secs]) => ['in', 'out', 'holdIn', 'holdOut'].includes(ph) && secs > 0));
+  ik = 0.4; let wlow = 0;
+  for (let i = 0; i < 300; i++) { w.run(wb, 0.05); wlow = Math.max(wlow, w.rig.inflateTarget); }
+  assert.ok(wmax > 0.9 && wlow <= 0.4 + 1e-9, `the fade makes the breath shallower (${wmax} → ${wlow})`);
+  wb.stop();
+  assert.deepEqual(swells.at(-1), [null, undefined], 'stop hands the texture back');
+  const wd = startMode('drift', w.api);
+  assert.equal(typeof w.sky.onGlint, 'function');
+  w.sky.onGlint(0); w.sky.onGlint(1);
+  assert.equal(bells.length, 2, 'every glint asks; the bed keeps them ≥ 20 s apart');
+  wd.stop();
+  assert.equal(w.sky.onGlint, null);
 });
 
 // ================================================================= U21 ==
@@ -1227,4 +1381,141 @@ test('U21 world helpers: the overhanging box maps the ground line; still DPR per
   assert.ok(near(-MARGIN + gy * (H + 2 * MARGIN), base * H), 'the ground stays exactly where the Mallow stands');
   assert.equal(stillDpr('low'), 1);
   assert.ok(stillDpr('medium') <= 1.25 && stillDpr('high') <= 1.5 && stillDpr('high') >= 1);
+});
+
+// ================================================================= U22 ==
+test('U22 night sound: the facade, bedPlan, and NightBed on AmbientBed (textures, pad, fade-in, breath, bell; Touch sounds do not silence it)', async () => {
+  // the facade: softer touches, no thuds, only sleepy voices; setQuiet silences everything
+  const calls = [];
+  const engine = {
+    ready: true, muted: false, unlock() { calls.push(['unlock']); },
+    poke: (m, i) => calls.push(['poke', i]), squish: (m, a) => calls.push(['squish', a]), release: (m, v) => calls.push(['release', v]),
+    impact: () => calls.push(['impact']), settle: () => calls.push(['settle']),
+    stretch: () => ({ update: (a) => calls.push(['stretch', a]), end() {} }), brush: () => ({ update: (a) => calls.push(['brush', a]), end() {} }),
+    voice: (id, kind, i) => { calls.push(['voice', id, kind, i]); return true; },
+  };
+  const f = nightSound(engine, 'boppo');
+  f.poke({}, 1); f.impact({}, 1); f.voice('boppo', 'giggle', 0.8); f.voice('boppo', 'hum', 0.6);
+  assert.deepEqual(calls, [['poke', NIGHT_K.touch], ['voice', 'boppo', 'coo', 0.8 * NIGHT_K.voice], ['voice', 'boppo', 'hum', 0.6 * NIGHT_K.voice]], 'pokes × 0.6, no impact, a giggle becomes a coo');
+  calls.length = 0;
+  f.setQuiet(true);
+  assert.equal(f.quiet, true);
+  f.poke({}, 1); f.settle({}); f.stretch({}).update(1); assert.equal(f.voice('boppo', 'coo', 1), null);
+  assert.deepEqual(calls, [], 'silent Quiet: no touch sounds, no voice');
+  f.unlock(); assert.deepEqual(calls, [['unlock']], 'unlock still forwards');
+  f.setQuiet(false); calls.length = 0; f.poke({}, 1);
+  assert.deepEqual(calls, [['poke', NIGHT_K.touch]]);
+  const loomi = nightSound(engine, 'loomi');
+  calls.length = 0;
+  assert.equal(loomi.voice('loomi', 'tap', 0.6), null, 'Loomi stays asleep and silent');
+  assert.deepEqual(calls, []);
+
+  // bedPlan: on only when it should sound; levels follow the mode's split × the displayed sound level
+  const plan = bedPlan({ split: MODES.moonlight.bed, sound: 1, volume: 0.5 });
+  assert.deepEqual({ ...plan, gain: +plan.gain.toFixed(6) }, { pad: 0.6, texture: 0.4, on: true, gain: 0.035 });
+  for (const m of MODES_ORDER) {
+    const p = bedPlan({ split: MODES[m].bed, sound: 1, volume: 1 });
+    assert.ok(p.gain <= BED.peak + 1e-12 && p.pad <= 1 && p.texture <= 1, `${m}: never above the bed's peak`);
+  }
+  const q = bedPlan({ split: MODES.quiet.bed, sound: 1 });
+  assert.ok(q.on && q.texture === 0 && near(q.pad, 0.5), 'Quiet with Sound on: a faint pad only');
+  for (const [why, o] of [['silent Quiet', { silent: true }], ['Volume 0', { volume: 0 }], ['sound below 0.03', { sound: 0.02 }],
+    ['ended', { ended: true }], ['hidden', { hidden: true }], ['leaving', { leaving: true }], ['no mode', { split: null }]]) {
+    assert.equal(bedPlan({ split: MODES.moonlight.bed, sound: 1, volume: 1, ...o }).on, false, `off: ${why}`);
+  }
+  const mid = bedPlan({ split: MODES.drift.bed, sound: 0.5, volume: 1, silent: true });
+  assert.ok(!mid.on && near(mid.texture, 0.35) && near(mid.pad, 0.15), 'levels are kept while off (a rebuild starts at the right mix)');
+  assert.equal(padFreq(0), PAD_LP.moon); assert.equal(padFreq(1), PAD_LP.ember); assert.ok(padFreq(0.5) < 900 && padFreq(0.5) > 380);
+
+  // NightBed on the real Sound Engine with the fake audio context
+  const restore = installAudioGlobals({ active: false });
+  const s = new SoundEngine({ volume: 0.7 });
+  try {
+    let now = 0;
+    const bed = new NightBed(s, { mallowId: 'noomi', texture: 'waves', quality: 'medium', temp: 0.5 });
+    const step = async (ms = 150) => { now += ms; bed.tick(now); await flush(); };
+    bed.want(bedPlan({ split: MODES.moonlight.bed, sound: 1, volume: 0.5 }));
+    await step(); await step();
+    assert.equal(bed.alive, false); assert.equal(s.ctx, null, 'nothing before the first gesture');
+    restore.setActive(true); s.unlock(); await flush();
+    s.setParts({ fx: false });   // Touch sounds off: the bed has its own controls (SHARED C7)
+    for (let i = 0; i < 4 && !bed.alive; i++) await step();
+    assert.equal(bed.alive, true, 'built once ready, even with Touch sounds off');
+    const c = s.ctx, v = [...s.live].find((x) => x.keep);
+    assert.ok(v && v.dur === 600 && reaches(v.out, c.destination), 'one long keep voice on the bus');
+    const fadeIn = v.out.gain.last('linear');
+    assert.ok(fadeIn.v === 1 && near(fadeIn.t - v.t, BED.fadeIn), 'rises from silence over 4 s');
+    // the waves texture: looping brown noise → lowpass 520 Hz, Q 0.4 → level → 0.08 Hz amplitude LFO (40 %)
+    const lp = c.nodes.find((n) => n.kind === 'biquad' && n.type === 'lowpass' && n.frequency.value === 520);
+    assert.ok(lp && near(lp.Q.value, 0.4));
+    const texGain = [...lp.outputs][0];
+    assert.ok(near(texGain.gain.value, 0.4 * BED.peak), 'texture level × peak');
+    assert.ok(c.nodes.some((n) => n.kind === 'oscillator' && near(n.frequency.value, 0.08)), 'the waves LFO');
+    // the pad on Noomi's own root: root/4, a fifth above, root/2 (triangle); lowpass at the Light's frequency with a slow LFO
+    const root = VOICES.noomi.root;
+    for (const fr of [root / 4, root / 4 * 2 ** (7 / 12), root / 2 * 1.003]) assert.ok(c.nodes.some((n) => n.kind === 'oscillator' && near(n.frequency.value, fr, 1e-6)), `pad tone ${fr}`);
+    const padLp = c.nodes.find((n) => n.kind === 'biquad' && n.type === 'lowpass' && near(n.frequency.value, padFreq(0.5)));
+    assert.ok(padLp, 'pad lowpass from the Light');
+    assert.ok(c.nodes.some((n) => n.kind === 'oscillator' && near(n.frequency.value, BED.padLfo)));
+    // the Light warms: the pad darkens (eased)
+    bed.setTemp(1); await step(1000);
+    assert.equal(padLp.frequency.last('target').v, PAD_LP.ember);
+    // levels follow at most once a second; on / off at once
+    const n0 = texGain.gain.of('target').length;
+    bed.want(bedPlan({ split: MODES.moonlight.bed, sound: 0.5, volume: 0.5 })); await step(300);
+    assert.equal(texGain.gain.of('target').length, n0, 'not yet: ≤ 1 Hz');
+    await step(800);
+    const tgt = texGain.gain.last('target');
+    assert.ok(near(tgt.v, 0.2 * BED.peak) && tgt.tau === BED.tau, 'eased with τ 1.5 s');
+    // Breathe: one linear ramp per phase; the plan leaves the texture alone while breathing
+    bed.want(bedPlan({ split: MODES.breathe.bed, sound: 1, volume: 0.5 })); bed.touch(); await step();
+    bed.breathe('in', 4);
+    const up = texGain.gain.last('linear');
+    assert.ok(near(up.v, 0.45 * BED.peak) && near(up.t - c.currentTime, 4), `in-breath swell ${up.v}`);
+    bed.breathe('holdIn', 0.3);
+    assert.equal(texGain.gain.last('linear'), up, 'holds leave the swell where it is');
+    bed.breathe('out', 6);
+    assert.ok(near(texGain.gain.last('linear').v, 0.45 * BED.breathLow * BED.peak));
+    const nt = texGain.gain.of('target').length;
+    await step(1100);
+    assert.equal(texGain.gain.of('target').length, nt, 'no plan target while breathing');
+    bed.breathe(null); await step();
+    assert.ok(near(texGain.gain.last('target').v, 0.45 * BED.peak), 'stopping hands the texture back');
+    // Drift's bell: only while playing, ≥ 20 s apart, soft
+    const bells = [];
+    s.chime = (id, st, i) => bells.push([id, st, i]);
+    bed.want(bedPlan({ split: MODES.drift.bed, sound: 1, volume: 0.5 })); await step();
+    assert.equal(bed.chime(now), true);
+    assert.equal(bed.chime(now + 19000), false, 'not within 20 s');
+    assert.equal(bed.chime(now + 20001), true);
+    assert.ok(bells.length === 2 && bells.every(([id, st, i]) => id === 'noomi' && st >= 0 && st < 5 && i <= BED.chimeI));
+    bed.want(bedPlan({ split: MODES.drift.bed, sound: 0.3, volume: 0.5 }));
+    assert.equal(bed.chime(now + 60000), false, 'no bell once the bed is below half its level');
+    // stopAll (mute, hidden, the voice cap): not alive; the next tick rebuilds with a fresh fade-in
+    s.stopAll();
+    assert.equal(bed.alive, false);
+    bed.want(bedPlan({ split: MODES.drift.bed, sound: 1, volume: 0.5 }));
+    await step(); await step();
+    assert.equal(bed.alive, true); assert.equal(bed.debug().builds, 2);
+    // off: let go over 1.5 s; end(2): sources stop by ~2.1 s
+    bed.want(bedPlan({ split: MODES.drift.bed, sound: 1, volume: 0 })); await step();
+    assert.equal(bed.alive, false, 'Volume 0: let go');
+    bed.want(bedPlan({ split: MODES.drift.bed, sound: 1, volume: 0.5 })); await step(); await step();
+    const v2 = [...s.live].find((x) => x.keep && x.srcs.some((q2) => !q2.stopAt));
+    bed.end(2);
+    assert.equal(bed.alive, false);
+    assert.ok(v2.srcs.every((q2) => q2.stopAt != null && q2.stopAt <= c.currentTime + 2.11), 'every source stops after the 2 s fade');
+    // a new world brings its own texture (the hush texture sits at 0.7 of the level)
+    const bed2 = new NightBed(s, { mallowId: 'glitzi', texture: 'hush' });
+    bed2.want(bedPlan({ split: MODES.moonlight.bed, sound: 1, volume: 0.5 }));
+    for (let i = 0; i < 4 && !bed2.alive; i++) { now += 150; bed2.tick(now); await flush(); }
+    const hushLp = c.nodes.filter((n) => n.kind === 'biquad' && n.type === 'lowpass' && n.frequency.value === TEXTURES.hush.f).at(-1);
+    assert.ok(hushLp && near([...hushLp.outputs][0].gain.value, 0.4 * BED.peak * TEXTURES.hush.gain));
+    bed2.setTexture('air');
+    assert.equal(bed2.alive, false, 'the old texture lets go…');
+    for (let i = 0; i < 4 && !bed2.alive; i++) { now += 150; bed2.tick(now); await flush(); }
+    assert.ok(bed2.alive && c.nodes.some((n) => n.kind === 'biquad' && n.type === 'bandpass' && n.frequency.value === TEXTURES.air.f), '…and the air texture comes in');
+    bed2.destroy();
+    assert.equal(new NightBed(s, { mallowId: 'nobody', texture: 'nonsense' }).texture, 'air', 'unknown ids fall back');
+  } finally { s.dispose(); restore(); }
 });

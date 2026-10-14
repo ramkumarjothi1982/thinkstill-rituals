@@ -21,7 +21,7 @@
 //             leads too; the Mallow fills with the breath
 //   offline   E10: offline renders (real Web Audio DSP) of every kit: pitch, loudness, clicks, hum
 //             attack and release, bass pitch and phone-band energy
-//   rapid     E9 (solo): 40 taps in 2 s: voice caps, every note in key, nothing clashes
+//   rapid     E9: 40 taps in 2 s, solo and in a duet (Zuzu leads Pipzi): voice caps, every note in key, nothing clashes
 //   quietmode E12/E13 (part): Mute keeps the music running silently, and unmuting during a hum brings
 //             it back; Visual only plays no sound, shows the suffix, survives a reload
 //   hidden    E19 (part): a hidden page releases everything, stops the scheduler, plays nothing after
@@ -36,6 +36,14 @@
 //   keep      E15: Keep/Removed/K, hidden while personalisation is off; home "For you"; Play it (nothing before);
 //             the Comfort DNA description; six tunes kept → Keep refuses without dropping anything
 //   rest      RESTING after the idle time (test seam): the resting face, a dimmer ring, Zuzu's spiral slows; a touch wakes
+// Slice 4 (duet, sheets, styles):
+//   duet      E16/E21: the picker, two stages and rigs, the hello, harmonies within 400 ms, a bloom and its arc, an answer,
+//             Friend answers Off, G, Tab between the stages, Keep with the friend and the kept duet from home (Play it),
+//             motion and quality reach both rigs, Play alone; the favourite Mallow never changes
+//   sheet     E11/E13/E23 (parts): Sound and pace: Volume moves prefs.volume and the master gain (at 0 the light still
+//             plays), Music | Visual only, Breath pace, Your tunes (Play brings the tune's friend; Remove keeps focus in
+//             the list; empty; personalisation off), Lab settings, the footnote; Escape closes the sheet first
+//   layout    (E22) also: duet, duet + tray, the sheet and the picker, at all seven viewports (land-small included)
 
 const path = require('path');
 const H = require('./lib/harness.cjs');
@@ -73,6 +81,61 @@ async function untilSilent(page, ms = 3500, pred = () => __lab.sound.live.size =
   }
 }
 const musicVoices = (page) => hb(page, () => [...__lab.sound.live].filter((v) => v.music != null).map((v) => ({ layer: v.layer, keep: v.keep })));
+const trace = (...a) => { if (process.env.HB_TRACE) console.log('  ·', ...a); };   // HB_TRACE=1: step markers
+const icOf = (a, b) => { const d = mod(a - b, 12); return Math.min(d, 12 - d); };
+/** Page px of every Mallow's body middle (lead first). */
+const bodiesAt = (page) => hb(page, () => __lab.companions().map((c) => { const r = c.rig.bodyRect(), o = c.rig.canvas.parentElement.getBoundingClientRect(); return { x: o.left + r.cx, y: o.top + r.mid }; }));
+/** Wait until the screen has n Mallows, every rig ready, no entrance or fade pending and no sheet open. */
+const duetReady = (page, n = 2) => page.waitForFunction((n) => {
+  const d = __lab.hushbeat?.debug(), cs = __lab.companions();
+  return !!d && cs.length === n && cs.every((c) => c.rig?.soft) && (n === 1 ? !d.friend : !!d.duet && !d.duet.entering) && !d.sheet && !document.querySelector('.hushbeat.hb-fading');
+}, n, { timeout: T });
+/** Friend → the picker → a Mallow, until the duet is ready. */
+async function invite(page, id) {
+  await page.click('.hushbeat .hb-friend-btn');
+  await page.waitForSelector('.hushbeat .sheet.on', { timeout: T });
+  await page.click(`.hushbeat .hb-friend[data-mallow="${id}"]`);
+  await duetReady(page, 2);
+}
+/** Open a sheet with its button and wait for it to slide in. */
+async function openSheetBy(page, sel) {
+  await page.click(sel);
+  await page.waitForSelector('.hushbeat .sheet.on', { timeout: T });
+  // settled: the slide-in transition has finished (its bottom edge sits on the viewport's)
+  await page.waitForFunction(() => { const el = document.querySelector('.hushbeat .sheet.on'); return el && Math.abs(el.getBoundingClientRect().bottom - innerHeight) < 1; }, null, { timeout: T });
+}
+/** Wait until this screen's sheet has closed and its scrim is gone (it lingers 300 ms and would take a tap). */
+const sheetGone = (page) => page.waitForFunction(() => !__lab.hushbeat.debug().sheet && !document.querySelector('.hushbeat .sheet, .hushbeat .sheet-scrim'), null, { timeout: T });
+/**
+ * The open sheet at this viewport: on screen below the top bar, nothing wider than it, its controls inside it,
+ * ≥ 40 px and not overlapping (the sticky Done aside; controls scrolled under it are reachable by scrolling).
+ */
+async function sheetLayout(page, scope) {
+  const L = await page.evaluate(() => {
+    const sh = document.querySelector('.hushbeat .sheet.on');
+    if (!sh) return null;
+    const r = sh.getBoundingClientRect(), tb = document.querySelector('.hushbeat .topbar .icon-btn').getBoundingClientRect();
+    const ctl = [...sh.querySelectorAll('button, input')].filter((b) => b.getBoundingClientRect().width > 0 && !b.classList.contains('done')).map((b) => {
+      const q = b.getBoundingClientRect();
+      return { t: (b.textContent.trim() || b.getAttribute('aria-label') || b.tagName).slice(0, 30), x: q.left, y: q.top, w: q.width, h: q.height };
+    });
+    return { r: { x: r.left, y: r.top, w: r.width, h: r.height }, sw: sh.scrollWidth, cw: sh.clientWidth, ctl, vw: innerWidth, vh: innerHeight, pageSw: document.documentElement.scrollWidth, tb: tb.bottom };
+  });
+  if (!check(scope, 'the sheet is open', !!L)) return;
+  const R = L.r;
+  check(scope, 'the sheet is on screen and leaves the top bar visible', R.x >= -0.5 && R.x + R.w <= L.vw + 1 && R.y + R.h <= L.vh + 1 && R.y >= L.tb - 1, JSON.stringify({ R, tb: L.tb, vh: L.vh }));
+  check(scope, 'nothing in the sheet is wider than it; no horizontal page scroll', L.sw <= L.cw + 1 && L.pageSw <= L.vw, JSON.stringify({ sw: L.sw, cw: L.cw, pageSw: L.pageSw }));
+  const out = L.ctl.filter((c) => c.x < R.x - 0.5 || c.x + c.w > R.x + R.w + 0.5).map((c) => c.t);
+  check(scope, 'sheet controls inside the sheet', !out.length, out.join(', '));
+  const small = L.ctl.filter((c) => c.w < 39.5 || c.h < 39.5).map((c) => `${c.t} ${Math.round(c.w)}×${Math.round(c.h)}`);
+  check(scope, 'sheet targets ≥ 40 px', !small.length, small.join(', '));
+  const clash = [];
+  for (let i = 0; i < L.ctl.length; i++) for (let j = i + 1; j < L.ctl.length; j++) {
+    const a = L.ctl[i], b = L.ctl[j];
+    if (a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1) clash.push(`${a.t}/${b.t}`);
+  }
+  check(scope, 'sheet controls do not overlap', !clash.length, clash.join(', '));
+}
 
 // Every pair of pitches sounding together, rebuilt from the log (notes ring for `ring`, released layers for
 // PAD_TAIL 1.0 / BASS_TAIL 0.3 s, as the engine counts them) → clashes (interval class 1 or 6)
@@ -448,6 +511,26 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const inKey = ns.every((e) => { const s = 12 * Math.log2(e.hz / V.rootHz), k = Math.round(s); return Math.abs(s - k) < 0.01 && V.scale.includes(mod(k, 12)); });
     check(scope, '40 taps in 2 s: live voices ≤ 24, music voices ≤ the low-tier cap', mx.live <= 24 && mx.voices <= mx.cap, JSON.stringify(mx));
     check(scope, 'every note in Zuzu\'s key; nothing sounding together forms a semitone or tritone', ns.length >= 10 && inKey && !clashes(L).length, JSON.stringify({ n: ns.length, ghosts: L.filter((e) => e.ghost).length, clashes: clashes(L).slice(0, 5) }));
+    // E9 in a duet: Pipzi joins Zuzu (the one scale with semitones leads); 40 taps alternating between them in 2 s
+    await hb(page, () => __lab.hushbeat.setFriend('pipzi', { instant: true }));
+    await duetReady(page, 2);
+    await sleep(1500);
+    const B2 = await bodiesAt(page);
+    await clearLog(page);
+    await hb(page, () => { window.__mx = { live: 0, voices: 0 }; window.__mxT = setInterval(() => { __mx.live = Math.max(__mx.live, __lab.sound.live.size); __mx.voices = Math.max(__mx.voices, __lab.hushbeat.audio.voices); }, 50); });
+    for (let i = 0; i < 40; i++) {
+      const p = B2[i % 2];
+      await page.mouse.click(p.x + Math.sin(i * 2.3) * 18, p.y + Math.cos(i * 1.7) * 18);
+      await sleep(25);
+    }
+    await sleep(1500);
+    const mx2 = await hb(page, () => { clearInterval(window.__mxT); return { ...window.__mx, cap: 10 }; });
+    const L2 = await logOf(page), ns2 = notes(L2);
+    const inKey2 = ns2.every((e) => { const s = 12 * Math.log2(e.hz / V.rootHz), k = Math.round(s); return Math.abs(s - k) < 0.01 && V.scale.includes(mod(k, 12)); });
+    check(`${scope}:duet`, 'E9 duet: 40 alternating taps in 2 s: live voices ≤ 24, music voices ≤ the low-tier cap', mx2.live <= 24 && mx2.voices <= mx2.cap, JSON.stringify(mx2));
+    check(`${scope}:duet`, 'E9 duet: both play, all in Zuzu\'s key (the friend plays in the lead\'s), they harmonise, nothing clashes',
+      ns2.some((e) => e.slot === 0) && ns2.some((e) => e.slot === 1) && inKey2 && L2.some((e) => e.kind === 'harmony') && !clashes(L2).length,
+      JSON.stringify({ n: ns2.length, slots: [ns2.filter((e) => !e.slot).length, ns2.filter((e) => e.slot === 1).length], harmony: L2.filter((e) => e.kind === 'harmony').length, clashes: clashes(L2).slice(0, 5) }));
     noErrors(scope, errors);
   });
 
@@ -830,9 +913,277 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     noErrors(scope, errors);
   });
 
+  // ------------------------------------------------------------- E16 E21 --
+  if (only('duet')) await guard(`${SCOPE}:duet`, async (scope, own) => {
+    const { ctx, page, errors } = await openHb(browser, 'phone', 'boppo');
+    own(ctx);
+    const solo = await hb(page, () => ({ canvases: document.querySelectorAll('canvas').length, fav: __lab.dna.get('favouriteMallow'), id: __lab.ctx.mallowId }));
+    await openSheetBy(page, '.hushbeat .hb-friend-btn');
+    const pk = await hb(page, () => {
+      const sh = document.querySelector('.hushbeat .sheet');
+      return { title: sh.querySelector('h3').textContent, pills: [...sh.querySelectorAll('.hb-friend')].map((b) => ({ id: b.dataset.mallow, label: b.getAttribute('aria-label') })), alone: !!sh.querySelector('.hb-alone'), focus: sh.contains(document.activeElement), sheet: __lab.hushbeat.debug().sheet };
+    });
+    check(scope, 'E16: Friend opens "Who joins Boppo?": the six other Mallows with their sound words, no Play alone yet, focus inside',
+      pk.title === 'Who joins Boppo?' && pk.pills.length === 6 && !pk.pills.some((x) => x.id === 'boppo') && pk.pills.find((x) => x.id === 'loomi')?.label === 'Loomi, soft pads'
+      && pk.pills.find((x) => x.id === 'pipzi')?.label === 'Pipzi, spark bells' && !pk.alone && pk.focus && pk.sheet === 'Who joins Boppo?', JSON.stringify(pk));
+    await H.shot(page, out, 'hushbeat-phone-picker');
+    await page.click('.hushbeat .hb-friend[data-mallow="loomi"]');
+    await duetReady(page);
+    await sleep(400);
+    const j = await hb(page, () => {
+      const scr = document.querySelector('.screen.hushbeat'), st = [...scr.querySelectorAll('.stage')], d = __lab.hushbeat.debug();
+      const bodies = __lab.companions().map((c, i) => { const r = c.rig.bodyRect(), sr = st[i].getBoundingClientRect(); return { id: c.id, l: r.cx - r.w / 2, r: r.cx + r.w / 2, sw: sr.width, left: sr.left + r.cx - r.w / 2, right: sr.left + r.cx + r.w / 2 }; });
+      return {
+        layout: scr.dataset.layout, stages: st.length, lead: st[0].classList.contains('lead'), partner: !!st[1]?.classList.contains('partner'),
+        labels: st.map((x) => x.getAttribute('aria-label')), sub: scr.querySelector('.topbar .title small').textContent, chip: scr.querySelector('.feedback').textContent,
+        bodies, friend: d.friend, players: d.players.map((x) => x.mallow), ctxLead: __lab.companion === __lab.companions()[0],
+        hello: __lab.hushbeat.log.filter((e) => e.kind === 'note' && e.src === 'hello').map((e) => e.slot),
+      };
+    });
+    check(scope, 'E16: Loomi joins: two stages, two rigs ready, the subtitle, the feedback and both stage labels (with G and Tab) say so',
+      j.layout === 'duet' && j.stages === 2 && j.lead && j.partner && j.sub === 'Boppo & Loomi' && j.chip === 'Loomi joins' && j.friend === 'loomi' && j.players.join() === 'boppo,loomi'
+      && j.labels[0].startsWith('Boppo.') && j.labels[1].startsWith('Loomi.') && j.labels.every((l) => l.includes('G plays both together')) && j.ctxLead, JSON.stringify(j));
+    check(scope, 'E16: each body inside its own stage; they do not overlap', j.bodies.every((b) => b.l >= -1 && b.r <= b.sw + 1) && j.bodies[0].right <= j.bodies[1].left + 1, JSON.stringify(j.bodies));
+    check(scope, 'the friend sings a quiet two-note hello (the picker tap was a gesture)', j.hello.length === 2 && j.hello.every((x) => x === 1), JSON.stringify(j.hello));
+    await H.layout(page, `${scope}:layout`, { scrollers: ['.hb-tray'] });
+    // a tap on each within 400 ms: the friend harmonises
+    const B = await bodiesAt(page);
+    await clearLog(page);
+    await page.mouse.click(B[0].x, B[0].y);
+    await page.mouse.click(B[1].x, B[1].y);
+    await waitEvent(page, "e.kind === 'harmony'");
+    const hm = await hb(page, () => { const L = __lab.hushbeat.log, n = L.filter((e) => e.kind === 'note' && !e.ghost); return { h: L.find((e) => e.kind === 'harmony'), a: n.find((e) => e.slot === 0), b: n.find((e) => e.slot === 1), glance: __lab.hushbeat.performers.map((x) => x.lookT) }; });
+    const icv = hm.a && hm.b ? icOf(hm.b.semi, hm.a.semi) : -1;
+    check(scope, 'E16: a left tap then a right one within 400 ms harmonise (a 3rd or 6th, else a 5th or octave), and the two glance at each other',
+      !!hm.h && hm.b.t - hm.a.t <= 0.4 && [0, 3, 4, 5].includes(icv) && hm.h.interval === icv && hm.glance.every((t) => t > 0), JSON.stringify({ h: hm.h, icv, a: hm.a?.semi, b: hm.b?.semi }));
+    // Both + Hum: a bloom, the arc between the heads
+    await page.click('.hushbeat .hb-buttons');
+    await page.waitForSelector('.hushbeat .hb-target', { timeout: T });
+    const tg = await hb(page, () => [...document.querySelectorAll('.hushbeat .hb-target button')].map((b) => b.textContent));
+    check(scope, 'E16: in a duet the tray starts with the target [Boppo | Both | Loomi]', tg.join('|') === 'Boppo|Both|Loomi', JSON.stringify(tg));
+    await page.click('.hushbeat .hb-target button:nth-child(2)');
+    const humBox = await (await page.$$('.hushbeat .hb-tray .chip.hold'))[1].boundingBox();
+    await clearLog(page);
+    await page.mouse.move(humBox.x + humBox.width / 2, humBox.y + humBox.height / 2);
+    await page.mouse.down();
+    await waitEvent(page, "e.kind === 'bloom' && e.on");
+    await page.waitForFunction(() => __lab.hushbeat.scene.arc?.shown > 0.15 && __lab.hushbeat.performers.every((x) => x.debug().face.glow > 0), null, { timeout: T }).catch(() => {});
+    const bl = await hb(page, () => {
+      const L = __lab.hushbeat.log, pads = L.filter((e) => e.kind === 'padOn'), pcs = new Set(pads.flatMap((e) => e.semis.map((x) => ((x % 12) + 12) % 12)));
+      return { pads: pads.map((e) => e.slot), pcs: pcs.size, arc: +(__lab.hushbeat.scene.arc?.shown || 0).toFixed(3), held: __lab.hushbeat.scene.arc?.held, glow: __lab.hushbeat.performers.map((x) => x.debug().face.glow), transform: __lab.hushbeat.debug().scene.transform };
+    });
+    check(scope, 'E16: Both + Hum: two hums bloom into one chord (≥ 3 pitch classes), the arc glows between the heads, both glow',
+      bl.pads.includes(0) && bl.pads.includes(1) && bl.pcs >= 3 && bl.held && bl.arc > 0.15 && bl.glow.every((g) => g > 0), JSON.stringify(bl));
+    await H.shot(page, out, 'hushbeat-phone-bloom');
+    await page.mouse.up();
+    await waitEvent(page, "e.kind === 'bloom' && !e.on");
+    // a phrase on the lead gets an answer from the idle friend
+    await page.click('.hushbeat .hb-target button:nth-child(1)');
+    await hb(page, () => document.querySelector('.hushbeat .stage.lead').focus());
+    await page.waitForFunction(() => __lab.hushbeat.debug().players.every((x) => !x.pad && !x.bass) && performance.now() / 1000 - __lab.hushbeat.players[1].part.lastOnset() > 0.8, null, { timeout: T });
+    await clearLog(page);
+    await page.keyboard.press('p');
+    await waitEvent(page, "e.kind === 'note' && e.src === 'answer' && e.slot === 1", T);
+    const an = await hb(page, () => { const L = __lab.hushbeat.log; return { end: L.find((e) => e.kind === 'phraseEnd'), first: L.find((e) => e.src === 'answer'), calls: L.filter((e) => e.kind === 'note' && e.src === 'phrase' && e.slot === 0).length }; });
+    check(scope, 'E16: the lead\'s phrase gets an answer from the friend, after the phrase', an.calls >= 2 && !!an.first && (!an.end || an.first.t > an.end.t), JSON.stringify(an));
+    // Friend answers Off (Sound and pace, only in a duet): no answer
+    await openSheetBy(page, '.hushbeat .hb-music');
+    const rows = await hb(page, () => [...document.querySelectorAll('.hushbeat .sheet .row .lbl')].map((l) => l.firstChild.textContent));
+    await page.click('.hushbeat .sheet .hb-answers button:nth-child(2)');
+    const ans = await hb(page, () => __lab.hushbeat.debug().answers);
+    await page.keyboard.press('Escape');
+    await sheetGone(page);
+    check(scope, 'Sound and pace in a duet has Friend answers; Off turns them off', rows.includes('Friend answers') && ans === false, JSON.stringify({ rows, ans }));
+    await hb(page, () => document.querySelector('.hushbeat .stage.lead').focus());
+    await sleep(1500);
+    await clearLog(page);
+    await page.keyboard.press('p');
+    await waitEvent(page, "e.kind === 'phraseEnd'", T);
+    await sleep(3000);
+    const noAns = await hb(page, () => __lab.hushbeat.log.filter((e) => e.src === 'answer').length);
+    check(scope, 'with Friend answers Off a phrase gets no answer', noAns === 0, String(noAns));
+    // G: both together
+    await clearLog(page);
+    await page.keyboard.press('g');
+    await waitEvent(page, "e.kind === 'harmony'");
+    const g = await hb(page, () => { const n = __lab.hushbeat.log.filter((e) => e.kind === 'note' && !e.ghost); return { slots: n.map((e) => e.slot), semis: n.map((e) => e.semi), h: __lab.hushbeat.log.find((e) => e.kind === 'harmony') }; });
+    check(scope, 'E16: G plays both together; the friend harmonises', g.slots.includes(0) && g.slots.includes(1) && [0, 3, 4, 5].includes(g.h?.interval), JSON.stringify(g));
+    // Tab: keyboard focus moves to the friend's stage, and its keys play the friend
+    await hb(page, () => document.querySelector('.hushbeat .stage.lead').focus());
+    await sleep(400);   // G's notes were just now: a key within 70 ms would be a ghost (rate limit)
+    await page.keyboard.press('Tab');
+    const fo = await hb(page, () => document.activeElement?.classList.contains('partner'));
+    await clearLog(page);
+    await page.keyboard.press('3'); await sleep(250);
+    await page.keyboard.press('Enter'); await sleep(500);
+    const tk = await hb(page, () => __lab.hushbeat.log.filter((e) => e.kind === 'note' && !e.ghost && e.src === 'live').map((e) => e.slot));
+    const tkAll = await hb(page, () => ({ log: __lab.hushbeat.log.map((e) => `${e.kind}:${e.slot}:${e.src || ''}${e.ghost ? ':ghost' : ''}`), d: __lab.hushbeat.debug().players, state: __lab.hushbeat.state, ev: __lab.events.slice(-4) }));
+    check(scope, 'E16: Tab moves keyboard focus to the friend\'s stage; 3 and Enter play the friend', fo && tk.length >= 2 && tk.every((x) => x === 1), JSON.stringify({ fo, tk, tkAll }));
+    // Keep in a duet: the tune keeps its friend
+    await page.waitForFunction(() => __lab.hushbeat.debug().controls.keep, null, { timeout: 15000 }).catch(async () => {
+      console.log('keep wait', JSON.stringify(await hb(page, () => { const d = __lab.hushbeat.debug(); return { state: d.state, take: d.take, best: d.best, prev: __lab.hushbeat.engine.take.prev?.length, c: d.controls, dna: __lab.dna.enabled }; })));
+    });
+    await page.click('.hushbeat .hb-keep'); await sleep(350);
+    const kf = await hb(page, () => __lab.dna.favourites().find((f) => f.kind === 'hushbeat'));
+    check(scope, 'E15: Keep in a duet saves the friend with the tune', kf?.mallow === 'boppo' && kf.friend === 'loomi' && kf.pace === 'natural' && typeof kf.motif === 'string', JSON.stringify(kf));
+    // motion and quality reach both rigs (lab.js addCompanion); the friend stays one tier lower
+    await hb(page, () => __lab.prefs.set('motion', 'reduced')); await sleep(300);
+    const rm = await hb(page, () => __lab.companions().map((c) => !!c.rig.opts.reducedMotion));
+    await hb(page, () => __lab.prefs.set('motion', 'system'));
+    await hb(page, () => __lab.prefs.set('quality', 'medium')); await sleep(1500);
+    const qq = await hb(page, () => ({ q: __lab.companions().map((c) => c.rig.quality), feature: __lab.hushbeat.debug().quality }));
+    await hb(page, () => __lab.prefs.set('quality', 'low')); await sleep(500);
+    check(scope, 'E16: reduced motion and a quality change reach both rigs; the friend runs one tier lower', rm.every(Boolean) && qq.q[0] === 'medium' && qq.q[1] === 'low' && qq.feature === 'medium', JSON.stringify({ rm, qq }));
+    // Play alone: the friend's stage and canvas go; the favourite Mallow never changed
+    await openSheetBy(page, '.hushbeat .hb-friend-btn');
+    const pressed = await hb(page, () => ({ on: document.querySelector('.hushbeat .hb-friend[aria-pressed="true"]')?.dataset.mallow, label: document.querySelector('.hushbeat .hb-friend[aria-pressed="true"]')?.getAttribute('aria-label') }));
+    await page.click('.hushbeat .hb-alone');
+    await duetReady(page, 1);
+    await sleep(400);
+    const al = await hb(page, () => ({ canvases: document.querySelectorAll('canvas').length, stages: document.querySelectorAll('.hushbeat .stage').length, layout: document.querySelector('.hushbeat').dataset.layout || null, sub: document.querySelector('.hushbeat .topbar .title small').textContent, chip: document.querySelector('.hushbeat .feedback').textContent, comps: __lab.companions().length, fav: __lab.dna.get('favouriteMallow'), id: __lab.ctx.mallowId, target: document.querySelector('.hushbeat .hb-target') }));
+    check(scope, 'E16: Play alone (the friend shown as playing now) removes the second stage and canvas; the tray loses its target',
+      pressed.on === 'loomi' && pressed.label === 'Loomi, soft pads, playing now' && al.stages === 1 && al.canvases === solo.canvases && !al.layout && al.sub === 'Boppo' && al.chip === 'Playing alone' && al.comps === 1 && !al.target, JSON.stringify({ pressed, al, solo }));
+    check(scope, 'E21: the favourite Mallow and the lab\'s Mallow are unchanged after a duet', al.fav === solo.fav && al.id === solo.id && al.id === 'boppo', JSON.stringify({ solo, al }));
+    noErrors(scope, errors);
+    // the kept duet from home: it opens as a duet with Play it, silent (no hello) until tapped
+    await hb(page, () => __lab.ctx.navigate('/'));
+    await page.waitForFunction(() => __lab.route === 'home', null, { timeout: T });
+    await H.waitRig(page, { timeout: T });
+    const offer = await hb(page, () => [...document.querySelectorAll('.offer')].map((o) => o.textContent).find((x) => x.includes('tune')));
+    check(scope, 'E15: home "For you" offers "Boppo & Loomi tune"', !!offer && offer.includes('Boppo & Loomi tune'), String(offer));
+    await page.click('.offer[data-offer="hushbeat:hushbeat"]');
+    await page.waitForFunction(() => __lab.route === 'hushbeat' && __lab.hushbeat, null, { timeout: T });
+    await duetReady(page, 2);
+    await sleep(2000);
+    const kd = await hb(page, () => { const d = __lab.hushbeat.debug(); return { friend: d.friend, playIt: d.controls.playIt, keep: d.controls.keepPressed, log: __lab.hushbeat.log.length, live: __lab.sound.live.size, sub: document.querySelector('.hushbeat .topbar .title small').textContent }; });
+    check(scope, 'E15: the kept duet opens with Loomi and Play it (Kept pressed); nothing sounds, not even a hello, until it is tapped',
+      kd.friend === 'loomi' && kd.playIt && kd.keep === 'true' && kd.log === 0 && kd.live === 0 && kd.sub === 'Boppo & Loomi', JSON.stringify(kd));
+    const upper = /[NBH]/.test(kf?.motif || '');
+    await page.click('.hushbeat .hb-playit');
+    await waitEvent(page, upper ? "e.kind === 'note' && e.src === 'replay' && e.slot === 1" : "e.kind === 'note' && e.src === 'replay'");
+    check(scope, 'Play it plays the kept duet (the friend\'s notes by the friend)', true, upper ? 'slot 1 replayed' : 'no friend notes in this take');
+    await H.shot(page, out, 'hushbeat-phone-duet-playit');
+    // leaving mid-duet (mid-replay): the friend goes with the screen, nothing is left
+    await hb(page, () => document.querySelector('.hushbeat .stage.lead').focus());
+    await page.keyboard.press('Escape'); await sleep(50); await page.keyboard.press('Escape');
+    await page.waitForFunction(() => __lab.route === 'home', null, { timeout: T });
+    const gone = await untilSilent(page, 3500);
+    const left = await hb(page, () => ({ hb: __lab.hushbeat, stage: !!__lab.stage, partners: __lab.companions().filter((c) => c !== __lab.ctx.companion).length, stages: document.querySelectorAll('.stage.partner').length, sheets: document.querySelectorAll('.sheet').length }));
+    check(`${scope}:kept`, 'leaving a duet mid-replay: home, no voice within 3.5 s, no partner left registered, no handle', gone.ok && left.hb === null && left.partners === 0 && left.stages === 0 && left.sheets === 0, JSON.stringify({ gone, left }));
+    noErrors(`${scope}:kept`, errors);
+  });
+
+  // ------------------------------------------------------- E11 E13 E23 --
+  if (only('sheet')) await guard(`${SCOPE}:sheet`, async (scope, own) => {
+    const tunes = [
+      { kind: 'hushbeat', id: 'hushbeat', mallow: 'boppo', friend: 'loomi', pace: 'natural', motif: '00n9604Na608nb6' },
+      { kind: 'hushbeat', id: 'hushbeat', mallow: 'pipzi', pace: 'livelier', motif: '00n7504n8508n95' },
+    ];
+    const { ctx, page, errors } = await H.open(browser, 'phone', '#hushbeat', { comfort: H.comfort({ favouriteMallow: 'boppo' }, { favourites: [...tunes, { kind: 'pocket', id: 'soft-breath' }] }) });
+    own(ctx);
+    await H.waitRig(page, { timeout: T });
+    await page.waitForFunction(() => __lab.hushbeat, null, { timeout: T });
+    await openSheetBy(page, '.hushbeat .hb-music');
+    const sh = await hb(page, () => {
+      const el = document.querySelector('.hushbeat .sheet');
+      return {
+        title: el.querySelector('h3').textContent, rows: [...el.querySelectorAll('.row .lbl')].map((l) => l.firstChild.textContent), focus: document.activeElement?.className,
+        vol: el.querySelector('.hb-volume').value, volLabel: el.querySelector('.hb-volume').getAttribute('aria-label'), sub: [...el.querySelectorAll('.row .sub')].map((x) => x.textContent),
+        tunes: [...el.querySelectorAll('.hb-tune')].map((t) => ({ name: t.querySelector('.hb-tune-name').textContent, play: t.querySelector('.hb-tune-play').getAttribute('aria-label'), remove: t.querySelector('.hb-tune-remove').getAttribute('aria-label') })),
+        foot: el.querySelector('.hb-foot').textContent, inScreen: !!el.closest('.screen.hushbeat'), prefVol: __lab.prefs.get('volume'), sheet: __lab.hushbeat.debug().sheet,
+      };
+    });
+    check(scope, '♪ opens "Sound and pace" inside the screen: Volume, Sound, Breath pace, Your tunes, Lab settings (no Friend answers solo); focus on Volume',
+      sh.title === 'Sound and pace' && sh.rows.join('|') === 'Volume|Sound|Breath pace|Your tunes|Lab settings' && sh.focus === 'hb-volume' && sh.inScreen && sh.sheet === 'Sound and pace', JSON.stringify(sh));
+    check(scope, 'Volume is the lab\'s volume ("Same as in Settings", labelled); the sub-texts and the footnote are as written',
+      +sh.vol === sh.prefVol && sh.volLabel === 'Volume' && sh.sub[0] === 'Same as in Settings' && sh.sub[1] === 'Visual only: music as light and movement, no sound'
+      && sh.foot === 'Music plays even with the Mallow voice off. Use Mute or Visual only for quiet.', JSON.stringify(sh));
+    check(scope, 'Your tunes: each kept tune described, with Play and Remove that name it',
+      sh.tunes.length === 2 && sh.tunes[0].name === 'Boppo & Loomi tune · 3 notes · Natural' && sh.tunes[1].name === 'Pipzi tune · 3 notes · Livelier'
+      && sh.tunes[0].play === 'Play Boppo & Loomi tune · 3 notes · Natural' && sh.tunes[1].remove === 'Remove Pipzi tune · 3 notes · Livelier', JSON.stringify(sh.tunes));
+    await H.shot(page, out, 'hushbeat-phone-sheet');
+    // E11: the volume moves prefs.volume and the master gain
+    const setVol = (v) => hb(page, (v) => { const r = document.querySelector('.hushbeat .hb-volume'); r.value = String(v); r.dispatchEvent(new Event('input', { bubbles: true })); }, v);
+    await setVol(0.3); await sleep(500);
+    const v1 = await hb(page, () => ({ pref: __lab.prefs.get('volume'), gain: __lab.sound.master ? +__lab.sound.master.gain.value.toFixed(3) : null }));
+    check(scope, 'E11: Volume moves prefs.volume and the master gain', v1.pref === 0.3 && v1.gain != null && Math.abs(v1.gain - 0.3) < 0.03, JSON.stringify(v1));
+    // Visual only and Breath pace
+    await page.click('.hushbeat .sheet .row:nth-of-type(2) .seg button:nth-child(2)');
+    await sleep(300);
+    const vo = await hb(page, () => ({ pref: __lab.prefs.get('musicVisualOnly'), vo: __lab.hushbeat.debug().visualOnly, sub: document.querySelector('.hushbeat .topbar .title small').textContent }));
+    await page.click('.hushbeat .sheet .row:nth-of-type(2) .seg button:nth-child(1)');
+    await page.click('.hushbeat .sheet .row:nth-of-type(3) .seg button:nth-child(3)');
+    await sleep(300);
+    const pc = await hb(page, () => ({ pace: __lab.hushbeat.debug().pace, vo: __lab.prefs.get('musicVisualOnly'), target: __lab.hushbeat.clock.target }));
+    check(scope, 'Sound [Music | Visual only] is prefs.musicVisualOnly (the subtitle says so); Breath pace sets this visit\'s pace',
+      vo.pref === true && vo.vo === true && vo.sub === 'Boppo · Visual only' && pc.vo === false && pc.pace === 'livelier', JSON.stringify({ vo, pc }));
+    // Remove keeps focus in the list
+    await page.click('.hushbeat .sheet .hb-tune:nth-child(2) .hb-tune-remove');
+    await sleep(300);
+    const rm = await hb(page, () => ({ n: document.querySelectorAll('.hushbeat .hb-tune').length, favs: __lab.dna.favourites().map((f) => f.kind + ':' + (f.mallow || f.id)), focusIn: !!document.activeElement?.closest('.hushbeat .sheet'), focus: document.activeElement?.className }));
+    check(scope, 'Remove takes the tune out of Comfort DNA and the list; focus stays in the sheet', rm.n === 1 && !rm.favs.includes('hushbeat:pipzi') && rm.favs.includes('hushbeat:boppo') && rm.favs.includes('pocket:soft-breath') && rm.focusIn, JSON.stringify(rm));
+    // Escape closes the sheet first (the screen stays); focus goes back to ♪
+    await page.keyboard.press('Escape');
+    await sheetGone(page);
+    await sleep(400);
+    const es = await hb(page, () => ({ route: __lab.route, state: __lab.hushbeat.state, focus: document.activeElement?.classList.contains('hb-music'), sheets: document.querySelectorAll('.sheet').length }));
+    check(scope, 'E23: Escape closes the sheet first (still on Hushbeat); focus returns to ♪', es.route === 'hushbeat' && es.state !== 'leaving' && es.focus && es.sheets === 0, JSON.stringify(es));
+    // E11 (at 0): nothing is heard, the light still plays
+    trace('volume 0');
+    await openSheetBy(page, '.hushbeat .hb-music');
+    await setVol(0); await sleep(300);
+    await page.keyboard.press('Escape');
+    await sheetGone(page);
+    await clearLog(page);
+    trace('tap at 0');
+    const B = await bodyAt(page);
+    await page.mouse.click(B.x, B.y);
+    await waitEvent(page, "e.kind === 'note' && !e.ghost");
+    await sleep(200);
+    const z = await hb(page, () => ({ gain: +__lab.sound.master.gain.value.toFixed(3), beads: __lab.hushbeat.scene.debug().beads, pref: __lab.prefs.get('volume') }));
+    check(scope, 'E11: at volume 0 nothing is heard, but the notes still show as light', z.pref === 0 && z.gain < 0.01 && z.beads > 0, JSON.stringify(z));
+    await hb(page, () => __lab.prefs.set('volume', 0.8));
+    // Your tunes → Play: the tune's friend joins and it plays at once (the tap in the sheet is the gesture)
+    await openSheetBy(page, '.hushbeat .hb-music');
+    await clearLog(page);
+    trace('play a tune');
+    await page.click('.hushbeat .sheet .hb-tune-play');
+    await duetReady(page, 2);
+    trace('duet ready');
+    await waitEvent(page, "e.kind === 'note' && e.src === 'replay' && e.slot === 1");
+    const pt = await hb(page, () => ({ friend: __lab.hushbeat.debug().friend, pace: __lab.hushbeat.debug().pace, replay: __lab.hushbeat.log.filter((e) => e.kind === 'note' && e.src === 'replay').map((e) => `${e.slot}:${e.deg}`), hello: __lab.hushbeat.log.filter((e) => e.src === 'hello').length }));
+    check(scope, 'Play (Your tunes): Loomi joins (no hello) and the tune plays, the friend\'s note by the friend, at the tune\'s pace', pt.friend === 'loomi' && pt.pace === 'natural' && pt.replay.includes('1:3') && pt.hello === 0, JSON.stringify(pt));
+    await page.waitForFunction(() => !__lab.hushbeat.engine.replaying, null, { timeout: T });
+    // Lab settings → Open: this sheet closes, the lab's Settings opens
+    trace('lab settings');
+    await openSheetBy(page, '.hushbeat .hb-music');
+    await page.click('.hushbeat .sheet .hb-lab');
+    await page.waitForFunction(() => [...document.querySelectorAll('.sheet.on h3')].some((x) => x.textContent === 'Settings') && !__lab.hushbeat.debug().sheet, null, { timeout: T });
+    const st = await hb(page, () => ({ sheets: [...document.querySelectorAll('.sheet')].map((x) => x.querySelector('h3').textContent) }));
+    await page.keyboard.press('Escape');
+    await sleep(500);
+    check(scope, 'Lab settings → Open closes Sound and pace and opens the lab\'s Settings', st.sheets.includes('Settings'), JSON.stringify(st));
+    // personalisation off; then nothing kept
+    trace('personalisation off');
+    await hb(page, () => __lab.dna.setEnabled(false));
+    await openSheetBy(page, '.hushbeat .hb-music');
+    const off = await hb(page, () => document.querySelector('.hushbeat .sheet .hb-tunes').textContent);
+    await page.keyboard.press('Escape');
+    await sheetGone(page);
+    await hb(page, () => { __lab.dna.setEnabled(true); for (const f of __lab.dna.favourites()) if (f.kind === 'hushbeat') __lab.dna.toggleFavourite(f); });
+    await openSheetBy(page, '.hushbeat .hb-music');
+    const empty = await hb(page, () => document.querySelector('.hushbeat .sheet .hb-tunes').textContent);
+    await page.keyboard.press('Escape');
+    check(scope, 'Your tunes says when personalisation is off, and when nothing is kept yet', off === "Personalisation is off, so tunes can't be kept." && empty === 'Tap ★ Keep after you play to keep a tune here.', JSON.stringify({ off, empty }));
+    noErrors(scope, errors);
+  });
+
   // ------------------------------------------------------------------ E22 --
+  // every viewport × solo, solo + tray, the row with Replay and Keep, duet, duet + tray, the sheet and the picker
+  // (LAYOUT_VPS=phone,small to run some)
   if (only('layout')) await guard(`${SCOPE}:layout`, async (scope) => {
-    for (const vp of ['phone', 'small', 'desktop', 'land']) {
+    const vps = (process.env.LAYOUT_VPS || 'phone,p375,small,android,desktop,land,land-small').split(',');
+    for (const vp of vps) {
       const { ctx, page, errors } = await openHb(browser, vp, 'loomi');
       try {
         const sc = `${scope}:${vp}`;
@@ -849,10 +1200,29 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         for (const k of ['1', '3', '5']) { await page.keyboard.press(k); await sleep(300); }
         await page.waitForFunction(() => __lab.hushbeat.debug().controls.keep, null, { timeout: T });
         await sleep(450);
-        const h1 = await hb(page, () => document.querySelector('.hushbeat .hb-row').getBoundingClientRect().height);
-        check(`${sc}:row`, 'Replay and Keep make the row wider, not taller', Math.abs(h1 - h0) < 1, JSON.stringify({ h0, h1 }));
+        const row = await hb(page, () => { const r = document.querySelector('.hushbeat .hb-row'); return { h: r.getBoundingClientRect().height, sw: r.scrollWidth, cw: r.clientWidth }; });
+        check(`${sc}:row`, 'Replay, Keep and Friend fit the row on one line (wider, not taller; nothing scrolled away)', Math.abs(row.h - h0) < 1 && row.sw <= row.cw + 1, JSON.stringify({ h0, row }));
         await H.layout(page, `${sc}:row`, { scrollers: ['.hb-tray'] });
         await H.shot(page, out, `hushbeat-${vp}-row`);
+        // the friend picker, then the duet (the tray stays open: duet + tray first)
+        await openSheetBy(page, '.hushbeat .hb-friend-btn');
+        await sheetLayout(page, `${sc}:picker`);
+        await H.shot(page, out, `hushbeat-${vp}-picker`);
+        await page.click('.hushbeat .hb-friend[data-mallow="noomi"]');
+        await duetReady(page, 2);
+        await sleep(500);
+        const inStage = await hb(page, () => { const st = [...document.querySelectorAll('.hushbeat .stage')]; return __lab.companions().map((c, i) => { const r = c.rig.bodyRect(), w = st[i].clientWidth; return r.cx - r.w / 2 >= -1 && r.cx + r.w / 2 <= w + 1; }); });
+        check(`${sc}:duet-tray`, 'each Mallow inside its own stage', inStage.length === 2 && inStage.every(Boolean), JSON.stringify(inStage));
+        await H.layout(page, `${sc}:duet-tray`, { scrollers: ['.hb-tray'] });
+        await H.shot(page, out, `hushbeat-${vp}-duet-tray`);
+        await page.click('.hushbeat .hb-buttons');
+        await sleep(500);
+        await H.layout(page, `${sc}:duet`, { scrollers: ['.hb-tray'] });
+        await H.shot(page, out, `hushbeat-${vp}-duet`);
+        // Sound and pace (in a duet it has every row)
+        await openSheetBy(page, '.hushbeat .hb-music');
+        await sheetLayout(page, `${sc}:sheet`);
+        await H.shot(page, out, `hushbeat-${vp}-sheet`);
         noErrors(sc, errors);
       } finally { await ctx.close(); }
     }

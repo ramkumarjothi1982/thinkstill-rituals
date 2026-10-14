@@ -117,6 +117,7 @@ export class Cue {
 
 // ------------------------------------------------------------ performer --
 const MOUTH = new Set(['replay', 'answer', 'hello', 'cadence', 'shimmer']);   // the Mallow's own singing: beads from the mouth
+const LEAN_MIX = Object.freeze({ calm: 0.6, loved: 0.4 });                     // a duet's bloom: leaning in together
 
 export class Performer {
   /**
@@ -325,6 +326,20 @@ export class Performer {
   /** Duet: watch a point (this stage's px) while idle, nodding on bar lines; null stops. */
   listen(pt) { this.watch = pt || null; }
 
+  /** Duet: a look at the other Mallow (a point in this stage's px): a friend arriving, a harmony. */
+  glance(pt) {
+    if (!pt || !this.rig.ready) return;
+    this.rig.lookAtScreen(pt.x, pt.y);
+    this.lookT = this.now();
+  }
+
+  /** Duet: two hums bloomed into one chord; lean in toward the other (dir +1 right, −1 left), softly content. */
+  leanIn(dir = 1) {
+    this.companion.director?.play(LEAN_MIX, 0.6, 2.2);
+    if (!this.reduced && this.rig.ready) this.rig.nudge({ lean: 0.2 * Math.sign(dir) * this.gK });
+    this.suppress(600);
+  }
+
   /** The page went hidden: everything stops at once (nothing resumes on its own). */
   hush() {
     this.stopPerforming();
@@ -393,6 +408,7 @@ export class Scene {
     for (let i = list.length; i < this.cast.length; i++) this.cast[i].halo.destroy();
     this.cast = next;
     this.arc = next.length > 1 ? (this.arc || new HarmonyArc({ color: list[1].color, tone: this.tone, segments: ARC[this.quality] || ARC.medium })) : null;
+    if (this.arc) this.arc.color = list[1].color;   // a new friend: the arc takes its light
   }
 
   /** A finger stroking slot's stage: phase 'start' | 'move' | 'end', screen px of the effects layer. */

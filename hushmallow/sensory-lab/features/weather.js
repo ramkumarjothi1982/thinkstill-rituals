@@ -16,9 +16,16 @@
 //
 // Built on the shared engine: stage-screen (backdrop null, then s.env), the
 // pointer router, the weather sims (core/weather/*), the WeatherLayer canvases,
-// the WeatherReactor with a FaceMixer, and the lab-ui announcer.
+// the WeatherReactor with a FaceMixer, WeatherSound (an AmbientBed plus
+// one-shots on the Sound Engine), and the lab-ui announcer.
 //
-// One loop: progress and the planner → presence → tools → sims → mood and transform → reactor → layer.
+// One loop: progress and the planner → presence → tools → sims → mood and transform → reactor → sound → layer.
+//
+// Photosafety (SHARED C6): realm pulses pass the Environment's gate (≤ 2 bright
+// a second); the lab's own cloud glows pass labGlowGate (≤ 1 a second across
+// both banks), so the screen stays within 3 bright events a second. Every lab
+// brightening rises over ≥ 300 ms; storm strikes are ≥ 8 s apart and become soft
+// glows with the gentle style or reduced motion.
 
 import { announcer } from '../lab-ui.js';
 import { stageScreen } from './stage-screen.js';
@@ -26,7 +33,7 @@ import { homeRealm, REALM_GEO } from '../core/environment.js';
 import { routePointers } from '../core/pointer-router.js';
 import { FaceMixer } from '../core/expression-engine.js';
 import { clearGlowSprites } from '../core/effects.js';
-import { clamp, smoothstep } from '../core/math.js';
+import { clamp, smoothstep, rng } from '../core/math.js';
 import {
   COPY, WEATHERS, DIAL_ORDER, DRY_REALMS, WeatherSession, moodFor, transformFor, pulseFor, progressFor, captionFor, lineFor, realmShort, realmPhrase,
 } from '../core/weather.js';
@@ -37,7 +44,8 @@ import { WaveField, Puddles } from '../core/weather/water.js';
 import { LightPool, EmberField } from '../core/weather/light.js';
 import { StarSwarm } from '../core/weather/stars.js';
 import { WeatherReactor } from '../core/weather-mallow.js';
-import { WeatherLayer } from '../core/weather-layer.js';
+import { WeatherLayer, labGlowGate } from '../core/weather-layer.js';
+import { WeatherSound, bedLevels } from '../core/weather-sound.js';
 import { createRings, addRing, stepRings, frontColour } from '../core/weather-draw.js';
 import { createTools } from './weather/tools.js';
 import { weatherDial, actionRow, hintLine } from './weather/ui.js';
@@ -51,7 +59,8 @@ let lastWeather = null;   // this session's last weather (module memory only; ne
 
 const DRIFT = { storm: 1600, rain: 500 };       // px/s leeward carry once resolved (× each bank's wind factor)
 const HAPTIC_GAP = { light: 250, soft: 600, pop: 800 };   // ms (light ≤ 4 a second)
-const CHIME_GAP = 200;                          // ms between plinks and tinks (≤ 5 a second)
+const SOUND_MS = 100;                           // the bed follows the sims at most 10 times a second
+const IDLE = [12, 20];                          // s without a weather touch before the Mallow looks at the weather
 const KINDLE_PULSE = 300;                       // ms: a kindle's realm tap at most this often
 const HEARTH_PULSE = 2;                         // s between the hearth's 'success' at the Mallow's feet
 const MOON_STAR_GAP = 6000;                     // ms between falling stars from a resting moon
@@ -71,6 +80,9 @@ export function mount(root, ctx) {
   let shownW = null, geoKey = '', deckY0 = 0, affA = 0, affKind = null, wHeld = false;
   let firstGap = false, saidLight = false, saidThin = false, saidShelter = false, saidMoon = false, saidStars = false, saidMist = false, saidWind = false, saidEmbers = false, saidHearth = false;
   let hearthT = 0, hearthK = 0, heatStep = 0, dewT = -1, haloA = 0, haloKind = 'sun', morphSun = false;
+  let sndT = -Infinity, bolt = 1, idleT = 0;
+  const idleRnd = rng(7 + id.length);
+  let idleAt = IDLE[0] + (IDLE[1] - IDLE[0]) * idleRnd();
   const touchedW = new Set();
   const gates = new Map();
   const geo = { W: 390, H: 844, skyTop: 64, horizonY: 480, floorY: 700, water: null, shore: null, baseline: 0.83, topBottom: 56, bottomTop: 718, body: null,
@@ -121,11 +133,19 @@ export function mount(root, ctx) {
   // ---------------------------------------------------------- the Mallow --
   const mixer = new FaceMixer(rig);
   const reactor = new WeatherReactor(companion, { mallowId: id, sound: ctx.sound, mixer, style: tuning.style, reduced, motion: tuning.motion });
-  const cond = { gaze: null, touch: null, pool: null, cluster: null, front: null, windAt: null, energy: 0, lightOnBody: 0, moonlit: false, bask: false, hearth: false, raining: false, touched: false, t: 0, dt: 0 };
-  const gazePt = { x: 0, y: 0 }, frontPt = { x: 0, y: 0 }, poolPt = { x: 0, y: 0 }, clusterPt = { x: 0, y: 0 };
+  const cond = { gaze: null, touch: null, pool: null, cluster: null, front: null, windAt: null, energy: 0, lightOnBody: 0, moonlit: false, bask: false, hearth: false,
+    raining: false, heat: 0, clusterN: 0, touched: false, t: 0, dt: 0 };
+  const gazePt = { x: 0, y: 0 }, frontPt = { x: 0, y: 0 }, poolPt = { x: 0, y: 0 }, clusterPt = { x: 0, y: 0 }, idlePt = { x: 0, y: 0 };
 
   // ------------------------------------------------------------ layers --
   const layer = new WeatherLayer({ wrap: s.wrap, screen: s.screen, quality: tier, reducedMotion: reduced, palette: ctx.dna.palette() });
+  const glows = labGlowGate();   // the lab's cloud glows (≤ 1 a second) and bead blooms
+
+  // ------------------------------------------------------------- sound --
+  const wsound = new WeatherSound(ctx.sound, id, { tier });
+  const bedIn = { amount: (w) => planner.amount(w), weather: session.weather, progress: 0, warmth: 0.5, rain: 0, storm: 0, wind: 0, water: 0, waves: 0, mist: 0, fade: 1 };
+  const bedOut = {};
+  const pan = (x) => clamp((x / Math.max(1, geo.W)) * 2 - 1, -1, 1) * 0.6;
   const front = { on: false, cover: 0, dir: 1, swapped: false, mode: 'sweep', family: 'cloud', colA: [0, 0, 0], colB: [0, 0, 0], t: 0, toRealm: null };
   const scene = {
     t: 0, W: geo.W, H: geo.H, geo, fade: 1, held: 0, rainAlpha: 1, rings, front,
@@ -156,7 +176,8 @@ export function mount(root, ctx) {
     emit: (type, x, y, k, vx, vy) => onWeather(type, x, y, k, vx, vy),
     reduced: () => reduced, gentle,
     ring: (x, y) => addRing(rings, x, y),
-    touched: (w) => touchedW.add(w),
+    touched: (w) => { touchedW.add(w); idleT = 0; },
+    flash: (bank, x) => (glows.allow('glow') ? bank.flash(x) : -1),
   });
   scene.storm.gaps = tools.storm.gaps;
   scene.trail = tools.trail;
@@ -204,7 +225,7 @@ export function mount(root, ctx) {
   });
   const onVis = () => {
     if (closed) return;
-    if (document.hidden) { session.pause(); actions.endHolds(); wRelease(); tools.altEnd(); }
+    if (document.hidden) { session.pause(); actions.endHolds(); wRelease(); tools.altEnd(); wsound.wipe(false); }   // the engine stops the bed; it rebuilds on return
     else { session.resume(); last = 0; kick(); }
   };
   document.addEventListener('visibilitychange', onVis);
@@ -382,7 +403,10 @@ export function mount(root, ctx) {
     conditions(w);
     reactor.weather(w, session.progress);
     reactor.conditions(cond, dt);
-    // 6. draw
+    idle(dt, w);
+    // 6. sound: the bed follows the sims
+    soundStep(w);
+    // 7. draw
     if (leaving) scene.fade = Math.max(0, scene.fade - dt / 0.45);
     fillScene(st, dt, w);
     layer.frame(dt, scene);
@@ -413,8 +437,9 @@ export function mount(root, ctx) {
     cond.front = front.on ? frontPt : null;
     const pool = w === 'sunshine' ? sun : w === 'moonlight' ? moon : null;
     if (pool && pool.amount > 0.5) { poolPt.x = pool.x; poolPt.y = pool.y; cond.pool = poolPt; } else cond.pool = null;
-    cond.cluster = null;
-    if (w === 'starlight') for (let k = 0; k < 2; k++) if (stars.cId[k] !== -1 && stars.cn[k]) { clusterPt.x = stars.cx[k]; clusterPt.y = stars.cy[k]; cond.cluster = clusterPt; break; }
+    cond.cluster = null; cond.clusterN = 0;
+    if (w === 'starlight') for (let k = 0; k < 2; k++) if (stars.cId[k] !== -1 && stars.cn[k]) { clusterPt.x = stars.cx[k]; clusterPt.y = stars.cy[k]; cond.cluster = clusterPt; cond.clusterN = stars.cn[k]; break; }
+    cond.heat = w === 'warm' ? embers.heat : 0;
     wind.sample(body.cx, body.mid, windBody);
     cond.windAt = wind.energy > 0.05 ? windBody : null;
     cond.energy = wind.energy;
@@ -430,6 +455,69 @@ export function mount(root, ctx) {
     if (w === 'warm') {
       const want = embers.heat >= 2 / 3 ? 2 : embers.heat >= 1 / 3 ? 1 : 0;
       if (want > heatStep) { heatStep = want; reactor.event('heat', { x: body.cx, y: body.top - 60, k: embers.heat }); if (!saidEmbers) { saidEmbers = true; say(COPY.announce.embers); } }
+    }
+  }
+
+  // The bed follows what the sims are doing (≤ 10 Hz; nothing plays before a gesture), and wiping
+  // mist plays the brush at the wipe's speed.
+  function soundStep(w) {
+    const t = performance.now();
+    if (t - sndT < SOUND_MS) return;
+    sndT = t;
+    bedIn.weather = w; bedIn.progress = session.progress; bedIn.warmth = moodOut.warmth;
+    bedIn.rain = rain.intensity;
+    bedIn.storm = clouds.amount > 0.01 ? clouds.coverage() * smoothstep(0.2, 1, clouds.amount) : 0;
+    bedIn.wind = wind.energy;
+    bedIn.water = geo.water ? 1 : 0; bedIn.waves = waves.energy;
+    bedIn.mist = mist.amount > 0.01 ? mist.amount * (1 - mist.fogClear()) : 0;
+    bedIn.fade = scene.fade;
+    wsound.update(bedLevels(bedIn, bedOut), t);
+    const ws = w === 'fog' && !leaving ? tools.wiping() : -1;
+    wsound.wipe(ws >= 0, ws);
+  }
+
+  // 12–20 s without a weather touch (sim time): the Mallow looks over at the weather's lead element
+  function idle(dt, w) {
+    if (tools.active || tools.altActive || wHeld || reactor.touched || front.on || leaving || planner.busy) { idleT = 0; return; }
+    idleT += dt;
+    if (idleT < idleAt) return;
+    idleT = 0;
+    idleAt = IDLE[0] + (IDLE[1] - IDLE[0]) * idleRnd();
+    if (leadPoint(w, idlePt)) reactor.event('idle', idlePt);
+  }
+
+  /** Where the weather's lead element is (the pool, the brighter star, the bank…) into out; false when there is none. */
+  function leadPoint(w, out) {
+    const b = body;
+    switch (w) {
+      case 'sunshine': case 'moonlight': {
+        const p = w === 'sunshine' ? sun : moon;
+        out.x = p.x; out.y = p.y;
+        return p.amount > 0.5;
+      }
+      case 'starlight': {
+        let i = stars.affordance;
+        if (i < 0 || i >= stars.n) { i = -1; for (let k = 0; k < stars.n; k++) if (stars.a[k] > 0.5 && !stars.held(k)) { i = k; break; } }
+        if (i < 0) return false;
+        out.x = stars.x[i]; out.y = stars.y[i];
+        return true;
+      }
+      case 'storm': out.x = geo.W / 2; out.y = (clouds.top + clouds.bottom) / 2; return clouds.amount > 0.5;
+      case 'rain': out.x = geo.W / 2; out.y = rain.deckY; return deck.amount > 0.5;
+      case 'wind': if (!ribbons.n || ribbons.amount < 0.5) return false; out.x = ribbons.px[0]; out.y = ribbons.py[0]; return true;
+      case 'fog': out.x = clamp(b.cx + b.w * 0.9, 20, geo.W - 20); out.y = b.mid - b.h * 0.5; return mist.amount > 0.5;
+      case 'warm': {
+        let best = -1, bd = Infinity;
+        for (let i = 0; i < embers.n; i++) {
+          if (embers.lit[i] >= 0.5) continue;
+          const d = Math.hypot(embers.x[i] - b.cx, embers.y[i] - b.mid);
+          if (d < bd) { bd = d; best = i; }
+        }
+        if (best < 0) return false;
+        out.x = embers.x[best]; out.y = embers.y[best];
+        return true;
+      }
+      default: return false;
     }
   }
 
@@ -478,6 +566,7 @@ export function mount(root, ctx) {
     const from = shownW;
     shownW = session.weather;
     lastWeather = shownW;
+    idleT = 0;
     if (planner.amount(shownW) < 0.01) tools.enter(shownW);   // arriving from nothing: fresh, untouched
     if (!fronting()) morph(from, shownW);
     dial.set(shownW);
@@ -640,7 +729,6 @@ export function mount(root, ctx) {
   let evN = 0;
   const gate = (key, ms) => { const t = performance.now(); if (t - (gates.get(key) ?? -1e9) < ms) return false; gates.set(key, t); return true; };
   const hap = (kind) => { if (ctx.prefs.get('haptics') && gate('h:' + kind, HAPTIC_GAP[kind] || 300)) haptic(kind); };
-  const chime = (step, i = 0.3) => { if (gate('chime', CHIME_GAP)) ctx.sound.chime(id, step % 10, i); };
 
   function pulse(event, x, y, o = {}) {
     const kind = pulseFor(event, env.realmId, { reduced, gentle: gentle(), n: o.n ?? 0, weather: o.weather ?? null });
@@ -660,33 +748,37 @@ export function mount(root, ctx) {
         reactor.event('gap', { x, y });
         hap('soft');
         say(COPY.announce.cloudsOpen);
-        if (!firstGap) { firstGap = true; ctx.sound.chime(id, 2, 0.35); ctx.sound.chime(id, 4, 0.3); }   // the first light: a warm pair
+        if (!firstGap && wsound.pair()) firstGap = true;   // the first light: a warm pair
         break;
       case 'light-through':
         reactor.event('light-through', { x, y });
         if (!saidLight) { saidLight = true; say(COPY.announce.lightOn(name)); }
         break;
-      case 'strike': pulse('strike', x, y); reactor.event('strike', { x, y }); break;
-      case 'glow': reactor.event('glance', { x, y }); break;
+      case 'strike': pulse('strike', x, y); reactor.event('strike', { x, y }); bolt = 1; wsound.rumble(1); break;
+      case 'glow': reactor.event('glance', { x, y }); bolt = 0.6; wsound.rumble(0.6); break;   // gentle or reduced: a glow, softer thunder
+      case 'thunder': wsound.thunder(bolt); break;
+      case 'swish': wsound.swish(Math.max(0.3, k), pan(x)); break;
       // rain
+      case 'bead': wsound.drip(0, 0.6, pan(x)); break;
       case 'bead-up':
         pulse('bead-up', x, y);
-        layer.addBloom(x, y, 34 + 4 * Math.sqrt(k), REALMS[env.realmId].palette.glow, 1.6);
+        wsound.rise(k);
+        if (glows.allow('bloom')) layer.addBloom(x, y, 34 + 4 * Math.sqrt(k), REALMS[env.realmId].palette.glow, 1.6);
         if (!saidThin && rain.level < 0.6) { saidThin = true; say(COPY.announce.rainThin); }
         break;
-      case 'merge': chime(Math.floor(k / 2)); hap('light'); break;   // plinks up the Mallow's scale
-      case 'hit-body': reactor.event('hit-body', { x, y, k }); break;
-      case 'splash-body': reactor.event('hit-body', { x, y, k: 1 }); break;
-      case 'orb-up': if (deck.amount > 0.5) deck.flash(x); break;   // light inside the cloud above
-      case 'splash-water': pulse('splash-water', x, y, { n: k }); addRing(rings, x, y); waves.ripple(x, Math.min(1, 0.2 + k / 20)); break;
-      case 'splash-ground': pulse('splash-ground', x, y); addRing(rings, x, y); break;
+      case 'merge': wsound.drip(Math.floor(k / 2), 1, pan(x)); hap('light'); break;   // plinks up the Mallow's scale
+      case 'hit-body': reactor.event('hit-body', { x, y, k }); wsound.patter(pan(x)); break;
+      case 'splash-body': reactor.event('hit-body', { x, y, k: 1 }); wsound.splash(clamp(k / 16, 0.2, 1), pan(x)); break;
+      case 'orb-up': if (deck.amount > 0.5 && glows.allow('glow')) deck.flash(x); break;   // light inside the cloud above
+      case 'splash-water': pulse('splash-water', x, y, { n: k }); addRing(rings, x, y); waves.ripple(x, Math.min(1, 0.2 + k / 20)); wsound.splash(clamp(k / 16, 0.2, 1), pan(x)); break;
+      case 'splash-ground': pulse('splash-ground', x, y); addRing(rings, x, y); wsound.splash(clamp(k / 16, 0.2, 0.7), pan(x)); break;
       case 'sheltered':
         reactor.event('sheltered', { x, y });
         if (!saidShelter) { saidShelter = true; say(COPY.announce.sheltered(name)); }
         break;
       // sunshine and moonlight
       case 'sun-rest':
-        if (w === 'sunshine' && pulse('sun-rest', x, y)) chime(3, 0.35);   // a sun shaft or sunbeam there, with a glint
+        if (w === 'sunshine' && pulse('sun-rest', x, y)) wsound.glint(3);   // a sun shaft or sunbeam there, with a glint
         break;
       case 'sun-in':
         if (w !== 'sunshine') break;
@@ -694,7 +786,7 @@ export function mount(root, ctx) {
         if (!saidLight) { saidLight = true; say(COPY.announce.lightOn(name)); }
         break;
       case 'moon-rest':   // resting in the sky: a falling star in the cove (a lantern in the fair), ≥ 6 s apart
-        if (w === 'moonlight' && !moon.onWater && !moon.onBody && y < geo.horizonY && gate('moon-star', MOON_STAR_GAP) && pulse('moon-rest', x, y)) chime(5, 0.3);
+        if (w === 'moonlight' && !moon.onWater && !moon.onBody && y < geo.horizonY && gate('moon-star', MOON_STAR_GAP) && pulse('moon-rest', x, y)) wsound.glint(5);
         break;
       case 'moon-in':
         if (w !== 'moonlight') break;
@@ -705,7 +797,7 @@ export function mount(root, ctx) {
       case 'moon-water': pulse('moon-water', x, y); break;
       // starlight
       case 'gather':
-        chime(2 + Math.min(7, k));   // tinks up the scale as the cluster grows
+        wsound.tink(2 + Math.min(7, k));   // tinks up the scale as the cluster grows
         if (!saidStars) { saidStars = true; say(COPY.announce.starsGather); }
         break;
       case 'constellation':
@@ -718,33 +810,36 @@ export function mount(root, ctx) {
       case 'gift':
         pulse('gift', body.cx, body.bottom);
         reactor.event('gift', { x: body.cx, y: body.top });
+        wsound.shower();
         say(COPY.announce.gift(name));
         break;
       // wind
-      case 'gust': reactor.event('gust', { x, y, k, vx, vy }); break;
+      case 'gust': reactor.event('gust', { x, y, k, vx, vy }); wsound.swish(k, pan(x - Math.sign(vx) * 60)); break;
       case 'gust-water': pulse('gust-water', x, y); break;
       case 'eddy': case 'calm-loop': reactor.event('eddy', { x, y, k }); break;
       // fog
+      case 'wipe': wsound.swish(0.35, pan(x)); break;   // then the brush follows the wipe (soundStep)
       case 'revealed':
         reactor.event('revealed', { x, y });
         if (!saidMist && mist.fogClear() > 0.25) { saidMist = true; say(COPY.announce.mistClear); }
         break;
       // warm glow
       case 'kindle':
-        if (gate('kindle', KINDLE_PULSE)) { pulse('kindle', x, y); chime(4 + (heatStep * 2)); }
+        if (gate('kindle', KINDLE_PULSE)) { pulse('kindle', x, y); wsound.kindle(4 + (heatStep * 2)); }
         reactor.event('kindle', { x, y });
         break;
       // water
-      case 'water-push': pulse('water-push', x, y); break;
-      case 'water-tap': pulse('water-tap', x, y); break;
-      case 'puddle': pulse('puddle', x, y); break;
+      case 'water-push': pulse('water-push', x, y); wsound.swell(k, pan(x)); break;
+      case 'water-tap': pulse('water-tap', x, y); wsound.drip(0, 0.7, pan(x)); break;
+      case 'puddle': pulse('puddle', x, y); wsound.drip(2, 0.6, pan(x)); break;
       case 'wave-arrive':
         reactor.event('wave-arrive', { x, y, k, vx: body.cx > geo.W / 2 ? 1 : -1 });
+        wsound.swell(Math.min(1, k) * 0.7, pan(body.cx), 'arrive');
         if (k > 0.7) hap('soft');
         if (waves.lastGold && w === 'warm') embers.kindleNear(body.cx, body.mid, 2);   // a warm swell brings heat
         break;
       case 'shore': if (gate('shore', 700)) pulse('shore', x, y); break;
-      default: break;   // swish, thunder, bead, wipe, land-*: their sounds arrive with WeatherSound
+      default: break;   // land-* (single drops: the rain bed carries them), wipe-end, eddy, calm-loop
     }
     if (w === 'wind' && !saidWind && wind.calm > 0.5) { saidWind = true; say(COPY.announce.windEase); }
   }
@@ -797,6 +892,7 @@ export function mount(root, ctx) {
     layer.setQuality(q);
     for (const sim of TIERED) sim.setTier(q);   // pools shrink, never grow, mid-session
     planner.setTier(q);
+    wsound.setTier(q);                          // the bed only loses layers
   }
 
   // Close or Escape: everything fades over 450 ms, the Mallow nods, the rest motif, then home
@@ -814,6 +910,7 @@ export function mount(root, ctx) {
     s.screen.classList.add('leaving');
     rig.react('nod');
     ctx.sound.motif(id, 'rest');
+    wsound.end(0.6);   // the bed fades with the screen
     leaveT = setTimeout(() => { leaveT = 0; if (!closed) ctx.navigate('/'); }, 460);
   }
 
@@ -856,7 +953,12 @@ export function mount(root, ctx) {
     metrics, env, layer, reactor, tools, session,
     /** The live terms moodFor is given this frame (wind energy, the sun's height, the hearth…). */
     live() { return { ...moodLive }; },
-    get sound() { return { alive: false, levels: {} }; },
+    /** WeatherSound.debug(): the bed (alive, layers, levels) and the one-shots played. */
+    get sound() { return wsound.debug(); },
+    /** The lab glow gate's last decisions (cloud glows, bead blooms). */
+    get glows() { return glows.log; },
+    /** The announcer's last 10 messages (what a screen reader was told). */
+    get said() { return sr.log; },
     get events() { const n = Math.min(64, evN), out = []; for (let i = evN - n; i < evN; i++) out.push({ ...evRing[i % 64] }); return out; },
     get pulses() { return env.log; },
     geo() {
@@ -886,6 +988,7 @@ export function mount(root, ctx) {
       clearTimeout(leaveT); clearTimeout(remountT); clearTimeout(actT);
       hint.destroy();
       sr.destroy();
+      wsound.end(0.4);   // the brush, then the bed
       reactor.destroy();
       layer.destroy();
       clearGlowSprites();
