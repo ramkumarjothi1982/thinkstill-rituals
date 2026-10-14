@@ -21,7 +21,8 @@
 //   unsureLoss(text)     → (owner decision 'Ask when unsure', 14 Oct 2026) nothing above reads a loss, but a person, a pet
 //                          or a pregnancy sits beside a softer loss cue: both screens ask "Is this about losing someone?"
 //   griefFeeling(id)     → a grief-family feeling chosen (grief, mourning, bereft, heartache, heartbreak, anticipatory grief)
-//   lossRoute(text, {emotion}) → 'gentle' | 'ask' | null: how a Tell reaches the gentle path on both screens
+//   lossRoute(text, {emotion}) → 'gentle' | 'ask' | null: how a Tell reaches the gentle path on both screens (final round 3: a
+//                          weak death word only about a person or a pet; about someone unknown, 'ask'; about a thing, null)
 //   ordinaryOnly(text)   → (review r10) the only bag words are ordinary idioms ("I passed my driving test!"): neutral lines
 //   harmWords(text)      → bagWords (the r7 name)
 //   harmRoute(text)      → null (no bag word) | 'gentle' (death talk, someone alive but going) | 'kind' (the rest)
@@ -36,7 +37,7 @@
 // Pure ES module, no DOM. Deterministic.
 
 import { norm, blankOrdinary, PERSON, PET, BARE, THING, KILLERS, ORDINALS } from './death-words.js';
-import { deathTalk, livingLoss } from './grief.js';
+import { deathTalk, livingLoss, weakDeath } from './grief.js';
 import { hasMarker } from './markers.js';
 
 /**
@@ -301,7 +302,10 @@ const NEAR_SOFT = 6;
  */
 export function unsureLoss(text) {
   if (!/\p{L}/u.test(String(text ?? ''))) return false;
-  if (deathTalk(text) || livingLoss(text) || strongLoss(text)) return false;
+  if (deathTalk(text, { sure: true }) || livingLoss(text) || strongLoss(text)) return false;
+  // (final round 3) a weak death word about someone or something the words never say is a person or a pet ("pepper died", "my
+  // sensei is dead", "the one on the left died"): not sure, so asked (never the gentle path)
+  if (weakDeath(text) === 'unknown') return true;
   const raw = blankOrdinary(norm(text)).toLowerCase();
   const t = raw.replace(WRONG_CUES, ' ').replace(CUE_ASIDE, ' ').replace(SOFT_ASIDE, ' ').replace(OWNED_THING, ' ').replace(/\s+/gu, ' ');
   const at = wordAt(t);
@@ -324,7 +328,8 @@ export const griefFeeling = (emotion) => GRIEF_FEELINGS.has(String(emotion ?? ''
  * question before any world or angle, angle-first.js; 'ask' is the check-in again only with that question switched off.)
  */
 export function lossRoute(text, { emotion = null } = {}) {
-  if (griefFeeling(emotion) || deathTalk(text) || livingLoss(text) || strongLoss(text)) return 'gentle';
+  // (final round 3: the weak death words only about a person or a pet, deathTalk `sure`; "my motivation is dead" is no loss)
+  if (griefFeeling(emotion) || deathTalk(text, { sure: true }) || livingLoss(text) || strongLoss(text)) return 'gentle';
   return unsureLoss(text) ? 'ask' : null;
 }
 
@@ -352,7 +357,7 @@ export function heavyHarm(text) {
 }
 /** null: no bag word; 'gentle': death talk or someone alive but going; 'kind': any other bag word. */
 export function harmRoute(text) {
-  if (deathTalk(text) || livingLoss(text)) return 'gentle';
+  if (deathTalk(text, { sure: true }) || livingLoss(text)) return 'gentle';
   return bagWords(text) ? 'kind' : null;
 }
 /**
@@ -364,7 +369,7 @@ export function framingAllowed(text) {
 }
 /** The gentle path's words: death talk, or someone alive but going (livingLoss). Never a mechanic, nothing assumed. */
 export function gentleRoute(text) {
-  return !!deathTalk(text) || livingLoss(text);
+  return !!deathTalk(text, { sure: true }) || livingLoss(text);
 }
 /** The mechanics that frame the words as a fact and a guess, a worst case, one meaning among others, or a spectrum. */
 export const FRAMING_MECHANICS = Object.freeze(new Set(['pull_apart', 'shrink_projection', 'open_interpretations', 'reveal_spectrum']));

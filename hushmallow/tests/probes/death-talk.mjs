@@ -48,11 +48,15 @@ export const DEATH_TALK = [
   'My dad is terminal.', 'My mum has terminal cancer.', 'My grandad is in a hospice.', 'My dad is on life support.', 'The doctors say she won’t make it.', 'He didn’t make it.', 'The baby didn’t make it.',
   'She has weeks to live.', 'My nan is on end of life care.',
   // grieving, a funeral, a grave, condolences, RIP
-  'It was my grandad’s funeral today.', 'I’ve been grieving for months.', 'I’m griefstricken.', 'The greif is too much.', 'I visited my mum’s grave.', 'We scattered his ashes.', 'I cried at the cemetery.',
+  'It was my grandad’s funeral today.', 'I’ve been grieving for months.', 'I’m griefstricken.', 'The greif is too much.', 'I visited my mum’s grave.', 'We scattered his ashes.',
   'We buried our dog in the garden.', 'He was cremated on Friday.', 'Thank you for the condolences.', 'I’m still in mourning.', 'I’ve been bereaved twice this year.', 'RIP Grandad.', 'R.I.P. my sweet boy.',
   'Rest in peace Nana.', 'rip nan', 'I’m going to the wake after the funeral.', 'I’m a widow now.',
 ];
-/** Grieving, a funeral, a grave without a death named: 'grief'. */
+/**
+ * Grieving, a funeral, a grave without a death named: 'grief'. (Final round 3: "I cried at the cemetery." names no one, so its
+ * cemetery is a weak word about someone unknown: 'grief' in deathTalk's wide reading, the escalation reader's, and the one
+ * question on both screens, never the gentle path: r3-words.mjs ASKED_NO_ONE.)
+ */
 export const GRIEF_ONLY = [
   'It was the funeral today.', 'I’ve been grieving for months.', 'I visited the grave.', 'I’m still in mourning.', 'Thank you for the condolences.', 'I cried at the cemetery.',
 ];

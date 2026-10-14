@@ -98,8 +98,9 @@ export const SEM_ORDINARY = [
  * game…", "a film where the dog dies", "the main character dies at the end of the book", "got killed in the game five times";
  * "My son died in Fortnite" names someone of their own, so it stays gentle.)
  */
+// (final round 3: "the plant I bought died" is a thing that died, the kind path now, never the gentle one)
 export const SEM_ORDINARY_GENTLE = [
-  'My son died in Fortnite and smashed his controller.', 'the plant I bought died',
+  'My son died in Fortnite and smashed his controller.',
 ];
 /** Polish: a gadget's part right before "died" is still the gadget ("phone battery died"): no longer a false alarm. */
 export const NOT_DEATH_R9 = ['phone battery died at the concert lol', 'my phone battery died', 'and then the laptop battery died', 'she was put to sleep for her operation', 'my application passed', 'my mum passed the salt',
