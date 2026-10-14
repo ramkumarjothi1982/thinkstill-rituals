@@ -9,7 +9,8 @@
 import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
 import { deathEscalation, serverLoss, griefLinesOk } from '../../src/beyond/grief.js';
 import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm, lossRoute, griefFeeling } from '../../src/beyond/backstop.js';
-import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, mechanicLines } from '../../src/beyond/lines.js';
+import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, mechanicLines } from '../../src/beyond/lines.js';
+import { firstStep, ASK_BEFORE_ANGLE } from '../../src/beyond/angle-first.js';
 import { validateScene, PATTERNS } from '../../src/beyond/vocab.js';
 import { checkText } from '../../src/engine/safety.js';
 
@@ -87,9 +88,13 @@ function drawn(scene, parts, L) {
  * quips: Zuzu's squeeze quips would still play; look: the Thought Mallow's first look, 'feeling:<kind>' or 'pattern:<id>').
  * (review r12, the owner's 'Ask when unsure') `answer`: the person's answer to the check-in when it is asked ('yes', 'else',
  * or null for no answer: route 'quiet'); R.asked says it was, R.requestsBeforeAnswer how many requests went first (none).
+ * (owner decision 'Ask before every world', 14 Oct 2026; angle-first.js) with `asks` (ASK_BEFORE_ANGLE, the default) every Tell
+ * that is not a detected loss, crisis or care is asked "Shall we look at this from another angle, or just be with it?"
+ * instead: `answer` 'angle' (or 'else') plays, 'be' (or 'yes') is the gentle path with nothing sent, null is quiet; R.question
+ * says which question was asked ('choice' | 'check-in'). `said`: the answer remembered from an earlier send of the same words.
  */
-export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else' } = {}) {
-  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, requestsBeforeAnswer: 0 };
+export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else', asks = ASK_BEFORE_ANGLE, said = null } = {}) {
+  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0 };
   const S = { level: 'none', follow: false, noPlay: false, grief: false, shown: [], used: [] };
   const say = (l) => { for (const x of [l].flat()) if (x) R.said.push(String(x)); };
   const note = (r) => { if (r?.level && LEVELS.indexOf(r.level) > LEVELS.indexOf(S.level)) S.level = r.level; };
@@ -131,19 +136,25 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
   };
 
   for (let k = 0; k < walk; k++) {
-    // startAngle (lossRoute: death talk, someone alive but going, a strong loss cue, a grief-family feeling: gentle; not sure:
-    // the check-in, asked once, before anything is sent: askAboutLoss)
+    // startAngle (lossRoute: death talk, someone alive but going, a strong loss cue, a grief-family feeling: gentle; else the
+    // one question before anything is sent, angle-first.js firstStep → askFirst; the answer kept for these words)
     const route = lossRoute(text, { emotion });
     if (route === 'gentle') return griefMode();
-    if (route === 'ask' && k === 0) {
-      R.asked = true; R.requestsBeforeAnswer = R.requests;
+    const step = firstStep(text, { emotion, another: k > 0, said, ask: asks });
+    if (step === 'be' || step === 'told') { S.noPlay = true; return griefMode({ told: 'loss', asked: step === 'be' }); }
+    if (step === 'choice' || step === 'check-in') {
+      R.asked = true; R.question = step; R.requestsBeforeAnswer = R.requests;
       R.faces.push('attentive');
-      say(LOSS_CHECK.ask);
-      if (answer === 'yes') { S.noPlay = true; return griefMode({ told: 'loss' }); }
-      if (answer !== 'else') return done('quiet');
+      say(step === 'choice' ? ANGLE_CHOICE.ask : LOSS_CHECK.ask);
+      const v = step === 'choice' ? ({ be: 'be', yes: 'be', angle: 'angle', else: 'angle' })[answer] : ({ yes: 'yes', else: 'else', be: 'yes', angle: 'else' })[answer];
+      if (v === 'be' || v === 'yes') { S.noPlay = true; return griefMode({ told: 'loss', asked: v === 'be' }); }
+      if (!v) return done('quiet');
+      said = v;
     }
+    const unsure = route === 'ask';
     let feel = null;
     try { feel = feelingOf(text) || (framingAllowed(text) ? null : { kind: 'low' }); } catch { feel = null; }
+    if (unsure) feel ||= { kind: 'low' };
     R.faces.push(feel ? 'attentive' : 'playful');
     // waitingLines (two at least)
     say((feel || server ? FEELING.waiting : WAITING).slice(0, 2));

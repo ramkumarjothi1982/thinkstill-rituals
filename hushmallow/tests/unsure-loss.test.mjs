@@ -327,27 +327,29 @@ test('the main screen: unsure words are asked about before any Thought Mallow, w
   for (const f of ['function safetyHold(', 'function onFinished(', 'function resumableNow(']) assert.ok(!between(hf, f, '\n  }').includes('lossCheck'), f);
 });
 
-test('Another Angle: Zuzu asks the same before anything is sent, framed or played; yes is griefMode, something else carries on, no answer stays quiet', () => {
+test('Another Angle: Zuzu asks before anything is sent, framed or played (the one choice, or with it switched off the check-in); a gentle answer is griefMode, the other carries on, no answer stays quiet', () => {
   const aa = read('src/beyond/another-angle.js');
-  const start = between(aa, 'async function startAngle(', 'async function askAboutLoss(');
+  const start = between(aa, 'async function startAngle(', 'const FIRST_QUESTION = {');
   const route = start.indexOf('const route = lossRoute(S.text, { emotion: S.emotion });');
-  const asks = start.indexOf('await askAboutLoss()');
+  const asks = start.indexOf('await askFirst(step)');
   assert.ok(route > 0 && asks > route);
   for (const later of ['spawnThought()', 'client.angle(', 'waitingLines(', 'playScene(']) assert.ok(asks < start.indexOf(later), later);
-  assert.match(start, /if \(route === 'ask' && !another && S\.lossChecked !== S\.text\) \{/);
-  assert.match(start, /if \(v === 'yes'\) \{ S\.lossChecked = S\.text; S\.lossSaid = true; S\.noPlay = true; return griefMode\(\{ told: 'loss' \}\); \}/);
-  assert.match(start, /if \(v !== 'else'\) \{ quietAfterAsk\(\); return; \}/);
-  const fn = between(aa, 'async function askAboutLoss(', 'async function waitingLines(');
+  // (owner decision 'Ask before every world': askall-angle.test.mjs pins the choice; LOSS_CHECK stays for the switch turned off)
+  assert.match(start, /if \(step === 'choice' \|\| step === 'check-in'\) \{/);
+  assert.match(start, /if \(v === 'be' \|\| v === 'yes'\) \{ S\.answers\.set\(key, v\); S\.lossSaid = true; S\.noPlay = true; return griefMode\(\{ told: 'loss', asked: v === 'be' \}\); \}/);
+  assert.match(start, /if \(v !== 'angle' && v !== 'else'\) \{ quietAfterAsk\(\); return; \}/);
+  const fn = between(aa, 'const FIRST_QUESTION = {', 'async function waitingLines(');
   assert.doesNotMatch(fn, /client\.|spawnThought|playScene|setStage\('playful'\)/, 'nothing sent, nothing made, nothing playful');
   assert.match(fn, /careFace\(\);/);
-  assert.match(fn, /choose\(LOSS_CHECK\.ask, \[\{ label: LOSS_CHECK\.yes, value: 'yes' \}, \{ label: LOSS_CHECK\.no, value: 'else' \}\],\s*\{ mallow: 'zuzu', timeoutMs: LOSS_CHECK\.ms, transient: true, lossCheck: true, interrupt: true \}\)/);
+  assert.match(fn, /'check-in': \{ ask: LOSS_CHECK\.ask, ms: LOSS_CHECK\.ms, options: \[\{ label: LOSS_CHECK\.yes, value: 'yes' \}, \{ label: LOSS_CHECK\.no, value: 'else' \}\] \}/);
+  assert.match(fn, /choose\(q\.ask, q\.options, \{ mallow: 'zuzu', timeoutMs: q\.ms, transient: true, lossCheck: true, interrupt: true \}\)/);
   assert.match(aa, /if \(layer\.lossCheck && \(!token \|\| token === layer\.lossCheck\)\) \{ layer\.lossCheck = 0; subs\?\.drop\(\(o\) => o\.lossCheck\); \}/);
   assert.match(aa, /'typing', 'asking'\]\.includes\(S\.phase\)/, 'no reload while it asks');
   // Zuzu's squeeze quips only in the invitation, squeeze and end phases (never while asking)
   assert.match(aa, /if \(\['arrive', 'invite', 'squeeze', 'end'\]\.includes\(S\.phase\)/);
 });
 
-test('Another Angle replay: the check-in is asked before any request; yes is gentle, no answer is quiet, something else carries on (a server loss answer still gentle)', () => {
+test('Another Angle replay: the question is asked before any request; a gentle answer is gentle, no answer is quiet, the other carries on (a server loss answer still gentle)', () => {
   for (const t of P.R5_DEATH_CHECK_IN) {
     for (const s of ['none', 'pull', 'mind', 'fallback', 'griefish', 'anger', 'grief']) {
       const server = STUBS[s] || null;
@@ -373,10 +375,13 @@ test('Another Angle replay: the check-in is asked before any request; yes is gen
     assert.deepEqual([R.route, R.asked], ['gentle', false], id);
     assert.deepEqual([R.scenes[0].subtitle_line_1, R.scenes[0].subtitle_line_2], GRIEF.grief, id);
   }
-  // ordinary words: no question at all
-  for (const t of ['my mum didnt call me back, she must be angry with me', 'my boss always ignores me']) assert.equal(visit(t).asked, false, t);
-  // a server care answer after "Yes, it is" is said gently
-  assert.deepEqual(visit('my dad isnt here anymore', { server: STUBS.care, answer: 'yes' }).careLines, SAFETY.careGentle);
+  // ordinary words: the one choice (owner decision 'Ask before every world'); with it switched off, no question at all
+  for (const t of ['my mum didnt call me back, she must be angry with me', 'my boss always ignores me']) {
+    assert.deepEqual([visit(t).asked, visit(t).question], [true, 'choice'], t);
+    assert.equal(visit(t, { asks: false }).asked, false, t);
+  }
+  // (the switch off) a server care answer after the check-in's "Yes, it is" is said gently
+  assert.deepEqual(visit('my dad isnt here anymore', { server: STUBS.care, answer: 'yes', asks: false }).careLines, SAFETY.careGentle);
 });
 
 test('gentleScene: what they told the check-in (a loss) or a grief-family feeling picks its pair; death talk keeps its own', () => {
