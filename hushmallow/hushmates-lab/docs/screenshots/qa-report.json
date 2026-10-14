@@ -32,7 +32,7 @@
         },
         "fallback": {
           "progress": "6 of 6",
-          "seconds": 24,
+          "seconds": 25,
           "notTicked": []
         },
         "partial": {
@@ -58,7 +58,7 @@
         },
         "partial": {
           "progress": "5 of 5",
-          "seconds": 37,
+          "seconds": 38,
           "notTicked": []
         }
       }
@@ -69,7 +69,7 @@
       "played": {
         "relay": {
           "progress": "10 of 10",
-          "seconds": 69,
+          "seconds": 68,
           "notTicked": []
         },
         "fallback": {
@@ -79,7 +79,7 @@
         },
         "partial": {
           "progress": "5 of 5",
-          "seconds": 38,
+          "seconds": 39,
           "notTicked": []
         }
       }
@@ -137,7 +137,7 @@
     "played": {
       "relay": {
         "progress": "10 of 10",
-        "seconds": 23,
+        "seconds": 24,
         "notTicked": []
       },
       "fallback": {
