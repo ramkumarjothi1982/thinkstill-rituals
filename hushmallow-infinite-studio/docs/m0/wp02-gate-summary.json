@@ -1,0 +1,690 @@
+{
+ "schema": "wp02-m0/2",
+ "finalVsExact": {
+  "command": "hm bench gate --a golden --b final --min-psnr 45 --min-face-ssim-mean 0.995 --min-face-ssim-min 0.98 --save-png --label wp02r2-final-vs-golden",
+  "summary": {
+   "minPsnr": 51.906053579683146,
+   "meanPsnr": 53.69223684190051,
+   "minFacePsnr": 46.7483510402601,
+   "meanFaceSsim": 0.9990587637380512,
+   "minFaceSsim": 0.998654422921908,
+   "identical": 0,
+   "maxAbs": 55
+  },
+  "checks": [
+   {
+    "name": "PSNR >= 45 dB on every frame",
+    "pass": true,
+    "value": 51.906053579683146
+   },
+   {
+    "name": "face-box SSIM mean >= 0.995",
+    "pass": true,
+    "value": 0.9990587637380512
+   },
+   {
+    "name": "face-box SSIM min >= 0.98",
+    "pass": true,
+    "value": 0.998654422921908
+   }
+  ],
+  "rows": [
+   {
+    "t": 0,
+    "psnr": 54.186994562108964,
+    "facePsnr": 59.072219143024924,
+    "faceSsim": 0.9995589822763103,
+    "maxAbs": 28,
+    "differingShare": 0.1671995563271605,
+    "box": [
+     250,
+     855,
+     825,
+     1238
+    ]
+   },
+   {
+    "t": 0.2,
+    "psnr": 53.95199378307333,
+    "facePsnr": 55.69611787545238,
+    "faceSsim": 0.9994640080754228,
+    "maxAbs": 23,
+    "differingShare": 0.16847800925925926,
+    "box": [
+     248,
+     851,
+     827,
+     1238
+    ]
+   },
+   {
+    "t": 0.4,
+    "psnr": 54.23012484900279,
+    "facePsnr": 51.728628870362755,
+    "faceSsim": 0.9993408659427726,
+    "maxAbs": 20,
+    "differingShare": 0.1568455825617284,
+    "box": [
+     231,
+     881,
+     844,
+     1243
+    ]
+   },
+   {
+    "t": 0.6,
+    "psnr": 55.03786796506469,
+    "facePsnr": 52.54314781968287,
+    "faceSsim": 0.9988098736461093,
+    "maxAbs": 19,
+    "differingShare": 0.1761598186728395,
+    "box": [
+     262,
+     658,
+     814,
+     1161
+    ]
+   },
+   {
+    "t": 0.98,
+    "psnr": 54.92818246916232,
+    "facePsnr": 50.902619080434654,
+    "faceSsim": 0.9993123200782814,
+    "maxAbs": 45,
+    "differingShare": 0.15562885802469137,
+    "box": [
+     264,
+     813,
+     811,
+     1232
+    ]
+   },
+   {
+    "t": 1.1,
+    "psnr": 54.72167952632256,
+    "facePsnr": 52.63862935263808,
+    "faceSsim": 0.9988948137748787,
+    "maxAbs": 17,
+    "differingShare": 0.19070939429012346,
+    "box": [
+     176,
+     969,
+     911,
+     1258
+    ]
+   },
+   {
+    "t": 3.2,
+    "psnr": 52.48187529233478,
+    "facePsnr": 47.752256847162435,
+    "faceSsim": 0.9986546428355444,
+    "maxAbs": 44,
+    "differingShare": 0.20326485339506173,
+    "box": [
+     245,
+     853,
+     828,
+     1242
+    ]
+   },
+   {
+    "t": 4.5,
+    "psnr": 52.759034154511866,
+    "facePsnr": 48.47098278235364,
+    "faceSsim": 0.9988572222588865,
+    "maxAbs": 52,
+    "differingShare": 0.17109712577160494,
+    "box": [
+     242,
+     874,
+     843,
+     1269
+    ]
+   },
+   {
+    "t": 6.5,
+    "psnr": 52.95129946935272,
+    "facePsnr": 48.76538915898978,
+    "faceSsim": 0.9989608702840186,
+    "maxAbs": 47,
+    "differingShare": 0.16105565200617283,
+    "box": [
+     224,
+     880,
+     844,
+     1294
+    ]
+   },
+   {
+    "t": 7,
+    "psnr": 53.88352235608822,
+    "facePsnr": 50.73392475045428,
+    "faceSsim": 0.9991697631602774,
+    "maxAbs": 48,
+    "differingShare": 0.17949701003086418,
+    "box": [
+     229,
+     886,
+     845,
+     1296
+    ]
+   },
+   {
+    "t": 8.9,
+    "psnr": 53.776492977773515,
+    "facePsnr": 51.281905905643356,
+    "faceSsim": 0.998964465669779,
+    "maxAbs": 29,
+    "differingShare": 0.18779176311728396,
+    "box": [
+     220,
+     722,
+     855,
+     1247
+    ]
+   },
+   {
+    "t": 9.6,
+    "psnr": 53.67315841836658,
+    "facePsnr": 50.900235773294405,
+    "faceSsim": 0.9987963777947964,
+    "maxAbs": 26,
+    "differingShare": 0.2056664737654321,
+    "box": [
+     170,
+     851,
+     904,
+     1272
+    ]
+   },
+   {
+    "t": 10.5,
+    "psnr": 53.18257148316619,
+    "facePsnr": 49.544756468417155,
+    "faceSsim": 0.9990302281039887,
+    "maxAbs": 32,
+    "differingShare": 0.1645896026234568,
+    "box": [
+     231,
+     865,
+     845,
+     1255
+    ]
+   },
+   {
+    "t": 11.9,
+    "psnr": 53.17610170020753,
+    "facePsnr": 48.81320027671646,
+    "faceSsim": 0.9989248627674857,
+    "maxAbs": 37,
+    "differingShare": 0.15898871527777778,
+    "box": [
+     249,
+     853,
+     826,
+     1238
+    ]
+   },
+   {
+    "t": 12.8,
+    "psnr": 51.906053579683146,
+    "facePsnr": 46.7483510402601,
+    "faceSsim": 0.998654422921908,
+    "maxAbs": 55,
+    "differingShare": 0.1629349922839506,
+    "box": [
+     248,
+     849,
+     827,
+     1238
+    ]
+   },
+   {
+    "t": 14.9,
+    "psnr": 54.228836884188965,
+    "facePsnr": 58.81618792136857,
+    "faceSsim": 0.9995465002183598,
+    "maxAbs": 29,
+    "differingShare": 0.16620900848765433,
+    "box": [
+     251,
+     856,
+     825,
+     1239
+    ]
+   }
+  ]
+ },
+ "exactVsGolden": {
+  "command": "hm bench gate --a golden --b exact --identical --label wp02r2-head-exact-vs-golden",
+  "summary": {
+   "minPsnr": "Infinity",
+   "meanPsnr": "Infinity",
+   "minFacePsnr": "Infinity",
+   "meanFaceSsim": 1,
+   "minFaceSsim": 1,
+   "identical": 16,
+   "maxAbs": 0
+  },
+  "checks": [
+   {
+    "name": "bit-identical on every frame",
+    "pass": true,
+    "value": "16/16"
+   }
+  ]
+ },
+ "stepGates": {
+  "command": "hm bench gate --steps both --label wp02r2-steps-head",
+  "pass": true,
+  "steps": [
+   {
+    "feature": "overlaySkip",
+    "mode": "off",
+    "a": "final [-overlaySkip] (faceCache+faceFastGlow+worldFast+fgAccum+adaptiveFloor+meshNormalTex+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "identical": true,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": "Infinity",
+     "minFacePsnr": "Infinity",
+     "minFaceSsim": 1,
+     "identical": 16
+    }
+   },
+   {
+    "feature": "faceCache",
+    "mode": "off",
+    "a": "final [-faceCache] (overlaySkip+worldFast+fgAccum+adaptiveFloor+meshNormalTex+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 55.11466420766926,
+     "minFacePsnr": 46.984971634134574,
+     "minFaceSsim": 0.9990056049425026,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "faceFastGlow",
+    "mode": "off",
+    "a": "final [-faceFastGlow] (overlaySkip+faceCache+worldFast+fgAccum+adaptiveFloor+meshNormalTex+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 55.47792387485369,
+     "minFacePsnr": 47.48419557167317,
+     "minFaceSsim": 0.9990579266088858,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "worldFast",
+    "mode": "off",
+    "a": "final [-worldFast] (overlaySkip+faceCache+faceFastGlow+fgAccum+adaptiveFloor+meshNormalTex+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 64.9893018388356,
+     "minFacePsnr": 84.76030103503516,
+     "minFaceSsim": 0.9999990281872052,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "fgAccum",
+    "mode": "off",
+    "a": "final [-fgAccum] (overlaySkip+faceCache+faceFastGlow+worldFast+adaptiveFloor+meshNormalTex+worldPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 48,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 54.772615159098066,
+     "minFacePsnr": 61.640046410348745,
+     "minFaceSsim": 0.999682049111249,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "adaptiveFloor",
+    "mode": "off",
+    "a": "final [-adaptiveFloor] (overlaySkip+faceCache+faceFastGlow+worldFast+fgAccum+meshNormalTex+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 45,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 62.04510446871453,
+     "minFacePsnr": 60.18779067187828,
+     "minFaceSsim": 0.9996780699911229,
+     "identical": 10
+    }
+   },
+   {
+    "feature": "meshNormalTex",
+    "mode": "off",
+    "a": "final [-meshNormalTex] (overlaySkip+faceCache+faceFastGlow+worldFast+fgAccum+adaptiveFloor+worldPasses+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 54.62856715534032,
+     "minFacePsnr": 55.37186156668422,
+     "minFaceSsim": 0.9991035394964828,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "worldPasses",
+    "mode": "off",
+    "a": "final [-worldPasses] (overlaySkip+faceCache+faceFastGlow+worldFast+fgAccum+adaptiveFloor+meshNormalTex+tightPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 67.45948106972973,
+     "minFacePsnr": 84.76030103503516,
+     "minFaceSsim": 0.9999995285273685,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "tightPasses",
+    "mode": "off",
+    "a": "final [-tightPasses] (overlaySkip+faceCache+faceFastGlow+worldFast+fgAccum+adaptiveFloor+meshNormalTex+worldPasses)",
+    "b": "final (all)",
+    "thresholds": {
+     "psnr": 48,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 96.06926599778072,
+     "minFacePsnr": 89.88859605467981,
+     "minFaceSsim": 0.9999999736285057,
+     "identical": 10
+    }
+   },
+   {
+    "feature": "overlaySkip",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+overlaySkip] (overlaySkip)",
+    "thresholds": {
+     "identical": true,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": "Infinity",
+     "minFacePsnr": "Infinity",
+     "minFaceSsim": 1,
+     "identical": 16
+    }
+   },
+   {
+    "feature": "faceCache",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+faceCache] (faceCache)",
+    "thresholds": {
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 62.028955303658506,
+     "minFacePsnr": 53.189338652358785,
+     "minFaceSsim": 0.999734476173017,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "faceFastGlow",
+    "mode": "on",
+    "a": "exact [+faceCache] (faceCache)",
+    "b": "exact [+faceCache,+faceFastGlow] (faceCache+faceFastGlow)",
+    "thresholds": {
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 56.883348755150635,
+     "minFacePsnr": 47.518284136506644,
+     "minFaceSsim": 0.9990592540146779,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "worldFast",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+worldFast] (worldFast)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 68.46036898009265,
+     "minFacePsnr": 86.97318905633188,
+     "minFaceSsim": 0.9999992163699901,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "fgAccum",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+fgAccum] (fgAccum)",
+    "thresholds": {
+     "psnr": 48,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 53.618032441323706,
+     "minFacePsnr": 61.684380184052415,
+     "minFaceSsim": 0.9996821651216947,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "adaptiveFloor",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+adaptiveFloor] (adaptiveFloor)",
+    "thresholds": {
+     "psnr": 45,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 62.29063264415463,
+     "minFacePsnr": 60.08412973317205,
+     "minFaceSsim": 0.9996775779779059,
+     "identical": 10
+    }
+   },
+   {
+    "feature": "meshNormalTex",
+    "mode": "on",
+    "a": "golden (exact)",
+    "b": "exact [+meshNormalTex] (meshNormalTex)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 58.70138214022056,
+     "minFacePsnr": 55.365835987086044,
+     "minFaceSsim": 0.9991042086666545,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "worldPasses",
+    "mode": "on",
+    "a": "exact [+worldFast] (worldFast)",
+    "b": "exact [+worldFast,+worldPasses] (worldFast+worldPasses)",
+    "thresholds": {
+     "psnr": 50,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": 67.45481805003935,
+     "minFacePsnr": 84.54955077419869,
+     "minFaceSsim": 0.9999992846188579,
+     "identical": 0
+    }
+   },
+   {
+    "feature": "tightPasses",
+    "mode": "on",
+    "a": "exact [+fgAccum] (fgAccum)",
+    "b": "exact [+fgAccum,+tightPasses] (fgAccum+tightPasses)",
+    "thresholds": {
+     "psnr": 48,
+     "facePsnr": 42
+    },
+    "pass": true,
+    "summary": {
+     "minPsnr": "Infinity",
+     "minFacePsnr": "Infinity",
+     "minFaceSsim": 1,
+     "identical": 16
+    }
+   }
+  ]
+ },
+ "restTest": {
+  "command": "node render/lib/write-jail.mjs -- node tools/perf/rest-test.mjs",
+  "result": {
+   "box": [
+    92,
+    294,
+    1091,
+    949
+   ],
+   "exact": {
+    "meanDiff": 1.0221513423348285,
+    "faceBoxMeanDiff": 2.0789812713476836
+   },
+   "finalCrossfade": {
+    "meanDiff": 1.017170464876887,
+    "faceBoxMeanDiff": 2.0688505299192324
+   },
+   "finalRest": {
+    "meanDiff": 1.017170464876887,
+    "faceBoxMeanDiff": 2.0688505299192324
+   }
+  }
+ },
+ "videoMetrics": {
+  "command": "python3 -I tools/perf/video_metrics.py exact-2/final.mp4 final-3/final.mp4 --face 250,855,825,1239",
+  "result": [
+   {
+    "video": "/home/user/hm-work/wp02r2/renders/exact-2/final.mp4",
+    "frames": 450,
+    "seam": {
+     "seam": 1.9079,
+     "median": 2.4227,
+     "quietMedian": 1.8123,
+     "p90": 4.3119,
+     "limit": 4.3119,
+     "pass": true
+    },
+    "flash": {
+     "count": 0,
+     "maxShareChanging10pct": 0.12794,
+     "maxMeanBlockDelta": 0.04971
+    },
+    "seamFace": {
+     "seam": 2.3675,
+     "median": 3.311,
+     "quietMedian": 2.1674,
+     "p90": 8.2446,
+     "limit": 8.2446,
+     "pass": true
+    }
+   },
+   {
+    "video": "/home/user/hm-work/wp02r2/renders/final-3/final.mp4",
+    "frames": 450,
+    "seam": {
+     "seam": 1.9076,
+     "median": 2.4179,
+     "quietMedian": 1.8085,
+     "p90": 4.3088,
+     "limit": 4.3088,
+     "pass": true
+    },
+    "flash": {
+     "count": 0,
+     "maxShareChanging10pct": 0.12794,
+     "maxMeanBlockDelta": 0.04969
+    },
+    "seamFace": {
+     "seam": 2.3711,
+     "median": 3.3266,
+     "quietMedian": 2.1733,
+     "p90": 8.2552,
+     "limit": 8.2552,
+     "pass": true
+    }
+   },
+   {
+    "compare": "/home/user/hm-work/wp02r2/renders/final-3/final.mp4 against /home/user/hm-work/wp02r2/renders/exact-2/final.mp4",
+    "relativeChange": {
+     "seam.seam": -0.00016,
+     "seam.median": -0.00198,
+     "seam.quietMedian": -0.0021,
+     "seam.p90": -0.00072,
+     "seamFace.seam": 0.00152,
+     "seamFace.median": 0.00471,
+     "seamFace.quietMedian": 0.00272,
+     "seamFace.p90": 0.00129,
+     "flash.maxShareChanging10pct": 0.0,
+     "flash.maxMeanBlockDelta": -0.0004
+    },
+    "flashCountEqual": true,
+    "seamPassEqual": true,
+    "within2pct": true
+   }
+  ]
+ },
+ "renders": {
+  "final-3 (round 2 HEAD, run A, 1 worker)": "651.1 s wall, segments 604.4 s",
+  "final-4 (round 2 HEAD, run B, 1 worker)": "572.1 s wall, segments 526.8 s; video stream byte-identical to final-3",
+  "draft-2 (round 2 HEAD, 1 worker)": "88.7 s wall",
+  "proof-3 (round 2 HEAD)": "13.3 s wall",
+  "exact-2 (round 2 HEAD, 2 workers)": "1341.2 s wall; frame hashes vs qa/golden/v2/sequential-frames.json 450/450 identical",
+  "final-2 (round 1, 1 worker)": "607.0 s wall",
+  "final-1 (P2-P8, 1 worker)": "758.6 s wall"
+ }
+}

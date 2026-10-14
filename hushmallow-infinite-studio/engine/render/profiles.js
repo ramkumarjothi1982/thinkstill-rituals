@@ -1,0 +1,126 @@
+// Quality profiles (PHASE2-PLAN "Profiles", WP-02).
+//
+//   exact  the approved v2 rules: the direction's own sub-frame count (floor 3),
+//          the face redrawn for every sub-frame with full-resolution blurs, the
+//          v2 world and pass structure. Bit-identical to the goldens; used for
+//          goldens and parity only (~26 min per 15 s).
+//   final  the production master: scale 1, every optimisation of WP-02's
+//          performance pass, x264 master + CRF 20 preview. Target <= 9 min per
+//          15 s on one worker, accepted <= 12.
+//   draft  review drafts: scale 0.5 (uRes stays in design space), 1 sub-frame,
+//          the face once per frame without glow blur, a 3-octave world without
+//          clouds, no 1/8 bloom, x264 veryfast, DRAFT mark. <= 3 min per 15 s.
+//   proof  6 full-quality stills (the final profile's settings), hm proof. <= 45 s.
+//
+// Every optimisation is a named feature, so each can be switched off on its
+// own: the per-step PSNR gates of WP-02 compare a profile with and without one
+// feature (tools/perf/gate.mjs), and `features=-<name>` (engine page query,
+// hm bench / hm gate --features) bisects a regression. The exact profile has
+// none of them.
+//
+// Pure data, no browser APIs: imported by the engine page and by Node (the
+// render farm, hm bench) alike.
+
+/** The optimisation features, in the order the performance pass landed them. */
+export const FEATURES = Object.freeze({
+  overlaySkip: 'P2: an overlay with nothing drawn on it is neither cleared again, uploaded nor composited',
+  faceCache: 'P3: the face is drawn once per frame from quantised parameters; per sub-frame only while it moves > 1.5 px',
+  faceFastGlow: 'P3b: face glows blurred at 1/4 resolution, soft inner tube bands at 1/2; a face-box-sized texture (dirty rect)',
+  worldFast: 'P4: world shader terms only where they can be non-zero; the water samples a once-rendered sky layer',
+  fgAccum: 'P5: premultiplied foreground accumulation over the world, scissored passes, the reflection at 1/4 resolution',
+  adaptiveFloor: 'P6: one centred sample when nothing moves 2 px or more during the shutter',
+  meshNormalTex: 'P7: rest normals baked once per Mallow; the mesh draws only cells that can show anything',
+  worldPasses: 'P4b: the fast world split by region with scissored draws (no branch skips work on SwiftShader): the smooth sky at 1/2 resolution, stars, hills and moon only where they are, water only below the horizon',
+  tightPasses: 'P5b: exact scissors for the glass backdrop and the mirror blur; single-sample frames skip the accumulation',
+});
+
+/** Features that read another feature's output: dependent → base. */
+export const NEEDS = Object.freeze({
+  faceFastGlow: 'faceCache',      // the fast face is drawn through the cache
+  worldPasses: 'worldFast',       // a variant of the fast world's passes
+  tightPasses: 'fgAccum',         // scissors of the foreground-accumulation pipeline
+});
+
+const ALL = Object.keys(FEATURES);
+const none = () => Object.fromEntries(ALL.map((f) => [f, false]));
+const all = () => Object.fromEntries(ALL.map((f) => [f, true]));
+
+/** Quality knobs beyond the features; every profile but draft renders at full quality. */
+const FULL_QUALITY = Object.freeze({
+  subframes: null,          // null: the direction's count (or the adaptive floor); a number: that many, always
+  faceGlow: true,           // the face tubes' blurred glow and light band
+  worldOctaves: 5,          // fbm octaves of the world shader (with worldFast)
+  worldClouds: true,        // the stratus layer (with worldFast)
+  bloomEighth: true,        // the wide 1/8-resolution bloom blur
+});
+const DRAFT_QUALITY = Object.freeze({ subframes: 1, faceGlow: false, worldOctaves: 3, worldClouds: false, bloomEighth: false });
+
+export const PROFILES = Object.freeze({
+  exact: Object.freeze({
+    name: 'exact', summary: 'approved v2 rules, bit-identical to the goldens (goldens and parity only)',
+    scale: 1, features: Object.freeze(none()), quality: FULL_QUALITY, encoder: 'qp15', preview: null, mark: null, stills: null,
+  }),
+  final: Object.freeze({
+    name: 'final', summary: 'production master: every WP-02 optimisation at full scale',
+    scale: 1, features: Object.freeze(all()), quality: FULL_QUALITY, encoder: 'qp15', preview: 'crf20', mark: null, stills: null,
+  }),
+  draft: Object.freeze({
+    name: 'draft', summary: 'review draft: 0.5 scale, 1 sub-frame, no face glow, 3-octave world without clouds, no 1/8 bloom, DRAFT mark',
+    scale: 0.5, features: Object.freeze(all()), quality: DRAFT_QUALITY, encoder: 'draft', preview: null, mark: 'DRAFT', stills: null,
+  }),
+  proof: Object.freeze({
+    name: 'proof', summary: '6 full-quality stills (final settings), hm proof',
+    scale: 1, features: Object.freeze(all()), quality: FULL_QUALITY, encoder: null, preview: null, mark: null, stills: 6,
+  }),
+});
+
+export const DEFAULT_PROFILE = 'exact';
+
+/**
+ * Parse a feature override list: "+a,-b" (or "a,-b"; "none" / "all" resets).
+ * → { reset: 'none' | 'all' | null, on: [...], off: [...] }
+ */
+export function parseFeatures(spec) {
+  const out = { reset: null, on: [], off: [] };
+  if (spec == null || spec === '') return out;
+  for (const raw of String(spec).split(',').map((s) => s.trim()).filter(Boolean)) {
+    if (raw === 'none' || raw === 'all') { out.reset = raw; out.on = []; out.off = []; continue; }
+    const off = raw.startsWith('-'), name = raw.replace(/^[+-]/, '');
+    if (!Object.hasOwn(FEATURES, name)) throw new Error(`unknown feature "${name}" (have: ${ALL.join(', ') || 'none yet'})`);
+    (off ? out.off : out.on).push(name);
+  }
+  return out;
+}
+
+/**
+ * The effective profile: a named profile plus optional feature overrides.
+ * → frozen { ...profile, features: { name: bool }, overrides }
+ */
+export function resolveProfile(name = DEFAULT_PROFILE, { features = null } = {}) {
+  const base = Object.hasOwn(PROFILES, name) ? PROFILES[name] : null;
+  if (!base) throw new Error(`unknown profile "${name}" (have: ${Object.keys(PROFILES).join(', ')})`);
+  const f = parseFeatures(features);
+  const feat = f.reset === 'none' ? none() : f.reset === 'all' ? all() : { ...base.features };
+  for (const n of f.on) feat[n] = true;
+  for (const n of f.off) feat[n] = false;
+  // a feature that builds on another one's output follows it off; asking for it without its base is an error
+  for (const [dep, base] of Object.entries(NEEDS)) {
+    if (!feat[dep] || feat[base]) continue;
+    if (f.on.includes(dep)) throw new Error(`feature ${dep} needs ${base}`);
+    feat[dep] = false;
+  }
+  return Object.freeze({ ...base, features: Object.freeze(feat), overrides: features || null });
+}
+
+/** The features `name` builds on, nearest first (NEEDS, transitively). */
+export function basesOf(name) {
+  const out = [];
+  for (let b = NEEDS[name]; b; b = NEEDS[b]) out.push(b);
+  return out;
+}
+
+/** A short stable label of the active features ('none', 'all' or the list), for logs. */
+export function featureLabel(profile) {
+  const on = ALL.filter((f) => profile.features[f]);
+  return on.length === 0 ? 'none' : on.length === ALL.length ? 'all' : on.join('+');
+}

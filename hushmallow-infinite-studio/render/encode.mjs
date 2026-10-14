@@ -42,8 +42,18 @@ export const ENCODERS = Object.freeze({
     x264: `keyint=${GOP}:min-keyint=${GOP}:scenecut=0:open-gop=0`,
     segmentSafe: false,
   },
+  draft: {
+    summary: 'x264 veryfast, constant QP 20, GOP-local (segment-invariant); review drafts',
+    preset: 'veryfast',
+    rate: ['-qp', '20'],
+    x264: `keyint=${GOP}:min-keyint=${GOP}:scenecut=0:open-gop=0:direct=spatial`,
+    segmentSafe: true,
+  },
   crf20: {
-    summary: 'x264 slow, CRF 20 preview copy (single pass from the master)',
+    // preset fast (WP-02, measured on v2's final master): 22.7 s instead of 61.6 s (slow, 2 threads),
+    // 46.46 dB against the master instead of 45.98, 9.8 MB instead of 10.7
+    summary: 'x264 fast, CRF 20 preview copy (single pass from the master)',
+    preset: 'fast',
     rate: ['-crf', '20'],
     x264: `keyint=${GOP}:min-keyint=${GOP}:scenecut=0:open-gop=0`,
     segmentSafe: false,
@@ -58,7 +68,7 @@ export function x264Args(encoder = 'qp15', { fps = 30, threads = 2 } = {}) {
   const e = ENCODERS[encoder];
   if (!e) throw new Error(`unknown encoder ${encoder} (have: ${Object.keys(ENCODERS).join(', ')})`);
   return [
-    '-c:v', 'libx264', '-preset', 'slow', ...e.rate, '-tune', 'film',
+    '-c:v', 'libx264', '-preset', e.preset || 'slow', ...e.rate, '-tune', 'film',
     '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.2', '-g', String(GOP), '-keyint_min', String(GOP),
     '-x264-params', e.x264, '-threads', String(threads),
     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',

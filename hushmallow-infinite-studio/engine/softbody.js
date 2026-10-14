@@ -35,8 +35,7 @@ export class SoftBody {
     this.rows = opts.rows || 96;
     this.lag = opts.lag ?? 0.075;
     this.bins = opts.bins || 48;
-    this.H = sil.baseY - sil.top;
-    this.R = Math.max(sil.halfW, this.H * 0.5);
+    this.H = sil.baseY - sil.top;      // (stage2 also computed an unused radius R here; dropped by WP-02, R21)
   }
 
   /**

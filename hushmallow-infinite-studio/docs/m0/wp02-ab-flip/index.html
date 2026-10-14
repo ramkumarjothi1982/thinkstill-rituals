@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A/B flip sheet</title>
+<style>
+:root { --bg: #0e0c18; --card: #181528; --ink: #ece8ff; --dim: #a9a3c8; --a: #8fd3ff; --b: #ffc98f; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, sans-serif; }
+main { max-width: 1500px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 22px; margin: 8px 0 4px; } p { color: var(--dim); max-width: 900px; }
+.card { background: var(--card); border-radius: 12px; padding: 12px; margin: 14px 0; }
+.card header { display: flex; gap: 14px; flex-wrap: wrap; align-items: baseline; margin-bottom: 8px; } .card header span { color: var(--dim); }
+.pair { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+figure { margin: 0; position: relative; } figure img { display: block; max-width: 100%; border-radius: 6px; }
+.flip { display: grid; } .flip img { grid-area: 1 / 1; }
+.flip img.b { animation: flip 2s steps(1) infinite; }
+.flip:hover img.b, .flip:active img.b { animation-play-state: paused; }
+@keyframes flip { 0% { opacity: 0; } 50% { opacity: 1; } }
+figcaption { font-size: 13px; color: var(--dim); margin-top: 4px; }
+.flip figcaption .lb { display: none; color: var(--b); } .flip figcaption .la { color: var(--a); }
+.flip figcaption span { animation: none; }
+.flip:has(img.b) figcaption .la { animation: capA 2s steps(1) infinite; }
+.flip:has(img.b) figcaption .lb { display: inline; animation: capB 2s steps(1) infinite; }
+.flip:hover figcaption span { animation-play-state: paused; }
+@keyframes capA { 0% { opacity: 1; } 50% { opacity: 0; } } @keyframes capB { 0% { opacity: 0; } 50% { opacity: 1; } }
+.flip:not(.face) img { width: 360px; } .face img { width: min(580px, 92vw); } .diff img { width: 290px; }
+table { border-collapse: collapse; margin: 8px 0; } td, th { padding: 2px 10px; text-align: right; } th { color: var(--dim); font-weight: 500; }
+</style></head><body><main>
+<h1>Final profile vs exact (WP-02)</h1>
+<p>Each picture flips between <b style="color:var(--a)">A, the exact profile</b> (the approved v2 render, bit-identical to the goldens) and
+<b style="color:var(--b)">B, the final profile</b> once a second; hover or press to hold one. The face is shown at 1:1 output pixels.
+The change to look for: the final profile draws the face once per frame (from quantised parameters), so an expression
+that changes within one frame is no longer smeared across the shutter (blinks and eye pops still are); the face still moves
+and blurs with the body.</p>
+<table><tr><th>min PSNR</th><th>mean PSNR</th><th>min face PSNR</th><th>face SSIM mean</th><th>face SSIM min</th></tr>
+<tr><td>51.91 dB</td><td>53.69 dB</td><td>46.75 dB</td><td>0.99906</td><td>0.99865</td></tr></table>
+
+  <section class="card">
+    <header><b>0.00 s</b><span>PSNR 54.19 dB · face 59.07 dB · face SSIM 0.99956 · max |Δ| 28 · 16.7 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/00.000-a.jpg" alt="exact 0 s"><img class="b" src="img/00.000-b.jpg" alt="final 0 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/00.000-face-a.jpg" alt="exact face"><img class="b" src="img/00.000-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/00.000-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>0.20 s</b><span>PSNR 53.95 dB · face 55.70 dB · face SSIM 0.99946 · max |Δ| 23 · 16.8 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/00.200-a.jpg" alt="exact 0.2 s"><img class="b" src="img/00.200-b.jpg" alt="final 0.2 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/00.200-face-a.jpg" alt="exact face"><img class="b" src="img/00.200-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/00.200-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>0.40 s</b><span>PSNR 54.23 dB · face 51.73 dB · face SSIM 0.99934 · max |Δ| 20 · 15.7 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/00.400-a.jpg" alt="exact 0.4 s"><img class="b" src="img/00.400-b.jpg" alt="final 0.4 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/00.400-face-a.jpg" alt="exact face"><img class="b" src="img/00.400-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/00.400-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>0.60 s</b><span>PSNR 55.04 dB · face 52.54 dB · face SSIM 0.99881 · max |Δ| 19 · 17.6 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/00.600-a.jpg" alt="exact 0.6 s"><img class="b" src="img/00.600-b.jpg" alt="final 0.6 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/00.600-face-a.jpg" alt="exact face"><img class="b" src="img/00.600-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/00.600-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>0.98 s</b><span>PSNR 54.93 dB · face 50.90 dB · face SSIM 0.99931 · max |Δ| 45 · 15.6 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/00.980-a.jpg" alt="exact 0.98 s"><img class="b" src="img/00.980-b.jpg" alt="final 0.98 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/00.980-face-a.jpg" alt="exact face"><img class="b" src="img/00.980-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/00.980-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>1.10 s</b><span>PSNR 54.72 dB · face 52.64 dB · face SSIM 0.99889 · max |Δ| 17 · 19.1 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/01.100-a.jpg" alt="exact 1.1 s"><img class="b" src="img/01.100-b.jpg" alt="final 1.1 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/01.100-face-a.jpg" alt="exact face"><img class="b" src="img/01.100-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/01.100-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>3.20 s</b><span>PSNR 52.48 dB · face 47.75 dB · face SSIM 0.99865 · max |Δ| 44 · 20.3 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/03.200-a.jpg" alt="exact 3.2 s"><img class="b" src="img/03.200-b.jpg" alt="final 3.2 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/03.200-face-a.jpg" alt="exact face"><img class="b" src="img/03.200-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/03.200-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>4.50 s</b><span>PSNR 52.76 dB · face 48.47 dB · face SSIM 0.99886 · max |Δ| 52 · 17.1 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/04.500-a.jpg" alt="exact 4.5 s"><img class="b" src="img/04.500-b.jpg" alt="final 4.5 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/04.500-face-a.jpg" alt="exact face"><img class="b" src="img/04.500-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/04.500-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>6.50 s</b><span>PSNR 52.95 dB · face 48.77 dB · face SSIM 0.99896 · max |Δ| 47 · 16.1 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/06.500-a.jpg" alt="exact 6.5 s"><img class="b" src="img/06.500-b.jpg" alt="final 6.5 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/06.500-face-a.jpg" alt="exact face"><img class="b" src="img/06.500-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/06.500-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>7.00 s</b><span>PSNR 53.88 dB · face 50.73 dB · face SSIM 0.99917 · max |Δ| 48 · 17.9 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/07.000-a.jpg" alt="exact 7 s"><img class="b" src="img/07.000-b.jpg" alt="final 7 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/07.000-face-a.jpg" alt="exact face"><img class="b" src="img/07.000-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/07.000-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>8.90 s</b><span>PSNR 53.78 dB · face 51.28 dB · face SSIM 0.99896 · max |Δ| 29 · 18.8 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/08.900-a.jpg" alt="exact 8.9 s"><img class="b" src="img/08.900-b.jpg" alt="final 8.9 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/08.900-face-a.jpg" alt="exact face"><img class="b" src="img/08.900-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/08.900-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>9.60 s</b><span>PSNR 53.67 dB · face 50.90 dB · face SSIM 0.99880 · max |Δ| 26 · 20.6 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/09.600-a.jpg" alt="exact 9.6 s"><img class="b" src="img/09.600-b.jpg" alt="final 9.6 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/09.600-face-a.jpg" alt="exact face"><img class="b" src="img/09.600-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/09.600-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>10.50 s</b><span>PSNR 53.18 dB · face 49.54 dB · face SSIM 0.99903 · max |Δ| 32 · 16.5 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/10.500-a.jpg" alt="exact 10.5 s"><img class="b" src="img/10.500-b.jpg" alt="final 10.5 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/10.500-face-a.jpg" alt="exact face"><img class="b" src="img/10.500-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/10.500-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>11.90 s</b><span>PSNR 53.18 dB · face 48.81 dB · face SSIM 0.99892 · max |Δ| 37 · 15.9 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/11.900-a.jpg" alt="exact 11.9 s"><img class="b" src="img/11.900-b.jpg" alt="final 11.9 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/11.900-face-a.jpg" alt="exact face"><img class="b" src="img/11.900-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/11.900-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>12.80 s</b><span>PSNR 51.91 dB · face 46.75 dB · face SSIM 0.99865 · max |Δ| 55 · 16.3 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/12.800-a.jpg" alt="exact 12.8 s"><img class="b" src="img/12.800-b.jpg" alt="final 12.8 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/12.800-face-a.jpg" alt="exact face"><img class="b" src="img/12.800-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/12.800-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+  <section class="card">
+    <header><b>14.90 s</b><span>PSNR 54.23 dB · face 58.82 dB · face SSIM 0.99955 · max |Δ| 29 · 16.6 % px differ</span></header>
+    <div class="pair">
+      <figure class="flip"><img src="img/14.900-a.jpg" alt="exact 14.9 s"><img class="b" src="img/14.900-b.jpg" alt="final 14.9 s"><figcaption><span class="la">A exact</span><span class="lb">B final</span></figcaption></figure>
+      <figure class="flip face"><img src="img/14.900-face-a.jpg" alt="exact face"><img class="b" src="img/14.900-face-b.jpg" alt="final face"><figcaption><span class="la">A exact · face 1:1</span><span class="lb">B final · face 1:1</span></figcaption></figure>
+      <figure class="diff"><img src="img/14.900-face-diff.png" alt="difference x8"><figcaption>|A − B| × 8</figcaption></figure>
+    </div>
+  </section>
+</main></body></html>

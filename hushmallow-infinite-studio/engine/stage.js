@@ -18,10 +18,16 @@
 //   - prime(a, k) replays the face draws of the k frames before a, so a segment
 //     started in a fresh page reproduces the in-order render history (Face.tmp)
 //   - dispose() frees everything a direction created (R4)
+//   - WP-02: a quality profile (render/profiles.js) chooses the renderer's
+//     pipeline; setMeter() installs hm bench's per-pass timing hooks; P2 skips
+//     the overlay when nothing is drawn on it (trackInk)
 
 import { clock } from './runtime/clock.js';   // deterministic time + seeded randomness (first)
 import { createGL } from './gl.js';
-import { Renderer, DESIGN_W, DESIGN_H } from './renderer.js';
+import { Renderer, DESIGN_W, DESIGN_H } from './renderer/index.js';
+import { resolveProfile } from './render/profiles.js';
+import { trackInk } from './render/overlay-ink.js';
+import { shutterDisplacement, STILL_PX } from './render/shutter.js';
 import { assetLog } from './runtime/asset-log.js';
 
 /** Sub-frame count used when a direction's subframes() returns garbage (R18). */
@@ -66,21 +72,25 @@ export class Stage {
   /**
    * canvas: the output canvas (sized here); width/height: design space; scale:
    * render scale; marks: optional runtime/marks.js corner mark; textKeys: 'content'
-   * (default) or 'legacy' (stage2's key-only texture cache; sensitivity tests only).
+   * (default) or 'legacy' (stage2's key-only texture cache; sensitivity tests only);
+   * profile: a resolved render/profiles.js profile (default: exact).
    */
-  constructor({ canvas, width = DESIGN_W, height = DESIGN_H, scale = 1, marks = null, textKeys = 'content' } = {}) {
+  constructor({ canvas, width = DESIGN_W, height = DESIGN_H, scale = 1, marks = null, textKeys = 'content', profile = resolveProfile('exact') } = {}) {
     this.W = width; this.H = height; this.scale = scale;
     this.outW = Math.round(width * scale); this.outH = Math.round(height * scale);
+    this.profile = profile;
     this.canvas = canvas;
     canvas.width = this.outW; canvas.height = this.outH;
     canvas.style.width = `${this.outW}px`; canvas.style.height = `${this.outH}px`;
     this.gl = createGL(canvas);
-    this.renderer = new Renderer(this.gl, { width, height, scale, marks, textKeys });
+    this.renderer = new Renderer(this.gl, { width, height, scale, marks, textKeys, profile });
     this.overlay = document.createElement('canvas');
     this.overlay.width = this.outW; this.overlay.height = this.outH;
     this.octx = this.overlay.getContext('2d');
     // directions draw the overlay in design space
     if (scale !== 1) this.octx.setTransform(scale, 0, 0, scale, 0, 0);
+    // P2 (overlaySkip): know whether anything is on the overlay
+    this.ink = profile.features.overlaySkip ? trackInk(this.octx, this.outW, this.outH) : null;
     this.cues = [];
     this.curves = [];
     this.errors = [];
@@ -88,6 +98,17 @@ export class Stage {
     this.clockFrames = 0;            // how many frames the virtual clock has advanced
     this.px = null;
     this.upload = null;              // the frame upload in flight (readback)
+    this.meter = null;               // per-pass timing hooks (hm bench), see setMeter()
+  }
+
+  /**
+   * Install per-pass timing hooks { begin(name), end(name) } on the stage and
+   * the renderer (null removes them). Only hm bench does this: the engine itself
+   * never reads a clock, the hooks bring their own.
+   */
+  setMeter(meter) {
+    this.meter = meter;
+    this.renderer.meter = meter;
   }
 
   async init(video) {
@@ -118,9 +139,27 @@ export class Stage {
   subframesAt(t) {
     const v = this.video;
     const N = v.subframes ? v.subframes(t, this) : (v.meta.subframes || 3);
-    if (Number.isFinite(N) && N >= 1 && N <= SUBFRAME_MAX) return N;
+    if (Number.isFinite(N) && N >= 1 && N <= SUBFRAME_MAX) {
+      if (this.profile.quality.subframes) return this.profile.quality.subframes;      // draft: always that many
+      return N > 1 && this.profile.features.adaptiveFloor && this.isStill(t) ? 1 : N;
+    }
     this.error('subframes', `subframes(${t}) returned ${N}; using ${SUBFRAME_FALLBACK}`, { t, value: String(N) });
     return SUBFRAME_FALLBACK;
+  }
+
+  /**
+   * P6 (adaptiveFloor): true when nothing moves STILL_PX output px or more
+   * between the two ends of the shutter (render/shutter.js); a still frame is
+   * rendered from one sample at its centre.
+   */
+  isStill(t) {
+    const r = this.renderer, sh = (this.video.meta.shutter ?? 0.5) / this.fps / 2;
+    if (r.mesh && (!this.stillStubs || this.stillStubs[0].data.length !== r.mesh.data.length)) {
+      const { cols, rows, stride, nVerts } = r.mesh;
+      this.stillStubs = [0, 1].map(() => ({ cols, rows, stride, nVerts, data: new Float32Array(nVerts * stride), upload() {} }));
+    }
+    const a = this.video.state(t - sh, this), b = this.video.state(t + sh, this);
+    return shutterDisplacement(a, b, { renderer: r, stubs: this.stillStubs }) < STILL_PX;
   }
 
   /** Advance the virtual clock by one frame interval (the same additions as an in-order render). */
@@ -146,17 +185,23 @@ export class Stage {
    * finish the GPU work); false → evaluate the states without rendering.
    */
   renderFrame(i, { capture = true } = {}) {
-    const fps = this.fps, t = i / fps;
+    const fps = this.fps, t = i / fps, m = this.meter;
     this.stepClock();
     // adaptive motion blur: more sub-frames when something moves fast
+    m?.begin('state');
     const N = this.subframesAt(t);
     this.lastSubframes = N;
     const subs = this.subStates(t, N);
     const center = this.video.state(t, this, { center: true });
+    m?.end('state');
     this.lastFrame = i;
     if (!capture) return null;
+    m?.begin('overlay.draw');
     const ov = this.video.overlay ? this.video.overlay(this.octx, t, this) : false;
-    this.renderer.renderFrame(subs, center, ov ? this.overlay : null);
+    m?.end('overlay.draw');
+    // P2: a transparent overlay is neither uploaded nor composited (o = 0 leaves every pixel as it was)
+    const withOverlay = ov && (!this.ink || this.ink.inked);
+    this.renderer.renderFrame(subs, center, withOverlay ? this.overlay : null);
     const g = this.gl;
     if (capture === 'none') { g.readPixels(0, 0, 1, 1, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4)); return null; }
     if (capture === 'raw') {
@@ -236,6 +281,9 @@ export class Stage {
    */
   prime(a, k = 0) {
     if (this.clockFrames !== 0) throw new Error('prime() must run in a fresh page, before any frame');
+    // with the face cache the face canvas is a pure function of each frame's own parameters:
+    // nothing to replay, only the virtual clock to advance
+    if (this.profile.features.faceCache) k = 0;
     const from = Math.max(0, a - k);
     while (this.clockFrames < from) this.stepClock();
     let dirty = false;

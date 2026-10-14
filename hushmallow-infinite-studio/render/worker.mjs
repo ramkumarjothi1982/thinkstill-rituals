@@ -73,6 +73,8 @@ export function engineUrl(p) {
   const q = new URLSearchParams({ direction: p.direction, w: String(p.width), h: String(p.height), scale: String(p.scale), seed: String(p.seed) });
   if (p.mark) q.set('mark', p.mark);
   if (p.textKeys && p.textKeys !== 'content') q.set('textKeys', p.textKeys);
+  if (p.profile && p.profile !== 'exact') q.set('profile', p.profile);
+  if (p.features) q.set('features', p.features);
   return `${STUDIO_URL}/engine/index.html?${q}`;
 }
 

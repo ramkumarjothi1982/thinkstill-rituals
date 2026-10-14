@@ -104,6 +104,7 @@ Commands (`hm help` prints the live list with one line each):
 
 - WP-00: `hm guard`, `hm test [guard] [unit] [parity] [property] [golden] [derive]`, `hm lock status`, `hm golden capture`, `hm golden sequential`, `hm golden verify`.
 - WP-01 (render farm): `hm render`, `hm status`, `hm doctor`.
+- WP-02 (performance pass): `hm bench` (exclusive lock, median of 3), `hm bench gate` (G-PIXEL on the 16 golden times; `--steps both` runs every feature's own gate, switched off alone and on alone), `hm proof` (6 full-quality stills); `hm render --profile exact|final|draft`.
 - WP-06 (planner): `hm lib validate` (extended: the story library, then the planner inputs), `hm lib coverage`, `hm plan`, `hm spec new`, `hm spec show`, `hm spec seal`, `hm spec check`, `hm spec compile`, `hm approve`, `hm reject`, `hm export`.
 - WP-07 (asset derivation) has no `hm` command yet: run `python3 -I tools/derive/derive_mallow.py --mallow <id>` and `python3 -I tools/derive/asset_qa.py --mallow <id>`; both take the exclusive heavy lock themselves.
 

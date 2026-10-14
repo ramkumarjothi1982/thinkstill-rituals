@@ -37,6 +37,7 @@ import { planSegments, segPaths, readDone, readJson, writeJsonAtomic, segmentSta
 import { EngineSession, ENGINE_ARGS, FRAME_TIMEOUT_MS, withTimeout } from './worker.mjs';
 import { scoreJob, muxJob } from './mux.mjs';
 import { withHeavyLock } from './lib/heavy-lock.mjs';
+import { PROFILES, DEFAULT_PROFILE, resolveProfile } from '../engine/render/profiles.js';
 
 const WORKER = fileURLToPath(new URL('./worker.mjs', import.meta.url));
 
@@ -51,12 +52,13 @@ export const DISK_WARN_GB = 5, DISK_REFUSE_GB = 3;
  * (qa/golden/v2/sequential-frames.json, whose re-encode is the approved master).
  */
 export const SEQUENTIAL_GOLDENS = Object.freeze({
-  'my-brain-at-2am-v2': { file: 'qa/golden/v2/sequential-frames.json', params: { width: 1080, height: 1920, scale: 1, seed: 20261013, mark: null, textKeys: 'content' } },
+  'my-brain-at-2am-v2': { file: 'qa/golden/v2/sequential-frames.json', params: { width: 1080, height: 1920, scale: 1, seed: 20261013, mark: null, textKeys: 'content', profile: 'exact', features: null } },
 });
 
 export const DEFAULTS = Object.freeze({
   width: 1080, height: 1920, scale: 1, seed: 20261013,
   segmentFrames: SEGMENT_FRAMES, encoder: 'qp15', preroll: 1, mark: null, textKeys: 'content',
+  profile: DEFAULT_PROFILE, features: null,
 });
 
 // ------------------------------------------------------------------ jobs --
@@ -106,6 +108,7 @@ export function computeKey({ params, direction, appTree, session }) {
     width: params.width, height: params.height, scale: params.scale, seed: params.seed,
     frames: params.frames, segmentFrames: params.segmentFrames, encoder: params.encoder,
     preroll: params.preroll, mark: params.mark, textKeys: params.textKeys,
+    profile: params.profile, features: params.features,
   };
   return jobKey({
     direction: direction.id, directionSha256: direction.sha256, engineTree: treeHash('engine').sha256, appTree, params: keyParams,
@@ -279,15 +282,26 @@ export function buildProvenance(jobDir, job, { session = null, extra = {} } = {}
 
 // ---------------------------------------------------------------- render --
 
-/** Job parameters from per-job options (DEFAULTS for the rest). */
-function jobParams(o) {
+/**
+ * Job parameters from per-job options. The profile (engine/render/profiles.js)
+ * supplies the defaults it owns (render scale, encoder, corner mark); explicit
+ * options win; DEFAULTS fill the rest.
+ */
+export function jobParams(o) {
   const params = { ...DEFAULTS };
+  const name = o.profile ?? DEFAULT_PROFILE;
+  const profile = resolveProfile(name, { features: o.features ?? null });   // throws on an unknown profile or feature
+  if (profile.encoder === null) throw new Error(`profile ${name} renders stills, not a video (use hm proof)`);
+  Object.assign(params, { profile: name, scale: profile.scale, encoder: profile.encoder, mark: profile.mark });
   for (const k of Object.keys(DEFAULTS)) if (o[k] !== undefined && o[k] !== null) params[k] = o[k];
   params.direction = o.direction;
   params.frames = o.frames || null;
   if (!ENCODERS[params.encoder]) throw new Error(`unknown encoder ${params.encoder}`);
   return params;
 }
+
+/** Whether a job writes preview.mp4: asked for explicitly, or its profile has one. */
+export const wantsPreview = (params, asked) => asked ?? !!PROFILES[params.profile]?.preview;
 
 /**
  * Create or reopen one job and compile it. → { jobDir, job, upToDate }
@@ -364,7 +378,8 @@ export async function finishJob(jobDir, job, { audio: wantAudio = true, preview 
   }
   if (prov.assets.conflicts.length) throw new Error(`assets changed during the job: ${JSON.stringify(prov.assets.conflicts)}`);
   await muxJob(jobDir, job, { audio, stamp: stamp({ job, git: prov.git }), log });
-  if (preview) transcode(path.join(jobDir, 'final.mp4'), path.join(jobDir, 'preview.mp4'), { encoder: 'crf20', fps: job.info.fps });
+  // the preview runs after every render worker has finished: 4 x264 threads (still a fixed count)
+  if (preview) transcode(path.join(jobDir, 'final.mp4'), path.join(jobDir, 'preview.mp4'), { encoder: 'crf20', fps: job.info.fps, threads: 4 });
   writeJsonAtomic(path.join(jobDir, 'provenance.json'), { ...prov, verify, final: { file: 'final.mp4', sha256: sha256File(path.join(jobDir, 'final.mp4')) } });
   if (!keepSegments) for (const s of job.segments) fs.rmSync(segPaths(jobDir, s.k).mp4, { force: true });
   setState(jobDir, job, 'muxed', { final: 'final.mp4' });
@@ -415,7 +430,7 @@ async function renderLocked(jobsOpts, common, { pre, locks, log }) {
       continue;
     }
     await withHeavyLock({ mode: 'shared', label: `finish ${job.id}` },
-      () => finishJob(jobDir, job, { audio: common.audio !== false, preview: common.preview, keepSegments: common.keepSegments, tee, log }));
+      () => finishJob(jobDir, job, { audio: common.audio !== false, preview: wantsPreview(job.params, common.preview), keepSegments: common.keepSegments, tee, log }));
   }
   if (failures.length) throw new Error(`${failures.join('; ')}; see the logs/ of each job`);
   return prepared.map((p) => ({ ...p, status: status[p.jobDir] ?? segmentStatus(p.jobDir, p.job.segments, p.job.key) }));
