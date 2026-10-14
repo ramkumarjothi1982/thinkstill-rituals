@@ -3,10 +3,11 @@
 // model is engine/face/cache.js; this module decides, per output frame:
 //   - capture every sub-frame's face parameters and the centre's (the direction
 //     draws through a closure; capture mode records instead of drawing),
-//   - quantise them (coarse when the pristine painting covers the face),
-//   - draw ONCE at the centre time, unless the face itself moves more than
-//     MOTION_PX output px across the shutter (blinks, eye pops): then per
-//     sub-frame,
+//   - while the painting covers the face (rest >= REST_FULL on every
+//     sub-frame), track nothing: hold the rest pose (cache.js restPose),
+//   - otherwise quantise them and draw ONCE at the centre time, unless the face
+//     itself moves more than MOTION_PX output px across the shutter (blinks,
+//     eye pops): then per sub-frame,
 //   - skip the draw and the upload whenever the canvas already holds the key.
 // The canvas is a pure function of the key, so frames never depend on the
 // frames rendered before them.
@@ -63,7 +64,8 @@ export class FacePass {
 
   /**
    * How this frame's face is drawn. → null (no face) or
-   * { face, once: quantised | null, perSub: [quantised] | null, motionPx }
+   * { face, once: { P, key } | null, perSub: [{ P, key }] | null, motionPx, rest? }
+   * (rest: the rest pose is held, the painting covers the face)
    */
   plan(subStates, center) {
     const cc = captureFaces(center);
@@ -72,10 +74,11 @@ export class FacePass {
     const { face, params } = cc[0];
     const Q = this.quantiser(face);
     this.stats.frames++;
-    const coarse = subStates.every((S) => (S.mallow?.rest || 0) >= REST_FULL);
-    const centre = Q.quantise(params, coarse);
-    if (coarse || subStates.length < 2) return { face, once: centre, perSub: null, motionPx: 0 };
-    const qs = subStates.map((S) => Q.quantise(captureFaces(S)[0]?.params ?? params, false));
+    // the painting covers the face on every sub-frame: hold the rest pose, whatever the parameters say
+    if (subStates.every((S) => (S.mallow?.rest || 0) >= REST_FULL)) return { face, once: Q.restPose(), perSub: null, motionPx: 0, rest: true };
+    const centre = Q.quantise(params);
+    if (subStates.length < 2) return { face, once: centre, perSub: null, motionPx: 0 };
+    const qs = subStates.map((S) => Q.quantise(captureFaces(S)[0]?.params ?? params));
     const art = Q.motionArt(qs[0].P, qs[qs.length - 1].P);
     const motionPx = art > 0 ? art * this.artToOutput(center) : 0;
     if (motionPx <= MOTION_PX) return { face, once: centre, perSub: null, motionPx };
@@ -83,7 +86,7 @@ export class FacePass {
     return { face, once: null, perSub: qs, motionPx };
   }
 
-  /** Make the face texture hold quantised parameters `q`; draws and uploads only on a key change. */
+  /** Make the face texture hold `q` (quantised parameters or the rest pose); draws and uploads only on a key change. */
   draw(face, q) {
     if (this.drawn.get(face) === q.key) return false;
     const m = this.r.meter;

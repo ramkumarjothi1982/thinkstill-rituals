@@ -7,8 +7,14 @@
 // painting (noomi-art.png) and the cleaned body + the procedural neutral face.
 // The dev page measures how far apart those two states are: the mean absolute
 // RGB difference over the art (and, here, inside the face box too). This tool
-// computes it for the approved face (exact profile: Face.draw) and the final
-// profile's face (the quantised neutral pose drawn with the fast tubes).
+// computes it for the approved face (exact profile: Face.draw, the baseline)
+// and for both faces the final profile draws at the neutral pose, each through
+// the face pass's own code path and the fast tubes:
+//   finalCrossfade  the quantised neutral pose (FaceQuantiser.quantise), drawn
+//                   while the painting fades in or out (0.001 < rest < 0.999)
+//   finalRest       the rest pose (FaceQuantiser.restPose), held while the
+//                   painting covers the face (rest >= 0.999 on every sub-frame)
+// Each must be no worse than the baseline.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -38,11 +44,11 @@ export async function restTest() {
         // exact: the approved draw of the neutral pose
         const exact = new Face(spec, mk());
         exact.draw({});
-        // final: the cache's quantised neutral pose, fast tubes, placed back at the face box
-        const fast = new Face(spec, mk());
-        const q = new FaceQuantiser(spec).quantise({});
-        const boxCanvas = fast.render(q.P, { fast: true });
-        const [x0, y0, x1, y1] = fast.box;
+        // final: the face pass's two neutral faces, fast tubes, placed back at the face box
+        const Q = new FaceQuantiser(spec);
+        const boxOf = (q) => new Face(spec, mk()).render(q.P, { fast: true });      // each Face has its own box canvas
+        const crossfade = boxOf(Q.quantise({})), rest = boxOf(Q.restPose());
+        const [x0, y0, x1, y1] = exact.box;
         const diff = (faceDraw) => {
           const pb = pixels((g) => { g.drawImage(clean, 0, 0); faceDraw(g); });
           let sum = 0, n = 0, fsum = 0, fn = 0;
@@ -55,9 +61,10 @@ export async function restTest() {
           return { meanDiff: sum / n, faceBoxMeanDiff: fsum / fn };
         };
         return {
-          box: fast.box,
+          box: exact.box,
           exact: diff((g) => g.drawImage(exact.canvas, 0, 0)),
-          final: diff((g) => g.drawImage(boxCanvas, x0, y0)),
+          finalCrossfade: diff((g) => g.drawImage(crossfade, x0, y0)),
+          finalRest: diff((g) => g.drawImage(rest, x0, y0)),
         };
       });
     } finally {
@@ -72,5 +79,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, JSON.stringify(r, null, 1) + '\n');
   console.log(JSON.stringify(r, null, 1));
-  console.log(`final ${r.final.meanDiff <= r.exact.meanDiff ? 'no worse than' : 'WORSE than'} exact (whole art), face box: ${r.final.faceBoxMeanDiff <= r.exact.faceBoxMeanDiff ? 'no worse' : 'WORSE'}`);
+  let worse = false;
+  for (const k of ['finalCrossfade', 'finalRest']) {
+    const art = r[k].meanDiff <= r.exact.meanDiff, box = r[k].faceBoxMeanDiff <= r.exact.faceBoxMeanDiff;
+    worse ||= !art || !box;
+    console.log(`${k}: ${art ? 'no worse than' : 'WORSE than'} the baseline (whole art), face box: ${box ? 'no worse' : 'WORSE'}`);
+  }
+  process.exitCode = worse ? 1 : 0;
 }

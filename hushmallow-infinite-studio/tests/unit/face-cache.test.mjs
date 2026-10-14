@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FaceQuantiser, featurePoints, faceMotionArt, captureFaces, facePolicy, STEP_PX, REST_COARSE } from '../../engine/face/cache.js';
+import { FaceQuantiser, featurePoints, faceMotionArt, captureFaces, facePolicy, STEP_PX, REST_FULL } from '../../engine/face/cache.js';
 import { NEUTRAL } from '../../engine/face/params.js';
 
 // a face spec shaped like Noomi's derived one (art px)
@@ -47,7 +47,7 @@ test('face cache: equal keys for poses within half a quantum; held poses hit, mo
   assert.equal(a.key, b.key);
   assert.notEqual(Q.quantise({ eyeOpen: 1.01 }).key, Q.quantise({ eyeOpen: 1 }).key);
   // an unknown parameter keeps the approved key's 1/2000 rounding
-  assert.equal(Q.quantum('somethingNew', false), 1 / 2000);
+  assert.equal(Q.quantum('somethingNew'), 1 / 2000);
 });
 
 test('face cache: mouthWavePhase is dropped while mouthWave < 0.01 and taken modulo 2π otherwise', () => {
@@ -59,11 +59,34 @@ test('face cache: mouthWavePhase is dropped while mouthWave < 0.01 and taken mod
   assert.notEqual(w.key, Q.quantise({ mouthWave: 0.5, mouthWavePhase: 1.5 }).key);
 });
 
-test('face cache: rest quanta are REST_COARSE times coarser and keyed apart', () => {
-  const Q = new FaceQuantiser(SPEC);
-  assert.equal(Q.quantum('lookX', true), Q.quantum('lookX', false) * REST_COARSE);
-  assert.ok(Q.quantise({}, true).key.startsWith('rest|'));
-  assert.notEqual(Q.quantise({}, true).key, Q.quantise({}, false).key);
+test('face cache: the rest pose is the neutral pose, quantised like any pose (same key as a neutral cross-fade face)', () => {
+  const Q = new FaceQuantiser(SPEC), r = Q.restPose();
+  assert.equal(r.key, Q.quantise({}).key);
+  assert.deepEqual(r.P, Q.quantise(NEUTRAL).P);
+  assert.ok(Q.motionArt(NEUTRAL, r.P) <= 1.5 * STEP_PX, 'within the quantisation error of the neutral pose');
+  r.P.eyeOpen = 1;
+  assert.equal(Q.restPose().P.eyeOpen, Q.quantise({}).P.eyeOpen, 'a fresh object every time');
+});
+
+/** A face whose draw() records its parameters in capture mode (engine/face Face.draw contract). */
+function fakeFace() {
+  return { spec: SPEC, box: [200, 380, 1000, 900], draw(p) { if (facePolicy.capture) facePolicy.capture.push({ face: this, params: p }); return false; } };
+}
+const faceState = (face, params, rest) => ({ drawFace: () => face.draw(params), mallow: { rest } });
+
+test('face pass: at rest >= REST_FULL on every sub-frame the rest pose is held, whatever the parameters', async () => {
+  const { FacePass } = await import('../../engine/renderer/passes/face.js');
+  const pass = new FacePass({ scale: 1 }), face = fakeFace();
+  const blinkA = { eyeOpen: 1, blink: 0 }, blinkB = { eyeOpen: 1, blink: 0.9, lookY: 0.06 };
+  const held = pass.plan([faceState(face, blinkA, 1), faceState(face, blinkB, REST_FULL)], faceState(face, blinkB, 1));
+  const neutral = new FaceQuantiser(SPEC).quantise({});
+  assert.equal(held.once.key, neutral.key, 'no tracking and no per-sub-frame redraw under the painting');
+  assert.deepEqual([held.perSub, held.rest, held.face], [null, true, face]);
+  assert.deepEqual(held.once.P, neutral.P);
+  // one sub-frame below REST_FULL (the cross-fade): the face is tracked again
+  const fading = pass.plan([faceState(face, blinkA, 0.998)], faceState(face, blinkA, 0.998));
+  assert.equal(fading.once.key, new FaceQuantiser(SPEC).quantise(blinkA).key);
+  assert.equal(fading.rest, undefined);
 });
 
 test('face cache: motion between poses (blink >> look jitter) and stable feature points', () => {

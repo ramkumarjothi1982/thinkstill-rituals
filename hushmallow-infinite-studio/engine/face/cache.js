@@ -12,9 +12,17 @@
 //     the frames rendered before it (segments may start anywhere);
 //   - mouthWavePhase is dropped while mouthWave < 0.01 (the wave is then below
 //     0.1 px) and taken modulo 2π otherwise;
-//   - at rest (rest >= 0.999 on every sub-frame) the pristine painting replaces
-//     the face; the face canvas then only masks spec, rim and glow, so the
-//     quanta are REST_COARSE times coarser;
+//   - at rest (rest >= REST_FULL = 0.999 on every sub-frame) the face is not
+//     tracked at all (the perf plan's "skip when rest >= 0.999"): the pristine
+//     painting is the albedo there, and the face canvas only masks the spec,
+//     rim and glow terms over the painted face. The canvas holds the REST POSE
+//     instead (restPose(): the neutral pose the painting shows, quantised like
+//     any pose, so a neutral face keeps its key across the window's edges), and
+//     the whole rest window costs at most one draw on entry, cache hits after.
+//     "Skip" is not "keep whatever the canvas last held": that would make a
+//     frame depend on the frames rendered before it, and the mask would follow
+//     an expression the painting does not show. The rest test
+//     (tools/perf/rest-test.mjs) measures this pose;
 //   - the face is drawn once per frame, at the centre time, and per sub-frame
 //     only while it moves more than motionPx (1.5 output px) during the shutter
 //     (blinks, eye pops). Body motion blur on the face is unchanged: the face
@@ -26,8 +34,7 @@ import { clamp, lerp, eyeGeom } from './geometry.js';
 
 /** Largest art-px move of a drawn point per quantum. */
 export const STEP_PX = 0.25;
-/** Quanta multiplier while the pristine painting covers the face (rest >= REST_FULL). */
-export const REST_COARSE = 8;
+/** At or above this rest weight on every sub-frame the painting covers the face: the canvas holds the rest pose. */
 export const REST_FULL = 0.999;
 /** Opacity quantum: half an 8-bit step. */
 const ALPHA_Q = 1 / 510;
@@ -76,19 +83,18 @@ export class FaceQuantiser {
   }
 
   /** The quantum of parameter `k` (value of mouthWave already quantised, for the phase). */
-  quantum(k, coarse, waveQ) {
-    const c = coarse ? REST_COARSE : 1;
-    if (this.alpha.has(k)) return ALPHA_Q * c;
-    if (k === 'mouthWavePhase') return (this.stepPx * c) / Math.max(1e-6, Math.abs(waveQ) * 0.06 * this.mw);
+  quantum(k, waveQ) {
+    if (this.alpha.has(k)) return ALPHA_Q;
+    if (k === 'mouthWavePhase') return this.stepPx / Math.max(1e-6, Math.abs(waveQ) * 0.06 * this.mw);
     const s = this.sens[k];
-    return s ? (this.stepPx * c) / s : 1 / 2000;       // unknown parameters: the approved key's rounding
+    return s ? this.stepPx / s : 1 / 2000;       // unknown parameters: the approved key's rounding
   }
 
   /**
-   * Quantise a full parameter set. coarse: the pristine painting covers the face.
+   * Quantise a full parameter set.
    * → { P (values to draw), key (string) }
    */
-  quantise(params, coarse = false) {
+  quantise(params) {
     const P = { ...NEUTRAL, ...params };
     const q = {}, idx = [];
     const keys = Object.keys(P).sort();
@@ -97,17 +103,29 @@ export class FaceQuantiser {
       if (k === 'mouthWavePhase') continue;
       const v = P[k];
       if (typeof v !== 'number') { q[k] = v; idx.push(`${k}=${JSON.stringify(v)}`); continue; }
-      round(k, v, this.quantum(k, coarse));
+      round(k, v, this.quantum(k));
     }
     if (Math.abs(q.mouthWave) < 0.01) { q.mouthWavePhase = 0; idx.push('mouthWavePhase:off'); }
     else {
       // a whole number of steps per turn, so the phase grid wraps onto itself
-      const steps = Math.ceil(TAU / this.quantum('mouthWavePhase', coarse, q.mouthWave));
+      const steps = Math.ceil(TAU / this.quantum('mouthWavePhase', q.mouthWave));
       const n = Math.round(((((P.mouthWavePhase % TAU) + TAU) % TAU) / TAU) * steps) % steps;
       q.mouthWavePhase = (n * TAU) / steps;
       idx.push(`mouthWavePhase:${n}/${steps}`);
     }
-    return { P: q, key: `${coarse ? 'rest|' : ''}${idx.join(',')}` };
+    return { P: q, key: idx.join(',') };
+  }
+
+  /**
+   * What the face canvas holds while the painting covers the face (rest >=
+   * REST_FULL on every sub-frame), whatever the direction's parameters: the
+   * neutral pose, which is the face the painting shows (engine/dev/rest-test.html
+   * compares this pose with it). Quantised like every other pose, so the
+   * neutral face of a cross-fade has the same key and is not drawn again at
+   * the window's edges. → { P, key }
+   */
+  restPose() {
+    return this.quantise(NEUTRAL);
   }
 
   /** How far the drawn face moves between two parameter sets, in art px (faceMotionArt). */
