@@ -42,6 +42,7 @@ test('profiles: a feature that reads another one\'s output follows it off, and c
   assert.throws(() => resolveProfile('final', { features: '-faceCache,+faceFastGlow' }), /needs faceCache/);
   assert.equal(resolveProfile('final', { features: '-worldFast' }).features.worldPasses, false, 'the half-res sky is a variant of the fast world');
   assert.throws(() => resolveProfile('exact', { features: '+worldPasses' }), /worldPasses needs worldFast/);
+  assert.equal(resolveProfile('final', { features: '-fgAccum' }).features.tightPasses, false, 'the tight scissors belong to the accumulation pipeline');
 });
 
 test('farm: the profile supplies scale, encoder and mark defaults; explicit options win', () => {
@@ -124,6 +125,13 @@ test('metrics: PSNR and SSIM behave on known images', () => {
   assert.equal(psnr(a, c, w, h, [20, 20, 40, 40]), Infinity);
   assert.ok(Number.isFinite(psnr(a, c, w, h, [0, 0, 20, 20])));
   assert.throws(() => ssim(a, b, w, h, [0, 0, 8, 8]), /smaller than the 11 px window/);
+});
+
+test('P5b: a blur pass reads its outer tap (3.23 k texels) plus the bilinear neighbour on each side', async () => {
+  const { blurReach } = await import('../../engine/renderer/passes/filters.js');
+  assert.equal(blurReach({ scale: 1 }, 2.2), 9);          // 7.11 texels -> 8, + 1
+  assert.equal(blurReach({ scale: 0.5 }, 2.2), 5);
+  assert.equal(blurReach({ scale: 1 }, 0.5), 3);          // 1.62 -> 2, + 1
 });
 
 test('R14: the renderer refuses a rolled camera (the reflection pass ignores roll)', () => {

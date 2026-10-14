@@ -31,12 +31,14 @@ export const FEATURES = Object.freeze({
   adaptiveFloor: 'P6: one centred sample when nothing moves 2 px or more during the shutter',
   meshNormalTex: 'P7: rest normals baked once per Mallow; the mesh draws only cells that can show anything',
   worldPasses: 'P4b: the fast world split by region with scissored draws (no branch skips work on SwiftShader): the smooth sky at 1/2 resolution, stars, hills and moon only where they are, water only below the horizon',
+  tightPasses: 'P5b: exact scissors for the glass backdrop and the mirror blur; single-sample frames skip the accumulation',
 });
 
 /** Features that read another feature's output: dependent → base. */
 const NEEDS = Object.freeze({
   faceFastGlow: 'faceCache',      // the fast face is drawn through the cache
   worldPasses: 'worldFast',       // a variant of the fast world's passes
+  tightPasses: 'fgAccum',         // scissors of the foreground-accumulation pipeline
 });
 
 const ALL = Object.keys(FEATURES);

@@ -20,10 +20,14 @@
 //              at 1/4 resolution from a 48×48 mesh (it is blurred and
 //              ripple-distorted anyway). The frosted glass samples a 1/4-res
 //              composite of the world and the foreground so far.
+//   tightPasses (P5b, exact) the frosted glass's backdrop and blur and the
+//              mirror image's blur are computed only where they are read; a
+//              single-sample frame composites FG directly instead of through
+//              the accumulation target.
 
 import { assetLog } from '../runtime/asset-log.js';
 import { setUniforms } from '../gl.js';
-import { blur, copy, accumulate } from './passes/filters.js';
+import { blur, blurReach, copy, accumulate, scissorTexels } from './passes/filters.js';
 import { drawMallow } from './passes/mesh.js';
 import { drawGlass } from './passes/glass.js';
 import { drawParticles } from './passes/particles.js';
@@ -93,6 +97,14 @@ function clearBox(r, b) {
   noScissor(r);
 }
 
+/** An output-px box in the texels of a smaller target t, grown by g texels, clamped to t. */
+function texelBox(r, b, t, g) {
+  const fx = t.w / r.outW, fy = t.h / r.outH;
+  return [Math.max(0, Math.floor(b[0] * fx) - g), Math.max(0, Math.floor(b[1] * fy) - g),
+    Math.min(t.w, Math.ceil(b[2] * fx) + g), Math.min(t.h, Math.ceil(b[3] * fy) + g)];
+}
+const grow = (b, g, t) => [Math.max(0, b[0] - g), Math.max(0, b[1] - g), Math.min(t.w, b[2] + g), Math.min(t.h, b[3] + g)];
+
 /** Largest ripple displacement of the reflection composite, in world px (WATER waterDisp bounds). */
 function maxWaterDisp(S) {
   const rip = (S.world.ripples || []).reduce((m, q) => Math.max(m, Math.abs(q.amp)), 0) * 17;
@@ -112,10 +124,19 @@ function backdrop(r, fg, world, dst) {
 
 function glassLayer(r, S, list, worldTarget) {
   const T = r.t;
-  backdrop(r, T.fg, worldTarget, T.q1);
-  blur(r, T.q1, T.q2, T.q1, 2.2);
-  T.fg.bind();
   const b = worldBox(r, S.cam, glassPoints(list), 2);
+  if (b && r.profile.features.tightPasses) {
+    // P5b: the glass reads the blurred backdrop only at its own pixels (bilinear: G ± 1), so
+    // the blur's output is needed there, its first pass one reach further, the backdrop two
+    const R = blurReach(r, 2.2), G = texelBox(r, b, T.q1, 1);
+    scissorTexels(r.gl, T.q1, grow(G, 2 * R + 2, T.q1));
+    backdrop(r, T.fg, worldTarget, T.q1);
+    blur(r, T.q1, T.q2, T.q1, 2.2, { tmp: grow(G, R + 1, T.q2), dst: grow(G, 1, T.q1) });
+  } else {
+    backdrop(r, T.fg, worldTarget, T.q1);
+    blur(r, T.q1, T.q2, T.q1, 2.2);
+  }
+  T.fg.bind();
   if (b) scissor(r, b);
   drawGlass(r, S, list, T.q1.tex);
   noScissor(r);
@@ -137,7 +158,16 @@ function renderSubFg(r, S, worldTarget) {
   S.buildMesh(r.reflStub, true);
   r.decimate(r.reflStub, r.reflMeshQ);
   drawMallow(r, S, r.reflMeshQ, true);
-  blur(r, T.reflQ, T.reflQB, T.reflQ, 0.5);      // = the approved 1.0 at 1/2 resolution, in design px
+  // = the approved 1.0 at 1/2 resolution, in design px
+  const mirror = r.profile.features.tightPasses ? worldBox(r, S.cam, meshPoints(r.reflStub), 4) : null;
+  if (mirror) {
+    // P5b: the cleared target is drawn only inside M; the blurred image reaches M ± R, which
+    // its second pass writes, reading the first pass's output one reach further
+    const R = blurReach(r, 0.5), M = texelBox(r, mirror, T.reflQ, 1);
+    blur(r, T.reflQ, T.reflQB, T.reflQ, 0.5, { tmp: grow(M, 2 * R + 1, T.reflQB), dst: grow(M, R + 1, T.reflQ) });
+  } else {
+    blur(r, T.reflQ, T.reflQB, T.reflQ, 0.5);
+  }
   m?.end('sub.reflection');
   // 2 the reflection composited onto (transparent) water, only around the mirror image
   m?.begin('sub.composite');
@@ -212,21 +242,25 @@ export function renderFrameFast(r, subStates, center, overlayCanvas) {
     r.world.renderWorld(center, T.accum);
     m?.end('world');
     if (face?.once) r.facePass.draw(face.face, face.once);
-    T.fgAcc.bind();
-    clearBox(r, r.accDirty);
+    // P5b: a single-sample frame composites its foreground directly (Σ w·FG = FG for w = 1)
+    const single = subStates.length === 1 && f.tightPasses;
+    if (!single) {
+      T.fgAcc.bind();
+      clearBox(r, r.accDirty);
+    }
     let frameBox = null;
     subStates.forEach((S, k) => {
       if (face?.perSub) r.facePass.draw(face.face, face.perSub[k]);
       const box = renderSubFg(r, S, T.accum);
-      if (box) {
+      if (box && !single) {
         m?.begin('accum');
         T.fgAcc.bind();
         scissor(r, box);
         accumulate(r, T.fg, wgt);
         noScissor(r);
         m?.end('accum');
-        frameBox = union(frameBox, box);
       }
+      frameBox = union(frameBox, box);
     });
     if (frameBox) {
       m?.begin('composite');
@@ -234,12 +268,12 @@ export function renderFrameFast(r, subStates, center, overlayCanvas) {
       scissor(r, frameBox);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      copy(r, T.fgAcc, T.accum);
+      copy(r, single ? T.fg : T.fgAcc, T.accum);
       gl.disable(gl.BLEND);
       noScissor(r);
       m?.end('composite');
     }
-    r.accDirty = frameBox;
+    if (!single) r.accDirty = frameBox;      // what the next accumulating frame clears
   }
   m?.begin('bloom');
   bloom(r, T.accum, center.post, { eighth: r.profile.quality.bloomEighth });
