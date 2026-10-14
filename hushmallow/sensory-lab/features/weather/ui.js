@@ -127,25 +127,28 @@ export function actionRow() {
   };
 }
 
-/** The hint spot: show(text, ms), caption(text, line, name, ms), hide(), destroy(). */
+/** The hint spot: show(text, ms), caption(text, line, name, ms), hide(), destroy(); captioning while a caption is up. */
 export function hintLine(screen) {
   const el = h('p', { class: 'moment-hint wx-hint', 'aria-hidden': 'true' });
   screen.append(el);
-  let timer = 0;
+  let timer = 0, cap = false;
   const on = (ms) => {
     el.classList.add('on');
     clearTimeout(timer);
-    timer = ms ? setTimeout(() => el.classList.remove('on'), ms) : 0;
+    timer = ms ? setTimeout(() => { el.classList.remove('on'); cap = false; }, ms) : 0;
   };
   return {
     el,
-    show(text, ms = 3000) { el.replaceChildren(text); on(ms); },
+    /** The resolve caption (and the Mallow's line) is showing: a passing hint waits its turn. */
+    get captioning() { return cap; },
+    show(text, ms = 3000) { cap = false; el.replaceChildren(text); on(ms); },
     caption(text, line, name, ms = 4000) {
       el.replaceChildren(h('span', { class: 'wx-cap' }, text),
         line ? h('span', { class: 'line' }, `“${line}”`, h('span', { class: 'who' }, ` ${name}`)) : null);
       on(ms);
+      cap = true;
     },
-    hide() { clearTimeout(timer); timer = 0; el.classList.remove('on'); },
+    hide() { clearTimeout(timer); timer = 0; cap = false; el.classList.remove('on'); },
     destroy() { clearTimeout(timer); timer = 0; el.remove(); },
   };
 }

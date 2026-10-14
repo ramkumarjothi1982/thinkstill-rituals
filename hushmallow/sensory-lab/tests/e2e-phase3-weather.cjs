@@ -120,6 +120,8 @@ const SCOPE = 'weather';
 const T = 60000;   // state waits: generous for software GL
 
 const noErrors = (scope, errors) => check(scope, 'no console errors', !errors.length, errors.join(' | '));
+/** A wait that names its step when it fails (a block's crash line then says which wait timed out). */
+const step = (label, p) => p.catch((e) => { throw new Error(`${label}: ${String(e.message).split('\n')[0]}`); });
 const wx = (page, fn, arg) => page.evaluate(fn, arg);
 /** Open #weather with a favourite Mallow and wait until the weather is live. */
 async function openWx(browser, vp, mallow, { prefs = {}, initScripts = [], hash = '#weather', dna = {}, dnaExtra = {} } = {}) {
@@ -1048,15 +1050,15 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     // a drag on the water (left of Loomi) sends a swell toward it
     const wy = g.water[0] + 50;
     await drag(page, line(6, wy, 70, wy, 6), 20);
-    await page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'water-push'), null, { timeout: T });
-    await page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'wave-arrive'), null, { timeout: T });
+    await step('the drag pushes the water', page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'water-push'), null, { timeout: T }));
+    await step('the swell reaches Loomi', page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'wave-arrive'), null, { timeout: T }));
     await page.waitForFunction(() => __lab.weather.reactor.log.some((e) => e.type === 'wave-arrive'), null, { timeout: T }).catch(() => {});
     const w1 = await wx(page, () => ({ pulses: __lab.weather.pulses.filter((p) => p.kind === 'ripple'), log: __lab.weather.reactor.log.map((e) => e.tag), comp: __lab.events.map((e) => e.type) }));
     check(scope, 'a drag on the water sends a swell (realm "ripple"); it reaches Loomi, who bobs serenely', w1.pulses.some((p) => p.ok) && w1.log.some((t) => t === 'loomi-wave-serene'), JSON.stringify(w1));
     // "Push the water" (a tap chip) rolls a swell in from one side
     const n0 = await wx(page, () => __lab.weather.events.filter((e) => e.type === 'wave-arrive').length);
     await page.click('.wx-actions [data-action="water"]');
-    await page.waitForFunction((n0) => __lab.weather.events.filter((e) => e.type === 'wave-arrive').length > n0, n0, { timeout: T });
+    await step('"Push the water" reaches Loomi', page.waitForFunction((n0) => __lab.weather.events.filter((e) => e.type === 'wave-arrive').length > n0, n0, { timeout: T }));
     check(scope, '"Push the water" rolls a swell to Loomi', true);
     await H.shot(page, out, 'weather-phone-water');
     noErrors(scope, errors);
@@ -1066,8 +1068,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
       await wx(b.page, () => __lab.weather.setWeather('warm', { instant: true }));
       await settled(b.page, 'warm');
       await wx(b.page, () => __lab.weather.act('water'));
-      await b.page.waitForFunction(() => __lab.weather.sims.waves.snapshot().swells.some((s) => s.gold), null, { timeout: T });
-      await b.page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'wave-arrive') && __lab.weather.metrics().heat > 0, null, { timeout: T });
+      await step('a gold swell in Warm glow', b.page.waitForFunction(() => __lab.weather.sims.waves.snapshot().swells.some((s) => s.gold), null, { timeout: T }));
+      await step('the gold swell brings heat', b.page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'wave-arrive') && __lab.weather.metrics().heat > 0, null, { timeout: T }));
       check(scope, 'in Warm glow the swell is gold and brings heat when it reaches Noomi', true);
       noErrors(`${scope}:warm`, b.errors);
     } finally { await b.ctx.close(); }
@@ -1076,11 +1078,11 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     try {
       await wx(c.page, () => __lab.weather.setWeather('rain', { instant: true }));
       await settled(c.page, 'rain');
-      await c.page.waitForFunction(() => __lab.weather.metrics().puddles > 0.5, null, { timeout: T * 2 });
+      await step('puddles after rain', c.page.waitForFunction(() => __lab.weather.metrics().puddles > 0.5, null, { timeout: T * 2 }));
       const e = await wx(c.page, () => Array.from(__lab.weather.sims.puddles.e)), W = (await wx(c.page, () => __lab.weather.geo())).W;
       const k = e[2] > 0 ? 0 : 1, px = Math.min(W - 4, Math.max(4, e[4 * k] + (k ? 0.4 : -0.4) * e[4 * k + 2]));   // its outer side, clear of Glitzi
       await c.page.mouse.click(px, e[4 * k + 1]);
-      await c.page.waitForFunction(() => __lab.weather.events.some((x) => x.type === 'puddle'), null, { timeout: T });
+      await step('a touched puddle ripples', c.page.waitForFunction(() => __lab.weather.events.some((x) => x.type === 'puddle'), null, { timeout: T }));
       const pz = await wx(c.page, () => ({ realm: __lab.weather.realmId, rip: Array.from(__lab.weather.tools.puddleRip), taps: __lab.weather.pulses.filter((p) => p.kind === 'tap').length }));
       await H.shot(c.page, out, 'weather-phone-puddles');
       check(scope, 'rain soaks a dry realm: puddles appear either side of Glitzi and ripple when touched', pz.realm === 'static-storm' && pz.rip.some((a) => a < 2) && pz.taps >= 1, JSON.stringify(pz));
@@ -1990,16 +1992,17 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         await wx(page, () => __lab.weather.setWeather('rain', { instant: true }));
         await settled(page, 'rain');
         await wx(page, () => { __lab.weather.sims.rain.level = 0.1; });
-        await page.waitForFunction(() => __lab.weather.resolved && document.querySelector('.weather .wx-hint.on .line'), null, { timeout: T });
-        await sleep(700);   // its 320 ms fade-in
-        const cap = await wx(page, () => {
-          const q = (s) => document.querySelector(s), hint = q('.weather .wx-hint'), r = hint.getBoundingClientRect();
+        // measured in the same wait that finds it (the hint spot is shared with passing hints)
+        const cap = await (await step('the resolve caption shows', page.waitForFunction(() => {
+          const q = (s) => document.querySelector(s), hint = q('.weather .wx-hint.on');
+          if (!__lab.weather.resolved || !hint?.querySelector('.line .who')) return null;
+          const r = hint.getBoundingClientRect(), bottom = q('.weather .bottom').getBoundingClientRect().top;
           const bar = [...document.querySelectorAll('.weather .topbar button')].map((b) => b.getBoundingClientRect());
-          const bottom = q('.weather .bottom').getBoundingClientRect().top;
           const sizes = ['.wx-cap', '.line', '.line .who'].map((s) => parseFloat(getComputedStyle(hint.querySelector(s)).fontSize));
           const hit = bar.some((b) => r.left < b.right && b.left < r.right && r.top < b.bottom && b.top < r.bottom);
           return { box: [r.left, r.top, r.right, r.bottom].map(Math.round), vw: innerWidth, bottom: Math.round(bottom), sizes, hit, text: hint.textContent, lines: Math.round(r.height / 20) };
-        });
+        }, null, { timeout: T }))).jsonValue();
+        await sleep(700);   // its fade-in, for the screenshot
         check(sc, 'the caption and the Mallow\'s line sit on screen under the top bar, clear of its buttons and the bottom rows, at ≥ 14 px',
           cap.box[0] >= 4 && cap.box[2] <= cap.vw - 4 && cap.box[3] < cap.bottom && !cap.hit && cap.sizes.every((v) => v >= 14), JSON.stringify(cap));
         await H.shot(page, out, `weather-${vp}-layout-resolved`);

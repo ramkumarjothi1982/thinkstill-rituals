@@ -351,7 +351,10 @@ export function mount(root, ctx) {
     if (session.resolvedNow) resolve();
     frontState(st);
     if (hintAt >= 0 && simT >= hintAt) { hintAt = -1; if (!session.resolved) showHint(session.weather); }
-    if (waterHintAt >= 0 && simT >= waterHintAt) { waterHintAt = -1; if (waterOn() && !front.on) hint.show(COPY.water.hint, 3000); }
+    if (waterHintAt >= 0 && simT >= waterHintAt) {   // the one-time water hint never cuts a caption short: it waits
+      if (hint.captioning) waterHintAt = simT + 1;
+      else { waterHintAt = -1; if (waterOn() && !front.on) hint.show(COPY.water.hint, 3000); }
+    }
     if (leanT && simT >= leanT) { leanT = 0; env.setFocus(0, 0); }
     const w = session.weather;
     // 2. presence follows the planner, then the tools

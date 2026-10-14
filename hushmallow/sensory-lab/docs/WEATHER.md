@@ -51,7 +51,9 @@ There are no progress bars, counters, dots or streaks. Progress shows only in th
 
 **Water** (every weather but Fog, in realms with water): a drag sends a swell (60–220 px/s), a tap a
 ripple, a hold a rocking swell; a swell reaching the Mallow bobs it (big ones: a hop and drops); swells are
-gold in Warm glow and add heat. The **Push the water** chip sends one from alternating sides.
+gold in Warm glow and add heat. The **Push the water** chip sends one from alternating sides; the first time
+there is water, a one-time hint says so, and it waits its turn rather than cut the resolve caption and the
+Mallow's line short (`hintLine().captioning`).
 **Puddles** appear in dry realms after rain, either side of the Mallow, and ripple when touched.
 
 Pick order for a claimed pointer: a held object, then the light pool (within 1.4 r), a deck puff (Rain),

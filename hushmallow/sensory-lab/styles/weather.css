@@ -30,7 +30,7 @@
 /* Weather moves under the chrome (a storm bank in a bright realm puts dark text over dark cloud): the title,
    subtitle, hint and caption get a tight halo in the backdrop's ink, under the usual soft glow */
 .weather[data-backdrop] .topbar .title b, .weather[data-backdrop] .topbar .title small, .weather .wx-hint {
-  text-shadow: 0 0 1px var(--ink-0), 0 0 3px var(--ink-0), 0 1px 12px var(--ink-0); }
+  text-shadow: 0 0 1px var(--ink-0), 0 0 2px var(--ink-0), 0 0 4px var(--ink-0), 0 1px 12px var(--ink-0); }
 .weather[data-backdrop] .topbar .title small { color: var(--text-2); }   /* the weather and its world: one step stronger than --text-3 */
 
 /* the hint spot: hints, then the caption with the Mallow's line under it */
