@@ -363,11 +363,14 @@ function hit(re, t) {
  * 'loss' when a death or a loss is named, 'grief' for grieving, a funeral or a grave without one, else null.
  * Fires on any of these words about anyone or anything alive; only the idioms in death-words.js are set aside.
  */
-export function deathTalk(text) {
+export function deathTalk(text, { stories = true } = {}) {
   const raw = norm(text);
   if (!/\p{L}/u.test(raw)) return null;
-  const t = blankOrdinary(raw);
+  // (r2-angle item 4: `stories: false` reads a game's, a film's or a book's deaths too, as before: serverLoss)
+  const t = blankOrdinary(raw, { stories });
   if (LOSS_WORDS.some((re) => re.test(t)) || NAMED.some((re) => hit(re, t)) || RIP.slice(0, 2).some((re) => re.test(t)) || notSurvived(t)) return 'loss';
+  // (r2-angle item 1) "since mum OD'd": the apostrophe out, its capitals as typed ("ODd", "ODed"), never "odd"
+  if (/\bOD(?:d|ed)\b/u.test(t)) return 'loss';
   // (a pet named, or the vet: "the vet put him to sleep this morning"; or anyone put to sleep, not for an operation)
   if ((PET_WORD.test(t) || /\bvets?\b/iu.test(t)) && PET_PUT.test(t)) return 'loss';
   if (PUT_TO_SLEEP.test(t)) return 'loss';
@@ -392,8 +395,9 @@ const PRON_TAIL = '(?=\\s*(?:$|[.,!?;:…)—–]|(?:again|now|forever|soon|so|t
 // (never "my brother's kids", "my dad's grave": a possessive names someone or something else)
 const OBJ_PERSON = `(?:(?:my|our|his|her|their)\\s+)?${ADJ}(?<who>${WHO}|${BARE})s?\\b(?!\\s+(?:${WHO}|${BARE}|kids|children|family|grave|graves|house|home|room|things|stuff|ashes|wishes|memory|memories|funeral|side|stone|bench|plot|photos?|clothes|bed|chair)s?\\b)|\\b(?<nm>[A-Z][a-z]+)\\b`;
 /** What says it is about the one who died wherever they are ("again", "in heaven", "up there"). */
-/** (askall-angle item 4) Where "doing the same" ends: the end of a clause, "too", "to himself", never a noun ("the same course"). */
-const SAME_END = '(?=\\s*(?:$|[.,!?;:…)—–]|(?:too|myself|to\\s+(?:myself|himself|herself|themselves|themself)|now|tonight|soon|sometimes|again|and|but|so|because|cos|i|im|honestly|really|as\\s+well|one\\s+day|someday)\\b))';
+/** (askall-angle item 4) Where "doing the same" ends: the end of a clause, "too", "to himself", never a noun ("the same course"); (r2-angle
+ * item 1) an "and" only before a new clause of theirs, never another plan ("the same as her and become a teacher"). */
+const SAME_END = '(?=\\s*(?:$|[.,!?;:…)—–]|(?:too|myself|to\\s+(?:myself|himself|herself|themselves|themself)|now|tonight|soon|sometimes|again|(?:and|but|so|then)(?=\\s+(?:i|im|ive|id|ill|it|its|that|thats|honestly|really|tbh|maybe)\\b)|because|cos|i|im|honestly|really|as\\s+well|one\\s+day|someday)\\b))';
 const AFTER = /^\s+(?:again|forever|in\s+heaven|up\s+there|wherever|where\s+(?:he|she|they|hes|shes|theyre)|on\s+the\s+other\s+side|once\s+and\s+for\s+all)\b/iu;
 const WANT = '(?:would\\s+like|id\\s+like|would\\s+love|id\\s+love|(?:would|id|i\\s+would)\\s+(?:give|do)\\s+anything|keep\\s+wanting|want|wants|wanting|wanna|wanted|need|needs|needed|long|longing|wish\\s+i\\s+could|wish\\s+i\\s+was|wish\\s+i\\s+were|wish\\s+id\\s+be|would\\s+rather|id\\s+rather|rather|ready|cant\\s+wait|just\\s+want|only\\s+want|going|gonna|will|ill|could|should|time|yearn|yearning|desperate|have|part\\s+of\\s+me\\s+wants|all\\s+i\\s+want\\s+is|all\\s+i\\s+wanna\\s+do\\s+is)';
 /** The verbs that say someone died (past: never "dying", never "might not make it"). */
@@ -613,13 +617,138 @@ export function stillAlive(text) {
   if (!PAST_DEATH.test(blankOrdinary(rest))) rest = rest.replace(/\bdying\b/giu, ' ');
   return !deathTalk(rest);
 }
+// ------------------------------------------------- (r2-angle item 1) doing what the one who died did --
+// The wish to follow someone who died kept slipping past phrase lists ("dad hanged himself, maybe I'll go the same way",
+// "my brother killed himself and I might follow suit", "mum's dead, thinking about doing it myself"). So the rule is
+// structural: a death named (deathTalk), with a SUICIDE death word or any death word, and somewhere in the same message a
+// first-person clause about doing the same act: an intent or a modal before it (I might, I'll, maybe I, I'm going to, I could,
+// considering, thought about, thinking about / bout / of, makes me want, want to), and what they would do ("the same way",
+// "follow suit / him / her", "copy her", "do it too / myself", "I'm next", "likewise", "doing the same", "the same" after
+// considering) at the end of a clause ("tbh", "honestly", "too", "soon" allowed; never "the same course", "the same way to
+// school", "follow her recipes", "the same when I'm old"); or the MEANS ("I know where the gun is", "I keep looking at bridges",
+// "I have the pills", "bought rope"); or "I don't see the point (any more)", "I want to go to sleep forever", "I should have
+// died instead". A fear ("I'm scared I'll go the same way", after cancer) or a "never" / "don't want to" is not a wish, unless
+// the death was a suicide (then fear of doing the same is care too: support first, nothing sent).
+/** A death by suicide named: the act someone may say they would do too. */
+const SUICIDE_DEATH = /\b(?:hanged|hung)\s+(?:himself|herself|themselves|themself)\b|\b(?:killed|kiled|killd|kild|shot|topped|offed|gassed|poisoned|electrocuted|hanged|drowned)\s+(?:himself|herself|themselves|themself)\b|\b(?:took|taken|take|takes|ended|end|ends|ending)\s+(?:his|her|their)\s+(?:own\s+)?(?:life|lives)\b|\boverdosed\b|\b(?:took|taken|had)\s+an?\s+overdose\b|\b(?:jumped|threw\s+(?:himself|herself|themselves|themself))\s+(?:off|from|in\s+front\s+of|under)\b|\bdied\s+by\s+suicide\b|\bsuicide\b|\bsuicided\b/iu;
+/** "she OD'd" with the apostrophe out ("ODd", case kept: never "odd"), "ODed", "O.D.'d". */
+const SUICIDE_OD = /\bO\.?D(?:d|ed|\s+d)\b|\b(?:oded|odded|od\s+d)\b/u;
+/** Where "the same" (or what they would do) ends: a clause end, or a few small words after it. */
+const ACT_END = '(?=\\s*(?:$|[.,!?;:…)—–]|(?:too|myself|as\\s+well|also|soon|sometimes|again|now|tonight|today|tomorrow|eventually|one\\s+day|someday|some\\s+day|honestly|really|seriously|tbh|tbf|ngl|lol|idk|tho|though|anyway|anyways|and|but|so|or|because|cos|coz|i|im|ive|id|ill|if|maybe|probably|in\\s+the\\s+end|at\\s+this\\s+rate|to\\s+be\\s+honest|x+|haha)\\b))';
+/**
+ * What they would do (each ends a clause, ACT_END). `needIntent`: an intent or a modal must come first in its clause;
+ * `suicideOnly`: only after a suicide ("do it", "I might too"); `wish`: after any other death only a wish or a thought counts
+ * ("thinking about doing it myself"), never a plan ("so I'll do it myself", the fence he used to fix).
+ */
+const ACTS = [
+  { re: new RegExp(`\\b(?:go|goes|going|gone|went|end\\s+up|ending\\s+up|end|ends|ended\\s+up|head|heading|go\\s+out)\\s+(?:out\\s+)?the\\s+(?:exact\\s+)?same\\s+way(?:\\s+as\\s+(?:him|her|them))?${ACT_END}`, 'giu'), needIntent: true },
+  { re: new RegExp(`\\b(?:im|i\\s+am)\\s+(?:(?:already|just|probably|definitely|slowly|really)\\s+)?(?:going|heading|ending\\s+up)\\s+(?:out\\s+)?the\\s+(?:exact\\s+)?same\\s+way(?:\\s+as\\s+(?:him|her|them))?${ACT_END}`, 'giu'), needIntent: false },
+  { re: new RegExp(`\\b(?:do|doing|did|done|does)\\s+(?:the\\s+(?:exact\\s+|very\\s+)?same(?:\\s+thing)?(?:\\s+as\\s+(?:him|her|them))?|likewise|what\\s+(?:he|she|they)\\s+did)${ACT_END}`, 'giu'), needIntent: true },
+  { re: new RegExp(`\\b(?:do|doing|did|done|does)\\s+(?:it|that)\\s+(?:too|myself|as\\s+well|also)${ACT_END}`, 'giu'), needIntent: true, wish: true },
+  { re: new RegExp(`\\b(?:considering|considered|consider|contemplating|contemplated|thinking\\s+(?:about|of)|thought\\s+(?:about|of)|think\\s+(?:about|of))\\s+(?:the\\s+same(?:\\s+thing)?|it\\s+(?:too|myself)|likewise)${ACT_END}`, 'giu'), needIntent: false },
+  { re: new RegExp(`\\b(?:do|doing)\\s+it${ACT_END}`, 'giu'), needIntent: true, suicideOnly: true },
+  { re: new RegExp(`\\b(?:end|ending|ended)\\s+it(?:\\s+all)?(?:\\s+(?:too|myself|as\\s+well))?${ACT_END}`, 'giu'), needIntent: true, wish: true },
+  { re: new RegExp(`\\b(?:i|maybe\\s+i|i\\s+think\\s+i|i\\s+guess\\s+i|perhaps\\s+i)\\s+(?:will|might|could|may|would)\\s+(?:do\\s+)?too${ACT_END}`, 'giu'), needIntent: false, suicideOnly: true },
+  { re: new RegExp(`\\bthe\\s+same(?:\\s+thing)?\\s+(?:will|might|could|is\\s+going\\s+to|gonna|is\\s+gonna)\\s+happen\\s+to\\s+me${ACT_END}`, 'giu'), needIntent: false, suicideOnly: true },
+  { re: new RegExp(`\\bfollow(?:ing)?\\s+(?:suit|(?:him|her|them)(?!\\s+(?:in|on|around|about|into\\s+(?:the\\s+)?(?:kitchen|garden|house|shop|room|town))\\b))${ACT_END}`, 'giu'), needIntent: true },
+  { re: new RegExp(`\\bcop(?:y|ying|ied|ies)\\s+(?:him|her|them|what\\s+(?:he|she|they)\\s+did)${ACT_END}`, 'giu'), needIntent: true },
+  { re: new RegExp(`\\b(?:im|i\\s+am|ill\\s+be|i\\s+will\\s+be|i\\s+might\\s+be|i\\s+could\\s+be|me)\\s+next${ACT_END}`, 'giu'), needIntent: false },
+  { re: new RegExp(`\\b(?:meet|meeting|share|sharing|suffer|suffering)\\s+the\\s+same\\s+(?:fate|end)${ACT_END}`, 'giu'), needIntent: true },
+];
+/** (after a death that was not a suicide) a wish or a thought, never a plan: "thinking about doing it myself". */
+const WISH = /\b(?:wanna|want\s+to|wants\s+to|wanted\s+to|tempted|considering|considered|consider|contemplating|contemplated|thinking\s+(?:about|of)|thought\s+(?:about|of)|think\s+(?:about|of)|makes?\s+me\s+want|made\s+me\s+want|feel\s+like|wish|keep\s+wanting|urge|ready\s+to|might|could|maybe)\b/iu;
+/** (after a death that was not a suicide) dying peacefully, one day, old: "hopefully I'll go the same way, peacefully". */
+const PEACEFUL = /\b(?:peacefully|in\s+(?:my|her|his|their)\s+sleep|old\s+age|when\s+(?:im|i\s+am|i\s+get|im\s+really)\s+old|at\s+(?:\d{2,3}|ninety|a\s+hundred)|hopefully|when\s+my\s+time\s+comes)\b/iu;
+/** (after a death that was not a suicide) "do the same as her and become a teacher": another plan follows. */
+const AND_PLAN = /^\s*(?:,\s*)?(?:and|so|then)\s+(?!(?:i|im|ive|id|ill|it|its|that|thats|honestly|really|tbh)\b)[a-z]+/iu;
+/** An intent or a modal before the act, in its clause (the subject may be left out: "thinking about doing it myself"). */
+const INTENT = /\b(?:might|may|could|will|ill|would|id|wanna|want\s+to|wants\s+to|wanted\s+to|going\s+to|gonna|need\s+to|should|shall|plan\s+to|planning\s+to|planning\s+on|about\s+to|tempted|ready\s+to|considering|considered|consider|contemplating|contemplated|thinking\s+(?:about|of)|thought\s+(?:about|of)|think\s+(?:about|of)|makes?\s+me\s+want|made\s+me\s+want|feel\s+like|wish\s+i\s+could|keep\s+wanting|urge\s+to|likely\s+to|maybe|probably|prob|surely|bound\s+to|end\s+up|ending\s+up)\b/iu;
+/** A fear or a "never" is not a wish (after a death that was not a suicide). */
+const FEAR = /\b(?:scared|afraid|worried|worry|worrying|terrified|frightened|fear|fears|feared|fearing|dread|dreading|panicking|panic|paranoid|anxious|petrified|nervous)\b/iu;
+const NEVER = /\b(?:dont|do\s+not|never|wont|will\s+not|not\s+going\s+to|refuse\s+to|wouldnt|would\s+not|shouldnt|cant|cannot|not)\b(?!\s+(?:know|sure|see\s+why\s+not|stop|help|mind|care|wait|lie)\b)/iu;
+/** First person, or nobody else as the subject (a third-person clause is about someone else). */
+const FIRST = /\b(?:i|im|ive|id|ill|me|myself)\b/iu;
+const THIRD = new RegExp(`\\b(?:he|she|they|hes|shes|theyre|theyll|hell|shell|(?:my|our|his|her|their)\\s+${ADJ}(?:${WHO}|${BARE})s?)\\b`, 'iu');
+/** Where a clause starts: punctuation, or a joining word. */
+const CLAUSE_FROM = /[.,!?;:…—–]|\b(?:and|but|so|because|cos|coz|then|while|plus|now)\b/giu;
+/** The last few words of `head` since its last clause boundary (at most ten). */
+function clauseBefore(head) {
+  let from = 0;
+  for (const b of head.matchAll(CLAUSE_FROM)) from = b.index + b[0].length;
+  return head.slice(from).split(/\s+/u).filter(Boolean).slice(-10).join(' ');
+}
+/** The means ("I know where the gun is", "I keep looking at bridges", "I have the pills", "bought rope"). */
+const MEANS = [
+  /\b(?:i\s+)?(?:know|knows|found\s+out|figured\s+out|worked\s+out)\s+where\s+(?:(?:the|his|her|their|my|our|dads|mums)\s+)?(?:gun|guns|rifle|shotgun|pistol|pills|tablets|meds|medication|rope|knife|knives|razor\s+blades|blades|gun\s+cabinet\s+key|key\s+to\s+the\s+gun\s+cabinet)\s+(?:is|are|was|were|gets|get)\b/iu,
+  /\b(?:keep|kept|keeps|been|started|start|always|still|im|i)\s+(?:\w+\s+)?(?:looking|staring|gazing|looked|stared)\s+(?:at|up|over|down\s+at)\s+(?:the\s+|tall\s+|high\s+)?(?:bridges?|train\s+tracks|railway\s+(?:lines?|tracks?|bridges?)|tracks|cliffs?|cliff\s+edges?|the\s+edge|rooftops?|roofs?|tall\s+buildings|multi\s*storeys?|car\s+parks?|(?:the|his|her|dads|my\s+dads)\s+gun|ropes?|pills|tablets|the\s+river|motorway\s+bridges?)\b/iu,
+  /(?:\bi\s+(?:have\s+|ve\s+|already\s+|just\s+|even\s+|still\s+)*|\bive\s+(?:already\s+|just\s+|even\s+|still\s+)*|(?:^|[,.;!?…]\s*|\b(?:and|but|so|now|already|even)\s+))(?:have|got|bought|buy|ordered|saved|saving|stockpiled|stockpiling|collected|collecting|hoarded|hoarding|kept|keeping|found|tied|made|been\s+(?:saving|collecting|stockpiling|hoarding|buying))\s+(?:up\s+)?(?:(?:the|some|a|an|enough|all|his|her|their|my|loads\s+of|a\s+lot\s+of|a\s+bunch\s+of|of\s+(?:his|her|their|my))\s+){0,3}(?:pills|tablets|paracetamol|painkillers|sleeping\s+pills|meds|medication|rope|ropes|noose|gun|guns|rifle|shotgun|razor\s+blades|blades|charcoal)\b(?!\s+(?:swing|ladder|lights?|bridge|course|toy|bracelet|necklace|list|box|boxes|bottles?|packets?|cabinet|holder|organi[sz]er|back|to\s+(?:return|the\s+(?:pharmacy|chemist|police))|licen[cs]e|safe|club|range|show|collection))\b/iu,
+  /\b(?:looked\s+up|look\s+up|looking\s+up|googled|googling|researched|researching|searched|searching)\s+(?:how\s+(?:many|much)\s+(?:pills|tablets|paracetamol|painkillers)|how\s+(?:he|she|they)\s+did\s+it|how\s+to\s+(?:do\s+it|die|end\s+it|hang|overdose|od))\b/iu,
+];
+/** "I don't see the point (any more)", "what's the point any more", after a death. */
+const NO_POINT = /\b(?:dont|do\s+not|cant|cannot|can\s+not|no\s+longer)\s+see\s+(?:the|any)\s+point(?=\s*(?:$|[.,!?;:…)—–]|(?:any\s*more|now|in\s+(?:anything|it\s+all|life|living|going\s+on|carrying\s+on|being\s+here|trying|getting\s+up|waking\s+up|any\s+of\s+(?:it|this))|of\s+(?:anything|it\s+all|life|living|going\s+on|carrying\s+on|being\s+here|trying|getting\s+up|waking\s+up|any\s+of\s+(?:it|this))|honestly|really|tbh|either|without)\b))|\b(?:whats|what\s+is|theres\s+no|there\s+is\s+no|no)\s+(?:the\s+)?point\s+(?:any\s*more|of\s+(?:anything|it\s+all|living|life|going\s+on)|in\s+(?:anything|living|life|going\s+on))\b/iu;
+/** "I just want to go to sleep forever", "I want to never wake up", "I should have died instead". */
+const SLEEP_FOREVER = /\b(?:want|wanna|wanted|wish\s+i\s+could|just\s+want|id\s+like|would\s+like|need)\s+to\s+(?:just\s+)?(?:go\s+to\s+sleep|sleep|fall\s+asleep|close\s+my\s+eyes|lie\s+down)\s+(?:forever|for\s+ever|and\s+(?:never|not)\s+wake\s+up)\b|\b(?:want|wanna|wish\s+i\s+could|just\s+want)\s+to\s+(?:never|not)\s+wake\s+up\b|\bwish\s+i\s+(?:wouldnt|would\s+not|didnt|did\s+not|couldnt|could\s+not)\s+wake\s+up\b/iu;
+const DIED_INSTEAD = /\bi\s+should\s+(?:have|ve|of)\s+(?:died|gone|been\s+killed)\s+(?:instead|too|as\s+well|with\s+(?:him|her|them)|not\s+(?:him|her|them))\b|\bwish\s+i\s+(?:had\s+)?(?:died|gone)\s+instead\b/iu;
+const TYPOS_ACT = [[/\b(think|thinking|thought|talk|talking)\s+(?:bout|abt|abut|aboot)\b/giu, '$1 about'], [/\bthinkin\b/giu, 'thinking'], [/\bdoin\b/giu, 'doing'], [/\bgoin\b/giu, 'going'], [/\bconsiderin\b/giu, 'considering']];
+
+/** A death by suicide named in the words (with OD'd as typed). */
+export function suicideDeath(text) {
+  const cased = blankOrdinary(norm(text));
+  return SUICIDE_DEATH.test(cased.toLowerCase()) || SUICIDE_OD.test(cased);
+}
+/** A first person future: "I'll", "I'm going to", "I might", "maybe I", "I want to", "thinking about", "considering". */
+const FUTURE_1P = /\b(?:ill|i\s+will|i\s+shall|im\s+going\s+to|i\s+am\s+going\s+to|im\s+gonna|i\s+might|i\s+may|i\s+could|maybe\s+i|maybe\s+ill|i\s+want\s+to|i\s+wanna|i\s+need\s+to|im\s+thinking\s+(?:about|of)|i\s+think\s+(?:ill|i\s+will|i\s+might|im\s+going)|im\s+considering|i\s+plan|im\s+planning|im\s+about\s+to|i\s+would|id|thinking\s+(?:about|of)|considering|planning)\b/iu;
+/**
+ * (r2-angle item 1) A suicide death word next to any first-person future clause: Another Angle's gentle path never sends these
+ * words to the server (another-angle.js griefMode routes them to care instead, nothing sent).
+ */
+export function suicideFuture(text) {
+  if (!suicideDeath(text)) return false;
+  let t = blankOrdinary(norm(text)).toLowerCase();
+  for (const [re, to] of TYPOS_ACT) t = t.replace(re, to);
+  return FUTURE_1P.test(t);
+}
+/**
+ * (r2-angle item 1) The structural rule: a death named and, in the same message, a first-person clause about doing the same
+ * act, the means, no point any more, sleeping forever, or dying instead (above).
+ */
+export function followsTheAct(text) {
+  if (!deathTalk(text)) return false;
+  const cased = blankOrdinary(norm(text));
+  let t = cased.toLowerCase();
+  for (const [re, to] of TYPOS_ACT) t = t.replace(re, to);
+  const suicide = SUICIDE_DEATH.test(t) || SUICIDE_OD.test(cased);
+  if (MEANS.some((re) => re.test(t)) || NO_POINT.test(t) || SLEEP_FOREVER.test(t) || DIED_INSTEAD.test(t)) return true;
+  for (const a of ACTS) {
+    if (a.suicideOnly && !suicide) continue;
+    a.re.lastIndex = 0;
+    for (const m of t.matchAll(a.re)) {
+      // the clause the act sits in: from its last boundary, at most ten words back
+      const clause = clauseBefore(t.slice(0, m.index));
+      const whole = `${clause} ${m[0]}`;
+      if (NEVER.test(clause)) continue;
+      if (!suicide && (FEAR.test(clause) || PEACEFUL.test(t) || AND_PLAN.test(t.slice(m.index + m[0].length)))) continue;
+      if (!suicide && a.wish && !WISH.test(clause)) continue;
+      if (a.needIntent && !INTENT.test(clause) && !/^\s*(?:considering|considered|contemplating|thinking|thought)\b/iu.test(m[0])) continue;
+      // first person, or nobody else as its subject
+      if (!FIRST.test(whole) && THIRD.test(clause)) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Death talk that also says they want to follow the one who died: the CARE support path (nothing is sent). About
  * someone still alive, only the plainest wishes count ("I want to die with her"); being at their side never does.
+ * (r2-angle item 1) Or doing what the one who died did (followsTheAct): a death that has happened, or a suicide.
  */
 export function deathEscalation(text) {
-  if (!deathTalk(text) || !wantsToFollow(text)) return false;
-  if (stillAlive(text)) return ALIVE_FOLLOW.test(blankOrdinary(norm(text)).toLowerCase());
+  if (!deathTalk(text)) return false;
+  const alive = stillAlive(text);
+  if (followsTheAct(text) && (!alive || suicideDeath(text))) return true;
+  if (!wantsToFollow(text)) return false;
+  if (alive) return ALIVE_FOLLOW.test(blankOrdinary(norm(text)).toLowerCase());
   return true;
 }
 
@@ -635,7 +764,8 @@ export function serverLoss(scene, text = '', { heavy = null } = {}) {
   if (scene?.source !== 'server') return false;
   const loss = scene.situation_type === 'loss';
   const griefEmotion = GRIEF_EMOTIONS.has(String(scene.emotion || '').toLowerCase());
-  if (deathTalk(text)) return loss || griefEmotion;
+  // (r2-angle item 4) a story's death too ("he died in the game"): the server sees the whole context, so its loss reading plays gently
+  if (deathTalk(text, { stories: false })) return loss || griefEmotion;
   return loss && (griefEmotion || !!heavy?.(text));
 }
 /** Both of a server answer's lines acknowledge (backstop.js acknowledges): nothing framed, asked or reframed. */

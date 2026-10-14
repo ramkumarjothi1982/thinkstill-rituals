@@ -77,19 +77,36 @@ export const LOSS_CHECK = Object.freeze({
   ask: 'I want to get this right. Is this about losing someone?',
   yes: 'Yes, it is',
   no: 'Something else',
+  // (the main screen's own copy, src/hushfold/lines.js, is the same; only asked with ASK_BEFORE_ANGLE off. r2-angle item 6:
+  // never counted while the page is hidden, another-angle.js questionClock)
   ms: 20000,
 });
 /**
  * (owner decision 'Ask before every world', 14 Oct 2026) After every Tell that is not a detected loss, crisis or care, before
  * anything is sent, framed or played, Zuzu asks one gentle choice (angle-first.js; its switch is ASK_BEFORE_ANGLE). "Another
- * angle" (primary) carries on as usual; "Just be with it" is the gentle path's lines (GRIEF.loss), no mechanic, nothing sent;
- * no answer within `ms`, or Back, stays here quietly. In Another Angle it replaces LOSS_CHECK (never two questions in a row).
+ * angle" carries on as usual; "Just be with it" is a quiet path of its own (BE_WITH, r2-angle item 5), no mechanic, nothing
+ * sent; no answer within `ms` (about 45 s, never counted while the page is hidden: r2-angle item 6), or Back, stays here
+ * quietly with the words kept for the next Tell. The two answers carry equal weight (r2-angle item 7, a coordinator default:
+ * the same chip style, "Another angle" first). In Another Angle it replaces LOSS_CHECK (never two questions in a row).
  */
 export const ANGLE_CHOICE = Object.freeze({
   ask: 'Shall we look at this from another angle, or just be with it?',
   angle: 'Another angle',
   be: 'Just be with it',
-  ms: 20000,
+  ms: 45000,
+});
+/**
+ * (r2-angle item 5) "Just be with it": the quiet path of its own, the main screen's line first ("Okay. Let's just be with it
+ * for a while."). Never the grief path's lines, support or goodbye: true for any words, a worry about an exam as much as a
+ * loss the lists missed. "See support" is offered only when something heavy was seen (optionsHeavy).
+ */
+export const BE_WITH = Object.freeze({
+  line: 'Okay. Let’s just be with it for a while.',
+  second: 'Nothing needs fixing right now. I’m right here.',
+  ask: 'Squeeze me whenever you like.',
+  options: Object.freeze([{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'Finish', value: 'finish' }]),
+  optionsHeavy: Object.freeze([{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'See support', value: 'support' }, { label: 'Finish', value: 'finish' }]),
+  squeeze: 'Take all the time you need.',
 });
 
 /**

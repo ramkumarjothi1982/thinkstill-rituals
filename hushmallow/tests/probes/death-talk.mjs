@@ -12,6 +12,13 @@ export const REVIEW_FALSE_ALARMS = [
   'My son died in Fortnite and smashed his controller.', 'I lost my sister in the supermarket for ten minutes and panicked.',
 ];
 
+/**
+ * (r2-angle item 4, owner decision 'Ask before every world', 14 Oct 2026) A game's or a film's death that names no one of their
+ * own: no longer death talk (death-words.js), so it is asked the one question first, never the gentle path. (Before, r7 kept
+ * them as death talk on purpose, when nothing else stood between the words and a game.)
+ */
+export const STORY_DEATHS = ['He died in the game and I cried anyway.', 'She died in the film and I can’t stop thinking about it.', 'He died in the game.', 'She died in the film.'];
+
 /** Death or loss words about anyone or anything alive: deathTalk is never null. */
 export const DEATH_TALK = [
   ...REVIEW_MISSES, ...REVIEW_FALSE_ALARMS,
@@ -20,7 +27,7 @@ export const DEATH_TALK = [
   'My nan died in her sleep.', 'Grandad died on Tuesday.', 'my grandads dead and nobody cares', 'Our cat is dead.', 'The baby died.', 'My best friend died in a car accident.',
   'My brother died of an overdose.', 'My dad is dying.', 'My mum is dying of cancer.', 'Watching my grandma die was the worst thing.', 'I’m scared my mum will die.', 'What if my dad dies?',
   'I dreamt my mum died.', 'My dad nearly died.', 'The death of my father changed everything.', 'Since my dad’s death I can’t sleep.', 'It’s the anniversary of her death.', 'My mum is deceased.',
-  'my dog dide yesterday', 'my nan is dieing', 'He died in the game and I cried anyway.', 'She died in the film and I can’t stop thinking about it.', 'My goldfish died.',
+  'my dog dide yesterday', 'my nan is dieing', 'My goldfish died.',
   // passed away, passed on, passed (after a person or he / she / they)
   'My grandma passed away.', 'My grandma passed awy.', 'My nan past away last week.', 'My uncle passed on in May.', 'My dad passed last year.', 'Mum passed in March.', 'Since Mum passed I can’t sleep.',
   'My husband’s passed.', 'She passed in her sleep.', 'He passed peacefully.', 'My dog has passed.', 'My son passed and I’m so proud of the man he was.', 'Since his passing nothing feels right.',

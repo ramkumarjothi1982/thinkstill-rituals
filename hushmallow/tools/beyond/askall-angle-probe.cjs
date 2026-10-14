@@ -10,8 +10,9 @@
 // Every /v1/ request is recorded (method, path, when). Scenarios, each in a fresh context:
 //   angle  'I am worried about my exam tomorrow' → the question (no thought, no mechanic, no waiting line, no request) →
 //          Another angle → a mechanic
-//   be     'we had to let our dog go, I think it was my fault' → the question → Just be with it → the gentle lines, nothing sent;
-//          then Tell Zuzu (opens empty) → the same words again → the gentle path, no question, still nothing sent
+//   be     'we had to let our dog go, I think it was my fault' → the question → Just be with it → its own quiet lines (final round 2:
+//          "Okay. Let's just be with it for a while.", never the grief path), nothing sent; then Tell Zuzu (opens empty) → the same
+//          words again → the question again (as on the main screen), still nothing sent
 //   death  'my mum died last week' → the gentle path with no question
 //   care   'my best friend killed himself and I keep thinking about doing the same' → care, no question, 0 requests
 //   match  'my dad never came to my football match' → the ordinary question (never the gentle path) → Another angle → a mechanic
@@ -52,7 +53,7 @@ async function tapEl(o, sel, text = null, timeout = 30000) {
 const chipTexts = (o) => o.page.$$eval('.hf-chips:not([hidden]) .hf-chip', (els) => els.filter((e) => e.offsetParent).map((e) => e.textContent.trim()));
 const said = (o) => o.page.evaluate(() => window.__aaSaid || []);
 async function waitFor(o, fn, arg, timeout = 30000) { return o.page.waitForFunction(fn, arg, { timeout, polling: 100 }); }
-const state = (o) => o.page.evaluate(() => { const A = window.__angle; return { phase: A.S.phase, grief: !!A.S.grief, level: A.S.level, follow: !!A.S.follow, mech: A.mechId || null, thought: !!A.thought, answers: [...A.S.answers.entries()], lastGentle: A.S.lastGentle, server: A.serverMode() }; });
+const state = (o) => o.page.evaluate(() => { const A = window.__angle; return { phase: A.S.phase, grief: !!A.S.grief, beOnly: !!A.S.beOnly, level: A.S.level, follow: !!A.S.follow, mech: A.mechId || null, thought: !!A.thought, answers: [...A.S.answers.entries()], keepWords: A.S.keepWords, server: A.serverMode() }; });
 async function shot(o, name) {
   if (SHOTS === 'none') return null;
   // (the subtitles' soft reveal finished, so the picture shows what a person reads)
@@ -122,7 +123,8 @@ async function seeQuestion(o, sentAt, name) {
   if (st.phase !== 'asking' || st.thought || st.mech) fail(o.scen, 'something made before the answer', st);
   if (r.requests) fail(o.scen, 'requests before the answer', o.req);
   if (r.waiting.length) fail(o.scen, 'a waiting line before the choice', r.waiting);
-  if (chips.length !== 2 || chips[0].t !== 'Another angle' || !chips[0].primary || chips[1].t !== 'Just be with it' || chips.some((c) => c.h < 44 || c.tag !== 'BUTTON')) fail(o.scen, 'chips', chips);
+  // (final round 2: equal weight, "Another angle" first)
+  if (chips.length !== 2 || chips[0].t !== 'Another angle' || chips.some((c) => c.primary) || chips[1].t !== 'Just be with it' || chips.some((c) => c.h < 44 || c.tag !== 'BUTTON')) fail(o.scen, 'chips', chips);
   if (name) await shot(o, name);
   return r;
 }
@@ -144,23 +146,22 @@ const SCEN = {
     const { sentAt } = await tell(o, words);
     const q = await seeQuestion(o, sentAt, null);
     await tapEl(o, '.hf-chips:not([hidden]) .hf-chip', 'Just be with it');
-    await waitFor(o, () => (window.__aaSaid || []).some((l) => l.includes('That sounds like a lot to carry.')), null, 30000);
+    await waitFor(o, () => (window.__aaSaid || []).some((l) => l.includes('Let’s just be with it for a while.')), null, 30000);
     await waitFor(o, () => [...document.querySelectorAll('.hf-chips:not([hidden]) .hf-chip')].some((e) => e.offsetParent && /Just squeeze Zuzu/.test(e.textContent)), null, 30000);
     const st1 = await state(o);
     const lines1 = await said(o);
     await shot(o, 'be-1-gentle');
     const req1 = o.req.filter((x) => x.at >= sentAt).map((x) => x.p);
     if (req1.length) fail('be', 'requests after Just be with it', req1);
-    if (!st1.grief || st1.mech || st1.thought) fail('be', 'not the gentle path', st1);
-    // Yes-then-resend: the Tell opens empty; the same words again go gently, with no question and nothing sent
+    if (st1.grief || !st1.beOnly || st1.mech || st1.thought) fail('be', 'not its own quiet path', st1);
+    // resend: the Tell opens empty; the same words again are asked again (final round 2), nothing sent before the answer
     const n0 = lines1.length;
     const again = await tell(o, words, { expectEmpty: true });
-    await waitFor(o, (n) => (window.__aaSaid || []).slice(n).some((l) => l.includes('Thank you for telling me.')), n0, 20000);
-    await sleep(4500);
+    await seeQuestion(o, again.sentAt, null);
     const st2 = await state(o);
     const lines2 = (await said(o)).slice(n0);
-    if (lines2.includes(ASK)) fail('be', 'asked again on resend', lines2);
-    if (!st2.grief || st2.mech || st2.thought) fail('be', 'resend not gentle', st2);
+    if (!lines2.includes(ASK)) fail('be', 'not asked again on resend', lines2);
+    if (st2.mech || st2.thought) fail('be', 'something made on resend', st2);
     const req2 = o.req.filter((x) => x.at >= again.sentAt).map((x) => x.p);
     if (req2.length) fail('be', 'requests on resend', req2);
     await shot(o, 'be-2-resend');

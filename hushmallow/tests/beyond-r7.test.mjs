@@ -61,8 +61,12 @@ test('r7.A: the review’s misses, false alarms and 100+ more are death talk (ap
 test('r7.A: only the short list of unambiguous idioms is set aside (a gadget, dead tired, dying to, killing it, lost my keys, passed my test)', () => {
   assert.ok(P.NOT_DEATH_TALK.length >= 60, `${P.NOT_DEATH_TALK.length} probes`);
   for (const text of P.NOT_DEATH_TALK) assert.equal(deathTalk(text), null, text);
-  // a game, a film, a near miss, an imagined death are never set aside
-  for (const text of ['He died in the game.', 'She died in the film.', 'My dad nearly died.', 'What if my mum dies?', 'I dreamt my nan died.']) assert.ok(deathTalk(text), text);
+  // a near miss, an imagined death are never set aside; (r2-angle item 4) a game's or a film's death naming no one of their own is
+  // (asked the one question first), while "My son died in Fortnite" names someone and stays death talk
+  for (const text of ['My dad nearly died.', 'What if my mum dies?', 'I dreamt my nan died.', 'My son died in Fortnite and smashed his controller.']) assert.ok(deathTalk(text), text);
+  for (const text of P.STORY_DEATHS) assert.equal(deathTalk(text), null, text);
+  // (the server's own loss reading beside one still plays gently: grief.js serverLoss reads them with `stories: false`)
+  for (const text of P.STORY_DEATHS) assert.ok(deathTalk(text, { stories: false }), text);
   // the idioms never blank a death beside them
   for (const text of ['My phone died and my dad died.', 'I lost my keys at my nan’s funeral.', 'I passed my test the day my grandad died.', 'I’m dead tired since Mum passed.']) assert.ok(deathTalk(text), text);
 });

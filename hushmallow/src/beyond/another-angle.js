@@ -32,11 +32,11 @@ import { hfIcon } from '../hushfold/icons.js';
 import { ensureBeyondCss } from './styles.js';
 import {
   WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
-  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, LOSS_CHECK, ANGLE_CHOICE, mechanicLines, pick,
+  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, LOSS_CHECK, ANGLE_CHOICE, BE_WITH, mechanicLines, pick,
 } from './lines.js';
-import { firstStep, answerKey } from './angle-first.js';
+import { firstStep, answerKey, questionClock, goodbye } from './angle-first.js';
 import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, guessGuard } from './authored.js';
-import { deathEscalation, serverLoss, griefLinesOk } from './grief.js';
+import { deathEscalation, serverLoss, griefLinesOk, suicideFuture } from './grief.js';
 import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess, lossRoute, griefFeeling } from './backstop.js';
 import { FEELING_LOOK } from './feelings.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
@@ -99,10 +99,12 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // (review r8) follow: death talk that wanted to follow the one who died was seen (typed, closed or sent: care, for
     // the visit); noPlay: a bag word or death talk was seen (no playful line for the visit); heavyDraft: while typing
     follow: false, noPlay: false, heavyDraft: false,
-    // (owner decision 'Ask before every world') answers: what they chose for these words in this visit (angle-first.js
-    // answerKey → 'angle' | 'be' | 'yes' | 'else'); lastGentle: the last Tell went to the gentle path (the Tell opens empty
-    // then, never prefilled with those words); unsure: the words carry a softer loss cue (lossRoute 'ask')
-    answers: new Map(), lastGentle: false, unsure: false,
+    // (owner decision 'Ask before every world') answers: the gentle answers given for these words in this visit (angle-first.js
+    // answerKey → 'be' | 'yes'; r2-angle item 2: "Another angle" is never remembered, every new Tell is asked again);
+    // keepWords: the question was let go (no answer, Back), so the Tell opens with those words (r2-angle item 2: after any
+    // answer it opens empty); unsure: the words carry a softer loss cue (lossRoute 'ask'); beOnly (r2-angle item 5): "Just be
+    // with it" for words where nothing heavy was seen, a quiet path of its own (never the grief path's support or goodbye)
+    answers: new Map(), keepWords: false, unsure: false, beOnly: false,
     touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9, band: 0,
   };
   const timers = new Set();
@@ -556,8 +558,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     openTellNow();
   }
   function openTellNow() {
-    // (askall-angle item 2) after the gentle path the Tell opens empty: sending those words again is never one tap away
-    const prefill = S.lastGentle ? '' : S.text;
+    // (askall-angle item 2, r2-angle item 2) after any answer the Tell opens empty: sending those words again is never one tap
+    // away (and is asked again); only after the question was let go (no answer, Back) are the words kept for them
+    const prefill = S.keepWords ? S.text : '';
     subs?.clear({ keepHeld: true });
     subs?.suspend();
     S.phase = 'typing';
@@ -660,6 +663,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
 
   async function afterTell({ text, emotion, intention, input = null, reading = null, safety: seen = null }) {
     S.text = String(text || '').trim();
+    // (r2-angle item 2) a new Tell: its words are only kept for the next one if its question is let go
+    S.keepWords = false;
     S.emotion = emotion || null;
     // how the Thought Mallow looks (only its look; nothing is sent): the feeling they chose; else a reading of the
     // words only when it is sure and troubled; else the kind of thought it is (fair anger looks hot, replaying busy)
@@ -679,6 +684,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // death talk or any word of the backstop's bag: no playful line for the rest of the visit
     readDraft(S.text);
     if (S.level === 'concern') S.keepSupport = true;
+    // (r2-angle item 7) only a grief-family feeling chosen, no words: the gentle path, as on the main screen (nothing to send)
+    if ((!S.text || !hasWords(S.text)) && griefFeeling(S.emotion)) { griefMode({ asked: true }); return; }
     if (!S.text || !hasWords(S.text)) { unclear(); return; }
     startAngle({ another: false });
   }
@@ -792,9 +799,12 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function griefMode({ scene = null, asked = false, told = null } = {}) {
     // (wanting to follow the one who died is care, whichever way it got here: nothing more is sent)
     if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
+    // (r2-angle item 1) a death by suicide beside any first-person future ("my dad killed himself and I'm going to…"): never sent
+    // to the server; care, said gently and assuming nothing
+    if (suicideFuture(S.text)) { careMode({ lines: SAFETY.careGentle }); return; }
     const seq = ++S.seq;
     S.grief = true; S.keepSupport = true; S.noPlay = true; S.phase = 'support';
-    S.lastGentle = true;
+    S.beOnly = false;
     keepCtl?.abort();
     dropThought(); endMechanic(true); dismissCompanion();
     supportPill.hidden = false;
@@ -847,6 +857,40 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       say(GRIEF.squeeze, { mallow: 'zuzu' });
     }
   }
+  /** Something heavy seen in this visit, or beside these words: then (and only then) "See support" is offered after "Just be with it". */
+  const heavySeen = () => S.level !== 'none' || S.keepSupport || S.care || S.crisis || S.heavyDraft || S.unsure || bagWords(S.text);
+  /**
+   * (r2-angle item 5) "Just be with it": a quiet path of its own, as the main screen's (its line: "Okay. Let's just be with it
+   * for a while."). No Thought Mallow, no mechanic, nothing sent, nothing playful (noPlay). It is not the grief path: S.grief
+   * and the visit's support stay as they were, so Finish says the ordinary goodbye (END.finish) and sends no safety level home,
+   * and "See support" is offered only when something heavy was seen (heavySeen).
+   */
+  async function beWithIt() {
+    const seq = ++S.seq;
+    S.beOnly = true; S.noPlay = true; S.phase = 'support';
+    keepCtl?.abort();
+    dropThought(); endMechanic(true); dismissCompanion();
+    careFace();
+    dockShow({ finish: true, tell: true });
+    subs?.clear();
+    await say(BE_WITH.line, { mallow: 'zuzu', interrupt: true });
+    if (S.left || seq !== S.seq) return;
+    await sleep(rmOn() ? 400 : 900);
+    await say(BE_WITH.second, { mallow: 'zuzu' });
+    if (S.left || seq !== S.seq) return;
+    dockShow({ tell: true, support: false });
+    const opts = heavySeen() ? BE_WITH.optionsHeavy : BE_WITH.options;
+    const v = await choose(BE_WITH.ask, opts, { mallow: 'zuzu' });
+    if (S.left || seq !== S.seq) return;
+    dockShow({ finish: true, tell: true });
+    if (v === 'support') { openSupportSheet(); return; }
+    if (v === 'finish') { finish(); return; }
+    if (v === 'squeeze') {
+      S.phase = 'squeeze';
+      later(() => layout(), 480);
+      say(BE_WITH.squeeze, { mallow: 'zuzu' });
+    }
+  }
   async function unclear() {
     S.phase = 'invite';
     // the choice carries "Tell Zuzu more": the dock's own Tell pill waits until it is answered
@@ -867,21 +911,23 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.unsure = route === 'ask';
     // (owner decision 'Ask before every world', 14 Oct 2026) otherwise Zuzu asks one gentle choice first, before anything is
     // sent, framed or played: "Shall we look at this from another angle, or just be with it?" (angle-first.js; with its switch
-    // ASK_BEFORE_ANGLE off, the 'Ask when unsure' check-in for unsure words instead). The answer is kept for these words:
-    // sent again after "Just be with it" (or "Yes, it is") they go to the gentle path again, never to a mechanic; after
-    // "Another angle" they play without asking again ("Show me another angle" never asks)
+    // ASK_BEFORE_ANGLE off, the 'Ask when unsure' check-in for unsure words instead). Only the gentle answers are kept for these
+    // words (r2-angle item 2): every new Tell is asked again, the same words included, and only "Show me another angle", inside
+    // an angle they chose, plays without asking. "Yes, it is" (the check-in) keeps those words on the gentle path; "Just be
+    // with it" is asked again too (angle-first.js BE_ASKS_AGAIN, as on the main screen)
     const key = answerKey(S.text);
     const step = firstStep(S.text, { emotion: S.emotion, another, said: S.answers.get(key) || null });
-    // (asked: true, nothing is sent: they chose to just be with it)
-    if (step === 'be' || step === 'told') return griefMode({ told: 'loss', asked: step === 'be' });
+    if (step === 'be') return beWithIt();
+    if (step === 'told') return griefMode({ told: 'loss' });
     if (step === 'choice' || step === 'check-in') {
       const v = await askFirst(step);
       if (S.left) return;
-      if (v === 'be' || v === 'yes') { S.answers.set(key, v); S.lossSaid = true; S.noPlay = true; return griefMode({ told: 'loss', asked: v === 'be' }); }
+      if (v) S.keepWords = false;
+      // (r2-angle item 5) "Just be with it": a quiet path of its own, nothing sent; never the grief path's support or goodbye
+      if (v === 'be') { S.answers.set(key, 'be'); return beWithIt(); }
+      if (v === 'yes') { S.answers.set(key, 'yes'); S.lossSaid = true; S.noPlay = true; return griefMode({ told: 'loss' }); }
       if (v !== 'angle' && v !== 'else') { quietAfterAsk(); return; }
-      S.answers.set(key, v);
     }
-    S.lastGentle = false;
     const seq = ++S.seq;
     S.phase = 'waiting';
     dockShow({});
@@ -956,26 +1002,53 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
    *              'yes' | 'else' | null
    * (null: no answer within its `ms`, Back, or a new Tell.)
    */
+  // (r2-angle item 7, a coordinator default) the two answers carry equal weight: the same chip style, "Another angle" first
   const FIRST_QUESTION = {
-    choice: { ask: ANGLE_CHOICE.ask, ms: ANGLE_CHOICE.ms, options: [{ label: ANGLE_CHOICE.angle, value: 'angle', primary: true }, { label: ANGLE_CHOICE.be, value: 'be' }] },
+    choice: { ask: ANGLE_CHOICE.ask, ms: ANGLE_CHOICE.ms, options: [{ label: ANGLE_CHOICE.angle, value: 'angle' }, { label: ANGLE_CHOICE.be, value: 'be' }] },
     'check-in': { ask: LOSS_CHECK.ask, ms: LOSS_CHECK.ms, options: [{ label: LOSS_CHECK.yes, value: 'yes' }, { label: LOSS_CHECK.no, value: 'else' }] },
   };
   async function askFirst(kind) {
     const q = FIRST_QUESTION[kind];
     const seq = ++S.seq;
     S.phase = 'asking';
+    // (r2-angle item 6) while it is up, and if it is let go, the words are kept for the next Tell
+    S.keepWords = true;
     careFace();
     dockShow({});
     layer.lossCheck = app.pushLayer?.() || 0;
+    // (r2-angle item 6) about 45 s, never counted while the page is hidden (subtitles' own timeout is not used)
+    stopClock?.();
+    const stop = (stopClock = questionClock(q.ms, () => { if (seq === S.seq) subs?.drop((o) => o.lossCheck); }));
     try {
-      const v = await choose(q.ask, q.options, { mallow: 'zuzu', timeoutMs: q.ms, transient: true, lossCheck: true, interrupt: true });
+      const p = choose(q.ask, q.options, { mallow: 'zuzu', transient: true, lossCheck: true, interrupt: true });
+      focusFirstChoice();
+      const v = await p;
       return seq === S.seq ? v : null;
     } finally {
+      stop();
+      if (stopClock === stop) stopClock = null;
       const t = layer.lossCheck; layer.lossCheck = 0; if (t) app.popLayer?.(t);
     }
   }
-  /** The question let go (no answer, Back, a new Tell): Zuzu stays here quietly, Tell close by, nothing sent or made. */
+  /** The question's clock (angle-first.js questionClock: never counted while the page is hidden); stopped on leave. */
+  let stopClock = null;
+  /** (r2-angle item 6) Focus moves to the first answer when the question appears (never out of a text field). */
+  function focusFirstChoice() {
+    const go = () => {
+      if (S.left || S.phase !== 'asking' || overlay) return;
+      const a = document.activeElement;
+      if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) return;
+      subs?.el?.querySelector?.('.hf-chips:not([hidden]) button')?.focus?.({ preventScroll: true });
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(go); else go();
+  }
+  /**
+   * The question let go (no answer, Back, a new Tell): Zuzu stays here quietly, Tell close by (with the words kept), nothing
+   * sent or made; (r2-angle item 3) and the rest of the visit stays quiet, as the main screen's softVisit: squeezing never
+   * brings the playful lines back after words the person never chose to play with.
+   */
   function quietAfterAsk() {
+    S.noPlay = true;
     if (S.left || overlay || S.phase !== 'asking') return;
     S.phase = 'invite';
     careFace();
@@ -1292,19 +1365,21 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.phase = 'finishing';
     S.seq++;
     subs?.clear();
-    const heavy = S.crisis || S.care || S.grief;
+    // (r2-angle item 5: angle-first.js goodbye) only crisis, care or the grief path are heavy; "Just be with it" alone is not
+    const bye = goodbye(S);
+    const heavy = bye.heavy;
     dockShow({});
     if (heavy || S.noPlay) careFace(); else zt?.setStage('comforting');
     if (!rmOn() && !heavy && !S.noPlay) zt?.react('hop');
-    const lines = heavy ? SAFETY.finish : END.finish;
+    const lines = bye.lines === 'safety' ? SAFETY.finish : END.finish;
     await say(lines[0], { mallow: 'zuzu' });
     if (S.left) return;
     await say(lines[1], { mallow: 'zuzu' });
     if (S.left) return;
     // the Hushfold keeps support close after something heavy (it reads params.safety): after the gentle path too, so
-    // "Support is one tap away" holds there (its Support pill, the attentive face, no playful opening)
-    const level = S.level !== 'none' ? S.level : S.grief ? 'concern' : 'none';
-    app.go('home', level !== 'none' ? { safety: { level } } : {});
+    // "Support is one tap away" holds there (its Support pill, the attentive face, no playful opening); never after "Just be
+    // with it" alone (its next Tell is asked the play question, as any)
+    app.go('home', bye.params);
   }
 
   // ------------------------------------------------------- the view --
@@ -1390,6 +1465,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       clearTimeout(resizeT);
       clearTimeout(heardT);
       clearTimeout(draftT);
+      stopClock?.();
       removeEventListener('resize', onResize);
       visualViewport?.removeEventListener('resize', onResize);
       offPrefs?.();
