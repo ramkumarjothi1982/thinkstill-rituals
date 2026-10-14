@@ -215,7 +215,8 @@ test('subtitle scrim: a bright spot behind it (the daytime sun) is found and dee
   assert.equal(hotSpot(img((i, j) => (j < 5 ? cloud : sky))), null, 'a cloud band across the box is not a spot');
   assert.equal(hotSpot(null), null);
   const css = read('src/ui/hushfold.css');
-  assert.match(css, /radial-gradient\(circle at var\(--hf-hot-x, 50%\) var\(--hf-hot-y, 50%\)/);
+  // (the follow-up: its own layer, a little larger than the scrim's pill, placed in px from the line's box)
+  assert.match(css, /\.hf-sub::after \{[^}]*radial-gradient\(circle at calc\(var\(--hf-hot-cx, 50%\) \+ 36px\) calc\(var\(--hf-hot-cy, 50%\) \+ 26px\)/);
 });
 
 test('the garden installation never lies on the person\'s words: the ripple beside them, the flight round them, each tag cut out', () => {

@@ -219,7 +219,18 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   let relayoutT = 0;          // while a line is up, keep it clear of things that move (a hop, a drifting thought)
   let reserved = 0;           // the band height the scene was asked to keep free (onBand)
   const release = () => { if (reserved) { reserved = 0; onBand?.(0); } };
-  const watch = (on) => { clearInterval(relayoutT); relayoutT = on ? setInterval(() => { if (cur?.lineEl || !chipsEl.hidden) layout(); }, 600) : 0; };
+  // (and, in a line's first seconds, what is behind it is looked at again: a line said while the realm is still fading in
+  // — just after the Hushfold opens — or that has moved, would keep a scrim sampled from a dimmer or other backdrop: the
+  // daytime sun left muddy under it. Until two looks in a row agree, four at most)
+  const watch = (on) => { clearInterval(relayoutT); relayoutT = on ? setInterval(() => { if (cur?.lineEl || !chipsEl.hidden) layout(); rescrim(); }, 600) : 0; };
+  function rescrim() {
+    const c = cur, n = c?.lineEl;
+    if (!n?.isConnected || c.phase === 'out' || (c.scrimLooks || 0) >= 4 || c.scrimStill >= 2) return;
+    c.scrimLooks = (c.scrimLooks || 0) + 1;
+    const key = sampleScrim(n);
+    c.scrimStill = key === c.scrimKey ? (c.scrimStill || 0) + 1 : 0;
+    c.scrimKey = key;
+  }
   const offPrefs = prefs?.onChange?.((k, v) => { if (k === 'subtitleSpeed') { speed = normaliseSpeed(v); renderSpeed(); } });
   // a line that changes size while it shows (its type face arriving: a world's title in story type, placed on one line
   // in the fallback face, wraps to two once the face is there) is placed again at once — never left grown over what it
@@ -283,7 +294,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     el.style.transform = `translateY(${y}px)`;
   }
 
-  /** Deepen the scrim over a bright backdrop (once per line; cheap: one 48×12 sample). */
+  /** Deepen the scrim over a bright backdrop (once per line, and again in its first seconds: rescrim; cheap: 48×12 samples). */
   function adaptScrim(node) {
     if (!node) return;
     // shrink-wrap the block to its longest line, so the scrim hugs the words (not the screen's width)
@@ -296,13 +307,20 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       for (const r of rng.getClientRects()) w = Math.max(w, r.width);
       if (w > 0) node.style.width = `${Math.ceil(w + 4)}px`;
     } catch { /* keep the natural width */ }
+    const key = sampleScrim(node);
+    if (cur && cur.lineEl === node) { cur.scrimKey = key; cur.scrimStill = 0; }
+  }
+  /** What is behind the line now → its scrim (and the deepening over a bright spot); a key of what was found. */
+  function sampleScrim(node) {
     let a = brightHint() ? 0.8 : SCRIM_MIN;
     const data = backdrop ? sampleBackdrop(node.getBoundingClientRect(), backdrop()) : null;
     if (data) a = scrimFor(brightPixel(data));
     node.style.setProperty('--hf-scrim', String(a));
     el.classList.toggle('bright', a > 0.62);
     // a bright spot behind the scrim's whole box (its feathered rim reaches past the words): the scrim is deepened over it
-    // (--hf-hot-*), so the daytime sun never shows through the dark as a muddy brown blob
+    // (--hf-hot-*), so the daytime sun never shows through the dark as a muddy brown blob — wherever it lies under the
+    // scrim, its rounded ends and rim included: the deepening is its own layer (.hf-sub::after), not cut to the scrim's
+    // pill, placed in px from the line's own box (--hf-hot-cx / -cy)
     let hs = null;
     try {
       const r = node.getBoundingClientRect();
@@ -312,11 +330,15 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       if (hs) {
         node.style.setProperty('--hf-hot-x', `${(hs.x * 100).toFixed(1)}%`);
         node.style.setProperty('--hf-hot-y', `${(hs.y * 100).toFixed(1)}%`);
+        node.style.setProperty('--hf-hot-cx', `${Math.round(hs.x * box.width - 24)}px`);
+        node.style.setProperty('--hf-hot-cy', `${Math.round(hs.y * box.height - 14)}px`);
         node.style.setProperty('--hf-hot-r', `${Math.round(hs.r * box.width)}px`);
         node.style.setProperty('--hf-hot-a', String(hs.a));
       }
     } catch { hs = null; }
     if (!hs) node.style.setProperty('--hf-hot-a', '0');
+    // (what was found, coarsely: two looks in a row that agree end the looking)
+    return `${a}|${hs ? `${Math.round(hs.x * 20)},${Math.round(hs.y * 10)},${Math.round(hs.r * 40)}` : '-'}`;
   }
 
   function lineNode(line) {

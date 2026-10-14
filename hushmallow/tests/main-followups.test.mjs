@@ -149,3 +149,30 @@ test('after Finish the closing line waits for the thought to come to rest with i
   assert.match(cb, /later\(\(\) => holdOffer\(false\), 8000\);/);
   assert.ok(cb.indexOf('endWorldMode();') < cb.indexOf('const goodbye'), 'after the world has gone');
 });
+
+// ------------------------------------------------------------------- 5. the scrim over a bright spot, edges included --
+test('the subtitle scrim deepens over a bright spot anywhere under it, its rounded ends and rim included, and looks again in a line\'s first seconds', async () => {
+  const { hotSpot } = await import('../src/hushfold/subtitles.js');
+  const cols = 48, rows = 12;
+  const img = (px) => { const d = new Uint8ClampedArray(cols * rows * 4); for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const [r, g, b] = px(i, j); const k = (j * cols + i) * 4; d[k] = r; d[k + 1] = g; d[k + 2] = b; d[k + 3] = 255; } return d; };
+  const sky = [110, 175, 230], sun = [255, 250, 225];
+  // the sun at the box's right end, its top right corner, half outside its right edge: found, where it is
+  for (const [cx, cy] of [[44, 6], [46, 2], [48.5, 5], [1, 6]]) {
+    const s = hotSpot(img((i, j) => (Math.hypot(i + 0.5 - cx, j + 0.5 - cy) < 3.2 ? sun : sky)));
+    assert.ok(s, `found at ${cx},${cy}`);
+    assert.ok(Math.abs(s.x - Math.min(47.5, Math.max(0.5, cx)) / cols) < 0.06, `${cx},${cy} → ${JSON.stringify(s)}`);
+  }
+  const css = read('src/ui/hushfold.css');
+  // the scrim itself: the pill; the deepening: its own layer, not cut to the pill's curve, reaching its feathered rim
+  assert.match(css, /\.hf-sub::before \{[^}]*inset: -14px -24px -16px; border-radius: 999px;[^}]*background: rgba\(9, 6, 28, var\(--hf-scrim, 0\.5\)\);/);
+  assert.match(css, /\.hf-sub::after \{[^}]*inset: -26px -36px -28px;[^}]*rgba\(9, 6, 28, var\(--hf-hot-a, 0\)\) var\(--hf-hot-r, 0px\)/);
+  // (found a moment late, it deepens in)
+  assert.match(css, /@property --hf-hot-a \{ syntax: '<number>'; inherits: true; initial-value: 0; \}/);
+  const subs = read('src/hushfold/subtitles.js');
+  // placed in px from the line's own box (the sampled box is the scrim's: 24 px beside, 14 px above the line)
+  assert.match(subs, /node\.style\.setProperty\('--hf-hot-cx', `\$\{Math\.round\(hs\.x \* box\.width - 24\)\}px`\);/);
+  assert.match(subs, /node\.style\.setProperty\('--hf-hot-cy', `\$\{Math\.round\(hs\.y \* box\.height - 14\)\}px`\);/);
+  // looked at again while the line shows (a line said as the realm still fades in): until two looks agree, four at most
+  assert.match(subs, /setInterval\(\(\) => \{ if \(cur\?\.lineEl \|\| !chipsEl\.hidden\) layout\(\); rescrim\(\); \}, 600\)/);
+  assert.match(subs, /if \(!n\?\.isConnected \|\| c\.phase === 'out' \|\| \(c\.scrimLooks \|\| 0\) >= 4 \|\| c\.scrimStill >= 2\) return;/);
+});
