@@ -1,9 +1,14 @@
-// Quality profiles on the engine (WP-02, heavy: ≈ 3 min).
+// Quality profiles on the engine (WP-02, heavy: ≈ 9 min).
 //
 // The exact profile's bit-identity with the goldens is tests/golden/engine-v2-frames
 // (the default profile is exact). Here:
 //   - G-PIXEL, final against exact: PSNR >= 45 dB on all 16 goldens, face-box SSIM
 //     >= 0.995 on average and >= 0.98 on every frame (PHASE2-PLAN QA gates);
+//   - the feature matrix: every feature switched off on its own (final without it)
+//     and on on its own (exact plus it) passes its step gate, face floor included,
+//     on three golden frames (the rest pose, a bubble over the face, the face close
+//     up). A combination that drops a layer, like the faceless frame that fgAccum
+//     without faceCache once rendered, fails here;
 //   - the final profile's frames do not depend on render history: frames rendered
 //     out of order in one page equal the same frames rendered cold (what lets the
 //     farm start a segment anywhere without replaying the face);
@@ -20,8 +25,8 @@ import { GOLDEN_V2 } from '../../render/lib/paths.mjs';
 import { withHeavyLock } from '../../render/lib/heavy-lock.mjs';
 import { decodePNG, flipRows } from '../../render/lib/png.mjs';
 import { EngineSession } from '../../render/worker.mjs';
-import { gate } from '../../tools/perf/gate.mjs';
-import { psnr } from '../../tools/perf/metrics.mjs';
+import { gate, steps } from '../../tools/perf/gate.mjs';
+import { psnr, fmtDb } from '../../tools/perf/metrics.mjs';
 
 const P = { direction: 'my-brain-at-2am-v2', width: 1080, height: 1920, scale: 1, seed: 20261013, profile: 'final' };
 
@@ -30,6 +35,17 @@ test('G-PIXEL final vs exact: PSNR >= 45 dB on all 16 goldens, face-box SSIM mea
   const s = r.summary;
   t.diagnostic(`min PSNR ${s.minPsnr.toFixed(2)} dB (mean ${s.meanPsnr.toFixed(2)}), min face PSNR ${s.minFacePsnr.toFixed(2)} dB, face SSIM mean ${s.meanFaceSsim.toFixed(5)} min ${s.minFaceSsim.toFixed(5)}`);
   for (const c of r.checks) assert.ok(c.pass, `${c.name}: ${c.value}`);
+});
+
+test('feature matrix: each feature switched off alone (final) and on alone (exact) passes its step gate', { timeout: 3600000 }, async (t) => {
+  const r = await steps({ steps: 'both', frames: '0,96,135', label: 'test-feature-matrix', log: () => {} });
+  assert.equal(r.steps.length, 18);
+  for (const x of r.steps) {
+    t.diagnostic(`${x.feature} ${x.mode}: min PSNR ${fmtDb(x.summary.minPsnr)} dB, min face PSNR ${fmtDb(x.summary.minFacePsnr)} dB, identical ${x.summary.identical}/3`);
+  }
+  for (const x of r.steps) {
+    assert.ok(x.pass, `${x.feature} ${x.mode} (${x.b} against ${x.a}): ${x.checks.filter((c) => !c.pass).map((c) => `${c.name}: ${c.value}`).join('; ')}`);
+  }
 });
 
 test('final profile: frames do not depend on render order (out of order in one page = cold)', { timeout: 1800000 }, async () => {

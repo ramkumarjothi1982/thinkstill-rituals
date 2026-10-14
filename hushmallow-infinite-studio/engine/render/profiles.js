@@ -35,7 +35,7 @@ export const FEATURES = Object.freeze({
 });
 
 /** Features that read another feature's output: dependent → base. */
-const NEEDS = Object.freeze({
+export const NEEDS = Object.freeze({
   faceFastGlow: 'faceCache',      // the fast face is drawn through the cache
   worldPasses: 'worldFast',       // a variant of the fast world's passes
   tightPasses: 'fgAccum',         // scissors of the foreground-accumulation pipeline
@@ -110,6 +110,13 @@ export function resolveProfile(name = DEFAULT_PROFILE, { features = null } = {})
     feat[dep] = false;
   }
   return Object.freeze({ ...base, features: Object.freeze(feat), overrides: features || null });
+}
+
+/** The features `name` builds on, nearest first (NEEDS, transitively). */
+export function basesOf(name) {
+  const out = [];
+  for (let b = NEEDS[name]; b; b = NEEDS[b]) out.push(b);
+  return out;
 }
 
 /** A short stable label of the active features ('none', 'all' or the list), for logs. */

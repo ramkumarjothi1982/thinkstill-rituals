@@ -1,13 +1,15 @@
-// The optimised frame pipeline (every profile but exact). Same frame model as
-// the approved pipeline (frame-exact.js): the world once per frame from the
-// centre state, N sub-frames of the moving things accumulated in HDR, bloom,
-// post. Each optimisation of WP-02's performance pass is a profile feature
-// (render/profiles.js), switched here:
+// The optimised frame pipeline (every profile with a frame feature, see
+// renderer/index.js framePlan). Same frame model as the approved pipeline
+// (frame-exact.js): the world once per frame from the centre state, N
+// sub-frames of the moving things accumulated in HDR, bloom, post. Each
+// optimisation of WP-02's performance pass is a profile feature
+// (render/profiles.js), switched here, and each can be off on its own:
 //
 //   faceCache  the face is drawn once per frame from quantised parameters, and
 //              per sub-frame only while it moves (passes/face.js). The draw is
 //              issued after the world pass, so the CPU canvas work overlaps the
-//              GPU's world rendering.
+//              GPU's world rendering. Without it the face follows the approved
+//              rule, redrawn for every sub-frame (frame-exact.js drawSubFace).
 //   fgAccum    premultiplied foreground accumulation (P5). The world is constant
 //              within a frame, so instead of copying it under every sub-frame
 //              (full-res copy + full-res accumulate per sub-frame), each
@@ -24,6 +26,8 @@
 //              mirror image's blur are computed only where they are read; a
 //              single-sample frame composites FG directly instead of through
 //              the accumulation target.
+//   meshNormalTex (P7) rest normals baked and the mesh trimmed before the first
+//              frame (renderer/index.js prepareMeshPass).
 
 import { assetLog } from '../runtime/asset-log.js';
 import { setUniforms } from '../gl.js';
@@ -32,7 +36,7 @@ import { drawMallow } from './passes/mesh.js';
 import { drawGlass } from './passes/glass.js';
 import { drawParticles } from './passes/particles.js';
 import { bloom, finish } from './passes/post.js';
-import { renderSubExact } from './frame-exact.js';
+import { renderSubExact, drawSubFace } from './frame-exact.js';
 
 // ------------------------------------------------------------ boxes (P5) --
 // Screen boxes are [x0, y0, x1, y1] in output px, top-down, half-open; null = empty.
@@ -215,10 +219,20 @@ function renderSubFg(r, S, worldTarget) {
 
 // ------------------------------------------------------------------ frame --
 
+/**
+ * The face of sub-frame k. With the face cache: the face pass's per-sub-frame
+ * draw when it planned one (a moving face), else nothing (drawn once per frame).
+ * Without it: the approved rule, the direction's own draw for every sub-frame.
+ */
+function subFace(r, face, S, k) {
+  if (!r.facePass) drawSubFace(r, S);
+  else if (face?.perSub) r.facePass.draw(face.face, face.perSub[k]);
+}
+
 export function renderFrameFast(r, subStates, center, overlayCanvas) {
   const gl = r.gl, T = r.t, m = r.meter, f = r.profile.features;
   const face = r.facePass ? r.facePass.plan(subStates, center) : null;
-  if (f.meshNormalTex) r.prepareMeshPass(center);
+  if (r.plan.bakeMesh) r.prepareMeshPass(center);
   const wgt = 1 / subStates.length;
   if (!f.fgAccum) {
     m?.begin('world');
@@ -229,7 +243,7 @@ export function renderFrameFast(r, subStates, center, overlayCanvas) {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     subStates.forEach((S, k) => {
-      if (face?.perSub) r.facePass.draw(face.face, face.perSub[k]);
+      subFace(r, face, S, k);
       renderSubExact(r, S);
       m?.begin('accum');
       T.accum.bind();
@@ -250,7 +264,7 @@ export function renderFrameFast(r, subStates, center, overlayCanvas) {
     }
     let frameBox = null;
     subStates.forEach((S, k) => {
-      if (face?.perSub) r.facePass.draw(face.face, face.perSub[k]);
+      subFace(r, face, S, k);
       const box = renderSubFg(r, S, T.accum);
       if (box && !single) {
         m?.begin('accum');

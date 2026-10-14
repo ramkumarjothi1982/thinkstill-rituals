@@ -2,6 +2,7 @@
 //
 //   hm bench gate --b final                                  final against the exact goldens
 //   hm bench gate --a final --a-features -worldFast --b final  one step: with vs without a feature
+//   hm bench gate --steps both                               every feature's step gate, both ways
 //
 // A and B are each 'golden' (the 16 lossless exact goldens in WORK/golden/v2,
 // i.e. the exact profile without re-rendering it), or a profile with optional
@@ -14,6 +15,15 @@
 // and checks the thresholds given (PHASE2-PLAN perf plan: P3 face-box PSNR >= 42 dB,
 // P4 >= 50, P5 >= 48, P6 >= 45, P7 >= 50; final vs exact: PSNR >= 45 on all 16,
 // face-box SSIM mean >= 0.995 and min >= 0.98).
+//
+// --steps runs the step gate of every feature (STEP_GATES: the perf plan's
+// tolerance, plus the face floor) in one session, in the two ways a feature can
+// be switched on its own:
+//   off  final without the feature against final (what bisecting a regression does)
+//   on   the approved pipeline plus the feature (and the features it builds on)
+//        against the approved pipeline plus only those bases (the goldens when
+//        it has none)
+// A combination that loses a layer (the face, the reflection) fails its gate.
 //
 // A rendered profile renders the 16 times in one page, in golden order. That is
 // valid for every profile with the faceCache feature, whose frames do not depend
@@ -28,7 +38,7 @@ import { WORK, GOLDEN_V2, assertWritable } from '../../render/lib/paths.mjs';
 import { withHeavyLock } from '../../render/lib/heavy-lock.mjs';
 import { decodePNG, encodePNG, flipRows } from '../../render/lib/png.mjs';
 import { EngineSession } from '../../render/worker.mjs';
-import { resolveProfile, featureLabel } from '../../engine/render/profiles.js';
+import { FEATURES, resolveProfile, featureLabel, basesOf } from '../../engine/render/profiles.js';
 import { psnr, ssim, diffSummary, clampBox, fmtDb } from './metrics.mjs';
 
 export const GATE_DIR = path.join(WORK, 'gate');
@@ -36,6 +46,53 @@ const W = 1080, H = 1920;
 const P0 = { direction: 'my-brain-at-2am-v2', width: W, height: H, scale: 1, seed: 20261013 };
 
 const manifest = () => JSON.parse(fs.readFileSync(path.join(GOLDEN_V2, 'manifest.json'), 'utf8'));
+
+/**
+ * The G-PIXEL tolerance of every feature's own step (PHASE2-PLAN perf plan; the
+ * follow-up steps P4b and P5b keep the tolerance of the step they extend). Every
+ * feature must have one (tests/unit/perf-tools.test.mjs), so each can be gated alone.
+ */
+export const STEP_GATES = Object.freeze({
+  overlaySkip: Object.freeze({ identical: true }),      // P2: bit-identical
+  faceCache: Object.freeze({ facePsnr: 42 }),           // P3: face-box PSNR >= 42 dB (+ owner A/B)
+  faceFastGlow: Object.freeze({ facePsnr: 42 }),        // P3b: as P3
+  worldFast: Object.freeze({ psnr: 50 }),               // P4
+  fgAccum: Object.freeze({ psnr: 48 }),                 // P5
+  adaptiveFloor: Object.freeze({ psnr: 45 }),           // P6
+  meshNormalTex: Object.freeze({ psnr: 50 }),           // P7
+  worldPasses: Object.freeze({ psnr: 50 }),             // P4b: P4's
+  tightPasses: Object.freeze({ psnr: 48 }),             // P5b: P5's
+});
+/** Every step gate also needs the face where it belongs: P3's face-box tolerance, the loosest face gate of the plan. */
+export const FACE_FLOOR_DB = 42;
+
+/**
+ * The two sides and thresholds of `feature`'s step gate, switched `mode` = 'off'
+ * (final without it vs final) or 'on' (exact + its bases vs exact + its bases + it).
+ * → { feature, mode, a, aFeatures, b, bFeatures, thresholds }
+ */
+export function stepGate(feature, mode) {
+  if (!Object.hasOwn(STEP_GATES, feature)) throw new Error(`no step gate for feature "${feature}"`);
+  const g = STEP_GATES[feature];
+  const thresholds = { ...g, facePsnr: Math.max(g.facePsnr ?? FACE_FLOOR_DB, FACE_FLOOR_DB) };
+  if (mode === 'off') return { feature, mode, a: 'final', aFeatures: `-${feature}`, b: 'final', bFeatures: null, thresholds };
+  if (mode !== 'on') throw new Error(`step mode must be off or on, got ${mode}`);
+  const bases = basesOf(feature).reverse().map((f) => `+${f}`);
+  return {
+    feature, mode,
+    a: bases.length ? 'exact' : 'golden', aFeatures: bases.length ? bases.join(',') : null,
+    b: 'exact', bFeatures: [...bases, `+${feature}`].join(','), thresholds,
+  };
+}
+
+/** Golden frames to measure: all 16 (spec null or 'all'), or the listed frame indices ("33,135"). */
+export function pickFrames(frames, spec) {
+  if (spec == null || spec === 'all') return frames;
+  const want = String(spec).split(',').map((x) => Number(x.trim()));
+  const missing = want.filter((i) => !frames.some((f) => f.i === i));
+  if (missing.length) throw new Error(`--frames: ${missing.join(', ')} not among the golden frame indices (${frames.map((f) => f.i).join(', ')})`);
+  return frames.filter((f) => want.includes(f.i));
+}
 
 /** A side: 'golden' or { profile, features }. → { label, cold, params } */
 function side(name, features) {
@@ -48,6 +105,8 @@ function side(name, features) {
     cold: !profile.features.faceCache,
   };
 }
+
+const goldenImages = (m, frames) => frames.map((f) => decodePNG(fs.readFileSync(path.join(m.framesDir, f.file))).data);
 
 /** Render the golden indices with one side. → [RGBA top-down Buffer] */
 async function renderSide(session, s, frames, log) {
@@ -81,67 +140,125 @@ async function faceBoxes(session, frames) {
   }
 }
 
+const gateLabel = (a, aF, b, bF) => `${a}${aF ? `[${aF}]` : ''}-vs-${b}${bF ? `[${bF}]` : ''}`.replace(/[^a-z0-9+\-[\]]+/gi, '_');
+const toJson = (x) => JSON.stringify(x, (k, v) => (typeof v === 'number' && !Number.isFinite(v) ? String(v) : v), 1);
+
 /**
- * Run the gate. o: { a, aFeatures, b, bFeatures, label, out, savePng, thresholds:
- * { psnr, facePsnr, faceSsimMean, faceSsimMin }, log } → result record
+ * Run the gate. o: { a, aFeatures, b, bFeatures, frames, label, out, savePng, thresholds:
+ * { psnr, facePsnr, faceSsimMean, faceSsimMin, identical }, log } → result record
  */
 export async function gate(o = {}) {
   const log = o.log || console.log;
   const m = manifest();
-  const frames = m.frames;
+  const frames = pickFrames(m.frames, o.frames);
   const A = side(o.a || 'golden', o.aFeatures), B = side(o.b || 'final', o.bFeatures);
-  const label = o.label || `${(o.a || 'golden')}${o.aFeatures ? `[${o.aFeatures}]` : ''}-vs-${o.b || 'final'}${o.bFeatures ? `[${o.bFeatures}]` : ''}`.replace(/[^a-z0-9+\-[\]]+/gi, '_');
+  const label = o.label || gateLabel(o.a || 'golden', o.aFeatures, o.b || 'final', o.bFeatures);
   const outDir = assertWritable(o.out || path.join(GATE_DIR, label));
   fs.mkdirSync(outDir, { recursive: true });
-  const t = o.thresholds || {};
   return withHeavyLock({ mode: 'shared', label: `gate ${label}` }, async () => {
     const session = await EngineSession.start({ log: (x) => log(`[gate] ${x}`) });
     let imgA, imgB, boxes;
     try {
       boxes = await faceBoxes(session, frames);
-      imgA = A.golden ? frames.map((f) => decodePNG(fs.readFileSync(path.join(m.framesDir, f.file))).data) : await renderSide(session, A, frames, log);
-      imgB = B.golden ? frames.map((f) => decodePNG(fs.readFileSync(path.join(m.framesDir, f.file))).data) : await renderSide(session, B, frames, log);
+      imgA = A.golden ? goldenImages(m, frames) : await renderSide(session, A, frames, log);
+      imgB = B.golden ? goldenImages(m, frames) : await renderSide(session, B, frames, log);
     } finally {
       await session.close();
     }
-    const rows = frames.map((f, k) => {
-      const box = clampBox(boxes[k], W, H);
-      const a = imgA[k], b = imgB[k];
-      const row = {
-        t: f.t, i: f.i, psnr: psnr(a, b, W, H), facePsnr: psnr(a, b, W, H, box), faceSsim: ssim(a, b, W, H, box),
-        box, ...diffSummary(a, b),
-      };
-      if (o.savePng) {
-        for (const [tag, img] of [['a', a], ['b', b]]) {
-          const file = path.join(outDir, `${tag}-${f.file}`);
-          if ((tag === 'a' && !A.golden) || tag === 'b') fs.writeFileSync(file, encodePNG({ width: W, height: H, data: img }));
-        }
+    return compare({ label, A, B, frames, boxes, imgA, imgB, thresholds: o.thresholds, outDir, savePng: o.savePng });
+  });
+}
+
+/** Measure B against A on every frame, check the thresholds and write gate.json. → result record */
+function compare({ label, A, B, frames, boxes, imgA, imgB, thresholds = {}, outDir, savePng = false }) {
+  const t = thresholds;
+  fs.mkdirSync(outDir, { recursive: true });
+  const rows = frames.map((f, k) => {
+    const box = clampBox(boxes[k], W, H);
+    const a = imgA[k], b = imgB[k];
+    const row = {
+      t: f.t, i: f.i, psnr: psnr(a, b, W, H), facePsnr: psnr(a, b, W, H, box), faceSsim: ssim(a, b, W, H, box),
+      box, ...diffSummary(a, b),
+    };
+    if (savePng) {
+      for (const [tag, img] of [['a', a], ['b', b]]) {
+        const file = path.join(outDir, `${tag}-${f.file}`);
+        if ((tag === 'a' && !A.golden) || tag === 'b') fs.writeFileSync(file, encodePNG({ width: W, height: H, data: img }));
       }
-      return row;
-    });
-    const fin = (xs) => xs.filter(Number.isFinite);
-    const minOf = (xs) => (fin(xs).length ? Math.min(...fin(xs)) : Infinity);
-    const summary = {
-      minPsnr: minOf(rows.map((r) => r.psnr)),
-      meanPsnr: fin(rows.map((r) => r.psnr)).length ? fin(rows.map((r) => r.psnr)).reduce((s, x) => s + x, 0) / fin(rows.map((r) => r.psnr)).length : Infinity,
-      minFacePsnr: minOf(rows.map((r) => r.facePsnr)),
-      meanFaceSsim: rows.reduce((s, r) => s + r.faceSsim, 0) / rows.length,
-      minFaceSsim: Math.min(...rows.map((r) => r.faceSsim)),
-      identical: rows.filter((r) => r.differingPixels === 0).length,
-      maxAbs: Math.max(...rows.map((r) => r.maxAbs)),
+    }
+    return row;
+  });
+  const fin = (xs) => xs.filter(Number.isFinite);
+  const minOf = (xs) => (fin(xs).length ? Math.min(...fin(xs)) : Infinity);
+  const summary = {
+    minPsnr: minOf(rows.map((r) => r.psnr)),
+    meanPsnr: fin(rows.map((r) => r.psnr)).length ? fin(rows.map((r) => r.psnr)).reduce((s, x) => s + x, 0) / fin(rows.map((r) => r.psnr)).length : Infinity,
+    minFacePsnr: minOf(rows.map((r) => r.facePsnr)),
+    meanFaceSsim: rows.reduce((s, r) => s + r.faceSsim, 0) / rows.length,
+    minFaceSsim: Math.min(...rows.map((r) => r.faceSsim)),
+    identical: rows.filter((r) => r.differingPixels === 0).length,
+    maxAbs: Math.max(...rows.map((r) => r.maxAbs)),
+  };
+  const checks = [];
+  if (t.psnr != null) checks.push({ name: `PSNR >= ${t.psnr} dB on every frame`, pass: summary.minPsnr >= t.psnr, value: summary.minPsnr });
+  if (t.facePsnr != null) checks.push({ name: `face-box PSNR >= ${t.facePsnr} dB on every frame`, pass: summary.minFacePsnr >= t.facePsnr, value: summary.minFacePsnr });
+  if (t.faceSsimMean != null) checks.push({ name: `face-box SSIM mean >= ${t.faceSsimMean}`, pass: summary.meanFaceSsim >= t.faceSsimMean, value: summary.meanFaceSsim });
+  if (t.faceSsimMin != null) checks.push({ name: `face-box SSIM min >= ${t.faceSsimMin}`, pass: summary.minFaceSsim >= t.faceSsimMin, value: summary.minFaceSsim });
+  if (t.identical) checks.push({ name: 'bit-identical on every frame', pass: summary.identical === rows.length, value: `${summary.identical}/${rows.length}` });
+  const result = {
+    schema: 'hm-gate/1', label, at: new Date().toISOString(), a: A.label, b: B.label, frames: rows.length,
+    summary, checks, pass: checks.every((c) => c.pass), rows, outDir,
+  };
+  fs.writeFileSync(path.join(outDir, 'gate.json'), toJson(result) + '\n');
+  return result;
+}
+
+/**
+ * Run the step gate of every feature (or of the comma list o.only), switched
+ * off and/or on (o.steps: 'off' | 'on' | 'both'), in one engine session. Each
+ * side is rendered once and kept only while a later step still needs it.
+ * → { schema, label, frames, steps: [{ feature, mode, a, b, thresholds, summary, checks, pass }], pass, outDir }
+ */
+export async function steps(o = {}) {
+  const log = o.log || console.log;
+  const modes = !o.steps || o.steps === 'both' ? ['off', 'on'] : [o.steps];
+  const names = o.only ? String(o.only).split(',').map((x) => x.trim()).filter(Boolean) : Object.keys(FEATURES);
+  for (const n of names) if (!Object.hasOwn(FEATURES, n)) throw new Error(`unknown feature "${n}"`);
+  const plan = modes.flatMap((mode) => names.map((f) => stepGate(f, mode)));
+  const m = manifest();
+  const frames = pickFrames(m.frames, o.frames);
+  const label = o.label || `steps-${modes.join('+')}`;
+  const outDir = assertWritable(o.out || path.join(GATE_DIR, label));
+  fs.mkdirSync(outDir, { recursive: true });
+  const sides = plan.map((g) => [side(g.a, g.aFeatures), side(g.b, g.bFeatures)]);
+  const uses = new Map();
+  for (const s of sides.flat()) uses.set(s.label, (uses.get(s.label) || 0) + 1);
+  return withHeavyLock({ mode: 'shared', label: `gate ${label}` }, async () => {
+    const session = await EngineSession.start({ log: (x) => log(`[gate] ${x}`) });
+    const cache = new Map(), results = [];
+    const images = async (s) => {
+      if (!cache.has(s.label)) cache.set(s.label, s.golden ? goldenImages(m, frames) : await renderSide(session, s, frames, log));
+      const img = cache.get(s.label);
+      uses.set(s.label, uses.get(s.label) - 1);
+      if (uses.get(s.label) === 0) cache.delete(s.label);
+      return img;
     };
-    const checks = [];
-    if (t.psnr != null) checks.push({ name: `PSNR >= ${t.psnr} dB on every frame`, pass: summary.minPsnr >= t.psnr, value: summary.minPsnr });
-    if (t.facePsnr != null) checks.push({ name: `face-box PSNR >= ${t.facePsnr} dB on every frame`, pass: summary.minFacePsnr >= t.facePsnr, value: summary.minFacePsnr });
-    if (t.faceSsimMean != null) checks.push({ name: `face-box SSIM mean >= ${t.faceSsimMean}`, pass: summary.meanFaceSsim >= t.faceSsimMean, value: summary.meanFaceSsim });
-    if (t.faceSsimMin != null) checks.push({ name: `face-box SSIM min >= ${t.faceSsimMin}`, pass: summary.minFaceSsim >= t.faceSsimMin, value: summary.minFaceSsim });
-    const result = {
-      schema: 'hm-gate/1', label, at: new Date().toISOString(), a: A.label, b: B.label, frames: rows.length,
-      summary, checks, pass: checks.every((c) => c.pass), rows, outDir,
-    };
-    const json = JSON.stringify(result, (k, v) => (typeof v === 'number' && !Number.isFinite(v) ? String(v) : v), 1);
-    fs.writeFileSync(path.join(outDir, 'gate.json'), json + '\n');
-    return result;
+    try {
+      const boxes = await faceBoxes(session, frames);
+      for (const [k, g] of plan.entries()) {
+        const [A, B] = sides[k];
+        const imgA = await images(A), imgB = await images(B);
+        const r = compare({ label: `${g.feature}-${g.mode}`, A, B, frames, boxes, imgA, imgB, thresholds: g.thresholds, outDir: path.join(outDir, `${g.feature}-${g.mode}`) });
+        const s = r.summary;
+        log(`[gate] ${r.pass ? 'PASS' : 'FAIL'} ${g.feature} ${g.mode}: min PSNR ${fmtDb(s.minPsnr)} dB, min face PSNR ${fmtDb(s.minFacePsnr)} dB, face SSIM min ${s.minFaceSsim.toFixed(5)}, identical ${s.identical}/${r.frames}`);
+        results.push({ feature: g.feature, mode: g.mode, a: r.a, b: r.b, thresholds: g.thresholds, summary: s, checks: r.checks, pass: r.pass });
+      }
+    } finally {
+      await session.close();
+    }
+    const out = { schema: 'hm-gate-steps/1', label, at: new Date().toISOString(), frames: frames.map((f) => f.i), steps: results, pass: results.every((r) => r.pass), outDir };
+    fs.writeFileSync(path.join(outDir, 'steps.json'), toJson(out) + '\n');
+    return out;
   });
 }
 
@@ -156,19 +273,36 @@ export function formatGate(r) {
   return lines.join('\n');
 }
 
+export function formatSteps(r) {
+  const n = r.frames.length;
+  const lines = [`gate ${r.label}: every feature's step gate on ${n} golden frames`, '  feature        way   min PSNR  min face PSNR  face SSIM min  identical  gate'];
+  for (const x of r.steps) {
+    const th = Object.entries(x.thresholds).map(([k, v]) => (k === 'identical' ? 'identical' : `${k} >= ${v}`)).join(', ');
+    lines.push(`  ${x.feature.padEnd(14)} ${x.mode.padEnd(4)} ${fmtDb(x.summary.minPsnr).padStart(9)}  ${fmtDb(x.summary.minFacePsnr).padStart(13)}  ${x.summary.minFaceSsim.toFixed(5).padStart(13)}  ${`${x.summary.identical}/${n}`.padStart(9)}  ${x.pass ? 'PASS' : 'FAIL'} (${th})`);
+  }
+  lines.push(`  ${r.pass ? 'PASS' : 'FAIL'}: ${r.steps.filter((x) => x.pass).length}/${r.steps.length} step gates`);
+  return lines.join('\n');
+}
+
 export function parseGateArgs(argv) {
   const o = { thresholds: {} };
-  const map = { a: 'a', b: 'b', 'a-features': 'aFeatures', 'b-features': 'bFeatures', label: 'label', out: 'out' };
+  const map = { a: 'a', b: 'b', 'a-features': 'aFeatures', 'b-features': 'bFeatures', label: 'label', out: 'out', frames: 'frames', steps: 'steps', only: 'only' };
   const th = { 'min-psnr': 'psnr', 'min-face-psnr': 'facePsnr', 'min-face-ssim-mean': 'faceSsimMean', 'min-face-ssim-min': 'faceSsimMin' };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i].replace(/^--/, '');
     if (k === 'save-png') { o.savePng = true; continue; }
+    if (k === 'identical') { o.thresholds.identical = true; continue; }
     if (!(k in map) && !(k in th)) throw new Error(`unknown option ${argv[i]}`);
     if (i + 1 >= argv.length) throw new Error(`${argv[i]} needs a value`);
     const v = argv[++i];
     if (k in map) o[map[k]] = v;
     else { o.thresholds[th[k]] = Number(v); if (!Number.isFinite(o.thresholds[th[k]])) throw new Error(`${argv[i - 1]} needs a number`); }
   }
+  if (o.steps != null) {
+    if (!['off', 'on', 'both'].includes(o.steps)) throw new Error(`--steps must be off, on or both, got ${o.steps}`);
+    const clash = ['a', 'b', 'aFeatures', 'bFeatures', 'savePng'].filter((x) => o[x] != null);
+    if (clash.length || Object.keys(o.thresholds).length) throw new Error('--steps uses each feature\'s own sides and thresholds (STEP_GATES): drop --a, --b, --*-features, thresholds and --save-png');
+  } else if (o.only != null) throw new Error('--only needs --steps');
   return o;
 }
 
@@ -176,8 +310,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const { confine } = await import('../../render/lib/write-jail.mjs');
   await confine();
   try {
-    const r = await gate(parseGateArgs(process.argv.slice(2)));
-    console.log(formatGate(r));
+    const o = parseGateArgs(process.argv.slice(2));
+    const r = o.steps ? await steps(o) : await gate(o);
+    console.log(o.steps ? formatSteps(r) : formatGate(r));
     process.exitCode = r.pass ? 0 : 1;
   } catch (e) {
     console.error(`gate: ${e.stack || e.message}`);

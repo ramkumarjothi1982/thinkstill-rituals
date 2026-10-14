@@ -59,6 +59,20 @@ export function renderSubExact(r, S) {
   m?.end('sub.particles');
 }
 
+/**
+ * The approved face rule for one sub-frame: the direction redraws its face
+ * (Face.draw skips an unchanged expression) and the face texture is uploaded
+ * when it changed. Also the fast frame's rule whenever the face cache is off,
+ * so every feature combination draws the face (renderer/index.js framePlan).
+ */
+export function drawSubFace(r, S) {
+  const m = r.meter;
+  m?.begin('face.draw');
+  const dirty = S.drawFace && S.drawFace();
+  m?.end('face.draw');
+  if (dirty) { m?.begin('face.upload'); r.updateFace(); m?.end('face.upload'); }
+}
+
 /** A full output frame: world, N accumulated sub-frames (face redrawn per sub-frame), bloom, post. */
 export function renderFrameExact(r, subStates, center, overlayCanvas) {
   const gl = r.gl, T = r.t, m = r.meter;
@@ -70,10 +84,7 @@ export function renderFrameExact(r, subStates, center, overlayCanvas) {
   gl.clear(gl.COLOR_BUFFER_BIT);
   const wgt = 1 / subStates.length;
   for (const S of subStates) {
-    m?.begin('face.draw');
-    const dirty = S.drawFace && S.drawFace();
-    m?.end('face.draw');
-    if (dirty) { m?.begin('face.upload'); r.updateFace(); m?.end('face.upload'); }
+    drawSubFace(r, S);
     r.renderSub(S);
     m?.begin('accum');
     T.accum.bind();

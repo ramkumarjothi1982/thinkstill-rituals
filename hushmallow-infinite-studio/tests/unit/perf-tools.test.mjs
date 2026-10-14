@@ -6,9 +6,21 @@ import assert from 'node:assert/strict';
 import { PROFILES, FEATURES, DEFAULT_PROFILE, resolveProfile, parseFeatures, featureLabel } from '../../engine/render/profiles.js';
 import { jobParams, wantsPreview, DEFAULTS } from '../../render/farm.mjs';
 import { sampleFrames, parseBenchArgs } from '../../tools/bench.mjs';
-import { parseGateArgs } from '../../tools/perf/gate.mjs';
+import { parseGateArgs, STEP_GATES, FACE_FLOOR_DB, stepGate, pickFrames } from '../../tools/perf/gate.mjs';
 import { psnr, ssim, diffSummary } from '../../tools/perf/metrics.mjs';
-import { assertNoRoll } from '../../engine/renderer/index.js';
+import { assertNoRoll, framePlan, FRAME_FEATURES } from '../../engine/renderer/index.js';
+
+/** Every feature set resolveProfile accepts (a dependent feature only with its base): → [profile] */
+function everyCombination() {
+  const names = Object.keys(FEATURES), out = [];
+  for (let mask = 0; mask < 1 << names.length; mask++) {
+    const on = names.filter((_, k) => mask & (1 << k));
+    try { out.push(resolveProfile('exact', { features: ['none', ...on.map((n) => `+${n}`)].join(',') })); } catch (e) {
+      if (!/needs/.test(e.message)) throw e;
+    }
+  }
+  return out;
+}
 
 test('profiles: exact is the default and has no optimisation; final has every one', () => {
   assert.equal(DEFAULT_PROFILE, 'exact');
@@ -43,6 +55,58 @@ test('profiles: a feature that reads another one\'s output follows it off, and c
   assert.equal(resolveProfile('final', { features: '-worldFast' }).features.worldPasses, false, 'the half-res sky is a variant of the fast world');
   assert.throws(() => resolveProfile('exact', { features: '+worldPasses' }), /worldPasses needs worldFast/);
   assert.equal(resolveProfile('final', { features: '-fgAccum' }).features.tightPasses, false, 'the tight scissors belong to the accumulation pipeline');
+});
+
+test('frame plan: every feature combination draws the face and runs each feature where it is implemented', () => {
+  const combos = everyCombination();
+  // 9 features, 3 of them dependent: 3 valid states per (base, dependent) pair → 3^3 · 2^3
+  assert.equal(Object.keys(FEATURES).length, 9);
+  assert.equal(combos.length, 216);
+  for (const f of FRAME_FEATURES) assert.ok(Object.hasOwn(FEATURES, f), f);
+  for (const p of combos) {
+    const f = p.features, plan = framePlan(f), tag = featureLabel(p);
+    // the face: through the face pass with the cache, else the approved per-sub-frame draw; never neither
+    assert.equal(plan.face, f.faceCache ? 'cache' : 'per-sub', tag);
+    if (f.faceFastGlow) assert.equal(plan.face, 'cache', `${tag}: the fast face is drawn through the cache`);
+    // a frame feature only exists in the fast frame: it must select it
+    assert.equal(plan.pipeline, FRAME_FEATURES.some((x) => f[x]) ? 'fast' : 'exact', tag);
+    if (plan.bakeMesh) assert.equal(plan.pipeline, 'fast', `${tag}: the baked normals are prepared by the fast frame`);
+    assert.equal(plan.foreground, f.fgAccum ? 'fgAccum' : 'scene', tag);
+    if (f.tightPasses) assert.equal(plan.foreground, 'fgAccum', tag);
+  }
+  // the reported regression: the foreground accumulation without the face cache still draws the face
+  assert.deepEqual({ ...framePlan(resolveProfile('final', { features: '-faceCache' }).features) },
+    { pipeline: 'fast', face: 'per-sub', foreground: 'fgAccum', bakeMesh: true });
+  assert.deepEqual({ ...framePlan(resolveProfile('exact', { features: '+fgAccum' }).features) },
+    { pipeline: 'fast', face: 'per-sub', foreground: 'fgAccum', bakeMesh: false });
+  assert.equal(framePlan(resolveProfile('exact', { features: '+meshNormalTex' }).features).pipeline, 'fast');
+  assert.equal(framePlan(resolveProfile('exact').features).pipeline, 'exact');
+});
+
+test('step gates: every feature has its own gate, and both of its sides resolve', () => {
+  assert.deepEqual(Object.keys(STEP_GATES).sort(), Object.keys(FEATURES).sort(), 'a new feature needs a step gate');
+  for (const f of Object.keys(FEATURES)) {
+    const off = stepGate(f, 'off'), on = stepGate(f, 'on');
+    for (const g of [off, on]) assert.ok(g.thresholds.facePsnr >= FACE_FLOOR_DB, `${f} ${g.mode}: the face floor`);
+    // off: final without f (and whatever builds on it) against final
+    const a = resolveProfile(off.a, { features: off.aFeatures });
+    assert.equal(a.features[f], false);
+    assert.equal(off.b, 'final');
+    // on: exactly f and its bases against only its bases (the goldens when it has none)
+    const b = resolveProfile(on.b, { features: on.bFeatures });
+    const want = new Set([f, ...(on.aFeatures ? on.aFeatures.split(',').map((x) => x.slice(1)) : [])]);
+    assert.deepEqual(Object.keys(FEATURES).filter((x) => b.features[x]).sort(), [...want].sort(), `${f} on`);
+    if (on.a === 'golden') assert.equal(on.aFeatures, null);
+    else assert.equal(resolveProfile(on.a, { features: on.aFeatures }).features[f], false);
+  }
+  assert.deepEqual(stepGate('faceCache', 'off'), { feature: 'faceCache', mode: 'off', a: 'final', aFeatures: '-faceCache', b: 'final', bFeatures: null, thresholds: { facePsnr: 42 } });
+  assert.deepEqual(stepGate('tightPasses', 'on').bFeatures, '+fgAccum,+tightPasses');
+  assert.equal(stepGate('overlaySkip', 'off').thresholds.identical, true);
+  assert.throws(() => stepGate('faceCache', 'sideways'), /off or on/);
+  const frames = [{ i: 0 }, { i: 33 }, { i: 135 }];
+  assert.deepEqual(pickFrames(frames, '135,33').map((f) => f.i), [33, 135]);
+  assert.equal(pickFrames(frames, null), frames);
+  assert.throws(() => pickFrames(frames, '34'), /34 not among the golden frame indices/);
 });
 
 test('farm: the profile supplies scale, encoder and mark defaults; explicit options win', () => {
@@ -106,6 +170,13 @@ test('bench: sample specs', () => {
   assert.deepEqual(parseBenchArgs(['--chromium-args', '--a  --b=1']).chromiumArgs, ['--a', '--b=1']);
   const g = parseGateArgs(['--b', 'final', '--a-features', '-x', '--min-psnr', '45', '--save-png']);
   assert.deepEqual([g.b, g.aFeatures, g.thresholds.psnr, g.savePng], ['final', '-x', 45, true]);
+  assert.equal(parseGateArgs(['--a', 'golden', '--b', 'exact', '--identical']).thresholds.identical, true);
+  assert.equal(parseGateArgs(['--frames', '33,135']).frames, '33,135');
+  const s = parseGateArgs(['--steps', 'both', '--only', 'faceCache,fgAccum']);
+  assert.deepEqual([s.steps, s.only], ['both', 'faceCache,fgAccum']);
+  assert.throws(() => parseGateArgs(['--steps', 'all']), /off, on or both/);
+  assert.throws(() => parseGateArgs(['--steps', 'off', '--min-psnr', '40']), /own sides and thresholds/);
+  assert.throws(() => parseGateArgs(['--only', 'faceCache']), /--only needs --steps/);
 });
 
 test('metrics: PSNR and SSIM behave on known images', () => {

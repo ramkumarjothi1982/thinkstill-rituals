@@ -36,6 +36,7 @@ import { renderFrameExact, renderSubExact } from './frame-exact.js';
 import { renderFrameFast } from './frame-fast.js';
 import { FacePass } from './passes/face.js';
 import { bakeRestNormals, alphaOf, trimmedIndex, indexedGrid } from './passes/normals.js';
+import { captureFaces } from '../face/cache.js';
 
 /** The design space of the approved v2 (and the default of every direction). */
 export const DESIGN_W = 1080, DESIGN_H = 1920;
@@ -48,6 +49,36 @@ export const DESIGN_W = 1080, DESIGN_H = 1920;
  */
 export function assertNoRoll(cam) {
   if (cam.roll) throw new Error(`camera roll ${cam.roll} is not supported: the reflection pass ignores roll (R14) and brand rules forbid it`);
+}
+
+/**
+ * Features implemented by the fast frame (frame-fast.js) and not by the
+ * approved one (frame-exact.js). Every other feature works inside a pass both
+ * frames share (the world, the mesh shader, the face pass) or before the
+ * renderer (the stage: sub-frame count, overlay).
+ */
+export const FRAME_FEATURES = Object.freeze(['faceCache', 'fgAccum', 'tightPasses', 'meshNormalTex']);
+
+/**
+ * How a frame is drawn under a set of features (pure; unit-tested over every
+ * feature combination, tests/unit/perf-tools.test.mjs). Each feature can be
+ * switched off on its own, so no combination may lose a layer:
+ *   pipeline  'exact' (the approved frame, GL call for GL call) unless a frame
+ *             feature is on, then 'fast'
+ *   face      'cache': through the face pass (faceCache, passes/face.js);
+ *             'per-sub': the approved rule, the direction redraws the face for
+ *             every sub-frame (frame-exact.js drawSubFace), in either pipeline
+ *   foreground 'fgAccum': premultiplied foreground accumulation; 'scene': the
+ *             approved world copy under every sub-frame
+ *   bakeMesh  rest normals baked and the mesh trimmed before the first frame (meshNormalTex)
+ */
+export function framePlan(features) {
+  return Object.freeze({
+    pipeline: FRAME_FEATURES.some((f) => features[f]) ? 'fast' : 'exact',
+    face: features.faceCache ? 'cache' : 'per-sub',
+    foreground: features.fgAccum ? 'fgAccum' : 'scene',
+    bakeMesh: !!features.meshNormalTex,
+  });
 }
 
 export class Renderer {
@@ -121,8 +152,9 @@ export class Renderer {
     this.textTex = new Map();
     // the fast pipeline and its passes (profile features; none in the exact profile)
     const f = profile.features;
-    this.facePass = f.faceCache ? new FacePass(this, { fast: !!f.faceFastGlow, glow: profile.quality.faceGlow }) : null;
-    if (f.fgAccum) {
+    this.plan = framePlan(f);
+    this.facePass = this.plan.face === 'cache' ? new FacePass(this, { fast: !!f.faceFastGlow, glow: profile.quality.faceGlow }) : null;
+    if (this.plan.foreground === 'fgAccum') {
       // P5: the foreground of one sub-frame, its weighted sum, and the 1/4-res mirror image
       this.t.fg = target(gl, W, H, { hdr: true });
       this.t.fgAcc = target(gl, W, H, { hdr: true });
@@ -131,7 +163,6 @@ export class Renderer {
       this.p.under = program(gl, FS_VERT, UNDER_FS, 'under');
       this.fgDirty = this.accDirty = null;      // boxes still to clear in fg / fgAcc (textures start zeroed)
     }
-    this.fastPipeline = !!(this.facePass || f.fgAccum);
   }
 
   setMallow({ artImg, pristineImg, faceCanvas, normalImg, cols = 96, rows = 96 }) {
@@ -201,7 +232,8 @@ export class Renderer {
       this.n0Box = [...bb];
     }
     if (this.meshAlphas && this.mesh) {
-      const keep = this.facePass ? [...this.facePass.quantisers.keys()].map((face) => face.box) : [];
+      // the face canvas is procedural: its box is always drawn, whichever path draws the face
+      const keep = captureFaces(center).map(({ face }) => face.box);
       const { cols, rows } = this.mesh;
       const trimmed = indexedGrid(this.gl, cols, rows, [2, 2, 1, 1], trimmedIndex(cols, rows, this.meshAlphas, { keep }));
       this.mesh.dispose();
@@ -257,7 +289,7 @@ export class Renderer {
   renderFrame(subStates, center, overlayCanvas) {
     for (const S of subStates) assertNoRoll(S.cam);
     assertNoRoll(center.cam);
-    if (this.fastPipeline) renderFrameFast(this, subStates, center, overlayCanvas);
+    if (this.plan.pipeline === 'fast') renderFrameFast(this, subStates, center, overlayCanvas);
     else renderFrameExact(this, subStates, center, overlayCanvas);
   }
 }
