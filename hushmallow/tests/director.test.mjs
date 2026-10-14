@@ -253,7 +253,9 @@ test('director: the real Luminous Ocean, entered gentle while a complete Static 
     assert.equal(D.state.complete, false);
     const lines = said.flatMap((s) => s.lines || []);
     const ocean = WORLDS.find((w) => w.id === 'luminous-ocean');
-    assert.ok(lines.includes(ocean.dialogue.intro[0]), `Loomi's intro plays (said: ${JSON.stringify(lines)})`);
+    // (a gentle session: Loomi's gentle intro — never "Ahh. The storm became a sea." nor the playful one, 'Ask before every world')
+    assert.ok(lines.includes(ocean.dialogue.gentle.intro[0]), `Loomi's gentle intro plays (said: ${JSON.stringify(lines)})`);
+    assert.ok(!lines.includes(ocean.dialogue.intro[0]) && !lines.includes(ocean.dialogue.arrive[0]), 'never the playful intro or the storm quip');
     assert.ok(!lines.includes(ocean.dialogue.completeStay) && !lines.includes(ocean.dialogue.complete), 'no completion line');
   } finally { for (const d of made) d.destroy(); dom.restore(); }
 });

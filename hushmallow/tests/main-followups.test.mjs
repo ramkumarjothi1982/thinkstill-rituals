@@ -91,11 +91,11 @@ test('abuse or a death typed in a running world and the Tell closed without Send
   const close = fnOf('onClose: (reason, meta = {}) => {', 'pushLayer(\'overlay\');');
   // held quietly (no pill, nothing resumes it): the support line, then stay here quietly or somewhere calm (careBeat → careChoice)
   assert.match(close, /if \(!S\.crisis && S\.hold === 'quiet' && worldMode && flowRef && !flowRef\.stub\) \{\s*if \(!S\.quietBeat\) \{/);
-  assert.match(close, /S\.quietBeat = careBeat\(\{ emotion: null, intention: null, safety: \{ level: S\.level, category: S\.category \} \}\)/);
+  assert.match(close, /S\.quietBeat = \(soft \? careChoice\(\{ emotion: null, intention: null, safety: null, soft: true \}\)\s*: careBeat\(\{ emotion: null, intention: null, safety: \{ level: S\.level, category: S\.category \} \}\)\)/);
   // (one beat at a time; it lets go once done)
   assert.match(close, /\.finally\(\(\) => \{ if \(S\.quietBeat === beat\) S\.quietBeat = null; \}\)/);
   // only when it was not sent (a Send has afterTell's own beat), and never after a crisis (the world ends quietly then)
-  assert.ok(close.indexOf("if (reason !== 'submit') {") < close.indexOf('S.quietBeat = careBeat('));
+  assert.ok(close.indexOf("if (reason !== 'submit') {") < close.indexOf('S.quietBeat = (soft ? careChoice('));
   // and careChoice ends a quietly held world quietly on "stay" or no answer, or melts into the calm world asked for
   const choice = fnOf('async function careChoice(', 'function calmTheWorld(');
   assert.match(choice, /\} else if \(S\.hold === 'quiet' && worldMode\) \{[\s\S]*?endQuietWorld\(\);/);
@@ -137,7 +137,7 @@ test('after Finish the closing line waits for the thought to come to rest with i
   const fin = fnOf('function onFinished() {', '/** A world\'s goodbye holds the garden offer folded');
   const cb = fin.slice(fin.indexOf('later(() => {'));
   // the line itself is chosen as before (crisis: the one calm line; gentle: the quiet line; else the Mallow's goodbye)
-  assert.match(cb, /if \(S\.crisis\) \{ speakCrisis\(\); \} else if \(gentle\(\)\) bye = say\(SHARED_LINES\.careQuiet\); else bye = say\(lines\.pick\(mallowId, 'finished'\)/);
+  assert.match(cb, /if \(S\.crisis\) \{ speakCrisis\(\); \} else if \(softNow\(\)\) bye = say\(SHARED_LINES\.careQuiet\); else bye = say\(lines\.pick\(mallowId, 'finished'\)/);
   // ...said once the thought is home (after the 780 ms re-plan) with its words showing, two looks in a row, or at 1.8 s
   assert.match(cb, /return d < 4 && !!L\.tagRect\(home\);/);
   assert.match(cb, /still = now\(\) - t0 >= 820 && atRest\(\) \? still \+ 1 : 0;\s*if \(still >= 2 \|\| now\(\) - t0 >= 1800\) \{ goodbye\(\); return; \}/);
@@ -163,9 +163,10 @@ test('the subtitle scrim deepens over a bright spot anywhere under it, its round
     assert.ok(Math.abs(s.x - Math.min(47.5, Math.max(0.5, cx)) / cols) < 0.06, `${cx},${cy} → ${JSON.stringify(s)}`);
   }
   const css = read('src/ui/hushfold.css');
-  // the scrim itself: the pill; the deepening: its own layer, not cut to the pill's curve, reaching its feathered rim
+  // the scrim itself: the pill; the deepening: its own layer in the pill's own shape and feather (review P3, 14 Oct: never
+  // a dark blot hanging past the pill on a bright home), its rounded ends and rim included
   assert.match(css, /\.hf-sub::before \{[^}]*inset: -14px -24px -16px; border-radius: 999px;[^}]*background: rgba\(9, 6, 28, var\(--hf-scrim, 0\.5\)\);/);
-  assert.match(css, /\.hf-sub::after \{[^}]*inset: -26px -36px -28px;[^}]*rgba\(9, 6, 28, var\(--hf-hot-a, 0\)\) var\(--hf-hot-r, 0px\)/);
+  assert.match(css, /\.hf-sub::after \{[^}]*inset: -14px -24px -16px; border-radius: 999px;[^}]*rgba\(9, 6, 28, var\(--hf-hot-a, 0\)\) calc\(var\(--hf-hot-r, 0px\) \* 0\.75\)[^}]*filter: blur\(12px\);/);
   // (found a moment late, it deepens in)
   assert.match(css, /@property --hf-hot-a \{ syntax: '<number>'; inherits: true; initial-value: 0; \}/);
   const subs = read('src/hushfold/subtitles.js');

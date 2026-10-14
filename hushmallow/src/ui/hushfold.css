@@ -83,6 +83,8 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 .hf-pill.is-hidden { opacity: 0; pointer-events: none !important; transform: translateY(8px); }
 /* a hidden pill takes no room in the dock (it would wrap the others onto a second row, up into the Mallow) */
 .hf-dock .hf-pill.is-hidden { position: absolute; }
+/* one Support control at a time: under the open Tell overlay (its own Support chip is there) the dock's pill steps away */
+.hf-dock .hf-pill.is-under { position: absolute; opacity: 0; pointer-events: none !important; transform: translateY(8px); }
 /* narrow phones: the paused pill says Resume only (its label still says Paused), so the dock stays one row */
 @media (max-width: 359px) { .hf-pill.paused .pz { display: none; } .hf-pill { padding: 0 16px 0 14px; } }
 
@@ -94,16 +96,19 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
    over a bright spot behind it (--hf-hot-*: the daytime sun), so that never shows through the dark as a muddy blob */
 .hf-sub::before { content: ''; position: absolute; z-index: -1; inset: -14px -24px -16px; border-radius: 999px; pointer-events: none;
   background: rgba(9, 6, 28, var(--hf-scrim, 0.5)); filter: blur(12px); transition: background-color 360ms var(--hf-ease); }
-/* the deepening over a bright spot: its own layer, a little larger than the scrim's pill (by its 12 px feather), so a sun
-   under the pill's rounded end or its feathered rim is deepened too — never a dark blob far past it; placed in px from the
-   line's box (--hf-hot-cx/-cy) */
-.hf-sub::after { content: ''; position: absolute; z-index: -1; inset: -26px -36px -28px; border-radius: 999px; pointer-events: none;
-  background: radial-gradient(circle at calc(var(--hf-hot-cx, 50%) + 36px) calc(var(--hf-hot-cy, 50%) + 26px), rgba(9, 6, 28, var(--hf-hot-a, 0)) 0,
-    rgba(9, 6, 28, var(--hf-hot-a, 0)) var(--hf-hot-r, 0px), rgba(9, 6, 28, 0) calc(var(--hf-hot-r, 0px) * 1.6));
-  filter: blur(10px); }
-/* (found a moment late — the realm still fading in when the line came — it deepens in, never pops) */
+/* the deepening over a bright spot: its own layer in the scrim's own shape (the same pill, the same 12 px feather), so a
+   sun or a moon under the pill's rounded end or its rim is deepened with it — and never past it: no dark blot hanging over
+   the pill on a bright home. Only as deep as the spot needs to read like the sky round it (hotAlpha, --hf-hot-a), soft to
+   its edge; placed in px from the line's box (--hf-hot-cx/-cy) */
+.hf-sub::after { content: ''; position: absolute; z-index: -1; inset: -14px -24px -16px; border-radius: 999px; pointer-events: none;
+  background: radial-gradient(circle at calc(var(--hf-hot-cx, 50%) + 24px) calc(var(--hf-hot-cy, 50%) + 14px), rgba(9, 6, 28, var(--hf-hot-a, 0)) 0,
+    rgba(9, 6, 28, var(--hf-hot-a, 0)) calc(var(--hf-hot-r, 0px) * 0.75), rgba(9, 6, 28, 0) calc(var(--hf-hot-r, 0px) * 1.5));
+  filter: blur(12px); }
+/* (found a moment late — the realm still drawing its first frames when the line came — it deepens in, never pops; a new
+   line's first look, before it is first painted, takes at once: .fresh) */
 @property --hf-hot-a { syntax: '<number>'; inherits: true; initial-value: 0; }
 .hf-sub { transition: --hf-hot-a 360ms var(--hf-ease); }
+.hf-sub.fresh, .hf-sub.fresh::before { transition: none; }
 .hf-sub .who { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 5px; font: 700 calc(13px * var(--hf-k))/1 var(--hf-ff-ui); letter-spacing: 0.04em;
   color: #efeaff; text-shadow: 0 1px 8px rgba(5, 3, 20, 0.8); }
 .hf-sub .who::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--hf-who, var(--hf-glow)); box-shadow: 0 0 10px var(--hf-who, var(--hf-glow)); }
