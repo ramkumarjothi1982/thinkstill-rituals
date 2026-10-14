@@ -65,6 +65,13 @@ const ctx = {
   /** Register an extra live Companion (a duet partner). tier(q): its quality for lab tier q. Returns remove(). */
   addCompanion(c, { tier = (q) => q } = {}) { extras.set(c, tier); return () => { extras.delete(c); }; },
   navigate(path) { go(path.replace(/^\/+/, '') || 'home'); },
+  /** Open Hushbeat with a kept tune in its own Mallow's voice (for this visit only; the favourite never changes). */
+  openTune(it, { play = false } = {}) {
+    if (it?.kind !== 'hushbeat') return;
+    if (validMallow(it.mallow)) { visitMallow = mallowId = it.mallow; }
+    handoff = play ? { ...it, play: true } : it;
+    ctx.navigate('/hushbeat');
+  },
   openSettings: () => settings(),
   monitor: null,
   log: (e) => { lab.events.push({ ...e, t: Math.round(performance.now()) }); if (lab.events.length > 200) lab.events.shift(); },

@@ -126,13 +126,19 @@ export function segmented(options, value, onChange, label) {
 }
 
 /** Bottom sheet. content: () => Node. Returns close(). */
-export function openSheet(root, title, content) {
+export function openSheet(root, title, content, { onClose = null } = {}) {
   const scrim = h('div', { class: 'sheet-scrim' });
   const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title });
+  let closed = false;
   const close = () => {
+    if (closed) return;
+    closed = true;
     scrim.classList.remove('on'); sheet.classList.remove('on');
+    // while it fades out, a closing sheet must not swallow the next tap
+    scrim.style.pointerEvents = 'none'; sheet.style.pointerEvents = 'none';
     document.removeEventListener('keydown', esc);
     setTimeout(() => { scrim.remove(); sheet.remove(); }, 300);
+    onClose?.();   // once, whatever closed it: Done, the scrim, Escape or the returned close()
   };
   const esc = (e) => {
     if (e.key === 'Escape') { e.stopPropagation(); close(); return; }

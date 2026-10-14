@@ -223,7 +223,11 @@ body {
 .stage-tint { position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
   background: radial-gradient(45% 30% at 50% var(--spot-y, 52%), var(--mallow-glow, transparent), transparent 72%); }
 .stage { position: absolute; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; outline: none; }
-.stage:focus-visible { box-shadow: inset 0 0 0 3px var(--accent); }
+/* keyboard focus: a soft rounded frame around where the Mallow stands (the band between the bars), never a hard box over the world */
+.stage:focus-visible::after { content: ''; position: absolute; pointer-events: none; z-index: 1; border-radius: var(--r-lg);
+  left: 10px; right: 10px; top: calc(var(--band-top, 64px) + 4px); bottom: calc(var(--band-bottom, 120px) + 4px);
+  box-shadow: 0 0 0 2px var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 75%, transparent), inset 0 0 22px color-mix(in srgb, var(--accent) 16%, transparent); }
 /* duet (stage-screen setPartner): two stages side by side, kept near the centre on wide screens */
 .screen[data-layout="duet"] .stage.lead { inset: 0 50% 0 0; }
 .screen[data-layout="duet"] .stage.partner { inset: 0 0 0 50%; }
@@ -301,6 +305,10 @@ button, .card, .chip, .icon-btn, .seg button, .pills button { touch-action: mani
 .seg button[aria-checked="true"] { background: var(--chip-on); color: var(--chip-on-text); }
 input[type="range"] { width: 140px; accent-color: var(--accent); }
 .sheet .done { position: sticky; bottom: 0; box-shadow: 0 -12px 16px 4px var(--glass-strong); width: 100%; margin-top: 14px; min-height: 48px; border-radius: var(--r-pill); border: 0; background: var(--chip-on); color: var(--chip-on-text); font-weight: 700; font-size: 16px; cursor: pointer; }
+/* the sheet's bottom padding sits below the sticky Done: fill it so scrolled rows never show through */
+.sheet .done::after { content: ''; position: absolute; pointer-events: none; left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter));
+  top: 100%; height: calc(var(--safe-bottom) + 24px);
+  background: linear-gradient(var(--glass-strong), var(--glass-strong)), linear-gradient(var(--glass-strong), var(--glass-strong)), var(--glass-strong); }   /* layered: the token is translucent */
 .btn-quiet { border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); border-radius: var(--r-pill); padding: 7px 14px; min-height: 38px; font-size: 13px; cursor: pointer; }
 
 @media (max-width: 360px) {

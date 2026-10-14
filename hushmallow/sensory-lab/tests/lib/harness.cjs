@@ -212,17 +212,33 @@ async function layout(page, scope, { extra = [], scrollers = [], band = true, mi
  */
 async function touch(page, frames) {
   const cdp = await page.context().newCDPSession(page);
+  // CDP acknowledges a touch only after the renderer has handled it, so on slow software GL a
+  // gesture's events can be hundreds of ms apart. Send a finger's first move with its touchStart,
+  // and the lift with the last move, when they were meant to be close (as a real finger's are), and
+  // fail a lost acknowledgement after 20 s instead of hanging the run.
+  const send = (params) => Promise.race([
+    cdp.send('Input.dispatchTouchEvent', params),
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`touch: ${params.type} not acknowledged in 20 s`)), 20000)),
+  ]);
+  const PAIR_MS = 40;
   const t0 = Date.now();
   let prev = new Set();
+  const events = frames.map((f) => {
+    const pts = (f.points || []).map((p, i) => ({ x: p.x, y: p.y, id: p.id ?? i + 1, radiusX: p.r ?? 4, radiusY: p.r ?? 4, force: p.force ?? 1 }));
+    const ids = new Set(pts.map((p) => p.id));
+    const type = !pts.length ? 'touchEnd' : pts.some((p) => !prev.has(p.id)) ? 'touchStart' : 'touchMove';
+    prev = ids;
+    return { t: f.t || 0, params: { type, touchPoints: pts } };
+  });
   try {
-    for (const f of frames) {
-      const wait = (f.t || 0) - (Date.now() - t0);
+    for (let i = 0; i < events.length; i++) {
+      const e = events[i], next = events[i + 1];
+      const wait = e.t - (Date.now() - t0);
       if (wait > 0) await sleep(wait);
-      const pts = (f.points || []).map((p, i) => ({ x: p.x, y: p.y, id: p.id ?? i + 1, radiusX: p.r ?? 4, radiusY: p.r ?? 4, force: p.force ?? 1 }));
-      const ids = new Set(pts.map((p) => p.id));
-      const type = !pts.length ? 'touchEnd' : pts.some((p) => !prev.has(p.id)) ? 'touchStart' : 'touchMove';
-      await cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
-      prev = ids;
+      const pair = next && next.t - e.t <= PAIR_MS
+        && ((e.params.type === 'touchStart' && next.params.type === 'touchMove') || (e.params.type === 'touchMove' && next.params.type === 'touchEnd'));
+      if (pair) { await Promise.all([send(e.params), send(next.params)]); i++; }
+      else await send(e.params);
     }
   } finally { await cdp.detach().catch(() => {}); }
 }

@@ -121,16 +121,23 @@ export function stageScreen(root, ctx, {
     }
     wrap.style.setProperty('--spot-y', `${Math.round((floor - band * 0.32) / H * 100)}%`);
     tint.style.setProperty('--spot-y', `${Math.round((floor - band * 0.32) / H * 100)}%`);
-    if (onLayout) {
-      const sy = screen.getBoundingClientRect().top;
-      onLayout({ W, H, floor, baseline, fit, band, topBottom: top.getBoundingClientRect().bottom - sy, bottomTop: bottom.getBoundingClientRect().top - sy });
-    }
+    // the free band between the bars, for the stage's focus frame (styles/lab.css)
+    const sy = screen.getBoundingClientRect().top;
+    const topBottom = top.getBoundingClientRect().bottom - sy, bottomTop = bottom.getBoundingClientRect().top - sy;
+    screen.style.setProperty('--band-top', `${Math.round(topBottom)}px`);
+    screen.style.setProperty('--band-bottom', `${Math.round(Math.max(0, H - bottomTop))}px`);
+    if (onLayout) onLayout({ W, H, floor, baseline, fit, band, topBottom, bottomTop });
   };
   const ro = new ResizeObserver(frame);
   ro.observe(stage); ro.observe(bottom);
 
   // a live Motion change reaches the realm too (lab.js handles the Mallows)
-  const offPrefs = ctx.prefs.onChange((k) => { if (k === 'motion' || k === '*') env.setReducedMotion(ctx.prefs.reducedMotion()); });
+  // the Mute button follows the sound setting wherever it changes (Settings, a feature's sheet)
+  const syncSound = () => { const on = ctx.prefs.get('sound'); soundBtn.innerHTML = icon(on ? 'sound' : 'mute'); soundBtn.setAttribute('aria-pressed', String(!on)); };
+  const offPrefs = ctx.prefs.onChange((k) => {
+    if (k === 'motion' || k === '*') env.setReducedMotion(ctx.prefs.reducedMotion());
+    if (k === 'sound' || k === '*') syncSound();
+  });
 
   function dropPartner() {
     const focused = document.activeElement === pstage;
