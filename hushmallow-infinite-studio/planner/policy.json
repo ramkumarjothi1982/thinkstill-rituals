@@ -1,0 +1,298 @@
+{
+  "schema": "hm-planner-policy/1",
+  "$doc": "Planner choices that are data, not code (PHASE2-PLAN principle: craft lives in code, choices live in data). Every number cites its source; 'planner default' marks a value the plan leaves open, which the owner may overrule (docs/OWNER-DECISIONS.md). Loaded and checked by planner/policy.mjs.",
+
+  "sampling": {
+    "$doc": "How the planner weighs legal options before the hard rules (G-SPEC) filter them.",
+    "mallowWeight": { "primary": 3, "secondary": 1, "source": "PHASE2-PLAN WP-06; story-library slotGrammar.mallow" },
+    "slotWeight": { "primary": 2, "alt": 1, "source": "planner default: the template's first choice of gag, metaphor, ritual and camera weighs double" },
+    "signatureGag": { "rate": 0.4, "source": "PHASE2-PLAN WP-06; story-library slotGrammar.gag ('40% chance of the Mallow's signature gag if listed')" },
+    "duration": { "15": 0.5, "rest": 0.5, "source": "design-variety-scale-first 10.1 (15 s weight 0.5, the others share 0.5)" },
+    "closer": {
+      "rate": 0.3,
+      "positiveRate": 0.45,
+      "maxConsecutive": 2,
+      "source": "story-library brand.closerRule (about 30%, higher on positive templates) and variationRules.copyCooldowns (never more than 2 consecutive posts)"
+    },
+    "fourthLine": { "rate": 0.5, "source": "story-library beatClocks.20.note (optional 4th line from any unused pool line)" },
+    "retries": {
+      "perSpec": 50,
+      "backtrack": 16,
+      "source": "design-quality-first 9 (resample up to 50 times, then report the blocking constraint); backtrack: production plans may re-plan earlier posts this many times in total when a window rule dead-ends (planner default)"
+    },
+    "worldJitter": {
+      "hue": 6,
+      "warmth": 0.1,
+      "exposure": 0.05,
+      "source": "story-library slotGrammar.palette.jitter (world only; the Mallow is never recoloured)"
+    },
+    "sound": {
+      "contours": ["rise-1", "rise-2", "arch-1", "arch-2"],
+      "tickTempo": [0.9, 1.1],
+      "source": "story-library slotGrammar.score (rising/arch contour set, tick tempo +/-10%, pan seed)"
+    }
+  },
+
+  "intensity": {
+    "$doc": "Gag intensity is sampled in [low * cap, cap]. The cap is the smallest of: 1, the template's tone cap, the template's own cap.",
+    "low": 0.8,
+    "byTone": { "gentle": 0.4, "gentle-comic": 0.6 },
+    "byTemplate": {
+      "T09-rejection-sting": { "cap": 0.6, "source": "T09 flags: 'Keep the gag soft (intensity <= 0.6)'" },
+      "T14-missing-someone": {
+        "cap": 0.4,
+        "source": "T14 gag.staging: 'soft gag (intensity <= 0.4)'; medicalTherapyFlags.decisionsInThisLibrary (missing-someone, capped at 0.4)"
+      },
+      "T26-nostalgia": {
+        "cap": 0.4,
+        "source": "medicalTherapyFlags.decisionsInThisLibrary: 'Missing-someone and nostalgia may touch grief: gentle tone, gag intensity capped at 0.4'"
+      }
+    },
+    "source": "byTone generalises the two explicit caps (T14 tone gentle -> 0.4, T09 tone gentle-comic -> 0.6) to the other templates of the same tone (planner default)"
+  },
+
+  "uniqueness": {
+    "$doc": "Exact fingerprint never reused; structural distance against the channel's last 14 days (PHASE2-PLAN G-SPEC, design-variety-scale-first 10.3).",
+    "windowDays": 14,
+    "minSlotsDiffer": 3,
+    "mustDifferOneOf": ["mallow", "hook"],
+    "ruleSlots": ["mallow", "hook", "lines", "ritual", "gag", "realmTod", "metaphor"],
+    "minWeightedDistance": 6.0,
+    "weights": {
+      "mallow": 3,
+      "hook": 3,
+      "template": 2,
+      "lines": 2,
+      "ritual": 2,
+      "gag": 2,
+      "realmTod": 1.5,
+      "metaphor": 1.5,
+      "weatherDressing": 1,
+      "camera": 0.5,
+      "end": 1
+    },
+    "hookJaccard": 0.5,
+    "source": "story-library variationRules.uniqueness; design-variety-scale-first 10.3 weights; PHASE2-PLAN G-SPEC (>= 3 slots, one of them Mallow or hook, plus weighted distance >= 6.0; hook token Jaccard >= 0.5 counts as the same hook)"
+  },
+
+  "sequencing": {
+    "$doc": "Rules over the posts of one channel, in post order (story-library variationRules.sequencing). The Mallow rules apply to the unlocked set (OWNER-DECISIONS Q1 default).",
+    "noRepeat": ["template", "mallow", "ritual", "gag"],
+    "mallowWindow": 10,
+    "mallowMaxPerWindow": 3,
+    "familyWindow": 7,
+    "minFamilies": 4,
+    "minPositiveOrMixed": 2,
+    "templatePerWeek": 2,
+    "templatePerWeekOverrides": { "T01-brain-at-2am": 1 },
+    "source": "story-library variationRules.sequencing"
+  },
+
+  "cooldowns": {
+    "hookDays": 90,
+    "lineUses": 3,
+    "lineDays": 30,
+    "resolutionUses": 1,
+    "resolutionDays": 7,
+    "source": "story-library variationRules.copyCooldowns"
+  },
+
+  "cadence": {
+    "$doc": "Posts per channel in any 7 days. While fewer than fewMallowsBelow Mallows are unlocked, the Q1 default cap applies.",
+    "fewMallowsBelow": 3,
+    "maxPerWeekFewMallows": 5,
+    "maxPerWeek": 14,
+    "source": "OWNER-DECISIONS Q1 default (Noomi-only, 3-5 posts per week per channel). 14/week is a planner default from library capacity: the valence rule needs >= 2 positive/mixed posts per 7, and the 9 positive/mixed templates hold 72 hooks under a 90-day hook cooldown, so at most 72 * 7/2 = 252 posts per 90 days (19.6/week) are possible; 21/week (design-variety-scale-first) runs out of hooks after about 2 months (docs/wp/WP-06.md)"
+  },
+
+  "reading": {
+    "$doc": "Reading-time pre-check. Every copy element is one readable text however it wraps into rows: a thought line, the whole hook (both rows), the whole end card (both rows). Each must stay on screen for at least max(min, base + perChar * characters), counting the characters of all its rows joined by a space; hook and end card use minCaption, thought lines minLine. Windows come from the beat clock of the duration. They approximate what the composer's G-DIR check measures on the real alpha curves (which are slightly shorter, because fades are not instant), so G-DIR stays the final word.",
+    "base": 0.25,
+    "perChar": 0.05,
+    "minLine": 1.0,
+    "minCaption": 2.0,
+    "hookWindow": "cyclic",
+    "windows": {
+      "hook": "cyclic: (D - HOOK_IN) + HOOK_OUT, the hook returns at HOOK_IN and stays through the loop seam until HOOK_OUT (G-DIR: hook at full alpha on frame 0); first-view: 0 .. HOOK_OUT only",
+      "line": "L<i> .. RITUAL[0] (escalation thoughts stay until the ritual releases them)",
+      "end": "RESOLVE .. CARD_OUT"
+    },
+    "source": "PHASE2-PLAN G-DIR text rules (each readable line >= max(1.0 s, 0.25 s + 0.05 s per character); hook and end line each >= 2.0 s). hookWindow 'cyclic' is a planner default (the videos loop; the cover frame is the hook at full alpha); 'first-view' is the stricter reading."
+  },
+
+  "layout": {
+    "$doc": "Layout pre-lint with planner/metrics/fredoka-metrics.json. The estimate is multiplied by margin before it is compared (tools/font-metrics.mjs measures the model's worst error on every library string, and fails if it is above half the margin).",
+    "margin": 1.04,
+    "hook": { "weight": 600, "tracking": 2, "maxSize": 76, "minSize": 50, "maxWidth": 960 },
+    "end": { "weight": 500, "size": 62, "tracking": 0, "maxWidth": 960 },
+    "bubble": { "weight": 500, "size": 50, "tracking": 0, "maxRowChars": 17, "padX": 38, "maxWidth": 960 },
+    "source": "story-library format.layout (hook 76 -> 50 px, 600 weight, tracking 2; resolution 62 px 500; bubble 50 px 500, padding 38 px from videos/my-brain-at-2am-v2.js bubbleCanvas); key text inside x 60-1020 (960 px), design-quality-first 8 (4% margin)"
+  },
+
+  "lint": {
+    "$doc": "Copy lint on top of templates/validate-library.mjs. Terms match whole words or phrases, case-insensitively. An entry starting with 're:' is a regular expression (case-insensitive).",
+    "topics": {
+      "self-harm": ["self harm", "hurt myself", "harm myself", "kill myself", "end it all", "end my life", "cut myself", "overdose", "unalive", "kms", "want to die", "wanna die", "want to disappear", "wanna disappear", "disappear forever", "never wake up", "not wake up"],
+      "death": ["dead", "death", "deaths", "die", "dies", "died", "deadly", "funeral", "grave", "graves", "coffin", "corpse", "rip", "r.i.p", "rest in peace", "kill", "kills", "killed", "killing", "murder", "murdered", "gone forever", "passed away", "afterlife", "drown", "drowns", "drowned", "drowning"],
+      "illness": ["sick", "sickness", "ill", "illness", "flu", "fever", "cough", "virus", "covid", "cancer", "disease", "hospital", "vomit", "puke", "nausea", "nauseous", "migraine", "headache", "stomachache", "dentist", "medicine", "meds", "medication", "pill", "pills", "prescription", "throw up", "ambulance", "surgery", "contagious", "caught a cold", "got a cold", "have a cold", "head cold", "blood", "bleeding", "bleed", "melatonin", "sleeping pill", "sleeping pills", "painkiller", "painkillers", "ibuprofen", "paracetamol", "xanax", "prozac", "valium", "antidepressant", "antidepressants", "sleep aid", "sleep aids"],
+      "body-food": ["fat", "fatty", "chubby", "skinny", "diet", "dieting", "calorie", "calories", "carbs", "weight", "weigh", "overweight", "binge", "binged", "starving", "starve", "bloated", "belly", "beach body", "cheat day", "burn it off", "guilty pleasure", "too full", "overate", "overeating", "workout", "gym", "abs", "thighs", "drink water", "hydrate", "snack guilt", "food guilt", "cheat meal", "cheat meals"],
+      "alcohol": ["alcohol", "drunk", "tipsy", "hungover", "hangover", "wine", "beer", "beers", "booze", "boozy", "vodka", "whisky", "whiskey", "tequila", "rum", "gin", "cocktail", "cocktails", "prosecco", "champagne", "pint", "pints", "shots", "happy hour", "pub", "drinks after work", "at the bar", "bar crawl", "night out drinking"],
+      "drugs": ["drug", "drugs", "weed", "stoned", "cannabis", "marijuana", "cocaine", "smoke", "smoking", "cigarette", "cigarettes", "vape", "vaping", "nicotine", "caffeine", "energy drink", "edibles", "getting high", "get high", "got high"],
+      "appearance": ["ugly", "hideous", "gorgeous", "attractive", "unattractive", "good-looking", "selfie", "selfies", "makeup", "make-up", "wrinkle", "wrinkles", "pimple", "pimples", "acne", "zit", "zits", "bad hair", "outfit", "cellulite", "double chin"],
+      "self-hatred": [
+        "hate myself", "i hate me", "worthless", "useless", "pathetic", "loser", "idiot", "stupid", "dumb", "failure",
+        "re:\\bhat(e|es|ed|ing)\\s+(my|this|our|your)\\s+(own\\s+)?(body|bodies|face|looks?|skin|hair|nose|thighs|belly|stomach|tummy|arms|legs|reflection|smile|teeth|voice|weight|shape|size)\\b",
+        "re:\\bhat(e|es|ed|ing)\\s+(how|the\\s+way)\\s+(i|we|you)\\s+(look|looked)\\b"
+      ],
+      "body-image": [
+        "body image", "body check", "body checking", "body shame", "body shaming", "body-shaming", "fat shaming", "fat-shaming",
+        "muffin top", "love handles", "thigh gap", "bikini body", "summer body", "flabby", "glow up", "glow-up",
+        "eye bags", "dark circles", "grey hair", "grey hairs", "gray hair", "gray hairs", "bald", "balding", "wrinkly",
+        "botox", "lip filler", "lip fillers", "body goals", "airbrush", "airbrushed", "airbrushing", "facelift", "nose job", "plastic surgery",
+        "re:\\b(i|you|we|they|she|he|me)\\s+(look|looks|looked|am\\s+looking|are\\s+looking|is\\s+looking|was\\s+looking|looking)\\s+(so\\s+|really\\s+|super\\s+|too\\s+|kinda\\s+|very\\s+|way\\s+too\\s+|a\\s+bit\\s+|this\\s+)?(old|older|ancient|ugly|gross|hideous|awful|terrible|frumpy|puffy|bloated|haggard|wrecked|rough)\\b",
+        "re:\\b(i'm|you're|we're|they're|she's|he's)\\s+looking\\s+(so\\s+|really\\s+|super\\s+|too\\s+|kinda\\s+|very\\s+|way\\s+too\\s+|a\\s+bit\\s+)?(old|older|ancient|ugly|gross|hideous|awful|terrible|frumpy|puffy|bloated|haggard|wrecked|rough)\\b"
+      ],
+      "catastrophe": ["catastrophe", "catastrophic", "disaster", "apocalypse", "end of the world"],
+      "claims": ["guaranteed", "guarantee", "guarantees", "instant calm", "instant relief", "instantly calm", "miracle", "miracles", "works every time", "fixes everything", "life-changing", "life changing", "mindfulness app", "meditation app", "wellness app", "sleep app", "calming app"],
+      "source": "story-library copyRules.general (no self-hatred, self-harm, death, illness, body/weight/food-guilt, alcohol, drugs or appearance comparisons; never catastrophic) and medicalTherapyFlags.decisionsInThisLibrary (no caffeine, dentist or 'drink water'). body-image (round 3) spells out body-image and appearance phrasing the single words miss ('I hate my body', 'I look so old', 'photoshop it out'); the library's own 'MY BODY: RESTING' and 'They look so serious.' stay legal, so 'my body' and 'look so' alone are not entries. claims (round 3): outcome promises and wellness-app framing (story-library copyRules.resolution 'never an instruction to fix, never an outcome promise'). Calibrated so every library string passes (tests/unit/planner-lint.test.mjs). 'let it go' is deliberately not a song entry: it is an everyday phrase (and the ritual's own idea)."
+    },
+    "names": {
+      "$doc": "A term ending in '+' also matches its English inflections (google+ matches Googled, googling, Google's; instagram+ matches Instagrammed). A space or hyphen inside a name matches a space, a hyphen or nothing, so 'coca-cola' also catches 'Coca Cola' and 'cocacola', 'tik tok+' catches 'TikTok', 'Tik-Tok' and 'tiktoks', and 'face time+' catches 'FaceTime' and 'Face Time'. Names whose split form is an everyday phrase stay glued ('iphone' not 'i phone' (I phone my mum), 'linkedin', 'powerpoint', 'bereal'). App names that are also everyday words (zoom, slack, teams, messenger, twitch, threads, outlook, excel, telegram, hinge, calm) match only in app contexts ('on Slack', 'Zoom call', 'Teams meeting', 'Hinge date', 'the Calm app'), so 'zoom in', 'cut me some slack' and 'my eye twitched' stay legal.",
+      "brand": [
+        "apple", "samsung", "microsoft", "amazon", "starbucks", "mcdonald's", "mcdonalds", "mc donald's", "mc donalds", "big mac", "happy meal",
+        "coca-cola", "coke", "pepsi", "dr pepper", "mountain dew", "red bull", "monster energy", "nespresso", "nike", "adidas", "ikea", "disney", "pixar", "marvel",
+        "lego+", "barbie", "pokemon", "pokémon", "nintendo", "wii", "game boy", "playstation", "ps 4", "ps 5", "x box", "tetris", "pac man", "animal crossing",
+        "mario kart", "super mario", "zelda", "tesla", "tupperware", "kindle", "fitbit", "peloton", "air pods", "lululemon", "gucci", "prada", "rolex",
+        "shein", "temu", "zara", "h&m", "costco", "walmart", "tesco", "aldi", "lidl", "kfc", "burger king", "domino's", "dominos", "pizza hut",
+        "dunkin", "dunkin'", "nutella", "oreo", "oreos", "kit kat", "skittles", "haribo", "doritos", "pringles", "gatorade", "fanta",
+        "squishmallow+", "jellycat+", "care bears", "build-a-bear", "hello kitty", "weight watchers"
+      ],
+      "app": [
+        "google+", "instagram+", "insta", "ig", "tik tok+", "whats app+", "snapchat+", "snap streak+", "facebook+", "fb", "twitter", "tweet+",
+        "you tube+", "netflix+", "hulu", "spotify+", "iphone", "iphones", "ipad", "ipads", "imessage+", "face time+", "android", "gmail", "discord",
+        "reddit", "redditor", "linkedin", "pinterest", "tinder", "bumble app", "bumble date", "on bumble", "grindr", "only fans", "bluesky",
+        "uber+", "uber eats", "lyft", "waze", "air bnb", "deliveroo", "doordash", "grubhub", "venmo+", "paypal", "chat gpt", "siri", "alexa",
+        "duolingo", "candy crush", "minecraft", "fortnite", "roblox", "wordle", "powerpoint", "photoshop+", "facetune+", "capcut", "canva",
+        "skype+", "bereal", "etsy", "ebay", "vinted", "shazam+", "audible", "google docs", "google meet", "apple music", "prime video", "amazon prime",
+        "re:\\b(zoom(s|ed|ing)?\\s+(call|meeting|link|chat|invite|room|fatigue|background|screen)s?|(on|via|over|into|another|a|the|my|our|this|that|next|first|last|one\\s+more|back-to-back)\\s+zooms?\\b(?!\\s+(in|out|past|by|around|through|off|away|ahead|into|up|down|across|over)\\b))",
+        "re:\\b(slack\\s+(ping|message|dm|notification|channel|thread|huddle|call|status)s?|(on|via|over|in)\\s+slack\\b|slack(ed|ing)\\s+(me|you|him|her|them|us)\\b)",
+        "re:\\b((ms|microsoft)\\s+teams|teams\\s+(call|meeting|chat|message|ping|invite|notification)s?|(on|via|over|in)\\s+teams\\b)",
+        "re:\\b((on|via|over|in)\\s+messenger\\b|messenger\\s+(chat|message|call|ping)s?|facebook\\s+messenger)",
+        "re:\\b((watching|on|via|streaming\\s+on|streamed\\s+on|live\\s+on)\\s+twitch\\b|twitch\\s+(stream|streamer|streamers|chat|live|emote|sub)s?\\b)",
+        "re:\\b((on|via|posted\\s+on|over\\s+on)\\s+threads\\b)",
+        "re:\\b(outlook\\s+(calendar|invite|inbox|email|reminder)s?|excel\\s+(sheet|spreadsheet|file|formula|cell)s?|(on|via|over|in)\\s+telegram\\b)",
+        "re:\\b((on|via)\\s+hinge\\b|hinge\\s+(date|match|matches|app|profile|prompt|prompts)\\b)",
+        "re:\\b(the\\s+calm\\s+app|calm\\s+app|headspace\\s+app)\\b",
+        "re:\\b(on|for)\\s+the\\s+gram\\b"
+      ],
+      "song": [
+        "baby shark", "despacito", "bohemian rhapsody", "gangnam style", "macarena", "wonderwall", "never gonna give you up", "all i want for christmas",
+        "jingle bells", "happy birthday to you", "twinkle twinkle", "clair de lune", "moonlight sonata", "single ladies", "hey jude", "dancing queen",
+        "mr brightside", "mr. brightside", "sweet caroline", "shake it off", "old town road", "uptown funk", "hotel california", "billie jean",
+        "taylor swift", "swiftie", "swifties", "beyonce", "beyoncé", "adele", "bts", "abba", "beatles", "drake", "ed sheeran", "billie eilish",
+        "harry styles", "ariana grande", "bruno mars", "rihanna", "eminem", "lady gaga", "justin bieber", "olivia rodrigo", "coldplay", "elvis",
+        "michael jackson", "madonna"
+      ],
+      "source": "story-library copyRules.general (no real brands, apps, people or places by name), design-quality-first 8 (no brand, app or song names). Round 3 adds spacing variants and the names a verifier found missing (Coca Cola, Tik-Tok, Face Time, PS5, Photoshop, Wii, AirPods, Big Mac, Squishmallow and other plush brands)."
+    },
+    "breathHold": [
+      "re:\\b(hold|holds|holding|held)\\s+(\\w+\\s+){0,2}breaths?\\b",
+      "re:\\bbreaths?\\s+(\\w+\\s+){0,2}(hold|holds|holding|held)\\b",
+      "re:\\b(breath\\w*|inhal\\w*|exhal\\w*)\\b[\\s\\S]{0,40}\\b(hold|holds|holding|held)\\b",
+      "re:\\b(hold|holds|holding|held)\\b[\\s\\S]{0,40}\\b(breath\\w*|inhal\\w*|exhal\\w*)\\b",
+      "re:\\b(take|takes|taking|took)\\s+(a|one|another|some|a\\s+few)?\\s*(deep|slow|big|long|calming|soft|full)?\\s*breaths?\\b",
+      "re:\\b(breathe|inhale|exhale)\\s+(in|out|deep|deeply|slowly|through)\\b",
+      "re:^\\s*(breathe|inhale|exhale)\\b",
+      "re:\\b(just|now|and\\s+now|remember\\s+to|try\\s+to|let'?s|gently|slowly|softly|please|okay|ok)\\s+(breathe|inhale|exhale)\\b",
+      "re:\\b(breathe|inhale|exhale)\\s*([.!]|$)",
+      "re:\\b(box|square|belly|diaphragmatic|paced|alternate[\\s-]nostril|pursed[\\s-]lips?|4-7-8|478)\\s+breath(ing|s)?\\b",
+      "re:\\bbreath[- ]?hold",
+      "re:\\b(stop|stops|stopped|stopping|pause|pauses|paused|pausing|freeze|froze)\\s+(\\w+\\s+){0,2}breath(e|es|ing)?\\b",
+      "re:\\bdon'?t\\s+breathe\\b",
+      "re:\\bcan'?t\\s+breathe\\b",
+      "re:\\bstop\\s+breathing\\b",
+      "re:\\bbreathe\\s+(in|out)\\s+for\\b",
+      "re:\\b(in|out)\\s+for\\s+(\\d+|one|two|three|four|five|six|seven|eight)\\b",
+      "re:\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\s+(in|hold|out)\\b[\\s\\S]{0,20}\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\s+(in|hold|out)\\b",
+      "re:\\b(in|out)\\s+through\\s+(the|your|my)\\s+(nose|mouth)\\b",
+      "re:\\bhold\\s+(it\\s+)?for\\s+(\\d+|one|two|three|four|five|six|seven|eight)\\b",
+      "re:\\bhold\\w*\\b[\\s\\S]{0,30}\\b(count|counts|counting|seconds?|secs?|beats?)\\b",
+      "re:\\b(count|counts|counting|seconds?|secs?|beats?)\\b[\\s\\S]{0,30}\\bhold\\w*\\b",
+      "re:\\bcount(ing)?\\s+to\\s+(\\d+|three|four|five|six|seven|eight|nine|ten)\\b",
+      "re:\\bcount\\s+of\\s+(\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\b",
+      "re:(^|[.!?,;:]\\s*|\\b(and|then|now)\\s+)hold(\\s+(it|now|there|still|that|it\\s+there|it\\s+in|that\\s+in|still\\s+now))?\\s*([.!?,;:]|$)",
+      "re:\\b(hold|holds|holding|held|keep|keeps|keeping|kept|trap|traps|trapping|trapped)\\s+(\\w+\\s+){0,2}(air|lungs?|lungful)\\b(?!\\s*(fryer|fryers|plane|planes|port|ports|line|lines|ways|bnb|pods|drop|con|conditioning|ball|craft|guitar|hockey)\\b)",
+      "re:\\blungs?\\b[\\s\\S]{0,30}\\b(hold|holds|holding|held|full|fill|filled|empty|emptied)\\b",
+      "re:\\b(fill|fills|filled|filling|empty|empties|emptied|emptying)\\s+(\\w+\\s+)?lungs?\\b",
+      "re:\\b(let|lets|letting|blow|blows|blowing|push|pushing)\\s+(\\w+\\s+){0,2}air\\s+(in|out)\\b",
+      "re:\\bair\\s+(in|out)\\b[\\s\\S]{0,15}\\bair\\s+(in|out)\\b",
+      "re:\\b\\d\\s*-\\s*\\d\\s*-\\s*\\d\\b",
+      "re:\\bunder\\s?water\\b",
+      "re:\\bsuffocat"
+    ],
+    "breathHoldSource": "story-library medicalTherapyFlags (no counts, no holds, no on-screen breathing instructions; G-SINK keeps the mouth above the waterline, no underwater reading). Round 3 adds holds without a breath word (a bare 'Hold.', 'hold for a count of four', holding air or lungs, 'let the air out'), counts ('count of four'; a run of three consecutive numbers such as '2... 3... 4' is caught in code, planner/lint-copy.mjs), breathing techniques and instructions ('just breathe', 'in through the nose'). The library itself has no breath word, no hold of air and no count in any copy string, so these patterns cost it nothing ('Hold it together...' and 'Still counts.' stay legal).",
+    "breathWords": {
+      "kinds": ["hook-line", "end-line"],
+      "source": "story-library copyRules.thought ('no breath words in the escalation (the breath belongs to the ritual)') and medicalTherapyFlags (no on-screen breathing instructions), extended by the planner to the hook and the end card (planner default): no on-screen copy names the breath, so a breathing instruction cannot hide in a phrasing the patterns above miss. The library uses no breath word in any hook or end text."
+    },
+    "hashtags": {
+      "$doc": "Owner hashtags (library/brand.json) glue words together, so whole-word matching cannot see inside them (#anxietyrelief, #therapytok). Each tag is searched for every term of the library's medical and caution flags, the topics and the names, with spaces, hyphens and punctuation removed ('panic attack' -> panicattack; 're:' patterns are skipped), plus the extra terms below. A hit is excused only when a carrier word covers it: a word of the story library's own copy (all of it lint-clean, so 'still' covers 'ill') or one listed here ('pillow' covers 'pill', 'closer' covers 'loser'). The check fails closed: a new innocent tag that is flagged needs its carrier word added here, by the owner.",
+      "carriers": [
+        "pillow", "pillows", "fluffy", "fluff", "chill", "chilly", "chilled", "chilling", "illustration", "illustrations", "illustrated", "illustrator",
+        "brilliant", "thrill", "closer", "skill", "skills", "imagine", "imagination", "begin", "beginning", "public", "indie", "foodie", "goodies",
+        "absolutely", "spectrum", "drip", "trip", "script", "grip", "gravity", "deadline", "pineapple", "screenshot", "screenshots"
+      ],
+      "terms": {
+        "breath-hold": ["breath", "inhal", "exhal"],
+        "name:app": ["zoomcall", "zoommeeting", "slackchat", "msteams", "teamsmeeting", "twitchstream", "booktok", "fyp", "foryoupage"]
+      },
+      "source": "design-quality-first 8 and OWNER-DECISIONS D8 (captions: library strings plus the owner-curated hashtags only); story-library copyRules.general (no brands, apps or names) and medicalTherapyFlags. 'fyp' and 'foryoupage' name TikTok's For You page. A carrier equal to a term never excuses it ('pill' is no carrier of 'pill'). The carriers here are planner defaults the owner may extend."
+    },
+    "cautionWhitelist": [
+      {
+        "text": "AND REGRETTING IT INSTANTLY",
+        "term": "instantly",
+        "reason": "T13 hook[7]: 'instantly' describes the regret, not a promised outcome (the validator's only caution warning in library 1.0.0)"
+      }
+    ],
+    "timeWordExemptions": [
+      {
+        "text": "Alarm at 6:30.",
+        "reason": "T02 Sunday evening: the thought is about tomorrow's alarm, so it does not set the time of day of the scene"
+      }
+    ],
+    "clockTimes": {
+      "$doc": "Clock times the library's timeWords patterns do not spell out (2:00 AM, 2.30am, 3 a.m., TWO AM, two-thirty a.m., 2 o'clock AM, quarter to three AM, 3 in the morning, 10 at night, 02:00, 0200 hours, noon). Each explicit time maps through its hour to the ToD classes below (planner/time-words.mjs). A clock phrase is read as a whole: 'two o'clock in the morning' is 2 AM, so the bare MORNING keyword inside it does not count; the keyword patterns (library timeWords and timePhrases below) see the text with its clock phrases blanked out, and the planner intersects their classes with the clock classes. Times without AM/PM or a part-of-day phrase (6:30, three o'clock) are ambiguous and pin nothing, as in the library. Every hour 0-23 appears exactly once.",
+      "hours": {
+        "late-night|night": [0, 1, 2, 3, 4, 21, 22, 23],
+        "morning|pre-dawn|misty-morning": [5, 6, 7, 8, 9],
+        "morning|misty-morning|midday": [10, 11],
+        "afternoon|midday": [12, 13, 14, 15, 16],
+        "golden|dusk|blue-hour|rainy-evening|night": [17, 18, 19, 20]
+      },
+      "source": "story-library timeWords (1-4 AM, MIDNIGHT and 9-11 PM: late-night|night; 5-9 AM: morning|pre-dawn|misty-morning; 1-4 PM: afternoon|midday; 5-8 PM: golden|dusk|blue-hour|rainy-evening|night); 10-11 AM and noon are planner defaults. hm lib validate checks the shared hours against the library patterns."
+    },
+    "timePhrases": {
+      "$doc": "Time words the library's timeWords do not list, matched like them (whole words or phrases, case-insensitive) and unioned with them: a text that says one of these allows only the mapped times of day. Bare day-part words that are often recollections or plans ('last night', 'this evening', 'lunch', 'breakfast') are deliberately not listed, as in the library (T01's line 'What I said at lunch.').",
+      "late-night|night": ["late night", "late-night", "late at night", "middle of the night", "small hours", "wee hours", "after midnight", "witching hour", "all night", "all-nighter", "all-nighters", "nighttime", "night-time", "night owl", "after dark"],
+      "morning|pre-dawn|misty-morning": ["sunrise", "dawn", "daybreak", "first light", "crack of dawn"],
+      "golden|dusk|blue-hour|rainy-evening|night": ["sunset", "sundown", "dusk", "twilight", "golden hour", "blue hour"],
+      "source": "planner default (round 3), following the library's own classes: 'late night' sits with TONIGHT and AT NIGHT, sunrise and dawn with MORNING, sunset and dusk with SUN GOES DOWN. hm lib validate checks that every library text still fits a time of day open to its template's cast."
+    },
+    "griefPairing": [
+      {
+        "template": "T14-missing-someone",
+        "hook": ["WHEN YOU WANT TO TELL THEM", "SOMETHING AND REMEMBER"],
+        "comicL3": ["Hug in the mail, please."],
+        "hookWeight": 0.5,
+        "source": "T14 flags: the most grief-adjacent hook; 'schedule it sparingly and never pair with a comic L3'"
+      }
+    ]
+  },
+
+  "export": {
+    "$doc": "What hm export demands of <variant>/qa/report.json before it hands a final to the owner (planner/export.mjs). The report must name the exact video it judged (video.sha256 = sha256 of final.mp4) and the spec (spec.fingerprint), list at least one gate, every gate must have pass === true (false = failed, null or missing = did not run), and each required gate must be present, either by name or as sub-gates named '<gate>:<part>' (also '-', '/', '.' or a space as separator).",
+    "requiredQaGates": ["G-FINAL", "G-AUDIO"],
+    "source": "PHASE2-PLAN data flow step 7 (mux -> final.mp4 -> G-FINAL and G-AUDIO -> gallery -> owner decisions) and section 8 (qa/report.json: {gates: {G-SPEC..G-AUDIO: {pass, warn, metrics, artefacts}}})"
+  }
+}

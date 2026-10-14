@@ -1,0 +1,16 @@
+{
+  "source": "fitted to the approved artwork hushmallow/assets/source/hires/noomi.webp (1254×1254): centreline parabola, corner height, depth and mid-line thickness of each painted glossy arc; open-eye size, iris and brows follow the approved rig (src/mallows/registry.js, noomi.face) scaled ×2.70",
+  "spec": {
+    "line": "#0a1450",
+    "eyes": {
+      "L": { "x": 411.9, "y": 729.0, "hw": 100.0, "sag": 38.4, "lw": 40.8, "r": 97.2, "irisR": 64.8, "irisOff": [8.1, 0] },
+      "R": { "x": 848.6, "y": 731.1, "hw": 102.4, "sag": 38.9, "lw": 39.6, "r": 97.2, "irisR": 64.8, "irisOff": [-8.1, 0] }
+    },
+    "brows": {
+      "L": { "p0": [323.6, 621.2], "c": [410.0, 594.2], "p1": [496.4, 615.8], "lw": 29.7 },
+      "R": { "p0": [761.0, 615.8], "c": [847.4, 594.2], "p1": [933.8, 621.2], "lw": 29.7 }
+    },
+    "mouth": { "x": 624.8, "y": 878.5, "w": 205.6, "sag": 40.4, "lw": 35.3 },
+    "cheeks": { "L": [294, 846, 92], "R": [962, 846, 92], "colour": "#ff7ff0" }
+  }
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hushmallow Studio Engine</title>
+<!--
+  The import map is the v2 adapter's other half (runtime/adapter-v2.js): the
+  frozen videos/my-brain-at-2am-v2.js imports '../stage2/*.js', and these
+  entries redirect exactly those URLs to the engine's own copies, so the
+  approved direction renders on engine code without an edit to a frozen file.
+  Keys and values resolve against this page's URL.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "../stage2/gl.js": "./gl.js",
+    "../stage2/motion.js": "./motion.js",
+    "../stage2/softbody.js": "./softbody.js",
+    "../stage2/face.js": "./face.js",
+    "../stage2/type.js": "./type.js",
+    "../stage2/renderer.js": "./renderer.js",
+    "../stage2/stage.js": "./stage.js"
+  }
+}
+</script>
+<style>
+  html, body { margin: 0; background: #05040f; overflow: hidden; }
+  #out { position: absolute; left: 0; top: 0; }
+</style>
+</head>
+<body>
+  <!-- sized from the query string (w, h, scale) by main.js -->
+  <canvas id="out"></canvas>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -100,15 +100,12 @@ export async function run(args, ctx) { /* return an exit code */ }   // ctx: { n
 - A command module does **no work at import**: it imports heavy dependencies inside `run()`. `tests/unit/cli.test.mjs` checks this for every command.
 - Run commands with `node cli/hm.mjs …` or `npm run hm -- …`.
 
-Commands since WP-00:
+Commands (`hm help` prints the live list with one line each):
 
-- `hm guard`
-- `hm test [guard] [unit] [parity] [golden]`
-- `hm lib validate`
-- `hm lock status`
-- `hm golden capture`
-- `hm golden sequential`
-- `hm golden verify`
+- WP-00: `hm guard`, `hm test [guard] [unit] [parity] [property] [golden] [derive]`, `hm lock status`, `hm golden capture`, `hm golden sequential`, `hm golden verify`.
+- WP-01 (render farm): `hm render`, `hm status`, `hm doctor`.
+- WP-06 (planner): `hm lib validate` (extended: the story library, then the planner inputs), `hm lib coverage`, `hm plan`, `hm spec new`, `hm spec show`, `hm spec seal`, `hm spec check`, `hm spec compile`, `hm approve`, `hm reject`, `hm export`.
+- WP-07 (asset derivation) has no `hm` command yet: run `python3 -I tools/derive/derive_mallow.py --mallow <id>` and `python3 -I tools/derive/asset_qa.py --mallow <id>`; both take the exclusive heavy lock themselves.
 
 ## 5. Tests: `node:test`, no dependencies
 
@@ -116,9 +113,11 @@ Commands since WP-00:
 tests/unit/         fast, pure (no browser)                      npm run test:unit     = hm test unit
 tests/guard/        safety rails (frozen, app, wall clock, writes) npm run test:guard    = hm test guard
 tests/parity/       re-sample in Chromium vs goldens (≈ 20 s)     npm run test:parity   = hm test parity
-tests/golden/       pixel goldens, heavy (≈ 2 min)                npm run test:golden   = hm test golden
-tests/property/  tests/smoke/  tests/determinism/                 (from WP-06, WP-24 and WP-26)
-npm test            guard + unit + parity: run before handing in any package (= node cli/hm.mjs test)
+tests/property/     planner invariants over 1k–10k specs (≈ 30 s) npm run test:property = hm test property
+tests/golden/       pixel goldens + render farm, heavy (≈ 5 min)  npm run test:golden   = hm test golden
+tests/derive/       tools/derive Python unittest (≈ 2.5 min)      npm run test:derive   = hm test derive
+tests/smoke/  tests/determinism/                                  (from WP-24 and WP-26)
+npm test            guard + unit + parity + property: run before handing in any package (= node cli/hm.mjs test)
 ```
 
 - Files are named `*.test.mjs`. Tests that render take the heavy lock themselves (shared), so running them directly is safe too.

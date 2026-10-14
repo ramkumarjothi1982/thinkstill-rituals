@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hm-variant/1",
+  "title": "Hushmallow variant spec (hm-variant/1)",
+  "description": "Written by the planner (planner/pick.mjs), checked by G-SPEC (planner/gspec.mjs), the only input of compile (composer). Every value is explicit: the composer adds no randomness beyond the named streams seeded from `seed`. Field-by-field documentation: docs/SPEC.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "batch", "index", "mode", "internal", "quality", "channel", "plannedFor", "template", "mallow", "realm", "tod", "weather", "dressing", "duration", "seed", "gag", "metaphor", "turn", "ritual", "loop", "camera", "arc", "worldJitter", "copy", "sound", "cells", "pins", "fingerprint"],
+  "properties": {
+    "schema": { "const": "hm-variant/1" },
+    "id": { "type": "string", "pattern": "^T[0-9]{2}-[a-z]+-[a-z-]+-[0-9]{2}s-[0-9a-f]{6}$" },
+    "batch": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$" },
+    "index": { "type": "integer", "minimum": 0 },
+    "mode": { "enum": ["production", "review"] },
+    "internal": { "type": "boolean" },
+    "quality": { "enum": ["final", "draft", "proof"] },
+    "channel": { "type": ["string", "null"], "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+    "plannedFor": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "template": { "type": "string", "pattern": "^T[0-9]{2}-[a-z0-9-]+$" },
+    "mallow": { "$ref": "#/$defs/slug" },
+    "realm": { "$ref": "#/$defs/slug" },
+    "tod": { "$ref": "#/$defs/slug" },
+    "weather": { "$ref": "#/$defs/slug" },
+    "dressing": {
+      "type": "array", "maxItems": 4,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "variant"],
+        "properties": { "id": { "$ref": "#/$defs/slug" }, "variant": { "type": "integer", "minimum": 1 } }
+      }
+    },
+    "duration": { "enum": [10, 12, 15, 20] },
+    "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "gag": {
+      "type": "object", "additionalProperties": false, "required": ["id", "intensity"],
+      "properties": { "id": { "type": "string", "pattern": "^G-[A-Z0-9-]+$" }, "intensity": { "type": "number", "minimum": 0.05, "maximum": 1 } }
+    },
+    "metaphor": { "type": "string", "pattern": "^M-[A-Z0-9-]+$" },
+    "turn": { "type": "string", "pattern": "^TURN-[A-Z0-9-]+$" },
+    "ritual": { "type": "string", "pattern": "^R-[A-Z0-9-]+$" },
+    "loop": { "type": "string", "pattern": "^LP-[A-Z0-9-]+$" },
+    "camera": { "type": "string", "pattern": "^C-[A-Z0-9-]+$" },
+    "arc": { "type": "string", "pattern": "^A-[A-Z0-9-]+$" },
+    "worldJitter": {
+      "type": "object", "additionalProperties": false, "required": ["hue", "warmth", "exposure"],
+      "properties": {
+        "hue": { "type": "number", "minimum": -6, "maximum": 6 },
+        "warmth": { "type": "number", "minimum": -0.1, "maximum": 0.1 },
+        "exposure": { "type": "number", "minimum": -0.05, "maximum": 0.05 }
+      }
+    },
+    "copy": {
+      "type": "object", "additionalProperties": false, "required": ["hook", "lines", "end", "nameWord"],
+      "properties": {
+        "hook": { "type": "array", "minItems": 1, "maxItems": 2, "items": { "$ref": "#/$defs/text" } },
+        "lines": { "type": "array", "minItems": 3, "maxItems": 4, "items": { "$ref": "#/$defs/text" } },
+        "end": {
+          "type": "object", "additionalProperties": false, "required": ["kind", "text"],
+          "properties": {
+            "kind": { "enum": ["resolution", "closer"] },
+            "text": { "type": "array", "minItems": 1, "maxItems": 2, "items": { "$ref": "#/$defs/text" } }
+          }
+        },
+        "nameWord": { "type": ["string", "null"] }
+      }
+    },
+    "sound": {
+      "type": "object", "additionalProperties": false, "required": ["motifs", "contour", "tickTempo", "panSeed"],
+      "properties": {
+        "motifs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^MO-[A-Z0-9-]+$" } },
+        "contour": { "type": "string" },
+        "tickTempo": { "type": "number", "minimum": 0.5, "maximum": 1.5 },
+        "panSeed": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "cells": {
+      "type": "object",
+      "additionalProperties": { "enum": ["approved", "candidate"] }
+    },
+    "pins": {
+      "type": "object", "additionalProperties": false, "required": ["library", "librarySha256", "capabilitiesSha256", "policySha256", "packs", "engine"],
+      "properties": {
+        "library": { "type": "string" },
+        "librarySha256": { "$ref": "#/$defs/hex64" },
+        "capabilitiesSha256": { "type": "string" },
+        "policySha256": { "$ref": "#/$defs/hex64" },
+        "packs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false, "required": ["file", "sha256"],
+            "properties": { "file": { "type": ["string", "null"] }, "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" } }
+          }
+        },
+        "engine": { "type": ["string", "null"] }
+      }
+    },
+    "fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "hex64": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "text": { "type": "string", "minLength": 1, "maxLength": 40 }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "hm-capabilities/1",
+  "$doc": "What the generator may build today: the planner samples only what this file enables (planner/capabilities.mjs, PHASE2-PLAN 'needs/provides capability gating'). Status per entry: blocked < untuned < candidate < approved. Production plans use approved entries only; review plans (hm plan --review) may also use candidate move cells. Packs, realm presets, times of day and loop durations must be approved in both modes. Work packages promote entries here as they land (cells: owner-ticked extremes sheet + clean G-DIR, OWNER-DECISIONS D2). Today only the approved v2 is buildable: Noomi in Moonmilk Cove, late night, 15 s, with the T01 moves.",
+  "library": "1.0.0",
+  "mallows": {
+    "noomi": { "status": "approved", "pack": "library/mallows/noomi.json", "evidence": "approved v2 'My Brain at 2 AM' (OWNER-DECISIONS D12)" },
+    "blubi": { "status": "blocked", "reason": "hi-res face assets not derived yet (WP-30), closed-tube generalisation (WP-32)" },
+    "loomi": { "status": "blocked", "reason": "canonical-art question Q2, derivation (WP-31)" },
+    "boppo": { "status": "blocked", "reason": "canonical-art question Q2, derivation (WP-42)" },
+    "pipzi": { "status": "blocked", "reason": "derivation (WP-41), open-socket face style (WP-40)" },
+    "zuzu": { "status": "blocked", "reason": "canonical-art question Q2, derivation (WP-51), spiral face style (WP-50)" },
+    "glitzi": { "status": "blocked", "reason": "layer split (WP-53), heavy-lid face style (WP-52)" }
+  },
+  "realms": {
+    "moonmilk-cove": {
+      "status": "approved",
+      "preset": "library/realms/moonmilk-cove.json",
+      "evidence": "approved v2 world (late night)",
+      "tods": { "late-night": "approved", "night": "untuned", "dusk": "untuned", "pre-dawn": "untuned" },
+      "durations": { "15": "approved", "10": "untuned", "12": "untuned", "20": "untuned" },
+      "durationsNote": "only 15 s loops seamlessly until the world terms are periodic over D (WP-14, audit R6)",
+      "weather": { "clear": "approved" },
+      "dressing": {},
+      "dressingBudget": { "maxItems": 2, "maxCostMs": 60 }
+    },
+    "raindrop-lagoon": { "status": "blocked", "reason": "realm port (WP-33)" },
+    "blue-drift": { "status": "blocked", "reason": "realm port (WP-34)" },
+    "sunpop-orchard": { "status": "blocked", "reason": "realm port (WP-43)" },
+    "spark-festival": { "status": "blocked", "reason": "realm port (WP-44)" },
+    "spiral-observatory": { "status": "blocked", "reason": "realm port (WP-54)" },
+    "static-storm": { "status": "blocked", "reason": "realm port (WP-55)" }
+  },
+  "moves": {
+    "G-JOLT": { "kind": "gag", "cells": { "noomi": "approved" }, "evidence": "v2 hypnic jolt (WP-03 re-expresses it as a move)" },
+    "M-ORBIT": { "kind": "metaphor", "cells": { "noomi": "approved" }, "evidence": "v2 thought-bubble orbit" },
+    "TURN-SQUEEZE": { "kind": "turn", "cells": { "noomi": "approved" }, "evidence": "v2 squeeze-and-let-go" },
+    "R-BREATH": { "kind": "ritual", "cells": { "noomi": "approved" }, "evidence": "v2 one big breath" },
+    "LP-RETURN": { "kind": "loop", "cells": { "noomi": "approved" }, "evidence": "v2 return to cover" },
+    "C-DRIFT-IN": { "kind": "camera", "cells": { "noomi": "approved" }, "evidence": "v2 drift-in" },
+    "A-COLD-DIP-WARM": { "kind": "arc", "cells": { "noomi": "approved" }, "evidence": "v2 night -> cold -> warm" }
+  }
+}

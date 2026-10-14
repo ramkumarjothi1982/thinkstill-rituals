@@ -43,6 +43,16 @@ Source: `docs/PHASE2-PLAN.md`, sections "Open questions for the owner" and "CONF
 | **Alternative** | Local files only, with no shareable previews. |
 | **Consequences** | WP-05 (the gallery, and the preview encode at 15 MB or less), WP-15, WP-27, WP-37, WP-48 and WP-57 (batch delivery). |
 
+### Q4. Master encoder for segmented renders: CRF 16 (D7) or constant QP
+
+| | |
+|---|---|
+| **Status** | open: raised by WP-01 and its review (Wave B integration, 2026-10-14). D7 stays the decided default until the owner answers. |
+| **Needed by** | WP-02 (the final profile), and in any case before the first production master (M2). |
+| **Why it matters** | D7 (and PHASE2-PLAN "CONFLICTS RESOLVED" #7) keeps the CRF 16 master. The render farm encodes 90-frame segments and joins them with `concat -c copy`, and its acceptance asks for ≥ 60 dB against a single pass. CRF carries rate-control state across segments, so segmented CRF 16 measured 49.5 dB against a single pass. WP-01 therefore made constant QP 15 the farm's default (`render/encode.mjs`), which is bit-identical to a single pass. Measured: QP 15 is slightly **better** than the approved master on the 15 frame-aligned goldens (PSNR-Y 45.86 vs 45.02 dB) but **34 % larger** (video stream 45.9 MB vs 34.2 MB; the plan budgeted about 35 MB per master). Details: `docs/wp/WP-01.md`, deviation 1. |
+| **Options** | (a) Accept constant QP for masters: QP 15 (≈ 46 MB) or QP 16 (≈ 39 MB estimated, quality just below CRF 16). (b) Keep CRF 16: segments are rendered to a lossless or near-lossless intermediate and the master is one CRF 16 pass over the joined frames (more disk and one extra encode per video). (c) Keep CRF 16 per segment and drop the ≥ 60 dB segment criterion (visible-seam risk not measured). |
+| **Consequences** | WP-01 (`ENCODERS` default), WP-02 (profiles), WP-05 (the size check), and the disk budget in PHASE2-PLAN "Resources". |
+
 ## Decided defaults (the owner may still overrule them)
 
 These came out of the plan synthesis. They count as settled unless the owner says otherwise.

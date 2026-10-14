@@ -1,0 +1,8 @@
+{
+  "schema": "hm-brand/1",
+  "$doc": "Brand data the studio needs outside the story library. hashtags.list is curated by the owner only (OWNER-DECISIONS D8): hm export appends it to caption.txt verbatim and never generates tags. It ships empty until the owner fills it; each tag is lowercase (#letters, digits, _).",
+  "hashtags": {
+    "curatedBy": "owner (not yet curated)",
+    "list": []
+  }
+}

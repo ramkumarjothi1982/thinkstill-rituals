@@ -17,6 +17,10 @@ comparison (see the end of this file).
 > `docs/CONVENTIONS.md` (paths, the write jail, the heavy-job lock, `hm`
 > commands, tests, goldens) and `docs/OWNER-DECISIONS.md`. Run `npm test` (or, without npm,
 > `node cli/hm.mjs test`) and `node cli/hm.mjs guard` before you hand work in.
+> `node cli/hm.mjs help` lists every command: so far the render farm (`hm render`,
+> `hm status`, `hm doctor`, WP-01) and the planner (`hm plan`, `hm spec …`,
+> `hm approve`, `hm reject`, `hm export`, WP-06); the generic asset derivation
+> lives in `tools/derive/` (WP-07).
 
 | File | What it is |
 |---|---|

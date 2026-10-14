@@ -8,11 +8,13 @@
     "node": ">=22.2"
   },
   "scripts": {
-    "test": "node cli/hm.mjs test guard unit parity",
+    "test": "node cli/hm.mjs test guard unit parity property",
     "test:guard": "node cli/hm.mjs test guard",
     "test:unit": "node cli/hm.mjs test unit",
     "test:parity": "node cli/hm.mjs test parity",
+    "test:property": "node cli/hm.mjs test property",
     "test:golden": "node cli/hm.mjs test golden",
+    "test:derive": "node cli/hm.mjs test derive",
     "lib:validate": "node cli/hm.mjs lib validate",
     "hm": "node cli/hm.mjs",
     "guard": "node cli/hm.mjs guard",

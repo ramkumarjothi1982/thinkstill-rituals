@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Rest-face alignment</title>
+<style>html,body{margin:0;background:#222;color:#ddd;font:14px sans-serif}</style></head>
+<body><canvas id="c" width="1500" height="560"></canvas>
+<script type="module">
+// The untouched painting vs the cleaned body + procedural neutral face (the two states
+// that cross-fade at the loop), and their amplified difference.
+import { MALLOWS } from '../../../hushmallow/src/mallows/registry.js';
+import { Face, specFromDerived } from '../face.js';
+const load = (src) => new Promise((r, j) => { const i = new Image(); i.onload = () => r(i); i.onerror = j; i.src = src; });
+const art = await load('../../assets/noomi/noomi-art.png');
+const clean = await load('../../assets/noomi/noomi-clean.png');
+const j = await (await fetch('../../assets/noomi/noomi-face.json')).json();
+const spec = specFromDerived(j, MALLOWS.noomi.face);
+const fc = document.createElement('canvas'); fc.width = art.width; fc.height = art.height;
+new Face(spec, fc).draw({});
+const box = [180, 480, 1020, 900], S = 0.58, W = (box[2] - box[0]) * S, H = (box[3] - box[1]) * S;
+const c = document.getElementById('c'), g = c.getContext('2d');
+const cell = (i, label, draw) => { const x = 10 + i * (W + 10), y = 26; g.save(); g.beginPath(); g.rect(x, y, W, H); g.clip(); g.translate(x, y); g.scale(S, S); g.translate(-box[0], -box[1]); draw(g); g.restore(); g.fillStyle = '#ddd'; g.fillText(label, x, 16); return [x, y]; };
+cell(0, 'approved painting (noomi-art.png)', (q) => q.drawImage(art, 0, 0));
+cell(1, 'cleaned body + procedural neutral face', (q) => { q.drawImage(clean, 0, 0); q.drawImage(fc, 0, 0); });
+// difference ×4
+const A = document.createElement('canvas'); A.width = art.width; A.height = art.height;
+const a = A.getContext('2d'); a.drawImage(art, 0, 0); const pa = a.getImageData(0, 0, A.width, A.height);
+a.clearRect(0, 0, A.width, A.height); a.drawImage(clean, 0, 0); a.drawImage(fc, 0, 0); const pb = a.getImageData(0, 0, A.width, A.height);
+let sum = 0, n = 0;
+for (let k = 0; k < pa.data.length; k += 4) { for (let ch = 0; ch < 3; ch++) { const d = Math.abs(pa.data[k + ch] - pb.data[k + ch]); pb.data[k + ch] = Math.min(255, d * 4); sum += d; n++; } pb.data[k + 3] = 255; }
+a.putImageData(pb, 0, 0);
+cell(2, 'difference ×4', (q) => q.drawImage(A, 0, 0));
+window.__meanDiff = sum / n;
+window.__done = true;
+</script></body></html>
