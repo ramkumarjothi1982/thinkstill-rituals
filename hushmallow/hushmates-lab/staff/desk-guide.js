@@ -9,14 +9,14 @@ export const DESK_ACTIONS = {
   feeling: [
     { id: 'resume-feeling', label: 'Let it carry on', explain: 'Nothing wrong with it. If it still has time, it travels again.' },
     { id: 'remove-feeling', label: 'Take it out of circulation', strong: true, explain: 'Nobody else is offered it. It goes home to the person who wrote it now, with whatever came back.' },
-    { id: 'restrict-user', label: 'Restrict the person who wrote it', explain: 'They can no longer catch feelings or write to anyone. Their own feelings still come home to them.',
-      confirm: 'Restrict this person? They will no longer be able to catch feelings or write to anyone. A team lead can lift it later.' },
+    { id: 'restrict-user', label: 'Restrict the person who wrote it', explain: 'They can no longer release or catch feelings, ask their Mallow, or write to anyone. Feelings already travelling stop being offered, and still come home to them.',
+      confirm: 'Restrict this person? They will no longer be able to release or catch feelings, ask their Mallow, or write to anyone. A team lead can lift it later.' },
   ],
   perspective: [
     { id: 'dismiss', label: 'No action needed', explain: 'It breaks no rule. (It has already left the collection of the person who reported it.)' },
     { id: 'remove-perspective', label: 'Remove the perspective', strong: true, explain: 'It disappears from the collection it was in, for good.' },
-    { id: 'restrict-user', label: 'Restrict the person who wrote it', explain: 'They can no longer catch feelings or write to anyone.',
-      confirm: 'Restrict this person? They will no longer be able to catch feelings or write to anyone. A team lead can lift it later.' },
+    { id: 'restrict-user', label: 'Restrict the person who wrote it', explain: 'They can no longer release or catch feelings, ask their Mallow, or write to anyone. Feelings already travelling stop being offered, and still come home to them.',
+      confirm: 'Restrict this person? They will no longer be able to release or catch feelings, ask their Mallow, or write to anyone. A team lead can lift it later.' },
   ],
   mallow: [
     { id: 'dismiss', label: 'Close: noted for the library', strong: true, explain: 'Automatic words that missed. Note what went wrong so the Mallow library can be improved.' },

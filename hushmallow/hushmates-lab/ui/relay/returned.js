@@ -22,7 +22,7 @@ import { humanProgress } from './journeys.js';
 const homeList = (state) => state.journeys.filter((j) => j.status === 'returned' || j.status === 'released')
   .sort((a, b) => (a.seenReturn - b.seenReturn) || ((b.returnedAt || 0) - (a.returnedAt || 0)));
 const caption = (j) => {
-  if (j.status === 'released') return 'Released';
+  if (j.status === 'released') return 'Let go';
   if (j.returnReason === 'removed') return 'Brought home by our safety team';
   if (!j.humanCount && j.placesTaken) return 'Caught, but those words aren’t here any more';
   if (!j.humanCount) return j.mallowPetal || j.mallowExtra ? 'No one caught it · a Mallow’s perspective' : 'No one caught it this time';
@@ -236,7 +236,7 @@ export function homecoming(dev, { id, refresh } = {}) {
       !released && j.canExplore ? h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--block', dataset: { test: 'explore-angle' }, onclick: () => explore() }, face(j.mallow, { size: 22 }), 'Explore another angle') : null,
       h('div', { class: 'hf-quiet-actions' },
         quiet('share-journey', 'Share a picture', () => dev.go('share', { id })),
-        released ? null : quiet('release-journey', 'Release this feeling', () => letGo()),
+        released ? null : quiet('release-journey', 'Let it go', () => letGo()),
         quiet('delete-journey', 'Delete my journey', () => remove(), 'hf-danger')));
   }
 
@@ -289,7 +289,7 @@ export function homecoming(dev, { id, refresh } = {}) {
     rebuild();
   }
   async function letGo() {
-    const ok = await dev.confirm({ title: 'Release this feeling?', text: 'Your words are cleared for good. Any perspectives you chose to keep stay with you.', confirmLabel: 'Release it' });
+    const ok = await dev.confirm({ title: 'Let this feeling go?', text: 'Your words are cleared for good. Any perspectives you chose to keep stay with you.', confirmLabel: 'Let it go' });
     if (!ok) return;
     play('release');
     const res = await dev.run(() => c.act('releaseJourney', { journeyId: id }));

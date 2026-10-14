@@ -819,7 +819,7 @@ export class RelayService {
 
   _expectation(rep) {
     return rep.urgent
-      ? 'Thank you. This is marked as a priority for our human safety team (we aim to look within 24 hours during the pilot). If anyone is in immediate danger, contact local emergency services now.'
+      ? 'Thank you. This is marked as a priority for our human safety team (we aim to look within 24 hours during the pilot). If anyone is in immediate danger, call 000 now.'
       : 'Thank you. A person on our safety team will review this. During the pilot we aim to review reports within 48 hours. Nobody is told who reported.';
   }
 

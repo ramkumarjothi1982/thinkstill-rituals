@@ -28,7 +28,7 @@ export function support(dev, { support: payload = {}, level = 'care', from = 're
     h('p', { class: 'hf-unsent', dataset: { test: 'support-unsent' } }, icon('shield'),
       h('span', {}, catching
         ? 'What you wrote wasn’t passed on or saved, and the feeling has floated on to someone else. Right now, this is about you.'
-        : 'Your words were not sent to anyone and were not saved. They stay on this device until you clear them.')),
+        : 'Your words weren’t sent to anyone or saved. They’re only in your draft here, and they’re gone when you clear them or close Hushmates.')),
     supportBody(payload, { note: hostNote(dev, 'support') }),
     catching
       ? h('div', { class: 'hf-actions' },

@@ -1,6 +1,6 @@
 # Hushmates 2.0 · The Feeling Relay: architecture
 
-> **One feeling. Five human perspectives. Back to you.**
+> **One feeling. Five perspectives. Back to you.**
 > SUBMIT → RELEASE → TRAVEL → CATCH → REFRAME → PASS → RETURN → CHOOSE
 
 This document describes how the relay works in the lab today, what is

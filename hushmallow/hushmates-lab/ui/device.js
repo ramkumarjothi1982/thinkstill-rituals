@@ -26,7 +26,7 @@ export class Device {
     this.screenHost = h('div', { class: 'hm-screens' });
     this.sheetRoot = h('div', { class: 'hm-sheet-root' });
     this.toastRoot = h('div', { class: 'hm-toast-root', role: 'status', 'aria-live': 'polite' });
-    this.offline = h('div', { class: 'hm-offline', hidden: true }, icon('wifiOff'), h('span', {}, 'You’re offline. Anything unsent will wait for you.'));
+    this.offline = h('div', { class: 'hm-offline', role: 'status', hidden: true }, icon('wifiOff'), h('span', {}, 'You’re offline. Anything unsent will wait for you.'));
     root.append(atmoEl, this.screenHost, this.offline, this.sheetRoot, this.toastRoot);
     client.on((state, detail) => this._changed(state, detail));
   }

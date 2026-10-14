@@ -858,7 +858,7 @@ end $$;
 create or replace function hushmates.expectation(p_urgent boolean) returns text
 language sql immutable set search_path = '' as $$
   select case when p_urgent
-    then 'Thank you. This is marked as a priority for our human safety team (we aim to look within 24 hours during the pilot). If anyone is in immediate danger, contact local emergency services now.'
+    then 'Thank you. This is marked as a priority for our human safety team (we aim to look within 24 hours during the pilot). If anyone is in immediate danger, call 000 now.'
     else 'Thank you. A person on our safety team will review this. During the pilot we aim to review reports within 48 hours. Nobody is told who reported.' end
 $$;
 

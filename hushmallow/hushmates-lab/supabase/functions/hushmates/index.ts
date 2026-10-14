@@ -13,6 +13,8 @@
 //   HUSHMATES_CLIENT_IP_HEADER optional: the header the platform sets with the caller's address (see STAGING.md)
 //   HUSHMATES_AI_URL, HUSHMATES_AI_TOKEN   Another Angle, used only when the owner turns AI on
 //                              (hushmates.settings 'ai'.enabled); unset = never called
+//   ANOTHER_ANGLE_COST_PER_CALL_AUD, ANOTHER_ANGLE_TIMEOUT_MS   optional: the adapter's cost
+//                              estimate (the budget hold uses the larger of it and the setting's) and timeout
 //
 // supabase/config.toml turns off Supabase's own token check for this function, because it
 // checks every token itself (and the scheduler's route has no person's token).
@@ -40,7 +42,8 @@ const verifier = createVerifier({
   }],
 });
 const crypt = await createFieldCrypt({ keys: JSON.parse(must('HUSHMATES_DATA_KEYS')), current: must('HUSHMATES_DATA_KEY_ID'), macKey: must('HUSHMATES_MAC_KEY') });
-const mallow = createMallowFor({ db, env: { HUSHMATES_AI_URL: env('HUSHMATES_AI_URL'), HUSHMATES_AI_TOKEN: env('HUSHMATES_AI_TOKEN') }, log });
+const AI_ENV = ['HUSHMATES_AI_URL', 'HUSHMATES_AI_TOKEN', 'ANOTHER_ANGLE_COST_PER_CALL_AUD', 'ANOTHER_ANGLE_TIMEOUT_MS'];
+const mallow = createMallowFor({ db, env: Object.fromEntries(AI_ENV.map((k) => [k, env(k)])), log });
 const gateway = createGateway({
   db, verifier, crypt, mallow, log,
   config: {

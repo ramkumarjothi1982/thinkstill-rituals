@@ -38,15 +38,16 @@ const safetyOf = (probe) => { const s = checkSafety(probe); return s.reframeAppr
 // services' published numbers. To be reviewed before launch by a clinical safety adviser (see
 // docs/READINESS.md), and again for any new region.
 export const SUPPORT_REGION = 'AU';
+// `tel` (digits only) and `link` (https only) make the lines tappable on the support screen.
 const AU = {
-  now: { label: 'Right now', detail: 'If you or someone else is in immediate danger, call 000.' },
-  lifeline: { label: 'Lifeline', detail: 'Call 13 11 14, any time, day or night, or chat online at lifeline.org.au.' },
-  callback: { label: 'Suicide Call Back Service', detail: 'Call 1300 659 467, any time.' },
-  yarn: { label: '13YARN', detail: 'Call 13 92 76: crisis support by and for Aboriginal and Torres Strait Islander people, any time.' },
-  respect: { label: '1800RESPECT', detail: 'Call 1800 737 732 about family, domestic or sexual violence, any time.' },
-  beyondBlue: { label: 'Beyond Blue', detail: 'Call 1300 22 4636 to talk things through with a counsellor.' },
-  worried: { label: 'Lifeline', detail: 'Call 13 11 14, any time. They help people who are worried about someone else, too.' },
-  elsewhere: { label: 'Outside Australia', detail: 'findahelpline.com lists free, confidential helplines in many countries.' },
+  now: { label: 'Right now', detail: 'If you or someone else is in immediate danger, call 000.', tel: '000', call: 'Call 000' },
+  lifeline: { label: 'Lifeline', detail: 'Call 13 11 14, any time, day or night, or chat online at lifeline.org.au.', tel: '131114', call: 'Call 13 11 14', link: { href: 'https://www.lifeline.org.au/crisis-chat/', text: 'Chat online' } },
+  callback: { label: 'Suicide Call Back Service', detail: 'Call 1300 659 467, any time.', tel: '1300659467', call: 'Call 1300 659 467' },
+  yarn: { label: '13YARN', detail: 'Call 13 92 76: crisis support by and for Aboriginal and Torres Strait Islander people, any time.', tel: '139276', call: 'Call 13 92 76' },
+  respect: { label: '1800RESPECT', detail: 'Call 1800 737 732 about family, domestic or sexual violence, any time.', tel: '1800737732', call: 'Call 1800 737 732' },
+  beyondBlue: { label: 'Beyond Blue', detail: 'Call 1300 22 4636 to talk things through with a counsellor.', tel: '1300224636', call: 'Call 1300 22 4636' },
+  worried: { label: 'Lifeline', detail: 'Call 13 11 14, any time. They help people who are worried about someone else, too.', tel: '131114', call: 'Call 13 11 14' },
+  elsewhere: { label: 'Outside Australia', detail: 'findahelpline.com lists free, confidential helplines in many countries.', link: { href: 'https://findahelpline.com', text: 'Find a helpline' } },
 };
 /** Crisis lines for the support screen and the "Get support now" sheet. */
 export const SUPPORT_RESOURCES = Object.freeze([AU.now, AU.lifeline, AU.callback, AU.yarn, AU.elsewhere]);
@@ -165,7 +166,7 @@ export function screenReframe(input, { minChars = 8, maxChars = 280, earlier = [
     return fail('support', support.message, { level: safety.level, support });
   }
   if (!safety.reframeAppropriate) {
-    return fail('unsafe', 'This one can’t be passed on: it touches on something that needs real support rather than a new angle. If you or someone else is in danger, please contact local emergency services.');
+    return fail('unsafe', 'This one can’t be passed on: it touches on something that needs real support rather than a new angle. If you or someone else is in danger, please call 000.');
   }
   if (UNKIND.some((re) => re.test(probe))) return fail('unkind', 'That might land as harsh. Offer a possibility, not a verdict.');
   if (DIAGNOSIS.some((re) => re.test(probe))) return fail('diagnosis', 'Please don’t diagnose anyone. Offer another way of seeing it instead.');

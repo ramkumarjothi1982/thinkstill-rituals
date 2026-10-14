@@ -1,0 +1,475 @@
+{
+  "stack": "production build + local Postgres + local Supabase Auth copy + the Edge Function code",
+  "checks": [
+    {
+      "ok": true,
+      "what": "the 18+ question isn’t asked twice"
+    },
+    {
+      "ok": true,
+      "what": "the author is signed in, the session kept on the device"
+    },
+    {
+      "ok": true,
+      "what": "the catcher is offered the author’s feeling"
+    },
+    {
+      "ok": true,
+      "what": "the catcher never learns who wrote it"
+    },
+    {
+      "ok": true,
+      "what": "four people wrote at once (fulfilled, fulfilled, fulfilled, fulfilled)"
+    },
+    {
+      "ok": true,
+      "what": "a sixth person isn’t offered a feeling that has five"
+    },
+    {
+      "ok": true,
+      "what": "the feeling came home with five (returned, 5)"
+    },
+    {
+      "ok": true,
+      "what": "five perspectives in the database, no more"
+    },
+    {
+      "ok": true,
+      "what": "the homecoming says five people caught it"
+    },
+    {
+      "ok": true,
+      "what": "two people wrote on the second feeling"
+    },
+    {
+      "ok": true,
+      "what": "the Mallow’s perspective was prepared by the scheduler (\"ready\")"
+    },
+    {
+      "ok": true,
+      "what": "no Mallow without the person’s consent"
+    },
+    {
+      "ok": true,
+      "what": "the Mallow’s perspective is labelled as automatic, never as a person"
+    },
+    {
+      "ok": true,
+      "what": "seeing it was recorded"
+    },
+    {
+      "ok": true,
+      "what": "it came from the free library (AI is off)"
+    },
+    {
+      "ok": true,
+      "what": "two people: came home with 2 (2)"
+    },
+    {
+      "ok": true,
+      "what": "nobody: came home with 0 (0)"
+    },
+    {
+      "ok": true,
+      "what": "the Mallow isn’t counted as a person"
+    },
+    {
+      "ok": true,
+      "what": "the homecoming says two people, not five"
+    },
+    {
+      "ok": true,
+      "what": "nobody: says so plainly, invents no one"
+    },
+    {
+      "ok": true,
+      "what": "Explore another angle: the Mallow’s perspective is labelled as automatic"
+    },
+    {
+      "ok": true,
+      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"b31feae5-c5cc-401b-b0b4-0302b4a2fab0\"}])"
+    },
+    {
+      "ok": true,
+      "what": "Explore another angle: the count of people stays 2"
+    },
+    {
+      "ok": true,
+      "what": "the share story leaves out a perspective its writer kept private"
+    },
+    {
+      "ok": true,
+      "what": "and says only that a Hushmate kept theirs private"
+    },
+    {
+      "ok": true,
+      "what": "a perspective its writer allowed can be chosen"
+    },
+    {
+      "ok": true,
+      "what": "Send it out again: the feeling travels again"
+    },
+    {
+      "ok": true,
+      "what": "a second account is offered the feeling sent out again"
+    },
+    {
+      "ok": true,
+      "what": "the second account’s perspective was stored once"
+    },
+    {
+      "ok": true,
+      "what": "it came home again with 1 (returned, 1, sent out again 1)"
+    },
+    {
+      "ok": true,
+      "what": "the second homecoming says one person, truthfully"
+    },
+    {
+      "ok": true,
+      "what": "and shows that person’s perspective"
+    },
+    {
+      "ok": true,
+      "what": "offline: says so in plain words"
+    },
+    {
+      "ok": true,
+      "what": "back online: the same feeling went (once)"
+    },
+    {
+      "ok": true,
+      "what": "the retried feeling exists once"
+    },
+    {
+      "ok": true,
+      "what": "support shows Australian crisis lines (000, Lifeline)"
+    },
+    {
+      "ok": true,
+      "what": "the crisis lines can be tapped to call (000, Lifeline)"
+    },
+    {
+      "ok": true,
+      "what": "words needing care were never stored"
+    },
+    {
+      "ok": true,
+      "what": "the catcher is offered the feeling they then report"
+    },
+    {
+      "ok": true,
+      "what": "the desk shows the reported words"
+    },
+    {
+      "ok": true,
+      "what": "the desk never shows who wrote them"
+    },
+    {
+      "ok": true,
+      "what": "the desk’s refresh leaves the note being written, and its focus, alone ({\"id\":\"resolve-note\",\"value\":\"Aimed at a whole team\"})"
+    },
+    {
+      "ok": true,
+      "what": "and leaves focus on the report row it was on"
+    },
+    {
+      "ok": true,
+      "what": "the desk doesn’t read itself out on every refresh (no live regions around the list or report)"
+    },
+    {
+      "ok": true,
+      "what": "the decision took it out of circulation"
+    },
+    {
+      "ok": true,
+      "what": "a blocked person’s words leave the collection"
+    },
+    {
+      "ok": true,
+      "what": "the count stays truthful after blocking (4)"
+    },
+    {
+      "ok": true,
+      "what": "the blocked person is never offered the blocker’s feelings"
+    },
+    {
+      "ok": true,
+      "what": "nobody is told they were blocked"
+    },
+    {
+      "ok": true,
+      "what": "the email field is reachable with Tab"
+    },
+    {
+      "ok": true,
+      "what": "focus moves to the code step"
+    },
+    {
+      "ok": true,
+      "what": "the focused control shows where focus is"
+    },
+    {
+      "ok": true,
+      "what": "signing in and joining work with the keyboard alone"
+    },
+    {
+      "ok": true,
+      "what": "a new device has everything (no second invitation)"
+    },
+    {
+      "ok": true,
+      "what": "the download names nobody else"
+    },
+    {
+      "ok": true,
+      "what": "the download has no locked text or internal ids"
+    },
+    {
+      "ok": true,
+      "what": "the download has the person’s own words"
+    },
+    {
+      "ok": true,
+      "what": "deleting removed the sign-in"
+    },
+    {
+      "ok": true,
+      "what": "another open device is signed out after the deletion"
+    },
+    {
+      "ok": true,
+      "what": "and stays signed out after a reload"
+    },
+    {
+      "ok": true,
+      "what": "deleting removed the words"
+    },
+    {
+      "ok": true,
+      "what": "other people’s own data is untouched"
+    },
+    {
+      "ok": true,
+      "what": "/lab/ isn’t there for a customer"
+    },
+    {
+      "ok": true,
+      "what": "/lab/index.html isn’t there for a customer"
+    },
+    {
+      "ok": true,
+      "what": "/core/relay-seed.js isn’t there for a customer"
+    },
+    {
+      "ok": true,
+      "what": "/lab/?key=anything isn’t there for a customer"
+    }
+  ],
+  "screens": [
+    {
+      "name": "01-signin-email",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "02-signin-code",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "03-signin-wrong-code",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "04-invitation",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "05-welcome",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "06-release",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "07-release-sent",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "08-desktop-catch-offer",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "09-desktop-catch-write",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "10-desktop-catch-sent",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "11-returned-shelf",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "12-homecoming-five",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "13-journeys",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "14-mallow-found",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "15-mallow-perspective",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "16-homecoming-two",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "17-homecoming-nobody",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "17a-explore-angle",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "17b-share-story",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "17c-share-picture",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "17d-resend-home-one",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "18-offline",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "19-support-au",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "20-desktop-report-received",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "21-desk-queue",
+      "url": "/staff/",
+      "hits": []
+    },
+    {
+      "name": "22-desk-report",
+      "url": "/staff/",
+      "hits": []
+    },
+    {
+      "name": "23-desk-decided",
+      "url": "/staff/",
+      "hits": []
+    },
+    {
+      "name": "24-desk-activity",
+      "url": "/staff/",
+      "hits": []
+    },
+    {
+      "name": "25-desk-not-for-members",
+      "url": "/staff/",
+      "hits": []
+    },
+    {
+      "name": "26-desktop-keyboard-invitation",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "27-desktop-same-account",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "28-you",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "29-your-data",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "30-deleted",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "31-desktop-after-deletion-elsewhere",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "32-320-signin",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "33-320-journeys",
+      "url": "/app/",
+      "hits": []
+    }
+  ],
+  "problems": [],
+  "console": [
+    "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "expected": [
+    "error: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "error: Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+    "error: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "error: Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "server": []
+}

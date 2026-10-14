@@ -17,14 +17,14 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
   - two Mallow generations;
   - a release without consent.
 
-  Tested: differential against the reference engine (8 seeds × 300 steps), seven race tests, and the database access test.
+  Tested: differential against the reference engine (8 seeds × 300 steps), eight race tests, and the database access test.
 - ✅ RLS is on every table, with no grants. Browsers (anon, authenticated) can read, write and call nothing, and even the service role reaches only `hushmates_api`. Tested role by role.
 - ✅ Words are encrypted by the Edge Function (AES-256-GCM) before they reach the database. The database never sees a feeling in the clear (tested).
 - 🟡 The Edge Function on Deno, and its way to the database through PostgREST (`postgrest-db.js`). The same code runs under Node in every test. Deno and real PostgREST are only exercised on staging (`STAGING.md` step 6).
 - 🟡 Scheduled jobs on Supabase (pg_cron → pg_net → `/jobs/tick`). Locally, the dev stack runs the same job every 15 s, and race tests prove overlapping runs are safe.
 - ⬜ Backups: Supabase Pro keeps daily backups (7 days).
   - 💰 Point-in-time recovery from about 10,000 people.
-  - ⬜ Test a restore on staging.
+  - ⬜ Test a restore: move staging to Pro for that test (about A$36 for the month), or practise with `pg_dump` / `pg_restore` on Free.
 - ⬜ Key custody. The data key (`HUSHMATES_DATA_KEYS`) and the MAC key:
   - decide who holds them (two people, in a password manager);
   - write the rotation steps down and test them on staging.
@@ -33,13 +33,13 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
 
 ### Sign-in and accounts
 - ✅ Passwordless email code, invitation, 18+ confirmation. Invitations are hashed, use-limited, expiring and revocable. Wrong guesses are limited per person (10 an hour) and per network (30 an hour), counted one at a time so guesses sent together can't slip past (tested).
-- ✅ Only an email-code sign-in opens Hushmates. The Edge Function checks how the person signed in (the token's `amr`), so a password sign-up for someone else's email gets nothing (tested). 🟡 Confirm on staging that Supabase writes `otp` for an email code (`STAGING.md` step 10).
+- ✅ Only an email-code sign-in opens Hushmates. The Edge Function checks how the person signed in (the token's `amr`), so a password sign-up for someone else's email gets nothing (tested). 🟡 Confirm on staging that both a first sign-in and a later one are accepted (`otp` or `magiclink`, `STAGING.md` step 10).
 - 🟡 The network used for those limits is the last `x-forwarded-for` entry, which the platform's proxy appends; a caller can only write earlier ones. Confirm on staging which header Supabase sets, and name it in `HUSHMATES_CLIENT_IP_HEADER` if there's a better one.
 - ✅ The same email on a new device reaches the same account and everything in it (tested). No usernames or passwords.
 - ✅ Identities are `(issuer, subject)` linked to a member. The main Hushmallow login can later be added as a second issuer, without a second account. It is not connected now: production Hushmallow auth is untouched.
-- 🟡 Supabase Auth itself (GoTrue). Locally, an emulator with the same endpoints is used (`server/auth-emulator.mjs`, local-only by design). Real Supabase Auth differs in details: rate limits, error codes, and email templates (the code must be put in the template, step 5).
+- 🟡 Supabase Auth itself (GoTrue). Locally, an emulator with the same endpoints is used (`server/auth-emulator.mjs`, local-only by design). Real Supabase Auth differs in details: rate limits, error codes, and email templates (the code must be in both the *Confirm signup* and *Magic Link* templates, `STAGING.md` step 5).
 - ⬜ 💰 A custom SMTP provider for sign-in emails to people outside the team. Configure SPF, DKIM and DMARC on the sending domain.
-- ⬜ Bot protection on code requests: Cloudflare Turnstile is free, and the client already accepts a captcha token (🛑 a site key from the owner).
+- ⬜ Bot protection on code requests. The sign-in client can forward a captcha token, but there is no widget yet, and the CSP would have to allow it (`script-src`, `frame-src`). Supabase's captcha stays **off** until both are built: turned on today, it would refuse every sign-in. Cloudflare Turnstile is free (🛑 a site key from the owner). Until then, code requests are limited by Supabase's own rate limits.
 - ⚠️ After someone deletes their data, an access token they already hold stays cryptographically valid until it expires (at most 1 hour). It leads to nothing that was theirs (tested). Shorten the JWT expiry in Supabase if that matters.
 
 ### Safety and moderation
@@ -99,7 +99,9 @@ These are questions for a lawyer, not conclusions:
    - Get advice before opening the beta.
 5. **The Notifiable Data Breaches scheme.** A breach response plan: who assesses, who notifies the OAIC and the people affected.
 6. **Therapeutic Goods (software as a medical device).** Keep Hushmates positioned as reflection and wellbeing, with no claims to diagnose, treat or prevent a condition. Have the wording checked.
-7. **Australian Consumer Law.** What the app says about privacy, anonymity and benefits must be accurate (no "anonymous", no "safe" guarantees).
+7. **Australian Consumer Law.** What the app says about privacy, anonymity and benefits must be accurate (no "safe" guarantees). Two lines come from the product brief and need a lawyer's view:
+   - The release consent reads "Share anonymously with Hushmates participants". Other participants never see a name, but Hushmates holds the email address and moderators can read reported words, so the app calls itself pseudonymous everywhere else (the privacy sheet says "not perfectly anonymous"). An alternative: "Share with Hushmates participants, without my name".
+   - The welcome line "One feeling. Five perspectives. Back to you." Five is the most a feeling can gather, not a promise; the app shows the real count, including zero.
 8. **Terms of use and community guidelines** that moderators can apply, and a way to appeal a restriction.
 9. **Contracts with providers** (data processing terms, where data is stored):
    - Supabase (Sydney region);

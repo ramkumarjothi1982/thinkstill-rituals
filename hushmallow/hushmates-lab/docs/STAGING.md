@@ -12,10 +12,10 @@ sender (team members only), and a free static host. See `COSTS.md`.
 ## 0. What you need
 
 - Node 22 and this repository (`npm install` in `hushmallow/hushmates-lab`).
-- The [Supabase CLI](https://supabase.com/docs/guides/cli) (`npm i -g supabase` or `brew install supabase/tap/supabase`).
+- The [Supabase CLI](https://supabase.com/docs/guides/cli): `brew install supabase/tap/supabase`, or `npm i -D supabase` and run it as `npx supabase …`.
 - Run every command from `hushmallow/hushmates-lab`, and first confirm the local suite passes:
   ```
-  node --test tests/*.test.mjs        # needs the local Postgres (see BACKEND.md)
+  node --test tests/*.test.mjs        # needs the local Postgres (see BACKEND.md, "Local development")
   node tools/sync-edge.mjs --check    # the Edge Function's shared copies match their sources
   ```
 
@@ -42,7 +42,7 @@ supabase link --project-ref <ref>
    supabase db push
    ```
 3. Expose the API schema. Under *Settings → API → Data API → Exposed schemas*, add `hushmates_api`. The Edge Function calls it through PostgREST. Only the service role may execute it: browsers can't.
-4. Check that browsers really can't reach anything. Run this in the SQL editor; every line must fail with *permission denied*:
+4. Check that browsers really can't reach anything. In the SQL editor, run each line on its own (select it, then *Run*): the editor stops at the first error, so a block shows only one. Each must fail with *permission denied*:
    ```sql
    set role anon;           select * from hushmates.journeys limit 1;
    set role anon;           select hushmates_api.settings();
@@ -64,11 +64,12 @@ supabase secrets set \
   HUSHMATES_DATA_KEY_ID=k1 \
   HUSHMATES_MAC_KEY='<MAC_KEY>' \
   HUSHMATES_JOB_SECRET='<JOB_SECRET>' \
-  HUSHMATES_ALLOWED_ORIGINS='https://<the staging web address>'
+  HUSHMATES_ALLOWED_ORIGINS='https://<staging host>'
 ```
+- `HUSHMATES_ALLOWED_ORIGINS` is the origin only: scheme and host, with no path and no trailing slash (`https://hushmates-staging.pages.dev`, not `…/app/`). Several are separated by commas.
 - If the project still uses the legacy shared-secret JWTs, also set `HUSHMATES_JWT_SECRET`, from *Settings → API → JWT secret*. Asymmetric signing keys need nothing: the function reads the project's public keys.
 - **Losing `HUSHMATES_DATA_KEYS` makes every stored feeling unreadable.** Losing `HUSHMATES_MAC_KEY` invalidates every invitation code.
-- To rotate the data key, add a new kid to the JSON, set `HUSHMATES_DATA_KEY_ID` to it, and keep the old kid until the old data is gone.
+- To rotate the data key, add a new kid to the JSON and set `HUSHMATES_DATA_KEY_ID` to it. Keep every old kid in `HUSHMATES_DATA_KEYS`: saved feelings stay locked with the key they were written with, and there is no re-encryption tool yet.
 - **Do not set** `HUSHMATES_AI_URL` / `HUSHMATES_AI_TOKEN` (Another Angle): AI stays off. See step 9.
 
 ## 4. The scheduler's secrets (Supabase Vault)
@@ -86,15 +87,15 @@ If the two jobs are missing (the extensions weren't on at step 2), run the
 
 Under *Authentication*:
 1. *Providers → Email*: enabled, with "Confirm email" on. (The Edge Function also refuses any sign-in that wasn't by email code, so a password sign-up can't be used to reach someone's account.)
-2. *Email Templates → Magic Link*: replace the link with the code, so people type it in. For example:
+2. *Email Templates*: edit **both** *Confirm signup* and *Magic Link*. In each, replace the link with the code, so people type it in. A new person's first code comes through *Confirm signup* (because "Confirm email" is on); every later one comes through *Magic Link*. The app only takes a typed code, so a link in either email signs nobody in. For example:
    > **Your Hushmates code**
    > Your code is **{{ .Token }}**. It works for 10 minutes. If you didn't ask for it, you can ignore this email.
 3. *Settings*: email OTP expiry 600 seconds, length 6.
 4. *URL configuration*: the staging web address as the Site URL.
 5. *Rate limits*: keep the defaults or lower them. One code per address a minute matches the app's "Send a new code" wait (`max_frequency` in `supabase/config.toml`).
-6. **Email sender.** Supabase's built-in sender only delivers to the project's team members' addresses, and only a few per hour. That's enough for staging with the team as testers.
+6. **Email sender.** Supabase's built-in sender only delivers to the project's team members' addresses, and only a couple of emails an hour for the whole project. That's enough for staging with the team as testers: space the smoke test's three sign-ins out (step 10), or set up SMTP first.
    - 🛑 **Owner:** real testers outside the team need a custom SMTP provider. Choosing one and creating its account needs your approval; see `COSTS.md`.
-7. *Bot protection* (optional, free): Cloudflare Turnstile or hCaptcha. 🛑 Owner: a site key from your account.
+7. *Bot protection* (*Attack Protection → captcha*): leave it **off**. The app has no captcha widget yet (`app/app.js` passes no token), so turning it on refuses every code request. Adding Cloudflare Turnstile needs the widget in the sign-in scene, a CSP change, and a site key from the owner (`READINESS.md`).
 
 ## 6. 🛑 Owner approval: deploy the Edge Function
 
@@ -135,17 +136,22 @@ root of what you upload:
   X-Robots-Tag: noindex, nofollow
   Strict-Transport-Security: max-age=31536000
 ```
-Alternatively, any Node host can run `node server/main.mjs --mode production`,
-which serves exactly the built files and checks their hashes.
+Alternatively, a Node host can run `node server/main.mjs --mode production --port 8080`
+behind an HTTPS reverse proxy. It serves exactly the built files and checks their
+hashes. It listens on 127.0.0.1; add `--host 0.0.0.0` only where the platform's own
+HTTPS proxy needs it.
 
-Then set `HUSHMATES_ALLOWED_ORIGINS` (step 3) to that address.
+Then set `HUSHMATES_ALLOWED_ORIGINS` (step 3) to that origin (`https://<staging host>`, no path).
 
 ## 8. Invitations and the safety team
 
-The operator's tool talks to the database directly. Use the *Session pooler*
-connection string from *Settings → Database*, plus the MAC key from step 3:
+The operator's tool talks to the database directly, so the connection must be
+encrypted and the server checked. Download the CA certificate from *Settings →
+Database → SSL configuration* (for example to `~/supabase-ca.crt`), then use the
+*Session pooler* connection string from *Settings → Database* with TLS
+required, plus the MAC key from step 3 (URL-encode the password if it has symbols in it):
 ```
-export HUSHMATES_ADMIN_PG='postgres://postgres.<ref>:<db password>@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres'
+export HUSHMATES_ADMIN_PG="postgres://postgres.<ref>:<db password>@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres?sslmode=verify-full&sslrootcert=$HOME/supabase-ca.crt"
 export HUSHMATES_MAC_KEY='<MAC_KEY>'
 node server/admin.mjs invite --count 10 --expires-days 14          # testers (single use)
 node server/admin.mjs invite --role moderator --count 2            # the safety team (for /staff/)
@@ -168,22 +174,27 @@ Switching it on needs, in this order:
 
 Turning it off takes effect at once: `set ai '{"enabled": false}'`.
 
-## 10. Smoke test with two real accounts
+## 10. Smoke test with real accounts
 
-1. On a phone, open `https://<staging>/app/`, sign in with a team email, enter the code, then an invitation, a name and 18+.
-2. Release a feeling. Allow the Mallow fallback.
-3. On a second device, with another team email and another invitation, turn on catching, catch the feeling, and write a perspective.
-4. Back on the first device, the perspective has arrived. After 30 minutes with no other catchers, the Mallow's perspective is waiting. After 24 hours, the feeling comes home.
-5. On the second device, report the feeling. At `/staff/`, sign in with a moderator invitation: the report is there; decide it.
-6. Check that the scheduler is running:
+You need three team email addresses: two members and one moderator. Use
+addresses that have **never signed in** to this project, so the first sign-in
+goes through *Confirm signup*, and check that its email shows a code, not a link.
+
+1. On a phone, open `https://<staging host>/app/`, sign in with the first team email, enter the code, then an invitation, a name and 18+.
+2. Release a feeling (A). Allow the Mallow fallback.
+3. On a second device, with the second team email and another invitation, turn on catching, catch feeling A, and write a perspective.
+4. Back on the first device, feeling A's orb shows one petal (1 of 5). The words appear when it comes home: after 24 hours, or sooner once five people have answered. A feeling a person answered never gets the Mallow fallback.
+5. To see the fallback: on the first device, release a second feeling (B) with the Mallow allowed, and let nobody catch it. About a minute after 30 minutes, its Mallow perspective is waiting in *Journeys*, labelled as automatically generated (even with the app closed in between).
+6. On the second device, find a fresh feeling (release a third one, C, from the first device if needed), and from the offer sheet choose *… → Report this feeling*. At `/staff/`, sign in with the third team email and a moderator invitation: the report is there; decide it.
+7. Check that the scheduler is running:
    ```sql
    select status, start_time from cron.job_run_details order by start_time desc limit 5;
    select hushmates_api.ops_summary(1);
    ```
-7. In the dashboard's Table Editor, open `hushmates.journeys`: `text_enc` starts with `hmenc:v1:`. No one's words are readable there.
-8. On the first device, *You → Delete my data*: the account, its words and its sign-in are gone (*Authentication → Users*).
-9. Two things only a real project can show, before inviting anyone else:
-   - **How sign-ins are marked.** Decode an access token from step 1 (paste it into a JWT viewer you trust, or `node -e` with `Buffer.from(token.split('.')[1], 'base64url')`): its `amr` should name `otp`. If it names something else, the function will refuse every sign-in; tell the developer before going further.
+8. In the dashboard's Table Editor, open `hushmates.journeys`: `text_enc` starts with `hmenc:v1:`. No one's words are readable there.
+9. On the first device, *You → Delete my data*: the account, its words and its sign-in are gone (*Authentication → Users*).
+10. Two things only a real project can show, before inviting anyone else:
+   - **How sign-ins are marked.** The function accepts a session only if its `amr` names `otp` or `magiclink`. A first sign-in (through *Confirm signup*) and a later one (through *Magic Link*) are verified differently, so check both: if step 1 worked, the first kind is accepted. Then sign out on the second device and sign in again with the second email: that later sign-in must reach the same account, with feeling A's perspective still there. If either is refused with "Please sign in again", decode its access token (a JWT viewer you trust, or `node -e` with `Buffer.from(token.split('.')[1], 'base64url')`), note its `amr`, and tell the developer before going further.
    - **Which header carries the caller's address.** Ask the function's logs (or a temporary log line) which of `x-forwarded-for`, `cf-connecting-ip` and `x-real-ip` holds the real address. If it isn't the last `x-forwarded-for` entry, set `HUSHMATES_CLIENT_IP_HEADER` to the right one (step 3).
 
 ## Undo

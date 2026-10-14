@@ -46,7 +46,7 @@ export function invite(dev) {
       who),
     h('div', { class: 'hf-form' },
       field('Your invitation code', code, 'It’s in the invitation you were sent.', 'hf-invite-code'),
-      field('A name for you here', name, 'Only you see it. Your feelings and perspectives travel with no name at all.', 'hf-invite-name'),
+      field('A name for you here', name, '3 to 20 letters or numbers. Only you see it. Your feelings and perspectives travel with no name at all.', 'hf-invite-name'),
       checkRow({ id: 'hf-invite-adult', label: 'I’m 18 or over', test: 'invite-adult', onChange: (on) => { form.adult = on; sync(); } })),
     error,
     h('div', { class: 'hf-actions' },

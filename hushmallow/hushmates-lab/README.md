@@ -2,7 +2,7 @@
 
 > **Hushmallow — A softer space for feelings.**
 > **Hushmates — Send a feeling. See it differently.**
-> ONE FEELING. FIVE HUMAN PERSPECTIVES. BACK TO YOU.
+> ONE FEELING. FIVE PERSPECTIVES. BACK TO YOU.
 
 **Status: Phase 2, the real backend, built and tested locally. Nothing is
 deployed, and nothing touches production.** Staging needs the owner's
@@ -25,7 +25,7 @@ There are three experiences, kept strictly apart (`docs/ACCESS.md`):
 
 The backend is described in `docs/BACKEND.md`, its costs in `docs/COSTS.md`.
 
-Neither touches production: no production data, no real backend, nothing
+Neither touches production: no production data, no production backend, nothing
 deployed. `tools/build-site.sh` copies only `src/` and selected `assets/`, so this
 folder never ships with the main Hushmallow app.
 
@@ -136,9 +136,8 @@ node --test tests/*.test.mjs                 # everything: the reference engine,
                                              # races, access), sign-in, the Mallow, access control, build, the app's link
 node tools/app-shots.mjs <out-dir>           # end to end in Chromium on the whole local stack, many accounts at once
 node tools/sync-edge.mjs --check             # the Edge Function's shared copies match their sources
-node --test hushmallow/hushmates-lab/v1-messaging/tests/*.test.mjs    # 32 (archived v1)
-node hushmallow/hushmates-lab/tools/app-shots.mjs <out-dir>           # the customer app: screens + content audit
-node hushmallow/hushmates-lab/tools/shots.cjs <out-dir> http://localhost:8000   # the lab: interface QA
+node --test v1-messaging/tests/*.test.mjs   # 32 (archived v1)
+node tools/shots.cjs <out-dir> http://localhost:8000   # the lab: interface QA
 ```
 
 The access-control tests run real servers over HTTP in both modes. They try
@@ -164,32 +163,40 @@ The relay tests cover:
 for the 2.0 rules) to fail on the code they reviewed. They failed, the defects
 were fixed, and they stay as regression tests.
 
-The QA tool captures 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024
-and 1280 × 860 and audits each one inside the phone. It plays all three
-demonstrations through the interface, releases a feeling with the keyboard
-alone, checks reduced motion really reduces motion, repeats the demonstrations
-with reduced motion, and fails on any console error. Results of the last run are below and in `docs/screenshots/qa-report.json`.
+The end-to-end run (`tools/app-shots.mjs`) builds the app and the desk exactly
+as they would ship and serves them from the local stack: Postgres, the local copy
+of Supabase Auth and the Edge Function code. It drives real signed-in accounts at
+once: Chromium phones and desktops for the author, a catcher, a moderator, a
+keyboard-only person, a second device and a 320-pixel screen, plus six more
+accounts through the API. It moves the clock for the 30-minute Mallow and the
+24-hour homecoming; the scheduler does that work with the app closed.
 
-**Latest run (this commit's code):**
+The lab's QA tool (`tools/shots.cjs`) captures 30 scenes at five sizes, audits
+each one inside the phone, plays the three demonstrations, releases a feeling
+with the keyboard alone and checks reduced motion.
+
+**Latest run (14 October 2026, on the code in this commit):**
 
 | Check | Result |
 |---|---|
-| Relay, access-control, build and your-data tests | 167 pass, 0 fail, 2 skipped (the optional live Another Angle checks, which need its local harness running) |
+| All tests (`node --test tests/*.test.mjs`) | 307 pass, 0 fail, 2 skipped: the optional live Another Angle checks, which need that service's local harness (and would be billable against the real one) |
+| On the real database | differential against the reference engine (8 seeds × 300 steps); eight race tests (twelve people for five places, duplicate sends, two devices, Mallow requests, a single-use invitation, overlapping scheduled jobs, blocking mid-write, finds during a catch); the AI budget hold under concurrent calls; RLS and access role by role; tokens forged, replayed or from a password sign-in refused |
+| End to end, many accounts | 66 of 66 checks, 37 screens, 0 problems (`docs/screenshots/phase2/`, with `app-report.json`): |
+| | five people at once, and a sixth isn't offered it; two people; nobody, said plainly |
+| | the Mallow prepared by the scheduler at 30 minutes, from the free library, labelled automatic, never counted |
+| | homecoming at 24 hours; Explore another angle (one labelled perspective, still 2 people) |
+| | Send it out again: caught by a second account, home again with 1 |
+| | the share story leaves out a perspective its writer kept private |
+| | offline, and a retry that sends once; support with tappable Australian crisis lines |
+| | reporting and the safety desk (decisions logged; its refresh keeps a moderator's place); blocking, never revealed |
+| | keyboard only; the same account on a second device; download, and deletion (sign-in included; the other device is signed out) |
+| Every screen | no developer content, raw data, internal ids, programming values or testing words, no sideways scrolling. The console shows only the 401s the test causes by moving the clock a day; the app refreshes the session |
+| Builds | app 71 files, desk 20; comments stripped, every module parses, scan clean, secret keys refused |
+| Edge Function copies | `tools/sync-edge.mjs --check`: the shared files match their sources (also a test) |
 | Archived v1 tests | 32 pass |
-| Customer app (`tools/app-shots.mjs`) | the production build on a production-mode server: 26 screens, from invitation to Your data, at 390 × 844, 320 × 568 and 1280 × 860; no developer content, raw data, internal ids, programming values or testing words on any screen; no console errors; `/lab/` and server files are 404 to a signed-in customer; the downloaded file has no other member's name or any internal id (`docs/screenshots/customer/`) |
-| Customer build | 68 files, comments stripped, every module still parses, scan clean |
-| Lab: scenes × sizes | 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024, 1280 × 860: no layout-audit findings (overflow, off-screen or clipped text, covered controls, small targets, tiny text, dock room) |
-| Scenario A (five people) | every guide step ticked at all five sizes (10 of 10) |
-| Scenario B (nobody, Mallow fallback) | every step ticked at all five sizes (6 of 6); the Mallow perspective shown as “A Mallow perspective · Automatically generated” with the lab tag “Reframe library (rule-based)” |
-| Scenario C (two people, then expiry) | every step ticked at all five sizes (5 of 5); “2 Hushmates caught it before it came home.” |
-| Keyboard | a feeling released with Tab, typing, Space and Enter; focus visible on every stop |
-| Reduced motion | no long animations during the release, the welcome doesn't advance on its own, all three scenarios complete |
-| Console | no errors or warnings in any run |
-
-The audit itself was checked against planted defects (it flags overflow,
-off-screen and clipped text, covered controls and small targets). Screenshots
-from this run are in `docs/screenshots/` (390 × 844 unless named), with the
-share picture export and video frames.
+Earlier screenshots are kept for comparison: Phase 1's customer app in
+`docs/screenshots/customer/` and the lab's scenes in `docs/screenshots/`
+(390 × 844 unless named), with the share picture export and video frames.
 
 ## What's real, what's simulated
 

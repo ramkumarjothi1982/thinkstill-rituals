@@ -40,7 +40,7 @@ header and dock float above it.
 | Release | `release` | Your Mallow in its room, a thought cloud that fills as you write, "What's on your mind?", optional tags, the consent tick, the Mallow choice (off by default), "Release into Hushfold" and "Cancel". Then the release moment and "Your feeling is on its way." |
 | Catch | `catch` | "Catch a feeling" → look up → the orb arrives: "A feeling has found you." → "Catch this feeling" / "Let it float past" → "Can you see this another way?" "Offer a possibility, not a verdict." → the petal moment → how the others saw it. |
 | My journeys | `journeys` → `journey` | Feelings still travelling, as a small constellation of orbs with their petals and "3 of 5 human perspectives". The detail shows your words, time left, and your Mallow offering another way to see it once it can. Bring it home early, delete. |
-| Returned | `returned` → `homecoming` | Feelings that came home. First time: the cinematic return. Then each perspective as a slide (keep / let it go), your Mallow's perspective apart once five people answered, and Save my journey, Explore another angle, Share, Release this feeling, Delete my journey. Nobody caught it: Send it out again / Keep it with me / Let it go. |
+| Returned | `returned` → `homecoming` | Feelings that came home. First time: the cinematic return. Then each perspective as a slide (keep / let it go), your Mallow's perspective apart once five people answered, and Save my journey, Explore another angle, Share, Let it go, Delete my journey. Nobody caught it: Send it out again / Keep it with me / Let it go. |
 
 Other scenes:
 - `welcome`: three quiet beats in your Mallow's room: what Hushmates is, how a

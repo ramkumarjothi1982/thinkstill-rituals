@@ -64,13 +64,22 @@ export function lights(j) {
   if (j.mallowPetal) items.push(h('i', { class: 'is-star' }, icon('star')));
   return h('span', { class: 'rl-lights', 'aria-hidden': 'true' }, items);
 }
+/** A line's "Call" and "Chat online" links: only digits become tel:, only https becomes a link. */
+function lineActions(r) {
+  const call = typeof r.tel === 'string' && /^\d{3,12}$/.test(r.tel)
+    ? h('a', { class: 'kit-btn kit-btn--ghost kit-btn--sm', href: `tel:${r.tel}`, dataset: { test: 'support-call' } }, r.call || `Call ${r.tel}`) : null;
+  const href = typeof r.link?.href === 'string' && /^https:\/\/[^\s"'<>]+$/.test(r.link.href) ? r.link.href : null;
+  const link = href ? h('a', { class: 'kit-btn kit-btn--ghost kit-btn--sm', href, target: '_blank', rel: 'noopener noreferrer', dataset: { test: 'support-link' } }, r.link.text || 'Open') : null;
+  return call || link ? h('div', { class: 'rl-support-actions' }, call, link) : null;
+}
+
 /** Support (shown instead of releasing when a feeling sounds unsafe). Copy comes from the Reframe engine's safety layer. */
 export function supportBody(support = {}, { note = null } = {}) {
   const resources = support.resources || [];
   return h('div', { class: 'rl-support' },
     h('p', { class: 'rl-support-msg' }, support.message || 'What you wrote sounds really heavy. It won’t be sent to anyone, and you deserve real support with it.'),
     resources.length ? h('ul', { class: 'rl-support-list', dataset: { test: 'support-resources' } },
-      resources.map((r) => h('li', {}, h('strong', {}, r.label), r.detail ? h('span', {}, r.detail) : null))) : null,
+      resources.map((r) => h('li', {}, h('strong', {}, r.label), r.detail ? h('span', {}, r.detail) : null, lineActions(r)))) : null,
     support.stillHere ? h('p', { class: 'kit-note' }, support.stillHere) : null,
     note);
 }

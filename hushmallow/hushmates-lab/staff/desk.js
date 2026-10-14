@@ -129,7 +129,7 @@ function notForYou() {
   stopRefresh();
   show(h('section', { class: 'desk-card desk-narrow', 'data-test': 'desk-not-staff' },
     h('h1', {}, 'This desk is for the safety team'),
-    h('p', {}, 'Your account isn’t part of the Hushmates safety team. If it should be, ask the team lead for a safety team invitation.'),
+    h('p', {}, 'Your account isn’t part of the Hushmates safety team. Safety team accounts are separate from member accounts: sign out, then sign in with a different email (one not used in the Hushmates app) and enter your safety team invitation.'),
     h('button', { type: 'button', class: 'desk-primary', onclick: signOut }, 'Sign out')));
 }
 
@@ -180,13 +180,15 @@ function kindOf(r) {
   return r.isMallow ? 'A Mallow perspective' : 'A perspective';
 }
 
+const rowIds = new WeakMap();
 function row(r) {
   return h('li', {},
-    h('button', { type: 'button', class: `desk-row${r.urgent ? ' is-urgent' : ''}${selected === r.id ? ' is-on' : ''}`, 'data-test': 'desk-report', 'aria-current': selected === r.id ? 'true' : null, onclick: () => detail(r.id) },
+    track(r.id, h('button', { type: 'button', class: `desk-row${r.urgent ? ' is-urgent' : ''}${selected === r.id ? ' is-on' : ''}`, 'data-test': 'desk-report', 'aria-current': selected === r.id ? 'true' : null, onclick: () => detail(r.id) },
       r.urgent ? h('span', { class: 'desk-badge' }, 'Priority') : null,
       h('span', { class: 'desk-row-main' }, `${kindOf(r)} · ${reasonLabel[r.reason] || 'Something else'}`),
-      h('span', { class: 'desk-row-side' }, r.status === 'open' ? ago(r.at) : r.status === 'actioned' ? 'Action taken' : 'No action needed')));
+      h('span', { class: 'desk-row-side' }, r.status === 'open' ? ago(r.at) : r.status === 'actioned' ? 'Action taken' : 'No action needed'))));
 }
+function track(id, el) { rowIds.set(el, id); return el; }
 
 async function reloadList() {
   try { reports = (await call('modListReports')).reports || []; } catch (e) { if (e?.code === 'forbidden') return notForYou(); return; }
@@ -204,16 +206,28 @@ async function queue(which) {
 
 let detailPane = null;
 function paint(focusHeading = false) {
+  // a quiet refresh: whoever was typing a note or moving through the list keeps their place
+  // (noted first: moving the open report into the new layout takes focus out of it)
+  const keep = focusHeading ? null : document.activeElement;
+  const keptRow = keep && rowIds.get(keep);
+  const sel = keep && 'selectionStart' in keep ? [keep.selectionStart, keep.selectionEnd] : null;
   const list = reports.filter((r) => (tab === 'open' ? r.status === 'open' : r.status !== 'open'));
   if (tab === 'decided') list.reverse();
   const listPane = h('section', { class: 'desk-list', 'aria-labelledby': 'desk-list-title' },
     h('h1', { id: 'desk-list-title' }, tab === 'open' ? 'Reports waiting for a decision' : 'Decided reports'),
     list.length ? h('ul', { class: 'desk-rows' }, list.map(row))
       : h('p', { class: 'desk-empty' }, tab === 'open' ? 'Nothing is waiting. New reports appear here by themselves.' : 'Nothing decided yet.'));
-  detailPane = detailPane && selected ? detailPane : h('section', { class: 'desk-detail', 'aria-live': 'polite' },
+  detailPane = detailPane && selected ? detailPane : h('section', { class: 'desk-detail' },
     h('p', { class: 'desk-empty' }, 'Choose a report to read it. Every report you open is recorded in the activity log.'));
   const body = h('div', { class: `desk-split${selected ? ' has-detail' : ''}` }, listPane, detailPane);
-  if (focusHeading) show(tabs(), body); else root.replaceChildren(tabs(), body);
+  if (focusHeading) return show(tabs(), body);
+  root.replaceChildren(tabs(), body);
+  const target = keptRow ? [...root.querySelectorAll('.desk-row')].find((b) => rowIds.get(b) === keptRow) : keep;
+  if (target && target !== document.body && target.isConnected && document.activeElement !== target) {
+    target.focus({ preventScroll: true });
+    if (sel && target === keep) { try { target.setSelectionRange(sel[0], sel[1]); } catch { /* not a text field */ } }
+  }
+  return undefined;
 }
 
 // --------------------------------------------------------------- detail --
@@ -229,7 +243,7 @@ async function detail(id) {
   if (summary) summary.isMallow = r.isMallow;
   const ev = r.evidence || {};
   const err = errorLine('resolve-error');
-  const note = h('textarea', { id: 'resolve-note', maxlength: 1000, rows: 3, 'aria-describedby': 'resolve-error' });
+  const note = h('textarea', { id: 'resolve-note', maxlength: 900, rows: 3, 'aria-describedby': 'resolve-error' });
   const kind = r.kind === 'feeling' ? 'feeling' : r.isMallow ? 'mallow' : 'perspective';
   const actions = DESK_ACTIONS[kind];
 
@@ -238,7 +252,7 @@ async function detail(id) {
     const a = actions.find((x) => x.id === action);
     if (a.confirm && !window.confirm(a.confirm)) return;
     try {
-      await call('modResolve', { id, action, note: note.value.trim() });
+      await call('modResolve', { id, action, note: [`Decision: ${a.label}`, note.value.trim()].filter(Boolean).join('. ') });   // the team notes say which decision it was
       await reloadList();
       await detail(id);
     } catch (e) { sayError(err, e); }

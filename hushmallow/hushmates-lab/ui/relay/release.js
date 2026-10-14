@@ -60,7 +60,7 @@ export function release(dev, params = {}) {
     const count = h('span', { class: 'hf-count', id: 'hf-feeling-count', 'aria-live': 'off' });
     const error = h('p', { class: 'kit-error', role: 'alert', dataset: { test: 'feeling-error' } }, err);
     const go = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--lg kit-btn--block hf-go', 'aria-describedby': 'hf-go-why', dataset: { test: 'release-submit' }, onclick: () => launch() }, 'Release into Hushfold');
-    const why = h('p', { class: 'hf-sr', id: 'hf-go-why' });
+    const why = h('p', { class: 'hf-note hf-note--quiet hf-go-why', id: 'hf-go-why', dataset: { test: 'release-why' } });   // why the button is resting, for everyone
     let lastBeat = 0;
     const sync = () => {
       const n = charCount(area.value.trim());
@@ -68,6 +68,7 @@ export function release(dev, params = {}) {
       count.classList.toggle('is-over', n > max);
       go.disabled = blocked || n < limits().feelingMinChars || n > max || !draft.consent;
       why.textContent = blocked ? '' : n < limits().feelingMinChars ? 'Write a few words first.' : n > max ? 'Your words are a little too long.' : !draft.consent ? 'Tick “Share anonymously with Hushmates participants” to release.' : '';
+      why.hidden = !why.textContent;
       el.style.setProperty('--fill', String(Math.min(1, n / 160)));
     };
     area.addEventListener('input', () => {
@@ -113,7 +114,7 @@ export function release(dev, params = {}) {
     fallback.classList.add('kit-switch--plain');
     // what turning it on means, at the point of choosing
     const fallbackNote = h('p', { class: 'hf-check-hint hf-fallback-note', id: 'hf-fallback-note' },
-      'If nobody catches it within 30 minutes, Hushmates writes a perspective for you automatically. It isn’t a person, and your words stay with Hushmates. ',
+      'If you turn this on and nobody catches it within 30 minutes, Hushmates writes a perspective for you automatically. It isn’t a person, and your words stay with Hushmates. ',
       h('button', { type: 'button', class: 'hf-link', dataset: { test: 'fallback-details' }, onclick: () => privacySheet(dev, { focus: 'mallow' }) }, 'How this works'));
     const sw = fallback.querySelector('[role="switch"]');
     sw?.setAttribute('aria-describedby', [sw.getAttribute('aria-describedby'), 'hf-fallback-note'].filter(Boolean).join(' '));

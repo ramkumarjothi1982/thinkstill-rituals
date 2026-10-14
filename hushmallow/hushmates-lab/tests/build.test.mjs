@@ -7,6 +7,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { build, scan } from '../tools/build-app.mjs';
 import { appFiles, labFiles } from '../server/app-files.mjs';
 
@@ -126,4 +128,9 @@ test('build: what ships has no comments, and the scan reads words split across l
     writeFileSync(svg, '<svg><text>Lab · control room · Scenario A</text></svg>');
     assert.ok(scan(new Map([['/assets/a.svg', svg]])).length > 0, 'the scan skips SVG');
   } finally { rmSync(out, { recursive: true, force: true }); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the Edge Function deploys exactly the shared code the tests run (tools/sync-edge.mjs --check)', () => {
+  const r = spawnSync(process.execPath, ['tools/sync-edge.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' });
+  assert.equal(r.status, 0, `the vendored Edge Function copies are stale: run node tools/sync-edge.mjs\n${r.stdout}${r.stderr}`);
 });

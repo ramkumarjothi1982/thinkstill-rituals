@@ -41,6 +41,8 @@ const PERSPECTIVES = [
   'The quiet might say more about their week than about how they feel about you.',
   'It might help to send something light, with no pressure, and see how they are.',
 ];
+const PRIVATE_P = 'Going over it again might show how much you care about doing well, not that it went badly.';   // its writer keeps it out of share pictures
+const RESEND_P = 'First days are new for everyone. Being nervous might mean it matters to you.';
 const SCREEN_ONLY = [
   [/\{\s*"|"\s*:\s*[{["\d]/, 'raw data (JSON)'],
   [/\b(?:undefined|NaN)\b|\[object |\bnull\b/, 'programming values'],
@@ -103,11 +105,11 @@ for (let i = 0; i < 6; i++) {
   members.push(who);
 }
 let n = 0;
-async function answer(who, text) {
+async function answer(who, text, { allowShare = true } = {}) {
   const { offer } = await call(who, 'findFeeling');
   if (!offer) return null;
   await call(who, 'catchFeeling', { holdId: offer.holdId });
-  return call(who, 'submitReframe', { holdId: offer.holdId, text, allowShare: true, clientId: `e2e-${(n += 1)}-${Date.now().toString(36)}` });
+  return call(who, 'submitReframe', { holdId: offer.holdId, text, allowShare, clientId: `e2e-${(n += 1)}-${Date.now().toString(36)}` });
 }
 
 // --------------------------------------------------------------------- browsers --
@@ -256,7 +258,7 @@ try {
   // --------------------------- 3. two people (partial), nobody (zero), and the Mallow --
   await page.getByRole('button', { name: 'Back' }).first().click().catch(() => {});
   await release(page, F3, { label: 'worry' });
-  const two = await Promise.allSettled(members.slice(0, 2).map((m, i) => answer(m, PERSPECTIVES[i + 2])));
+  const two = await Promise.allSettled([answer(members[0], PERSPECTIVES[2]), answer(members[1], PRIVATE_P, { allowShare: false })]);
   check(two.every((x) => x.status === 'fulfilled' && x.value), 'two people wrote on the second feeling');
   await release(page, F2, { label: 'sadness', fallback: true });
   await release(page, F4, { label: 'worry' });
@@ -304,6 +306,69 @@ try {
   check(!/\d Hushmates? caught/.test(zero) && /No one|nobody/i.test(zero), 'nobody: says so plainly, invents no one');
   await page.getByRole('button', { name: 'Back' }).first().click();
 
+  // ---------------- 3b. another angle, the share story, and a second journey for the quiet one --
+  // Explore another angle on the two-person feeling: one Mallow perspective, labelled, and still two people
+  await hook(page, `returned-${j3.id}`).click();
+  await hook(page, 'explore-angle').waitFor({ timeout: 20000 });
+  await hook(page, 'explore-angle').click();
+  await hook(page, 'confirm').click();
+  await page.locator('[data-test="perspective"][data-kind="mallow"]').first().waitFor({ timeout: 20000 });
+  await settle(page, 1500);
+  const angle = await shot(page, '17a-explore-angle');
+  check(/Automatically generated/i.test(angle), 'Explore another angle: the Mallow’s perspective is labelled as automatic');
+  const j3m = await sql('select source, requested_by from hushmates.mallow_perspectives where journey_id = $1', [j3.id]);
+  check(j3m.length === 1 && j3m[0].source === 'library', `Explore another angle: one perspective, from the free library (${JSON.stringify(j3m)})`);
+  check((await journeysOf(A)).find((j) => j.id === j3.id)?.humanCount === 2, 'Explore another angle: the count of people stays 2');
+  // the share story: a perspective its writer kept private is never offered for the picture
+  await hook(page, 'share-journey').click();
+  await hook(page, 'share-preview').waitFor({ timeout: 15000 });
+  const story = await shot(page, '17b-share-story', { full: true });
+  check(!story.includes(PRIVATE_P), 'the share story leaves out a perspective its writer kept private');
+  check(/kept theirs private/.test(story), 'and says only that a Hushmate kept theirs private');
+  check(story.includes(PERSPECTIVES[2]), 'a perspective its writer allowed can be chosen');
+  await page.locator('[data-test="share-pick"][data-kind="human"]:visible').first().click();
+  await hook(page, 'share-save').click();
+  await hook(page, 'share-image').waitFor({ timeout: 20000 });
+  await shot(page, '17c-share-picture');
+  // Send it out again: the quiet feeling travels once more, a second account catches it, it comes home with 1
+  await page.goto(`${base}/app/`);
+  await hook(page, 'nav-returned').waitFor({ timeout: 20000 });
+  await hook(page, 'nav-returned').click();
+  await hook(page, `returned-${j4.id}`).click();
+  await hook(page, 'send-again').waitFor({ timeout: 20000 });
+  await hook(page, 'send-again').click();
+  await hook(page, 'confirm').click();
+  await hook(page, `journey-${j4.id}`).waitFor({ timeout: 20000 });
+  check((await journeysOf(A)).find((j) => j.id === j4.id)?.status === 'travelling', 'Send it out again: the feeling travels again');
+  probing = true;                                                       // the catcher's session aged a day: the app refreshes it (401 first)
+  await catcher.page.goto(`${base}/app/`);
+  await hook(catcher.page, 'nav-catch').waitFor({ timeout: 20000 });
+  await hook(catcher.page, 'nav-catch').click();
+  await hook(catcher.page, 'find-feeling').click();
+  await hook(catcher.page, 'catch-feeling').waitFor({ timeout: 20000 });
+  check((await catcher.page.locator('body').innerText()).includes('new job'), 'a second account is offered the feeling sent out again');
+  await hook(catcher.page, 'catch-feeling').click();
+  await hook(catcher.page, 'reframe-text').waitFor({ timeout: 15000 });
+  await hook(catcher.page, 'reframe-text').fill(RESEND_P);
+  await hook(catcher.page, 'reframe-submit').click();
+  await catcher.page.waitForTimeout(2500);
+  probing = false;
+  check((await sql('select count(*)::int n from hushmates.perspectives where journey_id = $1', [j4.id]))[0].n === 1, 'the second account’s perspective was stored once');
+  probing = true;
+  await advance(24 * 3600e3 + 60e3);
+  const j4b = (await journeysOf(A)).find((j) => j.id === j4.id);
+  check(j4b?.status === 'returned' && j4b.humanCount === 1 && j4b.resends === 1, `it came home again with 1 (${j4b?.status}, ${j4b?.humanCount}, sent out again ${j4b?.resends})`);
+  await page.goto(`${base}/app/`);
+  await hook(page, 'nav-returned').waitFor({ timeout: 20000 });
+  await hook(page, 'nav-returned').click();
+  await hook(page, `returned-${j4.id}`).click();
+  await hook(page, 'homecoming-ready').waitFor({ timeout: 30000 });
+  probing = false;
+  const again = await shot(page, '17d-resend-home-one');
+  check(/\b1 Hushmate\b/.test(again) && /1 of 5/.test(again) && !/5 of 5/.test(again), 'the second homecoming says one person, truthfully');
+  check(again.includes(RESEND_P), 'and shows that person’s perspective');
+  await page.getByRole('button', { name: 'Back' }).first().click();
+
   // ------------------------------------------------- 4. connection lost, then back --
   probing = true;
   await author.ctx.setOffline(true);
@@ -333,6 +398,8 @@ try {
   await page.locator('[data-test="support-scene"]').waitFor({ timeout: 15000 });
   const support = await shot(page, '19-support-au', { full: true });
   check(/000/.test(support) && /13 11 14/.test(support), 'support shows Australian crisis lines (000, Lifeline)');
+  check(await page.locator('[data-test="support-call"][href="tel:000"]:visible').count() > 0 && await page.locator('[data-test="support-call"][href="tel:131114"]:visible').count() > 0,
+    'the crisis lines can be tapped to call (000, Lifeline)');
   check(!(await sql("select 1 from hushmates.journeys where text_mac is not null and text_enc like '%want to be here%'")).length, 'words needing care were never stored');
   await hook(page, 'support-clear').click();
 
@@ -351,6 +418,7 @@ try {
   await hook(catcher.page, 'report-received').waitFor({ timeout: 15000 });
   await shot(catcher.page, '20-desktop-report-received');
   const desk = await device({ width: 1280, height: 860, mobile: false, motion: 'no-preference' });
+  await desk.page.clock.install();                                      // time flows as usual, and the test can skip a minute
   await desk.page.goto(`${base}/staff/`);
   await desk.page.locator('#signin-email').fill('safety@example.com');
   await desk.page.keyboard.press('Enter');
@@ -369,6 +437,22 @@ try {
   const evidence = await shot(desk.page, '22-desk-report', { staff: true, full: true });
   check(evidence.includes('useless'), 'the desk shows the reported words');
   check(!/Emberly|member5@/.test(evidence), 'the desk never shows who wrote them');
+  // the list refreshes every minute: the moderator keeps their place, in the note and in the list
+  const refreshed = () => desk.page.waitForRequest((r) => r.url().endsWith('/rpc/modListReports'), { timeout: 10000 });
+  await desk.page.locator('#resolve-note').fill('Aimed at a whole team');
+  let refresh = refreshed();
+  await desk.page.clock.fastForward(61e3);
+  await refresh;
+  await settle(desk.page, 600);
+  const kept = await desk.page.evaluate(() => ({ id: document.activeElement?.id || document.activeElement?.tagName, value: document.getElementById('resolve-note')?.value }));
+  check(kept.id === 'resolve-note' && kept.value === 'Aimed at a whole team', `the desk’s refresh leaves the note being written, and its focus, alone (${JSON.stringify(kept)})`);
+  await desk.page.locator('[data-test="desk-report"]').first().focus();
+  refresh = refreshed();
+  await desk.page.clock.fastForward(61e3);
+  await refresh;
+  await settle(desk.page, 600);
+  check(await desk.page.evaluate(() => document.activeElement?.dataset?.test === 'desk-report'), 'and leaves focus on the report row it was on');
+  check(!(await desk.page.locator('[aria-live]:not(.desk-error):not([role="alert"])').count()), 'the desk doesn’t read itself out on every refresh (no live regions around the list or report)');
   desk.page.on('dialog', (d) => d.accept());
   await desk.page.locator('#resolve-note').fill('Aimed at a whole team: taken out of circulation.');
   await desk.page.locator('[data-test="desk-remove-feeling"]').click();

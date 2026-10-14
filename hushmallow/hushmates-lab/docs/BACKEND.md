@@ -121,7 +121,8 @@ To add the main login (each step needs the owner's approval):
 |---|---|---|
 | `POST /rpc/<method>` | a signed-in person (Bearer token) | Body `{ args }`. Answers `{ ok: true, result }`, or `{ ok: false, code, message }` with the HTTP status of the error |
 | `GET /health` | anyone | `{ ok: true }` |
-| `POST /jobs/tick` | the scheduler (`x-hushmates-job: <JOB_SECRET>`) | homecoming, expiry, Mallow fallback, retention |
+| `POST /jobs/tick` | the scheduler (`x-hushmates-job: <JOB_SECRET>`) | homecoming, expiry, the Mallow fallback, and retrying sign-in deletions |
+| `POST /jobs/retention` | the scheduler secret | retention. On Supabase, pg_cron also runs it directly in SQL every day (`hushmates-retention`) |
 
 Methods: everything in `CLIENT_METHODS` (`core/relay.js`), with the same
 arguments and answers, plus:
@@ -157,6 +158,12 @@ Every report opened and every decision is recorded on the server. It signs
 out after 30 minutes idle.
 
 ## Local development
+
+Needs Postgres 16 with a superuser at `postgres://postgres@127.0.0.1:54329`
+(the tests and the dev stack create their own databases). To use another one:
+- `HUSHMATES_TEST_PG` for the tests (server URL, no database);
+- `HUSHMATES_PG` for the dev stack (server URL; it uses the `hushmates_dev` database);
+- `HUSHMATES_ADMIN_PG` for `server/admin.mjs` (the full URL including the database; default `…/hushmates_dev`).
 
 ```
 npm install                         # dev-only: the Postgres driver for tests and the dev stack

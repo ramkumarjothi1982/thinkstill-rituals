@@ -190,8 +190,9 @@ const THEMES = [
       ['agency', 'Could there be one small, low-pressure way to be around people this week, where an activity does most of the talking?'],
       ['self-compassion', 'Wanting to belong isn’t too much to ask. It’s one of the most human things there is.'],
     ] },
-  { id: 'load', labels: ['frustration', 'anger', 'sadness'],
-    cues: [/\b(?:flatmates?|housemates?|roommates?|chores|washing up|the dishes|clean(?:ing|s)? up|tidy(?:ing)? up|do(?:ing)? everything|always end up (?:doing|cleaning|tidying|washing|paying|picking up)|nobody helps|no ?one helps|pull(?:ing)? (?:their|his|her) weight)\b/g],
+  // an unfair share of the work at home: a partner who "never helps" isn't a partner who's distant
+  { id: 'load', labels: ['frustration', 'anger', 'sadness'], crowds: ['partner-distant'],
+    cues: [/\b(?:flatmates?|housemates?|roommates?|chores|housework|house ?work|washing up|the dishes|the laundry|clean(?:ing|s)? up|tidy(?:ing)? up|do(?:ing)? everything|always end up (?:doing|cleaning|tidying|washing|paying|picking up)|nobody helps|no ?one helps|(?:he|she|they|my (?:partner|husband|wife|boyfriend|girlfriend|flatmates?|housemates?|roommates?|family|kids)) (?:never|doesn'?t|does not|won'?t|will not|don'?t|do not) (?:ever )?help(?:s)?|does nothing (?:around|at home|to help)|all the (?:cooking|cleaning|chores|housework|washing|laundry)|pull(?:ing)? (?:their|his|her) weight)\b/g],
     angles: [
       ['worry-partly-true', 'Your frustration might be pointing at something real: the load doesn’t feel shared. That’s worth saying out loud, kindly and plainly.'],
       ['benign', 'Sometimes people don’t notice a job until it stops getting done. That doesn’t make it fair, but it might mean it’s more fixable than it feels.'],
@@ -456,17 +457,19 @@ function candidatesFor(text, label) {
   const hitsOf = (th) => th.cues.reduce((n, re) => n + (probe.match(re) || []).length, 0);
   // a loss outweighs a happy label: no "soak it up" for a funeral, however it was labelled
   const grief = THEMES.some((th) => th.tender && hitsOf(th) > 0);
+  const crowded = new Set();   // situations a theme that fits rules out
   for (const th of THEMES) {
     if (label ? !th.labels.includes(label) : !th.labels.some((l) => HEAVY_LABELS.includes(l))) continue;
     if (grief && !th.tender && (th.notWithGrief || th.labels.every((l) => BRIGHT.has(l)))) continue;
     const hits = hitsOf(th);
     const not = th.notWhen && th.notWhen.re.test(probe) ? new Set(th.notWhen.ids) : null;
     if (hits) for (const a of th.angles) if (!not?.has(a.id)) add(a, BASE.theme + Math.min(hits - 1, 2) * 0.5);
+    if (hits) for (const id of th.crowds || []) crowded.add(id);
   }
   if (family === 'heavy') {
     const where = contextsIn(probe);
     const fit = (sc) => (!where.size ? 0 : sc.contexts.some((c) => where.has(c)) ? 1.5 : -1.5);
-    const matched = matchScenarios(text).filter((m) => m.confidence !== 'fallback');
+    const matched = matchScenarios(text).filter((m) => m.confidence !== 'fallback' && !crowded.has(m.scenario.id));
     const likely = matched.filter((m) => m.confidence === 'likely');
     // a strong match is used for any heavy label; a near match when it suits the label and either nothing
     // is strong or the strong one is about another part of life ("my mum criticised…" isn't work)

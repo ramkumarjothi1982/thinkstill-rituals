@@ -32,6 +32,7 @@ before deciding**. The figures:
 | Stored data | about 100 KB at steady state | Encrypted words, events and indexes. Unsaved feelings are cleared after 30 days |
 | Sign-in emails | about 1.5 | A code only on a new device or after signing out; refresh tokens keep people signed in |
 | Mallow fallback (when nobody replies within 30 minutes) | 40% of feelings at 100 people, 25% at 1,000, 15% at 10,000, 10% at 100,000 | More people, more catchers |
+| "Explore another angle" (asked for on a feeling that came home without a Mallow perspective) | 10% of those feelings | An extra the author chooses. At most one Mallow perspective per feeling, either way |
 
 The web pages (the app and the desk) are static files. A free static host
 (for example, a new Cloudflare Pages project) serves them for A$0. That is a
@@ -44,7 +45,7 @@ still needs the owner's account.
 |---|---:|---:|---:|---:|
 | **Fixed** |  |  |  |  |
 | Supabase Pro plan (US$25) | 36 | 36 | 36 | 36 |
-| Static web host, captcha (Cloudflare Turnstile), error tracking (free tiers) | 0 | 0 | 0 | 0 |
+| Static web host, captcha (Cloudflare Turnstile, once built), error tracking (free tiers) | 0 | 0 | 0 | 0 |
 | **Variable** |  |  |  |  |
 | Compute beyond the credit | 0 (Micro) | 7 (Small) | 73 (Medium) | 290–580 (XL–2XL) |
 | Edge Function calls | 0 (0.13 M) | 0 (1.3 M) | 32 (13 M) | 371 (130 M) |
@@ -55,8 +56,10 @@ still needs the owner's account.
 | Point-in-time recovery (recommended from 10,000) | – | – | 145 | 145 |
 | **Without AI** | **≈ A$36** | **≈ A$44** | **≈ A$315** | **≈ A$925–1,320** |
 | **AI (only if the owner turns it on)** |  |  |  |  |
-| Mallow perspectives from Another Angle | 160 calls → 10 | 1,000 → 60 | 6,000 → 360 | 40,000 → 2,400 |
-| **With AI** | **≈ A$46** | **≈ A$104** | **≈ A$675** | **≈ A$3,325–3,720** |
+| Mallow perspectives from Another Angle: the fallback | 160 calls → 10 | 1,000 → 60 | 6,000 → 360 | 40,000 → 2,400 |
+| …and "Explore another angle" | 24 → 1 | 300 → 18 | 3,400 → 204 | 36,000 → 2,160 |
+| **With AI** | **≈ A$47** | **≈ A$122** | **≈ A$880** | **≈ A$5,485–5,880** |
+| Upper bound for AI, if every feeling gets a Mallow perspective | 400 → 24 | 4,000 → 240 | 40,000 → 2,400 | 400,000 → 24,000 |
 
 All amounts are A$ per month, rounded. Ranges show the realistic spread.
 
@@ -79,9 +82,10 @@ All amounts are A$ per month, rounded. Ranges show the realistic spread.
   Another Angle call is about US$0.02 typical and about US$0.04 regenerated
   (the service's own figures), × 1.45. The database refuses any AI call that
   would pass the monthly cap.
-  - Defaults (`hushmates.settings 'ai'`): cap A$0, 3 a day per person, 200 a day overall.
-  - So with the defaults, AI spending is capped at about A$360 a month whatever the size.
-  - The 100,000 column assumes the owner raises the daily ceiling.
+  - Defaults (`hushmates.settings 'ai'`): off, a monthly cap of A$0, 3 a day per person, 200 a day overall.
+  - With the defaults AI costs A$0. Once it's on, `monthlyCapAud` is the only money cap, and it counts estimated costs (the actual bill comes from Another Angle's account).
+  - The 200-a-day ceiling allows about 6,000 calls a month (≈ A$370 at the A$0.06 estimate). The 10,000 and 100,000 columns assume the owner raises it.
+  - The Mallow's own daily allowance (`settings 'limits'`: `fallbackGlobalPerDay` 500, `fallbackPerPersonPerDay` 5) applies to the free library too. 500 a day is about 15,000 Mallow perspectives a month: raise it before about 15,000 people, or people who allowed a Mallow perspective are told the Mallows are resting for today.
 - **Who pays for AI.** Another Angle's model calls are billed to the account
   that runs the Another Angle service, so Hushmates traffic adds to that bill.
 - **Sign-in emails.** Supabase's built-in email sender is for testing only.
@@ -105,4 +109,4 @@ All amounts are A$ per month, rounded. Ranges show the realistic spread.
 1. Realtime change notices instead of polling (−80–90% of calls).
 2. A load test on staging, to size compute for 10,000+ people.
 3. A decision on the email provider, with the owner.
-4. Before turning AI on, confirm the per-call cost with the Another Angle service owner. If the cap must hold even in its worst case, set the estimate to A$0.48: `node server/admin.mjs set ai '{"costPerCallAud": 0.48}'`. The hold uses the larger of this setting and `ANOTHER_ANGLE_COST_PER_CALL_AUD`.
+4. Before turning AI on, confirm the per-call cost with the Another Angle service owner. If the cap must hold even in its worst case, set the estimate to A$0.48: `node server/admin.mjs set ai '{"costPerCallAud": 0.48}'`. The hold uses the larger of this setting and the Edge Function's optional `ANOTHER_ANGLE_COST_PER_CALL_AUD` secret.

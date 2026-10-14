@@ -17,6 +17,8 @@
 .rl-support-list li { display: grid; gap: 2px; padding: 14px 16px; border-radius: 20px; background: #fff; box-shadow: 0 0 0 1px rgba(31,22,64,.07) inset, 0 14px 30px -26px rgba(70,40,140,.5); }
 .rl-support-list strong { font: 800 15px/1.3 var(--hm-ui); color: var(--hm-ink); }
 .rl-support-list span { font: 400 14.5px/1.45 var(--hm-body); color: var(--hm-ink-2); }
+.rl-support-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.rl-support-actions .kit-btn { text-decoration: none; }
 
 /* report reasons (sheet) */
 .rl-reasons { display: grid; gap: 6px; }

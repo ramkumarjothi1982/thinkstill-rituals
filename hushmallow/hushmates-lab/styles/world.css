@@ -273,8 +273,11 @@
   color: var(--hm-ink); font: 700 14px/1.35 var(--hm-ui); box-shadow: 0 18px 40px -18px rgba(31,22,64,.45), 0 0 0 1px rgba(31,22,64,.05); text-align: left; }
 .hm-toast-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #A57BFF; box-shadow: 0 0 0 4px rgba(165,123,255,.18); }
 .hm-toast--warn .hm-toast-dot { background: #FF8A5C; box-shadow: 0 0 0 4px rgba(255,138,92,.2); }
-.hm-offline { position: absolute; z-index: 44; top: calc(14px + var(--hm-safe-top)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px;
-  padding: 9px 14px; border-radius: 999px; background: rgba(31,22,64,.88); color: #FFF8F3; font: 700 12.5px var(--hm-ui); white-space: nowrap; box-shadow: var(--hm-shadow-pill); }
+/* below the top bar, so "You & safety" (and "Get support now") stays reachable while offline */
+.hm-offline { position: absolute; z-index: 44; top: calc(70px + var(--hm-safe-top)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px;
+  max-width: calc(100% - 32px); padding: 9px 14px; border-radius: 999px; background: rgba(31,22,64,.96); color: #FFF8F3; font: 700 12.5px/1.35 var(--hm-ui); text-align: center;
+  box-shadow: var(--hm-shadow-pill); pointer-events: none; }
+.hm-device:has(> .hm-offline:not([hidden])) > .hm-toast-root { top: calc(118px + var(--hm-safe-top)); }
 .hm-offline .kit-ico { width: 16px; height: 16px; }
 
 /* --------------------------------------------- small helpers -- */

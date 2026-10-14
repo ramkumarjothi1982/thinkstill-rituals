@@ -60,7 +60,7 @@ export function welcome(dev) {
         st.el,
         h('div', { class: 'hf-copy' },
           line('Send a feeling. See it differently.'),
-          h('p', { class: 'hf-tagline' }, 'One feeling. Five human perspectives.', h('br'), 'Back to you.')),
+          h('p', { class: 'hf-tagline' }, 'One feeling. Five perspectives.', h('br'), 'Back to you.')),
         h('div', { class: 'hf-actions' }, next('How it works', () => show(1)), steps(0)));
     } else if (n === 1) {
       const title = h('h1', { class: 'hf-line hf-line--sm', 'data-autofocus': '' }, BEATS[0].title);

@@ -95,6 +95,10 @@
 /* the three starters wrap and centre: nothing cut off */
 .hf-tags.hf-starters { flex-wrap: wrap; justify-content: center; overflow: visible; margin: 0; padding: 0; -webkit-mask: none; mask: none; }
 .hf-tags::-webkit-scrollbar { display: none; }
+/* a mouse can't swipe a hidden scroller: show every chip instead */
+@media (hover: hover) and (pointer: fine) {
+  .hf-tags { flex-wrap: wrap; overflow: visible; -webkit-mask: none; mask: none; margin: -6px 0 -14px; padding: 8px 0 16px; }
+}
 .hf-tags .kit-chip { flex: none; }
 .hf-tags .kit-chip { min-height: 38px; padding: 0 13px; font-size: 13.5px; background: rgba(255,255,255,.82); }
 .hf-tags .kit-chip[aria-pressed="true"] { background: var(--hm-ink); color: #FFF8F3; }

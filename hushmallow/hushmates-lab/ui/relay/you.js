@@ -51,7 +51,7 @@ export function you(dev) {
 
     section('Your choices',
       sentenceSwitch({ label: 'Let feelings find me', hint: 'Catch other people’s feelings when you choose to look. Always voluntary.', checked: p.catching, test: 'pref-catching', onChange: (on) => pref({ catching: on }) }),
-      sentenceSwitch({ label: 'Gentle notices about my feelings', hint: 'When one comes home, or when your Mallow can offer another way to see one. Never about other people’s activity.', checked: p.notifyReturn !== false, test: 'pref-notify', onChange: (on) => pref({ notifyReturn: on }) }),
+      sentenceSwitch({ label: 'Gentle notices about my feelings', hint: 'While Hushmates is open: a quiet note when one comes home, or when your Mallow can offer another way to see one. Never about other people’s activity.', checked: p.notifyReturn !== false, test: 'pref-notify', onChange: (on) => pref({ notifyReturn: on }) }),
       sentenceSwitch({ label: 'Soft sounds', hint: 'Delicate sounds for releasing, catching and returning. On this device only.', checked: soundOn(), test: 'pref-sound', onChange: (on) => { setSound(on); return true; } })),
 
     section('The Mallow who carries your feelings', mallows),
