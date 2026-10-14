@@ -80,6 +80,9 @@ Five independent reviews kept finding new ways of saying someone died that the w
 | Home after a quiet Another Angle visit | Stays quiet (no playful chatter, no Support pill); the next Tell is still asked, and Play ends the quiet |
 | Home after a world ended quietly | Boppo says the existing orienting line ("Okay. I'm right here. Squeeze me whenever you like."), not a question |
 | Another Angle after a death | The gentle path stays on the phone: the authored gentle lines, nothing sent to the server (default; the model's own gentle reply is switched off) |
+| A suicide named, about anyone | Care on both screens: a gentle line that assumes nothing, the Support pill, no world for the rest of the visit, nothing sent ("…and I'm going to a support group tonight" is care too) |
+| A death, then the speaker talking about ending, joining or following | Care; when the wording is less clear but carries a death, ending or afterlife word, the gentle path with support first (no world offered) and nothing sent |
+| Changes to the shared safety word list | Strictly additive: nothing the list caught before may be caught less (checked by `tools/beyond/lexicon-diff.mjs` and `tools/beyond/detection-gate.mjs`); known false alarms are kept on the safe side: "beat me at chess" (care), "no one is in danger" (crisis), "I'm dead lol" (the gentle path), "the physio rubbed my thigh" (care) |
 
 ## Still open for the owner
 
