@@ -1,0 +1,14 @@
+{
+  "name": "hushmates",
+  "private": true,
+  "description": "Hushmates: the customer app, its Supabase backend, and the developer lab. Nothing here deploys anything.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "dev": "node server/dev-stack.mjs",
+    "build": "node tools/build-app.mjs"
+  },
+  "devDependencies": {
+    "pg": "8.13.1"
+  }
+}

@@ -20,44 +20,18 @@ import { LABEL_IDS, MALLOW_IDS, REPORT_REASON_IDS, REPORT_REASONS, FEELING_LABEL
 import { RELAY } from './relay-rules.js';
 import { screenFeeling, screenReframe, providerSupport } from './feeling-safety.js';
 import { normaliseText, charCount, checkPseudonym } from './text-policy.js';
+import { RELAY_MESSAGES } from './relay-messages.js';
+import { formatExport } from './export-format.js';
 
 export class RelayError extends Error {
   constructor(code, message) { super(message || MESSAGES[code] || 'Something went wrong. Please try again.'); this.name = 'RelayError'; this.code = code; }
 }
-const MESSAGES = {
-  'not-signed-in': 'Please sign in again.',
-  'account-inactive': 'This account can’t do that right now.',
-  'not-found': 'That isn’t available.',
-  'invalid': 'Something didn’t go through. Please try again.',
-  'forbidden': 'That isn’t something you can do here.',
-  'rate-limited': 'That’s a lot in a short time. Please pause for a moment.',
-  'too-many-active': `You have ${RELAY.maxActiveJourneys} feelings travelling already. When one comes home, you can send another.`,
-  'not-catching': 'Turn on “Let feelings find me” to catch feelings.',
-  'hold-expired': 'This feeling drifted on while you were away. Thank you for looking.',
-  'not-available': 'This feeling has moved on.',
-  'already-contributed': 'You’ve already offered a perspective on this feeling.',
-  'fallback-off': 'You chose not to have a Mallow offer a perspective on this feeling.',
-  'fallback-not-yet': 'A Mallow perspective becomes available if nobody catches your feeling for a while.',
-  'fallback-budget': 'Mallows are resting for today. Your feeling keeps travelling and will still come home.',
-  'fallback-held': 'A Mallow can’t offer a perspective while this feeling is with our safety team.',
-  'consent-required': 'Please confirm you’re happy to share this anonymously first.',
-  'resend-limit': 'This feeling has already travelled a few times. You can keep it with you, or let it go.',
-};
+const MESSAGES = RELAY_MESSAGES;
 const fail = (code, message) => { throw new RelayError(code, message); };
 
 /** The label for a fixed development example (only ever allowed with `cannedExamples`, never in a real deployment). */
 export const CANNED_LABEL = 'A Mallow perspective · Example for testing, not generated';
 
-// words for the personal-data file (exportMyData), so it reads without a manual
-const EXPORT_STATUS = { travelling: 'travelling', returned: 'came home', released: 'let go' };
-const EXPORT_RETURN = { complete: 'five people offered a perspective', expired: 'its day of travelling ended', withdrawn: 'you brought it home early', removed: 'our safety team stopped it travelling' };
-const EXPORT_EVENT = {
-  released: 'sent into Hushfold', resent: 'sent out again', perspective: 'a Hushmate offered a perspective',
-  'perspective-withdrawn': 'a Hushmate took their perspective back', 'mallow-offer': 'your Mallow could offer a perspective',
-  'mallow-perspective': 'your Mallow offered a perspective', returned: 'came home',
-};
-const OTHERS_EVENTS = new Set(['perspective', 'perspective-withdrawn']);   // other people's actions: dated by day only
-const EXPORT_ACCOUNT = { active: 'active', restricted: 'catching paused by our safety team', suspended: 'paused by our safety team' };
 
 export const CLIENT_METHODS = [
   'me', 'savePreferences',
@@ -860,61 +834,25 @@ export class RelayService {
     const acc = this._actor(token, { allow: ['active', 'restricted', 'suspended'] });
     this.tick();
     const p = this.s.profiles[acc.id];
-    const iso = (t) => (typeof t === 'number' ? new Date(t).toISOString() : null);
-    const day = (t) => (typeof t === 'number' ? new Date(t).toISOString().slice(0, 10) : null);
-    const choice = (v) => (v === true ? 'kept' : v === false ? 'let go' : 'not chosen yet');
     const mine = Object.values(this.s.journeys).filter((j) => j.owner === acc.id && j.status !== 'deleted').sort((a, b) => a.createdAt - b.createdAt);
-    const feelings = mine.map((j) => {
-      const home = j.status !== 'travelling';
-      const { visible, extra } = this._items(j);
-      const mallow = [...visible, extra].find((x) => x && x.kind === 'mallow') || null;
-      return {
-        words: j.text || null,                                         // gone once you let the feeling go
-        feeling: FEELING_LABELS.find((l) => l.id === j.label)?.label || null,
-        status: EXPORT_STATUS[j.status] || 'with you',
-        sentAt: iso(j.createdAt),
-        cameHomeAt: iso(j.returnedAt),
-        cameHomeBecause: EXPORT_RETURN[j.returnReason] || null,
-        timesSentOutAgain: j.resends || 0,
-        saved: !!j.saved,
-        agreedToShareAnonymouslyAt: iso(j.consentAt),
-        agreedToAMallowPerspectiveAt: iso(j.fallbackConsentAt),
-        peopleWhoOfferedAPerspective: this._humans(j).filter((r) => !r.removed && !r.hiddenForOwner).length,
-        // as in the app: people's words stay sealed until the feeling comes home
-        // other people's words carry no time: the file says when you did things, never exactly when they did
-        perspectivesFromHushmates: home ? visible.filter((x) => x.kind === 'human').map((x) => ({ from: 'A Hushmate', words: x.text, yourChoice: choice(x.kept) })) : [],
-        mallowPerspective: mallow ? { from: 'Your Mallow', label: mallow.label, words: mallow.text, at: iso(mallow.at), yourChoice: choice(mallow.kept) } : null,
-        journey: j.events.map((e) => ({ step: EXPORT_EVENT[e.type] || 'something changed', at: OTHERS_EVENTS.has(e.type) ? day(e.at) : iso(e.at) })),
-      };
-    });
-    const offered = Object.values(this.s.reframes).filter((r) => r.author === acc.id && !r.removed).sort((a, b) => a.at - b.at)
-      .map((r) => ({
-        words: r.text, offeredAt: iso(r.at),
-        mayAppearInSharePictures: !!r.allowShare, agreedToSharePicturesAt: iso(r.shareConsentAt),
-        feelingHasComeHome: this.s.journeys[r.journeyId]?.status !== 'travelling',
-      }));
-    const reports = Object.values(this.s.reports).filter((r) => r.by === acc.id).sort((a, b) => a.at - b.at)
-      .map((r) => ({
-        about: r.kind === 'feeling' ? 'A feeling that found you' : 'A perspective on your feeling',
-        reason: REPORT_REASONS.find((x) => x.id === r.reason)?.label || 'Something else',
-        yourWords: r.details || null, madeAt: iso(r.at),
-        status: r.status === 'open' ? 'waiting for our safety team' : 'reviewed by our safety team',
-      }));
-    return {
-      format: 'hushmates-personal-data', version: 1, exportedAt: iso(this.now()),
-      about: 'Everything Hushmates keeps that is yours: your feelings and what came back to you, the perspectives you offered, your reports, your choices, and when you agreed to each. Other people appear only as "A Hushmate", never by name. Anything you let go of or deleted is gone and is not included.',
-      you: {
-        name: p.pseudonym, mallow: p.mallow, joinedAt: iso(acc.createdAt),
-        letFeelingsFindYou: !!p.catching, gentleNotices: p.notifyReturn !== false,
-        account: EXPORT_ACCOUNT[acc.state] || 'active',
-      },
-      feelings,
-      perspectivesYouOffered: offered,
+    return formatExport({
+      now: this.now(),
+      you: { pseudonym: p.pseudonym, mallow: p.mallow, createdAt: acc.createdAt, catching: p.catching, notifyReturn: p.notifyReturn, state: acc.state },
+      feelings: mine.map((j) => ({
+        text: j.text, label: j.label, status: j.status, createdAt: j.createdAt, returnedAt: j.returnedAt, returnReason: j.returnReason,
+        resends: j.resends || 0, saved: j.saved, consentAt: j.consentAt, fallbackConsentAt: j.fallbackConsentAt,
+        people: this._humans(j).filter((r) => !r.removed && !r.hiddenForOwner).length,
+        items: this._items(j), events: j.events,
+      })),
+      offered: Object.values(this.s.reframes).filter((r) => r.author === acc.id && !r.removed).sort((a, b) => a.at - b.at)
+        .map((r) => ({ text: r.text, at: r.at, allowShare: r.allowShare, shareConsentAt: r.shareConsentAt, journeyHome: this.s.journeys[r.journeyId]?.status !== 'travelling' })),
       feelingsThatFoundYou: Object.values(this.s.holds).filter((h) => h.user === acc.id).length,
-      reportsYouMade: reports,
-      peopleYouBlocked: this.s.blocks.filter((b) => b.by === acc.id).length,
-    };
+      reports: Object.values(this.s.reports).filter((r) => r.by === acc.id).sort((a, b) => a.at - b.at)
+        .map((r) => ({ kind: r.kind, reason: r.reason, details: r.details, at: r.at, status: r.status })),
+      blocked: this.s.blocks.filter((b) => b.by === acc.id).length,
+    });
   }
+
 
   /** Close the account's Hushmates data: feelings deleted, given perspectives withdrawn, sessions ended. */
   deleteMyData(token, { confirm } = {}) {

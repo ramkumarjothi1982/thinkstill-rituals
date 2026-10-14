@@ -1,3 +1,4 @@
 # built customer app (tools/build-app.mjs) and local server state: never committed
 dist/
 .data/
+node_modules/
