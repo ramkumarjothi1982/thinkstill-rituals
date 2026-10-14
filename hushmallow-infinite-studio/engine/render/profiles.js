@@ -30,10 +30,14 @@ export const FEATURES = Object.freeze({
   fgAccum: 'P5: premultiplied foreground accumulation over the world, scissored passes, the reflection at 1/4 resolution',
   adaptiveFloor: 'P6: one centred sample when nothing moves 2 px or more during the shutter',
   meshNormalTex: 'P7: rest normals baked once per Mallow; the mesh draws only cells that can show anything',
+  worldPasses: 'P4b: the fast world split by region with scissored draws (no branch skips work on SwiftShader): the smooth sky at 1/2 resolution, stars, hills and moon only where they are, water only below the horizon',
 });
 
 /** Features that read another feature's output: dependent → base. */
-const NEEDS = Object.freeze({ faceFastGlow: 'faceCache' });     // the fast face is drawn through the cache
+const NEEDS = Object.freeze({
+  faceFastGlow: 'faceCache',      // the fast face is drawn through the cache
+  worldPasses: 'worldFast',       // a variant of the fast world's passes
+});
 
 const ALL = Object.keys(FEATURES);
 const none = () => Object.fromEntries(ALL.map((f) => [f, false]));

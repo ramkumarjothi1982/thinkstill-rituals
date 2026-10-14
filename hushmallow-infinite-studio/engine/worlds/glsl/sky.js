@@ -117,6 +117,177 @@ void main() {
   frag = vec4(c, disc);
 }`;
 
+// ---------------------------------------------------------- P4b worldPasses --
+// SwiftShader evaluates both sides of a branch (measured on v2: the sky pass
+// costs the same with or without the moon, hills and star code behind their
+// zero-region guards, and the world pass costs as much on a sky pixel as on a
+// water pixel), so P4's guards save little. P4b splits the work by REGION
+// instead, with scissored draws, and moves the smooth terms to 1/2 resolution.
+// Away from the moon, sky() is a smooth sky (gradient, haze, the moon's glow,
+// the stratus and its colour: fbm at 0.0016-0.0085 per px, exponentials of
+// the moon distance) plus the stars and the hills:
+//   sky = hills(mix(smooth + stars, cloud, a)) = hills(P + (1 - a) * stars),
+//   P = mix(c1 + glow term, cloud, a), a = 0.88 * cl.
+//   SKY_LOW_FS          P and a at 1/2 resolution (all sky rows)
+//   SKY_COMPOSE 'plain' P (bilinear) + the stars, rows above the hills band
+//   SKY_COMPOSE 'hills' the same plus the hills, the band's rows
+//   SKY_COMPOSE 'moon'  sky() term by term (cl from the low layer), in the box
+//                       of the disc and its limb, where the glow and the cloud
+//                       colour have a kink that bilinear sampling would round
+//                       off; drawn last, over both
+// and the world pass copies the sky rows (SKY_COPY_FS) and runs the water
+// shader only from the horizon's row down.
+
+/** The smooth part of sky() away from the moon: rgb = P, a = 0.88 * cl. */
+const skyLowFn = (clouds) => `
+vec4 skyLow(vec2 w) {
+  float h = clamp((uHorizonY - w.y) / 1150., 0., 1.);
+  vec3 c = mix(uHorizon, uHigh, smoothstep(0.0, 0.42, h));
+  c = mix(c, uZenith, smoothstep(0.38, 1.0, h));
+  float la = loopA();
+  if (h < 0.32) {
+    float hz = fbm(vec2(w.x * 0.0016 + 0.1 * cos(la), w.y * 0.008 + 0.05 * sin(la)));
+    c = mix(c, uHaze, smoothstep(0.32, 0.0, h) * (0.3 + 0.3 * hz));
+  }
+  vec2 mp = uMoon.xy; float mr = uMoon.z;
+  float d = length(w - mp), dd = max(d - mr, 0.);
+  float glow = exp(-dd / (mr * 0.45)) * 0.42 + exp(-dd / (mr * 2.2)) * 0.22 + exp(-dd / (mr * 8.0)) * 0.10;
+  float cl = 0.;
+  vec3 cloud = uCloudDark;
+  ${clouds ? `if (uClouds > 0.002) {
+    float band = smoothstep(0.12, 0.42, h) * smoothstep(0.95, 0.62, h);
+    if (band > 0.) {
+      vec2 cp = vec2(w.x * 0.0016 + 0.17 * cos(la), w.y * 0.0085 + 0.03 * sin(la));
+      cp += vec2(1.1, 0.35) * (vec2(fbm(cp * vec2(0.7, 1.3) + 7.0), fbm(cp * vec2(0.9, 1.1) + 2.3)) - 0.5);
+      float n = fbm(cp) * (0.75 + 0.5 * vnoise(vec2(w.x * 0.0009 - 0.09 * cos(la), 4.0 + 0.09 * sin(la))));
+      cl = smoothstep(0.66 - 0.32 * uClouds, 0.92 - 0.26 * uClouds, n) * band * min(1., uClouds * 1.6);
+      float near = exp(-dd / (mr * 3.2)) + 0.35 * exp(-dd / (mr * 10.0));
+      float thin = 1. - smoothstep(0.15, 0.85, cl);
+      cloud = mix(uCloudDark, uCloudLit, clamp(near * (0.35 + 0.9 * thin), 0., 1.));
+    }
+  }` : '// clouds off (draft profile)'}
+  c += uHaloCol * glow * uMoonGlow * (1. - 0.6 * cl);
+  float a = cl * 0.88;
+  return vec4(mix(c, cloud, a), a);
+}`;
+
+/** sky()'s stars (0 outside star cells) and its hills over c, with sky()'s arithmetic. */
+const STARS_HILLS = `
+vec3 skyStars(vec2 w, float h, float la, float d, float mr) {
+  vec2 g = floor(w / 7.0);
+  float s = hash12(g);
+  vec3 st = vec3(0.);
+  if (s >= 0.9972) {
+    float star = smoothstep(0.18, 0.7, h) * smoothstep(mr * 2.5, mr * 6.0, d);
+    float tw = 0.6 + 0.4 * sin(la * floor(2. + 7. * hash12(g + 7.)) + s * 40.);
+    vec2 f = fract(w / 7.0) - 0.5 - (vec2(hash12(g + 3.), hash12(g + 5.)) - 0.5) * 0.5;
+    float sz = 0.16 + 0.14 * hash12(g + 11.);
+    st = vec3(0.85, 0.88, 1.0) * star * tw * smoothstep(sz, 0.0, length(f)) * uStars * 1.4;
+  }
+  return st;
+}
+vec3 skyHills(vec2 w, vec3 c) {
+  if (w.y > uHorizonY - 60.) {
+    float hx = w.x * 0.0019;
+    float r1 = uHorizonY - (8. + 34. * pow(0.5 + 0.5 * sin(hx * 2.3 + 0.9), 1.6) + 14. * fbm(vec2(hx * 2.0, 3.7)));
+    float r2 = uHorizonY - (4. + 20. * pow(0.5 + 0.5 * sin(hx * 3.7 + 2.6), 2.0) + 8. * fbm(vec2(hx * 3.1, 9.1)));
+    vec3 far = mix(uHillCol, uHaze, 0.55);
+    c = mix(c, far, smoothstep(r1 - 1.0, r1 + 1.0, w.y) * 0.85);
+    c = mix(c, mix(uHillCol, uHaze, 0.22), smoothstep(r2 - 1.0, r2 + 1.0, w.y));
+  }
+  return c;
+}
+vec2 skyWorld(vec2 sp) { return (sp - uRes * 0.5) / uSkyCam.z + uSkyCam.xy; }
+`;
+
+/** sky() term by term around the moon, the stratus cover cl from the low layer. */
+const SKY_MOON = `
+vec3 skyMoon(vec2 w, float cl, out float discOut) {
+  float h = clamp((uHorizonY - w.y) / 1150., 0., 1.);
+  vec3 c = mix(uHorizon, uHigh, smoothstep(0.0, 0.42, h));
+  c = mix(c, uZenith, smoothstep(0.38, 1.0, h));
+  float la = loopA();
+  if (h < 0.32) {
+    float hz = fbm(vec2(w.x * 0.0016 + 0.1 * cos(la), w.y * 0.008 + 0.05 * sin(la)));
+    c = mix(c, uHaze, smoothstep(0.32, 0.0, h) * (0.3 + 0.3 * hz));
+  }
+  vec2 mp = uMoon.xy; float mr = uMoon.z;
+  float d = length(w - mp), dd = max(d - mr, 0.);
+  c += skyStars(w, h, la, d, mr);
+  float glow = exp(-dd / (mr * 0.45)) * 0.42 + exp(-dd / (mr * 2.2)) * 0.22 + exp(-dd / (mr * 8.0)) * 0.10;
+  float disc = 1. - smoothstep(mr - 1.2, mr + 1.2, d);
+  vec3 moon = uMoonCol;
+  if (disc > 0.) {
+    vec2 mq = (w - mp) / mr;
+    float maria = smoothstep(0.48, 0.72, fbm(mq * 1.7 + vec2(5.2, 1.3)));
+    float fine = fbm(mq * 7.0 + 2.0);
+    float limb = pow(max(1. - dot(mq, mq), 0.), 0.22);
+    moon = uMoonCol * (0.80 + 0.2 * limb) * (1. - 0.16 * maria - 0.05 * fine);
+  }
+  vec3 cloud = uCloudDark;
+  if (cl > 0.) {        // sky() mixes the cloud colour in with weight cl * 0.88: nothing to do at cl = 0
+    float near = exp(-dd / (mr * 3.2)) + 0.35 * exp(-dd / (mr * 10.0));
+    float thin = 1. - smoothstep(0.15, 0.85, cl);
+    cloud = mix(uCloudDark, uCloudLit, clamp(near * (0.35 + 0.9 * thin), 0., 1.));
+  }
+  c += uHaloCol * glow * uMoonGlow * (1. - 0.6 * cl);
+  c = mix(c, moon, disc * (1. - 0.85 * cl));
+  discOut = disc * (1. - 0.85 * cl);
+  c = mix(c, cloud, cl * 0.88);
+  return skyHills(w, c);
+}
+`;
+
+/** P4b pass 1a (1/2 resolution): P (rgb) and a = 0.88 * cl. */
+export const skyLowFS = ({ octaves = 5, clouds = true } = {}) => `
+in vec2 vUv;
+${CAM}
+${noiseGLSL(octaves)}
+${WATER_GLSL}
+${SKY_UNIFORMS}
+out vec4 frag;
+${skyLowFn(clouds)}
+vec2 skyWorld(vec2 sp) { return (sp - uRes * 0.5) / uSkyCam.z + uSkyCam.xy; }
+void main() {
+  vec2 sp = vec2(vUv.x * uRes.x, (1. - vUv.y) * uRes.y);
+  frag = skyLow(skyWorld(sp));
+}`;
+
+/** P4b pass 1b (full resolution, scissored): part 'plain' | 'hills' | 'moon' of the sky layer. */
+export const skyComposeFS = ({ octaves = 5, part = 'plain' } = {}) => {
+  if (!['plain', 'hills', 'moon'].includes(part)) throw new Error(`unknown sky part ${part}`);
+  const body = part === 'moon'
+    ? `  float disc;
+  vec3 c = skyMoon(w, low.a / 0.88, disc);
+  frag = vec4(c, disc);`
+    : `  float h = clamp((uHorizonY - w.y) / 1150., 0., 1.);
+  vec3 c = low.rgb + (1. - low.a) * skyStars(w, h, loopA(), length(w - uMoon.xy), uMoon.z);
+  ${part === 'hills' ? 'c = skyHills(w, c);' : '// above the hills band'}
+  frag = vec4(c, 0.);              // the visible disc is 0 outside the moon's box`;
+  return `
+in vec2 vUv;
+${CAM}
+${noiseGLSL(octaves)}
+${WATER_GLSL}
+${SKY_UNIFORMS}
+uniform sampler2D uSkyLow;
+out vec4 frag;
+${STARS_HILLS}
+${part === 'moon' ? SKY_MOON : ''}
+void main() {
+  vec2 sp = vec2(vUv.x * uRes.x, (1. - vUv.y) * uRes.y);
+  vec2 w = skyWorld(sp);
+  vec4 low = texture(uSkyLow, vUv);
+${body}
+}`;
+};
+
+/** P4b: the world pass's sky rows, copied from the sky layer exactly as WORLD_FAST_FS does. */
+export const SKY_COPY_FS = `
+uniform sampler2D uSky;
+out vec4 frag;
+void main() { frag = vec4(texelFetch(uSky, ivec2(gl_FragCoord.xy), 0).rgb, 1.); }`;
+
 /** Pass 2: sky pixels copied from the sky layer, water pixels mirroring it (sampled). */
 export const worldFastFS = ({ octaves = 5 } = {}) => `
 in vec2 vUv;

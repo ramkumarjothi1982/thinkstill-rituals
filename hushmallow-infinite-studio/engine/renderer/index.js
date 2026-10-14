@@ -72,7 +72,7 @@ export class Renderer {
     const sz = (v, d) => Math.max(1, Math.round(v / d));
     this.fs = fullscreen(gl);
     const q = profile.quality;
-    this.world = new LakeWorld(this, { fast: !!profile.features.worldFast, octaves: q.worldOctaves, clouds: q.worldClouds });
+    this.world = new LakeWorld(this, { fast: !!profile.features.worldFast, split: !!profile.features.worldPasses, octaves: q.worldOctaves, clouds: q.worldClouds });
     this.p = {
       mesh: program(gl, MESH_VS, profile.features.faceFastGlow || profile.features.meshNormalTex
         ? meshFS({ faceBox: !!profile.features.faceFastGlow, normalTex: !!profile.features.meshNormalTex }) : MESH_FS, 'mesh'),
