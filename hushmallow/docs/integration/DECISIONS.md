@@ -49,6 +49,23 @@ Line 1 stays true only while the Anthropic organisation is not enrolled in the D
 | Garden card on a small phone (H23 r2b, 2026-10-13) | The Thought Mallow makes way from the moment the card is placed and may rise into the subtitle band while the installation keeps the lines quiet; the lines and the band's ▶ pill come back only once it has left the band; the card is never seen over the thought or its words |
 | A world's first arrival (H23 r2b, 2026-10-13) | The host sets off once the person's words have faded out of its way (0.9 s at most); a world's thought shows no words while the hero covers every place round it |
 
+## 2026-10-14: Ask when unsure about a loss (owner)
+
+Five independent reviews kept finding new ways of saying someone died that the word lists missed (for example "we had to let our dog go", "my mum isn't with us now", "cancer won in the end"). The owner chose **"Ask when unsure"** over shipping with known gaps or switching Another Angle's game off offline:
+
+- When the words name a person, a pet or a pregnancy next to a softer loss word, and nothing clearer applies, the Mallow asks one gentle question first, on the main screen and in Another Angle: "Is this about losing someone?" Yes leads to the gentle path; "Something else" carries on as normal; no answer stays quietly at home. A false alarm costs one tap.
+- A grief-family feeling the person picks (Grief, Mourning, Heartache, …) always means the gentle path.
+- Crisis, care and the wish to follow someone who died still route to support first, as before.
+
+## Defaults taken on the owner's behalf (2026-10-14)
+
+| Topic | Default |
+|---|---|
+| Resume after something heavy | No Resume into a world after a loss or a care-level disclosure (abuse, violence, threat, unsafe); Resume stays after ordinary distress (P4) |
+| Everyday "death" sayings on the main screen | "My plant died", "the party is dead", "this traffic is murder" stay ordinary; in Another Angle they still never get the guess game |
+| Consent card at the largest text size on a 320 px phone | Reads in 6 steps (3 at normal text); the approved wording is kept in full |
+| Feelings suggested beside a loss | Grief and Sad first, plus any feeling the person stated outright; nothing read from unrelated words |
+
 ## Still open for the owner
 
 - Monthly spend limit in the Anthropic Console.
