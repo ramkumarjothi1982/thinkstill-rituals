@@ -59,8 +59,10 @@ export class RelayClient {
       this._clock(r.now);
       // a feeling that just came home (the scene plays the return moment)
       // announced once per journey, even when refreshes overlap
-      const cameHome = s.journeys.filter((j) => j.status === 'returned' && before.get(j.id) === 'travelling' && !this._announced.has(j.id)).map((j) => j.id);
-      cameHome.forEach((id) => this._announced.add(id));
+      // (by trip: a feeling sent out again is announced again when it comes home again)
+      const trip = (j) => `${j.id}:${j.returnedAt || ''}`;
+      const cameHome = s.journeys.filter((j) => j.status === 'returned' && before.get(j.id) === 'travelling' && !this._announced.has(trip(j))).map((j) => j.id);
+      cameHome.forEach((id) => this._announced.add(trip(s.journeys.find((j) => j.id === id))));
       // a feeling nobody has caught for a while, whose Mallow can now offer another way to see it
       const newly = (state) => s.journeys.filter((j) => j.status === 'travelling' && offerOf(j) === state && beforeOffer.has(j.id)
         && beforeOffer.get(j.id) !== state && !this._offered.has(`${state}:${j.id}`)).map((j) => j.id);

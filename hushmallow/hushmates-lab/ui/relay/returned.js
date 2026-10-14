@@ -24,6 +24,7 @@ const homeList = (state) => state.journeys.filter((j) => j.status === 'returned'
 const caption = (j) => {
   if (j.status === 'released') return 'Released';
   if (j.returnReason === 'removed') return 'Brought home by our safety team';
+  if (!j.humanCount && j.placesTaken) return 'Caught, but those words aren’t here any more';
   if (!j.humanCount) return j.mallowPetal || j.mallowExtra ? 'No one caught it · a Mallow’s perspective' : 'No one caught it this time';
   return humanProgress(j);
 };
@@ -105,7 +106,10 @@ export function homecoming(dev, { id, refresh } = {}) {
     const items = j.collection || [];
     const released = j.status === 'released';
     const humans = j.humanCount;
-    const noOne = !released && humans === 0;
+    const taken = j.placesTaken ?? humans;
+    const noOne = !released && humans === 0 && !taken;
+    // people caught it, but every one of their perspectives was since taken back or removed
+    const gone = !released && humans === 0 && taken > 0;
     const mallowItem = items.find((x) => x.kind === 'mallow') || null;
     const shownHumans = items.filter((x) => x.kind === 'human').length;
     const orbSlot = h('div', { class: 'hf-home-orb' });
@@ -120,6 +124,7 @@ export function homecoming(dev, { id, refresh } = {}) {
     if (released) sub = items.length || j.mallowExtra ? 'These are the perspectives you kept.' : 'Nothing was kept. It’s gone, gently.';
     else if (j.returnReason === 'removed') sub = 'Our safety team brought it home.';
     else if (noOne) sub = 'No one caught it this time.';
+    else if (gone) sub = `${taken === 1 ? 'Someone' : `${taken} people`} caught it, but those words aren’t here any more: taken back by whoever wrote them, or removed by our safety team.`;
     else if (!shownHumans) sub = `${people} caught it. The perspectives you chose not to see aren’t shown.`;
     else if (humans < j.of) { sub = `${people} caught it before it came home. Here’s how they saw it.`; partial = true; }
     else sub = 'Here’s how others saw it.';

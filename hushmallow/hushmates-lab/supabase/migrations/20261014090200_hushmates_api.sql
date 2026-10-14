@@ -134,10 +134,20 @@ create or replace function hushmates_api.job_mallow_claim(p_limit int default 10
 language plpgsql security definer set search_path = '' as $$
 declare v jsonb; v_timeout interval := make_interval(secs => coalesce((hushmates.setting('mallow') ->> 'claimTimeoutMs')::numeric, 120000) / 1000);
 begin
+  -- a scheduled one nobody has started that may no longer be written goes (nothing was generated, so the one generation is still there)
+  delete from hushmates.mallow_perspectives mp using hushmates.journeys jj
+  where jj.id = mp.journey_id and mp.status = 'pending' and mp.requested_by = 'schedule' and mp.claimed_at is null
+    and (jj.paused or jj.return_reason is not distinct from 'removed' or not jj.allow_fallback
+         or (select state from hushmates.members where id = jj.owner) <> 'active'
+         or (jj.status = 'travelling' and hushmates.human_count(jj.id) > 0));
   with c as (
     select mp.journey_id from hushmates.mallow_perspectives mp
+    join hushmates.journeys jj on jj.id = mp.journey_id
     where mp.status = 'pending' and not mp.hidden and (mp.claimed_at is null or mp.claimed_at < hushmates.clock() - v_timeout)
-    order by mp.created_at limit greatest(1, least(p_limit, 50)) for update skip locked
+      and not jj.paused and jj.return_reason is distinct from 'removed' and jj.allow_fallback
+      and (select state from hushmates.members where id = jj.owner) = 'active'
+      and (jj.status = 'returned' or (jj.status = 'travelling' and hushmates.human_count(jj.id) = 0))
+    order by mp.created_at limit greatest(1, least(p_limit, 50)) for update of mp skip locked
   ), u as (
     update hushmates.mallow_perspectives mp set claimed_at = hushmates.clock() from c where mp.journey_id = c.journey_id returning mp.journey_id
   )
@@ -301,7 +311,8 @@ begin
   update hushmates.members set state = p_state, catching = case when p_state = 'active' then catching else false end where id = p_member;
   if p_state <> 'active' then
     update hushmates.holds set status = 'voided', ended_at = hushmates.clock()
-    where member_id = p_member and status in ('offered', 'caught') and expires_at > hushmates.clock();
+    where (member_id = p_member or journey_id in (select id from hushmates.journeys where owner = p_member))
+      and status in ('offered', 'caught') and expires_at > hushmates.clock();
   end if;
   perform hushmates.audit('operator', 'account.state', jsonb_build_object('member', p_member, 'from', v_old, 'to', p_state));
   return jsonb_build_object('member', p_member, 'from', v_old, 'to', p_state);

@@ -107,8 +107,8 @@ language plpgsql set search_path = '' as $$
 declare n int;
 begin
   update hushmates.holds set status = 'expired', ended_at = hushmates.clock()
-  where status in ('offered', 'caught') and expires_at <= hushmates.clock()
-    and (p_member is null or member_id = p_member) and (p_journey is null or journey_id = p_journey);
+  where id in (select id from hushmates.holds where status in ('offered', 'caught') and expires_at <= hushmates.clock()
+    and (p_member is null or member_id = p_member) and (p_journey is null or journey_id = p_journey) order by id for update skip locked);
   get diagnostics n = row_count;
   return n;
 end $$;
@@ -160,6 +160,7 @@ begin
   if (select state from hushmates.members where id = j.owner) <> 'active' then return false; end if;
   if j.status = 'returned' then return true; end if;
   return j.status = 'travelling' and hushmates.human_count(j.id) = 0
+    and not exists (select 1 from hushmates.holds h where h.journey_id = j.id and h.status = 'caught' and h.expires_at > hushmates.clock())
     and hushmates.clock() - j.released_at >= make_interval(secs => hushmates.lim('fallbackAfterMs')::numeric / 1000);
 end $$;
 
@@ -191,11 +192,13 @@ begin
   if j.id is null or j.status <> 'travelling' then return; end if;
   if j.expires_at <= v_t then perform hushmates.return_journey(j.id, 'expired'); return; end if;
   if j.fallback_offered_at is null and hushmates.askable(j) then
-    update hushmates.journeys set fallback_offered_at = v_t where id = j.id;
-    perform hushmates.push_event(j.id, jsonb_build_object('type', 'mallow-offer', 'at', hushmates.ms(v_t)));
-    if coalesce((hushmates.setting('mallow') ->> 'autoGenerate')::boolean, false) and hushmates.charge_mallow(j.owner) then
-      insert into hushmates.mallow_perspectives (journey_id, status, mallow, requested_by, created_at)
-      values (j.id, 'pending', j.mallow, 'schedule', v_t) on conflict do nothing;
+    update hushmates.journeys set fallback_offered_at = v_t where id = j.id and fallback_offered_at is null;
+    if found then
+      perform hushmates.push_event(j.id, jsonb_build_object('type', 'mallow-offer', 'at', hushmates.ms(v_t)));
+      if coalesce((hushmates.setting('mallow') ->> 'autoGenerate')::boolean, false) and hushmates.charge_mallow(j.owner) then
+        insert into hushmates.mallow_perspectives (journey_id, status, mallow, requested_by, created_at)
+        values (j.id, 'pending', j.mallow, 'schedule', v_t) on conflict do nothing;
+      end if;
     end if;
   end if;
 end $$;
@@ -277,8 +280,10 @@ begin
   v_owner_active := (select state from hushmates.members where id = j.owner) = 'active';
   return jsonb_build_object(
     'id', j.id, 'status', j.status, 'text', j.text_enc, 'label', j.label, 'mallow', j.mallow, 'allowFallback', j.allow_fallback,
-    'createdAt', hushmates.ms(j.created_at), 'expiresAt', hushmates.ms(j.expires_at), 'returnedAt', hushmates.ms(j.returned_at),
+    'createdAt', hushmates.ms(j.created_at), 'releasedAt', hushmates.ms(j.released_at), 'expiresAt', hushmates.ms(j.expires_at), 'returnedAt', hushmates.ms(j.returned_at),
     'returnReason', j.return_reason, 'paused', j.paused, 'humanCount', v_count, 'of', v_max,
+    -- every place taken, including words since taken back or removed: "no one caught it" only when it's true
+    'placesTaken', v_all,
     'petals', v_petals,
     'mallowPetal', case when v_shown is null then null else jsonb_build_object('mallow', v_shown ->> 'mallow', 'source', v_shown ->> 'source') end,
     'events', j.events,
@@ -566,7 +571,6 @@ begin
   select id into v_current from hushmates.holds where member_id = m.id and status in ('offered', 'caught') and expires_at > v_t limit 1;
   if v_current is not null then return jsonb_build_object('offer', hushmates.offer_view(v_current)); end if;
   perform hushmates.rate(m.id::text, jsonb_build_array(jsonb_build_array('find', hushmates.lim('findsPerHour'), 3600000)));
-  perform hushmates.bump('find');
   select array_agg(id order by random()) into v_ids from (
     select x.id from hushmates.journeys x where x.status = 'travelling' and hushmates.eligible(x, m.id)
     order by x.last_progress_at, x.created_at limit hushmates.lim('fairnessPool')) c;
@@ -597,9 +601,11 @@ begin
       insert into hushmates.holds (journey_id, member_id, status, created_at, expires_at)
       values (j.id, m.id, 'offered', v_t, v_t + make_interval(secs => hushmates.lim('offerHoldMs')::numeric / 1000)) returning id into v_hold;
       insert into hushmates.exposures (journey_id, member_id, at) values (j.id, m.id, v_t) on conflict do nothing;
+      perform hushmates.bump('find');
       return jsonb_build_object('offer', hushmates.offer_view(v_hold));
     end loop;
   end loop;
+  perform hushmates.bump('find');
   return jsonb_build_object('offer', null);
 end $$;
 
@@ -621,7 +627,7 @@ begin
     return hushmates.err(case when h.status = 'expired' then 'hold-expired' else 'not-available' end);
   end if;
   select * into j from hushmates.journeys where id = h.journey_id;
-  if j.status <> 'travelling' or j.paused or hushmates.blocked_by(j.owner, m.id) then
+  if j.status <> 'travelling' or j.paused or hushmates.blocked_by(j.owner, m.id) or (select state from hushmates.members where id = j.owner) <> 'active' then
     perform hushmates.end_hold(h.id, 'voided');
     return hushmates.err('not-available');
   end if;
@@ -824,7 +830,7 @@ begin
   select * into j from hushmates.journeys where id = p_journey;
   if f.journey_id is null then return; end if;
   -- the person may have let go of it, deleted it, or left while we waited: a late answer is dropped
-  if f.hidden or f.status <> 'pending' or j.status in ('deleted', 'released') then
+  if f.hidden or f.status <> 'pending' or j.status in ('deleted', 'released') or j.paused or j.return_reason = 'removed' then
     update hushmates.mallow_perspectives set status = 'failed', reason = coalesce(reason, 'withdrawn'), text_enc = '' where journey_id = p_journey and status = 'pending';
     return;
   end if;
@@ -1117,7 +1123,8 @@ begin
       if s.id is not null and s.role <> 'moderator' then
         update hushmates.members set state = 'restricted', catching = false where id = s.id;
         update hushmates.holds set status = 'voided', ended_at = hushmates.clock()
-        where member_id = s.id and status in ('offered', 'caught') and expires_at > hushmates.clock();
+        where (member_id = s.id or journey_id in (select id from hushmates.journeys where owner = s.id))
+          and status in ('offered', 'caught') and expires_at > hushmates.clock();
       end if;
       v_status := 'actioned';
     else perform hushmates.fail('invalid');

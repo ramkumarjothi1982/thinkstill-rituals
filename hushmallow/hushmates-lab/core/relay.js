@@ -322,7 +322,7 @@ export class RelayService {
     if (live && acc.state !== 'active') fail('account-inactive');
     if (live && !this._holdLive(h)) fail(h.status === 'expired' ? 'hold-expired' : 'not-available');
     const j = this.s.journeys[h.journeyId];
-    if (live && (!j || j.status !== 'travelling' || j.paused || this._blockedBy(j.owner, acc.id))) { this._endHold(h, 'voided'); this._save(); fail('not-available'); }
+    if (live && (!j || j.status !== 'travelling' || j.paused || this._blockedBy(j.owner, acc.id) || this.s.accounts[j.owner]?.state !== 'active')) { this._endHold(h, 'voided'); this._save(); fail('not-available'); }
     return { acc, h, j };
   }
 
@@ -556,7 +556,7 @@ export class RelayService {
     if (!j.allowFallback || !this.provider || this.s.fallbacks[j.id] || j.paused || j.returnReason === 'removed') return false;
     if (this.s.accounts[j.owner]?.state !== 'active') return false;
     if (j.status === 'returned') return true;
-    return j.status === 'travelling' && this._humans(j).length === 0 && t - (j.releasedAt || j.createdAt) >= this.L.fallbackAfterMs;
+    return j.status === 'travelling' && this._humans(j).length === 0 && !this._liveHolds(j.id).some((h) => h.status === 'caught') && t - (j.releasedAt || j.createdAt) >= this.L.fallbackAfterMs;
   }
 
   _journeyView(j, viewer) {
@@ -568,8 +568,9 @@ export class RelayService {
     const shownMallow = visible.find((x) => x.kind === 'mallow') || null;
     return {
       id: j.id, status: j.status, text: j.text, label: j.label, mallow: j.mallow, allowFallback: j.allowFallback,
-      createdAt: j.createdAt, expiresAt: j.expiresAt, returnedAt: j.returnedAt, returnReason: j.returnReason,
+      createdAt: j.createdAt, releasedAt: j.releasedAt ?? null, expiresAt: j.expiresAt, returnedAt: j.returnedAt, returnReason: j.returnReason,
       paused: j.paused, humanCount: humans.length, of: this.L.perspectivesPerFeeling,
+      placesTaken: this._humans(j).length,                // every place taken, words taken back or removed included
       petals: humans.map((r) => ({ slot: r.slot, mallow: r.mallow })),          // the orb's luminous layers, no words
       mallowPetal: shownMallow ? { mallow: shownMallow.mallow, source: shownMallow.source } : null,   // only while it is really in the collection
       events: j.events.map((e) => ({ ...e })),                                   // privacy-conscious: no people in it
@@ -918,7 +919,8 @@ export class RelayService {
       if (a && a.role !== 'moderator') {
         a.state = 'restricted';
         if (this.s.profiles[a.id]) this.s.profiles[a.id].catching = false;
-        for (const h of Object.values(this.s.holds)) if (h.user === a.id && this._holdLive(h)) this._endHold(h, 'voided');
+        // their own holds end, and so do others' holds on their feelings
+        for (const h of Object.values(this.s.holds)) if ((h.user === a.id || this.s.journeys[h.journeyId]?.owner === a.id) && this._holdLive(h)) this._endHold(h, 'voided');
       }
       r.status = 'actioned';
     }
