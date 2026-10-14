@@ -16,7 +16,7 @@ import { Orb, fly, centreIn } from '../orb.js';
 import { play } from '../sound.js';
 import { wait, reducedMotion, CSS_EASE, rise } from '../motion.js';
 import { brandBar, dock, top, feelChip, feelColour, lights, reportSheet, errorText } from './common.js';
-import { room, stage, handsOf, Speech, line, swapLine, put, privacySheet, labSourceTag, focusHeading } from './parts.js';
+import { room, stage, handsOf, Speech, line, swapLine, put, privacySheet, hostNote, focusHeading } from './parts.js';
 import { humanProgress } from './journeys.js';
 
 const homeList = (state) => state.journeys.filter((j) => j.status === 'returned' || j.status === 'released')
@@ -185,10 +185,10 @@ export function homecoming(dev, { id, refresh } = {}) {
   }
 
   function sourceLine(p) {
-    const lab = p.kind === 'mallow' ? labSourceTag(dev, p.source) : null;
+    const note = p.kind === 'mallow' ? hostNote(dev, 'mallow-source', { source: p.source }) : null;
     return h('p', { class: 'hf-slide-src', dataset: { test: 'persp-source' } },
       p.kind === 'human' ? h('i', { class: 'hf-src-dot', style: { '--dot': MALLOWS[p.mallow]?.body || '#A07BFF' }, 'aria-hidden': 'true' }) : face(p.mallow, { size: 22 }),
-      h('span', {}, p.label), lab);
+      h('span', {}, p.label), note);
   }
 
   function slide(p, i, n) {

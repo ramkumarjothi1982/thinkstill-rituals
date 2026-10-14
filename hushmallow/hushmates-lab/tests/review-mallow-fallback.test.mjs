@@ -48,7 +48,9 @@ test('BUG 1 (fixed): a crisis verdict from the Mallow provider stops the feeling
   const j = await w.svc.askMallow(w.T.moon, { journeyId: id });
   assert.equal(j.fallback.status, 'failed');
   assert.equal(j.fallback.reason, 'safety');
-  assert.deepEqual(j.fallback.support, support, 'the author is shown the provider’s support');
+  // the author is shown support, in Hushmates' own reviewed words (a provider's text is never shown as is)
+  assert.ok(j.fallback.support?.message && j.fallback.support.resources?.length, 'the author is shown no support');
+  assert.notEqual(j.fallback.support.message, support.message, 'the provider’s unreviewed support text reached the author');
   assert.equal(w.svc.findFeeling(w.T.cloud).offer, null, 'a feeling flagged as crisis is still offered to a stranger');
   const reports = w.svc.modListReports(w.T.mod).reports;
   assert.ok(reports.some((x) => x.urgent && x.kind === 'feeling' && x.status === 'open'), 'no urgent report for a person on the safety team');
@@ -128,7 +130,7 @@ test('BUG 4 (fixed): a generation interrupted by a restart is marked failed, nev
   const id = w.release('moon', { allowFallback: true }).journey.id;
   w.advance(31 * MIN);
   w.svc.askMallow(w.T.moon, { journeyId: id });
-  const restarted = new RelayService({ state: w.svc.toJSON(), now: () => w.clock.t, provider: demoProvider() });
+  const restarted = new RelayService({ state: w.svc.toJSON(), now: () => w.clock.t, provider: demoProvider(), testMode: true });
   const j = await restarted.askMallow(w.T.moon, { journeyId: id });
   w.clock.t += 25 * 3600e3;
   const later = restarted.getJourney(w.T.moon, { journeyId: id });

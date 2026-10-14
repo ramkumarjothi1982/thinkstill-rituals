@@ -16,7 +16,7 @@ import { play } from '../sound.js';
 import { wait, reducedMotion, rise, CSS_EASE } from '../motion.js';
 import { PERSPECTIVE_LABELS } from '../../core/relay-config.js';
 import { brandBar, dock, top, feelChip, feelColour, lights, errorText, supportBody, reportSheet } from './common.js';
-import { room, stage, Speech, line, swapLine, put, labSourceTag, focusHeading } from './parts.js';
+import { room, stage, Speech, line, swapLine, put, hostNote, focusHeading } from './parts.js';
 
 export const humanProgress = (j) => `${j.humanCount} of ${j.of} human perspective${j.of === 1 ? '' : 's'}`;
 
@@ -118,7 +118,7 @@ export function journey(dev, { id } = {}) {
       h('figure', { class: 'hf-own-words' }, h('blockquote', {}, j.text), h('figcaption', {}, feelChip(j.label), h('span', { class: 'hf-meta' }, `Released ${fmtAgo(j.releasedAt || j.createdAt, now)}`))),
       h('p', { class: 'hf-hint' }, 'You’ll read what people offered when it comes home. Other people never see your name, and nobody can contact you through Hushmates.'),
       h('details', { class: 'hf-events' }, h('summary', {}, 'Its journey so far'),
-        h('ol', {}, events.map((e) => h('li', {}, h('i', { 'aria-hidden': 'true' }), h('span', {}, (EVENT_TEXT[e.type] || (() => e.type))(e)), h('time', {}, fmtAgo(e.at, now)))))),
+        h('ol', {}, events.map((e) => h('li', {}, h('i', { 'aria-hidden': 'true' }), h('span', {}, (EVENT_TEXT[e.type] || (() => 'Something changed on its journey'))(e)), h('time', {}, fmtAgo(e.at, now)))))),
       h('div', { class: 'hf-actions' },
         h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--block', dataset: { test: 'withdraw' }, onclick: () => withdraw() }, 'Bring it home now'),
         h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block hf-danger', dataset: { test: 'delete-journey' }, onclick: () => remove() }, icon('trash'), 'Delete this journey')));
@@ -157,7 +157,6 @@ export function journey(dev, { id } = {}) {
         } else {
           speech.say({
             safety: 'I won’t offer a perspective on this one. If things feel heavy, there’s support in You & safety.',
-            unconfigured: 'I can’t reach my thoughts here. Your feeling keeps travelling and will still come home.',
             withdrawn: 'You let this feeling go before I answered.',
           }[f.reason] || 'I couldn’t find the words this time. Your feeling keeps travelling, and people may still catch it.');
         }
@@ -174,14 +173,14 @@ export function journey(dev, { id } = {}) {
   }
 
   function showPerspective(reveal, item, animate) {
-    const lab = labSourceTag(dev, item.source);
+    const note = hostNote(dev, 'mallow-source', { source: item.source });
     reveal.dataset.test = 'mallow-ready';
     put(reveal,
       h('h2', { class: 'hf-line hf-line--sm hf-reveal-line', 'data-autofocus': '' }, 'Your Mallow found another way to see it.'),
       h('article', { class: 'hf-mallow-persp', dataset: { test: 'perspective', kind: 'mallow', source: item.source } },
         h('p', { class: 'hf-mallow-persp-src', dataset: { test: 'persp-source' } }, face(item.mallow, { size: 24 }), h('span', {}, item.label)),
         h('button', { type: 'button', class: 'rl-more hf-slide-more', 'aria-label': 'More: report this Mallow perspective', dataset: { test: 'persp-more' }, onclick: () => reportMallow(item) }, icon('more')),
-        h('p', { class: 'hf-mallow-persp-text' }, item.text), lab));
+        h('p', { class: 'hf-mallow-persp-text' }, item.text), note));
     if (animate) rise([...reveal.children], { y: 16, stagger: 160 });
   }
 

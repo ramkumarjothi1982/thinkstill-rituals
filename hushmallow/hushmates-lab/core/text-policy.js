@@ -1,4 +1,4 @@
-// Deterministic text rules for Hushspace messages and pseudonyms.
+// Deterministic text rules for messages and pseudonyms.
 //
 // No AI and no content scoring: a handful of fixed patterns that stop the
 // obvious cases (links, contact details, outside usernames, money requests).
@@ -39,7 +39,7 @@ const RULES = [
   },
   {
     code: 'link',
-    message: 'Links can’t be shared in Hushspace. You can describe it in your own words instead.',
+    message: 'Links can’t be shared here. You can describe it in your own words instead.',
     tests: [
       /\b(?:https?|ftp):\/\//i,
       /\bwww\.[^\s]/i,

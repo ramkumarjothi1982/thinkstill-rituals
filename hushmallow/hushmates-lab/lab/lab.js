@@ -11,6 +11,7 @@ import { LocalNetwork } from '../net/local-network.js';
 import { RelayClient } from '../client/relay-client.js';
 import { Device } from '../ui/device.js';
 import { SCREENS, startScene, connectRelay } from '../ui/relay/index.js';
+import { labNote } from './lab-notes.js';
 
 const STORE = 'hushmates-relay-lab:v2';   // v2: consent is recorded on every journey; older lab state is not reloaded
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -74,10 +75,10 @@ function makeProvider() {
 let service;
 let tokens;
 if (saved?.state && saved.tokens) {
-  service = new RelayService({ state: saved.state, now, provider: makeProvider(), cannedExamples: true });
+  service = new RelayService({ state: saved.state, now, provider: makeProvider(), cannedExamples: true, testMode: true });
   tokens = saved.tokens;
 } else {
-  service = seedRelay(new RelayService({ now, provider: makeProvider(), cannedExamples: true }));
+  service = seedRelay(new RelayService({ now, provider: makeProvider(), cannedExamples: true, testMode: true }));
   tokens = Object.fromEntries(RELAY_IDENTITIES.map((p) => [p.key, service.signInTestAccount(p.key)]));
   service.s.profiles[accId(AUTHOR)].onboarded = false;         // the author meets Hushmates from the start
 }
@@ -104,7 +105,8 @@ function mount(key, host) {
     onScreen: (screen, data) => { onSignal(key, screen, data); },
   });
   connectRelay(device);
-  device.env.lab = true;                       // lab-only annotations (e.g. which source wrote a Mallow perspective)
+  device.env.lab = true;
+  device.env.note = labNote;                   // lab-only notes for testers (e.g. which source wrote a Mallow perspective)
   const d = { key, link, client, device, root, started: false };
   devices[key] = d;
   client.on(() => { renderBadges(); scheduleGuide(); });
@@ -411,9 +413,11 @@ function type(el, text) {
 }
 
 function onSignal(key, name, data) {
-  if (name === 'catch:result' && key === 'ember') {
+  if (name === 'catch:looked' && key === 'ember') {
+    // the lab reads what Ember was offered from its own service, not from the scene
     const j = journeyFor('relay');
-    if (j && humansOn(j).length >= 5 && norm(data?.text) !== norm(FEELINGS.relay.text)) { flags.emberAfterFull = true; persist(); }
+    const held = Object.values(service.s.holds).find((x) => x.user === accId('ember') && ['offered', 'caught'].includes(x.status));
+    if (j && humansOn(j).length >= 5 && held?.journeyId !== j.id) { flags.emberAfterFull = true; persist(); }
   }
   scheduleGuide();
 }

@@ -6,7 +6,7 @@
 //   - counts are the journey's real human count; a Mallow never counts
 //   - a person's words appear only if that writer allowed it (`shareable`)
 //   - every perspective carries its own label from the service, so a Mallow's
-//     is never shown as a person's and a canned example is never called
+//     is never shown as a person's and a fixed example is never called
 //     automatically generated
 //   - nothing is invented to fill a gap: fewer people means fewer petals
 //   - the only picture drawn in is the author's own Mallow, from this site

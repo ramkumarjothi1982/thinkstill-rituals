@@ -1,6 +1,6 @@
 // One person's view of the Feeling Relay. Talks to the service only through
-// a network link (the lab's LocalNetwork today; Supabase in Phase 2) and keeps
-// what this person may see. The interface only uses this class.
+// a link (client/http-link.js to the Hushmates server; Supabase in Phase 2)
+// and keeps what this person may see. The interface only uses this class.
 
 const newClientId = () => {
   try { if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID(); } catch { /* insecure context */ }

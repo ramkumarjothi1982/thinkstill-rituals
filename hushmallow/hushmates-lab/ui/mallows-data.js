@@ -2,7 +2,7 @@
 // (framer/HushmallowLanding.tsx on the landing-page branch): web-sized art,
 // eyelid layers, colours, breathing pace, signature move and particles.
 // Lines are fixed, hand-written character flavour for choosing a Mallow,
-// never used inside a Hushspace and never presented as a person's words.
+// never presented as a person's words.
 
 const ART = (file) => new URL(`../assets/art/${file}`, import.meta.url).href;
 

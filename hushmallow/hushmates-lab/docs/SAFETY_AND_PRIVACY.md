@@ -139,9 +139,14 @@ not optional.
 
 ## 4. Your data
 
-- **See and copy my data:** your feelings and what came back, the perspectives
-  you gave (with your share choice), and when you agreed to share and to a
-  Mallow perspective. Other people's words are included, never their names.
+- **Your data** (You & safety): a short summary in plain words (how many
+  feelings, what came back, what you offered, when you agreed, your choices)
+  and **Download my data**, a file for the person's device in a standard format.
+  Nothing technical is shown on screen. The file (`exportMyData`, format v1) is
+  built from an allow-list: other people appear only as "A Hushmate". It never
+  holds their names, Mallows, ids or order, words you were never shown, the
+  text of feelings you caught or reported, the safety team's notes, or who you
+  blocked. Details and tests: `ACCESS.md`.
 - **Delete my journey**, **release this feeling** (words cleared, a Mallow
   perspective you didn't keep wiped with them; perspectives you kept stay),
   **delete my Hushmates data** (every feeling, every perspective you gave, your
@@ -156,7 +161,10 @@ not optional.
 The support screens reuse the safety copy the main app already ships (emergency
 numbers, Samaritans 116 123, 988 in the US, findahelpline.com). **They must be
 reviewed for each launch region by a safety lead** before real people use
-Hushmates; in the lab a note says so under them (hidden from consumers).
+Hushmates. In the lab, a note says so under them; the note lives in
+`lab/lab-notes.js`, which the customer app never loads. When a Mallow
+provider's own safety check flags a feeling, the person sees Hushmates' own
+reviewed support words, never the provider's text.
 
 ## 6. Before any real person uses it
 

@@ -2,7 +2,7 @@
 // Mallow placement, release, consent records). Each one failed before its fix.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { world, rng, throwsCode, rejectsCode, cid, REFRAMES } from './relay-helpers.mjs';
+import { world, rng, throwsCode, rejectsCode, cid, REFRAMES, FEELING } from './relay-helpers.mjs';
 import { RelayService } from '../core/relay.js';
 
 const MIN = 60e3;
@@ -94,7 +94,7 @@ function legacyWorld() {
   const state = structuredClone(w.svc.toJSON());
   // what a journey looked like before this change (no consent step, no releasedAt/resends)
   for (const k of ['consentAt', 'fallbackConsentAt', 'releasedAt', 'resends']) delete state.journeys[id][k];
-  const svc = new RelayService({ state, now: () => w.clock.t, random: rng(11) });
+  const svc = new RelayService({ state, now: () => w.clock.t, random: rng(11), testMode: true });
   return { ...w, svc, id };
 }
 
@@ -229,11 +229,13 @@ test('your data: a contributor sees the share consent they gave, and the author�
   assert.equal(w.svc.getJourney(w.T.moon, { journeyId: id }).collection[0].shareable, true, 'setup: the author sees it as shareable');
   const gift = w.svc.myGifts(w.T.cloud).gifts[0];
   assert.equal(gift.allowShare ?? gift.shareable, true, 'the writer cannot see that they allowed their words in someone’s share picture');
-  const exported = w.svc.exportMyData(w.T.cloud).gifts[0];
-  assert.equal(exported.allowShare ?? exported.shareable, true, 'the writer’s export omits their share consent');
-  const jx = w.svc.exportMyData(w.T.moon).journeys.find((x) => x.id === id);
-  assert.equal(jx.consentAt, t0, 'the author’s export omits when they agreed to share the feeling');
-  assert.equal(jx.fallbackConsentAt, t0, 'the author’s export omits when they agreed to the Mallow (AI) fallback');
+  // (export format v1: the same facts, in plain words and ISO dates)
+  const exported = w.svc.exportMyData(w.T.cloud).perspectivesYouOffered[0];
+  assert.equal(exported.mayAppearInSharePictures, true, 'the writer’s export omits their share consent');
+  assert.equal(exported.agreedToSharePicturesAt, new Date(t0).toISOString(), 'the writer’s export omits when they agreed');
+  const jx = w.svc.exportMyData(w.T.moon).feelings.find((x) => x.words === FEELING);
+  assert.equal(jx.agreedToShareAnonymouslyAt, new Date(t0).toISOString(), 'the author’s export omits when they agreed to share the feeling');
+  assert.equal(jx.agreedToAMallowPerspectiveAt, new Date(t0).toISOString(), 'the author’s export omits when they agreed to the Mallow (AI) fallback');
 });
 
 // ------------- 4. a feeling with no consent record can still be sent out to strangers --
@@ -245,7 +247,7 @@ test('consent: a returned feeling with no consent record (state saved before the
   // the shape the previous version persisted (lab.js: new RelayService({ state: saved.state }))
   const legacy = structuredClone(w.svc.toJSON());
   for (const k of ['consentAt', 'fallbackConsentAt', 'releasedAt', 'resends']) delete legacy.journeys[id][k];
-  const svc = new RelayService({ state: legacy, now: () => w.clock.t, random: rng(11) });
+  const svc = new RelayService({ state: legacy, now: () => w.clock.t, random: rng(11), testMode: true });
   assert.equal(svc.getJourney(w.T.moon, { journeyId: id }).status, 'returned', 'setup: the reloaded service sees it at home');
   try { svc.resendJourney(w.T.moon, { journeyId: id, clientId: cid('rs') }); } catch { /* refusing (or asking for consent) is the fix */ }
   assert.equal(svc.findFeeling(w.T.cloud).offer, null, 'a feeling nobody agreed to share reached a stranger');

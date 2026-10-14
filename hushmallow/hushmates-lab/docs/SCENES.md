@@ -52,8 +52,18 @@ Other scenes:
   device. The author chooses what it shows (see `RELAY.md` §2a).
 - `you`: You & safety: who you are here, choices, your Mallow, the
   perspectives you've offered (with their share choice), the standards,
-  support, your data.
+  support, your data, and (in the app) sign out.
+- `data`: Your data: a short summary in plain words and **Download my data**
+  (a file for the device; never shown on screen). If a browser blocks
+  downloads, "Didn't arrive? Copy it instead" copies the same file.
+- `invite` (the app only): the invitation code, a name only you see, "I'm 18 or
+  over". The welcome then skips the adult tick box, already confirmed.
+- `away`: Hushmates couldn't be reached when it opened: a gentle screen with
+  Try again, and another try when the connection returns.
 - `deleted`.
+
+Scenes leave an empty place for a host's note (`hostNote` in `parts.js`).
+Only the lab fills it (`lab/lab-notes.js`); the app adds nothing.
 
 ## Motion moments
 
@@ -102,8 +112,11 @@ The lab's autoplay, the QA tool and the guide use these hooks; scenes keep them 
 | release | `feeling-text`, `label-<id>`, `share-consent`, `privacy-link`, `allow-fallback`, `fallback-details`, `release-submit`, `cancel-feeling`, `feeling-error`, `release-limit`, `release-sent`, `follow-journey`, `go-catch`, `release-another` |
 | support | `support-scene`, `support-unsent`, `support-resources`, `support-edit`, `support-clear` |
 | catch | `catching-on`, `find-feeling`, `catch-none`, `look-again`, `catch-offer`, `offer-text`, `catch-feeling`, `float-past`, `offer-more`, `report-feeling`, `block-author`, `caught-text`, `starter-<n>`, `reframe-text`, `allow-share`, `reframe-error`, `reframe-submit`, `reframe-after`, `catch-another`, `catch-done`, `catch-gone`, `my-gifts` |
-| journeys | `journey-<id>`, `empty-release`, `progress`, `mallow-waiting`, `mallow-available`, `ask-mallow`, `mallow-ready`, `mallow-failed`, `perspective`, `persp-source`, `persp-more`, `lab-source` (lab only), `withdraw`, `delete-journey` |
-| returned | `returned-<id>`, `homecoming`, `homecoming-ready`, `home-note`, `perspective` (+ `data-kind`, `data-source`), `persp-source`, `lab-source` (lab only), `keep`, `let-go`, `persp-more`, `report-perspective`, `block-contributor`, `mallow-extra`, `home-empty`, `send-again`, `resend-fallback`, `keep-with-me`, `explore-angle`, `explore-details`, `save-journey`, `share-journey`, `release-journey`, `delete-journey` |
+| journeys | `journey-<id>`, `empty-release`, `progress`, `mallow-waiting`, `mallow-available`, `ask-mallow`, `mallow-ready`, `mallow-failed`, `perspective`, `persp-source`, `persp-more`, `lab-source` (lab note), `withdraw`, `delete-journey` |
+| returned | `returned-<id>`, `homecoming`, `homecoming-ready`, `home-note`, `perspective` (+ `data-kind`, `data-source`), `persp-source`, `lab-source` (lab note), `keep`, `let-go`, `persp-more`, `report-perspective`, `block-contributor`, `mallow-extra`, `home-empty`, `send-again`, `resend-fallback`, `keep-with-me`, `explore-angle`, `explore-details`, `save-journey`, `share-journey`, `release-journey`, `delete-journey` |
 | share | `share-preview`, `share-play`, `share-privacy`, `share-label`, `share-words`, `share-pick` (+ `data-kind`), `share-pick-locked`, `share-fit`, `share-save`, `share-image`, `share-video`, `share-video-out` |
-| you | `privacy-link`, `pref-catching`, `pref-notify`, `pref-sound`, `mallow-<id>`, `gifts`, `gift`, `gift-share-<id>`, `gift-withdraw-<id>`, `open-support`, `export-data`, `export-json`, `export-copy`, `delete-data`, `pilot-note`, `deleted` |
+| you | `privacy-link`, `pref-catching`, `pref-notify`, `pref-sound`, `mallow-<id>`, `gifts`, `gift`, `gift-share-<id>`, `gift-withdraw-<id>`, `open-support`, `open-data`, `delete-data`, `sign-out` (app only), `pilot-note`, `deleted` |
+| data | `your-data`, `data-summary`, `data-you`, `data-feelings`, `data-back`, `data-mallow`, `data-offered`, `data-consent`, `data-safety`, `data-choices`, `data-retry`, `download-data`, `copy-data` |
+| invite | `invite-code`, `invite-name`, `invite-adult`, `invite-error`, `invite-join`, `invite-privacy` |
+| away | `away`, `away-retry` |
 | sheets | `confirm`, `privacy-details`, `reason-<id>`, `report-send`, `report-received` |

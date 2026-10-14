@@ -14,7 +14,7 @@ import { play } from '../sound.js';
 import { wait, reducedMotion, rise, CSS_EASE } from '../motion.js';
 import { screenReframe } from '../../core/feeling-safety.js';
 import { charCount } from '../../core/text-policy.js';
-import { RELAY, PERSPECTIVE_LABELS } from '../../core/relay-config.js';
+import { SHOWN_LIMITS, PERSPECTIVE_LABELS } from '../../core/relay-config.js';
 import { brandBar, dock, top, feelChip, feelColour, errorText, reportSheet } from './common.js';
 import { room, stage, handsOf, ThoughtCloud, Speech, line, swapLine, checkRow, put, morph, focusHeading } from './parts.js';
 
@@ -23,6 +23,7 @@ const STARTERS = ['Another possibility could be…', 'Maybe…', 'Could there be
 export function catchScene(dev) {
   const c = dev.client;
   const me = () => dev.state.me;
+  const limits = () => ({ ...SHOWN_LIMITS, ...me()?.limits });      // the service's limits, as it tells them
   const mine = MALLOWS[me().profile.mallow] || MALLOWS.noomi;
   const mem = (dev.memory.catch ||= { drafts: {}, cids: {}, share: {} });
   let state = 'idle';
@@ -119,7 +120,7 @@ export function catchScene(dev) {
     }
     busy = false;
     if (!alive) return;
-    dev.onScreen?.('catch:result', { text: res.offer?.feeling.text || null });
+    dev.onScreen?.('catch:looked', { found: !!res.offer });   // never someone's words: a host learns only whether one came
     if (!res.offer) { none(); return; }
     offer = res.offer;
     if (offer.state === 'caught') writing(); else await arrive();
@@ -190,7 +191,13 @@ export function catchScene(dev) {
     try {
       const res = await c.api('catchFeeling', { holdId: offer.holdId });
       offer = res.offer;
-    } catch (e) { busy = false; lost(e); return; }
+    } catch (e) {
+      busy = false;
+      // only the connection failed: the feeling is still here, and catching again is safe (it's never caught twice)
+      if (e.code === 'network' || e.code === 'response-lost') { speech.say('The connection slipped. The feeling is still here: try again when you’re ready.'); dev.toast(errorText(e), { tone: 'warn', ms: 4200 }); return; }
+      lost(e);
+      return;
+    }
     busy = false;
     play('catch');
     st.mallow.press(0.5, 0.2);
@@ -238,7 +245,7 @@ export function catchScene(dev) {
     const words = new ThoughtCloud({ small: true, long: true, label: 'Their words' });
     words.set(f.text);
     words.el.dataset.test = 'caught-text';
-    const area = h('textarea', { id: 'hf-reframe', class: 'hf-input', rows: 3, maxlength: String(RELAY.reframeMaxChars + 40), placeholder: 'Write it gently…', 'aria-label': 'Your perspective', 'aria-describedby': 'hf-rf-sub hf-rf-count', dataset: { test: 'reframe-text' } });
+    const area = h('textarea', { id: 'hf-reframe', class: 'hf-input', rows: 3, maxlength: String(limits().reframeMaxChars + 40), placeholder: 'Write it gently…', 'aria-label': 'Your perspective', 'aria-describedby': 'hf-rf-sub hf-rf-count', dataset: { test: 'reframe-text' } });
     area.value = mem.drafts[offer.holdId] || '';
     const count = h('span', { class: 'hf-count', id: 'hf-rf-count' });
     const nudge = h('p', { class: 'hf-nudge', role: 'status', 'aria-live': 'polite' });
@@ -248,10 +255,10 @@ export function catchScene(dev) {
     const sync = () => {
       mem.drafts[offer.holdId] = area.value;
       const n = charCount(area.value.trim());
-      count.textContent = n > RELAY.reframeMaxChars * 0.8 ? `${n} / ${RELAY.reframeMaxChars}` : '';
-      count.classList.toggle('is-over', n > RELAY.reframeMaxChars);
-      send.disabled = n < RELAY.reframeMinChars || n > RELAY.reframeMaxChars;
-      const local = n >= RELAY.reframeMinChars ? screenReframe(area.value, { maxChars: RELAY.reframeMaxChars }) : null;
+      count.textContent = n > limits().reframeMaxChars * 0.8 ? `${n} / ${limits().reframeMaxChars}` : '';
+      count.classList.toggle('is-over', n > limits().reframeMaxChars);
+      send.disabled = n < limits().reframeMinChars || n > limits().reframeMaxChars;
+      const local = n >= limits().reframeMinChars ? screenReframe(area.value, { maxChars: limits().reframeMaxChars }) : null;
       nudge.textContent = local?.ok && local.nudges.includes('certainty') ? 'Try holding it lightly: “maybe” or “could” leaves room for them.' : '';
     };
     area.addEventListener('input', () => {
@@ -403,7 +410,7 @@ export function catchScene(dev) {
       h('ol', { class: 'hf-ribbons' },
         earlier.map((p) => h('li', { class: 'hf-ribbon' }, h('span', { class: 'hf-ribbon-src' }, PERSPECTIVE_LABELS.human), h('p', { class: 'hf-ribbon-text' }, p.text))),
         h('li', { class: 'hf-ribbon hf-ribbon--mine', style: { '--ribbon': mine.body } }, h('span', { class: 'hf-ribbon-src' }, 'Your perspective'), h('p', { class: 'hf-ribbon-text' }, res.perspective?.text || ''))),
-      h('p', { class: 'hf-note' }, res.homeward ? 'Five people have seen it differently now. It’s on its way home.' : `Yours was perspective ${res.slot} of ${RELAY.perspectivesPerFeeling}.`),
+      h('p', { class: 'hf-note' }, res.homeward ? 'Five people have seen it differently now. It’s on its way home.' : `Yours was perspective ${res.slot} of ${limits().perspectivesPerFeeling}.`),
       h('div', { class: 'hf-actions hf-actions--row' },
         h('button', { type: 'button', class: 'kit-btn kit-btn--ink', dataset: { test: 'catch-another' }, onclick: () => look() }, 'Catch another'),
         h('button', { type: 'button', class: 'kit-btn kit-btn--ghost', dataset: { test: 'catch-done' }, onclick: () => idle() }, 'Done'))));

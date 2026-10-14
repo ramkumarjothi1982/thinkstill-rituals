@@ -8,17 +8,18 @@ import { journeys, journey } from './journeys.js';
 import { returned, homecoming } from './returned.js';
 import { share } from './share.js';
 import { you, deleted } from './you.js';
+import { yourData } from './your-data.js';
+import { away } from './away.js';
 import { welcome } from './welcome.js';
 import { play } from '../sound.js';
 import { MALLOWS } from '../mallows-data.js';
 
 export const SCREENS = {
-  welcome, release, support, catch: catchScene, journeys, journey, returned, homecoming, share, you, deleted,
+  welcome, release, support, catch: catchScene, journeys, journey, returned, homecoming, share, you, data: yourData, deleted, away,
   home: release,
 };
 
-/** Where a person starts: the welcome until they've been through it. */
-export const startScene = (state) => (state.me?.accountState === 'deleted' ? 'deleted' : state.me?.profile?.onboarded ? 'release' : 'welcome');
+export { startScene } from './start.js';
 
 /**
  * App-wide reactions, gentle and only if the person wants them ("Tell me when a feeling comes home"):

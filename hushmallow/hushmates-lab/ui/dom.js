@@ -76,10 +76,6 @@ export function icon(name, label) {
   return svg;
 }
 
-export function testTag() {
-  return h('span', { class: 'kit-testtag', title: 'A simulated account used for testing the prototype' }, 'Test identity');
-}
-
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 export const fmtTime = (t) => timeFmt.format(new Date(t));
@@ -91,7 +87,23 @@ export function fmtDay(t) {
   if (diff === 1) return 'Yesterday';
   return dayFmt.format(d);
 }
-/** "just now", "12 min ago", "3 h ago" measured on the service's clock (the lab's dev clock can run ahead). */
+/**
+ * What to tell a person when something didn't work. Only words written for people are shown: the
+ * service's own refusals (marked `human` by the link) and the network's. Anything else (a browser,
+ * parsing or programming error) becomes one gentle line; its details never reach the screen.
+ */
+const NETWORK_WORDS = {
+  network: 'You’re offline. Nothing was sent; try again when you’re back.',
+  'response-lost': 'The connection dropped before we heard back. It’s safe to try again: nothing is sent twice.',
+};
+export const GENTLE = 'Something went wrong. Please try again in a moment.';
+export function humane(e) {
+  if (NETWORK_WORDS[e?.code]) return NETWORK_WORDS[e.code];
+  if (e?.human && typeof e.message === 'string' && e.message.trim()) return e.message;
+  return GENTLE;
+}
+
+/** "just now", "12 min ago", "3 h ago" measured on the service's clock (which can differ from this device's). */
 export function fmtAgo(t, now = Date.now()) {
   const diff = Math.max(0, now - t);
   if (diff < 60e3) return 'just now';

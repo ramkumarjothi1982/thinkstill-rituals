@@ -62,7 +62,7 @@ const DEMO_LINES = {
   excitement: 'Being excited and afraid at once is common: it means it matters. What would a small first step look like?',
   none: 'There might be more than one way to read this. What would someone who cares about you notice that you might be missing?',
 };
-// The same idea in each Mallow's voice (relay-config MALLOW_VOICES), so the lab shows the personalities.
+// The same idea in each Mallow's voice (relay-rules MALLOW_VOICES), so the lab shows the personalities.
 const DEMO_VOICES = {
   noomi: 'It makes sense this is weighing on you. Could there be a softer reading of it, the kind you’d offer someone you love?',
   blubi: 'That sounds like it has been sitting heavily with you. What might change if it meant a little less than it seems to right now?',

@@ -164,3 +164,9 @@ body { background: #FFF8F3; color: #1F1640; font: 400 15px/1.5 "Nunito Sans", -a
 .lab-mod-evidence { display: grid; gap: 8px; padding: 4px 0 10px; }
 .lab-quote { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(31,22,64,.05); font: 500 12.5px/1.45 var(--hm-body); color: var(--hm-ink); }
 .lab-mod-row { display: block; }
+
+/* lab-only notes inside the phones (lab/lab-notes.js); the customer app has none */
+.hf-lab-tag { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 6px; font: 800 10px/1.2 var(--hm-ui); letter-spacing: .04em; text-transform: none; color: #8A4B00; background: #FFF3CC; box-shadow: 0 0 0 1px #E8C66B inset; }
+.hf-lab-tag--block { display: block; width: fit-content; margin: 8px auto 0; }
+.hf-lab-tag--live { color: #0B5D3B; background: #DDF7E9; box-shadow: 0 0 0 1px #7DD3A8 inset; }
+.hf-lab-tag--note { display: block; width: fit-content; margin: 8px auto 0; font-weight: 700; text-transform: none; }

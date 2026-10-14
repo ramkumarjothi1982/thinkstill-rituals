@@ -27,7 +27,9 @@ export function welcome(dev) {
   const c = dev.client;
   const p = dev.state.me.profile;
   const mine = MALLOWS[p.mallow] || MALLOWS.noomi;
-  const choice = { catching: p.catching !== false, adult: false };
+  // an adult confirmation already given (when the invitation was accepted) isn't asked for twice
+  const confirmed = !!dev.state.me.adultConfirmed;
+  const choice = { catching: p.catching !== false, adult: confirmed };
   let alive = true;
   let beat = 0;
   let timer = 0;
@@ -103,7 +105,7 @@ export function welcome(dev) {
         h('button', { type: 'button', class: 'hf-link hf-link--centre', dataset: { test: 'welcome-privacy' }, onclick: () => privacySheet(dev) }, 'Privacy details'),
         h('div', { class: 'hf-form' },
           (() => { const sw = sentenceSwitch({ label: 'Let feelings find me', hint: 'Catch other people’s feelings when you choose to look. You can change this any time.', checked: choice.catching, test: 'welcome-catching', onChange: (on) => { choice.catching = on; return true; } }); sw.classList.add('kit-switch--plain'); return sw; })(),
-          checkRow({ id: 'hf-adult', label: 'I’m 18 or over, and I was invited to the pilot', hint: 'Hushmates is an invitation-only pilot for adults.', test: 'welcome-adult', onChange: (on) => { choice.adult = on; enter.disabled = !on; } })),
+          confirmed ? null : checkRow({ id: 'hf-adult', label: 'I’m 18 or over, and I was invited to the pilot', hint: 'Hushmates is an invitation-only pilot for adults.', test: 'welcome-adult', onChange: (on) => { choice.adult = on; enter.disabled = !on; } })),
         h('div', { class: 'hf-actions' }, enter, steps(2)));
     }
     rise([...body.querySelectorAll('.hf-copy > *, .hf-promise, .hf-form > *, .hf-actions')].slice(0, 9), { y: 12, stagger: 50 });

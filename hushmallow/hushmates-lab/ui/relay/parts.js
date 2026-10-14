@@ -182,7 +182,7 @@ export function privacySheet(dev, { focus = null } = {}) {
     sec('If you catch a feeling', 'The person who released it reads your perspective when it comes home, and so does anyone who adds one after you. Nobody sees who wrote it. You choose whether it may appear in their share picture or video, and you can change your mind in You & safety.'),
     sec('Not perfectly anonymous', 'Words can give people away. Leave out names, places, workplaces and anything that could identify you or someone else. Hushmates checks for some of these and will ask you to remove them. Our safety team can see reported words.'),
     sec('If you allow a Mallow perspective', 'If nobody catches your feeling, your Mallow can offer one perspective when you ask. To write it, your words are processed by an automated service. It isn’t written by a person, it’s always labelled “Automatically generated”, and it never counts as one of the five. It’s kept with your journey and deleted with it.', 'mallow'),
-    sec('Your choices', 'You can bring a feeling home early, delete a journey, see and copy your data, or delete all your Hushmates data at any time in You & safety.'),
+    sec('Your choices', 'You can bring a feeling home early, delete a journey, see and download your data, or delete all your Hushmates data at any time in You & safety.'),
     sec('Safety', 'Reported words are reviewed by people on our safety team. Hushmates isn’t an emergency service: if you might not be safe, please contact local emergency services or a crisis line.'));
   dev.sheet({
     title: 'Your privacy in Hushmates',
@@ -193,14 +193,10 @@ export function privacySheet(dev, { focus = null } = {}) {
 }
 
 /**
- * Lab only: where a Mallow perspective really came from, so testers can tell a
- * live AI response from a canned development example. Never shown to consumers.
+ * A place the host may add its own small note (kind: 'mallow-source', 'account', 'support', 'pilot').
+ * The app adds nothing; a test host can pass `env.note` to mark things for testers.
  */
-const LAB_SOURCES = { ai: 'live AI response (test key)', library: 'Reframe library (rule-based)', demo: 'canned example' };
-export function labSourceTag(dev, source) {
-  if (!dev.env?.lab) return null;
-  return h('span', { class: `hf-lab-tag hf-lab-tag--${source === 'ai' ? 'live' : 'canned'}`, dataset: { test: 'lab-source', source } }, `Lab · ${LAB_SOURCES[source] || source}`);
-}
+export const hostNote = (dev, kind, data = {}) => dev.env?.note?.(kind, data) || null;
 
 /** Choose a mood colour for the room's light while words arrive (a label's colour). */
 export function lightRoom(el, colour) {

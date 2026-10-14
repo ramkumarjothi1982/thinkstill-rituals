@@ -14,13 +14,14 @@ import { play } from '../sound.js';
 import { wait, reducedMotion, rise, CSS_EASE } from '../motion.js';
 import { screenFeeling } from '../../core/feeling-safety.js';
 import { charCount } from '../../core/text-policy.js';
-import { FEELING_LABELS, RELAY } from '../../core/relay-config.js';
+import { FEELING_LABELS, SHOWN_LIMITS } from '../../core/relay-config.js';
 import { brandBar, dock, feelColour, errorText } from './common.js';
 import { room, stage, handsOf, ThoughtCloud, Speech, line, swapLine, checkRow, privacySheet, lightRoom, put, morph, focusHeading } from './parts.js';
 
 export function release(dev, params = {}) {
   const c = dev.client;
   const me = () => dev.state.me;
+  const limits = () => ({ ...SHOWN_LIMITS, ...me()?.limits });      // the service's limits, as it tells them
   const mine = MALLOWS[me().profile.mallow] || MALLOWS.noomi;
   const draft = (dev.memory.release ||= { text: '', label: null, allowFallback: false, consent: false, clientId: null });
   const max = me().limits.feelingMaxChars;
@@ -65,8 +66,8 @@ export function release(dev, params = {}) {
       const n = charCount(area.value.trim());
       count.textContent = n > max * 0.8 ? `${n} / ${max}` : '';
       count.classList.toggle('is-over', n > max);
-      go.disabled = blocked || n < RELAY.feelingMinChars || n > max || !draft.consent;
-      why.textContent = blocked ? '' : n < RELAY.feelingMinChars ? 'Write a few words first.' : n > max ? 'Your words are a little too long.' : !draft.consent ? 'Tick “Share anonymously with Hushmates participants” to release.' : '';
+      go.disabled = blocked || n < limits().feelingMinChars || n > max || !draft.consent;
+      why.textContent = blocked ? '' : n < limits().feelingMinChars ? 'Write a few words first.' : n > max ? 'Your words are a little too long.' : !draft.consent ? 'Tick “Share anonymously with Hushmates participants” to release.' : '';
       el.style.setProperty('--fill', String(Math.min(1, n / 160)));
     };
     area.addEventListener('input', () => {
@@ -152,7 +153,7 @@ export function release(dev, params = {}) {
   // ------------------------------------------------------------- launch --
   async function launch() {
     if (busy || state !== 'compose') return;
-    const local = screenFeeling(draft.text, { minChars: RELAY.feelingMinChars, maxChars: max });
+    const local = screenFeeling(draft.text, { minChars: limits().feelingMinChars, maxChars: max });
     if (!local.ok && local.code === 'support') { dev.go('support', { support: local.support, level: local.level }); return; }   // never sent anywhere
     if (!local.ok) { compose({ err: local.message }); return; }
     if (!draft.consent) return;

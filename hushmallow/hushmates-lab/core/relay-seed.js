@@ -15,6 +15,7 @@ export const RELAY_IDENTITIES = [
 ];
 
 export function seedRelay(service) {
+  if (!service.testMode) throw Object.assign(new Error('Test identities exist only in the lab (testMode).'), { code: 'forbidden' });
   for (const p of RELAY_IDENTITIES) service.createTestAccount({ catching: true, ...p });
   return service;
 }

@@ -61,6 +61,9 @@ function supportOf(safety) {
   return { title: c.title || 'This one deserves real support', message: c.message, resources: c.resources, stillHere: HARM_COPY.stillHere };
 }
 
+/** Our own reviewed support copy, for when a Mallow provider's safety check flags a feeling (its own text is never shown). */
+export const providerSupport = () => supportOf({ level: 'crisis' });
+
 const IDENTIFYING = [
   /\b\d{1,5}\s+[A-Za-z][A-Za-z ]{1,30}\s(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|close|way|crescent|place|court)\b/i,   // street address
   /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/i,                                   // UK postcode (any case)
@@ -110,7 +113,8 @@ export function screenFeeling(input, { minChars = 3, maxChars = 500 } = {}) {
     const support = supportOf(safety);
     return fail('support', support.message, { level: safety.level, support });
   }
-  const rules = checkMessage(probe, { maxChars });
+  // (the length was checked on the words as written: the probe can be longer, e.g. "…" becomes "...")
+  const rules = checkMessage(probe, { maxChars: Infinity });
   if (!rules.ok) {
     const msg = rules.code === 'money' ? rules.message
       : 'Please leave out contact details, links and anything that could identify you or someone else. Other people will read this.';
@@ -144,7 +148,7 @@ export function screenReframe(input, { minChars = 8, maxChars = 280, earlier = [
   }
   if (UNKIND.some((re) => re.test(probe))) return fail('unkind', 'That might land as harsh. Offer a possibility, not a verdict.');
   if (DIAGNOSIS.some((re) => re.test(probe))) return fail('diagnosis', 'Please don’t diagnose anyone. Offer another way of seeing it instead.');
-  const rules = checkMessage(probe, { maxChars });
+  const rules = checkMessage(probe, { maxChars: Infinity });
   if (!rules.ok) return fail(rules.code, rules.code === 'money' ? rules.message : 'Perspectives can’t include contact details, links or usernames.');
   if (IDENTIFYING.some((re) => re.test(probe))) return fail('identifying', 'Please leave out names, addresses and anything that could identify you or someone else.');
   if (earlier.some((e) => similarity(e, text) >= threshold)) {

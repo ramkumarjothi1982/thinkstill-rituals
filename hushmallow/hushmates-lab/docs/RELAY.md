@@ -156,8 +156,10 @@ supports it). Nothing is uploaded or posted.
 - The picture holds one or two perspectives (a note says so if fewer fit); the
   video shows each in turn.
 
-**Durations** live in `core/relay-config.js` (`RELAY`) as pilot defaults to
-be tuned, not product rules.
+**Durations** live in `core/relay-rules.js` (`RELAY`, server-only) as pilot
+defaults to be tuned, not product rules. `core/relay-config.js` holds only what
+browsers need: labels, report reasons and the limits a person can see
+(`SHOWN_LIMITS`).
 
 ## 3. State
 
@@ -241,13 +243,16 @@ What happens:
 8. If five people later catch the feeling, the Mallow steps aside into its own
    optional section: humans fill every visible place.
 9. **Canned examples are lab-only.** `RelayService` refuses a `demo` (or
-   unknown) source unless it is created with `cannedExamples: true`, which only
-   the lab and the tests do; a real deployment treats a canned answer as no
-   answer, and the feeling still comes home.
-10. **In the lab only** (`dev.env.lab`), a tag under the label names the real
-   source for testers: "Lab · live AI response (test key)" (green),
+   unknown) source unless it is created with `cannedExamples: true` *and*
+   `testMode: true`, which only the lab and the tests do. A real deployment
+   treats a canned answer as no answer, and the feeling still comes home. One
+   kept in old state is never shown or exported, and its label lives only in
+   the server-side service (`CANNED_LABEL`).
+10. **In the lab only**, a tag under the label names the real source for
+   testers: "Lab · live AI response (test key)" (green),
    "Lab · Reframe library (rule-based)" or "Lab · canned example" (yellow).
-   Consumers never see it.
+   It comes from `lab/lab-notes.js` through the scenes' `hostNote` place. The
+   customer app never loads that file (`ACCESS.md`).
 
 **Which Mallow speaks:** the author's own Mallow: Noomi gentle, Blubi
 empathetic, Pipzi playful, Boppo encouraging, Zuzu imaginative, Loomi grounded,

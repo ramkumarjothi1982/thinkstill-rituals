@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { world, throwsCode, rejectsCode, cid, FEELING, REFRAMES } from './relay-helpers.mjs';
 import { LocalNetwork } from '../net/local-network.js';
 import { PERSPECTIVE_LABELS } from '../core/relay-config.js';
+import { CANNED_LABEL } from '../core/relay.js';
 
 const MIN = 60e3;
 const HOUR = 3600e3;
@@ -175,8 +176,9 @@ test('mallow: a reported extra Mallow perspective disappears', async () => {
 });
 
 test('mallow: a canned example is never called generated', () => {
-  assert.ok(!/generated/i.test(PERSPECTIVE_LABELS.demo.replace('not generated', '')));
-  assert.match(PERSPECTIVE_LABELS.demo, /not generated/);
+  assert.ok(!/generated/i.test(CANNED_LABEL.replace('not generated', '')));
+  assert.match(CANNED_LABEL, /not generated/);
+  assert.equal(PERSPECTIVE_LABELS.demo, undefined, 'the testing label ships to browsers with the shared config');
   assert.equal(PERSPECTIVE_LABELS.human, 'A Hushmate’s perspective');
 });
 

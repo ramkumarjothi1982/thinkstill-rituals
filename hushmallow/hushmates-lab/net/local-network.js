@@ -62,12 +62,12 @@ export class Link {
         let out;
         try {
           if (!net.allowed.has(payload.method) || typeof net.service[payload.method] !== 'function') {
-            throw Object.assign(new Error('That isn’t allowed.'), { code: 'forbidden' });
+            throw Object.assign(new Error('That isn’t something you can do here.'), { code: 'forbidden', name: 'RelayError' });
           }
           out = net.service[payload.method](payload.token, payload.args);
         } catch (e) {
           ok = false;
-          out = { code: e.code || 'error', message: e.message };
+          out = { code: e.code || 'error', message: e.message, human: e.name === 'RelayError' };   // only the service's own words are for people
         }
         const lose = this.loseNextResponse;
         this.loseNextResponse = false;
@@ -76,12 +76,12 @@ export class Link {
           net.schedule(() => {
             if (!this.online || lose) { reject(netError('response-lost')); return; }
             if (good) resolve(copy);
-            else reject(Object.assign(new Error(copy.message), { code: copy.code }));
+            else reject(Object.assign(new Error(copy.message), { code: copy.code, human: !!copy.human }));
           }, net._delay() / 2);
         };
         // services may answer asynchronously (e.g. a Mallow perspective)
         if (ok && out && typeof out.then === 'function') {
-          out.then((v) => deliver(true, v), (e) => deliver(false, { code: e.code || 'error', message: e.message }));
+          out.then((v) => deliver(true, v), (e) => deliver(false, { code: e.code || 'error', message: e.message, human: e.name === 'RelayError' }));
         } else deliver(ok, out);
       }, net._delay() / 2);
     });

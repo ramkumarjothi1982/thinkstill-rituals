@@ -7,7 +7,7 @@
 import { h, icon } from '../dom.js';
 import { MALLOWS } from '../mallows-data.js';
 import { top, supportBody } from './common.js';
-import { room, stage, Speech, line, put } from './parts.js';
+import { room, stage, Speech, line, put, hostNote } from './parts.js';
 
 // Hushmates writes its own titles (core/feeling-safety.js); an old Reframe title never shows
 const titleFor = (p) => (!p.title || /reframe/i.test(p.title) ? 'Let’s pause here' : p.title);
@@ -29,7 +29,7 @@ export function support(dev, { support: payload = {}, level = 'care', from = 're
       h('span', {}, catching
         ? 'What you wrote wasn’t passed on or saved, and the feeling has floated on to someone else. Right now, this is about you.'
         : 'Your words were not sent to anyone and were not saved. They stay on this device until you clear them.')),
-    supportBody(payload, { lab: !!dev.env?.lab }),
+    supportBody(payload, { note: hostNote(dev, 'support') }),
     catching
       ? h('div', { class: 'hf-actions' },
         h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'support-edit' }, onclick: () => dev.go('release', {}, { replace: true, back: true }) }, 'Take a pause'),

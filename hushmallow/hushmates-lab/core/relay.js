@@ -16,19 +16,20 @@
 //   • the Mallow fallback is opt-in, generated at most once per feeling,
 //     cached, budgeted, never for safety-flagged text, never counted as a person.
 
-import { RELAY, LABEL_IDS, MALLOW_IDS, REPORT_REASON_IDS, PERSPECTIVE_LABELS } from './relay-config.js';
-import { screenFeeling, screenReframe } from './feeling-safety.js';
+import { LABEL_IDS, MALLOW_IDS, REPORT_REASON_IDS, REPORT_REASONS, FEELING_LABELS, PERSPECTIVE_LABELS } from './relay-config.js';
+import { RELAY } from './relay-rules.js';
+import { screenFeeling, screenReframe, providerSupport } from './feeling-safety.js';
 import { normaliseText, charCount, checkPseudonym } from './text-policy.js';
 
 export class RelayError extends Error {
-  constructor(code, message) { super(message || MESSAGES[code] || code); this.name = 'RelayError'; this.code = code; }
+  constructor(code, message) { super(message || MESSAGES[code] || 'Something went wrong. Please try again.'); this.name = 'RelayError'; this.code = code; }
 }
 const MESSAGES = {
   'not-signed-in': 'Please sign in again.',
   'account-inactive': 'This account can’t do that right now.',
   'not-found': 'That isn’t available.',
-  'invalid': 'Something in that request wasn’t right.',
-  'forbidden': 'That isn’t allowed.',
+  'invalid': 'Something didn’t go through. Please try again.',
+  'forbidden': 'That isn’t something you can do here.',
   'rate-limited': 'That’s a lot in a short time. Please pause for a moment.',
   'too-many-active': `You have ${RELAY.maxActiveJourneys} feelings travelling already. When one comes home, you can send another.`,
   'not-catching': 'Turn on “Let feelings find me” to catch feelings.',
@@ -43,6 +44,19 @@ const MESSAGES = {
   'resend-limit': 'This feeling has already travelled a few times. You can keep it with you, or let it go.',
 };
 const fail = (code, message) => { throw new RelayError(code, message); };
+
+/** The label for a fixed development example (only ever allowed with `cannedExamples`, never in a real deployment). */
+export const CANNED_LABEL = 'A Mallow perspective · Example for testing, not generated';
+
+// words for the personal-data file (exportMyData), so it reads without a manual
+const EXPORT_STATUS = { travelling: 'travelling', returned: 'came home', released: 'let go' };
+const EXPORT_RETURN = { complete: 'five people offered a perspective', expired: 'its day of travelling ended', withdrawn: 'you brought it home early', removed: 'our safety team stopped it travelling' };
+const EXPORT_EVENT = {
+  released: 'sent into Hushfold', resent: 'sent out again', perspective: 'a Hushmate offered a perspective',
+  'perspective-withdrawn': 'a Hushmate took their perspective back', 'mallow-offer': 'your Mallow could offer a perspective',
+  'mallow-perspective': 'your Mallow offered a perspective', returned: 'came home',
+};
+const EXPORT_ACCOUNT = { active: 'active', restricted: 'catching paused by our safety team', suspended: 'paused by our safety team' };
 
 export const CLIENT_METHODS = [
   'me', 'savePreferences',
@@ -71,9 +85,12 @@ export class RelayService {
    *   cannedExamples  allow fixed development examples (source 'demo') as Mallow perspectives. Lab and
    *                   tests only: a real deployment leaves it off, so testing copy can never reach people
    *                   (a canned answer is then treated as no answer, and the feeling still comes home)
+   *   testMode   allow simulated test identities (createTestAccount, signInTestAccount, seedRelay). Lab and
+   *              tests only: the Hushmates server never sets it, so nobody can sign in as a test identity there
    */
-  constructor({ state = null, now = () => Date.now(), random = Math.random, provider = null, limits = {}, cannedExamples = false } = {}) {
-    this.cannedExamples = cannedExamples === true;
+  constructor({ state = null, now = () => Date.now(), random = Math.random, provider = null, limits = {}, cannedExamples = false, testMode = false } = {}) {
+    this.testMode = testMode === true;
+    this.cannedExamples = cannedExamples === true && this.testMode;   // testing examples exist only where test identities do
     this.s = state ? structuredClone(state) : emptyState();
     this.now = now;
     this.random = random;
@@ -115,9 +132,38 @@ export class RelayService {
   }
   _changed(accIds, scope, id) { for (const a of new Set(accIds)) this._emit(a, { type: 'changed', scope, id }); }
 
-  // Phase 1 only: simulated sign-in for clearly labelled test identities.
+  // ----------------------------------------------------------- accounts --
+  // Server-side only (never in CLIENT_METHODS): the Hushmates server creates a member when an
+  // invitation is redeemed, and issues the session it keeps behind an HttpOnly cookie.
   // Phase 2: Supabase Auth (token = the user's JWT, account id = auth.uid()).
+  createMember({ pseudonym, mallow = 'noomi', role = 'member', adult = false } = {}) {
+    if (!['member', 'moderator'].includes(role)) fail('invalid');
+    if (adult !== true) fail('invalid', 'Hushmates is for adults (18+) during the pilot.');
+    const name = checkPseudonym(pseudonym);
+    if (!name.ok) fail('invalid', name.message);
+    const id = this._id('acc');
+    this.s.accounts[id] = { id, role, state: 'active', createdAt: this.now(), adultConfirmedAt: this.now() };
+    this.s.profiles[id] = { pseudonym: name.text, mallow: MALLOW_IDS.includes(mallow) ? mallow : 'noomi', catching: false, notifyReturn: true, onboarded: false };
+    this._audit(id, 'account.created', { role });
+    this._save();
+    return id;
+  }
+  issueSession(accountId) {
+    const acc = this.s.accounts[accountId];
+    if (!acc || acc.state === 'deleted') fail('not-found');
+    const token = `tok_${this._rand(32)}`;
+    this.s.sessions[token] = acc.id;
+    this._save();
+    return token;
+  }
+  endSession(token) {
+    if (typeof token === 'string' && this.s.sessions[token]) { delete this.s.sessions[token]; this._save(); }
+    return { ended: true };
+  }
+
+  // Lab and tests only (testMode): simulated sign-in for clearly labelled test identities.
   createTestAccount({ key, pseudonym, mallow, role = 'member', catching = true }) {
+    if (!this.testMode) fail('forbidden');
     const id = this._id('acc');
     this.s.accounts[id] = { id, key, role, state: 'active', test: true, createdAt: this.now() };
     const name = checkPseudonym(pseudonym);
@@ -126,7 +172,8 @@ export class RelayService {
     return id;
   }
   signInTestAccount(key) {
-    const acc = Object.values(this.s.accounts).find((a) => a.key === key && a.state !== 'deleted');
+    if (!this.testMode) fail('forbidden');
+    const acc = Object.values(this.s.accounts).find((a) => a.test && a.key === key && a.state !== 'deleted');
     if (!acc) fail('not-found');
     const token = `tok_${this._rand(32)}`;
     this.s.sessions[token] = acc.id;
@@ -136,7 +183,7 @@ export class RelayService {
   _actor(token, { allow = ['active', 'restricted'] } = {}) {
     const id = typeof token === 'string' ? this.s.sessions[token] : undefined;
     const acc = id && this.s.accounts[id];
-    if (!acc) fail('not-signed-in');
+    if (!acc || (acc.test && !this.testMode)) fail('not-signed-in');   // a test identity is nobody outside the lab
     if (!allow.includes(acc.state)) fail('account-inactive');
     return acc;
   }
@@ -157,9 +204,10 @@ export class RelayService {
     const p = this.s.profiles[acc.id];
     const mine = Object.values(this.s.journeys).filter((j) => j.owner === acc.id);
     return {
-      accountState: acc.state, test: !!acc.test, isModerator: acc.role === 'moderator',
+      accountState: acc.state, test: !!acc.test, isModerator: acc.role === 'moderator', adultConfirmed: !!acc.adultConfirmedAt,
       profile: { ...p },
-      limits: { perspectives: this.L.perspectivesPerFeeling, maxActiveJourneys: this.L.maxActiveJourneys, feelingMaxChars: this.L.feelingMaxChars, reframeMaxChars: this.L.reframeMaxChars },
+      limits: { perspectives: this.L.perspectivesPerFeeling, perspectivesPerFeeling: this.L.perspectivesPerFeeling, maxActiveJourneys: this.L.maxActiveJourneys,
+        feelingMinChars: this.L.feelingMinChars, feelingMaxChars: this.L.feelingMaxChars, reframeMinChars: this.L.reframeMinChars, reframeMaxChars: this.L.reframeMaxChars },
       travelling: mine.filter((j) => j.status === 'travelling').length,
       homeUnseen: mine.filter((j) => j.status === 'returned' && !j.seenReturn).length,
       activeHold: this._activeHoldOf(acc.id)?.id || null,
@@ -218,7 +266,7 @@ export class RelayService {
     const dupe = Object.values(this.s.journeys).find((j) => j.owner === acc.id && j.clientId === clientId);
     if (dupe) {
       // a replay must be the same words; a reused id with different words is a client bug, not a release
-      if (dupe.status === 'deleted' || dupe.text !== screen.text || dupe.allowFallback !== (allowFallback === true)) fail('invalid', 'This was sent before with different words. Please try again.');
+      if (dupe.status === 'deleted' || dupe.text !== screen.text || dupe.allowFallback !== (allowFallback === true)) fail('invalid', 'Something changed while this was sending. Please send it again.');
       return { status: 'released', journey: this._journeyView(dupe, acc.id), duplicate: true };
     }
     if (acc.state !== 'active') fail('account-inactive');
@@ -480,8 +528,9 @@ export class RelayService {
     const visible = humans.map((r) => ({ id: r.id, kind: 'human', source: 'human', label: PERSPECTIVE_LABELS.human, text: r.text, mallow: r.mallow, slot: r.slot, at: r.at, kept: j.choices[r.id] ?? null, shareable: !!r.allowShare }));
     const f = this.s.fallbacks[j.id];
     let extra = null;
-    if (f && f.status === 'ready' && !f.hidden) {
-      const item = { id: f.id, kind: 'mallow', source: f.source, label: PERSPECTIVE_LABELS[f.source] || PERSPECTIVE_LABELS.demo, text: f.text, mallow: f.mallow, at: f.at, kept: j.choices[f.id] ?? null };
+    // a fixed testing example is shown only where they're allowed (the lab): never to customers, even from old state
+    if (f && f.status === 'ready' && !f.hidden && (f.source !== 'demo' || this.cannedExamples)) {
+      const item = { id: f.id, kind: 'mallow', source: f.source, label: f.source === 'demo' ? CANNED_LABEL : PERSPECTIVE_LABELS[f.source] || PERSPECTIVE_LABELS.ai, text: f.text, mallow: f.mallow, at: f.at, kept: j.choices[f.id] ?? null };
       if (this._answered(j) < this.L.perspectivesPerFeeling && visible.length < this.L.perspectivesPerFeeling) visible.push(item);
       else extra = item;
     }
@@ -499,8 +548,9 @@ export class RelayService {
       if (f.support && !f.hidden) v.support = structuredClone(f.support);       // the provider's safety gate spoke: show support
       return v;
     }
-    if (!j.allowFallback) return { status: 'off' };
+    if (!j.allowFallback || !this.provider) return { status: 'off' };         // no provider: never offer what can't be given
     if (j.paused || j.returnReason === 'removed') return { status: 'held' };    // under human review: nothing goes to a provider
+    if (this.s.accounts[j.owner]?.state !== 'active') return { status: 'off' };
     if (this._askable(j)) return { status: 'available', mallow: j.mallow };
     if (this._humans(j).length > 0) return { status: 'not-needed' };            // a person caught it: humans first
     return { status: 'waiting', mallow: j.mallow, availableAt: (j.releasedAt || j.createdAt) + this.L.fallbackAfterMs };
@@ -512,7 +562,7 @@ export class RelayService {
    */
   _askable(j) {
     const t = this.now();
-    if (!j.allowFallback || this.s.fallbacks[j.id] || j.paused || j.returnReason === 'removed') return false;
+    if (!j.allowFallback || !this.provider || this.s.fallbacks[j.id] || j.paused || j.returnReason === 'removed') return false;
     if (this.s.accounts[j.owner]?.state !== 'active') return false;
     if (j.status === 'returned') return true;
     return j.status === 'travelling' && this._humans(j).length === 0 && t - (j.releasedAt || j.createdAt) >= this.L.fallbackAfterMs;
@@ -658,7 +708,7 @@ export class RelayService {
       }
       if (r?.status === 'support') {
         // the provider's safety gate saw danger the rules missed: stop the journey, bring support, ask a person to look
-        Object.assign(f, { status: 'failed', reason: 'safety', support: r.support || null });
+        Object.assign(f, { status: 'failed', reason: 'safety', support: providerSupport() });   // our reviewed words, never the provider's
         this._holdForSafety(j, 'The Mallow provider’s safety check flagged this feeling.');
         return;
       }
@@ -780,15 +830,69 @@ export class RelayService {
   }
 
   // ----------------------------------------------------------- your data --
+  /**
+   * Everything Hushmates keeps that belongs to this person, as a file they can take with them.
+   * Built field by field from an allow-list (never by copying records), so nothing about anyone
+   * else can slip in: other people appear only as "A Hushmate", with no name, Mallow, id or order;
+   * words the person was never shown (sealed while travelling, let go, reported, blocked, taken
+   * back or removed) are left out; reports carry only the reporter's own reason and words, never
+   * the reported text or the safety team's notes. Internal ids, roles and test flags stay out too.
+   */
   exportMyData(token) {
     const acc = this._actor(token, { allow: ['active', 'restricted', 'suspended'] });
+    this.tick();
+    const p = this.s.profiles[acc.id];
+    const iso = (t) => (typeof t === 'number' ? new Date(t).toISOString() : null);
+    const choice = (v) => (v === true ? 'kept' : v === false ? 'let go' : 'not chosen yet');
+    const mine = Object.values(this.s.journeys).filter((j) => j.owner === acc.id && j.status !== 'deleted').sort((a, b) => a.createdAt - b.createdAt);
+    const feelings = mine.map((j) => {
+      const home = j.status !== 'travelling';
+      const { visible, extra } = this._items(j);
+      const mallow = [...visible, extra].find((x) => x && x.kind === 'mallow') || null;
+      return {
+        words: j.text || null,                                         // gone once you let the feeling go
+        feeling: FEELING_LABELS.find((l) => l.id === j.label)?.label || null,
+        status: EXPORT_STATUS[j.status] || 'with you',
+        sentAt: iso(j.createdAt),
+        cameHomeAt: iso(j.returnedAt),
+        cameHomeBecause: EXPORT_RETURN[j.returnReason] || null,
+        timesSentOutAgain: j.resends || 0,
+        saved: !!j.saved,
+        agreedToShareAnonymouslyAt: iso(j.consentAt),
+        agreedToAMallowPerspectiveAt: iso(j.fallbackConsentAt),
+        peopleWhoOfferedAPerspective: this._answered(j),
+        // as in the app: people's words stay sealed until the feeling comes home
+        perspectivesFromHushmates: home ? visible.filter((x) => x.kind === 'human').map((x) => ({ from: 'A Hushmate', words: x.text, at: iso(x.at), yourChoice: choice(x.kept) })) : [],
+        mallowPerspective: mallow ? { from: 'Your Mallow', label: mallow.label, words: mallow.text, at: iso(mallow.at), yourChoice: choice(mallow.kept) } : null,
+        journey: j.events.map((e) => ({ step: EXPORT_EVENT[e.type] || 'something changed', at: iso(e.at) })),
+      };
+    });
+    const offered = Object.values(this.s.reframes).filter((r) => r.author === acc.id && !r.removed).sort((a, b) => a.at - b.at)
+      .map((r) => ({
+        words: r.text, offeredAt: iso(r.at),
+        mayAppearInSharePictures: !!r.allowShare, agreedToSharePicturesAt: iso(r.shareConsentAt),
+        feelingHasComeHome: this.s.journeys[r.journeyId]?.status !== 'travelling',
+      }));
+    const reports = Object.values(this.s.reports).filter((r) => r.by === acc.id).sort((a, b) => a.at - b.at)
+      .map((r) => ({
+        about: r.kind === 'feeling' ? 'A feeling that found you' : 'A perspective on your feeling',
+        reason: REPORT_REASONS.find((x) => x.id === r.reason)?.label || 'Something else',
+        yourWords: r.details || null, madeAt: iso(r.at),
+        status: r.status === 'open' ? 'waiting for our safety team' : 'reviewed by our safety team',
+      }));
     return {
-      exportedAt: new Date(this.now()).toISOString(),
-      note: 'Your Hushmates data: your feelings and what came back, and the perspectives you gave. Other people never appear by name.',
-      profile: { ...this.s.profiles[acc.id] },
-      // when each choice was made: sharing anonymously, and (if given) letting a Mallow offer a perspective
-      journeys: this.listJourneys(token).journeys.map((v) => ({ ...v, consentAt: this.s.journeys[v.id].consentAt ?? null, fallbackConsentAt: this.s.journeys[v.id].fallbackConsentAt ?? null })),
-      gifts: this.myGifts(token).gifts,
+      format: 'hushmates-personal-data', version: 1, exportedAt: iso(this.now()),
+      about: 'Everything Hushmates keeps that is yours: your feelings and what came back to you, the perspectives you offered, your reports, your choices, and when you agreed to each. Other people appear only as "A Hushmate", never by name. Anything you let go of or deleted is gone and is not included.',
+      you: {
+        name: p.pseudonym, mallow: p.mallow, joinedAt: iso(acc.createdAt),
+        letFeelingsFindYou: !!p.catching, gentleNotices: p.notifyReturn !== false,
+        account: EXPORT_ACCOUNT[acc.state] || 'active',
+      },
+      feelings,
+      perspectivesYouOffered: offered,
+      feelingsThatFoundYou: Object.values(this.s.holds).filter((h) => h.user === acc.id).length,
+      reportsYouMade: reports,
+      peopleYouBlocked: this.s.blocks.filter((b) => b.by === acc.id).length,
     };
   }
 

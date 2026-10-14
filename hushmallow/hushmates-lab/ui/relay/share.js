@@ -6,7 +6,7 @@
 // The author chooses what it reveals. The feeling's name and their own words
 // are off by default; a person's perspective can only be chosen if its writer
 // allowed it; every perspective keeps its own honest label from the service,
-// so a Mallow's is never counted or presented as a stranger's, and a canned
+// so a Mallow's is never counted or presented as a stranger's, and a fixed
 // example is never called generated. All numbers are the real ones.
 
 import { h, icon } from '../dom.js';
@@ -184,7 +184,7 @@ export function share(dev, { id } = {}) {
       title: 'Your video',
       body: h('div', { class: 'rl-share-out' },
         h('video', { src: url, class: 'rl-share-img', controls: true, playsinline: true, loop: true, muted: true, dataset: { test: 'share-video-out' }, 'aria-label': 'Your journey as a short video' }),
-        h('p', { class: 'kit-note rl-center' }, `A ${Math.round(blob.size / 1024)} KB video made on this device. Use the player’s menu to save it. Nothing was uploaded or posted.`)),
+        h('p', { class: 'kit-note rl-center' }, 'A short video made on this device. Use the player’s menu to save it. Nothing was uploaded or posted.')),
       actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
       onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
     });

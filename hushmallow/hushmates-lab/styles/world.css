@@ -5,7 +5,7 @@
    Tokens are namespaced (--hm-*) so this can live inside the main app.
    Scene-specific styles live in styles/scenes/*.css. */
 
-.hm-device, .lab {
+.hm-device, .hm-world {
   --hm-ink: #1F1640; --hm-ink-2: #4B4366; --hm-ink-3: #6A6285; --hm-cream: #FFF8F3; --hm-paper: #FFFFFF;
   --hm-line: rgba(31,22,64,.1); --hm-hair: rgba(31,22,64,.07);
   --hm-lilac: #CDB8FF; --hm-peach: #FFCDB6; --hm-sky: #BFE6FF; --hm-pink: #FFBADB; --hm-butter: #FFE7A6;
@@ -82,8 +82,6 @@
 .kit-tag { display: inline-flex; align-items: center; font: 800 11px/1 var(--hm-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--hm-soon); background: var(--hm-soon-bg); padding: 6px 9px; border-radius: 999px; }
 .kit-hairline { display: flex; align-items: center; gap: 12px; width: 100%; font: 700 12px/1.2 var(--hm-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--hm-ink-3); }
 .kit-hairline::before, .kit-hairline::after { content: ""; flex: 1; height: 1px; background: var(--hm-line); }
-.kit-testtag { display: inline-flex; align-items: center; vertical-align: middle; white-space: nowrap; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.75);
-  box-shadow: 0 0 0 1px rgba(31,22,64,.1) inset; font: 700 10.5px/1 var(--hm-ui); letter-spacing: .04em; color: var(--hm-ink-3); }
 
 /* --------------------------------------------------------- buttons -- */
 .kit-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 24px; border-radius: 999px;
@@ -291,7 +289,7 @@
 .kit-person-sub { font: 600 13.5px/1.35 var(--hm-ui); color: var(--hm-ink-3); }
 
 @media (prefers-reduced-motion: reduce) {
-  .hm-device *, .lab * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  .hm-device *, .hm-world * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 @container hmd (max-width: 350px) {
   .hm-device { --hm-gutter: 16px; }

@@ -2,7 +2,7 @@
 // feeling chips, the five lights of progress, perspective objects and the
 // support panel. People's words only ever go in as text.
 
-import { h, icon } from '../dom.js';
+import { h, icon, humane } from '../dom.js';
 import { round } from '../kit.js';
 import { MALLOWS } from '../mallows-data.js';
 import { FEELING_LABELS, REPORT_REASONS } from '../../core/relay-config.js';
@@ -65,14 +65,14 @@ export function lights(j) {
   return h('span', { class: 'rl-lights', 'aria-hidden': 'true' }, items);
 }
 /** Support (shown instead of releasing when a feeling sounds unsafe). Copy comes from the Reframe engine's safety layer. */
-export function supportBody(support = {}, { lab = false } = {}) {
+export function supportBody(support = {}, { note = null } = {}) {
   const resources = support.resources || [];
   return h('div', { class: 'rl-support' },
     h('p', { class: 'rl-support-msg' }, support.message || 'What you wrote sounds really heavy. It won’t be sent to anyone, and you deserve real support with it.'),
     resources.length ? h('ul', { class: 'rl-support-list', dataset: { test: 'support-resources' } },
       resources.map((r) => h('li', {}, h('strong', {}, r.label), r.detail ? h('span', {}, r.detail) : null))) : null,
     support.stillHere ? h('p', { class: 'kit-note' }, support.stillHere) : null,
-    lab ? h('p', { class: 'kit-note rl-pilot-note hf-lab-tag--block' }, 'Lab note: crisis resources must be reviewed for each launch region by a safety lead before real people use Hushmates.') : null);
+    note);
 }
 
 /** Choose a reason, then send a report. → { reason } or null */
@@ -97,9 +97,5 @@ export function reportSheet(dev, { title = 'Report this', intro }) {
   });
 }
 
-const NETWORK = {
-  network: 'You’re offline. Nothing was sent; try again when you’re back.',
-  'response-lost': 'The connection dropped before we heard back. Trying again is safe: nothing is sent twice.',
-};
-/** The service's own words when it says no (it explains every refusal), else a gentle default. */
-export const errorText = (e) => NETWORK[e?.code] || e?.message || 'Something went wrong. Please try again.';
+/** The service's own words when it says no (it explains every refusal), else a gentle line. */
+export const errorText = (e) => humane(e);

@@ -1,33 +1,18 @@
-// Hushmates Feeling Relay: every rule and limit in one place.
+// Hushmates Feeling Relay: what people see. Labels, reasons, and the few
+// limits the interface shows (how many perspectives, how many characters).
 // "One feeling. Five perspectives. Back to you."
 //
-// Durations are pilot defaults, meant to be tested and tuned; nothing here is
-// a permanent product rule. The service (core/relay.js) enforces all of it.
+// This file reaches browsers. The service's own tuning (hold times, rate
+// limits, budgets, review thresholds) is server-only, in core/relay-rules.js.
 
-export const RELAY = {
-  perspectivesPerFeeling: 5,          // distinct human reframes before a feeling returns home
-  offerHoldMs: 3 * 60e3,              // a feeling waits 3 min for the person it found to decide
-  catchHoldMs: 10 * 60e3,             // after catching, 10 min to write a perspective
-  fallbackAfterMs: 30 * 60e3,         // no human perspective by then → offer a Mallow perspective (if allowed)
-  journeyTtlMs: 24 * 3600e3,          // after 24 h a feeling returns with whatever it has
+/** Limits a person can see in the interface. The service enforces them (core/relay-rules.js). */
+export const SHOWN_LIMITS = {
+  perspectivesPerFeeling: 5,          // distinct human perspectives before a feeling returns home
   maxActiveJourneys: 3,               // feelings travelling at once, per person
-  maxResends: 2,                      // "Send it out again" for a feeling nobody caught, per feeling
   feelingMinChars: 3,
   feelingMaxChars: 500,
   reframeMinChars: 8,
   reframeMaxChars: 280,
-  submissionsPerHour: 6,              // anti-spam, not a lifetime quota
-  submissionsPerDay: 24,
-  findsPerHour: 40,                   // looking for a feeling to catch
-  reframesPerHour: 12,
-  reportsPerDay: 20,
-  fallbackPerPersonPerDay: 5,         // Mallow perspectives a person can ask for per day
-  fallbackGlobalPerDay: 500,          // whole-service ceiling (cost guard), on top of the provider's own caps
-  fallbackMaxOutputTokens: 300,       // passed to the provider
-  fallbackTimeoutMs: 45e3,            // a provider that hasn't answered by then has failed (the feeling still comes home)
-  fairnessPool: 3,                    // pick at random among the N longest-waiting eligible feelings
-  reportsToPause: 2,                  // independent reports pause a feeling for human review
-  similarity: 0.8,                    // a perspective this close to an earlier one is asked to rephrase
 };
 
 export const FEELING_LABELS = [
@@ -44,21 +29,6 @@ export const LABEL_IDS = FEELING_LABELS.map((l) => l.id);
 
 export const MALLOW_IDS = ['noomi', 'blubi', 'pipzi', 'boppo', 'zuzu', 'loomi', 'glitzi'];
 
-// How each Mallow offers a perspective (used by the providers and the UI).
-// Every Mallow stays grounded: no forced positivity, no humour that shrinks
-// distress, no diagnosis, nothing presented as fact about another mind.
-export const MALLOW_VOICES = {
-  noomi: 'gentle and reassuring',
-  blubi: 'warm, empathetic and accepting',
-  pipzi: 'playful, curious and optimistic',
-  boppo: 'encouraging and appreciative',
-  zuzu: 'unexpected and imaginative',
-  loomi: 'calm, balanced and grounded',
-  glitzi: 'cheeky, direct and constructively challenging',
-};
-
-// The Mallow perspective comes from the author's own Mallow (the one that carried
-// the feeling), in that Mallow's voice (MALLOW_VOICES).
 
 export const REPORT_REASONS = [
   { id: 'unkind', label: 'Unkind or judgemental' },
@@ -76,5 +46,4 @@ export const PERSPECTIVE_LABELS = {
   human: 'A Hushmate’s perspective',
   ai: 'A Mallow perspective · Automatically generated',
   library: 'A Mallow perspective · Automatically generated',     // the rule-based Reframe library: automatic, not a person
-  demo: 'A Mallow perspective · Example for testing, not generated',   // canned development text: never called generated
 };

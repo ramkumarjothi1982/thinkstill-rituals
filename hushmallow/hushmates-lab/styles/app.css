@@ -1,0 +1,12 @@
+/* The customer app's frame: one Hushmates filling the screen on a phone, and
+   a phone-sized column in the middle of a larger window. */
+html, body { height: 100%; margin: 0; }
+body { background: #FFF8F3; overscroll-behavior: none; }
+.app { position: fixed; inset: 0; display: grid; justify-items: center;
+  background: radial-gradient(120% 80% at 20% 10%, #FFE3EC 0%, transparent 55%), radial-gradient(120% 80% at 85% 90%, #E5DBFF 0%, transparent 55%), #FFF8F3; }
+.app-device { position: relative; width: 100%; height: 100%; max-width: 560px; }
+@media (min-width: 700px) and (min-height: 700px) {
+  .app { align-items: center; padding: 24px; }
+  .app-device { height: min(100%, 940px); border-radius: 40px; overflow: hidden; box-shadow: 0 40px 90px -40px rgba(70,40,140,.45), 0 0 0 1px rgba(31,22,64,.06); }
+}
+.app-noscript { margin: 40px 20px; font: 600 16px/1.5 system-ui, sans-serif; color: #1F1640; text-align: center; }

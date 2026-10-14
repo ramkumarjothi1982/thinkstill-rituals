@@ -20,7 +20,7 @@ export const cid = (p = 'c') => `${p}-${(++n).toString(36)}-xxxxxxxx`;
 
 export function world({ limits = {}, provider = null, cannedExamples = true } = {}) {
   const clock = { t: Date.UTC(2026, 9, 14, 9) };
-  const svc = new RelayService({ now: () => clock.t, random: rng(), limits, provider, cannedExamples });
+  const svc = new RelayService({ now: () => clock.t, random: rng(), limits, provider, cannedExamples, testMode: true });
   seedRelay(svc);
   const T = {};
   for (const k of ['moon', 'cloud', 'star', 'fern', 'dream', 'pebble', 'ember', 'mod']) T[k] = svc.signInTestAccount(k);

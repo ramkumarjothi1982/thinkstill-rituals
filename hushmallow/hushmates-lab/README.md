@@ -7,13 +7,21 @@
 **Status: a playable prototype, waiting for the owner's approval. Nothing is
 integrated with or deployed to production.**
 
-Everything runs in the page:
-- seven simulated, clearly labelled test identities;
-- an in-page demonstration service;
-- no real backend, no real people, no production data.
+There are two experiences, kept strictly apart (`docs/ACCESS.md`):
+- **The customer app** (`app/`): invitation, welcome, Release, Catch, My
+  journeys, Returned, You & safety, Your data. It is served by the Hushmates
+  server (`server/`), which signs people in by invitation and keeps every rule
+  on the server. Its production build (`tools/build-app.mjs`) contains nothing
+  for developers, and is refused if it would.
+- **The lab** (`index.html`, `lab/`): the Control room, scenarios A/B/C, two
+  test phones, seven simulated test identities, a dev clock and an in-page
+  demonstration service. It is for developers and authorised testers only. A
+  development server shows it only with a tester key, and a production server
+  has no lab at all.
 
-`tools/build-site.sh` copies only `src/` and selected `assets/`, so this folder never
-ships with the app.
+Neither touches production: no production data, no real backend, nothing
+deployed. `tools/build-site.sh` copies only `src/` and selected `assets/`, so this
+folder never ships with the main Hushmallow app.
 
 Someone writes what's on their mind. Their Mallow gathers the words into a
 glowing orb, squeezes it until it ripples and lets it float up into Hushfold.
@@ -28,13 +36,29 @@ never presented or counted as a person.
 
 ## Run it
 
+**The customer app** (as customers get it):
+
 ```bash
 # from the repository root (the folder that contains hushmallow/)
+node hushmallow/hushmates-lab/tools/build-app.mjs           # → hushmallow/hushmates-lab/dist/app (scanned)
+HUSHMATES_INVITES="CODE-ONE,CODE-TWO" node hushmallow/hushmates-lab/server/main.mjs --mode production --port 8080
+# open http://127.0.0.1:8080/app/ and join with an invitation code
+```
+
+**The lab** (developers and testers):
+
+```bash
+# a development server: the app at /app/, and the lab at the /lab/?key=… address it prints
+HUSHMATES_TESTER_KEY="<at least 16 characters>" node hushmallow/hushmates-lab/server/main.mjs --mode development --port 8090
+
+# or, on your own machine only, the lab as a plain page
 python3 -m http.server 8000
 # open http://localhost:8000/hushmallow/hushmates-lab/index.html
 ```
 
-**The lab layout** (everything outside the phones is lab chrome)
+Nothing above deploys anything. Both servers listen on 127.0.0.1 by default.
+
+**The lab layout** (developers and testers only; everything outside the phones is lab chrome)
 - **Phone A** is the author, MoonMallow.
 - **Phone B** is a catcher. Pick any of six test identities: CloudMallow,
   StarMallow, FernMallow, DreamMallow, PebbleMallow, EmberMallow.
@@ -73,7 +97,8 @@ python3 -m http.server 8000
   | Canned development example (one line per Mallow personality) | "A Mallow perspective · Example for testing, not generated" | yellow "Lab · canned example" |
   | Another Angle server (Account 1's service, run locally, unchanged) | "Automatically generated" only if it reports a real model with a server-side key; its mock mode is treated as a canned example | green "Lab · live AI response (test key)" or yellow "Lab · canned example" |
 
-  The tags exist only because the lab sets `env.lab`; consumers never see them.
+  The tags come from `lab/lab-notes.js`, which only the lab loads: the customer
+  app has no such code.
   Canned examples are refused outside the lab (`RelayService` `cannedExamples`),
   so testing copy can never reach a real person. No AI key is configured here,
   so this lab can't show a live AI response; with a test key on a local Another
@@ -91,10 +116,17 @@ costs money and needs approval.
 ## Test it
 
 ```bash
-node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # 124 relay tests
+node --test hushmallow/hushmates-lab/tests/*.test.mjs                 # relay, access control, build, your data
 node --test hushmallow/hushmates-lab/v1-messaging/tests/*.test.mjs    # 32 (archived v1)
-node hushmallow/hushmates-lab/tools/shots.cjs <out-dir> http://localhost:8000   # interface QA
+node hushmallow/hushmates-lab/tools/app-shots.mjs <out-dir>           # the customer app: screens + content audit
+node hushmallow/hushmates-lab/tools/shots.cjs <out-dir> http://localhost:8000   # the lab: interface QA
 ```
+
+The access-control tests run real servers over HTTP in both modes. They try
+direct URLs (with traversal tricks), no session, an ordinary member's session,
+forged and leaked cookies, requests from other sites, and test-only methods
+through the API. They also check that consent, privacy and safety rules hold
+for anyone calling the API directly (`docs/ACCESS.md`).
 
 The relay tests cover:
 - the five-person cap, unique contributors, no self-reframe and the atomic last
@@ -142,29 +174,33 @@ share picture export and video frames.
 
 | Real (enforced, tested) | Simulated / mocked |
 |---|---|
-| Every relay rule, in `core/relay.js`, through a network layer that only accepts JSON and an allow-list of methods | The service runs in the page and saves to `localStorage`; there is no server or database |
-| Consent: recorded, enforced by the service, required for circulation and resends; contributors' share consent | Sign-in: seven test identities, simulated tokens; the adult/invitation check is a tick box |
+| Every relay rule, in `core/relay.js`, behind the Hushmates server's API (an allow-list of methods, JSON only, origin checks) | The server keeps state in memory or one JSON file; production needs Postgres (`RELAY.md` §5). In the lab the service runs in the page |
+| Sign-in by single-use invitation, adult confirmation recorded by the server, HttpOnly cookie sessions; the lab only for a tester key, on development servers | Invitation codes stand in for real accounts until Supabase Auth; the lab's seven test identities exist only in the lab (`testMode`) |
+| Consent: recorded, enforced by the service, required for circulation and resends; contributors' share consent | |
 | Per-viewer views: nobody sees who wrote what; words are sealed until home | |
 | Screening (shared Reframe safety lexicon plus Hushmates rules), support instead of release, before consent | Crisis resources are the app's existing copy, to be reviewed per region |
 | Holds, expiry, fairness, idempotency, rate limits, budgets, resend limits | Time: a dev clock moves the service's clock |
 | The Mallow fallback logic: opt-in, 30 minutes, one generation, caching, labels, budgets, safety handling, the separate section | **No live AI.** Mallow perspectives are a labelled canned example, the Reframe library, or Another Angle in mock mode |
-| Reports, the moderator queue and its actions, blocking, export, deletion | Moderators: one test identity; no staffing, no notifications |
+| Reports, the moderator queue and its actions, blocking, Your data (a summary and a privacy-safe file), deletion | Moderators join with a staff invitation; the safety desk interface exists only in the lab; no staffing, no notifications |
 | The interface: every scene, motion and sound; the share picture and video, made on the device | Push notifications ("tell me when it comes home" is only a saved preference); posting a share story is left to the person |
 
 ## Where things are
 
 ```
-core/        relay.js (the rules), relay-config.js (limits, labels), feeling-safety.js, perspectives.js (providers), relay-seed.js, text-policy.js
-net/         local-network.js: the simulated network (latency, offline, lost replies, allow-list)
-client/      relay-client.js: one person's view of the relay
+app/         the customer app: index.html, app.js (one person, one device, the Hushmates server)
+server/      server.mjs (production and development modes, invitations, sessions, API, lab gate), app-files.mjs (what the app may load), main.mjs
+core/        relay.js (the rules, server-side), relay-rules.js (tuning, server-only), relay-config.js (labels and shown limits, shared),
+             feeling-safety.js, text-policy.js, perspectives.js (providers, server-only), relay-seed.js (lab test identities)
+net/         local-network.js: the lab's simulated network (latency, offline, lost replies, allow-list)
+client/      relay-client.js: one person's view of the relay; http-link.js: the app's link to the server
 ui/          device.js, orb.js, sky.js, sound.js, mallow.js, atmosphere.js, motion.js, kit.js, dom.js
-ui/relay/    the scenes: welcome, release, support, catch, journeys, returned (homecoming), share (+ share-render), you;
-             parts.js (room, stage, thought cloud, speech, consent row, privacy details), common.js (dock, header, sheets)
-styles/      world.css (landing-page tokens and kit), relay.css (orb, sky, dock), hushfold.css (the 2.0 rooms), relay-scenes.css, lab.css
-lab/         lab.js: the two phones, control room, guide, autoplay, fixtures
-tests/       relay, attacks, 2.0 rules, and the five adversarial reviews
-tools/       shots.cjs (QA), preview.mjs (hosted preview packager)
-docs/        RELAY.md (architecture, Supabase plan, costs), SAFETY_AND_PRIVACY.md, SCENES.md, screenshots/
+ui/relay/    the scenes: invite, welcome, release, support, catch, journeys, returned (homecoming), share (+ share-render), you,
+             your-data, away; parts.js (room, stage, thought cloud, speech, consent row, privacy details), common.js (dock, header, sheets)
+styles/      world.css (landing-page tokens and kit), relay.css (orb, sky, dock), hushfold.css (the 2.0 rooms), relay-scenes.css, app.css, lab.css
+lab/         lab.js: the two phones, control room, guide, autoplay, fixtures; lab-notes.js: notes for testers inside the phones
+tests/       relay, attacks, 2.0 rules, the adversarial reviews, access control, build, your data, audit fixes
+tools/       build-app.mjs (the customer build and its scan), app-shots.mjs (customer QA), shots.cjs (lab QA), preview.mjs
+docs/        ACCESS.md (the two experiences), RELAY.md (architecture, Supabase plan, costs), SAFETY_AND_PRIVACY.md, SCENES.md, screenshots/
 v1-messaging/  the superseded private-messaging prototype (archived; its tests still pass)
 ```
 

@@ -1,8 +1,8 @@
 // One person's Hushmates, mounted into an element: the living atmosphere,
 // scenes that cross-fade into each other, sheets and gentle notices.
-// The lab mounts two (one per test identity); the main app would mount one.
+// The app mounts one; a test host can mount several side by side.
 
-import { h, icon } from './dom.js';
+import { h, icon, humane } from './dom.js';
 import { Atmosphere } from './atmosphere.js';
 import { springCurve, reducedMotion, CSS_EASE } from './motion.js';
 
@@ -18,7 +18,7 @@ export class Device {
     this.current = null;
     this.prefs = { textSize: 1, safetyNoteSeen: false };
     this.memory = {};
-    this.env = {};                       // set by the host (the lab says where Mallow perspectives come from)
+    this.env = {};                       // set by the host (sign in and out; optional notes for testers)
     root.classList.add('hm-device');
     const atmoEl = h('div');
     this.atmo = new Atmosphere(atmoEl);
@@ -186,7 +186,7 @@ export class Device {
       if (ok) this.toast(ok);
       return r;
     } catch (e) {
-      this.toast(e?.message || 'Something went wrong. Please try again.', { tone: 'warn', ms: 4200 });
+      this.toast(humane(e), { tone: 'warn', ms: 4200 });
       return undefined;
     }
   }
