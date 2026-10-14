@@ -70,7 +70,7 @@ export class Renderer {
     const W = this.outW, H = this.outH;
     const sz = (v, d) => Math.max(1, Math.round(v / d));
     this.fs = fullscreen(gl);
-    this.world = new LakeWorld(this);
+    this.world = new LakeWorld(this, { fast: !!profile.features.worldFast });
     this.p = {
       mesh: program(gl, MESH_VS, profile.features.faceFastGlow ? meshFS({ faceBox: true }) : MESH_FS, 'mesh'),
       blur: program(gl, FS_VERT, BLUR_FS, 'blur'),
