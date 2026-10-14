@@ -18,7 +18,7 @@
 //   hidden    the question while the page is hidden for 50 s: still asking; visible again, "Another angle" plays
 //   battery   "the battery in my car is dead again" → the question (never the gentle path)
 //   befinish  "I am worried about my exam tomorrow" → Just be with it → its own quiet lines (no "See support") → Finish → the
-//             ordinary goodbye → home with no safety level → "I am so angry my boss ignored me again" → the play question
+//             ordinary goodbye → home quiet (S.soft) with no safety level → "I am so angry my boss ignored me again" → the play question
 // Prints "RESULT {...}". Playwright from /opt/node-tools; Chromium at /opt/pw-browsers/chromium (never playwright install).
 // Touch through CDP Input.dispatchTouchEvent.
 const { createRequire } = require('module');
@@ -288,8 +288,10 @@ const SCEN = {
     if (bye.includes('Go gently.') || !bye.includes('That’s enough for now.')) fail('befinish', 'goodbye', bye);
     await o.page.waitForFunction(() => window.__hushfold?.touch?.ready && window.__hushfold?.mallow?.bodyRect?.(), null, { timeout: 60000 });
     await sleep(2500);
-    const home = await o.page.evaluate(() => { const Hf = window.__hushfold; const sp = document.querySelector('.hf-dock .hf-pill.support'); return { level: Hf.S.level, careSaid: !!Hf.S.careSaid, supportPill: !!sp && !sp.hidden && sp.getBoundingClientRect().height > 0 }; });
+    const home = await o.page.evaluate(() => { const Hf = window.__hushfold; const sp = document.querySelector('.hf-dock .hf-pill.support'); return { level: Hf.S.level, careSaid: !!Hf.S.careSaid, soft: !!Hf.S.soft, supportPill: !!sp && !sp.hidden && sp.getBoundingClientRect().height > 0 }; });
     if (home.level !== 'none' || home.careSaid || home.supportPill) fail('befinish', 'home carried a safety level', home);
+    // the quiet visit carries home ({ soft: true }: the Hushfold's softVisit), never a safety level
+    if (!home.soft) fail('befinish', 'home not quiet after "Just be with it"', home);
     await o.page.evaluate(() => window.__hushfold.openTell());
     await o.page.waitForSelector('.hf-input textarea', { state: 'visible', timeout: 10000 });
     await o.page.fill('.hf-input textarea', 'I am so angry my boss ignored me again');
