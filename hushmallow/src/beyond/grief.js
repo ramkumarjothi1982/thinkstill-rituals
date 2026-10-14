@@ -370,8 +370,9 @@ const DIED_A_DEATH = /\b((?:die|dies|died|dying)\s+)an?\s+(?:[a-z]+\s+){0,2}?dea
  * dying / dead, killed, murdered, drowned, buried / bury, a cemetery or a graveyard) count by who died (death-words.js
  * whoDied): a person or a pet always ("my mum died", "Pepper died", "the coach who taught me died", "we buried Biscuit"); a
  * thing, an idea or a place never ("the plant on my desk died", "my motivation is dead", "the traffic killed me", "I buried
- * myself in work", "the cemetery near my flat"). Someone unknown ("pepper died", "my sensei is dead") or themselves ("I nearly
- * died") count only in the wide reading, the escalation reader's (a wish to follow the one who died, a miss there costs
+ * myself in work", "the cemetery near my flat"). The speaker as the one who dies counts too, always ("I feel like dying", "I
+ * nearly killed myself last year": a safety backstop the lexicon may not cover). Someone unknown ("pepper died", "my sensei is
+ * dead") counts only in the wide reading, the escalation reader's (a wish to follow the one who died, a miss there costs
  * most); `sure: true` (the gentle path: backstop.js lossRoute, gentleRoute) leaves them out: they are asked the one question.
  */
 export function deathTalk(text, { stories = true, sure = false } = {}) {
@@ -385,7 +386,8 @@ export function deathTalk(text, { stories = true, sure = false } = {}) {
   // (a pet named, or the vet: "the vet put him to sleep this morning"; or anyone put to sleep, not for an operation)
   if ((PET_WORD.test(t) || /\bvets?\b/iu.test(t)) && PET_PUT.test(t)) return 'loss';
   if (PUT_TO_SLEEP.test(t)) return 'loss';
-  const counts = (who) => who === 'who' || (!sure && (who === 'unknown' || who === 'self'));
+  // (the speaker as the one who dies counts on the gentle path too: "I feel like dying", "I nearly killed myself last year")
+  const counts = (who) => who === 'who' || who === 'self' || (!sure && who === 'unknown');
   if (counts(whoDied(t, 'loss'))) return 'loss';
   if (GRIEF_WORDS.some((re) => re.test(t)) || RIP[2].test(t)) return 'grief';
   if (counts(whoDied(t, 'grief'))) return 'grief';

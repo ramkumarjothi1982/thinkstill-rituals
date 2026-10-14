@@ -231,11 +231,11 @@ export function blankOrdinary(t, { stories = true } = {}) {
 //   - what it is: a person or a pet noun ("mum", "the guy", "my coach", "our dog", "the cat next door"), he / she / him / her /
 //     himself / herself, "someone", "the one who…", they (unless what they stand for is plural things), a capitalised given
 //     name ("Pepper died", "We buried Biscuit") → 'who'; me / myself / us as the object ("killed me", "buried myself") → 'thing';
-//     I / we / you as the subject → 'self'; a thing, an idea, a place or a part of the body (the lists above and THING_WORDS
+//     I / we / you as the subject, "killed myself" → 'self' (the speaker: always counts); a thing, an idea, a place or a part of the body (the lists above and THING_WORDS
 //     below) → 'thing'; anything else (an unknown noun, "my sensei died", "pepper died" typed in lower case) → 'unknown'.
-// grief.js deathTalk reads a weak word as a death for 'who' only on the gentle path (lossRoute, gentleRoute); 'unknown' is the
-// question (lossRoute 'ask': the question already offers "Just be with it"), never the gentle path; a thing is no death at all
-// (lossRoute null). The escalation reader keeps 'unknown' and 'self' (a miss there costs most): deathTalk's wide reading.
+// grief.js deathTalk reads a weak word as a death for 'who' and 'self' on the gentle path (lossRoute, gentleRoute); 'unknown' is
+// the question (lossRoute 'ask': the question already offers "Just be with it"), never the gentle path; a thing is no death at
+// all (lossRoute null). The escalation reader keeps 'unknown' too (a miss there costs most): deathTalk's wide reading.
 
 /** The weak loss words: the one who died is the subject (WEAK_DIE) or, when one follows, the object (WEAK_KILL). */
 const WEAK_DIE = /^(?:die|dies|di+e+d+|dide|dided|dyde|ded|deaded|dying|dieing|dyin|dead)$/u;
@@ -458,6 +458,11 @@ const NOUN_DET = /^(?:the|a|an|his|her|their|my|our|your|some|any|every|each|ano
 function subjectOf(ws, i, ctx) {
   let from = i;
   while (from > 0 && !cutBefore(ws, from)) from--;
+  // ", who died": the one just before the comma ("I want to be with my dad, who died last year")
+  if (from > 0 && ws[from].cut && /^(?:who|whom|whos|which|that)$/u.test(ws[from].w) && ws.slice(from + 1, i).every((t) => SKIP_BACK.has(t.w))) {
+    const head = headBack(ws, from - 1, 0, ctx);
+    if (head != null) { const kind = kindOf(ws, head, ctx); return /^who/u.test(ws[from].w) ? best(kind, 'who') : kind; }
+  }
   // a relative clause in the subject: the one it hangs on ("the coach who taught me to swim died", "my cat that I had died")
   for (let k = from + 1; k < i; k++) {
     if (!RELATIVE.has(ws[k].w) || cutBefore(ws, k)) continue;
@@ -470,16 +475,20 @@ function subjectOf(ws, i, ctx) {
   }
   // a relative clause without "who" or "that": "the bird WE HAD for ten years died", "the man I married died"
   for (let k = from + 1; k < i; k++) {
-    if (!SUBJECT_PRONOUN.has(ws[k].w) || cutBefore(ws, k)) continue;
-    const prev = ws[k - 1].w;
-    if (FUNCTION.has(prev) || TIME_FILLER.has(prev) || /ly$/u.test(prev) || SAYING.has(prev)) continue;
+    if (!SUBJECT_PRONOUN.has(ws[k].w) || cutBefore(ws, k) || !nounBefore(ws, k, from, ctx)) continue;
     const head = headBack(ws, k - 1, from, ctx);
     if (head != null) return kindOf(ws, head, ctx) || 'unknown';
   }
-  let j = i - 1;
-  // (and what makes someone dead: "shot dead", "found dead", "dropped dead", "brain dead"; never a noun after "my": "my HOPE is dead")
+  let j = i - 1, wish = false;
+  // (and what makes someone dead: "shot dead", "found dead", "dropped dead", "brain dead"; never a noun after "my": "my HOPE is dead";
+  // an adverb the lists don't know is passed too: "I don't NECESSARILY want to die")
   while (j >= from && (SKIP_BACK.has(ws[j].w) && !(j - 1 >= from && /^(?:my|our|his|her|their|your|the|this|that|a|an)$/u.test(ws[j - 1].w))
-    || ws[i].w === 'dead' && j === i - 1 && RESULT.test(ws[j].w))) j--;
+    || ws[i].w === 'dead' && j === i - 1 && RESULT.test(ws[j].w) || /ly$/u.test(ws[j].w) && kindOf(ws, j, ctx) === 'unknown')) {
+    if (/^(?:want|wants|wanted|wanna|wish|need|hope|hoping|gonna|going|rather)$/u.test(ws[j].w)) wish = true;
+    j--;
+  }
+  // ("no no no want to actually die": a wish with no one before it is the speaker's)
+  if (wish && (j < from || /^(?:no|yes|yeah|so|just|honestly|really)$/u.test(ws[j].w)) && (from === 0 || !earlierSubject(ws, from, ctx))) return 'self';
   // "the dead", "a murder", "his dying": the word is a noun (what follows "of" says who: "the murder of my brother")
   if (j >= from && NOUN_DET.test(ws[j].w) && j === i - 1) {
     if (/^(?:his|her|their)$/u.test(ws[j].w)) return 'who';
@@ -498,6 +507,20 @@ function subjectOf(ws, i, ctx) {
   }
   const head = headBack(ws, j, from, ctx);
   return head == null ? earlierSubject(ws, from, ctx) : kindOf(ws, head, ctx);
+}
+/**
+ * A noun phrase ends just before word `k` (a relative clause without "who" may hang on it: "the bird | we had"): a word the lists
+ * know, or one after a determiner; never a verb ("that doesn't MEAN | I want to die"), a time, a filler or an adverb.
+ */
+function nounBefore(ws, k, from, ctx) {
+  const p = k - 1;
+  if (p < from) return false;
+  const w = ws[p].w;
+  if (FUNCTION.has(w) || TIME_FILLER.has(w) || /ly$/u.test(w) || SAYING.has(w)) return false;
+  const kind = kindOf(ws, p, ctx);
+  if (kind === 'who' || kind === 'thing') return true;
+  const { start } = phraseBack(ws, p, from);
+  return start < p ? DET.has(ws[start].w) || QUANT.has(ws[start].w) : DET.has(ws[p - 1]?.w || '');
 }
 /** The head noun of the subject that ends at word `j` (see subjectOf), or null when there is none. */
 function headBack(ws, j, from, ctx, depth = 0) {
@@ -528,7 +551,7 @@ function headBack(ws, j, from, ctx, depth = 0) {
   // (a noun phrase after a noun phrase), never a time or a filler before it ("last night my dog died", "omg my dog died")
   if (SUBJECT_PRONOUN.has(w) || SUBJECT_PRONOUN.has(before)) {
     const at = SUBJECT_PRONOUN.has(w) ? j : start - 1;
-    if (at - 1 >= from && !FUNCTION.has(ws[at - 1].w) && !TIME_FILLER.has(ws[at - 1].w) && !/ly$/u.test(ws[at - 1].w)) {
+    if (nounBefore(ws, at, from, ctx)) {
       const h = headBack(ws, at - 1, from, ctx, depth + 1);
       if (h != null) return h;
     }
@@ -595,6 +618,9 @@ function objectOf(ws, i, ctx) {
   const w = ws[k].w;
   if (PREP.has(w) && ws[i].w !== 'of') return null;
   if (TIME_FILLER.has(w) || SKIP_BACK.has(w) && !DET.has(w)) return null;
+  // (me / us is "very" or "a lot": "the traffic killed me"; myself after killed is the self, "I nearly killed myself", and a
+  // thing after buried or drowned, "I buried myself in work")
+  if (/^(?:myself|ourselves)$/u.test(w) && /^(?:kill|murder)/u.test(ws[i].w)) return 'self';
   if (PRONOUN_WHO.has(w) || PRONOUN_SELF.has(w) || PRONOUN_THEY.has(w) || PRONOUN_IT.has(w)) return kindOf(ws, k, ctx, { object: true });
   // the noun phrase that follows: its head is its last noun ("my best friends dog"), "two of my friends" the friends
   let end = k;

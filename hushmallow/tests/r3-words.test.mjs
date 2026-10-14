@@ -158,6 +158,17 @@ test('r3-words 7: the wish to follow keeps its recall: someone unknown who died,
   }
   // a thing that died, with a wish to die, is the lexicon's crisis, never missed
   for (const t of ['my plant died and I want to die too', 'my motivation is dead and I want to kill myself']) assert.equal(checkText(t).level, 'crisis', t);
+  // the speaker as the one who dies keeps the gentle path wherever the lexicon reads less (a safety backstop, as before): never the
+  // ordinary question; "killed me" / "buried myself" are no death at all
+  for (const t of ['I feel like dying', 'I nearly killed myself last year', 'I keep thinking about dying', "that doesn't mean i want to actually die",
+    'no no no no no want to actually die', "I don't necessarily want to really die"]) {
+    assert.equal(GR.deathTalk(t, { sure: true }), 'loss', t);
+    assert.ok([main(t), angle(t)].every((r) => r === 'gentle' || r === 'care'), `${t}: ${[main(t), angle(t)]}`);
+  }
+  // (and the lexicon's own: "better off dead" is crisis on both screens whatever the reading)
+  assert.deepEqual([main("I'd be better off dead"), angle("I'd be better off dead")], ['care', 'care']);
+  // ", who died": the one before the comma ("I want to be with my dad, who died last year": care, as before)
+  assert.equal(who('I want to be with my dad, who died last year'), 'who');
   // and nothing here touches strongLoss (the main screen's backstop for the strong cues)
   for (const t of P.CHECK_ORDINARY) assert.equal(strongLoss(t), false, t);
 });
