@@ -248,7 +248,8 @@ test('r12: with a marker, a server’s grief lines never play for words with no 
 test('r12: the review’s quoted visits are never framed, with no server and every scene stub (asked first where it is not sure)', () => {
   for (const t of P.R5_QUOTED) for (const s of ['none', 'pull', 'mind', 'fallback', 'griefish', 'anger', 'harsh', 'spectrum', 'catas']) {
     const R = visit(t, { server: STUBS[s] || null, answer: 'yes' });
-    assert.equal(R.route, 'gentle', `${t} @${s}`);
+    // (asked first where it is not sure: the gentle answer is "Just be with it", its own quiet path, r2-angle item 5)
+    assert.equal(R.route, P.R5_DEATH_CHECK_IN.includes(t) ? 'be' : 'gentle', `${t} @${s}`);
     assert.equal(R.asked, P.R5_DEATH_CHECK_IN.includes(t), `${t} @${s}`);
     assert.ok(!framed(R), `${t} @${s}`);
   }
@@ -313,13 +314,17 @@ test('Another Angle: Zuzu asks before anything is sent, framed or played (the on
   for (const later of ['spawnThought()', 'client.angle(', 'waitingLines(', 'playScene(']) assert.ok(asks < start.indexOf(later), later);
   // (owner decision 'Ask before every world': askall-angle.test.mjs pins the choice; LOSS_CHECK stays for the switch turned off)
   assert.match(start, /if \(step === 'choice' \|\| step === 'check-in'\) \{/);
-  assert.match(start, /if \(v === 'be' \|\| v === 'yes'\) \{ S\.answers\.set\(key, v\); S\.lossSaid = true; S\.noPlay = true; return griefMode\(\{ told: 'loss', asked: v === 'be' \}\); \}/);
+  // (r2-angle item 5) "Just be with it" is its own quiet path; the check-in's "Yes, it is" is the gentle path
+  assert.match(start, /if \(v === 'be'\) \{ S\.answers\.set\(key, 'be'\); return beWithIt\(\); \}/);
+  assert.match(start, /if \(v === 'yes'\) \{ S\.answers\.set\(key, 'yes'\); S\.lossSaid = true; S\.noPlay = true; return griefMode\(\{ told: 'loss' \}\); \}/);
   assert.match(start, /if \(v !== 'angle' && v !== 'else'\) \{ quietAfterAsk\(\); return; \}/);
   const fn = between(aa, 'const FIRST_QUESTION = {', 'async function waitingLines(');
   assert.doesNotMatch(fn, /client\.|spawnThought|playScene|setStage\('playful'\)/, 'nothing sent, nothing made, nothing playful');
   assert.match(fn, /careFace\(\);/);
   assert.match(fn, /'check-in': \{ ask: LOSS_CHECK\.ask, ms: LOSS_CHECK\.ms, options: \[\{ label: LOSS_CHECK\.yes, value: 'yes' \}, \{ label: LOSS_CHECK\.no, value: 'else' \}\] \}/);
-  assert.match(fn, /choose\(q\.ask, q\.options, \{ mallow: 'zuzu', timeoutMs: q\.ms, transient: true, lossCheck: true, interrupt: true \}\)/);
+  // (r2-angle item 6) its own clock (questionClock: never counted while the page is hidden), not the subtitles' timeout
+  assert.match(fn, /choose\(q\.ask, q\.options, \{ mallow: 'zuzu', transient: true, lossCheck: true, interrupt: true \}\)/);
+  assert.match(fn, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) subs\?\.drop\(\(o\) => o\.lossCheck\); \}\)/);
   assert.match(aa, /if \(layer\.lossCheck && \(!token \|\| token === layer\.lossCheck\)\) \{ layer\.lossCheck = 0; subs\?\.drop\(\(o\) => o\.lossCheck\); \}/);
   assert.match(aa, /'typing', 'asking'\]\.includes\(S\.phase\)/, 'no reload while it asks');
   // Zuzu's squeeze quips only in the invitation, squeeze and end phases (never while asking)
@@ -332,10 +337,13 @@ test('Another Angle replay: the question is asked before any request; a gentle a
       const server = STUBS[s] || null;
       const yes = visit(t, { server, answer: 'yes' });
       assert.ok(yes.asked && yes.requestsBeforeAnswer === 0, `${t} @${s}`);
-      assert.equal(yes.route, 'gentle', `${t} @${s}`);
+      // (with the question on, the gentle answer is "Just be with it": its own quiet path, r2-angle item 5; nothing sent)
+      assert.deepEqual([yes.route, yes.requests], ['be', 0], `${t} @${s}`);
       assert.ok(!framed(yes) && yes.mechanics.length === 0, `${t} @${s}`);
-      // "Yes, it is": the loss pair when Zuzu answers (never the server's mechanic)
-      if (!server) assert.deepEqual(yes.scenes[0] && [yes.scenes[0].subtitle_line_1, yes.scenes[0].subtitle_line_2], GRIEF.loss, t);
+      // the check-in's "Yes, it is" (the question switched off): the loss pair when Zuzu answers (never the server's mechanic)
+      const told = visit(t, { server, answer: 'yes', asks: false });
+      assert.equal(told.route, 'gentle', `${t} @${s}`);
+      if (!server) assert.deepEqual(told.scenes[0] && [told.scenes[0].subtitle_line_1, told.scenes[0].subtitle_line_2], GRIEF.loss, t);
       const quiet = visit(t, { server, answer: null });
       assert.deepEqual([quiet.route, quiet.requests, quiet.scenes.length], ['quiet', 0, 0], `${t} @${s}`);
       const els = visit(t, { server, answer: 'else' });

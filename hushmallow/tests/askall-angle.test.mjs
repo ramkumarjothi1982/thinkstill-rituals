@@ -18,7 +18,7 @@ import * as GR from '../src/beyond/grief.js';
 import { lossRoute, unsureLoss, FRAMING_MECHANICS, framesAsGuess, acknowledges } from '../src/beyond/backstop.js';
 import { angerUnsaid, angerAnswer, framesScene } from '../src/beyond/authored.js';
 import { ASK_BEFORE_ANGLE, firstStep, answerKey } from '../src/beyond/angle-first.js';
-import { ANGLE_CHOICE, LOSS_CHECK, GRIEF, WAITING } from '../src/beyond/lines.js';
+import { ANGLE_CHOICE, LOSS_CHECK, GRIEF, WAITING, BE_WITH } from '../src/beyond/lines.js';
 import { visit, STUBS, ALL_SCENE_STUBS } from './probes/r10-replay.mjs';
 import * as P from './probes/r13.mjs';
 
@@ -73,9 +73,9 @@ test('no reviewer death phrasing is ever played without the person choosing it: 
         const quiet = visit(t, { server: STUBS[s] || null, answer: null });
         assert.ok(quiet.route === 'gentle' || quiet.route === 'quiet' || quiet.route === 'care', `${t} @${s}: ${quiet.route}`);
         if (quiet.route === 'quiet') assert.deepEqual([quiet.requests, quiet.scenes.length, quiet.mechanics.length, quiet.question], [0, 0, 0, 'choice'], `${t} @${s}`);
-        // "Just be with it": the gentle lines, nothing sent, no mechanic, never framed
+        // "Just be with it": its own quiet path (r2-angle item 5), nothing sent, no mechanic, never framed
         const be = visit(t, { server: STUBS[s] || null, answer: 'be' });
-        assert.equal(be.route, 'gentle', `${t} @${s}`);
+        assert.equal(be.route, be.asked ? 'be' : 'gentle', `${t} @${s}`);
         assert.ok(be.mechanics.length === 0 && !framed(be), `${t} @${s}`);
         if (be.asked) assert.equal(be.requests, 0, `${t} @${s}: nothing sent`);
       }
@@ -172,10 +172,10 @@ test('item 7: readSafety and lossRoute keep their outputs and shapes (lossRoute 
 });
 
 // ------------------------------------------------------------------ item 1: the question itself --
-test('item 1: the question’s words, its two chips (Another angle first), about 20 s, the brand rules', () => {
+test('item 1: the question’s words, its two chips (Another angle first), about 45 s (r2-angle item 6), the brand rules', () => {
   assert.equal(ASK_BEFORE_ANGLE, true, 'the owner’s switch is on');
   assert.equal(ANGLE_CHOICE.ask, 'Shall we look at this from another angle, or just be with it?');
-  assert.deepEqual([ANGLE_CHOICE.angle, ANGLE_CHOICE.be, ANGLE_CHOICE.ms], ['Another angle', 'Just be with it', 20000]);
+  assert.deepEqual([ANGLE_CHOICE.angle, ANGLE_CHOICE.be, ANGLE_CHOICE.ms], ['Another angle', 'Just be with it', 45000]);
   for (const l of [ANGLE_CHOICE.ask, ANGLE_CHOICE.angle, ANGLE_CHOICE.be]) { assert.doesNotMatch(l, /\bAI\b|reframe|died|death|dead|loss|losing/i, l); assert.ok(l.length <= 64, l); }
   // "Just be with it": the gentle pair, which never assumes a death and frames nothing
   for (const l of GRIEF.loss) { assert.equal(acknowledges(l), true, l); assert.doesNotMatch(l, /\b(?:died|death|dead|loss|lost|miss|grief|them)\b/i, l); }
@@ -189,17 +189,20 @@ test('item 1: firstStep — a detected loss is gentle with no question; every ot
   for (const e of P.SEM_GRIEF_CHIP.not) assert.equal(firstStep(P.SEM_GRIEF_CHIP.text, { emotion: e }), 'choice', e);
   // ordinary words and unsure words alike: the one choice (never the check-in too)
   for (const t of ['I am worried about my exam tomorrow', 'we had to let our dog go', 'my dad never came to my football match']) assert.equal(firstStep(t), 'choice', t);
-  // "Show me another angle", or "Another angle" already chosen for these words: no question again
+  // "Show me another angle" inside an angle they chose: no question again; (r2-angle item 2) "Another angle" is never remembered,
+  // so a new Tell of the same words is asked again
   assert.equal(firstStep('I am worried about my exam tomorrow', { another: true }), 'play');
-  assert.equal(firstStep('I am worried about my exam tomorrow', { said: 'angle' }), 'play');
-  // "Just be with it" (or the check-in's "Yes, it is") remembered: the gentle path again, even with "another"
-  assert.equal(firstStep('we had to let our dog go', { said: 'be' }), 'be');
-  assert.equal(firstStep('we had to let our dog go', { said: 'be', another: true }), 'be');
+  assert.equal(firstStep('I am worried about my exam tomorrow', { said: 'angle' }), 'choice');
+  // (r2-angle item 7) "Just be with it" remembered is asked again (BE_ASKS_AGAIN, as on the main screen); with that switch off,
+  // its quiet path again; the check-in's "Yes, it is" keeps them on the gentle path
+  assert.equal(firstStep('we had to let our dog go', { said: 'be' }), 'choice');
+  assert.equal(firstStep('we had to let our dog go', { said: 'be', beAgain: false }), 'be');
   assert.equal(firstStep('we had to let our dog go', { said: 'yes', ask: false }), 'told');
+  assert.equal(firstStep('we had to let our dog go', { said: 'yes' }), 'told');
   // the switch off: the 'Ask when unsure' check-in for unsure words only, everything else plays as before
   assert.equal(firstStep('we had to let our dog go', { ask: false }), 'check-in');
   assert.equal(firstStep('I am worried about my exam tomorrow', { ask: false }), 'play');
-  assert.equal(firstStep('we had to let our dog go', { ask: false, said: 'else' }), 'play');
+  assert.equal(firstStep('we had to let our dog go', { ask: false, said: 'else' }), 'check-in');
   // the words an answer is kept for: case, apostrophes, punctuation and spacing aside
   assert.equal(answerKey("We had to let our dog go, I think it was my fault."), answerKey('we had to let our dog go I think it was my fault'));
   assert.equal(answerKey('My dad’s gone'), answerKey("my dads gone"));
@@ -208,7 +211,7 @@ test('item 1: firstStep — a detected loss is gentle with no question; every ot
 
 test('item 1: in Another Angle the question comes before anything is sent, made or played; "Just be with it" sends nothing; crisis, care and an escalation come first', () => {
   const aa = read('src/beyond/another-angle.js');
-  assert.match(aa, /import \{ firstStep, answerKey \} from '\.\/angle-first\.js';/);
+  assert.match(aa, /import \{ firstStep, answerKey, questionClock, goodbye \} from '\.\/angle-first\.js';/);
   const after = between(aa, 'async function afterTell(', 'function firstLook(');
   for (const first of ["if (S.level === 'crisis') { crisisMode(); return; }", "if (S.level === 'care') { careMode(); return; }", 'if (deathEscalation(S.text)) { noteFollow();']) assert.ok(after.indexOf(first) >= 0 && after.indexOf(first) < after.indexOf('startAngle('), first);
   const start = between(aa, 'async function startAngle(', 'const FIRST_QUESTION = {');
@@ -216,29 +219,38 @@ test('item 1: in Another Angle the question comes before anything is sent, made 
   assert.ok(start.indexOf("if (route === 'gentle') return griefMode();") < asks, 'a detected loss never asks');
   for (const later of ['spawnThought()', 'client.angle(', 'waitingLines(', 'playScene(', "setEmotion({ curious: 0.65, playful: 0.35 }"]) assert.ok(asks < start.indexOf(later), later);
   assert.match(start, /const step = firstStep\(S\.text, \{ emotion: S\.emotion, another, said: S\.answers\.get\(key\) \|\| null \}\);/);
-  // a remembered gentle answer goes to the gentle path (never to a mechanic); "Just be with it" sends nothing (asked: true)
-  assert.match(start, /if \(step === 'be' \|\| step === 'told'\) return griefMode\(\{ told: 'loss', asked: step === 'be' \}\);/);
-  assert.match(start, /if \(v === 'be' \|\| v === 'yes'\) \{ S\.answers\.set\(key, v\); S\.lossSaid = true; S\.noPlay = true; return griefMode\(\{ told: 'loss', asked: v === 'be' \}\); \}/);
-  const grief = between(aa, 'async function griefMode(', 'async function unclear(');
+  // (r2-angle item 5) "Just be with it" is its own quiet path (beWithIt: nothing sent); the check-in's yes is the gentle path;
+  // (item 2) only those gentle answers are remembered, never "Another angle"
+  assert.match(start, /if \(step === 'be'\) return beWithIt\(\);\s*if \(step === 'told'\) return griefMode\(\{ told: 'loss' \}\);/);
+  assert.match(start, /if \(v === 'be'\) \{ S\.answers\.set\(key, 'be'\); return beWithIt\(\); \}/);
+  assert.match(start, /if \(v === 'yes'\) \{ S\.answers\.set\(key, 'yes'\); S\.lossSaid = true; S\.noPlay = true; return griefMode\(\{ told: 'loss' \}\); \}/);
+  assert.equal((start.match(/S\.answers\.set\(/g) || []).length, 2, 'only the gentle answers are kept');
+  const be = between(aa, 'async function beWithIt(', 'async function unclear(');
+  assert.doesNotMatch(be, /client\.|spawnThought|playScene|S\.grief = true|S\.keepSupport = true|griefMode\(/);
+  const grief = between(aa, 'async function griefMode(', 'const heavySeen = ');
   assert.match(grief, /if \(!scene && !asked && serverMode\(\)\) \{/, 'asked: no request');
   const q = between(aa, 'const FIRST_QUESTION = {', 'async function waitingLines(');
-  assert.match(q, /choice: \{ ask: ANGLE_CHOICE\.ask, ms: ANGLE_CHOICE\.ms, options: \[\{ label: ANGLE_CHOICE\.angle, value: 'angle', primary: true \}, \{ label: ANGLE_CHOICE\.be, value: 'be' \}\] \}/);
-  assert.match(q, /S\.phase = 'asking';\s*careFace\(\);\s*dockShow\(\{\}\);\s*layer\.lossCheck = app\.pushLayer\?\.\(\) \|\| 0;/);
+  // (r2-angle item 7, a coordinator default) equal weight: the same chip style, "Another angle" first
+  assert.match(q, /choice: \{ ask: ANGLE_CHOICE\.ask, ms: ANGLE_CHOICE\.ms, options: \[\{ label: ANGLE_CHOICE\.angle, value: 'angle' \}, \{ label: ANGLE_CHOICE\.be, value: 'be' \}\] \}/);
+  assert.match(q, /S\.phase = 'asking';[\s\S]*?careFace\(\);\s*dockShow\(\{\}\);\s*layer\.lossCheck = app\.pushLayer\?\.\(\) \|\| 0;/);
   assert.doesNotMatch(q, /client\.|spawnThought|playScene|setStage\('playful'\)/);
   // no squeeze quips while it asks, no reload, Back lets it go
   assert.match(aa, /if \(\['arrive', 'invite', 'squeeze', 'end'\]\.includes\(S\.phase\)/);
   assert.match(aa, /'typing', 'asking'\]\.includes\(S\.phase\)/);
 });
 
-test('item 2: after the gentle path the Tell opens empty (never prefilled with those words); it is prefilled again after an angle', () => {
+test('item 2 (r2-angle item 2): after any answer the Tell opens empty, after an angle too; the words are kept only when the question was let go', () => {
   const aa = read('src/beyond/another-angle.js');
   const open = between(aa, 'function openTellNow() {', 'let draftT = 0;');
-  assert.match(open, /const prefill = S\.lastGentle \? '' : S\.text;/);
+  assert.match(open, /const prefill = S\.keepWords \? S\.text : '';/);
   assert.match(open, /hasPlan: true, text: prefill,/);
   assert.match(open, /if \(prefill\) readDraft\(prefill\);/);
-  assert.match(between(aa, 'async function griefMode(', 'async function unclear('), /S\.lastGentle = true;/);
+  assert.doesNotMatch(aa, /lastGentle/);
+  // a new Tell clears it; the question sets it while it is up; any answer clears it again
+  assert.match(between(aa, 'async function afterTell(', 'function firstLook('), /S\.keepWords = false;/);
+  assert.match(between(aa, 'async function askFirst(', 'let stopClock = null;'), /S\.keepWords = true;/);
   const start = between(aa, 'async function startAngle(', 'const FIRST_QUESTION = {');
-  assert.ok(start.indexOf('S.lastGentle = false;') > start.indexOf('await askFirst(step)') && start.indexOf('S.lastGentle = false;') < start.indexOf('spawnThought()'));
+  assert.ok(start.indexOf('if (v) S.keepWords = false;') > start.indexOf('await askFirst(step)'));
 });
 
 // ---------------------------------------------------------------------------- the replay --
@@ -250,8 +262,8 @@ test('replay: the question before any request; Another angle → a mechanic; Jus
       assert.deepEqual([angleR.asked, angleR.question, angleR.requestsBeforeAnswer], [true, 'choice', 0], `${t} @${s}`);
       assert.ok(['play', 'nomore', 'gentle'].includes(angleR.route), `${t} @${s}: ${angleR.route}`);
       const be = visit(t, { server, answer: 'be' });
-      assert.deepEqual([be.route, be.requests, be.mechanics.length], ['gentle', 0, 0], `${t} @${s}`);
-      assert.deepEqual([be.scenes[0].subtitle_line_1, be.scenes[0].subtitle_line_2], [...GRIEF.loss], `${t} @${s}`);
+      assert.deepEqual([be.route, be.requests, be.mechanics.length, be.scenes.length, be.grief], ['be', 0, 0, 0, false], `${t} @${s}`);
+      assert.deepEqual(be.said.slice(-4), [BE_WITH.line, BE_WITH.second, BE_WITH.ask, BE_WITH.squeeze], `${t} @${s}`);
       const quiet = visit(t, { server, answer: null });
       assert.deepEqual([quiet.route, quiet.requests, quiet.scenes.length], ['quiet', 0, 0], `${t} @${s}`);
     }
@@ -262,18 +274,20 @@ test('replay: the question before any request; Another angle → a mechanic; Jus
   assert.equal(play.mechanics.length, 1);
 });
 
-test('replay: Yes-then-resend — after "Just be with it" (or the check-in’s yes) the same words sent again go gently, with no question and nothing sent', () => {
+test('replay: resend — after "Just be with it" the same words are asked again (r2-angle item 7); after the check-in’s yes they go gently, nothing sent', () => {
   for (const [t] of P.SEM_B3_RESEND) {
     for (const s of ALL_SCENE_STUBS) {
-      const again = visit(t, { server: STUBS[s] || null, said: 'be' });
-      assert.deepEqual([again.route, again.asked, again.requests, again.mechanics.length], ['gentle', false, 0, 0], `${t} @${s}`);
+      // (asked again, before anything is sent; "Just be with it" again is its quiet path, nothing sent)
+      const again = visit(t, { server: STUBS[s] || null, said: 'be', answer: 'be' });
+      assert.deepEqual([again.route, again.asked, again.requestsBeforeAnswer, again.requests, again.mechanics.length], ['be', true, 0, 0, 0], `${t} @${s}`);
       assert.ok(!framed(again), `${t} @${s}`);
       // (the switch off: the check-in's yes, remembered; its lines may come from the server, never its mechanic)
       const told = visit(t, { server: STUBS[s] || null, said: 'yes', asks: false });
       assert.deepEqual([told.route, told.asked, told.mechanics.length], ['gentle', false, 0], `${t} @${s}`);
     }
-    // the reviewer's visit: let our dog go → "Yes" → resend: never return_responsibility, never "on one thought"
-    const R = visit(t, { said: 'be' });
+    // the reviewer's visit: let our dog go → "Yes" → resend: never return_responsibility, never "on one thought" (r2-angle: the
+    // check-in's yes is the remembered loss; after "Just be with it" the resend is asked again, above, and plays only if chosen)
+    const R = visit(t, { said: 'yes' });
     assert.ok(!R.said.some((l) => /Lots of things shape|one part of it|on one thought/.test(l)), R.said.join(' | '));
   }
 });

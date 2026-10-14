@@ -134,7 +134,8 @@ test('B2.3: grief in the orchestrator: no Thought Mallow, no mechanic, nothing p
   assert.doesNotMatch(grief, /startAngle|playScene|spawnThought|loadMechanic|setStage\('playful'\)/);
   // (r8: nor after any word of the backstop's bag)
   assert.match(src, /if \(S\.grief \|\| S\.noPlay\) return;/, 'no playful squeeze lines after a loss');
-  assert.match(src, /const heavy = S\.crisis \|\| S\.care \|\| S\.grief;/, 'Finish says the calm lines');
+  // (r2-angle item 5: angle-first.js goodbye decides; heavy is crisis, care or the grief path, never "Just be with it" alone)
+  assert.match(src, /const bye = goodbye\(S\);\s*const heavy = bye\.heavy;/, 'Finish says the calm lines');
   // its lines hold the brand rule and the one-short-sentence rule
   for (const l of [...GRIEF.loss, ...GRIEF.grief, GRIEF.ask, GRIEF.squeeze]) { assert.ok(l.length <= 60, l); assert.doesNotMatch(l, /\bAI\b|angle|reframe/i, l); }
 });

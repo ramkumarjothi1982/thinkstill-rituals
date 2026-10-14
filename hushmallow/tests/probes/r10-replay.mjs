@@ -7,9 +7,9 @@
 // Keep it in step with another-angle.js: each step below names the function it mirrors.
 
 import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
-import { deathEscalation, serverLoss, griefLinesOk } from '../../src/beyond/grief.js';
+import { deathEscalation, serverLoss, griefLinesOk, suicideFuture } from '../../src/beyond/grief.js';
 import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm, lossRoute, griefFeeling } from '../../src/beyond/backstop.js';
-import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, mechanicLines } from '../../src/beyond/lines.js';
+import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, BE_WITH, END, mechanicLines } from '../../src/beyond/lines.js';
 import { firstStep, ASK_BEFORE_ANGLE } from '../../src/beyond/angle-first.js';
 import { validateScene, PATTERNS } from '../../src/beyond/vocab.js';
 import { checkText } from '../../src/engine/safety.js';
@@ -92,19 +92,29 @@ function drawn(scene, parts, L) {
  * that is not a detected loss, crisis or care is asked "Shall we look at this from another angle, or just be with it?"
  * instead: `answer` 'angle' (or 'else') plays, 'be' (or 'yes') is the gentle path with nothing sent, null is quiet; R.question
  * says which question was asked ('choice' | 'check-in'). `said`: the answer remembered from an earlier send of the same words.
+ * (r2-angle) "Just be with it" is a quiet path of its own (another-angle.js beWithIt): route 'be', nothing sent, R.beOptions the
+ * chips it offers; only the gentle answers are remembered ('be' is asked again: BE_ASKS_AGAIN); no answer sets noPlay; R.grief and
+ * R.finishLevel / R.finishLines are what Finish would do (another-angle.js finish); a suicide death beside a first-person future
+ * is care on the gentle path with nothing sent (grief.js suicideFuture); a grief-family feeling with no words is gentle.
  */
 export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else', asks = ASK_BEFORE_ANGLE, said = null } = {}) {
-  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0 };
-  const S = { level: 'none', follow: false, noPlay: false, grief: false, shown: [], used: [] };
+  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0, grief: false, beOptions: null, finishLevel: 'none', finishLines: null };
+  const S = { level: 'none', follow: false, noPlay: false, grief: false, care: false, crisis: false, heavyDraft: false, shown: [], used: [] };
   const say = (l) => { for (const x of [l].flat()) if (x) R.said.push(String(x)); };
   const note = (r) => { if (r?.level && LEVELS.indexOf(r.level) > LEVELS.indexOf(S.level)) S.level = r.level; };
   const ask = (prev) => { R.requests++; return clientShape(server(text, { previous: prev })); };
-  const done = (route) => { R.route ||= route; R.noPlay = S.noPlay; R.quips = !(S.grief || S.noPlay || S.level !== 'none'); return R; };
+  const done = (route) => {
+    R.route ||= route; R.noPlay = S.noPlay; R.quips = !(S.grief || S.noPlay || S.level !== 'none'); R.grief = S.grief;
+    // finish(): the goodbye and the safety level sent home
+    R.finishLines = S.crisis || S.care || S.grief ? SAFETY.finish : END.finish;
+    R.finishLevel = S.level !== 'none' ? S.level : S.grief ? 'concern' : 'none';
+    return R;
+  };
   // careMode, crisisMode
-  const care = (lines = S.follow ? SAFETY.follow : SAFETY.care) => { R.careLines = lines; R.faces.push('attentive'); say(lines); say(SAFETY.careAsk); return done(S.follow ? 'follow' : 'care'); };
-  const crisis = () => { R.faces.push('attentive'); say(SAFETY.crisis); return done('crisis'); };
+  const care = (lines = S.follow ? SAFETY.follow : SAFETY.care) => { S.care = true; note({ level: 'care' }); R.careLines = lines; R.faces.push('attentive'); say(lines); say(SAFETY.careAsk); return done(S.follow ? 'follow' : 'care'); };
+  const crisis = () => { S.crisis = true; note({ level: 'crisis' }); R.faces.push('attentive'); say(SAFETY.crisis); return done('crisis'); };
   // readDraft
-  const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) S.noPlay = true; };
+  const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) { S.noPlay = true; S.heavyDraft = true; } };
 
   // afterTell: firstLook (no feeling chosen): a feeling's look, else the first candidate pattern's (review r11: never
   // 'valid_anger' beside a bag word, so the Thought Mallow and the mechanic are never tinted anger beside a loss)
@@ -114,11 +124,12 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
   if (S.level === 'crisis') return crisis();
   if (S.level === 'care') return care();
   if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
-  if (!hasWords(text)) return done('unclear');
 
   // griefMode
   const griefMode = ({ scene = null, asked = false, told = null } = {}) => {
     if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
+    // (r2-angle item 1) a suicide death beside a first-person future: care, said gently, nothing sent
+    if (suicideFuture(text)) return care(SAFETY.careGentle);
     S.grief = true; S.noPlay = true;
     R.faces.push('attentive');
     say(GRIEF.heard);
@@ -134,6 +145,17 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     say([scene.subtitle_line_1, scene.subtitle_line_2, GRIEF.ask, GRIEF.squeeze]);
     return done('gentle');
   };
+  // (r2-angle item 5) beWithIt: its own quiet path, nothing sent; "See support" only when something heavy was seen
+  const beWithIt = (route) => {
+    S.noPlay = true;
+    R.faces.push('attentive');
+    const heavy = S.level !== 'none' || S.heavyDraft || route === 'ask' || bagWords(text);
+    R.beOptions = (heavy ? BE_WITH.optionsHeavy : BE_WITH.options).map((o) => o.value);
+    say([BE_WITH.line, BE_WITH.second, BE_WITH.ask, BE_WITH.squeeze]);
+    return done('be');
+  };
+  // (r2-angle item 7) only a grief-family feeling chosen, no words: the gentle path, nothing to send
+  if (!hasWords(text)) return griefFeeling(emotion) ? griefMode({ asked: true }) : done('unclear');
 
   for (let k = 0; k < walk; k++) {
     // startAngle (lossRoute: death talk, someone alive but going, a strong loss cue, a grief-family feeling: gentle; else the
@@ -141,15 +163,18 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     const route = lossRoute(text, { emotion });
     if (route === 'gentle') return griefMode();
     const step = firstStep(text, { emotion, another: k > 0, said, ask: asks });
-    if (step === 'be' || step === 'told') { S.noPlay = true; return griefMode({ told: 'loss', asked: step === 'be' }); }
+    if (step === 'be') return beWithIt(route);
+    if (step === 'told') { S.noPlay = true; return griefMode({ told: 'loss' }); }
     if (step === 'choice' || step === 'check-in') {
       R.asked = true; R.question = step; R.requestsBeforeAnswer = R.requests;
       R.faces.push('attentive');
       say(step === 'choice' ? ANGLE_CHOICE.ask : LOSS_CHECK.ask);
       const v = step === 'choice' ? ({ be: 'be', yes: 'be', angle: 'angle', else: 'angle' })[answer] : ({ yes: 'yes', else: 'else', be: 'yes', angle: 'else' })[answer];
-      if (v === 'be' || v === 'yes') { S.noPlay = true; return griefMode({ told: 'loss', asked: v === 'be' }); }
-      if (!v) return done('quiet');
-      said = v;
+      if (v === 'be') return beWithIt(route);
+      if (v === 'yes') { S.noPlay = true; return griefMode({ told: 'loss' }); }
+      // (r2-angle item 3) let go: quiet for the rest of the visit
+      if (!v) { S.noPlay = true; return done('quiet'); }
+      // (r2-angle item 2) "Another angle" is never remembered: the next Tell of these words is asked again
     }
     const unsure = route === 'ask';
     let feel = null;
