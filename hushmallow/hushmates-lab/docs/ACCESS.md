@@ -36,7 +36,9 @@ Hushmates now has two separate experiences, and the server keeps them apart.
   SameSite=Strict cookie (Secure in production). The server keeps the mapping
   from that cookie to the internal session, so page scripts can't read either.
   Coming back after signing out needs the same invitation code and the same
-  name. Guessing invitations is slowed to 10 tries per 15 minutes.
+  name. Guessing invitations is slowed to 10 wrong tries per 15 minutes. An
+  account keeps at most 5 sessions and 6 live-update streams. A device signing
+  in again replaces its own session, and idle sessions are swept.
 - **The API** (`/api/v1/rpc/<method>`) reaches only the methods a person may
   use (`CLIENT_METHODS`). The safety-desk methods (`MODERATOR_METHODS`) check
   the moderator role on the server. Test, account and internal methods
@@ -53,8 +55,10 @@ Hushmates now has two separate experiences, and the server keeps them apart.
 
 - `testMode` must be set for test identities to exist (`createTestAccount`,
   `signInTestAccount`, `seedRelay`). Only the lab and the tests set it, and the
-  server never does. A test identity found in saved state is nobody on a
-  server: it can't sign in.
+  server never does. A server refuses to start from saved state that holds test
+  identities or testing examples. As a second safeguard outside test mode, a
+  test identity can't sign in and its feelings never circulate. `me()` only
+  mentions test identities in the lab.
 - Fixed testing examples (`cannedExamples`) need `testMode` too. A canned
   answer is treated as no answer, and one kept in old state is never shown or
   exported. The label "Example for testing, not generated" lives only in the
@@ -68,8 +72,11 @@ Hushmates now has two separate experiences, and the server keeps them apart.
 
 - `dist/app` holds exactly the files the app loads (68 today; a test pins the
   list, so a stray import of server or lab code fails).
-- Every built file is scanned. The build is refused if it contains lab or
-  control-room words, test identities, simulated services, testing labels,
+- What ships has no comments: developers' notes stay in the source. Every
+  stripped module is checked to still parse.
+- Every built file is scanned as written, and again with split lines and
+  joined pieces read whole. The build is refused (and deleted) if it contains
+  lab or control-room words, test identities, simulated services, testing labels,
   developer signals, server tuning, debug calls, local addresses, anything that
   looks like a credential, or placeholders. A test plants each kind of content
   and checks that the scan catches it.
@@ -109,13 +116,24 @@ field from an allow-list. It is never a copy of stored records.
 - Only the signed-in person's own file can be made. Arguments that name anyone
   else are ignored.
 
-Tests: `tests/your-data.test.mjs` (10). They cover the allow-list, both
-directions of privacy, sealing, removals, reports, blocks, who may export, the
-Mallow perspective, and plain words and ISO dates.
+Other people's perspectives carry no time in the file, and their steps on a
+feeling's journey are dated by day only: the file says exactly when *you* did
+things, never exactly when anyone else did.
+
+If a catcher has blocked the author (after catching the feeling), their
+perspective is set aside. They see the usual thanks and keep their words, but
+the feeling never learns of it: no place taken, no petal, no journey step,
+nothing in the author's file. A perspective the author hid themselves (by
+blocking, reporting or letting it go) leaves no count or petal either.
+
+Tests: `tests/your-data.test.mjs` (12). They cover the allow-list, both
+directions of privacy, sealing, removals, reports, blocks (including the
+set-aside case), who may export, the Mallow perspective, and plain words and
+dates.
 
 ## What the tests prove
 
-`tests/access-control.test.mjs` (18) runs real servers over HTTP in both modes:
+`tests/access-control.test.mjs` (20) runs real servers over HTTP in both modes:
 
 - the lab, its files and test data are 404 in production for everyone, with
   the tester key too, and look like any missing page;
@@ -135,10 +153,16 @@ Mallow perspective, and plain words and ISO dates.
   direct API calls;
 - deleting your data ends the session for good;
 - live updates reach only their person;
+- sessions and live updates end when they should, and can't pile up (a device
+  signing in again replaces its session, deleting your data closes every
+  device's live updates);
+- a server refuses saved lab state (test identities, testing examples);
 - a build changed after it was made is refused.
 
-`tests/build.test.mjs` (4) checks the build: the file list, the scan, planted
-defects and the pinned list. `tests/audit-fixes.test.mjs` (6) covers the
+`tests/build.test.mjs` (7) checks the build: the file list, the scan, planted
+defects (including split and joined words, and SVG), the pinned list, and that
+stripping comments changes nothing else (strings, templates and regular
+expressions stay exactly as written). `tests/audit-fixes.test.mjs` (6) covers the
 developer-content audit's findings.
 
 `tools/app-shots.mjs` drives the customer app as customers get it: the

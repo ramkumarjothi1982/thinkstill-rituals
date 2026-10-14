@@ -1,0 +1,178 @@
+{
+  "base": "production build, production-mode server",
+  "screens": [
+    {
+      "name": "01-invite",
+      "file": "01-invite.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "02-invite-filled",
+      "file": "02-invite-filled.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "03-welcome",
+      "file": "03-welcome.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "04-welcome-promises",
+      "file": "04-welcome-promises.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "05-release",
+      "file": "05-release.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "06-release-sent",
+      "file": "06-release-sent.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "07-returned-shelf",
+      "file": "07-returned-shelf.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "08-homecoming",
+      "file": "08-homecoming.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "09-perspective-kept",
+      "file": "09-perspective-kept.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "10-journeys",
+      "file": "10-journeys.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "11-mallow-available",
+      "file": "11-mallow-available.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "12-mallow-perspective",
+      "file": "12-mallow-perspective.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "13-support",
+      "file": "13-support.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "14-you",
+      "file": "14-you.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "15-you-end",
+      "file": "15-you-end.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "16-your-data",
+      "file": "16-your-data.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "17-your-data-end",
+      "file": "17-your-data-end.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "18-your-data-downloaded",
+      "file": "18-your-data-downloaded.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "19-lab-is-not-here",
+      "file": "19-lab-is-not-here.png",
+      "url": "/lab/",
+      "hits": []
+    },
+    {
+      "name": "20-catch-offer",
+      "file": "20-catch-offer.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "21-catch-write",
+      "file": "21-catch-write.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "22-away",
+      "file": "22-away.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "23-invite-320x568",
+      "file": "23-invite-320x568.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "24-your-data-320x568",
+      "file": "24-your-data-320x568.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "23-invite-1280x860",
+      "file": "23-invite-1280x860.png",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "24-your-data-1280x860",
+      "file": "24-your-data-1280x860.png",
+      "url": "/app/",
+      "hits": []
+    }
+  ],
+  "problems": [],
+  "console": [],
+  "expected": [
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "error: Failed to load resource: net::ERR_FAILED"
+  ],
+  "download": {
+    "name": "hushmates-my-data-2026-10-14.json",
+    "format": "hushmates-personal-data",
+    "version": 1,
+    "feelings": 2,
+    "perspectivesFromHushmates": 5
+  }
+}
