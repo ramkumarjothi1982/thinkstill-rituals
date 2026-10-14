@@ -90,9 +90,12 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 .hf-subs { position: fixed; z-index: 2; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 10px;
   padding: 0 var(--hf-edge); pointer-events: none; transition: transform 520ms var(--hf-ease); }
 .hf-sub { position: relative; max-width: min(92vw, 34em); text-align: center; isolation: isolate; }
-/* a soft, feathered scrim; the scene deepens it over bright realms (--hf-scrim, sampled once per line) */
+/* a soft, feathered scrim; the scene deepens it over bright realms (--hf-scrim, sampled once per line), and deeper still
+   over a bright spot behind it (--hf-hot-*: the daytime sun), so that never shows through the dark as a muddy blob */
 .hf-sub::before { content: ''; position: absolute; z-index: -1; inset: -14px -24px -16px; border-radius: 999px; pointer-events: none;
-  background: rgba(9, 6, 28, var(--hf-scrim, 0.5)); filter: blur(12px); transition: background-color 360ms var(--hf-ease); }
+  background: radial-gradient(circle at var(--hf-hot-x, 50%) var(--hf-hot-y, 50%), rgba(9, 6, 28, var(--hf-hot-a, 0)) 0,
+    rgba(9, 6, 28, var(--hf-hot-a, 0)) var(--hf-hot-r, 0px), rgba(9, 6, 28, 0) calc(var(--hf-hot-r, 0px) * 1.9)), rgba(9, 6, 28, var(--hf-scrim, 0.5));
+  filter: blur(12px); transition: background-color 360ms var(--hf-ease); }
 .hf-sub .who { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 5px; font: 700 calc(13px * var(--hf-k))/1 var(--hf-ff-ui); letter-spacing: 0.04em;
   color: #efeaff; text-shadow: 0 1px 8px rgba(5, 3, 20, 0.8); }
 .hf-sub .who::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--hf-who, var(--hf-glow)); box-shadow: 0 0 10px var(--hf-who, var(--hf-glow)); }
@@ -125,7 +128,11 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 .hf-subctl { display: inline-flex; align-items: center; gap: 0; padding: 2px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(14, 10, 36, 0.52); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0.82;
   transition: opacity 360ms var(--hf-ease), transform 360ms var(--hf-ease); }
-.hf-subctl.is-hidden { opacity: 0; transform: translateY(-4px); pointer-events: none !important; visibility: hidden; }
+.hf-subctl.is-hidden { opacity: 0; transform: translateY(-4px); pointer-events: none !important; visibility: hidden; transition-delay: 0s; }
+/* it comes in a moment after its line starts to (the line rises 620 ms): never seen first, alone; between two lines it
+   steps out with the line (.gap: no line on the stage), keeping its focus */
+.hf-subctl:not(.is-hidden):not(.gap) { transition-delay: 180ms; }
+.hf-subctl.gap { opacity: 0 !important; transform: translateY(-4px); pointer-events: none !important; transition-duration: 240ms; transition-delay: 0s; }
 .hushfold.hf-tight .hf-subctl { display: none; }
 /* the garden installation pauses the lines for its moment: that is not the person's pause, so no ▶ pill (and the card has the room) */
 .hushfold.hf-install-quiet .hf-subctl { visibility: hidden !important; pointer-events: none !important; }

@@ -345,3 +345,24 @@ test('canvasGL only: an overlay 2D canvas is laid just above it (polish 13)', ()
   L.destroy();
   assert.equal(host.children.length, 1, 'and takes it away when destroyed');
 });
+
+test('a lone thought on a small home stage (320×568): two lines when the first line alone would cut the person\'s words to a few (final main polish)', () => {
+  VIEW.W = 320; VIEW.H = 568;
+  // (the Hushfold's home stage at 320×568 after Send: the hero above, the thought's room down to the dock)
+  const hero = { left: 30, top: 235, right: 230, bottom: 430 };
+  const L = new ThoughtLayer({ bounds: () => ({ left: 10, right: 310, top: 188, bottom: 500 }), keepOut: () => hero, reducedMotion: false, tagRoot: document.body });
+  const text = 'I\'m so angry my boss ignored me again';
+  const th = L.add({ text, emotion: 'angry', intensity: 0.75, r: 32 }, { from: { x: 130, y: 280 }, home: { x: 263, y: 470 } });
+  for (let i = 0; i < 60 * 6; i++) L.frame(1 / 60);
+  const tg = L.tags.get(th);
+  assert.equal(tg.text, text, `all of the words show (${JSON.stringify(tg.text)}, ${tg.cur?.lines} lines, crowd ${L.crowd})`);
+  assert.ok(tg.cur.lines >= 2);
+  const r = L.tagRect(th);
+  assert.ok(r && !(r.left < hero.right && r.right > hero.left && r.top < hero.bottom && r.bottom > hero.top), `clear of the hero: ${JSON.stringify(r)}`);
+  // a second thought: the plan's places are theirs again (the extra line goes when the stage is planned anew)
+  L.add({ text: 'my sister forgot my birthday again this year', emotion: 'sad', intensity: 0.6, r: 32 }, { from: { x: 130, y: 280 }, home: { x: 80, y: 470 } });
+  for (let i = 0; i < 60 * 4; i++) L.frame(1 / 60);
+  assert.equal(L.tags.get(th).up || 0, 0, 'no extra line with company');
+  L.destroy();
+  VIEW.W = 390; VIEW.H = 844;
+});

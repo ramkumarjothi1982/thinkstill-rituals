@@ -3,10 +3,13 @@
 //
 //   onOffer(ctx) = keepDiscovery(ctx)  ← THE entry point for the Hushfold's
 //       'offer' event. ctx: { app, store, skillId, worldId, mallow, origin,
-//       face, avoid, subtitles, reducedMotion, lowStim, signal } (origin and
-//       face may be rects or functions that return the current rect; avoid:
+//       face, avoid, words, subtitles, reducedMotion, lowStim, signal } (origin
+//       and face may be rects or functions that return the current rect; avoid:
 //       rects, {x,y,w,h} or {left,top,…}, or a function returning them: what
-//       must stay uncovered, e.g. the world's postcards and Thought Mallow).
+//       must stay uncovered, e.g. the world's postcards and Thought Mallow;
+//       words: a function returning the person's words tags, and their thoughts
+//       with soft: true, live — the installation's ripple forms beside them, its
+//       charm flies round them and nothing it paints ever lies on a tag).
 //       → Promise<{ kept, already, stored, action }>: offer → save (only on
 //       the "Keep this" tap) → install. A tool that is already kept is not
 //       offered again: it is marked as practised and a quiet note says so.
@@ -20,8 +23,8 @@
 //       face: it sits below the body or above the head when there is room,
 //       else a compact card or a one-row bar below the face. Left alone for a
 //       while it folds into a small chip in a corner (tap → the offer again).
-//   playInstall({ canvas | ctx, from:{x,y} | origin, face, skillId, mallow, app,
-//                 subtitles, reducedMotion, lowStim, bright, onDone })
+//   playInstall({ canvas | ctx, from:{x,y} | origin, face, words, skillId, mallow,
+//                 app, subtitles, reducedMotion, lowStim, bright, onDone })
 //       → Promise<{action}> & { skip(), cancel(), seek(t) }
 //       The sequence (≈3.4 s, the card at 2.6 s; reduced motion ≈1.5 s): a
 //       luminous ripple gathers above the Mallow → the charm forms in it →
@@ -172,6 +175,8 @@ const CSS = `
 .hm-chip.is-reduced { transform: none; transition: opacity .35s ease; }
 /* no corner is free (the side panel or the phone sheet is open over them): the chip waits, unseen, until one is */
 .hm-chip.is-blocked { visibility: hidden; pointer-events: none; }
+/* the shell holds the moment (a world saying goodbye): the chip waits, unseen, until it lets go (holdInstall) */
+.hm-chip.is-held { visibility: hidden; pointer-events: none; }
 .hm-chip canvas { flex: 0 0 auto; display: block; margin: -4px -2px; }
 .hm-chip span { overflow-wrap: anywhere; }
 `;
@@ -411,7 +416,16 @@ function visibleRect(el) {
 const OBSTACLES = '.hf-sub, .hf-chips:not([hidden]), .hf-subctl:not(.is-hidden), .hf-read';
 function obstacleRects() {
   if (typeof document === 'undefined') return [];
-  return [...document.querySelectorAll(OBSTACLES)].map(visibleRect).filter(Boolean);
+  // (a line still fading in counts already: what is placed now must not end up under it a moment later)
+  return [...document.querySelectorAll(OBSTACLES)].map((e) => (e.matches('.hf-sub') ? shownRect(e) : visibleRect(e))).filter(Boolean);
+}
+/** Like visibleRect, whatever its opacity (a line arriving or leaving still has its place). */
+function shownRect(el) {
+  if (!el?.isConnected || el.hidden) return null;
+  const r = el.getBoundingClientRect();
+  if (!(r.width > 0 && r.height > 0)) return null;
+  const cs = getComputedStyle(el);
+  return cs.visibility === 'hidden' || cs.display === 'none' ? null : r;
 }
 /**
  * What the caller says must stay clear (a world's postcards and Thought Mallow, a reserved band): rects or a function
@@ -426,6 +440,8 @@ function extraRects(avoid) {
     if (o && r.hard) o.hard = true;
     // (a world's decoration — its postcards and photo bubbles — may lie under an offer rather than the Mallow)
     if (o && (r.kind === 'card' || r.kind === 'bubble')) o.decor = true;
+    // (the world's subtitle band in its free time: an offer may lie in it when nothing outside it is clear)
+    if (o && r.kind === 'band') o.band = true;
     return o;
   }).filter(Boolean);
 }
@@ -491,7 +507,9 @@ function freeSpans(y0, y1, xL, xR, obstacles) {
  * the body but off the face; else the smallest form against the face's edge
  * with the most room.
  * apply(form) sets the form; lift(form) is how far a part (the card's charm)
- * rises above the box. Returns { form, left, top, w, h } (top of the box).
+ * rises above the box. Returns { form, left, top, w, h, tier } (top of the box; tier: 'clear' of everything, 'band' —
+ * in the subtitle band's free time —, 'decor' — over a world's postcards or bubbles —, 'face' — over the body, off the
+ * face — or 'squeezed').
  */
 function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, lift = () => 0, extra = [] }) {
   const fr = screenFrame();
@@ -510,7 +528,7 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
   const cx = geom ? geom.body.cx : fr.W / 2;
   const size = (form) => { apply(form); return { w: el.offsetWidth || 300, h: (el.offsetHeight || 120) + lift(form), lift: lift(form) }; };
   const leftFor = (w) => clamp(cx - w / 2, 16, Math.max(16, fr.W - 16 - w));
-  const tryIn = (list, obs = obstacles) => {
+  const tryIn = (list, obs = obstacles, tier = 'clear') => {
     for (const form of forms) {
       const { w, h, lift: l } = size(form);
       for (const [y0, y1, anchor, sideLeft] of list) {
@@ -522,18 +540,20 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
           // level with the body's middle, in the free span nearest to it
           const want = geom.body.top + geom.body.height * 0.5 - (h - l) / 2 - l;
           const best = spans.map(([s, e]) => [s, e, clamp(want, s, e - h)]).sort((a, b) => Math.abs(a[2] - want) - Math.abs(b[2] - want))[0];
-          return { form, left, top: best[2] + l, w, h: h - l, region: 'side' };
+          return { form, left, top: best[2] + l, w, h: h - l, region: 'side', tier };
         }
         const span = anchor === 'top' ? spans[0] : spans[spans.length - 1];
         const top = (anchor === 'top' ? span[0] : span[1] - h) + l;
-        return { form, left, top, w, h: h - l, region: anchor === 'top' ? 'below' : 'above' };
+        return { form, left, top, w, h: h - l, region: anchor === 'top' ? 'below' : 'above', tier };
       }
     }
     return null;
   };
   // the clear of everything first; then still clear of the whole body (with room for its hop), the lines and the
   // person's thought, lying over a world's postcards or bubbles if it must; only then over the body, off the face
-  let p = tryIn(regions.clear) || tryIn(regions.clear, obstacles.filter((o) => !o.decor)) || tryIn(regions.face);
+  // (in between: in the subtitle band's free time, which a line coming takes back — the offer then steps aside or folds)
+  let p = tryIn(regions.clear) || tryIn(regions.clear, obstacles.filter((o) => !o.band), 'band')
+    || tryIn(regions.clear, obstacles.filter((o) => !o.decor), 'decor') || tryIn(regions.face, obstacles, 'face');
   if (!p) {
     const form = forms[forms.length - 1];
     const { w, h, lift: l } = size(form);
@@ -543,13 +563,15 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
       top = roomBelow >= roomAbove ? geom.face.bottom + 8 : geom.face.top - 8 - h;
     } else top = fr.bottomLimit - h;
     top = clamp(top, fr.ins.top + 8, Math.max(fr.ins.top + 8, fr.H - fr.ins.bottom - 8 - h)) + l;
-    p = { form, left: leftFor(w), top, w, h: h - l, region: 'squeezed' };
+    p = { form, left: leftFor(w), top, w, h: h - l, region: 'squeezed', tier: 'squeezed' };
   }
   apply(p.form);
   return p;
 }
 
 let openCard = null, openOffer = null, openChip = null;
+// the shell holds the moment (holdInstall): an open offer stays folded, its chip unseen, until it lets go
+let installHeld = false;
 // move focus to the card only for people using a keyboard (touch play is never interrupted)
 let keyboardUser = false;
 if (typeof addEventListener === 'function') {
@@ -572,6 +594,30 @@ export function relayoutInstall() {
   // (and the folded chip: never left over the panel, the sheet or the face the Mallow moved to)
   try { openChip?.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
 }
+/**
+ * A world is saying goodbye (the Hushfold's Finish): its last frame melts away and its closing line plays on a stage
+ * that is changing under the offer. While held, an offer still open folds into its chip at once (it never unfolds into
+ * a full card on the roomier home stage meanwhile, over the closing line, the dock or the person's thought on its way
+ * home) and the chip — this one, or a folded card's — waits unseen. Let go (false): the chip fades in, in a corner
+ * clear of what is on stage then. Nothing is saved or lost either way: a tap on the chip still brings the choice back.
+ */
+export function holdInstall(on) {
+  const was = installHeld;
+  installHeld = !!on;
+  if (installHeld) {
+    try { openOffer?.__fold?.(); } catch (e) { console.warn('[garden-install]', e); }
+    try { openCard?.__fold?.(); } catch (e) { console.warn('[garden-install]', e); }
+  }
+  const chip = openChip;
+  if (!chip) return;
+  try { chip.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
+  if (was && !installHeld && !chip.gone) {
+    // (it fades in where it now belongs, rather than appearing at once)
+    chip.el.classList.remove('is-in');
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (!chip.gone) chip.el.classList.add('is-in'); }));
+  }
+}
+export const installHeldNow = () => installHeld;
 /** window 'hm:offer' { phase: 'open' | 'fold' | 'unfold' | 'close', skillId }: the offer's life, for the shell (e.g. holding Auto-flow). */
 function offerEvent(phase, skillId) {
   try { dispatchEvent(new CustomEvent('hm:offer', { detail: { phase, skillId } })); } catch { /* old browsers: no signal, nothing breaks */ }
@@ -631,15 +677,23 @@ function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, ge
     const firm = obstacles.filter((o) => o.hard || !o.soft), body = (g || geom)?.body || null;
     const free = clear(obstacles) || (body ? clear([...firm, body]) : null) || clear(firm);
     b.classList.toggle('is-blocked', !free);
+    b.classList.toggle('is-held', installHeld);
     const at = free || spots[0];
     b.style.left = `${Math.round(at[0])}px`; b.style.top = `${Math.round(at[1])}px`;
   };
   place();
   requestAnimationFrame(() => requestAnimationFrame(() => b.classList.add('is-in')));
   let ttlT = 0;
+  // a line coming onto it (a corner in the subtitle band's free time): it moves to another free corner, or waits unseen
+  // until the line has gone — the lines keep their band; and a chip waiting for a corner tries again as the lines change
+  const stopBand = onBandChange(() => {
+    if (chip.gone) return;
+    const r = b.getBoundingClientRect();
+    if (b.classList.contains('is-blocked') || obstacleRects().some((o) => hits(r, o, 4))) place();
+  });
   const chip = { el: b, gone: false, __place: place, close(instant = false) {
     if (chip.gone) return;
-    chip.gone = true; clearTimeout(ttlT); stopLeave();
+    chip.gone = true; clearTimeout(ttlT); stopLeave(); stopBand();
     if (openChip === chip) openChip = null;
     b.classList.remove('is-in'); b.classList.add('is-out');
     const rm = () => { b.remove(); c.destroy(); };
@@ -690,7 +744,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     document.body.append(el);
     openOffer = el;
 
-    let form = null, charm = null, rect = null, folded = false, foldT = 0, done = false;
+    let form = null, charm = null, rect = null, folded = false, foldT = 0, done = false, tier = null;
     const apply = (f) => {
       el.classList.toggle('is-compact', f === 'compact');
       el.classList.toggle('is-bar', f === 'bar');
@@ -702,6 +756,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       const p = placeBox(el, { forms: ['full', 'compact', 'bar'], apply, kind: 'offer', geom, extra: extraRects(avoid) });
       el.style.left = `${Math.round(p.left)}px`; el.style.top = `${Math.round(p.top)}px`;
       rect = { left: p.left, top: p.top, right: p.left + p.w, bottom: p.top + p.h };
+      tier = p.tier;
       if (p.form !== form) {
         form = p.form;
         charm?.destroy();
@@ -718,9 +773,9 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
 
     // left alone, it folds into a chip in a corner (nothing is saved, nothing lost)
     const armFold = () => { clearTimeout(foldT); if (foldAfterMs > 0) foldT = setTimeout(fold, foldAfterMs); };
-    function fold() {
+    function fold(force = false) {
       if (done || folded) return;
-      if (el.contains(document.activeElement)) { armFold(); return; }
+      if (!force && el.contains(document.activeElement)) { armFold(); return; }
       folded = true;
       el.classList.remove('is-in'); el.classList.add('is-folded');
       offerEvent('fold', skillId);
@@ -731,11 +786,19 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     armFold();
     el.addEventListener('pointerdown', armFold);
     el.addEventListener('focusin', armFold);
+    // (offered while the shell holds the moment: it starts folded, its chip waiting)
+    if (installHeld) fold(true);
 
     const stopLeave = onSceneLeave(() => close(false));
     const stopBand = onBandChange(() => {
       if (done || folded || !rect) return;
-      if (obstacleRects().concat(extraRects(avoid)).some((o) => hits(rect, o, 4))) geom = place();
+      if (!obstacleRects().concat(extraRects(avoid)).some((o) => hits(rect, o, 4))) return;
+      // a line came onto it (it lay in the subtitle band's free time, on a small phone): if the only place left is over
+      // the Mallow, it folds into its chip instead — it never jumps onto the hero's head (the chip waits for a free corner)
+      const was = tier;
+      geom = place();
+      const off = (t) => t === 'clear' || t === 'band' || t === 'decor';
+      if (off(was) && !off(tier)) fold(true);
     });
     const onResize = () => { if (!folded) geom = place(); };
     addEventListener('resize', onResize);
@@ -759,6 +822,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     signal?.addEventListener?.('abort', onAbort);
     el.__close = close;
     el.__place = () => { if (!folded) geom = place(); };
+    el.__fold = () => fold(true);
     no.addEventListener('click', () => close(false));
     yes.addEventListener('click', () => close(true));
   });
@@ -882,6 +946,8 @@ export function playInstall(opts = {}) {
     const rip = () => ({ left: F.x - S * 0.9, right: F.x + S * 0.9, top: F.y - S * 0.6, bottom: F.y + S * 0.6 });
     const block = obstacles.find((o) => hits(rip(), o));
     if (block && geom) F.y = Math.min(Math.max(F.y, block.bottom + S * 0.6 + 4), geom.face.top - S * 0.3);
+    // (the person's words: the ripple forms beside them, never on them — with reduced motion the charm only fades there)
+    ripOffWords(obstacles);
     placeCard();
     // the portal: above, in the clear, where the card's charm will appear when the card is above too
     const topP = fr.topLimit + Rp * 1.25;
@@ -901,8 +967,126 @@ export function playInstall(opts = {}) {
     }
     if (F.y - Pp.y < 110 && Math.abs(Pp.x - F.x) < Rp * 2.6) { Pp.y = Math.max(topP, Math.min(Pp.y, F.y - 60)); if (Math.abs(Pp.x - F.x) < Rp * 1.6) Pp.x = F.x < W / 2 ? W * 0.72 : W * 0.28; }
     Pp.x = clamp(Pp.x, Rp * 1.3 + 12, W - Rp * 1.3 - 12);
+    // ...and the charm's flight keeps off them: it bows the other way round, or the portal opens on the other side
+    flightOffWords(!!at);
+    motesOffWords();
     bright = opts.bright ?? brightAt(Pp.x, Pp.y);
     placeSkip(fr, obstacles);
+  }
+  // ---- the person's thought and its words (opts.words: their rects, live) are never crossed by the moment
+  let bow = 0, bowAmp = 0.2;   // the flight's bow: −1 left / +1 right of the straight way (0: away from the portal's side, as before), × W
+  let ripFree = [];            // where the ripple may form clear of the words, nearest the crown first
+  // (each rect: a thought's words tag, or with soft: true the thought itself, kept clear when it can be)
+  const wordRects = () => {
+    const list = call(opts.words);
+    if (!Array.isArray(list)) return [];
+    return list.map((r) => { const o = asRect(r); return o && { left: o.left - 6, top: o.top - 6, right: o.right + 6, bottom: o.bottom + 6, soft: !!r.soft }; }).filter(Boolean);
+  };
+  const bowOf = (sign) => sign || (F.x <= Pp.x ? -1 : 1);
+  /** The words tags as they are this frame (a thought may move after the moment was placed: its light passes behind them). */
+  const liveTags = () => {
+    if (!opts.words) return [];
+    const list = call(opts.words);
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    for (const r of list) { const o = !r?.soft && asRect(r); if (o) out.push(o); }
+    return out;
+  };
+  /** How many of 24 samples along the flight (the charm’s size round each) lie on the words, or off the screen. */
+  function pathHits(words, sign, amp = bowAmp) {
+    const s0 = bowOf(sign), qx = lerp(F.x, Pp.x, 0.5) + s0 * W * amp, qy = lerp(F.y, Pp.y, 0.55), rr = S * 0.32;
+    let n = 0;
+    for (let k = 0; k <= 24; k++) {
+      const e = k / 24, u = 1 - e, x = u * u * F.x + 2 * u * e * qx + e * e * Pp.x, y = u * u * F.y + 2 * u * e * qy + e * e * Pp.y;
+      if (x < rr || x > W - rr || words.some((w) => x + rr > w.left && x - rr < w.right && y + rr > w.top && y - rr < w.bottom)) n++;
+    }
+    return n;
+  }
+  function ripOffWords(obstacles) {
+    ripFree = [];
+    const words = wordRects();
+    if (!words.length) return;
+    // the ripple's own reach (its rings ≈1.1 S wide each side, ≈0.5 S high) is kept off the words; the rest as before
+    const ring = (x, y) => ({ left: x - S * 1.1, right: x + S * 1.1, top: y - S * 0.5, bottom: y + S * 0.5 });
+    const rip = (x, y) => ({ left: x - S * 0.9, right: x + S * 0.9, top: y - S * 0.6, bottom: y + S * 0.6 });
+    const free = (x, y) => !words.some((w) => hits(ring(x, y), w)) && !obstacles.some((o) => hits(rip(x, y), o));
+    // as near the crown as it can be: within half the Mallow's width (and its own size) of the centre, or a little
+    // lower onto the crown (never down to the eyes); its rings may run off the screen's edge, the charm never
+    const reach = (geom?.body?.width || W * 0.5) * 0.5 + S;
+    const down = geom ? Math.max(0, geom.face.top - S * 0.3 - F.y) : 0;
+    const x0 = F.x, y0 = F.y, lo = S * 0.8, hi = W - S * 0.8;
+    for (let dy = 0; dy <= down; dy += 8) {
+      for (let d = 0; d <= reach; d += 8) {
+        for (const x of d ? [x0 + d, x0 - d] : [x0]) if (x >= lo && x <= hi && free(x, y0 + dy)) ripFree.push({ x, y: y0 + dy, cost: d + dy * 1.5 });
+      }
+    }
+    ripFree.sort((p, q) => p.cost - q.cost);
+    if (ripFree.length) { F.x = ripFree[0].x; F.y = ripFree[0].y; }
+  }
+  /** The motes that gather into the ripple spiral in from round it: each starts at an angle whose way in misses the words. */
+  function motesOffWords() {
+    const words = wordRects();
+    if (!words.length) return;
+    const U = S / 80;
+    const crosses = (a0, r0, sz) => {
+      for (let k = 0; k <= 12; k++) {
+        const e = (k / 12) ** 2, r = r0 * (1 - e), a = a0 + 1.7 * e, x = F.x + Math.cos(a) * r, y = F.y + Math.sin(a) * r * 0.62;
+        if (words.some((w) => x + sz > w.left && x - sz < w.right && y + sz > w.top && y - sz < w.bottom)) return true;
+      }
+      return false;
+    };
+    for (let i = 0; i < N; i++) {
+      const r0 = motes[i * 4 + 1] * 120 * U, sz = (3 + 3 * motes[i * 4 + 3]) * U * 1.2;
+      if (!crosses(motes[i * 4], r0, sz)) continue;
+      let ok = false;
+      for (let j = 1; j < 24 && !ok; j++) { const a = motes[i * 4] + j * (TAU / 24); if (!crosses(a, r0, sz)) { motes[i * 4] = a; ok = true; } }
+      // (no way in misses them: that mote gathers from nearer)
+      if (!ok) motes[i * 4 + 1] *= 0.55;
+    }
+  }
+  function flightOffWords(cardFixed) {
+    bow = 0; bowAmp = 0.2;
+    const words = wordRects();
+    if (!words.length || reduced) return;   // (with reduced motion nothing flies and no portal opens)
+    // the portal's light (its petals and the specks drawn into it reach ≈1.55 Rp) opens off them too
+    const portalOn = () => words.some((w) => Pp.x + Rp * 1.55 > w.left && Pp.x - Rp * 1.55 < w.right && Pp.y + Rp * 1.55 > w.top && Pp.y - Rp * 1.55 < w.bottom);
+    const mirror = () => clamp(W - Pp.x, Rp * 1.3 + 12, W - Rp * 1.3 - 12);
+    if (portalOn() && !cardFixed) { const x0 = Pp.x; Pp.x = mirror(); if (portalOn()) Pp.x = x0; }
+    // clear of the thoughts and their words; failing that, of the words (the tags) at least
+    const tags = words.filter((w) => !w.soft);
+    const f0 = { x: F.x, y: F.y }, p0 = Pp.x;
+    for (const set of tags.length < words.length ? [words, tags] : [words]) {
+      if (!set.length) return;
+      if (tryWays(set)) return;
+      // the portal from the other side (when it isn't where the card's charm will be)
+      if (!cardFixed) { Pp.x = mirror(); if (!portalOn() && tryWays(set)) return; Pp.x = p0; }
+      // the ripple at the next clear place whose way to the portal misses them
+      for (const c of ripFree) { F.x = c.x; F.y = c.y; if (tryWays(set)) return; }
+      F.x = f0.x; F.y = f0.y;
+    }
+    leastWay(tags.length ? tags : words);
+  }
+  // the ways the charm may fly: its own bow or the other way round, then wider
+  const WAYS = [[0, 0.2], [1, 0.2], [0, 0.32], [1, 0.32]];
+  const signOf = (flip) => (flip ? -bowOf(0) : 0);
+  function tryWays(set) {
+    for (const [flip, amp] of WAYS) { const sign = signOf(flip); if (!pathHits(set, sign, amp)) { bow = sign; bowAmp = amp; return true; } }
+    return false;
+  }
+  /** Nothing wholly clear: the way that crosses them least. */
+  function leastWay(set) {
+    let least = Infinity;
+    for (const [flip, amp] of WAYS) { const sign = signOf(flip), n = pathHits(set, sign, amp); if (n < least) { least = n; bow = sign; bowAmp = amp; } }
+  }
+  /** As the charm sets off: its way chosen again against where the thoughts and their words are now (they may have moved). */
+  let rebowed = false;
+  function rebow() {
+    rebowed = true;
+    const words = wordRects();
+    if (!words.length) return;
+    const tags = words.filter((w) => !w.soft);
+    if (tryWays(words) || (tags.length && tryWays(tags))) return;
+    if (pathHits(tags.length ? tags : words, bow, bowAmp)) leastWay(tags.length ? tags : words);
   }
   function placeSkip(fr, obstacles) {
     const w = skip.offsetWidth || 72, hh = skip.offsetHeight || 44;
@@ -949,7 +1133,7 @@ export function playInstall(opts = {}) {
     return trailGr;
   }
   const ctrl = { x: 0, y: 0 };
-  const setCtrl = () => { ctrl.x = lerp(F.x, Pp.x, 0.5) + (F.x <= Pp.x ? -1 : 1) * W * 0.2; ctrl.y = lerp(F.y, Pp.y, 0.55); };
+  const setCtrl = () => { ctrl.x = lerp(F.x, Pp.x, 0.5) + bowOf(bow) * W * bowAmp; ctrl.y = lerp(F.y, Pp.y, 0.55); };
   const bez = (e, out, i) => { const u = 1 - e; out[i] = u * u * F.x + 2 * u * e * ctrl.x + e * e * Pp.x; out[i + 1] = u * u * F.y + 2 * u * e * ctrl.y + e * e * Pp.y; };
   const pos = new Float32Array(2);
 
@@ -1018,6 +1202,7 @@ export function playInstall(opts = {}) {
     const formK = k01(t, T.form, T.form + 0.62);
     const travelK = k01(t, T.travel, T.enter);
     const e = eInOut(travelK);
+    if (travelK > 0 && !rebowed && manual == null) rebow();
     setCtrl();
     if (travelK > 0) bez(e, pos, 0); else { pos[0] = F.x; pos[1] = F.y; }
     const depth = k01(travelK, 0.62, 1);                       // how far into the well it has gone
@@ -1135,7 +1320,19 @@ export function playInstall(opts = {}) {
     g.clearRect(0, 0, canvas.width, canvas.height);
     if (t >= T.end) return;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // the person's words are never painted over: each tag (its rounded plate, 2 px round it) is cut out of this frame
+    const holes = liveTags();
+    if (holes.length) {
+      g.save();
+      for (const h of holes) {
+        g.beginPath(); g.rect(0, 0, W, H);
+        const x = h.left - 2, y = h.top - 2, w = h.width + 4, hh = h.height + 4;
+        if (typeof g.roundRect === 'function') g.roundRect(x, y, w, hh, 17); else g.rect(x, y, w, hh);
+        g.clip('evenodd');
+      }
+    }
     (reduced ? frameReduced : frameFull)(t);
+    if (holes.length) g.restore();
   }
 
   // ---- clock, phases, sound (in the shared Mallow loop)
@@ -1228,6 +1425,9 @@ export function playInstall(opts = {}) {
   }
   card.__finish = finish;
   card.__place = () => { if (!finished) onResize(); };
+  // (the shell holds the moment: a card already showing folds into its "In your garden" chip; one still to come shows as
+  // it would — the installation is the person's own "Keep this", seconds old)
+  card.__fold = () => { if (!finished && cardShown) finish('folded'); };
   const onKey = (e) => { if (e.key !== 'Escape') return; if (cardShown) finish('play'); else if (root.classList.contains('is-animating')) doSkip(); };
   document.addEventListener('keydown', onKey);
   skip.addEventListener('click', doSkip);
@@ -1251,7 +1451,7 @@ export function playInstall(opts = {}) {
       clearTimeout(foldT);
     },
     timing: T,
-    get geometry() { return { from: { ...F }, portal: { ...Pp }, charm: S, portalRadius: Rp, card: cardP && { ...cardP }, bright, face: geom?.face || null, body: geom?.body || null, skip: skip.getBoundingClientRect() }; },
+    get geometry() { return { from: { ...F }, portal: { ...Pp }, bow: bowOf(bow), bowAmp, charm: S, portalRadius: Rp, card: cardP && { ...cardP }, bright, face: geom?.face || null, body: geom?.body || null, skip: skip.getBoundingClientRect() }; },
     el: root,
   });
 }
@@ -1263,7 +1463,7 @@ export function playInstall(opts = {}) {
  * in the garden isn't offered again (it counts as practised, with a quiet
  * note); a save the device refused is said honestly, never "saved".
  */
-export async function keepDiscovery({ app = null, store = app?.store, skillId, worldId = null, mallow = null, origin = null, face = null, avoid = null, from = null, subtitles = null, reducedMotion, lowStim, signal } = {}) {
+export async function keepDiscovery({ app = null, store = app?.store, skillId, worldId = null, mallow = null, origin = null, face = null, avoid = null, words = null, from = null, subtitles = null, reducedMotion, lowStim, signal } = {}) {
   const skill = getSkill(skillId);
   if (!store || !skill) return { kept: false, already: false, stored: false, action: null };
   const mallowId = typeof mallow === 'string' ? mallow : mallow?.id || null;
@@ -1282,7 +1482,7 @@ export async function keepDiscovery({ app = null, store = app?.store, skillId, w
   }
   // stopped after the save (a safety hold, the person leaving): the tool is kept, the moment isn't played
   if (signal?.aborted) return { kept: true, already: false, stored: true, action: null };
-  const handle = playInstall({ app, skillId, mallow, origin, face, avoid, from, subtitles, reducedMotion, lowStim });
+  const handle = playInstall({ app, skillId, mallow, origin, face, avoid, words, from, subtitles, reducedMotion, lowStim });
   const onAbort = () => handle.cancel?.();
   signal?.addEventListener?.('abort', onAbort, { once: true });
   const r = await handle;

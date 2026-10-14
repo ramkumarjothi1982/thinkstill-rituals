@@ -48,7 +48,8 @@ const SHARED = {
   // wanting to hurt someone: calm, no jokes, safety first (said as a sequence, like support)
   harmOthers: ['That’s a lot of heat to carry.', 'Let’s keep everyone safe, you included. Support is one tap away.'],
   // after a care or harm disclosure, the person decides whether anything plays
-  careAsk: ['We can stay here quietly. Or play a little, slowly, if you’d like.'],
+  // (neutral, after a death or abuse too: the calm world is a place to be, not play)
+  careAsk: ['We can stay here quietly. Or somewhere calm, if you’d like.'],
   careQuiet: ['Okay. I’m right here. Squeeze me whenever you like.'],
   resumeAsk: ['Pick up where you left off in {world}?'],
   stub: ['The new worlds are still being built. Until they open, I’m all yours to squish.'],
