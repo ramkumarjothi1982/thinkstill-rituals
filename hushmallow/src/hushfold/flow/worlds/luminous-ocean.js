@@ -1140,6 +1140,8 @@ export function create(ctx) {
     const P = strokePacket(cam, U, { x0: x, y0: y, x1: f.x + (f.x === x && f.y === y ? 0.5 : 0), y1: f.y + 0.01, len: Math.max(1, f.len), speed: Math.max(f.speed, 1) }, pk);
     if (!P) return;
     P.free = false; P.user = true;
+    // (reduced motion: the swell shows 0.4 of its height; it carries the thought out as far as anyone's — Sea.look)
+    P.look = reduced() ? 0.4 : 1;
     f.slot = sea.launch(P);
     f.sid = f.slot >= 0 ? sea.id[f.slot] : 0;
   }
@@ -1148,7 +1150,9 @@ export function create(ctx) {
     const speed = f.moveT > 0.02 ? f.len / f.moveT : f.speed;
     const P = strokePacket(cam, U, { x0: f.x0, y0: f.y0, x1: f.x, y1: f.y, len: f.len, speed }, pk);
     if (!P) return;
-    if (reduced()) P.A *= 0.4;
+    // reduced motion softens how it looks, never what it does (the drift that takes the thought out counts towards
+    // 'distance' and its A Little More Room: cutting A itself left that out of reach — 1.5 × Z0 after 100 s, not 4.3)
+    P.look = reduced() ? 0.4 : 1;
     sea.sculpt(f.slot, P);
     sea.vis[f.slot] = onVisibleWater(f.slot) ? 1 : 0;
   }
@@ -1199,7 +1203,7 @@ export function create(ctx) {
       startHum();
     } else if (ev.lambdaU < FLICK_U && elapsed - lastDrip > 0.12) {
       lastDrip = elapsed; ctx.sound('drip', { intensity: 0.18, pitch: 1 + R() * 0.4, pan: clamp((f.x / W) * 2 - 1, -1, 1) });
-      if (!said.chop && !discovered.has('long-waves') && sea.chop(FLICK_U * U) > 0.05) { said.chop = true; say(ctx.entry.dialogue?.chop); }
+      if (!said.chop && !discovered.has('long-waves') && sea.chop(FLICK_U * U) > 0.05) { said.chop = true; say(line('chop')); }
     }
   }
   function tap(f, x, y) {
@@ -1217,7 +1221,7 @@ export function create(ctx) {
     // a tap rings out a soft circle of swells (the accessible way to move things: tap behind them)
     unproject(cam, x, y, wo);
     const lam = 0.32 * U;
-    sea.ringAt(wo.x, wo.z, lam, 0.028 * lam * (reduced() ? 0.4 : 1), true);
+    sea.ringAt(wo.x, wo.z, lam, 0.028 * lam, true, reduced() ? 0.4 : 1);
     ctx.sound('drip', { intensity: 0.14, pitch: 0.8 });
   }
 
@@ -1340,8 +1344,8 @@ export function create(ctx) {
     drawFront(now, rm);
     audioAndMallow(dt, now);
 
-    if (introAt > 0) { introAt -= dt; if (introAt <= 0) { introAt = -1; if (!everTouched) say(ctx.entry.dialogue?.intro); } }
-    if (arriveAt > 0) { arriveAt -= dt; if (arriveAt <= 0) { arriveAt = -1; if (!said.arrive) { said.arrive = true; say(ctx.entry.dialogue?.arrive); } } }
+    if (introAt > 0) { introAt -= dt; if (introAt <= 0) { introAt = -1; if (!everTouched) say(line('intro')); } }
+    if (arriveAt > 0) { arriveAt -= dt; if (arriveAt <= 0) { arriveAt = -1; if (!said.arrive) { said.arrive = true; say(line('arrive')); } } }
     if (!everTouched && !melt && prepared) {
       hint.next -= dt;
       if (hint.next <= 0 && hint.shown < 2 && hint.age < 0) { hint.next = 10; placeHint('away'); if (hint.ok) { hint.age = 0; hint.shown++; } }
@@ -1716,13 +1720,15 @@ export function create(ctx) {
     if (baseTension == null) { captureBase(); tS.tension = baseTension; }
     // drift on the person's swells (Stokes drift), with a little inertia; swells sent towards you from
     // nearer in tow it home (so bringing it back works wherever the stroke starts)
+    // (reduced motion softens how the sea and what floats on it look — bob, tilt, heave — never how far the person's
+    // swells carry their thought: that journey is the play, 'distance' and its A Little More Room, and it stays theirs)
     sea.sample(tS.x, tS.z, sm);
-    const g = driftGain / SEA.STOKES * (rm ? 0.6 : 1);
-    const ux = sm.ux * g, uz = sm.uz * g + towAt(tS.z) * (rm ? 0.6 : 1), uuz = sm.uuz * g;
+    const g = driftGain / SEA.STOKES;
+    const ux = sm.ux * g, uz = sm.uz * g + towAt(tS.z), uuz = sm.uuz * g;
     const ki = 1 - Math.exp(-dt / 0.45);
     tS.vx += (ux - tS.vx) * ki; tS.vz += (uz - tS.vz) * ki;
     // (the person's own part of it: their swells' drift and their tows)
-    tS.vzP += (uuz + towAt(tS.z) * (rm ? 0.6 : 1) - tS.vzP) * ki;
+    tS.vzP += (uuz + towAt(tS.z) - tS.vzP) * ki;
     const z0 = tS.z;
     if (tS.landK >= 1 && dt > 0) {
       tS.x += tS.vx * dt; tS.z += tS.vz * dt;
@@ -3202,6 +3208,11 @@ export function create(ctx) {
   }
 
   function say(lines) { if (lines && !paused) ctx.say(lines, { who: 'loomi', kind: 'dialogue' }); }
+  /** The sea's line for a moment: in a gentle session its gentle one where it has one (null: nothing said). */
+  function line(k) {
+    const d = ctx.entry.dialogue || {};
+    return ctx.gentle && d.gentle && k in d.gentle ? d.gentle[k] : d[k];
+  }
 
   function fireDiscovery(ev) {
     if (discovered.has(ev.id)) return;
@@ -3418,7 +3429,7 @@ export function create(ctx) {
       // where the line lay on screen (on the storm's horizon, the water at the start of the melt): it rolls away from
       // there, its crest still lit in the storm's gold for a few seconds
       unproject(cam, cx, Math.max(cy, cam.hy + 6), wo);
-      sea.launch({ x: wo.x, z: wo.z, dx: (R() - 0.5) * 0.7, dz: 1, lambda: lam, A: 0.022 * lam * (reduced() ? 0.4 : 1), len: clamp(len / Math.max(0.2, wo.s), lam * 2.4, lam * 4), user: false, carry: true, seed: true });
+      sea.launch({ x: wo.x, z: wo.z, dx: (R() - 0.5) * 0.7, dz: 1, lambda: lam, A: 0.022 * lam, look: reduced() ? 0.4 : 1, len: clamp(len / Math.max(0.2, wo.s), lam * 2.4, lam * 4), user: false, carry: true, seed: true });
       made++;
     }
     if (!made) {
@@ -3426,7 +3437,7 @@ export function create(ctx) {
       for (let k = 0; k < 2; k++) {
         unproject(cam, W * (0.35 + 0.3 * k), lerp(plan.homeY, plan.waterY, 0.5 + 0.2 * k), wo);
         const lam = (0.75 + 0.3 * k) * U;
-        sea.launch({ x: wo.x, z: wo.z, dx: (k - 0.5) * 0.3, dz: 1, lambda: lam, A: 0.016 * lam * (reduced() ? 0.4 : 1), len: lam * 2.6, user: false });
+        sea.launch({ x: wo.x, z: wo.z, dx: (k - 0.5) * 0.3, dz: 1, lambda: lam, A: 0.016 * lam, look: reduced() ? 0.4 : 1, len: lam * 2.6, user: false });
       }
     }
   }

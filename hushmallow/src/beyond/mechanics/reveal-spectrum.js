@@ -9,13 +9,18 @@
 
 import { drawGlow, clamp, lerp, approach, rgba, mix, Motes, blinkAt, roundRect, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
+import { framingAllowed } from '../backstop.js';
 
 export const id = 'reveal_spectrum';
 const BINS = 28;
 const LEFT = '#5a4a9e', MID = '#b48cff', RIGHT = '#ffd98a';
 
 export function mount(ctx) {
-  const L = MECHANIC_LINES[id];
+  // the gate (backstop.js, review r8): all-or-nothing reads the words as a thinking habit, so only with an
+  // interpretive marker of their own and never beside a bag word (the orchestrator then plays a kind step)
+  if (!framingAllowed(ctx.text)) throw new Error(`${id}: never for these words`);
+  // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
+  const L = ctx.lines || MECHANIC_LINES[id];
   const g = ctx.g;
   const rm = () => ctx.reducedMotion();
   let resolve;

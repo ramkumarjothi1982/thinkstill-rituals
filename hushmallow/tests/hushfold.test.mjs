@@ -199,13 +199,13 @@ test('hushfold safety verification (12 Oct): a crisis or care level seen earlier
   // the support sheet never leaves the heart-eyed face behind after something heavy
   assert.match(scene, /const sh = trackSheet\(openSupport\(app, opts\)\);\s*\/\/[^\n]*\n\s*if \(opts\.urgent \|\| gentle\(\)\) stageMallow\?\.setStage\?\.\(CARE_FACE, \{ quiet: true \}\);/);
   // an invitation, a resume offer or a gentle world never follows a crisis or care seen meanwhile
-  assert.match(scene, /if \(S\.left \|\| overlay \|\| S\.told \|\| gentle\(\)\) return;/);
+  assert.match(scene, /if \(S\.left \|\| overlay \|\| S\.told \|\| softNow\(\)\) return;/);
   assert.match(scene, /if \(S\.left \|\| worldMode \|\| overlay \|\| S\.flowAsked \|\| gentle\(\)\) return;/);
   assert.match(scene, /if \(v === 'play' && !S\.crisis\) \{/);
   // a later Tell in the same visit knows: Support from the start, no plan offer on the button, the concerned
   // face while they type, and a calm answer (never silence) when more words follow a crisis
   assert.match(scene, /heavy: gentle\(\),/);
-  assert.match(scene, /stageMallow\.setStage\(gentle\(\) \? CARE_FACE : 'listening', \{ quiet: true \}\);/);
+  assert.match(scene, /stageMallow\.setStage\(softNow\(\) \? CARE_FACE : 'listening', \{ quiet: true \}\);/);
   assert.match(scene, /if \(S\.crisisSpoken\) say\(SHARED_LINES\.supportConcern, \{ interrupt: !subtitles\.holding \}\);\s*else speakCrisis\(\);/);
   const overlay = read('src/hushfold/input-overlay.js');
   assert.match(overlay, /function plainSend\(\) \{\s*if \(hasPlan \|\| \(worst\.level === 'none' && !heavy\)/);
@@ -226,8 +226,8 @@ test('hushfold r3: words waiting on the plans page survive a new deploy; a world
   assert.match(scene, /function holdWorld\(on\)/);
   assert.match(read('src/ui/hushfold.css'), /body\.hf-world-held #fx-layer > canvas\.hf-front \{ opacity: 0 !important;/);
   // after something heavy: no invitations, no squeeze chatter, the concerned face (never heart eyes)
-  assert.match(scene, /const canInvite = \(\) => [^;]*!gentle\(\)/);
-  assert.match(scene, /if \(gentle\(\)\) return;\s*\/\/ after something heavy/);
+  assert.match(scene, /const canInvite = \(\) => [^;]*!softNow\(\)/);
+  assert.match(scene, /if \(softNow\(\)\) return;\s*\/\/ after something heavy/);
   assert.match(scene, /const CARE_FACE = 'concerned';/);
   assert.doesNotMatch(scene, /'comforting'/);
 });
@@ -670,15 +670,15 @@ test('H1: worlds pause the realm and end with a real fade; nothing cheery after 
   assert.match(onWorld, /S\.worldTitle = d\?\.title \|\| S\.worldTitle/);
   const end = fnBody(scene, 'function endWorldMode() {', 'function onFinished()');
   assert.match(end, /stageMallow\?\.float\?\.\(\{ lift: 0, tilt: 0 \}\);\s*world\.realm\?\.pause\?\.\(false\);/);
-  assert.match(end, /showMallow\(mallowId, \{ entrance: !gentle\(\) \}\)/);
+  assert.match(end, /showMallow\(mallowId, \{ entrance: !softNow\(\) \}\)/);
   // nothing the world queued plays after it has gone; a care hold ends with it
   assert.match(end, /subtitles\.clear\(\{ keepHeld: true \}\);/);
-  assert.match(end, /if \(S\.hold === 'care'\) S\.hold = null;/);
+  assert.match(end, /if \(S\.hold === 'care' \|\| S\.hold === 'quiet'\) S\.hold = null;/);
   const fin = fnBody(scene, 'function onFinished() {', 'function onFlowError(');
   assert.match(fin, /world\.realm\?\.pause\?\.\(false\)/);
   assert.match(fin, /S\.finishing = true;\s*(\/\/[^\n]*\n\s*if \(crisisLine\)[^\n]*\n\s*)?subtitles\.clear\(\{ keepHeld: true \}\);/);
   assert.match(scene, /say: \(lines, o\) => \{ if \(S\.hold === 'crisis' \|\| S\.finishing\) return Promise\.resolve\(null\);/);
-  assert.match(fin, /if \(S\.crisis\) \{[^}]*\} else if \(gentle\(\)\) say\(SHARED_LINES\.careQuiet\); else say\(lines\.pick\(mallowId, 'finished'\)/);
+  assert.match(fin, /if \(S\.crisis\) \{[^}]*\} else if \(softNow\(\)\) bye = say\(SHARED_LINES\.careQuiet\); else bye = say\(lines\.pick\(mallowId, 'finished'\)/);
   // the director keeps its reveal opacity inline: only !important lets Finish fade instead of cut
   const css = read('src/ui/hushfold.css').replace(/\s+/g, ' ');
   assert.match(css, /body\.hf-world-leaving #world > canvas\.hf-back, body\.hf-world-leaving #fx-layer > canvas\.hf-front \{ opacity: 0 !important; transition: opacity 1200ms/);
@@ -730,16 +730,17 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   // (H2: the director's own safety pause, which also holds a world that is still loading)
   assert.match(hold, /flowRef\.setAutoFlow\?\.\(false\); flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
   // care or distress typed in a running world, sent or not: it pauses, Resume allowed (owner P4)
-  assert.match(hold, /\} else if \(running && !S\.hold\) \{[\s\S]*?S\.hold = 'care';[\s\S]*?flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
+  // (care, P4: with Resume; after a death, a loss or harm done to the person: quietly, no Resume — final main polish)
+  assert.match(hold, /\} else if \(running && !S\.hold\) \{[\s\S]*?S\.hold = S\.noResume \? 'quiet' : 'care';[\s\S]*?flowRef\.pause\?\.\(\{ reason: 'safety' \}\);/);
   // only a world actually on its way is held on arrival, and a start that brings none leaves no hold behind
   assert.match(hold, /if \(starting && !worldMode\) S\.holdOnWorld = /);
-  assert.match(fnBody(scene, 'async function startFlow(', 'function warmWorld()'), /finally \{[\s\S]*?if \(!--starting && !worldMode\) S\.holdOnWorld = null;/);
+  assert.match(fnBody(scene, 'async function startFlow(', 'function warmWorld()'), /finally \{[\s\S]*?if \(!--starting && !worldMode\) \{ S\.holdOnWorld = null;/);
   // a resume from anywhere (the panel's own Resume too) ends a care hold, and takes the "Paused" line with it
   const paused = fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()');
-  assert.match(paused, /if \(!on && S\.hold === 'care'\) S\.hold = null;/);
+  assert.match(paused, /if \(!on && \(S\.hold === 'care' \|\| S\.hold === 'quiet'\)\) S\.hold = null;/);
   assert.match(paused, /if \(!on && pausedLine\) \{ pausedLine = null; subtitles\.clear\(\{ keepHeld: true \}\); \}/);
   // a world that fails to start after something heavy gets the quiet line, never the "squish" joke
-  assert.match(fnBody(scene, 'function onFlowError(d) {', 'async function onOffer('), /say\(gentle\(\) \? SHARED_LINES\.careQuiet : SHARED_LINES\.stub\[0\]\)/);
+  assert.match(fnBody(scene, 'function onFlowError(d) {', 'async function onOffer('), /say\(softNow\(\) \? SHARED_LINES\.careQuiet : SHARED_LINES\.stub\[0\]\)/);
   // the subtitle pill's replay says nothing of a world held for a crisis before the one calm line
   assert.match(scene, /subtitles\.replay = \(\) => \{ if \(S\.hold === 'crisis' && !S\.crisisSpoken\) return; replayLine\(\); \};/);
   // crisis sent, or the overlay closed after it: the world ends quietly (owner P3)
@@ -753,19 +754,20 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
   assert.match(fnBody(scene, 'function onWorld(d) {', 'function endWorldMode()'), /if \(!overlay\) endCrisisWorld\(\);/);
   assert.doesNotMatch(scene.replace(endCrisis, ''), /flowRef\?\.finish\?\.\(\)/, 'every crisis ending goes through endCrisisWorld');
   // care in a world: careBeat pauses first (the care regex above needs no block before await careBeat)
-  assert.match(fnBody(scene, 'async function careBeat(', 'async function startFlow('), /^async function careBeat\(\{ emotion, intention, safety \}\) \{\s*\/\/[^\n]*\n\s*if \(worldMode && flowRef && !flowRef\.stub\) \{ S\.hold = 'care';/);
+  assert.match(fnBody(scene, 'async function careBeat(', 'async function startFlow('), /^async function careBeat\(\{ emotion, intention, safety \}\) \{\s*(?:\/\/[^\n]*\n\s*)+if \(worldMode && flowRef && !flowRef\.stub\) \{ S\.hold = S\.noResume \? 'quiet' : 'care';/);
   // no resume while held for a crisis: the pill, the subtitle play button, Space, the panel
-  assert.match(fnBody(scene, 'function resumeFlow() {', 'let worldMode'), /if \(S\.hold === 'crisis'\) \{ panel\?\.update\(\); return; \}/);
-  assert.match(scene, /onPause: \(\) => \{ if \(S\.hold === 'crisis'\) \{ panel\?\.update\(\); return true; \}/);
-  assert.match(fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()'), /if \(on && S\.hold === 'crisis'\) \{ pausedPill\.hidden = true;/);
+  // (and held quietly after a death, a loss or harm done to the person: final main polish)
+  assert.match(fnBody(scene, 'function resumeFlow() {', 'let worldMode'), /if \(S\.hold === 'crisis' \|\| S\.hold === 'quiet'\) \{ panel\?\.update\(\); return; \}/);
+  assert.match(scene, /onPause: \(\) => \{ if \(S\.hold === 'crisis' \|\| S\.hold === 'quiet'\) \{ panel\?\.update\(\); return true; \}/);
+  assert.match(fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()'), /if \(on && \(S\.hold === 'crisis' \|\| S\.hold === 'quiet'\)\) \{ pausedPill\.hidden = true;/);
   assert.match(scene, /say: \(lines, o\) => \{ if \(S\.hold === 'crisis'[^)]*\) return Promise\.resolve\(null\);/);
   assert.match(scene, /choice: \(prompt, options, o\) => \(S\.hold === 'crisis'[^?]*\? Promise\.resolve\(null\)/);
   // a gentle world never carries the earlier words; after a crisis nothing starts a world (owner P3)
   const start = fnBody(scene, 'async function startFlow(', 'function warmWorld()');
-  assert.match(start, /requireEntitlement\(ent, 'paid'\)[^\n]*\n\s*\/\/[^\n]*\n\s*if \(gentle\(\)\) wordsCur = null;/);
+  assert.match(start, /requireEntitlement\(ent, 'paid'\)[^\n]*\n(?:\s*\/\/[^\n]*\n)+\s*if \(gentle\(\) \|\| soft\) wordsCur = null;/);
   assert.match(start, /if \(S\.crisis\) return;/);
   // (H3: the ThoughtLayer replaced the placeholder thought; a director made earlier lets the thoughts go)
-  assert.match(start, /if \(!flow\.stub && gentle\(\)\) flow\.setThoughts\?\.\(null\);/);
+  assert.match(start, /if \(!flow\.stub && \(gentle\(\) \|\| soft\)\) flow\.setThoughts\?\.\(null\);/);
   assert.match(fnBody(scene, 'async function resumableNow()', 'function resumeSaved()'), /\|\| S\.crisis\) return null;/);
   // low stimulation while the Support pill is up (owner P5)
   assert.match(scene, /const lowStimNow = \(\) => !!prefs\.get\('lowStim'\) \|\| gentle\(\);/);
@@ -774,7 +776,8 @@ test('H1: safety in a running world (interim): crisis holds and ends it, care pa
 test('H1: back from Another Angle, panel state, and the modules warmed for a new deploy', () => {
   const scene = read('src/app/scenes/hushfold.js');
   const enter = fnBody(scene, 'async enter() {', 'leave() {');
-  const safetyAt = enter.indexOf("if (params.safety?.level) { if (params.safety.level === 'crisis') S.crisisSpoken = true; noteSafety(params.safety); S.careSaid = true; }");
+  // (only a real level raises the visit, review r2 P2: a level of 'none', or a "Just be with it" there, never does)
+  const safetyAt = enter.indexOf("if (LEVELS.indexOf(params.safety?.level) > 0) { if (params.safety.level === 'crisis') S.crisisSpoken = true; noteSafety(params.safety); S.careSaid = true; }");
   assert.ok(safetyAt > 0 && safetyAt < enter.indexOf('await resumePendingTell()'));
   assert.match(enter, /if \(params\.flow\.emotion\) await setFeeling\(params\.flow\.emotion, \{ quiet: true \}\);/);
   assert.match(enter, /if \(params\.flow\.intention\) S\.intention = params\.flow\.intention;/);
@@ -827,11 +830,11 @@ test('H1 r3: the visit stays gentle across scenes (memory only) and when the pla
   const keptAt = enter.indexOf('if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; noteSafety(kept); S.careSaid = true; }');
   assert.ok(keptAt > 0 && keptAt < enter.indexOf('router = createInputRouter('), 'restored before any touch is routed');
   assert.ok(enter.indexOf('speakCrisis();') > keptAt && enter.indexOf('speakCrisis();') < enter.indexOf('await resumePendingTell()'));
-  assert.match(enter, /stageMallow\.setStage\(gentle\(\) \? CARE_FACE : 'neutral', \{ quiet: true \}\);/);
-  assert.match(enter, /const rigP = showMallow\(mallowId, \{ entrance: !gentle\(\) \}\);/);
+  assert.match(enter, /stageMallow\.setStage\(softNow\(\) \? CARE_FACE : 'neutral', \{ quiet: true \}\);/);
+  assert.match(enter, /const rigP = showMallow\(mallowId, \{ entrance: !softNow\(\) \}\);/);
   // care before plans on the free tier: back without buying, the gentle level is applied before the plan check
   const resume = fnBody(scene, 'async function resumePendingTell() {', 'const view = {');
-  const g = resume.indexOf('if (p.gentle) { noteSafety(p.gentle); S.careSaid = true; }');
+  const g = resume.indexOf('if (p.gentle) { noteSafety(p.gentle); if (p.gentle.level && p.gentle.level !== \'none\') S.careSaid = true; if (p.gentle.soft) softVisit(); }');
   assert.ok(g > 0 && g < resume.indexOf("if (!ent.has('paid')) return false;"), 'the gentle level does not depend on the plan');
   // no upsell in the panel after something heavy
   assert.match(fnBody(scene, 'function noteSafety(r) {', 'function safetyHold('), /root\.classList\.add\('hf-heavy'\);/);
@@ -841,12 +844,12 @@ test('H1 r3: the visit stays gentle across scenes (memory only) and when the pla
 test('H1 r3: after something heavy the side panel never jokes: feelings keep the attentive face, "just play" says nothing', () => {
   const scene = read('src/app/scenes/hushfold.js');
   const set = fnBody(scene, 'async function setFeeling(', 'const steerable');
-  assert.match(set, /if \(gentle\(\)\) stageMallow\.setStage\(CARE_FACE, \{ quiet: true \}\);\s*else if \(e\) stageMallow\.setEmotion\(/);
+  assert.match(set, /if \(softNow\(\)\) stageMallow\.setStage\(CARE_FACE, \{ quiet: true \}\);\s*else if \(e\) stageMallow\.setEmotion\(/);
   const feel = fnBody(scene, 'async function pickFeeling(', 'async function pickIntention(');
-  assert.match(feel, /if \(e && !gentle\(\)\) say\(lines\.pick\(mallowId, 'ack'/);
-  assert.doesNotMatch(feel.replace(/if \(e && !gentle\(\)\) say\(/, ''), /\bsay\(/, 'no other line from a feeling chip');
+  assert.match(feel, /if \(e && !softNow\(\)\) say\(lines\.pick\(mallowId, 'ack'/);
+  assert.doesNotMatch(feel.replace(/if \(e && !softNow\(\)\) say\(/, ''), /\bsay\(/, 'no other line from a feeling chip');
   const intent = fnBody(scene, 'async function pickIntention(', 'function backClose(');
-  assert.match(intent, /if \(id === 'play' && !gentle\(\)\) say\(lines\.pick\(mallowId, 'justPlay'\)/);
+  assert.match(intent, /if \(id === 'play' && !softNow\(\)\) say\(lines\.pick\(mallowId, 'justPlay'\)/);
   // a world held for a crisis, or ending, is not steered by the panel
   assert.match(scene, /const steerable = \(\) => !!\(flowRef && !flowRef\.stub && S\.hold !== 'crisis' && !S\.finishing\);/);
   assert.match(feel, /if \(e && steerable\(\)\) flowRef\.setEmotion\?\./);

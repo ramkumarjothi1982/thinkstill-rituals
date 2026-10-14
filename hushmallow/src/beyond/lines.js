@@ -35,9 +35,216 @@ export const SAFETY = Object.freeze({
   care: ['That sounds like something that shouldn’t have happened.', 'This one deserves real support, not a new angle.'],
   careAsk: 'I’m staying right here. Want to see who can help?',
   careOptions: [{ label: 'See support', value: 'support', primary: true }, { label: 'Just squeeze Zuzu', value: 'squeeze' }],
+  /** death talk that also wants to be with, join or follow the one who died (grief.js deathEscalation): the care path */
+  follow: ['What you just said matters, and I’m glad you told me.', 'This deserves real support, from someone who can be with you now.'],
+  /** (review r10) the server's care answer for death talk: gentle, assuming nothing (never "shouldn't have happened") */
+  careGentle: ['That sounds like a lot to carry.', 'Support is here if you want it.'],
   concern: 'That sounds heavy. Support is right there if you want it.',
   /** Finishing after crisis or care: calm, no jokes, no "another look". */
   finish: ['Go gently.', 'Support is one tap away whenever you need it.'],
+});
+
+/**
+ * The gentle path (review round 7): death talk (grief.js deathTalk), and any words with a death or harm word that
+ * are not ordinary (backstop.js). These words fire on a game, a near miss or an imagined death too, so every line
+ * here is true whether or not someone died: it never names or implies a death, grief, a loss, "them", or missing
+ * someone. No mechanic, no "what your mind added", no "another angle", nothing playful; Zuzu close and quiet,
+ * support one tap away. Nothing here speaks of grief or of missing someone: only the server (which sees the whole
+ * context) may answer that way, in its own two lines.
+ */
+export const GRIEF = Object.freeze({
+  /** first, whoever answers (with sharing on, said while the server answers) */
+  heard: 'Thank you for telling me.',
+  /** death talk that names a death or a loss ('loss'), or a funeral, a grave, grieving ('grief') */
+  loss: ['That sounds like a lot to carry.', 'There’s nothing to fix here. We can just be with it.'],
+  grief: ['That sounds really heavy.', 'There’s nothing to fix here. We can just be with it.'],
+  /** something heavy with a harm word in it (a hospital, an accident) and no death talk */
+  heavy: ['That sounds like a lot to hold.', 'Nothing needs fixing right now. I’m right here.'],
+  ask: 'I’m right here. Squeeze me whenever you like.',
+  options: [{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'See support', value: 'support' }, { label: 'Finish', value: 'finish' }],
+  squeeze: 'Take all the time you need.',
+  /** typed and closed without sending (review r8): said once, quietly; nothing is sent and nothing plays */
+  closed: 'I’m right here, whenever you want to say more.',
+});
+
+/**
+ * (owner decision 'Ask when unsure', 14 Oct 2026) The words might be about a death or a loss and nothing reads one for
+ * sure (backstop.js unsureLoss): before anything is sent, framed or played, Zuzu asks once, attentive. "Yes, it is" is
+ * the gentle path; "Something else" carries on as usual; no answer within `ms`, or Back, stays here quietly. The main
+ * screen's Mallow asks the same (src/hushfold/lines.js LOSS_CHECK).
+ */
+export const LOSS_CHECK = Object.freeze({
+  ask: 'I want to get this right. Is this about losing someone?',
+  yes: 'Yes, it is',
+  no: 'Something else',
+  // (the main screen's own copy, src/hushfold/lines.js, is the same; only asked with ASK_BEFORE_ANGLE off. r2-angle item 6:
+  // never counted while the page is hidden, another-angle.js questionClock)
+  ms: 20000,
+});
+/**
+ * (owner decision 'Ask before every world', 14 Oct 2026) After every Tell that is not a detected loss, crisis or care, before
+ * anything is sent, framed or played, Zuzu asks one gentle choice (angle-first.js; its switch is ASK_BEFORE_ANGLE). "Another
+ * angle" carries on as usual; "Just be with it" is a quiet path of its own (BE_WITH, r2-angle item 5), no mechanic, nothing
+ * sent; no answer within `ms` (about 45 s, never counted while the page is hidden: r2-angle item 6), or Back, stays here
+ * quietly with the words kept for the next Tell. The two answers carry equal weight (r2-angle item 7, a coordinator default:
+ * the same chip style, "Another angle" first). In Another Angle it replaces LOSS_CHECK (never two questions in a row).
+ */
+export const ANGLE_CHOICE = Object.freeze({
+  ask: 'Shall we look at this from another angle, or just be with it?',
+  angle: 'Another angle',
+  be: 'Just be with it',
+  ms: 45000,
+});
+/**
+ * (r2-angle item 5) "Just be with it": the quiet path of its own, the main screen's line first ("Okay. Let's just be with it
+ * for a while."). Never the grief path's lines, support or goodbye: true for any words, a worry about an exam as much as a
+ * loss the lists missed. "See support" is offered only when something heavy was seen (optionsHeavy).
+ */
+export const BE_WITH = Object.freeze({
+  line: 'Okay. Let’s just be with it for a while.',
+  second: 'Nothing needs fixing right now. I’m right here.',
+  ask: 'Squeeze me whenever you like.',
+  options: Object.freeze([{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'Finish', value: 'finish' }]),
+  optionsHeavy: Object.freeze([{ label: 'Just squeeze Zuzu', value: 'squeeze', primary: true }, { label: 'See support', value: 'support' }, { label: 'Finish', value: 'finish' }]),
+  squeeze: 'Take all the time you need.',
+});
+
+/**
+ * A stated event, or something someone did to them, with no interpretive marker in their words (review r8, the
+ * flipped default): it really happened. Never "one way to read it", never "what your mind added", never something to
+ * check: the acknowledging mechanics, with lines that treat it as real ('event': something happened; 'hurt':
+ * someone did something to them).
+ */
+export const KIND = Object.freeze({
+  first: Object.freeze({
+    event: 'What happened is real, and it makes sense that it’s on your mind.',
+    hurt: 'What happened to you is real, and it counts.',
+    neutral: 'Thank you for telling me what happened.',
+  }),
+  pairs: Object.freeze({
+    assemble_step: ['What happened is real, and it makes sense that it’s on your mind.', 'One small, kind thing for yourself is plenty for now.'],
+    soften_harshness: ['Something this hard deserves gentleness.', 'You can be as kind to yourself as you’d be to a friend.'],
+    separate_one: ['This is real, and it’s taking up a lot of room.', 'There’s still more to you than this one thing.'],
+    return_responsibility: ['What someone else did is theirs to carry, not yours.', 'You can put their part of it back where it belongs.'],
+  }),
+  steps: Object.freeze({
+    event: 'Do one small, kind thing for yourself today, even a little one.',
+    hurt: 'Tell one person you trust what happened.',
+    neutral: 'Do one small, kind thing for yourself today, even a little one.',
+  }),
+  /**
+   * (review r10) words whose only bag words are ordinary idioms ("I passed my driving test!", "lost my keys", "my phone
+   * died"): nothing hard was told, so nothing calls it hard; true for good news and for a bad day alike
+   */
+  neutral: Object.freeze({
+    pairs: Object.freeze({
+      assemble_step: ['Thank you for telling me what happened.', 'Whatever it brings up, one small, kind thing for yourself is plenty.'],
+      separate_one: ['That’s one thing that happened.', 'There’s more to you than this one thing.'],
+      soften_harshness: ['However it feels, you can go gently with yourself.', 'You can be as kind to yourself as you’d be to a friend.'],
+    }),
+    mechanics: Object.freeze({
+      separate_one: { hint: 'Lift this one thing out on its own.', done: 'There. One thing, and there’s more to you than it.', labels: { one: 'This', rest: 'The rest of you' } },
+      soften_harshness: {
+        hint: 'Stroke it slowly, the way you’d comfort a friend.', hint2: 'Slower. Gentle strokes.', hint3: 'Stroke slowly round the edge.',
+        assist: 'Soothe it', done: 'Gentle. That’s all it needs.', labels: { core: 'Still you' },
+      },
+    }),
+  }),
+  /** the mechanics' own lines for a stated event (over MECHANIC_LINES): no "thought", "verdict", "every time" or "lesson" */
+  mechanics: Object.freeze({
+    assemble_step: { hint: 'Here’s one small, kind step, in pieces. Put it together.', done: 'One kind step. That’s all it needs to be.', labels: { step: 'One kind step' } },
+    soften_harshness: {
+      hint: 'This one has sharp edges. Stroke it slowly, the way you’d comfort a friend.',
+      hint2: 'Slower. Gentle strokes soothe it.', hint3: 'Stroke slowly round the edge, where it’s sharpest.',
+      assist: 'Soothe it', done: 'Gentler now. It still counts.', labels: { core: 'Still you' },
+    },
+    separate_one: {
+      hint: 'This has spread over everything. Lift it out on its own.',
+      done: 'It’s real. And there’s more to you than this.', labels: { one: 'This', rest: 'The rest of you' },
+    },
+    return_responsibility: {
+      hint: 'That’s a lot of weight to hold. Move each piece to where it belongs.',
+      assist: 'Move a piece', done: 'Your part is still yours. The rest can go back.',
+    },
+  }),
+});
+/** The kinds a stated event plays as (feelingScene with one of these reads KIND, not FEELING). */
+export const EVENT_KINDS = Object.freeze(new Set(['event', 'hurt', 'neutral']));
+
+/**
+ * A feeling said plainly ("I feel empty", "I can't stop crying", "I'm so tired of everything"). A feeling is
+ * real, and it is the fact: never "what your mind added", never "one way to read it", never something to
+ * check. Zuzu says it counts and offers one small, kind step (feelings.js reads the kind).
+ */
+export const FEELING = Object.freeze({
+  /** line 1 with the kind step, per kind of feeling */
+  first: Object.freeze({
+    low: 'What you’re feeling is real, and it counts.',
+    heavy: 'That sounds like a lot to carry.',
+    lonely: 'Feeling this alone is real, and it’s hard.',
+    anxious: 'That anxious feeling is real, and it’s a lot to carry.',
+    guilty: 'Guilt can sit heavy, and the feeling is real.',
+    tired: 'Being this tired of everything is real, and it’s a lot.',
+    crying: 'Tears like these are real, and they’re allowed.',
+    angry: 'That anger is real, and it counts.',
+  }),
+  /** the two subtitle lines per mechanic (assemble_step's line 1 is `first`) */
+  pairs: Object.freeze({
+    assemble_step: ['What you’re feeling is real, and it counts.', 'One small, kind thing for yourself is plenty for now.'],
+    soften_harshness: ['A feeling this heavy deserves gentleness, not a verdict.', 'You can be as kind to yourself as you’d be to a friend.'],
+    separate_one: ['This feeling is real, and it’s taking up a lot of room.', 'There’s still more to you than this one feeling.'],
+  }),
+  /** one small, kind step per kind (assemble_step's pieces, and "Is there one useful action?") */
+  steps: Object.freeze({
+    low: 'Make a warm drink and sit somewhere comfy for a few minutes.',
+    heavy: 'Make a warm drink and sit somewhere comfy for a few minutes.',
+    lonely: 'Send one short message to someone you like, just to say hi.',
+    anxious: 'Put both feet on the floor and breathe out slowly, three times.',
+    guilty: 'Say to yourself what you’d say to a friend who felt this.',
+    tired: 'Pick one thing that can wait until tomorrow, and let it wait.',
+    crying: 'Have a glass of water and wrap up in something soft.',
+    angry: 'Step away for a minute and let your shoulders drop.',
+  }),
+  known: 'What you know is how you feel, and that’s real.',
+  /** while Zuzu prepares it (never "What else could be true?"), and the title over the two lines */
+  waiting: ['I hear you.', 'Let’s be gentle with this one.', 'Take a breath with me.'],
+  waitingLong: ['Zuzu is finding something kind.', 'Still here, taking it gently…'],
+  title: 'Something kind',
+  friend: 'You’d probably tell a friend their feeling makes sense, and to go gently.',
+  /** the mechanics' own lines for a feeling (over MECHANIC_LINES): no "verdict", no "every time", no "lesson" */
+  mechanics: Object.freeze({
+    assemble_step: { hint: 'Here’s one small, kind step, in pieces. Put it together.', done: 'One kind step. That’s all it needs to be.', labels: { step: 'One kind step' } },
+    soften_harshness: {
+      hint: 'That feeling has sharp edges. Stroke it slowly, the way you’d comfort a friend.',
+      hint2: 'Slower. Gentle strokes soothe it.', hint3: 'Stroke slowly round the edge, where it’s sharpest.',
+      assist: 'Soothe it', done: 'Gentler now. The feeling still counts.', labels: { core: 'Still you' },
+    },
+    separate_one: {
+      hint: 'This feeling has spread over everything. Lift it out on its own.',
+      done: 'It’s real. And there’s more to you than this feeling.', labels: { one: 'This feeling', rest: 'The rest of you' },
+    },
+  }),
+  /** what's offered after a feeling's perspective: never "What do you actually know?" or "another explanation" */
+  explore: Object.freeze(['friend', 'action']),
+  exploreAsk: 'Anything that might help?',
+  exploreMore: 'Anything else that might help?',
+});
+
+/**
+ * A mechanic's lines for a scene: a feeling's own over the mechanic's (MECHANIC_LINES), else the mechanic's. A wrong
+ * done to them (fair anger's scenes, `wrong`: review r9) uses a stated event's own, never "weight on one thought".
+ */
+export function mechanicLines(mechanic, scene = null) {
+  const base = MECHANIC_LINES[mechanic] || {};
+  const own = scene?.feeling ? (scene.feeling === 'neutral' ? KIND.neutral.mechanics[mechanic] || KIND.mechanics[mechanic]
+    : EVENT_KINDS.has(scene.feeling) ? KIND.mechanics[mechanic] : FEELING.mechanics[mechanic]) || KIND.mechanics[mechanic]
+    : scene?.wrong ? KIND.mechanics[mechanic] || null : null;
+  return own ? { ...base, ...own, labels: { ...(base.labels || {}), ...(own.labels || {}) } } : base;
+}
+
+/** Narration (no speaker), once a visit, when the server is open only to invited testers; Zuzu's own angle follows. */
+export const INVITE = Object.freeze({
+  line: 'Another Angle is open to invited testers for now. You can add your code in Settings.',
 });
 
 export const UNCLEAR = Object.freeze({
@@ -122,6 +329,15 @@ export const AUTHORED_PAIRS = Object.freeze({
   practical_problem: ['This is a real problem, and real problems have next steps.', 'What’s the smallest one you could take this week?'],
   self_criticism: ['That’s a harsh word for one moment.', 'You can own what happened without making it who you are.'],
   valid_anger: ['Being angry about this makes sense.', 'What would you want to say, ask for or protect, if you chose to respond?'],
+});
+
+/**
+ * Fair anger at something someone did (review r7): the wrong is the fact, so the scenes after the boundary one
+ * acknowledge it (its weight put back with whoever did it, one step to protect yourself), never "one way to read it".
+ */
+export const ANGER_PAIRS = Object.freeze({
+  personalisation: ['What they did is theirs to carry, not yours.', 'You can put their part of it back where it belongs.'],
+  practical_problem: ['Something wrong happened, and you get to choose what you do next.', 'What’s one small step that would protect you next time?'],
 });
 
 /** Authored "another explanation" where a situation's own angles could soften a real wrong. */

@@ -230,9 +230,19 @@ export const STAGES = {
   // Zuzu's and Pipzi's are open), and nothing drawn over or round the face (no sighs, ?, !, sparks, hearts or rain)
   concerned: { mix: { sad: 0.45, anxious: 0.25, loved: 0.3 }, intensity: 0.45,
     extra: { leanBias: 0.2, fxRain: 0, tears: 0, mouthOpen: 0.02, mouthRound: 0, tongue: 0, sighCycle: 0, yawnCycle: 0, fxSigh: 0, fxExclaim: 0, fxQuestion: 0,
-      fxSpark: 0, fxStar: 0, fxHeart: 0, fxNote: 0, sweat: 0 },
+      fxSpark: 0, fxStar: 0, fxHeart: 0, fxNote: 0, sweat: 0,
+      // (a Mallow's own attentive face where the shared one misreads: Noomi, the Dreamer, keeps her eyes shut for soft
+      // feelings — her sad closes them — so on the concerned stage she read as dozing; she looks up, eyes open and
+      // soft, brows a little raised, the blush down)
+      byMallow: {
+        noomi: { eyeOpen: 0.8, lidTop: 0.14, lidBot: 0.08, closedCurve: 0.6, sparkle: 0.9, irisScale: 1, lookY: -0.08, browAlpha: 0.75, browY: 0.28, browTilt: 0.5,
+          mouthSmile: 0.15, mouthWave: 0, blush: 0.7, fxZzz: 0, float: 0, breathRate: 0.2 },
+      } },
     // ...and it stays so whatever touches it (STAGE_LIMITS): a squeeze is a soft hug, never a grin
-    limits: 'hushed' },
+    limits: 'hushed',
+    // (what a screen reader hears: attentive, never "looks sad and loved" — this face also waits on an ordinary question,
+    // "Shall we play with this, or just be with it?", where sadness would be assumed for the person)
+    describe: 'is listening, attentive' },
   playful: { mix: { playful: 1 }, intensity: 0.75 },
   surprised: { mix: { surprised: 1 }, intensity: 0.8 },
   comforting: { mix: { loved: 0.5, calm: 0.5 }, intensity: 0.7, extra: { fxHeart: 0.15 } },
@@ -314,11 +324,19 @@ export function resolveExpression(mallow, mix, intensity = 0.7, extra = null) {
   const e = pers.energy ?? 1;
   out.bounce *= e;
   out.tremble *= Math.min(1.2, e + 0.2);
-  if (extra) for (const [k, v] of Object.entries(extra)) if (k in out) out[k] = v;
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) if (k in out) out[k] = v;
+    // (a stage's extra may carry a Mallow's own: extra.byMallow[id], applied last)
+    const own = extra.byMallow?.[mallow?.id];
+    if (own) for (const [k, v] of Object.entries(own)) if (k in out) out[k] = v;
+  }
   return out;
 }
 
-export function describeExpression(mallow, mix, intensity) {
+export function describeExpression(mallow, mix, intensity, stage = null) {
+  // (a stage that says what it is for in its own words: STAGES[stage].describe)
+  const own = stage && STAGES[stage]?.describe;
+  if (own) return `${mallow.name} ${own}`;
   const parts = Object.entries(mix || {}).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]);
   if (!parts.length || parts[0][0] === 'neutral') return `${mallow.name} looks peaceful`;
   const level = intensity < 0.35 ? 'a little ' : intensity > 0.8 ? 'very ' : '';

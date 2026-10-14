@@ -325,3 +325,37 @@ test('ThoughtLayer: a host over every place round the thought keeps its words hi
   assert.ok(tg.hostWait, 'waiting');
   L.destroy();
 });
+
+// The final follow-up (FU4): at 320×568 the ocean's words stayed cut to one line ("I'm so angry my boss…") for the whole of
+// its first seconds, and far out: a moment's block during the melt (the host swap) stepped them down, and nothing gave the
+// line back while the world drove the thought with the same plate. Now, once they have shown clear a while, the plate a
+// line larger is tried round the thought (measured before: no change in sight) and, clear there too, taken.
+test('ThoughtLayer: a world-driven thought cut to fewer lines by a hero passing gets its line back once that is clear (never onto the hero)', () => {
+  VIEW.W = 320; VIEW.H = 568;
+  let K = box(40, 520, 280, 568);
+  const L = new ThoughtLayer({ bounds: () => BOUNDS, keepOut: () => K, reducedMotion: false, tagRoot: document.body });
+  const th = L.add({ text: 'My boss embarrassed me in front of everyone today and I still cannot stop thinking about it', emotion: 'embarrassment', intensity: 0.6, r: 30 }, { x: 160, y: 262 });
+  th.x = 160; th.y = 262; th.labelSide = 'above'; th.labelFit = { lines: 3, maxW: 210 };
+  const tg = L.tags.get(th);
+  const run = (n, each = null) => { for (let i = 0; i < n; i++) { th.x = 160; th.y = 262; L.frame(1 / 60); each?.(i); } };
+  run(120);
+  assert.ok(tg.shown && tg.cur.rows === 3 && tg.drop === 0, `the plate asked for (rows ${tg.cur?.rows})`);
+  // the hero comes up under the thought (a melt's host swap): fewer lines
+  K = box(40, 300, 280, 568);
+  run(90);
+  assert.ok(tg.shown && tg.drop > 0, `stepped down (drop ${tg.drop})`);
+  // while it stays there, the line is never given back onto it (the step down stays: no blinking to and fro)
+  let onK = 0, hidden = 0;
+  run(240, () => { if (tg.shown && hit(L.tagRect(th), K)) onK++; if (!tg.shown) hidden++; });
+  assert.ok(tg.drop > 0, `kept its step down while the hero is there (drop ${tg.drop})`);
+  assert.equal(onK, 0, 'never on the hero');
+  assert.equal(hidden, 0, `never hidden for a try (${hidden} frames)`);
+  // the hero goes back down: the words get their whole budget again, with the same plate asked for
+  K = box(40, 520, 280, 568);
+  let back = -1;
+  run(60 * 6, (i) => { if (back < 0 && tg.drop === 0 && tg.shown && tg.cur?.rows === 3) back = i; if (tg.shown && hit(L.tagRect(th), K)) onK++; });
+  assert.ok(back >= 0 && back < 60 * 4, `the three lines are back (frame ${back}; drop ${tg.drop}, rows ${tg.cur?.rows})`);
+  assert.equal(onK, 0, 'never on the hero');
+  assert.deepEqual(th.labelFit, { lines: 3, maxW: 210 }, 'with the plate the world asked for, unchanged');
+  L.destroy();
+});

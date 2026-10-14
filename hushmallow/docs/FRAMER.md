@@ -61,13 +61,28 @@ any paid web launch should confirm the plan on a server.
 
 ## 4. Privacy
 
-Nothing typed into hushmallow leaves the phone. In this version that includes
-Another Angle in hushmallow Beyond: its angles are written in advance and run
-on the phone. (If a server version of Another Angle is switched on later, it
-will ask first, and this section, the plans screen and its consent screen will
-say who processes the words and that nothing is kept.) The app only loads
-its own files from wherever it's hosted: no analytics, no font service (HM
-Nunito Sans, HM Manrope and HM Fraunces are bundled in `assets/fonts/`, and
-they load inside the frame from the app's own origin, so Framer never needs
-the font files). Favourites, history and settings live in the browser's local
-storage for that site.
+Nothing typed into hushmallow leaves the phone, with one exception: Another
+Angle in hushmallow Beyond. It asks first, on a consent card in the scene.
+Only after the person taps Accept are the words they choose (with the feeling
+and the kind of help they picked) sent to our own server, a Cloudflare Worker
+at `hushmallow-another-angle.vibyfy-chat.workers.dev` (`ANGLE_ENDPOINT` in
+[`src/app/config.js`](../src/app/config.js)), where a language model from
+Anthropic, an outside provider, prepares the perspective. Photos are never
+sent. The consent card, the privacy sheet and the delete sheet in Settings say
+how long Anthropic keeps what it receives (the owner's approved wording,
+[`docs/integration/DECISIONS.md`](integration/DECISIONS.md)); our server
+stores no words. "Not now", no connection or a server that can't be reached
+all play Zuzu's own angles, written in advance and worked out on the phone.
+
+Inside Framer the app still runs in its own frame, from its own origin. The
+production server accepts only the app's own origins (`ALLOWED_ORIGINS` in
+[`server/another-angle/wrangler.toml`](../server/another-angle/wrangler.toml)):
+`https://app.hushmallow.com`, `https://hushmallow.pages.dev` and
+`https://ramkumarjothi1982.github.io`. A copy hosted anywhere else (a
+`*.framer.website` page, or a page with no origin) is refused, and Another
+Angle there plays Zuzu's own angles. The app
+otherwise only loads its own files from wherever it's hosted: no analytics, no
+font service (HM Nunito Sans, HM Manrope and HM Fraunces are bundled in
+`assets/fonts/`, and they load inside the frame from the app's own origin, so
+Framer never needs the font files). Favourites, history and settings live in
+the browser's local storage for that site.

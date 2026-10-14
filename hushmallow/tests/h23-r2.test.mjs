@@ -191,8 +191,10 @@ test('Phone sheet: a world it held carries on once the Mallow has landed again (
 test('A gentle visit\'s new host (Loomi after a care melt) keeps the attentive face', () => {
   const show = fnBody(scene, 'async function showMallow(', 'let heroGhost = null;');
   const touch = show.slice(0, show.indexOf('const rig = await world.setMallow('));
-  assert.ok(touch.indexOf('if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });') > touch.indexOf('await touchMt.loaded;'));
-  assert.match(show.slice(show.indexOf('const rig = await world.setMallow(')), /if \(gentle\(\)\) stageMallow\.setStage\?\.\(CARE_FACE, \{ quiet: true \}\);/);
+  // (softNow(): after something heavy, or "Just be with it" — 'Ask before every world')
+  // (and while the question asks: a host arriving under it — review r2, ask-r2-main.test.mjs)
+  assert.ok(touch.indexOf('if (softNow() || S.asking) stageMallow?.setStage?.(CARE_FACE, { quiet: true });') > touch.indexOf('await touchMt.loaded;'));
+  assert.match(show.slice(show.indexOf('const rig = await world.setMallow(')), /if \(softNow\(\) \|\| S\.asking\) stageMallow\.setStage\?\.\(CARE_FACE, \{ quiet: true \}\);/);
 });
 
 test('An angry Mallow\'s steam is a feathered wisp off the head, never a flat disc', () => {

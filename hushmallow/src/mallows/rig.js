@@ -387,7 +387,7 @@ export class MallowRig {
   lookAt(x, y) { this.pointerLook = x == null ? null : { x: clamp(x, -1, 1), y: clamp(y, -1, 1), t: this.time }; }
   setReducedMotion(b) { this.opts.reducedMotion = !!b; }
   snapshot() { return { ...this.val }; }
-  describe() { return describeExpression(this.mallow, this.mix, this.intensity); }
+  describe() { return describeExpression(this.mallow, this.mix, this.intensity, this.stage); }
 
   destroy() {
     this.destroyed = true;

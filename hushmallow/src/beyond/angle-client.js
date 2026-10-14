@@ -11,7 +11,7 @@
 //       feedback(rating, scene) → Promise<boolean>, deviceId(), forgetSession() }
 //   Result: { status: 'ok'|'crisis'|'care'|'unclear'|'fallback'|'error', scene?, keepSupportClose, reason?, hint? }
 //
-// What is sent: POST /v1/session { device_id, platform, app_version } and
+// What is sent: POST /v1/session { device_id, platform, app_version, invite? } and
 // POST /v1/angle { consent: true, text, emotion?, intention?, previous_angles?,
 // locale, request_id }; POST /v1/feedback { rating, reasoning_pattern,
 // interaction_type, mallow_character, prompt_version }. Never photos, never
@@ -21,8 +21,22 @@
 // Never safe by default: a non-200, a network error, a timeout or an answer
 // that fails validateScene() is { status: 'error' }, which the experience
 // treats like a fallback (its own safety check, then the authored engine).
+//
+// Tester codes: while the server has TESTER_INVITE_CODES, /v1/session without
+// a valid code answers 403 invite_required → { status: 'error', reason:
+// 'invite' }. That answer is remembered (with the code it refused) until the
+// stored code changes, or for INVITE_RETRY_MS, so each angle does not spend a
+// session request of the network's daily allowance.
 
 import { BUILD } from '../app/config.js';
+
+/** The build's version for /v1/session: its date and the slice's short name ("2026-10-12 · the Hushfold slice"), never cut mid-word (review r9). */
+export function appVersion(build = BUILD) {
+  const parts = String(build || '').split(/\s+·\s+/u);
+  const short = (parts[1] || '').replace(/\s*\(.*$/u, '').trim();
+  const v = short ? `${parts[0]} · ${short}` : parts[0];
+  return v.length <= 40 ? v : parts[0].slice(0, 40);
+}
 import { resolveEndpoint } from './endpoint.js';
 import { STORE_KEYS } from './consent.js';
 import { validateScene, previousAngles, PATTERNS } from './vocab.js';
@@ -35,6 +49,8 @@ export const PATHS = Object.freeze({ session: '/v1/session', angle: '/v1/angle',
  * experience also caps the whole wait, session included, at ANGLE_BUDGET_MS in another-angle.js).
  */
 export const TIMEOUTS = Object.freeze({ session: 6000, angle: 17000, feedback: 6000 });
+/** How long an invite_required answer is trusted before one new session is tried (codes may have been switched off). */
+export const INVITE_RETRY_MS = 12 * 3600000;
 
 // THE network call (see the header): one place, one shape.
 const netFetch = (url, init) => globalThis.fetch(url, init);
@@ -88,20 +104,42 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
     try { return await Promise.race([work, clock]); } finally { clearTimeout(timer); }
   }
 
+  /** The stored tester code, when it is one the server would accept the shape of. */
+  function storedInvite() {
+    let v = null;
+    try { v = store?.get(STORE_KEYS.invite, null); } catch { v = null; }
+    return typeof v === 'string' && v.length >= 1 && v.length <= 64 ? v : null;
+  }
+  let inviteBlock = null;   // { invite, endpoint, at } this visit (also kept in the store)
+  function inviteNeeded() {
+    let b = inviteBlock;
+    try { b = store?.get(STORE_KEYS.inviteNeeded, null) || b; } catch { /* memory only */ }
+    return !!b && typeof b === 'object' && b.endpoint === endpoint && (b.invite ?? null) === storedInvite() && now() - (Number(b.at) || 0) < INVITE_RETRY_MS;
+  }
+
   async function getToken(force = false) {
     if (!force && session && session.exp > now() + 60000) return session.token;
     session = null;
-    const body = { device_id: deviceId(), platform: platform || (globalThis.webkit?.messageHandlers?.hushStore || globalThis.HushNative ? 'ios' : 'web'), app_version: String(BUILD || '').slice(0, 40) };
-    let invite = null;
-    try { invite = store?.get(STORE_KEYS.invite, null); } catch { invite = null; }
-    if (typeof invite === 'string' && invite.length >= 1 && invite.length <= 64) body.invite = invite;
+    // the server asked for a tester code and the stored one has not changed since: no request
+    if (inviteNeeded()) { sessionReason = 'invite'; return null; }
+    const body = { device_id: deviceId(), platform: platform || (globalThis.webkit?.messageHandlers?.hushStore || globalThis.HushNative ? 'ios' : 'web'), app_version: appVersion() };
+    const invite = storedInvite();
+    if (invite) body.invite = invite;
     const r = await post(PATHS.session, body, { timeout: timeouts.session });
     if (ok200(r) && r.data.status === 'ok' && typeof r.data.token === 'string') {
       const exp = Date.parse(r.data.expires_at);
       session = { token: r.data.token, exp: Number.isFinite(exp) ? exp : now() + 3600000, endpoint };
       try { store?.set(STORE_KEYS.session, session); } catch { /* memory only */ }
+      inviteBlock = null;
+      try { store?.remove(STORE_KEYS.inviteNeeded); } catch { /* ignore */ }
       sessionReason = null;
       return session.token;
+    }
+    if (r.http === 403 && r.data?.error?.code === 'invite_required') {
+      inviteBlock = { invite, endpoint, at: now() };
+      try { store?.set(STORE_KEYS.inviteNeeded, inviteBlock); } catch { /* this visit only */ }
+      sessionReason = 'invite';
+      return null;
     }
     sessionReason = r.http === 0 ? (r.timedOut ? 'timeout' : 'network') : r.http === 403 ? 'forbidden' : r.http === 429 ? 'limit' : `session_${r.http}`;
     return null;

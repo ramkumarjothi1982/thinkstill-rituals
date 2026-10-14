@@ -132,7 +132,9 @@ test('H2: the full safety hold — the director\'s own safety pause (also while 
   assert.match(calm, /flowRef\.setGentle\?\.\(true\);/);
   assert.match(calm, /if \(flowRef\.state\?\.worldId === worldId\) \{ resumeFlow\(\); return; \}/);
   assert.match(calm, /if \(flowRef\.next\?\.\(\{ worldId \}\) === false\) resumeFlow\(\);/);
-  assert.match(fnBody(scene, 'async function careChoice(', 'function calmTheWorld('), /if \(worldMode && flowRef && !flowRef\.stub && !S\.finishing\) \{ calmTheWorld\(gw\.worldId\); return; \}/);
+  // (careChoice's "play" is playCalm's since review r2: the soft chip after "Just be with it" shares it)
+  assert.match(fnBody(scene, 'async function careChoice(', 'function calmTheWorld('), /playCalm\(\{ emotion, intention, worldId: gw\.worldId, safety, soft \}\);/);
+  assert.match(fnBody(scene, 'function playCalm(', 'function calmTheWorld('), /if \(worldMode && flowRef && !flowRef\.stub && !S\.finishing\) \{ calmTheWorld\(worldId\); return; \}/);
 });
 
 // ----------------------------------------------------------- leftovers --
@@ -167,7 +169,7 @@ test('(e) the world loads during the beat: the director, the likely world\'s cod
   assert.ok(warm.indexOf('const made = getFlow();') < warm.indexOf("import('../../v3/words.js')"));
   assert.match(warm, /reg\.registry\.select\(\{ emotion: fe, intention, gentle: gentle\(\), favourites: favouriteWorlds\(store\) \}\)/);
   assert.ok(warm.indexOf('reg.registry.prefetch?.(pick);') < warm.indexOf('await made;') && warm.indexOf('await made;') < warm.indexOf('prefetchHost(pick)'), 'code first, art last');
-  assert.match(fnBody(scene, 'async function afterTell(', 'async function gentleWorld('), /warmWorld\(\{ emotion: emotion \|\| S\.emotion, intention: intention \|\| S\.intention \}\);\s*\/\/[^\n]*\n\s*if \(text\) \{/);
+  assert.match(fnBody(scene, 'async function afterTell(', 'async function gentleWorld('), /warmWorld\(\{ emotion: steer, intention: intention \|\| S\.intention \}\);\s*\/\/[^\n]*\n\s*if \(text\) \{/);
   assert.match(fnBody(scene, 'async function resumePendingTell() {', 'function followOS()') || scene, /if \(p\.input\?\.text\) warmWorld\(\{ emotion: p\.emotion, intention: p\.intention \}\);/);
 });
 
@@ -190,7 +192,7 @@ test('(d) no positive feeling is suggested for words with a safety cue; ordinary
   // ordinary words: as before (confident matches, at most 3)
   assert.ok(suggestedFeelings(interpret('I am so relieved the exam is over')).includes('relief'));
   assert.ok(suggestedFeelings(interpret('I was fuming and gutted and so embarrassed')).length <= 3);
-  assert.match(read('src/hushfold/input-overlay.js'), /suggested = m\.suggestedFeelings \? m\.suggestedFeelings\(reading\) :/);
+  assert.match(read('src/hushfold/input-overlay.js'), /suggested = m\.suggestedFeelings \? m\.suggestedFeelings\(reading, \{ loss, level: safety\.level \}\) :/);
 });
 
 // ---------------------------------------------------------------- (h) rig --

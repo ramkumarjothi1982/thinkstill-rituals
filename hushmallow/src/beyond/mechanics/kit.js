@@ -575,7 +575,7 @@ export function makeTags(root, { bounds = null, announce = null } = {}) {
         if (!t.visible) continue;
         if (t.fixed) { const r = t.rect(); if (r) Object.assign(slot(n++), r); continue; }
         const prev = t.target, tie = t.tie;
-        let bestCost = Infinity, prevCost = Infinity, bdx = 0, bdy = 0;
+        let bestCost = Infinity, prevCost = Infinity, bdx = 0, bdy = 0, bestHit = 0, prevHit = 0;
         for (let iy = 0; iy < DY.length; iy++) {
           if (DY[iy] > tie || -DY[iy] > tie) continue;
           for (let ix = 0; ix < DX.length; ix++) {
@@ -586,12 +586,14 @@ export function makeTags(root, { bounds = null, announce = null } = {}) {
             for (let k = 0; k < obstacles.length; k++) { const o = obstacles[k]; if (o) hit += cover(L, T, R, B, o); }
             for (let k = 0; k < n; k++) hit += cover(L, T, R, B, boxes[k]) * 1.5;
             const cost = hit * 4 + Math.abs(b.dx) * 0.7 + Math.abs(b.dy);
-            if (cost < bestCost) { bestCost = cost; bdx = b.dx; bdy = b.dy; }
-            if (Math.abs(b.dx - prev.dx) < 1 && Math.abs(b.dy - prev.dy) < 1) prevCost = cost;
+            if (cost < bestCost) { bestCost = cost; bdx = b.dx; bdy = b.dy; bestHit = hit; }
+            if (Math.abs(b.dx - prev.dx) < 1 && Math.abs(b.dy - prev.dy) < 1) { prevCost = cost; prevHit = hit; }
           }
         }
-        // stickiness: stay put unless the new place is clearly better (no jitter between two near-equal places)
-        if (prevCost <= bestCost + 18) { bdx = prev.dx; bdy = prev.dy; }
+        // stickiness: stay put unless the new place is clearly better (no jitter between two near-equal places).
+        // Once nothing is in the way of either place, a tag goes back towards its object: a band or a Mallow that
+        // only passed by never leaves it drifted (review r4: cards left below their buds after the done line)
+        if (prevCost <= bestCost + 18 && !(bestHit === 0 && prevHit === 0)) { bdx = prev.dx; bdy = prev.dy; }
         t.settle(bdx, bdy, dt, instant);
         t.boxAt(bdx, bdy, slot(n++));
       }

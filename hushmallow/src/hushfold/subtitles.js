@@ -16,11 +16,14 @@
 //
 // createSubtitles({root, prefs, avoid, bounds, reducedMotion, backdrop, brightHint, onControl, onBand}) →
 //   { say(lines, {who, hold, id, kind:'dialogue'|'discovery'|'title', colour, interrupt, first}) → Promise<boolean>,
-//     choice(prompt, [{label, value, primary, onPick}], {who, timeoutMs, transient}) → Promise<value|null>,
-//     pause, resume, replay, skip, setSpeed, clear({keepHeld}), drop(match), suspend, unsuspend, layout, destroy,
+//     choice(prompt, [{label, value, primary, onPick}], {who, timeoutMs, transient, focus, waitHidden}) → Promise<value|null>,
+//     pause, resume, replay, skip, setSpeed, clear({keepHeld, keep}), drop(match), suspend, unsuspend, layout, destroy,
 //     get busy, get holding, get paused, get suspended, get speed, el }
 // suspend(): while the person types, nothing shows; a held discovery or a
 // choice waits (parked) and comes back on unsuspend(); passing chatter is dropped.
+// A choice with `focus` takes the keyboard focus to its first chip when it shows (never out of a text field), so
+// keyboard and screen-reader users land on it; with `waitHidden` its timeout waits while the page is hidden (WCAG 2.2.1:
+// the person who looked away comes back to the same choice, with at least HIDDEN_BACK_MS still to answer it).
 
 import { h } from '../app/ui.js';
 import { hfIcon } from './icons.js';
@@ -29,6 +32,7 @@ export const SUBTITLE_SPEEDS = Object.freeze([0.75, 1, 1.25, 1.5]);
 export const normaliseSpeed = (s) => (SUBTITLE_SPEEDS.includes(+s) ? +s : 1);
 const OUT_MS = 420;   // fade out
 const GAP_MS = 220;   // the breath between two lines
+export const HIDDEN_BACK_MS = 15000;   // a choice that waited while the page was hidden: at least this long once it is seen again
 
 /** How long a line stays on screen, in ms. */
 export function readingMs(text, speed = 1) {
@@ -87,8 +91,10 @@ function placeBandAt(bounds, blocks, need, gap) {
   const fitting = free.filter((f) => f.bottom - f.top >= need);
   const pick = fitting[0] || free.slice().sort((p, q) => (q.bottom - q.top) - (p.bottom - p.top))[0];
   if (!pick) return { y: top, fits: false, band: null };
-  const yy = pick.above ? pick.bottom - need : pick.top;
-  return { y: Math.max(top, Math.round(yy)), fits: fitting.length > 0, band: { top: pick.top, bottom: pick.bottom } };
+  const fits = fitting.length > 0;
+  // (nothing fits: the largest band, but never past the bottom bound — the dock is below it — while the bounds hold it)
+  const yy = Math.min(pick.above ? pick.bottom - need : pick.top, fits ? Infinity : bottom - need);
+  return { y: Math.max(top, Math.round(yy)), fits, band: { top: pick.top, bottom: pick.bottom } };
 }
 
 // ------------------------------------------------------------ contrast --
@@ -125,9 +131,98 @@ export function brightPixel(data) {
   const k = idx[Math.min(n - 1, Math.floor(n * 0.95))] * 4;   // the brightest 5 % (a moon behind one word counts)
   return [data[k], data[k + 1], data[k + 2]];
 }
+/**
+ * A bright spot behind the scrim (the daytime sun): where it is in the sampled box and how big, so the scrim is
+ * deepened there and the spot never shows through the dark as a muddy blob. data: RGBA, cols × rows cells over the box.
+ * → { x, y (0…1 of the box), r (0…1 of its width), a (the scrim's alpha over it) } or null (no spot much brighter than
+ * the rest). Pure; unit-tested.
+ */
+export function hotSpot(data, cols = 48, rows = 12) {
+  const n = cols * rows;
+  if (!data || data.length < n * 4) return null;
+  const L = new Float32Array(n);
+  let sum = 0, max = 0;
+  for (let i = 0; i < n; i++) { L[i] = luminance(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]); sum += L[i]; max = Math.max(max, L[i]); }
+  const mean = sum / n;
+  // (a spot: the brightest there is, bright in itself and well over the rest — a white cloud band across the box is not one)
+  if (max < 0.75) return null;
+  const cut = Math.max(0.6, mean + 0.2, max - 0.15);
+  let w = 0, cx = 0, cy = 0, hot = 0;
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const q = L[j * cols + i] - cut;
+    if (q <= 0) continue;
+    hot++; w += q; cx += q * (i + 0.5); cy += q * (j + 0.5);
+  }
+  if (!hot || hot > n * 0.35) return null;
+  cx /= w; cy /= w;
+  // its size: how far its light spreads round the centre (brightness-weighted, in box widths: a stray bright cell of
+  // cloud at the edge does not widen it), a little more for the glow round it; a wide spread is a band, not a spot
+  let s2 = 0;
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const q = L[j * cols + i] - cut;
+    if (q <= 0) continue;
+    s2 += q * (((i + 0.5 - cx) / cols) ** 2 + (((j + 0.5 - cy) / rows) * (rows / cols)) ** 2);
+  }
+  const spread = Math.sqrt(s2 / w);
+  if (spread > 0.16) return null;
+  // (its core — the brightest tenth of its cells — and the sky round it — the median cell —, for hotAlpha)
+  const order = Array.from({ length: n }, (_, i) => i).sort((p, q) => L[p] - L[q]);
+  const px = (i) => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]];
+  const core = px(order[Math.max(0, n - 1 - Math.floor(hot * 0.1))]), sky = px(order[n >> 1]);
+  return { x: cx / cols, y: cy / rows, r: Math.max(0.05, spread * 2.2 + 0.03), a: 0.8, core, sky };
+}
+/**
+ * How much the deepening over a bright spot adds on top of the scrim's own `a` (both rgba(9, 6, 28, α), the browser
+ * blending in sRGB): just enough that the spot's core under both reads a touch darker than the sky round it under the
+ * scrim alone (`under`: its luminance, 0.7 of the sky's — at equal luminance a warm sun still shows through a navy
+ * scrim as a faint brown disc) — so the sun or the moon never shows through as a muddy disc, and the place over it is
+ * never much darker than the rest of the scrim (never a dark blot). At most `max`. Pure; unit-tested.
+ */
+export function hotAlpha(core, sky, a, { max = 0.8, under = 0.7 } = {}) {
+  if (!core || !sky || !(a >= 0) || a >= 1) return 0;
+  const over = ([r, g, b], k) => luminance(r + (SCRIM_RGB[0] - r) * k, g + (SCRIM_RGB[1] - g) * k, b + (SCRIM_RGB[2] - b) * k);
+  // (a spot no brighter than the sky round it needs nothing)
+  const sk = over(sky, a);
+  if (over(core, a) <= sk) return 0;
+  const want = sk * under;
+  // the total cover the core needs (between a and 1), then what the second layer adds to reach it: 1 − (1 − k)/(1 − a)
+  let lo = a, hi = 1;
+  for (let i = 0; i < 18; i++) { const k = (lo + hi) / 2; if (over(core, k) > want) lo = k; else hi = k; }
+  const t = 1 - (1 - hi) / (1 - a);
+  return Math.round(Math.min(max, Math.max(0, t)) * 100) / 100;
+}
+/**
+ * The deepening over a bright spot, coloured as well as dark (review r2 P3: on Boppo's home at 320 the sun under the pill's
+ * right end read murky olive-brown — a warm white under a navy scrim is a grey of another hue than the warm sky round it,
+ * however dark). The layer's colour and alpha that bring the spot's core under both layers to the colour the sky round it
+ * has under the scrim alone, a touch darker (`under`, per sRGB channel: ~0.7 of its luminance) — the least alpha that does
+ * it with a colour in range, at most `max`. → { a, rgb: [r, g, b] }, or null when nothing is needed. Both layers are blended
+ * the browser's way (sRGB). Pure; unit-tested.
+ */
+export function hotTint(core, sky, a, { max = 0.8, under = 0.86 } = {}) {
+  if (!core || !sky || !(a >= 0) || a >= 1) return null;
+  const mix = (p, k) => p.map((v, i) => v + (SCRIM_RGB[i] - v) * k);
+  const P = mix(core, a), Sk = mix(sky, a);
+  // (a spot no brighter than the sky round it needs nothing)
+  if (luminance(...P) <= luminance(...Sk)) return null;
+  const T = Sk.map((v) => v * under);
+  let t = 0;
+  for (let i = 0; i < 3; i++) {
+    if (P[i] > T[i]) t = Math.max(t, (P[i] - T[i]) / P[i]);              // (its colour no less than 0)
+    else if (T[i] > P[i]) t = Math.max(t, (T[i] - P[i]) / Math.max(1, 255 - P[i]));   // (...nor more than 255)
+  }
+  t = Math.min(max, t);
+  if (!(t > 0.02)) return null;
+  const rgb = P.map((p, i) => Math.round(Math.min(255, Math.max(0, (T[i] - p * (1 - t)) / t))));
+  return { a: Math.round(t * 100) / 100, rgb };
+}
 let sampler = null;
-/** Draw what is behind `rect` (client px) from the given canvases into a tiny canvas; → RGBA data or null. */
-function sampleBackdrop(rect, canvases) {
+/**
+ * Draw what is behind `rect` (client px) from the given canvases into a tiny canvas; → RGBA data or null. `full`: each
+ * layer that is partly faded (a realm still fading in as the Hushfold opens, a world melting) drawn as it will be, fully
+ * shown; `out.partial` says whether there was one.
+ */
+function sampleBackdrop(rect, canvases, { full = false, out = null } = {}) {
   try {
     if (!rect || rect.width < 4 || rect.height < 4 || !canvases?.length) return null;
     sampler ||= Object.assign(document.createElement('canvas'), { width: 48, height: 12 });
@@ -140,9 +235,10 @@ function sampleBackdrop(rect, canvases) {
       let a = 1;
       for (let el = c; el && el !== document.body; el = el.parentElement) { const o = +getComputedStyle(el).opacity; if (Number.isFinite(o)) a *= o; }
       if (a < 0.05) continue;
+      if (a < 0.97 && out) out.partial = true;
       const kx = c.width / cr.width, ky = c.height / cr.height;
       const sx = (rect.left - cr.left) * kx, sy = (rect.top - cr.top) * ky;
-      g.globalAlpha = Math.min(1, a);
+      g.globalAlpha = full ? 1 : Math.min(1, a);
       g.drawImage(c, sx, sy, rect.width * kx, rect.height * ky, 0, 0, 48, 12);
     }
     g.globalAlpha = 1;
@@ -181,7 +277,18 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   let relayoutT = 0;          // while a line is up, keep it clear of things that move (a hop, a drifting thought)
   let reserved = 0;           // the band height the scene was asked to keep free (onBand)
   const release = () => { if (reserved) { reserved = 0; onBand?.(0); } };
-  const watch = (on) => { clearInterval(relayoutT); relayoutT = on ? setInterval(() => { if (cur?.lineEl || !chipsEl.hidden) layout(); }, 600) : 0; };
+  // (and, in a line's first seconds, what is behind it is looked at again: a line said while the realm is still fading in
+  // — just after the Hushfold opens — or that has moved, would keep a scrim sampled from a dimmer or other backdrop: the
+  // daytime sun left muddy under it. Until two looks in a row agree, four at most)
+  const watch = (on) => { clearInterval(relayoutT); relayoutT = on ? setInterval(() => { if (cur?.lineEl || !chipsEl.hidden) layout(); rescrim(); }, 600) : 0; };
+  function rescrim() {
+    const c = cur, n = c?.lineEl;
+    if (!n?.isConnected || c.phase === 'out' || (c.scrimLooks || 0) >= 4 || c.scrimStill >= 2) return;
+    c.scrimLooks = (c.scrimLooks || 0) + 1;
+    const key = sampleScrim(n);
+    c.scrimStill = key === c.scrimKey ? (c.scrimStill || 0) + 1 : 0;
+    c.scrimKey = key;
+  }
   const offPrefs = prefs?.onChange?.((k, v) => { if (k === 'subtitleSpeed') { speed = normaliseSpeed(v); renderSpeed(); } });
   // a line that changes size while it shows (its type face arriving: a world's title in story type, placed on one line
   // in the fallback face, wraps to two once the face is there) is placed again at once — never left grown over what it
@@ -203,6 +310,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
 
   function showCtl(on) {
     clearTimeout(hideCtlTimer);
+    ctl.classList.remove('gap');
     ctl.classList.toggle('idle', !on);
     if (on) ctl.classList.remove('is-hidden');
     // the pill leaves with the last line (it never lingers alone on the stage); a paused pill stays
@@ -244,7 +352,19 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     el.style.transform = `translateY(${y}px)`;
   }
 
-  /** Deepen the scrim over a bright backdrop (once per line; cheap: one 48×12 sample). */
+  /**
+   * A new line, just before its first paint (in the frame's rAF, after its last placing): what is behind it is sampled
+   * again where it now is, still with no fade (.fresh); from the next frame on a later look deepens in softly. One quick
+   * look follows at 160 ms (a realm drawing its first frames as the Hushfold opens), then rescrim's every 600 ms.
+   */
+  function settle(node) {
+    if (!node?.isConnected) return;
+    const key = sampleScrim(node);
+    if (cur?.lineEl === node) { cur.scrimKey = key; cur.scrimStill = 0; }
+    requestAnimationFrame(() => requestAnimationFrame(() => node.classList.remove('fresh')));
+    setTimeout(() => { if (!destroyed && cur?.lineEl === node && cur.phase !== 'out') rescrim(); }, 160);
+  }
+  /** Deepen the scrim over a bright backdrop (once per line, and again in its first seconds: rescrim; cheap: 48×12 samples). */
   function adaptScrim(node) {
     if (!node) return;
     // shrink-wrap the block to its longest line, so the scrim hugs the words (not the screen's width)
@@ -257,16 +377,57 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       for (const r of rng.getClientRects()) w = Math.max(w, r.width);
       if (w > 0) node.style.width = `${Math.ceil(w + 4)}px`;
     } catch { /* keep the natural width */ }
+    const key = sampleScrim(node);
+    if (cur && cur.lineEl === node) { cur.scrimKey = key; cur.scrimStill = 0; }
+  }
+  /** What is behind the line now → its scrim (and the deepening over a bright spot); a key of what was found. */
+  function sampleScrim(node) {
     let a = brightHint() ? 0.8 : SCRIM_MIN;
-    const data = backdrop ? sampleBackdrop(node.getBoundingClientRect(), backdrop()) : null;
-    if (data) a = scrimFor(brightPixel(data));
+    // (what is behind it may still be fading in — the realm as the Hushfold opens —: it is read as it will be too, and
+    // the deeper scrim of the two is kept, so the first look, before the line is first painted, is already right)
+    const layers = backdrop ? backdrop() : null;
+    const seen = { partial: false };
+    const data = layers ? sampleBackdrop(node.getBoundingClientRect(), layers, { out: seen }) : null;
+    const whole = seen.partial ? sampleBackdrop(node.getBoundingClientRect(), layers, { full: true }) : null;
+    if (data) a = Math.max(scrimFor(brightPixel(data)), whole ? scrimFor(brightPixel(whole)) : 0);
     node.style.setProperty('--hf-scrim', String(a));
     el.classList.toggle('bright', a > 0.62);
+    // a bright spot behind the scrim's whole box (its feathered rim reaches past the words): the scrim is deepened over it
+    // (--hf-hot-*), so the daytime sun never shows through the dark as a muddy brown blob — wherever it lies under the
+    // scrim, its rounded ends and rim included: the deepening is its own layer (.hf-sub::after), not cut to the scrim's
+    // pill, placed in px from the line's own box (--hf-hot-cx / -cy)
+    let hs = null, ha = 0;
+    try {
+      const r = node.getBoundingClientRect();
+      const box = { left: r.left - 24, top: r.top - 14, width: r.width + 48, height: r.height + 30 };
+      const seen2 = { partial: false };
+      const d2 = layers ? sampleBackdrop(box, layers, { out: seen2 }) : null;
+      hs = d2 ? hotSpot(d2) : null;
+      if (!hs && seen2.partial) { const w2 = sampleBackdrop(box, layers, { full: true }); hs = w2 ? hotSpot(w2) : null; }
+      // (only as deep as the spot needs to read as the sky round it does — in its colour too, never a grey or olive disc on
+      // a warm sky: hotTint — and never a dark blot on a bright home)
+      const tint = hs ? hotTint(hs.core, hs.sky, a, { max: hs.a }) : null;
+      ha = tint ? tint.a : 0;
+      if (hs && ha > 0.02) {
+        node.style.setProperty('--hf-hot-rgb', tint.rgb.join(', '));
+        node.style.setProperty('--hf-hot-x', `${(hs.x * 100).toFixed(1)}%`);
+        node.style.setProperty('--hf-hot-y', `${(hs.y * 100).toFixed(1)}%`);
+        node.style.setProperty('--hf-hot-cx', `${Math.round(hs.x * box.width - 24)}px`);
+        node.style.setProperty('--hf-hot-cy', `${Math.round(hs.y * box.height - 14)}px`);
+        node.style.setProperty('--hf-hot-r', `${Math.round(hs.r * box.width)}px`);
+        node.style.setProperty('--hf-hot-a', String(ha));
+      } else hs = null;
+    } catch { hs = null; }
+    if (!hs) node.style.setProperty('--hf-hot-a', '0');
+    // (what was found, coarsely: two looks in a row that agree end the looking)
+    return `${a}|${hs ? `${Math.round(hs.x * 20)},${Math.round(hs.y * 10)},${Math.round(hs.r * 40)}` : '-'}`;
   }
 
   function lineNode(line) {
     const kind = line.kind === 'discovery' || line.kind === 'title' ? line.kind : 'dialogue';
-    const node = h('div', { class: `hf-sub ${kind}` },
+    // (fresh: until it is first painted its scrim and its deepening take what is sampled at once, with no fade from the
+    // default — the first ~0.9 s never shows the sun or moon through a scrim still deepening: settle())
+    const node = h('div', { class: `hf-sub ${kind} fresh` },
       // the name in near-white; only the dot wears the Mallow's colour (contrast over bright realms)
       line.who ? h('div', { class: 'who', style: line.colour ? { '--hf-who': line.colour } : null }, line.who, h('span', { class: 'sr-only' }, ': ')) : null,
       h('p', { class: 'text' }, line.text));
@@ -297,8 +458,9 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     layout();
     adaptScrim(node);
     // ...and placed once more before it is first painted, now that it has its final width (adaptScrim) and the scene
-    // has answered a band it asked for: the line never shows first where it does not belong and then moves
-    requestAnimationFrame(() => { if (!destroyed && cur?.lineEl === node) { jumpNext = true; layout(); } });
+    // has answered a band it asked for: the line never shows first where it does not belong and then moves — and what is
+    // behind it where it now is, sampled again (its scrim and the deepening over a bright spot are right from its first frame)
+    requestAnimationFrame(() => { if (!destroyed && cur?.lineEl === node) { jumpNext = true; layout(); settle(node); } });
     watch(true);
     if (cur.holding) {
       cur.timer = 0;
@@ -323,6 +485,9 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     const mine = cur;
     // the last line of all: the pill fades out together with it (never left alone on the stage)
     if (cur.i >= cur.item.lines.length - 1 && !queue.length && !paused) { clearTimeout(hideCtlTimer); ctl.classList.add('idle', 'is-hidden'); }
+    // another line follows: the pill steps out with this one for the gap between them and comes back with the next (it
+    // is never seen alone, with no line; it keeps its focus meanwhile — a held line's Continue)
+    else if (!paused) ctl.classList.add('gap');
     fadeOut(cur.lineEl, () => {
       if (cur !== mine) return;
       cur.i += 1;
@@ -334,7 +499,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   function finish(result) {
     const item = cur?.item;
     cur = null;
-    chipsEl.hidden = true; chipsEl.replaceChildren();
+    chipsEl.hidden = true; chipsEl.replaceChildren(); chipsEl.classList.remove('out');
     ctl.classList.remove('holding');
     item?.resolve(result);
     next();
@@ -358,19 +523,51 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     if (node) lastLine = { text: prompt, who: opts.who, colour: opts.colour };
     chipsEl.setAttribute('aria-label', prompt || 'Choose');
     // onPick runs inside the tap itself (an iPhone keyboard only opens from a real gesture)
-    chipsEl.replaceChildren(...options.map((o) => h('button', { class: `hf-chip${o.primary ? ' primary' : ''}`, type: 'button', onclick: () => { try { o.onPick?.(); } catch (e) { console.warn(e); } choose(o.value); } }, o.label)));
+    chipsEl.replaceChildren(...options.map((o) => h('button', { class: `hf-chip${o.primary ? ' primary' : ''}${o.soft ? ' soft' : ''}`, type: 'button', onclick: () => { try { o.onPick?.(); } catch (e) { console.warn(e); } choose(o.value); } }, o.label)));
+    chipsEl.classList.remove('out');
     chipsEl.hidden = false;
     ctl.classList.add('is-hidden');
     layout();
     adaptScrim(node);
+    if (node) requestAnimationFrame(() => { if (!destroyed && cur === mine && mine.lineEl === node) { layout(); settle(node); } });
     watch(true);
-    if (opts.timeoutMs > 0) cur.timer = setTimeout(() => choose(null), opts.timeoutMs);
-    function choose(value) {
+    // (keyboard and screen readers: the first chip has the focus — never taken out of a text field, where on iPhone it
+    // would drop the keyboard mid-sentence)
+    if (opts.focus) {
+      const a = document.activeElement;
+      if (!a || !(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) chipsEl.firstChild?.focus?.({ preventScroll: true });
+    }
+    if (mine.onVis) { document.removeEventListener?.('visibilitychange', mine.onVis); mine.onVis = null; }
+    if (opts.timeoutMs > 0) {
+      // (waitHidden: the clock stops while the page is hidden and starts again, with at least HIDDEN_BACK_MS, once it is seen)
+      let left = opts.timeoutMs, t0 = 0;
+      const arm = () => {
+        clearTimeout(mine.timer); mine.timer = 0;
+        if (opts.waitHidden && document.hidden) return;
+        t0 = performance.now();
+        mine.timer = setTimeout(() => choose(null, { faded: true }), left);
+      };
+      if (opts.waitHidden) {
+        const onVis = mine.onVis = () => {
+          if (cur !== mine || mine.phase === 'out' || mine.onVis !== onVis) { document.removeEventListener?.('visibilitychange', onVis); return; }
+          if (document.hidden) {
+            if (mine.timer) { clearTimeout(mine.timer); mine.timer = 0; left = Math.max(0, left - (performance.now() - t0)); }
+          } else if (!mine.timer) { left = Math.max(left, opts.hiddenBackMs ?? HIDDEN_BACK_MS); arm(); }
+        };
+        document.addEventListener?.('visibilitychange', onVis);
+      }
+      arm();
+    }
+    function choose(value, { faded = false } = {}) {
       if (cur !== mine || mine.phase === 'out') return;
       clearTimeout(mine.timer);
+      if (mine.onVis) { document.removeEventListener?.('visibilitychange', mine.onVis); mine.onVis = null; }
       mine.phase = 'out';
-      chipsEl.hidden = true;
-      fadeOut(mine.lineEl, () => { if (cur === mine) finish(value); });
+      // (let go by its clock, the chips fade out with the line — the soft chip after "Just be with it" fades, never pops;
+      // a tapped one goes at once)
+      if (faded) chipsEl.classList.add('out'); else chipsEl.hidden = true;
+      if (!mine.lineEl && faded) setTimeout(() => { if (cur === mine) finish(value); }, OUT_MS);
+      else fadeOut(mine.lineEl, () => { if (cur === mine) finish(value); });
     }
     cur.choose = choose;
   }
@@ -379,7 +576,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   const keeper = (it) => !!(it && ((it.choice && !it.opts?.transient) || it.opts?.hold || it.lines?.some((l) => l.hold)));
   function hideNow() {
     liveEl.replaceChildren(); chipsEl.hidden = true; chipsEl.replaceChildren();
-    ctl.classList.remove('holding'); clearTimeout(hideCtlTimer); ctl.classList.add('is-hidden'); watch(false);
+    ctl.classList.remove('holding', 'gap'); clearTimeout(hideCtlTimer); ctl.classList.add('is-hidden'); watch(false);
   }
 
   const api = {
@@ -434,17 +631,26 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     /**
      * Remove everything now; pending promises resolve false (choices null).
      * keepHeld: held discoveries and non-transient choices stay (queued, or parked).
+     * keep(opts): what else stays — the one showing stays exactly as it is, on screen with its clock running (a world
+     * pausing under the shell's own question never takes the question with it).
      */
-    clear({ keepHeld = false } = {}) {
+    clear({ keepHeld = false, keep = null } = {}) {
+      const stays = (it) => { try { return !!(keep && it && keep(it.opts || {})); } catch { return false; } };
       const kept = [];
-      for (const it of queue.splice(0)) { if (keepHeld && keeper(it)) kept.push(it); else it.resolve(it.choice ? null : false); }
+      for (const it of queue.splice(0)) { if ((keepHeld && keeper(it)) || stays(it)) kept.push(it); else it.resolve(it.choice ? null : false); }
+      if (cur && cur.phase !== 'out' && stays(cur.item)) {
+        // (it stays on screen, untouched: only what was queued behind it is let go)
+        if (parked && !(keepHeld && keeper(parked.item)) && !stays(parked.item)) { parked.item.resolve(parked.item.choice ? null : false); parked = null; }
+        queue.push(...kept);
+        return;
+      }
       if (cur) {
         clearTimeout(cur.timer);
         const c = cur; cur = null;
         if (keepHeld && keeper(c.item)) { c.phase = 'in'; c.lineEl = null; kept.unshift({ ...c.item, resumeAt: c.i }); }
         else c.item.resolve(c.item.choice ? null : false);
       }
-      if (parked && !(keepHeld && keeper(parked.item))) { parked.item.resolve(parked.item.choice ? null : false); parked = null; }
+      if (parked && !(keepHeld && keeper(parked.item)) && !stays(parked.item)) { parked.item.resolve(parked.item.choice ? null : false); parked = null; }
       queue.push(...kept);
       liveEl.replaceChildren(); chipsEl.hidden = true; chipsEl.replaceChildren();
       ctl.classList.remove('holding'); showCtl(false); watch(false);

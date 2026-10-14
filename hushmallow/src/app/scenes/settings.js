@@ -48,7 +48,9 @@ export default function settings(app) {
   const tierName = ent.tier() === 'none' ? 'No plan yet' : PLANS[ent.tier()].name + (ent.source() === 'test' ? ' (test)' : '');
   const section = (title) => h('h2', { class: 'eyebrow', style: { marginTop: '22px', marginBottom: '2px' } }, title);
   const sample = h('p', { style: type('subtitle', { margin: '12px 0 2px', color: 'var(--text-1)', textAlign: 'center', textWrap: 'balance' }) }, 'Something bothering you? Want to tell me?');
-  // Another Angle (W8): share-my-words switch + "Delete my Another Angle data", only where they mean something
+  // Another Angle (W8): share-my-words switch, the notice, Tester code and "Delete my Another Angle data", only
+  // where they mean something: with the server on, for hushmallow Beyond; and for anyone with its data still here
+  // (then only Delete, unless Beyond is on)
   // Accounts (optional sign-in): one row at the top of Privacy, only when this build has sign-in on
   const signIn = !!app.auth?.enabled;
   const signedIn = signIn && app.auth.status() === 'signed-in';
@@ -61,7 +63,8 @@ export default function settings(app) {
   const angleRows = h('div');
   Promise.all([import('../../beyond/consent.js'), import('../../beyond/endpoint.js')]).then(([c, a]) => {
     const endpoint = a.resolveEndpoint();
-    if (endpoint || c.hasAngleData(app.store)) c.mountAngleSettings(app, angleRows, { endpoint });
+    const live = !!endpoint && ent.has('ultra');
+    if (live || c.hasAngleData(app.store)) c.mountAngleSettings(app, angleRows, { endpoint: live ? endpoint : null });
   }).catch(() => {});
 
   const el = h('div', { class: 'settings', style: { display: 'flex', flexDirection: 'column', height: '100%' } },

@@ -11,7 +11,8 @@ import * as SV from '../server/another-angle/src/vocab.js';
 import { THOUGHT_PATTERNS } from '../src/ultra/frameworks.js';
 import { authoredScene, sceneParts, exactPhrase, chunkStep, candidatePatterns, sameWords, secondPerson, FACT_ASK, GUESS_ASK } from '../src/beyond/authored.js';
 import { createAngleClient, resolveEndpoint, makeDeviceId, PATHS } from '../src/beyond/angle-client.js';
-import { consentState, setConsent, withdrawConsent, deleteAngleData, hasAngleData, noteFeedback, lessWanted, STORE_KEYS, CONSENT_VERSION, PROVIDER_RETENTION, RETENTION_PLACEHOLDER } from '../src/beyond/consent.js';
+import { consentState, setConsent, withdrawConsent, deleteAngleData, hasAngleData, noteFeedback, lessWanted, STORE_KEYS, CONSENT_VERSION, PROVIDER_RETENTION, RETENTION_PLACEHOLDER,
+  PROVIDER_SAFETY_HOLD, PROVIDER_USE, PROVIDER_DELETE, saveTesterCode } from '../src/beyond/consent.js';
 import * as LINES from '../src/beyond/lines.js';
 import { MECHANIC_MODULES } from '../src/beyond/mechanics/index.js';
 import { createStore } from '../src/engine/storage.js';
@@ -117,13 +118,15 @@ test('authored scenes: valid, short, deterministic, quoting the person exactly',
 
 test('authored scenes fit the words: fair anger, replaying, mind-reading, self-criticism', () => {
   assert.equal(authoredScene('My manager took the credit for my idea again.').reasoning_pattern, 'valid_anger');
-  assert.equal(authoredScene('My boss embarrassed me in front of everyone.').reasoning_pattern, 'valid_anger');
+  assert.equal(authoredScene('My boss shouted at me in front of everyone.').reasoning_pattern, 'valid_anger');
+  // (embarrassment told, never anger: the angle-polish QA)
+  assert.notEqual(authoredScene('My boss embarrassed me in front of everyone.').reasoning_pattern, 'valid_anger');
   assert.equal(authoredScene('I keep replaying something embarrassing I said.').reasoning_pattern, 'rumination');
   assert.equal(authoredScene('He hasn’t replied for hours. He must be annoyed with me.').reasoning_pattern, 'mind_reading');
   assert.equal(authoredScene('I failed my exam. I’m useless.').reasoning_pattern, 'self_criticism');
   assert.equal(authoredScene('Nobody likes me.').reasoning_pattern, 'overgeneralisation');
   // a fair-anger step is a boundary, never "say something light"
-  assert.match(authoredScene('My boss embarrassed me in front of everyone.').practical_next_step, /limit|boundar|noted|say/i);
+  assert.match(authoredScene('My boss shouted at me in front of everyone.').practical_next_step, /limit|boundar|noted|say/i);
   // a self-directed thought is never told it is a guess about someone else's mind
   for (const t of ['I always mess things up.', 'I feel like a fraud at work.']) assert.ok(!candidatePatterns(t).includes('mind_reading'), t);
 });
@@ -216,16 +219,18 @@ test('authored path: four angles for the brief’s examples, never cut, never no
     }
     assert.ok(seen.length >= 2, `${text}: ${seen.join(', ')}`);
   }
-  // overgeneralisation only when "always", "never", "nobody", "everyone"… is really the claim
+  // overgeneralisation only when "always", "never", "nobody", "everyone"… is really the claim (r8: a stated event may
+  // still play separate_one, but on its kind lines, never "one moment" or "every time")
   for (const t of ['My boss embarrassed me in front of everyone.', 'My friend invited everyone except me.']) {
-    const seen = [];
-    for (let i = 0; i < 6; i++) { const s = authoredScene(t, { exclude: seen }); if (s.exhausted) break; seen.push(s.reasoning_pattern); }
-    assert.ok(!seen.includes('overgeneralisation'), `${t}: ${seen.join(', ')}`);
+    const seen = [], scenes = [];
+    for (let i = 0; i < 6; i++) { const s = authoredScene(t, { exclude: seen }); if (s.exhausted) break; seen.push(s.reasoning_pattern); scenes.push(s); }
+    assert.ok(!scenes.some((s) => s.reasoning_pattern === 'overgeneralisation' && !s.feeling), `${t}: ${seen.join(', ')}`);
   }
   assert.equal(authoredScene('Nobody likes me.').subtitle_line_1, 'A word like “nobody” is powerful, but it’s rarely exactly true.');
-  // "another angle" for mind-reading words: the label, not the sentence
+  // "another angle" for mind-reading words: never a self-label lifted out of someone else's view (review r9: "I am
+  // boring" is what they fear the friend thinks, not a verdict they put on themselves)
   const second = authoredScene('My friend must think I am boring company.', { exclude: ['mind_reading'] });
-  assert.equal(second.subtitle_line_1, '“I am boring” squashes a whole person into one word.');
+  assert.doesNotMatch(`${second.subtitle_line_1} ${second.subtitle_line_2}`, /“I am boring”|squashes a whole person/);
 });
 
 test('steps: second person in Zuzu’s voice, and cut at a sentence end before anything else', () => {
@@ -246,7 +251,8 @@ const SERVER_BOSS = { ...V.validateScene({
   interaction_type: 'pull_apart', mallow_character: 'zuzu', subtitle_line_1: 'What your boss did may have been unfair.', subtitle_line_2: 'What matters now is whether to raise it privately.', safety_status: 'ok',
 }), source: 'server' };
 test('a server scene personalises the mechanics (known_fact, possible_assumption, alternative_angle, the step)', async () => {
-  const text = 'My boss embarrassed me in front of everyone.';
+  // (r8: the fact-and-guess mechanics play only for words with an interpretive marker of their own)
+  const text = 'My boss embarrassed me in front of everyone and now everyone thinks less of me.';
   const p = sceneParts(text, SERVER_BOSS);
   assert.equal(p.fact, SERVER_BOSS.known_fact);
   assert.equal(p.guess, SERVER_BOSS.possible_assumption);
@@ -433,18 +439,22 @@ test('the consent notice says it plainly (the one place automated processing is 
   for (const must of [/secure server/, /AI language model/, /Anthropic/, /Never your photos/, /stores nothing you write/, /doesn’t log your words/, /Not therapy or crisis support/, /'Accept'/, /'Not now'/, /Support lines/]) assert.match(src, must);
   // everything the client sends is told (review r3, blocking 3): the words and feeling, the kind of help
   // (intention), the lines already seen, the feedback buttons (never words), and the session's code + app version
-  for (const must of [/the feeling and the kind of help you pick/, /\(for another angle\) the lines you’ve seen/, /A feedback tap sends which button and what kind of angle it was, never your words/, /a random code for this phone, its version and device type/, /any invite code/, /Never your name or account/]) assert.match(src, must);
+  for (const must of [/the feeling and the kind of help you pick/, /\(for another angle\) the lines you’ve seen/, /Each angle request also carries the app’s language and a one-off random code, and every angle and feedback request carries this phone’s session code\./, /A feedback tap sends which button, which Mallow and what kind of angle it was \(and its version\), never your words/, /a random code for this phone, its version and device type/, /any invite code/, /Never your name or account/]) assert.match(src, must);
   const client = read('src/beyond/angle-client.js');
   for (const field of ['device_id', 'platform', 'app_version', 'invite', 'intention', 'previous_angles', 'rating', 'reasoning_pattern', 'interaction_type', 'mallow_character', 'prompt_version']) assert.match(client, new RegExp(field), `the client sends ${field} (and the notice says so)`);
   // on the card, "Not therapy" and the support link sit by the buttons (always in view), and a cue says when there is more to read
   const card = src.slice(src.indexOf('export function openConsent'), src.indexOf('export function openConsentSheet'));
-  assert.match(card, /notTherapy\(app\),\s*h\('div', \{ class: 'bx-actions' \}/);
+  assert.match(card, /notTherapy\(app, 'p', support\),\s*h\('div', \{ class: 'bx-actions' \}/);
   assert.match(card, /'More below'/);
   // the Settings sheet carries the same notice, "Not therapy" included
   assert.match(src, /noticeBody\(app, \{ compact: true, therapy: true \}\)/);
-  // the provider's retention is a marked placeholder until the owner confirms it
-  assert.equal(PROVIDER_RETENTION, '');
+  // the provider's retention: the owner's approved text once the server is on (before that, a marked placeholder)
   assert.match(RETENTION_PLACEHOLDER, /^\[Owner to confirm before launch:/);
+  if (ANGLE_ENDPOINT) {
+    assert.ok(PROVIDER_RETENTION.length > 0, 'the retention line is filled in when the server is on');
+    assert.notEqual(PROVIDER_RETENTION, RETENTION_PLACEHOLDER);
+    assert.doesNotMatch(PROVIDER_RETENTION, /Owner to confirm|\[|\]/);
+  }
   // nowhere else in Another Angle does the experience name the technology
   const mechFiles = readdirSync(`${root}src/beyond/mechanics`).map((n) => `mechanics/${n}`);
   for (const f of ['another-angle.js', 'lines.js', 'authored.js', 'angle-client.js', 'styles.js', 'vocab.js', ...mechFiles]) {
@@ -562,9 +572,10 @@ test('mechanics answer real touch: a pointer sequence on each one is handled wit
 test('the beyond module is gated like src/ultra (only through loadUltra)', () => {
   assert.match(read('src/app/entitlements.js'), /import\('\.\.\/beyond\/another-angle\.js'\)/);
   assert.match(read('src/app/scenes/angle.js'), /loadUltra\(app\.ent\)/);
-  // nothing outside src/beyond (and the settings privacy rows) imports it
+  // nothing outside src/beyond (and the settings privacy rows) imports it; the main-screen Tell loads only the pure
+  // text checks of grief.js (death and loss go to the gentle path), lazily, never the experience
   const offenders = [];
-  const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.startsWith('src/beyond/')) { const s = read(p); if (/['"]\.\.?\/(?:\.\.\/)*beyond\/(?!consent\.js|endpoint\.js)/.test(s) && !/src\/app\/entitlements\.js$/.test(p)) offenders.push(p); } } };
+  const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.startsWith('src/beyond/')) { const s = read(p); if (/['"]\.\.?\/(?:\.\.\/)*beyond\/(?!consent\.js|endpoint\.js|grief\.js)/.test(s) && !/src\/app\/entitlements\.js$/.test(p)) offenders.push(p); } } };
   walk('src');
   assert.deepEqual(offenders, []);
   assert.ok(existsSync(`${root}src/beyond/angle-client.js`));
@@ -577,7 +588,8 @@ test('safety seen while typing counts, sent or not (review r2, blocking 1)', () 
   assert.match(src, /onSafety:\s*\(r\)\s*=>\s*noteSafety\(r\)/);
   assert.match(src, /onClose:\s*\(reason, meta = \{\}\)\s*=>[\s\S]{0,400}noteSafety\(meta\.safety\)/);
   // closed without sending: crisis and care do what sending them would have done (and nothing is sent)
-  assert.match(src, /if \(reason !== 'submit'\) \{[\s\S]{0,240}S\.level === 'crisis'\) crisisMode[\s\S]{0,80}S\.level === 'care'\) careMode/);
+  // (r8: the typed words are read first: an escalation typed and closed is care too)
+  assert.match(src, /if \(reason !== 'submit'\) \{[\s\S]{0,160}readDraft\(typed\);[\s\S]{0,240}S\.level === 'crisis'\) crisisMode[\s\S]{0,80}S\.level === 'care'\) careMode/);
   // the visit's level decides before any request (reworded before Send still means no angle)
   assert.match(src, /noteSafety\(seen\);\s*noteSafety\(checkText\(S\.text\)\);\s*if \(S\.level === 'crisis'\) \{ crisisMode\(\); return; \}\s*if \(S\.level === 'care'\) \{ careMode\(\); return; \}/);
   // after something heavy: no playful squeeze lines, and the Support pill stays
@@ -649,7 +661,9 @@ test('soften: a slow straight stroke across the shell softens it as surely as on
 test('a mechanic that stops is never a dead end (pull_apart, then the perspective itself)', () => {
   const src = read('src/beyond/another-angle.js');
   assert.match(src, /catch \(e\) \{ mechFailed\(e\); \}/);
-  assert.match(src, /if \(!mech \|\| mech\.failed\)[\s\S]{0,260}scene\.mechanic = 'pull_apart'[\s\S]{0,120}reveal\(scene, seq, \{ played: false \}\)/);
+  // (pull_apart, or assemble_step for a feeling or words beside a death or harm word: never a fact/assumption split)
+  assert.match(src, /const gentle = !!scene\.feeling \|\| !framingAllowed\(S\.text\);\s*const fallback = gentle \? 'assemble_step' : 'pull_apart';/);
+  assert.match(src, /if \(!mech \|\| mech\.failed\)[\s\S]{0,320}scene\.mechanic = fallback[\s\S]{0,120}reveal\(scene, seq, \{ played: false \}\)/);
 });
 
 test('mechanics drive the person’s living Thought Mallow (W2) when the scene hands one in (review r3, polish 1)', async () => {
@@ -675,4 +689,200 @@ test('mechanics drive the person’s living Thought Mallow (W2) when the scene h
     assert.ok(made.every((t) => t.w2 === null), `${id} lets its Thought Mallows go`);
   }
   assert.ok(drawn > 100);
+});
+
+// ----------------------------------------- go-live (G1) and the client seam (B4) --
+// The owner's approved wording (docs/integration/DECISIONS.md, 12 Oct 2026), compared with the apostrophes
+// made straight: the app writes them typographically (’), the decision record plainly (').
+const APPROVED = {
+  retention: "Anthropic doesn't use your words to train its AI. It usually deletes them within 30 days.",
+  safetyHold: 'If its automatic safety checks flag a message as breaking its rules, Anthropic can keep it for up to 2 years. It also keeps anything the law requires it to.',
+  use: "Anthropic uses your words only to prepare your perspective, to keep its service safe, and where the law requires. It isn't sent your account or photos, but it sees anything you type, names included.",
+  remove: "Anthropic's copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can't delete it sooner from here.",
+  plans: 'Another Angle asks first, then sends only the words you choose to our secure server. Never your photos.',
+};
+const plain = (t) => String(t).replace(/[‘’]/g, "'");
+
+test('G1: the approved consent, privacy and delete wording, word for word, where the owner placed it', () => {
+  assert.equal(plain(PROVIDER_RETENTION), APPROVED.retention);
+  assert.equal(plain(PROVIDER_SAFETY_HOLD), APPROVED.safetyHold);
+  assert.equal(plain(PROVIDER_USE), APPROVED.use);
+  assert.equal(plain(PROVIDER_DELETE), APPROVED.remove);
+  const src = read('src/beyond/consent.js');
+  const body = src.slice(src.indexOf('function noticeBody('), src.indexOf('export function openConsent'));
+  // line 1 straight after "The provider receives your words to prepare the perspective.", then lines 2 and 3 (card and sheet share noticeBody)
+  assert.match(body, /'The provider receives your words to prepare the perspective\. ', retention, ` \$\{PROVIDER_SAFETY_HOLD\}`\)/);
+  assert.match(body, /PROVIDER_USE\)/);
+  assert.match(src, /noticeBody\(app\)\)/, 'the card');
+  assert.match(src, /noticeBody\(app, \{ compact: true, therapy: true \}\)/, 'the privacy sheet');
+  // line 4 on the delete sheet
+  const del = src.slice(src.indexOf('function confirmDelete()'), src.indexOf('export function saveTesterCode'));
+  assert.match(del, /PROVIDER_DELETE\)/);
+  // the plans page sentence (src/app/privacy.js, shown by the plans page while Another Angle is live)
+  assert.ok(read('src/app/privacy.js').includes(APPROVED.plans));
+  assert.match(read('src/app/scenes/plans.js'), /plansBeyondNote\(\)/);
+  // "AI" and the provider's name only on the consent card, the privacy sheet and the delete sheet (all in consent.js)
+  for (const f of ['another-angle.js', 'lines.js', 'authored.js', 'angle-client.js', 'styles.js', 'vocab.js', 'endpoint.js']) {
+    const strings = read(`src/beyond/${f}`).match(/'[^'\n]*'|`[^`]*`/g) || [];
+    for (const x of strings) assert.doesNotMatch(x, /\bAI\b|Anthropic/, `${f}: ${x.slice(0, 60)}`);
+  }
+  // a newer notice asks again
+  assert.ok(CONSENT_VERSION >= 2);
+});
+
+test('G1: the consent card says what the client really sends (every request body, re-checked)', async () => {
+  const src = read('src/beyond/consent.js');
+  const sent = src.match(/'What’s sent\. '\), '([^']+)'/)[1];
+  const kept = src.match(/'What’s kept\. '\),[^\n]*?' stores nothing you write[^']*'/)[0];
+  // what really goes out, from the client itself (a fake server records every body)
+  const srv = fakeServer({ angle: OK });
+  const store = memStore();
+  saveTesterCode(store, '  tester-1  ');
+  const c = createAngleClient({ store, endpoint: EP, fetchImpl: srv.fetch });
+  const r = await c.angle({ text: 'Nobody likes me.', emotion: 'sadness', intention: 'calm', previous: [{ ...GOOD }] });
+  await c.feedback('helped', r.scene);
+  const [session, angle, fb] = srv.calls;
+  assert.deepEqual(Object.keys(session.body).sort(), ['app_version', 'device_id', 'invite', 'platform']);
+  assert.equal(session.body.invite, 'tester-1', 'the tester code, trimmed');
+  assert.deepEqual(Object.keys(angle.body).sort(), ['consent', 'emotion', 'intention', 'locale', 'previous_angles', 'request_id', 'text']);
+  assert.deepEqual(Object.keys(fb.body).sort(), ['interaction_type', 'mallow_character', 'prompt_version', 'rating', 'reasoning_pattern']);
+  // …and each is told: words, feeling, kind of help, lines seen, language, request number; the session's code, version, device type, invite code
+  for (const [field, words] of [['text', /your words/i], ['emotion', /the feeling/], ['intention', /the kind of help you pick/], ['previous_angles', /the lines you’ve seen/],
+    ['locale', /the app’s language/], ['request_id', /a one-off random code/]]) assert.match(sent, words, `${field} is told`);
+  // (review r6: the language and the request code ride on /v1/angle only; r7: the session code on every angle and
+  // feedback request, never on /v1/session itself;
+  // feedback names the Mallow and the prompt version too)
+  assert.match(sent, /Each angle request also carries the app’s language and a one-off random code, and every angle and feedback request carries this phone’s session code\./);
+  assert.match(sent, /A feedback tap sends which button, which Mallow and what kind of angle it was \(and its version\), never your words/);
+  assert.match(kept, /a random code for this phone, its version and device type \(and any invite code\)/);
+  assert.doesNotMatch(JSON.stringify(srv.calls.map((x) => x.body)), /photo|image|data:/i);
+});
+
+test('G1: the endpoint is the production Worker on its own allow-listed host (no other workers.dev address in src)', () => {
+  if (!ANGLE_ENDPOINT) return;
+  const u = new URL(ANGLE_ENDPOINT);
+  assert.equal(u.protocol, 'https:');
+  assert.deepEqual(ANGLE_ALLOWED_HOSTS, [u.hostname]);
+  assert.equal(resolveEndpoint({ loc: { hostname: 'ramkumarjothi1982.github.io', protocol: 'https:', search: '' } }), ANGLE_ENDPOINT);
+  // on localhost ?angleDev still points at a local mock (the only way to test it from a sandbox)
+  assert.equal(resolveEndpoint({ loc: { hostname: 'localhost', protocol: 'http:', search: '?angleDev=8790' } }), 'http://localhost:8790');
+  const hits = [];
+  const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (/\.(js|mjs|html|css|json)$/.test(n)) read(p).split('\n').forEach((l, i) => { if (/workers\.dev/.test(l)) hits.push(`${p}:${i + 1}`); }); } };
+  walk('src');
+  assert.equal(hits.length, 2, hits.join(', '));
+  assert.ok(hits.every((h) => h.startsWith('src/app/config.js:')), hits.join(', '));
+  assert.doesNotMatch(read('src/app/config.js'), /staging/);
+});
+
+test('G1: Settings shows the Another Angle rows with the server on only for Beyond, or wherever its data is still kept', () => {
+  const src = read('src/app/scenes/settings.js');
+  assert.match(src, /const live = !!endpoint && ent\.has\('ultra'\);/);
+  assert.match(src, /if \(live \|\| c\.hasAngleData\(app\.store\)\) c\.mountAngleSettings\(app, angleRows, \{ endpoint: live \? endpoint : null \}\);/);
+});
+
+test('B4: the compact input has no photos and says where the words go; Back closes a sheet before the input', () => {
+  const src = read('src/beyond/another-angle.js');
+  const open = src.slice(src.indexOf('function openTellNow()'), src.indexOf('async function afterTell('));
+  assert.match(open, /photos: false, privacyNote: serverMode\(\) \? SERVER_CLAUSE : null/);
+  assert.match(open, /support: \(o\) => openSupportSheet\(o\), trackSheet: \(sh\) => trackSheet\(sh\)/);
+  assert.match(src, /const SERVER_CLAUSE = '[^']*secure server[^']*'/);
+  assert.doesNotMatch(src, /hf-ghost\.photo|PRIVACY_CLAUSE/);
+  // every support sheet the scene opens is tracked (its own history entry), the urgent one included
+  assert.doesNotMatch(src.replace(/const openSupportSheet = \(opts = \{\}\) => trackSheet\(openSupport\(app, opts\)\);/, ''), /[^.\w]openSupport\(app/);
+  assert.match(src, /openSupportSheet\(\{ urgent: true \}\)/);
+  // (review r12: and the check-in, "Is this about losing someone?", which Back lets go)
+  assert.match(src, /get blockBack\(\) \{\s*if \(!overlay && !sheets\.length && !layer\.lossCheck\) return null;\s*return \(token\) => backClose\(token\);/);
+  const back = src.slice(src.indexOf('function backClose('), src.indexOf('function backClose(') + 400);
+  assert.ok(back.indexOf('sheet.close(\'back\')') < back.indexOf('overlay.close(\'back\')'), 'the sheet first, then the input');
+});
+
+test('B4: keeping a discovery passes a signal crisis or care aborts, and a subtitles adapter that never un-pauses the person', () => {
+  const src = read('src/beyond/another-angle.js');
+  const keep = src.slice(src.indexOf('async function keep()'), src.indexOf('async function endChoice('));
+  assert.match(keep, /subtitles: installSubtitles,[^\n]*signal: ctl\?\.signal/);
+  assert.match(keep, /finally \{\s*if \(keepCtl === ctl\) keepCtl = null;\s*installSubtitles\.resume\(\);/);
+  assert.match(src, /pause\(\) \{ if \(!subs\) return; subsHeld = !subs\.paused; subs\.clear\(\{ keepHeld: true \}\); subs\.pause\(\); \}/);
+  assert.match(src, /resume\(\) \{ if \(subsHeld\) \{ subsHeld = false; subs\?\.resume\(\); \} \}/);
+  const note = src.slice(src.indexOf('function noteSafety('), src.indexOf('function crisisMode('));
+  assert.match(note, /if \(lv === 'crisis' \|\| lv === 'care'\) keepCtl\?\.abort\(\);/);
+  assert.match(src.slice(src.indexOf('    leave() {')), /keepCtl\?\.abort\(\);/);
+});
+
+test('B4: Continue carries the feeling, the intention, the words (in memory) and where the thought was', () => {
+  const src = read('src/beyond/another-angle.js');
+  const cont = src.slice(src.indexOf('async function continueFlow()'), src.indexOf('async function finish()'));
+  assert.match(cont, /thought: thoughtAt/);
+  assert.match(cont, /\{ x: Math\.round\(lt\.x\), y: Math\.round\(lt\.y\), r: Math\.round\(lt\.r\), emotion: S\.look \|\| S\.emotion \|\| null \}/);
+  assert.match(cont, /app\.go\('home', worldId \? \{ flow: \{ worldId, \.\.\.carry \} \} : \{ carry \}\)/);
+});
+
+test('B4: invite_required → reason "invite", remembered until the stored code changes (no session request on each angle)', async () => {
+  const store = memStore();
+  const calls = [];
+  let codes = ['the-code'];
+  const fetchImpl = async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push(url.replace(EP, ''));
+    const res = (code, data) => ({ status: code, json: async () => data });
+    if (url.endsWith('/v1/session')) {
+      if (codes.length && !codes.includes(body.invite)) return res(403, { status: 'error', error: { code: 'invite_required', message: 'A tester invite code is required during the testing phase.' } });
+      return res(200, { status: 'ok', token: 'tok', expires_at: new Date(Date.now() + 3600e3).toISOString() });
+    }
+    if (url.endsWith('/v1/angle')) return res(200, OK);
+    return res(404, {});
+  };
+  let t = 1_000_000;
+  const mk = () => createAngleClient({ store, endpoint: EP, fetchImpl, now: () => t });
+  const a = await mk().angle({ text: 'Nobody likes me.' });
+  assert.deepEqual([a.status, a.reason], ['error', 'invite']);
+  assert.deepEqual(calls, ['/v1/session']);
+  // more angles, this visit and the next: no request at all
+  assert.equal((await mk().angle({ text: 'Nobody likes me.' })).reason, 'invite');
+  const c1 = mk();
+  await c1.angle({ text: 'x y' }); await c1.angle({ text: 'x y z' });
+  assert.deepEqual(calls, ['/v1/session'], 'remembered across angles and visits');
+  // a wrong code is asked once, then remembered too
+  saveTesterCode(store, 'wrong');
+  assert.equal((await mk().angle({ text: 'x y' })).reason, 'invite');
+  assert.equal((await mk().angle({ text: 'x y' })).reason, 'invite');
+  assert.equal(calls.length, 2);
+  // the right code (from Settings): the next angle is ok
+  saveTesterCode(store, ' the-code ');
+  assert.equal(store.get(STORE_KEYS.session, null), null, 'a new code drops the session');
+  const ok = await mk().angle({ text: 'Nobody likes me.' });
+  assert.equal(ok.status, 'ok');
+  assert.deepEqual(calls.slice(2), ['/v1/session', '/v1/angle']);
+  // codes switched off later: a device that was refused tries once more after INVITE_RETRY_MS
+  const s2 = memStore();
+  codes = ['x'];
+  const mk2 = () => createAngleClient({ store: s2, endpoint: EP, fetchImpl, now: () => t });
+  await mk2().angle({ text: 'x y' });
+  codes = [];
+  assert.equal((await mk2().angle({ text: 'x y' })).reason, 'invite');
+  t += 12 * 3600000 + 1;
+  assert.equal((await mk2().angle({ text: 'x y' })).status, 'ok');
+  // deleting this phone's data removes the code and the remembered answer
+  deleteAngleData(store);
+  assert.equal(store.get(STORE_KEYS.invite, null), null);
+  assert.equal(store.get(STORE_KEYS.inviteNeeded, null), null);
+});
+
+test('B4: the invite line is said once a visit with no speaker, then Zuzu’s own angle plays; the Tester code row is built', () => {
+  assert.equal(LINES.INVITE.line, 'Another Angle is open to invited testers for now. You can add your code in Settings.');
+  const src = read('src/beyond/another-angle.js');
+  assert.match(src, /invited = res\.reason === 'invite';/);
+  assert.match(src, /if \(invited && !S\.inviteSaid\) \{ S\.inviteSaid = true; S\.offlineSaid = true; scene\.inviteNote = true; \}/);
+  assert.match(src, /if \(scene\.inviteNote\) say\(INVITE\.line, \{ who: null, colour: null \}\);/);
+  const consent = read('src/beyond/consent.js');
+  assert.match(consent, /rows\.push\(testerCodeRow\(app\)\);/);
+  const row = consent.slice(consent.indexOf('function testerCodeRow('));
+  assert.match(row, /type: 'text', class: 'search bx-invite', maxlength: '64'/);
+  assert.match(row, /'Tester code'/);
+  assert.match(read('src/beyond/styles.js'), /\.bx-invite-row input\.bx-invite \{[^}]*font-size: max\(16px, 1em\)/);
+  const store = memStore();
+  assert.equal(saveTesterCode(store, '  abc  '), 'abc');
+  assert.equal(store.get(STORE_KEYS.invite, null), 'abc');
+  saveTesterCode(store, '   ');
+  assert.equal(store.get(STORE_KEYS.invite, null), null, 'an empty code removes it');
+  assert.equal(saveTesterCode(store, 'x'.repeat(80)).length, 64);
 });

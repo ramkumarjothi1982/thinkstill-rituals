@@ -199,6 +199,10 @@ export class Sea {
     this.dec = F();                            // ∫β dt so far (the settle can change the rate without a jump)
     this.damp = 1;                             // ×β (the completion settle uses 3)
     this.capA = Infinity;                      // world px: the tallest a swell looks (swellCap; its drift is uncapped)
+    // look: how much of its height a packet shows (1; reduced motion 0.4). Like capA it is only how it looks — its height,
+    // slopes, crest sharpening and what floats on it bobbing — never what it carries (the Stokes drift that takes the
+    // thought out and back) nor whether it counts as seen (peakPx): reduced motion softens the sea, not the play
+    this.look = F();
     // (and the tallest the whole sea looks where swells meet: their sum eases off softly — tanh — at CAP_SUM × capA)
     this.n = 0; this.serial = 0; this.time = 0;
     // the sea's own breathing: a few endless, very gentle plane swells (texture and light; they carry
@@ -244,12 +248,13 @@ export class Sea {
     const sl = Math.max(0.6 * (o.len || 0), 0.75 * o.lambda);
     this.sl[i] = this.sl0[i] = sl; this.sw[i] = this.sw0[i] = 1.2 * sl;
     this.A0[i] = this.At[i] = o.A; this.A[i] = this.free[i] ? o.A : 0; this.rise[i] = 1; this.dec[i] = 0;
+    this.look[i] = Number.isFinite(o.look) ? clamp(o.look, 0, 1) : 1;
     this.age[i] = 0; this.id[i] = ++this.serial;
     return i;
   }
 
-  /** A ring of swells from a tap at (x, z). */
-  ringAt(x, z, lambda, A, user = true) {
+  /** A ring of swells from a tap at (x, z). look: how much of its height it shows (see the constructor). */
+  ringAt(x, z, lambda, A, user = true, look = 1) {
     const i = this._slot();
     if (i < 0) return -1;
     this.on[i] = 1; this.ring[i] = 1; this.user[i] = user ? 1 : 0; this.free[i] = 1; this.carry[i] = this.user[i]; this.seed[i] = 0; this.vis[i] = 0;
@@ -257,6 +262,7 @@ export class Sea {
     this.ex[i] = x; this.ez[i] = z; this.dx[i] = 0; this.dz[i] = 1;
     this.sl[i] = this.sl0[i] = 0.55 * lambda; this.sw[i] = this.sw0[i] = this.sl[i];
     this.A[i] = this.A0[i] = this.At[i] = A; this.rise[i] = 1; this.dec[i] = 0; this.age[i] = 0; this.id[i] = ++this.serial;
+    this.look[i] = Number.isFinite(look) ? clamp(look, 0, 1) : 1;
     return i;
   }
 
@@ -270,6 +276,7 @@ export class Sea {
     const sl = Math.max(0.6 * o.len, 0.75 * o.lambda);
     this.sl[i] = this.sl0[i] = sl; this.sw[i] = this.sw0[i] = 1.2 * sl;
     this.At[i] = o.A;
+    if (Number.isFinite(o.look)) this.look[i] = clamp(o.look, 0, 1);
   }
   /** The finger lifts: the swell is set free (its crest is where the fingertip was). */
   release(i) {
@@ -313,7 +320,7 @@ export class Sea {
     let n = 0;
     for (let i = 0; i < this.max; i++) if (this.on[i] && this.A[i] > 0.2) n++;
     n = Math.max(1, n);
-    for (let i = 0; i < this.max; i++) this._q[i] = this.on[i] ? Math.min(SEA.Q_MAX, SEA.Q_K / Math.max(1e-3, this.k[i] * this.A[i] * n)) : 0;
+    for (let i = 0; i < this.max; i++) this._q[i] = this.on[i] ? Math.min(SEA.Q_MAX, SEA.Q_K / Math.max(1e-3, this.k[i] * this.A[i] * this.look[i] * n)) : 0;
   }
 
   /**
@@ -347,7 +354,7 @@ export class Sea {
         th = this.k[i] * ((x - this.ax[i]) * dx + (z - this.az[i]) * dz) - (this.free[i] ? this.w[i] * this.age[i] : 0);
       }
       const a = A * E, c = Math.cos(th), sn = Math.sin(th), k = this.k[i];
-      const av = (A > this.capA ? this.capA : A) * E;          // (how tall it looks)
+      const av = (A > this.capA ? this.capA : A) * this.look[i] * E;          // (how tall it looks)
       h += av * c; hx -= av * k * dx * sn; hz -= av * k * dz * sn; amp += av;
       const q = this._q[i] || 0;
       gx -= q * av * dx * sn; gz -= q * av * dz * sn;
@@ -396,7 +403,7 @@ export class Sea {
         E = Math.exp(-0.5 * e2);
         th = k * ((x - this.ax[i]) * dx + (z - this.az[i]) * dz) - (this.free[i] ? this.w[i] * this.age[i] : 0);
       }
-      const a = (A > this.capA ? this.capA : A) * E, sn = Math.sin(th), q = this._q[i] || 0;
+      const a = (A > this.capA ? this.capA : A) * this.look[i] * E, sn = Math.sin(th), q = this._q[i] || 0;
       h += a * Math.cos(th); gx -= q * a * dx * sn; gz -= q * a * dz * sn;
     }
     for (const a of this.amb) {
@@ -462,7 +469,7 @@ export class Sea {
       if (this.ring[i]) {
         const att = filter ? Math.exp(-0.25 * k * k * (sx * sx + dz * dz)) : 1;
         if (att < 0.02) continue;
-        const A = Math.min(this.A[i], this.capA) * att, front = this.cg[i] * this.age[i], sl = this.sl[i], q0 = this._q[i] || 0, lam = this.lam[i];
+        const A = Math.min(this.A[i], this.capA) * this.look[i] * att, front = this.cg[i] * this.age[i], sl = this.sl[i], q0 = this._q[i] || 0, lam = this.lam[i];
         const ez = z - this.ez[i];
         if (Math.abs(ez) > front + 6 * sl) continue;
         for (let c = 0; c < n; c++) {
@@ -482,7 +489,7 @@ export class Sea {
       const C8 = XC && this.user[i] && this.lam[i] < X.chopMax ? XC : null;
       const G8 = XG && this.seed[i] && this.free[i] && this.age[i] < X.goldSec ? XG : null;
       if (att < 0.02 && !C8 && !G8) continue;
-      const A0 = Math.min(this.A[i], this.capA), A = att >= 0.02 ? A0 * att : 0, sl = this.sl[i], sw = this.sw[i], q0 = this._q[i] || 0;
+      const A0 = Math.min(this.A[i], this.capA) * this.look[i], A = att >= 0.02 ? A0 * att : 0, sl = this.sl[i], sw = this.sw[i], q0 = this._q[i] || 0;
       const gk = G8 ? A * k * (1 - this.age[i] / X.goldSec) : 0, ck = A0 * k;
       const run = this.free[i] ? this.cg[i] * this.age[i] : 0;
       // envelope: exponent quadratic in the column index c → e(c) = a2·c² + a1·c + a0

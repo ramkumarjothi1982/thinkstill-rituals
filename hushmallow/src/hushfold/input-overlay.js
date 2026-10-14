@@ -15,8 +15,10 @@
 //   openInput({ app, prompt, mallow:{id,name,glow}, root, emotion, intention,
 //               hasPlan, heavy, face(faceMix), onSubmit({text, emotion, intention, reading, safety, input}),
 //               onClose(reason, {safety, supportShown}), onLayout(rect), onSafety(result), support(opts), trackSheet(sheet),
-//               photos = true, privacyNote = null })
-//   photos:false → no Photos button (Another Angle never takes photos). privacyNote: the privacy clause in
+//               photos = true, privacyNote = null, lossAware = false })
+//   photos:false → no Photos button (Another Angle never takes photos). lossAware: death and loss talk read as
+//   concern (a wish to follow the one who died as care), for the main screen (src/beyond/grief.js; the feeling chips read loss
+//   talk on every screen: beside a death or a loss only Grief and Sad are suggested). privacyNote: the privacy clause in
 //   the note (default: "Your words stay on this phone."); the dictation hint keeps its first sentence.
 //     → { el, close(reason), rect(), get text, get dirty, get safety }
 //
@@ -43,6 +45,42 @@ const LEVELS = ['none', 'concern', 'care', 'crisis'];
 export const ROOMY_HEIGHT = 700;
 let mods = null, modsNow = null;
 /** interpret + safety + emotions, loaded on first use (kept out of the first second). */
+// The main screen also reads death and loss talk (never a Thought Mallow made of a death): grief.js, on its own
+// (Another Angle, which handles grief itself, already has it). Both read it for the feeling chips too (lossIn).
+let griefMod = null, griefNow = null;
+export const loadGrief = () => (griefMod ||= import('../beyond/grief.js').then((g) => (griefNow = g)).catch(() => null));
+/**
+ * A death or a loss in the words, for the feeling chips only (safety routing is readSafety's): grief.js deathTalk or
+ * livingLoss, or a person beside a strong loss cue (strongLoss, re-exported there from backstop.js). Beside one only the
+ * feelings that fit a loss are suggested (interpret.js suggestedFeelings `loss`). False until grief.js has loaded.
+ */
+export function lossIn(t) {
+  if (!griefNow || !String(t || '').trim()) return false;
+  try { return !!(griefNow.deathTalk(t) || griefNow.livingLoss?.(t) || griefNow.strongLoss?.(t)); } catch { return false; }
+}
+/**
+ * The safety reading with loss talk added (lossAware): a death named with a wish to follow the one who died is
+ * care; any other death or loss talk is concern (the gentle path: support close, no Thought Mallow, nothing
+ * playful), and so is a person beside a strong loss cue (grief.js strongLoss, review r11: "a drunk driver took my
+ * brother from us", "the fire took both my grandparents"; never the weak cues, a false alarm here opens the support
+ * beat), and so is a grief-family feeling they chose (`emotion`: grief, mourning, bereft, heartache, heartbreak,
+ * anticipatory grief), whatever the words say. Not sure (owner decision 'Ask when unsure', 14 Oct 2026: a person or a
+ * pet beside a softer loss cue, grief.js unsureLoss): level none with `unsure: true`, and the scene asks "Is this about
+ * losing someone?" before anything is made of the words. Never lowers what checkText found.
+ */
+export function readSafety(m, t, lossAware, { emotion = null } = {}) {
+  const r = m.checkText(t);
+  if (!lossAware || !griefNow || r.level === 'crisis' || r.level === 'care') return r;
+  try {
+    if (griefNow.deathEscalation(t)) return { level: 'care', category: 'unsafe', matched: null };
+    if (r.level !== 'none') return r;
+    const route = griefNow.lossRoute ? griefNow.lossRoute(t, { emotion })
+      : (griefNow.deathTalk(t) || griefNow.livingLoss?.(t) || griefNow.strongLoss?.(t) ? 'gentle' : null);
+    if (route === 'gentle') return { level: 'concern', category: 'loss', matched: null };
+    if (route === 'ask') return { ...r, unsure: true };
+  } catch { /* the plain reading stands */ }
+  return r;
+}
 export function loadInputModules() {
   mods ||= Promise.all([import('../engine/interpret.js'), import('../engine/safety.js'), import('../data/emotions.js')])
     .then(([interpretMod, safety, emotions]) => (modsNow = { interpret: interpretMod.interpret, suggestedFeelings: interpretMod.suggestedFeelings,
@@ -52,7 +90,9 @@ export function loadInputModules() {
 
 export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root = document.body, emotion = null, intention = null, hasPlan = true,
   text = '', face = null, onSubmit, onClose, onLayout, onSafety = null, support = null, trackSheet = null, heavy = false,
-  photos = true, privacyNote = null } = {}) {
+  photos = true, privacyNote = null, lossAware = false } = {}) {
+  // (the chips read loss talk on every screen; the safety reading only with lossAware)
+  loadGrief();
   const reduced = app?.prefs?.reducedMotion?.() ?? false;
   // larger text: the speaker's name takes its own line above the prompt
   const bigText = Number(app?.prefs?.get?.('textScale')) > 1.12;
@@ -63,7 +103,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   const roomy = () => innerHeight >= ROOMY_HEIGHT && (!vv?.height || vv.height >= 480);
   let chosenEmotion = emotion, chosenIntention = intention;
   let extraFeeling = emotion && !QUICK_IDS.has(emotion) ? emotion : null;  // a feeling from the A–Z list
-  let suggested = [];
+  // (heavyRow: the words, or something heavy earlier in this visit, are heavy: Sad leads the chips that follow the suggested)
+  let suggested = [], heavyRow = heavy;
   let reading = null, safety = { level: 'none', category: null };
   // the most serious level seen while this overlay was open (sent or not): the scene acts on it
   let worst = { level: 'none', category: null };
@@ -131,9 +172,12 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     const extra = [];
     if (extraFeeling && !QUICK_IDS.has(extraFeeling)) extra.push(extraFeeling);
     for (const id of suggested) if (!QUICK_IDS.has(id) && !extra.includes(id) && extra.length < 2) extra.push(id);
-    // what the words suggest comes first (highlighted, never chosen for them), then the rest
-    const first = [...suggested.filter((id) => QUICK_IDS.has(id)), ...extra];
-    const rest = QUICK_FEELINGS.map(([id]) => id).filter((id) => !first.includes(id));
+    // what the words suggest comes first, in the order suggested (highlighted, never chosen for them), then the rest
+    // (beside a loss: Grief, then Sad)
+    const first = [...suggested.filter((id) => QUICK_IDS.has(id) || extra.includes(id)), ...extra.filter((id) => !suggested.includes(id))];
+    // (heavy words never have the row led by an unrelated chip: Sad leads the rest, never Angry)
+    const quick = QUICK_FEELINGS.map(([id]) => id);
+    const rest = (heavyRow ? ['sadness', ...quick.filter((id) => id !== 'sadness')] : quick).filter((id) => !first.includes(id));
     feelRow.replaceChildren(
       ...[...first, ...rest].map((id) => chip(nameOf(id), id === chosenEmotion, suggested.includes(id), () => pickFeeling(id))),
       chip('Something else…', false, false, () => openPicker()));
@@ -208,14 +252,17 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   // --------------------------------------------------- reading --
   let timer = 0;
   async function read() {
-    const m = await loadInputModules();
+    const [m] = await Promise.all([loadInputModules(), loadGrief()]);
     if (closed) return;
     const t = ta.value;
     reading = t.trim() ? m.interpret(t) : null;
-    safety = t.trim() ? m.checkText(t) : { level: 'none', category: null };
-    // only confident matches are highlighted (typo-tolerant guesses stay quiet), and never a positive feeling for
-    // words that carry a safety cue: then nothing is suggested at all
-    suggested = m.suggestedFeelings ? m.suggestedFeelings(reading) : (reading?.emotions || []).filter((e) => e.confidence >= 0.6).slice(0, 3).map((e) => e.id);
+    safety = t.trim() ? readSafety(m, t, lossAware) : { level: 'none', category: null };
+    // only confident matches are highlighted (typo-tolerant guesses stay quiet), never a positive feeling for words
+    // that carry a safety cue (then nothing is suggested at all), never someone else's feeling, and beside a death or
+    // a loss only the feelings that fit it (Grief, Sad): never "Rested" or "Obligated" after "there was no heartbeat"
+    const loss = !!t.trim() && (safety.category === 'loss' || lossIn(t));
+    heavyRow = heavy || loss || safety.level !== 'none';
+    suggested = m.suggestedFeelings ? m.suggestedFeelings(reading, { loss, level: safety.level }) : (reading?.emotions || []).filter((e) => e.confidence >= 0.6).slice(0, 3).map((e) => e.id);
     for (const id of suggested) if (!cached.has(id)) cached.set(id, m.getEmotion(id)?.name || id);
     report(safety);
     if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }
@@ -307,9 +354,11 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     if (sending || closed || sendBtn.disabled) return;
     sending = true;
     const m = await loadInputModules();
+    if (lossAware) await loadGrief();
     const t = ta.value.trim();
     reading = t ? m.interpret(t) : null;
-    safety = t ? m.checkText(t) : { level: 'none', category: null };
+    // (a grief-family feeling chosen counts as a loss, words or not)
+    safety = t || chosenEmotion ? readSafety(m, t, lossAware, { emotion: chosenEmotion }) : { level: 'none', category: null };
     report(safety);
     if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }
     const intensity = reading?.emotions?.length ? reading.intensity : 0.6;
@@ -318,7 +367,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     for (const e of reading?.emotions || []) if (e.confidence >= 0.6 && emotions.length < 4 && !emotions.some((x) => x.id === e.id)) emotions.push({ id: e.id, confidence: e.confidence, intensity: e.intensity ?? intensity });
     // the express shape every later scene already reads
     const input = { text: t, emotions, intensity, contexts: reading?.contexts || [], desires: reading?.desires || [],
-      safety: { ...m.legacySafety(safety), detail: { level: safety.level, category: safety.category } }, intention: chosenIntention, source: 'hushfold' };
+      safety: { ...m.legacySafety(safety), detail: { level: safety.level, category: safety.category, ...(safety.unsure ? { unsure: true } : {}) } }, intention: chosenIntention, source: 'hushfold' };
     if (app) app.state.input = input;
     close('submit');
     onSubmit?.({ text: t, emotion: chosenEmotion, intention: chosenIntention, reading, safety, input });
@@ -327,7 +376,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   function close(reason = 'close') {
     if (closed) return;
     // words typed just before closing (inside the reading pause) are still checked
-    if (reason !== 'submit' && modsNow && ta.value.trim()) { try { report(modsNow.checkText(ta.value)); } catch { /* the scene still has what was seen */ } }
+    if (reason !== 'submit' && modsNow && ta.value.trim()) { try { report(readSafety(modsNow, ta.value, lossAware)); } catch { /* the scene still has what was seen */ } }
     closed = true;
     clearTimeout(timer); clearTimeout(hintT);
     document.removeEventListener('keydown', onKey, true);

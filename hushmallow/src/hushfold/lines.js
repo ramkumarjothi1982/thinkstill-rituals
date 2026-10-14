@@ -48,7 +48,8 @@ const SHARED = {
   // wanting to hurt someone: calm, no jokes, safety first (said as a sequence, like support)
   harmOthers: ['That’s a lot of heat to carry.', 'Let’s keep everyone safe, you included. Support is one tap away.'],
   // after a care or harm disclosure, the person decides whether anything plays
-  careAsk: ['We can stay here quietly. Or play a little, slowly, if you’d like.'],
+  // (neutral, after a death or abuse too: the calm world is a place to be, not play)
+  careAsk: ['We can stay here quietly. Or somewhere calm, if you’d like.'],
   careQuiet: ['Okay. I’m right here. Squeeze me whenever you like.'],
   resumeAsk: ['Pick up where you left off in {world}?'],
   stub: ['The new worlds are still being built. Until they open, I’m all yours to squish.'],
@@ -305,6 +306,42 @@ const M = {
 };
 export const MALLOW_LINES = M;
 export const SHARED_LINES = SHARED;
+/**
+ * (owner decision 'Ask when unsure', 14 Oct 2026) The words might be about a death or a loss and nothing reads one for
+ * sure (grief.js unsureLoss): before any Thought Mallow is made or any world starts, the Mallow asks once, attentive,
+ * nothing playful. "Yes, it is" is the gentle path (as a loss named would be); "Something else" carries on as usual;
+ * no answer within `ms`, or Back, stays here quietly. Another Angle's Zuzu asks the same (src/beyond/lines.js LOSS_CHECK).
+ * (Retired on the main screen by PLAY_CHECK below, which is asked for every ordinary Tell and so wherever this would
+ * be; kept, unused by the scene, as the words the two screens' check-ins were held to.)
+ */
+export const LOSS_CHECK = Object.freeze({
+  ask: 'I want to get this right. Is this about losing someone?',
+  yes: 'Yes, it is',
+  no: 'Something else',
+  ms: 20000,
+});
+/**
+ * (owner decision 'Ask before every world', 14 Oct 2026, after a fresh review showed word lists keep missing ways of
+ * telling a death) After every Tell whose words are ordinary — no crisis, care, distress or escalation, and no loss the
+ * words or a chosen grief feeling already name (those go to support or straight to the gentle path, as before) — and
+ * before any Thought Mallow is made or any world starts or takes the words, the Mallow asks this once: attentive,
+ * nothing playful. It replaces the loss check-in wherever both would apply (never two questions in a row). The two
+ * answers carry equal weight (the same chip style, "Play with it" first in reading order): nothing nudges towards play
+ * when the words might be about a loss. "Play with it" is the flow as it always was; "Just be with it" makes nothing of
+ * the words: `be` — one gentle line, never a second question — with one optional soft chip, `calm`, that fades after
+ * `calmMs` (at home staying is simply the default; in a world, the world ends quietly unless they tap it); no support
+ * line, and the visit stays gentle. No answer within `ms` (the clock waits while the page is hidden), or Back, stays
+ * here quietly and keeps the words for the next Tell. One extra tap for everyone.
+ */
+export const PLAY_CHECK = Object.freeze({
+  ask: 'Shall we play with this, or just be with it?',
+  play: 'Play with it',
+  stay: 'Just be with it',
+  be: 'Okay. Let’s just be with it for a while.',
+  calm: 'Somewhere calm',
+  ms: 45000,
+  calmMs: 12000,
+});
 
 const SQUEEZE_KINDS = new Set(['squeeze', 'release', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle']);
 const FIRST_KIND = { squeeze: 'hold', press: 'hold', stretch: 'hold', massage: 'hold', stroke: 'hold', jiggle: 'hold', release: 'hold', tap: 'tap', doubleTap: 'tap', flick: 'flick' };

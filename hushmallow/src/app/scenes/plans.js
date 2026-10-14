@@ -108,7 +108,8 @@ export default function plans(app, params = {}) {
         h('ul', { class: 'invite-list' }, ...rest.map(benefit))) : null,
       // Where Another Angle's words go, from the same source as Settings → About
       // (src/app/privacy.js, which follows resolveEndpoint()): on this phone until
-      // Another Angle goes live, then the approved sentence, both in the same release.
+      // Another Angle goes live, then the owner's approved sentence (docs/integration/DECISIONS.md,
+      // 12 Oct 2026). Who processes the words and how long they are kept is told on the consent card itself.
       beyond ? h('p', { class: 'invite-note', 'data-beyond-note': '' }, plansBeyondNote()) : null,
       action(p));
   }

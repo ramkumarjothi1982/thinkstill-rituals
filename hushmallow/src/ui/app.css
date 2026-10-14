@@ -170,6 +170,15 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .sheet .sheet-head h2 { margin: 0; font: var(--type-heading); letter-spacing: var(--type-heading-ls); flex: 1; min-width: 0; text-wrap: balance; }
 .sheet .sheet-body { overflow-y: auto; padding: 4px var(--gutter) 20px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .sheet .sheet-foot { padding: 10px var(--gutter) 14px; border-top: 1px solid var(--line); }
+/* (a control reached by keyboard or the screen reader scrolls fully clear of the sheet's foot) */
+.sheet .sheet-body { scroll-padding-block: 8px 24px; }
+/* (what scrolls on below fades out above the foot rather than being cut mid-line under it; scrolled to the end, the body's
+   own 20 px of room is all the fade reaches) */
+.sheet .sheet-body { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); }
+/* the support sheet's first actions (urgent: the calls; after abuse: Find A Helpline and the emergency number): whole,
+   one under the other, ahead of the rest */
+.support-calls { display: flex; flex-direction: column; gap: 8px; }
+.support-calls .support-call { text-decoration: none; padding-block: 8px; text-wrap: balance; }
 .sheet.full { top: calc(var(--safe-top) + 10px); max-height: none; }
 
 /* A–Z explorer */
