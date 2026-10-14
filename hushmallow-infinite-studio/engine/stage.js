@@ -19,12 +19,14 @@
 //     started in a fresh page reproduces the in-order render history (Face.tmp)
 //   - dispose() frees everything a direction created (R4)
 //   - WP-02: a quality profile (render/profiles.js) chooses the renderer's
-//     pipeline; setMeter() installs hm bench's per-pass timing hooks
+//     pipeline; setMeter() installs hm bench's per-pass timing hooks; P2 skips
+//     the overlay when nothing is drawn on it (trackInk)
 
 import { clock } from './runtime/clock.js';   // deterministic time + seeded randomness (first)
 import { createGL } from './gl.js';
 import { Renderer, DESIGN_W, DESIGN_H } from './renderer/index.js';
 import { resolveProfile } from './render/profiles.js';
+import { trackInk } from './render/overlay-ink.js';
 import { assetLog } from './runtime/asset-log.js';
 
 /** Sub-frame count used when a direction's subframes() returns garbage (R18). */
@@ -86,6 +88,8 @@ export class Stage {
     this.octx = this.overlay.getContext('2d');
     // directions draw the overlay in design space
     if (scale !== 1) this.octx.setTransform(scale, 0, 0, scale, 0, 0);
+    // P2 (overlaySkip): know whether anything is on the overlay
+    this.ink = profile.features.overlaySkip ? trackInk(this.octx, this.outW, this.outH) : null;
     this.cues = [];
     this.curves = [];
     this.errors = [];
@@ -176,7 +180,9 @@ export class Stage {
     m?.begin('overlay.draw');
     const ov = this.video.overlay ? this.video.overlay(this.octx, t, this) : false;
     m?.end('overlay.draw');
-    this.renderer.renderFrame(subs, center, ov ? this.overlay : null);
+    // P2: a transparent overlay is neither uploaded nor composited (o = 0 leaves every pixel as it was)
+    const withOverlay = ov && (!this.ink || this.ink.inked);
+    this.renderer.renderFrame(subs, center, withOverlay ? this.overlay : null);
     const g = this.gl;
     if (capture === 'none') { g.readPixels(0, 0, 1, 1, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4)); return null; }
     if (capture === 'raw') {

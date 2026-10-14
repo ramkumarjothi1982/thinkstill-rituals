@@ -18,7 +18,9 @@
 // render farm, hm bench) alike.
 
 /** The optimisation features, in the order the performance pass landed them. */
-export const FEATURES = Object.freeze({});
+export const FEATURES = Object.freeze({
+  overlaySkip: 'P2: an overlay with nothing drawn on it is neither cleared again, uploaded nor composited',
+});
 
 const ALL = Object.keys(FEATURES);
 const none = () => Object.fromEntries(ALL.map((f) => [f, false]));
