@@ -235,7 +235,8 @@ export class BreathClock {
  * A look-ahead scheduler: a setTimeout chain (25 ms) that fires callbacks up to
  * 120 ms before their time, so the renderer can schedule them exactly. It runs
  * only while something is queued. An event more than 50 ms late is dropped
- * (its optional `drop` callback runs instead), never played late.
+ * (its optional `drop` callback runs instead), never played late; an event may
+ * carry its own tolerance (a replay's notes: a long frame must not lose a note).
  */
 export class Scheduler {
   constructor({ now = perfNow, setTimer = (fn, ms) => setTimeout(fn, ms), clearTimer = (id) => clearTimeout(id), lookahead = 0.12, interval = 25, late = 0.05 } = {}) {
@@ -249,9 +250,9 @@ export class Scheduler {
     this._tick = () => this.tick();
   }
 
-  /** Run fn(t) at musical time t (performance seconds). → id */
-  at(t, fn, tag = null, drop = null) {
-    const ev = { id: ++this.ids, t: +t, fn, tag, drop };
+  /** Run fn(t) at musical time t (performance seconds); late: this event's own tolerance (s). → id */
+  at(t, fn, tag = null, drop = null, late = null) {
+    const ev = { id: ++this.ids, t: +t, fn, tag, drop, late };
     let lo = 0, hi = this.q.length;
     while (lo < hi) { const m = (lo + hi) >> 1; if (this.q[m].t <= ev.t) lo = m + 1; else hi = m; }
     this.q.splice(lo, 0, ev);
@@ -267,7 +268,7 @@ export class Scheduler {
       for (let guard = 0; guard < 1000 && this.q.length && this.q[0].t <= horizon; guard++) {
         const ev = this.q.shift();
         try {
-          if (now - ev.t > this.late) { this.dropped++; ev.drop?.(ev.t); } else ev.fn(ev.t);
+          if (now - ev.t > (ev.late ?? this.late)) { this.dropped++; ev.drop?.(ev.t); } else ev.fn(ev.t);
         } catch (e) { console.error(e); }
       }
     } finally { this._ticking = false; }

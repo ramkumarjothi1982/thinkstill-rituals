@@ -1,7 +1,7 @@
 {
- "when": "2026-10-14T17:00:12.925Z",
+ "when": "2026-10-14T17:59:12.171Z",
  "part": null,
- "passed": 173,
+ "passed": 357,
  "failed": 0,
  "results": [
   {
@@ -14,13 +14,13 @@
    "scope": "nightlight:open",
    "name": "a painted still is shown (two still canvases), the sky layer, no live realm outside Drift",
    "ok": true,
-   "detail": "{\"route\":\"nightlight\",\"view\":\"session\",\"stills\":2,\"shown\":1,\"realms\":0,\"sky\":1,\"enter\":[{\"t\":1067.3999999985099,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\",\"lum\":0.01964320783350079,\"realm\":\"moonmilk-cove\",\"plain\":false,\"backdrop\":\"dark\",\"sr\":[\"Nightlight on with Noomi until 5:24 PM.\"]}"
+   "detail": "{\"route\":\"nightlight\",\"view\":\"session\",\"stills\":2,\"shown\":1,\"realms\":0,\"sky\":1,\"enter\":[{\"t\":1292.0999999940395,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\",\"lum\":0.01964320783350079,\"realm\":\"moonmilk-cove\",\"plain\":false,\"backdrop\":\"dark\",\"sr\":[\"Nightlight on with Noomi until 6:20 PM.\"]}"
   },
   {
    "scope": "nightlight:open",
    "name": "rose from black with an opacity transition",
    "ok": true,
-   "detail": "{\"enter\":[{\"t\":1067.3999999985099,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\"}"
+   "detail": "{\"enter\":[{\"t\":1292.0999999940395,\"entering\":true}],\"dur\":\"1.2s\",\"prop\":\"opacity\"}"
   },
   {
    "scope": "nightlight:open",
@@ -38,7 +38,7 @@
    "scope": "nightlight:open",
    "name": "night chrome tone and the start announcement",
    "ok": true,
-   "detail": "[\"Nightlight on with Noomi until 5:24 PM.\"]"
+   "detail": "[\"Nightlight on with Noomi until 6:20 PM.\"]"
   },
   {
    "scope": "nightlight:open",
@@ -62,7 +62,7 @@
    "scope": "nightlight:moonlight",
    "name": "Moonlight: the glow floor ≥ 0.45 at defaults (0.55 × the ±12 % swell)",
    "ok": true,
-   "detail": "{\"glow\":0.5818500018847651,\"halo\":{\"amount\":1,\"alpha\":0.391,\"gain\":1.029,\"breath\":0},\"mode\":\"moonlight\",\"look\":0.55}"
+   "detail": "{\"glow\":0.5814577642673673,\"halo\":{\"amount\":1,\"alpha\":0.391,\"gain\":1.029,\"breath\":0},\"mode\":\"moonlight\",\"look\":0.55}"
   },
   {
    "scope": "nightlight:moonlight",
@@ -74,19 +74,19 @@
    "scope": "nightlight:moonlight",
    "name": "a tap's glow is lower at +100 ms than at +700 ms (a swell, never a flash)",
    "ok": true,
-   "detail": "0.632 → 0.997"
+   "detail": "0.589 → 0.956"
   },
   {
    "scope": "nightlight:moonlight",
    "name": "20 rapid taps: ≤ 1 brightening start per 2 s (limiter log)",
    "ok": true,
-   "detail": "{\"starts\":2,\"gaps\":[2916.1999999955297],\"refused\":9}"
+   "detail": "{\"starts\":2,\"gaps\":[2911.2999999970198],\"refused\":9}"
   },
   {
    "scope": "nightlight:moonlight",
    "name": "Boppo: no hop overlay, body.hop 0, no pop or spark burst",
    "ok": true,
-   "detail": "{\"hop\":0,\"kinds\":[\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nl-grin\",\"nod\"],\"parts\":0,\"tags\":[\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\",\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\"]}"
+   "detail": "{\"hop\":0,\"kinds\":[\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nod\",\"nl-grin\",\"nod\",\"nod\",\"nod\"],\"parts\":0,\"tags\":[\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\",\"night-tap-dizzy\",\"night-double-boop\",\"night-tap-dizzy\",\"night-double-bounce\"]}"
   },
   {
    "scope": "nightlight:moonlight",
@@ -104,7 +104,7 @@
    "scope": "nightlight:moonlight:pipzi",
    "name": "particles take the Mallow's brightness (graded alpha, never full bright at night)",
    "ok": true,
-   "detail": "[{\"n\":46}]"
+   "detail": "[{\"n\":52}]"
   },
   {
    "scope": "nightlight:moonlight:pipzi",
@@ -122,7 +122,7 @@
    "scope": "nightlight:sleepy",
    "name": "force('stretch'): the squeeze goes below −0.2, then a settle above 0, then back to 0",
    "ok": true,
-   "detail": "{\"min\":-0.28,\"max\":0.12,\"back\":4105}"
+   "detail": "{\"min\":-0.28,\"max\":0.12,\"back\":4093}"
   },
   {
    "scope": "nightlight:sleepy",
@@ -416,7 +416,7 @@
    "scope": "nightlight:modes:breathe",
    "name": "Breathe: the Mallow inflates with the breath",
    "ok": true,
-   "detail": "0.33073181185674344"
+   "detail": "0.3476660772517485"
   },
   {
    "scope": "nightlight:modes:sleepy",
@@ -488,7 +488,7 @@
    "scope": "nightlight:exit",
    "name": "Escape: the goodnight, then home",
    "ok": true,
-   "detail": "leaving 806 ms"
+   "detail": "leaving 824 ms"
   },
   {
    "scope": "nightlight:exit",
@@ -539,138 +539,6 @@
    "detail": ""
   },
   {
-   "scope": "nightlight:layout:phone",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:phone",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:phone",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:phone",
-   "name": "targets ≥ 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:phone",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:phone",
-   "name": "the chosen mode is in view in the mode row",
-   "ok": true,
-   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\"}"
-  },
-  {
-   "scope": "nightlight:layout:phone",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:small",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:small",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:small",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:small",
-   "name": "targets ≥ 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:small",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:small",
-   "name": "the chosen mode is in view in the mode row",
-   "ok": true,
-   "detail": "{\"inView\":true,\"scrolls\":true,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\"}"
-  },
-  {
-   "scope": "nightlight:layout:small",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:land-small",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:land-small",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:land-small",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:land-small",
-   "name": "targets ≥ 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:land-small",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "nightlight:layout:land-small",
-   "name": "the chosen mode is in view in the mode row",
-   "ok": true,
-   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · until 5:28 PM\",\"status\":\"flex\"}"
-  },
-  {
-   "scope": "nightlight:layout:land-small",
-   "name": "landscape: the time moves into the subtitle",
-   "ok": true,
-   "detail": "Moonlight · until 5:28 PM"
-  },
-  {
-   "scope": "nightlight:layout:land-small",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
    "scope": "nightlight:sound",
    "name": "E2: deep link, 3 s idle: no AudioContext, the bed not alive",
    "ok": true,
@@ -680,13 +548,13 @@
    "scope": "nightlight:sound",
    "name": "E2: after a real click the bed builds: its own texture (waves), peak ≤ 0.035",
    "ok": true,
-   "detail": "{\"alive\":true,\"wanted\":true,\"on\":true,\"gain\":0.035,\"fade\":0.0089,\"texture\":\"waves\",\"breathing\":false,\"builds\":1,\"chimes\":0,\"levels\":{\"texture\":0.4,\"pad\":0.6}}"
+   "detail": "{\"alive\":true,\"wanted\":true,\"on\":true,\"gain\":0.035,\"fade\":0.0009,\"texture\":\"waves\",\"breathing\":false,\"builds\":1,\"chimes\":0,\"levels\":{\"texture\":0.4,\"pad\":0.6}}"
   },
   {
    "scope": "nightlight:sound",
    "name": "E2: it rises from silence over ≥ 3 s (master fade still under 0.5 after ~1 s)",
    "ok": true,
-   "detail": "{\"early\":0.0089,\"later\":0.2389,\"ms\":915}"
+   "detail": "{\"early\":0.0009,\"later\":0.2288,\"ms\":918}"
   },
   {
    "scope": "nightlight:sound",
@@ -734,13 +602,13 @@
    "scope": "nightlight:sound",
    "name": "E7: Sound off again: the bed lets go within 3.5 s",
    "ok": true,
-   "detail": "{\"alive\":false,\"quiet\":true,\"ms\":213}"
+   "detail": "{\"alive\":false,\"quiet\":true,\"ms\":110}"
   },
   {
    "scope": "nightlight:sound",
    "name": "E7: Quiet idle: ≤ 10 × 3 × 1.3 + 2 renders in 3 s",
    "ok": true,
-   "detail": "{\"renders\":22,\"cap\":8}"
+   "detail": "{\"renders\":23,\"cap\":8}"
   },
   {
    "scope": "nightlight:sound",
@@ -758,43 +626,43 @@
    "scope": "nightlight:fade",
    "name": "E12: Timer 10: the status shows the local end time; a 200 s fade",
    "ok": true,
-   "detail": "{\"full\":\"Until 5:09 PM\",\"want\":\"Until 5:09 PM\",\"span\":600000,\"fadeMs\":200000}"
+   "detail": "{\"full\":\"Until 6:05 PM\",\"want\":\"Until 6:05 PM\",\"span\":600000,\"fadeMs\":200000}"
   },
   {
    "scope": "nightlight:fade",
    "name": "E13: into the fade: \"Fading · until\", the \"A little longer\" chip, announced",
    "ok": true,
-   "detail": "{\"f0\":{\"state\":\"fading\",\"chip\":\"longer\"},\"f1\":{\"full\":\"Fading · until 5:09 PM\",\"sr\":[\"Nightlight on with Boppo until 5:09 PM.\",\"Fading out.\"]}}"
+   "detail": "{\"f0\":{\"state\":\"fading\",\"chip\":\"longer\"},\"f1\":{\"full\":\"Fading · until 6:05 PM\",\"sr\":[\"Nightlight on with Boppo until 6:05 PM.\",\"Fading out.\"]}}"
   },
   {
    "scope": "nightlight:fade",
    "name": "E13: levels in (0, 1) that never rise; the bed is lower",
    "ok": true,
-   "detail": "[{\"world\":0.9956,\"mallow\":1,\"sound\":0.9882,\"gain\":0.034587162631526905},{\"world\":0.9509,\"mallow\":1,\"sound\":0.8715,\"gain\":0.030501769127098094},{\"world\":0.9235,\"mallow\":1,\"sound\":0.8031,\"gain\":0.028108869066845905},{\"world\":0.9032,\"mallow\":1,\"sound\":0.7561,\"gain\":0.02646194093837962}]"
+   "detail": "[{\"world\":0.9913,\"mallow\":1,\"sound\":0.9769,\"gain\":0.03419259209197499},{\"world\":0.9537,\"mallow\":1,\"sound\":0.8786,\"gain\":0.0307499854207169},{\"world\":0.9274,\"mallow\":1,\"sound\":0.8129,\"gain\":0.02845222697694464},{\"world\":0.9111,\"mallow\":1,\"sound\":0.7749,\"gain\":0.027120904922896292}]"
   },
   {
    "scope": "nightlight:fade",
    "name": "E13: \"A little longer\": endsAt + 10 min, back to steady, announced",
    "ok": true,
-   "detail": "{\"endsAt\":1791998344543,\"state\":\"steady\",\"sr\":\"Ten more minutes.\",\"chip\":null}"
+   "detail": "{\"endsAt\":1792001709283,\"state\":\"steady\",\"sr\":\"Ten more minutes.\",\"chip\":null}"
   },
   {
    "scope": "nightlight:fade",
    "name": "E13: the light eases back up (not yet at +300 ms; there later)",
    "ok": true,
-   "detail": "{\"l0\":0.8873,\"l1\":0.8921,\"l2\":0.9998,\"ms\":2503}"
+   "detail": "{\"l0\":0.8941,\"l1\":0.8975,\"l2\":0.9998,\"ms\":2602}"
   },
   {
    "scope": "nightlight:fade",
    "name": "E13: deep in the fade it falls asleep: the asleep face (i 0.75), slower movement",
    "ok": true,
-   "detail": "{\"fade\":{\"asleep\":true,\"step\":0.75,\"sighed\":true,\"eyeOpen\":0,\"blinkRate\":0.34,\"motionScale\":0.407,\"inflate\":0.606},\"rest\":{\"mix\":{\"calm\":0.75,\"exhausted\":0.25},\"i\":0.75},\"ms\":0.40654795268349003}"
+   "detail": "{\"fade\":{\"asleep\":true,\"step\":0.75,\"sighed\":true,\"eyeOpen\":0,\"blinkRate\":0.3,\"motionScale\":0.391,\"inflate\":0.581},\"rest\":{\"mix\":{\"calm\":0.75,\"exhausted\":0.25},\"i\":0.75},\"ms\":0.39073232339256575}"
   },
   {
    "scope": "nightlight:fade",
    "name": "E13: Boppo's open eyes close (eyeOpen set toward 0), blinks slow",
    "ok": true,
-   "detail": "{\"eye\":0,\"fade\":{\"asleep\":true,\"step\":0.75,\"sighed\":true,\"eyeOpen\":0,\"blinkRate\":0.34,\"motionScale\":0.407,\"inflate\":0.606}}"
+   "detail": "{\"eye\":0,\"fade\":{\"asleep\":true,\"step\":0.75,\"sighed\":true,\"eyeOpen\":0,\"blinkRate\":0.3,\"motionScale\":0.391,\"inflate\":0.581}}"
   },
   {
    "scope": "nightlight:fade",
@@ -806,13 +674,13 @@
    "scope": "nightlight:fade",
    "name": "E13: fading deep (world below 0.3): the frame cap drops to 8",
    "ok": true,
-   "detail": "8 (during the sigh: 24)"
+   "detail": "8 (during the sigh: 8)"
   },
   {
    "scope": "nightlight:fade",
    "name": "E13: a live end: the end view with the sleeping Mallow (snapshot), not skipped, focus on Again",
    "ok": true,
-   "detail": "{\"state\":\"ended\",\"endsAt\":1792001180871,\"skipped\":false,\"snap\":true,\"line\":\"Soft bounce… softer… sleepy sunshine.\",\"sr\":[\"Nightlight finished.\"],\"resting\":false,\"lift\":\"translateY(-48px)\",\"view\":\"end\",\"skew\":4017896}"
+   "detail": "{\"state\":\"ended\",\"endsAt\":1792004545783,\"skipped\":false,\"snap\":true,\"line\":\"Soft bounce… softer… sleepy sunshine.\",\"sr\":[\"Nightlight finished.\"],\"resting\":false,\"lift\":\"translateY(-48px)\",\"view\":\"end\",\"skew\":4017889}"
   },
   {
    "scope": "nightlight:fade",
@@ -824,13 +692,13 @@
    "scope": "nightlight:fade",
    "name": "E13: the end card: the finish time (or morning) and a rest line in quotes, announced",
    "ok": true,
-   "detail": "{\"cap\":\"Nightlight finished at 6:06 PM.\",\"line\":\"“Soft bounce… softer… sleepy sunshine.” Boppo\"}"
+   "detail": "{\"cap\":\"Nightlight finished at 7:02 PM.\",\"line\":\"“Soft bounce… softer… sleepy sunshine.” Boppo\"}"
   },
   {
    "scope": "nightlight:fade",
    "name": "E13: nothing runs: voices gone within 3.5 s, the audio rests after 2.2 s",
    "ok": true,
-   "detail": "{\"state\":\"suspended\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":0,\"ms\":2243}"
+   "detail": "{\"state\":\"suspended\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":0,\"ms\":2265}"
   },
   {
    "scope": "nightlight:fade",
@@ -842,7 +710,7 @@
    "scope": "nightlight:fade",
    "name": "E30: Again: a fresh session (new deadline, new record)",
    "ok": true,
-   "detail": "{\"ag\":{\"view\":\"session\",\"endsAt\":1792004786432,\"rec\":{\"v\":1,\"startedAt\":1792001186432,\"endsAt\":1792004786432,\"fadeFrom\":1792004306432,\"minutes\":60,\"fade\":true,\"mode\":\"moonlight\",\"extra\":0},\"state\":\"arriving\"},\"rec0\":\"{\\\"v\\\":1,\\\"startedAt\\\":1791997580871,\\\"endsAt\\\":1792001180871,\\\"fadeFrom\\\":1792000700871,\\\"minutes\\\":60,\\\"fade\\\":true,\\\"mode\\\":\\\"moonlight\\\",\\\"extra\\\":0}\"}"
+   "detail": "{\"ag\":{\"view\":\"session\",\"endsAt\":1792008151285,\"rec\":{\"v\":1,\"startedAt\":1792004551285,\"endsAt\":1792008151285,\"fadeFrom\":1792007671285,\"minutes\":60,\"fade\":true,\"mode\":\"moonlight\",\"extra\":0},\"state\":\"arriving\"},\"rec0\":\"{\\\"v\\\":1,\\\"startedAt\\\":1792000945783,\\\"endsAt\\\":1792004545783,\\\"fadeFrom\\\":1792004065783,\\\"minutes\\\":60,\\\"fade\\\":true,\\\"mode\\\":\\\"moonlight\\\",\\\"extra\\\":0}\"}"
   },
   {
    "scope": "nightlight:fade",
@@ -866,13 +734,13 @@
    "scope": "nightlight:background",
    "name": "E16: hidden: veiled at once (opacity 0, no transition), the rig frozen, the audio suspended",
    "ok": true,
-   "detail": "{\"veiled\":true,\"op\":\"0\",\"tr\":\"0s\",\"t\":[0.2007749999999999,0.2007749999999999],\"s\":\"suspended\"}"
+   "detail": "{\"veiled\":true,\"op\":\"0\",\"tr\":\"0s\",\"t\":[0.13822500000000015,0.13822500000000015],\"s\":\"suspended\"}"
   },
   {
    "scope": "nightlight:background",
    "name": "E16: back after 5 min: the same deadline; the shown levels ≤ the clock",
    "ok": true,
-   "detail": "{\"endsAt\":1791998973586,\"shown\":{\"world\":1,\"mallow\":1,\"sound\":1},\"clock\":{\"world\":1,\"mallow\":1,\"sound\":1,\"u\":0},\"veiled\":true}"
+   "detail": "{\"endsAt\":1792002338332,\"shown\":{\"world\":1,\"mallow\":1,\"sound\":1},\"clock\":{\"world\":1,\"mallow\":1,\"sound\":1,\"u\":0},\"veiled\":true}"
   },
   {
    "scope": "nightlight:background",
@@ -884,7 +752,7 @@
    "scope": "nightlight:background",
    "name": "E16: the bed rebuilds from silence (a new build, fading in)",
    "ok": true,
-   "detail": "{\"alive\":true,\"wanted\":true,\"on\":true,\"gain\":0.035,\"fade\":0.0038,\"texture\":\"waves\",\"breathing\":false,\"builds\":2,\"chimes\":0,\"levels\":{\"texture\":0.4,\"pad\":0.6}}"
+   "detail": "{\"alive\":true,\"wanted\":true,\"on\":true,\"gain\":0.035,\"fade\":0.0067,\"texture\":\"waves\",\"breathing\":false,\"builds\":2,\"chimes\":0,\"levels\":{\"texture\":0.4,\"pad\":0.6}}"
   },
   {
    "scope": "nightlight:background",
@@ -902,7 +770,7 @@
    "scope": "nightlight:background",
    "name": "E20: \"Tap to bring the sound back\" within 2 s, announced once, the chrome woken to show it",
    "ok": true,
-   "detail": "{\"chip\":\"soundBack\",\"sr\":[\"Nightlight on with Noomi until 5:29 PM.\",\"Sound paused. Tap to bring it back.\"],\"asleep\":false}"
+   "detail": "{\"chip\":\"soundBack\",\"sr\":[\"Nightlight on with Noomi until 6:25 PM.\",\"Sound paused. Tap to bring it back.\"],\"asleep\":false}"
   },
   {
    "scope": "nightlight:background",
@@ -914,25 +782,25 @@
    "scope": "nightlight:background",
    "name": "E17: hidden across the fade start: back fading, levels match the clock at once, no late sigh",
    "ok": true,
-   "detail": "{\"fs\":{\"state\":\"fading\",\"shown\":{\"world\":0.1035,\"mallow\":0.6692,\"sound\":0.1597},\"clock\":{\"world\":0.09561802306423062,\"mallow\":0.6553823519705408,\"sound\":0.15471602781684024,\"u\":0.6066604166666667},\"sighed\":true},\"fsr\":[]}"
+   "detail": "{\"fs\":{\"state\":\"fading\",\"shown\":{\"world\":0.1038,\"mallow\":0.6696,\"sound\":0.1598},\"clock\":{\"world\":0.09532705594525892,\"mallow\":0.6548630211949245,\"sound\":0.15453088585069447,\"u\":0.6068958333333333},\"sighed\":true},\"fsr\":[]}"
   },
   {
    "scope": "nightlight:background",
    "name": "E17: hidden across the end: the end view at once (skipped, no snapshot), focus on Again",
    "ok": true,
-   "detail": "{\"d\":{\"state\":\"ended\",\"endsAt\":1791998973586,\"skipped\":true,\"snap\":false,\"line\":\"Moonmilk and slow breaths. Stay as long as you like.\",\"sr\":[\"Nightlight finished.\"],\"resting\":true,\"lift\":\"\",\"view\":\"end\",\"skew\":1845694},\"focus\":\"Again\"}"
+   "detail": "{\"d\":{\"state\":\"ended\",\"endsAt\":1792002338332,\"skipped\":true,\"snap\":false,\"line\":\"Moonmilk and slow breaths. Stay as long as you like.\",\"sr\":[\"Nightlight finished.\"],\"resting\":true,\"lift\":\"\",\"view\":\"end\",\"skew\":1845331},\"focus\":\"Again\"}"
   },
   {
    "scope": "nightlight:background",
    "name": "E17: quietly: no voice or motif, the audio resting",
    "ok": true,
-   "detail": "{\"said\":[],\"s\":{\"state\":\"running\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":0}}"
+   "detail": "{\"said\":[],\"s\":{\"state\":\"suspended\",\"live\":1,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":1}}"
   },
   {
    "scope": "nightlight:background",
    "name": "E17: the audio context ends up suspended (even with a resume pending on return)",
    "ok": true,
-   "detail": "{\"state\":\"suspended\",\"live\":0,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":0}"
+   "detail": "{\"state\":\"suspended\",\"live\":1,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":true,\"keep\":1}"
   },
   {
    "scope": "nightlight:background",
@@ -944,19 +812,19 @@
    "scope": "nightlight:background:reload",
    "name": "E19: a reload mid-session resumes the same deadline and mode (no new start announcement)",
    "ok": true,
-   "detail": "{\"a\":{\"endsAt\":1791998390507,\"mode\":\"drift\"},\"b\":{\"endsAt\":1791998390507,\"mode\":\"drift\",\"sr\":[]}}"
+   "detail": "{\"a\":{\"endsAt\":1792001753837,\"mode\":\"drift\"},\"b\":{\"endsAt\":1792001753837,\"mode\":\"drift\",\"sr\":[]}}"
   },
   {
    "scope": "nightlight:background:reload",
    "name": "E19: a reload after the end (< 6 h) shows the end view, quietly",
    "ok": true,
-   "detail": "{\"state\":\"ended\",\"endsAt\":1791997134217,\"skipped\":true,\"snap\":false,\"line\":\"Rest here as long as you like. The rain can wait.\",\"sr\":[\"Nightlight finished.\"],\"resting\":true,\"lift\":\"\",\"view\":\"end\",\"skew\":0}"
+   "detail": "{\"state\":\"ended\",\"endsAt\":1792000497044,\"skipped\":true,\"snap\":false,\"line\":\"Rest here as long as you like. The rain can wait.\",\"sr\":[\"Nightlight finished.\"],\"resting\":true,\"lift\":\"\",\"view\":\"end\",\"skew\":0}"
   },
   {
    "scope": "nightlight:background:reload",
    "name": "E19: a record left more than 5 s ago starts fresh",
    "ok": true,
-   "detail": "{\"mode\":\"drift\",\"left\":1198630,\"sr\":[\"Nightlight on with Blubi until 5:19 PM.\"]}"
+   "detail": "{\"mode\":\"drift\",\"left\":1198786,\"sr\":[\"Nightlight on with Blubi until 6:15 PM.\"]}"
   },
   {
    "scope": "nightlight:background:reload",
@@ -1038,6 +906,1242 @@
   },
   {
    "scope": "nightlight:press",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "the sliders button opens the Nightlight sheet inside the screen, focus inside it",
+   "ok": true,
+   "detail": "{\"open\":true,\"dbg\":true,\"label\":\"Nightlight\",\"modal\":\"true\",\"inScreen\":true,\"focusIn\":true,\"bright\":[\"40\",\"40 %\",\"40 %\"],\"light\":[\"2\",\"Warm\",\"Warm\"],\"volume\":[\"50\",\"50 %\"],\"speed\":\"Slow\",\"timer\":\"30\",\"fade\":\"On\",\"motion\":\"Gentle\",\"wake\":\"Off\",\"timerSub\":\"Ends at 6:26 PM\",\"fadeSub\":\"Light, sound and movement ease down over the last 8 minutes\",\"wakeSub\":\"Until the light fades, an hour at most. Uses more battery.\",\"foot\":[\"Night sounds follow Mute and this volume, not Touch sounds.\",\"A gentle companion for winding down. It isn't a treatment for sleep problems.\"],\"fadeNow\":true,\"exit\":\"Close Nightlight\",\"scrim\":\"rgba(0, 0, 0, 0)\",\"bg\":\"rgb(11, 9, 32)\",\"blur\":\"none\",\"endsAt\":1792002375313}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "every row shows the settings: 40 %, Warm, Slow, 50 %, 30 (Ends at …), On, Gentle, Off",
+   "ok": true,
+   "detail": "{\"open\":true,\"dbg\":true,\"label\":\"Nightlight\",\"modal\":\"true\",\"inScreen\":true,\"focusIn\":true,\"bright\":[\"40\",\"40 %\",\"40 %\"],\"light\":[\"2\",\"Warm\",\"Warm\"],\"volume\":[\"50\",\"50 %\"],\"speed\":\"Slow\",\"timer\":\"30\",\"fade\":\"On\",\"motion\":\"Gentle\",\"wake\":\"Off\",\"timerSub\":\"Ends at 6:26 PM\",\"fadeSub\":\"Light, sound and movement ease down over the last 8 minutes\",\"wakeSub\":\"Until the light fades, an hour at most. Uses more battery.\",\"foot\":[\"Night sounds follow Mute and this volume, not Touch sounds.\",\"A gentle companion for winding down. It isn't a treatment for sleep problems.\"],\"fadeNow\":true,\"exit\":\"Close Nightlight\",\"scrim\":\"rgba(0, 0, 0, 0)\",\"bg\":\"rgb(11, 9, 32)\",\"blur\":\"none\",\"endsAt\":1792002375313}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "the footnotes (night sounds and Touch sounds; not a treatment) and the two finishing buttons",
+   "ok": true,
+   "detail": "[\"Night sounds follow Mute and this volume, not Touch sounds.\",\"A gentle companion for winding down. It isn't a treatment for sleep problems.\"]"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "opaque, no blur, over a clear scrim (the scene behind is the live preview)",
+   "ok": true,
+   "detail": "{\"scrim\":\"rgba(0, 0, 0, 0)\",\"bg\":\"rgb(11, 9, 32)\",\"blur\":\"none\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "live preview: a slide changes the light at once (shown \"70 %\"); release stores it",
+   "ok": true,
+   "detail": "{\"mid\":{\"s\":0.7,\"stored\":null,\"out\":\"70 %\"},\"rel\":1}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E8: brightness 100 → 5: the world luminance falls ≥ 60 %",
+   "ok": true,
+   "detail": "{\"hiLum\":0.13954441605585874,\"loLum\":0.0035396570003314917,\"hi\":{\"wb\":0.9789820483467163,\"lum\":0.1350580067226242},\"lo\":{\"wb\":0.12444733994071178,\"mb\":0.4843351478467491,\"state\":\"arriving\"}}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E8: the Mallow's floor (mallowB ≥ 0.45) and ≥ 2.5× its world while steady",
+   "ok": true,
+   "detail": "{\"wb\":0.12444733994071178,\"mb\":0.4843351478467491,\"state\":\"arriving\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E9: Light Moon → Ember: the still’s b/r falls ≥ 30 %",
+   "ok": true,
+   "detail": "{\"moon\":{\"lum\":0.02180339294287131,\"br\":1.8173268902456667,\"live\":false},\"ember\":{\"lum\":0.015680863865117762,\"br\":0.46021012988680376,\"live\":false}}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E9: the Mallow's blue stays ≥ 0.7 (it shifts less than its world)",
+   "ok": true,
+   "detail": "{\"mg\":[1,0.856,0.736],\"g\":[0.669999999931154,0.5735199999410678,0.4931199999493293]}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E9: during a slide only the grade re-bakes (no repaint, \"Candle\" shown); release repaints",
+   "ok": true,
+   "detail": "{\"moon\":{\"realmId\":\"moonmilk-cove\",\"live\":false,\"plain\":false,\"front\":1,\"paints\":2,\"bakes\":77,\"fallbacks\":0,\"W\":390,\"H\":844,\"dpr\":1,\"grade\":[0.321,0.347,0.373],\"drift\":{\"x\":0,\"y\":0}},\"sliding\":{\"d\":{\"realmId\":\"moonmilk-cove\",\"live\":false,\"plain\":false,\"front\":1,\"paints\":2,\"bakes\":89,\"fallbacks\":0,\"W\":390,\"H\":844,\"dpr\":1,\"grade\":[0.373,0.284,0.194],\"drift\":{\"x\":0,\"y\":0}},\"out\":\"Candle\",\"vt\":\"Candle\"},\"ember\":{\"realmId\":\"moonmilk-cove\",\"live\":false,\"plain\":false,\"front\":0,\"paints\":3,\"bakes\":98,\"fallbacks\":0,\"W\":390,\"H\":844,\"dpr\":1,\"grade\":[0.373,0.239,0.127],\"drift\":{\"x\":0,\"y\":0}}}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E10: Speed Slowest: rig speed 0.62, breath period × 1.25",
+   "ok": true,
+   "detail": "{\"rig\":0.62,\"k\":1.25,\"scale\":1.25,\"set\":\"slowest\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E10: Speed Natural: rig speed 0.9, breath period × 1",
+   "ok": true,
+   "detail": "{\"rig\":0.9,\"k\":1,\"scale\":1,\"set\":\"natural\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E10: Speed Slow: rig speed 0.75, breath period × 1.1",
+   "ok": true,
+   "detail": "{\"rig\":0.75,\"k\":1.1,\"scale\":1.1,\"set\":\"slow\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E11: the Volume slider sets the trim (20 %)",
+   "ok": true,
+   "detail": "{\"trim\":0.2,\"s\":0.2,\"vt\":\"20 %\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "muted: \"Sound is off\" and Turn on in place of the slider; Turn on brings it back (focus moves to the slider)",
+   "ok": true,
+   "detail": "{\"mu\":{\"slider\":false,\"muted\":true,\"txt\":\"Sound is off\",\"mute\":\"true\"},\"on\":{\"sound\":true,\"slider\":true,\"focus\":true,\"mute\":\"false\"}}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "Timer 10: restarts from now (ends in 10 min), \"Ends at …\" in the row and \"Until …\" in the status; a 3-minute fade",
+   "ok": true,
+   "detail": "{\"endsAt\":1792001211952,\"sub\":\"Ends at 6:06 PM\",\"st\":\"Until 6:06 PM\",\"fadeSub\":\"Light, sound and movement ease down over the last 3 minutes\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "Timer None: no end, \"Runs until you close it\", \"No timer\"; Fade out disabled (\"Needs a timer\")",
+   "ok": true,
+   "detail": "{\"endsAt\":null,\"sub\":\"Runs until you close it\",\"st\":\"No timer\",\"fadeOff\":true,\"fadeSub\":\"Needs a timer\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "Fade out Off: a 10 s settle at the end, and the row says so",
+   "ok": true,
+   "detail": "{\"ms\":10000,\"sub\":\"Light and sound go down in the last few seconds\",\"fade\":false}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "Movement Still: applied live (calm transitions, the rig reduced, a still sky)",
+   "ok": true,
+   "detail": "{\"motion\":\"still\",\"calm\":true,\"reduced\":true,\"anim\":\"still\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "Keep screen on: On holds a lock; a refusal switches it back to Off with \"Not available right now\" (asked once)",
+   "ok": true,
+   "detail": "{\"wk\":{\"w\":{\"requests\":1,\"releases\":0,\"held\":1},\"d\":{\"supported\":true,\"wanted\":true,\"held\":true,\"failed\":false,\"requests\":1}},\"wf\":{\"checked\":\"Off\",\"sub\":\"Not available right now\",\"s\":false,\"req\":1}}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "stored in the one nightlight pref, field by field",
+   "ok": true,
+   "detail": "{\"brightness\":0.4,\"temp\":0.5,\"mode\":\"breathe\",\"speed\":\"slow\",\"volume\":0.5,\"minutes\":30,\"fade\":true,\"motion\":\"gentle\",\"keepAwake\":false}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "the chrome stays awake while the sheet is open (9 s without input)",
+   "ok": true,
+   "detail": "{\"asleep\":false,\"open\":true}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "focus is trapped in the sheet (Tab from Done wraps to the first control, Shift+Tab back to Done)",
+   "ok": true,
+   "detail": "row nl-row nl-row-brightness / done"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "E15: Escape closes the sheet first; the Nightlight goes on and focus returns to the sliders button",
+   "ok": true,
+   "detail": "{\"view\":\"session\",\"state\":\"steady\",\"route\":\"nightlight\",\"focus\":\"Nightlight settings\",\"sheets\":0}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "Escape with focus on the page (not in a control) closes only the sheet",
+   "ok": true,
+   "detail": "{\"sheet\":false,\"state\":\"steady\",\"route\":\"nightlight\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "Fade out now: the sheet closes, the fade starts (ends within 12 s), \"Fading out.\"",
+   "ok": true,
+   "detail": "{\"state\":\"fading\",\"sheet\":false,\"endsIn\":11899,\"sr\":\"Fading out.\"}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "while fading the sheet hides Fade out now; Close Nightlight says goodnight and goes home (record cleared, trim 1)",
+   "ok": true,
+   "detail": "{\"hid\":true,\"gone\":{\"nl\":null,\"rec\":null,\"trim\":1,\"sheets\":0,\"wake\":{\"requests\":1,\"releases\":0,\"held\":0}}}"
+  },
+  {
+   "scope": "nightlight:sheet",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:motion",
+   "name": "E14: lab Motion Reduced: Gentle disabled (\"Your device asks for less motion\"), effective Less, the rig reduced",
+   "ok": true,
+   "detail": "{\"motion\":\"less\",\"setting\":\"gentle\",\"reduced\":true,\"gentle\":true,\"checked\":\"Less\",\"sub\":\"Your device asks for less motion\",\"subShown\":true,\"calm\":true,\"sheetTx\":\"none\"}"
+  },
+  {
+   "scope": "nightlight:motion",
+   "name": "E14: with less motion the sheet fades in place (no slide)",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "scope": "nightlight:motion",
+   "name": "E14: arrow keys skip the disabled Gentle (Less ← wraps to Still, → back to Less)",
+   "ok": true,
+   "detail": "{\"l\":{\"checked\":\"Still\",\"focus\":\"Still\",\"motion\":\"still\"},\"r\":{\"checked\":\"Less\",\"focus\":\"Less\"}}"
+  },
+  {
+   "scope": "nightlight:motion",
+   "name": "E14: the lab back to full motion: Gentle available again, the sub-label gone",
+   "ok": true,
+   "detail": "{\"gentle\":false,\"sub\":true,\"motion\":\"less\"}"
+  },
+  {
+   "scope": "nightlight:motion",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:access",
+   "name": "E25: Tab order: Close → Nightlight settings → Mute sound → the chosen mode → the status chip",
+   "ok": true,
+   "detail": "[\"Close\",\"Nightlight settings\",\"Mute sound\",\"Breathing Together\",\"breathe\"]"
+  },
+  {
+   "scope": "nightlight:access",
+   "name": "E25: arrows in the mode group choose (Breathe → Sleepy, brightness untouched); 4 → Drift; ↓ → 30 % (announced)",
+   "ok": true,
+   "detail": "{\"arrow\":{\"mode\":\"sleepy\",\"focus\":\"sleepy\",\"bright\":0.4},\"k4\":\"drift\",\"down\":{\"b\":0.3,\"sr\":\"Brightness 30 %.\"}}"
+  },
+  {
+   "scope": "nightlight:access",
+   "name": "E25: only the listed announcements (never breaths, blinks or captions)",
+   "ok": true,
+   "detail": "[\"Nightlight on with Blubi until 6:27 PM.\",\"Breathing Together.\",\"Sleepy Companion.\",\"Ambient Drift.\",\"Brightness 30 %.\",\"Moonlight.\"]"
+  },
+  {
+   "scope": "nightlight:access",
+   "name": "E24: asleep: the top bar and bottom fade (< 0.1), Close stays at 0.35, ≥ 40 px and tappable",
+   "ok": true,
+   "detail": "{\"top\":[0.35,0,0],\"bottom\":0,\"closeOp\":0.35,\"closeHit\":\"Close\",\"closeSize\":[44,44],\"under\":\"stage\",\"hidden\":[],\"pt\":[64.7890625,756]}"
+  },
+  {
+   "scope": "nightlight:access",
+   "name": "E24: a tap on a faded chip falls through to the stage; nothing is aria-hidden or inert",
+   "ok": true,
+   "detail": "{\"under\":\"stage\",\"hidden\":[]}"
+  },
+  {
+   "scope": "nightlight:access",
+   "name": "E24: a tap wakes the chrome without choosing the faded chip; Tab wakes it too",
+   "ok": true,
+   "detail": "{\"woke\":{\"asleep\":false,\"mode\":\"moonlight\"},\"slept\":true,\"tabWoke\":false}"
+  },
+  {
+   "scope": "nightlight:access",
+   "name": "E15: Close while asleep: one tap, the goodnight, home within ~1 s; record cleared, trim 1",
+   "ok": true,
+   "detail": "829 ms {\"nl\":null,\"trim\":1,\"rec\":null}"
+  },
+  {
+   "scope": "nightlight:access",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:theme",
+   "name": "E26: light theme: the screen keeps the night tokens (text, dark scheme, black), the dim chip colour",
+   "ok": true,
+   "detail": "{\"theme\":\"light\",\"text1\":\"#e9e3fa\",\"chipOn\":\"rgba(255,219,161,0.240)\",\"scheme\":\"dark\",\"bg\":\"rgb(0, 0, 0)\"}"
+  },
+  {
+   "scope": "nightlight:theme",
+   "name": "E26: no blur on the night chrome, the sheet or the chips",
+   "ok": true,
+   "detail": "[[\".nl-modes\",\"none\"],[\".icon-btn\",\"none\"],[\".nl-chip\",\"none\"],[\".sheet\",\"none\"],[\".end-card\",null]]"
+  },
+  {
+   "scope": "nightlight:theme",
+   "name": "E26: text on the chrome and in the sheet ≥ 4.5:1 (over the world behind it)",
+   "ok": true,
+   "detail": "{\"low\":[],\"n\":42,\"wl\":0.01964320783350079}"
+  },
+  {
+   "scope": "nightlight:theme",
+   "name": "E26: and at 100 % brightness",
+   "ok": true,
+   "detail": "{\"low\":[],\"wl\":0.1403055432188301,\"min\":7.75}"
+  },
+  {
+   "scope": "nightlight:theme",
+   "name": "E26: the end card: night tokens, no blur, text ≥ 4.5:1",
+   "ok": true,
+   "detail": "{\"endRows\":[{\"s\":\".nl-endcard .end-cap\",\"t\":\"Nightlight finished at 6\",\"r\":15.89},{\"s\":\".nl-endcard .end-line\",\"t\":\"“Moonmilk and slow breat\",\"r\":12.2},{\"s\":\".nl-endcard button\",\"t\":\"Again\",\"r\":9.97},{\"s\":\".nl-endcard button\",\"t\":\"Done\",\"r\":12.2}],\"blur\":[[\".nl-modes\",null],[\".icon-btn\",null],[\".nl-chip\",null],[\".sheet\",null],[\".end-card\",\"none\"]]}"
+  },
+  {
+   "scope": "nightlight:theme",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:scroll",
+   "name": "E27: drags on the stage and swipes on the mode row never scroll the page",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"se\":0,\"lab\":0,\"scr\":0,\"scale\":1,\"row\":63}"
+  },
+  {
+   "scope": "nightlight:scroll",
+   "name": "E27: a pinch on the stage never zooms",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"se\":0,\"lab\":0,\"scr\":0,\"scale\":1,\"row\":63}"
+  },
+  {
+   "scope": "nightlight:scroll",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:privacy",
+   "name": "E22: no service worker, no notification asked for",
+   "ok": true,
+   "detail": "{\"regs\":0,\"asked\":{\"notify\":0,\"sw\":0},\"perm\":\"default\",\"intervals\":[]}"
+  },
+  {
+   "scope": "nightlight:privacy",
+   "name": "E22: no network request once the screen is up (taps, every mode, the sheet)",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "scope": "nightlight:privacy",
+   "name": "E22: no setInterval from any Nightlight file",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "scope": "nightlight:privacy",
+   "name": "E22: hidden: no voice is made, the bed is not alive, the audio is suspended",
+   "ok": true,
+   "detail": "{\"voices\":0,\"live\":1,\"bed\":false,\"state\":\"suspended\"}"
+  },
+  {
+   "scope": "nightlight:privacy",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:isolation",
+   "name": "E29: TouchTalk afterwards: trim 1, not resting after a tap, no Nightlight handle or elements",
+   "ok": true,
+   "detail": "{\"route\":\"touchtalk\",\"nl\":null,\"trim\":1,\"resting\":false,\"grade\":[1,1,1],\"cap\":null,\"filter\":null,\"peek\":null,\"speed\":1,\"dnaSpeed\":1,\"motion\":1,\"night\":0,\"dna\":\"{\\\"version\\\":1,\\\"enabled\\\":true,\\\"learn\\\":false,\\\"prefs\\\":{\\\"favouriteMallow\\\":\\\"boppo\\\"},\\\"favourites\\\":[],\\\"history\\\":{}}\",\"face\":\"{\\\"set\\\":{},\\\"min\\\":{}}\"}"
+  },
+  {
+   "scope": "nightlight:isolation",
+   "name": "E29: its Mallow is untouched: identity grade, no frame cap, no filter, default peek, Comfort DNA speed",
+   "ok": true,
+   "detail": "{\"route\":\"touchtalk\",\"nl\":null,\"trim\":1,\"resting\":false,\"grade\":[1,1,1],\"cap\":null,\"filter\":null,\"peek\":null,\"speed\":1,\"dnaSpeed\":1,\"motion\":1,\"night\":0,\"dna\":\"{\\\"version\\\":1,\\\"enabled\\\":true,\\\"learn\\\":false,\\\"prefs\\\":{\\\"favouriteMallow\\\":\\\"boppo\\\"},\\\"favourites\\\":[],\\\"history\\\":{}}\",\"face\":\"{\\\"set\\\":{},\\\"min\\\":{}}\"}"
+  },
+  {
+   "scope": "nightlight:isolation",
+   "name": "E29: keys 1–5 and ↑/↓ are inert there (still TouchTalk, no Nightlight); Comfort DNA unchanged",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:isolation",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":390}"
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "portrait: the subtitle is \"{Mode} · {Mallow}\", the status row shows",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":390}"
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "E15: asleep: Close visible (0.35), on screen, ≥ 40 px",
+   "ok": true,
+   "detail": "{\"op\":0.35,\"w\":44,\"h\":44,\"on\":true}"
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "the sheet fits the screen with no sideways overflow; every control ≥ 40 px",
+   "ok": true,
+   "detail": "{\"rect\":[0,270,390,574],\"side\":false,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":false,\"body\":{\"l\":75.32395470398276,\"r\":314.67604529601726,\"t\":427.3985285761651,\"b\":687.6852043511764}}"
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "a bottom sheet that leaves the top of the scene in view",
+   "ok": true,
+   "detail": "[0,270,390,574]"
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "scrolled to its end: Done and the last row are reachable (Done does not cover them)",
+   "ok": true,
+   "detail": "{\"d\":true,\"exit\":true}"
+  },
+  {
+   "scope": "nightlight:layout:phone:fading",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone:fading",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone:fading",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone:fading",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone:fading",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone:end",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:phone",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":true,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":375}"
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "portrait: the subtitle is \"{Mode} · {Mallow}\", the status row shows",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":true,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":375}"
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "E15: asleep: Close visible (0.35), on screen, ≥ 40 px",
+   "ok": true,
+   "detail": "{\"op\":0.35,\"w\":44,\"h\":44,\"on\":true}"
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "the sheet fits the screen with no sideways overflow; every control ≥ 40 px",
+   "ok": true,
+   "detail": "{\"rect\":[0,260,375,552],\"side\":false,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":false,\"body\":{\"l\":72.42687952306036,\"r\":302.5731204769396,\"t\":407.1813836269507,\"b\":657.4570334106154}}"
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "a bottom sheet that leaves the top of the scene in view",
+   "ok": true,
+   "detail": "[0,260,375,552]"
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "scrolled to its end: Done and the last row are reachable (Done does not cover them)",
+   "ok": true,
+   "detail": "{\"d\":true,\"exit\":true}"
+  },
+  {
+   "scope": "nightlight:layout:p375:fading",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375:fading",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375:fading",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375:fading",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375:fading",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375:end",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:p375",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":true,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":320}"
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "portrait: the subtitle is \"{Mode} · {Mallow}\", the status row shows",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":true,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":320}"
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "E15: asleep: Close visible (0.35), on screen, ≥ 40 px",
+   "ok": true,
+   "detail": "{\"op\":0.35,\"w\":40,\"h\":40,\"on\":true}"
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "the sheet fits the screen with no sideways overflow; every control ≥ 40 px",
+   "ok": true,
+   "detail": "{\"rect\":[0,182,320,386],\"side\":false,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":false,\"body\":{\"l\":66.00443942375314,\"r\":253.99556057624687,\"t\":215.3105119870101,\"b\":419.7440052519668}}"
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "a bottom sheet that leaves the top of the scene in view",
+   "ok": true,
+   "detail": "[0,182,320,386]"
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "scrolled to its end: Done and the last row are reachable (Done does not cover them)",
+   "ok": true,
+   "detail": "{\"d\":true,\"exit\":true}"
+  },
+  {
+   "scope": "nightlight:layout:small:fading",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small:fading",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small:fading",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small:fading",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small:fading",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small:end",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:small",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":412}"
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "portrait: the subtitle is \"{Mode} · {Mallow}\", the status row shows",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":412}"
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "E15: asleep: Close visible (0.35), on screen, ≥ 40 px",
+   "ok": true,
+   "detail": "{\"op\":0.35,\"w\":44,\"h\":44,\"on\":true}"
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "the sheet fits the screen with no sideways overflow; every control ≥ 40 px",
+   "ok": true,
+   "detail": "{\"rect\":[0,293,412,622],\"side\":false,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":false,\"body\":{\"l\":79.57299830266896,\"r\":332.42700169733104,\"t\":470.44491987467615,\"b\":745.4144337703291}}"
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "a bottom sheet that leaves the top of the scene in view",
+   "ok": true,
+   "detail": "[0,293,412,622]"
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "scrolled to its end: Done and the last row are reachable (Done does not cover them)",
+   "ok": true,
+   "detail": "{\"d\":true,\"exit\":true}"
+  },
+  {
+   "scope": "nightlight:layout:android:fading",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android:fading",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android:fading",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android:fading",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android:fading",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android:end",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:android",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":1280}"
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "portrait: the subtitle is \"{Mode} · {Mallow}\", the status row shows",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · Loomi\",\"status\":\"flex\",\"stText\":\"block\",\"capBelowTop\":true,\"vw\":1280}"
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "E15: asleep: Close visible (0.35), on screen, ≥ 40 px",
+   "ok": true,
+   "detail": "{\"op\":0.35,\"w\":44,\"h\":44,\"on\":true}"
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "the sheet fits the screen with no sideways overflow; every control ≥ 40 px",
+   "ok": true,
+   "detail": "{\"rect\":[900,0,380,860],\"side\":true,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":true,\"body\":{\"l\":498.22020627787015,\"r\":781.7797937221299,\"t\":392.1178428803914,\"b\":700.4785604218167}}"
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "a side panel: the Mallow stays in view beside it (live preview)",
+   "ok": true,
+   "detail": "{\"rect\":[900,0,380,860],\"side\":true,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":true,\"body\":{\"l\":498.22020627787015,\"r\":781.7797937221299,\"t\":392.1178428803914,\"b\":700.4785604218167}}"
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "scrolled to its end: Done and the last row are reachable (Done does not cover them)",
+   "ok": true,
+   "detail": "{\"d\":true,\"exit\":true}"
+  },
+  {
+   "scope": "nightlight:layout:desktop:fading",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop:fading",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop:fading",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop:fading",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop:fading",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop:end",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:desktop",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · until 6:28 PM\",\"status\":\"flex\",\"stText\":\"none\",\"capBelowTop\":true,\"vw\":844}"
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "landscape: the time moves into the subtitle; the status text hides, its chip stays inline",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · until 6:28 PM\",\"status\":\"flex\",\"stText\":\"none\",\"capBelowTop\":true,\"vw\":844}"
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "E15: asleep: Close visible (0.35), on screen, ≥ 40 px",
+   "ok": true,
+   "detail": "{\"op\":0.35,\"w\":44,\"h\":44,\"on\":true}"
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "the sheet fits the screen with no sideways overflow; every control ≥ 40 px",
+   "ok": true,
+   "detail": "{\"rect\":[490,0,354,390],\"side\":true,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":true,\"body\":{\"l\":373.381606598493,\"r\":470.618393401507,\"t\":200.38645342933228,\"b\":306.1279154629306}}"
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "a side panel: the Mallow stays in view beside it (live preview)",
+   "ok": true,
+   "detail": "{\"rect\":[490,0,354,390],\"side\":true,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":true,\"body\":{\"l\":373.381606598493,\"r\":470.618393401507,\"t\":200.38645342933228,\"b\":306.1279154629306}}"
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "scrolled to its end: Done and the last row are reachable (Done does not cover them)",
+   "ok": true,
+   "detail": "{\"d\":true,\"exit\":true}"
+  },
+  {
+   "scope": "nightlight:layout:land:fading",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land:fading",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land:fading",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land:fading",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land:fading",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land:end",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "the chosen mode is in view in the mode row",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · until 6:28 PM\",\"status\":\"flex\",\"stText\":\"none\",\"capBelowTop\":true,\"vw\":568}"
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "landscape: the time moves into the subtitle; the status text hides, its chip stays inline",
+   "ok": true,
+   "detail": "{\"inView\":true,\"scrolls\":false,\"sub\":\"Moonlight · until 6:28 PM\",\"status\":\"flex\",\"stText\":\"none\",\"capBelowTop\":true,\"vw\":568}"
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "E15: asleep: Close visible (0.35), on screen, ≥ 40 px",
+   "ok": true,
+   "detail": "{\"op\":0.35,\"w\":44,\"h\":44,\"on\":true}"
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "the sheet fits the screen with no sideways overflow; every control ≥ 40 px",
+   "ok": true,
+   "detail": "{\"rect\":[329,0,239,320],\"side\":true,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":true,\"body\":{\"l\":244.1079849013276,\"r\":323.8920150986724,\"t\":151.14205149278223,\"b\":237.9042767511193}}"
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "a side panel: the Mallow stays in view beside it (live preview)",
+   "ok": true,
+   "detail": "{\"rect\":[329,0,239,320],\"side\":true,\"scrolls\":true,\"small\":[],\"wide\":[],\"hscroll\":false,\"inView\":true,\"mallowClear\":true,\"body\":{\"l\":244.1079849013276,\"r\":323.8920150986724,\"t\":151.14205149278223,\"b\":237.9042767511193}}"
+  },
+  {
+   "scope": "nightlight:layout:land-small",
+   "name": "scrolled to its end: Done and the last row are reachable (Done does not cover them)",
+   "ok": true,
+   "detail": "{\"d\":true,\"exit\":true}"
+  },
+  {
+   "scope": "nightlight:layout:land-small:fading",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small:fading",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small:fading",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small:fading",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small:fading",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small:end",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small:end",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small:end",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small:end",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "nightlight:layout:land-small",
    "name": "no console errors",
    "ok": true,
    "detail": ""

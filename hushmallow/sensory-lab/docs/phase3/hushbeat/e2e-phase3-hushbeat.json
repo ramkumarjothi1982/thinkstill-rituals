@@ -1,39 +1,38 @@
 {
- "when": "2026-10-14T17:09:28.037Z",
- "part": null,
- "note": "full run; hushbeat:layout:desktop re-run after the wide-tray rule (2026-10-14T17:12:51.479Z)",
- "passed": 470,
+ "when": "2026-10-14T19:15:51.206Z",
+ "part": "hushbeat:scene,hushbeat:replay",
+ "passed": 585,
  "failed": 0,
  "results": [
   {
    "scope": "hushbeat:open",
    "name": "the home card says Play and opens #hushbeat: rig ready, stage focused",
    "ok": true,
-   "detail": "{\"card\":\"Play\",\"s\":{\"screen\":true,\"focused\":true,\"title\":\"Hushbeat\",\"sub\":\"Boppo\",\"close\":true,\"settings\":false,\"label\":\"Boppo. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.\",\"hint\":\"Tap a note \u00b7 Squeeze bass \u00b7 Stroke a tune \u00b7 Hold a hum\",\"tray\":true,\"buttons\":\"false\",\"backdrop\":\"light\",\"realm\":1,\"debug\":{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.212,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}}}"
+   "detail": "{\"card\":\"Play\",\"s\":{\"screen\":true,\"focused\":true,\"title\":\"Hushbeat\",\"sub\":\"Boppo\",\"close\":true,\"settings\":false,\"label\":\"Boppo. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.\",\"hint\":\"Tap a note · Squeeze bass · Stroke a tune · Hold a hum\",\"tray\":true,\"buttons\":\"false\",\"backdrop\":\"light\",\"realm\":1,\"debug\":{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.213,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}}}"
   },
   {
    "scope": "hushbeat:open",
    "name": "title Hushbeat, subtitle the Mallow, Close (no Settings), the stage label lists the keys",
    "ok": true,
-   "detail": "{\"screen\":true,\"focused\":true,\"title\":\"Hushbeat\",\"sub\":\"Boppo\",\"close\":true,\"settings\":false,\"label\":\"Boppo. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.\",\"hint\":\"Tap a note \u00b7 Squeeze bass \u00b7 Stroke a tune \u00b7 Hold a hum\",\"tray\":true,\"buttons\":\"false\",\"backdrop\":\"light\",\"realm\":1,\"debug\":{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.212,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}}"
+   "detail": "{\"screen\":true,\"focused\":true,\"title\":\"Hushbeat\",\"sub\":\"Boppo\",\"close\":true,\"settings\":false,\"label\":\"Boppo. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.\",\"hint\":\"Tap a note · Squeeze bass · Stroke a tune · Hold a hum\",\"tray\":true,\"buttons\":\"false\",\"backdrop\":\"light\",\"realm\":1,\"debug\":{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.213,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}}"
   },
   {
    "scope": "hushbeat:open",
    "name": "the hint is visible; the tray is hidden behind Buttons",
    "ok": true,
-   "detail": "{\"screen\":true,\"focused\":true,\"title\":\"Hushbeat\",\"sub\":\"Boppo\",\"close\":true,\"settings\":false,\"label\":\"Boppo. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.\",\"hint\":\"Tap a note \u00b7 Squeeze bass \u00b7 Stroke a tune \u00b7 Hold a hum\",\"tray\":true,\"buttons\":\"false\",\"backdrop\":\"light\",\"realm\":1,\"debug\":{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.212,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}}"
+   "detail": "{\"screen\":true,\"focused\":true,\"title\":\"Hushbeat\",\"sub\":\"Boppo\",\"close\":true,\"settings\":false,\"label\":\"Boppo. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.\",\"hint\":\"Tap a note · Squeeze bass · Stroke a tune · Hold a hum\",\"tray\":true,\"buttons\":\"false\",\"backdrop\":\"light\",\"realm\":1,\"debug\":{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.213,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}}"
   },
   {
    "scope": "hushbeat:open",
    "name": "the Mallow's own world behind it (Automatic)",
    "ok": true,
-   "detail": "{\"screen\":true,\"focused\":true,\"title\":\"Hushbeat\",\"sub\":\"Boppo\",\"close\":true,\"settings\":false,\"label\":\"Boppo. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.\",\"hint\":\"Tap a note \u00b7 Squeeze bass \u00b7 Stroke a tune \u00b7 Hold a hum\",\"tray\":true,\"buttons\":\"false\",\"backdrop\":\"light\",\"realm\":1,\"debug\":{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.212,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}}"
+   "detail": "{\"screen\":true,\"focused\":true,\"title\":\"Hushbeat\",\"sub\":\"Boppo\",\"close\":true,\"settings\":false,\"label\":\"Boppo. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.\",\"hint\":\"Tap a note · Squeeze bass · Stroke a tune · Hold a hum\",\"tray\":true,\"buttons\":\"false\",\"backdrop\":\"light\",\"realm\":1,\"debug\":{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.213,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}}"
   },
   {
    "scope": "hushbeat:open",
    "name": "debug(): listening at the natural pace, 96 bpm in 4/4, scheduler idle, silent (nothing plays by itself)",
    "ok": true,
-   "detail": "{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.212,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}"
+   "detail": "{\"state\":\"listening\",\"bpm\":96,\"bar\":0,\"beat\":0.213,\"chord\":{\"root\":0,\"tones\":[0,4,7]},\"pace\":\"natural\",\"breath\":{\"level\":0.003,\"phase\":\"in\",\"leading\":null,\"target\":10},\"scheduler\":{\"running\":false,\"pending\":0},\"players\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":null}],\"voices\":0,\"live\":0,\"audible\":true,\"visualOnly\":false,\"muted\":false,\"friend\":null,\"answers\":true,\"target\":0,\"sheet\":null,\"take\":0,\"best\":0,\"replaying\":false,\"flash1s\":0,\"groove\":0,\"quality\":\"low\",\"idle\":0.1,\"audio\":{\"ready\":true,\"attached\":true,\"voices\":0,\"notes\":0,\"capped\":0,\"layers\":[{\"bass\":false,\"pad\":false},{\"bass\":false,\"pad\":false}],\"offset\":null,\"latency\":0.032},\"latency\":0.032,\"performers\":[{\"slot\":0,\"mallow\":\"boppo\",\"groove\":0,\"sing\":0,\"hum\":0,\"bass\":0,\"resting\":false,\"performing\":{\"squeeze\":false,\"press\":false},\"nudges\":0,\"pokes\":0,\"face\":{\"mouthOpen\":0,\"mouthRound\":0,\"mouthSkew\":0,\"glow\":0,\"cheekPuff\":0,\"blush\":0},\"grooveLog\":[],\"notes\":[]}],\"scene\":{\"beads\":0,\"ring\":0,\"ringTarget\":0.25,\"ringR\":150,\"glow\":0.017,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0,\"heaviness\":0,\"clarity\":0,\"warmth\":0},\"start\":null,\"ripples\":0,\"successes\":0,\"successPending\":false},\"cue\":0,\"controls\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"duet\":null}"
   },
   {
    "scope": "hushbeat:open",
@@ -57,7 +56,7 @@
    "scope": "hushbeat:quiet",
    "name": "E3: the first touch made one AudioContext, inside the activation (touchend)",
    "ok": true,
-   "detail": "{\"created\":1,\"contexts\":[{\"state\":\"running\",\"sampleRate\":44100,\"activation\":true,\"t\":19308.39999999851}],\"toDestination\":2,\"started\":1}"
+   "detail": "{\"created\":1,\"contexts\":[{\"state\":\"running\",\"sampleRate\":44100,\"activation\":true,\"t\":17434.29999999702}],\"toDestination\":2,\"started\":1}"
   },
   {
    "scope": "hushbeat:quiet",
@@ -73,7 +72,7 @@
   },
   {
    "scope": "hushbeat:quiet",
-   "name": "E5: a first-touch hold starts the hum's visuals (padOn) and never bursts after lift (\u2264 1 heard note, no heard hum)",
+   "name": "E5: a first-touch hold starts the hum's visuals (padOn) and never bursts after lift (≤ 1 heard note, no heard hum)",
    "ok": true,
    "detail": "[{\"kind\":\"note\",\"src\":\"live\",\"id\":1,\"heard\":false,\"restrike\":false,\"hz\":415.30777567684703},{\"kind\":\"padOn\",\"heard\":false,\"restrike\":false},{\"kind\":\"padOff\",\"heard\":false,\"restrike\":false}]"
   },
@@ -85,21 +84,21 @@
   },
   {
    "scope": "hushbeat:gestures",
-   "name": "E4: the note sounds at contact (heard, immediate, \u2264 6 ms added) before the finger lifts",
+   "name": "E4: the note sounds at contact (heard, immediate, ≤ 6 ms added) before the finger lifts",
    "ok": true,
-   "detail": "{\"kind\":\"note\",\"slot\":0,\"t\":19.55590000000596,\"id\":2,\"semi\":2,\"deg\":1,\"hz\":369.9971649842186,\"vel\":0.5903219460599445,\"dur\":0.6900000000000001,\"ring\":0.25,\"src\":\"live\",\"x01\":0,\"y01\":0.3392475543878246,\"immediate\":true,\"ghost\":false,\"heard\":true,\"audioT\":0.9163832199546486,\"ctxNow\":0.9113832199546485}"
+   "detail": "{\"kind\":\"note\",\"slot\":0,\"t\":19.18959999999404,\"id\":2,\"semi\":2,\"deg\":1,\"hz\":369.9971649842186,\"vel\":0.5903219460599445,\"dur\":0.6900000000000001,\"ring\":0.25,\"src\":\"live\",\"x01\":0,\"y01\":0.3536653370153768,\"immediate\":true,\"ghost\":false,\"heard\":true,\"audioT\":0.9250907029478458,\"ctxNow\":0.9200907029478458}"
   },
   {
    "scope": "hushbeat:gestures",
    "name": "E6 hold: one contact note, then the hum (padOn from it), a held pad voice, released on lift",
    "ok": true,
-   "detail": "{\"kinds\":[\"note\",\"padOn\",\"padSet\",\"padOff\"],\"holdV\":[{\"layer\":\"pad\",\"keep\":true}]}"
+   "detail": "{\"kinds\":[\"note\",\"padOn\",\"padSet\",\"padSet\",\"padOff\"],\"holdV\":[{\"layer\":\"pad\",\"keep\":true}]}"
   },
   {
    "scope": "hushbeat:gestures",
    "name": "E6 press down: duck, then bassOn (no second strike), a held bass voice, bassOff on lift",
    "ok": true,
-   "detail": "{\"ord\":[\"note\",\"padOn\",\"padSet\",\"padOff\",\"duck\",\"bassOn\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassOff\"],\"pressV\":[{\"layer\":\"bass\",\"keep\":true}]}"
+   "detail": "{\"ord\":[\"note\",\"duck\",\"bassOn\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassOff\"],\"pressV\":[{\"layer\":\"bass\",\"keep\":true}]}"
   },
   {
    "scope": "hushbeat:gestures",
@@ -109,9 +108,9 @@
   },
   {
    "scope": "hushbeat:gestures",
-   "name": "E6 stroke: \u2265 3 phrase notes after the first, each on the grid (\u00b13 ms), and a phraseEnd",
+   "name": "E6 stroke: ≥ 3 phrase notes after the first, each on the grid (±3 ms), and a phraseEnd",
    "ok": true,
-   "detail": "{\"n\":3,\"onGrid\":[true,true,true],\"kinds\":[\"bassSet\",\"bassBeat\",\"bassOff\",\"note:phrase\",\"phraseEnd\"]}"
+   "detail": "{\"n\":7,\"onGrid\":[true,true,true,true,true,true,true],\"kinds\":[\"note:live\",\"bend\",\"note:phrase\",\"phraseEnd\"]}"
   },
   {
    "scope": "hushbeat:gestures",
@@ -127,9 +126,9 @@
   },
   {
    "scope": "hushbeat:gestures",
-   "name": "E6: every voice is gone \u2264 3.5 s after the last release",
+   "name": "E6: every voice is gone ≤ 3.5 s after the last release",
    "ok": true,
-   "detail": "{\"ok\":true,\"ms\":11}"
+   "detail": "{\"ok\":true,\"ms\":1}"
   },
   {
    "scope": "hushbeat:gestures",
@@ -141,7 +140,7 @@
    "scope": "hushbeat:gestures:pinch",
    "name": "E6 pinch: the first finger's note ducks under the bass; the bass ends on lift",
    "ok": true,
-   "detail": "[\"note\",\"padOn\",\"padOff\",\"duck\",\"bassOn\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassOff\"]"
+   "detail": "[\"note\",\"padOn\",\"padSet\",\"padOff\",\"duck\",\"bassOn\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassSet\",\"bassSet\",\"bassBeat\",\"bassSet\",\"bassBeat\",\"bassBeat\",\"bassOff\"]"
   },
   {
    "scope": "hushbeat:gestures:pinch",
@@ -183,7 +182,7 @@
    "scope": "hushbeat:keys",
    "name": "key h: its musical result",
    "ok": true,
-   "detail": "[\"padOn\",\"padSet\",\"padOff\"]"
+   "detail": "[\"padOn\",\"padOff\"]"
   },
   {
    "scope": "hushbeat:keys",
@@ -225,7 +224,7 @@
    "scope": "hushbeat:keys",
    "name": "chip bass: its musical result",
    "ok": true,
-   "detail": "[\"bassOn\",\"bassBeat\",\"bassSet\",\"bassOff\"]"
+   "detail": "[\"bassOn\",\"bassSet\",\"bassBeat\",\"bassOff\"]"
   },
   {
    "scope": "hushbeat:keys",
@@ -249,7 +248,7 @@
    "scope": "hushbeat:mallows",
    "name": "glitzi: every solo gesture renders (notes, chord, phrase, bend, hum, bass) in its own key, heard",
    "ok": true,
-   "detail": "{\"kinds\":[\"note\",\"phraseEnd\",\"bend\",\"padOn\",\"padOff\",\"duck\",\"bassOn\",\"bassSet\",\"bassBeat\",\"bassOff\"],\"n\":17,\"unheard\":0,\"inKey\":true}"
+   "detail": "{\"kinds\":[\"note\",\"phraseEnd\",\"bend\",\"padOn\",\"padSet\",\"padOff\",\"duck\",\"bassOn\",\"bassSet\",\"bassBeat\",\"bassOff\"],\"n\":18,\"unheard\":0,\"inKey\":true}"
   },
   {
    "scope": "hushbeat:mallows",
@@ -303,7 +302,7 @@
    "scope": "hushbeat:mallows",
    "name": "boppo: every solo gesture renders (notes, chord, phrase, bend, hum, bass) in its own key, heard",
    "ok": true,
-   "detail": "{\"kinds\":[\"note\",\"phraseEnd\",\"bend\",\"padOn\",\"padSet\",\"padOff\",\"duck\",\"bassOn\",\"bassSet\",\"bassBeat\",\"bassOff\"],\"n\":12,\"unheard\":0,\"inKey\":true}"
+   "detail": "{\"kinds\":[\"note\",\"phraseEnd\",\"bend\",\"padOn\",\"padSet\",\"padOff\",\"duck\",\"bassOn\",\"bassSet\",\"bassBeat\",\"bassOff\"],\"n\":14,\"unheard\":0,\"inKey\":true}"
   },
   {
    "scope": "hushbeat:mallows",
@@ -321,7 +320,7 @@
    "scope": "hushbeat:mallows",
    "name": "pipzi: every solo gesture renders (notes, chord, phrase, bend, hum, bass) in its own key, heard",
    "ok": true,
-   "detail": "{\"kinds\":[\"note\",\"noteOff\",\"phraseEnd\",\"bend\",\"padOn\",\"padSet\",\"padOff\",\"duck\",\"bassOn\",\"bassSet\",\"bassBeat\",\"bassOff\"],\"n\":17,\"unheard\":0,\"inKey\":true}"
+   "detail": "{\"kinds\":[\"note\",\"noteOff\",\"phraseEnd\",\"bend\",\"padOn\",\"padSet\",\"padOff\",\"duck\",\"bassOn\",\"bassSet\",\"bassBeat\",\"bassOff\"],\"n\":18,\"unheard\":0,\"inKey\":true}"
   },
   {
    "scope": "hushbeat:mallows",
@@ -375,7 +374,7 @@
    "scope": "hushbeat:mallows",
    "name": "all quiet afterwards",
    "ok": true,
-   "detail": "{\"ok\":true,\"ms\":1949}"
+   "detail": "{\"ok\":true,\"ms\":2000}"
   },
   {
    "scope": "hushbeat:mallows",
@@ -385,13 +384,13 @@
   },
   {
    "scope": "hushbeat:breath",
-   "name": "Breathe leads: the in-breath sets the target cycle (2.5 \u00d7 the inhale, clamped); out on release",
+   "name": "Breathe leads: the in-breath sets the target cycle (2.5 × the inhale, clamped); out on release",
    "ok": true,
-   "detail": "{\"inhale\":1.8008999999985098,\"want\":7,\"breath\":{\"level\":0.836,\"phase\":\"out\",\"leading\":\"out\",\"target\":7}}"
+   "detail": "{\"inhale\":1.8373999999985098,\"want\":7,\"breath\":{\"level\":0.442,\"phase\":\"out\",\"leading\":\"out\",\"target\":7}}"
   },
   {
    "scope": "hushbeat:breath",
-   "name": "the tempo moves toward the breath only at bar lines, \u2264 8 % a bar",
+   "name": "the tempo moves toward the breath only at bar lines, ≤ 8 % a bar",
    "ok": true,
    "detail": "{\"bpm0\":96,\"end\":120,\"steps\":[0.08,0.08,0.0717]}"
   },
@@ -399,7 +398,7 @@
    "scope": "hushbeat:breath",
    "name": "the Mallow fills with the breath (inflate follows the level, r > 0.8)",
    "ok": true,
-   "detail": "r=0.997 [[0.72,0.57],[0.72,0.58],[0.74,0.58],[0.75,0.6],[0.77,0.62],[0.79,0.62],[0.81,0.65],[0.84,0.67]]"
+   "detail": "r=0.987 [[0.01,0],[0.04,0.02],[0.08,0.02],[0.14,0.11],[0.21,0.11],[0.28,0.18],[0.36,0.23],[0.44,0.32]]"
   },
   {
    "scope": "hushbeat:breath",
@@ -415,175 +414,175 @@
   },
   {
    "scope": "hushbeat:offline",
-   "name": "boppo: the tap note is on pitch (\u00b13 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
+   "name": "boppo: the tap note is on pitch (±3 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
    "ok": true,
    "detail": "{\"f\":415.3,\"f0\":413.8,\"err\":-0.36,\"rms\":-31,\"peak\":0.088,\"pre\":0,\"first\":0.008,\"tail\":0,\"padAttack\":1.09,\"padAfter1s\":-34.3,\"padEnd\":0,\"bass\":[{\"hz\":82.4,\"f0\":82.5,\"band\":35,\"end\":0.0003},{\"hz\":69.3,\"f0\":69.3,\"band\":21.8,\"end\":0.0003},{\"hz\":92.5,\"f0\":92.5,\"band\":35.7,\"end\":0.0004},{\"hz\":123.5,\"f0\":123.4,\"band\":37,\"end\":0.0003}],\"held\":466,\"heldWant\":466}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "boppo: the hum swells in (\u2265 300 ms), is quiet a second after letting go, and ends",
+   "name": "boppo: the hum swells in (≥ 300 ms), is quiet a second after letting go, and ends",
    "ok": true,
    "detail": "{\"a\":1.09,\"after\":-34.3,\"end\":0}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "boppo: every bass root sits below 131 Hz on pitch, \u2265 15 % of its energy in 150\u2013500 Hz, and ends",
+   "name": "boppo: every bass root sits below 131 Hz on pitch, ≥ 15 % of its energy in 150–500 Hz, and ends",
    "ok": true,
    "detail": "[{\"hz\":82.4,\"f0\":82.5,\"band\":35,\"end\":0.0003},{\"hz\":69.3,\"f0\":69.3,\"band\":21.8,\"end\":0.0003},{\"hz\":92.5,\"f0\":92.5,\"band\":35.7,\"end\":0.0004},{\"hz\":123.5,\"f0\":123.4,\"band\":37,\"end\":0.0003}]"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "boppo: a bent note follows to its new pitch (\u00b11 %)",
+   "name": "boppo: a bent note follows to its new pitch (±1 %)",
    "ok": true,
    "detail": "{\"held\":466,\"want\":466}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "pipzi: the tap note is on pitch (\u00b13 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
+   "name": "pipzi: the tap note is on pitch (±3 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
    "ok": true,
    "detail": "{\"f\":659.3,\"f0\":657.5,\"err\":-0.27,\"rms\":-31.1,\"peak\":0.087,\"pre\":0,\"first\":0.0123,\"tail\":0,\"padAttack\":1.33,\"padAfter1s\":-31.7,\"padEnd\":0,\"bass\":[{\"hz\":98,\"f0\":98,\"band\":47.2,\"end\":0.0003},{\"hz\":73.4,\"f0\":73.4,\"band\":21.1,\"end\":0.0003},{\"hz\":82.4,\"f0\":82.5,\"band\":46.4,\"end\":0.0004},{\"hz\":123.5,\"f0\":123.4,\"band\":48.2,\"end\":0.0004}],\"held\":738.5,\"heldWant\":739.7}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "pipzi: the hum swells in (\u2265 300 ms), is quiet a second after letting go, and ends",
+   "name": "pipzi: the hum swells in (≥ 300 ms), is quiet a second after letting go, and ends",
    "ok": true,
    "detail": "{\"a\":1.33,\"after\":-31.7,\"end\":0}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "pipzi: every bass root sits below 131 Hz on pitch, \u2265 15 % of its energy in 150\u2013500 Hz, and ends",
+   "name": "pipzi: every bass root sits below 131 Hz on pitch, ≥ 15 % of its energy in 150–500 Hz, and ends",
    "ok": true,
    "detail": "[{\"hz\":98,\"f0\":98,\"band\":47.2,\"end\":0.0003},{\"hz\":73.4,\"f0\":73.4,\"band\":21.1,\"end\":0.0003},{\"hz\":82.4,\"f0\":82.5,\"band\":46.4,\"end\":0.0004},{\"hz\":123.5,\"f0\":123.4,\"band\":48.2,\"end\":0.0004}]"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "pipzi: a bent note follows to its new pitch (\u00b11 %)",
+   "name": "pipzi: a bent note follows to its new pitch (±1 %)",
    "ok": true,
    "detail": "{\"held\":738.5,\"want\":739.7}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "blubi: the tap note is on pitch (\u00b13 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
+   "name": "blubi: the tap note is on pitch (±3 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
    "ok": true,
-   "detail": "{\"f\":587.3,\"f0\":585.4,\"err\":-0.33,\"rms\":-30.9,\"peak\":0.081,\"pre\":0,\"first\":0.0118,\"tail\":0,\"padAttack\":1.23,\"padAfter1s\":-33.7,\"padEnd\":0,\"bass\":[{\"hz\":73.4,\"f0\":73.3,\"band\":23.6,\"end\":0.0003},{\"hz\":98,\"f0\":97.8,\"band\":40.7,\"end\":0.0003},{\"hz\":87.3,\"f0\":87.1,\"band\":40.1,\"end\":0.0003},{\"hz\":130.8,\"f0\":130.8,\"band\":35.1,\"end\":0.0004}],\"held\":657.5,\"heldWant\":659}"
+   "detail": "{\"f\":587.3,\"f0\":585.4,\"err\":-0.33,\"rms\":-30.9,\"peak\":0.081,\"pre\":0,\"first\":0.0118,\"tail\":0,\"padAttack\":1.23,\"padAfter1s\":-34,\"padEnd\":0,\"bass\":[{\"hz\":73.4,\"f0\":73.3,\"band\":23.6,\"end\":0.0003},{\"hz\":98,\"f0\":97.8,\"band\":40.7,\"end\":0.0003},{\"hz\":87.3,\"f0\":87.1,\"band\":40.1,\"end\":0.0003},{\"hz\":130.8,\"f0\":130.8,\"band\":35.1,\"end\":0.0004}],\"held\":657.5,\"heldWant\":659}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "blubi: the hum swells in (\u2265 300 ms), is quiet a second after letting go, and ends",
+   "name": "blubi: the hum swells in (≥ 300 ms), is quiet a second after letting go, and ends",
    "ok": true,
-   "detail": "{\"a\":1.23,\"after\":-33.7,\"end\":0}"
+   "detail": "{\"a\":1.23,\"after\":-34,\"end\":0}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "blubi: every bass root sits below 131 Hz on pitch, \u2265 15 % of its energy in 150\u2013500 Hz, and ends",
+   "name": "blubi: every bass root sits below 131 Hz on pitch, ≥ 15 % of its energy in 150–500 Hz, and ends",
    "ok": true,
    "detail": "[{\"hz\":73.4,\"f0\":73.3,\"band\":23.6,\"end\":0.0003},{\"hz\":98,\"f0\":97.8,\"band\":40.7,\"end\":0.0003},{\"hz\":87.3,\"f0\":87.1,\"band\":40.1,\"end\":0.0003},{\"hz\":130.8,\"f0\":130.8,\"band\":35.1,\"end\":0.0004}]"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "blubi: a bent note follows to its new pitch (\u00b11 %)",
+   "name": "blubi: a bent note follows to its new pitch (±1 %)",
    "ok": true,
    "detail": "{\"held\":657.5,\"want\":659}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "glitzi: the tap note is on pitch (\u00b13 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
+   "name": "glitzi: the tap note is on pitch (±3 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
    "ok": true,
    "detail": "{\"f\":554.4,\"f0\":551.7,\"err\":-0.48,\"rms\":-33,\"peak\":0.078,\"pre\":0,\"first\":0.0084,\"tail\":0,\"padAttack\":0.83,\"padAfter1s\":-33.1,\"padEnd\":0,\"bass\":[{\"hz\":116.5,\"f0\":116.5,\"band\":45.7,\"end\":0.0003},{\"hz\":103.8,\"f0\":103.9,\"band\":45.2,\"end\":0.0003},{\"hz\":77.8,\"f0\":77.8,\"band\":46.6,\"end\":0.0003},{\"hz\":69.3,\"f0\":69.3,\"band\":33.6,\"end\":0.0003}],\"held\":623.4,\"heldWant\":622}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "glitzi: the hum swells in (\u2265 300 ms), is quiet a second after letting go, and ends",
+   "name": "glitzi: the hum swells in (≥ 300 ms), is quiet a second after letting go, and ends",
    "ok": true,
    "detail": "{\"a\":0.83,\"after\":-33.1,\"end\":0}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "glitzi: every bass root sits below 131 Hz on pitch, \u2265 15 % of its energy in 150\u2013500 Hz, and ends",
+   "name": "glitzi: every bass root sits below 131 Hz on pitch, ≥ 15 % of its energy in 150–500 Hz, and ends",
    "ok": true,
    "detail": "[{\"hz\":116.5,\"f0\":116.5,\"band\":45.7,\"end\":0.0003},{\"hz\":103.8,\"f0\":103.9,\"band\":45.2,\"end\":0.0003},{\"hz\":77.8,\"f0\":77.8,\"band\":46.6,\"end\":0.0003},{\"hz\":69.3,\"f0\":69.3,\"band\":33.6,\"end\":0.0003}]"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "glitzi: a bent note follows to its new pitch (\u00b11 %)",
+   "name": "glitzi: a bent note follows to its new pitch (±1 %)",
    "ok": true,
    "detail": "{\"held\":623.4,\"want\":622}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "zuzu: the tap note is on pitch (\u00b13 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
+   "name": "zuzu: the tap note is on pitch (±3 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
    "ok": true,
    "detail": "{\"f\":440,\"f0\":440.4,\"err\":0.09,\"rms\":-31,\"peak\":0.077,\"pre\":0,\"first\":0.002,\"tail\":0,\"padAttack\":1.01,\"padAfter1s\":-32.3,\"padEnd\":0,\"bass\":[{\"hz\":98,\"f0\":98,\"band\":50.1,\"end\":0.0002},{\"hz\":77.8,\"f0\":77.8,\"band\":45.4,\"end\":0.0002},{\"hz\":73.4,\"f0\":73.4,\"band\":26.7,\"end\":0.0002}],\"held\":494.8,\"heldWant\":493.7}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "zuzu: the hum swells in (\u2265 300 ms), is quiet a second after letting go, and ends",
+   "name": "zuzu: the hum swells in (≥ 300 ms), is quiet a second after letting go, and ends",
    "ok": true,
    "detail": "{\"a\":1.01,\"after\":-32.3,\"end\":0}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "zuzu: every bass root sits below 131 Hz on pitch, \u2265 15 % of its energy in 150\u2013500 Hz, and ends",
+   "name": "zuzu: every bass root sits below 131 Hz on pitch, ≥ 15 % of its energy in 150–500 Hz, and ends",
    "ok": true,
    "detail": "[{\"hz\":98,\"f0\":98,\"band\":50.1,\"end\":0.0002},{\"hz\":77.8,\"f0\":77.8,\"band\":45.4,\"end\":0.0002},{\"hz\":73.4,\"f0\":73.4,\"band\":26.7,\"end\":0.0002}]"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "zuzu: a bent note follows to its new pitch (\u00b11 %)",
+   "name": "zuzu: a bent note follows to its new pitch (±1 %)",
    "ok": true,
    "detail": "{\"held\":494.8,\"want\":493.7}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "loomi: the tap note is on pitch (\u00b13 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
+   "name": "loomi: the tap note is on pitch (±3 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
    "ok": true,
-   "detail": "{\"f\":329.6,\"f0\":328.8,\"err\":-0.25,\"rms\":-31,\"peak\":0.058,\"pre\":0,\"first\":0.0009,\"tail\":0,\"padAttack\":0.69,\"padAfter1s\":-33.2,\"padEnd\":0,\"bass\":[{\"hz\":98,\"f0\":98,\"band\":40.7,\"end\":0.0004},{\"hz\":82.4,\"f0\":82.5,\"band\":39.9,\"end\":0.0005},{\"hz\":73.4,\"f0\":73.4,\"band\":23.6,\"end\":0.0004}],\"held\":369.2,\"heldWant\":369.8}"
+   "detail": "{\"f\":329.6,\"f0\":328.8,\"err\":-0.25,\"rms\":-31,\"peak\":0.058,\"pre\":0,\"first\":0.0009,\"tail\":0,\"padAttack\":0.67,\"padAfter1s\":-33.3,\"padEnd\":0,\"bass\":[{\"hz\":98,\"f0\":98,\"band\":40.7,\"end\":0.0004},{\"hz\":82.4,\"f0\":82.5,\"band\":39.9,\"end\":0.0005},{\"hz\":73.4,\"f0\":73.4,\"band\":23.6,\"end\":0.0004}],\"held\":369.2,\"heldWant\":369.8}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "loomi: the hum swells in (\u2265 300 ms), is quiet a second after letting go, and ends",
+   "name": "loomi: the hum swells in (≥ 300 ms), is quiet a second after letting go, and ends",
    "ok": true,
-   "detail": "{\"a\":0.69,\"after\":-33.2,\"end\":0}"
+   "detail": "{\"a\":0.67,\"after\":-33.3,\"end\":0}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "loomi: every bass root sits below 131 Hz on pitch, \u2265 15 % of its energy in 150\u2013500 Hz, and ends",
+   "name": "loomi: every bass root sits below 131 Hz on pitch, ≥ 15 % of its energy in 150–500 Hz, and ends",
    "ok": true,
    "detail": "[{\"hz\":98,\"f0\":98,\"band\":40.7,\"end\":0.0004},{\"hz\":82.4,\"f0\":82.5,\"band\":39.9,\"end\":0.0005},{\"hz\":73.4,\"f0\":73.4,\"band\":23.6,\"end\":0.0004}]"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "loomi: a bent note follows to its new pitch (\u00b11 %)",
+   "name": "loomi: a bent note follows to its new pitch (±1 %)",
    "ok": true,
    "detail": "{\"held\":369.2,\"want\":369.8}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "noomi: the tap note is on pitch (\u00b13 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
+   "name": "noomi: the tap note is on pitch (±3 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)",
    "ok": true,
-   "detail": "{\"f\":587.3,\"f0\":585.4,\"err\":-0.33,\"rms\":-30.9,\"peak\":0.065,\"pre\":0,\"first\":0.0089,\"tail\":0,\"padAttack\":1.31,\"padAfter1s\":-33.1,\"padEnd\":0,\"bass\":[{\"hz\":130.8,\"f0\":130.8,\"band\":35.1,\"end\":0.0011},{\"hz\":82.4,\"f0\":82.3,\"band\":39.8,\"end\":0.0011},{\"hz\":110,\"f0\":109.8,\"band\":41.3,\"end\":0.0011},{\"hz\":98,\"f0\":97.8,\"band\":40.7,\"end\":0.0011}],\"held\":657.5,\"heldWant\":659}"
+   "detail": "{\"f\":587.3,\"f0\":585.4,\"err\":-0.33,\"rms\":-30.9,\"peak\":0.065,\"pre\":0,\"first\":0.0089,\"tail\":0,\"padAttack\":1.31,\"padAfter1s\":-33.2,\"padEnd\":0,\"bass\":[{\"hz\":130.8,\"f0\":130.8,\"band\":35.1,\"end\":0.0011},{\"hz\":82.4,\"f0\":82.3,\"band\":39.8,\"end\":0.0011},{\"hz\":110,\"f0\":109.8,\"band\":41.3,\"end\":0.0011},{\"hz\":98,\"f0\":97.8,\"band\":40.7,\"end\":0.0011}],\"held\":657.5,\"heldWant\":659}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "noomi: the hum swells in (\u2265 300 ms), is quiet a second after letting go, and ends",
+   "name": "noomi: the hum swells in (≥ 300 ms), is quiet a second after letting go, and ends",
    "ok": true,
-   "detail": "{\"a\":1.31,\"after\":-33.1,\"end\":0}"
+   "detail": "{\"a\":1.31,\"after\":-33.2,\"end\":0}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "noomi: every bass root sits below 131 Hz on pitch, \u2265 15 % of its energy in 150\u2013500 Hz, and ends",
+   "name": "noomi: every bass root sits below 131 Hz on pitch, ≥ 15 % of its energy in 150–500 Hz, and ends",
    "ok": true,
    "detail": "[{\"hz\":130.8,\"f0\":130.8,\"band\":35.1,\"end\":0.0011},{\"hz\":82.4,\"f0\":82.3,\"band\":39.8,\"end\":0.0011},{\"hz\":110,\"f0\":109.8,\"band\":41.3,\"end\":0.0011},{\"hz\":98,\"f0\":97.8,\"band\":40.7,\"end\":0.0011}]"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "noomi: a bent note follows to its new pitch (\u00b11 %)",
+   "name": "noomi: a bent note follows to its new pitch (±1 %)",
    "ok": true,
    "detail": "{\"held\":657.5,\"want\":659}"
   },
   {
    "scope": "hushbeat:offline",
-   "name": "tap-note loudness of the seven within \u00b14 dB",
+   "name": "tap-note loudness of the seven within ±4 dB",
    "ok": true,
    "detail": "{\"boppo\":-31,\"pipzi\":-31.1,\"blubi\":-30.9,\"glitzi\":-33,\"zuzu\":-31,\"loomi\":-31,\"noomi\":-30.9}"
   },
@@ -595,9 +594,9 @@
   },
   {
    "scope": "hushbeat:rapid",
-   "name": "40 taps in 2 s: live voices \u2264 24, music voices \u2264 the low-tier cap",
+   "name": "40 taps in 2 s: live voices ≤ 24, music voices ≤ the low-tier cap",
    "ok": true,
-   "detail": "{\"live\":14,\"voices\":10,\"cap\":10}"
+   "detail": "{\"live\":6,\"voices\":6,\"cap\":10}"
   },
   {
    "scope": "hushbeat:rapid",
@@ -607,9 +606,9 @@
   },
   {
    "scope": "hushbeat:rapid:duet",
-   "name": "E9 duet: 40 alternating taps in 2 s: live voices \u2264 24, music voices \u2264 the low-tier cap",
+   "name": "E9 duet: 40 alternating taps in 2 s: live voices ≤ 24, music voices ≤ the low-tier cap",
    "ok": true,
-   "detail": "{\"live\":12,\"voices\":10,\"cap\":10}"
+   "detail": "{\"live\":13,\"voices\":10,\"cap\":10}"
   },
   {
    "scope": "hushbeat:rapid:duet",
@@ -624,10 +623,28 @@
    "detail": ""
   },
   {
-   "scope": "hushbeat:quietmode",
-   "name": "E12 muted: a tap still makes its note event, no voice",
+   "scope": "hushbeat:rapid:two-point",
+   "name": "E9 two thumbs on two Mallows, 20 bursts in 2 s: both play every burst or nearly, live voices ≤ 24, music voices ≤ the cap",
    "ok": true,
-   "detail": "{\"notes\":1,\"voices\":0,\"ready\":false}"
+   "detail": "{\"sl\":[12,12],\"mx3\":{\"live\":5,\"voices\":5,\"cap\":10}}"
+  },
+  {
+   "scope": "hushbeat:rapid:two-point",
+   "name": "E9 two thumbs: every note in Zuzu's key, they harmonise, nothing sounding together clashes",
+   "ok": true,
+   "detail": "{\"n\":24,\"harmony\":12,\"clashes\":[]}"
+  },
+  {
+   "scope": "hushbeat:rapid:two-point",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E12 muted: a tap still makes its note event and its bead (the light carries it), no voice",
+   "ok": true,
+   "detail": "{\"notes\":1,\"voices\":0,\"ready\":false,\"beads\":2}"
   },
   {
    "scope": "hushbeat:quietmode",
@@ -639,13 +656,25 @@
    "scope": "hushbeat:quietmode",
    "name": "E13 Visual only: 30 gestures make their music events and no sound at all; the subtitle says so",
    "ok": true,
-   "detail": "{\"sub\":\"Noomi \u00b7 Visual only\",\"v1\":{\"notes\":26,\"heard\":0,\"pad\":true,\"live\":0,\"chip\":\"Note\"},\"maxV\":0}"
+   "detail": "{\"sub\":\"Noomi · Visual only\",\"v1\":{\"notes\":25,\"heard\":0,\"pad\":true,\"live\":0,\"beads\":5},\"maxV\":0}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E13 Visual only: the singing mouth opens on its notes, and the role captions repeat (the sound is off), at most every 1.5 s",
+   "ok": true,
+   "detail": "{\"mouth\":0.35,\"roles\":[{\"text\":\"Note\",\"t\":20025},{\"text\":\"Note\",\"t\":21543}],\"gaps\":[1518]}"
+  },
+  {
+   "scope": "hushbeat:quietmode",
+   "name": "E13 Visual only: Replay performs the take silently (replaying, the Mallow pokes, no voice); Keep keeps it",
+   "ok": true,
+   "detail": "{\"vr\":{\"state\":\"replaying\",\"voices\":0,\"live\":0,\"pokes\":1},\"vk\":{\"kept\":1,\"pressed\":\"true\"}}"
   },
   {
    "scope": "hushbeat:quietmode",
    "name": "E13 Visual only survives a reload",
    "ok": true,
-   "detail": "{\"sub\":\"Noomi \u00b7 Visual only\",\"attached\":false,\"visual\":true}"
+   "detail": "{\"sub\":\"Noomi · Visual only\",\"attached\":false,\"visual\":true}"
   },
   {
    "scope": "hushbeat:quietmode",
@@ -663,7 +692,7 @@
    "scope": "hushbeat:hidden",
    "name": "hidden: every layer released, players idle, scheduler stopped, breath let go",
    "ok": true,
-   "detail": "{\"players\":[{\"slot\":0,\"mallow\":\"blubi\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":7.77820000000298}],\"sched\":{\"running\":false,\"pending\":0},\"breath\":null,\"live\":1,\"layers\":0}"
+   "detail": "{\"players\":[{\"slot\":0,\"mallow\":\"blubi\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":8.12219999999553}],\"sched\":{\"running\":false,\"pending\":0},\"breath\":null,\"live\":1,\"layers\":0}"
   },
   {
    "scope": "hushbeat:hidden",
@@ -687,13 +716,13 @@
    "scope": "hushbeat:exit",
    "name": "Escape: the cadence plays (leaving, fading) and the lab goes home within 1.5 s",
    "ok": true,
-   "detail": "{\"mid\":{\"state\":\"leaving\",\"cad\":1,\"fading\":true},\"ms\":732}"
+   "detail": "{\"mid\":{\"state\":\"leaving\",\"cad\":1,\"fading\":true},\"ms\":722}"
   },
   {
    "scope": "hushbeat:exit",
    "name": "live voices reach 0 within 3 s; the handle is gone",
    "ok": true,
-   "detail": "{\"ok\":true,\"ms\":729}"
+   "detail": "{\"ok\":true,\"ms\":4}"
   },
   {
    "scope": "hushbeat:exit",
@@ -709,7 +738,7 @@
   },
   {
    "scope": "hushbeat:exit",
-   "name": "12 hushbeat \u2194 home switches: listeners, prefs and DNA listeners, timers and canvases back to the baseline",
+   "name": "12 hushbeat ↔ home switches: listeners, prefs and DNA listeners, timers and canvases back to the baseline",
    "ok": true,
    "detail": "{\"base\":{\"l\":20,\"timers\":0,\"prefs\":1,\"dna\":1,\"canvases\":1},\"now\":{\"l\":20,\"timers\":0,\"prefs\":1,\"dna\":1,\"canvases\":1}}"
   },
@@ -720,112 +749,10 @@
    "detail": ""
   },
   {
-   "scope": "hushbeat:scene",
-   "name": "listening: a faint ring breathes around the Mallow (alpha 0.25), within 0.86 of its height; nothing else lit",
-   "ok": true,
-   "detail": "{\"s0\":{\"beads\":0,\"ring\":0.036,\"ringTarget\":0.25,\"ringR\":164,\"glow\":0.024,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0.0885,\"heaviness\":0.1312,\"clarity\":0.6342,\"warmth\":0.511},\"start\":{\"agitation\":0.0885,\"heaviness\":0.1312,\"clarity\":0.6342,\"warmth\":0.511},\"ripples\":0,\"successes\":0,\"successPending\":false},\"h\":250.6180871626767}"
-  },
-  {
-   "scope": "hushbeat:scene",
-   "name": "E3: a touch lights a bead at the finger and sets the singing mouth on the rig in the same task; the mouth follows",
-   "ok": true,
-   "detail": "{\"at\":{\"beads\":2,\"floor\":0.81,\"note\":{\"src\":\"live\",\"immediate\":true}},\"base\":0.71156710481042,\"roseMs\":1}"
-  },
-  {
-   "scope": "hushbeat:scene",
-   "name": "E17: phrase notes are shown at ev.t + outputLatency (never before; \u2264 one slow frame after)",
-   "ok": true,
-   "detail": "{\"lat\":0.032,\"lagMax\":0.07200000000000006,\"n\":4}"
-  },
-  {
-   "scope": "hushbeat:scene",
-   "name": "E17: groove nudges land on beat crossings (never early, \u2264 one slow frame late), about one a beat",
-   "ok": true,
-   "detail": "{\"n\":6,\"last\":[{\"beat\":13,\"lag\":0.037},{\"beat\":14,\"lag\":0.05},{\"beat\":15,\"lag\":0.037},{\"beat\":16,\"lag\":0.023},{\"beat\":17,\"lag\":0.017},{\"beat\":18,\"lag\":0.053}]}"
-  },
-  {
-   "scope": "hushbeat:scene",
-   "name": "the realm warms and clears with the music (clarity and warmth above its own); a long hum transforms it; the ring brightens",
-   "ok": true,
-   "detail": "{\"sent\":{\"agitation\":0.013899569155686256,\"heaviness\":0,\"clarity\":0.8890146905608538,\"warmth\":0.5986821324773698},\"start\":{\"agitation\":0.0885,\"heaviness\":0.1312,\"clarity\":0.6342,\"warmth\":0.511},\"transform\":0.27,\"ring\":0.5}"
-  },
-  {
-   "scope": "hushbeat:scene",
-   "name": "E17 reduced motion: no groove nudges, no hop, body squash variance under 25 % of normal (the floor glow carries the beat)",
-   "ok": true,
-   "detail": "{\"vN\":\"1.69e-4\",\"vR\":\"8.83e-8\",\"nudges\":0,\"hopNormal\":\"0.0072\"}"
-  },
-  {
-   "scope": "hushbeat:scene",
-   "name": "E18: 40 rapid taps: flash1s \u2264 3 throughout (sampled, and in the gate's own log)",
-   "ok": true,
-   "detail": "{\"maxF\":0,\"worst\":1,\"allowed\":1}"
-  },
-  {
-   "scope": "hushbeat:scene",
-   "name": "E18 Visual only (1.4\u00d7 light): still \u2264 3 bright events a second",
-   "ok": true,
-   "detail": "{\"maxV\":2,\"worstV\":2,\"allowed\":3,\"refused\":0}"
-  },
-  {
-   "scope": "hushbeat:scene",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:replay",
-   "name": "E14: Replay and Keep stay hidden until a take has 3 events",
-   "ok": true,
-   "detail": "{\"c0\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"c1\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"c2\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null}}"
-  },
-  {
-   "scope": "hushbeat:replay",
-   "name": "E14: Replay \u2192 the chip reads Stop (pressed), replaying, the stage tint deepens, \"Replaying\"",
-   "ok": true,
-   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Stop\",\"replayPressed\":\"true\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"state\":\"replaying\",\"tint\":true,\"chip\":\"Replaying\"}"
-  },
-  {
-   "scope": "hushbeat:replay",
-   "name": "E14: the Mallow sings the take back: the same degrees in order, each on its soft-quantised beat (\u00b13 ms)",
-   "ok": true,
-   "detail": "{\"got\":[-2,0,2,-1,1],\"want\":[-2,0,2,-1,1],\"off\":[0,0,0,0,0]}"
-  },
-  {
-   "scope": "hushbeat:replay",
-   "name": "E14: it performs the take (pokes where each note was played) and ends proud: its reaction, one realm success pulse, \"Replay finished\"",
-   "ok": true,
-   "detail": "{\"pokes\":5,\"reacts\":[\"success\"],\"successes\":1,\"env\":[{\"t\":17281.69999999553,\"kind\":\"success\",\"ok\":true}],\"chip\":\"Replay finished\",\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"state\":\"playing\"}"
-  },
-  {
-   "scope": "hushbeat:replay",
-   "name": "E14: R replays; Stop ends it within 200 ms (aria-pressed false, the tint lifts, no success)",
-   "ok": true,
-   "detail": "{\"stopMs\":0.5,\"s2\":{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"last\":{\"kind\":\"replay\",\"slot\":0,\"t\":19.42169999999553,\"on\":false,\"stopped\":true},\"tint\":false}}"
-  },
-  {
-   "scope": "hushbeat:replay",
-   "name": "nothing more after Stop",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:replay",
-   "name": "E14/E19: a hidden page cancels the replay (scheduler stopped, nothing performed, listening)",
-   "ok": true,
-   "detail": "{\"rep\":false,\"sched\":false,\"tint\":false,\"perf\":{\"squeeze\":false,\"press\":false},\"state\":\"listening\"}"
-  },
-  {
-   "scope": "hushbeat:replay",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
    "scope": "hushbeat:keep",
    "name": "E15: Keep stores a sanitised tune (lead, pace, motif; no friend) and shows \"Kept\", pressed; the Pocket favourite stays",
    "ok": true,
-   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Kept\",\"keepPressed\":\"true\",\"tray\":false,\"targets\":null},\"chip\":\"Kept\",\"favs\":[{\"kind\":\"hushbeat\",\"id\":\"hushbeat\",\"mallow\":\"boppo\",\"pace\":\"natural\",\"motif\":\"00n5702n7505n9507n65\"},{\"kind\":\"pocket\",\"id\":\"soft-breath\"}]}"
+   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Kept\",\"keepPressed\":\"true\",\"tray\":false,\"targets\":null},\"chip\":\"Kept\",\"favs\":[{\"kind\":\"hushbeat\",\"id\":\"hushbeat\",\"mallow\":\"boppo\",\"pace\":\"natural\",\"motif\":\"00n5602n7705n9507n66\"},{\"kind\":\"pocket\",\"id\":\"soft-breath\"}]}"
   },
   {
    "scope": "hushbeat:keep",
@@ -847,7 +774,7 @@
   },
   {
    "scope": "hushbeat:keep",
-   "name": "E15: home \"For you\" shows \"Boppo tune \u00b7 Favourite\"",
+   "name": "E15: home \"For you\" shows \"Boppo tune · Favourite\"",
    "ok": true,
    "detail": "[{\"text\":\"Boppo tuneFavourite\",\"data\":\"hushbeat:hushbeat\"},{\"text\":\"Soft BreathFavourite\",\"data\":\"pocket:soft-breath\"}]"
   },
@@ -871,7 +798,7 @@
   },
   {
    "scope": "hushbeat:keep",
-   "name": "E15: the Comfort DNA screen describes it: \"Boppo tune \u00b7 4 notes \u00b7 Natural\"",
+   "name": "E15: the Comfort DNA screen describes it: \"Boppo tune · 4 notes · Natural\"",
    "ok": true,
    "detail": "Comfort DNA\nOn\n\nWhat your Mallow remembers about what you enjoy. This browser only.\n\nPERSONALISATION\nPersonalise my Mallow\nYour choices below shape every experience\nOn\nOff\nYOUR MALLOW\nFavourite\nGlitzi\nBlubi\nZuzu\nBoppo\nPipzi\nLoomi\nNoomi\nHOW IT RESPONDS\nResponses\nGentle: smaller, slower, no jumps\nGentle\nBalanced\nPlayful\nAnimation\nAlso sets the Soft Breath pace\nSlower\nNatural\nLivelier\nMovement\nHow mu"
   },
@@ -955,7 +882,7 @@
   },
   {
    "scope": "hushbeat:duet:layout",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -969,7 +896,7 @@
    "scope": "hushbeat:duet",
    "name": "E16: a left tap then a right one within 400 ms harmonise (a 3rd or 6th, else a 5th or octave), and the two glance at each other",
    "ok": true,
-   "detail": "{\"h\":{\"kind\":\"harmony\",\"slot\":0,\"t\":6.97539999999851,\"a\":1,\"b\":0,\"interval\":3},\"icv\":3,\"a\":7,\"b\":4}"
+   "detail": "{\"h\":{\"kind\":\"harmony\",\"slot\":0,\"t\":10.52160000000149,\"a\":1,\"b\":0,\"interval\":3},\"icv\":3,\"a\":7,\"b\":4}"
   },
   {
    "scope": "hushbeat:duet",
@@ -979,15 +906,15 @@
   },
   {
    "scope": "hushbeat:duet",
-   "name": "E16: Both + Hum: two hums bloom into one chord (\u2265 3 pitch classes), the arc glows between the heads, both glow",
+   "name": "E16: Both + Hum: two hums bloom into one chord (≥ 3 pitch classes), the arc glows between the heads, both glow",
    "ok": true,
-   "detail": "{\"pads\":[0,1],\"pcs\":3,\"arc\":0.353,\"held\":true,\"glow\":[0.31,0.31],\"transform\":0.023}"
+   "detail": "{\"pads\":[0,1],\"pcs\":3,\"arc\":0.314,\"held\":true,\"glow\":[0.31,0.31],\"transform\":0.023}"
   },
   {
    "scope": "hushbeat:duet",
    "name": "E16: the lead's phrase gets an answer from the friend, after the phrase",
    "ok": true,
-   "detail": "{\"end\":{\"kind\":\"phraseEnd\",\"slot\":0,\"t\":9.2415},\"first\":{\"kind\":\"note\",\"slot\":1,\"t\":10.162100000001491,\"id\":9,\"semi\":9,\"deg\":4,\"hz\":277.1846853600819,\"vel\":0.5590169943749475,\"dur\":3.51,\"ring\":0.616717504518756,\"src\":\"answer\",\"x01\":0,\"y01\":0.5714285714285714,\"immediate\":false,\"ghost\":false,\"heard\":true,\"audioT\":6.755445794144545,\"ctxNow\":6.6525170068027215},\"calls\":4}"
+   "detail": "{\"end\":{\"kind\":\"phraseEnd\",\"slot\":0,\"t\":13.4415},\"first\":{\"kind\":\"note\",\"slot\":1,\"t\":14.602,\"id\":9,\"semi\":9,\"deg\":4,\"hz\":277.1846853600819,\"vel\":0.5142956348249516,\"dur\":3.51,\"ring\":0.5666885391553251,\"src\":\"answer\",\"x01\":0,\"y01\":0.5714285714285714,\"immediate\":false,\"ghost\":false,\"heard\":true,\"audioT\":9.112821694469634,\"ctxNow\":9.012244897959183},\"calls\":4}"
   },
   {
    "scope": "hushbeat:duet",
@@ -1005,19 +932,19 @@
    "scope": "hushbeat:duet",
    "name": "E16: G plays both together; the friend harmonises",
    "ok": true,
-   "detail": "{\"slots\":[0,1],\"semis\":[9,12],\"h\":{\"kind\":\"harmony\",\"slot\":1,\"t\":17.19569999999553,\"a\":0,\"b\":1,\"interval\":3}}"
+   "detail": "{\"slots\":[0,1],\"semis\":[9,12],\"h\":{\"kind\":\"harmony\",\"slot\":1,\"t\":22.64670000000298,\"a\":0,\"b\":1,\"interval\":3}}"
   },
   {
    "scope": "hushbeat:duet",
    "name": "E16: Tab moves keyboard focus to the friend's stage; 3 and Enter play the friend",
    "ok": true,
-   "detail": "{\"fo\":true,\"tk\":[1,1],\"tkAll\":{\"log\":[\"note:1:live\",\"note:1:live\"],\"d\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":17.19489999999851},{\"slot\":1,\"mallow\":\"loomi\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":17.86529999999702}],\"state\":\"playing\",\"ev\":[{\"type\":\"strokeend\",\"tag\":\"stroke-after\",\"label\":\"Stroke\",\"t\":14155},{\"type\":\"tap\",\"tag\":\"tap-boop\",\"label\":\"Tap\",\"t\":17195},{\"type\":\"tap\",\"tag\":\"tap-small-smile\",\"label\":\"Tap\",\"partner\":true,\"t\":17196},{\"type\":\"tap\",\"tag\":\"tap-mm\",\"label\":\"Tap\",\"partner\":true,\"t\":17865}]}}"
+   "detail": "{\"fo\":true,\"tk\":[1,1],\"tkAll\":{\"log\":[\"note:1:live\",\"note:1:live\"],\"d\":[{\"slot\":0,\"mallow\":\"boppo\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":22.64590000000596},{\"slot\":1,\"mallow\":\"loomi\",\"state\":\"idle\",\"bass\":0,\"pad\":0,\"phrase\":false,\"bending\":false,\"lastStrikeT\":23.37610000000149}],\"state\":\"playing\",\"ev\":[{\"type\":\"strokeend\",\"tag\":\"stroke-after\",\"label\":\"Stroke\",\"t\":19608},{\"type\":\"tap\",\"tag\":\"tap-boop\",\"label\":\"Tap\",\"t\":22646},{\"type\":\"tap\",\"tag\":\"tap-small-smile\",\"label\":\"Tap\",\"partner\":true,\"t\":22647},{\"type\":\"tap\",\"tag\":\"tap-mm\",\"label\":\"Tap\",\"partner\":true,\"t\":23376}]}}"
   },
   {
    "scope": "hushbeat:duet",
    "name": "E15: Keep in a duet saves the friend with the tune",
    "ok": true,
-   "detail": "{\"kind\":\"hushbeat\",\"id\":\"hushbeat\",\"mallow\":\"boppo\",\"friend\":\"loomi\",\"pace\":\"natural\",\"motif\":\"00na500N9602h8102Hb107n9508nb70cna60gna716nb518nd71cnc61gnc721nb621Nc524N9626N94\"}"
+   "detail": "{\"kind\":\"hushbeat\",\"id\":\"hushbeat\",\"mallow\":\"boppo\",\"friend\":\"loomi\",\"pace\":\"natural\",\"motif\":\"00na500N9504h7104Ha10bn950en770in670mn671inb61mn871qn971un972enb62eNc52hN952iNc6\"}"
   },
   {
    "scope": "hushbeat:duet",
@@ -1065,7 +992,7 @@
    "scope": "hushbeat:duet:kept",
    "name": "leaving a duet mid-replay: home, no voice within 3.5 s, no partner left registered, no handle",
    "ok": true,
-   "detail": "{\"gone\":{\"ok\":true,\"ms\":2064},\"left\":{\"hb\":null,\"stage\":false,\"partners\":0,\"stages\":0,\"sheets\":0}}"
+   "detail": "{\"gone\":{\"ok\":true,\"ms\":1456},\"left\":{\"hb\":null,\"stage\":false,\"partners\":0,\"stages\":0,\"sheets\":0}}"
   },
   {
    "scope": "hushbeat:duet:kept",
@@ -1075,21 +1002,21 @@
   },
   {
    "scope": "hushbeat:sheet",
-   "name": "\u266a opens \"Sound and pace\" inside the screen: Volume, Sound, Breath pace, Your tunes, Lab settings (no Friend answers solo); focus on Volume",
+   "name": "♪ opens \"Sound and pace\" inside the screen: Volume, Sound, Breath pace, Your tunes, Lab settings (no Friend answers solo); focus on Volume",
    "ok": true,
-   "detail": "{\"title\":\"Sound and pace\",\"rows\":[\"Volume\",\"Sound\",\"Breath pace\",\"Your tunes\",\"Lab settings\"],\"focus\":\"hb-volume\",\"vol\":\"0.7\",\"volLabel\":\"Volume\",\"sub\":[\"Same as in Settings\",\"Visual only: music as light and movement, no sound\",\"For this visit. Keep saves it with the tune.\"],\"tunes\":[{\"name\":\"Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\",\"play\":\"Play Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\",\"remove\":\"Remove Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\"},{\"name\":\"Pipzi tune \u00b7 3 notes \u00b7 Livelier\",\"play\":\"Play Pipzi tune \u00b7 3 notes \u00b7 Livelier\",\"remove\":\"Remove Pipzi tune \u00b7 3 notes \u00b7 Livelier\"}],\"foot\":\"Music plays even with the Mallow voice off. Use Mute or Visual only for quiet.\",\"inScreen\":true,\"prefVol\":0.7,\"sheet\":\"Sound and pace\"}"
+   "detail": "{\"title\":\"Sound and pace\",\"rows\":[\"Volume\",\"Sound\",\"Breath pace\",\"Your tunes\",\"Lab settings\"],\"focus\":\"hb-volume\",\"vol\":\"0.7\",\"volLabel\":\"Volume\",\"sub\":[\"Same as in Settings\",\"Visual only: music as light and movement, no sound\",\"For this visit. Keep saves it with the tune.\"],\"tunes\":[{\"name\":\"Boppo & Loomi tune · 3 notes · Natural\",\"play\":\"Play Boppo & Loomi tune · 3 notes · Natural\",\"remove\":\"Remove Boppo & Loomi tune · 3 notes · Natural\"},{\"name\":\"Pipzi tune · 3 notes · Livelier\",\"play\":\"Play Pipzi tune · 3 notes · Livelier\",\"remove\":\"Remove Pipzi tune · 3 notes · Livelier\"}],\"foot\":\"Music plays even with the Mallow voice off. Use Mute or Visual only for quiet.\",\"inScreen\":true,\"prefVol\":0.7,\"sheet\":\"Sound and pace\"}"
   },
   {
    "scope": "hushbeat:sheet",
    "name": "Volume is the lab's volume (\"Same as in Settings\", labelled); the sub-texts and the footnote are as written",
    "ok": true,
-   "detail": "{\"title\":\"Sound and pace\",\"rows\":[\"Volume\",\"Sound\",\"Breath pace\",\"Your tunes\",\"Lab settings\"],\"focus\":\"hb-volume\",\"vol\":\"0.7\",\"volLabel\":\"Volume\",\"sub\":[\"Same as in Settings\",\"Visual only: music as light and movement, no sound\",\"For this visit. Keep saves it with the tune.\"],\"tunes\":[{\"name\":\"Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\",\"play\":\"Play Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\",\"remove\":\"Remove Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\"},{\"name\":\"Pipzi tune \u00b7 3 notes \u00b7 Livelier\",\"play\":\"Play Pipzi tune \u00b7 3 notes \u00b7 Livelier\",\"remove\":\"Remove Pipzi tune \u00b7 3 notes \u00b7 Livelier\"}],\"foot\":\"Music plays even with the Mallow voice off. Use Mute or Visual only for quiet.\",\"inScreen\":true,\"prefVol\":0.7,\"sheet\":\"Sound and pace\"}"
+   "detail": "{\"title\":\"Sound and pace\",\"rows\":[\"Volume\",\"Sound\",\"Breath pace\",\"Your tunes\",\"Lab settings\"],\"focus\":\"hb-volume\",\"vol\":\"0.7\",\"volLabel\":\"Volume\",\"sub\":[\"Same as in Settings\",\"Visual only: music as light and movement, no sound\",\"For this visit. Keep saves it with the tune.\"],\"tunes\":[{\"name\":\"Boppo & Loomi tune · 3 notes · Natural\",\"play\":\"Play Boppo & Loomi tune · 3 notes · Natural\",\"remove\":\"Remove Boppo & Loomi tune · 3 notes · Natural\"},{\"name\":\"Pipzi tune · 3 notes · Livelier\",\"play\":\"Play Pipzi tune · 3 notes · Livelier\",\"remove\":\"Remove Pipzi tune · 3 notes · Livelier\"}],\"foot\":\"Music plays even with the Mallow voice off. Use Mute or Visual only for quiet.\",\"inScreen\":true,\"prefVol\":0.7,\"sheet\":\"Sound and pace\"}"
   },
   {
    "scope": "hushbeat:sheet",
    "name": "Your tunes: each kept tune described, with Play and Remove that name it",
    "ok": true,
-   "detail": "[{\"name\":\"Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\",\"play\":\"Play Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\",\"remove\":\"Remove Boppo & Loomi tune \u00b7 3 notes \u00b7 Natural\"},{\"name\":\"Pipzi tune \u00b7 3 notes \u00b7 Livelier\",\"play\":\"Play Pipzi tune \u00b7 3 notes \u00b7 Livelier\",\"remove\":\"Remove Pipzi tune \u00b7 3 notes \u00b7 Livelier\"}]"
+   "detail": "[{\"name\":\"Boppo & Loomi tune · 3 notes · Natural\",\"play\":\"Play Boppo & Loomi tune · 3 notes · Natural\",\"remove\":\"Remove Boppo & Loomi tune · 3 notes · Natural\"},{\"name\":\"Pipzi tune · 3 notes · Livelier\",\"play\":\"Play Pipzi tune · 3 notes · Livelier\",\"remove\":\"Remove Pipzi tune · 3 notes · Livelier\"}]"
   },
   {
    "scope": "hushbeat:sheet",
@@ -1101,7 +1028,7 @@
    "scope": "hushbeat:sheet",
    "name": "Sound [Music | Visual only] is prefs.musicVisualOnly (the subtitle says so); Breath pace sets this visit's pace",
    "ok": true,
-   "detail": "{\"vo\":{\"pref\":true,\"vo\":true,\"sub\":\"Boppo \u00b7 Visual only\"},\"pc\":{\"pace\":\"livelier\",\"vo\":false,\"target\":8.5}}"
+   "detail": "{\"vo\":{\"pref\":true,\"vo\":true,\"sub\":\"Boppo · Visual only\"},\"pc\":{\"pace\":\"livelier\",\"vo\":false,\"target\":8.5}}"
   },
   {
    "scope": "hushbeat:sheet",
@@ -1111,7 +1038,7 @@
   },
   {
    "scope": "hushbeat:sheet",
-   "name": "E23: Escape closes the sheet first (still on Hushbeat); focus returns to \u266a",
+   "name": "E23: Escape closes the sheet first (still on Hushbeat); focus returns to ♪",
    "ok": true,
    "detail": "{\"route\":\"hushbeat\",\"state\":\"listening\",\"focus\":true,\"sheets\":0}"
   },
@@ -1129,7 +1056,7 @@
   },
   {
    "scope": "hushbeat:sheet",
-   "name": "Lab settings \u2192 Open closes Sound and pace and opens the lab's Settings",
+   "name": "Lab settings → Open closes Sound and pace and opens the lab's Settings",
    "ok": true,
    "detail": "{\"sheets\":[\"Sound and pace\",\"Settings\"]}"
   },
@@ -1137,10 +1064,670 @@
    "scope": "hushbeat:sheet",
    "name": "Your tunes says when personalisation is off, and when nothing is kept yet",
    "ok": true,
-   "detail": "{\"off\":\"Personalisation is off, so tunes can't be kept.\",\"empty\":\"Tap \u2605 Keep after you play to keep a tune here.\"}"
+   "detail": "{\"off\":\"Personalisation is off, so tunes can't be kept.\",\"empty\":\"Tap ★ Keep after you play to keep a tune here.\"}"
   },
   {
    "scope": "hushbeat:sheet",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 Tab order (solo): stage → Close → Sound and pace → Mute → Buttons → Friend, then round to the stage; each named, with a focus ring",
+   "ok": true,
+   "detail": "[{\"name\":\"Close\",\"ring\":true,\"labelled\":true},{\"name\":\"Sound and pace\",\"ring\":true,\"labelled\":true},{\"name\":\"Mute sound\",\"ring\":true,\"labelled\":true},{\"name\":\"Buttons\",\"ring\":true,\"labelled\":true},{\"name\":\"Friend: invite another Mallow\",\"ring\":true,\"labelled\":true},{\"name\":\"body\",\"ring\":false,\"labelled\":true},{\"name\":\"stage:lead\",\"ring\":true,\"labelled\":true}]"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 Shift+Tab walks back the same way",
+   "ok": true,
+   "detail": "[\"Friend: invite another Mallow\",\"Buttons\"]"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 Buttons by keyboard (Enter) shows the tray; aria-pressed follows; focus stays on it",
+   "ok": true,
+   "detail": "{\"tray\":true,\"pressed\":\"true\",\"focus\":true}"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 Tab order with a take and the tray: the tray's chips, then Buttons, Replay, Keep, Friend; every stop named and ringed",
+   "ok": true,
+   "detail": "[\"Close\",\"Sound and pace\",\"Mute sound\",\"Note\",\"Chord\",\"Tune\",\"Bass\",\"Hum\",\"Breathe\",\"Buttons\",\"Replay\",\"Keep\",\"Friend: invite another Mallow\"]"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 chips by keyboard: Enter on Note plays a note; Space held on Bass holds the bass until it is let go",
+   "ok": true,
+   "detail": "{\"viaEnter\":1,\"held\":true,\"released\":true}"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 the picker by keyboard: focus moves in and stays in (9 Tabs); Escape closes it first and focus returns to Friend",
+   "ok": true,
+   "detail": "{\"inside\":true,\"pe\":{\"route\":\"hushbeat\",\"state\":\"playing\",\"focus\":true}}"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 Enter on a pill invites that friend; focus returns to Friend",
+   "ok": true,
+   "detail": "{\"friend\":\"loomi\",\"focus\":true}"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 Tab order in a duet: the lead stage → the friend's stage → the top bar → the tray's target (one stop: Boppo)",
+   "ok": true,
+   "detail": "[{\"name\":\"stage:partner\",\"ring\":true,\"labelled\":true},{\"name\":\"Close\",\"ring\":true,\"labelled\":true},{\"name\":\"Sound and pace\",\"ring\":true,\"labelled\":true},{\"name\":\"Mute sound\",\"ring\":true,\"labelled\":true},{\"name\":\"Boppo\",\"ring\":true,\"labelled\":true}]"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 arrow keys move the target (radio group): Both",
+   "ok": true,
+   "detail": "{\"target\":\"both\",\"focus\":\"Both\"}"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 the friend's stage is an application with its own label (keys, G and Tab)",
+   "ok": true,
+   "detail": "{\"partner\":true,\"label\":\"Loomi. Tap for a note, squeeze or press down for bass, stroke for a tune, hold for a hum. Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay. G plays both together. Tab moves to the other Mallow.\",\"role\":\"application\"}"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 keys on the friend's stage play the friend; G plays both",
+   "ok": true,
+   "detail": "[1,0,1]"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 every request stays on the page's own origin (no CDN, no API, no analytics)",
+   "ok": true,
+   "detail": "{\"n\":77,\"foreign\":[]}"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 no request at all while playing (solo and duet: notes, hums, bass, replay, keep, the sheets)",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 a friend joining may only fetch the lab's own files (GET)",
+   "ok": true,
+   "detail": "[\"/hushmallow/assets/mallows/loomi.png\",\"/hushmallow/assets/rig/loomi-body.png\",\"/hushmallow/assets/rig/iris-navy.png\"]"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "E23 no microphone, no fetch, XHR, WebSocket, beacon, EventSource or media element in the whole visit",
+   "ok": true,
+   "detail": "{\"priv0\":{\"getUserMedia\":0,\"fetch\":0,\"xhr\":0,\"websocket\":0,\"beacon\":0,\"eventsource\":0,\"media\":0},\"priv1\":{\"getUserMedia\":0,\"fetch\":0,\"xhr\":0,\"websocket\":0,\"beacon\":0,\"eventsource\":0,\"media\":0}}"
+  },
+  {
+   "scope": "hushbeat:a11y",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 the page fits the screen (no vertical or horizontal overflow) and sits at 0, 0, unzoomed",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a press down on the body (bass): no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a drag up from the body past the top bar (stretch): no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a stroke back and forth across the body: no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a pull down on the sky (off the body: pull-to-refresh): no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a fling up on the sky: no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a swipe up from the controls: no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a sideways swipe across the whole screen: no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a pinch out on the body: no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a pinch in on the body: no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a pinch out on the sky (zoom): no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 a swipe along the tray: no page scroll",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 duet: one finger pressing down on the lead while another stretches the friend: no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "E24 duet: a pinch on the friend's small body: no scroll, no zoom",
+   "ok": true,
+   "detail": "{\"y\":0,\"x\":0,\"top\":0,\"left\":0,\"scale\":1,\"vx\":0,\"vy\":0,\"screen\":0,\"sh\":844,\"ih\":844}"
+  },
+  {
+   "scope": "hushbeat:scroll",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:isolation",
+   "name": "E21 TouchTalk pokes with sound before and after a Visual only duet (Visual only is Hushbeat's own)",
+   "ok": true,
+   "detail": "{\"tt0\":true,\"tt1\":true,\"music\":0}"
+  },
+  {
+   "scope": "hushbeat:isolation",
+   "name": "E21 its sound switches follow Comfort DNA as before; full trim; nothing resting; its Companion uses the real Sound Engine",
+   "ok": true,
+   "detail": "{\"a\":{\"voice\":true,\"fx\":true},\"b\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true},\"trim\":1,\"real\":true}"
+  },
+  {
+   "scope": "hushbeat:isolation",
+   "name": "E21 the same Mallow (Boppo) and favourite; the pace was for the visit only; one Companion; device sound and volume as before",
+   "ok": true,
+   "detail": "{\"a\":{\"route\":\"touchtalk\",\"id\":\"boppo\",\"ctxId\":\"boppo\",\"fav\":\"boppo\",\"speed\":\"natural\",\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true},\"trim\":1,\"resting\":false,\"realSound\":true,\"filter\":null,\"cap\":null,\"grade\":[1,1,1],\"peek\":null,\"comps\":1,\"hbDom\":0,\"sheets\":0,\"musicVoices\":0,\"sound\":true,\"volume\":0.7},\"b\":{\"route\":\"touchtalk\",\"id\":\"boppo\",\"ctxId\":\"boppo\",\"fav\":\"boppo\",\"speed\":\"natural\",\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true},\"trim\":1,\"resting\":false,\"realSound\":true,\"filter\":null,\"cap\":null,\"grade\":[1,1,1],\"peek\":null,\"comps\":1,\"hb\":null,\"hbDom\":0,\"sheets\":0,\"musicVoices\":0,\"sound\":true,\"volume\":0.7}}"
+  },
+  {
+   "scope": "hushbeat:isolation",
+   "name": "E21 nothing of Hushbeat is left: no handle, no screen, no friend's stage, no sheet; neutral persona filter, frame cap, grade and peek",
+   "ok": true,
+   "detail": "{\"route\":\"touchtalk\",\"id\":\"boppo\",\"ctxId\":\"boppo\",\"fav\":\"boppo\",\"speed\":\"natural\",\"parts\":{\"voice\":true,\"fx\":true},\"tuning\":{\"voice\":true,\"fx\":true},\"trim\":1,\"resting\":false,\"realSound\":true,\"filter\":null,\"cap\":null,\"grade\":[1,1,1],\"peek\":null,\"comps\":1,\"hb\":null,\"hbDom\":0,\"sheets\":0,\"musicVoices\":0,\"sound\":true,\"volume\":0.7}"
+  },
+  {
+   "scope": "hushbeat:isolation",
+   "name": "E21 Hushbeat again: alone, natural pace, answers on; Visual only kept (a device setting, shown in the subtitle)",
+   "ok": true,
+   "detail": "{\"friend\":null,\"pace\":\"natural\",\"answers\":true,\"visual\":true,\"sub\":\"Boppo · Visual only\",\"comps\":1}"
+  },
+  {
+   "scope": "hushbeat:isolation",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi",
+   "name": "the title, subtitle and hint take the world's tone (light on dark, dark on light)",
+   "ok": true,
+   "detail": "{\"tone\":\"dark\",\"title\":0.911,\"sub\":0.465,\"hint\":0.756}"
+  },
+  {
+   "scope": "hushbeat:looks:glitzi:sheet",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi:sheet",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":0,\"y\":281.65625,\"w\":390,\"h\":562.34375},\"tb\":56,\"vh\":844}"
+  },
+  {
+   "scope": "hushbeat:looks:glitzi:sheet",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":388,\"cw\":388,\"pageSw\":390}"
+  },
+  {
+   "scope": "hushbeat:looks:glitzi:sheet",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi:sheet",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:glitzi:sheet",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi",
+   "name": "the title, subtitle and hint take the world's tone (light on dark, dark on light)",
+   "ok": true,
+   "detail": "{\"tone\":\"dark\",\"title\":0.911,\"sub\":0.465,\"hint\":0.756}"
+  },
+  {
+   "scope": "hushbeat:looks:blubi:sheet",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi:sheet",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":0,\"y\":281.65625,\"w\":390,\"h\":562.34375},\"tb\":56,\"vh\":844}"
+  },
+  {
+   "scope": "hushbeat:looks:blubi:sheet",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":388,\"cw\":388,\"pageSw\":390}"
+  },
+  {
+   "scope": "hushbeat:looks:blubi:sheet",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi:sheet",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:blubi:sheet",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu",
+   "name": "the title, subtitle and hint take the world's tone (light on dark, dark on light)",
+   "ok": true,
+   "detail": "{\"tone\":\"dark\",\"title\":0.911,\"sub\":0.465,\"hint\":0.756}"
+  },
+  {
+   "scope": "hushbeat:looks:zuzu:sheet",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu:sheet",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":0,\"y\":281.65625,\"w\":390,\"h\":562.34375},\"tb\":56,\"vh\":844}"
+  },
+  {
+   "scope": "hushbeat:looks:zuzu:sheet",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":388,\"cw\":388,\"pageSw\":390}"
+  },
+  {
+   "scope": "hushbeat:looks:zuzu:sheet",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu:sheet",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:zuzu:sheet",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:boppo",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:boppo",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:boppo",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:boppo",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:boppo",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:boppo",
+   "name": "the title, subtitle and hint take the world's tone (light on dark, dark on light)",
+   "ok": true,
+   "detail": "{\"tone\":\"light\",\"title\":0.017,\"sub\":0.133,\"hint\":0.053}"
+  },
+  {
+   "scope": "hushbeat:looks:pipzi",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:pipzi",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:pipzi",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:pipzi",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:pipzi",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:pipzi",
+   "name": "the title, subtitle and hint take the world's tone (light on dark, dark on light)",
+   "ok": true,
+   "detail": "{\"tone\":\"dark\",\"title\":0.911,\"sub\":0.465,\"hint\":0.756}"
+  },
+  {
+   "scope": "hushbeat:looks:pipzi:sheet",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:pipzi:sheet",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":0,\"y\":281.6651916503906,\"w\":390,\"h\":562.34375},\"tb\":56,\"vh\":844}"
+  },
+  {
+   "scope": "hushbeat:looks:pipzi:sheet",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":388,\"cw\":388,\"pageSw\":390}"
+  },
+  {
+   "scope": "hushbeat:looks:pipzi:sheet",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:pipzi:sheet",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:pipzi:sheet",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:loomi",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:loomi",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:loomi",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:loomi",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:loomi",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:loomi",
+   "name": "the title, subtitle and hint take the world's tone (light on dark, dark on light)",
+   "ok": true,
+   "detail": "{\"tone\":\"light\",\"title\":0.017,\"sub\":0.133,\"hint\":0.053}"
+  },
+  {
+   "scope": "hushbeat:looks:noomi",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:noomi",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:noomi",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:noomi",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:noomi",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:noomi",
+   "name": "the title, subtitle and hint take the world's tone (light on dark, dark on light)",
+   "ok": true,
+   "detail": "{\"tone\":\"dark\",\"title\":0.911,\"sub\":0.465,\"hint\":0.756}"
+  },
+  {
+   "scope": "hushbeat:looks:noomi:sheet",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:noomi:sheet",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":0,\"y\":281.65625,\"w\":390,\"h\":562.34375},\"tb\":56,\"vh\":844}"
+  },
+  {
+   "scope": "hushbeat:looks:noomi:sheet",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":388,\"cw\":388,\"pageSw\":390}"
+  },
+  {
+   "scope": "hushbeat:looks:noomi:sheet",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:noomi:sheet",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks:noomi:sheet",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:looks",
    "name": "no console errors",
    "ok": true,
    "detail": ""
@@ -1165,7 +1752,7 @@
   },
   {
    "scope": "hushbeat:layout:phone:solo",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1195,7 +1782,7 @@
   },
   {
    "scope": "hushbeat:layout:phone:tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1231,7 +1818,7 @@
   },
   {
    "scope": "hushbeat:layout:phone:row",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1251,7 +1838,7 @@
    "scope": "hushbeat:layout:phone:picker",
    "name": "the sheet is on screen and leaves the top bar visible",
    "ok": true,
-   "detail": "{\"R\":{\"x\":0,\"y\":520.0053100585938,\"w\":390,\"h\":324},\"tb\":56,\"vh\":844}"
+   "detail": "{\"R\":{\"x\":0,\"y\":520.7205200195312,\"w\":390,\"h\":324},\"tb\":56,\"vh\":844}"
   },
   {
    "scope": "hushbeat:layout:phone:picker",
@@ -1267,7 +1854,7 @@
   },
   {
    "scope": "hushbeat:layout:phone:picker",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1303,7 +1890,7 @@
   },
   {
    "scope": "hushbeat:layout:phone:duet-tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1333,7 +1920,7 @@
   },
   {
    "scope": "hushbeat:layout:phone:duet",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1353,7 +1940,7 @@
    "scope": "hushbeat:layout:phone:sheet",
    "name": "the sheet is on screen and leaves the top bar visible",
    "ok": true,
-   "detail": "{\"R\":{\"x\":0,\"y\":214.78179931640625,\"w\":390,\"h\":629.34375},\"tb\":56,\"vh\":844}"
+   "detail": "{\"R\":{\"x\":0,\"y\":214.78074645996094,\"w\":390,\"h\":629.34375},\"tb\":56,\"vh\":844}"
   },
   {
    "scope": "hushbeat:layout:phone:sheet",
@@ -1369,7 +1956,7 @@
   },
   {
    "scope": "hushbeat:layout:phone:sheet",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1405,7 +1992,7 @@
   },
   {
    "scope": "hushbeat:layout:p375:solo",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1435,7 +2022,7 @@
   },
   {
    "scope": "hushbeat:layout:p375:tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1471,7 +2058,7 @@
   },
   {
    "scope": "hushbeat:layout:p375:row",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1491,7 +2078,7 @@
    "scope": "hushbeat:layout:p375:picker",
    "name": "the sheet is on screen and leaves the top bar visible",
    "ok": true,
-   "detail": "{\"R\":{\"x\":0,\"y\":488,\"w\":375,\"h\":324},\"tb\":56,\"vh\":812}"
+   "detail": "{\"R\":{\"x\":0,\"y\":488.0052490234375,\"w\":375,\"h\":324},\"tb\":56,\"vh\":812}"
   },
   {
    "scope": "hushbeat:layout:p375:picker",
@@ -1507,7 +2094,7 @@
   },
   {
    "scope": "hushbeat:layout:p375:picker",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1543,7 +2130,7 @@
   },
   {
    "scope": "hushbeat:layout:p375:duet-tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1573,7 +2160,7 @@
   },
   {
    "scope": "hushbeat:layout:p375:duet",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1593,7 +2180,7 @@
    "scope": "hushbeat:layout:p375:sheet",
    "name": "the sheet is on screen and leaves the top bar visible",
    "ok": true,
-   "detail": "{\"R\":{\"x\":0,\"y\":182.66650390625,\"w\":375,\"h\":629.34375},\"tb\":56,\"vh\":812}"
+   "detail": "{\"R\":{\"x\":0,\"y\":182.65625,\"w\":375,\"h\":629.34375},\"tb\":56,\"vh\":812}"
   },
   {
    "scope": "hushbeat:layout:p375:sheet",
@@ -1609,7 +2196,7 @@
   },
   {
    "scope": "hushbeat:layout:p375:sheet",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1645,7 +2232,7 @@
   },
   {
    "scope": "hushbeat:layout:small:solo",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1675,7 +2262,7 @@
   },
   {
    "scope": "hushbeat:layout:small:tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1711,7 +2298,7 @@
   },
   {
    "scope": "hushbeat:layout:small:row",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1731,7 +2318,7 @@
    "scope": "hushbeat:layout:small:picker",
    "name": "the sheet is on screen and leaves the top bar visible",
    "ok": true,
-   "detail": "{\"R\":{\"x\":0,\"y\":244.7186737060547,\"w\":320,\"h\":324},\"tb\":52,\"vh\":568}"
+   "detail": "{\"R\":{\"x\":0,\"y\":244,\"w\":320,\"h\":324},\"tb\":52,\"vh\":568}"
   },
   {
    "scope": "hushbeat:layout:small:picker",
@@ -1747,7 +2334,7 @@
   },
   {
    "scope": "hushbeat:layout:small:picker",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1783,7 +2370,7 @@
   },
   {
    "scope": "hushbeat:layout:small:duet-tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1813,7 +2400,7 @@
   },
   {
    "scope": "hushbeat:layout:small:duet",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1833,7 +2420,7 @@
    "scope": "hushbeat:layout:small:sheet",
    "name": "the sheet is on screen and leaves the top bar visible",
    "ok": true,
-   "detail": "{\"R\":{\"x\":0,\"y\":113.69989776611328,\"w\":320,\"h\":454.390625},\"tb\":52,\"vh\":568}"
+   "detail": "{\"R\":{\"x\":0,\"y\":113.609375,\"w\":320,\"h\":454.390625},\"tb\":52,\"vh\":568}"
   },
   {
    "scope": "hushbeat:layout:small:sheet",
@@ -1849,7 +2436,7 @@
   },
   {
    "scope": "hushbeat:layout:small:sheet",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1885,7 +2472,7 @@
   },
   {
    "scope": "hushbeat:layout:android:solo",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1915,7 +2502,7 @@
   },
   {
    "scope": "hushbeat:layout:android:tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1951,7 +2538,7 @@
   },
   {
    "scope": "hushbeat:layout:android:row",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -1987,7 +2574,7 @@
   },
   {
    "scope": "hushbeat:layout:android:picker",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2023,7 +2610,7 @@
   },
   {
    "scope": "hushbeat:layout:android:duet-tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2053,7 +2640,7 @@
   },
   {
    "scope": "hushbeat:layout:android:duet",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2073,7 +2660,7 @@
    "scope": "hushbeat:layout:android:sheet",
    "name": "the sheet is on screen and leaves the top bar visible",
    "ok": true,
-   "detail": "{\"R\":{\"x\":0,\"y\":285.7822570800781,\"w\":412,\"h\":629.34375},\"tb\":56,\"vh\":915}"
+   "detail": "{\"R\":{\"x\":0,\"y\":285.6665954589844,\"w\":412,\"h\":629.34375},\"tb\":56,\"vh\":915}"
   },
   {
    "scope": "hushbeat:layout:android:sheet",
@@ -2089,7 +2676,7 @@
   },
   {
    "scope": "hushbeat:layout:android:sheet",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2106,486 +2693,6 @@
    "detail": ""
   },
   {
-   "scope": "hushbeat:layout:land:solo",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:solo",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:solo",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:solo",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:solo",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:tray",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:tray",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:tray",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:tray",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:tray",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:row",
-   "name": "Replay, Keep and Friend fit the row on one line (wider, not taller; nothing scrolled away)",
-   "ok": true,
-   "detail": "{\"h0\":52,\"row\":{\"h\":52,\"sw\":395,\"cw\":395}}"
-  },
-  {
-   "scope": "hushbeat:layout:land:row",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:row",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:row",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:row",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:row",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:picker",
-   "name": "the sheet is open",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:picker",
-   "name": "the sheet is on screen and leaves the top bar visible",
-   "ok": true,
-   "detail": "{\"R\":{\"x\":142,\"y\":130.0042266845703,\"w\":560,\"h\":260},\"tb\":56,\"vh\":390}"
-  },
-  {
-   "scope": "hushbeat:layout:land:picker",
-   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
-   "ok": true,
-   "detail": "{\"sw\":558,\"cw\":558,\"pageSw\":844}"
-  },
-  {
-   "scope": "hushbeat:layout:land:picker",
-   "name": "sheet controls inside the sheet",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:picker",
-   "name": "sheet targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:picker",
-   "name": "sheet controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet-tray",
-   "name": "each Mallow inside its own stage",
-   "ok": true,
-   "detail": "[true,true]"
-  },
-  {
-   "scope": "hushbeat:layout:land:duet-tray",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet-tray",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet-tray",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet-tray",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet-tray",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:duet",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:sheet",
-   "name": "the sheet is open",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:sheet",
-   "name": "the sheet is on screen and leaves the top bar visible",
-   "ok": true,
-   "detail": "{\"R\":{\"x\":142,\"y\":78,\"w\":560,\"h\":312},\"tb\":56,\"vh\":390}"
-  },
-  {
-   "scope": "hushbeat:layout:land:sheet",
-   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
-   "ok": true,
-   "detail": "{\"sw\":558,\"cw\":558,\"pageSw\":844}"
-  },
-  {
-   "scope": "hushbeat:layout:land:sheet",
-   "name": "sheet controls inside the sheet",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:sheet",
-   "name": "sheet targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land:sheet",
-   "name": "sheet controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:solo",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:solo",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:solo",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:solo",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:solo",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:tray",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:tray",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:tray",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:tray",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:tray",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:row",
-   "name": "Replay, Keep and Friend fit the row on one line (wider, not taller; nothing scrolled away)",
-   "ok": true,
-   "detail": "{\"h0\":52,\"row\":{\"h\":52,\"sw\":242,\"cw\":242}}"
-  },
-  {
-   "scope": "hushbeat:layout:land-small:row",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:row",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:row",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:row",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:row",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:picker",
-   "name": "the sheet is open",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:picker",
-   "name": "the sheet is on screen and leaves the top bar visible",
-   "ok": true,
-   "detail": "{\"R\":{\"x\":4,\"y\":64.00418090820312,\"w\":560,\"h\":256},\"tb\":56,\"vh\":320}"
-  },
-  {
-   "scope": "hushbeat:layout:land-small:picker",
-   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
-   "ok": true,
-   "detail": "{\"sw\":558,\"cw\":558,\"pageSw\":568}"
-  },
-  {
-   "scope": "hushbeat:layout:land-small:picker",
-   "name": "sheet controls inside the sheet",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:picker",
-   "name": "sheet targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:picker",
-   "name": "sheet controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet-tray",
-   "name": "each Mallow inside its own stage",
-   "ok": true,
-   "detail": "[true,true]"
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet-tray",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet-tray",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet-tray",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet-tray",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet-tray",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet",
-   "name": "controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet",
-   "name": "controls on screen",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet",
-   "name": "no horizontal page scroll",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet",
-   "name": "targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:duet",
-   "name": "the Mallow sits between the top bar and the bottom area",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:sheet",
-   "name": "the sheet is open",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:sheet",
-   "name": "the sheet is on screen and leaves the top bar visible",
-   "ok": true,
-   "detail": "{\"R\":{\"x\":4,\"y\":64.20800018310547,\"w\":560,\"h\":256},\"tb\":56,\"vh\":320}"
-  },
-  {
-   "scope": "hushbeat:layout:land-small:sheet",
-   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
-   "ok": true,
-   "detail": "{\"sw\":558,\"cw\":558,\"pageSw\":568}"
-  },
-  {
-   "scope": "hushbeat:layout:land-small:sheet",
-   "name": "sheet controls inside the sheet",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:sheet",
-   "name": "sheet targets \u2265 40 px",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small:sheet",
-   "name": "sheet controls do not overlap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "hushbeat:layout:land-small",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
    "scope": "hushbeat:layout:desktop:solo",
    "name": "controls do not overlap",
    "ok": true,
@@ -2605,7 +2712,7 @@
   },
   {
    "scope": "hushbeat:layout:desktop:solo",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2635,7 +2742,7 @@
   },
   {
    "scope": "hushbeat:layout:desktop:tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2671,7 +2778,7 @@
   },
   {
    "scope": "hushbeat:layout:desktop:row",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2707,7 +2814,7 @@
   },
   {
    "scope": "hushbeat:layout:desktop:picker",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2743,7 +2850,7 @@
   },
   {
    "scope": "hushbeat:layout:desktop:duet-tray",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2773,7 +2880,7 @@
   },
   {
    "scope": "hushbeat:layout:desktop:duet",
-   "name": "targets \u2265 40 px",
+   "name": "targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2809,7 +2916,7 @@
   },
   {
    "scope": "hushbeat:layout:desktop:sheet",
-   "name": "sheet targets \u2265 40 px",
+   "name": "sheet targets ≥ 40 px",
    "ok": true,
    "detail": ""
   },
@@ -2824,6 +2931,822 @@
    "name": "no console errors",
    "ok": true,
    "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:solo",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:solo",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:solo",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:solo",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:solo",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:tray",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:tray",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:tray",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:tray",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:tray",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:row",
+   "name": "Replay, Keep and Friend fit the row on one line (wider, not taller; nothing scrolled away)",
+   "ok": true,
+   "detail": "{\"h0\":52,\"row\":{\"h\":52,\"sw\":395,\"cw\":395}}"
+  },
+  {
+   "scope": "hushbeat:layout:land:row",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:row",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:row",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:row",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:row",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:picker",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:picker",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":142,\"y\":130,\"w\":560,\"h\":260},\"tb\":56,\"vh\":390}"
+  },
+  {
+   "scope": "hushbeat:layout:land:picker",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":558,\"cw\":558,\"pageSw\":844}"
+  },
+  {
+   "scope": "hushbeat:layout:land:picker",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:picker",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:picker",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet-tray",
+   "name": "each Mallow inside its own stage",
+   "ok": true,
+   "detail": "[true,true]"
+  },
+  {
+   "scope": "hushbeat:layout:land:duet-tray",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet-tray",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet-tray",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet-tray",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet-tray",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:duet",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:sheet",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:sheet",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":142,\"y\":78,\"w\":560,\"h\":312},\"tb\":56,\"vh\":390}"
+  },
+  {
+   "scope": "hushbeat:layout:land:sheet",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":558,\"cw\":558,\"pageSw\":844}"
+  },
+  {
+   "scope": "hushbeat:layout:land:sheet",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:sheet",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land:sheet",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:solo",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:solo",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:solo",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:solo",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:solo",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:tray",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:tray",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:tray",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:tray",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:tray",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:row",
+   "name": "Replay, Keep and Friend fit the row on one line (wider, not taller; nothing scrolled away)",
+   "ok": true,
+   "detail": "{\"h0\":52,\"row\":{\"h\":52,\"sw\":242,\"cw\":242}}"
+  },
+  {
+   "scope": "hushbeat:layout:land-small:row",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:row",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:row",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:row",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:row",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:picker",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:picker",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":4,\"y\":64,\"w\":560,\"h\":256},\"tb\":56,\"vh\":320}"
+  },
+  {
+   "scope": "hushbeat:layout:land-small:picker",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":558,\"cw\":558,\"pageSw\":568}"
+  },
+  {
+   "scope": "hushbeat:layout:land-small:picker",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:picker",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:picker",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet-tray",
+   "name": "each Mallow inside its own stage",
+   "ok": true,
+   "detail": "[true,true]"
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet-tray",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet-tray",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet-tray",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet-tray",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet-tray",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet",
+   "name": "controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet",
+   "name": "controls on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet",
+   "name": "no horizontal page scroll",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet",
+   "name": "targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:duet",
+   "name": "the Mallow sits between the top bar and the bottom area",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:sheet",
+   "name": "the sheet is open",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:sheet",
+   "name": "the sheet is on screen and leaves the top bar visible",
+   "ok": true,
+   "detail": "{\"R\":{\"x\":4,\"y\":64,\"w\":560,\"h\":256},\"tb\":56,\"vh\":320}"
+  },
+  {
+   "scope": "hushbeat:layout:land-small:sheet",
+   "name": "nothing in the sheet is wider than it; no horizontal page scroll",
+   "ok": true,
+   "detail": "{\"sw\":558,\"cw\":558,\"pageSw\":568}"
+  },
+  {
+   "scope": "hushbeat:layout:land-small:sheet",
+   "name": "sheet controls inside the sheet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:sheet",
+   "name": "sheet targets ≥ 40 px",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small:sheet",
+   "name": "sheet controls do not overlap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:layout:land-small",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "listening: a faint ring breathes around the Mallow (alpha 0.25), within 0.86 of its height; nothing else lit",
+   "ok": true,
+   "detail": "{\"s0\":{\"beads\":0,\"ring\":0.057,\"ringTarget\":0.25,\"ringR\":164,\"glow\":0.024,\"ribbon\":0,\"transform\":0,\"presence\":0,\"mood\":{\"agitation\":0.0885,\"heaviness\":0.1312,\"clarity\":0.6342,\"warmth\":0.511},\"start\":{\"agitation\":0.0885,\"heaviness\":0.1312,\"clarity\":0.6342,\"warmth\":0.511},\"ripples\":0,\"successes\":0,\"successPending\":false},\"h\":250.6180871626767}"
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "E3: a touch lights a bead at the finger and sets the singing mouth on the rig in the same task; the mouth follows",
+   "ok": true,
+   "detail": "{\"at\":{\"beads\":2,\"floor\":0.81,\"note\":{\"src\":\"live\",\"immediate\":true}},\"base\":0.9949477753331986,\"roseMs\":2}"
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "E17: phrase notes are shown at ev.t + outputLatency (never before; ≤ one slow frame after)",
+   "ok": true,
+   "detail": "{\"lat\":0.032,\"lagMax\":0.2902999999970195,\"n\":4}"
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "E17: groove nudges land on beat crossings (never early, ≤ one slow frame late), about one a beat",
+   "ok": true,
+   "detail": "{\"n\":6,\"last\":[{\"beat\":24,\"lag\":0.131},{\"beat\":25,\"lag\":0.175},{\"beat\":26,\"lag\":0.013},{\"beat\":27,\"lag\":0.133},{\"beat\":28,\"lag\":0.057},{\"beat\":29,\"lag\":0.001}]}"
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "the realm warms and clears with the music (clarity and warmth above its own); a long hum transforms it; the ring brightens",
+   "ok": true,
+   "detail": "{\"sent\":{\"agitation\":0.021066618915952268,\"heaviness\":0,\"clarity\":0.8624376249521536,\"warmth\":0.5892218684089112},\"start\":{\"agitation\":0.0885,\"heaviness\":0.1312,\"clarity\":0.6342,\"warmth\":0.511},\"transform\":0.261,\"ring\":0.5}"
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "E17 reduced motion: no groove nudges, no hop, body squash variance under 25 % of normal (the floor glow carries the beat)",
+   "ok": true,
+   "detail": "{\"vN\":\"2.94e-4\",\"vR\":\"3.42e-6\",\"nudges\":0,\"hopNormal\":\"0.0072\"}"
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "E18: 40 rapid taps: flash1s ≤ 3 throughout (sampled, and in the gate's own log)",
+   "ok": true,
+   "detail": "{\"maxF\":0,\"worst\":1,\"allowed\":1}"
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "E18 Visual only (1.4× light): still ≤ 3 bright events a second",
+   "ok": true,
+   "detail": "{\"maxV\":2,\"worstV\":2,\"allowed\":3,\"refused\":0}"
+  },
+  {
+   "scope": "hushbeat:scene",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:replay",
+   "name": "E14: Replay and Keep stay hidden until a take has 3 events",
+   "ok": true,
+   "detail": "{\"c0\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"c1\":{\"playIt\":false,\"replay\":false,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":false,\"keepLabel\":\"\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"c2\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null}}"
+  },
+  {
+   "scope": "hushbeat:replay",
+   "name": "E14: Replay → the chip reads Stop (pressed), replaying, the stage tint deepens, \"Replaying\"",
+   "ok": true,
+   "detail": "{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Stop\",\"replayPressed\":\"true\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"state\":\"replaying\",\"tint\":true,\"chip\":\"Replaying\"}"
+  },
+  {
+   "scope": "hushbeat:replay",
+   "name": "E14: the Mallow sings the take back: the same degrees in order, each on its soft-quantised beat (±3 ms)",
+   "ok": true,
+   "detail": "{\"got\":[-2,0,2,-1,1],\"want\":[-2,0,2,-1,1],\"off\":[0,0,0,0,0],\"dropped\":0}"
+  },
+  {
+   "scope": "hushbeat:replay",
+   "name": "E14: it performs the take (pokes where each note was played) and ends proud: its reaction, one realm success pulse, \"Replay finished\"",
+   "ok": true,
+   "detail": "{\"pokes\":5,\"reacts\":[\"success\"],\"successes\":1,\"env\":[{\"t\":25222,\"kind\":\"success\",\"ok\":true}],\"chip\":\"Replay finished\",\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"state\":\"playing\"}"
+  },
+  {
+   "scope": "hushbeat:replay",
+   "name": "E14: R replays; Stop ends it within 200 ms (aria-pressed false, the tint lifts, no success)",
+   "ok": true,
+   "detail": "{\"stopMs\":0.5,\"s2\":{\"c\":{\"playIt\":false,\"replay\":true,\"replayLabel\":\"Replay\",\"replayPressed\":\"false\",\"keep\":true,\"keepLabel\":\"Keep\",\"keepPressed\":\"false\",\"tray\":false,\"targets\":null},\"last\":{\"kind\":\"replay\",\"slot\":0,\"t\":28.19889999999851,\"on\":false,\"stopped\":true},\"tint\":false}}"
+  },
+  {
+   "scope": "hushbeat:replay",
+   "name": "nothing more after Stop",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "hushbeat:replay",
+   "name": "E14/E19: a hidden page cancels the replay (scheduler stopped, nothing performed, listening)",
+   "ok": true,
+   "detail": "{\"rep\":false,\"sched\":false,\"tint\":false,\"perf\":{\"squeeze\":false,\"press\":false},\"state\":\"listening\"}"
+  },
+  {
+   "scope": "hushbeat:replay",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
   }
- ]
+ ],
+ "brief": [
+  {
+   "id": "E1",
+   "line": "Opens correctly; the character loads; controls are visible",
+   "blocks": [
+    "open"
+   ],
+   "checks": 7,
+   "passed": 7
+  },
+  {
+   "id": "E2",
+   "line": "Audio respects browser user-gesture requirements; no loud audio on page load",
+   "blocks": [
+    "quiet"
+   ],
+   "checks": 3,
+   "passed": 3
+  },
+  {
+   "id": "E3",
+   "line": "Tap produces a note; animation synchronisation",
+   "blocks": [
+    "quiet",
+    "scene"
+   ],
+   "checks": 5,
+   "passed": 5
+  },
+  {
+   "id": "E4",
+   "line": "No unnecessary audio delay",
+   "blocks": [
+    "gestures"
+   ],
+   "checks": 3,
+   "passed": 3
+  },
+  {
+   "id": "E5",
+   "line": "Audio playback respects browser user-gesture requirements",
+   "blocks": [
+    "quiet"
+   ],
+   "checks": 3,
+   "passed": 3
+  },
+  {
+   "id": "E6",
+   "line": "All required gesture types produce appropriate musical responses",
+   "blocks": [
+    "gestures",
+    "mallows"
+   ],
+   "checks": 33,
+   "passed": 33
+  },
+  {
+   "id": "E7",
+   "line": "Clear alternatives for people who cannot or prefer not to perform gestures",
+   "blocks": [
+    "keys"
+   ],
+   "checks": 16,
+   "passed": 16
+  },
+  {
+   "id": "E8",
+   "line": "Breathing influences the rhythm",
+   "blocks": [
+    "breath"
+   ],
+   "checks": 5,
+   "passed": 5
+  },
+  {
+   "id": "E9",
+   "line": "The sounds remain harmonious even during rapid interaction",
+   "blocks": [
+    "rapid"
+   ],
+   "checks": 8,
+   "passed": 8
+  },
+  {
+   "id": "E10",
+   "line": "Character-specific sounds; Web Audio synthesis; smooth sound transitions; squeeze introduces a warm bass tone",
+   "blocks": [
+    "mallows",
+    "offline"
+   ],
+   "checks": 53,
+   "passed": 53
+  },
+  {
+   "id": "E11",
+   "line": "Volume control",
+   "blocks": [
+    "sheet"
+   ],
+   "checks": 11,
+   "passed": 11
+  },
+  {
+   "id": "E12",
+   "line": "Mute",
+   "blocks": [
+    "quietmode"
+   ],
+   "checks": 4,
+   "passed": 4
+  },
+  {
+   "id": "E13",
+   "line": "Visual-only mode",
+   "blocks": [
+    "quietmode"
+   ],
+   "checks": 6,
+   "passed": 6
+  },
+  {
+   "id": "E14",
+   "line": "Replay sound sequences",
+   "blocks": [
+    "replay"
+   ],
+   "checks": 8,
+   "passed": 8
+  },
+  {
+   "id": "E15",
+   "line": "Save favourite sound combinations",
+   "blocks": [
+    "keep",
+    "duet"
+   ],
+   "checks": 15,
+   "passed": 15
+  },
+  {
+   "id": "E16",
+   "line": "Interactions involving two Mallows create harmonies",
+   "blocks": [
+    "duet"
+   ],
+   "checks": 23,
+   "passed": 23
+  },
+  {
+   "id": "E17",
+   "line": "Animation synchronisation; reduced motion works; reactions are correct",
+   "blocks": [
+    "rest",
+    "scene"
+   ],
+   "checks": 9,
+   "passed": 9
+  },
+  {
+   "id": "E18",
+   "line": "No flashes (photosensitivity: at most ~3 bright events a second)",
+   "blocks": [
+    "scene"
+   ],
+   "checks": 2,
+   "passed": 2
+  },
+  {
+   "id": "E19",
+   "line": "Background behaviour: nothing runs or plays while hidden",
+   "blocks": [
+    "hidden",
+    "replay"
+   ],
+   "checks": 5,
+   "passed": 5
+  },
+  {
+   "id": "E20",
+   "line": "Exit works; state cleanup is correct; no leaks when switching features",
+   "blocks": [
+    "exit"
+   ],
+   "checks": 6,
+   "passed": 6
+  },
+  {
+   "id": "E21",
+   "line": "Feature state remains isolated from other experiences",
+   "blocks": [
+    "duet",
+    "isolation"
+   ],
+   "checks": 7,
+   "passed": 7
+  },
+  {
+   "id": "E22",
+   "line": "Highly responsive mobile layouts; no clipping or overlapping; the Mallow remains the centre of attention",
+   "blocks": [
+    "looks",
+    "layout"
+   ],
+   "checks": 353,
+   "passed": 353
+  },
+  {
+   "id": "E23",
+   "line": "Accessibility (keyboard); privacy; no paid APIs and no unnecessary network requests",
+   "blocks": [
+    "sheet",
+    "a11y"
+   ],
+   "checks": 17,
+   "passed": 17
+  },
+  {
+   "id": "E24",
+   "line": "Touch does not accidentally trigger unwanted browser scrolling",
+   "blocks": [
+    "scroll"
+   ],
+   "checks": 15,
+   "passed": 15
+  }
+ ],
+ "merged": {
+  "kept": 568,
+  "ran": [
+   "scene",
+   "replay"
+  ]
+ }
 }

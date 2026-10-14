@@ -17,6 +17,8 @@
 .weather .wx-chip[data-action="again"] { background: var(--chip-on); color: var(--chip-on-text); border-color: transparent; }
 .weather .wx-chip:disabled { opacity: 0.45; cursor: default; }
 .weather .wx-chip:focus-visible, .weather .wx-radio:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* the stage is focused on arrival for the keys; its ring waits until a key is pressed (features/weather.js) */
+.weather.wx-quiet-focus .stage:focus-visible { box-shadow: none; }
 
 .weather .wx-dial { gap: 2px; padding: 3px; height: var(--wx-row); box-sizing: border-box; align-items: center; flex: none; }
 .weather .wx-radio { flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-2);
@@ -25,11 +27,17 @@
 .weather .wx-radio[aria-checked="true"] { background: var(--chip-on); color: var(--chip-on-text); }
 @media (hover: hover) { .weather .wx-radio:hover:not([aria-checked="true"]) { color: var(--text-1); } }
 
+/* Weather moves under the chrome (a storm bank in a bright realm puts dark text over dark cloud): the title,
+   subtitle, hint and caption get a tight halo in the backdrop's ink, under the usual soft glow */
+.weather[data-backdrop] .topbar .title b, .weather[data-backdrop] .topbar .title small, .weather .wx-hint {
+  text-shadow: 0 0 1px var(--ink-0), 0 0 3px var(--ink-0), 0 1px 12px var(--ink-0); }
+.weather[data-backdrop] .topbar .title small { color: var(--text-2); }   /* the weather and its world: one step stronger than --text-3 */
+
 /* the hint spot: hints, then the caption with the Mallow's line under it */
 .weather .wx-hint { width: max-content; max-width: min(calc(100% - 40px), 520px); }
 .weather .wx-hint .wx-cap { display: block; }
 .weather .wx-hint .line { display: block; margin-top: 4px; font-family: var(--font-ui); font-size: 14px; font-weight: 500; color: var(--text-2); }
-.weather .wx-hint .line .who { color: var(--text-3); font-size: 13px; }
+.weather .wx-hint .line .who { color: var(--text-3); font-size: 14px; }   /* nothing under 14 px (spec §8) */
 @media (max-height: 600px) { .weather .wx-hint { font-size: 16px; } }
 
 .weather .wx-back, .weather .wx-front { position: absolute; inset: 0; pointer-events: none; }

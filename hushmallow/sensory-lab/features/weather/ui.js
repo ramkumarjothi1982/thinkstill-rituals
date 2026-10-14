@@ -90,14 +90,15 @@ export function weatherDial(order, value, onPick) {
  * rebuilt only when the ids or labels change. A rebuilt or disabled hold chip ends its hold first.
  * Keyboard focus survives a rebuild (the chip with the same id, else the first): when the lead chip
  * becomes Again, focus moves onto Again, which ignores activations for a moment so a key still held
- * down on the old chip does not press it straight away.
+ * down on the old chip does not press it straight away. Only the chip that took focus that way waits:
+ * a chip the person moves to and presses is a fresh press.
  */
 const SETTLE_MS = 700;
 export function actionRow() {
   const el = h('div', { class: 'wx-actions', role: 'group', 'aria-label': COPY.actions });
-  let key = null, calmUntil = 0;
+  let key = null, calmUntil = 0, calmEl = null;
   const endHolds = () => { for (const b of el.children) if (b.classList.contains('active')) b.dispatchEvent(new Event('pointercancel')); };
-  const tap = (a) => (e) => { if (performance.now() >= calmUntil) a.click(e); };
+  const tap = (a) => (e) => { if (e.currentTarget !== calmEl || performance.now() >= calmUntil) a.click(e); };
   // a key held down repeats: repeats never press a chip (hold chips ignore them too), so holding
   // Enter on "Part the clouds" until the storm passes cannot then press Again
   el.addEventListener('keydown', (e) => { if (e.repeat && (e.key === 'Enter' || e.key === ' ')) e.preventDefault(); }, true);
@@ -112,9 +113,10 @@ export function actionRow() {
         el.replaceChildren(...list.map((a) => (a.hold
           ? holdButton(a.label, a.start, a.end, { class: 'chip hold wx-chip', 'data-action': a.id })
           : h('button', { type: 'button', class: 'chip wx-chip', 'data-action': a.id, onclick: tap(a) }, a.label))));
+        calmEl = null;
         if (had !== null && el.children.length) {
-          calmUntil = performance.now() + SETTLE_MS;
           const next = [...el.children].find((b) => b.dataset.action === had) || el.children[0];
+          calmEl = next; calmUntil = performance.now() + SETTLE_MS;
           next.focus({ preventScroll: true });
         }
       }

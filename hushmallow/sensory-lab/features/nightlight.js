@@ -27,6 +27,8 @@
 //
 // Views: the session view (a stage screen) and, when the light has gone,
 // the end view (DOM only: the rig, its loops, the world and the sound are gone).
+// The settings sheet (sheet.js, the sliders button) opens over the session
+// view; every change previews live behind it, and the chrome stays awake.
 //
 // Built on the shared engine: stage-screen (backdrop null, keys, onLayout,
 // the night sound facade), FaceMixer, Personality.setFilter, SoftMallow
@@ -34,7 +36,7 @@
 // EffectsLayer (manual), paintRealm, AmbientBed, setTrim / rest, the lab-ui
 // announcer, and core/screen-wake.js (opt-in only).
 
-import { h, segmented, holdButton, announcer } from '../lab-ui.js';
+import { h, icon, iconBtn, segmented, holdButton, announcer } from '../lab-ui.js';
 import { stageScreen } from './stage-screen.js';
 import { FaceMixer } from '../core/expression-engine.js';
 import { watchPresses } from '../core/pointer-router.js';
@@ -53,6 +55,7 @@ import { MODES, Moments, startMode } from './nightlight/modes.js';
 import { WorldLayer, MARGIN } from './nightlight/world.js';
 import { NightSky } from './nightlight/sky.js';
 import { nightSound, NightBed, bedPlan } from './nightlight/bed.js';
+import { openNightSheet } from './nightlight/sheet.js';
 
 export const meta = { id: 'nightlight', title: COPY.meta };
 
@@ -118,6 +121,7 @@ export function mount(root, ctx) {
     get modeCtl() { return v().modeCtl ?? null; },
     get script() { return v().modeCtl?.script ?? null; },
     get breath() { return v().modeCtl?.breath ?? null; },
+    get sheet() { return v().sheet ?? null; },
     debug() { return { ...(v().debug?.() || {}), view: view?.kind ?? null, skew }; },
     skew(ms) { skew += +ms || 0; return skew; },
     setMode(id) { v().setMode?.(id); },
@@ -157,8 +161,10 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   ctx.sound.setTrim(S.volume);
 
   // ------------------------------------------------------------ screen --
+  const settingsBtn = iconBtn('sliders', COPY.buttons.settings, () => openSettings(), { class: 'icon-btn nl-settings', 'aria-haspopup': 'dialog' });
   const s = stageScreen(root, ctx, {
     title: COPY.title, subtitle: COPY.subtitle(MODES[mode].name, name), backdrop: null, settings: false, feedback: false,
+    extraButtons: [settingsBtn],
     sound: facade, stageLabel: COPY.aria.stage, keys: (e, k, phase) => onKey(e, k, phase),
     onLayout: (L) => onLayout(L), onEvent: (e) => onCompanion(e), onExit: () => leave(),
   });
@@ -436,6 +442,9 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   function onKey(e, k, phase) {
     if (phase === 'down') { wakeChrome(); pacer.touch(); lastTouchAt = performance.now(); }
     if (leaving) return true;   // the goodnight is under way: nothing else starts
+    // the sheet is open but focus is outside it (keys inside it never reach here): Escape closes it,
+    // nothing else starts underneath (releases still go through, so nothing stays held)
+    if (sheet) { if (phase === 'down' && k === 'escape') sheet.close(); return phase === 'down'; }
     const ae = document.activeElement, onStage = !ae || ae === s.stage || ae === document.body;
     const digit = /^(?:Digit|Numpad)([1-9])$/.exec(e.code || '');
     if (digit && onStage) {
@@ -468,10 +477,12 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     sky.setMotion(motion);
     ctl.setMotion(motion);
     s.screen.classList.toggle('nl-calm', motion !== 'gentle');
+    sheet?.sync();
   }
-  function repaintMood() {
+  // the world takes a new Light on release (during a slide only its grade follows, in the frame)
+  function repaintMood(force = false) {
     nightMood(nw, { temp: S.temp, heavy: fadeStep }, moodOut);
-    world.setMood(moodOut);
+    world.setMood(moodOut, { force });
   }
   const offSettings = settings.onChange((k, val, cur) => {
     S = cur;
@@ -479,7 +490,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       case 'speed': tune(); break;
       case 'motion': applyMotion(); break;
       case 'volume': ctx.sound.setTrim(S.volume); if (S.volume === 0) lastTouchAt = performance.now(); break;
-      case 'temp': repaintMood(); break;
+      case 'temp': if (!tempSliding) repaintMood(true); break;
       case 'quietSound':
         if (mode === 'quiet') setQuiet(!S.quietSound);
         if (chipKind === 'sound') chipEl.setAttribute('aria-pressed', String(S.quietSound));
@@ -489,10 +500,12 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       case 'minutes': case 'fade': clock.restart({ minutes: S.minutes, fade: S.fade }); updateStatus(); break;
       default: break;
     }
+    sheet?.sync();
   });
   // lab.js's own listeners run first (registered at start-up); the night tuning and Movement are re-applied after them
   const offPrefs = ctx.prefs.onChange((k) => {
     if (k === 'motion' || k === '*') applyMotion();
+    if (k === 'sound' || k === '*') { syncMute(); sheet?.sync(); }
     if ((k === 'nightlight' && !settings.writing) || k === '*') {
       S = settings.reload();
       tune(); applyMotion(); ctx.sound.setTrim(S.volume); syncWake();
@@ -509,6 +522,47 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       if (painted) world.setScene(sceneFor());
     }
   });
+
+  // ------------------------------------------------------------ the settings sheet --
+  // Every row previews live behind the sheet; the chrome stays awake while it is open; focus goes back
+  // to the sliders button when the person closes it (openSheet itself does not return focus).
+  let sheet = null, tempSliding = false;
+  function openSettings() {
+    if (sheet || dead || leaving || ended) return;
+    wakeChrome();
+    pacer.touch();
+    sheet = openNightSheet(s.screen, {
+      state: () => ({ settings: S, labReduced: ctx.prefs.reducedMotion(), wakeSupported: wake.supported, wakeFailed,
+        soundOn: ctx.prefs.get('sound') !== false, endsAt: clock.endsAt, fading: state === 'fading' }),
+      change: (k, v, o) => sheetChange(k, v, o),
+      fadeNow: () => { if (!dead && !leaving) clock.stopSoon(); },
+      exit: () => leave(),
+      turnSoundOn: () => { ctx.prefs.set('sound', true); ctx.sound.unlock(); },
+      onClosed: ({ byUser }) => {
+        sheet = null;
+        if (tempSliding) { tempSliding = false; if (!dead && !leaving) repaintMood(true); }   // closed mid-slide: the world still takes the Light
+        lastInput = performance.now();   // a full 8 s of awake chrome after the sheet
+        if (byUser && !dead && !leaving && settingsBtn.isConnected) settingsBtn.focus({ preventScroll: true });
+      },
+    });
+  }
+  // persist: 'debounced' while a slider moves, 'now' on release and for choices; live: a slide in progress
+  function sheetChange(k, v, { persist = 'now', live = false } = {}) {
+    if (dead || leaving) return;
+    pacer.touch();   // full frame rate while the person adjusts: the preview follows the finger
+    if (k === 'temp') tempSliding = live;
+    settings.set(k, v, { persist });
+    if (k === 'temp' && !live) repaintMood(true);   // released: the world takes the new Light
+  }
+  // the top bar's Mute button shows the sound switch when it changes elsewhere (the sheet's Turn on, lab Settings)
+  const muteBtn = topbar.querySelector('.tb-right button[aria-label="Mute sound"]');
+  function syncMute() {
+    if (!muteBtn) return;
+    const on = ctx.prefs.get('sound') !== false;
+    if (muteBtn.getAttribute('aria-pressed') === String(!on)) return;
+    muteBtn.innerHTML = icon(on ? 'sound' : 'mute');
+    muteBtn.setAttribute('aria-pressed', String(!on));
+  }
 
   // ------------------------------------------------------------ layout and arrival --
   function onLayout(L) {
@@ -591,7 +645,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     if (unveilPending) unveil();   // the first frame back is drawn at the clock's levels, then the veil lifts
     const pn = performance.now();
     soundTick(pn);
-    if (!asleep && !leaving && pn - lastInput > CHROME_SLEEP_MS && !chromeFocused()) sleepChrome();
+    if (!asleep && !leaving && !sheet && pn - lastInput > CHROME_SLEEP_MS && !chromeFocused()) sleepChrome();
     if (clock.rev !== lastRev) { lastRev = clock.rev; saveRecord(store, clock); }
     if (pn - qAt > 1000) {   // the lab may step quality down; pools only shrink
       qAt = pn;
@@ -622,6 +676,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     state = ph;
     if (ph === 'fading' && was !== 'fading') say(COPY.say.fading);
     updateStatus();
+    sheet?.sync();   // "Fade out now" hides while fading
   }
 
   // "A little longer": ten more minutes, the light eases back up over 2 s, the eyes open slowly
@@ -706,6 +761,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     leaving = true;
     state = 'leaving';
     deliberate = true;
+    sheet?.close({ quiet: true });
     clearRecord(store);
     s.screen.classList.add('nl-leaving');   // only ever gets darker
     pacer.event(LEAVE_MS + 200);
@@ -722,6 +778,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     if (ended || dead) return;
     ended = true;
     state = 'ended';
+    sheet?.close({ quiet: true });
     const skipped = skip || display.mallow > SKIP_ABOVE;
     bed.end(skipped ? 0.4 : 2);
     syncWake();
@@ -753,6 +810,8 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     get levels() { return { world: display.world, mallow: display.mallow, sound: display.sound }; },
     get moments() { return api.moments; },
     get modeCtl() { return ctl; },
+    get sheet() { return sheet; },
+    openSettings,
     setMode,
     set(k, val) { if (k === 'mode') { setMode(val); return mode === val; } return settings.set(k, val, { persist: 'now' }); },
     force(kind) { ctl.script?.force(kind); },
@@ -769,7 +828,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
         bed: bed.debug(), sound: ctx.sound.debug(),
         wake: { supported: wake.supported, wanted: wake.wanted, held: wake.held, failed: wakeFailed, requests: wake.requests },
         chromeAsleep: asleep, veiled: s.screen.classList.contains('nl-veiled'), away, quality: ctx.quality, motion, quiet,
-        chip: chipKind, sky: sky.debug(), world: world.debug(), drowsy: ctl.drowsy?.() ?? null,
+        chip: chipKind, sheet: !!sheet, sky: sky.debug(), world: world.debug(), drowsy: ctl.drowsy?.() ?? null,
         fade: { asleep: restAsleep, step: fadeStep, sighed, eyeOpen: eyeSet, blinkRate: blinkSet, motionScale: +fadeMs.toFixed(3), inflate: +inflK.toFixed(3) },
         sr: sr.log,
       };
@@ -786,6 +845,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       offPrefs(); offDna(); offSettings();
       s.screen.removeEventListener('focusin', wakeChrome);
       modeRow.removeEventListener('scroll', fades);
+      sheet?.close({ quiet: true });
       ctl.stop();
       api.moments.clear();
       companion.persona.setFilter(null);

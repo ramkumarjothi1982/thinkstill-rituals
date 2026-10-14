@@ -542,10 +542,12 @@ export function mount(root, ctx) {
       if (g?.sun) { scene.sunAt[0] = sunGap[0] + (g.sun[0] * geo.W - sunGap[0]) * k; scene.sunAt[1] = sunGap[1] + (g.sun[1] * geo.H - sunGap[1]) * k; }
       if (k >= 1 || w !== 'sunshine') morphSun = false;
     }
-    // the glow behind the Mallow: basking (warm), moonlit (silver), the hearth (embers)
-    const hk = cond.bask ? 'sun' : cond.moonlit ? 'moon' : cond.hearth ? 'ember' : null;
+    // the glow behind the Mallow: basking (warm), moonlit (silver), the hearth (embers). In Warm glow the
+    // Mallow is the hearth from the start: a low ember glow that grows as the warmth spreads
+    const hearthGlow = w === 'warm' && !leaving ? (0.4 + 0.25 * embers.heat) * smoothstep(0.3, 1, planner.amount('warm')) : 0;
+    const hk = cond.bask ? 'sun' : cond.moonlit ? 'moon' : cond.hearth || hearthGlow > 0.01 ? 'ember' : null;
     if (hk) haloKind = hk;
-    haloA += ((hk ? (hk === 'moon' ? 0.42 : 0.5) : 0) - haloA) * Math.min(1, dt * 2.5);
+    haloA += ((hk ? (hk === 'moon' ? 0.42 : hk === 'ember' && !cond.hearth ? hearthGlow : 0.5) : 0) - haloA) * Math.min(1, dt * 2.5);
     scene.halo.a = haloA; scene.halo.kind = haloKind;
     // fog: it rises from the floor as it arrives and sinks back as it leaves (reduced motion: it fades in place)
     const ma = smoothstep(0, 1, mist.amount);
@@ -847,6 +849,7 @@ export function mount(root, ctx) {
   // ---------------------------------------------------------------- keys --
   // through stage-screen's keys hook: 1–8 choose, arrows shape, W holds the lead chip, R is Again
   function keys(e, k, phase) {
+    s.screen.classList.remove('wx-quiet-focus');   // the keyboard is in use: focus rings as usual
     if (!ready) return false;
     if (leaving) return k !== 'escape';
     const ae = document.activeElement;
@@ -972,7 +975,10 @@ export function mount(root, ctx) {
     debug() { return { state: session.state, weather: session.weather, realmId: env.realmId, progress: +session.progress.toFixed(3), resolved: session.resolved, metrics: metrics() }; },
   };
   if (globalThis.__lab) globalThis.__lab.weather = handle;
-  s.stage.focus({ preventScroll: true });   // keyboard gestures and keys work straight away
+  // keyboard gestures and keys work straight away. The ring waits for the keyboard: Chrome shows
+  // :focus-visible for a script's focus before any click (a deep link), framing the whole screen
+  s.screen.classList.add('wx-quiet-focus');
+  s.stage.focus({ preventScroll: true });
 
   return {
     unmount() {

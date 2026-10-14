@@ -20,7 +20,7 @@ import {
   pickNote, harmonise, velocity, shapeOf, voicePad, leadPad, BASS_RANGE, SUM_PEAK, LAYER_PEAK,
 } from '../core/music-theory.js';
 import { BreathClock, Scheduler, Take, softQuantise, encodeMotif, decodeMotif, MAX_STEP } from '../core/music-time.js';
-import { MusicEngine, CAPS, PAD_TAIL, BASS_TAIL, MIN_GAP, MAX_RATE } from '../core/music-engine.js';
+import { MusicEngine, CAPS, PAD_TAIL, BASS_TAIL, MIN_GAP, MAX_RATE, REPLAY_LATE } from '../core/music-engine.js';
 import { KITS, SOUND_WORDS, TIERS, graph, setTier, currentTier, warmNoise } from '../core/music-kits.js';
 import { MusicAudio } from '../core/music-audio.js';
 import { Player, bodyPoint } from '../features/hushbeat/player.js';
@@ -34,7 +34,8 @@ import { installAudioGlobals, FakeAudioContext, reaches } from './lib/fake-audio
 import { FlashGate } from '../core/effects.js';
 import { PULSE_GAPS } from '../core/environment.js';
 import { NoteBead, BeadPool, BeatGlow, PhraseRibbon, HarmonyArc, BreathHalo, POOL, RIBBON, BEAD, GLOW_MAX, KICK_GAP } from '../core/music-fx.js';
-import { TRAITS, Performer, Scene, Cue, grooveStep } from '../features/hushbeat/performer.js';
+import { TRAITS, Performer, Scene, Cue, grooveStep, musicFilter } from '../features/hushbeat/performer.js';
+import { Personality } from '../core/personality.js';
 import { friendChoices, tierBelow, yourTunes, tuneItem, TIER_BELOW } from '../features/hushbeat/sheet.js';
 import { REACTIONS } from '../../src/mallows/reactions.js';
 import { PRESETS } from '../../src/mallows/expressions.js';
@@ -851,6 +852,19 @@ test('U11 scheduler: time order, look-ahead, stops when empty, drops late events
   assert.deepEqual(dropped, [base + 0.4]);
   assert.ok(fired.some((f) => f[0] === 'ok'), 'an event 0–50 ms late still plays');
   assert.equal(s.dropped, 1);
+  // an event's own tolerance (a replay note, REPLAY_LATE): 200 ms late still plays (with its time), 300 ms drops
+  const b2 = time.now();
+  s.at(b2 + 0.1, (t) => fired.push(['tol', t]), 'replay', () => fired.push(['tol-dropped']), REPLAY_LATE);
+  s.at(b2 + 0.2, () => fired.push(['tol2']), 'replay', () => fired.push(['tol2-dropped']), REPLAY_LATE);
+  time.jump(0.3);   // 200 ms and 100 ms late
+  time.advance(0);
+  assert.deepEqual(fired.filter((f) => String(f[0]).startsWith('tol')).map((f) => f[0]), ['tol', 'tol2']);
+  assert.equal(fired.find((f) => f[0] === 'tol')[1], b2 + 0.1);
+  s.at(time.now() + 0.05, () => fired.push(['tol3']), 'replay', () => fired.push(['tol3-dropped']), REPLAY_LATE);
+  time.jump(0.36);   // 310 ms late
+  time.advance(0);
+  assert.ok(fired.some((f) => f[0] === 'tol3-dropped') && !fired.some((f) => f[0] === 'tol3'));
+  assert.equal(s.dropped, 2);
   // cancel by id, clear, stop
   const id = s.at(20, () => fired.push(['never']));
   s.cancel(id);
@@ -1588,6 +1602,36 @@ test('U16 performer: sings its notes at once, glows with a hum, grooves on beat 
   p.destroy();
   assert.deepEqual(rig.faceOverride, { set: {}, min: {} });
   assert.equal(calls.inflate.at(-1), 0);
+});
+
+test('U16 the personality as an instrument: a run of notes is answered with the groove face, never tickled, grumpy or dizzy; set and cleared by the performer', () => {
+  for (const id of MALLOW_IDS) {
+    const pe = new Personality(id, { seed: 3 });
+    const plain = [], music = [];
+    for (let i = 1; i <= 14; i++) plain.push(pe.respond('tap', { streak: i }));
+    pe.setFilter((out, g, d) => musicFilter(pe.p, out, g, d));
+    for (let i = 1; i <= 14; i++) music.push(pe.respond('tap', { streak: i }));
+    const runTags = plain.slice(pe.p.tickleAt - 1).map((r) => r.tag);
+    assert.ok(runTags.includes('tap-dizzy'), `${id}: unfiltered, a long run gets dizzy`);
+    music.forEach((r, i) => {
+      const streak = i + 1;
+      if (streak < pe.p.tickleAt) { assert.notEqual(r.tag, 'tap-music', `${id}: the first taps keep their own reaction`); return; }
+      assert.equal(r.tag, 'tap-music', `${id} streak ${streak}`);
+      assert.equal(r.react, undefined, `${id}: no reaction burst in a run`);
+      assert.ok(!Object.keys(r.mix).some((k) => ['confused', 'frustrated', 'exhausted', 'bored'].includes(k)), `${id}: ${JSON.stringify(r.mix)}`);
+    });
+    // other gestures pass unchanged
+    const dbl = musicFilter(pe.p, { react: 'doubleTap', tag: 'double-bounce' }, 'doubletap', {});
+    assert.equal(dbl.react, 'doubleTap');
+  }
+  // the performer sets it on its Mallow and clears it (only its own) when it goes
+  const { companion } = fakeStage('noomi');
+  companion.persona = new Personality('noomi');
+  const pf = new Performer({ companion, slot: 0, pool: new BeadPool({ cap: 8 }), tuning: {}, now: () => 1 });
+  assert.equal(typeof companion.persona.filter, 'function');
+  assert.equal(companion.persona.respond('tap', { streak: 20 }).tag, 'tap-music');
+  pf.destroy();
+  assert.equal(companion.persona.filter, null);
 });
 
 test('U16 scene: the realm warms and clears with the music, eases back, ≤ 1 mood send per 500 ms; a long hum transforms it; one ripple a bar; one success per replay through the shared gate', () => {

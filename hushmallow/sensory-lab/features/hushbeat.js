@@ -130,8 +130,9 @@ export function mount(root, ctx, { handoff = null } = {}) {
   const cue = new Cue(64);   // scheduled events wait to be seen until they are heard
 
   // ---------------------------------------------------------- controls --
+  // each cue stays whole on a line; a line may break only after a separator (no-break space before the dot)
   const hint = h('p', { class: 'hint hb-hint' },
-    ...COPY.hint.flatMap(([b, rest], i) => [i ? ' · ' : '', h('b', {}, b), h('span', { class: 'hb-long' }, rest)]));
+    ...COPY.hint.flatMap(([b, rest], i) => [i ? '\u00a0· ' : '', h('span', { class: 'hb-cue' }, h('b', {}, b), h('span', { class: 'hb-long' }, rest))]));
   // the tray's chips act on the target: the lead (solo), or in a duet the Mallow chosen in the
   // target control [Lead | Both | Friend]; with Both every chip plays on both (the friend harmonises)
   const chipTargets = () => (trayTarget === 'both' ? comps.slice() : [comps[trayTarget] || comps[0]]);
@@ -153,6 +154,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
     onclick: () => {
       const show = tray.hidden;
       tray.hidden = !show;
+      s.screen.classList.toggle('hb-tray-on', show);
       buttons.setAttribute('aria-pressed', String(show));
       edges();
     },
@@ -191,9 +193,14 @@ export function mount(root, ctx, { handoff = null } = {}) {
   function target() { const i = stages.indexOf(document.activeElement); return comps[i > 0 ? i : 0]; }
   const slotOf = (c) => Math.max(0, comps.indexOf(c));
 
-  // each stage's place in the screen (the effects layer covers the screen); after every reframe
-  function onLayout() {
+  // each stage's place in the screen (the effects layer covers the screen); after every reframe. The band
+  // between the bars (where the Mallows stand) also frames a stage's keyboard focus ring (styles/hushbeat.css)
+  function onLayout(L) {
     if (gone) return;
+    if (L) {
+      s.screen.style.setProperty('--hb-band-top', `${Math.round(L.topBottom)}px`);
+      s.screen.style.setProperty('--hb-band-bottom', `${Math.max(0, Math.round(L.H - L.bottomTop))}px`);
+    }
     const sr = s.screen.getBoundingClientRect();
     for (let i = 0; i < stages.length; i++) { const r = stages[i].getBoundingClientRect(); offs[i].x = r.left - sr.left; offs[i].y = r.top - sr.top; }
   }
@@ -392,12 +399,14 @@ export function mount(root, ctx, { handoff = null } = {}) {
     for (let i = 0; i < 2; i++) performers[i].listen(activeAt[1 - i] && !activeAt[i] ? across(1 - i, i) : null);
   }
 
-  // the feedback chip names a role the first time it is used; with the sound off, every time (≤ 1 per 1.5 s)
+  // the feedback chip names a role the first time it is used; with the sound off it names every role,
+  // the first uses included, at most once per 1.5 s (the chip is the music's only words: calm, not chatty)
   function say(role) {
     const t = perf(), text = COPY.roles[role];
     if (!text) return;
-    if (said.has(role) && audible()) return;
-    if (said.has(role) && t - saidT < ROLE_GAP_S) return;
+    const loud = audible();
+    if (said.has(role) && loud) return;
+    if ((said.has(role) || !loud) && t - saidT < ROLE_GAP_S) return;
     said.add(role); saidT = t;
     s.feedback.show(text);
   }
@@ -722,7 +731,10 @@ export function mount(root, ctx, { handoff = null } = {}) {
     leaveT = setTimeout(go, Math.min(LEAVE_MS[1], Math.max(LEAVE_MS[0], secs * 1000 + 60)));
   }
 
-  s.stage.focus({ preventScroll: true });   // keyboard gestures and keys work straight away
+  // keys work straight away (they reach the stage from the page too). The stage takes focus when a person
+  // brought us here (a card, a key: the ring then shows only after a key); a link opened directly starts with
+  // the page focused, so no focus ring frames the world before anyone has touched it (Tab reaches the stage first)
+  if (navigator.userActivation?.hasBeenActive !== false) s.stage.focus({ preventScroll: true });
   syncRow();
 
   // ------------------------------------------------------ debug handle --

@@ -23,7 +23,7 @@ import { smoothstep } from './math.js';
 import {
   buildSprites, freeSprites, weatherTints, drawClouds, drawShafts, drawRain, drawBeads, drawRings, drawAffordance, drawFront,
   drawStars, drawConstellations, drawBeam, drawField, drawRibbons, drawFluffs, drawWater, drawGlitter, drawPuddles, drawPool, drawHalo,
-  drawEmbers, drawTrail, drawDew,
+  drawEmbers, drawTrail, drawDew, drawGroundGlow,
 } from './weather-draw.js';
 
 export const DPR_CAP = Object.freeze({ high: 1.5, medium: 1.25, low: 1 });
@@ -207,7 +207,11 @@ export class WeatherLayer {
     if (sims.sun.amount > 0.01) { o.aff = this._aff('sunshine'); drawPool(g, sims.sun, sp, o); }
     if (sims.moon.amount > 0.01) { o.aff = this._aff('moonlight'); drawPool(g, sims.moon, sp, o); }
     o.aff = 0;
-    if (s.halo.a > 0.004) drawHalo(g, s.geo.body, T[s.halo.kind] || T.sun, s.halo.a * fade, o);
+    if (s.halo.a > 0.004) {
+      const b = s.geo.body, ember = s.halo.kind === 'ember';
+      drawHalo(g, b, T[s.halo.kind] || T.sun, s.halo.a * fade, o, ember ? 1.25 : 0.85);   // the hearth glows wider…
+      if (ember) drawGroundGlow(g, b.cx, b.bottom - 4, b.w * 1.15, T.ember, s.halo.a * fade * 0.9, o);   // …and lights the ground at its feet
+    }
     // embers and the warm ribbon a drag lays
     if (sims.embers.amount > 0.001) {
       o.aff = this._aff('warm');

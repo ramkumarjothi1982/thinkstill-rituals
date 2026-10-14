@@ -60,9 +60,11 @@ function blob(c, R, dpr, stops) {
 }
 
 const BODY = [[0, 1], [0.55, 0.94], [0.8, 0.5], [1, 0]];
+// thunderheads are big (a puff can span half a phone): a firmer edge keeps them painted cumulus, not smoke
+const BODY_FIRM = [[0, 1], [0.64, 0.97], [0.83, 0.8], [0.94, 0.3], [1, 0]];
 const STORM = [hexRGB('#25203e'), hexRGB('#373159'), hexRGB('#4c4672')];   // back → front band
 const DECK = hexRGB('#5d6684');
-const WHITE = [255, 255, 255];
+const WHITE = [255, 255, 255], LAVENDER = [206, 198, 255];
 
 /**
  * Sprites for one realm. palette: the realm's palette {sky, deep, glow, warm?};
@@ -73,22 +75,25 @@ export function buildSprites({ palette = {}, tone = 'dark', dpr = 1 } = {}) {
   const glow = hexRGB(palette.glow || '#ffffff'), warm = hexRGB(palette.warm || '#ffc98a');
   const light = tone === 'light';
   const rimCool = mixRGB(glow, WHITE, 0.35), rimWarm = mixRGB(warm, hexRGB('#ffe7b0'), 0.45);
+  // a thunderhead's rim is a cool silver-lavender whatever the realm (a gold festival glow mixed into
+  // violet-grey read as a dirty tan rim); it turns gold only as the storm clears (litWarm)
+  const rimStorm = mixRGB(mixRGB(glow, LAVENDER, 0.65), WHITE, 0.25);
   // each tone: the body, a darker underside and two lit tops (cool, and gold as a storm clears)
-  const tones = (body, coolK, warmK) => ({
-    body: blob(body, PUFF_R, dpr, BODY),
-    shade: blob(scale(body, light ? 0.72 : 0.6), PUFF_R, dpr, BODY),
-    lit: blob(mixRGB(body, rimCool, coolK), PUFF_R, dpr, BODY),
-    litWarm: blob(mixRGB(body, rimWarm, warmK), PUFF_R, dpr, BODY),
+  const tones = (body, coolK, warmK, rim, stops) => ({
+    body: blob(body, PUFF_R, dpr, stops),
+    shade: blob(scale(body, light ? 0.72 : 0.6), PUFF_R, dpr, stops),
+    lit: blob(mixRGB(body, rim, coolK), PUFF_R, dpr, stops),
+    litWarm: blob(mixRGB(body, rimWarm, warmK), PUFF_R, dpr, stops),
   });
-  const thunder = STORM.map((base, b) => tones(mixRGB(light ? sky : deep, base, light ? 0.8 : 0.72 - 0.04 * b), 0.22 + 0.06 * b, 0.42));
-  const deck = tones(mixRGB(sky, DECK, light ? 0.55 : 0.66), 0.3, 0.4);
+  const thunder = STORM.map((base, b) => tones(mixRGB(light ? sky : deep, base, light ? 0.8 : 0.8 - 0.04 * b), 0.24 + 0.06 * b, 0.42, rimStorm, BODY_FIRM));
+  const deck = tones(mixRGB(sky, DECK, light ? 0.55 : 0.66), 0.3, 0.4, rimCool, BODY);
   return {
     dpr, tone, light,
     thunder, deck,
     bead: beadSprite(dpr, light),
     shaft: shaftSprite(mixRGB(warm, hexRGB('#fff2cc'), 0.35), dpr),
     glowHex: hex(glow), warmHex: hex(rimWarm),
-    rain: light ? [36, 64, 104] : [214, 230, 255],
+    rain: light ? [78, 98, 136] : [214, 230, 255],   // over a bright sky a soft slate, never ink
     ring: light ? 'rgba(42,29,61,0.9)' : 'rgba(255,255,255,0.95)',
     tint: weatherTints(palette, tone, null),
   };
@@ -293,8 +298,8 @@ export function drawRain(g, rain, sp, z0, z1, o) {
     g.lineTo(x[i], y[i]);
     n++;
   }
-  g.strokeStyle = css(sp.rain, o.alpha * (0.22 + 0.42 * zm));
-  g.lineWidth = 0.8 + 1.1 * zm;
+  g.strokeStyle = css(sp.rain, o.alpha * (sp.light ? 0.14 + 0.26 * zm : 0.22 + 0.42 * zm));
+  g.lineWidth = sp.light ? 0.7 + 0.8 * zm : 0.8 + 1.1 * zm;
   g.lineCap = 'round';
   g.stroke();
   return n;
@@ -603,6 +608,17 @@ export function drawHalo(g, b, hexC, a, o, k = 0.85) {
   g.globalAlpha = 1;
 }
 
+/** Warm light pooled on the ground at the Mallow's feet (the hearth): a flattened glow, w wide. */
+export function drawGroundGlow(g, x, y, w, hexC, a, o) {
+  if (a <= 0.004) return;
+  const R = 64, s = glowSprite(hexC, R, o.go);
+  g.globalCompositeOperation = o.blend;
+  g.globalAlpha = clamp(a, 0, 1);
+  g.save(); g.translate(x, y); g.scale(1, 0.3); g.drawImage(s, -w, -w, 2 * w, 2 * w); g.restore();
+  g.globalCompositeOperation = 'source-over';
+  g.globalAlpha = 1;
+}
+
 /** The light's glitter path on water: short dashes from the horizon down to the pool, shimmering with the waves. */
 export function drawGlitter(g, pool, y0, waves, sp, o) {
   if (!pool || pool.amount <= 0.05 || !pool.onWater || o.alpha <= 0.004) return;
@@ -632,8 +648,9 @@ export function drawField(g, grid, tiny, rgb, k, o) {
   const { cols, rows, v, x0, y0, cw, ch } = grid, d = tiny.img.data, b = o.body, s = 255 * k * o.alpha;
   const top = o.top ?? -1e9, fade = o.fade || 0, arc = b ? o.arc || 0 : 0, R = b ? b.h * 0.95 : 0;
   for (let j = 0, p = 0; j < rows; j++) {
-    // feathered top and bottom rows: the field never ends in a hard line (under the top bar, at the floor)
-    const edge = j === rows - 1 ? 0.25 : j === rows - 2 ? 0.7 : j === 0 ? 0.5 : 1;
+    // feathered bottom rows (the field never ends in a hard line at the floor); the top row carries on up
+    // under the top bar (below), so the sky never shows a seam where the field begins
+    const edge = j === rows - 1 ? 0.25 : j === rows - 2 ? 0.7 : 1;
     const y = y0 + (j + 0.5) * ch, rise = smoothstep(top - 30, top + 30, y) * edge;
     for (let i = 0; i < cols; i++, p += 4) {
       const x = x0 + (i + 0.5) * cw;
@@ -650,6 +667,8 @@ export function drawField(g, grid, tiny, rgb, k, o) {
   g.imageSmoothingEnabled = true;
   g.globalAlpha = 1;
   g.drawImage(tiny.c, x0, y0, cols * cw, rows * ch);
+  // the top row stretched up to the screen's top edge (the grid's own first half-row holds the same values)
+  if (y0 > 0.5) g.drawImage(tiny.c, 0, 0, cols, 1, x0, 0, cols * cw, y0);
 }
 
 /** Dew glints for 3 s after the fog lifts (t: seconds since). */
@@ -680,9 +699,10 @@ export function drawRibbons(g, rib, sp, o) {
   if (o.aff > 0.01) { let bd = Infinity; for (let i = 0; i < rib.n; i++) { const d = Math.abs(rib.px[i * rib.capS] - o.W / 2); if (d < bd) { bd = d; affI = i; } } }
   const lift = 12 * breathe(o, o.aff);
   g.strokeStyle = sp.tint.ribbonCss; g.lineCap = 'round'; g.lineJoin = 'round';
-  for (let pass = 0; pass < 2; pass++) {
-    g.lineWidth = pass ? 1.6 : 6;
-    g.globalAlpha = a * (pass ? 0.62 : 0.13);
+  // silk, not thread: a wide soft sheen, the ribbon's body, then a fine light edge
+  for (let pass = 0; pass < 3; pass++) {
+    g.lineWidth = RIB_W[pass];
+    g.globalAlpha = a * RIB_A[pass];
     g.beginPath();
     for (let i = 0; i < rib.n; i++) {
       const b0 = i * rib.capS, up = i === affI ? lift : 0;
@@ -699,6 +719,7 @@ export function drawRibbons(g, rib, sp, o) {
   return rib.n;
 }
 
+const RIB_W = [13, 5, 1.3], RIB_A = [0.06, 0.15, 0.46];
 // a ribbon point's y; `up` lifts the last few points (the idle affordance)
 const ribY = (rib, b0, k, m, up) => rib.py[b0 + k] - (up && k > m - 5 ? (up * (k - (m - 5))) / 4 : 0);
 
@@ -803,7 +824,7 @@ const EMB_SHOW = new Float32Array(32), EMB_Y = new Float32Array(32);
 export function drawEmbers(g, emb, sp, o) {
   if (!emb || emb.amount <= 0.001 || o.alpha <= 0.004) return 0;
   const T = sp.tint, b = o.body, entering = emb.target >= emb.amount, k = smoothstep(0, 1, emb.amount), reach = (o.W + o.H) * 0.6;
-  const small = glowSprite(T.ember, 8, o.go), big = glowSprite(T.ember, 18, o.go), n = Math.min(emb.n, 32);
+  const small = glowSprite(T.ember, 11, o.go), big = glowSprite(T.ember, 18, o.go), n = Math.min(emb.n, 32);
   let drawn = 0, aff = -1, ad = Infinity;
   for (let i = 0; i < n; i++) {
     let y = emb.y[i], show;
@@ -818,7 +839,7 @@ export function drawEmbers(g, emb, sp, o) {
     const a = EMB_SHOW[i], lit = emb.lit[i];
     if (a <= 0.01) continue;
     if (lit > 0.01) { const R = 10 + 8 * lit; g.globalAlpha = a * (0.3 + 0.5 * lit); g.drawImage(big, emb.x[i] - R, EMB_Y[i] - R, 2 * R, 2 * R); }
-    else { g.globalAlpha = a * 0.34; g.drawImage(small, emb.x[i] - 8, EMB_Y[i] - 8, 16, 16); }
+    else { g.globalAlpha = a * 0.42; g.drawImage(small, emb.x[i] - 11, EMB_Y[i] - 11, 22, 22); }
     drawn++;
   }
   if (o.aff > 0.01 && aff >= 0) { g.globalAlpha = EMB_SHOW[aff] * 0.5 * breathe(o, o.aff); g.drawImage(big, emb.x[aff] - 18, EMB_Y[aff] - 18, 36, 36); }
@@ -827,7 +848,7 @@ export function drawEmbers(g, emb, sp, o) {
   for (let i = 0; i < n; i++) {
     const a = EMB_SHOW[i], lit = emb.lit[i];
     if (a <= 0.01) continue;
-    const c = 1.6 + 1.8 * lit;
+    const c = 2 + 1.6 * lit;
     g.globalAlpha = a * (0.55 + 0.45 * lit);
     g.fillRect(emb.x[i] - c / 2, EMB_Y[i] - c / 2, c, c);
   }

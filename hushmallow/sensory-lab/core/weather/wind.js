@@ -206,7 +206,7 @@ export class Ribbons extends SimBase {
     for (let i = 0; i < this.n; i++) {
       this.hx[i] = this.W * (i + 0.5) / this.n + (rand() - 0.5) * this.W * 0.08;
       this.hy[i] = this.skyTop + (this.horizonY - this.skyTop) * (0.18 + 0.64 * rand());
-      this.len[i] = clamp(this.W * 0.024, 6, 13);
+      this.len[i] = clamp(this.W * 0.04, 9, 22);   // long enough to read as silk currents (~150 px on a phone, low tier)
       this.ph[i] = rand() * TAU;
       this._lay(i);
     }
@@ -241,7 +241,7 @@ export class Ribbons extends SimBase {
       for (let j = 1; j < this.segs; j++) {
         const k = b + j;
         if (field) field.sample(this.px[k], this.py[k], s); else s.vx = s.vy = 0;
-        const flutter = reduced ? 0 : Math.sin(this.t * 3.1 + j * 0.7 + this.ph[i]) * 18 * (j / this.segs);
+        const flutter = reduced ? 0 : Math.sin(this.t * 2.2 + j * 0.55 + this.ph[i]) * 11 * (j / this.segs);   // a slow silk ripple, not a curl
         this.vx[k] += (s.vx * 0.9 * sp - this.vx[k]) * relax;
         this.vy[k] += (s.vy * 0.9 * sp + flutter - this.vy[k]) * relax + 4 * dt;
         this.qx[k] = this.px[k]; this.qy[k] = this.py[k];

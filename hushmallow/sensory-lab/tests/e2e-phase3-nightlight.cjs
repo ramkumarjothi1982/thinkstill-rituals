@@ -23,7 +23,7 @@
 //              a high-tier context, back to a still on leaving Drift, none with Movement Less
 //   exit       Escape and Close: the goodnight, home, nothing left behind, record cleared, trim 1;
 //              three visits leak no listeners, timers, rAF, prefs or Comfort DNA listeners, canvases or sprites
-//   layout     phone, 320 × 568 and 568 × 320: no overlap, on screen, targets ≥ 40 px, the Mallow in its band
+//   (layout    slice 2's three viewports; now E23 at all seven, below)
 //
 // Slice 3:
 //   sound      E2: no AudioContext and no bed before a gesture; after a real click the bed builds (≤ 0.035,
@@ -42,6 +42,26 @@
 //   wake       E21: no wake lock by default; opted in: requested, let go when hidden, asked again on return,
 //              let go at the end and on exit; unsupported and refused are handled quietly
 //   press      E4 (part): an off-body still press leads the breath without the Companion seeing a hold
+//
+// Slice 4:
+//   sheet      the settings sheet: every row and its value, the live preview (input moves the scene, release
+//              stores it), E8 brightness 100 → 5 (luminance, the Mallow's floor, the ratio), E9 Light Moon → Ember
+//              (b/r, a repaint only on release), E10 Speed (rig speed, breath period × k), E11 Volume (trim),
+//              Sound is off + Turn on, Timer / No timer, Fade Off, Movement Still, Keep screen on refused →
+//              Off, stored on release; the chrome stays awake; focus is trapped, Escape closes the sheet first
+//              and focus returns; Fade out now; Close Nightlight
+//   motion     E14: the lab asks for less motion: Gentle disabled (arrows skip it), effective Less, reduced rig
+//   access     E24 chrome sleep (faded, Close at 0.35, taps fall through, a tap or Tab wakes, nothing hidden
+//              from assistive tech). E25 keyboard: Tab order, keys 1–5, arrows in the mode group, ↑/↓, only the
+//              listed announcements. E15: Close works while the chrome sleeps, home within about a second
+//   theme      E26: in the light theme the screen, the sheet and the end card keep the night tokens, the dim
+//              chip colour and no blur; text on chrome ≥ 4.5:1
+//   scroll     E27: drags and swipes never scroll the page; a pinch never zooms
+//   privacy    E22: no service worker, no notification, no request after the screen is up, no setInterval
+//              from Nightlight files, no voices while hidden
+//   isolation  E29: TouchTalk afterwards is untouched (trim, rest, grade, filter, cap, peek, keys, Comfort DNA)
+//   layout     E23 (replaces slice 2's three viewports): all seven viewports, steady, asleep (Close visible),
+//              the sheet (scrolls, Done reachable, the Mallow beside a side panel), fading and the end view
 
 const path = require('path');
 const H = require('./lib/harness.cjs');
@@ -90,6 +110,24 @@ async function until(page, fn, pred, ms = 8000, every = 120) {
   let v;
   for (;;) { v = await page.evaluate(fn); if (pred(v) || Date.now() - t0 > ms) return v; await sleep(every); }
 }
+/** Open the settings sheet with the sliders button (waking the chrome first, as a person's touch would). */
+async function openSheet(page) {
+  await wakeUi(page);
+  await page.click('.nightlight .nl-settings');
+  await page.waitForFunction(() => document.querySelector('.nightlight .sheet.on') && __lab.nightlight.sheet, null, { timeout: 10000 });
+  await sleep(350);   // the slide (or fade) in
+}
+/** Move a sheet slider: `input` only (a slide in progress), or `input` then `change` (released). */
+function slide(page, sel, value, commit = true) {
+  return page.evaluate(([sel, value, commit]) => {
+    const el = document.querySelector(sel);
+    el.value = String(value);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    if (commit) el.dispatchEvent(new Event('change', { bubbles: true }));
+  }, [sel, value, commit]);
+}
+/** Click the choice with this text in a sheet row. */
+const pick = (page, row, text) => page.click(`.nightlight .sheet .nl-row-${row} button:text-is("${text}")`);
 
 async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || H.only(`${SCOPE}:${b}`) } = {}) {
   // ------------------------------------------------------------------- E1 --
@@ -404,26 +442,6 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'no live Nightlight timers, no extra rAF', !now.mine.length && now.timers <= base.timers && !rafExtra.length, JSON.stringify({ mine: now.mine, timers: [base.timers, now.timers], rafExtra }));
     check(scope, 'prefs and Comfort DNA listeners back to baseline; one canvas; no cached sprites left', now.prefsL === base.prefsL && now.dnaL === base.dnaL && now.canvases === 1 && now.sprites === 0, JSON.stringify({ base, now }));
     noErrors(scope, errors);
-  });
-
-  // --------------------------------------------------------------- layout --
-  if (only('layout')) await guard(`${SCOPE}:layout`, async (scope) => {
-    for (const vp of ['phone', 'small', 'land-small']) {
-      const r = await openNl(browser, vp, 'loomi');
-      const sc = `${scope}:${vp}`;
-      try {
-        await sleep(800);
-        await H.layout(r.page, sc, { scrollers: ['.nl-modes'] });
-        const d = await nl(r.page, () => {
-          const row = document.querySelector('.nl-modes'), r0 = row.getBoundingClientRect(), on = row.querySelector('[aria-checked="true"]').getBoundingClientRect();
-          return { inView: on.left >= r0.left - 1 && on.right <= r0.right + 1, scrolls: row.scrollWidth > row.clientWidth, sub: document.querySelector('.nightlight .topbar .title small').textContent, status: getComputedStyle(document.querySelector('.nl-status')).display };
-        });
-        check(sc, 'the chosen mode is in view in the mode row', d.inView, JSON.stringify(d));
-        if (vp === 'land-small') check(sc, 'landscape: the time moves into the subtitle', /· (until|no timer)/.test(d.sub), d.sub);
-        await H.shot(r.page, out, `nightlight-${vp}-steady`);
-        noErrors(sc, r.errors);
-      } finally { await r.ctx.close(); }
-    }
   });
 
   // ================================================================ slice 3 --
@@ -756,6 +774,497 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await page.keyboard.up('b');
     check(scope, 'E4: B held leads the breath too', kb === true, `${kb}`);
     noErrors(scope, errors);
+  });
+
+  // ================================================================ slice 4 --
+  // ---------------------------------------------------------------- sheet --
+  if (only('sheet')) await guard(`${SCOPE}:sheet`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'noomi', { initScripts: [wakeStub] });
+    own(ctx);
+    await openSheet(page);
+    const a = await nl(page, () => {
+      const sh = document.querySelector('.nightlight .sheet'), q = (x) => sh.querySelector(x);
+      const checked = (row) => q(`.nl-row-${row} [aria-checked="true"]`)?.textContent ?? null;
+      const cs = getComputedStyle(sh);
+      return {
+        open: !!__lab.nightlight.sheet, dbg: __lab.nightlight.debug().sheet, label: sh.getAttribute('aria-label'), modal: sh.getAttribute('aria-modal'),
+        inScreen: !!sh.closest('.screen.nightlight'), focusIn: sh.contains(document.activeElement),
+        bright: [q('.nl-row-brightness input').value, q('.nl-row-brightness input').getAttribute('aria-valuetext'), q('.nl-row-brightness .nl-val').textContent],
+        light: [q('.nl-row-light input').value, q('.nl-row-light input').getAttribute('aria-valuetext'), q('.nl-row-light .nl-val').textContent],
+        volume: [q('.nl-row-volume input').value, q('.nl-row-volume input').getAttribute('aria-valuetext')],
+        speed: checked('speed'), timer: checked('timer'), fade: checked('fade'), motion: checked('motion'), wake: checked('wake'),
+        timerSub: q('.nl-row-timer .sub').textContent, fadeSub: q('.nl-row-fade .sub').textContent, wakeSub: q('.nl-row-wake .sub').textContent,
+        foot: [...sh.querySelectorAll('.nl-foot')].map((x) => x.textContent), fadeNow: !q('.nl-fade-now').hidden, exit: q('.nl-exit')?.textContent,
+        scrim: getComputedStyle(document.querySelector('.nightlight .sheet-scrim')).backgroundColor, bg: cs.backgroundColor, blur: cs.backdropFilter,
+        endsAt: __lab.nightlight.clock.endsAt,
+      };
+    });
+    check(scope, 'the sliders button opens the Nightlight sheet inside the screen, focus inside it', a.open && a.dbg && a.label === 'Nightlight' && a.modal === 'true' && a.inScreen && a.focusIn, JSON.stringify(a));
+    const endTxt = await nl(page, (t) => new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(t), a.endsAt);
+    check(scope, 'every row shows the settings: 40 %, Warm, Slow, 50 %, 30 (Ends at …), On, Gentle, Off',
+      a.bright.join() === '40,40 %,40 %' && a.light.join() === '2,Warm,Warm' && a.volume.join() === '50,50 %' && a.speed === 'Slow' && a.timer === '30'
+      && a.timerSub === `Ends at ${endTxt}` && a.fade === 'On' && /last 8 minutes$/.test(a.fadeSub) && a.motion === 'Gentle' && a.wake === 'Off' && /hour at most/.test(a.wakeSub), JSON.stringify(a));
+    check(scope, 'the footnotes (night sounds and Touch sounds; not a treatment) and the two finishing buttons',
+      a.foot.length === 2 && /not Touch sounds/.test(a.foot[0]) && /isn't a treatment/.test(a.foot[1]) && a.fadeNow && a.exit === 'Close Nightlight', JSON.stringify(a.foot));
+    check(scope, 'opaque, no blur, over a clear scrim (the scene behind is the live preview)', a.scrim === 'rgba(0, 0, 0, 0)' && /^rgb\(/.test(a.bg) && a.blur === 'none', JSON.stringify({ scrim: a.scrim, bg: a.bg, blur: a.blur }));
+
+    // live preview: a slide moves the scene at once, the setting is stored on release
+    await slide(page, '.nightlight .sheet .nl-row-brightness input', 70, false);
+    const mid = await nl(page, () => ({ s: __lab.nightlight.settings.brightness, stored: __lab.prefs.get('nightlight')?.brightness ?? null, out: document.querySelector('.nl-row-brightness .nl-val').textContent }));
+    await slide(page, '.nightlight .sheet .nl-row-brightness input', 100, true);
+    const rel = await nl(page, () => __lab.prefs.get('nightlight')?.brightness ?? null);
+    check(scope, 'live preview: a slide changes the light at once (shown "70 %"); release stores it', mid.s === 0.7 && mid.stored !== 0.7 && mid.out === '70 %' && rel === 1, JSON.stringify({ mid, rel }));
+
+    // E8: brightness 100 → 5 (the world falls ≥ 60 %; the Mallow keeps its floor and stays ≥ 2.5× its world)
+    const hi = await until(page, () => ({ wb: __lab.nightlight.look.worldB, lum: __lab.nightlight.world.sample()?.lum }), (v) => v.wb > 0.97, 20000);
+    await sleep(600);
+    const hiLum = await nl(page, () => __lab.nightlight.world.sample()?.lum);
+    await slide(page, '.nightlight .sheet .nl-row-brightness input', 5, true);
+    const lo = await until(page, () => ({ wb: __lab.nightlight.look.worldB, mb: __lab.nightlight.look.mallowB, state: __lab.nightlight.state }), (v) => v.wb < 0.125, 20000);
+    await sleep(600);
+    const loLum = await nl(page, () => __lab.nightlight.world.sample()?.lum);
+    check(scope, 'E8: brightness 100 → 5: the world luminance falls ≥ 60 %', hi.wb > 0.97 && hiLum > 0 && loLum <= hiLum * 0.4, JSON.stringify({ hiLum, loLum, hi, lo }));
+    check(scope, "E8: the Mallow's floor (mallowB ≥ 0.45) and ≥ 2.5× its world while steady", lo.mb >= 0.45 && lo.mb / lo.wb >= 2.5 && ['steady', 'arriving'].includes(lo.state), JSON.stringify(lo));
+    await slide(page, '.nightlight .sheet .nl-row-brightness input', 40, true);
+
+    // E9: Light Moon → Ember: blue falls in the still; the Mallow shifts less (its blue ≥ 0.7); a repaint only on release
+    await slide(page, '.nightlight .sheet .nl-row-light input', 0, true);
+    await until(page, () => __lab.nightlight.look.warmth, (w) => Math.abs(w - 0.2) < 0.01, 20000);
+    await sleep(2200);   // the repaint's 1.5 s cross-fade
+    const moon = await nl(page, () => ({ s: __lab.nightlight.world.sample(), d: __lab.nightlight.world.debug() }));
+    await slide(page, '.nightlight .sheet .nl-row-light input', 3, false);   // a slide in progress: only the grade follows
+    await until(page, () => __lab.nightlight.look.warmth, (w) => Math.abs(w - 0.575) < 0.01, 20000);
+    await sleep(800);
+    const sliding = await nl(page, () => ({ d: __lab.nightlight.world.debug(), out: document.querySelector('.nl-row-light .nl-val').textContent, vt: document.querySelector('.nl-row-light input').getAttribute('aria-valuetext') }));
+    await slide(page, '.nightlight .sheet .nl-row-light input', 4, true);
+    await until(page, () => __lab.nightlight.look.warmth, (w) => Math.abs(w - 0.7) < 0.01, 20000);
+    await sleep(2200);
+    const ember = await nl(page, () => ({ s: __lab.nightlight.world.sample(), d: __lab.nightlight.world.debug(), mg: [...__lab.nightlight.look.mallowGain], g: [...__lab.companion.rig.grade] }));
+    check(scope, 'E9: Light Moon → Ember: the still’s b/r falls ≥ 30 %', moon.s && ember.s && ember.s.br <= moon.s.br * 0.7, JSON.stringify({ moon: moon.s, ember: ember.s }));
+    check(scope, "E9: the Mallow's blue stays ≥ 0.7 (it shifts less than its world)", ember.mg[2] >= 0.7 && ember.g[2] / ember.g[0] >= 0.7, JSON.stringify({ mg: ember.mg, g: ember.g }));
+    check(scope, 'E9: during a slide only the grade re-bakes (no repaint, "Candle" shown); release repaints',
+      sliding.d.paints === moon.d.paints && sliding.d.bakes > moon.d.bakes && sliding.out === 'Candle' && sliding.vt === 'Candle' && ember.d.paints > sliding.d.paints, JSON.stringify({ moon: moon.d, sliding, ember: ember.d }));
+    await slide(page, '.nightlight .sheet .nl-row-light input', 2, true);
+
+    // E10: Speed: the rig's speed, and the breath period scales by k
+    await nl(page, () => __lab.nightlight.setMode('breathe'));
+    const speeds = {};
+    for (const [name, rigK, k] of [['Slowest', 0.62, 1.25], ['Natural', 0.9, 1], ['Slow', 0.75, 1.1]]) {
+      await pick(page, 'speed', name);
+      const v = await until(page, () => { const b = __lab.nightlight.breath; return { rig: __lab.companion.rig.speed, k: b?.speedK, scale: b ? (b.period - b.holdIn - b.holdOut) / ((b.inhale + b.exhale) * b.slow) : null, set: __lab.nightlight.settings.speed }; }, (x) => Math.abs(x.k - k) < 1e-6, 8000);
+      speeds[name] = v;
+      check(scope, `E10: Speed ${name}: rig speed ${rigK}, breath period × ${k}`, Math.abs(v.rig - rigK) < 1e-6 && Math.abs(v.scale - k) < 1e-6, JSON.stringify(v));
+    }
+
+    // E11: Volume is the session trim
+    await slide(page, '.nightlight .sheet .nl-row-volume input', 20, true);
+    const vol = await nl(page, () => ({ trim: __lab.sound.debug().trim, s: __lab.nightlight.settings.volume, vt: document.querySelector('.nl-row-volume input').getAttribute('aria-valuetext') }));
+    check(scope, 'E11: the Volume slider sets the trim (20 %)', Math.abs(vol.trim - 0.2) < 1e-6 && vol.s === 0.2 && vol.vt === '20 %', JSON.stringify(vol));
+    // muted: "Sound is off" with Turn on (and the top bar's Mute button follows)
+    await nl(page, () => __lab.prefs.set('sound', false));
+    await sleep(150);
+    const mu = await nl(page, () => { const r = document.querySelector('.nl-row-volume'); return { slider: !r.querySelector('input').hidden, muted: !r.querySelector('.nl-muted').hidden, txt: r.querySelector('.nl-muted-txt').textContent, mute: document.querySelector('.nightlight .topbar button[aria-label="Mute sound"]').getAttribute('aria-pressed') }; });
+    await page.focus('.nightlight .sheet .nl-turn-on');
+    await page.click('.nightlight .sheet .nl-turn-on');
+    await sleep(200);
+    const on = await nl(page, () => { const r = document.querySelector('.nl-row-volume'); return { sound: __lab.prefs.get('sound'), slider: !r.querySelector('input').hidden, focus: document.activeElement === r.querySelector('input'), mute: document.querySelector('.nightlight .topbar button[aria-label="Mute sound"]').getAttribute('aria-pressed') }; });
+    check(scope, 'muted: "Sound is off" and Turn on in place of the slider; Turn on brings it back (focus moves to the slider)',
+      !mu.slider && mu.muted && mu.txt === 'Sound is off' && mu.mute === 'true' && on.sound === true && on.slider && on.focus && on.mute === 'false', JSON.stringify({ mu, on }));
+    await slide(page, '.nightlight .sheet .nl-row-volume input', 50, true);
+
+    // Timer: 10 → the new end in the row and the status; None → "Runs until you close it", the fade needs a timer
+    const t0 = await nl(page, () => Date.now() + (__lab.nightlight.debug().skew || 0));
+    await pick(page, 'timer', '10');
+    const t10 = await nl(page, () => ({ endsAt: __lab.nightlight.clock.endsAt, sub: document.querySelector('.nl-row-timer .sub').textContent, st: document.querySelector('.nl-st-full').textContent, fadeSub: document.querySelector('.nl-row-fade .sub').textContent }));
+    const t10Txt = await nl(page, (t) => new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(t), t10.endsAt);
+    check(scope, 'Timer 10: restarts from now (ends in 10 min), "Ends at …" in the row and "Until …" in the status; a 3-minute fade',
+      Math.abs(t10.endsAt - (t0 + 600000)) < 5000 && t10.sub === `Ends at ${t10Txt}` && t10.st === `Until ${t10Txt}` && /last 3 minutes$/.test(t10.fadeSub), JSON.stringify(t10));
+    await pick(page, 'timer', 'None');
+    const tn = await nl(page, () => ({ endsAt: __lab.nightlight.clock.endsAt, sub: document.querySelector('.nl-row-timer .sub').textContent, st: document.querySelector('.nl-st-full').textContent,
+      fadeOff: [...document.querySelectorAll('.nl-row-fade button')].every((b) => b.disabled), fadeSub: document.querySelector('.nl-row-fade .sub').textContent }));
+    check(scope, 'Timer None: no end, "Runs until you close it", "No timer"; Fade out disabled ("Needs a timer")',
+      tn.endsAt === null && tn.sub === 'Runs until you close it' && tn.st === 'No timer' && tn.fadeOff && tn.fadeSub === 'Needs a timer', JSON.stringify(tn));
+    await pick(page, 'timer', '30');
+    await pick(page, 'fade', 'Off');
+    const fo = await nl(page, () => ({ ms: __lab.nightlight.clock.fadeMs, sub: document.querySelector('.nl-row-fade .sub').textContent, fade: __lab.nightlight.settings.fade }));
+    check(scope, 'Fade out Off: a 10 s settle at the end, and the row says so', fo.ms === 10000 && fo.fade === false && /last few seconds/.test(fo.sub), JSON.stringify(fo));
+    await pick(page, 'fade', 'On');
+
+    // Movement Still: effective at once (calm transitions, a static sky)
+    await pick(page, 'motion', 'Still');
+    await sleep(400);
+    const still = await nl(page, () => ({ motion: __lab.nightlight.motion, calm: document.querySelector('.screen.nightlight').classList.contains('nl-calm'), reduced: __lab.companion.rig.opts.reducedMotion, anim: __lab.nightlight.sky.debug().motion }));
+    check(scope, 'Movement Still: applied live (calm transitions, the rig reduced, a still sky)', still.motion === 'still' && still.calm && still.reduced && still.anim === 'still', JSON.stringify(still));
+    await pick(page, 'motion', 'Gentle');
+
+    // Keep screen on: On asks for a lock; refused → back to Off with "Not available right now"
+    await pick(page, 'wake', 'On');
+    const wk = await until(page, () => ({ w: { ...window.__wake }, d: __lab.nightlight.debug().wake }), (v) => v.d.held, 4000, 60);
+    await pick(page, 'wake', 'Off');
+    await nl(page, (refuse) => { window.__wake = { requests: 0, releases: 0, held: 0 }; Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: () => { window.__wake.requests++; return refuse ? Promise.reject(new DOMException('Not allowed', 'NotAllowedError')) : Promise.resolve(null); } } }); }, true);
+    await pick(page, 'wake', 'On');
+    const wf = await until(page, () => ({ checked: document.querySelector('.nl-row-wake [aria-checked="true"]').textContent, sub: document.querySelector('.nl-row-wake .sub').textContent, s: __lab.nightlight.settings.keepAwake, req: window.__wake.requests }), (v) => v.checked === 'Off', 4000, 60);
+    check(scope, 'Keep screen on: On holds a lock; a refusal switches it back to Off with "Not available right now" (asked once)',
+      wk.d.held && wf.checked === 'Off' && wf.sub === 'Not available right now' && wf.s === false && wf.req === 1, JSON.stringify({ wk, wf }));
+
+    // stored: what the person changed, on release (only those fields)
+    const stored = await nl(page, () => __lab.prefs.get('nightlight'));
+    check(scope, 'stored in the one nightlight pref, field by field', stored.brightness === 0.4 && stored.temp === 0.5 && stored.speed === 'slow' && stored.volume === 0.5 && stored.minutes === 30 && stored.fade === true && stored.motion === 'gentle' && stored.keepAwake === false, JSON.stringify(stored));
+
+    // the chrome stays awake while the sheet is open (8 s without input would put it to sleep)
+    await sleep(9000);
+    const awake = await nl(page, () => ({ asleep: __lab.nightlight.debug().chromeAsleep, open: !!__lab.nightlight.sheet }));
+    check(scope, 'the chrome stays awake while the sheet is open (9 s without input)', awake.open && !awake.asleep, JSON.stringify(awake));
+
+    // focus is trapped; Escape closes the sheet first (the session goes on) and focus returns to the sliders button
+    await page.focus('.nightlight .sheet .done');
+    await page.keyboard.press('Tab');
+    const wrapF = await nl(page, () => document.activeElement?.closest('.nl-row')?.className || document.activeElement?.className);
+    await page.keyboard.press('Shift+Tab');
+    const wrapB = await nl(page, () => document.activeElement?.className);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !__lab.nightlight.sheet, null, { timeout: 5000 });
+    await sleep(400);
+    const esc = await nl(page, () => ({ view: __lab.nightlight.view, state: __lab.nightlight.state, route: __lab.route, focus: document.activeElement?.getAttribute('aria-label'), sheets: document.querySelectorAll('.nightlight .sheet').length }));
+    check(scope, 'focus is trapped in the sheet (Tab from Done wraps to the first control, Shift+Tab back to Done)', /nl-row-brightness/.test(wrapF) && wrapB === 'done', `${wrapF} / ${wrapB}`);
+    check(scope, 'E15: Escape closes the sheet first; the Nightlight goes on and focus returns to the sliders button',
+      esc.view === 'session' && esc.state !== 'leaving' && esc.route === 'nightlight' && esc.focus === 'Nightlight settings' && esc.sheets === 0, JSON.stringify(esc));
+    // Escape with focus outside the sheet (a click on its plain text) still only closes the sheet
+    await openSheet(page);
+    await page.click('.nightlight .sheet .nl-foot');
+    await page.keyboard.press('Escape');
+    await sleep(500);
+    const esc2 = await nl(page, () => ({ sheet: !!__lab.nightlight.sheet, state: __lab.nightlight.state, route: __lab.route }));
+    check(scope, 'Escape with focus on the page (not in a control) closes only the sheet', !esc2.sheet && esc2.state !== 'leaving' && esc2.route === 'nightlight', JSON.stringify(esc2));
+
+    // Fade out now: the sheet closes and the light goes down; the button hides while fading; Close Nightlight leaves
+    await openSheet(page);
+    await page.click('.nightlight .sheet .nl-fade-now');
+    const fading = await until(page, () => ({ state: __lab.nightlight.state, sheet: !!__lab.nightlight.sheet, endsIn: __lab.nightlight.clock.endsAt - __lab.nightlight.clock.now(), sr: __lab.nightlight.debug().sr.slice(-1)[0] }), (v) => v.state === 'fading', 8000, 80);
+    check(scope, 'Fade out now: the sheet closes, the fade starts (ends within 12 s), "Fading out."', fading.state === 'fading' && !fading.sheet && fading.endsIn <= 12000 && fading.sr === 'Fading out.', JSON.stringify(fading));
+    await openSheet(page);
+    const hid = await nl(page, () => document.querySelector('.nightlight .sheet .nl-fade-now').hidden);
+    await page.click('.nightlight .sheet .nl-exit');
+    await page.waitForFunction(() => __lab.route === 'home', null, { timeout: T });
+    const gone = await nl(page, () => ({ nl: __lab.nightlight, rec: sessionStorage.getItem('hm.sensorylab.nightlight.session.v1'), trim: __lab.sound.trim, sheets: document.querySelectorAll('.sheet').length, wake: window.__wake }));
+    check(scope, 'while fading the sheet hides Fade out now; Close Nightlight says goodnight and goes home (record cleared, trim 1)', hid && gone.nl === null && gone.rec === null && gone.trim === 1 && gone.sheets === 0, JSON.stringify({ hid, gone }));
+    noErrors(scope, errors);
+  });
+
+  // ---------------------------------------------------------------- E14 --
+  if (only('motion')) await guard(`${SCOPE}:motion`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'pipzi', { prefs: { motion: 'reduced' } });
+    own(ctx);
+    await openSheet(page);
+    const a = await nl(page, () => {
+      const r = document.querySelector('.nl-row-motion'), b = [...r.querySelectorAll('button')];
+      return { motion: __lab.nightlight.motion, setting: __lab.nightlight.settings.motion, reduced: __lab.companion.rig.opts.reducedMotion, gentle: b[0].disabled,
+        checked: r.querySelector('[aria-checked="true"]').textContent, sub: r.querySelector('.sub').textContent, subShown: !r.querySelector('.sub').hidden, calm: document.querySelector('.screen.nightlight').classList.contains('nl-calm'),
+        sheetTx: getComputedStyle(document.querySelector('.nightlight .sheet')).transform };
+    });
+    check(scope, 'E14: lab Motion Reduced: Gentle disabled ("Your device asks for less motion"), effective Less, the rig reduced',
+      a.motion === 'less' && a.setting === 'gentle' && a.reduced && a.gentle && a.checked === 'Less' && a.sub === 'Your device asks for less motion' && a.subShown && a.calm, JSON.stringify(a));
+    check(scope, 'E14: with less motion the sheet fades in place (no slide)', a.sheetTx === 'none', a.sheetTx);
+    await page.focus('.nl-row-motion [aria-checked="true"]');
+    await page.keyboard.press('ArrowLeft');
+    const l = await nl(page, () => ({ checked: document.querySelector('.nl-row-motion [aria-checked="true"]').textContent, focus: document.activeElement.textContent, motion: __lab.nightlight.motion }));
+    await page.keyboard.press('ArrowRight');
+    const r = await nl(page, () => ({ checked: document.querySelector('.nl-row-motion [aria-checked="true"]').textContent, focus: document.activeElement.textContent }));
+    check(scope, 'E14: arrow keys skip the disabled Gentle (Less ← wraps to Still, → back to Less)', l.checked === 'Still' && l.focus === 'Still' && l.motion === 'still' && r.checked === 'Less' && r.focus === 'Less', JSON.stringify({ l, r }));
+    // the lab setting back to full: Gentle comes back (the person's own choice, Less now, is kept)
+    await nl(page, () => __lab.prefs.set('motion', 'full'));
+    await sleep(200);
+    const b = await nl(page, () => ({ gentle: document.querySelector('.nl-row-motion button').disabled, sub: document.querySelector('.nl-row-motion .sub').hidden, motion: __lab.nightlight.motion }));
+    check(scope, 'E14: the lab back to full motion: Gentle available again, the sub-label gone', !b.gentle && b.sub && b.motion === 'less', JSON.stringify(b));
+    noErrors(scope, errors);
+  });
+
+  // ------------------------------------------------------- E24, E25, E15 --
+  if (only('access')) await guard(`${SCOPE}:access`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'blubi');
+    own(ctx);
+    await nl(page, () => __lab.nightlight.setMode('breathe'));   // a status chip to tab to
+    await sleep(600);
+    // E25: Tab order from the stage: Close → settings → sound → the mode radio → the status chip
+    await page.focus('.nightlight .stage');
+    const order = [];
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press('Tab');
+      order.push(await nl(page, () => { const e = document.activeElement; return e.getAttribute('aria-label') || e.dataset.chip || e.textContent.trim(); }));
+    }
+    check(scope, 'E25: Tab order: Close → Nightlight settings → Mute sound → the chosen mode → the status chip',
+      JSON.stringify(order) === JSON.stringify(['Close', 'Nightlight settings', 'Mute sound', 'Breathing Together', 'breathe']), JSON.stringify(order));
+    // arrows inside the mode group move and choose; keys 1–5 from the stage; ↑ / ↓ brightness
+    await page.focus('.nl-modes [aria-checked="true"]');
+    await page.keyboard.press('ArrowRight');
+    await sleep(200);
+    const arrow = await nl(page, () => ({ mode: __lab.nightlight.mode, focus: document.activeElement.dataset.mode, bright: __lab.nightlight.settings.brightness }));
+    await page.focus('.nightlight .stage');
+    await page.keyboard.press('Digit4'); await sleep(200);
+    const k4 = await nl(page, () => __lab.nightlight.mode);
+    await page.keyboard.press('ArrowDown'); await sleep(200);
+    const down = await nl(page, () => ({ b: __lab.nightlight.settings.brightness, sr: __lab.nightlight.debug().sr.slice(-1)[0] }));
+    await page.keyboard.press('Digit1'); await sleep(200);
+    check(scope, 'E25: arrows in the mode group choose (Breathe → Sleepy, brightness untouched); 4 → Drift; ↓ → 30 % (announced)',
+      arrow.mode === 'sleepy' && arrow.focus === 'sleepy' && arrow.bright === 0.4 && k4 === 'drift' && Math.abs(down.b - 0.3) < 1e-6 && down.sr === 'Brightness 30 %.', JSON.stringify({ arrow, k4, down }));
+    const sr = await nl(page, () => __lab.nightlight.debug().sr);
+    const allowed = /^(Nightlight on with \w+( until .+)?\.|Moonlight\.|Breathing Together\.|Sleepy Companion\.|Ambient Drift\.|Quiet Company\.|Brightness \d+ %\.|Fading out\.|Ten more minutes\.|Nightlight finished\.|Sound paused\. Tap to bring it back\.)$/;
+    check(scope, 'E25: only the listed announcements (never breaths, blinks or captions)', sr.length >= 4 && sr.every((x) => allowed.test(x)), JSON.stringify(sr));
+
+    // E24: chrome sleep: faded (Close at 0.35 and tappable), taps fall through, a tap or Tab wakes, nothing hidden
+    await page.mouse.move(5, 5);
+    await nl(page, () => __lab.nightlight.sleepChrome());
+    await sleep(1500);
+    const z = await nl(page, () => {
+      const top = [...document.querySelectorAll('.nightlight .topbar > *')].map((e) => +getComputedStyle(e).opacity);
+      const bottom = +getComputedStyle(document.querySelector('.nightlight .bottom')).opacity;
+      const close = document.querySelector('.nightlight .topbar button[aria-label="Close"]'), cr = close.getBoundingClientRect();
+      const chip = document.querySelector('.nl-modes [aria-checked="true"]').getBoundingClientRect();
+      const under = document.elementFromPoint(chip.left + chip.width / 2, chip.top + chip.height / 2);
+      const hidden = [...document.querySelectorAll('.nightlight .topbar, .nightlight .topbar *, .nightlight .bottom, .nightlight .bottom *')]
+        .filter((e) => !e.closest('svg') && (e.getAttribute('aria-hidden') === 'true' || e.hasAttribute('inert'))).map((e) => e.className || e.tagName);
+      return { top, bottom, closeOp: +getComputedStyle(close).opacity, closeHit: document.elementFromPoint(cr.left + cr.width / 2, cr.top + cr.height / 2)?.closest('button')?.getAttribute('aria-label'),
+        closeSize: [cr.width, cr.height], under: under?.closest('.stage') ? 'stage' : under?.className || under?.tagName, hidden, pt: [chip.left + chip.width / 2, chip.top + chip.height / 2] };
+    });
+    check(scope, 'E24: asleep: the top bar and bottom fade (< 0.1), Close stays at 0.35, ≥ 40 px and tappable',
+      z.top.slice(1).every((o) => o < 0.1) && z.bottom < 0.1 && Math.abs(z.closeOp - 0.35) < 0.01 && z.closeHit === 'Close' && z.closeSize.every((v) => v >= 40), JSON.stringify(z));
+    check(scope, 'E24: a tap on a faded chip falls through to the stage; nothing is aria-hidden or inert', z.under === 'stage' && !z.hidden.length, JSON.stringify({ under: z.under, hidden: z.hidden }));
+    await page.mouse.click(z.pt[0], z.pt[1]);
+    await sleep(300);
+    const woke = await nl(page, () => ({ asleep: __lab.nightlight.debug().chromeAsleep, mode: __lab.nightlight.mode }));
+    await page.focus('.nightlight .stage');   // (focusing the stage itself would wake it: focus first, then sleep)
+    await nl(page, () => __lab.nightlight.sleepChrome());
+    const slept = await nl(page, () => __lab.nightlight.debug().chromeAsleep);
+    await page.keyboard.press('Tab');
+    await sleep(200);
+    const tabWoke = await nl(page, () => __lab.nightlight.debug().chromeAsleep);
+    check(scope, 'E24: a tap wakes the chrome without choosing the faded chip; Tab wakes it too', !woke.asleep && woke.mode === 'moonlight' && slept && !tabWoke, JSON.stringify({ woke, slept, tabWoke }));
+
+    // E15: Close works while the chrome sleeps: the goodnight, home within about a second
+    await page.mouse.move(5, 5);
+    await nl(page, () => { document.activeElement?.blur(); __lab.nightlight.sleepChrome(); });
+    await sleep(1400);
+    const cb = await nl(page, () => { const r = document.querySelector('.nightlight .topbar button[aria-label="Close"]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+    const t0 = Date.now();
+    await page.mouse.click(cb[0], cb[1]);
+    await page.waitForFunction(() => __lab.route === 'home', null, { timeout: T, polling: 25 });
+    const ms = Date.now() - t0;
+    const after = await nl(page, () => ({ nl: __lab.nightlight, trim: __lab.sound.trim, rec: sessionStorage.getItem('hm.sensorylab.nightlight.session.v1') }));
+    check(scope, 'E15: Close while asleep: one tap, the goodnight, home within ~1 s; record cleared, trim 1', ms <= 1500 && after.nl === null && after.trim === 1 && after.rec === null, `${ms} ms ${JSON.stringify(after)}`);
+    noErrors(scope, errors);
+  });
+
+  // ----------------------------------------------------------------- E26 --
+  if (only('theme')) await guard(`${SCOPE}:theme`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'noomi', { prefs: { theme: 'light' } });
+    own(ctx);
+    await nl(page, () => __lab.nightlight.setMode('quiet'));   // a status chip too
+    await sleep(800);
+    await openSheet(page);
+    const audit = () => nl(page, () => {
+      const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; };
+      const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const L = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+      const over = (top, under) => [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1);
+      const wl = __lab.nightlight?.world?.sample()?.lum ?? 0;            // the world behind, as a grey of its mean luminance
+      const g = Math.round(255 * (wl <= 0.0031308 ? wl * 12.92 : 1.055 * wl ** (1 / 2.4) - 0.055));
+      const world = [g, g, g, 1];
+      const bgOf = (el) => {   // the element's own and its ancestors' backgrounds, composited over the world
+        const stack = [];
+        for (let e = el; e && e !== document.body; e = e.parentElement) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c[3] > 0) stack.push(c); if (e.classList.contains('screen')) break; }
+        return stack.reverse().reduce((acc, c) => over(c, acc), world);
+      };
+      const ratio = (el) => { const fg = parse(getComputedStyle(el).color), bg = bgOf(el); const a = L(over(fg, bg)), b = L(bg); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
+      const sel = ['.nl-modes button', '.nl-chip', '.sheet .nl-lbl', '.sheet .sub', '.sheet .nl-foot', '.sheet .nl-seg button', '.sheet .btn-quiet', '.sheet .done', '.nl-endcard .end-cap', '.nl-endcard .end-line', '.nl-endcard button'];
+      const rows = [];
+      for (const s of sel) for (const el of document.querySelectorAll(`.nightlight ${s}`)) { if (el.offsetParent === null || el.closest('[hidden]')) continue; rows.push({ s, t: el.textContent.trim().slice(0, 24), r: +ratio(el).toFixed(2) }); }
+      const scr = document.querySelector('.screen.nightlight'), cs = getComputedStyle(scr);
+      const blur = ['.nl-modes', '.icon-btn', '.nl-chip', '.sheet', '.end-card'].map((s) => [s, document.querySelector(`.nightlight ${s}`) ? getComputedStyle(document.querySelector(`.nightlight ${s}`)).backdropFilter : null]);
+      return { theme: document.documentElement.dataset.theme || null, light: matchMedia('(prefers-color-scheme: light)').matches, text1: cs.getPropertyValue('--text-1').trim(), chipOn: cs.getPropertyValue('--chip-on').trim(), scheme: cs.colorScheme, bg: cs.backgroundColor, wl, blur, rows };
+    });
+    const a = await audit();
+    const chipA = (() => { const m = a.chipOn.match(/rgba\(([^)]+)\)/); return m ? +m[1].split(',')[3] : 1; })();
+    check(scope, 'E26: light theme: the screen keeps the night tokens (text, dark scheme, black), the dim chip colour', a.text1 === '#e9e3fa' && a.scheme === 'dark' && a.bg === 'rgb(0, 0, 0)' && chipA <= 0.3, JSON.stringify({ theme: a.theme, text1: a.text1, chipOn: a.chipOn, scheme: a.scheme, bg: a.bg }));
+    check(scope, 'E26: no blur on the night chrome, the sheet or the chips', a.blur.every(([, v]) => v === null || v === 'none'), JSON.stringify(a.blur));
+    const low = a.rows.filter((r) => r.r < 4.5);
+    check(scope, 'E26: text on the chrome and in the sheet ≥ 4.5:1 (over the world behind it)', a.rows.length >= 20 && !low.length, JSON.stringify({ low, n: a.rows.length, wl: a.wl }));
+    // the same at full brightness (the brightest world behind the chrome)
+    await slide(page, '.nightlight .sheet .nl-row-brightness input', 100, true);
+    await until(page, () => __lab.nightlight.look.worldB, (v) => v > 0.97, 20000);
+    await sleep(800);
+    const full = await audit();
+    const lowFull = full.rows.filter((r) => r.r < 4.5);
+    check(scope, 'E26: and at 100 % brightness', full.rows.length >= 20 && !lowFull.length && full.wl > a.wl, JSON.stringify({ low: lowFull, wl: full.wl, min: Math.min(...full.rows.map((r) => r.r)) }));
+    // the end card, in the same theme
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !__lab.nightlight.sheet, null, { timeout: 5000 });
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.endsAt - c.now() + 1000); });
+    await page.waitForFunction(() => __lab.nightlight?.view === 'end', null, { timeout: T });
+    await nl(page, () => document.querySelector('.nl-endcard').classList.add('lit'));
+    await sleep(800);
+    const e = await audit();
+    const endRows = e.rows.filter((r) => r.s.startsWith('.nl-endcard'));
+    check(scope, 'E26: the end card: night tokens, no blur, text ≥ 4.5:1', endRows.length >= 3 && endRows.every((r) => r.r >= 4.5) && e.blur.find(([s]) => s === '.end-card')[1] === 'none' && e.text1 === '#e9e3fa', JSON.stringify({ endRows, blur: e.blur }));
+    noErrors(scope, errors);
+  });
+
+  // ----------------------------------------------------------------- E27 --
+  if (only('scroll')) await guard(`${SCOPE}:scroll`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'small', 'loomi');
+    own(ctx);
+    const pos = () => nl(page, () => ({ y: scrollY, x: scrollX, se: document.scrollingElement.scrollTop, lab: document.getElementById('lab').scrollTop, scr: document.querySelector('.screen.nightlight').scrollTop, scale: visualViewport.scale, row: document.querySelector('.nl-modes').scrollLeft }));
+    const g = await H.geo(page);
+    const cx = g.ox + g.cx, cy = g.oy + g.mid;
+    // a drag on the stage (pointer) and swipes on the stage and the mode row (touch)
+    await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx, cy - 160, { steps: 8 }); await page.mouse.move(cx + 60, cy + 120, { steps: 8 }); await page.mouse.up();
+    await H.touch(page, [{ t: 0, points: [{ x: 40, y: cy - 60 }] }, { t: 40, points: [{ x: 40, y: cy - 200 }] }, { t: 80, points: [{ x: 40, y: cy - 320 }] }, { t: 120, points: [] }]);
+    const row = await nl(page, () => { const r = document.querySelector('.nl-modes').getBoundingClientRect(); return { x: r.left + r.width - 30, y: r.top + r.height / 2 }; });
+    await H.touch(page, [{ t: 0, points: [{ x: row.x, y: row.y }] }, { t: 50, points: [{ x: row.x - 90, y: row.y - 6 }] }, { t: 100, points: [{ x: row.x - 180, y: row.y - 40 }] }, { t: 150, points: [] }]);
+    await sleep(400);
+    const a = await pos();
+    // a pinch on the stage
+    await H.touch(page, [{ t: 0, points: [{ x: cx - 20, y: cy, id: 1 }, { x: cx + 20, y: cy, id: 2 }] }, { t: 60, points: [{ x: cx - 70, y: cy - 30, id: 1 }, { x: cx + 70, y: cy + 30, id: 2 }] },
+      { t: 120, points: [{ x: cx - 120, y: cy - 60, id: 1 }, { x: cx + 120, y: cy + 60, id: 2 }] }, { t: 180, points: [] }]);
+    await sleep(400);
+    const b = await pos();
+    check(scope, 'E27: drags on the stage and swipes on the mode row never scroll the page', a.y === 0 && a.x === 0 && a.se === 0 && a.lab === 0 && a.scr === 0, JSON.stringify(a));
+    check(scope, 'E27: a pinch on the stage never zooms', b.scale === 1 && b.y === 0 && b.se === 0, JSON.stringify(b));
+    noErrors(scope, errors);
+  });
+
+  // ----------------------------------------------------------------- E22 --
+  if (only('privacy')) await guard(`${SCOPE}:privacy`, async (scope, own) => {
+    const spies = () => {
+      window.__asked = { notify: 0, sw: 0 };
+      try { if (window.Notification) { const rp = Notification.requestPermission; Notification.requestPermission = (...a) => { window.__asked.notify++; return rp.apply(Notification, a); }; } } catch { /* ignore */ }
+      try { const sw = navigator.serviceWorker; if (sw) { const reg = sw.register.bind(sw); sw.register = (...a) => { window.__asked.sw++; return reg(...a); }; } } catch { /* ignore */ }
+    };
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'zuzu', { initScripts: [H.INIT.timerSpy, spies] });
+    own(ctx);
+    const reqs = [];
+    page.on('request', (r) => reqs.push(`${r.method()} ${r.url()}`));
+    const p = await bodyPoint(page);
+    await page.mouse.click(p.x, p.y);
+    for (const m of ['breathe', 'sleepy', 'drift', 'quiet', 'moonlight']) { await nl(page, (m) => __lab.nightlight.setMode(m), m); await sleep(700); }
+    await openSheet(page);
+    await slide(page, '.nightlight .sheet .nl-row-brightness input', 60, true);
+    await page.keyboard.press('Escape');
+    await sleep(1500);
+    const a = await nl(page, async () => ({ regs: (await navigator.serviceWorker?.getRegistrations?.() || []).length, asked: window.__asked, perm: window.Notification?.permission ?? null,
+      intervals: Object.entries(__timers().created).filter(([f, c]) => /nightlight|frame-pacer|screen-wake/.test(f) && c.interval > 0) }));
+    check(scope, 'E22: no service worker, no notification asked for', a.regs === 0 && a.asked.sw === 0 && a.asked.notify === 0 && a.perm !== 'granted', JSON.stringify(a));
+    check(scope, 'E22: no network request once the screen is up (taps, every mode, the sheet)', reqs.length === 0, JSON.stringify(reqs.slice(0, 8)));
+    check(scope, 'E22: no setInterval from any Nightlight file', !a.intervals.length, JSON.stringify(a.intervals));
+    // nothing sounds, and no voice is made, while hidden
+    await nl(page, () => { const s = __lab.sound, v = s._voice.bind(s); window.__voices = 0; s._voice = (...x) => { window.__voices++; return v(...x); }; });
+    await H.setHidden(page, true);
+    await nl(page, () => { window.__voices = 0; });
+    await sleep(2500);
+    const hid = await nl(page, () => ({ voices: window.__voices, live: __lab.sound.live.size, bed: __lab.nightlight.bed.debug().alive, state: __lab.sound.debug().state }));
+    await H.setHidden(page, false);
+    // (a voice stopped as the page hid can stay listed until the suspended context runs again: it is silent)
+    check(scope, 'E22: hidden: no voice is made, the bed is not alive, the audio is suspended', hid.voices === 0 && !hid.bed && hid.state !== 'running', JSON.stringify(hid));
+    noErrors(scope, errors);
+  });
+
+  // ----------------------------------------------------------------- E29 --
+  if (only('isolation')) await guard(`${SCOPE}:isolation`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'phone', 'boppo');
+    own(ctx);
+    const dna0 = await nl(page, () => JSON.stringify(__lab.dna.data ?? localStorage.getItem('hm.sensorylab.comfort.v1')));
+    const p = await bodyPoint(page);
+    await page.mouse.click(p.x, p.y);
+    await nl(page, () => { __lab.nightlight.setMode('quiet'); __lab.nightlight.set('volume', 0.3); __lab.nightlight.set('brightness', 0.2); });
+    await openSheet(page);
+    await page.keyboard.press('Escape');
+    await sleep(800);
+    await nl(page, () => __lab.ctx.navigate('/touchtalk'));
+    await page.waitForFunction(() => __lab.route === 'touchtalk' && __lab.companion?.rig?.soft, null, { timeout: T });
+    await sleep(600);
+    const q = await bodyPoint(page);
+    await page.mouse.click(q.x, q.y);
+    await sleep(500);
+    await page.keyboard.press('Digit2');
+    await page.keyboard.press('ArrowDown');
+    await sleep(300);
+    const a = await nl(page, () => {
+      const c = __lab.companion, r = c.rig, t = __lab.dna.tuning();
+      return { route: __lab.route, nl: __lab.nightlight, trim: __lab.sound.trim, resting: __lab.sound.resting, grade: [...r.grade], cap: r.frameCap, filter: c.persona.filter, peek: r.peekParams,
+        speed: r.speed, dnaSpeed: t.speed, motion: r.motionScale ?? null, night: document.querySelectorAll('.nightlight, .nl-still, .nl-sky, .sheet').length,
+        dna: JSON.stringify(__lab.dna.data ?? localStorage.getItem('hm.sensorylab.comfort.v1')), face: JSON.stringify(r.faceOverride || {}) };
+    });
+    check(scope, 'E29: TouchTalk afterwards: trim 1, not resting after a tap, no Nightlight handle or elements', a.route === 'touchtalk' && a.nl === null && a.trim === 1 && !a.resting && a.night === 0, JSON.stringify(a));
+    check(scope, 'E29: its Mallow is untouched: identity grade, no frame cap, no filter, default peek, Comfort DNA speed',
+      a.grade.join() === '1,1,1' && a.cap === null && a.filter === null && a.peek === null && Math.abs(a.speed - a.dnaSpeed) < 1e-6, JSON.stringify(a));
+    check(scope, 'E29: keys 1–5 and ↑/↓ are inert there (still TouchTalk, no Nightlight); Comfort DNA unchanged', a.route === 'touchtalk' && a.nl === null && a.dna === dna0, a.dna === dna0 ? '' : `${dna0} → ${a.dna}`);
+    noErrors(scope, errors);
+  });
+
+  // ----------------------------------------------------------------- E23 --
+  if (only('layout')) await guard(`${SCOPE}:layout`, async (scope) => {
+    for (const vp of ['phone', 'p375', 'small', 'android', 'desktop', 'land', 'land-small']) {
+      const r = await openNl(browser, vp, 'loomi');
+      const sc = `${scope}:${vp}`;
+      try {
+        await sleep(800);
+        await H.layout(r.page, sc, { scrollers: ['.nl-modes'] });
+        const d = await nl(r.page, () => {
+          const row = document.querySelector('.nl-modes'), r0 = row.getBoundingClientRect(), on = row.querySelector('[aria-checked="true"]').getBoundingClientRect();
+          const st = document.querySelector('.nl-status'), cap = document.querySelector('.nl-caption').getBoundingClientRect(), top = document.querySelector('.nightlight .topbar').getBoundingClientRect();
+          return { inView: on.left >= r0.left - 1 && on.right <= r0.right + 1, scrolls: row.scrollWidth > row.clientWidth, sub: document.querySelector('.nightlight .topbar .title small').textContent,
+            status: getComputedStyle(st).display, stText: getComputedStyle(document.querySelector('.nl-st')).display, capBelowTop: cap.top >= top.bottom - 1 || cap.height === 0, vw: innerWidth };
+        });
+        check(sc, 'the chosen mode is in view in the mode row', d.inView, JSON.stringify(d));
+        if (vp.startsWith('land')) check(sc, 'landscape: the time moves into the subtitle; the status text hides, its chip stays inline', /· (until|no timer)/.test(d.sub) && d.stText === 'none', JSON.stringify(d));
+        else check(sc, 'portrait: the subtitle is "{Mode} · {Mallow}", the status row shows', d.sub === 'Moonlight · Loomi' && d.status !== 'none', JSON.stringify(d));
+        await H.shot(r.page, out, `nightlight-${vp}-steady`);
+
+        // asleep: Close still visible and ≥ 40 px
+        await r.page.mouse.move(2, 2);
+        await nl(r.page, () => __lab.nightlight.sleepChrome());
+        await sleep(1400);
+        const z = await nl(r.page, () => { const c = document.querySelector('.nightlight .topbar button[aria-label="Close"]'), cr = c.getBoundingClientRect(); return { op: +getComputedStyle(c).opacity, w: cr.width, h: cr.height, on: cr.left >= 0 && cr.top >= 0 && cr.right <= innerWidth && cr.bottom <= innerHeight }; });
+        check(sc, 'E15: asleep: Close visible (0.35), on screen, ≥ 40 px', Math.abs(z.op - 0.35) < 0.01 && z.w >= 40 && z.h >= 40 && z.on, JSON.stringify(z));
+        await H.shot(r.page, out, `nightlight-${vp}-asleep`);
+
+        // the sheet: fits, scrolls, Done reachable, ≥ 40 px controls, no sideways overflow; beside the Mallow where it is a side panel
+        await openSheet(r.page);
+        const sh = await nl(r.page, () => {
+          const s = document.querySelector('.nightlight .sheet'), sr = s.getBoundingClientRect();
+          const ctl = [...s.querySelectorAll('button, input')].filter((e) => e.offsetParent !== null && !e.closest('[hidden]'));
+          const small = ctl.map((e) => { const b = e.getBoundingClientRect(); return { t: (e.textContent || e.getAttribute('aria-label') || e.type).trim().slice(0, 20), w: Math.round(b.width), h: Math.round(b.height) }; }).filter((b) => b.w < 39.5 || b.h < 39.5);
+          const wide = [...s.querySelectorAll('*')].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && (b.left < sr.left - 0.5 || b.right > sr.right + 0.5); }).map((e) => e.className || e.tagName).slice(0, 5);
+          const rig = __lab.companion.rig, o = rig.canvas.parentElement.getBoundingClientRect(), b = rig.bodyRect();
+          const body = { l: o.left + b.cx - b.w / 2, r: o.left + b.cx + b.w / 2, t: o.top + b.top, b: o.top + b.bottom };
+          const side = sr.top <= 1 && sr.height >= innerHeight - 1;
+          return { rect: [sr.left, sr.top, sr.width, sr.height].map(Math.round), side, scrolls: s.scrollHeight > s.clientHeight, small, wide, hscroll: s.scrollWidth > s.clientWidth + 1,
+            inView: sr.left >= -0.5 && sr.right <= innerWidth + 0.5 && sr.bottom <= innerHeight + 0.5, mallowClear: body.r <= sr.left + 1 || body.l >= sr.right - 1, body };
+        });
+        check(sc, 'the sheet fits the screen with no sideways overflow; every control ≥ 40 px', sh.inView && !sh.hscroll && !sh.wide.length && !sh.small.length, JSON.stringify(sh));
+        if (['desktop', 'land', 'land-small'].includes(vp)) check(sc, 'a side panel: the Mallow stays in view beside it (live preview)', sh.side && sh.mallowClear, JSON.stringify(sh));
+        else check(sc, 'a bottom sheet that leaves the top of the scene in view', !sh.side && sh.rect[1] >= 120, JSON.stringify(sh.rect));
+        await H.shot(r.page, out, `nightlight-${vp}-sheet`);
+        const done = await nl(r.page, () => { const s = document.querySelector('.nightlight .sheet'); s.scrollTop = s.scrollHeight; const d = s.querySelector('.done').getBoundingClientRect(), e = s.querySelector('.nl-exit').getBoundingClientRect(); return { d: d.bottom <= innerHeight + 0.5 && d.top >= 0, exit: e.bottom <= d.top + 1 && e.top >= s.getBoundingClientRect().top - 0.5 }; });
+        check(sc, 'scrolled to its end: Done and the last row are reachable (Done does not cover them)', done.d && done.exit, JSON.stringify(done));
+        await r.page.click('.nightlight .sheet .done');
+        await r.page.waitForFunction(() => !__lab.nightlight.sheet, null, { timeout: 5000 });
+
+        // fading (half way through the fade), then the end view
+        await nl(r.page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.fadeFrom - c.now() + c.fadeMs / 2); });
+        await r.page.waitForFunction(() => __lab.nightlight.state === 'fading', null, { timeout: T });
+        await wakeUi(r.page);
+        await sleep(600);
+        await H.layout(r.page, `${sc}:fading`, { scrollers: ['.nl-modes'] });
+        await H.shot(r.page, out, `nightlight-${vp}-fading`);
+        await nl(r.page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.endsAt - c.now() + 1000); });
+        await r.page.waitForFunction(() => __lab.nightlight?.view === 'end', null, { timeout: T });
+        await nl(r.page, () => document.querySelector('.nl-endcard').classList.add('lit'));
+        await sleep(800);
+        await H.layout(r.page, `${sc}:end`, { band: false });
+        await H.shot(r.page, out, `nightlight-${vp}-end`);
+        noErrors(sc, r.errors);
+      } finally { await r.ctx.close(); }
+    }
   });
 }
 

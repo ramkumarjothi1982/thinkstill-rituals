@@ -49,6 +49,7 @@ const DUCK = 0.35;                 // −9 dB
 const MOVE_S = 0.15;               // phrase notes sound only while the finger keeps moving
 const PAD_LEVEL = 0.8;
 const ANSWER_GAP = 0.25, ANSWER_IDLE = 0.6;
+export const REPLAY_LATE = 0.25;   // s a replay note may be late (a long frame) and still sound, at once; later it drops
 
 /** The Music Engine. clock: BreathClock; scheduler: Scheduler; sink: { ready, event(ev) → heard } | null. */
 export class MusicEngine {
@@ -394,7 +395,8 @@ export class MusicEngine {
     }
     const e = R.list[R.i], q = R.q[R.i];
     const go = (x, late) => { R.i++; if (!late) this._replayEvent(R, e, q, x); this._replayNext(R); };
-    this.scheduler.at(this.clock.beatTime(R.sb + q), (x) => go(x, false), 'replay', (x) => go(x, true));
+    // a replay note caught by a long frame still sounds (at once, up to REPLAY_LATE late): the tune keeps every note
+    this.scheduler.at(this.clock.beatTime(R.sb + q), (x) => go(x, false), 'replay', (x) => go(x, true), REPLAY_LATE);
   }
 
   _replayEvent(R, e, q, t) {

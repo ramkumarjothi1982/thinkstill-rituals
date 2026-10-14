@@ -1,12 +1,13 @@
-// Unit tests for Mallow Nightlight (spec-nightlight.md §13): U1–U18, plus U19–U22
+// Unit tests for Mallow Nightlight (spec-nightlight.md §13): U1–U18, plus U19–U24
 // (slice 2: the frame-clock timeline and moments, the five modes on a fake api, world helpers;
-// slice 3: the night sound facade, bedPlan and NightBed). Node only; every clock,
+// slice 3: the night sound facade, bedPlan and NightBed; slice 4: the settings sheet's view and
+// the stylesheet's scope, night tokens and no-blur rules). Node only; every clock,
 // timer and random source is injected, so results are exact:
 //   node --test hushmallow/sensory-lab/tests/nightlight.test.mjs
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   STORE_KEY, TIMER_MINUTES, ARRIVE_S, fadeSeconds, levelsAt, validRecord, SessionClock, DisplayLevels,
@@ -46,6 +47,7 @@ import { FaceMixer } from '../core/expression-engine.js';
 import { ScreenWake, WAKE_MAX_MS } from '../core/screen-wake.js';
 import { BED, TEXTURES, PAD_LP, padFreq, nightSound, bedPlan, NightBed } from '../features/nightlight/bed.js';
 import { VOICES } from '../core/sound-engine.js';
+import { sheetView, fadeMinutes } from '../features/nightlight/sheet.js';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const MIN = 60e3;
@@ -950,6 +952,7 @@ test('U15 copy: no sleep, health, streak or score claims (one disclaimer); short
     COPY.status.fading('11:30 pm'), COPY.say.start('Glitzi', '11:30 pm'), COPY.say.mode('Breathing Together'), COPY.say.brightness(100),
     COPY.end.finished('11:42 pm'), ...MALLOW_IDS.flatMap((id) => MALLOWS[id].voice.rest.map((l) => COPY.end.line(l, MALLOWS[id].name))),
     COPY.sheet.fade.sub(8), COPY.sheet.timer.ends('11:40 pm'), COPY.sheet.timer.aria(60),
+    ...Object.values(sheetView({ endsAt: T0, locale: 'en-US' })).map((r) => [r.text, r.sub]).flat().filter(Boolean),
   ];
   for (const s of rendered) assert.ok(s.length <= 70, `${s.length}: ${s}`);
   assert.match(COPY.aria.stage('Noomi'), /^Noomi in the night\. Tap to say goodnight/);
@@ -1146,6 +1149,7 @@ test('U18 static scan: no network, workers, notifications or setInterval; wake l
   assert.ok(OWNED.length >= PURE.length);
   assert.deepEqual(scanFiles(OWNED, { forbid: [...NETWORK, /\bsetInterval\b/, /navigator\.wakeLock/, /wakeLock\.request/],
     allow: { 'navigator\\.wakeLock': ['core/screen-wake.js'], 'wakeLock\\.request': ['core/screen-wake.js'] } }), []);
+  assert.deepEqual(scanFiles([here('../styles/nightlight.css')], { forbid: [...NETWORK, /@import/] }), [], 'the stylesheet loads nothing');
   assert.deepEqual(scanFiles(PURE, { forbid: [/\bdocument\b/, /\bwindow\b/, /AudioContext/, /\blocalStorage\b/, /\bsessionStorage\b/, /requestAnimationFrame/, /\bnavigator\b/] }), []);
   // the scan itself works
   assert.equal(scanFiles([here('./lib/static-scan.mjs')], { forbid: [/\bfetch\s*\(/] }).length, 0);
@@ -1518,4 +1522,111 @@ test('U22 night sound: the facade, bedPlan, and NightBed on AmbientBed (textures
     bed2.destroy();
     assert.equal(new NightBed(s, { mallowId: 'nobody', texture: 'nonsense' }).texture, 'air', 'unknown ids fall back');
   } finally { s.dispose(); restore(); }
+});
+
+// ================================================================= U23 ==
+test('U23 settings sheet: what every row shows (values, names, sub-labels, disabled and hidden rows)', () => {
+  const base = { ...NIGHT_DEFAULTS };
+  const v = sheetView({ settings: base, endsAt: T0 + 30 * MIN, locale: 'en-GB', wakeSupported: true });
+  assert.deepEqual([v.brightness.value, v.brightness.text, v.light.value, v.light.text, v.speed.value], [40, '40 %', 2, 'Warm', 'slow']);
+  assert.deepEqual([v.volume.value, v.volume.text, v.volume.muted], [50, '50 %', false]);
+  assert.equal(v.timer.value, 30);
+  assert.equal(v.timer.sub, `Ends at ${clock(T0 + 30 * MIN, 'en-GB')}`);
+  assert.deepEqual([v.fade.value, v.fade.disabled, v.fade.sub], [true, false, 'Light, sound and movement ease down over the last 8 minutes']);
+  assert.deepEqual([v.motion.value, v.motion.gentle, v.motion.sub], ['gentle', true, '']);
+  assert.deepEqual([v.wake.shown, v.wake.value, v.wake.sub], [true, false, COPY.sheet.wake.sub]);
+  assert.equal(v.fadeNow.hidden, false);
+  // the Light names, and brightness / volume at their ends
+  assert.deepEqual([0, 0.25, 0.5, 0.75, 1].map((t) => sheetView({ settings: { ...base, temp: t } }).light.text), ['Moon', 'Soft', 'Warm', 'Candle', 'Ember']);
+  assert.equal(sheetView({ settings: { ...base, brightness: 0.05 } }).brightness.text, '5 %');
+  assert.equal(sheetView({ settings: { ...base, volume: 0 } }).volume.text, '0 %');
+  // No timer: "Runs until you close it", and the fade needs a timer
+  const none = sheetView({ settings: { ...base, minutes: 0 }, endsAt: null });
+  assert.deepEqual([none.timer.sub, none.fade.disabled, none.fade.sub], [COPY.sheet.timer.none, true, COPY.sheet.fade.needsTimer]);
+  // …but after "Fade out now" it has an end time
+  assert.match(sheetView({ settings: { ...base, minutes: 0 }, endsAt: T0 + 12e3, locale: 'en-GB', fading: true }).timer.sub, /^Ends at /);
+  // fade off; the fade length per timer (a third of the session, 2–8 min)
+  assert.equal(sheetView({ settings: { ...base, fade: false } }).fade.sub, COPY.sheet.fade.offSub);
+  assert.deepEqual(TIMER_MINUTES.map(fadeMinutes), [3, 7, 8, 8, 8, 0]);
+  assert.equal(sheetView({ settings: { ...base, minutes: 10 } }).fade.sub, COPY.sheet.fade.sub(3));
+  // the device asks for less motion: Gentle is disabled and the effective choice is Less (Still stays Still)
+  const red = sheetView({ settings: base, labReduced: true });
+  assert.deepEqual([red.motion.value, red.motion.gentle, red.motion.sub], ['less', false, COPY.sheet.motion.reduced]);
+  assert.equal(sheetView({ settings: { ...base, motion: 'still' }, labReduced: true }).motion.value, 'still');
+  // the wake lock: unsupported hides the choice; a refusal shows "Not available right now" until it is turned on again
+  assert.equal(sheetView({ settings: base }).wake.shown, false);
+  assert.equal(sheetView({ settings: base, wakeSupported: true, wakeFailed: true }).wake.sub, COPY.sheet.wake.failed);
+  assert.equal(sheetView({ settings: { ...base, keepAwake: true }, wakeSupported: true, wakeFailed: true }).wake.sub, COPY.sheet.wake.sub);
+  // muted: "Sound is off" with Turn on; fading: "Fade out now" is hidden
+  assert.equal(sheetView({ settings: base, soundOn: false }).volume.muted, true);
+  assert.equal(sheetView({ settings: base, fading: true }).fadeNow.hidden, true);
+  // every row's text fits the sheet (≤ 70 characters), with no claims
+  const texts = TIMER_MINUTES.flatMap((m) => [true, false].map((f) => sheetView({ settings: { ...base, minutes: m, fade: f }, endsAt: m ? T0 : null, locale: 'en-US', labReduced: true, wakeSupported: true, wakeFailed: true })))
+    .flatMap((x) => Object.values(x).flatMap((r) => [r.text, r.sub])).filter(Boolean);
+  for (const t of texts) assert.ok(t.length <= 70, t);
+  assert.deepEqual(lintCopy(texts, { extra: [SPEC_BANNED] }), []);
+});
+
+// ================================================================= U24 ==
+/** The rules of a stylesheet: [{ media, selectors: [...], body }] (comments dropped; one level of @media). */
+function cssRules(src) {
+  const text = src.replace(/\/\*[\s\S]*?\*\//g, '');
+  const out = [];
+  const walk = (s, media) => {
+    let i = 0;
+    while (i < s.length) {
+      const open = s.indexOf('{', i);
+      if (open < 0) break;
+      const head = s.slice(i, open).trim();
+      let depth = 1, j = open + 1;
+      while (j < s.length && depth) { if (s[j] === '{') depth++; else if (s[j] === '}') depth--; j++; }
+      const body = s.slice(open + 1, j - 1);
+      if (head.startsWith('@media')) walk(body, head);
+      else out.push({ media, selectors: head.split(',').map((x) => x.trim()).filter(Boolean), body });
+      i = j;
+    }
+  };
+  walk(text, null);
+  return out;
+}
+
+test('U24 stylesheet: every rule scoped to .nightlight, night tokens, no blur, no !important, 40 px controls, every viewport', () => {
+  const css = readFileSync(here('../styles/nightlight.css'), 'utf8');
+  const rules = cssRules(css);
+  assert.ok(rules.length > 40);
+  const unscoped = rules.flatMap((r) => r.selectors).filter((sel) => !/^\.(screen\.)?nightlight\b/.test(sel));
+  assert.deepEqual(unscoped, [], 'every selector starts with .nightlight or .screen.nightlight (SHARED §2)');
+  assert.ok(!/!important/.test(css), 'no !important');
+  assert.ok(!/@import/.test(css), 'no @import (linked after lab.css, SHARED C19)');
+  // no blur at night: every backdrop-filter is none
+  const blur = [...css.matchAll(/(?:-webkit-)?backdrop-filter\s*:\s*([^;}]+)/g)].map((m) => m[1].trim());
+  assert.ok(blur.length >= 2 && blur.every((v) => v === 'none'), JSON.stringify(blur));
+  const noBlur = rules.find((r) => /backdrop-filter:\s*none/.test(r.body));
+  for (const sel of ['.chips', '.icon-btn', '.end-card', '.sheet']) assert.ok(noBlur.selectors.some((x) => x.endsWith(sel)), `no blur on ${sel}`);
+  // the night tokens (spec §8) on .screen.nightlight, in either theme
+  const root = rules.find((r) => r.selectors.includes('.screen.nightlight') && !r.media).body.replace(/\s+/g, ' ');
+  for (const [k, val] of [['--text-1', '#e9e3fa'], ['--text-2', '#cfc6ea'], ['--text-3', '#a79dcb'], ['--chrome', 'rgba(8, 6, 22, 0.66)'],
+    ['--chrome-line', 'rgba(255, 255, 255, 0.12)'], ['--glass-strong', 'rgba(10, 8, 26, 0.95)'], ['--chip-on-text', '#fff1dc'], ['--accent', '#e8c690']]) {
+    assert.ok(root.includes(`${k}: ${val}`), `${k}: ${val}`);
+  }
+  assert.match(root, /--chip-on: var\(--nl-chip-on, rgba\(255, 214, 150, 0\.24\)\)/);
+  assert.match(root, /color-scheme: dark/);
+  assert.match(root, /background: #000/);
+  // the sheet is opaque (nothing glows through it), and its scrim is clear (the live preview)
+  assert.match(root, /--nl-sheet: #[0-9a-f]{6}\b/);
+  assert.ok(rules.some((r) => r.selectors.includes('.nightlight .sheet-scrim') && /background:\s*transparent/.test(r.body)));
+  // range inputs: 40 px high, at most min(180 px, 46 vw) wide; every sheet choice ≥ 40 px
+  const range = rules.find((r) => r.selectors.includes('.nightlight .nl-range')).body;
+  assert.match(range, /height:\s*40px/); assert.match(range, /width:\s*min\(180px,\s*46vw\)/);
+  const segBtn = rules.find((r) => r.selectors.includes('.nightlight .nl-seg button')).body;
+  assert.match(segBtn, /min-width:\s*40px/); assert.match(segBtn, /min-height:\s*40px/);
+  // the viewports: narrow (≤ 360), short landscape (≤ 420 tall, the time in the subtitle), the side panel
+  // (wide, and short landscape), and reduced motion
+  const medias = new Set(rules.map((r) => r.media).filter(Boolean));
+  for (const m of ['(max-width: 360px)', '(max-height: 420px)', '(min-width: 900px), (max-height: 420px) and (min-width: 540px)', '(prefers-reduced-motion: reduce)']) {
+    assert.ok([...medias].some((x) => x === `@media ${m}`), m);
+  }
+  // less motion: the chrome fades in 200 ms, the sheet fades instead of sliding
+  assert.ok(rules.some((r) => r.selectors.includes('.nightlight.nl-calm .sheet') && /opacity:\s*0/.test(r.body)));
+  assert.ok(!new RegExp('H' + 'ushmallow').test(css));
 });

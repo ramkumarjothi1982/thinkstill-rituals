@@ -300,18 +300,21 @@ export class HarmonyArc {
     return !this.gone;
   }
 
+  // one continuous thread of light, thickest in the middle: glow dots close enough to merge (3 px apart), each
+  // dimmed by how many overlap, so the thread glows evenly instead of reading as a dotted line
   draw(g, L) {
     if (this.shown < 0.01) return;
     const s = glowSprite(this.color, DOT_R, { dpr: L?.dpr || 1, rim: light(this.tone) });
     const mx = (this.ax + this.bx) / 2, d = Math.hypot(this.bx - this.ax, this.by - this.ay);
-    const my = Math.min(this.ay, this.by) - d * 0.28, n = this.segments;
+    const my = Math.min(this.ay, this.by) - d * 0.28;
+    const n = clamp(Math.ceil((d * 1.2) / 3), 8, this.segments * 3), step = (d * 1.2) / n;
     g.save();
     g.globalCompositeOperation = glowBlend(this.tone);
     for (let i = 1; i < n; i++) {
       const u = i / n, v = 1 - u;
       const x = v * v * this.ax + 2 * u * v * mx + u * u * this.bx, y = v * v * this.ay + 2 * u * v * my + u * u * this.by;
       const w = Math.sin(Math.PI * u), r = 3 + 4 * w;
-      g.globalAlpha = Math.min(0.5, this.shown * w);
+      g.globalAlpha = Math.min(0.5, this.shown * w) * Math.min(1, (1.5 * step) / r);
       g.drawImage(s, x - r, y - r, 2 * r, 2 * r);
     }
     g.restore();

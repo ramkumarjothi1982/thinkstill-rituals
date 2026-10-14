@@ -3,8 +3,8 @@
 //   python3 -m http.server 8000          # from the repository root
 //   node hushmallow/sensory-lab/tests/e2e-phase3-weather.cjs [outDir]
 //   PART=weather:open,weather:storm      (blocks: open, storm, rain, sun, moon, stars, wind, fog, warm, water, front, morph,
-//                                         resolve, motion, dial, keys, exit, sound, photo, dna, mallows, access, layout;
-//                                         default all)
+//                                         resolve, motion, dial, keys, exit, sound, photo, dna, mallows, access, tier, states,
+//                                         reach, touch, chips, smooth, leak, layout; default all)
 //
 // Also runs inside tests/e2e-phase3.cjs through run(browser, { out, only }).
 // Simulated input proves state, never smoothness: software GL can run at ~6 fps,
@@ -53,6 +53,41 @@
 //           strike reads differently on each Mallow
 //   access  labels, the radiogroup, the announcer's words; a held Enter on a chip resolves the weather,
 //           focus moves onto Again, a held key's repeats never press it, a fresh press does
+//   tier    a live quality drop sheds bed layers, the front canvas and pools; going back up grows nothing
+//
+// Blocks (slice 5):
+//   states  W2: every radio in turn: a new world each time (colour-residual probe > 12, with its self-check),
+//           moodFor's target, the Mallow answers within 2 s; one screenshot per state
+//   reach   W4: one gesture per weather; the realm's answer measured outside the touch box + 60 px
+//   touch   W5/W7: every interaction by CDP touch at 390×844, the two-finger spread, a tap on the Mallow;
+//           the page never scrolls or zooms
+//   chips   W6: Space held on every lead chip, Space on "Push the water", W held on the stage
+//   smooth  W8: the realm's eased mood sampled every 100 ms through a turn and two fronts; a mid-turn frame;
+//           the outgoing weather 300 ms in; a dragged front's shorter reveal
+//   leak    W14: TouchTalk after Weather starts clean (face, rest, inflate, realm, timers, rAF, voices);
+//           blocked storage still opens
+//   (W7, W9 and W15 checks were added to storm, motion and resolve; layout now covers all six viewports
+//   and all eight weathers, plus the caption)
+//
+// Brief line → blocks (spec §13; every check's name says what it proves):
+//   W1  opens; the character loads; controls visible ............ open
+//   W2  eight states; Hushfold worlds; not a colour change ........ states, dial
+//   W3  non-gesture selection ..................................... keys
+//   W4  the seven interactions; visible consequences; reactions ... storm, rain, sun, moon, stars, wind, fog, warm, water, reach
+//   W5  touch; no browser scroll .................................. touch
+//   W6  an alternative for every gesture .......................... chips (and each W4 block's chip and arrows, access)
+//   W7  input isolation ........................................... storm, rain, warm, touch
+//   W8  smooth, interactive, meaningful transitions ............... smooth, front, morph, dial
+//   W9  reduced motion ............................................ motion
+//   W10 photosensitivity .......................................... photo
+//   W11 sound works or mutes; the gesture rule .................... sound
+//   W12 background behaviour ...................................... motion, sound
+//   W13 layout at every viewport .................................. layout
+//   W14 exit, cleanup, isolation, privacy ......................... exit, leak
+//   W15 replay .................................................... resolve, keys, access
+//   W16 Comfort DNA ............................................... dna
+//   W17 all seven Mallows ......................................... mallows
+//   (quality tiers, spec §9 ....................................... tier)
 
 const path = require('path');
 const H = require('./lib/harness.cjs');
@@ -60,6 +95,27 @@ const { check, guard, sleep } = H;
 
 const LAB = '/hushmallow/sensory-lab';
 const OUT_DEFAULT = path.join(__dirname, '..', 'docs', 'phase3', 'weather');
+const DIAL = ['sunshine', 'wind', 'fog', 'rain', 'storm', 'moonlight', 'starlight', 'warm'];
+const BRIEF = {
+  W1: ['opens; the character loads; controls visible', ['open']],
+  W2: ['eight states; Hushfold worlds as the foundation; simple colour changes do not satisfy; the Mallow reacts', ['states', 'dial']],
+  W3: ['non-gesture selection', ['keys']],
+  W4: ['each of the seven interactions; visible environmental consequences; the Mallow reacts', ['storm', 'rain', 'sun', 'moon', 'stars', 'wind', 'fog', 'warm', 'water', 'reach']],
+  W5: ['touch; no browser scroll', ['touch']],
+  W6: ['alternatives for every gesture', ['chips', 'access']],
+  W7: ['input isolation', ['storm', 'rain', 'warm', 'touch']],
+  W8: ['transitions smooth, interactive and meaningful', ['smooth', 'front', 'morph', 'dial']],
+  W9: ['reduced motion preserved', ['motion']],
+  W10: ['photosensitivity', ['photo']],
+  W11: ['sound works or mutes; the user-gesture rule', ['sound']],
+  W12: ['background behaviour', ['motion', 'sound']],
+  W13: ['layout', ['layout']],
+  W14: ['exit; cleanup; isolation; privacy', ['exit', 'leak']],
+  W15: ['replay', ['resolve', 'keys', 'access']],
+  W16: ['Comfort DNA', ['dna']],
+  W17: ['all seven Mallows', ['mallows']],
+  tiers: ['quality tiers (spec §9)', ['tier']],
+};
 const SCOPE = 'weather';
 const T = 60000;   // state waits: generous for software GL
 
@@ -160,6 +216,204 @@ function flashStats(samples) {
 /** The most times (ms, ascending) inside any window of `ms`. */
 const perWindow = (times, ms) => times.reduce((m, t, i) => Math.max(m, times.slice(i).filter((u) => u < t + ms).length), 0);
 
+// ------------------------------------------------- colour-residual probe --
+// spec §13 residual(A, B): 96×54 composites of the realm canvas plus .wx-back; the RMS (0–255) left after the
+// best 12-parameter affine colour map from A to B (least squares). A recoloured world (a hue turn, a brighter
+// copy, a tint) leaves almost nothing; new or moved elements leave a residual.
+const RES = { w: 96, h: 54, layers: ['.weather canvas.hushfold-realm', '.weather canvas.wx-back'] };
+/** In the page: the listed canvases composited over black at w×h → RGBA as a plain array. */
+function grab({ w, h, layers }) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+  for (const s of layers) { const el = document.querySelector(s); if (el && el.width) g.drawImage(el, 0, 0, w, h); }
+  return Array.from(g.getImageData(0, 0, w, h).data);
+}
+const composite = (page) => page.evaluate(grab, RES);
+/** Solve the 4×4 system M·x = b (Gaussian elimination with partial pivoting). */
+function solve4(M, b) {
+  const A = M.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < 4; c++) {
+    let p = c;
+    for (let r = c + 1; r < 4; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    [A[c], A[p]] = [A[p], A[c]];
+    const d = A[c][c] || 1e-9;
+    for (let r = 0; r < 4; r++) if (r !== c) { const f = A[r][c] / d; for (let k = c; k < 5; k++) A[r][k] -= f * A[c][k]; }
+  }
+  return A.map((r, i) => r[4] / (A[i][i] || 1e-9));
+}
+/** RMS residual (0–255) of B against the best affine colour map of A: B_c ≈ w_c · [r, g, b, 1]. */
+function residual(A, B) {
+  const n = A.length / 4, M = [0, 1, 2, 3].map(() => [0, 0, 0, 0]), R = [0, 1, 2].map(() => [0, 0, 0, 0]), x = [0, 0, 0, 255];
+  for (let i = 0; i < n; i++) {
+    x[0] = A[4 * i]; x[1] = A[4 * i + 1]; x[2] = A[4 * i + 2];
+    for (let r = 0; r < 4; r++) { for (let c = 0; c < 4; c++) M[r][c] += x[r] * x[c]; for (let ch = 0; ch < 3; ch++) R[ch][r] += x[r] * B[4 * i + ch]; }
+  }
+  for (let r = 0; r < 4; r++) M[r][r] += n * 1e-3;   // a whisper of ridge: a flat image still solves
+  const Wc = R.map((b) => solve4(M, b));
+  let e = 0;
+  for (let i = 0; i < n; i++) {
+    x[0] = A[4 * i]; x[1] = A[4 * i + 1]; x[2] = A[4 * i + 2];
+    for (let ch = 0; ch < 3; ch++) { const p = Wc[ch][0] * x[0] + Wc[ch][1] * x[1] + Wc[ch][2] * x[2] + Wc[ch][3] * 255; e += (p - B[4 * i + ch]) ** 2; }
+  }
+  return +Math.sqrt(e / (3 * n)).toFixed(2);
+}
+/** A recoloured copy (3×3 matrix, then k·v + add, clamped): the probe's self-check. */
+function recolour(A, m, k = 1, add = 0) {
+  const out = A.slice();
+  for (let i = 0; i < A.length; i += 4) for (let ch = 0; ch < 3; ch++) out[i + ch] = Math.max(0, Math.min(255, k * (m[3 * ch] * A[i] + m[3 * ch + 1] * A[i + 1] + m[3 * ch + 2] * A[i + 2]) + add));
+  return out;
+}
+/** The CSS hue-rotate matrix. */
+function hueMatrix(deg) {
+  const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  return [0.213 + c * 0.787 - s * 0.213, 0.715 - c * 0.715 - s * 0.715, 0.072 - c * 0.072 + s * 0.928,
+    0.213 - c * 0.213 + s * 0.143, 0.715 + c * 0.285 + s * 0.140, 0.072 - c * 0.072 - s * 0.283,
+    0.213 - c * 0.213 - s * 0.787, 0.715 - c * 0.715 + s * 0.715, 0.072 + c * 0.928 + s * 0.072];
+}
+const IDENT = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+
+// ------------------------------------------------- outside-touch probe --
+// spec §13: what a touch changes away from where it landed. The realm animates by itself (water, drifting
+// clouds, twinkles), so a live before/after diff is mostly that animation: a no-touch control over the same
+// time measures as much. The probe therefore paints the realm twice as stills (paintRealm: one deterministic
+// frame) at the target mood and transform the realm was given before the touch and after it, and diffs them
+// outside the touch path's box inflated by 60 px; the same mood painted twice is the control (it diffs 0).
+/** The realm's current target: the mood last sent and the transform for this progress. */
+const target = (page) => page.evaluate(async (LAB) => {
+  const { transformFor } = await import(`${LAB}/core/weather.js`);
+  const lw = __lab.weather;
+  return { mood: lw.env.mood, transform: transformFor(lw.weather, lw.progress, lw.resolved), progress: lw.progress };
+}, LAB);
+/** In the page: a still of the current realm at {mood, transform}, kept at half size under window.__stills[key]. */
+const still = (page, key, t) => page.evaluate(async ({ LAB, key, t }) => {
+  const { paintRealm } = await import(`${LAB}/core/environment.js`);
+  const lw = __lab.weather, g = lw.geo(), host = document.createElement('div');
+  host.style.cssText = `position:fixed;left:0;top:0;width:${g.W}px;height:${g.H}px;visibility:hidden;pointer-events:none`;
+  document.body.append(host);
+  try {
+    const c = paintRealm(host, lw.realmId, { mood: t.mood, transform: t.transform, groundY: lw.env._groundY });
+    if (!c) return false;
+    const s = document.createElement('canvas');
+    s.width = Math.round(g.W / 2); s.height = Math.round(g.H / 2);
+    const x = s.getContext('2d', { willReadFrequently: true });
+    x.drawImage(c, 0, 0, s.width, s.height);
+    (window.__stills ||= {})[key] = { w: s.width, h: s.height, d: x.getImageData(0, 0, s.width, s.height).data };
+    return true;
+  } finally { host.remove(); }
+}, { LAB, key, t });
+/** In the page: the lab layer (.wx-back) alone, over black (a near-transparent pixel's raw colour is noise), at half size under window.__stills[key]. */
+function layerShot({ key }) {
+  const el = document.querySelector('.weather canvas.wx-back'), g = __lab.weather.geo();
+  const s = document.createElement('canvas');
+  s.width = Math.round(g.W / 2); s.height = Math.round(g.H / 2);
+  const x = s.getContext('2d', { willReadFrequently: true });
+  x.fillStyle = '#000'; x.fillRect(0, 0, s.width, s.height);
+  x.drawImage(el, 0, 0, s.width, s.height);
+  (window.__stills ||= {})[key] = { w: s.width, h: s.height, d: x.getImageData(0, 0, s.width, s.height).data };
+}
+/** In the page: share of pixels (and mean) differing by > thr outside box (stage px) + pad; band: only rows y0..y1 (stage px). */
+function outsideDiff({ a, b, box, pad = 60, thr = 2, band = null }) {
+  const A = window.__stills[a], B = window.__stills[b], w = A.w, h = A.h, s = 0.5;
+  const x0 = (box[0] - pad) * s, y0 = (box[1] - pad) * s, x1 = (box[2] + pad) * s, y1 = (box[3] + pad) * s;
+  let n = 0, over = 0, sum = 0;
+  for (let y = band ? Math.max(0, Math.floor(band[0] * s)) : 0; y < (band ? Math.min(h, Math.ceil(band[1] * s)) : h); y++) {
+    for (let x = 0; x < w; x++) {
+      if (x >= x0 && x <= x1 && y >= y0 && y <= y1) continue;
+      const i = (y * w + x) * 4, d = (Math.abs(A.d[i] - B.d[i]) + Math.abs(A.d[i + 1] - B.d[i + 1]) + Math.abs(A.d[i + 2] - B.d[i + 2])) / 3;
+      n++; sum += d; if (d > thr) over++;
+    }
+  }
+  return { frac: +(over / Math.max(1, n)).toFixed(4), mean: +(sum / Math.max(1, n)).toFixed(2), px: n };
+}
+/** The box (stage px) around a list of points. */
+const boxOf = (pts) => [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
+/**
+ * W4 "visible consequences" beyond the touch: stills at the target before and after, diffed outside the
+ * touch box + 60 px (> 2 on ≥ 2 % of pixels), with the control (the same target twice) at 0.
+ */
+async function reach(page, scope, label, before, box) {
+  await sleep(450);   // the env throttle forwards a held change within 200 ms
+  const after = await target(page);
+  const ok = (await still(page, 'r0', before)) && (await still(page, 'r0b', before)) && (await still(page, 'r1', after));
+  const d = ok ? await page.evaluate(outsideDiff, { a: 'r0', b: 'r1', box }) : null, c = ok ? await page.evaluate(outsideDiff, { a: 'r0', b: 'r0b', box }) : null;
+  await page.evaluate(() => { window.__stills = {}; });
+  check(scope, `${label}: the realm answers beyond the touch (stills at the target before/after differ by > 2 on ≥ 2 % of pixels outside the touch box + 60 px; the same target twice: none)`,
+    ok && d.frac >= 0.02 && c.frac === 0, JSON.stringify({ diff: d, control: c, before: before.mood, after: after.mood, p: [before.progress, after.progress].map((v) => +(+v).toFixed(3)), box: box.map(Math.round) }));
+  return d;
+}
+
+/**
+ * Waves change no mood (a swell is the lab's own), so for them the lab layer is diffed instead: in Starlight
+ * at the Moonmilk Cove (its stars stay above the horizon, so the water band holds only what a touch sends),
+ * a push at the water's left edge, until the swell reaches the Mallow, against a no-touch control.
+ */
+async function waveReach(page, scope) {
+  await page.evaluate(() => __lab.weather.setWeather('starlight', { instant: true }));
+  await settled(page, 'starlight');
+  await page.evaluate(() => __lab.weather.settle());
+  // the moonlit glow behind Noomi fades out first (it lies across the water band's rows)
+  await page.waitForFunction(() => __lab.weather.layer.scene.halo.a < 0.004 && !__lab.weather.sims.moon.amount, null, { timeout: T }).catch(() => {});
+  await sleep(800);
+  const g = await page.evaluate(() => __lab.weather.geo());
+  const wy = g.water[0] + 40, band = [g.water[0], g.water[1]], pts = line(6, wy, 60, wy, 5), box = boxOf(pts);
+  const n0 = await page.evaluate(() => __lab.weather.events.filter((e) => e.type === 'wave-arrive').length);
+  await page.evaluate(layerShot, { key: 'c0' });
+  const tc = Date.now();
+  await sleep(2500);
+  await page.evaluate(layerShot, { key: 'c1' });
+  const ctl = await page.evaluate(outsideDiff, { a: 'c0', b: 'c1', box, band });
+  await page.evaluate(layerShot, { key: 'a' });
+  const ts = Date.now();
+  await drag(page, pts, 20);
+  // until the swell has rolled across to the Mallow, well past the touch
+  await page.waitForFunction((n0) => __lab.weather.events.filter((e) => e.type === 'wave-arrive').length > n0, n0, { timeout: T }).catch(() => {});
+  await page.evaluate(layerShot, { key: 'b' });
+  const spans = [Date.now() - ts, ts - tc];
+  const sw = await page.evaluate(outsideDiff, { a: 'a', b: 'b', box, band });
+  await page.evaluate(() => { window.__stills = {}; });
+  check(scope, 'Waves: a push at the edge draws a swell along the water beyond the touch (lab layer, water band outside the box + 60 px: ≥ 2 % of pixels and over twice a no-touch control)',
+    sw.frac >= 0.02 && sw.frac > 2 * ctl.frac, JSON.stringify({ swell: sw, control: ctl, spans }));
+}
+
+// --------------------------------------------------------- CDP touch pad --
+/** Fingers that stay down across awaits (H.touch plays one timed sequence; a held bead needs a wait on state). */
+async function touchPad(page) {
+  const cdp = await page.context().newCDPSession(page);
+  const down = new Map();
+  const send = (type) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [...down].map(([id, p]) => ({ x: p[0], y: p[1], id, radiusX: 4, radiusY: 4, force: 1 })) });
+  return {
+    async down(x, y, id = 1) { down.set(id, [x, y]); await send('touchStart'); },
+    /** A down with its first move travelling with it (a drag, not a hold; see tdrag). */
+    async downMove(x, y, x1, y1, id = 1) { down.set(id, [x, y]); const a = send('touchStart'); down.set(id, [x1, y1]); await Promise.all([a, send('touchMove')]); },
+    async move(x, y, id = 1) { down.set(id, [x, y]); await send('touchMove'); },
+    async path(pts, ms = 16, id = 1) { for (const p of pts) { down.set(id, p); await send('touchMove'); if (ms) await sleep(ms); } },
+    async up(id = 1) { down.delete(id); await send(down.size ? 'touchMove' : 'touchEnd'); },
+    async close() { if (down.size) { down.clear(); await send('touchEnd').catch(() => {}); } await cdp.detach().catch(() => {}); },
+  };
+}
+/**
+ * One finger along page px points (CDP touch), `ms` between moves. CDP delivers one touch event per rendered
+ * frame, and software GL renders a few frames a second: a first move sent a frame after the down would reach
+ * the page past the 220 ms hold threshold and read as a hold. So the first move travels with the down (as a
+ * real finger's does, a few ms later) and the last with the lift; the moves between come a frame apart, so
+ * keep them few and long (a brisk finger covers 100+ px a frame at these rates).
+ */
+async function tdrag(page, pts, ms = 0) {
+  const cdp = await page.context().newCDPSession(page);
+  const ev = (type, p) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: p ? [{ x: p[0], y: p[1], id: 1, radiusX: 4, radiusY: 4, force: 1 }] : [] });
+  try {
+    await Promise.all([ev('touchStart', pts[0]), ev('touchMove', pts[1])]);
+    for (let i = 2; i < pts.length - 1; i++) { await ev('touchMove', pts[i]); if (ms) await sleep(ms); }
+    await Promise.all([ev('touchMove', pts[pts.length - 1]), ev('touchEnd')]);
+  } finally { await cdp.detach().catch(() => {}); }
+}
+/** Page scroll and the visual viewport: all must stay at 0 (and scale 1) while weather is touched. */
+const scrolls = (page) => page.evaluate(() => ({ x: scrollX, y: scrollY, se: document.scrollingElement.scrollTop + document.scrollingElement.scrollLeft,
+  vx: visualViewport.offsetLeft, vy: visualViewport.offsetTop, px: visualViewport.pageLeft, py: visualViewport.pageTop, scale: visualViewport.scale }));
+const still0 = (s) => !s.x && !s.y && !s.se && !s.vx && !s.vy && !s.px && !s.py && s.scale === 1;
+
 async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || H.only(`${SCOPE}:${b}`) } = {}) {
   // ------------------------------------------------------------------- W1 --
   if (only('open')) await guard(`${SCOPE}:open`, async (scope, own) => {
@@ -203,6 +457,13 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const g = await wx(page, () => __lab.weather.geo());
     const before = await wx(page, () => ({ m: __lab.weather.metrics(), mood: __lab.weather.env.mood, realm: __lab.weather.realmId, puffs: __lab.weather.layer.stats().drawn.puffs }));
     check(scope, 'Storm in the Static Storm: a heavy bank drawn, agitation capped at 0.32', before.realm === 'static-storm' && before.m.coverage > 0.85 && before.puffs > 0 && before.mood.agitation <= 0.32 + 1e-6, JSON.stringify(before));
+    // a click on Glitzi is TouchTalk: the Companion's tap; the weather tools never see it (W7)
+    await H.clearEvents(page);
+    const ev0 = await wx(page, () => __lab.weather.events.length);
+    await page.mouse.click(g.body.cx, g.body.mid);
+    await page.waitForFunction(() => __lab.events.some((e) => e.type === 'tap'), null, { timeout: T }).catch(() => {});
+    const tp = await wx(page, (n) => ({ comp: __lab.events.map((e) => e.type), wx: __lab.weather.events.slice(n).map((e) => e.type), active: __lab.weather.tools.active, clear: __lab.weather.metrics().clear }), ev0);
+    check(scope, 'a click on Glitzi is a Companion tap and leaves the weather untouched (W7)', tp.comp.includes('tap') && !tp.wx.includes('touch') && tp.active === 0 && tp.clear === before.m.clear, JSON.stringify(tp));
     await H.clearEvents(page);
     const tags0 = await wx(page, () => __lab.weather.reactor.log.length);
     for (let k = 0; k < 3; k++) { const x = g.body.cx + (k - 1) * 18; await drag(page, line(x, g.skyTop + 6, x, g.body.top - 30, 10), 12); await sleep(400); }
@@ -297,10 +558,12 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'Storm resolves: caption, Glitzi\'s line, the lead chip becomes Again, the clouds drift off', r.cap === 'The storm passed.' && /Pfft/.test(r.line) && r.chips.join() === 'Again' && r.p === 1 && r.drift, JSON.stringify(r));
     check(scope, 'the resolve beat: Glitzi\'s home weather resolves with its own celebration', r.tags.some((t) => /glitzi-home-resolved/.test(t)), JSON.stringify(r.tags));
     await H.shot(page, out, 'weather-phone-storm-resolved');
+    const n0 = await wx(page, () => __lab.weather.reactor.log.length);
     await page.click('.wx-actions [data-action="again"]');
     await page.waitForFunction(() => __lab.weather.progress === 0 && !__lab.weather.resolved && !__lab.weather.session.planner.busy && __lab.weather.metrics().coverage > 0.8, null, { timeout: T });
-    const a = await wx(page, () => ({ chips: [...document.querySelectorAll('.wx-actions button')].map((b) => b.textContent), mood: __lab.weather.env.mood }));
-    check(scope, 'Again: progress 0, a fresh bank, the lead chip back, the mood target back to base', a.chips.join() === 'Part the clouds' && Math.abs(a.mood.heaviness - 0.7) < 0.03, JSON.stringify(a));
+    await page.waitForFunction((n) => __lab.weather.reactor.log.slice(n).some((e) => e.type === 'arrive'), n0, { timeout: T }).catch(() => {});
+    const a = await wx(page, (n) => ({ chips: [...document.querySelectorAll('.wx-actions button')].map((b) => b.textContent), mood: __lab.weather.env.mood, arrive: __lab.weather.reactor.log.slice(n).filter((e) => e.type === 'arrive').map((e) => e.tag) }), n0);
+    check(scope, 'Again: progress 0, a fresh bank, the lead chip back, the mood target back to base, the arrival replayed (W15)', a.chips.join() === 'Part the clouds' && Math.abs(a.mood.heaviness - 0.7) < 0.03 && a.arrive.length > 0, JSON.stringify(a));
     // Rain: thin it, then one bead into the deck resolves it
     await wx(page, () => __lab.weather.setWeather('rain', { instant: true }));
     await settled(page, 'rain');
@@ -312,6 +575,15 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await page.waitForFunction(() => __lab.weather.resolved && document.querySelector('.wx-actions [data-action="again"]'), null, { timeout: T });
     const rr = await wx(page, () => ({ cap: document.querySelector('.weather .wx-hint .wx-cap')?.textContent, realm: __lab.weather.realmId, drift: __lab.weather.tools.rain.drift, sr: document.querySelector('.weather .sr-only').textContent }));
     check(scope, 'Rain resolves when the rain is caught (≤ 0.15): the caption, Again, the deck drifts off', rr.cap === 'The rain eased.' && rr.drift, JSON.stringify(rr));
+    // re-picking the weather that is already chosen is Again too
+    await page.waitForFunction(() => { const r = __lab.weather.reactor; return r.t - r.mem.lastReact > 2.6; }, null, { timeout: T });
+    const n1 = await wx(page, () => __lab.weather.reactor.log.length);
+    await page.click('.wx-dial [data-weather="rain"]');
+    await page.waitForFunction(() => __lab.weather.progress === 0 && !__lab.weather.resolved && !__lab.weather.session.planner.busy && __lab.weather.sims.rain.level > 0.9, null, { timeout: T });
+    await page.waitForFunction((n) => __lab.weather.reactor.log.slice(n).some((e) => e.type === 'arrive'), n1, { timeout: T }).catch(() => {});
+    await sleep(400);
+    const rp = await wx(page, (n) => ({ chips: [...document.querySelectorAll('.wx-actions button')].map((b) => b.dataset.action), mood: __lab.weather.env.mood, arrive: __lab.weather.reactor.log.slice(n).filter((e) => e.type === 'arrive').map((e) => e.tag), said: __lab.weather.said.slice(-2) }), n1);
+    check(scope, 're-picking Rain on the dial is Again: progress 0, fresh rain, mood back to base, the arrival replayed (W15)', rp.chips[0] === 'lead' && Math.abs(rp.mood.heaviness - 0.82) < 0.03 && rp.arrive.length > 0, JSON.stringify(rp));
     noErrors(scope, errors);
   });
 
@@ -329,12 +601,19 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await settled(page, 'storm');
     const want = await wx(page, async (LAB) => { const { moodFor } = await import(`${LAB}/core/weather.js`); __lab.weather.settle(); await new Promise((r) => setTimeout(r, 400)); return { want: moodFor('storm', 0, null, __lab.weather.realmId), got: __lab.weather.env.mood, focus: __lab.weather.env.realm.debug.state.camX }; }, LAB);
     check(scope, 'the mood targets are the same as with full motion', Math.abs(want.want.heaviness - want.got.heaviness) < 0.03 && Math.abs(want.want.agitation - want.got.agitation) < 0.03, JSON.stringify(want));
+    // the Mallow kept its feet on the ground: Boppo's home-weather celebration (and every hop) became a nod
+    const rlog = await wx(page, () => __lab.weather.reactor.log);
+    check(scope, 'reduced motion: the reactor never hops, celebrates or double-taps (Boppo\'s home welcome is a nod)', rlog.length > 0 && !rlog.some((e) => ['hop', 'celebrate', 'doubleTap'].includes(e.react)), JSON.stringify(rlog.map((e) => [e.tag, e.react])));
+    const dens = () => wx(page, () => ({ rain: __lab.weather.sims.rain.active, dropsDrawn: __lab.weather.layer.stats().drawn.drops }));
+    const dRed = await dens();
     // live toggle back to full motion, without remounting
     const canvas0 = await wx(page, () => document.querySelector('.weather canvas.hushfold-realm') === __lab.weather.env.realm.canvas && __lab.weather.layer.frames);
     await wx(page, () => __lab.prefs.set('motion', 'full'));
     await sleep(300);
     const live = await wx(page, () => ({ layer: __lab.weather.layer.stats().reduced, sims: __lab.weather.sims.clouds.reduced, planner: __lab.weather.session.planner.reduced, screens: document.querySelectorAll('.weather').length }));
     check(scope, 'a live Motion change applies without remounting', canvas0 && !live.layer && !live.sims && !live.planner && live.screens === 1, JSON.stringify(live));
+    const dFull = await dens();
+    check(scope, 'reduced motion is sparser: fewer drops (×0.4)', dRed.rain < dFull.rain, JSON.stringify({ reduced: dRed, full: dFull }));
     // hidden: frames and sim time stop, a held bead is let go; visible: one small step
     await wx(page, () => __lab.weather.setWeather('rain', { instant: true }));
     await settled(page, 'rain');
@@ -352,6 +631,23 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const h2 = await wx(page, () => ({ t: __lab.weather.sims.rain.t, state: __lab.weather.state }));
     check(scope, 'visible again: the first frames advance sim time by a frame or two, not the gap', h2.t - h1.t <= 0.12 && h2.state !== 'paused', JSON.stringify({ h1, h2 }));
     noErrors(scope, errors);
+    // the system setting (emulated prefers-reduced-motion, Motion left on "system") reduces just the same
+    const r = await H.open(browser, 'phone', '#home', { comfort: H.comfort({ favouriteMallow: 'boppo' }) });
+    try {
+      await H.waitRig(r.page, { timeout: T });
+      await r.page.emulateMedia({ reducedMotion: 'reduce' });
+      await wx(r.page, () => __lab.ctx.navigate('/weather'));
+      await r.page.waitForFunction(() => __lab.weather?.state === 'live', null, { timeout: T });
+      await r.page.click('.wx-dial [data-weather="moonlight"]');
+      await r.page.waitForFunction(() => __lab.weather.front, null, { timeout: T });
+      const m = await wx(r.page, () => { const S = __lab.weather.sims; return { pref: __lab.prefs.get('motion'), mode: __lab.weather.front.mode, env: __lab.weather.env.reduced, layer: __lab.weather.layer.stats().reduced, planner: __lab.weather.session.planner.reduced,
+        sims: ['rain', 'clouds', 'deck', 'sun', 'moon', 'stars', 'ribbons', 'fluffs', 'mist', 'embers', 'waves'].every((k) => S[k].reduced), focus: __lab.weather.env.realm.debug.state.reduced }; });
+      check(`${scope}:media`, 'the system setting alone (prefers-reduced-motion, Motion on "system"): a fading front; env, realm, layer, planner and sims reduced', m.pref === 'system' && m.mode === 'fade' && m.env && m.layer && m.planner && m.sims && m.focus, JSON.stringify(m));
+      await settled(r.page, 'moonlight');
+      const lg = await wx(r.page, () => __lab.weather.reactor.log);
+      check(`${scope}:media`, 'and the Mallow neither hops nor celebrates', lg.length > 0 && !lg.some((e) => ['hop', 'celebrate', 'doubleTap'].includes(e.react)), JSON.stringify(lg.map((e) => [e.tag, e.react])));
+      noErrors(`${scope}:media`, r.errors);
+    } finally { await r.ctx.close(); }
   });
 
   // ------------------------------------------------------------ W2 (dial) --
@@ -625,7 +921,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await drag(page, line(40, g.skyTop + 140, g.W - 40, g.skyTop + 140, 28), 50);
     const c1 = await wx(page, () => ({ calm: __lab.weather.metrics().calm, p: __lab.weather.progress }));
     check(scope, 'slow, smooth strokes build calm (progress rises)', c1.calm > c0 + 0.08 && c1.p > 0.08, JSON.stringify({ c0, c1 }));
-    await H.shot(page, out, 'weather-phone-wind');
+    await H.shot(page, out, 'weather-phone-wind-calm');
     // the arrow sends one breeze from its side; the chip held gives a slow breeze that calms
     await page.focus('.weather .stage');
     await page.keyboard.press('ArrowLeft');
@@ -893,10 +1189,10 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'the low tier keeps rain and wind (and the pad); the rain hiss follows the falling rain', s1.bed.layers.join() === 'rain,wind' && s1.bed.levels.rain > 0.3 && s1.bed.levels.pad === 0, JSON.stringify(s1.bed));
     // a bead: drips as it gathers, a rising note as it goes up into the cloud as light
     const deckY = await wx(page, () => __lab.weather.sims.rain.deckY);
-    await page.mouse.move(g.body.cx - 110, deckY + 90);
+    await page.mouse.move(g.body.cx - 110, deckY + 70);
     await page.mouse.down();
-    await page.waitForFunction(() => __lab.weather.metrics().held === 1 && (__lab.weather.sound.played.drip || 0) >= 2, null, { timeout: T }).catch(() => {});
-    await page.mouse.move(g.body.cx - 110, deckY + 10, { steps: 4 });
+    await page.waitForFunction(() => (__lab.weather.sims.rain.snapshot().orbs[0]?.n || 0) >= 4 && (__lab.weather.sound.played.drip || 0) >= 2, null, { timeout: T }).catch(() => {});
+    await page.mouse.move(g.body.cx - 110, deckY - 30, { steps: 4 });   // let go inside the deck: up as light
     await page.mouse.up();
     await page.waitForFunction(() => (__lab.weather.sound.played.rise || 0) >= 1, null, { timeout: 20000 }).catch(() => {});
     const b = await wx(page, () => ({ played: __lab.weather.sound.played, ev: __lab.weather.events.map((e) => e.type) }));
@@ -926,9 +1222,9 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await wx(page, () => __lab.dna.set('touchSounds', false));
     await page.waitForFunction(() => !__lab.weather.sound.alive, null, { timeout: 10000 }).catch(() => {});
     const p0 = await wx(page, () => __lab.weather.sound.played);
-    await page.mouse.click(g.W * 0.92, (g.water[0] + g.water[1]) / 2 + 30);   // a ripple on the water
+    await page.mouse.click(g.W * 0.92, g.water[0] + 40);   // a ripple on the water (beside the Mallow)
     await sleep(800);
-    const fx = await wx(page, () => ({ alive: __lab.weather.sound.alive, played: __lab.weather.sound.played, ev: __lab.weather.events.slice(-4).map((e) => e.type) }));
+    const fx = await wx(page, () => ({ alive: __lab.weather.sound.alive, played: __lab.weather.sound.played, ev: __lab.weather.events.map((e) => e.type).filter((t) => !/^land-|^hit-body$/.test(t)) }));
     check(scope, 'Touch sounds off: the bed lets go and a touch on the water stays silent', !fx.alive && total(fx.played) === total(p0) && fx.ev.includes('water-tap'), JSON.stringify({ p0, fx }));
     await wx(page, () => __lab.dna.set('touchSounds', true));
     await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: 10000 }).catch(() => {});
@@ -940,6 +1236,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await sleep(1500);
     await H.setHidden(page, false);
     await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: 15000 }).catch(() => {});
+    // voices stopped while the context was suspended finish ending once it runs again
+    await page.waitForFunction(() => __lab.sound.debug().keep === 1, null, { timeout: 5000 }).catch(() => {});
     const vs = await wx(page, () => ({ alive: __lab.weather.sound.alive, state: __lab.sound.debug().state, played: __lab.weather.sound.played, keep: __lab.sound.debug().keep }));
     check(scope, 'hidden: the bed stops and the audio suspends with the loop paused', !hd.alive && hd.state === 'suspended' && hd.wstate === 'paused', JSON.stringify(hd));
     check(scope, 'visible again: one bed rebuilt, no burst of one-shots', vs.alive && vs.keep === 1 && vs.state === 'running' && total(vs.played) - total(hd.played) <= 2, JSON.stringify({ hd: hd.played, vs }));
@@ -1131,27 +1429,565 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     noErrors(scope, errors);
   });
 
-  // ----------------------------------------------------------- W13 layout --
-  if (only('layout')) await guard(`${SCOPE}:layout`, async (scope) => {
-    for (const vp of ['phone', 'small', 'desktop', 'land']) {
-      const { ctx, page, errors } = await openWx(browser, vp, 'pipzi');
+  // ------------------------------------------------------- quality tiers --
+  if (only('tier')) await guard(`${SCOPE}:tier`, async (scope, own) => {
+    const { ctx, page, errors } = await openWx(browser, 'phone', 'loomi', { prefs: { quality: 'medium' } });
+    own(ctx);
+    const g = await wx(page, () => __lab.weather.geo());
+    await page.mouse.click(g.W * 0.12, g.skyTop + 40);   // a gesture: the bed builds
+    await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: T });
+    const m = await wx(page, () => ({ q: __lab.quality(), bed: __lab.weather.sound, layer: __lab.weather.layer.stats(), ribbons: __lab.weather.sims.ribbons.n, stars: __lab.weather.sims.stars.n }));
+    check(scope, 'medium: four bed layers and the pad, a front canvas, DPR ≤ 1.25', m.q === 'medium' && m.bed.layers.join() === 'rain,wind,rumble,lap' && m.layer.front && m.layer.backDpr <= 1.25, JSON.stringify(m));
+    await wx(page, () => __lab.prefs.set('quality', 'low'));
+    await page.waitForFunction(() => __lab.weather.layer.stats().quality === 'low' && __lab.weather.sound.tier === 'low', null, { timeout: T });
+    await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: T });
+    const l = await wx(page, () => ({ bed: __lab.weather.sound, layer: __lab.weather.layer.stats(), ribbons: __lab.weather.sims.ribbons.n, keep: __lab.sound.debug().keep, fronts: document.querySelectorAll('.weather canvas.wx-front').length }));
+    check(scope, 'a live drop to low: the bed sheds to rain and wind (rebuilt once), no front canvas, fewer ribbons', l.bed.layers.join() === 'rain,wind' && l.bed.alive && !l.layer.front && l.fronts === 0 && l.ribbons < m.ribbons, JSON.stringify(l));
+    await page.waitForFunction(() => __lab.sound.debug().keep === 1, null, { timeout: 5000 }).catch(() => {});
+    await wx(page, () => __lab.prefs.set('quality', 'high'));
+    await sleep(2500);
+    const h = await wx(page, () => ({ bed: __lab.weather.sound, ribbons: __lab.weather.sims.ribbons.n, keep: __lab.sound.debug().keep }));
+    check(scope, 'back up to high mid-session: pools and bed never grow back (one bed)', h.bed.layers.join() === 'rain,wind' && h.ribbons === l.ribbons && h.keep === 1, JSON.stringify(h));
+    noErrors(scope, errors);
+  });
+
+  // ------------------------------------------------- W2 states (residual) --
+  // Every radio in dial order (Boppo: the orchard, then the cove for the night skies): the state settles, the
+  // Mallow answers within 2 s, and the world is not a recolour of the one before (residual > 12).
+  if (only('states')) await guard(`${SCOPE}:states`, async (scope, own) => {
+    const { ctx, page, errors } = await openWx(browser, 'phone', 'boppo');
+    own(ctx);
+    await settled(page, 'sunshine');
+    await wx(page, () => __lab.weather.settle());
+    await sleep(1200);
+    let prev = await composite(page);
+    // the probe's self-check: a hue-turned, a brightened and a tinted copy are recolours (residual < 3)
+    const self = [residual(prev, recolour(prev, hueMatrix(40))), residual(prev, recolour(prev, IDENT, 0.85, 30)), residual(prev, recolour(prev, [1.08, 0.05, 0, 0, 0.95, 0.04, 0, 0.02, 0.8]))];
+    check(scope, 'self-check: a hue-turned, a brightened and a tinted copy of the world leave a residual under 3', self.every((r) => r < 3), JSON.stringify(self));
+    await H.shot(page, out, 'weather-phone-state-sunshine');
+    const rows = [];
+    for (const w of ['wind', 'fog', 'rain', 'storm', 'moonlight', 'starlight', 'warm']) {
+      // clear of the last beat (the arrival cooldown is 2.5 s of sim time), so the Mallow is free to answer
+      await page.waitForFunction(() => { const r = __lab.weather.reactor, l = r.log; return !l.length || r.t - l[l.length - 1].t > 2.6; }, null, { timeout: T });
+      const t0 = await wx(page, () => __lab.weather.reactor.t);
+      await page.click(`.wx-dial [data-weather="${w}"]`);
+      const answered = await page.waitForFunction((t0) => __lab.weather.reactor.log.some((e) => e.t > t0), t0, { timeout: T }).then(() => true, () => false);
+      const first = await wx(page, (t0) => __lab.weather.reactor.log.find((e) => e.t > t0) || null, t0);
+      await settled(page, w);
+      const st = await wx(page, async ({ LAB, w }) => {
+        const { pickRealm, moodFor } = await import(`${LAB}/core/weather.js`);
+        const lw = __lab.weather;
+        lw.settle();
+        await new Promise((r) => setTimeout(r, 600));
+        const want = moodFor(w, 0, lw.live(), lw.realmId), m = lw.env.mood;
+        return { realm: lw.realmId, dm: +Math.max(...Object.keys(want).map((k) => Math.abs(want[k] - m[k]))).toFixed(3) };
+      }, { LAB, w });
+      await sleep(600);
+      const img = await composite(page);
+      rows.push({ w, realm: st.realm, residual: residual(prev, img), dm: st.dm, answered, react: first && { tag: first.tag, dt: +(first.t - t0).toFixed(2) } });
+      prev = img;
+      await H.shot(page, out, `weather-phone-state-${w}`);
+    }
+    check(scope, 'each weather is a new world, not a recolour of the last: residual against the previous state > 12', rows.every((r) => r.residual > 12), JSON.stringify(rows.map((r) => [r.w, r.realm, r.residual])));
+    check(scope, 'each settles in its realm at moodFor(weather, 0) (within the throttle)', rows.every((r) => r.dm < 0.05), JSON.stringify(rows.map((r) => [r.w, r.dm])));
+    check(scope, 'the Mallow answers every pick within 2 s (sim time; arrival, front look or wary look)', rows.every((r) => r.answered && r.react && r.react.dt <= 2), JSON.stringify(rows.map((r) => [r.w, r.react])));
+    noErrors(scope, errors);
+  });
+
+  // ------------------------------------------------- W4 beyond the touch --
+  // One modest, meaningful gesture per weather, away from the middle; the realm's answer is measured outside
+  // the gesture's box + 60 px (stills at the target before and after: see the probe above). Waves change no
+  // mood (a swell is the lab's own), so for them the lab layer is diffed against a no-touch control.
+  if (only('reach')) await guard(`${SCOPE}:reach`, async (scope) => {
+    // Loomi in the Blue Drift: storm, wind, fog, sunshine, rain and waves all happen there
+    let r = await openWx(browser, 'phone', 'loomi');
+    try {
+      const { page } = r;
+      const ready = async (w) => { await wx(page, (w) => __lab.weather.setWeather(w, { instant: true }), w); await settled(page, w); await wx(page, () => __lab.weather.settle()); await sleep(700); };
+      let g = await wx(page, () => __lab.weather.geo());
+      // Storm: three swipes down through the left of the bank
+      await ready('storm');
+      let t0 = await target(page), pts = [];
+      for (let k = 0; k < 3; k++) { const p = line(46 + k * 16, g.skyTop + 6, 46 + k * 16, g.body.top - 40, 10); pts.push(...p); await drag(page, p, 12); await sleep(300); }
+      await page.waitForFunction(() => __lab.weather.metrics().clear > 0.08, null, { timeout: T }).catch(() => {});
+      await reach(page, `${scope}:storm`, 'Storm: swipes on the left part the bank', t0, boxOf(pts));
+      // Wind: three slow, smooth strokes along the top of the sky build calm (the gusts ease)
+      await ready('wind');
+      t0 = await target(page);
+      pts = [];
+      for (let k = 0; k < 3; k++) { const p = line(30, g.skyTop + 50 + k * 14, g.W - 30, g.skyTop + 50 + k * 14, 24); pts.push(...p); await drag(page, p, 45); }
+      await page.waitForFunction(() => __lab.weather.progress > 0.15, null, { timeout: T }).catch(() => {});
+      await reach(page, `${scope}:wind`, 'Wind: slow strokes along the top calm the gusts', t0, boxOf(pts));
+      // Fog: two wipes across the upper sky
+      await ready('fog');
+      t0 = await target(page);
+      pts = [];
+      for (let k = 0; k < 2; k++) { const p = line(16, g.skyTop + 40 + k * 40, g.W - 16, g.skyTop + 50 + k * 40, 12); pts.push(...p); await drag(page, p, 14); }
+      await reach(page, `${scope}:fog`, 'Fog: two wipes across the top', t0, boxOf(pts));
+      // Sunshine: the light taken a short way along the top of the sky
+      await ready('sunshine');
+      t0 = await target(page);
+      const sun = await wx(page, () => __lab.weather.sims.sun.snapshot());
+      pts = [[sun.x, sun.y], ...line(sun.x, sun.y, Math.max(40, sun.x - 200), g.skyTop + 60, 10)];
+      await drag(page, pts, 30);
+      await page.waitForFunction(() => __lab.weather.metrics().painted > 0.03, null, { timeout: T }).catch(() => {});
+      await reach(page, `${scope}:sun`, 'Sunshine: the light taken along the top burns haze away', t0, boxOf(pts));
+      // Rain: one bead on the left, let go up into the deck
+      await ready('rain');
+      const deckY = await wx(page, () => __lab.weather.sims.rain.deckY);
+      t0 = await target(page);
+      const bx = 60, by = deckY + 70;
+      await page.mouse.move(bx, by); await page.mouse.down();
+      await page.waitForFunction(() => (__lab.weather.sims.rain.snapshot().orbs[0]?.n || 0) >= 6, null, { timeout: T }).catch(() => {});
+      await page.mouse.move(bx, deckY - 30, { steps: 4 }); await page.mouse.up();
+      await page.waitForFunction(() => __lab.weather.progress > 0.05, null, { timeout: T }).catch(() => {});
+      await reach(page, `${scope}:rain`, 'Rain: one bead sent up into the deck on the left', t0, boxOf([[bx, by], [bx, deckY - 30]]));
+      noErrors(scope, r.errors);
+    } finally { await r.ctx.close(); }
+    // the night skies and the embers: Noomi (Moonlight), Zuzu (Starlight), Pipzi (Warm glow)
+    for (const [id, w] of [['noomi', 'moonlight'], ['zuzu', 'starlight'], ['pipzi', 'warm']]) {
+      r = await openWx(browser, 'phone', id);
       try {
-        const sc = `${scope}:${vp}`;
-        const bases = new Set();
-        for (const w of ['rain', 'storm']) {
+        const { page } = r;
+        await settled(page, w);
+        await wx(page, () => __lab.weather.settle());
+        await sleep(900);
+        const g = await wx(page, () => __lab.weather.geo());
+        const t0 = await target(page);
+        let pts;
+        if (w === 'moonlight') {
+          // the moonlight brought down onto Noomi and rested there
+          const m = await wx(page, () => __lab.weather.sims.moon.snapshot());
+          pts = [[m.x, m.y], ...line(m.x, m.y, g.body.cx, g.body.mid, 10)];
+          await page.mouse.move(m.x, m.y); await page.mouse.down();
+          for (const p of pts.slice(1)) { await page.mouse.move(p[0], p[1]); await sleep(20); }
+          await page.waitForFunction(() => __lab.weather.progress > 0.4, null, { timeout: T }).catch(() => {});
+          await page.mouse.up();
+          pts.push([g.body.cx - g.body.w / 2, g.body.top], [g.body.cx + g.body.w / 2, g.body.bottom]);
+        } else if (w === 'starlight') {
+          // stars swept up on the left (until at least three orbit the finger), let go: a constellation above Zuzu
+          pts = await wx(page, () => {
+            const s = __lab.weather.sims.stars, b = __lab.weather.geo().body, out = [];
+            for (let i = 0; i < s.n; i++) if (s.st[i] === 0 && s.a[i] > 0.5 && Math.hypot(s.x[i] - b.cx, s.y[i] - b.mid) > b.h) out.push([s.x[i], s.y[i]]);
+            out.sort((a, c) => (a[0] + a[1] * 0.5) - (c[0] + c[1] * 0.5));
+            return out.slice(0, 6).sort((a, c) => a[0] - c[0]);
+          });
+          await page.mouse.move(pts[0][0], pts[0][1]); await page.mouse.down();
+          for (const p of pts.slice(1)) {
+            await page.mouse.move(p[0], p[1], { steps: 8 });
+            if (await wx(page, () => __lab.weather.metrics().heldStars >= 3)) break;
+          }
+          await page.waitForFunction(() => __lab.weather.metrics().heldStars >= 3, null, { timeout: T }).catch(() => {});
+          await page.mouse.up();
+          await page.waitForFunction(() => __lab.weather.metrics().constellations >= 1, null, { timeout: T }).catch(() => {});
+          const c = await wx(page, () => { const s = __lab.weather.sims.stars, out = []; for (let i = 0; i < s.n; i++) if (s.st[i] === 2 || s.st[i] === 3) out.push([s.sx[i], s.sy[i]]); return out; });   // flying to / placed in its slots
+          pts.push(...c);   // the constellation is the touch's own consequence: kept inside the box
+        } else {
+          // a drag through four waiting embers in the upper sky
+          pts = await wx(page, () => {
+            const e = __lab.weather.sims.embers, out = [];
+            for (let i = 0; i < e.n; i++) if (e.litT[i] < 0) out.push([e.x[i], e.y[i]]);
+            return out.sort((a, c) => a[1] - c[1]).slice(0, 4).sort((a, c) => a[0] - c[0]);
+          });
+          await page.mouse.move(pts[0][0], pts[0][1]); await page.mouse.down();
+          for (const p of pts.slice(1)) await page.mouse.move(p[0], p[1], { steps: 6 });
+          await page.mouse.up();
+          await page.waitForFunction(() => __lab.weather.metrics().heat > 0.05, null, { timeout: T }).catch(() => {});
+        }
+        await reach(page, `${scope}:${w}`, `${w === 'warm' ? 'Warm glow' : w[0].toUpperCase() + w.slice(1)}: ${w === 'moonlight' ? 'moonlight resting on Noomi a while' : w === 'starlight' ? 'one constellation' : 'four embers kindled'}`, t0, boxOf(pts));
+        if (w === 'moonlight') await waveReach(page, `${scope}:water`);
+        noErrors(`${scope}:${w}`, r.errors);
+      } finally { await r.ctx.close(); }
+    }
+  });
+
+  // ------------------------------------------------------------ W5 touch --
+  // Every W4 interaction again with real touch input (CDP) at 390×844, the two-finger spread in Storm, a tap on
+  // the Mallow (TouchTalk, not weather), and the page never scrolls or zooms.
+  if (only('touch')) await guard(`${SCOPE}:touch`, async (scope) => {
+    let r = await openWx(browser, 'phone', 'loomi');
+    let pad = null;
+    try {
+      const { page } = r;
+      pad = await touchPad(page);
+      const ready = async (w) => { await wx(page, (w) => __lab.weather.setWeather(w, { instant: true }), w); await settled(page, w); await wx(page, () => __lab.weather.settle()); await sleep(600); };
+      const s0 = await scrolls(page);
+      let g = await wx(page, () => __lab.weather.geo());
+      // a tap on Loomi is TouchTalk: the Companion answers, the weather tools never see it
+      await settled(page, 'wind');
+      await H.clearEvents(page);
+      const e0 = await wx(page, () => __lab.weather.events.length);
+      await H.touch(page, [{ t: 0, points: [{ x: g.body.cx, y: g.body.mid, id: 1 }] }, { t: 60, points: [] }]);
+      await page.waitForFunction(() => __lab.events.some((e) => e.type === 'tap'), null, { timeout: T }).catch(() => {});
+      const tap = await wx(page, (e0) => ({ comp: __lab.events.map((e) => e.type), wx: __lab.weather.events.slice(e0).map((e) => e.type), active: __lab.weather.tools.active }), e0);
+      check(`${scope}:mallow`, 'a touch tap on Loomi is TouchTalk: a Companion tap, no weather touch, no tool claimed (W7)', tap.comp.includes('tap') && !tap.wx.includes('touch') && tap.active === 0, JSON.stringify(tap));
+      // Wind: a fast finger across the sky raises the flow
+      await wx(page, () => __lab.weather.settle());
+      await sleep(400);
+      await H.clearEvents(page);
+      const flow = (y) => wx(page, (y) => { const o = { vx: 0, vy: 0 }; __lab.weather.sims.wind.sample(__lab.weather.geo().W / 2, y, o); return Math.round(o.vx); }, y);
+      const fy = g.skyTop + 105, f0 = await flow(fy);
+      await tdrag(page, line(14, g.skyTop + 90, g.W - 14, g.skyTop + 120, 4));
+      const f1 = await flow(fy), en1 = await wx(page, () => __lab.weather.metrics().energy);
+      check(`${scope}:wind`, 'Wind by touch: the flow follows the finger (the current under its path runs its way, > 300 px/s); no Companion drag', f1 > 300 && f1 > f0 + 200 && !(await H.events(page)).some((t) => t === 'drag' || t === 'stroke'), JSON.stringify({ flow: [f0, f1], energy: en1 }));
+      // Waves: a finger on the water pushes a swell
+      const wy = g.water[0] + 50;
+      await tdrag(page, line(8, wy, 120, wy, 3));
+      const pushed = await page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'water-push'), null, { timeout: T }).then(() => true, () => false);
+      check(`${scope}:water`, 'Waves by touch: a finger on the water sends a swell', pushed);
+      // Fog: two wipes clear the mist
+      await ready('fog');
+      for (let k = 0; k < 2; k++) await tdrag(page, line(16, g.skyTop + 80 + k * 60, g.W - 16, g.skyTop + 100 + k * 60, 6));
+      const fc = await page.waitForFunction(() => __lab.weather.metrics().fogClear > 0.03, null, { timeout: T }).then(() => wx(page, () => __lab.weather.metrics().fogClear), () => -1);
+      check(`${scope}:fog`, 'Fog by touch: wipes clear the mist (fogClear ↑)', fc > 0.03, `${fc}`);
+      // Rain: a resting finger grows a bead; flicked up into the deck it goes up as light; a swipe leans the rain
+      await ready('rain');
+      const deckY = await wx(page, () => __lab.weather.sims.rain.deckY);
+      const lv0 = await wx(page, () => __lab.weather.sims.rain.level);
+      await pad.down(g.body.cx - 110, deckY + 70);
+      const grew = await page.waitForFunction(() => (__lab.weather.sims.rain.snapshot().orbs[0]?.n || 0) >= 4, null, { timeout: T }).then(() => true, () => false);
+      await pad.path(line(g.body.cx - 110, deckY + 70, g.body.cx - 110, deckY - 30, 4).slice(1), 16);
+      await pad.up();
+      const upd = await page.waitForFunction((lv) => __lab.weather.events.some((e) => e.type === 'bead-up') && __lab.weather.sims.rain.level < lv - 0.05, lv0, { timeout: T }).then(() => true, () => false);
+      check(`${scope}:rain`, 'Rain by touch: a resting finger grows a bead; flicked up, it rises as light and the rain thins', grew && upd, JSON.stringify(await wx(page, () => ({ level: __lab.weather.sims.rain.level, ev: [...new Set(__lab.weather.events.map((e) => e.type))] }))));
+      await tdrag(page, line(30, deckY + 150, g.W - 30, deckY + 170, 4));
+      const lean = await wx(page, () => __lab.weather.sims.rain.lean);
+      check(`${scope}:rain`, 'Rain by touch: a swipe leans the rain', Math.abs(lean) > 0.1, `${lean}`);
+      // Storm: one finger down through the bank parts it; then two fingers spreading open a gap at their midpoint
+      await ready('storm');
+      g = await wx(page, () => __lab.weather.geo());
+      const c0 = await wx(page, () => __lab.weather.metrics().clear);
+      for (let k = 0; k < 2; k++) { const x = g.body.cx + (k - 0.5) * 40; await tdrag(page, line(x, g.skyTop + 6, x, g.body.top - 30, 4)); await sleep(250); }
+      const c1 = await page.waitForFunction((c) => __lab.weather.metrics().clear > c + 0.05, c0, { timeout: T }).then(() => wx(page, () => __lab.weather.metrics().clear), () => -1);
+      check(`${scope}:storm`, 'Storm by touch: a finger swiped down through the bank parts it', c1 > c0 + 0.05, `${c0} → ${c1}`);
+      await wx(page, () => {
+        const lw = __lab.weather, c = lw.sims.clouds;
+        c.reset();
+        window.__spread = [];
+        if (!c.__spy) { c.__spy = c.spread; c.spread = function (x, y, k) { if (k > 0.001) window.__spread.push([Math.round(x), Math.round(y), +k.toFixed(3)]); return c.__spy.call(this, x, y, k); }; }
+      });
+      await sleep(300);
+      const sc0 = await wx(page, () => __lab.weather.metrics().clear);
+      await H.clearEvents(page);
+      const my = (g.skyTop + g.body.top) / 2 - 20, mx = g.body.cx;
+      await pad.down(mx - 22, my, 1); await pad.down(mx + 22, my, 2);
+      await sleep(120);
+      for (let k = 1; k <= 12; k++) { await pad.move(mx - 22 - k * 11, my, 1); await pad.move(mx + 22 + k * 11, my, 2); await sleep(40); }
+      await H.shot(page, out, 'weather-phone-touch-spread');
+      await pad.up(2); await pad.up(1);
+      await sleep(500);
+      const sp = await wx(page, () => ({ calls: window.__spread, clear: __lab.weather.metrics().clear, comp: __lab.events.map((e) => e.type) }));
+      const near = sp.calls.length && sp.calls.every((c) => Math.abs(c[0] - mx) < 30 && Math.abs(c[1] - my) < 30);
+      check(`${scope}:storm`, 'Storm by touch: two fingers spreading open a gap at their midpoint (clouds.spread there, clear ↑), never a squeeze', near && sp.clear > sc0 + 0.03 && !sp.comp.some((t) => /squeeze|drag|stroke/.test(t)),
+        JSON.stringify({ mid: [mx, Math.round(my)], calls: sp.calls.slice(0, 6), n: sp.calls.length, clear: [sc0, sp.clear], comp: sp.comp }));
+      // Sunshine: a finger takes the light across the sky, then onto Loomi
+      await ready('sunshine');
+      const sun = await wx(page, () => __lab.weather.sims.sun.snapshot());
+      await tdrag(page, [[sun.x, sun.y], ...line(sun.x, sun.y, 40, g.skyTop + 80, 4).slice(1), ...line(40, g.skyTop + 80, g.W - 40, g.skyTop + 110, 6).slice(1)]);
+      const painted = await page.waitForFunction(() => __lab.weather.metrics().painted > 0.05, null, { timeout: T }).then(() => true, () => false);
+      const s1 = await wx(page, () => __lab.weather.sims.sun.snapshot());
+      await pad.down(s1.x, s1.y);
+      await pad.path(line(s1.x, s1.y, g.body.cx, g.body.mid, 10).slice(1), 30);
+      const basked = await page.waitForFunction(() => __lab.weather.metrics().onBody && __lab.weather.metrics().bask > 0.3, null, { timeout: T }).then(() => true, () => false);
+      await pad.up();
+      check(`${scope}:sun`, 'Sunshine by touch: the light follows the finger, burns haze, and basks Loomi', painted && basked, JSON.stringify(await wx(page, () => __lab.weather.metrics())));
+      // Warm glow: a finger through waiting embers kindles them
+      await ready('warm');
+      const em = await wx(page, () => {
+        const e = __lab.weather.sims.embers, b = __lab.weather.geo().body, pts = [];
+        for (let i = 0; i < e.n; i++) if (e.litT[i] < 0 && Math.hypot(e.x[i] - b.cx, e.y[i] - b.mid) > b.h * 0.8) pts.push([e.x[i], e.y[i]]);
+        return pts.sort((a, c) => a[1] - c[1]).slice(0, 4).sort((a, c) => a[0] - c[0]);
+      });
+      const epts = [em[0]];
+      for (let i = 1; i < em.length; i++) epts.push(...line(em[i - 1][0], em[i - 1][1], em[i][0], em[i][1], 3).slice(1));
+      await tdrag(page, epts);
+      const heat = await page.waitForFunction(() => __lab.weather.metrics().heat > 0.04, null, { timeout: T }).then(() => wx(page, () => __lab.weather.metrics().heat), () => -1);
+      check(`${scope}:warm`, 'Warm glow by touch: a finger through the embers kindles them (heat ↑)', heat > 0.04, `${heat}`);
+      const s1s = await scrolls(page);
+      check(scope, 'the page never scrolled or zoomed through all of it (scroll, visual viewport offset 0, scale 1)', still0(s0) && still0(s1s), JSON.stringify({ s0, s1s }));
+      noErrors(scope, r.errors);
+    } finally { await pad?.close(); await r.ctx.close(); }
+    // the night skies: Noomi's Moonmilk Cove
+    r = await openWx(browser, 'phone', 'noomi');
+    pad = null;
+    try {
+      const { page } = r;
+      pad = await touchPad(page);
+      await settled(page, 'moonlight');
+      await wx(page, () => __lab.weather.settle());
+      await sleep(600);
+      const g = await wx(page, () => __lab.weather.geo());
+      const m = await wx(page, () => __lab.weather.sims.moon.snapshot());
+      await pad.down(m.x, m.y);
+      await pad.path(line(m.x, m.y, g.body.cx, g.body.mid, 12).slice(1), 30);
+      const lit = await page.waitForFunction(() => __lab.companion.rig.faceOverride?.set?.breathRate === 0.12, null, { timeout: T }).then(() => true, () => false);
+      await pad.up();
+      check(`${scope}:moon`, 'Moonlight by touch: the silver light taken onto Noomi slows its breath (breathRate 0.12)', lit);
+      await wx(page, () => __lab.weather.setWeather('starlight', { instant: true }));
+      await settled(page, 'starlight');
+      await wx(page, () => __lab.weather.settle());
+      await sleep(800);
+      const sp = await wx(page, () => {
+        const s = __lab.weather.sims.stars, b = __lab.weather.geo().body, pts = [];
+        for (let i = 0; i < s.n; i++) if (s.st[i] === 0 && s.a[i] > 0.5 && Math.hypot(s.x[i] - b.cx, s.y[i] - b.mid) > b.h) pts.push([s.x[i], s.y[i]]);
+        pts.sort((a, c) => (a[0] + a[1] * 0.5) - (c[0] + c[1] * 0.5));
+        return pts.slice(0, 4).sort((a, c) => a[0] - c[0]);
+      });
+      await pad.down(sp[0][0], sp[0][1]);
+      for (let i = 1; i < sp.length; i++) await pad.path(line(sp[i - 1][0], sp[i - 1][1], sp[i][0], sp[i][1], 8).slice(1), 20);
+      const held = await page.waitForFunction(() => __lab.weather.metrics().heldStars >= 2, null, { timeout: T }).then(() => true, () => false);
+      await pad.up();
+      const made = await page.waitForFunction(() => __lab.weather.metrics().constellations >= 1, null, { timeout: T }).then(() => true, () => false);
+      check(`${scope}:stars`, 'Starlight by touch: a finger sweeps up an orbiting cluster; let go, a constellation', held && made);
+      const s1 = await scrolls(page);
+      check(`${scope}:night`, 'still no page scroll or zoom', still0(s1), JSON.stringify(s1));
+      noErrors(`${scope}:night`, r.errors);
+    } finally { await pad?.close(); await r.ctx.close(); }
+  });
+
+  // ------------------------------------------------------------ W6 chips --
+  // Every lead chip held from the keyboard (Space), the water chip pressed with Space, W held on the stage:
+  // each gives the same change as its gesture.
+  if (only('chips')) await guard(`${SCOPE}:chips`, async (scope) => {
+    const METRIC = {   // what the gesture changes, read in the page, and how far the chip must move it
+      sunshine: ['() => __lab.weather.metrics().bask', 0.5], wind: ['() => __lab.weather.metrics().calm', 0.04], fog: ['() => __lab.weather.metrics().fogClear', 0.08],
+      rain: ['() => (__lab.weather.sims.rain.sheltered() ? 1 : 0) + Math.min(1, (__lab.weather.sims.rain.snapshot().orbs[0]?.n || 0) / 3)', 1.9],
+      storm: ['() => __lab.weather.metrics().clear', 0.15], warm: ['() => __lab.weather.metrics().heat', 0.1],
+      moonlight: ['() => __lab.weather.metrics().dwell', 0.05], starlight: ['() => Math.max(0, __lab.weather.sims.stars.clusterSize(-11))', 3],
+    };
+    const res = {};
+    for (const [id, list] of [['loomi', ['sunshine', 'wind', 'fog', 'rain', 'storm', 'warm']], ['noomi', ['moonlight', 'starlight']]]) {
+      const r = await openWx(browser, 'phone', id);
+      try {
+        const { page } = r;
+        for (const w of list) {
           await wx(page, (w) => __lab.weather.setWeather(w, { instant: true }), w);
           await settled(page, w);
-          bases.add(await wx(page, () => __lab.companion.rig.BASE.toFixed(1)));
+          await wx(page, () => __lab.weather.settle());
+          await sleep(500);
+          const [src, need] = METRIC[w];
+          const v0 = await wx(page, `(${src})()`);
+          await page.focus('.wx-actions [data-action="lead"]');
+          await page.keyboard.down('Space');
+          const ok = await page.waitForFunction(({ src, v0, need }) => { const v = (0, eval)(src)(); return v >= v0 + need || __lab.weather.resolved; }, { src, v0, need }, { timeout: T * 2 }).then(() => true, () => false);
+          const v1 = await wx(page, `(${src})()`);
+          const after = { focus: await wx(page, () => document.activeElement?.dataset?.action || null), active: await wx(page, () => !!document.querySelector('.wx-actions .active')) };
+          await page.keyboard.up('Space');
+          await sleep(300);
+          // what letting go does: Rain's bead goes up; Starlight's stream becomes a constellation
+          let rel = true;
+          if (w === 'rain') rel = await page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'bead-up'), null, { timeout: T }).then(() => true, () => false);
+          if (w === 'starlight') rel = await page.waitForFunction(() => __lab.weather.metrics().constellations >= 1, null, { timeout: T }).then(() => true, () => false);
+          const released = await wx(page, () => !document.querySelector('.wx-actions .active') && !__lab.weather.tools.altActive);
+          res[w] = { ok, v0: +(+v0).toFixed(3), v1: +(+v1).toFixed(3), rel, released, ...after };
         }
-        await H.layout(page, sc, { scrollers: ['.wx-dial', '.wx-actions'] });
-        const d = await wx(page, () => {
-          const dial = document.querySelector('.wx-dial'), r = dial.getBoundingClientRect(), b = dial.querySelector('[aria-checked="true"]').getBoundingClientRect();
-          const rows = [...document.querySelectorAll('.weather .bottom > *')].map((e) => Math.round(e.getBoundingClientRect().height));
-          return { inView: b.left >= r.left - 1 && b.right <= r.right + 1, rows, sw: dial.scrollWidth, cw: dial.clientWidth };
+        if (id === 'loomi') {
+          // "Push the water" with Space: a swell, as a drag on the water would send
+          await wx(page, () => __lab.weather.setWeather('wind', { instant: true }));
+          await settled(page, 'wind');
+          await page.focus('.wx-actions [data-action="water"]');
+          await page.keyboard.press('Space');
+          res.water = await page.waitForFunction(() => __lab.weather.events.some((e) => e.type === 'water-push'), null, { timeout: T }).then(() => true, () => false);
+          // W held on the stage is the lead chip: Storm parts from the centre
+          await wx(page, () => __lab.weather.setWeather('storm', { instant: true }));
+          await settled(page, 'storm');
+          await wx(page, () => __lab.weather.sims.clouds.reset());
+          await page.focus('.weather .stage');
+          const c0 = await wx(page, () => __lab.weather.metrics().clear);
+          await page.keyboard.down('KeyW');
+          const lit = await wx(page, () => !!document.querySelector('.wx-actions [data-action="lead"].active'));
+          res.w = await page.waitForFunction((c0) => __lab.weather.metrics().clear > c0 + 0.15, c0, { timeout: T }).then(() => true, () => false);
+          await page.keyboard.up('KeyW');
+          res.wChip = lit && await wx(page, () => !document.querySelector('.wx-actions .active') && !__lab.weather.tools.altActive);
+        }
+        noErrors(`${scope}:${id}`, r.errors);
+      } finally { await r.ctx.close(); }
+    }
+    for (const w of Object.keys(METRIC)) {
+      const x = res[w];
+      check(`${scope}:${w}`, `Space held on "${w === 'warm' ? 'Spread the warmth' : w}"'s chip does what the gesture does; letting go ends the hold`, !!x && x.ok && x.rel && x.released, JSON.stringify(x));
+    }
+    check(`${scope}:water`, 'Space on "Push the water" sends a swell', res.water === true);
+    check(`${scope}:w`, 'W held on the stage is the lead chip held (the chip lights; Storm parts); letting go ends it', res.w === true && res.wChip === true, JSON.stringify({ w: res.w, chip: res.wChip }));
+  });
+
+  // ----------------------------------------------------------- W8 smooth --
+  // A turn (Wind → Fog in the Blue Drift) and a front (→ Moonlight in the Moonmilk Cove), with the realm's eased
+  // mood sampled every 100 ms: no step over 0.2 within a realm; a mid-turn frame is neither end recoloured; the
+  // outgoing weather is still drawn 300 ms in; never a frame without a realm; a dragged front reveals sooner.
+  if (only('smooth')) await guard(`${SCOPE}:smooth`, async (scope, own) => {
+    const { ctx, page, errors } = await openWx(browser, 'phone', 'loomi');
+    own(ctx);
+    await settled(page, 'wind');
+    await wx(page, () => __lab.weather.settle());
+    await sleep(800);
+    // the sampler: raw mood every 100 ms (tagged by realm instance), realm canvases every frame, each reveal's length
+    await wx(page, () => {
+      let n = 0;
+      window.__raw = []; window.__noRealm = 0; window.__reveals = []; window.__seg = 0;   // __seg++ marks a fast-forward (settle)
+      const id = setInterval(() => {
+        const lw = __lab.weather, r = lw?.env.realm;
+        if (!lw) { clearInterval(id); return; }
+        if (r && !r.__wx) r.__wx = ++n;
+        window.__raw.push({ t: performance.now(), realm: r ? `${r.__wx}:${window.__seg}` : 0, ...(r ? r.debug.state.raw : {}) });
+      }, 100);
+      let inReveal = false, revealT = 0;
+      const tick = () => {
+        const lw = __lab.weather;
+        if (!lw) return;
+        if (!document.querySelector('.weather canvas.hushfold-realm')) window.__noRealm++;
+        const p = lw.session.planner;
+        if (p.phase === 'reveal') { inReveal = true; revealT = p._revealT; } else if (inReveal) { inReveal = false; window.__reveals.push(+revealT.toFixed(3)); }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      window.__stopRaw = () => clearInterval(id);
+    });
+    const A = await composite(page);
+    // the turn: Wind → Fog
+    const tPick = await wx(page, () => __lab.weather.reactor.t);
+    await page.click('.wx-dial [data-weather="fog"]');
+    // 300 ms (sim time) in: the ribbons still drawn while the mist rises
+    await page.waitForFunction((t) => __lab.weather.reactor.t >= t + 0.3, tPick, { timeout: T });
+    const at300 = await wx(page, () => ({ wind: +__lab.weather.session.planner.amount('wind').toFixed(2), ribbons: __lab.weather.layer.stats().drawn.ribbons, front: !!__lab.weather.front }));
+    await page.waitForFunction((t) => __lab.weather.reactor.t >= t + 0.45, tPick, { timeout: T });
+    const at450 = await wx(page, () => ({ wind: +__lab.weather.session.planner.amount('wind').toFixed(2), fog: +__lab.weather.session.planner.amount('fog').toFixed(2), ribbons: __lab.weather.layer.stats().drawn.ribbons }));
+    check(scope, 'a turn in place: the outgoing ribbons are still drawn 300 ms in, and the mist has begun to rise alongside them by 450 ms (no front)', at300.wind > 0.3 && at300.ribbons > 0 && !at300.front && at450.fog > 0 && at450.ribbons > 0, JSON.stringify({ at300, at450 }));
+    await page.waitForFunction(() => { const p = __lab.weather.session.planner; return p.amount('fog') >= 0.4 && p.amount('wind') <= 0.6 && p.amount('wind') > 0.1; }, null, { timeout: T, polling: 'raf' });
+    const M = await composite(page);
+    const mid = await wx(page, () => ({ wind: +__lab.weather.session.planner.amount('wind').toFixed(2), fog: +__lab.weather.session.planner.amount('fog').toFixed(2) }));
+    await settled(page, 'fog');
+    await wx(page, () => { window.__seg++; __lab.weather.settle(); });   // a fast-forward: its jump is not a step
+    await sleep(800);
+    const B = await composite(page);
+    const rr = { startMid: residual(A, M), midEnd: residual(M, B), startEnd: residual(A, B), mid };
+    check(scope, 'mid-turn the world is its own frame, neither end recoloured (residual > 3 against each end)', rr.startMid > 3 && rr.midEnd > 3, JSON.stringify(rr));
+    // a front without a drag, then one pushed by drags during its reveal
+    await page.click('.wx-dial [data-weather="moonlight"]');
+    await settled(page, 'moonlight');
+    await page.click('.wx-dial [data-weather="sunshine"]');   // the cove cannot paint sunshine: a front home to the Blue Drift
+    await page.waitForFunction(() => __lab.weather.session.planner.phase === 'reveal', null, { timeout: T, polling: 'raf' });
+    for (let k = 0; k < 12 && (await wx(page, () => __lab.weather.session.planner.phase === 'reveal')); k++) await drag(page, line(20, 300 + k * 6, 370, 320 + k * 6, 6), 8);
+    await settled(page, 'sunshine');
+    await sleep(300);
+    await wx(page, () => window.__stopRaw());
+    const s = await wx(page, () => ({ raw: window.__raw, none: window.__noRealm, reveals: window.__reveals }));
+    let maxStep = 0, at = null;
+    for (let i = 1; i < s.raw.length; i++) {
+      const a = s.raw[i - 1], b = s.raw[i];
+      if (a.realm !== b.realm || !a.realm) continue;   // a swap happens under a full front: a new realm starts its own ease
+      for (const k of ['agitation', 'heaviness', 'clarity', 'warmth']) { const d = Math.abs(b[k] - a[k]); if (d > maxStep) { maxStep = d; at = { k, i, dt: Math.round(b.t - a.t) }; } }
+    }
+    const realms = new Set(s.raw.map((x) => x.realm)).size;
+    check(scope, 'the realm\'s eased mood never steps by more than 0.2 between 100 ms samples (turn and two fronts)', s.raw.length > 20 && maxStep <= 0.2 && realms >= 3, JSON.stringify({ samples: s.raw.length, realms, maxStep: +maxStep.toFixed(3), at }));
+    check(scope, 'never a frame without a realm canvas', s.none === 0, `${s.none}`);
+    check(scope, 'dragging the front shortens its reveal (but never under 0.5 s)', s.reveals.length >= 2 && s.reveals[1] < s.reveals[0] - 0.1 && s.reveals[1] >= 0.45, JSON.stringify(s.reveals));
+    noErrors(scope, errors);
+  });
+
+  // ------------------------------------------------------------- W14 leak --
+  // After Weather, TouchTalk starts clean: no resting face, face override, inflate, weather realm, timers, rAF
+  // or keep voice of ours left behind; and the screen opens with storage blocked.
+  if (only('leak')) await guard(`${SCOPE}:leak`, async (scope) => {
+    let r = await H.open(browser, 'phone', '#home', { initScripts: [H.INIT.timerSpy, H.INIT.rafProbe], comfort: H.comfort({ favouriteMallow: 'noomi' }) });
+    try {
+      const { page } = r;
+      await H.waitRig(page, { timeout: T });
+      await wx(page, () => __lab.ctx.navigate('/weather'));
+      await page.waitForFunction(() => __lab.weather?.state === 'live', null, { timeout: T });
+      const g = await wx(page, () => __lab.weather.geo());
+      await page.mouse.click(g.W * 0.12, g.skyTop + 40);   // a gesture: the bed builds
+      await page.waitForFunction(() => __lab.weather.sound.alive, null, { timeout: T }).catch(() => {});
+      // moonlight on Noomi: a face override (slow breath, glow), an inflate and a resting face all in play
+      const m = await wx(page, () => __lab.weather.sims.moon.snapshot());
+      await page.mouse.move(m.x, m.y); await page.mouse.down();
+      await page.mouse.move(g.body.cx, g.body.mid, { steps: 10 });
+      await page.waitForFunction(() => __lab.companion.rig.faceOverride?.set?.breathRate === 0.12, null, { timeout: T }).catch(() => {});
+      const during = await wx(page, () => ({ face: JSON.stringify(__lab.companion.rig.faceOverride), rest: !!__lab.companion.restOverride }));
+      await page.mouse.up();
+      await wx(page, () => __lab.ctx.navigate('/touchtalk'));   // straight on (the router unmounts Weather)
+      await page.waitForFunction(() => __lab.route === 'touchtalk' && __lab.companion?.rig?.soft, null, { timeout: T });
+      await sleep(3500);
+      const s = await wx(page, () => {
+        const c = __lab.companion, rig = c.rig, mine = (f) => /\/(features\/weather|core\/weather)/.test(f);
+        const timers = Object.entries(__timers().live).filter(([f, v]) => mine(f) && (v.timeout || v.interval));
+        const raf = Object.keys(__raf().pendingByFile).filter(mine);
+        const realms = [...document.querySelectorAll('canvas.hushfold-realm')];
+        return {
+          rest: c.restOverride ?? null, face: JSON.stringify(rig.faceOverride || {}), inflate: rig.inflateTarget || 0, peek: rig.peekParams ?? null, frameCap: rig.frameCap ?? null, filter: c.persona?.filter ?? null,
+          wx: document.querySelectorAll('.weather, .wx-back, .wx-front').length, handle: __lab.weather, realms: realms.length, foreign: realms.filter((cv) => !cv.closest('.screen:not(.weather)')).length,
+          timers, raf, keep: __lab.sound.debug().keep, live: __lab.sound.live.size,
+        };
+      });
+      check(scope, 'Weather really had the Mallow in hand (moonlit face override, resting face)', /breathRate/.test(during.face) && during.rest, JSON.stringify(during));
+      check(scope, 'TouchTalk after Weather: no resting face, face override, inflate, peek or frame cap carried over', s.rest === null && s.face === '{"set":{},"min":{}}' && !s.inflate && s.peek === null && s.frameCap === null && s.filter === null, JSON.stringify(s));
+      check(scope, 'no weather screen, canvas, realm or handle left; no timer or rAF from a weather file; no keep voice', s.wx === 0 && s.handle === null && s.foreign === 0 && !s.timers.length && !s.raf.length && s.keep === 0, JSON.stringify(s));
+      noErrors(scope, r.errors);
+    } finally { await r.ctx.close(); }
+    // storage blocked (site data off): the app sees throwing storage from the moment its scripts run
+    const block = () => {
+      const deny = () => { throw new DOMException('The operation is insecure.', 'SecurityError'); };
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState !== 'interactive') return;
+        for (const k of ['localStorage', 'sessionStorage']) Object.defineProperty(window, k, { configurable: true, get: deny });
+      });
+    };
+    r = await H.open(browser, 'phone', '#weather', { initScripts: [block] });
+    try {
+      const { page } = r;
+      await H.waitRig(page, { timeout: T });
+      const live = await page.waitForFunction(() => __lab.weather?.state === 'live', null, { timeout: T }).then(() => true, () => false);
+      const g = live ? await wx(page, () => __lab.weather.geo()) : null;
+      if (g) { await page.mouse.click(g.W * 0.12, g.skyTop + 40); await drag(page, line(20, g.skyTop + 90, g.W - 20, g.skyTop + 110, 10), 14); }
+      const s = await wx(page, () => ({ blocked: (() => { try { void localStorage.length; return false; } catch { return true; } })(), w: __lab.weather?.weather, events: __lab.weather?.events.length || 0 }));
+      check(`${scope}:storage`, 'storage blocked: Weather still opens and answers touch, with no errors', live && s.blocked && s.events > 0, JSON.stringify(s));
+      noErrors(`${scope}:storage`, r.errors);
+    } finally { await r.ctx.close(); }
+  });
+
+  // ----------------------------------------------------------- W13 layout --
+  // At all six viewports: no overlap, everything on screen, targets ≥ 40 px, no horizontal scroll, the Mallow
+  // between the bars, the chosen radio in view, the same baseline for all eight weathers; the caption and the
+  // Mallow's line fit on screen at 14 px or more.
+  if (only('layout')) await guard(`${SCOPE}:layout`, async (scope) => {
+    const WHO = { phone: 'pipzi', p375: 'zuzu', small: 'blubi', android: 'noomi', desktop: 'boppo', land: 'glitzi' };
+    for (const vp of ['phone', 'p375', 'small', 'android', 'desktop', 'land']) {
+      const { ctx, page, errors } = await openWx(browser, vp, WHO[vp]);
+      try {
+        const sc = `${scope}:${vp}`;
+        const entry = await wx(page, () => __lab.weather.weather);
+        await settled(page, entry);
+        await sleep(900);   // the arrival hint is up from 0.8 s
+        await H.shot(page, out, `weather-${vp}-layout-${entry}`);
+        const bases = {};
+        let inView = true;
+        for (const w of DIAL) {
+          await wx(page, (w) => __lab.weather.setWeather(w, { instant: true }), w);
+          await settled(page, w);
+          bases[w] = await wx(page, () => __lab.companion.rig.BASE.toFixed(1));
+          inView = inView && await wx(page, () => { const dial = document.querySelector('.wx-dial'), r = dial.getBoundingClientRect(), b = dial.querySelector('[aria-checked="true"]').getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1; });
+          if (w === 'storm') { await H.layout(page, sc, { scrollers: ['.wx-dial', '.wx-actions'] }); await sleep(300); await H.shot(page, out, `weather-${vp}-layout-storm`); }
+        }
+        const rows = await wx(page, () => [...document.querySelectorAll('.weather .bottom > *')].map((e) => Math.round(e.getBoundingClientRect().height)));
+        check(sc, 'the chosen radio stays in view for every weather; both bottom rows 50 px', inView && rows.join() === '50,50', JSON.stringify({ inView, rows }));
+        check(sc, 'the baseline is the same for all eight weathers', new Set(Object.values(bases)).size === 1, JSON.stringify(bases));
+        // the resolve beat's caption and line (Rain, caught): on screen, clear of the chrome, ≥ 14 px
+        await wx(page, () => __lab.weather.setWeather('rain', { instant: true }));
+        await settled(page, 'rain');
+        await wx(page, () => { __lab.weather.sims.rain.level = 0.1; });
+        await page.waitForFunction(() => __lab.weather.resolved && document.querySelector('.weather .wx-hint.on .line'), null, { timeout: T });
+        await sleep(700);   // its 320 ms fade-in
+        const cap = await wx(page, () => {
+          const q = (s) => document.querySelector(s), hint = q('.weather .wx-hint'), r = hint.getBoundingClientRect();
+          const bar = [...document.querySelectorAll('.weather .topbar button')].map((b) => b.getBoundingClientRect());
+          const bottom = q('.weather .bottom').getBoundingClientRect().top;
+          const sizes = ['.wx-cap', '.line', '.line .who'].map((s) => parseFloat(getComputedStyle(hint.querySelector(s)).fontSize));
+          const hit = bar.some((b) => r.left < b.right && b.left < r.right && r.top < b.bottom && b.top < r.bottom);
+          return { box: [r.left, r.top, r.right, r.bottom].map(Math.round), vw: innerWidth, bottom: Math.round(bottom), sizes, hit, text: hint.textContent, lines: Math.round(r.height / 20) };
         });
-        check(sc, 'the chosen radio is in view; both bottom rows 50 px', d.inView && d.rows.join() === '50,50', JSON.stringify(d));
-        check(sc, 'the baseline is the same for Rain and Storm', bases.size === 1, [...bases].join(' / '));
-        await H.shot(page, out, `weather-${vp}-storm`);
+        check(sc, 'the caption and the Mallow\'s line sit on screen under the top bar, clear of its buttons and the bottom rows, at ≥ 14 px',
+          cap.box[0] >= 4 && cap.box[2] <= cap.vw - 4 && cap.box[3] < cap.bottom && !cap.hit && cap.sizes.every((v) => v >= 14), JSON.stringify(cap));
+        await H.shot(page, out, `weather-${vp}-layout-resolved`);
         noErrors(sc, errors);
       } finally { await ctx.close(); }
     }
@@ -1165,7 +2001,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         await H.layout(page, sc, { scrollers: ['.wx-dial', '.wx-actions'] });
         const rows = await wx(page, () => [...document.querySelectorAll('.weather .bottom > *')].map((e) => Math.round(e.getBoundingClientRect().height)));
         check(sc, 'two chips side by side, the rows still 50 px', chips.length === 2 && rows.join() === '50,50', JSON.stringify({ chips, rows }));
-        await H.shot(page, out, `weather-${vp}-moonlight`);
+        await H.shot(page, out, `weather-${vp}-layout-two-chips`);
         noErrors(sc, errors);
       } finally { await ctx.close(); }
     }
@@ -1180,6 +2016,9 @@ if (require.main === module) {
     const browser = await H.launch();
     try { await run(browser, { out }); } finally { await browser.close(); }
     const { failed } = H.writeReport(out, 'e2e-phase3-weather', { prefix: `${SCOPE}:` });
+    // the brief line each block proves, beside the results (spec §13)
+    const file = path.join(out, 'e2e-phase3-weather.json'), rep = JSON.parse(require('fs').readFileSync(file, 'utf8'));
+    require('fs').writeFileSync(file, JSON.stringify({ ...rep, brief: BRIEF }, null, 1));
     process.exit(failed ? 1 : 0);
   })().catch((e) => { console.error(e); process.exit(2); });
 }

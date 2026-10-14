@@ -30,6 +30,17 @@ const alt = (n) => (mod(n, 2) === 0 ? 1 : -1);
 const q2 = (v) => Math.round(v * 100) / 100;
 
 /**
+ * The Mallow's personality as an instrument (persona.setFilter while it performs here): a quick run of notes
+ * is music, not tickling, so from the profile's tickle point on a tap answers with the Mallow's own groove
+ * face, quietly (no reaction burst: the groove and the singing carry the movement), never giggly, grumpy,
+ * pretend-annoyed or dizzy. Everything else passes unchanged. p: the persona's profile (persona.p).
+ */
+export function musicFilter(p, out, gesture, d = {}) {
+  if (!out || gesture !== 'tap' || !(d.streak >= (p?.tickleAt ?? 4))) return out;
+  return { mix: p?.groove?.mix || { happy: 0.7, playful: 0.3 }, i: 0.5, hold: 1, poke: Math.min(0.8, out.poke ?? 0.8), tag: 'tap-music' };
+}
+
+/**
  * Per Mallow (spec §4): groove style, singing face weights, entrance / proud / leave reactions
  * (rig reaction kinds, softened when gentle or reduced), the resting face, and extras:
  * proudMix (an expression with the proud reaction), proudFace (face params held for it),
@@ -148,6 +159,9 @@ export class Performer {
     this.sq = false; this.press = false;   // a replay's squeeze / press is on
     this.watch = null; this.lookT = -Infinity; this.nodBar = -Infinity;
     this.nudges = 0; this.pokes = 0;
+    const persona = companion.persona;
+    this._filter = (out, g, d) => musicFilter(persona?.p, out, g, d);
+    persona?.setFilter?.(this._filter);
     this.log = Array.from({ length: 16 }, () => ({ t: 0, beat: 0, at: 0 })); this.logN = 0;            // groove nudges
     this.seen = Array.from({ length: 16 }, () => ({ id: 0, t: 0, due: 0, at: 0, src: '', immediate: false })); this.seenN = 0;   // notes shown
   }
@@ -365,6 +379,8 @@ export class Performer {
     this.mix.clear();
     this.rig.setInflate(0);
     this.watch = null;
+    const persona = this.companion.persona;
+    if (persona && persona.filter === this._filter) persona.setFilter(null);
   }
 }
 

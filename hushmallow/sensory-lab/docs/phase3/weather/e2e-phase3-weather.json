@@ -1,7 +1,7 @@
 {
- "when": "2026-10-14T16:12:41.957Z",
+ "when": "2026-10-14T17:39:49.252Z",
  "part": null,
- "passed": 164,
+ "passed": 231,
  "failed": 0,
  "results": [
   {
@@ -50,31 +50,31 @@
    "scope": "weather:storm",
    "name": "a swipe across the bank opens it: coverage falls, clear and progress rise",
    "ok": true,
-   "detail": "{\"coverage\":0.682,\"clear\":0.318,\"rainLevel\":0.72,\"wet\":0.558,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0.5,\"onBody\":false,\"bask\":0,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":1,\"intensity\":0.72,\"puddles\":0,\"hearth\":false}"
+   "detail": "{\"coverage\":0.68,\"clear\":0.32,\"rainLevel\":0.72,\"wet\":0.5,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0.5,\"onBody\":false,\"bask\":0,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":0.847,\"intensity\":0.72,\"puddles\":0,\"hearth\":false}"
   },
   {
    "scope": "weather:storm",
    "name": "the gap fires the realm \"clear\" pulse (through the gate)",
    "ok": true,
-   "detail": "[{\"t\":17210.5,\"kind\":\"clear\",\"ok\":true}]"
+   "detail": "[{\"t\":15293.89999999851,\"kind\":\"clear\",\"ok\":true}]"
   },
   {
    "scope": "weather:storm",
    "name": "the realm follows: heaviness falls and clarity rises (target mood)",
    "ok": true,
-   "detail": "{\"before\":{\"agitation\":0.32,\"heaviness\":0.7,\"clarity\":0.15,\"warmth\":0.25},\"after\":{\"agitation\":0.32,\"heaviness\":0.43419284819762166,\"clarity\":0.4501048488091368,\"warmth\":0.4000524244045684}}"
+   "detail": "{\"before\":{\"agitation\":0.32,\"heaviness\":0.7,\"clarity\":0.15,\"warmth\":0.25},\"after\":{\"agitation\":0.32,\"heaviness\":0.43605497002481686,\"clarity\":0.4480024531977873,\"warmth\":0.3990012265988937}}"
   },
   {
    "scope": "weather:storm",
    "name": "Glitzi reacts to the gap in character",
    "ok": true,
-   "detail": "[{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"arrive-stars-nod\",\"react\":\"nod\"},{\"t\":2.77,\"type\":\"hit-body\",\"tag\":\"glitzi-drip-huff\",\"react\":\"flick\"},{\"t\":4.22,\"type\":\"light-through\",\"tag\":\"light-through\",\"react\":null},{\"t\":5.52,\"type\":\"gap\",\"tag\":\"glitzi-gap-pretend\",\"react\":\"gasp\"}]"
+   "detail": "[{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"arrive-stars-nod\",\"react\":\"nod\"},{\"t\":2.77,\"type\":\"hit-body\",\"tag\":\"glitzi-drip-huff\",\"react\":\"flick\"},{\"t\":4.17,\"type\":\"light-through\",\"tag\":\"light-through\",\"react\":null},{\"t\":5.42,\"type\":\"gap\",\"tag\":\"glitzi-gap-pretend\",\"react\":\"gasp\"}]"
   },
   {
    "scope": "weather:storm",
    "name": "light reaches the Mallow through the gap",
    "ok": true,
-   "detail": "{\"light\":1}"
+   "detail": "{\"light\":0.847}"
   },
   {
    "scope": "weather:storm",
@@ -86,7 +86,7 @@
    "scope": "weather:storm",
    "name": "a strike: realm bolt on the far horizon, away from the Mallow, and Glitzi delights",
    "ok": true,
-   "detail": "{\"ev\":[{\"t\":8.23,\"type\":\"strike\",\"x\":290,\"y\":553,\"k\":0}],\"pulses\":[{\"t\":29880.5,\"kind\":\"strike\",\"ok\":true}],\"log\":[\"arrive-stars-nod\",\"glitzi-drip-huff\",\"light-through\",\"glitzi-gap-pretend\",\"glitzi-drip-huff\",\"glitzi-strike-delight\"],\"W\":390}"
+   "detail": "{\"ev\":[{\"t\":8.17,\"type\":\"strike\",\"x\":290,\"y\":553,\"k\":0}],\"pulses\":[{\"t\":26221.39999999851,\"kind\":\"strike\",\"ok\":true}],\"log\":[\"arrive-stars-nod\",\"glitzi-drip-huff\",\"light-through\",\"glitzi-gap-pretend\",\"glitzi-drip-huff\",\"glitzi-strike-delight\"],\"W\":390}"
   },
   {
    "scope": "weather:storm",
@@ -110,7 +110,7 @@
    "scope": "weather:rain",
    "name": "let go in the deck: the bead rises as light (\"success\" pulse) and the rain thins",
    "ok": true,
-   "detail": "{\"level\":0.8,\"ev\":[\"bead\",\"sheltered\",\"hit-body\",\"merge\",\"land-water\",\"bead-up\"],\"pulses\":[{\"t\":5011,\"kind\":\"success\",\"ok\":true}],\"progress\":0.23529411764705876}"
+   "detail": "{\"level\":0.8,\"ev\":[\"bead\",\"sheltered\",\"land-water\",\"hit-body\",\"merge\",\"bead-up\"],\"pulses\":[{\"t\":4973.20000000298,\"kind\":\"success\",\"ok\":true}],\"progress\":0.23529411764705876}"
   },
   {
    "scope": "weather:rain",
@@ -134,7 +134,7 @@
    "scope": "weather:rain",
    "name": "Blubi reacts to the rain in character (arrival, drips)",
    "ok": true,
-   "detail": "[\"blubi-home-rain-hop\",\"blubi-drip-blush\",\"blubi-sheltered-melt\"]"
+   "detail": "[\"blubi-home-rain-hop\",\"blubi-sheltered-melt\"]"
   },
   {
    "scope": "weather:rain",
@@ -152,7 +152,7 @@
    "scope": "weather:resolve",
    "name": "Storm resolves: caption, Glitzi's line, the lead chip becomes Again, the clouds drift off",
    "ok": true,
-   "detail": "{\"cap\":\"The storm passed.\",\"line\":\"“Pfft. I was not worried. Not even slightly.” Glitzi\",\"chips\":[\"Again\"],\"p\":1,\"t\":0.3874050334840418,\"drift\":true,\"tags\":[\"glitzi-home-resolved\"]}"
+   "detail": "{\"cap\":\"The storm passed.\",\"line\":\"“Pfft. I was not worried. Not even slightly.” Glitzi\",\"chips\":[\"Again\"],\"p\":1,\"t\":0.38549415403207593,\"drift\":true,\"tags\":[\"glitzi-home-resolved\"]}"
   },
   {
    "scope": "weather:resolve",
@@ -200,13 +200,13 @@
    "scope": "weather:motion",
    "name": "hidden: frames and sim time freeze; the held bead is let go; paused",
    "ok": true,
-   "detail": "{\"h0\":{\"f\":83,\"t\":4.066699999999995,\"held\":0,\"state\":\"paused\",\"active\":0},\"h1\":{\"f\":83,\"t\":4.066699999999995}}"
+   "detail": "{\"h0\":{\"f\":84,\"t\":4.0998999999999945,\"held\":0,\"state\":\"paused\",\"active\":0},\"h1\":{\"f\":84,\"t\":4.0998999999999945}}"
   },
   {
    "scope": "weather:motion",
    "name": "visible again: the first frames advance sim time by a frame or two, not the gap",
    "ok": true,
-   "detail": "{\"h1\":{\"f\":83,\"t\":4.066699999999995},\"h2\":{\"t\":4.083299999999993,\"state\":\"live\"}}"
+   "detail": "{\"h1\":{\"f\":84,\"t\":4.0998999999999945},\"h2\":{\"t\":4.116599999999996,\"state\":\"live\"}}"
   },
   {
    "scope": "weather:motion",
@@ -332,19 +332,19 @@
    "scope": "weather:sun",
    "name": "Sunshine in the Sunpop Orchard: a light pool, a \"Bring the sun\" chip",
    "ok": true,
-   "detail": "{\"sun\":{\"kind\":\"sun\",\"x\":195,\"y\":337,\"r\":43,\"height\":0.45,\"rest\":1.15,\"onBody\":false,\"onWater\":false,\"bask\":0,\"dwell\":0,\"painted\":0,\"amount\":1},\"mood\":{\"agitation\":0.1,\"heaviness\":0.3,\"clarity\":0.6425000000037611,\"warmth\":0.6459999999909734},\"realm\":\"sunpop-orchard\",\"chips\":[\"Bring the sun\"]}"
+   "detail": "{\"sun\":{\"kind\":\"sun\",\"x\":195,\"y\":337,\"r\":43,\"height\":0.45,\"rest\":1.17,\"onBody\":false,\"onWater\":false,\"bask\":0,\"dwell\":0,\"painted\":0,\"amount\":1},\"mood\":{\"agitation\":0.1,\"heaviness\":0.3,\"clarity\":0.6425000000039196,\"warmth\":0.6459999999905931},\"realm\":\"sunpop-orchard\",\"chips\":[\"Bring the sun\"]}"
   },
   {
    "scope": "weather:sun",
    "name": "the pool burns the haze along its path (painted ↑), heaviness falls, progress rises",
    "ok": true,
-   "detail": "{\"s0\":{\"agitation\":0.1,\"heaviness\":0.3,\"clarity\":0.6425000000037611,\"warmth\":0.6459999999909734},\"s1\":{\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0.081,\"height\":0.08,\"onBody\":false,\"bask\":0,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":0.969,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"mood\":{\"agitation\":0.09813185334891446,\"heaviness\":0.26525522764045173,\"clarity\":0.6363520815932581,\"warmth\":0.7015553270358889},\"p\":0.11642568335706269}}"
+   "detail": "{\"s0\":{\"agitation\":0.1,\"heaviness\":0.3,\"clarity\":0.6425000000039196,\"warmth\":0.6459999999905931},\"s1\":{\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0.082,\"height\":0.08,\"onBody\":false,\"bask\":0,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":0.969,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"mood\":{\"agitation\":0.09808311758533343,\"heaviness\":0.26471671056689505,\"clarity\":0.6366735160807991,\"warmth\":0.7018482733424001},\"p\":0.1177623255976609}}"
   },
   {
    "scope": "weather:sun",
    "name": "bask: the pool on the Mallow, glow ≥ 0.9, blush, inflated (Boppo the brightest)",
    "ok": true,
-   "detail": "{\"face\":{\"set\":{},\"min\":{\"glow\":1.2,\"blush\":1.6}},\"inflate\":0.4,\"log\":[\"boppo-home-sunshine-hop\",\"boppo-bask-glow\"],\"pulses\":[{\"t\":5627.900000002235,\"kind\":\"strike\",\"ok\":true},{\"t\":12851.70000000298,\"kind\":\"strike\",\"ok\":true}],\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0.128,\"height\":0,\"onBody\":true,\"bask\":1.25,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":1,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"comp\":[]}"
+   "detail": "{\"face\":{\"set\":{},\"min\":{\"glow\":1.2,\"blush\":1.6}},\"inflate\":0.4,\"log\":[\"boppo-home-sunshine-hop\",\"boppo-bask-glow\"],\"pulses\":[{\"t\":5804.60000000149,\"kind\":\"strike\",\"ok\":true},{\"t\":13831.60000000149,\"kind\":\"strike\",\"ok\":true}],\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0.128,\"height\":0,\"onBody\":true,\"bask\":1.25,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":1,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"comp\":[]}"
   },
   {
    "scope": "weather:sun",
@@ -356,7 +356,7 @@
    "scope": "weather:sun",
    "name": "resting light fires a sunbeam (\"strike\") in a day realm",
    "ok": true,
-   "detail": "[{\"t\":5627.900000002235,\"kind\":\"strike\",\"ok\":true},{\"t\":12851.70000000298,\"kind\":\"strike\",\"ok\":true}]"
+   "detail": "[{\"t\":5804.60000000149,\"kind\":\"strike\",\"ok\":true},{\"t\":13831.60000000149,\"kind\":\"strike\",\"ok\":true}]"
   },
   {
    "scope": "weather:sun",
@@ -386,19 +386,19 @@
    "scope": "weather:moon",
    "name": "Moonlight in the Moonmilk Cove: a silver pool; \"Bring the moonlight\" and \"Push the water\"",
    "ok": true,
-   "detail": "{\"moon\":{\"kind\":\"moon\",\"x\":164,\"y\":243,\"r\":39,\"height\":0.5,\"rest\":1,\"onBody\":false,\"onWater\":false,\"bask\":0,\"dwell\":0,\"painted\":0,\"amount\":1},\"realm\":\"moonmilk-cove\",\"chips\":[\"Bring the moonlight\",\"Push the water\"]}"
+   "detail": "{\"moon\":{\"kind\":\"moon\",\"x\":164,\"y\":243,\"r\":39,\"height\":0.5,\"rest\":0.98,\"onBody\":false,\"onWater\":false,\"bask\":0,\"dwell\":0,\"painted\":0,\"amount\":1},\"realm\":\"moonmilk-cove\",\"chips\":[\"Bring the moonlight\",\"Push the water\"]}"
   },
   {
    "scope": "weather:moon",
    "name": "the moon pool gliding on water: ripples, at most one a second",
    "ok": true,
-   "detail": "{\"ev\":9,\"pulses\":[9809,10863.900000002235,11874.199999999255,12939.199999999255,14003.300000000745,15086.699999999255,16161.199999999255,17165.10000000149,18227.199999999255],\"onWater\":true}"
+   "detail": "{\"ev\":10,\"pulses\":[9652.60000000149,10668.60000000149,11709.40000000596,12713.70000000298,13784.40000000596,14833,15851.40000000596,16892.30000000447,17904.90000000596,18916.70000000298],\"onWater\":true}"
   },
   {
    "scope": "weather:moon",
    "name": "moonlit: breathRate 0.12 (Noomi slows the most), silver glow ≥ 0.8, dwell and progress rise",
    "ok": true,
-   "detail": "{\"face\":{\"set\":{\"breathRate\":0.12},\"min\":{\"glow\":0.85,\"float\":0.3}},\"log\":[\"noomi-home-moonlight-hop\",\"noomi-moon-dream\",\"moon-look-after\"],\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0,\"onBody\":true,\"bask\":0,\"dwell\":0.031,\"constellations\":0,\"heat\":0,\"waveEnergy\":0.053,\"held\":0,\"heldStars\":0,\"light\":0,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"p\":0.025}"
+   "detail": "{\"face\":{\"set\":{\"breathRate\":0.12},\"min\":{\"glow\":0.85,\"float\":0.3}},\"log\":[\"noomi-home-moonlight-hop\",\"noomi-moon-dream\",\"moon-look-after\"],\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0,\"onBody\":true,\"bask\":0,\"dwell\":0.031,\"constellations\":0,\"heat\":0,\"waveEnergy\":0.1,\"held\":0,\"heldStars\":0,\"light\":0,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"p\":0.025}"
   },
   {
    "scope": "weather:moon",
@@ -410,7 +410,7 @@
    "scope": "weather:moon",
    "name": "resting moonlight in the sky sends a falling star; leaving Noomi, it looks after the light",
    "ok": true,
-   "detail": "{\"log\":[\"arrive\",\"moonlit\",\"moon-leave\",\"moon-leave\"],\"face\":{\"set\":{},\"min\":{}}}"
+   "detail": "{\"log\":[\"arrive\",\"moonlit\",\"moon-leave\"],\"face\":{\"set\":{},\"min\":{}}}"
   },
   {
    "scope": "weather:moon",
@@ -440,7 +440,7 @@
    "scope": "weather:stars",
    "name": "let go away from Zuzu: a constellation in Zuzu's shape, a realm \"success\", a celebration",
    "ok": true,
-   "detail": "{\"ev\":[\"gather\",\"gather\",\"gather\",\"gather\",\"gather\",\"constellation\"],\"pulses\":[{\"t\":8241.699999999255,\"kind\":\"success\",\"ok\":true}],\"log\":[{\"t\":0.93,\"type\":\"arrive\",\"tag\":\"zuzu-home-starlight-hop\",\"react\":\"hop\"},{\"t\":2.78,\"type\":\"constellation\",\"tag\":\"zuzu-constellation-spiral\",\"react\":\"celebrate\"}],\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0.5,\"onBody\":false,\"bask\":0,\"dwell\":0,\"constellations\":1,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":0,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"mood\":{\"agitation\":0.06,\"heaviness\":0.12,\"clarity\":0.5,\"warmth\":0.45}}"
+   "detail": "{\"ev\":[\"gather\",\"gather\",\"gather\",\"gather\",\"gather\",\"constellation\"],\"pulses\":[{\"t\":7618.5,\"kind\":\"success\",\"ok\":true}],\"log\":[{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"zuzu-home-starlight-hop\",\"react\":\"hop\"},{\"t\":2.8,\"type\":\"constellation\",\"tag\":\"zuzu-constellation-spiral\",\"react\":\"celebrate\"}],\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0.5,\"onBody\":false,\"bask\":0,\"dwell\":0,\"constellations\":1,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":0,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"mood\":{\"agitation\":0.06,\"heaviness\":0.12,\"clarity\":0.5,\"warmth\":0.45}}"
   },
   {
    "scope": "weather:stars",
@@ -470,13 +470,13 @@
    "scope": "weather:wind",
    "name": "Wind in the Blue Drift: silk ribbons drawn, ambient gusts, \"Send a breeze\"",
    "ok": true,
-   "detail": "{\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0.491,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0.5,\"onBody\":false,\"bask\":0,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":0,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"realm\":\"blue-drift\",\"ribbons\":4,\"chips\":[\"Send a breeze\",\"Push the water\"]}"
+   "detail": "{\"m\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0.483,\"calm\":0,\"fogClear\":0,\"painted\":0,\"height\":0.5,\"onBody\":false,\"bask\":0,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":0,\"intensity\":0,\"puddles\":0,\"hearth\":false},\"realm\":\"blue-drift\",\"ribbons\":4,\"chips\":[\"Send a breeze\",\"Push the water\"]}"
   },
   {
    "scope": "weather:wind",
    "name": "a gust across Loomi leans it (rig.body.lean ≠ 0) and it floats in character",
    "ok": true,
-   "detail": "{\"lean\":0.01967160292626098,\"e\":0.522,\"log\":[\"loomi-home-wind-hop\",\"loomi-gust-float\"],\"comp\":[]}"
+   "detail": "{\"lean\":0.019836347523396754,\"e\":0.456,\"log\":[\"loomi-home-wind-hop\",\"loomi-gust-float\"],\"comp\":[]}"
   },
   {
    "scope": "weather:wind",
@@ -494,7 +494,7 @@
    "scope": "weather:wind",
    "name": "slow, smooth strokes build calm (progress rises)",
    "ok": true,
-   "detail": "{\"c0\":0.238,\"c1\":{\"calm\":0.515,\"p\":0.5151203819912387}}"
+   "detail": "{\"c0\":0.615,\"c1\":{\"calm\":0.847,\"p\":0.8469313726169739}}"
   },
   {
    "scope": "weather:wind",
@@ -530,7 +530,7 @@
    "scope": "weather:fog",
    "name": "wiping clears the mist (fogClear ↑) and the realm clears (clarity target ↑)",
    "ok": true,
-   "detail": "{\"f0\":{\"agitation\":0.04,\"heaviness\":0.5,\"clarity\":0.08,\"warmth\":0.4},\"f1\":{\"agitation\":0.04,\"heaviness\":0.27938323790582564,\"clarity\":0.5002224039889035,\"warmth\":0.45252780049861296},\"fc\":0.385}"
+   "detail": "{\"f0\":{\"agitation\":0.04,\"heaviness\":0.5,\"clarity\":0.08,\"warmth\":0.4},\"f1\":{\"agitation\":0.04,\"heaviness\":0.29367820988627746,\"clarity\":0.47299388593090014,\"warmth\":0.4491242357413625},\"fc\":0.376}"
   },
   {
    "scope": "weather:fog",
@@ -542,13 +542,13 @@
    "scope": "weather:fog",
    "name": "a hold grows a clear patch under the finger",
    "ok": true,
-   "detail": "0.2595123048689006 → 0.263614720851183"
+   "detail": "0.2743947042328007 → 0.27841467400204467"
   },
   {
    "scope": "weather:fog",
    "name": "ArrowLeft ×3 wipes a band in from the left",
    "ok": true,
-   "detail": "0.377 → 0.615"
+   "detail": "0.367 → 0.61"
   },
   {
    "scope": "weather:fog",
@@ -602,7 +602,7 @@
    "scope": "weather:water",
    "name": "a drag on the water sends a swell (realm \"ripple\"); it reaches Loomi, who bobs serenely",
    "ok": true,
-   "detail": "{\"pulses\":[{\"t\":6781.699999999255,\"kind\":\"ripple\",\"ok\":true}],\"log\":[\"loomi-home-wind-hop\",\"loomi-wave-serene\"],\"comp\":[]}"
+   "detail": "{\"pulses\":[{\"t\":5908.39999999851,\"kind\":\"ripple\",\"ok\":true}],\"log\":[\"loomi-home-wind-hop\",\"loomi-wave-serene\"],\"comp\":[]}"
   },
   {
    "scope": "weather:water",
@@ -650,7 +650,7 @@
    "scope": "weather:front",
    "name": "dragging across the front pushes it (planner boost)",
    "ok": true,
-   "detail": "0.4654531806460587"
+   "detail": "0.5201477367332523"
   },
   {
    "scope": "weather:front",
@@ -708,6 +708,408 @@
   },
   {
    "scope": "weather:morph:loomi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:sound",
+   "name": "a deep link makes no sound before a gesture: no AudioContext, no bed",
+   "ok": true,
+   "detail": "{\"ctx\":false,\"made\":0,\"bed\":{\"alive\":false,\"wanted\":true,\"builds\":0,\"tier\":\"low\",\"layers\":[\"rain\",\"wind\"],\"levels\":{\"rain\":1,\"wind\":0,\"pad\":0},\"played\":{},\"wiping\":false,\"ended\":false}}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "after a tap: the bed is alive, one keep voice on the one AudioContext made inside the gesture",
+   "ok": true,
+   "detail": "{\"eng\":{\"state\":\"running\",\"live\":2,\"muted\":false,\"volume\":0.7,\"trim\":1,\"resting\":false,\"keep\":1},\"bed\":{\"alive\":true,\"wanted\":true,\"builds\":1,\"tier\":\"low\",\"layers\":[\"rain\",\"wind\"],\"levels\":{\"rain\":1,\"wind\":0,\"pad\":0},\"played\":{},\"wiping\":false,\"ended\":false},\"ctxs\":[{\"state\":\"running\",\"sampleRate\":44100,\"activation\":true,\"t\":3362.10000000149}]}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "the low tier keeps rain and wind (and the pad); the rain hiss follows the falling rain",
+   "ok": true,
+   "detail": "{\"alive\":true,\"wanted\":true,\"builds\":1,\"tier\":\"low\",\"layers\":[\"rain\",\"wind\"],\"levels\":{\"rain\":1,\"wind\":0,\"pad\":0},\"played\":{},\"wiping\":false,\"ended\":false}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "a bead plinks as drops merge (up the Mallow's scale) and rises as light with a soft upward note",
+   "ok": true,
+   "detail": "{\"pat\":1,\"drip\":3,\"rise\":1}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "Storm in the same lagoon: still the one bed, never rebuilt",
+   "ok": true,
+   "detail": "{\"alive\":true,\"wanted\":true,\"builds\":1,\"tier\":\"low\",\"layers\":[\"rain\",\"wind\"],\"levels\":{\"rain\":0.875,\"wind\":0,\"pad\":0},\"played\":{\"pat\":5,\"drip\":3,\"rise\":1,\"thunder\":1},\"wiping\":false,\"ended\":false}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "soft thunder follows the cloud glow (0.4–1.2 s later)",
+   "ok": true,
+   "detail": "{\"ev\":[\"hit-body\",\"hit-body\",\"hit-body\",\"land-water\",\"hit-body\",\"hit-body\",\"hit-body\",\"hit-body\",\"hit-body\",\"thunder\"],\"played\":{\"pat\":5,\"drip\":3,\"rise\":1,\"thunder\":1}}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "Mute: no live voices within 500 ms",
+   "ok": true,
+   "detail": "103 ms"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "unmute: the bed is back within 1.5 s (with a fresh fade-in)",
+   "ok": true,
+   "detail": "176 ms"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "Touch sounds off: the bed lets go and a touch on the water stays silent",
+   "ok": true,
+   "detail": "{\"p0\":{\"pat\":5,\"drip\":3,\"rise\":1,\"thunder\":1},\"fx\":{\"alive\":false,\"played\":{\"pat\":5,\"drip\":3,\"rise\":1,\"thunder\":1},\"ev\":[\"touch\",\"bead\",\"sheltered\",\"merge\",\"merge\",\"merge\",\"merge\",\"merge\",\"bead-up\",\"orb-up\",\"strike\",\"thunder\",\"water-tap\"]}}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "Touch sounds on again: the bed returns",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:sound",
+   "name": "hidden: the bed stops and the audio suspends with the loop paused",
+   "ok": true,
+   "detail": "{\"alive\":false,\"state\":\"suspended\",\"played\":{\"pat\":6,\"drip\":3,\"rise\":1,\"thunder\":1},\"wstate\":\"paused\"}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "visible again: one bed rebuilt, no burst of one-shots",
+   "ok": true,
+   "detail": "{\"hd\":{\"pat\":6,\"drip\":3,\"rise\":1,\"thunder\":1},\"vs\":{\"alive\":true,\"state\":\"running\",\"played\":{\"pat\":7,\"drip\":3,\"rise\":1,\"thunder\":1},\"keep\":1}}"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "Close: no live voices within 3.5 s of home (the bed fades over 0.6 s; the rest motif rings out)",
+   "ok": true,
+   "detail": "1066 ms"
+  },
+  {
+   "scope": "weather:sound",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:sound:no-audio",
+   "name": "with no AudioContext: no errors, no bed, the weather still answers",
+   "ok": true,
+   "detail": "{\"ctx\":null,\"alive\":false,\"energy\":0.464}"
+  },
+  {
+   "scope": "weather:sound:no-audio",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:photo",
+   "name": "the probe saw a storm strike and the realm change",
+   "ok": true,
+   "detail": "{\"frames\":151,\"realm\":\"sunpop-orchard\",\"struck\":true}"
+  },
+  {
+   "scope": "weather:photo",
+   "name": "at most 3 luminance rises of more than 10 % a second (whole frame and each quadrant)",
+   "ok": true,
+   "detail": "{\"frames\":151,\"fps\":6.1,\"rise250\":0.098,\"perSec\":0,\"step\":0.055,\"maxL\":0.518,\"minL\":0.034}"
+  },
+  {
+   "scope": "weather:photo",
+   "name": "no rise of more than 20 % within 250 ms anywhere",
+   "ok": true,
+   "detail": "{\"frames\":151,\"fps\":6.1,\"rise250\":0.098,\"perSec\":0,\"step\":0.055,\"maxL\":0.518,\"minL\":0.034}"
+  },
+  {
+   "scope": "weather:photo",
+   "name": "no whole-frame rise of more than 10 % from one frame to the next",
+   "ok": true,
+   "detail": "{\"frames\":151,\"fps\":6.1,\"rise250\":0.098,\"perSec\":0,\"step\":0.055,\"maxL\":0.518,\"minL\":0.034}"
+  },
+  {
+   "scope": "weather:photo",
+   "name": "realm: at most 2 bright pulses a second; lab: cloud glows at least 1 s apart",
+   "ok": true,
+   "detail": "{\"bright\":[10117.5,19679.89999999851],\"glows\":[10117.09999999404]}"
+  },
+  {
+   "scope": "weather:photo",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:dna:chosen",
+   "name": "the favourite Mallow on stage, the chosen world as home (Moonlight in the Moonmilk Cove)",
+   "ok": true,
+   "detail": "{\"id\":\"boppo\",\"w\":\"moonlight\",\"realm\":\"moonmilk-cove\",\"star\":\"#ffd7d5\",\"moon\":\"#edc8e5\",\"plain\":{\"sun\":\"#ffcf7a\",\"amber\":\"#ffa65a\",\"crisp\":\"#fff2cf\",\"sunRGB\":[255,207,122],\"sunCss\":\"rgba(255,207,122,1.000)\",\"moon\":\"#e4ebff\",\"moonRGB\":[228,235,255],\"moonCss\":\"rgba(228,235,255,1.000)\",\"star\":\"#fff4d8\",\"starCss\":\"rgba(255,244,216,1.000)\",\"coreCss\":\"#fffaf0\",\"ember\":\"#ffb057\",\"emberCss\":\"rgba(255,176,87,1.000)\",\"goldHex\":\"#ffd27a\",\"goldCss\":\"rgba(255,210,122,1.000)\",\"ribbonCss\":\"rgba(228,234,255,1.000)\",\"crestCss\":\"rgba(255,249,227,1.000)\",\"mist\":[108.96,111.16,161.04],\"haze\":[109,105,146],\"puddleCss\":\"rgba(116,110,137,1.000)\",\"puddleRimCss\":\"rgba(255,248,222,1.000)\",\"glowHex\":\"#fff4c8\"},\"speed\":0.82,\"wind\":0.82,\"planner\":0.82}"
+  },
+  {
+   "scope": "weather:dna:chosen",
+   "name": "the Comfort DNA palette tints the stars and the moonlight",
+   "ok": true,
+   "detail": "{\"id\":\"boppo\",\"w\":\"moonlight\",\"realm\":\"moonmilk-cove\",\"star\":\"#ffd7d5\",\"moon\":\"#edc8e5\",\"plain\":{\"sun\":\"#ffcf7a\",\"amber\":\"#ffa65a\",\"crisp\":\"#fff2cf\",\"sunRGB\":[255,207,122],\"sunCss\":\"rgba(255,207,122,1.000)\",\"moon\":\"#e4ebff\",\"moonRGB\":[228,235,255],\"moonCss\":\"rgba(228,235,255,1.000)\",\"star\":\"#fff4d8\",\"starCss\":\"rgba(255,244,216,1.000)\",\"coreCss\":\"#fffaf0\",\"ember\":\"#ffb057\",\"emberCss\":\"rgba(255,176,87,1.000)\",\"goldHex\":\"#ffd27a\",\"goldCss\":\"rgba(255,210,122,1.000)\",\"ribbonCss\":\"rgba(228,234,255,1.000)\",\"crestCss\":\"rgba(255,249,227,1.000)\",\"mist\":[108.96,111.16,161.04],\"haze\":[109,105,146],\"puddleCss\":\"rgba(116,110,137,1.000)\",\"puddleRimCss\":\"rgba(255,248,222,1.000)\",\"glowHex\":\"#fff4c8\"},\"speed\":0.82,\"wind\":0.82,\"planner\":0.82}"
+  },
+  {
+   "scope": "weather:dna:chosen",
+   "name": "Slower: ambient drift, wind and turns at ×0.82",
+   "ok": true,
+   "detail": "{\"id\":\"boppo\",\"w\":\"moonlight\",\"realm\":\"moonmilk-cove\",\"star\":\"#ffd7d5\",\"moon\":\"#edc8e5\",\"plain\":{\"sun\":\"#ffcf7a\",\"amber\":\"#ffa65a\",\"crisp\":\"#fff2cf\",\"sunRGB\":[255,207,122],\"sunCss\":\"rgba(255,207,122,1.000)\",\"moon\":\"#e4ebff\",\"moonRGB\":[228,235,255],\"moonCss\":\"rgba(228,235,255,1.000)\",\"star\":\"#fff4d8\",\"starCss\":\"rgba(255,244,216,1.000)\",\"coreCss\":\"#fffaf0\",\"ember\":\"#ffb057\",\"emberCss\":\"rgba(255,176,87,1.000)\",\"goldHex\":\"#ffd27a\",\"goldCss\":\"rgba(255,210,122,1.000)\",\"ribbonCss\":\"rgba(228,234,255,1.000)\",\"crestCss\":\"rgba(255,249,227,1.000)\",\"mist\":[108.96,111.16,161.04],\"haze\":[109,105,146],\"puddleCss\":\"rgba(116,110,137,1.000)\",\"puddleRimCss\":\"rgba(255,248,222,1.000)\",\"glowHex\":\"#fff4c8\"},\"speed\":0.82,\"wind\":0.82,\"planner\":0.82}"
+  },
+  {
+   "scope": "weather:dna:chosen",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:dna:gentle",
+   "name": "gentle: the storm strike is a soft glow, never a bolt",
+   "ok": true,
+   "detail": "{\"ev\":[\"hit-body\",\"hit-body\",\"hit-body\",\"hit-body\",\"hit-body\",\"glow\",\"land-ground\",\"land-ground\"],\"pulses\":[]}"
+  },
+  {
+   "scope": "weather:dna:gentle",
+   "name": "gentle: agitation stays at 0.30 or less",
+   "ok": true,
+   "detail": "{\"agitation\":0.3,\"heaviness\":0.7,\"clarity\":0.15,\"warmth\":0.25}"
+  },
+  {
+   "scope": "weather:dna:gentle",
+   "name": "gentle: no hops, celebrations or double taps",
+   "ok": true,
+   "detail": "[{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"arrive-stars-nod\",\"react\":\"nod\"},{\"t\":2.77,\"type\":\"hit-body\",\"tag\":\"glitzi-drip-huff\",\"react\":\"tap\"},{\"t\":4.57,\"type\":\"arrive\",\"tag\":\"love-wind-hop\",\"react\":\"nod\"}]"
+  },
+  {
+   "scope": "weather:dna:gentle",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:dna:off",
+   "name": "personalisation off: the Mallow's own world and entry weather, balanced style, its own colours",
+   "ok": true,
+   "detail": "{\"id\":\"boppo\",\"realm\":\"sunpop-orchard\",\"w\":\"sunshine\",\"want\":{\"realm\":\"sunpop-orchard\",\"w\":\"sunshine\"},\"palette\":null,\"style\":\"balanced\"}"
+  },
+  {
+   "scope": "weather:dna:off",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:mallows:glitzi",
+   "name": "starts in its realm's entry weather",
+   "ok": true,
+   "detail": "{\"me\":\"glitzi\",\"w\":\"starlight\",\"realm\":\"static-storm\",\"want\":{\"w\":\"starlight\",\"realm\":\"static-storm\"},\"homeW\":\"storm\",\"arrive\":{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"arrive-stars-nod\",\"react\":\"nod\"},\"t\":1.2167000000000006}"
+  },
+  {
+   "scope": "weather:mallows:glitzi",
+   "name": "its home weather (storm) arrives as a celebration in character",
+   "ok": true,
+   "detail": "{\"t\":4.27,\"type\":\"arrive\",\"tag\":\"glitzi-home-storm-hop\",\"react\":\"hop\"}"
+  },
+  {
+   "scope": "weather:mallows:glitzi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:mallows:blubi",
+   "name": "starts in its realm's entry weather",
+   "ok": true,
+   "detail": "{\"me\":\"blubi\",\"w\":\"rain\",\"realm\":\"raindrop-lagoon\",\"want\":{\"w\":\"rain\",\"realm\":\"raindrop-lagoon\"},\"homeW\":\"rain\",\"arrive\":{\"t\":0.93,\"type\":\"arrive\",\"tag\":\"blubi-home-rain-hop\",\"react\":\"hop\"},\"t\":1.2333999999999996}"
+  },
+  {
+   "scope": "weather:mallows:blubi",
+   "name": "its home weather (rain) arrives as a celebration in character",
+   "ok": true,
+   "detail": "{\"t\":0.93,\"type\":\"arrive\",\"tag\":\"blubi-home-rain-hop\",\"react\":\"hop\"}"
+  },
+  {
+   "scope": "weather:mallows:blubi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:mallows:zuzu",
+   "name": "starts in its realm's entry weather",
+   "ok": true,
+   "detail": "{\"me\":\"zuzu\",\"w\":\"starlight\",\"realm\":\"spiral-observatory\",\"want\":{\"w\":\"starlight\",\"realm\":\"spiral-observatory\"},\"homeW\":\"starlight\",\"arrive\":{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"zuzu-home-starlight-hop\",\"react\":\"hop\"},\"t\":1.2168000000000005}"
+  },
+  {
+   "scope": "weather:mallows:zuzu",
+   "name": "its home weather (starlight) arrives as a celebration in character",
+   "ok": true,
+   "detail": "{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"zuzu-home-starlight-hop\",\"react\":\"hop\"}"
+  },
+  {
+   "scope": "weather:mallows:zuzu",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:mallows:boppo",
+   "name": "starts in its realm's entry weather",
+   "ok": true,
+   "detail": "{\"me\":\"boppo\",\"w\":\"sunshine\",\"realm\":\"sunpop-orchard\",\"want\":{\"w\":\"sunshine\",\"realm\":\"sunpop-orchard\"},\"homeW\":\"sunshine\",\"arrive\":{\"t\":0.93,\"type\":\"arrive\",\"tag\":\"boppo-home-sunshine-hop\",\"react\":\"hop\"},\"t\":1.2335000000000005}"
+  },
+  {
+   "scope": "weather:mallows:boppo",
+   "name": "its home weather (sunshine) arrives as a celebration in character",
+   "ok": true,
+   "detail": "{\"t\":0.93,\"type\":\"arrive\",\"tag\":\"boppo-home-sunshine-hop\",\"react\":\"hop\"}"
+  },
+  {
+   "scope": "weather:mallows:boppo",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:mallows:pipzi",
+   "name": "starts in its realm's entry weather",
+   "ok": true,
+   "detail": "{\"me\":\"pipzi\",\"w\":\"warm\",\"realm\":\"spark-festival\",\"want\":{\"w\":\"warm\",\"realm\":\"spark-festival\"},\"homeW\":\"warm\",\"arrive\":{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"pipzi-home-warm-hop\",\"react\":\"hop\"},\"t\":1.2167000000000006}"
+  },
+  {
+   "scope": "weather:mallows:pipzi",
+   "name": "its home weather (warm) arrives as a celebration in character",
+   "ok": true,
+   "detail": "{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"pipzi-home-warm-hop\",\"react\":\"hop\"}"
+  },
+  {
+   "scope": "weather:mallows:pipzi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:mallows:loomi",
+   "name": "starts in its realm's entry weather",
+   "ok": true,
+   "detail": "{\"me\":\"loomi\",\"w\":\"wind\",\"realm\":\"blue-drift\",\"want\":{\"w\":\"wind\",\"realm\":\"blue-drift\"},\"homeW\":\"wind\",\"arrive\":{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"loomi-home-wind-hop\",\"react\":\"hop\"},\"t\":1.2166000000000003}"
+  },
+  {
+   "scope": "weather:mallows:loomi",
+   "name": "its home weather (wind) arrives as a celebration in character",
+   "ok": true,
+   "detail": "{\"t\":0.92,\"type\":\"arrive\",\"tag\":\"loomi-home-wind-hop\",\"react\":\"hop\"}"
+  },
+  {
+   "scope": "weather:mallows:loomi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:mallows:noomi",
+   "name": "starts in its realm's entry weather",
+   "ok": true,
+   "detail": "{\"me\":\"noomi\",\"w\":\"moonlight\",\"realm\":\"moonmilk-cove\",\"want\":{\"w\":\"moonlight\",\"realm\":\"moonmilk-cove\"},\"homeW\":\"moonlight\",\"arrive\":{\"t\":0.95,\"type\":\"arrive\",\"tag\":\"noomi-home-moonlight-hop\",\"react\":\"hop\"},\"t\":1.2000000000000006}"
+  },
+  {
+   "scope": "weather:mallows:noomi",
+   "name": "its home weather (moonlight) arrives as a celebration in character",
+   "ok": true,
+   "detail": "{\"t\":0.95,\"type\":\"arrive\",\"tag\":\"noomi-home-moonlight-hop\",\"react\":\"hop\"}"
+  },
+  {
+   "scope": "weather:mallows:noomi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:mallows",
+   "name": "the same strike reads differently on different Mallows (≥ 5 distinct reactions)",
+   "ok": true,
+   "detail": "{\"glitzi\":\"glitzi-strike-delight\",\"blubi\":\"blubi-strike-shiver\",\"zuzu\":\"zuzu-strike-wow\",\"boppo\":\"boppo-strike-eep\",\"pipzi\":\"pipzi-strike-ooh\",\"loomi\":\"loomi-strike-blink\",\"noomi\":\"noomi-strike-peek\"}"
+  },
+  {
+   "scope": "weather:access",
+   "name": "the stage is focused on arrival and labelled with the keys",
+   "ok": true,
+   "detail": "[\"application\",\"Weather Weaver with Boppo. Keys 1 to 8 choose the weather, arrow keys shape it, hold W to weave. Touch Boppo to talk.\"]"
+  },
+  {
+   "scope": "weather:access",
+   "name": "the dial is one radiogroup \"Weather\": eight named radios, one tab stop on the chosen one",
+   "ok": true,
+   "detail": "[[\"Sunshine\",\"true\",0,\"Sunshine\"],[\"Wind\",\"false\",-1,\"Wind\"],[\"Fog\",\"false\",-1,\"Fog\"],[\"Rain\",\"false\",-1,\"Rain\"],[\"Storm\",\"false\",-1,\"Storm\"],[\"Moonlight\",\"false\",-1,\"Moonlight\"],[\"Starlight\",\"false\",-1,\"Starlight\"],[\"Warm glow\",\"false\",-1,\"Warm glow\"]]"
+  },
+  {
+   "scope": "weather:access",
+   "name": "the alternatives are real buttons in a labelled group; the hint is hidden, the announcer speaks",
+   "ok": true,
+   "detail": "{\"stage\":[\"application\",\"Weather Weaver with Boppo. Keys 1 to 8 choose the weather, arrow keys shape it, hold W to weave. Touch Boppo to talk.\"],\"focus\":true,\"dial\":[\"radiogroup\",\"Weather\"],\"radios\":[[\"Sunshine\",\"true\",0,\"Sunshine\"],[\"Wind\",\"false\",-1,\"Wind\"],[\"Fog\",\"false\",-1,\"Fog\"],[\"Rain\",\"false\",-1,\"Rain\"],[\"Storm\",\"false\",-1,\"Storm\"],[\"Moonlight\",\"false\",-1,\"Moonlight\"],[\"Starlight\",\"false\",-1,\"Starlight\"],[\"Warm glow\",\"false\",-1,\"Warm glow\"]],\"group\":[\"group\",\"Weather actions\"],\"chips\":[[\"Bring the sun\",\"button\",\"lead\"]],\"sr\":[\"status\",\"polite\"],\"hint\":\"true\",\"said\":[\"Sunshine at the Sunpop Orchard. Drag to move the warm light.\"]}"
+  },
+  {
+   "scope": "weather:access",
+   "name": "the announcer says where we are and what to do, about the world, never the person",
+   "ok": true,
+   "detail": "[\"Sunshine at the Sunpop Orchard. Drag to move the warm light.\"]"
+  },
+  {
+   "scope": "weather:access",
+   "name": "held Enter on \"Bring the sun\" basks Boppo to golden hour; focus moves onto Again",
+   "ok": true,
+   "detail": "{\"focus\":\"again\",\"metrics\":{\"coverage\":1,\"clear\":0,\"rainLevel\":1,\"wet\":0,\"energy\":0,\"calm\":0,\"fogClear\":0,\"painted\":0.033,\"height\":0.016,\"onBody\":true,\"bask\":5.07,\"dwell\":0,\"constellations\":0,\"heat\":0,\"waveEnergy\":0,\"held\":0,\"heldStars\":0,\"light\":1,\"intensity\":0,\"puddles\":0,\"hearth\":false}}"
+  },
+  {
+   "scope": "weather:access",
+   "name": "a held key's repeats never press Again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:access",
+   "name": "a fresh Enter on Again plays the weather again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:access",
+   "name": "the announcer read the caption and Again (at least 3 s apart, newest wins)",
+   "ok": true,
+   "detail": "[\"Sunshine at the Sunpop Orchard. Drag to move the warm light.\",\"Light reaches Boppo.\",\"Golden hour.\",\"Sunshine again.\"]"
+  },
+  {
+   "scope": "weather:access",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "weather:tier",
+   "name": "medium: four bed layers and the pad, a front canvas, DPR ≤ 1.25",
+   "ok": true,
+   "detail": "{\"q\":\"medium\",\"bed\":{\"alive\":true,\"wanted\":true,\"builds\":1,\"tier\":\"medium\",\"layers\":[\"rain\",\"wind\",\"rumble\",\"lap\"],\"levels\":{\"rain\":0,\"wind\":0.4799613815060622,\"rumble\":0,\"lap\":0.3,\"pad\":0},\"played\":{},\"wiping\":false,\"ended\":false},\"layer\":{\"frames\":29,\"drawn\":{\"puffs\":0,\"drops\":0,\"beads\":0,\"ribbons\":6,\"stars\":0,\"embers\":0,\"crests\":0},\"backDpr\":1,\"front\":true,\"frontActive\":false,\"realm\":\"blue-drift\",\"reduced\":false,\"quality\":\"medium\"},\"ribbons\":6,\"stars\":20}"
+  },
+  {
+   "scope": "weather:tier",
+   "name": "a live drop to low: the bed sheds to rain and wind (rebuilt once), no front canvas, fewer ribbons",
+   "ok": true,
+   "detail": "{\"bed\":{\"alive\":true,\"wanted\":true,\"builds\":1,\"tier\":\"low\",\"layers\":[\"rain\",\"wind\"],\"levels\":{\"rain\":0,\"wind\":0.49848969700150625,\"pad\":0},\"played\":{},\"wiping\":false,\"ended\":false},\"layer\":{\"frames\":44,\"drawn\":{\"puffs\":0,\"drops\":0,\"beads\":0,\"ribbons\":4,\"stars\":0,\"embers\":0,\"crests\":0},\"backDpr\":1,\"front\":false,\"frontActive\":false,\"realm\":\"blue-drift\",\"reduced\":false,\"quality\":\"low\"},\"ribbons\":4,\"keep\":2,\"fronts\":0}"
+  },
+  {
+   "scope": "weather:tier",
+   "name": "back up to high mid-session: pools and bed never grow back (one bed)",
+   "ok": true,
+   "detail": "{\"bed\":{\"alive\":true,\"wanted\":true,\"builds\":1,\"tier\":\"low\",\"layers\":[\"rain\",\"wind\"],\"levels\":{\"rain\":0,\"wind\":0.4287139702772175,\"pad\":0},\"played\":{},\"wiping\":false,\"ended\":false},\"ribbons\":4,\"keep\":1}"
+  },
+  {
+   "scope": "weather:tier",
    "name": "no console errors",
    "ok": true,
    "detail": ""

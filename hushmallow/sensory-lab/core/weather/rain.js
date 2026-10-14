@@ -172,8 +172,11 @@ export class RainField extends SimBase {
     this.wet *= Math.exp(-dt / WET_TAU);
     const speedK = reduced ? 0.35 : 1, active = this.active;
 
-    // spawn
-    this._acc += (active * this.intensity / 1.1) * dt;
+    // spawn: enough drops to keep about active·intensity in flight. A drop lives as long as its fall from
+    // the deck to its depth's ground line (a storm's low base gives short falls: a fixed rate left a dozen
+    // stray streaks where a shower belongs)
+    const life = clamp(((this.horizonY + this.floorY) / 2 - this.deckY) / (540 * speedK), 0.3, 1.1);
+    this._acc += (active * this.intensity / life) * dt;
     if (this.alive >= active) this._acc = Math.min(this._acc, 1);
     while (this._acc >= 1 && this.alive < active) { this._acc -= 1; this._spawn(cover, speedK, wind); }
 
