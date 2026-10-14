@@ -45,7 +45,7 @@ test('build: the scan catches every kind of developer content (planted, one at a
       assert.ok(scan(new Map([[`/ui/f${i}.js`, file]])).length > 0, `the scan missed: ${text}`);
     });
     const clean = join(dir, 'clean.js');
-    writeFileSync(clean, 'export const line = "A Mallow perspective · Automatically generated"; // labels and labs-free\n');
+    writeFileSync(clean, 'export const line = "A Mallow perspective · Automatically generated"; // labels and labelled things\n');
     assert.deepEqual(scan(new Map([['/ui/clean.js', clean]])), []);
     assert.ok(scan(new Map([['/core/relay-seed.js', clean]])).length > 0, 'a server-only file name passed');
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -68,4 +68,62 @@ const EXPECTED = [
 
 test('build: the customer app is exactly the expected files (nothing new slips in unnoticed)', () => {
   assert.deepEqual([...appFiles().keys()].sort(), EXPECTED);
+});
+
+// ------------------------------------------------------------- comment stripping --
+import { stripJs, stripCss } from '../tools/strip-comments.mjs';
+
+test('build: stripping comments keeps strings, templates and regular expressions exactly', () => {
+  const cases = [
+    ["const u = 'http://x/*y*/'; // note", "const u = 'http://x/*y*/'; "],
+    ['const r = /\\/\\/[a-z/]+/g; /* gone */ f(r);', 'const r = /\\/\\/[a-z/]+/g;   f(r);'],
+    ['const t = `a ${b ? `in ${c /* x */}` : "//"} z`; // end', 'const t = `a ${b ? `in ${c  }` : "//"} z`; '],
+    ['const half = a / 2 / b; // math', 'const half = a / 2 / b; '],
+    ['if (x) return /re\\/x/.test(s); // regex after return', 'if (x) return /re\\/x/.test(s); '],
+    ['const o = { a: 1 }; /*\n many\n lines */ g();', 'const o = { a: 1 }; \n g();'],
+    ["const s = \"it's // not a comment\";", "const s = \"it's // not a comment\";"],
+    ['const k = `line one  \n\n\n  line two`; // spaces kept', 'const k = `line one  \n\n\n  line two`; '],
+  ];
+  for (const [src, want] of cases) assert.equal(stripJs(src), want, src);
+  assert.equal(stripCss('a { content: "/* keep */"; } /* drop */ b { c: d }'), 'a { content: "/* keep */"; }  b { c: d }');
+});
+
+test('build: every shipped module loses only its comments', () => {
+  for (const [url, file] of appFiles()) {
+    if (!/\.m?js$/.test(url)) continue;
+    const a = readFileSync(file, 'utf8');
+    const b = stripJs(a);
+    let i = 0;
+    let j = 0;
+    while (i < a.length || j < b.length) {
+      if (a[i] === b[j]) { i++; j++; continue; }
+      if (a.startsWith('//', i)) { const e = a.indexOf('\n', i); i = e < 0 ? a.length : e; continue; }
+      if (a.startsWith('/*', i)) { const e = a.indexOf('*/', i + 2) + 2; assert.equal(b[j], a.slice(i, e).includes('\n') ? '\n' : ' ', url); i = e; j++; continue; }
+      assert.fail(`${url}: something other than a comment changed at ${i}: ${JSON.stringify(a.slice(i, i + 40))}`);
+    }
+    assert.equal(stripJs(b), b, `${url}: stripping twice changes it`);
+  }
+});
+
+test('build: what ships has no comments, and the scan reads words split across lines or pieces', () => {
+  const out = mkdtempSync(join(tmpdir(), 'hushmates-strip-'));
+  const dir = mkdtempSync(join(tmpdir(), 'hushmates-scan2-'));
+  try {
+    assert.ok(build({ out }).ok);
+    for (const f of ['ui/device.js', 'ui/relay/parts.js', 'client/relay-client.js', 'app/app.js', 'core/feeling-safety.js']) {
+      const text = readFileSync(join(out, f), 'utf8');
+      assert.ok(!/^\s*\/\/|\/\*\*/m.test(text), `${f} still has comments`);
+      assert.ok(!/Phase 2|tester|test host|reviewed per region|build-app/.test(text), `${f} still has developer notes`);
+    }
+    const planted = ["'Example for ' + 'testing, not generated'", "'Open the control\\n room'", 'const devClock = 1', 'dev.env.labMode', 'LAB_TOOLS', "'Hushmates Labs'",
+      "'Try scenarios A, B and C'", "'Switch between phones A and B'", "'A simulated account'", "'Tester note'", "'live AI response (test key)'"];
+    planted.forEach((text, i) => {
+      const file = join(dir, `p${i}.js`);
+      writeFileSync(file, `export const x = ${text};\n`);
+      assert.ok(scan(new Map([[`/ui/p${i}.js`, file]])).length > 0, `the scan missed: ${text}`);
+    });
+    const svg = join(dir, 'a.svg');
+    writeFileSync(svg, '<svg><text>Lab · control room · Scenario A</text></svg>');
+    assert.ok(scan(new Map([['/assets/a.svg', svg]])).length > 0, 'the scan skips SVG');
+  } finally { rmSync(out, { recursive: true, force: true }); rmSync(dir, { recursive: true, force: true }); }
 });

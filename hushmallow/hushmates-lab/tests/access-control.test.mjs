@@ -165,7 +165,7 @@ test('joining: only a real invitation, only adults; the session is an HttpOnly c
     const me = await rpc(s.base, cookie, 'me');
     assert.equal(me.status, 200);
     assert.ok(!JSON.stringify(me.body).includes('tok_'), 'an answer carries the internal session token');
-    assert.equal(me.body.result.test, false);
+    assert.ok(!('test' in me.body.result), 'the app is told about test identities');
     assert.equal(me.body.result.isModerator, false);
     assert.equal(me.body.result.adultConfirmed, true);
     // an invitation opens one account: a second person can't take it over with another name
@@ -442,3 +442,25 @@ test('the production build refuses files changed after it was built', () => {
   } finally { rmSync(copy, { recursive: true, force: true }); }
 });
 
+
+test('a server refuses lab state: test identities and testing examples never load', async () => {
+  const { RelayService } = await import('../core/relay.js');
+  const { seedRelay } = await import('../core/relay-seed.js');
+  const dir = mkdtempSync(join(tmpdir(), 'hushmates-state-'));
+  try {
+    const labState = join(dir, 'lab.json');
+    writeFileSync(labState, JSON.stringify({ relay: seedRelay(new RelayService({ testMode: true })).toJSON(), sessions: {}, invites: {} }));
+    const svc = new RelayService({ testMode: true, cannedExamples: true, provider: async ({ mallow }) => ({ status: 'ok', text: 'A fixed line.', mallow, source: 'demo' }) });
+    const id = svc.createMember({ pseudonym: 'Realname', adult: true });
+    const tok = svc.issueSession(id);
+    const j = svc.submitFeeling(tok, { text: FEELING, consent: true, allowFallback: true, clientId: 'state-test-0001' }).journey.id;
+    svc.s.journeys[j].releasedAt -= 31 * 60e3;
+    await svc.askMallow(tok, { journeyId: j });
+    const demoState = join(dir, 'demo.json');
+    writeFileSync(demoState, JSON.stringify({ relay: svc.toJSON(), sessions: {}, invites: {} }));
+    for (const [statePath, why] of [[labState, /test identities/], [demoState, /testing examples/]]) {
+      assert.throws(() => createHushmatesServer({ mode: 'production', files: builtFiles(dist), statePath, log: quiet }), why);
+      assert.throws(() => createHushmatesServer({ mode: 'development', files: appFiles(), labFiles: labFiles(), testerKey: TESTER_KEY, statePath, log: quiet }), why);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

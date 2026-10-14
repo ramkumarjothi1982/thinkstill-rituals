@@ -72,6 +72,11 @@ export function createHushmatesServer({
 
   // ------------------------------------------------------------ state --
   const saved = statePath && existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) : null;
+  // lab state never becomes a server's: test identities and testing examples have no place here
+  if (saved?.relay) {
+    if (Object.values(saved.relay.accounts || {}).some((a) => a.test)) throw new Error(`${statePath} holds lab test identities: a Hushmates server never loads them`);
+    if (Object.values(saved.relay.fallbacks || {}).some((f) => f.source === 'demo')) throw new Error(`${statePath} holds testing examples: a Hushmates server never loads them`);
+  }
   const service = new RelayService({ state: saved?.relay || null, now, random, provider, cannedExamples: false, testMode: false });
   const sessions = new Map(Object.entries(saved?.sessions || {}));       // sha(cookie) → { token, accountId, seenAt }
   const inviteBook = new Map(Object.entries(saved?.invites || {}));     // sha(code) → { role, accountId, nameHash, usedAt }
@@ -126,7 +131,7 @@ export function createHushmatesServer({
     const key = sha(raw);
     const s = sessions.get(key);
     if (!s) return null;
-    if (now() - s.seenAt > SESSION_IDLE_MS || !service.s.sessions[s.token]) { sessions.delete(key); persist(); return null; }
+    if (now() - s.seenAt > SESSION_IDLE_MS || !service.s.sessions[s.token]) { service.endSession(s.token); sessions.delete(key); persist(); return null; }
     s.seenAt = now();
     return { key, ...s };
   }

@@ -56,6 +56,7 @@ const EXPORT_EVENT = {
   'perspective-withdrawn': 'a Hushmate took their perspective back', 'mallow-offer': 'your Mallow could offer a perspective',
   'mallow-perspective': 'your Mallow offered a perspective', returned: 'came home',
 };
+const OTHERS_EVENTS = new Set(['perspective', 'perspective-withdrawn']);   // other people's actions: dated by day only
 const EXPORT_ACCOUNT = { active: 'active', restricted: 'catching paused by our safety team', suspended: 'paused by our safety team' };
 
 export const CLIENT_METHODS = [
@@ -204,7 +205,7 @@ export class RelayService {
     const p = this.s.profiles[acc.id];
     const mine = Object.values(this.s.journeys).filter((j) => j.owner === acc.id);
     return {
-      accountState: acc.state, test: !!acc.test, isModerator: acc.role === 'moderator', adultConfirmed: !!acc.adultConfirmedAt,
+      accountState: acc.state, ...(this.testMode ? { test: !!acc.test } : {}), isModerator: acc.role === 'moderator', adultConfirmed: !!acc.adultConfirmedAt,
       profile: { ...p },
       limits: { perspectives: this.L.perspectivesPerFeeling, perspectivesPerFeeling: this.L.perspectivesPerFeeling, maxActiveJourneys: this.L.maxActiveJourneys,
         feelingMinChars: this.L.feelingMinChars, feelingMaxChars: this.L.feelingMaxChars, reframeMinChars: this.L.reframeMinChars, reframeMaxChars: this.L.reframeMaxChars },
@@ -291,7 +292,10 @@ export class RelayService {
   }
 
   // -------------------------------------------------------------- catch --
-  _humans(j) { return Object.values(this.s.reframes).filter((r) => r.journeyId === j.id).sort((a, b) => a.slot - b.slot); }
+  /** The perspectives that hold a place on a feeling (a set-aside one never does, see submitReframe). */
+  _humans(j) { return Object.values(this.s.reframes).filter((r) => r.journeyId === j.id && !r.setAside && !this._testOnly(r.author)).sort((a, b) => a.slot - b.slot); }
+  /** Outside the lab, anything a test identity wrote counts for nothing (state should never hold any; the server refuses it). */
+  _testOnly(accId) { return !this.testMode && !!this.s.accounts[accId]?.test; }
   _holdLive(h) { return (h.status === 'offered' || h.status === 'caught') && h.expiresAt > this.now(); }
   _liveHolds(jid) { return Object.values(this.s.holds).filter((h) => h.journeyId === jid && this._holdLive(h)); }
   _activeHoldOf(user) { return Object.values(this.s.holds).find((h) => h.user === user && this._holdLive(h)) || null; }
@@ -304,7 +308,7 @@ export class RelayService {
     if (this._exposed(j.id, user)) return false;                         // never shown twice
     if (this._blocked(j.owner, user)) return false;
     const owner = this.s.accounts[j.owner];
-    if (!owner || owner.state !== 'active') return false;
+    if (!owner || owner.state !== 'active' || this._testOnly(j.owner)) return false;
     const taken = this._humans(j).length + this._liveHolds(j.id).length;
     return taken < this.L.perspectivesPerFeeling;                         // a slot must be free
   }
@@ -386,9 +390,18 @@ export class RelayService {
     if (!screen.ok) fail(`reframe-${screen.code}`, screen.message);
     this._rate(acc.id, 'reframe', this.L.reframesPerHour, 3600e3);
     const t = this.now();
-    // if this person has blocked the author, their words still fill the slot (ending the hold would tell
-    // them whose feeling it is) but are never shown to the person they blocked
-    const r = { id: this._id('pv'), journeyId: j.id, author: acc.id, slot: humans.length + 1, text: screen.text, clientId, at: t, mallow: this.s.profiles[acc.id].mallow, hiddenForOwner: this._blockedBy(acc.id, j.owner), removed: false,
+    // If this person has blocked the author (after catching), refusing would tell them whose feeling it is,
+    // and counting it would tell the author someone blocked them. So it is set aside: the writer sees the usual
+    // thanks and keeps their words in their own list, while the feeling never learns of it (no place taken,
+    // no petal, no step on its journey, nothing in the author's file) and the place stays open for someone else.
+    if (this._blockedBy(acc.id, j.owner)) {
+      const aside = { id: this._id('pv'), journeyId: j.id, author: acc.id, slot: humans.length + 1, text: screen.text, clientId, at: t, mallow: this.s.profiles[acc.id].mallow, hiddenForOwner: true, setAside: true, removed: false, allowShare: allowShare === true, shareConsentAt: allowShare === true ? t : null };
+      this.s.reframes[aside.id] = aside;
+      this._endHold(h, 'used');
+      this._save();
+      return this._afterReframe(aside, acc.id, false);
+    }
+    const r = { id: this._id('pv'), journeyId: j.id, author: acc.id, slot: humans.length + 1, text: screen.text, clientId, at: t, mallow: this.s.profiles[acc.id].mallow, hiddenForOwner: false, removed: false,
       allowShare: allowShare === true, shareConsentAt: allowShare === true ? t : null };   // may the author include these words in a share picture? (off unless the writer says yes)
     this.s.reframes[r.id] = r;
     this._endHold(h, 'used');
@@ -404,7 +417,9 @@ export class RelayService {
     const j = this.s.journeys[r.journeyId];
     // after giving their own, a contributor sees how the others saw it (never who)
     const earlier = j ? this._humans(j).filter((x) => x.slot < r.slot && !x.removed).map((x) => ({ slot: x.slot, text: x.text })) : [];
-    return { slot: r.slot, homeward: !!j && j.status !== 'travelling', earlier, duplicate, perspective: { id: r.id, text: r.text } };
+    // (a set-aside perspective answers exactly as a counted one would, so its writer can't tell)
+    const homeward = !!j && (j.status !== 'travelling' || (!!r.setAside && r.slot >= this.L.perspectivesPerFeeling));
+    return { slot: r.slot, homeward, earlier, duplicate, perspective: { id: r.id, text: r.text } };
   }
 
   /** What this person has given: their own words, no author details. */
@@ -422,7 +437,7 @@ export class RelayService {
     const r = typeof perspectiveId === 'string' ? this.s.reframes[perspectiveId] : undefined;
     if (!r || r.author !== acc.id || r.removed) fail('not-found');
     Object.assign(r, { text: '', removed: true, withdrawnAt: this.now(), allowShare: false, shareConsentAt: null });
-    const j = this.s.journeys[r.journeyId];
+    const j = r.setAside ? null : this.s.journeys[r.journeyId];         // a set-aside one was never part of the journey
     if (j) {
       j.events.push({ type: 'perspective-withdrawn', at: this.now() });
       this._changed([j.owner], 'journeys', j.id);
@@ -543,6 +558,7 @@ export class RelayService {
 
   _fallbackView(j) {
     const f = this.s.fallbacks[j.id];
+    if (f && f.source === 'demo' && !this.cannedExamples) return { status: 'failed', mallow: f.mallow, source: null, reason: 'unavailable', superseded: false };
     if (f) {
       const v = { status: f.status, mallow: f.mallow, source: f.source || null, reason: f.reason || null, superseded: f.status === 'ready' && this._answered(j) >= this.L.perspectivesPerFeeling };
       if (f.support && !f.hidden) v.support = structuredClone(f.support);       // the provider's safety gate spoke: show support
@@ -569,7 +585,9 @@ export class RelayService {
   }
 
   _journeyView(j, viewer) {
-    const humans = this._humans(j).filter((r) => !r.removed);
+    // what the author can still be shown: a perspective they hid (by blocking its writer, reporting it or letting
+    // it go) leaves no count or petal behind, so nothing links that person to this feeling
+    const humans = this._humans(j).filter((r) => !r.removed && !r.hiddenForOwner);
     const home = j.status !== 'travelling';
     const { visible, extra } = this._items(j);
     const shownMallow = visible.find((x) => x.kind === 'mallow') || null;
@@ -843,6 +861,7 @@ export class RelayService {
     this.tick();
     const p = this.s.profiles[acc.id];
     const iso = (t) => (typeof t === 'number' ? new Date(t).toISOString() : null);
+    const day = (t) => (typeof t === 'number' ? new Date(t).toISOString().slice(0, 10) : null);
     const choice = (v) => (v === true ? 'kept' : v === false ? 'let go' : 'not chosen yet');
     const mine = Object.values(this.s.journeys).filter((j) => j.owner === acc.id && j.status !== 'deleted').sort((a, b) => a.createdAt - b.createdAt);
     const feelings = mine.map((j) => {
@@ -860,11 +879,12 @@ export class RelayService {
         saved: !!j.saved,
         agreedToShareAnonymouslyAt: iso(j.consentAt),
         agreedToAMallowPerspectiveAt: iso(j.fallbackConsentAt),
-        peopleWhoOfferedAPerspective: this._answered(j),
+        peopleWhoOfferedAPerspective: this._humans(j).filter((r) => !r.removed && !r.hiddenForOwner).length,
         // as in the app: people's words stay sealed until the feeling comes home
-        perspectivesFromHushmates: home ? visible.filter((x) => x.kind === 'human').map((x) => ({ from: 'A Hushmate', words: x.text, at: iso(x.at), yourChoice: choice(x.kept) })) : [],
+        // other people's words carry no time: the file says when you did things, never exactly when they did
+        perspectivesFromHushmates: home ? visible.filter((x) => x.kind === 'human').map((x) => ({ from: 'A Hushmate', words: x.text, yourChoice: choice(x.kept) })) : [],
         mallowPerspective: mallow ? { from: 'Your Mallow', label: mallow.label, words: mallow.text, at: iso(mallow.at), yourChoice: choice(mallow.kept) } : null,
-        journey: j.events.map((e) => ({ step: EXPORT_EVENT[e.type] || 'something changed', at: iso(e.at) })),
+        journey: j.events.map((e) => ({ step: EXPORT_EVENT[e.type] || 'something changed', at: OTHERS_EVENTS.has(e.type) ? day(e.at) : iso(e.at) })),
       };
     });
     const offered = Object.values(this.s.reframes).filter((r) => r.author === acc.id && !r.removed).sort((a, b) => a.at - b.at)

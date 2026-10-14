@@ -24,7 +24,7 @@ const ALLOWED = new Set([
   '.feelings[].cameHomeBecause', '.feelings[].timesSentOutAgain', '.feelings[].saved', '.feelings[].agreedToShareAnonymouslyAt',
   '.feelings[].agreedToAMallowPerspectiveAt', '.feelings[].peopleWhoOfferedAPerspective',
   '.feelings[].perspectivesFromHushmates', '.feelings[].perspectivesFromHushmates[].from', '.feelings[].perspectivesFromHushmates[].words',
-  '.feelings[].perspectivesFromHushmates[].at', '.feelings[].perspectivesFromHushmates[].yourChoice',
+  '.feelings[].perspectivesFromHushmates[].yourChoice',
   '.feelings[].mallowPerspective', '.feelings[].mallowPerspective.from', '.feelings[].mallowPerspective.label', '.feelings[].mallowPerspective.words',
   '.feelings[].mallowPerspective.at', '.feelings[].mallowPerspective.yourChoice',
   '.feelings[].journey', '.feelings[].journey[].step', '.feelings[].journey[].at',
@@ -72,7 +72,7 @@ test('your data: the author’s file never names, colours or numbers the people 
   assert.equal(f.status, 'came home');
   assert.equal(f.peopleWhoOfferedAPerspective, 5);
   assert.equal(f.perspectivesFromHushmates.length, 5);
-  for (const p of f.perspectivesFromHushmates) assert.deepEqual(Object.keys(p).sort(), ['at', 'from', 'words', 'yourChoice'], 'a perspective carries more than its words, time and your choice');
+  for (const p of f.perspectivesFromHushmates) assert.deepEqual(Object.keys(p).sort(), ['from', 'words', 'yourChoice'], 'a perspective carries more than its words and your choice (no time: that would say when someone wrote)');
   assert.ok(f.perspectivesFromHushmates.every((p) => p.from === 'A Hushmate'));
   // the contributors' Mallows (which colour the orb's petals in the app) are not in the file
   for (const m of ['blubi', 'pipzi', 'loomi', 'zuzu', 'boppo']) assert.ok(!text.includes(`"${m}"`), `the author's file names a contributor's Mallow (${m})`);
@@ -200,9 +200,64 @@ test('your data: dates are ISO, choices and states are plain words', () => {
   const file = w.svc.exportMyData(w.T.moon);
   const f = file.feelings[0];
   const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-  for (const d of [file.exportedAt, file.you.joinedAt, f.sentAt, f.cameHomeAt, f.agreedToShareAnonymouslyAt, ...f.journey.map((e) => e.at)]) assert.match(d, iso);
+  for (const d of [file.exportedAt, file.you.joinedAt, f.sentAt, f.cameHomeAt, f.agreedToShareAnonymouslyAt]) assert.match(d, iso);
+  // your own steps to the millisecond; other people's (a Hushmate offered or took back a perspective) by day only
+  for (const e of f.journey) assert.match(e.at, /^a Hushmate/.test(e.step) ? /^\d{4}-\d{2}-\d{2}$/ : iso, `${e.step}: ${e.at}`);
   assert.equal(f.cameHomeBecause, 'five people offered a perspective');
   assert.deepEqual(f.perspectivesFromHushmates.map((p) => p.yourChoice).slice(0, 3), ['kept', 'let go', 'not chosen yet']);
   assert.equal(f.feeling, 'Worry');
   assert.ok(f.journey.every((e) => !/[A-Z_]{3,}|-/.test(e.step)), 'a journey step is a code, not words');
+});
+
+// ----------------------------------------- from the separation review (privacy lens) --
+test('review: a perspective from someone who blocked the author leaves no trace the author could notice', () => {
+  const w = world({ limits: { fairnessPool: 1 } });
+  // Cloud's own feeling G, answered by Moon; Cloud then catches Moon's feeling F
+  const g = w.release('cloud', { text: 'I keep wondering whether I said too much at dinner.' }).journey.id;
+  w.give('moon', REFRAMES[0]);
+  const f = w.release('moon').journey.id;
+  const { offer } = w.svc.findFeeling(w.T.cloud);
+  assert.equal(w.svc.s.holds[offer.holdId].journeyId, f, 'setup: Cloud holds Moon’s feeling');
+  w.svc.catchFeeling(w.T.cloud, { holdId: offer.holdId });
+  // Cloud blocks whoever answered G (Moon), without knowing who that is
+  w.svc.withdrawFeeling(w.T.cloud, { journeyId: g });
+  const gcol = w.svc.getJourney(w.T.cloud, { journeyId: g }).collection;
+  w.svc.blockContributor(w.T.cloud, { journeyId: g, perspectiveId: gcol[0].id });
+  // Cloud writes on F: Cloud sees the usual thanks
+  const res = w.svc.submitReframe(w.T.cloud, { holdId: offer.holdId, text: REFRAMES[1], clientId: 'blocked-writer-01' });
+  assert.equal(res.slot, 1);
+  assert.ok(w.svc.myGifts(w.T.cloud).gifts.some((x) => x.text === REFRAMES[1]), 'the writer lost their own words');
+  // Moon learns nothing: no count, petal, step or file entry, and the place stays open
+  const view = w.svc.getJourney(w.T.moon, { journeyId: f });
+  assert.equal(view.humanCount, 0, 'the author can count a hidden perspective');
+  assert.equal(view.petals.length, 0);
+  assert.ok(!view.events.some((e) => e.type === 'perspective'), 'the journey shows a step for a hidden perspective');
+  const file = w.svc.exportMyData(w.T.moon);
+  assert.equal(file.feelings.find((x) => x.words === FEELING).peopleWhoOfferedAPerspective, 0);
+  assert.equal(file.peopleYouBlocked, 0);
+  assert.ok(!JSON.stringify(file).includes(REFRAMES[1]));
+  w.give('star', REFRAMES[2]);
+  assert.equal(w.svc.getJourney(w.T.moon, { journeyId: f }).humanCount, 1, 'a set-aside perspective took a place someone else could have had');
+  // taking it back or changing its share choice never touches Moon's journey either
+  const before = JSON.stringify(w.svc.getJourney(w.T.moon, { journeyId: f }).events);
+  const id = w.svc.myGifts(w.T.cloud).gifts.find((x) => x.text === REFRAMES[1]).id;
+  w.svc.setGiftSharing(w.T.cloud, { perspectiveId: id, allowShare: true });
+  w.svc.withdrawPerspective(w.T.cloud, { perspectiveId: id });
+  assert.equal(JSON.stringify(w.svc.getJourney(w.T.moon, { journeyId: f }).events), before);
+});
+
+test('review: a perspective the author hid (by blocking) leaves no count or petal to link its writer to a feeling', () => {
+  const w = world({ limits: { fairnessPool: 1 } });
+  const a = w.release('moon').journey.id;
+  w.advance(60e3);
+  const b = w.release('moon', { text: 'I keep replaying what I said in the meeting.' }).journey.id;
+  w.give('cloud', REFRAMES[0]);                      // on A
+  w.give('cloud', REFRAMES[1]);                      // on B, still sealed
+  w.svc.withdrawFeeling(w.T.moon, { journeyId: a });
+  const col = w.svc.getJourney(w.T.moon, { journeyId: a }).collection;
+  w.svc.blockContributor(w.T.moon, { journeyId: a, perspectiveId: col[0].id });
+  const vb = w.svc.getJourney(w.T.moon, { journeyId: b });
+  assert.equal(vb.humanCount, 0, 'the blocked person’s place on another feeling still shows');
+  assert.equal(vb.petals.length, 0);
+  assert.equal(w.svc.exportMyData(w.T.moon).feelings.find((x) => x.words !== FEELING).peopleWhoOfferedAPerspective, 0);
 });

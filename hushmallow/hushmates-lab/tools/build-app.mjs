@@ -3,27 +3,34 @@
 // app loads (server/app-files.mjs follows its imports from app/index.html),
 // with a manifest of their hashes the production server checks at start-up.
 //
-// Then it reads every file it wrote and refuses the build if anything meant
-// only for developers or testers made it in: lab and control-room words,
-// test identities, simulated services, testing labels, debug calls, local
-// service addresses, or anything that looks like a key.
+// What ships has no comments (developers' notes stay in the source), and every
+// stripped module is checked to still parse. Then it reads every file it wrote
+// and refuses the build (deleting it) if anything meant only for developers or
+// testers made it in: lab and control-room words, test identities, simulated
+// services, testing labels, debug calls, local service addresses, or anything
+// that looks like a key.
 //
 //   node tools/build-app.mjs [--out dist/app]
 //
 // Building is local. Nothing is uploaded or deployed.
 
 import { createHash } from 'node:crypto';
-import { mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, copyFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { appFiles, LAB_ROOT } from '../server/app-files.mjs';
+import { stripJs, stripCss, stripHtml } from './strip-comments.mjs';
 
 /** Never in a customer build: [pattern, why]. */
 export const FORBIDDEN = [
-  [/\blab\b/i, 'the lab'],
-  [/control room/i, 'the control room'],
-  [/scenario\s+[ABC]\b/i, 'test scenarios'],
-  [/\bphone\s+[AB]\b/i, 'the lab’s test phones'],
-  [/type it for me/i, 'the lab’s typing shortcut'],
+  [/\blabs?\b/i, 'the lab'],
+  [/\blab[A-Z_]|[a-z]Lab\b|\bLAB_/, 'the lab'],
+  [/control[\s-]*room/i, 'the control room'],
+  [/[Ss]cenarios?\s*[-\s]?[ABCabc]\b/, 'test scenarios'],
+  [/\b[Pp]hones?\s*[-\s]?[ABab]\b(?!\s+(?:friend|call|number|line))/, 'the lab’s test phones'],
+  [/simulat|\btesters?\b|\btest (?:account|key|user|phone|host|data)/i, 'testing'],
+  [/type[\s-]*it[\s-]*for[\s-]*me/i, 'the lab’s typing shortcut'],
   [/test identit/i, 'test identities'],
   [/\b(?:Moon|Cloud|Star|Fern|Dream|Pebble|Ember)Mallow\b|\bSafetyTeam\b/, 'test identity names'],
   [/seedRelay|signInTestAccount|createTestAccount|RELAY_IDENTITIES|testMode/, 'test accounts'],
@@ -32,7 +39,7 @@ export const FORBIDDEN = [
   [/MaxOutputTokens|reportsToPause|cost guard|fairnessPool|fallbackGlobalPerDay|MALLOW_VOICES/, 'server tuning'],
   [/\b\d+\s?KB\b|\$\{[^}]*\/\s*1024\)/, 'technical file sizes'],
   [/LocalNetwork|__lab\b|fixture/i, 'the simulated service'],
-  [/dev clock/i, 'the development clock'],
+  [/dev(?:elopment)?[\s-]*clock|devClock/i, 'the development clock'],
   [/\bdebugger\b|console\.(?:log|debug|trace)\s*\(/, 'debugging'],
   [/localhost|127\.0\.0\.1|:8790\b/, 'local service addresses'],
   [/sk-ant-|api[_-]?key|service[_-]?role|SUPABASE_|ANTHROPIC_/i, 'credentials'],
@@ -45,34 +52,54 @@ export function scan(files) {
   const found = [];
   for (const [url, file] of files) {
     if (SERVER_ONLY.some((p) => url.startsWith(p))) found.push({ url, why: 'server or developer file', match: url });
-    if (!/\.(?:html|css|m?js|json|txt)$/.test(url)) continue;
+    if (!/\.(?:html|css|m?js|json|txt|svg)$/.test(url)) continue;
     const text = readFileSync(file, 'utf8');
+    // words split across lines or joined from pieces ('Example for ' + 'testing') are read whole too
+    const joined = text.replace(/(['"`])\s*\+\s*\1/g, '').replace(/\\[nrt]/g, ' ').replace(/\s+/g, ' ');
     for (const [re, why] of FORBIDDEN) {
-      const m = re.exec(text);
-      if (m) found.push({ url, why, match: m[0], line: text.slice(0, m.index).split('\n').length });
+      const m = re.exec(text) || re.exec(joined);
+      if (m) found.push({ url, why, match: m[0], line: m.input === text ? text.slice(0, m.index).split('\n').length : undefined });
     }
   }
   return found;
 }
 
+/** Does this stripped module still parse? (node --check reads .mjs files as modules) */
+function parses(code) {
+  const dir = mkdtempSync(join(tmpdir(), 'hushmates-check-'));
+  try {
+    writeFileSync(join(dir, 'm.mjs'), code);
+    const r = spawnSync(process.execPath, ['--check', join(dir, 'm.mjs')], { encoding: 'utf8' });
+    return r.status === 0 ? null : (r.stderr || 'does not parse').split('\n').slice(0, 4).join(' ');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
+
 export function build({ out = join(LAB_ROOT, 'dist', 'app') } = {}) {
   const files = appFiles();
-  const problems = scan(files);
-  if (problems.length) return { ok: false, problems };
   rmSync(out, { recursive: true, force: true });
   const manifest = { app: 'hushmates', format: 1, files: {} };
+  const problems = [];
   for (const [url, file] of files) {
     const target = join(out, url);
     mkdirSync(dirname(target), { recursive: true });
-    copyFileSync(file, target);
+    // developers' notes stay in the source: what ships has no comments
+    if (/\.m?js$/.test(url)) {
+      const code = stripJs(readFileSync(file, 'utf8'));
+      const broken = parses(code);
+      if (broken) problems.push({ url, why: 'stripping comments broke it', match: broken });
+      writeFileSync(target, code);
+    } else if (url.endsWith('.css')) writeFileSync(target, stripCss(readFileSync(file, 'utf8')));
+    else if (url.endsWith('.html')) writeFileSync(target, stripHtml(readFileSync(file, 'utf8')));
+    else copyFileSync(file, target);
     const bytes = readFileSync(target);
     manifest.files[url] = { sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length };
   }
   writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  // check what was written, not only what was read
+  // the scan reads what was written: exactly what a browser would get
   const written = new Map(Object.keys(manifest.files).map((url) => [url, join(out, url)]));
-  const after = scan(written);
-  return { ok: !after.length, problems: after, out, count: written.size };
+  problems.push(...scan(written));
+  if (problems.length) rmSync(out, { recursive: true, force: true });
+  return { ok: !problems.length, problems, out, count: written.size };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
