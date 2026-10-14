@@ -128,7 +128,9 @@ const HEAVY_LABELS = ['worry', 'sadness', 'anger', 'loneliness', 'confusion', 'f
 // Hushmates themes. `cues` read the tidied, lower-cased words (straight apostrophes); `labels` are where they fit.
 const THEMES = [
   { id: 'loss', labels: LABEL_IDS, tender: true,
-    cues: [/\b(?:died|dying|passed away|passed on|funeral|grief|griev\w*|bereave\w*)\b/g,
+    // a death only when it is someone's: "my phone died" and "dying to see her" are not grief
+    cues: [/\b(?:passed away|passed on|funeral|grief|griev\w*|bereave\w*)\b/g,
+      /\b(?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|friend|baby|aunt|auntie|uncle|cousin|dog|cat|pet|he|she|they|someone)\b[^.!?]{0,30}?\b(?:died|is dying|was dying|has died)\b/g,
       /\blost (?:my|our) (?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|best friend|friend|baby|aunt|auntie|uncle|cousin|dog|cat|pet)\b/g],
     angles: [
       ['self-compassion', 'Missing someone this much can be a measure of how much they mattered. Grief doesn’t need to be tidied away or hurried along.'],
@@ -145,8 +147,18 @@ const THEMES = [
       ['agency', 'Could a small thread of contact help, like a message, a voice note or a photo, even if it can’t close the distance?'],
       ['time', 'Distance can make a feeling louder in the quiet moments. It might ease and swell at different times, and both are normal.'],
     ] },
+  // a rift with someone close: not speaking, falling out, drifting apart (distance between people, not death)
+  { id: 'rift', labels: HEAVY_LABELS, notWithGrief: true,
+    cues: [/\b(?:stopped (?:talking|speaking)|(?:haven'?t|have not|hasn'?t|has not|don'?t|do not|aren'?t|are not|not been|not) (?:spoken|speaking|talked|talking)(?: (?:to|with) (?:each other|him|her|them|me|my \w+))?(?: (?:in|for) (?:weeks|months|years|a (?:while|long time|year)))|stopped (?:calling|replying to me|visiting)|fell out|falling out|fallen out|estranged|cut (?:me|him|her|them) off|cut off contact|drifted apart|grown apart|grew apart|used to be (?:so |really )?close|(?:how|what) (?:things|we|it) used to be|not on speaking terms)\b/g],
+    angles: [
+      ['self-compassion', 'Missing how things used to be with someone can show how much that closeness mattered. No wonder the quiet hurts.'],
+      ['time', 'A silence between people who were close isn’t always the end of the story. Sometimes it’s a long pause that neither person knows how to break first.'],
+      ['agency', 'You don’t have to decide the whole relationship today. If and when it feels right, one small, kind step can be enough, and if some distance keeps you well, that’s allowed too.'],
+      ['neutral', 'Missing someone and still feeling hurt by them can sit side by side. Neither feeling has to win for both to be real.'],
+      ['other-eyes', 'If a good friend were in your place, you might tell them that wanting things to be better says something kind about them. That could be true for you as well.'],
+    ] },
   { id: 'care-for', labels: ['worry', 'sadness'],
-    cues: [/\b(?:worr\w* about|scared for|afraid for|frightened for|something (?:bad )?(?:will|might|is going to) happen to) (?:my|our|him|her|them)\b/g,
+    cues: [/\b(?:worr\w* about|scared for|afraid for|frightened for|something (?:bad )?(?:will|might|is going to) happen to) (?:him|her|them|(?:my|our) (?:mum|mom|mam|mother|dad|father|nan|gran|grandma|grandad|brother|sister|son|daughter|husband|wife|partner|friend|baby|kids?|parents?|family|dog|cat|pet))\b/g,
       /\b(?:getting old(?:er)?|getting frail|not getting any younger)\b/g],
     angles: [
       ['self-compassion', 'Worrying about someone you love can be love looking ahead. It makes sense that it shows up like this.'],
@@ -179,7 +191,7 @@ const THEMES = [
       ['self-compassion', 'Wanting to belong isn’t too much to ask. It’s one of the most human things there is.'],
     ] },
   { id: 'load', labels: ['frustration', 'anger', 'sadness'],
-    cues: [/\b(?:flatmates?|housemates?|roommates?|chores|washing up|the dishes|clean(?:ing|s)? up|tidy(?:ing)? up|do(?:ing)? everything|always end up|nobody helps|no ?one helps|pull(?:ing)? (?:their|his|her) weight)\b/g],
+    cues: [/\b(?:flatmates?|housemates?|roommates?|chores|washing up|the dishes|clean(?:ing|s)? up|tidy(?:ing)? up|do(?:ing)? everything|always end up (?:doing|cleaning|tidying|washing|paying|picking up)|nobody helps|no ?one helps|pull(?:ing)? (?:their|his|her) weight)\b/g],
     angles: [
       ['worry-partly-true', 'Your frustration might be pointing at something real: the load doesn’t feel shared. That’s worth saying out loud, kindly and plainly.'],
       ['benign', 'Sometimes people don’t notice a job until it stops getting done. That doesn’t make it fair, but it might mean it’s more fixable than it feels.'],
@@ -189,13 +201,15 @@ const THEMES = [
   { id: 'health', labels: ['worry', 'sadness', 'confusion', 'frustration'],
     cues: [/\b(?:doctors?|gp|hospital|scan|test results|blood tests?|symptoms?|lump|biopsy|diagnos\w*|unwell|operation|surgery|my health)\b/g],
     angles: [
-      ['not-enough-info', 'Waiting to hear about your health can send the mind racing ahead. Not knowing yet is hard, and it isn’t the same as bad news.'],
+      ['not-enough-info', 'Waiting for health news, yours or someone else’s, can send the mind racing ahead. Not knowing yet is hard, and it isn’t the same as bad news.'],
       ['agency', 'It might help to jot down your questions before the appointment, so some of this has somewhere to go.'],
-      ['self-compassion', 'Taking your health seriously is a way of looking after yourself. Being shaken by it is understandable.'],
+      ['self-compassion', 'Taking a health worry seriously is a way of caring. Being shaken by it is understandable.'],
       ['support', 'You don’t have to hold the waiting on your own. Telling one person you trust could make it a little lighter.'],
     ] },
   { id: 'exam', labels: ['worry', 'frustration', 'sadness', 'confusion'],
-    cues: [/\b(?:exams?|results day|finals|grades?|mock)\b/g, /\btests? (?:tomorrow|today|on|next|this)\b/g],
+    cues: [/\b(?:exams?|results day|finals|grades?|mocks|mock (?:exams?|tests?|papers?))\b/g, /\btests? (?:tomorrow|today|on|next|this)\b/g],
+    // after the result, lines about nerves and preparation don't fit
+    notWhen: { re: /\b(?:failed|fail|results?|didn'?t pass|grades?|marks?)\b/, ids: ['hm-exam-1', 'hm-exam-3'] },
     angles: [
       ['context', 'Nerves before a test can be a sign you care how it goes, rather than a forecast of how it will go.'],
       ['neutral', 'One exam measures one day’s work on one set of questions. It isn’t a measure of you, or of everything you’ll do next.'],
@@ -232,7 +246,7 @@ const THEMES = [
       ['agency', 'Could you picture the first two minutes going okay? Having just the opening ready can make the rest feel steadier.'],
     ] },
   { id: 'money', labels: ['worry', 'frustration', 'sadness', 'confusion', 'anger'],
-    cues: [/\b(?:rent|bills?|money|debts?|overdraft|afford|payday|skint|budget|savings|mortgage)\b/g, /\b(?:i'?m|am|so) broke\b/g],
+    cues: [/\b(?:rent|bills|(?:the|a|phone|power|electricity|gas|water|energy|credit card) bill|money|debts?|overdraft|afford|payday|skint|budget|savings|mortgage)\b/g, /\b(?:i'?m|am|so) broke\b/g],
     angles: [
       ['agency', 'Money worries tend to feel bigger in the fog. Writing down what’s due and when might shrink it to something you can plan around.'],
       ['self-compassion', 'Being stretched for money is stressful, and it says nothing about your worth. A lot of it comes down to things outside your control.'],
@@ -446,7 +460,8 @@ function candidatesFor(text, label) {
     if (label ? !th.labels.includes(label) : !th.labels.some((l) => HEAVY_LABELS.includes(l))) continue;
     if (grief && !th.tender && (th.notWithGrief || th.labels.every((l) => BRIGHT.has(l)))) continue;
     const hits = hitsOf(th);
-    if (hits) for (const a of th.angles) add(a, BASE.theme + Math.min(hits - 1, 2) * 0.5);
+    const not = th.notWhen && th.notWhen.re.test(probe) ? new Set(th.notWhen.ids) : null;
+    if (hits) for (const a of th.angles) if (!not?.has(a.id)) add(a, BASE.theme + Math.min(hits - 1, 2) * 0.5);
   }
   if (family === 'heavy') {
     const where = contextsIn(probe);

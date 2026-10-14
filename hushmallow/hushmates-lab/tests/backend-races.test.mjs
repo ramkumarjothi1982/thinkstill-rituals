@@ -136,3 +136,27 @@ test('races: blocking while someone writes never lets their words reach the pers
     assert.ok(!j2.collection.some((p) => p.text === REFRAMES[1]), 'a blocked person’s words reached the blocker');
   } finally { await b.drop(); }
 });
+
+test('races: people looking while someone else is taking a place still get one (nobody is told there’s nothing)', async () => {
+  const b = await backend();
+  try {
+    for (const n of NAMES.slice(0, 6)) await b.join(n);
+    const r = await b.as('moon').call('submitFeeling', { text: FEELING, consent: true, clientId: cid('f') });
+    // another finder's transaction has the feeling locked for a moment, exactly as when people tap at the same instant
+    const { default: pg } = await import('pg');
+    const { PG_URL } = await import('./backend-helpers.mjs');
+    const dbName = (await b.sql('select current_database() d'))[0].d;
+    const holder = new pg.Client({ connectionString: `${PG_URL}/${dbName}` });
+    await holder.connect();
+    await holder.query('begin');
+    await holder.query('select 1 from hushmates.journeys where id = $1 for update', [r.journey.id]);
+    const finders = NAMES.slice(1, 5);
+    const finding = settle(finders.map((n) => b.as(n).call('findFeeling')));
+    await new Promise((res) => setTimeout(res, 300));
+    await holder.query('commit');
+    await holder.end();
+    const finds = await finding;
+    const got = finds.filter((f) => f.status === 'fulfilled' && f.value.offer).length;
+    assert.equal(got, 4, `${got} of 4 people were offered the feeling with five free places`);
+  } finally { await b.drop(); }
+});

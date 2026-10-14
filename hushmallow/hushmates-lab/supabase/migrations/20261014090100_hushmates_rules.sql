@@ -553,6 +553,7 @@ $$;
 create or replace function hushmates.m_find_feeling(m hushmates.members) returns jsonb
 language plpgsql set search_path = '' as $$
 declare v_current uuid; v_ids uuid[]; v_id uuid; j hushmates.journeys; v_hold uuid; v_t timestamptz := hushmates.clock();
+  v_busy uuid[] := '{}'; v_pass int;
 begin
   perform hushmates.actor(m);
   if m.state <> 'active' then perform hushmates.fail('account-inactive'); end if;
@@ -565,16 +566,35 @@ begin
   select array_agg(id order by random()) into v_ids from (
     select x.id from hushmates.journeys x where x.status = 'travelling' and hushmates.eligible(x, m.id)
     order by x.last_progress_at, x.created_at limit hushmates.lim('fairnessPool')) c;
-  foreach v_id in array coalesce(v_ids, '{}') loop
-    -- lock it; someone else may be taking it right now (then try the next)
-    select * into j from hushmates.journeys where id = v_id for update skip locked;
-    continue when j.id is null;
-    perform hushmates.expire_holds(null, j.id);
-    continue when not hushmates.eligible(j, m.id);
-    insert into hushmates.holds (journey_id, member_id, status, created_at, expires_at)
-    values (j.id, m.id, 'offered', v_t, v_t + make_interval(secs => hushmates.lim('offerHoldMs')::numeric / 1000)) returning id into v_hold;
-    insert into hushmates.exposures (journey_id, member_id, at) values (j.id, m.id, v_t) on conflict do nothing;
-    return jsonb_build_object('offer', hushmates.offer_view(v_hold));
+  -- first pass: lock a candidate, skipping any that someone else is taking at this very moment;
+  -- second pass: those busy ones, waiting briefly for them, so people looking at the same instant
+  -- aren't told there's nothing while places are free (bounded: a wait that times out or would
+  -- deadlock just moves on)
+  for v_pass in 1..2 loop
+    if v_pass = 2 then
+      exit when cardinality(v_busy) = 0;
+      v_ids := v_busy;
+      perform set_config('lock_timeout', '2000', true);
+    end if;
+    foreach v_id in array coalesce(v_ids, '{}') loop
+      j := null;
+      if v_pass = 1 then
+        select * into j from hushmates.journeys where id = v_id for update skip locked;
+        if j.id is null then v_busy := v_busy || v_id; continue; end if;
+      else
+        begin
+          select * into j from hushmates.journeys where id = v_id for update;
+        exception when lock_not_available or deadlock_detected then continue;
+        end;
+      end if;
+      continue when j.id is null;
+      perform hushmates.expire_holds(null, j.id);
+      continue when not hushmates.eligible(j, m.id);
+      insert into hushmates.holds (journey_id, member_id, status, created_at, expires_at)
+      values (j.id, m.id, 'offered', v_t, v_t + make_interval(secs => hushmates.lim('offerHoldMs')::numeric / 1000)) returning id into v_hold;
+      insert into hushmates.exposures (journey_id, member_id, at) values (j.id, m.id, v_t) on conflict do nothing;
+      return jsonb_build_object('offer', hushmates.offer_view(v_hold));
+    end loop;
   end loop;
   return jsonb_build_object('offer', null);
 end $$;

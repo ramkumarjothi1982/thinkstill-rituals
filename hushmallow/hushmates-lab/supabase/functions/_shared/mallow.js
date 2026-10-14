@@ -81,7 +81,7 @@ export function readAiSettings(raw) {
     perDayGlobal: Math.floor(clamp(a.perDayGlobal, 0, 1e9, 0)),
     timeoutMs: clamp(a.timeoutMs, 500, 120e3, 20e3),
     model: typeof a.model === 'string' && a.model ? a.model : 'another-angle',
-    costPerCallAud: Number.isFinite(cost) && cost > 0 ? cost : null,      // no estimate, no AI: a free guess would dodge the cap
+    costPerCallAud: Number.isFinite(cost) && cost >= 1e-6 ? cost : null,  // no estimate, no AI: a free (or rounds-to-free) guess would dodge the cap
     cacheTtlMs: clamp(a.cacheTtlMs, 0, 24 * 3600e3, 3600e3),
   };
 }
@@ -260,7 +260,8 @@ export function createMallow({ library, ai = null, settings = () => ({}), usage 
 
   return {
     perspective(args = {}) {
-      const id = args?.journeyId;
+      // only the same person's same feeling shares one generation (never someone else's words)
+      const id = args?.journeyId ? `${args.memberId ?? ''}\u0000${args.journeyId}` : null;
       if (!id) return answer(args);
       if (inflight.has(id)) return inflight.get(id);
       const p = answer(args).finally(() => inflight.delete(id));

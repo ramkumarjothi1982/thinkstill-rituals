@@ -559,7 +559,7 @@ test('Another Angle adapter: errors, limits, fallbacks, support and the mock mod
     ['daily limit', (q, b, res, send) => send(res, 429, { status: 'limit' }), { status: 'unavailable', reason: 'rate-limited' }, 0],
     ['spending cap', (q, b, res, send) => send(res, 200, { status: 'fallback', fallback: { reason: 'capacity' } }), { status: 'unavailable', reason: 'over-budget' }, 0],
     ['quality', (q, b, res, send) => send(res, 200, { status: 'fallback', fallback: { reason: 'quality' } }), { status: 'unavailable', reason: 'quality' }, est],
-    ['unclear', (q, b, res, send) => send(res, 200, { status: 'fallback', fallback: { reason: 'unclear' } }), { status: 'unavailable', reason: 'unclear' }, 0],
+    ['unclear', (q, b, res, send) => send(res, 200, { status: 'fallback', fallback: { reason: 'unclear' } }), { status: 'unavailable', reason: 'unclear' }, est],   // the model read words it found unclear: charged
     ['crisis', (q, b, res, send) => send(res, 200, { status: 'crisis', support: {} }), { status: 'support', level: 'crisis' }, est],
     ['care', (q, b, res, send) => send(res, 200, { status: 'care', support: {} }), { status: 'support', level: 'care' }, est],
   ];

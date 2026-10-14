@@ -20,7 +20,8 @@
 // roughly A$1.55 to US$1 that is ≈A$0.03 typical, ≈A$0.06 regenerated. Every call
 // is charged at the regenerated figure, so the monthly cap is a cautious ceiling.
 // The service's own worst case per call is ≈US$0.31 (≈A$0.48), bounded on its side
-// by its daily spending cap; set the estimate to 0.48 for a cap that holds even then.
+// by its daily spending cap. For a cap that holds even then, set ANOTHER_ANGLE_COST_PER_CALL_AUD or
+// hushmates.settings 'ai'.costPerCallAud to 0.48: the hold uses the larger of the two (mallow-setup.js).
 //
 // Who pays: a call is counted as billed unless it clearly never reached the model:
 // nothing sent to /v1/angle (not configured, no session), the service's own limits or spending cap (429,
@@ -35,7 +36,8 @@ import { anotherAngleProvider } from './deps.js';
 
 export const ANOTHER_ANGLE_DEFAULTS = Object.freeze({ timeoutMs: 20e3, costPerCallAud: 0.06 });
 
-const NOT_BILLED = new Set(['unconfigured', 'session', 'limit', 'capacity', 'unclear', 'mock', 'http-503']);
+// ('unclear' is free only for words with no letters or digits: anything else reached the model first)
+const NOT_BILLED = new Set(['unconfigured', 'session', 'limit', 'capacity', 'mock', 'http-503']);
 const REASON = { limit: 'rate-limited', capacity: 'over-budget' };    // the service's words → the Mallow's
 const DEVICE_ID = /^[A-Za-z0-9_-]{16,128}$/;
 
@@ -124,6 +126,7 @@ export function createAnotherAngle({ baseUrl, serviceToken = null, deviceId = nu
     const est = num(estimateAud, num(costPerCallAud, ANOTHER_ANGLE_DEFAULTS.costPerCallAud, 0, 10), 0, 10);
     const out = (r) => ({ ...r, ms: Math.max(0, now() - t0) });
     if (!configured) return out({ status: 'unavailable', reason: 'unconfigured', costAud: 0 });
+    if (signal?.aborted) return out({ status: 'unavailable', reason: 'timeout', costAud: 0 });
     let timer;
     const stop = new Promise((resolve) => {
       timer = setTimeout(() => resolve({ status: 'unavailable', reason: 'timeout' }), limitMs + 100);   // a deadline of our own, too
@@ -133,8 +136,11 @@ export function createAnotherAngle({ baseUrl, serviceToken = null, deviceId = nu
     let reached = false;
     const callFetch = async (url, init) => {
       const angle = String(url).endsWith('/v1/angle');
+      // the Mallow's own deadline cancels the request too, so words never arrive after it has given up
+      if (signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
       if (angle) reached = true;
-      const res = await doFetch(url, init);
+      const both = signal && init?.signal && typeof AbortSignal.any === 'function' ? AbortSignal.any([init.signal, signal]) : (init?.signal || signal);
+      const res = await doFetch(url, { ...init, signal: both });
       if (angle && res.status === 401 && !token) held = null;          // a fresh session, once (the provider retries)
       return res;
     };
@@ -152,7 +158,7 @@ export function createAnotherAngle({ baseUrl, serviceToken = null, deviceId = nu
     }
     // the service's mock model answered: a placeholder, never shown as AI, and free
     const reason = r?.status === 'ok' ? 'mock' : String(r?.reason || 'unavailable');
-    const billed = !(NOT_BILLED.has(reason) || /^http-4\d\d$/.test(reason));
+    const billed = !(NOT_BILLED.has(reason) || /^http-4\d\d$/.test(reason) || (reason === 'unclear' && !/[\p{L}\p{N}]/u.test(String(text || ''))));
     return out({ status: 'unavailable', reason: REASON[reason] || reason, costAud: billed ? est : 0 });
   };
   provider.providerName = 'another-angle';

@@ -170,13 +170,15 @@ export function catchScene(dev) {
       await wait(40);
       const to = centreIn(slot, flight);
       const flyer = h('div', { class: 'rl-flyer' });
+      const arriving = orb;
       flight.append(flyer);
-      orb.freeze();
-      flyer.append(orb.el);
+      arriving.freeze();
+      flyer.append(arriving.el);
       setTimeout(() => { if (alive) { st.mallow.notice(0); st.mallow.reach(0.28); } }, 900);
       const side = flight.getBoundingClientRect().width;
       await fly(flyer, flight, { from: { x: side * 0.86, y: -120 }, to, via: { x: side * 0.97, y: to.y * 0.62 }, duration: 1700, scale: [0.35, 1], colour: tint });
-      if (!alive) return;
+      // the person may have moved on while it flew in (reported it, let it float past): then it simply lands nowhere
+      if (!alive || orb !== arriving) { flyer.remove(); return; }
       slot.append(orb.unfreeze().el);
       flyer.remove();
       orb.release(true);

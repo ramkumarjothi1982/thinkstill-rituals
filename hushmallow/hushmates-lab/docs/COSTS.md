@@ -105,4 +105,4 @@ All amounts are A$ per month, rounded. Ranges show the realistic spread.
 1. Realtime change notices instead of polling (−80–90% of calls).
 2. A load test on staging, to size compute for 10,000+ people.
 3. A decision on the email provider, with the owner.
-4. Before turning AI on, confirm the per-call cost with the Another Angle service owner. If the cap must hold even in its worst case, set the estimate to A$0.48.
+4. Before turning AI on, confirm the per-call cost with the Another Angle service owner. If the cap must hold even in its worst case, set the estimate to A$0.48: `node server/admin.mjs set ai '{"costPerCallAud": 0.48}'`. The hold uses the larger of this setting and `ANOTHER_ANGLE_COST_PER_CALL_AUD`.

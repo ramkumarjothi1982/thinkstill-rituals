@@ -39,8 +39,9 @@ export function createMallowFor({ db, env = {}, log = console, now = () => Date.
     if (!cached || now() - at > SETTINGS_MS) {
       try { cached = await db.rpc('settings', {}); at = now(); } catch (e) { if (!cached) throw e; }
     }
-    // the estimate the adapter was configured with, unless the owner set one in the settings
-    return { ...cached, ai: { costPerCallAud: aiConfig.costPerCallAud, ...(cached?.ai || {}) } };
+    // the cautious estimate: the larger of the adapter's (ANOTHER_ANGLE_COST_PER_CALL_AUD) and the settings'
+    const ai = cached?.ai || {};
+    return { ...cached, ai: { ...ai, costPerCallAud: Math.max(aiConfig.costPerCallAud || 0, Number(ai.costPerCallAud) || 0) } };
   }
   const mallow = createMallow({
     library: libraryProvider(), ai, settings, usage: dbUsage(db), now,
