@@ -83,8 +83,16 @@ function extrasOf(labRoot, prefix) {
   return [...art.map((f) => `${prefix}assets/art/${f}`), ...licences.map((f) => `${prefix}assets/fonts/${f}`)];
 }
 
+// the app's settings (where Supabase is, its public key) are fetched, not imported
+const configOf = (labRoot) => (existsSync(join(labRoot, 'app', 'config.json')) ? ['/app/config.json'] : []);
+
 export function appFiles(labRoot = LAB_ROOT) {
-  return collect({ entry: '/app/index.html', mounts: mountsFor(labRoot), extra: extrasOf(labRoot, '/') });
+  return collect({ entry: '/app/index.html', mounts: mountsFor(labRoot), extra: [...extrasOf(labRoot, '/'), ...configOf(labRoot)] });
+}
+
+/** The safety team's desk: its own page, sharing the app's sign-in code and settings. */
+export function staffFiles(labRoot = LAB_ROOT) {
+  return collect({ entry: '/staff/index.html', mounts: mountsFor(labRoot), extra: configOf(labRoot) });
 }
 
 export function labFiles(labRoot = LAB_ROOT) {

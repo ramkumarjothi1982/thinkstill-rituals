@@ -138,6 +138,7 @@ export function createGateway({ db, verifier, crypt, mallow, authAdmin = null, c
 
     async deleteMyData(who, a) {
       const r = await rpc(who, 'deleteMyData', { confirm: a.confirm });
+      mallow.forgetMember?.(r.memberId);                                // nothing of theirs stays cached here either
       // the person's sign-in identity goes too (only identities this project issues; never another app's)
       for (const id of r.identities || []) {
         if (!authAdmin || !(config.ownIssuers || []).includes(id.issuer)) continue;
@@ -168,8 +169,9 @@ export function createGateway({ db, verifier, crypt, mallow, authAdmin = null, c
     const clean = r?.status === 'ok' ? normaliseText(r.text) : '';
     // the Mallow's words meet the same standard as a person's (kind, no diagnosis, no contact details)
     if (r?.status === 'ok' && ['ai', 'library'].includes(r.source) && clean && screenReframe(clean, { minChars: 1, maxChars: 600 }).ok) {
+      // voice: the character an AI answer chose to speak as, when it isn't the person's own Mallow
       return { status: 'ok', text: await crypt.encrypt(clean), source: r.source, model: r.model || null, angleId: r.angleId || null,
-        voice: r.mallow && r.mallow !== mallowId ? r.mallow : null };
+        voice: r.voice && r.voice !== mallowId ? r.voice : null };
     }
     return { status: 'failed', reason: r?.reason === 'timeout' ? 'timeout' : 'unavailable' };
   }

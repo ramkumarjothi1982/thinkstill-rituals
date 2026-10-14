@@ -12,7 +12,9 @@ import { checkMessage, normaliseText, charCount } from './text-policy.js';
 // Every rule reads a compatibility-normalised copy (NFKC), so full-width or
 // stylised letters and digits ("ｅｎｄ ｉｔ", "０７７００") can't slip past;
 // the person's own words are stored as they wrote them.
-const probeOf = (text) => text.normalize('NFKC');
+// Phones type curly quotes (you’re), the rules are written with straight ones (you're): the
+// probe reads them straight, so "You’re so pathetic" is caught like "You're so pathetic".
+const probeOf = (text) => text.normalize('NFKC').replace(/[‘’ʼ′]/g, "'").replace(/[“”″]/g, '"');
 
 // Hushmates' own additions to the app's safety lexicon, kept here so the main
 // app's Reframe engine is reused unchanged. Words that mean someone may be in
@@ -30,17 +32,31 @@ function extraCrisis(probe) {
 }
 const safetyOf = (probe) => { const s = checkSafety(probe); return s.reframeAppropriate ? (extraCrisis(probe) || s) : s; };
 
-// Hushmates' own words for the support screen. The lexicon and the resource lists are the app's
-// (Reframe's, reused unchanged); its titles and messages talk about reframing, so they're replaced
-// here, and each category gets resources that fit it. To be reviewed per region by a safety lead.
-const [EMERGENCY] = HARM_COPY.crisis.resources;
-const ELSEWHERE = HARM_COPY.crisis.resources[HARM_COPY.crisis.resources.length - 1];
-const LISTENING = HARM_COPY.crisis.resources.find((r) => /samaritans/i.test(r.label));
-const GENERAL = [EMERGENCY, LISTENING, ELSEWHERE].filter(Boolean);
+// Hushmates' own words for the support screen. The lexicon is the app's (Reframe's, reused
+// unchanged); its titles and messages talk about reframing, and its helplines are for the UK and
+// the US, so both are replaced here. The private beta is in Australia: these are the national
+// services' published numbers. To be reviewed before launch by a clinical safety adviser (see
+// docs/READINESS.md), and again for any new region.
+export const SUPPORT_REGION = 'AU';
+const AU = {
+  now: { label: 'Right now', detail: 'If you or someone else is in immediate danger, call 000.' },
+  lifeline: { label: 'Lifeline', detail: 'Call 13 11 14, any time, day or night, or chat online at lifeline.org.au.' },
+  callback: { label: 'Suicide Call Back Service', detail: 'Call 1300 659 467, any time.' },
+  yarn: { label: '13YARN', detail: 'Call 13 92 76: crisis support by and for Aboriginal and Torres Strait Islander people, any time.' },
+  respect: { label: '1800RESPECT', detail: 'Call 1800 737 732 about family, domestic or sexual violence, any time.' },
+  beyondBlue: { label: 'Beyond Blue', detail: 'Call 1300 22 4636 to talk things through with a counsellor.' },
+  worried: { label: 'Lifeline', detail: 'Call 13 11 14, any time. They help people who are worried about someone else, too.' },
+  elsewhere: { label: 'Outside Australia', detail: 'findahelpline.com lists free, confidential helplines in many countries.' },
+};
+/** Crisis lines for the support screen and the "Get support now" sheet. */
+export const SUPPORT_RESOURCES = Object.freeze([AU.now, AU.lifeline, AU.callback, AU.yarn, AU.elsewhere]);
+const GENERAL = [AU.now, AU.lifeline, AU.beyondBlue, AU.elsewhere];
+const CARE_LINES = [AU.now, AU.respect, AU.lifeline, AU.elsewhere];
+const DANGER_LINES = [AU.now, AU.worried, AU.elsewhere];
 const NOT_SENT = 'It won’t be sent out for other perspectives.';
 const CARE = {
-  abuse: { message: `What you’re describing sounds like it could be abuse. ${NOT_SENT} It’s not your fault, and you don’t deserve it. If you can, tell someone you trust or contact a support service, at your own pace.`, resources: HARM_COPY.careResources },
-  violence: { message: `Nobody has the right to hurt you. This is something that happened to you, and it matters. ${NOT_SENT} If you can, tell someone you trust, and reach out to a support service or the police when you feel ready.`, resources: HARM_COPY.careResources },
+  abuse: { message: `What you’re describing sounds like it could be abuse. ${NOT_SENT} It’s not your fault, and you don’t deserve it. If you can, tell someone you trust or contact a support service, at your own pace.`, resources: CARE_LINES },
+  violence: { message: `Nobody has the right to hurt you. This is something that happened to you, and it matters. ${NOT_SENT} If you can, tell someone you trust, and reach out to a support service or the police when you feel ready.`, resources: CARE_LINES },
   threat: { message: `Being threatened is serious, and it isn’t something to talk yourself out of. ${NOT_SENT} Keep any messages or notes, tell someone you trust, and contact the police or a support service if you feel at risk.`, resources: GENERAL },
   harassment: { message: `Being harassed or bullied isn’t something to see differently, and it isn’t on you to fix. ${NOT_SENT} If you can, save screenshots or notes, tell someone you trust, and use the reporting routes at school, at work or on the app or site.`, resources: GENERAL },
   discrimination: { message: `Being treated unfairly because of who you are is real, and it isn’t something to explain away. Your reaction makes sense. ${NOT_SENT} If you want to, keep a record of what happened and talk to someone you trust, HR, a union or an advice organisation.`, resources: GENERAL },
@@ -48,13 +64,17 @@ const CARE = {
 };
 function supportOf(safety) {
   if (safety.level === 'crisis' && safety.category === 'someone-in-danger') {
-    return { title: safety.title, message: safety.message, resources: safety.resources, stillHere: safety.stillHere };
+    return {
+      title: 'Someone might be in danger',
+      message: 'If someone might be about to hurt themselves, or is in danger right now, that comes before anything else: call 000. If it’s safe to, stay with them or keep talking to them. You don’t have to handle this alone: a helpline can talk you through what to do.',
+      resources: DANGER_LINES, stillHere: HARM_COPY.stillHere,
+    };
   }
   if (safety.level === 'crisis') {
     return {
       title: 'Let’s pause here',
-      message: 'What you’ve written sounds really painful, and it matters. It won’t be sent to anyone: you deserve real support with this, right now. If you might act on these thoughts, or you’re not safe, please call your local emergency number. If you can, tell someone near you how you’re feeling. You don’t need the right words first.',
-      resources: HARM_COPY.crisis.resources, stillHere: HARM_COPY.stillHere,
+      message: 'What you’ve written sounds really painful, and it matters. It won’t be sent to anyone: you deserve real support with this, right now. If you might act on these thoughts, or you’re not safe, please call 000. If you can, tell someone near you how you’re feeling. You don’t need the right words first.',
+      resources: SUPPORT_RESOURCES, stillHere: HARM_COPY.stillHere,
     };
   }
   const c = CARE[safety.category] || CARE.unsafe;
@@ -82,6 +102,7 @@ const UNKIND = [
 const DIAGNOSIS = [
   /\b(?:you|they|he|she|your friend|your boss)\b[^.!?]{0,24}?\b(?:have|has|got|is|are|be|being|'re|'s|suffer(?:s|ing)? from)\s+(?:an?\s+|some\s+)?(?:clinical\s+)?(?:depression|depressed|anxiety disorder|an anxiety disorder|adhd|bpd|borderline|ptsd|ocd|bipolar|autis\w*|narcissis\w*|narcissist|psychopath|sociopath|a personality disorder)\b/i,
   /\bsounds like (?:depression|anxiety|adhd|bpd|ptsd|ocd|bipolar|narcissis\w*)\b/i,
+  /\b(?:narcissists?|psychopaths?|sociopaths?)\b/i,                          // a label for a person, however it's put
 ];
 
 const CERTAINTY = /\b(?:definitely|obviously|clearly|for sure|certainly|100%|without a doubt)\b/i;

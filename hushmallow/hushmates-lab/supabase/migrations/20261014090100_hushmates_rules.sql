@@ -981,22 +981,24 @@ begin
   delete from hushmates.identities where member_id = m.id;
   update hushmates.members set state = 'deleted', deleted_at = hushmates.clock(), pseudonym = 'A former Mallow', mallow = 'noomi', catching = false where id = m.id;
   perform hushmates.audit(m.id::text, 'account.deleted');
-  return jsonb_build_object('deleted', true, 'identities', v_ids);
+  return jsonb_build_object('deleted', true, 'identities', v_ids, 'memberId', m.id);
 end $$;
 
 -- ----------------------------------------------------------- invitations --
 create or replace function hushmates.redeem_invite(p_issuer text, p_subject text, p_provider text, a jsonb, ctx jsonb) returns jsonb
 language plpgsql set search_path = '' as $$
 declare inv hushmates.invites; v_member uuid; v_t timestamptz := hushmates.clock(); v_who text := p_issuer || '|' || p_subject;
-  v_net text := coalesce(ctx ->> 'net', 'unknown'); v_wrong int;
+  v_net text := coalesce(ctx ->> 'net', 'unknown'); v_wrong int; v_wrong_net int;
 begin
   select member_id into v_member from hushmates.identities where issuer = p_issuer and subject = p_subject;
   if v_member is not null then return hushmates.me_view(v_member); end if;           -- already in: nothing to do
   if (a -> 'adult') is distinct from 'true'::jsonb then perform hushmates.fail('invalid', 'Hushmates is for adults (18+) during the pilot.'); end if;
-  -- wrong codes are limited per person and per network address
-  select count(*) into v_wrong from hushmates.rate_events
-  where kind = 'invite-wrong' and subject in (v_who, 'net:' || v_net) and at > v_t - interval '1 hour';
-  if v_wrong >= hushmates.lim('invitesPerHour') then perform hushmates.fail('rate-limited', 'That’s a lot of tries. Please wait a little and try again.'); end if;
+  -- wrong codes are limited per person, and (more loosely: people share homes and campuses) per network
+  select count(*) filter (where subject = v_who), count(*) filter (where subject = 'net:' || v_net) into v_wrong, v_wrong_net
+  from hushmates.rate_events where kind = 'invite-wrong' and subject in (v_who, 'net:' || v_net) and at > v_t - interval '1 hour';
+  if v_wrong >= hushmates.lim('invitesPerHour') or v_wrong_net >= coalesce(hushmates.lim('invitesPerHourPerNetwork'), 3 * hushmates.lim('invitesPerHour')) then
+    perform hushmates.fail('rate-limited', 'That’s a lot of tries. Please wait a little and try again.');
+  end if;
   select * into inv from hushmates.invites where code_mac = a ->> 'codeMac' for update;
   if inv.id is null or inv.revoked_at is not null or (inv.expires_at is not null and inv.expires_at <= v_t) or inv.uses >= inv.max_uses then
     insert into hushmates.rate_events (subject, kind, at) values (v_who, 'invite-wrong', v_t), ('net:' || v_net, 'invite-wrong', v_t);
@@ -1037,7 +1039,12 @@ begin
   perform hushmates.audit(m.id::text, 'mod.view-report', jsonb_build_object('report', r.id));
   return jsonb_build_object('id', r.id, 'at', hushmates.ms(r.at), 'by', coalesce(r.by_member::text, 'system'), 'kind', r.kind, 'journeyId', r.journey_id,
     'perspectiveId', r.perspective_id, 'reason', r.reason, 'details', r.details_enc, 'subject', r.subject, 'status', r.status, 'urgent', r.urgent,
-    'evidence', r.evidence, 'subjectRef', r.subject,
+    'evidence', r.evidence, 'subjectRef', r.subject, 'isMallow', r.kind = 'perspective' and not exists (select 1 from hushmates.perspectives x where x.id = r.perspective_id),
+    -- what the desk needs to see a pattern, without anyone's identity: earlier reports about the same person
+    'subjectHistory', case when r.subject is null then null else jsonb_build_object(
+      'reports', (select count(*) from hushmates.reports x where x.subject = r.subject and x.id <> r.id and x.at < r.at),
+      'actioned', (select count(*) from hushmates.reports x where x.subject = r.subject and x.id <> r.id and x.at < r.at and x.status = 'actioned'),
+      'restricted', (select state from hushmates.members where id = r.subject) = 'restricted') end,
     'notes', coalesce((select jsonb_agg(jsonb_build_object('by', n.by_member, 'at', hushmates.ms(n.at), 'text', n.text_enc) order by n.at)
       from hushmates.report_notes n where n.report_id = r.id), '[]'));
 end $$;
@@ -1079,7 +1086,7 @@ begin
   if coalesce(a ->> 'noteEnc', '') <> '' then
     insert into hushmates.report_notes (report_id, by_member, at, text_enc) values (r.id, m.id, hushmates.clock(), a ->> 'noteEnc');
   end if;
-  perform hushmates.audit(m.id::text, 'mod.resolve', jsonb_build_object('report', r.id, 'action', a ->> 'action'));
+  perform hushmates.audit(m.id::text, 'mod.resolve', jsonb_build_object('report', r.id, 'decision', a ->> 'action'));
   return jsonb_build_object('id', r.id, 'status', v_status);
 end $$;
 
@@ -1089,6 +1096,6 @@ begin
   perform hushmates.moderator(m);
   perform hushmates.audit(m.id::text, 'mod.view-audit');
   return jsonb_build_object('entries', coalesce((select jsonb_agg(e order by e.id) from (
-    select jsonb_build_object('id', id, 'at', hushmates.ms(at), 'actor', actor, 'action', action) || detail as e, id
+    select detail || jsonb_build_object('id', id, 'at', hushmates.ms(at), 'actor', actor, 'action', action) as e, id
     from hushmates.audit_log order by id desc limit 200) x), '[]'));
 end $$;

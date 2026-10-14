@@ -1,0 +1,84 @@
+/* The safety desk: calm, plain and quick to scan. Hushmates' colours and type, none of
+   the customer app's theatre: this is a place to read carefully and decide. */
+:root {
+  --ink: #1F1640; --soft: #5B5378; --line: rgba(31,22,64,.14); --paper: #FFFFFF; --ground: #FFF8F3;
+  --violet: #5B3FD0; --violet-ink: #FFFFFF; --urgent: #A8322A; --urgent-bg: #FFF1EE; --focus: #5B3FD0;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--ground); color: var(--ink); font: 400 16px/1.55 "Nunito Sans", system-ui, sans-serif; min-height: 100vh; }
+h1, h2, h3 { font-family: "Manrope", system-ui, sans-serif; line-height: 1.25; margin: 0 0 12px; }
+h1 { font-size: 24px; font-weight: 800; }
+h2 { font-size: 21px; font-weight: 800; }
+h3 { font-size: 16px; font-weight: 800; margin-top: 4px; }
+h1:focus, h2:focus { outline: none; }
+p { margin: 0 0 10px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+
+.desk-top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.desk-brand { margin: 0; font: 800 17px/1.2 "Manrope", system-ui, sans-serif; }
+.desk-brand span { font-weight: 600; color: var(--soft); margin-left: 6px; }
+.desk-who { margin: 0; color: var(--soft); font-size: 15px; display: flex; gap: 8px; align-items: center; }
+.desk { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+.desk-noscript { margin: 40px 20px; text-align: center; font-weight: 600; }
+
+.desk-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+.desk-narrow { max-width: 460px; margin: 24px auto; display: grid; gap: 6px; }
+.desk-narrow label { font-weight: 700; margin-top: 8px; }
+input, textarea { font: inherit; color: inherit; width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; }
+textarea { resize: vertical; min-height: 72px; }
+input:focus-visible, textarea:focus-visible { border-color: var(--focus); }
+.desk-check { display: flex; gap: 10px; align-items: center; font-weight: 600; }
+.desk-check input { width: 20px; height: 20px; }
+
+button { font: 700 15px/1.2 "Manrope", system-ui, sans-serif; cursor: pointer; border-radius: 999px; min-height: 44px; padding: 10px 18px; }
+.desk-primary { background: var(--violet); color: var(--violet-ink); border: 0; }
+.desk-secondary { background: var(--paper); color: var(--ink); border: 1.5px solid var(--ink); }
+.desk-quiet { background: none; border: 0; color: var(--violet); text-decoration: underline; padding: 8px 6px; min-height: 40px; }
+button:disabled { opacity: .55; cursor: default; }
+.desk-error { color: var(--urgent); font-weight: 700; margin: 6px 0; }
+.desk-note { background: var(--urgent-bg); border-radius: 10px; padding: 8px 12px; }
+
+.desk-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.desk-tab { background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); display: inline-flex; gap: 8px; align-items: center; }
+.desk-tab.is-on { border-color: var(--ink); background: var(--ink); color: #fff; }
+.desk-count { background: rgba(255,255,255,.2); border-radius: 999px; padding: 1px 8px; font-size: 13px; }
+.desk-tab:not(.is-on) .desk-count { background: rgba(31,22,64,.08); }
+
+.desk-split { display: grid; gap: 16px; }
+@media (min-width: 900px) { .desk-split { grid-template-columns: minmax(300px, 400px) 1fr; align-items: start; } .desk-back { display: none; } }
+@media (max-width: 899px) { .desk-split.has-detail .desk-list { display: none; } .desk-split:not(.has-detail) .desk-detail { display: none; } }
+.desk-list, .desk-detail { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 18px; min-width: 0; }
+.desk-wide { max-width: none; }
+.desk-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.desk-row { width: 100%; text-align: left; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; background: var(--ground); color: var(--ink); border: 1.5px solid transparent; border-radius: 12px; padding: 12px 14px; font-weight: 600; }
+.desk-row-main { grid-column: 1 / -1; }
+.desk-row .desk-badge + .desk-row-main { grid-column: auto; }
+.desk-row-side { grid-column: 1 / -1; color: var(--soft); font: 600 13px/1.3 "Nunito Sans", system-ui, sans-serif; }
+.desk-row.is-on { border-color: var(--violet); background: #F3EFFF; }
+.desk-row.is-urgent { background: var(--urgent-bg); }
+.desk-badge { background: var(--urgent); color: #fff; border-radius: 999px; padding: 2px 9px; font-size: 12px; }
+.desk-empty { color: var(--soft); }
+
+.desk-meta { color: var(--soft); font-size: 14px; }
+.desk-ref { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; overflow-wrap: anywhere; }
+.desk-quote { margin: 14px 0; }
+.desk-quote figcaption { font-weight: 800; font-size: 14px; color: var(--soft); margin-bottom: 4px; }
+.desk-quote blockquote { margin: 0; padding: 12px 14px; border-left: 4px solid var(--violet); background: var(--ground); border-radius: 0 10px 10px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.desk-gone { font-style: italic; color: var(--soft); }
+.desk-urgent { background: var(--urgent-bg); border: 1.5px solid var(--urgent); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+.desk-urgent h3 { color: var(--urgent); }
+.desk-urgent ul { margin: 6px 0 0; padding-left: 18px; }
+.desk-notes { margin-top: 12px; }
+.desk-decide { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.desk-decide label { font-weight: 700; }
+.desk-actions { display: grid; gap: 10px; margin-top: 6px; }
+@media (min-width: 640px) { .desk-actions { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
+.desk-action { display: grid; gap: 6px; align-content: start; }
+.desk-action p { color: var(--soft); font-size: 14px; margin: 0; }
+.desk-decided { font-weight: 800; margin-top: 14px; }
+
+.desk-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.desk-table th, .desk-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+@media (max-width: 560px) { .desk-table thead { display: none; } .desk-table tr { display: grid; padding: 6px 0; border-bottom: 1px solid var(--line); } .desk-table td { border: 0; padding: 2px 0; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

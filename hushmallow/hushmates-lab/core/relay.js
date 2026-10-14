@@ -915,7 +915,7 @@ export class RelayService {
     }
     else fail('invalid');
     if (note) r.notes.push({ by: mod.id, at: this.now(), text: normaliseText(note).slice(0, 1000) });
-    this._audit(mod.id, 'mod.resolve', { report: id, action });
+    this._audit(mod.id, 'mod.resolve', { report: id, decision: action });   // not 'action': that names the entry
     this._save();
     return { id, status: r.status };
   }

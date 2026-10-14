@@ -182,12 +182,45 @@ language sql stable security definer set search_path = '' as $$
     'settings', hushmates.setting('ai'))
 $$;
 
+/**
+ * Before an AI call: check the owner's switch and limits and hold the call's estimated cost, in one
+ * step under a lock, so instances asking at the same moment can't both take the last of the budget.
+ * The limits are the database's own settings (never the caller's). → { ok, id } | { ok: false, reason }
+ */
+create or replace function hushmates_api.ai_reserve(p jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare s jsonb := hushmates.setting('ai'); v_cost numeric := (p ->> 'costAud')::numeric; v_member uuid := hushmates.as_uuid(p ->> 'memberId');
+  v_t timestamptz := hushmates.clock(); v_spent numeric; v_n int; v_id bigint;
+begin
+  if coalesce((s ->> 'enabled')::boolean, false) is not true then return jsonb_build_object('ok', false, 'reason', 'disabled'); end if;
+  if v_cost is null or v_cost <= 0 then return jsonb_build_object('ok', false, 'reason', 'no-estimate'); end if;
+  perform pg_advisory_xact_lock(hashtext('hushmates.ai-ledger'));
+  select coalesce(sum(cost_aud), 0) into v_spent from hushmates.ai_usage where at >= date_trunc('month', v_t);
+  if v_spent + v_cost > coalesce((s ->> 'monthlyCapAud')::numeric, 0) then return jsonb_build_object('ok', false, 'reason', 'over-budget'); end if;
+  select count(*) into v_n from hushmates.ai_usage where member_id = v_member and at >= date_trunc('day', v_t);
+  if v_member is null or v_n >= coalesce((s ->> 'perMemberDaily')::int, 0) then return jsonb_build_object('ok', false, 'reason', 'member-daily'); end if;
+  select count(*) into v_n from hushmates.ai_usage where at >= date_trunc('day', v_t);
+  if v_n >= coalesce((s ->> 'perDayGlobal')::int, 0) then return jsonb_build_object('ok', false, 'reason', 'global-daily'); end if;
+  insert into hushmates.ai_usage (at, member_id, journey_id, provider, cost_aud, status)
+  values (v_t, v_member, hushmates.as_uuid(p ->> 'journeyId'), coalesce(p ->> 'provider', 'another-angle'), v_cost, 'held')
+  returning id into v_id;
+  return jsonb_build_object('ok', true, 'id', v_id);
+end $$;
+
+/** After an AI call (or one that never happened): one row per attempt; with an id, it settles that hold. */
 create or replace function hushmates_api.ai_record(p jsonb) returns void
-language sql security definer set search_path = '' as $$
+language plpgsql security definer set search_path = '' as $$
+begin
+  if (p ->> 'id') ~ '^[0-9]+$' then
+    update hushmates.ai_usage set model = p ->> 'model', input_tokens = (p ->> 'inputTokens')::int, output_tokens = (p ->> 'outputTokens')::int,
+      cost_aud = coalesce((p ->> 'costAud')::numeric, cost_aud), status = coalesce(p ->> 'status', 'unknown'), ms = (p ->> 'ms')::int
+    where id = (p ->> 'id')::bigint and status = 'held';
+    if found then return; end if;
+  end if;
   insert into hushmates.ai_usage (at, member_id, journey_id, provider, model, input_tokens, output_tokens, cost_aud, status, ms)
   values (hushmates.clock(), hushmates.as_uuid(p ->> 'memberId'), hushmates.as_uuid(p ->> 'journeyId'), coalesce(p ->> 'provider', 'unknown'),
-    p ->> 'model', (p ->> 'inputTokens')::int, (p ->> 'outputTokens')::int, coalesce((p ->> 'costAud')::numeric, 0), coalesce(p ->> 'status', 'unknown'), (p ->> 'ms')::int)
-$$;
+    p ->> 'model', (p ->> 'inputTokens')::int, (p ->> 'outputTokens')::int, coalesce((p ->> 'costAud')::numeric, 0), coalesce(p ->> 'status', 'unknown'), (p ->> 'ms')::int);
+end $$;
 
 create or replace function hushmates_api.settings() returns jsonb
 language sql stable security definer set search_path = '' as $$
@@ -224,6 +257,23 @@ language sql security definer set search_path = '' as $$
   insert into hushmates.settings (key, value, updated_at) values (p_key, p_value, hushmates.clock())
   on conflict (key) do update set value = hushmates.settings.value || excluded.value, updated_at = excluded.updated_at
 $$;
+
+/** A team lead lifts (or sets) a restriction, by the reference the safety desk shows. */
+create or replace function hushmates_api.admin_set_member_state(p_member uuid, p_state text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_old text;
+begin
+  if p_state not in ('active', 'restricted', 'suspended') then raise exception 'state is active, restricted or suspended'; end if;
+  select state into v_old from hushmates.members where id = p_member for update;
+  if v_old is null or v_old = 'deleted' then raise exception 'no such account'; end if;
+  update hushmates.members set state = p_state, catching = case when p_state = 'active' then catching else false end where id = p_member;
+  if p_state <> 'active' then
+    update hushmates.holds set status = 'voided', ended_at = hushmates.clock()
+    where member_id = p_member and status in ('offered', 'caught') and expires_at > hushmates.clock();
+  end if;
+  perform hushmates.audit('operator', 'account.state', jsonb_build_object('member', p_member, 'from', v_old, 'to', p_state));
+  return jsonb_build_object('member', p_member, 'from', v_old, 'to', p_state);
+end $$;
 
 -- ------------------------------------------------------------------ grants --
 revoke all on all functions in schema hushmates from public;

@@ -1,45 +1,45 @@
 #!/usr/bin/env node
-// Run the Hushmates server.
+// Run Hushmates.
 //
-//   production (the built app only, no lab):
+//   production (the built app and safety desk only: no lab, no local sign-in, no API;
+//   on staging and production the API is the Hushmates Edge Function on Supabase):
 //     node tools/build-app.mjs
-//     HUSHMATES_INVITES="CODE1,CODE2" node server/main.mjs --mode production --port 8080
+//     node server/main.mjs --mode production --port 8080
 //
-//   development (the app from the source tree, plus the lab for testers):
-//     HUSHMATES_TESTER_KEY="<at least 16 characters>" node server/main.mjs --mode development
-//     (without a key, one is made up and printed; the lab opens at /lab/?key=…)
+//   development (everything on this machine, nothing outside it: Postgres, a local copy of
+//   Supabase Auth, the Edge Function's code, the scheduler, and the lab for testers):
+//     node server/main.mjs --mode development     (the same as node server/dev-stack.mjs)
+//     HUSHMATES_PG=postgres://postgres@127.0.0.1:54329  HUSHMATES_TESTER_KEY=<16+ characters>
+//     HUSHMATES_INVITES=CODE1,CODE2  HUSHMATES_STAFF_INVITES=CODE3 (the safety team)
 //
-// Options: --port (8080), --host (127.0.0.1), --state <file> (keep data between restarts),
-// --dist <folder> (production: dist/app). Invitations: HUSHMATES_INVITES (members),
-// HUSHMATES_STAFF_INVITES (moderators), comma separated. Nothing is deployed by this script.
+// Options: --port (8080 production, 8090 development), --host (127.0.0.1),
+// --dist <folder> (production: dist), --db <name> (development: hushmates_dev).
+// Nothing is deployed by this script.
 
-import { randomBytes } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { createHushmatesServer, builtFiles } from './server.mjs';
-import { appFiles, labFiles, LAB_ROOT } from './app-files.mjs';
+import { LAB_ROOT } from './app-files.mjs';
 
 const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : fallback; };
 const mode = arg('mode', 'production');
-const port = Number(arg('port', 8080));
 const host = arg('host', '127.0.0.1');
-const list = (v) => (v || '').split(',').map((x) => x.trim()).filter(Boolean);
-const make = () => randomBytes(6).toString('hex').toUpperCase();
 
-let invites = [...list(process.env.HUSHMATES_INVITES).map((code) => ({ code, role: 'member' })), ...list(process.env.HUSHMATES_STAFF_INVITES).map((code) => ({ code, role: 'moderator' }))];
-let options;
 if (mode === 'production') {
-  options = { mode, files: builtFiles(resolve(arg('dist', join(LAB_ROOT, 'dist', 'app')))) };
-  if (!invites.length) console.warn('No invitations configured (HUSHMATES_INVITES): nobody can join.');
+  const dist = resolve(arg('dist', join(LAB_ROOT, 'dist')));
+  const files = builtFiles(join(dist, 'app'));
+  if (existsSync(join(dist, 'staff', 'manifest.json'))) for (const [url, file] of builtFiles(join(dist, 'staff'))) files.set(url, file);
+  const port = Number(arg('port', 8080));
+  const app = createHushmatesServer({ mode, files });
+  app.server.listen(port, host, () => console.log(`Hushmates (production files) on http://${host}:${port}/app/`));
+  for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => app.close().then(() => process.exit(0)));
 } else if (mode === 'development') {
-  const testerKey = process.env.HUSHMATES_TESTER_KEY || randomBytes(18).toString('base64url');
-  if (!invites.length) invites = [make(), make(), make()].map((code) => ({ code, role: 'member' }));
-  options = { mode, files: appFiles(), labFiles: labFiles(), testerKey, secureCookies: false };
-  console.log(`Development server. Lab for testers: http://${host}:${port}/lab/?key=${testerKey}`);
-  console.log(`Invitations: ${invites.map((i) => i.code).join(', ')}`);
+  const { startDevStack } = await import('./dev-stack.mjs');
+  const list = (v) => (v || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const stack = await startDevStack({ port: Number(arg('port', 8090)), host, database: arg('db', 'hushmates_dev'),
+    invites: list(process.env.HUSHMATES_INVITES), staffInvites: list(process.env.HUSHMATES_STAFF_INVITES) });
+  for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => stack.close().then(() => process.exit(0)));
 } else {
   console.error('--mode must be production or development');
   process.exit(2);
 }
-const app = createHushmatesServer({ ...options, invites, statePath: arg('state', null) });
-app.server.listen(port, host, () => console.log(`Hushmates (${mode}) on http://${host}:${port}/app/`));
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => app.close().then(() => process.exit(0)));

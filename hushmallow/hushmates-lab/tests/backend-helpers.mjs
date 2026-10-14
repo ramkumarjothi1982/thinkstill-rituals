@@ -61,9 +61,21 @@ export async function freshDb() {
     }
   }
   const pool = new pg.Pool({ connectionString: `${PG_URL}/${name}`, max: 8 });
+  // a connection still closing when the test's database is dropped is told so: that's the end of the test, not a failure
+  let ending = false;
+  pool.on('error', (e) => { if (!ending) throw e; });
   return {
     pool, url: `${PG_URL}/${name}`, name,
-    async drop() { await pool.end(); await admin(`drop database if exists ${name} with (force)`); },
+    async drop() {
+      ending = true;
+      await pool.end();
+      // wait for the server to finish closing them, then drop (force only for anything left over)
+      for (let i = 0; i < 40; i++) {
+        if (!(await admin(`select 1 from pg_stat_activity where datname = '${name}'`)).rowCount) break;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      await admin(`drop database if exists ${name} with (force)`);
+    },
   };
 }
 

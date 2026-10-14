@@ -10,6 +10,7 @@ import { face } from '../mallow.js';
 import { MALLOWS, ORDER } from '../mallows-data.js';
 import { soundOn, setSound } from '../sound.js';
 import { HARM_COPY } from '../../../src/ultra/frameworks.js';
+import { SUPPORT_RESOURCES } from '../../core/feeling-safety.js';
 import { top, supportBody } from './common.js';
 import { room, stage, Speech, put, privacySheet, hostNote } from './parts.js';
 
@@ -67,7 +68,7 @@ export function you(dev) {
 
     section('If you’re not okay',
       h('div', { class: 'hf-choices-list' },
-        row('open-support', 'help', 'Get support now', 'Crisis lines and what to do if you’re not safe', () => dev.sheet({ title: 'You deserve support', body: supportBody({ message: 'Hushmates isn’t an emergency service. If you might be in danger, or you’re not safe, please reach out now.', resources: HARM_COPY.crisis.resources, stillHere: HARM_COPY.stillHere }, { note: hostNote(dev, 'support') }) })))),
+        row('open-support', 'help', 'Get support now', 'Crisis lines and what to do if you’re not safe', () => dev.sheet({ title: 'You deserve support', body: supportBody({ message: 'Hushmates isn’t an emergency service. If you might be in danger, or you’re not safe, please reach out now.', resources: SUPPORT_RESOURCES, stillHere: HARM_COPY.stillHere }, { note: hostNote(dev, 'support') }) })))),
 
     section('Your data',
       h('div', { class: 'hf-choices-list' },

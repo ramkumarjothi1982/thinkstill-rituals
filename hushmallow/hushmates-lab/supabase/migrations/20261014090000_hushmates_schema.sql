@@ -33,10 +33,10 @@ insert into hushmates.settings (key, value) values
      "feelingMinChars": 3, "feelingMaxChars": 500, "reframeMinChars": 8, "reframeMaxChars": 280,
      "submissionsPerHour": 6, "submissionsPerDay": 24, "findsPerHour": 40, "reframesPerHour": 12, "reportsPerDay": 20,
      "fallbackPerPersonPerDay": 5, "fallbackGlobalPerDay": 500, "fairnessPool": 3, "reportsToPause": 2, "similarity": 0.8,
-     "invitesPerHour": 10, "requestsPerMinute": 120
+     "invitesPerHour": 10, "invitesPerHourPerNetwork": 30, "requestsPerMinute": 120
    }'),
   ('mallow', '{ "available": true, "autoGenerate": true, "claimTimeoutMs": 120000 }'),
-  ('ai', '{ "enabled": false, "monthlyCapAud": 0, "perMemberDaily": 3, "perDayGlobal": 200, "timeoutMs": 30000, "costPerCallAud": 0.004 }'),
+  ('ai', '{ "enabled": false, "monthlyCapAud": 0, "perMemberDaily": 3, "perDayGlobal": 200, "timeoutMs": 20000, "costPerCallAud": 0.06, "cacheTtlMs": 3600000 }'),
   ('retention', '{ "returnedDays": 30, "evidenceDaysAfterResolution": 90, "auditDays": 365, "rateEventsHours": 48 }');
 
 -- ------------------------------------------------------------------- people --
