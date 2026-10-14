@@ -12,7 +12,8 @@ export function drawMallow(r, S, mesh, flip) {
   gl.useProgram(p.p);
   r.cam(p, S.cam, flip);
   setUniforms(gl, p, {
-    uArt: { tex: r.artTex, unit: 0 }, uFace: { tex: r.faceTex, unit: 1 },
+    // the fast face (faceFastGlow) lives in a texture the size of the face box, placed by uFaceBox
+    uArt: { tex: r.artTex, unit: 0 }, uFace: { tex: r.facePass?.boxTex || r.faceTex, unit: 1 }, uFaceBox: r.facePass?.boxUv || [0, 0, 1, 1],
     uNormal: { tex: r.normalTex || r.artTex, unit: 2 }, uHasNormal: r.normalTex ? 1 : 0,
     uBodyBox: m.bodyBox, uArtSize: r.artSize,
     uLightDir: m.light.dir, uKey: m.light.key, uRim: m.light.rim, uRimAmt: m.light.rimAmt,

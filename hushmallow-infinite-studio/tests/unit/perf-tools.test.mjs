@@ -34,6 +34,14 @@ test('profiles: feature overrides parse, reset and reject unknown names', () => 
   }
 });
 
+test('profiles: a feature that reads another one\'s output follows it off, and cannot be asked for without it', () => {
+  const p = resolveProfile('final', { features: '-faceCache' });
+  assert.equal(p.features.faceCache, false);
+  assert.equal(p.features.faceFastGlow, false, 'the fast face is drawn through the cache: off with it');
+  assert.throws(() => resolveProfile('exact', { features: '+faceFastGlow' }), /faceFastGlow needs faceCache/);
+  assert.throws(() => resolveProfile('final', { features: '-faceCache,+faceFastGlow' }), /needs faceCache/);
+});
+
 test('farm: the profile supplies scale, encoder and mark defaults; explicit options win', () => {
   const exact = jobParams({ direction: 'x' });
   assert.equal(exact.profile, 'exact');

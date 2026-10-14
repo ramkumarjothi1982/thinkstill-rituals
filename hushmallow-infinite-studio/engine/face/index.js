@@ -17,14 +17,16 @@
 // adds the engine-driven path of the face cache (cache.js, renderer/passes/face.js):
 //   - while the renderer captures (cache.js facePolicy), draw() records its
 //     parameters instead of drawing;
-//   - render(P) draws already quantised parameters with the approved tubes into
-//     the art-size canvas, scratch canvas cleared first, so the result does not
-//     depend on earlier draws.
+//   - render(P, opts) draws already quantised parameters, either with the
+//     approved tubes into the art-size canvas (scratch canvas cleared first, so
+//     the result does not depend on earlier draws) or with the fast tubes into
+//     a canvas the size of the face box (feature faceFastGlow).
 
 import { NEUTRAL, specFromRig, specFromDerived } from './params.js';
-import { legacyTube } from './tube.js';
+import { legacyTube, fastTube } from './tube.js';
 import { drawEye, drawBrow, drawMouth, drawBlush } from './features.js';
 import { facePolicy } from './cache.js';
+import { FaceLayers } from './glow.js';
 
 export { NEUTRAL, specFromRig, specFromDerived };
 
@@ -55,6 +57,8 @@ export class Face {
     const ys = [spec.brows.L.c[1] - spec.eyes.L.r * 1.8, spec.mouth.y + spec.mouth.w * 0.9];
     this.box = [Math.floor(Math.min(...xs)), Math.floor(Math.min(...ys)), Math.ceil(Math.max(...xs)), Math.ceil(Math.max(...ys))];
     this.last = '';
+    this.boxCanvas = null;              // fast path: the face box only (box-sized texture)
+    this.layers = null;
   }
 
   /** Redraw if the expression changed. Returns true when the canvas was updated. */
@@ -70,16 +74,32 @@ export class Face {
   }
 
   /**
-   * Draw complete, already quantised parameters (the face cache decides when)
-   * with the approved tubes into the art-size canvas. → the canvas drawn into
+   * Draw complete, already quantised parameters (the face cache decides when).
+   * fast: the fast tubes into boxCanvas (face box only); otherwise the approved
+   * tubes into the art-size canvas. glow: the tubes' blurred glow (draft: off).
+   * → the canvas drawn into
    */
-  render(P) {
+  render(P, { fast = false, glow = true } = {}) {
     this.last = '';                     // draw()'s cache no longer describes the canvas
-    const { ctx, tmp, spec } = this;
-    const g = tmp.getContext('2d');     // no stale scratch texels from earlier draws (CONVENTIONS §7)
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.clearRect(0, 0, tmp.width, tmp.height);
-    paint(ctx, this.box, spec, P, (pts, lw, alpha, opts) => legacyTube(ctx, tmp, pts, lw, alpha, opts));
-    return this.canvas;
+    const spec = this.spec;
+    if (!fast) {
+      const { ctx, tmp } = this;
+      const g = tmp.getContext('2d');   // no stale scratch texels from earlier draws (CONVENTIONS §7)
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, tmp.width, tmp.height);
+      paint(ctx, this.box, spec, P, (pts, lw, alpha, opts) => legacyTube(ctx, tmp, pts, lw, alpha, opts));
+      return this.canvas;
+    }
+    const [x0, y0, x1, y1] = this.box;
+    if (!this.boxCanvas) {
+      this.boxCanvas = document.createElement('canvas');
+      this.boxCanvas.width = x1 - x0; this.boxCanvas.height = y1 - y0;
+      this.layers = new FaceLayers({ glow });
+    }
+    this.layers.glow = glow;
+    const g = this.boxCanvas.getContext('2d');
+    g.setTransform(1, 0, 0, 1, -x0, -y0);
+    paint(g, this.box, spec, P, (pts, lw, alpha, opts) => fastTube(g, this.layers, pts, lw, alpha, opts));
+    return this.boxCanvas;
   }
 }

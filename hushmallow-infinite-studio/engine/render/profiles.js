@@ -21,7 +21,11 @@
 export const FEATURES = Object.freeze({
   overlaySkip: 'P2: an overlay with nothing drawn on it is neither cleared again, uploaded nor composited',
   faceCache: 'P3: the face is drawn once per frame from quantised parameters; per sub-frame only while it moves > 1.5 px',
+  faceFastGlow: 'P3b: face glows blurred at 1/4 resolution, soft inner tube bands at 1/2; a face-box-sized texture (dirty rect)',
 });
+
+/** Features that read another feature's output: dependent → base. */
+const NEEDS = Object.freeze({ faceFastGlow: 'faceCache' });     // the fast face is drawn through the cache
 
 const ALL = Object.keys(FEATURES);
 const none = () => Object.fromEntries(ALL.map((f) => [f, false]));
@@ -67,6 +71,12 @@ export function resolveProfile(name = DEFAULT_PROFILE, { features = null } = {})
   const feat = f.reset === 'none' ? none() : f.reset === 'all' ? all() : { ...base.features };
   for (const n of f.on) feat[n] = true;
   for (const n of f.off) feat[n] = false;
+  // a feature that builds on another one's output follows it off; asking for it without its base is an error
+  for (const [dep, base] of Object.entries(NEEDS)) {
+    if (!feat[dep] || feat[base]) continue;
+    if (f.on.includes(dep)) throw new Error(`feature ${dep} needs ${base}`);
+    feat[dep] = false;
+  }
   return Object.freeze({ ...base, features: Object.freeze(feat), overrides: features || null });
 }
 

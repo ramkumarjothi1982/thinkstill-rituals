@@ -30,6 +30,7 @@ import { assetLog } from '../runtime/asset-log.js';
 import { canvasKey } from '../runtime/hash.js';
 import { resolveProfile } from '../render/profiles.js';
 import { LakeWorld } from '../worlds/lake.js';
+import { meshFS } from './glsl-fast.js';
 import { MESH_VS, MESH_FS, BLUR_FS, COPY_FS, BRIGHT_FS, GLASS_VS, GLASS_FS, PART_VS, PART_FS, postFS, ACC_FS } from './glsl-v2.js';
 import { renderFrameExact, renderSubExact } from './frame-exact.js';
 import { renderFrameFast } from './frame-fast.js';
@@ -71,7 +72,7 @@ export class Renderer {
     this.fs = fullscreen(gl);
     this.world = new LakeWorld(this);
     this.p = {
-      mesh: program(gl, MESH_VS, MESH_FS, 'mesh'),
+      mesh: program(gl, MESH_VS, profile.features.faceFastGlow ? meshFS({ faceBox: true }) : MESH_FS, 'mesh'),
       blur: program(gl, FS_VERT, BLUR_FS, 'blur'),
       copy: program(gl, FS_VERT, COPY_FS, 'copy'),
       bright: program(gl, FS_VERT, BRIGHT_FS, 'bright'),
@@ -117,7 +118,7 @@ export class Renderer {
     this.textTex = new Map();
     // the fast pipeline and its passes (profile features; none in the exact profile)
     const f = profile.features;
-    this.facePass = f.faceCache ? new FacePass(this, { fast: false }) : null;
+    this.facePass = f.faceCache ? new FacePass(this, { fast: !!f.faceFastGlow }) : null;
     this.fastPipeline = !!this.facePass;
   }
 

@@ -7,8 +7,12 @@
 // exact profile's renderer, and it reads stale texels of the shared scratch
 // canvas from earlier strokes (docs/CONVENTIONS.md §7), which the exact profile
 // must keep.
+//
+// fastTube (profile feature faceFastGlow) draws the same layers with the
+// blurred ones at reduced resolution, see glow.js.
 
 import { smoothstep, normals, tubeOutline, fillPoly } from './geometry.js';
+import { FaceLayers, ensureCanvas } from './glow.js';
 
 export const TUBE = {   // sampled from the approved painted arcs (cross-section, top → bottom)
   glow: 'rgba(0,144,253,0.8)', shadow: 'rgba(0,10,60,0.1)', under: 'rgba(255,255,255,0.2)',
@@ -125,5 +129,62 @@ function shadow(ctx, pts, wfn, lw) {
   ctx.translate(0, lw * 0.1);
   ctx.fillStyle = TUBE.shadow;
   fillPoly(ctx, tubeOutline(pts, wfn, 1.1, -0.05));
+  ctx.restore();
+}
+
+/**
+ * The fast tube (profile feature faceFastGlow): legacyTube's geometry, colours
+ * and layer order, with every blurred layer rendered at reduced resolution
+ * (glow.js FaceLayers): the glow and the light band at 1/4, the soft inner
+ * bands of the body at 1/2; the body's crisp edge, the contact shadow and the
+ * specular stay at full resolution. Scratch layers are cleared whole before
+ * each use, so the result never depends on what was drawn before.
+ */
+export function fastTube(ctx, L, pts, lw, alpha = 1, opts = {}) {
+  if (alpha < 0.01 || pts.length < 2) return;
+  const taper = opts.taper ?? 0.8;
+  const wfn = (s) => lw * (taper + (1 - taper) * Math.sin(Math.PI * s));
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+  const pad = lw * 2.2;
+  const box = { x: x0 - pad, y: y0 - pad, w: x1 - x0 + pad * 2, h: y1 - y0 + pad * 2 };
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // 1 glow + the soft light band under the stroke: blurred silhouettes at 1/4 resolution
+  const glow = opts.glow ?? 1;
+  if (glow > 0.01 && L.glow) {
+    ctx.globalAlpha = alpha * glow;
+    L.blurredQuarter(ctx, box, (g) => { g.fillStyle = TUBE.glow; fillPoly(g, tubeOutline(pts, wfn, 1.36, 0.08)); }, lw * 0.26);
+    L.blurredQuarter(ctx, box, (g) => { g.fillStyle = TUBE.under; fillPoly(g, tubeOutline(pts, wfn, 1.0, -0.55)); }, lw * 0.3);
+    ctx.globalAlpha = alpha;
+  }
+  shadow(ctx, pts, wfn, lw);
+  // 2 body: the crisp edge at full resolution; the soft core and the lighter upper /
+  // darker lower bands at 1/2, composited source-atop onto the edge in one go
+  // (equivalent to drawing them one by one source-atop, as the approved tube does)
+  {
+    const bw = Math.ceil(box.w) + 2, bh = Math.ceil(box.h) + 2;     // 1 px margin
+    const t = FaceLayers.clean(ensureCanvas(L.full, bw, bh));
+    t.translate(1 - box.x, 1 - box.y);
+    t.fillStyle = TUBE.edge; fillPoly(t, tubeOutline(pts, wfn, 1.0, 0));
+    const k = 0.5, hw = Math.ceil(bw * k) + 2, hh = Math.ceil(bh * k) + 2;
+    const h = FaceLayers.clean(ensureCanvas(L.half, hw, hh));
+    h.setTransform(k, 0, 0, k, 1 - box.x * k, 1 - box.y * k);
+    h.filter = `blur(${(lw * 0.06 * k).toFixed(2)}px)`;
+    h.fillStyle = TUBE.core; fillPoly(h, tubeOutline(pts, wfn, 0.86, 0.02));
+    h.filter = `blur(${(lw * 0.1 * k).toFixed(2)}px)`;
+    h.fillStyle = TUBE.upper; fillPoly(h, tubeOutline(pts, wfn, 0.42, 0.24));
+    h.fillStyle = TUBE.lower; fillPoly(h, tubeOutline(pts, wfn, 0.34, -0.3));
+    h.filter = 'none';
+    // half-layer px u ↔ full-layer px (u - 1) / k + 1
+    t.setTransform(1, 0, 0, 1, 0, 0);
+    t.globalCompositeOperation = 'source-atop';
+    t.imageSmoothingEnabled = true;
+    t.drawImage(L.half, 0, 0, hw, hh, 1 - 1 / k, 1 - 1 / k, hw / k, hh / k);
+    t.globalCompositeOperation = 'source-over';
+    ctx.drawImage(L.full, 0, 0, bw, bh, box.x - 1, box.y - 1, bw, bh);
+  }
+  // 3 specular
+  specular(ctx, pts, wfn, lw, alpha, opts);
   ctx.restore();
 }
