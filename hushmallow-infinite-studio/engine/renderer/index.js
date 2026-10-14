@@ -30,7 +30,7 @@ import { assetLog } from '../runtime/asset-log.js';
 import { canvasKey } from '../runtime/hash.js';
 import { resolveProfile } from '../render/profiles.js';
 import { LakeWorld } from '../worlds/lake.js';
-import { meshFS } from './glsl-fast.js';
+import { meshFS, UNDER_FS } from './glsl-fast.js';
 import { MESH_VS, MESH_FS, BLUR_FS, COPY_FS, BRIGHT_FS, GLASS_VS, GLASS_FS, PART_VS, PART_FS, postFS, ACC_FS } from './glsl-v2.js';
 import { renderFrameExact, renderSubExact } from './frame-exact.js';
 import { renderFrameFast } from './frame-fast.js';
@@ -119,7 +119,16 @@ export class Renderer {
     // the fast pipeline and its passes (profile features; none in the exact profile)
     const f = profile.features;
     this.facePass = f.faceCache ? new FacePass(this, { fast: !!f.faceFastGlow }) : null;
-    this.fastPipeline = !!this.facePass;
+    if (f.fgAccum) {
+      // P5: the foreground of one sub-frame, its weighted sum, and the 1/4-res mirror image
+      this.t.fg = target(gl, W, H, { hdr: true });
+      this.t.fgAcc = target(gl, W, H, { hdr: true });
+      this.t.reflQ = target(gl, sz(W, 4), sz(H, 4), { hdr: true });
+      this.t.reflQB = target(gl, sz(W, 4), sz(H, 4), { hdr: true });
+      this.p.under = program(gl, FS_VERT, UNDER_FS, 'under');
+      this.fgDirty = this.accDirty = null;      // boxes still to clear in fg / fgAcc (textures start zeroed)
+    }
+    this.fastPipeline = !!(this.facePass || f.fgAccum);
   }
 
   setMallow({ artImg, pristineImg, faceCanvas, normalImg, cols = 96, rows = 96 }) {
@@ -132,6 +141,11 @@ export class Renderer {
     this.normalTex = normalImg ? texture(gl, normalImg, { mip: true, premultiply: false }) : null;
     this.mesh = gridMesh(gl, cols, rows, [2, 2, 1, 1]);
     this.reflMesh = gridMesh(gl, cols, rows, [2, 2, 1, 1]);
+    if (this.profile.features.fgAccum) {
+      // P5: the mirror image from a half-density grid: built at full density on the CPU, then decimated
+      this.reflMeshQ = gridMesh(gl, cols / 2, rows / 2, [2, 2, 1, 1]);
+      this.reflStub = { cols, rows, stride: 6, nVerts: (cols + 1) * (rows + 1), data: new Float32Array((cols + 1) * (rows + 1) * 6), upload() {} };
+    }
     this.artSize = [artImg.width, artImg.height];
     // every raster drawn through the Mallow mesh shares its UVs, so they share its magnification
     this.meshRasters = ['art', ...(pristineImg ? ['pristine'] : []), 'face', ...(normalImg ? ['normal'] : [])];
@@ -148,8 +162,9 @@ export class Renderer {
     for (const t of new Set([this.artTex, this.pristineTex, this.faceTex, this.normalTex])) if (t) gl.deleteTexture(t);
     this.mesh?.dispose();
     this.reflMesh?.dispose();
+    this.reflMeshQ?.dispose();
     this.facePass?.dispose();
-    this.artTex = this.pristineTex = this.faceTex = this.normalTex = this.faceCanvas = this.mesh = this.reflMesh = null;
+    this.artTex = this.pristineTex = this.faceTex = this.normalTex = this.faceCanvas = this.mesh = this.reflMesh = this.reflMeshQ = null;
   }
 
   /** Free everything a direction created: Mallow, text textures, overlay. Programs and targets stay. */
@@ -160,6 +175,21 @@ export class Renderer {
     this.texCache.clear();
     this.textTex.clear();
     if (this.overlayTex) { gl.deleteTexture(this.overlayTex); this.overlayTex = null; }
+    // P5: the next direction starts from fully cleared foreground buffers
+    if (this.t.fg) this.fgDirty = this.accDirty = [0, 0, this.outW, this.outH];
+  }
+
+  /** Copy every other vertex of a full-density grid (src, CPU) into a half-density mesh and upload it. */
+  decimate(src, dst) {
+    const k = src.cols / dst.cols, st = src.stride, row = src.cols + 1;
+    if (!Number.isInteger(k) || dst.stride !== st) throw new Error(`cannot decimate a ${src.cols}-grid into a ${dst.cols}-grid`);
+    for (let j = 0, o = 0; j <= dst.rows; j++) {
+      for (let i = 0; i <= dst.cols; i++, o += st) {
+        const s = (j * k * row + i * k) * st;
+        for (let c = 0; c < st; c++) dst.data[o + c] = src.data[s + c];
+      }
+    }
+    dst.upload();
   }
 
   updateFace() { updateTexture(this.gl, this.faceTex, this.faceCanvas, { mip: true }); }

@@ -23,6 +23,7 @@ export const FEATURES = Object.freeze({
   faceCache: 'P3: the face is drawn once per frame from quantised parameters; per sub-frame only while it moves > 1.5 px',
   faceFastGlow: 'P3b: face glows blurred at 1/4 resolution, soft inner tube bands at 1/2; a face-box-sized texture (dirty rect)',
   worldFast: 'P4: world shader terms only where they can be non-zero; the water samples a once-rendered sky layer',
+  fgAccum: 'P5: premultiplied foreground accumulation over the world, scissored passes, the reflection at 1/4 resolution',
 });
 
 /** Features that read another feature's output: dependent → base. */

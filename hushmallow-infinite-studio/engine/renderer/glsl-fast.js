@@ -62,3 +62,7 @@ ${faceBox ? `  vec2 fuv = (vUv - uFaceBox.xy) / uFaceBox.zw;
 }
 `;
 }
+
+/** The world behind the glass (P5): foreground over world, resampled to the target (1/4 res). */
+export const UNDER_FS = `in vec2 vUv; uniform sampler2D uFg; uniform sampler2D uBg; out vec4 frag;
+void main() { vec4 f = texture(uFg, vUv); frag = vec4(f.rgb + texture(uBg, vUv).rgb * (1. - f.a), 1.); }`;
