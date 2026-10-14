@@ -176,3 +176,26 @@ test('the subtitle scrim deepens over a bright spot anywhere under it, its round
   assert.match(subs, /setInterval\(\(\) => \{ if \(cur\?\.lineEl \|\| !chipsEl\.hidden\) layout\(\); rescrim\(\); \}, 600\)/);
   assert.match(subs, /if \(!n\?\.isConnected \|\| c\.phase === 'out' \|\| \(c\.scrimLooks \|\| 0\) >= 4 \|\| c\.scrimStill >= 2\) return;/);
 });
+
+// ------------------------------------------------------------- 6. the support sheet after abuse, violence or threats --
+test('the support sheet after abuse leads with its first actions above the fold (Find A Helpline, then the emergency number), only listed numbers', async () => {
+  const support = await import('../src/app/scenes/support.js');
+  const { abuseActions, SUPPORT_LINES, emergencyNumber } = support;
+  const known = new Set(['999', '911', '112', ...SUPPORT_LINES.filter((l) => l.tel).map((l) => l.tel)]);
+  for (const r of ['GB', 'IE', 'US', 'CA', null]) {
+    const a = abuseActions(r);
+    assert.deepEqual(a.map((x) => x.id), ['findahelpline', 'emergency'], String(r));
+    assert.equal(a[0].href, 'https://findahelpline.com');
+    assert.ok(a[0].primary && a[0].external);
+    assert.equal(a[1].href, `tel:${emergencyNumber(r)}`);
+    for (const c of a) if (c.href.startsWith('tel:')) assert.ok(known.has(c.href.slice(4)), `${r}: ${c.href} is a listed number`);
+  }
+  const src = read('src/app/scenes/support.js');
+  // the non-urgent sheet: the actions (abuse family only) come after the intro, before the cards
+  const plain = src.slice(src.indexOf(': h(\'div\', {},', src.indexOf('const body = urgent')));
+  assert.match(plain, /abuseFirst\(cat\) \? h\('div', \{ class: 'support-calls', role: 'group', 'aria-label': 'Get help' \}, \.\.\.abuseActions\(region\)\.map\(callBtn\)\) : null,\s*\.\.\.lines\.map\(card\)/);
+  assert.doesNotMatch(src.replace(/\/\/[^\n]*/g, ''), /0808|1-800|799-7233/, 'no new numbers');
+  // what scrolls on below fades out above the foot (never cut mid-line under it)
+  const css = read('src/ui/app.css');
+  assert.match(css, /\.sheet \.sheet-body \{ -webkit-mask-image: linear-gradient\(to bottom, #000 calc\(100% - 22px\), transparent\); mask-image: linear-gradient\(to bottom, #000 calc\(100% - 22px\), transparent\); \}/);
+});

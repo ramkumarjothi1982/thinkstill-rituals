@@ -3,9 +3,11 @@
 //
 // The urgent sheet (crisis words) leads with its calls: the emergency number
 // and a crisis line are tel: links above the fold on the smallest phone and at
-// the largest text size, ahead of "I’m safe — continue". Only the numbers this
-// file already lists are ever dialled; the region (the time zone, else the
-// language) only chooses which of them comes first.
+// the largest text size, ahead of "I’m safe — continue". After abuse, violence
+// or threats the sheet leads the same way: Find A Helpline, then the emergency
+// number (abuseActions). Only the numbers this file already lists are ever
+// dialled; the region (the time zone, else the language) only chooses which of
+// them comes first.
 import { h, openSheet } from '../ui.js';
 import { brandName } from '../../brand.js';
 import { type } from '../../ui/type.js';
@@ -74,6 +76,19 @@ export function urgentCalls(region) {
 // ('unsafe' is not one of them: the main screen's grief reading uses it for a wish to follow someone who died)
 const ABUSE_CATEGORIES = new Set(['abuse', 'violence', 'threat']);
 export const abuseFirst = (category) => ABUSE_CATEGORIES.has(category);
+/**
+ * The actions the support sheet leads with after someone tells what is being done to them (the abuse family), above the
+ * fold on the smallest phone at the largest text size, as the urgent sheet's calls are: Find A Helpline first (it lists
+ * domestic-abuse services in the person's country), then the emergency number, for danger now. Only numbers this file
+ * already lists: the emergency number the Emergency services card names (999, 911, 112).
+ */
+export function abuseActions(region) {
+  const num = emergencyNumber(region);
+  return [
+    { id: 'findahelpline', label: 'Find a domestic-abuse service near you', href: 'https://findahelpline.com', aria: 'Find A Helpline: domestic-abuse services in your country (opens a new tab)', external: true, primary: true },
+    { id: 'emergency', label: `Call ${num} · If you’re in danger now`, href: `tel:${num}`, aria: `Call emergency services, ${num}` },
+  ];
+}
 /** The cards in the order they show: for the abuse family, Find A Helpline first, saying plainly what it lists. */
 export function supportLines(category = null) {
   if (!abuseFirst(category)) return SUPPORT_LINES.slice();
@@ -111,6 +126,9 @@ export function openSupport(app, { urgent = false, category } = {}) {
       h('p', { style: type('body', { margin: '0 0 12px', color: 'var(--text-1)' }) }, abuseFirst(cat)
         ? 'What’s happening isn’t your fault, and you don’t have to handle it alone. These are free and confidential.'
         : 'If things feel like too much, talking to a real person can help. These are free and confidential.'),
+      // (after abuse, violence or threats: the first actions whole, above the fold, as the urgent sheet's calls are — the
+      // cards, with what each line is, follow)
+      abuseFirst(cat) ? h('div', { class: 'support-calls', role: 'group', 'aria-label': 'Get help' }, ...abuseActions(region).map(callBtn)) : null,
       ...lines.map(card), note);
   return openSheet({ title: urgent ? 'You’re not alone in this' : 'Support', body, label: 'Support lines',
     foot: h('button', { class: 'btn block', onclick: (e) => e.currentTarget.closest('.sheet').querySelector('.icon-btn').click() }, urgent ? 'I’m safe — continue' : 'Close') });
