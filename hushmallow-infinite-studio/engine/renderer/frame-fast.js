@@ -188,6 +188,7 @@ function renderSubFg(r, S, worldTarget) {
 export function renderFrameFast(r, subStates, center, overlayCanvas) {
   const gl = r.gl, T = r.t, m = r.meter, f = r.profile.features;
   const face = r.facePass ? r.facePass.plan(subStates, center) : null;
+  if (f.meshNormalTex) r.prepareMeshPass(center);
   const wgt = 1 / subStates.length;
   if (!f.fgAccum) {
     m?.begin('world');

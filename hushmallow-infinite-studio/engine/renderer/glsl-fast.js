@@ -8,8 +8,11 @@ import { COMMON } from './glsl-v2.js';
  * The Mallow mesh, fast variants.
  *   faceBox    (faceFastGlow) the face texture covers only the face box: uFaceBox =
  *              [u0, v0, du, dv] maps art UV into it, transparent outside
+ *   normalTex  (meshNormalTex) the rest normal n0 (dome blended with the derived
+ *              normal map) is read from a texture baked once per Mallow
+ *              (passes/normals.js) instead of computed per fragment
  */
-export function meshFS({ faceBox = false } = {}) {
+export function meshFS({ faceBox = false, normalTex = false } = {}) {
   return `
 in vec2 vUv; in float vComp; in float vBend;
 uniform sampler2D uArt; uniform sampler2D uFace; uniform sampler2D uNormal; uniform sampler2D uPristine;
@@ -22,16 +25,17 @@ uniform float uSpec; uniform vec3 uSpecCol; uniform vec3 uGlowCol; uniform float
 uniform vec3 uAmbient; uniform float uSSS; uniform float uReflect;
 uniform float uExposure;
 ${faceBox ? 'uniform vec4 uFaceBox;' : ''}
+${normalTex ? 'uniform sampler2D uN0;' : ''}
 out vec4 frag;
 ${COMMON}
-vec3 domeNormal(vec2 uv) {
+${normalTex ? '' : `vec3 domeNormal(vec2 uv) {
   vec2 px = uv * uArtSize;
   vec2 p = vec2((px.x - uBodyBox.x) / uBodyBox.z, ((uBodyBox.y - px.y) / uBodyBox.w - 0.5) * 2.);
   float r = pow(pow(abs(p.x), 4.) + pow(abs(p.y), 4.), 0.25);
   float e = smoothstep(0.35, 1.02, r);
   vec2 dir = normalize(vec2(sign(p.x) * pow(abs(p.x), 3.), sign(p.y) * pow(abs(p.y), 3.)) + 1e-5);
   return normalize(vec3(dir * e * 1.35, 1.0 - e * 0.55));
-}
+}`}
 void main() {
   vec4 art = texture(uArt, vUv);
 ${faceBox ? `  vec2 fuv = (vUv - uFaceBox.xy) / uFaceBox.zw;
@@ -40,8 +44,8 @@ ${faceBox ? `  vec2 fuv = (vUv - uFaceBox.xy) / uFaceBox.zw;
   if (uRest > 0.001) albedo = mix(albedo, texture(uPristine, vUv), uRest);
   if (albedo.a < 0.002) discard;
   vec3 col = pow(albedo.rgb / max(albedo.a, 1e-4), vec3(2.2));
-  vec3 n0 = domeNormal(vUv);
-  if (uHasNormal > 0.5) { vec3 nm = texture(uNormal, vUv, 3.5).xyz * 2. - 1.; n0 = normalize(mix(n0, nm, 0.6)); }
+${normalTex ? '  vec3 n0 = normalize(texture(uN0, vUv).xyz);' : `  vec3 n0 = domeNormal(vUv);
+  if (uHasNormal > 0.5) { vec3 nm = texture(uNormal, vUv, 3.5).xyz * 2. - 1.; n0 = normalize(mix(n0, nm, 0.6)); }`}
   vec3 n = normalize(n0 + vec3(vBend * 0.55, 0., 0.) + vec3(0., (vComp - 1.) * 0.25, 0.));
   vec3 L = normalize(uLightDir);
   float d0 = 0.78 + 0.22 * dot(n0, L), d1 = 0.78 + 0.22 * dot(n, L);
@@ -66,3 +70,4 @@ ${faceBox ? `  vec2 fuv = (vUv - uFaceBox.xy) / uFaceBox.zw;
 /** The world behind the glass (P5): foreground over world, resampled to the target (1/4 res). */
 export const UNDER_FS = `in vec2 vUv; uniform sampler2D uFg; uniform sampler2D uBg; out vec4 frag;
 void main() { vec4 f = texture(uFg, vUv); frag = vec4(f.rgb + texture(uBg, vUv).rgb * (1. - f.a), 1.); }`;
+

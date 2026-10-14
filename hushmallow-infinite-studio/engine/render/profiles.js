@@ -25,6 +25,7 @@ export const FEATURES = Object.freeze({
   worldFast: 'P4: world shader terms only where they can be non-zero; the water samples a once-rendered sky layer',
   fgAccum: 'P5: premultiplied foreground accumulation over the world, scissored passes, the reflection at 1/4 resolution',
   adaptiveFloor: 'P6: one centred sample when nothing moves 2 px or more during the shutter',
+  meshNormalTex: 'P7: rest normals baked once per Mallow; the mesh draws only cells that can show anything',
 });
 
 /** Features that read another feature's output: dependent → base. */

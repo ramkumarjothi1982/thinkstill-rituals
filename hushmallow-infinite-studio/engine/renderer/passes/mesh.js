@@ -20,6 +20,7 @@ export function drawMallow(r, S, mesh, flip) {
     uSpec: m.light.spec, uSpecCol: m.light.specCol, uGlowCol: m.light.glowCol, uGlow: m.light.glow,
     uAmbient: m.light.ambient, uSSS: m.light.sss, uReflect: flip ? 1 : 0, uExposure: 1,
     uPristine: { tex: r.pristineTex, unit: 3 }, uRest: m.rest || 0,
+    uN0: r.n0 ? { tex: r.n0.tex, unit: 4 } : undefined,            // P7: baked rest normals
   });
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);

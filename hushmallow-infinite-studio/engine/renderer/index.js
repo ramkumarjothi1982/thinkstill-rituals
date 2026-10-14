@@ -35,6 +35,7 @@ import { MESH_VS, MESH_FS, BLUR_FS, COPY_FS, BRIGHT_FS, GLASS_VS, GLASS_FS, PART
 import { renderFrameExact, renderSubExact } from './frame-exact.js';
 import { renderFrameFast } from './frame-fast.js';
 import { FacePass } from './passes/face.js';
+import { bakeRestNormals, alphaOf, trimmedIndex, indexedGrid } from './passes/normals.js';
 
 /** The design space of the approved v2 (and the default of every direction). */
 export const DESIGN_W = 1080, DESIGN_H = 1920;
@@ -72,7 +73,8 @@ export class Renderer {
     this.fs = fullscreen(gl);
     this.world = new LakeWorld(this, { fast: !!profile.features.worldFast });
     this.p = {
-      mesh: program(gl, MESH_VS, profile.features.faceFastGlow ? meshFS({ faceBox: true }) : MESH_FS, 'mesh'),
+      mesh: program(gl, MESH_VS, profile.features.faceFastGlow || profile.features.meshNormalTex
+        ? meshFS({ faceBox: !!profile.features.faceFastGlow, normalTex: !!profile.features.meshNormalTex }) : MESH_FS, 'mesh'),
       blur: program(gl, FS_VERT, BLUR_FS, 'blur'),
       copy: program(gl, FS_VERT, COPY_FS, 'copy'),
       bright: program(gl, FS_VERT, BRIGHT_FS, 'bright'),
@@ -149,6 +151,10 @@ export class Renderer {
     this.artSize = [artImg.width, artImg.height];
     // every raster drawn through the Mallow mesh shares its UVs, so they share its magnification
     this.meshRasters = ['art', ...(pristineImg ? ['pristine'] : []), 'face', ...(normalImg ? ['normal'] : [])];
+    if (this.profile.features.meshNormalTex) {
+      // P7: which grid cells can show anything (trimmed on the first frame, once the face box is known)
+      this.meshAlphas = [alphaOf(artImg), ...(pristineImg ? [alphaOf(pristineImg)] : [])];
+    }
     assetLog.texture('art', artImg);
     if (pristineImg) assetLog.texture('pristine', pristineImg);
     assetLog.texture('face', faceCanvas, { procedural: true });
@@ -164,6 +170,8 @@ export class Renderer {
     this.reflMesh?.dispose();
     this.reflMeshQ?.dispose();
     this.facePass?.dispose();
+    if (this.n0) { gl.deleteTexture(this.n0.tex); gl.deleteFramebuffer(this.n0.fb); }
+    this.n0 = this.n0Box = this.meshAlphas = null;
     this.artTex = this.pristineTex = this.faceTex = this.normalTex = this.faceCanvas = this.mesh = this.reflMesh = this.reflMeshQ = null;
   }
 
@@ -177,6 +185,28 @@ export class Renderer {
     if (this.overlayTex) { gl.deleteTexture(this.overlayTex); this.overlayTex = null; }
     // P5: the next direction starts from fully cleared foreground buffers
     if (this.t.fg) this.fgDirty = this.accDirty = [0, 0, this.outW, this.outH];
+  }
+
+  /**
+   * P7: bake the rest normals for the Mallow's body box (again if it changes),
+   * and on the first frame swap the mesh for one that draws only the cells
+   * that can show anything (the face boxes the face pass has seen are kept).
+   */
+  prepareMeshPass(center) {
+    const bb = center.mallow?.bodyBox;
+    if (bb && (!this.n0 || this.n0Box.some((v, i) => v !== bb[i]))) {
+      if (this.n0) { this.gl.deleteTexture(this.n0.tex); this.gl.deleteFramebuffer(this.n0.fb); }
+      this.n0 = bakeRestNormals(this, bb);
+      this.n0Box = [...bb];
+    }
+    if (this.meshAlphas && this.mesh) {
+      const keep = this.facePass ? [...this.facePass.quantisers.keys()].map((face) => face.box) : [];
+      const { cols, rows } = this.mesh;
+      const trimmed = indexedGrid(this.gl, cols, rows, [2, 2, 1, 1], trimmedIndex(cols, rows, this.meshAlphas, { keep }));
+      this.mesh.dispose();
+      this.mesh = trimmed;
+      this.meshAlphas = null;
+    }
   }
 
   /** Copy every other vertex of a full-density grid (src, CPU) into a half-density mesh and upload it. */
