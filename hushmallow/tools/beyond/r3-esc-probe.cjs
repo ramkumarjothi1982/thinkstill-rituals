@@ -1,7 +1,8 @@
 // Browser probe (final round 3, unit ESCALATION): a suicide named, or a death and the self ending, is care on both screens —
 // the gentle care lines, the Support pill, no question, no world, no "Somewhere calm", no Thought Mallow, and 0 /v1/ requests.
 //
-//   node hushmallow/tools/beyond/r3-esc-probe.cjs <main|angle> W H [server] [set=pos|neg|all] [from=N] [count=N] [base=URL] [dev=8790] [out=DIR]
+//   node hushmallow/tools/beyond/r3-esc-probe.cjs <main|angle> W H [server] [set=pos|neg|all] [from=N] [count=N] [lineAt=N] [base=URL] [dev=8790] [out=DIR]
+//   (lineAt: a screenshot of the line itself, a moment after Send, for the Nth phrase of the run)
 //
 // main:  the main screen (offline: no endpoint). Serve the repo root and pass base=http://127.0.0.1:<port>/hushmallow/index.html.
 // angle: Another Angle. With `server`, ?angleDev=<dev> points it at the mock harness (cd hushmallow/server/another-angle && npm run
@@ -114,7 +115,8 @@ async function probeMain(o, t, care) {
   const at = await tellMain(o, t);
   // the line (care: support; not care: the gentle path or the question)
   await o.page.waitForFunction(() => (window.__r3Said || []).length > 0, null, { timeout: 15000, polling: 100 }).catch(() => null);
-  await sleep(5500);
+  // (the line as a person reads it: once, for the phrase named by shotAt)
+  if (o.lineShot) { await sleep(1200); await shot(o, o.lineShot); await sleep(3800); } else await sleep(5500);
   const st = await o.page.evaluate(() => {
     const Hf = window.__hushfold, f = Hf.flow?.state || null;
     const vis = (el) => !!el && !el.hidden && getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).opacity > 0.05 && el.getBoundingClientRect().height > 0;
@@ -140,7 +142,7 @@ async function probeMain(o, t, care) {
 async function probeAngle(o, t, care) {
   const at = await tellAngle(o, t);
   await o.page.waitForFunction(() => (window.__r3Said || []).length > 0 && ['support', 'asking', 'invite', 'squeeze'].includes(window.__angle?.S?.phase), null, { timeout: 25000, polling: 100 }).catch(() => null);
-  await sleep(care ? 6000 : 9000);
+  if (o.lineShot) { await sleep(2500); await shot(o, o.lineShot); await sleep(care ? 3000 : 6000); } else await sleep(care ? 6000 : 9000);
   const st = await o.page.evaluate(() => { const A = window.__angle; return { phase: A.S.phase, level: A.S.level, category: A.S.category, follow: !!A.S.follow, suicide: !!A.S.suicide, grief: !!A.S.grief, mech: A.mechId || null, thought: !!A.thought, server: A.serverMode(), supportPill: !document.querySelector('.bx-dock .hf-pill.support')?.hidden }; });
   const said = await o.page.evaluate(() => window.__r3Said || []);
   const reqs = o.req.filter((q) => q.at >= at).map((q) => q.p);
@@ -169,6 +171,7 @@ async function probeAngle(o, t, care) {
     let n = 0;
     for (const [t, care] of list) {
       const o = await open(browser);
+      if (opt('lineAt', '') !== '' && n === +opt('lineAt', '-1')) o.lineShot = `line-${n}`;
       try {
         const r = SCREEN === 'main' ? await probeMain(o, t, care) : await probeAngle(o, t, care);
         r.errors = o.errors;
