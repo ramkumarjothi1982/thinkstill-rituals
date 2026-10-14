@@ -13,12 +13,25 @@
 //   4. a clearly negated danger ('nobody is in danger', 'no members of my family are actually in danger') is not crisis; the
 //      negation has to be the subject of the danger clause itself ('no one knows I'm in danger' still is).
 // Each list (15 that must read, 15 that must not) was written before the rules; the measured sentences are pinned verbatim.
+// Round 3 (the independent verifier failed the first pass: /tmp/claude-0/hf/verify-lex.json, every sentence pinned below):
+//   3. the default flipped: 'beat me' is a blow unless a game, a contest or a race is named (BEAT_GAME: 'at chess', 'in the
+//      final', 'to it', 'to the bus stop', 'home', 'on points', 'by two goals', 'fair and square', '6-2'); a place, a time or
+//      the harm after it is a blow again ('in the shower', 'on the way home', 'at the weekend', 'to the point where', 'to
+//      tears'), and the people who beat are more than the old list ('my uncle', 'the older boys', 'beat me with a belt').
+//   4. only a purely negated danger is blanked (TURN): nothing after it turns the meaning ('but', 'only me', 'just me', 'yet',
+//      'unless', 'if', 'now'…) and no other subject follows with is / are ("no one's in danger, my mum is"); "we're all in
+//      danger" reads.
+//   1. a private part touched ('he touched my privates', 'he put his hand down my pants', 'touched me down below') is care; a
+//      small child or a brother or sister who keeps touching is not, unless something says it is unwanted in that way.
+//   2. the phone spellings ('shes', 'hes', 'theyre', 'its'), a relative with no 'my' ('dad isn't breathing'), 'the old man on
+//      the floor', 'she collapsed and isn't breathing', 'barely breathing'; never 'not breathing a single word', 'breathing
+//      easy', 'breathing on my food'.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { checkText, checkTextFirstPass } from '../src/engine/safety.js';
 import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
-import { HARM_LEXICON } from '../src/data/safety-lexicon.js';
+import { HARM_LEXICON, CONCERN_LEXICON, HARM_OTHERS_LEXICON } from '../src/data/safety-lexicon.js';
 
 await loadGrief();
 
@@ -205,7 +218,7 @@ const DANGER_NEG = [
   'nobody here is in danger',
   'none of the kids are in danger',
   'no members of staff are in danger',
-  'nobody in my family is in danger right now',
+  'nobody in my family is in danger',
   'noone is in danger, it was a false alarm',
   'no one I know is in danger',
   'none of my friends are actually in danger',
@@ -217,9 +230,11 @@ test('lexicon gaps 4: a clearly negated danger is not crisis; a negation that do
   assert.equal(DANGER_NEG.length, 15);
   for (const t of DANGER_POS) for (const r of both(t)) assert.deepEqual([r.level, r.category], ['crisis', 'someone-in-danger'], `${t} → ${show(r)}`);
   for (const t of DANGER_NEG) for (const r of both(t)) assert.equal(r.level, 'none', `${t} → ${show(r)}`);
-  // 'but my mum thinks so' says nobody is; 'but my mum' says she is
-  assert.equal(plain('nobody is in danger but my mum thinks so').level, 'none');
+  // 'but my mum' says she is; (round 3) so does any 'but' after it, 'but my mum thinks so' too: only a purely negated danger
+  // is blanked, and 'right now' says it may not last (the first pass pinned 'nobody in my family is in danger right now' as
+  // none; it reads again, as it did on 931fbb0)
   assert.equal(plain('nobody is in danger but my mum').level, 'crisis');
+  for (const t of ['nobody is in danger but my mum thinks so', 'nobody in my family is in danger right now']) assert.equal(plain(t).level, 'crisis', t);
 });
 
 // --------------------------------------------------------------------------------- the measured ones --
@@ -243,10 +258,148 @@ test('lexicon gaps: the measured sentences, verbatim (and the one left alone)', 
   for (const t of ['the film really touched me', 'your message touched me', 'touched me deeply']) none(t);
   for (const t of ["he's not breathing", "they're not breathing", "someone's not breathing", "she isn't breathing", 'he is not breathing properly']) crisis(t);
   assert.ok(['none', 'concern'].includes(plain("I'm not breathing properly because of my cold").level));
-  for (const t of ['she beat me in the final', 'he beat me to it', 'he beat me on points']) none(t);
+  for (const t of ['she beat me in the final', 'he beat me to it', 'he beat me on points', 'he beat me at chess']) none(t);
   for (const t of ['he beat me up', 'he beat me with a stick']) care(t, 'violence');
   for (const t of ['nobody is in danger', "we're not in danger any more", 'none of us are in danger', 'no-one is in danger']) none(t);
   for (const t of ["no one knows I'm in danger", "nobody believes I'm in danger", 'no one can help, my sister is in danger']) crisis(t);
+});
+
+// ------------------------------------------------------------------------------- round 3: the verifier --
+// Every sentence in the independent verifier's report on the first pass (verify-lex.json), verbatim: the blocking ones read
+// again (each was care or crisis on 931fbb0, or a disclosure missed on both trees), the false alarms it listed are none where
+// they were fixed, and the two it listed that are left read as they did (with the reason).
+const R3 = {
+  // blocking: 'beat me' + at / in / to / on that is not a game (care/violence on 931fbb0, none on the first pass)
+  beatBlow: ['he beat me in the shower', 'he beat me in my sleep', 'my dad beat me in the basement', 'he beat me on the way home',
+    "he beat me at my nan's house", 'he beat me in public', "he beat me to the point where i couldn't stand", 'he beat me to near death',
+    'he beat me on the stairs', 'my boss beat me in his office', 'he beat me at the party', 'he beat me in the morning', 'he beat me at the weekend',
+    'he beat me in a rage', 'he beat me in the middle of the street', 'she beat me in the changing rooms', 'my husband beat me on our wedding night',
+    'he beat me in the woods', 'they beat me in the lift', 'my dad beats me at the slightest thing', 'my mum beats me at least once a week',
+    'my dad beats me in his temper', 'he beat me to tears', 'he beat me on and off for years', 'my stepdad beat me again at the weekend',
+    'he beat me twice in one night', 'she beats me on a daily basis', 'my dad beat me on purpose', 'he beat me on the spot'],
+  // blocking: the fear of it (care/unsafe on 931fbb0)
+  beatFear: ["i'm scared he'll beat me on the way home", "i'm scared she'll beat me on the stairs", "i'm terrified he will beat me on sight"],
+  // blocking: whoever beats (missed on both trees)
+  beatWho: ['my uncle beat me with a belt', 'my uncle beat me', 'my uncle beat me in the kitchen', 'my grandad beat me', 'the older boys beat me',
+    'the older boys beat me in the toilets'],
+  // blocking: a danger that only looks negated (crisis on 931fbb0)
+  dangerTurned: ['he says no kids are in danger but my little brother is', 'no one is in danger but my mum and dad are', 'nobody is in danger, only me',
+    'nobody is in danger, just me', 'no one is in danger, well except me', "no one is in danger yet but he's coming back with a knife",
+    "nobody is in danger right now but he said he'll kill us when he gets home", "nobody's in danger unless he comes back",
+    "no one is in danger but my mum's boyfriend hits her", 'no one is in danger, he said, but my sister is', 'no one is in danger if i stay quiet',
+    "no one's in danger, my mum is", 'no one is in danger. my mum is.', "nobody is in danger, but my dad's friend is"],
+  // blocking: all / both between (missed on both trees)
+  dangerAll: ["no one in my house is safe, we're all in danger", "we're all in danger", 'we are all in danger', 'my family is all in danger'],
+  // blocking: a private part (missed on both trees)
+  touchPart: ['my uncle touched my private parts', 'he touched my privates', 'my stepdad touches my private parts', 'he touched my boobs',
+    'he touched my vagina', 'he touched my penis', 'he grabbed my breasts', 'he put his hand down my pants', 'he put his hand up my skirt',
+    'he touched me down below'],
+  // blocking: not breathing (missed on both trees; main screen concern/loss for the last relative)
+  breath: ['shes not breathing', 'hes not breathing', 'theyre not breathing', "dad isn't breathing", "mum's not breathing", 'mom is not breathing',
+    "grandma isn't breathing", "nan's not breathing", 'dad stopped breathing call an ambulance', "my granny isn't breathing",
+    "the old man on the floor isn't breathing", "she collapsed and isn't breathing", 'my friend is unconscious and not breathing',
+    'my baby is blue and not breathing', "he's barely breathing"],
+  // polish, fixed: races, not blows (care/violence on 931fbb0)
+  races: ['he beat me to the bus stop', 'she beat me to the car', 'my brother beat me to the bathroom', 'he beat me to school', 'she beat me to work',
+    'my sister beat me to bed', 'he beat me home'],
+  // polish, fixed: purely negated (crisis on 931fbb0)
+  dangerCalm: ["no one's life is in danger", "nobody's job is in danger", 'no one is in danger, but it was scary', "nobody's in danger but it is scary"],
+  // polish, left: a 'but' and another subject with 'is' is exactly how the danger above is told ("but my dad's friend is"),
+  // so these still read; a false alarm is the small cost
+  dangerLeft: ['nobody is in danger but my dog is sick', 'nobody is in danger but my mum is worried'],
+  // polish, fixed: a child or a sibling touching as children do, and a doctor at work (none on 931fbb0, care on the first pass;
+  // the doctor was care on 931fbb0 too)
+  touchPlay: ['my nephew keeps touching me with sticky hands', 'my sister keeps touching me in the car', 'the baby keeps touching me',
+    'my little brother won\'t stop touching me on the arm', 'the doctor touched me on my chest to check my heartbeat'],
+  // polish, fixed: idioms after 'breathing' (none on 931fbb0, crisis on the first pass)
+  breathIdiom: ["he's not breathing a single word", "she's not breathing easy until the results come", "he isn't breathing easy",
+    "my brother's not breathing on my food anymore"],
+  // polish, noted: a stranger groping now reads as abuse (the abuse helpline first), still care
+  groped: ['a man on the train groped me without asking', "someone groped me where I didn't want"],
+};
+
+test('lexicon gaps r3: every sentence of the verifier\'s report reads as it should', () => {
+  const is = (t, level, category) => { for (const r of both(t)) assert.deepEqual([r.level, r.category], [level, category], `${t} → ${show(r)}`); };
+  assert.deepEqual(Object.values(R3).map((l) => l.length), [29, 3, 6, 14, 4, 10, 15, 7, 4, 2, 5, 4, 2]);
+  for (const t of [...R3.beatBlow, ...R3.beatWho]) is(t, 'care', 'violence');
+  for (const t of R3.beatFear) is(t, 'care', 'unsafe');
+  for (const t of [...R3.dangerTurned, ...R3.dangerAll, ...R3.dangerLeft, ...R3.breath]) is(t, 'crisis', 'someone-in-danger');
+  for (const t of [...R3.touchPart, ...R3.groped]) is(t, 'care', 'abuse');
+  for (const t of [...R3.races, ...R3.dangerCalm, ...R3.touchPlay]) for (const r of both(t)) assert.equal(r.level, 'none', `${t} → ${show(r)}`);
+  for (const t of R3.breathIdiom) {
+    assert.equal(plain(t).level, 'none', `${t} → ${show(plain(t))}`);
+    assert.ok(['none', 'concern'].includes(main(t).level), `${t} → ${show(main(t))}`);
+  }
+});
+
+test("lexicon gaps r3: 'beat me' is a blow unless a game, a contest or a race is named", () => {
+  const violence = (t) => { for (const r of both(t)) assert.deepEqual([r.level, r.category], ['care', 'violence'], `${t} → ${show(r)}`); };
+  const none = (t) => { for (const r of both(t)) assert.equal(r.level, 'none', `${t} → ${show(r)}`); };
+  // the harm itself after 'to', and the places and times a game word can name
+  for (const t of ['he beat me to a pulp', 'he beat me to death nearly', 'he beat me to the point i passed out', 'he beat me to the ground',
+    'he beat me within an inch of my life', 'he beat me in the pool', 'he beat me at the football', 'he beat me at football practice',
+    'he beat me in the heat of the moment', 'he beat me 2-3 times a week', 'he beat me with a golf club', 'he beat me with a belt last time',
+    'he beat me in the face and left marks', 'he beat me, missing my eye by inches', 'he beat me at the match', 'he beat me at night',
+    'he beat me in front of everyone at the final', 'my dad beats me every time we argue', 'he beats me if i lose at chess',
+    // whoever does it, and with what
+    "my mum's boyfriend beat me", 'a man beat me in the park', 'the kids at school beat me', 'some lads beat me', 'he used to beat me',
+    'he would beat me if i talked back', 'beat me with his fists', 'my little brother beat me']) violence(t);
+  // the evidence of a game: at / in + a game or a contest, a race to somewhere, home, on points, by so much, fair and square, a score
+  for (const t of ['he beat me at cards', 'she beat me at pool', 'he beat me at darts', 'he beat me at football', 'he beat me in the quiz',
+    'she beat me in the exam results', 'he beat me at scrabble', 'she beat me at monopoly', 'he beat me at arm wrestling', 'she beat me at a game of chess',
+    'he beat me in a race', 'she beat me at rock paper scissors', 'he beat me to the punch', 'he beat me on the leaderboard', 'she beat me on aggregate',
+    'he beat me by two goals', 'she beat me by 3 points', 'he beat me 6-2', 'she beat me 3-1 in the final', 'he beat me hands down', 'she beat me with ease',
+    'he beats me every time we play', 'she beat me in straight sets', 'he beat me in the semi-final', 'my friend beat me in the 100m',
+    'he beat me in the first round', 'she beat me with a perfect score', 'he beat me by miles', 'she beat me in the spelling bee',
+    'he beat me in the egg and spoon race', 'my brother beat me at video games', 'she beat me there by 10 minutes', 'he beat me back home',
+    'my brother beat me with a last-minute goal', 'she beat me in maths', 'he beat me in the polls',
+    // and what never named a person: 'beats me', a level, the computer
+    'it beats me why he did that', 'beats me', 'this level beat me again', 'the computer beat me at chess']) none(t);
+});
+
+test('lexicon gaps r3: a negated danger is blanked only when nothing after it turns the meaning', () => {
+  const crisis = (t) => { for (const r of both(t)) assert.deepEqual([r.level, r.category], ['crisis', 'someone-in-danger'], `${t} → ${show(r)}`); };
+  const none = (t) => { for (const r of both(t)) assert.equal(r.level, 'none', `${t} → ${show(r)}`); };
+  for (const t of ['nobody is in danger, I am', "no one is in danger, I'm the one who is", 'nobody is in danger though', 'nobody is in danger until he gets home',
+    'nobody is in danger anymore, he left but he is coming back', 'nobody is in danger, he is here with a knife', 'nobody is in danger now',
+    'no one is in danger apart from my mum', 'my kids are both in danger', 'they are all in danger']) crisis(t);
+  // purely negated, or followed by something calm (a calm subject, 'it', 'that', 'nobody'; 'just' / 'only' not before a person)
+  for (const t of ['nobody is in danger, everyone is fine', "no one is in danger, we're all safe", "no one is in danger, it's over",
+    'no one is in danger, the kids are asleep', "no one's in danger, i'm just stressed", 'nobody is in danger, I just wanted to talk',
+    "nobody is in danger, let's talk", 'there was a fire but nobody is in danger', "nobody's life is in danger, it's fine",
+    'nobody is in danger, my sister is safe', 'no one is actually in danger right now']) none(t);
+});
+
+test('lexicon gaps r3: a private part, a hand inside the clothes; a child at play, a baby at the breast, the speaker', () => {
+  const abuse = (t) => { for (const r of both(t)) assert.deepEqual([r.level, r.category], ['care', 'abuse'], `${t} → ${show(r)}`); };
+  const none = (t) => { for (const r of both(t)) assert.equal(r.level, 'none', `${t} → ${show(r)}`); };
+  for (const t of ['she touched my bum', 'he groped my breasts on the bus', 'my coach rubbed my thigh', 'he put his hand on my thigh',
+    'he put his hands inside my knickers', 'he fondled my breasts', 'you touched my privates', 'my cousin touched my privates',
+    // 'keeps touching me': an uncle, a cousin, a step-brother still read; a brother or a sister when something says it is unwanted
+    'my uncle keeps touching me', 'my cousin keeps touching me', 'my step-brother keeps touching me', 'my brother keeps touching me there',
+    'my brother keeps touching me at night', "my brother keeps touching me when we're alone", 'my sister keeps touching me, I hate it',
+    'my brother keeps touching me and I hate it']) abuse(t);
+  for (const t of ['she touched my bottom lip with her finger', 'I touched my toes', 'he touched my hand', 'my jeans rub my thighs',
+    'my shorts rub my inner thighs', 'my seatbelt rubbed my boobs', 'the baby keeps grabbing my boobs', 'my toddler touched my bum',
+    'I touched my vagina and it hurt', 'the baby keeps touching me and I love it', 'the toddler keeps touching me with her sticky fingers',
+    'my brother keeps touching me', 'he put his hand on my shoulder', 'she put her hand in my pocket']) none(t);
+});
+
+test('lexicon gaps r3: not breathing, as phones spell it and people say it; never an idiom or a pet', () => {
+  const crisis = (t) => { for (const r of both(t)) assert.deepEqual([r.level, r.category], ['crisis', 'someone-in-danger'], `${t} → ${show(r)}`); };
+  for (const t of ['its not breathing', 'hes stopped breathing', 'my 2 year old is not breathing', "my baby isn't breathing on my chest",
+    'she fell, hit her head and is not breathing', "she's not breathing on her own", 'my nan is unconscious and barely breathing',
+    'my husband just collapsed and isnt breathing', 'hes barely breathing', "she's not breathing yet"]) crisis(t);
+  for (const t of ["it's not breathing room, it's a cell", "he's not breathing heavily", 'my cat is not breathing', "i'm dizzy and not breathing right",
+    "she said I'm stressed and not breathing properly", "my mum isn't breathing down my neck any more"]) {
+    assert.equal(plain(t).level, 'none', `${t} → ${show(plain(t))}`);
+    assert.ok(['none', 'concern'].includes(main(t).level), `${t} → ${show(main(t))}`);
+  }
+  // a death told in the past keeps the loss path
+  for (const t of ['mum wasnt breathing when i found her', 'my grandad stopped breathing last night and died']) {
+    assert.equal(plain(t).level, 'none', t);
+    assert.deepEqual([main(t).level, main(t).category], ['concern', 'loss'], t);
+  }
 });
 
 // ----------------------------------------------------------------------------------------- the rules --
@@ -254,14 +407,22 @@ test('lexicon gaps: the rules stay plain data, without lookbehind, copied to the
   const app = readFileSync(new URL('../src/data/safety-lexicon.js', import.meta.url));
   const server = readFileSync(new URL('../server/another-angle/src/safety/shared-lexicon.js', import.meta.url));
   assert.ok(app.equals(server), 'npm run sync:lexicon in server/another-angle');
-  const all = [...HARM_LEXICON.idiomGuards, ...HARM_LEXICON.crisisOther, ...Object.values(HARM_LEXICON.care).flat()];
-  for (const src of all) assert.doesNotMatch(src, /\(\?<[=!]/, src);
+  // every list (round 3: the crisis, concern and harm-others lists too), and each one compiles
+  const all = [...HARM_LEXICON.idiomGuards, ...HARM_LEXICON.crisis, ...HARM_LEXICON.crisisOther, ...Object.values(HARM_LEXICON.care).flat(),
+    ...CONCERN_LEXICON, ...HARM_OTHERS_LEXICON];
+  assert.ok(all.length > 200);
+  for (const src of all) { assert.doesNotMatch(src, /\(\?<[=!]/, src); assert.doesNotThrow(() => new RegExp(src, 'i')); }
+  assert.doesNotMatch(app.toString(), /\(\?<[=!]/);
   // input built to make the new rules work hard (near misses of each), compared with the first pass measured alongside, as
   // tests/safety-scope-round4.test.mjs does
   const median = (xs) => xs.sort((a, b) => a - b)[xs.length >> 1];
   for (const seed of ['no members of my family at home i know are ', 'none of the people at the party in the house ', 'my best friend next to the man is not breat ',
     'he beat me at at in on to the ', 'he beat me in the by two at ', 'touched me under my touched me there and ', 'nobody of my family in the house is in danger except ',
-    "she's not breathing she's still not ", 'keeps touching me keeps touching me on the ', 'made me touch her made me touch his ']) {
+    "she's not breathing she's still not ", 'keeps touching me keeps touching me on the ', 'made me touch her made me touch his ',
+    // round 3: the rest of the message read after each negated danger, the game evidence, the subject left out, the people who beat
+    'nobody is in danger, ', "no one's life is in danger and ", 'she collapsed and he fell and ', 'the old man on the floor next to the ',
+    'hes shes theyre its mums ', 'he beat me with a with the perfect better ', 'the older boys at school beat me in ', "my mum's boyfriend's friend's ",
+    'touched my touched my private ', 'he put his hand down my ', 'the baby keeps touching me and ', 'beat me by two by a by ']) {
     const t = seed.repeat(Math.ceil(2000 / seed.length)).slice(0, 2000);
     checkText(t); checkTextFirstPass(t);
     const full = [], base = [];

@@ -174,9 +174,9 @@ test('r3-words 7: the wish to follow keeps its recall: someone unknown who died,
 });
 
 test('r3-words 8: the safety lexicons are untouched (byte-identical, as approved)', () => {
-  // (the hash moved once since, for the lexicon-gaps pass of 14 Oct 2026: tests/lexicon-gaps.test.mjs)
+  // (the hash moved since for the lexicon-gaps pass of 14 Oct 2026 and its round 3: tests/lexicon-gaps.test.mjs)
   const app = readFileSync(new URL('../src/data/safety-lexicon.js', import.meta.url));
   const server = readFileSync(new URL('../server/another-angle/src/safety/shared-lexicon.js', import.meta.url));
-  assert.match(createHash('sha256').update(app).digest('hex'), /^8098b501eb527d99/);
+  assert.match(createHash('sha256').update(app).digest('hex'), /^cafd8b3a868c8ea0/);
   assert.ok(app.equals(server));
 });
