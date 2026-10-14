@@ -15,6 +15,18 @@
 // fetched rather than imported, and rendered by engine/runtime/direction-runtime.js.
 
 import { adaptV2 } from './runtime/adapter-v2.js';
+import { createDirectionRuntime } from './runtime/direction-runtime.js';
+
+/**
+ * A compiled composer direction as a registry module: data fetched, not
+ * imported. Entries call it with a constant path, as import() entries do.
+ */
+async function loadDirectionJson(rel) {
+  const res = await fetch(new URL(rel, import.meta.url));
+  if (!res.ok) throw new Error(`direction ${rel}: HTTP ${res.status}`);
+  const direction = await res.json();
+  return { default: { meta: direction.meta }, direction };
+}
 
 export const DIRECTIONS = Object.freeze({
   'my-brain-at-2am-v2': {
@@ -22,6 +34,8 @@ export const DIRECTIONS = Object.freeze({
     load: () => import('../videos/my-brain-at-2am-v2.js'),
     meta: { runtime: 'v2', score: 'soundtrack-v2' },
   },
+  // T01 composed from specs/golden/t01-v2.json (WP-03), rendered by runtime v3: bit-identical to the v2 route
+  'composer/t01-v2': { src: '../specs/golden/t01-v2.direction.json', load: () => loadDirectionJson('../specs/golden/t01-v2.direction.json') },
   // test fixtures (engine/dev/fixtures): small, fast directions for the farm's own tests
   'dev/text-a': { src: './dev/fixtures/text-a.js', load: () => import('./dev/fixtures/text-a.js'), dev: true },
   'dev/text-b': { src: './dev/fixtures/text-b.js', load: () => import('./dev/fixtures/text-b.js'), dev: true },
@@ -34,7 +48,8 @@ export const DIRECTIONS = Object.freeze({
 export const RUNTIMES = Object.freeze({
   v2: adaptV2,
   v3: (mod, meta) => {
-    throw new Error(`direction ${meta.id}: runtime 'v3' (composer direction.json) is not installed yet; engine/runtime/direction-runtime.js arrives with WP-03`);
+    if (!mod.direction) throw new Error(`direction ${meta.id}: runtime 'v3' renders a composer direction.json; this module carries none`);
+    return createDirectionRuntime({ direction: mod.direction });
   },
 });
 

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hm-tuning-matrix/1",
+  "title": "Tuning matrix (library/tuning-matrix.json)",
+  "description": "PHASE2-PLAN data model §4: { <moveId>: { version, cells: { <mallow>: cell } } }. version = sha256 of the move's compiled output on the canonical fixtures (composer/versions.mjs).",
+  "type": "object",
+  "required": ["schema"],
+  "properties": { "schema": { "const": "hm-tuning-matrix/1" }, "$doc": { "type": "string" } },
+  "additionalProperties": {
+    "type": "object",
+    "required": ["version", "cells"],
+    "additionalProperties": false,
+    "properties": {
+      "version": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+      "cells": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "required": ["status", "tuning", "ranges", "evidence", "flags"],
+          "properties": {
+            "status": { "enum": ["untuned", "candidate", "approved"] },
+            "tuning": { "type": "object" },
+            "ranges": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 } },
+            "evidence": { "type": "object", "required": ["approvedVideos", "testCard", "extremesSheet", "junctions"] },
+            "approvedBy": { "type": "string" }, "approvedOn": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+            "flags": { "type": "array", "items": { "type": "string" } },
+            "note": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

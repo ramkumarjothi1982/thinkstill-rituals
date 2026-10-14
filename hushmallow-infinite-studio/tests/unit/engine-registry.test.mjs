@@ -14,7 +14,9 @@ import { SCORES, scoreJob } from '../../render/mux.mjs';
 test('every registry entry: src exists, and its import thunk names exactly that path', () => {
   for (const [id, e] of Object.entries(DIRECTIONS)) {
     assert.ok(fs.existsSync(path.resolve(STUDIO, 'engine', e.src)), `${id}: ${e.src}`);
-    assert.ok(e.load.toString().includes(`import('${e.src}')`), `${id}: load() must import '${e.src}' with a constant specifier`);
+    // modules are imported, compiled composer directions (JSON) fetched, both with a constant path
+    const call = e.src.endsWith('.json') ? `loadDirectionJson('${e.src}')` : `import('${e.src}')`;
+    assert.ok(e.load.toString().includes(call), `${id}: load() must be ${call} with a constant specifier`);
   }
   assert.equal(DIRECTIONS['my-brain-at-2am-v2'].src, '../videos/my-brain-at-2am-v2.js', 'the frozen module, used as is');
 });
@@ -30,7 +32,7 @@ test('meta: the registry supplies what a module cannot carry; conflicts and a mi
   assert.equal(effectiveMeta('plain-id', {}, { runtime: 'v2' }).runtime, 'v2', 'and an id without the suffix can be v2');
 });
 
-test('runtimes: v2 wraps a v2-contract module; v3 is routed but not installed before WP-03', () => {
+test('runtimes: v2 wraps a v2-contract module; v3 renders a composer direction (WP-03)', () => {
   assert.deepEqual(Object.keys(RUNTIMES), ['v2', 'v3']);
   const mod = { default: { meta: {}, setup() {}, state() { return 1; } } };
   const d = adaptV2(mod, { id: 't', fps: 30, duration: 1, runtime: 'v2' });
@@ -40,7 +42,7 @@ test('runtimes: v2 wraps a v2-contract module; v3 is routed but not installed be
   assert.equal(d.subframes, null);
   assert.throws(() => adaptV2({ default: { setup() {} } }, { id: 't', fps: 30, duration: 1 }), /must export state/);
   assert.throws(() => adaptV2({ default: { setup() {}, state() {} } }, { id: 't', fps: 0, duration: 1 }), /meta.fps/);
-  assert.throws(() => RUNTIMES.v3({}, { id: 'x' }), /runtime 'v3'.*WP-03/);
+  assert.throws(() => RUNTIMES.v3({}, { id: 'x' }), /runtime 'v3' renders a composer direction\.json; this module carries none/);
 });
 
 test('the score is chosen from meta.score, not from the direction id', async () => {

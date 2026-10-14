@@ -1,0 +1,250 @@
+{
+  "schema": "hm-tuning-matrix/1",
+  "$doc": "One cell per (move x Mallow). status: untuned | candidate | approved. A move's version is the sha256 of its compiled output on the canonical fixture (specs/golden/t01-v2.json, see composer/versions.mjs); when it changes, the move's cells drop to candidate (tests/unit/composer-library.test.mjs refuses a stale version). Promotion to approved needs a clean G-DIR on the fixtures AND an owner-ticked min/default/max extremes sheet (OWNER-DECISIONS D2). ranges: {param: [min, max, default]}; numeric tuning values collapse to the single approved v2 point except where a range is given.",
+  "acting/idle-breath": {
+    "version": "sha256:1201a7ca1ac6671eadb6d3fdecdf7791a5d26d6d02e34b8c055451f5864839e3",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {
+          "amp": 0.03,
+          "glow": 0.25
+        },
+        "ranges": {
+          "amp": [0.03, 0.03, 0.03],
+          "glow": [0.25, 0.25, 0.25]
+        },
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  },
+  "G-JOLT": {
+    "version": "sha256:1cfc4619768521a2c3b5baa76a6093c156ea1c2756cfa1eea221668b502462e6",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {
+          "height": 165,
+          "eyePop": 1.32
+        },
+        "ranges": {
+          "height": [165, 165, 165],
+          "eyePop": [1.32, 1.32, 1.32],
+          "intensity": [0.8, 1, 1]
+        },
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": ["D2-extremes-sheet-pending"],
+        "note": "approved at the v2 point (intensity 1); intensities 0.8-1 the planner samples follow the move's scaling law and await the D2 extremes sheet"
+      }
+    }
+  },
+  "acting/aftermath-startled": {
+    "version": "sha256:2b2e262e723ec07736e4f894465f0e622d71b8cc48c4ec2cd55f7d9a19f4ab06",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {
+          "glance": 0.75,
+          "pant": 0.012
+        },
+        "ranges": {
+          "glance": [0.75, 0.75, 0.75],
+          "pant": [0.012, 0.012, 0.012]
+        },
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  },
+  "M-ORBIT": {
+    "version": "sha256:6a937c4e8a8d682bc61cb45ff8c10ee52405d36f1898f75a19bfb0803430d5c2",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {
+          "slots": [3.141592653589793, 0.08, -1.5707963267948966],
+          "turns": 3.18
+        },
+        "ranges": {
+          "turns": [3.18, 3.18, 3.18]
+        },
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  },
+  "TURN-SQUEEZE": {
+    "version": "sha256:7532dcc902425ae7249cfd466b264cd78d1ececf5f6ad6c655fdff2149fd2127",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {},
+        "ranges": {},
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  },
+  "R-BREATH": {
+    "version": "sha256:c1604d2887652ed040b86a374033dbfc5eedf5653fff00096569c8d80137fc0b",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {
+          "lift": 36,
+          "swell": 0.21,
+          "exhaleDur": 1.9,
+          "moteSeed": 101,
+          "moteSeedStep": 17,
+          "motesPer": 8
+        },
+        "ranges": {
+          "lift": [36, 36, 36],
+          "swell": [0.21, 0.21, 0.21],
+          "exhaleDur": [1.9, 1.9, 1.9],
+          "moteSeed": [101, 101, 101],
+          "moteSeedStep": [17, 17, 17],
+          "motesPer": [8, 8, 8]
+        },
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  },
+  "close/content-card": {
+    "version": "sha256:46b4647cb92d4bc00e4717e37fc4c5099cec869721eb2e75f68493dc594c8dd2",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {
+          "skyGaze": [0.28, -0.38]
+        },
+        "ranges": {},
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  },
+  "LP-RETURN": {
+    "version": "sha256:44803cbe77c747d4d76fe3ac99228bfd008732f08dea5c0b07e04e79b13568e4",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {},
+        "ranges": {},
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  },
+  "C-DRIFT-IN": {
+    "version": "sha256:1572975b27aafd32a7730d960e0d60e8877b4fe8779255f52c6c09481754e094",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {
+          "push": 1.075,
+          "follow": 0.2
+        },
+        "ranges": {
+          "push": [1.075, 1.075, 1.075],
+          "follow": [0.2, 0.2, 0.2]
+        },
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  },
+  "A-COLD-DIP-WARM": {
+    "version": "sha256:1b042b1a2fca4a7b5450252d37375e3927e0d114d00f01a3ba05bafdd12a4a75",
+    "cells": {
+      "noomi": {
+        "status": "approved",
+        "tuning": {},
+        "ranges": {},
+        "evidence": {
+          "approvedVideos": ["my-brain-at-2am-v2"],
+          "testCard": null,
+          "extremesSheet": null,
+          "junctions": []
+        },
+        "approvedBy": "owner",
+        "approvedOn": "2026-10-13",
+        "flags": [],
+        "note": "approved at the v2 point"
+      }
+    }
+  }
+}

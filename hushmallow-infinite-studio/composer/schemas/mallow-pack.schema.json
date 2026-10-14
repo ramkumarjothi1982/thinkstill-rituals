@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hm-mallow-pack/1",
+  "title": "Character pack (library/mallows/<id>.json)",
+  "description": "PHASE2-PLAN data model §2. Read by composer/lib-node.mjs and engine/runtime/direction-runtime.js.",
+  "type": "object",
+  "required": ["schema", "id", "version", "status", "registry", "art", "measured", "placement", "body", "face", "light", "personality", "sound", "realms", "provides"],
+  "properties": {
+    "schema": { "const": "hm-mallow-pack/1" },
+    "id": { "type": "string", "pattern": "^[a-z]+$" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "status": { "enum": ["approved", "candidate", "blocked"] },
+    "registry": { "type": "string" },
+    "art": {
+      "type": "object",
+      "required": ["source", "pristine", "clean", "normal", "face", "cropOffset", "size", "sha256"],
+      "properties": {
+        "size": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "minItems": 2, "maxItems": 2 },
+        "cropOffset": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+        "sha256": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+      }
+    },
+    "measured": {
+      "type": "object",
+      "required": ["silhouette"],
+      "properties": { "silhouette": { "type": "object", "required": ["x0", "x1", "top", "baseY", "cx", "halfW", "w", "h", "sha256"] } }
+    },
+    "placement": { "type": "object", "required": ["baseX", "baseY", "scale", "maxDisplayScale", "thoughtOrigin", "centre"] },
+    "body": {
+      "type": "object",
+      "required": ["lag", "cols", "rows", "bins", "limits"],
+      "properties": { "limits": { "type": "object", "required": ["heightMin", "stretchMax", "shrinkMin"] } }
+    },
+    "face": {
+      "type": "object",
+      "required": ["style", "mouth", "rigScale", "neutral", "channels", "eyeGate", "gaze", "materials", "intents"],
+      "properties": {
+        "style": { "enum": ["closed-tube", "open-socket", "spiral", "heavy-lid"] },
+        "neutral": { "type": "object", "additionalProperties": { "type": "number" } },
+        "eyeGate": { "type": ["array", "null"], "items": { "type": "number", "minimum": 0 }, "minItems": 2, "maxItems": 2 },
+        "gaze": { "type": "object", "required": ["lead", "gain", "x", "y"] },
+        "intents": { "type": "object", "additionalProperties": { "type": "object", "additionalProperties": { "type": "number" } } }
+      }
+    },
+    "light": { "type": "object", "required": ["sss"] },
+    "personality": {
+      "type": "object",
+      "required": ["amp", "tempo", "reactLag", "blinkRate", "microNoise"],
+      "properties": {
+        "amp": { "type": "number", "minimum": 0.3, "maximum": 2 }, "tempo": { "type": "number", "minimum": 0.5, "maximum": 2 },
+        "reactLag": { "type": "number", "minimum": -0.1, "maximum": 0.3 }, "microNoise": { "type": "number", "minimum": 0, "maximum": 0.05 },
+        "blinkRate": { "type": ["array", "null"], "items": { "type": "number", "minimum": 0.5 }, "minItems": 2, "maxItems": 2 }
+      }
+    },
+    "sound": { "type": "object", "required": ["kit", "root", "scale", "bed"] },
+    "realms": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "provides": { "type": "object", "required": ["face", "body"] }
+  }
+}

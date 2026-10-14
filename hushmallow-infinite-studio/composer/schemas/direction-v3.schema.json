@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hm-direction/3",
+  "title": "Direction contract v3 (composer → engine runtime v3)",
+  "description": "Written by composer/compose.js, rendered by engine/runtime/direction-runtime.js through composer/scene.js. Every value is explicit: the runtime draws no random number. Frozen at the end of WP-03; docs/ARCHITECTURE.md §2 explains each field.",
+  "type": "object",
+  "required": ["schema", "meta", "anchors", "mallow", "realm", "channels", "body", "face", "props", "text", "cues", "audio", "layout", "probes", "moves", "provenance"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "hm-direction/3" },
+    "meta": {
+      "type": "object",
+      "required": ["id", "title", "fps", "duration", "width", "height", "subframes", "subframeMax", "subframePx", "shutter", "P", "runtime", "score", "profile", "internal", "layout", "template", "spec", "fingerprint", "composer"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 }, "title": { "type": "string" },
+        "fps": { "type": "number", "minimum": 1 }, "duration": { "type": "number", "minimum": 1 },
+        "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
+        "subframes": { "type": "integer", "minimum": 1 }, "subframeMax": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "subframePx": { "type": "number", "minimum": 0.1 }, "shutter": { "type": "number", "minimum": 0, "maximum": 1 },
+        "P": { "type": "number", "minimum": 0 },
+        "runtime": { "const": "v3" }, "score": { "type": "string" },
+        "profile": { "enum": ["final", "draft", "proof", "exact"] }, "internal": { "type": "boolean" },
+        "layout": { "enum": ["page", "shim"] }, "template": { "type": "string" }, "spec": { "type": "string" },
+        "fingerprint": { "type": ["string", "null"] }, "composer": { "type": "string" }
+      }
+    },
+    "anchors": { "type": "object", "additionalProperties": { "type": "number" } },
+    "mallow": {
+      "type": "object",
+      "required": ["id", "registry", "rigScale", "assets", "artSize", "placement", "silhouette", "faceSpec", "faceStyle", "body", "limits", "light"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" }, "registry": { "type": "string" }, "rigScale": { "type": "number" },
+        "assets": { "type": "object", "required": ["pristine", "clean", "normal", "face"], "additionalProperties": false, "properties": { "pristine": { "type": "string" }, "clean": { "type": "string" }, "normal": { "type": "string" }, "face": { "type": "string" } } },
+        "artSize": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+        "placement": { "type": "object", "required": ["baseX", "baseY", "scale"], "additionalProperties": false, "properties": { "baseX": { "type": "number" }, "baseY": { "type": "number" }, "scale": { "type": "number", "minimum": 0.01, "maximum": 1 } } },
+        "silhouette": { "type": "object", "required": ["x0", "x1", "top", "baseY", "cx", "halfW", "w", "h"] },
+        "faceSpec": { "type": "object", "required": ["eyes", "brows", "mouth", "cheeks"] },
+        "faceStyle": { "enum": ["closed-tube", "open-socket", "spiral", "heavy-lid"] },
+        "body": { "type": "object", "required": ["lag", "cols", "rows"], "additionalProperties": false, "properties": { "lag": { "type": "number" }, "cols": { "type": "integer" }, "rows": { "type": "integer" } } },
+        "limits": { "type": "object", "required": ["heightMin", "stretchMax", "shrinkMin"] },
+        "light": { "type": "object", "required": ["dir", "sss"], "additionalProperties": false, "properties": { "dir": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }, "sss": { "type": "number" } } }
+      }
+    },
+    "realm": {
+      "type": "object",
+      "required": ["id", "tod", "palette", "world", "post", "jitter"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" }, "tod": { "type": "string" },
+        "palette": { "type": "object", "required": ["base", "tense", "resolved"] },
+        "world": { "type": "object", "required": ["horizonY", "moon", "fresnel", "reflAmt", "shadow", "shadowFall", "contactSpread", "skyParallax", "skyCentreX", "rippleLife"] },
+        "post": { "type": "object", "required": ["bloom", "bloomThresh", "contrast", "vignette", "vignetteTension", "grain"] },
+        "jitter": { "type": ["object", "null"] }
+      }
+    },
+    "channels": { "type": "object", "additionalProperties": { "$ref": "#/$defs/channel" } },
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "squash": { "$ref": "#/$defs/layers" }, "inflate": { "$ref": "#/$defs/layers" }, "lean": { "$ref": "#/$defs/layers" }, "sway": { "$ref": "#/$defs/layers" },
+        "shimmer": { "$ref": "#/$defs/layers" }, "shimPhase": { "$ref": "#/$defs/layers" }, "lift": { "$ref": "#/$defs/layers" }
+      }
+    },
+    "face": { "type": "array", "items": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2 } },
+    "props": { "type": "array", "items": { "$ref": "#/$defs/prop" } },
+    "text": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+    "cues": { "type": "array", "items": { "type": "object", "required": ["t", "type", "data", "by"], "additionalProperties": false, "properties": { "t": { "type": "number", "minimum": 0 }, "type": { "type": "string", "pattern": "^[a-z_]+$" }, "data": { "type": "object" }, "by": { "type": "string" } } } },
+    "audio": { "type": "object", "required": ["pan"] },
+    "layout": { "type": "object", "required": ["measuredBy", "hook"] },
+    "probes": { "type": "array", "items": { "type": "object", "required": ["label", "t"], "additionalProperties": false, "properties": { "label": { "type": "string" }, "t": { "type": "number" } } } },
+    "moves": { "type": "array", "items": { "type": "object", "required": ["slot", "id", "rank", "params", "published", "cell"] } },
+    "provenance": { "type": "object", "required": ["composer", "cells", "pack", "realm", "tuning", "props"] }
+  },
+  "$defs": {
+    "layers": { "type": "array", "items": { "type": "string", "pattern": "^body\\.[a-zA-Z.]+(#(amp|phase))?$" } },
+    "channel": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["track", "spline", "impulses", "hops", "blinks", "shimmer", "ripples", "noise", "sine", "envscale", "ramp", "pulse", "const", "expr"] },
+        "keys": { "type": "array", "items": { "type": "object", "required": ["t", "v", "by"] } },
+        "list": { "type": "array", "items": { "type": "object", "required": ["by"] } },
+        "windows": { "type": "array", "items": { "type": "object", "required": ["by", "from", "to"], "additionalProperties": false, "properties": { "by": { "type": "string" }, "from": { "type": "number" }, "to": { "type": "number" } } } },
+        "v0": { "type": "number" }, "f": { "type": "number" }, "z": { "type": "number" }, "by": { "type": "string" }
+      }
+    },
+    "prop": {
+      "type": "object",
+      "required": ["id", "controller", "params", "items", "channels", "style"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }, "controller": { "type": "string" }, "params": { "type": "object" },
+        "items": { "type": "array", "items": { "type": "object", "required": ["slot", "born", "dissolve", "text", "lines", "tex", "layout"] } },
+        "channels": { "type": "object" }, "style": { "type": "object", "required": ["glass", "text"] }, "motes": { "type": ["object", "null"] }, "audio": { "type": "boolean" }
+      }
+    },
+    "text": {
+      "type": "object",
+      "required": ["id", "kind", "z", "opts", "by"],
+      "properties": {
+        "id": { "type": "string" }, "kind": { "enum": ["textblock", "logocard"] }, "z": { "type": "integer" }, "opts": { "type": "object" },
+        "drawFrom": { "type": "number" }, "widths": { "type": "array", "items": { "type": "number" } }, "readable": { "type": "object" }, "by": { "type": "string" }
+      }
+    }
+  }
+}

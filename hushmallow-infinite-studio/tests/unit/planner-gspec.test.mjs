@@ -26,9 +26,10 @@ const openSpec = (constraints, seed = 1) => planSpec({ ...open, mode: 'review', 
 test('a planned spec passes; warnings only for files later packages create', () => {
   const g = checkSpec(base, real);
   assert.equal(g.pass, true, JSON.stringify(g.errors));
-  const allowed = new Set(['assets-manifest-missing', 'pins:pack']);
+  const allowed = new Set(['assets-manifest-missing']);
   assert.deepEqual(g.warnings.filter((w) => !allowed.has(w.rule)), []);
-  assert.ok(g.warnings.some((w) => w.rule === 'pins:pack'), 'library/mallows/noomi.json is pinned once WP-03 creates it');
+  // WP-03 created the Noomi pack and the Moonmilk Cove preset: a plan pins both by sha256, so no pins:pack warning remains
+  assert.ok(Object.values(base.pins.packs).every((p) => /^[0-9a-f]{64}$/.test(p.sha256)), JSON.stringify(base.pins.packs));
   assert.ok(g.metrics.ms < 100);
 });
 

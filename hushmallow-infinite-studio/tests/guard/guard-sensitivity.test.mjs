@@ -130,6 +130,16 @@ test('outside-writes guard (git): reports edits, new files and renames outside t
   assert.equal(outside().length, 1);
   git('mv', 'serve.mjs', 'studio/render/serve.mjs');
   assert.deepEqual(outside(), []);
+  // a linked worktree checked out inside the repository (as the agent harness does under .claude/worktrees/)
+  // is another checkout with its own guards, not a write; anything else next to it still is
+  git('worktree', 'add', '-q', '--detach', path.join(repo, '.claude/worktrees/wp-x'));
+  assert.deepEqual(outside(), []);
+  write('.claude/notes.txt', 'not a worktree\n');
+  assert.deepEqual(outside().map((l) => l.slice(3)), ['.claude/notes.txt']);
+  fs.rmSync(path.join(repo, '.claude/notes.txt'));
+  git('worktree', 'remove', '--force', path.join(repo, '.claude/worktrees/wp-x'));
+  fs.rmSync(path.join(repo, '.claude'), { recursive: true, force: true });
+  assert.deepEqual(outside(), []);
 });
 
 test('write audit: fires on writes, deletions and git config changes outside the allowed places after arming; verifies npm cache entries', async () => {

@@ -131,6 +131,9 @@ export const GIT_INTERNALS = Object.freeze([
 // inside each linked worktree's admin directory (<git>/worktrees/<name>/)
 const WORKTREE_INTERNALS = ['HEAD', 'ORIG_HEAD', 'FETCH_HEAD', 'index', 'logs', 'commondir', 'gitdir', 'locked', 'COMMIT_EDITMSG',
   'MERGE_HEAD', 'MERGE_MSG', 'MERGE_MODE', 'AUTO_MERGE', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer', 'BISECT_LOG'];
+// written into each linked worktree's admin directory by the agent harness when it creates the
+// worktree (the commit the worktree was branched from); not studio code, never executed by git
+const HARNESS_WORKTREE_FILES = ['CLAUDE_BASE'];
 /** git config keys that git itself rewrites in normal use and that cannot make git run a program. */
 export const ROUTINE_GIT_CONFIG = Object.freeze([
   /^branch\..+\.(remote|merge|rebase|pushremote|description)$/,
@@ -176,6 +179,7 @@ export function allowedRoots({ studio = STUDIO, work = WORK, layout = gitLayout(
   const out = [{ path: studio, why: 'this studio' }, { path: work, why: 'WORK (shared scratch)' }];
   for (const n of GIT_INTERNALS) out.push({ path: path.join(layout.gitDir, n), why: 'git data written by git commands' });
   for (const d of layout.worktreeDirs) for (const n of WORKTREE_INTERNALS) out.push({ path: path.join(d, n), why: 'git worktree data' });
+  for (const d of layout.worktreeDirs) for (const n of HARNESS_WORKTREE_FILES) out.push({ path: path.join(d, n), why: 'agent harness worktree base marker' });
   for (const wt of layout.otherWorktrees) out.push({ path: wt, why: 'another worktree (checked by its own guards)' });
   return out;
 }

@@ -1,0 +1,65 @@
+{
+  "schema": "hm-realm-preset/1",
+  "$doc": "Realm preset for Moonmilk Cove (lake family, mirror ground). Only the late-night time of day exists, exactly the approved v2 world (videos/my-brain-at-2am-v2.js PAL, WORLD, state()). The three looks of a time of day are blended by the world dials: tension (v2 coldAt) toward 'tense', warmth (v2 warmAt) toward 'resolved'. Colours are sRGB hex, linearised with a 2.2 power; tints act in display space. Schema: composer/schemas/realm-preset.schema.json.",
+  "id": "moonmilk-cove",
+  "version": "1.0.0",
+  "status": "approved",
+  "evidence": "approved v2 world (late night)",
+  "family": "lake",
+  "ground": "mirror",
+  "source": "app:hushmallow/src/world/realms/moonmilk-cove.js (set pieces, ported later: WP-14)",
+  "tods": {
+    "late-night": {
+      "status": "approved",
+      "palette": {
+        "base": {
+          "zenith": "#05071c", "high": "#12164a", "horizon": "#4a3f8e", "haze": "#8b7fcf", "moonCol": "#fbf7ff", "haloCol": "#a59cff",
+          "cloudLit": "#c9c2ff", "cloudDark": "#1d1a4a", "hillCol": "#141238", "waterNear": "#070823", "waterFar": "#2a2768",
+          "key": "#f7f9ff", "rim": "#a9a2ff", "ambient": "#3a3480", "specCol": "#d9e6ff", "glowCol": "#ffcf9a",
+          "n": { "moonGlow": 1.0, "stars": 1.0, "clouds": 0.5, "exposure": 1.0, "sat": 1.03, "rimAmt": 0.32, "spec": 0.5, "glow": 0 },
+          "shadowTint": [0.95, 0.97, 1.05], "highTint": [1, 1, 1]
+        },
+        "tense": {
+          "zenith": "#03040d", "high": "#0a0d27", "horizon": "#262b56", "haze": "#4f5689", "moonCol": "#dfe6ff", "haloCol": "#7882c2",
+          "cloudLit": "#7f87bd", "cloudDark": "#0e1029", "hillCol": "#090a1e", "waterNear": "#04050e", "waterFar": "#181c40",
+          "key": "#c3cdee", "rim": "#8592dc", "ambient": "#1b2149", "specCol": "#c9d6ff", "glowCol": "#ffcf9a",
+          "n": { "moonGlow": 0.5, "stars": 0.3, "clouds": 0.98, "exposure": 0.93, "sat": 0.88, "rimAmt": 0.26, "spec": 0.42, "glow": 0 },
+          "shadowTint": [0.92, 0.97, 1.08], "highTint": [0.97, 0.99, 1.03]
+        },
+        "resolved": {
+          "zenith": "#0a0820", "high": "#281c56", "horizon": "#875c9b", "haze": "#d9a2c2", "moonCol": "#fff4dc", "haloCol": "#ffc5a3",
+          "cloudLit": "#ffd6c2", "cloudDark": "#35275a", "hillCol": "#21153c", "waterNear": "#0c0a23", "waterFar": "#45316b",
+          "key": "#fffaf4", "rim": "#ffc09a", "ambient": "#4a3a70", "specCol": "#fff0dc", "glowCol": "#ffd2a0",
+          "n": { "moonGlow": 1.35, "stars": 1.25, "clouds": 0.16, "exposure": 1.0, "sat": 1.04, "rimAmt": 0.5, "spec": 0.55, "glow": 0.07 },
+          "shadowTint": [0.98, 0.96, 1.05], "highTint": [1.04, 1.0, 0.95]
+        }
+      },
+      "celestial": { "kind": "moon", "x": 850, "y": 590, "r": 50 },
+      "light": { "dir": [0.45, 0.55, 0.7], "note": "key light from the moon, upper right" },
+      "text": "night-moonlit"
+    }
+  },
+  "constants": {
+    "world": {
+      "horizonY": 1150, "fresnel": 1.0, "reflAmt": 0.62, "shadow": 0.55, "shadowFall": 45, "contactSpread": 0.5,
+      "skyParallax": 0.35, "skyCentreX": 540, "rippleLife": 6
+    },
+    "note": "shadow · exp(−lift·scale / shadowFall); contact half-width · (1 + contactSpread · max(0, squash)); sky camera parallax about skyCentreX; ripples live rippleLife seconds."
+  },
+  "post": { "bloom": 0.14, "bloomThresh": 0.85, "contrast": 1.04, "vignette": 0.38, "vignetteTension": 0.08, "grain": 0.018 },
+  "mood": {
+    "tension": "palette base → tense; vignette + vignetteTension · tension",
+    "warmth": "palette → resolved",
+    "agitation": "water chop (renderer uniform)",
+    "note": "v2's coldAt is tension and warmAt is warmth (PHASE2-PLAN realm preset)"
+  },
+  "transform": { "kind": "warm-bloom", "note": "the ritual's release warms the realm (R-BREATH warm_bloom); the app's aurora/tide-still transform arrives with the port (WP-14)" },
+  "weather": ["clear"],
+  "dressing": [],
+  "dressingBudget": { "maxItems": 2, "maxCostMs": 60 },
+  "plates": [],
+  "budget": { "worldMsFinal": 250, "worldMsWorst": 350 },
+  "sound": { "bed": "moonmilk-cove" },
+  "reference": [],
+  "provides": ["ground.mirror", "world.tension", "world.warmth", "world.agitation", "world.ripples", "celestial.moon"]
+}

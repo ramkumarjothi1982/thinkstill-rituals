@@ -1,0 +1,3762 @@
+{
+ "schema": "hm-direction/3",
+ "meta": {
+  "id": "T01-noomi-late-night-15s-076e81",
+  "title": "My Brain at 2 AM",
+  "fps": 30,
+  "duration": 15,
+  "width": 1080,
+  "height": 1920,
+  "subframes": 3,
+  "subframeMax": 16,
+  "subframePx": 2,
+  "shutter": 0.4,
+  "P": 0,
+  "runtime": "v3",
+  "score": "soundtrack-v2",
+  "profile": "final",
+  "internal": true,
+  "layout": "page",
+  "template": "T01-brain-at-2am",
+  "spec": "T01-noomi-late-night-15s-076e81",
+  "fingerprint": "sha256:076e81ef6738e273b6e530b0f9ed63e9d44ee488bb1086949f34c0f56befa882",
+  "composer": "3.0.0"
+ },
+ "anchors": {
+  "COVER": 0,
+  "ANTIC": 0.26,
+  "GAG": 0.4,
+  "IMPACT": 0.98,
+  "HOOK_OUT": 2.72,
+  "L1": 3,
+  "L2": 4,
+  "L3": 5,
+  "PEAK0": 5.6,
+  "PEAK1": 7,
+  "TURN": 7,
+  "RITUAL0": 7.4,
+  "RITUAL1": 11.5,
+  "OPEN": 11.7,
+  "RESOLVE": 11.9,
+  "LOGO": 12.6,
+  "SETTLE": 13.5,
+  "CARD_OUT": 14.3,
+  "HOOK_IN": 14.66,
+  "END": 15,
+  "breathPeriod": 3.75,
+  "squeeze": 6.98,
+  "relax": 7.32,
+  "inhale": 7.42,
+  "crest": 8.9,
+  "exhale": 9.2,
+  "dissolve0": 9.42,
+  "dissolve1": 9.62,
+  "dissolve2": 9.82,
+  "open": 11.7,
+  "tagline": 11.9,
+  "logo": 12.6,
+  "slowBlink": 12.8,
+  "sleep": 13.5,
+  "cardOut": 14.3
+ },
+ "mallow": {
+  "id": "noomi",
+  "registry": "noomi",
+  "rigScale": 2.7,
+  "assets": {
+   "pristine": "assets/noomi/noomi-art.png",
+   "clean": "assets/noomi/noomi-clean.png",
+   "normal": "assets/noomi/noomi-normal.png",
+   "face": "assets/noomi/noomi-face.json"
+  },
+  "artSize": [
+   1199,
+   1110
+  ],
+  "placement": {
+   "baseX": 540,
+   "baseY": 1300,
+   "scale": 0.56
+  },
+  "silhouette": {
+   "x0": 31,
+   "x1": 1164,
+   "top": 28,
+   "baseY": 1078,
+   "cx": 597.5,
+   "halfW": 566.5,
+   "w": 1133,
+   "h": 1050
+  },
+  "faceSpec": {
+   "line": "#0a1450",
+   "eyes": {
+    "L": {
+     "x": 386.20000000000005,
+     "y": 607.7,
+     "hw": 105.1,
+     "sag": 41.69999999999993,
+     "lw": 40.8,
+     "tilt": -1.599999999999966,
+     "cxOff": -5.600000000000023,
+     "r": 99.1,
+     "irisR": 64.80000000000001,
+     "irisOff": [
+      8.100000000000001,
+      0
+     ]
+    },
+    "R": {
+     "x": 819.25,
+     "y": 607.25,
+     "hw": 109.45000000000005,
+     "sag": 45.075000000000045,
+     "lw": 40,
+     "tilt": 1.0499999999999545,
+     "cxOff": 7.0499999999999545,
+     "r": 102.2,
+     "irisR": 64.80000000000001,
+     "irisOff": [
+      -8.100000000000001,
+      0
+     ]
+    }
+   },
+   "brows": {
+    "L": {
+     "p0": [
+      297.1,
+      499.70000000000005
+     ],
+     "c": [
+      383.5,
+      472.70000000000005
+     ],
+     "p1": [
+      469.90000000000003,
+      494.3
+     ],
+     "lw": 29.700000000000003
+    },
+    "R": {
+     "p0": [
+      734.1999999999999,
+      493.31
+     ],
+     "c": [
+      820.6,
+      471.71000000000004
+     ],
+     "p1": [
+      907,
+      498.71000000000004
+     ],
+     "lw": 29.700000000000003
+    }
+   },
+   "mouth": {
+    "x": 595.15,
+    "y": 759.9,
+    "w": 209.7,
+    "sag": 41.39999999999998,
+    "lw": 36.4,
+    "cxOff": -1.0499999999999545,
+    "tilt": 0.8999999999999773
+   },
+   "cheeks": {
+    "L": [
+     264.1,
+     725.7,
+     85.9
+    ],
+    "R": [
+     919.2,
+     737.3,
+     85.7
+    ],
+    "colour": "#ff7ff0"
+   },
+   "colors": {
+    "core": {
+     "rgb": [
+      1,
+      24,
+      92
+     ],
+     "hex": "#01185c"
+    },
+    "coreUpper": {
+     "rgb": [
+      6,
+      51,
+      161
+     ],
+     "hex": "#0633a1"
+    },
+    "coreLower": {
+     "rgb": [
+      1,
+      18,
+      86
+     ],
+     "hex": "#011256"
+    },
+    "highlight": {
+     "color": {
+      "rgb": [
+       69,
+       126,
+       234
+      ],
+      "hex": "#457eea"
+     },
+     "offset": 11.6,
+     "width": 2.8
+    },
+    "glow": {
+     "color": {
+      "rgb": [
+       0,
+       144,
+       253
+      ],
+      "hex": "#0090fd"
+     },
+     "sampledAtEdge": {
+      "rgb": [
+       33,
+       147,
+       252
+      ],
+      "hex": "#2193fc"
+     },
+     "alphaAtEdge": 0.817,
+     "blurSigma": 19.3,
+     "blurRadius": 48.2,
+     "reach": 48
+    },
+    "underGlow": {
+     "peakOffset": 30,
+     "peakGain": 1.011,
+     "extent": 38,
+     "colorAtPeak": {
+      "rgb": [
+       201,
+       219,
+       251
+      ],
+      "hex": "#c9dbfb"
+     }
+    }
+   }
+  },
+  "faceStyle": "closed-tube",
+  "body": {
+   "lag": 0.062,
+   "cols": 96,
+   "rows": 96
+  },
+  "limits": {
+   "heightMin": 0.6,
+   "stretchMax": 1.4,
+   "shrinkMin": 0.6
+  },
+  "light": {
+   "dir": [
+    0.45,
+    0.55,
+    0.7
+   ],
+   "sss": 1
+  }
+ },
+ "realm": {
+  "id": "moonmilk-cove",
+  "tod": "late-night",
+  "palette": {
+   "base": {
+    "zenith": "#05071c",
+    "high": "#12164a",
+    "horizon": "#4a3f8e",
+    "haze": "#8b7fcf",
+    "moonCol": "#fbf7ff",
+    "haloCol": "#a59cff",
+    "cloudLit": "#c9c2ff",
+    "cloudDark": "#1d1a4a",
+    "hillCol": "#141238",
+    "waterNear": "#070823",
+    "waterFar": "#2a2768",
+    "key": "#f7f9ff",
+    "rim": "#a9a2ff",
+    "ambient": "#3a3480",
+    "specCol": "#d9e6ff",
+    "glowCol": "#ffcf9a",
+    "n": {
+     "moonGlow": 1,
+     "stars": 1,
+     "clouds": 0.5,
+     "exposure": 1,
+     "sat": 1.03,
+     "rimAmt": 0.32,
+     "spec": 0.5,
+     "glow": 0
+    },
+    "shadowTint": [
+     0.95,
+     0.97,
+     1.05
+    ],
+    "highTint": [
+     1,
+     1,
+     1
+    ]
+   },
+   "tense": {
+    "zenith": "#03040d",
+    "high": "#0a0d27",
+    "horizon": "#262b56",
+    "haze": "#4f5689",
+    "moonCol": "#dfe6ff",
+    "haloCol": "#7882c2",
+    "cloudLit": "#7f87bd",
+    "cloudDark": "#0e1029",
+    "hillCol": "#090a1e",
+    "waterNear": "#04050e",
+    "waterFar": "#181c40",
+    "key": "#c3cdee",
+    "rim": "#8592dc",
+    "ambient": "#1b2149",
+    "specCol": "#c9d6ff",
+    "glowCol": "#ffcf9a",
+    "n": {
+     "moonGlow": 0.5,
+     "stars": 0.3,
+     "clouds": 0.98,
+     "exposure": 0.93,
+     "sat": 0.88,
+     "rimAmt": 0.26,
+     "spec": 0.42,
+     "glow": 0
+    },
+    "shadowTint": [
+     0.92,
+     0.97,
+     1.08
+    ],
+    "highTint": [
+     0.97,
+     0.99,
+     1.03
+    ]
+   },
+   "resolved": {
+    "zenith": "#0a0820",
+    "high": "#281c56",
+    "horizon": "#875c9b",
+    "haze": "#d9a2c2",
+    "moonCol": "#fff4dc",
+    "haloCol": "#ffc5a3",
+    "cloudLit": "#ffd6c2",
+    "cloudDark": "#35275a",
+    "hillCol": "#21153c",
+    "waterNear": "#0c0a23",
+    "waterFar": "#45316b",
+    "key": "#fffaf4",
+    "rim": "#ffc09a",
+    "ambient": "#4a3a70",
+    "specCol": "#fff0dc",
+    "glowCol": "#ffd2a0",
+    "n": {
+     "moonGlow": 1.35,
+     "stars": 1.25,
+     "clouds": 0.16,
+     "exposure": 1,
+     "sat": 1.04,
+     "rimAmt": 0.5,
+     "spec": 0.55,
+     "glow": 0.07
+    },
+    "shadowTint": [
+     0.98,
+     0.96,
+     1.05
+    ],
+    "highTint": [
+     1.04,
+     1,
+     0.95
+    ]
+   }
+  },
+  "world": {
+   "horizonY": 1150,
+   "moon": [
+    850,
+    590,
+    50
+   ],
+   "fresnel": 1,
+   "reflAmt": 0.62,
+   "shadow": 0.55,
+   "shadowFall": 45,
+   "contactSpread": 0.5,
+   "skyParallax": 0.35,
+   "skyCentreX": 540,
+   "rippleLife": 6
+  },
+  "post": {
+   "bloom": 0.14,
+   "bloomThresh": 0.85,
+   "contrast": 1.04,
+   "vignette": 0.38,
+   "vignetteTension": 0.08,
+   "grain": 0.018
+  },
+  "jitter": null
+ },
+ "channels": {
+  "body.inflate": {
+   "type": "track",
+   "v0": 0,
+   "f": 2.4,
+   "z": 0.85,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": 0.06,
+     "f": 6,
+     "z": 0.6,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 0.75,
+     "v": 0,
+     "f": 2,
+     "z": 0.8,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 7.42,
+     "v": 0.21,
+     "f": 2.4,
+     "z": 0.85,
+     "ease": "inOutSine",
+     "dur": 1.4800000000000004,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 9.2,
+     "v": -0.035,
+     "f": 2.4,
+     "z": 0.85,
+     "ease": "inOutSine",
+     "dur": 1.9,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 11.4,
+     "v": 0,
+     "f": 0.7,
+     "z": 1,
+     "by": "R-BREATH"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 3
+    },
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 11.45
+    }
+   ]
+  },
+  "body.inflate.breath": {
+   "type": "sine",
+   "amp": 0.03,
+   "period": 3.75,
+   "env": "breath",
+   "by": "acting/idle-breath"
+  },
+  "body.inflate.pant": {
+   "type": "sine",
+   "amp": 0.012,
+   "freq": 1.7,
+   "env": "pant",
+   "by": "acting/aftermath-startled"
+  },
+  "body.lean": {
+   "type": "track",
+   "v0": 0,
+   "f": 2.2,
+   "z": 0.75,
+   "keys": [
+    {
+     "t": 1.85,
+     "v": -0.025,
+     "f": 2.2,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 2.2,
+     "v": 0.025,
+     "f": 2.2,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 2.58,
+     "v": 0,
+     "f": 2.2,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.1,
+     "v": -0.025592955109905162,
+     "f": 2.2,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 4.1,
+     "v": 0.02631406317333727,
+     "f": 2.2,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.1,
+     "v": 0.005352594568783106,
+     "f": 2.2,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.6,
+     "v": 0,
+     "f": 2.2,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.98,
+     "v": 0,
+     "f": 2.2,
+     "z": 0.75,
+     "by": "TURN-SQUEEZE"
+    }
+   ],
+   "windows": [
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    }
+   ]
+  },
+  "body.lift": {
+   "type": "track",
+   "v0": 0,
+   "f": 2.4,
+   "z": 0.85,
+   "keys": [
+    {
+     "t": 7.42,
+     "v": 36,
+     "f": 2.4,
+     "z": 0.85,
+     "ease": "inOutSine",
+     "dur": 1.4800000000000004,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 9.2,
+     "v": 0,
+     "f": 1.1,
+     "z": 0.62,
+     "by": "R-BREATH"
+    }
+   ],
+   "windows": [
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 11.45
+    }
+   ]
+  },
+  "body.lift.hops": {
+   "type": "hops",
+   "list": [
+    {
+     "t0": 0.4,
+     "t1": 0.98,
+     "h": 165,
+     "by": "G-JOLT"
+    }
+   ]
+  },
+  "body.shimPhase.tremble": {
+   "type": "ramp",
+   "env": "tremble",
+   "rate": 6,
+   "by": "M-ORBIT"
+  },
+  "body.shimmer.kicks": {
+   "type": "shimmer",
+   "list": [
+    {
+     "t": 0.98,
+     "amp": 1,
+     "decay": 3,
+     "freq": 19,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 9.319999999999999,
+     "amp": 0.35,
+     "decay": 2,
+     "freq": 12,
+     "by": "R-BREATH"
+    }
+   ]
+  },
+  "body.shimmer.tremble": {
+   "type": "envscale",
+   "env": "tremble",
+   "amp": 0.1,
+   "by": "M-ORBIT"
+  },
+  "body.squash": {
+   "type": "track",
+   "v0": 0,
+   "f": 3,
+   "z": 0.8,
+   "keys": [
+    {
+     "t": 0.26,
+     "v": 0.07,
+     "f": 4.5,
+     "z": 0.75,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 0.4,
+     "v": -0.26,
+     "f": 6,
+     "z": 0.5,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 0.53,
+     "v": -0.02,
+     "f": 4.5,
+     "z": 0.75,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 0.8,
+     "v": -0.09,
+     "f": 3.5,
+     "z": 0.9,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 0.98,
+     "v": 0,
+     "f": 9,
+     "z": 1,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 3.42,
+     "v": 0.05,
+     "f": 5,
+     "z": 0.7,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 3.9,
+     "v": 0,
+     "f": 2.2,
+     "z": 0.8,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.98,
+     "v": -0.05,
+     "f": 3,
+     "z": 0.8,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 7.32,
+     "v": 0,
+     "f": 1.5,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 7.42,
+     "v": -0.1,
+     "f": 3,
+     "z": 0.8,
+     "ease": "inOutSine",
+     "dur": 1.4800000000000004,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 9.2,
+     "v": 0.04,
+     "f": 1.05,
+     "z": 0.42,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 11,
+     "v": 0,
+     "f": 0.9,
+     "z": 0.9,
+     "by": "R-BREATH"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    },
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 11.45
+    }
+   ]
+  },
+  "body.squash.kicks": {
+   "type": "impulses",
+   "list": [
+    {
+     "t": 0.98,
+     "amp": 0.27,
+     "f": 3,
+     "z": 0.24,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 9.319999999999999,
+     "amp": 0.08,
+     "f": 1.5,
+     "z": 0.3,
+     "by": "R-BREATH"
+    }
+   ]
+  },
+  "body.squash.tremble": {
+   "type": "noise",
+   "env": "tremble",
+   "amp": 0.012,
+   "rate": 13,
+   "seed": 3,
+   "by": "M-ORBIT"
+  },
+  "body.sway.kicks": {
+   "type": "impulses",
+   "list": [
+    {
+     "t": 0.98,
+     "amp": 0.06,
+     "f": 2.1,
+     "z": 0.2,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 9.399999999999999,
+     "amp": 0.04,
+     "f": 1.3,
+     "z": 0.3,
+     "by": "R-BREATH"
+    }
+   ]
+  },
+  "body.sway.tremble": {
+   "type": "noise",
+   "env": "tremble",
+   "amp": 0.22,
+   "rate": 9,
+   "seed": 7,
+   "by": "M-ORBIT"
+  },
+  "cam.follow": {
+   "type": "const",
+   "value": 0.2,
+   "by": "C-DRIFT-IN"
+  },
+  "cam.x": {
+   "type": "const",
+   "value": 540,
+   "by": "C-DRIFT-IN"
+  },
+  "cam.y": {
+   "type": "spline",
+   "keys": [
+    {
+     "t": 0,
+     "v": 960,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 2.6,
+     "v": 960,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 5,
+     "v": 936,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 7,
+     "v": 926,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 8.9,
+     "v": 932,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 11.6,
+     "v": 960,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 15,
+     "v": 960,
+     "by": "C-DRIFT-IN"
+    }
+   ],
+   "windows": [
+    {
+     "by": "C-DRIFT-IN",
+     "from": 0,
+     "to": 15
+    }
+   ]
+  },
+  "cam.zoom": {
+   "type": "spline",
+   "keys": [
+    {
+     "t": 0,
+     "v": 1,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 2.6,
+     "v": 1,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 5,
+     "v": 1.045,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 7,
+     "v": 1.075,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 8.2,
+     "v": 1.07,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 9.2,
+     "v": 1.055,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 11.8,
+     "v": 1,
+     "by": "C-DRIFT-IN"
+    },
+    {
+     "t": 15,
+     "v": 1,
+     "by": "C-DRIFT-IN"
+    }
+   ],
+   "windows": [
+    {
+     "by": "C-DRIFT-IN",
+     "from": 0,
+     "to": 15
+    }
+   ]
+  },
+  "env.breath": {
+   "type": "expr",
+   "expr": {
+    "add": [
+     {
+      "sub": [
+       1,
+       {
+        "ss": [
+         0.18,
+         0.34
+        ]
+       }
+      ]
+     },
+     {
+      "max": [
+       {
+        "mul": [
+         0.7,
+         {
+          "ss": [
+           10.8,
+           11.8
+          ]
+         }
+        ]
+       },
+       {
+        "ss": [
+         13.3,
+         14.4
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "by": "acting/idle-breath"
+  },
+  "env.pant": {
+   "type": "expr",
+   "expr": {
+    "mul": [
+     {
+      "ss": [
+       1.3,
+       2
+      ]
+     },
+     {
+      "sub": [
+       1,
+       {
+        "ss": [
+         6.95,
+         7.3
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "by": "acting/aftermath-startled"
+  },
+  "env.rest": {
+   "type": "expr",
+   "expr": {
+    "clamp": [
+     {
+      "add": [
+       {
+        "sub": [
+         1,
+         {
+          "ss": [
+           0.17,
+           0.25
+          ]
+         }
+        ]
+       },
+       {
+        "ss": [
+         14.2,
+         14.5
+        ]
+       }
+      ]
+     },
+     0,
+     1
+    ]
+   },
+   "by": "composer"
+  },
+  "env.tremble": {
+   "type": "expr",
+   "expr": {
+    "mul": [
+     {
+      "ss": [
+       3,
+       6.6
+      ]
+     },
+     {
+      "sub": [
+       1,
+       {
+        "ss": [
+         6.95,
+         7.3
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "by": "M-ORBIT"
+  },
+  "face.blink": {
+   "type": "blinks",
+   "list": [
+    {
+     "t": 1.42,
+     "close": 0.07,
+     "hold": 0.02,
+     "open": 0.13,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 1.66,
+     "close": 0.07,
+     "hold": 0.02,
+     "open": 0.13,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 4.62,
+     "close": 0.07,
+     "hold": 0.02,
+     "open": 0.13,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.45,
+     "close": 0.07,
+     "hold": 0.02,
+     "open": 0.13,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.12,
+     "close": 0.07,
+     "hold": 0.02,
+     "open": 0.13,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.6,
+     "close": 0.07,
+     "hold": 0.02,
+     "open": 0.13,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 12.8,
+     "close": 0.15,
+     "hold": 0.08,
+     "open": 0.32,
+     "by": "close/content-card"
+    }
+   ]
+  },
+  "face.blush": {
+   "type": "track",
+   "v0": 0,
+   "f": 0.8,
+   "z": 1,
+   "keys": [
+    {
+     "t": 1.5,
+     "v": 0.8,
+     "f": 0.8,
+     "z": 1,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.4,
+     "v": 1.15,
+     "f": 2,
+     "z": 1,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 4,
+     "v": 0.55,
+     "f": 0.6,
+     "z": 1,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 7.4,
+     "v": 0,
+     "f": 0.6,
+     "z": 1,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 10.5,
+     "v": 0.35,
+     "f": 0.6,
+     "z": 1,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 13.6,
+     "v": 0,
+     "f": 0.8,
+     "z": 1,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 11.45
+    },
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.browAlpha": {
+   "type": "track",
+   "v0": 0,
+   "f": 1.5,
+   "z": 0.9,
+   "keys": [
+    {
+     "t": 1.2,
+     "v": 0.3,
+     "f": 1.5,
+     "z": 0.9,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.1,
+     "v": 0.78,
+     "f": 1.6,
+     "z": 0.9,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.98,
+     "v": 0.35,
+     "f": 4,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 7.32,
+     "v": 0,
+     "f": 2,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    }
+   ],
+   "windows": [
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    }
+   ]
+  },
+  "face.browTilt": {
+   "type": "const",
+   "value": 0.8,
+   "by": "composer"
+  },
+  "face.browY": {
+   "type": "track",
+   "v0": 0.35,
+   "f": 1.5,
+   "z": 0.9,
+   "keys": [
+    {
+     "t": 5.8,
+     "v": 0.6,
+     "f": 1.5,
+     "z": 0.9,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 7.32,
+     "v": 0.35,
+     "f": 1.5,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    }
+   ],
+   "windows": [
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    }
+   ]
+  },
+  "face.closedCurve": {
+   "type": "track",
+   "v0": 1,
+   "f": 5,
+   "z": 0.9,
+   "keys": [
+    {
+     "t": 6.98,
+     "v": 0.55,
+     "f": 5,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 7.32,
+     "v": 1,
+     "f": 2.2,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    }
+   ],
+   "windows": [
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    }
+   ]
+  },
+  "face.eyeOpen": {
+   "type": "track",
+   "v0": 0,
+   "f": 7,
+   "z": 0.5,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": 1.32,
+     "f": 8,
+     "z": 0.42,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 1.1,
+     "v": 1.12,
+     "f": 2,
+     "z": 0.9,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 2.6,
+     "v": 1.02,
+     "f": 1.5,
+     "z": 0.9,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.42,
+     "v": 0.12,
+     "f": 7,
+     "z": 0.8,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 3.9,
+     "v": 1.04,
+     "f": 2.6,
+     "z": 0.7,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.98,
+     "v": 0,
+     "f": 7,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 11.7,
+     "v": 1,
+     "f": 1.4,
+     "z": 0.85,
+     "by": "close/content-card"
+    },
+    {
+     "t": 13.5,
+     "v": 0,
+     "f": 1.1,
+     "z": 1,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 0.98
+    },
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    },
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.eyeScale": {
+   "type": "track",
+   "v0": 1,
+   "f": 2.4,
+   "z": 0.85,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": 1.1,
+     "f": 7,
+     "z": 0.45,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 1.2,
+     "v": 1,
+     "f": 1.5,
+     "z": 0.9,
+     "by": "G-JOLT"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 3
+    }
+   ]
+  },
+  "face.eyeStretch": {
+   "type": "track",
+   "v0": 1,
+   "f": 2.4,
+   "z": 0.85,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": 1.12,
+     "f": 8,
+     "z": 0.4,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 1,
+     "v": 1,
+     "f": 1.6,
+     "z": 0.8,
+     "by": "G-JOLT"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 3
+    }
+   ]
+  },
+  "face.irisScale": {
+   "type": "track",
+   "v0": 1,
+   "f": 1,
+   "z": 1,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": 0.58,
+     "f": 9,
+     "z": 0.8,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 1.4,
+     "v": 0.72,
+     "f": 1,
+     "z": 1,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3,
+     "v": 0.82,
+     "f": 1,
+     "z": 1,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 11.6,
+     "v": 1.12,
+     "f": 1,
+     "z": 1,
+     "by": "close/content-card"
+    },
+    {
+     "t": 13.5,
+     "v": 1,
+     "f": 1,
+     "z": 1,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 0.98
+    },
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.lidBot": {
+   "type": "track",
+   "v0": 0,
+   "f": 1.2,
+   "z": 1,
+   "keys": [
+    {
+     "t": 11.7,
+     "v": 0.4,
+     "f": 1.2,
+     "z": 1,
+     "by": "close/content-card"
+    },
+    {
+     "t": 13.5,
+     "v": 0,
+     "f": 1.2,
+     "z": 1,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.lidTop": {
+   "type": "track",
+   "v0": 0,
+   "f": 1.2,
+   "z": 1,
+   "keys": [
+    {
+     "t": 11.7,
+     "v": 0.04,
+     "f": 1.2,
+     "z": 1,
+     "by": "close/content-card"
+    },
+    {
+     "t": 13.5,
+     "v": 0,
+     "f": 1.2,
+     "z": 1,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.lookX": {
+   "type": "track",
+   "v0": 0,
+   "f": 9,
+   "z": 0.75,
+   "keys": [
+    {
+     "t": 1.85,
+     "v": -0.75,
+     "f": 9,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 2.2,
+     "v": 0.72,
+     "f": 9,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 2.58,
+     "v": 0,
+     "f": 9,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.1,
+     "v": -0.5687323357756703,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 4.1,
+     "v": 0.584756959407495,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.1,
+     "v": 0.11894654597295791,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.42,
+     "v": 0.1,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.62,
+     "v": -0.48374489502730206,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.98,
+     "v": 0.5132326854168686,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.3,
+     "v": 0.4618991786386937,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.55,
+     "v": 0.007124110113387482,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.76,
+     "v": -0.38158085903223005,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.92,
+     "v": 0.5452018952168809,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 7.32,
+     "v": 0,
+     "f": 9,
+     "z": 0.75,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 11.649999999999999,
+     "v": 0.28,
+     "f": 9,
+     "z": 0.75,
+     "by": "close/content-card"
+    },
+    {
+     "t": 12.35,
+     "v": 0,
+     "f": 9,
+     "z": 0.75,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    },
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.lookY": {
+   "type": "track",
+   "v0": 0,
+   "f": 9,
+   "z": 0.75,
+   "keys": [
+    {
+     "t": 1.85,
+     "v": -0.1,
+     "f": 9,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 2.2,
+     "v": -0.05,
+     "f": 9,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 2.58,
+     "v": 0.12,
+     "f": 9,
+     "z": 0.75,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.1,
+     "v": -0.7985740046211357,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 4.1,
+     "v": -0.7890433179916183,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.1,
+     "v": -0.9,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.42,
+     "v": 0.6,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.62,
+     "v": -0.8431734763245324,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.98,
+     "v": -0.8287797877509161,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.3,
+     "v": -0.8531425736864383,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.55,
+     "v": -0.9,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.76,
+     "v": -0.8850477181177039,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.92,
+     "v": -0.8118971044690475,
+     "f": 9,
+     "z": 0.75,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 7.32,
+     "v": 0,
+     "f": 9,
+     "z": 0.75,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 11.649999999999999,
+     "v": -0.38,
+     "f": 9,
+     "z": 0.75,
+     "by": "close/content-card"
+    },
+    {
+     "t": 12.35,
+     "v": 0.06,
+     "f": 9,
+     "z": 0.75,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    },
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.mouthOpen": {
+   "type": "track",
+   "v0": 0,
+   "f": 2,
+   "z": 0.9,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": 0.62,
+     "f": 9,
+     "z": 0.55,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 1.1,
+     "v": 0.06,
+     "f": 2,
+     "z": 0.9,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.1,
+     "v": 0.08,
+     "f": 2,
+     "z": 0.9,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.98,
+     "v": 0,
+     "f": 6,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 9.25,
+     "v": 0.28,
+     "f": 2.2,
+     "z": 0.9,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 10.7,
+     "v": 0,
+     "f": 1.2,
+     "z": 1,
+     "by": "R-BREATH"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 0.98
+    },
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    },
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 11.45
+    }
+   ]
+  },
+  "face.mouthRound": {
+   "type": "track",
+   "v0": 0,
+   "f": 2,
+   "z": 0.9,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": 0.85,
+     "f": 9,
+     "z": 0.9,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 1.1,
+     "v": 0.1,
+     "f": 2,
+     "z": 0.9,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 9.25,
+     "v": 0.75,
+     "f": 2.2,
+     "z": 0.9,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 10.7,
+     "v": 0,
+     "f": 1.2,
+     "z": 1,
+     "by": "R-BREATH"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 0.98
+    },
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 11.45
+    }
+   ]
+  },
+  "face.mouthSmile": {
+   "type": "track",
+   "v0": 1,
+   "f": 2,
+   "z": 0.9,
+   "keys": [
+    {
+     "t": 0.26,
+     "v": 0.7,
+     "f": 4,
+     "z": 0.9,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 0.4,
+     "v": 0,
+     "f": 9,
+     "z": 0.8,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 1.15,
+     "v": -0.25,
+     "f": 2,
+     "z": 0.9,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.42,
+     "v": -0.75,
+     "f": 6,
+     "z": 0.9,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 3.92,
+     "v": -0.38,
+     "f": 2,
+     "z": 0.9,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.98,
+     "v": -0.15,
+     "f": 5,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 7.32,
+     "v": 0.25,
+     "f": 1.5,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 10.9,
+     "v": 0.85,
+     "f": 1,
+     "z": 0.9,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 11.7,
+     "v": 0.95,
+     "f": 1.2,
+     "z": 0.9,
+     "by": "close/content-card"
+    },
+    {
+     "t": 13.5,
+     "v": 1,
+     "f": 0.8,
+     "z": 1,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 0.98
+    },
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    },
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 11.45
+    },
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.mouthWave": {
+   "type": "track",
+   "v0": 0,
+   "f": 2,
+   "z": 0.9,
+   "keys": [
+    {
+     "t": 1.15,
+     "v": 0.35,
+     "f": 2,
+     "z": 0.9,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 3.1,
+     "v": 0.85,
+     "f": 1.5,
+     "z": 0.9,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.98,
+     "v": 0,
+     "f": 6,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    }
+   ],
+   "windows": [
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    }
+   ]
+  },
+  "face.mouthWavePhase": {
+   "type": "ramp",
+   "rate": 4.2,
+   "by": "composer"
+  },
+  "face.mouthWidth": {
+   "type": "track",
+   "v0": 1,
+   "f": 2,
+   "z": 0.9,
+   "keys": [
+    {
+     "t": 1.15,
+     "v": 0.85,
+     "f": 2,
+     "z": 0.9,
+     "by": "acting/aftermath-startled"
+    },
+    {
+     "t": 6.98,
+     "v": 0.72,
+     "f": 6,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 7.32,
+     "v": 0.9,
+     "f": 2,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 9.25,
+     "v": 0.8,
+     "f": 2,
+     "z": 0.9,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 10.7,
+     "v": 1,
+     "f": 1.2,
+     "z": 0.9,
+     "by": "R-BREATH"
+    }
+   ],
+   "windows": [
+    {
+     "by": "acting/aftermath-startled",
+     "from": 0.98,
+     "to": 3
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    },
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 11.45
+    }
+   ]
+  },
+  "face.sparkle": {
+   "type": "track",
+   "v0": 0,
+   "f": 1,
+   "z": 1,
+   "keys": [
+    {
+     "t": 11.7,
+     "v": 1,
+     "f": 1,
+     "z": 1,
+     "by": "close/content-card"
+    },
+    {
+     "t": 13.5,
+     "v": 0,
+     "f": 1,
+     "z": 1,
+     "by": "close/content-card"
+    }
+   ],
+   "windows": [
+    {
+     "by": "close/content-card",
+     "from": 11.45,
+     "to": 15
+    }
+   ]
+  },
+  "face.squint": {
+   "type": "track",
+   "v0": 0,
+   "f": 5,
+   "z": 0.8,
+   "keys": [
+    {
+     "t": 0.26,
+     "v": 0.6,
+     "f": 5,
+     "z": 0.8,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 0.4,
+     "v": 0,
+     "f": 10,
+     "z": 1,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 3.42,
+     "v": 0.7,
+     "f": 7,
+     "z": 0.8,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 3.9,
+     "v": 0,
+     "f": 3,
+     "z": 0.8,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.98,
+     "v": 1,
+     "f": 6,
+     "z": 0.8,
+     "by": "TURN-SQUEEZE"
+    },
+    {
+     "t": 7.32,
+     "v": 0,
+     "f": 2.2,
+     "z": 0.9,
+     "by": "TURN-SQUEEZE"
+    }
+   ],
+   "windows": [
+    {
+     "by": "G-JOLT",
+     "from": 0.26,
+     "to": 0.98
+    },
+    {
+     "by": "M-ORBIT",
+     "from": 3,
+     "to": 6.95
+    },
+    {
+     "by": "TURN-SQUEEZE",
+     "from": 6.95,
+     "to": 7.4
+    }
+   ]
+  },
+  "mallow.glowPulse": {
+   "type": "pulse",
+   "amp": 0.25,
+   "period": 3.75,
+   "by": "acting/idle-breath"
+  },
+  "props.thoughts.phase": {
+   "type": "spline",
+   "keys": [
+    {
+     "t": 0,
+     "v": 0,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 3,
+     "v": 0,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 5.5,
+     "v": 0.26,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 6.2,
+     "v": 0.8,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 7,
+     "v": 2.15,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 7.5,
+     "v": 2.7,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 8.9,
+     "v": 3.05,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 9.8,
+     "v": 3.18,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 15,
+     "v": 3.18,
+     "by": "M-ORBIT"
+    }
+   ],
+   "windows": [
+    {
+     "by": "M-ORBIT",
+     "from": 0,
+     "to": 15
+    }
+   ]
+  },
+  "props.thoughts.radius": {
+   "type": "spline",
+   "keys": [
+    {
+     "t": 0,
+     "v": 1,
+     "by": "M-ORBIT"
+    },
+    {
+     "t": 7.4,
+     "v": 1,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 8.9,
+     "v": 0.95,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 9.3,
+     "v": 0.97,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 10.5,
+     "v": 1.3,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 15,
+     "v": 1.3,
+     "by": "R-BREATH"
+    }
+   ],
+   "windows": [
+    {
+     "by": "M-ORBIT",
+     "from": 0,
+     "to": 7.4
+    },
+    {
+     "by": "R-BREATH",
+     "from": 7.4,
+     "to": 15
+    }
+   ]
+  },
+  "world.agitation": {
+   "type": "spline",
+   "keys": [
+    {
+     "t": 0,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 0.9,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 1.3,
+     "v": 0.12,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 2.6,
+     "v": 0.08,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 4.2,
+     "v": 0.32,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 7,
+     "v": 0.62,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 8.9,
+     "v": 0.32,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 10.6,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 15,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    }
+   ],
+   "windows": [
+    {
+     "by": "A-COLD-DIP-WARM",
+     "from": 0,
+     "to": 15
+    }
+   ]
+  },
+  "world.ripples": {
+   "type": "ripples",
+   "list": [
+    {
+     "t": 0.42000000000000004,
+     "amp": 0.32,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 0.98,
+     "amp": 1,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 1.18,
+     "amp": 0.42,
+     "by": "G-JOLT"
+    },
+    {
+     "t": 9.299999999999999,
+     "amp": 0.5,
+     "by": "R-BREATH"
+    },
+    {
+     "t": 9.95,
+     "amp": 0.24,
+     "by": "R-BREATH"
+    }
+   ]
+  },
+  "world.tension": {
+   "type": "spline",
+   "keys": [
+    {
+     "t": 0,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 0.45,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 1.4,
+     "v": 0.2,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 2.6,
+     "v": 0.28,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 4.8,
+     "v": 1,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 7.2,
+     "v": 1,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 9.7,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 15,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    }
+   ],
+   "windows": [
+    {
+     "by": "A-COLD-DIP-WARM",
+     "from": 0,
+     "to": 15
+    }
+   ]
+  },
+  "world.warmth": {
+   "type": "spline",
+   "keys": [
+    {
+     "t": 0,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 9.25,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 11.4,
+     "v": 1,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 13.6,
+     "v": 1,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 14.95,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    },
+    {
+     "t": 15,
+     "v": 0,
+     "by": "A-COLD-DIP-WARM"
+    }
+   ],
+   "windows": [
+    {
+     "by": "A-COLD-DIP-WARM",
+     "from": 0,
+     "to": 15
+    }
+   ]
+  }
+ },
+ "body": {
+  "squash": [
+   "body.squash",
+   "body.squash.kicks",
+   "body.squash.tremble"
+  ],
+  "inflate": [
+   "body.inflate",
+   "body.inflate.breath",
+   "body.inflate.pant"
+  ],
+  "lean": [
+   "body.lean"
+  ],
+  "sway": [
+   "body.sway.kicks",
+   "body.sway.tremble"
+  ],
+  "shimmer": [
+   "body.shimmer.kicks#amp",
+   "body.shimmer.tremble"
+  ],
+  "shimPhase": [
+   "body.shimmer.kicks#phase",
+   "body.shimPhase.tremble"
+  ],
+  "lift": [
+   "body.lift.hops",
+   "body.lift"
+  ]
+ },
+ "face": [
+  [
+   "eyeOpen",
+   "face.eyeOpen"
+  ],
+  [
+   "lidTop",
+   "face.lidTop"
+  ],
+  [
+   "lidBot",
+   "face.lidBot"
+  ],
+  [
+   "blink",
+   "face.blink"
+  ],
+  [
+   "squint",
+   "face.squint"
+  ],
+  [
+   "closedCurve",
+   "face.closedCurve"
+  ],
+  [
+   "eyeStretch",
+   "face.eyeStretch"
+  ],
+  [
+   "eyeScale",
+   "face.eyeScale"
+  ],
+  [
+   "irisScale",
+   "face.irisScale"
+  ],
+  [
+   "lookX",
+   "face.lookX"
+  ],
+  [
+   "lookY",
+   "face.lookY"
+  ],
+  [
+   "sparkle",
+   "face.sparkle"
+  ],
+  [
+   "browAlpha",
+   "face.browAlpha"
+  ],
+  [
+   "browY",
+   "face.browY"
+  ],
+  [
+   "browTilt",
+   "face.browTilt"
+  ],
+  [
+   "mouthSmile",
+   "face.mouthSmile"
+  ],
+  [
+   "mouthOpen",
+   "face.mouthOpen"
+  ],
+  [
+   "mouthRound",
+   "face.mouthRound"
+  ],
+  [
+   "mouthWave",
+   "face.mouthWave"
+  ],
+  [
+   "mouthWavePhase",
+   "face.mouthWavePhase"
+  ],
+  [
+   "mouthWidth",
+   "face.mouthWidth"
+  ],
+  [
+   "blush",
+   "face.blush"
+  ]
+ ],
+ "props": [
+  {
+   "id": "thoughts",
+   "controller": "orbit",
+   "params": {
+    "ellipse": {
+     "cx": 540,
+     "cy": 600,
+     "rx": 270,
+     "ry": 132,
+     "lift": 150
+    },
+    "origin": [
+     540,
+     790
+    ],
+    "arrive": {
+     "f": 1.6,
+     "z": 0.62
+    },
+    "depthStart": -0.9,
+    "spin": [
+     5.6,
+     6.8,
+     7,
+     7.8
+    ],
+    "wobble": {
+     "amp": 0.09,
+     "f": 2.8,
+     "z": 0.28
+    },
+    "spinWobble": {
+     "amp": 0.035,
+     "freq": 17,
+     "step": 2
+    },
+    "grow": {
+     "from": 0.12,
+     "f": 2.3,
+     "z": 0.48
+    },
+    "depthScale": [
+     0.9,
+     0.1
+    ],
+    "swell": {
+     "amount": 0.12,
+     "dur": 0.55
+    },
+    "fadeIn": 0.16,
+    "fadeOut": [
+     0.06,
+     0.52
+    ],
+    "depthAlpha": [
+     0.84,
+     0.16
+    ],
+    "crowd": {
+     "alpha": 0.86,
+     "from": 7.4,
+     "to": 8.6
+    },
+    "glowUp": [
+     -0.05,
+     0.2,
+     0.18,
+     0.5
+    ],
+    "textOut": [
+     -0.08,
+     0.2
+    ],
+    "stress": 0.7,
+    "afterDissolve": 0.6
+   },
+   "items": [
+    {
+     "slot": 3.141592653589793,
+     "born": 3,
+     "dissolve": 9.42,
+     "text": "That awkward conversation.",
+     "lines": [
+      "That awkward",
+      "conversation."
+     ],
+     "tex": "b0",
+     "layout": {
+      "w": 322.34967041015625,
+      "hw": 199.17483520507812,
+      "hh": 84
+     }
+    },
+    {
+     "slot": 0.08,
+     "born": 4,
+     "dissolve": 9.62,
+     "text": "Did I say something weird?",
+     "lines": [
+      "Did I say",
+      "something weird?"
+     ],
+     "tex": "b1",
+     "layout": {
+      "w": 392.649658203125,
+      "hw": 234.3248291015625,
+      "hh": 84
+     }
+    },
+    {
+     "slot": -1.5707963267948966,
+     "born": 5,
+     "dissolve": 9.82,
+     "text": "Why did I do that?",
+     "lines": [
+      "Why did I",
+      "do that?"
+     ],
+     "tex": "b2",
+     "layout": {
+      "w": 206.49981689453125,
+      "hw": 141.24990844726562,
+      "hh": 84
+     }
+    }
+   ],
+   "channels": {
+    "phase": "props.thoughts.phase",
+    "radius": "props.thoughts.radius"
+   },
+   "style": {
+    "glass": {
+     "tint": [
+      [
+       0.92,
+       0.91,
+       1
+      ],
+      [
+       0.86,
+       0.88,
+       0.98
+      ]
+     ],
+     "edge": [
+      0.9,
+      0.92,
+      1
+     ],
+     "radiusMax": 64,
+     "minAlpha": 0.004
+    },
+    "text": {
+     "size": 50,
+     "weight": 500,
+     "lineHeight": 58,
+     "padX": 38,
+     "padY": 26,
+     "ink": "#1b1d57",
+     "supersample": 2,
+     "wrap": 17
+    }
+   },
+   "motes": {
+    "away": [
+     540,
+     1060
+    ],
+    "stagger": 0.12,
+    "drag": 1.6,
+    "sway": {
+     "amp": 9,
+     "freq": 2
+    },
+    "spread": [
+     0.85,
+     0.7
+    ],
+    "fadeIn": 0.4,
+    "fadeOutFrom": 0.4,
+    "flicker": {
+     "base": 0.85,
+     "amp": 0.15,
+     "freq": 2.2
+    },
+    "alpha": 0.7,
+    "colors": [
+     [
+      1.7,
+      1.2,
+      0.68
+     ],
+     [
+      1.25,
+      1,
+      1.35
+     ]
+    ],
+    "list": [
+     [
+      {
+       "u": -0.4495784640312195,
+       "v": -0.12070561992004514,
+       "up": 51.2520779883489,
+       "push": 60.32599273370579,
+       "life": 3.236603286489844,
+       "size": 16.406050629448146,
+       "ph": 5.519565859775934,
+       "sw": 0.5028908494394273
+      },
+      {
+       "u": 0.7760131545364857,
+       "v": -0.23180921049788594,
+       "up": 40.69047928135842,
+       "push": 85.17973718466237,
+       "life": 2.7321767706423996,
+       "size": 15.186959232669324,
+       "ph": 0.4256472474477927,
+       "sw": 0.7542210325133056
+      },
+      {
+       "u": -0.6473833546042442,
+       "v": 0.6938133160583675,
+       "up": 38.23071999754757,
+       "push": 50.47659508185461,
+       "life": 2.78956854455173,
+       "size": 18.8741794670932,
+       "ph": 0.5894526541890543,
+       "sw": 0.6938934411387891
+      },
+      {
+       "u": 0.7391744218766689,
+       "v": 0.7767102080397308,
+       "up": 37.467599178664386,
+       "push": 44.341509204823524,
+       "life": 2.697901380434632,
+       "size": 19.8212460312061,
+       "ph": 4.342166777703911,
+       "sw": 0.8137030429672449
+      },
+      {
+       "u": 0.3307861238718033,
+       "v": 0.24497365904971957,
+       "up": 25.779485202394426,
+       "push": 81.14759127842262,
+       "life": 2.548226761445403,
+       "size": 16.944803975056857,
+       "ph": 4.522172609475045,
+       "sw": 0.6178837704937905
+      },
+      {
+       "u": -0.584260132163763,
+       "v": 0.8756460580043495,
+       "up": 25.402534532360733,
+       "push": 41.45752822281793,
+       "life": 2.4952436316758395,
+       "size": 15.744139950256795,
+       "ph": 1.2009560510629083,
+       "sw": 0.6211553960572929
+      },
+      {
+       "u": -0.24245650321245193,
+       "v": -0.4388737608678639,
+       "up": 38.87991046812385,
+       "push": 40.08998840348795,
+       "life": 3.594017146155238,
+       "size": 18.945713459979743,
+       "ph": 0.6645426709496567,
+       "sw": 0.48427040684036915
+      },
+      {
+       "u": 0.8019558303058147,
+       "v": 0.0005757319740951061,
+       "up": 48.886001895181835,
+       "push": 72.31102788122371,
+       "life": 3.011697420850396,
+       "size": 17.77268810896203,
+       "ph": 0.6504666019277391,
+       "sw": 0.48706087986938656
+      }
+     ],
+     [
+      {
+       "u": -0.43640168150886893,
+       "v": 0.9632223956286907,
+       "up": 40.45329688163474,
+       "push": 41.78990375716239,
+       "life": 2.4325149449519814,
+       "size": 23.516898034140468,
+       "ph": 1.2949377193766272,
+       "sw": 0.8476510596461595
+      },
+      {
+       "u": 0.07232769066467881,
+       "v": -0.27856042981147766,
+       "up": 32.09055993752554,
+       "push": 67.2700814763084,
+       "life": 3.4601460213772954,
+       "size": 16.995955081656575,
+       "ph": 5.964611563338716,
+       "sw": 0.7083923199214042
+      },
+      {
+       "u": 0.5598598630167544,
+       "v": -0.7893760912120342,
+       "up": 40.50866851629689,
+       "push": 54.24021378625184,
+       "life": 2.4877430277876553,
+       "size": 24.555081790313125,
+       "ph": 3.0647497259619887,
+       "sw": 0.8253294949419796
+      },
+      {
+       "u": 0.7306969412602484,
+       "v": -0.20171283930540085,
+       "up": 43.124366850126535,
+       "push": 46.35541009251028,
+       "life": 2.4189032237045467,
+       "size": 24.764319816604257,
+       "ph": 4.274710415235651,
+       "sw": 0.5959506065584719
+      },
+      {
+       "u": -0.9165915860794485,
+       "v": 0.8623170517385006,
+       "up": 48.4402146008797,
+       "push": 65.4842807771638,
+       "life": 3.2223361733369527,
+       "size": 16.68504382483661,
+       "ph": 6.241223613066596,
+       "sw": 0.9123603758402169
+      },
+      {
+       "u": 0.32078740233555436,
+       "v": -0.8769914656877518,
+       "up": 40.79068061010912,
+       "push": 64.54096844885498,
+       "life": 2.8154574955813585,
+       "size": 15.59261773712933,
+       "ph": 5.905927107832733,
+       "sw": 0.9890145980753005
+      },
+      {
+       "u": -0.11499308934435248,
+       "v": -0.3999049626290798,
+       "up": 46.963236649055034,
+       "push": 70.9421791927889,
+       "life": 3.4229826140217483,
+       "size": 21.824050983414054,
+       "ph": 3.659230994275863,
+       "sw": 0.47795451777055864
+      },
+      {
+       "u": -0.38222392415627837,
+       "v": -0.8052202835679054,
+       "up": 24.694451168645173,
+       "push": 70.68921382073313,
+       "life": 3.010520506929606,
+       "size": 22.750654751434922,
+       "ph": 0.603695947913695,
+       "sw": 0.8715412036515773
+      }
+     ],
+     [
+      {
+       "u": -0.4232248989865184,
+       "v": 0.04715041117742658,
+       "up": 29.654515774920583,
+       "push": 73.253814780619,
+       "life": 2.828426603414118,
+       "size": 20.62774543883279,
+       "ph": 3.3534948861569065,
+       "sw": 0.5924112698528916
+      },
+      {
+       "u": -0.631357773207128,
+       "v": -0.3253116491250694,
+       "up": 23.49064059369266,
+       "push": 49.36042576795444,
+       "life": 2.9881152721121906,
+       "size": 18.804950930643827,
+       "ph": 5.220390572050053,
+       "sw": 0.6625636073295027
+      },
+      {
+       "u": -0.232896919362247,
+       "v": -0.27256549848243594,
+       "up": 42.78661703504622,
+       "push": 58.003832490649074,
+       "life": 3.385917511023581,
+       "size": 20.23598411353305,
+       "ph": 5.540046797734923,
+       "sw": 0.9567655487451703
+      },
+      {
+       "u": 0.7222194606438279,
+       "v": 0.8198641133494675,
+       "up": 48.78113452158868,
+       "push": 48.36931098019704,
+       "life": 3.339905066974461,
+       "size": 19.707393602002412,
+       "ph": 4.20725405276739,
+       "sw": 0.9781981701496989
+      },
+      {
+       "u": -0.1639692960307002,
+       "v": -0.5203395555727184,
+       "up": 41.10094399936497,
+       "push": 49.82097027590498,
+       "life": 2.6964455852285028,
+       "size": 16.425283674616367,
+       "ph": 1.677089309478561,
+       "sw": 0.6068369811866432
+      },
+      {
+       "u": -0.7741650631651282,
+       "v": -0.629628989379853,
+       "up": 26.17882668785751,
+       "push": 87.62440867489204,
+       "life": 3.135671359486878,
+       "size": 15.441095524001867,
+       "ph": 4.327712857422972,
+       "sw": 0.7568738000933082
+      },
+      {
+       "u": 0.012470324523746967,
+       "v": -0.36093616439029574,
+       "up": 25.046562829986215,
+       "push": 51.79436998208985,
+       "life": 3.2519480818882585,
+       "size": 24.702388506848365,
+       "ph": 0.3707340104224826,
+       "sw": 0.47163862870074813
+      },
+      {
+       "u": 0.4335963213816285,
+       "v": 0.38898370089009404,
+       "up": 30.502900442108512,
+       "push": 69.06739976024255,
+       "life": 3.009343593008816,
+       "size": 17.728621393907815,
+       "ph": 0.5569252938996508,
+       "sw": 0.656021527433768
+      }
+     ]
+    ]
+   },
+   "audio": true
+  }
+ ],
+ "text": [
+  {
+   "id": "hook",
+   "kind": "textblock",
+   "z": 0,
+   "by": "composer",
+   "opts": {
+    "lines": [
+     "ME TRYING TO SLEEP",
+     "AT 2 AM..."
+    ],
+    "y": 286,
+    "size": 76,
+    "weight": 600,
+    "tracking": 2,
+    "enterAt": -10,
+    "exitAt": 2.72,
+    "exitDur": 0.5
+   },
+   "widths": [
+    788.019775390625,
+    354.62786865234375
+   ],
+   "readable": {
+    "min": 2,
+    "with": "hookReturn"
+   }
+  },
+  {
+   "id": "hookReturn",
+   "kind": "textblock",
+   "z": 1,
+   "drawFrom": 14.66,
+   "opts": {
+    "lines": [
+     "ME TRYING TO SLEEP",
+     "AT 2 AM..."
+    ],
+    "y": 286,
+    "size": 76,
+    "weight": 600,
+    "tracking": 2,
+    "enterAt": 14.66,
+    "inDur": 0.3,
+    "stagger": 0,
+    "rise": 0
+   },
+   "widths": [
+    788.019775390625,
+    354.62786865234375
+   ],
+   "readable": {
+    "min": 2,
+    "with": "hook"
+   },
+   "by": "LP-RETURN"
+  },
+  {
+   "id": "end",
+   "kind": "textblock",
+   "z": 2,
+   "opts": {
+    "lines": [
+     "Give your feelings",
+     "somewhere soft to land."
+    ],
+    "y": 262,
+    "size": 62,
+    "weight": 500,
+    "enterAt": 11.9,
+    "exitAt": 14.3,
+    "exitDur": 0.34,
+    "stagger": 0.18
+   },
+   "widths": [
+    504.122314453125,
+    663.4623413085938
+   ],
+   "readable": {
+    "min": 2
+   },
+   "by": "close/content-card"
+  },
+  {
+   "id": "logo",
+   "kind": "logocard",
+   "z": 3,
+   "opts": {
+    "y": 488,
+    "logoW": 360,
+    "urlSize": 44,
+    "gap": 62,
+    "enterAt": 12.6,
+    "exitAt": 14.3,
+    "exitDur": 0.34
+   },
+   "by": "close/content-card"
+  }
+ ],
+ "cues": [
+  {
+   "t": 0,
+   "type": "scene",
+   "data": {
+    "loop": 15
+   },
+   "by": "composer"
+  },
+  {
+   "t": 0.26,
+   "type": "flinch",
+   "data": {},
+   "by": "G-JOLT"
+  },
+  {
+   "t": 0.4,
+   "type": "take",
+   "data": {},
+   "by": "G-JOLT"
+  },
+  {
+   "t": 0.42000000000000004,
+   "type": "lift_off",
+   "data": {},
+   "by": "G-JOLT"
+  },
+  {
+   "t": 0.98,
+   "type": "land",
+   "data": {
+    "amp": 1
+   },
+   "by": "G-JOLT"
+  },
+  {
+   "t": 1.18,
+   "type": "ripple",
+   "data": {
+    "amp": 0.4
+   },
+   "by": "G-JOLT"
+  },
+  {
+   "t": 1.42,
+   "type": "blink",
+   "data": {},
+   "by": "acting/aftermath-startled"
+  },
+  {
+   "t": 1.66,
+   "type": "blink",
+   "data": {},
+   "by": "acting/aftermath-startled"
+  },
+  {
+   "t": 1.85,
+   "type": "glance",
+   "data": {
+    "pan": -0.5
+   },
+   "by": "acting/aftermath-startled"
+  },
+  {
+   "t": 2.2,
+   "type": "glance",
+   "data": {
+    "pan": 0.5
+   },
+   "by": "acting/aftermath-startled"
+  },
+  {
+   "t": 3,
+   "type": "thought",
+   "data": {
+    "i": 0,
+    "pan": -0.6872759477770158
+   },
+   "by": "M-ORBIT"
+  },
+  {
+   "t": 4,
+   "type": "thought",
+   "data": {
+    "i": 1,
+    "pan": 0.6757017519344146
+   },
+   "by": "M-ORBIT"
+  },
+  {
+   "t": 5,
+   "type": "thought",
+   "data": {
+    "i": 2,
+    "pan": 0.19836938591454242
+   },
+   "by": "M-ORBIT"
+  },
+  {
+   "t": 3.42,
+   "type": "wince",
+   "data": {},
+   "by": "M-ORBIT"
+  },
+  {
+   "t": 5.6,
+   "type": "spin_up",
+   "data": {
+    "until": 6.98
+   },
+   "by": "M-ORBIT"
+  },
+  {
+   "t": 6.98,
+   "type": "squeeze",
+   "data": {},
+   "by": "TURN-SQUEEZE"
+  },
+  {
+   "t": 7.42,
+   "type": "inhale",
+   "data": {
+    "dur": 1.4800000000000004
+   },
+   "by": "R-BREATH"
+  },
+  {
+   "t": 8.9,
+   "type": "crest",
+   "data": {},
+   "by": "R-BREATH"
+  },
+  {
+   "t": 9.2,
+   "type": "exhale",
+   "data": {
+    "dur": 1.9
+   },
+   "by": "R-BREATH"
+  },
+  {
+   "t": 9.319999999999999,
+   "type": "release",
+   "data": {},
+   "by": "R-BREATH"
+  },
+  {
+   "t": 9.42,
+   "type": "dissolve",
+   "data": {
+    "i": 0,
+    "pan": 0.6659556418089744
+   },
+   "by": "R-BREATH"
+  },
+  {
+   "t": 9.62,
+   "type": "dissolve",
+   "data": {
+    "i": 1,
+    "pan": -0.6983828355928032
+   },
+   "by": "R-BREATH"
+  },
+  {
+   "t": 9.82,
+   "type": "dissolve",
+   "data": {
+    "i": 2,
+    "pan": -0.02889566776191856
+   },
+   "by": "R-BREATH"
+  },
+  {
+   "t": 9.5,
+   "type": "warm_bloom",
+   "data": {},
+   "by": "R-BREATH"
+  },
+  {
+   "t": 11.7,
+   "type": "eyes_open",
+   "data": {},
+   "by": "close/content-card"
+  },
+  {
+   "t": 11.9,
+   "type": "tagline",
+   "data": {},
+   "by": "close/content-card"
+  },
+  {
+   "t": 12.6,
+   "type": "logo",
+   "data": {},
+   "by": "close/content-card"
+  },
+  {
+   "t": 12.8,
+   "type": "blink",
+   "data": {
+    "soft": true
+   },
+   "by": "close/content-card"
+  },
+  {
+   "t": 13.5,
+   "type": "drift",
+   "data": {},
+   "by": "close/content-card"
+  },
+  {
+   "t": 14.66,
+   "type": "loop",
+   "data": {},
+   "by": "LP-RETURN"
+  }
+ ],
+ "audio": {
+  "pan": {
+   "centre": 540,
+   "curveNorm": 420
+  }
+ },
+ "layout": {
+  "measuredBy": "page",
+  "hook": {
+   "lines": [
+    "ME TRYING TO SLEEP",
+    "AT 2 AM..."
+   ],
+   "size": 76,
+   "widths": [
+    788.019775390625,
+    354.62786865234375
+   ]
+  }
+ },
+ "probes": [
+  {
+   "label": "cover",
+   "t": 0
+  },
+  {
+   "label": "gag",
+   "t": 0.4
+  },
+  {
+   "label": "impact",
+   "t": 0.9666666666666667
+  },
+  {
+   "label": "peak",
+   "t": 6.3
+  },
+  {
+   "label": "ritual-mid",
+   "t": 9.466666666666667
+  },
+  {
+   "label": "eyes-open",
+   "t": 12.2
+  },
+  {
+   "label": "end-card",
+   "t": 13.1
+  },
+  {
+   "label": "rest-end",
+   "t": 14.8
+  }
+ ],
+ "moves": [
+  {
+   "slot": "cover-idle",
+   "id": "acting/idle-breath",
+   "rank": 1,
+   "params": {
+    "amp": 0.03,
+    "glow": 0.25
+   },
+   "published": [],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:1201a7ca1ac6671eadb6d3fdecdf7791a5d26d6d02e34b8c055451f5864839e3"
+   }
+  },
+  {
+   "slot": "gag",
+   "id": "G-JOLT",
+   "rank": 2,
+   "params": {
+    "intensity": 1,
+    "height": 165,
+    "eyePop": 1.32
+   },
+   "published": [],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:1cfc4619768521a2c3b5baa76a6093c156ea1c2756cfa1eea221668b502462e6"
+   }
+  },
+  {
+   "slot": "aftermath",
+   "id": "acting/aftermath-startled",
+   "rank": 3,
+   "params": {
+    "glance": 0.75,
+    "pant": 0.012
+   },
+   "published": [],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:2b2e262e723ec07736e4f894465f0e622d71b8cc48c4ec2cd55f7d9a19f4ab06"
+   }
+  },
+  {
+   "slot": "metaphor",
+   "id": "M-ORBIT",
+   "rank": 4,
+   "params": {
+    "slots": [
+     3.141592653589793,
+     0.08,
+     -1.5707963267948966
+    ],
+    "turns": 3.18
+   },
+   "published": [],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:6a937c4e8a8d682bc61cb45ff8c10ee52405d36f1898f75a19bfb0803430d5c2"
+   }
+  },
+  {
+   "slot": "turn",
+   "id": "TURN-SQUEEZE",
+   "rank": 5,
+   "params": {},
+   "published": [
+    "squeeze",
+    "relax"
+   ],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:7532dcc902425ae7249cfd466b264cd78d1ececf5f6ad6c655fdff2149fd2127"
+   }
+  },
+  {
+   "slot": "ritual",
+   "id": "R-BREATH",
+   "rank": 6,
+   "params": {
+    "lift": 36,
+    "swell": 0.21,
+    "exhaleDur": 1.9,
+    "moteSeed": 101,
+    "moteSeedStep": 17,
+    "motesPer": 8
+   },
+   "published": [
+    "inhale",
+    "crest",
+    "exhale",
+    "dissolve0",
+    "dissolve1",
+    "dissolve2"
+   ],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:c1604d2887652ed040b86a374033dbfc5eedf5653fff00096569c8d80137fc0b"
+   }
+  },
+  {
+   "slot": "close",
+   "id": "close/content-card",
+   "rank": 7,
+   "params": {
+    "skyGaze": [
+     0.28,
+     -0.38
+    ]
+   },
+   "published": [
+    "open",
+    "tagline",
+    "logo",
+    "slowBlink",
+    "sleep",
+    "cardOut"
+   ],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:46b4647cb92d4bc00e4717e37fc4c5099cec869721eb2e75f68493dc594c8dd2"
+   }
+  },
+  {
+   "slot": "loop",
+   "id": "LP-RETURN",
+   "rank": 8,
+   "params": {},
+   "published": [],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:44803cbe77c747d4d76fe3ac99228bfd008732f08dea5c0b07e04e79b13568e4"
+   }
+  },
+  {
+   "slot": "camera",
+   "id": "C-DRIFT-IN",
+   "rank": 9,
+   "params": {
+    "push": 1.075,
+    "follow": 0.2
+   },
+   "published": [],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:1572975b27aafd32a7730d960e0d60e8877b4fe8779255f52c6c09481754e094"
+   }
+  },
+  {
+   "slot": "arc",
+   "id": "A-COLD-DIP-WARM",
+   "rank": 10,
+   "params": {},
+   "published": [],
+   "cell": {
+    "status": "approved",
+    "version": "sha256:1b042b1a2fca4a7b5450252d37375e3927e0d114d00f01a3ba05bafdd12a4a75"
+   }
+  }
+ ],
+ "provenance": {
+  "composer": "3.0.0",
+  "cells": {
+   "acting/idle-breath/noomi": {
+    "status": "approved",
+    "version": "sha256:1201a7ca1ac6671eadb6d3fdecdf7791a5d26d6d02e34b8c055451f5864839e3"
+   },
+   "G-JOLT/noomi": {
+    "status": "approved",
+    "version": "sha256:1cfc4619768521a2c3b5baa76a6093c156ea1c2756cfa1eea221668b502462e6"
+   },
+   "acting/aftermath-startled/noomi": {
+    "status": "approved",
+    "version": "sha256:2b2e262e723ec07736e4f894465f0e622d71b8cc48c4ec2cd55f7d9a19f4ab06"
+   },
+   "M-ORBIT/noomi": {
+    "status": "approved",
+    "version": "sha256:6a937c4e8a8d682bc61cb45ff8c10ee52405d36f1898f75a19bfb0803430d5c2"
+   },
+   "TURN-SQUEEZE/noomi": {
+    "status": "approved",
+    "version": "sha256:7532dcc902425ae7249cfd466b264cd78d1ececf5f6ad6c655fdff2149fd2127"
+   },
+   "R-BREATH/noomi": {
+    "status": "approved",
+    "version": "sha256:c1604d2887652ed040b86a374033dbfc5eedf5653fff00096569c8d80137fc0b"
+   },
+   "close/content-card/noomi": {
+    "status": "approved",
+    "version": "sha256:46b4647cb92d4bc00e4717e37fc4c5099cec869721eb2e75f68493dc594c8dd2"
+   },
+   "LP-RETURN/noomi": {
+    "status": "approved",
+    "version": "sha256:44803cbe77c747d4d76fe3ac99228bfd008732f08dea5c0b07e04e79b13568e4"
+   },
+   "C-DRIFT-IN/noomi": {
+    "status": "approved",
+    "version": "sha256:1572975b27aafd32a7730d960e0d60e8877b4fe8779255f52c6c09481754e094"
+   },
+   "A-COLD-DIP-WARM/noomi": {
+    "status": "approved",
+    "version": "sha256:1b042b1a2fca4a7b5450252d37375e3927e0d114d00f01a3ba05bafdd12a4a75"
+   }
+  },
+  "pack": {
+   "file": "library/mallows/noomi.json",
+   "version": "1.0.0",
+   "sha256": "14126269691c61deddd1aa26d643e07abeefc6a5c5203d44e14205bda47eae18"
+  },
+  "realm": {
+   "file": "library/realms/moonmilk-cove.json",
+   "version": "1.0.0",
+   "sha256": "8e1e43839b0aa0c7e4fac8e9f1388e0b438ec53460a8e18f46e23f9b7bf60494"
+  },
+  "tuning": {
+   "file": "library/tuning-matrix.json",
+   "sha256": "f19be71a76dc37b8996e78feea5dcd298da22fb28ab76473a5435b901cdd422b"
+  },
+  "props": {
+   "thoughts": {
+    "created": "M-ORBIT",
+    "params.crowd": "R-BREATH",
+    "items.0.dissolve": "R-BREATH",
+    "items.1.dissolve": "R-BREATH",
+    "items.2.dissolve": "R-BREATH",
+    "motes": "R-BREATH"
+   }
+  },
+  "bridges": []
+ }
+}

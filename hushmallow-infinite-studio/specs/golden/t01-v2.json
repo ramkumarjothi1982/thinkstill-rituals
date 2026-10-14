@@ -1,0 +1,93 @@
+{
+  "schema": "hm-variant/1",
+  "id": "T01-noomi-late-night-15s-076e81",
+  "batch": "golden-v2",
+  "index": 0,
+  "mode": "review",
+  "internal": true,
+  "quality": "final",
+  "channel": null,
+  "plannedFor": null,
+  "template": "T01-brain-at-2am",
+  "mallow": "noomi",
+  "realm": "moonmilk-cove",
+  "tod": "late-night",
+  "weather": "clear",
+  "dressing": [],
+  "duration": 15,
+  "seed": 20261013,
+  "gag": {
+    "id": "G-JOLT",
+    "intensity": 1
+  },
+  "metaphor": "M-ORBIT",
+  "turn": "TURN-SQUEEZE",
+  "ritual": "R-BREATH",
+  "loop": "LP-RETURN",
+  "camera": "C-DRIFT-IN",
+  "arc": "A-COLD-DIP-WARM",
+  "worldJitter": {
+    "hue": 0,
+    "warmth": 0,
+    "exposure": 0
+  },
+  "copy": {
+    "hook": [
+      "ME TRYING TO SLEEP",
+      "AT 2 AM..."
+    ],
+    "lines": [
+      "That awkward conversation.",
+      "Did I say something weird?",
+      "Why did I do that?"
+    ],
+    "end": {
+      "kind": "resolution",
+      "text": [
+        "Give your feelings",
+        "somewhere soft to land."
+      ]
+    },
+    "nameWord": null
+  },
+  "sound": {
+    "motifs": [
+      "MO-GLASS-RISE",
+      "MO-ORBIT",
+      "MO-TICK",
+      "MO-HUM",
+      "MO-WARMPAD",
+      "MO-CLOSE"
+    ],
+    "contour": "arch-1",
+    "tickTempo": 1,
+    "panSeed": 20261013
+  },
+  "cells": {
+    "G-JOLT/noomi": "approved",
+    "M-ORBIT/noomi": "approved",
+    "TURN-SQUEEZE/noomi": "approved",
+    "R-BREATH/noomi": "approved",
+    "LP-RETURN/noomi": "approved",
+    "C-DRIFT-IN/noomi": "approved",
+    "A-COLD-DIP-WARM/noomi": "approved"
+  },
+  "pins": {
+    "library": "1.0.0",
+    "librarySha256": "30e3adebd006952f3c336594dbc3af7ca68559d1ef2211d00bb4edb39c8d340b",
+    "capabilitiesSha256": "e81d3bd1c340225bb70116e3d6697cef31c1f6177a4a868badb4028b36a2dab4",
+    "policySha256": "fc68c9126cd1364f4146ee291eed198bf379e1931521224ca107f4f7e2e5822e",
+    "packs": {
+      "noomi": {
+        "file": "library/mallows/noomi.json",
+        "sha256": "14126269691c61deddd1aa26d643e07abeefc6a5c5203d44e14205bda47eae18"
+      },
+      "moonmilk-cove": {
+        "file": "library/realms/moonmilk-cove.json",
+        "sha256": "8e1e43839b0aa0c7e4fac8e9f1388e0b438ec53460a8e18f46e23f9b7bf60494"
+      }
+    },
+    "engine": null
+  },
+  "fingerprint": "sha256:076e81ef6738e273b6e530b0f9ed63e9d44ee488bb1086949f34c0f56befa882"
+}

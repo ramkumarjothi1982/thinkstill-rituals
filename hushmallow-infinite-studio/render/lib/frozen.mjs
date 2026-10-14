@@ -133,6 +133,7 @@ export function checkAppTree({ manifest = APP_TREE_MANIFEST, appDir = HUSHMALLOW
  */
 export function repoChangesOutsideStudio({ repo = REPO, studio = STUDIO } = {}) {
   const studioRel = path.relative(repo, studio).split(path.sep).join('/');
+  const worktrees = linkedWorktreesInside(repo);
   const entries = git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], repo).split('\0');
   const out = [];
   for (let i = 0; i < entries.length; i++) {
@@ -141,7 +142,22 @@ export function repoChangesOutsideStudio({ repo = REPO, studio = STUDIO } = {}) 
     // porcelain -z: "XY path"; a rename/copy is followed by one extra entry (the source path)
     const paths = [e.slice(3)];
     if (e[0] === 'R' || e[0] === 'C') paths.push(entries[++i]);
+    // a linked worktree of this repository checked out inside it (the agent harness puts them under
+    // .claude/worktrees/) shows up as one untracked directory; that checkout's own guards check it
+    if (e.startsWith('?? ') && worktrees.has(paths[0].replace(/\/$/, ''))) continue;
     if (paths.some((p) => p !== studioRel && !p.startsWith(`${studioRel}/`))) out.push(e);
+  }
+  return out;
+}
+
+/** Linked worktrees of the repository at `repo` that lie inside it, as repo-relative paths (the main checkout excluded). */
+function linkedWorktreesInside(repo) {
+  const top = path.resolve(repo);
+  const out = new Set();
+  for (const line of git(['worktree', 'list', '--porcelain'], repo).split('\n')) {
+    if (!line.startsWith('worktree ')) continue;
+    const rel = path.relative(top, path.resolve(line.slice(9)));
+    if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) out.add(rel.split(path.sep).join('/'));
   }
   return out;
 }

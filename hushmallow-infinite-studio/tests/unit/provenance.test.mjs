@@ -24,7 +24,11 @@ test('the job key changes with every input that decides segment bytes, and only 
     ['direction source', { directionSha256: 'd2' }], ['engine tree', { engineTree: 'e2' }], ['live app', { appTree: 'a2' }],
     ['render scale', { params: { ...base.params, scale: 0.5 } }], ['seed', { params: { ...base.params, seed: 1 } }],
     ['encoder', { encoderArgs: { encoder: 'crf16' } }], ['Chromium build', { chromium: '142' }], ['Chromium flags', { chromiumArgs: ['--use-angle=swiftshader'] }],
+    ['composer runtime code', { runtimeTrees: { composer: 'c', planner: 'p' } }],
   ]) assert.notEqual(jobKey({ ...base, ...change }).key, k0, name);
+  assert.equal(jobKey({ ...base, runtimeTrees: undefined }).key, k0, 'no runtime trees: a v2 key is unchanged');
+  const v3 = { ...base, runtimeTrees: { composer: 'c', planner: 'p' } };
+  assert.notEqual(jobKey({ ...v3, runtimeTrees: { composer: 'c2', planner: 'p' } }).key, jobKey(v3).key, 'composer code');
 });
 
 test('asset report: one hash per URL (a change mid-job is a conflict), rasters joined with hashes and max magnification', () => {

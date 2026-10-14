@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hm-move/1",
+  "title": "Move module contract (composer/moves/**, the default export minus compile())",
+  "description": "Validated in tests/unit/composer-compose.test.mjs against every registered move with compile/publishes/seam replaced by true. docs/ARCHITECTURE.md §3.",
+  "type": "object",
+  "required": ["id", "kind", "summary", "cost", "requires", "owns", "params", "cues", "compile"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^([A-Z]+-[A-Z0-9-]+|(acting|close)/[a-z-]+)$" },
+    "kind": { "enum": ["cover-idle", "gag", "aftermath", "metaphor", "turn", "ritual", "close", "loop", "camera", "arc", "bridge", "weather", "dressing"] },
+    "library": { "type": "string" },
+    "summary": { "type": "string", "minLength": 10 },
+    "cost": { "type": "object" },
+    "requires": { "type": "object" },
+    "span": { "type": "array", "items": { "type": ["string", "number"] }, "minItems": 2, "maxItems": 2 },
+    "entry": { "type": "string" },
+    "exit": { "type": "string" },
+    "next": { "type": "object" },
+    "publishes": { "const": true },
+    "seam": { "const": true },
+    "owns": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": ["string", "number"] }, "minItems": 2, "maxItems": 2 } },
+    "params": { "type": "object", "additionalProperties": { "type": "object", "required": ["def", "doc"], "properties": { "def": {}, "range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "doc": { "type": "string" } } } },
+    "cues": { "type": "object", "additionalProperties": { "type": "object", "required": ["recipe"], "properties": { "recipe": { "type": "string" }, "optional": { "type": "boolean" } } } },
+    "compile": { "const": true }
+  }
+}

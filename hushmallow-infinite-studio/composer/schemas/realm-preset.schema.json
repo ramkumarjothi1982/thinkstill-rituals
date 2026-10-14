@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hm-realm-preset/1",
+  "title": "Realm preset (library/realms/<id>.json)",
+  "description": "PHASE2-PLAN data model §3. Each time of day carries a palette triple blended by the world dials.",
+  "type": "object",
+  "required": ["schema", "id", "version", "status", "family", "ground", "tods", "constants", "post", "mood", "weather", "dressing", "dressingBudget", "plates", "budget", "sound", "provides"],
+  "properties": {
+    "schema": { "const": "hm-realm-preset/1" },
+    "family": { "enum": ["lake", "floor", "open"] },
+    "ground": { "enum": ["mirror", "glossy", "opaque"] },
+    "status": { "enum": ["approved", "candidate", "blocked"] },
+    "tods": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status", "palette", "celestial", "light"],
+        "properties": {
+          "palette": { "type": "object", "required": ["base", "tense", "resolved"], "additionalProperties": false, "properties": { "base": { "$ref": "#/$defs/look" }, "tense": { "$ref": "#/$defs/look" }, "resolved": { "$ref": "#/$defs/look" } } },
+          "celestial": { "type": "object", "required": ["kind", "x", "y", "r"] },
+          "light": { "type": "object", "required": ["dir"] }
+        }
+      }
+    },
+    "constants": { "type": "object", "required": ["world"], "properties": { "world": { "type": "object", "required": ["horizonY", "fresnel", "reflAmt", "shadow", "shadowFall", "contactSpread", "skyParallax", "skyCentreX", "rippleLife"] } } },
+    "post": { "type": "object", "required": ["bloom", "bloomThresh", "contrast", "vignette", "vignetteTension", "grain"] },
+    "weather": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "dressingBudget": { "type": "object", "required": ["maxItems", "maxCostMs"] }
+  },
+  "$defs": {
+    "hex": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+    "look": {
+      "type": "object",
+      "required": ["zenith", "high", "horizon", "haze", "moonCol", "haloCol", "cloudLit", "cloudDark", "hillCol", "waterNear", "waterFar", "key", "rim", "ambient", "specCol", "glowCol", "n", "shadowTint", "highTint"],
+      "properties": {
+        "n": { "type": "object", "required": ["moonGlow", "stars", "clouds", "exposure", "sat", "rimAmt", "spec", "glow"] },
+        "shadowTint": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "highTint": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+      },
+      "additionalProperties": { "$ref": "#/$defs/hexOrAny" }
+    },
+    "hexOrAny": { "type": ["string", "object", "array"] }
+  }
+}

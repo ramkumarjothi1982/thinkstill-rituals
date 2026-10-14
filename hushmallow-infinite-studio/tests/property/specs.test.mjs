@@ -159,9 +159,19 @@ test('1,000 specs over a wide enabled-cell set compile with 0 violations: Noomi 
   const ctx = { ...openCtx(), caps };
   const r = planBatch({ ...ctx, mode: 'review', count: 1000, seed: 2027, batch: 'prop-noomi' });
   assert.equal(r.specs.length, 1000);
-  const { gspecPass, slots, gdirRan, gdirErrors } = await compileAll(r, ctx, t, { composer: realComposer });
+  const { gspecPass, slots, gdirRan, reports } = await compileAll(r, ctx, t, { composer: realComposer });
   assert.equal(gspecPass, 1000);
-  if (realComposer) assert.deepEqual([gdirRan, gdirErrors], [1000, {}], 'G-DIR on the wide set once the composer exists');
+  if (realComposer) {
+    // the wide set opens cells, ToDs and durations the composer has not built yet (moves arrive from WP-13 on,
+    // Moonmilk ToDs with WP-14): those specs must be refused by compose, never passed; every spec the composer
+    // can build must pass G-DIR
+    assert.equal(gdirRan, 1000);
+    const UNBUILT = /move:unbuilt|realm:tod|realm:weather|realm:dressing|cell:missing/;
+    const built = reports.filter((rep) => !rep.gates['G-DIR'].errors.some((e) => e.rule === 'compose' && UNBUILT.test(e.message)));
+    for (const rep of built) assert.deepEqual(rep.gates['G-DIR'].errors, [], rep.id);
+    for (const rep of reports) for (const e of rep.gates['G-DIR'].errors) assert.ok(e.rule !== 'compose' || UNBUILT.test(e.message), `${rep.id}: ${e.message}`);
+    t.diagnostic(`G-DIR on the wide set: ${built.length} composable specs pass, ${1000 - built.length} refused as not built yet`);
+  }
   const noomiTemplates = [...lib.templates.values()].filter((x) => [...x.mallows.primary, ...x.mallows.secondary].includes('noomi') && !x.mallows.avoid?.noomi).length;
   assert.equal(slots.templates, noomiTemplates, 'every template Noomi is cast in');
   assert.ok(slots.cellSets >= 200, `cell combinations vary: ${slots.cellSets}`);

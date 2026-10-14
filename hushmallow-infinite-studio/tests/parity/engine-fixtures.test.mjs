@@ -5,7 +5,7 @@
 //        a v2 singleton module cannot be set up twice in one page
 //   R18  a NaN from subframes() falls back to 16 sub-frames with a logged error
 //   R3   the runtime is chosen from meta.runtime ('v3' is routed to the composer
-//        runtime, not installed before WP-03)
+//        runtime, which needs a composer direction.json)
 //   W, H and render scale are parameters; the DRAFT mark touches only its corner
 
 import { test } from 'node:test';
@@ -100,9 +100,9 @@ test('R18: a NaN from subframes() renders with 16 sub-frames and a logged error,
   });
 });
 
-test('R3: the runtime comes from meta.runtime: a v3 direction is routed to the composer runtime (not installed before WP-03)', { timeout: 300000 }, async () => {
+test('R3: the runtime comes from meta.runtime: a v3 direction is routed to the composer runtime', { timeout: 300000 }, async () => {
   await withSession(async (s) => {
-    await assert.rejects(s.openPage(P('dev/v3-probe')), /runtime 'v3' \(composer direction\.json\) is not installed yet/);
+    await assert.rejects(s.openPage(P('dev/v3-probe')), /runtime 'v3' renders a composer direction\.json; this module carries none/);
     const ok = await cold(s, P('dev/text-a'));
     assert.equal(ok.info.runtime, 'v2');
   });

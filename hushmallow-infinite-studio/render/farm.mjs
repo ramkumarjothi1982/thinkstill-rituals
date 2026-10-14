@@ -109,6 +109,8 @@ export function computeKey({ params, direction, appTree, session }) {
   };
   return jobKey({
     direction: direction.id, directionSha256: direction.sha256, engineTree: treeHash('engine').sha256, appTree, params: keyParams,
+    // a compiled composer direction (JSON, runtime v3) is evaluated by composer/ code (and the planner's typography)
+    runtimeTrees: direction.src.endsWith('.json') ? { composer: treeHash('composer').sha256, planner: treeHash('planner').sha256 } : undefined,
     encoderArgs: { encoder: ENCODERS[params.encoder], gop: GOP, vf: VF_FROM_GL, args: x264Args(params.encoder) },
     chromium: session.version, chromiumArgs: session.args,
   });

@@ -62,9 +62,14 @@ export function directionSource(entry) {
   return path.resolve(STUDIO, 'engine', entry.src);
 }
 
-/** The parts that decide a job's segment bytes, and their hash. */
-export function jobKey({ direction, directionSha256, engineTree, appTree, params, encoderArgs, chromium, chromiumArgs }) {
+/**
+ * The parts that decide a job's segment bytes, and their hash. runtimeTrees
+ * (composer directions only: the code outside engine/ that runtime v3 runs,
+ * e.g. { composer, planner }) is left out when absent, so v2 keys are unchanged.
+ */
+export function jobKey({ direction, directionSha256, engineTree, appTree, params, encoderArgs, chromium, chromiumArgs, runtimeTrees }) {
   const parts = { direction, directionSha256, engineTree, appTree, params, encoderArgs, chromium, chromiumArgs };
+  if (runtimeTrees) parts.runtimeTrees = runtimeTrees;
   return { key: hashValue(parts), parts };
 }
 

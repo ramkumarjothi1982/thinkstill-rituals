@@ -183,3 +183,12 @@ test('git directory: only the data git commands write is exempt; hooks, info, de
   }
   assert.ok(gitConfigFiles(layout).includes(path.join(layout.gitDir, 'config')));
 });
+
+test('linked worktree admin dirs: git\'s own data and the harness base marker are exempt, anything else there is audited', () => {
+  const layout = { gitDir: '/repo/.git', worktreeDirs: ['/repo/.git/worktrees/wp-x'], otherWorktrees: ['/repo/.claude/worktrees/wp-x'] };
+  const allowed = allowedRoots({ studio: '/repo/studio', work: '/work', layout });
+  const exempt = (p) => allowed.some((a) => isInside(p, a.path));
+  for (const n of ['HEAD', 'index', 'gitdir', 'commondir', 'logs/HEAD', 'CLAUDE_BASE']) assert.ok(exempt(`/repo/.git/worktrees/wp-x/${n}`), n);
+  for (const n of ['config.worktree', 'hooks/pre-commit', 'unknown-file']) assert.ok(!exempt(`/repo/.git/worktrees/wp-x/${n}`), `${n} must be audited`);
+  assert.ok(exempt('/repo/.claude/worktrees/wp-x/studio/x.js'), 'the other checkout itself is checked by its own guards');
+});
