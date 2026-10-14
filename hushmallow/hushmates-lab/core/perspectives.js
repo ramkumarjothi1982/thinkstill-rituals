@@ -190,9 +190,14 @@ const THEMES = [
       ['agency', 'Could there be one small, low-pressure way to be around people this week, where an activity does most of the talking?'],
       ['self-compassion', 'Wanting to belong isn’t too much to ask. It’s one of the most human things there is.'],
     ] },
-  // an unfair share of the work at home: a partner who "never helps" isn't a partner who's distant
-  { id: 'load', labels: ['frustration', 'anger', 'sadness'], crowds: ['partner-distant'],
-    cues: [/\b(?:flatmates?|housemates?|roommates?|chores|housework|house ?work|washing up|the dishes|the laundry|clean(?:ing|s)? up|tidy(?:ing)? up|do(?:ing)? everything|always end up (?:doing|cleaning|tidying|washing|paying|picking up)|nobody helps|no ?one helps|(?:he|she|they|my (?:partner|husband|wife|boyfriend|girlfriend|flatmates?|housemates?|roommates?|family|kids)) (?:never|doesn'?t|does not|won'?t|will not|don'?t|do not) (?:ever )?help(?:s)?|does nothing (?:around|at home|to help)|all the (?:cooking|cleaning|chores|housework|washing|laundry)|pull(?:ing)? (?:their|his|her) weight)\b/g],
+  // an unfair share of the work at home. Help means help at home here: "they don't help" about tablets,
+  // therapy or friends is not this. And a partner who never helps with the chores isn't a partner who's
+  // distant, so the work at home rules that situation out (unless the words say distant too).
+  { id: 'load', labels: ['frustration', 'anger', 'sadness'],
+    crowds: { ids: ['partner-distant'],
+      when: /\b(?:chores|housework|house ?work|washing up|the dishes|the laundry|all the (?:cooking|cleaning|chores|housework|washing|laundry)|help(?:s|ing)? (?:(?:me |us )?out|around the (?:house|flat|home)|at home|(?:me |us )?with (?:the )?(?:kids|children|baby|house|housework|chores|cooking|cleaning|dishes|washing|laundry|shopping))|my (?:partner|husband|wife|boyfriend|girlfriend) (?:never|doesn'?t|does not|won'?t|will not) (?:ever )?help(?:s)?(?=\s*(?:[.,;!?]|$|and\b|at all\b))|does nothing (?:around the (?:house|flat|home)|at home))\b/,
+      unless: /\b(?:distant|withdrawn|pulling away|pulled away|cold towards|barely (?:talk|speak)\w*|not (?:talking|speaking)|don'?t talk|drifting)\b/ },
+    cues: [/\b(?:flatmates?|housemates?|roommates?|chores|housework|house ?work|washing up|the dishes|the laundry|clean(?:ing|s)? up|tidy(?:ing)? up|do(?:ing)? everything|always end up (?:doing|cleaning|tidying|washing|paying|picking up)|nobody helps|no ?one helps|my (?:partner|husband|wife|boyfriend|girlfriend|flatmates?|housemates?|roommates?|kids) (?:never|doesn'?t|does not|won'?t|will not|don'?t|do not) (?:ever )?help(?:s)?(?=\s*(?:[.,;!?]|$|and\b|at all\b|out\b|around the (?:house|flat|home)\b|at home\b|(?:me |us )?(?:out )?with (?:the )?(?:kids|children|baby|house|housework|chores|cooking|cleaning|dishes|washing|laundry|shopping)\b))|(?:he|she|they) (?:never|doesn'?t|does not|won'?t|will not|don'?t|do not) (?:ever )?help(?:s)? (?:out\b|around the (?:house|flat|home)|at home|with (?:the )?(?:kids|children|baby|house|housework|chores|cooking|cleaning|dishes|washing|laundry|shopping))|does nothing (?:around the (?:house|flat|home)|at home)|all the (?:cooking|cleaning|chores|housework|washing|laundry)|pull(?:ing)? (?:their|his|her) weight)\b/g],
     angles: [
       ['worry-partly-true', 'Your frustration might be pointing at something real: the load doesn’t feel shared. That’s worth saying out loud, kindly and plainly.'],
       ['benign', 'Sometimes people don’t notice a job until it stops getting done. That doesn’t make it fair, but it might mean it’s more fixable than it feels.'],
@@ -457,14 +462,15 @@ function candidatesFor(text, label) {
   const hitsOf = (th) => th.cues.reduce((n, re) => n + (probe.match(re) || []).length, 0);
   // a loss outweighs a happy label: no "soak it up" for a funeral, however it was labelled
   const grief = THEMES.some((th) => th.tender && hitsOf(th) > 0);
-  const crowded = new Set();   // situations a theme that fits rules out
+  // situations a theme rules out when its words are there, whatever the label
+  const crowded = new Set();
+  for (const th of THEMES) if (th.crowds && th.crowds.when.test(probe) && !th.crowds.unless?.test(probe)) for (const id of th.crowds.ids) crowded.add(id);
   for (const th of THEMES) {
     if (label ? !th.labels.includes(label) : !th.labels.some((l) => HEAVY_LABELS.includes(l))) continue;
     if (grief && !th.tender && (th.notWithGrief || th.labels.every((l) => BRIGHT.has(l)))) continue;
     const hits = hitsOf(th);
     const not = th.notWhen && th.notWhen.re.test(probe) ? new Set(th.notWhen.ids) : null;
     if (hits) for (const a of th.angles) if (!not?.has(a.id)) add(a, BASE.theme + Math.min(hits - 1, 2) * 0.5);
-    if (hits) for (const id of th.crowds || []) crowded.add(id);
   }
   if (family === 'heavy') {
     const where = contextsIn(probe);

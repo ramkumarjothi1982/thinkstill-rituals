@@ -22,7 +22,8 @@
 
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, copyFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, copyFileSync, readFileSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { appFiles, staffFiles, LAB_ROOT } from '../server/app-files.mjs';
@@ -141,7 +142,12 @@ export function build({ out, which = 'app', deploy = {} } = {}) {
   return { ok: !problems.length, problems, out, count: written.size };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+/** Run as `node <this file>`? Compared as real paths, so spaces, % or a symlink in the path don't stop it. */
+function runAsCommand() {
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+
+if (runAsCommand()) {
   const opt = (name, env) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : (process.env[env] || ''); };
   const dist = resolve(opt('out', 'HUSHMATES_DIST') || join(LAB_ROOT, 'dist'));
   const deploy = { supabaseUrl: opt('supabase-url', 'HUSHMATES_SUPABASE_URL'), anonKey: opt('anon-key', 'HUSHMATES_SUPABASE_ANON_KEY') };

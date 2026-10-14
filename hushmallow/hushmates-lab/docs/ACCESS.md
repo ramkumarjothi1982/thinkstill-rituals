@@ -148,11 +148,13 @@ Also: `backend-db-access` (role by role, no table or function reachable),
 `backend-auth` (36: the sign-in tokens, the encryption, the local Auth copy),
 `backend-review-fixes` (regressions from the independent reviews, including
 password sign-ins refused), `client-auth` and `client-review-fixes` (the app's
-sign-in and link), `build` (7), `your-data` (12), `audit-fixes` (6).
+sign-in and link), `build` (8), `your-data` (12), `audit-fixes` (6).
 
 `tools/app-shots.mjs` drives the production build in Chromium on the whole local
-stack with many accounts at once, and fails on developer content, raw data,
-internal ids or testing words on any screen, or any unexpected console error.
+stack with many accounts at once, and fails on developer content, raw data or
+testing words on any screen, internal ids on any customer screen (the desk shows a
+labelled account reference by design), a refused session the test didn't cause,
+or any unexpected console error.
 
 ## Running them
 

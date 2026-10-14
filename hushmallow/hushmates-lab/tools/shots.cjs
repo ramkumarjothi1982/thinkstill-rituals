@@ -16,8 +16,8 @@
 const { createRequire } = require('module');
 const path = require('path');
 const fs = require('fs');
-const req = createRequire('/opt/node-tools/node_modules/');
-const { chromium } = req('playwright');
+// Playwright from this project if it's installed (npm i --no-save playwright), else this container's copy
+const { chromium } = (() => { try { return require('playwright'); } catch { return createRequire('/opt/node-tools/node_modules/')('playwright'); } })();
 
 const SIZES = [
   { name: 'mobile-390x844', width: 390, height: 844, mobile: true },

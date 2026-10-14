@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { build, scan } from '../tools/build-app.mjs';
+import { sync } from '../tools/sync-edge.mjs';
 import { appFiles, labFiles } from '../server/app-files.mjs';
 
 test('build: dist/app holds exactly what the app loads, and none of the lab, tests, tools or server code', () => {
@@ -131,6 +132,11 @@ test('build: what ships has no comments, and the scan reads words split across l
 });
 
 test('the Edge Function deploys exactly the shared code the tests run (tools/sync-edge.mjs --check)', () => {
-  const r = spawnSync(process.execPath, ['tools/sync-edge.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' });
-  assert.equal(r.status, 0, `the vendored Edge Function copies are stale: run node tools/sync-edge.mjs\n${r.stdout}${r.stderr}`);
+  const r = sync({ check: true });
+  assert.ok(r.files.length > 0, 'nothing to compare');
+  assert.deepEqual([...r.changed, ...r.stale], [], 'the vendored Edge Function copies are stale: run node tools/sync-edge.mjs');
+  // and the command itself says so (it once did nothing at all from a path with a space in it)
+  const cli = spawnSync(process.execPath, ['tools/sync-edge.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' });
+  assert.equal(cli.status, 0, `${cli.stdout}${cli.stderr}`);
+  assert.match(cli.stdout, /match their sources/);
 });

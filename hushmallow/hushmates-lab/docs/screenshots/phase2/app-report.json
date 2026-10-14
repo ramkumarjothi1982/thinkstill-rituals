@@ -87,7 +87,7 @@
     },
     {
       "ok": true,
-      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"b31feae5-c5cc-401b-b0b4-0302b4a2fab0\"}])"
+      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"ae41fc73-af26-4ce6-9421-56a0a701bec9\"}])"
     },
     {
       "ok": true,
@@ -151,11 +151,15 @@
     },
     {
       "ok": true,
-      "what": "words needing care were never stored"
+      "what": "words needing care were never stored (no new feeling in the database)"
     },
     {
       "ok": true,
       "what": "the catcher is offered the feeling they then report"
+    },
+    {
+      "ok": true,
+      "what": "opening a report moves focus to it (a screen reader reads its title)"
     },
     {
       "ok": true,
@@ -176,6 +180,14 @@
     {
       "ok": true,
       "what": "the desk doesn’t read itself out on every refresh (no live regions around the list or report)"
+    },
+    {
+      "ok": true,
+      "what": "after a decision, focus is back on the report, not lost"
+    },
+    {
+      "ok": true,
+      "what": "the team notes say which decision was taken"
     },
     {
       "ok": true,
@@ -216,6 +228,10 @@
     {
       "ok": true,
       "what": "a new device has everything (no second invitation)"
+    },
+    {
+      "ok": true,
+      "what": "“Get support now”: 000, Lifeline, Suicide Call Back and 13YARN can be tapped (tel:000 tel:131114 tel:1300659467 tel:139276)"
     },
     {
       "ok": true,
@@ -471,5 +487,6 @@
     "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
     "error: Failed to load resource: the server responded with a status of 404 (Not Found)"
   ],
-  "server": []
+  "server": [],
+  "refreshed": 5
 }

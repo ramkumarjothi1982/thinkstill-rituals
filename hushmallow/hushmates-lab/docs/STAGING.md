@@ -93,7 +93,7 @@ Under *Authentication*:
 3. *Settings*: email OTP expiry 600 seconds, length 6.
 4. *URL configuration*: the staging web address as the Site URL.
 5. *Rate limits*: keep the defaults or lower them. One code per address a minute matches the app's "Send a new code" wait (`max_frequency` in `supabase/config.toml`).
-6. **Email sender.** Supabase's built-in sender only delivers to the project's team members' addresses, and only a couple of emails an hour for the whole project. That's enough for staging with the team as testers: space the smoke test's three sign-ins out (step 10), or set up SMTP first.
+6. **Email sender.** Supabase's built-in sender only delivers to the project's team members' addresses, and only a couple of emails an hour for the whole project. That's enough for staging with the team as testers: space the smoke test's four sign-in emails out (step 10), or set up SMTP first.
    - 🛑 **Owner:** real testers outside the team need a custom SMTP provider. Choosing one and creating its account needs your approval; see `COSTS.md`.
 7. *Bot protection* (*Attack Protection → captcha*): leave it **off**. The app has no captcha widget yet (`app/app.js` passes no token), so turning it on refuses every code request. Adding Cloudflare Turnstile needs the widget in the sign-in scene, a CSP change, and a site key from the owner (`READINESS.md`).
 
@@ -186,15 +186,15 @@ goes through *Confirm signup*, and check that its email shows a code, not a link
 4. Back on the first device, feeling A's orb shows one petal (1 of 5). The words appear when it comes home: after 24 hours, or sooner once five people have answered. A feeling a person answered never gets the Mallow fallback.
 5. To see the fallback: on the first device, release a second feeling (B) with the Mallow allowed, and let nobody catch it. About a minute after 30 minutes, its Mallow perspective is waiting in *Journeys*, labelled as automatically generated (even with the app closed in between).
 6. On the second device, find a fresh feeling (release a third one, C, from the first device if needed), and from the offer sheet choose *… → Report this feeling*. At `/staff/`, sign in with the third team email and a moderator invitation: the report is there; decide it.
-7. Check that the scheduler is running:
+7. **A later sign-in.** A first sign-in (through *Confirm signup*) and a later one (through *Magic Link*) are verified differently, and the function accepts a session only if its `amr` names `otp` or `magiclink`. Step 1 proved the first kind. Now, on the second device, *You → Sign out*, and sign in again with the second email: it must go straight in, with no invitation asked for, the name chosen in step 3, and feeling A's perspective under *Perspectives you've offered*. If either sign-in is refused with "Please sign in again", decode its access token (a JWT viewer you trust, or `node -e` with `Buffer.from(token.split('.')[1], 'base64url')`), note its `amr`, and tell the developer before going further.
+8. Check that the scheduler is running:
    ```sql
    select status, start_time from cron.job_run_details order by start_time desc limit 5;
    select hushmates_api.ops_summary(1);
    ```
-8. In the dashboard's Table Editor, open `hushmates.journeys`: `text_enc` starts with `hmenc:v1:`. No one's words are readable there.
-9. On the first device, *You → Delete my data*: the account, its words and its sign-in are gone (*Authentication → Users*).
-10. Two things only a real project can show, before inviting anyone else:
-   - **How sign-ins are marked.** The function accepts a session only if its `amr` names `otp` or `magiclink`. A first sign-in (through *Confirm signup*) and a later one (through *Magic Link*) are verified differently, so check both: if step 1 worked, the first kind is accepted. Then sign out on the second device and sign in again with the second email: that later sign-in must reach the same account, with feeling A's perspective still there. If either is refused with "Please sign in again", decode its access token (a JWT viewer you trust, or `node -e` with `Buffer.from(token.split('.')[1], 'base64url')`), note its `amr`, and tell the developer before going further.
+9. In the dashboard's Table Editor, open `hushmates.journeys`: `text_enc` starts with `hmenc:v1:`. No one's words are readable there.
+10. On the first device, *You → Delete my data*: the account, its words and its sign-in are gone (*Authentication → Users*). The second account's perspective on feeling A goes with it, as the privacy details tell catchers.
+11. One thing only a real project can show, before inviting anyone else:
    - **Which header carries the caller's address.** Ask the function's logs (or a temporary log line) which of `x-forwarded-for`, `cf-connecting-ip` and `x-real-ip` holds the real address. If it isn't the last `x-forwarded-for` entry, set `HUSHMATES_CLIENT_IP_HEADER` to the right one (step 3).
 
 ## Undo

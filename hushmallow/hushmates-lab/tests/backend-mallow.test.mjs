@@ -326,6 +326,29 @@ test('library relevance: each situation gets angles written for it, from every M
   }
 });
 
+test('library relevance: “help” means help at home only when the words say so, and distance stays distance', async () => {
+  const picks = async (text, label) => (await Promise.all([0, 1, 2].map((attempt) => Promise.all(MALLOW_IDS.map((mallow) => lib({ text, label, mallow, attempt })))))).flat();
+  // treatment, therapy, friends or a partner's support in a hard moment: never chores lines
+  for (const [label, text] of [
+    ['sadness', 'I take antidepressants but they don’t help and I feel hopeless about getting better.'],
+    ['frustration', 'I keep going to therapy but they don’t help.'],
+    ['sadness', 'My friends try to cheer me up but they don’t help.'],
+    ['sadness', 'My family doesn’t help me when I feel low.'],
+    [null, 'I’ve tried breathing exercises but they don’t help.'],
+    ['frustration', 'The tablets the doctor gave me never help.'],
+    ['frustration', 'My boyfriend doesn’t help when I’m having a panic attack, he just goes quiet.'],
+  ]) for (const r of await picks(text, label)) assert.doesNotMatch(r.angleId, /^hm-load-/, `${r.mallow} · “${text}”: got ${r.angleId} “${r.text}”`);
+  // the work at home rules out "your partner is distant", whatever the label
+  for (const label of ['worry', 'confusion', 'frustration']) {
+    for (const r of await picks('My partner never helps with the kids.', label)) assert.doesNotMatch(r.angleId, /^pd-ang/, `${label} · ${r.mallow}: got ${r.angleId}`);
+  }
+  // ...but not when the words say the partner is distant
+  for (const text of ['My partner has been so distant lately and she doesn’t help me understand what is wrong.', 'My partner and I barely talk now; he does nothing to help us feel close.']) {
+    const got = (await picks(text, 'sadness')).map((r) => r.angleId);
+    assert.ok(got.some((id) => /^pd-ang/.test(id)) && !got.every((id) => /^hm-load-/.test(id)), `“${text}”: ${got.join(', ')}`);
+  }
+});
+
 test('library relevance: good news is never reframed as a worry, and grief is never told to “soak it up”', async () => {
   const GOOD = [['joy', 'My sister had her baby today!'], ['joy', 'The sun came out and I sat in the garden with a coffee.'], ['excitement', 'I just got accepted into university!'], ['excitement', 'My band is playing our first gig on Saturday.']];
   for (const [label, text] of GOOD) {

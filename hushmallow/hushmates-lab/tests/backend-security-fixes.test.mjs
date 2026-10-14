@@ -126,3 +126,61 @@ test('an open report’s words don’t stay forever: retention clears them after
     await rejects(Promise.reject(Object.assign(new Error('x'), { code: 'x' })), 'x');
   } finally { await b.drop(); }
 });
+
+test('retention clears each kind of stored data at its limit, and not before (30 days, 90, 365, 48 hours)', async () => {
+  const b = await backend();
+  const day = 86400e3;
+  const count = async (q, p) => (await b.sql(q, p))[0].n;
+  try {
+    for (const n of ['alice', 'bobby']) await b.join(n);
+    await b.join('mod', { role: 'moderator', catching: false });
+    // a feeling that came home unsaved, with a perspective on it
+    const home = await b.as('alice').call('submitFeeling', { text: FEELING, consent: true, clientId: cid('f') });
+    await catchAndWrite(b, 'bobby', REFRAMES[0]);
+    await b.as('alice').call('withdrawFeeling', { journeyId: home.journey.id });
+    // a second feeling, reported and decided
+    await b.as('alice').call('submitFeeling', { text: OTHER, consent: true, clientId: cid('f') });
+    const { offer } = await b.as('bobby').call('findFeeling');
+    const rep = await b.as('bobby').call('reportFeeling', { holdId: offer.holdId, reason: 'other', details: 'A note.' });
+    await b.as('mod').call('modResolve', { id: rep.reportId, action: 'resume-feeling' });
+    const words = () => b.sql('select status, text_enc from hushmates.journeys where id = $1', [home.journey.id]);
+    const evidence = () => b.sql('select evidence, details_enc from hushmates.reports where id = $1', [rep.reportId]);
+    assert.ok(await count('select count(*)::int n from hushmates.rate_events') > 0, 'nothing to clear');
+    assert.ok(await count('select count(*)::int n from hushmates.audit_log') > 0, 'nothing to clear');
+
+    // 47 hours: everything stays
+    await b.advance(47 * 3600e3);
+    await b.gw.retention();
+    assert.ok(await count('select count(*)::int n from hushmates.rate_events') > 0, 'rate-limit events went before 48 hours');
+    // 49 hours: rate-limit events go, nothing else
+    await b.advance(2 * 3600e3);
+    let r = await b.gw.retention();
+    assert.equal(await count('select count(*)::int n from hushmates.rate_events'), 0, 'rate-limit events stayed past 48 hours');
+    assert.ok(r.rateEventsDeleted > 0);
+    assert.equal((await words())[0].status, 'returned');
+
+    // 29 days after it came home the feeling is still there; 31 days, its words and what came back are gone
+    await b.advance(27 * day);
+    await b.gw.retention();
+    assert.notEqual((await words())[0].text_enc, '', 'cleared before 30 days');
+    await b.advance(2 * day);
+    r = await b.gw.retention();
+    assert.deepEqual(await words(), [{ status: 'deleted', text_enc: '' }], 'an unsaved feeling outlived 30 days');
+    assert.equal(await count("select count(*)::int n from hushmates.perspectives where journey_id = $1 and text_enc <> ''", [home.journey.id]), 0, 'the perspective on it stayed');
+    assert.ok(r.journeysCleared >= 1);
+
+    // the decided report keeps its evidence for 90 days after the decision, then it goes
+    assert.notDeepEqual((await evidence())[0].evidence, {}, 'evidence cleared too early');
+    await b.advance(60 * day);
+    r = await b.gw.retention();
+    assert.deepEqual(await evidence(), [{ evidence: {}, details_enc: '' }], 'resolved evidence outlived 90 days');
+    assert.ok(r.evidenceCleared >= 1);
+
+    // the activity log keeps a year
+    assert.ok(await count('select count(*)::int n from hushmates.audit_log') > 0, 'the log went before a year');
+    await b.advance(275 * day);
+    r = await b.gw.retention();
+    assert.equal(await count("select count(*)::int n from hushmates.audit_log where at < hushmates.clock() - interval '365 days'"), 0, 'log entries outlived a year');
+    assert.ok(r.auditDeleted > 0);
+  } finally { await b.drop(); }
+});

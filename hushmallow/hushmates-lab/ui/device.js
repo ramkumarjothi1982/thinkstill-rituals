@@ -26,8 +26,10 @@ export class Device {
     this.screenHost = h('div', { class: 'hm-screens' });
     this.sheetRoot = h('div', { class: 'hm-sheet-root' });
     this.toastRoot = h('div', { class: 'hm-toast-root', role: 'status', 'aria-live': 'polite' });
-    this.offline = h('div', { class: 'hm-offline', role: 'status', hidden: true }, icon('wifiOff'), h('span', {}, 'You’re offline. Anything unsent will wait for you.'));
-    root.append(atmoEl, this.screenHost, this.offline, this.sheetRoot, this.toastRoot);
+    this.offline = h('div', { class: 'hm-offline', 'aria-hidden': 'true', hidden: true }, icon('wifiOff'), h('span', {}, 'You’re offline. Anything unsent will wait for you.'));
+    // screen readers hear the change from a region that is always there (a region that appears isn't announced)
+    this.offlineSay = h('div', { class: 'sr-only', role: 'status' });
+    root.append(atmoEl, this.screenHost, this.offline, this.offlineSay, this.sheetRoot, this.toastRoot);
     client.on((state, detail) => this._changed(state, detail));
   }
 
@@ -85,6 +87,7 @@ export class Device {
   home() { this.history = []; this.go('home', {}, { back: true }); }
 
   _changed(state, detail) {
+    if (this.offline.hidden !== state.online) this.offlineSay.textContent = state.online ? 'You’re back online.' : 'You’re offline. Anything unsent will wait for you.';
     this.offline.hidden = state.online;
     this.root.classList.toggle('is-offline', !state.online);
     const cur = this.current;

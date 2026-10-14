@@ -66,8 +66,9 @@ node server/main.mjs --mode production --port 8080
 # the local stack with the lab at the /lab/?key=… address it prints
 HUSHMATES_TESTER_KEY="<at least 16 characters>" node server/dev-stack.mjs
 
-# or, on your own machine only, the lab as a plain page
-python3 -m http.server 8000
+# or, on your own machine only, the lab as a plain page: serve the repository root
+# (the lab imports ../../src/ultra), from here that's two folders up
+python3 -m http.server 8000 --directory ../..
 # open http://localhost:8000/hushmallow/hushmates-lab/index.html
 ```
 
@@ -130,6 +131,10 @@ costs money and needs approval.
 
 ## Test it
 
+The two browser tools need Playwright and Chromium:
+`npm i --no-save playwright@1.56.1 && npx playwright install chromium` (or set
+`HUSHMATES_CHROMIUM` to a Chromium you have).
+
 ```bash
 cd hushmallow/hushmates-lab
 node --test tests/*.test.mjs                 # everything: the reference engine, the real database (differential,
@@ -137,7 +142,7 @@ node --test tests/*.test.mjs                 # everything: the reference engine,
 node tools/app-shots.mjs <out-dir>           # end to end in Chromium on the whole local stack, many accounts at once
 node tools/sync-edge.mjs --check             # the Edge Function's shared copies match their sources
 node --test v1-messaging/tests/*.test.mjs   # 32 (archived v1)
-node tools/shots.cjs <out-dir> http://localhost:8000   # the lab: interface QA
+node tools/shots.cjs <out-dir> http://localhost:8000   # the lab: interface QA (the repository root served on :8000, see The lab)
 ```
 
 The access-control tests run real servers over HTTP in both modes. They try
@@ -179,22 +184,23 @@ with the keyboard alone and checks reduced motion.
 
 | Check | Result |
 |---|---|
-| All tests (`node --test tests/*.test.mjs`) | 307 pass, 0 fail, 2 skipped: the optional live Another Angle checks, which need that service's local harness (and would be billable against the real one) |
-| On the real database | differential against the reference engine (8 seeds × 300 steps); eight race tests (twelve people for five places, duplicate sends, two devices, Mallow requests, a single-use invitation, overlapping scheduled jobs, blocking mid-write, finds during a catch); the AI budget hold under concurrent calls; RLS and access role by role; tokens forged, replayed or from a password sign-in refused |
-| End to end, many accounts | 66 of 66 checks, 37 screens, 0 problems (`docs/screenshots/phase2/`, with `app-report.json`): |
+| All tests (`node --test tests/*.test.mjs`) | 309 pass, 0 fail, 2 skipped: the optional live Another Angle checks, which need that service's local harness (and would be billable against the real one) |
+| On the real database | differential against the reference engine (8 seeds × 300 steps); eight race tests (twelve people for five places, duplicate sends, two devices, Mallow requests, a single-use invitation, overlapping scheduled jobs, blocking mid-write, finds during a catch); the AI budget hold under concurrent calls; RLS and access role by role; tokens forged, replayed or from a password sign-in refused; retention at each of its limits |
+| End to end, many accounts | 70 of 70 checks, 37 screens, 0 problems (`docs/screenshots/phase2/`, with `app-report.json`): |
 | | five people at once, and a sixth isn't offered it; two people; nobody, said plainly |
 | | the Mallow prepared by the scheduler at 30 minutes, from the free library, labelled automatic, never counted |
 | | homecoming at 24 hours; Explore another angle (one labelled perspective, still 2 people) |
 | | Send it out again: caught by a second account, home again with 1 |
 | | the share story leaves out a perspective its writer kept private |
-| | offline, and a retry that sends once; support with tappable Australian crisis lines |
-| | reporting and the safety desk (decisions logged; its refresh keeps a moderator's place); blocking, never revealed |
+| | offline, and a retry that sends once; support, and “Get support now”, with tappable Australian crisis lines; words that need care never stored |
+| | reporting and the safety desk (focus moves into an opened report; decisions logged and noted; its refresh keeps a moderator's place); blocking, never revealed |
 | | keyboard only; the same account on a second device; download, and deletion (sign-in included; the other device is signed out) |
-| Every screen | no developer content, raw data, internal ids, programming values or testing words, no sideways scrolling. The console shows only the 401s the test causes by moving the clock a day; the app refreshes the session |
+| Every screen | no developer content, raw data, programming values or testing words, no sideways scrolling; no internal ids on any customer screen (the safety desk shows a labelled account reference for a team lead, by design). Every refused session (401) is accounted for: it follows a clock move that aged the session, or the test asked for it; the app refreshes and carries on |
 | Builds | app 71 files, desk 20; comments stripped, every module parses, scan clean, secret keys refused |
 | Edge Function copies | `tools/sync-edge.mjs --check`: the shared files match their sources (also a test) |
 | Archived v1 tests | 32 pass |
 | Lab QA (`tools/shots.cjs`, `docs/screenshots/qa-report.json`) | 30 scenes at 390 × 844, 375 × 812, 320 × 568, 768 × 1024 and 1280 × 860: no layout-audit findings; scenarios A (10 of 10), B (6 of 6) and C (5 of 5) ticked at every size; a feeling released with the keyboard alone, focus visible on every stop; reduced motion holds, and all three scenarios complete with it; no console errors |
+
 Earlier screenshots are kept for comparison: Phase 1's customer app in
 `docs/screenshots/customer/` and the lab's scenes in `docs/screenshots/`
 (390 × 844 unless named), with the share picture export and video frames.

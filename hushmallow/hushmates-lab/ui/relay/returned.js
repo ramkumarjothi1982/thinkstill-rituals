@@ -326,7 +326,7 @@ export function homecoming(dev, { id, refresh } = {}) {
     let res;
     try { res = await c.act('resendJourney', { journeyId: id, clientId: mem[id], ...(hasMallow ? {} : { allowFallback: allow }) }); } catch (e) { dev.toast(errorText(e), { tone: 'warn', ms: 4200 }); return; }
     delete mem[id];
-    if (res.status === 'support') { dev.go('support', { support: res.support, level: res.level }); return; }
+    if (res.status === 'support') { dev.go('support', { support: res.support, level: res.level, from: 'resend', journeyId: id }); return; }
     play('release');
     if (!reducedMotion() && orb.el.isConnected) {
       orb.ripple({ colour: m.glow });

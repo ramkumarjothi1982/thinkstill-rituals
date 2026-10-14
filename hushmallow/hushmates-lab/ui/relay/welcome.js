@@ -101,7 +101,7 @@ export function welcome(dev) {
           promise('eyeOff', 'Pseudonymous, not perfectly anonymous.', 'Other participants never see your name or account, and can’t contact you. Leave out names and details that could identify anyone.'),
           promise('sparkle', 'Possibilities, not verdicts.', 'No diagnosis, no judgement, no telling anyone what to do.'),
           promise('heart', 'People first.', 'A Mallow perspective is offered only if you allow it. It’s automatically generated, always labelled, and never counted as a person.'),
-          promise('shield', 'Not an emergency service.', 'If you might not be safe, Hushmates points you to real support straight away.')),
+          promise('shield', 'Not an emergency service.', 'Hushmates looks out for words that suggest you might not be safe and shows real support, but it can miss things. If you’re not safe, call 000 or Lifeline on 13 11 14.')),
         h('button', { type: 'button', class: 'hf-link hf-link--centre', dataset: { test: 'welcome-privacy' }, onclick: () => privacySheet(dev) }, 'Privacy details'),
         h('div', { class: 'hf-form' },
           (() => { const sw = sentenceSwitch({ label: 'Let feelings find me', hint: 'Catch other people’s feelings when you choose to look. You can change this any time.', checked: choice.catching, test: 'welcome-catching', onChange: (on) => { choice.catching = on; return true; } }); sw.classList.add('kit-switch--plain'); return sw; })(),

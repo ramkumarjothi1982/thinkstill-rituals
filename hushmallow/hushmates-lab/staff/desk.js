@@ -108,7 +108,7 @@ function enterCode(address) {
 function join() {
   const err = errorLine('join-error');
   const code = h('input', { id: 'join-code', autocomplete: 'off', autocapitalize: 'characters', required: true });
-  const name = h('input', { id: 'join-name', autocomplete: 'off', maxlength: 40, required: true });
+  const name = h('input', { id: 'join-name', autocomplete: 'off', minlength: 3, maxlength: 20, required: true, 'aria-describedby': 'join-name-hint' });
   const adult = h('input', { id: 'join-adult', type: 'checkbox', required: true });
   const form = h('form', { class: 'desk-card desk-narrow', 'data-test': 'desk-join', onsubmit: async (ev) => {
     ev.preventDefault();
@@ -118,7 +118,8 @@ function join() {
   h('h1', {}, 'Your safety team invitation'),
   h('p', {}, 'Enter the invitation the team lead gave you. It works once.'),
   h('label', { for: 'join-code' }, 'Invitation'), code,
-  h('label', { for: 'join-name' }, 'A first name or nickname the team will see'), name,
+  h('label', { for: 'join-name' }, 'A name for you here'), name,
+  h('p', { class: 'desk-meta', id: 'join-name-hint' }, '3 to 20 letters or numbers, not words like staff or support. Only you see it; the activity log shows an account reference.'),
   h('label', { class: 'desk-check' }, adult, ' I’m 18 or over'), err,
   h('button', { type: 'submit', class: 'desk-primary' }, 'Join the desk'),
   h('button', { type: 'button', class: 'desk-quiet', onclick: signOut }, 'Sign out'));
@@ -262,7 +263,7 @@ async function detail(id) {
   const history = r.subjectHistory;
   detailPane = h('section', { class: 'desk-detail', 'data-test': 'desk-detail', 'aria-labelledby': 'desk-detail-title' },
     back,
-    h('h2', { id: 'desk-detail-title' }, `${kindOf(r)} · ${reasonLabel[r.reason] || 'Something else'}`),
+    h('h2', { id: 'desk-detail-title', tabindex: '-1' }, `${kindOf(r)} · ${reasonLabel[r.reason] || 'Something else'}`),   // focus moves here when it opens or is decided
     h('p', { class: 'desk-meta' }, `Reported ${when(r.at)} (${ago(r.at)})`),
     r.urgent ? h('aside', { class: 'desk-urgent', 'data-test': 'desk-urgent' },
       h('h3', {}, URGENT_GUIDE.title), ...URGENT_GUIDE.steps.map((s) => h('p', {}, s)),

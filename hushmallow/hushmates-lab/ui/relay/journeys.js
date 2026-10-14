@@ -20,6 +20,8 @@ import { PERSPECTIVE_LABELS } from '../../core/relay-config.js';
 import { brandBar, dock, top, feelChip, feelColour, lights, errorText, supportBody, reportSheet } from './common.js';
 import { room, stage, Speech, line, swapLine, put, hostNote, focusHeading } from './parts.js';
 
+/** The account is paused by the safety team: its travelling feelings aren't offered to anyone (they still come home). */
+const held = (dev) => !!dev.state.me && dev.state.me.accountState !== 'active';
 export const humanProgress = (j) => `${j.humanCount} of ${j.of} human perspective${j.of === 1 ? '' : 's'}`;
 
 /**
@@ -54,7 +56,7 @@ export function journeys(dev) {
       h('span', { class: 'hf-jorb-cap' },
         h('span', { class: 'hf-jorb-text' }, j.text),
         h('span', { class: 'hf-jorb-progress' }, lights(drawn(dev, j)), h('span', {}, humanProgress(j))),
-        h('span', { class: 'hf-meta' }, j.paused ? 'Paused for a safety review' : `Home within ${fmtSpan(j.expiresAt - now)}`),
+        h('span', { class: 'hf-meta' }, j.paused ? 'Paused for a safety review' : held(dev) ? `Not being offered · home within ${fmtSpan(j.expiresAt - now)}` : `Home within ${fmtSpan(j.expiresAt - now)}`),
         ask ? h('span', { class: 'hf-jorb-offer' }, face(j.fallback.mallow, { size: 20 }), `${MALLOWS[j.fallback.mallow]?.name} can offer another perspective`) : null,
         found ? h('span', { class: 'hf-jorb-offer', dataset: { test: 'mallow-found-hint' } }, face(j.fallback.mallow, { size: 20 }), `${(MALLOWS[j.fallback.mallow] || MALLOWS.noomi).name} found another way to see it`) : null));
   });
@@ -128,7 +130,9 @@ export function journey(dev, { id } = {}) {
     put(body,
       h('div', { class: 'hf-jdetail-status' },
         h('p', { class: 'hf-home-progress', dataset: { test: 'progress' } }, lights(drawn(dev, j)), h('span', {}, humanProgress(j))),
-        h('p', { class: 'hf-meta' }, j.paused ? 'Paused while our safety team takes a look.' : `It comes home after five human perspectives, or within ${fmtSpan(j.expiresAt - now)}.`)),
+        h('p', { class: 'hf-meta' }, j.paused ? 'Paused while our safety team takes a look.'
+          : held(dev) ? `While your account is paused it isn’t offered to anyone. It comes home within ${fmtSpan(j.expiresAt - now)}.`
+            : `It comes home after five human perspectives, or within ${fmtSpan(j.expiresAt - now)}.`)),
       st.el,
       reveal,
       h('figure', { class: 'hf-own-words' }, h('blockquote', {}, j.text), h('figcaption', {}, feelChip(j.label), h('span', { class: 'hf-meta' }, `Released ${fmtAgo(j.releasedAt || j.createdAt, now)}`))),

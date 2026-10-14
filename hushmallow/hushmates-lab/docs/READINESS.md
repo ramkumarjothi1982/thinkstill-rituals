@@ -33,7 +33,7 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
 
 ### Sign-in and accounts
 - ✅ Passwordless email code, invitation, 18+ confirmation. Invitations are hashed, use-limited, expiring and revocable. Wrong guesses are limited per person (10 an hour) and per network (30 an hour), counted one at a time so guesses sent together can't slip past (tested).
-- ✅ Only an email-code sign-in opens Hushmates. The Edge Function checks how the person signed in (the token's `amr`), so a password sign-up for someone else's email gets nothing (tested). 🟡 Confirm on staging that both a first sign-in and a later one are accepted (`otp` or `magiclink`, `STAGING.md` step 10).
+- ✅ Only an email-code sign-in opens Hushmates. The Edge Function checks how the person signed in (the token's `amr`), so a password sign-up for someone else's email gets nothing (tested). 🟡 Confirm on staging that both a first sign-in and a later one are accepted (`otp` or `magiclink`, `STAGING.md` step 10.7).
 - 🟡 The network used for those limits is the last `x-forwarded-for` entry, which the platform's proxy appends; a caller can only write earlier ones. Confirm on staging which header Supabase sets, and name it in `HUSHMATES_CLIENT_IP_HEADER` if there's a better one.
 - ✅ The same email on a new device reaches the same account and everything in it (tested). No usernames or passwords.
 - ✅ Identities are `(issuer, subject)` linked to a member. The main Hushmallow login can later be added as a second issuer, without a second account. It is not connected now: production Hushmallow auth is untouched.
@@ -43,8 +43,8 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
 - ⚠️ After someone deletes their data, an access token they already hold stays cryptographically valid until it expires (at most 1 hour). It leads to nothing that was theirs (tested). Shorten the JWT expiry in Supabase if that matters.
 
 ### Safety and moderation
-- ✅ Words that suggest someone may not be safe are answered with support. They are never circulated, stored or sent to any AI. The screening is rules-based: a floor, not a guarantee, and the app says so.
-- ✅ The crisis lines are Australian: 000, Lifeline 13 11 14, Suicide Call Back Service, 13YARN, 1800RESPECT, Beyond Blue. They appear on the support screen and under "Get support now". 🩺 Check the wording and the numbers before launch.
+- ✅ Words that suggest someone may not be safe are answered with support. They are never circulated, stored or sent to any AI. The screening is rules-based: a floor, not a guarantee, and the app says so (the welcome and *You & safety* say it can miss things).
+- ✅ The crisis lines are Australian, and each one can be tapped to call. 000, Lifeline 13 11 14 (with its online chat), the Suicide Call Back Service 1300 659 467 and 13YARN 13 92 76 (plus findahelpline.com outside Australia) appear on the crisis support screen and under "Get support now"; 1800RESPECT 1800 737 732 is added for abuse and violence, Beyond Blue 1300 22 4636 for other care screens (tested end to end: the support screen and "Get support now"). 🩺 Check the wording and the numbers before launch.
 - ✅ Reporting, automatic pausing after reports, blocking (nobody learns of it), and withdrawal.
 - ✅ The safety desk at `/staff/`:
   - It is for moderators only, enforced server-side.
@@ -60,7 +60,7 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
 
 ### Privacy and consent
 - ✅ Consent is explicit before a feeling travels, and separately for the Mallow fallback. The app and the export say who can receive or process what.
-- ✅ Download my data (a human summary plus a file) and delete my data. The account goes, with its words: feelings, the perspectives it gave, its Mallow's perspectives, its own report notes, and its words quoted in safety reports (the reports stay, wordless). Its sign-in goes too; if the sign-in provider can't be reached at that moment, the scheduler keeps trying. Nobody else's data is touched (tested).
+- ✅ Download my data (a human summary plus a file) and delete my data. The account goes, with its words: feelings, the perspectives it gave, its Mallow's perspectives, its own report notes, and its words quoted in safety reports (the reports stay, wordless). Its sign-in goes too; if the sign-in provider can't be reached at that moment, the scheduler keeps trying. Nobody else's feelings or account are touched (tested). Perspectives other people wrote on the deleted feelings are erased with them, and leave those writers' lists and exports, as the privacy details tell catchers before they write.
 - ✅ Words a moderator removes are erased; the report keeps its own copy as evidence until retention clears it (90 days after a decision, 180 days for a report nobody decided).
 - ✅ Retention: unsaved feelings are cleared 30 days after they come home, resolved report evidence after 90 days, the audit log after 365 days, and rate-limit events after 48 hours. All of this is configurable.
 - ✅ Hushmates never claims absolute anonymity. Pseudonymous is the word, because:
@@ -100,7 +100,11 @@ These are questions for a lawyer, not conclusions:
 5. **The Notifiable Data Breaches scheme.** A breach response plan: who assesses, who notifies the OAIC and the people affected.
 6. **Therapeutic Goods (software as a medical device).** Keep Hushmates positioned as reflection and wellbeing, with no claims to diagnose, treat or prevent a condition. Have the wording checked.
 7. **Australian Consumer Law.** What the app says about privacy, anonymity and benefits must be accurate (no "safe" guarantees). Two lines come from the product brief and need a lawyer's view:
-   - The release consent reads "Share anonymously with Hushmates participants". Other participants never see a name, but Hushmates holds the email address and moderators can read reported words, so the app calls itself pseudonymous everywhere else (the privacy sheet says "not perfectly anonymous"). An alternative: "Share with Hushmates participants, without my name".
+   - The release consent reads "Share anonymously with Hushmates participants". Other participants never see a name, but Hushmates holds the email address and moderators can read reported words, so the app otherwise calls itself pseudonymous (the welcome and the privacy sheet say "not perfectly anonymous"). An alternative: "Share with Hushmates participants, without my name". If the label changes, these change with it:
+     - the hint under the release button (`ui/relay/release.js`);
+     - the Your data summary, "You agreed to share your feeling anonymously" (`ui/relay/your-data.js`);
+     - the consent-required message (`core/relay-messages.js`, pinned by `tests/audit-fixes.test.mjs`);
+     - the export key `agreedToShareAnonymouslyAt` (`core/export-format.js`, `docs/ACCESS.md`): a format change, so its tests change too.
    - The welcome line "One feeling. Five perspectives. Back to you." Five is the most a feeling can gather, not a promise; the app shows the real count, including zero.
 8. **Terms of use and community guidelines** that moderators can apply, and a way to appeal a restriction.
 9. **Contracts with providers** (data processing terms, where data is stored):
@@ -133,7 +137,7 @@ Not tested, and why:
 | Real Supabase (Auth, PostgREST, pg_cron, pg_net, Vault, Edge runtime) | Needs the owner's account; nothing is deployed without approval | The same code against real Postgres 16, the local Auth emulator, and the gateway under Node; `STAGING.md` steps 6 and 10 check each piece |
 | Deno | Not installed here | Web APIs only. The Mallow orchestration was also smoke-tested under Bun, a second runtime |
 | Email delivery | No email provider may be switched on | Codes are printed by the local Auth emulator |
-| A live Another Angle call | No billable AI calls | A local fake HTTP server for success, errors, timeouts and costs (33 tests) |
+| A live Another Angle call | No billable AI calls | Local fake HTTP servers for success, errors, timeouts, mock mode and costs (in `backend-mallow`, `backend-review-fixes` and `review-mallow-fallback`), and the AI limits, budget and fallbacks with in-process fakes |
 | Load at 10,000+ people | Needs staging | Race tests for correctness under concurrency |
 | Screen readers, by hand | No assistive technology here | Labels, roles, live regions and focus order, checked in the browser tests |
 

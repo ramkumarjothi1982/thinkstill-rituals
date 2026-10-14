@@ -17,7 +17,8 @@
 // until you hand them out. Turning AI on (set ai '{"enabled": true}') costs money once a
 // provider is configured: only with the owner's approval of the costs.
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { join } from 'node:path';
 import pg from 'pg';
@@ -105,4 +106,9 @@ async function main() {
   } finally { await client.end(); }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { console.error(e.message); process.exit(1); });
+/** Run as `node <this file>`? Compared as real paths, so spaces, % or a symlink in the path don't stop it. */
+function runAsCommand() {
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+
+if (runAsCommand()) main().catch((e) => { console.error(e.message); process.exit(1); });

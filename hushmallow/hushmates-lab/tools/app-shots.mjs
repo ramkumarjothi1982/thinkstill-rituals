@@ -18,7 +18,7 @@
 
 import { createRequire } from 'node:module';
 import net from 'node:net';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { build, FORBIDDEN } from './build-app.mjs';
@@ -26,7 +26,10 @@ import { builtFiles } from '../server/server.mjs';
 import { startDevStack } from '../server/dev-stack.mjs';
 import { freshDb } from '../tests/backend-helpers.mjs';
 
-const { chromium } = createRequire('/opt/node-tools/node_modules/')('playwright');
+// Playwright from this project if it's installed (npm i --no-save playwright), else this container's copy
+const playwright = (() => { try { return createRequire(import.meta.url)('playwright'); } catch { return createRequire('/opt/node-tools/node_modules/')('playwright'); } })();
+const { chromium } = playwright;
+const CHROMIUM = process.env.HUSHMATES_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const out = process.argv[2] || join(process.cwd(), 'app-shots');
 mkdirSync(out, { recursive: true });
 
@@ -73,7 +76,9 @@ const ANON = JSON.parse(readFileSync(new URL('../app/config.json', import.meta.u
 const report = { stack: 'production build + local Postgres + local Supabase Auth copy + the Edge Function code', checks: [], screens: [], problems: [], console: [], expected: [], server: [] };
 const check = (ok, what) => { report.checks.push({ ok: !!ok, what }); if (!ok) report.problems.push(`check failed: ${what}`); };
 const sql = async (q, p) => (await db.pool.query(q, p)).rows;
-const advance = async (ms) => { clock.t += ms; await stack.gateway.tick(); };
+// moving the clock an hour or more ages every open session: each page's next call may be refused once (401) and refreshed
+const sessions = [];
+const advance = async (ms) => { clock.t += ms; if (ms >= 3600e3) for (const s of sessions) s.aged = true; await stack.gateway.tick(); };
 
 // --------------------------------------------------- other members' apps (the API) --
 const H = { 'content-type': 'application/json', apikey: ANON };
@@ -113,13 +118,21 @@ async function answer(who, text, { allowShare = true } = {}) {
 }
 
 // --------------------------------------------------------------------- browsers --
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await chromium.launch({ executablePath: CHROMIUM, args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 let probing = false;
 async function device({ width = 390, height = 844, mobile = true, motion = 'reduce' } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, hasTouch: mobile, isMobile: mobile, reducedMotion: motion, acceptDownloads: true });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => report.console.push(`pageerror: ${e.message}`));
   page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) (probing ? report.expected : report.console).push(`${m.type()}: ${m.text()}`); });
+  // every refusal of a session is accounted for: the script asked for it, or the clock aged the session
+  const session = { aged: false };
+  sessions.push(session);
+  page.on('response', (r) => {
+    if (!r.url().includes('/functions/v1/hushmates/rpc/')) return;
+    if (r.status() === 401) { if (!probing && !session.aged) report.problems.push(`unexpected 401: ${r.url().replace(base, '')}`); else report.refreshed = (report.refreshed || 0) + 1; }
+    else if (r.ok()) session.aged = false;
+  });
   return { ctx, page };
 }
 const hook = (page, s) => page.locator(`[data-test="${s}"]:visible`).first();
@@ -394,13 +407,14 @@ try {
   if (await page.locator('[data-test="release-another"]:visible').count()) await hook(page, 'release-another').click();
   await hook(page, 'feeling-text').fill('I don’t want to be here anymore');
   await hook(page, 'share-consent').click().catch(() => {});
+  const storedBefore = (await sql('select count(*)::int n from hushmates.journeys'))[0].n;
   await hook(page, 'release-submit').click();
   await page.locator('[data-test="support-scene"]').waitFor({ timeout: 15000 });
   const support = await shot(page, '19-support-au', { full: true });
   check(/000/.test(support) && /13 11 14/.test(support), 'support shows Australian crisis lines (000, Lifeline)');
   check(await page.locator('[data-test="support-call"][href="tel:000"]:visible').count() > 0 && await page.locator('[data-test="support-call"][href="tel:131114"]:visible').count() > 0,
     'the crisis lines can be tapped to call (000, Lifeline)');
-  check(!(await sql("select 1 from hushmates.journeys where text_mac is not null and text_enc like '%want to be here%'")).length, 'words needing care were never stored');
+  check((await sql('select count(*)::int n from hushmates.journeys'))[0].n === storedBefore, 'words needing care were never stored (no new feeling in the database)');
   await hook(page, 'support-clear').click();
 
   // ------------------------------------------------ 6. reporting, and the safety desk --
@@ -434,6 +448,7 @@ try {
   await shot(desk.page, '21-desk-queue', { staff: true });
   await desk.page.locator('[data-test="desk-report"]').first().click();
   await desk.page.locator('[data-test="desk-detail"]').waitFor();
+  check(await desk.page.evaluate(() => document.activeElement?.id === 'desk-detail-title'), 'opening a report moves focus to it (a screen reader reads its title)');
   const evidence = await shot(desk.page, '22-desk-report', { staff: true, full: true });
   check(evidence.includes('useless'), 'the desk shows the reported words');
   check(!/Emberly|member5@/.test(evidence), 'the desk never shows who wrote them');
@@ -457,6 +472,8 @@ try {
   await desk.page.locator('#resolve-note').fill('Aimed at a whole team: taken out of circulation.');
   await desk.page.locator('[data-test="desk-remove-feeling"]').click();
   await desk.page.locator('[data-test="desk-decided"]').waitFor();
+  check(await desk.page.evaluate(() => document.activeElement?.id === 'desk-detail-title'), 'after a decision, focus is back on the report, not lost');
+  check((await desk.page.locator('.desk-notes').innerText()).includes('Decision: Take it out of circulation'), 'the team notes say which decision was taken');
   await shot(desk.page, '23-desk-decided', { staff: true, full: true });
   await desk.page.locator('[data-test="desk-tab-activity"]').click();
   await desk.page.locator('[data-test="desk-activity"]').waitFor();
@@ -534,6 +551,13 @@ try {
   await hook(page, 'open-you').click();
   await hook(page, 'open-data').waitFor();
   await shot(page, '28-you');
+  // "Get support now" carries the same tappable lines, any time
+  await hook(page, 'open-support').click();
+  await page.locator('.hm-sheet [data-test="support-resources"]').waitFor({ timeout: 10000 });
+  const lines = await page.locator('.hm-sheet [data-test="support-call"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  check(['tel:000', 'tel:131114', 'tel:1300659467', 'tel:139276'].every((t) => lines.includes(t)), `“Get support now”: 000, Lifeline, Suicide Call Back and 13YARN can be tapped (${lines.join(' ')})`);
+  await page.locator('.hm-sheet-close').click();
+  await page.locator('.hm-sheet').waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
   await hook(page, 'open-data').click();
   await hook(page, 'data-feelings').waitFor();
   await shot(page, '29-your-data');

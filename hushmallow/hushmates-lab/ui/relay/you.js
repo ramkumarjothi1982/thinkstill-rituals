@@ -63,7 +63,7 @@ export function you(dev) {
         promise('sparkle', 'A possibility, not a verdict.', 'Perspectives offer another way of seeing, never a diagnosis, judgement or order.'),
         promise('heart', 'Five different people at most.', 'Never the author, one each, and never shown to the same person twice.'),
         promise('star', 'Mallow perspectives are labelled.', 'They’re automatically generated (only if you allow it), never presented as a person, and never counted as one.'),
-        promise('shield', 'Rules first, people behind them.', 'Words are screened for safety and personal details, and every report goes to a person on our safety team.'),
+        promise('shield', 'Rules first, people behind them.', 'Words are screened for safety and personal details by rules that can miss things, so every report goes to a person on our safety team.'),
         promise('eyeOff', 'No scoreboards, no streaks.', 'Nothing here counts how popular you are.'))),
 
     section('If you’re not okay',

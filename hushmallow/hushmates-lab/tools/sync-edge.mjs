@@ -12,7 +12,8 @@
 //   node tools/sync-edge.mjs           write the copies (and remove stale ones)
 //   node tools/sync-edge.mjs --check   exit 1 if any copy differs from its source (the tests run this)
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { LAB_ROOT } from '../server/app-files.mjs';
 
@@ -68,7 +69,12 @@ export function sync({ check = false } = {}) {
   return { changed, stale, files: [...want.keys()].map((p) => relative(LAB_ROOT, p)) };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+/** Run as `node <this file>`? Compared as real paths, so spaces, % or a symlink in the path don't stop it. */
+function runAsCommand() {
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+
+if (runAsCommand()) {
   const check = process.argv.includes('--check');
   const r = sync({ check });
   if (check && (r.changed.length || r.stale.length)) {

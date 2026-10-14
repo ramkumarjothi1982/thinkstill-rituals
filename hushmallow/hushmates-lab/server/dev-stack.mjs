@@ -12,7 +12,8 @@
 //
 // Keys for encrypting words are made once and kept in .data/dev-keys.json (never committed).
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import pg from 'pg';
@@ -107,7 +108,12 @@ export async function startDevStack({
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+/** Run as `node <this file>`? Compared as real paths, so spaces, % or a symlink in the path don't stop it. */
+function runAsCommand() {
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+
+if (runAsCommand()) {
   const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : fallback; };
   const list = (v) => (v || '').split(',').map((x) => x.trim()).filter(Boolean);
   const stack = await startDevStack({ port: Number(arg('port', 8090)), database: arg('db', 'hushmates_dev'),
