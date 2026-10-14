@@ -83,6 +83,21 @@ Source: `docs/PHASE2-PLAN.md`, sections "Open questions for the owner" and "CONF
 | **Options** | (a) Switch new directions to `'hm-score'` after the listening pass (the golden T01 keeps `'soundtrack-v2'`). (b) Switch per Mallow as each kit is approved by ear. (c) Keep `'soundtrack-v2'` until the banned-recipe lint gaps found in the WP-04 review are closed. |
 | **Consequences** | WP-04 (score defaults, bitrate), WP-01 (`render/mux.mjs` loop mux), WP-13 onward (every new direction's sound), WP-25/WP-27 (delivery checks on the uploaded file). |
 
+
+## Lead decisions taken on the owner's behalf (2026-10-14)
+
+The owner approved Phase 2 and asked to proceed without a separate technical review. The lead took the choices below. Each one stays consistent with what the owner already approved, the approved v2, and can be reversed. They are shown to the owner with the M1 review batch, and **they count as answers until the owner overrules them**.
+
+| Item | Decision | Why |
+|---|---|---|
+| R1 (WP-02 face cache) | **Accepted.** The face is drawn once per frame, plus sub-frame redraws only for fast face motion. | The A/B flip sheet (`docs/m0/wp02-ab-flip/`) was reviewed by eye. Final vs exact is visually identical: face-box SSIM mean 0.9991, min 0.9987, PSNR ≥ 46.7 dB. It cuts about 410 s per video. |
+| Q4 master encoder | **(b) Keep CRF 16 (D7).** Segments render to a near-lossless intermediate, and the master is one CRF 16 pass over the joined frames. | This matches the approved master's quality and size (≈ 34 MB rather than 46 MB). Constant QP gives no visible gain. |
+| Q5 G-DIR thresholds | **(a) Accept the values calibrated on the approved v2** as the limits for new content: stretch ≤ 1.4, exhale ≥ 1.25× the inhale, glass readability at alpha ≥ 0.75. The plan's stricter values stay as warnings. | The owner approved v2, so its measured values are acceptable by definition. |
+| Q6 QA limits | **(a) Accept the values calibrated on the approved v2**, with the plan's values kept as the warn band. The hue limit goes back to 10° once the WP-10 rest probes exist. | As for Q5. The hue limit is tightened as soon as it can be measured properly. |
+| Q7 generic score | **New directions switch to `hm-score` once the banned-recipe and shape-lint gaps are closed** (M0 follow-up). The golden T01 keeps `soundtrack-v2`. | The owner listens to the generic score in the M1 batch, so a separate listening pass is not needed. |
+| Audio pre-roll (raised in Q7) | **No edit lists in delivered files.** The circular score is trimmed physically, so audio starts at t = 0 in every player. | Upload and transcoding pipelines that ignore edit lists would play the score 1 s late. This is a correctness fix, not a matter of taste. |
+| Q1–Q3 | The defaults stay in force. | They don't block M1. |
+
 ## Decided defaults (the owner may still overrule them)
 
 These came out of the plan synthesis. They count as settled unless the owner says otherwise.
