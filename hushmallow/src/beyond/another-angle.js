@@ -7,6 +7,9 @@
 //   arrive → (consent, once, when the server is configured) → invitation →
 //   the compact input (the person's words + an optional feeling) →
 //   safety (crisis: urgent support, nothing sent; care: support, no reframe) →
+//   a loss detected: the gentle path, no question; otherwise one gentle choice first (owner decision 'Ask before every
+//   world', 14 Oct 2026; angle-first.js ASK_BEFORE_ANGLE): "Shall we look at this from another angle, or just be with
+//   it?" (nothing sent or played before it; "Just be with it" is the gentle path, nothing sent) →
 //   the words become a Thought Mallow while Zuzu explores another angle →
 //   one of ten mechanics (picked by the scene's interaction_type) →
 //   a new perspective: two subtitle lines from the scene's Mallow beside Zuzu →
@@ -29,8 +32,9 @@ import { hfIcon } from '../hushfold/icons.js';
 import { ensureBeyondCss } from './styles.js';
 import {
   WAITING, WAITING_LONG, ARRIVAL, SAFETY, UNCLEAR, EXPLORE, EXPLORE_ASK, EXPLORE_MORE, EXPLORE_EMPTY,
-  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, LOSS_CHECK, mechanicLines, pick,
+  FRIEND_LINES, FEEDBACK, END, ZUZU_SQUEEZE, INVITE, GRIEF, FEELING, LOSS_CHECK, ANGLE_CHOICE, mechanicLines, pick,
 } from './lines.js';
+import { firstStep, answerKey } from './angle-first.js';
 import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, guessGuard } from './authored.js';
 import { deathEscalation, serverLoss, griefLinesOk } from './grief.js';
 import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess, lossRoute, griefFeeling } from './backstop.js';
@@ -95,6 +99,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // (review r8) follow: death talk that wanted to follow the one who died was seen (typed, closed or sent: care, for
     // the visit); noPlay: a bag word or death talk was seen (no playful line for the visit); heavyDraft: while typing
     follow: false, noPlay: false, heavyDraft: false,
+    // (owner decision 'Ask before every world') answers: what they chose for these words in this visit (angle-first.js
+    // answerKey → 'angle' | 'be' | 'yes' | 'else'); lastGentle: the last Tell went to the gentle path (the Tell opens empty
+    // then, never prefilled with those words); unsure: the words carry a softer loss cue (lossRoute 'ask')
+    answers: new Map(), lastGentle: false, unsure: false,
     touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9, band: 0,
   };
   const timers = new Set();
@@ -160,7 +168,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const sh = token ? sheets.find((r) => r.token === token) : sheets[sheets.length - 1];
     if (sh) { sh.token = 0; sh.sheet.close('back'); return; }
     if (overlay && (!token || token === layer.overlay || !sheets.length)) { layer.overlay = 0; overlay.close('back'); return; }
-    // (the check-in "Is this about losing someone?": Back lets it go, and Zuzu stays here quietly)
+    // (the question before the angle, or the check-in "Is this about losing someone?": Back lets it go, and Zuzu stays
+    // here quietly)
     if (layer.lossCheck && (!token || token === layer.lossCheck)) { layer.lossCheck = 0; subs?.drop((o) => o.lossCheck); }
   }
 
@@ -547,6 +556,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     openTellNow();
   }
   function openTellNow() {
+    // (askall-angle item 2) after the gentle path the Tell opens empty: sending those words again is never one tap away
+    const prefill = S.lastGentle ? '' : S.text;
     subs?.clear({ keepHeld: true });
     subs?.suspend();
     S.phase = 'typing';
@@ -556,7 +567,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     overlay = inputMod.openInput({
       app, root, prompt: ARRIVAL.prompt,
       mallow: { id: 'zuzu', name: ZUZU.name, glow: ZUZU.colours.glow },
-      emotion: S.emotion, intention: S.intention, hasPlan: true, text: S.text,
+      emotion: S.emotion, intention: S.intention, hasPlan: true, text: prefill,
       // Another Angle never takes photos; with sharing on, the note says where the words go (not "on this phone")
       photos: false, privacyNote: serverMode() ? SERVER_CLAUSE : null,
       // its support sheets (urgent on crisis words, the Support chip) and the A–Z list are layers of the scene,
@@ -599,7 +610,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // is seen, and death talk turns Zuzu's face attentive
     const ta = overlay?.el?.querySelector?.('textarea');
     ta?.addEventListener('input', () => { clearTimeout(draftT); draftT = setTimeout(() => { draftT = 0; if (overlay) readDraft(overlay.text); }, DRAFT_MS); });
-    if (S.text) readDraft(S.text);
+    if (prefill) readDraft(prefill);
     dockShow({});
     layout();
   }
@@ -775,14 +786,15 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
    * sees the whole context) and both lines acknowledge (griefLinesOk), else the authored pair (lines.js GRIEF), which
    * never assumes anyone died. An
    * ordinary server scene never plays here (never a fact-vs-guess game for death talk). `scene` is a server scene
-   * that already reads as grief (`asked`: the server has answered already); without one, and with sharing on, the
-   * words are sent once here.
+   * that already reads as grief (`asked`: the server has answered already, or nothing is to be sent: they chose "Just
+   * be with it"); without one, and with sharing on, the words are sent once here.
    */
   async function griefMode({ scene = null, asked = false, told = null } = {}) {
     // (wanting to follow the one who died is care, whichever way it got here: nothing more is sent)
     if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
     const seq = ++S.seq;
     S.grief = true; S.keepSupport = true; S.noPlay = true; S.phase = 'support';
+    S.lastGentle = true;
     keepCtl?.abort();
     dropThought(); endMechanic(true); dismissCompanion();
     supportPill.hidden = false;
@@ -852,15 +864,24 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // server still answers it, gently (griefMode)
     const route = lossRoute(S.text, { emotion: S.emotion });
     if (route === 'gentle') return griefMode();
-    // not sure (owner decision 'Ask when unsure'): Zuzu asks first, before anything is sent, framed or played; asked once
-    // for these words in the visit ("Show me another angle" never asks again)
-    if (route === 'ask' && !another && S.lossChecked !== S.text) {
-      const v = await askAboutLoss();
+    S.unsure = route === 'ask';
+    // (owner decision 'Ask before every world', 14 Oct 2026) otherwise Zuzu asks one gentle choice first, before anything is
+    // sent, framed or played: "Shall we look at this from another angle, or just be with it?" (angle-first.js; with its switch
+    // ASK_BEFORE_ANGLE off, the 'Ask when unsure' check-in for unsure words instead). The answer is kept for these words:
+    // sent again after "Just be with it" (or "Yes, it is") they go to the gentle path again, never to a mechanic; after
+    // "Another angle" they play without asking again ("Show me another angle" never asks)
+    const key = answerKey(S.text);
+    const step = firstStep(S.text, { emotion: S.emotion, another, said: S.answers.get(key) || null });
+    // (asked: true, nothing is sent: they chose to just be with it)
+    if (step === 'be' || step === 'told') return griefMode({ told: 'loss', asked: step === 'be' });
+    if (step === 'choice' || step === 'check-in') {
+      const v = await askFirst(step);
       if (S.left) return;
-      if (v === 'yes') { S.lossChecked = S.text; S.lossSaid = true; S.noPlay = true; return griefMode({ told: 'loss' }); }
-      if (v !== 'else') { quietAfterAsk(); return; }
-      S.lossChecked = S.text;
+      if (v === 'be' || v === 'yes') { S.answers.set(key, v); S.lossSaid = true; S.noPlay = true; return griefMode({ told: 'loss', asked: v === 'be' }); }
+      if (v !== 'angle' && v !== 'else') { quietAfterAsk(); return; }
+      S.answers.set(key, v);
     }
+    S.lastGentle = false;
     const seq = ++S.seq;
     S.phase = 'waiting';
     dockShow({});
@@ -869,6 +890,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // a feeling said plainly (or words beside a harm word) gets Zuzu's attentive face, never a playful one
     let feel = null;
     try { feel = feelingOf(S.text) || (framingAllowed(S.text) ? null : { kind: 'low' }); } catch { feel = null; }
+    // (askall-angle) words with a softer loss cue keep Zuzu attentive, whatever they chose
+    if (S.unsure) feel ||= { kind: 'low' };
     if (feel) careFace(); else zt?.setEmotion({ curious: 0.65, playful: 0.35 }, 0.7, { quiet: true });
     const started = now();
     waitingLines(seq);
@@ -924,25 +947,34 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     await playScene(scene, seq);
   }
   /**
-   * (owner decision 'Ask when unsure', 14 Oct 2026) "Is this about losing someone?", once, with Zuzu's attentive face:
-   * nothing is sent to the server before the answer, no Thought Mallow, nothing playful. The chips are real buttons in the
-   * subtitles' row (announced with the line). → 'yes' | 'else' | null (no answer within LOSS_CHECK.ms, Back, or a new Tell).
+   * The one question before anything is sent, framed or played, with Zuzu's attentive face: no Thought Mallow, nothing
+   * playful, no waiting line ("There's another side to this…" only once they chose an angle). The chips are real buttons in
+   * the subtitles' row (announced with the line), Back lets it go.
+   *   'choice'   (owner decision 'Ask before every world', 14 Oct 2026) "Shall we look at this from another angle, or just be
+   *              with it?" → 'angle' (primary) | 'be' | null
+   *   'check-in' (owner decision 'Ask when unsure'; only with ASK_BEFORE_ANGLE off) "Is this about losing someone?" →
+   *              'yes' | 'else' | null
+   * (null: no answer within its `ms`, Back, or a new Tell.)
    */
-  async function askAboutLoss() {
+  const FIRST_QUESTION = {
+    choice: { ask: ANGLE_CHOICE.ask, ms: ANGLE_CHOICE.ms, options: [{ label: ANGLE_CHOICE.angle, value: 'angle', primary: true }, { label: ANGLE_CHOICE.be, value: 'be' }] },
+    'check-in': { ask: LOSS_CHECK.ask, ms: LOSS_CHECK.ms, options: [{ label: LOSS_CHECK.yes, value: 'yes' }, { label: LOSS_CHECK.no, value: 'else' }] },
+  };
+  async function askFirst(kind) {
+    const q = FIRST_QUESTION[kind];
     const seq = ++S.seq;
     S.phase = 'asking';
     careFace();
     dockShow({});
     layer.lossCheck = app.pushLayer?.() || 0;
     try {
-      const v = await choose(LOSS_CHECK.ask, [{ label: LOSS_CHECK.yes, value: 'yes' }, { label: LOSS_CHECK.no, value: 'else' }],
-        { mallow: 'zuzu', timeoutMs: LOSS_CHECK.ms, transient: true, lossCheck: true, interrupt: true });
+      const v = await choose(q.ask, q.options, { mallow: 'zuzu', timeoutMs: q.ms, transient: true, lossCheck: true, interrupt: true });
       return seq === S.seq ? v : null;
     } finally {
       const t = layer.lossCheck; layer.lossCheck = 0; if (t) app.popLayer?.(t);
     }
   }
-  /** The check-in let go (no answer, Back, a new Tell): Zuzu stays here quietly, Tell close by, nothing sent or made. */
+  /** The question let go (no answer, Back, a new Tell): Zuzu stays here quietly, Tell close by, nothing sent or made. */
   function quietAfterAsk() {
     if (S.left || overlay || S.phase !== 'asking') return;
     S.phase = 'invite';
@@ -956,7 +988,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // a feeling said plainly (or words beside a harm word) is never met with "What else could be true?"
     let feel = null;
     try { feel = feelingOf(S.text) || (framingAllowed(S.text) ? null : { kind: 'low' }); } catch { feel = null; }
-    // (review r9) while the server is asked nothing frames the words yet: it may still answer them as a loss
+    if (S.unsure) feel ||= { kind: 'low' };
+    // (review r9) the server may still read a loss
     if (serverMode()) feel ||= { kind: 'low' };
     const lines = feel ? FEELING.waiting : WAITING, long = feel ? FEELING.waitingLong : WAITING_LONG;
     while (!S.left && seq === S.seq && S.phase === 'waiting') {

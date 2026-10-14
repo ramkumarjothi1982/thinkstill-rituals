@@ -320,7 +320,8 @@ export const griefFeeling = (emotion) => GRIEF_FEELINGS.has(String(emotion ?? ''
  * How a Tell reaches the gentle path, on both screens (owner decision 'Ask when unsure'): 'gentle' (a grief-family
  * feeling chosen, death talk, someone alive but going, or a person beside a strong loss cue), 'ask' (unsureLoss: the
  * check-in, "Is this about losing someone?"), or null. Crisis, care and a wish to follow the one who died come first,
- * read by the caller.
+ * read by the caller. (Owner decision 'Ask before every world', 14 Oct 2026: 'ask' and null are both asked the one
+ * question before any world or angle, angle-first.js; 'ask' is the check-in again only with that question switched off.)
  */
 export function lossRoute(text, { emotion = null } = {}) {
   if (griefFeeling(emotion) || deathTalk(text) || livingLoss(text) || strongLoss(text)) return 'gentle';

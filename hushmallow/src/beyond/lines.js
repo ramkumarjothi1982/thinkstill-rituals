@@ -79,6 +79,18 @@ export const LOSS_CHECK = Object.freeze({
   no: 'Something else',
   ms: 20000,
 });
+/**
+ * (owner decision 'Ask before every world', 14 Oct 2026) After every Tell that is not a detected loss, crisis or care, before
+ * anything is sent, framed or played, Zuzu asks one gentle choice (angle-first.js; its switch is ASK_BEFORE_ANGLE). "Another
+ * angle" (primary) carries on as usual; "Just be with it" is the gentle path's lines (GRIEF.loss), no mechanic, nothing sent;
+ * no answer within `ms`, or Back, stays here quietly. In Another Angle it replaces LOSS_CHECK (never two questions in a row).
+ */
+export const ANGLE_CHOICE = Object.freeze({
+  ask: 'Shall we look at this from another angle, or just be with it?',
+  angle: 'Another angle',
+  be: 'Just be with it',
+  ms: 20000,
+});
 
 /**
  * A stated event, or something someone did to them, with no interpretive marker in their words (review r8, the
