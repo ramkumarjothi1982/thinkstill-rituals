@@ -75,6 +75,10 @@ Five independent reviews kept finding new ways of saying someone died that the w
 | After "Just be with it" | One gentle line and a single optional "Somewhere calm" chip (no second question); inside a world, the world ends quietly unless the person taps it |
 | The question left unanswered | The words are kept for the next Tell; inside a world, the world stays paused with its Resume pill; the rest of the visit stays quiet |
 | Everyday "dead" sayings ("the party was dead", "my character died in the game") | Get the ordinary question, never the gentle path; the gentle path is kept for a person or a pet |
+| The question's clock | About 45 s, paused while the page is hidden; focus moves to the first answer and back to Tell afterwards |
+| Another Angle's two answers | Equal weight, "Another angle" first; after "Just be with it" the next Tell is asked again (`BE_ASKS_AGAIN`), and "See support" is offered only when something heavy was seen |
+| Home after a quiet Another Angle visit | Stays quiet (no playful chatter, no Support pill); the next Tell is still asked, and Play ends the quiet |
+| Home after a world ended quietly | Boppo says the existing orienting line ("Okay. I'm right here. Squeeze me whenever you like."), not a question |
 
 ## Still open for the owner
 
