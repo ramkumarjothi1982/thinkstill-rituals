@@ -7,7 +7,7 @@
 // Keep it in step with another-angle.js: each step below names the function it mirrors.
 
 import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
-import { deathEscalation, suicideDeath, serverLoss, griefLinesOk } from '../../src/beyond/grief.js';
+import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal } from '../../src/beyond/grief.js';
 import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm, lossRoute, griefFeeling } from '../../src/beyond/backstop.js';
 import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, BE_WITH, END, mechanicLines } from '../../src/beyond/lines.js';
 import { firstStep, ASK_BEFORE_ANGLE } from '../../src/beyond/angle-first.js';
@@ -96,9 +96,12 @@ function drawn(scene, parts, L) {
  * chips it offers; only the gentle answers are remembered ('be' is asked again: BE_ASKS_AGAIN); no answer sets noPlay; R.grief and
  * R.finishLevel / R.finishLines are what Finish would do (another-angle.js finish); a suicide death beside a first-person future
  * is care on the gentle path with nothing sent (grief.js suicideFuture); a grief-family feeling with no words is gentle.
+ * (Final round 5, structural) the gentle path never sends, whatever the words and whatever the server (R.held: the safety net's
+ * words, information only), and unsure words with the safety net's words play Zuzu's own angle after "Another angle", nothing
+ * sent (R.local).
  */
 export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else', asks = ASK_BEFORE_ANGLE, said = null } = {}) {
-  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0, grief: false, beOptions: null, finishLevel: 'none', finishLines: null };
+  const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0, grief: false, beOptions: null, finishLevel: 'none', finishLines: null, held: false, local: false };
   const S = { level: 'none', follow: false, suicide: false, noPlay: false, grief: false, care: false, crisis: false, heavyDraft: false, shown: [], used: [] };
   const say = (l) => { for (const x of [l].flat()) if (x) R.said.push(String(x)); };
   const note = (r) => { if (r?.level && LEVELS.indexOf(r.level) > LEVELS.indexOf(S.level)) S.level = r.level; };
@@ -135,13 +138,9 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     S.grief = true; S.noPlay = true;
     R.faces.push('attentive');
     say(GRIEF.heard);
-    if (!scene && !asked && server) {
-      const res = ask([]);
-      if (res.status === 'crisis') return crisis();
-      if (res.status === 'care') return care(S.follow ? SAFETY.follow : SAFETY.careGentle);
-      if (res.status === 'ok' && serverLoss(res.scene, text, { heavy: heavyHarm }) && griefLinesOk(res.scene)) scene = res.scene;
-      else { const again = checkText(text); if (again.level === 'crisis') return crisis(); if (again.level === 'care') return care(); }
-    }
+    // (final round 5, structural) nothing is ever sent from the gentle path, whatever the words (no ask() here); R.held: the safety
+    // net's words (grief.js keepLocal), for the main screen's supportFirst (information only here: the path is the same)
+    R.held = keepLocal(text);
     scene = scene ? { ...scene, grief: true, mechanic: null } : gentleScene(text, { emotion, kind: told || (griefFeeling(emotion) ? 'grief' : null) });
     R.scenes.push(scene);
     say([scene.subtitle_line_1, scene.subtitle_line_2, GRIEF.ask, GRIEF.squeeze]);
@@ -186,7 +185,10 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     // waitingLines (two at least)
     say((feel || server ? FEELING.waiting : WAITING).slice(0, 2));
     const exclude = S.shown.map((s) => s.reasoning_pattern);
-    const res = server ? ask(S.shown) : null;
+    // (final round 5) unsure words with the safety net's words (grief.js keepLocal): Zuzu's own authored angle, nothing sent (R.local)
+    const local = unsure && keepLocal(text);
+    if (local) R.local = true;
+    const res = server && !local ? ask(S.shown) : null;
     let scene = null, hint = null;
     if (res) {
       if (res.status === 'crisis') return crisis();

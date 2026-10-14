@@ -285,7 +285,8 @@ test('r8.4: a server grief or loss answer plays its lines only when both acknowl
   // the kind route ("my phone died and now she thinks I ignored her"): the framing pair never stays
   for (const res of [STUBS.mindRead, STUBS.overgen]) assert.ok(!framed(played('my phone died and now she thinks I ignored her', res).scene));
   const src = read('src/beyond/another-angle.js');
-  assert.match(src, /serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && griefLinesOk\(res\.scene\)\) scene = res\.scene;/);
+  // (final round 5: griefMode never asks the server itself now; a server loss answer reaches it from the ordinary path only, and
+  // its two lines are kept only when both acknowledge)
   assert.match(src, /griefMode\(\{ scene: griefLinesOk\(res\.scene\) \? res\.scene : null, asked: true \}\)/);
 });
 

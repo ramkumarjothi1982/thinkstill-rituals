@@ -119,7 +119,8 @@ test('item 1: the gentle path never sends a suicide death beside a first-person 
   assert.equal(GR.suicideFuture('my uncle killed himself years ago and we still miss him'), false);
   assert.deepEqual((({ route, requests, careLines }) => [route, requests, careLines])(visit('my uncle killed himself years ago and we still miss him', { server: STUBS.grief })), ['care', 0, SAFETY.careGentle]);
   const grief = between(AA, 'async function griefMode(', 'const heavySeen = ');
-  assert.ok(grief.indexOf('if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }') < grief.indexOf('client.angle('));
+  // (final round 5: it was "before its request"; the gentle path sends nothing at all now, and still reads it first)
+  assert.ok(grief.indexOf('if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }') >= 0 && grief.indexOf('client.') < 0);
 });
 
 // ------------------------------------------------------------------------- 4. the weak death words --

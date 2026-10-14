@@ -154,6 +154,9 @@ export default function hushfold(app, params = {}) {
     // noResume: a death, a loss or harm done to the person was told this visit — the world they were in is never offered back;
     // (r3-esc) deathCare: a suicide named or a wish to follow someone who died was read (DEATH_CARE) — no world is offered at all
     noResume: false, deathCare: false,
+    // (final round 4) supportFirst: on the gentle path, a first-person clause after the death with a death, ending, absence or
+    // afterlife word (grief.js keepLocal, input-overlay readSafety): still the gentle path, but no world is offered (support first)
+    supportFirst: false,
     worldAt: 0,   // when the world on stage now arrived (its first seconds: the person's thought is still on its way)
     // soft: "Just be with it" was chosen, or the question was left unanswered (owner decision 'Ask before every world'):
     // the rest of the visit stays gentle — no squeeze quips, invitations or playful lines, the attentive face — with no
@@ -1387,6 +1390,7 @@ export default function hushfold(app, params = {}) {
   function noteSafety(r) {
     noteNoResume(r);
     if (DEATH_CARE.has(r?.category)) S.deathCare = true;
+    if (r?.supportFirst) S.supportFirst = true;
     if (!r?.level || LEVELS.indexOf(r.level) <= LEVELS.indexOf(S.level)) return;
     S.level = r.level;
     S.category = r.category || null;
@@ -1952,8 +1956,9 @@ export default function hushfold(app, params = {}) {
    */
   async function careChoice({ emotion, intention, safety, soft = false }) {
     // (r3-esc) after a suicide named or a wish to follow someone who died: no world is offered, not even somewhere calm (a world
-    // held quietly ends quietly); the Support pill stays
-    if (S.deathCare) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }
+    // held quietly ends quietly); the Support pill stays. (Final round 4) So too on the gentle path when the safety net held the
+    // words (supportFirst): support first, the world can wait
+    if (S.deathCare || S.supportFirst) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }
     const gw = await gentleWorld({ calmOnly: soft });
     if (S.left || overlay) return;
     // (no world to offer: a world held quietly ends quietly, never left waiting under its veil)

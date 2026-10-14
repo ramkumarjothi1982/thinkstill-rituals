@@ -138,6 +138,7 @@ test('r10.5: escalation: the review’s positives (and the coordinator’s "go o
     for (const s of ['none', 'pull', 'grief']) {
       probes++;
       const R = visit(t, { server: STUBS[s] });
+      // (final round 5: the bare "I want to see her again" is care again, as at 931fbb0: round 4's exception is gone)
       assert.ok(['follow', 'care', 'crisis'].includes(R.route), `[${s}] ${t} → ${R.route} (esc=${deathEscalation(t)}, lexicon=${checkText(t).level})`);
       assert.equal(R.requests, 0, t);
     }
@@ -176,14 +177,18 @@ test('r10.7 (polish): devices without the apostrophe are never death talk; ordin
 });
 test('r10.8 (polish): a server care answer for death talk is said gently, never "shouldn’t have happened"', () => {
   for (const l of SAFETY.careGentle) { assert.equal(acknowledges(l), true, l); assert.equal(framesAsGuess(l), false, l); }
+  // (final round 5, structural: the gentle path never asks the server, so its care can no longer come from there; it was "care,
+  // SAFETY.careGentle" with STUBS.care) death talk is the gentle path, its authored lines, with 0 requests, whatever the server
   for (const t of P.CARE_GENTLE) {
     probes++;
     const R = visit(t, { server: STUBS.care });
-    assert.equal(R.route, 'care', t);
-    assert.deepEqual(R.careLines, SAFETY.careGentle, t);
+    assert.deepEqual([R.route, R.requests, R.careLines], ['gentle', 0, null], t);
     assert.ok(!R.said.includes(SAFETY.care[0]), t);
   }
-  assert.match(read('src/beyond/another-angle.js'), /if \(res\?\.status === 'care'\) \{ careMode\(\{ lines: S\.follow \? SAFETY\.follow : SAFETY\.careGentle \}\); return; \}/);
+  // the server's care on the ordinary path is still said gently beside a bag word (another-angle.js serverCareLines, r11.3)
+  const aa = read('src/beyond/another-angle.js');
+  assert.match(aa, /if \(res\.status === 'care'\) \{ careMode\(\{ lines: serverCareLines\(\) \}\); return; \}/);
+  assert.doesNotMatch(aa.slice(aa.indexOf('async function griefMode('), aa.indexOf('const heavySeen = ')), /client\.|res\?\.status/);
 });
 
 // --------------------------------------------------------------- the review's other groups --

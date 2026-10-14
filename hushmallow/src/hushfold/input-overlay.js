@@ -77,10 +77,14 @@ export function readSafety(m, t, lossAware, { emotion = null } = {}) {
     // more ('suicide-loss'): care, the scene says it gently and offers no world (hushfold.js careBeat / careChoice)
     const dc = griefNow.deathCare ? griefNow.deathCare(t) : (griefNow.deathEscalation(t) ? 'follow' : null);
     if (dc) return { level: 'care', category: dc === 'follow' ? 'death-follow' : 'suicide-loss', matched: null };
-    if (r.level !== 'none') return r;
+    // (final round 4, the safety net) a death recognised and, after it, a first-person clause with a death, ending, absence or
+    // afterlife word (grief.js keepLocal): still the gentle path (never care), but support first: the Support pill and no world
+    // offered, not even somewhere calm (`supportFirst`: hushfold.js careChoice)
+    const held = () => !!griefNow.keepLocal?.(t);
+    if (r.level !== 'none') return r.level === 'concern' && griefNow.deathTalk(t) && held() ? { ...r, supportFirst: true } : r;
     const route = griefNow.lossRoute ? griefNow.lossRoute(t, { emotion })
       : (griefNow.deathTalk(t) || griefNow.livingLoss?.(t) || griefNow.strongLoss?.(t) ? 'gentle' : null);
-    if (route === 'gentle') return { level: 'concern', category: 'loss', matched: null };
+    if (route === 'gentle') return { level: 'concern', category: 'loss', matched: null, ...(held() ? { supportFirst: true } : {}) };
     if (route === 'ask') return { ...r, unsure: true };
   } catch { /* the plain reading stands */ }
   return r;
@@ -113,8 +117,12 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   // the most serious level seen while this overlay was open (sent or not): the scene acts on it
   let worst = { level: 'none', category: null };
   function report(r) {
-    if (!r || LEVELS.indexOf(r.level) <= LEVELS.indexOf(worst.level)) return;
-    worst = { level: r.level, category: r.category };
+    if (!r) return;
+    const rise = LEVELS.indexOf(r.level) > LEVELS.indexOf(worst.level);
+    // (final round 4) support first, seen at the same level ("my dad died" → "… and I want out"): said to the scene too
+    const first = !!r.supportFirst && !worst.supportFirst && r.level !== 'none';
+    if (!rise && !first) return;
+    worst = { level: rise ? r.level : worst.level, category: rise ? r.category : worst.category, ...(first || worst.supportFirst ? { supportFirst: true } : {}) };
     try { onSafety?.({ ...worst }); } catch (e) { console.warn('[hushfold] onSafety', e); }
   }
   let supportShown = false, closed = false, sending = false, photosOpen = false, tray = null, hintUntil = 0, hintT = 0;

@@ -264,6 +264,9 @@ const PERSON_MORE = [
   'fater', 'mutha', 'muther', 'mothr', 'daugther', 'duaghter', 'daugter', 'neice', 'nefew', 'nephiew', 'cuzin', 'cuz', 'cousen', 'cozzie', 'anty', 'aunti',
   'uncel', 'unkle', 'husbund', 'husban', 'hubbie', 'boyfreind', 'girlfreind', 'granson', 'grandaughter', 'granddaugther', 'parants', 'perents',
   'grandfarther', 'grandmather', 'neighbor', 'nieghbour', 'naybor', 'collegue', 'coleague', 'teecher', 'techer',
+  // (final round 4) a vowel or a letter dropped or swapped ("my husbnd died", "my borther died")
+  'husbnd', 'husbad', 'husbend', 'hubsand', 'wfie', 'wief', 'borther', 'brohter', 'bruther', 'sistr', 'sistter', 'daugher', 'dauhgter', 'mther',
+  'fathr', 'grnadma', 'grnadad', 'gradad', 'parnter', 'patner',
 ].join('|');
 /** More pets (and a pet's own words). */
 const PET_MORE = 'pooch|mutt|moggy|moggie|furbaby|pupper|bun|piggie|cavy|cavies|cockatoo|lovebird|iguana|tarantula|terrapin|alpaca|llama|stick\\s+insect|hermit\\s+crab|dogs|cats|kitties'
@@ -311,7 +314,9 @@ const SKIP_BACK = new Set(('is was were are am be been being s re m isnt wasnt w
   + 'fully partly mostly half well proper stone clinically quite bit a little rather ultimately tragically suddenly unexpectedly peacefully keep keeps '
   + 'kept keeping start starts started starting begin begins began beginning '
   + 'quietly slowly gradually instantly immediately sadly unfortunately allegedly reportedly supposedly technically pretty way like lowkey highkey '
-  + 'officially legit legitimately properly fr deffo defo def surely certainly maybe perhaps possibly almost nearly long').split(' '));
+  + 'officially legit legitimately properly fr deffo defo def surely certainly maybe perhaps possibly almost nearly long '
+  // (final round 4) the same little words typed with a letter out ("i dnt want to die", "i wnat to die")
+  + 'dnt dotn wnat wnt wana cnt cnat').split(' '));
 /** Where a clause starts (a clause boundary as a word). */
 const BOUNDARY = new Set(('and but so because cos coz cause then when whenever after before since until till til while although though if as once '
   + 'where unless or plus whereas wherever nor yet whether why how what whatever').split(' '));
@@ -679,7 +684,9 @@ function cemetery(ws, i, ctx) {
 /**
  * (final round 3) The weak death words in `cased` (normed with norm(), idioms blanked, case kept), read by who died: 'who' (a
  * person or a pet), 'unknown', 'self', 'thing', or null when there is no weak word. `which`: 'loss' (died, dead, killed…) or
- * 'grief' (buried, a cemetery). The best reading wins: a person in any clause makes it a death.
+ * 'grief' (buried, a cemetery). The best reading wins: a person in any clause makes it a death. (Final round 5) The speaker
+ * always counts ('self'), whatever frame is round the words ("I'm dead lol" too): round 4's everyday-saying frames turned real
+ * notes ("when you read this I'll be dead") into the play question, so they are gone.
  */
 export function whoDied(cased, which = 'loss') {
   const text = String(cased ?? '');
