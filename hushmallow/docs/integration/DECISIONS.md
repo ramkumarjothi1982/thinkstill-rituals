@@ -83,6 +83,7 @@ Five independent reviews kept finding new ways of saying someone died that the w
 | A suicide named, about anyone | Care on both screens: a gentle line that assumes nothing, the Support pill, no world for the rest of the visit, nothing sent ("…and I'm going to a support group tonight" is care too) |
 | A death, then the speaker talking about ending, joining or following | Care; when the wording is less clear but carries a death, ending or afterlife word, the gentle path with support first (no world offered) and nothing sent |
 | Changes to the shared safety word list | Strictly additive: nothing the list caught before may be caught less (checked by `tools/beyond/lexicon-diff.mjs` and `tools/beyond/detection-gate.mjs`); known false alarms are kept on the safe side: "beat me at chess" (care), "no one is in danger" (crisis), "I'm dead lol" (the gentle path), "the physio rubbed my thigh" (care) |
+| A goodbye note or a wish to die, with no death named | Care on both screens ("by the time you read this I'll be gone", "this is my goodbye to everyone", "i wnat to dei"): the Support pill, no world, nothing sent, never the question. A goodbye or an absence with an everyday bound in its sentence or the next ("…I'll be at work", "see you Monday", "my train is here") gets the ordinary question; an unbounded one is care, on the safe side. A goodbye said to someone who died stays the gentle path |
 
 ## Still open for the owner
 

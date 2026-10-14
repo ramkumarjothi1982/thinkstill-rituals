@@ -7,7 +7,7 @@
 // Keep it in step with another-angle.js: each step below names the function it mirrors.
 
 import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
-import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal } from '../../src/beyond/grief.js';
+import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal, noteShape } from '../../src/beyond/grief.js';
 import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm, lossRoute, griefFeeling } from '../../src/beyond/backstop.js';
 import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, BE_WITH, END, mechanicLines } from '../../src/beyond/lines.js';
 import { firstStep, ASK_BEFORE_ANGLE } from '../../src/beyond/angle-first.js';
@@ -117,7 +117,7 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
   const care = (lines = S.follow ? SAFETY.follow : S.suicide ? SAFETY.careGentle : SAFETY.care) => { S.care = true; note({ level: 'care' }); R.careLines = lines; R.faces.push('attentive'); say(lines); say(SAFETY.careAsk); return done(S.follow ? 'follow' : 'care'); };
   const crisis = () => { S.crisis = true; note({ level: 'crisis' }); R.faces.push('attentive'); say(SAFETY.crisis); return done('crisis'); };
   // readDraft
-  const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } else if (suicideDeath(t)) { S.suicide = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) { S.noPlay = true; S.heavyDraft = true; } };
+  const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } else if (suicideDeath(t)) { S.suicide = true; note({ level: 'care' }); } if (!S.follow && noteShape(t)) { S.follow = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) { S.noPlay = true; S.heavyDraft = true; } };
 
   // afterTell: firstLook (no feeling chosen): a feeling's look, else the first candidate pattern's (review r11: never
   // 'valid_anger' beside a bag word, so the Thought Mallow and the mechanic are never tinted anger beside a loss)
@@ -127,12 +127,15 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
   if (S.level === 'crisis') return crisis();
   if (S.level === 'care') return care();
   if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
+  // (final round 6) a note's shape or a wish to die with no death named (grief.js noteShape): care, nothing sent
+  if (noteShape(text)) { S.follow = true; return care(SAFETY.follow); }
   // (r3-esc) a suicide named, whatever the clause: care, said gently, nothing sent
   if (suicideDeath(text)) { S.suicide = true; return care(SAFETY.careGentle); }
 
   // griefMode
   const griefMode = ({ scene = null, asked = false, told = null } = {}) => {
     if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
+    if (noteShape(text)) { S.follow = true; return care(SAFETY.follow); }
     // (r3-esc) a suicide named, whatever the clause: care, said gently, nothing sent
     if (suicideDeath(text)) { S.suicide = true; return care(SAFETY.careGentle); }
     S.grief = true; S.noPlay = true;

@@ -21,6 +21,7 @@ import { SHARED_LINES } from '../src/hushfold/lines.js';
 import { DEATH_CARE } from '../src/app/scenes/hushfold.js';
 import { visit, STUBS, ALL_SCENE_STUBS } from './probes/r10-replay.mjs';
 import * as R5 from './probes/r5.mjs';
+import * as R6 from './probes/r6.mjs';
 import * as P from './probes/r3-esc.mjs';
 import * as R2 from './probes/r2-angle.mjs';
 import * as R12 from './probes/r12.mjs';
@@ -227,7 +228,8 @@ test('false care on grief: across every earlier probe set, the self-ending rule 
     deaths++;
     if (GR.suicideDeath(t)) { suicides++; continue; }
     // (final round 5: and the known false care the detection gate keeps, care at 931fbb0: tests/probes/r5.mjs KNOWN_FALSE_CARE)
-    if (GR.selfEnding(t) && !/ESC|FOLLOW|GO_ON|ESCALATE/.test(src) && !R5.KNOWN_FALSE_CARE.includes(t)) outside.push(`${src}: ${t}`);
+    // (final round 6: and tests/probes/r6.mjs KNOWN_FALSE_CARE, the lexicon's own crisis there)
+    if (GR.selfEnding(t) && !/ESC|FOLLOW|GO_ON|ESCALATE/.test(src) && !R5.KNOWN_FALSE_CARE.includes(t) && !R6.KNOWN_FALSE_CARE.includes(t)) outside.push(`${src}: ${t}`);
   }
   console.log('r3-esc false care on grief:', JSON.stringify({ phrasings: seen.size, deaths, suicidesNamed: suicides, selfEndingOutsideEscalationSets: outside.length }));
   assert.deepEqual(outside, []);

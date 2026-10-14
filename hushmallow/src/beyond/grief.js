@@ -9,6 +9,9 @@
 //   stillAlive(text)      → the only death talk is present or future: dying, intensive care, might not make it,
 //                           close to death (review r9): wanting to be at their side is love, never care
 //   deathEscalation(text) → deathTalk and wantsToFollow together: the CARE support path, nothing sent
+//   noteShape(text)       → (final round 6) a goodbye note's shape or a wish to die with NO death named ("by the time you read
+//                           this I'll be gone", "this is my goodbye", "i wnat to dei"), unless an everyday bound is beside it:
+//                           care on both screens too (deathCare 'follow'; another-angle.js afterTell, readDraft, griefMode)
 //   serverGrief(scene, text) → a server answer that reads as grief or a loss (its two lines play gently)
 //   strongLoss(text)      → (re-exported from backstop.js, review r11) a person within four words of a strong loss cue:
 //                           the main screen's backstop (input-overlay readSafety reads it as concern / loss)
@@ -1129,11 +1132,249 @@ export function deathEscalation(text) {
 /**
  * (r3-esc) What a Tell's death words mean for care, on both screens: 'follow' (deathEscalation: the wish to follow, the self
  * ending), 'suicide' (a suicide named, nothing more: the gentle care lines), or null.
+ * (final round 6) A note's shape or a wish to die with no death named (noteShape) is 'follow' too: care, the follow lines.
  */
 export function deathCare(text) {
   if (deathEscalation(text)) return 'follow';
+  if (noteShape(text)) return 'follow';
   if (suicideDeath(text)) return 'suicide';
   return null;
+}
+
+// ------------------------------------------------- (final round 6) a note's shape, with no death named --
+// The check of integ/final-r5 (/tmp/claude-0/hf/check-r5.json, blocking): wishes to die and goodbye notes that name no death got
+// the play question, and could be sent after "Another angle", because every clause about the self ending needed a death beside
+// it. noteShape reads the note itself, by its shape, with no death needed. Two kinds of clause:
+//   (a) a farewell frame: "by the time / when you read this" with an ending after it, "this is my goodbye", "goodbye everyone |
+//       world", "the last thing I'll (ever) write", "letters for everyone", "don't blame yourselves", "made my peace", "tell mum
+//       I love her | I'm sorry", "sorry for what I'm about to do"; or two smaller note cues together ("forgive me" and "I couldn't
+//       keep going", "it's not your fault", "it was my choice", "I love you all", "thank you for everything", a closing goodbye)
+//   (b) a first-person future absence or ending: "I'll be gone", "won't be here | around (much longer | anymore | after tonight)",
+//       "when I'm not here anymore", "after I'm gone", "you'll be free of me", "won't have to worry about me", "won't see me
+//       again", "won't need them where I'm going", "I'm ready to go", "it's time for me to go", saving up my meds, ending things
+//       to be with someone, "I'll follow him soon", being with or joining someone up there, on the other side, or again with a
+//       plan or tonight, sleeping forever, giving my things away, and a wish to die typed with a slip ("i wnat to dei", "wanna di")
+// Each is care UNLESS it is bounded, in its sentence or the next (NOTE_QUAL): a return or an end ("see you Monday", "for the
+// weekend", "back on"), a destination or an errand ("at work", "on the plane", "to uni", "my train is here"), or an everyday
+// reason ("now I drive", "moving out", "leaving the group chat", "sorry I missed your call"). An absence with nothing to bound
+// it is care: an ambiguity goes to care only then. When a death is named, a goodbye said TO someone is grief ("goodbye grandad,
+// I love you", "this is the last thing I'll ever write to you, nan"), never a note: then only (b), the self's own absence, is
+// read here (deathEscalation reads the rest). Third-person absences ("she won't be around much longer") are never read.
+/** The slips a note may be typed with, after the shared ones (FOLLOW_TYPOS): "di", "dye" ending a wish to die; "goodby". */
+const NOTE_TYPOS = [
+  [/\b(to|wanna|gonna)\s+(?:di|dye|dy|dai|ded)\b(?=\s*(?:$|[.,!?;:…]|(?:now|tonight|today|already|soon|so\s+bad|so\s+much|honestly|tbh|pls|please|lol|x+)\b))/giu, '$1 die'],
+  [/\b(?:goodby|gdbye|gbye|goodbyee+|good\s+bye)\b/giu, 'goodbye'], [/\b(?:nemore|anymor|anymoe|anymre)\b/giu, 'anymore'],
+  [/\b(?:evryone|every1|evry1|everone)\b/giu, 'everyone'], [/\b(?:gna|gona|gunna)\b/giu, 'gonna'],
+];
+/** Someone, as a note names them: "my nan", "him", "grandpa" (one person or pet: "my friends" is a crowd, never the one joined). */
+const NOTE_WHO = `(?:(?:(?:my|our)\\s+)?${ADJ}(?:${PERSON}|${PET})\\b|him|her|them|(?:${BARE})\\b)`;
+/** "I'll", "I'm going to", "I might" … */
+const NOTE_FUT = '(?:ill|i\\s+will|i\\s+shall|im\\s+gonna|im\\s+going\\s+to|i\\s+am\\s+going\\s+to|i\\s+should|i\\s+might|i\\s+may|i\\s+would|id)';
+/** Gone, never "gone to the shops", "gone for the weekend", "gone by 6", "gone long" (but "gone for good", "gone forever"). */
+const NOTE_GONE = 'gone(?!\\s+(?:to(?!\\s+(?:heaven|a\\s+better\\s+place|be\\s+with|sleep|rest|god|jesus|the\\s+angels|the\\s+rainbow\\s+bridge))|out|home|off|back|away(?!\\s+(?:forever|for\\s+good))|abroad|on|into|up|down|for(?!\\s+(?:good|ever|real))|shopping|quiet|silent|mad|viral|missing|bald|grey|gray|wrong|crazy|through|over|round|around|past|ahead|along|by\\s+(?:the\\s+time\\s+(?!(?:you|u|anyone|someone|they|people|everyone|mum|dad|my\\s+[a-z]+)\\s+(?:read|reads|see|sees|find|finds|wake|wakes|get\\s+this|hear|notice))|\\d|then|lunch|noon|tea|dinner)|in\\s+(?:a|an|the|\\d|two|three|ten)|all|most|long|ages|a\\s+(?:few|couple|while|bit|week|day|month|year|fortnight)|this|next|till|until|til|before|early|from|while)\\b)';
+/** What bounds an absence or a goodbye as everyday (read in the clause's sentence and the next one). */
+const NOTE_QUAL = new RegExp([
+  // a return, or a time it ends
+  '\\b(?:see|catch|speak\\s+to|talk\\s+to|chat\\s+to|text|call|ring)\\s+(?:you|u|ya|yall|you\\s+all|you\\s+guys|everyone|them|her|him)\\s+(?:all\\s+|guys\\s+)?(?:soon|later|tomorrow|tmrw|tmr|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next|on\\s+(?!the\\s+other\\s+side)|at|in\\s+(?:a|an|the|\\d)|after|when|around|then|this|shortly)\\b',
+  '(?<!\\b(?:wont|never|not|aint)\\s+(?:ever\\s+)?)\\b(?:be|ill\\s+be|i\\s+will\\s+be|get|got|come|coming|head|heading)\\s+back\\b(?!\\s+(?:to\\s+(?:god|heaven|jesus)|again\\s+as))',
+  '\\bback\\s+(?:on|by|at|in|soon|later|tomorrow|tonight|next|after|before|from|home|for)\\b',
+  '\\bfor\\s+(?:the|a|an|this|that|two|three|four|five|six|seven|a\\s+few|a\\s+couple|\\d+)\\s+(?:few\\s+|couple\\s+(?:of\\s+)?|whole\\s+|long\\s+|next\\s+)?(?:weekend|week|weeks|day|days|night|nights|month|months|hour|hours|minutes?|mins?|while|bit|summer|holidays?|term|semester|year|evening|afternoon|morning|trip)\\b',
+  '(?<!\\bafter\\s)\\b(?:this|next|the)\\s+(?:weekend|week|month|summer|term|semester|holidays?)\\b',
+  '\\b(?:till|until|til)\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|tomorrow|tonight|next|later|then|after|lunch|dinner|tea|half\\s+term|the\\s+(?:weekend|morning|afternoon|evening|summer|holidays?|end\\s+of\\s+(?:the\\s+)?(?:week|month|term|year|holidays?))|i\\s+get|im\\s+back|christmas|easter|\\d)',
+  '\\bin\\s+(?:january|february|march|april|june|july|august|september|october|november|december)\\b',
+  '\\b(?:start|starting|begin|beginning)\\s+(?:uni|university|college|school|work|my\\s+new\\s+job|a\\s+new\\s+job|the\\s+army|training|my\\s+apprenticeship)\\b',
+  '\\b(?:got|have|ive\\s+got|i\\s+have)\\s+(?:a\\s+|an\\s+|my\\s+)?(?:football|rugby|netball|cricket|hockey|practice|training|work|school|class|lesson|swimming|dance|drama|piano|guitar|tutor\\w*|shift|meeting|appointment|exam|test|match|game|gig|date|plans)\\b',
+  '\\b(?:the|my|our|his|her)\\s+(?:car|taxi|uber|cab|bus|lift|train)\\s*(?:s|is)?\\s+(?:outside|here|waiting|downstairs|ready|coming|arriving)\\b',
+  '\\b(?:he|she|they)\\s+(?:just\\s+|has\\s+just\\s+|only\\s+)?(?:went|gone|popped|nipped|ran|walked|headed|left)\\s+(?:in|into|to|out|off|ahead|over|round|up|down|on)\\b(?!\\s+(?:heaven|to\\s+heaven|to\\s+be\\s+with))',
+  '\\bsorry\\s+(?:about|for)\\s+(?:the|your|my|his|her|that|earlier|last|yesterday)\\b(?!\\s+(?:pain|hurt|trouble|worry|way\\s+(?:i|things)|burden|life)\\b)',
+  '\\bover\\s+(?:the\\s+)?(?:weekend|christmas|easter|summer|half\\s+term|holidays?|new\\s+year)\\b', '\\bfor\\s+now\\b',
+  // where to, or an errand
+  '\\b(?:at|to|for|from|off\\s+to|on\\s+the\\s+way\\s+to|in)\\s+(?:work|school|uni|university|college|the\\s+office|class|practice|training|football|rugby|netball|swimming|the\\s+gym|gym|church|mass|the\\s+shops?|town|the\\s+airport|the\\s+station|the\\s+(?:pub|cinema|party|beach|match|game|dentist|dentists|doctors|gig|concert|festival|hairdressers|library|cafe|caf[eé])|my\\s+(?:shift|job|new\\s+job|exams?|lesson|class|dads|mums|nans|grans|aunts|uncles|friends|mates|boyfriends|girlfriends|cousins|sisters|brothers))\\b',
+  '\\b(?:on|off\\s+on)\\s+(?:holiday|holidays|vacation|a\\s+trip|(?:a|the|my)\\s+(?:train|bus|plane|ferry|boat|flight|coach|way)|my\\s+(?:holidays?|travels|gap\\s+year))\\b',
+  '\\b(?:holiday|vacation|trip|flight|plane|airport|abroad|camping|gap\\s+year|travelling|traveling|sleepover|appointment)\\b',
+  '\\b(?:my|his|her|their|our)\\s+(?:train|bus|flight|plane|taxi|uber|cab|lift|ride|ferry|coach)\\s+(?:is|s|has|gets|arrives|lands|leaves|goes|was|comes|came|just|due|in)\\b',
+  '\\b(?:battery|phone|charge|signal|wifi)\\s+(?:is\\s+|s\\s+)?(?:dying|about\\s+to\\s+die|on\\s+\\d|going|low|nearly\\s+(?:dead|gone|out))\\b',
+  '\\b(?:move|moving|moved)\\s+(?:out|away|house|abroad|to|back|in\\s+with)\\b', '\\bnew\\s+(?:job|school|house|flat|place)\\b', '\\bstay(?:ing)?\\s+(?:at|with|over|the\\s+night|round)\\b',
+  '\\bleav(?:e|ing)\\s+(?:the|this|my|our)\\s+(?:group|chat|group\\s+chat|server|team|company|job|school|club|band|class|channel|stream|forum|app|party|pub)\\b',
+  '\\bleav(?:e|ing)\\s+(?:twitter|instagram|insta|facebook|tiktok|discord|reddit|snapchat|social\\s+media|work|school|uni)\\b',
+  '\\b(?:log(?:ging)?|sign(?:ing)?)\\s+off\\b', '\\boffline\\b', '\\bdelet(?:e|ing)\\s+(?:my\\s+)?(?:account|app|instagram|insta|tiktok|twitter|facebook|snapchat)\\b',
+  '\\b(?:charity|oxfam|vinted|ebay|depop|car\\s+boot|declutter\\w*|clear(?:ing)?\\s+out|sold|selling)\\b',
+  // a day, a do or a place left cheerfully
+  '\\b(?:have|had|enjoy)\\s+(?:a\\s+)?(?:good|great|nice|lovely|fab|fun|safe)\\s+(?:weekend|week|day|night|holiday|trip|time|one|evening|summer|christmas|flight)\\b',
+  '\\bhappy\\s+(?:holidays|new\\s+year|christmas|easter|friday|weekend|birthday)\\b', '\\bbest\\s+(?:birthday|day|night|weekend|holiday|party)\\s+ever\\b',
+  '\\bgood\\s*night\\b', '\\bnight\\s+(?:all|everyone|x+)\\b', '\\bmerry\\s+christmas\\b', '\\bhello\\s+(?:summer|holidays?|weekend|freedom|world|new)\\b',
+  '\\b(?:gotta|got\\s+to|have\\s+to|need\\s+to)\\s+(?:go|run|dash|head\\s+off)\\b(?!\\s+(?:now\\s+)?(?:forever|for\\s+good))', '\\bearly\\s+(?:start|morning|shift|night)\\b',
+  '\\b(?:asleep|in\\s+bed|to\\s+bed)\\b(?!\\s+(?:forever|for\\s+(?:ever|good)|and\\s+(?:never|not)))', '\\bbusy\\b',
+  '\\b(?:be|get|got|go|going|head|heading|getting)\\s+(?:back\\s+)?home\\b(?!\\s+(?:to|with)\\s+(?:god|jesus|heaven|the\\s+lord))',
+  '\\b(?:are\\s+you|r\\s+u|you\\s+ready|lets\\s+go|come\\s+on|hurry\\s+up|waiting\\s+(?:for\\s+you|outside|in\\s+the\\s+car|downstairs))\\b',
+  // an everyday reason, an apology for something small, someone alive and somewhere
+  '\\b(?:now\\s+(?:that\\s+)?i|since\\s+i|because\\s+i|cos\\s+i|coz\\s+i|as\\s+i)\\s+(?:have|got|ve\\s+got|drive|passed|use|switched|bought|lost|grew|outgrew)\\b',
+  '\\b(?:lost\\s+weight|grew\\s+out|outgrown|too\\s+(?:small|big))\\b',
+  '\\b(?:ill|i\\s+will|ill\\s+try\\s+to|im\\s+going\\s+to|im\\s+gonna)\\s+(?:call|ring|phone|text|message|facetime|visit|pop\\s+round|come\\s+round)\\b', '\\bwhen\\s+i\\s+(?:land|arrive|get\\s+(?:there|in|home|back))\\b',
+  '\\bsorry\\s+(?:i|for|about)\\s+(?:forgot|forgetting|missed|missing|was\\s+late|being\\s+late|didnt|not\\s+(?:calling|coming|replying|texting|being\\s+there)|the\\s+(?:mess|delay|late|noise|wait)|last\\s+night|earlier|yesterday|this\\s+morning|what\\s+i\\s+said|shouting|snapping)\\b',
+  '\\bfor\\s+(?:tonight|today|the\\s+(?:day|night|evening))\\b', '\\benjoy\\s+(?:the|your|it|yourselves)\\b', '\\bgood\\s+luck\\b', '\\b(?:the|your|my|our)\\s+move\\b',
+  '\\b(?:closing|shutting)\\s+(?:down|for\\s+good|its\\s+doors)\\b', '\\b(?:train|bus|flight|plane|ferry|coach|lift)\\s+to\\s+catch\\b',
+  '\\b(?:my|the)\\s+(?:shift|lesson|class|meeting|session|game|match|stream|party|contract|lease|tenancy|placement|internship|term|course)\\s+(?:ends|finishes|is\\s+(?:over|ending|finishing))\\b',
+  '\\bafter\\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|the\\s+summer|this\\s+term|graduation|my\\s+exams)\\b',
+  '\\b(?:new|next)\\s+(?:manager|boss|teacher|tenant|owner|captain|lead|coach|head)\\b', '\\btakes?\\s+over\\b',
+  '\\b(?:he|she|it|they)\\s+always\\s+(?:does|do|sulks|cries|whines|misses)\\b|\\bevery\\s+time\\s+i\\s+(?:go|leave)\\b',
+  '\\b(?:im|i\\s+am)\\s+(?:a\\s+big\\s+(?:girl|boy)|grown\\s+up|an\\s+adult|old\\s+enough)\\b|\\bi\\s+can\\s+(?:look\\s+after|take\\s+care\\s+of)\\s+myself\\b',
+  '\\b(?:had|have|got|needed)\\s+to\\s+(?:leave|go|head\\s+off|run|dash)\\s+(?:early|home|back|now)\\b', '\\b(?:stream|video|episode|show|class|lesson|session|meeting|game|match|party|gig|term|shift)\\s+(?:is\\s+|s\\s+)?(?:over|done|finished|ending)\\b',
+  '\\b(?:pleasure|privilege|fun|great)\\s+(?:working|playing|studying|training|singing|dancing)\\s+with\\b', '\\bworking\\s+with\\s+(?:you|you\\s+all|everyone)\\b',
+  '\\b(?:im|i\\s+am|were|we\\s+are|ill\\s+be)\\s+(?:going|off|heading|staying)\\s+(?:to|at|with)\\s+(?:my\\s+|our\\s+)?[a-z]+s\\b(?!\\s+(?:grave|side))',
+  '\\b(?:ill|i\\s+will|im|i\\s+am)\\s+(?:be\\s+)?(?:fine|ok|okay|alright|all\\s+right|safe)\\b(?!\\s+(?:where|soon|now\\s+that|after|when\\s+im\\s+gone|up\\s+there|in\\s+heaven|once))', '\\b(?:ive|i\\s+have|ive\\s+got|i\\s+got)\\s+(?:got\\s+)?my\\s+(?:phone|keys|coat|charger|inhaler|bag|wallet|purse)\\b',
+  '\\b(?:my\\s+)?(?:mum|mom|dad|lift|taxi|uber|cab|bus|ride|nan|gran|grandma|grandad|brother|sister|friend|mate)s?\\s+(?:is\\s+)?(?:here|outside|waiting|picking\\s+me\\s+up|coming\\s+to\\s+get\\s+me)\\b',
+  '\\b(?:wants?|needs?|asked\\s+for)\\s+(?:the|my|it|his|her)\\s+(?:[a-z]+\\s+)?back\\b',
+  '\\b(?:dont|doesnt|didnt|no\\s+longer)\\s+fit\\b|\\bfit\\s+(?:me\\s+)?any\\s*more\\b|\\bthat\\s+(?:i\\s+)?(?:dont|never)\\s+(?:wear|use|play|read)\\b',
+  '\\bsorry\\s+(?:for|about)\\s+[^.!?]{0,40}?\\b(?:this\\s+(?:morning|afternoon|evening)|earlier|yesterday|last\\s+(?:night|week|time)|at\\s+(?:dinner|lunch|school|work))\\b',
+  '\\bsorry\\s+for\\s+being\\s+(?:so\\s+|such\\s+a\\s+)?(?:grumpy|late|rude|mean|moody|quiet|annoying|a\\s+pain|horrible|short|snappy|loud|slow|distant)\\b',
+  '\\bfor\\s+my\\s+(?:birthday|party|wedding|graduation|leaving\\s+do|exams?|move)\\b',
+  '\\b(?:great|good|lovely|amazing|fun|brilliant|best)\\s+(?:term|year|season|semester|course|camp|trip|week|night|party|summer|tour|day|evening)\\b', '\\blast\\s+day\\s+(?:at|of\\s+(?:term|school|work|the\\s+(?:term|year|holidays))|tomorrow|on\\s+(?:the|my)\\s+(?:job|course))\\b',
+  '\\bsorry\\s+(?:that\\s+)?i(?:ll|\\s+will|m|\\s+am|\\s+cant|\\s+wont|\\s+couldnt)\\s+(?:be\\s+)?(?:late|running\\s+late|not\\s+(?:be\\s+)?(?:there|coming|home)|make\\s+it|come|be\\s+there)\\b',
+  '\\b(?:like|as)\\s+(?:the|my)\\s+(?:doctor|gp|nurse|pharmacist|chemist)\\s+(?:said|told|says|advised)\\b', '\\b(?:this|my|the|a)\\s+(?:cold|flu|fever|bug|virus|hangover|migraine|headache|jet\\s*lag|period|cramps)\\b',
+  '\\bto\\s+(?:the|a|our|my)\\s+(?:school\\s+)?(?:library|libraries|church|charity\\s+shop|museum|food\\s*bank|shelter|hospice\\s+shop|scouts|guides|nursery|playgroup|jumble\\s+sale)\\b',
+  '\\bhello\\s+[a-z]+', '\\b(?:my|the)\\s+old\\s+(?:life|self|me|ways|habits)\\s+(?:in|at)\\b',
+  '\\b(?:the|it\\s+was\\s+the)\\s+(?:weather|rain|snow|wind|refs?|referees?|pitch|traffic|judges?|other\\s+team|injur(?:y|ies))\\b',
+  '\\b(?:hes|shes|theyre|he\\s+is|she\\s+is|they\\s+are)\\s+(?:(?:so|really|very|a\\s+bit|only|just|still|already)\\s+)?(?:poorly|ill|sick|unwell|in\\s+(?:hospital|bed|the\\s+hospital)|at\\s+(?:home|work|school|the|a|hers|his)|on\\s+(?:her|his|their)\\s+own|lonely|upset|bored|visiting|staying|coming|moving|back|home)\\b',
+].join('|'), 'iu');
+/** An absence a few words on is bounded: "gone for the weekend", "not here till Monday", "around much longer tonight". */
+const NOTE_TAIL_QUAL = /^\s*(?:for\b(?!\s+(?:good|ever|real|much\s+longer|long|christmas\s+(?:this|next)\s+year))|till|until|til|before|on\s+(?!this\s+earth)|at\s+(?!peace)|to\s+(?!(?:see|watch|hear|meet|help|celebrate|heaven|be\s+with|join)\b)|from|all\s+(?:day|week|night|weekend|morning|afternoon|evening|summer)|most\s+of|a\s+(?:few|couple|while|bit|week|day|month|year|fortnight)|this\s+(?:week|weekend|month|summer|term|morning|afternoon|evening)|next\s+(?:week|month|weekend|term)|in\s+(?:a|an|the|\d)\s|when\s+you\s+(?:get|come|wake)|while|tomorrow)/iu;
+/** The everyday a relationship ends ("end things with my boyfriend", "end it between us", "the contract"). */
+const END_WITH = /^\s*(?:with|between|for\s+(?:him|her|them|us)|off|on\s+a|there|here|early|at\s+\d|now\s+with)\b/iu;
+const RELATIONSHIP = /\b(?:boyfriend|girlfriend|bf|gf|partner|husband|wife|relationship|we|us|ex|fianc[eé]e?|marriage|dating|cheat\w*|lying|lied|the\s+(?:job|contract|lease|subscription|game|stream|call|meeting|season|series|book|show|chapter|war|argument|fight|match))\b/iu;
+const NOTE_NEG = /\b(?:not|never|dont|wont|wouldnt|didnt|cant|cannot|refuse|scared|afraid|terrified|worried)\b[^.!?,;]{0,12}$/iu;
+/** A plan, a decision or tonight beside a reunion ("I'll be with my brother soon, I've decided how"). */
+const NOTE_PLAN = /\b(?:decided|made\s+up\s+my\s+mind|made\s+my\s+mind\s+up|i\s+know\s+how|worked\s+out\s+how|planned|tonight|i\s+promise|its\s+time|not\s+long\s+now|no\s+point|no\s+reason|cant\s+(?:do\s+this|go\s+on)|end\s+(?:it|things))\b/iu;
+/** The self's own absence or ending (b): read whether or not a death is named. `third`: never when someone else is its subject. */
+const NOTE_SELF = [
+  { re: new RegExp(`\\b${NOTE_FUT}\\s+(?:(?:already|probably|definitely|surely|finally|just|all|soon|be\\s+long|long)\\s+)*be\\s+(?:long\\s+|already\\s+|well\\s+)?${NOTE_GONE}`, 'giu'), tail: true },
+  { re: /\b(?:wont|will\s+not|shant|shall\s+not|not\s+going\s+to|not\s+gonna|aint\s+gonna|may\s+not|might\s+not|dont\s+think\s+(?:ill|i\s+will)|dont\s+plan\s+(?:on|to))\s+(?:be|being)\s+(?:alive|breathing|on\s+this\s+earth|in\s+this\s+world)\b(?!\s+if\s+(?:mum|dad|my|she|he|they|anyone)\s+(?:finds|find|sees|see|catches|catch))/giu, third: true },
+  { re: /\b(?:wont|will\s+not|shant|shall\s+not|not\s+going\s+to|not\s+gonna|aint\s+gonna|may\s+not|might\s+not|dont\s+think\s+(?:ill|i\s+will)|dont\s+plan\s+(?:on|to))\s+(?:be|being)\s+(?:here|around|alive|living|breathing|on\s+this\s+earth|in\s+this\s+world|with\s+(?:you|you\s+all|everyone|yall)|in\s+your\s+li(?:fe|ves))(?!\s+(?:much\s+|for\s+much\s+)?longer\s+(?:today|tonight|than|this\s+(?:morning|afternoon|evening)|at\s+(?:the|this|work|school)))(?=\s*(?:much\s+longer|for\s+(?:much\s+)?longer|for\s+long|any\s*more|any\s+longer|after\s+(?:tonight|today|this|that|christmas|tomorrow)|by\s+(?:morning|tomorrow|the\s+(?:morning|weekend|end\s+of))|to\s+(?:see|watch|celebrate|hear|meet|help)|when\s+(?:you|they|it|the|mum|dad|my|your|he|she)|next\s+(?:year|christmas|birthday|summer)|soon|forever|$|[.,!?;:…]|(?:so|and|but|anyway|though|tho|please)\b))/giu, third: true },
+  { re: /\b(?:im|i\s+am|ill|i\s+will)?\s*(?:not|never|wont\s+be|will\s+not\s+be|aint)\s+(?:ever\s+)?(?:coming|come)\s+back\b(?!\s+(?:to\s+(?:this|the|that|my|your|work|school|uni|class)|here\s+(?:again|for)|for|till|until|on|at|in\s+(?:a|the)|tonight|today|tomorrow))/giu, third: true },
+  { re: new RegExp(`\\b(?:when|after|once|if|for\\s+when|by\\s+the\\s+time|now\\s+that)\\s+(?:im|i\\s+am|i\\s+m|ive|i\\s+have)\\s+(?:(?:finally|really|actually|properly|long|already|been|just|eventually)\\s+)*(?:${NOTE_GONE}|not\\s+(?:here|around)\\s+(?:any\\s*more|any\\s+longer)|no\\s+longer\\s+(?:here|around|alive|with\\s+you|in\\s+your\\s+lives)|dead|not\\s+alive|in\\s+heaven|in\\s+the\\s+ground|six\\s+feet\\s+under|away\\s+for\\s+good)`, 'giu') },
+  { re: /\b(?:free|rid|shot|clear)\s+of\s+me\b|\bbetter\s+off\s+without\s+me\b/giu, tail: true },
+  { re: /\b(?:ill|i\s+will)\s+(?:finally\s+be\s+free|be\s+free\s+(?:forever|at\s+last|of\s+(?:it\s+all|everything|this\s+(?:life|world|pain)|the\s+pain)))\b(?!\s+(?:to|for|after|at|on|this|next|tomorrow|tonight|later|in\s+(?:a|an|\d)))/giu },
+  { re: /\benough\s+(?:[a-z]+\s+)?(?:pills|tablets|meds|paracetamol|painkillers|sleeping\s+(?:pills|tablets))\s+(?:saved|stored|stashed|hidden|put\s+away|collected|now|to\s+(?:do\s+it|end\s+it|die|not\s+wake))\b|\b(?:saved|stashed|stockpiled|hidden|hid|collected)\s+(?:up\s+)?enough\s+(?:[a-z]+\s+)?(?:pills|tablets|meds|paracetamol|painkillers)\b/giu },
+  { re: /\b(?:wont|will\s+not|never|no\s+longer|wont\s+ever)\s+(?:have|need)\s+to\s+(?:worry\s+about|stress\s+about|deal\s+with|put\s+up\s+with|look\s+after|care\s+for|bother\s+with|feed|pay\s+for|see|hear\s+from|think\s+about)\s+me\b(?!\s+(?:at|in|on|for|till|until|this|next|tomorrow|when\s+i\s+(?:get|land|arrive)))/giu },
+  { re: /\b(?:nobody|no\s+one|noone|none\s+of\s+you)\s+(?:will\s+)?(?:has|have|needs?|will\s+need)\s+to\s+(?:worry\s+about|deal\s+with|put\s+up\s+with|look\s+after|bother\s+with|think\s+about)\s+me\b(?!\s+(?:at|in|on|for|till|until|this|next|tomorrow))/giu },
+  { re: /\b(?:wont|will\s+not|never)\s+(?:ever\s+)?(?:see|hear\s+from)\s+me\s+(?:again|any\s*more|ever\s+again)\b(?!\s+(?:till|until|at|in|for|on\s+the|after\s+(?:this|the)\s+(?:week|month|term)))/giu },
+  { re: /\b(?:the\s+)?last\s+(?:night|day|time|week|christmas|birthday)\s+(?:anyone|you|everyone|any\s+of\s+you|they)\s+(?:will|ll|wil)?\s*(?:ever\s+)?(?:have\s+to\s+)?(?:deal\s+with|put\s+up\s+with|see|hear\s+from|worry\s+about)\s+me\b/giu },
+  { re: /\b(?:wont|will\s+not|shant|dont\s+think\s+ill|not\s+going\s+to|not\s+gonna)\s+need\s+(?:it|them|these|those|this|that|any\s+of\s+(?:it|this|that|them|these|those)|anything|my\s+[a-z]+)\s+(?:any\s*more\s+|any\s+longer\s+)?(?:where\s+(?:im|i\s+am)\s+going|after\s+(?:tonight|today|this)|for\s+much\s+longer)\b/giu },
+  { re: /\b(?:im|i\s+am|i\s+think\s+im|i\s+feel)\s+(?:(?:finally|so|really|just|totally|truly|completely|now)\s+)*ready\s+to\s+(?:go|die|be\s+with|join|see\s+(?:him|her|them)|let\s+go|rest)\b(?=\s*(?:$|[.,!?;:…]|(?:now|finally|and|so|i\s+think|tbh|honestly|x+)\b))/giu },
+  { re: /\b(?:its|it\s+is|i\s+think\s+its)\s+(?:my\s+)?time\s+(?:for\s+me\s+)?to\s+(?:go|leave|die|rest)\b(?=\s*(?:$|[.,!?;:…]|(?:now|and|so)\b))|\bmy\s+time\s+(?:is\s+up|has\s+come|is\s+(?:nearly|almost)\s+up)\b(?!\s+(?:on|at|in|for))(?![^.!?]*\b(?:computer|laptop|ipad|console|turn|session|slot|lesson|game|round|timer|parking|meter|exam|test|quiz|teacher|class)\b)/giu },
+  { re: /\b(?:wont|will\s+not|not\s+going\s+to|not\s+gonna|dont\s+think\s+(?:ill|i\s+will)|might\s+not|may\s+not)\s+make\s+it\s+(?:to|till|until|through|past)\s+(?:my\s+(?:next\s+)?(?:birthday|\d+\w*)|christmas|the\s+(?:new\s+year|weekend|morning|end\s+of\s+the\s+(?:year|month))|tomorrow|next\s+(?:year|christmas|birthday)|another\s+(?:day|week|year))\b(?!\s+(?:party|meal|dinner|lunch|do|drinks|market|play|concert|show|on\s+time|at\s+this\s+rate))/giu, third: true },
+  { re: /\b(?:this\s+is|its|it\s+is)\s+(?:the\s+end|it)\s+for\s+me\b(?!\s+(?:at|in|on|with|here\s+at|as\s+(?:a|your)))/giu },
+  // saving up my meds, stockpiling them
+  { re: /\b(?:sav(?:e|ed|ing)|stockpil(?:e|ed|ing)|hoard(?:ed|ing)?|stash(?:ed|ing)?|squirrel(?:ed|ing)?\s+away)\s+(?:up\s+)?(?:all\s+)?(?:of\s+)?(?:my|the|these|those|some|enough|loads\s+of|lots\s+of)\s+(?:[a-z]+\s+)?(?:meds|medication|medicine|pills|tablets|paracetamol|painkillers|antidepressants|insulin|codeine|tramadol|oxy\w*)\b(?!\s+in\s+(?:the|a|my)\s+(?:pill\s*box|organi[sz]er|dosette))/giu },
+  { re: /\b(?:my|the|enough|all\s+(?:my|the))\s+(?:[a-z]+\s+)?(?:meds|medication|pills|tablets|paracetamol|painkillers|antidepressants|sleeping\s+(?:pills|tablets))\b[^.!?]{0,40}?\b(?:so\s+(?:i|id|ill)\s+(?:would\s+|will\s+)?have\s+enough|until\s+i\s+have\s+enough|for\s+when\s+(?:im|i\s+am|i\s+decide|the\s+time|i\s+cant|ive\s+had))\b/giu },
+  // ending things, to be with someone or tonight; ending it all, my life
+  { re: /\b(?:end|ending|finish|finishing)\s+(?:it(?:\s+all)?|things|everything|my\s+life|this\s+life)\b/giu, end: true },
+  // following or joining someone soon
+  { re: new RegExp(`\\b(?:ill|i\\s+will|im\\s+going\\s+to|im\\s+gonna|gonna|going\\s+to|i\\s+want\\s+to|i\\s+wanna|wanna|i\\s+need\\s+to|i\\s+have\\s+to|i\\s+must|let\\s+me|i\\s+promise\\s+(?:ill|to)|cant\\s+wait\\s+to|ill\\s+be|im)\\s+(?:(?:just|soon|be|finally|really)\\s+)*(?:follow|following|join|joining)\\s+${NOTE_WHO}\\s+(?:soon|very\\s+soon|now|tonight|today|shortly|there|wherever|too|i\\s+promise|again)\\b`, 'giu') },
+  // being with, joining or meeting someone up there, in heaven, on the other side; "see you on the other side"
+  { re: new RegExp(`\\b(?:be\\s+with|be\\s+next\\s+to|be\\s+beside|join|joining|meet|meeting|see|seeing|follow|hold|hug|find|reach)\\s+${NOTE_WHO}\\s+(?:again\\s+)?(?:up\\s+there(?!\\s+(?:on|in|at|by|near|with\\s+the)\\b)|in\\s+heaven|on\\s+the\\s+other\\s+side(?!\\s+of)|in\\s+the\\s+(?:sky|stars|afterlife|next\\s+life)|among\\s+the\\s+stars|beyond|(?:over|at)\\s+the\\s+rainbow\\s+bridge|wherever\\s+(?:he|she|they)\\s+(?:is|are|went)|where\\s+(?:he|she|they)\\s+(?:is|are|went))|\\bsee\\s+(?:you|u|ya|yall|you\\s+all)\\s+(?:all\\s+)?on\\s+the\\s+other\\s+side(?!\\s+of)\\b`, 'giu'), hope: true },
+  // being with, joining or meeting someone again, soon, now or tonight, with a plan, a decision or tonight; going to be with them now
+  { re: new RegExp(`\\b(?:ill|i\\s+will|im\\s+going\\s+to|im\\s+gonna|gonna|going\\s+to|i\\s+want\\s+to|i\\s+wanna|wanna|want\\s+to|i\\s+need\\s+to|need\\s+to|ready\\s+to|cant\\s+wait\\s+to|just\\s+want\\s+to|i\\s+get\\s+to|soon\\s+ill|so\\s+i\\s+can|so\\s+that\\s+i\\s+can)\\s+(?:(?:just|finally|really|soon|be\\s+able\\s+to)\\s+)*(?<go>go\\s+(?:and\\s+)?)?(?:be\\s+with|be\\s+joining|join|meet|see)\\s+${NOTE_WHO}\\s+(?<when>again|soon|now|tonight|today|forever)\\b`, 'giu'), reunion: true, hope: true },
+  // sleeping forever, never waking
+  { re: /\b(?:want|wanna|wanted|wish\s+i\s+could|just\s+want|would\s+like|id\s+like|need|ready|going|gonna|plan(?:ning)?)\s+(?:to\s+)?(?:just\s+)?(?:go\s+to\s+sleep|sleep|fall\s+asleep|close\s+my\s+eyes)\s+(?:forever|for\s+ever|for\s+good|and\s+(?:just\s+)?(?:never|not)\s+wake(?:\s+up)?)\b(?!\s+up\b)(?!\s+(?:this\s+weekend|after|until|till|til|before|on\s+(?:sunday|saturday)))/giu },
+  { re: new RegExp(GIVE_AWAY, 'giu') },
+  // a wish to die, typed any way ("i wnat to dei", "i just wanna di"; never "die of embarrassment", "dying to")
+  { re: /\b(?:i|im|i\s+am|ive|id|i\s+would|just|really|honestly|so|lowkey)\s+(?:(?:just|really|honestly|so|actually|literally|kinda|kind\s+of|still|already|truly|seriously|genuinely|lowkey|low\s+key)\s+)*(?:want|wanna|wanted|need|going|gonna|ready|wish|would\s+like|d\s+like)\s+(?:to\s+)?die\b(?!\s+(?:of|from|laughing|trying|for|in\s+(?:my\s+sleep|peace)|old|happy|when|at|with|before|doing|on\s+stage|inside|a\s+little))/giu, turned: true },
+];
+/** A farewell frame (a): read only when no death is named (a goodbye to the one who died is grief). */
+const NOTE_FRAME = [
+  { re: /\bthis\s+is\s+(?:my\s+|a\s+|the\s+)?(?:final\s+|last\s+)?goodbye\b(?!\s+(?:post|video|stream|tweet|speech|party|card|do|message\s+(?:to|for)\s+(?:the\s+)?(?:team|company|class|school|group)|to\s+(?:the|this|that|our|my)\s+(?:old\s+)?(?:house|home|flat|school|job|team|class|group|town|city|year|place|country|car|office|street|area|club|band|course|uni|college)\b))|\b(?:my|a)\s+(?:final|last)\s+goodbye\b(?!\s+(?:post|video|stream|tweet|party|card|to\s+(?:the|this|that|our|my)\s+(?:old\s+)?(?:house|home|flat|school|job|team|class|group|town|city|place|office)\b))/giu },
+  { re: /(?<!\b(?:said|says|saying|say|shouted|waved|wave|kiss|kissed|wrote|writes|post|posted|texted|text|sang|sing|singing|typed|type|like)\s)\b(?:goodbye|bye|farewell)\s+(?:to\s+)?(?:everyone|everybody|all|all\s+of\s+you|you\s+all|yall|world|cruel\s+world|forever|for\s+ever|for\s+good|my\s+(?:friends|family|loves?|darlings?|loved\s+ones))\b(?!\s*,?\s*(?:my\s+|you\s+|stupid\s+|dear\s+)?(?:old\s+)?(?:phone|uniform|school|braces|cast|job|car|house|flat|exams?|homework|maths|science|year\s+\d+|summer|winter|hair|fringe|glasses|retainer|crutches|plaster|stitches|course|office|desk|laptop)\b)/giu },
+  { re: /\b(?:ive|i\s+have|i)\s+(?:already\s+|finally\s+)?said\s+(?:all\s+)?my\s+goodbyes\b(?!\s+(?:to\s+)?(?:the|my)\s+(?:team|class|group|office|colleagues|coworkers|students|school|house|flat|old))/giu },
+  { re: /\b(?:the\s+)?(?:last|final)\s+(?:thing|words?|message|note|letter|text|post)\s+(?:(?:that\s+)?(?:ill|i\s+will|im\s+going\s+to|im\s+gonna|i\s+am\s+going\s+to|youll|you\s+will|anyone\s+will)\s+(?:ever\s+)?(?:write|say|send|type|post|text|get|hear|read)(?:\s+from\s+me)?|(?:i\s+)?ever\s+(?:write|say|send|type|post))\b(?!\s+(?:about|on|in|for|to\s+(?:the|this|my)\s+(?:group|team|class|blog|forum|chat|thread|paper)|before|until|till|tonight|today|this\s+(?:week|year|term|month)|here\s+for))|\b(?:these\s+are|this\s+is|here\s+(?:is|are)|this\s+will\s+be|thisll\s+be|that\s+was|these\s+will\s+be)\s+my\s+(?:last|final|very\s+last)\s+(?:words|message|note|letter|post|text)\b(?!\s+(?:about|on|in|for\s+(?:the|this|a)|to\s+(?:the|this|my)\s+(?:group|team|class|blog|forum|chat|thread)|before|until|till|tonight|today|this\s+(?:week|year|term)))|\bmy\s+(?:last|final)\s+(?:words|message|note|letter)\s+(?:to|for)\s+(?:you|everyone|all|my\s+family|mum|dad|the\s+world)\b/giu },
+  { re: /\b(?:wrote|written|writing|write|left|leaving|leave|made|done|finished|got|there\s+are|there\s+is|in\s+(?:my|the))\s+(?:(?:a|some|my|the|all\s+the|little|short)\s+)?(?<!\b(?:thank\s*you|thanks|christmas|xmas|birthday|valentines?|wedding|invitation|reference|cover|get\s+well|sympathy|condolence|revision|lecture|class|study|sticky|meeting|lesson|course|love|permission|sick|doctors|school)\s)(?:letters?\s+(?:for|to)\s+(?:everyone|everybody|you\s+all|all\s+of\s+you|each\s+of\s+you|every\s+one\s+of\s+you|my\s+(?:family|kids|children|friends|loved\s+ones|parents)|mum\s+and\s+dad|the\s+family|each\s+(?:person|one))(?!\s+(?:applying|about|asking|complaining|inviting|thanking|regarding|who\s+(?:came|helped|applied|sent|gave|donated|attended|signed|voted|won))\b)|notes?\s+(?:for|to)\s+(?:each\s+of\s+you|every\s+one\s+of\s+you|my\s+(?:family|kids|children|loved\s+ones|parents)|mum\s+and\s+dad))\b/giu, third: true },
+  { re: /\b(?:left|leaving|leave)\s+(?:a|my|some)\s+(?:note|letter)s?\s+(?:for|to)\s+(?:everyone|everybody|you\s+all|all\s+of\s+you|each\s+of\s+you|my\s+(?:family|parents)|mum\s+and\s+dad)\b(?!\s+(?:about|on\s+the\s+(?:fridge|table|door)|in\s+the\s+(?:kitchen|hall)))/giu, third: true },
+  { re: new RegExp(GOODBYES, 'giu'), third: true },
+  { re: /(?<!\b(?:said|says|saying|say|told|tell|telling|tells|keep\s+telling|kept\s+telling|reminded|remind|asked)\s+(?:(?:him|her|them|me|everyone|mum|dad|my\s+[a-z]+)\s+)?)\bdont\s+(?:you\s+)?(?:ever\s+)?blame\s+(?:yourselves|yourselfs|urselves|any\s+of\s+you|each\s+other)\b(?!\s+for\s+(?:the|a|an|that|his|her|their|our|losing|missing|failing|being\s+late)\b(?!\s+(?:way|choice|decision|end)\b))/giu },
+  { re: /\b(?:ive|i\s+have|i|ive\s+finally|i\s+finally|finally)\s+(?:made|make|making)\s+(?:my\s+)?peace\b(?!\s+with\s+(?!(?:it\s+all|everything|god|dying|death|leaving|going|my\s+(?:death|decision|choice|life|fate|end)|the\s+(?:end|idea\s+of\s+(?:dying|death|going|leaving))|what\s+(?:im|i\s+am)\s+(?:about\s+to|going\s+to))\b))|\b(?:ill|i\s+will)\s+(?:finally\s+)?be\s+at\s+peace\b(?!\s+(?:once|when|after)\s+(?:the|this|my|these)\s)/giu },
+  { re: new RegExp(`\\btell\\s+(?:(?:my\\s+)?${ADJ}(?:${PERSON})s?|him|her|them|everyone|everybody|my\\s+family|the\\s+kids|the\\s+family|${BARE})\\s+(?:that\\s+)?(?:i\\s+(?:will\\s+)?(?:(?:always|really|truly|still)\\s+)*(?:love|loved|luv)(?:\\s+(?:him|her|them|you|u|everyone|you\\s+all|all\\s+of\\s+you|(?:my\\s+)?(?:${PERSON})|${BARE}))?(?=\\s*(?:$|[.,!?;:…]|(?:and|so|but|always|forever|very|more|too|no\\s+matter)\\b))|ill\\s+always\\s+love|im\\s+(?:so\\s+|really\\s+|truly\\s+)?sorry|i\\s+am\\s+(?:so\\s+)?sorry|i\\s+said\\s+(?:goodbye|bye|sorry)|i\\s+never\\s+meant|i\\s+didnt\\s+mean\\s+to|i\\s+tried|not\\s+to\\s+(?:cry|be\\s+sad|blame))\\b`, 'giu') },
+  { re: /\bsorry\s+for\s+what\s+(?:im|i\s+am)\s+(?:about\s+to\s+do|going\s+to\s+do|gonna\s+do)\b|\bsorry\s+(?:that\s+)?(?:i\s+)?(?:have\s+to|had\s+to)\s+(?:leave\s+(?:you|like\s+this)|go\s+like\s+this|do\s+this)\b/giu },
+];
+/** "When you read this", with an ending in the words after it ("…I'll be gone", "…it'll be over", "…I'm sorry"). */
+const NOTE_READ = /\b(?:by\s+the\s+time|when|once|if|after|whenever)\s+(?:(?:you|u|anyone|someone|somebody|they|people|everyone|my\s+[a-z]+|mum|dad|mom)\s+(?:all\s+)?(?:read|reads|see|sees|find|finds|get|gets|hear|hears|open|opens|listen\s+to|watch|watches)|(?:youre|you\s+are|ur|anyone\s+is|someones|someone\s+is)\s+(?:reading|seeing|watching|hearing)|(?:this|my\s+(?:note|letter|message))\s+(?:is\s+)?(?:found|read))\s+(?:this|these|my\s+(?:note|letter|message|words|text|video))?\b/iu;
+const NOTE_READ_END = new RegExp(`\\b(?:${NOTE_FUT}\\s+(?:already\\s+|probably\\s+|long\\s+)?be\\s+(?:${NOTE_GONE}|dead|at\\s+peace|free|in\\s+a\\s+better\\s+place|with\\s+${NOTE_WHO}|somewhere\\s+better|far\\s+away|over)|(?:it|everything|this|it\\s+all)\\s+(?:will|ll|wil)\\s+(?:already\\s+)?be\\s+(?:over|done|too\\s+late|finished)|itll\\s+(?:already\\s+)?be\\s+(?:over|done|too\\s+late)|its\\s+(?:already\\s+)?(?:over|too\\s+late)|(?:wont|will\\s+not)\\s+be\\s+(?:here|around|alive)|im\\s+(?:already\\s+)?(?:gone|dead|not\\s+here)|i\\s+(?:will\\s+|ll\\s+)?(?:have\\s+)?(?:already\\s+)?(?:gone|left\\s+(?:this|for\\s+good)|died|done\\s+it)|(?:im|i\\s+am)\\s+(?:so\\s+)?sorry|i\\s+love\\s+(?:you|u)|dont\\s+(?:be\\s+sad|cry|blame|hate|be\\s+angry|be\\s+mad|worry)|please\\s+(?:forgive|dont|understand)|forgive\\s+me|not\\s+your\\s+fault|i\\s+had\\s+to|i\\s+couldnt|i\\s+cant\\s+(?:do|go|take|keep|carry))\\b`, 'iu');
+/** The smaller note cues: two together are a note, when no death is named and nothing bounds them. */
+const NOTE_CUES = [
+  /\b(?:please\s+)?forgive\s+me\b(?!\s+for\s+(?:being\s+late|the\s+(?:late|delay|mess|wait|typos?|rant|long)|asking|my\s+(?:ignorance|french|english|spelling|language)|not\s+(?:replying|calling|texting)))/iu,
+  /\b(?:couldnt|cant|cannot|could\s+not|can\s+not)\s+(?:go\s+on|keep\s+going|carry\s+on|do\s+(?:it|this)\s+any\s*more|take\s+(?:it|this|any\s+more)(?:\s+any\s*more)?|cope\s+any\s*more|keep\s+fighting|fight\s+(?:it|this)\s+any\s*more|do\s+this\s+any\s+longer|be\s+here\s+any\s*more)\b(?!\s+(?:after|with|at|in|on|for|without\s+(?:a|my|the)\s+(?:break|rest|coffee|drink|nap)))/iu,
+  /\bsorry\s+for\s+(?:everything(?!\s+(?:i\s+(?:said|did)\s+(?:to\s+you\s+)?(?:last|yesterday|earlier|at|today|this)|last\s+night|yesterday|earlier|at\s+the))|all\s+of\s+(?:this|it)|all\s+the\s+(?:pain|trouble|hurt|worry)|being\s+(?:a\s+burden|such\s+a\s+(?:burden|disappointment|failure|let\s+down|mess)|me|who\s+i\s+am|born|useless)|what\s+(?:ive|i\s+have)\s+(?:done|put\s+you\s+through)|leaving\s+(?:you|like\s+this)|doing\s+this|the\s+pain)\b/iu,
+  /\b(?:love|luv)\s+(?:you|u)\s+(?:all|so\s+much|guys|both|always|forever|more\s+than\s+anything)\b|\bi\s+(?:will\s+)?always\s+love\s+(?:you|u)\b|\bi\s+love\s+(?:you|u)(?:\s+(?:mum|dad|mom|mam|nan|nana|gran|granny|grandma|grandad|grandpa|all|both|guys|everyone))?\b(?=\s*[.!…x]*\s*(?:$|goodbye|bye))/iu,
+  /\bdont\s+(?:be\s+sad|cry\s+(?:for|over|about)\s+me|cry|grieve|mourn|miss\s+me|hate\s+me|be\s+angry\s+(?:with|at)\s+me|be\s+mad\s+at\s+me|worry\s+about\s+me|blame\s+(?:yourself|yourselves|anyone))\b/iu,
+  /\b(?:its|it\s+is|it\s+was|this\s+is|this\s+was|none\s+of\s+this\s+is)\s+(?:not\s+)?(?:your|anyones|any\s+of\s+your|nobodys|no\s+ones)\s+fault\b|\bnot\s+your\s+fault\b/iu,
+  /\b(?:it\s+was|its|it\s+is|this\s+was|this\s+is)\s+(?:all\s+)?(?:my\s+own|my)\s+(?:own\s+)?(?:choice|decision)\b(?!\s+(?:to|not\s+to|whether|if|about|on|for|of|which|what)\b)/iu,
+  /\bthank\s+(?:you|u)\s+(?:so\s+much\s+)?for\s+(?:everything|trying|all\s+(?:you\s+did|youve\s+done|of\s+it|the\s+love)|putting\s+up\s+with\s+me|loving\s+me|being\s+(?:there|my)|always\s+being|never\s+giving\s+up\s+on\s+me|the\s+(?:memories|good\s+times|love))\b/iu,
+  new RegExp(`\\b(?:look\\s+after|take\\s+care\\s+of|care\\s+for)\\s+(?:each\\s+other|yourselves|yourself|(?:(?:my|our)\\s+)?${ADJ}(?:${PERSON}|${PET})s?|my\\s+(?:kids|children|family))\\s+for\\s+me\\b|\\b(?:take\\s+care\\s+of|look\\s+after)\\s+each\\s+other\\b`, 'iu'),
+  /\bremember\s+me\b(?!\s+(?:to|when|as\s+(?:a|the)|at|for\s+(?:the|my)))/iu,
+  new RegExp(`\\b(?:goodbye|bye|farewell)(?:\\s+(?:x+|now|then|forever|all|everyone|guys|my\\s+[a-z]+|${BARE}))?\\s*[.!…x]*\\s*$`, 'iu'),
+  /\b(?:im|i\s+am|i\s+feel)\s+(?:finally\s+|so\s+|really\s+)?at\s+peace\b(?!\s+with\s+(?:the|my|his|her|their|not|being|losing)\b)/iu,
+  /\bmy\s+(?:last|final)\s+(?:words|message|note|letter)\b(?!\s+(?:about|on|in|for\s+(?:the|this|a)|to\s+(?:the|this|my)\s+(?:group|team|class|blog|forum|chat|thread)|before|until|till|tonight|today|this\s+(?:week|year|term)))/iu,
+  /\bsorry\s+to\s+(?:everyone|everybody|all\s+of\s+you|you\s+all)\b/iu,
+  /\b(?:it\s+was|its|it\s+is|this\s+is|this\s+was)\s+the\s+only\s+way\b(?!\s+(?:to\s+(?:get|make|fix|pass|win|do\s+it|learn|see|find|reach|save)|i\s+could\s+(?:get|make|afford|pass)|out\s+of\s+the))|\bthere\s+(?:was|is)\s+no\s+other\s+way\b(?!\s+(?:to|round|around|in|out))/iu,
+  /^\s*(?:goodbye|bye|farewell)(?:\s+(?:all|everyone|mum|dad))?\s*[.!,…]/iu,
+  /\b(?:ive|i\s+have)\s+(?:decided|made\s+(?:up\s+)?my\s+(?:mind|decision)|made\s+my\s+mind\s+up)\b(?=\s*(?:$|[.,!?;:…]|and\s+(?:how|when|im|i\s+am|i\s+feel|its)|how|when|its\s+time|tonight))|\bdecided\s+(?:how|when)(?:\s+and\s+(?:how|when))?(?=\s*(?:$|[.,!?;:…]))/iu,
+  /\b(?:im|i\s+am|ive\s+been|i\s+was|being)\s+(?:(?:just|such|always|only|nothing\s+but)\s+)*(?:a\s+)?burden\b/iu,
+  /\bplease\s+(?:try\s+to\s+)?understand\b|\b(?:its|it\s+is|this\s+is)\s+(?:for\s+the\s+best|better\s+(?:this\s+way|for\s+everyone))\b|\bbe\s+happy\s+(?:without\s+me|for\s+me)\b|\blive\s+your\s+li(?:fe|ves)\s+(?:without|for)\s+me\b|\bmove\s+on\s+without\s+me\b|\bhave\s+a\s+(?:good|great|happy)\s+life\b/iu,
+  /\b(?:wont|will\s+not|shant|dont\s+think\s+ill)\s+need\s+(?:it|them|these|those|any\s+of\s+(?:it|this|that|them)|anything)\b(?=\s*(?:$|[.,!?;:…]|any\s*more|any\s+longer|again))/iu,
+];
+/** The sentence a match sits in and the one after it: where a bound is read. */
+function noteWindow(t, at, len) {
+  const before = t.slice(0, at);
+  const start = Math.max(before.lastIndexOf('.'), before.lastIndexOf('!'), before.lastIndexOf('?'), before.lastIndexOf('…'), before.lastIndexOf('\n')) + 1;
+  const rest = t.slice(at + len);
+  const ends = [...rest.matchAll(/[.!?…\n]+/gu)].map((m) => m.index + m[0].length);
+  return t.slice(start, at + len + (ends[1] ?? rest.length));
+}
+function noteHit(t, r, death) {
+  r.re.lastIndex = 0;
+  for (const m of t.matchAll(r.re)) {
+    const after = t.slice(m.index + m[0].length);
+    const before = t.slice(0, m.index);
+    if (r.tail && NOTE_TAIL_QUAL.test(after)) continue;
+    if (r.third && lastSubject(before) === 'third') continue;
+    if (r.turned && TURNED.test(clauseBefore(before))) continue;
+    if (r.end) {
+      if (NOTE_NEG.test(before)) continue;
+      const strong = /^(?:end|ending|finish|finishing)\s+(?:it\s+all|everything|my\s+life|this\s+life)$/u.test(m[0]);
+      const reunion = /\b(?:so\s+(?:that\s+)?i\s+can|to)\s+(?:be\s+with|join|see|meet|follow)\b/u.test(after);
+      if (!strong && (END_WITH.test(after) || (!reunion && (RELATIONSHIP.test(t) || !/^\s*(?:tonight|for\s+good|once\s+and\s+for\s+all|now|today|soon)\b/u.test(after))))) continue;
+    }
+    if (r.hope && /\b(?:one\s+day|some\s*day|eventually|when\s+my\s+time\s+comes|when\s+im\s+old|in\s+time|in\s+my\s+dreams)\b/u.test(after.slice(0, 60))) continue;
+    // a reunion said with no plan, no decision and no tonight is not read ("can't wait to see my nan again"), unless going to be
+    // with them now ("I just want to go be with my nan now")
+    if (r.reunion && !m.groups?.go && (!/^(?:again|soon)$/u.test(m.groups?.when || '') || !NOTE_PLAN.test(t))) continue;
+    if (r.reunion && m.groups?.go && !/^(?:now|tonight|today|forever)$/u.test(m.groups?.when || '') && !NOTE_PLAN.test(t)) continue;
+    if (NOTE_QUAL.test(noteWindow(t, m.index, m[0].length))) continue;
+    return true;
+  }
+  return false;
+}
+/**
+ * (final round 6) A note's shape, or a wish to die, with no death needed (the rule above): true for a first-person future absence
+ * or ending, or (when no death is named) a farewell frame or two note cues, that nothing everyday bounds. Care on both screens
+ * (deathCare 'follow'; another-angle.js afterTell, readDraft and griefMode): the follow lines, the Support pill, no world, nothing
+ * sent, never the question.
+ */
+export function noteShape(text) {
+  let t = norm(text).toLowerCase();
+  if (!/\p{L}/u.test(t)) return false;
+  for (const [re, to] of TYPOS_ACT) t = t.replace(re, to);
+  for (const [re, to] of FOLLOW_TYPOS) t = t.replace(re, to);
+  for (const [re, to] of NOTE_TYPOS) t = t.replace(re, to);
+  if (NOTE_SELF.some((r) => noteHit(t, r))) return true;
+  // the frames and the cues only when no death is named (a goodbye to the one who died is grief, never a note)
+  let death = null;
+  const named = () => (death ??= !!(deathTalk(text) || suicideDeath(text)));
+  if (NOTE_FRAME.some((r) => noteHit(t, r)) && !named()) return true;
+  const read = NOTE_READ.exec(t);
+  if (read && NOTE_READ_END.test(t.slice(read.index + read[0].length)) && !NOTE_QUAL.test(noteWindow(t, read.index, read[0].length)) && !named()) return true;
+  let cues = 0;
+  for (const re of NOTE_CUES) if (re.test(t) && ++cues >= 2) break;
+  return cues >= 2 && !NOTE_QUAL.test(t) && !named();
 }
 
 // ------------------------------------------------- (final round 4) the safety net for what leaves the phone --

@@ -171,8 +171,15 @@ test('blocking 3: a real disclosure or a wish still counts (the lexicon\'s crisi
 });
 
 // ------------------------------------------------------------------------- item 4: the safety net --
+// (final round 6) "I'm ready to go" is a first-person future ending (grief.js noteShape, the check of integ/final-r5): care now, with
+// nothing sent; the other borderline wishes stay the gentle path, held
+const NOW_CARE = ["my husband passed and i'm ready to go"];
 test('item 4: the check\'s borderline wishes and the sea are the gentle path with NOTHING sent (every server answer), never care', () => {
-  for (const t of [...P.CHECK_BORDERLINE, ...P.CHECK_SEA]) {
+  for (const t of NOW_CARE) {
+    assert.equal(GR.deathCare(t), 'follow', t);
+    for (const s of STUB_NAMES) assert.deepEqual([visit(t, { server: STUBS[s] || null }).route, visit(t, { server: STUBS[s] || null }).requests], ['follow', 0], `${t} @${s}`);
+  }
+  for (const t of [...P.CHECK_BORDERLINE, ...P.CHECK_SEA].filter((x) => !NOW_CARE.includes(x))) {
     assert.equal(GR.keepLocal(t), true, t);
     assert.equal(GR.deathCare(t), null, `${t}: never care`);
     for (const s of STUB_NAMES) {
@@ -244,7 +251,8 @@ test('item 4 on the main screen: supportFirst offers no world (not even somewher
   assert.ok(no > 0 && no < choice.indexOf('await gentleWorld('), 'before any world is looked up');
   assert.match(between(HF, 'async function careBeat(', 'async function careAgain('), /supportPill\.hidden = false;/);
   // and the gentle path's level is never raised by it
-  for (const t of P.CHECK_BORDERLINE) assert.ok(!isCare(mainRead(t)), t);
+  for (const t of P.CHECK_BORDERLINE.filter((x) => !NOW_CARE.includes(x))) assert.ok(!isCare(mainRead(t)), t);
+  for (const t of NOW_CARE) assert.deepEqual([mainRead(t).level, mainRead(t).category], ['care', 'death-follow'], t);
 });
 
 // ------------------------------------------------------------------------- rules, not phrases --

@@ -36,7 +36,7 @@ import {
 } from './lines.js';
 import { firstStep, answerKey, questionClock, goodbye } from './angle-first.js';
 import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, feelingGuard, guessGuard } from './authored.js';
-import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal } from './grief.js';
+import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal, noteShape } from './grief.js';
 import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess, lossRoute, griefFeeling } from './backstop.js';
 import { FEELING_LOOK } from './feelings.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
@@ -632,6 +632,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (deathEscalation(t)) noteFollow();
     // (r3-esc) a suicide named, nothing more: care too, said gently (nothing sent)
     else if (suicideDeath(t)) noteSuicide();
+    // (final round 6) a note's shape or a wish to die with no death named (grief.js noteShape): care, the follow lines
+    if (!S.follow && noteShape(t)) noteFollow();
     if (gentleRoute(t) || bagWords(t)) {
       S.noPlay = true;
       if (!S.heavyDraft) { S.heavyDraft = true; careFace(); }
@@ -691,6 +693,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // (care seen earlier in the visit, the lexicon's or an escalation typed and reworded before Send, still holds)
     // (final) a wish to follow someone who died, or a suicide named, read first: when the lexicon's care (violence, abuse…) is
     // what routes, careMode still speaks with the follow / gentle lines (it reads S.follow / S.suicide); the lexicon's category stands
+    // ((final round 6) a note's shape with no death named, grief.js noteShape, speaks with the follow lines too)
+    if (noteShape(S.text)) S.follow = true;
     if (deathEscalation(S.text)) S.follow = true; else if (suicideDeath(S.text)) S.suicide = true;
     noteSafety(seen);
     noteSafety(checkText(S.text));
@@ -699,6 +703,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // death talk that wants to be with, join or follow the one who died (grief.js, never the safety lexicon):
     // the care path, nothing sent, no game (and care for the rest of the visit)
     if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
+    // (final round 6) a goodbye note or a wish to die with NO death named (grief.js noteShape: "by the time you read this I'll be
+    // gone", "this is my goodbye", "i wnat to dei"): the same care, nothing sent, never the question
+    if (noteShape(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
     // (r3-esc) a suicide named, whatever the clause: care, said gently, nothing sent (never the question, never the server)
     if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }
     // death talk or any word of the backstop's bag: no playful line for the rest of the visit
@@ -819,6 +826,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function griefMode({ scene = null, asked = false, told = null } = {}) {
     // (wanting to follow the one who died is care, whichever way it got here: nothing more is sent)
     if (deathEscalation(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
+    // ((final round 6) a note's shape: the same care)
+    if (noteShape(S.text)) { noteFollow(); careMode({ lines: SAFETY.follow }); return; }
     // (r3-esc) a suicide named, whatever the clause (r2-angle item 1 read only a first-person future beside it): never sent to
     // the server; care, said gently and assuming nothing
     if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }
