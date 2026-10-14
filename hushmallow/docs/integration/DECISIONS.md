@@ -71,6 +71,10 @@ Five independent reviews kept finding new ways of saying someone died that the w
 | Everyday "death" sayings on the main screen | "My plant died", "the party is dead", "this traffic is murder" stay ordinary; in Another Angle they still never get the guess game |
 | Consent card at the largest text size on a 320 px phone | Reads in 6 steps (3 at normal text); the approved wording is kept in full |
 | Feelings suggested beside a loss | Grief and Sad first, plus any feeling the person stated outright; nothing read from unrelated words |
+| The two answers to "Shall we play with this, or just be with it?" | Equal visual weight (Play first in reading order), so nothing nudges towards play when the words might be about a loss |
+| After "Just be with it" | One gentle line and a single optional "Somewhere calm" chip (no second question); inside a world, the world ends quietly unless the person taps it |
+| The question left unanswered | The words are kept for the next Tell; inside a world, the world stays paused with its Resume pill; the rest of the visit stays quiet |
+| Everyday "dead" sayings ("the party was dead", "my character died in the game") | Get the ordinary question, never the gentle path; the gentle path is kept for a person or a pet |
 
 ## Still open for the owner
 
