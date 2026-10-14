@@ -16,7 +16,8 @@ export const usage = `hm bench [direction] [options]
   --scale <s>          render scale (default: the profile's)
   --label <text>       result name (default <direction>-<profile>[-<features>])
   --out <file>         result JSON (default WORK/bench/<label>.json)
-  --no-passes          skip the per-pass split (timing pass only)`;
+  --no-passes          skip the per-pass split (timing pass only)
+  --chromium-args "…"  extra Chromium flags on top of the engine's (P8 experiments; recorded in the result)`;
 
 export async function run(args) {
   const { bench, formatBench, parseBenchArgs } = await import('../../tools/bench.mjs');

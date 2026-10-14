@@ -2,6 +2,7 @@
 //
 //   node cli/hm.mjs bench [direction] [--profile final] [--features -worldFast] [--runs 3]
 //                         [--sample windows|all|a:b|every:N] [--out file.json] [--label text] [--no-passes]
+//                         [--chromium-args "--flag1 --flag2"]   (added to the engine's flags: P8 experiments)
 //
 // Always under the EXCLUSIVE heavy-job lock (CONVENTIONS §3: benchmark numbers
 // count only on an exclusive machine). Each run opens fresh engine pages and
@@ -33,7 +34,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORK, assertWritable } from '../render/lib/paths.mjs';
 import { withHeavyLock } from '../render/lib/heavy-lock.mjs';
-import { EngineSession, engineUrl, outputSize } from '../render/worker.mjs';
+import { EngineSession, ENGINE_ARGS, engineUrl, outputSize } from '../render/worker.mjs';
 import { resolveProfile, featureLabel } from '../engine/render/profiles.js';
 
 export const BENCH_DIR = path.join(WORK, 'bench');
@@ -151,7 +152,8 @@ export async function bench(o = {}) {
   const out = assertWritable(o.out || path.join(BENCH_DIR, `${label}.json`));
   return withHeavyLock({ mode: 'exclusive', label: `bench ${label}` }, async () => {
     const load0 = os.loadavg();
-    const session = await EngineSession.start({ args: o.args, log: (m) => log(`[bench] ${m}`) });
+    const args = o.chromiumArgs ? [...ENGINE_ARGS, ...o.chromiumArgs] : undefined;
+    const session = await EngineSession.start({ args, log: (m) => log(`[bench] ${m}`) });
     const perRun = [];
     let info = null, frames = null;
     try {
@@ -230,10 +232,11 @@ export function parseBenchArgs(argv) {
     if (!a.startsWith('--')) { o._.push(a); continue; }
     const k = a.slice(2);
     if (k === 'no-passes') { o.passes = false; continue; }
-    if (!['profile', 'features', 'runs', 'sample', 'out', 'label', 'scale'].includes(k)) throw new Error(`unknown option --${k}`);
+    if (!['profile', 'features', 'runs', 'sample', 'out', 'label', 'scale', 'chromium-args'].includes(k)) throw new Error(`unknown option --${k}`);
     if (i + 1 >= argv.length) throw new Error(`--${k} needs a value`);
-    o[k] = argv[++i];
+    o[k === 'chromium-args' ? 'chromiumArgs' : k] = argv[++i];
   }
+  if (o.chromiumArgs !== undefined) o.chromiumArgs = o.chromiumArgs.split(/\s+/).filter(Boolean);
   if (o.runs !== undefined) { o.runs = Number(o.runs); if (!(Number.isInteger(o.runs) && o.runs > 0)) throw new Error('--runs must be a positive integer'); }
   if (o.scale !== undefined) { o.scale = Number(o.scale); if (!(o.scale > 0)) throw new Error('--scale must be > 0'); }
   o.direction = o._[0];

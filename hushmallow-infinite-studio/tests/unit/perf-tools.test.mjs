@@ -69,6 +69,7 @@ test('bench: sample specs', () => {
   const o = parseBenchArgs(['my-dir', '--profile', 'exact', '--runs', '2', '--no-passes']);
   assert.deepEqual([o.direction, o.profile, o.runs, o.passes], ['my-dir', 'exact', 2, false]);
   assert.throws(() => parseBenchArgs(['--runs', '0']), /positive integer/);
+  assert.deepEqual(parseBenchArgs(['--chromium-args', '--a  --b=1']).chromiumArgs, ['--a', '--b=1']);
   const g = parseGateArgs(['--b', 'final', '--a-features', '-x', '--min-psnr', '45', '--save-png']);
   assert.deepEqual([g.b, g.aFeatures, g.thresholds.psnr, g.savePng], ['final', '-x', 45, true]);
 });
