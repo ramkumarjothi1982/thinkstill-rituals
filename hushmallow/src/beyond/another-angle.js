@@ -689,6 +689,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // the app's own safety check first, always (never dependent on the server); and the visit's level
     // counts, not only the words sent (crisis or care typed earlier and reworded before Send still means no angle)
     // (care seen earlier in the visit, the lexicon's or an escalation typed and reworded before Send, still holds)
+    // (final) a wish to follow someone who died, or a suicide named, read first: when the lexicon's care (violence, abuse…) is
+    // what routes, careMode still speaks with the follow / gentle lines (it reads S.follow / S.suicide); the lexicon's category stands
+    if (deathEscalation(S.text)) S.follow = true; else if (suicideDeath(S.text)) S.suicide = true;
     noteSafety(seen);
     noteSafety(checkText(S.text));
     if (S.level === 'crisis') { crisisMode(); return; }

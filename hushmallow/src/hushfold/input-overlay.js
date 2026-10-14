@@ -71,7 +71,16 @@ export function lossIn(t) {
  */
 export function readSafety(m, t, lossAware, { emotion = null } = {}) {
   const r = m.checkText(t);
-  if (!lossAware || !griefNow || r.level === 'crisis' || r.level === 'care') return r;
+  if (!lossAware || !griefNow || r.level === 'crisis') return r;
+  if (r.level === 'care') {
+    // (final) the lexicon's care (violence, abuse…) beside a wish to follow someone who died or a suicide named: the lexicon's
+    // category and its resources stand, and `deathCare` carries the death-care reading so the scene offers no world either
+    try {
+      const dc = griefNow.deathCare ? griefNow.deathCare(t) : (griefNow.deathEscalation(t) ? 'follow' : null);
+      if (dc) return { ...r, deathCare: dc === 'follow' ? 'death-follow' : 'suicide-loss' };
+    } catch { /* the plain reading stands */ }
+    return r;
+  }
   try {
     // (r3-esc) a wish to follow someone who died, or the self ending after a death ('death-follow'); a suicide named, nothing
     // more ('suicide-loss'): care, the scene says it gently and offers no world (hushfold.js careBeat / careChoice)
@@ -121,8 +130,11 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     const rise = LEVELS.indexOf(r.level) > LEVELS.indexOf(worst.level);
     // (final round 4) support first, seen at the same level ("my dad died" → "… and I want out"): said to the scene too
     const first = !!r.supportFirst && !worst.supportFirst && r.level !== 'none';
-    if (!rise && !first) return;
-    worst = { level: rise ? r.level : worst.level, category: rise ? r.category : worst.category, ...(first || worst.supportFirst ? { supportFirst: true } : {}) };
+    // (final) a death-care reading beside the lexicon's care: said to the scene too, so it offers no world
+    const dc = !!r.deathCare && !worst.deathCare;
+    if (!rise && !first && !dc) return;
+    worst = { level: rise ? r.level : worst.level, category: rise ? r.category : worst.category, ...(first || worst.supportFirst ? { supportFirst: true } : {}),
+      ...(r.deathCare || worst.deathCare ? { deathCare: r.deathCare || worst.deathCare } : {}) };
     try { onSafety?.({ ...worst }); } catch (e) { console.warn('[hushfold] onSafety', e); }
   }
   let supportShown = false, closed = false, sending = false, photosOpen = false, tray = null, hintUntil = 0, hintT = 0;

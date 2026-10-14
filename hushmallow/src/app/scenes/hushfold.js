@@ -1390,6 +1390,8 @@ export default function hushfold(app, params = {}) {
   function noteSafety(r) {
     noteNoResume(r);
     if (DEATH_CARE.has(r?.category)) S.deathCare = true;
+    // (final) the lexicon's care beside a wish to follow or a suicide named (input-overlay readSafety's deathCare)
+    if (DEATH_CARE.has(r?.deathCare)) S.deathCare = true;
     if (r?.supportFirst) S.supportFirst = true;
     if (!r?.level || LEVELS.indexOf(r.level) <= LEVELS.indexOf(S.level)) return;
     S.level = r.level;
