@@ -43,5 +43,9 @@ export function connectRelay(dev) {
       const m = MALLOWS[state.me?.profile?.mallow] || MALLOWS.noomi;
       dev.toast(`Nobody’s caught one of your feelings yet. ${m.name} can offer another way to see it, if you’d like.`, { ms: 4200 });
     }
+    if (detail?.mallowFound?.length && !quiet() && dev.current?.name !== 'journey') {
+      const m = MALLOWS[state.me?.profile?.mallow] || MALLOWS.noomi;
+      dev.toast(`Nobody had caught one of your feelings yet, so ${m.name} found another way to see it. It’s waiting in your journeys.`, { ms: 4600 });
+    }
   });
 }

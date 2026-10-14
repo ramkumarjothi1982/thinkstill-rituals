@@ -68,10 +68,23 @@ Postgres (schema hushmates: tables; schema hushmates_api: the only callable func
   prepares the author's Mallow's perspective, whether or not the app is open.
   The app reveals it with the same moment as before. Any request can also ask
   for it, sharing the same single generation.
-- **AI is off.** `settings.ai.enabled = false`. When the owner turns it on,
-  each request still needs room in the monthly AUD cap and the per-person
-  daily limit. Any refusal, timeout or error falls back to the Reframe library
-  (free). Every AI call is recorded in `ai_usage` with its estimated cost.
+- **AI is off.** `settings.ai.enabled = false`, and Another Angle is
+  configured nowhere. When the owner turns it on, each call needs:
+  - the switch on;
+  - a configured provider;
+  - room in the monthly AUD cap, the person's daily limit and the overall daily limit.
+
+  These are checked and the estimated cost held in one locked step in the
+  database (`hushmates_api.ai_reserve`), so instances can't overspend
+  together. Any refusal, timeout, error or unsafe answer falls back to the
+  Reframe library (free). Every attempt is recorded in `ai_usage`.
+  `supabase/functions/_shared/mallow.js` decides; `mallow-setup.js` wires it
+  to the database.
+- **The Mallow library fits the feeling.** `core/perspectives.js` picks
+  among the Reframe engine's angles and Hushmates' own lines. It goes by the
+  words, the label and the person's Mallow (its voice). It is deterministic,
+  avoids the angles that person saw recently, and never uses forced
+  positivity, diagnosis or claims about other people's minds.
 - **Changes reach the app by polling** (every 20 s while the app is visible,
   and after every action). Supabase Realtime can come later; nothing depends
   on it.
@@ -95,10 +108,35 @@ arguments and answers, plus:
 `me` answers `{ needsInvite: true }` for a signed-in person who isn't a member
 yet; every other method answers `invite-required`.
 
+## Deploying (staging only, with approval)
+
+- `supabase/functions/hushmates/index.ts`: the Edge Function entry. It reads the secrets and wires up the gateway.
+- `supabase/config.toml`: the function checks tokens itself (`verify_jwt = false`), and `hushmates_api` is exposed to PostgREST for the service role only.
+- `tools/sync-edge.mjs`: copies the shared code (`core/…`, and the main app's `src/ultra/…`) byte for byte into `supabase/functions/_shared/vendor/`, so a deploy carries it. A test fails if a copy differs.
+- `tools/build-app.mjs --supabase-url … --anon-key …`: builds the app and the desk for a project. The CSP may connect to that project only, and a secret key is refused.
+- `server/admin.mjs`: the operator's tool for invitations, settings, ops and lifting restrictions.
+- Step by step in `STAGING.md`. Costs are in `COSTS.md`, and what remains before launch in `READINESS.md`.
+
+## The safety desk
+
+`/staff/` (`staff/desk.js`) is a separate page for moderators. It signs in
+with an email code like the app, and its session is held in that tab only.
+The server answers its methods only for members whose role is `moderator`
+(from a safety team invitation). It shows:
+- the queue, urgent first;
+- the evidence (people's words as text, never markup);
+- earlier reports about the same person, never who they are;
+- decisions with an explanation of each, and team notes;
+- the activity log.
+
+Every report opened and every decision is recorded on the server. It signs
+out after 30 minutes idle.
+
 ## Local development
 
 ```
 npm install                         # dev-only: the Postgres driver for tests and the dev stack
 node server/dev-stack.mjs           # Postgres (local), Auth (local copy), the gateway, the app, the desk, the lab (tester key)
+                                    # sign-in codes and invitations are printed; no email is sent
 node --test tests/*.test.mjs
 ```

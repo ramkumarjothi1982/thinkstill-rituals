@@ -74,7 +74,7 @@ export const isEncrypted = (s) => typeof s === 'string' && s.startsWith(PREFIX);
  */
 export async function createFieldCrypt({ keys, current, macKey } = {}) {
   if (!keys || typeof keys !== 'object' || Object.keys(keys).length === 0) throw new Error('createFieldCrypt needs keys');
-  if (!Object.hasOwn(keys, current)) throw new Error('the current key id is not among the keys');
+  if (typeof current !== 'string' || !Object.hasOwn(keys, current)) throw new Error('the current key id is not among the keys');
   const raw = new Map();
   for (const [kid, value] of Object.entries(keys)) {
     if (!KID.test(kid)) throw new Error(`key id ${JSON.stringify(kid)} must be 1-32 letters, digits, - or _`);

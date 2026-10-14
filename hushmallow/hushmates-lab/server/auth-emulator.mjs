@@ -130,9 +130,9 @@ export async function createAuthEmulator({
     throw new Error('the auth emulator is for local development only: its issuer must be a local address (127.0.0.1, localhost or [::1])');
   }
   if (!issuer.endsWith('/auth/v1')) throw new Error('issuer must end with /auth/v1 (no trailing slash), as Supabase\'s does');
-  for (const [name, key] of [['serviceKey', serviceKey], ['anonKey', anonKey]]) {
-    if (typeof key !== 'string' || key.length < 16) throw new Error(`${name} must be at least 16 characters`);
-  }
+  // the anon key is public by design (it ships in the app), so only the service key needs length
+  if (typeof serviceKey !== 'string' || serviceKey.length < 16) throw new Error('serviceKey must be at least 16 characters');
+  if (typeof anonKey !== 'string' || !anonKey) throw new Error('anonKey is needed');
   if (serviceKey === anonKey) throw new Error('serviceKey and anonKey must differ');
 
   const say = (...a) => (log.log || log.info || (() => {})).apply(log, a);

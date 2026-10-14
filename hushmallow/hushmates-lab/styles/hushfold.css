@@ -466,3 +466,17 @@
 .hf-catch[data-state="writing"] .hf-their--top { position: sticky; top: 0; z-index: 5; padding-bottom: 4px; }
 .hf-catch[data-state="writing"] .hf-their--top .hf-cloud-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 .hf-gift-take { justify-self: start; min-height: 40px; padding-inline: 2px; font-size: 13.5px; color: var(--hm-ink-2); }
+
+/* ------------------------------------------------------------- sign in -- */
+/* an email can be long and has no spaces: let it wrap anywhere rather than overflow */
+.hf-signin-email { overflow-wrap: anywhere; word-break: break-word; }
+.hf-signin-scroll .hf-line { max-width: 22ch; }
+/* the code reads as six calm digits */
+.hf-signin-code .kit-field { padding-left: 5px; }
+.hf-signin-code input { text-align: center; letter-spacing: .34em; text-indent: .34em; font: 700 22px/1.2 var(--hm-ui); font-variant-numeric: tabular-nums; }
+.hf-signin-again { display: grid; justify-items: center; gap: 0; }
+.hf-signin-again .hf-note { margin: 0; }
+.hf-signin-who { margin: 2px 0 0; max-width: 34ch; }
+.hf-signin-who .hf-link { font-size: 13px; }
+/* in the code step's heading, the address is quieter than the words around it */
+.hf-signin-scroll .hf-line .hf-signin-email { display: block; margin-top: 6px; font-size: .68em; font-style: italic; font-weight: 450; color: var(--hm-ink-2); }

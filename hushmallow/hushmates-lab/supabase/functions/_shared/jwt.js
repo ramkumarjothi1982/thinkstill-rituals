@@ -173,9 +173,13 @@ export function createVerifier({ issuers, fetch = globalThis.fetch, now = () => 
   async function keysFor(c, { force = false } = {}) {
     if (c.jwksUrl) {
       if (force) {
-        // an unknown kid may mean the issuer rotated its keys; made-up kids get one fetch per cool-down
-        if (now() - c.lastForcedAt >= REFETCH_COOLDOWN_MS) { c.lastForcedAt = now(); await fetchKeys(c); }
-      } else if ((!c.fetched || now() - c.fetched.at > jwksTtlMs) && now() - c.failedAt >= REFETCH_COOLDOWN_MS) {
+        // an unknown kid may mean the issuer rotated its keys; made-up kids get one fetch per cool-down,
+        // and requests arriving while that fetch runs wait for it rather than being refused
+        if (c.inflight) await c.inflight;
+        else if (now() - c.lastForcedAt >= REFETCH_COOLDOWN_MS) { c.lastForcedAt = now(); await fetchKeys(c); }
+      } else if (!c.fetched || (now() - c.fetched.at > jwksTtlMs && now() - c.failedAt >= REFETCH_COOLDOWN_MS)) {
+        // with no keys at all (a cold start after one failed fetch), always try again: waiting out the
+        // cool-down would refuse every valid sign-in meanwhile; concurrent requests share one fetch
         await fetchKeys(c);
       }
     }

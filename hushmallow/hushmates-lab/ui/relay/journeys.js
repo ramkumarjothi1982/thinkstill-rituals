@@ -7,6 +7,8 @@
 // has caught it, your Mallow can offer another way to see it: the orb drifts
 // down into its arms, it thinks, squeezes, and a new possibility unfolds,
 // labelled as automatically generated. The feeling keeps travelling.
+// The server may already have prepared it (30 minutes after release): then the
+// Mallow invites the person to see what it found, with the same moment.
 
 import { h, icon, fmtSpan, fmtAgo } from '../dom.js';
 import { face } from '../mallow.js';
@@ -20,6 +22,17 @@ import { room, stage, Speech, line, swapLine, put, hostNote, focusHeading } from
 
 export const humanProgress = (j) => `${j.humanCount} of ${j.of} human perspective${j.of === 1 ? '' : 's'}`;
 
+/**
+ * The server prepares the Mallow's perspective by itself (30 minutes after release, with consent,
+ * when nobody has caught it). Until the person opens it, it waits as an invitation; once opened
+ * here it is shown directly, even before the server has heard it was seen.
+ */
+const revealedHere = (dev) => (dev.memory.mallowSeen ||= new Set());
+export const unseenMallow = (dev, j) => j?.fallback?.status === 'ready' && j.fallback.seen === false && !revealedHere(dev).has(j.id)
+  && !!j.collection?.some((x) => x.kind === 'mallow');
+/** The journey as drawn (orb petals, progress lights): no Mallow star yet while its perspective is a surprise. */
+const drawn = (dev, j) => (unseenMallow(dev, j) ? { ...j, mallowPetal: null } : j);
+
 // ---------------------------------------------------------- the list --
 export function journeys(dev) {
   const me = dev.state.me;
@@ -31,16 +44,19 @@ export function journeys(dev) {
   let st = null;
   const items = travelling.map((j, i) => {
     const o = new Orb({ size: null, tint: feelColour(j.label), label: humanProgress(j) });
-    o.setPetals(j.petals || [], j.mallowPetal);
-    orbs.push(o);
     const ask = j.fallback?.status === 'available';
-    return h('button', { type: 'button', class: `hf-jorb${ask ? ' has-offer' : ''}`, style: { '--i': String(i) }, dataset: { test: `journey-${j.id}` }, onclick: () => dev.go('journey', { id: j.id }) },
+    // a perspective the Mallow prepared by itself stays a surprise (no star yet) until it's opened
+    const found = unseenMallow(dev, j);
+    o.setPetals(j.petals || [], drawn(dev, j).mallowPetal);
+    orbs.push(o);
+    return h('button', { type: 'button', class: `hf-jorb${ask || found ? ' has-offer' : ''}`, style: { '--i': String(i) }, dataset: { test: `journey-${j.id}` }, onclick: () => dev.go('journey', { id: j.id }) },
       h('span', { class: 'hf-jorb-orb' }, o.el),
       h('span', { class: 'hf-jorb-cap' },
         h('span', { class: 'hf-jorb-text' }, j.text),
-        h('span', { class: 'hf-jorb-progress' }, lights(j), h('span', {}, humanProgress(j))),
+        h('span', { class: 'hf-jorb-progress' }, lights(drawn(dev, j)), h('span', {}, humanProgress(j))),
         h('span', { class: 'hf-meta' }, j.paused ? 'Paused for a safety review' : `Home within ${fmtSpan(j.expiresAt - now)}`),
-        ask ? h('span', { class: 'hf-jorb-offer' }, face(j.fallback.mallow, { size: 20 }), `${MALLOWS[j.fallback.mallow]?.name} can offer another perspective`) : null));
+        ask ? h('span', { class: 'hf-jorb-offer' }, face(j.fallback.mallow, { size: 20 }), `${MALLOWS[j.fallback.mallow]?.name} can offer another perspective`) : null,
+        found ? h('span', { class: 'hf-jorb-offer', dataset: { test: 'mallow-found-hint' } }, face(j.fallback.mallow, { size: 20 }), `${(MALLOWS[j.fallback.mallow] || MALLOWS.noomi).name} found another way to see it`) : null));
   });
   if (!travelling.length) {
     st = stage(mine.id);
@@ -105,13 +121,13 @@ export function journey(dev, { id } = {}) {
     j = c.journey(id) || j;
     if (j.status !== 'travelling') { dev.go('homecoming', { id }, { replace: true }); return; }
     const now = c.now();
-    orb.setPetals(j.petals || [], j.mallowPetal);
     const f = j.fallback || { status: 'off' };
+    orb.setPetals(j.petals || [], drawn(dev, j).mallowPetal);
     const events = (j.events || []).slice().reverse();
-    const reveal = h('div', { class: 'hf-reveal', dataset: { test: f.status === 'ready' ? 'mallow-ready' : 'mallow-slot' } });
+    const reveal = h('div', { class: 'hf-reveal', dataset: { test: f.status === 'ready' && !unseenMallow(dev, j) ? 'mallow-ready' : 'mallow-slot' } });
     put(body,
       h('div', { class: 'hf-jdetail-status' },
-        h('p', { class: 'hf-home-progress', dataset: { test: 'progress' } }, lights(j), h('span', {}, humanProgress(j))),
+        h('p', { class: 'hf-home-progress', dataset: { test: 'progress' } }, lights(drawn(dev, j)), h('span', {}, humanProgress(j))),
         h('p', { class: 'hf-meta' }, j.paused ? 'Paused while our safety team takes a look.' : `It comes home after five human perspectives, or within ${fmtSpan(j.expiresAt - now)}.`)),
       st.el,
       reveal,
@@ -144,6 +160,16 @@ export function journey(dev, { id } = {}) {
         speech.say('Let me think about this one…');
         break;
       case 'ready': {
+        if (unseenMallow(dev, j)) {
+          // prepared while nobody had caught it: an invitation, opened with the same moment as asking
+          speech.el.dataset.test = 'mallow-found';
+          speech.say('Nobody had caught it yet, so I found another way to see it.', {
+            extra: h('div', {},
+              h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--sm', dataset: { test: 'mallow-reveal' }, onclick: () => seeIt() }, `See what ${m.name} found`),
+              h('p', { class: 'hf-say-note' }, 'Automatically generated · not written by a person')),
+          });
+          break;
+        }
         speech.say('');
         const item = j.collection.find((x) => x.kind === 'mallow');
         if (item) showPerspective(reveal, item, false);
@@ -187,7 +213,12 @@ export function journey(dev, { id } = {}) {
   // ---------------------------------------- the Mallow finds another way --
   // The orb is already in its hands: it looks at it, holds it closer, thinks (thought dots, a held
   // blush), squeezes it softly, and it glows, gains a star and unfolds into the perspective below.
-  async function ask() {
+  // Asking and opening one the server already prepared are the same moment.
+  const ask = () => moment(() => c.act('askMallow', { journeyId: id }), 'Hmm… let me look at it another way.');
+  // already prepared: if the note that it was seen doesn't get through, it's shown anyway
+  const seeIt = () => moment(() => c.act('markMallowSeen', { journeyId: id }).catch(() => c.journey(id) || j), 'Let me show you what I found…');
+
+  async function moment(answer, thinking) {
     if (magic) return;
     magic = true;
     const rm = reducedMotion();
@@ -205,11 +236,11 @@ export function journey(dev, { id } = {}) {
     orb.release(true);
     // it pauses and thinks (as long as the answer takes, at least a breath)
     st.mallow.think(true);
-    speech.say('Hmm… let me look at it another way.', { who: false });
+    speech.say(thinking, { who: false });
     let res;
     let err = null;
     try {
-      [res] = await Promise.all([c.act('askMallow', { journeyId: id }), wait(rm ? 300 : 1900)]);
+      [res] = await Promise.all([answer(), wait(rm ? 300 : 1900)]);
     } catch (e) { err = e; }
     if (!alive) return;
     st.mallow.think(false);
@@ -224,6 +255,9 @@ export function journey(dev, { id } = {}) {
     orb.glowPulse(2);
     const item = res?.collection?.find((x) => x.kind === 'mallow');
     if (item) {
+      // seen now: shown directly from here on, and the server is told (so no other device invites again)
+      revealedHere(dev).add(id);
+      if (res.fallback?.seen === false) c.api('markMallowSeen', { journeyId: id }).catch(() => {});
       play('reveal');
       orb.addStar(item.mallow);
       st.mallow.delight(0.9);

@@ -1,5 +1,5 @@
 // One person's view of the Feeling Relay. Talks to the service only through
-// a link (client/http-link.js to the Hushmates server; Supabase in Phase 2)
+// a link (client/functions-link.js: the Hushmates Edge Function on Supabase; the lab has its own)
 // and keeps what this person may see. The interface only uses this class.
 
 const newClientId = () => {
@@ -51,7 +51,9 @@ export class RelayClient {
     if (scope === 'me') { s.me = await this.api('me'); this._clock(s.me.now); }
     else if (scope === 'journeys') {
       const before = new Map(s.journeys.map((j) => [j.id, j.status]));
-      const beforeOffer = new Map(s.journeys.map((j) => [j.id, j.fallback?.status]));
+      // the Mallow's state as the person meets it: one they can ask for, one already found for them (not yet seen)
+      const offerOf = (j) => (j.fallback?.status === 'ready' && j.fallback.seen === false ? 'found' : j.fallback?.status);
+      const beforeOffer = new Map(s.journeys.map((j) => [j.id, offerOf(j)]));
       const r = await this.api('listJourneys');
       s.journeys = r.journeys;
       this._clock(r.now);
@@ -60,10 +62,14 @@ export class RelayClient {
       const cameHome = s.journeys.filter((j) => j.status === 'returned' && before.get(j.id) === 'travelling' && !this._announced.has(j.id)).map((j) => j.id);
       cameHome.forEach((id) => this._announced.add(id));
       // a feeling nobody has caught for a while, whose Mallow can now offer another way to see it
-      const mallowOffer = s.journeys.filter((j) => j.status === 'travelling' && j.fallback?.status === 'available' && beforeOffer.has(j.id)
-        && beforeOffer.get(j.id) !== 'available' && !this._offered.has(j.id)).map((j) => j.id);
-      mallowOffer.forEach((id) => this._offered.add(id));
-      this._notify({ journeys: true, cameHome, mallowOffer });
+      const newly = (state) => s.journeys.filter((j) => j.status === 'travelling' && offerOf(j) === state && beforeOffer.has(j.id)
+        && beforeOffer.get(j.id) !== state && !this._offered.has(`${state}:${j.id}`)).map((j) => j.id);
+      const mallowOffer = newly('available');
+      // the server prepares it by itself after the wait (with the person's consent): it's waiting for them
+      const mallowFound = newly('found');
+      mallowOffer.forEach((id) => this._offered.add(`available:${id}`));
+      mallowFound.forEach((id) => this._offered.add(`found:${id}`));
+      this._notify({ journeys: true, cameHome, mallowOffer, mallowFound });
       return;
     } else if (scope === 'gifts') s.gifts = (await this.api('myGifts')).gifts;
     this._notify({ [scope]: true });

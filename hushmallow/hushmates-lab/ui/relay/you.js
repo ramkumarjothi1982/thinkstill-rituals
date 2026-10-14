@@ -77,7 +77,7 @@ export function you(dev) {
 
     dev.env.signOut ? section('This device',
       h('div', { class: 'hf-choices-list' },
-        row('sign-out', 'leave', 'Sign out', 'To come back, use your invitation code and the same name', () => leave()))) : null,
+        row('sign-out', 'leave', 'Sign out', 'To come back, sign in with the same email', () => leave()))) : null,
 
     h('p', { class: 'hf-hint', dataset: { test: 'pilot-note' } }, 'Hushmates is an invitation-only pilot for adults (18+).', hostNote(dev, 'pilot')));
   r.el.append(head, body);
@@ -106,7 +106,7 @@ export function you(dev) {
   loadGifts();
 
   async function leave() {
-    const ok = await dev.confirm({ title: 'Sign out of Hushmates?', text: 'Your feelings keep travelling while you’re away. To come back, use your invitation code and the same name.', confirmLabel: 'Sign out' });
+    const ok = await dev.confirm({ title: 'Sign out of Hushmates?', text: 'Your feelings keep travelling while you’re away. To come back, sign in with the same email: everything will be here.', confirmLabel: 'Sign out' });
     if (ok) await dev.env.signOut();
   }
   async function deleteAll() {

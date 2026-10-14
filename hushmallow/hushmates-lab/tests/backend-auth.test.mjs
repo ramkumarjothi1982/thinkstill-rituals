@@ -444,7 +444,8 @@ describe('the local copy of Supabase Auth', () => {
     await assert.rejects(createAuthEmulator({ ...o, issuer: 'https://abcdefgh.supabase.co/auth/v1' }), /local/);
     await assert.rejects(createAuthEmulator({ ...o, issuer: 'http://10.0.0.5:8090/auth/v1' }), /local/);
     await assert.rejects(createAuthEmulator({ ...o, issuer: `${issuer}/` }), /auth\/v1/);
-    await assert.rejects(createAuthEmulator({ ...o, issuer, anonKey: 'short' }), /16/);
+    await assert.rejects(createAuthEmulator({ ...o, issuer, serviceKey: 'short' }), /16/);
+    await assert.rejects(createAuthEmulator({ ...o, issuer, anonKey: '' }), /anonKey/);   // public by design: present is enough
     await assert.rejects(createAuthEmulator({ ...o, issuer, anonKey: SERVICE }), /differ/);
     await assert.rejects(createAuthEmulator({ ...o, issuer, pool: null }), /Pool/);
   });

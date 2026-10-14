@@ -53,17 +53,17 @@ test('build: the scan catches every kind of developer content (planted, one at a
 
 // Any new file in the customer app has to be added here on purpose: a stray import of server or lab code fails this test.
 const EXPECTED = [
-  '/app/app.js', '/app/index.html',
+  '/app/app.js', '/app/config.json', '/app/index.html',
   ...['blubi', 'boppo', 'glitzi', 'loomi', 'noomi', 'pipzi', 'zuzu'].map((m) => `/assets/art/${m}.webp`),
   ...['boppo', 'glitzi', 'pipzi', 'zuzu'].map((m) => `/assets/art/${m}-lids.webp`), '/assets/art/mascot.webp',
   ...['OFL-Fraunces.txt', 'OFL-Manrope.txt', 'OFL-NunitoSans.txt', 'fraunces-italic-latin-ext.woff2', 'fraunces-italic-latin.woff2', 'fraunces-latin-ext.woff2', 'fraunces-latin.woff2',
     'manrope-latin-ext.woff2', 'manrope-latin.woff2', 'nunito-sans-italic-latin-ext.woff2', 'nunito-sans-italic-latin.woff2', 'nunito-sans-latin-ext.woff2', 'nunito-sans-latin.woff2'].map((f) => `/assets/fonts/${f}`),
-  '/client/http-link.js', '/client/relay-client.js',
+  '/client/functions-link.js', '/client/relay-client.js', '/client/supabase-auth.js',
   '/core/feeling-safety.js', '/core/relay-config.js', '/core/text-policy.js',
   '/src/ultra/frameworks.js', '/src/ultra/lenses.js', '/src/ultra/reframe-engine.js',
   ...['app', 'fonts', 'hushfold', 'relay-scenes', 'relay', 'share', 'world'].map((f) => `/styles/${f}.css`),
   ...['atmosphere', 'device', 'dom', 'kit', 'mallow', 'mallows-data', 'motion', 'orb', 'sky', 'sound'].map((f) => `/ui/${f}.js`),
-  ...['away', 'catch', 'common', 'index', 'invite', 'journeys', 'parts', 'release', 'returned', 'share-render', 'share', 'start', 'support', 'welcome', 'you', 'your-data'].map((f) => `/ui/relay/${f}.js`),
+  ...['away', 'catch', 'common', 'index', 'invite', 'journeys', 'parts', 'release', 'returned', 'share-render', 'share', 'sign-in', 'start', 'support', 'welcome', 'you', 'your-data'].map((f) => `/ui/relay/${f}.js`),
 ].sort();
 
 test('build: the customer app is exactly the expected files (nothing new slips in unnoticed)', () => {
