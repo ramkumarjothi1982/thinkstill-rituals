@@ -106,9 +106,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // answer it opens empty); unsure: the words carry a softer loss cue (lossRoute 'ask'); beOnly (r2-angle item 5): "Just be
     // with it" for words where nothing heavy was seen, a quiet path of its own (never the grief path's support or goodbye)
     answers: new Map(), keepWords: false, unsure: false, beOnly: false,
-    // (final round 4) held: the gentle path's words stay on the phone (grief.js keepLocal: a first-person clause with a death,
-    // ending, absence or afterlife word after the death); nothing is sent for them
-    held: false,
+    // (final round 5) local: unsure words (lossRoute 'ask') with the safety net's words (grief.js keepLocal): "Another angle" plays
+    // Zuzu's own authored angle and nothing is sent for them
+    local: false,
     touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9, band: 0,
   };
   const timers = new Set();
@@ -806,12 +806,12 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   /**
    * The gentle path (death talk, grief.js; or a harm word no idiom explains, backstop.js): no Thought Mallow, no
    * mechanic, nothing playful, support one tap away, and no "another angle" or feedback to give. Zuzu answers
-   * gently: with sharing on, the server's two lines only when its answer reads as grief or a loss (serverLoss: it
-   * sees the whole context) and both lines acknowledge (griefLinesOk), else the authored pair (lines.js GRIEF), which
-   * never assumes anyone died. An
-   * ordinary server scene never plays here (never a fact-vs-guess game for death talk). `scene` is a server scene
-   * that already reads as grief (`asked`: the server has answered already, or nothing is to be sent: they chose "Just
-   * be with it"); without one, and with sharing on, the words are sent once here.
+   * gently with the authored pair (lines.js GRIEF), which never assumes anyone died.
+   * (Final round 5, structural) The gentle path stays on the phone: NOTHING is ever sent from here, whatever the words, with
+   * sharing on or off (docs/integration/DECISIONS.md, defaults of 2026-10-14: "Another Angle after a death"; the model's own
+   * gentle reply is switched off). `scene` is a server scene that already reads as grief, from words sent on the ordinary
+   * path ("Another angle" chosen, and the server read a loss the app did not: serverLoss); its two lines are used only when
+   * both acknowledge (griefLinesOk), never its mechanic. `asked` is kept for the callers' sake: it changes nothing now.
    */
   async function griefMode({ scene = null, asked = false, told = null } = {}) {
     // (wanting to follow the one who died is care, whichever way it got here: nothing more is sent)
@@ -829,31 +829,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // (while the choice below is up, its chips carry support and Finish: the dock never offers them twice)
     dockShow({ finish: true, tell: true });
     subs?.clear();
-    // first, that they said it (and, with sharing on, while the server answers: never the lines about "another side")
+    // first, that they said it (never the lines about "another side")
     const heard = say(GRIEF.heard, { mallow: 'zuzu', interrupt: true });
-    // (final round 4, the safety net) after the death, any first-person clause with a death, ending, absence or afterlife word
-    // (grief.js keepLocal): nothing is sent; the authored gentle lines, support close, as without a server answer (S.held)
-    const local = !scene && !asked && serverMode() && keepLocal(S.text);
-    if (local) S.held = true;
-    if (!scene && !asked && serverMode() && !local) {
-      const res = await Promise.race([
-        client.angle({ text: S.text, emotion: S.emotion, intention: S.intention, previous: [] }).catch(() => ({ status: 'error', reason: 'exception' })),
-        sleep(devBudget || ANGLE_BUDGET_MS).then(() => ({ status: 'error', reason: 'timeout' })),
-      ]);
-      if (S.left || seq !== S.seq) return;
-      if (res?.status === 'crisis') { crisisMode(); return; }
-      // (review r10) the server's care for death talk is said gently, assuming nothing: never "shouldn't have happened"
-      if (res?.status === 'care') { careMode({ lines: S.follow ? SAFETY.follow : SAFETY.careGentle }); return; }
-      // (its two lines only when it reads them as grief or a loss, and both acknowledge: nothing framed as a guess,
-      // nothing to check, no question, no reframe (grief.js griefLinesOk); an ordinary scene never plays for death talk)
-      if (res?.status === 'ok' && serverLoss(res.scene, S.text, { heavy: heavyWords }) && griefLinesOk(res.scene)) scene = res.scene;
-      else {
-        // never "safe" by default: without the server's answer the app's own check runs again
-        const again = checkText(S.text);
-        if (again.level === 'crisis') { crisisMode(); return; }
-        if (again.level === 'care') { careMode(); return; }
-      }
-    }
+    // (final round 5, structural) nothing is sent from the gentle path: no client call here, whatever the words (the app's own
+    // check has run already, on the words as they were told)
     // only the two lines are used: the server's own mechanic never plays for a loss
     if (!scene) scene = gentleScene(S.text, { emotion: S.emotion, kind: told || (griefFeeling(S.emotion) ? 'grief' : null) });
     else scene = { ...scene, grief: true, mechanic: null };
@@ -964,8 +943,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     waitingLines(seq);
     // the request (only with consent) and a cinematic minimum beat, together
     const exclude = S.shown.map((s) => s.reasoning_pattern);
+    // (final round 5) unsure words (lossRoute 'ask') with the safety net's words (grief.js keepLocal: a death, ending, absence or
+    // afterlife word in a first-person clause, with or without a recognised death): Zuzu's own authored angle, nothing sent
+    S.local = S.unsure && keepLocal(S.text);
     // (a stalled server never keeps the person waiting long: past the budget, Zuzu's own angle plays)
-    const req = serverMode()
+    const req = serverMode() && !S.local
       ? Promise.race([
         client.angle({ text: S.text, emotion: S.emotion, intention: S.intention, previous: S.shown }).catch(() => ({ status: 'error', reason: 'exception' })),
         sleep(devBudget || ANGLE_BUDGET_MS).then(() => ({ status: 'error', reason: 'timeout' })),

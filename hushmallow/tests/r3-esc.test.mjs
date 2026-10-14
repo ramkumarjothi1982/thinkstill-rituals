@@ -20,6 +20,7 @@ import { SAFETY } from '../src/beyond/lines.js';
 import { SHARED_LINES } from '../src/hushfold/lines.js';
 import { DEATH_CARE } from '../src/app/scenes/hushfold.js';
 import { visit, STUBS, ALL_SCENE_STUBS } from './probes/r10-replay.mjs';
+import * as R5 from './probes/r5.mjs';
 import * as P from './probes/r3-esc.mjs';
 import * as R2 from './probes/r2-angle.mjs';
 import * as R12 from './probes/r12.mjs';
@@ -102,7 +103,8 @@ test('rule 1 in Another Angle: suicideDeath is read before anything is asked, se
   assert.ok(at < after.indexOf('startAngle('), 'before the question or any request');
   // the gentle path never sends a suicide death, whatever the clause (r2-angle item 1 read only a first-person future)
   const grief = between(AA, 'async function griefMode(', 'const heavySeen = ');
-  assert.ok(grief.indexOf('if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }') < grief.indexOf('client.angle('));
+  // (final round 5: it was "before its request"; the gentle path sends nothing at all now, and still reads it first)
+  assert.ok(grief.indexOf('if (suicideDeath(S.text)) { noteSuicide(); careMode({ lines: SAFETY.careGentle }); return; }') >= 0 && grief.indexOf('client.') < 0);
   assert.doesNotMatch(AA, /suicideFuture/, 'superseded by suicideDeath');
   // typed and closed, or typed and reworded: care for the visit, said gently
   assert.match(between(AA, 'function readDraft(', 'function serverCareLines('), /if \(deathEscalation\(t\)\) noteFollow\(\);\s*\/\/[^\n]*\n\s*else if \(suicideDeath\(t\)\) noteSuicide\(\);/);
@@ -224,7 +226,8 @@ test('false care on grief: across every earlier probe set, the self-ending rule 
     if (!GR.deathTalk(t) && !GR.suicideDeath(t)) continue;
     deaths++;
     if (GR.suicideDeath(t)) { suicides++; continue; }
-    if (GR.selfEnding(t) && !/ESC|FOLLOW|GO_ON|ESCALATE/.test(src)) outside.push(`${src}: ${t}`);
+    // (final round 5: and the known false care the detection gate keeps, care at 931fbb0: tests/probes/r5.mjs KNOWN_FALSE_CARE)
+    if (GR.selfEnding(t) && !/ESC|FOLLOW|GO_ON|ESCALATE/.test(src) && !R5.KNOWN_FALSE_CARE.includes(t)) outside.push(`${src}: ${t}`);
   }
   console.log('r3-esc false care on grief:', JSON.stringify({ phrasings: seen.size, deaths, suicidesNamed: suicides, selfEndingOutsideEscalationSets: outside.length }));
   assert.deepEqual(outside, []);

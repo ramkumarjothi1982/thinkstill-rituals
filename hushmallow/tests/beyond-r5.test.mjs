@@ -153,25 +153,17 @@ test('r5.1: a loss still never plays a mechanic or a fact/assumption split, and 
   assert.equal(checkText('My mum died and I want to die too.').level, 'crisis');
 });
 
-test('r5.1: grief in the orchestrator: gentle first, the server may answer with sharing on, its mechanic never plays', () => {
+test('r5.1: grief in the orchestrator: gentle first, nothing sent (final round 5), a server mechanic never plays', () => {
   const src = read('src/beyond/another-angle.js');
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
   // Zuzu says first that they said it, and never the waiting lines about "another side"
   assert.match(grief, /const heard = say\(GRIEF\.heard, \{ mallow: 'zuzu', interrupt: true \}\);/);
   assert.doesNotMatch(grief, /WAITING|waitingLines|spawnThought|playScene|loadMechanic|startAngle|setStage\('playful'\)/);
-  // with sharing on, one request; crisis and care from the server still route; a fallback runs the app's check again
-  // (final round 4: never when the safety net holds the words, `local`: grief.js keepLocal)
-  assert.match(grief, /if \(!scene && !asked && serverMode\(\)(?: && !local)?\) \{[\s\S]*client\.angle\(\{ text: S\.text, emotion: S\.emotion, intention: S\.intention, previous: \[\] \}\)/);
-  assert.equal((grief.match(/client\.angle\(/g) || []).length, 1, 'one request at most');
-  // the server's lines are said over death talk only when it answered with grief or a loss (r7), and never when they
-  // would read it as a guess
-  // (r8: both lines must acknowledge, grief.js griefLinesOk)
-  assert.match(grief, /res\?\.status === 'ok' && serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && griefLinesOk\(res\.scene\)\) scene = res\.scene;/);
-  assert.match(grief, /sleep\(devBudget \|\| ANGLE_BUDGET_MS\)/);
-  assert.match(grief, /res\?\.status === 'crisis'\) \{ crisisMode\(\); return; \}/);
-  // (review r10: the server's care for death talk is said gently, SAFETY.careGentle)
-  assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\{ lines: S\.follow \? SAFETY\.follow : SAFETY\.careGentle \}\); return; \}/);
-  assert.match(grief, /const again = checkText\(S\.text\);/);
+  // (final round 5, structural: it was "with sharing on, one request; crisis and care from the server still route; a fallback runs
+  // the app's check again") the gentle path never sends, whatever the words: no client call, no server answer to read
+  const gm = src.slice(src.indexOf('async function griefMode('), src.indexOf('const heavySeen = '));
+  assert.doesNotMatch(gm, /client\.|serverMode\(\)|res\?\.status|ANGLE_BUDGET_MS/);
+  assert.equal((gm.match(/client\.angle\(/g) || []).length, 0, 'no request at all');
   // the server's two lines (or the authored pair); never its mechanic
   // (review r12: with what they told the check-in, or a grief-family feeling, the loss or grief pair)
   assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion, kind: told \|\| \(griefFeeling\(S\.emotion\) \? 'grief' : null\) \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);

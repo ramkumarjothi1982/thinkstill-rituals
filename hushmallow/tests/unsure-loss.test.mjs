@@ -353,8 +353,10 @@ test('Another Angle replay: the question is asked before any request; a gentle a
       assert.deepEqual([quiet.route, quiet.requests, quiet.scenes.length], ['quiet', 0, 0], `${t} @${s}`);
       const els = visit(t, { server, answer: 'else' });
       assert.ok(els.asked && els.requestsBeforeAnswer === 0, `${t} @${s}`);
-      // a server that reads it as grief or a loss still answers it gently, without asking again
-      if (s === 'grief') assert.equal(els.route, 'gentle', t);
+      // a server that reads it as grief or a loss still answers it gently, without asking again; (final round 5) unless the words
+      // carry the safety net's (grief.js keepLocal): then "Another angle" plays Zuzu's own angle and nothing is sent at all
+      if (GR.keepLocal(t)) assert.deepEqual([els.route, els.requests, els.local], ['play', 0, true], `${t} @${s}`);
+      else if (s === 'grief') assert.equal(els.route, 'gentle', t);
       // beside a bag word or a loss cue: never framed, whatever they answered
       if (bagWords(t)) assert.ok(!framed(els), `${t} @${s}`);
     }
@@ -370,8 +372,12 @@ test('Another Angle replay: the question is asked before any request; a gentle a
     assert.deepEqual([visit(t).asked, visit(t).question], [true, 'choice'], t);
     assert.equal(visit(t, { asks: false }).asked, false, t);
   }
-  // (the switch off) a server care answer after the check-in's "Yes, it is" is said gently
-  assert.deepEqual(visit('my dad isnt here anymore', { server: STUBS.care, answer: 'yes', asks: false }).careLines, SAFETY.careGentle);
+  // (the switch off) after the check-in's "Yes, it is" the gentle path sends nothing (final round 5: it was "a server care answer
+  // after it is said gently", SAFETY.careGentle): the authored loss pair, 0 requests, whatever the server
+  for (const s of Object.keys(STUBS)) {
+    const R = visit('my dad isnt here anymore', { server: STUBS[s] || null, answer: 'yes', asks: false });
+    assert.deepEqual([R.route, R.requests, R.careLines], ['gentle', 0, null], s);
+  }
 });
 
 test('gentleScene: what they told the check-in (a loss) or a grief-family feeling picks its pair; death talk keeps its own', () => {

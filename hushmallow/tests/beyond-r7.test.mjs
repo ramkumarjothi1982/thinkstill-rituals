@@ -133,12 +133,11 @@ test('r7.B: a server answer plays its two lines for death talk only when it read
   }
   const src = read('src/beyond/another-angle.js');
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
-  // one request at most, crisis and care still route, a fallback re-runs the app's own check, then the authored lines
-  assert.equal((grief.match(/client\.angle\(/g) || []).length, 1);
-  assert.match(grief, /res\?\.status === 'crisis'\) \{ crisisMode\(\); return; \}/);
-  // (review r10: the server's care for death talk is said gently, SAFETY.careGentle)
-  assert.match(grief, /res\?\.status === 'care'\) \{ careMode\(\{ lines: S\.follow \? SAFETY\.follow : SAFETY\.careGentle \}\); return; \}/);
-  assert.match(grief, /serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\) && griefLinesOk\(res\.scene\)\) scene = res\.scene;\s*else \{[\s\S]*const again = checkText\(S\.text\);/);
+  // (final round 5, structural: it was "one request at most, crisis and care still route, a fallback re-runs the app's own check")
+  // no request at all from the gentle path; a server scene reaches it only from the ordinary path, already read as a loss
+  assert.equal((grief.match(/client\.angle\(/g) || []).length, 0);
+  assert.doesNotMatch(src.slice(src.indexOf('async function griefMode('), src.indexOf('const heavySeen = ')), /client\.|res\?\.status/);
+  assert.match(src, /serverLoss\(res\.scene, S\.text, \{ heavy: heavyWords \}\)\) \{ griefMode\(\{ scene: griefLinesOk\(res\.scene\) \? res\.scene : null, asked: true \}\); return; \}/);
   assert.match(grief, /if \(!scene\) scene = gentleScene\(S\.text, \{ emotion: S\.emotion, kind: told \|\| \(griefFeeling\(S\.emotion\) \? 'grief' : null\) \}\);\s*else scene = \{ \.\.\.scene, grief: true, mechanic: null \};/);
   assert.doesNotMatch(grief, /spawnThought|playScene|loadMechanic|startAngle|setStage\('playful'\)|WAITING\b/);
   assert.match(grief, /careFace\(\);/, 'Zuzu’s attentive face');
@@ -285,7 +284,9 @@ test('r7.D: in the orchestrator, the care path comes before anything is sent (su
   assert.match(after, /noteSafety\(seen\);\s*noteSafety\(checkText\(S\.text\)\);\s*if \(S\.level === 'crisis'\) \{ crisisMode\(\); return; \}\s*if \(S\.level === 'care'\) \{ careMode\(\); return; \}[\s\S]{0,260}if \(deathEscalation\(S\.text\)\) \{ noteFollow\(\); careMode\(\{ lines: SAFETY\.follow \}\); return; \}/);
   assert.ok(after.indexOf('deathEscalation(S.text)') < after.indexOf('startAngle('), 'before any angle (nothing is sent)');
   const grief = src.slice(src.indexOf('async function griefMode('), src.indexOf('async function unclear('));
-  assert.ok(grief.indexOf('deathEscalation(S.text)') >= 0 && grief.indexOf('deathEscalation(S.text)') < grief.indexOf('client.angle('), 'griefMode checks it too, before its one request');
+  // (final round 5: griefMode sends nothing at all now; it still reads the escalation first, before its lines)
+  assert.ok(grief.indexOf('deathEscalation(S.text)') >= 0 && grief.indexOf('deathEscalation(S.text)') < grief.indexOf('say(GRIEF.heard'), 'griefMode checks it too, before its lines');
+  assert.equal(grief.indexOf('client.angle('), -1, 'and sends nothing');
   const care = src.slice(src.indexOf('async function careMode('), src.indexOf('function concernNote('));
   assert.match(care, /S\.care = true; S\.keepSupport = true; S\.level = worse\(S\.level, 'care'\)/);
   assert.match(care, /dropThought\(\); endMechanic\(true\); dismissCompanion\(\);/);

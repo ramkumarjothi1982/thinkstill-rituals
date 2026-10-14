@@ -79,6 +79,7 @@ Five independent reviews kept finding new ways of saying someone died that the w
 | Another Angle's two answers | Equal weight, "Another angle" first; after "Just be with it" the next Tell is asked again (`BE_ASKS_AGAIN`), and "See support" is offered only when something heavy was seen |
 | Home after a quiet Another Angle visit | Stays quiet (no playful chatter, no Support pill); the next Tell is still asked, and Play ends the quiet |
 | Home after a world ended quietly | Boppo says the existing orienting line ("Okay. I'm right here. Squeeze me whenever you like."), not a question |
+| Another Angle after a death | The gentle path stays on the phone: the authored gentle lines, nothing sent to the server (default; the model's own gentle reply is switched off) |
 
 ## Still open for the owner
 

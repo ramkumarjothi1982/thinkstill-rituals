@@ -234,8 +234,8 @@ test('item 1: in Another Angle the question comes before anything is sent, made 
   const be = between(aa, 'async function beWithIt(', 'async function unclear(');
   assert.doesNotMatch(be, /client\.|spawnThought|playScene|S\.grief = true|S\.keepSupport = true|griefMode\(/);
   const grief = between(aa, 'async function griefMode(', 'const heavySeen = ');
-  // (final round 4: and nothing when the safety net holds the words: `local`, grief.js keepLocal)
-  assert.match(grief, /if \(!scene && !asked && serverMode\(\)(?: && !local)?\) \{/, 'asked: no request');
+  // (final round 5, structural: the gentle path never sends, whatever the words; it was "asked: no request" before)
+  assert.doesNotMatch(grief, /client\.|serverMode\(\)/, 'the gentle path sends nothing');
   const q = between(aa, 'const FIRST_QUESTION = {', 'async function waitingLines(');
   // (r2-angle item 7, a coordinator default) equal weight: the same chip style, "Another angle" first
   assert.match(q, /choice: \{ ask: ANGLE_CHOICE\.ask, ms: ANGLE_CHOICE\.ms, options: \[\{ label: ANGLE_CHOICE\.angle, value: 'angle' \}, \{ label: ANGLE_CHOICE\.be, value: 'be' \}\] \}/);

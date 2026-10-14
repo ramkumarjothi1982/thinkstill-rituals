@@ -10,6 +10,11 @@
 //   4. the structural safety net (grief.js keepLocal): on the gentle path, after the death, any first-person clause with a death,
 //      ending, absence or afterlife word keeps the words on the phone: Another Angle sends nothing (the authored gentle lines), and
 //      the main screen's gentle path shows its Support pill and offers no world (readSafety `supportFirst`): never care
+//
+// (Final round 5, the check of integ/final-r4 and the detection gate, tools/beyond/detection-gate.mjs) changed pins, each marked
+// "(final round 5)" below: item 3's sayings are the speaker's again (the gentle path, as at 931fbb0: round 4's frames turned real
+// notes into the play question); the polish's four exceptions are care again (nothing 931fbb0 read as care may read lower); and
+// Another Angle's gentle path sends nothing at all, so "asks the server as before" is now 0 requests.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -76,12 +81,15 @@ test('blocking 1: this unit\'s own 30 (one wording each, written before they wer
 test('blocking 1: the wish TURNED around is still no wish, and no shape reads past a condition or a plan', () => {
   for (const t of [
     "my dad died and it wouldn't be better if i wasn't here", "my dad died and i don't want to drive into the river", "my mum died and i don't want god to take me",
-    "my dad died and i would never go where he went", 'my nan died and i hope i make it to christmas', "my dad died and i'll die if he sees me like this",
+    "my dad died and i would never go where he went", 'my nan died and i hope i make it to christmas',
     'my dad died and i want to drive into town to see my aunt', 'my brother died and i want to jump on a plane home', 'my mum died and she used to take me to church',
-    'my dad died and he took me fishing every summer', "my grandad died and i wish i had gone to see him more", 'my mum died and i want to go where she went on holiday every year',
+    'my dad died and he took me fishing every summer', 'my mum died and i want to go where she went on holiday every year',
     'my nan died and i want to be there for my grandad', 'my dad is in heaven and i want to go there one day', 'my aunt died and my uncle said he would take me in',
     'my wife died and i want to visit where she is buried',
   ]) assert.equal(GR.deathCare(t), null, t);
+  // (final round 5) the condition about being seen, and "wish I had gone to see him" (the "wish I was gone" tail is gone again),
+  // are care again, as at 931fbb0 (false care, the safe side: known issues)
+  for (const t of ["my dad died and i'll die if he sees me like this", 'my grandad died and i wish i had gone to see him more']) assert.equal(GR.deathCare(t), 'follow', t);
 });
 
 test('blocking 1, the polish: false care on grief stays low (0 of this unit\'s 60, 0 of the check\'s three from grief.js)', () => {
@@ -90,16 +98,11 @@ test('blocking 1, the polish: false care on grief stays low (0 of this unit\'s 6
   console.log('r4 false care on 60 grief negatives:', care.length, JSON.stringify(care));
   assert.ok(care.length <= 3, care.join(' | '));
   assert.equal(care.length, 0, care.join(' | '));
-  for (const t of P.CHECK_FALSE_CARE) {
-    assert.equal(GR.deathCare(t), null, t);
-    assert.deepEqual([mainRead(t).level, mainRead(t).category], ['concern', 'loss'], t);
-    assert.equal(visit(t, { server: STUBS.grief }).route, 'gentle', t);
-  }
-  // the earlier rounds' bare "I want to see him again" is the same longing: gentle on both screens (with sharing on, sent as any grief)
-  for (const t of P.SEE_AGAIN_LONGING) {
-    assert.equal(GR.deathCare(t), null, t);
-    assert.equal(mainRead(t).level, 'concern', t);
-    assert.deepEqual([visit(t, { server: STUBS.grief }).route, visit(t, { server: STUBS.grief }).requests], ['gentle', 1], t);
+  // (final round 5: these were the gentle path; 931fbb0 read them as care, and the gate keeps that) the check's three and the
+  // earlier rounds' bare "I want to see him again" are care on both screens, 0 requests (false care, the safe side: known issues)
+  for (const t of [...P.CHECK_FALSE_CARE, ...P.SEE_AGAIN_LONGING]) {
+    assert.equal(GR.deathCare(t), 'follow', t);
+    careBoth(t);
   }
   // …while "again soon", "in heaven" stay care
   for (const t of ['my wife died and I want to see her again soon', 'my grandad died and I want to see him again in heaven']) assert.equal(GR.deathCare(t), 'follow', t);
@@ -126,23 +129,31 @@ test('blocking 2: "killed him self", "died by his own hand" are a suicide named:
 });
 
 // ------------------------------------------------------------------------- blocking item 3 --
-test('blocking 3: the speaker\'s everyday sayings (the check\'s 14 and this unit\'s 15) get the ordinary question, never gentle', () => {
+test('blocking 3 (final round 5): the speaker\'s everyday sayings are the speaker\'s again: never the play question, nothing sent', () => {
+  // (final round 5: round 4 read these as no death, the ordinary question; its frames also turned real notes, "when you read this
+  // I'll be dead", into the play question, so they are gone) the speaker always counts: the gentle path (a false gentle, the safe
+  // side: a known issue), or care where 931fbb0 read care; never asked to play, and Another Angle sends nothing
   assert.equal(P.CHECK_IDIOMS.length, 14);
   assert.equal(P.OWN_IDIOMS.length, 15);
+  const routes = {};
   for (const t of [...P.CHECK_IDIOMS, ...P.OWN_IDIOMS]) {
-    assert.equal(GR.deathTalk(t, { sure: true }), null, t);
-    assert.notEqual(lossRoute(t), 'gentle', t);
-    assert.equal(GR.deathCare(t), null, t);
     const r = mainRead(t);
-    assert.equal(r.level, 'none', `${t}: main ${r.level}/${r.category}`);
-    for (const s of ['none', 'grief', 'pull']) {
+    const k = isCare(r) ? 'care' : r.level === 'concern' ? 'gentle' : r.unsure ? 'ask' : 'play';
+    routes[k] = (routes[k] || 0) + 1;
+    // (asked only when the dead one is no one: a thing, never the speaker)
+    if (k === 'play' || k === 'ask') { assert.notEqual(whoDied(blankOrdinary(norm(t)), 'loss'), 'self', t); continue; }
+    for (const s of STUB_NAMES) {
       const R = visit(t, { server: STUBS[s] || null, answer: null });
-      assert.deepEqual([R.asked, R.question, R.requestsBeforeAnswer, R.requests], [true, 'choice', 0, 0], `${t} @${s}`);
+      assert.equal(R.requests, 0, `${t} @${s}`);
+      assert.equal(R.asked, false, `${t} @${s}`);
     }
   }
-  // "I'll die if he sees me like this" is a condition, never the self ending
-  assert.equal(GR.selfEnding("i'll die if he sees me like this"), false);
-  assert.equal(GR.selfEnding("my dad died and i'll die if he sees me like this"), false);
+  console.log('r5 the speaker\'s sayings (29):', JSON.stringify(routes));
+  // the ones about a thing, never the speaker ("I killed my plants again"), may still be asked
+  assert.ok((routes.gentle || 0) + (routes.care || 0) >= 24, JSON.stringify(routes));
+  // "I'll die if he sees me like this" is care again, as at 931fbb0 (the gate)
+  assert.equal(GR.selfEnding("i'll die if he sees me like this"), true);
+  assert.equal(GR.selfEnding("my dad died and i'll die if he sees me like this"), true);
 });
 
 test('blocking 3: a real disclosure or a wish still counts (the lexicon\'s crisis or care, or the gentle path), never an everyday saying', () => {
@@ -155,8 +166,8 @@ test('blocking 3: a real disclosure or a wish still counts (the lexicon\'s crisi
   assert.equal(mainRead('I feel like dying').level, 'concern');
   // a wish is never a saying, whatever the frame; nor is a feeling ("I feel dead inside"), nor a frame-less near death
   for (const t of ['i want to die lol', 'i feel dead inside', 'i nearly died last year', 'i nearly died when my appendix burst', "i'm dying", 'i want to die haha']) assert.equal(who(t), 'self', t);
-  // the frames
-  for (const t of P.CHECK_IDIOMS) assert.notEqual(who(t), 'self', t);
+  // (final round 5) the frames are gone: the speaker counts, whatever is round the words
+  for (const t of ["i'm dead lol", 'i died when he said that', 'i killed myself laughing']) assert.equal(who(t), 'self', t);
 });
 
 // ------------------------------------------------------------------------- item 4: the safety net --
@@ -166,8 +177,8 @@ test('item 4: the check\'s borderline wishes and the sea are the gentle path wit
     assert.equal(GR.deathCare(t), null, `${t}: never care`);
     for (const s of STUB_NAMES) {
       const R = visit(t, { server: STUBS[s] || null });
-      // (held: what sharing would have sent stays on the phone; with sharing off nothing is sent anyway)
-      assert.deepEqual([R.route, R.requests, R.held], ['gentle', 0, !!STUBS[s]], `${t} @${s}`);
+      // (final round 5: R.held is the net's reading, whatever the server; nothing is sent from the gentle path anyway)
+      assert.deepEqual([R.route, R.requests, R.held], ['gentle', 0, true], `${t} @${s}`);
       // the authored gentle lines (lines.js GRIEF via gentleScene), support close (GRIEF.ask offers it)
       assert.ok(R.said.includes(GRIEF.heard[0] ?? GRIEF.heard) || R.said.some((l) => [GRIEF.heard].flat().includes(l)), `${t}: heard`);
       assert.equal(R.scenes[0]?.source === 'server', false, `${t}: never the server's lines`);
@@ -179,13 +190,14 @@ test('item 4: the check\'s borderline wishes and the sea are the gentle path wit
   }
 });
 
-test('item 4: ordinary deaths are untouched: the gentle path, and Another Angle with sharing on asks the server as before', () => {
+test('item 4: ordinary deaths: the gentle path, and Another Angle sends nothing for them now (final round 5)', () => {
   for (const t of P.ORDINARY_DEATHS) {
     assert.equal(GR.keepLocal(t), false, t);
     assert.deepEqual(mainRead(t), { level: 'concern', category: 'loss', matched: null }, t);
+    // (final round 5: it was 1 request and the server's lines with sharing on) the authored gentle lines, 0 requests
     const R = visit(t, { server: STUBS.grief });
-    assert.deepEqual([R.route, R.requests, R.held], ['gentle', 1, false], t);
-    assert.equal(R.scenes[0].source, 'server', t);
+    assert.deepEqual([R.route, R.requests, R.held], ['gentle', 0, false], t);
+    assert.notEqual(R.scenes[0].source, 'server', t);
   }
   // the net's count on this unit's 60 grief negatives: held local (not sent), never care
   const held = P.OWN_GRIEF_60.filter((t) => GR.keepLocal(t));
@@ -202,17 +214,21 @@ test('item 4: ordinary deaths are untouched: the gentle path, and Another Angle 
     'my dad died and part of me wants to disappear', 'my dad died and nothing matters, nothing left', 'my dad died and i dont see the point of anything']) assert.equal(GR.keepLocal(t), true, t);
 });
 
-test('item 4 in Another Angle: griefMode reads the net before anything is sent (and the replay mirrors it)', () => {
+test('item 4 in Another Angle (final round 5): griefMode sends nothing at all; the unsure path reads the net before its request', () => {
+  // (final round 5: it was "griefMode reads the net before its request") the gentle path has no client call, whatever the words
   const grief = between(AA, 'async function griefMode(', 'const heavySeen = ');
-  const at = grief.indexOf('const local = !scene && !asked && serverMode() && keepLocal(S.text);');
-  assert.ok(at > 0 && at < grief.indexOf('client.angle('), 'before the request');
-  assert.match(grief, /if \(!scene && !asked && serverMode\(\) && !local\) \{/);
-  // nothing sent: the authored gentle lines play as without a server answer, support close (the Support pill, GRIEF.ask)
-  assert.ok(grief.indexOf('if (!scene) scene = gentleScene(') > at);
+  assert.doesNotMatch(grief, /client\.|serverMode\(\)/);
+  // the authored gentle lines, support close (the Support pill, GRIEF.ask)
+  assert.ok(grief.indexOf('if (!scene) scene = gentleScene(') > 0);
   assert.match(grief, /supportPill\.hidden = false;/);
+  // unsure words with the net's words: "Another angle" plays Zuzu's own angle, nothing sent
+  const start = between(AA, 'async function startAngle(', 'const FIRST_QUESTION = {');
+  const at = start.indexOf('S.local = S.unsure && keepLocal(S.text);');
+  assert.ok(at > 0 && at < start.indexOf('client.angle('), 'before the request');
+  assert.match(start, /const req = serverMode\(\) && !S\.local\s*\?/);
   assert.match(AA, /import \{[^}]*\bkeepLocal\b[^}]*\} from '\.\/grief\.js';/);
-  // still never care: the net is read after the care rules and changes no level
-  assert.ok(grief.indexOf('if (deathEscalation(S.text))') < at && grief.indexOf('if (suicideDeath(S.text))') < at);
+  // still never care: the gentle path reads the care rules first
+  assert.ok(grief.indexOf('if (deathEscalation(S.text))') < grief.indexOf('say(GRIEF.heard') && grief.indexOf('if (suicideDeath(S.text))') < grief.indexOf('say(GRIEF.heard'));
 });
 
 test('item 4 on the main screen: supportFirst offers no world (not even somewhere calm) and keeps the Support pill, without care', () => {

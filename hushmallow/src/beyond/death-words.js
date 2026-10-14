@@ -681,55 +681,20 @@ function cemetery(ws, i, ctx) {
   }
   return out;
 }
-// ------------------------------------------- (final round 4) the speaker's everyday sayings --
-// "I'm dead lol", "I'm dying here, it's so hot", "I died when he said that", "I killed myself laughing", "I'm dead meat if I'm
-// late", "I'll die if he sees me like this": the speaker as the one who "dies", inside a FIGURATIVE FRAME (a laugh, a joke, a
-// video, embarrassment or boredom, the heat, someone seen or finding out, "inside", "meat"). The speaker counts ('self') only for
-// a real disclosure or a wish: a wish or an attempt before the word ("I want to die", "I feel like dying", "I tried to kill
-// myself") always counts, and so does any saying without a frame ("I nearly killed myself last year", "I nearly died last year").
-/** A wish, a feeling or an attempt before the word: the speaker's own words are never an everyday saying then. */
-const SELF_WISH = /^(?:want|wants|wanted|wanting|wanna|wish|wished|wishing|need|needs|rather|ready|feel|feels|felt|feeling|tried|try|tries|trying|attempt|attempted|attempting|deserve|deserves|hope|hoping|pray|praying|plan|planning|planned|tempted|should|suicidal)$/u;
-/**
- * The frame that makes it a saying: a laugh or a joke, something watched or read, embarrassment, boredom, the heat, a condition
- * about being seen or found out, "dead meat", "died inside", or someone's words or deeds when it happened (a social verb only:
- * never "when my appendix burst"). Read on the sentence, lower case, apostrophes out.
- */
-const FIGURATIVE = new RegExp([
-  '\\b(?:lol+|lmao+|lmfao+|rofl|haha\\w*|ahaha\\w*|hehe\\w*|hilarious|funny|funniest|laugh\\w*|joke|jokes|joking|banter|meme|memes|tiktok|tiktoks|video|vid|clip|tweet|reel|panto)\\b',
-  '\\b(?:cringe\\w*|embarrass\\w*|mortified|awkward|boredom|bored|boring|heat|hot|boiling|roasting|sweltering|sweating|meat)\\b',
-  '\\b(?:died|dying|die|dead)\\s+(?:(?:a\\s+)?(?:little|bit|lil)\\s+)?inside\\b',
-  '\\bif\\s+(?:i|im|we|were)\\s+(?:am\\s+|are\\s+)?(?:late|caught|seen)\\b',
-  // ("I'm so dead if I miss the bus": in trouble, a condition after it; never "I'll be dead if…", which may be meant)
-  '\\b(?:im|i\\s+am|were|we\\s+are|youre|you\\s+are)\\s+(?:so\\s+|totally\\s+|absolutely\\s+|literally\\s+|actually\\s+|well\\s+|proper\\s+|completely\\s+)?dead\\s+(?:if|when|once|unless)\\b',
-  '\\b(?:finds?|found|finding)\\s+out\\b|\\b(?:sees?|saw|catches|caught|hears?|notices?|reads?)\\s+(?:me|us|this|that|it|the|my|what)\\b',
-  '\\bwhen\\s+(?:he|she|they|you|someone|somebody|everyone|everybody|my\\s+[a-z]+|the\\s+[a-z]+|[a-z]+s\\s+[a-z]+)\\s+(?:just\\s+|actually\\s+|literally\\s+)?(?:said|says|told|asked|called|walked|looked|saw|sees|smiled|winked|texted|replied|answered|sang|danced|kissed|hugged|showed|laughed|did|does|wore|fell|tripped|remembered|noticed|mentioned|read|came|turned|started|shouted|yelled|messaged|liked|posted)\\b',
-  '\\bwhen\\s+i\\s+(?:saw|see|heard|hear|read|looked|opened)\\b',
-  '\\b(?:he|she|they|you)\\s+(?:just\\s+|actually\\s+|really\\s+)?(?:said|says|did|does)\\s+that\\b',
-].join('|'), 'u');
-const FIGURATIVE_EMOJI = /[\u{1F602}\u{1F923}\u{1F480}\u{1F606}\u{1F639}]/u;
-/** The weak word at `i` is the speaker's, inside a figurative frame, with no wish or attempt before it in its clause. */
-function figurativeSelf(ws, i, sentence) {
-  for (let k = i - 1; k >= Math.max(0, i - 8); k--) {
-    if (SELF_WISH.test(ws[k].w)) return false;
-    if (cutBefore(ws, k)) break;
-  }
-  return FIGURATIVE_EMOJI.test(sentence) || FIGURATIVE.test(sentence.toLowerCase());
-}
-
 /**
  * (final round 3) The weak death words in `cased` (normed with norm(), idioms blanked, case kept), read by who died: 'who' (a
  * person or a pet), 'unknown', 'self', 'thing', or null when there is no weak word. `which`: 'loss' (died, dead, killed…) or
- * 'grief' (buried, a cemetery). The best reading wins: a person in any clause makes it a death. (Final round 4) The speaker in
- * an everyday saying ("I'm dead lol", "I died when he said that") is a thing (figurativeSelf), never the speaker's death.
+ * 'grief' (buried, a cemetery). The best reading wins: a person in any clause makes it a death. (Final round 5) The speaker
+ * always counts ('self'), whatever frame is round the words ("I'm dead lol" too): round 4's everyday-saying frames turned real
+ * notes ("when you read this I'll be dead") into the play question, so they are gone.
  */
 export function whoDied(cased, which = 'loss') {
   const text = String(cased ?? '');
   const caps = shouting(text);
   const all = [];
-  const parts = text.split(/[.!?…\n]+/u);
-  const sentences = parts.map((s) => { const ws = tokens(s); all.push(...ws); return ws; });
+  const sentences = text.split(/[.!?…\n]+/u).map((s) => { const ws = tokens(s); all.push(...ws); return ws; });
   let out = null;
-  sentences.forEach((ws, si) => {
+  for (const ws of sentences) {
     const ctx = { ws, caps, all };
     for (let i = 0; i < ws.length; i++) {
       const w = ws[i].w;
@@ -745,10 +710,8 @@ export function whoDied(cased, which = 'loss') {
       } else if (which === 'grief' && WEAK_PLACE.test(w)) {
         kind = cemetery(ws, i, ctx);
       } else continue;
-      // (final round 4) the speaker's everyday saying: no death at all
-      if (kind === 'self' && figurativeSelf(ws, i, parts[si])) kind = 'thing';
       out = best(out, kind || 'unknown');
     }
-  });
+  }
   return out;
 }

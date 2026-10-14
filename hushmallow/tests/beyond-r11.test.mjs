@@ -10,8 +10,8 @@ import { fileURLToPath } from 'node:url';
 
 import * as P from './probes/r11.mjs';
 import { visit, STUBS, ALL_SCENE_STUBS } from './probes/r10-replay.mjs';
-import { deathTalk, deathEscalation } from '../src/beyond/grief.js';
-import { bagWords, lossNear, strongLoss, ordinaryOnly, framingAllowed, framesAsGuess, FRAMING_MECHANICS } from '../src/beyond/backstop.js';
+import { deathTalk, deathEscalation, suicideDeath } from '../src/beyond/grief.js';
+import { bagWords, lossNear, strongLoss, ordinaryOnly, framingAllowed, framesAsGuess, FRAMING_MECHANICS, lossRoute } from '../src/beyond/backstop.js';
 import { angerAnswer, candidatePatterns, eventKind, serverLinesKeep } from '../src/beyond/authored.js';
 import { markerKinds } from '../src/beyond/markers.js';
 import { SAFETY, KIND, WAITING, ANGER_PAIRS, AUTHORED_PAIRS, FEELING, MECHANIC_LINES } from '../src/beyond/lines.js';
@@ -86,6 +86,9 @@ test('r11.3: a server care answer beside death talk or a bag word is SAFETY.care
     if (deathEscalation(t) || checkText(t).level !== 'none') continue;
     probes++;
     const R = visit(t, { server: STUBS.care });
+    // (final round 5, structural) a detected loss is the gentle path and never asks the server: its authored lines, 0 requests (it
+    // was the server's care, SAFETY.careGentle); words the server is asked about still get SAFETY.careGentle for its care
+    if (lossRoute(t) === 'gentle' && !suicideDeath(t)) { assert.deepEqual([R.route, R.requests], ['gentle', 0], t); assert.ok(!R.said.some((l) => ASSUMES.test(l)), t); continue; }
     assert.equal(R.route, 'care', t);
     assert.deepEqual(R.careLines, SAFETY.careGentle, t);
     assert.ok(!R.said.some((l) => ASSUMES.test(l)), t);
