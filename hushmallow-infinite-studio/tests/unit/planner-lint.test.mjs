@@ -140,11 +140,11 @@ test('every spelling of an explicit clock time pins the time of day', () => {
     assert.deepEqual(rules(lintLine(t, 0, ctx({ tod: 'afternoon' }))), ['time-word'], t);
     assert.deepEqual(rules(lintLine(t, 0, ctx({ tod: 'late-night' }))), [], t);
   }
-  // "3 in the morning" is 3 AM, read as one clock phrase: the library's bare MORNING keyword inside it
-  // does not count (it would allow a morning ToD), so it fits late night only
-  assert.deepEqual(rules(lintLine('Up 3 in the morning.', 0, ctx({ tod: 'morning' }))), ['time-word']);
-  assert.deepEqual(rules(lintLine('Up 3 in the morning.', 0, ctx({ tod: 'late-night' }))), []);
-  assert.deepEqual(timeClassesOf('Up 3 in the morning.', { lib, policy }), ['late-night', 'night']);
+  // "3 in the morning" is 3 AM to the planner (one clock phrase), but the library validator reads its MORNING
+  // keyword: the validator's reading is the floor (FU-3), so no time of day fits, and the text is never planned
+  for (const tod of ['morning', 'late-night', 'night', 'afternoon']) assert.deepEqual(rules(lintLine('Up 3 in the morning.', 0, ctx({ tod }))), ['time-word'], tod);
+  assert.deepEqual(timeClassesOf('Up 3 in the morning.', { lib, policy }), []);
+  assert.match(errorsOf(lintLine('Up 3 in the morning.', 0, ctx())).find((i) => i.rule === 'time-word').message, /library validator reads morning\|pre-dawn\|misty-morning .* the planner reads late-night\|night/);
   assert.deepEqual(rules(lintLine('Lunch at noon.', 0, ctx({ tod: 'late-night' }))), ['time-word']);
   assert.deepEqual(rules(lintLine('Still up at 4 p.m.', 0, ctx({ tod: 'morning' }))), ['time-word']);
   assert.deepEqual(rules(lintLine('Home by 7 in the evening.', 0, ctx({ tod: 'morning' }))), ['time-word']);
@@ -223,7 +223,8 @@ test('a hook or end card is one text: every phrase rule also reads its rows join
   for (const [rule, rows] of Object.entries(hooks)) assert.ok(rules(lintHook(rows, ctx())).includes(rule), rows.join(' / '));
   // breath split over the rows: the breath word itself is now caught in each row, and the hold across them
   assert.deepEqual(rules(lintEnd(['Hold your', 'breath now.'], ctx())), ['breath-hold', 'breath-word', 'medical']);
-  assert.deepEqual(rules(lintHook(['ME HOLDING MY', 'BREATH AT 2 AM'], ctx())), ['breath-hold', 'breath-word']);
+  // ... and joined they say 'holding my breath', an inflection of the banned 'hold my breath' (FU-3)
+  assert.deepEqual(rules(lintHook(['ME HOLDING MY', 'BREATH AT 2 AM'], ctx())), ['breath-hold', 'breath-word', 'medical']);
   // the verifier's combined copy: G-SPEC's lintCopy now refuses both elements
   const issues = errorsOf(lintCopy({ hook: ['WHEN YOU WANT TO END', 'IT ALL'], lines: ['Was that weird?', 'Did I say that?', 'Why am I like this?'], end: { kind: 'resolution', text: ['Hold your', 'breath now.'] }, nameWord: null },
     ctx({ template: 'T01-brain-at-2am', tod: 'late-night', duration: 15 })));
@@ -262,12 +263,17 @@ test('the planner never picks, and G-SPEC refuses, library copy that is banned o
 });
 
 test('round 3 clock spellings: dots, spelled minutes, o\'clock AM, military hours, quarter-to, whole phrases', () => {
-  const late = ['At 2.30am again.', 'Two-thirty a.m.', 'At 2 o\'clock AM.', 'It is 0200 hours.', 'Two o\'clock in the morning.', 'Quarter to three AM.', '2 oh five a.m.', 'Up at 3 this morning.'];
+  const late = ['At 2.30am again.', 'Two-thirty a.m.', 'At 2 o\'clock AM.', 'It is 0200 hours.', 'Quarter to three AM.', '2 oh five a.m.',
+    'Two-ish AM.', 'At 3 in the a.m.', 'At oh-two-hundred.'];
   for (const t of late) {
     for (const tod of ['afternoon', 'morning', 'golden']) assert.deepEqual(rules(lintLine(t, 0, ctx({ tod }))), ['time-word'], `${t} on ${tod}`);
     assert.deepEqual(rules(lintLine(t, 0, ctx({ tod: 'late-night' }))), [], `${t} on late-night`);
   }
-  assert.deepEqual(timeClassesOf('Half past two in the morning.', { lib, policy }), ['late-night', 'night']);
+  // a clock phrase with the library's MORNING keyword inside: the validator's MORNING is the floor, so it fits nothing
+  for (const t of ['Two o\'clock in the morning.', 'Up at 3 this morning.', 'Half past two in the morning.']) {
+    assert.deepEqual(timeClassesOf(t, { lib, policy }), [], t);
+    for (const tod of ['late-night', 'morning']) assert.deepEqual(rules(lintLine(t, 0, ctx({ tod }))).filter((r) => r === 'time-word'), ['time-word'], `${t} on ${tod}`);
+  }
   assert.deepEqual(clockTimes('Quarter to five AM, ten to six in the morning, quarter to one a.m.').map((t) => t.hour), [4, 5, 0], 'quarter to five is 4:45');
   assert.deepEqual(clockTimes('quarter-to-five am, 3 in the night, twelve thirty at night').map((t) => t.hour), [4, 3, 0]);
   assert.deepEqual(clockTimes('two o\'clock in the morning').length, 1, 'one phrase, one time');
@@ -351,4 +357,89 @@ test('hashtags: banned terms inside glued words are caught, carriers excuse inno
   // lintCaption runs it on every tag, once per term
   const cap = errorsOf(lintCaption('FINE\n\nAll good.\n\n#hushmallow #anxietyrelief #starbucks', { lib }));
   assert.deepEqual(cap.map((i) => `${i.rule}:${i.term}`), ['name:brand:starbucks', 'medical:anxiety']);
+});
+
+// ---- FU-3: inflections and derived forms, the validator floor for time words, hashtags --------------
+
+test('FU-3: topic lemmas match every inflection (the round-4 reviewer probe), derived words are lemmas of their own', () => {
+  const cases = {
+    'topic:drugs': ['Smoked again.', 'Vaped all night.', 'Drugged up.', 'Smokes a lot.', 'Smokers outside.', 'Heroin.', 'Got baked.', 'Shrooms again.', 'Lit a joint.'],
+    'topic:body-food': ['Dieted all week.', 'Binging again.', 'Starved by noon.', 'Weighed myself.', 'Workouts.', 'Diets.', 'Lost five pounds.', 'Skipped lunch again.', 'Ate way too much.'],
+    'topic:illness': ['Puking again.', 'Vomiting.', 'Coughing all night.', 'Sickly feeling.', 'Fevers.', 'Coughs and sneezes.', 'Allergies again.', 'Broke my arm.', 'Ozempic talk.', 'Took an Adderall.'],
+    'topic:death': ['Murdering it.', 'Funerals.', 'Corpses.', 'Grieving again.', 'Cemetery walk.', 'Passing away.'],
+    'topic:self-harm': ['Self harming.', 'Selfharm.', 'Self-harming.', 'Overdosed.', 'Overdosing.', 'Suicidal thoughts.', 'No reason to live.', 'I want to vanish.', 'Thinking of ending it.'],
+    'topic:alcohol': ['Wines.', 'Margarita time.', 'Day drinking.', 'Alcoholics.', 'Got wasted.'],
+    'topic:appearance': ['Uglier today.', 'Selfies again.', 'So pretty today.'],
+    'topic:self-hatred': ['Stupidest idea.', 'Idiots.', 'Losers.', 'Failures pile up.', 'Hated my life.', 'I am a mess.', 'Such a moron.'],
+    'topic:catastrophe': ['Disasters.', 'Nuclear war.', 'The world is ending.', 'Apocalyptic.'],
+  };
+  for (const [rule, texts] of Object.entries(cases)) for (const t of texts) assert.ok(rules(lintLine(t, 0, ctx())).includes(rule), `${t}: ${rules(lintLine(t, 0, ctx()))}`);
+  // the library's banned medical terms are lemmas too (a planner addition on top of the validator's exact terms)
+  for (const t of ['Diagnosed again.', 'Panicking a bit.', 'Healed by tea.', 'Therapies.']) assert.deepEqual(rules(lintLine(t, 0, ctx())), ['medical'], t);
+  // innocent words that only look like a listed lemma: no derivation, '=' entries exact, notForms
+  for (const ok of ['Weighted blanket mode.', 'Ripped jeans again.', 'Weeding the garden.', 'Gravity wins again.', 'Ginger tea, please.', 'Singing loudly.',
+    'Public speaking.', 'Warm hugs only.', 'Award night.', 'Little treats.', 'Shooting star!', 'Dinner was good.', 'The winner is me.']) {
+    assert.deepEqual(rules(lintLine(ok, 0, ctx())), [], ok);
+  }
+});
+
+test('FU-3: the reviewer\'s round-4 line probe is refused except for the listed deliberate passes', () => {
+  // the six groups of WORK/tmp/vr-wp06-r4/lint-probe.mjs that are topics, names and breath-holds (174 lines, 7 deliberate passes)
+  const deliberate = new Set(['One more round.', 'Snorting it.', 'Freckles everywhere.', 'I ruin everything.', 'Total meltdown.', "Don't let it out.", 'Pause at the top.']);
+  const probe = ['Cutting again tonight.', 'Done with life.', 'Better off without me.', 'Razor in hand.', 'Wish I was gone.', 'Deceased, basically.', 'My obituary.',
+    'Six feet under.', 'Feeling unwell.', 'Sore throat again.', 'Asthma attack.', 'Tummy ache.', 'Back pain.', 'Stomach bug.', 'Chemo day.', 'Diarrhea.',
+    'Food poisoning.', 'Injured my knee.', 'Gained a kilo.', 'Fasting today.', 'Keto again.', 'Sugar crash.', 'Junk food night.', 'The scale says no.', 'My BMI.',
+    'Counting macros.', 'Mimosa brunch.', 'Bottle of red.', 'Drinking again.', 'Martini night.', 'Liquor run.', 'Sangria please.', 'Bourbon night.', 'Pot brownie.',
+    'Bong rip.', 'Pop a molly.', 'Smoked a blunt.', 'Looking cute.', 'Bad skin day.', 'My big nose.', 'Hot or not?', 'I am the worst.', 'I suck.', 'I am trash.',
+    'Nobody likes me.', 'Hate my life.', 'Total screwup.', 'Doomsday again.', 'Armageddon vibes.', 'Earthquake drill.', 'Threads post.', 'Tamagotchi.',
+    'Post-it notes.', 'Band-Aid on it.', 'Kleenex box.', 'Monopoly night.', 'Bad Romance.', 'Hotline Bling.', 'Blinding Lights.', 'Party in the USA.',
+    "Don't Stop Believin'.", 'Rickroll.', 'Big gulp of air.', 'Hold till it hurts.', 'Box it in, 4 by 4.', 'Gasp and freeze.', ...deliberate];
+  const missed = probe.filter((t) => !rules(lintLine(t, 0, ctx())).length);
+  assert.deepEqual(missed.filter((t) => !deliberate.has(t)), []);
+  assert.deepEqual(missed.sort(), [...deliberate].sort(), 'each deliberate pass is still a pass (and documented)');
+  // the near misses of the names stay legal
+  for (const ok of ['Post it later.', 'A monopoly on naps.', 'Threads of thought.']) assert.deepEqual(rules(lintLine(ok, 0, ctx())), [], ok);
+});
+
+test('FU-3: copy lint is a superset of the validator for time words: the validator\'s classes are the floor', () => {
+  // the validator reads MORNING in each of these, the clock reads small hours: no time of day fits both
+  for (const hook of [["TWO O'CLOCK IN THE MORNING"], ['3 IN THE MORNING AND', 'STILL SCROLLING'], ['UP AT 4 THIS MORNING']]) {
+    assert.deepEqual(timeClassesOf(hook.join(' '), { lib, policy }), []);
+    for (const tod of ['late-night', 'night', 'morning', 'pre-dawn', 'afternoon']) assert.ok(rules(lintHook(hook, ctx({ tod }))).includes('time-word'), `${hook.join(' / ')} on ${tod}`);
+  }
+  assert.deepEqual(timeClassesOf("2 O'CLOCK IN THE AFTERNOON", { lib, policy }), ['afternoon', 'midday'], 'readings that agree are untouched');
+  // property: wherever the validator reads a time, the planner allows a subset of it (seeded texts from time fragments)
+  const frags = ['2 AM', '3 IN THE MORNING', 'MIDNIGHT', 'TONIGHT', 'MORNING', 'AFTER LUNCH', '5 PM', 'BEDTIME', 'ALARM', 'LATE NIGHT', 'SUNRISE', 'NOON',
+    "TWO O'CLOCK", '10 AT NIGHT', 'AFTERNOON', 'SUNDAY NIGHT', '02:00', 'AT NIGHT', '9 PM', 'QUARTER TO THREE AM', 'SNOOZE', 'DAWN', '7 IN THE EVENING'];
+  let x = 12345, n = 0;
+  const rnd = (k) => { x = (x * 1103515245 + 12345) >>> 0; return x % k; };
+  for (let i = 0; i < 3000; i++) {
+    const text = Array.from({ length: 1 + rnd(3) }, () => frags[rnd(frags.length)]).join(' AND ');
+    const v = lib.timeClasses(text), p = timeClassesOf(text, { lib, policy });
+    if (!v) continue;
+    n++;
+    assert.ok(p && p.every((c) => v.includes(c)), `${text}: planner ${p} not within validator ${v}`);
+  }
+  assert.ok(n > 2000, `${n} texts with validator time words`);
+});
+
+test('FU-3: hashtags: inflected and derived lemmas, new names, time words; innocent tags pass', () => {
+  const tag = (t) => rules(lintHashtag(t, { lib, policy }));
+  for (const [t, rule] of [['#suicidal', 'topic:self-harm'], ['#suicidalthoughts', 'topic:self-harm'], ['#heroin', 'topic:drugs'], ['#ozempic', 'topic:illness'],
+    ['#cemetery', 'topic:death'], ['#nuclearwar', 'topic:catastrophe'], ['#kleenex', 'name:brand'], ['#smoking', 'topic:drugs'], ['#selfharming', 'topic:self-harm']]) {
+    assert.ok(tag(t).includes(rule), `${t}: ${tag(t)}`);
+  }
+  // one list goes on every video, so a tag may not name a time of day
+  for (const t of ['#2am', '#latenight', '#bedtime', '#brainat2am', '#nightowl', '#4pmslump', '#sundaynight']) assert.deepEqual(tag(t), ['time-word'], t);
+  const innocent = ['#hushmallow', '#cozyvibes', '#sleepytime', '#bigfeelings', '#softlife', '#marshmallow', '#overthinking', '#pillowtalk', '#chillvibes', '#smallwins',
+    '#sundayscaries', '#socialbattery', '#nostalgia', '#wholesome', '#stillcounts', '#illustration', '#cuddlebuddies', '#studies', '#awareness', '#reward', '#software',
+    '#originalcharacter', '#singing', '#weeding', '#goodnight', '#starrynight', '#moonlight', '#teatime', '#naptime', '#snacktime', '#warmhugs', '#blanketfort',
+    '#rainyday', '#fireflies', '#lighthouse', '#gardening', '#friday', '#mondaymood', '#cosy', '#kindness'];
+  for (const t of innocent) assert.deepEqual(tag(t), [], t);
+});
+
+test('FU-3: the brand is one lowercase word, also when split', () => {
+  for (const t of ['Hush Mallow time.', 'hush-mallow time.', 'HushMallow time.']) assert.deepEqual(rules(lintLine(t, 0, ctx())), ['brand-case'], t);
+  assert.deepEqual(rules(lintHook(['HUSH', 'MALLOW'], ctx())), ['brand-case'], 'across the row break');
+  assert.deepEqual(rules(lintEnd(['Download', 'hushmallow.'], ctx())), ['topic:claims'], 'and no call to action');
 });

@@ -299,3 +299,58 @@ test('exportVariant names the hashtag file it actually read, and refuses tags th
     }
   } finally { t.done(); }
 });
+
+test('FU-3: export refuses draft and proof quality, checks a render provenance.json, and metadata records the quality', () => {
+  const t = temp('cli-quality-');
+  try {
+    const ledger = path.join(t.dir, 'ledger');
+    const L = ['--ledger', ledger];
+    assert.equal(hm(['plan', '--count', '1', '--seed', '42', '--review', '--quality', 'ultra', '--out', path.join(t.dir, 'x'), ...L]).status, 2, 'an unknown quality is a usage error');
+    for (const quality of ['draft', 'proof']) {
+      const dir = planOne(t, L, ['--seed', '42', '--channel', 'tiktok', '--start', '2026-11-03', '--quality', quality]);
+      assert.equal(readSpec(dir).quality, quality);
+      assert.equal(hm(['approve', dir, '--at', '2026-11-02T09:00:00Z', ...L]).status, 0, 'a draft may be approved as content');
+      fakeRender(dir);
+      const r = hm(['export', dir, ...L]);
+      assert.equal(r.status, 1, r.out);
+      assert.match(r.stderr, new RegExp(`spec quality is "${quality}": only final-quality renders are exported`));
+      assert.equal(fs.existsSync(path.join(dir, 'export')), false);
+      assert.equal(hm(['export', dir, '--skip-qa', ...L]).status, 1, '--skip-qa does not lift it');
+      const m = hm(['export', dir, '--mark-posted', ...L]);
+      assert.equal(m.status, 1);
+      assert.match(m.stderr, /only final-quality videos are exported/);
+    }
+    // a final spec: a provenance.json next to final.mp4 must describe this video and a full-quality, unmarked profile
+    const ledger2 = path.join(t.dir, 'ledger2');
+    const L2 = ['--ledger', ledger2];
+    const dir = planOne(t, L2);
+    assert.equal(hm(['approve', dir, '--at', '2026-11-02T09:00:00Z', ...L2]).status, 0);
+    fakeRender(dir);
+    const videoSha = sha256Hex(fs.readFileSync(path.join(dir, 'final.mp4')));
+    const prov = (params, sha = videoSha) => fs.writeFileSync(path.join(dir, 'provenance.json'), JSON.stringify({ schema: 'hm-provenance/1', job: { params }, final: { file: 'final.mp4', sha256: sha } }));
+    for (const [params, sha, re] of [
+      [{ profile: 'draft', scale: 0.5, mark: 'DRAFT', encoder: 'draft' }, videoSha, /rendered with the "draft" profile[\s\S]*carries the DRAFT mark[\s\S]*scale 0\.5/],
+      [{ profile: 'final', scale: 1, mark: null, encoder: 'qp15' }, 'a'.repeat(64), /provenance\.json describes another video/],
+    ]) {
+      prov(params, sha);
+      const r = hm(['export', dir, ...L2]);
+      assert.equal(r.status, 1, r.out);
+      assert.match(r.stderr, re);
+    }
+    prov({ profile: 'final', scale: 1, mark: null, encoder: 'qp15' });
+    const r = hm(['export', dir, '--at', '2026-11-02T10:00:00Z', ...L2]);
+    assert.equal(r.status, 0, r.out);
+    const meta = JSON.parse(read(path.join(dir, 'export', 'metadata.json')));
+    assert.equal(meta.quality, 'final');
+    assert.deepEqual([meta.render.profile, meta.render.scale, meta.render.mark, meta.render.encoder], ['final', 1, null, 'qp15']);
+    assert.equal(meta.render.provenance.sha256, sha256Hex(fs.readFileSync(path.join(dir, 'provenance.json'))));
+    // without a provenance.json, metadata says what the evidence is
+    fs.rmSync(path.join(dir, 'provenance.json'));
+    fs.rmSync(path.join(dir, 'export'), { recursive: true });
+    assert.equal(hm(['export', dir, '--at', '2026-11-02T10:00:00Z', ...L2]).status, 0);
+    const meta2 = JSON.parse(read(path.join(dir, 'export', 'metadata.json')));
+    assert.equal(meta2.quality, 'final');
+    assert.equal(meta2.render.profile, null);
+    assert.match(meta2.render.note, /no provenance\.json/);
+  } finally { t.done(); }
+});

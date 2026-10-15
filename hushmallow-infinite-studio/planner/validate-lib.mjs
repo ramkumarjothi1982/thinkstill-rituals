@@ -4,9 +4,15 @@
 //   - library/capabilities.json against the library ids and kinds;
 //   - planner/policy.json (shape, regexes) and its intensity caps against
 //     every "intensity <= x" / "capped at x" the library states in prose;
+//   - the planner's restatement of the library validator
+//     (planner/library-check.mjs) finds no error: the planner refuses to plan
+//     from a library that fails it;
 //   - every library string passes the planner's copy lint (context-free), and
-//     its time words (library patterns intersected with clock times) still
-//     fit a time of day open to the template's cast;
+//     its time words (library patterns intersected with clock times, the
+//     validator's reading as the floor) still fit a time of day open to the
+//     template's cast; a time-word exemption names a thought line only (the
+//     validator time-checks hooks and end texts, so an exemption there would
+//     let the planner accept what the validator rejects);
 //   - policy.lint.clockTimes agrees with the library's own "N AM/PM" patterns;
 //   - planner/metrics/fredoka-metrics.json matches the app's font file and the
 //     current library (else re-run tools/font-metrics.mjs);
@@ -26,6 +32,7 @@ import { specSchema } from './spec-schema.mjs';
 import { readLedger, KINDS } from './ledger.mjs';
 import { sha256Hex } from './canonical.mjs';
 import { intensityCap } from './pick.mjs';
+import { validatorFindings } from './library-check.mjs';
 
 /** Intensity caps the library states in prose: { templateId: cap } (the smallest stated). */
 export function statedIntensityCaps(lib) {
@@ -51,6 +58,10 @@ export function statedIntensityCaps(lib) {
 /** → { errors: [..], warnings: [..], info: [..] } */
 export function validatePlannerInputs({ lib = loadLibrary(), capabilitiesFile = CAPABILITIES_FILE } = {}) {
   const errors = [], warnings = [], info = [];
+  // the library validator, as the planner applies it before every plan
+  const vf = validatorFindings(lib.raw);
+  for (const e of vf.errors) errors.push(`library validator: ${e} (the planner refuses to plan from this library)`);
+  if (!vf.errors.length) info.push(`library validator: the planner's restatement agrees (0 errors, ${vf.warnings.length} warning(s)); planning is allowed`);
   // capabilities
   try {
     const raw = JSON.parse(fs.readFileSync(capabilitiesFile, 'utf8'));
@@ -71,6 +82,10 @@ export function validatePlannerInputs({ lib = loadLibrary(), capabilitiesFile = 
       if (cap > stated + 1e-9) errors.push(`policy: ${id} intensity cap ${cap} is above the library's stated ${stated}`);
     }
     for (const id of Object.keys(policy.intensity.byTemplate)) if (!lib.template(id)) errors.push(`policy: intensity.byTemplate names unknown template ${id}`);
+    const hooksAndEnds = new Set([...lib.templates.values()].flatMap((t) => [...hooksOf(t).map((h) => h.join(' ')), ...resolutionsOf(t).map((r) => r.lines.join(' '))]));
+    for (const x of policy.lint.timeWordExemptions) {
+      if (hooksAndEnds.has(x.text)) errors.push(`policy: lint.timeWordExemptions "${x.text}" is a hook or end text; the library validator time-checks those, so only a thought line may be exempted`);
+    }
     for (const g of policy.lint.griefPairing) {
       const t = lib.template(g.template);
       if (!t) { errors.push(`policy: griefPairing names unknown template ${g.template}`); continue; }

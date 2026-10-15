@@ -261,8 +261,7 @@ export function buildScore({ log, direction = null, spec = null }, opts = {}) {
     if (cueIndex >= 0) studio.push({ cue: cueIndex, k: emitted++, t, inst, f: p.f ?? p.f0 ?? null, softenDb: dB ?? 0 });
     synth.push(dB ? { t, inst, ...p, peak: p.peak * 10 ** (-dB / 20) } : { t, inst, ...p });
   };
-  const rnd = mulberry32(slots.panSeed ^ 0x2a2a);
-  const rr = (a, b) => a + rnd() * (b - a);
+  const { rnd, rr } = scoreStream(slots.panSeed);
   const R = {
     E, S, of, pitch, contour, CHIME_BASE,
     // a tonal note of a motif: labels the studio synth note at (t, hz), or, with no such
@@ -379,6 +378,40 @@ export function buildScore({ log, direction = null, spec = null }, opts = {}) {
     notes,
   };
   return { plan, report };
+}
+
+/** The score's one seeded stream (v2's order: the sparkles draw first, then crickets and swirl). */
+export function scoreStream(panSeed) {
+  const rnd = mulberry32(panSeed ^ 0x2a2a);
+  return { rnd, rr: (a, b) => a + rnd() * (b - a) };
+}
+
+/**
+ * The sparkle layer's events in a score plan: the texture the shape lint counts for the
+ * level only (audio/lint-shapes.mjs; G-AUDIO's plan lint, qa/gates/audio-gate.mjs). The
+ * layer is regenerated from the cue log, the Mallow's key and the pan seed exactly as
+ * buildScore runs it (the stream's first draws; v2's exhale fallback for a log without
+ * one, as compat; wrapped into the loop for a circular plan), and only the plan's own
+ * events equal to a regenerated sparkle are returned, so nothing else can pass as one.
+ * → Set of plan.synth events (empty when the plan has none)
+ */
+export function sparkleTexture(plan, { log, mallow = 'noomi', panSeed = V2_SEED }) {
+  const cues = log?.cues || [];
+  const of = (type) => cues.filter((c) => c.type === type).sort((a, b) => a.t - b.t);
+  const exhale = of('exhale')[0] ?? { t: 9.2, dur: 1.9 };
+  const ms = mallowSound(mallow);
+  const { rnd, rr } = scoreStream(panSeed);
+  const made = [];
+  sparkles({ S: (t, inst, p) => made.push({ t, inst, ...p }), of, A: { exhale: () => exhale }, rnd, rr, pitch: transposer(ms.kit, { octave: ms.octave }) });
+  if (plan.circular) for (const e of made) e.t = wrap(e.t, plan.DUR);
+  const out = new Set();
+  const pool = (plan.synth || []).filter((e) => e.inst === 'ping');
+  for (const m of made) {
+    const keys = Object.keys(m).filter((k) => k !== 't');
+    const hit = pool.find((e) => !out.has(e) && Math.abs(e.t - m.t) <= 1e-9 && Object.keys(e).length === keys.length + 1 && keys.every((k) => e[k] === m[k]));
+    if (hit) out.add(hit);
+  }
+  return out;
 }
 
 // ------------------------------------------------------------ tonal events --

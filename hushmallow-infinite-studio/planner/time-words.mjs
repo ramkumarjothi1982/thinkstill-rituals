@@ -11,7 +11,10 @@
 // A clock phrase is read as a whole: "two o'clock in the morning" is 2 AM,
 // a late-night time, even though the library's bare MORNING keyword sits
 // inside it. maskClockTimes() blanks the phrases out so the keyword patterns
-// (the library's and the planner's) only see the rest of the text.
+// (the library's and the planner's) only see the rest of the text. The copy
+// lint then intersects that reading with the library validator's own (its
+// timeWords on the whole text, MORNING included) as a floor, so such a phrase
+// fits no time of day (planner/lint-copy.mjs timeClassesOf).
 //
 // Times with no AM/PM and no part-of-day phrase ("6:30", "three o'clock",
 // "at 3") are ambiguous (6:30 in the morning or the evening?) and set no
@@ -28,7 +31,7 @@ const HOUR = `(\\d{1,2}|${HOUR_WORD})`;
 // " oh five", then an optional "o'clock". Only the hour matters, so minutes are consumed, not read.
 const DIGIT_WORD = 'one|two|three|four|five|six|seven|eight|nine';
 const MINUTE_WORD = `(?:oh[\\s-]?(?:${DIGIT_WORD})|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|(?:twenty|thirty|forty|fifty)(?:[\\s-]?(?:${DIGIT_WORD}))?)`;
-const AFTER = `(?:[:.][0-5]\\d|[\\s-]${MINUTE_WORD}\\b)?(?:\\s*o'?\\s?clock)?`;
+const AFTER = `(?:[:.][0-5]\\d|[\\s-]${MINUTE_WORD}\\b)?(?:[\\s-]?ish\\b)?(?:\\s*o'?\\s?clock)?`;
 // What may precede the hour: "half past", "quarter to", "ten past", "20 to", "five after";
 // "half two" is British for 2:30. "to/till/before" moves the hour back by one.
 const BEFORE = `(?:((?:quarter|half|\\d{1,2}|five|ten|twenty|twenty[\\s-]five)(?:[\\s-]+minutes)?[\\s-]+(past|after|to|till|til|before)|half(?=\\s+(?:\\d|${HOUR_WORD})\\b))[\\s-]+)?`;
@@ -37,13 +40,17 @@ const START = '(?<![\\w:.])';
 // "2 AM", "2:00 AM", "2.30am", "3 a.m.", "TWO P.M.", "two-thirty a.m.", "2 o'clock AM", "quarter to three AM"
 const MERIDIEM = new RegExp(`${START}${BEFORE}${HOUR}${AFTER}\\s*([ap])\\.?\\s?m\\b\\.?`, 'gi');
 // "3 in the morning", "two o'clock in the morning", "10 at night", "3 in the night", "two in the afternoon", "11 tonight", "3 this morning"
-const PART_OF_DAY = new RegExp(`${START}${BEFORE}${HOUR}${AFTER}\\s+((?:in\\s+the|this)\\s+(?:morning|afternoon|evening)|at\\s+night|in\\s+the\\s+night|tonight|last\\s+night)\\b`, 'gi');
+const PART_OF_DAY = new RegExp(`${START}${BEFORE}${HOUR}${AFTER}\\s+((?:in\\s+the|this)\\s+(?:morning|afternoon|evening)|at\\s+night|in\\s+the\\s+night|tonight|last\\s+night|in\\s+the\\s+[ap]\\.?\\s?m\\b\\.?)`, 'gi');
 // "02:00", "00:30", "13:45", "23:59" (24-hour; 1:00-12:59 without AM/PM stays ambiguous;
 // a '.' is not read here, so a price like 19.99 is never a time)
 const H24 = new RegExp(`${START}(0\\d|1[3-9]|2[0-3]):([0-5]\\d)\\b(?!\\s*[ap]\\.?\\s?m\\b)`, 'gi');
 // "0200 hours", "02:00 hrs", "0530h", "14:00 hours", "1400 hours": military time. "1000 hours"
 // and "1200 hours" (no separator, no leading zero) read as counts and are left alone.
 const HOURS_SUFFIX = new RegExp(`${START}(?:(0\\d)[:.]?[0-5]\\d|(1\\d|2[0-3])[:.][0-5]\\d|(1[3-9]|2[0-3])[0-5]\\d)\\s*(?:hours|hrs|hr|h)\\b`, 'gi');
+// "oh-two-hundred", "zero two hundred hours", "oh five thirty": spelled military time (hour 0-9; a
+// spelled hour of 10 or more needs "hours", because "twelve hundred" is a count)
+const SPELLED_MILITARY = new RegExp(`${START}(?:(?:oh|zero)[\\s-]?(${DIGIT_WORD})[\\s-]?(?:hundred|${MINUTE_WORD})(?:\\s+(?:hours|hrs))?|(ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|twenty[\\s-]?(?:one|two|three))[\\s-]?hundred\\s+(?:hours|hrs))\\b`, 'gi');
+const SPELLED_HOURS = Object.freeze({ ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, twentyone: 21, twentytwo: 22, twentythree: 23 });
 // "noon", "12 noon", "midday", "midnight"
 const NAMED = /\b(noon|midday|midnight)\b/gi;
 
@@ -66,6 +73,8 @@ function hour12(h, ap) {
 /** Hour (0-23) of "h in the morning/afternoon/evening", "h at night", "h tonight", "h last night". */
 function hourOfPart(h, part) {
   const p = part.toLowerCase().replace(/\s+/g, ' ');
+  const ap = /^in the ([ap])\.? ?m/.exec(p);
+  if (ap) return hour12(h, ap[1]);                             // "3 in the a.m." is 3 AM
   if (p.endsWith('morning')) return h === 12 ? 0 : h;          // "3 in the morning" is 3 AM
   if (p.endsWith('afternoon') || p.endsWith('evening')) return h === 12 ? 12 : h + 12;
   // at night / in the night / tonight / last night: 6-11 are evening hours, 12 is midnight, 1-5 are small hours
@@ -91,6 +100,7 @@ export function clockTimes(text) {
     push(m, h === null ? null : hourOfPart(h, m[4]));
   }
   for (const m of s.matchAll(HOURS_SUFFIX)) push(m, Number(m[1] ?? m[2] ?? m[3]));
+  for (const m of s.matchAll(SPELLED_MILITARY)) push(m, m[1] ? NUM_WORDS[m[1].toLowerCase()] : SPELLED_HOURS[m[2].toLowerCase().replace(/[\s-]/g, '')]);
   for (const m of s.matchAll(H24)) push(m, Number(m[1]));
   for (const m of s.matchAll(NAMED)) push(m, m[1].toLowerCase() === 'midnight' ? 0 : 12);
   found.sort((a, b) => a.at - b.at || b.end - a.end);

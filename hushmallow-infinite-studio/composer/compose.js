@@ -37,6 +37,15 @@ export const DIRECTION_SCHEMA = 'hm-direction/3';
 /** Frame model of the approved v2 ("exact" rules): 30 fps, shutter 0.4, 3–16 sub-frames ≤ 2 px apart. */
 export const FRAME = Object.freeze({ width: 1080, height: 1920, fps: 30, shutter: 0.4, subframes: 3, subframeMax: 16, subframePx: 2 });
 
+/**
+ * The score a direction names (meta.score; the farm renders and muxes by it). New
+ * directions are scored by the generic score, 'hm-score' (audio/score.mjs: OWNER-DECISIONS
+ * Q7, lead decision 2026-10-14, once FU-2 closed the banned-sound lint gaps). The approved
+ * film keeps the approved soundtrack: the golden T01 (specs/golden/t01-v2.json, by its
+ * fingerprint) names 'soundtrack-v2', so it still reproduces v2 exactly.
+ */
+export const SCORE = Object.freeze({ default: 'hm-score', legacy: Object.freeze({ 'sha256:076e81ef6738e273b6e530b0f9ed63e9d44ee488bb1086949f34c0f56befa882': 'soundtrack-v2' }) });
+
 /** The orbit ellipse of thought props when the library gives none (story-library format.layout.thoughtBubble.orbit). */
 const DEFAULT_ORBIT = Object.freeze({ cx: 540, cy: 600, rx: 270, ry: 132 });
 
@@ -153,7 +162,7 @@ export function composeWith(spec, { lib, data, measure, options = {}, moves = MO
       set.term('body.sway.micro', { type: 'noise', env: 'micro', amp: per.microNoise * 4, rate: 1.7, seed: 13 });
     }
     const spans = seq.filter(({ move }) => move.span && move.entry).map(({ id, move }) => ({ id, entry: move.entry, exit: move.exit, span: move.span.map((r) => resolveRef(r, A)) }));
-    for (const b of planBridges(spans)) {
+    for (const b of planBridges(spans, { channels: built, end: D })) {        // junctions judged on the compiled channels (FU-4)
       set.setWriter('acting/bridge', 98);
       try {
         const bridge = moves['acting/bridge'] ?? MOVES['acting/bridge'];
@@ -184,7 +193,7 @@ export function composeWith(spec, { lib, data, measure, options = {}, moves = MO
     meta: {
       id: spec.id, title: template.title, fps: FRAME.fps, duration: D, width: FRAME.width, height: FRAME.height,
       subframes: FRAME.subframes, subframeMax: FRAME.subframeMax, subframePx: FRAME.subframePx, shutter: FRAME.shutter, P,
-      runtime: 'v3', score: 'soundtrack-v2', profile: spec.quality, internal: spec.internal, layout: layout.measuredBy,
+      runtime: 'v3', score: Object.hasOwn(SCORE.legacy, String(spec.fingerprint)) ? SCORE.legacy[spec.fingerprint] : SCORE.default, profile: spec.quality, internal: spec.internal, layout: layout.measuredBy,
       template: template.id, spec: spec.id, fingerprint: spec.fingerprint ?? null, composer: COMPOSER_VERSION,
     },
     anchors: { ...A },

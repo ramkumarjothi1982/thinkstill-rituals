@@ -15,6 +15,8 @@ export async function run(args) {
       quality: { type: 'string', default: 'final' }, out: { type: 'string' }, ...cli.CONSTRAINT_OPTIONS,
     }, 'spec new');
     if (!values.template) throw Object.assign(new Error('hm spec new: --template is required'), { usage: true });
+    const { QUALITIES } = await import('../../planner/pick.mjs');
+    if (!QUALITIES.includes(values.quality)) throw Object.assign(new Error(`hm spec new: --quality must be ${QUALITIES.join('|')}`), { usage: true });
     const fs = await import('node:fs');
     const path = await import('node:path');
     const { planSpec } = await import('../../planner/pick.mjs');

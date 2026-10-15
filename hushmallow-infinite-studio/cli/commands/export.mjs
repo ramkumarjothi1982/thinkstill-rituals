@@ -1,7 +1,9 @@
 // hm export — hand an approved final to the owner: <variant>/export/
 // {final.mp4, caption.txt, metadata.json}. It re-runs G-SPEC, requires the
-// approval to cover exactly this spec.json, and a QA report that judged this
-// final.mp4 with every gate passed (planner/export.mjs). caption.txt uses the
+// approval to cover exactly this spec.json, a final-quality spec (never a
+// draft or proof; a render provenance.json, if present, must name a full-
+// quality unmarked profile), and a QA report that judged this final.mp4 with
+// every gate passed (planner/export.mjs). metadata.json records the quality. caption.txt uses the
 // library's own hook and end-card entries plus the owner's hashtags from
 // library/brand.json only: there is deliberately no option to read hashtags
 // from another file, and metadata.json records the brand file's sha256.

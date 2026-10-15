@@ -10,8 +10,14 @@
 //   - fingerprint and id recompute; the fingerprint was never used before;
 //   - production specs: sequencing, cooldowns, reservations, cadence and
 //     distance hold against the channel's ledger and the batch's earlier posts;
-//   - pins: library version, pack/preset hashes, and asset hashes against
-//     library/assets-manifest.json once it exists.
+//   - the story library itself passes templates/validate-library.mjs
+//     (planner/library-check.mjs): no spec passes from a library it rejects;
+//   - pins: library version; pins.packs names exactly the Mallow pack and
+//     realm preset files library/capabilities.json gives for spec.mallow and
+//     spec.realm, each with the sha256 of that file as it is now (a hash may
+//     be null only while its file does not exist); no engine pin (the
+//     render's provenance.json records the engine); a capabilities hash;
+//     and asset hashes against library/assets-manifest.json once it exists.
 //
 // → { gate: 'G-SPEC', pass, errors: [{rule, message}], warnings: [...], metrics }
 
@@ -28,6 +34,7 @@ import { channelContext, checkSchedule } from './schedule.mjs';
 import { TURN_MOVES } from './capabilities.mjs';
 import { intensityCap } from './pick.mjs';
 import { POLICY_FILE } from './policy.mjs';
+import { validatorFindings } from './library-check.mjs';
 
 export const ASSETS_MANIFEST = studioPath('library', 'assets-manifest.json');
 let policyShaCache = null;
@@ -51,6 +58,8 @@ export function checkSpec(spec, ctx) {
   if (shape.length) { for (const s of shape) err('schema', s); return done(); }
 
   // 2. slots legal for the template and Mallow
+  const libErrors = validatorFindings(lib.raw).errors;
+  if (libErrors.length) err('library', `the story library fails templates/validate-library.mjs (${libErrors.length} error(s), first: ${libErrors[0]}); no spec passes until it is fixed`);
   const t = lib.template(spec.template);
   if (!t || t.id !== spec.template) { err('slot:template', `unknown template ${spec.template}`); return done(); }
   const m = spec.mallow;
@@ -155,21 +164,58 @@ export function checkSpec(spec, ctx) {
   // 8. pins: library, policy, capability set, packs/presets, assets
   if (spec.pins.library !== lib.version) err('pins:library', `planned against library ${spec.pins.library}, current is ${lib.version}`);
   else if (spec.pins.librarySha256 !== lib.sha256) warn('pins:library', 'story-library.json changed since planning (same version); copy was re-checked above');
-  if (caps.sha256 && spec.pins.capabilitiesSha256 !== caps.sha256) warn('pins:capabilities', 'capabilities changed since planning; gating was re-checked above');
+  if (!spec.pins.capabilitiesSha256) err('pins:capabilities', 'pins.capabilitiesSha256 is empty: a planned spec always pins the capability set it was planned against');
+  else if (caps.sha256 && spec.pins.capabilitiesSha256 !== caps.sha256) warn('pins:capabilities', 'capabilities changed since planning; gating was re-checked above');
   if (spec.pins.policySha256 !== policyFileSha()) warn('pins:policy', 'planner/policy.json changed since planning; copy and caps were re-checked above');
-  for (const [id, pin] of Object.entries(spec.pins.packs)) {
-    if (!pin.file) continue;
-    const abs = studioPath(pin.file);
-    const now = fs.existsSync(abs) ? sha256Hex(fs.readFileSync(abs)) : null;
-    if (pin.sha256 && now !== pin.sha256) err('pins:pack', `${id} (${pin.file}) changed since planning`);
-    else if (!pin.sha256 && now) warn('pins:pack', `${id} (${pin.file}) appeared after planning; re-plan to pin it`);
-    else if (!now) warn('pins:pack', `${id} (${pin.file}) does not exist yet`);
-  }
+  if (spec.pins.engine !== null) err('pins:engine', `pins.engine is ${JSON.stringify(spec.pins.engine)}; the planner pins no engine (the render's provenance.json records the engine it used)`);
+  for (const p of packPinProblems(spec, realm, caps)) (p.error ? err : warn)('pins:pack', p.message);
   const manifest = ctx.assetsManifest || ASSETS_MANIFEST;
   if (!fs.existsSync(manifest)) warn('assets-manifest-missing', `${path.relative(studioPath(), manifest)} does not exist yet: asset hashes not checked`);
   else for (const p of checkAssets(manifest, m)) err('assets', p);
 
   return done();
+}
+
+/**
+ * The pack pins a spec must carry: exactly the Mallow pack and the realm
+ * preset library/capabilities.json gives for spec.mallow and its realm, each
+ * { file, sha256 } with the hash of that file as it is now. A pin may hold a
+ * null hash only while its file does not exist yet (a warning). An emptied,
+ * re-pointed or hash-stripped pin is an error: it would otherwise dodge the
+ * "pack changed since planning" check (round-4 review).
+ * → [{ error: boolean, message }]
+ */
+export function packPinProblems(spec, realm, caps) {
+  const out = [];
+  const want = new Map([[spec.mallow, caps.packFile(spec.mallow)], [realm, caps.presetFile(realm)]]);
+  const have = spec.pins.packs || {};
+  const extra = Object.keys(have).filter((k) => !want.has(k));
+  const missing = [...want.keys()].filter((k) => !(k in have));
+  if (extra.length || missing.length) {
+    out.push({ error: true, message: `pins.packs must name exactly the ${spec.mallow} pack and the ${realm} preset${missing.length ? `; missing ${missing.join(', ')}` : ''}${extra.length ? `; unexpected ${extra.join(', ')}` : ''}` });
+  }
+  for (const [id, file] of want) {
+    const pin = have[id];
+    if (!pin) continue;
+    if (pin.file !== file) { out.push({ error: true, message: `${id} pins ${JSON.stringify(pin.file)}, but library/capabilities.json gives ${JSON.stringify(file)}` }); continue; }
+    if (file === null) { if (pin.sha256 !== null) out.push({ error: true, message: `${id} pins a hash but no file` }); continue; }
+    const now = packSha(file);
+    if (pin.sha256 && now !== pin.sha256) out.push({ error: true, message: `${id} (${file}) changed since planning` });
+    else if (!pin.sha256 && now) out.push({ error: true, message: `${id} (${file}) exists but the spec pins no hash for it; re-plan it` });
+    else if (!now) out.push({ error: false, message: `${id} (${file}) does not exist yet` });
+  }
+  return out;
+}
+
+/** sha256 of a studio file, or null when it does not exist (cached per process and file content). */
+const packCache = new Map();
+function packSha(file) {
+  const abs = studioPath(file);
+  if (!fs.existsSync(abs)) return null;
+  const st = fs.statSync(abs);
+  const key = `${abs}|${st.ino}|${st.size}|${st.mtimeMs}|${st.ctimeMs}`;
+  if (!packCache.has(key)) packCache.set(key, sha256Hex(fs.readFileSync(abs)));
+  return packCache.get(key);
 }
 
 /**

@@ -163,11 +163,44 @@ test('the approved v2 is expressible as a valid hm-variant/1 spec (what WP-03 pi
     copy: { hook: t.hook.primary, lines: t.escalation.lines, end: { kind: 'resolution', text: t.resolution.primary }, nameWord: null },
     sound: { motifs: t.sound.motifs, contour: 'arch-1', tickTempo: 1, panSeed: 0 },
     cells: Object.fromEntries(['G-JOLT', 'M-ORBIT', 'TURN-SQUEEZE', 'R-BREATH', 'LP-RETURN', 'C-DRIFT-IN', 'A-COLD-DIP-WARM'].map((id) => [`${id}/noomi`, 'approved'])),
-    pins: { library: real.lib.version, librarySha256: real.lib.sha256, capabilitiesSha256: real.caps.sha256, policySha256: '0'.repeat(64), packs: {}, engine: null },
+    pins: {
+      library: real.lib.version, librarySha256: real.lib.sha256, capabilitiesSha256: real.caps.sha256, policySha256: '0'.repeat(64),
+      packs: Object.fromEntries([['noomi', real.caps.packFile('noomi')], ['moonmilk-cove', real.caps.presetFile('moonmilk-cove')]].map(([id, f]) => [id, { file: f, sha256: sha256Hex(fs.readFileSync(path.join(STUDIO, f))) }])),
+      engine: null,
+    },
     fingerprint: null,
   });
   const g = checkSpec(v2, real);
   assert.deepEqual(g.errors, []);
   assert.deepEqual(v2.copy.hook, ['ME TRYING TO SLEEP', 'AT 2 AM...']);
   assert.deepEqual(v2.copy.end.text, ['Give your feelings', 'somewhere soft to land.']);
+});
+
+test('FU-3 pins: G-SPEC refuses a spec that empties, re-points or strips its pins (the round-4 tamper probe)', () => {
+  assert.deepEqual(Object.keys(base.pins.packs).sort(), ['moonmilk-cove', 'noomi']);
+  const cases = [
+    ['pins:pack', 'packs emptied', (s) => { s.pins.packs = {}; }],
+    ['pins:pack', 'pack points elsewhere', (s) => { s.pins.packs = { noomi: { file: 'library/capabilities.json', sha256: null }, 'moonmilk-cove': s.pins.packs['moonmilk-cove'] }; }],
+    ['pins:pack', 'pack hash stripped', (s) => { s.pins.packs.noomi.sha256 = null; }],
+    ['pins:pack', 'preset hash wrong', (s) => { s.pins.packs['moonmilk-cove'].sha256 = 'f'.repeat(64); }],
+    ['pins:pack', 'preset dropped', (s) => { delete s.pins.packs['moonmilk-cove']; }],
+    ['pins:pack', 'extra pin', (s) => { s.pins.packs.blubi = { file: null, sha256: null }; }],
+    ['pins:engine', 'engine pinned', (s) => { s.pins.engine = 'git:deadbeef'; }],
+    ['pins:capabilities', 'capabilities hash emptied', (s) => { s.pins.capabilitiesSha256 = ''; }],
+  ];
+  for (const [rule, name, f] of cases) {
+    const s = clone(base);
+    f(s);
+    reseal(s);
+    const g = checkSpec(s, real);
+    assert.equal(g.pass, false, name);
+    assert.ok(rulesOf(g).includes(rule), `${name}: ${rulesOf(g).join(', ')}`);
+  }
+  // open capabilities name no pack files: the pins are { file: null, sha256: null } and nothing else
+  const o = openSpec({ template: ['T01'], mallow: ['noomi'] });
+  assert.deepEqual(o.pins.packs, { noomi: { file: null, sha256: null }, 'moonmilk-cove': { file: null, sha256: null } });
+  assert.equal(checkSpec(o, open).pass, true);
+  const forged = clone(o);
+  forged.pins.packs.noomi = { file: 'library/mallows/noomi.json', sha256: null };
+  assert.ok(rulesOf(checkSpec(reseal(forged), open)).includes('pins:pack'), 'a pin the capabilities do not give');
 });

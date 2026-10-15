@@ -11,7 +11,7 @@
 //   - the whole library (every capability opened) plans clean specs;
 //   - 90-day posting plans at the capped cadence satisfy every posting rule,
 //     checked by an independent re-statement of the rules;
-//   - tampered specs never pass G-SPEC;
+//   - tampered specs never pass G-SPEC, tampered pins included (FU-3);
 //   - 10k specs through the CLI in under 10 s, byte-reproducible.
 
 import { test } from 'node:test';
@@ -232,6 +232,8 @@ test('tampered specs never pass G-SPEC (600 seeded mutations)', () => {
     'wrong ToD': (s) => { s.tod = 'afternoon-x'; },
     'arc swap': (s) => { s.arc = s.arc === 'A-GREY-CLEAR' ? 'A-DIM-SOFT' : 'A-GREY-CLEAR'; },
     'closer edit': (s) => { s.copy.end = { kind: 'closer', text: ['Your second brain', 'for feeling.'] }; },
+    'pins emptied': (s) => { s.pins.packs = {}; },
+    'engine pinned': (s) => { s.pins.engine = 'git:0123456789ab'; },
   };
   const names = Object.keys(mutators);
   const r = stream(424242, 'fuzz');
@@ -247,6 +249,32 @@ test('tampered specs never pass G-SPEC (600 seeded mutations)', () => {
     assert.equal(g.pass, false, `${name} slipped through: ${s.id}`);
   }
   assert.ok(tried >= 500, `${tried} mutations applied`);
+});
+
+test('tampered pins never pass G-SPEC: 1,000 committed-capability specs x 5 pin mutations (FU-3)', () => {
+  const ctx = realCtx();
+  const specs = planBatch({ ...ctx, mode: 'review', count: 1000, seed: 11, batch: 'pins' }).specs;
+  assert.equal(specs.length, 1000);
+  const mutators = {
+    'packs emptied': (s) => { s.pins.packs = {}; },
+    'pack re-pointed': (s) => { s.pins.packs[s.mallow] = { file: 'library/capabilities.json', sha256: null }; },
+    'pack hash stripped': (s) => { s.pins.packs[s.mallow].sha256 = null; },
+    'preset hash stripped': (s) => { s.pins.packs[s.realm].sha256 = null; },
+    'engine pinned': (s) => { s.pins.engine = 'git:0123456789ab'; },
+  };
+  let n = 0;
+  for (const base of specs) {
+    for (const [name, f] of Object.entries(mutators)) {
+      const s = structuredClone(base);
+      f(s);
+      s.fingerprint = fingerprint(s); s.id = specId(s);
+      const g = checkSpec(s, ctx);
+      assert.equal(g.pass, false, `${name} slipped through: ${s.id}`);
+      assert.ok(g.errors.some((e) => e.rule.startsWith('pins:')), `${name}: ${g.errors.map((e) => e.rule)}`);
+      n++;
+    }
+  }
+  assert.equal(n, 5000);
 });
 
 test('10k specs through `hm plan` in under 10 s each run, byte-reproducible across processes', (t) => {

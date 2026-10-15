@@ -1,23 +1,20 @@
 {
   "schema": "hm-write-audit/2",
-  "since": "2026-10-14T22:09:51.068Z",
-  "armedBy": "Wave D integrator (WP-04, WP-05)",
-  "reason": "Wave D re-arm after review (2026-10-14). Before arming, the audit against the 2026-10-14T00:47:08.488Z baseline found only files in the shared agent session scratchpad /tmp/claude-0/-home-user-thinkstill-rituals/408ed79f-c8dc-5aa7-9180-8647f2fe949e/scratchpad, none written by studio code: (a) 4 files written there after the baseline by the WP-04 round-2 and WP-05 reviewers (compat-perturb.mjs, lint-evade2.mjs, gate.mjs, variants.py; 19:10-20:03) were moved to WORK/waveD/scratchpad-moved/ (they were not in the arming listing, so no deletion finding); (b) the remaining 75 findings are Phase-1 scratch files (aq1.png, face1.png, m1.py ... world_fs.glsl) that are in the arming listing, whose content mtimes are all on 2026-10-13 (before the baseline) and whose ctime the environment bumped together at 2026-10-14T18:28:42Z (metadata only, no content written). No deletions, no git config change; frozen v2 and app tree ok; no repository changes outside the studio root.",
+  "since": "2026-10-14T23:49:02.330Z",
+  "armedBy": "FU-1 (guard bypasses)",
+  "reason": "FU-1 re-arm after review (2026-10-14). The audit gained the touched and created directory checks (a file created and deleted again, mkdir, a directory's metadata change) and treats git's and the harness's worktree containers as housekeeping. Before arming, against the Wave D baseline 2026-10-14T22:09:51.068Z, the new audit reported exactly one finding: touched /tmp/claude-0/-home-user-thinkstill-rituals/408ed79f-c8dc-5aa7-9180-8647f2fe949e/scratchpad at 22:33:52.871Z, the M0 auditor's copy of docs/wp/WP-02.md created there and deleted again (docs/M0-REPORT.md section 11, Audit hygiene; not studio code). Nothing else was written, deleted, created or touched outside the studio and WORK; the git config is unchanged; frozen v2, app tree and the repository outside the studio are ok. The worktree removals of 23:15-23:18 (.claude, .git/worktrees) are git and harness housekeeping, excused by rule. A dry run against the round-3 baseline (00:47:08) confirms the new checks report the Wave A 00:56:35 jail-probe event (/home/user, ../hushmallow, /usr/local, /run, /dev/shm touched).",
   "listing": {
-    "file": "listing-2026-10-14T22-09-51-068Z.json.gz",
-    "sha256": "f3daf22c16d8771b5a0b2660ee42e3b18a31c3a0bfbaf7c418ba901c34e39ae2",
-    "dirs": 27870,
-    "entries": 221549,
+    "file": "listing-2026-10-14T23-49-02-330Z.json.gz",
+    "sha256": "7b78efecf73f9af68e598aad640f7e2f68e965b4ab51fc2f9006ea6ef867cf39",
+    "dirs": 27868,
+    "entries": 221554,
     "roots": [
       "/",
       "/dev/shm",
       "/run/sandbox-telemetry"
     ]
   },
-  "worktrees": [
-    "/home/user/thinkstill-rituals/.claude/worktrees/wf_2b3d309f-330-20",
-    "/home/user/thinkstill-rituals/.claude/worktrees/wf_2b3d309f-330-23"
-  ],
+  "worktrees": [],
   "gitConfig": {
     "/home/user/thinkstill-rituals/.git/config": [
       "branch.claude/hushmallow-phase-1-video-0ipvz6.merge=d3cda32dcab72542",
@@ -43,6 +40,11 @@
       "since": "2026-10-14T00:47:08.488Z",
       "armedBy": "WP-00 round 3",
       "reason": "Round-3 re-arm (schema 2: adds the directory listing for deletion detection and the git config content check; narrows the git exemption to git's own data; replaces the blanket /tmp/node-compile-cache exemption with per-entry verification). Reviewed before arming: the audit under the new rules found 0 files written outside the studio and WORK since 2026-10-13T23:41:36.971Z; changed directories since then were /tmp (harness), /tmp/claude-0 (harness), /home/user (23:44, the round-2 demo probe removal) and the repo .git directory (index refresh). The round-2 incident (npm debug logs deleted from /root/.npm/_logs at 23:25) predates both baselines and is recorded in docs/wp/WP-00.md."
+    },
+    {
+      "since": "2026-10-14T22:09:51.068Z",
+      "armedBy": "Wave D integrator (WP-04, WP-05)",
+      "reason": "Wave D re-arm after review (2026-10-14). Before arming, the audit against the 2026-10-14T00:47:08.488Z baseline found only files in the shared agent session scratchpad /tmp/claude-0/-home-user-thinkstill-rituals/408ed79f-c8dc-5aa7-9180-8647f2fe949e/scratchpad, none written by studio code: (a) 4 files written there after the baseline by the WP-04 round-2 and WP-05 reviewers (compat-perturb.mjs, lint-evade2.mjs, gate.mjs, variants.py; 19:10-20:03) were moved to WORK/waveD/scratchpad-moved/ (they were not in the arming listing, so no deletion finding); (b) the remaining 75 findings are Phase-1 scratch files (aq1.png, face1.png, m1.py ... world_fs.glsl) that are in the arming listing, whose content mtimes are all on 2026-10-13 (before the baseline) and whose ctime the environment bumped together at 2026-10-14T18:28:42Z (metadata only, no content written). No deletions, no git config change; frozen v2 and app tree ok; no repository changes outside the studio root."
     }
   ]
 }

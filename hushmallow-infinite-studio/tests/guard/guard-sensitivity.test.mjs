@@ -16,7 +16,7 @@ import {
 } from '../../render/lib/frozen.mjs';
 import { formatManifest, hashFiles } from '../../render/lib/tree-hash.mjs';
 import zlib from 'node:zlib';
-import { auditOutsideWrites, armBaseline, readBaseline, npmCompileCache, compileCacheKey } from '../../render/lib/write-audit.mjs';
+import { auditOutsideWrites, armBaseline, readBaseline, npmCompileCache, compileCacheKey, allowedRoots } from '../../render/lib/write-audit.mjs';
 
 let root, repo, studio, app, frozenManifest, localManifest, appManifest;
 const FROZEN = ['stage2/', 'output/v2/', 'render/render.mjs'];
@@ -202,4 +202,81 @@ test('write audit: fires on writes, deletions and git config changes outside the
   const b = readBaseline(at('work/baseline.json'));
   fs.appendFileSync(path.join(at('work/guard'), b.listing.file), 'x');
   assert.match(audit().errors.join('\n'), /altered/);
+});
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+test('write audit: a file created and deleted again leaves a touched directory; new directories and metadata changes are reported; harness, git and worktree churn is not', async () => {
+  // FU-1. A second miniature machine with a git checkout laid out as the real one (top level, .git, linked worktrees
+  // under .claude/worktrees), the harness's places, and directories studio work could stray into.
+  const m = path.join(root, 'machine2');
+  const at = (rel) => path.join(m, rel);
+  for (const d of ['studio', 'work', 'home/user', 'etc', 'srv', 'root', 'tmp/agent/sess/scratchpad', 'repo/.git/objects', 'repo/.claude/worktrees/wf0/src', 'repo/.git/worktrees/wf0']) fs.mkdirSync(at(d), { recursive: true });
+  for (const f of ['home/user/keep.txt', 'etc/a.conf', 'srv/data', 'root/.claude.json', 'repo/.claude/worktrees/wf0/src/x.js', 'repo/.git/worktrees/wf0/HEAD', 'repo/.git/HEAD']) write(f, 'before arming\n', m);
+  const layoutWith = (worktrees) => ({
+    gitDir: at('repo/.git'), top: at('repo'), mainTop: at('repo'),
+    worktreeDirs: worktrees.map((w) => at(`repo/.git/worktrees/${w}`)), otherWorktrees: worktrees.map((w) => at(`repo/.claude/worktrees/${w}`)),
+  });
+  const scopeFor = (layout) => {
+    const allowed = allowedRoots({ studio: at('studio'), work: at('work'), layout });
+    const externalWriters = [
+      { glob: at('root/.claude.json'), reason: 'harness config, rewritten atomically', scope: 'all' },
+      { glob: at('tmp/*/*'), reason: 'harness session directories', scope: 'remove' },
+      { glob: at('tmp'), reason: 'harness cwd files', scope: 'touch' },
+    ];
+    return {
+      prefix: '', roots: [m], listingRoots: [m], layout, allowed, externalWriters, worktrees: layout.otherWorktrees,
+      prune: [...allowed.map((a) => a.path), at('root/.claude.json')], removable: [...layout.otherWorktrees, path.join(layout.gitDir, 'worktrees')],
+    };
+  };
+  const arm = async (layout, file) => { await sleep(60); armBaseline({ reason: 'miniature machine 2', file, scope: scopeFor(layout), configFiles: [], listingDir: at('work/guard') }); await sleep(60); };
+  const audit = (layout, file) => auditOutsideWrites({ baseline: readBaseline(file), scope: scopeFor(layout), configFiles: [], listingDir: at('work/guard'), attributors: [] });
+  const show = (a) => a.findings.map((f) => `${f.kind} ${path.relative(m, f.path)}${f.detail ? ` (${f.detail})` : ''}`);
+  const b1 = at('work/b1.json');
+  await arm(layoutWith(['wf0']), b1);
+
+  // silent: the harness rewrites its config atomically and creates and deletes its cwd file in tmp; a new harness session;
+  // git takes and drops its index lock; a worktree is added and removed; then the last one goes, with its containers
+  write('root/.claude.json.tmp', 'new\n', m); fs.renameSync(at('root/.claude.json.tmp'), at('root/.claude.json'));
+  write('tmp/claude-ab12-cwd', '/x\n', m); fs.rmSync(at('tmp/claude-ab12-cwd'));
+  fs.mkdirSync(at('tmp/agent/sess2/scratchpad'), { recursive: true }); fs.mkdirSync(at('tmp/agent/sess2/tasks'));
+  write('repo/.git/index.lock', 'x', m); fs.rmSync(at('repo/.git/index.lock'));
+  write('repo/.claude/worktrees/wf1/src/y.js', 'a worktree\n', m); write('repo/.git/worktrees/wf1/HEAD', 'x\n', m);
+  for (const d of ['repo/.claude/worktrees/wf1', 'repo/.git/worktrees/wf1', 'repo/.claude/worktrees/wf0', 'repo/.git/worktrees/wf0']) fs.rmSync(at(d), { recursive: true });
+  fs.rmSync(at('repo/.claude'), { recursive: true }); fs.rmSync(at('repo/.git/worktrees'), { recursive: true });
+  let a = audit(layoutWith([]), b1);
+  assert.deepEqual([show(a), a.errors], [[], []]);
+  // a worktree added after arming (its containers are created again), whose own index lock is taken and dropped later
+  write('repo/.claude/worktrees/wf3/src/w.js', 'a worktree\n', m); write('repo/.git/worktrees/wf3/HEAD', 'x\n', m);
+  await sleep(60);
+  write('repo/.git/worktrees/wf3/index.lock', 'x', m); fs.rmSync(at('repo/.git/worktrees/wf3/index.lock'));
+  a = audit(layoutWith(['wf3']), b1);
+  assert.deepEqual([show(a), a.errors], [[], []]);
+
+  // reported: a directory created first, then (after it) a file created and deleted in home/user; one in the agent's
+  // scratchpad (a harness place, but touching it is not the harness's); a new empty directory; a chmod
+  fs.mkdirSync(at('home/user/tmpdir')); write('home/user/tmpdir/f', 'x', m); fs.rmSync(at('home/user/tmpdir/f'));
+  fs.mkdirSync(at('etc/newdir'));
+  await sleep(60);
+  write('home/user/probe.txt', 'created and deleted again\n', m); fs.rmSync(at('home/user/probe.txt'));
+  write('tmp/agent/sess/scratchpad/p.txt', 'x', m); fs.rmSync(at('tmp/agent/sess/scratchpad/p.txt'));
+  fs.chmodSync(at('srv'), 0o700);
+  a = audit(layoutWith(['wf3']), b1);
+  assert.equal(a.ok, false);
+  assert.deepEqual(show(a), [
+    'created etc/newdir (a new directory)',
+    'touched home/user (changed with nothing left to show for it: a file or directory created and deleted again)',
+    'created home/user/tmpdir (a new directory)',
+    'touched srv (its mode, owner or attributes changed)',
+    'touched tmp/agent/sess/scratchpad (changed with nothing left to show for it: a file or directory created and deleted again)',
+  ]);
+
+  // a worktree container that held anything else at arming is not housekeeping: its removal is a deletion
+  write('repo/.claude/worktrees/wf2/src/z.js', 'a worktree\n', m); write('repo/.git/worktrees/wf2/HEAD', 'x\n', m);
+  write('repo/.claude/settings.json', '{}\n', m);
+  const b2 = at('work/b2.json');
+  await arm(layoutWith(['wf2', 'wf3']), b2);
+  for (const d of ['repo/.claude', 'repo/.git/worktrees']) fs.rmSync(at(d), { recursive: true });
+  a = audit(layoutWith([]), b2);
+  assert.deepEqual(show(a).filter((l) => l.startsWith('deleted')), ['deleted repo/.claude (a directory with 2 entries at arming)']);
 });

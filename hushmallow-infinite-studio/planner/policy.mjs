@@ -4,6 +4,7 @@
 
 import fs from 'node:fs';
 import { studioPath } from '../render/lib/paths.mjs';
+import { phraseForms, gluedForms } from './morph.mjs';
 
 export const POLICY_FILE = studioPath('planner', 'policy.json');
 let cached = null;
@@ -11,30 +12,45 @@ let cached = null;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * English inflections of a name used as a word: s, es, 's, ed, d, ing, er,
- * ers; the final e dropped (googling, facetiming) and the final consonant
- * doubled (Instagrammed, snapchatting).
+ * How a list entry is matched. 're:<src>' is a regular expression; '=term' is
+ * the term exactly as written; 'term+' inflects (names opt in this way); any
+ * other entry inflects when `inflectByDefault` (topics and medical terms are
+ * lemma lists) and is matched as written otherwise (names).
+ * → { kind: 're'|'term', text, inflect }
  */
-function inflected(term) {
-  const alts = [`${escapeRe(term)}(?:s|es|'s|’s|ed|d|ing|er|ers)?`];
-  const last = term.at(-1);
-  if (last === 'e') alts.push(`${escapeRe(term.slice(0, -1))}(?:ing|ed|er|ers)`);
-  else if (/[b-df-hj-np-tv-z]/i.test(last)) alts.push(`${escapeRe(term)}${escapeRe(last)}(?:ed|ing|er|ers)`);
-  return `(?:${alts.join('|')})`;
+export function parseTerm(term, { inflectByDefault = false } = {}) {
+  if (term.startsWith('re:')) return { kind: 're', text: term.slice(3), inflect: false };
+  if (term.length > 1 && term.startsWith('=')) return { kind: 'term', text: term.slice(1), inflect: false };
+  if (term.length > 1 && term.endsWith('+')) return { kind: 'term', text: term.slice(0, -1), inflect: true };
+  return { kind: 'term', text: term, inflect: inflectByDefault };
 }
 
+/** A non-capturing alternation of literal forms, longest first. */
+const alternation = (fs) => (fs.length === 1 ? escapeRe(fs[0]) : `(?:${[...new Set(fs)].sort((a, b) => b.length - a.length || (a < b ? -1 : 1)).map(escapeRe).join('|')})`);
+
 /**
- * 'term' → whole-word/phrase regex; 'term+' → the same plus its English
- * inflections (google+ → Googled, googling); 're:<src>' → that regex. All
- * case-insensitive. flex: a space or hyphen inside the term matches a space,
- * a hyphen or nothing (names: 'coca-cola' → Coca Cola, cocacola; 'tik tok+'
- * → TikTok, Tik-Tok, tiktoks).
+ * A list entry → a case-insensitive whole-word/phrase regex.
+ *   'term'   the word or phrase as written ('re:<src>' is that regex);
+ *   'term+'  plus its inflections (planner/morph.mjs: google+ → Googled,
+ *            googling; instagram+ → Instagrammed; smoke → smoked, smoker);
+ *   '=term'  only as written, even where the list inflects by default.
+ * opts.inflect: inflect plain entries (topic and medical lemma lists).
+ * opts.flex: a space or hyphen inside the term matches a space, a hyphen or
+ * nothing ('coca-cola' → Coca Cola, cocacola; 'self harm' → self-harming,
+ * selfharm). opts.morph: { irregular, notForms } (policy.lint.morphology).
  */
-export function termRegex(term, { flex = false } = {}) {
-  if (term.startsWith('re:')) return new RegExp(term.slice(3), 'i');
-  let body = term.length > 1 && term.endsWith('+') ? inflected(term.slice(0, -1)) : escapeRe(term);
-  if (flex) body = body.replace(/[ -]/g, '[\\s-]?');
-  return new RegExp(`(^|[^a-z0-9À-ÿ])${body}($|[^a-z0-9À-ÿ])`, 'i');
+export function termRegex(term, { flex = false, inflect = false, morph = null } = {}) {
+  const t = parseTerm(term, { inflectByDefault: inflect });
+  if (t.kind === 're') return new RegExp(t.text, 'i');
+  let body;
+  if (t.inflect) {
+    const { words, seps } = phraseForms(t.text, morph);
+    body = words.map(alternation).reduce((acc, part, i) => `${acc}${flex ? '[\\s-]?' : escapeRe(seps[i - 1])}${part}`);
+  } else {
+    body = escapeRe(t.text);
+    if (flex) body = body.replace(/[ -]/g, '[\\s-]?');
+  }
+  return new RegExp(`(^|[^a-z0-9\u00c0-\u00ff])${body}($|[^a-z0-9\u00c0-\u00ff])`, 'i');
 }
 
 /**
@@ -43,10 +59,22 @@ export function termRegex(term, { flex = false } = {}) {
  * 'pokémon' → pokemon, 'google+' → google). null for 're:' patterns.
  */
 export function gluedForm(term) {
-  if (term.startsWith('re:')) return null;
-  const t = term.endsWith('+') && term.length > 1 ? term.slice(0, -1) : term;
-  const g = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const t = parseTerm(term);
+  if (t.kind === 're') return null;
+  const g = t.text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
   return g || null;
+}
+
+/**
+ * Every glued spelling of a term inside a hashtag: gluedForm(), plus, for an
+ * inflecting entry, its inflected forms glued (planner/morph.mjs gluedForms:
+ * #suicidal, #smoked, #selfharming). [] for 're:' patterns.
+ */
+export function gluedVariants(term, { inflect = false, morph = null } = {}) {
+  const t = parseTerm(term, { inflectByDefault: inflect });
+  if (t.kind === 're') return [];
+  const base = gluedForm(term);
+  return [...new Set([...(base ? [base] : []), ...(t.inflect ? gluedForms(t.text, morph) : [])])];
 }
 
 const need = (cond, msg) => { if (!cond) throw new Error(`planner/policy.json: ${msg}`); };
@@ -91,6 +119,13 @@ export function compilePolicy(p) {
   const ht = lint.hashtags;
   need(ht && Array.isArray(ht.carriers) && ht.carriers.every((w) => typeof w === 'string' && /^[a-z0-9]+$/.test(w)), 'lint.hashtags.carriers (lowercase words)');
   need(ht.terms && typeof ht.terms === 'object' && Object.entries(ht.terms).every(([rule, ts]) => /^(breath-hold|medical|caution|topic:[a-z-]+|name:[a-z]+)$/.test(rule) && Array.isArray(ts) && ts.every((t) => typeof t === 'string' && /^[a-z0-9]+$/.test(t))), 'lint.hashtags.terms ({ rule: [lowercase glued terms] })');
+  const mo = lint.morphology;
+  const lower = (w) => typeof w === 'string' && /^[a-z][a-z']*$/.test(w);
+  need(mo && mo.irregular && typeof mo.irregular === 'object' && Object.entries(mo.irregular).every(([k, v]) => lower(k) && Array.isArray(v) && v.length && v.every(lower)), 'lint.morphology.irregular ({ lemma: [irregular forms] }, lowercase words)');
+  need(Array.isArray(mo.notForms) && mo.notForms.every(lower), 'lint.morphology.notForms (lowercase words)');
+  for (const [cat, terms] of Object.entries(lint.topics).filter(([k]) => k !== 'source' && !k.startsWith('$'))) {
+    need(Array.isArray(terms) && terms.every((t) => typeof t === 'string' && t.trim() === t && t.length > 0 && (t.startsWith('re:') || t === t.toLowerCase())), `lint.topics.${cat}: lowercase terms (a lemma, '=term' as written, or 're:<regex>')`);
+  }
   const tp = lint.timePhrases;
   need(tp && typeof tp === 'object', 'lint.timePhrases');
   const hours = lint.clockTimes?.hours;
@@ -104,19 +139,24 @@ export function compilePolicy(p) {
   const lists = (o) => Object.entries(o).filter(([k]) => k !== 'source' && !k.startsWith('$'));
   const timePhrases = lists(tp);
   for (const [classes, terms] of timePhrases) need(/^[a-z-]+(\|[a-z-]+)*$/.test(classes) && Array.isArray(terms) && terms.every((t) => typeof t === 'string' && t && !t.startsWith('re:')), `lint.timePhrases.${classes}`);
-  const glue = (rule, term) => ({ rule, term, glued: gluedForm(term) });
+  // topic entries are lemmas: each matches its inflections (planner/morph.mjs); names inflect when written 'name+'
+  const morph = Object.freeze({ irregular: mo.irregular, notForms: new Set(mo.notForms) });
+  // the term as messages show it: the entry without its '+' or '=' marker
+  const shown = (t) => (t.startsWith('re:') ? t : parseTerm(t).text);
+  const glue = (rule, term, inflect) => gluedVariants(term, { inflect, morph }).map((g) => ({ rule, term: shown(term), glued: g }));
   const compiled = {
-    topics: lists(lint.topics).flatMap(([cat, terms]) => terms.map((t) => ({ cat, term: t, re: termRegex(t) }))),
-    names: lists(lint.names).flatMap(([cat, terms]) => terms.map((t) => ({ cat, term: t, re: termRegex(t, { flex: true }) }))),
+    morph,
+    topics: lists(lint.topics).flatMap(([cat, terms]) => terms.map((t) => ({ cat, term: shown(t), re: termRegex(t, { flex: true, inflect: true, morph }) }))),
+    names: lists(lint.names).flatMap(([cat, terms]) => terms.map((t) => ({ cat, term: shown(t), re: termRegex(t, { flex: true, morph }) }))),
     breathHold: lint.breathHold.map((t) => ({ term: t, re: termRegex(t) })),
     breathWordKinds: new Set(lint.breathWords.kinds),
     timePhrases: timePhrases.flatMap(([classes, terms]) => terms.map((t) => ({ classes: classes.split('|'), term: t, re: termRegex(t) }))),
     // hashtag search (lint-copy adds the library's medical/caution terms and its vocabulary as carriers)
     gluedTerms: [
-      ...lists(lint.topics).flatMap(([cat, terms]) => terms.map((t) => glue(`topic:${cat}`, t))),
-      ...lists(lint.names).flatMap(([cat, terms]) => terms.map((t) => glue(`name:${cat}`, t))),
-      ...Object.entries(ht.terms).flatMap(([rule, terms]) => terms.map((t) => glue(rule, t))),
-    ].filter((g) => g.glued),
+      ...lists(lint.topics).flatMap(([cat, terms]) => terms.flatMap((t) => glue(`topic:${cat}`, t, true))),
+      ...lists(lint.names).flatMap(([cat, terms]) => terms.flatMap((t) => glue(`name:${cat}`, t, false))),
+      ...Object.entries(ht.terms).flatMap(([rule, terms]) => terms.flatMap((t) => glue(rule, t, false))),
+    ],
     carriers: ht.carriers,
     cautionOk: new Set(lint.cautionWhitelist.map((w) => `${w.term.toLowerCase()}␟${w.text}`)),
     timeExempt: new Set(lint.timeWordExemptions.map((w) => w.text)),

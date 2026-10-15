@@ -81,7 +81,7 @@ export function spliceLoop(y, duration, { cues, log = () => {}, maxShift = SPLIC
       const d = encodeLoopDelivery(z, duration, tmp, { tries: SPLICE.alignments });     // (muxLoop walks the same alignments in the same order)
       const o = onCue(d.y);
       const pass = d.pass && o.pass;
-      const r = { k: c.k, wavStepDbfs: c.stepDbfs, delivered: { stepDbfs: d.stepDbfs, clickDbfs: d.clickDbfs, offsetMs: o.lagMs, offsetMargin: +o.margin.toFixed(3), pad: d.pad, tries: d.tries }, pass };
+      const r = { k: c.k, wavStepDbfs: c.stepDbfs, delivered: { stepDbfs: d.stepDbfs, clickDbfs: d.clickDbfs, offsetMs: o.lagMs, offsetMargin: +o.margin.toFixed(3), preRollFrames: d.frames, pad: d.pad, tries: d.tries }, pass };
       tried.push(r);
       if (!best || (pass && !best.pass) || (pass === best.pass && d.stepDbfs < best.delivered.stepDbfs)) best = { ...r, y: z };
       if (pass) break;

@@ -31,8 +31,11 @@ import { usedFingerprints } from './ledger.mjs';
 import { channelContext, recordPlanned, checkSchedule, copyBlock, closerRunBlocked, sequenceFilter, dayNumber, dateOfDay, cadenceCap } from './schedule.mjs';
 import { POLICY_FILE } from './policy.mjs';
 import { TURN_MOVES } from './capabilities.mjs';
+import { assertValidLibrary } from './library-check.mjs';
 
 export const PLANNER_VERSION = '1.0.0';
+/** Render qualities a spec may ask for (planner/schema/hm-variant-1.schema.json; engine/render/profiles.js). */
+export const QUALITIES = Object.freeze(['final', 'draft', 'proof']);
 const r2 = (v) => Math.round(v * 100) / 100;
 const r3 = (v) => Math.round(v * 1000) / 1000;
 const firstWord = (l) => (l.match(/[A-Za-z0-9']+/) || [''])[0].toLowerCase();
@@ -319,8 +322,11 @@ export function planBatch(o) {
   if (!o.batch) throw new Error('batch id required');
   const production = mode === 'production';
   if (production && (!o.channel || !o.start)) throw new Error('a production plan needs a channel and a start date');
-  const opts = buildOptions({ lib, caps, policy, mode, constraints: o.constraints || {} });
   const quality = o.quality || 'final';
+  if (!QUALITIES.includes(quality)) throw new Error(`quality must be ${QUALITIES.join('|')}, got ${quality}`);
+  // the story library is the only source of copy: never plan from one the library validator rejects
+  assertValidLibrary(lib);
+  const opts = buildOptions({ lib, caps, policy, mode, constraints: o.constraints || {} });
   const cap = cadenceCap(caps.unlocked().length, policy);
   const perWeek = production ? Math.min(o.perWeek || cap, cap) : null;
   const startDay = production ? dayNumber(o.start) : null;

@@ -4,13 +4,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { STUDIO, mkWorkTemp } from '../../render/lib/paths.mjs';
+import { STUDIO, REPO, mkWorkTemp, isFrozen } from '../../render/lib/paths.mjs';
 import { scanSource, scanDirs, DETERMINISTIC_DIRS, WALLCLOCK_ALLOWED } from '../../render/lib/determinism-scan.mjs';
 
 test('engine/ and composer/ contain no wall-clock or unseeded-randomness reads; every allowlist entry is live', (t) => {
   const r = scanDirs(STUDIO);
-  t.diagnostic(`scanned ${r.scanned.length} files in ${DETERMINISTIC_DIRS.join(', ')}${r.missing.length ? ` (not created yet: ${r.missing.join(', ')})` : ''}; followed ${r.followed.length} imports, ${r.locked.length} locked`);
+  t.diagnostic(`scanned ${r.scanned.length} files in ${DETERMINISTIC_DIRS.join(', ')}${r.missing.length ? ` (not created yet: ${r.missing.join(', ')})` : ''}; `
+    + `followed ${r.followed.length} studio files, ${r.locked.length} locked, ${r.packages.length} in node_modules, ${r.symlinks.length} symlinks`);
   for (const a of r.allowed) t.diagnostic(`allowlisted ${a.file}:${a.line} ${a.api}: ${a.reason}`);
+  for (const w of r.watched) t.diagnostic(`watched real-clock handle ${w.kind} ${w.name} (from ${w.origin})`);
   assert.deepEqual(r.findings.map((f) => `${f.file}:${f.line} ${f.api}: ${f.text}`), []);
   assert.deepEqual(r.stale.map((s) => `${s.file}: ${s.line}`), [], 'stale allowlist entries: delete them from WALLCLOCK_ALLOWED');
   assert.deepEqual(r.pending.map((s) => `${s.file}: ${s.line}`), [], 'allowlist entries for files that are not scanned: register an exception in the same change as the line it excuses');
@@ -173,7 +175,8 @@ function tree() {
   const root = mkWorkTemp('wallclock-');
   const studio = path.join(root, 'studio');
   const write = (rel, text) => { const p = path.join(studio, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text); };
-  return { root, studio, write, scan: (allow = [], dirs = ['engine', 'composer']) => scanDirs(studio, dirs, allow), done: () => fs.rmSync(root, { recursive: true, force: true }) };
+  const link = (rel, target) => { const p = path.join(studio, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.symlinkSync(target, p); };
+  return { root, studio, write, link, scan: (allow = [], dirs = ['engine', 'composer']) => scanDirs(studio, dirs, allow), done: () => fs.rmSync(root, { recursive: true, force: true }) };
 }
 const keys = (r) => r.findings.map((f) => `${f.file}:${f.line} ${f.api}`).sort();
 
@@ -243,12 +246,13 @@ test('allowlist: excusing a capture never excuses its handle: every use and ever
   } finally { t.done(); }
 });
 
-test('imports: studio code imported from elsewhere is scanned too; locked code is not followed; unfollowable imports are findings', () => {
+test('imports: studio code imported from elsewhere is scanned too, locked code is followed and judged, unfollowable imports are findings', () => {
   const t = tree();
   try {
     t.write('lib/now.js', 'export const now = () => Date.now();\n');                    // a helper outside engine/
     t.write('lib/ok.js', 'export const two = 2;\n');
-    t.write('stage2/frozen.js', 'export const r = () => Math.random();\n');              // FROZEN path: hash-locked elsewhere
+    t.write('stage2/frozen.js', 'export const r = () => Math.random();\n');              // FROZEN path: hash-locked, still judged
+    t.write('../hushmallow/src/registry.js', 'export const REGISTRY = {};\n');           // the live app: hash-locked, clean
     t.write('data/cfg.json', '{"Math.random": true}\n');
     t.write('engine/a.js', [
       "import { now } from '../lib/now.js';",
@@ -262,17 +266,187 @@ test('imports: studio code imported from elsewhere is scanned too; locked code i
       "import z from '../../elsewhere/z.js';",
       "import w from '../lib/plain';",
     ].join('\n'));
+    t.write('../elsewhere/z.js', 'export default 1;\n');
     t.write('lib/plain', 'export default Date.now();\n');
     const r = t.scan();
     assert.deepEqual(r.followed, [{ file: 'lib/now.js', from: 'engine/a.js' }, { file: 'lib/ok.js', from: 'engine/a.js' }]);
     assert.deepEqual(r.locked.map((l) => l.file).sort(), ['../hushmallow/src/registry.js', 'stage2/frozen.js']);
     assert.deepEqual(keys(r), [
       'engine/a.js:10 imports a file the guard cannot read as JS: the guard cannot follow it',
-      'engine/a.js:6 imports a package (lodash): the guard cannot follow it',
+      'engine/a.js:6 imports a package (lodash) that is not installed here: the guard cannot follow it',
       'engine/a.js:7 imports code from a URL (https:): the guard cannot follow it',
       'engine/a.js:8 imports an absolute import path: the guard cannot follow it',
       'engine/a.js:9 imports code from outside the studio: the guard cannot follow it',
       'lib/now.js:1 Date.now',
+      'stage2/frozen.js:1 Math.random',
+    ]);
+  } finally { t.done(); }
+});
+
+// ---- FU-1 regression tests: one per bypass the Wave A review and the M0 audit reported (docs/wp/FU-1.md)
+
+test('bypass: code in node_modules that engine code imports is scanned (relative imports into node_modules and package imports)', () => {
+  const t = tree();
+  try {
+    // round 3 skipped every node_modules directory, so this file was never parsed although engine/a.js runs it
+    t.write('engine/node_modules/x/index.js', 'export const t = () => Date.now();\n');
+    t.write('engine/node_modules/unused/index.js', 'export const u = Math.random();\n');  // never imported: never runs, not scanned
+    // a package: every entry it can expose is judged (exports conditions, main, CommonJS requires with probing)
+    t.write('node_modules/pkg/package.json', JSON.stringify({ name: 'pkg', main: './main.cjs', exports: { '.': { browser: './b.js', default: './main.cjs' }, './sub': './sub.js' } }));
+    t.write('node_modules/pkg/b.js', 'export const b = performance.now();\n');
+    t.write('node_modules/pkg/main.cjs', "module.exports = require('./lib');\n");
+    t.write('node_modules/pkg/lib.js', 'module.exports = Math.random();\n');
+    t.write('node_modules/pkg/sub.js', "module.exports = require('@scope/dep');\n");
+    t.write('node_modules/@scope/dep/package.json', JSON.stringify({ name: '@scope/dep' }));
+    t.write('node_modules/@scope/dep/index.js', 'module.exports = new Date();\n');
+    t.write('engine/a.js', "import { t } from './node_modules/x/index.js';\nimport p from 'pkg';\nimport s from 'pkg/sub';\nimport n from 'not-installed';\n");
+    const r = t.scan();
+    assert.deepEqual(keys(r), [
+      'engine/a.js:4 imports a package (not-installed) that is not installed here: the guard cannot follow it',
+      'engine/node_modules/x/index.js:1 Date.now',
+      'node_modules/@scope/dep/index.js:1 new Date() (current time)',
+      'node_modules/pkg/b.js:1 performance.now',
+      'node_modules/pkg/lib.js:1 Math.random',
+    ]);
+    assert.deepEqual(r.packages.map((p) => p.file).sort(), ['node_modules/@scope/dep/index.js', 'node_modules/pkg/b.js', 'node_modules/pkg/lib.js', 'node_modules/pkg/main.cjs', 'node_modules/pkg/sub.js']);
+    assert.ok(!r.scanned.includes('engine/node_modules/unused/index.js'));
+  } finally { t.done(); }
+});
+
+test('bypass: symlinked directories are followed, imports through them are judged, links out of the studio are findings', () => {
+  const t = tree();
+  try {
+    // round 3 did not follow engine/<symlink>/ and skipped imports through it as "inside engine/"
+    t.write('lib/shared/clock.js', 'export const now = () => performance.now();\n');
+    t.link('engine/shared', '../lib/shared');
+    t.write('engine/a.js', "import { now } from './shared/clock.js';\n");
+    // a link out of the studio is a finding, whether walked or imported through
+    t.write('../outside/x.js', 'export default Math.random();\n');
+    t.link('engine/out', '../../outside');
+    t.link('composer/x.js', '../../outside/x.js');
+    t.link('lib/out', '../../outside');
+    t.write('engine/b.js', "import x from '../lib/out/x.js';\n");
+    // a symlinked file resolves its imports from both its own path (browsers) and its real path (Node)
+    t.write('other/linked.js', "import { h } from './helper.js';\nexport default h;\n");
+    t.write('other/helper.js', 'export const h = Date.now();\n');
+    t.write('engine/helper.js', 'export const h = new Date();\n');
+    t.link('engine/linked.js', '../other/linked.js');
+    t.link('engine/loop', '.');                                                       // a cycle terminates
+    const r = t.scan();
+    assert.deepEqual(keys(r), [
+      'composer/x.js:1 a symlink to a file outside the studio: the guard cannot follow it',
+      'engine/b.js:1 imports code from outside the studio (through a symlink): the guard cannot follow it',
+      'engine/helper.js:1 new Date() (current time)',
+      'engine/out:1 a symlink to a directory outside the studio: the guard cannot follow it',
+      'lib/shared/clock.js:1 performance.now',
+      'other/helper.js:1 Date.now',
+    ]);
+    assert.ok(r.symlinks.some((s) => s.link === 'engine/shared' && s.target === 'lib/shared'));
+  } finally { t.done(); }
+});
+
+/** The v1 clock, copied (read-only) from the frozen file into a test tree's stage/components/. */
+const V1_CLOCK = fs.readFileSync(path.join(STUDIO, 'stage/components/clock.js'), 'utf8');
+const V1_CLOCK_ENTRIES = WALLCLOCK_ALLOWED.filter((e) => e.file === 'stage/components/clock.js');
+
+test('bypass: imports of locked code are followed: a live-app module that reads the clock is a finding (rig.js)', () => {
+  const t = tree();
+  try {
+    // round 3 listed these imports and never read the files, so engine code reached the clock through them with zero findings
+    t.write('../hushmallow/src/mallows/rig.js', 'export const blink = () => Math.random() < 0.1;\nexport const t0 = performance.now();\nperformance.now();\n');
+    t.write('engine/a.js', "import { blink } from '../../hushmallow/src/mallows/rig.js';\nexport const b = blink();\n");
+    let r = t.scan();
+    assert.deepEqual(keys(r), ['../hushmallow/src/mallows/rig.js:1 Math.random', '../hushmallow/src/mallows/rig.js:2 performance.now', '../hushmallow/src/mallows/rig.js:3 performance.now']);
+    assert.deepEqual(r.locked, [{ file: '../hushmallow/src/mallows/rig.js', from: 'engine/a.js' }]);
+    // a reviewed entry may pin a line of a locked file (it cannot change: the app is hash-locked) ...
+    const entry = (line, apis) => ({ file: '../hushmallow/src/mallows/rig.js', line, apis, reason: 'test entry' });
+    r = t.scan([entry('performance.now();', ['performance.now'])]);
+    assert.deepEqual(keys(r), ['../hushmallow/src/mallows/rig.js:1 Math.random', '../hushmallow/src/mallows/rig.js:2 performance.now']);
+    // ... but excusing a line never excuses the handle it exports
+    r = t.scan([entry('export const blink = () => Math.random() < 0.1;', ['Math.random'])]);
+    assert.deepEqual(keys(r), ['../hushmallow/src/mallows/rig.js:1 exports the real-clock handle blink (declared on an allowlisted line)',
+      '../hushmallow/src/mallows/rig.js:2 performance.now', '../hushmallow/src/mallows/rig.js:3 performance.now']);
+  } finally { t.done(); }
+});
+
+test('bypass: the v1 clock\'s real-clock handles (realNow, RealDate, window.__hushClock) are findings wherever they are read', () => {
+  const t = tree();
+  try {
+    t.write('stage/components/clock.js', V1_CLOCK);
+    t.write('engine/a.js', "import { clock } from '../stage/components/clock.js';\nexport const step = (dt) => clock.step(dt);\n");
+    // without entries, importing the frozen clock is a finding (its real-timer captures)
+    assert.deepEqual(keys(t.scan()), [
+      'stage/components/clock.js:42 performance (as a value)', 'stage/components/clock.js:42 performance.now', 'stage/components/clock.js:44 Date (as a value)',
+    ]);
+    // with the studio's reviewed entries the import is clean, and every way to read the handles is a finding
+    assert.equal(V1_CLOCK_ENTRIES.length, 4);
+    assert.deepEqual(keys(t.scan(V1_CLOCK_ENTRIES)), []);
+    t.write('engine/b.js', [
+      "import { clock } from '../stage/components/clock.js';",
+      'export const a = window.__hushClock.realNow();',
+      'export const b = new clock.RealDate();',
+      'const { realNow } = clock; export const c = realNow();',
+      "export const d = globalThis['__hush' + 'Clock'];",
+      "export const e = Reflect.get(clock, 'realNow');",
+      'export const f = __hushClock;',
+    ].join('\n'));
+    const r = t.scan(V1_CLOCK_ENTRIES);
+    assert.deepEqual(keys(r), [
+      'engine/b.js:2 real-clock carrier __hushClock (published by stage/components/clock.js:89)',
+      'engine/b.js:2 real-clock handle .realNow (exported by stage/components/clock.js:85)',
+      'engine/b.js:3 real-clock handle .RealDate (exported by stage/components/clock.js:86)',
+      'engine/b.js:4 real-clock handle .realNow (exported by stage/components/clock.js:85)',
+      'engine/b.js:5 real-clock carrier __hushClock (published by stage/components/clock.js:89)',
+      'engine/b.js:6 names the real-clock handle "realNow" in a string (exported by stage/components/clock.js:85)',
+      'engine/b.js:7 real-clock carrier __hushClock (published by stage/components/clock.js:89)',
+    ]);
+    assert.deepEqual(r.watched.filter((w) => w.kind !== 'binding').map((w) => `${w.kind} ${w.name}`), ['property realNow', 'property RealDate', 'global __hushClock']);
+    // installing a replacement (assignment) is not a read
+    t.write('engine/b.js', 'window.__hushClock = { step() {} };\n');
+    assert.deepEqual(keys(t.scan(V1_CLOCK_ENTRIES)), []);
+  } finally { t.done(); }
+});
+
+test('allowlist: a handle that leaves an excused line where the guard cannot follow it is a finding no entry can excuse', () => {
+  const t = tree();
+  try {
+    const entry = (line, apis) => ({ file: 'engine/c.js', line, apis, reason: 'test entry' });
+    t.write('engine/c.js', 'export default performance.now.bind(performance);\n');
+    let r = t.scan([entry('export default performance.now.bind(performance);', ['performance.now', 'performance (as a value)'])]);
+    assert.deepEqual(keys(r), ['engine/c.js:1 a real-clock handle leaves this allowlisted line (returned, exported, thrown or passed on where the guard cannot follow it)']);
+    // stored on the global object: the global name is watched in every file
+    t.write('engine/c.js', 'window.rn = performance.now.bind(performance);\n');
+    t.write('composer/d.js', 'export const x = rn() + window.rn();\n');
+    r = t.scan([entry('window.rn = performance.now.bind(performance);', ['performance.now', 'performance (as a value)'])]);
+    assert.deepEqual(keys(r), ['composer/d.js:1 real-clock carrier rn (published by engine/c.js:1)', 'composer/d.js:1 real-clock handle .rn (exported by engine/c.js:1)']);
+  } finally { t.done(); }
+});
+
+test('bypass: import maps, frames and script sources of HTML pages are followed', () => {
+  const t = tree();
+  try {
+    t.write('lib/evil.js', 'export const t = Date.now();\n');
+    t.write('lib/dir/a.js', 'export const r = Math.random();\n');
+    t.write('lib/frame.html', '<script type="module">const t = performance.now();</script>\n');
+    t.write('engine/index.html', [
+      '<script type="importmap">',
+      '{ "imports": { "./util.js": "../lib/evil.js", "lib/": "../lib/dir/" } }',
+      '</script>',
+      '<iframe src="../lib/frame.html"></iframe>',
+      '<script type="module" src="./util.js"></script>',
+      '<script src="vendor/../../lib/page-relative.js"></script>',
+    ].join('\n'));
+    t.write('lib/page-relative.js', 'var p = Math.random();\n');                       // src="x/y.js" is a URL relative to the page, not a package
+    t.write('engine/util.js', 'export const u = 1;\n');
+    t.write('engine/bad.html', '<script type="importmap">{ nope }</script>\n<script type="importmap" src="map.json"></script>\n');
+    const r = t.scan();
+    assert.deepEqual(keys(r), [
+      'engine/bad.html:1 unparseable import map (Expected property name or \'}\' in JSON at position 2 (line 1 column 3)): the guard cannot follow it',
+      'engine/bad.html:2 an external import map (src=): the guard cannot follow it',
+      'lib/dir/a.js:1 Math.random',
+      'lib/evil.js:1 Date.now',
+      'lib/frame.html:1 performance.now',
+      'lib/page-relative.js:1 Math.random',
     ]);
   } finally { t.done(); }
 });
@@ -286,11 +460,26 @@ test('files the guard cannot parse or read are findings', () => {
   } finally { t.done(); }
 });
 
-test('allowlist: every entry is in a deterministic dir and has a reason; none is registered ahead of its file', () => {
+test('allowlist: every entry is in a deterministic dir or in hash-locked code, has a reason, and its file exists', () => {
   for (const a of WALLCLOCK_ALLOWED) {
-    assert.ok(DETERMINISTIC_DIRS.some((dir) => a.file.startsWith(`${dir}/`)), a.file);
+    const abs = path.join(STUDIO, a.file);
+    const lockedCode = isFrozen(abs) || !path.relative(path.join(REPO, 'hushmallow'), abs).startsWith('..');
+    assert.ok(DETERMINISTIC_DIRS.some((dir) => a.file.startsWith(`${dir}/`)) || lockedCode, a.file);
     assert.ok(a.reason.length > 20 && a.apis.length);
-    assert.ok(fs.existsSync(path.join(STUDIO, a.file)), `${a.file} does not exist`);
+    assert.ok(fs.existsSync(abs), `${a.file} does not exist`);
+  }
+});
+
+test('the allowlist\'s premise: in the engine page, every stage2 module the frozen v2 module imports is redirected to engine/ by the import map', () => {
+  // the entries for stage2/stage.js and the v1 clock rest on this: frozen stage2 never loads in the engine page
+  const html = fs.readFileSync(path.join(STUDIO, 'engine/index.html'), 'utf8');
+  const map = JSON.parse(/<script type="importmap">([\s\S]*?)<\/script>/.exec(html)[1]).imports;
+  const v2 = fs.readFileSync(path.join(STUDIO, 'videos/my-brain-at-2am-v2.js'), 'utf8');
+  const stage2 = [...v2.matchAll(/from '(\.\.\/stage2\/[^']+)'/g)].map((m) => m[1]);
+  assert.ok(stage2.includes('../stage2/stage.js'));
+  for (const spec of stage2) {
+    assert.ok(map[spec], `${spec} is not redirected by engine/index.html`);
+    assert.ok(fs.existsSync(path.join(STUDIO, 'engine', map[spec])), `${map[spec]} does not exist in engine/`);
   }
 });
 
@@ -308,11 +497,18 @@ test('the v1 clock (which WP-01 inlines as engine/runtime/clock.js): only its un
   assert.deepEqual(scanSource(inlined), []);
 });
 
-test('the code WP-01 forks (stage2/) and the v2 direction under the full rules: one finding, the computed direction import', () => {
+test('the code WP-01 forked (stage2/) and the v2 direction under the full rules: the computed direction import and the v1 clock\'s captures', () => {
   const r = scanDirs(STUDIO, ['stage2'], []);
   assert.ok(r.scanned.length >= 10);
-  // engine/ must load directions through constant import() thunks (followed by the guard) or pin this line with a reason
-  assert.deepEqual(keys(r), ['stage2/stage.js:109 import() with a computed specifier (dynamic code)']);
-  assert.deepEqual(r.locked.map((l) => l.file).sort(), ['../hushmallow/src/mallows/registry.js', '../hushmallow/src/mallows/registry.js', 'stage/components/clock.js']);
+  // engine/ loads directions through constant import() thunks (followed by the guard); the frozen line and the v1 clock
+  // (followed now: locked code is judged too) are what WALLCLOCK_ALLOWED pins
+  assert.deepEqual(keys(r), [
+    'stage/components/clock.js:42 performance (as a value)', 'stage/components/clock.js:42 performance.now', 'stage/components/clock.js:44 Date (as a value)',
+    'stage2/stage.js:109 import() with a computed specifier (dynamic code)',
+  ]);
+  assert.deepEqual(r.locked.map((l) => l.file).sort(), ['../hushmallow/src/mallows/registry.js', 'stage/components/clock.js']);
   assert.deepEqual(scanSource(fs.readFileSync(path.join(STUDIO, 'videos/my-brain-at-2am-v2.js'), 'utf8')), []);
+  // the studio's entries excuse exactly these, and the handles they let out stay watched
+  const s = scanDirs(STUDIO, ['stage2']);
+  assert.deepEqual([keys(s), s.stale, s.pending], [[], [], []]);
 });

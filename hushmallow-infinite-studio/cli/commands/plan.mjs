@@ -42,6 +42,8 @@ export async function run(args, ctx) {
     const batch = values.batch || (mode === 'review' ? `review-s${seed}` : `${values.start}-${values.channel}-s${seed}`);
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(batch)) throw Object.assign(new Error(`hm plan: batch id "${batch}" must be letters, digits, . _ - (max 80)`), { usage: true });
     if (values.reserve && mode !== 'production') throw Object.assign(new Error('hm plan: --reserve is for production plans'), { usage: true });
+    const { QUALITIES } = await import('../../planner/pick.mjs');
+    if (!QUALITIES.includes(values.quality)) throw Object.assign(new Error(`hm plan: --quality must be ${QUALITIES.join('|')} (only final is ever exported)`), { usage: true });
 
     const c = cli.loadContext(values);
     const t0 = process.hrtime.bigint();

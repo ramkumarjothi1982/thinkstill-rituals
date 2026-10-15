@@ -5,7 +5,11 @@
 // (published + copy-usage), which drives cooldowns.
 //
 // An export happens only when all of this holds (exportBlockers):
-//   - the spec is a production spec (never review/INTERNAL);
+//   - the spec is a production spec (never review/INTERNAL) of final quality
+//     (never a draft, which is a half-resolution render with the DRAFT mark,
+//     nor a proof, which is stills); a render provenance.json next to
+//     final.mp4, when there is one, must describe this video, rendered with a
+//     full-quality, unmarked profile (final or exact);
 //   - G-SPEC passes today, in the spec's batch and against the ledger, so
 //     every copy string is a library string and mode/channel agree;
 //   - a spec of a planned batch is exactly what hm plan wrote;
@@ -130,6 +134,38 @@ export function qaProblems(report, { videoSha256, fingerprint, required = [] }) 
   return out;
 }
 
+/** Why a spec quality other than final is never exported. */
+const QUALITY_WHY = Object.freeze({
+  draft: 'a draft is a review render at half resolution with the DRAFT mark burned in',
+  proof: 'a proof is 6 stills for a look, not a video',
+});
+/** Render profiles that make a full-quality, unmarked master (engine/render/profiles.js). */
+export const EXPORT_PROFILES = Object.freeze(['final', 'exact']);
+
+/**
+ * The render's own record of how final.mp4 was made, when the render farm
+ * left provenance.json next to it (hm-provenance/1: job.params.profile,
+ * scale, mark; final.sha256). It must describe this very video and a
+ * full-quality, unmarked profile. Without a provenance.json the spec's
+ * quality and the QA report (G-FINAL checks the DRAFT/INTERNAL mark) are the
+ * evidence. → { render: { profile, scale, mark, encoder, provenance } | null, problems: [] }
+ */
+export function renderProvenance(dir, videoSha256) {
+  const file = path.join(dir, 'provenance.json');
+  if (!fs.existsSync(file)) return { render: null, problems: [] };
+  let prov;
+  try { prov = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { return { render: null, problems: [`provenance.json is not JSON (${e.message})`] }; }
+  const params = prov?.job?.params || {};
+  const render = { profile: params.profile ?? null, scale: params.scale ?? null, mark: params.mark ?? null, encoder: params.encoder ?? null, provenance: { file: 'provenance.json', sha256: sha256Hex(fs.readFileSync(file)) } };
+  const problems = [];
+  const madeSha = typeof prov?.final?.sha256 === 'string' ? prov.final.sha256.replace(/^sha256:/, '') : null;
+  if (madeSha !== videoSha256) problems.push(`provenance.json describes another video (final.sha256 ${madeSha ? `${madeSha.slice(0, 12)}...` : 'missing'}, final.mp4 is ${videoSha256.slice(0, 12)}...)`);
+  if (!EXPORT_PROFILES.includes(render.profile)) problems.push(`final.mp4 was rendered with the "${render.profile}" profile (provenance.json); only ${EXPORT_PROFILES.join(' or ')} renders are exported`);
+  if (render.mark) problems.push(`final.mp4 carries the ${render.mark} mark (provenance.json); a marked render is never exported`);
+  if (render.scale !== null && render.scale !== 1) problems.push(`final.mp4 was rendered at scale ${render.scale} (provenance.json); only full-resolution renders are exported`);
+  return { render, problems };
+}
+
 /**
  * Why an export must not happen (empty = allowed).
  * ctx: { lib, caps, policy, ledger, file (spec.json path), dir (variant dir), skipQa? }
@@ -140,6 +176,7 @@ export function exportBlockers(spec, ctx) {
   if (shape.length) return shape;
   const out = [];
   if (spec.internal || spec.mode !== 'production') out.push('review/INTERNAL specs are never exported (re-plan it as a production spec)');
+  if (spec.quality !== 'final') out.push(`spec quality is "${spec.quality}": only final-quality renders are exported (${QUALITY_WHY[spec.quality] || 'unknown quality'}); re-plan it with --quality final and render it with the final profile`);
   const g = gspecOf(file, spec, ctx);
   for (const e of g.errors) out.push(`G-SPEC ${e.rule}: ${e.message}`);
   const prov = planProvenance(file, spec);
@@ -150,6 +187,7 @@ export function exportBlockers(spec, ctx) {
   const video = path.join(dir, 'final.mp4');
   const hasVideo = fs.existsSync(video) && fs.statSync(video).size > 0;
   if (!hasVideo) out.push(`no final.mp4 (or an empty one) in ${dir}`);
+  else out.push(...renderProvenance(dir, sha256Hex(fs.readFileSync(video))).problems);
   if (!skipQa) {
     const qa = path.join(dir, 'qa', 'report.json');
     if (!fs.existsSync(qa)) out.push(`no QA report (${qa}); run QA first or pass --skip-qa`);
@@ -192,6 +230,8 @@ export function exportVariant(opts) {
     schema: 'hm-export/1',
     id: spec.id, title: t.title, template: spec.template, mallow: spec.mallow, realm: spec.realm, tod: spec.tod, duration: spec.duration,
     channel: spec.channel, plannedFor: spec.plannedFor, fingerprint: spec.fingerprint,
+    quality: spec.quality,
+    render: renderProvenance(dir, sha256Hex(fs.readFileSync(video))).render ?? { profile: null, note: 'no provenance.json next to final.mp4: the spec quality and the QA report are the evidence' },
     spec: { file: path.basename(file), sha256: sha256Hex(fs.readFileSync(file)), hash: specHash(spec), gspec: 'pass', plan: planProvenance(file, spec).planned ? 'matches plan.json' : 'loose spec (no plan.json entry)' },
     video: { file: 'final.mp4', sha256: sha256Hex(fs.readFileSync(video)), bytes: fs.statSync(video).size },
     caption: {
@@ -220,6 +260,7 @@ export function exportVariant(opts) {
 export function markPosted({ lib, caps, policy, ledger, spec, channel, at, dir: ledgerDirOpt }) {
   const problems = shapeProblems(spec);
   if (spec.internal || spec.mode !== 'production') problems.push('review/INTERNAL specs are never posted');
+  if (spec.quality !== 'final') problems.push(`spec quality is "${spec.quality}": only final-quality videos are exported, so only they are recorded as posted`);
   const d = latestDecision(ledger, spec.id);
   if (!d || d.verdict !== 'approve') problems.push(`${spec.id} is not approved; only approved videos can be recorded as posted`);
   else if (d.specHash !== specHash(spec)) problems.push(`spec.json changed since it was approved (approved ${d.specHash.slice(7, 19)}, now ${specHash(spec).slice(7, 19)})`);

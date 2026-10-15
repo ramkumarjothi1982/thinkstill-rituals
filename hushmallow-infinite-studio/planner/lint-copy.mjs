@@ -1,14 +1,21 @@
 // Copy lint: every per-string rule of templates/validate-library.mjs, plus
 // the planner's additions (PHASE2-PLAN WP-06 / G-SPEC):
 //   - the tone/topic blocklist (self-harm, death, illness, body/food, alcohol,
-//     drugs, appearance, body image, self-hatred, catastrophe, outcome claims);
+//     drugs, appearance, body image, self-hatred, catastrophe, violence,
+//     outcome claims). Each entry is a lemma matched in all its inflections
+//     (planner/morph.mjs: smoke → Smoked, smokers; vomit → Vomiting); derived
+//     words are lemmas of their own (suicidal, sickly). The library's banned
+//     medical terms are lemmas too (diagnose → diagnosed, panic → panicking);
 //   - Latin-1 only (the renderer's Fredoka subset, audit R16) and clean spacing;
 //   - time words must match the spec's chosen time of day (lines included):
 //     the library's timeWords and the planner's timePhrases ('late night',
 //     'sunrise') read on the text with its clock phrases masked, intersected
 //     with every explicit clock time (2:00 AM, 2.30am, 3 a.m., two o'clock in
-//     the morning, 02:00, 0200 hours, noon; planner/time-words.mjs);
-//   - lowercase 'hushmallow' (so never inside an ALL-CAPS hook);
+//     the morning, 02:00, 0200 hours, noon; planner/time-words.mjs), and with
+//     the validator's own reading (the library's timeWords on the whole text)
+//     as the floor, so the lint never allows a time the validator would not;
+//   - lowercase 'hushmallow' (so never inside an ALL-CAPS hook), never split
+//     ('Hush Mallow', 'hush-mallow', or over a hook's two rows);
 //   - breath-hold phrasing, holds and breathing counts; no breath word in a
 //     hook or end card (policy.lint.breathWords);
 //   - caution terms are errors unless whitelisted for that exact string;
@@ -16,8 +23,9 @@
 //   - a hook or end card is one text however it wraps: every phrase rule
 //     (medical, caution, topics, names, breath-hold) also reads its rows
 //     joined, so a banned phrase split across the row break is caught;
-//   - hashtags (export captions): the same terms searched inside glued words
-//     (#anxietyrelief), excused only by a carrier word (lintHashtag);
+//   - hashtags (export captions): the same terms, inflections included,
+//     searched inside glued words (#anxietyrelief, #suicidal), excused only by
+//     a carrier word, and no time word (#2am: one list goes on every video);
 //   - reading-time pre-checks against the beat clock: every copy element is
 //     one readable text (a thought, the whole hook, the whole end card);
 //   - layout pre-checks with the Fredoka metrics;
@@ -28,28 +36,65 @@
 // Issues are { rule, severity: 'error'|'warn', where, text, message, term? }.
 
 import { wrap2, hooksOf, linePools, resolutionsOf } from './library.mjs';
-import { loadPolicy, gluedForm } from './policy.mjs';
+import { loadPolicy, gluedForm, gluedVariants, termRegex } from './policy.mjs';
 import { measureText, fitSize, typographic, loadMetrics } from './text-metrics.mjs';
 import { clockClasses, allowedTods, maskClockTimes } from './time-words.mjs';
 
-// ---- library-derived matchers (built once per library object) ---------------
+// ---- library-derived matchers (built once per library and policy) ----------
 const libCache = new WeakMap();
-function libMatchers(lib) {
-  if (libCache.has(lib)) return libCache.get(lib);
+function libMatchers(lib, policy) {
+  let byPolicy = libCache.get(lib);
+  if (!byPolicy) libCache.set(lib, (byPolicy = new WeakMap()));
+  if (byPolicy.has(policy)) return byPolicy.get(policy);
   const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const f = lib.raw.medicalTherapyFlags;
+  const morph = policy.compiled.morph;
   const m = {
     // the validator's exact patterns
     banned: f.banned.map((t) => [t, new RegExp(`(^|[^a-z0-9])${esc(t)}($|[^a-z0-9])`, 'i')]),
     caution: f.caution.map((t) => [t, new RegExp(`(^|[^a-z])${esc(t)}`, 'i')]),
-    // the same terms as they would sit inside a glued hashtag
-    gluedFlags: [...f.banned.map((t) => ({ rule: 'medical', term: t, glued: gluedForm(t) })), ...f.caution.map((t) => ({ rule: 'caution', term: t, glued: gluedForm(t) }))].filter((g) => g.glued),
+    // planner addition: a banned term is a lemma too, so its inflections are banned with it ('diagnosed',
+    // 'panicking', 'healed'); the caution patterns already match any ending
+    bannedInflected: f.banned.map((t) => [t, termRegex(t, { inflect: true, flex: true, morph })]),
+    // the same terms as they would sit inside a glued hashtag (banned terms with their inflections)
+    gluedFlags: [
+      ...f.banned.flatMap((t) => gluedVariants(t, { inflect: true, morph }).map((g) => ({ rule: 'medical', term: t, glued: g }))),
+      ...f.caution.map((t) => ({ rule: 'caution', term: t, glued: gluedForm(t) })).filter((g) => g.glued),
+    ],
     // every word of the library's copy: all of it is lint-clean, so a library word that contains a
     // term ('still' contains 'ill') is an innocent carrier of it inside a hashtag
     vocabulary: libraryVocabulary(lib),
+    // time words as they would sit inside a glued hashtag: the library's literal timeWords
+    // ('bedtime', 'tonight', 'sundaynight', '2am') and the planner's timePhrases ('latenight')
+    gluedTimes: [
+      ...Object.entries(lib.raw.timeWords).filter(([k]) => !k.startsWith('$')).flatMap(([classes, pats]) => pats.flatMap(literalExpansions).map((g) => ({ glued: g, classes: classes.split('|') }))),
+      ...policy.compiled.timePhrases.map((p) => ({ glued: gluedForm(p.term), classes: p.classes })).filter((g) => g.glued),
+      ...['noon', 'midday'].map((g) => ({ glued: g, classes: classesOfHour(12, policy) })),
+    ],
   };
-  libCache.set(lib, m);
+  byPolicy.set(policy, m);
   return m;
+}
+
+/**
+ * The literal spellings a simple time-word pattern stands for, glued
+ * ('\\b(1|2|3|4) ?AM\\b' → 1am, 2am, 3am, 4am; '\\bSUNDAY (6 PM|NIGHT)\\b' →
+ * sunday6pm, sundaynight). Patterns with other regex syntax, and spellings
+ * without a letter ('8:15'), give nothing.
+ */
+function literalExpansions(src) {
+  let outs = [src.replace(/\\b/g, '').replace(/ \?/g, ' ')];
+  const group = /\(([^()]*)\)/;
+  for (let guard = 0; guard < 8 && outs.some((x) => group.test(x)); guard++) {
+    outs = outs.flatMap((x) => { const g = group.exec(x); return g ? g[1].split('|').map((alt) => x.slice(0, g.index) + alt + x.slice(g.index + g[0].length)) : [x]; });
+  }
+  return outs.filter((x) => /^[A-Za-z0-9 :]+$/.test(x) && /[a-z]/i.test(x)).map((x) => x.toLowerCase().replace(/[^a-z0-9]/g, ''));
+}
+
+/** The ToD classes policy.lint.clockTimes maps an hour (0-23) to. */
+function classesOfHour(hour, policy) {
+  for (const [classes, hs] of Object.entries(policy.lint.clockTimes.hours)) if (hs.includes(hour)) return classes.split('|');
+  return [];
 }
 
 /** Lowercase words (letters and digits, apostrophes dropped) of every copy string in the library. */
@@ -69,6 +114,7 @@ function libraryVocabulary(lib) {
 const issue = (rule, where, text, message, severity = 'error', term = undefined) => ({ rule, severity, where, text, message, ...(term === undefined ? {} : { term }) });
 const keyOf = (i) => `${i.rule}␟${(i.term ?? '').toLowerCase()}`;
 const BREATH_WORD = /\b(breath|breathe|inhale|exhale)/i;
+const SPLIT_BRAND = /\bhush[\s-]+mallow/i;
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
 const COUNT_WORDS = Object.freeze({ one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 });
 const COUNT_TOKEN = new RegExp(`\\b(\\d{1,2}|${Object.keys(COUNT_WORDS).join('|')})\\b`, 'gi');
@@ -103,14 +149,19 @@ function phraseHits(text, lib, policy) {
   let cache = byPolicy.get(policy);
   if (!cache) byPolicy.set(policy, (cache = new Map()));
   if (cache.has(text)) return cache.get(text);
-  const m = libMatchers(lib), c = policy.compiled, out = [];
+  const m = libMatchers(lib, policy), c = policy.compiled, out = [];
   for (const [t, re] of m.banned) if (re.test(text)) out.push({ rule: 'medical', term: t, message: `banned medical/therapy/safety term "${t}" in "${text}"` });
+  for (const [t, re] of m.bannedInflected) {
+    if (re.test(text) && !out.some((h) => h.rule === 'medical' && h.term === t)) out.push({ rule: 'medical', term: t, message: `an inflection of the banned medical/therapy/safety term "${t}" in "${text}"` });
+  }
   for (const [t, re] of m.caution) if (re.test(text)) out.push({ rule: 'caution', term: t, message: `caution term "${t}" in "${text}" (needs a cautionWhitelist entry in planner/policy.json)` });
   for (const t of c.topics) if (t.re.test(text)) out.push({ rule: `topic:${t.cat}`, term: t.term, message: `${t.cat} topic ("${t.term}") in "${text}"` });
   for (const t of c.names) if (t.re.test(text)) out.push({ rule: `name:${t.cat}`, term: t.term, message: `real ${t.cat} name ("${t.term}") in "${text}"` });
   for (const t of c.breathHold) if (t.re.test(text)) out.push({ rule: 'breath-hold', term: t.term, message: `breath-hold, breathing-count or breathing-instruction phrasing in "${text}"` });
   const run = countRun(text);
   if (run) out.push({ rule: 'breath-hold', term: 'count-run', message: `a breathing count ("${run}") in "${text}"` });
+  // the brand split in two ('Hush Mallow', 'hush-mallow', or over the rows of a hook or end card)
+  if (SPLIT_BRAND.test(text)) out.push({ rule: 'brand-case', term: 'hush mallow', message: `the brand is one lowercase word 'hushmallow', never split ("${text}")` });
   cache.set(text, out);
   return out;
 }
@@ -189,15 +240,31 @@ export function readingWindow(clock, slot, { duration, hookWindow = 'cyclic' } =
 }
 
 /**
- * The times of day a text allows (null = it names no time). The keyword
- * classes (the library's timeWords plus policy.lint.timePhrases, unioned as
- * the library validator does) are read on the text with its clock phrases
- * blanked out, so "two o'clock in the morning" is 2 AM and not MORNING; they
- * are intersected with the classes of the explicit clock times.
+ * The times of day a text allows (null = it names no time).
+ *
+ * The planner's reading: the keyword classes (the library's timeWords plus
+ * policy.lint.timePhrases, unioned as the library validator unions them) are
+ * read on the text with its clock phrases blanked out, so "two o'clock in the
+ * morning" is 2 AM and not MORNING, and intersected with the classes of the
+ * explicit clock times (planner/time-words.mjs).
+ *
+ * The validator's reading is the floor: templates/validate-library.mjs reads
+ * the library's timeWords on the raw text, and the planner's answer is
+ * intersected with it, so the planner never allows a time of day the
+ * validator would not (copy lint is a superset of the validator). Where the
+ * two readings disagree ("3 IN THE MORNING": the validator reads MORNING,
+ * the clock reads 3 AM) no time of day fits, and the text is never planned.
  */
 export function timeClassesOf(text, { lib, policy = loadPolicy() }) {
-  if (policy.compiled.timeExempt.has(text)) return null;
-  return allowedTods(keywordClasses(maskClockTimes(text), lib, policy), clockClasses(text, policy.lint.clockTimes.hours));
+  return timeReading(text, { lib, policy }).allowed;
+}
+
+/** Both readings of a text's time words, and what they allow together: { validator, planner, allowed } (null = no time named). */
+export function timeReading(text, { lib, policy = loadPolicy() }) {
+  if (policy.compiled.timeExempt.has(text)) return { validator: null, planner: null, allowed: null, exempt: true };
+  const planner = allowedTods(keywordClasses(maskClockTimes(text), lib, policy), clockClasses(text, policy.lint.clockTimes.hours));
+  const validator = lib.timeClasses(text);
+  return { validator, planner, allowed: allowedTods(validator, planner) };
 }
 
 /** Union of the ToD classes of the library's timeWords and the planner's timePhrases in text, or null. */
@@ -226,9 +293,15 @@ function crossRowIssues(lines, where, ctx) {
 
 /** Time-of-day agreement for one text: contradictory time words always, the spec's ToD when known. */
 function timeIssue(text, where, ctx) {
-  const allowed = timeClassesOf(text, ctx);
+  const r = timeReading(text, ctx);
+  const allowed = r.allowed;
   if (!allowed) return null;
-  if (!allowed.length) return issue('time-word', where, text, `time words in "${text}" contradict each other (no time of day fits them all)`);
+  if (!allowed.length) {
+    const why = r.validator && r.planner && !r.validator.some((c) => r.planner.includes(c))
+      ? `: the library validator reads ${r.validator.join('|')} (its timeWords on the whole text), the planner reads ${r.planner.join('|')} (the clock phrase as a whole); the library could not hold this text in any template, so write the time another way ("3 AM", not "3 in the morning")`
+      : ' (no time of day fits them all)';
+    return issue('time-word', where, text, `time words in "${text}" contradict each other${why}`);
+  }
   if (ctx.tod && !allowed.includes(ctx.tod)) return issue('time-word', where, text, `time words in "${text}" need ToD ${allowed.join('|')}, the spec is ${ctx.tod}`);
   return null;
 }
@@ -354,37 +427,50 @@ export function lintCopy(copy, ctx0) {
 
 /**
  * Lint one hashtag ('#word', lowercase letters, digits, '_'): every medical,
- * caution, topic and name term, and policy.lint.hashtags.terms, searched as
- * a substring of the glued tag ('_' removed). An occurrence is excused only
+ * caution, topic and name term (with the inflections of the lemma lists:
+ * #suicidal, #smoked), and policy.lint.hashtags.terms, searched as a
+ * substring of the glued tag ('_' removed). An occurrence is excused only
  * when a longer carrier word covers it (a library copy word or
  * policy.lint.hashtags.carriers: 'pillow' covers 'pill'). Terms of one or
  * two letters ('ig', 'fb') count only as the whole tag. Fails closed.
+ * A tag may not name a time of day either (#2am, #latenight, #bedtime): the
+ * owner's list in library/brand.json goes on every video, whatever its time
+ * of day (rule time-word).
  */
 export function lintHashtag(tag, { lib, policy = loadPolicy(), where = 'hashtag' }) {
   const out = [];
   if (!/^#[A-Za-z0-9_]+$/.test(tag)) return [issue('hashtag-shape', where, tag, `"${tag}" is not a hashtag (#, then letters, digits or _)`)];
   const body = tag.slice(1).toLowerCase().replace(/_/g, '');
-  const m = libMatchers(lib), c = policy.compiled;
-  const terms = [...m.gluedFlags, ...c.gluedTerms];
+  const m = libMatchers(lib, policy), c = policy.compiled;
   const carrierSpans = [];
   for (const w of new Set([...m.vocabulary, ...c.carriers])) {
     if (w.length < 3) continue;
     for (let j = body.indexOf(w); j >= 0; j = body.indexOf(w, j + 1)) carrierSpans.push([j, j + w.length, w]);
   }
-  const seen = new Set();
-  for (const t of terms) {
-    const k = `${t.rule}␟${t.glued}`;
-    if (seen.has(k)) continue;
-    seen.add(k);
+  /** Is there an occurrence of glued in the tag that no longer carrier word covers? */
+  const uncovered = (glued) => {
     // a 1-2 letter term ('ig', 'fb', 'hm' from h&m) is only a hit as the whole tag: as a substring it is noise
-    if (t.glued.length < 3 && body !== t.glued) continue;
-    for (let i = body.indexOf(t.glued); i >= 0; i = body.indexOf(t.glued, i + 1)) {
-      const end = i + t.glued.length;
-      const carrier = carrierSpans.find(([a, b, w]) => a <= i && end <= b && w !== t.glued && w.length > t.glued.length);
-      if (carrier) continue;
-      out.push(issue(t.rule, where, tag, `${t.rule} term "${t.term}" inside the hashtag "${tag}" (if this is an innocent word, add the word that contains it to policy.lint.hashtags.carriers)`, 'error', t.term));
-      break;
+    if (glued.length < 3) return body === glued;
+    for (let i = body.indexOf(glued); i >= 0; i = body.indexOf(glued, i + 1)) {
+      const end = i + glued.length;
+      if (!carrierSpans.some(([a, b, w]) => a <= i && end <= b && w !== glued && w.length > glued.length)) return true;
     }
+    return false;
+  };
+  const reported = new Set();
+  for (const t of [...m.gluedFlags, ...c.gluedTerms]) {
+    const k = `${t.rule}␟${t.term}`;
+    if (reported.has(k) || !uncovered(t.glued)) continue;
+    reported.add(k);
+    out.push(issue(t.rule, where, tag, `${t.rule} term "${t.term}"${t.glued === gluedForm(t.term) ? '' : ` (as "${t.glued}")`} inside the hashtag "${tag}" (if this is an innocent word, add the word that contains it to policy.lint.hashtags.carriers)`, 'error', t.term));
+  }
+  // a glued time word, or a clock time glued to its meridiem (#2am, #brainat2am, #4pmslump)
+  const time = m.gluedTimes.find((g) => uncovered(g.glued));
+  const clock = /(?<![0-9])(1[0-2]|0?[1-9])(?:[0-5][0-9])?([ap])m/.exec(body);
+  if (time || clock) {
+    const hour = clock ? (Number(clock[1]) % 12) + (clock[2] === 'p' ? 12 : 0) : null;
+    const [said, classes] = time ? [time.glued, time.classes] : [clock[0], classesOfHour(hour, policy)];
+    out.push(issue('time-word', where, tag, `the hashtag "${tag}" names a time of day ("${said}": ${classes.join('|')}); the owner's hashtags go on every video, whatever its time of day`, 'error', said));
   }
   return out;
 }

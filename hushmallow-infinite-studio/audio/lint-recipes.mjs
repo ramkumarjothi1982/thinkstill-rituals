@@ -8,15 +8,18 @@
 //      - words: the recipe's id, cue, tags, doc and the engine sounds it names;
 //      - shapes: the recipe is run on probe cues and what it plays is inspected for
 //        the patterns themselves (audio/lint-shapes.mjs: what each banned sound IS,
-//        read from a sound model of every event: pitch path, envelope, band and
-//        level), so a banned sound cannot pass under an innocent name. Their limits
-//        are the patterns' own (a beep's pitch holds still, a lub-dub is a heart's
-//        S1–S2 apart, a machine repeats four or five times) or are calibrated on the
-//        approved v2 sounds, as the plan asks: v2's fastest rise in level plus 3 dB
+//        read from a sound model of every event, the engine's fx voices included:
+//        pitch path, envelope, band and level), so a banned sound cannot pass under
+//        an innocent name or an engine voice. Their limits are the patterns' own (a
+//        beep's energy holds its pitch, a lub-dub is a heart's S1–S2 apart, a machine
+//        repeats four or five times, a phone line beats two tones) or are calibrated
+//        on the approved v2 sounds, as the plan asks: v2's own maxima plus 3 dB
 //        (LOUD, recomputed by tests/unit/audio-lint.test.mjs).
 //    audio/score.mjs also runs the shapes on every cue recipe's events together
 //    (lintEvents), so a pattern spread over several cues is caught too, while an
-//    approved sound repeated by a direction (a triple blink, three glances) is not.
+//    approved sound repeated by a direction (a triple blink, three glances) is not;
+//    G-AUDIO runs them on the whole score plan of every video (qa/gates/audio-gate.mjs),
+//    the sparkle cloud counting for its level only (audio/score.mjs sparkleTexture).
 // 2. Silence is declared: a 'marker' or 'anchor' recipe emits nothing and says why
 //    (`silent`); every other recipe sounds.
 // 3. No absolute times: a recipe run at two cue times emits the same events shifted
@@ -30,9 +33,9 @@ import { fileURLToPath } from 'node:url';
 import { RECIPES } from './recipes/index.mjs';
 import { CONTOURS, CHIME_BASE } from './recipes/contours.mjs';
 import { transposer, REF_ROOT, REF_SCALE } from './pitch.mjs';
-import { sounds, clusters, shapes, shapeFindings, riseMetrics, SHAPE, LOUD, ENGINE } from './lint-shapes.mjs';
+import { sounds, clusters, shapes, shapeFindings, riseMetrics, chimePairLevel, SHAPE, LOUD, ENGINE, ENGINE_FX } from './lint-shapes.mjs';
 
-export { sounds, clusters, shapes, shapeFindings, riseMetrics, SHAPE, LOUD, ENGINE };
+export { sounds, clusters, shapes, shapeFindings, riseMetrics, chimePairLevel, SHAPE, LOUD, ENGINE, ENGINE_FX };
 
 export const BANNED = Object.freeze({
   ringtone: /ring[\s_-]*tone|phone[\s_-]*ring|ringing[\s_-]*phone|\bringer\b|\btrill[\s_-]*phone/i,
@@ -66,13 +69,18 @@ export function probe(recipe, t, payload = {}) {
 
 /**
  * v2's maxima the LOUD limits are calibrated on: the largest 50 ms and 250 ms rises of
- * the level, the 50 ms rise of its bright broadband noise and the engine's voices
- * stacked, over every recipe and probe payload and over any further approved event
- * sets (the approved v2 score's events: tests/unit/audio-lint.test.mjs passes them). → { rise, riser, bright, engine }
+ * the level, the 50 ms rise of its noise and of its bright broadband noise, the engine's
+ * voices stacked (all of them, and the Mallow's opaque gestures alone) and the quieter
+ * note of the loudest close pair of long-ringing notes, over every recipe and probe
+ * payload and over any further approved event sets (the approved v2 score's events:
+ * tests/unit/audio-lint.test.mjs passes them). → { rise, riser, noise, bright, engine, voice, chimePair }
  */
 export function calibrateLoud(registry = RECIPES, approved = []) {
-  const m = { rise: 0, riser: 0, bright: 0, engine: 0 };
-  const take = (events) => { const r = riseMetrics(sounds(events)); for (const k of Object.keys(m)) m[k] = Math.max(m[k], r[k]); };
+  const m = { rise: 0, riser: 0, noise: 0, bright: 0, engine: 0, voice: 0, chimePair: 0 };
+  const take = (events) => {
+    const parts = sounds(events), r = { ...riseMetrics(parts), chimePair: chimePairLevel(clusters(parts)) };
+    for (const k of Object.keys(m)) m[k] = Math.max(m[k], r[k]);
+  };
   for (const r of Object.values(registry)) for (const p of PROBES) take(probe(r, 2, p));
   for (const events of approved) take(events);
   return m;
@@ -82,9 +90,13 @@ export function calibrateLoud(registry = RECIPES, approved = []) {
 
 const words = (r, events) => [r.id, r.cue, r.doc, r.silent, ...(r.tags || []), ...events.engine.map((e) => e.name)].filter(Boolean).join(' ');
 
-/** Shape findings for a set of events (a whole score's recipe events): [{ rule, message }]. */
-export function lintEvents(events) {
-  return shapeFindings(events).map((f) => ({ recipe: null, rule: `banned:${f.category}`, message: `the events sound like a banned recipe (${f.category}: ${f.why})` }));
+/**
+ * Shape findings for a set of events (a whole score's recipe events, or a whole score
+ * plan): [{ rule, message }]. options.texture: events that count only for the level
+ * (the sparkle layer's cloud; audio/lint-shapes.mjs sounds()).
+ */
+export function lintEvents(events, options = {}) {
+  return shapeFindings(events, options).map((f) => ({ recipe: null, rule: `banned:${f.category}`, message: `the events sound like a banned recipe (${f.category}: ${f.why})` }));
 }
 
 /** Findings for one recipe: [{ recipe, rule, message }]. */

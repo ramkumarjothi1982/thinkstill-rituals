@@ -14,6 +14,7 @@ import zlib from 'node:zlib';
 import {
   globToRegExp, coveredBy, EXTERNAL_WRITERS, storageRoots, readBaseline, armBaseline, scanChanged, snapshotListing, readListing,
   compileCacheKey, npmCompileCache, findNpmRoots, gitConfigEntries, gitConfigChanges, gitLayout, allowedRoots, gitConfigFiles,
+  matchesExactly, worktreePlaces, auditScope, TOUCH_EPS_MS,
 } from '../../render/lib/write-audit.mjs';
 
 test('globToRegExp: * stays within one path segment, other characters are literal', () => {
@@ -38,7 +39,33 @@ test('the exemption list is narrow: every entry has a reason, and none covers pl
   for (const p of [STUDIO, WORK]) assert.equal(coveredBy(p, EXTERNAL_WRITERS), null);
   // removal-only entries: just the harness's own session directories
   assert.deepEqual(EXTERNAL_WRITERS.filter((x) => x.scope === 'remove').map((x) => x.glob), ['/tmp/claude-*/*/*']);
-  for (const p of ['/tmp/x', '/home/user/x', '/root/.npm/_logs/x.log', '/tmp/claude-0/x']) assert.equal(coveredBy(p, EXTERNAL_WRITERS), null, `${p} must not be exempt`);
+  const removals = EXTERNAL_WRITERS.filter((x) => x.scope !== 'touch');
+  for (const p of ['/tmp/x', '/home/user/x', '/root/.npm/_logs/x.log', '/tmp/claude-0/x']) assert.equal(coveredBy(p, removals), null, `${p} must not be exempt`);
+  // touch-only entries: just /tmp ITSELF (the harness's per-command cwd file), never anything below it
+  const touch = EXTERNAL_WRITERS.filter((x) => x.scope === 'touch');
+  assert.deepEqual(touch.map((x) => x.glob), ['/tmp']);
+  assert.ok(matchesExactly('/tmp', touch));
+  for (const p of ['/tmp/claude-0', '/tmp/claude-0/proj/sess/scratchpad', '/tmp/x', '/home/user', '/']) assert.ok(!matchesExactly(p, touch), `${p} must not be touch-exempt`);
+});
+
+test('worktree places: git\'s and the harness\'s worktree containers may be created, touched and emptied; nothing else in the checkout', () => {
+  const layout = { gitDir: '/repo/.git', top: '/repo', mainTop: '/repo', worktreeDirs: [], otherWorktrees: ['/repo/.claude/worktrees/wf-1', '/repo/deep/wt/x'] };
+  const w = worktreePlaces(layout, ['/repo/.claude/worktrees/wf-0']);
+  for (const p of ['/repo/.git/worktrees', '/repo/.git/worktrees/wf-1', '/repo/.claude', '/repo/.claude/worktrees', '/repo/deep', '/repo/deep/wt']) assert.ok(matchesExactly(p, w.places), p);
+  for (const p of ['/repo', '/repo/.git', '/repo/.git/hooks', '/repo/hushmallow-infinite-studio', '/repo/.claude/settings.json', '/repo/.git/worktrees/wf-1/hooks']) assert.ok(!matchesExactly(p, w.places), `${p} is not a worktree place`);
+  // the git directory (lock files) and the top level change with nothing left behind in normal operation
+  assert.ok(w.touch.includes('/repo/.git') && w.touch.includes('/repo'));
+  assert.ok(!w.touch.includes('/repo/.git/hooks'));
+  assert.deepEqual(worktreePlaces(undefined), { places: [], touch: [] });
+});
+
+test('gitLayout names the main checkout, and the real audit scope carries it (for the worktree places)', () => {
+  const layout = gitLayout();
+  assert.ok(layout.top && layout.mainTop && isInside(STUDIO, layout.top));
+  const s = auditScope({ layout });
+  assert.equal(s.layout, layout);
+  assert.ok(s.removable.includes(path.join(layout.gitDir, 'worktrees')), 'git removes <git>/worktrees itself when the last worktree goes');
+  assert.ok(TOUCH_EPS_MS >= 10 && TOUCH_EPS_MS <= 100);
 });
 
 test('storageRoots: writable storage mounts only (no kernel filesystems, no read-only mounts, nothing under /proc or /sys)', () => {

@@ -130,17 +130,62 @@
   },
 
   "lint": {
-    "$doc": "Copy lint on top of templates/validate-library.mjs. Terms match whole words or phrases, case-insensitively. An entry starting with 're:' is a regular expression (case-insensitive).",
+    "$doc": "Copy lint on top of templates/validate-library.mjs. Terms match whole words or phrases, case-insensitively. An entry starting with 're:' is a regular expression (case-insensitive). Topic entries (and the library's banned medical terms) are lemmas: each also matches its inflections (morphology below; FU-3), and a space or hyphen inside one matches a space, a hyphen or nothing ('self harm' -> self-harming, selfharm). An entry written '=term' matches only as written.",
     "topics": {
-      "self-harm": ["self harm", "hurt myself", "harm myself", "kill myself", "end it all", "end my life", "cut myself", "overdose", "unalive", "kms", "want to die", "wanna die", "want to disappear", "wanna disappear", "disappear forever", "never wake up", "not wake up"],
-      "death": ["dead", "death", "deaths", "die", "dies", "died", "deadly", "funeral", "grave", "graves", "coffin", "corpse", "rip", "r.i.p", "rest in peace", "kill", "kills", "killed", "killing", "murder", "murdered", "gone forever", "passed away", "afterlife", "drown", "drowns", "drowned", "drowning"],
-      "illness": ["sick", "sickness", "ill", "illness", "flu", "fever", "cough", "virus", "covid", "cancer", "disease", "hospital", "vomit", "puke", "nausea", "nauseous", "migraine", "headache", "stomachache", "dentist", "medicine", "meds", "medication", "pill", "pills", "prescription", "throw up", "ambulance", "surgery", "contagious", "caught a cold", "got a cold", "have a cold", "head cold", "blood", "bleeding", "bleed", "melatonin", "sleeping pill", "sleeping pills", "painkiller", "painkillers", "ibuprofen", "paracetamol", "xanax", "prozac", "valium", "antidepressant", "antidepressants", "sleep aid", "sleep aids"],
-      "body-food": ["fat", "fatty", "chubby", "skinny", "diet", "dieting", "calorie", "calories", "carbs", "weight", "weigh", "overweight", "binge", "binged", "starving", "starve", "bloated", "belly", "beach body", "cheat day", "burn it off", "guilty pleasure", "too full", "overate", "overeating", "workout", "gym", "abs", "thighs", "drink water", "hydrate", "snack guilt", "food guilt", "cheat meal", "cheat meals"],
-      "alcohol": ["alcohol", "drunk", "tipsy", "hungover", "hangover", "wine", "beer", "beers", "booze", "boozy", "vodka", "whisky", "whiskey", "tequila", "rum", "gin", "cocktail", "cocktails", "prosecco", "champagne", "pint", "pints", "shots", "happy hour", "pub", "drinks after work", "at the bar", "bar crawl", "night out drinking"],
-      "drugs": ["drug", "drugs", "weed", "stoned", "cannabis", "marijuana", "cocaine", "smoke", "smoking", "cigarette", "cigarettes", "vape", "vaping", "nicotine", "caffeine", "energy drink", "edibles", "getting high", "get high", "got high"],
-      "appearance": ["ugly", "hideous", "gorgeous", "attractive", "unattractive", "good-looking", "selfie", "selfies", "makeup", "make-up", "wrinkle", "wrinkles", "pimple", "pimples", "acne", "zit", "zits", "bad hair", "outfit", "cellulite", "double chin"],
+      "self-harm": [
+        "self harm", "hurt myself", "harm myself", "kill myself", "end it all", "end my life", "end my own life", "take my life", "take my own life", "cut myself",
+        "cut my wrists", "slit my wrists", "cutting again", "razor", "razor blade", "overdose", "unalive", "=kms", "suicide", "suicidal", "want to die", "wanna die",
+        "want to disappear", "wanna disappear", "disappear forever", "want to vanish", "wanna vanish", "never wake up", "not wake up", "no reason to live",
+        "nothing to live for", "done with life", "done with living", "better off without me", "better off dead", "wish i was dead", "wish i were dead",
+        "wish i was gone", "wish i were gone",
+        "re:\\b(think|thinks|thinking|thought)\\s+(about|of)\\s+end(ing)?\\s+it(\\s+all)?\\b"
+      ],
+      "death": [
+        "dead", "death", "die", "deadly", "funeral", "grave", "coffin", "casket", "corpse", "=rip", "r.i.p", "rest in peace", "kill", "murder", "gone forever",
+        "pass away", "afterlife", "drown", "deceased", "cemetery", "graveyard", "tombstone", "hearse", "morgue", "autopsy", "obituary", "grief", "grieve", "mourn",
+        "six feet under"
+      ],
+      "illness": [
+        "sick", "sickly", "sickness", "ill", "illness", "unwell", "flu", "fever", "feverish", "cough", "virus", "covid", "cancer", "chemo", "chemotherapy", "tumor",
+        "tumour", "disease", "diabetes", "asthma", "inhaler", "allergy", "allergic", "infection", "hospital", "vomit", "puke", "nausea", "nauseous", "nauseated",
+        "diarrhea", "diarrhoea", "food poisoning", "stomach bug", "migraine", "headache", "stomachache", "stomach ache", "tummy ache", "toothache", "earache",
+        "sore throat", "back pain", "chest pain", "heart attack", "seizure", "concussion", "injure", "injury", "dentist", "medicine", "meds", "medication", "pill",
+        "prescription", "antibiotic", "throw up", "ambulance", "surgery", "contagious", "catch a cold", "get a cold", "have a cold", "head cold", "blood", "bleed",
+        "melatonin", "sleeping pill", "painkiller", "ibuprofen", "paracetamol", "xanax", "prozac", "valium", "adderall", "ritalin", "ozempic", "wegovy", "mounjaro",
+        "antidepressant", "sleep aid",
+        "re:\\b(broke|broken|break|breaks|breaking)\\s+(my|a|his|her|your|their)\\s+(arm|leg|wrist|ankle|nose|toe|finger|hip|rib|bone|back|neck)s?\\b"
+      ],
+      "body-food": [
+        "fat", "fatty", "chubby", "skinny", "diet", "calorie", "carbs", "bmi", "weight", "overweight", "weigh myself", "weigh yourself", "lose weight", "gain weight",
+        "weight loss", "weight gain", "binge", "starve", "fasting", "keto", "count macros", "bloated", "belly", "beach body", "cheat day", "cheat meal",
+        "burn it off", "guilty pleasure", "too full", "overeat", "sugar crash", "junk food", "workout", "gym", "=abs", "thighs", "drink water", "hydrate",
+        "snack guilt", "food guilt", "anorexia", "anorexic", "bulimia", "bulimic", "step on the scale",
+        "re:\\b(lose|loses|losing|lost|gain|gains|gained|gaining|drop|drops|dropped|dropping|shed|sheds|shedding)\\s+(\\w+\\s+){0,2}(pounds?|lbs?|kilos?|kgs?|stone)\\b",
+        "re:\\b(skip|skips|skipped|skipping)\\s+(lunch|dinner|breakfast|a\\s+meal|meals)\\b",
+        "re:\\b(the|my|bathroom)\\s+scales?\\s+(says?|said|is|was|hates?|won't|doesn't|lies|lied)\\b",
+        "re:\\b(ate|eaten|eating|eat|eats)\\s+(way\\s+|far\\s+|so\\s+)?too\\s+much\\b"
+      ],
+      "alcohol": [
+        "alcohol", "alcoholic", "alcoholism", "drunk", "tipsy", "sober", "hungover", "hangover", "wine", "beer", "booze", "boozy", "vodka", "whisky", "whiskey",
+        "tequila", "rum", "gin", "bourbon", "brandy", "liquor", "lager", "cocktail", "margarita", "mimosa", "martini", "mojito", "negroni", "daiquiri", "aperol",
+        "sangria", "prosecco", "champagne", "merlot", "chardonnay", "pinot", "nightcap", "pint", "shots", "happy hour", "pub", "drinks after work", "at the bar",
+        "bar crawl", "night out drinking", "day drinking", "binge drinking", "drinking again", "drinking alone", "drinking game", "drinking buddy",
+        "bottle of red", "glass of red", "get wasted"
+      ],
+      "drugs": [
+        "drug", "druggie", "junkie", "=weed", "stoned", "stoner", "cannabis", "marijuana", "cocaine", "heroin", "meth", "ketamine", "mdma", "lsd", "shrooms",
+        "magic mushrooms", "opioid", "fentanyl", "smoke", "cigarette", "vape", "nicotine", "caffeine", "energy drink", "edibles", "bong", "smoke a joint",
+        "roll a joint", "light a joint", "pot brownie", "weed brownie", "pop a molly", "crack pipe", "get high", "high as a kite", "get baked"
+      ],
+      "appearance": [
+        "ugly", "hideous", "gorgeous", "attractive", "unattractive", "good-looking", "so pretty", "looking cute", "looking hot", "hot or not", "selfie", "makeup",
+        "make-up", "wrinkle", "pimple", "acne", "zit", "blemish", "bad skin", "bad hair", "outfit", "cellulite", "double chin",
+        "re:\\bmy\\s+(big|huge|giant|crooked|weird|ugly|fat)\\s+(nose|ears|forehead|teeth|chin|chins|butt|bum|lips|face)\\b"
+      ],
       "self-hatred": [
-        "hate myself", "i hate me", "worthless", "useless", "pathetic", "loser", "idiot", "stupid", "dumb", "failure",
+        "hate myself", "i hate me", "hate my life", "worthless", "useless", "pathetic", "loser", "idiot", "idiotic", "moron", "stupid", "stupidity", "dumb", "failure",
+        "i suck", "nobody likes me", "no one likes me", "everyone hates me", "re:\\bscrew-?ups?\\b",
+        "re:\\b(i\\s+am|i'm|im)\\s+((such|so|the|a|an|total|complete|hot|utter|absolute)\\s+)*(worst|trash|garbage|mess|wreck|disaster|joke|failure|loser|idiot|moron|nothing|nobody|disappointment|burden)\\b",
         "re:\\bhat(e|es|ed|ing)\\s+(my|this|our|your)\\s+(own\\s+)?(body|bodies|face|looks?|skin|hair|nose|thighs|belly|stomach|tummy|arms|legs|reflection|smile|teeth|voice|weight|shape|size)\\b",
         "re:\\bhat(e|es|ed|ing)\\s+(how|the\\s+way)\\s+(i|we|you)\\s+(look|looked)\\b"
       ],
@@ -148,13 +193,41 @@
         "body image", "body check", "body checking", "body shame", "body shaming", "body-shaming", "fat shaming", "fat-shaming",
         "muffin top", "love handles", "thigh gap", "bikini body", "summer body", "flabby", "glow up", "glow-up",
         "eye bags", "dark circles", "grey hair", "grey hairs", "gray hair", "gray hairs", "bald", "balding", "wrinkly",
-        "botox", "lip filler", "lip fillers", "body goals", "airbrush", "airbrushed", "airbrushing", "facelift", "nose job", "plastic surgery",
+        "botox", "lip filler", "lip fillers", "body goals", "body positivity", "body positive", "airbrush", "airbrushed", "airbrushing", "facelift", "nose job", "plastic surgery",
         "re:\\b(i|you|we|they|she|he|me)\\s+(look|looks|looked|am\\s+looking|are\\s+looking|is\\s+looking|was\\s+looking|looking)\\s+(so\\s+|really\\s+|super\\s+|too\\s+|kinda\\s+|very\\s+|way\\s+too\\s+|a\\s+bit\\s+|this\\s+)?(old|older|ancient|ugly|gross|hideous|awful|terrible|frumpy|puffy|bloated|haggard|wrecked|rough)\\b",
         "re:\\b(i'm|you're|we're|they're|she's|he's)\\s+looking\\s+(so\\s+|really\\s+|super\\s+|too\\s+|kinda\\s+|very\\s+|way\\s+too\\s+|a\\s+bit\\s+)?(old|older|ancient|ugly|gross|hideous|awful|terrible|frumpy|puffy|bloated|haggard|wrecked|rough)\\b"
       ],
-      "catastrophe": ["catastrophe", "catastrophic", "disaster", "apocalypse", "end of the world"],
-      "claims": ["guaranteed", "guarantee", "guarantees", "instant calm", "instant relief", "instantly calm", "miracle", "miracles", "works every time", "fixes everything", "life-changing", "life changing", "mindfulness app", "meditation app", "wellness app", "sleep app", "calming app"],
-      "source": "story-library copyRules.general (no self-hatred, self-harm, death, illness, body/weight/food-guilt, alcohol, drugs or appearance comparisons; never catastrophic) and medicalTherapyFlags.decisionsInThisLibrary (no caffeine, dentist or 'drink water'). body-image (round 3) spells out body-image and appearance phrasing the single words miss ('I hate my body', 'I look so old', 'photoshop it out'); the library's own 'MY BODY: RESTING' and 'They look so serious.' stay legal, so 'my body' and 'look so' alone are not entries. claims (round 3): outcome promises and wellness-app framing (story-library copyRules.resolution 'never an instruction to fix, never an outcome promise'). Calibrated so every library string passes (tests/unit/planner-lint.test.mjs). 'let it go' is deliberately not a song entry: it is an everyday phrase (and the ritual's own idea)."
+      "catastrophe": [
+        "catastrophe", "catastrophic", "disaster", "disastrous", "apocalypse", "apocalyptic", "end of the world", "doomsday", "armageddon", "nuclear", "nuclear war",
+        "war", "earthquake", "tsunami", "pandemic", "terrorist", "terrorism",
+        "re:\\b(the\\s+)?world\\s+(is|was|'s)\\s+ending\\b"
+      ],
+      "violence": ["gun", "gunshot", "weapon", "stab", "assault", "violence", "violent", "riot", "hostage"],
+      "claims": ["guarantee", "instant calm", "instant relief", "instantly calm", "miracle", "works every time", "fixes everything", "life changing", "mindfulness app", "meditation app", "wellness app", "sleep app", "calming app", "one tap away",
+        "re:\\b(your|my|our|the|all)\\s+(worries|fears|troubles|stress|problems|feelings)\\s+(are|is|will\\s+be)\\s+(gone|over|fixed|solved|cured)\\b", "re:\\bdownload\\b"],
+      "source": "story-library copyRules.general (no self-hatred, self-harm, death, illness, body/weight/food-guilt, alcohol, drugs or appearance comparisons; never catastrophic) and medicalTherapyFlags.decisionsInThisLibrary (no caffeine, dentist or 'drink water'). body-image (round 3) spells out body-image and appearance phrasing the single words miss ('I hate my body', 'I look so old', 'photoshop it out'); the library's own 'MY BODY: RESTING' and 'They look so serious.' stay legal, so 'my body' and 'look so' alone are not entries. claims (round 3): outcome promises and wellness-app framing (story-library copyRules.resolution 'never an instruction to fix, never an outcome promise'). Calibrated so every library string passes (tests/unit/planner-lint.test.mjs). FU-3: every entry is a lemma (inflections generated, planner/morph.mjs); derived words that must be refused are listed as lemmas of their own (suicidal, sickly, alcoholic, idiotic, apocalyptic); the round-4 reviewer's misses were added (suicide, heroin, cemetery, ozempic, nuclear war, margarita, ...), and a 'violence' category; 'kms', 'rip', 'weed' and 'abs' are exact ('=') because their inflections are innocent (ripped, weeding). Not one library lint verdict changed (0 of 28,935, docs/wp/FU-3.md). 'let it go' is deliberately not a song entry: it is an everyday phrase (and the ritual's own idea)."
+    },
+    "morphology": {
+      "$doc": "Topic entries and the library's banned medical terms are lemmas: each also matches its regular English inflections (planner/morph.mjs: -s/-es/-ies, 's, -ed/-d/-ied, -ing/-ying, -er/-est/-ier/-iest/-ers, with the e-drop, y-to-i, doubled-consonant and c-to-ck spellings), so 'smoke' refuses 'Smoked again.' and 'smokers', 'vomit' refuses 'Vomiting.', 'starve' refuses 'Starved by noon.'. Derived words (suicidal, sickly, alcoholic) are separate lemmas in the lists, never generated: derivation changes meaning (grave -> gravity). irregular adds the forms no suffix rule makes. notForms are everyday words a rule would produce from a listed lemma that are words of their own; they are never matched as inflections. An entry written '=term' is matched only as written.",
+      "irregular": {
+        "bleed": ["bled"],
+        "throw": ["threw", "thrown"],
+        "eat": ["ate", "eaten"],
+        "overeat": ["overate", "overeaten"],
+        "drink": ["drank", "drunk"],
+        "get": ["got", "gotten"],
+        "light": ["lit"],
+        "lose": ["lost"],
+        "take": ["took", "taken"],
+        "hang": ["hung"],
+        "feel": ["felt"],
+        "break": ["broke", "broken"],
+        "fall": ["fell", "fallen"],
+        "catch": ["caught"],
+        "have": ["has", "had"]
+      },
+      "notForms": ["weighted", "weighting", "treats"],
+      "source": "planner default (FU-3): inflection is grammar, not a new topic, so every lemma inflects; derived and irregular words are listed by hand. 'weighted' (a weighted blanket) and 'weighting' are innocent words a rule would derive from the body-food lemma 'weight'. Calibrated: all 652 library texts still pass, and not one library lint verdict changed (docs/wp/FU-3.md)."
     },
     "names": {
       "$doc": "A term ending in '+' also matches its English inflections (google+ matches Googled, googling, Google's; instagram+ matches Instagrammed). A space or hyphen inside a name matches a space, a hyphen or nothing, so 'coca-cola' also catches 'Coca Cola' and 'cocacola', 'tik tok+' catches 'TikTok', 'Tik-Tok' and 'tiktoks', and 'face time+' catches 'FaceTime' and 'Face Time'. Names whose split form is an everyday phrase stay glued ('iphone' not 'i phone' (I phone my mum), 'linkedin', 'powerpoint', 'bereal'). App names that are also everyday words (zoom, slack, teams, messenger, twitch, threads, outlook, excel, telegram, hinge, calm) match only in app contexts ('on Slack', 'Zoom call', 'Teams meeting', 'Hinge date', 'the Calm app'), so 'zoom in', 'cut me some slack' and 'my eye twitched' stay legal.",
@@ -165,7 +238,9 @@
         "mario kart", "super mario", "zelda", "tesla", "tupperware", "kindle", "fitbit", "peloton", "air pods", "lululemon", "gucci", "prada", "rolex",
         "shein", "temu", "zara", "h&m", "costco", "walmart", "tesco", "aldi", "lidl", "kfc", "burger king", "domino's", "dominos", "pizza hut",
         "dunkin", "dunkin'", "nutella", "oreo", "oreos", "kit kat", "skittles", "haribo", "doritos", "pringles", "gatorade", "fanta",
-        "squishmallow+", "jellycat+", "care bears", "build-a-bear", "hello kitty", "weight watchers"
+        "squishmallow+", "jellycat+", "care bears", "build-a-bear", "hello kitty", "weight watchers", "tamagotchi", "kleenex", "band-aid", "jenga",
+        "scrabble", "rubik's cube", "rubiks cube", "play-doh", "velcro", "sharpie", "jacuzzi", "frisbee", "chapstick", "q-tip",
+        "re:\\b(post-its?|postits?|post\\s+it\\s+notes?)\\b", "re:\\bmonopoly\\s+(night|game|games|board|money)\\b"
       ],
       "app": [
         "google+", "instagram+", "insta", "ig", "tik tok+", "whats app+", "snapchat+", "snap streak+", "facebook+", "fb", "twitter", "tweet+",
@@ -183,7 +258,8 @@
         "re:\\b(outlook\\s+(calendar|invite|inbox|email|reminder)s?|excel\\s+(sheet|spreadsheet|file|formula|cell)s?|(on|via|over|in)\\s+telegram\\b)",
         "re:\\b((on|via)\\s+hinge\\b|hinge\\s+(date|match|matches|app|profile|prompt|prompts)\\b)",
         "re:\\b(the\\s+calm\\s+app|calm\\s+app|headspace\\s+app)\\b",
-        "re:\\b(on|for)\\s+the\\s+gram\\b"
+        "re:\\b(on|for)\\s+the\\s+gram\\b",
+        "re:\\bthreads\\s+(post|posts|app|feed)\\b"
       ],
       "song": [
         "baby shark", "despacito", "bohemian rhapsody", "gangnam style", "macarena", "wonderwall", "never gonna give you up", "all i want for christmas",
@@ -191,7 +267,8 @@
         "mr brightside", "mr. brightside", "sweet caroline", "shake it off", "old town road", "uptown funk", "hotel california", "billie jean",
         "taylor swift", "swiftie", "swifties", "beyonce", "beyoncé", "adele", "bts", "abba", "beatles", "drake", "ed sheeran", "billie eilish",
         "harry styles", "ariana grande", "bruno mars", "rihanna", "eminem", "lady gaga", "justin bieber", "olivia rodrigo", "coldplay", "elvis",
-        "michael jackson", "madonna"
+        "michael jackson", "madonna", "bad romance", "hotline bling", "blinding lights", "party in the usa", "don't stop believin'", "don't stop believing",
+        "rickroll+"
       ],
       "source": "story-library copyRules.general (no real brands, apps, people or places by name), design-quality-first 8 (no brand, app or song names). Round 3 adds spacing variants and the names a verifier found missing (Coca Cola, Tik-Tok, Face Time, PS5, Photoshop, Wii, AirPods, Big Mac, Squishmallow and other plush brands)."
     },
@@ -228,7 +305,12 @@
       "re:\\bair\\s+(in|out)\\b[\\s\\S]{0,15}\\bair\\s+(in|out)\\b",
       "re:\\b\\d\\s*-\\s*\\d\\s*-\\s*\\d\\b",
       "re:\\bunder\\s?water\\b",
-      "re:\\bsuffocat"
+      "re:\\bsuffocat",
+      "re:\\bgulps?\\s+(of\\s+)?air\\b",
+      "re:\\bgulp(s|ed|ing)?\\s+(\\w+\\s+){0,2}air\\b",
+      "re:\\bgasp\\w*\\b[\\s\\S]{0,20}\\b(freeze|froze|frozen|hold|holding|still)\\b",
+      "re:\\bhold\\s+(it\\s+)?(in\\s+)?(till|until|til)\\b",
+      "re:\\b(4|four)\\s*(by|x)\\s*(4|four)\\b"
     ],
     "breathHoldSource": "story-library medicalTherapyFlags (no counts, no holds, no on-screen breathing instructions; G-SINK keeps the mouth above the waterline, no underwater reading). Round 3 adds holds without a breath word (a bare 'Hold.', 'hold for a count of four', holding air or lungs, 'let the air out'), counts ('count of four'; a run of three consecutive numbers such as '2... 3... 4' is caught in code, planner/lint-copy.mjs), breathing techniques and instructions ('just breathe', 'in through the nose'). The library itself has no breath word, no hold of air and no count in any copy string, so these patterns cost it nothing ('Hold it together...' and 'Still counts.' stay legal).",
     "breathWords": {
@@ -236,11 +318,13 @@
       "source": "story-library copyRules.thought ('no breath words in the escalation (the breath belongs to the ritual)') and medicalTherapyFlags (no on-screen breathing instructions), extended by the planner to the hook and the end card (planner default): no on-screen copy names the breath, so a breathing instruction cannot hide in a phrasing the patterns above miss. The library uses no breath word in any hook or end text."
     },
     "hashtags": {
-      "$doc": "Owner hashtags (library/brand.json) glue words together, so whole-word matching cannot see inside them (#anxietyrelief, #therapytok). Each tag is searched for every term of the library's medical and caution flags, the topics and the names, with spaces, hyphens and punctuation removed ('panic attack' -> panicattack; 're:' patterns are skipped), plus the extra terms below. A hit is excused only when a carrier word covers it: a word of the story library's own copy (all of it lint-clean, so 'still' covers 'ill') or one listed here ('pillow' covers 'pill', 'closer' covers 'loser'). The check fails closed: a new innocent tag that is flagged needs its carrier word added here, by the owner.",
+      "$doc": "Owner hashtags (library/brand.json) glue words together, so whole-word matching cannot see inside them (#anxietyrelief, #therapytok). Each tag is searched for every term of the library's medical and caution flags, the topics and the names, with spaces, hyphens and punctuation removed ('panic attack' -> panicattack; 're:' patterns are skipped), plus the extra terms below. A hit is excused only when a carrier word covers it: a word of the story library's own copy (all of it lint-clean, so 'still' covers 'ill') or one listed here ('pillow' covers 'pill', 'closer' covers 'loser'). The check fails closed: a new innocent tag that is flagged needs its carrier word added here, by the owner. Topic and banned medical lemmas are searched in every inflected form, glued (#suicidal is a listed derived lemma, #smoking an inflection of 'smoke'). A tag may not name a time of day either (#2am, #latenight, #bedtime; the library's literal timeWords and the timePhrases below, glued): the owner's one list goes on every video, whatever its time of day (rule time-word).",
       "carriers": [
         "pillow", "pillows", "fluffy", "fluff", "chill", "chilly", "chilled", "chilling", "illustration", "illustrations", "illustrated", "illustrator",
         "brilliant", "thrill", "closer", "skill", "skills", "imagine", "imagination", "begin", "beginning", "public", "indie", "foodie", "goodies",
-        "absolutely", "spectrum", "drip", "trip", "script", "grip", "gravity", "deadline", "pineapple", "screenshot", "screenshots"
+        "absolutely", "spectrum", "drip", "trip", "script", "grip", "gravity", "deadline", "pineapple", "screenshot", "screenshots",
+        "aware", "awareness", "beware", "software", "hardware", "forward", "toward", "towards", "wardrobe", "swarm", "dwarf", "warp", "buddies",
+        "studies", "studied", "candies", "candied", "ladies", "original", "originals", "singing", "weeding"
       ],
       "terms": {
         "breath-hold": ["breath", "inhal", "exhal"],
@@ -262,7 +346,7 @@
       }
     ],
     "clockTimes": {
-      "$doc": "Clock times the library's timeWords patterns do not spell out (2:00 AM, 2.30am, 3 a.m., TWO AM, two-thirty a.m., 2 o'clock AM, quarter to three AM, 3 in the morning, 10 at night, 02:00, 0200 hours, noon). Each explicit time maps through its hour to the ToD classes below (planner/time-words.mjs). A clock phrase is read as a whole: 'two o'clock in the morning' is 2 AM, so the bare MORNING keyword inside it does not count; the keyword patterns (library timeWords and timePhrases below) see the text with its clock phrases blanked out, and the planner intersects their classes with the clock classes. Times without AM/PM or a part-of-day phrase (6:30, three o'clock) are ambiguous and pin nothing, as in the library. Every hour 0-23 appears exactly once.",
+      "$doc": "Clock times the library's timeWords patterns do not spell out (2:00 AM, 2.30am, 3 a.m., TWO AM, two-thirty a.m., 2 o'clock AM, quarter to three AM, 3 in the morning, 10 at night, 02:00, 0200 hours, noon). Each explicit time maps through its hour to the ToD classes below (planner/time-words.mjs). A clock phrase is read as a whole by the planner ('two o'clock in the morning' is 2 AM): the keyword patterns (library timeWords and timePhrases below) see the text with its clock phrases blanked out, and the planner intersects their classes with the clock classes. The library validator's own reading (its timeWords on the whole text) is the floor: the planner's answer is intersected with it, so 'two o'clock in the morning' (validator: MORNING; clock: 2 AM) fits no time of day and is never planned, while '2 AM' fits late night (FU-3: copy lint stays a superset of the validator). Times without AM/PM or a part-of-day phrase (6:30, three o'clock) are ambiguous and pin nothing, as in the library. Every hour 0-23 appears exactly once.",
       "hours": {
         "late-night|night": [0, 1, 2, 3, 4, 21, 22, 23],
         "morning|pre-dawn|misty-morning": [5, 6, 7, 8, 9],
