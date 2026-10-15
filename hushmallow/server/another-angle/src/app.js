@@ -27,6 +27,9 @@ import { costMicros, worstCaseMicros } from './cost.js';
 import { createAnthropicProvider } from './providers/anthropic.js';
 import { createMockProvider } from './providers/mock.js';
 
+/** The unauthenticated safety pre-check reads at most this many characters of the text (src/validate.js TEXT_MAX is 600). */
+export const EARLY_CHECK_CHARS = 2000;
+
 /**
  * @typedef {import('./providers/anthropic.js').Provider} Provider
  * @typedef {{ waitUntil?(p: Promise<unknown>): void }} Ctx
@@ -178,11 +181,14 @@ export function createApp(options) {
     // The body is read first so the safety pre-check can run before anything
     // that could turn a person in crisis away (a burst limit, an expired
     // token, a missing setting). The check is cheap, uses no quota and
-    // returns only the authored support copy.
+    // returns only the authored support copy. It reads at most the first
+    // EARLY_CHECK_CHARS characters (no token yet, so no unbounded CPU for
+    // anyone); a longer text is refused later anyway (TEXT_MAX), and the full
+    // checks run on the validated text after the token.
     const body = await readJson(request, ANGLE_BODY_MAX_BYTES);
     const raw = body.ok && body.value && typeof body.value === 'object' ? /** @type {Record<string, unknown>} */ (body.value).text : null;
     if (typeof raw === 'string') {
-      const early = checkSafety(cleanText(raw));
+      const early = checkSafety(cleanText(raw.slice(0, EARLY_CHECK_CHARS)));
       if (early.level === 'crisis' || early.level === 'care') {
         logEvt({ status: early.level, http: 200, safety_level: early.level, safety_source: 'lexicon', text_len_bucket: lengthBucket(raw.length) });
         return json(200, { ...base, status: early.level, scene: null, support: supportPayload(early.level, early.category, 'lexicon'), fallback: null, keep_support_close: true }, cors);
