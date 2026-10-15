@@ -6,7 +6,7 @@
 //     &photos=3          sample photos (0 = the seven Mallow cards)
 //     &motion=reduce     reduced motion for this lab session only (the saved pref is untouched)
 //     &autoflow=1        Auto-flow on
-//     &next=<worldId>    force the next world (e.g. static-storm, or dev-realm for a melt test)
+//     &next=<worldId>    force the next world (e.g. static-storm, or dev-realm for a melt test; lab-only worlds: moonmilk-cove)
 //     &q=fixed | 0..3    quality: no governor / a fixed level
 //     &resume=1          resume saved progress
 //
@@ -41,10 +41,16 @@ const DEV_REALM = {
   }),
 };
 
+// Lab-only worlds (not in WORLDS until the coordinator switches them on): playable here from the lab's own list.
+const LAB_WORLDS = {
+  'moonmilk-cove': () => import('./worlds/moonmilk-cove.js').then((m) => ({ ...m.MOONMILK_COVE, status: STATUS.PLAYABLE })),
+};
+
 export async function hushflowLab(app, qs) {
   const worldId = qs.get('hushflow');
   const forceNext = qs.get('next') || null;
-  const registry = createRegistry(forceNext === 'dev-realm' ? [...WORLDS, DEV_REALM] : WORLDS);
+  const labWorlds = await Promise.all([...new Set([worldId, forceNext])].filter((id) => LAB_WORLDS[id]).map((id) => LAB_WORLDS[id]()));
+  const registry = createRegistry([...WORLDS, ...labWorlds, ...(forceNext === 'dev-realm' ? [DEV_REALM] : [])]);
   const entry = registry.get(worldId);
   if (!entry || !registry.playable(worldId)) { console.warn(`[hushflow lab] no playable world "${worldId}"`); return false; }
 
