@@ -16,6 +16,7 @@
 import { createHushflow } from './director.js';
 import { WORLDS, createRegistry, STATUS } from './registry.js';
 import { rigMallow, createPlaceholderThought, createLabSubtitles } from './placeholders.js';
+import { SUNPOP_ORCHARD } from './worlds/sunpop-orchard.js';   // (lab-only until the coordinator lists it in WORLDS)
 
 const WORDS_EMOTION = { angry: 'anger', frustrated: 'anger', anxious: 'fear', overwhelmed: 'fear', restless: 'fear', sad: 'sadness', lonely: 'loneliness' };
 
@@ -44,7 +45,7 @@ const DEV_REALM = {
 export async function hushflowLab(app, qs) {
   const worldId = qs.get('hushflow');
   const forceNext = qs.get('next') || null;
-  const registry = createRegistry(forceNext === 'dev-realm' ? [...WORLDS, DEV_REALM] : WORLDS);
+  const registry = createRegistry([...WORLDS, ...(forceNext === 'dev-realm' ? [DEV_REALM] : []), ...(WORLDS.some((w) => w.id === SUNPOP_ORCHARD.id) ? [] : [SUNPOP_ORCHARD])]);
   const entry = registry.get(worldId);
   if (!entry || !registry.playable(worldId)) { console.warn(`[hushflow lab] no playable world "${worldId}"`); return false; }
 
