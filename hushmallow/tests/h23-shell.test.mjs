@@ -170,7 +170,7 @@ test('(e) the world loads during the beat: the director, the likely world\'s cod
   assert.match(warm, /reg\.registry\.select\(\{ emotion: fe, intention, gentle: gentle\(\), favourites: favouriteWorlds\(store\) \}\)/);
   assert.ok(warm.indexOf('reg.registry.prefetch?.(pick);') < warm.indexOf('await made;') && warm.indexOf('await made;') < warm.indexOf('prefetchHost(pick)'), 'code first, art last');
   assert.match(fnBody(scene, 'async function afterTell(', 'async function gentleWorld('), /warmWorld\(\{ emotion: steer, intention: intention \|\| S\.intention \}\);\s*\/\/[^\n]*\n\s*if \(text\) \{/);
-  assert.match(fnBody(scene, 'async function resumePendingTell() {', 'function followOS()') || scene, /if \(p\.input\?\.text\) warmWorld\(\{ emotion: p\.emotion, intention: p\.intention \}\);/);
+  assert.match(fnBody(scene, 'async function resumePendingTell() {', 'function followOS()') || scene, /if \(p\.input\?\.text\) warmWorld\(\{ emotion: p\.emotion \|\| p\.heard \|\| null, intention: p\.intention \}\);/);
 });
 
 test('(f) reduced motion "system" follows the OS live (MallowTouch reads undefined as "not reduced")', () => {

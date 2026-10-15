@@ -22,19 +22,22 @@ test('visit r1: only the level is kept for the tab — never the words, nothing 
   const words = 'my partner hits me';
   assert.equal(rememberVisitSafety({ level: 'care', category: 'unsafe', crisisSpoken: false, text: words, input: { text: words } }, { ss, now: 1000 }), true);
   const raw = ss.m.get(VISIT_SAFETY_KEY);
-  assert.deepEqual(Object.keys(JSON.parse(raw)).sort(), ['at', 'category', 'crisisSpoken', 'level']);
-  assert.doesNotMatch(raw, /partner|hits|text|input/, 'no words');
-  assert.deepEqual(recallVisitSafety({ ss, now: 2000 }), { level: 'care', category: 'unsafe', crisisSpoken: false });
-  // a category that is not one of ours is dropped (nothing free-form is ever kept)
-  rememberVisitSafety({ level: 'care', category: 'he hit me' }, { ss, now: 3000 });
-  assert.equal(recallVisitSafety({ ss, now: 3000 }).category, null);
+  // (fix round, privacy: not the reading's category either — only what routing across a reload needs, as flags)
+  assert.deepEqual(Object.keys(JSON.parse(raw)).sort(), ['at', 'crisisSpoken', 'level']);
+  assert.doesNotMatch(raw, /partner|hits|text|input|unsafe|category/, 'no words, no category');
+  assert.deepEqual(recallVisitSafety({ ss, now: 2000 }), { level: 'care', crisisSpoken: false });
+  // routing flags only, as booleans; anything else (a category, free text) is dropped
+  rememberVisitSafety({ level: 'care', category: 'abuse', abuseFirst: true, noWorld: 'yes', note: 'he hit me' }, { ss, now: 3000 });
+  assert.deepEqual(recallVisitSafety({ ss, now: 3000 }), { level: 'care', crisisSpoken: false, abuseFirst: true });
+  assert.doesNotMatch(ss.m.get(VISIT_SAFETY_KEY), /abuse"|he hit me|note/);
 });
 
 test('visit r1: the level only rises; the calm line said stays said; it lapses after 12 h and when unreadable', () => {
   const ss = fakeSession();
   rememberVisitSafety({ level: 'crisis', category: null, crisisSpoken: true }, { ss, now: 0 });
-  rememberVisitSafety({ level: 'concern', category: 'distress', crisisSpoken: false }, { ss, now: 10 });
-  assert.deepEqual(recallVisitSafety({ ss, now: 20 }), { level: 'crisis', category: null, crisisSpoken: true });
+  rememberVisitSafety({ level: 'concern', category: 'distress', crisisSpoken: false, liftable: true }, { ss, now: 10 });
+  // (fix round: a lower level never brings its "distress alone" with it)
+  assert.deepEqual(recallVisitSafety({ ss, now: 20 }), { level: 'crisis', crisisSpoken: true });
   assert.equal(recallVisitSafety({ ss, now: 10 + MAX_AGE_MS + 1 }), null, 'a tab left open past 12 h is a new visit');
   assert.equal(ss.m.size, 0, '...and the lapsed level is removed');
   ss.setItem(VISIT_SAFETY_KEY, '{nope');
@@ -52,11 +55,13 @@ test('visit r1: the level only rises; the calm line said stays said; it lapses a
 test('visit r1: the Hushfold keeps the level for the tab, reads it back before the first frame, and floors every Mallow', () => {
   const scene = read('src/app/scenes/hushfold.js');
   const keep = fnBody(scene, 'function keepSafety() {', '// ---------------------------------------------------- telling');
-  assert.match(keep, /app\.state\.hfSafety = \{ level: S\.level, category: S\.category, crisisSpoken: S\.crisisSpoken \};\s*rememberVisitSafety\(app\.state\.hfSafety\);/);
+  // (fix round: the routing flags only for a reload, never the category)
+  assert.match(keep, /app\.state\.hfSafety = \{ level: S\.level, category: S\.category, crisisSpoken: S\.crisisSpoken, \.\.\.flags \};\s*rememberVisitSafety\(\{ level: S\.level, crisisSpoken: S\.crisisSpoken, \.\.\.visitFlags\(flags\) \}\);/);
   const enter = fnBody(scene, 'async enter() {', 'leave() {');
   const at = enter.indexOf('const kept = app.state.hfSafety || recallVisitSafety();');
   assert.ok(at > 0 && at < enter.indexOf('new MallowTouch('), 'read back before the Mallow is made');
-  assert.ok(enter.indexOf('if (kept?.level) setStageFloor(CARE_FACE);') > at && enter.indexOf('if (kept?.level) setStageFloor(CARE_FACE);') < enter.indexOf('new MallowTouch('));
+  // (fix round: and after the check-in's "I'm okay" in this page session, S.attentive)
+  assert.ok(enter.indexOf('if (kept?.level || S.attentive) setStageFloor(CARE_FACE);') > at && enter.indexOf('if (kept?.level || S.attentive) setStageFloor(CARE_FACE);') < enter.indexOf('new MallowTouch('));
   assert.match(fnBody(scene, 'function noteSafety(r) {', 'function safetyHold('), /keepSafety\(\);\s*\/\/[^\n]*\n\s*setStageFloor\(CARE_FACE\);/);
   // the module never touches localStorage and keeps no words (the shell itself still touches no storage at all)
   const mod = read('src/app/visit-safety.js');

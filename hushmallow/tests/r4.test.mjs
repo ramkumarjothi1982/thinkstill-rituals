@@ -247,7 +247,9 @@ test('item 4 on the main screen: supportFirst offers no world (not even somewher
   // the scene: sticky for the visit, and careChoice offers no world before any is looked up (careBeat already showed the pill)
   assert.match(between(HF, 'function noteSafety(r) {', 'function noteNoResume('), /if \(r\?\.supportFirst\) S\.supportFirst = true;/);
   const choice = between(HF, 'async function careChoice(', 'function calmTheWorld(');
-  const no = choice.indexOf("if (S.deathCare || S.supportFirst) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }");
+  // (fix round: with something to tap — [See support] [Stay here quietly], supportChoice, which offers no world either)
+  const no = choice.indexOf('if (S.deathCare || S.supportFirst) { await supportChoice(); return; }');
+  { const sc = HF.slice(HF.indexOf('async function supportChoice('), HF.indexOf('async function gentleWorld(')); assert.doesNotMatch(sc, /gentleWorld|playCalm|startFlow|calmTheWorld/); assert.match(sc, /if \(S\.hold === 'quiet' && worldMode\) endQuietWorld\(\);/); }
   assert.ok(no > 0 && no < choice.indexOf('await gentleWorld('), 'before any world is looked up');
   assert.match(between(HF, 'async function careBeat(', 'async function careAgain('), /supportPill\.hidden = false;/);
   // and the gentle path's level is never raised by it
