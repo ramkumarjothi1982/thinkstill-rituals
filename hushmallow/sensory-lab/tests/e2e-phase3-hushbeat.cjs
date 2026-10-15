@@ -162,6 +162,9 @@ async function shot(page, out, name, { ring = false } = {}) {
   try { return await H.shot(page, out, name); } finally { await page.evaluate(() => document.getElementById('__hbShot')?.remove()).catch(() => {}); }
 }
 const hb = (page, fn, arg) => page.evaluate(fn, arg);
+/** The lab's own path on every server (the repository root, or the published copy whose page is /hushmallow/test-index.html):
+ * in-page imports use it, never the page's location, as the other suites do. */
+const LAB = '/hushmallow/sensory-lab';
 const mod = (a, n) => ((a % n) + n) % n;
 
 /** Open #hushbeat with a favourite Mallow and wait for its rig and the feature handle. */
@@ -211,8 +214,8 @@ async function invite(page, id) {
  * few px, within the face's depth); feet false: not checked. Records the checks under scope and returns the measurements.
  */
 async function onProp(page, scope, { feet = 'line' } = {}) {
-  const m = await hb(page, async () => {
-    const S = await import(new URL('features/hushbeat/stagecraft.js', location.href).href);
+  const m = await hb(page, async (LAB) => {
+    const S = await import(`${LAB}/features/hushbeat/stagecraft.js`);
     const realm = __lab.stage?.env?.realm;
     if (!realm) return null;
     const st = realm.debug.state, rc = realm.canvas.getBoundingClientRect(), k = rc.width / st.W;
@@ -222,7 +225,7 @@ async function onProp(page, scope, { feet = 'line' } = {}) {
       return { id: r.id, l: Math.round(o.left + b.cx - b.w / 2), r: Math.round(o.left + b.cx + b.w / 2), w: Math.round(b.w), feet: Math.round(o.top + r.BASE) };
     });
     return { realm: st.id, P: Number.isFinite(P) ? Math.round(P) : null, cx: Math.round(cx), gy: Math.round(gy), bodies, frame: __lab.hushbeat.debug().duet?.frame };
-  });
+  }, LAB);
   if (!check(scope, 'a duet over a realm', m && m.bodies.length === 2, JSON.stringify(m))) return m;
   const on = m.P == null || m.bodies.every((b) => b.l >= m.cx - m.P - 1 && b.r <= m.cx + m.P + 1);
   check(scope, 'both Mallows stand on the world\'s prop: each body inside its top (none hangs off its edge)', on, JSON.stringify(m));
@@ -747,7 +750,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const { ctx, page, errors } = await H.open(browser, 'desktop', '#home');
     own(ctx);
     await page.waitForFunction(() => globalThis.__lab, null, { timeout: T });
-    const res = await page.evaluate(renderKits);
+    const res = await page.evaluate(renderKits, LAB);
     const rmsAll = Object.values(res).map((r) => r.rms);
     for (const [id, r] of Object.entries(res)) {
       check(scope, `${id}: the tap note is on pitch (±3 %), peak < 0.9, no clicks (silent before, < 0.02 in its first 0.5 ms, silent after)`,
@@ -1365,11 +1368,13 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await clearLog(page);
     await page.mouse.click(B[0].x, B[0].y);
     await page.mouse.click(B[1].x, B[1].y);
-    await waitEvent(page, "e.kind === 'harmony'");
-    const hm = await hb(page, () => { const L = __lab.hushbeat.log, n = L.filter((e) => e.kind === 'note' && !e.ghost); return { h: L.find((e) => e.kind === 'harmony'), a: n.find((e) => e.slot === 0), b: n.find((e) => e.slot === 1), glance: __lab.hushbeat.performers.map((x) => x.lookT) }; });
+    // the friend's own harmony (b = 1, its call the lead's note): the lead's tap may itself harmonise first with the
+    // tail of the friend's hello, still within 400 ms of a quick tap (notes close together harmonise either way)
+    await waitEvent(page, "e.kind === 'harmony' && e.b === 1 && e.a === 0");
+    const hm = await hb(page, () => { const L = __lab.hushbeat.log, n = L.filter((e) => e.kind === 'note' && !e.ghost); return { h: L.find((e) => e.kind === 'harmony' && e.b === 1 && e.a === 0), a: n.find((e) => e.slot === 0), b: n.find((e) => e.slot === 1), glance: __lab.hushbeat.performers.map((x) => x.lookT) }; });
     const icv = hm.a && hm.b ? icOf(hm.b.semi, hm.a.semi) : -1;
     check(scope, 'E16: a left tap then a right one within 400 ms harmonise (a 3rd or 6th, else a 5th or octave), and the two glance at each other',
-      !!hm.h && hm.b.t - hm.a.t <= 0.4 && [0, 3, 4, 5].includes(icv) && hm.h.interval === icv && hm.glance.every((t) => t > 0), JSON.stringify({ h: hm.h, icv, a: hm.a?.semi, b: hm.b?.semi }));
+      !!hm.h && hm.b.t - hm.a.t <= 0.4 && hm.h.t === hm.b.t && [0, 3, 4, 5].includes(icv) && hm.h.interval === icv && hm.glance.every((t) => t > 0), JSON.stringify({ h: hm.h, icv, a: hm.a?.semi, b: hm.b?.semi, at: [hm.a?.t, hm.b?.t] }));
     // Both + Hum: a bloom, the arc between the heads
     await page.click('.hushbeat .hb-buttons');
     await page.waitForSelector('.hushbeat .hb-target', { timeout: T });
@@ -1419,8 +1424,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     // G: both together
     await clearLog(page);
     await page.keyboard.press('g');
-    await waitEvent(page, "e.kind === 'harmony'");
-    const g = await hb(page, () => { const n = __lab.hushbeat.log.filter((e) => e.kind === 'note' && !e.ghost); return { slots: n.map((e) => e.slot), semis: n.map((e) => e.semi), h: __lab.hushbeat.log.find((e) => e.kind === 'harmony') }; });
+    await waitEvent(page, "e.kind === 'harmony' && e.b === 1 && e.a === 0");
+    const g = await hb(page, () => { const n = __lab.hushbeat.log.filter((e) => e.kind === 'note' && !e.ghost); return { slots: n.map((e) => e.slot), semis: n.map((e) => e.semi), h: __lab.hushbeat.log.find((e) => e.kind === 'harmony' && e.b === 1 && e.a === 0) }; });
     check(scope, 'E16: G plays both together; the friend harmonises', g.slots.includes(0) && g.slots.includes(1) && [0, 3, 4, 5].includes(g.h?.interval), JSON.stringify(g));
     // Tab: keyboard focus moves to the friend's stage, and its keys play the friend
     await hb(page, () => document.querySelector('.hushbeat .stage.lead').focus());
@@ -1617,8 +1622,19 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     own(ctx);
     const origin = new URL(H.BASE).origin, reqs = [];
     let phase = 'load';
-    page.on('request', (r) => reqs.push({ url: r.url(), method: r.method(), type: r.resourceType(), phase }));
-    await page.reload();   // every request from the first byte, now that the listener is on
+    page.on('request', (r) => reqs.push({ url: r.url(), method: r.method(), type: r.resourceType(), referer: r.headers().referer || '', phase }));
+    const doc = await page.reload();   // every request from the first byte, now that the listener is on
+    // The page's own HTML may link a font stylesheet on another origin: the published copy's shell does (its host
+    // loads Fredoka from Google Fonts), the repository page does not. That stylesheet and the font files it asks for
+    // (their Referer is its origin) belong to the page, not the lab, whose code static-scan.mjs keeps free of any
+    // http(s) URL; every other request must stay on the page's origin.
+    const html = doc ? await doc.text() : '';
+    const shellCss = [...html.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]).filter((t) => /\brel=["']?stylesheet\b/i.test(t))
+      .map((t) => (t.match(/\bhref=["']([^"']+)["']/i) || [])[1] || '').filter((u) => /^https?:\/\//i.test(u))
+      .map((u) => new URL(u.replace(/&amp;/g, '&')).href);
+    const shellOrigins = new Set(shellCss.map((u) => new URL(u).origin));
+    const fromShell = (r) => (r.type === 'stylesheet' && shellCss.includes(r.url))
+      || (r.type === 'font' && /^https?:/.test(r.referer) && shellOrigins.has(new URL(r.referer).origin));
     await H.waitRig(page, { timeout: T });
     await page.waitForFunction(() => __lab.hushbeat, null, { timeout: T });
     await page.waitForLoadState('networkidle');
@@ -1725,10 +1741,11 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await sleep(800);
     const priv1 = await hb(page, () => __privacy());
     // privacy: the whole visit, from the first byte
-    const foreign = reqs.filter((r) => !/^(data|blob):/.test(r.url) && new URL(r.url).origin !== origin).map((r) => r.url);
+    const offOrigin = reqs.filter((r) => !/^(data|blob):/.test(r.url) && new URL(r.url).origin !== origin);
+    const foreign = offOrigin.filter((r) => !fromShell(r)).map((r) => r.url), shell = offOrigin.filter(fromShell).map((r) => `${r.type} ${new URL(r.url).origin}`);
     const during = reqs.filter((r) => r.phase === 'play' || r.phase === 'duet').map((r) => `${r.method} ${r.url.replace(origin, '')}`);
     const joining = reqs.filter((r) => r.phase === 'friend');
-    check(scope, 'E23 every request stays on the page\'s own origin (no CDN, no API, no analytics)', reqs.length > 0 && !foreign.length, JSON.stringify({ n: reqs.length, foreign: foreign.slice(0, 5) }));
+    check(scope, 'E23 every request stays on the page\'s own origin (no CDN, no API, no analytics; only a font stylesheet the page\'s HTML links may load from its host)', reqs.length > 0 && !foreign.length, JSON.stringify({ n: reqs.length, foreign: foreign.slice(0, 5), shellCss, shell }));
     check(scope, 'E23 no request at all while playing (solo and duet: notes, hums, bass, replay, keep, the sheets)', !during.length, JSON.stringify(during.slice(0, 8)));
     check(scope, 'E23 a friend joining may only fetch the lab\'s own files (GET)', joining.every((r) => r.method === 'GET'), JSON.stringify(joining.map((r) => r.url.replace(origin, '')).slice(0, 8)));
     const zero = (p) => Object.values(p).every((v) => v === 0);
@@ -1991,8 +2008,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
 }
 
 // In the page: offline renders of every kit (real DSP) and their measurements.
-async function renderKits() {
-  const base = new URL('core/', location.href).href;
+async function renderKits(LAB) {
+  const base = `${LAB}/core/`;
   const K = await import(base + 'music-kits.js');
   const T = await import(base + 'music-theory.js');
   const sr = 48000;
