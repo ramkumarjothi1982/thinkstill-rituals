@@ -30,7 +30,7 @@
 
 import { createRealmCore } from '../../../world/realm.js';
 import { glowSprite, glintSprite, Pool, Rings, clamp, lerp, smoothstep, TAU, makeCanvas } from '../../../world/util.js';
-import { LAGOON, VOCAB, UNSURE, feelingWords, tagRows, planLagoon, defaultMallowBox, createFocus, createNaming, createNamingDetector, createLagoonProgress } from './raindrop-lagoon-core.js';
+import { LAGOON, VOCAB, UNSURE, feelingWords, planLagoon, defaultMallowBox, createFocus, createNaming, createNamingDetector, createLagoonProgress } from './raindrop-lagoon-core.js';
 import { wrapLines } from '../placeholders.js';
 import { STATUS } from '../registry.js';
 
@@ -225,7 +225,7 @@ function frostSprite(seed = 7) {
   g.translate(cx, cy);
   dropPath(g, r - 1);
   const gr = g.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.1, 0, 0, r * 1.2);
-  gr.addColorStop(0, 'rgba(236,246,255,0.78)'); gr.addColorStop(0.7, 'rgba(206,226,255,0.62)'); gr.addColorStop(1, 'rgba(255,214,246,0.5)');
+  gr.addColorStop(0, 'rgba(232,244,255,0.66)'); gr.addColorStop(0.7, 'rgba(190,214,255,0.5)'); gr.addColorStop(1, 'rgba(255,206,242,0.42)');
   g.fillStyle = gr; g.fill();
   g.save(); g.clip();
   for (let k = 0; k < 46; k++) {
@@ -310,6 +310,15 @@ export function create(ctx) {
     return r || mallowBox();
   }
   const bandBottom = () => (ctx.band?.y || 0) + (ctx.band?.h || 0);
+  /** The person's text size (1 | 1.12 | 1.25, set on <html> by type.js): the tag and the word in the hand grow with it. */
+  let tkCache = 1, tkAt = -9;
+  function textK() {
+    if (elapsed - tkAt < 0.5 && tkAt >= 0) return tkCache;
+    tkAt = elapsed;
+    try { const v = parseFloat(document.documentElement.style.getPropertyValue('--type-scale')); tkCache = clamp(Number.isFinite(v) ? v : 1, 1, 1.4); } catch { tkCache = 1; }
+    return tkCache;
+  }
+  let layoutTK = 1;
   const freeW = () => (Number.isFinite(ctx.freeW) && ctx.freeW > 0 ? Math.min(W, ctx.freeW) : W);
   /** W2's ThoughtLayer when it draws the person's thought (it measures and shows the words), else null. */
   const wordsLayer = () => (thought && !thought.draw && ctx.thoughtLayer?.plateFor ? ctx.thoughtLayer : null);
@@ -327,7 +336,9 @@ export function create(ctx) {
       if ((P.rows || P.lines || 1) > lines) return null;
       // (the layer keeps its own room between the thought and its words: plan for the plate where the layer hangs it)
       const pad = Number.isFinite(P.above) ? Math.max(0, Math.ceil(P.above - (r + LAGOON.PLATE_GAP))) : 0;
-      return { w: Math.ceil(P.w), h: Math.ceil(P.h) + pad, fit: { lines, maxW: Math.round(maxW) } };
+      // (an excerpt — the start of the words, cut with "…" — is only for when nothing else fits)
+      const cut = typeof P.text === 'string' && /…\s*$/.test(P.text) && !/…\s*$/.test(tok);
+      return { w: Math.ceil(P.w), h: Math.ceil(P.h) + pad, cut, fit: { lines, maxW: Math.round(maxW) } };
     }
     try {
       measureG ||= makeCanvas(4, 4).getContext('2d');
@@ -339,7 +350,7 @@ export function create(ctx) {
         if (ls.length <= lines || (px === 15 && lines > 1)) {
           const n = Math.min(lines, ls.length, 2);
           let tw = 0; for (let k = 0; k < n; k++) tw = Math.max(tw, measureG.measureText(ls[k]).width);
-          return { w: Math.ceil(Math.min(inner, tw) + 2 * LAGOON.LABEL_PAD_X), h: Math.ceil(n * LAGOON.LABEL_LINE + 2 * LAGOON.LABEL_PAD_Y), lines: n, fit: { lines: n, maxW: Math.round(maxW) } };
+          return { w: Math.ceil(Math.min(inner, tw) + 2 * LAGOON.LABEL_PAD_X), h: Math.ceil(n * LAGOON.LABEL_LINE + 2 * LAGOON.LABEL_PAD_Y), lines: n, cut: ls.length > n, fit: { lines: n, maxW: Math.round(maxW) } };
         }
       }
     } catch { /* no canvas: estimate */ }
@@ -349,14 +360,14 @@ export function create(ctx) {
   function layout(first = true) {
     frameNo++;
     const rest = restBox();
-    layoutRest = rest; layoutBandB = bandBottom(); layoutFreeW = freeW();
+    layoutRest = rest; layoutBandB = bandBottom(); layoutFreeW = freeW(); tkAt = -9; layoutTK = textK();
     const nPh = Math.min(7, photos?.n || 0);
     let p = null;
     // as many feeling drops as fit (six, down to four: three words and "unsure")
     const r0 = Math.round(clamp(0.08 * Math.min(W, H), 22, 38));
     for (let n = 6; n >= 4; n--) {
       const q = planLagoon({
-        W, H, band: ctx.band, mallow: rest || defaultMallowBox(W, H), freeW: layoutFreeW, n, photos: nPh, thought: !!thought,
+        W, H, band: ctx.band, mallow: rest || defaultMallowBox(W, H), freeW: layoutFreeW, n, photos: nPh, thought: !!thought, textScale: layoutTK,
         plate: thought ? (maxW, lines) => plateFor(maxW, lines, r0) : null,
       });
       p = q;
@@ -382,7 +393,7 @@ export function create(ctx) {
     if (relayoutClock < 0.25) return;
     const step = relayoutClock; relayoutClock = 0;
     const r = restBox();
-    const changed = boxMoved(r, layoutRest, RELAYOUT_TOL) || Math.abs(bandBottom() - layoutBandB) > 4 || Math.abs(freeW() - layoutFreeW) > 4;
+    const changed = boxMoved(r, layoutRest, RELAYOUT_TOL) || Math.abs(bandBottom() - layoutBandB) > 4 || Math.abs(freeW() - layoutFreeW) > 4 || Math.abs(textK() - layoutTK) > 0.01;
     if (!changed) { pendingRect = null; pendingFor = 0; return; }
     // wait until the move has settled (the shell glides its Mallow for 720 ms), or 2 s at most
     pendingFor += step;
@@ -990,12 +1001,14 @@ export function create(ctx) {
     // photo orbs
     for (const o of orbs) drawOrb(g, o, now, rm);
     // the drops hanging, then the thought and its tag, then anything moving or in the hand above them
+    // (all of them under the thought, its words and its tag: a drop carried over the person's words never hides them,
+    // and one given falls in behind the thought)
     for (const d of drops) if (d.state === 'hang' || d.state === 'form' || d.state === 'rise') drawDrop(g, d, now, rm);
+    for (const d of drops) if (d.state === 'held' || d.state === 'open' || d.state === 'fall') drawDrop(g, d, now, rm);
     drawThought(g, now, rm);
     drawTag(g, now);
     halo.draw(g);
-    for (const d of drops) if (d.state === 'fall') drawDrop(g, d, now, rm);
-    for (const d of drops) if (d.state === 'held' || d.state === 'open') { drawDrop(g, d, now, rm); drawPill(g, d); } else d.pill = null;
+    for (const d of drops) if (d.state === 'held' || d.state === 'open') drawPill(g, d); else d.pill = null;
     // light and water
     g.globalCompositeOperation = 'lighter';
     splash.draw(g, sprites.list, 1, 0.05);
@@ -1019,17 +1032,17 @@ export function create(ctx) {
     g.scale(sx, sy);
     // a soft halo (stronger as it clears)
     g.globalCompositeOperation = 'lighter';
-    g.globalAlpha = d.alpha * (0.22 + 0.4 * d.focus.k);
+    g.globalAlpha = d.alpha * (0.2 + 0.22 * d.focus.k);
     g.drawImage(sprites.glow, -r * 1.6, -r * 1.9, r * 3.2, r * 3.2);
     g.globalCompositeOperation = 'source-over';
     g.globalAlpha = d.alpha;
     g.drawImage(spr, -w / 2, -h * spr.cy, w, h);
-    if (fog > 0.01) { g.globalAlpha = d.alpha * fog * 0.92; g.drawImage(fr, -w / 2, -h * fr.cy, w, h); }
+    if (fog > 0.01) { g.globalAlpha = d.alpha * fog * 0.85; g.drawImage(fr, -w / 2, -h * fr.cy, w, h); }
     // inside a clearing drop: its word, small, when it fits (the pill above shows it large)
     if (d.focus.k > 0.35 && (d.state === 'held' || d.state === 'open' || d.state === 'fall')) {
-      g.globalAlpha = d.alpha * smoothstep(0.35, 0.85, d.focus.k);
+      g.globalAlpha = d.alpha * 0.32 * smoothstep(0.35, 0.85, d.focus.k);
       g.globalCompositeOperation = 'lighter';
-      g.drawImage(sprites.white, -r * 0.7, -r * 0.8, r * 1.4, r * 1.4);
+      g.drawImage(sprites.gold, -r * 0.55, -r * 0.62, r * 1.1, r * 1.1);
       g.globalCompositeOperation = 'source-over';
     }
     // a glint now and then
@@ -1041,13 +1054,14 @@ export function create(ctx) {
   /** The word in the hand: a pill above the drop (beside it near the top of the stage), readable as soon as it shows. */
   const pillCache = new Map();
   function pillSprite(word) {
+    if (pillCache.k !== layoutTK) { pillCache.clear(); pillCache.k = layoutTK; }
     let s = pillCache.get(word);
     if (s) return s;
     const dpr = Math.max(1, ctx.dpr || 1);
     measureG ||= makeCanvas(4, 4).getContext('2d');
-    const font = ctx.font(20, 800);
+    const k = layoutTK, font = ctx.font(20 * k, 800);
     measureG.font = font;
-    const tw = Math.ceil(measureG.measureText(word).width), w = tw + 32, h = 44;
+    const tw = Math.ceil(measureG.measureText(word).width), w = tw + 32, h = Math.round(44 * Math.max(1, k * 0.95));
     const c = makeCanvas(Math.ceil((w + 16) * dpr), Math.ceil((h + 16) * dpr));
     const g = c.getContext('2d');
     g.scale(dpr, dpr); g.translate(8, 8);
@@ -1067,14 +1081,24 @@ export function create(ctx) {
     const a = smoothstep(0.2, 0.55, d.focus.k);
     if (a <= 0.01) { d.pill = null; return; }
     const P = pillSprite(d.word), r = dropR(d);
-    let x = d.x, y = d.y - r * 1.55 - 10 - P.h / 2;
-    const minY = bandBottom() + LAGOON.TOP_GAP + P.h / 2;
-    if (y < minY) {
-      // no room above: beside the drop, on the roomier side
-      const right = d.x < freeW() / 2;
-      x = right ? d.x + r + 12 + P.w / 2 : d.x - r - 12 - P.w / 2; y = Math.max(minY, d.y - r * 0.2);
+    // above the drop; else beside it (the roomier side first), else under it — never over the person's words, the
+    // thought or its tag, never in the band
+    const minY = bandBottom() + LAGOON.TOP_GAP + P.h / 2, maxY = H - LAGOON.EDGE - P.h / 2, XR = freeW();
+    const right = d.x < XR / 2, sx = r + 12 + P.w / 2;
+    const C0 = plan.cluster, CB = { x0: C0.x0 + tS.ox - 4, y0: C0.y0 + tS.oy - 4, x1: C0.x1 + tS.ox + 4, y1: C0.y1 + tS.oy + 4 };
+    const M = mallowBox(), HB = M ? { x0: M.left + 0.06 * M.width, y0: M.top, x1: M.right - 0.06 * M.width, y1: M.bottom } : null;
+    const over = (B, o) => !!o && !(B.x1 < o.x0 || B.x0 > o.x1 || B.y1 < o.y0 || B.y0 > o.y1);
+    let x = d.x, y = d.y - r * 1.55 - 10 - P.h / 2, best = null, bestCost = Infinity;
+    // (cost: the person's words worst, then the hero, then the drop in the hand; the first clear place wins)
+    for (const [cx, cy] of [[d.x, d.y - r * 1.55 - 10 - P.h / 2], [d.x + (right ? sx : -sx), d.y - r * 0.3], [d.x + (right ? -sx : sx), d.y - r * 0.3], [d.x, d.y + r + 14 + P.h / 2], [d.x, d.y - r * 0.2]]) {
+      const px = clamp(cx, LAGOON.EDGE + P.w / 2, XR - LAGOON.EDGE - P.w / 2), py = clamp(cy, minY, maxY);
+      const B = { x0: px - P.w / 2, y0: py - P.h / 2, x1: px + P.w / 2, y1: py + P.h / 2 };
+      const onDrop = Math.abs(px - d.x) < P.w / 2 + r * 0.8 && Math.abs(py - (d.y - r * 0.2)) < P.h / 2 + r * 1.1;
+      const cost = (over(B, CB) ? 100 : 0) + (over(B, HB) ? 10 : 0) + (onDrop ? 1 : 0);
+      if (cost < bestCost) { bestCost = cost; best = [px, py]; }
+      if (!cost) break;
     }
-    x = clamp(x, LAGOON.EDGE + P.w / 2, freeW() - LAGOON.EDGE - P.w / 2);
+    x = best[0]; y = best[1];
     g.globalAlpha = a;
     g.drawImage(P.c, x - P.w / 2 - 8, y - P.h / 2 - 8, P.w + 16, P.h + 16);
     if (d.focus.latched) { g.globalAlpha = a * 0.55; g.strokeStyle = C.gold; g.lineWidth = 1.5; roundRect(g, x - P.w / 2, y - P.h / 2, P.w, P.h, P.h / 2); g.stroke(); }
@@ -1139,24 +1163,34 @@ export function create(ctx) {
   let tagSprite = null, tagKey = '';
   function buildTag() {
     const list = naming.list;
-    const key = `${list.join(',')}|${ctx.font(16, 700)}|${plan.tag.w}|${ctx.dpr}`;
+    const k = layoutTK;
+    const key = `${list.join(',')}|${ctx.font(16, 700)}|${plan.tag.w}|${ctx.dpr}|${k}`;
     if (key === tagKey && tagSprite) return tagSprite;
     tagKey = key;
     measureG ||= makeCanvas(4, 4).getContext('2d');
-    const fontA = ctx.font(15, 600), fontB = ctx.font(17, 800);
     const maxW = plan.tag.w - 2 * LAGOON.TAG_PAD_X;
-    measureG.font = fontB;
-    const rows = list.length ? tagRows(list, (s) => measureG.measureText(s).width <= maxW) : ['This is…'];
-    // measure each row in its parts ("This is… " softer, the words bright)
-    const parts = rows.map((row, i) => {
-      const lead = i === 0 ? 'This is… ' : (row.startsWith('and ') ? 'and ' : '');
-      const rest = row.slice(lead.length);
-      measureG.font = fontA; const wl = lead ? measureG.measureText(lead).width : 0;
-      measureG.font = fontB; const wr = rest ? measureG.measureText(rest).width : 0;
-      return { lead, rest, wl, wr };
-    });
+    const words = list.map((i) => VOCAB[i]);
+    // the rows, roomiest first: "This is… a · b" · "This is… a" / "and b" · "This is…" / "a · b" — then smaller type
+    const sets = !words.length ? [[['This is…', '']]]
+      : words.length === 1 ? [[['This is… ', words[0]]], [['This is…', ''], ['', words[0]]]]
+        : [[['This is… ', words.join(' · ')]], [['This is… ', words[0]], ['and ', words[1]]], [['This is…', ''], ['', words[0]], ['and ', words[1]]]];
+    let fontA, fontB, LINE, parts = null;
+    pick: for (const shrink of [1, 0.92, 0.85]) {
+      fontA = ctx.font(15 * k * shrink, 600); fontB = ctx.font(17 * k * shrink, 800); LINE = LAGOON.TAG_LINE * k * shrink;
+      for (const set of sets) {
+        // (three rows only when two would not fit even in the smallest type)
+        if (set.length > 2 && shrink !== 0.85) continue;
+        parts = set.map(([lead, rest]) => {
+          measureG.font = fontA; const wl = lead ? measureG.measureText(lead).width : 0;
+          measureG.font = fontB; const wr = rest ? measureG.measureText(rest).width : 0;
+          return { lead, rest, wl, wr };
+        });
+        if (parts.every((q) => q.wl + q.wr <= maxW)) break pick;
+      }
+    }
+    const rows = parts;
     let tw = 0; for (const p of parts) tw = Math.max(tw, p.wl + p.wr);
-    const w = Math.ceil(Math.min(plan.tag.w, tw + 2 * LAGOON.TAG_PAD_X)), h = Math.ceil(rows.length * LAGOON.TAG_LINE + 2 * LAGOON.TAG_PAD_Y);
+    const w = Math.ceil(Math.min(plan.tag.w, tw + 2 * LAGOON.TAG_PAD_X)), h = Math.ceil(rows.length * LINE + 2 * LAGOON.TAG_PAD_Y);
     const dpr = Math.max(1, ctx.dpr || 1);
     const c = makeCanvas(Math.ceil((w + 16) * dpr), Math.ceil((h + 16) * dpr));
     const g = c.getContext('2d');
@@ -1169,7 +1203,8 @@ export function create(ctx) {
     g.textBaseline = 'middle';
     const spans = [];
     parts.forEach((p, i) => {
-      const y = LAGOON.TAG_PAD_Y + LAGOON.TAG_LINE * (i + 0.5) + 0.5;
+      const y = LAGOON.TAG_PAD_Y + LINE * (i + 0.5) + 0.5;
+      // (a row may be a lead alone — "This is…" over its words)
       const x0 = (w - (p.wl + p.wr)) / 2;
       g.font = fontA; g.fillStyle = 'rgba(214,236,255,0.92)'; g.shadowBlur = 0;
       if (p.lead) g.fillText(p.lead, x0, y);
@@ -1183,8 +1218,8 @@ export function create(ctx) {
         for (let b = 0; b < bits.length; b++) {
           measureG.font = fontB;
           const bw = measureG.measureText(bits[b]).width;
-          const k = VOCAB.indexOf(bits[b]);
-          if (k >= 0) spans.push({ k, x0: xx, x1: xx + bw, y0: y - LAGOON.TAG_LINE / 2, y1: y + LAGOON.TAG_LINE / 2 });
+          const wi = VOCAB.indexOf(bits[b]);
+          if (wi >= 0) spans.push({ k: wi, x0: xx, x1: xx + bw, y0: y - LINE / 2, y1: y + LINE / 2 });
           xx += bw + (b < bits.length - 1 ? measureG.measureText(' · ').width : 0);
         }
       }
