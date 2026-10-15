@@ -530,7 +530,8 @@ test('lexicon gaps r4: strictly additive: the idiom guards and the old rules are
   assert.equal(HARM_LEXICON.idiomGuards.length, 19);
   assert.match(createHash('sha256').update(JSON.stringify(HARM_LEXICON.idiomGuards)).digest('hex'), /^c0d1da179764faef/);
   const rules = (L) => [...L.crisis, ...L.crisisOther, ...Object.values(L.care).flat()];
-  assert.equal(rules(HARM_LEXICON).length, 157 + 36, "931fbb0's 157 crisis, someone-in-danger and care rules, and this pass's 36");
+  // (fix round, 15 Oct 2026) + 1: the detection fix added one care rule, additively (the threat still being made, care/threat)
+  assert.equal(rules(HARM_LEXICON).length, 157 + 36 + 1, "931fbb0's 157 crisis, someone-in-danger and care rules, this pass's 36, and the detection fix's 1");
   assert.deepEqual([CONCERN_LEXICON.length, HARM_OTHERS_LEXICON.length], [46, 2], 'the concern and harm-others lists are untouched');
   // what rounds 1-3 took away reads again, on both readings: a game, a negated danger, the doctor's check, an idiom 931fbb0 read
   const is = (t, level, category) => { for (const r of both(t)) assert.deepEqual([r.level, r.category], [level, category], `${t} → ${show(r)}`); };
