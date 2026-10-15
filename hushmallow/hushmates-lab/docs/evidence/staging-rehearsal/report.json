@@ -1,11 +1,13 @@
 {
   "environment": "local-rehearsal",
   "verifiedOn": "local-rehearsal",
-  "site": "http://127.0.0.1:41423",
-  "supabase": "http://127.0.0.1:43561",
-  "startedAt": "2026-10-15T05:49:41.625Z",
-  "run": "lhockf",
+  "site": "http://127.0.0.1:32851",
+  "supabase": "http://127.0.0.1:33963",
+  "startedAt": "2026-10-15T08:06:09.113Z",
+  "run": "ohphde",
   "engine": "Chromium (desktop and mobile emulation)",
+  "edge": "deno 2.9.6",
+  "edgeLabel": "the real index.ts under Deno 2.9.6",
   "checks": [
     {
       "area": "site",
@@ -452,7 +454,7 @@
     "email delivery: the app’s “send me a code” call was answered by the test (no email sent); the staging guide’s hand test covers real emails",
     "Safari/WebKit and real phones: Chromium with phone sizes and touch only (run with real devices by hand)"
   ],
-  "finishedAt": "2026-10-15T05:51:10.392Z",
+  "finishedAt": "2026-10-15T08:07:37.792Z",
   "passed": 57,
   "failed": 0
 }

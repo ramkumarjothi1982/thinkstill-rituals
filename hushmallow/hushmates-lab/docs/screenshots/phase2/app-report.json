@@ -87,7 +87,7 @@
     },
     {
       "ok": true,
-      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"4cae9c60-8fc8-4a48-a3fa-e6386cc68cf7\"}])"
+      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"c8aedc4e-bc51-4a69-b290-2b750e81655e\"}])"
     },
     {
       "ok": true,
@@ -123,6 +123,10 @@
     },
     {
       "ok": true,
+      "what": "a refresh with nothing new leaves a keyboard user’s focus where it was"
+    },
+    {
+      "ok": true,
       "what": "the Mallow’s words to look for are known"
     },
     {
@@ -148,6 +152,38 @@
     {
       "ok": true,
       "what": "the video draws the Mallow’s perspective with “A Mallow perspective · Automatically generated”"
+    },
+    {
+      "ok": true,
+      "what": "a writer stopped sharing while a video with their words was recording: the video is stopped or not kept, never handed over"
+    },
+    {
+      "ok": true,
+      "what": "their words are no longer offered, and the other choice stays"
+    },
+    {
+      "ok": true,
+      "what": "a writer took their words back mid-share: nothing is made or drawn"
+    },
+    {
+      "ok": true,
+      "what": "and their words are gone from the screen"
+    },
+    {
+      "ok": true,
+      "what": "the feeling was let go mid-share: nothing is made until the author looks again"
+    },
+    {
+      "ok": true,
+      "what": "and “Include my own words” is gone"
+    },
+    {
+      "ok": true,
+      "what": "a picture made afterwards draws none of the words that were let go or taken back"
+    },
+    {
+      "ok": true,
+      "what": "a journey deleted mid-share: nothing is made, and both buttons are switched off"
     },
     {
       "ok": true,
@@ -438,6 +474,16 @@
       "hits": []
     },
     {
+      "name": "17c-share-video-stopped",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "17c-share-let-go",
+      "url": "/app/",
+      "hits": []
+    },
+    {
       "name": "17d-resend-home-one",
       "url": "/app/",
       "hits": []
@@ -532,6 +578,7 @@
   "expected": [
     "error: Failed to load resource: the server responded with a status of 403 (Forbidden)",
     "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
     "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
     "error: Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
     "error: Failed to load resource: the server responded with a status of 403 (Forbidden)",

@@ -151,7 +151,13 @@ node tools/app-shots.mjs <out-dir>           # end to end in Chromium on the who
 node tools/sync-edge.mjs --check             # the Edge Function's shared copies match their sources
 node --test v1-messaging/tests/*.test.mjs   # 32 (archived v1)
 node tools/shots.cjs <out-dir> http://localhost:8000   # the lab: interface QA (the repository root served on :8000, see The lab)
+HUSHMATES_DENO=<deno> npm run staging:rehearse        # the staging E2E on this machine, across two hosts (npm run staging:rehearse:node without Deno)
+node tools/safety-eval.mjs                   # what the safety screen does with every known phrasing (--export, --sample, --library, --labels)
+node tools/cost-model.mjs                    # the cost tables in docs/COSTS.md
 ```
+
+Staging itself (`docs/STAGING_CLOUD.md`): `staging:deploy`, then `staging:check` and `staging:e2e`
+on the real project, once the owner has made the staging accounts.
 
 The access-control tests run real servers over HTTP in both modes. They try
 direct URLs (with traversal tricks), no session, an ordinary member's session,
@@ -192,17 +198,19 @@ with the keyboard alone and checks reduced motion.
 
 | Check | Result |
 |---|---|
-| All tests (`node --test tests/*.test.mjs`, with `HUSHMATES_DENO` set) | 338: 336 pass, 0 fail, 2 skipped (the optional live Another Angle checks, which need that service's local harness and would be billable against the real one). Without a Deno installed, the two Deno tests skip and the staging check runs the Edge Function code under Node |
-| The real Edge Function under Deno (Phase 3) | `index.ts` passes `deno check`. It runs under Deno 2.9 with only its secrets and network access to this machine, reaching the database through the local PostgREST stand-in (grants decide: anon 401, a person 403, the private schema 406, an `sb_` key as a Bearer token refused). The **full browser E2E through it: 81 of 81** (`docs/evidence/e2e-edge-under-deno.json`) |
+| All tests (`node --test tests/*.test.mjs`, with `HUSHMATES_DENO` set) | 379: 377 pass, 0 fail, 2 skipped (the optional live Another Angle checks, which need that service's local harness and would be billable against the real one). Without a Deno installed, the Deno tests skip and the staging check runs the Edge Function code under Node |
+| The real Edge Function under Deno (Phase 3) | `index.ts` passes `deno check`. It runs under Deno 2.9 with only its secrets and network access to this machine, reaching the database through the local PostgREST stand-in (grants decide: anon 401, a person 403, the private schema 406, an `sb_` key as a Bearer token refused). The **full browser E2E through it: 90 of 90** (`docs/evidence/e2e-edge-under-deno.json`) |
+| The staging E2E, rehearsed (Phase 3b) | the packed site on one host, the real `index.ts` under Deno and the Supabase stand-ins on another, real Chromium at 360, 390, 1280 and 1440: **57 of 57** (`docs/evidence/staging-rehearsal/`). It is labelled a rehearsal, never staging |
+| The staging tools (Phase 3b) | the deploy against a stand-in that enforces the Management API's own document: dry runs proven read-only, migrations applied and recorded, an edited migration refused, Vault by parameters only. Each command is run end to end, and refuses anything but the staging-only project and Cloudflare account before reading keys or data. Keys are derived from a root secret, with SQL through the API, for a cloud session. Reviewed adversarially, and every confirmed finding fixed (`docs/evidence/review-phase3b.md`) |
 | The staging check, on the local stack (Phase 3) | every check it can make here passes; what only a real project has (pg_cron, pg_net, Vault, password sign-in) is reported as not checked, never as passed. Its scheduler watch fails when no scheduler runs, and the wrong keys fail the encryption check. It cleans up its test accounts and invitations |
 | Recovery drill (Phase 3) | a `pg_dump` restored into a new database: every locked text opens with the keys, none with wrong keys |
 | On the real database | differential against the reference engine (8 seeds × 300 steps); eight race tests (twelve people for five places, duplicate sends, two devices, Mallow requests, a single-use invitation, overlapping scheduled jobs, blocking mid-write, finds during a catch); the AI budget hold under concurrent calls; RLS and access role by role; tokens forged, replayed or from a password sign-in refused; retention at each of its limits |
-| End to end, many accounts | 81 of 81 checks, 39 screens, 0 problems (`docs/screenshots/phase2/`, with `app-report.json`): |
+| End to end, many accounts | 90 of 90 checks, 41 screens, 0 problems (`docs/screenshots/phase2/`, with `app-report.json`): |
 | | five people at once, and a sixth isn't offered it; two people; nobody, said plainly |
 | | the Mallow prepared by the scheduler at 30 minutes, from the free library, labelled automatic, never counted |
 | | homecoming at 24 hours; Explore another angle (one labelled perspective, still 2 people) |
 | | Send it out again: caught by a second account, home again with 1 |
-| | the share story leaves out a perspective its writer kept private; a writer who stops sharing while the share screen is open is left out, and nothing is made until the author looks again; the screen follows when they allow it again; what the picture and the video actually draw is read back: the allowed perspective, never the private one, nobody's name, and a Mallow's words always with "A Mallow perspective · Automatically generated" |
+| | the share story leaves out a perspective its writer kept private; a writer who stops sharing or takes their words back while the share screen is open is left out, and nothing is made until the author looks again; a video recording when a writer stops sharing is stopped and never handed over; the screen follows when they allow it again, and a refresh with nothing new leaves a keyboard user's focus where it was; a feeling let go or a journey deleted mid-share: nothing is made, and both buttons are switched off; what the picture and the video actually draw is read back: the allowed perspective, never the private one, nobody's name, and a Mallow's words always with "A Mallow perspective · Automatically generated" |
 | | offline, and a retry that sends once; support, and “Get support now”, with tappable Australian crisis lines; words that need care never stored |
 | | reporting and the safety desk (focus moves into an opened report; decisions logged and noted; its refresh keeps a moderator's place); blocking, never revealed |
 | | keyboard only; the same account on a second device; download, and deletion (sign-in included; the other device is signed out) |

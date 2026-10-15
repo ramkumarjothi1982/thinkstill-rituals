@@ -1,8 +1,8 @@
-# Staging end-to-end: LOCAL REHEARSAL (not staging)
+# Staging end-to-end: LOCAL REHEARSAL (not staging) · Edge Function: the real index.ts under Deno 2.9.6
 
 Run on one machine: the packed site and a local stand-in for Supabase on two hosts. It proves the test and the cross-host set-up, not the real platform.
 
-2026-10-15T05:49:41.625Z → 2026-10-15T05:51:10.392Z · Chromium (desktop and mobile emulation)
+2026-10-15T08:06:09.113Z → 2026-10-15T08:07:37.792Z · Chromium (desktop and mobile emulation)
 
 **57 passed, 0 failed.**
 
