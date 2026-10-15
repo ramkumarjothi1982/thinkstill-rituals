@@ -79,9 +79,12 @@ export default function express(app, params = {}) {
     if (!text.trim()) { safety = { level: 'none', category: null }; return; }
     readWordsSafety({ text, emotions: [...sel.values()].filter((s) => s.source !== 'auto') }).then((r) => {
       if (!r || left || seq !== readSeq) return;
+      // (the chips follow the reading both ways: heavier words narrow them, lighter ones give them back)
+      const key = (s) => `${s.level}|${s.category}|${!!s.check}|${!!s.deathCare}`;
+      const changed = key(r) !== key(safety);
       safety = r;
       seen(r);
-      if (r.level !== 'none' || r.check || r.category === 'loss') { choose(); render(); }
+      if (changed) { choose(); render(); }
     });
   }
   /** A reading seen while typing (sent or not, as on the main screen): crisis opens the urgent sheet once; anything heavy is kept for the visit. */
