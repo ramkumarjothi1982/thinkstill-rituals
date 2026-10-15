@@ -18,7 +18,9 @@ Pillow; Node 18+; for step 4, Playwright with Chromium and a local server).
 `data/old-registry.json` is the registry *before* any high-res switch (the
 fixed input of step 2; do not regenerate it after `applyHires` is wired in).
 Hand decisions live in code with their reasons: `measure.py` NEUTRAL and
-MOUTH_LANDMARKS (painted open-mouth points), `build_table.py` TWEAKS (Glitzi's
+MOUTH_LANDMARKS (painted open-mouth points), `build_table.py` LOOMI_BROWS
+(arched brows for the browless drawing: the old drawing's strokes it kept
+were a second lid arc) and TWEAKS (Glitzi's
 lid line, its open-mouth depth / upper lip so an excited mouth stays inside
 the body, its crease relief) and PRESET_OVERRIDES (Glitzi's lids and round
 mouths per preset).
@@ -60,7 +62,18 @@ Serve the repo root (`python3 -m http.server 8000`), then:
   rig), `spin` (Zuzu's eyes at several spin angles), `overflow` (drawn face
   pixels outside the body alpha for every preset, stage and reaction, with
   spring overshoot), `jump` (rest-jump metric, all seven), `live` (ticking
-  rigs at several sizes; `run.cjs page`).
+  rigs at several sizes; `run.cjs page`), `mouths` (every mouth state on
+  rest / happy, and talking frames on rest and on the concerned stage, held
+  to its limits). `kind=old` needs `&hires=0` (it throws otherwise).
+* `lab/loomi-sweep.cjs` — the app sweep that verified Loomi (workstream
+  hires-loomi, `docs/workstreams/hires-loomi.md`): the Hushfold home with
+  Loomi chosen, every stage, the concerned stage under squeeze and tap,
+  MallowTouch tiers, the switcher, the Mallows scene, the V3 card, at
+  390x844 / 360x780 / 320x568, text 1 and 1.25, reduced motion; `PERF=3`
+  for interleaved old/new frame times at 4x CPU. Its numbers are recorded in
+  `data/loomi-sweep.json` with `loomi-fingerprint.mjs` (the table entry and
+  files they were run against): `tests/hires.test.mjs` fails when either
+  changes, until the sweep is re-run and recorded.
 * Rest jump (`mode=jump`): mean |luminance| difference (0-255) in the face
   rect between the approved art and the drawn rest face on one frozen frame
   (t 1.234, no blink, reduced motion, skin 600), Zuzu's spirals at the
@@ -69,7 +82,7 @@ Serve the repo root (`python3 -m http.server 8000`), then:
 
   | | glitzi | zuzu (0.7) | boppo | pipzi | blubi | loomi | noomi |
   |---|---|---|---|---|---|---|---|
-  | high-res | 5.84 | 5.80 (11.83) | 7.53 | 7.47 | 5.04 | 3.59 | 3.45 |
+  | high-res | 5.84 | 5.80 (11.83) | 7.53 | 7.47 | 5.04 | 3.48 | 3.45 |
   | current | 15.73 | 6.90 (12.41) | 8.72 | 8.97 | 6.07 | 6.31 | 4.33 |
 
   A spinning Zuzu jumps by its phase, not its rig: W2, snap `spinAngle` to 0

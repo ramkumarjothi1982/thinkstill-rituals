@@ -55,7 +55,17 @@ GLITZI_ROUND_OPEN = {'surprised': 1.4, 'awe': 1.0, 'scared': 0.9}
 #   centred ~1 lw under the groove), not the faint ridge above the current
 #   rig draws; drawn here so the closed frown keeps its carved look at phone
 #   size. [colour, width, offset] in lw units, + = below.
-TWEAKS = {'glitzi': {('eyes', 'L', 'lw'): 6.0, ('eyes', 'R', 'lw'): 6.0,
+# Loomi (the browless cyan drawing, owner-approved; workstream hires-loomi):
+#   it paints no brows, so measure.py kept the OLD drawing's brow strokes
+#   relative to the eyes, and those were a second set of lid arcs (U-shaped,
+#   ~20 px above the closed eyes). Faded in by an expression (sad, anxious,
+#   the concerned stage) they read as a ghost double eyelid. These are brows
+#   proper: an arch (control point above the ends) ~30-45 px above the eyes,
+#   placed like Noomi's relative to its eyes, mirrored; still alpha 0 at rest.
+LOOMI_BROWS = {'L': {'p0': [91.0, 155.0], 'c': [115.0, 145.0], 'p1': [139.0, 152.0]},
+               'R': {'p0': [246.0, 151.6], 'c': [270.0, 144.6], 'p1': [294.0, 154.6]}}
+TWEAKS = {'loomi': {('brows', s, k): v for s, b in LOOMI_BROWS.items() for k, v in b.items()},
+          'glitzi': {('eyes', 'L', 'lw'): 6.0, ('eyes', 'R', 'lw'): 6.0,
                      ('mouth', 'depth'): 27.0, ('mouth', 'upper'): -22.0,
                      ('mouth', 'relief'): [['rgba(34,92,235,0.6)', 0.75, 0.95],
                                            ['rgba(150,190,255,0.16)', 0.5, -0.8]]}}
@@ -336,11 +346,10 @@ head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7
 // Decision D13: a Mallow switches to its high-res rig only after a visual
 // check. HIRES_VERIFIED lists the ones that passed; applyHires() applies those
 // (or the ids you pass) to the registry objects, once, before rigs load.
-// The cyan file without brows is treated as Loomi (owner to confirm): its
-// high-res rig has no brows at rest (they appear only when an expression
-// raises browAlpha), so Loomi stays off HIRES_VERIFIED until the owner says,
-// and switching six while Loomi keeps its old drawing mixes two styles in
-// the switcher: switch all seven together, or none, for an owner build.
+// The cyan file without brows is Loomi (owner-approved, workstream
+// hires-loomi): no brows at rest, as drawn; arched brows (build_table.py
+// LOOMI_BROWS) appear only when an expression raises browAlpha, as on Noomi.
+// Sweeps: docs/workstreams/hires-loomi.md.
 //
 // Integration (after the patch is merged): in registry.js, once, at the end:
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);

@@ -1,9 +1,10 @@
 {
- "_": "Recorded by the Loomi hi-res sweep (workstream hires-loomi): tools/hires/lab/run.cjs (mode=jump, overflow, mouths) and tools/hires/lab/loomi-sweep.cjs (the app, after the switch). tests/hires.test.mjs reads it; re-run both and rewrite it when Loomi's table changes.",
+ "_": "Recorded by the Loomi hi-res sweep (workstream hires-loomi): tools/hires/lab/run.cjs (mode=jump, overflow, mouths), tools/hires/lab/loomi-sweep.cjs (the app after the switch: app; before it: appBefore; PERF=3: perf). fingerprint: tools/hires/loomi-fingerprint.mjs at the time; tests/hires.test.mjs fails when it no longer matches.",
+ "fingerprint": "5e65ca01de5fb3f0a8c229ccac9b941a61a5c16dab9fbd220fac033a803a11fa",
  "jump": {
   "new": {
-   "mean": 3.59,
-   "bigFrac": 0.0221
+   "mean": 3.48,
+   "bigFrac": 0.0212
   },
   "old": {
    "mean": 6.31,
@@ -26,8 +27,34 @@
  },
  "mouths": {
   "concernedSmileMax": 0.17869374999999998,
-  "concernedOpen": 0.02,
+  "concernedOpenMax": 0.1,
   "n": 35
+ },
+ "perf": {
+  "old": {
+   "runs": 3,
+   "n": 62,
+   "mean": 300.8,
+   "p50": 300,
+   "p95": 349.9,
+   "perRunMean": [
+    294.4,
+    311.7,
+    296.8
+   ]
+  },
+  "new": {
+   "runs": 3,
+   "n": 59,
+   "mean": 313,
+   "p50": 316.6,
+   "p95": 366.7,
+   "perRunMean": [
+    310,
+    306.7,
+    322.8
+   ]
+  }
  },
  "app": [
   {
@@ -72,7 +99,7 @@
      "eyeOpen": 1.132
     },
     "comforting": {
-     "smile": 0.773,
+     "smile": 0.772,
      "open": 0.082,
      "eyeOpen": 0.191
     },
@@ -104,26 +131,26 @@
    },
    "concernedTap": {
     "smile": 0.2,
-    "open": 0.1,
-    "eyeOpen": 0.2
+    "open": 0.084,
+    "eyeOpen": 0.093
    },
    "tiers": {
     "gl": {
      "tier": "gl",
      "rect": [
-      57,
-      354,
-      276,
-      260
+      56,
+      360,
+      279,
+      255
      ]
     },
     "tri": {
      "tier": "tri",
      "rect": [
-      55,
-      360,
-      279,
-      254
+      57,
+      356,
+      276,
+      258
      ]
     },
     "strip": {
@@ -138,11 +165,11 @@
    },
    "panelHscroll": 0,
    "frames": {
-    "n": 20,
-    "mean": 201.7,
-    "p50": 200,
-    "p95": 250,
-    "max": 250
+    "n": 23,
+    "mean": 181.9,
+    "p50": 183.3,
+    "p95": 233.3,
+    "max": 233.4
    },
    "mallowsHscroll": 0,
    "loomiCard": {
@@ -181,8 +208,8 @@
    },
    "concernedTap": {
     "smile": 0.2,
-    "open": 0.094,
-    "eyeOpen": 0.132
+    "open": 0.09,
+    "eyeOpen": 0.133
    },
    "panelHscroll": 0,
    "mallowsHscroll": 0,
@@ -221,8 +248,8 @@
    },
    "concernedTap": {
     "smile": 0.2,
-    "open": 0.087,
-    "eyeOpen": 0.113
+    "open": 0.097,
+    "eyeOpen": 0.155
    },
    "panelHscroll": 0,
    "mallowsHscroll": 0,
@@ -261,8 +288,8 @@
    },
    "concernedTap": {
     "smile": 0.2,
-    "open": 0.081,
-    "eyeOpen": 0.09
+    "open": 0.083,
+    "eyeOpen": 0.092
    },
    "panelHscroll": 0,
    "mallowsHscroll": 0,
@@ -296,13 +323,13 @@
    },
    "concernedAfter": {
     "smile": 0.2,
-    "open": 0.103,
-    "eyeOpen": 0.287
+    "open": 0.104,
+    "eyeOpen": 0.292
    },
    "concernedTap": {
     "smile": 0.2,
-    "open": 0.073,
-    "eyeOpen": 0.074
+    "open": 0.079,
+    "eyeOpen": 0.094
    },
    "panelHscroll": 0,
    "mallowsHscroll": 0,
@@ -381,13 +408,13 @@
    },
    "concernedAfter": {
     "smile": 0.2,
-    "open": 0.101,
-    "eyeOpen": 0.269
+    "open": 0.104,
+    "eyeOpen": 0.293
    },
    "concernedTap": {
     "smile": 0.2,
-    "open": 0.094,
-    "eyeOpen": 0.159
+    "open": 0.07,
+    "eyeOpen": 0.06
    },
    "panelHscroll": 0,
    "mallowsHscroll": 0,
@@ -421,13 +448,13 @@
    },
    "concernedAfter": {
     "smile": 0.2,
-    "open": 0.078,
-    "eyeOpen": 0.209
+    "open": 0.076,
+    "eyeOpen": 0.193
    },
    "concernedTap": {
     "smile": 0.2,
     "open": 0.098,
-    "eyeOpen": 0.274
+    "eyeOpen": 0.264
    },
    "panelHscroll": 0,
    "mallowsHscroll": 0,
