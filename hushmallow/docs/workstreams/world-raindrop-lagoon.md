@@ -53,7 +53,7 @@ Soft rain falls over Blubi's realm, a blue-hour lagoon with its cushion stage an
 - **Lagoon tests:** 14/14 pass.
 - **Full suite** (`node --test hushmallow/tests/*.test.mjs`):
   - before the review: 1118/1118 pass;
-  - final run: see the commit that adds this file.
+  - final run (683817a, the final world code): 1121/1121 pass.
 - **Chromium lab, from melt-in or cold start to completion and Finish, no console errors:**
   - 390×844, 360×780 and 320×568, each at normal and largest text (`textScale` 1.25);
   - reduced motion;
