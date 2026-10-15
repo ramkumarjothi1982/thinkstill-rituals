@@ -106,6 +106,9 @@ export function planOrchard({ W, H, band = null, mallow = null, x1 = W, plate = 
   let avail = yBot - (bandB + rope);
   if (thought && avail < need(rr)) { short = true; rope = ORCHARD.ROPE_SHORT; avail = yBot - (bandB + rope); }
   while (thought && avail < need(rr) && rr > ORCHARD.R_MIN) rr -= 1;
+  // still too tall (long words on the smallest phone): the words may use the room kept for the hero's hop, never its body
+  let tight = false;
+  if (thought && avail < need(rr) && !beside) { tight = true; yBot = M.y0 - 4; avail = yBot - (bandB + rope); }
   if (thought && avail < need(rr)) fits = false;
   const spare = Math.max(0, avail - need(rr));
   const ty = Math.round(bandB + rope + rr + spare * 0.36);
@@ -130,19 +133,23 @@ export function planOrchard({ W, H, band = null, mallow = null, x1 = W, plate = 
   // ---- what the sunpops keep clear of: the swing's column (its ropes, crown and the air under it), the words, the
   // hero, the band. Sunpops hang from the trees at the sides, never out in the middle.
   const zoneHalf = thought ? rr + ORCHARD.CROWN_GAP + half + G : 0;
-  const zone = thought ? { x0: tx - zoneHalf, x1: tx + zoneHalf, y0: bandB, y1: beside ? ty + rr + G : hero.y0 } : null;
+  const zone = thought ? { x0: tx - zoneHalf, x1: tx + zoneHalf, y0: bandB, y1: beside ? ty + rr + G : Math.max(hero.y0, ty + rr + G) } : null;
   const blocked = [hero];
   if (zone) blocked.push(zone);
   if (plateBox) blocked.push({ x0: plateBox.x0 - G, y0: plateBox.y0 - G, x1: plateBox.x1 + G, y1: plateBox.y1 + G });
-  // (not down among the hero's feet: the lowest sunpop hangs by its middle)
-  const ground = Math.min(H - 8, Math.max(M.y1 - 0.28 * (M.y1 - M.y0), H * 0.72));
-
+  // (not down among the hero's feet: the lowest sunpop hangs by its middle — unless a small screen needs the room)
+  let ground = Math.min(H - 8, Math.max(M.y1 - 0.28 * (M.y1 - M.y0), H * 0.72));
   let best = { slots: [], D: ORCHARD.D_MIN };
-  for (let D = ORCHARD.D_MAX; D >= ORCHARD.D_MIN; D -= 2) {
-    const slots = pickSlots({ D, cx, XR, E, G, bandB, ground, blocked, arbour });
-    if (slots.length > best.slots.length) best = { slots, D };
-    if (slots.length >= ORCHARD.N_MAX) break;
+  for (const gy of [ground, Math.min(H - 8, M.y1), H - 12]) {
+    if (gy < ground) continue;
+    for (let D = ORCHARD.D_MAX; D >= ORCHARD.D_MIN; D -= 2) {
+      const slots = pickSlots({ D, cx, XR, E, G, bandB, ground: gy, blocked, arbour });
+      if (slots.length > best.slots.length) best = { slots, D, ground: gy };
+      if (slots.length >= ORCHARD.N_MAX) break;
+    }
+    if (best.slots.length >= ORCHARD.N_MIN) break;
   }
+  if (best.ground) ground = best.ground;
   const slots = best.slots.map((s) => {
     const side = s.x < cx ? -1 : 1;
     return { ...s, side, ax: s.x - side * s.D * 0.12, ay: s.y - s.D / 2 - ORCHARD.STEM };
@@ -150,7 +157,7 @@ export function planOrchard({ W, H, band = null, mallow = null, x1 = W, plate = 
   // top to bottom, left then right: a stable order (a re-plan keeps each sunpop on its side)
   slots.sort((a, b) => a.side - b.side || a.y - b.y);
   return {
-    W, H, x1: XR, cx, bandB, arbour, ground, short, fits, beside,
+    W, H, x1: XR, cx, bandB, arbour, ground, short, fits, beside, tight,
     thought: thought ? { x: tx, y: ty, r: rr } : null, plate: plateBox, ropes: thought ? ropes : null, crown,
     slots, D: best.D,
     rects: { band: band ? { x0: band.x, y0: band.y, x1: band.x + band.w, y1: bandB } : { x0: 0, y0: 0, x1: W, y1: bandB }, hero, zone, plate: plateBox },
