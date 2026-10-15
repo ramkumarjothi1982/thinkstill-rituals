@@ -18,6 +18,8 @@ const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
 // balances .invite-period): never "nothing is / charged" or "It’s / free →", and the
 // test-purchase note breaks only after a "·", never before one.
 export const SUPPORT_LINK = 'Need support right\u00a0now? It’s\u00a0free\u00a0→';
+/** Said on the plans page when a test plan kept on this phone is not honoured by this site (entitlements.js testEnded). */
+export const TEST_ENDED = 'Test access ended for the pilot.';
 /** The line under a plan's button: how it is billed (App Store) or that a test purchase is free. */
 export function periodNote({ native = false, period = 'monthly' } = {}) {
   const yearly = period === 'yearly';
@@ -178,7 +180,9 @@ export default function plans(app, params = {}) {
     logoImg({ tone: 'light', width: 'min(54vw, 216px)', sizes: 'min(54vw, 216px)', className: 'plans-logo' }),
     h('p', { class: 'plans-tagline' }, BRAND.brandTagline),
     h('h1', { class: 'plans-title t-cinematic', 'data-focus': '' }, title),
-    h('p', { class: 'plans-lede' }, lede));
+    h('p', { class: 'plans-lede' }, lede),
+    // a returning pilot tester whose test plan this site no longer honours (entitlements.js testEnded): one quiet line
+    ent.testEnded ? h('p', { class: 'test-note', 'data-test-ended': '' }, TEST_ENDED) : null);
   const gap = h('div', { class: 'plans-gap', 'aria-hidden': 'true' });
 
   const el = h('div', { class: 'plans' },

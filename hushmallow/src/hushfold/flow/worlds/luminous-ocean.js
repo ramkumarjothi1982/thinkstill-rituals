@@ -3077,7 +3077,7 @@ export function create(ctx) {
       const cx = x, cy = y;
       if (k < 1) photos.draw(g, b.i, cx, cy, size, { shape: 'card', rot: b.from.rot * (1 - k), alpha: b.alpha * (1 - k), shadow: false, glow: 0.3 * (1 - k), glowColour: C.dawn });
       if (k > 0) {
-        photos.draw(g, b.i, cx, cy, size * (0.92 + 0.08 * k), { shape: 'bubble', sheen: false, shadow: false, alpha: b.alpha * k });
+        bubbleFace(g, b.i, cx, cy, size * (0.92 + 0.08 * k), { shape: 'bubble', sheen: false, shadow: false, alpha: b.alpha * k });
         g.globalAlpha = b.alpha * k; g.drawImage(film, cx - size / 2, cy - size / 2, size, size); g.globalAlpha = 1;
       }
       return;
@@ -3091,8 +3091,34 @@ export function create(ctx) {
     g.globalCompositeOperation = 'source-over';
     // a little deep water behind it, so the person's picture reads against the dawn's glare and the crest light
     g.globalAlpha = b.alpha * (0.55 + 0.35 * smoothstep(3, OCEAN.CAP, b.z / cam.Z0)); g.drawImage(sprites.shade, x - D * 0.66, y - D * 0.66, D * 1.32, D * 1.32);
-    photos.draw(g, b.i, x, y, D, { shape: 'bubble', sheen: false, shadow: false, alpha: b.alpha, rot: b.rot, glow: 0.2 * fl, glowColour: C.dawn });
+    bubbleFace(g, b.i, x, y, D, { shape: 'bubble', sheen: false, shadow: false, alpha: b.alpha, rot: b.rot, glow: 0.2 * fl, glowColour: C.dawn });
     g.globalAlpha = b.alpha; g.drawImage(film, x - D / 2, y - D / 2, D, D); g.globalAlpha = 1;
+  }
+  /**
+   * What a bubble holds: the photo — except in a gentle session (after a death, a loss or harm, or "Just be with it"),
+   * where the stand-in Mallow cards' faces (a grin, spiral eyes, a cheeky look) never float on the water: those bubbles
+   * are plain, a soft light in each card's own colour. The person's own photos are theirs and stay as they are.
+   * ctx.gentle is live (setGentle can turn a session gentle while the sea plays).
+   */
+  function bubbleFace(g, i, x, y, D, o) {
+    if (!(ctx.gentle && photos.standIn)) { photos.draw(g, i, x, y, D, o); return; }
+    const a = clamp(o.alpha ?? 1);
+    if (a <= 0.002 || D <= 0) return;
+    const [r0, g0, b0] = rgbOf(photos.colour(i) || C.loomi);
+    // the card's colour, lifted towards the sea's own light so it reads as a lit bubble, never a dark disc
+    const mix = (c, t) => Math.round(c + (t - c) * 0.45);
+    const lit = `${mix(r0, 168)},${mix(g0, 255)},${mix(b0, 240)}`, R = D / 2;
+    const gr = g.createRadialGradient(x - R * 0.28, y - R * 0.34, R * 0.06, x, y, R);
+    gr.addColorStop(0, `rgba(${lit},${(0.42 * a).toFixed(3)})`);
+    gr.addColorStop(0.65, `rgba(${lit},${(0.2 * a).toFixed(3)})`);
+    gr.addColorStop(1, `rgba(${lit},${(0.06 * a).toFixed(3)})`);
+    g.save();
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, R, 0, TAU); g.fill();
+    if ((o.glow || 0) > 0) {
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = a * clamp(o.glow);
+      g.drawImage(sprites.warm, x - R * 1.3, y - R * 1.3, R * 2.6, R * 2.6);
+    }
+    g.restore();
   }
 
   /**

@@ -28,8 +28,11 @@ export const PLANS_BEYOND_NOTE = Object.freeze({
   live: 'Another Angle asks first, then sends only the words you choose to our secure server. Never your photos.',
 });
 
-/** What an account keeps (the same list as the account screen's "Deleted from our server"). */
-export const ACCOUNT_KEEPS = 'An account is optional. If you make one, your email (and your name and home Mallow, if you choose them) is kept with it; if you switch on sync, so are the parts you choose: your settings, favourite worlds, Memory Garden and where a Hushflow paused. Never your words, feelings or photos.';
+/**
+ * What an account keeps (the same list as the account screen's "Deleted from our server"): its profile row also notes when
+ * the app was last opened signed in (profiles.last_seen_at, src/auth/client.js profile.touch at each start).
+ */
+export const ACCOUNT_KEEPS = 'An account is optional. If you make one, your email (and your name and home Mallow, if you choose them) is kept with it, as is when you last opened the app; if you switch on sync, so are the parts you choose: your settings, favourite worlds, Memory Garden and where a Hushflow paused. Never your words, feelings or photos.';
 
 /** Whether Another Angle may send words from this build (resolveEndpoint() is not null). */
 export function angleLive(endpoint = resolveEndpoint()) { return !!endpoint; }
@@ -57,8 +60,10 @@ export function aboutIntro({ endpoint = resolveEndpoint(), beyond = 'hushmallow 
  */
 export function aboutPrivacy({ endpoint = resolveEndpoint(), signIn = false, beyond = 'hushmallow Beyond' } = {}) {
   const parts = [signIn ? 'Your words, feelings and photos stay on this phone.' : 'Nothing you type or add leaves this phone.'];
+  // (what Another Angle sends is its words and, when picked there, the feeling and the kind of help: src/beyond/angle-client.js
+  // angle(), as its privacy sheet says — so the exception names all three, beside "Your words, feelings and photos stay")
   parts.push(angleLive(endpoint)
-    ? `The one exception is Another Angle in ${beyond}: only after you say yes, the words you choose go to our server, where an outside service prepares the perspectives you see.`
+    ? `The one exception is Another Angle in ${beyond}: only after you say yes, the words you choose go to our server, with the feeling and the kind of help you pick there, and an outside service prepares the perspectives you see.`
     : `Another Angle in ${beyond} works on this phone too: what you type there stays here.`);
   if (signIn) parts.push(ACCOUNT_KEEPS);
   return parts.join(' ');

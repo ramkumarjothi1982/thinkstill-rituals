@@ -166,7 +166,9 @@ const LUMINOUS_OCEAN = {
     + 'curious in chop, calmer and sleepier as the swells lengthen; watches the finger, else the thought; a tiny hop on a big crest.' },
   input: {
     words: 'The person’s exact words stay on the Thought Mallow as it rides the swells, readable at every distance.',
-    photos: { becomes: 'bubbles floating on the swells', change: 'they drift further away or closer, never sink', shape: 'bubble', standIn: 'the seven Mallow cards' },
+    photos: { becomes: 'bubbles floating on the swells', change: 'they drift further away or closer, never sink', shape: 'bubble', standIn: 'the seven Mallow cards',
+      // (a gentle session: no Mallow card faces — no grin, no spiral eyes — on the water; the person's own photos stay theirs)
+      gentle: 'the stand-in cards become plain bubbles, a soft light in each card’s colour' },
   },
   progression: [
     'The storm’s grounded lines arrive as the first gentle swells.',
