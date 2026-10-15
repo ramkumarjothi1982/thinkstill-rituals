@@ -9,7 +9,8 @@
 //      database (PostgREST) directly.
 //   2. The database's own rules, read over an encrypted connection: row level security on every
 //      table, no browser role with any way into the Hushmates schemas, AI off, the scheduler's
-//      jobs and Vault secrets present (names only), and the scheduler's last calls answered.
+//      jobs and Vault secrets present (names only), and the scheduler's most recent runs and calls
+//      answered (a first deploy's start-up minute or two of failures doesn't count; failing still does).
 //   3. Real accounts: three test people made with Supabase Auth's admin API and signed in with
 //      a generated email code (no email is sent), and invitations made for them.
 //   4. The relay end to end through the Edge Function: joining, a feeling, a perspective, a
@@ -30,7 +31,10 @@
 //     HUSHMATES_STAGING_ANON_KEY      the project's anon / publishable key (public)
 //     HUSHMATES_STAGING_SERVICE_KEY   the project's service role / secret key (admin: test accounts)
 //     HUSHMATES_ADMIN_PG              the database connection string, with sslmode=verify-full
-//     and the staging secrets file .data/staging.env (tools/staging-secrets.mjs);
+//     and the staging secrets file .data/staging.env (tools/staging-secrets.mjs). With
+//     SUPABASE_ACCESS_TOKEN set too, the staging guard runs first; without it, the tool says the guard
+//     couldn't run, and the address is only matched against --project-ref. An address on this
+//     computer (a tunnel) can't be matched at all, and the tool says that too;
 //   or in a cloud session (docs/STAGING_CLOUD.md):
 //     SUPABASE_ACCESS_TOKEN           the staging-only account's token: SQL and the keys go through the
 //                                     Management API, after the same staging guard as the deploy
@@ -45,10 +49,21 @@ import pg from 'pg';
 import { createFieldCrypt } from '../supabase/functions/_shared/fieldcrypt.js';
 import { createAdmin } from '../server/admin.mjs';
 import { keyHeaders } from '../supabase/functions/_shared/postgrest-db.js';
-import { resolveRun } from './staging-env.mjs';
+import { resolveRun, runCaveats } from './staging-env.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Has something that runs over and over (the scheduler's runs, the function's answers to it) settled
+ * well? `list` is newest first. Yes when the most recent one worked and every one since the first
+ * that worked did too: failures only before that are a start-up (a first deploy's minute or two
+ * before the function was there); a failure after it means it keeps failing.
+ */
+export function settledWell(list, worked) {
+  const first = list.findLastIndex(worked);
+  return first >= 0 && list.slice(0, first + 1).every(worked);
+}
 
 /**
  * @param {object} o
@@ -132,12 +147,14 @@ export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, db = 
       check('scheduler', 'the two scheduled jobs are there and active', jobs.join('|') === 'hushmates-retention 17 3 * * *|hushmates-tick * * * * *', jobs.join(', ') || 'none');
       const vault = await has('vault', 'secrets') ? (await sql("select name from vault.secrets where name in ('hushmates_job_url', 'hushmates_job_secret') order by name")).map((r) => r.name) : null;
       if (vault) check('scheduler', 'its two Vault secrets are there (names only)', vault.join(',') === 'hushmates_job_secret,hushmates_job_url', vault.join(', ') || 'none');
+      // judged by the most recent runs and answers: a first deploy starts the job a minute or two
+      // before the function is there, and those first failures say nothing about the project now
       const runs = await sql(`select d.status, d.start_time from cron.job_run_details d join cron.job j on j.jobid = d.jobid
         where j.jobname = 'hushmates-tick' and d.start_time > now() - interval '5 minutes' order by d.start_time desc limit 5`);
-      check('scheduler', 'it ran in the last five minutes, without errors', runs.length > 0 && runs.every((r) => r.status === 'succeeded'), JSON.stringify(runs));
+      check('scheduler', 'it ran in the last five minutes, and its most recent runs succeeded (any failures only before its first success, as when a deploy starts)', settledWell(runs, (r) => r.status === 'succeeded'), JSON.stringify(runs));
       if (await has('net', '_http_response')) {
         const answers = await sql("select status_code, timed_out, error_msg from net._http_response where created > now() - interval '5 minutes' order by created desc limit 5");
-        check('scheduler', 'and the Edge Function answered its calls (HTTP 200)', answers.length > 0 && answers.every((a) => a.status_code === 200), JSON.stringify(answers));
+        check('scheduler', 'and the Edge Function answered its most recent calls (HTTP 200; any failures only before its first success, as when a deploy starts)', settledWell(answers, (a) => a.status_code === 200), JSON.stringify(answers));
       } else say('scheduler', 'the Edge Function answered the scheduler’s calls', 'skip', 'no pg_net here');
     } else say('scheduler', 'the platform’s scheduler (pg_cron)', 'skip', 'no pg_cron here: a local stack');
 
@@ -265,11 +282,12 @@ if (runAsCommand()) {
   try { run = await resolveRun({ ref, site: arg('site') }); } catch (e) { stop(`✗ ${e.message}`); }
   const origin = run.secrets.HUSHMATES_ALLOWED_ORIGINS.split(',')[0].trim();
   console.log(`Checking staging project ${ref} (database reached by ${run.via}; secrets from ${run.source === 'root' ? 'the root secret' : '.data/staging.env'}).`);
+  for (const line of runCaveats(run)) console.log(line);
   const out = await runStagingCheck({ url: `https://${ref}.supabase.co`, anonKey: run.anonKey, serviceKey: run.serviceKey,
     adminPg: run.adminPg, db: run.db, secrets: run.secrets, secretsSource: run.source, origin, waitForScheduler: !process.argv.includes('--quick') });
   const file = join(ROOT, '.data', `staging-check-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify({ project: ref, at: new Date().toISOString(), via: run.via, ...out }, null, 2)}\n`, { mode: 0o600 });
+  writeFileSync(file, `${JSON.stringify({ project: ref, at: new Date().toISOString(), via: run.via, guarded: run.guarded, localDatabase: run.local, ...out }, null, 2)}\n`, { mode: 0o600 });
   const n = (s) => out.results.filter((r) => r.status === s).length;
   console.log(`\n${n('pass')} passed, ${n('fail')} failed, ${n('skip')} not checked here. Report: ${file}`);
   process.exit(out.ok ? 0 : 1);

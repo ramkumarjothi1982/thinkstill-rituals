@@ -13,16 +13,23 @@
 //       needs what tools/staging-check.mjs needs: on the owner's computer the keys, HUSHMATES_ADMIN_PG and
 //       .data/staging.env; in a cloud session SUPABASE_ACCESS_TOKEN and HUSHMATES_STAGING_ROOT_SECRET
 //       (tools/staging-env.mjs). About 10 minutes
-//   node tools/staging-e2e.mjs --rehearse      the same run on this machine: the packed site on one local host,
-//       the local stack standing in for Supabase on another (labelled "local-rehearsal", never "staging")
+//   node tools/staging-e2e.mjs --rehearse [--node]      the same run on this machine: the packed site on one
+//       local host, the local stack standing in for Supabase on another (labelled "local-rehearsal", never
+//       "staging"). The Edge Function is the real one (supabase/functions/hushmates/index.ts) under the Deno
+//       HUSHMATES_DENO names; without it the rehearsal refuses, unless --node is given, and then the report
+//       says "Node gateway, not the real index.ts". The report names the runtime either way
 //
 // What it does to the project, and undoes: it shortens two timings (the Mallow's wait and a journey's
 // day) for the run and puts them back; it makes four test people (no email is sent: their codes come
 // from Supabase Auth's admin API, and the app's "send me a code" call is answered by the test) and
-// four invitations, and removes them all at the end. It never calls AI.
+// four invitations, and removes them all at the end, also when stopped (Ctrl-C, SIGTERM). A run cut
+// off harder than that leaves the short timings behind: the next run sees them, and puts back the
+// defaults the migrations set instead of keeping them. It never calls AI. The browser it starts gets
+// none of the Hushmates, Supabase or Cloudflare settings (the secrets are among them).
 // Playwright: this project's copy (npm i --no-save playwright && npx playwright install chromium) or the container's.
 
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync, realpathSync, mkdtempSync, rmSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -35,7 +42,8 @@ import { keyHeaders } from '../supabase/functions/_shared/postgrest-db.js';
 import { createAdmin } from '../server/admin.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const playwright = (() => { try { return createRequire(import.meta.url)('playwright'); } catch { return createRequire('/opt/node-tools/node_modules/')('playwright'); } })();
+// loaded when a run starts, so the rest of this file can be used (and tested) without it
+const loadPlaywright = () => { try { return createRequire(import.meta.url)('playwright'); } catch { return createRequire('/opt/node-tools/node_modules/')('playwright'); } };
 const CHROMIUM = process.env.HUSHMATES_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 
 const F1 = 'My friend hasn’t replied in days. I think they’re avoiding me.';
@@ -45,6 +53,67 @@ const CRISIS = 'I don’t want to be alive anymore and I have a plan.';
 const PERSPECTIVE = 'Maybe they’ve had a really full week and meant to reply when they had more energy.';
 const PROBE = '<img src=x onerror="window.__pwned=1">I feel left out at work lately.';
 
+// the two timings the run shortens, as supabase/migrations/20261014090000_hushmates_schema.sql sets them
+export const DEFAULT_TIMINGS = { fallbackAfterMs: 1800000, journeyTtlMs: 86400000 };
+// below these, a value is a test's short timing left behind, never a staging project's own choice
+const LEAST = { fallbackAfterMs: 5 * 60e3, journeyTtlMs: 3600e3 };
+
+/**
+ * The timings to put back after a run with `short`: the live ones, unless a run was cut off before
+ * it could put them back (they are its short ones, or too short to be real): then the defaults.
+ */
+export function timingsToRestore(live = {}, short = {}) {
+  return Object.fromEntries(Object.keys(DEFAULT_TIMINGS).map((k) => {
+    const v = Number(live[k]);
+    return [k, Number.isFinite(v) && v >= LEAST[k] && v !== short[k] ? v : DEFAULT_TIMINGS[k]];
+  }));
+}
+
+/**
+ * Ctrl-C or SIGTERM (a tool's time limit) runs `cleanup` (the timings put back, the test people and
+ * invitations removed) before stopping. A second Ctrl-C stops at once. → a function that removes the handlers
+ */
+export function cleanUpOnStop(cleanup, { proc = process, say = () => {} } = {}) {
+  const handler = (sig) => {
+    say(`\n  (stopped by ${sig}: putting the timings back and removing the test people and invitations first)`);
+    Promise.resolve(sig).then(cleanup).catch(() => {}).finally(() => proc.exit(sig === 'SIGINT' ? 130 : 143));
+  };
+  for (const sig of ['SIGINT', 'SIGTERM']) proc.once(sig, handler);
+  return () => { for (const sig of ['SIGINT', 'SIGTERM']) proc.off(sig, handler); };
+}
+
+/**
+ * The environment for a program this tool starts (the browser, Deno's version check): this one's,
+ * without the Hushmates, Supabase and Cloudflare settings, which none of them needs and which hold
+ * the secrets (the root secret, the access token, the database address, the service key). A
+ * deny-list, so the browser keeps the display, font and proxy settings it needs to start.
+ */
+export function withoutSecrets(env = process.env) {
+  return Object.fromEntries(Object.entries(env).filter(([k, v]) => v !== undefined && !/^(HUSHMATES_|SUPABASE_|CLOUDFLARE_)/i.test(k)));
+}
+
+/**
+ * Waits for `promise`, but no longer than `ms`. The timer keeps the process up meanwhile (a promise
+ * that never settles holds nothing open, so without it Node would just quit there), and is cleared
+ * as soon as the promise settles.
+ */
+const within = (ms, promise) => {
+  let timer;
+  return Promise.race([promise, new Promise((r) => { timer = setTimeout(r, ms); })]).finally(() => clearTimeout(timer));
+};
+
+/** What ran the Edge Function in a rehearsal: Deno (the real index.ts) with its version, or the Node gateway. → { edge, edgeLabel } */
+export function edgeRuntime({ deno = null, node = false, run = spawnSync } = {}) {
+  if (deno) {
+    const v = run(deno, ['--version'], { encoding: 'utf8', env: withoutSecrets() });
+    const version = v.status === 0 && /deno (\S+)/.exec(v.stdout || '')?.[1];
+    if (!version) throw new Error(`HUSHMATES_DENO doesn’t run (${deno}): point it at a Deno binary`);
+    return { edge: `deno ${version}`, edgeLabel: `the real index.ts under Deno ${version}` };
+  }
+  if (!node) throw new Error('HUSHMATES_DENO isn’t set, so the real Edge Function (index.ts) can’t run here: set it to a Deno binary, or add --node to rehearse with the Node gateway instead');
+  return { edge: 'node', edgeLabel: 'Node gateway, not the real index.ts' };
+}
+
 /**
  * @param {object} o
  *   environment   'staging' | 'local-rehearsal' (what the report says was verified)
@@ -53,8 +122,13 @@ const PROBE = '<img src=x onerror="window.__pwned=1">I feel left out at work lat
  *   anonKey, serviceKey, adminPg, secrets   as for tools/staging-check.mjs
  *   out           where the report and screenshots go
  *   timings       { fallbackAfterMs, journeyTtlMs, waitMs } for this run
+ *   stopAlso      what else to undo when stopped by a signal, after the run's own clean-up (the rehearsal's local stack)
+ *   caveats       what the guards couldn't cover (runCaveats in tools/staging-env.mjs), kept in the report
  */
-export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, serviceKey, adminPg, db = null, secrets, out, timings = {}, log = console } = {}) {
+export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, serviceKey, adminPg, db = null, secrets, out, timings = {}, log = console, stopAlso = async () => {}, caveats = [],
+  edge = environment === 'staging' ? { edge: 'supabase', edgeLabel: 'the function deployed on Supabase' } : { edge: 'unknown', edgeLabel: 'Edge Function runtime not recorded' },
+  // tests only: the signals' source, the network, and Playwright
+  proc = process, fetch: doFetch = globalThis.fetch, playwright = null } = {}) {
   site = String(site).replace(/\/+$/, '');
   supabaseUrl = String(supabaseUrl).replace(/\/+$/, '');
   const T = { fallbackAfterMs: 60e3, journeyTtlMs: 180e3, waitMs: 150e3, ...timings };
@@ -62,7 +136,8 @@ export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, s
   const run = randomBytes(3).toString('hex').replace(/[0-9]/g, (d) => 'ghijklmnop'[d]);
   const report = {
     environment, verifiedOn: environment, site, supabase: supabaseUrl, startedAt: new Date().toISOString(), run,
-    engine: 'Chromium (desktop and mobile emulation)', checks: [], screens: [], console: [], expected: [], notChecked: [],
+    engine: 'Chromium (desktop and mobile emulation)', edge: edge.edge, edgeLabel: edge.edgeLabel, checks: [], screens: [], console: [], expected: [],
+    notChecked: caveats.map((c) => String(c).replace(/^·\s*/, '')),
   };
   const say = (l) => (log.log || (() => {}))(l);
   const check = (area, ok, what, detail = '') => {
@@ -72,7 +147,7 @@ export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, s
   const issuer = `${supabaseUrl}/auth/v1`;
   const fn = `${supabaseUrl}/functions/v1/hushmates`;
   const http = async (url, { method = 'GET', headers = {}, body, redirect = 'manual' } = {}) => {
-    const r = await fetch(url, { method, headers, redirect, body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body) });
+    const r = await doFetch(url, { method, headers, redirect, body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body) });
     const text = await r.text();
     let json = null;
     try { json = text ? JSON.parse(text) : null; } catch { /* not JSON */ }
@@ -90,6 +165,25 @@ export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, s
   const made = { users: [], codes: [] };
   let restoreLimits = null;
   let browser = null;
+  // A stop (Ctrl-C, SIGTERM) runs the clean-up while the run itself is still going. So once it has
+  // begun nothing new is made (`stopping`), and whatever was being made at that moment (a test
+  // person, an invitation, the short timings) is waited for first, so the clean-up removes it too
+  let stopping = false;
+  const making = new Set();
+  const track = (promise) => { making.add(promise); promise.then(() => making.delete(promise), () => making.delete(promise)); return promise; };
+  const notStopping = () => { if (stopping) throw new Error('stopped'); };
+  // whatever happens (an error, Ctrl-C, a time limit): the timings go back, the test people and invitations go
+  let cleaning = null;
+  const cleanup = () => (cleaning ||= (async () => {
+    stopping = true;
+    await Promise.allSettled([...making]);
+    if (browser) await browser.close().catch(() => {});
+    if (restoreLimits) await admin.set('limits', restoreLimits).then(() => say('  (timings put back)'), (e) => check('run', false, 'the timings were put back', e.message));
+    for (const id of made.users) await authAdmin(`/admin/users/${id}`, { method: 'DELETE' }).catch(() => {});
+    for (const code of made.codes) await admin.revoke(code).catch(() => {});
+    await pool.end().catch(() => {});
+  })());
+  const offStop = cleanUpOnStop((sig) => { report.stoppedBy = sig; check('run', false, 'it ran to the end without being stopped', `stopped by ${sig}`); return cleanup().then(stopAlso); }, { proc, say });
 
   try {
     // ------------------------------------------------------- the published site --
@@ -126,19 +220,30 @@ export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, s
 
     // ---------------------------------------- shorter timings for this run only --
     const before = (await admin.settings()).limits || {};
-    restoreLimits = { fallbackAfterMs: before.fallbackAfterMs, journeyTtlMs: before.journeyTtlMs };
-    await admin.set('limits', { fallbackAfterMs: T.fallbackAfterMs, journeyTtlMs: T.journeyTtlMs });
-    say(`  (for this run: the Mallow waits ${T.fallbackAfterMs / 1000} s instead of ${before.fallbackAfterMs / 60000} min, a journey lasts ${T.journeyTtlMs / 1000} s instead of ${before.journeyTtlMs / 3600000} h; put back at the end)`);
+    restoreLimits = timingsToRestore(before, T);
+    if (Object.keys(restoreLimits).some((k) => restoreLimits[k] !== before[k])) say('  (the project still had a cut-off run’s short timings: the defaults the migrations set go back at the end instead)');
+    notStopping();
+    await track(admin.set('limits', { fallbackAfterMs: T.fallbackAfterMs, journeyTtlMs: T.journeyTtlMs }));
+    say(`  (for this run: the Mallow waits ${T.fallbackAfterMs / 1000} s instead of ${restoreLimits.fallbackAfterMs / 60000} min, a journey lasts ${T.journeyTtlMs / 1000} s instead of ${restoreLimits.journeyTtlMs / 3600000} h; put back at the end)`);
 
     // --------------------------------------------------------- people and devices --
-    const invites = await admin.invite({ count: 4, role: 'member', uses: 1, expiresDays: 1, note: `staging-e2e ${run}` });
-    const deskInvite = await admin.invite({ count: 1, role: 'moderator', uses: 1, expiresDays: 1, note: `staging-e2e ${run}` });
-    made.codes.push(...invites.codes, ...deskInvite.codes);
+    // one at a time, each kept as soon as it exists: a stop (or an error) part-way still finds every one
+    const invite = async (count, role) => {
+      const codes = [];
+      for (let i = 0; i < count; i += 1) {
+        notStopping();
+        const x = await track(admin.invite({ count: 1, role, uses: 1, expiresDays: 1, note: `staging-e2e ${run}` }).then((r) => { made.codes.push(...r.codes); return r; }));
+        codes.push(...x.codes);
+      }
+      return { codes };
+    };
+    const invites = await invite(4, 'member');
+    const deskInvite = await invite(1, 'moderator');
     const person = async (tag) => {
+      notStopping();
       const email = `staging-e2e+${run}-${tag}@example.com`;
-      const r = await authAdmin('/admin/users', { body: { email, email_confirm: true } });
+      const r = await track(authAdmin('/admin/users', { body: { email, email_confirm: true } }).then((x) => { if (x.body?.id) made.users.push(x.body.id); return x; }));
       if (r.status !== 200 || !r.body?.id) throw new Error(`couldn't make a test person (${r.status} ${r.text.slice(0, 120)})`);
-      made.users.push(r.body.id);
       return { email, id: r.body.id, tag };
     };
     const codeFor = async (email) => {
@@ -149,7 +254,11 @@ export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, s
     };
     const [A, B, C, M] = [await person('a'), await person('b'), await person('c'), await person('m')];
 
-    browser = await playwright.chromium.launch({ executablePath: CHROMIUM, args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+    // Playwright's own Ctrl-C and SIGTERM handling would close the browser and exit before the clean-up above.
+    // The browser gets this environment without the secrets (Playwright would otherwise hand it all of it)
+    notStopping();
+    await track((playwright || loadPlaywright()).chromium.launch({ executablePath: CHROMIUM, args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'], handleSIGINT: false, handleSIGTERM: false, env: withoutSecrets() })
+      .then((b) => { browser = b; }));
     let expecting = false;
     async function device(name, { width, height, mobile, motion = 'no-preference' }) {
       const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: mobile ? 3 : 1, isMobile: mobile, hasTouch: mobile, reducedMotion: motion, acceptDownloads: true });
@@ -454,11 +563,8 @@ export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, s
     check('run', false, 'the journey ran to the end', e.message.split('\n')[0]);
     if (browser) for (const ctx of browser.contexts()) for (const pg2 of ctx.pages()) await pg2.screenshot({ path: join(out, `zz-stopped-${report.screens.length}-${Math.random().toString(36).slice(2, 6)}.png`) }).catch(() => {});
   } finally {
-    if (browser) await browser.close().catch(() => {});
-    if (restoreLimits) await admin.set('limits', restoreLimits).then(() => say('  (timings put back)'), (e) => check('run', false, 'the timings were put back', e.message));
-    for (const id of made.users) await authAdmin(`/admin/users/${id}`, { method: 'DELETE' }).catch(() => {});
-    for (const code of made.codes) await admin.revoke(code).catch(() => {});
-    await pool.end();
+    await cleanup();
+    offStop();
   }
   for (const c of report.console) report.checks.push({ area: 'console', ok: false, what: 'no errors in the browser', detail: c, verifiedOn: environment });
   report.finishedAt = new Date().toISOString();
@@ -473,18 +579,35 @@ export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, s
   return report;
 }
 
-function toMarkdown(r) {
+export function toMarkdown(r) {
   const head = r.environment === 'staging'
-    ? `# Staging end-to-end: VERIFIED ON STAGING\n\nProject ${r.supabase}, site ${r.site}.`
-    : `# Staging end-to-end: LOCAL REHEARSAL (not staging)\n\nRun on one machine: the packed site and a local stand-in for Supabase on two hosts. It proves the test and the cross-host set-up, not the real platform.`;
+    ? `# Staging end-to-end: VERIFIED ON STAGING · Edge Function: ${r.edgeLabel}\n\nProject ${r.supabase}, site ${r.site}.`
+    : `# Staging end-to-end: LOCAL REHEARSAL (not staging) · Edge Function: ${r.edgeLabel}\n\nRun on one machine: the packed site and a local stand-in for Supabase on two hosts. It proves the test and the cross-host set-up, not the real platform.`;
   const rows = r.checks.map((c) => `| ${c.ok ? '✅ pass' : '❌ FAIL'} | ${c.area} | ${c.what}${c.detail ? ` — ${c.detail.replace(/\|/g, '/')}` : ''} |`).join('\n');
   return `${head}\n\n${r.startedAt} → ${r.finishedAt} · ${r.engine}\n\n**${r.passed} passed, ${r.failed} failed.**\n\n| Result | Area | Check |\n|---|---|---|\n${rows}\n\n## Not checked by this run\n\n${r.notChecked.map((n) => `- ${n}`).join('\n')}\n\n## Screens\n\n${r.screens.map((s) => `- ${s.file} (${s.size})`).join('\n')}\n`;
 }
 
 const freePort = () => new Promise((r) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
 
-/** The rehearsal: the same run, here, with the two hosts staging has. */
-export async function rehearse({ out, deno = process.env.HUSHMATES_DENO, log = console } = {}) {
+/**
+ * Takes the rehearsal's local set-up down, once, however it was left: the site, the stack, the
+ * database, the folder. A terminal's Ctrl-C reaches Deno as well, and the stack then waits for a
+ * Deno that has already stopped (server/dev-stack.mjs), so neither server is waited for longer than
+ * `waitMs`: the database and the folder still go. → a function that does it (the same promise each time)
+ */
+export function rehearsalTearDown({ site, stack, db, dir, waitMs = 5000 }) {
+  let down = null;
+  return () => (down ||= (async () => {
+    await within(waitMs, site.close());
+    await within(waitMs, stack.close());
+    await db.drop();
+    rmSync(dir, { recursive: true, force: true });
+  })());
+}
+
+/** The rehearsal: the same run, here, with the two hosts staging has, and the real Edge Function under Deno (or, with node, the Node gateway, and the report says so). */
+export async function rehearse({ out, deno = process.env.HUSHMATES_DENO, node = false, log = console } = {}) {
+  const edge = edgeRuntime({ deno, node });
   const { startDevStack } = await import('../server/dev-stack.mjs');
   const { freshDb } = await import('../tests/backend-helpers.mjs');
   const { packSite } = await import('./pack-site.mjs');
@@ -495,21 +618,19 @@ export async function rehearse({ out, deno = process.env.HUSHMATES_DENO, log = c
   const siteOrigin = `http://127.0.0.1:${sitePort}`;
   const anonKey = 'local-anon-key-dev-only';
   const stack = await startDevStack({ port: apiPort, pool: db.pool, anonKey, keysFile: join(dir, 'keys.json'), quiet: true, log: { error: (...a) => (log.error || (() => {}))(...a), log() {} },
-    tickMs: 3000, extraOrigins: [siteOrigin], ...(deno ? { edge: 'deno', deno } : {}) });
+    tickMs: 3000, extraOrigins: [siteOrigin], ...(deno ? { edge: 'deno', deno } : { edge: 'node' }) });
   packSite({ supabaseUrl: stack.origin, anonKey, out: join(dir, 'site'), allowLocal: true });
   const site = createStaticSite({ root: join(dir, 'site') });
   await site.listen(sitePort);
+  const tearDown = rehearsalTearDown({ site, stack, db, dir });
   try {
     return await runStagingE2E({
       environment: 'local-rehearsal', site: siteOrigin, supabaseUrl: stack.origin, anonKey, serviceKey: stack.keys.serviceKey, adminPg: db.url,
       secrets: { HUSHMATES_DATA_KEYS: JSON.stringify({ [stack.keys.dataKeyId]: stack.keys.dataKey }), HUSHMATES_DATA_KEY_ID: stack.keys.dataKeyId, HUSHMATES_MAC_KEY: stack.keys.macKey },
-      out, timings: { fallbackAfterMs: 12e3, journeyTtlMs: 45e3, waitMs: 40e3 }, log,
+      out, timings: { fallbackAfterMs: 12e3, journeyTtlMs: 45e3, waitMs: 40e3 }, log, edge, stopAlso: tearDown,
     });
   } finally {
-    await site.close();
-    await stack.close();
-    await db.drop();
-    rmSync(dir, { recursive: true, force: true });
+    await tearDown();
   }
 }
 
@@ -522,9 +643,12 @@ if (runAsCommand()) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   let r;
   if (process.argv.includes('--rehearse')) {
-    r = await rehearse({ out: arg('out') || join(ROOT, '.data', `staging-e2e-rehearsal-${stamp}`) });
+    const node = process.argv.includes('--node');
+    const deno = node ? null : process.env.HUSHMATES_DENO;
+    try { edgeRuntime({ deno, node }); } catch (e) { console.error(`✗ ${e.message}`); process.exit(2); }
+    r = await rehearse({ out: arg('out') || join(ROOT, '.data', `staging-e2e-rehearsal-${stamp}`), deno, node });
   } else {
-    const { resolveRun } = await import('./staging-env.mjs');
+    const { resolveRun, runCaveats } = await import('./staging-env.mjs');
     const ref = arg('project-ref') || '';
     const site = arg('site') || '';
     const stop = (m) => { console.error(m); process.exit(2); };
@@ -532,10 +656,12 @@ if (runAsCommand()) {
     let run;
     try { run = await resolveRun({ ref, site }); } catch (e) { stop(`✗ ${e.message}`); }
     if (!run.secrets.HUSHMATES_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).includes(site)) stop(`${site} isn’t in HUSHMATES_ALLOWED_ORIGINS: the function would refuse the app`);
-    console.log(`The browser E2E on staging project ${ref} and ${site} (database reached by ${run.via}).`);
+    console.log(`The browser E2E on staging project ${ref} and ${site} (database reached by ${run.via}; secrets from ${run.source === 'root' ? 'the root secret' : '.data/staging.env'}).`);
+    for (const line of runCaveats(run)) console.log(line);
     r = await runStagingE2E({ environment: 'staging', site, supabaseUrl: `https://${ref}.supabase.co`, anonKey: run.anonKey,
-      serviceKey: run.serviceKey, adminPg: run.adminPg, db: run.db, secrets: run.secrets, out: arg('out') || join(ROOT, '.data', `staging-e2e-${stamp}`) });
+      serviceKey: run.serviceKey, adminPg: run.adminPg, db: run.db, secrets: run.secrets, caveats: runCaveats(run), out: arg('out') || join(ROOT, '.data', `staging-e2e-${stamp}`) });
   }
-  console.log(`\n${r.environment === 'staging' ? 'VERIFIED ON STAGING' : 'LOCAL REHEARSAL (not staging)'}: ${r.passed} passed, ${r.failed} failed. Report: report.md and report.json, with the screens.`);
-  process.exit(r.failed ? 1 : 0);
+  console.log(`\n${r.environment === 'staging' ? 'VERIFIED ON STAGING' : 'LOCAL REHEARSAL (not staging)'} (Edge Function: ${r.edgeLabel}): ${r.passed} passed, ${r.failed} failed${r.stoppedBy ? `, stopped by ${r.stoppedBy}` : ''}. Report: report.md and report.json, with the screens.`);
+  // stopped: the signal's own code, whichever of the run and the stop gets here first
+  process.exit(r.stoppedBy ? (r.stoppedBy === 'SIGINT' ? 130 : 143) : r.failed ? 1 : 0);
 }

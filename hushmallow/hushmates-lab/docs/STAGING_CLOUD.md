@@ -17,8 +17,11 @@ sender, which only sends to team members. None of these can bill you
 - live users.
 
 That's why each account is **new and separate**: a token from a separate account
-can't reach production at all. The tools also refuse to run if a token can see
-any project without "staging" in its name.
+can't reach production at all. The tools also check, before changing anything:
+- the Supabase token must reach the staging project and nothing else;
+- every Pages project on the Cloudflare account must have "staging" in its name.
+
+Otherwise they refuse.
 
 **Who can reach staging:** anyone who has its address can load it, as with any
 website. But:
@@ -86,7 +89,9 @@ How to read this guide:
    - press *Deploy*.
 
    **Make it as a Pages project.** The developer's tools only ever deploy to a Pages project you made, never create one. Note: from AI tools, Cloudflare's own command-line tool would otherwise make a Workers project instead.
-3. Note the address Cloudflare shows: usually `https://hushmates-staging.pages.dev`. If the name was taken, it has a few extra letters, like `https://hushmates-staging-7xq.pages.dev`. Use that exact address below.
+3. Note the address Cloudflare shows: usually `https://hushmates-staging.pages.dev`. If the name was taken, it has a few extra letters, like `https://hushmates-staging-7xq.pages.dev`. Use that exact address below: the tools find the project by its address.
+
+   Keep only staging projects on this account. The tools refuse an account that holds any Pages project without "staging" in its name.
 4. Find the **Account ID**: on *Workers & Pages*, in the right-hand column, or the 32 characters after `dash.cloudflare.com/` in the address bar. It isn't secret.
 5. Make an **API token**:
    - *My Profile → API Tokens → Create Token → Create Custom Token*;
@@ -154,7 +159,12 @@ Neither value is secret.
 
 ## Step 7 · What the session does (no action from you)
 
-In `hushmallow/hushmates-lab`. Every command refuses unless the project is named like staging, is in Sydney and is healthy, and the token reaches no other project.
+In `hushmallow/hushmates-lab`. Every command refuses unless:
+- the project is named like staging, is in Sydney and is healthy;
+- the Supabase token reaches no other project;
+- for the deploy, every Pages project on the Cloudflare account is a staging one, and one of them is at `<site>`.
+
+These checks run first, in the dry run too, before anything changes.
 
 ```
 npm ci
@@ -187,9 +197,11 @@ What the session does on the staging project:
 
 | What the session reports | What it means | What you do |
 |---|---|---|
-| "the token can also reach N other project(s)" | The token belongs to an account that can see another project | Use a token from the separate staging account (step 1) |
-| "there is no Pages project called …" | Step 3, item 2 wasn't done, or has another name | Make it as a Pages project, named as in your message |
-| "the Pages project … is at https://…, not …" | Cloudflare gave it another address | Nothing: the session re-runs with that address. Add it to *Allowed domains* if it differs |
+| "the token can also reach N other project(s)", or "the token’s own list of projects doesn’t include this one" | The token belongs to an account that can see another project, or not this one | Use a token from the separate staging account (step 1) |
+| "the Cloudflare account also holds N Pages project(s) without "staging" in the name" | The Cloudflare token belongs to an account with other sites | Use a separate Cloudflare account for staging (step 3) |
+| "no Pages project is at https://…" | Step 3, item 2 wasn't done, or the address in your message differs from Cloudflare's | Make the Pages project (step 3), or send the exact address Cloudflare shows |
+| "the Pages project … is at https://…, not …" | Cloudflare gave the project another address | Nothing: the session re-runs with that address. Add it to *Allowed domains* if it differs |
 | "connect_rejected" or "host not allowed" | A host is missing from *Allowed domains* | Add the host it names, then start a new session |
 | Every sign-in ends with "Please sign in again" | The project still uses the legacy JWT secret | Step 1, item 5 |
 | 403 from the Management API | The scoped token lacks a permission | Make a new token with the table in step 2 |
+| "… changed after it was applied: add a new migration instead" | A database change was edited after staging got it | Nothing: the developer adds a new migration |

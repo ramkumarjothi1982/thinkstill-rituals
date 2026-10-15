@@ -55,17 +55,28 @@ const paramsOk = (op, params) => op.parameters.filter((p) => p.in === 'path' || 
   ? (p.required ? [`${p.name} missing`] : []) : validate(p.schema, params[p.name], p.name)));
 
 /**
- * The stand-in. `project` is what GET /v1/projects/{ref} answers; `others` more projects the token can see;
- * the SQL runs on `database` (a name on the local server) or `connectionString`; `keys` are the project's keys.
+ * The stand-in. `project` is what GET /v1/projects/{ref} answers; `others` more projects the token can see
+ * (or `list`, the whole list GET /v1/projects answers); the SQL runs on `database` (a name on the local
+ * server) or `connectionString`; `keys` are the project's keys. Every query's SQL text is kept in
+ * state.queries (the parameters are not). `extensions` ([{ name, installed_version }]) answers for
+ * pg_cron and pg_net, which a local Postgres doesn't have: their "create extension" is recorded, not run.
  */
-export async function standIn({ database, connectionString, project, others = [], keys = KEYS }) {
+export async function standIn({ database, connectionString, project, others = [], list = null, keys = KEYS, extensions = null }) {
   const pool = new pg.Pool({ connectionString: connectionString || `${PG_URL}/${database}`, max: 2 });
-  const state = { postgrest: { db_schema: 'public,graphql_public', max_rows: 1000 }, auth: { site_url: 'http://localhost:3000', mailer_otp_length: 6, mailer_otp_exp: 3600, external_email_enabled: true }, secrets: [], functions: {}, problems: [], calls: [] };
+  const state = { postgrest: { db_schema: 'public,graphql_public', max_rows: 1000 }, auth: { site_url: 'http://localhost:3000', mailer_otp_length: 6, mailer_otp_exp: 3600, external_email_enabled: true }, secrets: [], functions: {}, problems: [], calls: [], queries: [] };
+  const ext = extensions && extensions.map((e) => ({ ...e }));
+  const query = async (b) => {
+    state.queries.push(b.query);
+    if (ext && /pg_available_extensions/.test(b.query)) return ext.map((e) => ({ ...e }));
+    const create = ext && /^\s*create extension if not exists (pg_cron|pg_net)\b/i.exec(b.query);
+    if (create) { const e = ext.find((x) => x.name === create[1]); if (e) e.installed_version = '1.0'; return []; }
+    return (await pool.query(b.query, b.parameters || [])).rows ?? [];
+  };
   const routes = [
-    ['GET /v1/projects', () => [200, [project, ...others]]],
+    ['GET /v1/projects', () => [200, list ?? [project, ...others]]],
     ['GET /v1/projects/{ref}', () => [200, project]],
     ['GET /v1/projects/{ref}/api-keys', (b, p) => [200, keys.map((k) => (k.type === 'secret' && !/^(true|1|yes|on|y|enabled)$/.test(p.reveal || '') ? { ...k, api_key: `${k.api_key.slice(0, 15)}••••••••` } : k))]],
-    ['POST /v1/projects/{ref}/database/query', async (b) => [201, (await pool.query(b.query, b.parameters || [])).rows ?? []]],
+    ['POST /v1/projects/{ref}/database/query', async (b) => [201, await query(b)]],
     ['GET /v1/projects/{ref}/postgrest', () => [200, state.postgrest]],
     ['PATCH /v1/projects/{ref}/postgrest', (b) => [200, Object.assign(state.postgrest, b)]],
     ['GET /v1/projects/{ref}/config/auth', () => [200, state.auth]],
@@ -124,10 +135,26 @@ export async function standIn({ database, connectionString, project, others = []
   return { base: `http://127.0.0.1:${server.address().port}`, state, pool, close: async () => { await new Promise((r) => server.close(r)); await pool.end(); } };
 }
 
-export async function emptyDatabase() {
+/**
+ * An empty database on the local server. With `vault`, a minimal stand-in for Supabase Vault (the
+ * table and the two functions the deploy uses, the same arguments in the same order; no encryption).
+ */
+export async function emptyDatabase({ vault = false } = {}) {
   const name = `hm_deploy_${randomBytes(4).toString('hex')}`;
   const admin = new pg.Client({ connectionString: `${PG_URL}/postgres` });
   await admin.connect();
   await admin.query(`create database ${name}`);
+  if (vault) {
+    const c = new pg.Client({ connectionString: `${PG_URL}/${name}` });
+    await c.connect();
+    await c.query(`create schema vault;
+      create table vault.secrets (id uuid primary key default gen_random_uuid(), name text unique, secret text not null);
+      create view vault.decrypted_secrets as select id, name, secret as decrypted_secret from vault.secrets;
+      create function vault.create_secret(new_secret text, new_name text default null) returns uuid language sql
+        as $$ insert into vault.secrets (name, secret) values ($2, $1) returning id $$;
+      create function vault.update_secret(secret_id uuid, new_secret text) returns void language sql
+        as $$ update vault.secrets set secret = $2 where id = $1 $$;`);
+    await c.end();
+  }
   return { name, drop: async () => { await admin.query(`drop database if exists ${name} with (force)`); await admin.end(); } };
 }

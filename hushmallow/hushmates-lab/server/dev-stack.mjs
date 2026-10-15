@@ -133,7 +133,7 @@ export async function startDevStack({
     async close() {
       clearInterval(timer);
       await host_.close();
-      if (edgeProcess && edgeProcess.exitCode === null) { const gone = new Promise((r) => edgeProcess.once('exit', r)); edgeProcess.kill('SIGTERM'); await gone; }
+      if (edgeProcess && edgeProcess.exitCode === null && edgeProcess.signalCode === null) { const gone = new Promise((r) => edgeProcess.once('exit', r)); edgeProcess.kill('SIGTERM'); await gone; }
       await auth.close?.();
       if (!givenPool) await pool.end();
     },

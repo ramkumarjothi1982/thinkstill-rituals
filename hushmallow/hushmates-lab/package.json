@@ -18,6 +18,7 @@
     "staging:site": "node tools/pack-site.mjs",
     "staging:e2e": "node tools/staging-e2e.mjs",
     "staging:rehearse": "node tools/staging-e2e.mjs --rehearse",
+    "staging:rehearse:node": "node tools/staging-e2e.mjs --rehearse --node",
     "staging:deploy": "node tools/staging-deploy.mjs"
   },
   "devDependencies": {

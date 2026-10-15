@@ -5,11 +5,24 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import http from 'node:http';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { packSite } from '../tools/pack-site.mjs';
 import { createStaticSite } from '../server/static-site.mjs';
+
+// the path exactly as written: fetch() and URL tidy %2e%2e and ../ away before a server sees them
+const rawGet = (base, path) => new Promise((resolve, reject) => {
+  const u = new URL(base);
+  const req = http.request({ host: u.hostname, port: u.port, path, method: 'GET' }, (res) => {
+    const chunks = [];
+    res.on('data', (c) => chunks.push(c));
+    res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+  });
+  req.on('error', reject);
+  req.end();
+});
 
 test('the static site serves the packed folder as Pages does', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'hushmates-static-'));
@@ -23,10 +36,19 @@ test('the static site serves the packed folder as Pages does', async () => {
     const root = await fetch(`${base}/`, { redirect: 'manual' });
     assert.equal(root.status, 302);
     assert.equal(root.headers.get('location'), '/app/');
-    for (const p of ['/lab/', '/nope', '/%2e%2e/%2e%2e/etc/passwd', '/_headers', '/_redirects']) {
+    for (const p of ['/lab/', '/nope', '/_headers', '/_redirects']) {
       const r = await fetch(`${base}${p}`);
       assert.equal(r.status, 404, p);
       assert.match(await r.text(), /This page isn’t here/, p);
+    }
+    // nothing outside the folder: a file next to it, and the system's own, asked for every way a path can climb
+    writeFileSync(join(dir, 'outside.txt'), 'OUTSIDE-THE-SITE-FOLDER');
+    const up = '..%2f'.repeat(12);
+    for (const p of ['/..%2foutside.txt', '/%2e%2e%2foutside.txt', '/..%2F..%2Fsite%2F..%2Foutside.txt', `/${up}etc%2fpasswd`, '/..%2f..%2fetc%2fpasswd',
+      '/%2e%2e/%2e%2e/etc/passwd', '/../outside.txt', '/app/..%2f..%2foutside.txt', '/..%5coutside.txt']) {
+      const r = await rawGet(base, p);
+      assert.equal(r.status, 404, p);
+      assert.ok(!r.text.includes('OUTSIDE-THE-SITE-FOLDER') && !/root:.*:0:0:/.test(r.text), `${p} served a file from outside the folder`);
     }
   } finally { await site.close(); rmSync(dir, { recursive: true, force: true }); }
 });
