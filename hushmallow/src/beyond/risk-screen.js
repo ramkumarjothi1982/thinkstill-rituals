@@ -322,6 +322,8 @@ const F = String.raw;
 const G = (n) => F`(?:(?!i )[a-z0-9]+ ){0,${n}}`;
 /** Fillers between a wish and its verb ("want to just die", "going to actually end it"). */
 const ADV = F`(?:(?:just|really|actually|literally|honestly|seriously|simply|kind of|sort of|so|finally|totally|quietly|peacefully|properly|fucking|bloody|like|already|truly|even|now|all|to|go|go and|be able to|try to|try and|rather|soon|probably|definitely|maybe|one day|eventually|someday|forever) ){0,3}`;
+/** A gap after the self that never passes another subject ("i am scared my mum will die" is not the self's wish). */
+const GS = (n) => F`(?:(?!(?:i|he|she|they|we|you|it|someone|somebody|everyone|everybody|people|nobody|my|his|her|their|our|your|the|mum|mom|dad|nan|gran|grandma|grandad|grandpa|brother|sister|son|daughter|husband|wife|partner|boyfriend|girlfriend|friend|baby|dog|cat) )[a-z0-9]+ ){0,${n}}`;
 const SELF = F`\bi `;
 /** Sentence start: an elided subject ("want to die.", "going to end it tonight"). */
 const START = F`(?:^ |[.,] )`;
@@ -329,6 +331,8 @@ const START = F`(?:^ |[.,] )`;
 const MOD = F`(?:want is|need is|want|wanted|wanting|wants|wish|wished|wishing|need|needed|would like|would love|would rather|rather|hope|hoping|pray|praying|long|longing|deserve|ready|am ready|tempted|desperate|am going|going|gonna|plan|planning|planned|plan on|decided|have decided|deciding|am about|about|trying|intend|intending|mean|meant|choose|chose|feel like|will|would|shall|should|must|have got|got|has to|have to|could just|might just|may as well|might as well|keep wanting|just want|only want|can not wait)`;
 const PAST_TRY = F`(?:tried|attempted|have tried|have attempted|was going|was about|was planning|was ready|came close)`;
 const IDEATE = F`(?:think|thinking|thought|keep thinking|thoughts|dream|dreaming|dreamt|dreamed|fantasi[sz]e|fantasi[sz]ing|obsess|obsessing|obsessed|wonder|wondering|picture|picturing|imagine|imagining|consider|considering|contemplate|contemplating|research|researching|google|googled|googling|look up|looking up|looked up|search|searching|searched|planning|planned)`;
+/** Family and pets (never friends or mates: being with them is everyday). */
+const KIN = F`(?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|baby|husband|wife|partner|fiance|fiancee|uncle|aunt|auntie|twin|dog|cat|boy|girl)`;
 const PERSON = F`(?:mum|mom|mam|mummy|mother|dad|daddy|father|nan|nana|nanna|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|baby|husband|wife|partner|boyfriend|girlfriend|fiance|fiancee|friend|best friend|uncle|aunt|auntie|cousin|dog|cat|boy|girl|twin|grandson|granddaughter|mate|bestie)`;
 
 // the self ending, by strength: with a wish or a plan, END_STRONG is care on its own; END_MID and END_SOFT need company
@@ -390,15 +394,15 @@ function bounded(src) {
  * first person in its sentence; guard — a regex over its sentence that drops it (the words mean something else).
  */
 const frame = (id, cat, w, src, opt = {}) => FRAMES.push({ id, cat, w, re: new RegExp(bounded(src), 'g'), ...opt });
-const WISH_HEAD = F`(?:${SELF}(?<pre>${G(4)})|${START})(?<mod>${MOD}) (?:to )?(?<adv>${ADV})`;
+const WISH_HEAD = F`(?:${SELF}(?<pre>${GS(4)})|${START})(?<mod>${MOD}) (?:to )?(?<adv>${ADV})`;
 
 // ---- END: the self ending -----------------------------------------------------------------------------------------
 frame('end-wish', 'end', 6, F`${WISH_HEAD}(?:${END_STRONG})\b`, { neg: true });
 frame('end-wish-mid', 'end', 4, F`${WISH_HEAD}(?:${END_MID})\b`, { neg: true });
 frame('end-wish-soft', 'end', 3, F`${WISH_HEAD}(?:${END_SOFT})(?= [.,]| (?:forever|for good|now|tonight|today|soon|already|anymore|any more|from (?:this|it all|everything|life)|so (?:bad|much))\b)`, { neg: true });
-frame('end-ideate', 'end', 6, F`${SELF}(?<pre>${G(4)})${IDEATE} (?:about |of |up |on )?(?<adv>${ADV})(?:${END_GER_STRONG})\b`, { neg: true });
-frame('end-ideate-soft', 'end', 3, F`${SELF}(?<pre>${G(4)})${IDEATE} (?:about |of |up |on )?(?<adv>${ADV})(?:${END_GER_SOFT})\b`, { neg: true });
-frame('end-tried', 'end', 4, F`${SELF}(?<pre>${G(2)})${PAST_TRY} (?:to )?(?<adv>${ADV})(?:${END_STRONG})\b|${SELF}(?<pre2>${G(1)})(?:nearly|almost|tried to|attempted to) (?:killed myself|died|ended my life|took my life|overdosed|hanged myself|ended it)\b(?! (?:laughing|on|at|in|falling|tripping|slipping|with|by|driving|cycling|running|trying|when|from|of))`, { neg: true });
+frame('end-ideate', 'end', 6, F`${SELF}(?<pre>${GS(4)})${IDEATE} (?:about |of |up |on )?(?<adv>${ADV})(?:${END_GER_STRONG})\b`, { neg: true });
+frame('end-ideate-soft', 'end', 3, F`${SELF}(?<pre>${GS(4)})${IDEATE} (?:about |of |up |on )?(?<adv>${ADV})(?:${END_GER_SOFT})\b`, { neg: true });
+frame('end-tried', 'end', 4, F`${SELF}(?<pre>${GS(2)})${PAST_TRY} (?:to )?(?<adv>${ADV})(?:${END_STRONG})\b|${SELF}(?<pre2>${G(1)})(?:nearly|almost|tried to|attempted to) (?:killed myself|died|ended my life|took my life|overdosed|hanged myself|ended it)\b(?! (?:laughing|on|at|in|falling|tripping|slipping|with|by|driving|cycling|running|trying|when|from|of))`, { neg: true });
 frame('end-future', 'end', 6, F`\b(?:i will|i would|i am going to|i shall|i will soon|i am gonna) (?<adv>${ADV})(?:be dead|die|not be alive|not wake up|never wake up|not make it through (?:the night|tonight|the week))\b`, { neg: true });
 frame('end-future-gone', 'end', 4, F`\b(?:i will|i am going to|i shall|i would) (?<adv>${ADV})(?:be gone|be at peace|be out of (?:the picture|the way|your way|everyones way)|be too late|be over for me)\b`, { neg: true });
 frame('end-state', 'end', 4, F`(?<!\b(?:when|once|after|if|before|time|since|that) )\bi am (?:already |long |finally |probably )?(?:gone|no longer here|not here anymore)\b(?= [.,]| (?:by|when|before|now|already|and|so)\b)`);
@@ -425,11 +429,14 @@ const AFTER = F`(?:up there(?! (?:on|at|in|by|with|near|for))|in heaven|on the o
 const REUNION = F`(?:be with|join|joining|meet|meeting|see|seeing|follow|following|go to|go home to|go be with|be reunited with|rest beside|rest next to|lie (?:down )?(?:beside|next to|with)|cross over to|go where)`;
 const REUNION_GUARD = /\b(?:good luck|mate|move|moving|exam|exams|surgery|op|operation|holiday|wedding|hill|stage|balcony|roof|top floor|loft)\b/;
 frame('reunion-after', 'end', 6, F`${SELF}${G(3)}(?:${MOD}|will|am going to|am|shall) (?:to )?${ADV}${REUNION} ${G(2)}${AFTER}\b|\b(?:going|gonna) (?:to )?${ADV}${REUNION} ${G(2)}${AFTER}\b(?! of)`, { neg: true, guard: REUNION_GUARD });
-frame('reunion-time', 'end', 3, F`${SELF}${G(3)}(?:${MOD}|will|am going to|shall) (?:to )?${ADV}(?:join|follow|be with|go be with|be joining|see|be seeing|meet|go and see) (?:him|her|them|my ${PERSON}|${PERSON}) ${G(1)}(?:soon|tonight|very soon|today|now|i promise)\b(?! (?:,|\.)? (?:(?:his|her|their|the) (?:train|bus|flight|plane)|she is|he is|they are|when (?:she|he|they) (?:gets|get|comes|come)|at the|in the|after (?:school|work)|on (?:the|monday|friday)))|\b(?:going|gonna) (?:to )?(?:join|follow|meet|see) (?:my |him|her|them)${G(1)}(?:${PERSON} )?(?:again )?(?:tonight|soon)\b`, { neg: true, guard: /\b(?:just went|went to (?:get|the)|tickets|shop|toilet|car park|bar|queue|picking me up|train|bus|flight|plane|be there in|on (?:his|her|my|their) way|at the (?:corner|shop|station)|after (?:school|work)|for (?:dinner|lunch|tea|drinks)|party|holiday|wedding|date|visit|visiting|cousin|baby cousin|boyfriend|girlfriend)\b/ });
+frame('reunion-time', 'end', 3, F`${SELF}${G(3)}(?:${MOD}|will|am going to|shall) (?:to )?${ADV}(?:join|follow|be with|go be with|be joining|see|be seeing|go and see) (?:him|her|them|my ${KIN}|${KIN}) ${G(1)}(?:soon|tonight|very soon|today|now|i promise)\b(?! (?:,|\.)? (?:(?:his|her|their|the) (?:train|bus|flight|plane)|she is|he is|they are|when (?:she|he|they) (?:gets|get|comes|come)|at the|in the|after (?:school|work)|on (?:the|monday|friday)))|\b(?:going|gonna) (?:to )?(?:join|follow|meet|see) (?:my |him|her|them)${G(1)}(?:${KIN} )?(?:again )?(?:tonight|soon)\b`, { neg: true, family: 'reunion', guard: /\b(?:just went|went to (?:get|the)|tickets|shop|toilet|car park|bar|queue|picking me up|train|bus|flight|plane|be there in|on (?:his|her|my|their) way|at the (?:corner|shop|station)|after (?:school|work)|for (?:dinner|lunch|tea|drinks)|party|holiday|wedding|date|visit|visiting|cousin|baby cousin|boyfriend|girlfriend)\b/ });
 // beside a death named (the DEATH family below), the self joining, following or going after the one who died; on their own
 // these are longing ("i want to be with her"), and count for nothing
-frame('reunion-bare', 'end', 3, F`\bi am going (?:where|wherever) (?:he|she|they) (?:went|is|are|has gone)\b|${SELF}${G(3)}(?:${MOD}|will|am going to|am|shall|keep praying to|pray to|long to) (?:to )?${ADV}(?:be with|join|joine|follow|folow|go to|go home to|go where|be where|go wherever|be wherever|get to|go too|be too|go there|be in the ground with|lie in the grave with|lie (?:down )?(?:beside|next to|with)|rest beside|rest next to|be next to|be beside|be reunited with|cross over to|meet|go after|swap places with|take (?:his|her|their) place)\b|\bwait for me\b|\bi am coming(?: to (?:you|him|her|them))?\b|\b(?:i will|i would|i am going to|i shall) be (?:the )?next(?: one)?\b|\b(?:it is|its|it will be) my turn\b|\b(?:if|whether) i should (?:too|as well|do the same|do it too|follow)\b|\bplanning (?:mine|my own)\b|\bdoing it (?:in|at|the same way|the way)\b|\bgo the way (?:he|she|they) did\b`, { needsDeath: true, neg: true });
-frame('end-let-me', 'end', 5, F`\b(?:let me|please let me|just let me) ${ADV}(?:die|be dead|go to (?:him|her|them|sleep forever)|not wake up)\b|\b(?:god|someone|something|death) (?:to )?(?:take|takes|took) me\b|\btake me (?:too|instead|now|home|with (?:you|him|her|them))\b|\b(?:better|happier|easier) (?:off )?dead\b|\b(?:wish|wished) (?:i had|i would have|it had been me|it was me) ${ADV}(?:died|been the one|gone instead|instead)\b|\bit should have been me\b|\b(?:hope|hoping|pray|praying) (?:that )?i (?:do not|never|will not|would not) (?:make it|wake up|see|last)\b|\b(?:pray|praying|hope|hoping|wish|wishing) (?:that )?(?:my heart|i) (?:just )?(?:stops|stop|gives out|gives up|would stop|will stop|stopped|stop breathing)\b|\band never get (?:up|back up)(?: again)?\b`, { neg: true });
+/** A pronoun for the one who died, with nothing after it that makes it someone else's ("her family", "him on his birthday"). */
+const GONE_ONE = F`(?:him|her|them|u|you)(?= [.,]| (?:again|forever|for ever|for good|soon|now|tonight|today|too|up there|in heaven|so bad|so much|more than anything|already|wherever|properly|and i|but i|so i|i)\b)`;
+frame('reunion-went', 'end', 5, F`\b(?:go|be|going|went) (?:to )?(?:where|wherever) (?:he|she|they) (?:went|is|are|has gone|have gone)\b(?! (?:buried|laid to rest|laid|resting|scattered|remembered|on the|at the|in the (?:garden|cemetery|churchyard|park)))|\b(?:be|lie|lay|rest|sleep|lie down) (?:down )?(?:in the (?:ground|grave)|in (?:his|her|their) grave|on (?:his|her|their|[a-z]+s) grave)\b(?: with (?:him|her|them))?(?! (?:to (?:talk|tell|read|sing|chat|visit|leave|put|lay flowers)|for (?:a while|an hour|a bit|his|her)|and (?:talk|cry|read|tell)))|${SELF}${G(2)}(?:want|wanna|need|would like|wish i could|am ready|am going) to (?:go|be) (?:too|there)(?= [.,])|\bgo the way (?:he|she|they) did\b|\b(?:cross over|go home|cross) to ${GONE_ONE}|\bi am coming(?: to (?:you|him|her|them))?(?= [.,]| (?:soon|now|tonight|son|mum|dad|my love)\b)`, { needsDeath: true, neg: true, guard: /\b(?:funeral|memorial|wake|service|army|school|work|house|party|choir|support group|family|cousins|kids|children|grew up|used to (?:live|walk|go))\b/ });
+frame('reunion-bare', 'end', 3, F`${SELF}${G(3)}(?:${MOD}|will|am going to|shall|keep praying to|pray to|long to) (?:to )?${ADV}(?:be with|follow|folow|be reunited with|lie (?:down )?(?:beside|next to)|rest beside|rest next to|swap places with|take (?:his|her|their) place with) ${GONE_ONE}|\bwait for me(?= [.,]| (?:my love|up there|i am coming|darling)\b)|\b(?:i will|i would|i am going to|i shall) be (?:the )?next(?: one)?(?= [.,]| (?:to go|to die|soon)\b)|\b(?:it is|its|it will be) my turn(?= [.,]| (?:now|next|soon|tonight)\b)|\b(?:if|whether) i should (?:too|as well|do the same|do it too)\b|\bplanning (?:mine|my own)(?= [.,])|\bdoing it (?:in|at) the same (?:place|way|garage|room|spot|bridge)\b`, { needsDeath: true, neg: true, family: 'reunion' });
+frame('end-let-me', 'end', 5, F`\b(?:let me|please let me|just let me) ${ADV}(?:die|be dead|go to (?:him|her|them|sleep forever)|not wake up)\b|\b(?:god|someone|something|death) (?:to )?(?:take|takes|took) me\b|\btake me (?:too|instead|now|home|with (?:you|him|her|them))\b|\b(?:better|happier|easier) (?:off )?dead\b|\b(?:wish|wished) (?:i had|i would have|it had been me|it was me) ${ADV}(?:died|been the one|gone instead|instead)\b|\bit should have been me\b|\b(?:hope|hoping|pray|praying) (?:that )?i (?:do not|never|will not|would not) (?:make it|wake up|see|last)\b|\b(?:pray|praying|hope|hoping|wish|wishing) (?:that )?(?:my heart|i) (?:just )?(?:stops|stop|gives out|gives up|would stop|will stop|stopped|stop breathing)\b(?! (?!breathing|beating)[a-z]+ing)|\b(?:want|wish|need|just want) (?:for )?my heart to (?:just )?stop\b(?! (?:hurting|aching|breaking|racing|pounding|feeling))|\band never get (?:up|back up)(?: again)?\b`, { neg: true });
 frame('end-do-it', 'end', 3, F`${SELF}${G(2)}(?:going to|gonna|will|want to|am ready to|ready to|am about to|about to|have to|need to) (?:just )?(?:do it|go through with it)\b(?= [.,]| (?:tonight|today|now|soon|this time|for real|i promise|properly)\b)`, { guard: /\b(?:homework|exam|test|essay|dishes|washing|laundry|presentation|interview|ask (?:her|him)|tell (?:her|him|them|mum|dad)|bungee|skydive|skydiving|marathon|tattoo|piercing|haircut|later|tomorrow morning)\b/ });
 frame('end-leaving-soon', 'end', 2, F`\bi am (?:checking out|leaving|signing off|logging off) (?:soon|tonight|for good|forever|now)\b`, { needsDeath: true });
 frame('see-other-side', 'end', 3, F`\bsee you (?:all )?on the other side\b(?! of)`);
@@ -451,11 +458,13 @@ frame('means-ligature', 'means', 5, F`\b(?:tie|tied|tying|make|made|making|bough
 frame('means-rope', 'means', 3, F`${SELF}${G(2)}(?:bought|got|have|ordered|found) ${G(1)}(?:a |some |the )?(?:rope|belt|cord|cable|ligature)\b`, { guard: /\b(?:tent|camping|climbing|boat|swing|washing line|garden|craft|crafts|skipping|dog|lead|trousers|jeans|dress|outfit|bag|parcel|delivery|tie down|tow|luggage|hammock|gym|yoga)\b/ });
 const HIGH = F`(?:bridge|roof|rooftop|ledge|cliff|cliffs|cliff edge|edge|platform|platform edge|tracks|track|railway|railway line|train line|trains|motorway|tower|tower block|car park|multi storey|balcony|top floor|sea|river|canal|lake|reservoir|traffic|oncoming traffic|quarry|dam|viaduct|overpass|flyover|parapet)`;
 frame('means-height', 'means', 4, F`${SELF}${G(2)}(?:keep|kept|have been|been|keep going|keep walking|keep driving|keep looking|keep staring) ${G(1)}(?:going|walking|driving|looking|staring|standing|sitting|thinking about|hovering|lingering|stood|sat|leaning)? ?(?:on|at|near|over|off|onto|by|to|from|under|down at|out at|too close to|close to|on the edge of|at the edge of|over the edge of|the edge of|near the edge of) ${G(2)}${HIGH}\b(?! (?:station|stop|timetable|times|ticket|tickets|journey|was|is|got|will|to (?:work|school|uni|town|london|see)|home|ride|trip|view|views|walk|path|cafe|pub|bar|restaurant|shop|at sunset|for (?:a|the) (?:photo|view|train|bus)))|${SELF}${G(2)}(?:am|was|have been|been|keep|kept) ${G(1)}(?:standing|sitting|stood|sat|hovering|leaning) ${G(1)}(?:on the edge of|at the edge of|over the edge of|near the edge of|on the wrong side of|on (?:the|a) (?:ledge|parapet|railing|railings)|too close to|right at the edge of)\b`, { guard: /\b(?:fixing|repairing|cleaning|painting|working|gutter|aerial|satellite|tiles|photo|photos|view|views|sunset|sunrise|fireworks|waiting for (?:the|my|a) (?:train|bus))\b/ });
-frame('means-height-act', 'means', 4, F`\b(?:jump|jumping|step|stepping|throw myself|throwing myself|lie|lying|walk|walking|run|running|fall|falling) (?:off|from|in front of|under|onto|into|in to|over|out into|out in front of) (?:a|the|that|this|my|oncoming|an) ?${G(1)}(?:bridge|roof|rooftop|ledge|cliff|building|tower|tower block|balcony|car park|multi storey|train|trains|tracks|railway|lorry|truck|bus|motorway|traffic|reservoir|quarry|viaduct|overpass)\b(?! (?:to (?:get|catch|see)|for (?:fun|a photo|a dare|charity)|at the (?:lido|pool)|in the summer))|\b(?:drive|driving|crash|crashing|steer|steering|swerve|swerving) ${G(1)}(?:my car |the car |it )?(?:into|off|in to|over) (?:a|the|that|this|oncoming|an) ?${G(1)}(?:wall|tree|lorry|truck|bus|river|sea|canal|lake|cliff|bridge|traffic|barrier|motorway|edge)\b|\bcrash(?:ing)? (?:my|the) car\b(?! (?:into the (?:kerb|curb|gate|bin|post)|by accident|last|again (?:into|on)|on (?:the|my) (?:way|driving test)|in (?:the|a) (?:car park|game)))`, { self: true, guard: /\b(?:by accident|accidentally|game|level|mario|gta|fortnite|minecraft|roblox|lesson|instructor|test|driving test|insurance|garage|mechanic|parking)\b/ });
+frame('means-height-act', 'means', 4, F`\b(?:jump|jumping|step|stepping|throw myself|throwing myself|lie|lying|walk|walking|run|running|fall|falling) (?:off|from|in front of|under|onto|into|in to|over|out into|out in front of) (?:a|the|that|this|my|oncoming|an) ?${G(1)}(?:bridge|roof|rooftop|ledge|cliff|building|tower|tower block|balcony|car park|multi storey|train|trains|tracks|railway|lorry|truck|bus|motorway|traffic|reservoir|quarry|viaduct|overpass)\b(?! (?:to (?:get|catch|see)|for (?:fun|a photo|a dare|charity)|at the (?:lido|pool)|in the summer))|\b(?:drive|driving|crash|crashing|steer|steering|swerve|swerving) ${G(1)}(?:my car |the car |it )?(?:into|off|in to|over) (?:a|the|that|this|oncoming|an) ?${G(1)}(?:wall|tree|lorry|truck|bus|river|sea|canal|lake|cliff|bridge|traffic|barrier|motorway|edge)\b|\bcrash(?:ing)? (?:my|the) car\b(?! (?:into the (?:kerb|curb|gate|bin|post)|by accident|last|again (?:into|on)|on (?:the|my) (?:way|driving test)|in (?:the|a) (?:car park|game)))`, { self: true, neg: true, guard: /\b(?:by accident|accidentally|game|level|mario|gta|fortnite|minecraft|roblox|lesson|instructor|test|driving test|insurance|garage|mechanic|parking)\b/ });
 frame('means-blade', 'means', 5, F`${SELF}${G(3)}(?:cut|cutting|cuts|slit|slitting|slash|slashed|slashing|burn|burning|burnt|burned|scratch|scratching|scratched|carve|carved|carving|stab|stabbed|stabbing|hurt|hurting|harm|harming) ${G(1)}(?:myself|my (?:wrists?|arms?|thighs?|legs?|skin|veins?|stomach|body))\b(?! (?:on|by accident|accidentally|shaving|chopping|cooking|playing|when i fell|falling|at the gym|at football|while|in the kitchen|with (?:a|the) (?:knife|tin|can|paper|lid|glass) (?:by|while|chopping|when|opening)))|\b(?:blade|blades|razor|razors|knife|knives|scissors|glass|sharpener) ${G(4)}(?:to (?:cut|hurt) myself|cut myself|my wrists?|my arms?|my thighs?|my veins?|deep enough)\b|\bself harm(?:ing|ed)?\b|\bselfharm\w*\b`, { neg: true, guard: /\b(?:onions?|chopping|cooking|shaving|accident|accidentally|garden|gardening|paper cut|tin|can opener|hair|fringe|nails|toenails)\b/ });
 frame('means-gun', 'means', 4, F`\b(?:gun|rifle|shotgun|pistol|firearm|revolver) ${G(4)}(?:myself|my head|my mouth|to my head|in my mouth|loaded|load it|bullet|bullets|access|in my (?:room|drawer|car|bag))\b|\b(?:put|hold|holding|held) ${G(1)}(?:a|the|his|my) (?:gun|rifle|pistol) to my (?:head|chest|mouth)\b`, { guard: /\b(?:game|games|fortnite|call of duty|cod|range|clay|shooting club|airsoft|paintball|nerf|water gun)\b/ });
 frame('means-gun-access', 'means', 3, F`\baccess to (?:a|the|his|my|the same|dads|grandads) (?:gun|rifle|pistol|shotgun|firearm)\b|\b(?:holding|hold|held|cleaning|loading|looking at|keep holding) (?:his|my|the|a|dads|grandads) (?:old )?(?:gun|rifle|shotgun|pistol)\b`, { guard: /\b(?:game|games|range|club|airsoft|paintball|nerf|water gun|museum)\b/ });
-frame('means-planning-how', 'means', 3, F`${SELF}${G(2)}(?:been planning|planning|planned|thought about|been thinking about|worked out) how (?:to|i will|i am going to|i could) ${G(2)}(?:do it|get to (?:him|her|them)|end it|go|die|be with (?:him|her|them))\b|\blooking up how to\b`);
+frame('means-planning-how', 'means', 3, F`${SELF}${G(2)}(?:been planning|planning|planned|thought about|been thinking about|worked out) how (?:to|i will|i am going to|i could) ${G(2)}(?:do it|end it|go|die)\b|\blooking up how to\b`);
+// (planning how to reach the one who died: a joining, read with the reunions — beside a death, support first, never care alone)
+frame('reunion-planning', 'means', 3, F`${SELF}${G(2)}(?:been planning|planning|planned|thought about|been thinking about|worked out) how (?:to|i will|i am going to|i could) ${G(2)}(?:get to|be with|join) (?:him|her|them)\b`, { family: 'reunion' });
 frame('means-car', 'means', 4, F`\b(?:car|engine|van) ${G(4)}(?:exhaust|hose|hosepipe|pipe|fumes|garage door (?:shut|closed|down))\b|${SELF}${G(3)}(?:sit|sitting|sat|been sitting) ${G(1)}in (?:the|my) (?:car|van) ${G(2)}(?:engine running|with the engine on|in the garage|exhaust)\b`, { guard: /\b(?:to (?:warm|keep|charge|cool|defrost|dry)|warm it up|waiting|outside (?:the|school|work)|heater|heating|mechanic|garage said|mot|repair|leak|smell)\b/ });
 frame('means-water', 'means', 4, F`\b(?:walk|walking|walked|swim|swimming|swam|go|going|wade|wading) (?:into|out into|out to|out in|in to|off into) (?:the )?(?:sea|ocean|river|lake|water|waves|canal|reservoir)\b(?! (?:with|for (?:a|the) (?:swim|paddle|dip)|to (?:swim|paddle|cool|play|fish)|on holiday|at the beach|in the summer))|\b(?:drown|drowning) myself\b`, { guard: /\b(?:swim|swimming|paddle|paddling|surf|surfing|beach day|holiday|kids|dog|wetsuit|lido|dip|cold water|wild swim)\b/ });
 
@@ -500,9 +509,9 @@ frame('bu-nobody-miss', 'burden', 4, F`\b(?:nobody|no one|not one person|no body
 frame('bu-no-point', 'burden', 3, F`\b(?:no|not any|not much|nothing|is there any|what is the) (?:point|reason|purpose|meaning) ${G(2)}(?:in |to |of )?${G(2)}(?:living|life|being alive|being here|going on|carrying on|anything|any of (?:it|this)|existing|me|my life|it all|waking up|getting up|trying|staying|staying alive)\b|\blife (?:is|has|feels) (?:pointless|meaningless|not worth (?:living|it)|no meaning|no point|over)\b|\b(?:what is|whats) the point(?: anymore| of (?:anything|it all|living|life|me))?(?= [.,?])`, { guard: /\b(?:revising|revision|exam|cancelled|bus|train|waiting|queue|arguing|asking|trying to explain|this game|the game|homework)\b/ });
 frame('bu-no-point-see', 'burden', 3, F`\b(?:do not|can not|cannot|no longer) see (?:the|any) (?:point|reason|purpose)\b(?! (?:in (?:arguing|asking|going (?:out|to (?:the|that|this))|buying|paying|revising|that|this (?:class|course|job|game))|of (?:this|that) (?:game|class|course|meeting|app)))`, { guard: /\b(?:revising|revision|exam|cancelled|bus|train|waiting|queue|arguing|asking|trying to explain|this game|the game|homework|meeting|class|course|app|subscription|gym)\b/ });
 frame('bu-nothing-left', 'burden', 3, F`\bnothing (?:left|more) (?:for me|to live for|to lose|to give|in me|of me|here for me)\b|\bnothing to live for\b|\bno (?:reason|reasons) (?:left )?to (?:live|stay|keep going|go on|carry on|wake up|be here|stay alive)\b|\bno future (?:for me|left|ahead)\b|\bi (?:do not|can not) see a future\b`);
-frame('bu-tired', 'burden', 3, F`\b(?:tired|sick|exhausted|done|finished|fed up|weary) (?:of|with) (?:everything|it all|being me|being myself|trying|fighting|all of this|all of it|everyone|this world|people|being here|feeling like this|this pain)\b(?! (?:at|in|on|from) (?:work|school|uni|college|the office|this job))`, { guard: /\b(?:at work|this week|today|job|assignment|essay|homework|level|game|project|admin|traffic|commute|weather|rain|flat|house|meeting)\b/ });
+frame('bu-tired', 'burden', 3, F`\b(?:tired|sick|exhausted|done|finished|fed up|weary) (?:of|with) (?:everything|it all|being me|being myself|trying|fighting|all of this|all of it|everyone|this world|people|being here|feeling like this|this pain)\b(?! (?:at|in|on|from) (?:work|school|uni|college|the office|this job))(?! [a-z]+ing)`, { guard: /\b(?:at work|this week|today|job|assignment|essay|homework|level|game|project|admin|traffic|commute|weather|rain|flat|house|meeting)\b/ });
 frame('bu-tired-life', 'burden', 6, F`\b(?:tired|sick|exhausted|done|finished|fed up|weary) (?:of|with) (?:living|life|being alive|existing|this life|waking up|my life|being in this world|being on this earth)\b(?! (?:in|with|at|here|there|near|next to|on|admin|like this in))`);
-frame('bu-cant-go-on', 'burden', 3, F`\b(?:can not|could not|can not seem to|do not think i can|am not able to|unable to) ${ADV}(?:go on|keep going|carry on|do this|do it|take (?:it|this|any more|anymore|much more)|live like this|handle (?:it|this|life)|face (?:another day|tomorrow|it)|keep living|keep doing this|bear it|stand it|hold on)\b(?! (?:with (?:this|the) (?:job|course|essay|diet|level|game|puzzle)|for (?:another|much longer than) (?:minute|hour|second)|after (?:mile|lap|the first|the second|halfway)|past (?:mile|lap)|up the hill))`, { guard: /\b(?:mile|miles|lap|laps|marathon|race|run|level|game|puzzle|this job|course|diet|gym|workout|set|reps)\b/ });
+frame('bu-cant-go-on', 'burden', 3, F`\b(?:can not|could not|can not seem to|do not think i can|am not able to|unable to) ${ADV}(?:go on|keep going|carry on|do this|do it|take (?:it|this|any more|anymore|much more)|live like this|handle (?:it|this|life)|face (?:another day|tomorrow|it)|keep living|keep doing this|bear it|stand it|hold on)\b(?! (?:working|studying|at work|at school|with (?:work|school|uni|my (?:job|course|studies))|as (?:normal|usual|if)|like normal|going to (?:work|school)|with (?:this|the) (?:job|course|essay|diet|level|game|puzzle)|for (?:another|much longer than) (?:minute|hour|second)|after (?:mile|lap|the first|the second|halfway)|past (?:mile|lap)|up the hill))(?! (?:to|back|there|into|round|over|past|near|by|through|outside|home|up|down|on holiday|on (?:a|the|that|this) (?:trip|ride|bus|train|stage|course|walk|date|holiday)|out (?:there|with|to|for|on)|in (?:the|to|there)))`, { guard: /\b(?:mile|miles|lap|laps|marathon|race|run|level|game|puzzle|this job|course|diet|gym|workout|set|reps)\b/ });
 frame('bu-cant-cope', 'burden', 2, F`\b(?:can not|could not|do not think i can|am not able to|unable to) ${ADV}cope\b`, { guard: SMALL });
 frame('bu-done', 'burden', 2, F`${SELF}am ${ADV}(?:so |completely |totally |really )?(?:done|finished|over it)(?= [.,])`);
 frame('bu-nothing-matters', 'burden', 3, F`\bnothing (?:matters|means anything|is worth it|feels worth it)(?: anymore| any more| to me)?\b|\bnone of (?:this|it) (?:will |would )?(?:matter|matters)(?: soon| anymore| any more)?\b|\b(?:i|my life) (?:do not|does not) matter\b`, { guard: /\b(?:score|result|results|grade|grades|the match|the game|who wins|what they think|in the end, it is fine)\b/ });
@@ -565,6 +574,7 @@ const DAMPEN = 0.35;
 
 /** Negation before a frame's wish, in its own clause (a frame whose words are a negation does not ask). */
 const NEG = /\b(?:not|never|no|nobody|neither|nor|without|stop myself from|resist|refuse to)\b/;
+const NEG_PROJECT = /\b(?:not|never|no)\b(?:(?![.,]).)*\b(?:think|thinks|thought|say|says|said|mean|means|meant|believe|believes|imply|implies|assume|assumes|that|saying|pretend|pretending)\s*$/;
 const NEG_OK = /\b(?:not|never) (?:only|just)\b|\bnot (?:sure|certain)\b|\bno (?:one|longer)\b|\b(?:can|could) not (?:stop|help) (?:thinking|wanting|wishing)\b|\bdo not know (?:why|how|if|whether)\b|\bnot a day goes by\b/;
 
 /**
@@ -594,7 +604,7 @@ export function frames(norm) {
       const sent = sentText[k];
       if (f.guard && f.guard.test(sent)) continue;
       // the frame's words and the few after them, against the idioms that are no ending at all
-      if (f.cat === 'end' && END_IDIOM.test(c.slice(Math.max(0, at - 12), Math.min(c.length, end + 40)))) continue;
+      if ((f.cat === 'end') && END_IDIOM.test(c.slice(Math.max(0, at - 12), Math.min(c.length, end + 40)))) continue;
       if (f.neg) {
         // the negation must govern the wish: inside its own words before the verb, or among the four words just before it in
         // its clause ("i do not want to die", "not that i want to die"; never "mum is not here and i want to be with her")
@@ -605,6 +615,8 @@ export function frames(norm) {
         const lead = leadWords.slice(Math.max(joint + 1, leadWords.length - 4)).join(' ');
         const before = `${lead} ${g.pre ?? g.pre2 ?? ''} ${g.mod ?? ''} ${g.adv ?? g.adv2 ?? ''}`;
         if (NEG.test(before) && !NEG_OK.test(before)) continue;
+        // a negation that governs a thought or a saying the frame sits inside ("i do not want people to think i want to die")
+        if (NEG_PROJECT.test(c.slice(clauseStart, at))) continue;
       }
       let w = f.w;
       if (f.needsDeath && !DEATH_ANY.test(c)) continue;
@@ -617,7 +629,7 @@ export function frames(norm) {
       // (a farewell or an absence is bounded by its own sentence or the next: "goodbye everyone. see you monday")
       const near = (f.cat === 'farewell' || f.cat === 'absence') && dampAt[k + 1] ? [...dampAt[k], ...dampAt[k + 1]] : dampAt[k];
       if (near.some(([a, b]) => a < at || b > end)) w = strong ? Math.max(CHECK_AT, w * 0.6) : w * DAMPEN;
-      hits.push({ id: f.id, cat: f.cat, w, at, end, sentence: k, text: m[0].trim() });
+      hits.push({ id: f.id, cat: f.family || f.cat, w, at, end, sentence: k, text: m[0].trim(), ...(f.needsDeath ? { dep: true } : {}) });
     }
   }
   // one reading per stretch of words: where two frames read the same words ("i will be gone": a wish and an absence), the
@@ -631,7 +643,8 @@ export function frames(norm) {
   for (const h of hits.filter((x) => x.cat !== 'now')) if (!kept.some((k) => overlaps(k, h))) kept.push(h);
   for (const h of hits.filter((x) => x.cat === 'now')) if (!kept.some((k) => Math.min(k.end, h.end) - Math.max(k.at, h.at) > 0)) kept.push(h);
   kept.sort((a, b) => a.at - b.at);
-  return { hits: kept, cats: catScores(kept), canonical: c };
+  // (indep: the families without the death and the frames that read only beside one — what the words say on their own)
+  return { hits: kept, cats: catScores(kept), indep: catScores(kept.filter((h) => !h.dep && h.cat !== 'death')), canonical: c };
 }
 
 /** A death named beside a self frame adds this (scoreOf). */
@@ -640,7 +653,7 @@ const DEATH_BONUS = 3;
 const NOTE_BONUS = 2.5;
 /** The score per frame family: the best hit and every other distinct one (a note piles them up); a time word counts once. */
 function catScores(hits) {
-  const cats = { end: 0, means: 0, farewell: 0, burden: 0, absence: 0, now: 0, decided: 0, death: 0 };
+  const cats = { end: 0, means: 0, farewell: 0, burden: 0, absence: 0, reunion: 0, now: 0, decided: 0, death: 0 };
   for (const h of hits) if (h.id === 'now-decided') cats.decided = Math.max(cats.decided, h.w);
   const by = {};
   for (const h of hits) {
@@ -650,7 +663,7 @@ function catScores(hits) {
   }
   for (const [cat, m] of Object.entries(by)) {
     const ws = [...m.values()].map((h) => h.w).sort((a, b) => b - a);
-    const extra = cat === 'now' || cat === 'death' ? 0 : cat === 'end' || cat === 'absence' ? 0.5 : 1;
+    const extra = cat === 'now' || cat === 'death' ? 0 : cat === 'end' || cat === 'absence' || cat === 'reunion' ? 0.5 : 1;
     cats[cat] = ws[0] + ws.slice(1).reduce((s, w) => s + w * extra, 0);
     if (cat === 'farewell') {
       // three or more distinct farewells are a note's shape; a strong one (a goodbye, a last message, letters) with another, a pair
@@ -667,16 +680,20 @@ const BONUS = [
   ['absence', 'now', () => 2], ['burden', 'now', (c) => (c.now >= 2 ? 3 : 0)],
   ['burden', 'end', () => 2], ['absence', 'farewell', () => 2], ['burden', 'absence', () => 2], ['farewell', 'end', () => 2],
   ['farewell', 'burden', () => 1], ['means', 'end', () => 2], ['means', 'farewell', () => 2], ['means', 'burden', () => 2],
-  ['means', 'absence', () => 2], ['end', 'absence', () => 1],
+  ['means', 'absence', () => 2], ['end', 'absence', () => 1], ['reunion', 'now', () => 1], ['reunion', 'means', () => 2], ['reunion', 'burden', () => 2],
 ];
 /** A score from the families' scores. A time word adds only beside another family; a firm decision alone is a check-in. */
 export function scoreOf(cats) {
-  const core = cats.end + cats.means + cats.farewell + cats.burden + cats.absence;
+  const core = cats.end + cats.means + cats.farewell + cats.burden + cats.absence + cats.reunion;
   if (core < 1) return cats.decided >= 2 ? CHECK_AT : 0;
   let s = core;
   for (const [a, b, f] of BONUS) if (cats[a] >= 1 && cats[b] >= 1) s += f(cats);
-  // a death named beside the self ending, joining, a means, a burden or an absence: a bereavement's known risk
-  if (cats.death >= 1 && (cats.end >= 2 || cats.means >= 3 || cats.burden >= 3 || cats.absence >= 3 || cats.farewell >= 4)) s += DEATH_BONUS;
+  // a death named beside the self ending, joining, a means, a burden or an absence: a bereavement's known risk, raised to the
+  // check-in at most (beside a loss: support first, no world, nothing sent; never care from the death alone: "my dad died, i
+  // want out", "dad died and im gonna do it tonight" and "writing goodbye letters" after a death are held, not care)
+  // (DECISIONS.md: a death, then words about ending, joining or following that are less clear: the gentle path with support
+  // first, held; care only when the words are care without the death, or the grief rules read the clause as explicit)
+  if (cats.death >= 1 && s < CARE_AT && (cats.end >= 2 || cats.means >= 3 || cats.burden >= 3 || cats.absence >= 3 || cats.farewell >= 4)) s = Math.min(s + DEATH_BONUS, CARE_AT - 0.01);
   return s;
 }
 const levelOf = (s) => (s >= CARE_AT ? 'care' : s >= CHECK_AT ? 'check' : null);
@@ -706,5 +723,8 @@ export function riskScreen(text, { history = [] } = {}) {
     const s = Math.min(scoreOf(mixed), weakOnly ? CARE_AT - 0.01 : Infinity);
     if (s > ownScore) { score = s; context = true; cats = mixed; }
   }
+  // (DECISIONS.md) beside a death named, care stands only on what the words say without it (a death, then words about ending,
+  // joining or following that are less clear: the gentle path with support first; the grief rules read the explicit clauses)
+  if (own.cats.death >= 1 && score >= CARE_AT && !context && scoreOf(own.indep) < CARE_AT) score = CARE_AT - 0.01;
   return { level: levelOf(score), score: Math.round(score * 100) / 100, cats, hits: own.hits, context, normalised: norm };
 }

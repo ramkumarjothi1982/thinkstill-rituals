@@ -269,10 +269,13 @@ test('the visit stays quiet after "Just be with it" or an unanswered question (r
   ];
   for (const [start, re] of uses) { const i = hf.indexOf(start); assert.ok(i >= 0, start); assert.match(hf.slice(i, i + 4000), re, start); }
   assert.match(hf, /const quiet = \(\) => [^;]*!softNow\(\);/, 'no opening nudge');
-  // the Support pill is still only gentle()'s: shown by noteSafety, careBeat and careAgain alone (never "Just be with it")
+  // the Support pill is still only gentle()'s: shown by noteSafety, careBeat and careAgain alone (never "Just be with it");
+  // (15 Oct 2026, the owner's check-in) and while the risk screener's check-in is up (askPlay, only `if (check)`) and after its
+  // "Not really" (careLite)
   const shows = [...hf.matchAll(/supportPill\.hidden = false;/g)].map((x) => x.index);
-  const fns = ['function noteSafety(r) {', 'async function careBeat(', 'async function careAgain('].map((f) => [hf.indexOf(f), hf.indexOf('\n  }\n', hf.indexOf(f))]);
-  assert.equal(shows.length, 3);
+  const fns = ['function noteSafety(r) {', 'async function careBeat(', 'async function careAgain(', 'async function askPlay(', 'async function careLite('].map((f) => [hf.indexOf(f), hf.indexOf('\n  }\n', hf.indexOf(f))]);
+  assert.equal(shows.length, 5);
+  assert.match(between(hf, 'async function askPlay(', 'function focusTell('), /if \(check\) \{ supportPill\.hidden = false; layout\(\); \}/);
   for (const i of shows) assert.ok(fns.some(([a, b]) => i > a && i < b), `at ${i}`);
 });
 

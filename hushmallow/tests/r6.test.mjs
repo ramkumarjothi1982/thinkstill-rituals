@@ -60,7 +60,10 @@ test('check-r5 polish 1: the 9 own-first wishes that missed care are care on bot
   assert.equal(P.WISHES_9.length, 9);
   for (const t of P.WISHES_9) {
     assert.equal(noteShape(t), true, t);
-    assert.equal(mainRead(t).category, 'death-follow', t);
+    // (15 Oct 2026) the lexicon also reads the words in one spelling (risk-screen.js normalise): "i wnat to dei" is "i want to
+    // die", crisis, as typed without the slip; otherwise the death care
+    const r = mainRead(t);
+    assert.ok(r.category === 'death-follow' || r.level === 'crisis', `${t}: ${r.level} ${r.category}`);
     careBoth(t);
   }
 });
@@ -116,7 +119,8 @@ test('own note variants (written as the held-out negatives): care on both screen
   const all = [...P.OWN_ESC_A, ...P.OWN_ESC_C, ...P.OWN_ESC_D, ...P.OWN_ESC_E];
   assert.equal(all.length, 90);
   const missed = all.filter((t) => !careEither(t));
-  assert.deepEqual(missed, P.KNOWN_MISSES);
+  // (15 Oct 2026) no new miss; the risk screener now reads some of the known ones as care ("i'm not going to be here tomorrow, i'm sorry")
+  assert.deepEqual(missed.filter((t) => !P.KNOWN_MISSES.includes(t)), []);
   for (const t of all.filter((x) => !P.KNOWN_MISSES.includes(x))) {
     const r = mainRead(t);
     assert.ok(isCare(r), `${t}: main ${r.level}`);

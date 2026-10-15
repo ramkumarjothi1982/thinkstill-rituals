@@ -100,6 +100,22 @@ export const ANGLE_CHOICE = Object.freeze({
  * for a while."). Never the grief path's lines, support or goodbye: true for any words, a worry about an exam as much as a
  * loss the lists missed. "See support" is offered only when something heavy was seen (optionsHeavy).
  */
+/**
+ * (owner, 15 Oct 2026) The check-in: when the risk screener (risk-screen.js) reads the words as possibly at risk ('check') and
+ * nothing more serious applies, it REPLACES ANGLE_CHOICE (the same clock, the same equal-weight chips), before anything is sent
+ * or played. "I'm okay" → the angle (the request goes to the server, which checks again); "Not really" → `heard`, support first
+ * (`options`: "See support" first), no angle for the visit and nothing sent; "Just be with it" → BE_WITH; no answer → quiet.
+ */
+export const CHECK_IN = Object.freeze({
+  ask: 'Before we go on — are you okay right now?',
+  angle: 'I’m okay — show me another angle',
+  notReally: 'Not really',
+  be: 'Just be with it',
+  heard: 'Thank you for telling me. You don’t have to hold this on your own.',
+  options: Object.freeze([{ label: 'See support', value: 'support', primary: true }, { label: 'Just squeeze Zuzu', value: 'squeeze' }]),
+  squeeze: 'Take all the time you need.',
+  ms: 45000,
+});
 export const BE_WITH = Object.freeze({
   line: 'Okay. Let’s just be with it for a while.',
   second: 'Nothing needs fixing right now. I’m right here.',

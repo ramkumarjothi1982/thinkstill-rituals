@@ -573,9 +573,9 @@ test('the beyond module is gated like src/ultra (only through loadUltra)', () =>
   assert.match(read('src/app/entitlements.js'), /import\('\.\.\/beyond\/another-angle\.js'\)/);
   assert.match(read('src/app/scenes/angle.js'), /loadUltra\(app\.ent\)/);
   // nothing outside src/beyond (and the settings privacy rows) imports it; the main-screen Tell loads only the pure
-  // text checks of grief.js (death and loss go to the gentle path), lazily, never the experience
+  // text checks of grief.js (death and loss go to the gentle path) and (15 Oct 2026) of risk-screen.js, lazily, never the experience
   const offenders = [];
-  const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.startsWith('src/beyond/')) { const s = read(p); if (/['"]\.\.?\/(?:\.\.\/)*beyond\/(?!consent\.js|endpoint\.js|grief\.js)/.test(s) && !/src\/app\/entitlements\.js$/.test(p)) offenders.push(p); } } };
+  const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.startsWith('src/beyond/')) { const s = read(p); if (/['"]\.\.?\/(?:\.\.\/)*beyond\/(?!consent\.js|endpoint\.js|grief\.js|risk-screen\.js)/.test(s) && !/src\/app\/entitlements\.js$/.test(p)) offenders.push(p); } } };
   walk('src');
   assert.deepEqual(offenders, []);
   assert.ok(existsSync(`${root}src/beyond/angle-client.js`));
