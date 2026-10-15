@@ -46,22 +46,57 @@ export class ExprTrack {
   }
 }
 
+/**
+ * The companion's hi-res art (tools/derive_companions_hires.py) in the rig's own frame: each image
+ * reports its rig-frame size as width / height, so the rig's sprite maths is unchanged, and the
+ * skin context draws a 2-argument drawImage of one at that logical size.
+ */
+async function useHires(rig, id) {
+  const base = new URL(`../assets/companions/${id}/`, import.meta.url).href;
+  const meta = await (await fetch(base + 'meta.json')).json();
+  const load = (name, lw, lh) => new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => {
+      const w = lw ?? im.naturalWidth / meta.q, h = lh ?? im.naturalHeight / meta.q;
+      Object.defineProperty(im, 'width', { value: w });
+      Object.defineProperty(im, 'height', { value: h });
+      im.__logical = [w, h];
+      res(im);
+    };
+    im.onerror = rej;
+    im.src = base + name;
+  });
+  const [W, H] = meta.frame;
+  const A = rig.assets;
+  A.body = await load('body.png', W, H);
+  A.original = await load('original.png', W, H);
+  for (const name of Object.keys(meta.sprites)) A.sprites[name] = await load(`${name}.png`, meta.sprites[name].size[0], meta.sprites[name].size[1]);
+  // a painting whose resting face is not the rig's (Loomi): never cross-fade to it
+  if (meta.faceDiffersFromRig) rig.opts.pristine = false;
+  const ctx = rig.sctx, raw = ctx.drawImage.bind(ctx);
+  ctx.drawImage = (img, ...a) => (a.length === 2 && img.__logical ? raw(img, a[0], a[1], img.__logical[0], img.__logical[1]) : raw(img, ...a));
+  return meta;
+}
+
 export class LivingMallow {
-  /** id: Mallow id; q: skin resolution (source px multiplier) */
-  constructor(id, { q = 1.5 } = {}) {
+  /** id: Mallow id; q: skin resolution (source px multiplier); hires: paint from the companion's hi-res art (assets/companions) */
+  constructor(id, { q = 1.5, hires = false } = {}) {
     this.id = id;
     this.q = q;
+    this.hires = hires;
     this.div = document.createElement('div');
     this.rig = new MallowRig(this.div, { id, interactive: false, particles: false, reducedMotion: true, shadow: false, aura: false });
     this.mallow = this.rig.mallow;
     this.blinks = new Blinks();
     this.look = null;          // (t) → [x, y, weight] gaze override
+    this.mod = null;           // (t, P) → void: adjust parameters in place
     this.spinTable = null;
   }
 
   async load() {
     await this.rig.loaded;
     const r = this.rig;
+    if (this.hires) this.hiresMeta = await useHires(r, this.id);
     r.q = this.q;
     r.skin.width = Math.ceil(this.mallow.size[0] * this.q);
     r.skin.height = Math.ceil(this.mallow.size[1] * this.q);
@@ -88,6 +123,7 @@ export class LivingMallow {
 
   params(t) {
     const P = { ...this.expr.value(t) };
+    if (this.mod) this.mod(t, P);   // per-frame acting on top of the timeline (talking, trembling), a function of t
     if (this.look) {
       const [x, y, w] = this.look(t);
       P.lookX += (x - P.lookX) * w; P.lookY += (y - P.lookY) * w;

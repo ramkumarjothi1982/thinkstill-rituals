@@ -1,6 +1,10 @@
 """Objective audio review of a score: what can be measured without ears.
 
-    python3 -I tools/audio-review.py <score dir> <cues.json> [--plan-chords v2]
+    python3 -I tools/audio-review.py <score dir> <cues.json> [--profile v2|v3]
+
+v3: stems/{pads,lead,rhythm,sfx,bed}.wav (audio/score-feel-v3.mjs); the music stem is pads + lead,
+the sections are the v3 story's, and a phone check is added: how much of each section survives a
+small phone speaker (mono, nothing below ~300 Hz), and how loud the lead (the theme) sits in it.
 
 <score dir> holds score.wav and stems/{music,rhythm,sfx,bed}.wav (audio/score-feel-v2.mjs).
 Prints and writes <score dir>/audio-review.json:
@@ -35,10 +39,15 @@ def read(p):
     return x.reshape(-1, ch).astype(np.float64)
 
 
+PROFILE = sys.argv[sys.argv.index('--profile') + 1] if '--profile' in sys.argv else 'v2'
 mix = read(os.path.join(d, 'score.wav'))
-stems = {k: read(os.path.join(d, 'stems', f'{k}.wav')) for k in ['music', 'rhythm', 'sfx', 'bed'] if os.path.exists(os.path.join(d, 'stems', f'{k}.wav'))}
+stems = {k: read(os.path.join(d, 'stems', f'{k}.wav')) for k in ['music', 'pads', 'lead', 'rhythm', 'sfx', 'bed'] if os.path.exists(os.path.join(d, 'stems', f'{k}.wav'))}
+if PROFILE == 'v3' and 'music' not in stems:
+    stems['music'] = stems['pads'] + stems['lead']
 DUR = len(mix) / SR
 SECTIONS = [('hook', 0, 2.5), ('split+feelings', 2.5, 7.5), ('magic', 7.5, 12.5), ('dawn+talk', 12.5, 13.75), ('breath', 13.75, 15.0), ('meet', 15.0, 16.875), ('brand', 16.875, 19.15), ('return', 19.15, 20.0)]
+if PROFILE == 'v3':
+    SECTIONS = [('curiosity', 0, 2.5), ('vulnerability', 2.5, 5.0), ('connection', 5.0, 7.5), ('wonder', 7.5, 10.0), ('joy', 10.0, 12.5), ('belonging', 12.5, 15.0), ('brand', 15.0, 17.5), ('tag+loop', 17.5, 20.0)]
 db = lambda x: float(20 * np.log10(np.sqrt(np.mean(x ** 2)) + 1e-12))
 seg = lambda x, a, b: x[int(a * SR):int(b * SR)]
 
@@ -69,11 +78,20 @@ CHORDS = {'Am9': [9, 0, 4, 7, 11], 'Fmaj9': [5, 9, 0, 4, 7], 'Cadd9': [0, 4, 7, 
           'G6sus': [7, 0, 2, 4], 'G': [7, 11, 2, 9], 'Cmaj9': [0, 4, 7, 11, 2], 'G6': [7, 11, 2, 4], 'C': [0, 4, 7]}
 HALF = ['Am9', 'Fmaj9', 'Cadd9', 'G/B', 'Am9', 'Em7', 'Fmaj7s11', 'Fmaj7s11', 'G6sus', 'G', 'Cmaj9', 'Cmaj9', 'Am9', 'G6', 'C', 'Am9']
 SCALE = {0, 2, 4, 5, 7, 9, 11}
+SPANS = [(h * 1.25, h * 1.25 + 1.25, name) for h, name in enumerate(HALF)]
+if PROFILE == 'v3':
+    # the composed chord-scale tones: the chord plus the tensions the theme leans on (F lydian's #11,
+    # the 9th over C); anything else counts as a passing tone or a clash
+    CHORDS = {'Am9': [9, 0, 4, 7, 11], 'Fmaj7': [5, 9, 0, 4, 7, 11], 'Dm9': [2, 5, 9, 0, 4], 'Fm6': [5, 8, 0, 2], 'C/E': [0, 4, 7, 2], 'Fmaj9': [5, 9, 0, 4, 7, 11],
+              'Em7': [4, 7, 11, 2], 'G6sus': [7, 0, 2, 4], 'C': [0, 4, 7, 2], 'G/B': [7, 11, 2], 'Fmaj9/C': [5, 9, 0, 4, 7]}
+    PROG = [(0, 'Am9'), (2, 'Fmaj7'), (4, 'Dm9'), (6, 'Fm6'), (8, 'C/E'), (10, 'Fmaj9'), (12, 'Dm9'), (13, 'Em7'), (14, 'Fmaj7'), (15, 'G6sus'), (16, 'C'), (18, 'G/B'), (20, 'Am9'), (22, 'Fmaj9'), (24, 'C'), (26, 'Fmaj9/C'), (28, 'Am9'), (30, 'G6sus')]
+    SPANS = [(b0 * BEAT, (PROG[k + 1][0] if k + 1 < len(PROG) else 32) * BEAT, name) for k, (b0, name) in enumerate(PROG)]
+    SCALE = {0, 2, 4, 5, 7, 9, 11, 8}
 if 'music' in stems:
     mus = stems['music'].mean(1)
     fits, outs = [], []
-    for h, name in enumerate(HALF):
-        x = seg(mus, h * 1.25 + 0.05, h * 1.25 + 1.25)
+    for h, (a0, a1, name) in enumerate(SPANS):
+        x = seg(mus, a0 + 0.05, a1)
         X = np.abs(np.fft.rfft(x * np.hanning(len(x)))) ** 2
         f = np.fft.rfftfreq(len(x), 1 / SR)
         m = (f > 100) & (f < 4200)
@@ -97,6 +115,8 @@ flux = (flux - np.median(flux)) / (np.std(flux) + 1e-9)
 peaks = [i for i in range(1, len(flux) - 1) if flux[i] > 1.2 and flux[i] >= flux[i - 1] and flux[i] >= flux[i + 1]]
 onsets = np.array([(i + 1) * hop / SR for i in peaks])
 SOUNDING = ['split', 'reveal', 'emerge', 'land', 'group_land', 'logo', 'wave', 'wink', 'orb_pulse']
+if PROFILE == 'v3':
+    SOUNDING = ['orb_pulse', 'touch', 'tear', 'land', 'hug', 'rise', 'emerge', 'land_on', 'sparks', 'drop', 'bounce', 'blink_together', 'gift_land', 'logo', 'wink', 'hello']
 offs = []
 for c in cues['cues']:
     if c['type'] not in SOUNDING:
@@ -109,5 +129,22 @@ for c in cues['cues']:
 found = [o for o in offs if o is not None]
 out['sync']['summary'] = {'cues': len(offs), 'withOnsetWithin80ms': len(found), 'medianAbsMs': round(float(np.median(np.abs(found)) * 1000), 1) if found else None,
                           'p90AbsMs': round(float(np.percentile(np.abs(found), 90) * 1000), 1) if found else None}
+if PROFILE == 'v3':
+    # a small phone speaker: mono, a steep high-pass around 300 Hz (and nothing above 12 kHz)
+    def band(x, lo, hi):
+        X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
+        X[(f < lo) | (f > hi)] = 0
+        return np.fft.irfft(X, len(x))
+    mono = mix.mean(1)
+    phone = band(mono, 300, 12000)
+    lead = stems['lead'].mean(1) if 'lead' in stems else None
+    out['phone'] = {}
+    for name, a, b in SECTIONS:
+        row = {'fullDb': round(db(seg(mono, a, b)), 1), 'phoneDb': round(db(seg(phone, a, b)), 1)}
+        row['lossDb'] = round(row['phoneDb'] - row['fullDb'], 1)
+        if lead is not None:
+            lp = band(seg(lead, a, b), 300, 12000)
+            row['leadOverMixOnPhoneDb'] = round(db(lp) - row['phoneDb'], 1)
+        out['phone'][name] = row
 json.dump(out, open(os.path.join(d, 'audio-review.json'), 'w'), indent=1)
 print(json.dumps({k: v for k, v in out.items() if k != 'harmony'} | {'harmony': out['harmony'].get('summary')}, indent=1))

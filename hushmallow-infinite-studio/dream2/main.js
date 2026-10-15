@@ -11,6 +11,7 @@ import { Dream2Stage } from './stage.js';
 
 const DIRECTIONS = {
   'feel-something-v2': () => import('../videos/feel-something-v2.js'),
+  'feel-something-v3': () => import('../videos/feel-something-v3.js'),
 };
 
 const q = new URLSearchParams(location.search);

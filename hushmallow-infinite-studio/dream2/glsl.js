@@ -278,6 +278,11 @@ void main() {
 // premultiplied foreground of the sub-frames
 export const COMPOSE_FS = `
 in vec2 vUv;
-uniform sampler2D uBg; uniform sampler2D uFg;
+uniform sampler2D uBg; uniform sampler2D uFg; uniform sampler2D uBgSoft; uniform float uBgDof;
 out vec4 frag;
-void main() { vec4 f = texture(uFg, vUv); vec3 b = texture(uBg, vUv).rgb; frag = vec4(b * (1.0 - f.a) + f.rgb, 1.0); }`;
+void main() {
+  vec4 f = texture(uFg, vUv); vec3 b = texture(uBg, vUv).rgb;
+  // depth of field (v3 close-ups): the world behind the characters, softened
+  if (uBgDof > 0.0) b = mix(b, texture(uBgSoft, vUv).rgb, uBgDof);
+  frag = vec4(b * (1.0 - f.a) + f.rgb, 1.0);
+}`;

@@ -48,3 +48,24 @@ Python dependencies: `requirements-python.txt`.
 Every state is a pure function of time. The rig's springs, timers and random blinks are
 bypassed; Noomi's face uses `Face.render()` (scratch canvas cleared each time); the mirrored
 orbs refract this frame's sky. `tools/determinism-dream2.mjs` checks this.
+
+## v3 additions (feel-something-v3; all opt-in, v2 renders pixel-identical)
+
+- **Hi-res companions** — `new LivingMallow(id, { q: 2.5, hires: true })` paints the rig from
+  `assets/companions/<id>/` (made by `tools/derive_companions_hires.py` from the owner-supplied
+  1254 px art, registered onto the rig's frame). Each hi-res image reports its rig-frame size as
+  `width`/`height`, so the rig's sprite maths is untouched; the skin context draws a two-argument
+  `drawImage` of one at that logical size. Loomi's painting has a different resting face from the
+  rig's, so the rest-pose cross-fade is off for Loomi. Check: `dream2/dev/rig-sheet-hires.html`
+  (`node tools/shot.mjs hushmallow-infinite-studio/dream2/dev/rig-sheet-hires.html out.png 3000 1800`).
+- **Depth of field** — `post.bgDof` (0..1) mixes the softened background (the ¼-res blur the orbs
+  already refract) under the characters in close shots.
+- **Per-frame acting** — `LivingMallow.mod = (t, P) => …` adjusts the rig parameters on top of the
+  expression timeline (Blubi talking); still a pure function of t.
+
+```bash
+node tools/render-dream.mjs --stage dream2 --direction feel-something-v3 --scale 0.5 --preview --out <dir>   # draft (~8 min)
+node tools/render-dream.mjs --stage dream2 --direction feel-something-v3 --out <dir>                         # final
+node audio/score-feel-v3.mjs <dir>/cues.json <out> --treatment t1|t2|t3    # → score.wav + stems/{pads,lead,rhythm,sfx,bed}.wav
+python3 -I tools/audio-review.py <out> <dir>/cues.json --profile v3         # arc, bands, stereo, harmony, sync, phone speaker
+```

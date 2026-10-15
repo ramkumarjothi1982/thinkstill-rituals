@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>rig sheet, hi-res</title>
+<body style="margin:0;background:#2a2550">
+<canvas id="c"></canvas>
+<script type="module">
+// Approved rig art (q 1.5) vs the companions' hi-res art (q 2.5), same expressions, close-up size.
+// ?ids=blubi,loomi  ?moods=happy,sad
+import { clock } from '../../engine/runtime/clock.js';
+import { LivingMallow } from '../living.js';
+const qs = new URLSearchParams(location.search);
+const ids = (qs.get('ids') || 'blubi,loomi,pipzi,glitzi,zuzu,boppo').split(',');
+const moods = (qs.get('moods') || 'rest,happy,sad,loved,surprised').split(',');
+const S = +(qs.get('s') || 300), c = document.getElementById('c');
+c.width = S * moods.length * 2; c.height = S * ids.length;
+const g = c.getContext('2d');
+g.imageSmoothingQuality = 'high';
+for (const [r, id] of ids.entries()) {
+  for (const [h, hires] of [false, true].entries()) {
+    const L = await new LivingMallow(id, { q: hires ? 2.5 : 1.5, hires }).load();
+    for (const [k, mood] of moods.entries()) {
+      L.setExpressions([{ t: 0, mood: mood === 'rest' ? null : mood, k: 0.85 }]);
+      if (id === 'zuzu') L.buildSpin(2);
+      L.lastSig = null; L.draw(1.0);
+      g.drawImage(L.skin, (k * 2 + h) * S + 6, r * S + 6, S - 12, S - 12);
+    }
+  }
+}
+window.__done = true;
+</script>

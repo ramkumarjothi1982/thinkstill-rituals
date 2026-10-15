@@ -400,6 +400,124 @@ async function renderInPage({ plan, check }) {
         o.connect(g1); g1.connect(lp); o.start(t); o.stop(end);
       }
     },
+    // ---- the v3 score's instruments (feel-something-v3); additive, no earlier plan uses them ----
+    // the Mallow voice: a wordless "ooh" lead — two detuned saws through three vowel formants over a
+    // sine body, sliding into each note (portamento from e.from), with a delayed vibrato
+    vox(e) {
+      const t = T(e.t), a = e.a ?? 0.035, r = e.r ?? 0.22, len = Math.max(a, e.len), end = t + len + r * 4 + 0.05;
+      const F = { oo: [[330, 1, 6], [780, 0.32, 8], [2600, 0.07, 10]], oh: [[460, 1, 6], [860, 0.48, 7], [2700, 0.1, 10]], ah: [[760, 1, 6], [1220, 0.6, 7], [2850, 0.16, 10]] }[e.vowel || 'oo'];
+      const amp = gainNode(0);
+      amp.gain.setValueAtTime(0, t);
+      amp.gain.linearRampToValueAtTime(e.peak, t + a);
+      amp.gain.setValueAtTime(e.peak, t + len);
+      amp.gain.setTargetAtTime(0, t + len, r);
+      const lp = biquad('lowpass', e.lp ?? 6000, 0.6);
+      amp.connect(lp); lp.connect(strip(e.pan ?? 0, e.send ?? 0.45));
+      const vib = ctx.createOscillator(); vib.frequency.value = e.vibRate ?? 5.4;
+      const vd = gainNode(0); vd.gain.setValueAtTime(0, t); vd.gain.setValueAtTime(0, t + Math.min(len, 0.18)); vd.gain.linearRampToValueAtTime(e.vib ?? 16, t + Math.min(len, 0.18) + 0.35);
+      vib.connect(vd); vib.start(t); vib.stop(end);
+      const freq = (o, det) => {
+        o.frequency.setValueAtTime(e.from || e.f, t);
+        if (e.from) o.frequency.exponentialRampToValueAtTime(e.f, t + (e.glide ?? 0.09));
+        o.detune.value = det; vd.connect(o.detune);
+      };
+      const saws = gainNode(1);
+      for (const det of [-5, 6]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; freq(o, det); const og = gainNode(0.5); o.connect(og); og.connect(saws); o.start(t); o.stop(end); }
+      // formants summed two at a time (node inputs ≤ 2, as everywhere in this renderer)
+      const fs = F.map(([fc, lvl, q]) => { const bp = biquad('bandpass', fc, q); const fg = gainNode(lvl * 4.2); saws.connect(bp); bp.connect(fg); return fg; });
+      const s1 = gainNode(1); fs[0].connect(s1); fs[1].connect(s1);
+      const s2 = gainNode(1); s1.connect(s2); fs[2].connect(s2);
+      const body = ctx.createOscillator(); freq(body, 0);
+      const bg = gainNode(e.body ?? 0.55); body.connect(bg); body.start(t); body.stop(end);
+      s2.connect(amp); bg.connect(amp);
+    },
+    // supersaw pad: five detuned saws spread across the field, a filter that opens with the swell
+    saw(e) {
+      const t = T(e.t), a = e.a ?? 0.04, r = e.r ?? 0.35, len = Math.max(a, e.len), end = t + len + r + 0.05, w = e.width ?? 0.7;
+      const amp = gainNode(0);
+      amp.gain.setValueAtTime(0, t);
+      amp.gain.linearRampToValueAtTime(e.peak, t + a);
+      amp.gain.setValueAtTime(e.peak, t + len);
+      amp.gain.linearRampToValueAtTime(0, t + len + r);
+      const lp = biquad('lowpass', e.lp0 ?? 900, 0.75);
+      lp.frequency.setValueAtTime(e.lp0 ?? 900, t);
+      lp.frequency.linearRampToValueAtTime(e.lp1 ?? 3200, t + a + (e.open ?? 0.25));
+      lp.frequency.linearRampToValueAtTime(e.lp2 ?? (e.lp0 ?? 900) * 1.4, t + len + r);
+      const hp = biquad('highpass', e.hp ?? 180, 0.7);
+      lp.connect(hp); hp.connect(amp); amp.connect(strip(e.pan ?? 0, e.send ?? 0.35));
+      let acc = null;
+      [[-16, -w], [-8, -w / 2], [0, 0], [8, w / 2], [16, w]].forEach(([det, pan]) => {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = e.f; o.detune.value = det;
+        const p = ctx.createStereoPanner(); p.pan.value = pan;
+        const og = gainNode(0.2); o.connect(og); og.connect(p); o.start(t); o.stop(end);
+        if (!acc) acc = p; else { const s = gainNode(1); acc.connect(s); p.connect(s); acc = s; }
+      });
+      acc.connect(lp);
+    },
+    // sub bass: a sine, gently driven (its harmonics carry on phone speakers), plus a quiet octave
+    sub(e) {
+      const t = T(e.t), len = e.len ?? 0.5, end = t + len + 0.3;
+      const amp = gainNode(0);
+      amp.gain.setValueAtTime(0, t);
+      amp.gain.linearRampToValueAtTime(e.peak, t + (e.a ?? 0.012));
+      amp.gain.setValueAtTime(e.peak, t + len);
+      amp.gain.setTargetAtTime(0, t + len, e.r ?? 0.05);
+      const sh = ctx.createWaveShaper();
+      const drive = e.drive ?? 1.8, curve = new Float32Array(1024);
+      for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(drive * x) / Math.tanh(drive); }
+      sh.curve = curve;
+      const lp = biquad('lowpass', e.lp ?? 420, 0.7);
+      const o = ctx.createOscillator(); o.frequency.value = e.f;
+      const o2 = ctx.createOscillator(); o2.frequency.value = e.f * 2;
+      const g2 = gainNode(e.oct ?? 0.16);
+      o.connect(sh); sh.connect(lp); o2.connect(g2); const s = gainNode(1); lp.connect(s); g2.connect(s); s.connect(amp); amp.connect(strip(0, 0));
+      o.start(t); o2.start(t); o.stop(end); o2.stop(end);
+    },
+    // clap: three quick noise bursts and a short room
+    clap(e) {
+      const t = T(e.t), out = strip(e.pan ?? 0, e.send ?? 0.3), p = e.peak, d = e.d ?? 0.13;
+      const s = noiseSrc(t, t + d + 0.1, (e.t * 6.7 + 0.2) % 2.5);
+      const bp = biquad('bandpass', e.f ?? 1250, 1.1);
+      const a = gainNode(0), g = a.gain;
+      g.setValueAtTime(0, t);
+      [0, 0.011, 0.022].forEach((dt, k) => { g.linearRampToValueAtTime(p * (k === 2 ? 1 : 0.8), t + dt + 0.001); g.exponentialRampToValueAtTime(p * 0.18, t + dt + 0.009); });
+      g.exponentialRampToValueAtTime(p * 0.001, t + 0.031 + d); g.linearRampToValueAtTime(0, t + 0.041 + d);
+      s.connect(bp); bp.connect(a); a.connect(out);
+    },
+    // hi-hat: bright, short noise (open with a longer d)
+    hat(e) {
+      const t = T(e.t), out = strip(e.pan ?? 0, e.send ?? 0.08);
+      const s = noiseSrc(t, t + (e.d ?? 0.04) + 0.05, (e.t * 12.9 + 0.4) % 2.5);
+      const hp = biquad('highpass', 7200, 0.7); const bp = biquad('bandpass', e.f ?? 10500, 0.6); const a = gainNode(0);
+      envAD(a.gain, t, 0.001, 0, e.d ?? 0.04, e.peak);
+      s.connect(hp); hp.connect(bp); bp.connect(a); a.connect(out);
+    },
+    // the hypnotic drone: two saws a few cents apart that drag (a slow warble of their tuning)
+    // under a slowly breathing filter, a sine an octave down, the whole voice circling the listener
+    drone(e) {
+      const t = T(e.t), dur = e.a + (e.h || 0) + e.r, end = t + dur + 0.05;
+      const n = Math.max(64, Math.ceil(dur * 60)), env = new Float32Array(n), pan = new Float32Array(n), cut = new Float32Array(n), war = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * dur, ts = e.t + x;
+        env[i] = e.peak * (x < e.a ? (1 - Math.cos(Math.PI * x / e.a)) / 2 : x < e.a + (e.h || 0) ? 1 : (1 + Math.cos(Math.PI * (x - e.a - (e.h || 0)) / e.r)) / 2);
+        pan[i] = Math.max(-1, Math.min(1, (e.width ?? 0.8) * Math.sin(2 * Math.PI * (e.orbit ?? 0.1) * ts + (e.phase || 0))));
+        cut[i] = e.lp0 * Math.pow(e.lp1 / e.lp0, 0.5 - 0.5 * Math.cos(2 * Math.PI * (e.rate ?? 0.2) * ts));
+        war[i] = (e.warble ?? 9) * Math.sin(2 * Math.PI * (e.wrate ?? 0.4) * ts) - (e.drag ?? 0) * Math.min(1, x / Math.max(0.01, dur));
+      }
+      const amp = gainNode(0); amp.gain.setValueCurveAtTime(env, t, dur);
+      const lp = biquad('lowpass', e.lp0, 0.9); lp.frequency.setValueCurveAtTime(cut, t, dur);
+      const p = ctx.createStereoPanner(); p.pan.setValueCurveAtTime(pan, t, dur);
+      lp.connect(amp); amp.connect(p); p.connect(bus);
+      if (e.send) { const sg = gainNode(e.send); p.connect(sg); sg.connect(wet); }
+      let acc = null;
+      for (const [type, mul, det, k] of [['sawtooth', 1, -7, 0.4], ['sawtooth', 1, 7, 0.4], ['sine', 0.5, 0, e.subK ?? 0.5]]) {
+        const o = ctx.createOscillator(); o.type = type; o.frequency.value = e.f * mul;
+        o.detune.setValueCurveAtTime(war.map((v) => v + det), t, dur);
+        const og = gainNode(k); o.connect(og); o.start(t); o.stop(end);
+        if (!acc) acc = og; else { const s = gainNode(1); acc.connect(s); og.connect(s); acc = s; }
+      }
+      acc.connect(lp);
+    },
   };
 
   // wooden clock tick-tock: a noise click through a resonant band-pass + a short sine "body"

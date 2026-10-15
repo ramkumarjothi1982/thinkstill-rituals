@@ -9,7 +9,7 @@ const page = await browser.newPage({ viewport: { width: +w, height: +h }, device
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log('[page]', m.text()); });
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
 await page.goto(`http://127.0.0.1:${port}/${rel}`);
-await page.waitForFunction(() => window.__done === true, null, { timeout: 120000 });
+await page.waitForFunction(() => window.__done === true, null, { polling: 250, timeout: +(process.env.SHOT_TIMEOUT || 120000) });
 await page.screenshot({ path: out });
 await browser.close(); server.close();
 console.log('wrote', out);

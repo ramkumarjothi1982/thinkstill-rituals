@@ -40,10 +40,14 @@ def run(args, text=True):
     return p
 
 
+# what made the file (the v2 wording is kept so its masters re-mux byte-identically)
+COMMENT = 'videos/feel-something-v2.js + audio/score-feel-v2.mjs' if vid == 'feel-something-v2' else arg('--comment', f'videos/{vid}.js + its synthesised score')
+
+
 def mux(silent_mp4, out):
     run(['ffmpeg', '-y', '-v', 'error', '-i', silent_mp4, '-i', score, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-profile:a', 'aac_low',
          '-b:a', '256k', '-ar', '48000', '-ac', '2', '-shortest', '-metadata', 'title=Feel Something? Hushmallow',
-         '-metadata', 'comment=hushmallow-infinite-studio dream2: videos/feel-something-v2.js + audio/score-feel-v2.mjs (all procedural)', '-movflags', '+faststart', out])
+         '-metadata', f'comment=hushmallow-infinite-studio dream2: {COMMENT} (all procedural)', '-movflags', '+faststart', out])
 
 
 mux(silent, master)

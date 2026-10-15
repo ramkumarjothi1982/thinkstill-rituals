@@ -219,9 +219,9 @@ export class Dream2Renderer {
       this.pass(this.p.acc, this.t.fgAcc, { uTex: { tex: this.t.fg.tex, unit: 0 }, uW: 1 / subs.length });
       gl.disable(gl.BLEND);
     }
-    this.pass(this.p.compose, this.t.scene, { uBg: { tex: this.t.bg.tex, unit: 0 }, uFg: { tex: this.t.fgAcc.tex, unit: 1 } });
-    // bloom
     const po = C.post;
+    this.pass(this.p.compose, this.t.scene, { uBg: { tex: this.t.bg.tex, unit: 0 }, uFg: { tex: this.t.fgAcc.tex, unit: 1 }, uBgSoft: { tex: this.t.bq1.tex, unit: 2 }, uBgDof: po.bgDof || 0 });
+    // bloom
     this.pass(this.p.bright, this.t.q1, { uTex: { tex: this.t.scene.tex, unit: 0 }, uThresh: po.bloomThresh });
     this.blur(this.t.q1, this.t.q2, 1.5);
     this.blur(this.t.q1, this.t.q2, 3.0);
