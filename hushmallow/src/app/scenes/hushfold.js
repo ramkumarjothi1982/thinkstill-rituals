@@ -2451,7 +2451,10 @@ export default function hushfold(app, params = {}) {
       theme();
       // the Thought Mallows (W2's ThoughtLayer, loaded lazily) keep off the Mallow (room for its hop) and inside the
       // room layout() leaves them; their sounds follow the sound setting live
+      // (a finger that sets off from the words of a thought is a stroke on the stage — in the storm it stirs the storm,
+      // never carries the thought — and one held still on them a moment picks the thought up: the router takes it)
       stage = createStage({ fx: world.fx, tagRoot: root, reducedMotion: () => prefs.reducedMotion(), lowStim: () => lowStimNow(), onReadThought: readThought,
+        onTagGesture: (th, kind, e, from) => !!router?.adopt?.(e, { kind, from, thought: th }),
         keepOut: () => mallowAvoidRect(), bounds: () => thoughtBounds, haptic: (k) => app.haptic?.(k),
         audio: { fx: (n, o) => (prefs.get('sound') ? app.audio?.fx?.(n, o) : false) } });
       // MallowTouch (W2), the squeezable Mallow, is the stage's Mallow for everyone (owner P9), behind the

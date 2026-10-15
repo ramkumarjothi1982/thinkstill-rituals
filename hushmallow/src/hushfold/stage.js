@@ -260,10 +260,12 @@ const NO_THOUGHTS = Object.freeze([]);
  * keepOut() → the hero's rect (client px; thoughts and their words keep off it); bounds() → where the
  * thoughts may float (default: under tagRoot's .hf-top, over its .hf-dock pills); onReadThought(th) → a
  * tap on the words; textScale() → the person's text size
- * (default: --type-scale on <html>, as Settings sets it); haptic(kind), audio {fx(name, opts)}.
+ * (default: --type-scale on <html>, as Settings sets it); haptic(kind), audio {fx(name, opts)};
+ * onTagGesture(th, 'stroke'|'hold', e, from) → a touch that began on the words turned out to be a stroke or a
+ * deliberate hold (the ThoughtLayer's option: the shell hands it to the input router's adopt()).
  */
 export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersReducedMotion(), lowStim = () => false, onReadThought = null, onRead = null,
-  keepOut = null, bounds = null, haptic = null, audio = null, textScale = null } = {}) {
+  keepOut = null, bounds = null, haptic = null, audio = null, textScale = null, onTagGesture = null } = {}) {
   const canvas = h('canvas', { class: 'hf-stage', 'aria-hidden': 'true' });
   fx.replaceChildren(canvas);
   fx.classList.add('live');
@@ -311,7 +313,7 @@ export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersR
 
   const ready = import('../mallows/thought/index.js').then(({ ThoughtLayer }) => {
     if (destroyed) return null;
-    const L = new ThoughtLayer({ ctx2d: g, tagRoot, keepOut, bounds: bounds || shellBounds, onRead: onReadThought || onRead, reducedMotion, lowStim, haptic, audio, textScale: textK });
+    const L = new ThoughtLayer({ ctx2d: g, tagRoot, keepOut, bounds: bounds || shellBounds, onRead: onReadThought || onRead, reducedMotion, lowStim, haptic, audio, textScale: textK, onTagGesture });
     L.onChange = kick;
     layer = L;
     if (hide != null) L.hideTags(hide);
