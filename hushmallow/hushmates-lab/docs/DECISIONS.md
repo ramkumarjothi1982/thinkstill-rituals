@@ -1,41 +1,54 @@
 # Hushmates · Decisions that need the owner
 
-Nothing below has been done. Each needs your explicit approval; the
-recommendation is mine, and the choice is yours. Costs are in A$ (`COSTS.md`).
+The recommendation is the developer's; the choice is yours. Costs are in A$
+(`COSTS.md`; reviews in `REVIEWS.md`).
 
-## To start staging (A$0)
+## Decided (Phase 3b instructions, 15 October 2026)
+
+| # | Decision | What was approved | What it still needs from you |
+|---|---|---|---|
+| **D1** | Staging accounts | ✅ **Approved:** Supabase Free in Sydney and Cloudflare Free, completely isolated from production | Creating the accounts. It's your sign-up, so the developer can't do it (`STAGING_CLOUD.md` steps 1–3) |
+| **D4** | Deploy to staging and verify it on real infrastructure | ✅ **Approved:** the real app and backend on staging; real Auth, RLS, permissions, Edge Function, scheduling, encryption, concurrency and deletion; the whole journey on desktop and mobile; negative security tests | Tokens in the environment's secret settings, and the allowed domains (`STAGING_CLOUD.md` steps 4–5). The developer then runs everything |
+| **D6** (old) | A$5,000–9,000 clinical review | ❌ **Not approved.** Replaced by a risk-based proposal (D6a–D6d below; `REVIEWS.md`) | — |
+| **D3** | Supabase Pro | ⏸ **Not now.** Staging stays Free | Revisit before testers outside the team |
+| — | Spending | ⛔ **No paid service, AI, email, or professional review** without a separate approval of scope and cost | — |
+
+**Unchanged:**
+- production Hushmallow (its project, sign-in, Framer site, DNS, Cloudflare and users) is untouched;
+- Reframe and Another Angle are unchanged;
+- nothing is merged to `main`;
+- nothing is public.
+
+## Needed for the approved staging work (A$0)
+
+| # | Decision | Recommendation | Cost |
+|---|---|---|---|
+| **D15** | How the staging deploy and tests run | **In the cloud session** (`STAGING_CLOUD.md`): you add four secrets and five allowed domains, and nothing has to be installed on your computer. Or on your computer (`STAGING.md`), sharing the reports | A$0 |
+| **D11** | Who holds the staging root secret (it unlocks every stored staging word) | You, in your password manager; a second named person once the beta has real people | A$0 |
+
+## Before testers outside the team
 
 | # | Decision | Options | Recommendation | Cost |
 |---|---|---|---|---|
-| **D1** | Create the staging accounts | A new Supabase organisation and project on the Free plan (Sydney); a separate free Cloudflare account for the web app | Yes, exactly as `STAGING.md` parts 2 and 7 describe: nothing shared with Hushmallow | A$0 |
-| **D4** | Deploy to staging | Part 6 (the Edge Function) and part 7 (the web app), then the staging check (part 9) | Yes, once D1 is done; share the check's report | A$0 |
-| **D11** | Who holds the keys | `.data/staging.env` (and later production's) locks every word | Two named people, each with a copy in a password manager; the recovery drill monthly | A$0 |
-| **D15** | Optional: let the cloud session run checks | Environment secrets and allowed hosts (`STAGING.md`, optional section) | Not needed: run the check yourself and share the report. Keep the data keys off the cloud | A$0 |
-
-## Before real testers use it
-
-| # | Decision | Options | Recommendation | Cost |
-|---|---|---|---|---|
-| **D3** | The beta's Supabase plan | Free (A$0: no backups, pauses after a quiet week) or Pro (≈ A$36 a month: daily backups, never pauses) | **Pro** for any beta with real people. Free only for staging | ≈ A$36/month |
-| **D5** | Emails for testers outside the team | Supabase's built-in sender (team only, a few an hour), or a provider with a free tier (e.g. Resend, about 3,000 emails a month free; Amazon SES) | A provider's free tier, sending from **a domain or subdomain set up only for Hushmates**. ⚠️ Adding email records (SPF, DKIM, DMARC) to Hushmallow's production domain is a change to production DNS. That needs its own approval, or use a separate domain | A$0 for the beta (a new domain ≈ A$20–30 a year if you choose one) |
-| **D12** | Who tests, and who answers the desk | The team only, or invited testers; how many; for how long; who reads the safety desk, and when | Start with the team; then up to ~30 invited adults; a named person checks the desk daily, with the escalation procedure agreed first (D6) | A$0 |
-| **D6** | A clinical adviser | Two clinicians label `docs/clinical/crisis-phrasings-for-review.csv` (blind), agree thresholds, review the support wording, the check-in (D2) and the escalation procedure | **Yes, before anyone outside the team uses it** | ≈ A$5,000–9,000, one-off (estimate; get quotes) |
-| **D2** | The "ask, don't guess" check-in | When the screen is unsure, ask "are you safe right now?" instead of guessing. If the person says they're okay, the feeling either travels as usual or goes only to their Mallow | Build it after the clinical adviser sets the wording, the phrasings and the routing (`CRISIS_DETECTION.md` §3) | A$0 |
+| **D6a** | Tier 0 safety self-assessment | The developer maps the Mallow library and support screens against Mindframe, #chatsafe and Samaritans, and fills in the NSQDMH checklist. You run eSafety's free start-up tool, write the WHS assessment for the desk, and email Samaritans and Mindframe | **Yes, now** | A$0 |
+| **D6b** | Moderator training | LivingWorks Start (about 90 min online) for each desk reader | Optional | about A$40 + tax a person |
+| **D6c** | Ask for Tier A quotes | Two or three registered psychologists or AMHSWs; fixed fee; the draft email is in `REVIEWS.md` §8 | **Yes**. Asking commits to nothing | A$0 |
+| **D6d** | Approve a Tier A review | One reviewer for 3.5–4.5 hours: crisis categories and 108 phrasings, every Mallow line, the escalation procedure, a go/no-go memo | Before outside testers | expected A$1,155–1,530 + GST |
+| **D2** | The "are you safe right now?" check-in | Build it once Tier A sets the wording and routing | After D6d | A$0 |
+| **D3** | The beta's Supabase plan | Free (A$0: no backups, can pause after a quiet week) or Pro (A$35.70 a month, about A$40 all-in: daily backups, never pauses) | Pro for any beta with outside testers | ≈ A$40/month |
+| **D5** | Emails for testers outside the team | A provider's free tier (Resend: 3,000 a month, 100 a day; Brevo: 300 a day) | A free tier, sending from **a domain or subdomain set up only for Hushmates**. ⚠️ Email records on Hushmallow's production domain are a production DNS change: that needs its own approval, or use a separate domain | A$0 (a new domain ≈ A$20–30 a year, if chosen) |
+| **D12** | Who tests, and who reads the desk | The team, then up to about 30 invited adults | Start with the team. Outside testers only after D6d's conditions are met. Name the desk readers and the safety lead in `ESCALATION.md` | A$0 |
+| **D7a** | Privacy basics | Privacy policy, collection notice, consent wording, breach plan, self-run PIA | The developer drafts them from the OAIC's free guides, and you approve. A lawyer's check is D7 | A$0 |
 
 ## Before a public launch
 
-| # | Decision | Options | Recommendation | Cost |
-|---|---|---|---|---|
-| **D7** | Legal and privacy review | Privacy policy and collection notice, terms, a Privacy Impact Assessment, the Online Safety Act, the social media minimum age law, APP 1.7 (automated decisions) | Engage an Australian privacy lawyer; the questions are in `READINESS.md` §2 | ≈ A$8,000–20,000 (estimate) |
-| **D8** | "Share anonymously" | Keep the brief's wording, or "Share with Hushmates participants, without my name" | Change it, since Hushmates is pseudonymous, not anonymous; the lawyer decides (D7). Five places change with it (`READINESS.md` §2.7) | A$0 |
-| **D9** | Age assurance | The 18+ tick, or stronger checks | The lawyer's view first (D7); it depends on whether Hushmates counts as an age-restricted platform | depends |
-| **D10** | AI (Another Angle) | Stays off, or on with a monthly cap | **Stays off** for the beta: the free library answers. Turning it on needs, in order: costs, Another Angle's owner, consent wording naming the provider (APP 8), then the switch | A$0 off; ≈ A$0.06 a perspective on |
-| **D13** | Accessibility audit | An external WCAG 2.2 AA audit with screen-reader users | Before launch | ≈ A$3,000–8,000 (estimate) |
-| **D14** | Security test | An external penetration test of the staging copy | Before launch | ≈ A$8,000–20,000 (estimate) |
-| **D16** | Captcha on sign-in codes | Cloudflare Turnstile (free) | Only if invitations stop being the way in; needs the widget built, and a site key from you | A$0 |
-| **D17** | Production | A separate production Supabase project, merging this branch into `main`, launch | Only after the reviews above, and with your final approval | Pro ≈ A$36/month and up (`COSTS.md`) |
-
-**Already decided, and unchanged:**
-- production Hushmallow (its project, sign-in, Framer site, Cloudflare and users) is untouched;
-- Reframe and Another Angle are unchanged;
-- no paid service, AI call or email provider is switched on.
+| # | Decision | Recommendation | Cost |
+|---|---|---|---|
+| **D7** | Legal and privacy review | One scoped question set for an Australian lawyer (`READINESS.md` §2, `REVIEWS.md` §3) | not researched; get a quote |
+| **D8** | "Share anonymously" | Change it: Hushmates is pseudonymous. Five places change with it (`READINESS.md` §2.7) | A$0 |
+| **D9** | Under-16 law and age assurance | The lawyer's view first: health-purpose exclusion, s4A features | depends |
+| **D10** | AI (Another Angle) | **Stays off.** Turning it on needs, in order: the costs, Another Angle's owner, consent wording naming the provider (APP 8), then the switch | A$0 off; ≈ A$0.06 a perspective on |
+| **D13** | Accessibility audit | Hands-on screen-reader testing first (A$0); an external audit before launch | not researched |
+| **D14** | Security test | Automated scanning first (A$0); a scoped penetration test before launch | not researched |
+| **D16** | Captcha on sign-in codes | Cloudflare Turnstile (free), only if invitations stop being the way in | A$0 |
+| **D17** | Production | A separate production project, merging to `main`, launch: only after the above, and with your final approval | Pro ≈ A$40/month and up |

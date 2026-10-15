@@ -3,6 +3,7 @@
 //
 //   node tools/safety-eval.mjs                       what the screen does with every known phrasing
 //   node tools/safety-eval.mjs --export <file.csv>   a sheet for the clinical reviewers to label
+//   node tools/safety-eval.mjs --export <file.csv> --sample   the shorter sheet for one reviewer (REVIEWS.md)
 //   node tools/safety-eval.mjs --labels <file.csv>   the screen scored against their labels
 //
 // The sheet is blind: one row per phrasing, in a shuffled order, with no hint of what Hushmates
@@ -45,13 +46,36 @@ export function phrasings(fixture = JSON.parse(readFileSync(FIXTURE, 'utf8'))) {
 }
 
 const quote = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
-/** The blind sheet: phrasings only, in an order that doesn't group them (the same order every time). */
-export function toCsv(rows) {
-  const head = ['id', 'phrasing', 'clinician_1', 'clinician_2', 'agreed', 'notes'];
+/** Every phrasing in the sheet's order, which doesn't group them (the same order every time), with its sheet id. */
+export function blindOrder(rows) {
   let seed = 20261015;
   const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2 ** 32; };
-  const order = rows.map((r) => r.phrasing).map((p) => [rand(), p]).sort((a, b) => a[0] - b[0]).map(([, p]) => p);
-  return `${[head, ...order.map((p, i) => [i + 1, p, '', '', '', ''])].map((line) => line.map(quote).join(',')).join('\n')}\n`;
+  return rows.map((r) => [rand(), r]).sort((a, b) => a[0] - b[0]).map(([, r], i) => ({ ...r, id: i + 1 }));
+}
+
+/** The blind sheet: phrasings only. `only` keeps some rows, with the full sheet's ids and order. */
+export function toCsv(rows, { only } = {}) {
+  const head = ['id', 'phrasing', 'clinician_1', 'clinician_2', 'agreed', 'notes'];
+  const order = blindOrder(rows).filter((r) => !only || only.has(r.id));
+  return `${[head, ...order.map((r) => [r.id, r.phrasing, '', '', '', ''])].map((line) => line.map(quote).join(',')).join('\n')}\n`;
+}
+
+/**
+ * The shorter sheet for one reviewer (docs/REVIEWS.md, Tier A): every undecided phrasing, plus as many
+ * of the others again, drawn from each group in proportion so no kind is left out. The ids are the
+ * full sheet's, so the labels drop straight into it later; the full sheet itself never changes.
+ */
+export function sampleIds(rows) {
+  const order = blindOrder(rows);
+  const undecided = order.filter((r) => r.group === 'undecided');
+  const others = order.filter((r) => r.group !== 'undecided');
+  const ids = new Set(undecided.map((r) => r.id));
+  for (const g of [...new Set(others.map((r) => r.group))]) {
+    const inGroup = others.filter((r) => r.group === g);
+    const n = Math.max(1, Math.round((undecided.length * inGroup.length) / others.length));
+    for (const r of inGroup.slice(0, n)) ids.add(r.id);
+  }
+  return ids;
 }
 
 /** RFC 4180 CSV → objects keyed by the header row. */
@@ -116,12 +140,17 @@ if (runAsCommand()) {
   const pct = (x) => (x == null ? 'n/a' : `${(x * 100).toFixed(1)}%`);
   if (arg('export')) {
     const file = arg('export');
+    const rows = phrasings();
+    const only = process.argv.includes('--sample') ? sampleIds(rows) : undefined;
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, toCsv(phrasings()));
-    console.log(`Wrote ${phrasings().length} phrasings to ${file}, for two clinicians to label (${LABELS.join(' · ')}).`);
+    writeFileSync(file, toCsv(rows, { only }));
+    console.log(only
+      ? `Wrote ${only.size} of the ${rows.length} phrasings to ${file}, for one reviewer (docs/REVIEWS.md, Tier A). The ids are the full sheet's.`
+      : `Wrote ${rows.length} phrasings to ${file}, for two clinicians to label (${LABELS.join(' · ')}).`);
   } else if (arg('labels')) {
     const s = score(parseCsv(readFileSync(arg('labels'), 'utf8')));
     console.log(`Labelled: ${s.labelled} (unsure: ${s.unsure}).  Clinicians' agreement before settling: kappa ${s.kappa == null ? 'n/a' : s.kappa.toFixed(2)} over ${s.raterPairs}.`);
+    if (!s.raterPairs) console.log('One reviewer, so no agreement was measured: this is an expert review of these phrasings, not a validation of the screen.');
     console.log(`Crisis and someone-in-danger caught: ${pct(s.sensitivity)}   ·   everyday feelings held back: ${pct(s.falseAlarmRate)}   ·   of those flagged, really at risk: ${pct(s.ppv)}`);
     for (const m of s.missed) console.log(`  missed (${m.agreed}, screen says ${m.now}): ${m.phrasing}`);
     for (const f of s.falseAlarms) console.log(`  held back (screen says ${f.now}): ${f.phrasing}`);

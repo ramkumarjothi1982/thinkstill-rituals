@@ -1,140 +1,203 @@
-# Hushmates · Monthly cost forecast (AUD)
+# Hushmates · Costs (AUD): staging, the beta, and 100 to 100,000 people
 
-A forecast, not a quote. Nothing here has been bought or switched on. Every
-paid item below needs the owner's approval first.
+A forecast, not a quote. **Nothing has been bought, and no paid plan or service is
+switched on.**
+- Supabase Pro isn't activated.
+- No AI, email provider or professional service is paid for.
 
-**Exchange rate.** A$1.45 per US$1, from AUD/USD ≈ 0.69 in early October 2026
-([exchange-rates.org](https://www.exchange-rates.org/exchange-rate-history/aud-usd-2026-10-01)).
-Card fees and GST on foreign services are not included; allow about 10–15% on top.
+Every paid item needs the owner's approval first (`DECISIONS.md`).
 
-**Prices.** Phase 3 confirmed these against Supabase's own published plan data:
-`packages/shared-data/plans.ts` and `pricing.ts` in the supabase/supabase
-repository, which supabase.com/pricing is built from, read on 15 October 2026.
-Prices change; glance at supabase.com/pricing before deciding. The figures:
+**Where the numbers come from:**
+- **Supabase:** its own published plan data. That's `packages/shared-data/plans.ts` and `pricing.ts` in the supabase/supabase repository, which supabase.com/pricing is built from, plus its billing and cost-control docs, all read on 15 October 2026 (high confidence).
+- **Cloudflare:** the Pages and Workers docs (high).
+- **Email providers:** search extracts of their pricing pages (medium).
+- **The arithmetic** is in `tools/cost-model.mjs`, pinned by `tests/cost-model.test.mjs`. Re-run it when a price or an assumption changes.
 
-- Pro: US$25 a month, which includes a US$10 compute credit (enough for a Micro instance).
-- Included each month: 100,000 MAU, 8 GB of database and 250 GB of egress.
-- Edge Function invocations: 2 million included, then US$2 per million.
-- Overage: MAU about US$0.00325 each, egress US$0.09 per GB, database US$0.125 per GB.
-- Compute per month: Micro about US$10, Small about US$15, Medium about US$60, Large about US$110, XL about US$210, 2XL about US$410.
+**Exchange rate and fees:**
+- RBA 4 pm rate on 14 October 2026: **US$0.7002 per A$1**, so US$1 ≈ A$1.428.
+- Supabase bills in US dollars, by card, and payments may show as coming from Singapore.
+- "All-in" adds 10% GST and a typical 3% card foreign-transaction fee. Both may not apply:
+  - It isn't confirmed that Supabase charges Australian GST. It began adding local taxes in May–June 2026, only where it is registered.
+  - A GST-registered business that gives its ABN usually self-assesses instead.
+  - Some cards charge no foreign fee.
 
-## Staging and the private beta: what it costs to start
+## 1. Staging: A$0
 
-| | Free plan | Pro plan |
-|---|---|---|
-| Price | **A$0** | **≈ A$36 a month** (US$25, including a US$10 compute credit that covers the smallest instance) |
-| Limits that matter | 500 MB database; 50,000 monthly active users; 500,000 Edge Function calls a month; 5 GB egress; at most 2 active free projects | 8 GB database; 100,000 MAU; 2 million calls; 250 GB egress |
-| **Pauses** | **After one week without use.** While paused nothing runs: feelings don't come home and the scheduler stops, until someone resumes the project | Never |
-| **Backups** | **None.** You make your own: `pg_dump`, then the recovery drill (`STAGING.md` part 11) | Daily, kept 7 days, restorable from the dashboard |
+| Piece | Plan | Cost | What happens at a limit |
+|---|---|---|---|
+| Supabase, in its **own organisation and account** (Sydney) | Free | **A$0**. Supabase says a Free organisation is never charged | It doesn't bill: it restricts. Over a quota, Supabase emails, gives a grace period, then may pause projects, make databases read-only or answer 402. The database goes read-only above 500 MB |
+| The web app and the desk | Cloudflare Pages Free, in a separate account | **A$0**. Requests for static files are free and unlimited | 500 builds a month; we upload ready-made files instead of building. Hushmates' site has no Pages Functions, so the Workers request quota never applies |
+| Sign-in emails for the team | Supabase's built-in sender | **A$0** | Team members only, about 2 an hour. Not for outside testers |
+| AI | Off | **A$0** | The database refuses any AI call while it is off; the cap is A$0 |
 
-Recommendations:
-- **Staging: Free, A$0.** Use is occasional, pausing is harmless, and its data is test data.
-- **A beta with real people: Pro, ≈ A$36 a month (🛑 decision D3).** People's words and the safety desk's evidence deserve backups. A feeling waiting to come home shouldn't depend on someone visiting that week.
-- If Free must be used for the beta: a weekly `pg_dump` plus the recovery drill, and someone checks the project isn't paused.
-- About 100 people use roughly 0.13 million function calls and a few MB a month: far inside either plan.
+Staging test runs use a few hundred calls and a few MB, against quotas of 500,000 calls,
+5 GB of egress and 500 MB of database a month.
 
-Emails for testers outside your team need a provider (decision D5). The free tiers below cover the beta: **A$0**.
+The separate account matters for cost as well as safety:
+- Supabase allows 2 active Free projects per person, counted across every organisation they administer.
+- Free-plan restrictions apply to a whole organisation.
 
-Crisis detection adds **A$0** in services (`CRISIS_DETECTION.md`): rules, and later Supabase's built-in embedding model, which isn't charged separately.
+## 2. The model: monthly and annual cost by scale
 
-### One-off costs before a public launch (indicative)
-
-These are planning placeholders, not researched quotes: get quotes. They are listed because launch depends on them (`READINESS.md` §6).
-
-| Review | Indicative range (A$) |
-|---|---|
-| Clinical safety review: two clinicians label the phrasing sheet, agree thresholds, review the support wording and the escalation procedure (20–30 hours) | 5,000–9,000 |
-| Privacy and legal: privacy policy and collection notice, terms, Privacy Impact Assessment, Online Safety Act and age-assurance advice | 8,000–20,000 |
-| Accessibility audit (WCAG 2.2 AA, with screen readers by hand) | 3,000–8,000 |
-| Security penetration test | 8,000–20,000 |
-
-## Assumptions (per active person, per month)
+### Assumptions (per active person, per month)
 
 | What | Assumption | Why |
 |---|---|---|
 | Feelings released | 4 | A reflective app, used a few times a week at most |
-| Perspectives written | 4–6 | Each feeling can receive up to five |
-| Time with the app open | 10 minutes a day, 20 days | |
-| Gateway calls (Edge Function invocations) | about 1,300 | Most come from polling: about 6 calls a minute while the app is visible (two refreshes every 20 s), about 1,200 a month. The other ~100 are actions |
+| Gateway calls (Edge Function invocations) | about 1,300 | Mostly polling: about 6 calls a minute while the app is visible, 10 minutes a day, 20 days. The other ~100 are actions |
 | API egress | about 7 MB | About 5 KB per call |
 | Stored data | about 100 KB at steady state | Encrypted words, events and indexes. Unsaved feelings are cleared after 30 days |
-| Sign-in emails | about 1.5 | A code only on a new device or after signing out; refresh tokens keep people signed in |
-| Mallow fallback (when nobody replies within 30 minutes) | 40% of feelings at 100 people, 25% at 1,000, 15% at 10,000, 10% at 100,000 | More people, more catchers |
-| "Explore another angle" (asked for on a feeling that came home without a Mallow perspective) | 10% of those feelings | An extra the author chooses. At most one Mallow perspective per feeling, either way |
+| Sign-in emails | about 1.5 | A code only on a new device or after signing out |
+| With Realtime instead of polling | 15% of the calls, plus about 300 change notices; 5% of people connected at the busiest moment | Notices replace most polling |
+| Compute | Micro at 100 (covered by the credit), Small at 1,000, Medium at 10,000, 2XL at 100,000 | The least certain line: a staging load test should size it |
+| Point-in-time recovery | From 10,000 people | Daily backups are enough before that |
 
-The web pages (the app and the desk) are static files. A free static host
-(for example, a new Cloudflare Pages project) serves them for A$0. That is a
-new project, not a change to the existing production Cloudflare setup, and it
-still needs the owner's account.
+### As built (polling every 20 seconds)
 
-## The forecast
-
-|  | 100 people | 1,000 | 10,000 | 100,000 |
+| Active people | US$/month | A$/month (before GST and card fees) | A$/month all-in | A$/year all-in |
 |---|---:|---:|---:|---:|
-| **Fixed** |  |  |  |  |
-| Supabase Pro plan (US$25) | 36 | 36 | 36 | 36 |
-| Static web host, captcha (Cloudflare Turnstile, once built), error tracking (free tiers) | 0 | 0 | 0 | 0 |
-| **Variable** |  |  |  |  |
-| Compute beyond the credit | 0 (Micro) | 7 (Small) | 73 (Medium) | 290–580 (XL–2XL) |
-| Edge Function calls | 0 (0.13 M) | 0 (1.3 M) | 32 (13 M) | 371 (130 M) |
-| Database size beyond 8 GB | 0 | 0 | 0 | 1 |
-| Egress beyond 250 GB | 0 | 0 | 0 | 59 |
-| Monthly active users beyond 100,000 | 0 | 0 | 0 | 0 |
-| Sign-in emails (custom SMTP; see below) | 0 (free tier) | 0 (free tier) | 29 | 22–130 |
-| Point-in-time recovery (recommended from 10,000) | – | – | 145 | 145 |
-| **Without AI** | **≈ A$36** | **≈ A$44** | **≈ A$315** | **≈ A$925–1,320** |
-| **AI (only if the owner turns it on)** |  |  |  |  |
-| Mallow perspectives from Another Angle: the fallback | 160 calls → 10 | 1,000 → 60 | 6,000 → 360 | 40,000 → 2,400 |
-| …and "Explore another angle" | 24 → 1 | 300 → 18 | 3,400 → 204 | 36,000 → 2,160 |
-| **With AI** | **≈ A$47** | **≈ A$122** | **≈ A$880** | **≈ A$5,485–5,880** |
-| Upper bound for AI, if every feeling gets a Mallow perspective | 400 → 24 | 4,000 → 240 | 40,000 → 2,400 | 400,000 → 24,000 |
+| 100 (beta, Free plan) | 0 | 0 | 0 | 0 |
+| 100 (beta, Pro plan) | 25 | 36 | 40 | 485 |
+| 1,000 | 30 | 43 | 49 | 583 |
+| 10,000 | 217 | 310 | 351 | 4,214 |
+| 100,000 | 837 | 1,195 | 1,354 | 16,247 |
 
-All amounts are A$ per month, rounded. Ranges show the realistic spread.
+| Item (US$/month) | 100 Pro | 1,000 | 10,000 | 100,000 |
+|---|---:|---:|---:|---:|
+| Supabase Pro plan (includes a US$10 compute credit) | 25 | 25 | 25 | 25 |
+| Compute beyond the credit | 0 (Micro) | 5 (Small) | 50 (Medium) | 400 (2XL) |
+| Edge Function calls beyond 2 million (US$2 per started million) | 0 | 0 | 22 | 256 |
+| Egress beyond 250 GB (US$0.09/GB) | 0 | 0 | 0 | 41 |
+| Database beyond 8 GB (US$0.125/GB) | 0 | 0 | 0 | 0.25 |
+| Monthly active users beyond 100,000 | 0 | 0 | 0 | 0 |
+| Point-in-time recovery, 7 days | – | – | 100 | 100 |
+| Sign-in emails | 0 (free tier) | 0 (free tier) | 20 (e.g. Resend Pro) | 15 (e.g. Amazon SES) |
+| Static site, captcha (Cloudflare Pages, Turnstile) | 0 | 0 | 0 | 0 |
+
+### After switching to Realtime change notices
+
+| Active people | US$/month | A$/month (before GST and card fees) | A$/month all-in | A$/year all-in |
+|---|---:|---:|---:|---:|
+| 100 (beta, Free plan) | 0 | 0 | 0 | 0 |
+| 100 (beta, Pro plan) | 25 | 36 | 40 | 485 |
+| 1,000 | 30 | 43 | 49 | 583 |
+| 10,000 | 195 | 278 | 316 | 3,786 |
+| 100,000 | 689 | 984 | 1,114 | 13,374 |
+
+At 100,000 people, Realtime cuts calls from 130 million to 19.5 million a month, and adds:
+- about 30 million messages (US$62.50 beyond the 5 million included);
+- about 5,000 peak connections (US$50 beyond the 500 included).
 
 ### Reading it
 
-- **Fixed vs variable.** The only fixed cost is the Supabase Pro plan. A
-  staging project can stay on Supabase's **free plan (A$0)**. Free projects
-  pause after a week without use and have lower quotas, which is fine for
-  testing. Everything else grows with use.
-- **The biggest variable cost is polling.** The app asks for changes every
-  20 seconds while it is open. At 100,000 people that is about 130 million
-  calls a month (≈ A$371), plus the compute to answer them. Moving to Supabase
-  Realtime for change notices would remove most of those calls, which is
-  worth doing before 10,000 people.
-- **Compute at 100,000** is the least certain line. It depends on how many
-  people are active at the same moment (I assumed up to about 5%, roughly 500
-  calls a second at peak). Load-test on staging before choosing.
-- **AI is A$0 until the owner switches it on.** When it is on, each Mallow
-  perspective is estimated at A$0.06. That is the "regenerated" figure: an
-  Another Angle call is about US$0.02 typical and about US$0.04 regenerated
-  (the service's own figures), × 1.45. The database refuses any AI call that
-  would pass the monthly cap.
-  - Defaults (`hushmates.settings 'ai'`): off, a monthly cap of A$0, 3 a day per person, 200 a day overall.
-  - With the defaults AI costs A$0. Once it's on, `monthlyCapAud` is the only money cap, and it counts estimated costs (the actual bill comes from Another Angle's account).
-  - The 200-a-day ceiling allows about 6,000 calls a month (≈ A$370 at the A$0.06 estimate). The 10,000 and 100,000 columns assume the owner raises it.
-  - The Mallow's own daily allowance (`settings 'limits'`: `fallbackGlobalPerDay` 500, `fallbackPerPersonPerDay` 5) applies to the free library too. 500 a day is about 15,000 Mallow perspectives a month: raise it before about 15,000 people, or people who allowed a Mallow perspective are told the Mallows are resting for today.
-- **Who pays for AI.** Another Angle's model calls are billed to the account
-  that runs the Another Angle service, so Hushmates traffic adds to that bill.
-- **Sign-in emails.** Supabase's built-in email sender is for testing only.
-  Real people need a custom SMTP provider:
-  - Free tiers (for example, Resend: 3,000 emails a month) cover up to roughly 1,000 people.
-  - Above that it is a paid plan. Resend is about US$20 a month for 50,000 emails; Amazon SES is about US$0.10 per 1,000.
-  - **Choosing and switching on a provider needs the owner's approval** (and their account).
+- **The beta (about 100 people) fits the Free plan's quotas** (`overFree(100)` is empty). The choice between Free and Pro is about safety of data, not capacity (decision D3):
+  - **Free: A$0.** No automatic backups: a weekly `pg_dump` and the recovery drill instead (`STAGING.md` part 11). It may pause after a week of low activity. Daily use by 100 people makes that unlikely, but a quiet week can still trigger it.
+  - **Pro: A$35.70 a month, about A$40 all-in (A$485 a year).** Daily backups kept 7 days, and it never pauses.
+  - Recommendation unchanged: Pro once people outside the team rely on it. **Not activated**: that is D3.
+- **1,000 people pass the Free plan's call and egress quotas as built.** With Realtime they would fit, but Pro is still the right plan by then.
+- **Polling is the biggest variable cost.** Realtime is worth doing before about 10,000 people. It saves about A$35 a month at 10,000 and about A$240 at 100,000 (all-in).
+- **Compute at 100,000 is the least certain line.** A staging load test should size it before it matters.
+- **Fixed costs:** only the Pro plan fee, and point-in-time recovery once chosen. Everything else grows with use.
 
-## What keeps costs down (already built)
+### AI (off; only if the owner turns it on)
 
-- **The Mallow library is free and deterministic.** It answers whenever AI is off, unavailable, rate-limited, over budget or unsafe.
-- **The AI budget is held atomically** in the database (`hushmates_api.ai_reserve`, under a lock), so several Edge Function instances can never overspend a cap. Every attempt is recorded in `ai_usage` with its cost. Unsure outcomes are charged, never assumed free.
-- **AI answers are cached** per person for an hour. Asking twice for one feeling makes one generation.
-- **Per-person limits** (in `settings 'limits'`) on releases, finds, perspectives, reports, Mallow fallbacks and requests a minute. Sign-in codes are limited per email, and invitation guesses per person and per network.
-- **Expensive work runs once a minute in one place**: homecoming, expiry and Mallow preparation, in batches, safe to overlap.
-- **Monitoring.** `node server/admin.mjs ops` shows what the service did and spent: daily counts of expensive operations, AI spend this month, members, travelling feelings and open reports.
-- **Data stays small.** Words are cleared after the retention period (30 days for unsaved feelings), and old rate-limit events are deleted.
+- **Defaults:** `hushmates.settings 'ai'` is off, with a monthly cap of A$0, 3 a day per person and 200 a day overall.
+- **Cost per Mallow perspective:** about **A$0.06**. Another Angle's own figures are about US$0.04 for a regenerated call, × 1.428.
+- **What the AI fallback would add, if switched on:**
 
-## Next steps that change the forecast
+  | People | Calls a month | A$ a month |
+  |---:|---:|---:|
+  | 100 | 160 | ≈ 10 |
+  | 1,000 | 1,000 | ≈ 60 |
+  | 10,000 | 6,000 | ≈ 360 |
+  | 100,000 | 40,000 | ≈ 2,400 |
 
-1. Realtime change notices instead of polling (−80–90% of calls).
-2. A load test on staging, to size compute for 10,000+ people.
-3. A decision on the email provider, with the owner.
-4. Before turning AI on, confirm the per-call cost with the Another Angle service owner. If the cap must hold even in its worst case, set the estimate to A$0.48: `node server/admin.mjs set ai '{"costPerCallAud": 0.48}'`. The hold uses the larger of this setting and the Edge Function's optional `ANOTHER_ANGLE_COST_PER_CALL_AUD` secret.
+  That assumes the fallback rate falls with scale, from 40% to 10% of feelings. The upper bound, a Mallow perspective on every feeling, is about 10 times that.
+- The 200-a-day ceiling allows about 6,000 calls a month (≈ A$370).
+- **Who pays:** Another Angle's calls are billed to the account that runs Another Angle.
+- **Turning it on needs, in order:** confirmation of the cost; Another Angle's owner; consent wording naming the provider (APP 8); then the switch (D10).
+
+## 3. One-off reviews
+
+Nothing is authorised. `REVIEWS.md` has the reasoning, the scope and the arithmetic.
+
+| Review | Indicative cost | When |
+|---|---|---|
+| Tier 0: free self-assessments (eSafety, NSQDMH, guideline mapping, WHS assessment) | **A$0**. Optional moderator training is about A$40 + tax a person | Now |
+| Tier A: one psychologist or AMHSW, 3.5–4.5 hours | **A$1,155–1,530 excl. GST**; up to about A$2,332 incl. GST at an organisational rate | Before testers outside the team |
+| Tier B: one clinician for 8–12 hours, plus a lived-experience reviewer | A$2,750–4,680 excl. GST | On a trigger (`REVIEWS.md` §5.4) |
+| Tier C: the original two-clinician validation | A$7,275–10,720 excl. GST | Before measured safety claims |
+| Privacy, legal, accessibility, penetration test | **Not researched.** The old A$3,000–20,000 placeholders are withdrawn. Each starts with a free self-run step (`REVIEWS.md` §4) | Before a public launch |
+
+## 4. Charges that could surprise you
+
+**On Free:** none of these can be switched on, and nothing is ever billed.
+
+**On Pro, the Spend Cap** is on by default. It blocks overage on:
+- egress;
+- Edge Function calls;
+- monthly active users;
+- disk;
+- Realtime;
+- storage;
+- logs.
+
+It does **not** cover the items below, which are billed hourly whenever they are switched on:
+
+| Add-on | Price (US$) | All-in (A$/month) | Needed by Hushmates? | How it's prevented |
+|---|---|---:|---|---|
+| Compute above Micro | Small +5; Medium +50; Large +100; 2XL +400 a month | 8–647 | Only at scale | Changed only by hand, with D3-style approval. Changing size also causes downtime |
+| An **extra project** in a Pro organisation | about +10 a month each | 16 | **No.** Staging stays in its own Free organisation | Never create projects in the paid organisation for testing |
+| Point-in-time recovery | about 100 a month (7 days), and it needs Small compute | about 170 | From about 10,000 people | Off unless approved |
+| Custom domain | about 10 a month | 16 | No (use `<ref>.supabase.co`) | Off |
+| IPv4 add-on | about 4 a month | 6.47 | **No.** The tools and the app connect through the pooler or HTTPS, which work over IPv4 already | Off |
+| Read replicas | at least 10 a month each, plus disk | 16+ | No | Off |
+| Branching (preview branches) | about 0.01344 an hour per branch | 16 per always-on branch | No | Off; there's no GitHub integration |
+| Log drains | about 60 a month per drain | 97 | No | Off |
+| Phone MFA | about 75 a month | 121 | No (sign-in is by email code) | Off |
+| Pipelines (replication) | per hour, plus per GB | varies | No | Off |
+
+Other places a bill could start:
+
+| Provider | How it could start billing | Prevention |
+|---|---|---|
+| Cloudflare | Subscribing to **Workers Paid** (US$5 a month minimum); adding **R2** (it needs a checkout) | Neither is used. Static Pages hosting is free. Don't press *Enable* on any paid plan |
+| Email | Resend Pro (US$20 a month); turning on Resend's overage (off by default, capped at 5 × the quota); Amazon SES (billed per email; its free tier closed to new customers on 21 July 2026) | Free tiers stop sending at their cap rather than billing: Resend 100 a day, Brevo 300 a day. A provider is decision D5 |
+| A Supabase invoice left unpaid | Projects pause and the organisation drops to Free | Use a card that is checked monthly |
+| Card fees | About 3% foreign-transaction fee | A card without foreign fees |
+
+## 5. Stopping runaway usage
+
+**Built into Hushmates (works on any plan):**
+- **Invitations only:** nobody can sign up without one. Codes are limited per email, and guesses per person and per network.
+- **Per-person limits**, in `settings 'limits'`, on:
+  - releases;
+  - finds;
+  - perspectives;
+  - reports;
+  - Mallow fallbacks;
+  - requests a minute.
+- The Mallow's own daily allowance: 500 a day overall, 5 per person.
+- **AI off, with a cap of A$0.** The budget is held atomically in the database (`ai_reserve`, under a lock), so no number of Edge Function instances can overspend it. Every attempt is recorded with its cost, and an unsure outcome is charged, never assumed free.
+- **Scheduled work runs once a minute, in one place:** homecoming, expiry and Mallow preparation, batched, and safe to overlap.
+- **Data stays small:**
+  - unsaved feelings are cleared after 30 days;
+  - report evidence after 90 or 180 days;
+  - old rate-limit events are deleted.
+- **Polling pauses when the app is hidden:** it only polls while visible.
+
+**On the platforms:**
+- **Supabase Free:** cannot bill.
+- **Supabase Pro:** keep the **Spend Cap on**. Supabase sends no budget alerts: it can't notify you at a spending threshold. So, once a week:
+  - look at the organisation's *Usage* page and the *Upcoming invoice*;
+  - run `node server/admin.mjs ops`: daily counts of the expensive operations, AI spend this month, members, travelling feelings and open reports.
+- **Cloudflare:** no paid product is enabled. The site has no Functions, so no request can be billed.
+- **Email:** free tiers stop rather than bill.
+- **Staging tools:** they refuse to run if they see AI settings, or if the access token can reach any project that isn't staging (`tools/staging-deploy.mjs`).
+
+## 6. What would change the forecast
+
+1. **Realtime change notices instead of polling.** About 85% fewer calls; saves about A$240 a month at 100,000.
+2. **A load test on staging,** to size compute for 10,000+ people.
+3. **The beta's plan (D3) and the email provider (D5),** decided with the owner.
+4. **Before turning AI on:** confirm the per-call cost with Another Angle's owner. For a cap that must hold even in the worst case, set the estimate to A$0.48: `node server/admin.mjs set ai '{"costPerCallAud": 0.48}'`.
