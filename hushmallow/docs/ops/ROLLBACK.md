@@ -89,8 +89,9 @@ and preview have separate sets, the production set matching the Worker's
 new random `PILOT_COOKIE_KEY` signs everyone out of the gate) → **Deployments
 → latest production → Retry deployment** (Pages applies variable changes only
 to new deployments). Follow `docs/PILOT.md` where it exists. With the gate on,
-run the monitor with `--allow-gate --gate-marker <text only the gate page
-contains>` (workflow inputs `allow_gate` + `gate_marker`, or the repository
+run the monitor with `--allow-gate --gate-marker <a unique token only the
+gate page emits, e.g. data-hm-pilot-gate; never words an error page could
+contain>` (workflow inputs `allow_gate` + `gate_marker`, or the repository
 variables `HM_MONITOR_ALLOW_GATE=1` and `HM_MONITOR_GATE_MARKER`); its final
 line then lists what the gate kept it from checking. The gate page must send
 the same security headers (a Pages Function's own responses do not get
