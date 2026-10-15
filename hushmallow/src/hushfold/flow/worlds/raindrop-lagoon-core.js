@@ -98,19 +98,20 @@ const union = (a, b) => (!a ? { ...b } : !b ? { ...a } : { x0: Math.min(a.x0, b.
 /**
  * Plan the screen.
  *   In:  { W, H, band:{y,h}, mallow (client box or null), freeW (the stage's free width, else W),
- *          plate: (maxW, lines) → {w, h} | null — the person's words plate as it will be drawn (null: no thought),
+ *          plate: (maxW, lines) → {w, h, cut} | null — the person's words plate as it will be drawn (cut: only the start of
+ *          the words fits; null: it does not fit at all),
  *          thought: whether there is a Thought Mallow (else a lily-pad cup takes its place), n (feeling drops),
  *          photos (orbs wanted) }
  *   Out: { U, r, D, hy, top, bottom, XR, K (the hero keep-out), thought:{x, y, r}, plate:{x0,y0,x1,y1,w,h,maxW,lines}|null,
  *          tag:{mode:'below'|'right'|'left', x0,y0,x1,y1, w, h}, cluster (the union), drops:[{x,y,D}], orbs:[{x,y,D}], fit }
  */
-export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate = null, thought = true, n = 6, photos = 0 } = {}) {
+export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate = null, thought = true, n = 6, photos = 0, textScale = 1 } = {}) {
   W = Math.max(200, W || 390); H = Math.max(240, H || 844);
   const U = Math.min(W, H);
   const XR = freeW > 0 ? Math.min(W, freeW) : W;
   const E = LAGOON.EDGE;
   const r = Math.round(clamp(0.08 * U, 22, 38));
-  const D = Math.round(clamp(0.125 * U, LAGOON.DROP_MIN, LAGOON.DROP_MAX));
+  const D = Math.round(clamp(0.125 * U, LAGOON.DROP_MIN, LAGOON.DROP_MAX)), DROP = D;
   const hy = Math.round(H * LAGOON.HORIZON);
   const bandB = band ? (band.y || 0) + (band.h || 0) : 0;
   const top = bandB + LAGOON.TOP_GAP, bottom = H - LAGOON.BOTTOM;
@@ -118,17 +119,20 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
   const mw = (M.right ?? M.left + M.width) - M.left;
   const K = { x0: M.left + 0.05 * mw - LAGOON.GAP, x1: M.left + 0.95 * mw + LAGOON.GAP, y0: M.top - LAGOON.GAP, y1: (M.bottom ?? M.top + M.height) };
   const inner = XR - 2 * E;
-  const tagH = 2 * LAGOON.TAG_LINE + 2 * LAGOON.TAG_PAD_Y;
-  const tagWBelow = Math.min(LAGOON.TAG_MAX, inner);
-  const tagWSide = clamp(Math.round(XR * 0.44), LAGOON.TAG_SIDE_MIN, LAGOON.TAG_SIDE_MAX);
+  // (the tag's words grow with the person's text size: its reserved place grows with them)
+  const tk = clamp(+textScale || 1, 1, 1.4);
+  const tagH = Math.ceil(2 * LAGOON.TAG_LINE * tk + 2 * LAGOON.TAG_PAD_Y);
+  const tagWBelow = Math.min(Math.round(LAGOON.TAG_MAX * tk), inner);
+  const tagWSide = Math.min(Math.round(clamp(Math.round(XR * 0.44), LAGOON.TAG_SIDE_MIN, LAGOON.TAG_SIDE_MAX) * tk), Math.round(inner * 0.6));
   const wMax = Math.min(LAGOON.PLATE_MAX, inner);
   const plates = thought && plate
     ? [{ maxW: wMax, lines: 2 }, { maxW: wMax, lines: 1 }, { maxW: Math.round(wMax * 0.66), lines: 2 }, { maxW: Math.round(wMax * 0.66), lines: 3 },
       // (a short, wide screen: the words on one wide line)
       ...(inner > wMax + 40 ? [{ maxW: Math.round(Math.min(inner, 2.2 * wMax)), lines: 1 }] : []), null]
     : [null];
-  const want = clamp(Math.round(n), 2, 6) + Math.max(0, Math.min(7, photos | 0));
   const needDrops = clamp(Math.round(n), 2, 6);
+  const nOrbs = Math.max(0, Math.min(7, photos | 0));
+  const DO = Math.round(D * LAGOON.ORB_K);
 
   /** The cluster for a thought centred at (cx, cy). */
   function clusterAt(cx, cy, P, mode) {
@@ -161,8 +165,9 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
     return out;
   }
   /** Greedy, deterministic: drops round the thought (in the air first), sides kept even, every pair DROP_GAP apart. */
-  function pickSlots(cl, count) {
+  function pickSlots(cl, count, D = DROP, more = null) {
     const taken = cl ? [cl.all] : [];
+    if (more) for (const p of more) taken.push({ x0: p.x - p.D / 2, y0: p.y - TIP * p.D, x1: p.x + p.D / 2, y1: p.y + p.D / 2 });
     const C = candidates(D, taken);
     const cx = cl ? (cl.body.x0 + cl.body.x1) / 2 : XR / 2, cy = cl ? (cl.body.y0 + cl.body.y1) / 2 : (top + K.y0) / 2;
     const ring = Math.max(r * 2.6, D * 1.6);
@@ -229,13 +234,14 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
         const cy = tr.over ? yLo + (yHi - yLo) * 0.62 : clamp(K.y0 + r, yLo, yHi);
         cl = clusterAt(cx, cy, PP, mode);
         if (!inside(cl.all) || hits(cl.all, K, 2)) continue;
-        const drops = pickSlots(cl, want);
+        const drops = pickSlots(cl, needDrops);
         // (a thought without its words plate is only ever the last resort: the person's words always show)
-        const ok = drops.length >= needDrops && !(thought && plate && !PP);
+        // (and a plate that shows the person's words whole: one that has to cut them short only when nothing else fits)
+        const ok = drops.length >= needDrops && !(thought && plate && !PP) && !PP?.cut;
         // (every feeling drop first; photo orbs are welcome, never at the cost of the tag under the thought or a wide plate)
-        const score = (ok ? 1000 + Math.min(drops.length - needDrops, 7) * 8 : drops.length * 10) - pi * 40 - mi * 60 - ti * 15 - (thought && plate && !PP ? 5000 : 0);
+        const score = (ok ? 1000 : drops.length * 10) - pi * 40 - mi * 60 - ti * 15 - (thought && plate && !PP ? 5000 : 0) - (PP?.cut ? 300 : 0);
         if (!best || score > best.score) best = { score, cl, drops, ok, cx, cy, pi, mode };
-        if (ok && drops.length >= want && pi === 0 && mi === 0) break plan;
+        if (ok && pi === 0 && mi === 0) break plan;
       }
     }
   }
@@ -244,11 +250,11 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
     const cx = clamp(XR / 2, E + tagWBelow / 2, XR - E - tagWBelow / 2);
     const cy = clamp(K.y0 - 4 - r - LAGOON.TAG_GAP - tagH, top + r, Math.max(top + r, bottom - r));
     const cl = clusterAt(cx, cy, null, 'below');
-    best = { score: 0, cl, drops: pickSlots(cl, want), ok: false, cx, cy, pi: -1, mode: 'below' };
+    best = { score: 0, cl, drops: pickSlots(cl, needDrops), ok: false, cx, cy, pi: -1, mode: 'below' };
   }
   const drops = best.drops.slice(0, needDrops);
-  // the photo orbs: what is left, a little smaller, the furthest from the thought last
-  const orbs = best.drops.slice(needDrops).map((p) => ({ x: p.x, y: p.y, D: Math.round(D * LAGOON.ORB_K) }));
+  // the photo orbs: in the room the drops left, a little smaller (photos that find no place wait their turn)
+  const orbs = nOrbs ? pickSlots(best.cl, nOrbs, DO, drops).map((p) => ({ x: p.x, y: p.y, D: DO })) : [];
   return {
     U, r, D, hy, top, bottom, XR, K, band: band ? { x: 0, y: band.y || 0, w: W, h: band.h || 0 } : null,
     thought: { x: Math.round(best.cx), y: Math.round(best.cy), r },
