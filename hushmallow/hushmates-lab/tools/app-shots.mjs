@@ -413,6 +413,40 @@ try {
     await shot(page, '17c-share-video');
     await page.getByRole('button', { name: 'Done' }).click();
   } else report.expected.push('this browser can’t record video: the video checks were not run');
+  // its writer takes their words back while the screen is open: nothing is made, and the words are gone from the choices
+  await humanPick.first().click();
+  await call(members[0], 'withdrawPerspective', { perspectiveId: allowedGift.id });
+  await clearDrawn();
+  await hook(page, 'share-save').click();
+  await page.locator('.hm-toast', { hasText: 'stopped sharing' }).waitFor({ timeout: 15000 });
+  check(!(await page.locator('[data-test="share-image"]').count()) && !(await drawnText()), 'a writer took their words back mid-share: nothing is made or drawn');
+  check(!(await humanPick.count()) && !(await page.locator('body').innerText()).includes(PERSPECTIVES[2]), 'and their words are gone from the screen');
+  // the author lets the feeling go in another tab, having chosen their own words: they go, and the Mallow's (not kept) with them
+  await page.locator('.hm-toast').first().waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
+  await hook(page, 'share-words').click();
+  await call(A, 'releaseJourney', { journeyId: j3.id });
+  await clearDrawn();
+  await hook(page, 'share-save').click();
+  await page.locator('.hm-toast', { hasText: 'was let go' }).waitFor({ timeout: 15000 });
+  await shot(page, '17c-share-let-go');
+  check(!(await page.locator('[data-test="share-image"]').count()) && !(await drawnText()), 'the feeling was let go mid-share: nothing is made until the author looks again');
+  check(!(await page.locator('[data-test="share-words"]').count()), 'and “Include my own words” is gone');
+  await page.locator('.hm-toast').first().waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
+  await clearDrawn();
+  await hook(page, 'share-save').click();
+  await hook(page, 'share-image').waitFor({ timeout: 20000 });
+  const afterLetGo = await drawnText();
+  check(!afterLetGo.includes('replaying what I said') && !afterLetGo.includes(PERSPECTIVES[2].split(' ').slice(0, 3).join(' '))
+    && !afterLetGo.includes(PRIVATE_P.split(' ').slice(0, 4).join(' ')) && !afterLetGo.includes(opening), 'a picture made afterwards draws none of the words that were let go or taken back');
+  await page.getByRole('button', { name: 'Done' }).click();
+  // the same journey deleted elsewhere while its share screen is still open: nothing is made, and making is switched off
+  probing = true;                                                        // the check is refused on purpose: the journey is gone
+  await call(A, 'deleteJourney', { journeyId: j3.id, confirm: 'DELETE' });
+  await clearDrawn();
+  await hook(page, 'share-save').click();
+  await page.locator('.hm-toast', { hasText: 'isn’t here any more' }).waitFor({ timeout: 15000 });
+  probing = false;
+  check(!(await page.locator('[data-test="share-image"]').count()) && !(await drawnText()) && await hook(page, 'share-save').isDisabled(), 'a journey deleted mid-share: nothing is made, and the buttons are switched off');
   // Send it out again: the quiet feeling travels once more, a second account catches it, it comes home with 1
   await page.goto(`${base}/app/`);
   await hook(page, 'nav-returned').waitFor({ timeout: 20000 });

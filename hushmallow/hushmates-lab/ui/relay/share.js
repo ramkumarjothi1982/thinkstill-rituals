@@ -39,6 +39,7 @@ export function share(dev, { id } = {}) {
   let items = itemsOf(j);
   const allowed = (p) => p.kind === 'mallow' || p.shareable === true;
   const opts = { label: false, words: false, picks: new Set() };
+  const pickedKind = new Map();                                           // id → 'human' | 'mallow', for saying what went
   let hasMallow = items.some((p) => p.kind === 'mallow');
   let story = null;
   let alive = true;
@@ -99,9 +100,10 @@ export function share(dev, { id } = {}) {
   }
 
   // ----------------------------------------------------------- choices --
+  const wordsSwitch = j.text ? sentenceSwitch({ label: 'Include my own words', hint: 'Off unless you choose. Leave out anything that could identify you or anyone else.', checked: opts.words, test: 'share-words', onChange: (on) => { opts.words = on; refresh(); return true; } }) : null;
   const switches = [
     j.label ? sentenceSwitch({ label: 'Show the feeling’s name', checked: opts.label, test: 'share-label', onChange: (on) => { opts.label = on; refresh(); return true; } }) : null,
-    j.text ? sentenceSwitch({ label: 'Include my own words', hint: 'Off unless you choose. Leave out anything that could identify you or anyone else.', checked: opts.words, test: 'share-words', onChange: (on) => { opts.words = on; refresh(); return true; } }) : null,
+    wordsSwitch,
   ].filter(Boolean);
   switches.forEach((s) => s.classList.add('kit-switch--plain'));
 
@@ -116,7 +118,7 @@ export function share(dev, { id } = {}) {
       type: 'button', role: 'checkbox', class: 'hf-pick', 'aria-checked': String(opts.picks.has(p.id)), dataset: { test: 'share-pick', kind: p.kind },
       onclick: () => {
         const on = !opts.picks.has(p.id);
-        if (on) opts.picks.add(p.id); else opts.picks.delete(p.id);
+        if (on) { opts.picks.add(p.id); pickedKind.set(p.id, p.kind); } else opts.picks.delete(p.id);
         btn.setAttribute('aria-checked', String(on));
         refresh();
       },
@@ -142,36 +144,52 @@ export function share(dev, { id } = {}) {
   paintPicks();
   /**
    * The journey as the service has it now. Anything chosen that is no longer allowed is
-   * taken out (and the numbers follow). → how many chosen perspectives were taken out
+   * taken out (and the numbers follow): a perspective its writer stopped sharing or took back,
+   * and the author's own words once the feeling was let go.
+   * → { dropped: perspectives taken out, wordsGone: the author's chosen words are gone }
    */
   function adopt(view) {
     j = view;
     items = itemsOf(view);
     hasMallow = items.some((p) => p.kind === 'mallow');
     let dropped = 0;
+    let mallowGone = false;
     for (const pid of [...opts.picks]) {
       const p = items.find((x) => x.id === pid);
-      if (!p || !allowed(p)) { opts.picks.delete(pid); dropped += 1; }
+      if (!p || !allowed(p)) { opts.picks.delete(pid); if (pickedKind.get(pid) === 'mallow') mallowGone = true; else dropped += 1; }
     }
+    // the feeling was let go (its words cleared): the choice to include them goes, once
+    let wordsGone = false;
+    if (!j.text && wordsSwitch?.isConnected) { wordsGone = opts.words; opts.words = false; wordsSwitch.remove(); }
     // a row being redrawn can't keep focus: it moves to the section's heading, not to the top of the page
     const onPick = picksBox.contains(document.activeElement);
     paintPicks();
     if (onPick) { const head = picksSec.querySelector('h2'); head.setAttribute('tabindex', '-1'); head.focus(); }
     refresh();
-    return dropped;
+    return { dropped, wordsGone, mallowGone };
   }
-  const changedMind = (n) => `${n === 1 ? 'A writer has' : 'Some writers have'} stopped sharing ${n === 1 ? 'their perspective' : 'theirs'}, so ${n === 1 ? 'it’s' : 'they’re'} no longer in your story. Have a look, then make it again.`;
+  const changedMind = ({ dropped: n, wordsGone, mallowGone }) => [
+    wordsGone ? 'This feeling was let go, so your own words are no longer in your story.' : '',
+    mallowGone ? 'The Mallow perspective you chose isn’t part of this journey any more.' : '',
+    n ? `${n === 1 ? 'A writer has' : 'Some writers have'} stopped sharing ${n === 1 ? 'their perspective' : 'theirs'}, so ${n === 1 ? 'it’s' : 'they’re'} no longer in your story.` : '',
+  ].filter(Boolean).join(' ');
+  const gone = () => {
+    for (const b of [makePic, makeVid]) if (b) b.disabled = true;
+    dev.toast('This journey isn’t here any more, so nothing was made.', { tone: 'warn', ms: 5000 });
+  };
   /** Asked of the service just before anything is made: false (and nothing is made) if it can't say, or if a choice had to go. */
   async function stillAllowed() {
     let view;
-    try { view = await c.api('getJourney', { journeyId: id }); } catch {
+    try { view = await c.api('getJourney', { journeyId: id }); } catch (e) {
+      if (!alive) return false;
+      if (e?.code === 'not-found') { gone(); return false; }
       dev.toast('Couldn’t check with Hushmates just now, so nothing was made. Please try again in a moment.', { tone: 'warn', ms: 5000 });
       return false;
     }
     if (!alive) return false;
-    if (!view || !view.id) { dev.toast('This journey isn’t here any more.', { tone: 'warn' }); return false; }
-    const dropped = adopt(view);
-    if (dropped) { dev.toast(changedMind(dropped), { tone: 'warn', ms: 6500 }); return false; }
+    if (!view || !view.id) { gone(); return false; }
+    const changed = adopt(view);
+    if (changed.dropped || changed.wordsGone || changed.mallowGone) { dev.toast(`${changedMind(changed)} Have a look, then make it again.`, { tone: 'warn', ms: 6500 }); return false; }
     return true;
   }
 
@@ -253,9 +271,9 @@ export function share(dev, { id } = {}) {
     update(state, detail) {
       if (!detail?.journeys || !alive) return;
       const fresh = c.journey(id);
-      if (!fresh) return;
-      const dropped = adopt(fresh);
-      if (dropped) dev.toast(changedMind(dropped).replace(' Have a look, then make it again.', ''), { tone: 'warn', ms: 6500 });
+      if (!fresh) { if (!makePic.disabled) gone(); return; }
+      const changed = adopt(fresh);
+      if (changed.dropped || changed.wordsGone || changed.mallowGone) dev.toast(changedMind(changed), { tone: 'warn', ms: 6500 });
     },
     destroy() { alive = false; cancelAnimationFrame(raf); },
   };
