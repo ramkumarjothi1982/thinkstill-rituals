@@ -3,6 +3,10 @@
   "checks": [
     {
       "ok": true,
+      "what": "“Support” on the sign-in screen: 000, Lifeline and 1800RESPECT can be tapped (tel:000 tel:131114 tel:1300659467 tel:139276 tel:1800737732 tel:1300224636)"
+    },
+    {
+      "ok": true,
       "what": "the 18+ question isn’t asked twice"
     },
     {
@@ -11,11 +15,27 @@
     },
     {
       "ok": true,
+      "what": "“Support” on the release screen: 000, Lifeline and 1800RESPECT can be tapped (tel:000 tel:131114 tel:1300659467 tel:139276 tel:1800737732 tel:1300224636)"
+    },
+    {
+      "ok": true,
+      "what": "opening and closing support keeps the draft"
+    },
+    {
+      "ok": true,
       "what": "the catcher is offered the author’s feeling"
     },
     {
       "ok": true,
       "what": "the catcher never learns who wrote it"
+    },
+    {
+      "ok": true,
+      "what": "“Support” on the screen where a catcher writes a perspective: 000, Lifeline and 1800RESPECT can be tapped (tel:000 tel:131114 tel:1300659467 tel:139276 tel:1800737732 tel:1300224636)"
+    },
+    {
+      "ok": true,
+      "what": "opening and closing support keeps the catcher’s words"
     },
     {
       "ok": true,
@@ -32,6 +52,10 @@
     {
       "ok": true,
       "what": "five perspectives in the database, no more"
+    },
+    {
+      "ok": true,
+      "what": "“Support” on the homecoming: 000, Lifeline and 1800RESPECT can be tapped (tel:000 tel:131114 tel:1300659467 tel:139276 tel:1800737732 tel:1300224636)"
     },
     {
       "ok": true,
@@ -87,7 +111,7 @@
     },
     {
       "ok": true,
-      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"5670b2fd-1553-46fc-8c8d-74d651f53a73\"}])"
+      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"07a8fcfa-45b6-408f-a05a-bf310918933c\"}])"
     },
     {
       "ok": true,
@@ -215,6 +239,10 @@
     },
     {
       "ok": true,
+      "what": "“Support” on the release screen while offline: 000, Lifeline and 1800RESPECT can be tapped (tel:000 tel:131114 tel:1300659467 tel:139276 tel:1800737732 tel:1300224636)"
+    },
+    {
+      "ok": true,
       "what": "back online: the same feeling went (once)"
     },
     {
@@ -236,6 +264,18 @@
     {
       "ok": true,
       "what": "the catcher is offered the feeling they then report"
+    },
+    {
+      "ok": true,
+      "what": "“Someone may be in danger” says the team can’t contact anyone, and to call 000"
+    },
+    {
+      "ok": true,
+      "what": "and that note goes for other reasons"
+    },
+    {
+      "ok": true,
+      "what": "the reporter is told the team is small and not there around the clock, with no 24-hour promise"
     },
     {
       "ok": true,
@@ -311,7 +351,7 @@
     },
     {
       "ok": true,
-      "what": "“Get support now”: 000, Lifeline, Suicide Call Back and 13YARN can be tapped (tel:000 tel:131114 tel:1300659467 tel:139276)"
+      "what": "“Get support now”: 000, Lifeline, Suicide Call Back, 13YARN, 1800RESPECT and Beyond Blue can be tapped (tel:000 tel:131114 tel:1300659467 tel:139276 tel:1800737732 tel:1300224636)"
     },
     {
       "ok": true,
@@ -584,7 +624,7 @@
   ],
   "server": [],
   "drawn": {
-    "picture": "Hushmates I released one thought into the world… Two strangers saw it differently. Here’s what came back. A HUSHMATE’S PERSPECTIVE “Perhaps they’re worried about saying the wrong thing, and silence felt safer.” What would they see in yours? Hushmallow A softer space for feelings.",
-    "mallowPicture": "Hushmates I released one thought into the world… Two strangers saw it differently. Here’s what came back. A MALLOW PERSPECTIVE AUTOMATICALLY GENERATED “There’s no rush with this one. Let’s just sit with it a moment. You only have the replay from inside your own head. You don’t have anyone else’s.” What would they see in yours? Hushmallow A softer space for feelings."
+    "picture": "Hushmates I released one thought into the world… Two strangers saw it differently. Here’s what came back. A HUSHMATE’S PERSPECTIVE “Perhaps they’re worried about saying the wrong thing, and silence felt safer.” A MALLOW PERSPECTIVE AUTOMATICALLY GENERATED “Oh, that sounds like a lot to be holding. Let’s go gently. An awkward moment is a few seconds out of a whole conversation.” What would they see in yours? Hushmallow A softer space for feelings.",
+    "mallowPicture": "Hushmates I released one thought into the world… Two strangers saw it differently. Here’s what came back. A MALLOW PERSPECTIVE AUTOMATICALLY GENERATED “Oh, that sounds like a lot to be holding. Let’s go gently. An awkward moment is a few seconds out of a whole conversation.” What would they see in yours? Hushmallow A softer space for feelings."
   }
 }
