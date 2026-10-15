@@ -7,3 +7,6 @@
 2026-10-15 launch run: + a fixed sample of the H1 blind held-out sets (90 risk, 30 everyday look-alikes, 12 griefs)
 --max-calls 160
 --max-usd 4
+2026-10-15 fix round: the merged launch fix (output check, invisible characters, earlier angles, normaliser) + 12 synthetic disguised-risk and look-alike cases
+--max-calls 160
+--max-usd 4
