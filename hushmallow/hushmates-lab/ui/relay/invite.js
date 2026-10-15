@@ -8,6 +8,7 @@
 import { h, humane } from '../dom.js';
 import { MALLOWS } from '../mallows-data.js';
 import { room, stage, Speech, line, checkRow, privacySheet, put } from './parts.js';
+import { supportPill } from './common.js';
 
 export function invite(dev) {
   const m = MALLOWS.noomi;
@@ -52,7 +53,7 @@ export function invite(dev) {
     h('div', { class: 'hf-actions' },
       join,
       h('button', { type: 'button', class: 'hf-link hf-link--centre', dataset: { test: 'invite-privacy' }, onclick: () => privacySheet(dev) }, 'Privacy details')));
-  r.el.append(body);
+  r.el.append(h('div', { class: 'hf-head' }, h('header', { class: 'rl-top' }, h('span', { class: 'rl-top-title' }), supportPill(dev))), body);
 
   async function submit() {
     if (join.disabled) return;

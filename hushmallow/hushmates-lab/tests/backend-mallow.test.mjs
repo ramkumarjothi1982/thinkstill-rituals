@@ -487,10 +487,11 @@ test('library avoid list: never an avoided angle (by id or by text hash) when th
   assert.notEqual(byHash.text, first.text);
   // avoid everything it could say: it still answers, with the one seen longest ago
   const everything = libraryCatalogue().angles.map((a) => a.id);
-  const all = [...everything.filter((id) => id !== 'um-ang7'), 'um-ang7'];   // um-ang7 is the oldest
+  const oldest = first.angleId;   // one this feeling can get, seen longest ago
+  const all = [...everything.filter((id) => id !== oldest), oldest];
   const last = await lib({ text: FEELING, label: 'worry', mallow: 'noomi', avoid: all });
   assert.equal(last.status, 'ok');
-  assert.equal(last.angleId, 'um-ang7');
+  assert.equal(last.angleId, oldest);
 });
 
 test('library determinism: the same words, label, Mallow and attempt always give the same answer (no Math.random)', async () => {

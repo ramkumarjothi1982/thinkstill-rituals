@@ -431,7 +431,7 @@ export function catchScene(dev) {
     // each ending says what really happened
     const GONE = {
       'already-contributed': ['You’ve already seen this one differently.', 'Each person offers one perspective per feeling.'],
-      'account-inactive': ['Catching is paused for your account.', 'Our safety team has paused your account for now. Feelings you already released still come home to you.'],
+      'account-inactive': ['Catching is paused for your account.', 'Our safety team has paused catching for your account for now. Feelings you already released still come home to you.'],
     }[e?.code];
     speech.say(GONE ? '' : 'It drifted on before we could catch it. There will be others.');
     put(body,

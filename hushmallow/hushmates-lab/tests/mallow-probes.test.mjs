@@ -66,3 +66,37 @@ test('the Mallow library: a death or pregnancy loss is recognised as grief; pass
   for (const [label, text] of P.notGrief) { const got = await ids(text, label); if (got.some((id) => /^hm-loss-/.test(id))) wrong.push(`not grief · ${label} · ${text}: ${got.join(' ')}`); }
   assert.deepEqual(wrong, []);
 });
+
+// Tier 0 (docs/safety/TIER0_SELF_ASSESSMENT.md §3): where the library's everyday lines must not reach.
+test('the Mallow library: harm at home, a worrying silence, a mistake that hurt someone, a medical test and a death told with "he" each get the right lines', async () => {
+  const { SCENARIOS } = await import('../../src/ultra/frameworks.js');
+  const { libraryCatalogue } = await import('../core/perspectives.js');
+  const of = (...scenarioIds) => new Set(SCENARIOS.filter((s) => scenarioIds.includes(s.id)).flatMap((s) => s.angles.map((a) => a.id)));
+  const harmIds = of('partner-distant', 'family-argument', 'seemed-annoyed', 'family-criticism', 'work-criticism', 'appearance-comment', 'not-listened', 'future-worry');
+  const silenceIds = of('unanswered-message', 'no-text-back');
+  const mistakeIds = of('mistake-judged');
+  const loud = libraryCatalogue().openers.filter((o) => o.family === 'heavy' && !o.tender).map((o) => o.text.split('{adj}')[0]);
+  const wrong = []; let answered = 0;
+  const check = async (label, text, bad, why) => {
+    for (const r of await picks(text, label)) {
+      if (r.status !== 'ok') continue;
+      answered++;
+      if (bad(r)) wrong.push(`${why} · ${label} · ${text}: ${r.angleId} · ${r.text}`);
+    }
+  };
+  for (const [label, text] of [
+    ['anger', 'He calls me names and puts me down every night.'],
+    ['worry', 'I walk on eggshells around him, he gets so angry if I see my friends.'],
+    ['sadness', 'My mum screams at me every day and says I am useless.'],
+    ['frustration', 'My boyfriend goes through my phone and gets angry when I talk to anyone.'],
+  ]) await check(label, text, (r) => harmIds.has(r.angleId) || /^gen-[a-z]+-[a-z-]+-ang/.test(r.angleId) || loud.some((o) => r.text.startsWith(o)), 'harm at home');
+  for (const [label, text] of [
+    ['worry', 'My friend sent me thanks for everything and now she is not answering my messages.'],
+    ['worry', 'My daughter has been really low and has not replied to my texts for three days.'],
+  ]) await check(label, text, (r) => silenceIds.has(r.angleId), 'a worrying silence');
+  await check('sadness', 'I made a mistake at work and a patient got hurt.', (r) => mistakeIds.has(r.angleId), 'a mistake that hurt someone');
+  await check('worry', 'I have a blood test tomorrow and I am nervous.', (r) => /^hm-exam-/.test(r.angleId), 'a medical test is not an exam');
+  await check('sadness', 'I miss him so much since he passed.', (r) => !/^hm-loss-/.test(r.angleId), 'a death told with "he"');
+  assert.deepEqual(wrong, []);
+  assert.ok(answered > 50, `only ${answered} answers were checked`);
+});

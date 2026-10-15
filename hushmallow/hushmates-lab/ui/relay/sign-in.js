@@ -10,6 +10,7 @@
 import { h, humane } from '../dom.js';
 import { MALLOWS } from '../mallows-data.js';
 import { room, stage, Speech, line, privacySheet, put, morph, focusHeading } from './parts.js';
+import { supportPill } from './common.js';
 
 export const CODE_LENGTH = 6;
 const RESEND_AFTER_MS = 60e3;                  // a new code can be asked for a minute after the last (Supabase's own limit)
@@ -90,7 +91,7 @@ export function signin(dev, params = {}) {
   };
 
   const body = h('form', { class: 'hf-scroll hf-invite-scroll hf-signin-scroll', novalidate: '', onsubmit: (e) => { e.preventDefault(); submit(); } });
-  r.el.append(body);
+  r.el.append(h('div', { class: 'hf-head' }, h('header', { class: 'rl-top' }, h('span', { class: 'rl-top-title' }), supportPill(dev))), body);
 
   function build() {
     hideError();

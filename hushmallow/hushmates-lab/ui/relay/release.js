@@ -67,7 +67,7 @@ export function release(dev, params = {}) {
       count.textContent = n > max * 0.8 ? `${n} / ${max}` : '';
       count.classList.toggle('is-over', n > max);
       go.disabled = blocked || n < limits().feelingMinChars || n > max || !draft.consent;
-      why.textContent = blocked ? '' : n < limits().feelingMinChars ? 'Write a few words first.' : n > max ? 'Your words are a little too long.' : !draft.consent ? 'Tick “Share anonymously with Hushmates participants” to release.' : '';
+      why.textContent = blocked ? '' : n < limits().feelingMinChars ? 'Write a few words first.' : n > max ? 'Your words are a little too long.' : !draft.consent ? 'Tick “Share with Hushmates participants, without my name” to release.' : '';
       why.hidden = !why.textContent;
       el.style.setProperty('--fill', String(Math.min(1, n / 160)));
     };
@@ -100,7 +100,7 @@ export function release(dev, params = {}) {
 
     const consent = checkRow({
       id: 'hf-consent', test: 'share-consent', checked: draft.consent,
-      label: 'Share anonymously with Hushmates participants',
+      label: 'Share with Hushmates participants, without my name',   // pseudonymous, never "anonymous" (D8)
       hint: 'Your words may be shown to other people who can offer different perspectives. Please leave out identifying details.',
       extra: h('button', { type: 'button', class: 'hf-link', dataset: { test: 'privacy-link' }, onclick: () => privacySheet(dev) }, 'Privacy details'),
       onChange: (on) => { draft.consent = on; sync(); if (on) st.mallow.pulseBlush(); },

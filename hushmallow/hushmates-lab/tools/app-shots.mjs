@@ -144,6 +144,18 @@ async function device({ width = 390, height = 844, mobile = true, motion = 'redu
   return { ctx, page };
 }
 const hook = (page, s) => page.locator(`[data-test="${s}"]:visible`).first();
+// Tier 0: "Support" opens the crisis lines over the current screen, from every scene, and closing it leaves
+// the screen (and any draft) as it was
+async function supportHere(p, where) {
+  const pill = p.locator('[data-test="get-support"]:visible').first();
+  if (!(await pill.count())) { check(false, `“Support” is in the header on the ${where}`); return; }
+  await pill.click();
+  await p.locator('.hm-sheet [data-test="support-resources"]').waitFor({ timeout: 10000 });
+  const tels = await p.locator('.hm-sheet [data-test="support-call"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  check(['tel:000', 'tel:131114', 'tel:1800737732'].every((t) => tels.includes(t)), `“Support” on the ${where}: 000, Lifeline and 1800RESPECT can be tapped (${tels.join(' ')})`);
+  await p.locator('.hm-sheet-close').click();
+  await p.locator('.hm-sheet').waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
+}
 const settle = (page, ms = 700) => page.waitForTimeout(ms);
 async function shot(page, name, { full = false, staff = false } = {}) {
   await settle(page);
@@ -218,6 +230,7 @@ try {
   await page.goto(`${base}/app/`);
   await hook(page, 'signin-email').waitFor();
   await shot(page, '01-signin-email');
+  await supportHere(page, 'sign-in screen');
   await hook(page, 'signin-email').fill('author@example.com');
   await hook(page, 'signin-send').click();
   await hook(page, 'signin-code').waitFor();
@@ -250,6 +263,8 @@ try {
   await hook(page, 'label-worry').click();
   await hook(page, 'share-consent').click();
   await shot(page, '06-release');
+  await supportHere(page, 'release screen');
+  check((await hook(page, 'feeling-text').inputValue()) === F1, 'opening and closing support keeps the draft');
   await hook(page, 'release-submit').click();
   await hook(page, 'release-sent').waitFor({ timeout: 20000 });
   await shot(page, '07-release-sent');
@@ -266,6 +281,8 @@ try {
   await hook(catcher.page, 'reframe-text').waitFor({ timeout: 15000 });
   await hook(catcher.page, 'reframe-text').fill(PERSPECTIVES[0]);
   await shot(catcher.page, '09-desktop-catch-write');
+  await supportHere(catcher.page, 'screen where a catcher writes a perspective');
+  check((await hook(catcher.page, 'reframe-text').inputValue()) === PERSPECTIVES[0], 'opening and closing support keeps the catcher’s words');
   await hook(catcher.page, 'reframe-submit').click();
   await catcher.page.waitForTimeout(2500);
   await shot(catcher.page, '10-desktop-catch-sent');
@@ -285,6 +302,7 @@ try {
   await page.locator('[data-test^="returned-"]:visible').first().click();
   await hook(page, 'homecoming-ready').waitFor({ timeout: 30000 });
   const home5 = await shot(page, '12-homecoming-five');
+  await supportHere(page, 'homecoming');
   check(/5 of 5 human perspectives/.test(home5), 'the homecoming says five people caught it');
 
   // --------------------------- 3. two people (partial), nobody (zero), and the Mallow --
@@ -516,6 +534,7 @@ try {
   await page.waitForTimeout(2500);
   const offline = await shot(page, '18-offline');
   check(/connection|offline|internet/i.test(offline), 'offline: says so in plain words');
+  await supportHere(page, 'release screen while offline');
   await author.ctx.setOffline(false);
   await page.waitForTimeout(1500);
   await hook(page, 'release-submit').click();
@@ -550,10 +569,15 @@ try {
   check((await catcher.page.locator('body').innerText()).includes('useless'), 'the catcher is offered the feeling they then report');
   await hook(catcher.page, 'offer-more').click();
   await hook(catcher.page, 'report-feeling').click();
+  await hook(catcher.page, 'reason-safety').click();
+  check(await catcher.page.locator('[data-test="report-danger-hint"]:visible').count() === 1
+    && /can’t contact them/.test(await hook(catcher.page, 'report-danger-hint').innerText()), '“Someone may be in danger” says the team can’t contact anyone, and to call 000');
   await hook(catcher.page, 'reason-unkind').click();
+  check(await catcher.page.locator('[data-test="report-danger-hint"]:visible').count() === 0, 'and that note goes for other reasons');
   await hook(catcher.page, 'report-send').click();
   await hook(catcher.page, 'report-received').waitFor({ timeout: 15000 });
-  await shot(catcher.page, '20-desktop-report-received');
+  const received = await shot(catcher.page, '20-desktop-report-received');
+  check(/not here around the clock/.test(received) && !/24 hours/.test(received), 'the reporter is told the team is small and not there around the clock, with no 24-hour promise');
   const desk = await device({ width: 1280, height: 860, mobile: false, motion: 'no-preference' });
   await desk.page.clock.install();                                      // time flows as usual, and the test can skip a minute
   await desk.page.goto(`${base}/staff/`);
@@ -678,7 +702,7 @@ try {
   await hook(page, 'open-support').click();
   await page.locator('.hm-sheet [data-test="support-resources"]').waitFor({ timeout: 10000 });
   const lines = await page.locator('.hm-sheet [data-test="support-call"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-  check(['tel:000', 'tel:131114', 'tel:1300659467', 'tel:139276'].every((t) => lines.includes(t)), `“Get support now”: 000, Lifeline, Suicide Call Back and 13YARN can be tapped (${lines.join(' ')})`);
+  check(['tel:000', 'tel:131114', 'tel:1300659467', 'tel:139276', 'tel:1800737732', 'tel:1300224636'].every((t) => lines.includes(t)), `“Get support now”: 000, Lifeline, Suicide Call Back, 13YARN, 1800RESPECT and Beyond Blue can be tapped (${lines.join(' ')})`);
   await page.locator('.hm-sheet-close').click();
   await page.locator('.hm-sheet').waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
   await hook(page, 'open-data').click();

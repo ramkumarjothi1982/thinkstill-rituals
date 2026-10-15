@@ -4,8 +4,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { phrasings, toCsv, parseCsv, score, kappa, outcome, sampleIds, libraryCsv } from '../tools/safety-eval.mjs';
+import {
+  phrasings, toCsv, parseCsv, score, kappa, outcome, sampleIds, libraryCsv, outcomeDetail, normalisePhrasing, LABELS, OUTCOMES, DANGER_TITLE,
+  displaySample, displayCsv, displayKeyCsv, withSheetIds, probeResults, probeResultsCsv, probeBlindCsv, probeSummary,
+} from '../tools/safety-eval.mjs';
 import { libraryCatalogue } from '../core/perspectives.js';
+
+const P = JSON.parse(readFileSync(new URL('./fixtures/mallow-probes.json', import.meta.url), 'utf8'));
+const doc = (name) => readFileSync(new URL(`../docs/clinical/${name}`, import.meta.url), 'utf8');
 
 test('the clinicians’ sheet holds every phrasing once, blind to what the screen does', () => {
   const rows = phrasings();
@@ -58,7 +64,8 @@ test('the full sheet in docs/clinical is the one the harness makes (379 phrasing
 
 test('the shorter sheet for one reviewer: every undecided phrasing, each group represented, the full sheet’s ids', () => {
   const rows = phrasings();
-  // 11 phrasings appear twice in the full sheet (once in a crisis list, once among the undecided), so a phrasing can have two ids
+  // 11 phrasings appear twice in the full sheet, so a phrasing can have two ids: 10 are in the crisis list and among the
+  // undecided, and 1 is listed twice among the undecided ("I just want to disappear for a while.")
   const full = new Map();
   for (const r of parseCsv(toCsv(rows))) full.set(r.phrasing, [...(full.get(r.phrasing) || []), r.id]);
   const ids = sampleIds(rows);
@@ -98,4 +105,165 @@ test('the Mallow library sheet holds every line a Mallow can say, and docs/clini
   assert.ok(sheet.some((r) => r.from === 'reframe') && sheet.some((r) => r.from.startsWith('theme:')) && sheet.some((r) => r.from.startsWith('label:')));
   const file = readFileSync(new URL('../docs/clinical/mallow-library-for-review.csv', import.meta.url), 'utf8');
   assert.equal(file, libraryCsv(c), 'the Mallow library changed: re-export docs/clinical/mallow-library-for-review.csv (node tools/safety-eval.mjs --library <file>)');
+});
+
+test('the full sheet’s repeated phrasings are the 10 crisis/undecided pairs and 1 undecided phrasing listed twice', () => {
+  const groups = new Map();
+  for (const r of phrasings()) groups.set(r.phrasing, [...(groups.get(r.phrasing) || []), r.group]);
+  const twice = [...groups].filter(([, g]) => g.length > 1);
+  assert.equal(twice.length, 11);
+  assert.equal(twice.filter(([, g]) => g.join() === 'crisis,undecided').length, 10);
+  assert.deepEqual(twice.filter(([, g]) => g.join() === 'undecided,undecided').map(([p]) => p), ['I just want to disappear for a while.']);
+});
+
+test('outcomeDetail: the same answer as outcome, telling the writer’s own crisis screen from "Someone might be in danger" by its title', () => {
+  for (const r of phrasings()) assert.equal(outcomeDetail(r.phrasing).outcome, outcome(r.phrasing), r.phrasing);
+  assert.deepEqual(outcomeDetail(P.danger[0]), { outcome: 'danger', code: 'support', title: DANGER_TITLE });
+  const own = outcomeDetail('I want to end my life tonight.');
+  assert.equal(own.outcome, 'crisis');
+  assert.notEqual(own.title, DANGER_TITLE);
+  assert.equal(outcomeDetail(P.careNotCrisis[0]).outcome, 'care');
+  // released on the sheet, but not by the screen: the code says why
+  assert.deepEqual(outcomeDetail('Call me on 0412 345 678 tonight'), { outcome: 'release', code: 'contact', title: '' });
+  assert.deepEqual(outcomeDetail('I’m nervous about my first day at the new job.'), { outcome: 'release', code: 'ok', title: '' });
+});
+
+test('scoring shows what the headline figures leave out: every label × screen, unsure rows, misrouted risk, released care, distinct phrasings', () => {
+  const crisis = 'I want to end my life tonight.';
+  const danger = P.danger[0];
+  const care = P.careNotCrisis[0];
+  const everyday = 'I’m nervous about my first day at the new job.';
+  assert.deepEqual([outcome(crisis), outcome(danger), outcome(care), outcome(everyday)], ['crisis', 'danger', 'care', 'release']);
+  const rows = [
+    { id: '1', phrasing: crisis, agreed: 'crisis' },
+    { id: '2', phrasing: 'i want to end my life  tonight', agreed: 'crisis' },   // the same phrasing, typed differently
+    { id: '3', phrasing: crisis, agreed: 'danger' },                             // danger, shown the writer’s own crisis screen
+    { id: '4', phrasing: danger, agreed: 'crisis' },                             // crisis, shown "Someone might be in danger"
+    { id: '5', phrasing: everyday, agreed: 'care' },                             // care, released to strangers
+    { id: '6', phrasing: care, agreed: 'care' },
+    { id: '7', phrasing: everyday, agreed: 'release' },
+    { id: '8', phrasing: crisis, agreed: 'unsure' },
+    { id: '9', phrasing: everyday, agreed: 'unsure' },
+    { id: '10', phrasing: danger, clinician_1: 'danger', agreed: '' },          // labelled by one clinician, not agreed yet
+  ];
+  const s = score(rows);
+  // the headline figures are as before: misrouted risk still counts as caught
+  assert.equal(s.labelled, 7);
+  assert.equal(s.unsure, 2);
+  assert.equal(s.sensitivity, 1);
+  assert.equal(s.falseAlarmRate, 0);
+  assert.equal(s.ppv, 1);
+  assert.deepEqual(s.confusion, { crisis: { crisis: 2, danger: 1 }, danger: { crisis: 1 }, care: { release: 1, care: 1 }, release: { release: 1 } });
+  // every agreed label (unsure too) against every screen, zeros included
+  assert.deepEqual(Object.keys(s.matrix), LABELS);
+  assert.deepEqual(s.matrix, {
+    crisis: { crisis: 2, danger: 1, care: 0, release: 0 },
+    danger: { crisis: 1, danger: 0, care: 0, release: 0 },
+    care: { crisis: 0, danger: 0, care: 1, release: 1 },
+    release: { crisis: 0, danger: 0, care: 0, release: 1 },
+    unsure: { crisis: 1, danger: 0, care: 0, release: 1 },
+  });
+  for (const l of LABELS) assert.deepEqual(Object.keys(s.matrix[l]), OUTCOMES);
+  assert.deepEqual(s.unsureRows, [{ id: '8', phrasing: crisis, now: 'crisis' }, { id: '9', phrasing: everyday, now: 'release' }]);
+  assert.deepEqual(s.misrouted, [
+    { id: '3', phrasing: crisis, agreed: 'danger', now: 'crisis' },
+    { id: '4', phrasing: danger, agreed: 'crisis', now: 'danger' },
+  ]);
+  assert.deepEqual(s.careReleased, [{ id: '5', phrasing: everyday, now: 'release' }]);
+  assert.deepEqual(s.awaitingAgreement, ['10']);
+  assert.equal(s.prevalence, 4 / 7);
+  // rows, and the distinct phrasings behind them
+  assert.equal(normalisePhrasing(rows[1].phrasing), normalisePhrasing(crisis));
+  assert.equal(normalisePhrasing('I’m  done.'), normalisePhrasing("i'm done"));
+  assert.deepEqual(s.counts.sheet, { rows: 10, phrasings: 4 });
+  assert.deepEqual(s.counts.labelled, { rows: 7, phrasings: 4 });
+  assert.deepEqual(s.counts.unsure, { rows: 2, phrasings: 2 });
+  assert.deepEqual(s.counts.risk, { rows: 4, phrasings: 2 });
+  assert.deepEqual(s.counts.caught, { rows: 4, phrasings: 2 });
+  assert.deepEqual(s.counts.missed, { rows: 0, phrasings: 0 });
+  assert.deepEqual(s.counts.care, { rows: 2, phrasings: 2 });
+  assert.deepEqual(s.counts.careReleased, { rows: 1, phrasings: 1 });
+  assert.deepEqual(s.counts.misrouted, { rows: 2, phrasings: 2 });
+  assert.deepEqual(s.repeated.map((r) => [r.ids, r.agreed]), [
+    [['1', '2', '3', '8'], ['crisis', 'crisis', 'danger', 'unsure']],
+    [['4', '10'], ['crisis', '']],
+    [['5', '7', '9'], ['care', 'release', 'unsure']],
+  ]);
+  // an old sheet (ids, both clinicians' columns, agreed) scores as it always did
+  const old = score(parseCsv(`id,phrasing,clinician_1,clinician_2,agreed,notes\n1,${crisis},crisis,crisis,crisis,\n2,"${everyday}",release,care,release,\n`));
+  assert.equal(old.labelled, 2);
+  assert.equal(old.raterPairs, 2);
+  assert.deepEqual(old.missed, []);
+});
+
+test('the display sheet for the Tier A reviewer: the same 108 rows shuffled afresh, ids 1 to 108, a key back to the full sheet, nothing leaked', () => {
+  const rows = phrasings();
+  const ids = sampleIds(rows);
+  assert.equal(ids.size, 108);
+  assert.equal(displayCsv(rows), displayCsv(phrasings()), 'the display sheet is not the same every time');
+  assert.equal(displayKeyCsv(rows), displayKeyCsv(phrasings()), 'the key is not the same every time');
+  const csv = displayCsv(rows);
+  const sheet = parseCsv(csv);
+  const key = parseCsv(displayKeyCsv(rows));
+  assert.equal(sheet.length, 108);
+  assert.equal(key.length, 108);
+  // only display ids, phrasings and empty label columns: no group, note, screen outcome or full sheet id
+  assert.equal(csv.split('\n')[0], 'display_id,phrasing,clinician_1,clinician_2,agreed,notes');
+  assert.ok(sheet.every((r) => !r.clinician_1 && !r.clinician_2 && !r.agreed && !r.notes), 'the sheet came pre-labelled');
+  assert.ok(displaySample(rows).every((r) => !csv.includes(`,${r.group},`) && !csv.includes(`,${outcome(r.phrasing)},`)), 'a group or an outcome leaked');
+  assert.deepEqual(Object.keys(key[0]), ['display_id', 'full_sheet_id']);
+  assert.deepEqual(sheet.map((r) => r.display_id), Array.from({ length: 108 }, (_, i) => String(i + 1)));
+  // the same phrasings as the shorter sheet (one phrasing is on it twice), in a fresh order
+  const sample = parseCsv(toCsv(rows, { only: ids }));
+  assert.deepEqual(sheet.map((r) => r.phrasing).sort(), sample.map((r) => r.phrasing).sort());
+  assert.notDeepEqual(sheet.map((r) => r.phrasing), sample.map((r) => r.phrasing), 'not reshuffled');
+  assert.ok(sheet.filter((r, i) => r.phrasing === sample[i].phrasing).length < 10, 'too close to the shorter sheet’s order');
+  // the key maps each display id back to the full sheet's row with the same phrasing, each of the sample's ids once
+  assert.deepEqual(key.map((k) => k.display_id), sheet.map((r) => r.display_id));
+  assert.deepEqual(new Set(key.map((k) => k.full_sheet_id)), new Set([...ids].map(String)));
+  const full = new Map(parseCsv(toCsv(rows)).map((r) => [r.id, r.phrasing]));
+  const back = withSheetIds(sheet, key);
+  for (const r of back) assert.equal(full.get(r.id), r.phrasing, `display id ${r.display_id} maps to the wrong row`);
+  assert.throws(() => withSheetIds([{ display_id: '109', phrasing: 'x' }], key), /not in the key/);
+  // a labelled display sheet scores by its display ids, or by the full sheet's with the key
+  const labelled = sheet.map((r) => ({ ...r, agreed: 'release' }));
+  const held = score(labelled).falseAlarms;
+  assert.ok(held.length > 0);
+  assert.ok(held.every((f) => sheet.some((r) => r.display_id === f.id && r.phrasing === f.phrasing)), 'reported by the wrong display id');
+  const heldFull = score(withSheetIds(labelled, key)).falseAlarms;
+  assert.equal(heldFull.length, held.length);
+  assert.ok(heldFull.every((f) => full.get(f.id) === f.phrasing), 'reported by the wrong full sheet id');
+});
+
+test('docs/clinical has the current display sheet and its key', () => {
+  const rows = phrasings();
+  const again = 'node tools/safety-eval.mjs --export docs/clinical/tier-a-sample-display.csv --sample --display-ids docs/clinical/tier-a-display-key.csv';
+  assert.equal(doc('tier-a-sample-display.csv'), displayCsv(rows), `docs/clinical/tier-a-sample-display.csv is out of date: ${again}`);
+  assert.equal(doc('tier-a-display-key.csv'), displayKeyCsv(rows), `docs/clinical/tier-a-display-key.csv is out of date: ${again}`);
+});
+
+test('the Tier 0 probe: its blind sheet holds every phrasing once with nothing about intent or the screen, and screen_now is today’s screen', () => {
+  const results = parseCsv(doc('tier0-probe-results.csv'));
+  assert.deepEqual(Object.keys(results[0]), ['id', 'phrasing', 'category', 'intended', 'screen_000c0cd', 'screen_now']);
+  assert.ok(results.every((r) => LABELS.includes(r.intended) && OUTCOMES.includes(r.screen_000c0cd) && OUTCOMES.includes(r.screen_now)));
+  assert.equal(new Set(results.map((r) => normalisePhrasing(r.phrasing))).size, results.length, 'a phrasing is in the probe twice');
+  // the blind sheet: ids 1..n, phrasings only, empty label columns, not grouped by kind
+  const blind = doc('tier0-probe-blind.csv');
+  assert.equal(blind, probeBlindCsv(results), 'docs/clinical/tier0-probe-blind.csv is out of date: node tools/safety-eval.mjs --probe docs/clinical/tier0-probe-results.csv --blind docs/clinical/tier0-probe-blind.csv');
+  assert.equal(blind.split('\n')[0], 'id,phrasing,clinician_1,clinician_2,agreed,notes');
+  const sheet = parseCsv(blind);
+  assert.deepEqual(sheet.map((r) => r.id), results.map((_, i) => String(i + 1)));
+  assert.ok(sheet.every((r) => !r.clinician_1 && !r.clinician_2 && !r.agreed && !r.notes), 'the blind sheet came pre-labelled');
+  assert.deepEqual(sheet.map((r) => r.phrasing).sort(), results.map((r) => r.phrasing).sort());
+  const byId = new Map(results.map((r) => [r.id, r]));
+  for (const r of sheet) assert.equal(byId.get(r.id).phrasing, r.phrasing, `blind id ${r.id} is another row in the results`);
+  assert.ok(new Set(sheet.slice(0, 20).map((r) => byId.get(r.id).category)).size > 5, 'the blind sheet is grouped by kind');
+  // the ids and screen_now are what the tool makes, from today's screen
+  const fresh = probeResults(results.map(({ id, screen_now, ...r }) => r));
+  assert.deepEqual(fresh.map((r) => String(r.id)), results.map((r) => r.id));
+  assert.equal(doc('tier0-probe-results.csv'), probeResultsCsv(fresh),
+    'the screen now answers a Tier 0 probe phrasing differently: refresh screen_now (node tools/safety-eval.mjs --probe docs/clinical/tier0-probe-results.csv --blind docs/clinical/tier0-probe-blind.csv) and report the change');
+  // at 000c0cd the screen caught 25 of the 127 crisis or danger rows (the baseline column never changes)
+  const p = probeSummary(results);
+  assert.deepEqual([p.rows, p.risk.rows, p.risk.caughtBefore, p.care.rows, p.care.heldBefore, p.everyday.rows, p.everyday.heldBefore], [246, 127, 25, 41, 7, 54, 20]);
 });

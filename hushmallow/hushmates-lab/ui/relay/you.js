@@ -9,9 +9,7 @@ import { sentenceSwitch } from '../kit.js';
 import { face } from '../mallow.js';
 import { MALLOWS, ORDER } from '../mallows-data.js';
 import { soundOn, setSound } from '../sound.js';
-import { HARM_COPY } from '../../../src/ultra/frameworks.js';
-import { SUPPORT_RESOURCES } from '../../core/feeling-safety.js';
-import { top, supportBody } from './common.js';
+import { top, openSupport, supportPill } from './common.js';
 import { room, stage, Speech, put, privacySheet, hostNote } from './parts.js';
 
 export function you(dev) {
@@ -36,7 +34,8 @@ export function you(dev) {
     }, face(id, { size: 44 }), h('span', {}, MALLOWS[id].name))));
 
   const row = (test, ic, title, sub, onclick, cls = '') => h('button', { type: 'button', class: `hf-choice ${cls}`, dataset: { test }, onclick }, icon(ic), h('span', {}, h('strong', {}, title), sub ? h('small', {}, sub) : null));
-  const section = (label, ...kids) => h('section', { class: 'hf-you-sec' }, h('p', { class: 'kit-label' }, label), ...kids);
+  // section names are headings, so a screen reader can jump straight to "If you’re not okay"
+  const section = (label, ...kids) => h('section', { class: 'hf-you-sec' }, h('h2', { class: 'kit-label' }, label), ...kids);
   const promise = (ic, title, text) => h('li', { class: 'hf-promise' }, icon(ic), h('span', {}, h('strong', {}, title), ' ', text));
   const gifts = h('div', { class: 'hf-gifts', dataset: { test: 'gifts' } }, h('p', { class: 'hf-note' }, 'Loading…'));
 
@@ -48,6 +47,11 @@ export function you(dev) {
       h('p', { class: 'hf-sub' }, 'Others never see this name. Your feelings and perspectives travel with no name at all.'),
       h('p', { class: 'hf-note hf-you-anon' }, h('strong', {}, 'Pseudonymous, not perfectly anonymous. '), 'Words can give people away, so leave out names, places and details. Our safety team can see reported words.'),
       h('button', { type: 'button', class: 'hf-link hf-link--centre', dataset: { test: 'privacy-link' }, onclick: () => privacySheet(dev) }, 'Privacy details')),
+
+    // first, so it is never below the fold or after a long list of choices (Tier 0)
+    section('If you’re not okay',
+      h('div', { class: 'hf-choices-list' },
+        row('open-support', 'help', 'Get support now', 'Crisis lines, any time, and what to do if you’re not safe', () => openSupport(dev, { note: hostNote(dev, 'support') })))),
 
     section('Your choices',
       sentenceSwitch({ label: 'Let feelings find me', hint: 'Catch other people’s feelings when you choose to look. Always voluntary.', checked: p.catching, test: 'pref-catching', onChange: (on) => pref({ catching: on }) }),
@@ -62,13 +66,9 @@ export function you(dev) {
       h('ul', { class: 'hf-promises' },
         promise('sparkle', 'A possibility, not a verdict.', 'Perspectives offer another way of seeing, never a diagnosis, judgement or order.'),
         promise('heart', 'Five different people at most.', 'Never the author, one each, and never shown to the same person twice.'),
-        promise('star', 'Mallow perspectives are labelled.', 'They’re automatically generated (only if you allow it), never presented as a person, and never counted as one.'),
-        promise('shield', 'Rules first, people behind them.', 'Words are screened for safety and personal details by rules that can miss things, so every report goes to a person on our safety team.'),
+        promise('star', 'Mallow perspectives are labelled.', 'They’re chosen automatically from lines the Hushmates team wrote (only if you allow it), never presented as a person, and never counted as one.'),
+        promise('shield', 'Rules first, then people.', 'Words are checked for safety and personal details by rules that read English only and can miss things. Nobody on our team reads feelings as they travel. When something is reported, a person on our small safety team reads it, usually within a day or two. They aren’t counsellors, and they can’t see who anyone is or contact anyone.'),
         promise('eyeOff', 'No scoreboards, no streaks.', 'Nothing here counts how popular you are.'))),
-
-    section('If you’re not okay',
-      h('div', { class: 'hf-choices-list' },
-        row('open-support', 'help', 'Get support now', 'Crisis lines and what to do if you’re not safe', () => dev.sheet({ title: 'You deserve support', body: supportBody({ message: 'Hushmates isn’t an emergency service. If you might be in danger, or you’re not safe, please reach out now.', resources: SUPPORT_RESOURCES, stillHere: HARM_COPY.stillHere }, { note: hostNote(dev, 'support') }) })))),
 
     section('Your data',
       h('div', { class: 'hf-choices-list' },
@@ -122,7 +122,8 @@ export function deleted(dev) {
   const r = room('noomi', 'hf-deleted', { seed: 9 });
   const st = stage('noomi', { size: 'm', label: 'Noomi, waving goodbye' });
   r.el.dataset.test = 'deleted';
-  r.el.append(h('div', { class: 'hf-scroll hf-deleted-scroll' },
+  r.el.append(h('div', { class: 'hf-head' }, h('header', { class: 'rl-top' }, h('span', { class: 'rl-top-title' }), supportPill(dev))),
+    h('div', { class: 'hf-scroll hf-deleted-scroll' },
     st.el,
     h('div', { class: 'hf-copy' },
       h('h1', { class: 'hf-line hf-line--sm', 'data-autofocus': '' }, 'Your Hushmates data is deleted.'),

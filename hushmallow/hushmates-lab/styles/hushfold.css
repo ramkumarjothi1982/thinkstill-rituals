@@ -484,3 +484,8 @@
 .hf-signin-who .hf-link { font-size: 13px; }
 /* in the code step's heading, the address is quieter than the words around it */
 .hf-signin-scroll .hf-line .hf-signin-email { display: block; margin-top: 6px; font-size: .68em; font-style: italic; font-weight: 450; color: var(--hm-ink-2); }
+
+/* Tier 0: support beside a paused or safety-returned feeling, worded the same whatever the reason */
+.hf-help-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+.hf-help-inline { display: inline-flex; align-items: center; gap: 6px; margin: 10px auto 0; }
+.hf-help-inline .kit-ico { width: 16px; height: 16px; }

@@ -6,6 +6,7 @@ import { h, icon, humane } from '../dom.js';
 import { round } from '../kit.js';
 import { MALLOWS } from '../mallows-data.js';
 import { FEELING_LABELS, REPORT_REASONS } from '../../core/relay-config.js';
+import { SUPPORT_NOW_RESOURCES, SUPPORT_NOW_MESSAGE } from '../../core/feeling-safety.js';
 
 export const LABELS = Object.fromEntries(FEELING_LABELS.map((l) => [l.id, l]));
 export const feelColour = (label) => LABELS[label]?.colour || '#C9B8FF';
@@ -33,18 +34,34 @@ export function dock(dev, active) {
     offer && d.id === 'journeys' ? h('span', { class: 'rl-dock-dot', 'aria-hidden': 'true' }) : null)));
 }
 
-/** Top bar: optional back, a quiet title, optional action. */
-export function top(dev, { title = '', back = false, action = null, left = false } = {}) {
+/**
+ * "Get support now": the crisis lines, in a sheet over whatever screen someone is on, so a draft or a
+ * catch is never lost. The lines are part of the app, so it works offline (and tel: needs no internet).
+ */
+export function openSupport(dev, { note = null } = {}) {
+  // four lines first, the rest a tap away: guidance for platforms (Samaritans) is to keep signposts few at a time
+  dev.sheet({ title: 'You deserve support', body: supportBody({ message: SUPPORT_NOW_MESSAGE, resources: SUPPORT_NOW_RESOURCES }, { note, first: 4 }) });
+}
+/** A small pill in every header: support is one tap away from every screen (Tier 0). */
+export function supportPill(dev) {
+  return h('button', { type: 'button', class: 'rl-help', 'aria-label': 'Support: crisis lines, any time', dataset: { test: 'get-support' }, onclick: () => openSupport(dev) },
+    icon('help'), h('span', { 'aria-hidden': 'true' }, 'Support'));
+}
+
+/** Top bar: optional back, a quiet title, the support pill, optional action. */
+export function top(dev, { title = '', back = false, action = null, left = false, help = true } = {}) {
   return h('header', { class: 'rl-top' },
     back ? round(icon('back'), 'Back', typeof back === 'function' ? back : () => dev.back()) : null,
     h('p', { class: `rl-top-title${left ? ' is-left' : ''}` }, title),
-    action || (back ? h('span', { class: 'rl-top-spacer', 'aria-hidden': 'true' }) : null));
+    help ? supportPill(dev) : null,
+    action || (back && !help ? h('span', { class: 'rl-top-spacer', 'aria-hidden': 'true' }) : null));
 }
 
-/** Brand bar for the main places: wordmark + "You & safety". */
+/** Brand bar for the main places: wordmark, the support pill, and "You & safety". */
 export function brandBar(dev) {
   return h('header', { class: 'rl-top' },
     h('div', { class: 'rl-brand' }, h('p', { class: 'rl-brand-mark' }, 'Hush', h('em', {}, 'mates'))),
+    supportPill(dev),
     round(icon('shield'), 'You and safety', () => dev.go('you'), { dataset: { test: 'open-you' } }));
 }
 
@@ -74,12 +91,14 @@ function lineActions(r) {
 }
 
 /** Support (shown instead of releasing when a feeling sounds unsafe). Copy comes from the Reframe engine's safety layer. */
-export function supportBody(support = {}, { note = null } = {}) {
+export function supportBody(support = {}, { note = null, first = Infinity } = {}) {
   const resources = support.resources || [];
+  const item = (r) => h('li', {}, h('strong', {}, r.label), r.detail ? h('span', {}, r.detail) : null, lineActions(r));
+  const more = resources.slice(first);
   return h('div', { class: 'rl-support' },
     h('p', { class: 'rl-support-msg' }, support.message || 'What you wrote sounds really heavy. It won’t be sent to anyone, and you deserve real support with it.'),
-    resources.length ? h('ul', { class: 'rl-support-list', dataset: { test: 'support-resources' } },
-      resources.map((r) => h('li', {}, h('strong', {}, r.label), r.detail ? h('span', {}, r.detail) : null, lineActions(r)))) : null,
+    resources.length ? h('ul', { class: 'rl-support-list', dataset: { test: 'support-resources' } }, resources.slice(0, first).map(item)) : null,
+    more.length ? h('details', { class: 'rl-support-more' }, h('summary', {}, 'More support lines'), h('ul', { class: 'rl-support-list' }, more.map(item))) : null,
     support.stillHere ? h('p', { class: 'kit-note' }, support.stillHere) : null,
     note);
 }
@@ -91,15 +110,22 @@ export function reportSheet(dev, { title = 'Report this', intro }) {
     let done = false;
     const finish = (v) => { if (!done) { done = true; resolve(v); dev.closeSheet(); } };
     const send = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', disabled: true, dataset: { test: 'report-send' }, onclick: () => finish({ reason: chosen }) }, 'Send report');
+    // while "Someone may be in danger" is chosen: what the team can and can't do
+    const danger = h('p', { class: 'kit-note rl-report-danger', id: 'report-danger-hint', hidden: true, dataset: { test: 'report-danger-hint' } },
+      'Our team can’t see who wrote it, so we can’t contact them or send help. If you know someone is in danger right now, call 000.');
     const list = h('div', { class: 'rl-reasons', role: 'radiogroup', 'aria-label': 'What best describes it?' },
       REPORT_REASONS.map((r) => h('button', {
         type: 'button', role: 'radio', class: 'rl-reason', 'aria-checked': 'false', dataset: { test: `reason-${r.id}` },
-        onclick: (e) => { chosen = r.id; list.querySelectorAll('.rl-reason').forEach((b) => b.setAttribute('aria-checked', String(b === e.currentTarget))); send.disabled = false; },
+        'aria-describedby': r.id === 'safety' ? 'report-danger-hint' : null,
+        onclick: (e) => {
+          chosen = r.id; list.querySelectorAll('.rl-reason').forEach((b) => b.setAttribute('aria-checked', String(b === e.currentTarget))); send.disabled = false;
+          danger.hidden = r.id !== 'safety';
+        },
       }, h('i', { 'aria-hidden': 'true' }), r.label)));
     dev.sheet({
       title,
-      body: h('div', { class: 'kit-stack' }, h('p', { class: 'hm-sheet-text' }, intro), list,
-        h('p', { class: 'kit-note' }, 'Reports go to a person on the safety team. Nobody is told who reported.')),
+      body: h('div', { class: 'kit-stack' }, h('p', { class: 'hm-sheet-text' }, intro), list, danger,
+        h('p', { class: 'kit-note' }, 'A person on our safety team reads reports, but not straight away and not around the clock. They can’t see who anyone is, and they can’t contact anyone. Nobody is told who reported. If someone is in danger right now, call 000.')),
       actions: [send, h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', onclick: () => finish(null) }, 'Cancel')],
       onClose: () => { if (!done) { done = true; resolve(null); } },
     });

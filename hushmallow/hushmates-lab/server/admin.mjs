@@ -7,6 +7,8 @@
 //   node server/admin.mjs revoke <CODE>
 //   node server/admin.mjs settings
 //   node server/admin.mjs set <key> '<json to merge>'     e.g. set ai '{"monthlyCapAud": 20}'
+//   node server/admin.mjs set desk '{"awayUntil": "2026-12-29"}'   nobody can read the desk until then: reporters are
+//                                                                   told so (set it back with '{"awayUntil": null}')
 //   node server/admin.mjs ops [--days 7]
 //   node server/admin.mjs member <reference> active|restricted|suspended   (the reference the safety desk shows)
 //
@@ -28,7 +30,7 @@ import { normaliseCode } from '../supabase/functions/_shared/gateway.js';
 
 // no 0/O, 1/I/L: codes are read aloud and typed from messages
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const SETTING_KEYS = ['limits', 'mallow', 'ai', 'retention', 'invites'];
+const SETTING_KEYS = ['limits', 'mallow', 'ai', 'retention', 'invites', 'desk'];
 
 /** A new code like 7KQ2M-XW9HD (about 50 bits; wrong guesses are limited per person and network). */
 export function newCode() {

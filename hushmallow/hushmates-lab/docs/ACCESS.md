@@ -91,7 +91,7 @@ field from an allow-list. It is never a copy of stored records.
 
 - **It holds** your name here and your Mallow, your choices, and each feeling's
   words, status and dates. It also holds when you agreed to share it
-  anonymously and to a Mallow perspective, the perspectives that came back to
+  without your name and to a Mallow perspective, the perspectives that came back to
   you, your Mallow's perspective with its label, the journey in plain words, the
   perspectives you offered with your share-picture choice, and your own reports
   (your reason, your words, and whether they were reviewed). It ends with counts

@@ -82,6 +82,14 @@
 .rl-brand { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .rl-brand-mark { font: 560 italic 22px/1 var(--hm-display); font-variation-settings: "SOFT" 100; letter-spacing: -.01em; color: var(--hm-ink); }
 .rl-brand-mark em { font-style: italic; background: linear-gradient(100deg, #4FB4F0, #A57BFF 50%, #FF9A5C); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: .06em; }
+/* "Support": the crisis lines, one tap away on every screen (Tier 0). As soft as the round buttons beside it. */
+.rl-help { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 11px; border-radius: 999px;
+  background: rgba(255,255,255,.86); color: var(--hm-ink); font: 800 12.5px/1 var(--hm-ui); letter-spacing: .02em;
+  box-shadow: 0 8px 20px -10px rgba(31,22,64,.4), 0 0 0 1px rgba(31,22,64,.05) inset; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: transform .2s var(--hm-ease); }
+.rl-help .kit-ico { width: 18px; height: 18px; color: var(--hm-violet); }
+@media (hover: hover) { .rl-help:hover { transform: scale(1.04); } }
+.rl-help:active { transform: scale(.96); }
+@media (max-width: 340px) { .rl-help { padding: 0 11px 0 9px; gap: 5px; } }
 
 /* ------------------------------------------------- feeling chips -- */
 .rl-feel { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 12px 0 9px; border-radius: 999px; white-space: nowrap;

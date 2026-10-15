@@ -12,6 +12,7 @@ import { Orb } from '../orb.js';
 import { play } from '../sound.js';
 import { rise, reducedMotion, wait } from '../motion.js';
 import { room, stage, Speech, line, swapLine, checkRow, privacySheet, put } from './parts.js';
+import { supportPill } from './common.js';
 
 // an illustration only (no one's activity): the colours a feeling might gather
 const ILLUSTRATION = ['blubi', 'pipzi', 'loomi', 'zuzu', 'boppo'].map((m, i) => ({ slot: i + 1, mallow: m }));
@@ -40,7 +41,7 @@ export function welcome(dev) {
   const orb = new Orb({ size: null, tint: '#CDB8FF', label: 'An illustration of a feeling, gathering petals of light' });
   const orbSlot = h('div', { class: 'hf-orb-slot hf-welcome-orb' }, orb.el);
   put(st.above, orbSlot, speech.el);
-  const head = h('div', { class: 'hf-head' }, h('header', { class: 'rl-top' }, h('div', { class: 'rl-brand' }, h('p', { class: 'rl-brand-mark' }, 'Hush', h('em', {}, 'mates')))));
+  const head = h('div', { class: 'hf-head' }, h('header', { class: 'rl-top' }, h('div', { class: 'rl-brand' }, h('p', { class: 'rl-brand-mark' }, 'Hush', h('em', {}, 'mates'))), supportPill(dev)));
   const body = h('div', { class: 'hf-scroll hf-welcome-scroll' });
   r.el.append(head, body);
   r.el.dataset.test = 'welcome';
@@ -100,8 +101,9 @@ export function welcome(dev) {
         h('ul', { class: 'hf-promises' },
           promise('eyeOff', 'Pseudonymous, not perfectly anonymous.', 'Other participants never see your name or account, and can’t contact you. Leave out names and details that could identify anyone.'),
           promise('sparkle', 'Possibilities, not verdicts.', 'No diagnosis, no judgement, no telling anyone what to do.'),
-          promise('heart', 'People first.', 'A Mallow perspective is offered only if you allow it. It’s automatically generated, always labelled, and never counted as a person.'),
-          promise('shield', 'Not an emergency service.', 'Hushmates looks out for words that suggest you might not be safe and shows real support, but it can miss things. If you’re not safe, call 000 or Lifeline on 13 11 14.')),
+          promise('heart', 'People first.', 'A Mallow perspective is offered only if you allow it. It’s chosen automatically from lines the Hushmates team wrote, always labelled, and never counted as a person.'),
+          promise('shield', 'Not an emergency service.', 'Hushmates checks words for some signs that someone might not be safe, and shows numbers to call. The check reads English only, it can miss things, and nobody is watching in real time. If you’re not safe, call ',
+            h('a', { href: 'tel:000' }, '000'), ', or Lifeline on ', h('a', { href: 'tel:131114' }, '13 11 14'), ', any time.')),
         h('button', { type: 'button', class: 'hf-link hf-link--centre', dataset: { test: 'welcome-privacy' }, onclick: () => privacySheet(dev) }, 'Privacy details'),
         h('div', { class: 'hf-form' },
           (() => { const sw = sentenceSwitch({ label: 'Let feelings find me', hint: 'Catch other people’s feelings when you choose to look. You can change this any time.', checked: choice.catching, test: 'welcome-catching', onChange: (on) => { choice.catching = on; return true; } }); sw.classList.add('kit-switch--plain'); return sw; })(),

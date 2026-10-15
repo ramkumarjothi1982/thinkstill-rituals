@@ -9,12 +9,24 @@ import { checkSafety } from '../../src/ultra/reframe-engine.js';
 import { HARM_COPY } from '../../src/ultra/frameworks.js';
 import { checkMessage, normaliseText, charCount } from './text-policy.js';
 
-// Every rule reads a compatibility-normalised copy (NFKC), so full-width or
-// stylised letters and digits ("ｅｎｄ ｉｔ", "０７７００") can't slip past;
-// the person's own words are stored as they wrote them.
-// Phones type curly quotes (you’re), the rules are written with straight ones (you're): the
-// probe reads them straight, so "You’re so pathetic" is caught like "You're so pathetic".
-const probeOf = (text) => text.normalize('NFKC').replace(/[‘’ʼ′]/g, "'").replace(/[“”″]/g, '"');
+// Every rule reads a normalised copy, the probe; the person's own words are stored as they wrote them.
+// - Compatibility forms (NFKC): full-width or stylised letters and digits ("ｅｎｄ ｉｔ", "０７７００").
+// - Curly quotes read straight: phones type you’re, the rules say you're.
+// - Accents, combining marks and invisible format characters are dropped ("kíll", "k͏ill", "kill️").
+// - Cyrillic and Greek letters that look like Latin ones read as Latin ("kіll" with a Cyrillic і).
+// - Runs of spaces and line breaks read as one space, as the shared lexicon already reads them,
+//   so "I wanna  die" or a line break typed on a phone can't slip past Hushmates' own rules (Tier 0).
+const IGNORABLE = /[\p{M}\p{Default_Ignorable_Code_Point}\u115F\u1160\u3164\uFFA0\u2800]/gu;
+const LOOKALIKE = {
+  а: 'a', е: 'e', о: 'o', р: 'p', с: 'c', у: 'y', х: 'x', і: 'i', ј: 'j', ѕ: 's', ԁ: 'd', һ: 'h', ӏ: 'l', ԛ: 'q', ԝ: 'w', ɡ: 'g',
+  А: 'A', В: 'B', Е: 'E', К: 'K', М: 'M', Н: 'H', О: 'O', Р: 'P', С: 'C', Т: 'T', Х: 'X', І: 'I', Ј: 'J', Ѕ: 'S',
+  α: 'a', ε: 'e', ι: 'i', κ: 'k', ν: 'v', ο: 'o', ρ: 'p', τ: 't', υ: 'u', χ: 'x',
+  Α: 'A', Β: 'B', Ε: 'E', Η: 'H', Ι: 'I', Κ: 'K', Μ: 'M', Ν: 'N', Ο: 'O', Ρ: 'P', Τ: 'T', Υ: 'Y', Χ: 'X', Ζ: 'Z',
+};
+const LOOKALIKE_RE = new RegExp(`[${Object.keys(LOOKALIKE).join('')}]`, 'g');
+const probeOf = (text) => text.normalize('NFKC').replace(/[‘’ʼ′]/g, "'").replace(/[“”″]/g, '"')
+  .normalize('NFKD').replace(IGNORABLE, '').normalize('NFC')
+  .replace(LOOKALIKE_RE, (c) => LOOKALIKE[c]).replace(/\s+/g, ' ');
 
 // Hushmates' own additions to the app's safety lexicon, kept here so the main
 // app's Reframe engine is reused unchanged. Words that mean someone may be in
@@ -76,11 +88,14 @@ const EXTRA_DANGER = [
   /\b(?:wants?|wanna|going|planning|threaten(?:s|ed|ing)?|tried|trying) to end (?:his|her|their) (?:own )?life\b(?! of\b)(?![^.!?]*\b(?:assisted dying|vad|euthanasia)\b)|\b(?:talk(?:s|ed|ing)?|think(?:s|ing)?|thought) about ending (?:his|her|their) (?:own )?life\b/i,
   /\b(?:cuts|cutting) (?:himself|herself|themselves|themself)\b(?! (?:on|off|out|shaving|while|by accident|accidentally|some slack|slack|short)\b)/i,
   /\b(?:hang|hanging) (?:himself|herself|themselves|themself)\b(?! out to dry\b)/i,
+  // the shared lexicon's "not breathing" rule misses the contracted forms people type: "He's not breathing" (Tier 0).
+  // Not about a pet: "our old cat, she's not breathing properly" is distressing, but 000 isn't the answer
+  /(?<!\b(?:cat|cats|dog|dogs|pet|pets|puppy|kitten|rabbit|bunny|bird|budgie|guinea pig|hamster|horse|fish)\b[^.!?]{0,40})(?:\b(?:he|she|they|someone|somebody|(?:my|our|his|her|their) (?:\w+ )?\w+)(?:'s|'re| is| are) not breathing\b|\b(?:he|she|they|someone|somebody|(?:my|our|his|her|their) (?:\w+ )?\w+) (?:isn'?t|aren'?t|is not|are not|has stopped|have stopped|stopped) breathing\b)/i,
 ];
 function extraCrisis(probe) {
   const p = probe.replace(/[’‘]/g, "'");
-  if (EXTRA_CRISIS.some((re) => re.test(p))) return { reframeAppropriate: false, level: 'crisis', title: HARM_COPY.crisis.title, message: HARM_COPY.crisis.message, resources: HARM_COPY.crisis.resources, stillHere: HARM_COPY.stillHere };
-  if (EXTRA_DANGER.some((re) => re.test(p))) return { reframeAppropriate: false, level: 'crisis', category: 'someone-in-danger', title: HARM_COPY.crisisOther.title, message: HARM_COPY.crisisOther.message, resources: HARM_COPY.crisisOther.resources, stillHere: HARM_COPY.stillHere };
+  if (EXTRA_CRISIS.some((re) => re.test(p))) return { reframeAppropriate: false, level: 'crisis', title: HARM_COPY.crisis.title, message: HARM_COPY.crisis.message, resources: HARM_COPY.crisis.resources, stillHere: STILL_HERE };
+  if (EXTRA_DANGER.some((re) => re.test(p))) return { reframeAppropriate: false, level: 'crisis', category: 'someone-in-danger', title: HARM_COPY.crisisOther.title, message: HARM_COPY.crisisOther.message, resources: HARM_COPY.crisisOther.resources, stillHere: STILL_HERE };
   return null;
 }
 // A care match (abuse, violence, bullying) never hides crisis words. "He hurt my arm" stays violence:
@@ -88,8 +103,12 @@ function extraCrisis(probe) {
 const MY_BODY = /\b(?:cut|cutting|burn|burning|hurt|hurting|harm|harming)\s+my (?:arms?|wrists?|legs?|thighs?|skin)\b/gi;
 const I_HURT_MY_BODY = /\bI(?:'ve|'m|'d)?(?:\s+(?:have|am|was|keep|kept|started|start|been|just|sometimes|still|always|often|again|to|want|wanna|need|needed|going|gonna|can'?t stop|couldn'?t stop|tried))*\s+(?:(?:hurt|hurting|harm|harming)\s+my (?:arms|wrists|legs|thighs|skin)\b|(?:cut|cutting|burn|burning)\s+my (?:arms?|wrists?|legs?|thighs?|skin)\b(?!\s+(?:on\b(?!\s+purpose)|against|trying|pulling|running|falling|getting)\b))/i;
 // "I don't want to go on the school camp", "...live with my parents", "...wake up early": the everyday words are
-// blanked before any rule reads them (as the lexicon's own idiom guards do); anything else in the feeling is still read
-const EVERYDAY_NOT_WANT = /\b(?:don'?t|do not|no longer) (?:want to|wanna) (?:go on (?=(?:(?:a|an|the|that|this|my|our|his|her|their|another|school|family|work|uni|class|year \d+|first|second) )*(?:holiday|holidays|vacation|camp|trip|tour|date|dates|excursion|cruise|ride|stage|exchange|retreat|course|plane|flight|bus|train|social media|instagram|tiktok|my phone|the internet)\b)|live (?=(?:with|in|at|near|on) (?!(?:(?:this|that|the|a|my|such) )?(?:world|earth|planet|body|head|skin|pain|hell|misery|guilt|shame|fear|regret|darkness|grief|myself|it|way|like)\b)\w)|be around (?=(?:people|crowds|him|her|them|anyone|anybody|everyone|everybody|you|my|his|her|their|our|family|friends|kids)\b)|be here (?=(?:at|for) (?:this|the|a|an|my|our|work|school|uni|class|christmas|dinner|lunch|another)\b(?! (?:point|moment|stage|world|earth|long|longer|much)\b))|wake up (?=early\b|so early\b|before\b|at \d|at (?:dawn|six|five|seven|eight)\b|for (?:work|school|uni|class|my|the|a|an)\b|on (?:a |the )?(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|on (?:the )?weekends?\b))/gi;
+// blanked before any rule reads them (as the lexicon's own idiom guards do); anything else in the feeling is still read.
+// Only a concrete everyday place, person or thing counts: "live at all", "live with this any more", "live at this
+// point", "live with what I did" or "be here for another day" are never blanked (Tier 0: blanking them hid the
+// lexicon's own crisis rule).
+const NOT_EVERYDAY = String.raw`(?:(?:this|that|these|those|the|a|my|our|such|own|what|i) )*(?:world|earth|planet|body|head|skin|pain|hell|misery|guilt|shame|fear|regret|darkness|grief|myself|it|way|like|all|what|thoughts?|memories|feelings?|depression|anxiety|illness|condition|trauma|life|point|moment|stage|any ?more|any longer|forever|now|again|existence|reality|person|me|did|done)\b|(?:this|that|these|those)\s*(?:[.!?,;]|$)`;
+const EVERYDAY_NOT_WANT = new RegExp(String.raw`\b(?:don'?t|do not|no longer) (?:want to|wanna) (?:go on (?=(?:(?:a|an|the|that|this|my|our|his|her|their|another|school|family|work|uni|class|year \d+|first|second) )*(?:holiday|holidays|vacation|camp|trip|tour|date|dates|excursion|cruise|ride|stage|exchange|retreat|course|plane|flight|bus|train|social media|instagram|tiktok|my phone|the internet)\b)|live (?=(?:with|in|at|near|on) (?!${NOT_EVERYDAY})\w)|be around (?=(?:people|crowds|him|her|them|anyone|anybody|everyone|everybody|you|my|his|her|their|our|family|friends|kids)\b)|be here (?=(?:at|for) (?:this|the|a|an|my|our|work|school|uni|class|christmas|dinner|lunch)\b(?! (?:point|moment|stage|world|earth|long|longer|much)\b))|wake up (?=early\b|so early\b|before\b|at \d|at (?:dawn|six|five|seven|eight)\b|for (?:work|school|uni|class|my|the|a|an)\b|on (?:a |the )?(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|on (?:the )?weekends?\b))`, 'gi');
 const everydayBlanked = (probe) => probe.replace(EVERYDAY_NOT_WANT, (m) => ' '.repeat(m.length));
 const safetyOf = (raw) => {
   const probe = everydayBlanked(raw);
@@ -112,45 +131,58 @@ const AU = {
   callback: { label: 'Suicide Call Back Service', detail: 'Call 1300 659 467, any time.', tel: '1300659467', call: 'Call 1300 659 467' },
   yarn: { label: '13YARN', detail: 'Call 13 92 76: crisis support by and for Aboriginal and Torres Strait Islander people, any time.', tel: '139276', call: 'Call 13 92 76' },
   respect: { label: '1800RESPECT', detail: 'Call 1800 737 732 about family, domestic or sexual violence, any time.', tel: '1800737732', call: 'Call 1800 737 732' },
-  beyondBlue: { label: 'Beyond Blue', detail: 'Call 1300 22 4636 to talk things through with a counsellor.', tel: '1300224636', call: 'Call 1300 22 4636' },
+  beyondBlue: { label: 'Beyond Blue', detail: 'Call 1300 22 4636 to talk things through with a counsellor, any time.', tel: '1300224636', call: 'Call 1300 22 4636' },
   worried: { label: 'Lifeline', detail: 'Call 13 11 14, any time. They help people who are worried about someone else, too.', tel: '131114', call: 'Call 13 11 14' },
   elsewhere: { label: 'Outside Australia', detail: 'findahelpline.com lists free, confidential helplines in many countries.', link: { href: 'https://findahelpline.com', text: 'Find a helpline' } },
 };
-/** Crisis lines for the support screen and the "Get support now" sheet. */
+/** Crisis lines for the support screen. */
 export const SUPPORT_RESOURCES = Object.freeze([AU.now, AU.lifeline, AU.callback, AU.yarn, AU.elsewhere]);
+/** "Get support now", from any screen: the same lines, plus family violence and someone to talk things through with. */
+export const SUPPORT_NOW_RESOURCES = Object.freeze([AU.now, AU.lifeline, AU.callback, AU.yarn, AU.respect, AU.beyondBlue, AU.elsewhere]);
+export const SUPPORT_NOW_MESSAGE = 'Hushmates isn’t an emergency service, and nobody here is watching in real time. If you or someone else is in danger right now, call 000. If you’re not okay, or you’re worried about someone, these services are free and there to talk.';
 const GENERAL = [AU.now, AU.lifeline, AU.beyondBlue, AU.elsewhere];
 const CARE_LINES = [AU.now, AU.respect, AU.lifeline, AU.elsewhere];
 const DANGER_LINES = [AU.now, AU.worried, AU.elsewhere];
 const NOT_SENT = 'It won’t be sent out for other perspectives.';
+// Under every support message. Hushmates' own line (Tier 0): the shared lexicon's said "The Mallows are still here",
+// and at a moment like this the people to turn to are on the lines above, not in the app.
+export const STILL_HERE = 'When you’re ready, Hushmates will still be here for the lighter things. For this, the people on these lines are ready to listen now.';
 const CARE = {
   abuse: { message: `What you’re describing sounds like it could be abuse. ${NOT_SENT} It’s not your fault, and you don’t deserve it. If you can, tell someone you trust or contact a support service, at your own pace.`, resources: CARE_LINES },
   violence: { message: `Nobody has the right to hurt you. This is something that happened to you, and it matters. ${NOT_SENT} If you can, tell someone you trust, and reach out to a support service or the police when you feel ready.`, resources: CARE_LINES },
-  threat: { message: `Being threatened is serious, and it isn’t something to talk yourself out of. ${NOT_SENT} Keep any messages or notes, tell someone you trust, and contact the police or a support service if you feel at risk.`, resources: GENERAL },
+  // threats and fear of someone are among the strongest signs of family violence, so these get 1800RESPECT too (Tier 0)
+  threat: { message: `Being threatened is serious, and it isn’t something to talk yourself out of. ${NOT_SENT} Keep any messages or notes, tell someone you trust, and contact the police or a support service if you feel at risk.`, resources: CARE_LINES },
   harassment: { message: `Being harassed or bullied isn’t something to see differently, and it isn’t on you to fix. ${NOT_SENT} If you can, save screenshots or notes, tell someone you trust, and use the reporting routes at school, at work or on the app or site.`, resources: GENERAL },
   discrimination: { message: `Being treated unfairly because of who you are is real, and it isn’t something to explain away. Your reaction makes sense. ${NOT_SENT} If you want to, keep a record of what happened and talk to someone you trust, HR, a union or an advice organisation.`, resources: GENERAL },
-  unsafe: { title: 'Your safety comes first', message: `Not feeling safe is important information. Please trust it. ${NOT_SENT} If you can, talk to someone you trust or a support service about what’s going on.`, resources: GENERAL },
+  unsafe: { title: 'Your safety comes first', message: `Not feeling safe is important information. Please trust it. ${NOT_SENT} If you can, talk to someone you trust or a support service about what’s going on.`, resources: CARE_LINES },
 };
-function supportOf(safety) {
+const STALKING = /\bstalk\w*|\b(?:follows|followed|following) me\b|\bkeeps? turning up\b|\bturns? up at my\b/i;
+function supportOf(safety, probe = '') {
   if (safety.level === 'crisis' && safety.category === 'someone-in-danger') {
     return {
       title: 'Someone might be in danger',
       message: 'If someone might be about to hurt themselves, or is in danger right now, that comes before anything else: call 000. If it’s safe to, stay with them or keep talking to them. You don’t have to handle this alone: a helpline can talk you through what to do.',
-      resources: DANGER_LINES, stillHere: HARM_COPY.stillHere,
+      resources: DANGER_LINES, stillHere: STILL_HERE,
     };
   }
   if (safety.level === 'crisis') {
     return {
       title: 'Let’s pause here',
       message: 'What you’ve written sounds really painful, and it matters. It won’t be sent to anyone: you deserve real support with this, right now. If you might act on these thoughts, or you’re not safe, please call 000. If you can, tell someone near you how you’re feeling. You don’t need the right words first.',
-      resources: SUPPORT_RESOURCES, stillHere: HARM_COPY.stillHere,
+      resources: SUPPORT_RESOURCES, stillHere: STILL_HERE,
     };
   }
   const c = CARE[safety.category] || CARE.unsafe;
-  return { title: c.title || 'This one deserves real support', message: c.message, resources: c.resources, stillHere: HARM_COPY.stillHere };
+  const resources = safety.category === 'harassment' && STALKING.test(probe) ? CARE_LINES : c.resources;
+  return { title: c.title || 'This one deserves real support', message: c.message, resources, stillHere: STILL_HERE };
 }
 
 /** Our own reviewed support copy, for when a Mallow provider's safety check flags a feeling (its own text is never shown). */
 export const providerSupport = () => supportOf({ level: 'crisis' });
+
+// The national lines' own numbers are never contact details: a feeling or a perspective may name them (Tier 0)
+const HELPLINES = /\b(?:13 ?11 ?14|0477 ?13 ?11 ?14|1300 ?659 ?467|13 ?92 ?76|1800 ?737 ?732|0458 ?737 ?732|1300 ?22 ?4636|1300 ?78 ?99 ?78|1800 ?55 ?1800|1800 ?184 ?527|13 ?11 ?26|1800 ?250 ?015|1800 ?33 ?4673|13 ?14 ?50|1300 ?726 ?306|1300 ?727 ?247)\b/g;
+const withoutHelplines = (probe) => probe.replace(HELPLINES, ' ');
 
 const IDENTIFYING = [
   /\b\d{1,5}\s+[A-Za-z][A-Za-z ]{1,30}\s(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|close|way|crescent|place|court)\b/i,   // street address
@@ -158,7 +190,30 @@ const IDENTIFYING = [
   /\b\d{5}(?:-\d{4})?\b(?=.*\b(?:zip|postcode|post code)\b)/i,                 // "90210 is my zip"
   /\b(?:zip|post\s?code)(?:\s+code)?\b[^\d\n]{0,12}\d{5}(?:-\d{4})?\b/i,          // "my zip code is 90210"
   /\b(?:my|our)\s+(?:full\s+|real\s+)?name(?:\s+is|\s*['’]s)\b/i,                // "my name is", "my name’s"
+  /\b(?:post\s?code|p\/?code)\b[^\d\n]{0,12}\d{4}\b|\b(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+\d{4}\b/i,   // an Australian postcode, with context
 ];
+
+// Words that tell the reader to hurt themselves, or that someone shouldn't exist. A catcher's perspective
+// with them never reaches the writer, and a feeling with them never reaches catchers (Tier 0).
+const INCITEMENT = [
+  /\b(?:go |just |should |could |please |gonna |go and )?(?:kill|hang|neck|unalive|off|end|shoot|drown|cut|hurt|harm|starve|stab) (?:your ?self|ur ?self|yaself|yo ?self|yourselves|ur self)\b/i,
+  /\bk[\s.\-_*]*y[\s.\-_*]*s\b|\bkys+\b/i,
+  /\b(?:you|u|ya)(?: should| need to| ought to|'d better| deserve to| might as well)(?: just| all)? (?:die|be dead|not exist|stop existing|disappear forever|rot|suffer)\b/i,
+  /\b(?:no ?one|nobody|no-one) (?:would|will|'d|is going to|gonna|ever) (?:even )?(?:miss|notice|care about|cry for) (?:you|u)\b/i,
+  /\b(?:the world|everyone|everybody|we|they|people|your family) (?:would|'d|will) be (?:so much |much )?better (?:off )?without (?:you|u)\b/i,
+  /\b(?:everyone|everybody|people) (?:hates|hate) (?:you|u)\b/i,
+];
+// For perspectives only: harmful advice and the questions groomers ask. Blocking a catcher's words needs no
+// clinical judgement; what perspectives may say beyond this is for the clinical review.
+const HARMFUL_ADVICE = [
+  /\b(?:skip(?:ping)?|stop eating|eat less|cut out|don'?t eat|starve)\b[^.!?]{0,20}\b(?:dinner|lunch|breakfast|meals?|food|carbs|eating)\b|\b(?:lose|losing|drop) (?:some |a bit of )?weight\b|\bcalories?\b|\byou'?ll feel lighter\b|\b(?:you(?:'re| are)|ur|u r) (?:so |too |really )?(?:fat|ugly|disgusting|a waste of space)\b/i,
+  /\bstop (?:taking )?(?:your |ur )?(?:meds|medication|medicine|tablets|pills|antidepressants)\b|\b(?:meds|medication|antidepressants|pills) (?:are|is) (?:poison|bad for you|a scam|a lie)\b/i,
+  /\b(?:drink|get drunk|get high|smoke (?:weed|a joint|a cone)|take (?:a |some )?(?:pills?|xanax|valium|benzos?))\b[^.!?]{0,12}\b(?:until|till|til|to) (?:you )?(?:forget|feel (?:better|nothing)|numb|cope|pass out)\b/i,
+  /\bhow old (?:are|r) (?:you|u)\b|\bwhere (?:do |d )?(?:you|u) live\b|\bwhat school\b|\b(?:we|let'?s|wanna|want to) (?:should )?meet (?:up|irl|in person)\b|\b(?:send|show) (?:me )?(?:a |some )?(?:pics?|photos?|nudes|selfies?)\b|\bare (?:you|u) (?:single|a (?:girl|boy|guy))\b/i,
+  /\bbecause (?:you|u) (?:provoke|provoked|asked for|deserve|deserved|let) (?:him|her|them|it)\b/i,
+];
+// a feeling that quotes what someone said to the writer is harassment, answered with care, not refused
+const REPORTED_SPEECH = /\b(?:said|says|told|tells|telling|keeps? saying|kept saying|messag\w*|text(?:s|ed)|wrote|writes|posted|comment\w*|called me|dm(?:s|ed|'d)?|replied|yelled|shouted)\b/i;
 
 const UNKIND = [
   /\b(?:you(?:'re| are)?|ur|u r)\s+(?:(?:so|being|just|really|very|kind of|a bit)\s+){0,3}(?:stupid|pathetic|worthless|an? idiot|a loser|weak|dramatic|overreacting|crazy|insane|selfish|ridiculous|a baby|attention[- ]seeking)\b/i,
@@ -185,6 +240,8 @@ export function similarity(a, b) {
 }
 
 const fail = (code, message, extra = {}) => ({ ok: false, code, message, ...extra });
+const SAFETY_READS = 2000;
+const firstChars = (text, n) => (text.length <= n ? text : Array.from(text).slice(0, n).join(''));
 
 /**
  * A feeling about to be released.
@@ -193,17 +250,29 @@ const fail = (code, message, extra = {}) => ({ ok: false, code, message, ...extr
 export function screenFeeling(input, { minChars = 3, maxChars = 500 } = {}) {
   const text = normaliseText(input);
   if (!text) return fail('empty', 'Write a thought or a feeling first.');
+  // Safety comes before length (Tier 0): crisis words in a feeling a little too long still get support,
+  // rather than "try the heart of it", which could mean trimming exactly those words. Only the first
+  // 2,000 characters are read, so a very long paste costs nothing.
+  const head = probeOf(firstChars(text, SAFETY_READS));
+  const safety = safetyOf(head);
+  if (!safety.reframeAppropriate) {
+    // never released to strangers and never sent to an AI provider
+    const support = supportOf(safety, head);
+    return fail('support', support.message, { level: safety.level, support });
+  }
+  if (INCITEMENT.some((re) => re.test(head))) {
+    // words telling someone to hurt themselves: when they're what someone said to the writer, that's harassment
+    if (REPORTED_SPEECH.test(head)) {
+      const support = supportOf({ level: 'care', category: 'harassment' }, head);
+      return fail('support', support.message, { level: 'care', support });
+    }
+    return fail('unkind', 'Other people will read this, so it can’t tell anyone to hurt themselves. If you’re not okay yourself, Get support now has people you can talk to, any time.');
+  }
   if (charCount(text) < minChars) return fail('too-short', 'Tell us a little more, even a few words.');
   if (charCount(text) > maxChars) return fail('too-long', `Feelings can be up to ${maxChars} characters. Try the heart of it.`);
   const probe = probeOf(text);
-  const safety = safetyOf(probe);
-  if (!safety.reframeAppropriate) {
-    // never released to strangers and never sent to an AI provider
-    const support = supportOf(safety);
-    return fail('support', support.message, { level: safety.level, support });
-  }
   // (the length was checked on the words as written: the probe can be longer, e.g. "…" becomes "...")
-  const rules = checkMessage(probe, { maxChars: Infinity });
+  const rules = checkMessage(withoutHelplines(probe), { maxChars: Infinity });
   if (!rules.ok) {
     const msg = rules.code === 'money' ? rules.message
       : 'Please leave out contact details, links and anything that could identify you or someone else. Other people will read this.';
@@ -224,20 +293,24 @@ export function screenFeeling(input, { minChars = 3, maxChars = 500 } = {}) {
 export function screenReframe(input, { minChars = 8, maxChars = 280, earlier = [], threshold = 0.8 } = {}) {
   const text = normaliseText(input);
   if (!text) return fail('empty', 'Write a possibility first.');
-  if (charCount(text) < minChars) return fail('too-short', 'Add a few more words so it can help.');
-  if (charCount(text) > maxChars) return fail('too-long', `Perspectives can be up to ${maxChars} characters. Short and kind works best.`);
-  const probe = probeOf(text);
-  const safety = safetyOf(probe);
+  // safety before length, as for feelings
+  const head = probeOf(firstChars(text, SAFETY_READS));
+  const safety = safetyOf(head);
   if (!safety.reframeAppropriate && safety.level === 'crisis') {
-    const support = supportOf(safety);
+    const support = supportOf(safety, head);
     return fail('support', support.message, { level: safety.level, support });
   }
   if (!safety.reframeAppropriate) {
     return fail('unsafe', 'This one can’t be passed on: it touches on something that needs real support rather than a new angle. If you or someone else is in danger, please call 000.');
   }
+  if (INCITEMENT.some((re) => re.test(head))) return fail('unkind', 'This can’t be passed on. Perspectives here are for kindness, never for telling anyone to hurt themselves.');
+  if (HARMFUL_ADVICE.some((re) => re.test(head))) return fail('unsafe', 'This one can’t be passed on: advice about food, weight, medication, drinking or meeting up isn’t something perspectives here can offer, and neither are personal questions. Offer another way of seeing it instead.');
+  if (charCount(text) < minChars) return fail('too-short', 'Add a few more words so it can help.');
+  if (charCount(text) > maxChars) return fail('too-long', `Perspectives can be up to ${maxChars} characters. Short and kind works best.`);
+  const probe = probeOf(text);
   if (UNKIND.some((re) => re.test(probe))) return fail('unkind', 'That might land as harsh. Offer a possibility, not a verdict.');
   if (DIAGNOSIS.some((re) => re.test(probe))) return fail('diagnosis', 'Please don’t diagnose anyone. Offer another way of seeing it instead.');
-  const rules = checkMessage(probe, { maxChars: Infinity });
+  const rules = checkMessage(withoutHelplines(probe), { maxChars: Infinity });
   if (!rules.ok) return fail(rules.code, rules.code === 'money' ? rules.message : 'Perspectives can’t include contact details, links or usernames.');
   if (IDENTIFYING.some((re) => re.test(probe))) return fail('identifying', 'Please leave out names, addresses and anything that could identify you or someone else.');
   if (earlier.some((e) => similarity(e, text) >= threshold)) {

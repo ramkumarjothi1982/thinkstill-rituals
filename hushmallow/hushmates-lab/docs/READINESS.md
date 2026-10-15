@@ -92,21 +92,27 @@ Needs the owner, in order (`STAGING.md`):
 - ⚠️ After someone deletes their data, an access token they already hold stays cryptographically valid until it expires (at most 1 hour). It leads to nothing that was theirs (tested). Shorten the JWT expiry in Supabase if that matters.
 
 ### Safety and moderation
-- ✅ Words that suggest someone may not be safe are answered with support. They are never circulated, stored or sent to any AI. The screening is rules-based: a floor, not a guarantee, and the app says so (the welcome and *You & safety* say it can miss things).
-- ✅ The crisis lines are Australian, and each one can be tapped to call. 000, Lifeline 13 11 14 (with its online chat), the Suicide Call Back Service 1300 659 467 and 13YARN 13 92 76 (plus findahelpline.com outside Australia) appear on the crisis support screen and under "Get support now"; 1800RESPECT 1800 737 732 is added for abuse and violence, Beyond Blue 1300 22 4636 for other care screens (tested end to end: the support screen and "Get support now"). 🩺 Check the wording and the numbers before launch.
+- ✅ Words the rules recognise as a sign someone may not be safe are answered with support. They are never circulated, stored or sent to any AI. The screening is rules-based: a floor, not a guarantee, and the app says so (the welcome and *You & safety* say it reads English only and can miss things). It misses many natural phrasings (§3).
+- ✅ The crisis lines are Australian, and each one can be tapped to call. 000, Lifeline 13 11 14 (with its online chat), the Suicide Call Back Service 1300 659 467 and 13YARN 13 92 76 (plus findahelpline.com outside Australia) appear on the crisis support screen. The care screens for abuse, violence, threats, fear and stalking show 1800RESPECT 1800 737 732; those for harassment and discrimination show Beyond Blue 1300 22 4636.
+- ✅ A *Support* pill is in the header of every screen (`ui/relay/common.js`, in `top()` and `brandBar()`, and on the welcome, sign-in, invitation, offline and deleted screens). It opens the crisis lines in a sheet over the current screen: 000, Lifeline, the Suicide Call Back Service and 13YARN first, then 1800RESPECT, Beyond Blue and findahelpline.com under "More support lines". Tested end to end on the sign-in, release, catch, homecoming and offline release screens. 🩺 Check the wording and the numbers before launch.
 - ✅ Reporting, automatic pausing after reports, blocking (nobody learns of it), and withdrawal.
 - ✅ The safety desk at `/staff/`:
   - It is for moderators only, enforced server-side.
   - It records every report opened and every decision in the activity log, and logs out after 30 minutes idle.
   - It shows earlier reports about the same person without naming them.
-  - It offers urgent guidance for Australia. 🩺⚖️ Review that guidance.
-- ⬜ 🩺 A written escalation procedure for "someone may be in danger":
+  - It offers urgent guidance for Australia, in the same order as `ESCALATION.md` §3. 🩺⚖️ Review that guidance.
+  - It marks a priority report still open after 12 hours *Over 12 hours*.
+- ✅ Reporters are told honestly what happens: a small team, not around the clock; priority reports read within a day during the pilot (nights, weekends and holidays can take longer), others within two days; the team can't see who wrote it or contact them; call 000 if someone is in danger now (`core/relay.js`, `supabase/migrations/20261015090000_hushmates_tier0.sql`). While the owner marks the desk away (`settings.desk.awayUntil`), reporters are told when it will be read. The team's own target for priority reports stays 12 hours (`ESCALATION.md`).
+- ⬜ 🩺 A written escalation procedure for "someone may be in danger" (`ESCALATION.md` is a draft):
   - Hushmates is pseudonymous and the desk can't contact anyone.
-  - Decide what the team does, within which hours, and who is on call.
-  - Decide whether the person who wrote a flagged feeling should be shown support on their next visit. That's a product decision, not built.
+  - Name the people, and decide the fixed check times.
+  - Paused feelings, and feelings the safety team brought home, now show neutral wording and a *Get support now* button, the same whatever the reason (`ui/relay/journeys.js`, `ui/relay/returned.js`). Whether to say more to the writer is Tier A's call.
 - ⬜ Moderator wellbeing (psychosocial hazards under WHS law ⚖️): rotation, debriefs and access to support.
 - ✅ Share pictures and videos (Phase 3 privacy audit). They draw only perspectives their writers allow, re-checked with the server just before drawing. They never name anyone or show a writer's Mallow. A Mallow's words are never drawn without "A Mallow perspective · Automatically generated" (checked frame by frame, and in the E2E from what the picture and the video actually draw).
-- ⬜ The library's ~110 new Mallow lines and 49 openers. 🩺 Review them for tone and safety. They were written to avoid diagnosis, certainty, forced positivity and claims about other people's minds, and each one is tested against the same screen as a person's perspective.
+- ⬜ The Mallow library: 291 lines in use (49 openers, 114 Hushmates lines, 128 of Reframe's). 🩺 Tier A reviews them for tone and safety (`docs/clinical/mallow-library-for-review.csv`).
+  - They were written to avoid diagnosis, certainty, forced positivity and claims about other people's minds, and each one is tested against the same screen as a person's perspective.
+  - At Tier 0 all 342 lines then in the library were read twice (for harm, and for anything misleading or clinical). Of 123 flagged lines, 40 were rewritten, 51 of Reframe's were left out (`SKIP` in `core/perspectives.js`) and 32 were kept (`docs/clinical/tier0-library-decisions.csv`).
+  - Harm or control at home now crowds out 8 of Reframe's situations and the thinking-habit lines, and uses tender openers only (`tests/mallow-probes.test.mjs`).
 
 ### Privacy and consent
 - ✅ Consent is explicit before a feeling travels, and separately for the Mallow fallback. The app and the export say who can receive or process what.
@@ -120,8 +126,8 @@ Needs the owner, in order (`STAGING.md`):
   - networks are kept only as keyed hashes, and only for rate limits.
 - ⚖️ A privacy policy and a collection notice (APP 5) in plain English, before launch.
 - ⚖️ AI stays off. Before turning it on, the consent wording must name the provider and that words go overseas (Another Angle → its model provider in the US): APP 8, cross-border disclosure.
-  Today the app says "your words stay with Hushmates" in four places, which is true only while AI is off:
-  `ui/relay/parts.js` (privacy notes), `ui/relay/release.js` and `ui/relay/returned.js` (two places).
+  Today the app says "your words stay with Hushmates" in two places (`ui/relay/release.js`, `ui/relay/returned.js`),
+  and the privacy notes say "your words aren't sent anywhere else for this" (`ui/relay/parts.js`). That is true only while AI is off.
   Before AI is switched on, change those words and ask people's consent again.
 
 ### Web
@@ -150,11 +156,12 @@ These are questions for a lawyer, not conclusions:
 5. **The Notifiable Data Breaches scheme.** A breach response plan: who assesses, who notifies the OAIC and the people affected.
 6. **Therapeutic Goods (software as a medical device).** Keep Hushmates positioned as reflection and wellbeing, with no claims to diagnose, treat or prevent a condition. Have the wording checked.
 7. **Australian Consumer Law.** What the app says about privacy, anonymity and benefits must be accurate (no "safe" guarantees). Two lines come from the product brief and need a lawyer's view:
-   - The release consent reads "Share anonymously with Hushmates participants". Other participants never see a name, but Hushmates holds the email address and moderators can read reported words, so the app otherwise calls itself pseudonymous (the welcome and the privacy sheet say "not perfectly anonymous"). An alternative: "Share with Hushmates participants, without my name". If the label changes, these change with it:
+   - **Changed (D8 applied, 15 October 2026).** The release consent used to read "Share anonymously with Hushmates participants". Other participants never see a name, but Hushmates holds the email address and moderators can read reported words, so the app otherwise calls itself pseudonymous (the welcome and the privacy sheet say "not perfectly anonymous"). It now reads "Share with Hushmates participants, without my name", and these changed with it:
      - the hint under the release button (`ui/relay/release.js`);
-     - the Your data summary, "You agreed to share your feeling anonymously" (`ui/relay/your-data.js`);
-     - the consent-required message (`core/relay-messages.js`, pinned by `tests/audit-fixes.test.mjs`);
-     - the export key `agreedToShareAnonymouslyAt` (`core/export-format.js`, `docs/ACCESS.md`): a format change, so its tests change too.
+     - the Your data summary, now "You agreed to share your feeling without your name" (`ui/relay/your-data.js`);
+     - the consent-required message (`core/relay-messages.js`, pinned by `tests/audit-fixes.test.mjs`).
+
+     Not changed: the export key `agreedToShareAnonymouslyAt` (`core/export-format.js`, `docs/ACCESS.md`). Renaming it is a format change, so its tests change too. A lawyer may still want to see the new wording.
    - The welcome line "One feeling. Five perspectives. Back to you." Five is the most a feeling can gather, not a promise; the app shows the real count, including zero.
 8. **Terms of use and community guidelines** that moderators can apply, and a way to appeal a restriction.
 9. **Contracts with providers** (data processing terms, where data is stored):
@@ -166,13 +173,14 @@ These are questions for a lawyer, not conclusions:
 
 - The support screen's wording, and which lines appear for which kind of concern (crisis, someone in danger, abuse and violence, harassment, other).
 - The extra crisis rules Hushmates adds to the shared lexicon (`core/feeling-safety.js`): overdose, self-harm, "no point going on", "don't want to be here any more", and passive wishes not to be here ("I just want to disappear", "sleep and never wake up", "I wish I'd never been born", "everyone would be better off without me", "I'm a burden", "tired of being alive"). Methods said with intent ("I want to hang myself", "take all my pills tonight", "unalive myself") and someone else in danger ("my friend says she wants to die", "my daughter is cutting herself", shown the "Someone might be in danger" screen) were added after a fifth review. Crisis words win over abuse or bullying words in the same feeling. Every phrasing found so far, and the everyday sentences that must still be released, are in `tests/fixtures/mallow-probes.json`, with a `clinicianCandidates` list of about 55 phrasings that need a clinician's call ("I can't do this anymore", "I feel like dying", "part of me wants to die", "I just want to disappear for a while"…). Start the review from there.
-- 🩺⚖️ **Keyword rules have a ceiling.** Five adversarial rounds kept finding new phrasings, in both directions (missed risk, false alarms). The rules are a floor that shows support more often than not; they can't be complete. **Phase 3 plan: `CRISIS_DETECTION.md`.**
+- 🩺⚖️ **Keyword rules have a ceiling.** Five adversarial rounds kept finding new phrasings, in both directions (missed risk, false alarms). The rules catch the phrasings they were written for and miss many natural variants. A Tier 0 developer probe released 102 of 127 crisis or danger phrasings (`docs/clinical/tier0-probe-results.csv`). That is evidence of gaps, not a measured rate: the phrasings and their intended answers are developer-written. New vocabulary waits for the batch after Tier A. **Phase 3 plan: `CRISIS_DETECTION.md`; Tier 0 findings: `docs/safety/TIER0_SELF_ASSESSMENT.md`.**
   - The rules are frozen as the floor.
   - An "ask, don't guess" check-in covers the uncertain middle (D2).
   - A meaning-based check runs on Supabase itself, escalate-only and in shadow mode first.
   - Changes are made only against an independent reviewer's labels:
-    - first one reviewer on the 108-phrasing sheet (Tier A);
+    - first one reviewer on the 108-phrasing sheet (Tier A), then the Tier 0 probe as a supplementary sheet;
     - two clinicians on all 379 phrasings only when a trigger calls for it (`docs/clinical/crisis-phrasings-for-review.csv`, scored by `tools/safety-eval.mjs`).
+  - The 379 are the development and regression set, not a test set: CI pins 335 of them to the screen's current answers. No locked test set exists yet.
   - No paid AI.
 - The Mallow library's rule that a death, harm at home, or health and mood never get "unfair load" lines (`NOT_CHORES` in `core/perspectives.js`), and whether it should be wider.
 - The escalation procedure (section 1) and the desk's urgent guidance.
@@ -217,9 +225,9 @@ Most start with a free self-run step. Decisions are in `DECISIONS.md`.
 
 | Review | What it covers | Status | Needed before |
 |---|---|---|---|
-| 🩺 **Independent safety review, Tier A** (D6a–D6d) | One registered psychologist or AMHSW, about 5–6 hours:<br>• crisis categories and 108 phrasings;<br>• all 342 Mallow lines;<br>• the support wording and the check-in (D2);<br>• the escalation procedure;<br>• a go/no-go memo.<br>Tier 0 (free) first. Tier B/C only on a trigger (`REVIEWS.md` §5) | ⛔ OUTSTANDING | **beta** (outside the team) |
+| 🩺 **Independent safety review, Tier A** (D6a–D6d) | One registered psychologist or AMHSW, for the time their quote sets (our estimate of 5–6 hours isn't confirmed):<br>• crisis categories and 108 phrasings, labelled first;<br>• all 291 Mallow lines in use;<br>• the Tier 0 probe, as a supplementary sheet;<br>• the support wording and the check-in (D2);<br>• the escalation procedure;<br>• a go/no-go memo.<br>Tier 0 (free) done by the developer; the owner's eSafety tool and WHS assessment still to do. Tier B/C only on a trigger (`REVIEWS.md` §5) | ⛔ OUTSTANDING | **beta** (outside the team) |
 | ⚖️ **Privacy** (D7) | Privacy policy and collection notice (APP 5); a Privacy Impact Assessment; health information as sensitive information; retention; the automated decisions (the screen, pausing, Mallow lines) under APP 1.7 from 10 December 2026; overseas disclosure if AI is ever on (APP 8) | ⛔ OUTSTANDING | **beta** (collection notice); launch (the rest) |
-| ⚖️ **Legal** (D7, D8, D9) | Terms and community guidelines; Online Safety Act duties; the social media minimum age law and age assurance; "Share anonymously"; how the app describes itself (Australian Consumer Law, TGA); notifiable data breaches plan | ⛔ OUTSTANDING | launch |
+| ⚖️ **Legal** (D7, D8, D9) | Terms and community guidelines; Online Safety Act duties; the social media minimum age law and age assurance; the consent wording (now "without my name", D8); how the app describes itself (Australian Consumer Law, TGA); notifiable data breaches plan | ⛔ OUTSTANDING | launch |
 | ♿ **Accessibility** (D13) | WCAG 2.2 AA by an external auditor, with screen-reader and switch users; reduced motion; contrast; the share video's alternative | ⛔ OUTSTANDING | launch |
 | 🔐 **Security** (D14) | An external penetration test of staging: the Edge Function, sign-in, the desk, the static site; key handling and rotation | ⛔ OUTSTANDING | launch |
 | 👥 **Moderator wellbeing** (WHS: a legal duty once anyone else reads the desk) | A written risk assessment; rotation, debriefs, an opt-out and access to support for whoever reads the desk | ⛔ OUTSTANDING | **beta** (outside the team) |

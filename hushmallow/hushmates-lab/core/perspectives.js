@@ -81,7 +81,7 @@ const OPENERS = {
     bright: ['Oh, this is so nice to hear.', 'This feels warm all the way through.', 'What a lovely thing to send out into the sky.'],
   },
   pipzi: {
-    heavy: ['Ooh, can we turn this over together for a second?', 'Feeling {adj} is allowed. Could we peek at this from a different side?', 'Hmm, let’s get curious about this one, kindly.', soft('Oh. That’s a big feeling. Let’s be soft with it.')],
+    heavy: ['Can we look at this together for a second, really gently?', 'Feeling {adj} is allowed. Could we peek at this from a different side?', 'Hmm, let’s get curious about this one, kindly.', soft('Oh. That’s a big feeling. Let’s be soft with it.')],
     bright: ['Wait, this is brilliant!', 'Oh! That deserves a little bounce.', 'Yes! This is the good stuff.'],
   },
   boppo: {
@@ -89,7 +89,7 @@ const OPENERS = {
     bright: ['This is wonderful news, and it deserves a moment.', 'Oh, this is worth cheering for!', 'Yes! That’s worth a big cheer.'],
   },
   zuzu: {
-    heavy: ['Let’s float up onto a cloud and look down at this for a moment.', soft('Imagine this feeling as weather, passing over a big, wide sky.'), 'Let’s turn this sideways and see what it looks like from there.', 'Picture holding this up to the light, like a strange little crystal.'],
+    heavy: ['Let’s sit on a quiet hilltop for a moment and look at this from a little further off.', soft('Imagine this feeling as weather, and you as the big, wide sky that can hold it.'), 'Let’s turn this sideways and see what it looks like from there.', 'Picture holding this up to the light, like a strange little crystal.'],
     bright: ['Somewhere a tiny star just did a cartwheel.', 'Ooh, this is the kind of news that makes clouds fizz.', 'This one deserves to go in a jar, it’s shiny.'],
   },
   loomi: {
@@ -97,7 +97,7 @@ const OPENERS = {
     bright: ['Let’s take a slow breath and really let this land.', 'This is a good moment. Let’s stay with it for a bit.', 'Lovely. No need to rush past this.'],
   },
   glitzi: {
-    heavy: [soft('Okay. Not going to pretend this is nothing.'), 'Real talk, the kind sort.', 'Feeling {adj}? Fair enough. Let’s look at this straight.', tender('Ugh. That sounds rough, honestly.')],
+    heavy: [soft('Okay. Not going to pretend this is nothing.'), 'Real talk, the kind sort.', 'Feeling {adj}? Fair enough. Let’s look at this straight.', tender('Honestly? That sounds really, really hard.')],
     bright: ['…Okay, fine. That’s actually lovely.', 'Well, look at that. Not bad at all.', 'Hm. Annoyingly, this is great.'],
   },
 };
@@ -147,6 +147,13 @@ const CHILD = String.raw`(?:the (?:kids|children|baby|boys|girls)|(?:my|our|his|
 const HARM_AT_HOME = String.raw`(?:(?:hit(?:s|ting)?|smack\w*|slap\w*|punch\w*|shak(?:es?|ing)|abus(?:es|ed|ing)) ${CHILD}|(?:kick\w*|beat(?:s|ing)?) ${CHILD}(?! (?:out|off|at|to|home|in|by)\b)|(?:grab\w*|push\w*) ${CHILD} (?:by|around|about)\b|(?<!play(?:s|ing)? )(?:rough|violent|aggressive|cruel|abusive|horrible|nasty|mean) (?:with|to|towards?) ${CHILD}|takes? (?:his|her|their) (?:anger|temper) out on|calls ${CHILD} (?:useless|lazy|stupid|worthless|names|fat|ugly)|(?:scream|shout|yell)\w* at (?:me|us)|(?:screams|shouts|yells)\b|(?:get|gets|got|getting|being) (?:screamed|shouted|yelled) at|(?:he|she|they)(?: \w+)? (?:scream|shout|yell)\w*|swear\w* at (?:me|us)|hits? (?:me|us)|(?<!\b(?:it|this|that|what)(?: really| just| so)? )hurt(?:s|ing)? (?:me|us|my (?:mum|mom|mam|mother|dad|sister|brother)|${CHILD})|kicks? (?:me|us)|threaten\w*|drunk|drinks\b|break(?:s|ing)? things|smash\w* things|throw\w* (?:things|stuff|plates|cups)(?! (?:on|onto|around|all over|everywhere|in|into|down|away|out)\b)|punch\w* (?:me|us|walls?|the wall|holes|doors?)|push(?:es|ed|ing)? (?:me|us)(?! to\b)|grab\w* (?:me|us|my (?:arms?|wrists?|neck|throat|hair))(?! (?:a|an|some|the)\b)|beat\w* (?:me|us)(?! (?:to|at|why|how)\b)|(?:won'?t|doesn'?t|don'?t|will not|does not) let (?:me|us) eat|or (?:i|we) (?:don'?t|won'?t|do not) get (?:to eat|food|fed)|(?:says|tells me|calls me) (?:i'?m|im|i am) (?:so )?(?:useless|lazy|stupid|worthless|nothing|fat|ugly|crazy)|calls me (?:useless|lazy|stupid|worthless|names|fat|ugly)|puts? me down|controls? (?:what|who|where|how|when|everything)|tracks? my|goes through my|checks my phone|who i can see|eggshells|nothing without (?:him|her)|(?:scared|afraid|frightened) of (?:him|her|them|how (?:he|she|they|my \w+) treats)|(?:will|'ll|going to|gonna|threaten\w* to|tries? to) take the kids|take the kids (?:away|off me|from me)|controlling|(?:is|gets|got|getting|be|so|really|very) (?:violent|aggressive|possessive|scary)|(?:his|her|their) temper|(?:he|she|they|partner|husband|wife|boyfriend|girlfriend) (?:has|has got|'s got) (?:a |such a )?(?:\w+ ){0,2}temper|(?:scared|afraid|frightened|terrified) (?:when (?:he|she|they)|of what (?:he|she|they)(?:'ll| will| might| would| could)? do)|call\w* me (?:\w+ )?names|makes? me feel (?:so |really )?(?:worthless|useless|stupid|small|like nothing)|no ?(?:one|body) else (?:would|will|could) (?:ever )?(?:want|love) me|humiliat\w* me|reads? (?:all )?my (?:messages|texts)|takes? my phone|check\w* (?:up on me|where i am)|(?:angry|mad|furious|jealous) (?:if|when|whenever) i (?:don'?t|go|see|talk|text|wear)|(?:won'?t|doesn'?t|will not|does not) let me (?:wear|go out|see my|talk to|have my own)|punish\w* me)`;
 const NOT_CHORES = new RegExp(String.raw`\b(?:panic\w*|anxi\w*|depress(?!ing)\w*|mental health|my mental|homesick\w*|feel less\b(?! like\b)|(?:i|me)(?: \w+){0,3} disappear|hopeless|worthless|numb|so low|feel(?:ing)? low|(?:what(?:'?s| is) the|no|see(?:ing)? (?:the|any)) point (?:of|in) (?:anything|everything|it all|life|any of it)|(?:can'?t|cannot|don'?t|do not) see (?:a|any) way out|no way out|(?:me )?when (?:i'?m|im|i am|i feel|i get) (?:sick|unwell|ill|low|down|sad|upset|struggling|anxious|crying|overwhelmed|scared|panicking)|therap\w*|counsell?\w*|meds|medication|tablets|pills|antidepressant\w*|eating disorder|self[- ]harm\w*|suicid\w*|(?:help\w*|make\w*|made) (?:me |us )?(?:to )?(?:feel (?:any )?(?:better|okay|ok)|cope|calm (?:me )?down)|feel any better|feel safe|calm me down|emotional(?:ly)? (?:support\w*|abus\w*|neglect\w*)|griev\w*|grief|(?<!(?:machine|dishwasher|hoover|vacuum|fridge|freezer|boiler|oven|cooker|kettle|dryer|microwave|car|phone|laptop|battery|tv|telly) )died|dying(?! (?:for|to)\b)|passed away|funeral|miscarr\w*|stillb(?:orn|irth)\w*|lost (?:the|a|our) (?:baby|pregnancy)|illness|ill\b|unwell|my (?:illness|condition|pain|recovery|health|period)|in (?:\w+ )?(?:pain|agony)|migraines?|flare[- ]?ups?|strokes?|my disab(?:ility|ilities)|(?:i'?m|i am) disabled|wheelchair|physio\w*|injur(?:y|ies|ed)|diabet\w*|insulin|hospital|operation|diagnos\w*|symptoms?|chronic|long covid|cancer|chemo\w*|surgery|rehab|(?:i'?m|im|i am|i'?ve been|i have been|i was|i got|i get|i feel|i felt)(?: (?:feeling|so|really|very|quite|too|a bit))* (?:sick|poorly|not (?:feeling )?well)\b(?! (?:of|and tired|to death|to the back teeth|paid|off)\b)|(?:don'?t|do not) feel well|heart attack|crutches|broke my (?:leg|arm|ankle|wrist|foot|hip|knee|back)|(?:hurt|injured) my back|bad back|my back is|my op|(?:my|car) accident|(?:had|got|have|caught) (?:covid|the flu|flu)|flares?|cramps|fibro\w*)\b|${HARM_AT_HOME}`);
 const HARM_AT_HOME_RE = new RegExp(String.raw`\b${HARM_AT_HOME}`);
+// Tier 0 (docs/safety/TIER0_SELF_ASSESSMENT.md §3): when the words describe harm or control at home, none of
+// Reframe's lines that ask the person to see the other side, read it more kindly or blame a thinking habit.
+const HARM_CROWDS = ['partner-distant', 'family-argument', 'seemed-annoyed', 'family-criticism', 'work-criticism', 'appearance-comment', 'not-listened', 'future-worry'];
+// someone who may not be safe, behind a silence: never "they're probably just busy"
+const WELFARE_WORDS = /\b(?:(?:been|is|was|seems?|seemed) (?:really |so |very )?(?:low|down|depressed|struggling)|thanks for everything|(?:nobody|no ?one) knows where|lives (?:alone|on (?:his|her|their) own)|can'?t do this any ?more|talk(?:s|ing|ed)? about being a burden|missing (?:since|overnight|all night)|(?:hasn'?t|has not|haven'?t|have not) (?:come|been) home)\b/;
+// a mistake that hurt someone: never "everyone makes mistakes" lines
+const SERIOUS_HARM_WORDS = /\b(?:(?:got|was|were|been|is|are|get) (?:badly |seriously )?(?:hurt|injured|killed)|died|killed|went missing|(?:was|were|went) lost|hospital|ambulance|run over|hit by a car)\b/;
 // the words Reframe's own "partner seems distant" situation listens for (src/ultra/frameworks.js): a
 // partner described as cold, quiet, snappy or moody (not "I get snappy"), and the other signs of distance.
 // A partner on their phone is distance only when no work at home is named (PHONE_WORDS).
@@ -165,20 +172,22 @@ const THEMES = [
       /\b(?:lost|(?<!\b(?:scared|afraid|terrified|frightened|petrified|fear|worried|worry|worrying|thought|imagine|imagining|risk) (?:of |about )?|\b(?:i'?m|im|i am|we'?re|we are) )losing) (?:my|our) (?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife|partner|boyfriend|girlfriend|fianc\w*|friend|aunt|auntie|uncle|cousin|dog|cat|best friend|baby|pet)\b(?! to (?:her|his|their|another|other|someone|somebody|some)\b| because (?:i|of (?:me|my))\b)/g,
       /\b(?:(?:lost|losing) (?:his|her|their) (?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|son|daughter|husband|wife)|we(?:'ve| have)? lost (?:mum|mom|mam|dad|nan|nana|gran|granny|grandma|grandad|granddad|grandpa))\b(?!'s)(?! to (?:her|his|their)\b)/g,
       /\b(?:since|after|when) (?:(?:my|our|his|her|their) )?(?:mum|mom|mam|mother|dad|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|brother|sister|husband|wife) (?:has |had |just |sadly |recently )?passed\b(?! (?:out|over|by|through|around|round|me|us|him|them|his|her|their|the|a|an|all|both|it|with)\b)(?![^.!?]*\b(?:tests?|exams?|driving)\b)/g,
-      /\b(?:miscarr\w*|stillb(?:orn|irth)\w*|ectopic|(?:lost|(?<!\b(?:scared|afraid|terrified|frightened|petrified|fear|worried|worry|worrying|thought|imagine|imagining|risk) (?:of |about )?|\b(?:i'?m|im|i am|we'?re|we are) )losing) (?:the|a|our) (?:baby|pregnancy))\b/g],   // a pregnancy loss is a loss too
+      /\b(?:since|after|when) (?:he|she|they) (?:has |had |just |sadly |recently )?passed(?: away| on)?\b(?! (?:out|over|by|through|around|round|me|us|him|them|his|her|their|the|a|an|all|both|it|with|my|our)\b)(?![^.!?]*\b(?:tests?|exams?|driving)\b)/g,
+      /\bwe(?:'ve| have)? lost (?:him|her)\b(?! (?:in|at|on|to|for|during|around|again)\b)/g,
+      /\b(?:miscarr\w*|stillb(?:orn|irth)\w*|ectopic|no heartbeat|(?:lost|(?<!\b(?:scared|afraid|terrified|frightened|petrified|fear|worried|worry|worrying|thought|imagine|imagining|risk) (?:of |about )?|\b(?:i'?m|im|i am|we'?re|we are) )losing) (?:the|a|our) (?:baby|pregnancy))\b/g],   // a pregnancy loss is a loss too
     angles: [
       ['self-compassion', 'Missing someone this much can be a measure of how much they mattered. Grief doesn’t need to be tidied away or hurried along.'],
       ['context', 'Grief often comes in waves rather than a straight line. A hard day doesn’t undo the steadier ones, or mean you’re going backwards.'],
-      ['connection', 'Maybe there’s a small way to keep them close today: a song, a place, or a story you could share with someone who’d love to hear it.'],
+      ['connection', 'If it feels right, there might be a small way to mark this today: a quiet moment, a song, or a few words with someone who gets it.'],
       ['time', 'There’s no right amount of time for this. Still feeling it, weeks or years on, can simply be what love looks like later.'],
-      ['support', 'You don’t have to carry this on your own. Talking to someone who knew them, or someone who simply listens well, might help a little.'],
+      ['support', 'You don’t have to carry this on your own. Talking with someone who understands, or someone who simply listens well, might help a little.'],
       ['savour', 'Laughing and grieving can sit side by side. Remembering someone with joy can be one of the ways love carries on.', ['joy', 'excitement']],
     ] },
   { id: 'missing', labels: ['sadness', 'loneliness'], notWithGrief: true,   // its lines are about distance, not death
     cues: [/\bmiss(?:ing)? (?:him|her|them|you|home|everyone|my (?:\w+ )?(?:friends?|family|mum|mom|dad|partner|boyfriend|girlfriend|husband|wife|ex|kids?|brother|sister|nan|gran|grandma|grandad))\b/g],
     angles: [
       ['self-compassion', 'Missing someone often shows how much space they hold in your life. That ache is a kind of caring.'],
-      ['agency', 'Could a small thread of contact help, like a message, a voice note or a photo, even if it can’t close the distance?'],
+      ['agency', 'Could a small thread of connection help, like an old photo, a familiar song, or a chat with someone who gets it, even if it can’t close the distance?'],
       ['time', 'Distance can make a feeling louder in the quiet moments. It might ease and swell at different times, and both are normal.'],
     ] },
   // a rift with someone close: not speaking, falling out, drifting apart (distance between people, not death)
@@ -186,7 +195,7 @@ const THEMES = [
     cues: [/\b(?:stopped (?:talking|speaking)|(?:haven'?t|have not|hasn'?t|has not|don'?t|do not|aren'?t|are not|not been|not) (?:spoken|speaking|talked|talking)(?: (?:to|with) (?:each other|him|her|them|me|my \w+))?(?: (?:in|for) (?:weeks|months|years|a (?:while|long time|year)))|stopped (?:calling|replying to me|visiting)|fell out|falling out|fallen out|estranged|cut (?:me|him|her|them) off|cut off contact|drifted apart|grown apart|grew apart|used to be (?:so |really )?close|(?:how|what) (?:things|we|it) used to be|not on speaking terms)\b/g],
     angles: [
       ['self-compassion', 'Missing how things used to be with someone can show how much that closeness mattered. No wonder the quiet hurts.'],
-      ['time', 'A silence between people who were close isn’t always the end of the story. Sometimes it’s a long pause that neither person knows how to break first.'],
+      ['time', 'A silence between people who were close can hold a lot: hurt, missing, even relief. It doesn’t have to be solved today, and what it means can get clearer with time.'],
       ['agency', 'You don’t have to decide the whole relationship today. If and when it feels right, one small, kind step can be enough, and if some distance keeps you well, that’s allowed too.'],
       ['neutral', 'Missing someone and still feeling hurt by them can sit side by side. Neither feeling has to win for both to be real.'],
       ['other-eyes', 'If a good friend were in your place, you might tell them that wanting things to be better says something kind about them. That could be true for you as well.'],
@@ -197,30 +206,30 @@ const THEMES = [
     angles: [
       ['self-compassion', 'Worrying about someone you love can be love looking ahead. It makes sense that it shows up like this.'],
       ['agency', 'Maybe some of that care could go into today: time together, a call, or a small thing that would make them smile.'],
-      ['not-enough-info', 'Nobody can see how the future goes, for anyone. What you can choose is how you spend the time that’s here.'],
+      ['not-enough-info', 'Nobody can see exactly how things will go. If something about them is worrying you, it’s okay to check in with them, and to lean on someone for support too.'],
     ] },
-  { id: 'tired', labels: HEAVY_LABELS,
+  { id: 'tired', labels: HEAVY_LABELS, notWithGrief: true,
     cues: [/\b(?:tired|exhausted|drained|worn out|burn(?:ed|t) out|burnout|no energy|knackered|can'?t sleep|cannot sleep|haven'?t slept|not sleeping)\b/g,
       /\b(?:feel(?:ing|s)?|felt) (?:so |really |a bit |kind of |pretty )?(?:flat|empty|numb|shattered)\b/g],
     angles: [
-      ['context', 'Being worn out can make everything feel heavier and more final than it is. Some of this might look different after proper rest.'],
+      ['context', 'Being worn out can make everything feel heavier and harder to hold. It’s okay to go easy on yourself, and on big conclusions, while you’re this tired.'],
       ['self-compassion', 'Feeling flat after a long stretch isn’t a failing. It might be your body and mind asking for a gentler pace for a while.'],
-      ['agency', 'Could one small kindness for your body help a little today: water, food, fresh air, or an earlier night?'],
+      ['agency', 'Could one small kindness for your body help a little today: water, a warm drink, some fresh air, or a rest?'],
       ['support', 'If it’s been going on for a while, it could be worth talking it over with someone you trust, or a doctor. You don’t need a big reason to ask.'],
     ] },
   { id: 'decision', labels: ['confusion', 'worry', 'frustration', 'excitement'],
     cues: [/\b(?:should i|can'?t decide|cannot decide|don'?t know (?:if|whether|what to do|which)|not sure (?:if|whether|what to do)|torn between|choose between|deciding between|stay or (?:go|leave)|or stay)\b/g],
     angles: [
-      ['neutral', 'Feeling torn often means both options hold something you care about. That’s less like being stuck and more like having two good reasons.'],
+      ['neutral', 'Feeling torn can mean a lot is riding on this, and that’s heavy to hold on your own. It’s okay not to have the answer yet.'],
       ['agency', 'Not every choice needs the whole answer today. Maybe one smaller question, answered first, would make the next one clearer.'],
-      ['other-eyes', 'Imagine yourself a year from now, having chosen each path in turn. Which version of you seems to breathe out a little?'],
-      ['worry-partly-true', 'There may not be a perfect option, only real ones with different trade-offs. Choosing one you can live with is allowed.'],
+      ['other-eyes', 'Imagine someone kind, who knows you well, hearing all of this. What might they say matters most to you here?'],
+      ['worry-partly-true', 'There may not be a perfect option here. It’s okay to take your time, and to talk it through with someone you trust before you choose.'],
     ] },
   { id: 'belonging', labels: ['loneliness', 'sadness', 'worry'],
     cues: [/\b(?:fit in|fitting in|no friends|have friends|making friends|make friends|everyone (?:else )?(?:has|seems)|by myself|on my own|no ?one to talk to|nobody to talk to|alone|new (?:city|town|school|uni|place|country)|moved (?:here|away|to))\b/g],
     angles: [
-      ['context', 'From the outside, other people’s friendships can look finished and easy. Lots of them were built slowly, through small repeated moments.'],
-      ['benign', 'Some of the people around you might feel more on the edge than they show. Loneliness tends to be quieter than it is rare.'],
+      ['context', 'From the outside, other people’s friendships can look ready-made and easy. Lots of them were built slowly, through small repeated moments.'],
+      ['benign', 'Some of the people around you might feel more on the outside than they show. Loneliness is often more common than it looks, just quieter.'],
       ['agency', 'Could there be one small, low-pressure way to be around people this week, where an activity does most of the talking?'],
       ['self-compassion', 'Wanting to belong isn’t too much to ask. It’s one of the most human things there is.'],
     ] },
@@ -234,23 +243,23 @@ const THEMES = [
       near: new RegExp(String.raw`\b${HOME_WORDS}\b`) },
     cues: [new RegExp(String.raw`\b(?:flatmates?|housemates?|roommates?|chores|housework|house ?work|washing up|the dishes|the laundry|clean(?:ing|s)? up|tidy(?:ing)? up|do(?:ing)? everything|always end up (?:doing|cleaning|tidying|washing|paying|picking up)|nobody helps|no ?one helps|${HELP_AT_HOME}|does nothing (?:around (?:here|the (?:house|flat|home|place))|at home)|all the (?:cooking|cleaning|chores|housework|washing|laundry)|pull(?:ing)? (?:their|his|her) weight)\b`, 'g')],
     angles: [
-      ['worry-partly-true', 'Your frustration might be pointing at something real: the load doesn’t feel shared. That’s worth saying out loud, kindly and plainly.'],
+      ['worry-partly-true', 'This feeling might be pointing at something real: the load doesn’t feel shared. If it feels safe to, that’s worth saying out loud, kindly and plainly.'],
       ['benign', 'Sometimes people don’t notice a job until it stops getting done. That doesn’t make it fair, but it might mean it’s more fixable than it feels.'],
-      ['agency', 'Could there be one specific ask, like a rota or a single job that’s theirs, rather than a general plea for help?'],
+      ['agency', 'If it feels okay to ask, could there be one specific thing, like a roster or a single job that’s theirs, rather than a general plea for help?'],
       ['self-compassion', 'Being the one who always notices what needs doing is tiring. It makes sense that you’ve had enough.'],
     ] },
-  { id: 'health', labels: ['worry', 'sadness', 'confusion', 'frustration'],
-    cues: [/\b(?:doctors?|gp|hospital|scan|test results|blood tests?|symptoms?|lump|biopsy|diagnos\w*|unwell|operation|surgery|my health)\b/g],
+  { id: 'health', labels: ['worry', 'sadness', 'confusion', 'frustration'], notWithGrief: true,
+    cues: [/\b(?:doctors?|gp|hospital|scan|test results|blood tests?|symptoms?|lump|biopsy|diagnos\w*|unwell|operation|surgery|my health|cancer|chemo\w*|palliative)\b/g],
     angles: [
-      ['not-enough-info', 'Waiting for health news, yours or someone else’s, can send the mind racing ahead. Not knowing yet is hard, and it isn’t the same as bad news.'],
-      ['agency', 'It might help to jot down your questions before the appointment, so some of this has somewhere to go.'],
+      ['not-enough-info', 'Health worries, yours or someone else’s, can send the mind racing ahead. Whatever you know so far, it’s okay to take this one small step at a time.'],
+      ['agency', 'If there’s an appointment coming up, it might help to jot down your questions first, so some of this has somewhere to go.'],
       ['self-compassion', 'Taking a health worry seriously is a way of caring. Being shaken by it is understandable.'],
-      ['support', 'You don’t have to hold the waiting on your own. Telling one person you trust could make it a little lighter.'],
+      ['support', 'You don’t have to hold this on your own. Telling one person you trust could make it a little lighter.'],
     ] },
-  { id: 'exam', labels: ['worry', 'frustration', 'sadness', 'confusion'],
-    cues: [/\b(?:exams?|results day|finals|grades?|mocks|mock (?:exams?|tests?|papers?))\b/g, /\btests? (?:tomorrow|today|on|next|this)\b/g],
+  { id: 'exam', labels: ['worry', 'frustration', 'sadness', 'confusion'], notWithGrief: true,
+    cues: [/\b(?:exams?|results day|finals|grades?|mocks|mock (?:exams?|tests?|papers?))\b/g, /\b(?<!\b(?:blood|pregnancy|covid|rat|pcr|medical|eye|hearing|smear|cervical|hiv|sti|genetic|allergy|lab|drug|urine|heart|breath|liver|kidney|glucose|diabetes) )tests? (?:tomorrow|today|on|next|this)\b/g],
     // after the result, lines about nerves and preparation don't fit
-    notWhen: { re: /\b(?:failed|fail|results?|didn'?t pass|grades?|marks?)\b/, ids: ['hm-exam-1', 'hm-exam-3'] },
+    notWhen: { re: /\b(?:failed|fail|results?|didn'?t pass|grades?|marks?|negative|positive)\b/, ids: ['hm-exam-1', 'hm-exam-3'] },
     angles: [
       ['context', 'Nerves before a test can be a sign you care how it goes, rather than a forecast of how it will go.'],
       ['neutral', 'One exam measures one day’s work on one set of questions. It isn’t a measure of you, or of everything you’ll do next.'],
@@ -259,39 +268,39 @@ const THEMES = [
   { id: 'study', labels: ['worry', 'frustration', 'sadness', 'confusion'],
     cues: [/\b(?:revision|revis(?:e|ing)|assignments?|essays?|coursework|dissertation|homework|studying|procrastinat\w*|deadlines?)\b/g],
     angles: [
-      ['self-compassion', 'Studying while stressed is harder than it looks from the outside. Doing some of it, imperfectly, still counts.'],
+      ['self-compassion', 'Getting work done while stressed is harder than it looks from the outside. Doing some of it, imperfectly, still counts.'],
       ['context', 'Putting things off often has more to do with how big a task feels than with how much you care.'],
       ['agency', 'Could you shrink the first step to something tiny, like ten minutes or one paragraph, and stop there if you want to?'],
     ] },
-  { id: 'trying', labels: ['frustration', 'sadness', 'worry'],
+  { id: 'trying', labels: ['frustration', 'sadness', 'worry'], notWithGrief: true,
     cues: [/\b(?:trying|tried|practis\w*|practic\w*|learning|still bad|can'?t get (?:it|the hang)|keeps? (?:breaking|failing|going wrong|crashing))\b/g],
     angles: [
       ['neutral', 'You might be trying hard at something that’s genuinely hard. That isn’t the same as getting it wrong.'],
-      ['growth', 'Being stuck is often part of getting better, even when it doesn’t feel like progress. The awkward middle bit counts.'],
-      ['agency', 'Could you make the next try smaller, or ask someone for a fresh pair of eyes? Sometimes that’s all it takes to get unstuck.'],
+      ['growth', 'Feeling stuck after trying this hard is exhausting, and it isn’t a sign you’ve failed. Some things need more than effort alone, and that’s okay.'],
+      ['agency', 'Could someone you trust look at this with you, or help you think through the next step? You don’t have to get unstuck alone.'],
     ] },
-  { id: 'rejection', labels: ['sadness', 'frustration', 'worry', 'anger', 'confusion'],
+  { id: 'rejection', labels: ['sadness', 'frustration', 'worry', 'anger', 'confusion'], notWithGrief: true,
     cues: [/\b(?:didn'?t get (?:in|into|the job|the role|the place|picked|chosen|selected|accepted)|turned down|unsuccessful|rejection (?:letter|email)|application|applied)\b/g],
     angles: [
-      ['neutral', 'A no from one place is a decision about one application at one moment. It isn’t a verdict on what you’re capable of.'],
-      ['self-compassion', 'Disappointment this sharp often means you let yourself hope, and hoping took courage.'],
+      ['neutral', 'A no from one place is a decision about one application at one moment. It isn’t a verdict on you.'],
+      ['self-compassion', 'A hurt this sharp often means you let yourself hope, and hoping took courage.'],
       ['agency', 'When you’re ready, it might help to look at what’s still open, rather than only at what closed.'],
     ] },
-  { id: 'perform', labels: ['worry', 'excitement', 'confusion'],
+  { id: 'perform', labels: ['worry', 'excitement', 'confusion'], notWithGrief: true,
     cues: [/\b(?:interviews?|presentation|first day|audition|speech|pitch|public speaking)\b/g,
       /\bstart(?:ing)? (?:a |my )?(?:new )?(?:job|role)\b/g],
     angles: [
       ['benign', 'The people on the other side of the table often want it to go well too. The room might be more on your side than it feels.'],
-      ['context', 'Nerves and excitement can feel almost the same in the body. Some of this might be your body getting ready.'],
+      ['context', 'Nerves before a big moment are very normal. They can feel loud in the body without meaning it will go badly.'],
       ['neutral', 'It doesn’t have to go perfectly to go well. A couple of wobbly moments rarely decide the whole thing.'],
       ['agency', 'Could you picture the first two minutes going okay? Having just the opening ready can make the rest feel steadier.'],
     ] },
   { id: 'money', labels: ['worry', 'frustration', 'sadness', 'confusion', 'anger'],
     cues: [/\b(?:rent|bills|(?:the|a|phone|power|electricity|gas|water|energy|credit card) bill|money|debts?|overdraft|afford|payday|skint|budget|savings|mortgage)\b/g, /\b(?:i'?m|am|so) broke\b/g],
     angles: [
-      ['agency', 'Money worries tend to feel bigger in the fog. Writing down what’s due and when might shrink it to something you can plan around.'],
-      ['self-compassion', 'Being stretched for money is stressful, and it says nothing about your worth. A lot of it comes down to things outside your control.'],
-      ['support', 'If it keeps feeling tight, a free money advice service could help you sort out the next steps, without judgement.'],
+      ['agency', 'Money worries can feel even heavier in a fog. Writing down what’s due and when might make the next step a little easier to see.'],
+      ['self-compassion', 'Being stretched for money is stressful, and it says nothing about your worth. It happens to all sorts of people, for all sorts of reasons.'],
+      ['support', 'If money keeps feeling tight, or scary, a free financial counsellor could help you sort out the next steps, without judgement.'],
     ] },
   { id: 'overwhelm', labels: ['worry', 'frustration', 'confusion', 'sadness'],
     cues: [/\b(?:overwhelm\w*|too much (?:to do|on|going on)|so much to do|can'?t keep up|everything at once|all at once|swamped|snowed under)\b/g],
@@ -319,7 +328,7 @@ const THEMES = [
     cues: [/\b(?:start(?:ing)?|moving|trip|travel\w*|holiday|abroad|first|can'?t wait|next (?:week|month|year)|this (?:weekend|summer)|tomorrow|soon|adventure|gig|festival|concert)\b/g],
     angles: [
       ['neutral', 'Excitement and nerves often travel together, because both mean it matters. You don’t have to pick just one.'],
-      ['savour', 'It doesn’t all need planning yet. The looking-forward part is part of the good bit too.'],
+      ['savour', 'The looking-forward part is part of the good bit too. Plan whatever helps you feel ready, and let the rest wait.'],
       ['agency', 'What’s one small thing you could do to get ready that would also feel like a treat?'],
     ] },
   { id: 'small-joys', labels: ['joy'],
@@ -333,31 +342,31 @@ const THEMES = [
 // Lines written for each label, so every feeling has something that fits its emotion.
 const LABEL_LINES = {
   worry: [
-    ['context', 'Worry tends to speak in what-ifs. It can feel like a warning, even when it’s really a guess about something that hasn’t happened.'],
+    ['context', 'Worry tends to speak in what-ifs. Some are guesses, and some are worth listening to, especially when they’re about your safety.'],
     ['not-enough-info', 'You might not have enough information yet to know how this goes. That gap is uncomfortable, and it isn’t the same as bad news.'],
     ['worry-partly-true', 'Your worry could be partly right, and that’s okay to admit. If it is, noticing it early gives you more time to act.'],
-    ['agency', 'Maybe split this into two piles: the parts you can do something about, and the parts that can only be waited out.'],
+    ['agency', 'Maybe split this into two piles: the parts you can do something about, and the parts you might want some help with.'],
     ['self-compassion', 'Worrying about this suggests it matters to you. You don’t have to talk yourself out of caring.'],
-    ['time', 'Think of a past worry that felt this big. How did that one turn out, and what helped you through it?'],
+    ['time', 'Think of another time something felt this big. What helped you get through it, even a little?'],
   ],
   sadness: [
     ['self-compassion', 'Sadness doesn’t always need fixing. Sometimes it just needs room, and a bit of company.'],
-    ['context', 'Feeling low can make the whole picture look grey, even the parts that aren’t. It might be worth going easy on big conclusions today.'],
+    ['context', 'Feeling this low can make everything look grey at once. It might help to go gently today, and leave big decisions for later.'],
     ['self-compassion', 'It might hurt this much because something here really mattered to you. That caring is worth honouring, even while it aches.'],
     ['agency', 'Is there one small comfort within reach right now? A warm drink, a short walk, or a message to someone who feels safe.'],
     ['time', 'Heavy feelings can shift, even when it seems like they won’t. Today doesn’t have to decide how next week feels.'],
   ],
   anger: [
     ['worry-partly-true', 'Your anger might be pointing at something that really wasn’t fair. It’s worth listening to before deciding what to do with it.'],
-    ['agency', 'What would a fair outcome look like here? Knowing that can turn the heat into a clear, calm ask.'],
-    ['time', 'Anger often makes its point best once it has cooled a little. Waiting before you reply might help it land the way you mean it.'],
+    ['agency', 'What would a fair outcome look like here? Knowing that can help you work out what you need next.'],
+    ['time', 'Anger often gets clearer once it has cooled a little. You don’t owe anyone a quick reply, and there’s no rush to decide what to do with it.'],
     ['context', 'Sometimes anger shows up on top of hurt or tiredness. It could be worth asking what else is underneath it.'],
-    ['not-enough-info', 'You might not have the whole story yet about why it happened. That doesn’t make it okay, but it might change what you do next.'],
+    ['not-enough-info', 'You don’t need the whole story of why it happened for your anger to count. It’s okay to start with what you need.'],
   ],
   loneliness: [
     ['self-compassion', 'Feeling lonely isn’t a sign that something is wrong with you. It’s a signal that you need connection, and that’s a very human need.'],
     ['context', 'Loneliness can be loud and convincing, telling you everyone else is fine. Plenty of people feel it quietly, more often than they say.'],
-    ['agency', 'Could you reach out to one person, even in a small way? A short message can open a door without asking much of anyone.'],
+    ['agency', 'Could you reach out to one person, in a small way that feels safe? A quick hello can open a door without asking much of anyone.'],
     ['neutral', 'Being alone right now and being alone for good are different things. This might be a season, not the whole story.'],
     ['connection', 'Sending this feeling out is its own kind of reaching out. That part of you, the part that reaches, is worth trusting.'],
   ],
@@ -391,7 +400,7 @@ const LABEL_LINES = {
   ],
   none: [
     ['self-compassion', 'Whatever this is, it’s okay that it’s on your mind. You don’t have to have it all worked out right now.'],
-    ['other-eyes', 'If someone who cares about you saw this, what might they notice that’s harder to see from the inside?'],
+    ['other-eyes', 'If someone kind were reading this with you, what might they notice that’s harder to see from the inside?'],
     ['agency', 'Is there one small, kind thing you could do for yourself while this settles?'],
   ],
 };
@@ -428,7 +437,19 @@ const SCENARIO_LABELS = {
 };
 // Reframe lines Hushmates leaves out: they refer to Reframe's own steps, sound certain ("clearly"),
 // state other people's minds as fact, or offer a silver lining for a hurt.
-const SKIP = new Set(['gen-ang6', 'gen-ang7', 'aw-ang1', 'pd-ang1', 'nt-ang4']);
+const SKIP = new Set([
+  'gen-ang6', 'gen-ang7', 'aw-ang1', 'pd-ang1', 'nt-ang4',
+  // Tier 0 (docs/safety/TIER0_SELF_ASSESSMENT.md §3): left out because, in the contexts they can reach,
+  // they excuse a harmer, play down violence, discourage checking on someone at risk, blame the person,
+  // or meet a passive wish not to be here. Tier A can return any of them line by line.
+  'um-ang1', 'um-ang2', 'um-ang3', 'um-ang5', 'um-ang7', 'wc-ang1', 'wc-ang2', 'pd-ang7',
+  'mj-ang1', 'mj-ang2', 'mj-ang4', 'mj-ang7', 'fa-ang1', 'fa-ang2', 'fa-ang3', 'fa-ang5',
+  'fa-ang6', 'sa-ang4', 'sa-ang7', 'bg-ang5', 'nt-ang1', 'nt-ang2', 'nt-ang5', 'nt-ang6',
+  'fc-ang2', 'ms-ang3', 'ms-ang6', 'ac-ang2', 'fw-ang1', 'fw-ang2', 'fw-ang3', 'fw-ang4',
+  'fw-ang5', 'rg-ang4', 'aw-ang2', 'aw-ang6', 'aw-ang7', 'gen-ang2', 'gen-future-reading-ang2', 'gen-all-or-nothing-ang1',
+  'gen-all-or-nothing-ang2', 'gen-always-never-ang1', 'gen-always-never-ang2', 'gen-spotlight-on-me-ang1', 'gen-worst-case-jump-ang2', 'gen-should-rules-ang2', 'gen-only-the-bad-bit-ang2', 'gen-feelings-as-proof-ang1',
+  'gen-feelings-as-proof-ang2', 'gen-what-if-loop-ang1', 'gen-what-if-loop-ang2',
+]);
 // Reframe was written for worries: a line about "your worry" doesn't fit anger, grief or joy.
 const WORRY_WORD = /\bworr(?:y|ies|ied|ying)\b/i;
 
@@ -481,7 +502,7 @@ function kindFit(kind, label, mallow) {
   return s;
 }
 
-/** Every line this feeling could get, with its fit. → { list: [{ id, kind, text, base }], family, grief } */
+/** Every line this feeling could get, with its fit. → { list: [{ id, kind, text, base }], family, grief, tender } */
 function candidatesFor(text, label) {
   const probe = tidyInput(text).toLowerCase();
   const family = BRIGHT.has(label) ? 'bright' : 'heavy';
@@ -502,7 +523,10 @@ function candidatesFor(text, label) {
   // situations a theme rules out when its words are there: for a label it serves, on any of its cues;
   // otherwise only when the words name it outright. Never when the words also describe that situation.
   // harm or control at home, or a partner who has died: never "your partner seems distant" lines
-  const crowded = new Set(HARM_AT_HOME_RE.test(probe) || (grief && !PARTNER_DISTANT_WORDS.test(probe)) ? ['partner-distant'] : []);
+  const harm = HARM_AT_HOME_RE.test(probe);
+  const crowded = new Set(harm ? HARM_CROWDS : grief && !PARTNER_DISTANT_WORDS.test(probe) ? ['partner-distant'] : []);
+  if (grief || WELFARE_WORDS.test(probe)) for (const id of ['unanswered-message', 'no-text-back']) crowded.add(id);
+  if (SERIOUS_HARM_WORDS.test(probe)) crowded.add('mistake-judged');
   for (const th of THEMES) {
     if (!th.crowds || th.crowds.unless.test(probe) || (th.crowds.unlessNoHits?.test(probe) && !hitsOf(th))) continue;
     if ((fits(th) && !skipped(th) && hitsOf(th) > 0) || th.crowds.home.test(probe) || (hitsOf(th) > 0 && th.crowds.near.test(probe))) for (const id of th.crowds.ids) crowded.add(id);
@@ -531,19 +555,20 @@ function candidatesFor(text, label) {
       for (const a of m.scenario.angles) add(a, base + fit(m.scenario), true);
     }
   }
-  for (const p of detectPatterns(text)) {
+  for (const p of harm ? [] : detectPatterns(text)) {
     // good news only borrows the habit of shrinking it ("it was just luck")
     if (family === 'bright' && p.pattern.id !== 'shrinking-the-good') continue;
     for (const a of GENERAL.patternKit[p.pattern.id]?.angles || []) add(a, WEAK_PATTERNS.has(p.pattern.id) ? BASE.weakPattern : BASE.pattern, true);
   }
   for (const a of LABEL_LINES[label] || LABEL_LINES.none) add(a, BASE.label);
   if (family === 'heavy') for (const a of GENERAL.angles) add(a, BASE.general, true);
-  return { list, family, grief };
+  // harm at home gets the tender openers grief gets: no "Ooh" or "Fair enough"
+  return { list, family, grief, tender: grief || harm };
 }
 
-function openerFor(mallow, family, grief, label, pickSeed) {
-  let list = OPENERS[mallow][grief ? 'heavy' : family];
-  if (grief) list = list.filter((o) => (family === 'bright' ? o.soft : o.tender));
+function openerFor(mallow, family, tender, label, pickSeed) {
+  let list = OPENERS[mallow][tender ? 'heavy' : family];
+  if (tender) list = list.filter((o) => (family === 'bright' ? o.soft : o.tender));
   if (!ADJ[label]) list = list.filter((o) => !o.text.includes('{adj}'));
   const o = list[pickSeed % list.length];
   return o.text.replace('{adj}', ADJ[label] || '');
@@ -565,11 +590,11 @@ export function libraryProvider() {
     if (!screen.ok && screen.code === 'support') return { status: 'support', level: screen.level };
     const voice = MALLOW_IDS.includes(mallow) ? mallow : 'loomi';
     const feeling = LABEL_IDS.includes(label) ? label : inferLabel(tidyInput(words).toLowerCase());
-    const { list, family, grief } = candidatesFor(words, feeling);
+    const { list, family, tender } = candidatesFor(words, feeling);
     if (!list.length) return { status: 'unavailable', reason: 'no-angle' };
     const seed = fnv(`${words}\u0000${feeling}\u0000${voice}\u0000${Number(attempt) || 0}`);
     const scored = list.map((c) => {
-      const full = `${openerFor(voice, family, grief, feeling, fnv(`${seed}:open:${c.id}`))} ${c.text}`;
+      const full = `${openerFor(voice, family, tender, feeling, fnv(`${seed}:open:${c.id}`))} ${c.text}`;
       return { ...c, full, score: c.base + kindFit(c.kind, feeling, voice), keys: [c.id, textHash(full), textHash(c.text)], mix: fnv(`${seed}:${c.id}`) };
     });
     const recent = Array.isArray(avoid) ? avoid.map(String) : [];

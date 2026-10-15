@@ -236,7 +236,7 @@ export class RelayService {
     // a safety concern is answered with support first, whatever else is true: never circulated, never stored
     if (!screen.ok && screen.code === 'support') return { status: 'support', level: screen.level, support: screen.support };
     if (!screen.ok) fail(`feeling-${screen.code}`, screen.message);
-    // the person must actively agree to share it anonymously; the interface can't skip this
+    // the person must actively agree to share it without their name; the interface can’t skip this
     if (consent !== true) fail('consent-required');
     const dupe = Object.values(this.s.journeys).find((j) => j.owner === acc.id && j.clientId === clientId);
     if (dupe) {
@@ -817,10 +817,12 @@ export class RelayService {
     return { blocked: true };
   }
 
+  // The same words as hushmates.expectation (supabase/migrations/20261015090000_hushmates_tier0.sql): a small
+  // team, not there around the clock, that can't see who anyone is or contact anyone (Tier 0).
   _expectation(rep) {
     return rep.urgent
-      ? 'Thank you. This is marked as a priority for our human safety team (we aim to look within 24 hours during the pilot). If anyone is in immediate danger, call 000 now.'
-      : 'Thank you. A person on our safety team will review this. During the pilot we aim to review reports within 48 hours. Nobody is told who reported.';
+      ? 'Thank you for telling us. This goes to the front of the queue for a person on our safety team. We’re a small team and we’re not here around the clock: during the pilot we aim to read priority reports within a day, and nights, weekends and holidays can take longer. We can’t see who wrote it, so we can’t contact them or send help. If you know someone is in danger right now, call 000. If this has stayed with you, Lifeline is there any time on 13 11 14. Nobody is told who reported.'
+      : 'Thank you for telling us. A person on our safety team will read it. We’re a small team, not here around the clock: during the pilot we aim to read reports within two days. Nobody is told who reported.';
   }
 
   // ----------------------------------------------------------- your data --

@@ -4,14 +4,16 @@
 > **Hushmates — Send a feeling. See it differently.**
 > ONE FEELING. FIVE PERSPECTIVES. BACK TO YOU.
 
-**Status: Phase 3b. Staging is approved, prepared and rehearsed; it is not yet verified on
-real infrastructure. Nothing is deployed, nothing touches production, and nothing is public.**
-- The whole staging topology has been rehearsed on one machine: the packed site on one host, and the real Edge Function under Deno on another, in front of stand-ins for Supabase.
+**Status: Phase 3c. Not ready for anyone outside the team.** Staging is approved, prepared and
+rehearsed; it is not yet verified on real infrastructure. Nothing is deployed, nothing touches
+production, and nothing is public.
+- Where everything stands: **`docs/LAUNCH_READINESS.md`**, in six parts (technical staging, technical production, privacy and legal, safety and moderation, accessibility, financial and operational) against four gates.
+- The free safety self-assessment (Tier 0): **`docs/safety/TIER0_SELF_ASSESSMENT.md`**. The crisis screen is weak on new phrasings. The Mallow library was checked line by line and fixed. *Support* is now on every screen.
+- Draft privacy and legal documents (not approved, not seen by a lawyer): `docs/legal/`.
 - The deploy and the checks run from the developer's cloud session as soon as the owner makes the staging accounts (`docs/STAGING_CLOUD.md`).
-- Where everything stands: **`docs/LAUNCH_READINESS.md`**, with technical, safety and legal readiness assessed separately.
 - The other key documents:
   - what needs the owner: `docs/DECISIONS.md`;
-  - the reviews the law requires, and the smallest safe safety review: `docs/REVIEWS.md`;
+  - the independent review, and the quote requests: `docs/REVIEWS.md`, `docs/REVIEW_QUOTES.md`;
   - costs from 100 to 100,000 people: `docs/COSTS.md`;
   - the risks, ranked by severity: `docs/RISKS.md`.
 

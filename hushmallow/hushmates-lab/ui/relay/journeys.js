@@ -17,7 +17,7 @@ import { Orb } from '../orb.js';
 import { play } from '../sound.js';
 import { wait, reducedMotion, rise, CSS_EASE } from '../motion.js';
 import { PERSPECTIVE_LABELS } from '../../core/relay-config.js';
-import { brandBar, dock, top, feelChip, feelColour, lights, errorText, supportBody, reportSheet } from './common.js';
+import { brandBar, dock, top, feelChip, feelColour, lights, errorText, supportBody, reportSheet, openSupport } from './common.js';
 import { room, stage, Speech, line, swapLine, put, hostNote, focusHeading } from './parts.js';
 
 /** The account is paused by the safety team: its travelling feelings aren't offered to anyone (they still come home). */
@@ -130,9 +130,11 @@ export function journey(dev, { id } = {}) {
     put(body,
       h('div', { class: 'hf-jdetail-status' },
         h('p', { class: 'hf-home-progress', dataset: { test: 'progress' } }, lights(drawn(dev, j)), h('span', {}, humanProgress(j))),
-        h('p', { class: 'hf-meta' }, j.paused ? 'Paused while our safety team takes a look.'
+        h('p', { class: 'hf-meta' }, j.paused ? `Paused for now, until a person on our safety team can read it. It still comes home within ${fmtSpan(j.expiresAt - now)}.`
           : held(dev) ? `While your account is paused it isn’t offered to anyone. It comes home within ${fmtSpan(j.expiresAt - now)}.`
-            : `It comes home after five human perspectives, or within ${fmtSpan(j.expiresAt - now)}.`)),
+            : `It comes home after five human perspectives, or within ${fmtSpan(j.expiresAt - now)}.`),
+        // the same words for every pause, so the reason is never revealed (Tier 0)
+        j.paused ? h('p', { class: 'hf-meta hf-help-row' }, 'If anything feels heavy while you wait, you don’t have to wait for us. ', h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--sm hf-help-inline', dataset: { test: 'inline-support' }, onclick: () => openSupport(dev) }, icon('help'), 'Get support now')) : null),
       st.el,
       reveal,
       h('figure', { class: 'hf-own-words' }, h('blockquote', {}, j.text), h('figcaption', {}, feelChip(j.label), h('span', { class: 'hf-meta' }, `Released ${fmtAgo(j.releasedAt || j.createdAt, now)}`))),
@@ -186,13 +188,13 @@ export function journey(dev, { id } = {}) {
           put(reveal, h('div', { class: 'hf-care' }, supportBody(f.support)));
         } else {
           speech.say({
-            safety: 'I won’t offer a perspective on this one. If things feel heavy, there’s support in You & safety.',
+            safety: 'I won’t offer a perspective on this one. If things feel heavy, real people are there to listen: Get support is at the top of the screen.',
             withdrawn: 'You let this feeling go before I answered.',
           }[f.reason] || 'I couldn’t find the words this time. Your feeling keeps travelling, and people may still catch it.');
         }
         break;
       case 'held':
-        speech.say('This feeling is with our safety team for a moment.');
+        speech.say('This one is waiting for our safety team to read it, so I’ll hold off for now.');
         break;
       case 'not-needed':
         speech.say('People are catching it. I’ll just keep it company.');

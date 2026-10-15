@@ -19,26 +19,53 @@ and *Get support now* is on every screen.
 
 ## 2. Who, and when
 
-- **Beta desk hours:** one named person checks the desk **every day, morning and evening** (at least twice in 24 hours). A second named person covers days off. Write both names here before the beta: ________ / ________.
+- **Beta desk hours:** one named person checks the desk **every day, morning and evening, at fixed times** (at least twice in 24 hours). A second named person covers days off. Write both names here before the beta: ________ / ________.
+- **Check times:** set by the owner before the beta: ________ and ________ (Sydney time).
+- **There are no alerts.** Hushmates has no alerts today: the desk only refreshes while it's open and someone is signed in, and nothing tells anyone that a report has come in. That's why the readers check at the fixed times. A twice-daily phone reminder (an alarm or a calendar entry) is the free stop-gap.
 - **The safety lead:** decides anything uncertain, owns this procedure, and checks the activity log weekly. Name: ________.
-- **Target times:**
-  - priority reports ("Someone may be in danger"): looked at within **12 hours**;
+- **Target times (the team's own):**
+  - priority reports ("Someone may be in danger"): looked at within **12 hours**. One still open after 12 hours is marked *Over 12 hours* on the desk;
   - everything else: within **48 hours**.
 
-  These are realistic targets for a small beta, and the app does not promise them to anyone. Review them with the independent reviewer (`REVIEWS.md`).
+  These are realistic targets for a small beta. Review them with the independent reviewer (`REVIEWS.md`).
+- **What the app tells reporters:** after a report, the app says:
+  - the team is small and isn't there around the clock;
+  - during the pilot we aim to read priority reports within a day, and nights, weekends and holidays can take longer;
+  - other reports: within two days;
+  - it can't see who wrote it, so it can't contact them or send help.
+
+  The 12-hour target is the team's own, tighter than what reporters are told. It isn't promised to anyone.
+
+### When nobody can read the desk
+
+- If no reader can check the desk for **more than 24 hours** (holidays, illness), the owner marks it away first, with the day a reader will next check it:
+
+  ```
+  node server/admin.mjs set desk '{"awayUntil": "YYYY-MM-DD"}'
+  ```
+
+  Reporters are then told when it will be read. The app says "Our safety team is away until {day}…" instead of the usual times.
+- If it will be **more than 72 hours**, or after any priority report that can't be read, the owner also:
+  - pauses invitations (no new codes; revoke unused ones with `node server/admin.mjs revoke <CODE>`);
+  - tells current testers.
+- When a reader is back, the owner sets it back:
+
+  ```
+  node server/admin.mjs set desk '{"awayUntil": null}'
+  ```
 
 ## 3. A report that someone may be in danger
 
 These go to the top of the queue, marked *Priority*. In order:
 
-1. **Read the words.**
-2. **Take the feeling out of circulation** (*Take it out of circulation*), unless it clearly isn't about danger. Nobody else is offered it, and it goes home to its writer with whatever came back.
-3. **If the words point to immediate danger AND the team independently holds information that identifies the person**, call **000**. For example, they emailed the team directly. Give what you know. This is expected to be very rare: the desk shows no identities.
-4. **Otherwise:** note what you saw (team notes; no guesses about who it is), and tell the safety lead the same day.
-5. **If it was the screen's miss:** the words should have been answered with support when they were written. Paraphrase them, never copying anyone's words, and add the paraphrase to the review list for the next batch (`CRISIS_DETECTION.md` §3, step 5).
-6. **Look after yourself:**
-   - talk to the safety lead;
-   - you can call Lifeline 13 11 14 or Beyond Blue 1300 22 4636 too;
+1. **Read the words first.** The desk never shows who anyone is, and it can't contact anyone.
+2. **If it's a feeling, take it out of circulation** (*Take it out of circulation*) unless it clearly isn't about danger. A "Someone may be in danger" report has already paused it. Nobody else is offered it, and it goes home to its writer with whatever came back. **If it's a perspective, remove it** (*Remove the perspective*).
+3. **If the words point to immediate danger AND the team independently holds information that identifies the person** (for example, they emailed us directly), call **000** and give what you know. This is expected to be very rare: the desk shows no identities.
+4. **Write what you saw and did in the team notes** (no diagnosis, no guesses about who it is), and **tell the safety lead today**. If you can't decide, ring the safety lead now.
+5. **If the screen should have caught these words**, add a paraphrase (never their words) to the review list for the next batch (`CRISIS_DETECTION.md` §3, step 5). The words should have been answered with support when they were written.
+6. **Look after yourself too:** reading this is hard.
+   - talk to the safety lead, or one of the services below;
+   - Lifeline 13 11 14 and Beyond Blue 1300 22 4636 are there any time;
    - nobody reads the desk alone for long stretches.
 
 The desk shows these same steps (`staff/desk-guide.js`), with the national lines:

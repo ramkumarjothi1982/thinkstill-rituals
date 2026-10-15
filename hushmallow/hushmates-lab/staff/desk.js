@@ -9,7 +9,7 @@
 import { createAuth } from '../client/supabase-auth.js';
 import { FunctionsLink } from '../client/functions-link.js';
 import { REPORT_REASONS } from '../core/relay-config.js';
-import { DESK_ACTIONS, URGENT_GUIDE } from './desk-guide.js';
+import { DESK_ACTIONS, URGENT_GUIDE, isOverdue } from './desk-guide.js';
 
 const IDLE_MS = 30 * 60e3;
 const REFRESH_MS = 60e3;
@@ -182,12 +182,16 @@ function kindOf(r) {
 }
 
 const rowIds = new WeakMap();
+// a priority report still open past the team's 12-hour target says so in words, not only colour
+const overdueBadge = () => h('span', { class: 'desk-overdue', 'data-test': 'desk-overdue' },
+  h('span', { class: 'desk-sr' }, 'Overdue: '), 'Over 12 hours');
 function row(r) {
   return h('li', {},
     track(r.id, h('button', { type: 'button', class: `desk-row${r.urgent ? ' is-urgent' : ''}${selected === r.id ? ' is-on' : ''}`, 'data-test': 'desk-report', 'aria-current': selected === r.id ? 'true' : null, onclick: () => detail(r.id) },
       r.urgent ? h('span', { class: 'desk-badge' }, 'Priority') : null,
       h('span', { class: 'desk-row-main' }, `${kindOf(r)} · ${reasonLabel[r.reason] || 'Something else'}`),
-      h('span', { class: 'desk-row-side' }, r.status === 'open' ? ago(r.at) : r.status === 'actioned' ? 'Action taken' : 'No action needed'))));
+      h('span', { class: 'desk-row-side' }, isOverdue(r, Date.now()) ? [overdueBadge(), ' '] : null,
+        r.status === 'open' ? ago(r.at) : r.status === 'actioned' ? 'Action taken' : 'No action needed'))));
 }
 function track(id, el) { rowIds.set(el, id); return el; }
 
@@ -217,7 +221,7 @@ function paint(focusHeading = false) {
   const listPane = h('section', { class: 'desk-list', 'aria-labelledby': 'desk-list-title' },
     h('h1', { id: 'desk-list-title' }, tab === 'open' ? 'Reports waiting for a decision' : 'Decided reports'),
     list.length ? h('ul', { class: 'desk-rows' }, list.map(row))
-      : h('p', { class: 'desk-empty' }, tab === 'open' ? 'Nothing is waiting. New reports appear here by themselves.' : 'Nothing decided yet.'));
+      : h('p', { class: 'desk-empty' }, tab === 'open' ? 'Nothing is waiting. New reports appear here by themselves while this page is open and you’re signed in. Nothing alerts anyone when it’s closed, so check at the set times.' : 'Nothing decided yet.'));
   detailPane = detailPane && selected ? detailPane : h('section', { class: 'desk-detail' },
     h('p', { class: 'desk-empty' }, 'Choose a report to read it. Every report you open is recorded in the activity log.'));
   const body = h('div', { class: `desk-split${selected ? ' has-detail' : ''}` }, listPane, detailPane);
@@ -266,7 +270,7 @@ async function detail(id) {
     h('h2', { id: 'desk-detail-title', tabindex: '-1' }, `${kindOf(r)} · ${reasonLabel[r.reason] || 'Something else'}`),   // focus moves here when it opens or is decided
     h('p', { class: 'desk-meta' }, `Reported ${when(r.at)} (${ago(r.at)})`),
     r.urgent ? h('aside', { class: 'desk-urgent', 'data-test': 'desk-urgent' },
-      h('h3', {}, URGENT_GUIDE.title), ...URGENT_GUIDE.steps.map((s) => h('p', {}, s)),
+      h('h3', {}, URGENT_GUIDE.title), h('ol', { class: 'desk-steps' }, URGENT_GUIDE.steps.map((s) => h('li', {}, s))),
       h('ul', {}, URGENT_GUIDE.resources.map((x) => h('li', {}, h('strong', {}, x.label), ` ${x.detail}`)))) : null,
     r.details ? h('figure', { class: 'desk-quote' }, h('figcaption', {}, 'What the person who reported it added'), h('blockquote', {}, r.details)) : null,
     h('figure', { class: 'desk-quote' }, h('figcaption', {}, 'The feeling'),
@@ -283,7 +287,8 @@ async function detail(id) {
     r.status === 'open'
       ? h('div', { class: 'desk-decide' },
         h('h3', {}, 'Decide'),
-        h('label', { for: 'resolve-note' }, 'A note for the team (optional, only the team sees it)'), note,
+        h('label', { for: 'resolve-note' }, 'A note for the team (optional, only the team sees it) ',
+          h('span', { class: 'desk-label-hint' }, 'What you saw and did. No diagnosis, no guesses about who anyone is.')), note,
         h('div', { class: 'desk-actions' }, actions.map((a) => h('div', { class: 'desk-action' },
           h('button', { type: 'button', class: a.strong ? 'desk-primary' : 'desk-secondary', 'data-test': `desk-${a.id}`, onclick: () => decide(a.id) }, a.label),
           h('p', {}, a.explain)))),

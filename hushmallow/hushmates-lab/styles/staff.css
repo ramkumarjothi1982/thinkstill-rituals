@@ -13,6 +13,7 @@ h2 { font-size: 21px; font-weight: 800; }
 h3 { font-size: 16px; font-weight: 800; margin-top: 4px; }
 h1:focus, h2:focus { outline: none; }
 p { margin: 0 0 10px; }
+.desk-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
 
 .desk-top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--paper); }
@@ -58,6 +59,7 @@ button:disabled { opacity: .55; cursor: default; }
 .desk-row.is-on { border-color: var(--violet); background: #F3EFFF; }
 .desk-row.is-urgent { background: var(--urgent-bg); }
 .desk-badge { background: var(--urgent); color: #fff; border-radius: 999px; padding: 2px 9px; font-size: 12px; }
+.desk-overdue { display: inline-block; background: var(--paper); color: var(--urgent); border: 1.5px solid var(--urgent); border-radius: 999px; padding: 1px 8px; font-weight: 800; font-size: 12px; }
 .desk-empty { color: var(--soft); }
 
 .desk-meta { color: var(--soft); font-size: 14px; }
@@ -69,9 +71,12 @@ button:disabled { opacity: .55; cursor: default; }
 .desk-urgent { background: var(--urgent-bg); border: 1.5px solid var(--urgent); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
 .desk-urgent h3 { color: var(--urgent); }
 .desk-urgent ul { margin: 6px 0 0; padding-left: 18px; }
+.desk-steps { margin: 0 0 10px; padding-left: 22px; }
+.desk-steps li { margin: 0 0 6px; }
 .desk-notes { margin-top: 12px; }
 .desk-decide { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
 .desk-decide label { font-weight: 700; }
+.desk-label-hint { display: block; font-weight: 400; color: var(--soft); font-size: 14px; }
 .desk-actions { display: grid; gap: 10px; margin-top: 6px; }
 @media (min-width: 640px) { .desk-actions { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
 .desk-action { display: grid; gap: 6px; align-content: start; }

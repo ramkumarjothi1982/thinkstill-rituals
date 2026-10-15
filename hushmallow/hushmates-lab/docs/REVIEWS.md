@@ -20,13 +20,14 @@ of its scope and its cost first (`DECISIONS.md`, D6).
   - The Online Safety Act codes expect a service to act on self-harm risk.
   - Consumer law forbids overstating safety.
 - **The A$5,000–9,000 estimate bought more than a small beta needs.** It priced two clinicians independently labelling all 379 phrasings, so their agreement could be measured. That level of evidence is needed to tune the screen against labels, or to make any measured-performance claim. It isn't needed to decide whether a small invite-only beta is reasonably safe. §2 reconstructs how the figure was reached.
-- **The smallest appropriate review ("Tier A")** is one registered psychologist or Accredited Mental Health Social Worker for **about 5–6 hours**. It covers:
-  - the crisis categories and the 108 hardest and most representative phrasings;
-  - all 342 Mallow lines;
+- **The smallest appropriate review ("Tier A")** is one registered psychologist or Accredited Mental Health Social Worker. Our own estimate is **about 5–6 hours**. It isn't confirmed, and it may not be enough: the reviewers' quotes will say (`REVIEW_QUOTES.md`). It covers:
+  - the crisis categories and a 108-phrasing sheet: the 54 phrasings the developers couldn't decide, plus 54 settled ones drawn in proportion;
+  - all 291 Mallow lines in use (all 342 were reviewed at Tier 0, and 51 were left out);
+  - the Tier 0 probe, as a separate supplementary sheet after the blind labelling;
   - the escalation procedure;
   - a written go/no-go memo.
 
-  Indicative cost: **A$1,650–2,040 excl. GST** at the 2026-27 professional-association rates, and up to about A$2,830 at an organisational rate (§5). A leaner version labels only the 54 undecided phrasings, for about 4–5 hours (A$1,320–1,700). Tier A comes after **"Tier 0"**: free self-assessments the team can do now, for A$0.
+  Indicative cost, an estimate from published rates, not a quote: **A$1,650–2,040 excl. GST** for 5–6 hours at the 2026-27 professional-association rates, and up to about A$2,830 at an organisational rate (§5). A leaner version labels only the 54 undecided phrasings, estimated at about 4–5 hours (A$1,320–1,700). Tier A comes after **"Tier 0"**: free self-assessments, for A$0. The developer's part was done on 15 October 2026 (`docs/safety/TIER0_SELF_ASSESSMENT.md`).
 - **Recommendation:**
   - Tier 0 now.
   - Tier A before anyone outside the team uses Hushmates.
@@ -98,7 +99,9 @@ and none is authorised (`DECISIONS.md`).
 
 ### 5.1 Tier 0: free self-assessment (now, A$0)
 
-The developer can do these now, without spending anything:
+The developer can do these now, without spending anything.
+
+**Status (15 October 2026):** the developer's part is done (`docs/safety/TIER0_SELF_ASSESSMENT.md`): the guideline mapping, all 342 Mallow lines read twice, the NSQDMH checklist, and prepared answers for the eSafety tool (`docs/safety/SBD_SELF_ASSESSMENT.md`). The owner's part (the eSafety tool, the WHS assessment and the two emails) is still to do.
 
 | Step | What it gives | Who | Cost |
 |---|---|---|---|
@@ -120,14 +123,14 @@ diligence. **It is not an independent judgement**, which is why Tier A follows.
 
 They must have no stake in Hushmallow. Ask them to confirm their professional indemnity insurance covers advisory work like this.
 
-**Scope, about 5–6 hours:**
+**Scope, our estimate about 5–6 hours** (not confirmed: ask each reviewer for their own estimate, and don't tell them ours; `REVIEW_QUOTES.md`):
 
 | Part | Hours | What they get | The question it answers |
 |---|---:|---|---|
 | 1. The pack | 0.75–1 | A 10-page summary:<br>• what the screen does;<br>• screenshots of every support screen and *Get support now*;<br>• the crisis lines shown;<br>• `ESCALATION.md`;<br>• the desk guide;<br>• the "You & safety" copy;<br>• what Hushmates says about itself | Is anything missing or unsafe in the overall design? |
-| 2. Crisis recognition | 2–2.5 | The categories (crisis · someone in danger · care · release), plus the **shorter blind sheet**, `docs/clinical/tier-a-sample-for-review.csv` (`node tools/safety-eval.mjs --export <file> --sample`). It holds 108 rows at about a minute each:<br>• the 54 "undecided" rows (53 distinct phrasings);<br>• 54 others, in proportion to each group | Which of these must get support? Are the categories right? Is the planned "are you safe right now?" check-in (D2) appropriate, and with what wording and routing? |
-| 3. The Mallow library | 1–1.5 | Every line, as a sheet with a column for the reviewer's call (ok · change · remove): `docs/clinical/mallow-library-for-review.csv` (`--library`). It holds 342 short lines:<br>• 49 openers;<br>• 70 lines by theme;<br>• 44 by feeling;<br>• 179 from Reframe's library, which Hushmates uses read-only and can leave out line by line | Could any line hurt someone at a hard moment? Is the rule keeping "chores" and "distance" lines away from grief, harm and health wide enough? |
-| 4. Escalation and vulnerable users | 0.5 | `ESCALATION.md` | Are the 12-hour and 48-hour desk targets acceptable, given that in-app support, not the desk, carries imminent risk? Is "call 000 only if the team independently knows who it is" right? Should the account email ever be used in imminent danger? (That last one is also a privacy-law question: the "serious threat" exception, APP 6.2(c).) |
+| 2. Crisis recognition (done **first**, before the pack) | 2–2.5 | The categories (crisis · someone in danger · care · release), plus the **shorter blind sheet with display ids**, `docs/clinical/tier-a-sample-display.csv` (`node tools/safety-eval.mjs --export <file> --sample --display-ids <key.csv>`). It holds 108 rows, numbered 1–108 and shuffled afresh, at about a minute each:<br>• the 54 phrasings the developers couldn't decide (53 distinct);<br>• 54 settled ones, drawn in proportion to each group.<br>The key, `docs/clinical/tier-a-display-key.csv`, stays with the developers and is **not** in the pack | Which of these must get support? Are the categories right? Is the planned "are you safe right now?" check-in (D2) appropriate, and with what wording and routing? |
+| 3. The Mallow library | 1–1.5 | Every line in use, as a sheet with a column for the reviewer's call (ok · change · remove): `docs/clinical/mallow-library-for-review.csv` (`--library`). It holds 291 short lines:<br>• 49 openers;<br>• 70 lines by theme;<br>• 44 by feeling;<br>• 128 from Reframe's library, which Hushmates uses read-only and can leave out line by line.<br>At Tier 0 all 342 lines then in the library were read twice; 40 were rewritten and 51 of Reframe's 179 left out (`docs/clinical/tier0-library-decisions.csv`) | Could any line hurt someone at a hard moment? Is the rule keeping "chores" and "distance" lines away from grief, harm and health wide enough? |
+| 4. Escalation and vulnerable users | 0.5 | `ESCALATION.md` | Are the team's own 12-hour and 48-hour targets acceptable? And what reporters are told: priority reports read "within a day" during the pilot (nights, weekends and holidays can take longer), others within two days, given that in-app support, not the desk, carries imminent risk? Is "call 000 only if the team independently knows who it is" right? Should the account email ever be used in imminent danger? (That last one is also a privacy-law question: the "serious threat" exception, APP 6.2(c).) |
 | 5. The memo | 0.5 | — | Go or no-go for an invite-only beta of up to about 30 adults, and on what conditions. What must change. **What may and may not be said publicly about this review** (consumer law: a few hours' review is not "clinical validation") |
 
 For your information only (the sheet stays blind, so the reviewer doesn't see this):
@@ -135,20 +138,30 @@ For your information only (the sheet stays blind, so the reviewer doesn't see th
 - Ten of them are also in the fixture's crisis list, so the screen already gives them support.
 - Today the screen releases 36 of the 54 rows, gives crisis support for 17, and the "care" screen for 1 (`node tools/safety-eval.mjs`).
 - The 36 released are where Tier A's answers matter most.
+- The 54 settled rows are 28 crisis, 2 crisis-not-care, 3 danger, 1 care and 20 everyday. They are a spot-check of the developers' decisions, not the hardest or most representative phrasings: the 379 were written alongside the rules, and whole categories have none (`CRISIS_DETECTION.md` §3, step 5).
+- **After the blind labelling**, the reviewer gets the Tier 0 probe as a separate, supplementary sheet: `docs/clinical/tier0-probe-blind.csv`, 246 developer-written phrasings written apart from the rules, with no outcomes. It isn't in the hours above: agree with the reviewer how much of it to label.
 
 **The leaner version:**
 - the reviewer labels only the 54 undecided rows (`--export <file> --undecided`);
-- that saves about an hour, for about 4–5 hours in all;
+- by our estimate that saves about an hour, for about 4–5 hours in all;
 - but it doesn't check the decisions the screen has already settled.
 
-**How the reviewer labels:** they write one label per row in the `agreed` column (`crisis`, `danger`, `care`, `release` or `unsure`). Then `node tools/safety-eval.mjs --labels <their sheet>` reports, for those phrasings:
+**How the reviewer labels:**
+1. **Label first, then read the pack**, so the pack doesn't steer the labels.
+2. Use the display-id sheet (`docs/clinical/tier-a-sample-display.csv`).
+3. Write one label per row (`crisis`, `danger`, `care`, `release` or `unsure`) in the `clinician_1` column, and the same label in `agreed`. Keeping `clinician_1` lets a second reviewer's labels be compared later.
+
+Then `node tools/safety-eval.mjs --labels <their sheet> --key docs/clinical/tier-a-display-key.csv` reports, for those phrasings, by the full sheet's ids:
 - what the screen catches;
 - what it holds back;
+- every label against every screen (a confusion matrix);
+- the rows labelled unsure;
+- risk sent to the wrong screen, and care the screen releases;
 - every miss, by name.
 
-With one reviewer it measures no agreement and says so: it is an expert review of those phrasings, **not a validation of the screen**. The ids match the full 379-row sheet, so Tier B or C can build on these labels later.
+With one reviewer it measures no agreement and says so: it is an expert review of those phrasings, **not a validation of the screen**. Through the key, the rows map to the full 379-row sheet's ids, so Tier B or C can build on these labels later.
 
-**Indicative cost** (published rates, excl. GST; §10):
+**Indicative cost: an estimate, not a quote** (published rates for our 5–6 hour estimate, excl. GST; §10):
 
 | Rate source | Rate (A$/h) | 5 h | 6 h |
 |---|---:|---:|---:|
@@ -158,12 +171,12 @@ With one reviewer it measures no agreement and says so: it is an expert review o
 | AAPi organisational consultation (2024-25; the 2026-27 figure is unknown) | 471 | 2,355.00 | 2,826.00 |
 | ReturnToWorkSA psychology, 1 July 2026 (a scheme rate, not a market rate; a reviewer may not accept it) | 265.20 | 1,326.00 | 1,591.20 |
 
-- **Expect A$1,650–2,040 excl. GST** at the APS and AAPi rates. Ask for a **fixed fee** for the scope above.
+- **Our estimate: A$1,650–2,040 excl. GST** at the APS and AAPi rates, if 5–6 hours is enough. The reviewers' quotes will say. Ask for a **fixed fee** for the scope above.
 - If the reviewer is GST-registered, add 10%: A$1,815–2,244. That is claimable back if the owner is GST-registered; ask an accountant.
-- The ceiling at an organisational rate is about A$3,109 incl. GST.
-- The leaner version, 4–5 hours: A$1,320–1,700 excl. GST.
+- The ceiling at an organisational rate, on the same hours, is about A$3,109 incl. GST.
+- The leaner version, estimated at 4–5 hours: A$1,320–1,700 excl. GST.
 
-An earlier draft of this page said 3.5–4.5 hours and A$1,155–1,530. That undercounted the Mallow library: it counted only the lines in `core/perspectives.js`, and missed Reframe's 179. It also undercounted the time to label 108 phrasings.
+An earlier draft of this page said 3.5–4.5 hours and A$1,155–1,530. That undercounted the Mallow library: it counted only the lines in `core/perspectives.js`, and missed Reframe's 179 (128 since Tier 0). It also undercounted the time to label 108 phrasings.
 
 ### 5.3 What Tier A does not do
 
@@ -188,7 +201,7 @@ call (§8 has a draft email).
 | Free guidelines: Mindframe, #chatsafe, Samaritans, and WHO/IASP's media resource | A$0 | ✅ Yes, in Tier 0, as the benchmark |
 | eSafety Safety by Design start-up tool; NSQDMH self-assessment | A$0 | ✅ Yes, in Tier 0 |
 | Samaritans' Online Safety Advisory Service; Mindframe's advice line | A$0 | ❔ Worth one email each; eligibility unconfirmed |
-| A single registered psychologist or AMHSW at the association rates (Tier A) | A$1,650–2,040 (leaner: A$1,320–1,700) | ✅ **The recommended independent review** |
+| A single registered psychologist or AMHSW at the association rates (Tier A) | Estimate: A$1,650–2,040 for 5–6 hours (leaner: A$1,320–1,700); the hours aren't confirmed | ✅ **The recommended independent review** |
 | Lived-experience reviewers at published paid-participation rates:<br>• WA Mental Health Commission: A$37.50 or A$75 an hour;<br>• WAAMH: A$35 or A$65 an hour, 3-hour minimum;<br>• QMHC (interim): A$25, A$50 or A$100 an hour | A$112.50–300 for 3 hours | ✅ As part of Tier B |
 | Moderator training:<br>• LivingWorks Start: A$39.95 + tax;<br>• Lifeline *Accidental Counsellor*: about A$250 + GST online to A$550 for two days | A$40–550 a person | ✅ Optional, for desk readers |
 | Lived-experience organisations (Roses in the Ocean), Black Dog Institute consultancy | No published price ("some fees may apply") | ❔ Ask if Tier B is triggered |
@@ -201,20 +214,21 @@ call (§8 has a draft email).
 ## 7. What stays the same
 
 - **The 379-phrasing blind evaluation harness is kept as it is.**
-  - The sheet, `docs/clinical/crisis-phrasings-for-review.csv`, and its scoring are unchanged. A test pins the sheet byte for byte (`tests/safety-eval.test.mjs`).
-  - `tools/safety-eval.mjs` only gained ways to export subsets (with the same ids) and the Mallow library.
+  - The sheet, `docs/clinical/crisis-phrasings-for-review.csv`, is unchanged. A test pins the sheet byte for byte (`tests/safety-eval.test.mjs`).
+  - It is the screen's **development and regression set, not a test set.** CI pins 335 of its 379 rows to the screen's current answers, and they were written alongside the rules. Whole categories have no rows (eating disorders, threats to others, a minor disclosing, strangulation and coercive control, sexual assault without keywords, substances, third-party emergencies). No locked test set exists yet.
+  - `tools/safety-eval.mjs` gained ways to export subsets (with the same ids), a display-id sheet with its key, the Mallow library, and the Tier 0 probe. Its scoring now also prints a confusion matrix, the unsure rows, routing mismatches and released care rows.
   - 11 rows repeat a phrasing:
     - ten are in a crisis list and again among the undecided;
     - one is listed twice among the undecided.
 
     This is harmless. Scores count each row, and a reviewer who labels both copies alike shows consistency.
-- **Developer tests are not clinical validation.** About 330 fixture phrasings, the 379-row sheet and five adversarial review rounds show that the screen behaves *as the developers decided*. They say nothing about whether those decisions are clinically right. No document, screen or marketing line may say Hushmates' crisis handling is "validated", "clinically reviewed" or that it "detects" risk until a review supports exactly that wording.
+- **Developer tests are not clinical validation.** About 330 fixture phrasings, the 379-row sheet and five adversarial review rounds show that the screen behaves *as the developers decided*. They say nothing about whether those decisions are clinically right. A Tier 0 probe written apart from the rules found it released 102 of 127 phrasings meant as crisis or danger (`docs/clinical/tier0-probe-results.csv`; developer-written, so evidence of gaps, not a measured rate). No document, screen or marketing line may say Hushmates' crisis handling is "validated", "clinically reviewed" or that it "detects" risk until a review supports exactly that wording.
 - **Unreviewed crisis features stay behind safeguards:**
   - The keyword rules stay as the floor, frozen, and run first, with no network call.
   - The **check-in (D2) is not built**. It waits on Tier A's wording and routing.
   - The **meaning-based check is not built**. When it is built, it can only add caution, and it runs in shadow mode first.
   - **No AI is added for crisis detection.** There is no measured need yet. The harness is the way to show one, and the cost and privacy price of each option is in `CRISIS_DETECTION.md` §5.
-  - *Get support now* stays on every screen, and the app keeps saying the screen can miss things.
+  - A *Support* pill is in the header of every screen (since Tier 0; `ui/relay/common.js`), and the app keeps saying the screen can miss things.
   - **Testers stay within the team until Tier A is done and its conditions are met** (D12). This is a procedure the owner follows, not a technical lock:
     - Sign-in needs an invitation, and only the owner and admins can make them.
     - On staging, Supabase's built-in sender only emails team members, until an email provider is chosen (D5).
@@ -227,20 +241,20 @@ call (§8 has a draft email).
 | D6a | Approve Tier 0. The developer does the guideline mapping and the NSQDMH checklist; you do the eSafety tool and the WHS assessment, and send the two free emails | A$0 |
 | D6b | Optional: buy LivingWorks Start for each desk reader | about A$40 + tax a person |
 | D6c | Approve **asking for fixed-fee quotes** for Tier A from two or three reviewers. Asking costs nothing and commits to nothing | A$0 |
-| D6d | Later: approve one Tier A quote | expected A$1,650–2,040 + GST (leaner: A$1,320–1,700) |
+| D6d | Later: approve one Tier A quote | our estimate A$1,650–2,040 + GST (leaner: A$1,320–1,700), to be replaced by the quotes |
 
-**A draft email for D6c** (for you to send; edit freely):
+**A draft email for D6c** (for you to send; edit freely). The fuller, current request is in `REVIEW_QUOTES.md`, which asks reviewers for their own estimate of the hours:
 
-> Subject: Fixed-fee quote: 4-hour safety review of a non-clinical wellbeing app
+> Subject: Fixed-fee quote: a limited safety review of a non-clinical wellbeing app
 >
 > Hello [name],
 >
 > I'm building Hushmallow, a non-clinical emotional-companion app for adults: people write a feeling, a few other members offer a kind perspective, and characters called Mallows respond from a fixed library. It is not a health or counselling service. Before inviting outside testers I'd like an independent registered psychologist or AMHSW to review its safety design.
 >
-> Scope (about 5–6 hours, from a written pack):
+> Scope (from a written pack; please tell us how many hours you would need):
 > - the support screens and crisis lines;
 > - about 108 example phrasings to label;
-> - the app's fixed response lines (about 340 short lines);
+> - the app's fixed response lines (about 290 short lines);
 > - our escalation procedure;
 > - a short memo with go/no-go conditions for a beta of about 30 adults, and what we may say publicly about the review.
 >

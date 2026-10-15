@@ -5,6 +5,7 @@
 import { h, icon } from '../dom.js';
 import { MALLOWS } from '../mallows-data.js';
 import { room, stage, Speech, line, put } from './parts.js';
+import { supportPill } from './common.js';
 import { startScene } from './start.js';
 
 export function away(dev) {
@@ -26,7 +27,8 @@ export function away(dev) {
       speech.say('Not yet. Let’s give it a moment.');
     } finally { busy = false; again.disabled = false; }
   }
-  r.el.append(h('div', { class: 'hf-scroll hf-deleted-scroll', dataset: { test: 'away' } },
+  // the lines are part of the app, so support still opens offline (and tel: needs no internet)
+  r.el.append(h('div', { class: 'hf-head' }, h('header', { class: 'rl-top' }, h('span', { class: 'rl-top-title' }), supportPill(dev))), h('div', { class: 'hf-scroll hf-deleted-scroll', dataset: { test: 'away' } },
     st.el,
     h('div', { class: 'hf-copy' },
       line('We can’t reach Hushmates just now', { cls: 'hf-line--sm' }),

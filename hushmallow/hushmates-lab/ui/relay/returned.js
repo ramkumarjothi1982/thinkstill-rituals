@@ -15,7 +15,7 @@ import { MALLOWS } from '../mallows-data.js';
 import { Orb, fly, centreIn } from '../orb.js';
 import { play } from '../sound.js';
 import { wait, reducedMotion, CSS_EASE, rise } from '../motion.js';
-import { brandBar, dock, top, feelChip, feelColour, lights, reportSheet, errorText } from './common.js';
+import { brandBar, dock, top, feelChip, feelColour, lights, reportSheet, errorText, openSupport } from './common.js';
 import { room, stage, handsOf, Speech, line, swapLine, put, privacySheet, hostNote, focusHeading } from './parts.js';
 import { humanProgress } from './journeys.js';
 
@@ -122,7 +122,7 @@ export function homecoming(dev, { id, refresh } = {}) {
     let sub;
     let partial = false;
     if (released) sub = items.length || j.mallowExtra ? 'These are the perspectives you kept.' : 'Nothing was kept. It’s gone, gently.';
-    else if (j.returnReason === 'removed') sub = 'Our safety team brought it home.';
+    else if (j.returnReason === 'removed') sub = 'Our safety team brought it home early. Sometimes a feeling needs more care than a new way of seeing it. If that’s true for you right now, support is here any time.';
     else if (noOne) sub = 'No one caught it this time.';
     else if (gone) sub = `${taken === 1 ? 'Someone' : `${taken} people`} caught it, but those words aren’t here any more: taken back by whoever wrote them, or removed by our safety team.`;
     else if (!shownHumans) sub = `${people} caught it. The perspectives you chose not to see aren’t shown.`;
@@ -133,7 +133,8 @@ export function homecoming(dev, { id, refresh } = {}) {
       st.el,
       h('div', { class: 'hf-copy' },
         h('h1', { class: 'hf-line', 'data-autofocus': '' }, headline),
-        h('p', { class: 'hf-sub hf-sub--soft', dataset: partial ? { test: 'home-note' } : undefined }, sub)),
+        h('p', { class: 'hf-sub hf-sub--soft', dataset: partial ? { test: 'home-note' } : undefined }, sub),
+        !released && j.returnReason === 'removed' ? h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--sm hf-help-inline', dataset: { test: 'inline-support' }, onclick: () => openSupport(dev) }, icon('help'), 'Get support now') : null),
       !released && !noOne ? h('p', { class: 'hf-home-progress' }, lights(j), h('span', {}, humanProgress(j))) : null,
       noOne ? zeroHuman(mallowItem) : items.length ? pager(items) : null,
       j.mallowExtra ? extraSection(j.mallowExtra) : null,

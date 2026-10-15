@@ -15,6 +15,11 @@
 .rl-support-msg { font: 400 16px/1.55 var(--hm-body); color: var(--hm-ink); text-wrap: pretty; }
 .rl-support-list { list-style: none; display: grid; gap: 8px; }
 .rl-support-list li { display: grid; gap: 2px; padding: 14px 16px; border-radius: 20px; background: #fff; box-shadow: 0 0 0 1px rgba(31,22,64,.07) inset, 0 14px 30px -26px rgba(70,40,140,.5); }
+.rl-support-more { margin-top: 8px; }
+.rl-support-more > summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; padding: 0 4px; font: 800 12px/1 var(--hm-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--hm-ink-2); }
+.rl-support-more > summary::-webkit-details-marker { display: none; }
+.rl-support-more > summary::after { content: "+"; margin-left: auto; font-size: 18px; }
+.rl-support-more[open] > summary::after { content: "–"; }
 .rl-support-list strong { font: 800 15px/1.3 var(--hm-ui); color: var(--hm-ink); }
 .rl-support-list span { font: 400 14.5px/1.45 var(--hm-body); color: var(--hm-ink-2); }
 .rl-support-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }

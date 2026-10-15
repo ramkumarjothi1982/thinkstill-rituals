@@ -69,7 +69,7 @@ test('audit: only words written for people reach the screen; programming errors 
   const net = new LocalNetwork(w.svc, { latency: [0, 0], methods: [...w.svc.clientMethods, 'boom'] });
   const link = net.link('moon');
   const refusal = await link.request('submitFeeling', w.T.moon, { text: 'A feeling to share', clientId: 'audit-000001' }).catch((e) => e);
-  assert.equal(humane(refusal), 'Please confirm you’re happy to share this anonymously first.');
+  assert.equal(humane(refusal), 'Please confirm you’re happy to share this without your name first.');
   const crash = await link.request('boom', w.T.moon, {}).catch((e) => e);
   assert.equal(humane(crash), GENTLE, 'a programming error’s text reached the screen');
   const notAllowed = await link.request('signInTestAccount', w.T.moon, { key: 'cloud' }).catch((e) => e);

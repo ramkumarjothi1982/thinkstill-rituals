@@ -25,18 +25,27 @@ safe, fictional words written for the demonstration.
      not to be here ("I just want to disappear", "sleep and never wake up", "better off without me",
      "a burden", "tired of being alive"). Crisis words win over abuse or bullying words in the same
      feeling. The phrasings are in `tests/fixtures/mallow-probes.json`.
-   - Every rule reads an NFKC-normalised copy, so stylised or full-width letters
-     can't slip past.
-   - Contact details, links, money requests, addresses, postcodes and ZIP codes,
-     and "my name is…" are refused, in feelings and in perspectives.
+   - Every rule reads a normalised copy (the words are stored as written).
+     Stylised or full-width letters (NFKC), accents, combining marks, invisible
+     characters, Cyrillic and Greek look-alike letters, and runs of spaces or
+     line breaks can't slip past.
+   - Safety is checked before length, so crisis words in a feeling a little too
+     long still get support.
+   - Contact details, links, money requests, street addresses, UK postcodes, US
+     ZIP codes and "my name is…" are refused, in feelings and in perspectives.
+     Australian postcodes are refused only with context ("postcode 3065",
+     "VIC 3065"). A bare suburb and number ("Fitzroy 3065") is not. National
+     helpline numbers are never treated as contact details.
+   - Feelings that tell readers to hurt themselves ("kys whoever catches this")
+     are refused. When they quote what someone said to the writer ("they keep
+     telling me to kys"), the writer gets the harassment care screen instead.
    - Perspectives are also checked for unkindness, diagnosis and near-copies.
-4. **The Mallow provider's own gate:** Another Angle has its own lexicon and its
-   own model check. If it says a feeling is a crisis:
-   - the feeling stops travelling and every hold on it ends;
-   - an urgent report goes to a person on the safety team;
-   - the author is shown support.
-   What the provider writes must pass the same rules as a person's words before
-   anyone sees it.
+     Perspectives that urge self-harm, give diet, medication or drinking advice,
+     or ask someone's age or location, to meet, or for pictures are blocked.
+4. **The Mallow:** a fixed library of lines, chosen automatically. There is no
+   AI behind it: AI is off (D10, `DECISIONS.md`). Words the screen holds back
+   never reach it, and every line it picks must pass the same rules as a
+   person's perspective before anyone sees it.
 5. **People:**
    - **Catchers** can report a feeling, which leaves their sky at once. Two
      independent reports, or one "someone may be in danger", pause it for review.
@@ -49,13 +58,15 @@ safe, fictional words written for the demonstration.
      resume, remove the feeling, remove the perspective, or restrict the account.
      Restricting ends that account's holds and stops it catching.
 
-Rules are a floor, not a guarantee. The interface says so, and the human layer is
-not optional.
+Rules are a floor, not a guarantee. They catch the phrasings they were written
+for and miss many natural variants: a Tier 0 developer probe released 102 of 127
+phrasings meant as crisis or danger (`CRISIS_DETECTION.md`). The interface says
+the rules can miss things, and the human layer is not optional.
 
 ## 2. Consent, and anonymity, honestly
 
 - **Sharing is an active, recorded choice.** On the release screen the person
-  ticks "Share anonymously with Hushmates participants" ("Your words may be
+  ticks "Share with Hushmates participants, without my name" ("Your words may be
   shown to other people who can offer different perspectives. Please leave out
   identifying details."). The button stays off until they do, and the service
   refuses any release without it (`consent-required`), so a modified client
@@ -88,20 +99,28 @@ not optional.
 
 ## 3. Automated perspectives, honestly
 
-- The relay is human-first, and the AI behind the Mallow is never promoted:
-  no "AI companion", chatbot, therapy or "AI reframing" language, and no
+- The relay is human-first. A Mallow perspective is a line chosen
+  automatically from a fixed library: lines the Hushmates team wrote, plus some
+  of Reframe's. There is no AI behind it, and AI is off (D10). The app uses no
+  "AI companion", chatbot, therapy or "AI reframing" language, and shows no
   model, provider, token or latency details anywhere a person sees.
 - A Mallow perspective exists only when the author:
   - opted in for that feeling ("Let a Mallow offer another perspective if
-    nobody responds." — off by default; the privacy details explain that the
-    words are then sent to an automated service, that the reply is not written
-    by a person, and that it is deleted with the journey);
+    nobody responds." — off by default; the privacy details explain that
+    Hushmates chooses it automatically from its own library of lines the team
+    wrote, on its own servers, that the words aren't sent anywhere else for
+    this, that it is not written by a person, and that it is deleted with the
+    journey);
   - then asks: after 30 minutes with nobody while it travels, or with
     "Explore another angle" once it is home (confirmed again there, with the
     same disclosure if they hadn't opted in).
+- The welcome and You & safety describe Mallow perspectives as "chosen
+  automatically from lines the Hushmates team wrote".
 - **It is always labelled.** "A Mallow perspective · Automatically generated",
   and "Automatically generated · not written by a person" next to the button
-  that asks for it. A canned development example is never called generated:
+  that asks for it. "Generated" can suggest AI for a line picked from a
+  library; whether to change the label is an owner decision, pending. A canned
+  development example is never called generated:
   "A Mallow perspective · Example for testing, not generated". In the lab
   only, a tag under it names the real source so testers can tell a live test
   response from a canned example.
@@ -121,8 +140,13 @@ not optional.
   shown support, their words are not passed on or saved, and the feeling floats
   on to someone else. Support screens use Hushmates' own words (never
   "reframe"), and each category gets fitting resources (bullying gets general
-  lines, not domestic-abuse lines); a safety lead must review them per region. Anything paused
-  or removed by moderation can't be sent to a provider either.
+  lines, not domestic-abuse lines; threats, fear and stalking get 1800RESPECT);
+  a safety lead must review them per region. Anything paused or removed by
+  moderation can't be sent to a provider either.
+- **Paused and removed feelings.** A feeling paused for review, or brought home
+  by the safety team, shows the same neutral wording whatever the reason, and a
+  *Get support now* button. Whether to say more to the writer is for the
+  clinical review (Tier A).
 - **In this lab no AI key is configured.** No output here is live AI, and none
   is labelled as if it were.
 
@@ -175,36 +199,60 @@ not optional.
 
 ## 5. Crisis resources
 
-The support screens reuse the safety copy the main app already ships (emergency
-numbers, Samaritans 116 123, 988 in the US, findahelpline.com). **They must be
-reviewed for each launch region by a safety lead** before real people use
-Hushmates. In the lab, a note says so under them; the note lives in
-`lab/lab-notes.js`, which the customer app never loads. When a Mallow
-provider's own safety check flags a feeling, the person sees Hushmates' own
-reviewed support words, never the provider's text.
+The support screens use Hushmates' own words and Australian lines
+(`core/feeling-safety.js`), and each line can be tapped to call:
+- **Crisis:** 000, Lifeline 13 11 14 (with online chat), the Suicide Call Back
+  Service 1300 659 467 and 13YARN 13 92 76, plus findahelpline.com outside
+  Australia.
+- **Someone else in danger:** 000, Lifeline (which helps people worried about
+  someone) and findahelpline.com.
+- **Abuse, violence, threats, fear and stalking:** 000, 1800RESPECT
+  1800 737 732, Lifeline and findahelpline.com.
+- **Harassment and discrimination:** 000, Lifeline, Beyond Blue 1300 22 4636 and
+  findahelpline.com.
+- **The *Support* pill**, in the header of every screen, opens 000, Lifeline,
+  the Suicide Call Back Service and 13YARN first, then, under "More support
+  lines", 1800RESPECT, Beyond Blue (any time) and findahelpline.com. It opens
+  over the current screen and works offline.
+
+**They must be reviewed for each launch region by a safety lead** before real
+people use Hushmates. In the lab, a note says so under them; the note lives in
+`lab/lab-notes.js`, which the customer app never loads.
 
 ## 6. Before any real person uses it
 
-- [ ] A named safety lead, and moderators on a rota that meets the stated review
-      times (urgent within 24 hours, others within 48 hours during the pilot).
+- [ ] A named safety lead, and moderators on a rota that meets the team's own
+      targets (priority reports within 12 hours, others within 48: `ESCALATION.md`).
+      What reporters are told is looser and honest: a small team, not around the
+      clock; priority reports read within a day during the pilot (nights, weekends
+      and holidays can take longer), others within two days; the team can't see
+      who wrote it or contact them; call 000 if someone is in danger now.
 - [ ] An escalation path for "someone may be in danger" reports, including what
-      happens outside working hours.
+      happens outside working hours (a draft is in `ESCALATION.md`).
 - [ ] Crisis resources reviewed per region; age and invitation checks through the
       real auth flow.
-- [ ] Privacy notice and data-protection review (special-category data: mental
-      health), including the AI processing disclosure and the provider's data terms.
+- [ ] Privacy policy, collection notice and privacy review (health information is
+      sensitive information under the Privacy Act). Only if AI is ever turned on
+      (D10): the AI processing disclosure and the provider's data terms.
 - [ ] Retention schedule approved and implemented with scheduled deletion.
-- [ ] The Another Angle service agreement for server-to-server use (origin, limits,
-      spend cap) and its safety gate reviewed for this use.
+- [ ] Only if AI is ever turned on (D10): the Another Angle service agreement for
+      server-to-server use (origin, limits, spend cap) and its safety gate
+      reviewed for this use.
 - [ ] Abuse testing on the real backend: concurrency, replay and rate limits,
       repeated against Supabase.
 - [ ] A way to pause the whole relay instantly (kill switch) and to purge content.
+      **Not built.** What exists: the owner can mark the desk away
+      (`node server/admin.mjs set desk '{"awayUntil": "YYYY-MM-DD"}'`), so
+      reporters are told when it will be read. Pausing invitations is manual: make
+      no new codes, and revoke unused ones (`node server/admin.mjs revoke <CODE>`).
 
 ## 7. Known limits and risks
 
-- **Lexicons miss things.** Rules can't understand context, and some distress will
-  get past them. That's why reports, the provider's gate and the human team exist,
-  and why "not an emergency service" is said plainly.
+- **Lexicons miss things.** Rules can't understand context, and much distress will
+  get past them: a Tier 0 developer probe released 102 of 127 phrasings meant as
+  crisis or danger (`CRISIS_DETECTION.md`). That's why reports, the *Support* pill
+  on every screen and the human team exist, and why "not an emergency service"
+  is said plainly.
 - **Words can identify people** despite the rules: a distinctive story can be
   recognisable. The pilot should stay small and invitation-only, and the guidance
   must stay visible.
