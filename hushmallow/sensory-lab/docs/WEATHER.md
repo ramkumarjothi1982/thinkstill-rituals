@@ -90,7 +90,7 @@ a pointer that `rig.hitTest` places on the body).
 | `features/weather/tools.js` | `createTools(api)`: pointers → sim operations and weather events; the chips' alternatives and arrow keys. |
 | `features/weather/ui.js` | `weatherDial`, `actionRow`, `hintLine`, `WEATHER_ICONS`. |
 | `styles/weather.css` | Scoped `.weather` styles (two fixed 50 px bottom rows, chips, dial, hint; on short, wide stages the corner layout, §7). |
-| `tests/weather.test.mjs` | Unit tests U1–U19, R1–R6 for the third review's findings, R7 for the visual QA pass and R8 for the landscape framing. |
+| `tests/weather.test.mjs` | Unit tests U1–U19, R1–R6 for the third review's findings, R7 for the visual QA pass, R8 for the landscape framing and R9 for the reactor's beat clock (the landscape caption's wait). |
 | `tests/e2e-phase3-weather.cjs` | Browser tests (blocks listed in §10). |
 
 Paint order, back to front: the realm canvas and `canvas.wx-back` (in `.stage-wrap`), `.stage-tint`, the
@@ -459,8 +459,8 @@ the reactor nods instead of hopping; `rig.nudge` is ×0.25. Direct manipulation 
 - At 320 px eight 40 px radios cannot fit: the dial shows exactly seven whole radios, scrolls one radio at a time
   to keep the chosen one clear of the edge, and a small chevron at the end that has more says so (in the end radio's
   empty margin: no icon is faded or cut in half at the pill's end).
-- **A phone on its side** (a short, wide stage: `(min-aspect-ratio: 7/5) and (max-height: 460px)`, e.g. 568×320,
-  640×360, 667×375, 844×390, 915×412, 932×430; a Phase 3 follow-up done in Phase 4). Before, the two full-width
+- **A phone on its side** (a short, wide stage: `(min-aspect-ratio: 7/5) and (max-height: 460px) and (min-width:
+  520px)`, e.g. 568×320, 640×360, 667×375, 844×390, 915×412, 932×430; a Phase 3 follow-up done in Phase 4). Before, the two full-width
   bottom rows took 126 px of a 320–430 px screen, stage-screen fitted the body to what was left by the rig's height
   rule (H × (fit + 0.06)), and the Mallow stood 84–112 px tall: 0.30–0.32 of the stage under the top bar, and at
   568×320 its head sat under the hint and the resolve caption. Now `styles/weather.css` moves the controls into the
@@ -478,8 +478,22 @@ the reactor nods instead of hopping; `rig.nudge` is ×0.25. Direct manipulation 
   stage under the top bar. It runs on every reframe (stage-screen sets its own fit just before, which portrait keeps
   unchanged), when the soft body replaces the drawn one's box, and when the hint spot moves with a wrapping
   subtitle. The bigger jumps (a celebrate, 0.06–0.13 × H; a double tap, up to 0.15 × H) would cross the caption's
-  second line, so in landscape the resolve caption waits until the resolve jump has landed (at most 1.5 s; the
-  announcer speaks at once). The swells' row keeps above the clusters (`geo.bottomTop` is their top), the stage's
+  second line, so in landscape the resolve caption keys off the resolve beat itself (`waitCaption`). The reactor
+  plays that beat at once, or holds it back for its 1.2 s GAP after a recent expressive beat (the last constellation
+  forming, a bask); `reactor.beatAt('resolved')` and `reactor.pending` say which. The caption waits while the beat is
+  pending, then until its jump has landed (or 0.35 s with no jump, at the latest 1.5 s after the beat, never more
+  than 4 s after the resolve; a beat dropped because the Mallow was held past its slot counts as one with no jump).
+  The announcer speaks at once. Every other jump (a double tap, a follow-up hop, an idle bounce, a moonlit float)
+  meets the safety net: while the hint spot shows, it ducks (`.wx-duck`, out in 90 ms, back over the usual 600 ms)
+  as soon as the head rises, or its hop will peak (hopV² / 2g of the stage height, from the rig's own gravity),
+  within 4 px of the spot's bottom, and comes back once the Mallow is down again; a Mallow standing still never
+  hides it, and the spot's box is measured once per text or layout change, never every frame. The corner layout
+  starts at 520 px wide (`LAND.minW`): narrower, the two 192 px clusters would leave the Mallow less room than
+  stage-screen's own framing (448×320 gave a 54 px body against 84 before), so such stages (no phone in landscape
+  is that narrow; a small desktop window can be) keep the two bottom rows, exactly as in Phase 3. After every
+  reframe the dial works out its scroll position and edge cues again (`dial.reveal()`), and in landscape the
+  keypad never takes lab.css's scroll-edge mask, so a rotation from a scrolled 320 px dial leaves no faded column.
+  The swells' row keeps above the clusters (`geo.bottomTop` is their top), the stage's
   focus frame sits between them, and both bars keep clear of the side safe areas (a notch and rounded corners in
   landscape; 0 in the tests). Portrait and desktop are unchanged, metric for metric (fit, scale, baseline, every
   control's box), checked against the code before the change.
@@ -546,7 +560,7 @@ the hint and announcer, `wsound.end()` (the brush, then the bed), `reactor.destr
 
 ```
 cd /home/user/thinkstill-rituals
-node --test hushmallow/sensory-lab/tests/weather.test.mjs                      # U1–U19, R1–R8 (Node, no DOM)
+node --test hushmallow/sensory-lab/tests/weather.test.mjs                      # U1–U19, R1–R9 (Node, no DOM)
 node --test hushmallow/sensory-lab/tests/*.test.mjs                             # the whole unit suite
 python3 -m http.server 8000                                                     # from the repository root
 node hushmallow/sensory-lab/tests/e2e-phase3-weather.cjs [outDir]               # every browser block
@@ -574,7 +588,8 @@ state with generous limits, and nothing relies on frame counts.
 | R4 | a morph's parting is drawn only: coverage untouched, puffs drawn away from the centre, closed again on re-entry, none with reduced motion |
 | R5 | the light-through puff is let go; the hearth is a tap in the fair; gentle festival constellations, gifts and resolves are taps |
 | R6 | the swell row is clear of the Mallow in all three water realms; two or three guide stars; the first constellation forms above the Mallow |
-| R8 | (Phase 4, landscape) `landFit` at 844×390, 568×320, 667×375, 640×360, 915×412 and 932×430 for all seven Mallows: the rig's own scale rule gives the size it reports; the head clears the hint spot's two lines and the lift room; at most half the stage tall; 12 px clear of both clusters; ≥ 40 % larger than stage-screen's framing and ≥ 0.45 of the stage under the top bar; every Mallow the same height; a narrow stage is bound by the clusters; a lower hint spot gives a smaller Mallow; nothing fits → the smallest fit |
+| R8 | (Phase 4, landscape) `landFit` at 844×390, 568×320, 667×375, 640×360, 915×412 and 932×430 for all seven Mallows: the rig's own scale rule gives the size it reports; the head clears the hint spot's two lines and the lift room; at most half the stage tall; 12 px clear of both clusters; ≥ 40 % larger than stage-screen's framing and ≥ 0.45 of the stage under the top bar; every Mallow the same height; the narrowest corner stage (`LAND.minW`, 520 px) is bound by the clusters; a sweep over every stage the query admits (H 240–460, W from max(520, 1.4 H) to 1440, both hint tops, all seven Mallows) never gives a Mallow smaller than the Phase 3 framing of the same stage wherever that framing kept its head under the top bar, while 480×320 would have (the reason for the min-width); `styles/weather.css`'s query carries `LAND.minW`; a lower hint spot gives a smaller Mallow; nothing fits → the smallest fit |
+| R9 | (Phase 4, landscape caption) the reactor's beat clock: with nothing recent the resolve beat plays at once (`beatAt` = now, a celebrate for Boppo's Starlight); right after a constellation beat it waits (`pending` = 'resolved', not played) and plays once GAP has passed, reporting when; a waiting beat held past its 2.5 s slot (the Mallow touched all the while) is dropped: neither played nor pending |
 | R7 | (visual QA) each puff is one crisp body: through a recording canvas, every puff sprite's silhouette is its sub-blobs drawn first as discs with a firm edge (thunderheads ≤ 4 sprite px of feather, the deck ≤ 12 % of a sub-blob), no stretched bitmaps, nothing but `source-atop` after it, nothing outside its box; the gold twin has the same silhouette and rims and is blitted on the same rectangle |
 
 | Browser block | Proves (spec §13) |
@@ -592,7 +607,7 @@ state with generous limits, and nothing relies on frame counts.
 | `mallows` | W17: all seven Mallows' entry weather, home arrival, and different readings of one strike |
 | `access` | labels, the radiogroup, the announcer, keyboard holds, focus onto Again, repeats |
 | `tier` | a live quality drop sheds bed layers, the front canvas and pools; nothing grows back |
-| `layout` | W13: at all seven viewports (390×844, 375×812, 320×568, 412×915, 1280×860, 844×390, 568×320): no overlap, on screen, targets ≥ 40 px, the Mallow between the bars, the chosen radio in view, the dial resting on whole radios with an edge cue when it scrolls, the same baseline for all eight weathers; in Storm the hint's ink follows the title's and the subtitle never ends a line on its dot; the resolve caption and the Mallow's line on screen, clear of the chrome, at ≥ 14 px. Portrait and desktop keep stage-screen's framing exactly (no landscape fit) and their two 50 px rows. Landscape (844×390, 568×320): the corner layout is on; the action column and the dial (a 4 × 2 keypad of all eight radios) both 94 px for every weather; for all eight weathers the resting Mallow is fully on screen, under the top bar, clear of the hint spot's two lines, every chip, radio and both clusters, at the same fit, and ≥ 0.45 of the stage under the top bar (the band: H − the top bar's bottom, the same quantity before and after; before 0.31 at 844×390 and 0.32 at 568×320); the caption sits above the head at rest and through 2.5 s of the resolve beat (every frame watched); a front (Moonlight → Sunshine) sampled until it has passed overlaps nothing at the same fit; two chips stack in the left column, clear of the Mallow |
+| `layout` | W13: at all seven viewports (390×844, 375×812, 320×568, 412×915, 1280×860, 844×390, 568×320): no overlap, on screen, targets ≥ 40 px, the Mallow between the bars, the chosen radio in view, the dial resting on whole radios with an edge cue when it scrolls, the same baseline for all eight weathers; in Storm the hint's ink follows the title's and the subtitle never ends a line on its dot; the resolve caption and the Mallow's line on screen, clear of the chrome, at ≥ 14 px. Portrait and desktop keep stage-screen's framing exactly (no landscape fit) and their two 50 px rows. Landscape (844×390, 568×320): the corner layout is on; the action column and the dial (a 4 × 2 keypad of all eight radios) both 94 px for every weather; for all eight weathers the resting Mallow is fully on screen, under the top bar, clear of the hint spot's two lines, every chip, radio and both clusters, at the same fit, and ≥ 0.45 of the stage under the top bar (the band: H − the top bar's bottom, the same quantity before and after; before 0.31 at 844×390 and 0.32 at 568×320); the caption sits above the head at rest and through 2.5 s of the resolve beat (every frame watched); a front (Moonlight → Sunshine) sampled until it has passed overlaps nothing at the same fit; two chips stack in the left column, clear of the Mallow. A held-back celebrate (568×320, Boppo, Starlight, a constellation beat just before the resolve): the resolve beat waits, then plays and jumps, the caption shows only after that jump has landed and the head never meets it in any frame; a double tap under the caption (the head rises 26 px above its bottom) finds the spot ducked in every frame it is over the head, and it comes back once Boppo lands. A rotation from 320×568 on Warm glow (dial scrolled to its end) to 568×320 leaves no scroll-edge class or mask on the keypad, and back in portrait the chosen radio is in view with its cue. 448×320 and 480×320 (under `LAND.minW`) keep the Phase 3 layout (stage-screen's fit, two 50 px rows) with nothing overlapping |
 | `states` | W2: every radio in turn settles in its realm at `moodFor`'s target, the Mallow answers within 2 s, and the world is not a recolour of the last (the colour-residual probe > 12, with its self-check) |
 | `reach` | W4: one gesture per weather; the realm's answer beyond the touch box + 60 px (stills at the target before and after), the swell along the water for waves |
 | `touch` | W5, W7: every interaction by CDP touch, the two-finger spread at its midpoint, a tap on the Mallow is TouchTalk; no page scroll or zoom |
@@ -642,4 +657,6 @@ Simulated input proves state only. None of these counts as tested until it has b
 - A luminance and comfort review of Storm in the Static Storm and of the dark-to-bright realm changes.
 - A phone on its side (pending: not yet tried on a device): the corner clusters under the thumbs (holding Part the
   clouds with the left thumb while the right picks a weather), the side safe areas with the notch on either side,
-  and the Mallow's size against the sky on a small (568×320) and a large (932×430) phone.
+  and the Mallow's size against the sky on a small (568×320) and a large (932×430) phone; the hint spot ducking out
+  of a double tap's way at 60 and 120 Hz (the duck starts from the hop's predicted peak, so a fast display only helps);
+  rotating with the dial scrolled at 320 px.

@@ -473,6 +473,7 @@ export class WeatherReactor {
     this._faceUntil = -1;
     this._log = Array.from({ length: LOG_N }, () => ({ t: 0, type: '', tag: '', react: null }));
     this._logN = 0;
+    this._beat = Object.create(null);   // event type → reactor time of its last reaction (beatAt)
     this.body = { cx: 0, top: 0, bottom: 0, mid: 0, w: 1, h: 1 };
     this._in = { mallowId, style, reduced: !!reduced, motion, weather: null, progress: 0, event: null, cond: null, body: this.body, t: 0 };
     this.destroyed = false;
@@ -562,7 +563,14 @@ export class WeatherReactor {
   _note(type, tag, react) {
     const e = this._log[this._logN++ % LOG_N];
     e.t = +this.t.toFixed(2); e.type = type; e.tag = tag; e.react = react || null;
+    this._beat[type] = this.t;
   }
+
+  /** Reactor time (this.t) of the last reaction to an event type, or -Infinity if it never played. */
+  beatAt(type) { return this._beat[type] ?? -Infinity; }
+
+  /** The event type of the beat waiting behind a recent one (it plays once GAP has passed), or null. */
+  get pending() { const p = this.mem.pending; return p && this.t <= p.until ? p.type : null; }
 
   /** The last 32 reactions, oldest first: [{t, type, tag, react}]. */
   get log() {

@@ -46,7 +46,10 @@
 //           chosen radio visible at 320 px, the same baseline for every weather; (Phase 4) on the short,
 //           wide stages (844×390, 568×320) the corner layout: the Mallow ≥ LAND_FRAC of the stage under the top
 //           bar, fully visible, clear of the chips, the dial and the hint spot for all eight weathers, through a
-//           front and the resolve caption; portrait keeps stage-screen's framing exactly
+//           front and the resolve caption; portrait keeps stage-screen's framing exactly; a celebrate held back
+//           behind a constellation beat (Boppo, 568×320): the caption waits for it to land, and a double tap
+//           under the caption finds the spot ducked; a rotation from a scrolled 320 px dial leaves the keypad
+//           unmasked; 448×320 and 480×320 (under LAND.minW) keep the Phase 3 layout
 //
 // Blocks (slice 4):
 //   sound   W11/W12: nothing before a gesture; one bed after a tap; drips and a rising note for a bead;
@@ -190,7 +193,7 @@ function landProbe() {
     .map((e) => ({ t: (e.textContent.trim() || e.getAttribute('aria-label') || '').slice(0, 24), ...box(e.getBoundingClientRect()) }));
   const hint = q('.weather .wx-hint');
   return { body, h: b.h, ctrls, dial: box(q('.wx-dial').getBoundingClientRect()), actions: box(q('.wx-actions').getBoundingClientRect()),
-    hint: box(hint.getBoundingClientRect()), hintOn: hint.classList.contains('on'),
+    hint: box(hint.getBoundingClientRect()), hintOn: hint.classList.contains('on') && !hint.classList.contains('wx-duck'),   // ducked: faded out of a jump's way
     topBottom: Math.max(...bar.map((e) => e.getBoundingClientRect().bottom), q('.weather .topbar .title').getBoundingClientRect().bottom),
     vw: innerWidth, vh: innerHeight, fit: +rig.opts.fit.toFixed(4), land: __lab.weather.land, front: !!__lab.weather.front, grounded: !!rig.body.grounded,
     weather: __lab.weather.weather };
@@ -2319,6 +2322,134 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         await H.shot(page, out, `weather-${vp}-layout-two-chips`);
         noErrors(sc, errors);
       } finally { await ctx.close(); }
+    }
+
+    // A celebrate the reactor held back: Boppo at 568×320, Starlight, the last constellation forming just before the
+    // resolve (an expressive beat, so the resolve beat waits its GAP). The caption waits for that beat, then for its
+    // jump to land: every frame from the resolve on, the head never meets a showing caption. Then a double tap (the
+    // biggest jump, 0.15 × H) while the caption shows: the spot ducks out of the way and comes back once Boppo lands.
+    if (VPS.includes('land-small')) {
+      const { ctx, page, errors } = await openWx(browser, 'land-small', 'boppo');
+      try {
+        const sc = `${scope}:land-small:held-beat`;
+        await wx(page, () => __lab.weather.setWeather('starlight', { instant: true }));
+        await settled(page, 'starlight');
+        await page.waitForFunction(() => { const r = __lab.weather.reactor; return r.t - r.mem.lastReact > 2.5 && __lab.companion.rig.body.grounded; }, null, { timeout: T });
+        // every frame: the live head (rig.bodyRect) against the hint spot while it shows the caption
+        await wx(page, () => {
+          const m = window.__held = { run: true, t0: performance.now(), frames: 0, over: 0, overVis: 0, top: 1e9, cap: 0, capAt: -1, pendingSeen: false, beatAt: -1, landAt: -1, up: false,
+            duck: 0, tapOver: 0, tapOverVis: 0, tapTop: 1e9, tapCap: 0, tapAt: -1, backAt: -1 };
+          const tick = () => {
+            if (!m.run) return;
+            const lw = __lab.weather, rig = __lab.companion.rig, o = rig.container.getBoundingClientRect(), now = performance.now() - m.t0;
+            const top = o.top + rig.bodyRect().top, hint = document.querySelector('.weather .wx-hint'), b = rig.body, up = !b.grounded || b.hop > 0;
+            if (lw.reactor.pending === 'resolved') m.pendingSeen = true;
+            if (m.beatAt < 0 && lw.reactor.log.some((e) => e.type === 'resolved')) m.beatAt = now;
+            if (m.beatAt >= 0 && up) m.up = true;
+            if (m.beatAt >= 0 && m.up && !up && m.landAt < 0) m.landAt = now;
+            const cap = hint.classList.contains('on') && hint.querySelector('.line');
+            if (cap) {
+              const cb = hint.getBoundingClientRect().bottom, op = +getComputedStyle(hint).opacity;
+              if (m.capAt < 0) m.capAt = now;
+              if (hint.classList.contains('wx-duck')) m.duck++;
+              if (m.tapAt < 0) { m.frames++; if (top < cb - 1) { m.over++; if (op > 0.1) m.overVis++; } if (top < m.top) { m.top = top; m.cap = cb; } }
+              else {
+                if (top < cb - 1) { m.tapOver++; if (op > 0.1) m.tapOverVis++; }
+                if (top < m.tapTop) { m.tapTop = top; m.tapCap = cb; }
+                if (m.backAt < 0 && !up && !hint.classList.contains('wx-duck') && op > 0.95) m.backAt = now;
+              }
+            }
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+        // the last constellation forms, then the weather resolves on the next frame (progress forced to 1 once)
+        await wx(page, () => {
+          const lw = __lab.weather, b = lw.geo().body, s = lw.session, orig = s.update;
+          lw.reactor.event('constellation', { x: b.cx, y: b.top - 60 });
+          s.update = function (dt) { s.update = orig; return orig.call(this, dt, 1); };
+        });
+        await step('the weather resolves', page.waitForFunction(() => __lab.weather.resolved, null, { timeout: T }));
+        await step('the caption shows', page.waitForFunction(() => window.__held.capAt >= 0, null, { timeout: T }));
+        await H.shot(page, out, 'weather-land-small-held-beat-caption');
+        const a = await wx(page, () => ({ ...window.__held, log: __lab.weather.reactor.log.slice(-4).map((e) => `${e.type}:${e.tag}:${e.react}`) }));
+        const r0 = (v) => Math.round(v);
+        check(sc, 'the resolve beat (a celebrate) waited behind the constellation beat, then played and jumped',
+          a.pendingSeen && a.beatAt >= 0 && a.up && a.log.some((l) => /^resolved:.*:celebrate$/.test(l)), JSON.stringify({ pendingSeen: a.pendingSeen, beatAt: r0(a.beatAt), up: a.up, log: a.log }));
+        check(sc, 'the caption waits for that beat and shows only once its jump has landed',
+          a.landAt >= 0 && a.capAt >= a.landAt && a.capAt >= a.beatAt, JSON.stringify({ beatAt: r0(a.beatAt), landAt: r0(a.landAt), capAt: r0(a.capAt) }));
+        // the double tap, while the caption shows
+        await sleep(250);
+        // Boppo bounces on its own: the double tap lands on a frame where it stands on the ground (in the air a hop has no effect)
+        await wx(page, () => new Promise((res) => {
+          const rig = __lab.companion.rig, f = () => {
+            if (!rig.body.grounded) { requestAnimationFrame(f); return; }
+            window.__held.tapAt = performance.now() - window.__held.t0; rig.react('doubleTap'); res();
+          };
+          f();
+        }));
+        await step('the spot comes back after the double tap', page.waitForFunction(() => window.__held.backAt >= 0 || !document.querySelector('.weather .wx-hint.on'), null, { timeout: T }));
+        await sleep(300);
+        const z = await wx(page, () => { window.__held.run = false; return { ...window.__held }; });
+        check(sc, 'every frame the caption shows before the double tap, Boppo\'s head stays under it (no frame over it)',
+          z.frames > 0 && z.over === 0 && z.top >= z.cap - 1, JSON.stringify({ frames: z.frames, over: z.over, top: r0(z.top), cap: r0(z.cap) }));
+        check(sc, 'a double tap under the caption: the spot ducks before the head reaches it (never visible over the head) and comes back once Boppo lands',
+          z.tapTop < z.tapCap - 1 && z.duck > 0 && z.tapOverVis === 0 && z.backAt > z.tapAt, JSON.stringify({ tapTop: r0(z.tapTop), cap: r0(z.tapCap), tapOver: z.tapOver, tapOverVis: z.tapOverVis, duck: z.duck, tapAt: r0(z.tapAt), backAt: r0(z.backAt) }));
+        await H.shot(page, out, 'weather-land-small-held-beat-after-tap');
+        noErrors(sc, errors);
+      } finally { await ctx.close(); }
+    }
+
+    // A rotation from 320×568 with the dial scrolled to its end (Warm glow): the landscape keypad never scrolls, so it
+    // carries no scroll-edge class or mask (lab.css's fade would cut its left column); back in portrait the dial keeps
+    // the chosen radio in view, on whole radios, with its cue again.
+    if (VPS.includes('small')) {
+      const { ctx, page, errors } = await openWx(browser, 'small', 'pipzi');
+      try {
+        const sc = `${scope}:small:rotate`;
+        await wx(page, () => __lab.weather.setWeather('warm', { instant: true }));
+        await settled(page, 'warm');
+        const dialState = () => {
+          const d = document.querySelector('.wx-dial'), cs = getComputedStyle(d), r = d.getBoundingClientRect(), b = d.querySelector('[aria-checked="true"]').getBoundingClientRect();
+          return { cls: d.className, mask: cs.maskImage || cs.webkitMaskImage || 'none', scrolls: d.scrollWidth > d.clientWidth + 1, inView: b.left >= r.left - 1 && b.right <= r.right + 1, land: !!__lab.weather.land };
+        };
+        const p0 = await wx(page, dialState);
+        await page.setViewportSize({ width: 568, height: 320 });
+        await step('the corner layout takes over', page.waitForFunction(() => !!__lab.weather.land, null, { timeout: T }));
+        await sleep(400);
+        const l = await wx(page, dialState);
+        await H.shot(page, out, 'weather-small-rotated-land-small-keypad');
+        check(sc, '320×568 → 568×320 on Warm glow: the keypad has no scroll-edge class or mask (all eight radios whole)',
+          p0.scrolls && /fade-l/.test(p0.cls) && l.land && !/fade-[lr]/.test(l.cls) && l.mask === 'none' && !l.scrolls, JSON.stringify({ portrait: p0, land: l }));
+        await page.setViewportSize({ width: 320, height: 568 });
+        await step('portrait again', page.waitForFunction(() => !__lab.weather.land, null, { timeout: T }));
+        await sleep(400);
+        const p1 = await wx(page, dialState);
+        check(sc, 'back to 320×568: the chosen radio in view and the end cue back', p1.inView && p1.scrolls && /fade-l/.test(p1.cls), JSON.stringify(p1));
+        noErrors(sc, errors);
+      } finally { await ctx.close(); }
+    }
+
+    // Short, wide stages narrower than LAND.minW (520 px): the two clusters would squeeze the Mallow, so they keep the
+    // Phase 3 layout (stage-screen's framing, the two 50 px bottom rows), with nothing overlapping
+    if (VPS.includes('land-small')) {
+      for (const [w, h] of [[448, 320], [480, 320]]) {
+        const { ctx, page, errors } = await openWx(browser, { name: `narrow-${w}`, width: w, height: h, touch: true }, 'glitzi');
+        try {
+          const sc = `${scope}:narrow-${w}x${h}`;
+          await settled(page, await wx(page, () => __lab.weather.weather));
+          const pf = await wx(page, () => {
+            const st = document.querySelector('.weather .stage'), W = st.clientWidth, H = st.clientHeight, bh = document.querySelector('.weather .bottom').getBoundingClientRect().height;
+            const band = Math.min(H - bh - 18, H * 0.84) - 96;
+            return { land: __lab.weather.land, fit: __lab.companion.rig.opts.fit, want: Math.max(0.2, Math.min(0.64, Math.min(W * 0.64, band * 0.58) / W)),
+              rows: [...document.querySelectorAll('.weather .bottom > *')].map((e) => Math.round(e.getBoundingClientRect().height)).join(), h: Math.round(__lab.companion.rig.bodyRect().h) };
+          });
+          check(sc, `${w}×${h}: under LAND.minW the Phase 3 layout stays (stage-screen's own fit, both bottom rows 50 px)`, pf.land === null && Math.abs(pf.fit - pf.want) < 1e-6 && pf.rows === '50,50', JSON.stringify(pf));
+          await H.layout(page, sc, { scrollers: ['.wx-dial', '.wx-actions'] });
+          await H.shot(page, out, `weather-narrow-${w}x${h}`);
+          noErrors(sc, errors);
+        } finally { await ctx.close(); }
+      }
     }
   });
 }

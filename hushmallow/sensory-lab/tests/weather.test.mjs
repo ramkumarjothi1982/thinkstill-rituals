@@ -20,7 +20,7 @@ import { WindField, Ribbons, Fluffs, WIND_TAU } from '../core/weather/wind.js';
 import { WaveField, Puddles, ARRIVE_AT, DRY_TAU } from '../core/weather/water.js';
 import { LightPool, EmberField, SUN_REST } from '../core/weather/light.js';
 import { placeStars, constellationShape, StarSwarm, CONSTELLATION_STYLE, TWINKLE_HZ, TWINKLE_AMP, GATHER_R, MIN_GAP, STARS, isGuide } from '../core/weather/stars.js';
-import { FEEL, REST, EVENT_TYPES, GAP, CLOSED_EYES, decide, createMemory, restFor, isPositiveMix } from '../core/weather-mallow.js';
+import { FEEL, REST, EVENT_TYPES, GAP, CLOSED_EYES, decide, createMemory, restFor, isPositiveMix, WeatherReactor } from '../core/weather-mallow.js';
 import { REALM_GEO, homeRealm } from '../core/environment.js';
 import { softened } from '../core/personality.js';
 import { REALMS, REALM_IDS } from '../../src/world/realm.js';
@@ -1598,14 +1598,94 @@ test('R8 landscape framing: landFit grows every Mallow between the corner contro
     }
     assert.equal(heights.size, 1, `${W}×${H}: every Mallow stands the same height (head on the same line): ${[...heights]}`);
   }
-  // a narrow stage is bound by the clusters instead: the body narrows to keep clear of both
+  // the narrowest corner stage (LAND.minW) is bound by the clusters instead: the body narrows to keep clear of both
   const [bx0, by0, bx1, by1] = MALLOWS.noomi.bodyBox, hU = by1 - by0, wU = bx1 - bx0, ref = Math.sqrt(hU * wU);
-  const n = landFit({ W: 470, H: 320, floor: 268.8, hintTop: 74, left: SIDE, right: 470 - SIDE, hU, wU, ref });
-  assert.ok(Math.abs(n.w - (470 - 2 * SIDE - 2 * LAND.side)) < 1e-6 && 268.8 - n.h > n.headTop, 'width-bound: exactly the gap between the clusters');
+  const NW = LAND.minW, n = landFit({ W: NW, H: 320, floor: 268.8, hintTop: 74, left: SIDE, right: NW - SIDE, hU, wU, ref });
+  assert.ok(Math.abs(n.w - (NW - 2 * SIDE - 2 * LAND.side)) < 1e-6 && 268.8 - n.h > n.headTop, 'width-bound: exactly the gap between the clusters');
+  // wherever the corner layout applies (the CSS query: W ≥ LAND.minW, W / H ≥ 7 / 5, H ≤ 460) every Mallow is at least
+  // as tall as stage-screen's own framing of the same stage with the two 50 px bottom rows (126 px with their gap and
+  // padding) gave it, whatever the hint spot's top (one- or two-line subtitle). Only where that framing could not keep
+  // its own head under the 56 px top bar (H < ~262) is there nothing to compare with: the corner layout is the one that fits.
+  const phase3 = (W, H, ref, hU) => {
+    const floor = Math.min(H - 126 - 18, 0.84 * H), band = floor - 96;
+    const fit = Math.max(0.2, Math.min(0.64, Math.min(W * 0.64, band * 0.58) / W));
+    const h = hU * Math.min(W * fit, H * (fit + 0.06)) / ref;
+    return { h, valid: floor - h >= 56 };
+  };
+  let compared = 0;
+  for (let H = 240; H <= 460; H += 4) {
+    for (let W = Math.max(LAND.minW, Math.ceil(1.4 * H)); W <= 1440; W += 8) {
+      for (const id of MALLOW_IDS) {
+        const [x0, y0, x1, y1] = MALLOWS[id].bodyBox, hu = y1 - y0, wu = x1 - x0, rf = Math.sqrt(hu * wu), old = phase3(W, H, rf, hu);
+        if (!old.valid) continue;
+        for (const hintTop of [74, 84]) {
+          const r = landFit({ W, H, floor: 0.84 * H, hintTop, left: SIDE, right: W - SIDE, hU: hu, wU: wu, ref: rf });
+          assert.ok(r.h >= old.h - 1e-6, `${W}×${H} ${id} (hint ${hintTop}): the corner layout (${r.h.toFixed(1)} px) never shrinks the Mallow below the Phase 3 framing (${old.h.toFixed(1)} px)`);
+          compared++;
+        }
+      }
+    }
+  }
+  assert.ok(compared > 5000, `the sweep covers the corner layout's stages (${compared})`);
+  // …and just under LAND.minW it would have: there the two bottom rows stay (the reason for the min-width)
+  const nb = landFit({ W: 480, H: 320, floor: 268.8, hintTop: 74, left: SIDE, right: 480 - SIDE, hU, wU, ref });
+  assert.ok(nb.h < phase3(480, 320, ref, hU).h, '480×320: the clusters would squeeze the Mallow below its Phase 3 size');
+  // the CSS query is the one these numbers assume
+  const css = readFileSync(join(LAB, 'styles', 'weather.css'), 'utf8');
+  assert.ok(css.includes(`@media (min-aspect-ratio: 7/5) and (max-height: 460px) and (min-width: ${LAND.minW}px) {`), 'styles/weather.css: the corner layout\'s query carries LAND.minW');
   // a lower hint spot (a two-line subtitle) gives a smaller Mallow, never one under it
   const a = landFit({ W: 568, H: 320, floor: 268.8, hintTop: 74, left: SIDE, right: 568 - SIDE, hU, wU, ref });
   const b = landFit({ W: 568, H: 320, floor: 268.8, hintTop: 84, left: SIDE, right: 568 - SIDE, hU, wU, ref });
   assert.ok(b.h < a.h && 268.8 - b.h >= b.headTop - 1e-6);
   // nothing fits: the smallest fit, never a negative or empty one
   assert.equal(landFit({ W: 400, H: 280, floor: 100, hintTop: 74, left: SIDE, right: 400 - SIDE, hU, wU, ref }).fit, LAND.fitMin);
+});
+
+// ------------------------------------------------------------------- R9 --
+test('R9 the reactor says when the resolve beat played, and when it is waiting behind another (the landscape caption keys off it)', () => {
+  const fake = (id) => {
+    const reacts = [];
+    const rig = { reacts, opts: {}, react(k) { reacts.push(k); }, bodyRect(o) { return Object.assign(o, { cx: 284, top: 140, bottom: 270, mid: 205, w: 125, h: 130 }); },
+      lookAtScreen() {}, nudge() {}, brush() {}, poke() {}, setInflate() {}, peek() {} };
+    return { id, rig, director: { play() {} }, hold: false };
+  };
+  const run = (r, s) => { const cond = {}; for (let t = 0; t < s - 1e-9; t += 0.05) r.conditions(cond, 0.05); };
+  // nothing recent: the beat plays at once (Boppo's Starlight resolve is a celebrate)
+  const a = fake('boppo'), ra = new WeatherReactor(a, { mallowId: 'boppo' });
+  ra.weather('starlight', 1);
+  run(ra, 3);
+  assert.equal(ra.beatAt('resolved'), -Infinity, 'never played yet');
+  const t0 = ra.t;
+  ra.event('resolved', { x: 284, y: 205 });
+  assert.equal(ra.beatAt('resolved'), t0, 'played at once');
+  assert.equal(ra.pending, null);
+  assert.equal(a.rig.reacts.at(-1), 'celebrate');
+  // the last constellation just formed: the resolve beat waits its GAP, then plays (and reports when)
+  const b = fake('boppo'), rb = new WeatherReactor(b, { mallowId: 'boppo' });
+  rb.weather('starlight', 0.9);
+  run(rb, 3);
+  rb.event('constellation', { x: 284, y: 80 });
+  const tc = rb.t, n = b.rig.reacts.length;
+  assert.equal(rb.beatAt('constellation'), tc, 'the constellation beat played');
+  rb.weather('starlight', 1);
+  rb.event('resolved', { x: 284, y: 205 });
+  assert.equal(rb.pending, 'resolved', 'held back behind the constellation beat');
+  assert.ok(rb.beatAt('resolved') < tc, 'not played yet');
+  run(rb, GAP + 0.3);
+  assert.ok(rb.beatAt('resolved') >= tc + GAP - 1e-9 && rb.beatAt('resolved') <= tc + GAP + 0.15, `played once the gap passed (${(rb.beatAt('resolved') - tc).toFixed(2)} s)`);
+  assert.equal(rb.pending, null);
+  assert.equal(b.rig.reacts.length, n + 1);
+  assert.equal(b.rig.reacts.at(-1), 'celebrate');
+  // a waiting beat that outlives its 2.5 s slot (the Mallow held all the while: a waiting beat only plays untouched)
+  // is dropped: neither played nor waiting, so the caption has nothing left to wait for
+  const d = fake('boppo'), rd = new WeatherReactor(d, { mallowId: 'boppo' });
+  rd.weather('starlight', 0.9);
+  run(rd, 3);
+  rd.event('constellation', { x: 284, y: 80 });
+  rd.event('resolved', { x: 284, y: 205 });
+  assert.equal(rd.pending, 'resolved');
+  d.hold = true;
+  run(rd, 3);
+  assert.equal(rd.pending, null, 'past its 2.5 s slot');
+  assert.equal(rd.beatAt('resolved'), -Infinity);
 });

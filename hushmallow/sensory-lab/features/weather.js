@@ -68,7 +68,10 @@ const MOON_STAR_GAP = 6000;                     // ms between falling stars from
 const DEW_S = 3;                                // s of dew glints after the fog lifts
 const WATER_HINT_WAIT = 4;                      // s after a weather change before the one-time water hint may show
 const INK = [0.35, 0.5];                        // top-band darkness that turns the title's ink light (off, on) over a bright realm
-const CAP_JUMP = [0.35, 1.5];                   // s (landscape): a resolve jump starts within the first, the caption shows by the second
+const CAP_JUMP = [0.35, 1.5];                   // s from the resolve beat (landscape): its jump starts within the first, the caption shows by the second
+const CAP_MAX = 4;                              // s from the resolve: the caption never waits longer (a beat held back, then its jump)
+const DUCK_PX = 4;                              // px (landscape): the hint spot ducks once the head rises within this of its bottom
+const HOP_G = 9.8 * 1.3;                        // the rig's hop gravity (src/mallows/rig.js): a hop peaks hopV² / 2g stage heights higher
 
 export function mount(root, ctx) {
   const id = ctx.mallowId, mallow = MALLOWS[id], name = mallow.name;
@@ -86,7 +89,8 @@ export function mount(root, ctx) {
   let hearthT = 0, hearthK = 0, heatStep = 0, dewT = -1, haloA = 0, haloKind = 'sun', morphSun = false;
   let sndT = -Infinity, bolt = 1, idleT = 0;
   let land = null, lastL = null;   // land: landFit's answer while the stage is short and wide (styles/weather.css), else null
-  let capWait = null;               // landscape: the resolve caption waiting for the Mallow's jump to land
+  let capWait = null;               // landscape: the resolve caption waiting for the resolve beat's jump to land
+  let hintRev = -1, hintBottom = 0; // landscape: the hint spot's bottom (container px), measured once per text or layout change
   const idleRnd = rng(7 + id.length);
   let idleAt = IDLE[0] + (IDLE[1] - IDLE[0]) * idleRnd();
   const touchedW = new Set();
@@ -277,6 +281,7 @@ export function mount(root, ctx) {
     fitSubtitle();
     lastL = L;
     frameLand(L);
+    dial.reveal();   // every reframe: the scroll position and the edge cues follow the new layout (a rotation to the keypad drops them)
     if (!ready) { begin(); return; }
     applyGeo(false);
     // a new ground line: rebuild the realm in place (debounced, never under a front)
@@ -300,7 +305,6 @@ export function mount(root, ctx) {
     reactor.weather(shownW, 0);
     setSubtitle();
     updateActions();
-    dial.reveal();
     hintAt = 0.8;
     say(COPY.announce.at(WEATHERS[shownW].label, realmPhrase(REALMS[realm].name), howTo(shownW)));
     kick();
@@ -311,7 +315,8 @@ export function mount(root, ctx) {
   // clusters. stage-screen sets its own fit on every reframe just before this, so portrait keeps exactly that one.
   function frameLand(L) {
     land = getComputedStyle(s.screen).getPropertyValue('--wx-land').trim() === '1' ? land || {} : null;
-    if (!land) return;
+    hintRev = -1;   // the hint spot may have moved (a wrapping subtitle, a rotation)
+    if (!land) { hint.duck(false); return; }
     const st = s.stage.getBoundingClientRect(), ar = actions.el.getBoundingClientRect(), dr = dial.el.getBoundingClientRect();
     const [bx0, by0, bx1, by1] = rig.mallow.bodyBox, soft = rig.soft;
     const r = landFit({ W: L.W, H: L.H, floor: L.floor, hintTop: hint.el.getBoundingClientRect().top - st.top,
@@ -415,6 +420,7 @@ export function mount(root, ctx) {
     if (session.arrivedNow) reactor.event('arrive', { x: body.cx, y: body.top - 140 });
     if (session.resolvedNow) resolve();
     if (capWait) waitCaption();
+    duckHint();
     frontState(st);
     if (hintAt >= 0 && simT >= hintAt) { hintAt = -1; if (!session.resolved) showHint(session.weather); }
     if (waterHintAt >= 0 && simT >= waterHintAt) {   // the one-time water hint never cuts a hint or caption short: it waits its turn
@@ -745,8 +751,9 @@ export function mount(root, ctx) {
     ctx.sound.motif(id, 'bright');
     const cap = captionFor(w, realm);
     // on a short, wide stage the Mallow's head stands close under the hint spot, and a celebrate or a big hop would
-    // jump through the caption's second line: there it waits until the jump has landed (the announcer says it now)
-    if (land) { hint.hide(); capWait = { cap, line: lineFor(id, w), t: simT, flew: false }; }
+    // jump through the caption's second line: there it waits until the resolve beat's jump has landed (the announcer
+    // says it now). rt: the reactor's clock now, so waitCaption knows the beat that answers this resolve
+    if (land) { hint.hide(); capWait = { cap, line: lineFor(id, w), t: simT, rt: reactor.t, beat: -1, flew: false }; }
     else hint.caption(cap, lineFor(id, w), name, 4000);
     hintAt = -1;
     say(cap);
@@ -756,12 +763,37 @@ export function mount(root, ctx) {
     updateActions();
   }
 
-  // the landscape resolve caption: once the Mallow is down again after its jump (or had none), at the latest CAP_JUMP[1]
+  // The landscape resolve caption keys off the resolve beat itself. The reactor plays it at once, or holds it back for
+  // its GAP after a recent expressive beat (the last constellation forming, a bask): until it has played the caption
+  // waits. Then, once the Mallow is down again after that beat's jump (or CAP_JUMP[0] passed with none), at the
+  // latest CAP_JUMP[1] after the beat, and never later than CAP_MAX after the resolve. A beat the reactor dropped (held
+  // past its slot while the Mallow was being touched) counts as one with no jump.
   function waitCaption() {
     if (!session.resolved || leaving) { capWait = null; return; }
-    const b = rig.body, up = !b.grounded || b.hop > 0, t = simT - capWait.t;
-    if (up) capWait.flew = true;
-    if ((!up && (capWait.flew || t >= CAP_JUMP[0])) || t >= CAP_JUMP[1]) { hint.caption(capWait.cap, capWait.line, name, 4000); capWait = null; }
+    const c = capWait, b = rig.body, up = !b.grounded || b.hop > 0, t = simT - c.t;
+    if (c.beat < 0) {
+      if (reactor.beatAt('resolved') >= c.rt) c.beat = simT;
+      else if (reactor.pending === 'resolved' && t < CAP_MAX) return;
+      else c.beat = c.t;
+    }
+    if (up) c.flew = true;
+    const since = simT - c.beat;
+    if ((!up && (c.flew || since >= CAP_JUMP[0])) || since >= CAP_JUMP[1] || t >= CAP_MAX) { hint.caption(c.cap, c.line, name, 4000); capWait = null; }
+  }
+
+  // Landscape safety net for every other jump (a double tap, an idle bounce, a follow-up hop, a moonlit float): while
+  // the hint spot shows, it fades out quickly (styles/weather.css .wx-duck) as soon as the Mallow's head rises, or its
+  // hop will peak, within DUCK_PX of the spot's bottom, and fades back once the Mallow is down again. A Mallow standing
+  // still never hides it. The spot's box is measured once per text or layout change, never every frame.
+  function duckHint() {
+    let duck = false;
+    if (land && hint.busy) {
+      if (hintRev !== hint.rev) { hintRev = hint.rev; hintBottom = hint.el.getBoundingClientRect().bottom - rig.container.getBoundingClientRect().top; }
+      const b = rig.body, up = !b.grounded || b.hop > 0, rest = rig.BASE - body.h, line = hintBottom + DUCK_PX;
+      const peak = up && b.hopV > 0 ? body.top - (b.hopV * b.hopV) / (2 * HOP_G) * body.H : body.top;
+      duck = (up || body.top < rest - 1) && Math.min(body.top, peak) < line;
+    }
+    hint.duck(duck);
   }
 
   // Again ran its reset step: everything the weather left behind goes too

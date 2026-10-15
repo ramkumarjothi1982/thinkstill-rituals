@@ -319,7 +319,9 @@ export function lineFor(mallowId, w) {
 // big as frames well: its head clears the hint spot's two lines (the resolve caption and the Mallow's line) with
 // room for it to rise (a calm float, an ordinary hop), it is at most half the stage tall (sky left above it), and
 // it keeps SIDE px clear of both corner clusters. Every Mallow then gets the same height there. (The bigger jumps,
-// a celebrate or a double tap, reach 0.06–0.15 × H: in landscape the resolve caption waits until the Mallow lands.)
+// a celebrate or a double tap, reach 0.06–0.15 × H: in landscape the resolve caption waits for the resolve beat's
+// jump to land, and the hint spot ducks out of the way of any other.) Narrower than minW the two clusters would
+// leave less room than stage-screen's own framing, so the corner layout starts there.
 export const LAND = Object.freeze({
   caption: 44,     // px: the hint spot's two lines at 16 and 14 px (styles/weather.css), from the hint's top
   lift: 0.08,      // × H: how far the Mallow may rise above its rest (a hop peaks at 0.05–0.076 × H; moonlit or windy floats)
@@ -327,6 +329,7 @@ export const LAND = Object.freeze({
   side: 12,        // px between the Mallow and a corner cluster
   fitMax: 0.64,    // stage-screen's own cap (a body never wider than 64 % of its stage)
   fitMin: 0.12,
+  minW: 520,       // px: the corner layout's narrowest stage (the min-width in styles/weather.css's media query)
 });
 
 /**

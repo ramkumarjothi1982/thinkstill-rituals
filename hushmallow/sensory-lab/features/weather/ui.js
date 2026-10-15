@@ -133,12 +133,16 @@ export function actionRow() {
   };
 }
 
-/** The hint spot: show(text, ms), caption(text, line, name, ms), hide(), destroy(); busy while anything shows, captioning while a caption does. */
+/**
+ * The hint spot: show(text, ms), caption(text, line, name, ms), hide(), duck(on), destroy(); busy while anything
+ * shows, captioning while a caption does; rev changes whenever its text does (so a cached measure knows to redo it).
+ */
 export function hintLine(screen) {
   const el = h('p', { class: 'moment-hint wx-hint', 'aria-hidden': 'true' });
   screen.append(el);
-  let timer = 0, cap = false;
+  let timer = 0, cap = false, rev = 0, ducked = false;
   const on = (ms) => {
+    rev++;
     el.classList.add('on');
     clearTimeout(timer);
     timer = ms ? setTimeout(() => { el.classList.remove('on'); cap = false; }, ms) : 0;
@@ -149,6 +153,7 @@ export function hintLine(screen) {
     get captioning() { return cap; },
     /** A hint or a caption is showing. */
     get busy() { return el.classList.contains('on'); },
+    get rev() { return rev; },
     show(text, ms = 3000) { cap = false; el.replaceChildren(text); on(ms); },
     caption(text, line, name, ms = 4000) {
       el.replaceChildren(h('span', { class: 'wx-cap' }, text),
@@ -157,6 +162,8 @@ export function hintLine(screen) {
       cap = true;
     },
     hide() { clearTimeout(timer); timer = 0; cap = false; el.classList.remove('on'); },
+    /** Out of the way for a moment (a quick fade, styles/weather.css) while the Mallow's head is up in the spot; its timer runs on. */
+    duck(d) { d = !!d; if (d !== ducked) { ducked = d; el.classList.toggle('wx-duck', d); } },
     destroy() { clearTimeout(timer); timer = 0; el.remove(); },
   };
 }
