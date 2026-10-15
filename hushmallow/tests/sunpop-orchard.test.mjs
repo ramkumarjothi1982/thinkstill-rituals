@@ -473,6 +473,10 @@ test('review: the thought never calms by itself across setThought(null) → the 
     const after = w.debug.thought;
     assert.equal(after.t0, before.t0, 'its own starting tension, not the one this world wrote');
     assert.ok(Math.abs(after.tension - before.tension) < 1e-6, `unchanged (${before.tension} → ${after.tension})`);
+    // gifts given to the empty swing while it was away are not counted for it
+    const t1 = w.debug.thought.tension;
+    D.setThought(null); steps(D, 0.3); giveOne(w, D); D.setThought(thought); steps(D, 1);
+    assert.ok(Math.abs(w.debug.thought.tension - t1) < 1e-6, 'not eased by gifts it was not there for');
     const other = { ...fakeThought(), token: 'Something else', state: { tension: 0.8 } };
     D.setThought(other); steps(D, 1);
     assert.ok(Math.abs(w.debug.thought.tension - 0.8) < 1e-6, 'new words arrive with their own tension, not already softened');

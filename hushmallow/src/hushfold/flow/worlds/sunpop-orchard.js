@@ -1074,7 +1074,8 @@ export function create(ctx) {
 
   // ---------------------------------------------------------- hand-over --
   function captureT0(v) {
-    if (t0 != null) return;
+    // (restored: t0 is known already — still remember it for this handle)
+    if (t0 != null) { if (thought && !seenT0.has(thought)) seenT0.set(thought, { t0, givenBase, handBase }); return; }
     const s = Number.isFinite(v) ? v : Number.isFinite(thought?.state?.tension) ? thought.state.tension : 0.6;
     t0 = clamp(s, 0.25, 0.9);
     tension = t0;
@@ -1173,9 +1174,11 @@ export function create(ctx) {
       if (thought && thought !== h) { try { if (thought.labelFit === wordsFit || thought.labelFit === heldFit) thought.labelFit = null; } catch { /* */ } heldFit = null; }
       thought = h || null;
       if (prepared) layout(false);
+      // (the one leaving keeps what it was given; what goes to the swing while it is away is not counted for it)
+      if (prev && prev !== h && t0 != null) seenT0.set(prev, { t0, givenBase, handBase, leftAt: given, handAt: hand });
       if (h && h !== prev) {
         const known = seenT0.get(h);
-        if (known) ({ t0, givenBase, handBase } = known);
+        if (known) { t0 = known.t0; givenBase = known.givenBase + (given - (known.leftAt ?? given)); handBase = known.handBase + (hand - (known.handAt ?? hand)); }
         else { givenBase = given; handBase = hand; t0 = null; captureT0(); }
         relief = reliefFor(given - givenBase, hand - handBase); tension = tensionFor(t0 ?? 0.6, relief);
         if (!had) { tS.alpha = 0; tS.glide = null; }
