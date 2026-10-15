@@ -148,6 +148,110 @@ test('Tier 0: an Australian postcode with its context is refused as identifying'
     assert.equal(feeling(t).ok, true, t);
 });
 
+// The second review of the code-review fixes (9012d6f): nothing the screen refused or answered with support before
+// (7b92ee8, a674f4b) is released now, unless it is plainly kind. When in doubt a perspective is refused: a kind one
+// refused costs its writer a rewrite, a harmful one released reaches someone in pain.
+test('Tier 0 review 2: stopping medication is refused unless the words right before it say not to', () => {
+  for (const t of ['It won’t hurt to stop taking your meds suddenly', 'Don’t listen to them, just stop taking your meds suddenly', 'Don’t be scared, stop taking your meds cold turkey',
+    'Doctors don’t know you, stop taking your meds on your own', 'You’re not sick, stop taking your pills all at once', 'It’s not a big deal, stop your meds without asking your GP',
+    'Why not just stop taking your meds suddenly', 'You don’t need them, stop taking your meds suddenly', 'Can you not just stop taking your meds',
+    'It’s not a good idea to stop taking your meds, but do it anyway', 'Is it not a good idea to stop taking your meds? It is', 'Flush your pills and see how you feel'])
+    assert.equal(screenReframe(t).code, 'unsafe', t);
+  for (const t of ['Don’t stop taking your meds without talking to your GP', 'Please don’t stop taking your meds suddenly', 'It’s not a good idea to stop taking your meds without talking to your GP',
+    'Never stop taking your meds without your doctor', 'You shouldn’t stop your meds suddenly, talk to your GP', 'There’s no need to stop taking your meds, they’re helping'])
+    assert.equal(screenReframe(t).ok, true, t);
+});
+
+test('Tier 0 review 2: a "not" in a question or a taunt is never care, only a negative imperative right before the words', () => {
+  for (const t of ['Can you not just hang yourself', 'Could you not just hang yourself already', 'Why did you not hang yourself yet', 'Will you not just off yourself', 'Can u not just starve yourself',
+    'Can you not just end yourself', 'Could you not go and hang yourself', 'Do you not want to hang yourself', 'Should you not just hang yourself', 'Did you not try to hang yourself yet',
+    'Why can you not just hurt yourself', 'I’m not saying don’t hang yourself', 'You’ll never kill yourself, you’re too scared', 'If you don’t hang yourself I will laugh',
+    'Don’t kill yourself yet', 'Don’t hurt yourself, but if you do, do it properly', 'No need to hang yourself']) {
+    assert.equal(screenReframe(t).code, 'unkind', t);
+    assert.equal(outcome(feeling(t)), 'crisis', t);   // a feeling gets support, never a bare refusal
+  }
+  for (const t of ['Please don’t hurt yourself', 'Try not to hurt yourself when it gets loud in your head', 'You don’t need to hurt yourself to cope', 'You should not hurt yourself over a mark',
+    'Don’t you dare hurt yourself', 'Promise me you won’t hurt yourself tonight', 'I hope you never hurt yourself']) assert.equal(screenReframe(t).ok, true, t);
+});
+
+test('Tier 0 review 2: "you’ll feel lighter" beside eating less is refused, and so is stopping eating without a food word', () => {
+  for (const t of ['Stop eating and you’ll feel lighter', 'Don’t eat and you’ll feel lighter', 'Don’t eat, you’ll feel lighter', 'Eat less and you’ll feel lighter', 'You’ll feel lighter if you stop eating',
+    'Just stop eating for a few days, you’ll feel lighter', 'Fasting will help, you’ll feel lighter', 'Throw up after dinner and you’ll feel lighter', 'Take a laxative, you’ll feel lighter',
+    'Stop eating after 6pm', 'Don’t eat anything today', 'Try fasting for a few days', 'Only water today']) assert.equal(screenReframe(t).code, 'unsafe', t);
+  for (const t of ['Please don’t skip meals, your body needs fuel', 'Don’t stop eating just because you’re sad', 'Don’t eat yourself up about it',
+    'You’ll feel lighter after a good rest', 'Writing it down might help you feel lighter']) assert.equal(screenReframe(t).ok, true, t);
+});
+
+test('Tier 0 review 2: any suggestion to lose weight, and any calorie counting or limit, is refused; plainly kind words pass', () => {
+  for (const t of ['Count your calories', 'Count your calories and you’ll feel more in control', 'Stay under 1200 calories', '1000 calories max', 'Track every calorie', 'Have you tried losing weight?',
+    'Have you thought about losing weight', 'Losing weight will cheer you up', 'Losing weight is the answer', 'Losing some weight could be a good start', 'Honestly lose some weight',
+    'Keep it under 1000 cals', 'A bit of weight loss would help', 'Dropping some weight would be good for you', 'Start a diet']) assert.equal(screenReframe(t).code, 'unsafe', t);
+  for (const t of ['You don’t need to lose weight to deserve rest', 'Please don’t count calories tonight', 'Losing weight isn’t the point, you matter as you are',
+    'Counting calories when you’re stressed can make things worse, be gentle with yourself', 'Calories don’t define you', 'Please stop counting calories for a while'])
+    assert.equal(screenReframe(t).ok, true, t);
+});
+
+test('Tier 0 review 2: how things can feel passes only when the same sentence says it isn’t so', () => {
+  for (const t of ['You probably think nobody would miss you, and you’re right', 'It feels like everyone hates you because they do', 'Life feels like everyone hates you, and honestly they do',
+    'it’s easy to think nobody would miss you, and you’d be right', 'feeling like nobody would miss you is correct', 'don’t believe nobody would miss you, believe it', 'As if nobody would miss you',
+    'Honestly it feels like the world would be better without you', 'It can feel like nobody would miss you.', 'You feel like nobody would miss you and they wouldn’t']) {
+    assert.equal(screenReframe(t).code, 'unkind', t);
+    assert.equal(outcome(feeling(t)), 'crisis', t);
+  }
+  for (const t of ['It can feel like nobody would miss you, but that isn’t true', 'It can feel like everyone hates you, and that feeling lies', 'You might feel like everyone hates you, but nobody does',
+    'It’s easy to believe the world would be better without you, but it wouldn’t', 'It might seem like nobody would miss you, but people would']) assert.equal(screenReframe(t).ok, true, t);
+});
+
+test('Tier 0 review 2: padding that the stored words lose (zero-width, spaces, line breaks, controls) never pushes the words past the cut', () => {
+  const words = 'I want to kill\u{2800}myself';
+  for (const pad of ['\u{200b}'.repeat(2000), ' '.repeat(2100), '\n'.repeat(2100), '\r\n'.repeat(2100), '\u{1}'.repeat(2000), '\u{202a}'.repeat(2000), 'a\u{200b}'.repeat(1200) + ' ']) {
+    for (const o of [undefined, { minChars: 1, maxChars: 10000 }, { minChars: 1, maxChars: Infinity }]) assert.equal(outcome(screenFeeling(pad + words, o)), 'crisis', JSON.stringify([pad.slice(0, 2), o]));
+    assert.equal(outcome(screenReframe(pad + words)), 'crisis', JSON.stringify(pad.slice(0, 2)));
+  }
+  assert.equal(screenReframe(`${'\u{200b}'.repeat(2000)}Go hang\u{2800}yourself`).code, 'unkind');
+  // and a long feeling of ordinary words is still cut where the stored words are
+  assert.equal(screenFeeling(`${'and the day went on and on '.repeat(80)}I want to kill myself`, { maxChars: 500 }).code, 'too-long');
+});
+
+test('Tier 0 review 2: a pet is who isn’t breathing only when the verb follows it straight away', () => {
+  for (const t of ['My dog walker isn’t breathing', 'my pet sitter is not breathing', 'My dog’s owner is not breathing', 'My dog barked and then my dad’s not breathing'])
+    assert.equal(outcome(feeling(t)), 'danger', t);
+  for (const t of ['My cat’s not breathing', 'My pet rabbit isn’t breathing', 'My mum’s dog isn’t breathing', 'Our family dog has stopped breathing']) assert.equal(outcome(feeling(t)), 'release', t);
+});
+
+test('Tier 0 review 2: NSW, Vic, Qld or Tas and a postcode identify in any case; SA, WA, NT or ACT in capitals or beside where someone lives', () => {
+  for (const t of ['i live in parramatta nsw 2150', 'brisbane qld 4000 is where i live', 'I live in Fitzroy vic 3065 and nobody knows me', 'hobart tas 7000 is home', 'I’m in Parramatta Nsw 2150',
+    'i live in adelaide sa 5000', 'darwin nt 0800 is home']) assert.equal(feeling(t).code, 'identifying', t);
+  for (const t of ['The Privacy Act 1988 training at work made me anxious', 'Year 12 is done and act 2026 of my life starts now', 'My wa 6000 steps goal slipped']) assert.equal(feeling(t).ok, true, t);
+});
+
+test('Tier 0 review 2: "it", "that" or "this off yourself" is never an everyday saying', () => {
+  for (const t of ['Just do it off yourself', 'Do us a favour and finish it off yourself', 'Do that off yourself']) {
+    assert.equal(screenReframe(t).code, 'unkind', t);
+    assert.equal(outcome(feeling(t)), 'crisis', t);
+  }
+  for (const t of ['Take the pressure off yourself for a bit', 'Ease off yourself a little']) {
+    assert.equal(screenReframe(t).ok, true, t);
+    assert.equal(feeling(t).ok, true, t);
+  }
+});
+
+test('Tier 0 review 2: a helpline beside 000 or a time still stands alone; someone’s own number never does', () => {
+  for (const t of ['If it’s urgent, 000 (13 11 14 if not)', 'Ring Lifeline on 13 11 14 - 2 am is fine too', 'Call 13 11 14 - 3pm or 3am, they answer']) {
+    assert.equal(screenReframe(t).ok, true, t);
+    assert.equal(feeling(t).ok, true, t);
+  }
+  for (const t of ['Ring 0412 13 11 14 after six', 'Try 04 13 11 14 22 tonight', '13 11 14 22 33 44 any time', '000 13 11 14 22', '04 000 13 11 14', '13 11 14 - 2 am 0412 345 678'])
+    assert.equal(feeling(t).code, 'contact', t);
+});
+
+test('Tier 0 review 2: a filler after the words ends the thought, as a line break does', () => {
+  for (const t of ['I hope I never wake up\u{2800}idk', 'I hope I don’t wake up tomorrow\u{3164}idk', 'I’m so tired of living\u{2800}in this flat', 'I hope I never wake up\u{34f}idk'])
+    assert.equal(outcome(feeling(t)), 'crisis', JSON.stringify(t));
+  for (const t of ['I’m so tired of living in this flat', 'Long day\u{2800}but okay now', 'Caf\u{e9}\u{2800}closed early and I went home', 'Long day \u{2764}\u{fe0f} bed now'])
+    assert.equal(feeling(t).ok, true, JSON.stringify(t));
+});
+
 // The shared lexicon belongs to the main app (Reframe). Hushmates relies on it, so a change there must be
 // reviewed by Hushmates' safety lead before it ships here: update this hash only after that review.
 test('Tier 0: the shared safety lexicon is the one Hushmates reviewed', () => {

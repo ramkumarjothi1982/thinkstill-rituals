@@ -979,7 +979,43 @@
   "Since mum passed it's been so hard.",
   "My mum passed a year ago and I still can't believe it.",
   "Since he passed a few weeks ago nothing feels right.",
-  "Since dad passed maths has been impossible to focus on."
+  "Since dad passed maths has been impossible to focus on.",
+  "We lost him only a month ago and I can't stop crying.",
+  "We lost him nearly two years ago and I still miss him.",
+  "We lost her when I was twelve and I still think about her every day.",
+  "We lost him over the weekend and I am numb.",
+  "We lost him way too soon.",
+  "We lost him the day before his birthday.",
+  "We lost her not long ago and I feel empty.",
+  "We lost her earlier this year and I miss her laugh.",
+  "We lost him back in 2019 and it still hurts.",
+  "We lost him because of a drunk driver.",
+  "We lost him while I was overseas and I never got to say goodbye.",
+  "We lost him at Christmas and I dread it every year.",
+  "We lost him in a car crash.",
+  "We lost her in her sleep.",
+  "We lost him in a fire last spring.",
+  "We lost her in childbirth.",
+  "We lost him at home surrounded by family.",
+  "We lost her at 32 weeks.",
+  "We lost him to the sea.",
+  "We sadly lost him on Tuesday.",
+  "We lost him during the pandemic.",
+  "We lost him at the beach two years ago and I still can't go back.",
+  "We lost him on the way to hospital.",
+  "When dad passed I was so proud of how brave he had been.",
+  "Since dad passed music helps me cope.",
+  "After mum passed I was really proud of how my brother stepped up, but I feel so lost.",
+  "Since grandad passed I've been really proud of how mum has coped.",
+  "Since he passed I've been so proud of my mum for coping.",
+  "After he passed English stopped making sense to me.",
+  "When mum passed music was all I had.",
+  "Since my brother passed the house has been so quiet.",
+  "Since mum passed with cancer I can't focus.",
+  "Since she passed up north we never visit.",
+  "Since she passed down the hall that last night I keep seeing it.",
+  "We lost him on the spot, the paramedics said.",
+  "We lost him for good last year."
  ],
  "notGrief": [
   [
@@ -1085,6 +1121,70 @@
   [
    "sadness",
    "My dad passed comment on my weight again."
+  ],
+  [
+   "worry",
+   "We lost him at the shops for ten minutes and I panicked."
+  ],
+  [
+   "frustration",
+   "We lost her keys and had to wake up the landlord."
+  ],
+  [
+   "frustration",
+   "We lost her number by accident."
+  ],
+  [
+   "sadness",
+   "We lost her trust after the argument."
+  ],
+  [
+   "worry",
+   "We lost him again at the zoo, he wandered off."
+  ],
+  [
+   "worry",
+   "We lost her in the supermarket but found her by the tills."
+  ],
+  [
+   "frustration",
+   "We lost him to a rival club."
+  ],
+  [
+   "frustration",
+   "We lost him as a client last week."
+  ],
+  [
+   "frustration",
+   "Since she passed up the chance to go, she has regretted it."
+  ],
+  [
+   "joy",
+   "My mum passed down her recipe to me."
+  ],
+  [
+   "sadness",
+   "After he passed along the news, everyone rang me."
+  ],
+  [
+   "joy",
+   "Since he passed maths, he has been so proud of himself."
+  ],
+  [
+   "frustration",
+   "After she passed English she wanted to quit."
+  ],
+  [
+   "joy",
+   "When she passed her exams I was so proud."
+  ],
+  [
+   "frustration",
+   "We lost her inhaler at the park and had to go home."
+  ],
+  [
+   "sadness",
+   "We lost him to Melbourne when he moved for work."
   ]
  ],
  "danger": [
