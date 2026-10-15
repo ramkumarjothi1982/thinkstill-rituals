@@ -202,59 +202,82 @@ webhook that records the plan in Supabase).
 - The page loads Google Fonts and, until you upload the images to Framer, the
   art from jsDelivr. There are no analytics in the component.
 
-## 6. What changed in the "softer space" update
+## 6. What changed in the "Feel something? hushmallow." update
 
-- **Positioning**: every "companion" reference is gone (eyebrow, support
-  line, scene copy, perks, footer, defaults, code comments). The hero is now
-  *A softer space for feelings.* / *A playful, soothing space to touch, unwind
-  and connect.* with the two-paragraph description; the eyebrow reads
-  *Touch · Unwind · Connect*.
-- **CTAs**: "Meet the Mallows" (to the character stage), "Discover
-  hushmallow" (to the new three-ways strip), "Create my hushmallow account"
-  after the preview and at the end, "Find your soft place." as the final
-  headline. The nav is The Mallows · Unwind · Hushmates · Your space.
-- **Squishy word**: now matched in any case, and shown exactly as the headline
-  spells it, so changing the headline or word can't break the animation.
-- **New sections**: *Touch. Unwind. Connect.* (three ways in) and **Hushmates**
-  (Connect, coming soon), with a new **Hushmates updates** property.
-- **Story order**: hero → three ways → Touch → Unwind (thoughts, the little
-  moment, more than a moment) → Connect → your space → final.
-- **Footer**: "A softer space for feelings.", the brief's explanation of the
-  Mallows and Hushmates, and a short not-a-medical-or-crisis-service line,
-  plus the helpline link.
-- **Unchanged**: all seven Mallows and their art, lines, blinking, squints,
-  particles and signature moves; FeelSense and its crisis care; the breathing
-  moment; Remember my Mallow; the sign-up and log-in panels and URL handoff;
-  every existing property control; reduced motion.
+- **Hero**: *Feel something? hushmallow.* revealed word by word (the word
+  *hushmallow* squishes with the Mallow and shimmers like pearl),
+  *Whatever you feel, there's a Mallow for that.* and the new description.
+  Behind it there is now a living backdrop: a slow pearl swirl, two
+  interleaved spirals with light flowing along them, drifting motes of light
+  (a small canvas that pauses off screen), floating bubbles, sparkles and
+  hearts, and gentle parallax on scroll and pointer. **Meet your Mallow**
+  goes to the live moment; **See the magic** goes to Moodspell.
+- **Mallows feel more alive**: idle quirks when left alone (Noomi yawns,
+  Blubi wobbles, Pipzi bounces, Boppo hops, Zuzu wiggles, Loomi glows,
+  Glitzi glitches), a reaction to a long patient squeeze, and a tickle
+  reaction to three quick taps, on top of breathing, blinking, squash and
+  stretch and signature moves.
+- **Meet the Mallows. Find your kind of magic.**: every Mallow has a card
+  saying what it's for, what it's here for, how it responds, and its real
+  signature ritual and realm in the app, with **Try a moment with ...** and
+  **Share ...**.
+- **The live moment** is now the second section: *Can't explain the
+  feeling? Start anywhere.*, with the room changing to match the feeling and
+  changing again once you let it go. A card's **Try a moment** always starts
+  it fresh.
+- **Moodspell** (new, coming soon): a labelled visual preview now, and a
+  real film as soon as you set **Moodspell video**.
+- **How it works**: *Feel it. Meet it. Move through it.*
+- **Your feelings have company.** replaces the previous thoughts heading.
+- **Final**: *Feel something?* **Meet your Mallow.**
+- **Footer**: *Think emotion. Think hushmallow.* and a line saying the Mallows
+  are animated characters (not people, not AI) and Moodspell and Hushmates
+  are planned.
+- **Nav**: Start here · The Mallows · Moodspell · Hushmates.
+- **New properties**: Moodspell video, Video poster, Video caption. The
+  headline property accepts a line break.
+- **Unchanged and re-tested**: sign-up and log-in handoff (Google, Apple,
+  email), every earlier property, art URLs, FeelSense and its crisis and
+  concern handling, Hushmates coming soon, Remember my Mallow, reduced
+  motion, responsive layouts and legal links.
 
-### Earlier: the companion update
-The previous round added FeelSense, blinking, the remember switch and the
-seven-scene story. Its copy has been replaced by the update above.
+### How it was reviewed
+Six independent reviewers went over the change (React correctness,
+regressions, responsive and visual, accessibility and reduced motion,
+performance, copy and claims), and their findings were checked against the
+code and in the browser before being fixed. The fixes are in commit
+`38331e2` and later; the main ones are listed in that commit message.
+
+### Earlier: the "softer space" update
+That round introduced the three-ways strip, Hushmates (coming soon) and the
+"A softer space for feelings." positioning, which this update replaces.
 
 ## 7. Quality audit
 
 Each point was checked in Chromium with Playwright at 1440×900, 1280×800,
 768×1024, 390×844, 375×812 and 320×700, plus reduced motion.
-`landing/preview/play.mjs` plays the page like a visitor (104 checks).
+`landing/preview/play.mjs` plays the page like a visitor (the full suite of visitor checks).
 
 | Question | Verdict |
 |---|---|
-| First screen explains hushmallow? | Yes: eyebrow, tagline, product description, the hero description and a Mallow inviting a squeeze. On 390 px the CTA and Pipzi's face are both on the first screen (the small "No account needed" note is hidden on phones to make room). |
+| First screen explains hushmallow? | Yes: *Feel something? hushmallow.*, *Whatever you feel, there's a Mallow for that.*, a one-paragraph description, **Meet your Mallow** and a Mallow inviting a squeeze. On 390 px the CTA and Pipzi's face are both on the first screen. |
 | Distinctly hushmallow, not SaaS? | Character-led scenes, no card grids, Fraunces SOFT display type, a dusk finale. |
 | Real logo integrated? | The official wordmark with its white background removed (mascot intact) in the nav and footer, and the logo mascot in the sign-up panel. |
 | Mallows premium and alive? | The original art at 640 px, breathing, blinking, squash and stretch, signature moves, moods, leaning, and a voice for each. |
-| Hero creates curiosity? | The squeeze reacts the instant you press, the squad joins in, and the headline word squishes too. |
+| Hero creates curiosity? | A living backdrop from the first second, a word-by-word headline, a squeeze that reacts instantly, the squad joining in, and small surprises (tickles, long squeezes, idle quirks). |
 | Demo delightful and real? | A state machine (pick → sense → breathe ×3 → drift/keep → check-in → invite). Keyboard (Space), touch, mouse and "Do it for me" all play it through. |
 | Persuasive, not pushy? | Sign-up is offered after the value and never blocks it. There's no urgency. Honest notes cover plans and FeelSense. |
 | Typography? | Fraunces, Nunito Sans and Manrope. Balanced headings and pretty-wrapped body text. Reading text is 13.5 px or larger; only small uppercase labels are 12 px. |
-| Animations sophisticated? | Springs on transform and opacity only, with idle loops in CSS. Respects reduced motion. |
+| Animations sophisticated? | Slow (60–160 s) rotations, springs on transform and opacity, one small canvas that pauses off screen; everything stops for reduced motion, including pseudo-element glows. |
 | Every CTA real? | Anchors scroll. Account buttons open the sign-up panel and navigate with context. Unconfigured URLs show a visible message. |
 | Beautiful at 390 px? | Yes, no horizontal overflow at any size (checked automatically). |
-| New positioning clear? | Tagline and description in the hero, Touch · Unwind · Connect throughout, Hushmates clearly marked coming soon, and an automated check that no "companion" / AI wording appears on the page. |
+| New positioning clear? | Headline, support line and slogans placed once each; automated checks that no "companion", AI, therapy or "softer space" wording appears and that the brand is never shown in capitals. |
 | Why an account? | Scene 6 lists concrete benefits, and the demo's ending invites people in. |
 | Reasons to return? | A greeting from a remembered Mallow (opt-in), and every Mallow has more to say. No streaks or guilt. |
 
-**Known limits.** The eyelids come from the older rig art, recoloured to
+**Known limits.** Moodspell is a preview until you add your film; the page
+can't make the film itself. Sharing copies the page link (or opens the share
+sheet); it doesn't create a link to a specific Mallow. The eyelids come from the older rig art, recoloured to
 match. They're only visible for about 0.2 s per blink (longer during a
 squeeze), and you can see faint patch edges if you look closely while holding.
 The "remembered" features beyond the browser switch (favourites, check-ins,
@@ -269,7 +292,7 @@ npm install
 node build.mjs            # dist/index.html (open via any static server)
 node build.mjs --inline   # also dist/standalone.html, one file with the art inlined
 node shots.mjs full       # screenshots at the six viewports + overflow/error checks
-node play.mjs             # plays the page like a visitor (104 checks)
+node play.mjs             # plays the page like a visitor (the full suite of visitor checks)
 ```
 
 URL parameters simulate configuration: `?signup=…&login=…&terms=…&privacy=…`,
