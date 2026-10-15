@@ -1,0 +1,11 @@
+# Append a line here on a claude/** branch to run .github/workflows/hushmallow-auth-e2e.yml:
+# the isolated sign-in end-to-end check on a LOCAL Supabase stack on the GitHub runner
+# (never the production project). Results: the run's summary and its "hushmallow-auth-e2e" artifact.
+2026-10-13 first run (stage 3: the E2E suite)
+2026-10-13 sign-in review round 1 (password reauth, guest keys, delete race, shared-device reset, 0009)
+2026-10-13 sign-in review round 2 (tombstone, home Mallow chain, account named) on the merged pilot
+2026-10-13 final QA (history-aware sheets, honest delete copy) on the merged pilot
+2026-10-14 final round (ask before every world, Another Angle quiet path) on the merged pilot
+2026-10-14 final head (detection rounds 3-6, additive safety word list, gentle path on the phone)
+2026-10-15 launch branch (risk screener and check-in, sign-in readiness gate, health gate, 320 px fixes)
+2026-10-15 fix round head (account copy, settings Delete everything, visit safety flags, sheets inert)

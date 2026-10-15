@@ -199,7 +199,10 @@ function collectStrings(node, out = []) {
 }
 
 test('no forbidden words in any authored string or engine output', () => {
-  const strings = collectStrings(Object.values(F));
+  // (14 Oct 2026, lexicon gaps round 4) HARM_LEXICON is data, not copy: its regular-expression sources may name what people
+  // write ('my patient isn't breathing'). Every authored string is still read, the safety copy (HARM_COPY) included.
+  const strings = collectStrings(Object.entries(F).filter(([k]) => k !== 'HARM_LEXICON').map(([, v]) => v));
+  assert.ok(collectStrings(F.HARM_COPY).length > 20, 'the safety copy is still read');
   // Engine-authored output across every framework and stage.
   for (const s of ALL_FRAMEWORKS) {
     for (const stage of STAGES) strings.push(pickCameo(s, stage).text);

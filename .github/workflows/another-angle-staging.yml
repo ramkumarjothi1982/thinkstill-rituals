@@ -1,0 +1,91 @@
+# Staging deploy of the Another Angle server (hushmallow Beyond) from a work
+# branch, so the whole path can be checked against the real model before
+# anything is merged. Deploys the separate Worker
+# "hushmallow-another-angle-staging" (wrangler.toml [env.staging]: its own
+# signing keys, a $3 daily spending cap) and then runs scripts/e2e.mjs
+# against it: health, session, one angle, another angle, feedback and a crisis
+# sentence (two model calls, about $0.03).
+# Runs only when asked: append a line to
+# hushmallow/server/another-angle/deploy/STAGING on a claude/** branch.
+# Production still deploys only from main (another-angle.yml).
+name: Another Angle staging
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['hushmallow/server/another-angle/deploy/STAGING']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: another-angle-staging
+  cancel-in-progress: false
+
+defaults:
+  run:
+    # bash with pipefail, so `wrangler deploy | tee` fails when the deploy does
+    shell: bash
+    working-directory: hushmallow/server/another-angle
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Read Cloudflare secrets
+        working-directory: .
+        env:
+          CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # Trim stray spaces or line breaks pasted into the secrets.
+          tok="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '[:space:]')"
+          acct="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '[:space:]')"
+          if [ -z "$tok" ] || [ -z "$acct" ]; then
+            echo "::error title=No Cloudflare secrets::Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (see hushmallow/server/another-angle/README.md)."
+            exit 1
+          fi
+          echo "::add-mask::$tok"
+          echo "::add-mask::$acct"
+          { echo "CLOUDFLARE_API_TOKEN=$tok"; echo "CLOUDFLARE_ACCOUNT_ID=$acct"; } >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hushmallow/server/another-angle/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Prepare Worker secrets
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TESTER_INVITE_CODES: ${{ secrets.TESTER_INVITE_CODES }}
+        run: |
+          umask 077
+          if npx wrangler secret list --env staging > "$RUNNER_TEMP/existing-secrets.json" 2> "$RUNNER_TEMP/secret-list.err"; then
+            node scripts/ci-secrets.mjs "$RUNNER_TEMP/existing-secrets.json" "$RUNNER_TEMP/angle-secrets.json" --list-ok
+          else
+            cat "$RUNNER_TEMP/secret-list.err" >&2
+            node scripts/ci-secrets.mjs --list-error "$RUNNER_TEMP/secret-list.err" "$RUNNER_TEMP/angle-secrets.json"
+          fi
+
+      - name: Deploy (staging)
+        run: |
+          npx wrangler deploy --env staging --secrets-file "$RUNNER_TEMP/angle-secrets.json" | tee "$RUNNER_TEMP/deploy.log"
+
+      - name: Remove secrets file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/angle-secrets.json" "$RUNNER_TEMP/existing-secrets.json" "$RUNNER_TEMP/secret-list.err"
+
+      - name: End-to-end check
+        env:
+          TESTER_INVITE_CODES: ${{ secrets.TESTER_INVITE_CODES }}
+        run: |
+          url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n 1 || true)"
+          if [ -z "$url" ]; then echo "::error::No workers.dev URL in the deploy output."; exit 1; fi
+          echo "Staging Worker: $url"
+          echo "### Staging Worker: $url" >> "$GITHUB_STEP_SUMMARY"
+          E2E_INVITE="${TESTER_INVITE_CODES%%,*}" node scripts/e2e.mjs "$url" | tee -a "$GITHUB_STEP_SUMMARY"

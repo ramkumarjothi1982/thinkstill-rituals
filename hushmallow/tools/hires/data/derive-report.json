@@ -1,0 +1,107 @@
+{
+ "glitzi": {
+  "erase_px": 97309,
+  "sprites": {
+   "glitzi-iris-L": [
+    146,
+    146
+   ],
+   "glitzi-iris-R": [
+    140,
+    140
+   ]
+  },
+  "body_kb": 374.2
+ },
+ "zuzu": {
+  "erase_px": 231473,
+  "sprites": {
+   "zuzu-spiral-L": [
+    302,
+    302
+   ],
+   "zuzu-spiral-R": [
+    310,
+    310
+   ]
+  },
+  "spiral_rims": {
+   "L": {
+    "R": 150.25,
+    "edge_min": 144.98,
+    "edge_max": 155.35,
+    "ring_min": 142.87,
+    "ring_max": 152.94
+   },
+   "R": {
+    "R": 153.57,
+    "edge_min": 143.84,
+    "edge_max": 156.92,
+    "ring_min": 142.21,
+    "ring_max": 155.33
+   }
+  },
+  "body_kb": 291.4
+ },
+ "boppo": {
+  "erase_px": 264827,
+  "sprites": {
+   "boppo-iris-L": [
+    196,
+    196
+   ],
+   "boppo-iris-R": [
+    194,
+    194
+   ],
+   "iris-navy": [
+    196,
+    196
+   ]
+  },
+  "iris": {
+   "L": {
+    "cx": 336.321,
+    "cy": 503.571,
+    "r": 95.163,
+    "edges": 135
+   },
+   "R": {
+    "cx": 685.235,
+    "cy": 501.451,
+    "r": 94.249,
+    "edges": 91
+   }
+  },
+  "body_kb": 243.8
+ },
+ "pipzi": {
+  "erase_px": 281749,
+  "sprites": {
+   "pipzi-iris-L": [
+    190,
+    190
+   ],
+   "pipzi-iris-R": [
+    188,
+    188
+   ]
+  },
+  "body_kb": 261.4
+ },
+ "blubi": {
+  "erase_px": 135326,
+  "sprites": {},
+  "body_kb": 217.9
+ },
+ "loomi": {
+  "erase_px": 93444,
+  "sprites": {},
+  "body_kb": 210.3
+ },
+ "noomi": {
+  "erase_px": 82869,
+  "sprites": {},
+  "body_kb": 139.5
+ }
+}

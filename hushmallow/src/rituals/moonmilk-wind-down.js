@@ -18,6 +18,9 @@
 // promises sleep — resting counts either way.
 
 import { h, wait } from '../app/ui.js';
+import { canvasFontPx } from '../ui/type.js';
+
+const FONT_13 = canvasFontPx(13, 650);   // canvas labels: the voice face, at the 13px floor
 
 export const meta = { id: 'moonmilk-wind-down' };
 
@@ -91,12 +94,13 @@ export async function run(ctx) {
       box-shadow:0 0 calc(30px*var(--g)) calc(6px*var(--g)) rgba(255,205,130,calc(.45*var(--g)));transition:box-shadow 300ms}
     .mm-lantern .flame{position:absolute;left:50%;top:50%;width:9px;height:14px;margin:-6px 0 0 -4.5px;border-radius:50% 50% 45% 45%;
       background:#fff3cf;opacity:var(--g);transform:scale(calc(.5 + .5*var(--g)))}
-    .mm-lantern .lab{font:650 12.5px/1.15 var(--font-ui);text-align:center;max-width:78px;text-shadow:0 1px 8px rgba(5,3,20,.9);color:var(--text-2)}
-    .mm-lantern .lab small{display:block;font-size:11px;color:var(--text-3);margin-top:1px}
+    .mm-lantern .lab{font:650 var(--type-caption-size)/1.2 var(--ff-ui);text-align:center;max-width:96px;width:max-content;min-width:min-content;padding:2px 6px;border-radius:10px;
+      background:rgba(12,8,34,.74);box-shadow:0 2px 10px rgba(8,4,26,.35);color:var(--text-1);overflow-wrap:normal;white-space:normal}
+    .mm-lantern .lab small{display:block;font:600 var(--type-caption-size)/1.2 var(--ff-ui);color:var(--text-2);margin-top:1px}
     .mm-lantern.out .glass{border-color:rgba(180,190,230,.25)}
-    .mm-lantern.out .lab{color:var(--text-3)}
+    .mm-lantern.out .lab{color:var(--text-2)}
     .mm-own .glass{background:rgba(40,40,90,.35);border-style:dashed;box-shadow:none;display:grid;place-items:center}
-    .mm-own .plus{font:700 20px/1 var(--font-display);color:var(--text-2)}
+    .mm-own .plus{font:700 20px/1 var(--ff-voice);color:var(--text-2)}
     .mm-tight .mm-lantern .lab small{display:none}
     @keyframes mmFlicker{0%,100%{transform:scale(calc(.5 + .5*var(--g))) translateY(0)}50%{transform:scale(calc(.46 + .5*var(--g))) translateY(1px)}}
     .mm-flick .mm-lantern .flame{animation:mmFlicker 2.6s ease-in-out infinite}
@@ -165,10 +169,16 @@ export async function run(ctx) {
   realm()?.setMood?.({ agitation: 0.35, heaviness: 0.6, clarity: 0.2, warmth: 0.25 });
   realm()?.transform?.(0);
   const lanterns = LANTERNS.map(([id, label, line]) => ({ id, label, line, own: false, prog: 0, out: false, auto: false, el: null }));
-  const dimBtn = h('button', { class: 'btn', 'aria-label': 'Dim the next lantern for me', style: { padding: '0 12px', fontSize: '15px' } }, 'Dim one for me');
-  const doneBtn = h('button', { class: 'btn primary', disabled: true, style: { padding: '0 12px', fontSize: '15px' } }, 'Enough for tonight');
+  const pill = { padding: '0 12px', fontSize: 'var(--type-control-size)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+  const dimBtn = h('button', { class: 'btn', 'aria-label': 'Dim the next lantern for me', style: pill }, 'Dim one for me');
+  const doneBtn = h('button', { class: 'btn primary', disabled: true, style: pill }, 'Enough for tonight');
   const mainRow = h('div', { class: 'row-btns' }, dimBtn, doneBtn);
   dock.replaceChildren(mainRow);
+  // one line each: shorter words on a narrow phone or with large text
+  const fitLabel = (btn, ...shorter) => { for (const t of shorter) if (btn.scrollWidth > btn.clientWidth) btn.textContent = t; };
+  const fitDock = () => { fitLabel(dimBtn, 'Dim one'); fitLabel(doneBtn, 'That’s enough', 'Enough'); };
+  requestAnimationFrame(fitDock);
+  setTimeout(fitDock, 700);   // again once the web fonts have certainly swapped in
   // an unlit lantern at the end of the shore: tap it to name your own loose end
   const ownBtn = h('button', { class: 'mm-lantern mm-own', 'aria-label': 'Add a lantern in your own words', style: { opacity: '0' } },
     h('span', { class: 'bob' }, h('span', { class: 'hang' }), h('span', { class: 'glass' }, h('span', { class: 'plus', 'aria-hidden': 'true' }, '+'))),
@@ -206,22 +216,40 @@ export async function run(ctx) {
     const perRow = Math.ceil(n / rows);
     const tight = H < 700;
     field.classList.toggle('mm-tight', tight);
-    const rowH = tight ? 98 : 112;
+    // slots wide enough that each label's pill stays clear of its neighbours,
+    // and rows tall enough for the tallest label (plus 'for tomorrow' later)
+    const slotW = (perRow <= 3 ? W - 24 : Math.min(W - 24, perRow * 104)) / perRow;
+    for (const el of slots) { const lab = el.querySelector('.lab'); if (lab) lab.style.maxWidth = `${Math.floor(slotW - 4)}px`; }
+    const labH = Math.max(0, ...slots.map((el) => el.querySelector('.lab')?.offsetHeight || 0));
+    const subH = tight ? 0 : (slots[0]?.querySelector('.lab')?.offsetHeight ? 17 * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--type-scale')) || 1) : 0);
+    const rowH = Math.max(tight ? 98 : 112, Math.ceil(70 + labH + subH + 6));
     const shoreTop = bottom - rows * rowH;
     slots.forEach((el, i) => {
       const r = Math.floor(i / perRow), c = i % perRow;
       const inRow = Math.min(perRow, n - r * perRow);
-      const span = Math.min(W - 16, inRow * 84);
+      const span = Math.min(W - 24, inRow * slotW);
       const x = W / 2 - span / 2 + (span / inRow) * (c + 0.5);
       // a gentle shoreline curve: the middle sits a touch lower
       const k = inRow > 1 ? (c / (inRow - 1)) * 2 - 1 : 0;
       const y = shoreTop + r * rowH + (1 - k * k) * 8 - 8;
       el.style.left = `${x}px`; el.style.top = `${y}px`;
     });
+    // a word longer than its slot keeps whole: the row's labels slide apart
+    // (each stays under its lantern as far as it can) and inside the screen
+    for (let r = 0; r < rows; r++) {
+      const row = slots.slice(r * perRow, r * perRow + perRow).map((el) => ({ lab: el.querySelector('.lab'), c: parseFloat(el.style.left) })).filter((it) => it.lab);
+      row.forEach((it) => { it.lab.style.transform = ''; it.w = it.lab.offsetWidth; });
+      let x = 8;
+      for (const it of row) { it.l = Math.max(it.c - it.w / 2, x); x = it.l + it.w + 6; }
+      x = W - 8;
+      for (const it of [...row].reverse()) { it.l = Math.min(it.l, x - it.w); x = it.l - 6; }
+      row.forEach((it) => { const dx = Math.round(it.l - (it.c - it.w / 2)); if (dx) it.lab.style.transform = `translateX(${dx}px)`; });
+    }
     // Noomi sits above the shore, a little behind the back row
+    // (only the lanterns' tops may cover Noomi: never the face)
     const avail = shoreTop - top;
-    const bodyH = clamp(avail + 24, 90, 300);
-    placeBody(top + avail / 2 + 10, bodyH);
+    const bodyH = clamp(avail + 24, 72, 300);
+    placeBody(Math.min(top + avail / 2 + 10, shoreTop + 14 - bodyH / 2), bodyH);
   };
   await wait(30);
   layoutLanterns();
@@ -393,11 +421,11 @@ export async function run(ctx) {
       g.fillStyle = 'rgba(255,250,235,0.95)'; g.beginPath(); g.arc(hx, y, 8, 0, Math.PI * 2); g.fill();
       g.fillStyle = 'rgba(40,40,90,0.55)'; g.beginPath(); g.arc(hx + 3.5, y - 2, 6.5, 0, Math.PI * 2); g.fill();
       if (reached === 0 && !dragging && !auto) {
-        g.font = '650 13px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center';
+        g.font = FONT_13; g.textAlign = 'center';
         g.fillStyle = 'rgba(230,230,255,0.7)'; g.fillText('drag down, slowly', body.cx, y - 14);
       }
       // softened region labels on the left
-      g.font = '650 12.5px ui-rounded, system-ui, sans-serif'; g.textBaseline = 'middle';
+      g.font = FONT_13; g.textBaseline = 'middle';
       for (let i = 0; i < reached; i++) {
         const ry = body.top + body.height * REGIONS[i][2];
         const txt = `${REGIONS[i][1].toLowerCase()} · soft`;
@@ -443,7 +471,7 @@ export async function run(ctx) {
   // ================================================== 3. SLOW BLINKS ==
   setMove(2, { eyebrow: 'Move 3 of 4', title: 'Slow blinks', prompt: 'Tap as my eyes close. Each blink a little slower than the last.' });
   const blinkCanvas = h('canvas', { width: 264, height: 264, 'aria-hidden': 'true', style: { position: 'absolute', inset: '0', width: '100%', height: '100%' } });
-  const countEl = h('span', { style: { position: 'relative', transform: 'translateY(-14px)', font: '700 28px var(--font-display)', textShadow: '0 1px 8px rgba(0,0,0,.5)' } }, String(BLINKS));
+  const countEl = h('span', { style: { position: 'relative', transform: 'translateY(-14px)', font: '700 calc(28px * var(--type-scale))/1.2 var(--ff-voice)', textShadow: '0 1px 8px rgba(0,0,0,.5)' } }, String(BLINKS));
   const blinkBtn = h('button', { class: 'hold-target', style: { width: '120px', height: '120px' }, 'aria-label': `Blink with Noomi. Press as Noomi’s eyes close. ${BLINKS} blinks to go.` }, blinkCanvas, countEl);
   const bcue = h('p', { class: 'muted', 'aria-live': 'polite', style: { textAlign: 'center', margin: '4px 0 0', minHeight: '20px', color: 'var(--text-1)', textShadow: '0 1px 10px rgba(5,3,20,.95), 0 0 2px rgba(5,3,20,.8)' } }, 'Watch my eyes…');
   const watchBtn = h('button', { class: 'btn block' }, 'Just watch Noomi');
@@ -539,11 +567,11 @@ export async function run(ctx) {
   sleepyFace(0.7, { comforted: 0.6, calm: 0.4 });
   const REST = rests(day);
   const grid = h('div', { class: 'choice-grid', role: 'group', 'aria-label': 'Tiny rests' });
-  const note = h('p', { class: 'muted', 'aria-live': 'polite', style: { margin: '8px 2px 0', minHeight: '20px', textAlign: 'center', fontSize: '13.5px', color: 'var(--text-1)', textShadow: '0 1px 10px rgba(5,3,20,.95)' } }, '');
+  const note = h('p', { class: 'muted', 'aria-live': 'polite', style: { margin: '8px 2px 0', minHeight: '20px', textAlign: 'center', fontSize: 'var(--type-label-size)', color: 'var(--text-1)', textShadow: '0 1px 10px rgba(5,3,20,.95)' } }, '');
   const finishBtn = h('button', { class: 'btn primary block', disabled: true, style: { marginTop: '8px' } }, day ? 'Thanks, Noomi' : 'Goodnight, Noomi');
   for (const [id, label, line] of REST) {
     const tight = H < 700;
-    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: tight ? '46px' : '54px', fontSize: tight ? '13.5px' : '14.5px', padding: tight ? '7px 12px' : '10px 14px' } }, label);
+    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: tight ? '46px' : '54px', fontSize: tight ? 'var(--type-label-size)' : 'var(--type-control-size)', padding: tight ? '7px 12px' : '10px 14px' } }, label);
     b.onclick = () => {
       grid.querySelectorAll('.choice').forEach((x) => x.setAttribute('aria-pressed', 'false'));
       b.setAttribute('aria-pressed', 'true');
@@ -599,7 +627,7 @@ export async function run(ctx) {
       z.age += dt;
       if (!rm) { z.y -= 14 * dt; z.x += Math.sin(z.age * 0.9) * 0.25; }
       z.a = Math.min(1, z.age) * Math.max(0, 1 - z.age / 4.2);
-      g.font = `700 ${z.s + z.age * 3}px Fredoka, ui-rounded, system-ui, sans-serif`;
+      g.font = canvasFontPx(z.s + z.age * 3, 700);
       g.fillStyle = `rgba(235,235,255,${(0.6 * z.a).toFixed(3)})`;
       g.fillText('z', z.x + z.age * 8, z.y);
     }

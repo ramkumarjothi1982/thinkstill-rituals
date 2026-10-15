@@ -1,0 +1,386 @@
+/* The Hushfold — the living home stage (src/app/scenes/hushfold.js).
+   The scene root never takes a touch: only .hf-ui elements do, so the Mallow
+   and the world underneath stay squeezable through every overlay.
+   Type comes from W1's tokens (src/ui/type.css) with local fallbacks. */
+
+.hushfold {
+  --hf-ff-voice: var(--ff-voice, "HM Nunito Sans", "Nunito Sans", ui-rounded, "SF Pro Rounded", system-ui, sans-serif);
+  --hf-ff-ui: var(--ff-ui, "HM Manrope", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif);
+  --hf-ff-story: var(--ff-story, "HM Fraunces", "Fraunces", Georgia, "Times New Roman", serif);
+  --hf-k: var(--type-scale, 1);
+  --hf-font-subtitle: var(--type-subtitle, 600 calc(clamp(19px, 2.727vw + 9.273px, 21px) * var(--hf-k))/1.36 var(--hf-ff-voice));
+  --hf-font-dialogue: var(--type-dialogue, 650 calc(clamp(19px, 3.636vw + 6.364px, 22px) * var(--hf-k))/1.32 var(--hf-ff-voice));
+  --hf-font-discovery: var(--type-discovery, 500 calc(clamp(22px, 7.273vw - 3.273px, 28px) * var(--hf-k))/1.18 var(--hf-ff-story));
+  --hf-font-entry: var(--type-entry, 500 calc(18px * var(--hf-k))/1.4 var(--hf-ff-voice));
+  --hf-font-control: var(--type-control, 650 calc(15px * var(--hf-k))/1.2 var(--hf-ff-ui));
+  --hf-font-button: var(--type-button, 700 calc(16px * var(--hf-k))/1.15 var(--hf-ff-ui));
+  --hf-font-label: var(--type-label, 600 calc(14px * var(--hf-k))/1.35 var(--hf-ff-ui));
+  --hf-font-caption: var(--type-caption, 550 calc(13px * var(--hf-k))/1.4 var(--hf-ff-ui));
+  --hf-font-heading: var(--type-heading, 700 calc(20px * var(--hf-k))/1.2 var(--hf-ff-ui));
+  --hf-font-thought: var(--type-thought, 700 calc(clamp(17px, 3.636vw + 4.364px, 20px) * var(--hf-k))/1.25 var(--hf-ff-voice));
+  --hf-glass: rgba(18, 13, 44, 0.62);
+  --hf-glass-strong: rgba(15, 11, 37, 0.9);
+  --hf-line: rgba(255, 255, 255, 0.12);
+  --hf-line-strong: rgba(255, 255, 255, 0.22);
+  --hf-glow: #ffd98a;           /* set per Mallow by the scene */
+  --hf-tint: #2a1a6e;
+  --hf-edge: 16px;
+  --hf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: absolute; inset: 0; pointer-events: none !important;
+  color: var(--text-1, #f7f3ff);
+}
+/* only the scene's own controls take touches */
+.hushfold .hf-ui { pointer-events: auto; }
+.hushfold [hidden] { display: none !important; }
+/* the default scene entry would slide position:fixed children around: fade only */
+.hushfold.scene-enter { animation: hfFade 420ms var(--hf-ease) both; transform: none; }
+@keyframes hfFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* While the Hushfold is home, the stage takes multi-touch itself */
+body.hf-active #fx-layer { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#fx-layer > canvas.hf-stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Hushflow layers (the director's canvases) melt in over the realm and out again, never a hard cut */
+#world > canvas.hf-back, #fx-layer > canvas.hf-front { transition: opacity 1200ms cubic-bezier(0.65, 0, 0.35, 1); }
+body.hf-world-arriving #world > canvas.hf-back, body.hf-world-arriving #fx-layer > canvas.hf-front { opacity: 0; }
+/* Finish: the last frame fades out over 1.2 s (!important: the director keeps its reveal opacity and transition inline) */
+body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer > canvas.hf-front {
+  opacity: 0 !important; transition: opacity 1200ms cubic-bezier(0.65, 0, 0.35, 1) !important; }
+/* phones: while the sheet holds a world, its front layer (postcards, the Thought Mallow) steps back
+   so nothing ever covers the Mallow lifted above the sheet; the back layer waits under its veil */
+/* (!important: the director keeps its reveal opacity inline) */
+body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transition: opacity 380ms ease !important; }
+/* the shell asking over a world (the question, or the soft chip after "Just be with it"): its postcards fold away under
+   the veil, so the lines and chips never sit over them; the person's own Thought Mallow stays (the lines keep clear of it) */
+body.hf-ask-fold #fx-layer > canvas.hf-front { opacity: 0 !important; transition: opacity 380ms ease !important; }
+/* (and, when even then the question has no room clear of it — a small phone — the person's thought steps back with them) */
+body.hf-ask-fold-thought #fx-layer > canvas.hf-stage, body.hf-ask-fold-thought .hushfold .tm-tag { opacity: 0 !important; pointer-events: none !important; transition: opacity 380ms ease !important; }
+
+/* ------------------------------------------------------------ top bar -- */
+.hf-top { position: fixed; z-index: 2; top: calc(var(--safe-top, 0px) + 12px); left: var(--hf-edge); right: var(--hf-edge);
+  display: flex; align-items: center; gap: 10px; min-height: 48px; pointer-events: none; }
+.hf-top > * { pointer-events: auto; }
+.hf-top .grow { flex: 1; pointer-events: none; }
+.hf-top { transition: opacity 320ms var(--hf-ease); }
+/* while the person types, the top bar steps back so the compact input reads cleanly */
+.hushfold.hf-typing .hf-top { opacity: 0; }
+.hushfold.hf-typing .hf-top > * { pointer-events: none !important; }
+.hf-logo { display: inline-flex; align-items: center; height: 44px; padding: 0 2px; border: 0; background: none; color: inherit; cursor: default; }
+.hf-logo .hm-logo { width: auto !important; height: 24px; }
+.hf-logo .brand-name { font: 800 21px/1 var(--font-display, var(--hf-ff-voice)); letter-spacing: 0.01em; text-shadow: 0 2px 14px rgba(10, 6, 30, 0.5); }
+.hf-btn { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--hf-line); background: var(--hf-glass); color: var(--text-1, #f7f3ff);
+  backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2); display: grid; place-items: center; padding: 0; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(4, 2, 16, 0.28); transition: transform 140ms var(--hf-ease), background 200ms; flex: 0 0 auto; }
+.hf-btn:active { transform: scale(0.93); }
+.hf-btn svg { width: 21px; height: 21px; }
+.hf-btn[aria-expanded="true"] { background: rgba(255, 255, 255, 0.16); }
+
+/* --------------------------------------------------------------- dock -- */
+.hf-dock { position: fixed; z-index: 2; left: 0; right: 0; bottom: calc(var(--safe-bottom, 0px) + 18px); display: flex; justify-content: center;
+  gap: 10px; padding: 0 var(--hf-edge); pointer-events: none; flex-wrap: wrap; }
+.hf-dock > * { pointer-events: auto; }
+.hf-pill { display: inline-flex; align-items: center; gap: 9px; min-height: 48px; padding: 0 20px 0 16px; border-radius: 999px; border: 1px solid var(--hf-line-strong);
+  background: var(--hf-glass); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); color: var(--text-1, #f7f3ff);
+  font: var(--hf-font-button); cursor: pointer; box-shadow: 0 10px 30px rgba(4, 2, 16, 0.3); transition: transform 160ms var(--hf-ease), opacity 420ms var(--hf-ease), background 200ms; }
+.hf-pill:active { transform: scale(0.96); }
+.hf-pill svg { width: 19px; height: 19px; flex: 0 0 auto; }
+.hf-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hf-glow); box-shadow: 0 0 12px var(--hf-glow); }
+.hf-pill.support { border-color: rgba(255, 156, 207, 0.55); background: rgba(70, 20, 60, 0.6); }
+.hf-pill.is-hidden { opacity: 0; pointer-events: none !important; transform: translateY(8px); }
+/* a hidden pill takes no room in the dock (it would wrap the others onto a second row, up into the Mallow) */
+.hf-dock .hf-pill.is-hidden { position: absolute; }
+/* one Support control at a time: under the open Tell overlay (its own Support chip is there) the dock's pill steps away */
+.hf-dock .hf-pill.is-under { position: absolute; opacity: 0; pointer-events: none !important; transform: translateY(8px); }
+/* narrow phones: the paused pill says Resume only (its label still says Paused), so the dock stays one row */
+@media (max-width: 359px) { .hf-pill.paused .pz { display: none; } .hf-pill { padding: 0 16px 0 14px; } }
+
+/* ---------------------------------------------------------- subtitles -- */
+.hf-subs { position: fixed; z-index: 2; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 0 var(--hf-edge); pointer-events: none; transition: transform 520ms var(--hf-ease); }
+.hf-sub { position: relative; max-width: min(92vw, 34em); text-align: center; isolation: isolate; }
+/* a soft, feathered scrim; the scene deepens it over bright realms (--hf-scrim, sampled once per line), and deeper still
+   over a bright spot behind it (--hf-hot-*: the daytime sun), so that never shows through the dark as a muddy blob */
+.hf-sub::before { content: ''; position: absolute; z-index: -1; inset: -14px -24px -16px; border-radius: 999px; pointer-events: none;
+  background: rgba(9, 6, 28, var(--hf-scrim, 0.5)); filter: blur(12px); transition: background-color 360ms var(--hf-ease); }
+/* the deepening over a bright spot: its own layer in the scrim's own shape (the same pill, the same 12 px feather), so a
+   sun or a moon under the pill's rounded end or its rim is deepened with it — and never past it: no dark blot hanging over
+   the pill on a bright home. Only as deep as the spot needs to read like the sky round it, in its colour too (hotTint:
+   --hf-hot-a, --hf-hot-rgb — a warm sun never reads as a grey or olive disc), soft to its edge; placed in px from the
+   line's box (--hf-hot-cx/-cy) */
+.hf-sub::after { content: ''; position: absolute; z-index: -1; inset: -14px -24px -16px; border-radius: 999px; pointer-events: none;
+  background: radial-gradient(circle at calc(var(--hf-hot-cx, 50%) + 24px) calc(var(--hf-hot-cy, 50%) + 14px), rgba(var(--hf-hot-rgb, 9, 6, 28), var(--hf-hot-a, 0)) 0,
+    rgba(var(--hf-hot-rgb, 9, 6, 28), var(--hf-hot-a, 0)) calc(var(--hf-hot-r, 0px) * 0.75), rgba(var(--hf-hot-rgb, 9, 6, 28), 0) calc(var(--hf-hot-r, 0px) * 1.5));
+  filter: blur(12px); }
+/* (found a moment late — the realm still drawing its first frames when the line came — it deepens in, never pops; a new
+   line's first look, before it is first painted, takes at once: .fresh) */
+@property --hf-hot-a { syntax: '<number>'; inherits: true; initial-value: 0; }
+.hf-sub { transition: --hf-hot-a 360ms var(--hf-ease); }
+.hf-sub.fresh, .hf-sub.fresh::before { transition: none; }
+.hf-sub .who { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 5px; font: 700 calc(13px * var(--hf-k))/1 var(--hf-ff-ui); letter-spacing: 0.04em;
+  color: #efeaff; text-shadow: 0 1px 8px rgba(5, 3, 20, 0.8); }
+.hf-sub .who::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--hf-who, var(--hf-glow)); box-shadow: 0 0 10px var(--hf-who, var(--hf-glow)); }
+.hf-sub .text { margin: 0; font: var(--hf-font-subtitle); letter-spacing: var(--type-subtitle-ls, 0.004em); color: #fbf8ff; text-wrap: balance;
+  text-shadow: var(--type-shadow, 0 1px 12px rgba(5, 3, 20, 0.8), 0 0 2px rgba(5, 3, 20, 0.55)); overflow-wrap: anywhere; }
+.hf-sub.dialogue .text { font: var(--hf-font-dialogue); }
+.hf-sub.discovery .text { font: var(--hf-font-discovery); font-optical-sizing: auto; letter-spacing: -0.005em; color: #fff7e6; }
+.hf-sub.discovery .who::before { background: var(--accent, #ffd98a); box-shadow: 0 0 10px var(--accent, #ffd98a); }
+.hf-sub.title .text { font: var(--type-world, 540 calc(clamp(24px, 9.091vw - 9.091px, 30px) * var(--hf-k))/1.12 var(--hf-ff-story)); font-optical-sizing: auto;
+  letter-spacing: -0.01em; color: #fff8ec; }
+/* reveal: soft rise and focus pull; out: drift up and fade */
+.hf-sub { animation: hfSubIn 620ms var(--hf-ease) both; }
+.hf-sub.out { animation: hfSubOut 420ms var(--hf-ease) both; }
+@keyframes hfSubIn { from { opacity: 0; transform: translateY(10px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes hfSubOut { to { opacity: 0; transform: translateY(-8px); filter: blur(4px); } }
+.hf-subs.reduced { transition: none; }
+.hf-subs.reduced .hf-sub { animation-name: hfFade; }
+.hf-subs.reduced .hf-sub.out { animation-name: hfFadeOut; }
+@keyframes hfFadeOut { to { opacity: 0; } }
+
+.hf-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; animation: hfSubIn 620ms var(--hf-ease) 160ms both; }
+.hf-subs.reduced .hf-chips { animation-name: hfFade; }
+.hf-subs.reduced .hf-chips.out { animation-name: hfFadeOut; }
+.hf-chip { min-height: 46px; padding: 0 20px; border-radius: 999px; border: 1px solid var(--hf-line-strong); background: var(--hf-glass); color: var(--text-1, #f7f3ff);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); font: var(--hf-font-button); cursor: pointer; transition: transform 140ms var(--hf-ease), background 180ms; }
+.hf-chip:active { transform: scale(0.96); }
+.hf-chip.primary { background: linear-gradient(180deg, #ffe6b0, var(--accent, #ffd98a) 55%, var(--accent-2, #ffb86b)); color: var(--text-on-accent, #23140a);
+  border-color: transparent; box-shadow: 0 10px 28px rgba(255, 190, 90, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+/* the one optional chip after "Just be with it" ("Somewhere calm"): quieter than a choice, the same 46 px to tap; let go by
+   its clock, the chips fade out with their line (never a pop) */
+.hf-chip.soft { background: rgba(18, 13, 44, 0.46); border-color: rgba(255, 255, 255, 0.24); font-weight: 560; }
+.hf-subs.bright .hf-chip.soft { background: rgba(18, 13, 44, 0.72); }
+.hf-chips.out { animation: hfFadeOut 420ms var(--hf-ease) both; pointer-events: none !important; }
+
+/* the small ⏸ ↺ ⏭ pill + speed (every control here, the overlay's and the panel's: a 44 px hit area at least) */
+.hf-subctl { display: inline-flex; align-items: center; gap: 0; padding: 2px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 10, 36, 0.52); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0.82;
+  transition: opacity 360ms var(--hf-ease), transform 360ms var(--hf-ease); }
+.hf-subctl.is-hidden { opacity: 0; transform: translateY(-4px); pointer-events: none !important; visibility: hidden; transition-delay: 0s; }
+/* it comes in a moment after its line starts to (the line rises 620 ms): never seen first, alone; between two lines it
+   steps out with the line (.gap: no line on the stage), keeping its focus */
+.hf-subctl:not(.is-hidden):not(.gap) { transition-delay: 180ms; }
+.hf-subctl.gap { opacity: 0 !important; transform: translateY(-4px); pointer-events: none !important; transition-duration: 240ms; transition-delay: 0s; }
+.hushfold.hf-tight .hf-subctl { display: none; }
+/* the garden installation pauses the lines for its moment: that is not the person's pause, so no ▶ pill (and the card has the room) */
+.hushfold.hf-install-quiet .hf-subctl { visibility: hidden !important; pointer-events: none !important; }
+/* the garden card waits, unseen and untouchable, while the person's thought is still under it; then it comes in as it
+   would have (the shell's cardWaitsForThought: at most 0.9 s) */
+body.hf-card-wait .hm-install-card { opacity: 0 !important; pointer-events: none !important; }
+body.hf-card-wait .hm-install:not(.is-reduced) .hm-install-card { transform: translateY(16px) scale(.97) !important; }
+body.hf-card-wait .hm-install-card * { animation-play-state: paused !important; }
+.hf-subctl.idle { opacity: 0.5; }
+.hf-subs.bright .hf-subctl { background: rgba(14, 10, 36, 0.74); opacity: 0.92; }
+.hf-subs.bright .hf-subctl.idle { opacity: 0.7; }
+.hf-subs.bright .hf-chip:not(.primary) { background: rgba(18, 13, 44, 0.8); }
+.hf-subctl:hover, .hf-subctl:focus-within { opacity: 1; }
+.hf-subctl button { min-width: 44px; height: 44px; border-radius: 999px; border: 0; background: none; color: var(--text-1, #f7f3ff); display: grid; place-items: center;
+  cursor: pointer; padding: 0 8px; font: 700 calc(13px * var(--hf-k))/1 var(--hf-ff-ui); }
+.hf-subctl button svg { width: 17px; height: 17px; }
+.hf-subctl button:active { background: rgba(255, 255, 255, 0.12); }
+.hf-subctl .go { display: none; gap: 6px; background: var(--accent, #ffd98a); color: var(--text-on-accent, #23140a); padding: 0 14px 0 16px; }
+.hf-subctl.holding .go { display: inline-flex; align-items: center; }
+.hf-subctl.holding .skip { display: none; }
+
+/* ------------------------------------------------- the compact input -- */
+/* The prompt, one growing field and one chip row; the scene lays the Mallow
+   out below it. Extra rows (intentions, photos, notes) only where there is room. */
+.hf-input { position: fixed; z-index: 4; left: 12px; right: 12px; top: calc(var(--safe-top, 0px) + 10px); margin: 0 auto; max-width: 560px;
+  border-radius: 24px; border: 1px solid var(--hf-line-strong); background: var(--hf-glass-strong); backdrop-filter: blur(24px) saturate(1.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25); box-shadow: 0 24px 60px rgba(3, 1, 14, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden auto; overscroll-behavior: contain;
+  transform-origin: 50% 0; animation: hfInputIn 460ms var(--hf-ease) both; }
+.hf-input.out { animation: hfInputOut 300ms var(--hf-ease) both; pointer-events: none !important; }
+@keyframes hfInputIn { from { opacity: 0; transform: translateY(-10px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes hfInputOut { to { opacity: 0; transform: translateY(-8px) scale(0.985); } }
+.hf-input.reduced, .hf-input.reduced.out { animation-name: hfFade; }
+.hf-input.reduced.out { animation-name: hfFadeOut; }
+.hf-input .head { display: flex; align-items: center; gap: 10px; padding-left: 4px; }
+.hf-input .prompt { flex: 1; min-width: 0; margin: 0; font: var(--hf-font-dialogue); font-size: calc(18px * var(--hf-k)); line-height: 1.25; color: #fbf8ff; }
+/* the speaker in near-white; only the dot carries the Mallow's colour (contrast) */
+.hf-input .prompt .who { display: inline-flex; align-items: center; gap: 6px; margin-right: 8px; vertical-align: 1px; font: 700 calc(13px * var(--hf-k))/1.2 var(--hf-ff-ui);
+  letter-spacing: 0.04em; color: #ece8ff; }
+.hf-input .prompt .who::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--hf-who, var(--hf-glow)); box-shadow: 0 0 10px var(--hf-who, var(--hf-glow)); }
+.hf-input .close { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 50%; border: 1px solid var(--hf-line); background: rgba(255, 255, 255, 0.06); color: inherit;
+  display: grid; place-items: center; cursor: pointer; padding: 0; }
+.hf-input .close svg { width: 18px; height: 18px; }
+.hf-input .field { position: relative; }
+/* The frame (border, fill, padding) is the field, not the textarea: the textarea itself has no
+   padding, so a field scrolled to its last line shows whole lines only (a textarea's own top
+   padding scrolls away and would leave half a line under the border). */
+.hf-input .field { border: 1px solid var(--hf-line-strong); border-radius: 18px; background: rgba(255, 255, 255, 0.06); padding: 12px 50px 12px 14px; min-height: 50px;
+  transition: border-color 200ms, box-shadow 200ms; cursor: text; }
+.hf-input .field:focus-within { border-color: rgba(255, 217, 138, 0.7); box-shadow: 0 0 0 4px rgba(255, 217, 138, 0.14); }
+.hf-input textarea { width: 100%; resize: none; border: 0; border-radius: 0; background: transparent; padding: 0; margin: 0;
+  color: var(--text-1, #f7f3ff); font: var(--hf-font-entry); font-size: max(16px, calc(18px * var(--hf-k))); max-height: 128px;
+  outline: none; display: block; overflow-y: auto; caret-color: var(--accent, #ffd98a); }
+/* larger text: the speaker's name on its own line, so the prompt keeps the width */
+.hf-input.big .prompt .who { display: flex; width: fit-content; margin: 0 0 5px; }
+.hf-input textarea::placeholder { color: rgba(205, 198, 234, 0.7); }
+.hf-input .mic { position: absolute; right: 3px; top: 2px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; color: var(--text-2, #cdc6ea);
+  display: grid; place-items: center; cursor: pointer; padding: 0; }
+.hf-input .mic:active { background: rgba(255, 255, 255, 0.08); }
+.hf-input .mic svg { width: 19px; height: 19px; }
+.hf-input .note { display: flex; gap: 7px; align-items: flex-start; margin: 0 4px; font: var(--hf-font-caption); color: var(--text-2, #cdc6ea); }
+.hf-input .note svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 1px; opacity: 0.8; }
+.hf-scroll { display: flex; gap: 7px; overflow-x: auto; min-width: 0; scrollbar-width: none; margin: 0 -12px; padding: 2px 26px 2px 12px; scroll-padding: 0 26px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 28px), transparent); }
+.hf-scroll::-webkit-scrollbar { display: none; }
+.hf-opt { flex: 0 0 auto; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hf-line-strong); background: rgba(255, 255, 255, 0.05);
+  color: var(--text-1, #f7f3ff); font: var(--hf-font-control); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  transition: background 160ms, border-color 160ms, transform 140ms var(--hf-ease); }
+.hf-opt:active { transform: scale(0.96); }
+.hf-opt[aria-pressed="true"] { background: var(--accent, #ffd98a); color: var(--text-on-accent, #23140a); border-color: transparent; }
+.hf-opt.suggested:not([aria-pressed="true"]) { border-color: rgba(255, 217, 138, 0.75); box-shadow: 0 0 0 3px rgba(255, 217, 138, 0.14); }
+.hf-opt.suggested:not([aria-pressed="true"])::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #ffd98a); }
+.hf-opt.back::after { content: ''; width: 7px; height: 7px; margin-left: 2px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+.hf-opt .hue { width: 8px; height: 8px; border-radius: 50%; }
+/* the actions never clip: icon-only extras on narrow phones, and Send may take a row of its own */
+.hf-input .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hf-input .actions .grow { flex: 1 1 0; min-width: 0; }
+.hf-input .actions .hf-send { margin-left: auto; }
+.hf-ghost { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hf-line); background: rgba(255, 255, 255, 0.04); color: var(--text-1, #f7f3ff);
+  font: var(--hf-font-control); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.hf-ghost svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.hf-ghost.support { border-color: rgba(255, 156, 207, 0.55); color: #ffd6ea; }
+.hf-ghost .count { font: var(--hf-font-caption); font-weight: 700; color: var(--accent, #ffd98a); }
+.hf-send { min-height: 46px; padding: 0 18px 0 20px; border-radius: 999px; border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: var(--hf-font-button); white-space: nowrap; background: linear-gradient(180deg, #ffe6b0, var(--accent, #ffd98a) 55%, var(--accent-2, #ffb86b)); color: var(--text-on-accent, #23140a);
+  box-shadow: 0 10px 26px rgba(255, 190, 90, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6); transition: opacity 200ms, transform 140ms var(--hf-ease); }
+.hf-send svg { width: 18px; height: 18px; }
+.hf-send[disabled] { opacity: 0.45; pointer-events: none; }
+.hf-send:active { transform: scale(0.97); }
+/* no plan: Continue carries where it goes as a second, smaller line (no extra row in the overlay) */
+.hf-send.two { padding: 5px 16px 5px 20px; text-align: left; }
+.hf-send .lbl { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05; }
+.hf-send .sub { margin-top: 2px; font: 650 calc(13px * var(--hf-k))/1.1 var(--hf-ff-ui); opacity: 0.86; letter-spacing: 0; }
+/* near the 600-character limit: a visible count, so typing never just stops */
+.hf-input .count-vis { display: block; text-align: right; font: var(--hf-font-caption); font-weight: 700; color: var(--accent, #ffd98a); }
+/* photos: one compact horizontal strip */
+.hf-input .photos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; min-width: 0; }
+.hf-input .photos .photo-head { display: none; }
+.hf-input .photos .photo-tray { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 10px; margin: 0 -12px; padding: 12px 22px 4px 14px; }
+.hf-input .photos .photo-tray::-webkit-scrollbar { display: none; }
+.hf-input .photos .photo-tray .ph, .hf-input .photos .photo-tray .ph > button.swap, .hf-input .photos .photo-tray .add { width: 52px; height: 52px; border-radius: 15px; }
+.hf-input .photos .photo-tray .ph canvas { width: 52px !important; height: 52px !important; border-radius: 15px; }
+.hf-input .photos .photo-tray .ph .x { width: 28px; height: 28px; top: -10px; right: -10px; }
+.hf-input .photos .photo-tray .add.wide { width: auto; height: 46px; padding: 0 14px; display: inline-flex; gap: 8px; font: var(--hf-font-control); }
+.hf-input .photos .photo-tray .add.wide svg { width: 18px; height: 18px; }
+@media (max-height: 699px) { .hf-input .photos .photo-note { display: none; } }
+@media (max-width: 439px) {
+  /* Photos speaks through its icon (and its label for screen readers) */
+  .hf-input .actions .photo .t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hf-input .actions .photo { padding: 0 12px; }
+}
+@media (max-width: 379px) {
+  /* Support keeps its word (it matters most); if the row runs out, Send moves to a row of its own */
+  .hf-input .actions .hf-ghost { padding: 0 12px; }
+}
+@media (max-width: 359px) {
+  .hf-input .actions:has(.support:not([hidden])) .hf-send { flex: 1 0 100%; }
+}
+
+/* --------------------------------------------------------- side panel -- */
+.hf-panel { position: fixed; z-index: 5; top: 0; right: 0; bottom: 0; width: min(360px, calc(100vw - 56px)); display: flex; flex-direction: column;
+  /* fully opaque: nothing under the panel (a word plate, the dock's pills) ghosts through its text */
+  background: linear-gradient(180deg, #18123a, #0c091e); border-left: 1px solid var(--hf-line-strong); border-radius: 28px 0 0 28px;
+  box-shadow: -24px 0 60px rgba(3, 1, 14, 0.45); transform: translateX(104%); visibility: hidden;
+  transition: transform 460ms var(--hf-ease), visibility 0s linear 460ms; padding-top: var(--safe-top, 0px); padding-bottom: var(--safe-bottom, 0px); }
+.hf-panel.open { transform: none; visibility: visible; transition: transform 460ms var(--hf-ease), visibility 0s; }
+.hf-panel.reduced { transition: opacity 240ms, visibility 0s linear 240ms; transform: none; opacity: 0; }
+.hf-panel.reduced.open { opacity: 1; transition: opacity 240ms, visibility 0s; }
+.hf-panel .p-head { display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px 20px; }
+.hf-panel .p-head h2 { flex: 1; margin: 0; font: var(--hf-font-heading); }
+.hf-panel .p-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px 22px; -webkit-overflow-scrolling: touch; }
+.hf-panel section { padding: 14px 0; border-bottom: 1px solid var(--hf-line); }
+.hf-panel section:last-child { border-bottom: 0; }
+.hf-panel h3 { margin: 0 0 10px; font: var(--hf-font-label); font-weight: 700; color: var(--text-2, #cdc6ea); }
+.hf-panel .wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.hf-panel .plan { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hf-line-strong);
+  background: rgba(255, 255, 255, 0.05); font: var(--hf-font-label); color: var(--text-1, #f7f3ff); cursor: pointer; margin: 0 0 4px 0; }
+.hf-panel .plan.on { border-color: rgba(255, 217, 138, 0.6); color: var(--accent, #ffd98a); }
+.hf-panel .plan.beyond { border-color: rgba(190, 130, 255, 0.6); color: #e2c8ff; }
+/* after something heavy in this visit, no upsell: the free tier's "No plan yet · See plans" steps aside */
+.hushfold.hf-heavy .hf-panel .plan:not(.on):not(.beyond) { display: none; }
+.hf-switcher { display: flex; align-items: center; gap: 10px; }
+.hf-switcher .who { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.hf-switcher img { width: 52px; height: 52px; object-fit: contain; flex: 0 0 auto; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35)); }
+.hf-switcher b { display: block; font: 700 calc(17px * var(--hf-k))/1.2 var(--hf-ff-voice); }
+.hf-switcher span { display: block; font: var(--hf-font-caption); color: var(--text-3, #a59fc9); }
+.hf-switcher .hf-btn { width: 44px; height: 44px; }
+.hf-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hf-actions .hf-ghost { justify-content: center; min-height: 46px; padding: 0 10px; }
+.hf-actions .hf-ghost[disabled] { opacity: 0.45; pointer-events: none; }
+.hf-actions .hf-ghost[aria-pressed="true"] { border-color: rgba(255, 217, 138, 0.7); color: var(--accent, #ffd98a); }
+.hf-toggle { display: flex; align-items: center; gap: 12px; padding: 4px 0 0; cursor: pointer; }
+.hf-toggle .t { flex: 1; font: var(--hf-font-label); color: var(--text-1, #f7f3ff); }
+.hf-toggle small { display: block; font: var(--hf-font-caption); color: var(--text-3, #a59fc9); margin-top: 2px; }
+.hf-links { display: grid; gap: 2px; }
+.hf-link { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 4px; border: 0; background: none; color: var(--text-1, #f7f3ff); cursor: pointer;
+  font: var(--type-row, 600 calc(16px * var(--hf-k))/1.3 var(--hf-ff-ui)); text-align: left; border-radius: 12px; }
+.hf-link svg { width: 20px; height: 20px; opacity: 0.85; flex: 0 0 auto; }
+.hf-link .grow { flex: 1; }
+.hf-link .chev { opacity: 0.5; width: 16px; height: 16px; }
+.hf-link:active { background: rgba(255, 255, 255, 0.06); }
+.hf-support { width: 100%; min-height: 50px; border-radius: 999px; border: 1px solid rgba(255, 156, 207, 0.55); background: rgba(90, 26, 74, 0.45); color: #ffe0ef;
+  font: var(--hf-font-button); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
+.hf-support svg { width: 19px; height: 19px; }
+.hf-panel .fine { font: var(--hf-font-caption); color: var(--text-3, #a59fc9); margin: 8px 0 0; }
+
+/* phones and portrait tablets: a shorter bottom sheet, so the Mallow (lifted above it by the scene) stays playable
+   (side-panel.js PANEL_SHEET_QUERY / panelIsSheet: the scene lays the stage out by the same rule) */
+@media (max-width: 699px), (max-width: 999px) and (orientation: portrait) {
+  .hf-panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(52vh, 520px); max-height: calc(100% - 150px); border-left: 0;
+    border-top: 1px solid var(--hf-line-strong); border-radius: 28px 28px 0 0; transform: translateY(104%); box-shadow: 0 -24px 60px rgba(3, 1, 14, 0.45); padding-top: 0; }
+  .hf-panel::before { content: ''; position: absolute; left: 50%; top: 8px; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: rgba(255, 255, 255, 0.22); }
+  .hf-panel .p-head { padding: 14px 14px 2px 20px; }
+  .hf-panel .p-head h2 { font-size: calc(18px * var(--hf-k)); }
+}
+.hf-pill.paused { border-color: rgba(255, 217, 138, 0.55); }
+.hf-pill.paused svg { color: var(--accent, #ffd98a); }
+.hf-touch { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+/* ------------------------------------------------------ Thought Mallows -- */
+/* W2's ThoughtLayer draws the bodies on #fx-layer canvas.hf-stage and hangs the words on .tm-tag buttons in this
+   root: under the overlay (z4), the panel (z5) and the sheets, over the stage */
+.hushfold .tm-tag { z-index: 1; }
+/* phones: while the sheet holds a world, the thoughts step back with the world's front layer */
+body.hf-world-held #fx-layer > canvas.hf-stage, body.hf-world-held .hushfold .tm-tag { opacity: 0 !important; pointer-events: none !important; }
+/* a host taking the stage cross-fades in over a picture of the one leaving */
+.hf-hero-ghost { pointer-events: none !important; }
+.hf-read { position: fixed; z-index: 6; left: 16px; right: 16px; margin: 0 auto; max-width: 480px; top: calc(var(--safe-top, 0px) + 74px); padding: 18px 20px 14px;
+  border-radius: 24px; border: 1px solid var(--hf-line-strong); background: var(--hf-glass-strong); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+  box-shadow: 0 20px 50px rgba(3, 1, 14, 0.5); animation: hfInputIn 360ms var(--hf-ease) both; }
+.hf-read p { margin: 0 0 12px; font: var(--type-quote, 600 calc(19px * var(--hf-k))/1.45 var(--hf-ff-voice)); white-space: pre-wrap; overflow-wrap: anywhere;
+  user-select: text; -webkit-user-select: text; }
+.hf-read .hf-ghost { width: 100%; justify-content: center; }
+
+/* ------------------------------------------------------- small phones -- */
+@media (max-width: 360px) {
+  .hushfold { --hf-edge: 12px; }
+  .hf-btn { width: 44px; height: 44px; }
+  /* (fix round) a little less room round each chip, so a question's three chips take two rows, not three (320, largest text) */
+  .hf-chips { gap: 8px; }
+  .hf-chip { padding: 0 14px; }
+}
+@media (min-width: 700px) {
+  .hf-input { top: calc(var(--safe-top, 0px) + 72px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hf-subs { transition: none; }
+  .hf-sub, .hf-chips, .hf-input, .hf-read { animation-name: hfFade !important; }
+  .hf-sub.out, .hf-chips.out, .hf-input.out { animation-name: hfFadeOut !important; }
+  .hf-panel { transition: opacity 240ms, visibility 0s linear 240ms; transform: none; opacity: 0; }
+  .hf-panel.open { opacity: 1; transition: opacity 240ms, visibility 0s; }
+}
+
+/* a sheet (support, the A–Z list) is up: the Hushfold's own layers step back so nothing ghosts through it */
+.hushfold.hf-sheet-open .hf-input:not([data-sheet-beside]), .hushfold.hf-sheet-open .hf-panel, .hushfold.hf-sheet-open .hf-subs, .hushfold.hf-sheet-open .hf-top { opacity: 0 !important; transition: opacity 200ms; }
+/* (fix round) the urgent sheet opened below the words while the person types (ui.js openSheet beside): the overlay stays, in
+   reach, and keeps to the words and Send — the feeling chips, notes and photos step aside so the sheet below has the room
+   to show its calls whole */
+.hf-input.urgent .note, .hf-input.urgent .hf-scroll, .hf-input.urgent .photos, .hf-input.urgent .photo { display: none !important; }
+/* the A–Z list as a one-pick list (from the Hushfold): the tick only on the chosen feeling */
+.emo-row.single[aria-pressed="false"] .tick { visibility: hidden; }
+
+/* ----------------------------------------- classic home (route 'classic') --
+   The classic home root also takes no touches, so its Mallow is squeezable. */
+.home { pointer-events: none !important; }
+.home > .topbar, .home .ask, .home .chips, .home .ultra-card, .home .mallow-switch button, .home button { pointer-events: auto; }

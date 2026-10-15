@@ -1,0 +1,193 @@
+# Real-model check of Another Angle (hushmallow Beyond), controlled and capped.
+# The server's own app code runs on the runner (hushmallow/server/another-angle/tools/local-harness.mjs,
+# PROVIDER=anthropic with the ANTHROPIC_API_KEY repository secret) and the built site runs in Chromium against it.
+# Nothing is deployed and nothing is published: the only outside service called is Anthropic's API.
+#
+#   1. API level, straight HTTP to the harness, bypassing the app (server/another-angle/scripts/real-check.mjs):
+#      health and session; the error contract (empty, oversized, malformed, no session, forged token, wrong origin,
+#      a burst over the rate limit); support that nothing gets round (no token, no consent, oversized, hidden
+#      characters, a tripped limit); obfuscated risk only the model can read; every case in eval/real-cases.json
+#      (status, safety source, gate, the two lines, latency); a second harness with an INVALID key (the fallback
+#      path, no cost); no words in the server log
+#   2. browser level, the site built in CI mode on 127.0.0.1:8000 with ?angleDev=8790 (tools/beyond/real-client.cjs):
+#      the consent card first, "Not now" sends nothing, Accept → the question → "Another angle" → a real angle with
+#      its lines on screen, "Just be with it", a crisis and a care sentence send nothing, the delete-data sheet,
+#      0 console errors, nothing leaves the runner; screenshots
+#   3. report.md (per-case table with the inputs and the model's lines, totals, cost, latency p50/p95, every failure
+#      verbatim) in the artifact only; the log and the step summary get summary.md (ids, groups, verdicts, counts,
+#      costs, latencies). The repository is public: any signed-in GitHub user can download the artifact.
+#
+# HARD COST CAP: real-check.mjs counts model calls and cost from the usage the harness logs (src/cost.js prices) and
+# stops before one more worst-case request (~$0.32) could pass --max-calls (default 80) or --max-usd (default $4);
+# the harness's DAILY_SPEND_CAP_USD is set to the same amount, so the server refuses to go past it either. Expected
+# about $0.60–$0.90 a run (about 30 model requests at ~$0.02, README "Costs"), plus ~$0.02 per held-out case that
+# reaches the model.
+#
+# Runs only when asked: append a line to hushmallow/server/another-angle/eval/REAL on a claude/** branch (a line
+# "--max-usd 2" or "--max-calls 40" there sets the caps for that run), or Actions → "Another Angle real-model
+# check" → Run workflow (once this file is on main). About 10 minutes.
+name: Another Angle real-model check
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['hushmallow/server/another-angle/eval/REAL']
+  workflow_dispatch:
+    inputs:
+      max_calls:
+        description: 'Most model calls in the run (hard cap, 10–200)'
+        default: '80'
+      max_usd:
+        description: 'Most spend in USD (hard cap, 1–10)'
+        default: '4'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: another-angle-real
+  cancel-in-progress: false
+
+jobs:
+  real:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # the production model settings (wrangler.toml [vars]); the harness reads MODEL and EFFORT
+      MODEL: claude-opus-5-5
+      EFFORT: low
+      # pinned as in hushmallow-auth-e2e.yml
+      PLAYWRIGHT_VERSION: 1.63.0
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse to run without the key
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error title=No ANTHROPIC_API_KEY::Add the ANTHROPIC_API_KEY repository secret (Settings → Secrets and variables → Actions). Nothing was run."
+            exit 1
+          fi
+
+      - name: Caps, model and effort
+        env:
+          IN_CALLS: ${{ inputs.max_calls }}
+          IN_USD: ${{ inputs.max_usd }}
+        run: |
+          set -euo pipefail
+          calls="${IN_CALLS:-80}"; usd="${IN_USD:-4}"
+          # a push run reads its caps from eval/REAL (the last "--max-calls N" / "--max-usd N" line); a manual run uses its inputs
+          f=hushmallow/server/another-angle/eval/REAL
+          if [ -z "${IN_CALLS:-}" ]; then c="$(grep -oE '^--max-calls[ =][0-9]+' "$f" | tail -n1 | grep -oE '[0-9]+$' || true)"; [ -z "$c" ] || calls="$c"; fi
+          if [ -z "${IN_USD:-}" ]; then u="$(grep -oE '^--max-usd[ =][0-9]+(\.[0-9]+)?' "$f" | tail -n1 | grep -oE '[0-9.]+$' || true)"; [ -z "$u" ] || usd="$u"; fi
+          [[ "$calls" =~ ^[0-9]+$ ]] && [ "$calls" -ge 10 ] && [ "$calls" -le 200 ] || { echo "::error title=Caps::max calls must be 10–200 (got $calls)"; exit 1; }
+          [[ "$usd" =~ ^[0-9]+(\.[0-9]+)?$ ]] && awk -v u="$usd" 'BEGIN { exit !(u >= 1 && u <= 10) }' || { echo "::error title=Caps::max usd must be 1–10 (got $usd)"; exit 1; }
+          { echo "MAX_CALLS=$calls"; echo "MAX_USD=$usd"; echo "OUT=$RUNNER_TEMP/real"; } >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/real"
+          echo "Model $MODEL · effort $EFFORT · at most $calls model calls · at most \$$usd (the harness's DAILY_SPEND_CAP_USD is the same)"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hushmallow/server/another-angle/package-lock.json
+
+      - name: Install the server's dependencies
+        working-directory: hushmallow/server/another-angle
+        run: npm ci --no-audit --no-fund
+
+      - name: Start the harness with the real model (127.0.0.1:8790)
+        working-directory: hushmallow/server/another-angle
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+          PROVIDER=anthropic DAILY_SPEND_CAP_USD="$MAX_USD" ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000 \
+            nohup node --import ./test/register.mjs tools/local-harness.mjs --serve 8790 > "$OUT/harness-8790.out" 2> "$OUT/harness-8790.log" &
+          echo $! > "$RUNNER_TEMP/harness-8790.pid"
+          for i in $(seq 1 30); do curl -fsS -o /dev/null -H 'origin: http://127.0.0.1:8000' http://127.0.0.1:8790/v1/health && break; sleep 1; done
+          curl -fsS -H 'origin: http://127.0.0.1:8000' http://127.0.0.1:8790/v1/health | tee /dev/stderr | grep -q '"provider":"anthropic"'
+
+      - name: Start a second harness with an INVALID key (127.0.0.1:8791, the fallback path, no cost)
+        working-directory: hushmallow/server/another-angle
+        run: |
+          set -euo pipefail
+          # never the real key: Anthropic refuses this one (401) before any model runs
+          PROVIDER=anthropic ANTHROPIC_API_KEY=sk-ant-api03-invalid-real-check-not-a-key DAILY_SPEND_CAP_USD=1 ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000 \
+            nohup node --import ./test/register.mjs tools/local-harness.mjs --serve 8791 > "$OUT/harness-8791.out" 2> "$OUT/harness-8791.log" &
+          echo $! > "$RUNNER_TEMP/harness-8791.pid"
+          for i in $(seq 1 30); do curl -fsS -o /dev/null -H 'origin: http://127.0.0.1:8000' http://127.0.0.1:8791/v1/health && break; sleep 1; done
+          curl -fsS -H 'origin: http://127.0.0.1:8000' http://127.0.0.1:8791/v1/health
+
+      - name: API level (scripts/real-check.mjs)
+        id: api
+        working-directory: hushmallow/server/another-angle
+        run: |
+          node scripts/real-check.mjs api --yes --no-fail --expect-provider anthropic --model "$MODEL" --effort "$EFFORT" \
+            --base http://127.0.0.1:8790 --log "$OUT/harness-8790.log" \
+            --broken-base http://127.0.0.1:8791 --broken-log "$OUT/harness-8791.log" \
+            --cases eval/real-cases.json --out "$OUT" --max-calls "$MAX_CALLS" --max-usd "$MAX_USD"
+
+      - name: Build the site (CI mode, sign-in off)
+        if: ${{ !cancelled() && steps.api.outcome != 'skipped' }}
+        env:
+          HM_AUTH_MODE: ci
+        run: bash hushmallow/tools/build-site.sh "$RUNNER_TEMP/site" "real${GITHUB_SHA::10}"
+
+      - name: Serve it at its root like Cloudflare Pages (127.0.0.1:8000)
+        if: ${{ !cancelled() && steps.api.outcome != 'skipped' }}
+        run: |
+          nohup node hushmallow/tools/auth/pages-serve.mjs "$RUNNER_TEMP/site" 8000 > "$OUT/pages-serve.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8000/version.json && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8000/version.json
+
+      - name: Install Playwright and Chromium
+        if: ${{ !cancelled() && steps.api.outcome != 'skipped' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/pw"
+          cd "$RUNNER_TEMP/pw"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "playwright@$PLAYWRIGHT_VERSION"
+          ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Browser level (tools/beyond/real-client.cjs)
+        if: ${{ !cancelled() && steps.api.outcome != 'skipped' }}
+        env:
+          PLAYWRIGHT_DIR: ${{ runner.temp }}/pw/node_modules
+          E2E_CHROMIUM_ARGS: --enable-unsafe-swiftshader --disable-dev-shm-usage
+        run: |
+          node hushmallow/tools/beyond/real-client.cjs --no-fail --site http://127.0.0.1:8000 --dev 8790 \
+            --out "$OUT" --budget "$OUT/budget.json" --log "$OUT/harness-8790.log"
+
+      - name: Report (fails the run on any miss, false support, error or failed step)
+        if: ${{ !cancelled() && steps.api.outcome != 'skipped' }}
+        working-directory: hushmallow/server/another-angle
+        run: |
+          rc=0
+          # The repository is public, and so are this log and the step summary: both get summary.md (ids, groups,
+          # verdicts, counts, costs, latencies). report.md (inputs, the model's lines, failures in full) stays in the
+          # artifact, which any signed-in GitHub user can download from a public repository.
+          node scripts/real-check.mjs report --out "$OUT" --log "$OUT/harness-8790.log" --broken-log "$OUT/harness-8791.log" --model "$MODEL" || rc=$?
+          [ -f "$OUT/summary.md" ] && cat "$OUT/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+
+      - name: Stop the harnesses
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/harness-*.pid; do [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null || true; done
+          for f in "$OUT"/harness-*.out; do [ -f "$f" ] && { echo "== $f"; tail -n 20 "$f"; }; done
+          ls -la "$OUT" || true
+
+      - name: Upload the report, results, screenshots and harness logs (metadata only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: another-angle-real
+          path: ${{ runner.temp }}/real
+          retention-days: 14
+          if-no-files-found: warn

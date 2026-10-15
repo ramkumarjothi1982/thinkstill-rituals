@@ -15,9 +15,19 @@
 //
 // One shared requestAnimationFrame loop drives every rig; rigs that are off
 // screen or in a hidden tab don't render.
+//
+// The skin outlives a frame: a headless rig (MallowTouch) redraws only the
+// face parts that changed, over the full drawing underneath. The browser can
+// drop a canvas's pixels (a GPU process crash, memory pressure: Chrome fires
+// contextlost, then contextrestored with the canvas blank), so a partial
+// redraw runs only over a full drawing known to be there (_skinBaseOk) — and
+// anything else (a lost or restored context, a new canvas, size or scale, a
+// draw that threw, verifySkin() finding the body gone) makes the next redraw
+// a full one. Otherwise only the changed parts would come back: a patchwork
+// face of eye, brow and mouth tiles with no body.
 
-import { MALLOWS, loadMallowAssets } from './registry.js';
-import { PARAMS, PARAM_NAMES, PRESETS, STAGES, resolveExpression, baseParams, describeExpression } from './expressions.js';
+import { MALLOWS, loadMallowAssets, MASK_SIZE } from './registry.js';
+import { PARAMS, PARAM_NAMES, PRESETS, STAGES, resolveExpression, baseParams, describeExpression, stageLimits, applyStageLimits } from './expressions.js';
 import { REACTIONS } from './reactions.js';
 import { ParticleField } from './particles.js';
 import { drawStar, drawHeart, drawDrop } from './shapes.js';
@@ -37,23 +47,61 @@ const GROUPS_CALM = {
   cheek: [50, 14], body: [35, 12], fx: [25, 10],
 };
 
+// face params a soothing stroke or massage pulls toward its calm look
+const CALM_KEYS = ['eyeOpen', 'closedCurve', 'lidTop', 'lidBot', 'lidSlant', 'browY', 'browTilt', 'browAlpha', 'mouthSmile', 'mouthOpen',
+  'mouthWave', 'mouthTremble', 'tremble', 'gazeDart', 'blinkRate', 'sweat', 'blush', 'glow', 'breath', 'breathRate', 'glitch', 'spinJitter'];
+
 // GLITZI: rows of the approved glitch lines (source px)
 const GLITCH_ROWS = [61, 111, 122, 177, 215, 242, 269, 281, 329];
 
 // ---------------------------------------------------------------- ticker --
 const rigs = new Set();
+const tickers = new Set();
+const failed = new WeakSet();   // rigs / tickers that threw (logged once each)
 let rafId = 0;
 let lastT = 0;
+function logOnce(who, label, e) {
+  if (failed.has(who)) return;
+  failed.add(who);
+  console.error(label, e);
+}
 function frame(t) {
-  rafId = 0;
+  // the next frame is booked first: whatever throws below, the loop (and with
+  // it MallowTouch, the thoughts and the world) keeps running
+  rafId = (rigs.size || tickers.size) ? requestAnimationFrame(frame) : 0;
   const dt = Math.min(0.05, Math.max(0.001, (t - (lastT || t)) / 1000));
   lastT = t;
-  let any = false;
   for (const r of rigs) {
-    if (r._shouldRun()) { r._tick(dt, t / 1000); any = true; }
+    try { if (r._shouldRun()) r._tick(dt, t / 1000); } catch (e) { logOnce(r, `Mallow rig ${r.id} failed a frame:`, e); }
   }
-  if (any || rigs.size) rafId = requestAnimationFrame(frame);
+  // MallowTouch stages, Thought Mallows and worlds share this one loop; they
+  // run after the rigs so they see this frame's face
+  for (const fn of tickers) {
+    try { fn(dt, t / 1000); } catch (e) { logOnce(fn, 'Mallow loop ticker failed a frame:', e); }
+  }
+  // everything left during this frame: no loop to keep
+  if (rafId && !rigs.size && !tickers.size) {
+    if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafId);
+    rafId = 0;
+  }
 }
+/**
+ * A visit that turned heavy (the Hushfold's safety level, kept for the tab): every Mallow on screen keeps this stage's
+ * face (the concerned one) on every scene — a stage asked for meanwhile (the plans page's 'curious', a sheet's
+ * 'comforting') lands on it, a new rig starts on it, and its limits hold whatever face is set or put on top. null: none.
+ */
+let stageFloor = null;
+export function setStageFloor(name = null) {
+  const next = name && stageLimits(name) ? name : null;
+  if (next === stageFloor) return;
+  stageFloor = next;
+  if (next) for (const r of rigs) if (!stageLimits(r.stage)) r.setStage(next, { quiet: true });
+}
+export const getStageFloor = () => stageFloor;
+
+/** Run fn(dt, seconds) every animation frame in the shared Mallow loop. */
+export function addTicker(fn) { if (typeof fn === 'function') { tickers.add(fn); ensureLoop(); } return fn; }
+export function removeTicker(fn) { tickers.delete(fn); }
 function ensureLoop() {
   if (!rafId && typeof requestAnimationFrame === 'function') {
     lastT = 0;
@@ -64,6 +112,33 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) ensureLoop(); });
 }
 
+// ------------------------------------------------------- canvas loss --
+const SKIN_LOST_WAIT = 2000;   // ms a lost skin context may take to come back before the skin is a new canvas
+const clockMs = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+/** Listen for a 2D canvas losing and regaining its pixels (contextlost / contextrestored: a GPU process crash,
+ *  memory pressure; restored, the canvas is blank and its context reset). Returns the unsubscribe function. */
+export function watchCanvas(c, lost, restored) {
+  if (!c || typeof c.addEventListener !== 'function') return null;
+  const onLost = () => lost(), onRestored = () => restored();
+  c.addEventListener('contextlost', onLost);
+  c.addEventListener('contextrestored', onRestored);
+  return () => { c.removeEventListener?.('contextlost', onLost); c.removeEventListener?.('contextrestored', onRestored); };
+}
+// one shared canvas, the art mask's grid in size, that reads a skin back (verifySkin); a fresh one after it lost
+// its own context
+let probe = null;
+function probeCtx() {
+  if (probe?.isContextLost?.()) probe = null;
+  if (!probe && typeof document !== 'undefined') {
+    try {
+      const c = document.createElement('canvas');
+      c.width = c.height = MASK_SIZE;
+      probe = c.getContext('2d', { willReadFrequently: true });
+    } catch { probe = null; }
+  }
+  return probe;
+}
+
 // vibration only after the person has interacted (browsers require it);
 // in the iOS app wrapper haptics go through the native bridge instead
 function buzz(pattern) {
@@ -72,6 +147,14 @@ function buzz(pattern) {
     if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
     navigator.vibrate?.(pattern);
   } catch { /* unsupported */ }
+}
+
+// rig vibration patterns → the kinds haptics.js understands
+function hapticKind(p) {
+  if (!Array.isArray(p)) return 'light';
+  if (p.length === 1) return 'pop';
+  if (p.length <= 3) return 'soft';
+  return p[0] <= 6 ? 'buzz' : 'success';
 }
 
 export function prefersReducedMotion() {
@@ -90,6 +173,10 @@ export class MallowRig {
       audio: null, haptics: true, particles: true, shadow: true, aura: true,
       ...opts,
     };
+    // headless: no canvas of its own, no pointer, no observers — the face
+    // brain (springs, overlays, blinks, skin) for MallowTouch
+    this.headless = !!this.opts.headless;
+    if (this.opts.lowStim) this.opts.particles = false;
     this.container = container;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'mallow-canvas';
@@ -100,10 +187,11 @@ export class MallowRig {
       this.canvas.style.cursor = 'grab';
       this.canvas.tabIndex = 0;
     }
-    container.appendChild(this.canvas);
-    this.ctx = this.canvas.getContext('2d');
+    if (!this.headless) container.appendChild(this.canvas);
+    this.ctx = this.headless ? null : this.canvas.getContext('2d');
     this.skin = document.createElement('canvas');
     this.sctx = this.skin.getContext('2d');
+    this._unwatchSkin = watchCanvas(this.skin, () => this._onSkinLost(), () => this._onSkinRestored());
 
     // parameters
     this.base = baseParams(this.mallow);
@@ -131,6 +219,9 @@ export class MallowRig {
       press: 0, pressV: 0, glitchBurst: 0, burstRows: [],
     };
     this.press = null;
+    this.touch = null;       // set by MallowTouch: {depth, stretch, speed, turns, strokes, calm}
+    this.skinVersion = 0;    // bumps whenever the skin's pixels change
+    this.skinRect = null;    // the skin-px rect that changed last
     this.lastTap = 0;
     this.visible = true;
     this.destroyed = false;
@@ -139,15 +230,17 @@ export class MallowRig {
     this.particles = new ParticleField(this);
 
     this._resize = this._resize.bind(this);
-    this.ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._resize) : null;
+    this.ro = !this.headless && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._resize) : null;
     this.ro?.observe(container);
-    if (typeof IntersectionObserver !== 'undefined') {
+    if (!this.headless && typeof IntersectionObserver !== 'undefined') {
       this.io = new IntersectionObserver((es) => { this.visible = es.some((e) => e.isIntersecting); ensureLoop(); });
       this.io.observe(container);
     }
-    if (this.opts.interactive) this._bindPointer();
+    if (this.opts.interactive && !this.headless) this._bindPointer();
     this._resize();
     this._label();
+    // (after something heavy in this visit, a Mallow arrives on the attentive face, never on its own grin)
+    if (stageFloor) this.setStage(stageFloor, { instant: true, quiet: true });
 
     this.loaded = loadMallowAssets(this.id).then((assets) => {
       if (this.destroyed) return this;
@@ -168,6 +261,8 @@ export class MallowRig {
   /** emotion: preset id | {presetId: weight}; intensity 0..1 */
   setEmotion(emotion, intensity = 0.7, opts = {}) {
     const mix = typeof emotion === 'string' ? { [emotion]: 1 } : { ...emotion };
+    // a heavy visit's floor: a plain "no feeling" (the shared stage handing a new rig its neutral) is the attentive face
+    if (stageFloor && !opts.stage && !Object.entries(mix).some(([k, w]) => k !== 'neutral' && w > 0)) return this.setStage(stageFloor, opts);
     this.mix = mix;
     this.intensity = Number.isFinite(+intensity) ? clamp(+intensity, 0, 1) : 0.7;
     this.stage = opts.stage || null;
@@ -178,7 +273,9 @@ export class MallowRig {
       const delta = Math.abs((this.target.mouthSmile || 0) - (this.val.mouthSmile || 0)) +
         Math.abs((this.target.eyeOpen || 0) - (this.val.eyeOpen || 0));
       if (delta > 0.25) {
-        this.body.squashV += this.opts.reducedMotion ? 0 : 0.9 * Math.min(1, delta);
+        const kick = this.opts.reducedMotion ? 0 : 0.9 * Math.min(1, delta);
+        if (this.opts.onImpulse) this.opts.onImpulse({ squash: kick, lean: 0, shear: 0 }, 'emotion');
+        else this.body.squashV += kick;
         this._blinkNow();
       }
     }
@@ -188,44 +285,109 @@ export class MallowRig {
   }
 
   setStage(name, opts = {}) {
+    // (a heavy visit: whatever stage is asked for, the Mallow keeps the attentive one — setStageFloor)
+    if (stageFloor && !stageLimits(name)) name = stageFloor;
     const s = STAGES[name] || STAGES.neutral;
-    this.setEmotion(s.mix, opts.intensity ?? s.intensity, { extra: s.extra, stage: name, quiet: opts.quiet });
+    this.setEmotion(s.mix, opts.intensity ?? s.intensity, { extra: s.extra, stage: name, quiet: opts.quiet, instant: opts.instant });
     this.stage = name;
     return this;
   }
+
+  /**
+   * The limits the face keeps now (the stage's own, or the visit's floor), with the face they are measured from
+   * (that stage's resting face for this Mallow); null when nothing holds it. While set the Mallow never grins: no
+   * open or smiling mouth, no sparkle or big eyes, no hop, nothing drawn round it (applyStageLimits, react()).
+   */
+  _limits() {
+    const name = stageLimits(this.stage) ? this.stage : stageFloor;
+    const lim = name ? stageLimits(name) : null;
+    if (!lim) return null;
+    const c = this._limitRef;
+    if (c?.name === name && c.id === this.id) return c;
+    const s = STAGES[name];
+    return (this._limitRef = { name, id: this.id, lim, ref: resolveExpression(this.mallow, s.mix, s.intensity, s.extra) });
+  }
+  /** Is the face held to a stage's limits now (the concerned stage, or a heavy visit's floor)? */
+  get hushed() { return !!this._limits(); }
 
   /** One-shot reaction: tap, doubleTap, flick, squeeze, release, celebrate,
    *  nod, gasp, shiver, sigh, yawn, comfort, glitchBurst, hop */
   react(kind, opts = {}) {
     if (!this.ready) return this;
     const table = REACTIONS[this.id] || {};
+    // after something heavy (the face held to the concerned stage's limits): the signature idle is a quiet look round,
+    // and every other reaction keeps its face change (held down by the limits) and a soft squash, but no hop, no
+    // pirouette and nothing drawn round the face
+    const hushed = this.hushed;
+    if (hushed && kind === 'idle') return this._quietIdle();
     const r = table[kind] || REACTIONS._shared[kind];
     if (!r) return this;
     const rm = this.opts.reducedMotion;
     const dur = (r.dur || 0.8) * (rm ? 1.15 : 1);
     this.overlays.push({ start: this.time, dur, params: r.params || {}, kind });
     const b = this.body;
-    const imp = r.impulse || {};
+    const imp = hushed ? { ...r.impulse, hop: 0, spin: 0 } : r.impulse || {};
     const k = rm ? 0.25 : 1;
-    if (imp.squash) b.squashV += imp.squash * 6 * k;
-    if (imp.hop && b.grounded && !rm) { b.hopV = Math.sqrt(2 * 9.8 * imp.hop * 0.14) * 1.0; b.grounded = false; b.squash += 0.06; }
-    if (imp.lean) b.leanV += imp.lean * 4 * k;
-    if (imp.shear) b.shearV += imp.shear * 5 * k;
+    if (this.opts.onImpulse) {
+      // MallowTouch: squash / lean / shear become soft-body velocity fields
+      this.opts.onImpulse({ squash: (imp.squash || 0) * 6 * k + (imp.hop && b.grounded && !rm ? 0.5 : 0),
+        lean: (imp.lean || 0) * 4 * k, shear: (imp.shear || 0) * 5 * k }, kind);
+    } else {
+      if (imp.squash) b.squashV += imp.squash * 6 * k;
+      if (imp.lean) b.leanV += imp.lean * 4 * k;
+      if (imp.shear) b.shearV += imp.shear * 5 * k;
+    }
+    if (imp.hop && b.grounded && !rm) { b.hopV = Math.sqrt(2 * 9.8 * imp.hop * 0.14) * 1.0; b.grounded = false; if (!this.opts.onImpulse) b.squash += 0.06; }
     if (imp.tilt) b.tiltV += imp.tilt * 60 * k;
     if (imp.spin && !rm) b.spin = imp.spin;
     if (imp.glitch) { b.glitchBurst = Math.max(b.glitchBurst, rm ? 0 : imp.glitch); }
-    if (r.fx && this.opts.particles) this.particles.burst(r.fx, opts);
-    if (r.sound) this.opts.audio?.play?.(this.id, r.sound, { intensity: this.intensity });
-    if (r.haptic && this.opts.haptics) buzz(r.haptic);
+    if (r.fx && this.opts.particles && !hushed) this.particles.burst(r.fx, opts);
+    // opts.intensity: e.g. how deep the squeeze was (MallowTouch release)
+    if (r.sound) this.opts.audio?.play?.(this.id, r.sound, { intensity: Number.isFinite(opts.intensity) ? clamp(opts.intensity, 0, 1) : this.intensity });
+    if (r.haptic) this._haptic(r.haptic);
     if (r.blink) this._blinkNow();
     this._emit('react', { kind });
+    return this;
+  }
+
+  /** The concerned stage's idle: a slow look to one side and a blink — no hop, no mouth, no sparkle, no sound. */
+  _quietIdle() {
+    const side = (this._quietSide = -(this._quietSide || 1));
+    this.overlays.push({ start: this.time, dur: 2.2 * (this.opts.reducedMotion ? 1.15 : 1), params: { lookX: 0.35 * side, lookY: 0.12 }, kind: 'idle-quiet' });
+    this._blinkNow();
+    this._emit('react', { kind: 'idle-quiet' });
+    return this;
+  }
+
+  // haptics only through the injected fn when one is given (prefs + rate limits live there)
+  _haptic(pattern) {
+    if (typeof this.opts.haptic === 'function') { try { this.opts.haptic(hapticKind(pattern)); } catch { /* ignore */ } return; }
+    if (this.opts.haptic === null || this.opts.haptic === false) return;
+    if (this.opts.haptics) buzz(pattern);
+  }
+
+  /** MallowTouch drives the face from the gesture: {depth 0..1, stretch ~1, speed px/s, turns, strokes, calm 0..1}. */
+  setTouch(state) {
+    if (!state) { this.touch = null; return this; }
+    const t = this.touch || (this.touch = { depth: 0, stretch: 1, speed: 0, turns: 0, strokes: 0, calm: 0 });
+    for (const key of Object.keys(state)) { const v = +state[key]; if (Number.isFinite(v)) t[key] = v; }
+    return this;
+  }
+
+  /** A one-off face overlay (attack / hold / release envelope) with optional
+   *  particles and sound — for touch reactions that are not in REACTIONS. */
+  overlay(params, { dur = 1, fx = null, sound = null } = {}) {
+    if (!this.ready) return this;
+    this.overlays.push({ start: this.time, dur: dur * (this.opts.reducedMotion ? 1.15 : 1), params: params || {}, kind: 'overlay' });
+    if (fx && this.opts.particles && !this.hushed) this.particles.burst(fx);
+    if (sound) this.opts.audio?.play?.(this.id, sound, { intensity: this.intensity });
     return this;
   }
 
   lookAt(x, y) { this.pointerLook = x == null ? null : { x: clamp(x, -1, 1), y: clamp(y, -1, 1), t: this.time }; }
   setReducedMotion(b) { this.opts.reducedMotion = !!b; }
   snapshot() { return { ...this.val }; }
-  describe() { return describeExpression(this.mallow, this.mix, this.intensity); }
+  describe() { return describeExpression(this.mallow, this.mix, this.intensity, this.stage); }
 
   destroy() {
     this.destroyed = true;
@@ -233,11 +395,13 @@ export class MallowRig {
     this.ro?.disconnect();
     this.io?.disconnect();
     this._unbind?.();
+    this._unwatchSkin?.();
     this.canvas.remove();
   }
 
   // ----------------------------------------------------------- layout --
   _resize() {
+    if (this.headless) { this._resizeHeadless(); return; }
     const r = this.container.getBoundingClientRect();
     const dpr = Math.min(2, (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1);
     const W = Math.max(1, Math.round(r.width)), H = Math.max(1, Math.round(r.height));
@@ -254,11 +418,34 @@ export class MallowRig {
     this.CX = W / 2;
     this.BASE = H * this.opts.baseline;
     // skin resolution follows on-screen size (cheap for thumbnails)
-    const q = clamp(this.S * dpr * 1.05, 0.28, 1.25);
+    const q = this.opts.skinSize ? this.opts.skinSize / Math.max(...m.size) : clamp(this.S * dpr * 1.05, 0.28, 1.25 * (m.res || 1));
     if (q !== this.q) {
       this.q = q;
       this.skin.width = Math.ceil(m.size[0] * q);
       this.skin.height = Math.ceil(m.size[1] * q);
+    }
+    this.skinDirty = true;
+  }
+
+  /** Headless (MallowTouch): change the skin's resolution (max side, px). The
+   *  next renderSkin() is a full redraw at the new size. */
+  setSkinSize(px) {
+    if (!(px > 0) || px === this.opts.skinSize) return this;
+    this.opts.skinSize = px;
+    if (this.headless) this._resizeHeadless(); else this._resize();
+    return this;
+  }
+
+  _resizeHeadless() {
+    const m = this.mallow;
+    this.W = this.W || 1; this.H = this.H || 1; this.dpr = 1;
+    this.S = this.S || 1; this.CX = this.CX || 0; this.BASE = this.BASE || 0;
+    const q = (this.opts.skinSize || 640) / Math.max(...m.size);
+    if (q !== this.q) {
+      this.q = q;
+      this.skin.width = Math.ceil(m.size[0] * q);
+      this.skin.height = Math.ceil(m.size[1] * q);
+      this._faceRect = null;
     }
     this.skinDirty = true;
   }
@@ -276,8 +463,10 @@ export class MallowRig {
 
   // ---------------------------------------------------------- pointer --
   _toLocal(e) {
+    // a CSS-scaled layer: the rect includes the transform, W/H do not
     const r = this.canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    const sx = r.width > 0 ? this.W / r.width : 1, sy = r.height > 0 ? this.H / r.height : 1;
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
   }
 
   _hit(p) {
@@ -392,7 +581,7 @@ export class MallowRig {
     this._updateBody(dt, goal);
     this._updateCycles(dt);
     if (this.opts.particles) this.particles.update(dt, this.val);
-    this._render();
+    if (!this.headless) this._render();
   }
 
   _composeTargets(dt) {
@@ -404,6 +593,8 @@ export class MallowRig {
       const w = t < 0.18 ? smoothstep(0, 0.18, t) : t > 0.62 ? 1 - smoothstep(0.62, 1, t) : 1;
       for (const [k, v] of Object.entries(o.params)) if (k in goal) goal[k] = lerp(goal[k], v, w);
     }
+    // MallowTouch: the face follows how deep, how stretched and how soothed
+    if (this.touch) this._touchFace(goal, this.touch);
     // squeeze face while held
     if (this.press?.squeezed) {
       const sq = REACTIONS[this.id]?.squeezeFace || REACTIONS._shared.squeezeFace;
@@ -427,6 +618,10 @@ export class MallowRig {
       goal.mouthOpen = lerp(goal.mouthOpen, 0.35, sigh);
       goal.eyeOpen *= 1 - 0.6 * sigh;
     }
+    // after something heavy: whatever was put on top (a reaction, the squeeze face, a stretch, a touch persona, a
+    // yawn) the face stays inside the concerned stage's limits — the squeeze is a soft hug, never a grin
+    const L = this._limits();
+    if (L) applyStageLimits(goal, L.lim, L.ref);
     // gaze: pointer > saccades
     this.sacc.next -= dt;
     const dart = this.val.gazeDart;
@@ -446,6 +641,33 @@ export class MallowRig {
     goal.lookX = clamp(goal.lookX, -1, 1);
     goal.lookY = clamp(goal.lookY, -1, 1);
     return goal;
+  }
+
+  _touchFace(goal, T) {
+    const d = clamp(T.depth || 0, 0, 1);
+    if (d > 0.004) {
+      const sq = REACTIONS[this.id]?.squeezeFace || REACTIONS._shared.squeezeFace;
+      const w = smoothstep(0.05, 0.6, d);
+      for (const k in sq) if (k in goal) goal[k] = lerp(goal[k], sq[k], w);
+      goal.cheekPuff += 0.7 * d;
+      goal.lidBot += 0.4 * d;
+      goal.eyeOpen *= 1 - 0.6 * d;
+      goal.browY -= 0.2 * d;
+    }
+    const st = T.stretch ?? 1;
+    if (st > 1.1) {
+      // a long stretch: "ooh"
+      const w = smoothstep(1.1, 1.35, st);
+      goal.mouthRound = lerp(goal.mouthRound, 0.8, w);
+      goal.mouthOpen = lerp(goal.mouthOpen, Math.max(goal.mouthOpen, 0.55), w);
+      goal.eyeOpen += 0.3 * w;
+    }
+    const calm = clamp(T.calm || 0, 0, 0.85);
+    if (calm > 0.005) {
+      const cg = this._calmGoal || (this._calmGoal = resolveExpression(this.mallow, { comforted: 0.6, calm: 0.4 }, 0.8));
+      for (const k of CALM_KEYS) goal[k] = lerp(goal[k], cg[k], calm);
+    }
+    this.opts.touchFace?.(goal, T, this);
   }
 
   _cycleEnv(name) {
@@ -481,7 +703,7 @@ export class MallowRig {
     c.idle -= dt;
     if (c.idle <= 0) {
       c.idle = rand(5, 10);
-      if (!this.press && this.overlays.length === 0 && this.intensity < 0.6) this.react('idle');
+      if (!this.press && !this.touch?.held && this.overlays.length === 0 && this.intensity < 0.6) this.react('idle');
     }
     // blinking (open-eyed states only)
     const b = this.blink;
@@ -552,16 +774,18 @@ export class MallowRig {
       b.hop += b.hopV * dt * 0.42;
       if (b.hop <= 0) {
         b.hop = 0; b.grounded = true; b.sinceLand = 0;
-        b.squashV += Math.min(2.6, Math.abs(b.hopV) * 1.7) * energy;
-        b.shearV += rand(-0.4, 0.4) * energy;
+        const land = Math.min(2.6, Math.abs(b.hopV) * 1.7) * energy, wob = rand(-0.4, 0.4) * energy;
+        if (this.opts.onImpulse) this.opts.onImpulse({ squash: land, lean: 0, shear: wob }, 'land');
+        else { b.squashV += land; b.shearV += wob; }
         b.hopV = 0;
         if (this.opts.particles && v.bounce > 0.3) this.particles.burst({ kind: 'dust', n: 3 });
       }
     } else {
       b.sinceLand += dt;
       const interval = 1 / Math.max(0.4, v.bounceRate);
-      if (v.bounce > 0.06 && !rm && !this.press && b.sinceLand > interval * 0.6) {
-        b.squash += 0.05 * v.bounce;    // anticipation
+      if (v.bounce > 0.06 && !rm && !this.press && !this.touch?.held && b.sinceLand > interval * 0.6) {
+        if (this.opts.onImpulse) this.opts.onImpulse({ squash: 0.5 * v.bounce, lean: 0, shear: 0 }, 'anticipate');
+        else b.squash += 0.05 * v.bounce;    // anticipation
         b.hopV = Math.sqrt(2 * g * 0.42 * v.bounce * 0.12) * 1.05;
         b.grounded = false;
       }
@@ -671,35 +895,204 @@ export class MallowRig {
     if (this.opts.particles) this.particles.draw(ctx, { lift, S });
   }
 
+  /** Redraw the skin if the face changed. Returns true when its pixels changed
+   *  (skinVersion bumps; skinRect is the changed area in skin px). */
+  renderSkin() { return this._renderSkin() === true; }
+
+  /** The skin-px rectangle that holds everything the face animates (eyes,
+   *  brows, mouth, tongue, cheeks, tears, sweat) — for dirty-rect uploads. */
+  faceRect() {
+    if (this._faceRect) return this._faceRect;
+    this._faceRect = this._skinBox(faceRectSrc(this.mallow));
+    return this._faceRect;
+  }
+
+  _skinBox([x0, y0, x1, y1]) {
+    const q = this.q || 1, W = this.skin.width, H = this.skin.height;
+    const x = clamp(Math.floor(x0 * q), 0, W), y = clamp(Math.floor(y0 * q), 0, H);
+    return { x, y, w: clamp(Math.ceil(x1 * q) - x, 1, W - x), h: clamp(Math.ceil(y1 * q) - y, 1, H - y) };
+  }
+
+  // The face parts that changed since they were last drawn (each side's eye,
+  // brow, cheek and tear, the mouth, the sweat drop), each as the skin rect
+  // around where it was drawn last time and where it is drawn now — computed
+  // from the live geometry, so a squinting eye dirties the eye, not the face.
+  // this._dirtyRects lists them (overlaps are not merged: each is redrawn and
+  // uploaded on its own); returns their bounding rect, or null. `covered`:
+  // the approved art lies over the eyes, brows and mouth, so those wait.
+  _dirtyFaceRect(P, covered = false) {
+    if (!this._parts || this._partQ !== this.q) {
+      this._partQ = this.q;
+      this._parts = makeFaceParts(this.mallow);
+      this._rectPool = this._parts.map(() => ({ x: 0, y: 0, w: 0, h: 0 }));
+      this._dirtyRects = [];
+      this._dirtyU = box();
+      this._dirtyBox = { x: 0, y: 0, w: 0, h: 0 };
+    }
+    const parts = this._parts, out = this._dirtyRects, u = this._dirtyU;
+    out.length = 0;
+    u[0] = u[1] = Infinity; u[2] = u[3] = -Infinity;
+    for (let i = 0; i < parts.length; i++) {
+      const pt = parts[i];
+      if (covered && pt.under) continue;
+      const keys = pt.keys, sg = pt.sig;
+      let changed = !pt.init;
+      for (let j = 0; j < keys.length && !changed; j++) if (!(Math.abs(sg[j] - P[keys[j]]) < pt.tol[j])) changed = true;
+      if (!changed && !partAnimated(pt, P, this)) continue;
+      for (let j = 0; j < keys.length; j++) sg[j] = P[keys[j]];
+      pt.init = true;
+      partBounds(this, pt, P, pt.cur);
+      const a = pt.prev, b = pt.cur;
+      const x0 = Math.min(a[0], b[0]) - 2, y0 = Math.min(a[1], b[1]) - 2, x1 = Math.max(a[2], b[2]) + 2, y1 = Math.max(a[3], b[3]) + 2;
+      pt.prev = b; pt.cur = a;
+      if (!(x1 > x0 && y1 > y0)) continue;    // drawn neither then nor now
+      const r = this._skinBoxInto([x0, y0, x1, y1], this._rectPool[out.length]);
+      if (r.w <= 1 && r.h <= 1) continue;
+      out.push(r);
+      grow(u, x0, y0, x1, y1);
+    }
+    return out.length ? this._skinBoxInto(u, this._dirtyBox) : null;
+  }
+
+  _skinBoxInto([x0, y0, x1, y1], o) {
+    const q = this.q || 1, W = this.skin.width, H = this.skin.height;
+    const x = clamp(Math.floor(x0 * q), 0, W), y = clamp(Math.floor(y0 * q), 0, H);
+    o.x = x; o.y = y; o.w = clamp(Math.ceil(x1 * q) - x, 1, W - x); o.h = clamp(Math.ceil(y1 * q) - y, 1, H - y);
+    return o;
+  }
+
+  /** Glitzi's energised glitch lines for a shader (opts.shaderGlitch): per row
+   *  [y, x0, len, alpha] in source px, plus out.thick and out.mode ('lit');
+   *  null when calm. With {dim:true} a calm Glitzi returns its quieted rows
+   *  instead (out.mode 'dim': dark bands over the approved lines). */
+  glitchLines(out = new Float32Array((this.mallow.glitchRows || GLITCH_ROWS).length * 4), opts = {}) {
+    const rows = this.mallow.glitchRows || GLITCH_ROWS;   // high-res art: its own rows
+    const g = clamp(this.val.glitch, 0, 2);
+    if (this.id !== 'glitzi') return null;
+    if (g < 0.55) {
+      const a = (0.55 - g) * 1.2;
+      if (!opts.dim || a < 0.003) return null;
+      for (let i = 0; i < rows.length; i++) { out[4 * i] = rows[i]; out[4 * i + 1] = 0; out[4 * i + 2] = this.mallow.size[0]; out[4 * i + 3] = a; }
+      out.thick = 6; out.mode = 'dim';
+      return out;
+    }
+    out.mode = 'lit';
+    const W = this.mallow.size[0], k = (g - 0.55) / 1.45;
+    for (let i = 0; i < rows.length; i++) {
+      const ph = this.time * (0.6 + i * 0.13) + i * 1.7;
+      out[4 * i] = rows[i];
+      out[4 * i + 1] = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;
+      out[4 * i + 2] = W * (0.35 + 0.5 * k);
+      out[4 * i + 3] = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
+    }
+    out.thick = 3 + 2 * k;
+    return out;
+  }
+
   _renderSkin() {
     const v = this.val;
     const blinkAmt = this._blinkAmount();
-    const animated = this.id === 'zuzu' || this.id === 'glitzi' || v.tears > 0.01 || v.sweat > 0.01 ||
-      v.mouthTremble > 0.01 || v.heartEyes > 0.01 || v.sparkle > 1.05 || v.wet > 0.05;
+    const shaderGlitch = this.id === 'glitzi' && !!this.opts.shaderGlitch;
+    // MallowTouch tier A cross-fades the approved art in its shader: the skin
+    // then holds only the live face (no per-blink, per-fade face uploads)
+    const shaderRest = this.headless && !!this.opts.shaderRest;
     // rest state for the approved-art cross-fade
     const blinking = blinkAmt > 0.01 && v.eyeOpen > 0.05;
-    const atRest = !blinking && this._deviation(v) < 0.03;
+    // the shader lays the approved art over everything, so with it nothing
+    // may be drawn on top at rest (extra blush, puff, tears, sweat)
+    const bare = !shaderRest || (v.blush - (this.mallow.face.cheeks?.base ?? 1) <= 0.02 && v.blushLines <= 0.03 &&
+      v.cheekPuff <= 0.05 && v.tears <= 0.02 && v.sweat <= 0.02);
+    const atRest = !blinking && bare && this._deviation(v) < 0.03;
     const prevRest = this.restMix ?? 1;
     this.restMix = atRest ? Math.min(1, prevRest + (this._dt || 0.016) * 7) : 0;
-    const sig = this._faceSignature(blinkAmt) + '|' + this.restMix.toFixed(2);
-    if (!animated && !this.skinDirty && sig === this._lastSig) return;
-    this._lastSig = sig;
+    // fully at rest the approved art covers the eyes, brows and mouth: their
+    // changes (a glance, Zuzu's spirals, Glitzi's lines) are invisible, so the
+    // skin keeps still (and an idle Mallow uploads nothing) until it fades
+    const covered = !this.skinDirty && this.restMix >= 0.999 && (shaderRest || (this._drawnRest ?? 0) >= 0.999);
+    const waveAnim = v.mouthWave * this.mallow.face.mouth.w * 0.05 > 0.3;
+    const animated = (!covered && (this.id === 'zuzu' || (this.id === 'glitzi' && !shaderGlitch) || v.sparkle > 1.02 ||
+      v.heartEyes > 0.02 || v.mouthTremble > 0.01 || waveAnim)) || v.sweat > 0.02;
+    // numeric signature of everything the face draws (no strings per frame)
+    const S = this._sigVals || (this._sigVals = new Float64Array(FACE_SIG_KEYS.length + 2).fill(NaN));
+    const nk = FACE_SIG_KEYS.length;
+    let same = true;
+    for (let i = 0; i < nk; i++) if (!(Math.abs(S[i] - v[FACE_SIG_KEYS[i]]) < 2.5e-4)) { same = false; break; }
+    if (same && !(Math.abs(S[nk] - blinkAmt) < 1e-3)) same = false;
+    if (same && !shaderRest && !(Math.abs(S[nk + 1] - this.restMix) < 5e-3)) same = false;
+    if (!animated && !this.skinDirty && same) return false;
+    for (let i = 0; i < nk; i++) S[i] = v[FACE_SIG_KEYS[i]];
+    S[nk] = blinkAmt; S[nk + 1] = this.restMix;
+    // headless (MallowTouch): only the face parts that changed are redrawn —
+    // outside them the body and the approved art are the same pixels.
+    // Glitzi's glitch lines span the body, so they force a full redraw
+    // unless a shader draws them.
+    const fullKey = this.q + (this.id === 'glitzi' && !shaderGlitch && !covered ? String(this.time) : '');
+    // (a context that is lost now draws nothing: wait for it, the redraw after it comes back is a full one)
+    const ctx = this._skinCtx();
+    if (!ctx) { this.skinDirty = true; return false; }
+    // …and parts are drawn only over a full drawing that is still there
+    const partial = this.headless && !this.skinDirty && this.skinVersion > 0 && fullKey === this._fullKey && this._skinBaseOk();
+    this._fullKey = fullKey;
     this.skinDirty = false;
-    const ctx = this.sctx;
-    const q = this.q;
-    const m = this.mallow;
-    const A = this.assets;
+    // one reused params object (the face renderers read P.blink as well)
+    const P0 = this._P0 || (this._P0 = {});
+    Object.assign(P0, v); P0.blink = blinkAmt;
+    // a baked pristine fade touches everything the body art changed: the whole face
+    const restMoved = !shaderRest && this.restMix !== this._lastRestMix;
+    this._lastRestMix = this.restMix;
+    let dirty = this.headless ? this._dirtyFaceRect(P0, covered && partial) : null;
+    if (partial && restMoved) {
+      // the whole face rect, plus anything that moved outside it
+      const fr = this.faceRect(), list = this._dirtyRects;
+      const o = this._faceRectSlot || (this._faceRectSlot = { x: 0, y: 0, w: 0, h: 0 });
+      o.x = fr.x; o.y = fr.y; o.w = fr.w; o.h = fr.h;
+      list.push(o);
+      dirty = dirty ? unionRect(dirty, fr) : fr;
+    }
+    if (partial && !dirty) { this.skinRect = null; this.skinRects = null; return false; }
+    if (!shaderRest) this._drawnRest = this.restMix;
+    // always balanced: a face draw that throws must not leave its clip, transform or blend on the skin's context
+    // for every later frame, and leaves no full drawing to draw parts over
+    ctx.save();
+    let drawn = false;
+    try {
+      this._paintSkin(ctx, partial, dirty, P0, shaderGlitch, shaderRest);
+      drawn = true;
+    } finally {
+      ctx.restore();
+      if (!drawn || ctx.isContextLost?.()) { this._skinBase = null; this.skinDirty = true; }
+    }
+    if (!partial && !this.skinDirty) { this._skinBase = { canvas: this.skin, ctx, w: this.skin.width, h: this.skin.height, q: this.q }; this._fullDraws = (this._fullDraws || 0) + 1; }
+    this.skinVersion++;
+    return true;
+  }
+
+  // the skin's pixels, inside _renderSkin's save/restore: the changed face parts (partial: clipped to
+  // this._dirtyRects, over the full drawing) or everything
+  _paintSkin(ctx, partial, dirty, P, shaderGlitch, shaderRest) {
+    const q = this.q, m = this.mallow, A = this.assets;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.skin.width, this.skin.height);
+    if (partial) {
+      const rs = this._dirtyRects;
+      ctx.beginPath();
+      for (const r of rs) ctx.rect(r.x, r.y, r.w, r.h);
+      ctx.clip();
+      for (const r of rs) ctx.clearRect(r.x, r.y, r.w, r.h);
+      this.skinRect = dirty;
+      this.skinRects = rs;
+    } else {
+      ctx.clearRect(0, 0, this.skin.width, this.skin.height);
+      this.skinRect = { x: 0, y: 0, w: this.skin.width, h: this.skin.height, full: true };
+      this.skinRects = null;
+    }
     ctx.setTransform(q, 0, 0, q, 0, 0);
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(A.body, 0, 0);
+    // art drawn at the rig's logical size (high-res art: res image px per logical px)
+    ctx.drawImage(A.body, 0, 0, m.size[0], m.size[1]);
 
     const f = m.face;
-    const P = { ...v };
-    P.blink = blinkAmt;
     // Glitzi's energised/dimmed glitch lines sit on the body, under the eyes
-    if (this.id === 'glitzi') drawGlitchLines(ctx, this, P);
+    if (this.id === 'glitzi' && !shaderGlitch) drawGlitchLines(ctx, this, P);
     for (const side of ['L', 'R']) drawEye(ctx, this, f, side, P);
     for (const side of ['L', 'R']) drawBrow(ctx, f, side, P);
     drawMouth(ctx, f, P, this.time);
@@ -708,10 +1101,10 @@ export class MallowRig {
     // blinks don't count as "not at rest"; leaving rest is a hard cut and
     // returning only fades in once the face has converged, so the two faces
     // never overlap visibly.
-    if (this.opts.pristine && this.restMix > 0.004) {
+    if (this.opts.pristine && this.restMix > 0.004 && !shaderRest) {
       ctx.globalAlpha = this.restMix;
       ctx.globalCompositeOperation = 'source-atop';   // keep the approved alpha, no edge build-up
-      ctx.drawImage(A.original, 0, 0);
+      ctx.drawImage(A.original, 0, 0, m.size[0], m.size[1]);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     }
@@ -720,13 +1113,126 @@ export class MallowRig {
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  // ------------------------------------------------- the skin's canvas --
+  // The skin's 2D context, or null while it is lost (drawing on it would draw nothing; the browser gives it back
+  // blank with contextrestored, and the redraw after that is a full one). A skin with no context or no size, or
+  // one still lost after 2 s, is replaced by a new canvas (at most every 2 s); 'skin' tells MallowTouch, whose
+  // tier A texture is bound to the canvas.
+  _skinCtx() {
+    const s = this.skin, g = this.sctx;
+    // (isContextLost where the engine has it; else the contextlost / contextrestored events)
+    const api = typeof g?.isContextLost === 'function';
+    const lost = api ? !!g.isContextLost() : !!this._skinLost;
+    if (api && !lost) this._skinLost = false;
+    if (g && !lost && s.width > 0 && s.height > 0) { this._skinLostAt = 0; return g; }
+    const t = clockMs();
+    if (g && lost && s.width > 0 && s.height > 0) {
+      if (!this._skinLostAt) this._skinLostAt = t;
+      if (t - this._skinLostAt < SKIN_LOST_WAIT) return null;
+    }
+    if (t - (this._skinNewAt ?? -Infinity) < SKIN_LOST_WAIT || this.destroyed) return null;
+    this._skinNewAt = t;
+    this._newSkin();
+    const n = this.sctx;
+    return n && !n.isContextLost?.() && this.skin.width > 0 ? n : null;
+  }
+
+  _newSkin() {
+    const old = this.skin, m = this.mallow, q = this.q || 1;
+    this._unwatchSkin?.();
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(m.size[0] * q);
+    c.height = Math.ceil(m.size[1] * q);
+    this.skin = c;
+    this.sctx = c.getContext('2d');
+    this._unwatchSkin = watchCanvas(c, () => this._onSkinLost(), () => this._onSkinRestored());
+    this._skinLost = false; this._skinLostAt = 0;
+    this._skinBase = null; this.skinDirty = true;
+    this._faceRect = null;
+    if (old && old !== c) { try { old.width = 0; old.height = 0; } catch { /* gone */ } }
+    this._emit('skin', { reason: 'new' });
+  }
+
+  _onSkinLost() { this._skinLost = true; this._skinBase = null; this.skinDirty = true; }
+  _onSkinRestored() {
+    this._skinLost = false; this._skinLostAt = 0;
+    this._skinBase = null; this.skinDirty = true;
+    this._emit('skin', { reason: 'restored' });
+  }
+
+  // the last full drawing is still on the skin: the same canvas, context, size and scale, nothing lost since
+  _skinBaseOk() {
+    const b = this._skinBase, s = this.skin;
+    return !!b && b.canvas === s && b.ctx === this.sctx && b.w === s.width && b.h === s.height && b.q === this.q && !this._skinLost;
+  }
+
+  /** Headless: is the last full drawing still on the skin? Reads the skin back once, at the art mask's 64 px grid,
+   *  through a probe canvas (never the skin's own context) and looks at a few cells on the body clear of every face
+   *  part (sentinels from the mask). When one has gone transparent — the browser dropped the canvas's pixels
+   *  without a contextlost — the next renderSkin() is a full redraw and this returns false. A sentinel still
+   *  transparent right after that full redraw is not on the body (it is dropped). About once a second in the 2D
+   *  tiers, which show the skin as it is (tier A keeps its own texture). */
+  verifySkin() {
+    if (this._verifyOff || !this.ready || this.destroyed || this.skinDirty || !this._skinBaseOk() || !this.assets) return true;
+    const cells = this._sentinels(), N = MASK_SIZE;
+    const g = probeCtx();
+    if (!cells.length || !g || g.isContextLost?.()) return true;
+    let px;
+    try {
+      g.imageSmoothingEnabled = false;      // each probe pixel is the skin's pixel at that cell's centre
+      g.clearRect(0, 0, N, N);
+      g.drawImage(this.skin, 0, 0, this.skin.width, this.skin.height, 0, 0, N, N);
+      px = g.getImageData(0, 0, N, N).data;
+    } catch { return true; }
+    const gone = cells.filter(([i, j]) => px[4 * (j * N + i) + 3] < 128);
+    if (!gone.length) { this._verifyRedrew = 0; this._allGone = 0; return true; }
+    // a full drawing made since the last finding (partial redraws — Zuzu's spirals, every frame — never count)
+    const redrawn = !!this._verifyRedrew && this._verifyRedrew !== (this._fullDraws || 0);
+    if (gone.length < cells.length) {
+      // some cells transparent on a full drawing made since: bad sentinels, not a lost skin (dropped; at least one
+      // always stays, so the check never switches itself off)
+      if (redrawn) { this._sent = cells.filter((c) => !gone.includes(c)); this._verifyRedrew = 0; return true; }
+    } else if (redrawn && ++this._allGone >= 3) {
+      // a lost skin is transparent everywhere, so every sentinel gone is a loss — even a second one within the same
+      // interval — but three in a row straight after full drawings is the readback, not the skin: stop asking
+      this._verifyOff = true;
+      return true;
+    }
+    this._skinBase = null; this.skinDirty = true;
+    this._verifyRedrew = this._fullDraws || 0;
+    return false;
+  }
+
+  // a few cells of the art mask's 64 px grid on the body (solid, with their neighbours) well clear of every face
+  // part: the lowest one and the outermost on each side, as [column, row]
+  _sentinels() {
+    if (this._sent) return this._sent;
+    const m = this.mallow, mask = this.assets?.mask, N = MASK_SIZE, out = [];
+    if (mask && mask.length >= N * N) {
+      const parts = Object.values(facePartsSrc(m)), pad = 0.04 * Math.max(...m.size);
+      const [bx0, by0, bx1, by1] = m.bodyBox;
+      const solid = (i, j) => mask[j * N + i] >= 0.99;
+      let low = null, left = null, right = null;
+      for (let j = 1; j < N - 1; j++) {
+        for (let i = 1; i < N - 1; i++) {
+          if (!solid(i, j) || !solid(i - 1, j) || !solid(i + 1, j) || !solid(i, j - 1) || !solid(i, j + 1)) continue;
+          const x = ((i + 0.5) / N) * m.size[0], y = ((j + 0.5) / N) * m.size[1];
+          if (x < bx0 || x > bx1 || y < by0 || y > by1) continue;
+          if (parts.some((r) => x > r[0] - pad && x < r[2] + pad && y > r[1] - pad && y < r[3] + pad)) continue;
+          if (!low || j > low[1]) low = [i, j];
+          if (!left || i < left[0]) left = [i, j];
+          if (!right || i > right[0]) right = [i, j];
+        }
+      }
+      for (const c of [low, left, right]) if (c && !out.some((o) => o[0] === c[0] && o[1] === c[1])) out.push(c);
+    }
+    this._sent = out;
+    return out;
+  }
+
   _faceSignature(blink) {
     let s = blink.toFixed(2);
-    for (const k of ['eyeOpen', 'closedCurve', 'lidTop', 'lidBot', 'lidSlant', 'wink', 'lookX', 'lookY', 'irisScale',
-      'eyeScale', 'browAlpha', 'browY', 'browTilt', 'browAsym', 'mouthSmile', 'mouthOpen', 'mouthWidth', 'mouthRound',
-      'mouthWave', 'mouthSkew', 'mouthPout', 'tongue', 'blush', 'blushLines', 'cheekPuff']) {
-      s += '|' + this.val[k].toFixed(3);
-    }
+    for (const k of FACE_SIG_KEYS) s += '|' + this.val[k].toFixed(3);
     return s;
   }
 
@@ -743,6 +1249,250 @@ export class MallowRig {
 }
 
 // ---------------------------------------------------------- drawing --
+/** Source-px boxes [x0, y0, x1, y1] around each animated face feature group:
+ *  eyes, brows, mouth, cheeks, wet (tears + sweat). */
+export function facePartsSrc(m) {
+  const f = m.face;
+  const parts = { eyes: box(), brows: box(), mouth: box(), cheeks: box(), wet: box() };
+  for (const side of ['L', 'R']) {
+    const e = f.eyes[side];
+    const rx = e.rx || e.hw, ry = e.ry || e.hw * 0.7, lw = e.lw || 10;
+    // open eyes stay inside their (scaled) ellipse; closed lids are a tube
+    const hx = Math.max(rx * 1.45, (e.hw || 0) * 1.15) + lw, hy = ry * 1.5 + lw;
+    grow(parts.eyes, e.x - hx, e.y - hy, e.x + hx, e.y + hy);
+    const out = side === 'L' ? -1 : 1;
+    const tx = e.x + out * (e.hw || rx) * 0.55;
+    grow(parts.wet, tx - 12, e.y, tx + 12, e.y + (e.ry || e.sag) * 0.9 + (e.ry || 30) * 2.2 + 8);
+    if (side === 'R') grow(parts.wet, e.x + rx * 1.15 - 18, e.y - ry * 1.2 - 18, e.x + rx * 1.15 + 18, e.y - ry * 1.2 + 36);
+    const b = f.brows?.[side];
+    if (b) {
+      const lift = ry * 1.2 + b.lw;
+      grow(parts.brows, Math.min(b.p0[0], b.p1[0]) - b.lw, Math.min(b.p0[1], b.p1[1], b.c[1]) - lift,
+        Math.max(b.p0[0], b.p1[0]) + b.lw, Math.max(b.p0[1], b.p1[1], b.c[1]) + lift * 0.6);
+    }
+    const c = f.cheeks?.[side];
+    if (c) grow(parts.cheeks, c[0] - c[2] * 1.55, c[1] - c[2] * 1.55, c[0] + c[2] * 1.55, c[1] + c[2] * 1.55);
+  }
+  const M = f.mouth;
+  const depth = M.depth || M.w * 0.45;
+  grow(parts.mouth, M.x - M.w * 0.78 - M.lw, M.y - M.w * 0.22 - M.lw, M.x + M.w * 0.78 + M.lw, M.y + (M.sag || 0) + depth * 1.6 + M.w * 0.28 + M.lw);
+  const pad = 8;
+  for (const k of Object.keys(parts)) {
+    const r = parts[k];
+    if (!(r[2] > r[0])) { delete parts[k]; continue; }
+    r[0] = Math.max(0, r[0] - pad); r[1] = Math.max(0, r[1] - pad);
+    r[2] = Math.min(m.size[0], r[2] + pad); r[3] = Math.min(m.size[1], r[3] + pad);
+  }
+  return parts;
+}
+/** The same boxes, finer: [[group, box], …] with each side's eye, brow and
+ *  cheek on its own (for per-part dirty rects). */
+export function facePartBoxesSrc(m) {
+  const all = facePartsSrc(m), f = m.face, out = [];
+  const clampBox = (r) => [Math.max(0, r[0]), Math.max(0, r[1]), Math.min(m.size[0], r[2]), Math.min(m.size[1], r[3])];
+  for (const side of ['L', 'R']) {
+    const e = f.eyes[side];
+    const rx = e.rx || e.hw, ry = e.ry || e.hw * 0.7, lw = e.lw || 10;
+    const hx = Math.max(rx * 1.45, (e.hw || 0) * 1.15) + lw, hy = ry * 1.5 + lw;
+    out.push(['eyes', clampBox([e.x - hx - 8, e.y - hy - 8, e.x + hx + 8, e.y + hy + 8])]);
+    const b = f.brows?.[side];
+    if (b && all.brows) {
+      const lift = ry * 1.2 + b.lw;
+      out.push(['brows', clampBox([Math.min(b.p0[0], b.p1[0]) - b.lw - 8, Math.min(b.p0[1], b.p1[1], b.c[1]) - lift - 8,
+        Math.max(b.p0[0], b.p1[0]) + b.lw + 8, Math.max(b.p0[1], b.p1[1], b.c[1]) + lift * 0.6 + 8])]);
+    }
+    const c = f.cheeks?.[side];
+    if (c && all.cheeks) out.push(['cheeks', clampBox([c[0] - c[2] * 1.55 - 8, c[1] - c[2] * 1.55 - 8, c[0] + c[2] * 1.55 + 8, c[1] + c[2] * 1.55 + 8])]);
+  }
+  if (all.mouth) out.push(['mouth', all.mouth]);
+  if (all.wet) out.push(['wet', all.wet]);
+  return out;
+}
+
+function box() { return [Infinity, Infinity, -Infinity, -Infinity]; }
+function grow(r, x0, y0, x1, y1) { r[0] = Math.min(r[0], x0); r[1] = Math.min(r[1], y0); r[2] = Math.max(r[2], x1); r[3] = Math.max(r[3], y1); }
+
+/** Source-px box [x0, y0, x1, y1] around every animated face feature. */
+export function faceRectSrc(m) {
+  const r = box();
+  for (const p of Object.values(facePartsSrc(m))) grow(r, ...p);
+  return r;
+}
+
+// which face params each part draws (for per-part dirty rects)
+const PART_KEYS = {
+  eyes: ['eyeOpen', 'closedCurve', 'lidTop', 'lidBot', 'lidSlant', 'wink', 'lookX', 'lookY', 'irisScale', 'eyeScale', 'sparkle', 'heartEyes', 'wet', 'spiralHue'],
+  brows: ['browAlpha', 'browY', 'browTilt', 'browCurve', 'browAsym'],
+  mouth: ['mouthSmile', 'mouthOpen', 'mouthWidth', 'mouthRound', 'mouthWave', 'mouthSkew', 'mouthPout', 'tongue', 'mouthTremble'],
+  cheeks: ['blush', 'blushLines', 'cheekPuff'],
+  wet: ['tears', 'sweat'],
+};
+
+// every expression param the face skin draws (the skin's redraw signature)
+const FACE_SIG_KEYS = [...new Set([...PART_KEYS.eyes, ...PART_KEYS.brows, ...PART_KEYS.mouth, ...PART_KEYS.cheeks, ...PART_KEYS.wet])];
+
+// the face as separately redrawn parts: [{k, side, keys, tol, sig, prev, cur, under}]
+// (`under`: drawn below the approved art's cross-fade)
+function makeFaceParts(m) {
+  const f = m.face, out = [];
+  const mk = (k, side, keys, under) => out.push({ k, side, keys, under, init: false,
+    tol: keys.map((key) => (key === 'blink' ? 1e-3 : 2.5e-4)), sig: new Float64Array(keys.length).fill(NaN),
+    prev: box(), cur: box() });
+  for (const side of ['L', 'R']) {
+    mk('eye', side, ['blink', ...PART_KEYS.eyes], true);
+    if (f.brows?.[side]) mk('brow', side, PART_KEYS.brows, true);
+  }
+  mk('mouth', null, PART_KEYS.mouth, true);
+  if (f.cheeks) for (const side of ['L', 'R']) mk('cheek', side, PART_KEYS.cheeks, false);
+  for (const side of ['L', 'R']) mk('tear', side, ['tears'], false);
+  mk('sweat', null, ['sweat'], false);
+  return out;
+}
+
+// does this part move with time even when its params hold still?
+function partAnimated(pt, P, rig) {
+  if (pt.k === 'eye') return rig.id === 'zuzu' || P.sparkle > 1.02 || P.heartEyes > 0.02 || P.spiralHue > 0.02;
+  if (pt.k === 'mouth') return P.mouthTremble > 0.01 || P.mouthWave * rig.mallow.face.mouth.w * 0.05 > 0.3;
+  if (pt.k === 'sweat') return P.sweat > 0.02;
+  return false;
+}
+
+function hull(r, xs, ys, pad) {
+  for (const x of xs) { if (x - pad < r[0]) r[0] = x - pad; if (x + pad > r[2]) r[2] = x + pad; }
+  for (const y of ys) { if (y - pad < r[1]) r[1] = y - pad; if (y + pad > r[3]) r[3] = y + pad; }
+}
+// exact bounds of Bézier curves (not their control hulls), grown by pad
+function cubicAxis(a0, a1, a2, a3, lohi) {
+  let lo = Math.min(a0, a3), hi = Math.max(a0, a3);
+  const A = -a0 + 3 * a1 - 3 * a2 + a3, B = 2 * (a0 - 2 * a1 + a2), C = a1 - a0;
+  const at = (t) => { const u = 1 - t; return u * u * u * a0 + 3 * u * u * t * a1 + 3 * u * t * t * a2 + t * t * t * a3; };
+  const test = (t) => { if (t > 0 && t < 1) { const v = at(t); if (v < lo) lo = v; if (v > hi) hi = v; } };
+  if (Math.abs(A) < 1e-9) { if (Math.abs(B) > 1e-9) test(-C / B); } else {
+    const d = B * B - 4 * A * C;
+    if (d >= 0) { const q = Math.sqrt(d); test((-B + q) / (2 * A)); test((-B - q) / (2 * A)); }
+  }
+  lohi[0] = lo; lohi[1] = hi;
+  return lohi;
+}
+const _ax = [0, 0], _ay = [0, 0];
+function cubicBox(r, x0, y0, x1, y1, x2, y2, x3, y3, pad, dy = 0) {
+  cubicAxis(x0, x1, x2, x3, _ax); cubicAxis(y0, y1, y2, y3, _ay);
+  grow(r, _ax[0] - pad, _ay[0] + dy - pad, _ax[1] + pad, _ay[1] + dy + pad);
+}
+// a quadratic is the cubic with controls 2/3 of the way to its control point
+function quadBox(r, x0, y0, cx, cy, x1, y1, pad) {
+  cubicBox(r, x0, y0, x0 + (cx - x0) * 2 / 3, y0 + (cy - y0) * 2 / 3, x1 + (cx - x1) * 2 / 3, y1 + (cy - y1) * 2 / 3, x1, y1, pad);
+}
+
+/** Where one face part draws right now (source px) — the same geometry as
+ *  its renderer (curves by their exact extrema, strokes padded by their
+ *  shadow width, time-animated parts by their whole range). Empty (Infinity
+ *  box) when it draws nothing. */
+function partBounds(rig, pt, P, r) {
+  r[0] = r[1] = Infinity; r[2] = r[3] = -Infinity;
+  const f = rig.mallow.face, side = pt.side;
+  if (pt.k === 'eye') {
+    const spec = f.eyes[side], style = f.eyeStyle, lw = spec.lw;
+    const g = eyeGeom(spec, side, P, style, rig.id);
+    const upper = (pad, dy = 0) => cubicBox(r, g.xout, g.yout, g.up[0], g.up[1], g.up[2], g.up[3], g.xin, g.yin, pad, dy);
+    if (g.o > 0.015) {
+      // inside the lid region: the eyeball (sclera, iris, hearts, sparkle) or the spiral
+      let cx0, cy0, cx1, cy1;
+      if (style === 'spiral') {
+        const img = rig.assets?.sprites?.[spec.sprite];
+        const rr = ((img ? img.width / 2 / (rig.mallow.res || 1) : spec.spriteR || spec.rx) * P.eyeScale) + 1;
+        cx0 = g.ex - rr; cx1 = g.ex + rr; cy0 = g.ey - rr; cy1 = g.ey + rr;
+      } else {
+        cx0 = g.ex - g.rx * 1.06; cx1 = g.ex + g.rx * 1.06; cy0 = g.ey - g.ry * 1.06; cy1 = g.ey + g.ry * 1.06;
+        const ir = (spec.irisR || 0) * P.irisScale * P.eyeScale * 1.12;
+        if (ir > 0) {
+          const ix = g.ex + (spec.irisOff?.[0] || 0) * P.eyeScale + clamp(P.lookX, -1, 1) * (g.rx - ir / 1.12) * 0.85;
+          const iy = g.ey + (spec.irisOff?.[1] || 0) * P.eyeScale + clamp(P.lookY, -1, 1) * (g.ry - ir / 1.12) * 0.8;
+          cx0 = Math.min(cx0, ix - ir); cx1 = Math.max(cx1, ix + ir); cy0 = Math.min(cy0, iy - ir); cy1 = Math.max(cy1, iy + ir);
+        }
+      }
+      // …clipped to the lid region
+      const reg = [Infinity, Infinity, -Infinity, -Infinity];
+      cubicBox(reg, g.xout, g.yout, g.up[0], g.up[1], g.up[2], g.up[3], g.xin, g.yin, 1);
+      cubicBox(reg, g.xin, g.yin, g.lo[0], g.lo[1], g.lo[2], g.lo[3], g.xout, g.yout, 1);
+      const bx0 = Math.max(cx0, reg[0]), by0 = Math.max(cy0, reg[1]), bx1 = Math.min(cx1, reg[2]), by1 = Math.min(cy1, reg[3]);
+      if (bx1 > bx0 && by1 > by0) grow(r, bx0, by0, bx1, by1);
+      if (style === 'glitzi') upper(2, -lw * 0.75);   // the neon lid rim
+    }
+    // the lid line (shut, or closing)
+    if (1 - smoothstep(0.02, 0.3, g.o) > 0.01) upper(lw * 0.9 + 1);
+    return r;
+  }
+  if (pt.k === 'brow') {
+    const spec = f.brows?.[side];
+    if (!spec || Math.max(spec.alpha, clamp(P.browAlpha, 0, 1)) < 0.02) return r;
+    const eye = f.eyes[side], unit = (eye.ry || eye.hw * 0.7) * 0.42;
+    const innerIsP1 = side === 'L' ? spec.p1[0] > spec.p0[0] : spec.p1[0] < spec.p0[0];
+    const lift = -P.browY * unit - (side === 'L' ? P.browAsym : -P.browAsym * 0.35) * unit * 0.9;
+    const tiltIn = -P.browTilt * unit * 1.55, tiltOut = P.browTilt * unit * 0.45;
+    const y0 = spec.p0[1] + lift + (innerIsP1 ? tiltOut : tiltIn), y1 = spec.p1[1] + lift + (innerIsP1 ? tiltIn : tiltOut);
+    const mid = (spec.p0[1] + spec.p1[1]) / 2;
+    const bend = 1 + P.browCurve * 0.6 + Math.min(0, P.browTilt) * 0.5;
+    const cy = mid + lift + (spec.c[1] - mid) * bend + (tiltIn + tiltOut) * 0.5;
+    quadBox(r, spec.p0[0], y0, spec.c[0], cy, spec.p1[0], y1, spec.lw * 0.9 + 1);
+    return r;
+  }
+  if (pt.k === 'mouth') {
+    const M = f.mouth;
+    const sm = clamp(P.mouthSmile, -1.2, 1.2), o = clamp(P.mouthOpen, 0, 1.4), rd = clamp(P.mouthRound, 0, 1), pout = clamp(P.mouthPout, 0, 1);
+    const W = M.w * clamp(P.mouthWidth, 0.3, 1.5) * (1 - 0.5 * rd) * (1 - 0.45 * pout);
+    const oc = clamp(o, 0, 1), depth = M.depth || M.w * 0.45;
+    const sagS = (M.sag === 0 ? M.w * 0.18 * (1 - oc) : (M.sag ?? M.w * 0.2)) * sm * (1 - 0.6 * rd);
+    const trem = Math.abs(P.mouthTremble) * 3.2;
+    const skewY = P.mouthSkew * M.w * 0.1, sx = P.mouthSkew * M.w * 0.04;
+    const x0 = M.x - W / 2 + sx, x1 = M.x + W / 2 + sx;
+    const upperOpen = (M.upper ?? -M.w * 0.08) * (0.4 + 0.6 * Math.max(0, sm));
+    let U = lerp(sagS, upperOpen, oc) - rd * o * depth * 0.28;
+    const Lo = sagS + o * depth * (1 + 0.15 * rd) * (sm < -0.2 ? 0.7 : 1);
+    if (sm < 0 && oc > 0.05) U = Math.min(U, Lo - trem - 2);
+    const k = 4 / 3, cy = M.y, wave = P.mouthWave * M.w * 0.05;
+    const lw = M.style === 'open' ? Math.max(M.lw, 8) : M.lw;
+    const yL = cy + skewY, yR = cy - skewY, pad = lw * 1.25 + wave + 2;
+    const ux0 = x0 + W * 0.22, ux1 = x1 - W * 0.22;
+    cubicBox(r, x0, yL, ux0, cy + U * k, ux1, cy + U * k, x1, yR, pad);
+    for (const L of [Lo - trem, Lo + trem]) cubicBox(r, x1, yR, ux1, cy + L * k, ux0, cy + L * k, x0, yL, pad);
+    if (pout > 0.05) grow(r, M.x - W * 0.32 - 1, cy + Math.max(Lo + trem, 0) + M.lw * 0.5, M.x + W * 0.32 + 1, cy + Math.max(Lo + trem, 0) + M.lw * 1.3);
+    if (P.tongue > 0.03) {
+      const t = clamp(P.tongue, 0, 1), tx = M.x + P.mouthSkew * M.w * 0.08, ty = cy + Math.max(Lo + trem, U) + M.lw * 0.3;
+      grow(r, tx - M.w * 0.17 - 2, ty - 2, tx + M.w * 0.17 + 2, ty + M.w * 0.2 * t * 1.25 + 2);
+    }
+    return r;
+  }
+  if (pt.k === 'cheek') {
+    const ch = f.cheeks, [x, y, cr] = ch[side];
+    const extra = P.blush - (ch.base ?? 1);
+    if (extra > 0.02) { const rr = cr * (1.05 + 0.2 * clamp(extra, 0, 1.5) + P.cheekPuff * 0.15) + 1; grow(r, x - rr, y - rr, x + rr, y + rr); }
+    if (P.blushLines > 0.03) grow(r, x - cr * 0.54 - 3, y - cr * 0.22 - 3, x + cr * 0.54 + 3, y + cr * 0.22 + 3);
+    if (P.cheekPuff > 0.05) { const a = cr * 0.75 + 3; grow(r, x - a, y + cr * 0.1 - a, x + a, y + cr * 0.1 + a); }
+    return r;
+  }
+  if (pt.k === 'tear') {
+    if (!(P.tears > 0.02)) return r;
+    const e = f.eyes[side], out = side === 'L' ? -1 : 1;
+    const x = e.x + out * (e.hw || e.rx) * 0.55, y = e.y + (e.ry || e.sag) * 0.9, len = (e.ry || 30) * 2.2 * clamp(P.tears, 0, 1);
+    hull(r, [x, x + out * 6], [y, y + len], 4);
+    return r;
+  }
+  if (pt.k === 'sweat') {
+    if (!(P.sweat > 0.02)) return r;
+    const e = f.eyes.R, sz = 10 + 6 * clamp(P.sweat, 0, 1);
+    const x = e.x + (e.rx || e.hw) * 1.15, y = e.y - (e.ry || e.hw * 0.6) * 1.2;
+    grow(r, x - sz * 0.7 - 1, y - sz - 1, x + sz * 0.7 + 1, y + 18 + sz + 1);   // the whole slide
+    return r;
+  }
+  return r;
+}
+
+function unionRect(a, b) {
+  const x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y);
+  return { x: x0, y: y0, w: Math.max(a.x + a.w, b.x + b.w) - x0, h: Math.max(a.y + a.h, b.y + b.h) - y0 };
+}
+
 function hexA(hex, a) {
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
@@ -837,7 +1587,7 @@ function drawEye(ctx, rig, f, side, P) {
     ctx.clip();
     if (style === 'spiral') {
       const img = A[spec.sprite];
-      const r = (img.width / 2) * P.eyeScale;
+      const r = (img.width / 2 / (rig.mallow.res || 1)) * P.eyeScale;
       ctx.save();
       ctx.translate(g.ex, g.ey);
       ctx.rotate(rig.spinAngle * (side === 'L' ? 1 : -1));
@@ -969,6 +1719,9 @@ function drawBrow(ctx, f, side, P) {
     spec.lw, spec.ink || f.line, spec.hi || f.lineHi, alpha);
 }
 
+// the carved frown's lit ridge: [colour, width, offset] strokes, in lw units
+const CREASE_RELIEF = [['rgba(120,170,255,0.22)', 0.6, -0.8]];
+
 function drawMouth(ctx, f, P, time) {
   const M = f.mouth;
   const s = clamp(P.mouthSmile, -1.2, 1.2);
@@ -1017,13 +1770,18 @@ function drawMouth(ctx, f, P, time) {
     ctx.closePath();
   };
   if (M.style === 'crease' && !open) {
-    // carved frown (Glitzi): shadow groove with a lit ridge above
+    // carved frown (Glitzi): shadow groove with a lit ridge above; a
+    // re-rigged face may carry its art's own relief (M.relief: [colour,
+    // width, offset] strokes in lw units, + = below the groove)
     ctx.save();
     ctx.lineCap = 'round';
-    ctx.strokeStyle = 'rgba(120,170,255,0.22)';
-    ctx.lineWidth = M.lw * 0.6;
-    ctx.translate(0, -M.lw * 0.8);
-    linePath(); ctx.stroke();
+    for (const [col, wk, yk] of M.relief || CREASE_RELIEF) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = M.lw * wk;
+      ctx.translate(0, M.lw * yk);
+      linePath(); ctx.stroke();
+      ctx.translate(0, -M.lw * yk);
+    }
     ctx.restore();
     tube(ctx, linePath, M.lw, '#05061c', null, 1);
   } else if (open) {
@@ -1055,13 +1813,21 @@ function drawMouth(ctx, f, P, time) {
     ctx.strokeStyle = M.style === 'line' || M.style === 'crease' ? f.line : shade(M.inside, -0.3);
     ctx.lineWidth = Math.max(2, M.lw * 0.45);
     region(); ctx.stroke();
-    // lit lower lip (only on a properly open mouth)
-    ctx.strokeStyle = Lo - U > 10 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0)';
-    ctx.lineWidth = Math.max(1.5, M.lw * 0.25);
-    ctx.beginPath();
-    ctx.moveTo(lerp(x0, x1, 0.25), cy + Lo * 0.98 + M.lw * 0.45);
-    ctx.quadraticCurveTo(M.x, cy + Lo * 1.03 + M.lw * 0.45, lerp(x0, x1, 0.75), cy + Lo * 0.98 + M.lw * 0.45);
-    ctx.stroke();
+    // lit lower lip (only on a properly open mouth): a sheen that follows the
+    // lower lip's own curve and fades out toward the corners
+    if (Lo - U > 10) {
+      const lg = ctx.createLinearGradient(x0, 0, x1, 0);
+      lg.addColorStop(0.2, 'rgba(255,255,255,0)');
+      lg.addColorStop(0.5, 'rgba(255,255,255,0.22)');
+      lg.addColorStop(0.8, 'rgba(255,255,255,0)');
+      ctx.strokeStyle = lg;
+      ctx.lineWidth = Math.max(1.5, M.lw * 0.25);
+      ctx.translate(0, M.lw * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(x1, yR);
+      ctx.bezierCurveTo(lower[0], lower[1], lower[2], lower[3], x0, yL);
+      ctx.stroke();
+    }
     ctx.restore();
   } else {
     const lw = M.style === 'open' ? Math.max(M.lw, 8) : M.lw;
@@ -1187,6 +1953,7 @@ function drawTearsAndSweat(ctx, rig, f, P) {
 }
 
 function drawGlitchLines(ctx, rig, P) {
+  const rows = rig.mallow.glitchRows || GLITCH_ROWS;
   const g = clamp(P.glitch, 0, 2);
   const W = rig.mallow.size[0];
   ctx.save();
@@ -1195,12 +1962,12 @@ function drawGlitchLines(ctx, rig, P) {
     // calm / sad Glitzi: its static quiets down
     ctx.globalAlpha = (0.55 - g) * 1.2;
     ctx.fillStyle = '#1b1452';
-    for (const y of GLITCH_ROWS) ctx.fillRect(0, y - 3, W, 6);
+    for (const y of rows) ctx.fillRect(0, y - 3, W, 6);
   } else {
     // energised: lines brighten, drift and stretch, never strobing
     const k = (g - 0.55) / 1.45;
-    for (let i = 0; i < GLITCH_ROWS.length; i++) {
-      const y = GLITCH_ROWS[i];
+    for (let i = 0; i < rows.length; i++) {
+      const y = rows[i];
       const ph = rig.time * (0.6 + i * 0.13) + i * 1.7;
       const a = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
       const x0 = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;

@@ -1,0 +1,118 @@
+/* hushmallow account screens (src/app/scenes/account.js), on top of the
+   shared sign-in surfaces in src/auth/auth.css. The same night-ink glass and
+   moonmilk gold as Settings; the person's home Mallow floats above the card.
+   Text ≥ 13 px (type tokens), inputs ≥ 16 px, 44 px targets, reduced motion
+   respected, keyboard-safe on iPhone (--kb from visualViewport). */
+
+.hm-account { position: relative; }
+.hm-account .topbar { gap: 8px; }
+.hm-account .topbar .icon-btn { flex: 0 0 auto; }
+
+/* the scroller fills the scene; the card is centred and never wider than a phone */
+/* full-bleed (into the scene's gutters): the card's soft shadow fades out
+   before the scroller's edge instead of being cut off in a straight line */
+.hm-account-scroll { margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) calc(24px + var(--kb, 0px));
+  scroll-padding: 96px 0 calc(24px + var(--kb, 0px)); overscroll-behavior: contain; }
+.hm-account-scroll > .hm-auth-card { flex: 0 0 auto; }
+
+/* the home Mallow: alive (the rig) or a still picture, gently floating */
+.hm-account-mallow { width: clamp(116px, 36vw, 168px); margin: clamp(0px, 1.6vh, 14px) auto -26px; flex: 0 0 auto;
+  transition: width 320ms var(--ease-out), margin 320ms var(--ease-out); }
+/* while the keyboard is up there is little room: the Mallow sits smaller */
+.hm-account[data-kb="open"] .hm-account-mallow { width: 76px; margin: 0 auto -14px; }
+
+/* the card's content changes softly between screens */
+.hm-auth-card.hm-swap > * { animation: hmAccountIn 240ms var(--ease-out) both; }
+@keyframes hmAccountIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.hm-account .hm-auth-card { padding-top: 34px; }
+.hm-auth-form { display: grid; gap: 14px; }
+.hm-account p.hm-auth-hint { margin: 0; }
+.hm-account p.hm-auth-hint:empty, .hm-account p.hm-account-consent:empty { display: none; }
+.hm-auth-optional { color: var(--text-3); font-weight: 500; }
+/* an address stays in one piece: it moves to the next line whole, and only an address wider than the card breaks (at its <wbr>s after "@" and dots) */
+.hm-account-strong { display: inline-block; max-width: 100%; overflow-wrap: break-word; }
+.hm-account-strong strong { color: var(--text-1); font-weight: 700; }
+/* the "." or "," after an address sits inside its last piece (emailParts' tail), so it never wraps alone; it reads as the lede's own text */
+.hm-account-strong .hm-account-tail { color: var(--text-2); font-weight: var(--type-body-weight); }
+/* the word to type for Delete account: plainly the thing to type */
+.hm-account-word { color: var(--text-1); font-weight: 800; letter-spacing: .01em; }
+.hm-account .hm-auth-lede { overflow-wrap: break-word; }   /* an email breaks at its <wbr>s first */
+.hm-account [data-since] { text-wrap: balance; }   /* "With hushmallow since" / "13 Oct 2026.", never a lone "2026." */
+
+/* quiet text buttons (forgot password, switch screens) */
+.hm-auth-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 10px; border: 0; background: none;
+  color: var(--accent); font: var(--type-label); letter-spacing: var(--type-label-ls); text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 217, 138, .45); cursor: pointer; border-radius: 12px; }
+.hm-auth-actions .hm-auth-link { justify-self: center; }
+.hm-auth-error .hm-auth-link { padding: 0 4px; color: #ffe7a8; }
+.hm-account-forgot { display: flex; justify-content: flex-end; margin-top: -6px; }
+
+/* buttons this scene adds */
+.hm-auth-btn.small { width: auto; min-height: 44px; padding: 0 16px; flex: 0 0 auto; }
+.hm-auth-btn.danger { background: linear-gradient(180deg, #ff9f9f, #ff7b7b); color: #2b0a0a; border-color: transparent; box-shadow: 0 10px 26px rgba(255, 110, 110, .25); }
+.hm-auth-btn.danger[disabled] { opacity: .45; }
+.hm-auth-btn.danger-quiet { background: transparent; border-color: rgba(255, 138, 138, .45); color: #ffc4c4; }
+
+/* the welcome card's three plain promises */
+.hm-account-benefits { margin: 2px 0 2px; padding: 0; list-style: none; display: grid; gap: 10px; }
+.hm-account-benefits li { position: relative; padding-left: 22px; color: var(--text-2); font: var(--type-label); letter-spacing: var(--type-label-ls); text-wrap: pretty; }
+.hm-account-benefits li::before { content: ""; position: absolute; left: 4px; top: .55em; width: 8px; height: 8px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff4d6, var(--accent) 60%); box-shadow: 0 0 10px var(--accent-glow); }
+.hm-account-benefits b { color: var(--text-1); font-weight: 700; }
+
+.hm-account-list { margin: 0; padding: 0 0 0 20px; display: grid; gap: 6px; color: var(--text-2); font: var(--type-label); letter-spacing: var(--type-label-ls); text-wrap: pretty; }
+.hm-account-list li::marker { color: var(--accent); }
+
+/* the account card's sections */
+.hm-account-section { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+.hm-account-eyebrow { margin: 0; font: var(--type-overline); letter-spacing: var(--type-overline-ls); text-transform: uppercase; color: var(--text-3); }
+.hm-account-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+.hm-account-row .grow { flex: 1; min-width: 0; }
+.hm-account-row .hm-auth-hint { min-height: 0; margin: 2px 0 0; }
+.hm-account-rowtitle { display: block; font: var(--type-row); letter-spacing: var(--type-row-ls); color: var(--text-1); text-wrap: pretty; }
+.hm-account-sync { align-items: flex-start; }
+.hm-account-sync .switch { margin-top: 2px; }
+.hm-account-consent { margin: 4px 0 0; font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--calm); }
+.hm-account-inline { grid-template-columns: 1fr; gap: 8px; }
+.hm-account-inline .hm-auth-actions { margin-top: 0; justify-items: end; }
+.hm-account-facts { display: grid; gap: 8px; padding: 12px 14px; border-radius: 18px; background: rgba(10, 8, 30, .45); border: 1px solid var(--line); }
+.hm-account-facts .hm-account-eyebrow + .hm-account-list { margin-bottom: 4px; }
+.hm-account-row-block { align-items: flex-start; flex-wrap: wrap; }
+
+/* home Mallow picker: seven round portraits */
+.hm-account-mallows { display: flex; flex-wrap: wrap; gap: 8px; }
+.hm-account-pick { width: 48px; height: 48px; padding: 2px; border-radius: 50%; border: 1px solid var(--line-strong); background: rgba(10, 8, 30, .55); cursor: pointer;
+  transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast), border-color var(--t-fast); }
+.hm-account-pick img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.hm-account-pick[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255, 217, 138, .28), 0 6px 18px rgba(255, 190, 90, .22); transform: translateY(-1px); }
+.hm-account-pick:active { transform: scale(.94); }
+
+/* offline: one calm pill in the top bar */
+.hm-account-offline { margin: 0; padding: 6px 12px; border-radius: var(--r-pill); background: rgba(12, 8, 34, .72); border: 1px solid var(--line);
+  color: var(--text-2); font: var(--type-caption); letter-spacing: var(--type-caption-ls); max-width: calc(100% - 56px); text-wrap: pretty; }
+.hm-account-offline[hidden] { display: none; }
+
+/* text size 1.25 on the smallest phones: everything stacks, nothing clips */
+@media (max-width: 360px) {
+  .hm-account .hm-auth-card { padding: 30px 16px 18px; }
+  .hm-account-row { flex-wrap: wrap; }
+  .hm-account-sync { flex-wrap: nowrap; }
+  .hm-account-pick { width: 44px; height: 44px; }
+}
+:root[data-text-scale="large"] .hm-account-row:not(.hm-account-sync) { flex-wrap: wrap; }
+:root[data-text-scale="large"] .hm-account-row:not(.hm-account-sync) .hm-auth-btn.small { width: 100%; }
+
+@media (max-height: 600px) {
+  .hm-account-mallow { width: 96px; margin: 0 auto -16px; }
+}
+/* a wide screen: the card stays phone-sized, with a little more room above */
+@media (min-width: 900px) {
+  .hm-account-scroll { padding-top: 12px; }
+  .hm-account-mallow { width: 176px; }
+  .hm-account .hm-auth-card { width: min(100%, 440px); box-shadow: 0 12px 28px rgba(4, 2, 16, .45), inset 0 1px 0 rgba(255, 255, 255, .08); }   /* fades out inside the scene's column */
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-auth-card.hm-swap > * { animation: none !important; }
+  .hm-account-mallow { transition: none; }
+}

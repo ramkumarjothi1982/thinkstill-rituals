@@ -19,6 +19,7 @@ import {
   LENSES, LENS_IDS, LENS_REASONS, LENS_RULES, LENS_CAMEOS, FUTURE_CUES, MIXER_LEXICON, AGREE_PLURAL,
   HEAT_BANDS, CERTAINTY_BANDS, ZOOM_STOPS, ZOOM_FAMILY, ZOOM_LINES, SEAL_WHEN,
 } from './lenses.js';
+import { checkText } from '../engine/safety.js';
 
 // ---------------------------------------------------------------------------
 // Text helpers
@@ -70,6 +71,13 @@ function hash(str) {
 // Safety
 // ---------------------------------------------------------------------------
 
+// The decision comes from the shared detector (src/engine/safety.js
+// checkText, 13 Oct 2026), so the classic ritual agrees with the free input
+// and Beyond, its second pass included ("he finally hit me", "I want to
+// actually die"). The rules below are this module's original check, kept as
+// a floor for text longer than checkText's 2,000 characters: up to there it
+// finds exactly what checkText's first pass finds, and it still reads past
+// them, so nothing it caught before is lost.
 const compileList = (list) => list.map((src) => new RegExp(src, 'i'));
 const SAFETY = {
   guards: HARM_LEXICON.idiomGuards.map((src) => new RegExp(src, 'gi')),
@@ -77,6 +85,7 @@ const SAFETY = {
   crisisOther: compileList(HARM_LEXICON.crisisOther),
   care: Object.entries(HARM_LEXICON.care).map(([category, list]) => [category, compileList(list)]),
 };
+const SAFETY_RANK = { none: 0, concern: 1, care: 2, crisis: 3 };
 
 function firstHit(regexes, text) {
   for (const re of regexes) {
@@ -86,43 +95,53 @@ function firstHit(regexes, text) {
   return null;
 }
 
-/**
- * Decide whether reframing is appropriate for this text.
- * → { reframeAppropriate, level: 'none'|'care'|'crisis', category, title, message, resources, matched }
- * Crisis: self-harm or suicide, or someone else in danger. Care: abuse,
- * violence, threats, harassment, discrimination, feeling unsafe.
- */
-export function checkSafety(text) {
+/** The original check: { level: 'none'|'care'|'crisis', category, matched }. */
+function localSafety(text) {
   let t = tidyInput(text);
   // Blank out common idioms ("this deadline is killing me", "dying to know").
   for (const re of SAFETY.guards) t = t.replace(re, (m) => ' '.repeat(m.length));
 
   let hit = firstHit(SAFETY.crisis, t);
-  if (hit) {
-    return {
-      reframeAppropriate: false, level: 'crisis', category: 'self-harm',
-      title: HARM_COPY.crisis.title, message: HARM_COPY.crisis.message,
-      resources: HARM_COPY.crisis.resources, stillHere: HARM_COPY.stillHere, matched: hit,
-    };
-  }
+  if (hit) return { level: 'crisis', category: 'self-harm', matched: hit };
   hit = firstHit(SAFETY.crisisOther, t);
-  if (hit) {
-    return {
-      reframeAppropriate: false, level: 'crisis', category: 'someone-in-danger',
-      title: HARM_COPY.crisisOther.title, message: HARM_COPY.crisisOther.message,
-      resources: HARM_COPY.crisisOther.resources, stillHere: HARM_COPY.stillHere, matched: hit,
-    };
-  }
+  if (hit) return { level: 'crisis', category: 'someone-in-danger', matched: hit };
   for (const [category, regexes] of SAFETY.care) {
     hit = firstHit(regexes, t);
-    if (hit) {
-      const copy = HARM_COPY.care[category];
-      return {
-        reframeAppropriate: false, level: 'care', category,
-        title: copy.title, message: copy.message,
-        resources: HARM_COPY.careResources, stillHere: HARM_COPY.stillHere, matched: hit,
-      };
-    }
+    if (hit) return { level: 'care', category, matched: hit };
+  }
+  return { level: 'none', category: null, matched: null };
+}
+
+/**
+ * Decide whether reframing is appropriate for this text.
+ * → { reframeAppropriate, level: 'none'|'care'|'crisis', category, title, message, resources, matched }
+ * Crisis: self-harm or suicide, or someone else in danger. Care: abuse,
+ * violence, threats, harassment, discrimination, feeling unsafe. (The shared
+ * detector's 'concern' level, distress or wanting to hurt someone, reads as
+ * none here: this ritual only ever stopped for crisis and care.)
+ */
+export function checkSafety(text) {
+  let r = checkText(text);
+  // Only text longer than checkText reads can hold more for the original check.
+  if (String(text ?? '').length > 2000) {
+    const local = localSafety(text);
+    if (SAFETY_RANK[local.level] > SAFETY_RANK[r.level]) r = local;
+  }
+  if (r.level === 'crisis') {
+    const c = r.category === 'someone-in-danger' ? HARM_COPY.crisisOther : HARM_COPY.crisis;
+    return {
+      reframeAppropriate: false, level: 'crisis', category: r.category === 'someone-in-danger' ? 'someone-in-danger' : 'self-harm',
+      title: c.title, message: c.message, resources: c.resources, stillHere: HARM_COPY.stillHere, matched: r.matched,
+    };
+  }
+  if (r.level === 'care') {
+    // every care category has its own copy; 'Your safety comes first' if one ever lacks it
+    const copy = HARM_COPY.care[r.category] || HARM_COPY.care.unsafe;
+    return {
+      reframeAppropriate: false, level: 'care', category: r.category,
+      title: copy.title, message: copy.message,
+      resources: HARM_COPY.careResources, stillHere: HARM_COPY.stillHere, matched: r.matched,
+    };
   }
   return {
     reframeAppropriate: true, level: 'none', category: null,

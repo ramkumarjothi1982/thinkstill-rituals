@@ -1,12 +1,15 @@
-// Subscription entitlements: exactly two paid tiers.
+// Subscription entitlements: exactly two paid tiers. The ids stay 'paid' /
+// 'ultra' (StoreKit product ids, stored entitlements and tests depend on
+// them); customers only ever see the names from src/brand.js:
 //
-//   paid  — HUSHMALLOW: the Mallows, the Hushfold, the ritual library.
-//   ultra — HUSHMALLOW ULTRA: everything in paid + Another Angle (Reframe).
+//   paid  — hushmallow Flow: the Mallows, MallowTouch, Hushflow, the
+//           Memory Garden and the ritual library.
+//   ultra — hushmallow Beyond: everything in Flow + Another Angle.
 //
 // Enforcement points (not just hidden buttons):
 //   * the router refuses to start any ritual without `paid` (or `ultra`)
 //   * the recommender never returns rituals outside the person's tier
-//   * Ultra's modules and content are dynamically imported ONLY through
+//   * Beyond's ('ultra') modules and content are dynamically imported ONLY through
 //     loadUltra(), which throws without the `ultra` entitlement
 //
 // Purchases go through a provider. In the iOS app wrapper the native
@@ -17,37 +20,49 @@
 // charges and the UI always says "Test purchase".
 
 import { RITUALS } from '../data/rituals.js';
+import { BRAND } from '../brand.js';
 
-// say only what is switched on today (the library grows to 1,000+ as engines land)
+// say only what is switched on today
 const PAID_COUNT = RITUALS.filter((r) => (r.tier || 'paid') === 'paid').length;
 const LIBRARY_LINE = PAID_COUNT >= 1000
-  ? 'Over 1,000 interactive touch rituals for the whole A–Z of feelings'
-  : `${PAID_COUNT.toLocaleString('en-GB')} interactive touch rituals for the A–Z of feelings, growing towards 1,000`;
+  ? 'Over 1,000 more touch rituals in the library, for the whole A–Z of feelings'
+  : `${PAID_COUNT.toLocaleString('en-GB')} more touch rituals in the library, for the A–Z of feelings`;
 
+// Lines that sell something not switched on in this build stay out until
+// the release that switches it on (flip the flag in that same change).
+//   beliefMallows: Belief Mallows (W2 stage 2) inside Another Angle (W8)
+export const LIVE_FEATURES = Object.freeze({ beliefMallows: false });
+
+// Customer copy. Never the word 'AI' (brand language rule): Another Angle
+// is described by what it does; the consent and privacy screens say how.
+// The plans page leads with the first three lines of each plan (Beyond: its
+// own capabilities, then "Everything in Flow"); the rest sit behind
+// "Everything included".
 export const PLANS = {
   paid: {
-    id: 'paid', name: 'Hushmallow', tagline: 'Your second brain for feelings.',
+    id: 'paid', name: BRAND.flowPlanName, tagline: BRAND.flowTagline,
     productIds: { monthly: 'hushmallow.paid.monthly', yearly: 'hushmallow.paid.yearly' },
     includes: [
-      'All seven living Mallows and their reactions',
-      'The Hushfold: seven realms that respond to how you feel',
+      'The seven living, squeezable Mallows, with MallowTouch',
+      'Continuous Hushflow through worlds that respond to how you feel',
+      'Mallow discoveries, kept as skills in your Memory Garden',
+      'Cinematic conversations, where your thoughts become Thought\u00a0Mallows',
+      'Release, calming and sensory play for big feelings',
+      'Favourites and saved progress, stored on this phone',
+      'Your own words and up to seven of your own photos inside the worlds (they never leave your phone), or the seven Mallows when you add none',
       LIBRARY_LINE,
-      'Your own words and up to six of your own photos inside the ritual (they never leave your phone), or the seven Mallows when you add none',
-      'Suggestions that rotate so things stay fresh',
-      'Favourites and optional private history',
-      'New rituals as the library grows',
     ],
   },
   ultra: {
-    id: 'ultra', name: 'Hushmallow Ultra', tagline: 'See your thoughts in a different light.',
+    id: 'ultra', name: BRAND.beyondPlanName, tagline: BRAND.beyondTagline,
     productIds: { monthly: 'hushmallow.ultra.monthly', yearly: 'hushmallow.ultra.yearly' },
     includes: [
-      'Everything in Hushmallow',
-      'Another Angle: separate what happened from what your brain added',
-      'Evidence orbits, perspective portals and plot twists for real situations',
-      'Authored frameworks for work, friends, family, love, rejection and more',
-      'Fact or fiction, thought X-rays and conversation practice',
-      'Plan your next move and save the angles you found',
+      `Everything in ${BRAND.flowPlanName}`,
+      'Another Angle: fresh perspectives on your own situations, explored with Zuzu',
+      'Fact versus interpretation: what you know, and what your mind added',
+      'Alternative explanations you can test for yourself',
+      ...(LIVE_FEATURES.beliefMallows ? ['Belief Mallow investigation for the stories that keep coming back'] : []),
+      'Perspective-changing worlds made for Another Angle',
     ],
   },
 };
@@ -78,8 +93,10 @@ export function createEntitlements({ store }) {
   const listeners = new Set();
   let state = store.get('entitlement', { tier: 'none', source: null, since: null });
   const testOk = testPurchasesAllowed();
-  // a test plan saved on a dev host means nothing on the public site
-  if (state.source === 'test' && !testOk && !native) state = { tier: 'none', source: null, since: null };
+  // a test plan saved on a dev host means nothing on the public site (testEnded: the plans page says so, once, quietly —
+  // a returning pilot tester whose test plan this host no longer honours; nothing stored is changed)
+  const testEnded = state.source === 'test' && !testOk && !native;
+  if (testEnded) state = { tier: 'none', source: null, since: null };
 
   const set = (tier, source) => {
     state = { tier, source, since: Date.now() };
@@ -91,6 +108,8 @@ export function createEntitlements({ store }) {
     get isNative() { return !!native; },
     /** Can this build sell (or test-grant) a plan right now? */
     get canPurchase() { return !!native || testOk; },
+    /** A test plan was kept on this phone, and this host has no test purchases: it was set aside at start. */
+    get testEnded() { return testEnded && state.tier === 'none'; },
     tier: () => state.tier,
     source: () => state.source,
     has: (need) => RANK[state.tier] >= RANK[need],
@@ -107,8 +126,11 @@ export function createEntitlements({ store }) {
       if (!plan) throw new Error('Unknown plan');
       if (native) {
         const r = await native.purchase(plan.productIds[period]);
-        if (r?.tier) set(r.tier, 'app-store');
-        return { ok: !!r?.tier, test: false };
+        // the shell replies {cancelled:true} when the person backs out of the sheet
+        if (r?.cancelled) return { ok: false, test: false, cancelled: true };
+        if (r?.tier && RANK[r.tier] != null) set(r.tier, 'app-store');
+        // a reply carrying the old tier is not a purchase
+        return { ok: RANK[r?.tier] >= RANK[planId], test: false };
       }
       // development/test provider: grants locally, never charges — dev/preview hosts only
       if (!testOk) return { ok: false, test: false, unavailable: true };
@@ -132,13 +154,14 @@ export function requireEntitlement(ent, need) {
   if (!ent.has(need)) throw new EntitlementError(need);
 }
 
-/** The only way Ultra code/content gets loaded. */
+/** The only way Beyond ('ultra') code/content gets loaded. */
 export async function loadUltra(ent) {
   requireEntitlement(ent, 'ultra');
-  const [angle, frameworks, engine] = await Promise.all([
+  const [angle, frameworks, engine, beyond] = await Promise.all([
     import('../ultra/another-angle.js'),
     import('../ultra/frameworks.js'),
     import('../ultra/reframe-engine.js'),
+    import('../beyond/another-angle.js'),   // the cinematic Another Angle (W8): its server client lives inside it
   ]);
-  return { angle, frameworks, engine };
+  return { angle, frameworks, engine, beyond };
 }

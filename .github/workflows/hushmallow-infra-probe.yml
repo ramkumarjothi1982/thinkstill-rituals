@@ -1,0 +1,86 @@
+# Read-only check of the live hushmallow deployment, run on request (edit
+# hushmallow/tools/infra/PROBE on a work branch). It fetches public pages of
+# the production app and, with the repository's Cloudflare token, reads the
+# Cloudflare Pages project's settings and latest deployments. It also asks the
+# Supabase project (hushmallow1) the app's own public readiness questions with
+# the PUBLISHABLE key only (src/auth/readiness.js: Auth settings, and whether
+# each table of supabase/migrations exists), and reads the production and
+# staging Another Angle Workers' /v1/health. Only GET / HEAD requests; no
+# secret key is ever used or needed for those; it changes nothing.
+name: hushmallow infra probe
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['hushmallow/tools/infra/PROBE']
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Public pages
+        run: |
+          P=https://claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev
+          for u in https://app.hushmallow.com/ https://app.hushmallow.com/version.json https://app.hushmallow.com/auth/callback https://hushmallow.com/ "$P/" "$P/version.json" "$P/auth/callback?token_hash=x&type=email" "$P/auth/callback/" "$P/#account"; do
+            echo "===== $u"
+            curl -sS -m 20 -D - -o body.txt "$u" | grep -iE '^(HTTP|content-type|location|cf-|server|cache-control|x-)' || true
+            head -c 1500 body.txt | sed -e 's/^/    /'; echo
+          done
+      - name: Cloudflare Pages project (read only)
+        env:
+          CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          tok="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '[:space:]')"; acct="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '[:space:]')"
+          echo "::add-mask::$tok"; echo "::add-mask::$acct"
+          api() { curl -sS -m 20 -H "Authorization: Bearer $tok" "https://api.cloudflare.com/client/v4/accounts/$acct/$1"; }
+          echo "===== projects"; api "pages/projects" | jq -c '{success, errors, result: [.result[]? | {name, subdomain, domains, production_branch, source: (.source.type // null), repo: (.source.config.repo_name // null), owner: (.source.config.owner // null), build: .build_config}]}'
+          echo "===== project hushmallow"; api "pages/projects/hushmallow" | jq -c '{success, errors, r: (.result | {name, subdomain, domains, production_branch, created_on, source, build_config, deployment_configs: {production: {env_vars: ((.deployment_configs.production.env_vars // {}) | keys), compatibility_date: .deployment_configs.production.compatibility_date}, preview: {env_vars: ((.deployment_configs.preview.env_vars // {}) | keys)}}})}'
+          echo "===== latest deployments"; api "pages/projects/hushmallow/deployments?per_page=8" | jq -c '{success, errors, r: [.result[]? | {id, environment, url, created_on, source: .deployment_trigger.type, branch: .deployment_trigger.metadata.branch, commit: .deployment_trigger.metadata.commit_hash, msg: .deployment_trigger.metadata.commit_message, stage: .latest_stage.name, status: .latest_stage.status}]}'
+      - name: Supabase project (public, publishable key only, read only)
+        env:
+          # the project's PUBLISHABLE key: public by design (the app ships it); never a secret key here
+          SB_URL: https://igbxbfuaoybfzsroxuln.supabase.co
+          SB_KEY: sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw
+        run: |
+          case "$SB_KEY" in sb_publishable_*) ;; *) echo "refusing: not a publishable key"; exit 1;; esac
+          echo "===== GET /auth/v1/settings"
+          curl -sS -m 20 -H "apikey: $SB_KEY" "$SB_URL/auth/v1/settings" -o settings.json -w 'HTTP %{http_code}\n' || true
+          jq -c '{external_email: .external.email, mailer_autoconfirm, disable_signup, phone: .external.phone, sms_provider, phone_autoconfirm, providers_on: ((.external // {}) | to_entries | map(select(.value == true) | .key))}' settings.json || head -c 600 settings.json
+          ready_email="$(jq -r 'if .external.email == true and .mailer_autoconfirm == false then "yes" else "no" end' settings.json 2>/dev/null || echo no)"
+          echo "email sign-up ready for the app (external.email true, mailer_autoconfirm false): $ready_email"
+          echo "===== tables (supabase/migrations): HEAD and GET ?limit=0 with the publishable key"
+          echo "     present = 200, or 401/403 with code 42501 (anon may not read it: by design); missing = 404 / PGRST205"
+          for t in profiles sync_consents preferences favourite_worlds garden_skills hushflow_progress; do
+            head_code="$(curl -sS -m 20 -I -o /dev/null -w '%{http_code}' -H "apikey: $SB_KEY" "$SB_URL/rest/v1/$t?select=*&limit=0" || echo 000)"
+            get_code="$(curl -sS -m 20 -o body.json -w '%{http_code}' -H "apikey: $SB_KEY" -H 'accept: application/json' "$SB_URL/rest/v1/$t?select=*&limit=0" || echo 000)"
+            code="$(jq -r '.code? // empty' body.json 2>/dev/null || true)"
+            if [ "$head_code" = 404 ] || [ "$code" = PGRST205 ]; then state=missing
+            elif [ "$get_code" = 200 ] || { { [ "$get_code" = 401 ] || [ "$get_code" = 403 ]; } && [ "$code" = 42501 ]; }; then state=present
+            else state=unknown; fi
+            echo "  $t: $state (HEAD $head_code, GET $get_code${code:+ $code})"
+          done
+      - name: Another Angle Workers (read only)
+        run: |
+          for pair in "production https://hushmallow-another-angle.vibyfy-chat.workers.dev https://app.hushmallow.com" \
+                      "staging https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev https://ramkumarjothi1982.github.io"; do
+            set -- $pair
+            echo "===== $1 $2/v1/health (origin $3)"
+            curl -sS -m 20 -H "origin: $3" -o health.json -w 'HTTP %{http_code}\n' "$2/v1/health" || true
+            jq -c '{ok, service, schema_version, prompt_version, provider, entitlement_mode, configured}' health.json 2>/dev/null || head -c 600 health.json
+            echo "client expects: ok true, service another-angle, schema_version scene-v1, configured.signing_key and .provider_key true, provider not mock"
+          done
+      - name: Production app version
+        run: |
+          echo "===== https://app.hushmallow.com/version.json"
+          curl -sS -m 20 -D - -o version.json "https://app.hushmallow.com/version.json" | grep -iE '^(HTTP|cache-control|age|cf-cache-status)' || true
+          cat version.json; echo
+          v="$(jq -r '.v // empty' version.json 2>/dev/null || true)"
+          if [ -n "$v" ]; then
+            echo "===== the published sign-in config of that version (public values only)"
+            curl -sS -m 20 "https://app.hushmallow.com/v/$v/src/auth/public-config.js" | grep -vE '^//' | sed -e 's/sb_publishable_[A-Za-z0-9_-]*/sb_publishable_…/g' || true
+          fi

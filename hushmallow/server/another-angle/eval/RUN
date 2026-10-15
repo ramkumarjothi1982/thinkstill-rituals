@@ -1,0 +1,7 @@
+# Edit this file on a work branch to run the real-model eval in GitHub Actions
+# (.github/workflows/another-angle-eval.yml). Lines starting with -- are passed
+# to tools/angle-eval.mjs.
+# run 1: 2026-10-12T15:45:44Z
+# run 2 (angle-v2): 2026-10-12T16:43:08Z
+run 3 2026-10-12: angle-v4 after the W6t gate rounds (49 cases)
+run 4 2026-10-12: angle-v5 after gate round 4

@@ -7,6 +7,7 @@
 // low-confidence results are flagged so the UI asks instead of assuming.
 
 import { EMOTIONS, getEmotion, normalizeText, editDistance } from '../data/emotions.js';
+import { checkText, legacySafety } from './safety.js';
 
 // ----------------------------------------------------------- lexicons --
 // everyday phrases → [emotion id, confidence]
@@ -67,14 +68,62 @@ const DESIRES = [
   [/\b(move|walk|run|shake it off)\b/, 'move-body'], [/\b(laugh|cheer me up|something fun)\b/, 'laugh'],
 ];
 
-const CRISIS = [
-  /\b(kill|killing|hurt|hurting|harm|harming|cut|cutting) myself\b/, /\bsuicid\w*/, /\bend (it all|my life)\b/,
-  /\b(don'?t|do not) want to (be here|live|exist|wake up)\b/, /\bno reason to (live|go on)\b/, /\bbetter off (dead|without me)\b/,
-  /\bwant to die\b/, /\bself[- ]harm\w*/, /\boverdose\b/,
-];
-const CONCERN = [/\bcan'?t cope\b/, /\bhopeless\b/, /\bworthless\b/, /\bcan'?t go on\b/, /\b(he|she|they) (hit|hits|hurt|hurts) me\b/, /\b(abus\w+|unsafe at home)\b/];
+// Safety lives in one shared detector (./safety.js, lexicon in
+// ../data/safety-lexicon.js) so the free path and Another Angle agree.
 
 const NEGATORS = /\b(not|no|never|isn'?t|wasn'?t|aren'?t|weren'?t|don'?t|doesn'?t|didn'?t|no longer|hardly|barely)\b/;
+/**
+ * A feeling the words give to someone else ("she must be angry with me", "my mum is upset", "they were furious"): read on
+ * the normalised words just before the feeling word. It is their feeling (or a guess at it), never the person's own, so it
+ * is kept only as a low-confidence note (target 'other') and is never suggested or acknowledged as theirs.
+ */
+const OTHER_WHO = '(?:he|she|they|everyone|everybody|people|(?:(?:my|our|his|her|their|your|the)(?: [a-z]+)? )?(?:mum|mom|mam|mother|dad|father|parents?|nan|nana|gran|granny|grandma|grandad|grandpa|grandparents?|brother|sister|siblings?|son|daughter|kids?|child|children|husband|wife|partner|boyfriend|girlfriend|bf|gf|fiance|fiancee|ex|friends?|mates?|bestie|boss|manager|teacher|tutor|coach|colleagues?|coworkers?|team|family|flatmates?|housemates?|roommates?|neighbou?rs?|aunt|auntie|uncle|cousins?|landlord|dog|cat|classmates?))';
+const OTHER_BE = '(?:(?:must|might|may|could|would|will|should|ll|d|is going to|are going to|gonna) (?:be|have been|get|feel)|is|was|are|were|has been|have been|had been|seems?|seemed|looks?|looked|sounds?|sounded|feels?|felt|gets?|got|getting|became|becomes?|is being|was being|is getting|was getting|is feeling|was feeling)';
+const OTHER_ADV = '(?: (?:so|really|very|quite|pretty|super|totally|completely|absolutely|well|a bit|a little|kind of|kinda|sort of|bloody|fucking|still|always|properly|probably|definitely|clearly|obviously|surely|actually|just|getting))*';
+const OTHERS_FEEL = new RegExp(`(?:^|\\s)(?:(?:hes|shes|theyre|theyve been|hes been|shes been)|${OTHER_WHO}${OTHER_ADV} ${OTHER_BE})${OTHER_ADV}$`);
+/**
+ * A feeling the person shares with someone ("me and my brother were furious", "my mum is angry and so am I", "my dog was
+ * scared of the fireworks and so was I"): theirs too, so it is never set aside as someone else's. `before`: the normalised
+ * words before the feeling; `after`: the rest of its sentence.
+ */
+const SHARED_BEFORE = new RegExp(`(?:^|\\s)(?:me|i|myself) (?:and|n) ${OTHER_WHO}${OTHER_ADV} ${OTHER_BE}${OTHER_ADV}$`);
+const SHARED_AFTER = /^(?:[a-z]+ ){0,8}?(?:(?:and|but) )?(?:so (?:am|was|were|did|do|have|had|was) i|as (?:am|was|did|do) i|(?:and )?i (?:am|was|did|do|felt|feel|got|get|have been|had been) (?:too|as well|also)|and me too|me too|and so was i|we both|both of us)\b/;
+/** True when the normalised words before a feeling give it to someone else (and not to the person as well). */
+const othersFeeling = (before, after = '') => {
+  const b = ` ${String(before || '').trim()}`;
+  if (!OTHERS_FEEL.test(b)) return false;
+  return !SHARED_BEFORE.test(b) && !SHARED_AFTER.test(String(after || '').trim());
+};
+/**
+ * A feeling the person states outright as theirs ("I feel so guilty", "I am so angry at the doctors", "I'm relieved she
+ * isn't in pain", "it makes me so angry"): 'now', or 'past' ("I felt", "I was"). Beside a loss these are kept after grief
+ * and sadness (suggestedFeelings): the person named them; a word the reading merely found is not.
+ */
+const STATED_ADV = '(?: (?:so|really|very|quite|pretty|super|totally|completely|absolutely|a bit|a little|kind of|kinda|sort of|bloody|fucking|still|just|actually|honestly|weirdly|strangely|oddly|deeply|incredibly|extremely|utterly|massively|mostly|also|too|almost|even|more|most|genuinely|truly|properly|unbelievably))*';
+const STATED_NOW = new RegExp(`(?:^|\\s)(?:i (?:feel|am|get|keep feeling|have been|ve been|m)|im|ive been|i still feel|feeling|makes me|making me|leaves me|it is making me)${STATED_ADV}$`);
+const STATED_PAST = new RegExp(`(?:^|\\s)(?:i (?:felt|was|had been|got)|made me|left me)${STATED_ADV}$`);
+const statedFeeling = (before) => { const b = ` ${String(before || '').trim()}`; return STATED_NOW.test(b) ? 'now' : STATED_PAST.test(b) ? 'past' : null; };
+/**
+ * Words that are feelings in one sense and doings in another ("I was so moved", "touched by her card" — but "since I moved",
+ * "we moved house", "he touched me"): read as the feeling only when the words around them say so (a feeling frame before:
+ * "so", "deeply", "I feel", "I was"; or "by…", "to tears" after; or "it/that/this … me").
+ */
+const VERB_SENSE = new Set(['moved', 'touched']);
+const SENSE_INTENSE = /(?:^|\s)(?:so|really|very|deeply|truly|genuinely|quite|incredibly|profoundly|utterly|a bit|a little|kind of|kinda|moved and|touched and)$/;
+const SENSE_BE = /(?:^|\s)(?:feel|felt|feeling|am|im|was|were|been|be|is|are|got|get|getting)$/;
+const SENSE_PARTICLE = /^(?:to(?! tears)\b|in\b|into|out|away|on\b|off|house|home|back|over|up|down|around|across|abroad|here|there|schools?|jobs?|city|country|flat|desks?|teams?|rooms?|seats?|base|upon|my|his|her|their|our|your|it\b|the\b|a\b|him|them|someone|something)/;
+function feelingSense(toks, i) {
+  const before = toks.slice(Math.max(0, i - 2), i).join(' ');
+  const after = toks.slice(i + 1, i + 4).join(' ');
+  if (toks.length === 1 || /^(?:by|to tears|my heart)\b/.test(after)) return true;
+  // (moving house is never "so moved": a feeling word's own intensifier says it is the feeling)
+  if (SENSE_INTENSE.test(before)) return true;
+  // "it moved me", "that really touched me", "what she said moved us" (a person doing it — "he touched me" — is not)
+  if (/^(?:me|us)\b/.test(after)) return /(?:^|\s)(?:it|that|this|which|said|wrote|did|words|kindness|card|letter|film|movie|song|story|book|speech|gesture)(?: (?:really|so|deeply|truly|just|honestly))?$/.test(before);
+  return SENSE_BE.test(before) && !SENSE_PARTICLE.test(after);
+}
+/** Someone else's feeling: noted, never as theirs (below every threshold a suggestion or an acknowledgement reads). */
+const OTHERS_CONFIDENCE = 0.3;
 const INTENSIFY = /\b(really|so|very|extremely|super|completely|totally|absolutely|incredibly|beyond|utterly|fucking|f\*+ing|insanely|deeply|massively)\b/g;
 const SOFTEN = /\b(a bit|slightly|kind of|kinda|a little|somewhat|sort of|a tad|mildly)\b/g;
 const UNSURE = /\b(don'?t know why|not sure|i guess|maybe|kind of|weird|idk|dunno|can'?t tell)\b/;
@@ -113,9 +162,12 @@ export function interpret(text) {
   };
   if (!t.trim()) { out.needsClarification = true; out.acknowledgement = 'Tell me a little, or pick a feeling below.'; return out; }
 
-  // safety first
-  for (const re of CRISIS) if (re.test(t)) { out.safety = { level: 'crisis', reason: 'self-harm' }; break; }
-  if (out.safety.level === 'none') for (const re of CONCERN) if (re.test(t)) { out.safety = { level: 'concern', reason: re.source }; break; }
+  // safety first (shared detector; care is reported as 'concern' here, and
+  // the full level is kept in safety.detail for new callers)
+  const check = checkText(raw);
+  out.safety = { ...legacySafety(check), detail: { level: check.level, category: check.category } };
+  // (the words say someone hurt them: the feeling suggestions stay quiet about positive feelings, see suggestedFeelings)
+  out.hurtCue = HURT_CUE.test(pre);
 
   const index = INDEX || buildIndex();
   const found = new Map();
@@ -126,12 +178,17 @@ export function interpret(text) {
   };
 
   // clause-level intensity
-  const clauses = pre.split(/[.;,!?\n]+|\b(?:but|although|though|while|also|yet)\b/i).map((c) => normalizeText(c || '').trim()).filter(Boolean);
+  // (each clause with the rest of its sentence: "my mum is angry, and so am I" shares the feeling)
+  const clauses = [];
+  for (const sentence of pre.split(/[.!?\n]+/)) {
+    const cs = sentence.split(/[;,]+|\b(?:but|although|though|while|also|yet)\b/i).map((c) => normalizeText(c || '').trim()).filter(Boolean);
+    cs.forEach((c, k) => clauses.push({ c, tail: cs.slice(k + 1).join(' ') }));
+  }
   const shout = (raw.match(/\b[A-Z]{3,}\b/g) || []).length;
   const bangs = (raw.match(/!/g) || []).length;
   let globalIntensity = 0.55 + Math.min(0.2, bangs * 0.06) + Math.min(0.15, shout * 0.08);
 
-  for (const clause of clauses) {
+  for (const { c: clause, tail } of clauses) {
     const intens = Math.min(1, 0.55 + (clause.match(INTENSIFY) || []).length * 0.15 - (clause.match(SOFTEN) || []).length * 0.18 +
       (/\b(fuming|furious|devastated|terrified|livid|panicking|heartbroken)\b/.test(clause) ? 0.15 : 0));
     const toks = tokens(clause);
@@ -149,6 +206,8 @@ export function interpret(text) {
           }
         }
         if (!hit) continue;
+        // a word that is also a doing ("since I moved", "he touched me") is the feeling only when the words say so
+        if (n === 1 && VERB_SENSE.has(hit[0]) && !feelingSense(toks, i)) continue;
         // negation within the 3 preceding words
         const before = toks.slice(Math.max(0, i - 3), i).join(' ');
         if (NEGATORS.test(before)) {
@@ -157,13 +216,22 @@ export function interpret(text) {
           continue;
         }
         for (let k = 0; k < n; k++) used.add(i + k);
+        // someone else's feeling ("she must be angry with me"): theirs, never the person's
+        const rest = `${toks.slice(i + n).join(' ')} ${tail}`;
+        if (othersFeeling(toks.slice(Math.max(0, i - 7), i).join(' '), rest)) { note(hit[0], Math.min(hit[1], OTHERS_CONFIDENCE), gram, { intensity: intens, target: 'other' }); continue; }
         // meta-emotion: "ashamed of being jealous" → shame about self
         const after = toks.slice(i + n, i + n + 3).join(' ');
         const target = /^(of|about|for) (being|feeling|myself)/.test(after) || /^(at|with) myself/.test(after) ? 'self' : null;
-        note(hit[0], hit[1], gram, { intensity: intens, target });
+        const stated = statedFeeling(toks.slice(Math.max(0, i - 6), i).join(' '));
+        note(hit[0], hit[1], gram, { intensity: intens, target, ...(stated ? { stated } : {}) });
       }
     }
-    for (const [re, id, conf] of PHRASES) if (re.test(clause)) note(id, conf, clause.match(re)[0], { intensity: intens });
+    for (const [re, id, conf] of PHRASES) {
+      const m = clause.match(re);
+      if (!m) continue;
+      if (othersFeeling(clause.slice(0, m.index), `${clause.slice(m.index + m[0].length)} ${tail}`)) note(id, Math.min(conf, OTHERS_CONFIDENCE), m[0], { intensity: intens, target: 'other' });
+      else { const stated = statedFeeling(clause.slice(0, m.index)); note(id, conf, m[0], { intensity: intens, ...(stated ? { stated } : {}) }); }
+    }
     for (const [re, id, conf] of IMPLIED) if (re.test(clause)) note(id, conf, clause.match(re)[0], { intensity: intens * 0.9 });
   }
 
@@ -195,6 +263,46 @@ export function interpret(text) {
   out.acknowledgement = acknowledge(out);
   return out;
 }
+
+/**
+ * The feelings that fit a death or a loss: the only word-read feelings suggested beside one. LOSS_OFFER is what is
+ * suggested beside one whatever the words read ("covid took my grandad" reads no feeling word): grief, then sadness.
+ */
+export const LOSS_FIT = Object.freeze(new Set(['grief', 'sadness', 'sorrow', 'mourning', 'heartache', 'heartbreak', 'bereft', 'anguish', 'tearful',
+  'heavy-hearted', 'longing', 'emptiness', 'numbness', 'shock', 'disbelief', 'anticipatory-grief', 'loneliness', 'despair']));
+export const LOSS_OFFER = Object.freeze(['grief', 'sadness']);
+/**
+ * The feelings worth highlighting as suggestions for an interpret() reading: ids of the confident matches
+ * (≥ min), most confident first, at most `max`. Never a feeling the words give to someone else ("she must be angry
+ * with me"). Words with a safety cue in them (crisis, care or distress) never get a positive feeling suggested —
+ * "relieved" beside "he hit me", "happy" beside "done with life" — and when the reading has one, nothing is
+ * suggested at all (the person names it, if they want to). `level`: the caller's own safety reading (the main screen's
+ * Tell reads loss talk as concern), counted with the reading's.
+ *
+ * `loss` (the caller read a death or a loss in the words: grief.js deathTalk / livingLoss, backstop.js strongLoss, or a
+ * safety reading of category 'loss'): grief and sadness, then any other word-read feeling that fits a loss (LOSS_FIT),
+ * and any feeling the person states outright as theirs ("I feel so guilty", "I am so angry at the doctors": statedBesideLoss),
+ * never any other word-read feeling beside it ("rested" and "obligated" in "there was no heartbeat. I should have rested
+ * more", the self-blame echoed back after a pregnancy loss).
+ */
+export function suggestedFeelings(reading, { min = 0.6, max = 3, loss = false, level = null } = {}) {
+  const list = (reading?.emotions || []).filter((e) => e.confidence >= min && e.target !== 'other');
+  if (loss) return [...new Set([...LOSS_OFFER, ...list.filter((e) => LOSS_FIT.has(e.id) || statedBesideLoss(e)).map((e) => e.id)])].slice(0, Math.max(LOSS_OFFER.length, max));
+  const read = reading?.safety?.detail?.level || reading?.safety?.level || 'none';
+  // (words about being hurt by someone count as a cue here even when the safety detector reads none —
+  // "glad he finally hit me so I could leave": no "joy" is highlighted for them)
+  const cue = read !== 'none' || (level && level !== 'none') || reading?.hurtCue;
+  if (cue && list.some((e) => (getEmotion(e.id)?.valence ?? 0) > 0)) return [];
+  return list.slice(0, max).map((e) => e.id);
+}
+/**
+ * A feeling the person states outright beside a loss ("I feel so guilty", "I am so angry at the doctors", "I'm relieved she
+ * isn't in pain") stays after grief and sadness: they named it. A pleasant one only as it is now ("I was so excited to be a
+ * mum" is what was lost, not what they feel).
+ */
+const statedBesideLoss = (e) => e.stated === 'now' || (e.stated === 'past' && (getEmotion(e.id)?.valence ?? 0) <= 0);
+// being hurt by someone (for the suggestion guard only; safety routing is the detector's)
+const HURT_CUE = /\b(?:hit|hits|hitting|beat|beats|beating|beaten|slapped|slaps|punched|punches|kicked|kicks|choked|chokes|strangled|shoved|pushed|hurt|hurts|hurting|abused|abuses|abusing|raped|assaulted|attacked|threatened|threatens)\s+(?:me|us|my\s+(?:kid|kids|child|children|son|daughter|mum|mom|dad|sister|brother))\b/i;
 
 function acknowledge(r) {
   const names = r.emotions.filter((e) => e.confidence >= 0.5).slice(0, 2).map((e) => (getEmotion(e.id).phrase || getEmotion(e.id).name).toLowerCase());

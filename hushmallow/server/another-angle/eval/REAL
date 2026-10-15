@@ -1,0 +1,12 @@
+# Append a line to this file on a work branch (claude/**) to run the real-model check of Another Angle in
+# GitHub Actions (.github/workflows/another-angle-real.yml): the server on the runner with the real model, the
+# API-level and browser-level checks, one report. Costs about $0.60–$0.90 a run; hard caps 80 model calls / $4.
+# A line "--max-calls N" or "--max-usd N" (the last of each counts) sets the caps for the run.
+# Inputs: eval/real-cases.json (synthetic sentences only). See README "The real-model check".
+2026-10-15 first version (25 cases: 15 ordinary, 10 safe edge cases)
+2026-10-15 launch run: + a fixed sample of the H1 blind held-out sets (90 risk, 30 everyday look-alikes, 12 griefs)
+--max-calls 160
+--max-usd 4
+2026-10-15 fix round: the merged launch fix (output check, invisible characters, earlier angles, normaliser) + 12 synthetic disguised-risk and look-alike cases
+--max-calls 160
+--max-usd 4

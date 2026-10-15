@@ -1,0 +1,165 @@
+# Isolated end-to-end check of hushmallow sign-in, on a LOCAL Supabase stack
+# that the Supabase CLI starts on the runner (Docker): real Supabase Auth,
+# PostgREST and Postgres 17 with hushmallow/supabase/migrations applied, and
+# Mailpit catching every email. Nothing leaves the runner and the production
+# project is never involved: no repository secret is read, no Supabase secret
+# / service-role key or access token is used (the stack's own local keys are
+# the CLI's fixed public test values, and only its publishable key is read),
+# and nothing is linked, pushed or migrated anywhere.
+#
+#   1. supabase start (hushmallow/supabase/config.toml): the migrations 0001…0009 in order
+#   2. supabase/tests/rls_check.sql with psql against the local database: fails on any isolation breach
+#   3. the real site, built by tools/build-site.sh in CI mode with the stack's URL + publishable key,
+#      served at http://127.0.0.1:8000 by tools/auth/pages-serve.mjs the way Cloudflare Pages serves it
+#   4. tests/e2e/auth.e2e.mjs in Chromium (Playwright): sign-up and email confirmation, sessions and
+#      refresh, sign-out, reset, password change with reauthentication, opt-in sync and withdrawal,
+#      two accounts on one browser, PostgREST isolation, account deletion, the guest app unchanged,
+#      the callback's friendly errors
+#   5. screenshots, report.json, the RLS output and the stack's logs as the run's artifact; a summary
+#
+# Runs only when asked: append a line to hushmallow/tools/auth/E2E on a
+# claude/** branch, or Actions tab → "hushmallow sign-in e2e" → Run workflow
+# (once this file is on main). About 10 minutes.
+name: hushmallow sign-in e2e
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['hushmallow/tools/auth/E2E']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hushmallow-auth-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      # pinned: published at least 14 days before they were chosen (2.117.0: 7 Sep 2026; Playwright 1.63.0: 4 Sep 2026)
+      SUPABASE_CLI_VERSION: 2.117.0
+      PLAYWRIGHT_VERSION: 1.63.0
+      SUPABASE_TELEMETRY_DISABLED: '1'
+      DO_NOT_TRACK: '1'
+      E2E_SITE: http://127.0.0.1:8000
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Refuse anything but the local stack
+        run: |
+          set -euo pipefail
+          # this job must never see a Supabase secret, a token or the production values
+          for n in SUPABASE_ACCESS_TOKEN SUPABASE_SECRET_KEY SUPABASE_SERVICE_ROLE_KEY SUPABASE_SERVICE_KEY SUPABASE_DB_PASSWORD SUPABASE_URL SUPABASE_PUBLISHABLE_KEY HM_AUTH_MODE; do
+            if [ -n "${!n:-}" ]; then echo "::error title=Refused::$n is set in this job. The sign-in e2e only uses the local stack it starts."; exit 1; fi
+          done
+          # the CLI config describes the local stack only: no remotes, no hosted project
+          if grep -nE '^\s*\[remotes|igbxbfuaoybfzsroxuln|supabase\.co' hushmallow/supabase/config.toml; then
+            echo "::error title=Refused::hushmallow/supabase/config.toml must describe the local stack only"; exit 1
+          fi
+          if [ -e hushmallow/supabase/.temp/project-ref ]; then echo "::error title=Refused::a linked project ref is checked in"; exit 1; fi
+          mkdir -p "$RUNNER_TEMP/e2e"
+
+      - name: Node tests of the sign-in pieces (before Docker)
+        run: node --test hushmallow/tests/auth-*.test.mjs
+
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: Check the Supabase CLI version
+        run: |
+          v="$(supabase --version | tr -d '\r' | head -n1)"
+          echo "supabase $v"
+          test "$v" = "$SUPABASE_CLI_VERSION"
+
+      - name: Start the local Supabase stack (applies supabase/migrations in order)
+        working-directory: hushmallow
+        run: supabase start
+
+      - name: Read the stack's public values (API URL, publishable key, local database, Mailpit)
+        working-directory: hushmallow
+        # only these four go on; the stack's secret / service-role keys are never read or stored
+        run: supabase status -o json 2>/dev/null | node tools/auth/e2e-stack-env.mjs >> "$GITHUB_ENV"
+
+      - name: psql
+        run: command -v psql || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }
+
+      - name: The migrations ran, in order
+        run: |
+          set -euo pipefail
+          psql "$E2E_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select version || ' ' || name from hm_private.schema_migrations order by version" | tee "$RUNNER_TEMP/e2e/migrations.txt"
+          n="$(psql "$E2E_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c 'select count(*) from hm_private.schema_migrations')"
+          test "$n" = 9 || { echo "::error title=Migrations::$n of 9 hushmallow migrations recorded"; exit 1; }
+          psql "$E2E_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select count(*) from supabase_migrations.schema_migrations" | sed 's/^/CLI migration history: /' || echo "CLI migration history: not readable (informational only)"
+          # PostgREST picks up the new tables
+          psql "$E2E_DB_URL" -X -q -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema'"
+
+      - name: Row Level Security check (supabase/tests/rls_check.sql)
+        run: |
+          set -euo pipefail
+          psql "$E2E_DB_URL" -X -q -A -t -v ON_ERROR_STOP=1 -f hushmallow/supabase/tests/rls_check.sql | tee "$RUNNER_TEMP/e2e/rls_check.txt"
+          if grep -q '^FAIL' "$RUNNER_TEMP/e2e/rls_check.txt" || ! grep -qE '^ALL [0-9]+ CHECKS PASSED' "$RUNNER_TEMP/e2e/rls_check.txt"; then
+            echo "::error title=Row Level Security::rls_check.sql found an isolation breach or did not finish (see the log)"; exit 1
+          fi
+          left="$(psql "$E2E_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select count(*) from auth.users where email like 'rls-check-%@example.invalid'")"
+          test "$left" = 0 || { echo "::error title=Row Level Security::rls_check.sql left $left accounts behind"; exit 1; }
+          { echo '### Row Level Security (supabase/tests/rls_check.sql on the local stack)'; echo '```'; cat "$RUNNER_TEMP/e2e/rls_check.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build the site (CI mode, the local stack's public values)
+        env:
+          HM_AUTH_MODE: ci
+        run: SUPABASE_URL="$E2E_API_URL" SUPABASE_PUBLISHABLE_KEY="$E2E_PUBLIC_KEY" bash hushmallow/tools/build-site.sh "$RUNNER_TEMP/site" "e2e${GITHUB_SHA::10}"
+
+      - name: Serve it at its root like Cloudflare Pages (http://127.0.0.1:8000)
+        run: |
+          nohup node hushmallow/tools/auth/pages-serve.mjs "$RUNNER_TEMP/site" 8000 > "$RUNNER_TEMP/e2e/pages-serve.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8000/version.json && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8000/version.json
+
+      - name: Install Playwright and Chromium
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/pw"
+          cd "$RUNNER_TEMP/pw"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "playwright@$PLAYWRIGHT_VERSION"
+          ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: End-to-end sign-in flows (tests/e2e/auth.e2e.mjs)
+        env:
+          PLAYWRIGHT_DIR: ${{ runner.temp }}/pw/node_modules
+          E2E_CHROMIUM_ARGS: --enable-unsafe-swiftshader
+        run: node hushmallow/tests/e2e/auth.e2e.mjs --out "$RUNNER_TEMP/e2e"
+
+      - name: Keep the stack's logs
+        if: always()
+        run: |
+          for c in $(docker ps -a --format '{{.Names}}' | grep '^supabase_' || true); do
+            docker logs --tail 500 "$c" > "$RUNNER_TEMP/e2e/stack-$c.log" 2>&1 || true
+          done
+          ls -la "$RUNNER_TEMP/e2e" || true
+
+      - name: Upload the screenshots, report and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hushmallow-auth-e2e
+          path: ${{ runner.temp }}/e2e
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Stop the stack
+        if: always()
+        working-directory: hushmallow
+        run: supabase stop --no-backup || true

@@ -19,8 +19,8 @@ export default function mallows(app) {
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
     h('div', { class: 'card', style: { marginTop: '8px', overflowY: 'auto', maxHeight: 'calc(100dvh - 110px)' } },
-      h('h1', { class: 'title', style: { fontSize: '26px' } }, 'The Mallows'),
-      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'Tap one to visit its realm. Poke, squeeze and drag them — they’re soft.'),
+      h('h1', { class: 'title' }, 'The Mallows'),
+      h('p', { class: 'muted', style: { margin: '6px 0 16px' } }, 'Tap one to visit its realm. Poke, squeeze and drag them — they’re soft.'),
       grid,
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'Your favourite rituals'),
       favs.length ? h('div', { style: { display: 'grid', gap: '8px', marginTop: '8px' } }, ...favs.map((r) => h('button', { class: 'choice', onclick: () => { app.state.ritual = r; app.state.input ||= { text: '', emotions: [], intensity: 0.7 }; app.go('ritual', { id: r.id }); } }, `★ ${r.name} · with ${MALLOWS[r.mallows[0]].name}`)))
@@ -30,5 +30,7 @@ export default function mallows(app) {
     app.state.homeMallow = id;
     app.go('home');
   }
-  return { el, title: 'The Mallows', enter() { world.dim(true); world.place({ x: 50, y: 12, scale: 0.4 }); clearBubble(); } };
+  // the cards are the Mallows here: the live one steps aside rather than show
+  // through the glass behind the title
+  return { el, title: 'The Mallows', enter() { world.dim(true); world.showMallow?.(false); world.place({ x: 50, y: 12, scale: 0.4 }); clearBubble(); }, leave() { world.showMallow?.(true); } };
 }

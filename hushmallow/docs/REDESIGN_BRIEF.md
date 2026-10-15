@@ -746,3 +746,389 @@ Identify all customer-facing instances of incorrect capitalisation and correct t
 Verify the logo, app screens, subscription presentation and communications visually.
 Final non-negotiable rule: The first letter of hushmallow must always be lowercase in all customer-facing branding and communications, including the logo.
 Implement the changes without breaking existing functionality.
+
+---
+
+# Brief 2 (from the owner, 12 Oct 2026): hushmallow Beyond — Another Angle with a secure backend, and the brand language rule
+
+This supersedes the earlier "no AI at runtime" rule for **Another Angle in hushmallow Beyond only**; everything else stays deterministic. Kept verbatim:
+
+CLAUDE MASTER PROMPT — hushmallow Beyond
+Build the world's most compelling AI-powered Reframe experience
+Claude, redesign and upgrade Another Angle, the Reframe experience exclusive to hushmallow Beyond, using a secure AI backend.
+The objective is to provide users with exceptionally relevant, intelligent, practical and thought-provoking alternative perspectives on their own real-life situations.
+This must NOT behave like an ordinary AI chatbot, therapy questionnaire or motivational quote generator.
+It must feel like a premium, cinematic, interactive experience inside the Hushfold, featuring the seven living Mallows.
+The goal: The user enters a thought that bothers them and discovers a more helpful way to understand or respond to the situation, often within 30–90 seconds.
+Do not promise guaranteed emotional relief.
+1. WHAT THE AI BRAIN MUST DO
+The user may enter:
+
+* "My boss embarrassed me in front of everyone."
+* "My partner hasn't replied for hours."
+* "I failed my exam. I'm useless."
+* "Nobody likes me."
+* "My colleague got promoted instead of me."
+* "I made a mistake at work. Everyone will judge me."
+* "My friend invited everyone except me."
+
+The AI must identify what is actually bothering the user and provide a relevant, useful new angle.
+It should consider:
+
+1. What the user actually knows.
+2. What they might be assuming.
+3. What alternative explanations remain possible.
+4. What is within their control.
+5. Whether a practical next action would help.
+6. Whether a more compassionate perspective is appropriate.
+
+Use evidence-informed principles from CBT, ACT, DBT, cognitive flexibility, self-compassion and practical problem-solving.
+Never invent facts about other people or pretend to know their intentions.
+Never invalidate the user's experience or insist that a genuinely harmful event was harmless.
+2. EXTREMELY SHORT AI RESPONSES
+This is non-negotiable.
+Each visible AI response must contain a maximum of two short sentences, ideally 15–35 words total.
+No essays.
+No paragraphs.
+No five-point lists.
+No generic motivational speeches.
+No therapy jargon.
+No repetitive empathy introductions.
+No "As an AI..."
+No automatic "I understand how you feel."
+Responses should be:
+
+* Highly situation-specific.
+* Emotionally appropriate.
+* Intelligent.
+* Practical.
+* Conversational.
+* Unexpected when helpful.
+* Easy to understand.
+* Memorable.
+* Grounded in the user's actual issue.
+
+A strong response should produce a moment of recognition:
+"Oh. I hadn't thought of that."
+Or:
+"That's actually something I can do."
+Keep the tone warm, sharp and lightly playful when suitable, never dismissive.
+3. EXAMPLES OF THE REQUIRED QUALITY
+Example A — Work embarrassment
+USER:
+"My boss embarrassed me in front of everyone."
+WEAK RESPONSE:
+"Remember that you are worthy and valuable. Practise self-love."
+UNACCEPTABLE.
+BETTER RESPONSE:
+"Your boss's behaviour may have been unfair. What matters now is deciding whether to address it privately or document what happened."
+The second response acknowledges the situation and gives the user an actionable choice.
+Example B — Relationship anxiety
+USER:
+"He hasn't replied to my message for five hours."
+WEAK RESPONSE:
+"Don't worry. He probably loves you."
+UNACCEPTABLE.
+BETTER RESPONSE:
+"Five hours without a reply is a fact. What it means is still an unanswered question."
+Example C — Self-criticism
+USER:
+"I failed my exam. I'm useless."
+WEAK RESPONSE:
+"Believe in yourself. You are amazing."
+UNACCEPTABLE.
+BETTER RESPONSE:
+"One exam measured your performance on one day. It didn't measure everything you're capable of learning."
+Example D — Jealousy
+USER:
+"My colleague got promoted instead of me."
+BETTER RESPONSE:
+"That disappointment makes sense. Could you ask what specific experience or results would strengthen your next promotion opportunity?"
+Example E — Overthinking
+USER:
+"I keep replaying something embarrassing I said."
+BETTER RESPONSE:
+"Your brain keeps replaying the moment, but replaying isn't repairing. Is there anything useful left to do, or can this remain an awkward memory?"
+These examples establish the quality standard, not fixed answers to repeat.
+AI must dynamically respond to each user's actual situation.
+4. MAKE THE USER DISCOVER THE REFRAME THROUGH GAMEPLAY
+Do not immediately display the entire response in a message box.
+Create a cinematic interactive sequence.
+Example:
+USER:
+"My boss embarrassed me."
+The user's own words materialise as a small, distressed Thought Mallow.
+Zuzu enters the scene.
+The Thought Mallow is holding a glowing interpretation.
+Zuzu slowly separates the visible event from the assumptions surrounding it.
+The user interacts using swipes, squeezes, stretching, peeling, rotating or moving thought objects.
+An AI-generated short perspective is then revealed as a cinematic subtitle.
+The user should experience the distinction, not simply read it.
+Different AI reasoning patterns must drive meaningfully different interactive mechanics.
+Examples:
+Fact versus assumption: Pull apart two connected Thought Mallows.
+Catastrophising: Slowly resize an exaggerated future projection.
+Personalisation: Move the imagined responsibility back to its appropriate place.
+All-or-nothing thinking: Reveal a spectrum between extremes.
+Mind reading: Open several possible interpretations without claiming one is true.
+Overgeneralisation: Separate one event from a larger collection of experiences.
+Rumination: Let a looping thought continue moving without repeatedly engaging it.
+Practical problem: Assemble one small actionable next step.
+Self-criticism: Soften an overly harsh interpretation without erasing accountability.
+Valid anger: Identify what boundary or response may be needed rather than pressuring the user to forgive.
+Do not implement every experience as the same floating-card interface.
+5. SHORT CINEMATIC SUBTITLE DELIVERY
+No chatbot bubbles.
+No ordinary question-and-answer form.
+AI responses must appear as beautifully paced movie-style subtitles while users continue interacting with Mallows.
+Example:
+Zuzu reveals:
+"Five hours without a reply is a fact."
+Pause naturally.
+"What it means is still an unanswered question."
+Allow the user time to read and absorb the words.
+Requirements:
+
+* One brief sentence at a time.
+* Large, readable, premium typography.
+* Soft fade-in animation.
+* Carefully designed pauses.
+* The user can squeeze or touch the Mallow while reading.
+* Important lines remain until acknowledged.
+* Replay, pause, skip and subtitle-speed controls.
+* No text covering Mallow faces or essential touch targets.
+* No long AI monologues.
+
+A user should feel they're discovering something through an interactive film.
+6. USE THE AI TO CHOOSE A RELEVANT EXPERIENCE
+The AI should return structured reasoning information, not merely dialogue.
+Return a validated JSON object containing fields equivalent to:
+
+* emotion
+* situation_type
+* reasoning_pattern
+* known_fact
+* possible_assumption
+* alternative_angle
+* practical_next_step
+* interaction_type
+* mallow_character
+* subtitle_line_1
+* subtitle_line_2
+* safety_status
+
+The renderer must use a controlled list of authored interaction types and approved Mallow characters.
+Do not let the model generate arbitrary executable code, URLs or unsafe gameplay instructions.
+The AI should never invent the content of the user's original experience.
+The user's raw text remains separate and unchanged.
+The game engine uses the structured result to choose and personalise the appropriate scene.
+7. MAKE THE MALLOWS CENTRAL
+Zuzu is the signature guide for Another Angle.
+However, all seven Mallows may participate depending on the situation.
+
+* Zuzu — unexpected perspectives and cognitive flexibility.
+* Glitzi — anger, boundaries and frustration.
+* Noomi — detachment, rest and rumination.
+* Loomi — calm and emotional steadiness.
+* Blubi — sadness and emotional tenderness.
+* Boppo — self-compassion and constructive action.
+* Pipzi — curiosity, possibility and playful discoveries.
+
+Mallows should have expressive faces, soft-body physics, memorable reactions and occasional tasteful humour.
+Avoid generic static avatars.
+The AI writes concise content; the app controls character movement, animation and visual storytelling.
+8. GIVE THE USER A CHANCE TO TEST THE NEW ANGLE
+A reframe should not simply be presented as the correct answer.
+The user should be able to explore it.
+Examples:
+"Could there be another explanation?"
+"What do you actually know?"
+"What would you tell a friend?"
+"Is there one useful action?"
+Allow the user to select an interpretation, reject a suggestion or ask for another angle.
+If the first reframe doesn't fit, generate a genuinely different perspective without contradicting known facts.
+Never force the user to agree.
+Include optional feedback:
+
+* That helped.
+* Show me another angle.
+* Not relevant.
+* I'd rather just squeeze a Mallow.
+
+Use feedback to improve future suggestions only with appropriate privacy protections and consent.
+9. THE AI MUST FEEL INTELLIGENT, NOT GENERIC
+Create a quality-control layer.
+Reject and regenerate responses that are:
+
+* Generic affirmations.
+* Unrelated to the user's input.
+* Too long.
+* Repetitive.
+* Factually speculative.
+* Overly therapeutic.
+* Condescending.
+* Unrealistically positive.
+* Blaming the user.
+* Overly complicated.
+* Impractical.
+* Inappropriately humorous.
+* Based on unsupported assumptions.
+
+Ensure multiple requests for another angle produce genuinely different useful perspectives.
+But do not manufacture novelty at the expense of accuracy or emotional safety.
+Specificity, credibility and practical usefulness take priority over cleverness.
+10. SECURE AI BACKEND
+Use a proper server-side AI architecture.
+Never expose API keys in Framer's frontend code.
+Preferred architecture:
+Framer iPhone UI → Secure backend endpoint → AI provider → Response validation → Structured scene data → Hushmallow cinematic renderer.
+Cloudflare Workers is an acceptable option if it fits the existing deployment.
+Requirements:
+
+* Server-side secrets.
+* Authentication and Beyond entitlement verification.
+* Secure HTTPS.
+* Strict input validation and output schema validation.
+* Rate limiting and abuse protection.
+* Token and usage cost controls.
+* Model timeouts and error handling.
+* Safe fallback responses.
+* Monitoring without unnecessary sensitive content logging.
+* Protection against prompt injection.
+* Versioned system prompts.
+* Model-independent provider abstraction where practical.
+* Explicit disclosure that this feature uses AI.
+
+Use an appropriate fast, capable model that reliably follows short, structured-output instructions.
+Optimise for accuracy, response relevance, latency and cost.
+Do not hard-code a provider without considering the existing project configuration.
+Target fast responses, but never sacrifice response safety or accuracy merely to save time.
+While waiting, the user must be able to keep squeezing the Mallow. Do not display a blocking spinner.
+11. PRIVACY AND EMOTIONAL SAFETY
+Users may enter sensitive personal information involving relationships, workplace conflict, shame, grief or distress.
+Do not automatically transmit uploaded personal photographs to the AI backend.
+Ask for explicit permission before any image analysis.
+Process only the minimum information needed.
+Provide clear data-retention and deletion controls.
+Do not use personal emotional disclosures for model training without explicit, informed consent and an appropriate provider arrangement.
+The AI must not diagnose conditions, replace professional care, encourage dependency or provide false psychological certainty.
+Handle severe distress, self-harm risk, abuse and crisis disclosures using an appropriate, separately designed safety response.
+Do not present ordinary reframes as sufficient support for emergencies.
+12. NEW SUBSCRIPTION POSITIONING
+Preserve exactly two paid subscription plans:
+hushmallow Flow
+Core squeezable Mallows, emotional release, Hushflow, Memory Garden and personal emotional experiences.
+hushmallow Beyond
+Everything in Flow, plus the AI-powered Another Angle Reframe experience.
+Make the additional value immediately understandable.
+Beyond users get more useful ways to examine their thoughts and situations, not simply longer AI conversations.
+The rest of the Hushmallow experience can remain deterministic and AI-free.
+Clearly distinguish which feature uses AI.
+13. PREMIUM INTERACTION AND RETENTION
+Make the experience delightful, memorable and worth voluntarily returning to.
+Use:
+
+* Exceptionally satisfying Mallow squish physics.
+* Short cinematic revelations.
+* Responsive visual transformations.
+* Surprising but relevant perspective changes.
+* Character-specific reactions.
+* Gentle haptics and beautiful sound.
+* Optional Memory Garden discoveries.
+* Meaningful real-world takeaways.
+
+Avoid artificial pressure, endless engagement traps, guilt-based streaks or rewards designed to prolong distress.
+The user should feel comfortable finishing after one useful insight.
+Success means people find the experience enjoyable and helpful enough to return when they choose.
+14. IMPLEMENTATION PRIORITY
+Build and test one complete working vertical slice before expanding.
+The first experience should demonstrate:
+
+1. User opens Another Angle.
+2. Zuzu appears as a living, squeezable Mallow.
+3. User enters a real concern using a cinematic overlay.
+4. The concern becomes an expressive Thought Mallow.
+5. The secure backend analyses the relevant situation.
+6. A short, practical alternative perspective is generated.
+7. Gameplay makes that distinction visible and interactive.
+8. The perspective appears in two short cinematic subtitle lines.
+9. The user can explore, reject or request another angle.
+10. The user can save a useful discovery in the Memory Garden.
+11. The user can continue Hushflow or finish immediately.
+
+Test with at least 30 varied realistic inputs spanning relationships, work, anxiety, jealousy, shame, self-criticism, disappointment, rumination and uncertainty.
+Evaluate relevance, accuracy, concision, actionability, respectful tone, emotional safety and gameplay enjoyment.
+Fix weak responses before expanding.
+Also verify performance on iPhone-sized screens and keep the Framer component lightweight.
+FINAL NON-NEGOTIABLE STANDARD
+The user should feel that Zuzu has revealed a useful possibility they had not considered—not that an AI has delivered a generic motivational message.
+Maximum two short sentences per reveal.
+Deep reasoning behind the scenes.
+Simple, meaningful words on the screen.
+Spectacular, tactile, original gameplay.
+Practical relevance to the user's real issue.
+Build the actual AI-backed experience, not a mock chatbot or scripted demonstration.
+The desired feeling is:
+"That actually makes sense. Let me try looking at it that way."# CLAUDE — PERMANENT hushmallow BRAND LANGUAGE RULE
+
+Although hushmallow Beyond uses an intelligent backend to generate personalised reframes, **never use the term "AI" in the everyday user experience, marketing language or cinematic storytelling.**
+
+## Mandatory changes
+
+Remove technology-focused labels such as:
+
+- AI-powered Reframe
+- Ask AI
+- AI Brain
+- AI Assistant
+- AI Analysis
+- AI-generated Response
+- AI Insights
+- Powered by AI
+
+Instead, use Hushmallow's own original language:
+
+| Instead of | Use |
+|---|---|
+| AI-powered Reframe | Another Angle |
+| AI is analysing your thought | Zuzu is exploring another angle |
+| AI-generated insight | A new perspective |
+| Ask AI again | Show me another angle |
+| AI response | Zuzu's perspective |
+| AI has found a solution | Here's something worth considering |
+| Save AI insight | Keep this discovery |
+| AI recommendations | Suggested experiences |
+
+## Cinematic experience
+
+Never display technical processing messages.
+
+While the backend prepares a response, Zuzu must remain animated and squeezable.
+
+Use subtle cinematic subtitles such as:
+
+"There's another side to this..."
+
+"Let's look a little closer."
+
+"What else could be true?"
+
+Then reveal one or two short, situation-specific sentences.
+
+Do not imply Zuzu is a real human or that it knows things about the user that were never provided.
+
+## Important transparency exception
+
+Keep accurate disclosures about automated processing, external service providers, sensitive information and data handling in the appropriate privacy, consent and legal screens.
+
+Do not hide material information from users or make misleading claims about how their personal information is processed.
+
+## Permanent rule
+
+**The technology operates behind the scenes. The Hushmallow universe remains the experience.**
+
+Users interact with Mallows, thoughts, feelings, discoveries and perspectives—not technical systems.
+
+Apply this consistently across the app's visible interface, subscription descriptions, tutorials, subtitles, buttons and marketing materials.
+
+Preserve the secure backend, short personalised responses and the existing features.

@@ -1,0 +1,219 @@
+// Self-criticism: soften a harsh interpretation without erasing accountability.
+//
+// The thought is locked in a cold, spiky crystal shell carrying the harsh
+// verdict in the person's own words. Slow strokes over the shell round off
+// the spikes the finger passes close to (by distance to each spike's tip, so a
+// stroke across works as well as one round the edge, and every gentle stroke
+// calms the whole shell a little) and warm its colour; fast scratching does
+// nothing much (gentle is the point). When it has softened, the shell is
+// a soft, warm membrane and the verdict's plate has lost its hard edge, but a
+// small glowing seed stays inside: "Something to learn". The lesson is kept;
+// the cruelty goes. A tap (or the assist pill) smooths it a little each time.
+
+import { drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, tintFor, TAU, Timers, RectList, thoughtFor } from './kit.js';
+import { MECHANIC_LINES } from '../lines.js';
+import { framingAllowed } from '../backstop.js';
+
+export const id = 'soften_harshness';
+const SPIKES = 14;
+const STEEL = '#8a90bd', ICE = '#d7dcff';
+
+export function mount(ctx) {
+  // the gate (backstop.js, review r8): its own lines read the words as a harsh verdict, so only with an interpretive marker of their
+  // own; a feeling's or a stated event's kind lines (ctx.scene.feeling) may always play
+  if (!ctx.scene?.feeling && !framingAllowed(ctx.text)) throw new Error(`${id}: never for these words`);
+  // (a scene's own lines when it has them: a feeling's never speak of verdicts or "every time")
+  const L = ctx.lines || MECHANIC_LINES[id];
+  const g = ctx.g;
+  const rm = () => ctx.reducedMotion();
+  let resolve;
+  const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
+  const motes = new Motes(40);
+  let [light, deep] = tintFor(ctx.emotion === 'anger' ? 'shame' : ctx.emotion || 'shame');
+  const A0 = ctx.area();
+  const R = clamp(Math.min(A0.w, A0.h) * 0.16, 34, 58);
+  const thought = thoughtFor(ctx, { x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R * 0.62, light, deep });
+  // its light follows the living Thought Mallow's own tint (one colour for the jelly, its trail, glow and projection)
+  if (thought.w2?.style?.tint) ({ light, deep } = thought.w2.style.tint);
+  const BL = new RectList(), AL = new RectList(), CE = { x: 0, y: 0 };
+  const spike = new Float32Array(SPIKES).fill(1);     // 1 = sharp, 0 = smoothed
+  const soft = new Float32Array(SPIKES);              // eased display value
+  let softness = 0, phase = 'hard', held = null, warned = false, moves = 0, doneT = 0, strokes = 0, edgeSaid = false;
+  const shells = new Map();   // the shell's light, cached per warmth step
+  const t0 = performance.now();
+  const tags = {
+    harsh: ctx.tags.add(ctx.parts.harsh, { kind: 'verdict', max: 220 }),
+    core: ctx.tags.add(L.labels.core, { kind: 'label', colour: '#ffd98a' }),
+  };
+
+  /** The shell's light, in 24 warmth steps (made once each, in the shell's own frame). */
+  function shellGradient(warm) {
+    const step_ = Math.round(warm * 24);
+    let gr = shells.get(step_);
+    if (!gr) {
+      const wq = step_ / 24, sq = 1 - wq;
+      gr = g.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R * 1.3);
+      gr.addColorStop(0, rgba('#ffffff', 0.55 + 0.2 * wq)); gr.addColorStop(0.5, rgba(mix(STEEL, light, wq), 0.5 + 0.15 * sq)); gr.addColorStop(1, rgba(mix('#3e4170', deep, wq), 0.75));
+      shells.set(step_, gr);
+    }
+    return gr;
+  }
+  function centre() { const A = ctx.area(); CE.x = A.x + A.w / 2; CE.y = A.y + A.h * 0.48; return CE; }
+  const total = () => { let s = 0; for (let i = 0; i < SPIKES; i++) s += 1 - spike[i]; return s / SPIKES; };
+
+  /** Smooth the spikes near angle a by amount k (a tap, or the assist pill). */
+  function smoothAt(a, k) {
+    for (let i = 0; i < SPIKES; i++) {
+      const ai = (i / SPIKES) * TAU;
+      let d = Math.abs(((a - ai + Math.PI * 3) % TAU) - Math.PI);
+      const w = Math.exp(-(d * d) / 0.28);
+      spike[i] = Math.max(0, spike[i] - k * w);
+    }
+    changed();
+  }
+  /** A stroke passing (x, y): the spikes whose tips are near it soften most; the whole shell a little. */
+  function smoothNear(x, y, k) {
+    const c = centre();
+    const sig2 = 2 * (R * 0.62) ** 2;
+    for (let i = 0; i < SPIKES; i++) {
+      const a = (i / SPIKES) * TAU - Math.PI / 2;
+      const tip = R * (1 + 0.42 * spike[i]);
+      const dx = x - (c.x + Math.cos(a) * tip), dy = y - (c.y + Math.sin(a) * tip);
+      const w = Math.exp(-(dx * dx + dy * dy) / sig2);
+      spike[i] = Math.max(0, spike[i] - k * (1.1 * w + 0.06));
+    }
+    changed();
+  }
+  function changed() {
+    softness = total();
+    ctx.progress(softness * 0.95);
+    if (softness >= 0.85 && phase === 'hard') finish();
+  }
+  function finish() {
+    phase = 'soft'; doneT = 0;
+    for (let i = 0; i < SPIKES; i++) spike[i] = 0;
+    softness = 1;
+    ctx.haptic('success'); ctx.fx('bloom', { intensity: 0.5 });
+    const c = centre();
+    motes.burst(c.x, c.y, light, 10, { speed: 46, size: 2.6 });
+    ctx.progress(1);
+    TM.after(() => resolve({ moves, ms: performance.now() - t0 }), rm() ? 200 : 1100);
+  }
+  function step() {
+    if (phase !== 'hard') return;
+    moves++;
+    // the sharpest side first
+    let best = 0;
+    for (let i = 1; i < SPIKES; i++) if (spike[i] > spike[best]) best = i;
+    smoothAt((best / SPIKES) * TAU, 0.75);
+    ctx.haptic('light'); ctx.fx('swish', { intensity: 0.3 });
+  }
+
+  function frame(dt, t) {
+    TM.step(dt);
+    const R_ = rm();
+    const c = centre();
+    thought.hx = c.x; thought.hy = c.y;
+    thought.step(dt, R_);
+    for (let i = 0; i < SPIKES; i++) soft[i] = R_ ? spike[i] : approach(soft[i], spike[i], 6, dt);
+    let shown = 0; for (let i = 0; i < SPIKES; i++) shown += soft[i]; shown /= SPIKES;   // 1 hard → 0 soft
+    const warm = 1 - shown;
+    // the shell: a star polygon whose spikes shorten as they're smoothed, steel warming into the thought's tint
+    const rim = mix(ICE, '#fff3fa', warm);
+    drawGlow(g, c.x, c.y, R * 2, mix('#5b5f9a', deep, warm), 0.38);
+    g.save();
+    g.translate(c.x, c.y);
+    const breathe = R_ ? 1 : 1 + 0.015 * Math.sin(t * 1.4) * warm;
+    g.beginPath();
+    for (let i = 0; i <= SPIKES * 2; i++) {
+      const k = i % (SPIKES * 2);
+      const a = (k / (SPIKES * 2)) * TAU - Math.PI / 2;
+      const sp = k % 2 === 0 ? soft[(k / 2) | 0] : 0;
+      const rr = R * breathe * (k % 2 === 0 ? 1 + 0.42 * sp : 1 - 0.1 * shown);
+      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+      if (i === 0) g.moveTo(x, y);
+      else if (warm > 0.65) {
+        // soft enough: round curves instead of sharp joins
+        const am = ((k - 0.5) / (SPIKES * 2)) * TAU - Math.PI / 2;
+        g.quadraticCurveTo(Math.cos(am) * R * 1.02, Math.sin(am) * R * 1.02, x, y);
+      } else g.lineTo(x, y);
+    }
+    g.closePath();
+    g.fillStyle = shellGradient(warm); g.fill();
+    g.lineJoin = warm > 0.65 ? 'round' : 'miter';
+    g.strokeStyle = rgba(rim, 0.75); g.lineWidth = 1.6 + shown * 0.8; g.stroke();
+    // hard facets glint (only while hard)
+    if (shown > 0.2) {
+      g.globalAlpha = shown * 0.45; g.strokeStyle = '#ffffff'; g.lineWidth = 1;
+      for (let i = 0; i < SPIKES; i += 3) { const a = (i / SPIKES) * TAU - Math.PI / 2; g.beginPath(); g.moveTo(Math.cos(a) * R * 0.5, Math.sin(a) * R * 0.5); g.lineTo(Math.cos(a) * R * (1 + 0.38 * soft[i]), Math.sin(a) * R * (1 + 0.38 * soft[i])); g.stroke(); }
+      g.globalAlpha = 1;
+    }
+    g.restore();
+    // the thought inside, and its seed of accountability (kept, glowing)
+    thought.draw(g, { tension: lerp(0.15, 0.85, shown), sad: shown * 0.5, calm: warm * 0.7, blink: blinkAt(t, 0.4), press: held ? 0.6 : 0, lookY: 0.3 * shown }, { glow: 0.2 });
+    const sx = c.x + R * 0.36, sy = c.y + R * 0.4;
+    drawGlow(g, sx, sy, R * (0.36 + warm * 0.12), '#ffd98a', 0.65 + 0.2 * Math.sin(t * 2) * (R_ ? 0 : 1));
+    drawJelly(g, { x: sx, y: sy, r: R * 0.1, light: '#fff4c8', deep: '#ffb84a', glow: 0, alpha: 1 });
+    motes.draw(g, dt);
+    if (phase === 'soft') doneT += dt;
+    // the verdict plate softens with the shell; the seed's label arrives once it is soft
+    tags.harsh.el.style.setProperty('--bx-soft', warm.toFixed(2));
+    tags.harsh.at(c.x, c.y - R * (1.42 + 0.3 * shown) - 6, 'top', 1);
+    tags.core.at(c.x, c.y + R * 1.18 + 10, 'bottom', phase === 'soft' ? clamp(doneT * 2) : warm > 0.4 ? (warm - 0.4) : 0);
+    return true;
+  }
+
+  function pointer(e) {
+    const c = centre();
+    const on = (x, y) => Math.hypot(x - c.x, y - c.y) < R * 1.55;
+    if (e.type === 'down') {
+      if (!on(e.x, e.y)) return false;
+      held = { id: e.id, x: e.x, y: e.y, t: e.t, x0: e.x, y0: e.y, t0: e.t, path: 0 };
+      // the thought inside feels the stroke through its shell
+      thought.poke(e); ctx.haptic('light');
+      return true;
+    }
+    thought.pointer(e);
+    if (!held || held.id !== e.id) return false;
+    if (e.type === 'move') {
+      const dx = e.x - held.x, dy = e.y - held.y, d = Math.hypot(dx, dy);
+      // speed, smoothed: events that arrive batched (a slow frame) must not read as a scratch
+      const dts = Math.max(16, e.t - held.t) / 1000;
+      held.sp = held.sp == null ? d / dts : held.sp * 0.7 + (d / dts) * 0.3;
+      const sp = held.sp;
+      held.x = e.x; held.y = e.y; held.t = e.t; held.path += d;
+      if (phase === 'hard' && d > 0.5) {
+        // gentle strokes work; scratching barely does
+        const gentle = sp < 25 ? 0.5 : sp <= 800 ? 1 : 0.15;
+        if (gentle < 0.2 && !warned && held.path > 120) { warned = true; ctx.hint(L.hint2); }
+        smoothNear(e.x, e.y, (d / (R * 2.2)) * gentle);
+        held.tick = (held.tick || 0) + d * gentle;
+        if (held.tick > 90) { held.tick = 0; ctx.haptic('light'); }
+      }
+      return true;
+    }
+    if (e.type === 'up' || e.type === 'cancel') {
+      const h0 = held; held = null; moves++;
+      if (h0.path < 12 && e.t - h0.t0 < 380 && phase === 'hard') { smoothAt(Math.atan2(e.y - c.y, e.x - c.x) + Math.PI / 2, 0.6); ctx.haptic('light'); }
+      // a few real strokes and the sharpest side still untouched: say where (once)
+      else if (phase === 'hard' && h0.path > 60) {
+        strokes++;
+        if (strokes >= 4 && !edgeSaid && softness < 0.7) { edgeSaid = true; ctx.hint(L.hint3); }
+      }
+      return true;
+    }
+    return false;
+  }
+
+  return {
+    id, frame, pointer, done,
+    hitTest: (x, y) => { const c = centre(); return Math.hypot(x - c.x, y - c.y) < R * 1.55; },
+    assist: step,
+    bodies: () => { const c = centre(); return BL.begin().circle(c.x, c.y, R * 1.32, 2).end(); },
+    avoid: () => { const c = centre(); AL.begin().circle(c.x, c.y, R * 1.5); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
+    get settled() { return phase === 'soft'; },
+    probe: () => { const c = centre(); return { c: { x: c.x, y: c.y }, R, softness, phase }; },
+    destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
+  };
+}

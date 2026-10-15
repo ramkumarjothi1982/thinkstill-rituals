@@ -223,7 +223,7 @@ export async function run(ctx) {
   const setFace = (mix, i = 0.7) => world.setEmotion(mix, i, { quiet: true });
   const tiny = H < 640;   // short phones: shorter prompts, smaller Loomi
   // a soft dark backing so dock text reads over any realm
-  const PILL = { justifySelf: 'center', textAlign: 'center', margin: '0', background: 'rgba(6,22,52,.66)', color: 'var(--text-1)', borderRadius: '12px', padding: '4px 12px', fontSize: '14px', maxWidth: '100%' };
+  const PILL = { justifySelf: 'center', textAlign: 'center', margin: '0', background: 'rgba(6,22,52,.66)', color: 'var(--text-1)', borderRadius: '12px', padding: '4px 12px', fontSize: 'var(--type-label-size)', maxWidth: '100%' };
 
   // ================================================= 1. SLOW THE WAVE ==
   setMove(0, { eyebrow: 'Move 1 of 4', title: 'Slow the wave', prompt: tiny ? 'Right as you breathe in. Back, slower, as you breathe out.' : 'Trace the glow right as you breathe in. Back left, slower, as you breathe out.' });
@@ -235,7 +235,7 @@ export async function run(ctx) {
 
   const IN = 4, OUT = 6, GOAL = 6;   // 6 smooth passes = 3 slow breaths
   const pips = Array.from({ length: GOAL }, () => h('i', { style: { width: '10px', height: '10px', borderRadius: '50%', background: 'rgba(255,255,255,.22)', transition: 'background 400ms, box-shadow 400ms' } }));
-  const cue = h('p', { 'aria-live': 'polite', style: { ...PILL, fontSize: '15px', fontWeight: '650', minHeight: '22px' } }, 'Put your finger on the glow →');
+  const cue = h('p', { 'aria-live': 'polite', style: { ...PILL, fontSize: 'var(--type-control-size)', fontWeight: '650', minHeight: '22px' } }, 'Put your finger on the glow →');
   const guideBtn = h('button', { class: 'btn block', 'aria-label': 'Run a guided wave for me: three slow breaths, about 4 seconds in and 6 out' }, 'Run a guided wave for me');
   dock.replaceChildren(h('div', { role: 'img', 'aria-label': 'Smooth waves so far', style: { display: 'flex', gap: '8px', justifyContent: 'center' } }, pips), cue, guideBtn);
   layout();
@@ -401,11 +401,11 @@ export async function run(ctx) {
   const chipWrap = h('div', { style: small
     ? { display: 'flex', gap: '8px', overflowX: 'auto', padding: '2px 2px 6px', scrollbarWidth: 'none' }
     : { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' } });
-  const ownInput = h('input', { class: 'text', type: 'text', maxlength: '40', placeholder: 'Or in your own words…', 'aria-label': 'A worry in your own words', style: { flex: '1', minWidth: '0', fontSize: '16px' } });
+  const ownInput = h('input', { class: 'text', type: 'text', maxlength: '40', placeholder: 'Or in your own words…', 'aria-label': 'A worry in your own words', style: { flex: '1', minWidth: '0', fontSize: 'var(--type-row-size)' } });
   const ownBtn = h('button', { class: 'btn', style: { flex: '0 0 auto', padding: '0 16px', minHeight: '48px' } }, 'Launch');
   const fleetBtn = h('button', { class: 'btn primary block', disabled: true }, 'That’s the fleet');
   const chipEls = WORRIES.map(([id, label]) => {
-    const c = h('button', { class: 'chip', 'aria-pressed': 'false', style: { minHeight: '44px', fontSize: '14px' }, 'aria-label': `${label}. Launch as a boat.` }, label);
+    const c = h('button', { class: 'chip', 'aria-pressed': 'false', style: { minHeight: '44px', fontSize: 'var(--type-label-size)' }, 'aria-label': `${label}. Launch as a boat.` }, label);
     c.onclick = () => {
       if (c.dataset.used) return;
       c.dataset.used = '1';
@@ -443,7 +443,7 @@ export async function run(ctx) {
         color: 'var(--text-1)', minWidth: '64px', minHeight: '44px', borderRadius: '14px',
         transition: rm ? 'opacity 300ms' : 'left 900ms cubic-bezier(.2,.8,.2,1), top 900ms cubic-bezier(.2,.8,.2,1), opacity 400ms' } },
       h('span', { html: BOAT_SVG(small ? 54 : 64) }),
-      h('span', { class: 'db-label', style: { font: '650 13px/1.15 var(--font-ui)', background: 'rgba(6,22,52,.78)', borderRadius: '10px', padding: '3px 8px',
+      h('span', { class: 'db-label', style: { font: '650 var(--type-caption-size)/1.15 var(--ff-ui)', background: 'rgba(6,22,52,.78)', borderRadius: '10px', padding: '3px 8px',
         maxWidth: '29vw', whiteSpace: 'normal', textAlign: 'center', boxShadow: '0 2px 10px rgba(0,0,0,.25)' } }, label));
     field.append(el);
     const b = { id, label, own, el, x: 0, y: 0, ph: Math.random() * 6, docked: false, dragging: false };
@@ -550,7 +550,7 @@ export async function run(ctx) {
     const count = h('span', { class: 'sr-only' }, '');
     const el = h('button', { 'aria-label': `${label} jetty. No boats yet.`,
       style: { position: 'relative', minHeight: small ? '92px' : '108px', borderRadius: '16px', border: '1px solid rgba(255,255,255,.22)', borderTop: `3px solid ${col}`,
-        background: 'linear-gradient(180deg, rgba(14,34,74,.9), rgba(8,22,54,.94))', color: 'var(--text-1)', font: '700 13px/1.2 var(--font-ui)', padding: '10px 6px 16px',
+        background: 'linear-gradient(180deg, rgba(14,34,74,.9), rgba(8,22,54,.94))', color: 'var(--text-1)', font: '700 var(--type-caption-size)/1.2 var(--ff-ui)', padding: '10px 6px 16px',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: '6px', cursor: 'pointer',
         boxShadow: 'inset 0 -9px 0 rgba(170,128,86,.55), inset 0 -11px 0 rgba(90,60,40,.5)', transition: 'transform 200ms, box-shadow 200ms' } },
       h('span', { style: { textWrap: 'balance', textAlign: 'center' } }, label), moor, count);
@@ -619,7 +619,7 @@ export async function run(ctx) {
   const showOptions = (opts, kind) => {
     choice = null; useBtn.disabled = true;
     grid.replaceChildren(...opts.map(([id, label, note]) => {
-      const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: small ? '56px' : '64px', fontSize: small ? '14px' : '15px' } }, label);
+      const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: small ? '56px' : '64px', fontSize: small ? 'var(--type-label-size)' : 'var(--type-control-size)' } }, label);
       b.onclick = () => {
         grid.querySelectorAll('.choice').forEach((x) => x.setAttribute('aria-pressed', 'false'));
         b.setAttribute('aria-pressed', 'true');
@@ -671,7 +671,7 @@ export async function run(ctx) {
 
   // ---- drop the anchor: pull it down through the water
   setMove(3, { eyebrow: 'Move 4 of 4', title: 'Drop the anchor', prompt: 'Pull it down to the seabed.' });
-  const tag = h('span', { style: { font: '650 13px/1.2 var(--font-ui)', background: 'rgba(6,22,52,.82)', borderRadius: '10px', padding: '4px 10px', width: 'max-content', maxWidth: '44vw', textAlign: 'center', whiteSpace: 'normal' } }, choice.label);
+  const tag = h('span', { style: { font: '650 var(--type-caption-size)/1.2 var(--ff-ui)', background: 'rgba(6,22,52,.82)', borderRadius: '10px', padding: '4px 10px', width: 'max-content', maxWidth: '44vw', textAlign: 'center', whiteSpace: 'normal' } }, choice.label);
   const anchorBtn = h('button', { 'aria-label': `Anchor: ${choice.label}. Drag down, or press to drop it.`,
     style: { position: 'absolute', left: '70%', top: '0px', transform: 'translate(-50%, 0)', pointerEvents: 'auto', touchAction: 'none', background: 'none', border: '0', padding: '4px',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', color: 'var(--text-1)', cursor: 'grab', minWidth: '64px', minHeight: '64px' } },
@@ -721,7 +721,7 @@ export async function run(ctx) {
   if (choice.id === 'see5') {
     setMove(3, { eyebrow: 'Move 4 of 4', title: 'Five things', prompt: 'Look around. Tap a dot for each thing you can see.' });
     const dots = Array.from({ length: 5 }, (_, i) => h('button', { 'aria-label': `Thing ${i + 1} spotted`, 'aria-pressed': 'false',
-      style: { width: '48px', height: '48px', borderRadius: '50%', border: '2px solid rgba(168,240,255,.6)', background: 'rgba(10,30,70,.7)', color: 'var(--text-1)', font: '800 16px var(--font-ui)', cursor: 'pointer' } }, String(i + 1)));
+      style: { width: '48px', height: '48px', borderRadius: '50%', border: '2px solid rgba(168,240,255,.6)', background: 'rgba(10,30,70,.7)', color: 'var(--text-1)', font: '800 var(--type-row-size)/1.25 var(--ff-ui)', cursor: 'pointer' } }, String(i + 1)));
     const skip = h('button', { class: 'btn ghost block' }, 'Done looking');
     dock.replaceChildren(h('div', { style: { display: 'flex', gap: '10px', justifyContent: 'center' } }, dots), skip);
     say('Boring things count. Boring things are excellent.', 2400);

@@ -1,0 +1,135 @@
+# hushmallow · Supabase database
+
+Project **hushmallow1** · ref `igbxbfuaoybfzsroxuln` · Sydney (ap-southeast-2) ·
+`https://igbxbfuaoybfzsroxuln.supabase.co`. The old Singapore project is not
+used for anything.
+
+Nothing here is run automatically against the project. **You paste each file
+into the SQL editor** (Dashboard → SQL Editor → New query), in the order
+below, as the default `postgres` role. No secret key, service-role key or
+access token is needed or used anywhere: the app holds only the publishable
+key, and Row Level Security is what protects the data.
+
+## What is stored
+
+Only what the app needs, and nothing personal beyond an optional name:
+
+| Table | What | When |
+|---|---|---|
+| `profiles` | optional display name (≤ 40 characters), home Mallow id, created / last seen, schema version | one row per account, made by a trigger at sign-up |
+| `sync_consents` | the two opt-in switches with server timestamps for giving and withdrawing | when the person first touches a switch (no row = both off) |
+| `preferences` | sound, volume, haptics, motion, low stimulation, the history and saved-angles switches, intro seen, auto-flow, subtitle speed, text size, home Mallow | only while **Sync my settings** is on |
+| `favourite_worlds` | world ids and their order | only while **Keep my favourites and progress with my account** is on |
+| `garden_skills` | Memory Garden tool ids, when kept / last practised, how often, which world and Mallow (ids) | same switch |
+| `hushflow_progress` | where a Hushflow paused: world id, step numbers, the world sequence (ids), Mallow id, seed | same switch |
+
+Never stored: anything the person types (words, thoughts, feelings),
+photos, the feeling or intention picked for a world, the world's own state,
+Another Angle text. Every id column has a check that refuses free text, and
+the synced tables refuse every write while the matching switch is off.
+Turning a switch off deletes what it synced. Account deletion removes
+everything.
+
+Security on every table: RLS **enabled and forced**; four policies (select,
+insert, update, delete) that match `auth.uid()` to `user_id`, with `WITH
+CHECK` on insert and update (and the consent check on the synced tables);
+no privileges at all for `anon`; `authenticated` gets only the columns it
+may write on `profiles` and `sync_consents` (the server stamps the rest).
+Every function has `search_path = ''` and schema-qualified names.
+
+## Run order
+
+| # | File | What it does |
+|---|---|---|
+| 0 | *(pre-flight, automatic)* | `0001` first checks that the role running it bypasses RLS (Supabase's `postgres` does). If not, it stops before changing anything; tell the developer. |
+| 1 | `migrations/0001_foundation.sql` | `hm_private` schema (never exposed by the Data API), the `updated_at` trigger function, `hm_private.schema_migrations` (a record of what ran) |
+| 2 | `migrations/0002_profiles.sql` | `profiles` + RLS + policies + column grants; server-owned columns; the `on_auth_user_created` trigger on `auth.users` that makes a profile for every new sign-up (name cleaned and capped) |
+| 3 | `migrations/0003_sync_consents.sql` | `sync_consents` + RLS + policies + column grants; server timestamps for giving / withdrawing |
+| 4 | `migrations/0004_preferences.sql` | `preferences` + RLS; writes need `settings_sync`; `created_at` / `updated_at` triggers |
+| 5 | `migrations/0005_library.sql` | `favourite_worlds`, `garden_skills`, `hushflow_progress` + RLS; writes need `library_sync`; at most 64 favourites and 64 tools per account; stamps |
+| 6 | `migrations/0006_consent_withdrawal.sql` | turning a switch off (or deleting the consent row) deletes what that switch synced |
+| 7 | `migrations/0007_delete_my_account.sql` | `public.delete_my_account()`: no arguments, deletes the **caller's** rows and the caller's `auth.users` row (cascading to Supabase Auth's identities and sessions); executable by `authenticated` only |
+| 8 | `migrations/0008_backfill_profiles.sql` | adds a profile for every account created before step 2 (safe to re-run any time) |
+| 9 | `migrations/0009_row_cap_upserts.sql` | the 64-row cap counts only new rows, so saving the same 64 favourites or tools again (every sync does) is never refused. **If you already ran 0001–0008, run just this one.** |
+| ✓ | `tests/rls_check.sql` | proves the isolation (below). Run it after step 9, and again after any change. |
+
+Every migration is wrapped in a transaction and is safe to run again (it
+replaces policies, functions and triggers; it never drops data).
+
+### The check: `tests/rls_check.sql`
+
+Paste and run. It creates two throwaway accounts directly in `auth.users`
+(`rls-check-…@example.invalid`; Supabase Auth sends no email for rows
+written this way), acts as each with `role authenticated` and
+`request.jwt.claims` exactly as the Data API does, then as `anon`, and checks
+35 things: RLS forced and no anon privileges on every table, the right owner
+and `search_path` on every function, the sign-up trigger, that A can never
+read, create, change or delete B's rows (and the reverse), that nothing syncs
+without consent and consent is time-stamped, that free text is refused, that the
+64-row cap allows re-saving the same 64 but not a 65th, that
+withdrawing consent deletes the synced rows, and that `delete_my_account()`
+removes only the caller. It then **rolls everything back on purpose**, so
+nothing is left. The result is one column: a `PASS`/`FAIL` line per check and
+`ALL 35 CHECKS PASSED. …` at the end. Any `FAIL`: do not switch sign-in on.
+
+(The same files are checked by `tools/auth/sql-check.sh` on a throwaway
+local PostgreSQL with a small Supabase stand-in, and by the CI end-to-end
+check on a real local Supabase stack, which runs this file with psql and
+stops on any `FAIL`. Neither ever touches the project.)
+
+## Email templates
+
+`templates/` holds the five templates to paste into Authentication → Emails →
+Templates (subject in each file's first line). Every link is
+`{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=…`: it always
+opens the production app's `/auth/callback` (so a one-time token can never
+be sent to a preview or any other address a request names), and works on
+any device. The Site URL must therefore be exactly `https://app.hushmallow.com`,
+with no trailing slash. The reauthentication email carries the 6-digit
+`{{ .Token }}` the app asks for before a password change. The rest of the
+dashboard settings are in `../docs/AUTH.md`.
+
+## `config.toml` (local stack only)
+
+`config.toml` is for the Supabase CLI's **local** stack that the CI
+end-to-end check starts on a GitHub runner
+(`.github/workflows/hushmallow-auth-e2e.yml`): the same migrations, the same
+templates, confirmations and secure password change on, 120-second access
+tokens. It names no hosted project and nothing here is ever linked or
+pushed: production is set up only by hand, as above. See
+`../docs/AUTH.md` ("The isolated E2E").
+
+## Backfill
+
+Accounts created before `0002` ran have no profile. `0008_backfill_profiles.sql`
+creates one for each (`insert … where not exists`), taking the display name
+from the sign-up metadata if there is one. Run it once after `0002`; running it
+again later changes nothing for accounts that already have a profile. The app
+also copes with a missing profile (it creates the row the first time the
+person saves a name or home Mallow). Consent rows are never backfilled: a
+missing row means both switches are off, which is the right default.
+
+## Cleanup notes
+
+* **Test accounts** you make while checking the email flows: delete them in
+  Dashboard → Authentication → Users (the cascade removes their rows), or
+  sign in as them in the app and use Delete account.
+* **Unconfirmed sign-ups** stay in `auth.users` until confirmed. To clear old
+  ones (and their profiles, via the cascade):
+  `delete from auth.users where email_confirmed_at is null and created_at < now() - interval '30 days';`
+  (review with `select` first).
+* **Stale synced progress** is harmless (the app ignores Hushflow progress
+  older than 7 days). To trim it:
+  `delete from public.hushflow_progress where saved_at < now() - interval '30 days';`
+* **What ran**: `select * from hm_private.schema_migrations order by version;`
+
+## Rollback
+
+`rollback/rollback_all.sql` removes everything above **including every row in
+these tables** (it does not delete accounts). Back up first (Database →
+Backups), switch sign-in off in the app (remove `SUPABASE_URL` /
+`SUPABASE_PUBLISHABLE_KEY` from Cloudflare Pages and redeploy), then run it.
+If the SQL editor's role is not allowed to drop the trigger on `auth.users`,
+the script leaves it in place doing nothing (sign-ups keep working) and says
+so; delete it in Dashboard → Database → Triggers and run the script again.
+To return, run the migrations again from `0001` to `0009`.

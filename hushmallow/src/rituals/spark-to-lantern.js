@@ -23,6 +23,9 @@
 // vanish — the aim is to be steering it.
 
 import { h, wait } from '../app/ui.js';
+import { canvasFontPx } from '../ui/type.js';
+
+const FONT_13 = canvasFontPx(13, 700);   // canvas labels: the voice face, at the 13px floor
 import { getEmotion } from '../data/emotions.js';
 
 export const meta = { id: 'spark-to-lantern' };
@@ -244,9 +247,9 @@ export async function run(ctx) {
   layoutString(); resizers.push(layoutString);
   requestAnimationFrame(layoutString);
 
-  const tapBtn = h('button', { class: 'btn primary block', style: { minHeight: '72px', fontSize: '20px', letterSpacing: '.04em', touchAction: 'manipulation' },
+  const tapBtn = h('button', { class: 'btn primary block', style: { minHeight: '72px', fontSize: 'calc(20px * var(--type-scale))', letterSpacing: '.04em', touchAction: 'manipulation' },
     'aria-label': 'Tap on the beat. Press Space or Enter in time with the drum.' }, 'TAP! ✦');
-  const tempoEl = h('p', { style: { textAlign: 'center', margin: '0', minHeight: '20px', color: 'var(--text-1)', font: '650 14px var(--font-ui)', textShadow: '0 1px 8px rgba(10,4,20,.9)' }, 'aria-live': 'polite' }, `Lanterns: 0 of ${LANTERNS}`);
+  const tempoEl = h('p', { style: { textAlign: 'center', margin: '0', minHeight: '20px', color: 'var(--text-1)', font: '650 var(--type-label-size)/1.3 var(--ff-ui)', textShadow: '0 1px 8px rgba(10,4,20,.9)' }, 'aria-live': 'polite' }, `Lanterns: 0 of ${LANTERNS}`);
   dock.replaceChildren(tempoEl, tapBtn);
   world.fx.classList.add('live');
 
@@ -393,7 +396,7 @@ export async function run(ctx) {
   say(WAVE_INTRO[kind], 3600);
   const rideBtn = h('button', { class: 'btn primary block', style: { touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' },
     'aria-label': 'Hold to ride the wave. Press Enter or Space to start or pause.' }, 'Hold to ride');
-  const cue = h('p', { style: { textAlign: 'center', margin: '0', minHeight: '20px', color: 'var(--text-1)', font: '650 14px var(--font-ui)', textShadow: '0 1px 8px rgba(10,4,20,.9)' }, 'aria-live': 'polite' }, 'Flat water… for now.');
+  const cue = h('p', { style: { textAlign: 'center', margin: '0', minHeight: '20px', color: 'var(--text-1)', font: '650 var(--type-label-size)/1.3 var(--ff-ui)', textShadow: '0 1px 8px rgba(10,4,20,.9)' }, 'aria-live': 'polite' }, 'Flat water… for now.');
   const toggleBtn = h('button', { class: 'btn ghost block' }, 'Can’t hold? Tap to ride / pause');
   dock.replaceChildren(cue, rideBtn, toggleBtn);
   world.fx.classList.add('live');
@@ -458,7 +461,7 @@ export async function run(ctx) {
       }
       g.globalCompositeOperation = 'source-over';
       // labels
-      g.font = '700 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,240,225,.7)';
+      g.font = FONT_13; g.textAlign = 'center'; g.fillStyle = 'rgba(255,240,225,.7)';
       g.fillText('rising', xOf(0.36), base - 16);
       g.fillText('crest', xOf(0.5), yAt(0.5) - 34);
       g.fillText('falling', xOf(0.64), base - 16);
@@ -526,16 +529,16 @@ export async function run(ctx) {
   world.setEmotion({ curious: 0.5, excited: 0.5 }, 0.65, { extra: { bounceRate: 1.4 } });
   say('Ooh, sorting! What’s all this lovely energy FOR?', 2600);
   const zoneStyle = (c) => ({ position: 'absolute', borderRadius: '22px', border: `2px dashed ${c}`, background: 'rgba(20,10,30,.55)', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'flex-end', padding: '8px', pointerEvents: 'auto', color: 'var(--text-1)', font: '750 14px var(--font-ui)', textAlign: 'center', boxSizing: 'border-box' });
+    alignItems: 'center', justifyContent: 'flex-end', padding: '8px', pointerEvents: 'auto', color: 'var(--text-1)', font: '750 var(--type-label-size)/1.3 var(--ff-ui)', textAlign: 'center', boxSizing: 'border-box' });
   const shelfRow = h('div', { style: { display: 'flex', gap: '4px', minHeight: '26px', alignItems: 'flex-end', justifyContent: 'center', flexWrap: 'wrap', borderBottom: '3px solid rgba(255,200,140,.6)', width: '86%', paddingBottom: '2px', marginBottom: '6px' } });
-  const nowZone = h('div', { style: zoneStyle('rgba(255,207,74,.75)'), 'aria-hidden': 'true' }, h('span', { style: { fontSize: '22px', lineHeight: '1' } }, '↑'), h('span', {}, 'Use it now'));
+  const nowZone = h('div', { style: zoneStyle('rgba(255,207,74,.75)'), 'aria-hidden': 'true' }, h('span', { style: { fontSize: 'calc(22px * var(--type-scale))', lineHeight: '1' } }, '↑'), h('span', {}, 'Use it now'));
   const laterZone = h('div', { style: zoneStyle('rgba(255,176,240,.7)'), 'aria-hidden': 'true' }, shelfRow, h('span', {}, 'Save for later'));
   const orb = h('span', { style: { width: '34px', height: '34px', borderRadius: '50%', flex: '0 0 auto', background: 'radial-gradient(circle at 40% 35%, #fffbe6, #ffcf4a 45%, #ff6a3a 80%)',
     boxShadow: rm ? '0 0 10px rgba(255,190,80,.6)' : '0 0 22px rgba(255,190,80,.85)' } });
   const sparkLabel = h('span', {});
-  const sparkEl = h('button', { class: 'chip', style: { position: 'absolute', pointerEvents: 'auto', touchAction: 'none', minHeight: '56px', padding: '0 16px 0 10px', gap: '10px', fontSize: '16px',
+  const sparkEl = h('button', { class: 'chip', style: { position: 'absolute', pointerEvents: 'auto', touchAction: 'none', minHeight: '56px', padding: '0 16px 0 10px', gap: '10px', fontSize: 'var(--type-row-size)',
     background: 'rgba(30,12,36,.85)', borderColor: 'rgba(255,207,74,.6)', transform: 'translate(-50%,-50%)', whiteSpace: 'nowrap', transition: 'opacity 250ms' } }, orb, sparkLabel);
-  const countEl = h('p', { style: { textAlign: 'center', margin: '0', minHeight: '20px', color: 'var(--text-1)', font: '650 14px var(--font-ui)', textShadow: '0 1px 8px rgba(10,4,20,.9)' }, 'aria-live': 'polite' });
+  const countEl = h('p', { style: { textAlign: 'center', margin: '0', minHeight: '20px', color: 'var(--text-1)', font: '650 var(--type-label-size)/1.3 var(--ff-ui)', textShadow: '0 1px 8px rgba(10,4,20,.9)' }, 'aria-live': 'polite' });
   const nowBtn = h('button', { class: 'btn primary' }, 'Use it now');
   const laterBtn = h('button', { class: 'btn' }, 'Save for later');
   const skipBtn = h('button', { class: 'btn ghost block' }, 'Not this one');
@@ -675,9 +678,9 @@ export async function run(ctx) {
     + '<ellipse cx="50" cy="60" rx="10" ry="46" fill="none" stroke="rgba(90,20,30,.5)"/>'
     + '<rect x="40" y="104" width="20" height="7" rx="3" fill="#5a1420"/>';
   const fillEl = svg.querySelector('.fill'), halo = svg.querySelector('.halo');
-  const holdLabel = h('span', { style: { position: 'absolute', bottom: '-2px', font: '800 12px var(--font-ui)', letterSpacing: '.08em', textShadow: '0 1px 6px rgba(0,0,0,.6)' } }, 'HOLD');
+  const holdLabel = h('span', { style: { position: 'absolute', bottom: '-2px', font: '800 var(--type-caption-size)/1.3 var(--ff-ui)', letterSpacing: '.08em', textShadow: '0 1px 6px rgba(0,0,0,.6)' } }, 'HOLD');
   const lanternBtn = h('button', { class: 'hold-target', 'aria-label': `Lantern for: ${picked[1]}. Press and hold to fill it with warm air. Press Enter to start or pause.` }, svg, holdLabel);
-  const stepCap = h('p', { style: { textAlign: 'center', margin: '0', font: '700 16px var(--font-ui)' } }, `“${picked[1]}”`);
+  const stepCap = h('p', { style: { textAlign: 'center', margin: '0', font: '700 var(--type-row-size)/1.25 var(--ff-ui)' } }, `“${picked[1]}”`);
   const fillTap = h('button', { class: 'btn ghost block' }, 'Can’t hold? Tap to fill / pause');
   dock.replaceChildren(stepCap, lanternBtn, fillTap);
 

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0a0818">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark">
+<title>hushmallow</title>
+<!-- tools/build-site.sh rewrites every ../../ path below to /v/<version>/ (absolute: this page lives at /auth/callback/) -->
+<link rel="icon" href="../../assets/brand/favicon-48.png" sizes="48x48" type="image/png">
+<link rel="preload" href="../../assets/fonts/nunito-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../../assets/fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../src/ui/tokens.css">
+<link rel="stylesheet" href="../../src/ui/type.css">
+<link rel="stylesheet" href="../../src/auth/auth.css">
+</head>
+<body class="hm-auth-page">
+  <main class="hm-auth" id="hm-auth">
+    <img class="hm-auth-logo" src="../../assets/brand/hushmallow-logo-light-360.webp" alt="hushmallow" width="168" height="32">
+    <div class="hm-auth-mallow" id="hm-auth-mallow" data-mood="busy" aria-hidden="true"></div>
+    <section class="hm-auth-card" aria-labelledby="hm-auth-title">
+      <h1 class="hm-auth-title" id="hm-auth-title" tabindex="-1">One moment</h1>
+      <p class="hm-auth-lede" id="hm-auth-status" role="status" aria-live="polite">Opening your link…</p>
+      <div class="hm-auth-body" id="hm-auth-body"></div>
+    </section>
+    <p class="hm-auth-tagline">Less noise. More magic.</p>
+  </main>
+  <noscript><p class="hm-auth-lede">hushmallow needs JavaScript to open this link.</p></noscript>
+  <script type="module" src="../../src/auth/callback.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Append a line to deploy the staging Worker (hushmallow-another-angle-staging)
+# from a work branch and run the end-to-end check against the real model.
+# See .github/workflows/another-angle-staging.yml.
+2026-10-12 first staging deploy
+2026-10-12 retry: secrets trimmed
+2026-10-12 retry: first-deploy detection
+2026-10-12 retry: wait for the new workers.dev address
+2026-10-12 redeploy with angle-v4
+2026-10-12 redeploy with angle-v5

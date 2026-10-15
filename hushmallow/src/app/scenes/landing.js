@@ -4,6 +4,8 @@ import { h, icon, say, clearBubble, toast, wait } from '../ui.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
 import { setFelt } from '../../engine/journey.js';
+import { brandName } from '../../brand.js';
+import { canvasFontPx, fontsReady, loadLogo, logoImg } from '../../ui/type.js';
 
 const CHECK = [
   ['lighter', 'A bit lighter'], ['same', 'About the same'], ['heavier', 'Heavier'], ['unsure', 'Not sure'],
@@ -29,7 +31,7 @@ export default function landing(app) {
   const summary = h('div', { class: 'summary-card' }, ...(res.summary || []).flatMap((l) => [h('div', { class: 'k' }, l.label), h('div', { class: 'v' }, l.text)]));
 
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' } },
-    h('div', { class: 'topbar' }, h('div', { class: 'brand' }, h('span', { class: 'dot' }), 'Hushmallow')),
+    h('div', { class: 'topbar' }, h('div', { class: 'brand' }, logoImg({ tone: 'light', width: 136 }))),
     h('div', { style: { minHeight: '27dvh', flex: '0 0 auto' } }),
     h('div', { class: 'card', style: { textAlign: 'center' } },
       h('div', { class: 'eyebrow' }, 'Take a second to notice'),
@@ -42,7 +44,7 @@ export default function landing(app) {
         h('button', { class: 'btn', onclick: () => another() }, 'Another ritual'),
         favBtn,
         h('button', { class: 'btn', style: { flex: '0 0 56px' }, 'aria-label': 'Share a card (no personal words)', onclick: () => share() }, icon('share')))),
-    h('div', { class: 'eyebrow', style: { margin: '18px 4px 8px' } }, 'What you did'),
+    h('div', { class: 'eyebrow', style: { margin: '18px 4px 8px', color: 'var(--text-2)' } }, 'What you did'),
     summary);
 
   async function check(id, btn) {
@@ -81,8 +83,22 @@ export default function landing(app) {
   function finish() { app.state.result = null; app.go('home'); }
   function another() { app.go('encounter', {}); }
 
+  // the card's font and logo are made ready when the screen opens, so share()
+  // only draws: iOS Safari lets navigator.share run only close to the tap
+  let shareLogo = null;
+  const shareAssets = Promise.all([fontsReady(['voice'], 1200), loadLogo('light', 720)]).then(([, l]) => { shareLogo = l; });
+  // a synchronous PNG (no await between the tap and navigator.share)
+  const pngBlob = (canvas) => {
+    const bin = atob(canvas.toDataURL('image/png').split(',')[1]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: 'image/png' });
+  };
+
   async function share() {
     // privacy-safe: Mallow + ritual title only, never anything you typed
+    if (!shareLogo) await Promise.race([shareAssets, wait(600)]);
+    const logo = shareLogo;
     const c = document.createElement('canvas');
     c.width = 1080; c.height = 1350;
     const g = c.getContext('2d');
@@ -98,17 +114,22 @@ export default function landing(app) {
       g.drawImage(src, 540 - (src.width * s) / 2, 380, src.width * s, src.height * s);
     }
     g.fillStyle = '#fff'; g.textAlign = 'center';
-    g.font = '700 84px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
-    g.fillText(res.share?.title || ritual.name, 540, 220);
-    g.font = '600 44px ui-rounded, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.85)';
-    g.fillText(res.share?.subtitle || `A Mallow Moment with ${lead.name}`, 540, 300);
-    g.font = '800 34px ui-rounded, system-ui, sans-serif'; g.fillStyle = '#ffd98a';
-    g.fillText('HUSHMALLOW', 540, 1270);
-    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    g.font = canvasFontPx(84, 800); g.shadowColor = 'rgba(8,4,24,.45)'; g.shadowBlur = 24;
+    g.fillText(res.share?.title || ritual.name, 540, 220, 960);
+    g.font = canvasFontPx(44, 600); g.fillStyle = 'rgba(255,255,255,.88)';
+    g.fillText(res.share?.subtitle || `A Mallow Moment with ${lead.name}`, 540, 300, 960);
+    g.shadowBlur = 0;
+    // the approved logo artwork, never re-typed (360×68 at the foot of the card)
+    if (logo) { g.shadowColor = 'rgba(8,4,24,.5)'; g.shadowBlur = 18; g.drawImage(logo, 360, 1236, 360, 360 * logo.naturalHeight / logo.naturalWidth); g.shadowBlur = 0; }
+    else { g.font = canvasFontPx(40, 800); g.fillStyle = '#f7f3ff'; g.fillText(brandName, 540, 1276); }
+    const blob = pngBlob(c);
     const file = new File([blob], 'hushmallow.png', { type: 'image/png' });
     try {
-      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Hushmallow' }); return; }
-    } catch { return; }
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: brandName }); return; }
+    } catch (e) {
+      if (e?.name === 'AbortError') return;   // the person closed the share sheet
+      // otherwise (no activation left, share refused): save the card instead
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'hushmallow.png'; a.click();
     toast('Card saved. Nothing you typed is on it.');

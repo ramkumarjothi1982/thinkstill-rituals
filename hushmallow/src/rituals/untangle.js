@@ -19,13 +19,14 @@
 // untangling, not reframing: nothing here questions whether a thought is true.
 
 import { h, wait } from '../app/ui.js';
+import { CANVAS_FONT } from '../ui/type.js';
 
 export const meta = { id: 'untangle' };
 
 const TAU = Math.PI * 2;
 const N = 30; // samples per thread shape
 const MAX_STRANDS = 6;
-const FONT = 'ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif';
+const FONT = CANVAS_FONT.voice;   // the Mallows' voice face, for canvas and DOM labels alike
 
 const CHIPS = [
   ['decision', 'a decision', 'A decision! Slippery things, decisions.'],
@@ -714,7 +715,7 @@ export async function run(ctx) {
     h('i', { 'aria-hidden': 'true', style: { position: 'absolute', left: '6px', right: '6px', top: '50%', height: '3px', marginTop: '-1.5px', borderRadius: '3px',
       background: `linear-gradient(90deg, ${s.col}00, ${s.col} 6%, ${s.col} 94%, ${s.col}00)`, boxShadow: `0 0 10px ${s.col}, 0 0 2px #fff` } }),
     h('span', { style: { position: 'relative', display: 'inline-block', marginLeft: '18px', padding: '3px 11px', borderRadius: '999px', background: 'rgba(11,3,32,.88)',
-      border: `1px solid ${s.col}aa`, font: `700 13px/1.25 ${FONT}`, maxWidth: 'calc(100% - 40px)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'middle' } }, s.label));
+      border: `1px solid ${s.col}aa`, font: `700 var(--type-caption-size)/1.25 ${FONT}`, maxWidth: 'calc(100% - 40px)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'middle' } }, s.label));
     field.append(s.el);
   }
 
@@ -777,7 +778,7 @@ export async function run(ctx) {
   face({ curious: 0.6, calm: 0.2, happy: 0.2 }, 0.6, { spin: 0.7, spinJitter: 0.15 });
   realm()?.setMood?.({ agitation: 0.2, clarity: 0.45 });
   const sortQ = h('p', { class: 'muted', style: { textAlign: 'center', margin: '0', minHeight: '20px' }, 'aria-live': 'polite' });
-  const ringBtns = RINGS.map((R0, k) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: '13.5px', lineHeight: '1.15', padding: '0 6px', borderColor: R0.col, gap: '6px' },
+  const ringBtns = RINGS.map((R0, k) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: 'var(--type-label-size)', lineHeight: '1.15', padding: '0 6px', borderColor: R0.col, gap: '6px' },
     onclick: () => { const s = current(); if (s) placeOnRing(s, k); } },
   h('span', { 'aria-hidden': 'true', style: { width: '9px', height: '9px', borderRadius: '50%', flex: '0 0 auto', background: R0.col, boxShadow: `0 0 8px ${R0.col}` } }), R0.label));
   dock.replaceChildren(sortQ, h('div', { class: 'row-btns', style: { gap: '6px' } }, ...ringBtns));
@@ -934,7 +935,7 @@ export async function run(ctx) {
       result.step = id;
       audio.ui?.('select'); haptic('light');
       readyBtn.disabled = false;
-      const kids = [h('p', { class: 'muted', style: { margin: '0', fontSize: compact ? '13px' : '' } }, note)];
+      const kids = [h('p', { class: 'muted', style: { margin: '0', fontSize: compact ? 'var(--type-caption-size)' : '' } }, note)];
       if (id === 'coin') kids.push(coinToy(compact));
       detail.replaceChildren(...kids);
     };
@@ -1052,9 +1053,9 @@ export async function run(ctx) {
   // ------------------------------------------------------- coin toy --
   function coinToy(compact) {
     const coin = h('div', { 'aria-hidden': 'true', style: { width: '44px', height: '44px', borderRadius: '50%', flex: '0 0 auto', display: 'grid', placeItems: 'center',
-      background: 'radial-gradient(circle at 35% 30%, #fff3c4, #ffd27a 45%, #c58a2a)', color: '#5a3a08', font: `800 15px ${FONT}`,
+      background: 'radial-gradient(circle at 35% 30%, #fff3c4, #ffd27a 45%, #c58a2a)', color: '#5a3a08', font: `800 var(--type-control-size)/1 ${FONT}`,
       transition: rm ? 'none' : 'transform 700ms cubic-bezier(.3,1.4,.5,1)', boxShadow: '0 0 14px rgba(255,210,122,.55)' } }, '?');
-    const out = h('span', { style: { color: 'var(--text-2)', fontSize: compact ? '12.5px' : '14px', lineHeight: '1.3', flex: '1' }, 'aria-live': 'polite' }, 'Heads for one option, tails for the other.');
+    const out = h('span', { style: { color: 'var(--text-2)', fontSize: compact ? 'var(--type-caption-size)' : 'var(--type-label-size)', lineHeight: '1.3', flex: '1' }, 'aria-live': 'polite' }, 'Heads for one option, tails for the other.');
     let flips = 0;
     const btn = h('button', { class: 'btn', style: { minHeight: '44px', padding: '0 14px', flex: '0 0 auto' } }, 'Flip');
     btn.onclick = () => {

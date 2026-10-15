@@ -161,9 +161,9 @@ test('rounds: no V3 ritual repeats until the whole plan has been offered', () =>
   assert.equal(planOptions({ rec, req, rituals, seen: round.seen(), limit: 1 }).options.length, 0);
 });
 
-test('photos: up to six of the person’s own; with none, the seven Mallows stand in', () => {
-  assert.equal(MAX_PHOTOS, 6);
-  assert.equal(photoSession.max, 6);
+test('photos: up to seven of the person’s own; with none, the seven Mallows stand in', () => {
+  assert.equal(MAX_PHOTOS, 7);   // D5: brief 2 §11 allows 0–7
+  assert.equal(photoSession.max, 7);
   assert.equal(photoSession.count, 0);
   // the cards are painted from the seven approved Mallow artworks
   assert.equal(REGISTRY_IDS.length, 7);
@@ -209,9 +209,11 @@ test('clearing photos wipes every cached copy; keeping lasts one ritual', () => 
 test('the plan page says only what is switched on', () => {
   const paid = RITUALS.filter((r) => (r.tier || 'paid') === 'paid').length;
   const line = PLANS.paid.includes.find((x) => /touch rituals/.test(x));
-  if (paid < 1000) assert.match(line, new RegExp(`^${paid.toLocaleString('en-GB')} interactive touch rituals`));
+  if (paid < 1000) assert.match(line, new RegExp(`^${paid.toLocaleString('en-GB')} more touch rituals in the library`));
   else assert.match(line, /^Over 1,000/);
-  assert.match(PLANS.paid.includes.join(' '), /up to six of your own photos/);
+  assert.doesNotMatch(line, /growing towards/, 'the 1,000-ritual programme is stopped (D14): promise nothing');
+  assert.match(PLANS.paid.includes.join(' '), /up to seven of your own photos/);   // D5: up to 7
+  assert.match(PLANS.ultra.includes[0], /^Everything in hushmallow Flow$/);
 });
 
 test('photos never leave the device: no storage or network in the photo system', () => {

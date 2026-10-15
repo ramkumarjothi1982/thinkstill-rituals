@@ -1,0 +1,5 @@
+# Copy to .dev.vars for `npm run dev` (never commit .dev.vars).
+TOKEN_SIGNING_KEY=replace-with-at-least-32-random-characters-xxxx
+IP_HASH_KEY=replace-with-16-plus-random-chars
+# Only needed with PROVIDER=anthropic:
+# ANTHROPIC_API_KEY=sk-ant-...
