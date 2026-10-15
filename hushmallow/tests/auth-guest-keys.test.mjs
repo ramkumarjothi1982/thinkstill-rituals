@@ -19,6 +19,9 @@ import { favouriteWorlds, loadProgress, FLOW_KEYS } from '../src/engine/flow-sto
 import { readGarden, GARDEN_KEY } from '../src/engine/garden.js';
 import { journeyEntries } from '../src/engine/journey.js';
 import { playedSet } from '../src/engine/played.js';
+import { createRecommender } from '../src/engine/recommend.js';
+import { createRound } from '../src/engine/round.js';
+import { RITUALS } from '../src/data/rituals.js';
 import { consentState, STORE_KEYS } from '../src/beyond/consent.js';
 import { createAngleClient } from '../src/beyond/angle-client.js';
 import { memoryStorage, supabaseLib, fakeDom } from './helpers/auth-env.mjs';
@@ -42,6 +45,10 @@ function readAll(store, ls) {
     tier: createEntitlements({ store }).tier(),
     journey: journeyEntries(store).map((e) => `${e.id}:${e.felt}:${(e.families || []).join('+')}`),
     played: [...playedSet(store)],
+    savedRituals: createRecommender({ rituals: RITUALS, store }).favourites(),   // src/engine/recommend.js
+    ritualHistory: createRecommender({ rituals: RITUALS, store }).history().map((h) => h.id),
+    round: createRound(store, 'paid').count(),                                    // src/engine/round.js
+    sealed: (store.get('ultra.sealedPredictions', []) || []).map((p) => p.id),    // src/ultra/another-angle.js reads it this way
     flowRotation: store.get('hushflow.rotation', null)?.sessionCount ?? null,   // src/hushfold/flow/director.js reads it this way
     invite: store.get(STORE_KEYS.invite, null),                                // src/beyond/angle-client.js reads it this way
     sound: JSON.parse(ls.getItem('hm2:sound') || 'null'),       // src/engine/audio.js reads it raw
@@ -58,6 +65,10 @@ const EXPECTED = {
   tier: 'paid',
   journey: ['r-001:lighter:worry'],
   played: ['r-001'],
+  savedRituals: ['hm-0001', 'moonmilk-wind-down'],
+  ritualHistory: ['r-001'],
+  round: 1,
+  sealed: ['seal-1'],
   flowRotation: 3,
   invite: 'tester-invite-01',
   sound: { enabled: false, volume: 0.35 },
@@ -129,6 +140,8 @@ test('sign in → “Not now” → the account’s page → sign out: the guest
   assert.equal(a.ns.mode, 'account'); assert.equal(a.ns.uid, r.uid);
   const seen = readAll(a.store, ls);
   assert.deepEqual(seen.favourites, []); assert.equal(seen.progress, null); assert.deepEqual(seen.garden, []);
+  // (the classic rotation, the round and the sealed predictions — the guest's own words — stay the guest's)
+  assert.deepEqual(seen.savedRituals, []); assert.deepEqual(seen.ritualHistory, []); assert.equal(seen.round, 0); assert.deepEqual(seen.sealed, []);
   assert.equal(seen.consent, 'unasked', 'Another Angle consent is a person’s choice: asked again');
   assert.equal(seen.prefs.textScale, DEFAULTS.textScale);
   assert.equal(seen.device, DEVICE_ID, 'the device code is the phone’s (device-level)');
