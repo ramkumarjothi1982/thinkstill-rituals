@@ -605,8 +605,9 @@ export function create(ctx) {
 
   function waterTouch(x, y, first) {
     const rm = reduced(), s = clamp((y - plan.hy) / Math.max(1, H - plan.hy), 0, 1);
-    rings.add(x, y, 2, (first ? 34 : 22) + 40 * s, first ? 1.8 : 1.4, 0.28, '#ffffff', first ? 0.7 : 0.45, 1.2 + s);
-    if (first) rings.add(x, y, 2, 20 + 22 * s, 1.3, 0.28, '#ffd1f0', 0.5, 1);
+    const r1 = (first ? 34 : 22) + 40 * s;
+    rings.add(x, y, rm ? r1 * 0.6 : 2, rm ? r1 * 0.7 : r1, first ? 1.8 : 1.4, 0.28, '#ffffff', first ? 0.7 : 0.45, 1.2 + s);
+    if (first && !rm) rings.add(x, y, 2, 20 + 22 * s, 1.3, 0.28, '#ffd1f0', 0.5, 1);
     if (elapsed - lastDrip > 0.12) { lastDrip = elapsed; ctx.sound('drip', { intensity: first ? 0.35 : 0.18, pitch: 0.9 + 0.3 * R(), pan: clamp((x / W) * 2 - 1, -1, 1) * 0.6 }); }
     if (!rm && first) for (let k = 0; k < Math.round(4 * dens()); k++) splash.spawn(x, y - 2, (R() - 0.5) * 60, -40 - 60 * R(), 0.6, 1.4 + R() * 1.6, 0, 0.7);
   }
@@ -624,8 +625,9 @@ export function create(ctx) {
   function landed(d) {
     d.state = 'in'; d.alpha = 0;
     const x = thoughtX(), y = thoughtY(), rm = reduced();
-    halo.add(x, y, tS.r * 0.9, tS.r * 2.6, 1.6, 1, '#ffffff', 0.6, 1.6);
-    halo.add(x, y, tS.r * 0.6, tS.r * 1.9, 1.2, 1, C.pink, 0.45, 1.2);
+    // (reduced motion: a ring of light that fades where it is, never one that spreads)
+    halo.add(x, y, tS.r * (rm ? 1.4 : 0.9), tS.r * (rm ? 1.5 : 2.6), 1.6, 1, '#ffffff', 0.6, 1.6);
+    if (!rm) halo.add(x, y, tS.r * 0.6, tS.r * 1.9, 1.2, 1, C.pink, 0.45, 1.2);
     if (!rm) for (let k = 0; k < Math.round(10 * dens()); k++) { const a = -Math.PI * (0.15 + 0.7 * R()); splash.spawn(x, y - tS.r * 0.6, Math.cos(a) * (50 + 70 * R()), Math.sin(a) * (60 + 80 * R()), 0.7 + 0.3 * R(), 1.5 + 2 * R(), 0, 0.85); }
     for (let k = 0; k < Math.round(6 * dens()); k++) motes.spawn(x + (R() - 0.5) * tS.r * 2, y + (R() - 0.5) * tS.r, (R() - 0.5) * 10, -18 - 22 * R(), 1.8 + R(), 3 + 3 * R(), 1, 0.7);
     tS.squash = 1;
@@ -633,7 +635,7 @@ export function create(ctx) {
     ctx.haptic('soft');
     try { thought?.react?.('sigh'); } catch { /* optional */ }
     try { mallow?.react?.('nod'); } catch { /* optional */ }
-    try { realm?.pulse('ripple', { x, y: plan.hy + 10 }); } catch { /* decoration */ }
+    if (!rm) { try { realm?.pulse('ripple', { x, y: plan.hy + 10 }); } catch { /* decoration */ } }
     const count = naming.count;
     prog.name(count);
     const ev = finder.given({ looked: !!d.looked, stillSec: d.stillSec || 0, count });
@@ -883,7 +885,7 @@ export function create(ctx) {
 
   function finish() {
     complete = true; completeAt = elapsed;
-    try { realm?.pulse('clear', { x: W / 2, y: plan.hy }); } catch { /* decoration */ }
+    if (!reduced()) { try { realm?.pulse('clear', { x: W / 2, y: plan.hy }); } catch { /* decoration */ } }
     ctx.sound('bloom', { intensity: 0.5 });
     try { mallow?.react?.(ctx.gentle ? 'nod' : 'comfort'); } catch { /* optional */ }
     try { thought?.settle?.(1); } catch { /* optional */ }
