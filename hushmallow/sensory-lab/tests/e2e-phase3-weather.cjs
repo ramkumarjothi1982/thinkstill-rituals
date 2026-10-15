@@ -2121,7 +2121,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
   });
 }
 
-module.exports = { run };
+module.exports = { run, BRIEF };
 
 if (require.main === module) {
   (async () => {

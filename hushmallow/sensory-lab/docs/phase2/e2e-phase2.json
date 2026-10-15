@@ -1,5 +1,5 @@
 {
- "when": "2026-10-15T03:25:53.118Z",
+ "when": "2026-10-15T04:32:08.458Z",
  "passed": 231,
  "failed": 0,
  "results": [
@@ -25,7 +25,7 @@
    "scope": "touchtalk:glitzi",
    "name": "eyes look at the finger",
    "ok": true,
-   "detail": "{\"x\":0.25496567946213944,\"y\":0.2436788347434095,\"t\":0.06760000000000002}"
+   "detail": "{\"x\":0.25496567946213944,\"y\":0.2436788347434095,\"t\":0.06770000000000005}"
   },
   {
    "scope": "touchtalk:glitzi",
@@ -37,13 +37,13 @@
    "scope": "touchtalk:glitzi",
    "name": "drag stretches the body",
    "ok": true,
-   "detail": "-0.172"
+   "detail": "-0.156"
   },
   {
    "scope": "touchtalk:glitzi",
    "name": "squeeze compresses and the face squeezes",
    "ok": true,
-   "detail": "{\"s\":0.43154391363642464,\"f\":1}"
+   "detail": "{\"s\":0.4152208647326864,\"f\":1}"
   },
   {
    "scope": "touchtalk:glitzi",
@@ -73,7 +73,7 @@
    "scope": "touchtalk:blubi",
    "name": "closed eyes open to look at the finger",
    "ok": true,
-   "detail": "{\"x\":0.25536240797776444,\"y\":0.24423234550873832,\"t\":0.6509}"
+   "detail": "{\"x\":0.25536240797776444,\"y\":0.24423234550873832,\"t\":0.6510000000000001}"
   },
   {
    "scope": "touchtalk:blubi",
@@ -85,13 +85,13 @@
    "scope": "touchtalk:blubi",
    "name": "drag stretches the body",
    "ok": true,
-   "detail": "-0.168"
+   "detail": "-0.157"
   },
   {
    "scope": "touchtalk:blubi",
    "name": "squeeze compresses and the face squeezes",
    "ok": true,
-   "detail": "{\"s\":0.4201887067309713,\"f\":1}"
+   "detail": "{\"s\":0.39706145487165445,\"f\":1}"
   },
   {
    "scope": "touchtalk:blubi",
@@ -121,7 +121,7 @@
    "scope": "touchtalk:zuzu",
    "name": "eyes look at the finger",
    "ok": true,
-   "detail": "{\"x\":0.25322484725560895,\"y\":0.2412291844083236,\"t\":0.5844}"
+   "detail": "{\"x\":0.25322484725560895,\"y\":0.2412291844083236,\"t\":0.5841999999999999}"
   },
   {
    "scope": "touchtalk:zuzu",
@@ -133,13 +133,13 @@
    "scope": "touchtalk:zuzu",
    "name": "drag stretches the body",
    "ok": true,
-   "detail": "-0.114"
+   "detail": "-0.127"
   },
   {
    "scope": "touchtalk:zuzu",
    "name": "squeeze compresses and the face squeezes",
    "ok": true,
-   "detail": "{\"s\":0.38776165769916215,\"f\":1}"
+   "detail": "{\"s\":0.38974345604407534,\"f\":1}"
   },
   {
    "scope": "touchtalk:zuzu",
@@ -169,121 +169,121 @@
    "scope": "touchtalk:boppo",
    "name": "eyes look at the finger",
    "ok": true,
-   "detail": "{\"x\":0.25496004544771633,\"y\":0.24367102455753867,\"t\":0.5843000000000002}"
+   "detail": "{\"x\":0.25496004544771633,\"y\":0.24367102455753867,\"t\":0.6176}"
   },
   {
    "scope": "touchtalk:boppo",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,stroke,stroke,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.138"
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.4192804269065594,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:boppo",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "eyes look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.25942805363581734,\"y\":0.24980780578902562,\"t\":0.6343}"
+  },
+  {
+   "scope": "touchtalk:pipzi",
    "name": "hold, stroke and drag recognised",
    "ok": true,
    "detail": "hold,holdend,stroke,stroke,strokeend,drag,release"
   },
   {
-   "scope": "touchtalk:boppo",
+   "scope": "touchtalk:pipzi",
+   "name": "drag stretches the body",
+   "ok": true,
+   "detail": "-0.158"
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "squeeze compresses and the face squeezes",
+   "ok": true,
+   "detail": "{\"s\":0.3949554144562294,\"f\":1}"
+  },
+  {
+   "scope": "touchtalk:pipzi",
+   "name": "no console errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "favourite Mallow is the one on stage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "tap recognised",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "face answers the tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "closed eyes open to look at the finger",
+   "ok": true,
+   "detail": "{\"x\":0.24548934545272436,\"y\":0.22992422962640716,\"t\":0.651}"
+  },
+  {
+   "scope": "touchtalk:loomi",
+   "name": "hold, stroke and drag recognised",
+   "ok": true,
+   "detail": "hold,holdend,stroke,stroke,stroke,stroke,strokeend,drag,release"
+  },
+  {
+   "scope": "touchtalk:loomi",
    "name": "drag stretches the body",
    "ok": true,
    "detail": "-0.126"
   },
   {
-   "scope": "touchtalk:boppo",
-   "name": "squeeze compresses and the face squeezes",
-   "ok": true,
-   "detail": "{\"s\":0.429461157729366,\"f\":1}"
-  },
-  {
-   "scope": "touchtalk:boppo",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "touchtalk:pipzi",
-   "name": "favourite Mallow is the one on stage",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "touchtalk:pipzi",
-   "name": "tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "touchtalk:pipzi",
-   "name": "face answers the tap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "touchtalk:pipzi",
-   "name": "eyes look at the finger",
-   "ok": true,
-   "detail": "{\"x\":0.25942805363581734,\"y\":0.24980780578902562,\"t\":0.6509000000000001}"
-  },
-  {
-   "scope": "touchtalk:pipzi",
-   "name": "hold, stroke and drag recognised",
-   "ok": true,
-   "detail": "hold,holdend,stroke,stroke,stroke,stroke,strokeend,drag,release"
-  },
-  {
-   "scope": "touchtalk:pipzi",
-   "name": "drag stretches the body",
-   "ok": true,
-   "detail": "-0.139"
-  },
-  {
-   "scope": "touchtalk:pipzi",
-   "name": "squeeze compresses and the face squeezes",
-   "ok": true,
-   "detail": "{\"s\":0.40001586048455484,\"f\":1}"
-  },
-  {
-   "scope": "touchtalk:pipzi",
-   "name": "no console errors",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "touchtalk:loomi",
-   "name": "favourite Mallow is the one on stage",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "touchtalk:loomi",
-   "name": "tap recognised",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "touchtalk:loomi",
-   "name": "face answers the tap",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "scope": "touchtalk:loomi",
-   "name": "closed eyes open to look at the finger",
-   "ok": true,
-   "detail": "{\"x\":0.24548934545272436,\"y\":0.22992422962640716,\"t\":0.6343000000000001}"
-  },
-  {
-   "scope": "touchtalk:loomi",
-   "name": "hold, stroke and drag recognised",
-   "ok": true,
-   "detail": "hold,holdend,stroke,stroke,stroke,stroke,strokeend,drag,release"
-  },
-  {
-   "scope": "touchtalk:loomi",
-   "name": "drag stretches the body",
-   "ok": true,
-   "detail": "-0.134"
-  },
-  {
    "scope": "touchtalk:loomi",
    "name": "squeeze compresses and the face squeezes",
    "ok": true,
-   "detail": "{\"s\":0.4202677229819045,\"f\":1}"
+   "detail": "{\"s\":0.4245649358442596,\"f\":1}"
   },
   {
    "scope": "touchtalk:loomi",
@@ -313,25 +313,25 @@
    "scope": "touchtalk:noomi",
    "name": "closed eyes open to look at the finger",
    "ok": true,
-   "detail": "{\"x\":0.2616408128004808,\"y\":0.2527694571978675,\"t\":0.6344000000000001}"
+   "detail": "{\"x\":0.2616408128004808,\"y\":0.2527694571978675,\"t\":0.6343}"
   },
   {
    "scope": "touchtalk:noomi",
    "name": "hold, stroke and drag recognised",
    "ok": true,
-   "detail": "hold,holdend,stroke,stroke,stroke,strokeend,drag,release"
+   "detail": "hold,holdend,stroke,stroke,stroke,stroke,stroke,stroke,stroke,strokeend,drag,release"
   },
   {
    "scope": "touchtalk:noomi",
    "name": "drag stretches the body",
    "ok": true,
-   "detail": "-0.122"
+   "detail": "-0.115"
   },
   {
    "scope": "touchtalk:noomi",
    "name": "squeeze compresses and the face squeezes",
    "ok": true,
-   "detail": "{\"s\":0.4375039757308057,\"f\":1}"
+   "detail": "{\"s\":0.4522441516900506,\"f\":1}"
   },
   {
    "scope": "touchtalk:noomi",
@@ -685,7 +685,7 @@
    "scope": "pocket:phone:gentle-glow",
    "name": "the light warms and lights up the Mallow",
    "ok": true,
-   "detail": "{\"w\":0.35494899999999974,\"glow\":0.6292326390193417}"
+   "detail": "{\"w\":0.3294900000000004,\"glow\":0.6292323522536426}"
   },
   {
    "scope": "pocket:phone:gentle-glow",
@@ -1267,7 +1267,7 @@
    "scope": "review:pocket",
    "name": "Quiet Moment's sound starts after the first tap on a deep link",
    "ok": true,
-   "detail": "[600,0.6]"
+   "detail": "[600]"
   },
   {
    "scope": "review:pocket",

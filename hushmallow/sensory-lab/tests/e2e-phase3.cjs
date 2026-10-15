@@ -14,7 +14,8 @@
 // Then each feature suite, tests/e2e-phase3-<id>.cjs, runs through its
 // run(browser, { out, only }) when the file exists: out = <outDir>/<id>;
 // only(block) is true when PART lists the id itself or `<id>:<block>`.
-// Report: <outDir>/e2e-phase3.json (default docs/phase3), every result included.
+// Report: <outDir>/e2e-phase3.json (default docs/phase3), every result included; after a
+// full run of a feature, also <outDir>/<id>/e2e-phase3-<id>.json (its own results).
 
 const path = require('path');
 const fs = require('fs');
@@ -621,5 +622,15 @@ async function sharedBlock(browser) {
   const { failed } = H.writeReport(OUT, 'e2e-phase3');
   const file = path.join(OUT, 'e2e-phase3.json');
   fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), suites }, null, 1));
+  // Each feature's own report beside its screenshots, as its standalone run writes it,
+  // from this run's results; only when the whole feature ran (not one PART block).
+  for (const id of FEATURES) {
+    if (suites[id] !== 'ran' || !H.only(id)) continue;
+    const mod = require(path.join(__dirname, `e2e-phase3-${id}.cjs`)), dir = path.join(OUT, id), name = `e2e-phase3-${id}`;
+    H.writeReport(dir, name, { prefix: `${id}:` });
+    const f = path.join(dir, `${name}.json`), rep = JSON.parse(fs.readFileSync(f, 'utf8'));
+    const brief = mod.briefMap ? mod.briefMap(rep.results) : mod.BRIEF;
+    if (brief) fs.writeFileSync(f, JSON.stringify({ ...rep, brief }, null, 1));
+  }
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(2); });
