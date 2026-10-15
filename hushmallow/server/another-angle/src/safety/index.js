@@ -811,6 +811,11 @@ export function warmSafety() {
     }
   }
   for (const re of OUTPUT_HARM) re.test(sample);
+  // The output check: its second-person rules and the first-person copies, twice.
+  for (let i = 0; i < 2; i++) {
+    outputHarm("You could tell your boss you'll beat your sister at chess, and nobody would miss you if you left early.");
+    outputHarm('Your partner said you were late; maybe ask them what they meant.');
+  }
 }
 
 /**
@@ -884,23 +889,115 @@ function titleFor(level, title) {
 /**
  * Post-check on what the model wrote: visible text must not itself contain
  * crisis or harm language (it never should; this is defence in depth).
+ *
+ * Three readings of every visible field (15 Oct 2026, security review 2): the
+ * lexicon on the words as written; the lexicon again on the same words turned
+ * into the first person (firstPersonCopies: "you should hang yourself" → "I
+ * should hang myself", "nobody would miss you" → "nobody would miss me"), so
+ * harm aimed at the person reads as the person saying it; and OUTPUT_HARM,
+ * second-person means, worthlessness and violence advice the first-person
+ * lexicon has no words for ("take all of your pills", "stop eating for a few
+ * days", "hit your boss hard"). Any hit: the pipeline gives the authored
+ * fallback, never a regeneration that could word the same harm again.
+ * Checked against every line the model has written in eval/runs and the
+ * real-model run (test/output-harm.test.js): no rejections.
  * @param {Record<string, string>} scene
  * @param {readonly string[]} fields
  * @returns {boolean} true when the output is clean
  */
 export function outputIsSafe(scene, fields) {
-  for (const f of fields) {
-    const text = scene[f] || '';
-    const r = checkSafety(text);
-    if (r.level === 'crisis' || r.level === 'care') return false;
-    if (OUTPUT_HARM.some((re) => re.test(tidyForSafety(text)))) return false;
-  }
+  for (const f of fields) if (outputHarm(scene[f] || '')) return false;
   return true;
 }
 
-// Second-person harm language the first-person lexicon would not see.
+/**
+ * Whether one line the model wrote reads as harm (outputIsSafe). Never
+ * returns the words.
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function outputHarm(text) {
+  const t = tidyForSafety(text);
+  if (!t) return false;
+  if (OUTPUT_HARM.some((re) => re.test(t))) return true;
+  for (let copy of [t, ...firstPersonCopies(t)]) {
+    for (const re of OUTPUT_GUARDS) copy = copy.replace(re, (m) => ' '.repeat(m.length));
+    const r = checkSafety(copy);
+    if (r.level === 'crisis' || r.level === 'care') return true;
+  }
+  return false;
+}
+
+// Games, not blows, once 'your sister' reads as 'my sister': "you'll beat
+// your sister at Scrabble next time".
+const OUTPUT_GUARDS = [
+  /\b(?:beat|beats|beating|beaten|thrash|thrashing|smash|smashing|destroy|destroying) (?:[\w']+ ){1,3}(?:at|in) (?:a |the |your |my |their )?(?:\w+ )?(?:chess|cards|poker|tennis|table tennis|ping pong|football|golf|squash|badminton|scrabble|monopoly|mario kart|fifa|games?|video games|quiz|quizzes|trivia|darts|pool|bowling|races?|running|arm wrestling|exams?|tests?)\b/gi,
+];
+
+// Second person → first person, for the lexicon (written for the person's
+// own words). 'you' is a subject ("you should", "you paused") or an object
+// ("miss you", "without you there"); where the next word does not settle it,
+// both readings are tried: one copy with 'I', one with 'me'.
+/** @type {[RegExp, string][]} */
+const FIRST_PERSON = [
+  [/\byou(?:'re| are)\b/gi, "I'm"],
+  [/\byoure\b/gi, "I'm"],
+  [/\byou were\b/gi, 'I was'],
+  [/\bare you\b/gi, 'am I'],
+  [/\bwere you\b/gi, 'was I'],
+  [/\byou've\b/gi, "I've"],
+  [/\byou'll\b/gi, "I'll"],
+  [/\byou'd\b/gi, "I'd"],
+  [/\byourselves\b/gi, 'ourselves'],
+  [/\byourself\b/gi, 'myself'],
+  [/\byours\b/gi, 'mine'],
+  [/\byour\b/gi, 'my'],
+];
+
+/**
+ * The text in the first person, both ways 'you' can be read; [] when it has
+ * no second person at all.
+ * @param {string} tidied the text after tidyForSafety
+ * @returns {string[]}
+ */
+export function firstPersonCopies(tidied) {
+  if (!/\byou/i.test(tidied)) return [];
+  let c = tidied;
+  for (const [re, to] of FIRST_PERSON) c = c.replace(re, to);
+  if (!/\byou\b/i.test(c)) return [c];
+  /** @param {string} unsure @returns {string} */
+  const read = (unsure) => c.replace(/\byou\b/gi, (_, at) => {
+    const next = c.slice(at + 3);
+    return YOU_SUBJECT.test(next) ? 'I' : YOU_OBJECT.test(next) ? 'me' : unsure;
+  });
+  const asI = read('I');
+  const asMe = read('me');
+  return asI === asMe ? [asI] : [asI, asMe];
+}
+// 'you' + a helper or a past tense is the subject ("you could", "you paused")...
+const YOU_SUBJECT = /^ (?:am|are|were|was|have|had|has|do|did|does|don't|didn't|doesn't|dont|didnt|can|can't|cannot|could|couldn't|should|shouldn't|would|wouldn't|will|won't|might|must|may|need|needn't|ought|shall|[a-z]+ed)\b/i;
+// ...and before the end, a stop or a word that never follows a subject, the object ("miss you", "tell you what")
+const YOU_OBJECT = /^(?:\s*$|\s*[^\s\w']|\s+(?:to|for|with|at|in|on|about|from|off|up|out|down|back|over|again|too|there|here|if|when|so|because|that|anymore|tonight|today|tomorrow|a|an|the|this|these|those|some|any|what|how|why|much|more|less|enough|anyway|either|yet|around)\b)/i;
+
+// Words for the second-person rules below.
+const O = String.raw;
+// someone the person could be told to hurt
+const TARGET = O`(?:him|her|them|someone|somebody|anyone|people|(?:that|this|the) (?:guy|man|woman|bloke|lad|girl|boy|kid|person)|(?:your|my|his|her|their|the) (?:(?:new|old|ex-|former|line|direct|own|little|big|older|younger|best|step-?) ?)?(?:boss|manager|supervisor|partner|boyfriend|girlfriend|husband|wife|ex|colleague|coworker|co-worker|workmate|friend|mate|flatmate|roommate|housemate|brother|sister|sibling|mum|mom|dad|mother|father|parents?|son|daughter|child|kids?|cousin|uncle|aunt|auntie|nan|gran|grandma|grandad|neighbou?r|teacher|tutor|coach|landlord|landlady|classmate|teammate|team ?mate|bf|gf|bully|bullies))`;
+// what turns 'hurt' into advice: "you should…", "maybe just…", "go and…", or the start of a sentence
+const ADVICE = O`(?:(?:^|[.!?;:]\s*)|\b(?:you|u) (?:should|need to|have to|ought to|must|want to|wanna|deserve to|get to|are allowed to|'re allowed to|could (?:just|always|go and|even)|can (?:just|always|go and))(?: (?:just|always|really|even|definitely|simply|finally|go and|go))* |\b(?:maybe|perhaps|why not|just|go and|try to|try and|time to|feel free to|don't be afraid to) (?:(?:just|go and|go|really) )*)`;
+// a person, not their things ("your manager's decision")
+const PERSON_END = O`\b(?!'s|')`;
+// words, not blows: 'hit him with the facts', 'kill them with kindness', 'kick your flatmate out'
+const NOT_A_BLOW = O`(?! (?:up|out|off|back with|with (?:kindness|love|compassion|praise|questions|facts|the truth|honesty)|with (?:a |an |the |your |some |this |that |those |these |one |two )?(?:\w+ ){0,2}(?:question|questions|request|reply|answer|message|email|text|update|idea|proposal|plan|fact|facts|number|numbers|data|details?|point|points|truth|news|offer|figures|evidence|list|summary|deadline|invoice|bill))\b)`;
+
+// Second-person harm the first-person lexicon has no words for. Kept narrow:
+// test/output-harm.test.js runs every real line the model has written
+// through these.
 const OUTPUT_HARM = [
-  /\b(?:kill|killing|hurt|hurting|harm|harming|cut|cutting|burn|burning|starve|starving|punish|punishing) yourself\b/i,
+  /\b(?:kill|killing|hurt|hurting|harm|harming|starve|starving|punish|punishing) yourself\b/i,
+  // 'cut yourself some slack' and 'burn yourself out' are what a friend says
+  /\b(?:cut|cutting) yourself\b(?! (?:(?:some|a (?:little|bit of)|more) )?(?:slack|a break|off from)\b)/i,
+  /\b(?:burn|burning) yourself\b(?! out\b)/i,
   /\bend(?:ing)? your (?:own )?life\b/i,
   /\btake your (?:own )?life\b/i,
   /\bsuicid\w*/i,
@@ -908,6 +1005,34 @@ const OUTPUT_HARM = [
   /\boverdos\w*/i,
   /\b(?:want|wanting|wish) to die\b/i,
   /\bweapons?\b|\bpoison\w*/i,
+  // means: pills, hanging, a rope, jumping, starving, cutting, drinking
+  /\b(?:take|taking|took|swallow|swallowing|down|downing|neck|necking|have|having) (?:all|the rest|every one|every last one|a (?:handful|bottle|box|packet|load|bunch|stack|pile|whole (?:bottle|box|packet|pack))|loads|lots|a lot|double|twice|extra|more|as many) (?:of )?(?:(?:your|the|those|these|my|his|her) )?(?:\w+ )?(?:pills|tablets|meds|medication|medicine|painkillers|paracetamol|sleeping pills|antidepressants|insulin)\b/i,
+  /\b(?:lethal|fatal|deadly) (?:dose|amount)\b/i,
+  /\b(?:hang|hanging|hanged) yourself\b/i,
+  /\bnoose\b/i,
+  /(?<!\b(?:skipping|jump|jumping|tow|climbing|learn the|learning the|know the|knows the|show you the) )\bropes?\b(?! (?:swing|swings|ladder|course|bridge|climb|climbing|walk|light|lights|access|in|into)\b)(?!-)/i,
+  /\b(?:jump|jumping|throw yourself|throwing yourself|leap|leaping|step|stepping) (?:off|from) (?:a |an |the |your |that |this |some )?(?:\w+ )?(?:bridge|building|roof|rooftop|cliff|cliff edge|balcony|ledge|tower|tower block|car park|multi-storey|window)\b/i,
+  /\b(?:jump|jumping|throw yourself|throwing yourself|step|stepping|walk|walking|lie down|lying down|run|running) (?:in front of|under) (?:a |an |the |that |this |some |oncoming )?(?:\w+ )?(?:train|bus|lorry|truck|car|traffic|tube)\b/i,
+  /\b(?:jump|jumping|throw yourself|throwing yourself|step|stepping|walk|walking|run|running|wade|wading) (?:out )?into (?:the |a |oncoming )?(?:traffic|sea|river|canal|lake|road|motorway)\b/i,
+  /\b(?:throw|throwing|hurl|hurling) yourself\b/i,
+  /(?<!\b(?:don't|do not|dont|never|not|no|try not to|without|stop) )\b(?:stop|stopping|quit|quitting|give up|giving up|skip|skipping) (?:eating|food|meals|all food|drinking water)\b(?=\s*$|\s*[.,;:!?]| (?:for|until|till|so|and|altogether|completely|entirely|at all|for good|anymore|any more|today|tonight|tomorrow|this week|now|again)\b)(?! so (?:late|much|fast|quickly|early|often)\b)/i,
+  /\b(?:don't|do not|stop) eat(?:ing)? (?:anything )?(?:for (?:a|two|three|several|a few|the next) (?:\w+ )?(?:days?|weeks?)|until)\b/i,
+  /\bgo without (?:food|eating|meals)\b/i,
+  /\b(?:cut|slit|slash|slice) (?:your|ur) (?:wrists?|arms?|legs?|skin|thighs?)\b/i,
+  /\bdrink(?:ing)? yourself\b/i,
+  // worthlessness aimed at the person
+  /\b(?:be |are |were |is )?better off without you\b/i,
+  /\b(?:nobody|no one|no-one|noone|not one person|no person)\b(?: [\w']+){0,4}? (?:would|will|could|is going to|is gonna|ever)(?: (?:even|ever|really|actually|honestly|truly|probably))* (?:(?:miss|mourn|care about|care if|care that|cry (?:for|over)) you\b|notice (?:if |that |when )?you(?:'re| are| were| was)? (?:gone|missing|dead|not there|weren't there|disappeared|died|vanished|left for good)\b|remember you(?=\s*$|\s*[.,;:!?]| (?:at all|once|after)\b))/i,
+  /\b(?:nobody|no one|no-one|noone) (?:misses|cares about|would care about|wants) you\b/i,
+  /\byou (?:don't|do not|didn't|did not|no longer) deserve to (?:live|be alive|exist|be here|be happy|be loved|have friends|have anyone|breathe|get better|be forgiven|have a life|have a future)\b/i,
+  /\byou deserve (?:to (?:die|suffer|be hurt|be alone|be punished|feel (?:this|that) (?:bad|awful|way)|be in pain)|(?:all )?(?:the |this |that )?(?:pain|suffering)(?! relief\b))\b/i,
+  /\byou(?:'re| are) (?:just |really |truly |honestly |simply |nothing but )?(?:worthless|a burden|a waste of (?:space|air|time|oxygen)|pathetic|unlovable|better off dead|a lost cause|beyond help)\b/i,
+  /\b(?:the world|everyone|everybody|your (?:family|friends|team|colleagues|kids)) (?:would be|is|are|will be) better (?:off )?without you\b/i,
+  // violence advice: hit, punch or hurt a person
+  new RegExp(O`\b(?:hit|hitting|punch|punching|slap|slapping|kick|kicking|smack|smacking|thump|thumping|whack|whacking|batter|battering|headbutt|headbutting|stab|stabbing|strangle|strangling|choke|choking|shove|shoving|assault|assaulting|deck|decking|lamp|lamping|knock out|glass|glassing|kill|killing|murder|murdering) ${TARGET}${PERSON_END}${NOT_A_BLOW}`, 'i'),
+  new RegExp(O`\b(?:beat|beating|knock|knocking|smash|smashing) (?:${TARGET}|the \w+ out of ${TARGET})(?: \w+)? (?:up|out|senseless|unconscious|to a pulp|black and blue)\b`, 'i'),
+  new RegExp(O`\b(?:hurt|hurting|harm|harming|injure|injuring) ${TARGET} back\b`, 'i'),
+  new RegExp(O`${ADVICE}(?:hurt|harm|injure|wound|get physical with|lash out at|square up to|rough up|attack|beat) ${TARGET}${PERSON_END}(?! (?:at|in|to)\b)`, 'i'),
 ];
 
 warmSafety();
