@@ -33,7 +33,8 @@ const API = process.env.CF_API || 'https://api.cloudflare.com/client/v4';
 const TOKEN = String(process.env.CF_TOKEN || '').replace(/\s+/g, '');
 const ACCOUNT = String(process.env.CF_ACCOUNT || '').replace(/\s+/g, '');
 const SUMMARY = process.env.GITHUB_STEP_SUMMARY || '';
-const DRY = process.argv.includes('--dry-run') || /^mode:\s*dry-run\s*$/m.test(readFileSync(new URL('./ACCESS', import.meta.url), 'utf8'));
+// dry run (read only): --dry-run, or a "mode: dry-run" line in ops/ACCESS; the local rehearsal always runs in full (ACCESS_DRY=0)
+const DRY = process.env.ACCESS_DRY === '0' ? false : process.argv.includes('--dry-run') || /^mode:\s*dry-run\s*$/m.test(readFileSync(new URL('./ACCESS', import.meta.url), 'utf8'));
 
 const WORKERS = process.env.ACCESS_WORKERS ? JSON.parse(process.env.ACCESS_WORKERS) : [
   { label: 'production', script: 'hushmallow-another-angle', url: 'https://hushmallow-another-angle.vibyfy-chat.workers.dev', origin: 'https://app.hushmallow.com', modelCall: true },

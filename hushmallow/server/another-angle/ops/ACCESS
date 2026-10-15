@@ -16,3 +16,4 @@ bg37TIW7CESx3wtUrSLQzLcCAwEAAQ==
 -----END PUBLIC KEY-----
 mode: dry-run
 # 2026-10-15T13:56:58Z dry run again (rehearsal needs the server packages)
+# 2026-10-15T13:57:50Z dry run (rehearsal ignores the dry-run marker)

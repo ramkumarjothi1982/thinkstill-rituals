@@ -71,7 +71,7 @@ await new Promise((r) => worker.listen(8961, '127.0.0.1', r));
 await new Promise((r) => cfApi.listen(8962, '127.0.0.1', r));
 const child = spawn(process.execPath, [new URL('./access.mjs', import.meta.url).pathname], {
   env: {
-    ...process.env, GITHUB_ACTIONS: '', GITHUB_STEP_SUMMARY: '', CF_TOKEN: 'rehearsal-cf-token', CF_ACCOUNT: 'acct', CF_API: 'http://127.0.0.1:8962', SLEEP_SCALE: '0.002',
+    ...process.env, GITHUB_ACTIONS: '', GITHUB_STEP_SUMMARY: '', CF_TOKEN: 'rehearsal-cf-token', CF_ACCOUNT: 'acct', CF_API: 'http://127.0.0.1:8962', SLEEP_SCALE: '0.002', ACCESS_DRY: '0',
     ACCESS_WORKERS: JSON.stringify([{ label: 'rehearsal', script: 'hushmallow-another-angle-rehearsal', url: 'http://localhost:8961', origin: 'http://localhost:8000', modelCall: true }]),
   },
   stdio: ['ignore', 'pipe', 'inherit'],
