@@ -16,6 +16,7 @@
 import { createHushflow } from './director.js';
 import { WORLDS, createRegistry, STATUS } from './registry.js';
 import { rigMallow, createPlaceholderThought, createLabSubtitles } from './placeholders.js';
+import { RAINDROP_LAGOON } from './worlds/raindrop-lagoon.js';
 
 const WORDS_EMOTION = { angry: 'anger', frustrated: 'anger', anxious: 'fear', overwhelmed: 'fear', restless: 'fear', sad: 'sadness', lonely: 'loneliness' };
 
@@ -44,7 +45,9 @@ const DEV_REALM = {
 export async function hushflowLab(app, qs) {
   const worldId = qs.get('hushflow');
   const forceNext = qs.get('next') || null;
-  const registry = createRegistry(forceNext === 'dev-realm' ? [...WORLDS, DEV_REALM] : WORLDS);
+  // worlds still being built (not in WORLDS): a playable copy, here only, when asked for by id (hushflow= or next=)
+  const LAB = [RAINDROP_LAGOON].filter((e) => e.id === worldId || e.id === forceNext).map((e) => ({ ...e, status: STATUS.PLAYABLE }));
+  const registry = createRegistry([...(forceNext === 'dev-realm' ? [...WORLDS, DEV_REALM] : WORLDS), ...LAB]);
   const entry = registry.get(worldId);
   if (!entry || !registry.playable(worldId)) { console.warn(`[hushflow lab] no playable world "${worldId}"`); return false; }
 
