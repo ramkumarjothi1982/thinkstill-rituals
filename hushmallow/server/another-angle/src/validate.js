@@ -1,6 +1,7 @@
 // Request validation. Strict: unknown fields are rejected so client bugs and
 // probing show up immediately. The person's text is normalised only for
-// transport safety (NFC, control characters, whitespace) and never reworded.
+// transport safety (NFC, control and invisible characters, whitespace) and
+// never reworded.
 
 import { normaliseEmotion, normaliseIntention, PATTERNS, INTERACTIONS, MALLOWS, PATTERN_INTERACTION, INTERACTION_PATTERN } from './vocab.js';
 
@@ -10,14 +11,29 @@ export const PREVIOUS_LINE_MAX = 200;
 export const ANGLE_BODY_MAX_BYTES = 16384;
 export const SESSION_BODY_MAX_BYTES = 20000;
 
-// C0/C1 controls (except tab and newline), zero-width and bidi controls.
+// Taken out of the person's text (and the earlier angles) before any check and
+// before the prompt (15 Oct 2026, security review 1): C0/C1 controls (except
+// tab and newline) and every default-ignorable or format character, so nothing
+// invisible can split a word for the safety checks or carry words past them to
+// the model. That is zero-width spaces and joiners, bidi controls and isolates
+// (202A–202E, 2066–2069), the soft hyphen, the combining grapheme joiner, word
+// joiners and invisible operators (2060–206F), variation selectors (FE00–FE0F,
+// E0100–E01EF), Hangul fillers (115F, 1160, 3164, FFA0), Unicode tag
+// characters (E0000–E007F: invisible ASCII a model can still read) and the
+// rest of Default_Ignorable_Code_Point and of the format category (Cf); plus
+// the combining marks for symbols (20D0–20FF), which no English text needs.
+// The shared risk screener folds lookalike letters on its own copy
+// (risk-screen.js normalise); the words themselves are never changed.
 // eslint-disable-next-line no-control-regex
-const STRIP = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F​-‏‪-‮⁦-⁩﻿]/gu;
+const STRIP = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\p{Default_Ignorable_Code_Point}\p{Cf}\u20D0-\u20FF\u{E0000}-\u{E0FFF}]/gu;
+// Blank characters that stand for a space are a space (no-break and the other
+// Unicode spaces, the braille blank); line and paragraph separators are new lines.
+const SPACES = /[\p{Zs}\u2800]+/gu;
 
 /** @param {string} s */
 export function cleanText(s) {
-  return s.normalize('NFC').replace(/\r\n?/g, '\n').replace(/\t/g, ' ').replace(STRIP, '')
-    .replace(/[  ]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  return s.replace(/\r\n?|[\u2028\u2029]/g, '\n').replace(/\t/g, ' ').replace(STRIP, '').normalize('NFC')
+    .replace(SPACES, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /** @typedef {{ ok: false, code: string, field: string, message: string }} Invalid */

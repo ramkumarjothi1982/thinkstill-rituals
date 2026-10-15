@@ -1,6 +1,6 @@
 // HTTP layer for the Another Angle Worker.
 //
-//   GET  /v1/health   liveness + versions (no secrets)
+//   GET  /v1/health   liveness + versions + whether a tester invite is needed (no secrets)
 //   POST /v1/session  entitlement check → signed session token
 //   POST /v1/angle    one Another Angle scene (or support, or a fallback signal)
 //   POST /v1/feedback which of the four feedback buttons was pressed (metadata only)
@@ -27,6 +27,9 @@ import { costMicros, worstCaseMicros } from './cost.js';
 import { createAnthropicProvider } from './providers/anthropic.js';
 import { createMockProvider } from './providers/mock.js';
 
+/** The unauthenticated safety pre-check reads at most this many characters of the text (src/validate.js TEXT_MAX is 600). */
+export const EARLY_CHECK_CHARS = 2000;
+
 /**
  * @typedef {import('./providers/anthropic.js').Provider} Provider
  * @typedef {{ waitUntil?(p: Promise<unknown>): void }} Ctx
@@ -47,7 +50,7 @@ export function createApp(options) {
   const configs = new WeakMap();
   /** @type {Map<string, Provider>} */
   const providers = new Map();
-  const fallbackNs = memoryLedgerNamespace();
+  const fallbackNs = memoryLedgerNamespace({ now });
   const fallbackAngleLimiter = memoryRateLimiter({ limit: 6, periodMs: 60000, now });
   const fallbackSessionLimiter = memoryRateLimiter({ limit: 3, periodMs: 60000, now });
   const fallbackFeedbackLimiter = memoryRateLimiter({ limit: 20, periodMs: 60000, now });
@@ -100,6 +103,8 @@ export function createApp(options) {
       return json(200, {
         ok: true, service: 'another-angle', prompt_version: PROMPT_VERSION, schema_version: SCHEMA_VERSION,
         provider: cfg.provider, entitlement_mode: cfg.entitlementMode,
+        // a testing session needs one of TESTER_INVITE_CODES (src/auth/entitlement.js); only whether, never a code
+        invite_required: cfg.entitlementMode !== 'storekit' && cfg.inviteCodes.length > 0,
         configured: { signing_key: cfg.signingKeys.length > 0, provider_key: cfg.provider === 'mock' || cfg.apiKey.length > 0 },
       }, cors);
     }
@@ -120,6 +125,15 @@ export function createApp(options) {
 
   /** @param {Record<string, any>} env */
   const ledgerFor = (env) => ledgerClient(env.LEDGER || fallbackNs);
+
+  /**
+   * The opaque tag sent to Anthropic as metadata.user_id, so abuse can be
+   * spotted within a day: a keyed hash of the session subject and the UTC
+   * day, so it changes every day and one phone's requests cannot be linked
+   * across days by it (15 Oct 2026, privacy review 3).
+   * @param {import('./config.js').Config} cfg @param {string} subject @param {string} day
+   */
+  const userTag = (cfg, subject, day) => keyedHash(cfg.hashKey, `tag:${day}:${subject}`, 12);
 
   /**
    * @param {Request} request @param {Record<string, any>} env
@@ -178,11 +192,14 @@ export function createApp(options) {
     // The body is read first so the safety pre-check can run before anything
     // that could turn a person in crisis away (a burst limit, an expired
     // token, a missing setting). The check is cheap, uses no quota and
-    // returns only the authored support copy.
+    // returns only the authored support copy. It reads at most the first
+    // EARLY_CHECK_CHARS characters (no token yet, so no unbounded CPU for
+    // anyone); a longer text is refused later anyway (TEXT_MAX), and the full
+    // checks run on the validated text after the token.
     const body = await readJson(request, ANGLE_BODY_MAX_BYTES);
     const raw = body.ok && body.value && typeof body.value === 'object' ? /** @type {Record<string, unknown>} */ (body.value).text : null;
     if (typeof raw === 'string') {
-      const early = checkSafety(cleanText(raw));
+      const early = checkSafety(cleanText(raw.slice(0, EARLY_CHECK_CHARS)));
       if (early.level === 'crisis' || early.level === 'care') {
         logEvt({ status: early.level, http: 200, safety_level: early.level, safety_source: 'lexicon', text_len_bucket: lengthBucket(raw.length) });
         return json(200, { ...base, status: early.level, scene: null, support: supportPayload(early.level, early.category, 'lexicon'), fallback: null, keep_support_close: true }, cors);
@@ -267,7 +284,7 @@ export function createApp(options) {
     try {
       result = await runAngle(input, {
         provider, systemPrompt: options.systemPrompt, maxTokens: cfg.maxTokens, attemptTimeoutMs: cfg.attemptTimeoutMs,
-        deadlineMs: cfg.deadlineMs, userTag: await keyedHash(cfg.hashKey, `tag:${subject}`, 12), now, usage,
+        deadlineMs: cfg.deadlineMs, userTag: await userTag(cfg, subject, day), now, usage,
       });
     } catch (e) {
       await defer(ctx, ledger.settle('global', 'spend', day, reserve, costMicros(usage)));

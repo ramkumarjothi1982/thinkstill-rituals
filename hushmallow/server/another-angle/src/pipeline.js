@@ -9,7 +9,7 @@
 //   3. strict schema validation           invalid → regenerate
 //   4. model's safety_status honoured     care/crisis → support, no reframe
 //   5. "unclear" situation                → fallback signal (client asks for more)
-//   6. output safety post-check           unsafe → regenerate
+//   6. output safety post-check           unsafe → fallback signal, never a regeneration; support kept close
 //   7. deterministic quality gate         fail → ONE regeneration with reasons
 //   8. still failing                      → fallback signal (authored engine)
 
@@ -103,10 +103,13 @@ export async function runAngle(input, deps) {
   }
   // 1c. Earlier angles come back from the device, and the model reads them: a client could hide risk words there. The
   // server's own lines never read as crisis or care (outputIsSafe below; 0 of the 255 real ones in eval/runs), so any
-  // that do were not written here: support, no model call.
+  // that do were not written here: support, no model call. A 'check' reading on any of them counts as one on the
+  // person's words: the model is told to judge safety first, and support is kept close.
+  let previousCheck = false;
   for (const p of input.previous) {
-    if (deps.skipLexicon) break;
-    const prev = [p.subtitle_line_1, p.subtitle_line_2].map((l) => screenInput(l)).find((r) => r.level === 'crisis' || r.level === 'care');
+    const reads = [p.subtitle_line_1, p.subtitle_line_2].map((l) => screenInput(l));
+    if (reads.some((r) => r.check)) previousCheck = true;
+    const prev = deps.skipLexicon ? undefined : reads.find((r) => r.level === 'crisis' || r.level === 'care');
     if (!prev) continue;
     meta.safety_source = prev.source;
     meta.safety_level = prev.level;
@@ -114,7 +117,7 @@ export async function runAngle(input, deps) {
     const level = /** @type {'crisis' | 'care'} */ (prev.level);
     return /** @type {AngleResult} */ (done({ status: level, support: supportPayload(level, prev.category, prev.source || 'lexicon'), keep_support_close: true }));
   }
-  const riskCheck = screened.check;
+  const riskCheck = screened.check || previousCheck;
   const concern = safety.level === 'concern' || screened.level === 'concern' || riskCheck;
   // Earlier angles come back from the device too, so they are checked as well.
   meta.injection = looksLikeInjection(input.text)
@@ -189,14 +192,16 @@ export async function runAngle(input, deps) {
     if (scene.situation_type === 'unclear') {
       return /** @type {AngleResult} */ (done({ fallback: { reason: 'unclear', hint: null }, keep_support_close: concern }));
     }
-    valid.push(scene);
-    // 6. Output post-check.
+    // 6. Output post-check: harm in what the model wrote, in its own words or aimed at the person, is never shown and
+    // never regenerated (a second draft could word the same harm again): the authored fallback, with support kept
+    // close. The harmful draft's pattern is not offered as the hint either.
     if (!outputIsSafe(scene, VISIBLE_FIELDS)) {
-      meta.gate_codes.push('unsafe_output');
-      rejected = { lines: [scene.subtitle_line_1, scene.subtitle_line_2], reasons: ['The draft used harm or crisis language; write a calm, safe angle instead.'] };
-      drafts?.push({ attempt, lines: rejected.lines, pattern: scene.reasoning_pattern, failures: [{ code: 'unsafe_output', field: '', text: null }] });
-      continue;
+      meta.gate = 'fail';
+      meta.gate_codes = [...new Set([...meta.gate_codes, 'unsafe_output'])];
+      drafts?.push({ attempt, lines: [scene.subtitle_line_1, scene.subtitle_line_2], pattern: scene.reasoning_pattern, failures: [{ code: 'unsafe_output', field: '', text: null }] });
+      return /** @type {AngleResult} */ (done({ fallback: { reason: 'quality', hint: hintFrom(valid, input.previous) }, keep_support_close: true }));
     }
+    valid.push(scene);
     // 7. Quality gate.
     const gate = qualityGate(scene, { text: input.text, previous: input.previous, emotion: input.emotion });
     if (gate.pass) {

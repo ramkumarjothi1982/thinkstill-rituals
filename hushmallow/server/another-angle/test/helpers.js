@@ -11,6 +11,7 @@ import { PROMPT_VERSION } from '../src/prompt.js';
 export const SYSTEM_PROMPT = readFileSync(new URL(`../prompts/${PROMPT_VERSION}.md`, import.meta.url), 'utf8');
 export const ORIGIN = 'https://ramkumarjothi1982.github.io';
 export const BASE = 'https://angle.example.workers.dev';
+export const CLOCK_START = Date.parse('2026-10-12T10:00:00Z');
 
 /** @param {Record<string, any>} [over] */
 export function makeEnv(over = {}) {
@@ -22,7 +23,11 @@ export function makeEnv(over = {}) {
     ALLOWED_ORIGINS: `${ORIGIN},http://localhost:8000`,
     DEVICE_DAILY_LIMIT: '5',
     DAILY_SPEND_CAP_USD: '10',
-    LEDGER: memoryLedgerNamespace(),
+    // The ledger's alarms run on this clock: 10:00 UTC on 12 Oct 2026, where
+    // clock() below starts. The tests here use that day or today, so no
+    // counter is ever two days past its day for this ledger, as before the
+    // alarm (test/ledger.test.js tests the alarm on a moving clock).
+    LEDGER: memoryLedgerNamespace({ now: () => CLOCK_START }),
     ANGLE_IP_LIMITER: allowAll(),
     SESSION_IP_LIMITER: allowAll(),
     ...over,
@@ -147,7 +152,7 @@ export const ANCHORS = [
 export const anchor = (i, over = {}) => ({ ...ANCHORS[i].scene, ...over });
 
 /** A clock that only moves when told to. */
-export function clock(start = Date.parse('2026-10-12T10:00:00Z')) {
+export function clock(start = CLOCK_START) {
   let t = start;
   const now = () => t;
   now.advance = (ms) => { t += ms; };

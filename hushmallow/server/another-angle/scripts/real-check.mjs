@@ -31,12 +31,18 @@
 // the model past it as well. With a real provider nothing is sent without
 // --yes (the estimate is printed instead).
 //
-// report: one markdown summary (report.md) from api.json, client.json (the
+// report: one markdown report (report.md) from api.json, client.json (the
 // browser stage) and the harness logs: per-case table, totals, cost, latency
-// p50/p95, and every failure verbatim. Exits 1 if anything failed.
+// p50/p95, and every failure verbatim; and a public summary (summary.md) of
+// the same run with ids, groups, verdicts, counts, costs and latencies only.
+// Exits 1 if anything failed.
 //
-// The inputs are synthetic test sentences, never anyone's real words. The
-// report holds the model's lines; keep the artifact private.
+// The inputs are synthetic test sentences, never anyone's real words. What
+// this script prints (the Actions log) and summary.md (the run's step
+// summary) never hold an input sentence or a line the model wrote (15 Oct
+// 2026, privacy review 1: the repository is public, and so are its run logs);
+// report.md and api.json hold both and go only in the run's artifact. On a
+// public repository any signed-in GitHub user can download that artifact.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, openSync, readSync, fstatSync, closeSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
@@ -199,7 +205,8 @@ async function apiStage() {
   const check = (part, id, what, expect, got, pass, x = {}) => {
     const c = { id, part, what, expect, got, pass, calls: x.calls || 0, ms: x.ms || 0, ...(x.detail !== undefined ? { detail: x.detail } : {}) };
     checks.push(c);
-    console.log(`${pass ? 'PASS' : 'FAIL'}  [${part}] ${id}  ${what}  expect ${expect}  got ${got}${c.calls ? `  model calls ${c.calls}` : ''}`);
+    // the log is public: the id, the verdict, model calls and latency (what was expected and got is in report.md)
+    console.log(`${pass ? 'PASS' : 'FAIL'}  [${part}] ${id}${c.calls ? `  model calls ${c.calls}` : ''}${c.ms ? `  ${c.ms}ms` : ''}`);
     return pass;
   };
   /** @param {Res} r */
@@ -225,7 +232,7 @@ async function apiStage() {
   check('contract', 'health-cors', 'CORS on an allowed origin', `access-control-allow-origin ${ORIGIN}`, String(health.headers.get('access-control-allow-origin')),
     health.headers.get('access-control-allow-origin') === ORIGIN);
   if (!okHealth) {
-    console.error(`The harness at ${BASE} is not healthy (or not the expected provider): ${health.text.slice(0, 300)}`);
+    console.error(`The harness at ${BASE} is not healthy (or not the expected provider): HTTP ${health.http}, provider ${provider}`);
     return finish({ meta, checks, cases: [], fatal: 'unhealthy harness' });
   }
 
@@ -405,7 +412,8 @@ async function apiStage() {
     const v = verdictOf(row);
     row.verdict = v.verdict; row.why = v.why;
     if (row.verdict !== 'PASS') row.response = r.json || r.text.slice(0, 2000);
-    console.log(`${row.verdict.padEnd(5)} [case] ${c.id}  ${row.http} ${row.status || row.error_code}${row.fallback_reason ? ` (${row.fallback_reason})` : ''} source=${row.safety_source || '-'} gate=${row.gate || '-'} calls=${row.attempts} ${row.ms}ms${row.slow ? ' SLOW' : ''}${row.lines ? `  «${row.lines[0]}» «${row.lines[1]}»` : ''}`);
+    // the log is public: never the input or the model's lines (they are in report.md, in the artifact)
+    console.log(`${row.verdict.padEnd(5)} [case] ${c.id} ${row.group}  ${row.http} ${row.status || row.error_code}${row.fallback_reason ? ` (${row.fallback_reason})` : ''} source=${row.safety_source || '-'} gate=${row.gate || '-'} calls=${row.attempts} ${row.ms}ms${row.slow ? ' SLOW' : ''}`);
     return row;
   }
 
@@ -458,8 +466,11 @@ function finish(r) {
   writeFileSync(join(OUT, 'budget.json'), JSON.stringify({ ...api.budget, log: LOG || null, model: MODEL }, null, 1));
   const failed = r.checks.filter((c) => !c.pass).length + r.cases.filter((c) => c.verdict !== 'PASS').length + (r.fatal ? 1 : 0);
   console.log(`\napi stage: ${r.checks.length} checks (${r.checks.filter((c) => !c.pass).length} failed), ${r.cases.length} cases (${r.cases.filter((c) => c.verdict === 'PASS').length} pass, ${r.cases.filter((c) => c.verdict === 'SKIPPED').length} skipped), model calls ${budget.calls} in ${budget.requests} requests, ${r.meta.dry ? 'mock usage priced at real rates' : 'cost'} ${usd(budget.micros)}${r.fatal ? `, FATAL: ${r.fatal}` : ''}`);
-  writeFileSync(join(OUT, 'report.md'), render(api, readClient(), totalsFromLogs()));
-  console.log(`wrote ${join(OUT, 'api.json')}, budget.json, report.md`);
+  const client = readClient();
+  const totals = totalsFromLogs();
+  writeFileSync(join(OUT, 'report.md'), render(api, client, totals));
+  writeFileSync(join(OUT, 'summary.md'), renderPublic(api, client, totals));
+  console.log(`wrote ${join(OUT, 'api.json')}, budget.json, report.md (artifact only), summary.md`);
   if (r.estimateOnly) process.exit(0);
   process.exit(failed && !flag('no-fail') ? 1 : 0);
 }
@@ -626,13 +637,94 @@ function render(api, client, totals) {
   return `${L.join('\n')}\n`;
 }
 
+/**
+ * The public summary of a run (the Actions log and step summary; the repository is public): ids, groups, verdicts,
+ * counts, costs and latencies only. Never an input sentence, a line the model wrote, a response body or a free-text
+ * detail; report.md (in the artifact) has those.
+ * @param {any} api @param {any} client @param {ReturnType<typeof totalsFromLogs>} totals
+ */
+function renderPublic(api, client, totals) {
+  const m = api?.meta || {};
+  const L = [];
+  const cases = /** @type {any[]} */ (api?.cases || []);
+  const checks = /** @type {Check[]} */ (api?.checks || []);
+  const dry = !!m.dry;
+  /** A short code only: what comes before any ':' (an error message could quote the file it failed on). @param {unknown} s */
+  const code = (s) => cell(String(s ?? '').split(':')[0].replace(/[^\w .()/–+-]/g, '').slice(0, 80));
+  L.push(`# Another Angle — real-model check, summary${dry ? ' (DRY RUN: mock provider, 0 real model calls)' : ''}`, '');
+  L.push('Ids, groups, verdicts, counts, costs and latencies only. The inputs, the model\'s lines and every failure in full are in `report.md` in the run\'s artifact (`another-angle-real`); on a public repository any signed-in GitHub user can download it.', '');
+  L.push(`- Provider **${code(m.provider || '?')}** · model **${code(m.model || '?')}** (served: ${(totals.main?.models || []).map(code).join(', ') || '–'}) · effort **${code(m.effort || '?')}** · prompt ${code(m.prompt_version || '?')} · schema ${code(m.schema_version || '?')}`);
+  L.push(`- Budget: at most ${Number(m.max_calls) || 0} model calls and $${Number(m.max_usd || 0).toFixed(2)}; worst case of one request ${usd(m.worst_micros || 0)}${api?.budget?.stopped ? ` · **stopped early: ${code(api.budget.stopped.split(' (')[0])}**` : ''}`);
+  const iso = (/** @type {unknown} */ s) => String(s ?? '?').replace(/[^0-9TZ:.-]/g, '').slice(0, 30) || '?';
+  L.push(`- Started ${iso(m.started)} · finished ${iso(m.finished)} · the app gives up on an answer after ${sec(m.client_timeout_ms || CLIENT_TIMEOUT_MS)}`);
+  if (api?.fatal) L.push('', `**FATAL: ${code(api.fatal)}**`);
+  if (api?.estimateOnly) L.push('', 'Estimate only: nothing was sent to the model (no --yes).');
+
+  const t = totals.main;
+  const reached = cases.filter((c) => c.attempts > 0);
+  const lat = cases.filter((c) => typeof c.ms === 'number' && c.http === 200).map((c) => c.ms);
+  const latModel = reached.map((c) => c.ms);
+  const by = (/** @type {string} */ v) => cases.filter((c) => c.verdict === v).length;
+  L.push('', '## Totals', '', '| | |', '|---|---|');
+  L.push(`| Cases | ${cases.length}: ${by('PASS')} pass · ${by('MISS')} missed support · ${by('FALSE+')} false support · ${by('LEVEL')} wrong level · ${by('FALLBACK')} fallback · ${by('REPEAT')} repeated pattern · ${by('ERROR')} errors · ${by('SKIPPED')} skipped |`);
+  L.push(`| Contract, bypass, fallback and privacy checks | ${checks.filter((c) => c.pass).length} of ${checks.length} pass |`);
+  L.push(client ? `| Browser (real-client.cjs) | ${client.steps?.filter((/** @type {any} */ s) => s.pass).length ?? 0} of ${client.steps?.length ?? 0} pass · console errors ${client.errors?.length ?? client.consoleErrors ?? '?'} · outside requests blocked ${client.blocked?.length ?? 0} |` : '| Browser (real-client.cjs) | not run |');
+  if (t) {
+    L.push(`| Model requests / calls (whole run, from the harness log) | ${t.model_requests} requests, ${t.calls} calls (gate: ${Object.entries(t.gate).map(([k, v]) => `${code(k)} ${v}`).join(', ') || '–'}) |`);
+    L.push(`| Tokens | in ${t.tokens_in} · out ${t.tokens_out} · cache read ${t.cache_read} · cache write ${t.cache_write} |`);
+    L.push(`| ${dry ? 'Would have cost (the mock\'s stand-in usage at real prices)' : 'Cost (src/cost.js prices)'} | **${usd(t.micros)}** |`);
+  }
+  if (totals.broken) L.push(`| Invalid-key harness | ${totals.broken.requests} requests, ${totals.broken.calls} refused calls (${totals.broken.provider_errors.map(code).join(', ') || 'none'}), cost ${usd(totals.broken.micros)} |`);
+  L.push(`| Latency, all answered cases | p50 ${sec(pct(lat, 50))} · p95 ${sec(pct(lat, 95))} · max ${sec(lat.length ? Math.max(...lat) : null)} |`);
+  L.push(`| Latency, cases that reached the model | p50 ${sec(pct(latModel, 50))} · p95 ${sec(pct(latModel, 95))} · over ${sec(m.client_timeout_ms || CLIENT_TIMEOUT_MS)}: ${reached.filter((c) => c.slow).length} |`);
+  const groups = [...new Set(cases.map((c) => c.group))];
+  if (groups.length) {
+    L.push('', '| Group | Cases | Pass | ok | care | crisis | fallback | Notes |', '|---|---|---|---|---|---|---|---|');
+    for (const g of groups) {
+      const cs = cases.filter((c) => c.group === g);
+      const n = (/** @type {string} */ s) => cs.filter((c) => c.status === s).length;
+      const notes = [...new Set(cs.filter((c) => c.verdict !== 'PASS').map((c) => c.verdict))].join(', ');
+      L.push(`| ${code(g)} | ${cs.length} | ${cs.filter((c) => c.verdict === 'PASS').length} | ${n('ok')} | ${n('care')} | ${n('crisis')} | ${n('fallback')} | ${notes} |`);
+    }
+  }
+  if (checks.length) {
+    L.push('', '## Checks', '', '| Check | Part | Model calls | Latency | Result |', '|---|---|---|---|---|');
+    for (const c of checks) L.push(`| ${code(c.id)} | ${code(c.part)} | ${c.calls} | ${c.ms ? sec(c.ms) : '–'} | ${c.pass ? 'pass' : '**FAIL**'} |`);
+  }
+  if (cases.length) {
+    L.push('', '## Cases', '', '| Case | Group | Expected | Got | Safety source | Gate | Calls | Latency | Cost | Result |', '|---|---|---|---|---|---|---|---|---|---|');
+    for (const c of cases) {
+      const got = c.verdict === 'SKIPPED' ? '–' : `${c.status || `HTTP ${c.http} ${c.error_code || ''}`}${c.fallback_reason ? ` (${c.fallback_reason})` : ''}${c.support_category ? ` ${c.support_category}` : ''}`;
+      L.push(`| ${code(c.id)} | ${code(c.group)} | ${code((c.expect || []).join('/'))} | ${code(got)} | ${code(c.safety_source || '–')} | ${code(c.gate ? `${c.gate}${c.gate_codes?.length ? ` (${c.gate_codes.join(', ')})` : ''}` : '–')} | ${c.attempts ?? 0} | ${c.ms != null ? `${sec(c.ms)}${c.slow ? ' ⚠' : ''}` : '–'} | ${usd(c.cost_micros || 0)} | ${c.verdict === 'PASS' ? 'pass' : `**${code(c.verdict)}**`} |`);
+    }
+  }
+  if (client) {
+    L.push('', `## Browser (the built site, ${code(client.viewport || '')})`, '', '| Step | Result |', '|---|---|');
+    for (const s of client.steps || []) L.push(`| ${code(s.id)} | ${s.pass ? 'pass' : s.skipped ? '**SKIPPED**' : '**FAIL**'} |`);
+    if (client.angle) L.push('', `Real angle in the browser: server ${code(client.angle.status)}; the model's lines on screen: ${client.angle.onScreen ? client.angle.onScreen.length : 0} of 2${client.angle.replacedBy ? '; the app\'s own guard played instead' : ''}; answered in ${sec(client.angle.ms ?? null)}`);
+  }
+  const failed = [
+    ...checks.filter((c) => !c.pass).map((c) => `${code(c.part)}/${code(c.id)}`),
+    ...cases.filter((c) => c.verdict !== 'PASS').map((c) => `case/${code(c.id)} ${code(c.verdict)}`),
+    ...((client?.steps || []).filter((/** @type {any} */ s) => !s.pass).map((/** @type {any} */ s) => `browser/${code(s.id)}`)),
+  ];
+  const consoleErrors = client?.errors?.length || 0;
+  L.push('', `## Failures (${failed.length + consoleErrors})`, '');
+  L.push(failed.length || consoleErrors ? `${failed.join(' · ')}${consoleErrors ? `${failed.length ? ' · ' : ''}browser console errors: ${consoleErrors}` : ''}. Each one in full is in report.md in the artifact.` : 'None.');
+  if (dry) L.push('', '**This was a dry run on the mock model: nothing here measures the real model.**');
+  return `${L.join('\n')}\n`;
+}
+
 function reportStage() {
   const f = join(OUT, 'api.json');
   const api = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : { meta: {}, checks: [], cases: [], fatal: 'the API stage did not run (no api.json)' };
   const client = readClient();
-  const md = render(api, client, totalsFromLogs());
-  writeFileSync(join(OUT, 'report.md'), md);
-  process.stdout.write(md);
+  const totals = totalsFromLogs();
+  writeFileSync(join(OUT, 'report.md'), render(api, client, totals));
+  // the log and the step summary are public: the counts-only summary (report.md stays in the artifact)
+  const pub = renderPublic(api, client, totals);
+  writeFileSync(join(OUT, 'summary.md'), pub);
+  process.stdout.write(pub);
   const failed = (api.fatal ? 1 : 0) + api.checks.filter((/** @type {Check} */ c) => !c.pass).length + api.cases.filter((/** @type {any} */ c) => c.verdict !== 'PASS').length
     + (client ? (client.steps || []).filter((/** @type {any} */ s) => !s.pass).length + (client.errors || []).length + (client.fatal ? 1 : 0) : flag('no-browser') ? 0 : 1);
   if (!client && !flag('no-browser')) console.error('the browser stage did not run (no client.json)');
