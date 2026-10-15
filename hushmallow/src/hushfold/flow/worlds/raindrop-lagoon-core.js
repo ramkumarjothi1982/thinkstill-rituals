@@ -152,7 +152,7 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
   const inside = (b) => b.x0 >= E - 0.5 && b.x1 <= XR - E + 0.5 && b.y0 >= top - 0.5 && b.y1 <= bottom + 0.5;
 
   /** Every free place for something round, diameter d, given what is taken. */
-  function candidates(d, taken) {
+  function candidates(d, taken, pad = 10) {
     const out = [];
     const step = Math.max(6, Math.round(d / 7));
     // (a drop is a teardrop: its point reaches TIP × d above the round part's centre)
@@ -161,17 +161,17 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
         const b = { x0: x - d / 2, x1: x + d / 2, y0: y - TIP * d, y1: y + d / 2 };
         if (hits(b, K, LAGOON.GAP * 0.6)) continue;
         let ok = true;
-        for (const t of taken) if (discHits(x, y, d / 2 + 10, t) || hits(b, t, 6)) { ok = false; break; }
+        for (const t of taken) if (discHits(x, y, d / 2 + pad, t) || hits(b, t, Math.min(6, pad))) { ok = false; break; }
         if (ok) out.push(x, y);
       }
     }
     return out;
   }
   /** Greedy, deterministic: drops round the thought (in the air first), sides kept even, every pair DROP_GAP apart. */
-  function pickSlots(cl, count, D = DROP, more = null) {
+  function pickSlots(cl, count, D = DROP, more = null, pad = 10) {
     const taken = cl ? [cl.all] : [];
     if (more) for (const p of more) taken.push({ x0: p.x - p.D / 2, y0: p.y - TIP * p.D, x1: p.x + p.D / 2, y1: p.y + p.D / 2 });
-    const C = candidates(D, taken);
+    const C = candidates(D, taken, pad);
     const cx = cl ? (cl.body.x0 + cl.body.x1) / 2 : XR / 2, cy = cl ? (cl.body.y0 + cl.body.y1) / 2 : (top + K.y0) / 2;
     const ring = Math.max(r * 2.6, D * 1.6);
     const picked = [];
@@ -185,9 +185,10 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
         const bx0 = x - D / 2, bx1 = x + D / 2, by0 = y - TIP * D, by1 = y + D / 2;
         for (const p of picked) {
           const dd = Math.hypot(p.x - x, p.y - y); if (dd < near) near = dd;
-          if (bx0 < p.x + D / 2 + 8 && bx1 > p.x - D / 2 - 8 && by0 < p.y + D / 2 + 8 && by1 > p.y - TIP * D - 8) { clash = true; break; }
+          const g = Math.min(8, pad);
+        if (bx0 < p.x + D / 2 + g && bx1 > p.x - D / 2 - g && by0 < p.y + D / 2 + g && by1 > p.y - TIP * D - g) { clash = true; break; }
         }
-        if (clash || near < minD) continue;
+        if (clash || near < (pad < 10 ? D + 6 : minD)) continue;
         const dist = Math.hypot(x - cx, y - cy);
         let s = -Math.abs(dist - ring) * 0.9;            // a loose ring round the thought
         s -= Math.max(0, dist - ring * 2.2) * 0.6;       // not scattered far away
@@ -271,7 +272,7 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
   // the photo orbs: in the room the drops left, a little smaller (photos that find no place wait their turn)
   // (a small screen: smaller glass drops rather than none — their touch target keeps a 12 px margin)
   let orbs = [];
-  if (nOrbs) for (const d of [DO, Math.round(D * 0.72)]) { orbs = pickSlots(best.cl, nOrbs, d, drops).map((p) => ({ x: p.x, y: p.y, D: d })); if (orbs.length) break; }
+  if (nOrbs) for (const d of [DO, Math.round(D * 0.72), Math.max(28, Math.round(D * 0.6))]) { orbs = pickSlots(best.cl, nOrbs, d, drops, d < DO ? 4 : 10).map((p) => ({ x: p.x, y: p.y, D: d })); if (orbs.length) break; }
   return {
     U, r, D, hy, top, bottom, XR, K, band: band ? { x: 0, y: band.y || 0, w: W, h: band.h || 0 } : null,
     thought: { x: Math.round(best.cx), y: Math.round(best.cy), r },
