@@ -143,7 +143,7 @@ test('2. distress alone is asked the check-in; "I’m okay — let’s play" lif
   assert.match(lc, /markChecked\(\{ attentive: true \}\);/, 'the pill stays, the face stays attentive');
   const after = between(hf, 'async function afterTell(', 'async function askPlay(');
   assert.match(after, /const lift = safety\?\.level === 'concern' && liftable\(\);/);
-  assert.match(after, /S\.askCheck = !!safety\?\.check \|\| lift;/);
+  assert.match(after, /S\.askCheck = !!safety\?\.check;\s*\/\/[^\n]*\n\s*if \(lift\) S\.askCheck = true;/);
   assert.match(after, /if \(out === 'play' && lift\) lifted = liftConcern\(\);/);
   // every category is noted, so a loss or harm-others at the same level is never lifted with the distress
   assert.match(between(hf, 'function noteSafety(r) {', 'function noteNoResume('), /if \(r\?\.level && r\.level !== 'none'\) S\.seen\.add\(r\.category \|\| r\.level\);/);

@@ -1829,8 +1829,9 @@ export default function hushfold(app, params = {}) {
     // "Shall we play with this, or just be with it?" — a loss the lists are only unsure of is asked exactly this, once
     if (tellRoute({ level: safety?.level || 'none', carried, chosen, liftable: lift }) === 'ask') {
       // (15 Oct 2026) words the risk screener reads as possibly at risk: the check-in instead of the question (askPlay, CHECK_IN)
+      S.askCheck = !!safety?.check;
       // (fix round) and distress alone, the lexicon's concern (lift): the same check-in — "I'm okay" lifts that quiet
-      S.askCheck = !!safety?.check || lift;
+      if (lift) S.askCheck = true;
       const asked = S.askCheck;
       // (review P2: the words wait for the next Tell meanwhile, in memory only — left unanswered, closed with Back or with a
       // Tell opened over the question, they are in the Tell when it opens again, their feeling too, as after the plans page;
