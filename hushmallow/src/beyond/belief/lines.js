@@ -131,6 +131,7 @@ export const BELIEF = Object.freeze({
   keptFull: 'This phone already keeps three. Delete one first, or let this one go for now.',
   keptFailed: 'I couldn’t keep it on this phone just now. It’s fine to let it go for now.',
   forgotten: 'Deleted from this phone.',
+  forgetFailed: 'I couldn’t delete it just now. “Delete everything” in Settings removes it too.',
   letGo: 'Okay. It’s not kept anywhere.',
   /** Into Another Angle's own path: its question comes next (and its consent, if words would be sent). */
   toAngle: 'Let’s look at it from another angle.',

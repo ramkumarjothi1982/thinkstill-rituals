@@ -39,6 +39,7 @@ export function pullOf(b) {
 }
 
 export function mountBeliefStage(ctx) {
+  ensureCss();
   const g = ctx.g;
   const rm = () => !!ctx.reducedMotion?.();
   const low = () => !!ctx.lowStim?.();
@@ -64,6 +65,8 @@ export function mountBeliefStage(ctx) {
   const home = () => { const a = A(); return { x: a.x + a.w * (run?.kind === 'shape' || moments.length ? 0.64 : 0.5), y: a.y + a.h * 0.56 }; };
   const belief = createBelief({ text: ctx.text, prop: ctx.prop, r, explored: clamp(ctx.explored || 0), seed: ctx.seed, reducedMotion: rm(), lowStim: low() });
   layer.add(belief, { from: { x: home().x, y: a0.y + 8 }, home: home() });
+  // a kept stone belief comes back as it was left: its stone already beside it (never set down again before their eyes)
+  if (ctx.prop === 'stone' && clamp(ctx.explored || 0) >= 0.72) Object.assign(belief.propState, { down: 1, downing: true, landed: true });
   let room = clamp(ctx.room || 0);
   if (room > 0) { belief.farther(room * 0.6); belief.makeSpace(room); }
   let rmWas = rm();
@@ -172,13 +175,16 @@ export function mountBeliefStage(ctx) {
   const momentAt = (x, y) => moments.find((m) => (m.state === 'waiting' || m.state === 'held') && Math.hypot(x - m.x, y - m.y) < MR() + 18);
 
   // ------------------------------------------------------------- room --
-  let hold = null, ringR = 0;
+  let hold = null, ringR = 0, roomAt = 0;
   function stepRoom(dt) {
     if (hold && run?.kind === 'room') {
-      room = Math.min(1, room + dt / (rm() ? ROOM_SECONDS * 0.8 : ROOM_SECONDS));
+      // (counted in real time: a slow phone fills it in the same five seconds of holding)
+      const now = performance.now(), real = roomAt ? Math.min(0.25, (now - roomAt) / 1000) : dt;
+      roomAt = now;
+      room = Math.min(1, room + real / (rm() ? ROOM_SECONDS * 0.8 : ROOM_SECONDS));
       belief.farther(room * 0.6); belief.makeSpace(room);
       if (room >= 1 && !announced.room) { announced.room = true; ctx.say?.(BELIEF.heard.room); ctx.haptic?.('soft'); }
-    }
+    } else roomAt = 0;
     const b = bodyOf(), R = Math.max(b.width, b.height) / 2;
     const want = room > 0 ? R * (1.25 + room * 1.1) : 0;
     ringR = rm() ? want : approach(ringR, want, 4, dt);
@@ -202,18 +208,43 @@ export function mountBeliefStage(ctx) {
   // ------------------------------------------------------------- frame --
   function frame(dt, t) {
     if (destroyed || failed) return;
-    dt = Math.min(0.05, Math.max(0, dt || 0));
+    // (up to 0.1 s a step: a slow phone's moments still cross at their pace; the solver keeps its own steps)
+    dt = Math.min(0.1, Math.max(0, dt || 0));
     if (rm() !== rmWas) { rmWas = rm(); layer.setReducedMotion(rmWas); }
     // the belief rests a little lower in the area (its words above it), and follows the area as it changes
     const h = home();
     if (Math.hypot(h.x - belief.home.x, h.y - belief.home.y) > 24 && !belief.pressed) belief.moveHome(h);
     stepRoom(dt);
     drawRoom();
-    layer.frame(dt, t, g);
+    layer.frame(Math.min(dt, 0.05), t, g);
     stepMoments(dt);
     drawMoments();
     if (!rm()) motes.draw(g, dt);
+    chipsOver(dt);
     checkRun(dt);
+  }
+
+  /**
+   * A choice's chips (or its line) over the belief's words — a small phone at a large text size, where the band cannot
+   * make room for them: the words step back (fade) while the choice is up, and come back the moment it is answered.
+   * Never covered: either readable where they are, or out of the way. Looked at about seven times a second.
+   */
+  let coverT = 0, covered = false;
+  function chipsOver(dt) {
+    coverT -= dt;
+    if (coverT > 0) return;
+    coverT = 0.14;
+    const el = layer.tags.get(belief)?.el;
+    if (!el || typeof el.getBoundingClientRect !== 'function') return;
+    const w = el.getBoundingClientRect();
+    let over = false;
+    if (w.width > 0) {
+      for (const c of ctx.root.querySelectorAll('.hf-chips:not([hidden]) .hf-chip, .hf-sublive .hf-sub')) {
+        const r = c.getBoundingClientRect();
+        if (r.width > 0 && r.left < w.right - 2 && r.right > w.left + 2 && r.top < w.bottom - 2 && r.bottom > w.top + 2) { over = true; break; }
+      }
+    }
+    if (over !== covered) { covered = over; layer.hideTags(over); }
   }
 
   function checkRun(dt) {
@@ -236,7 +267,7 @@ export function mountBeliefStage(ctx) {
       if (run.count < DONE_AT.shape && !moments.some((m) => m.state === 'waiting' || m.state === 'moving' || m.state === 'held')) offerMoment();
       done = run.count >= DONE_AT.shape && !moments.some((m) => m.state === 'moving');
     }
-    if (done) { const r_ = run; run = null; r_.resolve({ done: true }); }
+    if (done) { const r_ = run; run = null; ctx.root?.classList?.remove('bm-room'); r_.resolve({ done: true }); }
   }
 
   // ------------------------------------------------------------- input --
@@ -295,6 +326,8 @@ export function mountBeliefStage(ctx) {
       if (destroyed || failed) return Promise.resolve({ stopped: true });
       return new Promise((resolve) => {
         run = { kind, resolve, t: 0, count: 0, onMoment };
+        // (giving it room: a finger resting on its words grows the room too, rather than opening them to read)
+        ctx.root?.classList?.toggle('bm-room', kind === 'room');
         if (kind === 'shape') offerMoment();
         if (kind === 'loosen') announced.prop = false;
         // moments still waiting from an earlier look drift off quietly
@@ -336,6 +369,16 @@ export function mountBeliefStage(ctx) {
       try { layer.destroy(); } catch { /* ignore */ }
     },
   };
-  function stop() { if (run) { const r_ = run; run = null; r_.resolve({ stopped: true }); } hold = null; }
+  function stop() { ctx.root?.classList?.remove('bm-room'); if (run) { const r_ = run; run = null; r_.resolve({ stopped: true }); } hold = null; }
   return stage;
+}
+
+let cssDone = false;
+function ensureCss() {
+  if (cssDone || typeof document === 'undefined') return;
+  cssDone = true;
+  const st = document.createElement('style');
+  st.dataset.belief = '';
+  st.textContent = '.bm-room .tm-tag{pointer-events:none}';
+  document.head.append(st);
 }

@@ -39,6 +39,8 @@ import { lossRoute, gentleRoute, bagWords } from '../backstop.js';
 const DEV = () => typeof location !== 'undefined' && ['localhost', '127.0.0.1'].includes(location.hostname);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const later = (fn) => setTimeout(fn, 0);
+/** The height (px) the top bar, the play area and Zuzu with the dock need below the subtitle band before chips may claim room of their own. */
+const ROOM_LEFT = 470;
 
 /** Words from this visit that may be offered as a belief: newest first, distinct, and nothing heavy (they are read again anyway). */
 export function offerable(recent = []) {
@@ -84,6 +86,9 @@ export function createBeliefHook(host) {
   function beginWith(text, kept = null) {
     if (!on() || quiet()) return;
     armed = { kept };
+    // (afterTell adds them to the visit's last Tells again: never twice in the risk screener's context)
+    const i = S.recent?.lastIndexOf?.(text) ?? -1;
+    if (i >= 0) S.recent.splice(i, 1);
     host.afterTell({ text, emotion: null, intention: null });
   }
 
@@ -92,13 +97,23 @@ export function createBeliefHook(host) {
     const kept = keptBeliefs(store);
     // only the words they just looked at, nothing kept: "This one keeps coming back" means these words
     if (recent.length === 1 && !kept.length) return beginWith(recent[0]);
+    // (a kept belief can be tender: Zuzu's attentive face, and the Support pill, while this is up)
+    host.careFace();
+    host.dockShow({ asking: true });
+    // (their recent words first, always; then as many kept ones as fit in five)
     const opts = [
       ...recent.map((t, i) => ({ label: BELIEF.recentLabel(excerpt(t)), value: `recent:${i}` })),
-      ...kept.map((k) => ({ label: BELIEF.keptLabel(excerpt(k.text, 24)), value: `kept:${k.id}` })),
+      ...kept.slice(0, Math.max(0, 3 - recent.length)).map((k) => ({ label: BELIEF.keptLabel(excerpt(k.text, 24)), value: `kept:${k.id}` })),
       { label: BELIEF.sourceNew, value: 'new', primary: !recent.length, onPick: () => beginNew() },
       { label: BELIEF.sourceNot, value: 'not' },
     ];
-    const v = await choose(BELIEF.sourceAsk, opts.slice(-5));
+    const asked = choose(BELIEF.sourceAsk, opts);
+    // (the invitation's own answer settles its dock just after this opens: the Support pill comes back while this is up)
+    let open = true;
+    setTimeout(() => { if (open && !left) host.dockShow({ asking: true }); }, 450);
+    const v = await asked;
+    open = false;
+    if (!left && (v == null || v === 'not')) host.dockShow({ tell: true });
     if (left || v == null || v === 'new') return;
     if (v === 'not') { say(BELIEF.notNow); return; }
     if (v.startsWith('recent:')) return beginWith(recent[+v.slice(7)]);
@@ -126,8 +141,14 @@ export function createBeliefHook(host) {
       current.prop = p;
     }
     // the band the experiences' lines need, then the stage (the play area is laid out below it)
-    S.band = host.measureBand([BELIEF.shape.hint, BELIEF.loosen.hint, BELIEF.room.hint, BELIEF.shape.done, BELIEF.loosen.done.stone, BELIEF.understand.ask, BELIEF.endAsk]);
+    // (and the tallest set of chips it asks with, at this size and text scale: a choice never sits on the belief's words)
+    // (only where that still leaves the play area its room: on a small phone at a large text size, the stage steps its words
+    // back while a choice is up instead: stage.js chipsOver)
+    const lineBand = host.measureBand([BELIEF.shape.hint, BELIEF.loosen.hint, BELIEF.room.hint, BELIEF.shape.done, BELIEF.loosen.done.stone, BELIEF.understand.ask, BELIEF.endAsk]);
+    const chipsH = chipsHeight();
+    S.band = lineBand + (typeof innerHeight === 'number' && innerHeight - lineBand - chipsH >= ROOM_LEFT ? chipsH : 0);
     host.layout();
+    stage = null;
     let mod = null;
     try { mod = await import('./stage.js'); } catch (e) { console.warn('[belief] stage', e?.message); }
     if (!alive()) return;
@@ -188,6 +209,8 @@ export function createBeliefHook(host) {
     if (!stage || stage.failed) return;
     const L = BELIEF[kind];
     host.dockShow({ assist: L.assist, asking: true });
+    // (the chip that was pressed has gone: the assist pill takes a lost focus, never the page)
+    focusIfLost(host.root?.querySelector?.('[data-bx=assist]'));
     say(L.hint, { interrupt: true });
     let results = [], nudged = false;
     const nudge = setTimeout(() => { if (alive() && stage?.experience === kind && !nudged) { nudged = true; say(L.hint2); } }, rm() ? 12000 : 9000);
@@ -216,11 +239,18 @@ export function createBeliefHook(host) {
         if (r.ok) { current.id = r.id; current.saved = true; current.keptNow = true; await say(BELIEF.kept); } else await say(r.full ? BELIEF.keptFull : BELIEF.keptFailed);
         continue;
       }
-      if (v === 'forget') { if (current.id) forgetBelief(store, current.id); current.id = null; current.saved = false; current.keptNow = false; await say(BELIEF.forgotten); continue; }
+      if (v === 'forget') {
+        const gone = current.id ? forgetBelief(store, current.id) : true;
+        if (gone) { current.id = null; current.saved = false; current.keptNow = false; }
+        await say(gone ? BELIEF.forgotten : BELIEF.forgetFailed);
+        continue;
+      }
       if (v === 'angle') {
         // Another Angle's own path (its question first; words sent only with its consent): the Belief Mallow steps aside
         await say(BELIEF.toAngle);
         if (!alive()) return;
+        // (its words fade with it, never left standing while the stage fades)
+        try { stage?.layer?.release?.(rm() ? 150 : 420); } catch { /* the stage goes anyway */ }
         await host.endMechanic();
         stage = null; playing++;
         if (left || S.left || quiet()) return;
@@ -235,6 +265,38 @@ export function createBeliefHook(host) {
       host.dockShow({ finish: true, tell: true });
       return;
     }
+  }
+
+  /** The height of the tallest chip set this flow asks with, laid out as the subtitles lay chips out (0 without a DOM). */
+  function chipsHeight() {
+    try {
+      const real = host.root?.querySelector?.('.hf-subs');
+      if (!real?.parentNode || typeof document === 'undefined') return 0;
+      const sets = [BELIEF.props.map((o) => o.label), [...BELIEF.experiences.slice(0, 2).map((x) => x.label), BELIEF.enough],
+        BELIEF.understand.options.map((o) => o.label), BELIEF.feel.map((o) => o.label), [BELIEF.end.keep, BELIEF.end.forget, BELIEF.end.angle, BELIEF.end.finish]];
+      let most = 0;
+      for (const set of sets) {
+        const probe = document.createElement('div');
+        probe.className = 'hf-subs';
+        probe.setAttribute('aria-hidden', 'true');
+        Object.assign(probe.style, { visibility: 'hidden', pointerEvents: 'none', transform: 'none' });
+        const live = document.createElement('div'); live.className = 'hf-sublive';
+        const row = document.createElement('div'); row.className = 'hf-chips';
+        for (const t of set) { const b = document.createElement('button'); b.className = 'hf-chip'; b.type = 'button'; b.textContent = t; row.append(b); }
+        live.append(row); probe.append(live);
+        real.parentNode.append(probe);
+        most = Math.max(most, row.offsetHeight || 0);
+        probe.remove();
+      }
+      return Math.round(most);
+    } catch { return 0; }
+  }
+  function focusIfLost(el) {
+    try {
+      const a = document.activeElement;
+      const lost = !a || a === document.body || a === document.documentElement || !a.isConnected || a.closest?.('[hidden]') || (typeof a.getClientRects === 'function' && !a.getClientRects().length);
+      if (lost && el && !el.hidden && el.isConnected) el.focus({ preventScroll: true });
+    } catch { /* no focus to move */ }
   }
 
   function devApi() {
@@ -256,7 +318,8 @@ export function createBeliefHook(host) {
     },
     /** openInput options for the Tell opening now: belief mode (its prompt; "Your words stay on this phone."), or nothing. */
     tell() {
-      const p = pending;
+      // (the belief question let go, its words kept for the next Tell: that Tell is still the belief's, on this phone)
+      const p = pending || (armed && S.keepWords ? armed : null);
       pending = null;
       armed = p && on() ? p : null;
       if (!armed) return {};

@@ -182,6 +182,17 @@ async function flow(o) {
   await overlapCheck(o, 'meet');
   check(await o.page.evaluate(() => !document.querySelector('.bx-dock .hf-pill.support').hidden), 'Support pill while playing');
   res.notes.frames = await frameStats(o, 3000);
+  // the stage's own cost per frame (its ThoughtLayer, moments, room ring and checks), measured in place
+  res.notes.stageMs = await o.page.evaluate(() => new Promise((resolve) => {
+    const st = window.__belief.stage, f0 = st.frame, ms = [];
+    st.frame = (dt, t) => { const a = performance.now(); f0(dt, t); ms.push(performance.now() - a); };
+    setTimeout(() => { st.frame = f0; ms.sort((x, y) => x - y); resolve({ n: ms.length, p50: +ms[ms.length >> 1].toFixed(2), p95: +ms[Math.floor(ms.length * 0.95)].toFixed(2) }); }, 3000);
+  }));
+  // the experiences' chips never sit on the belief's words (the band is sized for them)
+  await waitChip(o, 'See how it shapes things');
+  await sleep(1200);
+  await overlapCheck(o, 'chips');
+  await shot(o, 'chips');
   // 1. see how it shapes things: two moments, by touch
   await tapChip(o, 'See how it shapes things');
   await sleep(1500);
@@ -208,7 +219,7 @@ async function flow(o) {
   res.notes.loosenTouch = { ex0: +ex0.toFixed(3), ex1: +ex1.toFixed(3) };
   check(ex1 > ex0 + 0.1, 'touch loosens it', res.notes.loosenTouch);
   await shot(o, 'loosening');
-  for (let i = 0; i < 6 && (await o.page.evaluate(() => !document.querySelector('[data-bx=assist]').hidden)); i++) { await tapSel(o, '[data-bx=assist]'); await sleep(700); }
+  for (let i = 0; i < 6 && (await o.page.evaluate(() => !document.querySelector('[data-bx=assist]').hidden)); i++) { try { await tapSel(o, '[data-bx=assist]', 2000); } catch { break; } await sleep(700); }
   await waitLine(o, /set the stone down|shell has opened|Looser now|not pulling so hard/);
   await sleep(1200);
   const p2 = await stageProbe(o);
@@ -221,7 +232,8 @@ async function flow(o) {
   await sleep(1200);
   const a = await o.page.evaluate(() => window.__angle.area);
   const p3 = await stageProbe(o);
-  const hx = Math.min(a.x + a.w - 20, p3.belief.x + 110), hy = Math.max(a.y + 20, p3.belief.y - 60);
+  // open sky beside it (left of it, level with its middle: never its words, whose tap opens the reader)
+  const hx = Math.max(a.x + 24, p3.belief.x - 115), hy = p3.belief.y + 10;
   await holdAt(o, hx, hy, RM ? 4300 : 5400);
   await waitLine(o, /isn’t the whole sky/, 15000);
   const p4 = await stageProbe(o);
