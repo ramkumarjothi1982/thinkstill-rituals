@@ -10,9 +10,11 @@
 // (a detached worktree of `--base`, made in the system's temp directory and removed after), plus every sentence quoted ("…") in
 // the check files (`--checks`, the three independent checks by default). Each is read on both trees by
 //   main    input-overlay.js readSafety (the main screen's reading, grief.js loaded): crisis | care | held (the gentle path,
-//           supportFirst) | support (the lexicon's concern) | gentle | ask (unsure: the check-in question) | play (the question)
+//           supportFirst) | support (the lexicon's concern) | gentle | checkin (the risk screener's check-in: "Before we go on —
+//           are you okay right now?", fix round) | ask (unsure: the check-in question) | play (the question)
 //   angle   tests/probes/r10-replay.mjs visit() with sharing on and a request-counting stub (STUBS.pull, an ordinary scene that
-//           never reads as a loss; "Another angle" answered): crisis | care | held | gentle | ask | play
+//           never reads as a loss; "Another angle" answered): crisis | care | held | gentle | checkin (the screener's check-in asked
+//           before anything is sent) | ask | play
 // and the counts printed:
 //   LOST_CARE         the base reads it care or crisis on a screen, the branch reads it lower there
 //   LOST_SELF_GENTLE  a first-person sentence the base sends to the gentle path on a screen, the branch asks or plays it there
@@ -116,8 +118,9 @@ export const keep = (s) => typeof s === 'string' && s.length <= 600 && /\p{L}/u.
 
 // ----------------------------------------------------------------------------------------------- the two readings --
 const FIRST = /(?<![\p{L}\p{N}])(?:i|i['’]?m|i['’]?ve|i['’]?d|i['’]?ll|ive|ill|id|me|my|myself|mine|im)(?![\p{L}\p{N}])/iu;
-const MAIN_RANK = { play: 0, ask: 1, gentle: 2, support: 3, held: 4, care: 5, crisis: 6 };
-const ANGLE_RANK = { play: 0, ask: 1, gentle: 2, held: 4, care: 5, crisis: 6 };
+// (fix round) the check-in ranks above the play question and the unsure question, below support held first
+const MAIN_RANK = { play: 0, ask: 1, checkin: 1.5, gentle: 2, support: 3, held: 4, care: 5, crisis: 6 };
+const ANGLE_RANK = { play: 0, ask: 1, checkin: 1.5, gentle: 2, held: 4, care: 5, crisis: 6 };
 export async function tree(root) {
   const u = (p) => pathToFileURL(join(root, 'hushmallow', p)).href;
   const [io, safety, replay, backstop, grief] = await Promise.all([u('src/hushfold/input-overlay.js'), u('src/engine/safety.js'), u('tests/probes/r10-replay.mjs'), u('src/beyond/backstop.js'), u('src/beyond/grief.js')].map((x) => import(x)));
@@ -129,7 +132,7 @@ export function readMain(T, t) {
   if (r.level === 'crisis') return 'crisis';
   if (r.level === 'care') return 'care';
   if (r.level === 'concern') return r.supportFirst ? 'held' : r.category === 'loss' ? 'gentle' : 'support';
-  return r.unsure ? 'ask' : 'play';
+  return r.check ? 'checkin' : r.unsure ? 'ask' : 'play';
 }
 export function readAngle(T, t) {
   let n = 0;
@@ -140,7 +143,7 @@ export function readAngle(T, t) {
   const route = R.route === 'follow' ? 'care' : R.route;
   if (route === 'crisis' || route === 'care') return { label: route, R };
   if (route === 'gentle' && !R.asked) return { label: R.held ? 'held' : 'gentle', R };
-  if (R.asked) return { label: T.backstop.lossRoute(t) === 'ask' ? 'ask' : 'play', R };
+  if (R.asked) return { label: R.question === 'check' ? 'checkin' : T.backstop.lossRoute(t) === 'ask' ? 'ask' : 'play', R };
   return { label: route === 'gentle' ? 'gentle' : 'play', R };
 }
 /**
