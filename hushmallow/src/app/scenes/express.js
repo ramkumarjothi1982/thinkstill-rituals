@@ -1,14 +1,24 @@
 // EXPRESS — "What's happening in your head?"
 // Type, tap or browse. The rule-based feeling finder only ever SUGGESTS;
 // you pick what fits. The Mallow above mirrors your feelings as you go.
+//
+// (15 Oct 2026) The words are read the way the Hushfold's Tell reads them (encounter.js readWordsSafety: the lexicon, the
+// grief rules and the risk screener) as they are typed: a crisis opens the urgent support sheet once, a heavy reading is
+// kept for the visit (encounter.js noteVisitSafety), and beside a death or a loss only the feelings that fit it are
+// suggested. "Meet a Mallow" hands the reading to the encounter, whose gate decides what comes first (support, the gentle
+// response, the check-in or the ritual).
 import { h, iconBtn, openSheet, say, clearBubble, fitMallow } from '../ui.js';
-import { interpret, faceMix } from '../../engine/interpret.js';
+import { interpret, faceMix, suggestedFeelings } from '../../engine/interpret.js';
 import { getEmotion, getFamily, FAMILIES, searchEmotions, azIndex, EMOTIONS } from '../../data/emotions.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
 import { photoTray } from '../../v3/tray.js';
 import { warmMallowCards } from '../../v3/mallow-cards.js';
-import { type } from '../../ui/type.js';
+import { type, withBrand } from '../../ui/type.js';
+import { legacySafety } from '../../engine/safety.js';
+import { readWordsSafety, noteVisitSafety } from './encounter.js';
+
+const LEVELS = ['none', 'concern', 'care', 'crisis'];
 
 export default function express(app, params = {}) {
   const { world } = app;
@@ -17,6 +27,8 @@ export default function express(app, params = {}) {
   let reading = null;
   let intensity = 0.6;
   let supportShown = false;
+  let safety = { level: 'none', category: null };   // the main screen's reading of the words (readWordsSafety)
+  let readSeq = 0, going = false, left = false;
 
   if (params.preset && getEmotion(params.preset)) sel.set(params.preset, { id: params.preset, confidence: 1, source: 'tap' });
   if (app.state.input?.text && params.keep) params.text = app.state.input.text;
@@ -39,7 +51,8 @@ export default function express(app, params = {}) {
     h('div', { class: 'card express-card', style: { padding: '16px' } },
       h('h1', { class: 'title express-q', style: { marginBottom: '12px' } }, 'What’s happening in your head?'),
       ta,
-      h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, 'Tip: tap the mic on your keyboard to talk instead. Your words stay on this phone.'),
+      // (dictation is the keyboard's: where it listens follows the phone's own settings, so only what this app does is promised)
+      h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, ...withBrand('Tip: tap the mic on your keyboard to talk instead. hushmallow keeps your words on this phone. Your keyboard’s dictation follows your phone’s settings.')),
       tray.el,
       ack, sugg,
       h('button', { class: 'btn ghost', style: { padding: '0 4px', minHeight: '40px' }, onclick: () => openExplorer() }, 'Browse every feeling A–Z →'),
@@ -54,19 +67,55 @@ export default function express(app, params = {}) {
   go.addEventListener('click', proceed);
 
   function read() {
-    reading = interpret(ta.value);
-    if (reading.safety.level === 'crisis' && !supportShown) { supportShown = true; openSupport(app, { urgent: true }); }
-    ack.textContent = ta.value.trim() ? reading.acknowledgement : 'Type a little, or tap a feeling.';
-    // confident matches are pre-selected but always removable
-    for (const [k, v] of sel) if (v.source === 'auto') sel.delete(k);
-    for (const e of reading.emotions) if (e.confidence >= 0.6 && sel.size < 4 && !sel.has(e.id)) sel.set(e.id, { id: e.id, confidence: e.confidence, source: 'auto' });
+    const text = ta.value;
+    reading = interpret(text);
+    // (the lexicon at once, then the main screen's whole reading as soon as it has loaded: words read the same everywhere)
+    seen({ level: reading.safety.detail?.level || reading.safety.level, category: reading.safety.detail?.category ?? null });
+    ack.textContent = text.trim() ? reading.acknowledgement : 'Type a little, or tap a feeling.';
+    choose();
     if (reading.emotions.length && !level.dataset.touched) { intensity = reading.intensity; level.value = intensity; level.dispatchEvent(new Event('input')); }
     render();
+    const seq = ++readSeq;
+    if (!text.trim()) { safety = { level: 'none', category: null }; return; }
+    readWordsSafety({ text, emotions: [...sel.values()].filter((s) => s.source !== 'auto') }).then((r) => {
+      if (!r || left || seq !== readSeq) return;
+      safety = r;
+      seen(r);
+      if (r.level !== 'none' || r.check || r.category === 'loss') { choose(); render(); }
+    });
+  }
+  /** A reading seen while typing (sent or not, as on the main screen): crisis opens the urgent sheet once; anything heavy is kept for the visit. */
+  function seen(r) {
+    if (!r || LEVELS.indexOf(r.level) < 1) return;
+    noteVisitSafety(app, r);
+    if (r.level === 'crisis' && !supportShown) { supportShown = true; openSupport(app, { urgent: true }); }
+  }
+  /**
+   * Confident matches are pre-selected but always removable. Beside a death or a loss only the feelings that fit it
+   * (grief, sadness, and any stated feeling that fits a loss: interpret.js suggestedFeelings), and beside any other safety
+   * cue never a pleasant one: never "Rested" for "there was no heartbeat. I should have rested more".
+   */
+  function choose() {
+    for (const [k, v] of sel) if (v.source === 'auto') sel.delete(k);
+    const loss = safety.category === 'loss' || !!safety.deathCare;
+    const cue = loss || safety.level !== 'none' || !!safety.check;
+    const ok = cue ? new Set(suggestedFeelings(reading, { loss, level: safety.level === 'none' ? (safety.check ? 'concern' : null) : safety.level, max: 4 })) : null;
+    for (const e of reading?.emotions || []) {
+      if (e.confidence >= 0.6 && sel.size < 4 && !sel.has(e.id) && (!ok || ok.has(e.id))) sel.set(e.id, { id: e.id, confidence: e.confidence, source: 'auto' });
+    }
+  }
+  /** The suggestion chips: beside a loss, the feelings that fit it first; beside any other cue, never a pleasant one. */
+  function suggestionIds() {
+    const loss = safety.category === 'loss' || !!safety.deathCare;
+    if (loss) return suggestedFeelings(reading, { loss: true, max: 6 });
+    const all = (reading?.suggestions || []).map((s) => s.id);
+    if (safety.level === 'none' && !safety.check && (reading?.safety?.level || 'none') === 'none') return all;
+    return all.filter((id) => (getEmotion(id)?.valence ?? 0) <= 0);
   }
   level.addEventListener('pointerdown', () => { level.dataset.touched = '1'; });
 
   function render() {
-    const ids = (reading?.suggestions || []).map((s) => s.id).filter((id) => !sel.has(id)).slice(0, 6);
+    const ids = suggestionIds().filter((id) => !sel.has(id)).slice(0, 6);
     sugg.replaceChildren(...ids.map((id) => {
       const e = getEmotion(id);
       return h('button', { class: 'chip', 'aria-pressed': 'false', onclick: () => { toggle(id); } },
@@ -114,10 +163,26 @@ export default function express(app, params = {}) {
       onClose: () => render() });
   }
 
-  function proceed() {
+  async function proceed() {
+    if (going) return;
+    going = true; go.disabled = true;
+    const text = ta.value.trim();
     const emotions = [...sel.values()].map((s) => ({ id: s.id, confidence: s.confidence, intensity }));
-    app.state.input = { text: ta.value.trim(), emotions, intensity, contexts: reading?.contexts || [], desires: reading?.desires || [], safety: reading?.safety || { level: 'none' } };
+    reading = interpret(text);
+    // the main screen's reading of these words and these feelings (a grief feeling chosen counts as a loss); the
+    // encounter reads them again whatever it is handed, so a reading that could not load here is still made there
+    const r = await readWordsSafety({ text, emotions });
+    if (left) return;
+    const detail = r || { level: reading.safety.detail?.level || reading.safety.level || 'none', category: reading.safety.detail?.category ?? null };
+    // (kept for the visit; a crisis not yet answered with the support sheet gets it on the next screen, which a scene change
+    // would otherwise close at once)
+    noteVisitSafety(app, detail);
+    // (the check-in or the question already answered for these very words: not asked twice)
+    const answeredFor = app.state.input?.answeredFor === text ? text : undefined;
+    app.state.input = { text, emotions, intensity, contexts: reading?.contexts || [], desires: reading?.desires || [],
+      safety: { ...legacySafety(detail), detail: { ...detail } }, source: 'express', ...(answeredFor ? { answeredFor } : {}), ...(supportShown ? { supportShown: true } : {}) };
     app.audio.ui('whoosh');
+    going = false;
     app.go('encounter');
   }
 
@@ -137,6 +202,6 @@ export default function express(app, params = {}) {
       if (params.text) read(); else render();
       if (!matchMedia('(pointer: coarse)').matches) ta.focus();
     },
-    leave() { clearBubble(); tray.destroy(); world.showMallow(true); },
+    leave() { left = true; clearBubble(); tray.destroy(); world.showMallow(true); },
   };
 }
