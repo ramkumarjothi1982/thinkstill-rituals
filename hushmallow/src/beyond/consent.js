@@ -15,7 +15,10 @@
 // What this phone keeps (all deletable here, and by "Delete everything"):
 // the choice, a random device code, a session token, a tester code if one was
 // entered (and whether the server asked for one), and a tally of the four
-// feedback buttons per kind of scene. Never words, never photos.
+// feedback buttons per kind of scene. Never words, never photos. (Fix round:
+// "Delete my Another Angle data" also removes the older Another Angle's sealed
+// Future Lens predictions, ANGLE_EXTRA_KEYS, which hold the words typed into
+// them: src/ultra/another-angle.js keeps them only with "Keep my saved angles" on.)
 
 import { h, openSheet, toast } from '../app/ui.js';
 import { openSupport } from '../app/scenes/support.js';
@@ -26,6 +29,11 @@ export const STORE_KEYS = Object.freeze({
   // the server asked for a tester code (and which code it refused): no new session is asked for until the code changes
   inviteNeeded: 'beyond.inviteNeeded',
 });
+/**
+ * (fix round, privacy) Another Angle data this phone may hold beyond STORE_KEYS: the older Another Angle's (src/ultra) sealed
+ * Future Lens predictions, with the words typed into them. Deleted and counted with the rest (deleteAngleData, hasAngleData).
+ */
+export const ANGLE_EXTRA_KEYS = Object.freeze(['ultra.sealedPredictions']);
 /** Bump when the notice changes in a way people should read again (2: the provider's real retention, 12 Oct 2026). */
 export const CONSENT_VERSION = 2;
 
@@ -57,12 +65,12 @@ export function setConsent(store, choice) {
   return v;
 }
 export function withdrawConsent(store) { return setConsent(store, 'no'); }
-/** Removes this phone's Another Angle data: the choice, the device code, the session and the feedback tally. */
+/** Removes this phone's Another Angle data: the choice, the device code, the session, the feedback tally and any sealed predictions. */
 export function deleteAngleData(store) {
-  for (const k of Object.values(STORE_KEYS)) { try { store?.remove(k); } catch { /* ignore */ } }
+  for (const k of [...Object.values(STORE_KEYS), ...ANGLE_EXTRA_KEYS]) { try { store?.remove(k); } catch { /* ignore */ } }
 }
 export function hasAngleData(store) {
-  return [STORE_KEYS.consent, STORE_KEYS.device, STORE_KEYS.session, STORE_KEYS.feedback, STORE_KEYS.invite, STORE_KEYS.inviteNeeded].some((k) => { try { return store?.get(k, null) != null; } catch { return false; } });
+  return [STORE_KEYS.consent, STORE_KEYS.device, STORE_KEYS.session, STORE_KEYS.feedback, STORE_KEYS.invite, STORE_KEYS.inviteNeeded, ...ANGLE_EXTRA_KEYS].some((k) => { try { return store?.get(k, null) != null; } catch { return false; } });
 }
 
 /** A tally of the four feedback buttons per pattern, on this phone only (no words). */
@@ -269,7 +277,7 @@ export function mountAngleSettings(app, el, { endpoint = null } = {}) {
     const s = openSheet({
       title: 'Delete your Another Angle data?',
       body: h('div', {},
-        h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, any tester code, your sharing choice and your feedback. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
+        h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, any tester code, your sharing choice, your feedback and any predictions you sealed. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
         h('p', { class: 'bx-sheet-copy', style: { marginTop: '10px' } }, PROVIDER_DELETE)),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { deleteAngleData(store); s.close(); toast('Deleted'); mountAngleSettings(app, el, { endpoint }); } }, 'Delete')),
