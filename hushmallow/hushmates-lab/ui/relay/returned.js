@@ -316,7 +316,7 @@ export function homecoming(dev, { id, refresh } = {}) {
     if (!hasMallow) {
       sw = sentenceSwitch({
         label: 'Let a Mallow offer another perspective if nobody responds.',
-        hint: 'If no one catches your feeling, your Mallow offers an automatically generated perspective. Hushmates writes it, not a person, and your words stay with Hushmates.',
+        hint: 'If no one catches your feeling, your Mallow offers an automatically generated perspective. Hushmates chooses it from lines written in advance, guided by your words: no person writes it, and your words stay with Hushmates.',
         checked: allow, test: 'resend-fallback', onChange: (on) => { allow = on; return true; },
       });
       sw.classList.add('kit-switch--plain');
@@ -345,10 +345,10 @@ export function homecoming(dev, { id, refresh } = {}) {
     const needsConsent = !j.allowFallback;
     const ok = await dev.confirm({
       title: `Ask ${fm.name} for another angle?`, art: face(fm.id, { size: 64, float: true }),
-      text: `${fm.name} will offer one automatically generated perspective. It isn’t written by a person, and it isn’t counted as one. ${needsConsent ? 'Hushmates writes it automatically from your words, on its own servers. The perspective is kept with this journey and deleted with it.' : ''}`.trim(),
+      text: `${fm.name} will offer one automatically generated perspective. It isn’t written by a person, and it isn’t counted as one. ${needsConsent ? 'Hushmates chooses it automatically from lines written in advance, guided by your words, on its own servers. The perspective is kept with this journey and deleted with it.' : ''}`.trim(),
       // the details open in place, so the choice stays where it is
       extra: needsConsent ? h('details', { class: 'hf-inline-details', dataset: { test: 'explore-details' } }, h('summary', {}, 'How this works'),
-        h('p', {}, 'Your Mallow’s perspective is written automatically by Hushmates from your words, once. It isn’t written by a person, it’s always labelled “Automatically generated”, and it never counts as one of the five. Nobody else sees it unless you choose to share it.')) : null,
+        h('p', {}, 'Your Mallow’s perspective is chosen automatically by Hushmates, once, from lines written in advance and guided by your words. It isn’t written by a person, it’s always labelled “Automatically generated”, and it never counts as one of the five. Nobody else sees it unless you choose to share it.')) : null,
       confirmLabel: `Ask ${fm.name}`,
     });
     if (!ok || !alive) return;

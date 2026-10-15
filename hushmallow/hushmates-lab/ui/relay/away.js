@@ -14,7 +14,7 @@ export function away(dev) {
   const st = stage(m.id, { size: 'm', label: `${m.name}, waiting with you` });
   const speech = new Speech(m.id);
   put(st.above, speech.el);
-  speech.say('I’ll be right here.');
+  speech.say('Let’s try again when you’re back online.');
   let busy = false;
   const again = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', dataset: { test: 'away-retry' }, onclick: () => retry() }, icon('refresh'), 'Try again');
   async function retry() {
@@ -32,7 +32,7 @@ export function away(dev) {
     st.el,
     h('div', { class: 'hf-copy' },
       line('We can’t reach Hushmates just now', { cls: 'hf-line--sm' }),
-      h('p', { class: 'hf-sub' }, 'Your feelings are safe and keep travelling. We’ll try again as soon as you’re back online.')),
+      h('p', { class: 'hf-sub' }, 'Your feelings keep travelling while you’re offline. We’ll try again as soon as you’re back online.')),
     h('div', { class: 'hf-actions' }, again)));
   return { el: r.el, mood: 'calm', quiet: true, destroy() { st.destroy(); } };
 }
