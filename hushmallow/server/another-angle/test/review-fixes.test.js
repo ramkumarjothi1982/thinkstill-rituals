@@ -59,6 +59,30 @@ test('HTTP: a crisis sentence split by an invisible character gets support with 
   }
 });
 
+test('a check reading on an earlier angle tells the model to judge safety first and keeps support close', async () => {
+  // the screener's check-in sentences (test/risk-screen.test.js), whichever of them still read 'check'
+  const lines = ['this is my last message to you all', "i'm so tired of everything", 'goodbye world'].filter((l) => screenInput(l).check);
+  assert.ok(lines.length > 0, 'a check-in sentence for the test');
+  for (const line of lines) {
+    const previous = [{ subtitle_line_1: 'One short reply is one short reply.', subtitle_line_2: line }];
+    const provider = createMockProvider({ script: [anchor(1)] });
+    const r = await runAngle({ text: ANCHORS[1].text, emotion: null, intention: null, previous }, deps(provider));
+    assert.equal(provider.calls.length, 1, line);
+    assert.ok(provider.calls[0].user.includes(RISK_CHECK_NOTE), `${line}: the safety-first note`);
+    assert.equal(r.keep_support_close, true, line);
+  }
+  // ordinary earlier angles: no note, nothing kept close
+  const provider = createMockProvider({ script: [anchor(1)] });
+  const plain = await runAngle({ text: ANCHORS[1].text, emotion: null, intention: null, previous: [{ subtitle_line_1: 'Five hours is a fact.', subtitle_line_2: 'What it means is still open.' }] }, deps(provider));
+  assert.ok(!provider.calls[0].user.includes(RISK_CHECK_NOTE));
+  assert.equal(plain.keep_support_close, false);
+  // and with an earlier angle that reads crisis or care, still support and no model call
+  const p3 = createMockProvider({ script: [anchor(1)] });
+  const crisis = await runAngle({ text: ANCHORS[1].text, emotion: null, intention: null, previous: [{ subtitle_line_1: 'I am going to end my life tonight.', subtitle_line_2: 'Okay.' }] }, deps(p3));
+  assert.equal(crisis.status, 'crisis');
+  assert.equal(p3.calls.length, 0);
+});
+
 test('the unauthenticated pre-check reads at most the first EARLY_CHECK_CHARS characters', async () => {
   assert.equal(EARLY_CHECK_CHARS, 2000);
   const { app, provider } = makeApp({ script: [anchor(1)] });

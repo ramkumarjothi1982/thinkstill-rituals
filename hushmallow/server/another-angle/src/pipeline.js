@@ -103,10 +103,13 @@ export async function runAngle(input, deps) {
   }
   // 1c. Earlier angles come back from the device, and the model reads them: a client could hide risk words there. The
   // server's own lines never read as crisis or care (outputIsSafe below; 0 of the 255 real ones in eval/runs), so any
-  // that do were not written here: support, no model call.
+  // that do were not written here: support, no model call. A 'check' reading on any of them counts as one on the
+  // person's words: the model is told to judge safety first, and support is kept close.
+  let previousCheck = false;
   for (const p of input.previous) {
-    if (deps.skipLexicon) break;
-    const prev = [p.subtitle_line_1, p.subtitle_line_2].map((l) => screenInput(l)).find((r) => r.level === 'crisis' || r.level === 'care');
+    const reads = [p.subtitle_line_1, p.subtitle_line_2].map((l) => screenInput(l));
+    if (reads.some((r) => r.check)) previousCheck = true;
+    const prev = deps.skipLexicon ? undefined : reads.find((r) => r.level === 'crisis' || r.level === 'care');
     if (!prev) continue;
     meta.safety_source = prev.source;
     meta.safety_level = prev.level;
@@ -114,7 +117,7 @@ export async function runAngle(input, deps) {
     const level = /** @type {'crisis' | 'care'} */ (prev.level);
     return /** @type {AngleResult} */ (done({ status: level, support: supportPayload(level, prev.category, prev.source || 'lexicon'), keep_support_close: true }));
   }
-  const riskCheck = screened.check;
+  const riskCheck = screened.check || previousCheck;
   const concern = safety.level === 'concern' || screened.level === 'concern' || riskCheck;
   // Earlier angles come back from the device too, so they are checked as well.
   meta.injection = looksLikeInjection(input.text)
