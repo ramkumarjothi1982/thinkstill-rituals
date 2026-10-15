@@ -122,7 +122,8 @@ test('320×568: a line coming into the band folds the offer lying there (whateve
   const place = offer.slice(offer.indexOf('function place({ fresh = false } = {}) {'), offer.indexOf('let geom = place();'));
   // in place() itself: the band's watch, the shell's relayout once the Mallow lands, a resize all go through it
   assert.match(place, /const prev = fresh \? null : rect, was = fresh \? null : tier, wasForm = form;/);
-  assert.match(place, /if \(prev && !folded && offBody\(was\) && !offBody\(p\.tier\)\) \{\s*if \(wasForm\) apply\(wasForm\);[\s\S]*?fold\(true, \{ quick: true \}\);\s*return geom;/);
+  // (P1, 15 Oct: never over the Mallow at all — placed again it folds; placed fresh it waits as its chip for room)
+  assert.match(place, /if \(geom && !offBody\(p\.tier\)\) \{\s*if \(wasForm\) apply\(wasForm\);\s*if \(!prev\) \{ roomWait = true; return geom; \}\s*if \(!folded\) fold\(true, \{ quick: true \}\);[^\n]*\n\s*return geom;/);
   assert.ok(place.indexOf('fold(true, { quick: true })') < place.indexOf('el.style.left ='), 'it folds where it is: never moved first');
   // (the band's watch no longer decides by itself)
   assert.doesNotMatch(offer, /const off = \(t\) =>/);
@@ -130,8 +131,9 @@ test('320×568: a line coming into the band folds the offer lying there (whateve
   assert.match(gi, /\.hm-offer\.is-folded\.is-quick, \.hm-offer\.is-reduced\.is-folded\.is-quick \{ transition: none; \}/);
   assert.match(gi, /\.hm-offer\.is-hop \{ transition: none !important; opacity: 0 !important; \}/);
   assert.match(place, /const hop = !!\(sweep && f && el\.classList\.contains\('is-in'\) && hits\(sweep, f, 2\) && !hits\(next, f, 2\)/);
-  // a tap on the chip places it afresh (not folded again for where it was before)
-  assert.match(offer, /geom = place\(\{ fresh: true \}\); reveal\(\);/);
+  // a tap on the chip places it afresh (not folded again for where it was before) — and with no room off the Mallow
+  // yet, the chip stays (glowing) until there is
+  assert.match(offer, /const g = place\(\{ fresh: true \}\);[\s\S]*?if \(roomWait\) \{ folded = false; fold\(true, \{ quick: true, waiting: true \}\); return; \}\s*geom = g;\s*folded = false; el\.classList\.remove\('is-folded'\); reveal\(\);/);
 });
 
 // ------------------------------------------------------- 3. the goodbye's line, placed knowing where the thought rests --
@@ -201,4 +203,73 @@ test('the support sheet after abuse leads with its first actions above the fold 
   // what scrolls on below fades out above the foot (never cut mid-line under it)
   const css = read('src/ui/app.css');
   assert.match(css, /\.sheet \.sheet-body \{ -webkit-mask-image: linear-gradient\(to bottom, #000 calc\(100% - 22px\), transparent\); mask-image: linear-gradient\(to bottom, #000 calc\(100% - 22px\), transparent\); \}/);
+});
+
+// ------------------------------------------- P1 (15 Oct): the Memory Garden offer never over the Mallow, any screen --
+test('P1 320×568: the garden offer never lies over the Mallow — first shown with no room, it waits as its chip and opens by itself once there is', () => {
+  const gi = read('src/hushfold/garden-install.js');
+  const offer = gi.slice(gi.indexOf('export function offerSave('), gi.indexOf('function note('));
+  // the first placement: offered with nothing but the hero's body left, it is never revealed there
+  assert.match(offer, /if \(roomWait\) fold\(true, \{ quick: true, waiting: false \}\);\s*else reveal\(\);/);
+  assert.match(offer, /const reveal = \(\) => requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => \{ if \(!done && !folded\) el\.classList\.add\('is-in'\); \}\)\);/);
+  // waiting: the lines changing, a relayout or a resize try again; it opens only where it is clear of the Mallow
+  const room = offer.slice(offer.indexOf('function tryRoom() {'), offer.indexOf('// left alone, it folds'));
+  assert.match(room, /if \(done \|\| !folded \|\| !roomWait \|\| installHeld\) return;\s*const g = place\(\{ fresh: true \}\);\s*if \(roomWait\) return;/);
+  assert.match(offer, /const stopBand = onBandChange\(\(\) => \{\s*if \(folded && roomWait\) \{ tryRoom\(\); return; \}/);
+  assert.match(offer, /el\.__place = \(\) => \{ if \(folded\) tryRoom\(\); else geom = place\(\); \};/);
+  assert.match(offer, /const onResize = \(\) => \{ if \(folded\) tryRoom\(\); else geom = place\(\); \};/);
+  // the chip itself never lies over the Mallow's body: with no corner clear of it, it waits unseen
+  const chip = gi.slice(gi.indexOf('function showChip('), gi.indexOf('function hideChip('));
+  assert.match(chip, /const free = clear\(obstacles\) \|\| \(body \? clear\(\[\.\.\.firm, body\]\) : clear\(firm\)\);/);
+  assert.match(gi, /\.hm-chip\.is-waiting \{/);
+});
+
+// ---------------------------------------- P1 (15 Oct): a stroke that starts on the thought's words stirs the world --
+test('P1: a finger setting off from a thought\'s words is a stroke on the stage (the storm stirs), a hold carries the thought, a tap reads', async () => {
+  const layer = read('src/mallows/thought/layer.js');
+  assert.match(layer, /const TAG_SLOP = 10, TAG_HOLD_MS = 450;/);
+  assert.match(layer, /touch-action:none;pointer-events:auto;/, 'the words never become a browser pan');
+  assert.match(layer, /el\.addEventListener\('pointerdown', \(e\) => \{ e\.stopPropagation\(\); this\._tagDown\(th, el, e\); \}\);/);
+  const down = layer.slice(layer.indexOf('  _tagDown(th, el, e) {'), layer.indexOf('  _makeTag(th) {'));
+  assert.match(down, /if \(Math\.hypot\(ev\.clientX - g\.x, ev\.clientY - g\.y\) > TAG_SLOP\) give\('stroke', ev\);/);
+  assert.match(down, /g\.timer = setTimeout\(\(\) => \{ if \(this\._tagG === g\) give\('hold', g\.last\); \}, TAG_HOLD_MS\);/);
+  // a handed-over touch never reads (the click that may follow is swallowed until a moment after the finger lifts)
+  assert.match(layer, /el\.addEventListener\('click', \(\) => \{ const g = this\.tags\.get\(th\); if \(g && nowMs\(\) < \(g\.swallowUntil \|\| 0\)\) return; this\.read\(th\); \}\);/);
+  // the shell hands it to the router; the stage passes the option through
+  assert.match(read('src/app/scenes/hushfold.js'), /onTagGesture: \(th, kind, e, from\) => !!router\?\.adopt\?\.\(e, \{ kind, from, thought: th \}\),/);
+  assert.match(read('src/hushfold/stage.js'), /textScale: textK, onTagGesture \}\);/);
+  // the worlds' generous ring round the thought's body never reaches over its words
+  for (const f of ['src/hushfold/flow/worlds/static-storm.js', 'src/hushfold/flow/worlds/luminous-ocean.js']) assert.match(read(f), /if \(onWords\(thought, x, y\)\) return false;/, f);
+  // the router: a stroke is the world's from where it began (never the thought's or the Mallow's); a hold carries the thought
+  const { createInputRouter } = await import('../src/hushfold/input-router.js');
+  const listeners = {}, el = { addEventListener: (t, f) => { listeners[t] = f; }, removeEventListener() {}, setPointerCapture() {} };
+  const prevDoc = globalThis.document;
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, body: { classList: { add() {}, remove() {} } } };
+  try {
+    const got = [], thoughtGot = [];
+    const th = { x: 100, y: 200 };
+    const r = createInputRouter({ el, mallow: { hitTest: () => true, pointer: () => got.push('mallow') }, thoughts: { hitTest: () => th, pointer: (t, e) => thoughtGot.push([e.type, e.x, e.y]) } });
+    r.setWorld((e) => got.push([e.type, Math.round(e.x), Math.round(e.y)]), { thoughts: true });
+    const ev = (id, x, y, t) => ({ pointerId: id, clientX: x, clientY: y, timeStamp: t, pointerType: 'touch' });
+    assert.equal(r.adopt(ev(5, 130, 260, 20), { kind: 'stroke', from: { x: 110, y: 250, t: 0 }, thought: th }), true);
+    assert.deepEqual(got.slice(0, 2), [['down', 110, 250], ['move', 130, 260]], 'from where it began, then where it is: the world\'s, never the Mallow\'s');
+    listeners.pointermove(ev(5, 160, 270, 40));
+    listeners.pointerup(ev(5, 170, 270, 60));
+    assert.deepEqual(got.slice(2).map((g) => g[0]), ['move', 'up']);
+    assert.equal(r.active, 0);
+    // a hold: felt on the thought's body (the world owns the thoughts here), the finger's moves as they are
+    got.length = 0;
+    assert.equal(r.adopt(ev(6, 110, 250, 500), { kind: 'hold', from: { x: 110, y: 250, t: 0 }, thought: th }), true);
+    listeners.pointermove(ev(6, 120, 240, 540));
+    assert.deepEqual(got, [['down', 100, 200], ['move', 110, 190]]);
+    listeners.pointerup(ev(6, 120, 240, 560));
+    // no world: a hold carries the thought itself; a stroke is empty space's
+    r.setWorld(null);
+    assert.equal(r.adopt(ev(7, 110, 250, 600), { kind: 'hold', from: { x: 110, y: 250, t: 0 }, thought: th }), true);
+    assert.deepEqual(thoughtGot[0], ['down', 100, 200]);
+    listeners.pointerup(ev(7, 110, 250, 620));
+    // the same pointer twice, or a hold with no thought: not taken
+    assert.equal(r.adopt(ev(8, 1, 1, 0), { kind: 'hold', thought: null }), false);
+    r.destroy();
+  } finally { globalThis.document = prevDoc; }
 });

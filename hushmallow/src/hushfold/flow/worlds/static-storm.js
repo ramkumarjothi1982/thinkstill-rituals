@@ -77,6 +77,16 @@ const GIVE_MIN = 16;
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
 const rgbaHex = (h, a) => `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${a})`;
 
+/** Is (x, y) on the thought's words (its DOM tag), as they are on screen now? */
+function onWords(th, x, y) {
+  try {
+    const el = th?.tag;
+    if (!el?.isConnected) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 2;
+  } catch { return false; }
+}
+
 export function create(ctx) {
   const { photos, words } = ctx;
   const mallow = ctx.mallow || null;
@@ -453,6 +463,9 @@ export function create(ctx) {
   function hitThought(x, y) {
     if (!thought) return false;
     if (thought.hitTest) { try { if (thought.hitTest(x, y)) return true; } catch { /* placeholder */ } }
+    // (a stroke that starts on the thought's words stirs the storm — the words may be passing through, unable to take
+    // the touch themselves: the generous ring round the body never reaches over them)
+    if (onWords(thought, x, y)) return false;
     return Math.hypot(x - tSpring.x, y - tSpring.y) < tR * 1.25;
   }
   function cardAt(x, y, pad = 6) {

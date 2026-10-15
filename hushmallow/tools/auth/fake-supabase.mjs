@@ -75,7 +75,9 @@ export function renderTemplate(kind, vars) {
 
 export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirectAllow = null, log = false } = {}) {
   const secret = randomBytes(32);
-  const cfg = { autoconfirm: false, securePasswordChange: true, recentLoginMs: 86_400_000, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, down: false, singleToken: false, reuseIntervalMs: 10_000, restDelayMs: 0, restDelayTables: null };
+  // (noSchema: the project's tables were never created — every table answers 404 PGRST205, as PostgREST does;
+  //  emailOff: email sign-in switched off in Auth — GET /settings says external.email false. src/auth/readiness.js)
+  const cfg = { autoconfirm: false, securePasswordChange: true, recentLoginMs: 86_400_000, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, down: false, singleToken: false, reuseIntervalMs: 10_000, restDelayMs: 0, restDelayTables: null, noSchema: false, emailOff: false };
   let users, sessions, refresh, tokens, codes, outbox, rows, lastSend, pending = 0;
   function reset() {
     users = new Map();      // id → user
@@ -313,7 +315,7 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
     const byEmail = (e) => [...users.values()].find((u) => u.email === e);
     const flowOf = () => (b.code_challenge ? { challenge: b.code_challenge, method: String(b.code_challenge_method || 's256').toLowerCase() } : null);
 
-    if (path === '/settings' && req.method === 'GET') return send(200, { external: { email: true }, disable_signup: false, mailer_autoconfirm: cfg.autoconfirm, phone_autoconfirm: false, sms_provider: '' });
+    if (path === '/settings' && req.method === 'GET') return send(200, { external: { email: !cfg.emailOff, phone: false, google: false }, disable_signup: false, mailer_autoconfirm: cfg.autoconfirm, phone_autoconfirm: false, sms_provider: '' });
 
     if (path === '/signup' && req.method === 'POST') {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return gerr(400, 'email_address_invalid', 'Email address is invalid');
@@ -478,7 +480,7 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
       for (const s of sessions.values()) if (s.uid === uid) s.revoked = true;
       return send(200, { deleted: true, rows: counts });
     }
-    const T = TABLES[name];
+    const T = cfg.noSchema ? null : TABLES[name];
     if (!T) return perr(404, 'PGRST205', `Could not find the table 'public.${name}' in the schema cache`);
     if (role !== 'authenticated') return perr(401, '42501', `permission denied for table ${name}`);
     const filters = parseFilters(url.searchParams);

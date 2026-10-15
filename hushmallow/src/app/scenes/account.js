@@ -84,13 +84,25 @@ export function emailParts(text, tail = null) {
 /** Opens the account scene (for the side panel). params.view opens one screen directly. */
 export function openAccount(app, params = {}) { return app.go('account', params); }
 
-/** One Settings row: "Your account · Signed in as …" or "Sign in or create an account". Nothing when sign-in is off. */
+/**
+ * One Settings row: "Your account · Signed in as …" or "Sign in or create an account". Nothing when sign-in is off —
+ * nor, for a guest, until the project has said it is ready for sign-in (src/auth/readiness.js; asked once a session):
+ * a half-configured project never shows the entry. A signed-in account's row never waits.
+ */
 export function mountAccountRow(app, el) {
   const auth = app.auth;
   if (!el) return;
   if (!auth?.enabled) { el.replaceChildren(); return; }
   const u = auth.user();
   const signedIn = auth.status() === 'signed-in' && u;
+  if (!signedIn && typeof auth.ready === 'function') {
+    el.replaceChildren();
+    auth.ready().then((ok) => { if (ok) fillAccountRow(app, el, auth, u, false); }, () => {});
+    return;
+  }
+  fillAccountRow(app, el, auth, u, signedIn);
+}
+function fillAccountRow(app, el, auth, u, signedIn) {
   const label = signedIn ? 'Your account' : 'Sign in or create an account';
   // the address as on the account card: whole on its line, broken only after "@" or a dot if it must
   const addr = (email) => h('span', { translate: 'no', 'data-email': '', style: { display: 'inline-block', maxWidth: '100%', overflowWrap: 'break-word' } }, ...emailParts(email));
@@ -917,7 +929,14 @@ export default function account(app, params = {}) {
       mallow = createAuthMallow(mallowEl, { id: shownMallow().id, reducedMotion: reduced(), lowStim: !!prefs.get('lowStim') });
       lastStatus = auth?.enabled ? auth.status() : 'off';
       if (auth?.enabled && auth.status() === 'signed-in') api().catch(() => {});
-      const first = VM.initialView({ enabled: !!auth?.enabled, status: lastStatus, pendingGuestChoice: !!auth?.pendingGuestChoice, view: params.view });
+      // a guest (or a session that ended) sees the sign-in screens only once the project is ready for them
+      // (src/auth/readiness.js): otherwise this is the "doesn't use accounts" screen, as with sign-in off
+      let usable = !!auth?.enabled;
+      if (usable && lastStatus !== 'signed-in' && typeof auth.ready === 'function') {
+        usable = await auth.ready().catch(() => false);
+        if (left) return;
+      }
+      const first = VM.initialView({ enabled: usable, status: usable ? lastStatus : 'off', pendingGuestChoice: !!auth?.pendingGuestChoice, view: params.view });
       go(first, { arrived: params.arrived || null, email: params.email || '' });
       if (params.arrived && ['signed-in', 'verified', 'password-updated', 'email-changed', 'guest-kept'].includes(params.arrived)) later(() => mood('happy'), 450);
       // the calm line from before the reload: on the card when this screen says it, else the usual toast

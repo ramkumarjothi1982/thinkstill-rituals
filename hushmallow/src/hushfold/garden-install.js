@@ -164,6 +164,9 @@ const CSS = `
 .hm-offer.is-bar .hm-actions .hm-quiet { width: 44px; padding: 0; display: grid; place-items: center; }
 .hm-offer.is-bar .hm-lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .hm-offer.is-bar .hm-x { display: block; font: 600 20px/1 var(--hm-ff-ui); margin-top: -2px; }
+.hm-offer.is-bar.is-tight .hm-offer-slot { display: none; }
+.hm-offer.is-bar.is-tight .hm-offer-head { padding-left: 12px; }
+.hm-offer.is-bar.is-tight .hm-actions button.hm-primary { padding: 0 12px; }
 
 .hm-note { position: fixed; z-index: 6; left: 0; top: 0; width: max-content; max-width: min(calc(100vw - 40px), 360px); box-sizing: border-box; padding: 11px 18px; border-radius: 18px; pointer-events: none; text-wrap: balance;
   background: rgba(13, 9, 34, .86); border: 1px solid rgba(255,255,255,.14); color: #f1ecff; font: var(--type-label, 600 calc(14px * var(--hm-k))/1.35 var(--hm-ff-ui)); text-align: center;
@@ -181,6 +184,9 @@ const CSS = `
 .hm-chip.is-blocked { visibility: hidden; pointer-events: none; }
 /* the shell holds the moment (a world saying goodbye): the chip waits, unseen, until it lets go (holdInstall) */
 .hm-chip.is-held { visibility: hidden; pointer-events: none; }
+/* tapped while there is no room for the choice off the Mallow (a line or a choice is up on a small phone): it glows softly
+   until there is, then the choice opens by itself */
+.hm-chip.is-waiting { border-color: rgba(255,217,138,.62); box-shadow: 0 10px 30px rgba(4,2,16,.45), 0 0 30px rgba(var(--glow, 255,217,138), .32); }
 .hm-chip canvas { flex: 0 0 auto; display: block; margin: -4px -2px; }
 .hm-chip span { overflow-wrap: anywhere; }
 `;
@@ -655,12 +661,12 @@ function onBandChange(fn) {
  * keeps clear (the side panel or the phone sheet among them). Placed again with the offer and the card
  * (relayoutInstall), against the Mallow where it is now (geomNow); while no corner is free it waits unseen.
  */
-function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, geomNow = null, avoid = null, onTap, ttl = 0 }) {
+function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, geomNow = null, avoid = null, onTap, ttl = 0, waiting = false }) {
   hideChip(true);
   ensureCss();
   const b = document.createElement('button');
   b.type = 'button';
-  b.className = `hm-chip${reduced ? ' is-reduced' : ''}`;
+  b.className = `hm-chip${reduced ? ' is-reduced' : ''}${waiting ? ' is-waiting' : ''}`;
   b.setAttribute('aria-label', label);
   if (glow) b.style.setProperty('--glow', glow.join(','));
   const c = charmCanvas({ skillId, mallow, box: 44, reducedMotion: reduced, bob: false });
@@ -678,8 +684,10 @@ function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, ge
     // a corner clear of everything; else one clear of the Mallow's body, the lines and what must never be covered (the
     // panel, the sheet, the overlay: { hard }) — a world's own things may lie under it; else clear of the face at least;
     // else it waits, unseen
+    // (never over the Mallow itself: with no corner clear of its body, the chip waits unseen until one is — a line
+    // leaving, the panel closing — and the choice is never lost meanwhile)
     const firm = obstacles.filter((o) => o.hard || !o.soft), body = (g || geom)?.body || null;
-    const free = clear(obstacles) || (body ? clear([...firm, body]) : null) || clear(firm);
+    const free = clear(obstacles) || (body ? clear([...firm, body]) : clear(firm));
     b.classList.toggle('is-blocked', !free);
     b.classList.toggle('is-held', installHeld);
     const at = free || spots[0];
@@ -749,10 +757,17 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     openOffer = el;
 
     let form = null, charm = null, rect = null, folded = false, foldT = 0, done = false, tier = null;
+    // waiting for room: the only place left for the choice was over the Mallow (a line or a choice and the person's
+    // thought fill a small phone's free band), so it waits as its chip and opens by itself once there is room
+    let roomWait = false;
     const apply = (f) => {
       el.classList.toggle('is-compact', f === 'compact');
       el.classList.toggle('is-bar', f === 'bar');
       t.textContent = f === 'bar' ? shortName : name;
+      // (a narrow bar at a large text size: a word of the name wider than its room — "Slowing" at 1.25 on 320 px —
+      // is never cut; the charm steps out and the buttons draw in instead)
+      el.classList.remove('is-tight');
+      if (f === 'bar' && t.scrollWidth > t.clientWidth + 1) el.classList.add('is-tight');
     };
     // (clear of the body: in the clear, in the subtitle band's free time, or over a world's decoration)
     const offBody = (t) => t === 'clear' || t === 'band' || t === 'decor';
@@ -761,16 +776,18 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       const geom = mallowGeom(origin, m, face);
       const prev = fresh ? null : rect, was = fresh ? null : tier, wasForm = form;
       const p = placeBox(el, { forms: ['full', 'compact', 'bar'], apply, kind: 'offer', geom, extra: extraRects(avoid) });
-      // Placed again (a line came into the band it lay in, the layout moved, the panel opened…) and the only place left is
-      // over the Mallow, where it was clear of it: it folds into its chip instead — it never moves onto the hero's head
-      // (the chip waits for a free corner; a tap brings the choice back). Whatever placed it again: the band's own watch,
-      // the shell's relayout once the Mallow lands, a resize.
-      if (prev && !folded && offBody(was) && !offBody(p.tier)) {
+      // The choice never lies over the Mallow (its head included), on any screen. Placed again (a line came into the band
+      // it lay in, the layout moved, the panel opened…) and the only place left is over it: it folds into its chip
+      // instead (the chip waits for a free corner; a tap brings the choice back). Whatever placed it again: the band's own
+      // watch, the shell's relayout once the Mallow lands, a resize. Placed fresh (first shown, or its chip tapped) with
+      // only the Mallow left: it waits as its chip until there is room (roomWait), then opens by itself.
+      if (geom && !offBody(p.tier)) {
         if (wasForm) apply(wasForm);
-        // (quickly: a line coming into the band is fading in where it lay)
-        fold(true, { quick: true });
+        if (!prev) { roomWait = true; return geom; }
+        if (!folded) fold(true, { quick: true });   // (quickly: a line coming into the band is fading in where it lay)
         return geom;
       }
+      roomWait = false;
       const next = { left: p.left, top: p.top, right: p.left + p.w, bottom: p.top + p.h };
       // Moving on screen: it slides there — unless the slide would pass over the face (the new form's size takes effect
       // at once, its place eases in): then it hops, unseen for a frame and fading in where it now belongs.
@@ -795,23 +812,43 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       return geom;
     }
     let geom = place();
-    const reveal = () => requestAnimationFrame(() => requestAnimationFrame(() => { if (!done) el.classList.add('is-in'); }));
-    reveal();
+    const reveal = () => requestAnimationFrame(() => requestAnimationFrame(() => { if (!done && !folded) el.classList.add('is-in'); }));
     announce(`Keep this in your Memory Garden? ${name}`);
     offerEvent('open', skillId);
+    if (roomWait) fold(true, { quick: true, waiting: false });
+    else reveal();
+    /** Waiting for room (roomWait): open the choice now if there is a place for it off the Mallow. */
+    function tryRoom() {
+      if (done || !folded || !roomWait || installHeld) return;
+      const g = place({ fresh: true });
+      if (roomWait) return;
+      geom = g;
+      hideChip(true);
+      folded = false;
+      el.classList.remove('is-folded', 'is-quick');
+      reveal(); armFold(); offerEvent('unfold', skillId);
+    }
 
     // left alone, it folds into a chip in a corner (nothing is saved, nothing lost)
     const armFold = () => { clearTimeout(foldT); if (foldAfterMs > 0) foldT = setTimeout(fold, foldAfterMs); };
-    function fold(force = false, { quick = false } = {}) {
+    function fold(force = false, { quick = false, waiting = false } = {}) {
       if (done || folded) return;
       if (!force && el.contains(document.activeElement)) { armFold(); return; }
       folded = true;
+      clearTimeout(foldT);
       el.classList.toggle('is-quick', !!quick);
       el.classList.remove('is-in'); el.classList.add('is-folded');
       offerEvent('fold', skillId);
-      showChip({ text: `Keep “${shortName}”?`, label: `${name}. Show the choice to keep it in your Memory Garden.`, skillId, mallow: m.id, reduced, glow, geom, avoid,
+      showChip({ text: `Keep “${shortName}”?`, label: `${name}. Show the choice to keep it in your Memory Garden.`, skillId, mallow: m.id, reduced, glow, geom, avoid, waiting,
         geomNow: () => mallowGeom(origin, m, face),
-        onTap: () => { if (done) return; folded = false; el.classList.remove('is-folded'); geom = place({ fresh: true }); reveal(); armFold(); offerEvent('unfold', skillId); yes.focus({ preventScroll: true }); } });
+        onTap: () => {
+          if (done) return;
+          const g = place({ fresh: true });
+          // (no room for it off the Mallow yet: the chip stays, glowing, and the choice opens the moment there is)
+          if (roomWait) { folded = false; fold(true, { quick: true, waiting: true }); return; }
+          geom = g;
+          folded = false; el.classList.remove('is-folded'); reveal(); armFold(); offerEvent('unfold', skillId); yes.focus({ preventScroll: true });
+        } });
     }
     armFold();
     el.addEventListener('pointerdown', armFold);
@@ -821,6 +858,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
 
     const stopLeave = onSceneLeave(() => close(false));
     const stopBand = onBandChange(() => {
+      if (folded && roomWait) { tryRoom(); return; }
       if (done || folded || !rect) return;
       if (!obstacleRects().concat(extraRects(avoid)).some((o) => hits(rect, o, 4))) return;
       // a line came onto it (it lay in the subtitle band's free time, on a small phone): if the only place left is over
@@ -828,7 +866,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       // (place() folds it when the only place left is over the Mallow)
       geom = place();
     });
-    const onResize = () => { if (!folded) geom = place(); };
+    const onResize = () => { if (folded) tryRoom(); else geom = place(); };
     addEventListener('resize', onResize);
     const onKey = (e) => { if (e.key === 'Escape' && !folded) close(false); };
     document.addEventListener('keydown', onKey);
@@ -849,7 +887,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     if (signal?.aborted) { close(false); return; }
     signal?.addEventListener?.('abort', onAbort);
     el.__close = close;
-    el.__place = () => { if (!folded) geom = place(); };
+    el.__place = () => { if (folded) tryRoom(); else geom = place(); };
     el.__fold = () => fold(true);
     no.addEventListener('click', () => close(false));
     yes.addEventListener('click', () => close(true));

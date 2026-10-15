@@ -11,8 +11,14 @@
 // velocity. The Mallow's eyes follow any finger or cursor on the stage.
 // ctrl + wheel over the Mallow (a desktop trackpad pinch) goes to mallow.wheel.
 //
+// A touch that began on a Thought Mallow's words (a DOM button above the stage) is handed over by the
+// ThoughtLayer once it shows what it is: adopt(e, { kind: 'stroke' }) makes it the stage's from where it began —
+// the world's stroke (the storm stirs, the sea swells) or empty space, never the thought's or the Mallow's;
+// adopt(e, { kind: 'hold', thought }) — a deliberate hold on the words — carries that thought, as if the finger
+// had taken it by its body (the world's, when the world owns the thoughts). The router captures the pointer.
+//
 // createInputRouter({el, mallow, thoughts, onEmpty, onTouch}) →
-//   { setWorld(fn|null, {thoughts}), get active, get owners, get worldOwnsThoughts, destroy() }
+//   { setWorld(fn|null, {thoughts}), adopt(e, {kind, from, thought}), get active, get owners, get worldOwnsThoughts, destroy() }
 // Routed pointer: { type:'down'|'move'|'up'|'cancel', id, x, y, t, vx, vy,
 //   speed, pointerType, count, shift (Shift held: a mouse Shift-drag stretches
 //   the Mallow), mouse (pointerType 'mouse') }
@@ -23,8 +29,9 @@ export function createInputRouter({ el, mallow, thoughts = null, onEmpty = null,
   let world = null;
   let worldOwnsThoughts = false;   // setWorld(fn, {thoughts: true}): Thought Mallow hits go to the world
 
+  // (dx, dy: a hold adopted from a thought's words is felt on the thought's body, the finger's moves as they are)
   const routed = (type, e, p) => ({
-    type, id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp || performance.now(),
+    type, id: e.pointerId, x: e.clientX + (p?.dx || 0), y: e.clientY + (p?.dy || 0), t: e.timeStamp || performance.now(),
     vx: p?.vx || 0, vy: p?.vy || 0, speed: Math.hypot(p?.vx || 0, p?.vy || 0), pointerType: e.pointerType || 'touch', count: owners.size,
     shift: !!e.shiftKey, mouse: e.pointerType === 'mouse',
   });
@@ -115,6 +122,30 @@ export function createInputRouter({ el, mallow, thoughts = null, onEmpty = null,
     setWorld(fn, opts = {}) {
       world = typeof fn === 'function' ? fn : null;
       worldOwnsThoughts = !!world && !!opts?.thoughts;
+    },
+    /**
+     * Take a touch that began above the stage, on a Thought Mallow's words (the ThoughtLayer's onTagGesture), from here
+     * on. kind 'stroke': it is the world's (or empty space's) from `from`, where it began — never the Mallow's or a
+     * thought's, though it began over the words. kind 'hold': it carries `thought`, shifted onto its body. True when taken.
+     */
+    adopt(e, { kind = 'stroke', from = null, thought = null } = {}) {
+      if (!e || e.pointerId == null || owners.has(e.pointerId) || owners.size >= maxPointers) return false;
+      const x0 = Number.isFinite(from?.x) ? from.x : e.clientX, y0 = Number.isFinite(from?.y) ? from.y : e.clientY;
+      const t0 = Number.isFinite(from?.t) ? from.t : (e.timeStamp || performance.now());
+      const p = { kind: 'empty', target: null, x: x0, y: y0, t: t0, vx: 0, vy: 0, dx: 0, dy: 0 };
+      if (kind === 'hold') {
+        if (!thought || !Number.isFinite(thought.x) || !Number.isFinite(thought.y)) return false;
+        p.dx = thought.x - x0; p.dy = thought.y - y0;
+        if (worldOwnsThoughts && world) p.kind = 'world';
+        else { p.kind = 'thought'; p.target = thought; }
+      } else if (world) p.kind = 'world';
+      owners.set(e.pointerId, p);
+      // the rest of this touch comes here, not to the words
+      try { el.setPointerCapture(e.pointerId); } catch { /* synthetic or already gone */ }
+      deliver(p, 'down', { pointerId: e.pointerId, clientX: x0, clientY: y0, timeStamp: t0, pointerType: e.pointerType || 'touch', shiftKey: false });
+      onTouch?.({ kind: p.kind, type: 'down', x: x0, y: y0 });
+      if (kind !== 'hold') { track(p, e); deliver(p, 'move', e); }
+      return true;
     },
     get worldOwnsThoughts() { return worldOwnsThoughts; },
     get active() { return owners.size; },

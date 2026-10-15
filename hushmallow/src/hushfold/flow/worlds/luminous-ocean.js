@@ -127,6 +127,16 @@ function facetTile(seed) {
   return T;
 }
 
+/** Is (x, y) on the thought's words (its DOM tag), as they are on screen now? */
+function onWords(th, x, y) {
+  try {
+    const el = th?.tag;
+    if (!el?.isConnected) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 2;
+  } catch { return false; }
+}
+
 export function create(ctx) {
   const { photos, words } = ctx;
   const mallow = ctx.mallow || null;
@@ -1035,6 +1045,8 @@ export function create(ctx) {
   function hitThought(x, y) {
     if (!thought || tS.alpha < 0.5) return false;
     try { if (thought.hitTest?.(x, y)) return true; } catch { /* placeholder */ }
+    // (a stroke that starts on the thought's words makes its swell: the generous ring round the body never reaches over them)
+    if (onWords(thought, x, y)) return false;
     return Math.hypot(x - tS.sx, y - tS.sy) < Math.max(22, tS.r * tS.surf * 1.25);
   }
   function bubbleAt(x, y) {

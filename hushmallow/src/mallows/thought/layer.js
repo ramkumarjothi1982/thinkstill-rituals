@@ -98,6 +98,12 @@ const HOST_GIVE_S = 0.9;
 // how long a world-driven thought's words, cut to fewer lines for a moment (a hero passing by, a melt's host swap), must
 // have shown clear before the line they gave up is tried again (doubled, to 8 s, each time it is lost again soon after)
 const RAISE_S = 0.8;
+/**
+ * A finger on the words (o.onTagGesture): one that sets off more than TAG_SLOP px before TAG_HOLD_MS is a stroke and
+ * goes to the host from where it began (a world stirs, the sea swells; never the thought); one held still on them
+ * for TAG_HOLD_MS is a deliberate hold and picks the thought up by its words; one lifted before either is a tap (reads).
+ */
+const TAG_SLOP = 10, TAG_HOLD_MS = 450;
 let styled = false;
 
 function injectStyle() {
@@ -110,7 +116,7 @@ function injectStyle() {
   border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,var(--tm-wash,rgba(255,255,255,.05)),rgba(255,255,255,0) 70%),rgba(14,10,36,.74);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fbf8ff;
   font:650 calc(17px * var(--tm-k,1))/1.3 var(--ff-voice,"HM Nunito Sans","Nunito Sans",ui-rounded,system-ui,sans-serif);letter-spacing:.004em;text-align:center;
   box-shadow:0 8px 22px rgba(4,2,16,.34),inset 0 1px 0 var(--tm-tint,rgba(255,255,255,.22));cursor:pointer;transform-origin:50% 0;
-  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;pointer-events:auto;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:none;pointer-events:auto;
   opacity:0;transition:opacity .2s ease,border-color .6s ease}
 .tm-tag.tm-move{will-change:transform}
 .tm-tag::before{content:"";position:absolute;left:-2px;right:-2px;top:50%;height:max(100% + 4px,48px);transform:translateY(-50%)}
@@ -197,6 +203,10 @@ export class ThoughtLayer {
    * @param {(th)=>void} [o.onRead]  tap on the words (default: a small reader with all of them)
    * @param {(kind)=>void} [o.haptic]  @param {object} [o.audio]
    * @param {number|()=>number} [o.textScale=1]  the person's text size (1 … 1.25 …): the words' font and plates scale with it
+   * @param {(th, kind: 'stroke'|'hold', e: PointerEvent, from: {x, y, t}) => boolean} [o.onTagGesture]  a touch that began
+   *   on the words and turned out to be a stroke or a deliberate hold (TAG_SLOP / TAG_HOLD_MS): the host takes the pointer
+   *   (true) — a stroke is the stage's from `from` (never the thought's), a hold carries the thought. Without it the words
+   *   keep every touch, as before.
    */
   constructor(o = {}) {
     injectStyle();
@@ -1506,6 +1516,57 @@ export class ThoughtLayer {
   }
 
   // ------------------------------------------------------------- words --
+  /**
+   * A finger down on a thought's words, with a host that takes tag gestures (o.onTagGesture): it is watched until it
+   * shows what it is. Lifted first: a tap (the click reads). Off by more than TAG_SLOP px first: a stroke, handed to the
+   * host from where it began (a world's stir — never the thought). Still for TAG_HOLD_MS: a deliberate hold, handed to
+   * the host to carry the thought by its words. One finger at a time; the rest of a handed-over touch is the host's
+   * (it captures the pointer) and its click, if one follows, does not read.
+   */
+  _tagDown(th, el, e) {
+    const host = this.o.onTagGesture;
+    if (typeof host !== 'function' || this.paused || this.hidden || this._tagG || th._leaving) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const tg = this.tags.get(th);
+    if (!tg) return;
+    tg.swallowUntil = 0;
+    const g = { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp || nowMs(), last: e, timer: 0 };
+    this._tagG = g;
+    // (a mouse keeps sending its moves to the words while it is down; a finger does so by itself)
+    try { el.setPointerCapture?.(e.pointerId); } catch { /* synthetic or already gone */ }
+    const end = () => {
+      clearTimeout(g.timer);
+      el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up); el.removeEventListener('lostpointercapture', up);
+      if (this._tagG === g) this._tagG = null;
+    };
+    const give = (kind, ev) => {
+      end();
+      if (th._leaving || !this.tags.has(th) || this.paused) return;
+      let took = false;
+      try { took = !!host(th, kind, ev, { x: g.x, y: g.y, t: g.t }); } catch (err) { console.warn('[thought] tag gesture', err); }
+      if (!took) return;
+      // its click, if one comes, is not a tap on the words: none reads until a moment after this finger lifts
+      tg.swallowUntil = nowMs() + 15000;
+      const lift = (u) => {
+        if (u.pointerId !== g.id) return;
+        tg.swallowUntil = nowMs() + 450;
+        removeEventListener('pointerup', lift, true); removeEventListener('pointercancel', lift, true);
+      };
+      addEventListener('pointerup', lift, true); addEventListener('pointercancel', lift, true);
+      if (kind === 'hold') { try { this.o.haptic?.('tick'); } catch { /* decoration */ } }
+    };
+    const mv = (ev) => {
+      if (ev.pointerId !== g.id) return;
+      g.last = ev;
+      if (Math.hypot(ev.clientX - g.x, ev.clientY - g.y) > TAG_SLOP) give('stroke', ev);
+    };
+    const up = (ev) => { if (ev.pointerId === g.id) end(); };
+    g.timer = setTimeout(() => { if (this._tagG === g) give('hold', g.last); }, TAG_HOLD_MS);
+    el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+  }
+
   _makeTag(th) {
     if (!this.tagRoot || typeof document === 'undefined') return;
     const el = document.createElement('button');
@@ -1518,7 +1579,8 @@ export class ThoughtLayer {
     const label = th.kind === 'belief' ? 'Belief' : 'Thought';
     const said = th.text.trim();
     el.setAttribute('aria-label', `${label}: ${said}${/[.!?…]$/u.test(said) ? '' : '.'} Enter reads it all; hold Space to squeeze it; the arrow keys move it; Shift and an arrow strokes it.`);
-    el.addEventListener('click', () => this.read(th));
+    // (a stroke or a hold handed to the host is not a tap: the click that may follow it does not read)
+    el.addEventListener('click', () => { const g = this.tags.get(th); if (g && nowMs() < (g.swallowUntil || 0)) return; this.read(th); });
     el.addEventListener('keydown', (e) => {
       if (e.key === ' ' || e.key === 'Spacebar') {
         // holding Space squeezes it (as a held finger); a button would read on Space, Enter does that here
@@ -1542,8 +1604,9 @@ export class ThoughtLayer {
       this._changed();
     });
     el.addEventListener('blur', () => { if (th.reader.keys?.space != null) th.key({ type: 'up', key: ' ', t: nowMs() / 1000 }); });
-    // the words take their own taps; nothing underneath gets them
-    el.addEventListener('pointerdown', (e) => e.stopPropagation());
+    // the words take their own taps; nothing underneath gets them — but a finger that sets off across the screen from
+    // them is a stroke, and one held still on them picks the thought up (_tagDown, when the host takes those)
+    el.addEventListener('pointerdown', (e) => { e.stopPropagation(); this._tagDown(th, el, e); });
     if (this.hidden || this.paused) el.classList.add('tm-hidden');
     if (this._k !== 1) el.style.setProperty('--tm-k', String(this._k));
     this.tagRoot.appendChild(el);
