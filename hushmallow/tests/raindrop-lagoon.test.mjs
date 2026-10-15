@@ -105,7 +105,9 @@ test('layout: on every screen the drops, the thought, its words and its tag neve
       assert.ok(!hits(p.cluster, p.K), `${tag}: thought off the hero`);
       // (a phone on its side, 390 px tall, has no room for a planned plate beside the hero: the handle places its words itself)
       if (text && H >= 480) assert.ok(p.plate && p.plate.y1 <= p.thought.y - p.thought.r, `${tag}: the words above the thought`);
-      assert.ok(p.tag.h >= 2 * LAGOON.TAG_LINE, `${tag}: two rows kept for the tag`);
+      assert.ok(p.tag.rows >= 1 && p.tag.h >= p.tag.rows * LAGOON.TAG_LINE, `${tag}: rows kept for the tag`);
+      if (W >= 360 && H >= 640) assert.equal(p.tag.rows, 2, `${tag}: two rows on a phone`);
+      assert.ok(!p.plate || !hits(p.plate, p.tag, 1), `${tag}: the tag never on the words`);
     }
   }
   // a side panel open: everything left of it
@@ -445,5 +447,63 @@ test('world: melting in from the ocean, the thought glides from where it was; th
     assert.ok(Math.abs(T1.x - T1.home.x) < 4 && Math.abs(T1.y - T1.home.y) < 5, 'and glided home');
     assert.ok(lag.debug.drops.every((d) => d.state === 'hang'), 'the drops condensed');
     assert.equal(lag.debug.orbs.length, 3, 'three glass photo drops');
+  } finally { D?.destroy(); dom.restore(); }
+});
+
+test('world (review): a relayout mid-hold keeps the drop; "unsure" is not "a word"; resting on the tag or tapping too soon names nothing', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const W = 390, H = 844, mallow = fakeMallow(W, H), thought = fakeThought(), said = [], found = [];
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, registry: createRegistry([...WORLDS, LAB]), ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say(l) { said.push([].concat(l)); return Promise.resolve(); }, choice: () => new Promise(() => {}), clear() {} } });
+    D.on('discovery', (e) => found.push(e));
+    await D.start({ worldId: 'raindrop-lagoon', emotion: 'sad', intention: 'steady' });
+    const w = D.world;
+    steps(D, 3);
+    // resting a finger on the empty tag for 2 s: nothing is drawn to it, nothing named
+    const tg = w.debug.tag;
+    let t = D.debug.time * 1000;
+    D.pointer({ type: 'down', id: 7, x: (tg.x0 + tg.x1) / 2, y: (tg.y0 + tg.y1) / 2, t, pointerType: 'touch' });
+    steps(D, 2);
+    D.pointer({ type: 'up', id: 7, x: (tg.x0 + tg.x1) / 2, y: (tg.y0 + tg.y1) / 2, t: t + 2000, pointerType: 'touch' });
+    steps(D, 1);
+    assert.deepEqual(w.metrics.named, [], 'a finger resting on the tag names nothing');
+    assert.equal(w.progress, 0, 'and is not play');
+    // a tap on a drop, then the thought at once: its word is not readable yet, nothing is given
+    const d0 = w.debug.drops[0], T = w.debug.thought;
+    tap(D, d0.x, d0.y, 8);
+    tap(D, T.x, T.y, 8);
+    steps(D, 1);
+    assert.deepEqual(w.metrics.named, [], 'never given before its word shows');
+    tap(D, 20, 300, 8); steps(D, 1);
+    // "unsure" first: it counts, it says so, and "You gave it a word." waits for a word
+    const un = w.debug.drops.find((d) => d.word === 'unsure');
+    holdAndCarry(D, un, T.x, T.y);
+    assert.deepEqual(w.metrics.named, ['unsure']);
+    assert.ok(said.some((l) => l.includes('“Unsure” counts too.')));
+    assert.ok(!found.some((e) => e.id === 'named'), 'no "You gave it a word." for unsure');
+    // hold a drop, turn the phone mid-hold (fewer slots), carry it to the thought: it lands and counts
+    const d1 = w.debug.drops[0];
+    t = D.debug.time * 1000;
+    D.pointer({ type: 'down', id: 9, x: d1.x, y: d1.y, t, pointerType: 'touch' });
+    for (let s = 0; s < 1.4; s += 1 / 30) { t += 33; D.debug.step(1 / 30); }
+    w.resize(320, 568);
+    steps(D, 0.6);
+    const T2 = w.debug.thought;
+    for (let i = 1; i <= 15; i++) { t += 33; D.pointer({ type: 'move', id: 9, x: d1.x + ((T2.home.x - d1.x) * i) / 15, y: d1.y + ((T2.home.y - d1.y) * i) / 15, t, pointerType: 'touch' }); D.debug.step(1 / 30); }
+    D.pointer({ type: 'up', id: 9, x: T2.home.x, y: T2.home.y, t: t + 16, pointerType: 'touch' });
+    steps(D, 1.5);
+    assert.ok(w.metrics.named.includes(d1.word), `named after the relayout: ${w.metrics.named}`);
+    assert.ok(found.some((e) => e.id === 'named'), 'and the discovery came');
+    const same = w.debug.drops.filter((d) => d.word === d1.word && d.state !== 'gone');
+    assert.equal(same.length, 1, 'one drop per word');
+    assert.equal(same[0].state, 'in');
+    // it can be given back from the tag (once the thought has eased to its new home)
+    steps(D, 2);
+    const tw = w.debug.tag.words.find((x) => x.word === d1.word);
+    tap(D, (tw.x0 + tw.x1) / 2, (tw.y0 + tw.y1) / 2, 10);
+    steps(D, 2);
+    assert.ok(!w.metrics.named.includes(d1.word), `given back: ${JSON.stringify({ named: w.metrics.named, tag: w.debug.tag, tw, drops: w.debug.drops.map((d) => [d.word, d.state, Math.round(d.x), Math.round(d.y)]) })}`);
   } finally { D?.destroy(); dom.restore(); }
 });
