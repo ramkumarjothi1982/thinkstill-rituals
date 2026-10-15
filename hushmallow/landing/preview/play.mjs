@@ -1,7 +1,7 @@
 // Plays the page like a visitor and asserts each step. Writes shots/play-*.png.
 //   node play.mjs
 import http from "node:http"
-import { readFileSync, existsSync, mkdirSync } from "node:fs"
+import { readFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -13,7 +13,10 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const dist = path.join(here, "dist")
 const out = path.join(here, "shots")
 mkdirSync(out, { recursive: true })
-const types = { ".html": "text/html", ".js": "text/javascript", ".webp": "image/webp" }
+const types = { ".html": "text/html", ".js": "text/javascript", ".webp": "image/webp", ".webm": "video/webm" }
+// a stand-in clip (an old screen recording) just to prove the Moodspell player works; it never ships
+const repoVideo = path.join(here, "..", "..", "..", "Animation.webm")
+if (existsSync(repoVideo)) copyFileSync(repoVideo, path.join(dist, "test-video.webm"))
 const server = http.createServer((req, res) => {
     const u = decodeURIComponent(new URL(req.url, "http://x").pathname)
     if (u.startsWith("/signup") || u.startsWith("/login")) { res.writeHead(200, { "content-type": "text/html" }); return res.end("<p>app auth page</p>") }
@@ -29,7 +32,7 @@ const ok = (cond, msg) => { console.log(`${cond ? "  ok " : "FAIL "} ${msg}`); i
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 async function open(w, h, opts = {}) {
-    const page = await browser.newPage({ viewport: { width: w, height: h }, hasTouch: w < 800, isMobile: w < 800, reducedMotion: opts.reduced ? "reduce" : "no-preference" })
+    const page = await browser.newPage({ viewport: { width: w, height: h }, hasTouch: w < 800, isMobile: w < 800, reducedMotion: opts.reduced ? "reduce" : "no-preference", permissions: ["clipboard-read", "clipboard-write"] })
     const errors = []
     page.on("pageerror", (e) => errors.push(String(e)))
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()) })
@@ -96,21 +99,33 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
 
     // copy: the new positioning, none of the old
     const text = await page.locator(".hm").innerText()
-    ok(/A softer space for feelings\./.test(text) && text.includes("A playful, soothing space to touch, unwind and connect."), "hero carries the tagline and description")
-    ok(!/companion|second brain|virtual therapist|AI emotional/i.test(text), "no old 'companion' / AI positioning anywhere on the page")
-    ok((await page.locator(".hm-squishword").innerText()) === "softer", "'softer' is the squishy word")
+    ok((await page.locator("#hm-hero-title").getAttribute("aria-label")) === "Feel something? hushmallow.", "hero headline: Feel something? hushmallow.")
+    ok(text.includes("Think emotion. Think hushmallow.".toUpperCase()) || text.includes("Think emotion. Think hushmallow."), "eyebrow: Think emotion. Think hushmallow.")
+    ok(text.includes("Whatever you feel, there's a Mallow for that."), "support line: Whatever you feel, there's a Mallow for that.")
+    ok(!/companion|second brain|virtual therapist|AI emotional|softer space/i.test(text), "no old 'companion' / AI / 'softer space' positioning anywhere on the page")
+    ok((await page.locator(".hm-squishword").innerText()) === "hushmallow", "'hushmallow' is the squishy word")
+    ok((await page.locator(".hm-motes").count()) >= 1 && (await page.locator(".hm-hero-spirals").count()) === 1, "hero atmosphere (spirals, motes) is present")
+    ok(/therapy|treatment/i.test(text.replace(/isn't a medical or crisis service/, "")) === false, "never markets itself as therapy or treatment")
 
     // anchor nav
     await page.locator(".hm-hero .hm-btn-ghost").click()
-    await wait(1400)
-    const disTop = await page.locator("#discover").evaluate((el) => el.getBoundingClientRect().top)
-    ok(Math.abs(disTop) < 120, `"Discover hushmallow" scrolls to the three ways in (top ${Math.round(disTop)})`)
+    await wait(1500)
+    const msTop = await page.locator("#moodspell").evaluate((el) => el.getBoundingClientRect().top)
+    ok(Math.abs(msTop) < 120, `"See the magic" scrolls to Moodspell (top ${Math.round(msTop)})`)
+    ok((await page.locator(".hm-ms-badge").innerText()).toLowerCase().includes("visual preview"), "Moodspell without a film is labelled a visual preview")
+    ok((await page.locator("#moodspell video").count()) === 0, "…and has no fake video player")
+    ok((await page.locator(".hm-ms-caption").innerText()).includes("not the film itself"), "…and says it isn't the film")
+    await page.locator(".hm-ms-ctl").click(); await wait(300)
+    ok((await page.locator(".hm-ms-screen").getAttribute("class")).includes("is-paused") && (await page.locator(".hm-ms-ctl").getAttribute("aria-pressed")) === "true", "Moodspell preview motion can be paused")
+    await page.locator(".hm-ms-ctl").click()
+    if (w === 1440 || w === 390) { await wait(600); await page.screenshot({ path: path.join(out, `play-${w}-moodspell.png`) }) }
     await page.evaluate(() => window.scrollTo(0, 0)); await wait(500)
     await page.locator(".hm-hero .hm-btn-primary").click()
     await wait(1500)
-    const malTop = await page.locator("#mallows").evaluate((el) => el.getBoundingClientRect().top)
-    ok(Math.abs(malTop) < 120, `"Meet the Mallows" scrolls to the Mallows (top ${Math.round(malTop)})`)
-    ok(await page.evaluate(() => !!document.activeElement?.closest(".hm-meet-fig")), "…and focuses the Mallow, ready to squeeze")
+    const tryTop0 = await page.locator("#try").evaluate((el) => el.getBoundingClientRect().top)
+    ok(Math.abs(tryTop0) < 120, `"Meet your Mallow" scrolls to the live moment (top ${Math.round(tryTop0)})`)
+    ok(await page.evaluate(() => document.activeElement?.classList.contains("hm-chip")), "…and lands on the first feeling")
+    ok((await page.locator("#hm-try-title").innerText()).replace(/\s+/g, " ").includes("Can't explain the feeling? Start anywhere."), "the live moment asks: Can't explain the feeling? Start anywhere.")
 
     // Hushmates: coming soon, no fake chat, no button without a real updates link
     await page.locator("#hushmates").scrollIntoViewIfNeeded(); await wait(1200)
@@ -147,6 +162,8 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
 
     // the little moment
     await page.locator(".hm-chip", { hasText: "Anxious" }).click()
+    await wait(300)
+    ok((await page.locator(".hm-weather.hm-wx-anxious").count()) === 1, "choosing a feeling changes the room around the Mallow")
     await wait(900)
     ok((await page.locator(".hm-say-bubble").innerText()).includes("buzzing"), "Loomi greets for 'Anxious'")
     await page.locator(".hm-name-btn").click()
@@ -189,6 +206,10 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     await page.locator(".hm-chip", { hasText: "Still a lot" }).click()
     await wait(900)
     ok(await page.locator(".hm-care").isVisible(), "'Still a lot' shows the gentle support note")
+    ok((await page.locator(".hm-weather.hm-wx-anxious.is-settled").count()) === 1, "the room changed with the feeling and settled after letting it go")
+    await page.locator(".hm-done .hm-share-btn").click(); await wait(700)
+    const toastText = await page.locator(".hm-toast").innerText().catch(() => "")
+    ok(/Link copied|Thanks for sharing|Sharing isn't available/.test(toastText), `sharing gives clear feedback ("${toastText}")`)
     ok(await page.locator(".hm-done-title").isVisible(), "conversion moment appears after the demo")
     await page.locator(".hm-done").scrollIntoViewIfNeeded()
     await page.screenshot({ path: path.join(out, `play-${w}-demo-done.png`) })
@@ -231,10 +252,18 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     await page.locator(".hm-tray-btn", { hasText: "Glitzi" }).click()
     await wait(700)
     ok((await page.locator(".hm-meet-name").innerText()) === "Glitzi", "tray picks Glitzi")
+    ok((await page.locator(".hm-meet-card").innerText()).includes("Static to Signal"), "Glitzi's card names its real in-app ritual")
     await page.locator(".hm-meet-stage").scrollIntoViewIfNeeded()
     await press(page, page.locator(".hm-meet-fig .hm-squish"), 500)
     await wait(200)
     await page.screenshot({ path: path.join(out, `play-${w}-meet-glitzi.png`) })
+    await wait(1700)
+    for (let t = 0; t < 3; t++) { await press(page, page.locator(".hm-meet-fig .hm-squish"), 60); await wait(120) }
+    await wait(500)
+    ok((await page.locator(".hm-meet-say .hm-caption").innerText()).includes("That was funny"), "three quick taps tickle Glitzi")
+    await page.locator(".hm-meet-cta .hm-btn-primary").click()
+    await wait(1500)
+    ok((await page.locator(".hm-say-bubble").innerText()).includes("Want to let some of it out?") && (await page.locator(".hm-weather.hm-wx-frustrated").count()) === 1, "'Try a moment with Glitzi' starts the live moment with Glitzi")
 
     ok(errors.length === 0, `no page errors ${errors.join(" | ")}`)
     await page.close()
@@ -280,6 +309,28 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     ok((await page.evaluate(() => localStorage.getItem("hushmallow.mallow"))) === null, "'Forget me' clears it")
     ok(errors.length === 0, `no page errors ${errors.join(" | ")}`)
     await ctx.close()
+}
+
+// Moodspell with a real film: muted autoplay on screen, sound only on request, pausable
+{
+    console.log("\n=== moodspell video 1440")
+    const { page, errors } = await open(1440, 900, { query: "?video=/test-video.webm" })
+    await page.evaluate(() => document.getElementById("moodspell").scrollIntoView()); await wait(2500)
+    const st = await page.locator("#moodspell video").evaluate((v) => ({ muted: v.muted, paused: v.paused, src: v.currentSrc }))
+    ok(st.src.endsWith("test-video.webm") && st.muted && !st.paused, `the film loads near the screen and plays muted (${JSON.stringify(st)})`)
+    ok((await page.locator(".hm-ms-badge").innerText()).toLowerCase().includes("first look"), "with a film it's labelled First look")
+    await page.locator(".hm-ms-ctl", { hasText: "Sound on" }).click(); await wait(300)
+    ok((await page.locator("#moodspell video").evaluate((v) => v.muted)) === false, "sound turns on only when asked")
+    await page.locator(".hm-ms-ctl", { hasText: "Pause" }).click(); await wait(300)
+    ok((await page.locator("#moodspell video").evaluate((v) => v.paused)) === true, "the film can be paused")
+    await page.screenshot({ path: path.join(out, "play-1440-moodspell-video.png") })
+    ok(errors.length === 0, `no page errors ${errors.join(" | ")}`)
+    await page.close()
+    const r = await open(390, 844, { reduced: true, query: "?video=/test-video.webm" })
+    await r.page.evaluate(() => document.getElementById("moodspell").scrollIntoView()); await wait(1500)
+    ok((await r.page.locator("#moodspell video").evaluate((v) => v.paused)) === true, "reduced motion: the film waits for a tap instead of autoplaying")
+    ok(r.errors.length === 0, `no page errors ${r.errors.join(" | ")}`)
+    await r.page.close()
 }
 
 // reduced motion: still fully playable
