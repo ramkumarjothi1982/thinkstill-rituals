@@ -168,8 +168,11 @@ jobs:
         working-directory: hushmallow/server/another-angle
         run: |
           rc=0
+          # The repository is public, and so are this log and the step summary: both get summary.md (ids, groups,
+          # verdicts, counts, costs, latencies). report.md (inputs, the model's lines, failures in full) stays in the
+          # artifact, which any signed-in GitHub user can download from a public repository.
           node scripts/real-check.mjs report --out "$OUT" --log "$OUT/harness-8790.log" --broken-log "$OUT/harness-8791.log" --model "$MODEL" || rc=$?
-          [ -f "$OUT/report.md" ] && cat "$OUT/report.md" >> "$GITHUB_STEP_SUMMARY"
+          [ -f "$OUT/summary.md" ] && cat "$OUT/summary.md" >> "$GITHUB_STEP_SUMMARY"
           exit $rc
 
       - name: Stop the harnesses
