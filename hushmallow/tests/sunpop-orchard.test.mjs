@@ -29,7 +29,8 @@ test('plan: the band, the hero, the thought and its words stay clear; sunpops ne
       assert.ok(p.D >= 44, `${W}×${H}: D ${p.D}`);
       const T = p.thought;
       assert.ok(T.y - T.r >= bandB, `${W}×${H}: the thought under the band`);
-      assert.ok(p.plate.y0 > T.y + T.r && p.plate.y1 <= p.rects.hero.y0 + 1e-6, `${W}×${H}: the words under the thought, above the hero`);
+      // (long words on the smallest phone may use the hero's hop room — never its body)
+      assert.ok(p.plate.y0 > T.y + T.r && p.plate.y1 <= (p.tight ? p.rects.hero.y0 + ORCHARD.HOP + ORCHARD.GAP - 4 : p.rects.hero.y0) + 1e-6, `${W}×${H}: the words under the thought, above the hero`);
       assert.ok(p.plate.x0 >= ORCHARD.EDGE - 1e-6 && p.plate.x1 <= W - ORCHARD.EDGE + 1e-6, `${W}×${H}: the words on screen`);
       for (const c of p.crown) {
         assert.ok(c.y - ORCHARD.LANTERN / 2 >= bandB, 'the crown under the band');

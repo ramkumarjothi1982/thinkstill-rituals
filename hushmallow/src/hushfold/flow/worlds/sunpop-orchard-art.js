@@ -128,18 +128,35 @@ export function paintTrees(plan, d = 1, seed = 1) {
   const trunkX = (T, y) => { const t = clamp((T.yb - y) / (T.yb - T.yt)); return T.xb + (T.xt - T.xb) * t + T.side * -trunkW * 0.22 * Math.sin(t * Math.PI); };
   const trunkHalf = (T, y) => { const t = clamp((T.yb - y) / (T.yb - T.yt)); return (trunkW / 2) * (1 - 0.42 * t); };
 
-  // ---- canopy blobs behind everything (the far, darker leaves)
-  const blob = (x, y, r, dark) => {
-    g.fillStyle = dark ? ART.leafDeep : ART.leafDark;
-    g.beginPath(); g.arc(x - r * 0.06, y + r * 0.12, r, 0, TAU); g.fill();
-    const gr = g.createRadialGradient(x + r * 0.32, y - r * 0.38, r * 0.05, x, y, r * 1.02);
-    if (dark) { gr.addColorStop(0, '#b6d85a'); gr.addColorStop(0.5, '#7cb83e'); gr.addColorStop(1, '#4f8a26'); }
-    else { gr.addColorStop(0, ART.leafLight); gr.addColorStop(0.42, ART.leaf); gr.addColorStop(0.85, ART.leafMid); gr.addColorStop(1, ART.leafDark); }
-    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * 0.96, 0, TAU); g.fill();
-    // the sun's rim on the upper right
-    g.strokeStyle = 'rgba(255,252,206,0.55)'; g.lineWidth = 1.4; g.lineCap = 'round';
-    g.beginPath(); g.arc(x, y, r * 0.93, -1.35, -0.1); g.stroke();
+  // ---- canopy clumps: each a bumpy cluster of leaf-rounds (a cauliflower silhouette), shaded underneath, lit from
+  // the sun on the upper right, a few lighter rounds on its lit side for texture; the far ones darker
+  const clump = (x, y, r, dark) => {
+    const n = 7, pts = [];
+    const ph = R() * TAU;
+    pts.push([x, y, r * 0.62]);
+    for (let k = 0; k < n; k++) { const a = ph + (k / n) * TAU, rr = r * (0.5 + 0.12 * R()); pts.push([x + Math.cos(a) * r * 0.48, y + Math.sin(a) * r * 0.42, rr]); }
+    const path = (dx, dy, k = 1) => { g.beginPath(); for (const [px, py, pr] of pts) { g.moveTo(px + dx + pr * k, py + dy); g.arc(px + dx, py + dy, pr * k, 0, TAU); } };
+    // underside shade
+    g.fillStyle = dark ? '#2f5a1c' : ART.leafDeep;
+    path(-r * 0.04, r * 0.1); g.fill();
+    // body
+    const gr = g.createRadialGradient(x + r * 0.35, y - r * 0.42, r * 0.06, x, y + r * 0.1, r * 1.05);
+    if (dark) { gr.addColorStop(0, '#a6cc52'); gr.addColorStop(0.55, '#6fa83a'); gr.addColorStop(1, '#3f7424'); }
+    else { gr.addColorStop(0, '#e2f48a'); gr.addColorStop(0.38, '#a8d04a'); gr.addColorStop(0.78, '#6fae36'); gr.addColorStop(1, '#4a8226'); }
+    g.fillStyle = gr; path(0, 0, 0.94); g.fill();
+    // lit rounds on the sun side (texture), and a soft warm rim
+    if (!dark) {
+      for (let k = 0; k < 4; k++) {
+        const a = -0.9 + (R() - 0.5) * 1.3, rr = r * (0.16 + 0.1 * R()), px = x + Math.cos(a) * r * 0.5, py = y + Math.sin(a) * r * 0.48;
+        const lg = g.createRadialGradient(px + rr * 0.3, py - rr * 0.35, 0, px, py, rr);
+        lg.addColorStop(0, 'rgba(240,252,170,0.75)'); lg.addColorStop(1, 'rgba(200,232,110,0)');
+        g.fillStyle = lg; g.beginPath(); g.arc(px, py, rr, 0, TAU); g.fill();
+      }
+      g.strokeStyle = 'rgba(255,240,170,0.32)'; g.lineWidth = 1.2; g.lineCap = 'round';
+      g.beginPath(); g.arc(x + r * 0.05, y - r * 0.02, r * 0.92, -1.3, -0.25); g.stroke();
+    }
   };
+  const blob = clump;
   const canopy = [];
   for (const T of trunks) {
     // a cloud of leaves from the trunk's top in towards the middle, sagging a little, meeting the other tree's
@@ -207,11 +224,10 @@ export function paintTrees(plan, d = 1, seed = 1) {
     branch(xb, yb, s.ax, s.ay - 2, clamp(trunkW * 0.3, 7, 13), 3);
     tufts.push({ x: s.ax, y: s.ay - 6, r: clamp(s.D * 0.3, 12, 20) });
   }
-  // the bough the swing hangs from: across the middle, under the meeting canopies
+  // the bough the swing hangs from: one gentle limb across the middle, out of the meeting canopies
   if (plan.ropes) {
-    const { xl, xr, y0 } = plan.ropes, span = Math.max(80, (xr - xl) * 2.6);
-    branch(cx - span, y0 - 10, cx + span * 0.1, y0 - 1, 9, 6);
-    branch(cx + span, y0 - 10, cx - span * 0.1, y0 - 1, 9, 6);
+    const { xl, xr, y0 } = plan.ropes, span = Math.max(70, (xr - xl) * 1.7);
+    branch(cx - span, y0 - 7, cx + span, y0 - 5, 8, 6);
   }
 
   // ---- the near canopy, lit
@@ -228,5 +244,28 @@ export function paintTrees(plan, d = 1, seed = 1) {
     if (R() < 0.55) { g.fillStyle = R() < 0.3 ? '#ffd0dc' : ART.blossom; g.beginPath(); g.arc(x, y, 1.3 + R() * 1.2, 0, TAU); g.fill(); }
     else { g.fillStyle = 'rgba(255,250,200,0.35)'; g.beginPath(); g.ellipse(x, y, 3 + R() * 4, 1.6 + R() * 2, -0.4, 0, TAU); g.fill(); }
   }
-  return { canvas: c, x: x0, y: top, w: x1 - x0, h: bottom - top };
+  // ---- cut into what has paint in it (a band of canopy across the top, a strip down each side): far fewer pixels to
+  // blit each frame than one canvas over the whole stage
+  let cb = top;
+  for (const b of canopy) cb = Math.max(cb, b.y + b.r * 1.15);
+  if (plan.ropes) cb = Math.max(cb, plan.ropes.y0 + 6);
+  cb = Math.min(bottom, Math.ceil(cb + 4));
+  const reach = [x0, x1];
+  for (const T of trunks) {
+    for (let y = cb; y <= bottom; y += 8) { const xx = trunkX(T, y), hh = trunkHalf(T, y) + 4; if (T.side < 0) reach[0] = Math.max(reach[0], xx + hh); else reach[1] = Math.min(reach[1], xx - hh); }
+  }
+  for (const t of tufts) { const side = t.x < cx ? 0 : 1; if (side === 0) reach[0] = Math.max(reach[0], t.x + t.r * 1.5); else reach[1] = Math.min(reach[1], t.x - t.r * 1.5); }
+  const pieces = [];
+  const cut = (px0, py0, px1, py1) => {
+    px0 = Math.max(x0, Math.floor(px0)); px1 = Math.min(x1, Math.ceil(px1)); py0 = Math.max(top, Math.floor(py0)); py1 = Math.min(bottom, Math.ceil(py1));
+    if (px1 - px0 < 2 || py1 - py0 < 2) return;
+    const pc = makeCanvas(Math.ceil((px1 - px0) * d), Math.ceil((py1 - py0) * d));
+    pc.getContext('2d').drawImage(c, Math.round((px0 - x0) * d), Math.round((py0 - top) * d), pc.width, pc.height, 0, 0, pc.width, pc.height);
+    pieces.push({ canvas: pc, x: px0, y: py0, w: pc.width / d, h: pc.height / d });
+  };
+  cut(x0, top, x1, cb);
+  if (reach[0] >= reach[1] - 8) cut(x0, cb, x1, bottom);
+  else { cut(x0, cb, reach[0], bottom); cut(reach[1], cb, x1, bottom); }
+  c.width = c.height = 0;
+  return { pieces, x: x0, y: top, w: x1 - x0, h: bottom - top };
 }

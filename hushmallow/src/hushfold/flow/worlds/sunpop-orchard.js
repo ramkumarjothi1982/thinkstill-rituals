@@ -153,6 +153,7 @@ const HINT_AT = 4.5, HINT_SEC = 3.2, HINT_MAX = 3;
 const PHOTO_TURN_SEC = 14;                   // with photos waiting, a warmed photo sunpop gives up its place this often
 const RELAYOUT_TOL = 12;
 const SWAY = 0.016, SWAY_W = TAU / 5.6;      // the swing's own sway (rad, rad/s)
+const clock = () => (typeof performance !== 'undefined' ? performance.now() : 0);
 const easeInOut = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
 const normBox = (r) => {
@@ -186,7 +187,7 @@ export function create(ctx) {
   const kinderD = createKinderDetector();
   const discovered = new Set();
   const said = { pokes: false, firstGift: false };
-  let introAt = -1, pokesSeen = 0, ripenedAny = false;
+  let introAt = -1, arriving = false, pokesSeen = 0, ripenedAny = false;
   let melt = null;                       // { k, t, glide } while melting in
   let restored = null;
   let lastPluck = -9, emoAt = -9, emoKey = '', ambClock = 0, holdClock = 0;
@@ -196,6 +197,7 @@ export function create(ctx) {
   let measureG = null;
   const layoutLog = { n: 0 };
   const hint = { next: HINT_AT, shown: 0, age: -1, fruit: -1 };
+  const timing = { realm: 0, trees: 0, front: 0 };     // (QA: ms per frame, EMA)
 
   // sunpops, photos waiting their turn, gifts in flight, the crown of lights
   let fruits = [];
@@ -272,9 +274,13 @@ export function create(ctx) {
     let p = planOrchard({ W, H, band: ctx.band, mallow: rest, x1: XR, plate: pl, thought: true });
     textMax = max2; plateLines = pl?.lines || 2;
     // a short screen: the words on one wide line when two would not fit between the band and the hero
-    if (pl && pl.lines > 1 && !p.fits) {
+    // (and rather one wide line than words in the room kept for the hero's hop)
+    if (pl && pl.lines > 1 && (!p.fits || p.tight)) {
       const pl1 = plateFor(tok, max1, 1, r0);
-      if (pl1) { const p1 = planOrchard({ W, H, band: ctx.band, mallow: rest, x1: XR, plate: pl1, thought: true }); if (p1.fits || p1.thought.r > p.thought.r) { p = p1; pl = pl1; textMax = max1; plateLines = 1; } }
+      if (pl1) {
+        const p1 = planOrchard({ W, H, band: ctx.band, mallow: rest, x1: XR, plate: pl1, thought: true });
+        if ((p1.fits && !p1.tight) || (p1.fits && !p.fits) || p1.thought.r > p.thought.r) { p = p1; pl = pl1; textMax = max1; plateLines = 1; }
+      }
     }
     plan = p;
     plateH = pl?.h || 0;
@@ -283,7 +289,8 @@ export function create(ctx) {
     // sunpops: one per place; a re-plan keeps every sunpop (and its ripeness) and glides it to its new place
     const n = Math.min(photos?.n || 0, 7);
     if (!fruits.length) {
-      const shown = Math.max(0, Math.min(n, plan.slots.length - 2));
+      // (at most three photo sunpops at once, and always more plain ones to give: the rest take turns)
+      const shown = Math.max(0, Math.min(n, 3, Math.floor(plan.slots.length / 2)));
       // photos take the places nearest the swing's height first (they are the easiest to see)
       const order = plan.slots.map((s, k) => k).sort((a, b) => Math.abs(plan.slots[a].y - (plan.thought?.y ?? H * 0.4)) - Math.abs(plan.slots[b].y - (plan.thought?.y ?? H * 0.4)));
       const photoAt = new Map(order.slice(0, shown).map((k, j) => [k, j]));
@@ -334,7 +341,7 @@ export function create(ctx) {
     fruitS = S;
     sprites = {
       bud: fruitSprite(S, false), ripe: fruitSprite(S, true), rimBud: rimSprite(S, false), rimRipe: rimSprite(S, true),
-      leaf: leafSprite(Math.ceil(28 * d)), glow: glowSprite(C.gold, { size: 64, core: 0.5 }), warm: glowSprite(C.warm, { size: 128 }),
+      leaf: leafSprite(Math.ceil(28 * d)), glow: glowSprite(C.gold, { size: 64, core: 0.5 }), halo: glowSprite('#ffc23a', { size: 64, falloff: 3.2 }), warm: glowSprite(C.warm, { size: 128 }),
       sun: glowSprite(C.sun, { size: 64, core: 0.6 }), glint: glintSprite('#fff4c0', 48), mote: glowSprite('#ffe9a0', { size: 32, core: 0.7, falloff: 5 }),
       pad: glowSprite('#fff8e6', { size: 64, core: 0.2, falloff: 3 }),
     };
@@ -753,7 +760,7 @@ export function create(ctx) {
       updateProgress(dt);
       audioAndMallow(dt, now);
       // the first lines, and the hint (a gentle hold, shown on the bud nearest the swing)
-      if (introAt >= 0 && elapsed >= introAt) { introAt = -1; say(melt ? line('arrive') : line('intro')); }
+      if (introAt >= 0 && elapsed >= introAt) { introAt = -1; say(arriving ? line('arrive') : line('intro')); }
       if (!everTouched || elapsed - lastTouch > 14) stepHint(dt);
     }
     if (!rm) { motes.update(dt, 0, 0.6); leaves.update(dt, 4, 0.8); for (let i = 0; i < leaves.n; i++) leaves.vx[i] += Math.sin(elapsed * 2 + i) * 18 * dt; }
@@ -768,11 +775,17 @@ export function create(ctx) {
       if (f0) realm.setFocus(clamp((f0.x / W) * 2 - 1, -1, 1) * 0.35, clamp((f0.y / H) * 2 - 1, -1, 1) * 0.25); else realm.setFocus(0, 0);
       if (!!realm.st.reduced !== rm) realm.setReducedMotion(rm);
       if (realm.st.low !== low()) realm.setLowStimulation(low());
+      const c0 = clock();
       realm.tick(dt * 1000);
       realm.draw();
+      const c1 = clock();
       drawBack(realm.ctx, realm.st.dpr);
+      const c2 = clock();
+      timing.realm += (c1 - c0 - timing.realm) * 0.05; timing.trees += (c2 - c1 - timing.trees) * 0.05;
     }
+    const c3 = clock();
     drawFront(ctx.front.g, now, rm);
+    timing.front += (clock() - c3 - timing.front) * 0.05;
   }
 
   function stepHint(dt) {
@@ -795,7 +808,7 @@ export function create(ctx) {
     if (!trees) return;
     g.setTransform(d, 0, 0, d, 0, 0);
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
-    g.drawImage(trees.canvas, trees.x, trees.y, trees.w, trees.h);
+    for (const P of trees.pieces) g.drawImage(P.canvas, P.x, P.y, P.w, P.h);
     // golden hour: the leaves catch the light
     const gold = complete ? clamp((elapsed - completeAt) / 2.5) : 0.35 * warmK;
     if (gold > 0.01) {
@@ -863,28 +876,41 @@ export function create(ctx) {
     const sq = rm ? 0 : clamp(Math.abs(q.wobV) * 0.012, 0, 0.08);
     const breathe = rm ? 0 : Math.sin(now * 1.3 + k) * 0.012 * (1 - q.ripe);
     drawSunpop(g, x, y, D * (1 + sq + breathe), D * (1 - sq * 0.8 - breathe), q.ripe, q.warm, q.alpha, q.photo, lowK, k, now, rm, q.state === 'kept');
-    // the ring of light filling round it while it is warmed
-    if (q.warm > 0.04 && q.state === 'bud') {
-      const n = 14, r = D * 0.64, on = q.ripe * n, rot = rm ? 0 : now * 0.35;
+    // the ring of light filling round it while it is warmed (from the top, clockwise): a faint track, the warmth
+    // so far as a soft glowing arc, and a bright bead at its head
+    if (q.warm > 0.04 && q.state === 'bud') drawRing(g, x, y, D * 0.72, q.ripe, q.warm * lowK);
+  }
+
+  function drawRing(g, x, y, r, fill, a) {
+    if (a <= 0.01) return;
+    const a0 = -Math.PI / 2, a1 = a0 + TAU * clamp(fill);
+    g.lineCap = 'round';
+    g.globalAlpha = 0.28 * a; g.strokeStyle = '#fff8e0'; g.lineWidth = 2;
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.stroke();
+    if (fill > 0.005) {
       g.globalCompositeOperation = 'lighter';
-      for (let j = 0; j < n; j++) {
-        const a = -Math.PI / 2 + (j / n) * TAU + rot, lit2 = clamp(on - j);
-        const s = 2.4 + 2.2 * lit2;
-        g.globalAlpha = (0.16 + 0.7 * lit2) * q.warm * lowK;
-        g.drawImage(sprites.mote, x + Math.cos(a) * r - s, y + Math.sin(a) * r - s, s * 2, s * 2);
-      }
-      g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = 0.32 * a; g.strokeStyle = '#ffc94a'; g.lineWidth = 9;
+      g.beginPath(); g.arc(x, y, r, a0, a1); g.stroke();
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = 0.95 * a; g.strokeStyle = '#ffe9a0'; g.lineWidth = 3.4;
+      g.beginPath(); g.arc(x, y, r, a0, a1); g.stroke();
+      const s = 7;
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.9 * a;
+      g.drawImage(sprites.mote, x + Math.cos(a1) * r - s, y + Math.sin(a1) * r - s, s * 2, s * 2);
+      g.globalCompositeOperation = 'source-over';
     }
+    g.globalAlpha = 1;
   }
 
   /** One sunpop (or a photo sunpop) at (x, y), w × h px. */
   function drawSunpop(g, x, y, w, h, ripe, warm, alpha, photo, lowK, k = 0, now = 0, rm = false, kept = false) {
     // warm glow behind
-    const glowA = (0.18 * ripe + 0.35 * warm) * lowK * alpha;
+    // (a soft halo with no white core, behind the body: warmth, never glare)
+    const glowA = (0.2 * ripe + 0.26 * warm) * lowK * alpha;
     if (glowA > 0.01) {
       g.globalCompositeOperation = 'lighter'; g.globalAlpha = glowA;
-      const gr = w * (0.95 + 0.25 * warm);
-      g.drawImage(sprites.glow, x - gr, y - gr, gr * 2, gr * 2);
+      const gr = w * (0.9 + 0.2 * warm);
+      g.drawImage(sprites.halo, x - gr, y - gr, gr * 2, gr * 2);
       g.globalCompositeOperation = 'source-over';
     }
     const S = sprites.bud.width, sx = w / (S * 0.8), sy = h / (S * 0.8);
@@ -1020,15 +1046,7 @@ export function create(ctx) {
     g.fillStyle = '#fffaf0'; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
     g.globalAlpha = 0.7 * a; g.strokeStyle = '#ffffff'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r, 0, TAU); g.stroke();
     const fill = rm ? 0.6 : smoothstep(0.9, HINT_SEC - 0.7, t);
-    g.globalCompositeOperation = 'lighter';
-    const n = 14, rr = q.D * 0.64;
-    for (let j = 0; j < n; j++) {
-      const an = -Math.PI / 2 + (j / n) * TAU, l = clamp(fill * n - j);
-      g.globalAlpha = (0.12 + 0.55 * l) * a;
-      const s = 2.2 + 2 * l;
-      g.drawImage(sprites.mote, q.sx + Math.cos(an) * rr - s, q.sy + Math.sin(an) * rr - s, s * 2, s * 2);
-    }
-    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    drawRing(g, q.sx, q.sy, q.D * 0.72, fill, 0.8 * a);
   }
 
   // ---------------------------------------------------------- hand-over --
@@ -1066,7 +1084,8 @@ export function create(ctx) {
           const p = q.photo >= 0 ? ps.find((o) => o && o.i === q.photo && Number.isFinite(o.x) && Number.isFinite(o.y)) : null;
           if (p && !rm) { q.from = { x: p.x, y: p.y, D: clamp(Math.max(p.w || 0, p.h || 0) || q.D, 24, 140) }; q.fromK = 0; q.delay = 0; q.grow = 1; q.state = 'bud'; }
         });
-        introAt = 1.2;
+        // (Boppo speaks once the melt is over and it is on stage: intro(1) sets the time)
+        introAt = -1;
       } else {
         if (thought) {
           captureT0(restored?.t0);
@@ -1095,7 +1114,7 @@ export function create(ctx) {
     },
     get progress() { return complete ? 1 : progP; },
     get complete() { return complete; },
-    intro(k) { if (melt) { melt.k = k; if (k >= 1) melt = null; } },
+    intro(k) { if (melt) { melt.k = k; if (k >= 1) { melt = null; if (!restored && !everTouched) { arriving = true; introAt = elapsed + 0.6; } } } },
     outro(k) {
       outroK = k;
       if (k > 0) { if (hum) { hum.stop?.(); hum = null; } try { if (thought && (thought.labelFit === wordsFit || thought.labelFit === heldFit)) thought.labelFit = null; } catch { /* */ } }
@@ -1194,8 +1213,9 @@ export function create(ctx) {
       get layouts() { return layoutLog; },
       get hint() { return { ...hint }; },
       get melt() { return melt ? { ...melt } : null; },
-      get trees() { return trees ? { x: trees.x, y: trees.y, w: trees.w, h: trees.h } : null; },
+      get trees() { return trees ? trees.pieces.map((P) => ({ x: P.x, y: P.y, w: Math.round(P.w), h: Math.round(P.h) })) : null; },
       get swing() { return { ...swing }; },
+      get timing() { return { ...timing }; },
     },
   };
   return api;
