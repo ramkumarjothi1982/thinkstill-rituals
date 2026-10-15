@@ -26,6 +26,61 @@ export const QUALITY = {
   low: { grid: 8, substeps: 4, dpr: 1 },
 };
 
+// ------------------------------------------------------------ particles --
+// The production field (src/mallows/particles.js) draws a sigh's or a pillow's 'puff' (white at 0.7) and a landing's
+// 'dust' (white at 0.35) as hard pale discs, and a 'ring' (a ripple at the feet) as a hard line drawn over the body.
+// On the lab's light stage those read as smudges on the face, stray discs at the feet and a line across the body.
+// The lab draws these three itself (the field draws every other kind as authored): puffs and dust as soft white
+// wisps (a radial sprite, a lower peak; a puff rises up and away from the mouth and is gone within 0.9 s), a ring
+// as a soft stroke whose back half goes behind the body. Zuzu's rings circle its middle, as authored. A feature that
+// turns a puff into its own kind at spawn (Nightlight's wisps) never reaches this.
+export const SOFT_FX = Object.freeze({
+  puff: Object.freeze({ peak: 0.32, grow: Object.freeze([0.8, 1.2]), rise: 1.1, fan: 0.5, life: Object.freeze([0.7, 0.9]) }),
+  dust: Object.freeze({ peak: 0.3, grow: Object.freeze([0.6, 0.8]) }),
+});
+
+/** True when the lab draws this particle itself (see above). */
+export const softKind = (p, mallowId) => p.kind === 'puff' || p.kind === 'dust' || (p.kind === 'ring' && mallowId !== 'zuzu');
+
+/** A particle's progress 0..1 through its life (after any delay); -1 while it waits. */
+export function particleT(p) {
+  const d = p.delay || 0;
+  return p.age < d ? -1 : (p.age - d) / Math.max(1e-6, p.life - d);
+}
+
+/** The field's own fade at progress t: in over the first 15 %, out over the last 45 %. */
+export function fieldFade(t) { return t < 0 ? 0 : t < 0.15 ? t / 0.15 : Math.max(0, 1 - Math.max(0, (t - 0.55) / 0.45)); }
+
+/** A wisp's opacity curve (× its peak): a quick rise over the first 20 %, then a long fade to nothing. */
+export function wispFade(t) {
+  if (!(t > 0 && t < 1)) return 0;
+  if (t < 0.2) { const u = t / 0.2; return u * u * (3 - 2 * u); }
+  return (1 - (t - 0.2) / 0.8) ** 1.6;
+}
+
+/** Send a puff, as the field spawned it at the mouth, up and away in a small fan (once; mutates and returns p). */
+export function liftPuff(p, bodyH, { reduced = false, rand = Math.random } = {}) {
+  const P = SOFT_FX.puff, a = (rand() - 0.5) * 2 * P.fan, v = P.rise * bodyH * (reduced ? 0.5 : 1) * (0.9 + 0.2 * rand());
+  p.vx = Math.sin(a) * v; p.vy = -Math.cos(a) * v; p.drag = 0.9;
+  p.life = P.life[0] + (P.life[1] - P.life[0]) * rand();
+  p.labLifted = true;
+  return p;
+}
+
+let WISP = null;   // one soft white sprite for every SoftMallow (built on first use: no DOM at import)
+function wispSprite() {
+  if (WISP) return WISP;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  if (g) {
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  }
+  return (WISP = c);
+}
+
 // a closed-eyed Mallow's look at a finger: friendly, not worried (an experience can swap it via peekParams)
 export const DEFAULT_PEEK = Object.freeze({ eyeOpen: 0.72, lidTop: 0.18, closedCurve: 0.2, browTilt: -0.25, mouthSmile: 1 });
 
@@ -423,6 +478,7 @@ export class SoftMallow extends MallowRig {
       ctx.fillStyle = g;
       ctx.fillRect(this.CX - r, cy - r, r * 2, r * 2);
     }
+    if (this.opts.particles) this._ringBacks(ctx, S);   // a ripple's back half goes behind the body
 
     // mesh → screen
     const P = this._pos, n = s.n, px = s.px, py = s.py;
@@ -444,7 +500,52 @@ export class SoftMallow extends MallowRig {
       this._renderFailed(err);
     }
     if (this.showMesh) this._drawMesh(ctx);
-    if (this.opts.particles) this.particles.draw(ctx, { lift, S });
+    if (this.opts.particles) this._drawParticles(ctx, lift, S);
+  }
+
+  // the field draws every particle but puffs, dust and rings (alpha 0 while it draws), which the lab draws soft
+  _drawParticles(ctx, lift, S) {
+    const list = this.particles.list, id = this.id;
+    let n = 0;
+    for (const p of list) if (softKind(p, id)) { p.labAlpha = p.alpha; p.alpha = 0; n++; }
+    this.particles.draw(ctx, { lift, S });
+    if (!n) return;
+    const bodyH = (this.soft ? this.soft.H : 1) * S, reduced = !!this.opts.reducedMotion;
+    ctx.save();
+    for (const p of list) {
+      if (!softKind(p, id)) continue;
+      p.alpha = p.labAlpha;
+      if (p.kind === 'ring') { this._ring(ctx, p, S, false); continue; }
+      if (p.kind === 'puff' && !p.labLifted) liftPuff(p, bodyH, { reduced });
+      const t = particleT(p), fx = SOFT_FX[p.kind];
+      const a = (p.kind === 'puff' ? wispFade(t) : fieldFade(t)) * fx.peak * (p.alpha ?? 1);
+      if (a < 0.004) continue;
+      const r = p.size * (fx.grow[0] + fx.grow[1] * t) * 1.6;   // the sprite fades to its rim: a little wider than the disc was
+      ctx.globalAlpha = a;
+      ctx.drawImage(wispSprite(), p.x - r, p.y - r, 2 * r, 2 * r);
+    }
+    ctx.restore();
+  }
+
+  _ringBacks(ctx, S) {
+    const list = this.particles.list;
+    if (!list.length || this.id === 'zuzu') return;
+    ctx.save();
+    for (const p of list) if (p.kind === 'ring') this._ring(ctx, p, S, true);
+    ctx.restore();
+  }
+
+  // a ripple at the feet as a soft stroke (a faint wide halo round a thinner core): the back half or the front half
+  _ring(ctx, p, S, back) {
+    const t = particleT(p), a = fieldFade(t) * (p.alpha ?? 1);
+    if (a < 0.004) return;
+    const [bx0, , bx1] = this.mallow.bodyBox;
+    const r = p.size + p.grow * t, lw = Math.max(1, (bx1 - bx0) * S * 0.02 * (1 - t));
+    ctx.strokeStyle = p.col; ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, r, r * 0.28, 0, back ? Math.PI : 0, back ? 2 * Math.PI : Math.PI);
+    ctx.globalAlpha = a * 0.22; ctx.lineWidth = lw * 3.2; ctx.stroke();
+    ctx.globalAlpha = a * 0.55; ctx.lineWidth = lw; ctx.stroke();
   }
 
   // Glitzi's signature: short horizontal slices of the body jump sideways, like

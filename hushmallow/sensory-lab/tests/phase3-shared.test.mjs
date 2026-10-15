@@ -25,7 +25,7 @@ import { personalityTable, comfortTable, readFixture, mismatches, oldProfile, PR
 import { FakeAudioContext, FakeParam, installAudioGlobals, reaches } from './lib/fake-audio.mjs';
 import { SoundEngine, MAX_VOICES, VOICES, soundFacade, quietSound } from '../core/sound-engine.js';
 import { AmbientBed, noiseBuffer } from '../core/ambience.js';
-import { SoftMallow, DEFAULT_PEEK } from '../core/soft-mallow.js';
+import { SoftMallow, DEFAULT_PEEK, SOFT_FX, softKind, particleT, fieldFade, wispFade, liftPuff } from '../core/soft-mallow.js';
 import { MeshRenderer } from '../core/mesh-renderer.js';
 import { Companion } from '../core/companion.js';
 import { MallowRig } from '../../src/mallows/rig.js';
@@ -1325,4 +1325,34 @@ test('L10 Companion.handle: the Companion handles first, then onGesture(type, d,
   assert.deepEqual(seen, [['own', 'tap', { x: 1 }], ['hook', 'tap', { x: 1 }, true], ['own', 'double', {}], ['hook', 'double', {}, true]]);
   c.o = {}; c.handle('tap');
   assert.equal(seen.length, 5, 'no hook: the Companion alone');
+});
+
+// ================================================ visual QA: rig particles ==
+test('soft particles: the lab draws puffs, dust and (but Zuzu\'s) rings itself; the field draws the rest', () => {
+  for (const kind of ['puff', 'dust', 'ring']) assert.equal(softKind({ kind }, 'boppo'), true, kind);
+  assert.equal(softKind({ kind: 'ring' }, 'zuzu'), false, 'Zuzu\'s rings circle its middle, as authored');
+  for (const kind of ['spark', 'star', 'heart', 'drop', 'steam', 'z', 'cloud', 'nl-puff']) assert.equal(softKind({ kind }, 'boppo'), false, kind);
+});
+
+test('soft particles: progress (with a delay), the field\'s fade and the wisp\'s fade', () => {
+  assert.equal(particleT({ age: 0.1, life: 1, delay: 0.2 }), -1, 'still waiting');
+  assert.ok(Math.abs(particleT({ age: 0.6, life: 1.2, delay: 0.2 }) - 0.4) < 1e-12);
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  assert.ok(near(fieldFade(-1), 0) && near(fieldFade(0.075), 0.5) && near(fieldFade(0.4), 1) && near(fieldFade(1), 0));
+  assert.equal(wispFade(0), 0); assert.equal(wispFade(0.2), 1); assert.equal(wispFade(1), 0);
+  assert.ok(wispFade(0.1) > 0 && wispFade(0.1) < 1 && wispFade(0.6) < wispFade(0.3), 'a quick rise, then a long fade');
+  assert.ok(SOFT_FX.puff.peak <= 0.35 && SOFT_FX.dust.peak <= 0.35, 'fainter than the field\'s discs (white at 0.7 and 0.35)');
+});
+
+test('soft particles: a puff leaves the mouth up and away, in a small fan, gone within 0.9 s', () => {
+  const vals = [0, 0.5, 1];
+  for (const r of vals) {
+    const p = liftPuff({ kind: 'puff', vx: 5, vy: -20, drag: 0.8, life: 1.5 }, 200, { rand: () => r });
+    assert.ok(p.vy < -150, `rises fast (${p.vy})`);
+    assert.ok(Math.abs(p.vx) <= Math.abs(p.vy) * Math.tan(SOFT_FX.puff.fan) + 1e-9, 'within the fan');
+    assert.ok(p.life >= 0.7 && p.life <= 0.9 && p.labLifted === true);
+  }
+  const slow = liftPuff({ kind: 'puff' }, 200, { reduced: true, rand: () => 0.5 });
+  const fast = liftPuff({ kind: 'puff' }, 200, { rand: () => 0.5 });
+  assert.ok(Math.abs(slow.vy - fast.vy / 2) < 1e-9, 'half as fast with less motion');
 });

@@ -413,11 +413,48 @@ function rafProbe() {
 
 const INIT = Object.freeze({ listenerCounter, timerSpy, audioSpy, rafProbe });
 
+// ---------------------------------------------------------------- pixels --
+/**
+ * Decode a PNG screenshot (page.screenshot() with no type: 8-bit RGB or RGBA, not interlaced) into
+ * { width, height, at(x, y) → [r, g, b] } so a check can compare what a person actually sees.
+ */
+function pngPixels(buf) {
+  const zlib = require('zlib');
+  let p = 8, width = 0, height = 0, ch = 0;
+  const idat = [];
+  while (p < buf.length) {
+    const len = buf.readUInt32BE(p), type = buf.toString('ascii', p + 4, p + 8), d = buf.subarray(p + 8, p + 8 + len);
+    if (type === 'IHDR') {
+      width = d.readUInt32BE(0); height = d.readUInt32BE(4);
+      if (d[8] !== 8 || d[12] !== 0 || (d[9] !== 2 && d[9] !== 6)) throw new Error(`pngPixels: unsupported PNG (depth ${d[8]}, colour ${d[9]}, interlace ${d[12]})`);
+      ch = d[9] === 6 ? 4 : 3;
+    } else if (type === 'IDAT') idat.push(d);
+    else if (type === 'IEND') break;
+    p += 12 + len;
+  }
+  const raw = zlib.inflateSync(Buffer.concat(idat)), stride = width * ch, px = Buffer.alloc(stride * height);
+  for (let y = 0; y < height; y++) {
+    const f = raw[y * (stride + 1)], src = y * (stride + 1) + 1, row = y * stride;
+    for (let i = 0; i < stride; i++) {
+      const a = i >= ch ? px[row + i - ch] : 0, b = y ? px[row - stride + i] : 0, c = i >= ch && y ? px[row - stride + i - ch] : 0;
+      let v = raw[src + i];
+      if (f === 1) v += a;
+      else if (f === 2) v += b;
+      else if (f === 3) v += (a + b) >> 1;
+      else if (f === 4) { const q = a + b - c, pa = Math.abs(q - a), pb = Math.abs(q - b), pc = Math.abs(q - c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+      px[row + i] = v & 255;
+    }
+  }
+  return { width, height, at: (x, y) => { const i = Math.round(y) * stride + Math.round(x) * ch; return [px[i], px[i + 1], px[i + 2]]; } };
+}
+/** Largest channel difference between two [r, g, b] colours. */
+const colourDiff = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2]));
+
 module.exports = {
   chromium, BASE, ARGS, QUIET_ARGS, VIEWPORTS,
   launch, open, waitRig, geo, events, clearEvents, comfort, layout,
   results, check, writeReport, only,
   touch, setHidden, INIT,
   // extras
-  guard, shot, liveVoices, sleep,
+  guard, shot, liveVoices, sleep, pngPixels, colourDiff,
 };

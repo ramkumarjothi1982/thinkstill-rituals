@@ -42,7 +42,8 @@ export default {
         level = phase === 'in' ? Math.max(level, ease) : Math.min(level, 1 - ease);
         ring.level = level;
         rig.setInflate(level);
-        const B = api.body(); ring.x = B.cx; ring.y = B.mid;
+        // follow the live body: at start the stage may not have framed the Mallow yet (the ring ran off the screen)
+        const B = api.body(); ring.x = B.cx; ring.y = B.mid; ring.r0 = B.h * 0.62; ring.r1 = B.h * 0.86;
         if (phase === 'in' && k >= 1 && !held) begin('out');
         else if (phase === 'out' && k >= 1) {
           breaths++;

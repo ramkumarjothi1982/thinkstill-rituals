@@ -23,6 +23,7 @@
   --seg-track: rgba(127, 127, 160, 0.16);
   --mesh: rgba(255, 255, 255, 0.55);
   --mallow-glow: transparent;   /* each stage sets its Mallow's own glow colour inline */
+  --sheet: #100c27;             /* a sheet's surface: opaque, so its Done band can match it exactly */
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -56,6 +57,7 @@
     --glyph-b: rgba(40, 140, 190, 0.12);
     --seg-track: rgba(42, 29, 61, 0.07);
     --mesh: rgba(42, 29, 61, 0.45);
+    --sheet: #fbf3f0;
     color-scheme: light;
   }
 }
@@ -89,6 +91,7 @@
   --glyph-b: rgba(40, 140, 190, 0.12);
   --seg-track: rgba(42, 29, 61, 0.07);
   --mesh: rgba(42, 29, 61, 0.45);
+  --sheet: #fbf3f0;
   color-scheme: light;
 }
 
@@ -110,7 +113,7 @@ body {
 .home-inner { width: 100%; max-width: 560px; margin: 0 auto; padding: calc(var(--safe-top) + 18px) var(--gutter) calc(var(--safe-bottom) + 32px); }
 .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .brand h1 { font-family: var(--font-display); font-weight: 600; font-size: 19px; margin: 0; letter-spacing: 0.01em; }
-.brand h1 span { color: var(--text-3); font-weight: 500; }
+.brand h1 span { color: var(--text-3); font-weight: 500; white-space: nowrap; }   /* "Sensory Lab" stays one unit beside the pill */
 .pill { font-size: var(--fs-micro); color: var(--text-2); border: 1px solid var(--line-strong); border-radius: var(--r-pill); padding: 4px 10px; white-space: nowrap; }
 .hero { position: relative; height: min(46vh, 380px); margin: 6px -8px 4px; }
 .hero-cap { text-align: center; margin: 0 0 22px; }
@@ -135,6 +138,7 @@ body {
 .offer .t { display: block; font-weight: 650; font-size: 15px; color: var(--text-1); }
 .offer .d { display: block; font-size: var(--fs-micro); color: var(--text-3); margin-top: 2px; }
 .icon-btn[aria-pressed="true"] svg { fill: currentColor; }
+.icon-btn[data-icon="mesh"][aria-pressed="true"] svg { fill: none; }   /* the active grid stays a grid, never a filled Stop square */
 .foot { color: var(--text-3); font-size: var(--fs-micro); text-align: center; margin-top: 26px; line-height: 1.5; }
 
 /* ---------------------------------------------------------- comfort dna -- */
@@ -169,19 +173,20 @@ body {
   --text-1: #f7f3ff; --text-2: #e4defa; --text-3: #b9b0dc; --ink-0: #0a0818;
   --chrome: rgba(16, 12, 40, 0.52); --chrome-line: rgba(255, 255, 255, 0.18);
   --glass: rgba(20, 16, 48, 0.6); --glass-strong: rgba(16, 12, 40, 0.86); --line: rgba(255, 255, 255, 0.1); --line-strong: rgba(255, 255, 255, 0.22);
-  --chip-on: #ffd98a; --chip-on-text: #23140a; --accent: #ffd98a; --mesh: rgba(255, 255, 255, 0.55);
+  --chip-on: #ffd98a; --chip-on-text: #23140a; --accent: #ffd98a; --mesh: rgba(255, 255, 255, 0.55); --sheet: #141030;
 }
 .screen[data-backdrop="light"] {
   --text-1: #2a1d3d; --text-2: #4a3a60; --text-3: #6f5f86; --ink-0: #fff7ef;
   --chrome: rgba(255, 255, 255, 0.62); --chrome-line: rgba(42, 29, 61, 0.12);
   --glass: rgba(255, 255, 255, 0.62); --glass-strong: rgba(255, 250, 245, 0.92); --line: rgba(42, 29, 61, 0.1); --line-strong: rgba(42, 29, 61, 0.2);
-  --chip-on: #2a1d3d; --chip-on-text: #fff7ef; --accent: #b5650a; --mesh: rgba(42, 29, 61, 0.45);
+  --chip-on: #2a1d3d; --chip-on-text: #fff7ef; --accent: #b5650a; --mesh: rgba(42, 29, 61, 0.45); --sheet: #f8f3ef;
 }
 .screen[data-backdrop] .topbar .title b, .screen[data-backdrop] .topbar .title small { text-shadow: 0 1px 10px var(--ink-0); }
 
 /* ---------------------------------------------------------- pocket hush -- */
 .pocket .brand { justify-content: flex-start; }
 .pocket .brand h1 { flex: 1; font-size: 21px; }
+.pocket .dna-lede { text-align: left; margin: 8px 2px 14px; text-wrap: pretty; }
 .ptiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
 .ptile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 14px; min-height: 128px; border-radius: var(--r-md);
   background: var(--glass); border: 1px solid var(--line); cursor: pointer; transition: transform var(--t-fast) var(--ease-out); }
@@ -197,10 +202,13 @@ body {
 .screen.moment.leaving { pointer-events: none; }
 .moment-hint { position: absolute; left: 50%; top: calc(var(--safe-top) + 74px); transform: translateX(-50%); z-index: 3; margin: 0; max-width: calc(100% - 40px);
   text-align: center; font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-1); opacity: 0;
-  text-shadow: 0 1px 12px var(--ink-0); transition: opacity 600ms var(--ease-out); pointer-events: none; }
+  text-shadow: 0 1px 12px var(--ink-0); transition: opacity 600ms var(--ease-out); pointer-events: none; text-wrap: balance; }
 .moment-hint.on { opacity: 1; }
 .moment .feedback { display: none; }
-.moment-dots { display: flex; gap: 10px; pointer-events: none; }
+.moment .chips { background: var(--glass-strong); }   /* the action pill never looks disabled over a pale part of the world */
+.moment-dots { display: flex; gap: 10px; pointer-events: none; padding: 7px 12px; border-radius: var(--r-pill); background: var(--chrome);
+  border: 1px solid var(--chrome-line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: opacity 300ms var(--ease-out); }
+.moment-dots.gone { opacity: 0; }   /* the end card covers their place */
 .moment-dots span { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--text-2); transition: background var(--t-med), transform var(--t-med) var(--ease-spring); }
 .moment-dots span.on { background: var(--chip-on); border-color: var(--chip-on); transform: scale(1.2); }
 .end-card { position: absolute; left: 50%; bottom: calc(var(--safe-bottom) + 18px); transform: translate(-50%, 20px); z-index: 5; width: min(520px, calc(100% - 32px));
@@ -223,11 +231,14 @@ body {
 .stage-tint { position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
   background: radial-gradient(45% 30% at 50% var(--spot-y, 52%), var(--mallow-glow, transparent), transparent 72%); }
 .stage { position: absolute; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; outline: none; }
-/* keyboard focus: a soft rounded frame around where the Mallow stands (the band between the bars), never a hard box over the world */
-.stage:focus-visible::after { content: ''; position: absolute; pointer-events: none; z-index: 1; border-radius: var(--r-lg);
-  left: 10px; right: 10px; top: calc(var(--band-top, 64px) + 4px); bottom: calc(var(--band-bottom, 120px) + 4px);
+/* keyboard focus: a soft rounded frame around where the Mallow stands, inset within the band between the bars (16 px
+   under the title, 12 px over the controls, 16 px from the sides) so it never crowds them: a fine ring in a soft glow,
+   clearly there for a keyboard user, never a hard box over the world */
+.stage:focus-visible::after { content: ''; position: absolute; pointer-events: none; z-index: 1; border-radius: 28px;
+  left: 16px; right: 16px; top: calc(var(--band-top, 64px) + 16px); bottom: calc(var(--band-bottom, 120px) + 12px);
   box-shadow: 0 0 0 2px var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 75%, transparent), inset 0 0 22px color-mix(in srgb, var(--accent) 16%, transparent); }
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 16px 3px color-mix(in srgb, var(--accent) 22%, transparent),
+    inset 0 0 26px color-mix(in srgb, var(--accent) 12%, transparent); }
 /* duet (stage-screen setPartner): two stages side by side, kept near the centre on wide screens */
 .screen[data-layout="duet"] .stage.lead { inset: 0 50% 0 0; }
 .screen[data-layout="duet"] .stage.partner { inset: 0 0 0 50%; }
@@ -262,6 +273,12 @@ body {
 .hint { color: var(--text-2); font-size: var(--fs-small); text-align: center; transition: opacity 600ms var(--ease-out); pointer-events: none; }
 .hint.gone { opacity: 0; }
 .hint b { color: var(--text-1); font-weight: 600; }
+/* TouchTalk over a realm: the hint sits on a soft chrome pill (the world behind it can be bright and busy) */
+.screen[data-backdrop] .tt-hint { padding: 4px 12px; border-radius: var(--r-pill); background: var(--chrome); border: 1px solid var(--chrome-line);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+@media (max-width: 599px) {
+  .chips.tt-tray { display: grid; grid-template-columns: repeat(3, auto); justify-content: center; }   /* two even rows of three, not 4 + 2 */
+}
 
 .chips { display: flex; gap: 6px; padding: 5px; border-radius: var(--r-pill); background: var(--chrome); border: 1px solid var(--chrome-line);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
@@ -271,6 +288,12 @@ button, .card, .chip, .icon-btn, .seg button, .pills button { touch-action: mani
 .chips.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px); mask-image: linear-gradient(90deg, transparent, #000 28px); }
 .chips.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
 .chips.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+/* SoftBody's material row: a longer fade that is fully clear over the last 12 px, so a chip cut at the edge fades out
+   instead of leaving a fragment of a word */
+.chips.sb-materials.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent 12px, #000 56px); mask-image: linear-gradient(90deg, transparent 12px, #000 56px); }
+.chips.sb-materials.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent calc(100% - 12px)); mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent calc(100% - 12px)); }
+.chips.sb-materials.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, transparent 12px, #000 56px, #000 calc(100% - 56px), transparent calc(100% - 12px));
+  mask-image: linear-gradient(90deg, transparent 12px, #000 56px, #000 calc(100% - 56px), transparent calc(100% - 12px)); }
 .chips.wrap { flex-wrap: wrap; justify-content: center; border-radius: 24px; overflow: visible; }
 .chip { flex: none; border: 0; background: transparent; border-radius: var(--r-pill); padding: 9px 12px; min-height: 40px; font-size: 14px; font-weight: 600;
   color: var(--text-2); cursor: pointer; transition: background var(--t-fast), color var(--t-fast); white-space: nowrap; }
@@ -284,9 +307,11 @@ button, .card, .chip, .icon-btn, .seg button, .pills button { touch-action: mani
 /* --------------------------------------------------------------- sheet -- */
 .sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 10; opacity: 0; transition: opacity var(--t-med); }
 .sheet-scrim.on { opacity: 1; }
-.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 11; max-width: 560px; margin: 0 auto; background: var(--glass-strong);
+/* the surface is opaque (--sheet, near the old glass over the stage), so the Done band below can be painted in exactly
+   the same colour: one continuous surface, in either theme and inside a realm-toned screen */
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 11; max-width: 560px; margin: 0 auto; background: var(--sheet);
   border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 18px var(--gutter) calc(var(--safe-bottom) + 22px);
-  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); transform: translateY(100%); transition: transform var(--t-med) var(--ease-out); max-height: 80vh; overflow-y: auto;
+  transform: translateY(100%); transition: transform var(--t-med) var(--ease-out); max-height: 80vh; overflow-y: auto;
   scroll-padding-bottom: calc(var(--safe-bottom) + 92px); /* tabbing never leaves a control under the sticky Done */ }
 .sheet.on { transform: none; }
 .sheet h3 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2); margin: 0 0 12px; }
@@ -299,21 +324,28 @@ button, .card, .chip, .icon-btn, .seg button, .pills button { touch-action: mani
   padding: 7px 12px; min-height: 38px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
 .row:first-of-type { border-top: 0; }
 .row label, .row .lbl { font-size: 15px; }
+.lab-settings .row:not(.stack) > .lbl { flex: 1 1 0; min-width: min-content; }   /* the helper text wraps before the control drops a line */
 .row .sub { display: block; color: var(--text-3); font-size: var(--fs-micro); }
 .seg { display: flex; gap: 4px; padding: 3px; border-radius: var(--r-pill); background: var(--seg-track); flex-wrap: wrap; justify-content: flex-end; }
 .seg button { border: 0; background: transparent; padding: 7px 11px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--text-2); cursor: pointer; min-height: 38px; }
 .seg button[aria-checked="true"] { background: var(--chip-on); color: var(--chip-on-text); }
 input[type="range"] { width: 140px; accent-color: var(--accent); }
-.sheet .done { position: sticky; bottom: 0; box-shadow: 0 -12px 16px 4px var(--glass-strong), 0 10px 0 10px var(--glass-strong); width: 100%; margin-top: 14px; min-height: 48px; border-radius: var(--r-pill); border: 0; background: var(--chip-on); color: var(--chip-on-text); font-weight: 700; font-size: 16px; cursor: pointer; }
-/* the sheet's bottom padding sits below the sticky Done: fill it so scrolled rows never show through (the second
-   shadow above covers the corners beside the pill's rounded ends). Sized from its edges, never a height, so it ends
-   exactly at the padding (a sheet that fits never scrolls) and a feature's `inset: 0` replaces all four sides */
-.sheet .done::after { content: ''; position: absolute; pointer-events: none; left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter));
-  top: 100%; bottom: calc(-1 * (var(--safe-bottom) + 22px));
-  background: linear-gradient(var(--glass-strong), var(--glass-strong)), linear-gradient(var(--glass-strong), var(--glass-strong)), var(--glass-strong); }   /* layered: the token is translucent */
+.sheet .done { position: sticky; bottom: 0; z-index: 1; width: 100%; margin-top: 16px; min-height: 48px; border-radius: var(--r-pill); border: 0;
+  background: transparent; color: var(--chip-on-text); font-weight: 700; font-size: 16px; cursor: pointer; }
+/* Done stays at the sheet's foot on a band of the sheet's own surface: ::before runs the sheet's full width from 18 px
+   above the pill (rows fade out softly there, never cut by a seam) down through the bottom padding; ::after is the pill.
+   Both sit behind the label (z-index -1 in the sticky button's own stacking context, which is why the pill is a
+   pseudo-element: the button's own background would paint under the band). The band is sized from its edges, never a
+   height, so it ends exactly at the padding (a sheet that fits never scrolls); with the last row in view the fade lies
+   in the 16 px gap above the pill (it reaches 2 px past it, near transparent). A feature may restyle either (Nightlight does). */
+.sheet .done::before, .sheet .done::after { content: ''; position: absolute; z-index: -1; pointer-events: none; }
+.sheet .done::before { left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); top: -18px; bottom: calc(-1 * (var(--safe-bottom) + 22px));
+  background: linear-gradient(transparent, var(--sheet) 18px); }
+.sheet .done::after { inset: 0; border-radius: inherit; background: var(--chip-on); }
 .btn-quiet { border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); border-radius: var(--r-pill); padding: 7px 14px; min-height: 38px; font-size: 13px; cursor: pointer; }
 
 @media (max-width: 360px) {
+  .sb-actions .chip { padding-left: 9px; padding-right: 9px; }   /* SoftBody's four actions fit a 320 screen with room at the end */
   .topbar { padding-left: 10px; padding-right: 10px; gap: 6px; }
   .topbar .title b { font-size: 15px; }
   .icon-btn { width: 40px; height: 40px; }

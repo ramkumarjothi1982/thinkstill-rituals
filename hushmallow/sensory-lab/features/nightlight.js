@@ -40,7 +40,7 @@ import { h, iconBtn, segmented, holdButton, announcer } from '../lab-ui.js';
 import { stageScreen } from './stage-screen.js';
 import { FaceMixer } from '../core/expression-engine.js';
 import { watchPresses } from '../core/pointer-router.js';
-import { clearGlowSprites } from '../core/effects.js';
+import { clearGlowSprites, glowSprite } from '../core/effects.js';
 import { FramePacer } from '../core/frame-pacer.js';
 import { ScreenWake } from '../core/screen-wake.js';
 import { approach, rng, hash, smoothstep } from '../core/math.js';
@@ -49,7 +49,7 @@ import { resolveExpression } from '../../src/mallows/expressions.js';
 import { COPY, clock as clockText, endTitle, pct } from './nightlight/copy.js';
 import { SessionClock, DisplayLevels, loadRecord, saveRecord, clearRecord, EXTEND_MIN } from './nightlight/session.js';
 import { NightSettings, MODES_ORDER, SPEEDS, MOTION_RULES, effectiveMotion } from './nightlight/settings.js';
-import { nightLook, chromeTokens, LightLimiter } from './nightlight/look.js';
+import { nightLook, chromeTokens, LightLimiter, sighPuff, puffAlpha, puffRadius, PUFF } from './nightlight/look.js';
 import { waysFor, nightWorld, nightMood, nightSet, nightFilter, peekFor, REST, PEEK_S } from './nightlight/ways.js';
 import { MODES, Moments, startMode } from './nightlight/modes.js';
 import { WorldLayer, MARGIN } from './nightlight/world.js';
@@ -62,7 +62,7 @@ export const meta = { id: 'nightlight', title: COPY.meta };
 const CHROME_SLEEP_MS = 8000;     // the chrome goes to sleep after this long without input
 const REVEAL_MAX_MS = 1500;       // the screen rises from black when painted and ready, or after this
 const LEAVE_MS = 600;             // the goodnight before going home
-const CARD_DIM_MS = 8000;         // the end card returns to 0.35 after this
+const CARD_DIM_MS = 8000;         // the end card returns to its dim rest (0.5) after this
 const ANSWER_GAP_MS = 800;        // at most one drowsy tap answer per this
 const EASE_HALF = 0.28;           // brightness and temperature ease with τ ≈ 0.4 s (half-life 0.28 s)
 const ASLEEP_AT = 0.35;           // below this displayed Mallow level it falls asleep
@@ -75,6 +75,8 @@ const SOUND_BACK_MS = 1500;       // back from hidden with sound wanted but not 
 const STILL_HERE_S = 30;          // away longer than this: its "still here" sign on return
 const UNVEIL_MAX_MS = 700;        // the veil lifts on the first frame back, or after this
 const SKIP_ABOVE = 0.25;          // an end with the Mallow still brighter than this was not seen: quiet end view
+const PUFF_R = 24;                // the sigh's wisp sprite radius (drawn scaled)
+const LAND_GROW = 1.28;           // short, wide stages: the Mallow this much taller than stage-screen frames it
 
 // sessionStorage can itself throw (blocked site data, sandboxed frames)
 function sessionStore() { try { return globalThis.sessionStorage ?? null; } catch { return null; } }
@@ -393,17 +395,38 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   }
   // particles (a sigh's puffs, whisper sparks, a moon mote) are drawn over the graded mesh, outside the
   // shader's grade: each takes the Mallow's brightness as it is born (including the rig's own ambient
-  // emitters, which spawn inside its update), so none glows brighter than the Mallow at night. A wrapper on
-  // this rig's own particle field only; removed on unmount (the rig dies with the view anyway).
-  const field = rig.particles;
-  if (field && typeof field.spawn === 'function') {
-    const spawn = field.spawn;
+  // emitters, which spawn inside its update), so none glows brighter than the Mallow at night. A sigh's
+  // puff (the rig's is a hard pale disc that lingers on the mouth) becomes a soft wisp in the Mallow's
+  // grade that rises away and is gone within 0.9 s (look.js sighPuff), drawn here as a glow sprite.
+  // Wrappers on this rig's own particle field only; removed on unmount (the rig dies with the view anyway).
+  const field = rig.particles, puffBody = {};
+  if (field && typeof field.spawn === 'function' && typeof field.draw === 'function') {
+    const spawn = field.spawn, draw = field.draw;
     field.spawn = function nightSpawn(...a) {
       const before = this.list[this.list.length - 1];
       const out = spawn.apply(this, a);
       const p = this.list[this.list.length - 1];
-      if (p && p !== before && !p.nlGraded) { const g = look.mallowGrade; p.nlGraded = true; p.alpha = (p.alpha ?? 1) * (g[0] + g[1] + g[2]) / 3; }
+      if (p && p !== before && !p.nlGraded) {
+        const g = look.mallowGrade;
+        p.nlGraded = true;
+        if (p.kind === 'puff') {
+          sighPuff(p, { i: a[1], n: a[2], body: rig.bodyRect(puffBody), grade: g, reduced: !!rig.opts.reducedMotion });
+          p.sprite = glowSprite(p.col, PUFF_R);
+        } else p.alpha = (p.alpha ?? 1) * (g[0] + g[1] + g[2]) / 3;
+      }
       return out;
+    };
+    field.draw = function nightDraw(g, o) {
+      draw.call(this, g, o);   // the field skips the wisps (an unknown kind to it)
+      for (const p of this.list) {
+        if (p.kind !== PUFF.kind || !p.sprite) continue;
+        const t = p.age / p.life, al = p.peak * puffAlpha(t), r = puffRadius(p, t);
+        if (al < 0.004) continue;
+        const ga = g.globalAlpha, op = g.globalCompositeOperation;
+        g.globalAlpha = ga * al; g.globalCompositeOperation = 'screen';   // a haze that only lightens, never greys the face
+        g.drawImage(p.sprite, p.x - r, p.y - r, 2 * r, 2 * r);
+        g.globalAlpha = ga; g.globalCompositeOperation = op;
+      }
     };
   }
   // one soft sigh as the world falls asleep (only on the frame clock: never caught up after being away)
@@ -591,6 +614,13 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   // ------------------------------------------------------------ layout and arrival --
   function onLayout(L) {
     layout.W = L.W; layout.H = L.H; layout.baseline = L.baseline;
+    // a short, wide stage (a phone on its side by the bed): the rig's scale is bound by the height there
+    // (H × (fit + 0.06)), which leaves the Mallow small on a wide world; it grows by LAND_GROW, still clear of
+    // both bars and the caption, with room to stretch
+    if (L.W > L.H * 1.4 && L.H <= 460) {
+      const fit = Math.min(0.64, (L.fit + 0.06) * LAND_GROW - 0.06);
+      if (fit > L.fit + 0.005) companion.setLayout({ fit });
+    }
     world.resize(L.W, L.H, L.baseline);
     if (!painted) {
       world.setGrade(look.worldGrade, { force: true });
@@ -882,7 +912,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       rig.setFrameCap(null);
       rig.setGrade([1, 1, 1]);
       rig.peekParams = null;
-      if (field && Object.hasOwn(field, 'spawn')) delete field.spawn;   // back to the field's own spawn
+      if (field && Object.hasOwn(field, 'spawn')) { delete field.spawn; delete field.draw; }   // back to the field's own spawn and draw
       face.clear();
       bed.destroy();
       ctx.sound.setTrim(1);
@@ -931,7 +961,7 @@ function endView(root, ctx, { endsAt, skipped = false, snap = null, snapBase = n
   const rest = () => { restT = 0; if ([...ctx.sound.live].some((v) => !v.keep)) return false; ctx.sound.rest(); return true; };
   const restLater = () => { clearTimeout(restT); restT = setTimeout(rest, REST_AFTER_END_MS); };
   if (!(skipped && rest())) restLater();
-  // the card rests at 0.35; a touch or a key lifts it to full for 8 s
+  // the card rests dim (0.5, its text still readable); a touch or a key lifts it to full for 8 s
   let dimT = 0, raf = 0;
   const lift = () => { card.classList.add('lit'); clearTimeout(dimT); dimT = setTimeout(() => card.classList.remove('lit'), CARD_DIM_MS); restLater(); };
   const key = (e) => { if (e.key === 'Escape') { e.preventDefault(); onDone(); return; } lift(); };

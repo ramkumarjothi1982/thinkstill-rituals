@@ -26,12 +26,14 @@ const defaultLabel = (name) => `${name}. Tap, double tap, hold, stroke, drag to 
  *   onGesture  (type, d, companion): every Companion's raw gestures
  *   onLayout   ({ W, H, floor, baseline, fit, band, topBottom, bottomTop }) after every reframe
  *   stageLabel (mallowName) → aria-label for each stage
+ *   floorMax   how far down the floor may sit, as a share of the stage height (0.84): with short controls it sits
+ *              there; a smaller value raises the Mallow nearer the middle (TouchTalk's hint-only layout)
  * Returns { screen, wrap, stage, bottom, companion, feedback, env, realm, setPartner(id, opts),
  *           companions, stages, partner, unmount() }.
  */
 export function stageScreen(root, ctx, {
   title, subtitle, material, extraButtons = [], onEvent, backdrop, onExit, settings = true,
-  sound = ctx.sound, feedback = true, keys = null, onGesture = null, onLayout = null, stageLabel = null,
+  sound = ctx.sound, feedback = true, keys = null, onGesture = null, onLayout = null, stageLabel = null, floorMax = 0.84,
 }) {
   const m = MALLOWS[ctx.mallowId];
   const label = (name) => stageLabel?.(name) || defaultLabel(name);
@@ -117,7 +119,7 @@ export function stageScreen(root, ctx, {
   const frame = () => {
     const H = stage.clientHeight || 1, W = stage.clientWidth || 1;
     const bottomH = bottom.getBoundingClientRect().height;
-    const floor = Math.min(H - bottomH - 18, H * 0.84);
+    const floor = Math.min(H - bottomH - 18, H * floorMax);
     const baseline = floor / H;
     const band = floor - 96;                       // top bar
     const fit = fitFor(W, band);

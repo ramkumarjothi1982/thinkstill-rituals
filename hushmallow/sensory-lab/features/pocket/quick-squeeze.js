@@ -7,6 +7,7 @@ const GOAL = 5;
 export default {
   id: 'quick-squeeze',
   hint: 'Squeeze me: pinch, press down, or hold Squeeze',
+  hintMs: 0,          // the instruction stays until the first squeeze
   maxSeconds: 30,
   start(api) {
     const { companion, rig, sound, variant } = api;
@@ -25,6 +26,7 @@ export default {
         active = false;
         if (peak > 0.12) {
           count++;
+          if (count === 1) api.hideHint();
           setDots(count);
           sound.chime(api.mallowId, count + 1, 0.5);
           api.realm?.pulse('ripple');

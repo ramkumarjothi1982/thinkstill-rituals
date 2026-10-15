@@ -327,7 +327,7 @@ async function sharedBlock(browser) {
   });
 
   // lab-ui openSheet and the lab.css sheet: the Done band ends at the sheet's padding (a sheet that fits never
-  // scrolls) and a feature's `inset: 0` makes a full-height pill; Escape with focus on the page closes only the
+  // scrolls) and the pill (`inset: 0`, as Nightlight's) is Done's full height; Escape with focus on the page closes only the
   // sheet; a route change never leaves a sheet's key listener behind to take the next screen's Escape
   if (shared('sheet')) await guard('shared:sheet', async (scope, own) => {
     const { ctx, page, errors } = await H.open(browser, { width: 1280, height: 1100, touch: false }, '#home', { initScripts: [H.INIT.listenerCounter] });
@@ -345,10 +345,10 @@ async function sharedBlock(browser) {
     const k0 = await keyL();
     await openSettings();
     const m = await page.evaluate(() => {
-      const s = document.querySelector('.sheet'), d = s.querySelector('.done'), af = getComputedStyle(d, '::after');
-      return { sh: s.scrollHeight, ch: s.clientHeight, pb: parseFloat(getComputedStyle(s).paddingBottom), band: parseFloat(af.height), vh: innerHeight };
+      const s = document.querySelector('.sheet'), d = s.querySelector('.done'), bf = getComputedStyle(d, '::before');
+      return { sh: s.scrollHeight, ch: s.clientHeight, pb: parseFloat(getComputedStyle(s).paddingBottom), band: -parseFloat(bf.bottom), vh: innerHeight };
     });
-    check(scope, 'a Settings sheet that fits does not scroll: the Done band is exactly the bottom padding', m.sh === m.ch && Math.abs(m.band - m.pb) <= 0.5, JSON.stringify(m));
+    check(scope, 'a Settings sheet that fits does not scroll: the Done band ends exactly at the bottom padding', m.sh === m.ch && Math.abs(m.band - m.pb) <= 0.5, JSON.stringify(m));
     const ins = await page.evaluate(() => {
       const st = document.createElement('style'), lab = document.getElementById('lab');
       st.textContent = '.probe-inset .sheet .done::after { inset: 0; }';   // what Nightlight's pill does
@@ -357,7 +357,7 @@ async function sharedBlock(browser) {
       st.remove(); lab.classList.remove('probe-inset');
       return r;
     });
-    check(scope, "a feature's `inset: 0` on the band gives a pill the Done's full height", ins.done >= 47 && Math.abs(ins.pill - ins.done) <= 1, JSON.stringify(ins));
+    check(scope, "the pill (`inset: 0`, as a feature's own) is the Done's full height", ins.done >= 47 && Math.abs(ins.pill - ins.done) <= 1, JSON.stringify(ins));
     await page.click('.sheet h3');
     const ae = await page.evaluate(() => document.activeElement?.tagName);
     await page.keyboard.press('Escape'); await sleep(450);
@@ -386,6 +386,99 @@ async function sharedBlock(browser) {
     check(scope, 'and the discarded sheet\'s listener removed itself', k3 === kHome, `${kHome} → ${k3}`);
     noErrors(scope, errors);
   });
+
+  // Visual QA (lab.css, soft-mallow): what a person sees, from screenshots and canvas pixels.
+  // The sheet's Done band is one continuous surface with the sheet (no seam, halo or glyph pieces beside, under or
+  // around the pill; rows fade out above it) in the light and dark themes and inside realm-toned screens; the stage
+  // focus frame sits inset in the band between the bars; the rig's landing dust and sigh puffs are soft (no hard disc).
+  if (shared('looks')) {
+    const CASES = [
+      { name: 'light', theme: 'light', hash: '#touchtalk' },
+      { name: 'dark', theme: 'dark', hash: '#touchtalk' },
+      { name: 'realm-light', theme: 'dark', hash: '#touchtalk', env: 'sunpop-orchard', inScreen: true },
+      { name: 'realm-dark', theme: 'light', hash: '#touchtalk', env: 'moonmilk-cove', inScreen: true },
+    ];
+    for (const c of CASES) await guard(`shared:looks:sheet-${c.name}`, async (scope, own) => {
+      const { ctx, page, errors } = await H.open(browser, 'phone', c.hash, { prefs: { theme: c.theme }, comfort: c.env ? H.comfort({ environment: c.env, favouriteMallow: 'boppo' }) : null });
+      own(ctx); await H.waitRig(page);
+      if (c.inScreen) {
+        // a feature's sheet inside its realm-toned screen (as Hushbeat's), long enough to scroll
+        await page.waitForFunction(() => !!document.querySelector('.screen')?.dataset.backdrop, null, { timeout: 15000 });
+        await page.evaluate(async (LAB) => {
+          const { openSheet, h } = await import(`${LAB}/lab-ui.js`);
+          const rows = Array.from({ length: 12 }, (_, i) => h('div', { class: 'row' }, h('span', { class: 'lbl' }, `Row ${i + 1}`, h('span', { class: 'sub' }, 'A line of helper text')), h('button', { class: 'btn-quiet', type: 'button' }, 'Open')));
+          openSheet(document.querySelector('.screen'), 'Probe', () => h('div', {}, ...rows));
+        }, LAB);
+      } else await page.click('button[aria-label="Settings"]');
+      await page.waitForFunction(() => { const s = document.querySelector('.sheet.on'); return s && getComputedStyle(s).transform === 'none'; }, null, { timeout: 10000, polling: 50 });
+      // a row half under the band: scrolled so a row's text sits across the pill's top edge
+      const g = await page.evaluate(() => {
+        const s = document.querySelector('.sheet'), d = s.querySelector('.done');
+        const dTop0 = d.getBoundingClientRect().top;
+        const row = [...s.querySelectorAll('.row')].find((r) => r.getBoundingClientRect().top > dTop0 - 8);
+        if (row) s.scrollTop += row.getBoundingClientRect().top + 14 - dTop0;
+        const R = s.getBoundingClientRect(), D = d.getBoundingClientRect(), cs = getComputedStyle(s), dcs = getComputedStyle(d);
+        const sheetVar = cs.getPropertyValue('--sheet').trim();
+        return { R: { l: R.left, t: R.top, r: R.right, b: R.bottom }, D: { l: D.left, t: D.top, r: D.right, b: D.bottom }, scrolls: s.scrollHeight > s.clientHeight, top: s.scrollTop,
+          bg: cs.backgroundColor, sheetVar, own: dcs.backgroundColor, shadow: dcs.boxShadow, tone: document.querySelector('.screen')?.dataset.backdrop || null, inScreen: !!s.closest('.screen') };
+      });
+      await sleep(250);
+      const P = H.pngPixels(await page.screenshot());
+      const surf = P.at(g.R.l + 8, g.R.t + 40);   // the sheet's own surface, in the padding beside its title
+      const band = [], fade = [];
+      for (let y = Math.ceil(g.D.t) + 1; y < g.R.b - 1; y += 2) band.push([g.R.l + 6, y], [g.R.r - 7, y]);                 // the band each side of the pill, full height
+      for (let y = Math.ceil(g.D.b) + 2; y < g.R.b - 1; y += 2) for (const x of [0.25, 0.5, 0.75]) band.push([g.D.l + (g.D.r - g.D.l) * x, y]);   // under it
+      band.push([g.D.l + 3, g.D.t + 3], [g.D.r - 4, g.D.t + 3], [g.D.l + 3, g.D.b - 4], [g.D.r - 4, g.D.b - 4]);         // beside its rounded ends
+      for (let x = g.R.l + 20; x < g.R.r - 20; x += 3) fade.push([x, g.D.t - 2]);                                          // just above the pill
+      const worst = (pts) => pts.reduce((m, [x, y]) => Math.max(m, H.colourDiff(P.at(x, y), surf)), 0);
+      const opaque = /^rgb\(/.test(g.bg) || /, 1\)$/.test(g.bg);
+      check(scope, `the sheet surface is opaque, in its scope's --sheet colour (${c.name}${c.inScreen ? ', in a ' + g.tone + ' screen' : ''})`, opaque && !!g.sheetVar && (!c.inScreen || (g.inScreen && !!g.tone)), JSON.stringify(g));
+      check(scope, 'Done has no halo of its own (no box-shadow, a transparent button; the pill is drawn behind its label)', g.own === 'rgba(0, 0, 0, 0)' && g.shadow === 'none', JSON.stringify(g));
+      check(scope, 'the sheet scrolls here, with a row under the band', g.scrolls && g.top > 0, JSON.stringify(g));
+      check(scope, 'the band beside, below and around the pill is the sheet surface exactly (no seam, halo or glyph pieces: ≤ 3 levels)', worst(band) <= 3, JSON.stringify({ worst: worst(band), surf }));
+      check(scope, 'rows fade out above the pill (2 px above it nothing reads: ≤ 40 levels from the surface)', worst(fade) <= 40, JSON.stringify({ worst: worst(fade), surf }));
+      noErrors(scope, errors);
+    });
+
+    for (const vp of ['phone', 'desktop']) await guard(`shared:looks:focus-${vp}`, async (scope, own) => {
+      const { ctx, page, errors } = await H.open(browser, vp, '#touchtalk', { prefs: { theme: 'light' } });
+      own(ctx); await H.waitRig(page);
+      await page.evaluate(() => document.querySelector('.stage').focus());
+      await page.keyboard.press('Shift');
+      await sleep(200);
+      const f = await page.evaluate(() => {
+        const st = document.querySelector('.stage'), a = getComputedStyle(st, '::after'), sr = st.getBoundingClientRect();
+        const tb = document.querySelector('.topbar .title').getBoundingClientRect().bottom, bt = document.querySelector('.bottom').getBoundingClientRect().top;
+        return { fv: st.matches(':focus-visible'), content: a.content, top: sr.top + parseFloat(a.top), bottom: sr.bottom - parseFloat(a.bottom), left: parseFloat(a.left), right: parseFloat(a.right), tb, bt, shadow: a.boxShadow };
+      });
+      check(scope, 'keyboard focus on the stage shows the frame (a ring in a soft glow)', f.fv && f.content !== 'none' && /2px/.test(f.shadow) && (f.shadow.match(/px/g) || []).length >= 8, JSON.stringify(f));
+      check(scope, 'the frame is inset within the band: ≥ 16 px under the title, ≥ 12 px over the controls, ≥ 16 px from the sides', f.top - f.tb >= 15.5 && f.bt - f.bottom >= 11.5 && f.left >= 16 && f.right >= 16, JSON.stringify(f));
+      noErrors(scope, errors);
+    });
+
+    await guard('shared:looks:particles', async (scope, own) => {
+      const { ctx, page, errors } = await H.open(browser, 'phone', '#touchtalk', { prefs: { theme: 'light' } });
+      own(ctx); await H.waitRig(page);
+      // draw one mid-life dust mote and one puff through the rig's particle pass onto a blank canvas, then read it back
+      const r = await page.evaluate(() => {
+        const rig = __lab.companion.rig, list = rig.particles.list, saved = list.splice(0);
+        const mk = (kind, x) => ({ kind, age: 0.25, life: 0.6, x, y: 100, vx: 0, vy: 0, size: 20, rot: 0, vr: 0, g: 0, drag: 1, col: 'rgba(255,255,255,0.7)', alpha: 1, labLifted: true });
+        list.push(mk('dust', 80), mk('puff', 220));
+        const c = document.createElement('canvas'); c.width = 300; c.height = 200;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        rig._drawParticles(g, 0, rig._S || rig.S);
+        const a = (x, y) => g.getImageData(x, y, 1, 1).data[3];
+        // the field's own disc for these (radius size·(0.6 + 0.8 t) ≈ 18.7 at t 0.42) would be uniform to its rim
+        const rim = 18.7 * 0.92, out = { dust: { c: a(80, 100), rim: a(Math.round(80 + rim), 100) }, puff: { c: a(220, 100), rim: a(Math.round(220 + rim), 100) }, alphas: list.map((p) => p.alpha) };
+        list.splice(0, list.length, ...saved);
+        return out;
+      });
+      check(scope, 'landing dust and a sigh\'s puff are drawn soft: a faint centre that fades to nothing (no hard pale disc)',
+        r.dust.c > 0 && r.dust.c <= 100 && r.puff.c > 0 && r.puff.c <= 100 && r.dust.rim < r.dust.c * 0.75 && r.puff.rim < r.puff.c * 0.75, JSON.stringify(r));
+      check(scope, 'their alpha is theirs again after the pass (the field drew them at 0)', r.alphas.every((v) => v === 1), JSON.stringify(r.alphas));
+      noErrors(scope, errors);
+    });
+  }
 
   // CR-H6/H7: built-in keys let a held H or S go on a window blur, and leave Ctrl/Alt/Cmd shortcuts to the browser
   if (shared('keys')) await guard('shared:keys', async (scope, own) => {

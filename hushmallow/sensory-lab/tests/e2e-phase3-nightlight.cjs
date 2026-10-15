@@ -85,6 +85,13 @@
 //   sheet      one footnote; easing the Light builds few glow sprites
 //   layout     Done's pill fills the button
 //
+// Visual QA fixes:
+//   sigh       (new) the sigh in the fade: soft wisps in the Mallow's grade (none of the rig's hard discs), faint when
+//              drawn alone, gone within 0.9 s of rig time, each rising ≥ 0.35 body heights away from the mouth
+//   theme      the resting end card's text ≥ 3:1 (with the card's own dim opacity)
+//   layout     at rest no sheet label or control is cut by the Done strip's edge; the five mode chips fit at 375 and 320 px;
+//              beside a side panel the Mallow is centred in the space left of it
+//
 // Brief line → blocks (spec §13):
 //   gentle night-time companion: open, moonlight, mallows · Moonlight: moonlight · Breathing Together: breathe,
 //   press · Sleepy Companion: sleepy · Ambient Drift: drift · Quiet Company: sound · brightness, colour, speed,
@@ -1208,6 +1215,29 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const e = await audit();
     const endRows = e.rows.filter((r) => r.s.startsWith('.nl-endcard'));
     check(scope, 'E26: the end card: night tokens, no blur, text ≥ 4.5:1', endRows.length >= 3 && endRows.every((r) => r.r >= 4.5) && e.blur.find(([s]) => s === '.end-card')[1] === 'none' && e.text1 === '#e9e3fa', JSON.stringify({ endRows, blur: e.blur }));
+    // visual QA: resting dim (no touch for 8 s), the card's text is still readable in a dark room: ≥ 3:1 with the card's opacity
+    await nl(page, () => document.querySelector('.nl-endcard').classList.remove('lit'));
+    const restFn = () => {
+      const card = document.querySelector('.nl-endcard'), op = +getComputedStyle(card).opacity;
+      const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const v = m[1].split(',').map((x) => parseFloat(x)); return [v[0], v[1], v[2], v[3] ?? 1]; };
+      const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const L = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+      const over = (top, under, a = top[3]) => [0, 1, 2].map((i) => top[i] * a + under[i] * (1 - a));
+      const black = [0, 0, 0];
+      const rows = [...card.querySelectorAll('.end-cap, .end-line, button')].map((el) => {
+        let bg = black;   // the screen is black; the card's and the element's own backgrounds, each at the card's opacity
+        for (const e of [card, el]) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c[3] > 0 && e !== card.parentElement) bg = over(c, bg, c[3] * op); }
+        const fg = over(parse(getComputedStyle(el).color), bg, op);
+        const a = L(fg), b = L(bg);
+        return { t: el.textContent.trim().slice(0, 20), r: +((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toFixed(2) };
+      });
+      return { op, rows };
+    };
+    await until(page, restFn, (v) => v.op < 0.6, 5000, 100);
+    await sleep(900);   // the 600 ms dimming has settled
+    const resting = await nl(page, restFn);
+    check(scope, 'visual QA: the resting end card stays dim (< 0.6) yet its text is readable: every line and button ≥ 3:1',
+      resting.op < 0.6 && resting.op > 0.2 && resting.rows.length >= 4 && resting.rows.every((r) => r.r >= 3), JSON.stringify(resting));
     noErrors(scope, errors);
   });
 
@@ -1455,6 +1485,55 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     noErrors(scope, errors);
   });
 
+  // ------------------------------------------------------- visual QA: sigh --
+  // The sigh as the world falls asleep (E13's one soft sigh), on the desktop, where the Mallow is largest. The rig's
+  // own puffs were hard pale discs that sat on the mouth for ~2.5 s as the brightest thing on screen; at night they
+  // are soft wisps in the Mallow's grade that rise away and are gone in under a second. Measured on state: the
+  // particle field (kinds, rig-time ages, birth and last places) and what the wisps add when drawn alone.
+  if (only('sigh')) await guard(`${SCOPE}:sigh`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'desktop', 'loomi');
+    own(ctx);
+    await sleep(800);
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.fadeFrom - c.now() + c.fadeMs / 2); });
+    await page.waitForFunction(() => __lab.nightlight.state === 'fading', null, { timeout: T });
+    await page.waitForFunction(() => __lab.nightlight.debug().fade.sighed, null, { timeout: T, polling: 50 });
+    const t0 = Date.now();
+    const sample = () => nl(page, () => {
+      const rig = __lab.companion.rig, f = rig.particles, b = rig.bodyRect();
+      const w = (window.__nlSigh ||= { n: 0, seen: {}, c: document.createElement('canvas') });
+      for (const p of f.list) {
+        if (p.__nl == null) p.__nl = ++w.n;
+        const s = (w.seen[p.__nl] ||= { kind: p.kind, y0: p.y, x0: p.x });
+        s.y = p.y; s.x = p.x; s.age = p.age; s.life = p.life;
+      }
+      // the particles alone on a clear canvas: the most they add anywhere on the Mallow (opacity × luminance)
+      const c = w.c; c.width = rig.W; c.height = rig.H;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      f.draw(g, { lift: 0, S: rig.S });
+      const x0 = Math.max(0, Math.floor(b.cx - b.w / 2)), y0 = Math.max(0, Math.floor(b.top)), bw = Math.min(rig.W - x0, Math.ceil(b.w)), bh = Math.min(rig.H - y0, Math.ceil(b.h));
+      const d = g.getImageData(x0, y0, bw, bh).data, lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      let add = 0;
+      for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; add = Math.max(add, (d[i + 3] / 255) * (0.2126 * lin(d[i]) + 0.7152 * lin(d[i + 1]) + 0.0722 * lin(d[i + 2]))); }
+      return { live: f.list.length, add, h: b.h, seen: w.seen };
+    });
+    let v = await sample(), add = v.add, shot = false, goneMs = null;
+    for (let i = 0; i < 80; i++) {
+      if (!shot && v.live) { await H.shot(page, out, 'nightlight-desktop-sigh'); shot = true; }
+      if (!v.live && Object.keys(v.seen).length) { goneMs = Date.now() - t0; break; }
+      await sleep(60);
+      v = await sample();
+      add = Math.max(add, v.add);
+    }
+    const puffs = Object.values(v.seen);
+    check(scope, 'the sigh breathes out soft wisps, none of the rig\'s hard discs', puffs.length >= 1 && puffs.every((p) => p.kind === 'nl-puff'), JSON.stringify(puffs.map((p) => p.kind)));
+    check(scope, 'faint: drawn alone, the wisps add at most 0.1 (opacity × luminance) anywhere on the Mallow (the old discs: 0.4 or more)', add <= 0.1, add.toFixed(3));
+    check(scope, 'short: each is gone within 0.9 s of rig time (and all within 3 s of wall time, even on software GL)',
+      goneMs != null && goneMs < 3000 && puffs.every((p) => p.life <= 0.9 + 1e-6), JSON.stringify({ goneMs, lives: puffs.map((p) => +p.life.toFixed(2)) }));
+    check(scope, 'never left on the face: each rises ≥ 0.35 body heights from the mouth before it fades (the discs: < 0.1)',
+      puffs.every((p) => p.y0 - p.y >= 0.35 * v.h), JSON.stringify({ h: Math.round(v.h), rise: puffs.map((p) => Math.round(p.y0 - p.y)) }));
+    noErrors(scope, errors);
+  });
+
   // ----------------------------------------------------------------- E23 --
   if (only('layout')) await guard(`${SCOPE}:layout`, async (scope) => {
     for (const vp of ['phone', 'p375', 'small', 'android', 'desktop', 'land', 'land-small']) {
@@ -1470,6 +1549,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
             status: getComputedStyle(st).display, stText: getComputedStyle(document.querySelector('.nl-st')).display, capBelowTop: cap.top >= top.bottom - 1 || cap.height === 0, vw: innerWidth };
         });
         check(sc, 'the chosen mode is in view in the mode row', d.inView, JSON.stringify(d));
+        if (['phone', 'p375', 'small', 'android'].includes(vp)) check(sc, 'visual QA: the five mode chips fit the row (no chip cut mid-word by the edge fade)', !d.scrolls, JSON.stringify(d));
         if (vp.startsWith('land')) check(sc, 'landscape: the time moves into the subtitle; the status text hides, its chip stays inline', /· (until|no timer)/.test(d.sub) && d.stText === 'none', JSON.stringify(d));
         else check(sc, 'portrait: the subtitle is "{Mode} · {Mallow}", the status row shows', d.sub === 'Moonlight · Loomi' && d.status !== 'none', JSON.stringify(d));
         await H.shot(r.page, out, `nightlight-${vp}-steady`);
@@ -1510,6 +1590,22 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         check(sc, "the sheet's Done: an opaque pill on a full-width opaque strip (rows never show through or beside it)",
           /^rgb\(/.test(strip.pill) && strip.pillImg.startsWith('linear-gradient') && strip.strip.startsWith('linear-gradient') && strip.own === 'rgba(0, 0, 0, 0)' && strip.span.every((v) => Math.abs(v) <= 1.5), JSON.stringify(strip));
         check(sc, "E23: Done's pill fills the whole button (its height, from the top): never a half pill with the label below", Math.abs(strip.pillH - strip.h) <= 1 && Math.abs(strip.pillTop) <= 0.5, JSON.stringify(strip));
+        // visual QA: at rest the strip's opaque top edge falls in a gap, never through a label or a control (no half row)
+        const rest = await nl(r.page, () => {
+          const s = document.querySelector('.nightlight .sheet'), d = s.querySelector('.done'), bf = getComputedStyle(d, '::before');
+          const edge = d.getBoundingClientRect().top + parseFloat(bf.top);
+          const cut = [...s.querySelectorAll('.nl-sheet .lbl, .nl-sheet .nl-seg, .nl-sheet input, .nl-sheet .btn-quiet, .nl-sheet .nl-muted, .nl-sheet .nl-foot')]
+            .filter((e) => e.offsetHeight).map((e) => { const b = e.getBoundingClientRect(); return { c: e.className || e.tagName, t: Math.round(b.top), b: Math.round(b.bottom) }; })
+            .filter((x) => x.t < edge - 1.5 && x.b > edge + 1.5);
+          return { edge: Math.round(edge), top: s.scrollTop, opaque: bf.backgroundImage.replace(/\s+/g, ''), line: bf.borderTopWidth, cut };
+        });
+        check(sc, "visual QA: at rest the Done strip's opaque edge (a hairline, no fade) falls in a gap: no label or control is cut in half", rest.top === 0 && !rest.cut.length && rest.line === '1px' && !/rgba\([^)]*,0\)/.test(rest.opaque), JSON.stringify(rest));
+        if (sh.side) {
+          // beside the panel the Mallow is centred in the space left of it (the stage moves with its halo); less motion: it stays
+          const mid = await until(r.page, () => { const s = document.querySelector('.nightlight .sheet').getBoundingClientRect(), rig = __lab.companion.rig, o = rig.canvas.parentElement.getBoundingClientRect(), b = rig.bodyRect(); return { cx: Math.round(o.left + b.cx), free: Math.round(s.left / 2) }; },
+            (v) => Math.abs(v.cx - v.free) <= 6, 5000, 100);
+          check(sc, 'visual QA: beside the side panel the Mallow is centred in the space left of it', Math.abs(mid.cx - mid.free) <= 6, JSON.stringify(mid));
+        }
         if (vp.startsWith('land')) {
           const aside = await until(r.page, () => ['.nightlight .topbar .title', '.nightlight .bottom', '.nightlight .nl-caption'].map((q) => +getComputedStyle(document.querySelector(q)).opacity), (v) => v.every((o) => o < 0.02), 4000, 100);
           check(sc, 'landscape: while the panel is open the title, mode row and caption it would cut step aside', aside.every((o) => o < 0.02), JSON.stringify(aside));

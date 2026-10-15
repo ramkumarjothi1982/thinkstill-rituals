@@ -81,11 +81,12 @@
 .nightlight.nl-calm .nl-caption { transition-duration: 300ms; }
 .nightlight.nl-sheet-open .nl-caption { opacity: 0; }   /* the sheet is open: the scene is the preview, no words over it */
 
-/* the end view: near black, the sleeping Mallow where it was, a card that rests at 0.35 */
+/* the end view: near black, the sleeping Mallow where it was, a card that rests dim at 0.5: its text stays
+   readable in a dark room (the rest line and Done ≥ 3.5:1, the title ≥ 4:1); a touch or a key lifts it to full */
 .screen.nightlight.nl-end { background: #000; }
 .nightlight .nl-snap { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 .nightlight .nl-endcard { transition: opacity 600ms ease, transform 600ms ease; }
-.nightlight .nl-endcard.on { opacity: 0.35; }
+.nightlight .nl-endcard.on { opacity: 0.5; }
 .nightlight .nl-endcard.on.lit { opacity: 1; }
 .nightlight .nl-endcard .end-cap { text-wrap: balance; }   /* "Nightlight finished / at 9:02 PM.", never a lone "PM." */
 .nightlight .nl-endcard .end-line { text-wrap: pretty; }
@@ -121,17 +122,30 @@
 .nightlight .nl-row-stop > :last-child { margin-left: 0; }
 .nightlight .nl-foot { margin: 10px 0 0; color: var(--text-3); font-size: var(--fs-micro); line-height: 1.45; }
 /* Done stays at the foot of the sheet: an opaque pill on an opaque strip the full width of the sheet, so the
-   rows scroll under it and never show through or beside it */
+   rows scroll under it and never show through or beside it. The strip is opaque from its top edge, under a
+   hairline: a row is covered cleanly, never shown half-faded through a gradient; at rest its edge falls in a gap,
+   never through a label or a control (sheet.js fitFoot: the bottom sheet's height, or --nl-cut on the side panel) */
 .nightlight .sheet .done { z-index: 1; min-height: 48px; background: transparent; box-shadow: none; }
 .nightlight .sheet .done::before, .nightlight .sheet .done::after { content: ''; position: absolute; z-index: -1; pointer-events: none; }
-.nightlight .sheet .done::before { left: calc(-1 * var(--nl-pad)); right: calc(-1 * var(--nl-pad)); top: -20px; bottom: calc(-1 * var(--nl-padb));
-  background: linear-gradient(rgba(11, 9, 32, 0), var(--nl-sheet) 20px); }
+.nightlight .sheet .done::before { left: calc(-1 * var(--nl-pad)); right: calc(-1 * var(--nl-pad)); top: calc(-12px - var(--nl-cut, 0px)); bottom: calc(-1 * var(--nl-padb));
+  background: linear-gradient(var(--nl-sheet), var(--nl-sheet)); border-top: 1px solid var(--chrome-line); }
 .nightlight .sheet .done::after { inset: 0; height: auto; border-radius: inherit; background: linear-gradient(var(--chip-on), var(--chip-on)), var(--nl-sheet); }
 /* less motion: the sheet fades in place instead of sliding */
 .nightlight.nl-calm .sheet, .nightlight.nl-calm .sheet.on { transform: none; transition: opacity 200ms ease; }
 .nightlight.nl-calm .sheet { opacity: 0; pointer-events: none; }
 .nightlight.nl-calm .sheet.on { opacity: 1; pointer-events: auto; }
 
+/* phones: the five mode chips fit the row without scrolling (at 375 px the last one was cut mid-word);
+   at 340 px and narrower a smaller label and no gaps, still ≥ 40 px each. A wider system font still scrolls,
+   with the edge fades */
+@media (max-width: 400px) {
+  .nightlight .nl-modes button { padding-left: 9px; padding-right: 9px; }
+}
+@media (max-width: 340px) {
+  .nightlight .bottom { padding-left: 8px; padding-right: 8px; }
+  .nightlight .nl-modes { gap: 0; }
+  .nightlight .nl-modes button { min-width: 40px; padding-left: 7px; padding-right: 7px; font-size: 13px; }
+}
 /* beside a chip, the status takes its short form ("Until 6:28 PM"): beside the long sound-back chip on phones,
    beside any chip on narrow ones; at 320 px the sound-back chip has the row to itself */
 @media (max-width: 440px) {
@@ -143,9 +157,10 @@
   .nightlight .nl-status[data-chip]:not([data-chip=""]) .nl-st-time { display: inline; }
   .nightlight .nl-status[data-chip="soundBack"] .nl-st { display: none; }
 }
-/* short screens: tighter sheet rows (targets stay ≥ 40 px) */
+/* short screens: tighter sheet rows (targets stay ≥ 40 px), a little more sheet and a slimmer foot under Done */
 @media (max-height: 600px) {
   .nightlight .nl-row { padding: 6px 0; min-height: 44px; }
+  .nightlight .sheet { max-height: min(74vh, 640px); --nl-padb: calc(var(--safe-bottom) + 12px); }
 }
 /* landscape on a bedside stand: one row (modes, then the chip); the time moves into the subtitle */
 @media (max-height: 420px) {
@@ -153,7 +168,7 @@
     gap: 10px; padding-bottom: calc(var(--safe-bottom) + 8px); max-width: none; }
   .nightlight .nl-status { height: auto; flex: none; }
   .nightlight .nl-st { display: none; }
-  .nightlight .nl-caption { top: calc(var(--safe-top) + 60px); }
+  .nightlight .nl-caption { top: calc(var(--safe-top) + 70px); font-size: 16px; font-weight: 500; }   /* clear of the subtitle */
 }
 /* landscape on a bedside stand, and wide screens: the sheet is a side panel and the Mallow stays in view */
 @media (min-width: 900px), (max-height: 420px) and (min-width: 540px) {
@@ -163,6 +178,11 @@
     padding: calc(var(--safe-top) + 14px) var(--nl-pad) var(--nl-padb); transform: translateX(100%); }
   .nightlight .sheet.on { transform: none; }
   .nightlight.nl-calm .sheet { transform: none; }
+  /* while the panel is open the Mallow (the stage, and its halo and pool on the sky) moves to the middle of the
+     space beside it, so it is framed there rather than pushed against the panel; with less motion it stays put */
+  .nightlight .stage, .nightlight .nl-sky { transition: transform 450ms ease; }
+  .nightlight.nl-sheet-open .stage, .nightlight.nl-sheet-open .nl-sky { transform: translateX(calc(min(380px, 42vw) / -2)); }
+  .nightlight.nl-calm.nl-sheet-open .stage, .nightlight.nl-calm.nl-sheet-open .nl-sky { transform: none; }
 }
 @media (max-height: 420px) and (min-width: 540px) {
   .nightlight .sheet h3 { font-size: 18px; margin-bottom: 0; }
@@ -173,6 +193,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .screen.nightlight { transition-duration: 300ms; }
+  .nightlight.nl-sheet-open .stage, .nightlight.nl-sheet-open .nl-sky { transform: none; }
   .nightlight .topbar > *, .nightlight .bottom { transition-duration: 200ms; }
   .nightlight .sheet, .nightlight .sheet.on { transform: none; transition: opacity 200ms ease; }
   .nightlight .sheet { opacity: 0; pointer-events: none; }

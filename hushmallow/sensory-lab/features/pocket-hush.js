@@ -95,7 +95,7 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
   const { dna, sound } = ctx;
   const info = pocketById(id);
   const mallow = MALLOWS[ctx.mallowId];
-  let mode = null, ended = false, closed = false, leaving = false, leaveT = 0, t = 0, raf = 0, last = 0, captureFn = null, gestureFn = null;
+  let mode = null, ended = false, closed = false, leaving = false, leaveT = 0, t = 0, raf = 0, last = 0, captureFn = null, gestureFn = null, dotsEl = null;
   const s = stageScreen(root, ctx, {
     title: info.title, subtitle: surprise ? 'Surprise' : mallow.name, material: variant.material || 'marshmallow',
     backdrop: dna.environment('moment', ctx.mallowId), settings: false,
@@ -160,11 +160,14 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
       clearTimeout(api._hintT);
       if (ms) api._hintT = setTimeout(() => hintEl.classList.remove('on'), ms);
     },
+    /** Fade the instruction out now (its text stays while it fades). */
+    hideHint() { clearTimeout(api._hintT); hintEl.classList.remove('on'); },
     button(label, onPress, attrs = {}) { const b = h('button', { type: 'button', class: 'chip', onclick: onPress, ...attrs }, label); actions.append(b); actions.hidden = false; return b; },
     holdButton(label, onStart, onEnd, attrs = {}) { const b = holdButton(label, onStart, onEnd, attrs); actions.append(b); actions.hidden = false; return b; },
     dots(n) {
       const wrap = h('div', { class: 'moment-dots', role: 'img', 'aria-label': `0 of ${n}` }, ...Array.from({ length: n }, () => h('span', {})));
       s.bottom.prepend(wrap);
+      dotsEl = wrap;
       return (k) => { [...wrap.children].forEach((d, i) => d.classList.toggle('on', i < k)); wrap.setAttribute('aria-label', `${k} of ${n}`); };
     },
     capture(fn) { captureFn = fn; },
@@ -177,7 +180,7 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
 
   companion.restOverride = { mix: { calm: 0.5, comforted: 0.5 }, i: 0.35 };
   mode = mod.start(api);
-  api.hint(mod.hint, 3200);
+  api.hint(mod.hint, mod.hintMs ?? 3200);   // a mode may keep its instruction up until the person acts (hintMs 0)
   // test / debugging handle (development lab only)
   if (globalThis.__lab) globalThis.__lab.moment = { id, variant, api, get mode() { return mode; }, get t() { return t; }, get ended() { return ended; } };
 
@@ -231,6 +234,7 @@ function momentView(root, ctx, mod, { id, variant, surprise, onClose, again, oth
         keep,
         h('button', { type: 'button', class: 'chip', onclick: () => ctx.navigate('/') }, 'Done')));
     s.screen.append(card);
+    dotsEl?.classList.add('gone');   // the card covers their place: fade them rather than leave half-dots below it
     requestAnimationFrame(() => card.classList.add('on'));
     card.querySelector('button')?.focus({ preventScroll: true });
   }

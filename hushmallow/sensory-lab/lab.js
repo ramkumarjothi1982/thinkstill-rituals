@@ -210,7 +210,7 @@ function settings() {
       oninput: (e) => prefs.set('volume', +e.target.value) });
     const row = (label, ctl, sub) => h('div', { class: 'row' }, h('span', { class: 'lbl' }, label, sub ? h('span', { class: 'sub' }, sub) : null), ctl);
     const onOff = (k, label) => segmented([[true, 'On'], [false, 'Off']], prefs.get(k), (v) => { prefs.set(k, v); if (k === 'sound' && v) sound.unlock(); }, label);
-    return h('div', {},
+    return h('div', { class: 'lab-settings' },
       row('Sound', onOff('sound', 'Sound')),
       row('Volume', vol),
       row('Haptics', onOff('haptics', 'Haptics'), 'Android only; iPhone needs the app'),

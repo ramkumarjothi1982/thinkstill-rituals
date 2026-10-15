@@ -135,6 +135,54 @@ export function chromeTokens(look, out = {}) {
   return out;
 }
 
+// ------------------------------------------------------------ the sigh's breath --
+/**
+ * The rig's own 'puff' (src/mallows/particles.js) is a hard, pale disc (white at 0.7) that drifts about
+ * 25 px in 1–1.6 s, so in the fade it sat on the mouth as the brightest thing on screen. At night a newborn
+ * puff becomes a soft wisp instead (drawn by the Nightlight as a glow sprite, outside the field's own draw):
+ * it takes the Mallow's night grade, starts at the mouth, rises up and away in a small fan (about 0.6 body
+ * heights over its life), and is gone within 0.9 s of rig time, at a low peak opacity.
+ */
+export const PUFF = Object.freeze({
+  kind: 'nl-puff', tint: '#e4eaff', peak: 0.3, life: Object.freeze([0.7, 0.9]), rise: 1.1, drag: 0.9, fan: 0.55,
+  size: Object.freeze([0.05, 0.075]), fadeIn: 0.4,   // its opacity rises over the first 40 % of its life (≥ 300 ms at any Speed)
+});
+
+/** A hex colour multiplied by a grade [r, g, b], each channel in 5 % steps (so only a few sprites are ever built). */
+export function gradeHex(hex, grade) {
+  const c = parseHex(hex), q = (v) => Math.round(clamp(num(v, 1), 0, 1) * 20) / 20;
+  return `#${hex2(c[0] * q(grade?.[0]))}${hex2(c[1] * q(grade?.[1]))}${hex2(c[2] * q(grade?.[2]))}`;
+}
+
+/**
+ * Turn a puff as the field spawned it into the night's wisp (mutates and returns p).
+ * i, n: its place in the burst (the fan) · body: { w, h } in px · grade: the Mallow's [r, g, b] · reduced: less motion.
+ */
+export function sighPuff(p, { i = 0, n = 1, body = null, grade = null, reduced = false, rand = Math.random } = {}) {
+  const w = num(body?.w, 100), ht = num(body?.h, w);
+  const side = n > 1 ? clamp(num(i, 0) / (n - 1), 0, 1) - 0.5 : 0;           // −0.5 … 0.5 across the burst
+  const a = (side * 2 + (rand() - 0.5) * 0.3) * PUFF.fan;                     // about ±30° from straight up
+  const v = PUFF.rise * ht * (reduced ? 0.5 : 1) * (0.9 + 0.2 * rand());
+  p.kind = PUFF.kind;
+  p.vx = Math.sin(a) * v; p.vy = -Math.cos(a) * v; p.g = 0; p.drag = PUFF.drag;
+  p.age = 0; p.life = lerp(PUFF.life[0], PUFF.life[1], rand());
+  p.size = w * lerp(PUFF.size[0], PUFF.size[1], rand());
+  p.alpha = 1; p.peak = PUFF.peak;
+  p.col = gradeHex(PUFF.tint, grade);
+  return p;
+}
+
+/** The wisp's opacity (× PUFF.peak) at t = age / life: a gentle rise over the first 40 %, then a fade to nothing. */
+export function puffAlpha(t) {
+  if (!(t > 0 && t < 1)) return 0;
+  const a = PUFF.fadeIn;
+  if (t < a) { const u = t / a; return u * u * (3 - 2 * u); }
+  return (1 - (t - a) / (1 - a)) ** 1.4;
+}
+
+/** Its drawn radius at t: it widens as it thins. */
+export const puffRadius = (p, t) => p.size * (0.8 + 1.2 * clamp(num(t, 0), 0, 1));
+
 /**
  * Photosafe brightenings (touch-lamp swells): at most one start per 2 s,
  * each rising over ≥ 300 ms (600 ms by default). A refused request returns

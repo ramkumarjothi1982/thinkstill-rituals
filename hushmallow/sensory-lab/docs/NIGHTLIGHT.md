@@ -24,13 +24,15 @@ Five beats per session:
    a dream twitch. Touches get drowsy, gentle answers, never a hop, a burst or a giggle.
 4. **Drift down (the fade).** The world dims first, then the Mallow, while the sound falls. Below a Mallow level
    of 0.35 it falls asleep: a sleepy face, slower movement and blinks, a shallower breath, and its open eyes
-   close (Glitzi's last). When the world reaches 0.25 it gives one soft sigh. The world is repainted a little
+   close (Glitzi's last). When the world reaches 0.25 it gives one soft sigh: a faint wisp of breath in its own
+   night grade rises from the mouth, up and away, and is gone within a second. The world is repainted a little
    heavier (mist, a dimmer moon) at 25, 50 and 75 % of the fade. **A little longer** adds ten minutes, and a new
    Timer (or Fade out) choice restarts from now; either way the light eases back up over 2 s and the Mallow wakes.
 5. **Finished.** The stage is torn down. A near-black end view shows the sleeping Mallow above a card:
    "Nightlight finished at 23:42." (between 05:00 and 11:00, "Good morning.") with one of the Mallow's own
-   authored rest lines, and **Again** / **Done**. Nothing runs: no animation frames, no voices, the audio
-   suspended, no wake lock.
+   authored rest lines, and **Again** / **Done**. After 8 s the card rests dim (opacity 0.5), its text still
+   readable in a dark room (the title ≥ 4:1, the rest line and Done ≥ 3.5:1); a touch or a key lifts it to full.
+   Nothing runs: no animation frames, no voices, the audio suspended, no wake lock.
 
 ### Modes
 
@@ -65,14 +67,17 @@ Touches never extend the session.
 - **Top bar:** Close · *Nightlight* with the subtitle "{Mode} · {Mallow}" ("Moonlight · Noomi") · the sliders
   button (**Nightlight settings**) · Mute.
 - **Bottom** (a fixed height, so the Mallow is framed once and never jumps): the mode row (Moonlight · Breathe ·
-  Sleepy · Drift · Quiet, a radio group dressed as chips, scrolling sideways with edge fades when narrow), and the
+  Sleepy · Drift · Quiet, a radio group dressed as chips; all five fit on phones, with smaller labels and no gaps at
+  340 px and narrower, and a wider system font scrolls the row sideways with edge fades), and the
   status row: "Until 23:30", "No timer" or "Fading · until 23:30" (beside a chip it takes the short form
   "Until 23:30" at 360 px and narrower, and beside the long sound-back chip on phones; at 320 px that chip has the
   row to itself), with at most one chip: **Hold to breathe in** (Breathe), **Sound** (Quiet), **A little longer** (fading), or
   **Tap to bring the sound back** (the audio did not resume after the page was hidden). A newer need replaces the
   current chip until it is resolved.
 - **Landscape** (≤ 420 px tall, a bedside stand): one row. The status text hides and the time moves into the
-  subtitle ("Moonlight · until 23:30"); the chip stays inline after the modes.
+  subtitle ("Moonlight · until 23:30"); the chip stays inline after the modes. On these short, wide stages the
+  Mallow is framed 1.28 × larger than stage-screen frames it (its scale is bound by the height there), and the
+  caption sits a little lower and lighter, clear of the subtitle.
 - **The caption** ("A soft glow to rest by.") steps aside while the sheet is open: the scene is the preview.
 - **Night chrome** has no blur. It uses opaque night tokens on `.screen.nightlight` in either theme.
 
@@ -80,10 +85,16 @@ Touches never extend the session.
 
 Every change previews live behind the sheet: its scrim is clear, so the world and the sky show the new light
 as the slider moves. In portrait it is a bottom sheet that keeps the sky in view; in landscape and on wide
-screens it is a side panel, so the Mallow itself stays in view beside it; in landscape the centred title and the
+screens it is a side panel, so the Mallow itself stays in view beside it, moved (with its halo) to the middle of
+the space left of the panel while it is open (with less motion it stays put); in landscape the centred title and the
 mode row, which the panel would cut in half, step aside while it is open. The sheet is fully opaque, traps
 focus, closes on Done, the scrim or Escape, and hands focus back to the sliders button. Done stays at its foot as
-an opaque pill on an opaque strip the sheet's full width, so the rows scroll under it and never show through. The
+an opaque pill on an opaque strip the sheet's full width, so the rows scroll under it and never show through: the
+strip is opaque from its top edge, under a hairline (no fade), and at rest that edge falls in a gap, never through a
+label or a control: between two rows, or between a stacked row's label and its choices, so a whole label can peek
+above it as a hint that more follows (the bottom sheet takes the height that ends at such a gap, a little taller when
+that is a small step, else a little shorter; the full-height side panel's strip reaches up to the gap above and lowers
+back to its own edge as the panel scrolls). The
 chrome stays awake while it is open.
 
 | Row | Choices | Notes |
@@ -99,7 +110,8 @@ chrome stays awake while it is open.
 | Finish | **Fade out now** · **Close Nightlight** | Fade out now ends gently within 12 s (hidden while already fading). Close Nightlight says goodnight and goes home. |
 
 Footnote: "A gentle companion for winding down. It isn't a treatment for sleep problems." On screens 600 px tall
-or less the rows are tighter (targets stay ≥ 40 px).
+or less the rows are tighter (targets stay ≥ 40 px), the sheet may take 74 % of the height and the foot under Done
+is slimmer.
 
 ---
 
@@ -175,7 +187,10 @@ and unveil fallbacks, the goodnight, the end card's 8 s, the settings debounce).
 
 The world's brightness and colour are baked into the still with a `multiply` fill; the Mallow is graded by
 `uGrade` in the mesh shader (brightness and 40 % of the colour shift, so it never looks washed out); particles
-take the Mallow's grade as they are born. The aura and the light sit outside the grade. At low brightness the
+take the Mallow's grade as they are born. A sigh's puff (the rig's own is a hard, pale disc that lingers on the
+mouth for over a second) becomes a soft wisp (`look.js` `sighPuff`): the Mallow's grade on a pale tint, drawn by the
+Nightlight as a glow sprite with a `screen` blend at ≤ 0.3 opacity (fading in over ≥ 300 ms), rising up and away in a
+small fan (about 0.6 body heights) and gone within 0.9 s of rig time. The aura and the light sit outside the grade. At low brightness the
 Mallow stays at ≥ 0.45 and at least 2.5 × its world.
 
 ### Time
@@ -218,7 +233,9 @@ allow), `cleanNight(raw, base)`, `defaultsFromDNA(dna)`, `effectiveMotion(settin
 `TEMPS`, `envGains`, `mallowGains`, `lightColour`, `mixHex`, **`nightLook(input, out)`** →
 `{ worldB, worldGain, worldGrade, mallowB, mallowGain, mallowGrade, glow, haloAlpha, warmth, light, star }`
 (no allocation per frame), `chromeTokens(look, out)`, **`LightLimiter({ now })`**: `request(k)` → `{ k, riseMs }`
-or null (at most one brightening start per 2 s, each rising ≥ 300 ms), `log`.
+or null (at most one brightening start per 2 s, each rising ≥ 300 ms), `log`. The sigh's wisp: `PUFF` (kind, tint,
+peak, life, rise, drag, fan, size, fadeIn), **`sighPuff(p, { i, n, body, grade, reduced, rand })`** (turns a newborn puff
+into the wisp, in place), `puffAlpha(t)`, `puffRadius(p, t)`, `gradeHex(hex, grade)` (5 % steps, few sprites).
 
 ### `features/nightlight/pacing.js` (pure)
 **`BreathPacer({ inhale, exhale, speedK })`**: `step(dt)` → one reused `{ phase, k, level, turned }`, `lead(on)`,
@@ -256,7 +273,8 @@ twinkles and fireflies take the nearest step), `setLight(light, star)` (one colo
 `debug()`, `destroy()`.
 
 ### `features/nightlight/sheet.js`
-**`openNightSheet(root, model)`** → `{ el, sync(), close({ quiet }), open }`. The model is getters and callbacks:
+**`openNightSheet(root, model)`** → `{ el, sync(), close({ quiet }), open }` (it fits the foot between rows on open,
+when a row changes height and on resize; let go on close). The model is getters and callbacks:
 `state()` → `{ settings, labReduced, wakeSupported, wakeFailed, soundOn, endsAt, fading }`,
 `change(k, v, { persist, live })`, `fadeNow()`, `exit()`, `turnSoundOn()`, `onClosed({ byUser })`.
 **`sheetView(state)`** (pure) is what each row shows; `fadeMinutes(minutes)`.
@@ -294,7 +312,7 @@ pacer, face mixer, modes, chrome, status, chips, sheet, visibility) and the end 
   chrome fades and a 300 ms arrival), Still (all of Less, plus no breath movement, a static sky drawn only on
   change, no scripted gaze or dreams, at most 10 fps). The lab or the device asking for less motion means at
   least Less; the lab's own prefs are never changed.
-- **Photosensitivity**: every brightening rises over ≥ 300 ms (touch swells 600 ms, sliders τ 0.4 s); at most one
+- **Photosensitivity**: every brightening rises over ≥ 300 ms (touch swells 600 ms, sliders τ 0.4 s, the sigh's faint wisp); at most one
   brightening start per 2 s; twinkles ≤ 15 % at ≤ 0.5 Hz; no realm pulses; the live window uses reduced motion
   (no fireworks); no full-screen change faster than 1.2 s except the 500 ms fade to black on leaving.
 - **Screen readers**: the stage label "{Name} in the night. Tap to say goodnight, hold to stay close. Keys: 1 to
@@ -364,19 +382,25 @@ moments and the five modes on a fake api; U21 world helpers; U22 the night sound
 fake audio; U23 the settings sheet's view; U24 the stylesheet (every selector scoped to `.nightlight`, the night
 tokens, no blur, no `!important`, 40 px controls, the viewport and reduced-motion rules); U25 the review fixes (a
 Speed change reaches Sleepy's script and moves Moonlight's wave without a jump, Moonlight is the glow mode, the
-Light's two steps, Zuzu's lids, the one footnote).
+Light's two steps, Zuzu's lids, the one footnote); U26 the sigh at night (the rig's own puff on the production
+particle field lingers on the mouth; as a wisp it is faint, in the Mallow's grade, rises ≥ 0.45 body heights, is gone
+within 0.9 s, and the field's own draw never paints it as a disc).
 
 **Browser** (`tests/e2e-phase3-nightlight.cjs`, on the shared harness; reports and screenshots in
 `docs/phase3/nightlight/`): `open` (E1), `moonlight` (E3), `sleepy` (E5), `mallows` (E28), `modes`, `exit`
 (and three-visit leaks), `sound` (E2, E7, E11), `fade` (E12, E13, E30), `background` (E16–E20), `wake` (E21),
 `press` (E4, off-body press), `sheet` (the sheet, E8–E11 through it), `motion` (E14), `access` (E24, E25, E15),
-`theme` (E26), `scroll` (E27), `privacy` (E22), `isolation` (E29), `breathe` (E4 in full: two breaths, the
+`theme` (E26), `scroll` (E27), `privacy` (E22), `isolation` (E29), `sigh` (the fade's sigh), `breathe` (E4 in full: two breaths, the
 period, the halo following the inflate, H and the chip, Less and Still), `drift` (E6 in full: the live realm's
 3 minutes and 45 s on clock time, fireflies, Less, Still drawing nothing) and `layout` (E23 at all seven
 viewports: steady, asleep, the sheet, fading and a live end with the sleeping Mallow above the card). Review 3
 added: Moonlight beside Quiet (E3), a Timer change deep in the fade (E13), the fade beginning under a held chip
 (E4), a turn of the phone as the live realm settles (E6), back from the end view (E19), tapped controls and chrome
-sleep (E24), the Light's sprites (E9) and Done's pill (E23). Every night
+sleep (E24), the Light's sprites (E9) and Done's pill (E23). The visual QA pass added `sigh` (the fade's sigh on
+the desktop: only wisps, adding ≤ 0.1 when drawn alone, gone within 0.9 s of rig time, each rising ≥ 0.35 body
+heights; `nightlight-desktop-sigh.jpg`), the resting end card's text ≥ 3:1 (`theme`), and in `layout` no sheet label
+or control cut by the Done strip at rest, the five mode chips fitting at 390, 375, 320 and 412 px, and the Mallow centred beside
+the side panel. Every night
 world is also shot at the default and the minimum brightness (`nightlight-phone-<mallow>[-min].jpg`), and each mode
 once (`nightlight-phone-mode-<mode>.jpg`). Each block's header in the file maps it to its brief line. Software GL
 runs slowly, so every wait is on state.

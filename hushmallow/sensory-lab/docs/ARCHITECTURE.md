@@ -70,7 +70,13 @@ like this:
 5. **Rendering.** The rig renders its skin as before: the approved art plus
    the animated face. SoftMallow then maps that skin through the deformed
    mesh in WebGL, with lighting per vertex from the area change, and
-   composites it with the shadow, aura and particles.
+   composites it with the shadow, aura and particles. The rig's own particle
+   field draws every kind as authored except three that read as hard pale
+   shapes on the light stage: a sigh's or a pillow's `puff` and a landing's
+   `dust` are drawn as soft white wisps (a radial sprite, a lower peak; a puff
+   rises up and away from the mouth and is gone within 0.9 s), and a `ring`
+   (a ripple at the feet) as a soft stroke whose back half goes behind the
+   body. Zuzu's rings circle its middle, as authored (`SOFT_FX`, `softKind`).
 6. **Release.** On `squeezeend`, the squeeze is removed, the material springs
    back with its own overshoot and damping, a release "boing" plays at the
    squeeze's peak strength, and the personality chooses a reaction (`release`,
@@ -194,9 +200,13 @@ like this:
   (a reaction, a closing line from that Mallow's authored lines, a sound
   motif, the realm's transform and a bloom) and the end card.
 - Each moment in `features/pocket/` exports `{id, hint, maxSeconds,
-  start(api)}` and uses the host API: `body()`, `hint()`, `button()`,
-  `holdButton()`, `dots()`, `capture()`, `onGesture()`, `progress()`,
-  `complete()`, plus `effectsKit`, `palette` and `timing`.
+  start(api)}` (and `hintMs`, how long the opening instruction stays: 3.2 s,
+  or 0 to keep it until the moment hides it, as Quick Squeeze does at the
+  first squeeze) and uses the host API: `body()`, `hint()`, `hideHint()`,
+  `button()`, `holdButton()`, `dots()`, `capture()`, `onGesture()`,
+  `progress()`, `complete()`, plus `effectsKit`, `palette` and `timing`.
+  The action row and the progress dots sit on solid chrome, so they read over
+  a pale part of the world; the dots fade when the end card covers them.
 - `pickSurprise({modes, bias, recent, hour, reducedMotion, seed})` is a pure
   rules engine: it avoids recent moments, leans on Comfort DNA, weights
   evening moments at night, and picks a variant.
@@ -274,9 +284,17 @@ Mallow that made it. `openSheet(root, title, content, {onClose})` calls
 taps while it fades. Its Escape listener is in the capture phase, so Escape
 closes the sheet before a screen's own key listener can leave the screen,
 and a sheet that a route change discards drops its listener at the next key.
-The router closes an open Settings sheet when the route changes. The screen
+The router closes an open Settings sheet when the route changes. A sheet's
+surface is opaque (`--sheet`, set for each theme and for light and dark
+realm-toned screens), so Done sits on a band of exactly that colour: the band
+runs the sheet's full width from 18 px above the pill, where rows fade out,
+down through the bottom padding (`.done::before`; the pill is `.done::after`,
+which a feature may restyle, as Nightlight does). The screen
 publishes its chrome bands as `--band-top` / `--band-bottom` and in
-`onLayout`. Key presses with Ctrl, Alt or Cmd (Escape aside) are left to the
+`onLayout`; a focused stage draws its soft focus frame inset within them
+(16 px under the title, 12 px over the controls). `floorMax` (default 0.84)
+caps how far down the floor sits when the controls are short; TouchTalk uses
+0.76 so the Mallow stands nearer the middle. Key presses with Ctrl, Alt or Cmd (Escape aside) are left to the
 browser and never reach `keys` or the built-ins, and a held H or S lets go
 when the window loses focus.
 

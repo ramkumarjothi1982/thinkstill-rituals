@@ -1,7 +1,7 @@
 // Unit tests for Mallow Nightlight (spec-nightlight.md §13): U1–U18, plus U19–U24
 // (slice 2: the frame-clock timeline and moments, the five modes on a fake api, world helpers;
 // slice 3: the night sound facade, bedPlan and NightBed; slice 4: the settings sheet's view and
-// the stylesheet's scope, night tokens and no-blur rules). Node only; every clock,
+// the stylesheet's scope, night tokens and no-blur rules; U25 review fixes; U26 the sigh's soft wisp). Node only; every clock,
 // timer and random source is injected, so results are exact:
 //   node --test hushmallow/sensory-lab/tests/nightlight.test.mjs
 
@@ -19,7 +19,10 @@ import {
 } from '../features/nightlight/settings.js';
 import {
   TEMPS, MALLOW_SHIFT, envGains, mallowGains, lightColour, tempColour, tempStep, mixHex, luminance, nightLook, chromeTokens, LightLimiter,
+  PUFF, gradeHex, sighPuff, puffAlpha, puffRadius,
 } from '../features/nightlight/look.js';
+import { ParticleField } from '../../src/mallows/particles.js';
+import { rng } from '../core/math.js';
 import { NIGHT_CAPS, PACE, fpsFor, FramePacer } from '../core/frame-pacer.js';
 import {
   SPEED_K, BreathPacer, SleepyScript, SLEEPY_KINDS, BIG_EVENTS, STRETCH, SPACING_S, TOUCH_QUIET_S, rampFor, LEAD_MIN_S,
@@ -1706,4 +1709,72 @@ test('U25 review fixes: Speed reaches Sleepy and Moonlight without a jump; Moonl
   // the sheet's one footnote is the disclaimer (Touch sounds belong to another screen)
   assert.ok(!collectStrings(COPY.sheet).some((x) => /Touch sounds/.test(x)));
   assert.equal(COPY.sheet.soundNote, undefined);
+});
+
+// ================================================================= U26 ==
+/** A rig as the production ParticleField sees it (Loomi, a 600 px stage). */
+function puffRig(reducedMotion = false) {
+  return { id: 'loomi', mallow: MALLOWS.loomi, S: 0.5, W: 400, H: 600, CX: 200, BASE: 520, body: { hop: 0 }, opts: { reducedMotion } };
+}
+/** Run a field until it is empty; per particle: its birth and last place, its age, and the most it ever adds to the screen. */
+function runPuffs(field, drawn) {
+  const seen = new Map();
+  for (const p of field.list) seen.set(p, { y0: p.y, x0: p.x, y: p.y, x: p.x, age: 0, peak: 0 });
+  for (let i = 0; i < 400 && field.list.length; i++) {
+    field.update(1 / 30, {});
+    for (const p of field.list) { const s = seen.get(p); s.x = p.x; s.y = p.y; s.age = p.age; s.peak = Math.max(s.peak, drawn(p)); }
+  }
+  return [...seen.values()];
+}
+/** A canvas context that only records which drawing calls were made. */
+function recorder() {
+  const calls = [];
+  return { calls, ctx: new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => { calls.push(k); }), set: (t, k, v) => { t[k] = v; return true; } }) };
+}
+
+test('U26 the sigh at night: a soft wisp in the Mallow\'s grade that rises away and is gone in under a second (never a disc on the face)', () => {
+  const grade = [0.58, 0.55, 0.51];
+  // the rig's own puff, as it was drawn at night: a hard pale disc that lingers on the mouth
+  const raw = new ParticleField(puffRig());
+  raw.burst({ kind: 'puff', n: 3 });
+  const g = raw.geo();
+  const before = runPuffs(raw, (p) => 0.7 * (p.alpha ?? 1));
+  assert.ok(before.every((s) => s.age >= 0.9 && s.y0 - s.y < 40 && s.y0 - s.y < 0.25 * g.h), `the problem: ${JSON.stringify(before)}`);   // ≤ 36 px in ≥ 1 s
+
+  // at night every newborn puff becomes the wisp (the Nightlight's spawn wrapper calls sighPuff on it)
+  const field = new ParticleField(puffRig());
+  field.burst({ kind: 'puff', n: 3 });
+  const rand = rng(7), mouthY = field.list[0].y, tintL = luminance(PUFF.tint);
+  field.list.forEach((p, i) => sighPuff(p, { i, n: 3, body: { w: g.w, h: g.h }, grade, rand }));
+  assert.ok(field.list.every((p) => p.kind === PUFF.kind && p.life <= 0.9 && p.peak <= 0.3 && p.vy < 0), 'a wisp: its own kind, short, faint, rising');
+  assert.ok(field.list.every((p) => luminance(p.col) <= tintL * Math.max(...grade) + 0.01), 'it takes the Mallow\'s night grade');
+  assert.ok(new Set(field.list.map((p) => Math.sign(Math.round(p.vx)))).size >= 2, 'a small fan, up and away');
+  // what it adds to the screen at most: opacity × the luminance of its colour (the old disc: 0.7 white)
+  const after = runPuffs(field, (p) => p.peak * puffAlpha(p.age / p.life) * luminance(p.col));
+  for (const s of after) {
+    assert.ok(s.age <= 0.9 + 1e-9, `gone within 0.9 s of rig time (${s.age})`);
+    assert.ok(s.y0 - s.y >= 0.45 * g.h, `it rises away from the mouth: ${Math.round(s.y0 - s.y)} px of a ${Math.round(g.h)} px body`);
+    assert.ok(s.peak <= 0.08, `faint: adds at most ${s.peak.toFixed(3)}`);
+  }
+  assert.ok(Math.min(...after.map((s) => s.y)) < mouthY - 0.45 * g.h);
+  // the field's own draw skips the wisp (it is drawn as a soft sprite by the Nightlight): never a hard disc
+  const again = new ParticleField(puffRig());
+  again.burst({ kind: 'puff', n: 3 });
+  again.list.forEach((p, i) => sighPuff(p, { i, n: 3, body: { w: g.w, h: g.h }, grade, rand }));
+  again.update(0.1, {});
+  const rec = recorder();
+  again.draw(rec.ctx);
+  assert.ok(!rec.calls.some((k) => k === 'arc' || k === 'fill' || k === 'drawImage'), rec.calls.join(','));
+  // the envelope and the size: a quick rise, then a long fade to nothing; it widens as it thins
+  assert.equal(puffAlpha(0), 0); assert.equal(puffAlpha(1), 0); assert.ok(near(puffAlpha(PUFF.fadeIn), 1, 1e-9));
+  for (let t = 0.05; t <= PUFF.fadeIn; t += 0.05) assert.ok(puffAlpha(t) > puffAlpha(t - 0.05) - 1e-12, 'it rises');
+  for (let t = PUFF.fadeIn + 0.05; t < 1; t += 0.05) assert.ok(puffAlpha(t) < puffAlpha(t - 0.05) + 1e-12, 'then fades');
+  // photosafe: even at the fastest Speed (the rig's 0.9) and the shortest life, it rises over ≥ 300 ms of wall time
+  assert.ok((PUFF.life[0] * PUFF.fadeIn) / 0.9 >= 0.3);
+  assert.ok(puffRadius({ size: 10 }, 1) > puffRadius({ size: 10 }, 0));
+  // less motion: half the speed; colour steps of 5 % (few sprites); unreadable input never throws
+  const slow = sighPuff({}, { body: { w: 100, h: 100 }, grade, reduced: true, rand: () => 0.5 }), fast = sighPuff({}, { body: { w: 100, h: 100 }, grade, rand: () => 0.5 });
+  assert.ok(near(Math.hypot(slow.vx, slow.vy) * 2, Math.hypot(fast.vx, fast.vy), 1e-9));
+  assert.equal(gradeHex('#ffffff', [0.51, 0.5, 0.49]), gradeHex('#ffffff', [0.5, 0.5, 0.5]));
+  assert.match(gradeHex('nope', null), /^#[0-9a-f]{6}$/);
 });

@@ -17,7 +17,7 @@ export function mount(root, ctx) {
     ctx.prefs.set('showMesh', on);
     meshBtn.setAttribute('aria-pressed', String(on));
     s.companion.setShowMesh(on);
-  }, { 'aria-pressed': String(!!ctx.prefs.get('showMesh')) });
+  }, { 'aria-pressed': String(!!ctx.prefs.get('showMesh')), 'data-icon': 'mesh' });
   // ★ keeps this Mallow-and-material squishy in Comfort DNA favourites
   const fav = () => ({ kind: 'softbody', mallow: ctx.mallowId, material: mat });
   const starBtn = h('button', { type: 'button', class: 'chip', 'aria-label': 'Keep this squishy as a favourite',
@@ -32,7 +32,7 @@ export function mount(root, ctx) {
   ctx.dna?.record({ kind: 'softbody', mallow: ctx.mallowId, material: mat });
   const blurb = h('p', { class: 'blurb' }, MATERIALS[mat].blurb);
   const sub = s.screen.querySelector('.title small');
-  const chips = h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Material' },
+  const chips = h('div', { class: 'chips sb-materials', role: 'radiogroup', 'aria-label': 'Material' },
     ...MATERIAL_IDS.map((id) => h('button', {
       type: 'button', class: 'chip', role: 'radio', 'aria-checked': String(id === mat), 'data-material': id,
       onclick: (e) => {
@@ -50,7 +50,7 @@ export function mount(root, ctx) {
         reveal(e.currentTarget);
       },
     }, MATERIALS[id].label)));
-  const actions = h('div', { class: 'chips', role: 'group', 'aria-label': 'Squish without touch' },
+  const actions = h('div', { class: 'chips sb-actions', role: 'group', 'aria-label': 'Squish without touch' },
     holdButton('Squish', () => c.act('squeezeStart'), () => c.act('squeezeEnd')),
     h('button', { type: 'button', class: 'chip', onclick: () => c.act('stretch') }, 'Stretch'),
     h('button', { type: 'button', class: 'chip', onclick: () => c.act('tap') }, 'Poke'),

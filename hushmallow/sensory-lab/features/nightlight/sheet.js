@@ -93,6 +93,49 @@ function skipDisabled(seg) {
   }, true);
 }
 
+// At rest the Done strip's top edge falls in a gap, never through a label or a control (rows scroll under it once
+// the sheet scrolls): between two rows, or between a stacked row's label and its choices, so a whole label can peek
+// above the edge as a hint that more follows. The bottom sheet takes the height that ends at such a gap: a little
+// taller when that is a small step and the sky stays in view, else a little shorter. The side panel is the screen's
+// height, so its strip reaches up to the gap above instead (--nl-cut) and lowers back to its own edge as the panel
+// scrolls. Re-fitted when a row changes height (a new sub-label) or the screen turns.
+const MIN_TOP = 140;    // the bottom sheet's top stays at least this far down (the sky in view)
+const MAX_GROW = 48;    // it grows to reach the next gap only by this much at most
+function fitFoot(el) {
+  const doneEl = el?.querySelector('.done'), body = el?.querySelector('.nl-sheet');
+  if (!doneEl || !body) return { dispose() {} };
+  let cut0 = 0;
+  const onScroll = () => { el.style.setProperty('--nl-cut', `${Math.max(0, Math.round(cut0 - el.scrollTop))}px`); };
+  function fit() {
+    if (!el.isConnected) return;
+    el.style.maxHeight = ''; el.style.setProperty('--nl-cut', '0px'); cut0 = 0;
+    if (el.scrollHeight <= el.clientHeight + 1) return;                    // nothing scrolls: nothing is cut
+    const sr = el.getBoundingClientRect(), s = el.scrollTop, y = (v) => v - sr.top + s;   // at rest (scrollTop 0)
+    const lip = -parseFloat(getComputedStyle(doneEl, '::before').top) || 12;
+    const strip = doneEl.getBoundingClientRect().top - sr.top - lip;      // the strip's top edge, in the sheet
+    const gaps = [];
+    for (const r of body.children) {
+      if (r.hidden || !r.offsetHeight) continue;
+      const b = r.getBoundingClientRect();
+      gaps.push(y(b.top), y(b.bottom));
+      const lbl = r.firstElementChild, ctl = r.lastElementChild;
+      if (r.classList.contains('nl-stack') && lbl && ctl && lbl !== ctl) gaps.push(y((lbl.getBoundingClientRect().bottom + ctl.getBoundingClientRect().top) / 2));
+    }
+    if (gaps.some((g) => Math.abs(g - strip) <= 1.5)) return;             // already in a gap
+    const up = Math.max(...gaps.filter((g) => g < strip)), down = Math.min(...gaps.filter((g) => g > strip));
+    if (!Number.isFinite(up)) return;
+    if (sr.height >= innerHeight - 1) { cut0 = strip - up; onScroll(); return; }   // the side panel
+    const grow = down - strip, room = innerHeight - sr.height - MIN_TOP;
+    el.style.maxHeight = `${Math.floor(grow <= MAX_GROW && grow <= room ? sr.height + grow : sr.height - (strip - up))}px`;
+  }
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => fit()) : null;
+  ro?.observe(body);
+  el.addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', fit);
+  fit();
+  return { fit, dispose() { ro?.disconnect(); el.removeEventListener('scroll', onScroll); removeEventListener('resize', fit); } };
+}
+
 let uid = 0;
 
 /** Open the sheet in `root` (the Nightlight screen). → { el, sync(), close({ quiet }), get open() } */
@@ -197,7 +240,8 @@ export function openNightSheet(root, model) {
     else if (had === P.fadeNow && v.fadeNow.hidden) P.exit.focus({ preventScroll: true });
   }
 
-  const tr = track(root, el, close, model.onClosed);
+  const foot = fitFoot(el);
+  const tr = track(root, el, close, (o) => { foot.dispose(); model.onClosed?.(o); });
   handle = { el, sync, get open() { return tr.open; }, close: (o) => tr.close(o) };
   sync();
   return handle;
