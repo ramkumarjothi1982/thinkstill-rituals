@@ -1,0 +1,9 @@
+# Trigger and pin list for .github/workflows/hushmallow-model-vendor.yml.
+# Values from the read-only provenance run of 15 Oct 2026 (hushmallow-model-provenance.yml).
+repo Xenova/all-MiniLM-L6-v2
+revision 751bff37182d3f1213fa05d7196b954e230abad9
+dest hushmallow/vendor/models/all-minilm-l6-v2
+file onnx/model_quantized.onnx 22972370 afdb6f1a0e45b715d0bb9b11772f032c399babd23bfc31fed1c170afc848bdb1
+file tokenizer.json 711661 da0e79933b9ed51798a3ae27893d3c5fa4a201126cef75586296df9b4d2c62a0
+file tokenizer_config.json 366 9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3
+file config.json 650 7135149f7cffa1a573466c6e4d8423ed73b62fd2332c575bf738a0d033f70df7

@@ -1,0 +1,53 @@
+# Vendors one pinned on-device model into the repository for the safety
+# screen's second detector (hushmallow/vendor/models/...): downloads each file
+# from its official Hugging Face repository at the pinned revision, refuses it
+# unless its size and SHA-256 match hushmallow/tools/model/VENDOR, writes a
+# provenance note, and commits the files to this work branch. Runs only for a
+# push to the work branch that edits hushmallow/tools/model/VENDOR.
+name: hushmallow model vendor
+
+on:
+  push:
+    branches: ['claude/upbeat-pasteur-b0aqg1']
+    paths: ['hushmallow/tools/model/VENDOR']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hushmallow-model-vendor
+  cancel-in-progress: false
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Download, verify and commit the pinned files
+        run: |
+          set -euo pipefail
+          spec=hushmallow/tools/model/VENDOR
+          repo="$(awk '$1=="repo"{print $2}' "$spec")"; rev="$(awk '$1=="revision"{print $2}' "$spec")"; dest="$(awk '$1=="dest"{print $2}' "$spec")"
+          [[ "$repo" =~ ^Xenova/[A-Za-z0-9._-]+$ ]] || { echo "::error::unexpected repo $repo"; exit 1; }
+          [[ "$rev" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::revision must be a full commit id"; exit 1; }
+          [[ "$dest" =~ ^hushmallow/vendor/models/[a-z0-9._-]+$ ]] || { echo "::error::unexpected destination $dest"; exit 1; }
+          mkdir -p "$dest"
+          note="$dest/PROVENANCE.md"
+          printf '# %s\n\nDownloaded by .github/workflows/hushmallow-model-vendor.yml from https://huggingface.co/%s at revision `%s`, each file checked against the size and SHA-256 pinned in hushmallow/tools/model/VENDOR.\nLicense: Apache-2.0 (the model card). Used only on the device; no text leaves it.\n\n| file | bytes | sha256 |\n|---|---|---|\n' "$repo" "$repo" "$rev" > "$note"
+          awk '$1=="file"{print $2, $3, $4}' "$spec" | while read -r f size sha; do
+            out="$dest/$(basename "$f")"
+            curl -sSfL -m 600 -o "$out" "https://huggingface.co/$repo/resolve/$rev/$f"
+            got_size="$(stat -c %s "$out")"; got_sha="$(sha256sum "$out" | cut -d' ' -f1)"
+            [ "$got_size" = "$size" ] && [ "$got_sha" = "$sha" ] || { echo "::error::$f does not match the pin (size $got_size, sha256 $got_sha)"; exit 1; }
+            echo "verified $f ($size bytes)"
+            printf '| %s | %s | `%s` |\n' "$f" "$size" "$sha" >> "$note"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$dest"
+          git commit -m "Vendor $repo at ${rev:0:12} for the on-device safety screen (verified against pinned SHA-256)" \
+            -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_01PTMVzk87fyReNC1jbKp1HZ"
+          git push origin "HEAD:${GITHUB_REF#refs/heads/}"
