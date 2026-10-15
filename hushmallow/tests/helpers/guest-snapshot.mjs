@@ -36,7 +36,7 @@ export function todayGuestKeys(now = Date.now()) {
     'hm2:rotation': JSON.stringify({ bags: {}, dealt: [], history: [{ id: 'r-001', at: now - 2 * 86_400_000, helped: true, before: null, after: null }], favourites: ['hm-0001', 'moonmilk-wind-down'], feedback: { 'r-001': { helped: 1, notHelped: 0, runs: 1 } } }),
     // src/engine/round.js (one round per plan tier: what was tried in this round)
     'hm2:round-paid': JSON.stringify({ n: 1, seen: ['r-001'] }),
-    // src/ultra/another-angle.js (Future Lens predictions sealed with "Keep my saved angles" on: the person's own words, on this phone only)
+    // src/ultra/another-angle.js (Future Lens predictions sealed with "Keep sealed predictions" on: the person's own words, on this phone only)
     'hm2:ultra.sealedPredictions': JSON.stringify([{ id: 'seal-1', text: 'They will ignore my message', certainty: 70, when: 'week', sealedAt: now - 8 * 86_400_000, dueAt: now - 86_400_000, scenario: 'friends' }]),
     'hm2:entitlement': JSON.stringify({ tier: 'paid', source: 'native', since: now - 30 * 86_400_000 }),
     'hm2:sound': JSON.stringify({ enabled: false, volume: 0.35 }),

@@ -29,7 +29,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const out = { completed: false, scenario: null, facts: [], added: [], patterns: [], evidence: { supports: [], against: [], missing: [] }, kept: [], dismissed: [], next: null, lensOffer: [], lenses: {} };
   const ABORT = Symbol('abort');
   // Sealed Future Lens predictions live on this phone only, and only when the
-  // person has switched on "Keep my saved angles" (prefs.saveWords).
+  // person has switched on "Keep sealed predictions" (prefs.saveWords).
   const SEAL_KEY = 'ultra.sealedPredictions';
   const sealStore = (() => {
     try {
@@ -1382,7 +1382,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       }));
       setMove(4, { eyebrow: 'Future lens', title: 'Seal the prediction?', prompt: compact() ? '' : 'Future-you gets to open it and see what really happened.' });
       const note = sealStore ? (compact() ? 'Kept on this phone only.' : 'Kept on this phone only. Another Angle will offer to open it when it’s time.')
-        : compact() ? 'Saved angles are off in Settings, so it stays in today’s star map only.' : '“Keep my saved angles” is off in Settings, so this stays in today’s star map only — nothing is saved.';
+        : compact() ? 'Sealed predictions are off in Settings, so it stays in today’s star map only.' : '“Keep sealed predictions” is off in Settings, so this stays in today’s star map only — nothing is saved.';
       const doSeal = h('button', { class: 'btn ultra' }, 'Seal it');
       const back = h('button', { class: 'btn' }, 'Not now');
       dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },

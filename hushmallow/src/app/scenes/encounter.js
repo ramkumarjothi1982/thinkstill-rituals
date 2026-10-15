@@ -303,6 +303,7 @@ export default function encounter(app) {
       // support first, then staying quietly (no ritual is offered: the main screen's careBeat, without its world)
       noteVisitSafety(app, r);
       const first = r.category === 'harm-others' ? SHARED_LINES.harmOthers
+        : route === 'loss' && r.category !== 'suicide-loss' ? (SHARED_LINES.supportGrief || SHARED_LINES.supportLoss)
         : r.category === 'suicide-loss' || route === 'loss' ? SHARED_LINES.supportLoss
           : route === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern;
       gentleCard(first, route === 'care'

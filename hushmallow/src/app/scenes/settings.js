@@ -98,7 +98,8 @@ export default function settings(app) {
       section('Privacy'),
       accountRow,
       sw('saveHistory', 'Remember what I played', 'Rituals and worlds, how they felt and where you paused. Never your words or photos.'),
-      sw('saveWords', 'Keep my saved angles', `${PLANS.ultra?.name || 'hushmallow Beyond'} only. Stored on this phone, never uploaded.`),
+      // (it governs only the simpler Another Angle that opens when the new one can't load: its sealed Future Lens predictions)
+      sw('saveWords', 'Keep sealed predictions', 'From the simpler Another Angle that opens if the new one can’t load. Kept on this phone with your words, never uploaded.'),
       angleRows,
       h('button', { class: 'btn block', style: { marginTop: '12px', textWrap: 'balance' }, 'data-act': 'delete-local', onclick: () => confirmClear() }, deleteLabel),
 
@@ -120,9 +121,9 @@ export default function settings(app) {
           h('button', { class: 'btn ghost block', onclick: () => app.go('classic') }, 'Classic home (QA)')) : null));
 
   function confirmClear() {
-    const body = signedIn ? 'This removes this account’s favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.'
-      : otherAccounts ? 'This removes the guest’s favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. Accounts on this phone keep their own things. Your subscription isn’t affected.'
-        : 'This removes your favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.';
+    const body = signedIn ? 'This removes this account’s favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.'
+      : otherAccounts ? 'This removes the guest’s favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. Accounts on this phone keep their own things. Your subscription isn’t affected.'
+        : 'This removes your favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.';
     const s = openSheet({ title: signedIn ? 'Delete this account’s things?' : otherAccounts ? 'Delete the guest’s things?' : 'Delete everything?', body: h('p', { style: type('body', { margin: 0, color: 'var(--text-2)' }) }, body),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { const keep = app.store.get('entitlement', null); app.store.clearAll(); if (keep) app.store.set('entitlement', keep); prefs.reset(); rec.clearAll(); forgetVisit(); s.close(); toast('Deleted'); app.go('home'); } }, 'Delete')) });
@@ -133,7 +134,7 @@ export default function settings(app) {
    */
   function forgetVisit() {
     forgetVisitSafety();
-    if (app.state) app.state.hfSafety = null;
+    if (app.state) { app.state.hfSafety = null; app.state.hfChecked = false; app.state.hfAttentive = false; app.state.hfSoft = false; }
   }
 
   // the card fills the screen, so the Mallow rests out of sight (not half-hidden behind its corner)

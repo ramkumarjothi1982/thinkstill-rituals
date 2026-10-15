@@ -52,7 +52,8 @@ const CLIENT_TIMEOUT_MS = Number((/angle:\s*(\d+)/.exec(fs.readFileSync(path.joi
 const res = { site: SITE, dev: DEV, viewport: `${W}x${H}`, started: new Date().toISOString(), finished: '', steps: [], angle: null, requests: [], blocked: [], errors: [], consoleErrors: 0, screenshots: [], calls: 0, micros: 0, fatal: null };
 const step = (id, what, pass, detail = '', data = undefined, skipped = false) => {
   res.steps.push({ id, what, pass: !!pass, ...(skipped ? { skipped: true } : {}), detail: String(detail || ''), ...(data !== undefined ? { data } : {}) });
-  console.log(`${pass ? 'PASS' : skipped ? 'SKIP' : 'FAIL'}  [browser] ${id}  ${what}${detail ? `  ${String(detail).slice(0, 300)}` : ''}`);
+  // the Actions log is public: the id and the verdict (the detail is in client.json, in the artifact)
+  console.log(`${pass ? 'PASS' : skipped ? 'SKIP' : 'FAIL'}  [browser] ${id}`);
   return pass;
 };
 

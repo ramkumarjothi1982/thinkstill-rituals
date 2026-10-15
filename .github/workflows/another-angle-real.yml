@@ -13,8 +13,9 @@
 #      the consent card first, "Not now" sends nothing, Accept → the question → "Another angle" → a real angle with
 #      its lines on screen, "Just be with it", a crisis and a care sentence send nothing, the delete-data sheet,
 #      0 console errors, nothing leaves the runner; screenshots
-#   3. one markdown report: per-case table, totals, cost, latency p50/p95, every failure verbatim; in the log, the
-#      run summary and the artifact (which holds the model's lines: keep it private)
+#   3. report.md (per-case table with the inputs and the model's lines, totals, cost, latency p50/p95, every failure
+#      verbatim) in the artifact only; the log and the step summary get summary.md (ids, groups, verdicts, counts,
+#      costs, latencies). The repository is public: any signed-in GitHub user can download the artifact.
 #
 # HARD COST CAP: real-check.mjs counts model calls and cost from the usage the harness logs (src/cost.js prices) and
 # stops before one more worst-case request (~$0.32) could pass --max-calls (default 80) or --max-usd (default $4);

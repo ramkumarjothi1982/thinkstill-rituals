@@ -4,7 +4,7 @@ export const DEFAULTS = Object.freeze({
   motion: 'system',          // 'system' | 'reduced' | 'full'
   lowStim: false,            // calmer visuals, fewer particles
   saveHistory: true,         // which rituals you did + how it felt (no typed words)
-  saveWords: false,          // keep what you type in Another Angle "saved angles"
+  saveWords: false,          // keep sealed Future Lens predictions (the fallback Another Angle ritual), with the words
   seenIntro: false,
   // the Hushfold
   autoFlow: false,           // the next world begins by itself when one completes

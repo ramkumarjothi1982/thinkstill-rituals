@@ -18,7 +18,7 @@
 // feedback buttons per kind of scene. Never words, never photos. (Fix round:
 // "Delete my Another Angle data" also removes the older Another Angle's sealed
 // Future Lens predictions, ANGLE_EXTRA_KEYS, which hold the words typed into
-// them: src/ultra/another-angle.js keeps them only with "Keep my saved angles" on.)
+// them: src/ultra/another-angle.js keeps them only with "Keep sealed predictions" on.)
 
 import { h, openSheet, toast } from '../app/ui.js';
 import { openSupport } from '../app/scenes/support.js';

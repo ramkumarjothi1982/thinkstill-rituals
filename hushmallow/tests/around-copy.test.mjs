@@ -47,8 +47,8 @@ test('Settings → Delete everything: the tab’s visit safety goes too (stored 
   const fn = src.slice(src.indexOf('function forgetVisit() {'), src.indexOf('}', src.indexOf('function forgetVisit() {')) + 1);
   assert.match(fn, /forgetVisitSafety\(\);/);
   assert.match(fn, /app\.state\.hfSafety = null;/);
-  // "Keep my saved angles" is not this round's to change
-  assert.match(src, /sw\('saveWords', 'Keep my saved angles'/);
+  // the saveWords row names what it really keeps: the fallback ritual's sealed predictions (with the person's words)
+  assert.match(src, /sw\('saveWords', 'Keep sealed predictions'/);
 });
 
 test('plans: a test plan kept on the phone and set aside on a host without test purchases → one quiet line', async () => {
