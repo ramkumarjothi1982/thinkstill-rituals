@@ -41,12 +41,14 @@ const same = (a, b) => timingSafeEqual(Buffer.from(sha(a)), Buffer.from(sha(b)))
  *   labFiles    development only: Map(urlPath → file) for the lab, served only to testers
  *   testerKey   development only: the key that opens the lab (none, or under 16 characters → no lab)
  *   auth        development only: the local copy of Supabase Auth ({ handle(req, res, path) })
+ *   rest        development only: the local stand-in for Supabase's PostgREST ({ handle(req, res, path) }),
+ *               for the Edge Function run under Deno (server/edge-local.ts)
  *   gateway     development only: the Edge Function's logic ({ handle(Request) → Response })
  */
-export function createHushmatesServer({ mode = 'production', files, labFiles = null, testerKey = null, auth = null, gateway = null, secureCookies = mode === 'production', now = () => Date.now(), log = console } = {}) {
+export function createHushmatesServer({ mode = 'production', files, labFiles = null, testerKey = null, auth = null, rest = null, gateway = null, secureCookies = mode === 'production', now = () => Date.now(), log = console } = {}) {
   if (!['production', 'development'].includes(mode)) throw new Error(`unknown mode ${mode}`);
   if (!(files instanceof Map) || !files.has('/app/index.html')) throw new Error('the app’s files are missing (build it first)');
-  if (mode === 'production' && (labFiles || testerKey || auth || gateway)) throw new Error('a production host has no lab, no local sign-in and no API');
+  if (mode === 'production' && (labFiles || testerKey || auth || rest || gateway)) throw new Error('a production host has no lab, no local sign-in and no API');
   const lab = mode === 'development' && typeof testerKey === 'string' && testerKey.length >= 16 && labFiles instanceof Map ? labFiles : null;
   // a build for a Supabase project talks to that project (app/config.json): the header policy allows it too,
   // as the page's own does (browsers apply both)
@@ -135,6 +137,7 @@ export function createHushmatesServer({ mode = 'production', files, labFiles = n
     const path = url.pathname;
     try {
       if (auth && path.startsWith('/auth/v1/')) { if (!(await auth.handle(req, res, path))) notHere(res); return; }
+      if (rest && path.startsWith('/rest/v1/')) { if (!(await rest.handle(req, res, path))) notHere(res); return; }
       if (gateway && (path === '/functions/v1/hushmates' || path.startsWith('/functions/v1/hushmates/'))) { await toGateway(req, res, url); return; }
       if (path === '/' || path === '/app') { headers(res, { Location: '/app/', 'Cache-Control': 'no-store' }); res.writeHead(302); res.end(); return; }
       if (path === '/staff' && files.has('/staff/index.html')) { headers(res, { Location: '/staff/', 'Cache-Control': 'no-store' }); res.writeHead(302); res.end(); return; }

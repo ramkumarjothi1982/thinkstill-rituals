@@ -6,7 +6,10 @@
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "dev": "node server/dev-stack.mjs",
-    "build": "node tools/build-app.mjs"
+    "build": "node tools/build-app.mjs",
+    "check:edge": "deno check supabase/functions/hushmates/index.ts server/edge-local.ts",
+    "e2e": "node tools/app-shots.mjs docs/screenshots/phase2",
+    "e2e:deno": "HUSHMATES_EDGE=deno node tools/app-shots.mjs .data/e2e-deno"
   },
   "devDependencies": {
     "pg": "8.13.1"

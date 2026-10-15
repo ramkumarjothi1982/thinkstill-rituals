@@ -7,6 +7,10 @@
 // members' apps all talk to the same gateway over HTTP.
 //
 //   node tools/app-shots.mjs <out-dir>
+//   HUSHMATES_EDGE=deno HUSHMATES_DENO=<path to deno> node tools/app-shots.mjs <out-dir>
+//     the same run with the real Edge Function entry point (supabase/functions/hushmates/index.ts)
+//     under Deno, reaching the database over HTTP through the local PostgREST stand-in; Deno keeps
+//     real time, so only the database's clock moves (sessions don't age)
 //
 // People: the author on a phone (reduced motion), a catcher on a laptop (full motion), a
 // moderator at the safety desk, a newcomer who uses only the keyboard, and six more members
@@ -67,13 +71,17 @@ const port = await new Promise((r) => { const s = net.createServer(); s.listen(0
 const db = await freshDb();
 const clock = { t: Date.now() };
 const MEMBER_CODES = ['AUTHORCODE1', 'CATCHERCD2', 'KEYBOARDC3', ...Array.from({ length: 8 }, (_, i) => `MEMBERCODE${i}`)];
+const EDGE = process.env.HUSHMATES_EDGE === 'deno' ? 'deno' : 'node';
 const stack = await startDevStack({
-  port, pool: db.pool, files, keysFile: join(dist, 'keys.json'), quiet: true, tickMs: 3600e3, now: () => clock.t, moveDbClock: true,
+  port, pool: db.pool, files, keysFile: join(dist, 'keys.json'), quiet: true, tickMs: 3600e3,
+  ...(EDGE === 'deno' ? { edge: 'deno', deno: process.env.HUSHMATES_DENO || 'deno', dbNow: () => clock.t } : { now: () => clock.t, moveDbClock: true }),
   invites: MEMBER_CODES, staffInvites: ['SAFETYDESK1'], log: { log() {}, error: (...a) => report.server.push(a.join(' ')) },
 });
 const base = stack.origin;
 const ANON = JSON.parse(readFileSync(new URL('../app/config.json', import.meta.url), 'utf8')).supabaseAnonKey;
-const report = { stack: 'production build + local Postgres + local Supabase Auth copy + the Edge Function code', checks: [], screens: [], problems: [], console: [], expected: [], server: [] };
+const report = { stack: EDGE === 'deno'
+  ? 'production build + local Postgres + local Supabase Auth copy + the real Edge Function entry point under Deno (supabase/functions/hushmates/index.ts), through the local PostgREST stand-in'
+  : 'production build + local Postgres + local Supabase Auth copy + the Edge Function code', checks: [], screens: [], problems: [], console: [], expected: [], server: [] };
 const check = (ok, what) => { report.checks.push({ ok: !!ok, what }); if (!ok) report.problems.push(`check failed: ${what}`); };
 const sql = async (q, p) => (await db.pool.query(q, p)).rows;
 // moving the clock an hour or more ages every open session: each page's next call may be refused once (401) and refreshed
