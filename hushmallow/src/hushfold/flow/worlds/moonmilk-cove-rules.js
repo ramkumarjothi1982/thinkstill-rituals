@@ -22,7 +22,8 @@ export const COVE = Object.freeze({
   EDGE: 10, GAP: 14,       // px from the screen edges / round the hero
   LABEL_GAP: 4,            // px between the thought and its words plate
   SHELL_N: 3,
-  CRADLE_B: 1.25,          // × r: how far below the thought's centre its cradle reaches
+  CRADLE_B: 1.25,
+  BOTTOM: 56,              // px kept free at the bottom for the shell's own controls (a line's replay chip, the bar)          // × r: how far below the thought's centre its cradle reaches
 });
 
 // ---------------------------------------------------------------- plan --
@@ -40,6 +41,19 @@ export function defaultHero(W, H) {
   return { left: W / 2 - B / 2, right: W / 2 + B / 2, top: bottom - B, bottom, width: B, height: B };
 }
 
+/**
+ * The words plate for a thought at (x, y) of radius r on `side` ('above' | 'below' | 'right' | 'left': beside it, centred
+ * on it — a short landscape screen), kept inside [E, XR − E] horizontally (above / below slide; beside cannot).
+ */
+export function plateRect(side, x, y, r, pw, ph, E, XR) {
+  const g = COVE.LABEL_GAP, wr = r * 1.45;
+  if (side === 'right') return { x0: x + wr + g, y0: y - ph / 2, x1: x + wr + g + pw, y1: y + ph / 2 };
+  if (side === 'left') return { x0: x - wr - g - pw, y0: y - ph / 2, x1: x - wr - g, y1: y + ph / 2 };
+  const px0 = clamp(x - pw / 2, E, Math.max(E, XR - E - pw));
+  return side === 'above' ? { x0: px0, y0: y - r - g - ph, x1: px0 + pw, y1: y - r - g }
+    : { x0: px0, y0: y + r * COVE.CRADLE_B + g, x1: px0 + pw, y1: y + r * COVE.CRADLE_B + g + ph };
+}
+const SIDE_COST = { above: 0, below: 0.05, right: 0.08, left: 0.1 };
 const hit = (a, b, pad = 0) => a.x0 < b.x1 + pad && a.x1 > b.x0 - pad && a.y0 < b.y1 + pad && a.y1 > b.y0 - pad;
 const rectOf = (x0, y0, x1, y1) => ({ x0, y0, x1, y1 });
 
@@ -51,7 +65,16 @@ const rectOf = (x0, y0, x1, y1) => ({ x0, y0, x1, y1 });
  *     shells: [{x, y, s, hit}], slots: [{x, y, D}], floor }
  * Nothing it places touches the band, the hero (GAP round it) or another thing it places.
  */
-export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = null, n = 0 } = {}) {
+export function planCove(o = {}) {
+  const p = planOnce(o);
+  // (a short landscape screen with no clear place for two lines of words: one wide line, when that fits clear)
+  if (!p.clear && o.plate1?.w > 0) {
+    const p1 = planOnce({ ...o, plate: o.plate1 });
+    if (p1.clear) return Object.assign(p1, { lines: 1 });
+  }
+  return p;
+}
+function planOnce({ W, H, band = null, mallow = null, x1 = W, plate = null, n = 0 } = {}) {
   const E = COVE.EDGE, G = COVE.GAP;
   const XR = Math.min(W, x1 > 0 ? x1 : W);
   const U = Math.min(W, H);
@@ -60,7 +83,8 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
   const M = { x0: m.left, y0: m.top, x1: m.right ?? m.left + m.width, y1: m.bottom ?? m.top + m.height };
   const bandB = band ? band.y + band.h : 0;
   const B = rectOf(0, band ? band.y : 0, W, bandB);
-  const floor = H - 8;
+  // (nothing placed here reaches into the shell's bottom strip: its chips and controls would sit on the words)
+  const floor = H - COVE.BOTTOM;
   const pw = plate?.w || 0, ph = plate?.h || 0;
 
   // ---- the thought, resting in its cradle on the water (away from the moon's side when it can)
@@ -68,7 +92,7 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
   const rMax = clamp(U * 0.085, 22, 34);
   const ideal = { x: XR * 0.27, y: hy + 0.3 * (shoreY(W, H, XR * 0.27) - hy) };
   for (let r = rMax; r >= 20 && !best; r -= 2) {
-    for (const side of ['above', 'below']) {
+    for (const side of ['above', 'below', 'right', 'left']) {
       const yLo = hy + 0.3 * r, yHi = Math.min(shoreY(W, H, ideal.x) - r * 0.8, floor - r * COVE.CRADLE_B);
       for (let y = yLo; y <= yHi; y += 4) {
         for (let x = E + r * 1.45 + 2; x <= XR - E - r * 1.45 - 2; x += 6) {
@@ -76,29 +100,34 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
           if (hit(T, M, G) || hit(T, B, 4) || T.y1 > floor) continue;
           let P = null;
           if (pw) {
-            const px0 = clamp(x - pw / 2, E, XR - E - pw);
-            P = side === 'above' ? rectOf(px0, y - r - COVE.LABEL_GAP - ph, px0 + pw, y - r - COVE.LABEL_GAP)
-              : rectOf(px0, y + r * COVE.CRADLE_B + COVE.LABEL_GAP, px0 + pw, y + r * COVE.CRADLE_B + COVE.LABEL_GAP + ph);
-            if (pw > XR - 2 * E || hit(P, M, 4) || hit(P, B, 4) || P.y1 > floor) continue;
+            P = plateRect(side, x, y, r, pw, ph, E, XR);
+            if (pw > XR - 2 * E || P.x0 < E || P.x1 > XR - E || hit(P, M, 4) || hit(P, B, 4) || P.y1 > floor) continue;
           }
-          const s = Math.hypot((x - ideal.x) / W, (y - ideal.y) / H) + (side === 'below' ? 0.05 : 0) + (rMax - r) * 0.01;
+          const s = Math.hypot((x - ideal.x) / W, (y - ideal.y) / H) + SIDE_COST[side] + (rMax - r) * 0.01;
           if (!best || s < best.s) best = { s, x, y, r, side, T, P };
         }
       }
     }
   }
+  const clear = !!best;
   if (!best) {
     // nowhere clear (a tiny landscape window at the largest text): the place where the words cover least of the hero and
     // the band (the words weigh most: they must stay readable), anywhere on screen
     const area = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
     const r = 20;
-    for (const side of ['above', 'below']) {
-      for (let y = Math.max(r, hy - 2 * r); y <= floor - r * COVE.CRADLE_B; y += 4) {
+    for (const side of ['above', 'below', 'right', 'left']) {
+      for (let y = Math.max(r, hy - 2 * r); y <= H - 8 - r * COVE.CRADLE_B; y += 4) {
         for (let x = E + r * 1.45; x <= XR - E - r * 1.45; x += 4) {
           const T = rectOf(x - r * 1.45, y - r, x + r * 1.45, y + r * COVE.CRADLE_B);
-          const px0 = clamp(x - pw / 2, E, Math.max(E, XR - E - pw));
-          const P = pw ? (side === 'above' ? rectOf(px0, y - r - 4 - ph, px0 + pw, y - r - 4) : rectOf(px0, y + r * COVE.CRADLE_B + 4, px0 + pw, y + r * COVE.CRADLE_B + 4 + ph)) : null;
-          let s = area(T, M) + area(T, B) + (P ? 4 * (area(P, M) + area(P, B)) + 4 * Math.max(0, -P.y0) * pw + 4 * Math.max(0, P.y1 - H) * pw : 0);
+          const P = pw ? plateRect(side, x, y, r, pw, ph, E, XR) : null;
+          if (P && (P.x0 < 0 || P.x1 > XR)) continue;
+          // (against the hero, only the letters count: the plate's padding and rounded corners may pass behind it)
+          const Pt = P && rectOf(P.x0 + 12, P.y0 + 8, P.x1 - 12, P.y1 - 8);
+          // (priorities: the thought and the letters never on the hero or under the band; on screen; and only then out of
+          // the shell's bottom strip, whose replay chip comes and goes)
+          const S = rectOf(0, floor, W, H);
+          const Mi = rectOf(M.x0 - 2, M.y0 - 2, M.x1 + 2, M.y1 + 2);
+          let s = 8 * (area(T, M) + area(T, B)) + (P ? 40 * (area(Pt, Mi) + area(P, B)) + 8 * (Math.max(0, -P.y0) + Math.max(0, P.y1 - H)) * pw + area(Pt, S) : 0);
           s += Math.hypot(x - ideal.x, y - ideal.y) * 0.01;
           if (!best || s < best.s) best = { s, x, y, r, side, T, P };
         }
@@ -109,11 +138,13 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
   const avoid = [M, B, best.T, ...(best.P ? [best.P] : [])];
 
   // ---- the shells (things left to do) on the sand by the water's edge, beside the hero: ≥ 44 px targets, apart
+  // (shells may sit lower than words: they are small, carry no text, and keep clear of the very bottom edge)
+  const sFloor = H - 12;
   const s = clamp(U * 0.05, 15, 22), hitR = Math.max(22, s * 1.5);
   const shells = [];
   const okShell = (x, y) => {
     const R = rectOf(x - hitR, y - hitR, x + hitR, y + hitR * 0.8);
-    if (R.x0 < 2 || R.x1 > XR - 2 || R.y1 > floor) return false;
+    if (R.x0 < 2 || R.x1 > XR - 2 || R.y1 > sFloor) return false;
     for (const o of avoid) if (hit(R, o, 2)) return false;
     for (const q of shells) if (Math.hypot(q.x - x, q.y - y) < 2 * hitR + 4) return false;
     return true;
@@ -128,7 +159,7 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
       for (let f = 0; f <= 1 && !placed; f += 0.125) {
         const x = lerp(a, b, pass % 2 ? 1 - f : f);
         const y0 = shoreY(W, H, x) + s * 0.6 + 4;
-        for (let y = y0; y <= Math.min(floor - hitR, y0 + 0.12 * H) && !placed; y += 6) if (okShell(x, y)) { shells.push({ x: Math.round(x), y: Math.round(y), s, hit: hitR }); placed = true; }
+        for (let y = y0; y <= Math.min(sFloor - hitR, y0 + 0.12 * H) && !placed; y += 6) if (okShell(x, y)) { shells.push({ x: Math.round(x), y: Math.round(y), s, hit: hitR }); placed = true; }
       }
     }
   }
@@ -174,7 +205,7 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
     }
   }
   return {
-    W, H, hy, x1: XR, moon: moonOf(W, H), M, home, side: best.side, floor,
+    W, H, hy, x1: XR, moon: moonOf(W, H), M, home, side: best.side, floor, clear, lines: 2,
     rects: { thought: best.T, plate: best.P, band: B, hero: M },
     shells, slots,
   };

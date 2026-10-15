@@ -35,7 +35,7 @@ import { glowSprite, Pool, Rings, clamp, lerp, smoothstep, TAU, makeCanvas, flas
 import { PACE } from '../discovery.js';
 import { STATUS } from '../registry.js';
 import { wrapLines } from '../placeholders.js';
-import { COVE, planCove, shoreY, createRestMeter, createRestDetector, createWaitedDetector, createCoveProgress, moonShadow, tideBusy } from './moonmilk-cove-rules.js';
+import { COVE, planCove, plateRect, shoreY, createRestMeter, createRestDetector, createWaitedDetector, createCoveProgress, moonShadow, tideBusy } from './moonmilk-cove-rules.js';
 
 // ------------------------------------------------------------------ registry entry (lab-only until integration) --
 /**
@@ -199,7 +199,7 @@ export function create(ctx) {
   let melt = null;                        // melting in: { k }
   let restored = null;
   let layoutRest = null, layoutBandB = 0, layoutFreeW = 0, pendingRect = null, pendingFor = 0, relayoutClock = 0;
-  let measureG = null, wordsFit = null, plateH = 0, plateW = 0;
+  let measureG = null, wordsFit = null, plateH = 0, plateW = 0, plateLines = 2, plateText = 210;
 
   // fingers
   const fingers = Array.from({ length: MAX_F }, () => ({
@@ -238,36 +238,40 @@ export function create(ctx) {
   const wordsLayer = () => (thought && !thought.draw && ctx.thoughtLayer?.plateFor ? ctx.thoughtLayer : null);
   const layerDrawn = () => !!thought && !thought.draw;
 
-  /** The words plate (w, h) the thought will show: W2's layer measures it; else 17 → 15 px on ≤ 2 lines at 210 px. */
-  function measurePlate(r) {
+  /**
+   * The words plate (w, h, fit) the thought will show on ≤ `lines` lines: W2's layer measures it; else 17 → 15 px at
+   * 210 px (2 lines) or one wide line (a short landscape screen).
+   */
+  function measurePlate(r, lines = 2) {
     const tok = thought ? (thought.token || words?.token || '') : '';
-    wordsFit = null;
     if (!tok) return null;
-    const L = wordsLayer();
+    const L = wordsLayer(), wide = Math.min(lines === 1 ? 440 : 232, freeW() - 2 * COVE.EDGE);
     if (L) {
-      const maxW = Math.min(232, freeW() - 2 * COVE.EDGE);
+      const maxW = wide;
       let P = null;
-      try { P = L.plateFor(thought, { lines: 2, maxW, r, z: 0 }); } catch { P = null; }
+      try { P = L.plateFor(thought, { lines, maxW, r, z: 0 }); } catch { P = null; }
       if (P && P.w > 0 && P.h > 0) {
-        wordsFit = { lines: 2, maxW };
+        const fit = { lines, maxW };
         // (the layer keeps more room between the thought and its words than this world's own 4 px: plan with it)
         const pad = Math.max(0, Math.ceil(Math.max(P.above || 0, P.below || 0) - (r + COVE.LABEL_GAP)));
-        return { w: Math.ceil(P.w), h: Math.ceil(P.h) + pad };
+        return { w: Math.ceil(P.w), h: Math.ceil(P.h) + pad, fit };
       }
     }
     try {
       measureG ||= makeCanvas(4, 4).getContext('2d');
       for (const px of [17, 16, 15]) {
         measureG.font = ctx.font(px, 700);
-        const ls = wrapLines(measureG, tok, 210);
-        if (ls.length <= 2 || px === 15) {
+        const maxT = lines === 1 ? wide - 24 : 210;
+        const ls = wrapLines(measureG, tok, maxT);
+        if (ls.length <= lines || px === 15) {
+          if (lines === 1 && ls.length > 1) return null;
           const n = Math.min(2, ls.length);
           let tw = 0; for (let k = 0; k < n; k++) tw = Math.max(tw, measureG.measureText(ls[k]).width);
-          return { w: Math.ceil(tw + 24), h: Math.ceil(n * 21.25 + 16) };
+          return { w: Math.ceil(tw + 24), h: Math.ceil(n * 21.25 + 16), maxT };
         }
       }
     } catch { /* estimate below */ }
-    return { w: Math.min(234, tok.length * 9 + 24), h: 58 };
+    return lines === 1 ? null : { w: Math.min(234, tok.length * 9 + 24), h: 58, maxT: 210 };
   }
 
   function layout(first = true) {
@@ -276,9 +280,14 @@ export function create(ctx) {
     layoutRest = rest; layoutBandB = bandBottom(); layoutFreeW = freeW();
     const rGuess = Math.max(22, Math.min(34, U * 0.085));
     const pl = measurePlate(rGuess);
-    plateW = pl?.w || 0; plateH = pl?.h || 0;
     const n = Math.min(7, photos?.n || 0);
-    plan = planCove({ W, H, band: ctx.band, mallow: rest, x1: layoutFreeW, plate: pl, n });
+    // (one wide line instead, only when two lines have no clear place: measured lazily)
+    const opts = { W, H, band: ctx.band, mallow: rest, x1: layoutFreeW, plate: pl, n };
+    plan = planCove(opts);
+    let use = pl;
+    if (!plan.clear && pl) { const pl1 = measurePlate(rGuess, 1); if (pl1) { plan = planCove({ ...opts, plate1: pl1 }); if (plan.lines === 1) use = pl1; } }
+    plateW = use?.w || 0; plateH = use?.h || 0; plateLines = plan.lines; plateText = use?.maxT || 210;
+    wordsFit = use?.fit || null;
     hero.ok = true; hero.cx = (plan.M.x0 + plan.M.x1) / 2; hero.top = plan.M.y0;
     tP.r = plan.home.r;
     // shells: keep their clocks across a re-plan
@@ -1049,9 +1058,11 @@ export function create(ctx) {
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     // the thought (the 2D placeholder draws itself; W2's layer draws its own)
     if (thought?.draw && tP.alpha > 0.003) {
-      const labelY = plan.side === 'above' ? -(tP.r + COVE.LABEL_GAP + (plateH || 58)) : tP.r * COVE.CRADLE_B + COVE.LABEL_GAP;
+      // (the plate as planned, relative to the thought: above, below, or beside it on a short landscape screen)
+      const P = plateRect(plan.side, tP.x, tP.y, tP.r, plateW || 234, plateH || 58, COVE.EDGE, plan.x1);
+      const labelY = P.y0 - tP.y, labelX = plan.side === 'right' || plan.side === 'left' ? (P.x0 + P.x1) / 2 - tP.x : 0;
       try {
-        thought.draw(g, tP.x, tP.y, 1, { tension: tP.tension, charge: 0, calm: tP.calm, reduced: rm, radius: tP.r, now, minX: COVE.EDGE, maxX: (plan?.x1 || W) - COVE.EDGE, labelWidth: 210, labelY, labelAlpha: labelK(), alpha: tP.alpha });
+        thought.draw(g, tP.x, tP.y, 1, { tension: tP.tension, charge: 0, calm: tP.calm, reduced: rm, radius: tP.r, now, minX: COVE.EDGE, maxX: (plan?.x1 || W) - COVE.EDGE, labelWidth: plateText, labelLines: plateLines, labelY, labelX, labelAlpha: labelK(), alpha: tP.alpha });
       } catch { /* placeholder only */ }
     }
     g.globalCompositeOperation = 'lighter';
@@ -1196,9 +1207,8 @@ export function create(ctx) {
       if (thought && tP.alpha > 0.1 && plan) {
         out.push({ x: tP.x - tP.r * 1.45, y: tP.y - tP.r - 4, w: tP.r * 2.9, h: tP.r * (1 + COVE.CRADLE_B) + 8, kind: 'thought' });
         if (plateW) {
-          const px = clamp(tP.x - plateW / 2, COVE.EDGE, plan.x1 - COVE.EDGE - plateW);
-          const py = plan.side === 'above' ? tP.y - tP.r - COVE.LABEL_GAP - plateH : tP.y + tP.r * COVE.CRADLE_B + COVE.LABEL_GAP;
-          out.push({ x: px, y: py, w: plateW, h: plateH, kind: 'thought' });
+          const P = plateRect(plan.side, tP.x, tP.y, tP.r, plateW, plateH, COVE.EDGE, plan.x1);
+          out.push({ x: P.x0, y: P.y0, w: plateW, h: plateH, kind: 'thought' });
         }
       }
       for (const s of shells) out.push({ x: s.x - s.hit, y: s.y - s.hit, w: s.hit * 2, h: s.hit * 1.8, kind: 'shell' });

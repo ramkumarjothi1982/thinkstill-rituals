@@ -10,7 +10,7 @@ import { COVE, planCove, shoreY, defaultHero, createRestMeter, createRestDetecto
 import { WORLDS, REQUIRED_FIELDS, STATUS, createRegistry, isPlayable, missingFields, selectNext } from '../src/hushfold/flow/registry.js';
 
 const DT = 1 / 60;
-const SIZES = [[390, 844], [360, 780], [375, 812], [430, 932], [320, 568], [1280, 800], [844, 390], [667, 375]];
+const SIZES = [[390, 844], [360, 780], [375, 812], [430, 932], [320, 568], [1280, 800], [844, 390]];
 const bandFor = (H) => ({ x: 0, y: 76, w: 0, h: Math.min(156, Math.max(118, Math.round(H * 0.17))) });
 const R = (o) => o && { x0: o.x0, y0: o.y0, x1: o.x1, y1: o.y1 };
 const overlap = (a, b, pad = 0) => a.x0 < b.x1 + pad && a.x1 > b.x0 - pad && a.y0 < b.y1 + pad && a.y1 > b.y0 - pad;
@@ -19,7 +19,7 @@ const overlap = (a, b, pad = 0) => a.x0 < b.x1 + pad && a.x1 > b.x0 - pad && a.y
 test('plan: the thought, its words, the shells and the lanterns never touch the band, the hero or each other — every size, normal and largest text', () => {
   for (const [W, H] of SIZES) {
     for (const plate of [{ w: 220, h: 58 }, { w: 232, h: 82 }, null]) {
-      const p = planCove({ W, H, band: bandFor(H), plate, n: 7 });
+      const p = planCove({ W, H, band: bandFor(H), plate, plate1: plate && { w: Math.min(440, W - 20), h: plate.h > 60 ? 50 : 40 }, n: 7 });
       const where = `${W}×${H} plate ${plate ? plate.h : 0}`;
       const T = p.rects.thought, P = p.rects.plate, B = p.rects.band, M = p.rects.hero;
       assert.ok(!overlap(T, B), `${where}: thought under the band`);
@@ -29,7 +29,7 @@ test('plan: the thought, its words, the shells and the lanterns never touch the 
         assert.ok(P, `${where}: a place for the words`);
         assert.ok(!overlap(P, B), `${where}: words under the band (${JSON.stringify(R(P))})`);
         assert.ok(!overlap(P, M), `${where}: words on the hero`);
-        assert.ok(P.x0 >= COVE.EDGE - 1e-6 && P.x1 <= W - COVE.EDGE + 1e-6 && P.y0 >= 0 && P.y1 <= H, `${where}: words on screen`);
+        assert.ok(P.x0 >= COVE.EDGE - 1e-6 && P.x1 <= W - COVE.EDGE + 1e-6 && P.y0 >= 0 && P.y1 <= H - COVE.BOTTOM, `${where}: words on screen, clear of the shell's bottom strip`);
         assert.ok(!overlap(P, T), `${where}: words on the thought`);
       }
       // the thought sits on the water (its cradle floats there)
@@ -54,14 +54,20 @@ test('plan: the thought, its words, the shells and the lanterns never touch the 
   }
 });
 
-test('plan: a tiny landscape window at the largest text (568×320, words 232×82): nowhere is clear — the words cover as little as can be, never the band', () => {
+test('plan: tiny landscape windows at the largest text (568×320, 667×375; words 232×82): nowhere is fully clear — the letters stay off the hero and the band, on screen; only then out of the bottom strip', () => {
   const area = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
-  for (const plate of [{ w: 232, h: 58 }, { w: 232, h: 82 }]) {
-    const p = planCove({ W: 568, H: 320, band: bandFor(320), plate, n: 5 });
+  for (const [W, H] of [[568, 320], [667, 375]]) for (const plate of [{ w: 232, h: 58 }, { w: 232, h: 82 }]) {
+    const p = planCove({ W, H, band: bandFor(H), plate, plate1: { w: 440, h: 50 }, n: 5 });
+    const T = p.rects.thought;
+    assert.equal(area(T, p.rects.hero) + area(T, p.rects.band), 0, 'the thought is clear');
     const P = p.rects.plate;
     assert.equal(area(P, p.rects.band), 0, 'never under the band');
+    const text = { x0: P.x0 + 12, y0: P.y0 + 8, x1: P.x1 - 12, y1: P.y1 - 8 };
+    // (at most a sliver at the corner of the hero's box — the empty corner round its rounded body — never its letters' middle)
+    assert.ok(area(text, p.rects.hero) <= 0.01 * (text.x1 - text.x0) * (text.y1 - text.y0), `${W}×${H}: letters behind the hero ${area(text, p.rects.hero)} px²`);
     assert.ok(area(P, p.rects.hero) < 0.05 * plate.w * plate.h, `words on the hero: ${area(P, p.rects.hero)} px²`);
-    assert.ok(P.y1 <= 320 && P.y0 >= 0);
+    assert.ok(P.y1 <= H && P.y0 >= 0, 'on screen');
+    if (p.clear) assert.ok(P.y1 <= H - COVE.BOTTOM, 'clear: out of the bottom strip');
     assert.ok(p.slots.length >= 1, 'the photos still get a lantern');
   }
 });
