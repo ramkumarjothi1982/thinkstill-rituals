@@ -4,13 +4,18 @@
 > **Hushmates — Send a feeling. See it differently.**
 > ONE FEELING. FIVE PERSPECTIVES. BACK TO YOU.
 
-**Status: Phase 3, staging prepared and rehearsed locally. Nothing is
-deployed, and nothing touches production.** The real Edge Function runs under
-Deno against local stand-ins for Supabase, and a staging kit checks the real
-platform once the owner sets it up (`docs/STAGING.md`, step by step). What needs
-the owner is in `docs/DECISIONS.md`, the remaining risks in `docs/RISKS.md`, the
-outstanding independent reviews in `docs/READINESS.md` §6, and the safety
-screen's plan in `docs/CRISIS_DETECTION.md`. Launch needs the owner's final approval.
+**Status: Phase 3b. Staging is approved, prepared and rehearsed; it is not yet verified on
+real infrastructure. Nothing is deployed, nothing touches production, and nothing is public.**
+- The whole staging topology has been rehearsed on one machine: the packed site on one host, and the real Edge Function under Deno on another, in front of stand-ins for Supabase.
+- The deploy and the checks run from the developer's cloud session as soon as the owner makes the staging accounts (`docs/STAGING_CLOUD.md`).
+- Where everything stands: **`docs/LAUNCH_READINESS.md`**, with technical, safety and legal readiness assessed separately.
+- The other key documents:
+  - what needs the owner: `docs/DECISIONS.md`;
+  - the reviews the law requires, and the smallest safe safety review: `docs/REVIEWS.md`;
+  - costs from 100 to 100,000 people: `docs/COSTS.md`;
+  - the risks, ranked by severity: `docs/RISKS.md`.
+
+Launch needs the owner's final approval.
 
 There are three experiences, kept strictly apart (`docs/ACCESS.md`):
 - **The customer app** (`app/`): sign in with an email code, an invitation the
@@ -216,11 +221,11 @@ Earlier screenshots are kept for comparison: Phase 1's customer app in
 
 | Real (built, and tested locally against real Postgres) | Not yet real |
 |---|---|
-| Every rule in Postgres functions with row locks and constraints: at most five people, no self-catch, one live hold, no duplicates, the 30-minute Mallow and the 24-hour homecoming by the scheduler, accurate counts. Differential-tested against the reference engine `core/relay.js` | **Supabase itself.** The same code runs against a local Postgres 16 and a local copy of Supabase Auth's endpoints. The real Edge Function entry point also runs under Deno, through a local stand-in for PostgREST, with the full E2E passing through it. The real platform needs the owner's account; `staging:check` then proves each piece there (`docs/STAGING.md`) |
+| Every rule in Postgres functions with row locks and constraints: at most five people, no self-catch, one live hold, no duplicates, the 30-minute Mallow and the 24-hour homecoming by the scheduler, accurate counts. Differential-tested against the reference engine `core/relay.js` | **Supabase and Cloudflare themselves.** The same code runs against a local Postgres 16 and a local copy of Supabase Auth's endpoints. The real Edge Function entry point also runs under Deno, through a local stand-in for PostgREST, with the full E2E passing through it. The staging topology is rehearsed across two hosts. The real platform needs the owner's accounts; `staging:deploy`, `staging:check` and `staging:e2e` then prove each piece there (`docs/STAGING_CLOUD.md`) |
 | Sign-in by email code, invitation (hashed, expiring, use-limited, rate-limited) and 18+; the same account on any device; identities ready for a future Hushmallow login | **Email delivery.** The local copy prints codes; real people need a custom SMTP provider (owner's approval) |
 | RLS on every table with no grants: browsers reach nothing directly. Words encrypted (AES-256-GCM) before they reach the database | |
 | The Mallow from Hushmates' own library, fitted to the words, the label and the Mallow's voice; AI behind a server-side switch with monthly AUD caps, daily limits and an atomic budget hold | **AI is off** (no provider configured, A$0 cap), as the owner asked |
-| Reports, automatic pausing, blocking, withdrawal, restricted accounts; the safety desk for moderators, with an activity log | A written escalation procedure and clinical review (`docs/READINESS.md`) |
+| Reports, automatic pausing, blocking, withdrawal, restricted accounts; the safety desk for moderators, with an activity log; a draft escalation procedure (`docs/ESCALATION.md`) | The independent safety review (Tier A, `docs/REVIEWS.md`) and named desk readers |
 | Export and deletion (words, account and sign-in); retention by schedule | |
 | Crisis support with Australian services, reviewed wording pending | |
 | | Changes reach the app by polling every 20 s; Realtime and push notifications later |
@@ -246,10 +251,13 @@ tests/       the reference engine, the real database (differential, races, acces
 tools/       build-app.mjs (app and desk builds, scan, deploy config), app-shots.mjs (end to end), sync-edge.mjs, shots.cjs (lab QA),
              pack-site.mjs (the static host's folder), staging-secrets.mjs, staging-preflight.mjs, staging-check.mjs (the real
              project, checked from outside), recovery-drill.mjs (a backup restored and read), safety-eval.mjs (the screen against
-             clinicians' labels)
+             a reviewer's labels; --sample for the Tier A sheet), staging-deploy.mjs (the guarded deploy), staging-env.mjs
+             (secrets from a root, SQL and keys through the Management API), staging-e2e.mjs (real browsers on staging;
+             --rehearse locally), cost-model.mjs (costs by scale)
 server/      … edge-local.ts (the real Edge Function under Deno), postgrest-emulator.mjs (a local stand-in for PostgREST)
-docs/        STAGING.md, DECISIONS.md, RISKS.md, READINESS.md, CRISIS_DETECTION.md, COSTS.md, BACKEND.md, ACCESS.md, RELAY.md,
-             SAFETY_AND_PRIVACY.md, SCENES.md, clinical/ (the blind phrasing sheet), evidence/, screenshots/
+docs/        LAUNCH_READINESS.md, STAGING_CLOUD.md, STAGING.md, DECISIONS.md, REVIEWS.md, RISKS.md, READINESS.md, COSTS.md,
+             CRISIS_DETECTION.md, ESCALATION.md, BACKEND.md, ACCESS.md, RELAY.md, SAFETY_AND_PRIVACY.md, SCENES.md,
+             clinical/ (the blind phrasing sheet and the Tier A sample), evidence/, screenshots/
 v1-messaging/  the superseded private-messaging prototype (archived)
 ```
 
@@ -262,8 +270,9 @@ v1-messaging/  the superseded private-messaging prototype (archived)
   - Account 1's Another Angle service was only read. Its adapter is written but never called (AI off, nothing configured).
 - No secrets in the browser (the build refuses them). The data keys live only in the Edge Function's secrets. No paid
   services, AI calls or email providers were used; nothing was deployed.
-- **Next steps need the owner** (`docs/DECISIONS.md`):
-  - a staging Supabase project and the deploy (`docs/STAGING.md`), then the staging check;
-  - an email provider;
-  - a clinical adviser, and the legal, privacy, accessibility and security reviews (`docs/READINESS.md` §6);
+- **Next steps need the owner** (`docs/DECISIONS.md`, `docs/LAUNCH_READINESS.md` §4):
+  - the staging accounts and the environment's secrets (`docs/STAGING_CLOUD.md`). The developer's session then deploys and verifies staging;
+  - Tier 0 and then a Tier A quote for the independent safety review (`docs/REVIEWS.md`). No review spend is authorised yet;
+  - the privacy basics, an email provider, and the beta's plan, before testers outside the team;
+  - the legal, accessibility and security reviews, before a public launch;
   - the final approval for launch.

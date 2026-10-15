@@ -2,7 +2,8 @@
 
 **Status: an assessment and a plan. Nothing in it is a clinical claim.** The
 safety screen has not been validated by a clinician. Until it is, it is a
-floor, and the app says so. ⚠️ **Clinical review: OUTSTANDING.**
+floor, and the app says so. ⚠️ **Independent safety review: OUTSTANDING** (the
+proportionate plan is in `REVIEWS.md`).
 
 ## 1. Why the current approach has reached its limit
 
@@ -157,19 +158,36 @@ How these were worked out:
 
 ## 8. What to do, in order
 
-1. **Now:** 🩺 engage a clinical adviser. Give them:
-   - the blind sheet, `docs/clinical/crisis-phrasings-for-review.csv`;
-   - the support screen wording;
-   - the `clinicianCandidates` notes in the fixture;
-   - this document.
+The review plan changed in Phase 3b: the owner did not approve the A$5,000–9,000
+two-clinician review. `REVIEWS.md` explains how that estimate was reached, and what
+replaces it.
 
-   Ask for two independent labellers.
-2. **When the labels are back:** run `node tools/safety-eval.mjs --labels`, agree the thresholds, and fix only what the numbers show, in one batch.
-3. **The check-in:** the clinical adviser's wording and routing (D2), then build it. A small change: one sheet and one rule set.
-4. **On staging:** trial `gte-small` in shadow mode: CPU time, region, and agreement with the labels.
-5. **Before launch:** the escalation procedure, the privacy-policy wording (APP 1.7), and the legal view on how the screen is described (TGA).
+1. **Now, free (Tier 0):**
+   - map the support screens, the Mallow library and the desk guide against Mindframe, #chatsafe and Samaritans' guidelines;
+   - fill in the NSQDMH self-assessment as a checklist;
+   - the owner runs eSafety's Safety by Design start-up tool.
+2. **Before anyone outside the team (Tier A):** one registered psychologist or AMHSW for 3.5–4.5 hours, after the owner approves a quote. They:
+   - label the 108-phrasing sheet (`docs/clinical/tier-a-sample-for-review.csv`, from `node tools/safety-eval.mjs --export <file> --sample`): all 54 undecided phrasings, plus 54 others;
+   - read every Mallow line;
+   - review the support wording, the check-in idea (D2) and `ESCALATION.md`;
+   - write a go/no-go memo.
 
-**Cost of the plan:** A$0 in services. The real cost is clinician time. Labelling 379 phrasings twice, agreeing thresholds and reviewing the wording is roughly 20–30 hours. That is about A$5,000–9,000 at common Australian consulting rates for psychologists. This is an estimate, not a quote: get quotes.
+   `node tools/safety-eval.mjs --labels <sheet>` then scores the screen on those phrasings. With one reviewer that is an expert review, not a validation.
+3. **When Tier A is back:** fix only what it found, in one batch, with the phrasings added to the fixture.
+4. **The check-in:** build it with Tier A's wording and routing (D2). A small change: one sheet and one rule set.
+5. **On staging:** trial `gte-small` in shadow mode: CPU time, region, and agreement with the labels.
+6. **Only on a trigger** (`REVIEWS.md` §5.4):
+   - Tier B: one clinician over the whole sheet, plus a lived-experience reviewer;
+   - Tier C: two clinicians label all 379 phrasings blind, the original design of step 5 in §3. That is needed before any measured safety claim, or before tuning against labels.
+7. **Before launch:** the escalation procedure signed off, the privacy-policy wording (APP 1.7), and the legal view on how the screen is described (TGA, consumer law).
+
+**Cost of the plan:** A$0 in services, and no AI calls. Reviewer time:
+- Tier 0: A$0;
+- Tier A: about A$1,155–1,530 excl. GST at the 2026-27 APS and AAPi rates;
+- Tier B: A$2,750–4,680;
+- Tier C: A$7,275–10,720.
+
+These are indicative figures from published rates, not quotes (`REVIEWS.md` §5).
 
 ## 9. Sources (seen 15 October 2026)
 

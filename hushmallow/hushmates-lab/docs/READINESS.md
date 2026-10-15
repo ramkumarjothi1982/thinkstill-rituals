@@ -9,7 +9,10 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
 review that hasn't happened yet (§6).
 
 Companion documents:
-- `STAGING.md`: the step-by-step staging set-up;
+- `LAUNCH_READINESS.md`: technical, safety and legal readiness, separately, and the pass/fail record;
+- `STAGING_CLOUD.md`: staging from the developer's cloud session (nothing on your computer);
+- `STAGING.md`: the step-by-step staging set-up from your computer;
+- `REVIEWS.md`: which reviews the law requires, and the smallest safe safety review;
 - `DECISIONS.md`: what needs the owner;
 - `RISKS.md`: the remaining risks;
 - `CRISIS_DETECTION.md`: the safety screen's plan;
@@ -38,7 +41,10 @@ Needs the owner, in order (`STAGING.md`):
 
 | Step | Who | Status |
 |---|---|---|
-| D1: a new Supabase organisation and project (Free, Sydney), and a separate free Cloudflare account | 🛑 owner | ⬜ |
+| D1 (✅ approved): a separate Supabase account and project (Free, Sydney), a separate free Cloudflare account and its Pages project (`STAGING_CLOUD.md` steps 1–3) | 🛑 owner | ⬜ |
+| The four secrets in the environment's settings, and the four allowed domains (`STAGING_CLOUD.md` steps 4–5), or the computer route below | 🛑 owner | ⬜ |
+| D4 (✅ approved): `staging:deploy`, `staging:check` and `staging:e2e` on the real project (`STAGING_CLOUD.md` step 7) | the developer's session | ⬜ |
+| **Or, from your computer (`STAGING.md`):** | | |
 | Secrets made on the owner's computer (`staging:secrets`) and kept in a password manager (D11) | 🛑 owner | ⬜ |
 | Extensions, `db push`, exposed schema, the scheduler's Vault settings | 🛑 owner (guided) | ⬜ |
 | Sign-in by email code: templates, OTP settings, Site URL | 🛑 owner (guided) | ⬜ |
@@ -46,7 +52,7 @@ Needs the owner, in order (`STAGING.md`):
 | `staging:check` passes (0 failed) and its report is shared | owner runs it | ⬜ |
 | The manual smoke test (`STAGING.md` part 10): both email templates send a code; a later sign-in works | owner, with two team members | ⬜ |
 | A backup made and the recovery drill passed | owner | ⬜ |
-| Before testers outside the team: D3 (Pro), D5 (email), D6 (clinical adviser), D12 (who answers the desk) | 🛑 owner | ⬜ |
+| Before testers outside the team: D6a–D6d (Tier 0, then the Tier A review), D3 (Pro), D5 (email), D7a (privacy basics), D12 (who answers the desk) | 🛑 owner | ⬜ |
 
 ## 1. Must be true before any real person signs in
 
@@ -156,7 +162,7 @@ These are questions for a lawyer, not conclusions:
    - the email provider;
    - Another Angle's provider, if AI is ever turned on.
 
-## 3. 🩺 Clinical safety review (before launch)
+## 3. 🩺 Independent safety review (Tier A before outside testers; `REVIEWS.md`)
 
 - The support screen's wording, and which lines appear for which kind of concern (crisis, someone in danger, abuse and violence, harassment, other).
 - The extra crisis rules Hushmates adds to the shared lexicon (`core/feeling-safety.js`): overdose, self-harm, "no point going on", "don't want to be here any more", and passive wishes not to be here ("I just want to disappear", "sleep and never wake up", "I wish I'd never been born", "everyone would be better off without me", "I'm a burden", "tired of being alive"). Methods said with intent ("I want to hang myself", "take all my pills tonight", "unalive myself") and someone else in danger ("my friend says she wants to die", "my daughter is cutting herself", shown the "Someone might be in danger" screen) were added after a fifth review. Crisis words win over abuse or bullying words in the same feeling. Every phrasing found so far, and the everyday sentences that must still be released, are in `tests/fixtures/mallow-probes.json`, with a `clinicianCandidates` list of about 55 phrasings that need a clinician's call ("I can't do this anymore", "I feel like dying", "part of me wants to die", "I just want to disappear for a while"…). Start the review from there.
@@ -164,7 +170,9 @@ These are questions for a lawyer, not conclusions:
   - The rules are frozen as the floor.
   - An "ask, don't guess" check-in covers the uncertain middle (D2).
   - A meaning-based check runs on Supabase itself, escalate-only and in shadow mode first.
-  - Changes are made only against labels two clinicians agree, on a blind sheet of all 379 known phrasings (`docs/clinical/crisis-phrasings-for-review.csv`, scored by `tools/safety-eval.mjs`).
+  - Changes are made only against an independent reviewer's labels:
+    - first one reviewer on the 108-phrasing sheet (Tier A);
+    - two clinicians on all 379 phrasings only when a trigger calls for it (`docs/clinical/crisis-phrasings-for-review.csv`, scored by `tools/safety-eval.mjs`).
   - No paid AI.
 - The Mallow library's rule that a death, harm at home, or health and mood never get "unfair load" lines (`NOT_CHORES` in `core/perspectives.js`), and whether it should be wider.
 - The escalation procedure (section 1) and the desk's urgent guidance.
@@ -200,15 +208,18 @@ Known limitations:
 
 ## 6. ⛔ Independent reviews: OUTSTANDING
 
-None of these has happened. Each is needed before a **public** launch. The ones
-marked "beta" are needed before anyone outside the team uses it. Costs are
-indicative (`COSTS.md`); decisions are in `DECISIONS.md`.
+None of these has happened, and no money is authorised for any of them.
+- Each is needed before a **public** launch.
+- The ones marked "beta" are needed before anyone outside the team uses it.
+
+Which are legally mandatory, which advisable and which optional is in `REVIEWS.md` §3.
+Most start with a free self-run step. Decisions are in `DECISIONS.md`.
 
 | Review | What it covers | Status | Needed before |
 |---|---|---|---|
-| 🩺 **Clinical safety** (D6) | Two clinicians label the blind phrasing sheet; acceptance thresholds; the support wording and lines; the check-in (D2); the escalation procedure; the Mallow library's lines; the desk's urgent guidance | ⛔ OUTSTANDING | **beta** (outside the team) |
+| 🩺 **Independent safety review, Tier A** (D6a–D6d) | One registered psychologist or AMHSW, 3.5–4.5 hours:<br>• crisis categories and 108 phrasings;<br>• every Mallow line;<br>• the support wording and the check-in (D2);<br>• the escalation procedure;<br>• a go/no-go memo.<br>Tier 0 (free) first. Tier B/C only on a trigger (`REVIEWS.md` §5) | ⛔ OUTSTANDING | **beta** (outside the team) |
 | ⚖️ **Privacy** (D7) | Privacy policy and collection notice (APP 5); a Privacy Impact Assessment; health information as sensitive information; retention; the automated decisions (the screen, pausing, Mallow lines) under APP 1.7 from 10 December 2026; overseas disclosure if AI is ever on (APP 8) | ⛔ OUTSTANDING | **beta** (collection notice); launch (the rest) |
 | ⚖️ **Legal** (D7, D8, D9) | Terms and community guidelines; Online Safety Act duties; the social media minimum age law and age assurance; "Share anonymously"; how the app describes itself (Australian Consumer Law, TGA); notifiable data breaches plan | ⛔ OUTSTANDING | launch |
 | ♿ **Accessibility** (D13) | WCAG 2.2 AA by an external auditor, with screen-reader and switch users; reduced motion; contrast; the share video's alternative | ⛔ OUTSTANDING | launch |
 | 🔐 **Security** (D14) | An external penetration test of staging: the Edge Function, sign-in, the desk, the static site; key handling and rotation | ⛔ OUTSTANDING | launch |
-| 👥 **Moderator wellbeing** (WHS) | Rotation, debriefs, access to support for whoever reads the desk | ⛔ OUTSTANDING | **beta** (outside the team) |
+| 👥 **Moderator wellbeing** (WHS: a legal duty once anyone else reads the desk) | A written risk assessment; rotation, debriefs, an opt-out and access to support for whoever reads the desk | ⛔ OUTSTANDING | **beta** (outside the team) |
