@@ -1,3 +1,4 @@
 2026-10-13 probe the live deployment before adding sign-in
 2026-10-13 probe the branch preview's /auth/callback after the sign-in merge
 2026-10-15 read-only probe: Supabase readiness, Workers' health, live version
+2026-10-15 read-only probe after the PR #13 merge: live app version, Pages deployments, production Worker health
