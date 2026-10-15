@@ -6,7 +6,7 @@ They are listed here so the suite is never reported as green when it is not.
 
 Last run: 2026-10-15, branch `claude/feel-something-v3`, `node cli/hm.mjs test guard unit` →
 **535 tests, 522 pass, 12 fail** (1 more is the summary line). Parity and property: see the v3 review
-(`output/feel-something-v3/qa/tests.txt`).
+(`output/feel-something-v3/qa/tests-parity-property.log`: 40 tests, 39 pass, 1 opt-in skipped, 0 fail).
 
 ## 1. Composer work in progress — 7 tests (pre-existing; not fixed here)
 

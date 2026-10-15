@@ -49,6 +49,7 @@ const lin = (h) => hex3(h).map((v) => Math.pow(v, 2.2));
 const mix3 = (a, c, k) => a.map((v, i) => v + (c[i] - v) * k);
 const smoother = (x) => { const t = clamp(x, 0, 1); return t * t * t * (t * (t * 6 - 15) + 10); };
 let MOTION = 1;                 // 1 full; the reduced-motion cut holds still framings and halves hops
+let TRAVEL = 1;                 // reduced motion: shorter journeys (hops in, lights rising, falls) and softer impacts
 
 // ------------------------------------------------------------ the cast --
 // seat: where each sits in the pile. Blubi and Loomi stand beside Noomi; the four who arrive
@@ -171,13 +172,13 @@ function mallowWorld(i, t) {
   if (c.id === 'blubi') {
     // a hop in from the left, landing beside Noomi on the bar
     const u = smoother((t - T.blubiJump) / (T.blubiLand - T.blubiJump));
-    return { X: lerp(-330, s.X, u), Y: 4 * 170 * u * (1 - u) * (t < T.blubiLand ? 1 : 0), Z: s.Z };
+    return { X: lerp(s.X - (s.X + 330) * TRAVEL, s.X, u), Y: 4 * 170 * TRAVEL * u * (1 - u) * (t < T.blubiLand ? 1 : 0), Z: s.Z };
   }
   if (c.id === 'loomi') {
     // drifts down like a cloud, a slow sway, settling on the beat
     const u = ease.outCubic(clamp((t - T.loomiFloat) / (T.loomiLand - T.loomiFloat), 0, 1));
     const sw = 26 * Math.sin((t - T.loomiFloat) * 4.4) * (1 - u) * MOTION;
-    return { X: s.X + sw, Y: 720 * (1 - u), Z: s.Z };
+    return { X: s.X + sw, Y: 720 * TRAVEL * (1 - u), Z: s.Z };
   }
   // the arrivals: a light rises from the lake, arcs over, becomes the Mallow, falls onto its seat
   const land = ARRIVE[c.id];
@@ -186,18 +187,18 @@ function mallowWorld(i, t) {
   const tp = topOf(s.on, land, s.dx);
   const end = { X: tp.X + s.dx, Y: tp.Y, Z: s.Z };
   const u = clamp((t - (land - 0.35)) / 0.35, 0, 1);         // the fall
-  const apex = { X: end.X, Y: end.Y + 330, Z: end.Z };
+  const apex = { X: end.X, Y: end.Y + 330 * TRAVEL, Z: end.Z };
   return { X: apex.X, Y: lerp(apex.Y, end.Y, u * u), Z: apex.Z };
 }
 
 function lightPath(i, t) {
   // the arriving light: from the lake (rise) over to just above its seat, by land − 0.35
   const c = CAST[i], land = ARRIVE[c.id];
-  const [X0, Z0] = RISE[c.id];
   const W = mallowWorld(i, land - 0.35);
+  const [X0, Z0] = TRAVEL === 1 ? RISE[c.id] : [lerp(W.X, RISE[c.id][0], TRAVEL), lerp(W.Z, RISE[c.id][1], TRAVEL)];
   const u = smoother((t - (land - 1.35)) / 1.0);
   const X = lerp(X0, W.X, u), Z = lerp(Z0, W.Z, u);
-  const Y = lerp(0, W.Y + COMPANION_H * 0.5, u) + Math.sin(Math.PI * u) * 260;
+  const Y = lerp(TRAVEL < 1 ? W.Y + COMPANION_H * 0.5 : 0, W.Y + COMPANION_H * 0.5, u) + Math.sin(Math.PI * u) * 260 * TRAVEL;
   return { X, Y, Z, u };
 }
 
@@ -232,14 +233,14 @@ function companionDof(i) {
     let inflate = 0.016 * P.breath * Math.sin(TAU * t * 0.4 + i) * a - 0.08 * P.shrink + 0.03 * (P.cheekPuff || 0);
     if (id === 'loomi') inflate += breathShape(t) * 1.1;
     inflate += breathShape(t) * 0.25 * (id !== 'loomi' ? 1 : 0) * (t > T.loomiLand ? 1 : 0);
-    const nuzzle = id === 'blubi' ? 0.03 * Math.sin((t - T.hug) * 9) * bump(t, T.hug, T.hug + 0.15, T.hug + 0.9, T.hug + 1.3) : 0;
+    const nuzzle = id === 'blubi' ? 0.03 * MOTION * Math.sin((t - T.hug) * 9) * bump(t, T.hug, T.hug + 0.15, T.hug + 0.9, T.hug + 1.3) : 0;
     return {
-      squash: kicks.value(t) + P.squashBias * 0.7 + P.droop * 0.05 + (t < arrive ? -0.12 : 0) * (top ? 1 : 0),
+      squash: kicks.value(t) * (0.4 + 0.6 * TRAVEL) + P.squashBias * 0.7 + P.droop * 0.05 + (t < arrive ? -0.12 : 0) * (top ? 1 : 0),
       inflate,
       lean: lean.value(t) + 0.002 * P.tiltBias + 0.012 * Math.sin(ph * 6 + i) * a + nuzzle,
       sway: P.tremble * 0.05 * Math.sin(t * 43 + i) * a + 0.04 * ring(t - arrive, 2.2, 0.3),
       shimmer: 0.7 * Math.exp(-Math.max(0, t - arrive) * 3) * (t > arrive ? 1 : 0), shimPhase: (t - arrive) * 14,
-      lift: sils[id].h * hops.value(t) * (MOTION < 1 ? 0.5 : 1),
+      lift: sils[id].h * hops.value(t) * (MOTION < 1 ? 0.35 : 1),
     };
   };
 }
@@ -295,7 +296,7 @@ function giftOrb(t, cam) {
   if (t < 18.95) {
     // given back: it floats down in front of the pile and stays, glowing softly
     const u = ease.outCubic(clamp((t - T.gift) / (T.giftLand - T.gift), 0, 1));
-    const P = { X: GIFT.X + 60 * Math.sin(u * Math.PI) * MOTION, Y: lerp(560, GIFT.Y, u) + 6 * Math.sin((t - T.gift) * 3) * MOTION * u, Z: GIFT.Z };
+    const P = { X: GIFT.X + 60 * Math.sin(u * Math.PI) * MOTION, Y: lerp(GIFT.Y + 490 * TRAVEL, GIFT.Y, u) + 6 * Math.sin((t - T.gift) * 3) * MOTION * u, Z: GIFT.Z };
     return orbScreen(P, cam, { kind: 0, reveal: 0, morph: 0, alpha: smoothstep(T.gift, T.gift + 0.25, t), seed: 0.5, glow: 0.45 + 0.1 * Math.sin((t - T.gift) * 2.4), flash: 0.25 * (1 - u), color: PEARL_ORB, R: GIFT.R });
   }
   // home to the lens: the opening frame
@@ -331,12 +332,12 @@ function returnOrb(i, t, cam) {
 // --------------------------------------------------------------- Noomi ---
 function noomiDof(t) {
   return {
-    squash: nb.squash.value(t) + nb.kicks.value(t) + 0.012 * Math.sin(t * 61) * nb.tremble(t),
+    squash: nb.squash.value(t) + nb.kicks.value(t) * (0.4 + 0.6 * TRAVEL) + 0.012 * Math.sin(t * 61) * nb.tremble(t),
     inflate: nb.inflate.value(t) + 0.02 * Math.sin(PH(t) * 5) * MOTION + breathShape(t) * 0.8,
     lean: nb.lean.value(t) + nb.nod(t),
     sway: nb.sway.value(t) + 0.04 * Math.sin(t * 47) * nb.tremble(t),
     shimmer: nb.shimmer(t), shimPhase: t * 14,
-    lift: (nb.hop.value(t) + nb.lift.value(t)) * (MOTION < 1 ? 0.5 : 1),
+    lift: (nb.hop.value(t) + nb.lift.value(t)) * (MOTION < 1 ? 0.35 : 1),
   };
 }
 function faceAt(t) {
@@ -475,6 +476,7 @@ let hook, hookEnd, whatever, forThat, talk, feel, meet, logo, think, tag;
 
 async function setup(stage) {
   MOTION = stage.motion === 'reduced' ? 0.35 : 1;
+  TRAVEL = stage.motion === 'reduced' ? 0.3 : 1;
   const R = stage.renderer;
   const url = (rel) => new URL(rel, import.meta.url).href;
   const [nClean, nNormal, nJson, nPristine] = await Promise.all([
