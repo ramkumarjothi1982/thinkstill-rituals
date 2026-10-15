@@ -23,16 +23,21 @@
 //   7. Deletion: each test person deletes their data; their sign-in is gone from Supabase Auth.
 //      Leftover invitations are revoked.
 //
-//   node tools/staging-check.mjs --project-ref <ref> [--quick]
+//   node tools/staging-check.mjs --project-ref <ref> [--site https://<name>.pages.dev] [--quick]
 //
-// It needs, in the environment (never on the command line, never committed):
-//   HUSHMATES_STAGING_ANON_KEY      the project's anon / publishable key (public)
-//   HUSHMATES_STAGING_SERVICE_KEY   the project's service role / secret key (admin: test accounts)
-//   HUSHMATES_ADMIN_PG              the database connection string, with sslmode=verify-full (docs/STAGING.md)
-// and the staging secrets file .data/staging.env (tools/staging-secrets.mjs).
+// It needs, in the environment (never on the command line, never committed), either
+//   on the owner's computer (docs/STAGING.md):
+//     HUSHMATES_STAGING_ANON_KEY      the project's anon / publishable key (public)
+//     HUSHMATES_STAGING_SERVICE_KEY   the project's service role / secret key (admin: test accounts)
+//     HUSHMATES_ADMIN_PG              the database connection string, with sslmode=verify-full
+//     and the staging secrets file .data/staging.env (tools/staging-secrets.mjs);
+//   or in a cloud session (docs/STAGING_CLOUD.md):
+//     SUPABASE_ACCESS_TOKEN           the staging-only account's token: SQL and the keys go through the
+//                                     Management API, after the same staging guard as the deploy
+//     HUSHMATES_STAGING_ROOT_SECRET   the staging keys are derived from it (with --site).
 // A full report is written to .data/staging-check-<time>.json (no secrets in it).
 
-import { mkdirSync, writeFileSync, realpathSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, realpathSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,10 +45,9 @@ import pg from 'pg';
 import { createFieldCrypt } from '../supabase/functions/_shared/fieldcrypt.js';
 import { createAdmin } from '../server/admin.mjs';
 import { keyHeaders } from '../supabase/functions/_shared/postgrest-db.js';
-import { readEnvFile, problemsWith, ENV_FILE } from './staging-secrets.mjs';
+import { resolveRun } from './staging-env.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const LOCAL = new Set(['127.0.0.1', 'localhost', '[::1]']);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -55,7 +59,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  *   waitForScheduler   watch the platform's scheduler end an expired offer (needs pg_cron)
  * @returns {Promise<{ ok: boolean, results: {area, what, status, detail}[] }>}
  */
-export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, secrets, origin, waitForScheduler = true, log = console, fetch: doFetch = globalThis.fetch,
+export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, db = null, secrets, secretsSource = 'file', origin, waitForScheduler = true, log = console, fetch: doFetch = globalThis.fetch,
   // tests only: a local stack's own scheduler stands in for pg_cron, with a shorter wait
   schedulerHere = null, schedulerMarginMs = 100000 } = {}) {
   url = String(url).replace(/\/+$/, '');
@@ -104,7 +108,7 @@ export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, secre
   check('database', 'a browser can’t read the tables (the private schema isn’t exposed)', [404, 406].includes(tables.status) && !Array.isArray(tables.body), `${tables.status} ${tables.text}`);
 
   // ------------------------------------------------------------------ 2 --
-  const pool = new pg.Pool({ connectionString: adminPg, max: 3 });
+  const pool = db || new pg.Pool({ connectionString: adminPg, max: 3 });
   const sql = async (q, p) => (await pool.query(q, p)).rows;
   const has = async (schema, name) => (await sql('select 1 from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = $1 and c.relname = $2', [schema, name])).length > 0;
   const keys = JSON.parse(secrets.HUSHMATES_DATA_KEYS);
@@ -185,7 +189,7 @@ export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, secre
     check('encryption', 'the feeling is stored locked (hmenc:v1:…), never readable', stored.length === 1 && stored[0].text_enc.startsWith('hmenc:v1:') && !stored[0].text_enc.includes('replaying'), stored[0]?.text_enc?.slice(0, 12));
     let opened = '';
     try { opened = stored[0] ? await crypt.decrypt(stored[0].text_enc) : ''; } catch (e) { opened = `(${e.message})`; }
-    check('encryption', 'the keys in .data/staging.env open it (they are the deployed keys: keep that file safe)', opened === MARK, opened.slice(0, 40));
+    check('encryption', secretsSource === 'root' ? 'the keys derived from the root secret open it (they are the deployed keys: keep the root secret safe)' : 'the keys in .data/staging.env open it (they are the deployed keys: keep that file safe)', opened === MARK, opened.slice(0, 40));
     // two people find it and answer at the same moment: both perspectives arrive, in different places
     const offers = await Promise.all([B, C].map((w) => rpc(w.token, 'findFeeling')));
     const holds = offers.map((o) => o.body?.result?.offer?.holdId);
@@ -214,7 +218,7 @@ export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, secre
 
     // ---------------------------------------------------------------- 6 --
     const tick = await http('/jobs/tick', { headers: { 'content-type': 'application/json', 'x-hushmates-job': secrets.HUSHMATES_JOB_SECRET }, body: {} });
-    check('scheduler', 'the job secret in .data/staging.env is the deployed one (the scheduler’s route answers it)', tick.status === 200 && tick.body?.ok === true, `${tick.status} ${tick.text.slice(0, 120)}`);
+    check('scheduler', `the job secret ${secretsSource === 'root' ? 'derived from the root secret' : 'in .data/staging.env'} is the deployed one (the scheduler’s route answers it)`, tick.status === 200 && tick.body?.ok === true, `${tick.status} ${tick.text.slice(0, 120)}`);
     if (waitForScheduler && (schedulerHere ?? await has('cron', 'job'))) {
       // A sends a second feeling; B is offered it and lets the offer lapse; the platform's scheduler ends it
       const limits = settings?.limits || {};
@@ -256,24 +260,16 @@ function runAsCommand() {
 if (runAsCommand()) {
   const arg = (name) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : undefined; };
   const ref = arg('project-ref') || '';
-  const env = process.env;
   const stop = (m) => { console.error(m); process.exit(2); };
-  if (!/^[a-z0-9]{20}$/.test(ref)) stop('Give the staging project’s reference: --project-ref <ref> (it must be the staging project, never production)');
-  if (!existsSync(ENV_FILE)) stop('No .data/staging.env: make it with tools/staging-secrets.mjs first.');
-  const secrets = readEnvFile();
-  const problems = problemsWith(secrets);
-  if (problems.length) stop(problems.map((p) => `✗ ${p}`).join('\n'));
-  for (const k of ['HUSHMATES_STAGING_ANON_KEY', 'HUSHMATES_STAGING_SERVICE_KEY', 'HUSHMATES_ADMIN_PG']) if (!env[k]) stop(`${k} isn’t set (see the top of this file)`);
-  let pgHost = '';
-  try { const u = new URL(env.HUSHMATES_ADMIN_PG); pgHost = u.hostname; if (!LOCAL.has(pgHost) && u.searchParams.get('sslmode') !== 'verify-full') stop('HUSHMATES_ADMIN_PG must use sslmode=verify-full (docs/STAGING.md, step 8)'); } catch { stop('HUSHMATES_ADMIN_PG isn’t a postgres:// address'); }
-  if (!LOCAL.has(pgHost) && !pgHost.includes(ref) && !/pooler\.supabase\.com$/.test(pgHost)) stop('HUSHMATES_ADMIN_PG doesn’t look like this project’s database');
-  if (/pooler\.supabase\.com$/.test(pgHost) && !String(new URL(env.HUSHMATES_ADMIN_PG).username).endsWith(`.${ref}`)) stop('HUSHMATES_ADMIN_PG is for a different project than --project-ref');
-  const origin = secrets.HUSHMATES_ALLOWED_ORIGINS.split(',')[0].trim();
-  const out = await runStagingCheck({ url: `https://${ref}.supabase.co`, anonKey: env.HUSHMATES_STAGING_ANON_KEY, serviceKey: env.HUSHMATES_STAGING_SERVICE_KEY,
-    adminPg: env.HUSHMATES_ADMIN_PG, secrets, origin, waitForScheduler: !process.argv.includes('--quick') });
+  let run;
+  try { run = await resolveRun({ ref, site: arg('site') }); } catch (e) { stop(`✗ ${e.message}`); }
+  const origin = run.secrets.HUSHMATES_ALLOWED_ORIGINS.split(',')[0].trim();
+  console.log(`Checking staging project ${ref} (database reached by ${run.via}; secrets from ${run.source === 'root' ? 'the root secret' : '.data/staging.env'}).`);
+  const out = await runStagingCheck({ url: `https://${ref}.supabase.co`, anonKey: run.anonKey, serviceKey: run.serviceKey,
+    adminPg: run.adminPg, db: run.db, secrets: run.secrets, secretsSource: run.source, origin, waitForScheduler: !process.argv.includes('--quick') });
   const file = join(ROOT, '.data', `staging-check-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify({ project: ref, at: new Date().toISOString(), ...out }, null, 2)}\n`, { mode: 0o600 });
+  writeFileSync(file, `${JSON.stringify({ project: ref, at: new Date().toISOString(), via: run.via, ...out }, null, 2)}\n`, { mode: 0o600 });
   const n = (s) => out.results.filter((r) => r.status === s).length;
   console.log(`\n${n('pass')} passed, ${n('fail')} failed, ${n('skip')} not checked here. Report: ${file}`);
   process.exit(out.ok ? 0 : 1);

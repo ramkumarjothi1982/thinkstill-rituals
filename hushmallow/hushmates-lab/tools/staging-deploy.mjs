@@ -10,7 +10,9 @@
 //   · the project is named like staging (contains "staging"), is in Sydney (ap-southeast-2) and healthy;
 //   · the access token can see NO project that isn't staging (so a token from the account that holds
 //     Hushmallow's production project is refused: make a separate Supabase account for staging);
-//   · .data/staging.env is complete, with AI off, and names the same site.
+//   · the staging secrets are complete, with AI off, and name the same site. They come from
+//     .data/staging.env on the owner's computer, or are derived from HUSHMATES_STAGING_ROOT_SECRET
+//     in a cloud session (tools/staging-env.mjs, docs/STAGING_CLOUD.md).
 //
 // What --apply does, each step idempotent (safe to run again):
 //   1. enables pg_cron and pg_net (as Supabase documents);
@@ -22,17 +24,22 @@
 //   5. sets the Edge Function's secrets from .data/staging.env;
 //   6. stores the scheduler's address and secret in Vault (as query parameters, never in the SQL text);
 //   7. deploys the Edge Function (the entry point and every file it imports, with verify_jwt off);
-//   8. builds the site for this project with its publishable key, and publishes it with wrangler
-//      (CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID set) or says where to upload it.
+//   8. builds the site for this project with its publishable key, and publishes it with wrangler to
+//      the Pages project the owner made (CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID set), or says
+//      where to upload it. It never creates a Pages project.
 //
 //   SUPABASE_ACCESS_TOKEN   a personal access token of the staging-only Supabase account
 //   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   optional: a token with "Cloudflare Pages: Edit" on the staging account
+//   HUSHMATES_STAGING_ROOT_SECRET   in a cloud session, instead of .data/staging.env
 // Nothing secret is printed. AI stays off. It never touches billing, and makes no paid change.
 
-import { readFileSync, existsSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { guardStaging, pagesProject } from './staging-env.mjs';
+
+export { createManagementApi } from './staging-env.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const WRANGLER = 'wrangler@4.146.0';                        // pinned (published 2026-10-01)
@@ -54,34 +61,6 @@ const EXTENSIONS_SQL = {
   pg_cron: 'create extension if not exists pg_cron with schema pg_catalog; grant usage on schema cron to postgres; grant all privileges on all tables in schema cron to postgres;',
   pg_net: 'create extension if not exists pg_net with schema extensions;',
 };
-
-/** A small client for the Management API endpoints this tool uses. Errors carry the status; secrets never appear in them. */
-export function createManagementApi({ token, base = 'https://api.supabase.com', fetch: doFetch = globalThis.fetch }) {
-  async function call(method, path, { json, form, query } = {}) {
-    const url = `${base}${path}${query ? `?${new URLSearchParams(query)}` : ''}`;
-    const headers = { authorization: `Bearer ${token}`, ...(json !== undefined ? { 'content-type': 'application/json' } : {}) };
-    const res = await doFetch(url, { method, headers, body: json !== undefined ? JSON.stringify(json) : form });
-    const text = await res.text();
-    let body = null;
-    try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-    if (!res.ok) throw Object.assign(new Error(`${method} ${path.replace(/\/v1\/projects\/[a-z]+/, '/v1/projects/<ref>')} answered ${res.status}: ${String(typeof body === 'string' ? body : body?.message || '').slice(0, 160)}`), { status: res.status });
-    return body;
-  }
-  return {
-    listProjects: () => call('GET', '/v1/projects'),
-    getProject: (ref) => call('GET', `/v1/projects/${ref}`),
-    apiKeys: (ref) => call('GET', `/v1/projects/${ref}/api-keys`),
-    query: (ref, query, parameters) => call('POST', `/v1/projects/${ref}/database/query`, { json: parameters ? { query, parameters } : { query } }),
-    getPostgrest: (ref) => call('GET', `/v1/projects/${ref}/postgrest`),
-    patchPostgrest: (ref, body) => call('PATCH', `/v1/projects/${ref}/postgrest`, { json: body }),
-    getAuth: (ref) => call('GET', `/v1/projects/${ref}/config/auth`),
-    patchAuth: (ref, body) => call('PATCH', `/v1/projects/${ref}/config/auth`, { json: body }),
-    listSecrets: (ref) => call('GET', `/v1/projects/${ref}/secrets`),
-    createSecrets: (ref, list) => call('POST', `/v1/projects/${ref}/secrets`, { json: list }),
-    deployFunction: (ref, slug, form) => call('POST', `/v1/projects/${ref}/functions/deploy`, { form, query: { slug } }),
-    getFunction: (ref, slug) => call('GET', `/v1/projects/${ref}/functions/${slug}`),
-  };
-}
 
 /** The entry point and every local file it imports, as paths relative to the project folder (as the Supabase CLI sends them). */
 export function functionFiles(entry = FUNCTION.entry, root = ROOT) {
@@ -118,15 +97,9 @@ export async function deployStaging({ api, ref, site, secrets, apply = false, mi
   const verb = apply ? 'done' : 'would';
 
   // ------------------------------------------------------------------ guards --
-  if (!/^[a-z]{20}$/.test(ref)) { say('the project reference', 'refused', 'it should be 20 lowercase letters'); return { ok: false, steps }; }
-  const project = await api.getProject(ref);
-  if (!/staging/i.test(project.name || '')) { say('the project is a staging project', 'refused', `it is named "${project.name}": staging projects have "staging" in their name`); return { ok: false, steps }; }
-  if (project.region !== 'ap-southeast-2') { say('the project is in Sydney', 'refused', `it is in ${project.region}`); return { ok: false, steps }; }
-  if (project.status && project.status !== 'ACTIVE_HEALTHY') { say('the project is running', 'refused', `its status is ${project.status} (resume it in the dashboard)`); return { ok: false, steps }; }
-  const visible = await api.listProjects();
-  const others = (visible || []).filter((p) => !/staging/i.test(p.name || ''));
-  if (others.length) { say('the access token reaches staging only', 'refused', `it can also reach ${others.length} other project(s). Use a separate Supabase account for staging, so a token can never touch production`); return { ok: false, steps }; }
-  say('the project is a staging project, in Sydney, and the token reaches nothing else', 'unchanged', project.name);
+  const guard = await guardStaging({ api, ref });
+  if (!guard.ok) { say('the project is staging, in Sydney, running, and the only one the token reaches', 'refused', guard.why); return { ok: false, steps }; }
+  say('the project is a staging project, in Sydney, and the token reaches nothing else', 'unchanged', guard.project.name);
   const siteOrigin = new URL(site).origin;
   if (!String(secrets.HUSHMATES_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).includes(siteOrigin)) { say('the secrets name this site', 'refused', `${siteOrigin} isn't in HUSHMATES_ALLOWED_ORIGINS`); return { ok: false, steps }; }
   if (secrets.HUSHMATES_AI_URL || secrets.HUSHMATES_AI_TOKEN) { say('AI stays off', 'refused', 'the secrets file sets AI: remove it'); return { ok: false, steps }; }
@@ -213,19 +186,25 @@ export async function deployStaging({ api, ref, site, secrets, apply = false, mi
   return { ok: !steps.some((s) => ['failed', 'refused'].includes(s.status)), steps };
 }
 
-/** Build dist/site for the project, then publish it with wrangler (Cloudflare Pages) if a token is set. */
-export function makePublisher({ pagesProject, env = process.env, run = spawnSync }) {
-  return async ({ supabaseUrl, anonKey }) => {
+/**
+ * Build dist/site for the project, then publish it with wrangler to the Pages project the owner
+ * made (CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID set). It never creates a project: the owner
+ * makes it in the Cloudflare dashboard (docs/STAGING_CLOUD.md), so it is theirs and its address is
+ * the one they saw; and deploying to an existing Pages project is a plain Pages deploy.
+ */
+export function makePublisher({ pagesProject: name, env = process.env, run = spawnSync, lookup = pagesProject }) {
+  return async ({ supabaseUrl, anonKey, site }) => {
     const { packSite } = await import('./pack-site.mjs');
     const out = join(ROOT, 'dist', 'site');
     packSite({ supabaseUrl, anonKey, out });
     if (!env.CLOUDFLARE_API_TOKEN || !env.CLOUDFLARE_ACCOUNT_ID) return { detail: `built ${relative(ROOT, out)}: upload it to the Pages project by hand (docs/STAGING.md part 7)` };
+    const found = await lookup({ token: env.CLOUDFLARE_API_TOKEN, accountId: env.CLOUDFLARE_ACCOUNT_ID, name });
+    if (!found.exists) return { failed: true, detail: `there is no Pages project called "${name}" on the Cloudflare account: make it in the dashboard first (docs/STAGING_CLOUD.md, step 3). This tool never creates one` };
+    if (site && found.subdomain && `https://${found.subdomain}` !== new URL(site).origin) return { failed: true, detail: `the Pages project "${name}" is at https://${found.subdomain}, not ${new URL(site).origin}: run again with --site https://${found.subdomain}` };
     const wr = (args) => run('npx', ['--yes', WRANGLER, ...args], { cwd: ROOT, encoding: 'utf8', env: { ...env, WRANGLER_SEND_METRICS: 'false' } });
-    const created = wr(['pages', 'project', 'create', pagesProject, '--production-branch', 'main']);
-    if (created.status !== 0 && !/already exists/i.test(`${created.stdout}${created.stderr}`)) return { failed: true, detail: `couldn't create the Pages project: ${(created.stderr || '').slice(-200)}` };
-    const dep = wr(['pages', 'deploy', out, '--project-name', pagesProject, '--branch', 'main', '--commit-dirty=true']);
+    const dep = wr(['pages', 'deploy', out, '--project-name', name, '--branch', found.productionBranch, '--commit-dirty=true']);
     if (dep.status !== 0) return { failed: true, detail: `wrangler pages deploy failed: ${(dep.stderr || '').slice(-200)}` };
-    return { detail: `built and published to the Pages project ${pagesProject}` };
+    return { detail: `built and published to the Pages project ${name} (${found.productionBranch})` };
   };
 }
 
@@ -236,15 +215,13 @@ function runAsCommand() {
 if (runAsCommand()) {
   const arg = (name) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : undefined; };
   const stop = (m) => { console.error(m); process.exit(2); };
-  const { readEnvFile, problemsWith, ENV_FILE } = await import('./staging-secrets.mjs');
+  const { stagingSecrets } = await import('./staging-env.mjs');
   const ref = arg('project-ref') || '';
   const site = arg('site') || '';
-  if (!process.env.SUPABASE_ACCESS_TOKEN) stop('SUPABASE_ACCESS_TOKEN isn’t set (a personal access token of the staging-only Supabase account; docs/STAGING.md)');
-  if (!/^https:\/\/[a-z0-9-]+\.pages\.dev$|^https:\/\/[a-z0-9.-]+$/i.test(site)) stop('Give the staging site: --site https://<name>.pages.dev');
-  if (!existsSync(ENV_FILE)) stop('No .data/staging.env: make it with tools/staging-secrets.mjs first.');
-  const secrets = readEnvFile();
-  const problems = problemsWith(secrets);
-  if (problems.length) stop(problems.map((p) => `✗ ${p}`).join('\n'));
+  if (!process.env.SUPABASE_ACCESS_TOKEN) stop('SUPABASE_ACCESS_TOKEN isn’t set (a personal access token of the staging-only Supabase account; docs/STAGING_CLOUD.md)');
+  if (!/^https:\/\/[a-z0-9.-]+$/i.test(site)) stop('Give the staging site: --site https://<name>.pages.dev');
+  let secrets;
+  try { ({ secrets } = stagingSecrets({ ref, site })); } catch (e) { stop(`✗ ${e.message}`); }
   const apply = process.argv.includes('--apply');
   const pagesProject = arg('pages-project') || new URL(site).hostname.replace(/\.pages\.dev$/, '');
   console.log(apply ? 'Deploying STAGING (approved for staging only).' : 'A dry run: reading only. Add --apply to make the changes.');

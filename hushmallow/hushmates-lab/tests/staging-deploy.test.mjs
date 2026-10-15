@@ -1,139 +1,24 @@
 // The staging deploy tool (tools/staging-deploy.mjs) against a local stand-in for Supabase's
-// Management API. The stand-in checks every request against the API's own OpenAPI document
-// (tools/vendor/supabase-management-api.subset.json: field names, types, limits, patterns),
-// runs SQL on a real, empty local database, and unpacks the function upload, so the tool is
-// tested before it ever meets the real API: its refusals, its dry run, a full deploy (the
-// migrations really applied), and a second run changing nothing.
+// Management API (tests/management-api-stand-in.mjs: every request checked against the API's own
+// OpenAPI document, SQL on a real, empty local database), so the tool is tested before it ever
+// meets the real API: its refusals, its dry run, a full deploy (the migrations really applied), a
+// second run changing nothing, and publishing only to a Pages project the owner made.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import http from 'node:http';
 import { readFileSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pg from 'pg';
-import { deployStaging, createManagementApi, functionFiles, AUTH_CONFIG } from '../tools/staging-deploy.mjs';
-import { PG_URL } from './backend-helpers.mjs';
+import { deployStaging, createManagementApi, functionFiles, AUTH_CONFIG, makePublisher } from '../tools/staging-deploy.mjs';
+import { standIn, emptyDatabase, TOKEN, REF, STAGING } from './management-api-stand-in.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SPEC = JSON.parse(readFileSync(join(ROOT, 'tools', 'vendor', 'supabase-management-api.subset.json'), 'utf8')).operations;
-const TOKEN = 'sbp_test_token_for_these_tests_only';
-const REF = 'stagingrefabcdefghij';
-
-/** A JSON Schema check, for the OpenAPI 3.0 subset the document uses. → a list of problems */
-function validate(schema, value, at = 'body') {
-  if (!schema) return [];
-  if (value === null) return schema.nullable || schema.type === 'null' ? [] : [`${at} is null`];
-  const out = [];
-  const t = schema.type;
-  const typeOk = !t || (t === 'integer' ? Number.isInteger(value) : t === 'number' ? typeof value === 'number' : t === 'array' ? Array.isArray(value)
-    : t === 'object' ? typeof value === 'object' && !Array.isArray(value) : typeof value === t);
-  if (!typeOk) return [`${at} should be ${t}`];
-  if (schema.enum && !schema.enum.includes(value)) out.push(`${at} is not one of ${schema.enum.join(', ')}`);
-  if (typeof value === 'number') {
-    if (schema.minimum !== undefined && value < schema.minimum) out.push(`${at} < ${schema.minimum}`);
-    if (schema.maximum !== undefined && value > schema.maximum) out.push(`${at} > ${schema.maximum}`);
-  }
-  if (typeof value === 'string') {
-    if (schema.minLength !== undefined && value.length < schema.minLength) out.push(`${at} too short`);
-    if (schema.maxLength !== undefined && value.length > schema.maxLength) out.push(`${at} too long`);
-    if (schema.pattern && !new RegExp(schema.pattern).test(value)) out.push(`${at} doesn't match ${schema.pattern}`);
-  }
-  if (Array.isArray(value) && schema.items) value.forEach((v, i) => out.push(...validate(schema.items, v, `${at}[${i}]`)));
-  if (t === 'object' || schema.properties) {
-    for (const k of schema.required || []) if (value[k] === undefined) out.push(`${at}.${k} is required`);
-    for (const [k, v] of Object.entries(value)) {
-      if (schema.properties?.[k]) out.push(...validate(schema.properties[k], v, `${at}.${k}`));
-      else if (schema.properties && schema.additionalProperties !== true && !schema.additionalProperties) out.push(`${at}.${k} is not a field the API knows`);
-    }
-  }
-  return out;
-}
-const paramsOk = (op, params) => op.parameters.filter((p) => p.in === 'path' || p.in === 'query').flatMap((p) => (params[p.name] === undefined
-  ? (p.required ? [`${p.name} missing`] : []) : validate(p.schema, params[p.name], p.name)));
-
-/** The stand-in. `project` is what GET /v1/projects/{ref} answers; `others` more projects the token can see. */
-async function standIn({ database, project, others = [] }) {
-  const pool = new pg.Pool({ connectionString: `${PG_URL}/${database}`, max: 2 });
-  const state = { postgrest: { db_schema: 'public,graphql_public', max_rows: 1000 }, auth: { site_url: 'http://localhost:3000', mailer_otp_length: 6, mailer_otp_exp: 3600, external_email_enabled: true }, secrets: [], functions: {}, problems: [], calls: [] };
-  const routes = [
-    ['GET /v1/projects', () => [200, [project, ...others]]],
-    ['GET /v1/projects/{ref}', () => [200, project]],
-    ['GET /v1/projects/{ref}/api-keys', () => [200, [{ name: 'default', type: 'publishable', api_key: 'sb_publishable_stand_in' }]]],
-    ['POST /v1/projects/{ref}/database/query', async (b) => [201, (await pool.query(b.query, b.parameters || [])).rows ?? []]],
-    ['GET /v1/projects/{ref}/postgrest', () => [200, state.postgrest]],
-    ['PATCH /v1/projects/{ref}/postgrest', (b) => [200, Object.assign(state.postgrest, b)]],
-    ['GET /v1/projects/{ref}/config/auth', () => [200, state.auth]],
-    ['PATCH /v1/projects/{ref}/config/auth', (b) => [200, Object.assign(state.auth, b)]],
-    ['GET /v1/projects/{ref}/secrets', () => [200, state.secrets.map(({ name }) => ({ name, value: 'hidden' }))]],
-    ['POST /v1/projects/{ref}/secrets', (b) => { for (const s of b) { state.secrets = state.secrets.filter((x) => x.name !== s.name); state.secrets.push(s); } return [201, null]; }],
-    ['GET /v1/projects/{ref}/functions/{function_slug}', (b, p) => (state.functions[p.function_slug] ? [200, state.functions[p.function_slug]] : [404, { message: 'not found' }])],
-  ];
-  const server = http.createServer(async (req, res) => {
-    const u = new URL(req.url, 'http://x');
-    const send = (status, body) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(body == null ? '' : JSON.stringify(body)); };
-    if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { message: 'Unauthorized' });
-    const chunks = [];
-    for await (const c of req) chunks.push(c);
-    const raw = Buffer.concat(chunks);
-    // which documented operation is this?
-    const opKey = Object.keys(SPEC).find((k) => {
-      const [m, p] = k.split(' ');
-      return m === req.method && new RegExp(`^${p.replace(/\{[^}]+\}/g, '[^/]+')}$`).test(u.pathname);
-    });
-    if (!opKey) { state.problems.push(`undocumented: ${req.method} ${u.pathname}`); return send(404, { message: 'no such endpoint' }); }
-    const op = SPEC[opKey];
-    const names = [...op.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
-    const values = new RegExp(`^${op.path.replace(/\{[^}]+\}/g, '([^/]+)')}$`).exec(u.pathname).slice(1);
-    const params = { ...Object.fromEntries(names.map((n, i) => [n, decodeURIComponent(values[i])])), ...Object.fromEntries(u.searchParams) };
-    const problems = paramsOk(op, params);
-    let body = null;
-    const ct = req.headers['content-type'] || '';
-    if (op.requestBody) {
-      if (ct.startsWith('multipart/form-data')) {
-        const form = await new Request('http://x', { method: 'POST', headers: { 'content-type': ct }, body: raw }).formData();
-        let meta = null;
-        try { meta = JSON.parse(form.get('metadata')); } catch { problems.push('metadata is not JSON'); }
-        const schema = op.requestBody.content['multipart/form-data'].schema;
-        problems.push(...validate(schema.properties.metadata, meta, 'metadata'));
-        const files = form.getAll('file').map((f) => ({ name: f.name, size: f.size }));
-        if (!files.length) problems.push('no files');
-        body = { meta, files, form };
-      } else {
-        try { body = JSON.parse(raw.toString('utf8')); } catch { problems.push('body is not JSON'); }
-        problems.push(...validate(op.requestBody.content['application/json'].schema, body));
-      }
-    }
-    state.calls.push(`${req.method} ${op.path}`);
-    if (problems.length) { state.problems.push(`${opKey}: ${problems.join('; ')}`); return send(400, { message: problems.join('; ') }); }
-    if (opKey === 'POST /v1/projects/{ref}/functions/deploy') {
-      const contents = {};
-      for (const f of body.form.getAll('file')) contents[f.name] = Buffer.from(await f.arrayBuffer());
-      state.functions[params.slug] = { slug: params.slug, name: body.meta.name, entrypoint_path: body.meta.entrypoint_path, verify_jwt: body.meta.verify_jwt, status: 'ACTIVE', version: 1, files: contents };
-      return send(201, { id: 'fn', slug: params.slug, version: 1, status: 'ACTIVE' });
-    }
-    const route = routes.find(([k]) => k === opKey);
-    try { const [status, out] = await route[1](body, params); send(status, out); } catch (e) { send(400, { message: e.message }); }
-  });
-  await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  return { base: `http://127.0.0.1:${server.address().port}`, state, pool, close: async () => { await new Promise((r) => server.close(r)); await pool.end(); } };
-}
-
-async function emptyDatabase() {
-  const name = `hm_deploy_${randomBytes(4).toString('hex')}`;
-  const admin = new pg.Client({ connectionString: `${PG_URL}/postgres` });
-  await admin.connect();
-  await admin.query(`create database ${name}`);
-  return { name, drop: async () => { await admin.query(`drop database if exists ${name} with (force)`); await admin.end(); } };
-}
 
 const SITE = 'https://hushmates-staging-test.pages.dev';
 const SECRETS = {
   HUSHMATES_DATA_KEYS: JSON.stringify({ k1: Buffer.alloc(32, 3).toString('base64') }), HUSHMATES_DATA_KEY_ID: 'k1',
   HUSHMATES_MAC_KEY: Buffer.alloc(32, 4).toString('base64'), HUSHMATES_JOB_SECRET: 'job-secret-for-these-tests-only', HUSHMATES_ALLOWED_ORIGINS: SITE,
 };
-const STAGING = { id: 'p1', ref: REF, name: 'hushmates-staging', region: 'ap-southeast-2', status: 'ACTIVE_HEALTHY', organization_id: 'o1' };
 const quiet = { log() {} };
 
 test('it refuses anything that isn’t clearly the staging project', async () => {
@@ -220,4 +105,30 @@ test('the stand-in refuses what the API would refuse (so the passes above mean s
     await assert.rejects(api.deployFunction(REF, 'hushmates', form), (e) => e.status === 400);
     assert.equal(s.state.problems.length, 5);                                  // (the wrong token is refused at the door, before any body check)
   } finally { await s.close(); await db.drop(); }
+});
+
+test('publishing: only to the Pages project the owner made, at the address they were given, on its production branch', async () => {
+  const env = { CLOUDFLARE_API_TOKEN: 'cf-test-token', CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32) };
+  const ran = [];
+  const run = (cmd, args) => { ran.push(args.join(' ')); return { status: 0, stdout: '', stderr: '' }; };
+  const site = 'https://hushmates-staging.pages.dev';
+  const opts = { supabaseUrl: `https://${REF}.supabase.co`, anonKey: 'sb_publishable_stand_in', site };
+  // no such project: it says so, and creates nothing (wrangler isn't even started)
+  let r = await makePublisher({ pagesProject: 'hushmates-staging', env, run, lookup: async () => ({ exists: false }) })(opts);
+  assert.equal(r.failed, true);
+  assert.match(r.detail, /make it in the dashboard first/);
+  assert.deepEqual(ran, []);
+  // Cloudflare gave the project another address: it stops and names it
+  r = await makePublisher({ pagesProject: 'hushmates-staging', env, run, lookup: async () => ({ exists: true, subdomain: 'hushmates-staging-7xq.pages.dev', productionBranch: 'main' }) })(opts);
+  assert.equal(r.failed, true);
+  assert.match(r.detail, /--site https:\/\/hushmates-staging-7xq\.pages\.dev/);
+  assert.deepEqual(ran, []);
+  // the project the owner made: a plain deploy to its production branch, never "project create"
+  r = await makePublisher({ pagesProject: 'hushmates-staging', env, run, lookup: async () => ({ exists: true, subdomain: 'hushmates-staging.pages.dev', productionBranch: 'production' }) })(opts);
+  assert.ok(!r.failed, r.detail);
+  assert.equal(ran.length, 1);
+  assert.match(ran[0], /^--yes wrangler@\S+ pages deploy \S+dist\/site --project-name hushmates-staging --branch production --commit-dirty=true$/);
+  assert.ok(!ran.some((a) => /project create/.test(a)));
+  // and the source never asks wrangler to create one
+  assert.ok(!/'project', 'create'/.test(readFileSync(join(ROOT, 'tools', 'staging-deploy.mjs'), 'utf8')));
 });

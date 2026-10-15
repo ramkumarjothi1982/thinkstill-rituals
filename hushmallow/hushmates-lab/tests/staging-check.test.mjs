@@ -8,13 +8,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDevStack } from '../server/dev-stack.mjs';
 import { runStagingCheck } from '../tools/staging-check.mjs';
 import { problemsWith, makeSecrets } from '../tools/staging-secrets.mjs';
 import { freshDb } from './backend-helpers.mjs';
+import { deriveSecrets, managementSql, createManagementApi } from '../tools/staging-env.mjs';
+import { standIn, TOKEN, REF, STAGING } from './management-api-stand-in.mjs';
 
 const ANON = 'hushmates-test-anon-key-0001';
 const DENO = process.env.HUSHMATES_DENO || 'deno';
@@ -54,6 +56,39 @@ test(`the staging check passes on the local stack (Edge Function under ${edge}),
     assert.equal(again.ok, false);
     assert.ok(again.results.some((r) => r.status === 'fail' && /keys in .data\/staging.env open it/.test(r.what)));
   } finally {
+    await s.close();
+    await db.drop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the staging check as a cloud session runs it: keys derived from the root secret, SQL through the Management API', { timeout: 180e3 }, async () => {
+  const db = await freshDb();
+  const dir = mkdtempSync(join(tmpdir(), 'hushmates-check-'));
+  const port = await freePort();
+  // the "deployed" function holds the keys derived from the root, as tools/staging-deploy.mjs would set them
+  const root = 'q7Vd-Lm2#xR9pT4!wZ6nB8@kH3sJ5cF1yG0uE-test-only';
+  const d = deriveSecrets({ root, ref: REF, origin: 'https://hushmates-staging.pages.dev' });
+  const keysFile = join(dir, 'keys.json');
+  writeFileSync(keysFile, JSON.stringify({ dataKeyId: 'k1', dataKey: JSON.parse(d.HUSHMATES_DATA_KEYS).k1, macKey: d.HUSHMATES_MAC_KEY, jobSecret: d.HUSHMATES_JOB_SECRET, serviceKey: 'sb_secret_dev_root_mode_test_000001' }));
+  const s = await startDevStack({ port, pool: db.pool, anonKey: ANON, keysFile, quiet: true, log: { error() {}, log() {} }, tickMs: 3600e3, edge, deno: DENO });
+  const api = await standIn({ connectionString: db.url, project: STAGING });
+  try {
+    const secrets = { ...d, HUSHMATES_ALLOWED_ORIGINS: s.origin };
+    const lines = [];
+    const out = await runStagingCheck({ url: s.origin, anonKey: ANON, serviceKey: s.keys.serviceKey, db: managementSql({ api: createManagementApi({ token: TOKEN, base: api.base }), ref: REF }),
+      secrets, secretsSource: 'root', origin: s.origin, log: { log: (l) => lines.push(l) } });
+    assert.deepEqual(out.results.filter((r) => r.status === 'fail'), [], lines.join('\n'));
+    const passed = out.results.filter((r) => r.status === 'pass').map((r) => r.what);
+    for (const must of ['row level security is on for every Hushmates table', 'the keys derived from the root secret open it (they are the deployed keys: keep the root secret safe)',
+      'the job secret derived from the root secret is the deployed one (the scheduler’s route answers it)', 'the same feeling sent five times at once is stored once']) {
+      assert.ok(passed.includes(must), `not checked: ${must}\n${lines.join('\n')}`);
+    }
+    assert.equal(out.results.filter((r) => r.area === 'deletion' && r.status === 'pass').length, 4, lines.join('\n'));
+    assert.deepEqual(api.state.problems, [], 'a query the Management API would refuse');
+    assert.ok(api.state.calls.filter((c) => c.endsWith('/database/query')).length > 10);
+  } finally {
+    await api.close();
     await s.close();
     await db.drop();
     rmSync(dir, { recursive: true, force: true });

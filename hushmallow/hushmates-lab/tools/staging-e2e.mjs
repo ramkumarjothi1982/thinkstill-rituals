@@ -10,8 +10,9 @@
 // where it was verified: "staging" only when it ran against the real project.
 //
 //   node tools/staging-e2e.mjs --project-ref <ref> --site https://<name>.pages.dev
-//       needs HUSHMATES_STAGING_ANON_KEY, HUSHMATES_STAGING_SERVICE_KEY, HUSHMATES_ADMIN_PG and .data/staging.env,
-//       as tools/staging-check.mjs does; about 10 minutes
+//       needs what tools/staging-check.mjs needs: on the owner's computer the keys, HUSHMATES_ADMIN_PG and
+//       .data/staging.env; in a cloud session SUPABASE_ACCESS_TOKEN and HUSHMATES_STAGING_ROOT_SECRET
+//       (tools/staging-env.mjs). About 10 minutes
 //   node tools/staging-e2e.mjs --rehearse      the same run on this machine: the packed site on one local host,
 //       the local stack standing in for Supabase on another (labelled "local-rehearsal", never "staging")
 //
@@ -53,7 +54,7 @@ const PROBE = '<img src=x onerror="window.__pwned=1">I feel left out at work lat
  *   out           where the report and screenshots go
  *   timings       { fallbackAfterMs, journeyTtlMs, waitMs } for this run
  */
-export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, serviceKey, adminPg, secrets, out, timings = {}, log = console } = {}) {
+export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, serviceKey, adminPg, db = null, secrets, out, timings = {}, log = console } = {}) {
   site = String(site).replace(/\/+$/, '');
   supabaseUrl = String(supabaseUrl).replace(/\/+$/, '');
   const T = { fallbackAfterMs: 60e3, journeyTtlMs: 180e3, waitMs: 150e3, ...timings };
@@ -82,7 +83,7 @@ export async function runStagingE2E({ environment, site, supabaseUrl, anonKey, s
     method: 'POST', headers: { 'content-type': 'application/json', apikey: anonKey, ...(token ? { authorization: `Bearer ${token}` } : {}), ...(from ? { origin: from } : {}), 'x-hushmates': '1' }, body: { args },
   });
 
-  const pool = new pg.Pool({ connectionString: adminPg, max: 3 });
+  const pool = db || new pg.Pool({ connectionString: adminPg, max: 3 });
   const sql = async (q, p) => (await pool.query(q, p)).rows;
   const crypt = await createFieldCrypt({ keys: JSON.parse(secrets.HUSHMATES_DATA_KEYS), current: secrets.HUSHMATES_DATA_KEY_ID, macKey: secrets.HUSHMATES_MAC_KEY });
   const admin = createAdmin({ db: pool, crypt });
@@ -523,20 +524,17 @@ if (runAsCommand()) {
   if (process.argv.includes('--rehearse')) {
     r = await rehearse({ out: arg('out') || join(ROOT, '.data', `staging-e2e-rehearsal-${stamp}`) });
   } else {
-    const { readEnvFile, problemsWith, ENV_FILE } = await import('./staging-secrets.mjs');
+    const { resolveRun } = await import('./staging-env.mjs');
     const ref = arg('project-ref') || '';
     const site = arg('site') || '';
     const stop = (m) => { console.error(m); process.exit(2); };
-    if (!/^[a-z0-9]{20}$/.test(ref)) stop('Give the staging project’s reference: --project-ref <ref> (never production)');
     if (!/^https:\/\/[a-z0-9.-]+$/i.test(site)) stop('Give the staging site: --site https://<name>.pages.dev');
-    if (!existsSync(ENV_FILE)) stop('No .data/staging.env (tools/staging-secrets.mjs).');
-    const secrets = readEnvFile();
-    const problems = problemsWith(secrets);
-    if (problems.length) stop(problems.map((p) => `✗ ${p}`).join('\n'));
-    if (!secrets.HUSHMATES_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).includes(site)) stop(`${site} isn’t in HUSHMATES_ALLOWED_ORIGINS: the function would refuse the app`);
-    for (const k of ['HUSHMATES_STAGING_ANON_KEY', 'HUSHMATES_STAGING_SERVICE_KEY', 'HUSHMATES_ADMIN_PG']) if (!process.env[k]) stop(`${k} isn’t set`);
-    r = await runStagingE2E({ environment: 'staging', site, supabaseUrl: `https://${ref}.supabase.co`, anonKey: process.env.HUSHMATES_STAGING_ANON_KEY,
-      serviceKey: process.env.HUSHMATES_STAGING_SERVICE_KEY, adminPg: process.env.HUSHMATES_ADMIN_PG, secrets, out: arg('out') || join(ROOT, '.data', `staging-e2e-${stamp}`) });
+    let run;
+    try { run = await resolveRun({ ref, site }); } catch (e) { stop(`✗ ${e.message}`); }
+    if (!run.secrets.HUSHMATES_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).includes(site)) stop(`${site} isn’t in HUSHMATES_ALLOWED_ORIGINS: the function would refuse the app`);
+    console.log(`The browser E2E on staging project ${ref} and ${site} (database reached by ${run.via}).`);
+    r = await runStagingE2E({ environment: 'staging', site, supabaseUrl: `https://${ref}.supabase.co`, anonKey: run.anonKey,
+      serviceKey: run.serviceKey, adminPg: run.adminPg, db: run.db, secrets: run.secrets, out: arg('out') || join(ROOT, '.data', `staging-e2e-${stamp}`) });
   }
   console.log(`\n${r.environment === 'staging' ? 'VERIFIED ON STAGING' : 'LOCAL REHEARSAL (not staging)'}: ${r.passed} passed, ${r.failed} failed. Report: report.md and report.json, with the screens.`);
   process.exit(r.failed ? 1 : 0);

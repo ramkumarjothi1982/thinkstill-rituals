@@ -16,6 +16,9 @@ How to read this guide:
 - ✅ **Check:** what you should see before going on. If you don't, stop and see *If something goes wrong* at the end.
 - 🔒 **Secret:** never paste it into a chat, an email or a document. It goes only where the step says.
 
+Prefer not to install anything? `STAGING_CLOUD.md` does the same from the developer's
+cloud session.
+
 Each of these is a separate approval (see `DECISIONS.md`):
 - creating the accounts (part 2);
 - deploying the Edge Function (part 6);
@@ -291,16 +294,15 @@ keys is unreadable. The keys without a backup are useless.
 
 ---
 
-## Optional · Letting the developer's cloud session run the check
+## Or · Let the developer's cloud session do all of it
 
-The simplest and safest way is to run part 9 on your computer and share the report.
+`STAGING_CLOUD.md` is the same staging, set up from the cloud session instead of
+your computer:
+- you make the accounts, two tokens and one root secret;
+- you put them in the environment's secret settings, never in the chat;
+- the session deploys, then runs the staging check and the browser E2E.
 
-If you'd rather the cloud session ran it:
-1. 🔒 Add `HUSHMATES_STAGING_ANON_KEY`, `HUSHMATES_STAGING_SERVICE_KEY` and `HUSHMATES_ADMIN_PG` as secrets in the environment's settings. That's the cloud environment menu in the session's title bar, then *Edit*. Never paste them into the chat.
-2. Allow these two hosts under *Network access → Allowed domains*:
-   - `<project reference>.supabase.co`;
-   - the pooler host from part 8, step 2.
-3. The check also needs `.data/staging.env`, which holds the data keys. Keeping those only on your computer is safer.
+Nothing needs installing on your computer.
 
 ---
 

@@ -23,7 +23,7 @@ The recommendation is the developer's; the choice is yours. Costs are in A$
 
 | # | Decision | Recommendation | Cost |
 |---|---|---|---|
-| **D15** | How the staging deploy and tests run | **In the cloud session** (`STAGING_CLOUD.md`): you add four secrets and five allowed domains, and nothing has to be installed on your computer. Or on your computer (`STAGING.md`), sharing the reports | A$0 |
+| **D15** | How the staging deploy and tests run | **In the cloud session** (`STAGING_CLOUD.md`): you add four secrets and four allowed domains, and nothing has to be installed on your computer. Or on your computer (`STAGING.md`), sharing the reports | A$0 |
 | **D11** | Who holds the staging root secret (it unlocks every stored staging word) | You, in your password manager; a second named person once the beta has real people | A$0 |
 
 ## Before testers outside the team
