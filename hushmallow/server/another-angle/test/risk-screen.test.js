@@ -119,3 +119,44 @@ test('pipeline: risk words hidden in previous_angles never reach the model; the 
     assert.ok(r.level !== 'crisis' && r.level !== 'care', `a real model line reads as ${r.level}: ${l}`);
   }
 });
+
+// (fix round, 15 Oct 2026; security finding 1) obfuscated risk words reached the model: lookalike letters, invisible characters,
+// combining marks and spaced or split key words. The shared normaliser now reads them, so the lexicon on the normalised words
+// stops them before any model call.
+test('screenInput: obfuscated self-harm words read as crisis or care, never sent to the model', async () => {
+  const hidden = ['і wаnt tо kіll mysеlf', 'ᴋɪʟʟ ᴍʏsᴇʟꜰ tonight', 'i want to ｋｉｌｌ ｍｙｓｅｌｆ', 'su\u{E0069}\u{E0063}icidal', 'i want to ki️ll myself',
+    'i want to kiㅤll myself', 'i want to k҉ill myself', 'k i l l m y s e l f', 'im gonna k.m.s', 'i want to ki ll myself', 'i want to k‑i‑l‑l myself'];
+  for (const t of hidden) {
+    const r = screenInput(t);
+    assert.ok(r.level === 'crisis' || r.level === 'care', `${JSON.stringify(t)}: ${r.level}`);
+    const provider = createMockProvider({ script: [anchor(1)] });
+    const out = await runAngle(input(t), deps(provider));
+    assert.equal(provider.calls.length, 0, JSON.stringify(t));
+    assert.ok(out.status === 'crisis' || out.status === 'care');
+  }
+});
+
+test('screenInput: the check-in tier (one risk concept) asks the model with the note; abuse is the check-in, never the screener\'s care', async () => {
+  for (const t of ['keep walking up to the viaduct at night and staring down', "can't imagine still being alive at thirty", 'coach makes me promise to keep what happens after practice between us']) {
+    assert.equal(riskScreen(t).level, 'check', t);
+    const r = screenInput(t);
+    assert.equal(r.check, true, t);
+    const provider = createMockProvider({ script: [anchor(1)] });
+    const out = await runAngle(input(t), deps(provider));
+    assert.ok(provider.calls.length >= 1 && provider.calls[0].user.includes(RISK_CHECK_NOTE), t);
+    assert.equal(out.keep_support_close, true);
+  }
+  // abuse: the screener's reading is the check-in only (the lexicon's own abuse care, where it reads one, stands)
+  for (const t of ['my stepmum shuts me in the box room whenever she leaves the house', 'after lights out my uncle sneaks into my bedroom and makes me promise to keep it between us']) {
+    assert.equal(riskScreen(t).level, 'check', t);
+    const r = screenInput(t);
+    assert.ok(r.check || (r.level === 'care' && r.source === 'lexicon'), `${t}: ${JSON.stringify(r)}`);
+  }
+  // a combination is care: no model call
+  for (const t of ['ordered some rope online. nobody knows', "i've stashed a razor blade in my makeup bag for when things get too much"]) {
+    const provider = createMockProvider({ script: [anchor(1)] });
+    const out = await runAngle(input(t), deps(provider));
+    assert.equal(provider.calls.length, 0, t);
+    assert.ok(out.status === 'care' || out.status === 'crisis', `${t}: ${out.status}`);
+  }
+});
