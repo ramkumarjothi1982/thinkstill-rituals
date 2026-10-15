@@ -307,8 +307,9 @@ test('open mouths use the colours painted in the high-res art', () => {
   }
 });
 
-test('the live registry runs on the verified high-res rigs; pipzi and loomi keep their drawings; ?hires=0 keeps all seven', async () => {
-  assert.deepEqual(HIRES_VERIFIED, ['glitzi', 'zuzu', 'boppo', 'blubi', 'noomi'], 'owner decision A-1: five switch now');
+test('the live registry runs on the verified high-res rigs; the others keep their drawings; ?hires=0 keeps all seven', async () => {
+  // owner decision A-1 (five), then A-2: the browless cyan drawing is Loomi (workstream hires-loomi)
+  for (const id of ['glitzi', 'zuzu', 'boppo', 'blubi', 'noomi', 'loomi']) assert.ok(HIRES_VERIFIED.includes(id), `${id} verified`);
   assert.deepEqual(HIRES_ON, HIRES_VERIFIED, 'the registry applied exactly HIRES_VERIFIED');
   for (const id of HIRES_VERIFIED) {
     const m = MALLOWS[id], h = HIRES[id];
@@ -321,7 +322,7 @@ test('the live registry runs on the verified high-res rigs; pipzi and loomi keep
     assert.deepEqual(JSON.parse(JSON.stringify(m.face)), h.face, `${id} face`);
     for (const k of Object.values(m.face.eyes).map((e) => e.iris || e.sprite)) assert.ok(SPRITES[k], `${id} sprite ${k}`);
   }
-  for (const id of ['pipzi', 'loomi']) {
+  for (const id of MALLOW_IDS.filter((x) => !HIRES_VERIFIED.includes(x))) {
     const m = MALLOWS[id];
     assert.ok(!m.hires && !m.art && !m.res, `${id} stays on its drawing`);
     assert.match(m.file, new RegExp(`/assets/mallows/${id}\\.png$`));
@@ -436,5 +437,43 @@ test('iris sprites carry no sclera (no pale crescent, nothing past rc)', () => {
     assert.ok(c, `${k} checked`);
     assert.ok(c.paleOutside <= 10, `${k}: ${c.paleOutside} pale px past rc`);
     assert.ok(c.paleRimSector <= 100, `${k}: a pale crescent on the rim (${c.paleRimSector} px in one 30 degree sector)`);
+  }
+});
+
+// ---- Loomi (workstream hires-loomi): the owner-approved browless cyan drawing
+test('Loomi runs on its approved high-res drawing: browless at rest, its own silhouette and colours', () => {
+  const m = MALLOWS.loomi, h = HIRES.loomi;
+  assert.ok(m.hires && m.art === h.art && m.file === h.file && m.res === h.res, 'switched');
+  // the approved drawing: wider than tall (the old drawing was 363 x 388), 1024 px art
+  assert.ok(m.size[0] > m.size[1], `size ${m.size}`);
+  // browless at rest, as drawn: the brows exist only for expressions that raise browAlpha
+  const rest = resolveExpression(m, { neutral: 1 }, 0);
+  assert.equal(m.face.brows.L.alpha, 0);
+  assert.equal(m.face.brows.R.alpha, 0);
+  assert.ok(rest.browAlpha <= 0.05, `rest browAlpha ${rest.browAlpha}`);
+  // closed, smiling eyes at rest; the cyan family's navy line and pink cheeks
+  assert.equal(m.face.eyeStyle, 'closed');
+  assert.equal(rest.eyeOpen, 0);
+  assert.ok(rest.mouthSmile > 0.9);
+  assert.equal(m.face.line, OLD.loomi.face.line);
+  assert.equal(m.face.cheeks.colour, OLD.loomi.face.cheeks.colour);
+  assert.ok(SPRITES['hires:iris-navy'], 'its iris sprite is registered');
+});
+
+test('Loomi on the concerned stage never grins, and its rest face matches the art', () => {
+  const m = MALLOWS.loomi, st = STAGES.concerned;
+  const P = resolveExpression(m, st.mix, st.intensity, st.extra);
+  assert.ok(P.mouthSmile <= 0.3, `concerned smile ${P.mouthSmile}`);
+  assert.ok(P.mouthOpen <= 0.05, `concerned mouth ${P.mouthOpen}`);
+  assert.equal(P.tongue, 0);
+  // the rest-jump metric of the lab (README table): high-res Loomi 3.59 vs 6.31 on the old drawing
+  const J = JSON.parse(readFileSync(new URL('../tools/hires/data/loomi-sweep.json', import.meta.url), 'utf8'));
+  assert.ok(J.jump.new.mean < J.jump.old.mean && J.jump.new.mean < 5, `rest jump ${J.jump.new.mean}`);
+  assert.equal(J.overflow.new.worstPx, 0, 'no drawn face pixel outside the body, any preset, stage or reaction');
+  for (const r of J.app) {
+    assert.deepEqual(r.errs, [], `${r.tag} page errors`);
+    assert.equal(r.art.natural, 1024, `${r.tag} rig art`);
+    assert.equal(r.hscroll + r.panelHscroll + r.mallowsHscroll, 0, `${r.tag} horizontal scroll`);
+    for (const k of ['concernedSqueeze', 'concernedAfter', 'concernedTap']) assert.ok(r[k].smile <= 0.3 && r[k].open <= 0.12, `${r.tag} ${k} ${JSON.stringify(r[k])}`);
   }
 });
