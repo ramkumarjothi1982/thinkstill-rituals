@@ -87,7 +87,14 @@ test('ESCALATION.md §2 says what reporters are told, that there are no alerts, 
     assert.ok(sql.includes(p), `the database says "${p}"`);
     assert.ok(relay.includes(p), `core/relay.js says "${p}"`);
   }
-  assert.ok(sql.includes('Our safety team is away until'));
+  // the away notice is the database's only (the in-memory relay has no settings); docs/legal/MODERATION.md §4.1 quotes both forms
+  const moderation = read('docs/legal/MODERATION.md');
+  for (const p of ['Our safety team is away until ', ', so it will be read when we’re back. ',
+    'Our safety team is away for now and may not be able to read it straight away. It will be read when we’re back. ']) {
+    assert.ok(sql.includes(p), `the database says "${p}"`);
+    assert.ok(moderation.includes(p.trim()), `MODERATION.md quotes "${p.trim()}"`);
+    assert.ok(!relay.includes(p.trim()), `core/relay.js has no away notice, so it mustn't claim one: "${p.trim()}"`);
+  }
 });
 
 test('isOverdue: only a priority report still open more than 12 hours after it came in', () => {

@@ -67,36 +67,84 @@ test('the Mallow library: a death or pregnancy loss is recognised as grief; pass
   assert.deepEqual(wrong, []);
 });
 
-// Tier 0 (docs/safety/TIER0_SELF_ASSESSMENT.md §3): where the library's everyday lines must not reach.
+// Tier 0 (docs/safety/TIER0_SELF_ASSESSMENT.md §3) and its code review: where the library's everyday lines must
+// not reach. Every phrasing here passes the screen (a held one would test nothing), and each was answered with
+// one of these lines before the fix.
 test('the Mallow library: harm at home, a worrying silence, a mistake that hurt someone, a medical test and a death told with "he" each get the right lines', async () => {
   const { SCENARIOS } = await import('../../src/ultra/frameworks.js');
   const { libraryCatalogue } = await import('../core/perspectives.js');
   const of = (...scenarioIds) => new Set(SCENARIOS.filter((s) => scenarioIds.includes(s.id)).flatMap((s) => s.angles.map((a) => a.id)));
-  const harmIds = of('partner-distant', 'family-argument', 'seemed-annoyed', 'family-criticism', 'work-criticism', 'appearance-comment', 'not-listened', 'future-worry');
-  const silenceIds = of('unanswered-message', 'no-text-back');
+  // the situations whose lines explain someone's behaviour away (a bad day, a busy week, a crowded guest list)
+  const harmIds = of('partner-distant', 'family-argument', 'seemed-annoyed', 'family-criticism', 'work-criticism', 'appearance-comment', 'not-listened', 'future-worry',
+    'plans-cancelled', 'group-chat-ignored', 'no-text-back', 'left-out');
+  const silenceIds = of('unanswered-message', 'no-text-back', 'group-chat-ignored', 'plans-cancelled', 'seemed-annoyed', 'left-out');
+  const moodIds = of('seemed-annoyed');
   const mistakeIds = of('mistake-judged');
-  const loud = libraryCatalogue().openers.filter((o) => o.family === 'heavy' && !o.tender).map((o) => o.text.split('{adj}')[0]);
+  const gradeIds = of('bad-grade');
+  const habit = (r) => /^gen-[a-z]+-[a-z-]+-ang/.test(r.angleId);   // Reframe's thinking-habit kit
+  const { openers } = libraryCatalogue();
+  const loud = openers.filter((o) => o.family === 'heavy' && !o.tender).map((o) => o.text.split('{adj}')[0]);
   const wrong = []; let answered = 0;
   const check = async (label, text, bad, why) => {
+    let ok = 0;
     for (const r of await picks(text, label)) {
       if (r.status !== 'ok') continue;
-      answered++;
+      ok++;
       if (bad(r)) wrong.push(`${why} · ${label} · ${text}: ${r.angleId} · ${r.text}`);
     }
+    if (!ok) wrong.push(`${why} · ${label} · ${text}: held by the screen, so it checks nothing`);
+    answered += ok;
   };
   for (const [label, text] of [
     ['anger', 'He calls me names and puts me down every night.'],
     ['worry', 'I walk on eggshells around him, he gets so angry if I see my friends.'],
     ['sadness', 'My mum screams at me every day and says I am useless.'],
-    ['frustration', 'My boyfriend goes through my phone and gets angry when I talk to anyone.'],
-  ]) await check(label, text, (r) => harmIds.has(r.angleId) || /^gen-[a-z]+-[a-z-]+-ang/.test(r.angleId) || loud.some((o) => r.text.startsWith(o)), 'harm at home');
+    ['anger', 'My husband ignored my message in the group chat and then screamed at me.'],
+    ['frustration', 'My husband cancelled my plans again and shouted at me.'],
+    ['sadness', 'My partner keeps cancelling our plans and screams at me if I complain.'],
+    ['loneliness', 'My husband stopped texting back when I am out and yells at me when I get home.'],
+    ['sadness', 'He puts me down and they all went without me, he made sure I was left out.'],
+  ]) await check(label, text, (r) => harmIds.has(r.angleId) || habit(r) || loud.some((o) => r.text.startsWith(o)), 'harm at home');
   for (const [label, text] of [
     ['worry', 'My friend sent me thanks for everything and now she is not answering my messages.'],
     ['worry', 'My daughter has been really low and has not replied to my texts for three days.'],
-  ]) await check(label, text, (r) => silenceIds.has(r.angleId), 'a worrying silence');
-  await check('sadness', 'I made a mistake at work and a patient got hurt.', (r) => mistakeIds.has(r.angleId), 'a mistake that hurt someone');
-  await check('worry', 'I have a blood test tomorrow and I am nervous.', (r) => /^hm-exam-/.test(r.angleId), 'a medical test is not an exam');
+    ['worry', 'My friend has been really low and nobody in the group chat has heard from her, she ignored my message.'],
+    ['worry', 'My mate sent thanks for everything in the group chat and now nobody replied.'],
+    ['sadness', 'My brother has been really down and he cancelled our plans again, last minute.'],
+    ['worry', 'She has been so low lately and she seemed annoyed with me and was short with me.'],
+    ['sadness', 'My friend has been really low and they all went without me to the party, she was not invited either.'],
+    ['worry', 'My friend has been so down and I bet she thinks I am annoying, she has not replied.'],
+    ['sadness', 'Since mum passed my friends cancelled plans with me, they bailed on me last minute.'],
+  ]) await check(label, text, (r) => silenceIds.has(r.angleId) || habit(r) || /^pd-ang/.test(r.angleId), 'a worrying silence, or a loss');
+  // a parent whose moods can't be predicted: never "faces are hard to read" or "this is a chance to practise checking in"
+  await check('sadness', 'My dad snapped at me again, I never know what mood he will be in.', (r) => moodIds.has(r.angleId), 'a volatile parent');
+  for (const text of ['I made a mistake at work and a patient got hurt.', 'I made a mistake with his dose and he ended up in ICU.',
+    'I made a mistake and my son fell and broke his arm.', 'I made a mistake and crashed the car with my sister in it.']) await check('sadness', text, (r) => mistakeIds.has(r.angleId), 'a mistake that hurt someone');
+  for (const [label, text] of [
+    ['worry', 'I have a blood test tomorrow and I am nervous.'],
+    ['worry', 'I have a test on Thursday to see if the cancer is back.'],
+    ['sadness', 'Another negative test today.'],
+    ['worry', 'My IVF results come back tomorrow and I have a test on Monday.'],
+    ['sadness', 'The pregnancy test was negative again, another failed round of IVF results.'],
+  ]) await check(label, text, (r) => /^hm-exam-/.test(r.angleId) || gradeIds.has(r.angleId), 'a medical or pregnancy test is not an exam');
   await check('sadness', 'I miss him so much since he passed.', (r) => !/^hm-loss-/.test(r.angleId), 'a death told with "he"');
+  // good news that mentions drinks or a scary ride keeps its bright openers; plain harm beside good news doesn't
+  const bright = (r) => openers.some((o) => o.mallow === r.mallow && o.family === 'bright' && r.text.startsWith(o.text));
+  for (const [label, text] of [['joy', 'Had drinks with the girls tonight and laughed so much, best night.'], ['joy', 'We got a bit drunk at the wedding and danced all night, so happy.'],
+    ['excitement', 'The rollercoaster was so scary but we screamed the whole way, can not wait to go again!']]) await check(label, text, (r) => !bright(r), 'good news gets a bright opener');
+  await check('joy', 'He screams at me less now, things are so much better.', bright, 'harm beside good news gets a tender opener');
   assert.deepEqual(wrong, []);
-  assert.ok(answered > 50, `only ${answered} answers were checked`);
+  assert.ok(answered > 400, `only ${answered} answers were checked`);
+});
+
+test('the Mallow library: everyday words keep their lines (the wifi is down, a phone died, an admin slip at a hospital)', async () => {
+  const has = async (label, text, re) => (await ids(text, label)).some((id) => re.test(id));
+  const missing = [];
+  for (const [label, text, re] of [
+    ['worry', 'The wifi has been down all day and my friend has not replied to my messages.', /^um-ang/],
+    ['worry', 'I have been down to the shops twice and he still has not replied.', /^um-ang/],
+    ['worry', 'I made a mistake at the hospital where I work and booked the wrong room.', /^mj-ang/],
+    ['worry', 'I have a maths test tomorrow and my heart is racing.', /^hm-exam-/],
+  ]) if (!(await has(label, text, re))) missing.push(`${label} · ${text}`);
+  assert.deepEqual(missing, []);
 });

@@ -17,6 +17,31 @@ import { readEnvFile, problemsWith, ENV_FILE } from './staging-secrets.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// the migrations every staging database has, in this order; later ones may follow them. The scheduler's
+// jobs are made in the API one (its schedules block), not necessarily the last
+export const KNOWN_MIGRATIONS = ['20261014090000_hushmates_schema.sql', '20261014090100_hushmates_rules.sql', '20261014090200_hushmates_api.sql', '20261015090000_hushmates_tier0.sql'];
+const SCHEDULES_IN = '20261014090200_hushmates_api.sql';
+const JOBS = ['hushmates-tick', 'hushmates-retention'];
+
+/** The migration checks, on a folder of migrations: → [{ status, what, detail }] */
+export function migrationChecks(dir = join(ROOT, 'supabase', 'migrations')) {
+  const out = [];
+  const ok = (cond, what, detail) => out.push({ status: cond ? 'pass' : 'fail', what, detail: cond ? '' : detail });
+  const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  const later = files.slice(KNOWN_MIGRATIONS.length);
+  const missing = KNOWN_MIGRATIONS.filter((f, i) => files[i] !== f);
+  ok(!missing.length, `the ${KNOWN_MIGRATIONS.length} known migrations, first and in order${later.length ? ` (then ${later.length} newer)` : ''}`,
+    `not first and in order: ${missing.join(', ')} (the folder has ${files.join(', ') || 'nothing'})`);
+  // the deploy and the Supabase CLI both record a migration by the timestamp in its name
+  const unnamed = files.filter((f) => !/^\d+_.+\.sql$/.test(f));
+  ok(!unnamed.length, 'every migration is named <timestamp>_<name>.sql', unnamed.join(', '));
+  const sqlOf = (f) => readFileSync(join(dir, f), 'utf8');
+  const schedules = (f) => JOBS.every((j) => sqlOf(f).includes(`cron.schedule('${j}'`));
+  const where = files.includes(SCHEDULES_IN) && schedules(SCHEDULES_IN) ? SCHEDULES_IN : files.find(schedules);
+  ok(!!where, `the scheduler’s jobs (${JOBS.join(', ')}) are in a migration${where ? ` (${where})` : ''}`, `no migration schedules both (they belong in ${SCHEDULES_IN})`);
+  return out;
+}
+
 export function preflight({ projectRef = null, anonKey = null, deno = process.env.HUSHMATES_DENO || 'deno' } = {}) {
   const out = [];
   const add = (status, what, detail = '') => out.push({ status, what, detail });
@@ -38,9 +63,7 @@ export function preflight({ projectRef = null, anonKey = null, deno = process.en
   ok(/schemas\s*=\s*\[[^\]]*"hushmates_api"/.test(toml), 'config.toml: the hushmates_api schema is exposed to the function', 'add "hushmates_api" to [api].schemas');
   ok(/otp_length\s*=\s*6/.test(toml) && /otp_expiry\s*=\s*600/.test(toml), 'config.toml: 6-digit email codes, 10 minutes', 'otp_length = 6, otp_expiry = 600');
 
-  const migrations = readdirSync(join(ROOT, 'supabase', 'migrations')).filter((f) => f.endsWith('.sql')).sort();
-  ok(migrations.length === 3, 'three migrations, in order', migrations.join(', '));
-  ok(/cron\.schedule\('hushmates-tick'/.test(readFileSync(join(ROOT, 'supabase', 'migrations', migrations.at(-1)), 'utf8')), 'the scheduler’s jobs are in the last migration', 'missing');
+  out.push(...migrationChecks());
 
   if (existsSync(ENV_FILE)) {
     const problems = problemsWith(readEnvFile());

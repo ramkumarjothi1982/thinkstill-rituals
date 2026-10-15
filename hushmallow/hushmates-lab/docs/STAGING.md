@@ -109,7 +109,7 @@ every stored feeling becomes unreadable. That is what the encryption is for.
    ```
    npx supabase login                                   # opens the browser to sign in
    npx supabase link --project-ref <project reference>  # asks for the database password
-   npx supabase db push                                 # lists 3 migrations: answer Y
+   npx supabase db push                                 # lists the migrations (4 today): answer Y
    ```
 3. **Let the Edge Function reach its database functions.** *Project Settings → Data API*. Under *Exposed schemas*, add `hushmates_api`, then press *Save*.
 

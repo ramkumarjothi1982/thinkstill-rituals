@@ -972,7 +972,14 @@
   "My wife lost her mum last year and she never helps with the kids anymore.",
   "Since we lost Dad my husband never helps with anything.",
   "Since mum passed my husband hasn't been there for me at all.",
-  "My husband lost his mum in May and he's not been the same."
+  "My husband lost his mum in May and he's not been the same.",
+  "We lost him last week and I can't stop crying.",
+  "We lost her to cancer in March.",
+  "We lost him.",
+  "Since mum passed it's been so hard.",
+  "My mum passed a year ago and I still can't believe it.",
+  "Since he passed a few weeks ago nothing feels right.",
+  "Since dad passed maths has been impossible to focus on."
  ],
  "notGrief": [
   [
@@ -1034,6 +1041,50 @@
   [
    "sadness",
    "My friend passed and I failed."
+  ],
+  [
+   "frustration",
+   "We lost her passport on the way to the airport and the trip is ruined."
+  ],
+  [
+   "frustration",
+   "We lost her number and now we cannot invite her."
+  ],
+  [
+   "worry",
+   "We lost him in the crowd at the footy for an hour."
+  ],
+  [
+   "joy",
+   "Since she passed her driving test she drives us everywhere."
+  ],
+  [
+   "anger",
+   "After he passed comment on my weight I could not stop thinking about it."
+  ],
+  [
+   "anger",
+   "When they passed judgement on my outfit I felt small."
+  ],
+  [
+   "joy",
+   "Since she passed Year 12 she has been so much happier."
+  ],
+  [
+   "frustration",
+   "After he passed maths he stopped studying altogether."
+  ],
+  [
+   "sadness",
+   "After she passed on the message nobody called me back."
+  ],
+  [
+   "joy",
+   "My sister passed Year 12!"
+  ],
+  [
+   "sadness",
+   "My dad passed comment on my weight again."
   ]
  ],
  "danger": [

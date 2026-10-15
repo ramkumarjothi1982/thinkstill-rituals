@@ -8,7 +8,8 @@
 //   node server/admin.mjs settings
 //   node server/admin.mjs set <key> '<json to merge>'     e.g. set ai '{"monthlyCapAud": 20}'
 //   node server/admin.mjs set desk '{"awayUntil": "2026-12-29"}'   nobody can read the desk until then: reporters are
-//                                                                   told so (set it back with '{"awayUntil": null}')
+//                                                                   told so (set it back with '{"awayUntil": null}').
+//                                                                   Written YYYY-MM-DD, today to 90 days ahead in Sydney
 //   node server/admin.mjs ops [--days 7]
 //   node server/admin.mjs member <reference> active|restricted|suspended   (the reference the safety desk shows)
 //
@@ -31,6 +32,43 @@ import { normaliseCode } from '../supabase/functions/_shared/gateway.js';
 // no 0/O, 1/I/L: codes are read aloud and typed from messages
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const SETTING_KEYS = ['limits', 'mallow', 'ai', 'retention', 'invites', 'desk'];
+// the database reads a later day as away with no date (supabase/migrations/20261015090000_hushmates_tier0.sql)
+export const DESK_AWAY_MAX_DAYS = 90;
+
+/** A day in Sydney (where the database reads the desk's date), as YYYY-MM-DD. */
+export function sydneyDay(t) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/**
+ * Why a desk setting would be refused, or null. awayUntil is null (a reader is back) or the day a reader will
+ * next check the desk, written YYYY-MM-DD: a real date, today to 90 days ahead in Sydney. Only that form, so
+ * "29/12/2026" can't quietly leave the usual "within a day" while nobody reads, nor "12/01/2027" become 1 December.
+ */
+export function deskProblem(value, now = Date.now()) {
+  const back = `, or '{"awayUntil": null}' when a reader is back`;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return `desk is '{"awayUntil": "YYYY-MM-DD"}'${back}`;
+  const others = Object.keys(value).filter((k) => k !== 'awayUntil');
+  // a misspelt key would be stored, and the desk not marked away
+  if (others.length || !('awayUntil' in value)) return `desk takes only awayUntil${others.length ? ` (not ${others.join(', ')})` : ''}: '{"awayUntil": "YYYY-MM-DD"}'${back}`;
+  const v = value.awayUntil;
+  if (v === null) return null;
+  const today = sydneyDay(now);
+  const m = typeof v === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(v) : null;
+  if (!m) return `awayUntil is the day a reader will next check the desk, written YYYY-MM-DD (today in Sydney is ${today}), not ${JSON.stringify(v)}${back}`;
+  const [y, mo, d] = m.slice(1).map(Number);
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  if (!(mo >= 1 && mo <= 12 && d >= 1 && d <= [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1])) return `awayUntil ${v} isn't a real date`;
+  if (v < today) return `awayUntil ${v} is before today in Sydney (${today})`;
+  const [ty, tm, td] = today.split('-').map(Number);
+  const ahead = (Date.UTC(y, mo - 1, d) - Date.UTC(ty, tm - 1, td)) / 86400e3;
+  if (ahead > DESK_AWAY_MAX_DAYS) {
+    return `awayUntil ${v} is more than ${DESK_AWAY_MAX_DAYS} days ahead (the latest is ${new Date(Date.UTC(ty, tm - 1, td + DESK_AWAY_MAX_DAYS)).toISOString().slice(0, 10)}): set the nearest day a reader will check, and set it again then`;
+  }
+  return null;
+}
 
 /** A new code like 7KQ2M-XW9HD (about 50 bits; wrong guesses are limited per person and network). */
 export function newCode() {
@@ -75,6 +113,8 @@ export function createAdmin({ db, crypt = null, now = () => Date.now() }) {
     async set(key, value) {
       if (!SETTING_KEYS.includes(key)) throw new Error(`settings are ${SETTING_KEYS.join(', ')}`);
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('the value is a JSON object to merge');
+      const problem = key === 'desk' ? deskProblem(value, now()) : null;
+      if (problem) throw new Error(problem);
       await call('select hushmates_api.admin_set_setting($1, $2::jsonb) v', [key, JSON.stringify(value)]);
       return (await settings())[key];
     },

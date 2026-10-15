@@ -21,7 +21,7 @@
 // What --apply does, each step idempotent (safe to run again):
 //   1. enables pg_cron and pg_net (as Supabase documents);
 //   2. stores the scheduler's address and secret in Vault (as query parameters, never in the SQL text),
-//      before the migrations: the last one starts a job every minute that reads them;
+//      before the migrations: 20261014090200_hushmates_api.sql starts a job every minute that reads them;
 //   3. applies supabase/migrations not yet applied, each in one transaction, recorded where the
 //      Supabase CLI records them (supabase_migrations.schema_migrations); one changed after it was
 //      applied stops the deploy (add a new migration instead);
@@ -150,7 +150,7 @@ export async function deployStaging({ api, ref, site, secrets, apply = false, mi
   }
 
   // ---------------------------------------------- 2. the scheduler's Vault secrets --
-  // before the migrations: the last one schedules a job every minute, which reads these. The address
+  // before the migrations: 20261014090200_hushmates_api.sql schedules a job every minute, which reads these. The address
   // depends on the project only, and Vault is there on Supabase before any migration
   const hasVault = (await rows("select 1 from pg_catalog.pg_namespace where nspname = 'vault'")).length;
   if (!hasVault) say('the scheduler’s address and secret in Vault', 'skipped', 'no Vault on this database (it is on Supabase)');
@@ -192,7 +192,7 @@ export async function deployStaging({ api, ref, site, secrets, apply = false, mi
     if (!cronOn) say('the scheduled jobs', 'skipped', 'no pg_cron on this database (it is on Supabase)');
     else {
       const jobs = await rows("select jobname from cron.job where jobname like 'hushmates-%' order by jobname").catch(() => []);
-      say('the scheduled jobs', jobs.length === 2 ? 'unchanged' : 'failed', jobs.map((j) => j.jobname).join(', ') || 'none: enable pg_cron and pg_net, then run the schedules block of the last migration');
+      say('the scheduled jobs', jobs.length === 2 ? 'unchanged' : 'failed', jobs.map((j) => j.jobname).join(', ') || 'none: enable pg_cron and pg_net, then run the schedules block at the end of 20261014090200_hushmates_api.sql');
     }
   }
 

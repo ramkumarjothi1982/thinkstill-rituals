@@ -817,8 +817,9 @@ export class RelayService {
     return { blocked: true };
   }
 
-  // The same words as hushmates.expectation (supabase/migrations/20261015090000_hushmates_tier0.sql): a small
-  // team, not there around the clock, that can't see who anyone is or contact anyone (Tier 0).
+  // The same usual words as hushmates.expectation (supabase/migrations/20261015090000_hushmates_tier0.sql): a small
+  // team, not there around the clock, that can't see who anyone is or contact anyone (Tier 0). The desk-away
+  // notice (settings.desk.awayUntil) is the database's only: this relay has no settings, so it always says these.
   _expectation(rep) {
     return rep.urgent
       ? 'Thank you for telling us. This goes to the front of the queue for a person on our safety team. We’re a small team and we’re not here around the clock: during the pilot we aim to read priority reports within a day, and nights, weekends and holidays can take longer. We can’t see who wrote it, so we can’t contact them or send help. If you know someone is in danger right now, call 000. If this has stayed with you, Lifeline is there any time on 13 11 14. Nobody is told who reported.'

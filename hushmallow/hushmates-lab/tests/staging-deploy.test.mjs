@@ -9,14 +9,17 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deployStaging, createManagementApi, functionFiles, AUTH_CONFIG, makePublisher, wranglerEnv, WRANGLER } from '../tools/staging-deploy.mjs';
+import { migrationChecks, KNOWN_MIGRATIONS } from '../tools/staging-preflight.mjs';
 import { standIn, emptyDatabase, TOKEN, REF, STAGING } from './management-api-stand-in.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// the real migrations, however many there are by now (a new one mustn't break these tests)
+const MIGRATIONS = readdirSync(join(ROOT, 'supabase', 'migrations')).filter((f) => f.endsWith('.sql')).sort();
 
 const SITE = 'https://hushmates-staging-test.pages.dev';
 const SECRETS = {
@@ -75,7 +78,7 @@ test('a dry run sends nothing but reads (the Cloudflare check too); --apply depl
     assert.ok(s.state.queries.length >= 3, s.state.queries.join('\n'));
     for (const q of s.state.queries) assert.ok(isRead(q), `the dry run sent a query that isn't a read: ${q}`);
     assert.equal((await s.pool.query("select count(*)::int n from pg_namespace where nspname in ('hushmates', 'supabase_migrations')")).rows[0].n, 0, 'the dry run changed the database');
-    assert.equal(dry.steps.filter((x) => /^migration/.test(x.step) && x.status === 'would').length, 3);
+    assert.deepEqual(dry.steps.filter((x) => /^migration/.test(x.step) && x.status === 'would').map((x) => x.step), MIGRATIONS.map((f) => `migration ${f}`));
     assert.match(dry.steps.find((x) => x.step === 'the web app').detail, /Pages project hushmates-staging \(main\)/);
 
     const before = s.state.queries.length;
@@ -85,7 +88,7 @@ test('a dry run sends nothing but reads (the Cloudflare check too); --apply depl
     assert.ok(r.ok, JSON.stringify(r.steps.filter((x) => x.status === 'failed')));
     assert.ok(s.state.queries.slice(before).some((q) => !isRead(q)), 'the read check above would pass anything');
     // the migrations really ran, and are recorded where the Supabase CLI records them
-    assert.equal((await s.pool.query('select count(*)::int n from supabase_migrations.schema_migrations')).rows[0].n, 3);
+    assert.deepEqual((await s.pool.query('select version from supabase_migrations.schema_migrations order by version')).rows.map((x) => x.version), MIGRATIONS.map((f) => f.split('_')[0]));
     assert.equal((await s.pool.query("select count(*)::int n from pg_tables where schemaname = 'hushmates'")).rows[0].n > 10, true);
     assert.equal((await s.pool.query('select hushmates_api.settings() -> \'ai\' ->> \'enabled\' as on')).rows[0].on, 'false');
     // the exposed schema, sign-in, secrets, the function
@@ -108,10 +111,10 @@ test('a dry run sends nothing but reads (the Cloudflare check too); --apply depl
     const again = await deployStaging({ api, ref: REF, site: SITE, secrets: SECRETS, apply: true, log: quiet, checkPages, publishSite: async () => ({ detail: 'again' }) });
     assert.ok(again.ok, JSON.stringify(again.steps));
     const schemaAndSettings = again.steps.filter((x) => /^migration|schema is exposed|sign-in by email code/.test(x.step));
-    assert.equal(schemaAndSettings.length, 5);
+    assert.equal(schemaAndSettings.length, MIGRATIONS.length + 2);                 // each migration, the exposed schema, sign-in
     assert.ok(schemaAndSettings.every((x) => x.status === 'unchanged'), JSON.stringify(again.steps));
     assert.ok(again.steps.filter((x) => /^migration/.test(x.step)).every((x) => /the same as the file/.test(x.detail)));
-    assert.equal((await s.pool.query('select count(*)::int n from supabase_migrations.schema_migrations')).rows[0].n, 3);
+    assert.equal((await s.pool.query('select count(*)::int n from supabase_migrations.schema_migrations')).rows[0].n, MIGRATIONS.length);
     // what a second run does do (their values can't be read back to compare)
     assert.match(again.steps.find((x) => /secrets \(values not shown\)/.test(x.step)).detail, /5 set \(0 new\)/);
     assert.equal(again.steps.find((x) => x.step === 'the Edge Function').status, 'done');
@@ -286,4 +289,34 @@ test('publishing: only to the Pages project the check found, still at the site�
     // and the source never asks wrangler to create one
     assert.ok(!/'project', 'create'|project create/.test(readFileSync(join(ROOT, 'tools', 'staging-deploy.mjs'), 'utf8')));
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test('the preflight’s migration check: the known migrations first and in order, newer ones allowed after them, and the scheduler’s jobs in a migration', () => {
+  const fails = (dir) => migrationChecks(dir).filter((r) => r.status === 'fail').map((r) => r.what);
+  // the real folder, as it is now
+  assert.deepEqual(fails(join(ROOT, 'supabase', 'migrations')), []);
+  assert.deepEqual(MIGRATIONS.slice(0, KNOWN_MIGRATIONS.length), KNOWN_MIGRATIONS);
+  const real = Object.fromEntries(KNOWN_MIGRATIONS.map((f) => [f, readFileSync(join(ROOT, 'supabase', 'migrations', f), 'utf8')]));
+  const dirs = [];
+  const folder = (files) => { const d = tinyMigrations(files); dirs.push(d); return d; };
+  try {
+    // a fifth, later migration that schedules nothing: still ready
+    assert.deepEqual(fails(folder({ ...real, '20270101000000_later.sql': 'select 1;\n' })), []);
+    assert.match(migrationChecks(folder({ ...real, '20270101000000_later.sql': 'select 1;\n' }))[0].what, /then 1 newer/);
+    // one missing, or one slipped in before the known ones: not ready
+    const { '20261014090100_hushmates_rules.sql': _rules, ...noRules } = real;
+    assert.equal(fails(folder(noRules)).length, 1);
+    assert.match(fails(folder({ ...real, '20261014090150_between.sql': 'select 1;\n' }))[0], /known migrations, first and in order/);
+    // a file the deploy couldn't record
+    assert.match(fails(folder({ ...real, 'later.sql': 'select 1;\n' })).join(), /named <timestamp>_<name>\.sql/);
+    // the schedules moved to a later migration: found there; gone altogether: not ready
+    const api = real['20261014090200_hushmates_api.sql'];
+    const cut = api.indexOf('-- ------------------------------------------------------------- schedules --');
+    assert.ok(cut > 0 && /cron\.schedule\('hushmates-tick'/.test(api.slice(cut)));
+    const moved = migrationChecks(folder({ ...real, '20261014090200_hushmates_api.sql': api.slice(0, cut), '20270101000000_schedules.sql': api.slice(cut) }));
+    assert.ok(moved.every((r) => r.status === 'pass'), JSON.stringify(moved));
+    assert.match(moved.at(-1).what, /20270101000000_schedules\.sql/);
+    assert.match(fails(folder({ ...real, '20261014090200_hushmates_api.sql': api.slice(0, cut) })).join(), /scheduler’s jobs/);
+  } finally { for (const d of dirs) rmSync(d, { recursive: true, force: true }); }
 });
