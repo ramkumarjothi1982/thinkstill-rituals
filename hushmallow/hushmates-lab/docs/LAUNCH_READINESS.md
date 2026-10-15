@@ -79,7 +79,7 @@ Every result below is labelled by where it was shown:
 | # | Requirement | Status | Where |
 |---|---|---|---|
 | 1 | Verified results from real staging infrastructure | ⛔ **PENDING.** Blocked only on the owner's accounts and the environment settings. The tools are ready, and each command is tested against stand-ins. None has met the real APIs yet | `STAGING_CLOUD.md` |
-| 2 | A complete pass/fail report | ✅ for local and rehearsal (§3 below); the staging column is empty until 1 is done | §3; `docs/evidence/` |
+| 2 | A complete pass/fail report | ✅ for local and rehearsal (§3 below, run on the code as committed); the staging column is empty until 1 is done | §3; `docs/evidence/` |
 | 3 | Evidence of end-to-end testing | ✅ REHEARSAL and LOCAL, with screens and JSON reports. STAGING pending | `docs/evidence/staging-rehearsal/`, `docs/screenshots/phase2/` |
 | 4 | Monthly and annual costs | ✅ For 100 (Free or Pro), 1,000, 10,000 and 100,000 people, polling and Realtime | `COSTS.md` §2 |
 | 5 | A revised safety review proposal with justified costs | ✅ Tier 0 → Tier A, with the arithmetic and the sources | `REVIEWS.md` §5 |
@@ -89,16 +89,18 @@ Every result below is labelled by where it was shown:
 
 ## 3. Pass/fail report
 
-**Local and rehearsal results (latest run, 15 October 2026):**
+**Local and rehearsal results** (15 October 2026, on the code as committed, after the Phase 3b review's fixes):
 
 | Run | Result | Label |
 |---|---|---|
-| Automated suite (`node --test tests/*.test.mjs`, with Deno) | _filled in by the final run_ | LOCAL |
-| Many-account browser E2E (`tools/app-shots.mjs`), Edge Function under Node | _filled in by the final run_ | LOCAL |
-| The same E2E with the Edge Function under Deno | _filled in by the final run_ | LOCAL |
-| The staging E2E rehearsed (`npm run staging:rehearse`, with `HUSHMATES_DENO` set) | _filled in by the final run_ | REHEARSAL |
-| The staging check on the local stack (by database connection, and as a cloud session) | _filled in by the final run_ | LOCAL |
-| Lab QA (`tools/shots.cjs`) | _filled in by the final run_ | LOCAL |
+| Automated suite (`node --test tests/*.test.mjs`, with Deno) | **379 tests: 377 pass, 0 fail, 2 skipped.** The two skipped need a local Another Angle harness, and would be billable against the real service | LOCAL |
+| Many-account browser E2E (`tools/app-shots.mjs`), Edge Function under Node | **90 of 90 checks, 41 screens, 0 problems** (`docs/screenshots/phase2/`) | LOCAL |
+| The same E2E with the Edge Function under Deno | **90 of 90, 0 problems** (`docs/evidence/e2e-edge-under-deno.json`) | LOCAL |
+| The staging E2E rehearsed (`npm run staging:rehearse`, with `HUSHMATES_DENO` set) | **57 of 57.** The report names the runtime: the real `index.ts` under Deno 2.9.6 (`docs/evidence/staging-rehearsal/`) | REHEARSAL |
+| The staging check on the local stack, by database connection and as a cloud session (keys from the root secret, SQL through the API stand-in) | Every check it can make here passes. What only Supabase has (pg_cron, pg_net, Vault, password sign-in) is reported as not checked | LOCAL |
+| Each staging command run against the Management API stand-in | The deploy's dry run is clean. Every command refuses a project that isn't the staging-only one, before reading keys or data (`tests/staging-cli.test.mjs`) | LOCAL |
+| Lab QA (`tools/shots.cjs`) | 30 scenes at 390, 375, 320, 768 and 1280 wide: no layout-audit findings; scenarios A (10 of 10), B (6 of 6) and C (5 of 5) at every size; a feeling released with the keyboard alone, focus visible on every stop; reduced motion holds; no console errors (`docs/screenshots/qa-report.json`) | LOCAL |
+| The Edge Function's shared copies; the archived v1 tests | Match their sources; 32 of 32 | LOCAL |
 
 **On staging:** nothing yet. When the real run happens, its report replaces this line.
 

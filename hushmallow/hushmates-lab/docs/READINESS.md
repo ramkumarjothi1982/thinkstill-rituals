@@ -21,7 +21,7 @@ Companion documents:
 ## 0. Staging readiness checklist
 
 Ready in the code (Phase 3, checked on this machine):
-- ✅ **The real Edge Function entry point runs under Deno.** `index.ts` passes `deno check`, and the full browser E2E (81 checks) passes through it under Deno. It reaches the database over HTTP through a local stand-in for Supabase's PostgREST, which follows PostgREST's documented rules, so Postgres's own grants decide who may call what.
+- ✅ **The real Edge Function entry point runs under Deno.** `index.ts` passes `deno check`, and the full browser E2E (90 checks) passes through it under Deno. It reaches the database over HTTP through a local stand-in for Supabase's PostgREST, which follows PostgREST's documented rules, so Postgres's own grants decide who may call what.
 - ✅ **Both kinds of Supabase key work.** The new `sb_secret_`/`sb_publishable_` keys go in `apikey` only; legacy JWT keys are sent as they always were. Tested both ways.
 - ✅ **The staging kit:**
   - `staging:preflight`: an offline checklist;
