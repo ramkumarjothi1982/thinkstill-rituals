@@ -1224,34 +1224,39 @@ export function create(ctx) {
   function buildTag() {
     const list = naming.list;
     const k = layoutTK;
-    const key = `${list.join(',')}|${ctx.font(16, 700)}|${plan.tag.w}|${ctx.dpr}|${k}`;
+    const key = `${list.join(',')}|${ctx.font(16, 700)}|${plan.tag.w}|${plan.tag.h}|${ctx.dpr}|${k}`;
     if (key === tagKey && tagSprite) return tagSprite;
     tagKey = key;
     measureG ||= makeCanvas(4, 4).getContext('2d');
-    const maxW = plan.tag.w - 2 * LAGOON.TAG_PAD_X;
     const words = list.map((i) => VOCAB[i]);
-    // the rows, roomiest first: "This is… a · b" · "This is… a" / "and b" · "This is…" / "a · b" — then smaller type
-    // (never more rows than the plan kept for it: a tag that grew would come over the person's words or the hero)
-    const rowsMax = plan.tag.rows || 2;
-    const sets = (!words.length ? [[['This is…', '']]]
+    // the rows, roomiest first: "This is… a · b" · "This is… a" / "and b" · "This is…" / "a · b" — then smaller type;
+    // never bigger than the place the plan kept for it (a tag that grew would come over the thought, its words or the
+    // hero): the roomiest wording that fits, in the largest type that fits — two rows in a one-row place only in small
+    // type, and as a last resort the words alone, clipped to the box
+    const rowsMax = plan.tag.rows || 2, boxW = plan.tag.w, boxH = plan.tag.h, maxW = boxW - 2 * LAGOON.TAG_PAD_X;
+    const sets = !words.length ? [[['This is…', '']]]
       : words.length === 1 ? [[['This is… ', words[0]]], [['This is…', ''], ['', words[0]]], [['', words[0]]]]
-        : [[['This is… ', words.join(' · ')]], [['This is… ', words[0]], ['and ', words[1]]], [['This is…', ''], ['', words.join(' · ')]], [['', words.join(' · ')]], [['', words[0]], ['', words[1]]]])
-      .filter((set) => set.length <= rowsMax);
-    let fontA, fontB, LINE, parts = null;
-    pick: for (const shrink of [1, 0.92, 0.85, 0.78]) {
+        : [[['This is… ', words.join(' · ')]], [['This is… ', words[0]], ['and ', words[1]]], [['This is…', ''], ['', words.join(' · ')]], [['', words.join(' · ')]], [['', words[0]], ['', words[1]]]];
+    let fontA, fontB, LINE, parts = null, padY = LAGOON.TAG_PAD_Y;
+    const measure = (set) => set.map(([lead, rest]) => {
+      measureG.font = fontA; const wl = lead ? measureG.measureText(lead).width : 0;
+      measureG.font = fontB; const wr = rest ? measureG.measureText(rest).width : 0;
+      return { lead, rest, wl, wr };
+    });
+    pick: for (const shrink of [1, 0.92, 0.85, 0.78, 0.7, 0.64]) {
       fontA = ctx.font(15 * k * shrink, 600); fontB = ctx.font(17 * k * shrink, 800); LINE = LAGOON.TAG_LINE * k * shrink;
       for (const set of sets) {
-        parts = set.map(([lead, rest]) => {
-          measureG.font = fontA; const wl = lead ? measureG.measureText(lead).width : 0;
-          measureG.font = fontB; const wr = rest ? measureG.measureText(rest).width : 0;
-          return { lead, rest, wl, wr };
-        });
+        padY = set.length > rowsMax ? 4 : LAGOON.TAG_PAD_Y;
+        if (set.length * LINE + 2 * padY > boxH + 1) continue;
+        parts = measure(set);
         if (parts.every((q) => q.wl + q.wr <= maxW)) break pick;
+        parts = null;
       }
     }
+    if (!parts) { const set = sets[sets.length - 1].slice(0, Math.max(1, Math.floor((boxH - 8) / LINE))); padY = 4; parts = measure(set); }
     const rows = parts;
     let tw = 0; for (const p of parts) tw = Math.max(tw, p.wl + p.wr);
-    const w = Math.ceil(tw + 2 * LAGOON.TAG_PAD_X), h = Math.ceil(rows.length * LINE + 2 * LAGOON.TAG_PAD_Y);
+    const w = Math.ceil(Math.min(boxW, tw + 2 * LAGOON.TAG_PAD_X)), h = Math.ceil(Math.min(boxH, rows.length * LINE + 2 * padY));
     const dpr = Math.max(1, ctx.dpr || 1);
     const c = makeCanvas(Math.ceil((w + 16) * dpr), Math.ceil((h + 16) * dpr));
     const g = c.getContext('2d');
@@ -1262,9 +1267,10 @@ export function create(ctx) {
     if (!list.length) g.setLineDash([4, 4]);
     g.stroke(); g.setLineDash([]);
     g.textBaseline = 'middle';
+    g.save(); roundRect(g, 0, 0, w, h, Math.min(18, h / 2)); g.clip();
     const spans = [];
     parts.forEach((p, i) => {
-      const y = LAGOON.TAG_PAD_Y + LINE * (i + 0.5) + 0.5;
+      const y = padY + LINE * (i + 0.5) + 0.5;
       // (a row may be a lead alone — "This is…" over its words)
       const x0 = (w - (p.wl + p.wr)) / 2;
       g.font = fontA; g.fillStyle = 'rgba(214,236,255,0.92)'; g.shadowBlur = 0;
@@ -1285,6 +1291,7 @@ export function create(ctx) {
         }
       }
     });
+    g.restore();
     tagSprite = { c, w, h, spans, empty: !list.length };
     return tagSprite;
   }

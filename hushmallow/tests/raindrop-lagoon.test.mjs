@@ -507,3 +507,37 @@ test('world (review): a relayout mid-hold keeps the drop; "unsure" is not "a wor
     assert.ok(!w.metrics.named.includes(d1.word), `given back: ${JSON.stringify({ named: w.metrics.named, tag: w.debug.tag, tw, drops: w.debug.drops.map((d) => [d.word, d.state, Math.round(d.x), Math.round(d.y)]) })}`);
   } finally { D?.destroy(); dom.restore(); }
 });
+
+test('layout (review r2): the person’s photos get at least one glass drop even on a 320×568 screen', () => {
+  for (const tk of [1, 1.25]) {
+    let p = null;
+    for (let n = 6; n >= 4 && !p?.fit; n--) p = planLagoon({ W: 320, H: 568, band: bandFor(568), mallow: defaultMallowBox(320, 568), n, photos: 3, plate: platePx('My boss embarrassed me today.'), textScale: tk });
+    assert.ok(p.orbs.length >= 1, `text ×${tk}: ${p.orbs.length} photo drops`);
+    for (const o of p.orbs) assert.ok(o.D >= 28 && o.D + 24 >= 44, 'its touch target keeps 44 px');
+  }
+});
+
+test('world (review r2): two long words never grow the tag past the place kept for it', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    for (const [W, H] of [[320, 568], [390, 844]]) {
+      const mallow = fakeMallow(W, H), thought = fakeThought();
+      D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow, thought, registry: createRegistry([...WORLDS, LAB]), ticker: fakeTicker(), store: memStore(), reducedMotion: true, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
+      await D.start({ worldId: 'raindrop-lagoon', emotion: 'frustrated', intention: 'calm' });
+      const w = D.world;
+      steps(D, 3);
+      const T = w.debug.thought;
+      for (const word of ['frustration', 'disappointment']) { const d = w.debug.drops.find((q) => q.word === word); holdAndCarry(D, d, T.x, T.y); }
+      steps(D, 1);
+      assert.deepEqual(w.metrics.named, ['frustration', 'disappointment']);
+      const tg = w.debug.tag, P = w.debug.plan.tag;
+      assert.ok(tg.x1 - tg.x0 <= P.w + 0.5 && tg.y1 - tg.y0 <= P.h + 0.5, `${W}×${H}: tag ${JSON.stringify(tg)} in ${JSON.stringify(P)}`);
+      const body = { x0: T.x - T.r, x1: T.x + T.r, y0: T.y - T.r, y1: T.y + T.r };
+      assert.ok(!hits(tg, body), `${W}×${H}: the tag is not on the thought`);
+      if (w.debug.plan.plate) assert.ok(!hits(tg, w.debug.plan.plate, -1), `${W}×${H}: nor on its words`);
+      D.destroy(); D = null;
+    }
+  } finally { D?.destroy(); dom.restore(); }
+});
