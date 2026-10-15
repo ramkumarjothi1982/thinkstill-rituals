@@ -50,6 +50,8 @@ const mix3 = (a, c, k) => a.map((v, i) => v + (c[i] - v) * k);
 const smoother = (x) => { const t = clamp(x, 0, 1); return t * t * t * (t * (t * 6 - 15) + 10); };
 let MOTION = 1;                 // 1 full; the reduced-motion cut holds still framings and halves hops
 let TRAVEL = 1;                 // reduced motion: shorter journeys (hops in, lights rising, falls) and softer impacts
+let BODY = 1;                   // reduced motion: smaller body acting (leans, squashes, breaths)
+let TREMBLE = 0.4;              // Noomi's tremble while she cries: a gentle quiver (none in the reduced-motion cut)
 
 // ------------------------------------------------------------ the cast --
 // seat: where each sits in the pile. Blubi and Loomi stand beside Noomi; the four who arrive
@@ -234,15 +236,21 @@ function companionDof(i) {
     if (id === 'loomi') inflate += breathShape(t) * 1.1;
     inflate += breathShape(t) * 0.25 * (id !== 'loomi' ? 1 : 0) * (t > T.loomiLand ? 1 : 0);
     const nuzzle = id === 'blubi' ? 0.03 * MOTION * Math.sin((t - T.hug) * 9) * bump(t, T.hug, T.hug + 0.15, T.hug + 0.9, T.hug + 1.3) : 0;
-    return {
+    return reduceBody({
       squash: kicks.value(t) * (0.4 + 0.6 * TRAVEL) + P.squashBias * 0.7 + P.droop * 0.05 + (t < arrive ? -0.12 : 0) * (top ? 1 : 0),
       inflate,
       lean: lean.value(t) + 0.002 * P.tiltBias + 0.012 * Math.sin(ph * 6 + i) * a + nuzzle,
-      sway: P.tremble * 0.05 * Math.sin(t * 43 + i) * a + 0.04 * ring(t - arrive, 2.2, 0.3),
+      sway: P.tremble * 0.05 * Math.sin(t * 43 + i) * a * (TRAVEL < 1 ? 0 : 1) + 0.04 * ring(t - arrive, 2.2, 0.3),
       shimmer: 0.7 * Math.exp(-Math.max(0, t - arrive) * 3) * (t > arrive ? 1 : 0), shimPhase: (t - arrive) * 14,
       lift: sils[id].h * hops.value(t) * (MOTION < 1 ? 0.35 : 1),
-    };
+    });
   };
+}
+// reduced motion: the body acts smaller (BODY = 1 in the full cut: unchanged)
+function reduceBody(d) {
+  if (BODY === 1) return d;
+  d.squash *= BODY; d.inflate *= BODY; d.lean *= BODY; d.sway *= BODY;
+  return d;
 }
 // one big slow breath together (Loomi leads): in for a beat, held, out over two
 function breathShape(t) {
@@ -286,7 +294,7 @@ function giftOrb(t, cam) {
   const bob = 7 * Math.sin(PH(t) * 4) * MOTION;
   if (t < T.melt + 0.05) {
     // it drifts in to Noomi's cheek as she reaches for it, and melts into her
-    const u = smoother((t - (T.take - 0.15)) / (T.melt - T.take + 0.15));
+    const u = TRAVEL < 1 ? 0 : smoother((t - (T.take - 0.15)) / (T.melt - T.take + 0.15));
     const to = { X: NOOMI.X - 150, Y: 205, Z: NOOMI.Z - 40 };
     const P = { X: lerp(HOOK_ORB.X, to.X, u), Y: lerp(HOOK_ORB.Y + bob, to.Y, u), Z: lerp(HOOK_ORB.Z, to.Z, u) };
     const fade = 1 - smoothstep(T.melt - 0.12, T.melt + 0.05, t);
@@ -299,7 +307,11 @@ function giftOrb(t, cam) {
     const P = { X: GIFT.X + 60 * Math.sin(u * Math.PI) * MOTION, Y: lerp(GIFT.Y + 490 * TRAVEL, GIFT.Y, u) + 6 * Math.sin((t - T.gift) * 3) * MOTION * u, Z: GIFT.Z };
     return orbScreen(P, cam, { kind: 0, reveal: 0, morph: 0, alpha: smoothstep(T.gift, T.gift + 0.25, t), seed: 0.5, glow: 0.45 + 0.1 * Math.sin((t - T.gift) * 2.4), flash: 0.25 * (1 - u), color: PEARL_ORB, R: GIFT.R });
   }
-  // home to the lens: the opening frame
+  // home to the lens: the opening frame (reduced motion: it fades out here and in by the lens)
+  if (TRAVEL < 1) {
+    if (t < 19.4) return orbScreen({ X: GIFT.X, Y: GIFT.Y, Z: GIFT.Z }, cam, { kind: 0, reveal: 0, morph: 0, alpha: 1 - smoothstep(18.95, 19.3, t), seed: 0.5, glow: 0.45, flash: 0, color: PEARL_ORB, R: GIFT.R });
+    return orbScreen({ X: HOOK_ORB.X, Y: HOOK_ORB.Y + 7 * Math.sin(PH(t) * 4) * MOTION, Z: HOOK_ORB.Z }, cam, { kind: 0, reveal: 0, morph: 0, alpha: smoothstep(19.4, 19.9, t), seed: 0.5, glow: 0.35, flash: 0, color: PEARL_ORB, R: HOOK_ORB.R });
+  }
   const w = ease.inOutSine(smoothstep(18.95, 19.97, t));
   const P = { X: lerp(GIFT.X, HOOK_ORB.X, w), Y: lerp(GIFT.Y, HOOK_ORB.Y, w) + Math.sin(Math.PI * w) * 110, Z: lerp(GIFT.Z, HOOK_ORB.Z, w) };
   return orbScreen(P, cam, { kind: 0, reveal: 0, morph: 0, alpha: 1, seed: 0.5, glow: lerp(0.45, 0.35, w), flash: 0, color: PEARL_ORB, R: lerp(GIFT.R, HOOK_ORB.R, w) });
@@ -331,14 +343,14 @@ function returnOrb(i, t, cam) {
 
 // --------------------------------------------------------------- Noomi ---
 function noomiDof(t) {
-  return {
-    squash: nb.squash.value(t) + nb.kicks.value(t) * (0.4 + 0.6 * TRAVEL) + 0.012 * Math.sin(t * 61) * nb.tremble(t),
+  return reduceBody({
+    squash: nb.squash.value(t) + nb.kicks.value(t) * (0.4 + 0.6 * TRAVEL) + 0.012 * Math.sin(t * 61) * nb.tremble(t) * TREMBLE,
     inflate: nb.inflate.value(t) + 0.02 * Math.sin(PH(t) * 5) * MOTION + breathShape(t) * 0.8,
     lean: nb.lean.value(t) + nb.nod(t),
-    sway: nb.sway.value(t) + 0.04 * Math.sin(t * 47) * nb.tremble(t),
+    sway: nb.sway.value(t) + 0.04 * Math.sin(t * 47) * nb.tremble(t) * TREMBLE,
     shimmer: nb.shimmer(t), shimPhase: t * 14,
     lift: (nb.hop.value(t) + nb.lift.value(t)) * (MOTION < 1 ? 0.35 : 1),
-  };
+  });
 }
 function faceAt(t) {
   const v = (k) => nf[k].value(t);
@@ -477,6 +489,8 @@ let hook, hookEnd, whatever, forThat, talk, feel, meet, logo, think, tag;
 async function setup(stage) {
   MOTION = stage.motion === 'reduced' ? 0.35 : 1;
   TRAVEL = stage.motion === 'reduced' ? 0.3 : 1;
+  TREMBLE = stage.motion === 'reduced' ? 0 : 0.4;
+  BODY = stage.motion === 'reduced' ? 0.4 : 1;
   const R = stage.renderer;
   const url = (rel) => new URL(rel, import.meta.url).href;
   const [nClean, nNormal, nJson, nPristine] = await Promise.all([
