@@ -581,8 +581,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear({ keepHeld: true });
     subs?.suspend();
     S.phase = 'typing';
-    // after something heavy Zuzu listens with its attentive face
-    if (S.level !== 'none') careFace(); else zt?.setStage('listening');
+    // after something heavy Zuzu listens with its attentive face (and for the rest of a visit gone quiet: the check-in, a
+    // question let go, "Just be with it", a bag word)
+    if (S.level !== 'none' || S.noPlay) careFace(); else zt?.setStage('listening');
     root.classList.add('hf-typing');
     overlay = inputMod.openInput({
       app, root, prompt: ARRIVAL.prompt,
@@ -597,7 +598,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       support: (o) => openSupportSheet(o), trackSheet: (sh) => trackSheet(sh),
       // something heavy earlier in this visit: the overlay's Support chip is there from the start
       heavy: S.level !== 'none',
-      face: (f) => { if (S.level === 'none' && !S.heavyDraft) zt?.setEmotion(f, 0.6, { quiet: true }); },
+      face: (f) => { if (S.level === 'none' && !S.heavyDraft && !S.noPlay) zt?.setEmotion(f, 0.6, { quiet: true }); },
       onLayout: () => layout(),
       // the level is the scene's the moment it is seen, whether or not anything is sent
       onSafety: (r) => noteSafety(r),
@@ -1017,6 +1018,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (v === 'notreally') return careLite();
       if (v === 'be') return beWithIt();
       if (v !== 'angle') { quietAfterAsk(); return; }
+      // (fix round) "I'm okay": the angle, but the rest of the visit stays quiet (Zuzu's attentive face, never the grin or the
+      // spiral eyes; no squeeze quips), and support stays close
+      S.noPlay = true;
     } else if (step === 'choice' || step === 'check-in') {
       const v = await askFirst(step);
       if (S.left) return;
@@ -1039,6 +1043,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     try { feel = feelingOf(S.text) || (framingAllowed(S.text) ? null : { kind: 'low' }); } catch { feel = null; }
     // (askall-angle) words with a softer loss cue keep Zuzu attentive, whatever they chose
     if (S.unsure) feel ||= { kind: 'low' };
+    // (fix round) a visit gone quiet (the check-in's "I'm okay", a question let go, a bag word) or something heavy seen in it:
+    // the attentive face too, never the playful one
+    if (S.noPlay || S.level !== 'none') feel ||= { kind: 'low' };
     if (feel) careFace(); else zt?.setEmotion({ curious: 0.65, playful: 0.35 }, 0.7, { quiet: true });
     const started = now();
     waitingLines(seq);
@@ -1251,8 +1258,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     zt?.lookAt(0, -0.8);
     if (mech) {
       if (scene.inviteNote) say(INVITE.line, { who: null, colour: null });
+      // (fix round) the note that this one is Zuzu's own comes first: never between the instruction and the lines after it
+      if (scene.offlineNote) say(ARRIVAL.offlineOnce, { who: null, colour: null });
       say(L.hint, { mallow: 'zuzu' });
-      if (scene.offlineNote) say('Zuzu’s own angle this time, worked out on this phone.', { who: null, colour: null });
     }
     const result = mech ? await Promise.race([mech.done, failP]) : await failP;
     failNote = null;
@@ -1628,6 +1636,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     return {
       S, get subs() { return subs; }, get mech() { return mech; }, get mechId() { return mechId; }, get area() { return area; },
       get zuzu() { return zAd; }, get companion() { return compAd; }, get overlay() { return overlay; }, get consent() { return consentCard; },
+      get touch() { return zt; },
       get thought() { return thought; },
       openTell, layout, serverMode, endpoint,
       /** Play a scene directly (lab): an authored scene for `text`, optionally forcing the mechanic. */

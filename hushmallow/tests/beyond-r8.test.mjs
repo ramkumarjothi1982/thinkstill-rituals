@@ -356,7 +356,8 @@ test('r8 UI: death talk typed and closed gets a quiet word and support close, ne
   assert.match(grief, /dockShow\(\{ tell: true, support: false \}\);\s*const v = await choose\(GRIEF\.ask, GRIEF\.options/);
   assert.deepEqual(GRIEF.options.map((o) => o.value), ['squeeze', 'support', 'finish']);
   // while death talk is typed Zuzu turns attentive (the overlay's suggested face never overrides it)
-  assert.match(src, /face: \(f\) => \{ if \(S\.level === 'none' && !S\.heavyDraft\) zt\?\.setEmotion/);
+  // (fix round: and never in a visit gone quiet, the check-in's "I'm okay" included)
+  assert.match(src, /face: \(f\) => \{ if \(S\.level === 'none' && !S\.heavyDraft && !S\.noPlay\) zt\?\.setEmotion/);
   assert.doesNotMatch(read('src/beyond/death-words.js'), /safety-lexicon/);
   assert.equal(livingLoss('My nan has dementia and doesn’t know who I am.'), true);
 });
