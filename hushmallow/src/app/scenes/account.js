@@ -125,9 +125,12 @@ export const ARRIVALS = Object.freeze(['signed-in', 'verified', 'password-update
 export const carriesArrival = (view, kind) => (view === 'account' && ARRIVALS.includes(kind)) || (view === 'guest-choice' && (kind === 'signed-in' || kind === 'verified'));
 
 const PRIVACY_LINE = 'Nothing you write in hushmallow, no feeling and no photo is ever sent with your account.';
+// (exactly what public.delete_my_account() removes, supabase/migrations/0007: the profile row with its last-opened time, the
+// sync choices and rows, and the auth.users row with its identities and sessions. The sign-in service's own security log
+// (auth.audit_log_entries: sign-in times and the like) is not deleted from here, and the screen says so.)
 const DELETED_ON_SERVER = [
   'your sign-in: your email address and password',
-  'your profile: your name and home Mallow',
+  'your profile: your name, home Mallow and when you last opened the app',
   'your sync choices and when you made them',
   'anything kept with your account: settings, favourite worlds, Memory Garden tools and where a Hushflow paused',
 ];
@@ -136,6 +139,7 @@ const NOT_TOUCHED = [
   'the guest’s things on this phone, and any other account’s',
   'your plan: it belongs to this phone’s app store account',
   'Another Angle: it isn’t part of your account. Settings → Privacy can delete its data.',
+  'the sign-in service’s own security log (such as when you signed in): we can’t delete it from here',
 ];
 
 export default function account(app, params = {}) {
