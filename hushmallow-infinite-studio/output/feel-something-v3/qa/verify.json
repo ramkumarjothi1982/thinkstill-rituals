@@ -1,0 +1,143 @@
+{
+ "file": "feel-something-v3.mp4",
+ "bytes": 43051404,
+ "previewBytes": 11482945,
+ "proxy": "feel-something-v3.proxy.webm",
+ "gates": {
+  "mobileSpec": {
+   "codec": "h264",
+   "profile": "High",
+   "level": 42,
+   "pix_fmt": "yuv420p",
+   "size": [
+    1080,
+    1920
+   ],
+   "fps": "30/1",
+   "avg_fps": "30/1",
+   "cfr": true,
+   "sar": "1:1",
+   "color": [
+    "bt709",
+    "bt709",
+    "bt709"
+   ],
+   "maxKeyframeGapS": 1.0,
+   "audio": [
+    "aac",
+    "LC",
+    "48000",
+    2
+   ],
+   "topBoxes": [
+    "ftyp",
+    "moov",
+    "free",
+    "mdat"
+   ],
+   "bitrateMbps": 17.22,
+   "pass": true
+  },
+  "decode": {
+   "errors": null,
+   "videoFrames": 600,
+   "videoS": 20.0,
+   "audioS": 20.0,
+   "pass": true
+  },
+  "audio": {
+   "integratedLUFS": -16.0,
+   "LRA": 4.6,
+   "truePeakDBFS": -2.0,
+   "longestSilenceS": 0.0,
+   "dcOffset": 2e-05,
+   "clippedSamples": 0,
+   "monoFoldLossDb": -0.33,
+   "lrCorrelation": 0.853,
+   "pass": true
+  },
+  "loop": {
+   "seamPSNR": 40.79,
+   "medianStepPSNR": 27.01,
+   "p5StepPSNR": 19.99,
+   "pass": true
+  },
+  "flash": {
+   "regions": {
+    "full": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0112
+    },
+    "r00": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.024
+    },
+    "r01": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0269
+    },
+    "r02": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0218
+    },
+    "r10": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0319
+    },
+    "r11": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0327
+    },
+    "r12": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0233
+    },
+    "r20": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0195
+    },
+    "r21": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0288
+    },
+    "r22": {
+     "generalFlashesPerS": 0,
+     "redFlashesPerS": 0,
+     "maxStep": 0.0207
+    }
+   },
+   "worst": {
+    "general": 0,
+    "red": 0,
+    "region": null
+   },
+   "pass": true
+  },
+  "motion": {
+   "full": {
+    "p95GlobalShiftPx": 15.9,
+    "maxGlobalShiftPx": 25.1,
+    "meanChange": 0.0153,
+    "p95Change": 0.0367
+   },
+   "reduced": {
+    "p95GlobalShiftPx": 0.0,
+    "maxGlobalShiftPx": 96.9,
+    "meanChange": 0.0074,
+    "p95Change": 0.0162,
+    "file": "feel-something-v3.reduced-motion.mp4"
+   },
+   "pass": true
+  }
+ },
+ "allPass": true
+}

@@ -1,0 +1,76 @@
+✔ every modelled engine fx voice: the lint's onset level is the engine's within 4.5 dB (median within 1 dB) (13565.792716ms)
+ℹ engine − model (dB): crackle -2.5, sort 0.1, snap -1.0, drop-in 0.8, clear -2.0, portal 4.0, separate 0.1, rotate-tick -2.1, lens-focus 3.1, chime 0.2, star 0.3, bloom 3.0, pluck 0.1, glass 0.3, drip 0.1, paper -0.1, wind -1.4, settle 0.3, swish -0.1, shimmer 0.7, thrum 2.1, click -2.2, bubble -0.7, unlock -1.2, breathe-in 0.3, breathe-out 0.4, chime panned 0.2, pluck panned -0.2, snap panned -1.0
+✔ --compat v2-score through the forked renderer is the approved soundtrack, byte for byte (7037.682966ms)
+[heavy-lock] waiting for shared (test audio default); held by: shared:1 pid 11774 "test audio lint engine"; shared:1 pid 11777 "test:parity composer v2"
+[heavy-lock] waiting for shared (test audio default again); held by: shared:1 pid 12430 "test:parity composer v2 pixels"; shared:1 pid 12898 "test:parity engine fixtures"
+✔ the default score (every fix): G-AUDIO on the score side and the project's gate on the delivered MP4, every check; deterministic (48763.061143ms)
+[heavy-lock] waiting for shared (test audio kits); held by: shared:1 pid 12430 "test:parity composer v2 pixels"
+✔ buildMallow(id) and the realm bed build for all 7 ids; the engine's kits are the sound map's (16460.307167ms)
+[heavy-lock] waiting for shared (test audio kit voices); held by: shared:1 pid 13653 "test:parity engine v2"; shared:1 pid 12898 "test:parity engine fixtures"
+✔ kit voice models are the engine's oscillators; each accent sounds where its model says; the planned damping silences it (5355.470783ms)
+[heavy-lock] waiting for shared (test audio voiced glitzi); held by: shared:1 pid 13653 "test:parity engine v2"; shared:1 pid 12898 "test:parity engine fixtures"
+✔ T01 voiced by each of the 7 Mallows: every score-side G-AUDIO check, and the project's gate on the delivered MP4 (192094.048175ms)
+✔ the bed crossfade holds the expected level within 1 dB (50 ms windows) for every realm bed, anti-correlated ones included (21407.580169ms)
+✔ hm remux re-scores an existing picture: video copied, loop-aware audio in sync, score-plan written, in well under 60 s (20907.657341ms)
+[heavy-lock] waiting for shared (test:parity composer v2); held by: shared:1 pid 11774 "test audio lint engine"; shared:1 pid 11775 "test audio compat"
+✔ T01 is composed in the page from the golden spec and runs on runtime v3, without the frozen module (29838.434221ms)
+✔ G-STATE: all 2,441 states (+ the 0.98 s golden) match within 1e-9; in fact bit-identical (527.153602ms)
+ℹ 2446 rows, 476585 numbers compared, max |Δ| 0
+✔ mesh buffer hashes and sub-frame counts are identical (16.077155ms)
+✔ G-CUES: the cue log and the dry-run curves are byte-equal; the score plan is v2's (23.775182ms)
+✔ the page-composed direction equals the Node-composed one except for what the real font measured, and passes G-DIR (716.047087ms)
+✔ the committed golden direction (specs/golden/t01-v2.direction.json) is exactly what the page composes (1.56176ms)
+[heavy-lock] waiting for shared (test:parity composer v2 pixels); held by: shared:1 pid 11777 "test:parity composer v2"; shared:1 pid 11775 "test audio default"
+✔ composer → runtime v3: 4 golden frames, cold, bit-identical (tolerance 0/255) (53070.387131ms)
+ℹ 0.2s ==, 0.98s ==, 6.5s ==, 12.8s ==
+﹣ composer → runtime v3: all 450 frames in order equal the sequential golden (the WP-01 legacy render) (0.90469ms) # opt-in: HM_PARITY_SEQUENTIAL=1 (about 25 min)
+✔ R4: two directions in one page show no texture bleed (content-hashed keys, dispose); the legacy cache does bleed (10025.959536ms)
+[heavy-lock] waiting for shared (test:parity engine fixtures); held by: shared:1 pid 12430 "test:parity composer v2 pixels"; shared:1 pid 11775 "test audio default again"
+✔ R4: a v2 module (a singleton) cannot be set up twice in one page; dispose() frees GL objects (13764.1512ms)
+[heavy-lock] waiting for shared (test:parity engine fixtures); held by: shared:1 pid 12430 "test:parity composer v2 pixels"; shared:1 pid 11775 "test audio kits"
+✔ R18: a NaN from subframes() renders with 16 sub-frames and a logged error, never a black frame (13064.736837ms)
+[heavy-lock] waiting for shared (test:parity engine fixtures); held by: shared:1 pid 11775 "test audio kits"; shared:1 pid 13653 "test:parity engine v2"
+✔ R3: the runtime comes from meta.runtime: a v3 direction is routed to the composer runtime (4859.435419ms)
+[heavy-lock] waiting for shared (test:parity engine fixtures); held by: shared:1 pid 13653 "test:parity engine v2"; shared:1 pid 11775 "test audio kit voices"
+✔ design size and render scale are parameters; the DRAFT mark changes only its corner (7811.57018ms)
+[heavy-lock] waiting for shared (test:parity engine v2); held by: shared:1 pid 11775 "test audio kits"; shared:1 pid 12898 "test:parity engine fixtures"
+✔ the frozen direction runs on the engine through runtime v2 (chosen from meta, not the id) (24418.367496ms)
+✔ G-STATE: all 2,441 states (+ the 0.98 s golden) match within 1e-9 on the engine (247.581725ms)
+ℹ 2446 rows, 476585 numbers compared, max |Δ| 0
+✔ mesh buffer hashes and sub-frame counts are identical on the engine (7.496565ms)
+✔ R12: rendering records no curves; the dry run gives the golden cue log, curves and plan (92.132333ms)
+[heavy-lock] waiting for shared (test:parity v2); held by: shared:1 pid 13653 "test:parity engine v2"; shared:1 pid 11775 "test audio voiced glitzi"
+✔ G-STATE baseline: all 2,441 frame-centre and sub-frame states (+ the 0.98 s golden) match within 1e-9 (32350.717437ms)
+ℹ 2446 rows, 476585 numbers compared, max |Δ| 0
+✔ mesh buffer hashes and sub-frame counts are identical (9.181872ms)
+✔ G-CUES baseline: the cue log and curves are identical (10.64642ms)
+✔ G-PLAN baseline: buildPlanV2 on the re-sampled cue log equals the golden event list (31.752846ms)
+▶ 1,000 specs over the enabled cells compile through G-SPEC and G-DIR with 0 violations
+  ✔ G-DIR (composer/validate.js) passes on all 1,000 specs (1.800161ms)
+✔ 1,000 specs over the enabled cells compile through G-SPEC and G-DIR with 0 violations (238067.837271ms)
+ℹ G-SPEC 1000/1000; G-DIR ran 1000, passed 1000; compile {"pass":1000}; distinct {"cellSets":1,"templates":1,"tods":1,"durations":1,"hooks":8,"lineTriples":60,"ends":3,"intensities":21,"jitters":1000}
+✔ the compile path end to end through a stub composer: verdicts, failures and the G-SPEC gate (wiring, not G-DIR) (5709.921821ms)
+ℹ G-SPEC 1000/1000; G-DIR ran 1000, passed 1000; compile {"pass":1000}; distinct {"cellSets":1,"templates":1,"tods":1,"durations":1,"hooks":8,"lineTriples":60,"ends":3,"intensities":21,"jitters":1000}
+ℹ G-SPEC 1000/1000; G-DIR ran 1000, passed 503 (errors {"stub:strict-intensity":497}); compile {"incomplete":503,"fail":497}; distinct {"cellSets":1,"templates":1,"tods":1,"durations":1,"hooks":8,"lineTriples":60,"ends":3,"intensities":21,"jitters":1000}
+✔ 1,000 specs over a wide enabled-cell set compile with 0 violations: Noomi with every cell, ToD and duration approved (3295.380825ms)
+ℹ G-SPEC 1000/1000; G-DIR ran 1000, passed 2 (errors {"compose":998}); compile {"fail":998,"pass":2}; distinct {"cellSets":460,"templates":16,"tods":4,"durations":4,"hooks":125,"lineTriples":663,"ends":46,"intensities":43,"jitters":1000}
+ℹ G-DIR on the wide set: 2 composable specs pass, 998 refused as not built yet
+✔ the whole library (every capability opened) plans clean specs: 3,000 review specs (3688.654117ms)
+✔ 90-day posting plans at the capped cadence satisfy every posting rule (3 seeds, independent check) (6978.987288ms)
+ℹ seed 1: 180 posts 2026-11-03..2027-01-31, 0 backtracks
+ℹ seed 2: 180 posts 2026-11-03..2027-01-31, 0 backtracks
+ℹ seed 3: 180 posts 2026-11-03..2027-01-31, 0 backtracks
+✔ Q1 default: Noomi-only posting at 5 per week for 90 days (290.098751ms)
+✔ tampered specs never pass G-SPEC (600 seeded mutations) (653.876742ms)
+✔ tampered pins never pass G-SPEC: 1,000 committed-capability specs x 5 pin mutations (FU-3) (2473.642127ms)
+✔ 10k specs through `hm plan` in under 10 s each run, byte-reproducible across processes (21185.381839ms)
+ℹ planning 1320 ms; whole command incl. writing 10,000 spec files 3136 / 2985 ms
+✔ fingerprints are unique across a large plan and stable when re-derived (2132.340789ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 378707.370508

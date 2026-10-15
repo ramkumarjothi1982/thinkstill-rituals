@@ -1,0 +1,152 @@
+{
+ "summary": {
+  "direction": "feel-something-v3",
+  "medianCompanionPx": 324,
+  "p90CompanionPx": 432,
+  "framesWithACompanionOver400px": "28%",
+  "medianNoomiPx": 645,
+  "maxNoomiPx": 1420
+ },
+ "perSecond": [
+  {
+   "s": 0,
+   "companionsVisible": 0,
+   "tallestCompanion": 0,
+   "medianCompanion": 0,
+   "noomi": 1206
+  },
+  {
+   "s": 1,
+   "companionsVisible": 0,
+   "tallestCompanion": 0,
+   "medianCompanion": 0,
+   "noomi": 1240
+  },
+  {
+   "s": 2,
+   "companionsVisible": 0,
+   "tallestCompanion": 0,
+   "medianCompanion": 0,
+   "noomi": 1245
+  },
+  {
+   "s": 3,
+   "companionsVisible": 0,
+   "tallestCompanion": 0,
+   "medianCompanion": 0,
+   "noomi": 1342
+  },
+  {
+   "s": 4,
+   "companionsVisible": 0,
+   "tallestCompanion": 0,
+   "medianCompanion": 0,
+   "noomi": 1332
+  },
+  {
+   "s": 5,
+   "companionsVisible": 0.9,
+   "tallestCompanion": 683,
+   "medianCompanion": 545,
+   "noomi": 777
+  },
+  {
+   "s": 6,
+   "companionsVisible": 1,
+   "tallestCompanion": 524,
+   "medianCompanion": 497,
+   "noomi": 742
+  },
+  {
+   "s": 7,
+   "companionsVisible": 1.9,
+   "tallestCompanion": 515,
+   "medianCompanion": 438,
+   "noomi": 661
+  },
+  {
+   "s": 8,
+   "companionsVisible": 3.6,
+   "tallestCompanion": 428,
+   "medianCompanion": 314,
+   "noomi": 473
+  },
+  {
+   "s": 9,
+   "companionsVisible": 5.3,
+   "tallestCompanion": 391,
+   "medianCompanion": 309,
+   "noomi": 468
+  },
+  {
+   "s": 10,
+   "companionsVisible": 6,
+   "tallestCompanion": 395,
+   "medianCompanion": 333,
+   "noomi": 499
+  },
+  {
+   "s": 11,
+   "companionsVisible": 6,
+   "tallestCompanion": 447,
+   "medianCompanion": 351,
+   "noomi": 529
+  },
+  {
+   "s": 12,
+   "companionsVisible": 6,
+   "tallestCompanion": 421,
+   "medianCompanion": 372,
+   "noomi": 571
+  },
+  {
+   "s": 13,
+   "companionsVisible": 6,
+   "tallestCompanion": 436,
+   "medianCompanion": 423,
+   "noomi": 655
+  },
+  {
+   "s": 14,
+   "companionsVisible": 6,
+   "tallestCompanion": 443,
+   "medianCompanion": 431,
+   "noomi": 649
+  },
+  {
+   "s": 15,
+   "companionsVisible": 6,
+   "tallestCompanion": 432,
+   "medianCompanion": 297,
+   "noomi": 457
+  },
+  {
+   "s": 16,
+   "companionsVisible": 6,
+   "tallestCompanion": 280,
+   "medianCompanion": 273,
+   "noomi": 425
+  },
+  {
+   "s": 17,
+   "companionsVisible": 6,
+   "tallestCompanion": 306,
+   "medianCompanion": 274,
+   "noomi": 428
+  },
+  {
+   "s": 18,
+   "companionsVisible": 6,
+   "tallestCompanion": 309,
+   "medianCompanion": 280,
+   "noomi": 424
+  },
+  {
+   "s": 19,
+   "companionsVisible": 1.8,
+   "tallestCompanion": 340,
+   "medianCompanion": 252,
+   "noomi": 739
+  }
+ ]
+}

@@ -1,0 +1,360 @@
+{
+ "sections": {
+  "curiosity": {
+   "mix": -19.5,
+   "pads": -26.3,
+   "lead": -21.7,
+   "rhythm": -28.4,
+   "sfx": -33.0,
+   "bed": -37.0,
+   "music": -20.4
+  },
+  "vulnerability": {
+   "mix": -21.4,
+   "pads": -27.7,
+   "lead": -23.0,
+   "rhythm": -38.9,
+   "sfx": -35.0,
+   "bed": -37.3,
+   "music": -21.7
+  },
+  "connection": {
+   "mix": -20.0,
+   "pads": -25.3,
+   "lead": -23.3,
+   "rhythm": -29.3,
+   "sfx": -29.6,
+   "bed": -37.3,
+   "music": -21.2
+  },
+  "wonder": {
+   "mix": -18.7,
+   "pads": -29.2,
+   "lead": -22.6,
+   "rhythm": -23.4,
+   "sfx": -27.4,
+   "bed": -37.4,
+   "music": -21.7
+  },
+  "joy": {
+   "mix": -16.2,
+   "pads": -27.7,
+   "lead": -20.5,
+   "rhythm": -18.0,
+   "sfx": -27.4,
+   "bed": -35.8,
+   "music": -19.5
+  },
+  "belonging": {
+   "mix": -18.8,
+   "pads": -23.4,
+   "lead": -21.9,
+   "rhythm": -29.0,
+   "sfx": -41.4,
+   "bed": -35.7,
+   "music": -19.4
+  },
+  "brand": {
+   "mix": -18.5,
+   "pads": -24.8,
+   "lead": -20.9,
+   "rhythm": -26.5,
+   "sfx": -34.3,
+   "bed": -35.7,
+   "music": -19.4
+  },
+  "tag+loop": {
+   "mix": -19.4,
+   "pads": -27.0,
+   "lead": -23.9,
+   "rhythm": -29.4,
+   "sfx": -24.4,
+   "bed": -36.3,
+   "music": -22.1
+  }
+ },
+ "balance": {
+  "curiosity": {
+   "20-80": -31.7,
+   "80-200": -9.4,
+   "200-500": -5.7,
+   "500-2000": -2.6,
+   "2000-5000": -12.0,
+   "5000-12000": -27.3,
+   "12000-24000": -85.2
+  },
+  "vulnerability": {
+   "20-80": -29.6,
+   "80-200": -16.1,
+   "200-500": -7.5,
+   "500-2000": -1.2,
+   "2000-5000": -14.6,
+   "5000-12000": -33.0,
+   "12000-24000": -95.1
+  },
+  "connection": {
+   "20-80": -24.5,
+   "80-200": -7.6,
+   "200-500": -5.8,
+   "500-2000": -3.0,
+   "2000-5000": -12.8,
+   "5000-12000": -27.5,
+   "12000-24000": -49.7
+  },
+  "wonder": {
+   "20-80": -17.5,
+   "80-200": -4.6,
+   "200-500": -12.0,
+   "500-2000": -2.8,
+   "2000-5000": -12.9,
+   "5000-12000": -27.5,
+   "12000-24000": -48.0
+  },
+  "joy": {
+   "20-80": -15.5,
+   "80-200": -5.3,
+   "200-500": -7.0,
+   "500-2000": -3.7,
+   "2000-5000": -13.4,
+   "5000-12000": -27.2,
+   "12000-24000": -45.4
+  },
+  "belonging": {
+   "20-80": -30.5,
+   "80-200": -11.8,
+   "200-500": -4.5,
+   "500-2000": -3.0,
+   "2000-5000": -11.4,
+   "5000-12000": -29.5,
+   "12000-24000": -80.4
+  },
+  "brand": {
+   "20-80": -20.0,
+   "80-200": -7.8,
+   "200-500": -5.6,
+   "500-2000": -2.9,
+   "2000-5000": -14.5,
+   "5000-12000": -29.3,
+   "12000-24000": -49.0
+  },
+  "tag+loop": {
+   "20-80": -30.3,
+   "80-200": -9.2,
+   "200-500": -6.9,
+   "500-2000": -2.3,
+   "2000-5000": -10.3,
+   "5000-12000": -35.1,
+   "12000-24000": -79.8
+  }
+ },
+ "stereo": {
+  "correlation": 0.89,
+  "monoLossDb": -0.25,
+  "width_side_to_mid_db": -12.3
+ },
+ "harmony": {
+  "00 Am9": {
+   "onChord": 0.98,
+   "outOfKey": 0.006
+  },
+  "01 Fmaj7": {
+   "onChord": 0.96,
+   "outOfKey": 0.039
+  },
+  "02 Dm9": {
+   "onChord": 0.94,
+   "outOfKey": 0.003
+  },
+  "03 Fm6": {
+   "onChord": 0.85,
+   "outOfKey": 0.019
+  },
+  "04 C/E": {
+   "onChord": 0.98,
+   "outOfKey": 0.009
+  },
+  "05 Fmaj9": {
+   "onChord": 0.58,
+   "outOfKey": 0.006
+  },
+  "06 Dm9": {
+   "onChord": 0.92,
+   "outOfKey": 0.007
+  },
+  "07 Em7": {
+   "onChord": 0.94,
+   "outOfKey": 0.03
+  },
+  "08 Fmaj7": {
+   "onChord": 0.98,
+   "outOfKey": 0.01
+  },
+  "09 G6sus": {
+   "onChord": 0.97,
+   "outOfKey": 0.003
+  },
+  "10 C": {
+   "onChord": 0.93,
+   "outOfKey": 0.016
+  },
+  "11 G/B": {
+   "onChord": 0.94,
+   "outOfKey": 0.041
+  },
+  "12 Am9": {
+   "onChord": 0.98,
+   "outOfKey": 0.009
+  },
+  "13 Fmaj9": {
+   "onChord": 0.98,
+   "outOfKey": 0.019
+  },
+  "14 C": {
+   "onChord": 0.97,
+   "outOfKey": 0.006
+  },
+  "15 Fmaj9/C": {
+   "onChord": 0.96,
+   "outOfKey": 0.008
+  },
+  "16 Am9": {
+   "onChord": 0.86,
+   "outOfKey": 0.01
+  },
+  "17 G6sus": {
+   "onChord": 0.94,
+   "outOfKey": 0.008
+  },
+  "summary": {
+   "meanOnChord": 0.93,
+   "worstOnChord": 0.58,
+   "maxOutOfKey": 0.041
+  }
+ },
+ "sync": {
+  "orb_pulse": [
+   null,
+   -10.0
+  ],
+  "touch": [
+   null
+  ],
+  "tear": [
+   -15.0,
+   -15.0
+  ],
+  "land": [
+   -10.0,
+   -10.0
+  ],
+  "hug": [
+   -10.0
+  ],
+  "rise": [
+   null,
+   null,
+   null,
+   null
+  ],
+  "emerge": [
+   null,
+   null,
+   null,
+   0.0
+  ],
+  "land_on": [
+   -10.0,
+   -10.0,
+   -10.0,
+   -10.0
+  ],
+  "sparks": [
+   5.0
+  ],
+  "drop": [
+   -10.0
+  ],
+  "bounce": [
+   -10.0,
+   -10.0,
+   -10.0
+  ],
+  "blink_together": [
+   -10.0
+  ],
+  "gift_land": [
+   null
+  ],
+  "logo": [
+   -10.0
+  ],
+  "wink": [
+   -10.0
+  ],
+  "hello": [
+   null,
+   65.0,
+   -15.0,
+   -15.0,
+   -15.0,
+   -15.0,
+   -15.0
+  ],
+  "summary": {
+   "cues": 36,
+   "withOnsetWithin80ms": 25,
+   "medianAbsMs": 10.0,
+   "p90AbsMs": 15.0
+  }
+ },
+ "phone": {
+  "curiosity": {
+   "fullDb": -19.7,
+   "phoneDb": -20.7,
+   "lossDb": -1.0,
+   "leadOverMixOnPhoneDb": -1.0
+  },
+  "vulnerability": {
+   "fullDb": -21.6,
+   "phoneDb": -22.4,
+   "lossDb": -0.8,
+   "leadOverMixOnPhoneDb": -0.7
+  },
+  "connection": {
+   "fullDb": -20.3,
+   "phoneDb": -21.6,
+   "lossDb": -1.3,
+   "leadOverMixOnPhoneDb": -1.8
+  },
+  "wonder": {
+   "fullDb": -18.9,
+   "phoneDb": -21.1,
+   "lossDb": -2.2,
+   "leadOverMixOnPhoneDb": -1.6
+  },
+  "joy": {
+   "fullDb": -16.3,
+   "phoneDb": -19.5,
+   "lossDb": -3.2,
+   "leadOverMixOnPhoneDb": -1.0
+  },
+  "belonging": {
+   "fullDb": -19.2,
+   "phoneDb": -20.2,
+   "lossDb": -1.0,
+   "leadOverMixOnPhoneDb": -1.7
+  },
+  "brand": {
+   "fullDb": -18.8,
+   "phoneDb": -19.8,
+   "lossDb": -1.0,
+   "leadOverMixOnPhoneDb": -1.1
+  },
+  "tag+loop": {
+   "fullDb": -19.8,
+   "phoneDb": -20.7,
+   "lossDb": -0.9,
+   "leadOverMixOnPhoneDb": -3.2
+  }
+ }
+}
