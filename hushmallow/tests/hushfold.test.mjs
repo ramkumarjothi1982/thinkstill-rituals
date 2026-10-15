@@ -204,7 +204,8 @@ test('hushfold safety verification (12 Oct): a crisis or care level seen earlier
   assert.match(scene, /if \(v === 'play' && !S\.crisis\) \{/);
   // a later Tell in the same visit knows: Support from the start, no plan offer on the button, the concerned
   // face while they type, and a calm answer (never silence) when more words follow a crisis
-  assert.match(scene, /heavy: gentle\(\),/);
+  // (fix round: after the check-in too — its pill steps under the overlay, so the overlay's own Support chip is the one)
+  assert.match(scene, /heavy: gentle\(\) \|\| !!S\.checked,/);
   assert.match(scene, /stageMallow\.setStage\(softNow\(\) \? CARE_FACE : 'listening', \{ quiet: true \}\);/);
   assert.match(scene, /if \(S\.crisisSpoken\) say\(SHARED_LINES\.supportConcern, \{ interrupt: !subtitles\.holding \}\);\s*else speakCrisis\(\);/);
   const overlay = read('src/hushfold/input-overlay.js');

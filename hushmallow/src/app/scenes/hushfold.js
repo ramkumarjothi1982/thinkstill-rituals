@@ -1715,7 +1715,8 @@ export default function hushfold(app, params = {}) {
       // in a world, after a death, it would read as theirs; only words offered back carry their own feeling)
       emotion: again?.emotion || null, intention: S.intention || again?.intention || null, hasPlan: ent.has('paid'), text: again?.text || '',
       // something heavy earlier in this visit: the Support chip is there from the start, and no plan offer
-      heavy: gentle(),
+      // (fix round: after the check-in too — its Support pill steps under the overlay, so the overlay's own chip is the one)
+      heavy: gentle() || !!S.checked,
       // a death or a loss in the words is never made into a Thought Mallow or a playful world: the gentle path
       lossAware: true,
       // (the risk screener reads them beside the visit's last Tells, in memory only)
