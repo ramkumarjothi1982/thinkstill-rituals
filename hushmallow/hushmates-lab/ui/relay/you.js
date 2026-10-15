@@ -66,8 +66,8 @@ export function you(dev) {
       h('ul', { class: 'hf-promises' },
         promise('sparkle', 'A possibility, not a verdict.', 'Perspectives offer another way of seeing, never a diagnosis, judgement or order.'),
         promise('heart', 'Five different people at most.', 'Never the author, one each, and never shown to the same person twice.'),
-        promise('star', 'Mallow perspectives are labelled.', 'They’re chosen automatically from lines the Hushmates team wrote (only if you allow it), never presented as a person, and never counted as one.'),
-        promise('shield', 'Rules first, then people.', 'Words are checked for safety and personal details by rules that read English only and can miss things. Nobody on our team reads feelings as they travel, unless one is reported or an automatic check pauses it for a person to look at. When something is reported, a person on our small safety team reads it, usually within a day or two. They aren’t counsellors, and they can’t see who anyone is or contact anyone.'),
+        promise('star', 'Mallow perspectives are labelled.', 'They’re chosen automatically from a fixed set of lines written in advance for Hushmallow (only if you allow it), never presented as a person, and never counted as one.'),
+        promise('shield', 'Rules first, then people.', 'Words are checked for safety and personal details by rules that read English only and can miss things. Nobody on our team reads feelings as they travel. When something is reported, a person on our small safety team reads it: during the pilot we aim to do that within a day or two, and nights, weekends and holidays can take longer. They aren’t counsellors, and they can’t see who anyone is or contact anyone. If someone is in danger right now, call 000.'),
         promise('eyeOff', 'No scoreboards, no streaks.', 'Nothing here counts how popular you are.'))),
 
     section('Your data',

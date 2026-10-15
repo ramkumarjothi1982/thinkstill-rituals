@@ -101,7 +101,7 @@ export function welcome(dev) {
         h('ul', { class: 'hf-promises' },
           promise('eyeOff', 'Pseudonymous, not perfectly anonymous.', 'Other participants never see your name or account, and can’t contact you. Leave out names and details that could identify anyone.'),
           promise('sparkle', 'Possibilities, not verdicts.', 'No diagnosis, no judgement, no telling anyone what to do.'),
-          promise('heart', 'People first.', 'A Mallow perspective is offered only if you allow it. It’s chosen automatically from lines the Hushmates team wrote, always labelled, and never counted as a person.'),
+          promise('heart', 'People first.', 'A Mallow perspective is offered only if you allow it. It’s chosen automatically from a fixed set of lines written in advance, always labelled, and never counted as a person.'),
           promise('shield', 'Not an emergency service.', 'Hushmates checks words for some signs that someone might not be safe, and shows numbers to call. The check reads English only, it can miss things, and nobody is watching in real time. If you’re not safe, call ',
             h('a', { href: 'tel:000' }, '000'), ', or Lifeline on ', h('a', { href: 'tel:131114' }, '13 11 14'), ', any time.')),
         h('button', { type: 'button', class: 'hf-link hf-link--centre', dataset: { test: 'welcome-privacy' }, onclick: () => privacySheet(dev) }, 'Privacy details'),

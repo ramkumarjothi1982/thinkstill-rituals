@@ -21,7 +21,7 @@ const ALLOWED = new Set([
   '.format', '.version', '.exportedAt', '.about',
   '.you', '.you.name', '.you.mallow', '.you.joinedAt', '.you.letFeelingsFindYou', '.you.gentleNotices', '.you.account',
   '.feelings', '.feelings[].words', '.feelings[].feeling', '.feelings[].status', '.feelings[].sentAt', '.feelings[].cameHomeAt',
-  '.feelings[].cameHomeBecause', '.feelings[].timesSentOutAgain', '.feelings[].saved', '.feelings[].agreedToShareAnonymouslyAt',
+  '.feelings[].cameHomeBecause', '.feelings[].timesSentOutAgain', '.feelings[].saved', '.feelings[].agreedToShareWithoutYourNameAt',
   '.feelings[].agreedToAMallowPerspectiveAt', '.feelings[].peopleWhoOfferedAPerspective',
   '.feelings[].perspectivesFromHushmates', '.feelings[].perspectivesFromHushmates[].from', '.feelings[].perspectivesFromHushmates[].words',
   '.feelings[].perspectivesFromHushmates[].yourChoice',
@@ -56,7 +56,7 @@ test('your data: the file follows the v1 allow-list, field by field, whatever ha
     const extra = [...keys(file)].filter((x) => !ALLOWED.has(x));
     assert.deepEqual(extra, [], `${k}'s file carries fields outside the allow-list`);
     assert.equal(file.format, 'hushmates-personal-data');
-    assert.equal(file.version, 1);
+    assert.equal(file.version, 2);
   }
 });
 
@@ -200,7 +200,7 @@ test('your data: dates are ISO, choices and states are plain words', () => {
   const file = w.svc.exportMyData(w.T.moon);
   const f = file.feelings[0];
   const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-  for (const d of [file.exportedAt, file.you.joinedAt, f.sentAt, f.cameHomeAt, f.agreedToShareAnonymouslyAt]) assert.match(d, iso);
+  for (const d of [file.exportedAt, file.you.joinedAt, f.sentAt, f.cameHomeAt, f.agreedToShareWithoutYourNameAt]) assert.match(d, iso);
   // your own steps to the millisecond; other people's (a Hushmate offered or took back a perspective) by day only
   for (const e of f.journey) assert.match(e.at, /^a Hushmate/.test(e.step) ? /^\d{4}-\d{2}-\d{2}$/ : iso, `${e.step}: ${e.at}`);
   assert.equal(f.cameHomeBecause, 'five people offered a perspective');

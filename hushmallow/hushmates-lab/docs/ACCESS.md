@@ -86,7 +86,7 @@ customer app never loads. Only words written for people reach the screen
 
 ## Your data
 
-`exportMyData` (format `hushmates-personal-data`, version 1) is built field by
+`exportMyData` (format `hushmates-personal-data`, version 2) is built field by
 field from an allow-list. It is never a copy of stored records.
 
 - **It holds** your name here and your Mallow, your choices, and each feeling's

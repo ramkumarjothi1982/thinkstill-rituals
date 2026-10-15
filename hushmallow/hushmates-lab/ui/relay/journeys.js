@@ -130,11 +130,11 @@ export function journey(dev, { id } = {}) {
     put(body,
       h('div', { class: 'hf-jdetail-status' },
         h('p', { class: 'hf-home-progress', dataset: { test: 'progress' } }, lights(drawn(dev, j)), h('span', {}, humanProgress(j))),
-        h('p', { class: 'hf-meta' }, j.paused ? `Paused for now, until a person on our safety team can read it. It still comes home within ${fmtSpan(j.expiresAt - now)}.`
-          : held(dev) ? `While your account is paused it isn’t offered to anyone. It comes home within ${fmtSpan(j.expiresAt - now)}.`
+        h('p', { class: 'hf-meta' }, held(dev) ? `While your account is paused it isn’t offered to anyone. It comes home within ${fmtSpan(j.expiresAt - now)}.`
+          : j.paused ? `Paused for now. Our safety team will look at it, but they can’t contact you. It still comes home within ${fmtSpan(j.expiresAt - now)}.`
             : `It comes home after five human perspectives, or within ${fmtSpan(j.expiresAt - now)}.`),
         // the same words for every pause, so the reason is never revealed (Tier 0)
-        j.paused ? h('p', { class: 'hf-meta hf-help-row' }, 'If anything feels heavy while you wait, you don’t have to wait for us. ', h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--sm hf-help-inline', dataset: { test: 'inline-support' }, onclick: () => openSupport(dev) }, icon('help'), 'Get support now')) : null),
+        j.paused ? h('p', { class: 'hf-meta hf-help-row' }, 'If anything feels heavy, people on these lines are ready to listen now. ', h('button', { type: 'button', class: 'kit-btn kit-btn--ghost kit-btn--sm hf-help-inline', dataset: { test: 'inline-support' }, onclick: () => openSupport(dev) }, icon('help'), 'Get support now')) : null),
       st.el,
       reveal,
       h('figure', { class: 'hf-own-words' }, h('blockquote', {}, j.text), h('figcaption', {}, feelChip(j.label), h('span', { class: 'hf-meta' }, `Released ${fmtAgo(j.releasedAt || j.createdAt, now)}`))),

@@ -41,7 +41,7 @@ export function formatExport(raw) {
       cameHomeBecause: RETURN[j.returnReason] || null,
       timesSentOutAgain: j.resends || 0,
       saved: !!j.saved,
-      agreedToShareAnonymouslyAt: iso(j.consentAt),
+      agreedToShareWithoutYourNameAt: iso(j.consentAt),
       agreedToAMallowPerspectiveAt: iso(j.fallbackConsentAt),
       peopleWhoOfferedAPerspective: j.people,
       // as in the app: people's words stay sealed until the feeling comes home, and carry no time
@@ -51,7 +51,8 @@ export function formatExport(raw) {
     };
   });
   return {
-    format: 'hushmates-personal-data', version: 1, exportedAt: iso(raw.now),
+    // version 2: the consent is "agreedToShareWithoutYourNameAt" (it was "…AnonymouslyAt"; D8)
+    format: 'hushmates-personal-data', version: 2, exportedAt: iso(raw.now),
     about: 'Everything Hushmates keeps that is yours: your feelings and what came back to you, the perspectives you offered, your reports, your choices, and when you agreed to each. Other people appear only as "A Hushmate", never by name. Anything you let go of or deleted is gone and is not included.',
     you: {
       name: raw.you.pseudonym, mallow: raw.you.mallow, joinedAt: iso(raw.you.createdAt),

@@ -234,7 +234,7 @@ test('your data: a contributor sees the share consent they gave, and the author�
   assert.equal(exported.mayAppearInSharePictures, true, 'the writer’s export omits their share consent');
   assert.equal(exported.agreedToSharePicturesAt, new Date(t0).toISOString(), 'the writer’s export omits when they agreed');
   const jx = w.svc.exportMyData(w.T.moon).feelings.find((x) => x.words === FEELING);
-  assert.equal(jx.agreedToShareAnonymouslyAt, new Date(t0).toISOString(), 'the author’s export omits when they agreed to share the feeling');
+  assert.equal(jx.agreedToShareWithoutYourNameAt, new Date(t0).toISOString(), 'the author’s export omits when they agreed to share the feeling');
   assert.equal(jx.agreedToAMallowPerspectiveAt, new Date(t0).toISOString(), 'the author’s export omits when they agreed to the Mallow (AI) fallback');
 });
 

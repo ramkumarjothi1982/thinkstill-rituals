@@ -15,7 +15,7 @@ review proposed in `REVIEWS.md` §5.2.
 | Write team notes; see the activity log | Call anyone on a person's behalf (Hushmates holds an email address only, and the desk never sees it) |
 
 People are told this before they share: Hushmates isn't an emergency service,
-and *Get support now* is on every screen.
+and *Support*, the button at the top of every screen, opens the crisis lines.
 
 ## 2. Who, and when
 

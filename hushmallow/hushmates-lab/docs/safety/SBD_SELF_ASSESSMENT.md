@@ -59,7 +59,7 @@ The Tier 0 fixes (15 October 2026) changed the items below. §1–§5 and the st
   (`staff/desk-guide.js`, checked by `tests/desk-guide.test.mjs`). The note box now says "No diagnosis,
   no guesses about who anyone is" (`staff/desk.js`).
 - **D8, "Share anonymously".** The release consent now reads "Share with Hushmates participants, without
-  my name" (`ui/relay/release.js`). The export file's key is still `agreedToShareAnonymouslyAt`.
+  my name" (`ui/relay/release.js`). The export file's key changed with it, to `agreedToShareWithoutYourNameAt`.
 
 **Drafted, awaiting the owner's approval and legal review** (`docs/legal/`; none is in force or linked
 in the app):
@@ -363,7 +363,6 @@ This is the strongest part of the assessment. Use it for any "how did you design
 - **Gaps:**
   - "Let feelings find me" starts on at the welcome (`ui/relay/welcome.js:32,107`), so new members can receive strangers' feelings unless they switch it off (SBD-17).
   - There's no approved privacy policy or collection notice. Drafts exist in `docs/legal/` (SBD-05).
-  - The export file's key still says `agreedToShareAnonymouslyAt`. People don't see it on screen.
 - **Smallest free action:**
   - Consider making catching an explicit choice at the welcome.
   - D7a: approve the privacy policy and notice.

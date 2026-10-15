@@ -161,7 +161,7 @@ These are questions for a lawyer, not conclusions:
      - the Your data summary, now "You agreed to share your feeling without your name" (`ui/relay/your-data.js`);
      - the consent-required message (`core/relay-messages.js`, pinned by `tests/audit-fixes.test.mjs`).
 
-     Not changed: the export key `agreedToShareAnonymouslyAt` (`core/export-format.js`, `docs/ACCESS.md`). Renaming it is a format change, so its tests change too. A lawyer may still want to see the new wording.
+     The export file changed with it: its key is now `agreedToShareWithoutYourNameAt` (format version 2, `core/export-format.js`). A lawyer may still want to see the new wording.
    - The welcome line "One feeling. Five perspectives. Back to you." Five is the most a feeling can gather, not a promise; the app shows the real count, including zero.
 8. **Terms of use and community guidelines** that moderators can apply, and a way to appeal a restriction.
 9. **Contracts with providers** (data processing terms, where data is stored):
