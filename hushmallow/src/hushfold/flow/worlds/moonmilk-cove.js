@@ -984,15 +984,28 @@ export function create(ctx) {
    * What a lantern holds: the photo — except in a gentle session, where the stand-in Mallow cards' faces never float on
    * the water: those lanterns are plain light in each card's colour. The person's own photos stay as they are.
    */
+  const plainCache = new Map();
   function face(g, i, x, y, D, a) {
     if (!(ctx.gentle && photos.standIn)) { photos.draw(g, i, x, y, D, { shape: 'arch', alpha: a, shadow: false }); return; }
-    const [r0, g0, b0] = rgbOf(photos.colour(i) || '#ffd98a');
-    const mix = (c, t) => Math.round(c + (t - c) * 0.5);
-    const w = D * 0.78, h = D;
-    const gr = g.createLinearGradient(0, y - h / 2, 0, y + h / 2);
-    gr.addColorStop(0, `rgba(${mix(r0, 255)},${mix(g0, 244)},${mix(b0, 220)},${0.92 * a})`); gr.addColorStop(1, `rgba(${mix(r0, 120)},${mix(g0, 100)},${mix(b0, 200)},${0.85 * a})`);
-    g.fillStyle = gr;
-    g.beginPath(); g.moveTo(x - w / 2, y + h / 2); g.lineTo(x - w / 2, y - h / 2 + w / 2); g.arc(x, y - h / 2 + w / 2, w / 2, Math.PI, 0); g.lineTo(x + w / 2, y + h / 2); g.closePath(); g.fill();
+    // (a plain lantern: drawn once per photo and size, then blitted — nothing allocated per frame)
+    const d = Math.min(2, Math.max(1, ctx.dpr || 1)), key = `${i}|${Math.round(D)}|${d}`;
+    let c = plainCache.get(key);
+    if (!c) {
+      if (plainCache.size > 24) plainCache.clear();
+      const w = D * 0.78, h = D;
+      c = makeCanvas(Math.ceil(w * d) + 2, Math.ceil(h * d) + 2);
+      const pg = c.getContext('2d');
+      pg.scale(d, d);
+      const [r0, g0, b0] = rgbOf(photos.colour(i) || '#ffd98a');
+      const mix = (v, t) => Math.round(v + (t - v) * 0.5);
+      const gr = pg.createLinearGradient(0, 0, 0, h);
+      gr.addColorStop(0, `rgba(${mix(r0, 255)},${mix(g0, 244)},${mix(b0, 220)},0.92)`); gr.addColorStop(1, `rgba(${mix(r0, 120)},${mix(g0, 100)},${mix(b0, 200)},0.85)`);
+      pg.fillStyle = gr;
+      pg.beginPath(); pg.moveTo(0, h); pg.lineTo(0, w / 2); pg.arc(w / 2, w / 2, w / 2, Math.PI, 0); pg.lineTo(w, h); pg.closePath(); pg.fill();
+      c.cssW = w; c.cssH = h;
+      plainCache.set(key, c);
+    }
+    g.globalAlpha = a; g.drawImage(c, x - c.cssW / 2, y - c.cssH / 2, c.width / d, c.height / d); g.globalAlpha = 1;
   }
 
   function drawCradle(g, now, rm) {
