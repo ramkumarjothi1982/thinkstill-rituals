@@ -166,9 +166,9 @@ replaces it.
    - map the support screens, the Mallow library and the desk guide against Mindframe, #chatsafe and Samaritans' guidelines;
    - fill in the NSQDMH self-assessment as a checklist;
    - the owner runs eSafety's Safety by Design start-up tool.
-2. **Before anyone outside the team (Tier A):** one registered psychologist or AMHSW for 3.5–4.5 hours, after the owner approves a quote. They:
+2. **Before anyone outside the team (Tier A):** one registered psychologist or AMHSW for about 5–6 hours, after the owner approves a quote. They:
    - label the 108-phrasing sheet (`docs/clinical/tier-a-sample-for-review.csv`, from `node tools/safety-eval.mjs --export <file> --sample`): all 54 undecided phrasings, plus 54 others;
-   - read every Mallow line;
+   - read all 342 Mallow lines (`docs/clinical/mallow-library-for-review.csv`);
    - review the support wording, the check-in idea (D2) and `ESCALATION.md`;
    - write a go/no-go memo.
 
@@ -183,9 +183,9 @@ replaces it.
 
 **Cost of the plan:** A$0 in services, and no AI calls. Reviewer time:
 - Tier 0: A$0;
-- Tier A: about A$1,155–1,530 excl. GST at the 2026-27 APS and AAPi rates;
+- Tier A: about A$1,650–2,040 excl. GST at the 2026-27 APS and AAPi rates (a leaner 4–5 hour version: A$1,320–1,700);
 - Tier B: A$2,750–4,680;
-- Tier C: A$7,275–10,720.
+- Tier C: A$7,275–11,400.
 
 These are indicative figures from published rates, not quotes (`REVIEWS.md` §5).
 

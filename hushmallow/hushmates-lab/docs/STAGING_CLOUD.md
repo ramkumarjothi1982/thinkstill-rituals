@@ -1,7 +1,7 @@
 # Hushmates · Staging from the cloud session, step by step
 
 This is the shortest way to get Hushmates onto real staging infrastructure. **You**
-make three accounts and four secrets; **the developer's cloud session** deploys
+make two accounts, two tokens and one root secret; **the developer's cloud session** deploys
 and runs every test. Nothing needs installing on your computer.
 
 `STAGING.md` is the other way, run from your own computer. Both end in the same place.

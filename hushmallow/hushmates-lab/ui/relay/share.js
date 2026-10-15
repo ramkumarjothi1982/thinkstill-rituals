@@ -12,7 +12,10 @@
 // What a writer allows can change while this screen is open (they turn sharing
 // off, or take their words back): the screen follows every refresh, and before a
 // picture or video is made it asks the service for the journey as it is now, so
-// nothing a writer has withdrawn is ever drawn.
+// nothing a writer has withdrawn is ever drawn. A video takes a while to record: if
+// anything chosen goes while it records, the recording stops; and anything made is
+// checked with the service once more before it is handed over, and dropped if a
+// choice went in the meantime.
 
 import { h, icon } from '../dom.js';
 import { sentenceSwitch } from '../kit.js';
@@ -43,6 +46,7 @@ export function share(dev, { id } = {}) {
   let hasMallow = items.some((p) => p.kind === 'mallow');
   let story = null;
   let alive = true;
+  let making = null;                                                      // { chosen, ctl? } while a picture or video is being made
   let raf = 0;
   let playing = !reducedMotion();
   let t0 = 0;
@@ -132,64 +136,102 @@ export function share(dev, { id } = {}) {
   const picksHint = h('p', { class: 'hf-hint hf-hint--left' });
   const picksBox = h('div', { class: 'hf-picks' });
   const picksSec = h('section', { class: 'hf-share-sec' }, h('h2', { class: 'kit-label' }, 'Perspectives to include'), picksHint, picksBox, fitNote);
+  let painted = '';
   function paintPicks() {
     const open = items.filter(allowed);
     const kept = items.filter((p) => !allowed(p));
+    // a refresh that changes nothing leaves the rows (and a keyboard user's place) alone. Ticks aren't
+    // part of this: a row keeps its own, and a tick only goes when its row does
+    const shows = JSON.stringify([open.map((p) => [p.id, p.kind, honestLabel(p), p.text]), kept.length]);
+    if (shows === painted) return false;
+    painted = shows;
     picksSec.hidden = !items.length;
     picksHint.textContent = open.length
       ? 'Only ones their writers allowed. Nobody is named, and each keeps its own label. The picture fits one or two; the video shows each in turn.'
       : 'Their writers kept these private, so the story shows the real count without their words.';
     put(picksBox, open.map(pickRow), kept.map(lockedRow));
+    return true;
   }
   paintPicks();
   /**
    * The journey as the service has it now. Anything chosen that is no longer allowed is
-   * taken out (and the numbers follow): a perspective its writer stopped sharing or took back,
-   * and the author's own words once the feeling was let go.
-   * → { dropped: perspectives taken out, wordsGone: the author's chosen words are gone }
+   * taken out (and the numbers follow): a perspective its writer stopped sharing, one that
+   * isn't on the journey any more, and the author's own words once the feeling was let go.
+   * → { stopped, letGo, unavailable, wordsGone, mallowGone }: what went, for saying so
    */
   function adopt(view) {
+    const hadWords = !!j?.text;
     j = view;
     items = itemsOf(view);
     hasMallow = items.some((p) => p.kind === 'mallow');
-    let dropped = 0;
-    let mallowGone = false;
+    const letGoNow = hadWords && !j.text;                                 // the feeling was let go: its words were cleared
+    const out = { stopped: 0, letGo: 0, unavailable: 0, wordsGone: false, mallowGone: false };
     for (const pid of [...opts.picks]) {
       const p = items.find((x) => x.id === pid);
-      if (!p || !allowed(p)) { opts.picks.delete(pid); if (pickedKind.get(pid) === 'mallow') mallowGone = true; else dropped += 1; }
+      if (p && allowed(p)) continue;
+      opts.picks.delete(pid);
+      if (pickedKind.get(pid) === 'mallow') out.mallowGone = true;
+      else if (p) out.stopped += 1;                                       // still there, no longer shareable: its writer stopped sharing
+      else if (letGoNow) out.letGo += 1;                                  // not kept, so it went with the feeling
+      else out.unavailable += 1;                                          // taken back, or removed
     }
+    // where focus is matters: a part about to go hands it to the screen's heading, not to the page
+    const active = document.activeElement;
+    const landing = () => { const t = r.el.querySelector('.hf-copy h1'); t.setAttribute('tabindex', '-1'); t.focus(); };
     // the feeling was let go (its words cleared): the choice to include them goes, once
-    let wordsGone = false;
-    if (!j.text && wordsSwitch?.isConnected) { wordsGone = opts.words; opts.words = false; wordsSwitch.remove(); }
-    // a row being redrawn can't keep focus: it moves to the section's heading, not to the top of the page
-    const onPick = picksBox.contains(document.activeElement);
-    paintPicks();
-    if (onPick) { const head = picksSec.querySelector('h2'); head.setAttribute('tabindex', '-1'); head.focus(); }
+    if (!j.text && wordsSwitch?.isConnected) {
+      out.wordsGone = opts.words;
+      opts.words = false;
+      const hadFocus = wordsSwitch.contains(active);
+      wordsSwitch.remove();
+      if (hadFocus) landing();
+    }
+    const onPick = picksBox.contains(active);
+    if (paintPicks() && onPick) {
+      if (picksSec.hidden) landing();
+      else { const head = picksSec.querySelector('h2'); head.setAttribute('tabindex', '-1'); head.focus(); }
+    }
     refresh();
-    return { dropped, wordsGone, mallowGone };
+    // something chosen for a picture or video being made went: the video stops
+    if (making?.ctl && changedSince(making.chosen)) making.ctl.abort(new Error('changed'));
+    return out;
   }
-  const changedMind = ({ dropped: n, wordsGone, mallowGone }) => [
+  const what = (o) => o.stopped || o.letGo || o.unavailable || o.wordsGone || o.mallowGone;
+  const changedMind = ({ stopped: n, letGo, unavailable, wordsGone, mallowGone }) => [
     wordsGone ? 'This feeling was let go, so your own words are no longer in your story.' : '',
+    letGo ? `This feeling was let go, so the ${letGo === 1 ? 'perspective you hadn’t kept is' : 'perspectives you hadn’t kept are'} no longer in your story.` : '',
     mallowGone ? 'The Mallow perspective you chose isn’t part of this journey any more.' : '',
     n ? `${n === 1 ? 'A writer has' : 'Some writers have'} stopped sharing ${n === 1 ? 'their perspective' : 'theirs'}, so ${n === 1 ? 'it’s' : 'they’re'} no longer in your story.` : '',
+    unavailable ? `${unavailable === 1 ? 'A perspective you chose isn’t' : 'Some perspectives you chose aren’t'} available any more, so ${unavailable === 1 ? 'it’s' : 'they’re'} no longer in your story.` : '',
   ].filter(Boolean).join(' ');
-  const gone = () => {
+  /** What the author has chosen right now (kept when they press Make, to compare with what is still allowed). */
+  const choices = () => ({ picks: new Set(opts.picks), words: opts.words });
+  const changedSince = (chosen) => [...chosen.picks].some((pid) => !opts.picks.has(pid)) || (chosen.words && !opts.words);
+  const gone = ({ making: trying = false } = {}) => {
     for (const b of [makePic, makeVid]) if (b) b.disabled = true;
-    dev.toast('This journey isn’t here any more, so nothing was made.', { tone: 'warn', ms: 5000 });
+    if (making?.ctl) { making.ctl.abort(new Error('gone')); return; }    // the recording says so itself
+    dev.toast(trying ? 'This journey isn’t here any more, so nothing was made.' : 'This journey isn’t here any more, so nothing can be made from it.', { tone: 'warn', ms: 5000 });
   };
-  /** Asked of the service just before anything is made: false (and nothing is made) if it can't say, or if a choice had to go. */
-  async function stillAllowed() {
+  /**
+   * Asked of the service just before anything is made, and again before it is handed over:
+   * false (and nothing is made or kept) if it can't say, or if anything chosen had to go.
+   */
+  async function stillAllowed(chosen, { after = '' } = {}) {
     let view;
     try { view = await c.api('getJourney', { journeyId: id }); } catch (e) {
       if (!alive) return false;
-      if (e?.code === 'not-found') { gone(); return false; }
-      dev.toast('Couldn’t check with Hushmates just now, so nothing was made. Please try again in a moment.', { tone: 'warn', ms: 5000 });
+      if (e?.code === 'not-found') { gone({ making: true }); return false; }
+      dev.toast(`Couldn’t check with Hushmates just now, so ${after ? `the ${after} wasn’t kept` : 'nothing was made'}. Please try again in a moment.`, { tone: 'warn', ms: 5000 });
       return false;
     }
     if (!alive) return false;
-    if (!view || !view.id) { gone(); return false; }
+    if (!view || !view.id) { gone({ making: true }); return false; }
     const changed = adopt(view);
-    if (changed.dropped || changed.wordsGone || changed.mallowGone) { dev.toast(`${changedMind(changed)} Have a look, then make it again.`, { tone: 'warn', ms: 6500 }); return false; }
+    if (what(changed) || changedSince(chosen)) {
+      const why = what(changed) ? changedMind(changed) : 'Something you chose changed just now.';
+      dev.toast(`${why}${after ? ` The ${after} wasn’t kept.` : ''} Have a look, then make it again.`, { tone: 'warn', ms: 6500 });
+      return false;
+    }
     return true;
   }
 
@@ -207,59 +249,77 @@ export function share(dev, { id } = {}) {
     h('div', { class: 'hf-actions' }, makePic, makeVid,
       h('p', { class: 'hf-hint' }, vtype ? 'Made on this device. You decide if and where to post it.' : 'Made on this device. (This browser can’t make videos, but the picture works everywhere.)'))));
 
-  let busy = false;
+  // one at a time; and what was chosen when the button was pressed is what must still be allowed
   async function savePicture() {
-    if (busy) return;
-    busy = true;
-    try { if (!(await stillAllowed())) return; } finally { busy = false; }
-    let url;
-    const pic = makeStory(data());
-    try { url = URL.createObjectURL(await renderPicture(pic)); } catch {
-      dev.toast('Couldn’t make the picture here. Please try again.', { tone: 'warn' });
-      return;
-    }
-    // shown, not downloaded: works everywhere (some hosts block script downloads), and nothing is uploaded
-    dev.sheet({
-      title: 'Your picture',
-      body: h('div', { class: 'rl-share-out' },
-        h('img', { src: url, alt: `Your journey as a picture: the orb with a petal of light for each person${pic.showsMallow() ? `, ${mine.name} on a cloud beneath it` : ''}, the real count, and any perspectives you chose`, class: 'rl-share-img', dataset: { test: 'share-image' } }),
-        h('p', { class: 'kit-note rl-center' }, 'Press and hold the picture (or right-click it) to save it. Nothing was uploaded or posted.')),
-      actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
-      onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
-    });
+    if (making) return;
+    making = { chosen: choices() };
+    try {
+      if (!(await stillAllowed(making.chosen))) return;
+      let blob;
+      const pic = makeStory(data());
+      try { blob = await renderPicture(pic); } catch {
+        dev.toast('Couldn’t make the picture here. Please try again.', { tone: 'warn' });
+        return;
+      }
+      // once more before it is handed over: a choice may have gone while it was drawn
+      if (!(await stillAllowed(making.chosen, { after: 'picture' })) || !alive) return;
+      const url = URL.createObjectURL(blob);
+      // shown, not downloaded: works everywhere (some hosts block script downloads), and nothing is uploaded
+      dev.sheet({
+        title: 'Your picture',
+        body: h('div', { class: 'rl-share-out' },
+          h('img', { src: url, alt: `Your journey as a picture: the orb with a petal of light for each person${pic.showsMallow() ? `, ${mine.name} on a cloud beneath it` : ''}, the real count, and any perspectives you chose`, class: 'rl-share-img', dataset: { test: 'share-image' } }),
+          h('p', { class: 'kit-note rl-center' }, 'Press and hold the picture (or right-click it) to save it. Nothing was uploaded or posted.')),
+        actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
+        onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
+      });
+    } finally { making = null; }
   }
 
   async function saveVideo() {
-    if (busy) return;
-    busy = true;
-    try { if (!(await stillAllowed())) return; } finally { busy = false; }
-    const ctl = new AbortController();
-    const bar = h('span', { class: 'hf-progress-bar' });
-    const status = h('p', { class: 'kit-note rl-center', 'aria-live': 'polite' }, 'Recording your story… it plays once, in real time.');
-    dev.sheet({
-      title: 'Making your video',
-      body: h('div', { class: 'kit-stack' }, h('div', { class: 'hf-progress', role: 'progressbar', 'aria-label': 'Making your video' }, bar), status),
-      actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', onclick: () => { ctl.abort(); dev.closeSheet(); } }, 'Cancel')],
-      onClose: () => ctl.abort(),
-    });
-    let blob;
+    if (making) return;
+    making = { chosen: choices() };
     try {
-      blob = await renderVideo(makeStory(data()), { signal: ctl.signal, onProgress: (p) => { bar.style.width = `${Math.round(p * 100)}%`; } });
-    } catch (e) {
-      if (!ctl.signal.aborted) { dev.closeSheet(); dev.toast('Couldn’t make the video here. The picture still works.', { tone: 'warn' }); }
-      return;
-    }
-    if (!alive) return;
-    const url = URL.createObjectURL(blob);
-    dev.closeSheet();
-    dev.sheet({
-      title: 'Your video',
-      body: h('div', { class: 'rl-share-out' },
-        h('video', { src: url, class: 'rl-share-img', controls: true, playsinline: true, loop: true, muted: true, dataset: { test: 'share-video-out' }, 'aria-label': 'Your journey as a short video' }),
-        h('p', { class: 'kit-note rl-center' }, 'A short video made on this device. Use the player’s menu to save it. Nothing was uploaded or posted.')),
-      actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
-      onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
-    });
+      if (!(await stillAllowed(making.chosen))) return;
+      const ctl = new AbortController();
+      making.ctl = ctl;
+      let cancelled = false;
+      const bar = h('span', { class: 'hf-progress-bar' });
+      const status = h('p', { class: 'kit-note rl-center', 'aria-live': 'polite' }, 'Recording your story… it plays once, in real time.');
+      dev.sheet({
+        title: 'Making your video',
+        body: h('div', { class: 'kit-stack', dataset: { test: 'share-video-making' } }, h('div', { class: 'hf-progress', role: 'progressbar', 'aria-label': 'Making your video' }, bar), status),
+        actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--text kit-btn--block', onclick: () => { cancelled = true; ctl.abort(); dev.closeSheet(); } }, 'Cancel')],
+        onClose: () => { cancelled = true; ctl.abort(); },
+      });
+      let blob;
+      try {
+        blob = await renderVideo(makeStory(data()), { signal: ctl.signal, onProgress: (p) => { bar.style.width = `${Math.round(p * 100)}%`; } });
+        if (ctl.signal.aborted) throw ctl.signal.reason || new Error('aborted');
+      } catch (e) {
+        const reason = ctl.signal.reason?.message;
+        if (reason === 'changed' || reason === 'gone') {
+          // a choice went (or the journey did) while it recorded: stopped, and nothing kept
+          dev.closeSheet();
+          dev.toast(reason === 'gone' ? 'This journey isn’t here any more, so the video was stopped and not kept.'
+            : 'Something you chose isn’t in your story any more, so the video was stopped and wasn’t kept. Have a look, then make it again.', { tone: 'warn', ms: 6500 });
+        } else if (!cancelled && alive) { dev.closeSheet(); dev.toast('Couldn’t make the video here. The picture still works.', { tone: 'warn' }); }
+        return;
+      }
+      making.ctl = null;
+      // once more before it is handed over
+      if (!(await stillAllowed(making.chosen, { after: 'video' })) || !alive || cancelled) { if (!cancelled) dev.closeSheet(); return; }
+      const url = URL.createObjectURL(blob);
+      dev.closeSheet();
+      dev.sheet({
+        title: 'Your video',
+        body: h('div', { class: 'rl-share-out' },
+          h('video', { src: url, class: 'rl-share-img', controls: true, playsinline: true, loop: true, muted: true, dataset: { test: 'share-video-out' }, 'aria-label': 'Your journey as a short video' }),
+          h('p', { class: 'kit-note rl-center' }, 'A short video made on this device. Use the player’s menu to save it. Nothing was uploaded or posted.')),
+        actions: [h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--block', onclick: () => dev.closeSheet() }, 'Done')],
+        onClose: () => setTimeout(() => URL.revokeObjectURL(url), 1000),
+      });
+    } finally { making = null; }
   }
 
   refresh();
@@ -273,8 +333,9 @@ export function share(dev, { id } = {}) {
       const fresh = c.journey(id);
       if (!fresh) { if (!makePic.disabled) gone(); return; }
       const changed = adopt(fresh);
-      if (changed.dropped || changed.wordsGone || changed.mallowGone) dev.toast(changedMind(changed), { tone: 'warn', ms: 6500 });
+      // a recording that was stopped by this says so itself
+      if (what(changed) && !making?.ctl?.signal.aborted) dev.toast(changedMind(changed), { tone: 'warn', ms: 6500 });
     },
-    destroy() { alive = false; cancelAnimationFrame(raf); },
+    destroy() { alive = false; cancelAnimationFrame(raf); making?.ctl?.abort(); },
   };
 }

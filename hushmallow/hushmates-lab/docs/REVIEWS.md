@@ -19,14 +19,14 @@ of its scope and its cost first (`DECISIONS.md`, D6).
   - Hushmates already runs safety functions: the crisis screen, the support screens, and the danger-report queue. Under negligence law, a function it chose to run must be run with reasonable care.
   - The Online Safety Act codes expect a service to act on self-harm risk.
   - Consumer law forbids overstating safety.
-- **The A$5,000–9,000 estimate bought more than a small beta needs.** It priced two clinicians independently labelling all 379 phrasings, so their agreement could be measured. That level of evidence is needed to tune the screen against labels, or to make any measured-performance claim. It isn't needed to decide whether a small invite-only beta is reasonably safe. §2 shows exactly how the figure was reached.
-- **The smallest appropriate review ("Tier A")** is one registered psychologist or Accredited Mental Health Social Worker for **3.5–4.5 hours**. It covers:
-  - the crisis categories and the hardest phrasings;
-  - every Mallow line;
+- **The A$5,000–9,000 estimate bought more than a small beta needs.** It priced two clinicians independently labelling all 379 phrasings, so their agreement could be measured. That level of evidence is needed to tune the screen against labels, or to make any measured-performance claim. It isn't needed to decide whether a small invite-only beta is reasonably safe. §2 reconstructs how the figure was reached.
+- **The smallest appropriate review ("Tier A")** is one registered psychologist or Accredited Mental Health Social Worker for **about 5–6 hours**. It covers:
+  - the crisis categories and the 108 hardest and most representative phrasings;
+  - all 342 Mallow lines;
   - the escalation procedure;
   - a written go/no-go memo.
 
-  Indicative cost: **A$1,155–1,530 excl. GST** at the 2026-27 professional-association rates, and up to about A$2,120 at an organisational rate (§5). It comes after **"Tier 0"**: free self-assessments the team can do now, for A$0.
+  Indicative cost: **A$1,650–2,040 excl. GST** at the 2026-27 professional-association rates, and up to about A$2,830 at an organisational rate (§5). A leaner version labels only the 54 undecided phrasings, for about 4–5 hours (A$1,320–1,700). Tier A comes after **"Tier 0"**: free self-assessments the team can do now, for A$0.
 - **Recommendation:**
   - Tier 0 now.
   - Tier A before anyone outside the team uses Hushmates.
@@ -34,12 +34,12 @@ of its scope and its cost first (`DECISIONS.md`, D6).
 
 ## 2. How the A$5,000–9,000 estimate was calculated
 
-It was a planning placeholder from Phase 3 (`CRISIS_DETECTION.md` §8). It was **not** a quote, and its hourly rate was **not researched**.
+It was a planning placeholder from Phase 3 (`CRISIS_DETECTION.md` §8). It was **not** a quote, and its hourly rate was **not researched**. The note at the time said only "roughly 20–30 hours … at common Australian consulting rates". The split below is a **reconstruction** of how those hours were reached, not a record of a calculation.
 
 | Part | Hours assumed | How |
 |---|---:|---|
 | Two clinicians label every phrasing on the blind sheet, each alone | 12.6 | 379 phrasings × about 1 minute × 2 clinicians = 758 minutes |
-| Everything else, as one rough allowance (not itemised at the time):<br>• settling disagreements;<br>• agreeing acceptance thresholds;<br>• the support wording, the check-in and the escalation procedure;<br>• the Mallow library;<br>• a written memo and a meeting | about 7–17 | An allowance, not a breakdown |
+| Everything else, as one rough allowance (never itemised):<br>• settling disagreements;<br>• agreeing acceptance thresholds;<br>• the support wording, the check-in and the escalation procedure;<br>• the Mallow library;<br>• a written memo and a meeting | about 7–17 | An allowance, not a breakdown |
 | **Total** | **about 20–30** | |
 | **× an assumed A$250–300 an hour** | | 20 h × A$250 = **A$5,000**; 30 h × A$300 = **A$9,000** |
 
@@ -120,17 +120,26 @@ diligence. **It is not an independent judgement**, which is why Tier A follows.
 
 They must have no stake in Hushmallow. Ask them to confirm their professional indemnity insurance covers advisory work like this.
 
-**Scope, 3.5–4.5 hours:**
+**Scope, about 5–6 hours:**
 
 | Part | Hours | What they get | The question it answers |
 |---|---:|---|---|
-| 1. The pack | 1 | A 10-page summary:<br>• what the screen does;<br>• screenshots of every support screen and *Get support now*;<br>• the crisis lines shown;<br>• `ESCALATION.md`;<br>• the desk guide;<br>• the "You & safety" copy;<br>• what Hushmates says about itself | Is anything missing or unsafe in the overall design? |
-| 2. Crisis recognition | 1–1.5 | The categories (crisis · someone in danger · care · release), plus the **shorter blind sheet**, `docs/clinical/tier-a-sample-for-review.csv`, made by `node tools/safety-eval.mjs --export <file> --sample`. It holds 108 phrasings:<br>• all 54 "undecided" phrasings the developers couldn't call;<br>• 54 others in proportion | Which of these must get support? Are the categories right? Is the planned "are you safe right now?" check-in (D2) appropriate, and with what wording and routing? |
-| 3. The Mallow library | 0.5–1 | Every line: about 160–220 short lines and 49 openers (`core/perspectives.js`). A full read fits, so there's no sampling | Could any line hurt someone at a hard moment? Is the rule keeping "chores" and "distance" lines away from grief, harm and health wide enough? |
+| 1. The pack | 0.75–1 | A 10-page summary:<br>• what the screen does;<br>• screenshots of every support screen and *Get support now*;<br>• the crisis lines shown;<br>• `ESCALATION.md`;<br>• the desk guide;<br>• the "You & safety" copy;<br>• what Hushmates says about itself | Is anything missing or unsafe in the overall design? |
+| 2. Crisis recognition | 2–2.5 | The categories (crisis · someone in danger · care · release), plus the **shorter blind sheet**, `docs/clinical/tier-a-sample-for-review.csv` (`node tools/safety-eval.mjs --export <file> --sample`). It holds 108 rows at about a minute each:<br>• the 54 "undecided" rows (53 distinct phrasings);<br>• 54 others, in proportion to each group | Which of these must get support? Are the categories right? Is the planned "are you safe right now?" check-in (D2) appropriate, and with what wording and routing? |
+| 3. The Mallow library | 1–1.5 | Every line, as a sheet with a column for the reviewer's call (ok · change · remove): `docs/clinical/mallow-library-for-review.csv` (`--library`). It holds 342 short lines:<br>• 49 openers;<br>• 70 lines by theme;<br>• 44 by feeling;<br>• 179 from Reframe's library, which Hushmates uses read-only and can leave out line by line | Could any line hurt someone at a hard moment? Is the rule keeping "chores" and "distance" lines away from grief, harm and health wide enough? |
 | 4. Escalation and vulnerable users | 0.5 | `ESCALATION.md` | Are the 12-hour and 48-hour desk targets acceptable, given that in-app support, not the desk, carries imminent risk? Is "call 000 only if the team independently knows who it is" right? Should the account email ever be used in imminent danger? (That last one is also a privacy-law question: the "serious threat" exception, APP 6.2(c).) |
-| 5. The memo | 0.5 | — | Go or no-go for an invite-only beta of up to about 30 adults, and on what conditions. What must change. **What may and may not be said publicly about this review** (consumer law: a 4-hour review is not "clinical validation") |
+| 5. The memo | 0.5 | — | Go or no-go for an invite-only beta of up to about 30 adults, and on what conditions. What must change. **What may and may not be said publicly about this review** (consumer law: a few hours' review is not "clinical validation") |
 
-For your information only (the sheet stays blind, so the reviewer doesn't see this): of the 54 undecided phrasings, the screen releases 36 today and shows crisis support for 17 (`node tools/safety-eval.mjs`). Those 36 are where Tier A's answers matter most.
+For your information only (the sheet stays blind, so the reviewer doesn't see this):
+- The 54 undecided rows hold 53 distinct phrasings; one is listed twice.
+- Ten of them are also in the fixture's crisis list, so the screen already gives them support.
+- Today the screen releases 36 of the 54 rows, gives crisis support for 17, and the "care" screen for 1 (`node tools/safety-eval.mjs`).
+- The 36 released are where Tier A's answers matter most.
+
+**The leaner version:**
+- the reviewer labels only the 54 undecided rows (`--export <file> --undecided`);
+- that saves about an hour, for about 4–5 hours in all;
+- but it doesn't check the decisions the screen has already settled.
 
 **How the reviewer labels:** they write one label per row in the `agreed` column (`crisis`, `danger`, `care`, `release` or `unsure`). Then `node tools/safety-eval.mjs --labels <their sheet>` reports, for those phrasings:
 - what the screen catches;
@@ -141,17 +150,20 @@ With one reviewer it measures no agreement and says so: it is an expert review o
 
 **Indicative cost** (published rates, excl. GST; §10):
 
-| Rate source | Rate (A$/h) | 3.5 h | 4.5 h |
+| Rate source | Rate (A$/h) | 5 h | 6 h |
 |---|---:|---:|---:|
-| APS suggested fee 2026-27 (46–60 min consultation) | 330 | 1,155.00 | 1,485.00 |
-| AAPi recommended fee 2026-27 (40–60 min) | 340 | 1,190.00 | **1,530.00** |
-| AASW consultancy (2022 schedule; 2025 figure unconfirmed) | 325 | 1,137.50 | 1,462.50 |
-| AAPi organisational consultation (2024-25; the 2026-27 figure is unknown) | 471 | 1,648.50 | 2,119.50 |
-| ReturnToWorkSA psychology, 1 July 2026 (a scheme rate, not a market rate; a reviewer may not accept it) | 265.20 | **928.20** | 1,193.40 |
+| APS suggested fee 2026-27 (46–60 min consultation) | 330 | **1,650.00** | 1,980.00 |
+| AAPi recommended fee 2026-27 (40–60 min) | 340 | 1,700.00 | **2,040.00** |
+| AASW consultancy (2022 schedule; 2025 figure unconfirmed) | 325 | 1,625.00 | 1,950.00 |
+| AAPi organisational consultation (2024-25; the 2026-27 figure is unknown) | 471 | 2,355.00 | 2,826.00 |
+| ReturnToWorkSA psychology, 1 July 2026 (a scheme rate, not a market rate; a reviewer may not accept it) | 265.20 | 1,326.00 | 1,591.20 |
 
-- **Expect A$1,155–1,530 excl. GST** at the APS and AAPi rates. Ask for a **fixed fee** for the scope above.
-- If the reviewer is GST-registered, add 10%: A$1,270.50–1,683. That is claimable back if the owner is GST-registered; ask an accountant.
-- The ceiling at an organisational rate is about A$2,332 incl. GST.
+- **Expect A$1,650–2,040 excl. GST** at the APS and AAPi rates. Ask for a **fixed fee** for the scope above.
+- If the reviewer is GST-registered, add 10%: A$1,815–2,244. That is claimable back if the owner is GST-registered; ask an accountant.
+- The ceiling at an organisational rate is about A$3,109 incl. GST.
+- The leaner version, 4–5 hours: A$1,320–1,700 excl. GST.
+
+An earlier draft of this page said 3.5–4.5 hours and A$1,155–1,530. That undercounted the Mallow library: it counted only the lines in `core/perspectives.js`, and missed Reframe's 179. It also undercounted the time to label 108 phrasings.
 
 ### 5.3 What Tier A does not do
 
@@ -164,7 +176,7 @@ With one reviewer it measures no agreement and says so: it is an expert review o
 | Tier | Who, and how long | Indicative cost (excl. GST) | When it becomes advisable |
 |---|---|---|---|
 | **B** | One clinician for 8–12 hours (the whole sheet by one person, thresholds, the check-in), plus a reviewer with lived experience of suicide for 3–6 hours, with a briefing, an opt-out and a debrief | Clinician 8 × 330 = A$2,640 to 12 × 340 = A$4,080. Lived-experience reviewer A$112.50–600 (3 h × A$37.50 to 6 h × A$100, published paid-participation rates). **Total about A$2,750–4,680** | Any of:<br>• a confirmed crisis the screen missed during the beta;<br>• the check-in about to go live beyond the team;<br>• more than about 100 testers;<br>• before opening sign-up beyond invitations |
-| **C** (the original scope) | Two clinicians label all 379 phrasings blind (20–28 hours together), agree thresholds; a lived-experience panel of three | Clinicians A$6,600–9,520; panel A$675–1,200. **Total about A$7,275–10,720** | Before:<br>• a public launch that makes any measured safety claim;<br>• tuning the screen or the meaning-based check against labels (`CRISIS_DETECTION.md` §3) |
+| **C** (the original scope, plus a panel) | Two clinicians label all 379 phrasings blind, agree thresholds and review the wording (20–30 hours together, as in §2); a lived-experience panel of three, which the original didn't include | Clinicians A$6,600–10,200; panel A$675–1,200. **Total about A$7,275–11,400** | Before:<br>• a public launch that makes any measured safety claim;<br>• tuning the screen or the meaning-based check against labels (`CRISIS_DETECTION.md` §3) |
 
 ## 6. Lower-cost options investigated
 
@@ -176,7 +188,7 @@ call (§8 has a draft email).
 | Free guidelines: Mindframe, #chatsafe, Samaritans, and WHO/IASP's media resource | A$0 | ✅ Yes, in Tier 0, as the benchmark |
 | eSafety Safety by Design start-up tool; NSQDMH self-assessment | A$0 | ✅ Yes, in Tier 0 |
 | Samaritans' Online Safety Advisory Service; Mindframe's advice line | A$0 | ❔ Worth one email each; eligibility unconfirmed |
-| A single registered psychologist or AMHSW at the association rates (Tier A) | A$1,155–1,530 | ✅ **The recommended independent review** |
+| A single registered psychologist or AMHSW at the association rates (Tier A) | A$1,650–2,040 (leaner: A$1,320–1,700) | ✅ **The recommended independent review** |
 | Lived-experience reviewers at published paid-participation rates:<br>• WA Mental Health Commission: A$37.50 or A$75 an hour;<br>• WAAMH: A$35 or A$65 an hour, 3-hour minimum;<br>• QMHC (interim): A$25, A$50 or A$100 an hour | A$112.50–300 for 3 hours | ✅ As part of Tier B |
 | Moderator training:<br>• LivingWorks Start: A$39.95 + tax;<br>• Lifeline *Accidental Counsellor*: about A$250 + GST online to A$550 for two days | A$40–550 a person | ✅ Optional, for desk readers |
 | Lived-experience organisations (Roses in the Ocean), Black Dog Institute consultancy | No published price ("some fees may apply") | ❔ Ask if Tier B is triggered |
@@ -188,10 +200,14 @@ call (§8 has a draft email).
 
 ## 7. What stays the same
 
-- **The 379-phrasing blind evaluation harness is kept exactly as it is.**
-  - `docs/clinical/crisis-phrasings-for-review.csv` and `tools/safety-eval.mjs` are unchanged. A test pins the sheet byte for byte (`tests/safety-eval.test.mjs`).
-  - The Tier A sheet is a subset with the same ids.
-  - 11 phrasings appear twice (once in a crisis list, once among the undecided). This is harmless: scores count them twice, and a reviewer who labels both copies alike shows consistency.
+- **The 379-phrasing blind evaluation harness is kept as it is.**
+  - The sheet, `docs/clinical/crisis-phrasings-for-review.csv`, and its scoring are unchanged. A test pins the sheet byte for byte (`tests/safety-eval.test.mjs`).
+  - `tools/safety-eval.mjs` only gained ways to export subsets (with the same ids) and the Mallow library.
+  - 11 rows repeat a phrasing:
+    - ten are in a crisis list and again among the undecided;
+    - one is listed twice among the undecided.
+
+    This is harmless. Scores count each row, and a reviewer who labels both copies alike shows consistency.
 - **Developer tests are not clinical validation.** About 330 fixture phrasings, the 379-row sheet and five adversarial review rounds show that the screen behaves *as the developers decided*. They say nothing about whether those decisions are clinically right. No document, screen or marketing line may say Hushmates' crisis handling is "validated", "clinically reviewed" or that it "detects" risk until a review supports exactly that wording.
 - **Unreviewed crisis features stay behind safeguards:**
   - The keyword rules stay as the floor, frozen, and run first, with no network call.
@@ -199,7 +215,10 @@ call (§8 has a draft email).
   - The **meaning-based check is not built**. When it is built, it can only add caution, and it runs in shadow mode first.
   - **No AI is added for crisis detection.** There is no measured need yet. The harness is the way to show one, and the cost and privacy price of each option is in `CRISIS_DETECTION.md` §5.
   - *Get support now* stays on every screen, and the app keeps saying the screen can miss things.
-  - **Testers stay within the team until Tier A is done and its conditions are met** (D12). Sign-in is by invitation only, so this is enforced.
+  - **Testers stay within the team until Tier A is done and its conditions are met** (D12). This is a procedure the owner follows, not a technical lock:
+    - Sign-in needs an invitation, and only the owner and admins can make them.
+    - On staging, Supabase's built-in sender only emails team members, until an email provider is chosen (D5).
+    - Nothing technical stops an invitation going to someone outside the team.
 
 ## 8. What the owner decides
 
@@ -208,7 +227,7 @@ call (§8 has a draft email).
 | D6a | Approve Tier 0. The developer does the guideline mapping and the NSQDMH checklist; you do the eSafety tool and the WHS assessment, and send the two free emails | A$0 |
 | D6b | Optional: buy LivingWorks Start for each desk reader | about A$40 + tax a person |
 | D6c | Approve **asking for fixed-fee quotes** for Tier A from two or three reviewers. Asking costs nothing and commits to nothing | A$0 |
-| D6d | Later: approve one Tier A quote | expected A$1,155–1,530 + GST |
+| D6d | Later: approve one Tier A quote | expected A$1,650–2,040 + GST (leaner: A$1,320–1,700) |
 
 **A draft email for D6c** (for you to send; edit freely):
 
@@ -218,10 +237,10 @@ call (§8 has a draft email).
 >
 > I'm building Hushmallow, a non-clinical emotional-companion app for adults: people write a feeling, a few other members offer a kind perspective, and characters called Mallows respond from a fixed library. It is not a health or counselling service. Before inviting outside testers I'd like an independent registered psychologist or AMHSW to review its safety design.
 >
-> Scope (about 3.5–4.5 hours, from a written pack):
+> Scope (about 5–6 hours, from a written pack):
 > - the support screens and crisis lines;
 > - about 108 example phrasings to label;
-> - the app's fixed response lines;
+> - the app's fixed response lines (about 340 short lines);
 > - our escalation procedure;
 > - a short memo with go/no-go conditions for a beta of about 30 adults, and what we may say publicly about the review.
 >

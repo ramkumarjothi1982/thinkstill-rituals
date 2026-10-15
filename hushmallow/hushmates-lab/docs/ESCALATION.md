@@ -4,7 +4,7 @@
 operational, not clinical advice.** It describes what the desk can and can't do
 and what the team does with a report that someone may be in danger.
 ⚠️ **Independent review: OUTSTANDING.** It is in the scope of the smallest
-review proposed in `REVIEWS.md` §4.
+review proposed in `REVIEWS.md` §5.2.
 
 ## 1. What the desk can and can't do
 

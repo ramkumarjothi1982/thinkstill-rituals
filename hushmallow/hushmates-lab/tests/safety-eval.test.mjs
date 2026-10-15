@@ -4,7 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { phrasings, toCsv, parseCsv, score, kappa, outcome, sampleIds } from '../tools/safety-eval.mjs';
+import { phrasings, toCsv, parseCsv, score, kappa, outcome, sampleIds, libraryCsv } from '../tools/safety-eval.mjs';
+import { libraryCatalogue } from '../core/perspectives.js';
 
 test('the clinicians’ sheet holds every phrasing once, blind to what the screen does', () => {
   const rows = phrasings();
@@ -75,4 +76,26 @@ test('the shorter sheet for one reviewer: every undecided phrasing, each group r
   const s = score(sheet.slice(0, 3).map((r) => ({ ...r, agreed: 'crisis' })));
   assert.equal(s.raterPairs, 0);
   assert.equal(s.kappa, null);
+});
+
+test('the undecided-only sheet: just the phrasings the developers couldn’t call, with the full sheet’s ids', () => {
+  const rows = phrasings();
+  const ids = sampleIds(rows, { others: false });
+  const sheet = parseCsv(toCsv(rows, { only: ids }));
+  assert.equal(sheet.length, rows.filter((r) => r.group === 'undecided').length);
+  assert.ok(sheet.every((r) => rows.some((x) => x.group === 'undecided' && x.phrasing === r.phrasing)));
+  const alsoCrisis = rows.filter((r) => r.group === 'crisis').map((r) => r.phrasing).filter((p) => rows.some((x) => x.group === 'undecided' && x.phrasing === p));
+  assert.equal(alsoCrisis.length, 10);
+  assert.ok(alsoCrisis.every((p) => sheet.some((r) => r.phrasing === p)), 'a phrasing listed under both keeps its undecided copy');
+});
+
+test('the Mallow library sheet holds every line a Mallow can say, and docs/clinical has the current one', () => {
+  const c = libraryCatalogue();
+  const sheet = parseCsv(libraryCsv(c));
+  assert.equal(sheet.length, c.openers.length + c.angles.length);
+  assert.deepEqual(Object.keys(sheet[0]), ['n', 'kind', 'from', 'mallow', 'line', 'review', 'notes']);
+  assert.deepEqual(new Set(sheet.map((r) => r.line)), new Set([...c.openers, ...c.angles].map((x) => x.text)));
+  assert.ok(sheet.some((r) => r.from === 'reframe') && sheet.some((r) => r.from.startsWith('theme:')) && sheet.some((r) => r.from.startsWith('label:')));
+  const file = readFileSync(new URL('../docs/clinical/mallow-library-for-review.csv', import.meta.url), 'utf8');
+  assert.equal(file, libraryCsv(c), 'the Mallow library changed: re-export docs/clinical/mallow-library-for-review.csv (node tools/safety-eval.mjs --library <file>)');
 });

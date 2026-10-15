@@ -124,9 +124,9 @@ Nothing is authorised. `REVIEWS.md` has the reasoning, the scope and the arithme
 | Review | Indicative cost | When |
 |---|---|---|
 | Tier 0: free self-assessments (eSafety, NSQDMH, guideline mapping, WHS assessment) | **A$0**. Optional moderator training is about A$40 + tax a person | Now |
-| Tier A: one psychologist or AMHSW, 3.5–4.5 hours | **A$1,155–1,530 excl. GST**; up to about A$2,332 incl. GST at an organisational rate | Before testers outside the team |
+| Tier A: one psychologist or AMHSW, about 5–6 hours | **A$1,650–2,040 excl. GST**; up to about A$3,109 incl. GST at an organisational rate. A leaner 4–5 hour version: A$1,320–1,700 | Before testers outside the team |
 | Tier B: one clinician for 8–12 hours, plus a lived-experience reviewer | A$2,750–4,680 excl. GST | On a trigger (`REVIEWS.md` §5.4) |
-| Tier C: the original two-clinician validation | A$7,275–10,720 excl. GST | Before measured safety claims |
+| Tier C: the original two-clinician validation, plus a lived-experience panel | A$7,275–11,400 excl. GST | Before measured safety claims |
 | Privacy, legal, accessibility, penetration test | **Not researched.** The old A$3,000–20,000 placeholders are withdrawn. Each starts with a free self-run step (`REVIEWS.md` §4) | Before a public launch |
 
 ## 4. Charges that could surprise you

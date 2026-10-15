@@ -376,6 +376,11 @@ try {
   await call(members[0], 'setGiftSharing', { perspectiveId: allowedGift.id, allowShare: true });
   await humanPick.first().waitFor({ timeout: 40000 });
   check((await mallowPick.first().getAttribute('aria-checked')) === 'true', 'the share screen followed the change without losing the other choice');
+  // a keyboard user on a choice keeps their place when a refresh brings nothing new (the app looks every 20 seconds)
+  await mallowPick.first().focus();
+  await settle(page, 25000);
+  check(await page.evaluate(() => document.activeElement?.dataset?.test === 'share-pick' && document.activeElement.dataset.kind === 'mallow'),
+    'a refresh with nothing new leaves a keyboard user’s focus where it was');
   await humanPick.first().click();
   await clearDrawn();
   await hook(page, 'share-save').click();
@@ -412,13 +417,26 @@ try {
     check(filmed.includes(opening) && labelled(filmed), 'the video draws the Mallow’s perspective with “A Mallow perspective · Automatically generated”');
     await shot(page, '17c-share-video');
     await page.getByRole('button', { name: 'Done' }).click();
+    // a writer stops sharing while a video of their words is recording: it is stopped or thrown away, never handed over
+    await humanPick.first().click();
+    await hook(page, 'share-video').click();
+    await hook(page, 'share-video-making').waitFor({ timeout: 15000 });
+    await call(members[0], 'setGiftSharing', { perspectiveId: allowedGift.id, allowShare: false });
+    await page.locator('.hm-toast', { hasText: /video (was stopped and )?wasn’t kept/ }).waitFor({ timeout: 90000 });
+    await shot(page, '17c-share-video-stopped');
+    check(!(await page.locator('[data-test="share-video-out"]').count()) && !(await page.locator('[data-test="share-video-making"]').count()),
+      'a writer stopped sharing while a video with their words was recording: the video is stopped or not kept, never handed over');
+    check(!(await humanPick.count()) && (await mallowPick.first().getAttribute('aria-checked')) === 'true', 'their words are no longer offered, and the other choice stays');
+    await call(members[0], 'setGiftSharing', { perspectiveId: allowedGift.id, allowShare: true });
+    await humanPick.first().waitFor({ timeout: 40000 });
+    await page.locator('.hm-toast').first().waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
   } else report.expected.push('this browser can’t record video: the video checks were not run');
   // its writer takes their words back while the screen is open: nothing is made, and the words are gone from the choices
   await humanPick.first().click();
   await call(members[0], 'withdrawPerspective', { perspectiveId: allowedGift.id });
   await clearDrawn();
   await hook(page, 'share-save').click();
-  await page.locator('.hm-toast', { hasText: 'stopped sharing' }).waitFor({ timeout: 15000 });
+  await page.locator('.hm-toast', { hasText: 'isn’t available any more' }).waitFor({ timeout: 15000 });
   check(!(await page.locator('[data-test="share-image"]').count()) && !(await drawnText()), 'a writer took their words back mid-share: nothing is made or drawn');
   check(!(await humanPick.count()) && !(await page.locator('body').innerText()).includes(PERSPECTIVES[2]), 'and their words are gone from the screen');
   // the author lets the feeling go in another tab, having chosen their own words: they go, and the Mallow's (not kept) with them
@@ -446,7 +464,8 @@ try {
   await hook(page, 'share-save').click();
   await page.locator('.hm-toast', { hasText: 'isn’t here any more' }).waitFor({ timeout: 15000 });
   probing = false;
-  check(!(await page.locator('[data-test="share-image"]').count()) && !(await drawnText()) && await hook(page, 'share-save').isDisabled(), 'a journey deleted mid-share: nothing is made, and the buttons are switched off');
+  const videoOff = !(await page.locator('[data-test="share-video"]').count()) || await hook(page, 'share-video').isDisabled();
+  check(!(await page.locator('[data-test="share-image"]').count()) && !(await drawnText()) && await hook(page, 'share-save').isDisabled() && videoOff, 'a journey deleted mid-share: nothing is made, and both buttons are switched off');
   // Send it out again: the quiet feeling travels once more, a second account catches it, it comes home with 1
   await page.goto(`${base}/app/`);
   await hook(page, 'nav-returned').waitFor({ timeout: 20000 });

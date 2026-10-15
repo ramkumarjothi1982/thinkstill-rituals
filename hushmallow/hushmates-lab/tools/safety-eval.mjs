@@ -3,7 +3,9 @@
 //
 //   node tools/safety-eval.mjs                       what the screen does with every known phrasing
 //   node tools/safety-eval.mjs --export <file.csv>   a sheet for the clinical reviewers to label
-//   node tools/safety-eval.mjs --export <file.csv> --sample   the shorter sheet for one reviewer (REVIEWS.md)
+//   node tools/safety-eval.mjs --export <file.csv> --sample   the shorter sheet for one reviewer (REVIEWS.md, Tier A)
+//   node tools/safety-eval.mjs --export <file.csv> --undecided   only the phrasings the developers couldn't call
+//   node tools/safety-eval.mjs --library <file.csv>  every Mallow line, for the reviewer to read (REVIEWS.md, Tier A)
 //   node tools/safety-eval.mjs --labels <file.csv>   the screen scored against their labels
 //
 // The sheet is blind: one row per phrasing, in a shuffled order, with no hint of what Hushmates
@@ -18,6 +20,7 @@ import { readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { screenFeeling } from '../core/feeling-safety.js';
+import { libraryCatalogue } from '../core/perspectives.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURE = join(ROOT, 'tests', 'fixtures', 'mallow-probes.json');
@@ -65,10 +68,10 @@ export function toCsv(rows, { only } = {}) {
  * of the others again, drawn from each group in proportion so no kind is left out. The ids are the
  * full sheet's, so the labels drop straight into it later; the full sheet itself never changes.
  */
-export function sampleIds(rows) {
+export function sampleIds(rows, { others: withOthers = true } = {}) {
   const order = blindOrder(rows);
   const undecided = order.filter((r) => r.group === 'undecided');
-  const others = order.filter((r) => r.group !== 'undecided');
+  const others = withOthers ? order.filter((r) => r.group !== 'undecided') : [];
   const ids = new Set(undecided.map((r) => r.id));
   for (const g of [...new Set(others.map((r) => r.group))]) {
     const inGroup = others.filter((r) => r.group === g);
@@ -76,6 +79,21 @@ export function sampleIds(rows) {
     for (const r of inGroup.slice(0, n)) ids.add(r.id);
   }
   return ids;
+}
+
+/**
+ * Every line a Mallow can say, for a reviewer to read in one sitting: the openers and every
+ * perspective line, with where it comes from (Hushmates' themes, a feeling's own lines, or Reframe's
+ * library, which Hushmates uses read-only and can leave out line by line). A column for the
+ * reviewer's call (ok · change · remove) and notes.
+ */
+export function libraryCsv(catalogue = libraryCatalogue()) {
+  const head = ['n', 'kind', 'from', 'mallow', 'line', 'review', 'notes'];
+  const rows = [
+    ...catalogue.openers.map((o) => ['opener', `opener:${o.family}`, o.mallow, o.text]),
+    ...catalogue.angles.map((a) => ['perspective', a.from, '', a.text]),
+  ];
+  return `${[head, ...rows.map((r, i) => [i + 1, ...r, '', ''])].map((line) => line.map(quote).join(',')).join('\n')}\n`;
 }
 
 /** RFC 4180 CSV → objects keyed by the header row. */
@@ -141,12 +159,18 @@ if (runAsCommand()) {
   if (arg('export')) {
     const file = arg('export');
     const rows = phrasings();
-    const only = process.argv.includes('--sample') ? sampleIds(rows) : undefined;
+    const only = process.argv.includes('--sample') ? sampleIds(rows) : process.argv.includes('--undecided') ? sampleIds(rows, { others: false }) : undefined;
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, toCsv(rows, { only }));
     console.log(only
       ? `Wrote ${only.size} of the ${rows.length} phrasings to ${file}, for one reviewer (docs/REVIEWS.md, Tier A). The ids are the full sheet's.`
       : `Wrote ${rows.length} phrasings to ${file}, for two clinicians to label (${LABELS.join(' · ')}).`);
+  } else if (arg('library')) {
+    const file = arg('library');
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, libraryCsv());
+    const c = libraryCatalogue();
+    console.log(`Wrote ${c.openers.length} openers and ${c.angles.length} perspective lines to ${file}, for the reviewer to read (ok · change · remove).`);
   } else if (arg('labels')) {
     const s = score(parseCsv(readFileSync(arg('labels'), 'utf8')));
     console.log(`Labelled: ${s.labelled} (unsure: ${s.unsure}).  Clinicians' agreement before settling: kappa ${s.kappa == null ? 'n/a' : s.kappa.toFixed(2)} over ${s.raterPairs}.`);

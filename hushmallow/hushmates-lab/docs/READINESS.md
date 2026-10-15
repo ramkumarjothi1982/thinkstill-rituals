@@ -217,7 +217,7 @@ Most start with a free self-run step. Decisions are in `DECISIONS.md`.
 
 | Review | What it covers | Status | Needed before |
 |---|---|---|---|
-| 🩺 **Independent safety review, Tier A** (D6a–D6d) | One registered psychologist or AMHSW, 3.5–4.5 hours:<br>• crisis categories and 108 phrasings;<br>• every Mallow line;<br>• the support wording and the check-in (D2);<br>• the escalation procedure;<br>• a go/no-go memo.<br>Tier 0 (free) first. Tier B/C only on a trigger (`REVIEWS.md` §5) | ⛔ OUTSTANDING | **beta** (outside the team) |
+| 🩺 **Independent safety review, Tier A** (D6a–D6d) | One registered psychologist or AMHSW, about 5–6 hours:<br>• crisis categories and 108 phrasings;<br>• all 342 Mallow lines;<br>• the support wording and the check-in (D2);<br>• the escalation procedure;<br>• a go/no-go memo.<br>Tier 0 (free) first. Tier B/C only on a trigger (`REVIEWS.md` §5) | ⛔ OUTSTANDING | **beta** (outside the team) |
 | ⚖️ **Privacy** (D7) | Privacy policy and collection notice (APP 5); a Privacy Impact Assessment; health information as sensitive information; retention; the automated decisions (the screen, pausing, Mallow lines) under APP 1.7 from 10 December 2026; overseas disclosure if AI is ever on (APP 8) | ⛔ OUTSTANDING | **beta** (collection notice); launch (the rest) |
 | ⚖️ **Legal** (D7, D8, D9) | Terms and community guidelines; Online Safety Act duties; the social media minimum age law and age assurance; "Share anonymously"; how the app describes itself (Australian Consumer Law, TGA); notifiable data breaches plan | ⛔ OUTSTANDING | launch |
 | ♿ **Accessibility** (D13) | WCAG 2.2 AA by an external auditor, with screen-reader and switch users; reduced motion; contrast; the share video's alternative | ⛔ OUTSTANDING | launch |

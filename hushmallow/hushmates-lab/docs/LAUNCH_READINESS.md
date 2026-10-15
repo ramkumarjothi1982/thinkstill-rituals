@@ -51,7 +51,7 @@ Every result below is labelled by where it was shown:
 | Mallow perspectives always labelled as automatic, never as a person's | ✅ Tested in the app, the share picture and the desk |
 | No AI anywhere; no extra AI for crisis detection | ✅ AI off; cap A$0 |
 | The check-in ("are you safe right now?") | ⏸ Not built until Tier A sets its wording |
-| Independent review | ⛔ Tier 0 (free) and Tier A (about A$1,155–1,530) outstanding (`REVIEWS.md`) |
+| Independent review | ⛔ Tier 0 (free) and Tier A (about A$1,650–2,040) outstanding (`REVIEWS.md`) |
 | Moderators' wellbeing (WHS) | ⛔ The risk assessment, shift limits and debriefs are outstanding |
 
 **To reach green for outside testers:**
@@ -126,6 +126,6 @@ Each of these is checked by `staging:check` and/or `staging:e2e`, and recorded p
 | Deploy and verify staging; publish the report here | Developer (cloud session) | A$0 |
 | Tier 0 safety self-assessment; draft the privacy basics, terms and eSafety records | Developer, then 🛑 owner approves | A$0 |
 | Team-only beta on staging (people the owner knows) | 🛑 Owner (D12) | A$0 |
-| Tier A quotes, then the review | 🛑 Owner approves scope and cost (D6c, D6d) | about A$1,155–1,530 + GST |
+| Tier A quotes, then the review | 🛑 Owner approves scope and cost (D6c, D6d) | about A$1,650–2,040 + GST (leaner: A$1,320–1,700) |
 | Before outside testers:<br>• the beta's plan (D3);<br>• email (D5);<br>• named desk readers;<br>• the WHS assessment | 🛑 Owner | about A$40 a month on Pro; email A$0 on a free tier |
 | Before a public launch:<br>• the lawyer (D7, D9);<br>• accessibility and security testing (D13, D14);<br>• your final approval (D17) | 🛑 Owner | to be quoted |
