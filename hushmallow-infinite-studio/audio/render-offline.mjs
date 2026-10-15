@@ -74,7 +74,10 @@ async function renderInPage({ plan, check }) {
   }
   if (!E.REALM_BEDS[plan.bed.realm]) throw new Error(`engine has no realm bed '${plan.bed.realm}'`);
   for (const c of plan.engine) {
-    if (c.kind === 'mallow' ? !(kit.special[c.name] || E.GESTURES[c.name]) : !(E.FX[c.name] || E.FX_FROM_HOLD[c.name])) {
+    // an event may name its own Mallow kit (c.kit), e.g. a cast of several Mallows; the plan's kit otherwise
+    const ck = c.kind === 'mallow' ? E.KITS[c.kit || kitId] : null;
+    if (c.kind === 'mallow' && (!ck || (c.kit || kitId) === 'neutral')) throw new Error(`engine has no Mallow kit '${c.kit}' (at ${c.t} s)`);
+    if (c.kind === 'mallow' ? !(ck.special[c.name] || E.GESTURES[c.name]) : !(E.FX[c.name] || E.FX_FROM_HOLD[c.name])) {
       throw new Error(`engine has no ${c.kind} sound '${c.name}' (at ${c.t} s)`);
     }
   }
@@ -217,6 +220,49 @@ async function renderInPage({ plan, check }) {
         const a = gainNode(0); a.gain.setValueCurveAtTime(curve.map((v) => v / Math.sqrt(sides.length)), t, total);
         s.connect(bp); bp.connect(lp); lp.connect(a); a.connect(strip(pan, e.send));
       });
+    },
+    // (additions for multi-layer scores; no v2 plan uses them, so the v2 renders are unchanged)
+    // a sustained pad voice that circles the listener: detuned sine + triangle, a slow filter
+    // sweep, raised-cosine attack / release, its pan automated round a circle (orbit Hz, phase)
+    swell(e) {
+      const t = T(e.t), dur = e.a + (e.h || 0) + e.r, end = t + dur + 0.05;
+      const n = Math.max(64, Math.ceil(dur * 120)), env = new Float32Array(n), pan = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * dur;
+        env[i] = e.peak * (x < e.a ? (1 - Math.cos(Math.PI * x / e.a)) / 2 : x < e.a + (e.h || 0) ? 1 : (1 + Math.cos(Math.PI * (x - e.a - (e.h || 0)) / e.r)) / 2);
+        pan[i] = Math.max(-1, Math.min(1, (e.pan || 0) + (e.width || 0) * Math.sin(2 * Math.PI * ((e.orbit || 0) * (e.t + x)) + (e.phase || 0))));
+      }
+      const amp = gainNode(0); amp.gain.setValueCurveAtTime(env, t, dur);
+      const lp = biquad('lowpass', e.lp0 || 1200, 0.7);
+      if (e.lp1) lp.frequency.exponentialRampToValueAtTime(e.lp1, t + dur);
+      const p = ctx.createStereoPanner(); p.pan.setValueCurveAtTime(pan, t, dur);
+      lp.connect(amp); amp.connect(p); p.connect(bus);
+      if (e.send) { const sg = gainNode(e.send); p.connect(sg); sg.connect(wet); }
+      for (const [type, det, k] of [['sine', -(e.detune || 6), 1], ['triangle', e.detune || 6, 0.5], ['sine', 1200, 0.12]]) {
+        const o = ctx.createOscillator(); o.type = type; o.frequency.value = e.f; o.detune.value = det;
+        const og = gainNode(k / 1.3); o.connect(og); og.connect(lp); o.start(t); o.stop(end);
+      }
+    },
+    // a soft rhythmic pulse: a muffled, pitched-down thump with a second harmonic phones can play
+    pulse(e) {
+      const t = T(e.t);
+      const o = ctx.createOscillator(); o.frequency.setValueAtTime(e.f * 2, t); o.frequency.exponentialRampToValueAtTime(e.f, t + 0.06);
+      const a = gainNode(0); const end = envAD(a.gain, t, 0.004, 0.01, e.d || 0.22, e.peak);
+      const o2 = ctx.createOscillator(); o2.frequency.setValueAtTime(e.f * 4, t); o2.frequency.exponentialRampToValueAtTime(e.f * 2, t + 0.05);
+      const a2 = gainNode(0); envAD(a2.gain, t, 0.003, 0, (e.d || 0.22) * 0.6, e.peak * 0.45);
+      const lp = biquad('lowpass', e.lp || 900, 0.6); const out = strip(e.pan || 0, e.send || 0);
+      o.connect(a); o2.connect(a2); a.connect(lp); a2.connect(lp); lp.connect(out);
+      o.start(t); o.stop(end); o2.start(t); o2.stop(end);
+    },
+    // a plucked, marimba-like note for ostinati: sine fundamental + a quickly fading 4th harmonic
+    pluck(e) {
+      const t = T(e.t), out = strip(e.pan || 0, e.send || 0);
+      const lp = biquad('lowpass', e.lp || 4200, 0.6); lp.connect(out);
+      for (const [ratio, lvl, dk] of [[1, 1, 1], [2, 0.18, 0.5], [4, 0.22, 0.18]]) {
+        const o = ctx.createOscillator(); o.frequency.value = e.f * ratio;
+        const g1 = gainNode(0); const end = envAD(g1.gain, t, 0.003, 0, e.decay * dk, e.peak * lvl);
+        o.connect(g1); g1.connect(lp); o.start(t); o.stop(end);
+      }
     },
   };
 
@@ -378,7 +424,7 @@ async function renderInPage({ plan, check }) {
       for (const c of list) {
         now = c.nowAt;
         g.voices.clear();
-        if (c.kind === 'mallow') E.buildMallow(kitId, c.name, c.opts); else E.buildFx(c.name, c.opts);
+        if (c.kind === 'mallow') E.buildMallow(c.kit || kitId, c.name, c.opts); else E.buildFx(c.name, c.opts);
         for (const v of g.voices) {
           v.out.gain.value = c.trim;
           if (c.cut) { v.out.gain.setValueAtTime(c.trim, T(c.cut.at)); v.out.gain.linearRampToValueAtTime(0, T(c.cut.at + c.cut.fade)); }

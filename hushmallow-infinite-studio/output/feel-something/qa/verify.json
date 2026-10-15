@@ -1,0 +1,47 @@
+{
+ "file": "feel-something.mp4",
+ "bytes": 35503591,
+ "previewBytes": 9521171,
+ "video": {
+  "codec": "h264",
+  "profile": "High",
+  "level": 42,
+  "pix_fmt": "yuv420p",
+  "width": 1080,
+  "height": 1920,
+  "fps": "30/1",
+  "frames": 600,
+  "duration": 20.0,
+  "color": [
+   "bt709",
+   "bt709",
+   "bt709"
+  ]
+ },
+ "audio": {
+  "codec": "aac",
+  "sample_rate": "48000",
+  "channels": 2,
+  "duration": 20.0
+ },
+ "faststart": true,
+ "decodeErrors": null,
+ "loudness": {
+  "integratedLUFS": -16.0,
+  "LRA": 4.4,
+  "truePeakDBFS": -1.9
+ },
+ "loop": {
+  "seamPSNR_last_to_first": 33.08,
+  "consecutivePSNR_median": 30.91,
+  "consecutivePSNR_p5": 24.12,
+  "seamWithinNormalMotion": true
+ },
+ "flashSafety": {
+  "maxFullFrameLuminanceStep": 0.0097,
+  "maxQuarterTileLuminanceStep": 0.1493,
+  "generalFlashesPerSecond": 0,
+  "tileOpposingPairsWithin1s": 0,
+  "passesWCAG3Flashes": true
+ }
+}

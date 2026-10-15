@@ -25,3 +25,13 @@ __pycache__/
 runs/
 # golden PNG frames live in /home/user/hm-work/golden/v2/frames (hashes in qa/golden/v2/frames.sha256)
 qa/golden/v2/frames/
+# "Feel Something?" sample (dream stage) deliverables
+!output/feel-something/
+output/feel-something/*
+!output/feel-something/feel-something.mp4
+!output/feel-something/feel-something.preview.mp4
+!output/feel-something/poster.jpg
+!output/feel-something/score.wav
+!output/feel-something/cues.json
+!output/feel-something/render-stats.json
+!output/feel-something/qa/
