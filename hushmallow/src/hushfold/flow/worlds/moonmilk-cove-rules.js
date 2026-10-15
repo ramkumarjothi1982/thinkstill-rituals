@@ -22,6 +22,7 @@ export const COVE = Object.freeze({
   EDGE: 10, GAP: 14,       // px from the screen edges / round the hero
   LABEL_GAP: 4,            // px between the thought and its words plate
   SHELL_N: 3,
+  CRADLE_B: 1.25,          // × r: how far below the thought's centre its cradle reaches
 });
 
 // ---------------------------------------------------------------- plan --
@@ -68,16 +69,16 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
   const ideal = { x: XR * 0.27, y: hy + 0.3 * (shoreY(W, H, XR * 0.27) - hy) };
   for (let r = rMax; r >= 20 && !best; r -= 2) {
     for (const side of ['above', 'below']) {
-      const yLo = hy + 0.3 * r, yHi = Math.min(shoreY(W, H, ideal.x) - r * 0.8, floor - r);
+      const yLo = hy + 0.3 * r, yHi = Math.min(shoreY(W, H, ideal.x) - r * 0.8, floor - r * COVE.CRADLE_B);
       for (let y = yLo; y <= yHi; y += 4) {
-        for (let x = E + r + 2; x <= XR - E - r - 2; x += 6) {
-          const T = rectOf(x - r, y - r, x + r, y + r * 0.85);                 // the body and its cradle
+        for (let x = E + r * 1.45 + 2; x <= XR - E - r * 1.45 - 2; x += 6) {
+          const T = rectOf(x - r * 1.45, y - r, x + r * 1.45, y + r * COVE.CRADLE_B);   // the body and its cradle
           if (hit(T, M, G) || hit(T, B, 4) || T.y1 > floor) continue;
           let P = null;
           if (pw) {
             const px0 = clamp(x - pw / 2, E, XR - E - pw);
             P = side === 'above' ? rectOf(px0, y - r - COVE.LABEL_GAP - ph, px0 + pw, y - r - COVE.LABEL_GAP)
-              : rectOf(px0, y + r * 0.85 + COVE.LABEL_GAP, px0 + pw, y + r * 0.85 + COVE.LABEL_GAP + ph);
+              : rectOf(px0, y + r * COVE.CRADLE_B + COVE.LABEL_GAP, px0 + pw, y + r * COVE.CRADLE_B + COVE.LABEL_GAP + ph);
             if (pw > XR - 2 * E || hit(P, M, G - 4) || hit(P, B, 4) || P.y1 > floor) continue;
           }
           const s = Math.hypot((x - ideal.x) / W, (y - ideal.y) / H) + (side === 'below' ? 0.05 : 0) + (rMax - r) * 0.01;
@@ -90,7 +91,7 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
     // nowhere clear (a tiny window): beside the hero on the water, words above, as near as it gets
     const r = 20, x = Math.max(E + r, Math.min(XR - E - r, M.x0 - G - r)), y = clamp(hy + 0.3 * r, bandB + 8 + ph + r, floor - r);
     const px0 = clamp(x - pw / 2, E, Math.max(E, XR - E - pw));
-    best = { x, y, r, side: 'above', T: rectOf(x - r, y - r, x + r, y + r * 0.85), P: pw ? rectOf(px0, y - r - 4 - ph, px0 + pw, y - r - 4) : null };
+    best = { x, y, r, side: 'above', T: rectOf(x - r * 1.45, y - r, x + r * 1.45, y + r * COVE.CRADLE_B), P: pw ? rectOf(px0, y - r - 4 - ph, px0 + pw, y - r - 4) : null };
   }
   const home = { x: Math.round(best.x), y: Math.round(best.y), r: best.r };
   const avoid = [M, B, best.T, ...(best.P ? [best.P] : [])];
