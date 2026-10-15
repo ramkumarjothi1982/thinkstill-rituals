@@ -39,11 +39,13 @@ It reuses the moonmilk-cove realm as its back layer. On top of that it draws the
 - `hushmallow/src/hushfold/flow/worlds/moonmilk-cove.js`: the world, plus the exported registry entry `MOONMILK_COVE` (every REQUIRED_FIELDS field, `fits`, `calm: true`, `next: []`, `final: true`, `load`). Its `status` is `IN_PROGRESS`: not playable in production and never DEV.
 - `hushmallow/src/hushfold/flow/worlds/moonmilk-cove-rules.js`: the pure core.
   - `planCove`: the screen plan (band, hero, words, shells, lanterns, the side panel).
+    - It keeps a 56 px bottom strip free for the shell's controls.
+    - Words go above, below, or beside the thought (left or right), or on one wide line on short landscape screens.
   - The rest meter, the two discoveries and completion.
   - `moonShadow`: lit area = 0.12 + 0.88·p.
   - `tideBusy`.
 - `hushmallow/tests/moonmilk-cove.test.mjs`: 13 tests.
-  - The plan at 8 sizes, normal and largest text, plus the tiny landscape case.
+  - The plan at 7 sizes, normal and largest text, plus the tiny landscape windows (568x320 and 667x375 at the largest text).
   - The rest meter, the discoveries, completion and the moon.
   - The entry's contract.
   - Headless runs in the director: a full rest to completion, gentle and thought rest, a storm → cove melt with and without reduced motion, and resize.
@@ -53,7 +55,7 @@ It reuses the moonmilk-cove realm as its back layer. On top of that it draws the
 
 ## Tests
 - `node --test hushmallow/tests/moonmilk-cove.test.mjs`: 13 of 13 pass.
-- Whole suite `node --test hushmallow/tests/*.test.mjs`: 1119 of 1119 pass on the first full run; re-run after the review fixes — see the final note below.
+- Whole suite `node --test hushmallow/tests/*.test.mjs`: 1120 of 1120 pass on the final commit (exit 0).
 
 ## Browser checks (Chromium, lab, CDP touch, dpr 2–2.5)
 - **Sizes:** 390x844, 360x780 and 320x568, each at normal and largest text (textScale 1.25), plus 844x390, 568x320 at largest text, and reduced motion.
@@ -64,7 +66,7 @@ It reuses the moonmilk-cove realm as its back layer. On top of that it draws the
 - **No console errors.**
 - **Screenshots:**
   - The words plate always sits clear of the band and the hero.
-  - At 568x320 with the largest text, nothing is fully clear. There the words take the least-overlap place: at most a corner of the hero's box.
+  - At 568x320 with the largest text, nothing is fully clear. The words go to the right of the thought, in the open bottom-right sand, clear of the replay chip. At most the plate's padding touches the edge of the hero's box; the letters never do.
   - Shells sit on the sand beside the hero with 44 px or larger targets.
   - Lanterns sit on the water.
   - The moon reads as a crescent filling up.
@@ -109,7 +111,17 @@ There is one loop: the director's. Nothing large is allocated per frame. Sprites
   - `ctx.keepOut()` is not read (the ocean doesn't read it either);
   - the moon's dark side draws over the clouds crossing it.
 
-Round 2 (re-check): see the final note below.
+**Round 2: one Medium.** In short landscape at the largest text, the words sat in the bottom strip where the shell's replay chip appears. Fixed:
+- a 56 px bottom strip reserved in the plan;
+- words beside the thought, or on one wide line;
+- a fallback that ranks keeping the letters off the hero above everything else.
+
+**Round 3: one Medium.** At 568x320 the chip still covered the words. Fixed: the fallback now reserves only the chip's bottom-left corner, and the plate stays inside the edge margin.
+
+**Round 4: ready to integrate, with no Medium or worse left.** Low items still open:
+- one shell's touch area can sit partly under the replay chip at 568x320;
+- `keepOut` is not read;
+- the moon's shadow draws over the clouds.
 
 ## For the coordinator (integration)
 1. Add `MOONMILK_COVE` to `WORLDS` in `src/hushfold/flow/registry.js` with `status: STATUS.PLAYABLE` (never DEV):
