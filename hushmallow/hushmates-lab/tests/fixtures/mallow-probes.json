@@ -1322,1344 +1322,1344 @@
   ]
  ],
  "floor": {
-  "about": "Every phrasing two rounds of independent checks found (round 1 after 9012d6f, round 2 on 2a67f1b), with the careful outcome each must get from the Mallow library: 7 Mallows x 3 attempts, real picks. Checks: grief (some grief line), nogrief (no grief line), tender (every opener tender or soft), bright (every opener bright), achieve (some achievement line), nosilence (none of Reframe's lines that explain a silence away), noregret, nomistake, nopd (no 'partner seems distant'), nomissing, nosa (no 'seemed annoyed'), nohabit (no thinking-habit line), habit (some thinking-habit line: everyday hyperbole keeps them), school (some exam or bad-grade line), noschool. The fourth column says where the phrasing came from. The protective lists are a floor (core/perspectives.js, 'the Tier 0 floor'): grief lines need a clear loss, any loss word gets grief's protections.",
-  "cases": [
+  "about": "Every phrasing two rounds of independent checks found (round 1 after 9012d6f, round 2 on 2a67f1b), with the careful outcome each must get from the Mallow library: 7 Mallows x 3 attempts, real picks. Checks: grief (some grief line), nogrief (no grief line), tender (every opener tender or soft), bright (every opener bright), achieve (some achievement line), nosilence (none of Reframe's lines that explain a silence away), noregret, nomistake, nopd (no 'partner seems distant'), nomissing, nosa (no 'seemed annoyed'), nohabit (no thinking-habit line), habit (some thinking-habit line: everyday hyperbole keeps them), school (some exam or bad-grade line), noschool. Each entry is [label, checks, where it came from, phrasing]. The protective lists are a floor (core/perspectives.js, 'the Tier 0 floor'): grief lines need a clear loss, any loss word gets grief's protections.",
+  "phrasings": [
    [
     "worry",
-    "My son has been really down the past few weeks and has not replied to my messages.",
     "nosilence nopd nohabit",
-    "r1.1"
-   ],
-   [
-    "worry",
-    "She seems low the past month and has stopped texting back.",
-    "nosilence nopd nohabit",
-    "r1.1"
+    "r1.1",
+    "My son has been really down the past few weeks and has not replied to my messages."
    ],
    [
     "worry",
-    "My friend has been depressed the whole year and now she won't answer my messages.",
     "nosilence nopd nohabit",
-    "r1.1"
-   ],
-   [
-    "sadness",
-    "She has been depressed the whole time",
-    "nosilence nopd nohabit",
-    "r1.1"
+    "r1.1",
+    "She seems low the past month and has stopped texting back."
    ],
    [
     "worry",
-    "He has been struggling the last month",
     "nosilence nopd nohabit",
-    "r1.1"
+    "r1.1",
+    "My friend has been depressed the whole year and now she won't answer my messages."
+   ],
+   [
+    "sadness",
+    "nosilence nopd nohabit",
+    "r1.1",
+    "She has been depressed the whole time"
    ],
    [
     "worry",
-    "She is struggling by herself",
     "nosilence nopd nohabit",
-    "r1.1"
+    "r1.1",
+    "He has been struggling the last month"
    ],
    [
     "worry",
-    "My mum is low at the moment",
     "nosilence nopd nohabit",
-    "r1.1"
-   ],
-   [
-    "sadness",
-    "We lost him only a month ago and I can't stop crying.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost him nearly two years ago and I still miss him.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost her when I was twelve and I still think about her every day.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost him over the weekend and I am numb.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost him way too soon.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost him the day before his birthday.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost her not long ago and I feel empty.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost her earlier this year and I miss her laugh.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost him back in 2019 and it still hurts.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost him because of a drunk driver.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "We lost him while I was overseas and I never got to say goodbye.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "When dad passed I was so proud of how brave he had been.",
-    "grief",
-    "r1.2"
-   ],
-   [
-    "sadness",
-    "Since dad passed music helps me cope.",
-    "grief",
-    "r1.2"
+    "r1.1",
+    "She is struggling by herself"
    ],
    [
     "worry",
-    "The kid behind the car died because I reversed.",
+    "nosilence nopd nohabit",
+    "r1.1",
+    "My mum is low at the moment"
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost him only a month ago and I can't stop crying."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost him nearly two years ago and I still miss him."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost her when I was twelve and I still think about her every day."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost him over the weekend and I am numb."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost him way too soon."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost him the day before his birthday."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost her not long ago and I feel empty."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost her earlier this year and I miss her laugh."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost him back in 2019 and it still hurts."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost him because of a drunk driver."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "We lost him while I was overseas and I never got to say goodbye."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "When dad passed I was so proud of how brave he had been."
+   ],
+   [
+    "sadness",
+    "grief",
+    "r1.2",
+    "Since dad passed music helps me cope."
+   ],
+   [
+    "worry",
     "nomistake nohabit",
-    "r1.3"
+    "r1.3",
+    "The kid behind the car died because I reversed."
    ],
    [
     "worry",
-    "I made a mistake and my son's friend in the car died.",
     "nomistake nohabit",
-    "r1.3"
+    "r1.3",
+    "I made a mistake and my son's friend in the car died."
    ],
    [
     "confusion",
-    "I made a mistake reversing and the kid behind the car died.",
     "nomistake nohabit",
-    "r1.3"
+    "r1.3",
+    "I made a mistake reversing and the kid behind the car died."
    ],
    [
     "worry",
-    "I made a mistake and she is at the hospital because of me.",
     "nomistake nohabit",
-    "r1.3"
+    "r1.3",
+    "I made a mistake and she is at the hospital because of me."
    ],
    [
     "worry",
-    "I made a mistake and he ended up in a hospital bed.",
     "nomistake nohabit",
-    "r1.3"
+    "r1.3",
+    "I made a mistake and he ended up in a hospital bed."
    ],
    [
     "worry",
-    "I never know what mood my dad will be in and he seemed annoyed at me again.",
     "nohabit nosa",
-    "r1.4"
+    "r1.4",
+    "I never know what mood my dad will be in and he seemed annoyed at me again."
    ],
    [
     "sadness",
-    "I tiptoe around my stepdad, he seemed annoyed with me again tonight.",
     "nohabit nosa",
-    "r1.4"
+    "r1.4",
+    "I tiptoe around my stepdad, he seemed annoyed with me again tonight."
    ],
    [
     "worry",
-    "I'm always on edge around him, and he seemed annoyed with me today.",
     "nohabit nosa",
-    "r1.4"
+    "r1.4",
+    "I'm always on edge around him, and he seemed annoyed with me today."
    ],
    [
     "joy",
-    "My husband is so much better now, he only yelled once this week!",
     "tender",
-    "r1.5"
+    "r1.5",
+    "My husband is so much better now, he only yelled once this week!"
    ],
    [
     "worry",
-    "My Specialist Maths exam is tomorrow and I am so nervous.",
     "school",
-    "r1.6"
+    "r1.6",
+    "My Specialist Maths exam is tomorrow and I am so nervous."
    ],
    [
     "sadness",
-    "I got my results from the exams today and I failed two subjects.",
     "school",
-    "r1.6"
+    "r1.6",
+    "I got my results from the exams today and I failed two subjects."
    ],
    [
     "worry",
-    "We lost him at the train station for ten minutes and I panicked.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost him at the train station for ten minutes and I panicked."
    ],
    [
     "worry",
-    "We lost him at the Easter Show and I was so scared until security found him.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost him at the Easter Show and I was so scared until security found him."
    ],
    [
     "worry",
-    "We lost her in Westfield and I was terrified until we found her by the escalators.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost her in Westfield and I was terrified until we found her by the escalators."
    ],
    [
     "worry",
-    "We lost him at the theme park and it took half an hour to find him.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost him at the theme park and it took half an hour to find him."
    ],
    [
     "worry",
-    "We lost her at the school fete and I still feel sick about it.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost her at the school fete and I still feel sick about it."
    ],
    [
     "worry",
-    "We lost him in the city and I am still shaking.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost him in the city and I am still shaking."
    ],
    [
     "worry",
-    "We lost him briefly at the beach and I can't stop thinking about it.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost him briefly at the beach and I can't stop thinking about it."
    ],
    [
     "worry",
-    "We lost her dog at the park and we have been looking all day.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost her dog at the park and we have been looking all day."
    ],
    [
     "frustration",
-    "We lost her paperwork again and now the visa is delayed.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost her paperwork again and now the visa is delayed."
    ],
    [
     "frustration",
-    "We lost her booking and the hotel won't help.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost her booking and the hotel won't help."
    ],
    [
     "frustration",
-    "We lost her new school shoes on the first day.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost her new school shoes on the first day."
    ],
    [
     "frustration",
-    "We lost her focus in the second half and the coach was furious.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.1"
+    "r2a.1",
+    "We lost her focus in the second half and the coach was furious."
    ],
    [
     "joy",
-    "My son passed Maths Methods and I am so relieved.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My son passed Maths Methods and I am so relieved."
    ],
    [
     "joy",
-    "My daughter passed English Language and we are going out for dinner.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My daughter passed English Language and we are going out for dinner."
    ],
    [
     "joy",
-    "My friend passed maths so we are celebrating tonight.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My friend passed maths so we are celebrating tonight."
    ],
    [
     "joy",
-    "My son passed chemistry for the first time and he is over the moon.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My son passed chemistry for the first time and he is over the moon."
    ],
    [
     "joy",
-    "My daughter passed physics after three tries, she worked so hard.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My daughter passed physics after three tries, she worked so hard."
    ],
    [
     "joy",
-    "My son passed music theory and he is thrilled.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My son passed music theory and he is thrilled."
    ],
    [
     "joy",
-    "My brother passed history because he finally studied.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My brother passed history because he finally studied."
    ],
    [
     "joy",
-    "My sister passed biology which means she can do nursing.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My sister passed biology which means she can do nursing."
    ],
    [
     "joy",
-    "My boyfriend passed science despite everything going on.",
     "nogrief bright achieve",
-    "r2a.2"
+    "r2a.2",
+    "My boyfriend passed science despite everything going on."
    ],
    [
     "worry",
-    "My daughter passed English but she is still anxious about Year 12.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.2"
+    "r2a.2",
+    "My daughter passed English but she is still anxious about Year 12."
    ],
    [
     "sadness",
-    "My son passed maths but his best friend didn't and now they aren't talking.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.2"
+    "r2a.2",
+    "My son passed maths but his best friend didn't and now they aren't talking."
    ],
    [
     "confusion",
-    "My mum passed up going to the party and I don't know why.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2a.2"
+    "r2a.2",
+    "My mum passed up going to the party and I don't know why."
    ],
    [
     "joy",
-    "I told my mum I got in and she screamed with joy!",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "I told my mum I got in and she screamed with joy!"
    ],
    [
     "joy",
-    "He yelled happy birthday from the garden, best morning.",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "He yelled happy birthday from the garden, best morning."
    ],
    [
     "joy",
-    "I proposed and she screamed yes, I am so happy!",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "I proposed and she screamed yes, I am so happy!"
    ],
    [
     "excitement",
-    "When I scored she screamed so loud from the stands!",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "When I scored she screamed so loud from the stands!"
    ],
    [
     "joy",
-    "We got the puppy today and she screamed with excitement.",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "We got the puppy today and she screamed with excitement."
    ],
    [
     "joy",
-    "My dad screamed so loud when I scored the winning goal!",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "My dad screamed so loud when I scored the winning goal!"
    ],
    [
     "joy",
-    "My mum yelled out my name at graduation, so embarrassing but so proud!",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "My mum yelled out my name at graduation, so embarrassing but so proud!"
    ],
    [
     "joy",
-    "My dad was screaming from the sideline the whole game, we won!",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "My dad was screaming from the sideline the whole game, we won!"
    ],
    [
     "excitement",
-    "My boyfriend shouted from the crowd when I crossed the finish line!",
     "bright",
-    "r2a.3"
+    "r2a.3",
+    "My boyfriend shouted from the crowd when I crossed the finish line!"
    ],
    [
     "worry",
-    "I was lost in maths class today and I bet everyone thinks I'm stupid.",
     "habit nomistake",
-    "r2a.4"
+    "r2a.4",
+    "I was lost in maths class today and I bet everyone thinks I'm stupid."
    ],
    [
     "worry",
-    "I nearly died when I said the wrong answer, everyone must think I'm an idiot.",
     "habit nomistake",
-    "r2a.4"
+    "r2a.4",
+    "I nearly died when I said the wrong answer, everyone must think I'm an idiot."
    ],
    [
     "worry",
-    "I'm not a patient person and I always think people are judging me.",
     "habit nomistake",
-    "r2a.4"
+    "r2a.4",
+    "I'm not a patient person and I always think people are judging me."
    ],
    [
     "worry",
-    "I get hurt so easily when people don't reply, they probably all think I'm annoying.",
     "habit nomistake",
-    "r2a.4"
+    "r2a.4",
+    "I get hurt so easily when people don't reply, they probably all think I'm annoying."
    ],
    [
     "worry",
-    "I was so embarrassed I could have died, everyone must think I'm weird.",
     "habit nomistake",
-    "r2a.4"
+    "r2a.4",
+    "I was so embarrassed I could have died, everyone must think I'm weird."
    ],
    [
     "sadness",
-    "I got my results from my maths test and I failed.",
     "school",
-    "r2a.6"
+    "r2a.6",
+    "I got my results from my maths test and I failed."
    ],
    [
     "sadness",
-    "I got the results from my chemistry test today and I failed again.",
     "school",
-    "r2a.6"
+    "r2a.6",
+    "I got the results from my chemistry test today and I failed again."
    ],
    [
     "sadness",
-    "I got my results from my Year 12 exams and I think I failed.",
     "school",
-    "r2a.6"
+    "r2a.6",
+    "I got my results from my Year 12 exams and I think I failed."
    ],
    [
     "sadness",
-    "I got my results from my mid-year exams and I failed two subjects.",
     "school",
-    "r2a.6"
+    "r2a.6",
+    "I got my results from my mid-year exams and I failed two subjects."
    ],
    [
     "sadness",
-    "I got the results from the end of year exams and I bombed.",
     "school",
-    "r2a.6"
+    "r2a.6",
+    "I got the results from the end of year exams and I bombed."
    ],
    [
     "worry",
-    "I got the results from the clinic and the test on Friday will tell us more.",
     "noschool",
-    "r2a.6"
+    "r2a.6",
+    "I got the results from the clinic and the test on Friday will tell us more."
    ],
    [
     "worry",
-    "My results from the lab come back tomorrow and the test on Monday decides everything.",
     "noschool",
-    "r2a.6"
+    "r2a.6",
+    "My results from the lab come back tomorrow and the test on Monday decides everything."
    ],
    [
     "worry",
-    "Waiting on results from my specialist about the lump.",
     "noschool",
-    "r2a.6"
+    "r2a.6",
+    "Waiting on results from my specialist about the lump."
    ],
    [
     "worry",
-    "I made a mistake and the man who borrowed my car died.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I made a mistake and the man who borrowed my car died."
    ],
    [
     "worry",
-    "I made a mistake and the man who was driving my car died.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I made a mistake and the man who was driving my car died."
    ],
    [
     "worry",
-    "I made a mistake and the man who bought my car died.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I made a mistake and the man who bought my car died."
    ],
    [
     "worry",
-    "The boy who was driving the car died and I was the one who gave him the keys. I made a mistake.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "The boy who was driving the car died and I was the one who gave him the keys. I made a mistake."
    ],
    [
     "worry",
-    "I fixed the brakes wrong and the woman who owned the car died. It was my mistake.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I fixed the brakes wrong and the woman who owned the car died. It was my mistake."
    ],
    [
     "worry",
-    "I gave my nephew the keys and the boy who took the car died. I keep thinking it's my mistake.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I gave my nephew the keys and the boy who took the car died. I keep thinking it's my mistake."
    ],
    [
     "worry",
-    "I sold my old car to a young guy and the boy who bought the car died. I made a mistake not telling him about the brakes.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I sold my old car to a young guy and the boy who bought the car died. I made a mistake not telling him about the brakes."
    ],
    [
     "worry",
-    "I made a mistake with the boiler and the old man who used the boiler died.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I made a mistake with the boiler and the old man who used the boiler died."
    ],
    [
     "worry",
-    "I made a mistake and the lady who rented my car died in a crash.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I made a mistake and the lady who rented my car died in a crash."
    ],
    [
     "worry",
-    "I lent my mate the car and the guy driving the car died. It was my mistake.",
     "nomistake nohabit",
-    "r2b.1"
+    "r2b.1",
+    "I lent my mate the car and the guy driving the car died. It was my mistake."
    ],
    [
     "worry",
-    "I made a mistake and the hospital where my son is says he might lose his leg.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I made a mistake and the hospital where my son is says he might lose his leg."
    ],
    [
     "worry",
-    "I made a mistake and the hospital staff said he might not wake up.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I made a mistake and the hospital staff said he might not wake up."
    ],
    [
     "worry",
-    "I made a mistake and now the hospital car park is where I sleep while she is in surgery.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I made a mistake and now the hospital car park is where I sleep while she is in surgery."
    ],
    [
     "worry",
-    "I didn't watch him closely enough and I am sitting at the hospital cafe while they operate on him. It's my mistake.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I didn't watch him closely enough and I am sitting at the hospital cafe while they operate on him. It's my mistake."
    ],
    [
     "worry",
-    "I left work for the hospital after I let my son ride without a helmet. My mistake.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I left work for the hospital after I let my son ride without a helmet. My mistake."
    ],
    [
     "worry",
-    "I made a mistake and I've been at the hospital canteen all night waiting to hear if he'll be okay.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I made a mistake and I've been at the hospital canteen all night waiting to hear if he'll be okay."
    ],
    [
     "worry",
-    "I mixed up mum's tablets and the hospital staff said it could have been really bad. I made a huge mistake.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I mixed up mum's tablets and the hospital staff said it could have been really bad. I made a huge mistake."
    ],
    [
     "worry",
-    "I left the pool gate open and now we are at the hospital where they are keeping her in. I keep thinking it was my mistake.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I left the pool gate open and now we are at the hospital where they are keeping her in. I keep thinking it was my mistake."
    ],
    [
     "worry",
-    "I made a mistake and spent the night at the hospital reception waiting for news about her.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I made a mistake and spent the night at the hospital reception waiting for news about her."
    ],
    [
     "worry",
-    "I messed up the hospital booking and mum missed her chemo. I made a stupid mistake.",
     "nomistake nohabit",
-    "r2b.2"
+    "r2b.2",
+    "I messed up the hospital booking and mum missed her chemo. I made a stupid mistake."
    ],
    [
     "sadness",
-    "My dad passed on a cold winter morning and I still can't believe he's gone.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "My dad passed on a cold winter morning and I still can't believe he's gone."
    ],
    [
     "sadness",
-    "My nan passed on this day three years ago and I still cry.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "My nan passed on this day three years ago and I still cry."
    ],
    [
     "sadness",
-    "My dad passed on the job site last week and nobody at his work has called us.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "My dad passed on the job site last week and nobody at his work has called us."
    ],
    [
     "sadness",
-    "My brother passed on that awful night and I keep replaying it.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "My brother passed on that awful night and I keep replaying it."
    ],
    [
     "joy",
-    "My nan passed on this day three years ago and today we had a lovely picnic remembering her.",
     "grief tender",
-    "r2b.3"
+    "r2b.3",
+    "My nan passed on this day three years ago and today we had a lovely picnic remembering her."
    ],
    [
     "sadness",
-    "Mum passed on this day last year and nobody remembered.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "Mum passed on this day last year and nobody remembered."
    ],
    [
     "sadness",
-    "My dad passed on that Tuesday and I have not been the same since.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "My dad passed on that Tuesday and I have not been the same since."
    ],
    [
     "sadness",
-    "When my grandad passed on that cold morning I was holding his hand.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "When my grandad passed on that cold morning I was holding his hand."
    ],
    [
     "sadness",
-    "Grandma passed on this very day in 2019 and today is hard.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "Grandma passed on this very day in 2019 and today is hard."
    ],
    [
     "sadness",
-    "My dad passed on this morning and I don't know what to do.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "My dad passed on this morning and I don't know what to do."
    ],
    [
     "sadness",
-    "Grandad passed on a cold night in June and the house feels empty.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "Grandad passed on a cold night in June and the house feels empty."
    ],
    [
     "joy",
-    "Mum passed on a cold Sunday two years ago and today we laughed about her terrible jokes.",
     "grief tender",
-    "r2b.3"
+    "r2b.3",
+    "Mum passed on a cold Sunday two years ago and today we laughed about her terrible jokes."
    ],
    [
     "sadness",
-    "My grandad passed on this past weekend and I keep waiting for him to call.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "My grandad passed on this past weekend and I keep waiting for him to call."
    ],
    [
     "sadness",
-    "Dad passed on that day in hospital and I wasn't there.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "Dad passed on that day in hospital and I wasn't there."
    ],
    [
     null,
-    "My mum passed on this day last year.",
     "grief",
-    "r2b.3"
+    "r2b.3",
+    "My mum passed on this day last year."
    ],
    [
     "sadness",
-    "My uncle passed on the job last week and I can't believe it.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2b.3 (ambiguous: declined a job, or died at work)"
+    "r2b.3 (ambiguous: declined a job, or died at work)",
+    "My uncle passed on the job last week and I can't believe it."
    ],
    [
     "sadness",
-    "Since mum passed music in the car makes me cry every time.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "Since mum passed music in the car makes me cry every time."
    ],
    [
     null,
-    "Since dad passed music in the car makes me cry.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "Since dad passed music in the car makes me cry."
    ],
    [
     "sadness",
-    "When dad passed art at school was the only thing that kept me going.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "When dad passed art at school was the only thing that kept me going."
    ],
    [
     "sadness",
-    "Ever since dad passed music on the radio sets me off crying.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "Ever since dad passed music on the radio sets me off crying."
    ],
    [
     "sadness",
-    "Since my nan passed science at uni feels pointless.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "Since my nan passed science at uni feels pointless."
    ],
    [
     "sadness",
-    "After mum passed english at school felt impossible.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "After mum passed english at school felt impossible."
    ],
    [
     "sadness",
-    "Since dad passed music with lyrics is too hard to listen to.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "Since dad passed music with lyrics is too hard to listen to."
    ],
    [
     "sadness",
-    "Since grandad passed history in class just makes me think of him.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "Since grandad passed history in class just makes me think of him."
    ],
    [
     "loneliness",
-    "Since mum passed music by myself is the only comfort I have.",
     "grief",
-    "r2b.4"
+    "r2b.4",
+    "Since mum passed music by myself is the only comfort I have."
    ],
    [
     "sadness",
-    "We lost her somewhere around 3am and I was asleep in the chair next to her.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost her somewhere around 3am and I was asleep in the chair next to her."
    ],
    [
     "sadness",
-    "We lost him somewhere on the way to the hospital.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost him somewhere on the way to the hospital."
    ],
    [
     "sadness",
-    "We lost her somewhere in the night while I was holding her hand.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost her somewhere in the night while I was holding her hand."
    ],
    [
     "sadness",
-    "We lost her somewhere between the diagnosis and the end, and I miss her.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost her somewhere between the diagnosis and the end, and I miss her."
    ],
    [
     "sadness",
-    "We lost him as a baby and I still think about him every day.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost him as a baby and I still think about him every day."
    ],
    [
     "sadness",
-    "We lost him as a newborn and I still can't talk about it.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost him as a newborn and I still can't talk about it."
    ],
    [
     "sadness",
-    "We lost her in the floods and nothing feels real.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost her in the floods and nothing feels real."
    ],
    [
     "sadness",
-    "We lost him in the war and mum still sets his place at the table.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost him in the war and mum still sets his place at the table."
    ],
    [
     "sadness",
-    "We lost her to depression and I keep asking what I missed.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost her to depression and I keep asking what I missed."
    ],
    [
     "sadness",
-    "We lost her the night of the storm and I can't stop thinking about it.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost her the night of the storm and I can't stop thinking about it."
    ],
    [
     "sadness",
-    "We lost him for good this time and I feel empty.",
     "grief",
-    "r2b.5"
+    "r2b.5",
+    "We lost him for good this time and I feel empty."
    ],
    [
     "sadness",
-    "We lost her on her first day of school and I still can't breathe.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "r2b.5 (ambiguous: a child lost for a while, or a death)"
+    "r2b.5 (ambiguous: a child lost for a while, or a death)",
+    "We lost her on her first day of school and I still can't breathe."
    ],
    [
     "worry",
-    "She has been down the previous few weeks and stopped texting back.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "She has been down the previous few weeks and stopped texting back."
    ],
    [
     "worry",
-    "She seemed down the day after the breakup and hasn't replied to anyone.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "She seemed down the day after the breakup and hasn't replied to anyone."
    ],
    [
     "worry",
-    "My son seemed down the morning I left and hasn't answered my calls since.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My son seemed down the morning I left and hasn't answered my calls since."
    ],
    [
     "worry",
-    "She seemed really down to me and hasn't replied since.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "She seemed really down to me and hasn't replied since."
    ],
    [
     "worry",
-    "My mate seemed down by the end of the night and now he's ignoring my texts.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My mate seemed down by the end of the night and now he's ignoring my texts."
    ],
    [
     "worry",
-    "My son is down the worst I have seen and is ignoring my messages.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My son is down the worst I have seen and is ignoring my messages."
    ],
    [
     "worry",
-    "My friend seemed really down at the party and hasn't replied since.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My friend seemed really down at the party and hasn't replied since."
    ],
    [
     "worry",
-    "My friend has been down 3 weeks now and won't reply to anyone.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My friend has been down 3 weeks now and won't reply to anyone."
    ],
    [
     "worry",
-    "My brother was really down at dinner and hasn't texted me back.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My brother was really down at dinner and hasn't texted me back."
    ],
    [
     "worry",
-    "My son has been down the better part of a year and barely answers my messages.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My son has been down the better part of a year and barely answers my messages."
    ],
    [
     "worry",
-    "My brother has been down the most I have ever seen him and he left my message on read.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My brother has been down the most I have ever seen him and he left my message on read."
    ],
    [
     "worry",
-    "He seemed really down the night before and now he's not answering his phone.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "He seemed really down the night before and now he's not answering his phone."
    ],
    [
     "worry",
-    "My son has been really down at his new school and isn't replying to my messages.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My son has been really down at his new school and isn't replying to my messages."
    ],
    [
     "worry",
-    "She has been really down at her new job and isn't answering my calls.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "She has been really down at her new job and isn't answering my calls."
    ],
    [
     "worry",
-    "My sister has been really down by the sound of it and isn't answering my calls.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My sister has been really down by the sound of it and isn't answering my calls."
    ],
    [
     "worry",
-    "My son has been so down to the point he won't get out of bed or answer anyone.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My son has been so down to the point he won't get out of bed or answer anyone."
    ],
    [
     "worry",
-    "My daughter seems down by the look of her and won't text me back.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My daughter seems down by the look of her and won't text me back."
    ],
    [
     "worry",
-    "My son is really down at bedtime and cries and hasn't been replying to his friends.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My son is really down at bedtime and cries and hasn't been replying to his friends."
    ],
    [
     "worry",
-    "He was so down at training and hasn't messaged anyone since.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "He was so down at training and hasn't messaged anyone since."
    ],
    [
     "worry",
-    "She seemed down at the wedding and now she won't answer her phone.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "She seemed down at the wedding and now she won't answer her phone."
    ],
    [
     "worry",
-    "My dad seemed so down the few times I've seen him and he won't pick up.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My dad seemed so down the few times I've seen him and he won't pick up."
    ],
    [
     "worry",
-    "My son's been really down the days since his best friend moved away and won't reply.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My son's been really down the days since his best friend moved away and won't reply."
    ],
    [
     "worry",
-    "My mum has been really down the weeks since dad moved out and isn't returning calls.",
     "nosilence nopd nohabit",
-    "r2b.6"
+    "r2b.6",
+    "My mum has been really down the weeks since dad moved out and isn't returning calls."
    ],
    [
     "worry",
-    "My son is low key depressed and hasn't answered my calls all week.",
     "nosilence nopd nohabit",
-    "r2b.7"
+    "r2b.7",
+    "My son is low key depressed and hasn't answered my calls all week."
    ],
    [
     "worry",
-    "My best friend is low key not coping and has stopped replying.",
     "nosilence nopd nohabit",
-    "r2b.7"
+    "r2b.7",
+    "My best friend is low key not coping and has stopped replying."
    ],
    [
     "worry",
-    "My daughter is low-key depressed I think, and she hasn't replied all week.",
     "nosilence nopd nohabit",
-    "r2b.7"
+    "r2b.7",
+    "My daughter is low-key depressed I think, and she hasn't replied all week."
    ],
    [
     "worry",
-    "My sister has been low key depressed for months and won't text me back.",
     "nosilence nopd nohabit",
-    "r2b.7"
+    "r2b.7",
+    "My sister has been low key depressed for months and won't text me back."
    ],
    [
     "worry",
-    "My best mate has been low-key struggling since his dad left and isn't replying.",
     "nosilence nopd nohabit",
-    "r2b.7"
+    "r2b.7",
+    "My best mate has been low-key struggling since his dad left and isn't replying."
    ],
    [
     "worry",
-    "Honestly my girlfriend seems low key depressed and keeps leaving me on read.",
     "nosilence nopd nohabit",
-    "r2b.7"
+    "r2b.7",
+    "Honestly my girlfriend seems low key depressed and keeps leaving me on read."
    ],
    [
     "worry",
-    "My best friend is lowkey struggling and has stopped replying.",
     "nosilence nopd nohabit",
-    "r2b.7"
+    "r2b.7",
+    "My best friend is lowkey struggling and has stopped replying."
    ],
    [
     "worry",
-    "I think he's lowkey depressed and he hasn't replied in days.",
     "nosilence nopd nohabit",
-    "r2b.7"
+    "r2b.7",
+    "I think he's lowkey depressed and he hasn't replied in days."
    ],
    [
     "worry",
-    "My son who is glued to his screen has been really down and won't reply to his friends.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My son who is glued to his screen has been really down and won't reply to his friends."
    ],
    [
     "worry",
-    "My son who is always on his computer is really down and hasn't replied to anyone in days.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My son who is always on his computer is really down and hasn't replied to anyone in days."
    ],
    [
     "worry",
-    "My mate from the site is really down and isn't answering his phone.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My mate from the site is really down and isn't answering his phone."
    ],
    [
     "worry",
-    "My brother who crashed the car is really down and hasn't replied to my texts.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My brother who crashed the car is really down and hasn't replied to my texts."
    ],
    [
     "worry",
-    "Dad on the phone was really down and hasn't answered since.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "Dad on the phone was really down and hasn't answered since."
    ],
    [
     "worry",
-    "My daughter who is always on her phone has been really low and isn't answering my texts.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My daughter who is always on her phone has been really low and isn't answering my texts."
    ],
    [
     "worry",
-    "My husband who works in sales has been really down and won't answer my calls.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My husband who works in sales has been really down and won't answer my calls."
    ],
    [
     "worry",
-    "My wife who works at the bank has been so low lately and isn't replying to my messages.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My wife who works at the bank has been so low lately and isn't replying to my messages."
    ],
    [
     "worry",
-    "My son who is always on the internet has been really down and isn't texting back.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My son who is always on the internet has been really down and isn't texting back."
    ],
    [
     "worry",
-    "My foster sister who is still in the system has been really down and isn't replying.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My foster sister who is still in the system has been really down and isn't replying."
    ],
    [
     "worry",
-    "My dad who lost a lot on the market has been really low and won't pick up.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My dad who lost a lot on the market has been really low and won't pick up."
    ],
    [
     "worry",
-    "My girlfriend whose dad lost all his money on stocks has been really low and isn't replying.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My girlfriend whose dad lost all his money on stocks has been really low and isn't replying."
    ],
    [
     "worry",
-    "My son who moved up there has been really down and won't call me back.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My son who moved up there has been really down and won't call me back."
    ],
    [
     "worry",
-    "My son who lives down there has been really low and won't answer the phone.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My son who lives down there has been really low and won't answer the phone."
    ],
    [
     "worry",
-    "My dad who works on the line has been really low and isn't returning my calls.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My dad who works on the line has been really low and isn't returning my calls."
    ],
    [
     "worry",
-    "My sister who runs the site has been really down and isn't answering.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My sister who runs the site has been really down and isn't answering."
    ],
    [
     "worry",
-    "My dad who works on the line is a bit low and hasn't called back.",
     "nosilence nopd nohabit",
-    "r2b.8"
+    "r2b.8",
+    "My dad who works on the line is a bit low and hasn't called back."
    ],
    [
     "joy",
-    "My husband is so much better now, he hardly ever yells at the kids anymore!",
     "tender",
-    "r2b.9"
+    "r2b.9",
+    "My husband is so much better now, he hardly ever yells at the kids anymore!"
    ],
    [
     "joy",
-    "I'm so happy, she barely ever shouts at the baby now.",
     "tender",
-    "r2b.9"
+    "r2b.9",
+    "I'm so happy, she barely ever shouts at the baby now."
    ],
    [
     "joy",
-    "Finally some peace! Dad hardly ever screams at mum now.",
     "tender",
-    "r2b.9"
+    "r2b.9",
+    "Finally some peace! Dad hardly ever screams at mum now."
    ],
    [
     "joy",
-    "So proud of us, he rarely ever yells at the kids now!",
     "tender",
-    "r2b.9"
+    "r2b.9",
+    "So proud of us, he rarely ever yells at the kids now!"
    ],
    [
     "joy",
-    "Really happy, mum has been sober a month and hasn't been drunk around us once!",
     "tender",
-    "r2b.9"
+    "r2b.9",
+    "Really happy, mum has been sober a month and hasn't been drunk around us once!"
    ],
    [
     "excitement",
-    "Can't wait for the weekend, hopefully dad won't be drunk this time!",
     "tender",
-    "r2b.9"
+    "r2b.9",
+    "Can't wait for the weekend, hopefully dad won't be drunk this time!"
    ],
    [
     "worry",
-    "My stepdad's moods are all over the place and he seemed annoyed with me again, I always think it's my fault.",
     "nohabit nosa",
-    "checker B corpus (volatile)"
+    "checker B corpus (volatile)",
+    "My stepdad's moods are all over the place and he seemed annoyed with me again, I always think it's my fault."
    ]
   ]
  },
  "floorAccepted": {
-  "about": "Over-caution the Tier 0 floor accepts (owner's choice: a misfire that only gives gentler, more general lines is acceptable), pinned so a later narrowing can't drop the floor unnoticed, and listed for the Tier A review. Same checks as 'floor'; the fourth column is the class.",
-  "cases": [
+  "about": "Over-caution the Tier 0 floor accepts (owner's choice: a misfire that only gives gentler, more general lines is acceptable), pinned so a later narrowing can't drop the floor unnoticed, and listed for the Tier A review. Same checks as 'floor'; each entry is [label, checks, the class of over-caution, phrasing].",
+  "phrasings": [
    [
     "worry",
-    "The wifi has been down all day and my friend has not replied to my messages.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "The wifi has been down all day and my friend has not replied to my messages."
    ],
    [
     "worry",
-    "The website has been down all morning and my friend has not replied to my messages.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "The website has been down all morning and my friend has not replied to my messages."
    ],
    [
     "worry",
-    "The NBN has been down the past two days and my friend has not replied to my messages.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "The NBN has been down the past two days and my friend has not replied to my messages."
    ],
    [
     "worry",
-    "Instagram has been down the whole day and my friend has not replied to my messages.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "Instagram has been down the whole day and my friend has not replied to my messages."
    ],
    [
     "worry",
-    "Our internet connection has been down the past week and nobody has replied to my messages.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "Our internet connection has been down the past week and nobody has replied to my messages."
    ],
    [
     "worry",
-    "I have been down to the shops twice and he still has not replied.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "I have been down to the shops twice and he still has not replied."
    ],
    [
     "worry",
-    "My friend has been down to the coast and hasn't texted back.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "My friend has been down to the coast and hasn't texted back."
    ],
    [
     "worry",
-    "My brother is down the next street at his mate's and hasn't replied to my messages.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "My brother is down the next street at his mate's and hasn't replied to my messages."
    ],
    [
     "worry",
-    "The website that has been down all week still hasn't sent my order and the seller hasn't replied.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "The website that has been down all week still hasn't sent my order and the seller hasn't replied."
    ],
    [
     "worry",
-    "My laptop is struggling to load anything and my friend has not replied to my messages.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "My laptop is struggling to load anything and my friend has not replied to my messages."
    ],
    [
     "worry",
-    "Mum's down at work late tonight and hasn't texted back.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "Mum's down at work late tonight and hasn't texted back."
    ],
    [
     "worry",
-    "My sister is down at the weekend and hasn't replied about our plans.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "My sister is down at the weekend and hasn't replied about our plans."
    ],
    [
     "worry",
-    "My sister is down the other end of the house and won't answer my texts.",
     "nosilence",
-    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines"
+    "An outage, a place or a device \"down\" or \"struggling\" counts as someone low (0037d57 floor): a worrying silence loses its \"they are probably just busy\" lines",
+    "My sister is down the other end of the house and won't answer my texts."
    ],
    [
     "sadness",
-    "I've been feeling really down lately and I always think everyone is judging me.",
     "nohabit",
-    "The writer's own low mood counts as welfare (2a67f1b): no thinking-habit lines"
+    "The writer's own low mood counts as welfare (2a67f1b): no thinking-habit lines",
+    "I've been feeling really down lately and I always think everyone is judging me."
    ],
    [
     "worry",
-    "I made a mistake and my phone died.",
     "nomistake",
-    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines"
+    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines",
+    "I made a mistake and my phone died."
    ],
    [
     "worry",
-    "I made a mistake and the car just died on the freeway.",
     "nomistake",
-    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines"
+    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines",
+    "I made a mistake and the car just died on the freeway."
    ],
    [
     "worry",
-    "I made a mistake and the battery in my car died, so I was late for work.",
     "nomistake",
-    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines"
+    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines",
+    "I made a mistake and the battery in my car died, so I was late for work."
    ],
    [
     "worry",
-    "I made a mistake and the battery in my phone died so I missed the meeting.",
     "nomistake",
-    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines"
+    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines",
+    "I made a mistake and the battery in my phone died so I missed the meeting."
    ],
    [
     "worry",
-    "I made a mistake at the hospital where I work and booked the wrong room.",
     "nomistake",
-    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines"
+    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines",
+    "I made a mistake at the hospital where I work and booked the wrong room."
    ],
    [
     "worry",
-    "I work at the hospital and I made a mistake with the rota.",
     "nomistake",
-    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines"
+    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines",
+    "I work at the hospital and I made a mistake with the rota."
    ],
    [
     "worry",
-    "I made a mistake at the hospital today and booked the wrong meeting room.",
     "nomistake",
-    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines"
+    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines",
+    "I made a mistake at the hospital today and booked the wrong meeting room."
    ],
    [
     "worry",
-    "I'm a nurse and I made a mistake at the hospital with the rota.",
     "nomistake",
-    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines"
+    "A device that \"died\", or a slip at a hospital as a workplace, counts as serious harm (0037d57 floor): no \"everyone makes mistakes\" lines",
+    "I'm a nurse and I made a mistake at the hospital with the rota."
    ],
    [
     "worry",
-    "I made a mistake and ate so much I'm in a food coma.",
     "nomistake",
-    "Everyday words in the serious-harm list (\"coma\", \"CPR\", \"fell down\", \"killed it\"): no mistake lines; outside the closed hyperbole list, no thinking-habit lines either"
+    "Everyday words in the serious-harm list (\"coma\", \"CPR\", \"fell down\", \"killed it\"): no mistake lines; outside the closed hyperbole list, no thinking-habit lines either",
+    "I made a mistake and ate so much I'm in a food coma."
    ],
    [
     "worry",
-    "I made a mistake and forgot the CPR steps in my first aid assessment.",
     "nomistake",
-    "Everyday words in the serious-harm list (\"coma\", \"CPR\", \"fell down\", \"killed it\"): no mistake lines; outside the closed hyperbole list, no thinking-habit lines either"
+    "Everyday words in the serious-harm list (\"coma\", \"CPR\", \"fell down\", \"killed it\"): no mistake lines; outside the closed hyperbole list, no thinking-habit lines either",
+    "I made a mistake and forgot the CPR steps in my first aid assessment."
    ],
    [
     "worry",
-    "I fell down the stairs at school and now everyone thinks I'm a joke.",
     "nomistake nohabit",
-    "Everyday words in the serious-harm list (\"coma\", \"CPR\", \"fell down\", \"killed it\"): no mistake lines; outside the closed hyperbole list, no thinking-habit lines either"
+    "Everyday words in the serious-harm list (\"coma\", \"CPR\", \"fell down\", \"killed it\"): no mistake lines; outside the closed hyperbole list, no thinking-habit lines either",
+    "I fell down the stairs at school and now everyone thinks I'm a joke."
    ],
    [
     "joy",
-    "I totally killed it at my presentation but it was probably just luck.",
     "nohabit",
-    "Everyday words in the serious-harm list (\"coma\", \"CPR\", \"fell down\", \"killed it\"): no mistake lines; outside the closed hyperbole list, no thinking-habit lines either"
+    "Everyday words in the serious-harm list (\"coma\", \"CPR\", \"fell down\", \"killed it\"): no mistake lines; outside the closed hyperbole list, no thinking-habit lines either",
+    "I totally killed it at my presentation but it was probably just luck."
    ],
    [
     "joy",
-    "My husband got drunk at the wedding and we danced all night, so happy.",
     "tender",
-    "A partner or parent drunk, told with good news, reads as plain harm: tender openers"
+    "A partner or parent drunk, told with good news, reads as plain harm: tender openers",
+    "My husband got drunk at the wedding and we danced all night, so happy."
    ],
    [
     "worry",
-    "We lost him in the crowd at the footy for an hour.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death"
+    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death",
+    "We lost him in the crowd at the footy for an hour."
    ],
    [
     "frustration",
-    "We lost her passport on the way to the airport and the trip is ruined.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death"
+    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death",
+    "We lost her passport on the way to the airport and the trip is ruined."
    ],
    [
     "worry",
-    "My mum passed out at work today.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death"
+    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death",
+    "My mum passed out at work today."
    ],
    [
     "sadness",
-    "My dad passed comment on my weight again.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death"
+    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death",
+    "My dad passed comment on my weight again."
    ],
    [
     "sadness",
-    "After she passed on the message nobody called me back.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death"
+    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death",
+    "After she passed on the message nobody called me back."
    ],
    [
     "frustration",
-    "After he passed maths he stopped studying altogether.",
     "nogrief tender nosilence noregret nomistake nohabit nomissing nopd",
-    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death"
+    "Any loss word with a heavy feeling (LOSS_FLOOR): tender openers and none of the silence, regret, mistake, missing or thinking-habit lines, though it is not a death",
+    "After he passed maths he stopped studying altogether."
    ]
   ]
  },

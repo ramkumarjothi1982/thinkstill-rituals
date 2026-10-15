@@ -23,9 +23,16 @@ import { checkMessage, normaliseText, charCount } from './text-policy.js';
 // - split: an invisible character or filler reads as the space it looks like, so it can't run two words
 //   together ("kill\u2800myself", "wanna\u3164die"), and a line break stays one, so the next line's first word isn't
 //   read as the rest of the sentence above ("I hope I never wake up\nidk");
-// - broken: an invisible character or filler reads as a line break, as the screen read it before there were readings
-//   (a674f4b): it ends the thought, so "I hope I never wake up\u2800idk" reads like "...wake up\nidk" (Tier 0 review).
+// - broken: a visible blank people paste for a space (a Hangul filler, the blank Braille cell) reads as a line break,
+//   as the screen read it before there were readings (a674f4b): it ends the thought, so "I hope I never wake
+//   up\u2800idk" reads like "...wake up\nidk" (Tier 0 review). Only those: every other invisible character is dropped,
+//   as in the joined reading, so "I just want to disappear\u200D to a beach" is the everyday sentence it looks like
+//   (Tier 0 review 3: a zero-width joiner or a direction mark there isn't the end of a thought);
+// - as written: the stored words with only their compatibility forms and curly quotes read, all that a674f4b read.
+//   Accents, look-alike letters, the marks normaliseText keeps (a variation selector, a grapheme joiner, a filler) and
+//   runs of spaces stay as they are, so nothing a674f4b's screen caught is missed ("I hope I never wake up\u034Fidk").
 const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\u115F\u1160\u3164\uFFA0\u2800]/gu;
+const VISIBLE_BLANK = /[\u115F\u1160\u3164\uFFA0\u2800]/g;
 // what normaliseText deletes besides (C0/C1 controls but tab and line breaks); for the split reading, a space
 const CONTROL = /[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F]/g;
 const LOOKALIKE = {
@@ -35,17 +42,20 @@ const LOOKALIKE = {
   Α: 'A', Β: 'B', Ε: 'E', Η: 'H', Ι: 'I', Κ: 'K', Μ: 'M', Ν: 'N', Ο: 'O', Ρ: 'P', Τ: 'T', Υ: 'Y', Χ: 'X', Ζ: 'Z',
 };
 const LOOKALIKE_RE = new RegExp(`[${Object.keys(LOOKALIKE).join('')}]`, 'g');
-const readingOf = (text, { invisible, lines }) => {
-  const s = text.normalize('NFKC').replace(/[‘’ʼ′]/g, "'").replace(/[“”″]/g, '"').normalize('NFKD')
-    .replace(INVISIBLE, invisible).replace(CONTROL, invisible).replace(/\p{M}/gu, '').normalize('NFC')
+const asWritten = (text) => text.normalize('NFKC').replace(/[‘’ʼ′]/g, "'").replace(/[“”″]/g, '"');
+const readingOf = (text, { invisible, lines, blanks = invisible }) => {
+  const s = asWritten(text).normalize('NFKD')
+    .replace(VISIBLE_BLANK, blanks).replace(INVISIBLE, invisible).replace(CONTROL, invisible).replace(/\p{M}/gu, '').normalize('NFC')
     .replace(LOOKALIKE_RE, (c) => LOOKALIKE[c]);
   return lines === ' ' ? s.replace(/[\s\u0085]+/g, ' ')
     : s.replace(/\r\n?|[\v\f\u0085\u2028\u2029]/g, '\n').replace(/[^\S\n]+/g, ' ').replace(/ ?\n[\s]*/g, '\n').trim();
 };
 const probeOf = (text) => readingOf(text, { invisible: '', lines: ' ' });
-// Every combination of the two choices, and the broken reading. The joined ones read the stored words (normaliseText
-// has already dropped zero-width and control characters); the others read the words as they came, where those show.
-const READINGS = [[{ invisible: '', lines: ' ' }, 'text'], [{ invisible: ' ', lines: '\n' }, 'raw'], [{ invisible: '', lines: '\n' }, 'text'], [{ invisible: ' ', lines: ' ' }, 'raw'], [{ invisible: '\n', lines: '\n' }, 'raw']];
+// Every combination of the two choices, the broken reading and the words as written. The joined, broken and written ones
+// read the stored words (normaliseText has already dropped zero-width and control characters); the split ones read the
+// words as they came, where those show.
+const READINGS = [[{ invisible: '', lines: ' ' }, 'text'], [{ invisible: ' ', lines: '\n' }, 'raw'], [{ invisible: '', lines: '\n' }, 'text'], [{ invisible: ' ', lines: ' ' }, 'raw'],
+  [{ invisible: '', blanks: '\n', lines: '\n' }, 'text'], [null, 'text']];
 const SAFETY_READS = 2000;
 const firstChars = (text, n) => (text.length <= n ? text : Array.from(text).slice(0, n).join(''));
 // The words as they came are cut where the stored words are (Tier 0 review: 2,000 zero-width characters, spaces, line
@@ -76,18 +86,23 @@ function firstWords(s, n) {
   }
   return s.slice(0, end);
 }
+/** Every reading of the first n characters of the words (`sizes` lists each n). */
+function readingsAt(input, text, sizes) {
+  const raw = gapsCollapsed(String(input ?? ''));
+  const out = new Set();
+  for (const n of new Set(sizes)) {
+    for (const [how, from] of READINGS) {
+      const words = from === 'raw' ? firstWords(raw, n) : firstChars(text, n);
+      out.add(how ? readingOf(words, how) : asWritten(words));
+    }
+  }
+  return [...out];
+}
 /**
  * The readings the safety rules read: every reading of the first 2,000 characters (a very long paste costs little)
  * and, when a caller accepts more (maxChars), of everything it accepts, so nothing it could release is unread.
  */
-function readingsOf(input, text, maxChars) {
-  const raw = gapsCollapsed(String(input ?? ''));
-  const out = new Set();
-  for (const n of new Set([SAFETY_READS, Math.max(SAFETY_READS, Number(maxChars) || 0)])) {
-    for (const [how, from] of READINGS) out.add(readingOf(from === 'raw' ? firstWords(raw, n) : firstChars(text, n), how));
-  }
-  return [...out];
-}
+const readingsOf = (input, text, maxChars) => readingsAt(input, text, [SAFETY_READS, Math.max(SAFETY_READS, Number(maxChars) || 0)]);
 
 // Hushmates' own additions to the app's safety lexicon, kept here so the main
 // app's Reframe engine is reused unchanged. Words that mean someone may be in
@@ -278,10 +293,21 @@ const IDENTIFYING = [
 // with them never reaches the writer. A feeling with them never reaches catchers either, but its writer may be
 // talking to themselves ("I keep telling myself kys"), so it's answered with support, never a bare refusal.
 const YOURSELF = String.raw`(?:your ?self|ur ?self|yaself|yo ?self|yourselves)\b`;
-// Everyday sayings are blanked before these rules read the words (Tier 0 review): "cut yourself some slack",
+// Everyday sayings are blanked before a feeling's rules read the words (Tier 0 review): "cut yourself some slack",
 // "cut yourself off", "shooting yourself in the foot", "take the pressure off yourself", "lay off yourself". Never
 // "it", "that" or "this off yourself": "Just do it off yourself" is a push (Tier 0 review).
 const SAYINGS = new RegExp(String.raw`\bcut ${YOURSELF} (?:(?:some|a little|a bit of|a lot of|a|more) )?(?:slack|break)\b|\bcut ${YOURSELF} (?:off|short)\b|\bshoot(?:ing)? ${YOURSELF} in the f(?:oo|ee)t\b|\bhang(?:ing)? ${YOURSELF} out to dry\b|\b(?:pressure|weight|load|heat|stress|burden|spotlight|blame|focus|attention|eyes|mind|expectations?|guilt|shame|lay|ease) off ${YOURSELF}`, 'gi');
+// A perspective's sayings are fewer (Tier 0 review 3), and each blanks only the saying, so the rest of the words are
+// still read: "cut yourself some slack" or "a break" (not beside skin, blood or a blade), "shoot yourself in the foot",
+// "hang yourself out to dry", "take the pressure off yourself" or "ease the weight off yourself", and "don't eat
+// yourself up".
+const PERSPECTIVE_SAYINGS = new RegExp([
+  String.raw`\bcut ${YOURSELF} (?:(?:some|a little|a bit of|a lot of|a|more) )?(?:slack|break)\b(?![^.!?\n]{0,30}\b(?:skin|arms?|wrists?|legs?|thighs?|veins?|blood|bleed\w*|blades?|razors?|knife|knives|scissors|deep\w*)\b)`,
+  String.raw`\bshoot(?:ing)? ${YOURSELF} in the f(?:oo|ee)t\b`,
+  String.raw`\bhang(?:ing)? ${YOURSELF} out to dry\b`,
+  String.raw`\b(?:take|takes|taking|took|ease|eases|easing|eased)(?: (?:some|a bit|a little|a lot|all|most)(?: of)?)? (?:the )?(?:pressure|weight) off ${YOURSELF}`,
+  String.raw`\b(?:don'?t|dont|do not|never) eat (?:yourself|urself) up\b`,
+].join('|'), 'gi');
 const blank = (m) => ' '.repeat(m.length);
 const TELL_HARM = String.raw`\b(?:kill|hang|neck|unalive|off|end|shoot|drown|cut|hurt|harm|starve|stab) ${YOURSELF}`;
 const KYS = String.raw`\bk[\s.\-_*]*y[\s.\-_*]*s\b|\bkys+\b`;
@@ -289,53 +315,24 @@ const SHOULD_DIE = String.raw`\b(?:you|u|ya)(?: should| need to| ought to|'d bet
 const NOT_MISSED = String.raw`\b(?:no ?one|nobody|no-one) (?:would|will|'d|is going to|gonna|ever) (?:even )?(?:miss|notice|care about|cry for) (?:you|u)\b`;
 const BETTER_WITHOUT = String.raw`\b(?:the world|everyone|everybody|we|they|people|your family) (?:would|'d|will) be (?:so much |much )?better (?:off )?without (?:you|u)\b`;
 const HATED = String.raw`\b(?:everyone|everybody|people) (?:hates|hate) (?:you|u)\b`;
-// In a perspective, a negative imperative or statement right before the words, saying not to, is care, not a push:
-// "Don't hurt yourself over this", "Please never hurt yourself", "Try not to", "You shouldn't", "Promise me you won't".
-// Only those (Tier 0 review): never a "not" in a question or a taunt ("Can you not just...", "Why did you not...",
-// "Why not..."), never "I'm not saying don't...", "If you don't..." or "Bet you don't...", and never "You'll never..."
-// or "You won't...", which can be a dare; and nothing after in the sentence may take it back ("Don't kill yourself
-// yet", "...but do it properly"). Shared with the advice rules below.
-const SAYING_IT = String.raw`\b(?:not|never|\w+n'?t|nobody'?s|no ?one'?s|who'?s|who) (?:(?:really|just|even|here|gonna|going to) )?(?:says?|saying|said|tells?|telling|told|suggests?|suggesting|asks?|asking)(?: (?:that|to))?(?: (?:you|u|ya))? `;
-const NOT_GUARD = String.raw`(?<!${SAYING_IT}|\b(?:why|how come|if|unless|bet|betcha) (?:(?:you|u|ya) )?)`;
-const PROMISE = String.raw`\b(?:promise(?: me)?|hope|hoping|wish|pray|swear|make sure|tell me)(?: that)? `;
-const NEVER = String.raw`(?<!(?<!${PROMISE})\b(?:you|u|ya)(?:'ll| will| would|'d| could| can| are going to| are gonna| r gonna)? )never`;
-const WONT = String.raw`(?<=${PROMISE}(?:you|u|ya) )(?:won'?t|wont|will not)`;
-const SAY_NOT_TO = String.raw`(?:don'?t|dont|do not|shouldn'?t|shouldnt|should not|mustn'?t|mustnt|must not|(?:'d|had) better not|${NEVER}|${WONT}|(?:try|trying|careful|sure|remember|promise(?: me)?|important|best|better|okay|ok|please|choose|decide) not to)`;
-const THEN = String.raw`(?: (?:ever|ever again|go|go and|want to|need to|have to|try to|you dare|be tempted to|feel (?:like )?you (?:have|need) to|to))`;
-const TAKEN_BACK = String.raw`[^.!?]*\b(?:but|yet|until|till|til|first|before|without|unless|instead|properly|later|anyway|otherwise|except|jk|just kidding|lol|lmao|do it|go ahead|go for it|slowly|quickly|harder|deeper|tomorrow|another day|next week|next time|some other (?:day|time)|if you (?:must|have to|want to))\b`;
-const NOT_SAID_TO = (verb) => String.raw`(?:(?<!${NOT_GUARD}\b${SAY_NOT_TO}${THEN}{0,2} )${verb}|${verb}(?=${TAKEN_BACK}))`;
-// ...and how things can feel isn't a verdict when the same sentence says it isn't so: "It can feel like nobody would
-// miss you, and that feeling lies", "You might think everyone hates you, but they don't". Only then (Tier 0 review):
-// "It feels like everyone hates you because they do", "...and you're right" and "As if nobody would miss you" are
-// verdicts, and so is how things feel with nothing after to say it isn't so. "I think nobody would miss you" is one too.
-const FEELS = String.raw`(?:\b(?:it|you|u|that|this|things|everything|life)(?: (?:can|could|might|may|will|would|must|often|sometimes|probably|really|just|still|always|even|almost))* (?:feels?|felt|feeling)(?: like| as if| as though)?|\b(?:it|that|this|things|everything|life)(?: (?:can|could|might|may|will|would|often|sometimes))+ (?:seems?|looks?)(?: like| as if| as though)?|\bfeeling like|\bas if|\bas though|\b(?:you|u)(?: (?:can|could|might|may|will|would|probably|often|sometimes|start to|begin to|end up))* (?:think|thinking|believe|believing|feel|feeling)(?: like| that)?|\b(?:don'?t|do not|never) (?:think|believe)(?: that)?|\b(?:easy|tempting|natural|normal|common|understandable|okay|ok|fine|alright|human) to (?:think|believe|feel)(?: like| that)?|\bmakes? (?:you|u) (?:think|believe|feel)(?: like| that)?)(?: (?:that|maybe|honestly|really|literally|just|actually|sometimes|totally|completely|right now))* `;
-// what may stand between the words and what says they aren't so: nothing that agrees with them
-const BEFORE_UNTRUE = String.raw`(?:(?!\b(?:right|correct|true|truth|because|cause|cos|coz|since|do|does|did|agree|yes|yeah|yep|exactly|literally|believe|honestly|fact|facts|real|really)\b)[^.!?]){0,40}?\b(?:(?:and|but|though|although|even though|even if|yet|while|however)\W+)?(?:(?:honestly|really|truly|actually|i promise|trust me|i swear)\W+)?`;
-const UNTRUE = String.raw`(?:that|it|this)(?:'s| is| was)? (?:not|never) (?:true|real|so|right|the truth|the case|how it is|what'?s (?:happening|true|real))|(?:that|it|this) (?:isn'?t|wasn'?t|is not|was not) (?:true|real|so|right|the truth|the case|how it is|what'?s (?:happening|true|real))|(?:that|it|this)(?:'s| is) (?:a lie|untrue|false)|(?:that|the|this|those|these|your) (?:feelings?|thoughts?|voice|depression|brain|mind|pain|illness|low|darkness|exhaustion|anxiety)(?: is| are|'s)? (?:lies|lying|a liar|liars|wrong|lie to (?:you|u)|lies to (?:you|u)|(?:is|are)n'?t (?:true|right|the truth|telling the truth)|(?:is|are) not (?:true|right|the truth|telling the truth))|that'?s (?:just )?(?:the )?(?:pain|depression|illness|low|darkness|exhaustion|anxiety|tiredness|brain) talking`;
-const SAID_THEN = String.raw`(?=\s*(?:[,.!?;:)\u2014\u2013-]|$|\b(?:and|but|so|at all|ever|you know)\b))`;
-const MISSED_UNTRUE = String.raw`(?:(?:(?:so many|lots of|plenty of|many) )?(?:people|someone|somebody|we|i|they|your (?:friends|family|mum|mom|dad|people))(?: really| truly| absolutely| definitely| honestly)?(?: would| will| do|'d)(?: (?:miss|notice|care about)(?: (?:you|u))?(?: (?:so much|a lot|deeply|terribly))?)?|(?:you|u)(?:'d| would| will|'re| are)(?: be)?(?: so| really| truly| deeply)? missed)${SAID_THEN}`;
-const HATED_UNTRUE = String.raw`(?:(?:they|people|we|most people|everyone|everybody)(?: really)? (?:don'?t|do not)(?: (?:hate (?:you|u)|at all))?|(?:nobody|no one|no-one) (?:does|hates (?:you|u))|(?:(?:so many|lots of|many|most) )?(?:people|they|we|i) (?:love|like|care about|care for) (?:you|u))${SAID_THEN}`;
-const WITHOUT_UNTRUE = String.raw`(?:(?:it|they|the world|we|everyone|everybody|nobody|no one|people|your family)(?: really| absolutely| definitely)? (?:wouldn'?t|would not|won'?t|will not)(?: be)?|(?:it|the world|they|we|everyone|everybody|people|your family)(?: would|'d| will) be (?:(?:so much|much|a lot|far) )?(?:worse|poorer|emptier|sadder|less)|(?:you|u)(?:'d| would| will)(?: be)?(?: so| really)? missed)${SAID_THEN}`;
-const unlessUntrue = (verdict, untrue) => String.raw`(?:(?<!${FEELS})(?:${verdict})|(?:${verdict})(?!${BEFORE_UNTRUE}(?:${UNTRUE}|${untrue})))`;
 const asRules = (list) => list.map((src) => new RegExp(src, 'i'));
-// A feeling reads them all, without those two exceptions: from the writer, "don't kill yourself" or "it can feel
-// like nobody would miss you" may be about themselves, and holding it back with support is the careful answer.
-const INCITES_IN_FEELING = asRules([TELL_HARM, KYS, SHOULD_DIE, NOT_MISSED, BETTER_WITHOUT, HATED]);
-const INCITES_IN_PERSPECTIVE = asRules([NOT_SAID_TO(TELL_HARM), KYS, SHOULD_DIE, unlessUntrue(NOT_MISSED, MISSED_UNTRUE), unlessUntrue(BETTER_WITHOUT, WITHOUT_UNTRUE), unlessUntrue(HATED, HATED_UNTRUE)]);
-const incites = (readings, list) => readings.some((r) => {
-  const t = r.replace(SAYINGS, blank);
-  return list.some((re) => re.test(t));
+// A feeling and a perspective read the same six, and no wording exempts a perspective (Tier 0 review 3). Two rounds of
+// exemptions for kind wording ("Don't hurt yourself…", "It can feel like nobody would miss you, but…") each passed on
+// harmful replies that earlier screens refused: "Don't cut yourself where people can see", "It can feel like nobody
+// would miss you, but that's not true, nobody would even notice". A kind perspective refused costs its writer a
+// rewrite; a harmful one released reaches someone in pain. Kind words get a gentler refusal instead (below).
+const VERDICTS = asRules([NOT_MISSED, BETTER_WITHOUT, HATED]);
+const INCITES = [...asRules([TELL_HARM, KYS, SHOULD_DIE]), ...VERDICTS];
+const incites = (readings, sayings) => readings.some((r) => {
+  const t = r.replace(sayings, blank);
+  return INCITES.some((re) => re.test(t));
 });
 // For perspectives only: harmful advice and the questions groomers ask. Blocking a catcher's words needs no
-// clinical judgement; what perspectives may say beyond this is for the clinical review. When in doubt, the words are
-// refused (Tier 0 review): a kind perspective refused costs its writer a rewrite, a harmful one released reaches
-// someone in pain. So any mention of eating less, fasting, losing weight, calories or stopping medication is refused,
-// unless the words say not to, right before it ("Please don't skip meals", "It's not a good idea to stop taking your
-// meds suddenly", "You don't need to lose weight to deserve rest"), or are plainly kind ("Losing weight isn't the
-// point", "Counting calories when you're stressed can make things worse"): those are blanked first, as the sayings
-// are. "You'll feel lighter after a good rest" passes, but not beside any word about food, the body or harm.
-const THEN_ADVICE = String.raw`(?:${THEN}| (?:just|suddenly|abruptly|simply|completely|try|start|keep))`;
-const SAY_NOT_TO_ADVICE = String.raw`(?:${SAY_NOT_TO}|wouldn'?t|wouldnt|would not|no need to|no reason to|(?<!\b(?:is|was|isn'?t|wasn'?t) it )(?:not|never|isn'?t|is not|wasn'?t)(?: (?:a|really|very|always|ever|usually|generally))* (?:good|great|wise|safe|smart|ok|okay|advisable|helpful|recommended|healthy)(?: idea)? to)`;
+// clinical judgement; what perspectives may say beyond this is for the clinical review. Any mention of eating less,
+// fasting, losing weight, calories, feeling lighter or stopping medication is refused, however kindly it's put (Tier 0
+// review 3): "Please don't skip meals" and "It's not a good idea to stop taking your meds suddenly" get the gentler
+// refusal, but they aren't passed on. Every rule an earlier screen (7b92ee8, 9012d6f) refused perspectives with is here,
+// as it was or within a broader one, without its exemptions; the broader ones are this screen's own.
 const MEDS = String.raw`(?:your |ur |the |those |these |all )?(?:meds|medications?|medicines?|tablets|pills|antidepressants|anti-?depressants|prescriptions?)\b`;
 const STOP = String.raw`\b(?:stop(?:ping)?|quit(?:ting)?|ditch(?:ing)?|skip(?:ping)?|come off|coming off|get off|go off|throw (?:away|out)|bin|flush)`;
 const STOP_MEDS = String.raw`${STOP} (?:taking |using )?${MEDS}`;
@@ -346,12 +343,71 @@ const AMOUNT = String.raw`(?:(?:some|any|a|a bit of|a little|a lot of|a few|a fe
 const WEIGHT = String.raw`(?:weight|kilos?|kilograms?|kgs?|pounds|lbs|stone|(?:the )?baby weight|belly fat|body fat|fat)\b`;
 const LOSE = String.raw`(?:lose|losing|lost|loses|drop|dropping|dropped|shed|shedding|get(?:ting)? rid of|burn(?:ing)?(?: off)?)(?: off)?`;
 const DIET = String.raw`(?:dieting|(?:go|going|be|being|start|starting|try|trying)(?: on)? an? (?:\w+ )?diet)\b`;
-// Kind only when nothing after takes it back: no "but", "anyway", "jk" or a limit in the sentence ("...but stay under
-// 1200"), and no second push anywhere after ("Don't skip meals, skip them all", "...suddenly. Stop them slowly instead").
+// "you'll feel lighter" (7b92ee8), and feeling lighter, thinner or emptier beside any word about food, the body or harm
+const LIGHTER = String.raw`\byou'?ll feel lighter\b`;
+const FEEL_LIGHTER = String.raw`^(?=[^]*\bfeel(?:s|ing)?(?: (?:so|so much|much|a lot|way|a bit|heaps|even|a little))? (?:lighter|thinner|skinnier|emptier)\b)[^]*\b(?:eat\w*|ate|food|meals?|fasting|fasted|starv\w*|hungry|hunger|diet\w*|calori\w*|cals|kcals?|carbs|sugar|snack\w*|dinner|lunch|breakfast|skip\w*|purg\w*|vomit\w*|throw(?:ing)? up|sick|laxatives?|weigh\w*|kilos?|kgs?|lbs|pounds|thin|skinny|fat|cuts?|cutting|burn(?:s|t|ed|ing)?|blades?|razors?|bleed\w*|pills?|meds|tablets|drink\w*|alcohol|booze|smok\w*|weed|drugs?)\b`;
+const HARMFUL_FOOD = asRules([
+  // 7b92ee8's, as it was (9012d6f's first was the same)
+  String.raw`\b(?:skip(?:ping)?|stop eating|eat less|cut out|don'?t eat|starve)\b[^.!?]{0,20}\b(?:dinner|lunch|breakfast|meals?|food|carbs|eating)\b|\b(?:lose|losing|drop) (?:some |a bit of )?weight\b|\bcalories?\b`,
+  LIGHTER,
+  // 9012d6f's that the broader ones below don't hold ("only eat 50cal", "800cals a day")
+  String.raw`\b(?:only|just) (?:eat|have) \d+ ?(?:cal|cals|calories|kcal)\b|\b\d{3,4} ?(?:cal|cals|calories|kcal) (?:a|per) day\b`,
+  // eating less, fasting, losing weight, calories
+  String.raw`\b(?:skip(?:ping|ped)?|cut(?:ting)? out|starv(?:e|ing)|restrict(?:ing)?)\b[^.!?]{0,20}\b(?:dinner|lunch|breakfast|meals?|food|carbs|sugar|snacks?|eating)\b`
+    + String.raw`|\b(?:stop(?:ped|ping)?|quit(?:ting)?|no|not|cut down on|cut back on) eating\b|\beat(?:ing)? (?:less|nothing|very little|as little as|barely|one meal|only once)\b|\bgo(?:ing)? without (?:food|eating|meals?)\b`
+    + String.raw`|\bfast(?:ing|ed)\b|\b(?:intermittent|water|juice|dry) fast\b|\b(?:go|going|try|do|start) (?:on )?a fast\b|\bfast for (?:a (?:day|week|weekend|few days|couple of days)|\d+ ?(?:hours?|hrs?|days?)|24|48|72)\b|\b(?:juice|detox) (?:cleanse|diet)\b|\bjuice cleanse\b`
+    + String.raw`|\b(?:don'?t|dont|do not|never) eat\b(?! (?:yourself|urself) (?:up|out)\b| your heart out\b)|\beat (?:less than|under|below|no more than|only) \d+|\b(?:only|nothing but) (?:have |drink )?(?:water|black coffee|diet (?:coke|soda))\b`,
+  FEEL_LIGHTER,
+  String.raw`\b${LOSE} ${AMOUNT}${WEIGHT}|\bweight[- ]?loss\b|\b(?:get|getting|be|being|look|looking|stay|staying)(?: (?:a bit|a little|so|more|really|super|nice and))? (?:skinny|skinnier|thin|thinner|slim|slimmer)\b(?!-)|\b(?:slim|slimming) down\b|\b${DIET}`,
+  String.raw`\b${CALORIES}|\b\d{3,5} ?(?:cal|kcal|kj)\b`,
+  // stopping medication, or "them" after medication is named
+  String.raw`${STOP_MEDS}|^(?=[^]*\b(?:meds|medications?|medicines?|tablets|pills|antidepressants|prescriptions?)\b)[^]*${STOP} (?:taking |using )?(?:them|those|these)\b|\b(?:meds|medications?|antidepressants|pills) (?:are|is) (?:poison|bad for you|a scam|a lie|useless)\b`,
+]);
+const HARMFUL_OTHER = asRules([
+  // verdicts on a body
+  String.raw`\b(?:you(?:'re| are)|ur|u r) (?:so |too |really )?(?:fat|ugly|disgusting|a waste of space)\b`,
+  String.raw`\b(?:drink|get drunk|get high|smoke (?:weed|a joint|a cone)|take (?:a |some )?(?:pills?|xanax|valium|benzos?))\b[^.!?]{0,12}\b(?:until|till|til|to) (?:you )?(?:forget|feel (?:better|nothing)|numb|cope|pass out)\b`,
+  // "what school" as 7b92ee8 read it, "what school of thought" too
+  String.raw`\bhow old (?:are|r) (?:you|u)\b|\bwhere (?:do |d )?(?:you|u) (?:live|go to school)\b|\bwhat school\b|\bwhich school\b(?! of (?:thought|life|hard knocks)\b)|\bwhat'?s (?:your|ur) school\b|\bwhat (?:year|grade) (?:are|r) (?:you|u) in\b|\b(?:what|which) (?:suburb|town|street) (?:are|r|do) (?:you|u)\b|\b(?:we|let'?s|wanna|want to) (?:should )?meet (?:up|irl|in person)\b|\b(?:send|show) (?:me )?(?:a |some )?(?:pics?|photos?|nudes|selfies?)\b|\bare (?:you|u) (?:single|a (?:girl|boy|guy))\b`,
+  String.raw`\bbecause (?:you|u) (?:provoke|provoked|asked for|deserve|deserved|let) (?:him|her|them|it)\b`,
+]);
+const HARMFUL_ADVICE = [...HARMFUL_FOOD, ...HARMFUL_OTHER];
+
+// The gentler refusal (Tier 0 review 3), for a perspective refused on these rules whose words look kindly meant. It
+// only picks the words of the refusal: it never passes anything on. Kindly meant is how the earlier screens' exemptions
+// read it: a "don't", "never", "try not to", "no need to" or "it's not a good idea to" right before the words, with
+// nothing after to take it back ("Please don't hurt yourself", "Don't stop taking your meds without your GP"); "it can
+// feel like…" before a verdict and "but that isn't true" after it; the plainly kind things said about calories and
+// weight ("Losing weight isn't the point"); "you'll feel lighter" with no word about food or the body; or a doctor, a
+// GP, Lifeline or support named. Never beside a push ("why not", "lol", "properly"), a method, a place on the body,
+// hiding it, a degree or a time ("…use a rope", "…where people can see", "…too deep", "…tonight"), an insult, "kys",
+// "you should die", or any other advice.
+const SAYING_IT = String.raw`\b(?:not|never|\w+n'?t|nobody'?s|no ?one'?s|who'?s|who) (?:(?:really|just|even|here|gonna|going to) )?(?:says?|saying|said|tells?|telling|told|suggests?|suggesting|asks?|asking)(?: (?:that|to))?(?: (?:you|u|ya))? `;
+const NOT_GUARD = String.raw`(?<!${SAYING_IT}|\b(?:why|how come|if|unless|bet|betcha) (?:(?:you|u|ya) )?)`;
+const PROMISE = String.raw`\b(?:promise(?: me)?|hope|hoping|wish|pray|swear|make sure|tell me)(?: that)? `;
+const NEVER = String.raw`(?<!(?<!${PROMISE})\b(?:you|u|ya)(?:'ll| will| would|'d| could| can| are going to| are gonna| r gonna)? )never`;
+const WONT = String.raw`(?<=${PROMISE}(?:you|u|ya) )(?:won'?t|wont|will not)`;
+const SAY_NOT_TO = String.raw`(?:don'?t|dont|do not|shouldn'?t|shouldnt|should not|mustn'?t|mustnt|must not|(?:'d|had) better not|${NEVER}|${WONT}|(?:try|trying|careful|sure|remember|promise(?: me)?|important|best|better|okay|ok|please|choose|decide) not to)`;
+const THEN = String.raw`(?: (?:ever|ever again|go|go and|want to|need to|have to|try to|you dare|be tempted to|feel (?:like )?you (?:have|need) to|to))`;
+const TAKEN_BACK = String.raw`[^.!?]*\b(?:but|yet|until|till|til|first|before|without|unless|instead|properly|later|anyway|otherwise|except|jk|just kidding|lol|lmao|do it|go ahead|go for it|slowly|quickly|harder|deeper|tomorrow|another day|next week|next time|some other (?:day|time)|if you (?:must|have to|want to))\b`;
+const FEELS = String.raw`(?:\b(?:it|you|u|that|this|things|everything|life)(?: (?:can|could|might|may|will|would|must|often|sometimes|probably|really|just|still|always|even|almost))* (?:feels?|felt|feeling)(?: like| as if| as though)?|\b(?:it|that|this|things|everything|life)(?: (?:can|could|might|may|will|would|often|sometimes))+ (?:seems?|looks?)(?: like| as if| as though)?|\bfeeling like|\bas if|\bas though|\b(?:you|u)(?: (?:can|could|might|may|will|would|probably|often|sometimes|start to|begin to|end up))* (?:think|thinking|believe|believing|feel|feeling)(?: like| that)?|\b(?:don'?t|do not|never) (?:think|believe)(?: that)?|\b(?:easy|tempting|natural|normal|common|understandable|okay|ok|fine|alright|human) to (?:think|believe|feel)(?: like| that)?|\bmakes? (?:you|u) (?:think|believe|feel)(?: like| that)?)(?: (?:that|maybe|honestly|really|literally|just|actually|sometimes|totally|completely|right now))* `;
+const BEFORE_UNTRUE = String.raw`(?:(?!\b(?:right|correct|true|truth|because|cause|cos|coz|since|do|does|did|agree|yes|yeah|yep|exactly|literally|believe|honestly|fact|facts|real|really)\b)[^.!?]){0,40}?\b(?:(?:and|but|though|although|even though|even if|yet|while|however)\W+)?(?:(?:honestly|really|truly|actually|i promise|trust me|i swear)\W+)?`;
+const UNTRUE = String.raw`(?:that|it|this)(?:'s| is| was)? (?:not|never) (?:true|real|so|right|the truth|the case|how it is|what'?s (?:happening|true|real))|(?:that|it|this) (?:isn'?t|wasn'?t|is not|was not) (?:true|real|so|right|the truth|the case|how it is|what'?s (?:happening|true|real))|(?:that|it|this)(?:'s| is) (?:a lie|untrue|false)|(?:that|the|this|those|these|your) (?:feelings?|thoughts?|voice|depression|brain|mind|pain|illness|low|darkness|exhaustion|anxiety)(?: is| are|'s)? (?:lies|lying|a liar|liars|wrong|lie to (?:you|u)|lies to (?:you|u)|(?:is|are)n'?t (?:true|right|the truth|telling the truth)|(?:is|are) not (?:true|right|the truth|telling the truth))|that'?s (?:just )?(?:the )?(?:pain|depression|illness|low|darkness|exhaustion|anxiety|tiredness|brain) talking`;
+const SAID_THEN = String.raw`(?=\s*(?:[,.!?;:)—–-]|$|\b(?:and|but|so|at all|ever|you know)\b))`;
+const MISSED_UNTRUE = String.raw`(?:(?:(?:so many|lots of|plenty of|many) )?(?:people|someone|somebody|we|i|they|your (?:friends|family|mum|mom|dad|people))(?: really| truly| absolutely| definitely| honestly)?(?: would| will| do|'d)(?: (?:miss|notice|care about)(?: (?:you|u))?(?: (?:so much|a lot|deeply|terribly))?)?|(?:you|u)(?:'d| would| will|'re| are)(?: be)?(?: so| really| truly| deeply)? missed)${SAID_THEN}`;
+const HATED_UNTRUE = String.raw`(?:(?:they|people|we|most people|everyone|everybody)(?: really)? (?:don'?t|do not)(?: (?:hate (?:you|u)|at all))?|(?:nobody|no one|no-one) (?:does|hates (?:you|u))|(?:(?:so many|lots of|many|most) )?(?:people|they|we|i) (?:love|like|care about|care for) (?:you|u))${SAID_THEN}`;
+const WITHOUT_UNTRUE = String.raw`(?:(?:it|they|the world|we|everyone|everybody|nobody|no one|people|your family)(?: really| absolutely| definitely)? (?:wouldn'?t|would not|won'?t|will not)(?: be)?|(?:it|the world|they|we|everyone|everybody|people|your family)(?: would|'d| will) be (?:(?:so much|much|a lot|far) )?(?:worse|poorer|emptier|sadder|less)|(?:you|u)(?:'d| would| will)(?: be)?(?: so| really)? missed)${SAID_THEN}`;
+const SAID_UNTRUE = (verdict, untrue) => String.raw`(?<=${FEELS})(?:${verdict})(?=${BEFORE_UNTRUE}(?:${UNTRUE}|${untrue}))`;
+const THEN_ADVICE = String.raw`(?:${THEN}| (?:just|suddenly|abruptly|simply|completely|try|start|keep))`;
+const SAY_NOT_TO_ADVICE = String.raw`(?:${SAY_NOT_TO}|wouldn'?t|wouldnt|would not|no need to|no reason to|(?<!\b(?:is|was|isn'?t|wasn'?t) it )(?:not|never|isn'?t|is not|wasn'?t)(?: (?:a|really|very|always|ever|usually|generally))* (?:good|great|wise|safe|smart|ok|okay|advisable|helpful|recommended|healthy)(?: idea)? to)`;
+// kind only when nothing after takes it back: no "but", "anyway", "jk" or a limit in the sentence ("...but stay under
+// 1200"), and no second push anywhere after ("Don't skip meals, skip them all", "...suddenly. Stop them slowly instead")
 const SECOND_PUSH = String.raw`[^]*${STOP}(?: (?:taking|using|eating))? (?:them|those|these|it|all|everything|eating|food|meals?|dinner|lunch|breakfast|pills|meds|tablets|medications?|antidepressants)\b`;
 const KIND_UNLESS_TAKEN_BACK = String.raw`(?![^.!?]*\b(?:but|though|although|yet|still|anyway|otherwise|except|instead|jk|just kidding|lol|lmao|under|below|max|limit|\d{3,5}|unless (?!(?:your |a |the )?(?:doctor|gp|psychiatrist|prescriber|pharmacist)))\b)(?!${SECOND_PUSH})`;
-const KIND_ADVICE = new RegExp([
-  // the words say not to, right before it (for medication only the verb is blanked: "Don't stop taking [your meds]")
+const KIND_WORDS = new RegExp([
+  String.raw`(?<=${NOT_GUARD}\b${SAY_NOT_TO}${THEN}{0,2} )${TELL_HARM}(?!${TAKEN_BACK})`,
+  SAID_UNTRUE(NOT_MISSED, MISSED_UNTRUE), SAID_UNTRUE(BETTER_WITHOUT, WITHOUT_UNTRUE), SAID_UNTRUE(HATED, HATED_UNTRUE),
+  // the words say not to, right before it (for medication only the verb: "Don't stop taking [your meds]")
   String.raw`${NOT_GUARD}\b${SAY_NOT_TO_ADVICE}${THEN_ADVICE}{0,2} (?:${STOP}(?: taking| using)?(?= ${MEDS})|${EAT_LESS}|${COUNT_CALORIES}|${LOSE} ${AMOUNT}${WEIGHT}|${DIET})${KIND_UNLESS_TAKEN_BACK}`,
   // or to stop counting
   String.raw`(?<!\b(?:don'?t|dont|do not|never|not|why)(?: (?:ever|just))? )\b(?:stop|quit|give up|forget(?: about)?|let go of) (?:counting|tracking|logging|worrying about|obsessing over|thinking about|restricting) (?:your |ur |the |any |every |those )?${CALORIES}${KIND_UNLESS_TAKEN_BACK}`,
@@ -362,22 +418,33 @@ const KIND_ADVICE = new RegExp([
   // or that losing weight isn't the point
   String.raw`\b(?:(?:losing|dropping|shedding) ${AMOUNT}${WEIGHT}|weight[- ]?loss)(?= (?:(?:alone|itself|by itself) )?(?:isn'?t|is not|won'?t|will not|doesn'?t|does not|can'?t|cannot|never|wouldn'?t|would not) (?:(?:going to|gonna|ever|really|always|actually) )?(?:the (?:point|answer|solution|fix|goal|cure)|required|necessary|needed|what (?:matters|counts|makes)|(?:fix|solve|change|define|decide|determine|measure|make you (?:worthy|enough|lovable|happy|better|a better))\b))(?![^.!?]*\b(?:essential|smart|good|great|better|helps?|helpful|important|worth|should|need|must)\b)${KIND_UNLESS_TAKEN_BACK}`,
 ].join('|'), 'gi');
-const HARMFUL_ADVICE = asRules([
-  // eating less, fasting, losing weight, calories, and verdicts on a body
-  String.raw`\b(?:skip(?:ping|ped)?|cut(?:ting)? out|starv(?:e|ing)|restrict(?:ing)?)\b[^.!?]{0,20}\b(?:dinner|lunch|breakfast|meals?|food|carbs|sugar|snacks?|eating)\b`
-    + String.raw`|\b(?:stop(?:ped|ping)?|quit(?:ting)?|no|not|cut down on|cut back on) eating\b|\beat(?:ing)? (?:less|nothing|very little|as little as|barely|one meal|only once)\b|\bgo(?:ing)? without (?:food|eating|meals?)\b`
-    + String.raw`|\bfast(?:ing|ed)\b|\b(?:intermittent|water|juice|dry) fast\b|\b(?:go|going|try|do|start) (?:on )?a fast\b|\bfast for (?:a (?:day|week|weekend|few days|couple of days)|\d+ ?(?:hours?|hrs?|days?)|24|48|72)\b|\b(?:juice|detox) (?:cleanse|diet)\b|\bjuice cleanse\b`
-    + String.raw`|\b(?:don'?t|dont|do not|never) eat\b(?! (?:yourself|urself) (?:up|out)\b| your heart out\b)|\beat (?:less than|under|below|no more than|only) \d+|\b(?:only|nothing but) (?:have |drink )?(?:water|black coffee|diet (?:coke|soda))\b`
-    + String.raw`|^(?=[^]*\bfeel(?:s|ing)?(?: (?:so|so much|much|a lot|way|a bit|heaps|even|a little))? (?:lighter|thinner|skinnier|emptier)\b)[^]*\b(?:eat\w*|ate|food|meals?|fasting|fasted|starv\w*|hungry|hunger|diet\w*|calori\w*|cals|kcals?|carbs|sugar|snack\w*|dinner|lunch|breakfast|skip\w*|purg\w*|vomit\w*|throw(?:ing)? up|sick|laxatives?|weigh\w*|kilos?|kgs?|lbs|pounds|thin|skinny|fat|cuts?|cutting|burn(?:s|t|ed|ing)?|blades?|razors?|bleed\w*|pills?|meds|tablets|drink\w*|alcohol|booze|smok\w*|weed|drugs?)\b`
-    + String.raw`|\b${LOSE} ${AMOUNT}${WEIGHT}|\bweight[- ]?loss\b|\b(?:get|getting|be|being|look|looking|stay|staying)(?: (?:a bit|a little|so|more|really|super|nice and))? (?:skinny|skinnier|thin|thinner|slim|slimmer)\b(?!-)|\b(?:slim|slimming) down\b|\b${DIET}`
-    + String.raw`|\b${CALORIES}|\b\d{3,5} ?(?:cal|kcal|kj)\b`
-    + String.raw`|\b(?:you(?:'re| are)|ur|u r) (?:so |too |really )?(?:fat|ugly|disgusting|a waste of space)\b`,
-  // stopping medication, or "them" after medication is named
-  String.raw`${STOP_MEDS}|^(?=[^]*\b(?:meds|medications?|medicines?|tablets|pills|antidepressants|prescriptions?)\b)[^]*${STOP} (?:taking |using )?(?:them|those|these)\b|\b(?:meds|medications?|antidepressants|pills) (?:are|is) (?:poison|bad for you|a scam|a lie|useless)\b`,
-  String.raw`\b(?:drink|get drunk|get high|smoke (?:weed|a joint|a cone)|take (?:a |some )?(?:pills?|xanax|valium|benzos?))\b[^.!?]{0,12}\b(?:until|till|til|to) (?:you )?(?:forget|feel (?:better|nothing)|numb|cope|pass out)\b`,
-  String.raw`\bhow old (?:are|r) (?:you|u)\b|\bwhere (?:do |d )?(?:you|u) (?:live|go to school)\b|\b(?:what|which) school\b(?! of (?:thought|life|hard knocks)\b)|\bwhat'?s (?:your|ur) school\b|\bwhat (?:year|grade) (?:are|r) (?:you|u) in\b|\b(?:what|which) (?:suburb|town|street) (?:are|r|do) (?:you|u)\b|\b(?:we|let'?s|wanna|want to) (?:should )?meet (?:up|irl|in person)\b|\b(?:send|show) (?:me )?(?:a |some )?(?:pics?|photos?|nudes|selfies?)\b|\bare (?:you|u) (?:single|a (?:girl|boy|guy))\b`,
-  String.raw`\bbecause (?:you|u) (?:provoke|provoked|asked for|deserve|deserved|let) (?:him|her|them|it)\b`,
-]);
+const LIGHTER_ALONE = new RegExp(LIGHTER, 'gi');
+const FEEL_LIGHTER_RE = new RegExp(FEEL_LIGHTER, 'i');
+const CARE_WORDS = /\b(?:doctors?|gp|pharmacists?|psychiatrists?|psychologists?|counsell?ors?|nurses?|lifeline|beyond blue|kids helpline|13yarn|1800respect|helplines?|support|someone you trust|talk to someone|reach out|be gentle|go easy on (?:yourself|urself)|look after (?:yourself|urself)|take care of (?:yourself|urself)|you matter|you(?:'re| are) (?:worth|enough|not alone)|please (?:don'?t|do not|never|talk|call|ring|reach|see|speak|ask|look after|take care|be gentle|be kind|stay|get help|go easy))\b/i;
+const PUSHED = new RegExp(String.raw`\b(?:why not|why don'?t (?:you|u)|go and|go ahead|go for it|just do it|do it (?:properly|already|now|tonight|right)|properly|deeper|harder|jk|just kidding|lol|lmao|haha|do (?:us|everyone) a favou?r|good riddance)\b|\bgo (?:kill|hang|neck|unalive|off|end|shoot|drown|cut|hurt|harm|starve|stab)\b`
+  // a method, a place on the body, hiding it, a degree or a time
+  + String.raw`|\b(?:ropes?|belts?|cords?|noose|blades?|razors?|knife|knives|glass|scissors|guns?|bleach|poison|bridges?|trains?|cliffs?|roofs?|overdose|laxatives?|purg\w*|vomit\w*|throw(?:ing)? up|arms?|wrists?|thighs?|legs?|stomach|neck|throat|veins?|where (?:people|anyone|anybody|nobody|no ?one|they|others|your (?:parents|family|mum|mom|dad|friends)) (?:can|could|will|would|won'?t|can'?t|cannot|might|wouldn'?t)|hide|hidden|secret\w*|nobody (?:will|would|'?ll) (?:know|notice|see)|too (?:deep|much|hard|often|far|fast|many|soon)|halfway|completely|all at once|slowly|gradually|taper\w*|wean\w*|yet|wait (?:till|til|until|for)|(?:tonight|tomorrow|later|next week|after)(?: is| would be| will be| might be|'?s|'?d be) (?:better|best|easier|safer)|when (?:everyone|they|you'?re alone|no ?one|nobody)(?:'s| is| are)? (?:asleep|out|gone|away|home))\b`, 'i');
+// what a perspective is never thanked for: "kys", "you should die", insults, and advice about a body, drinking or meeting up
+const NEVER_KIND = () => [...asRules([KYS, SHOULD_DIE]), ...HARMFUL_OTHER, UNKIND[0], UNKIND[1], UNKIND[3]];
+const GENTLE_HARM = 'Thank you for caring. Hushmates can’t pass on perspectives that mention hurting yourself, stopping medicine, eating, weight or feeling lighter, even when they’re kind. Could you say what you’d like them to know another way?';
+const GENTLE_VERDICT = 'Thank you for caring. Hushmates can’t pass on perspectives that repeat words like “nobody would miss you” or “everyone hates you”, even to say they aren’t true. Could you say what you’d like them to know another way?';
+const RULES = [...INCITES, ...HARMFUL_ADVICE];
+/** The gentler refusal for these readings (sayings already blanked), or null when the words aren't kindly put. */
+function gentleRefusal(said) {
+  const never = NEVER_KIND();
+  let flagged = false; let harm = false;
+  for (const t of said) {
+    const hits = RULES.filter((re) => re.test(t));
+    if (!hits.length) continue;
+    flagged = true;
+    if (PUSHED.test(t) || never.some((re) => re.test(t))) return null;
+    let left = t.replace(KIND_WORDS, blank);
+    if (!FEEL_LIGHTER_RE.test(t)) left = left.replace(LIGHTER_ALONE, blank);
+    if (RULES.some((re) => re.test(left)) && !CARE_WORDS.test(t)) return null;
+    if (hits.some((re) => !VERDICTS.includes(re))) harm = true;
+  }
+  return !flagged ? null : harm ? GENTLE_HARM : GENTLE_VERDICT;
+}
 // a feeling that quotes what someone said to the writer is harassment, answered with care, not refused
 const REPORTED_SPEECH = /\b(?:said|says|told|tells|telling|keeps? saying|kept saying|messag\w*|text(?:s|ed)|wrote|writes|posted|comment\w*|called me|dm(?:s|ed|'d)?|replied|yelled|shouted)\b/i;
 // ...but said to themselves ("I keep telling myself kys", "my head tells me…"), they're the writer's own (Tier 0 review)
@@ -426,7 +493,7 @@ export function screenFeeling(input, { minChars = 3, maxChars = 500 } = {}) {
   const safety = safetyOfAll(reads);
   // never released to strangers and never sent to an AI provider
   if (!safety.reframeAppropriate) return supportFail(safety, reads);
-  if (incites(reads, INCITES_IN_FEELING)) {
+  if (incites(reads, SAYINGS)) {
     // words telling someone to hurt themselves: when they're what someone said to the writer, that's harassment;
     // otherwise the writer may be saying them to themselves, and the crisis screen is the careful answer (Tier 0 review)
     const all = reads.join('\n');
@@ -464,13 +531,23 @@ export function screenReframe(input, { minChars = 8, maxChars = 280, earlier = [
   if (!safety.reframeAppropriate) {
     return fail('unsafe', 'This one can’t be passed on: it touches on something that needs real support rather than a new angle. If you or someone else is in danger, please call 000.');
   }
-  if (incites(reads, INCITES_IN_PERSPECTIVE)) return fail('unkind', 'This can’t be passed on. Perspectives here are for kindness, never for telling anyone to hurt themselves.');
-  if (reads.some((r) => { const t = r.replace(KIND_ADVICE, blank); return HARMFUL_ADVICE.some((re) => re.test(t)); })) return fail('unsafe', 'This one can’t be passed on: advice about food, weight, medication, drinking or meeting up isn’t something perspectives here can offer, and neither are personal questions. Offer another way of seeing it instead.');
+  // The rules below read what a perspective may hold: its first 2,000 characters, as the server reads, or maxChars if
+  // that's fewer (Tier 0 review 3: on 100,000 characters the rules for kind words took seconds). A longer one is never
+  // passed on, so nothing that could be is unread.
+  const reach = Math.min(SAFETY_READS, Number(maxChars) > 0 ? Number(maxChars) : SAFETY_READS);
+  const near = readingsAt(input, text, [reach]);
+  const said = near.map((r) => r.replace(PERSPECTIVE_SAYINGS, blank));
+  const inciting = said.some((t) => INCITES.some((re) => re.test(t)));
+  if (inciting || said.some((t) => HARMFUL_ADVICE.some((re) => re.test(t)))) {
+    const gentle = gentleRefusal(said);
+    return inciting ? fail('unkind', gentle || 'This can’t be passed on. Perspectives here are for kindness, never for telling anyone to hurt themselves.')
+      : fail('unsafe', gentle || 'This one can’t be passed on: advice about food, weight, medication, drinking or meeting up isn’t something perspectives here can offer, and neither are personal questions. Offer another way of seeing it instead.');
+  }
   if (charCount(text) < minChars) return fail('too-short', 'Add a few more words so it can help.');
-  if (charCount(text) > maxChars) return fail('too-long', `Perspectives can be up to ${maxChars} characters. Short and kind works best.`);
-  // within maxChars, the readings hold every word
-  if (reads.some((r) => UNKIND.some((re) => re.test(r)))) return fail('unkind', 'That might land as harsh. Offer a possibility, not a verdict.');
-  if (reads.some((r) => DIAGNOSIS.some((re) => re.test(r)))) return fail('diagnosis', 'Please don’t diagnose anyone. Offer another way of seeing it instead.');
+  if (charCount(text) > reach) return fail('too-long', `Perspectives can be up to ${reach} characters. Short and kind works best.`);
+  // within reach, the readings hold every word
+  if (near.some((r) => UNKIND.some((re) => re.test(r)))) return fail('unkind', 'That might land as harsh. Offer a possibility, not a verdict.');
+  if (near.some((r) => DIAGNOSIS.some((re) => re.test(r)))) return fail('diagnosis', 'Please don’t diagnose anyone. Offer another way of seeing it instead.');
   const probe = probeOf(text);
   const rules = checkMessage(withoutHelplines(probe), { maxChars: Infinity });
   if (!rules.ok) return fail(rules.code, rules.code === 'money' ? rules.message : 'Perspectives can’t include contact details, links or usernames.');

@@ -4,7 +4,8 @@
 // from undoing another, and give the clinical review (docs/READINESS.md) a list to start from.
 // The library's protective word lists are a floor too (core/perspectives.js, "the Tier 0 floor"):
 // whatever 0037d57, 9012d6f or 2a67f1b kept away stays away. P.floor pins every phrasing the
-// independent checks found; P.floorAccepted pins the over-caution that floor brings back, for Tier A.
+// independent checks found; P.floorAccepted pins the over-caution that floor brings back, for Tier A. Their
+// entries are [label, checks, where from, phrasing]: the phrasing last, as every fixture group's reader expects.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -226,7 +227,7 @@ const FLOOR_CHECKS = async () => {
 const floorRun = async (cases) => {
   const CHECK = await FLOOR_CHECKS();
   const wrong = [];
-  for (const [label, text, checks, from] of cases) {
+  for (const [label, checks, from, text] of cases) {
     const rs = (await picks(text, label)).filter((r) => r.status === 'ok');
     if (!rs.length) { wrong.push(`${from} · ${label} · ${text}: held by the screen, so it checks nothing`); continue; }
     const failed = checks.split(' ').filter((k) => { assert.ok(CHECK[k], `unknown check ${k}`); return !CHECK[k](rs); });
@@ -236,10 +237,10 @@ const floorRun = async (cases) => {
 };
 
 test('the Tier 0 floor: every phrasing the independent checks found gets the careful outcome (grief lines only for a clear loss)', async () => {
-  assert.ok(P.floor.cases.length >= 180, 'the floor cases are all there');
-  assert.deepEqual(await floorRun(P.floor.cases), []);
+  assert.ok(P.floor.phrasings.length >= 180, 'the floor cases are all there');
+  assert.deepEqual(await floorRun(P.floor.phrasings), []);
 });
 
 test('the Tier 0 floor: the over-caution it brings back is still there (accepted, listed for the Tier A review)', async () => {
-  assert.deepEqual(await floorRun(P.floorAccepted.cases), []);
+  assert.deepEqual(await floorRun(P.floorAccepted.phrasings), []);
 });
