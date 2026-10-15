@@ -1,0 +1,38 @@
+# Read-only provenance check for candidate on-device safety models: downloads
+# the files from their official Hugging Face repositories at a pinned revision
+# and prints each file's size and SHA-256, so a copy obtained another way (for
+# example from an npm mirror) can be proved byte-identical before it is used.
+# Nothing is committed, uploaded or deployed. Runs only for a push to the work
+# branch that edits hushmallow/tools/model/PROVENANCE.
+name: hushmallow model provenance
+
+on:
+  push:
+    branches: ['claude/upbeat-pasteur-b0aqg1']
+    paths: ['hushmallow/tools/model/PROVENANCE']
+
+permissions:
+  contents: read
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Official files, sizes and SHA-256
+        run: |
+          set -euo pipefail
+          for spec in \
+            "Xenova/all-MiniLM-L6-v2 onnx/model.onnx onnx/model_quantized.onnx tokenizer.json tokenizer_config.json config.json" \
+            "Xenova/bge-small-en-v1.5 onnx/model_quantized.onnx tokenizer.json tokenizer_config.json config.json" \
+            "Xenova/paraphrase-multilingual-MiniLM-L12-v2 onnx/model_quantized.onnx tokenizer.json config.json"; do
+            set -- $spec; repo="$1"; shift
+            rev="$(curl -sS -m 30 "https://huggingface.co/api/models/$repo" | jq -r '.sha // empty')"
+            lic="$(curl -sS -m 30 "https://huggingface.co/api/models/$repo" | jq -r '.cardData.license // (.tags[]? | select(startswith("license:"))) // "unknown"' | head -1)"
+            echo "===== $repo @ $rev (license: $lic)"
+            for f in "$@"; do
+              curl -sSfL -m 600 -o file.bin "https://huggingface.co/$repo/resolve/$rev/$f" || { echo "  $f: download failed"; continue; }
+              echo "  $f  $(stat -c %s file.bin) bytes  sha256 $(sha256sum file.bin | cut -d' ' -f1)"
+              rm -f file.bin
+            done
+          done
