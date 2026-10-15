@@ -2,13 +2,18 @@
 # Install as .github/workflows/hushmallow-monitor.yml (the coordinator does).
 #
 # Every 10 minutes (and on request) runs hushmallow/tools/ops/monitor.mjs
-# against https://app.hushmallow.com and the Another Angle Worker: the page,
-# its CSP and HSTS, version.json against main, the published sign-in config
-# (the Sydney project), the app's code, the /auth/callback headers and the
-# Worker's /v1/health. Nothing is sent with credentials; no repository secret
-# is read. On failure it opens ONE issue labelled "prod-monitor" (or comments
-# on the open one); when production is healthy again it comments and closes it.
-# GitHub may delay or skip scheduled runs under load; ten minutes is a target.
+# against https://app.hushmallow.com and the Another Angle Worker: the page and
+# its security headers (exactly as this repository builds them), version.json
+# against main, the published sign-in config (the Sydney project), the app's
+# code, /auth/callback and the Worker's /v1/health. Nothing is sent with
+# credentials; no repository secret is read. On failure it opens ONE issue
+# labelled "prod-monitor" (or comments on the one it opened); when production
+# is healthy again it comments and closes that issue. Issues people file with
+# the label are never touched. GitHub may delay scheduled runs under load.
+#
+# Repository variables (optional): HM_MONITOR_ALLOW_GATE=1 and
+# HM_MONITOR_GATE_MARKER=<text only the pilot gate page contains> while the
+# pilot gate is on (docs/ops/ROLLBACK.md section 4).
 name: hushmallow monitor
 
 on:
@@ -17,14 +22,18 @@ on:
   workflow_dispatch:
     inputs:
       expect_version:
-        description: 'Commit that must be live (blank: the last hushmallow/ change on main older than 30 minutes, or newer)'
+        description: 'Commit that must be live (blank: the last hushmallow/ change on main older than 30 minutes, or newer). After a Pages rollback, the rolled-back commit.'
         required: false
         default: ''
       allow_gate:
-        description: 'The pilot gate is on: accept the gate page at / (CSP and HSTS still required)'
+        description: 'The pilot gate is on: accept the gate page at / (its security headers are still checked)'
         type: boolean
         required: false
         default: false
+      gate_marker:
+        description: 'Text only the pilot gate page contains (needed with allow_gate)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -37,12 +46,12 @@ concurrency:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 200
+          fetch-depth: 300
           persist-credentials: false
 
       - uses: actions/setup-node@v4
@@ -52,24 +61,25 @@ jobs:
       - name: Versions that may be live
         id: versions
         run: |
-          # The newest change to hushmallow/ on main that is over 30 minutes old must be live by now
-          # (Pages builds each push in a few minutes); it or anything newer on main is accepted.
-          expect="$(git log -1 --format=%H --before='30 minutes ago' -- hushmallow || true)"
+          # The newest commit ON MAIN ITSELF (--first-parent: the merge commits Pages builds, not the
+          # branch commits inside them, whose dates are older) that changed hushmallow/ and is over
+          # 30 minutes old must be live by now; it or anything newer on main is accepted.
+          expect="$(git log --first-parent -1 --format=%H --before='30 minutes ago' -- hushmallow || true)"
+          allowed=""
           if [ -n "$expect" ]; then
-            allowed="$(git rev-list "${expect}^..HEAD" 2>/dev/null | paste -sd, - || true)"
-            [ -n "$allowed" ] || allowed="$expect"
-          else
-            allowed=""
+            allowed="$( { echo "$expect"; git rev-list --first-parent "${expect}..HEAD"; } | paste -sd, - )"
           fi
           echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
           echo "oldest acceptable: ${expect:-none}"
 
       - name: Check production
         id: check
+        timeout-minutes: 4
         env:
           MONITOR_EXPECT_VERSION: ${{ github.event.inputs.expect_version }}
           MONITOR_ALLOWED_VERSIONS: ${{ steps.versions.outputs.allowed }}
           MONITOR_ALLOW_GATE: ${{ github.event.inputs.allow_gate == 'true' && '1' || vars.HM_MONITOR_ALLOW_GATE }}
+          MONITOR_GATE_MARKER: ${{ github.event.inputs.gate_marker || vars.HM_MONITOR_GATE_MARKER }}
         run: |
           set +e
           node hushmallow/tools/ops/monitor.mjs --json "$RUNNER_TEMP/monitor.json" | tee "$RUNNER_TEMP/monitor.txt"
@@ -78,19 +88,24 @@ jobs:
           exit 0
 
       - name: Open or update the incident issue
-        if: steps.check.outputs.code != '0'
+        # also when the check step timed out (no code): a hang is an incident
+        if: always() && steps.check.outputs.code != '0'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh label create prod-monitor --color B60205 --description 'hushmallow production monitor' 2>/dev/null || true
-          body="$(printf 'The production monitor failed at %s.\n\n```\n%s\n```\n\nRun: %s\n\nRunbook: hushmallow/docs/ops/ROLLBACK.md' "$(date -u +%FT%TZ)" "$(cat "$RUNNER_TEMP/monitor.txt")" "$RUN_URL")"
-          open="$(gh issue list --label prod-monitor --state open --limit 1 --json number --jq '.[0].number')"
+          # the output quotes server answers: keep it inside the code block (no backticks, no @mentions)
+          out="$(head -40 "$RUNNER_TEMP/monitor.txt" 2>/dev/null | cut -c1-400 | tr '`@' "'_")"
+          [ -n "$out" ] || out="the check did not finish (timed out or crashed)"
+          body="$(printf 'The production monitor failed at %s.\n\n```\n%s\n```\n\nRun: %s\n\nRunbook: hushmallow/docs/ops/ROLLBACK.md' "$(date -u +%FT%TZ)" "$out" "$RUN_URL")"
+          # only the issue this workflow opened (author github-actions), never one a person filed
+          open="$(gh issue list --label prod-monitor --state open --author app/github-actions --limit 1 --json number --jq '.[0].number')"
           if [ -n "$open" ]; then
             gh issue comment "$open" --body "$body"
           else
-            gh issue create --label prod-monitor --title "Production monitor: $(tail -1 "$RUNNER_TEMP/monitor.txt" | cut -c1-120)" --body "$body"
+            gh issue create --label prod-monitor --title "Production monitor failing" --body "$body"
           fi
           exit 1
 
@@ -100,8 +115,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          open="$(gh issue list --label prod-monitor --state open --limit 1 --json number --jq '.[0].number')"
+          open="$(gh issue list --label prod-monitor --state open --author app/github-actions --limit 1 --json number --jq '.[0].number')"
           if [ -n "$open" ]; then
-            gh issue comment "$open" --body "Healthy again at $(date -u +%FT%TZ): $(tail -1 "$RUNNER_TEMP/monitor.txt")"
+            gh issue comment "$open" --body "Healthy again at $(date -u +%FT%TZ): $(tail -1 "$RUNNER_TEMP/monitor.txt" | tr '`@' "'_")"
             gh issue close "$open" --reason completed
           fi
