@@ -1226,9 +1226,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // (fix round, the safety floor) the Support pill is there while any question is up, whatever the words read as
     dockShow({ asking: true });
     layer.lossCheck = app.pushLayer?.() || 0;
-    // (r2-angle item 6) about 45 s, never counted while the page is hidden (subtitles' own timeout is not used)
+    // (r2-angle item 6) about 45 s, never counted while the page is hidden (subtitles' own timeout is not used); (fix round)
+    // nor while a support sheet is open over it (the Support pill is there on every question)
     stopClock?.();
-    const stop = (stopClock = questionClock(q.ms, () => { if (seq === S.seq) { tellFirst(); subs?.drop((o) => o.lossCheck); } }));
+    const stop = (stopClock = questionClock(q.ms, () => { if (seq === S.seq) { tellFirst(); subs?.drop((o) => o.lossCheck); } }, { held: () => sheets.length > 0 }));
     try {
       const p = choose(q.ask, q.options, { mallow: 'zuzu', transient: true, lossCheck: true, interrupt: true });
       focusFirstChoice();

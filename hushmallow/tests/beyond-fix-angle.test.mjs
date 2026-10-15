@@ -178,7 +178,7 @@ test('4: the focus goes to support after Send on care, crisis and gentle, never 
 });
 
 test('4: the question let go (Back, its clock) puts the focus on Tell; "Not really" is heard with its chips, focused, never timed out', () => {
-  assert.match(AA, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) \{ tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \} \}\)/);
+  assert.match(AA, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) \{ tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \} \}, \{ held: \(\) => sheets\.length > 0 \}\)/);
   assert.match(AA, /if \(layer\.lossCheck && \(!token \|\| token === layer\.lossCheck\)\) \{ layer\.lossCheck = 0; tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \}/);
   const first = between(AA, 'function tellFirst() {', 'function quietAfterAsk() {');
   assert.match(first, /dockShow\(\{ tell: true, asking: true \}\);\s*focusIfLost\(tellPill, \{ always: inChips \}\);/);
@@ -378,4 +378,22 @@ test('8: "Delete my Another Angle data" removes the sealed predictions too, and 
   assert.equal(store.get(STORE_KEYS.device, null), null);
   assert.equal(hasAngleData(store), false);
   assert.match(read('src/beyond/consent.js'), /your sharing choice, your feedback and any predictions you sealed\./);
+});
+
+test('4: the question’s clock never runs out while a support sheet is open over it; once it closes at least QUESTION_BACK_MS is left', async () => {
+  const { questionClock, QUESTION_BACK_MS } = await import('../src/beyond/angle-first.js');
+  let clock = 0, timers = [], fired = 0, held = false;
+  const deps = { doc: null, now: () => clock, setTimer: (fn, t) => { const r = { at: clock + t, fn }; timers.push(r); return r; }, clearTimer: (r) => { timers = timers.filter((x) => x !== r); }, held: () => held };
+  const run = (to) => { for (;;) { timers.sort((a, b) => a.at - b.at); const n = timers[0]; if (!n || n.at > to) break; timers.shift(); clock = n.at; n.fn(); } clock = to; };
+  const stop = questionClock(45000, () => fired++, deps);
+  run(20000); held = true;
+  run(200000); assert.equal(fired, 0, 'never while held');
+  held = false;
+  run(200000 + QUESTION_BACK_MS - 1); assert.equal(fired, 0, 'at least QUESTION_BACK_MS once let go');
+  run(200000 + QUESTION_BACK_MS + 600); assert.equal(fired, 1);
+  stop();
+  // not held: exactly as before (45 s)
+  clock = 0; timers = []; fired = 0;
+  questionClock(45000, () => fired++, { ...deps, held: () => false });
+  run(44999); assert.equal(fired, 0); run(45000); assert.equal(fired, 1);
 });

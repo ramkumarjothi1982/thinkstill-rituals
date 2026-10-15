@@ -330,7 +330,7 @@ test('Another Angle: Zuzu asks before anything is sent, framed or played (the on
   // (r2-angle item 6) its own clock (questionClock: never counted while the page is hidden), not the subtitles' timeout
   assert.match(fn, /choose\(q\.ask, q\.options, \{ mallow: 'zuzu', transient: true, lossCheck: true, interrupt: true \}\)/);
   // (fix round, a11y: tellFirst puts Tell in the dock and the focus on it before the line fades)
-  assert.match(fn, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) \{ tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \} \}\)/);
+  assert.match(fn, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) \{ tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \} \}, \{ held: \(\) => sheets\.length > 0 \}\)/);
   assert.match(aa, /if \(layer\.lossCheck && \(!token \|\| token === layer\.lossCheck\)\) \{ layer\.lossCheck = 0; tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \}/);
   assert.match(aa, /'typing', 'asking'\]\.includes\(S\.phase\)/, 'no reload while it asks');
   // Zuzu's squeeze quips only in the invitation, squeeze and end phases (never while asking)

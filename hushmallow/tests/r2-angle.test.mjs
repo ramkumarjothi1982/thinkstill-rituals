@@ -266,7 +266,7 @@ test('item 6: the question lasts about 45 s, never counts while the page is hidd
   // wired in: its own clock (not the subtitles' timeout), the words kept while it is up, focus on its first answer
   const ask = between(AA, 'async function askFirst(kind) {', 'let stopClock = null;');
   assert.match(ask, /S\.keepWords = true;/);
-  assert.match(ask, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) \{ tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \} \}\)/);
+  assert.match(ask, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) \{ tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \} \}, \{ held: \(\) => sheets\.length > 0 \}\)/);
   assert.doesNotMatch(ask, /timeoutMs/);
   assert.match(ask, /focusFirstChoice\(\);/);
   const focus = between(AA, 'function focusFirstChoice() {', 'function quietAfterAsk() {');
