@@ -41,6 +41,11 @@ const QUICK_IDS = new Set(QUICK_FEELINGS.map(([id]) => id));
 const MAX_CHARS = 600;
 /** The visible count appears this close to the limit (sighted people see why typing stops). */
 const COUNT_FROM = 540;
+/** (fix round) With the urgent sheet below the words, a field left this long without a keystroke gives the focus to the sheet. */
+export const URGENT_IDLE_MS = 8000;
+/** (fix round) The dictation hint's privacy clause: hushmallow keeps the words; a keyboard's dictation is the phone's own. */
+export const DICTATION_NOTE = 'hushmallow keeps your words on this phone. Your keyboard’s dictation follows your phone’s settings.';
+const DICTATION_NOTE_DESKTOP = 'Your device’s dictation works here too, and follows its own settings. hushmallow keeps your words on this device.';
 const LEVELS = ['none', 'concern', 'care', 'crisis'];
 /** Below this viewport height the overlay keeps to one chip row and no notes. */
 export const ROOMY_HEIGHT = 700;
@@ -193,6 +198,9 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     try { onSafety?.({ ...worst }); } catch (e) { console.warn('[hushfold] onSafety', e); }
   }
   let supportShown = false, closed = false, sending = false, photosOpen = false, tray = null, hintUntil = 0, hintT = 0;
+  // (fix round) the urgent sheet crisis words opened while the person types: beside the words, never taking the focus out of
+  // them (a Space meant for the next word used to close it; a tap meant for Send landed on its call)
+  let urgent = null, idleT = 0;
   let rowMode = 'feel';          // short phones: 'feel' or 'intent' (the chosen feeling, then the "I'd like…" chips)
   const opener = document.activeElement;
   const uid = `hfin${Math.random().toString(36).slice(2, 8)}`;
@@ -223,6 +231,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     planHint?.remove();
   }
   const count = h('span', { class: 'sr-only', 'aria-live': 'polite' });
+  // (the urgent sheet opened below the words while typing: said, without moving the focus)
+  const urgentNote = h('span', { class: 'sr-only', role: 'status' });
   const countVis = h('span', { class: 'count-vis', 'aria-hidden': 'true', hidden: true });
   const el = h('div', { class: `hf-input hf-ui${reduced ? ' reduced' : ''}${bigText ? ' big' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-label': prompt, 'data-hf': 'input' },
     h('div', { class: 'head' },
@@ -231,8 +241,47 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     // the frame around the words: a tap on its padding still lands in the field
     h('div', { class: 'field', onclick: (e) => { if (e.target === e.currentTarget) ta.focus({ preventScroll: true }); } }, ta, micBtn),
     note, feelRow, intentRow, photosBox,
-    h('div', { class: 'actions' }, photoBtn, supportBtn, h('div', { class: 'grow' }, countVis, planHint), sendBtn), count);
+    h('div', { class: 'actions' }, photoBtn, supportBtn, h('div', { class: 'grow' }, countVis, planHint), sendBtn), count, urgentNote);
   root.append(el);
+
+  // ------------------------------------------------------ the urgent sheet --
+  /**
+   * (fix round) Crisis words: the urgent support sheet. Seen while typing (typing: true) it opens below the overlay (beside:
+   * its top and its backdrop below the words, so no call lies where Send is), with its calls first, and the keyboard focus
+   * stays in the words; the overlay keeps to the words and Send meanwhile (.urgent). The focus moves to the sheet's heading
+   * on Send, on closing the overlay, or once the field has been left idle for URGENT_IDLE_MS. A tap in its first 700 ms
+   * is ignored (support.js). Sent (typing: false): it opens as it always did, the focus in it.
+   */
+  function openUrgent({ typing = false } = {}) {
+    const beside = typing && !closed && el.isConnected;
+    if (beside) el.classList.add('urgent');
+    urgent = openSupportSheet({ urgent: true, ...(beside ? { beside: el, focus: false } : {}) }) || null;
+    if (!beside) return;
+    urgentNote.textContent = '';
+    setTimeout(() => { if (!closed && urgent?.open) urgentNote.textContent = 'Support lines are open just below your words. You can keep typing, or call now.'; }, 120);
+    place();
+    armIdle();
+    // (closed while the person types: the overlay has all its rows back)
+    const sheetEl = urgent?.el;
+    if (sheetEl && typeof MutationObserver === 'function') {
+      const mo = new MutationObserver(() => { if (!urgent?.open || urgent?.el !== sheetEl) { mo.disconnect(); el.classList.remove('urgent'); place(); } });
+      mo.observe(sheetEl, { attributes: true, attributeFilter: ['class'] });
+    }
+  }
+  /**
+   * The field left idle with the urgent sheet below it: after URGENT_IDLE_MS the focus goes to the sheet's heading, once —
+   * the sheet stays beside the words (not modal), so the person can tap back into them and carry on.
+   */
+  let idleMoved = false;
+  function armIdle() {
+    clearTimeout(idleT);
+    if (idleMoved) return;
+    idleT = setTimeout(() => {
+      if (closed || idleMoved || !urgent?.open || !urgent.beside || document.activeElement !== ta) return;
+      idleMoved = true;
+      urgent.focusIn?.({ modal: false });
+    }, URGENT_IDLE_MS);
+  }
 
   // --------------------------------------------------------- chips --
   let lastSuggestKey = '';
@@ -319,8 +368,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     if (hinting) {
       note.append(hfIcon('mic'), h('span', {}, privacyNote
         ? `${coarse ? 'Tap the mic on your keyboard and just talk.' : 'Your device’s dictation works here too.'} ${privacyNote}`
-        : coarse ? 'Tap the mic on your keyboard and just talk. Your words stay on this phone.'
-          : 'Your device’s dictation works here too. Your words stay on this device.'));
+        // (fix round) hushmallow keeps the words on the phone; a keyboard's dictation is the phone's own, and follows its settings
+        : coarse ? `Tap the mic on your keyboard and just talk. ${DICTATION_NOTE}` : DICTATION_NOTE_DESKTOP));
     } else if (roomy() && !ta.value.trim() && !chosenEmotion && !photosOpen) {
       // said once, before anything is typed (the highlighted chips carry their own 'suggested' label)
       note.append(hfIcon('sparkle'), h('span', {}, privacyNote || 'Your words stay on this phone.'));
@@ -344,7 +393,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     suggested = m.suggestedFeelings ? m.suggestedFeelings(reading, { loss, level: safety.level }) : (reading?.emotions || []).filter((e) => e.confidence >= 0.6).slice(0, 3).map((e) => e.id);
     for (const id of suggested) if (!cached.has(id)) cached.set(id, m.getEmotion(id)?.name || id);
     report(safety);
-    if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }
+    if (safety.level === 'crisis' && !supportShown) { supportShown = true; openUrgent({ typing: true }); }
     // once support has been needed it stays one tap away, even if the words change
     supportBtn.hidden = worst.level === 'none' && !heavy;
     plainSend();
@@ -382,6 +431,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     const has = !!ta.value.trim();
     if (has !== hadText) { hadText = has; renderIntentions(); }
     clearTimeout(timer); timer = setTimeout(read, 260);
+    if (urgent?.open && urgent.beside) armIdle();
   });
   ta.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
@@ -441,7 +491,9 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     // (a grief-family feeling chosen counts as a loss, words or not)
     safety = t || chosenEmotion ? readSafety(m, t, lossAware, { emotion: chosenEmotion }) : { level: 'none', category: null };
     report(safety);
-    if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }
+    if (safety.level === 'crisis' && !supportShown) { supportShown = true; openUrgent({ typing: false }); }
+    // (fix round) the urgent sheet the person closed while typing: Send of crisis words shows it again
+    else if (safety.level === 'crisis' && !urgent?.open) openUrgent({ typing: false });
     const intensity = reading?.emotions?.length ? reading.intensity : 0.6;
     const emotions = [];
     if (chosenEmotion) emotions.push({ id: chosenEmotion, confidence: 1, intensity });
@@ -467,10 +519,14 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     vv?.removeEventListener('scroll', place);
     ro?.disconnect();
     tray?.destroy?.(); tray?.offLabel?.();
+    clearTimeout(idleT);
     ta.blur();
     el.classList.add('out');
     setTimeout(() => el.remove(), reduced ? 160 : 300);
-    if (reason !== 'submit' && opener?.isConnected) opener.focus?.({ preventScroll: true });
+    // (fix round) the urgent sheet still open below the words: they have stopped typing — the focus goes to its heading
+    // (Send, ✕ or Back alike), never left on the page; else back where it came from
+    if (urgent?.open) urgent.focusIn?.();
+    else if (reason !== 'submit' && opener?.isConnected) opener.focus?.({ preventScroll: true });
     onClose?.(reason, { safety: { ...worst }, supportShown });
   }
 
