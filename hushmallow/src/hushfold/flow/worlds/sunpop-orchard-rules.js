@@ -280,7 +280,7 @@ export function reliefFor(given, hand = 0) {
 // ------------------------------------------------------------- discoveries --
 /**
  * 'gentle-hands': quick pokes that made sunpops wobble (≥ pokes of them), then — within withinSec of the last poke — a
- * gentle hold (still or slow, near) that ripened a sunpop. Literally: "Quick pokes made it wobble. A gentle hold
+ * gentle hold (still or slow, near) that ripened one of the sunpops that was poked (poked: false → not this one). Literally: "Quick pokes made it wobble. A gentle hold
  * ripened it."
  * events: poke() when a poke wobbled a sunpop; ripened({ via }) when one ripened. update(dt) → null | { id, evidence }.
  */
@@ -290,8 +290,8 @@ export function createGentleHandsDetector({ pokes = 2, withinSec = 20 } = {}) {
     get fired() { return fired; },
     markFired() { fired = true; },
     poke() { if (fired) return; n++; since = 0; },
-    ripened({ via } = {}) {
-      if (fired || n < pokes || since > withinSec) return;
+    ripened({ via, poked = true } = {}) {
+      if (fired || n < pokes || since > withinSec || !poked) return;
       if (via !== 'near' && via !== 'still' && via !== 'slow') return;
       fired = true;
       out = { id: 'gentle-hands', evidence: { pokes: n, afterSec: Math.round(since * 10) / 10 } };

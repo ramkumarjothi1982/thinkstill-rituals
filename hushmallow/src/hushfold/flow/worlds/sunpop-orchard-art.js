@@ -237,12 +237,24 @@ export function paintTrees(plan, d = 1, seed = 1) {
     blob(t.x + t.r * 0.5, t.y - t.r * 0.45, t.r * 0.9, false);
   }
   // blossom and dappled light over the leaves
+  const bandR = plan.rects?.band;
   for (let k = 0; k < Math.round(aw / 6); k++) {
     const b = canopy[(R() * canopy.length) | 0];
     if (!b) break;
     const a = R() * TAU, rr = b.r * Math.sqrt(R()) * 0.85, x = b.x + Math.cos(a) * rr, y = b.y + Math.sin(a) * rr;
+    if (bandR && y > bandR.y0 - 6 && y < bandR.y1 + 6) continue;
     if (R() < 0.55) { g.fillStyle = R() < 0.3 ? '#ffd0dc' : ART.blossom; g.beginPath(); g.arc(x, y, 1.3 + R() * 1.2, 0, TAU); g.fill(); }
     else { g.fillStyle = 'rgba(255,250,200,0.35)'; g.beginPath(); g.ellipse(x, y, 3 + R() * 4, 1.6 + R() * 2, -0.4, 0, TAU); g.fill(); }
+  }
+  // ---- behind the subtitle band the leaves fall into shade (darker, quieter), so white lines read on them
+  if (bandR) {
+    const y0 = bandR.y0, y1 = bandR.y1, f = Math.min(24, (y1 - y0) * 0.25);
+    g.save(); g.globalCompositeOperation = 'source-atop';
+    const sg = g.createLinearGradient(0, y0 - f, 0, y1 + f);
+    sg.addColorStop(0, 'rgba(24,46,14,0)'); sg.addColorStop(f / (y1 - y0 + 2 * f), 'rgba(24,46,14,0.42)');
+    sg.addColorStop(1 - f / (y1 - y0 + 2 * f), 'rgba(24,46,14,0.42)'); sg.addColorStop(1, 'rgba(24,46,14,0)');
+    g.fillStyle = sg; g.fillRect(x0, y0 - f, x1 - x0, y1 - y0 + 2 * f);
+    g.restore();
   }
   // ---- cut into what has paint in it (a band of canopy across the top, a strip down each side): far fewer pixels to
   // blit each frame than one canvas over the whole stage
