@@ -145,7 +145,7 @@ project URL and a made-up publishable key, then serves it with
 Supabase fake and an Another Angle mock (health → session → angle).
 
 **Result: 56 scene visits (28 scenes × 390×844 and 1280×800), 0 violations,
-0 scenes not reached, 0 off-site requests.** <!-- FINAL-SWEEP -->
+0 scenes not reached, 0 off-site requests.** Re-run on the final policy (after the review fixes) with the same result.
 
 Scenes covered:
 - **Hushfold:** the home screen (with a squeeze); Tell → question → Play →
@@ -204,10 +204,9 @@ as `.github/workflows/hushmallow-monitor.yml`):
 
 ## Tests
 
-- `node --test hushmallow/tests/*.test.mjs`: **1123/1123 pass** (run before
-  the review fixes).
-- After the fixes: `tests/security-headers*.test.mjs` (17),
-  `auth-config.test.mjs` and `deploy-audit.test.mjs` all pass. <!-- FINAL-TESTS -->
+- `node --test hushmallow/tests/*.test.mjs` on the final head: **1124/1124 pass**
+  (including `security-headers.test.mjs`, 9 tests, and `security-headers-monitor.test.mjs`, 8 tests).
+- CSP sweep on the final head: 56 visits, 0 violations (above).
 
 ## Independent review (adversarial subagent)
 
@@ -223,7 +222,21 @@ as `.github/workflows/hushmallow-monitor.yml`):
 | Low | Runbook facts. | **Fixed.** version.json names the bad deploy; the module recovery limits; the full list of Worker deploy paths; `expect_version` after a rollback; open apps keep a not-ready Worker until reloaded. |
 | Low | Unquoted handlers were not hashed. | **Fixed** and tested. |
 
-Re-check: <!-- RECHECK -->
+**Re-checks.**
+- **Round 2:** all four Medium fixes held. One new Medium: a repeated CSP
+  directive got past the monitor, because browsers obey the first copy and
+  the monitor read the last. **Fixed:** repeats now fail. The fix also checks
+  version.json's headers, counts extra inline hashes, and requires the gate
+  marker to be literal text of 8+ characters. Tested.
+- **Round 3:** "no Medium-or-worse issue remains".
+
+Lows left as they are:
+- A gate marker that also appears on an error page would hide a failure.
+  The runbook now asks for a unique token such as `data-hm-pilot-gate`.
+- A swapped inline hash with the same count passes. This is by design for
+  older builds, and a hash still allows only one exact piece of code.
+- After a rollback to a build made before a header change, the monitor raises
+  a false alarm. This is noted in the runbook.
 
 ## Where `pages-headers.mjs` may differ from Cloudflare
 
