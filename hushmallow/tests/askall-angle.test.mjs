@@ -46,6 +46,8 @@ function angle(t, emotion = null) {
 }
 /** (r3-esc) The reviews' phrasings that name a suicide, gentle until final round 3: care by design now (grief.js suicideDeath). */
 const R3_SUICIDE_CARE = new Set(["my mate's brother topped himself", 'my cousin offed himself last year']);
+/** (detection fix, 15 Oct 2026) A remembrance the gentle path hears now (backstop.js remembrance): the review let it fall to the question. */
+const FIX_GENTLE = new Set(['my daughter would have been ten today']);
 const GROUPS = ['SEM_B1_COMMON', 'SEM_B1_EXOTIC', 'SEM_B2_REGRESSIONS', 'SEM_B3_RESEND', 'SEM_B4_ORDINARY', 'SEM_B5_WORRIES', 'SEM_POLISH', 'SEM_PROVEN', 'UI_B1', 'UI_EVERYDAY', 'UI_AT_PEACE', 'UI_LEXICON', 'UI_PROVEN'];
 const framed = (R) => R.scenes.some((s) => !s.grief && (FRAMING_MECHANICS.has(s.mechanic) || framesScene(s)));
 
@@ -56,7 +58,7 @@ test('probe table: every phrasing of both reviews takes its route under the new 
     const c = (counts[g] = { gentle: 0, question: 0, ordinary: 0, care: 0 });
     for (const [t, want] of P[g]) {
       // (r3-esc, by design) a suicide named is care on both screens, whatever the clause: these two were gentle
-      const [wm, wa] = R3_SUICIDE_CARE.has(t) ? ['care', 'care'] : Array.isArray(want) ? want : [want, want];
+      const [wm, wa] = R3_SUICIDE_CARE.has(t) ? ['care', 'care'] : FIX_GENTLE.has(t) ? ['gentle', 'gentle'] : Array.isArray(want) ? want : [want, want];
       const got = [main(t), angle(t)];
       // (the lexicon's own reading may only ever move these to care: the owner's lexicon pass)
       if (g === 'UI_LEXICON') { assert.ok(got.every((r, i) => r === [wm, wa][i] || r === 'care'), `${t}: ${got}`); assert.ok(!got.includes('gentle'), t); }

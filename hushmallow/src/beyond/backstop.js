@@ -330,7 +330,68 @@ export const griefFeeling = (emotion) => GRIEF_FEELINGS.has(String(emotion ?? ''
 export function lossRoute(text, { emotion = null } = {}) {
   // (final round 3: the weak death words only about a person or a pet, deathTalk `sure`; "my motivation is dead" is no loss)
   if (griefFeeling(emotion) || deathTalk(text, { sure: true }) || livingLoss(text) || strongLoss(text)) return 'gentle';
+  // (fix round) a death remembered rather than told: the gentle path too
+  if (remembrance(text)) return 'gentle';
   return unsureLoss(text) ? 'ask' : null;
+}
+
+// ------------------------------------------------------------- remembrance (fix round, 15 Oct 2026) --
+// About a third of the blind set's griefs got the play question: a death is often REMEMBERED rather than told ("her scarf
+// still smells of her", "setting out a second mug", "what I'd give for one more phone call with him", "his voicemails,
+// kept", "would have turned forty today"). Each cue below is one of the ways a death is
+// remembered (a closed vocabulary), with someone in its own words (a person or a pet, or him / her / them); the words where
+// that someone is alive and only away, or the thing is everyday, set it aside. It only ever opens the gentle path (support
+// close, nothing playful, nothing sent): never care, never a check-in.
+const ADJ_W = '(?:(?:late|dear|beloved|lovely|darling|old|little|big|baby|twin|best)\\s+)?';
+const SOMEONE = `(?:him|her|them|(?:my|our)\\s+${ADJ_W}(?:${PERSON}|${PET})s?|(?:${BARE})s?)`;
+const THEIR = `(?:his|her|their|(?:my|our)\\s+${ADJ_W}(?:${PERSON}|${PET})s|(?:${BARE})s)`;
+const NUM_W = '(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|\\d+)';
+const REMEMBRANCE = [
+  // their scent on a thing of theirs
+  `\\b(?:still\\s+)?smells?\\s+(?:like|of)\\s+${SOMEONE}(?!\\s+(?:after|when)\\b)`,
+  // their voice kept
+  `\\b${THEIR}\\s+(?:old\\s+)?(?:voicemails?|voice\\s*mails?|voice\\s+notes?|answer\\s*phone(?:\\s+messages?)?|voice\\s+messages?)\\b`,
+  `\\b(?:hear|hearing)\\s+(?:his|her|their)\\s+voice\\s+(?:again|one\\s+more\\s+time)\\b`, `\\bmiss\\s+${THEIR}\\s+voice\\b`,
+  // one more time with them
+  `\\b(?:wish|give\\s+anything|would\\s+give|just\\s+want|if\\s+only|long\\s+for|longing\\s+for|what\\s+i\\s+would\\s+give|ill\\s+never\\s+get)\\b(?:\\s+[a-z]+){0,6}?\\s+(?:one|1)\\s+more\\s+(?:[a-z]+\\s+)?(?:conversation|chat|talk|hug|cuddle|afternoon|evening|phone\\s+call|call|walk|dance|cup\\s+of\\s+tea|moment|minute|day)\\b`,
+  // the habits kept for them
+  `\\b(?:still\\s+)?(?:put|puts|putting|set|sets|setting|lay|laying|get|getting|make|making|pour|pouring)\\s+(?:out\\s+)?(?:two|2)\\s+(?:cups|mugs|plates|places|teas|glasses)\\b`,
+  `\\b(?:cook|cooking|cooked|shopping|meals?)\\s+for\\s+one\\b`,
+  `\\b(?:talk|talking|talked|speak|speaking|chat|chatting|say\\s+(?:goodnight|good\\s+night|good\\s+morning|hello|hi)|kiss|kissing)\\s+(?:to\\s+)?${THEIR}\\s+(?:photo|picture|photograph|grave|headstone|urn|ashes)\\b`,
+  `\\b(?:a\\s+second|an\\s+extra)\\s+(?:cup|mug|plate|place|place\\s+setting|cup\\s+of\\s+tea)\\b(?=(?:\\s+[a-z]+){0,8}?\\s+(?:for\\s+(?:him|her|them)|still|without\\s+thinking|habit|out\\s+of\\s+habit))|\\bstill\\s+(?:lay|set|put)\\s+(?:out\\s+)?(?:a\\s+second|an\\s+extra)\\s+(?:cup|mug|plate|place)\\b`,
+  `\\bstill\\s+(?:talk|speak|chat)\\s+to\\s+${SOMEONE}\\s+(?:out\\s+loud|every\\s+(?:day|night|morning))\\b`,
+  // a candle, a prayer, a planting, a playlist for them
+  `\\b(?:lit|light|lighting|lights)\\s+(?:a\\s+)?(?:candle|candles|diya|lamp|lantern)\\s+(?:for\\s+${SOMEONE}|in\\s+(?:his|her|their)\\s+memory|to\\s+remember)`,
+  `\\b${THEIR}\\s+(?:birthday|bday|anniversary)\\b(?:\\s+[a-z]+){0,8}?\\s+(?:lit|light|lighting)\\s+(?:a\\s+)?(?:candle|candles|diya|lamp)\\b`,
+  `\\b(?:prayed|prayers?|pray|praying|duas?|mass|a\\s+service)\\s+for\\s+(?:${SOMEONE}|baba|[a-z]+)\\b(?=(?:\\s+[a-z]+){0,8}?\\s+(?:mosque|church|temple|gurdwara|synagogue|fortieth|40th|rest|soul|memorial|anniversary|felt\\s+held))|\\b(?:at\\s+the\\s+(?:mosque|church|temple|gurdwara|synagogue)\\s+they\\s+prayed\\s+for)\\b|\\b(?:fortieth|40th|third|seventh)\\s+day\\s+prayers?\\b`,
+  `\\b(?:for|at)\\s+(?:the|his|her|their)\\s+(?:memorial|celebration\\s+of\\s+life|wake|vigil)\\b`,
+  `\\bplant(?:ing|ed|s)?\\s+(?:a\\s+)?(?:tree|rose\\s+bush|rose|roses|bulbs|daffodils|memorial\\s+garden)\\s+(?:in\\s+the\\s+garden\\s+)?(?:for\\s+${SOMEONE}|in\\s+(?:his|her|their)\\s+memory)`,
+  // a day that would have been theirs
+  `\\b(?:birthday|bday|anniversary)\\s+would\\s+(?:have|ve|of)\\s+been\\s+(?:today|tomorrow|this\\s+week|on)\\b|\\b(?:${PERSON}|${PET})s?\\s+would\\s+(?:have|ve|of)\\s+(?:turned|been)\\s+${NUM_W}\\b|\\b(?:mothers|fathers)\\s+day\\s+(?:is|was|will\\s+be)\\s+(?:so\\s+)?(?:hard|tough|difficult|painful)\\b`,
+  // a part of me with them, dreams of them (a quiet house without someone is the unsure path's: they may only be away)
+  `\\b(?:a\\s+)?part\\s+of\\s+me\\s+(?:died|went|is\\s+gone|was\\s+buried)\\s+with\\s+${SOMEONE}`,
+  `\\b(?:dream|dreams|dreaming|dreamt|dreamed)\\s+(?:that\\s+)?(?:(?:she|he|they|${SOMEONE})\\s+(?:is|was|are|were|s)|shes|hes|theyre)\\s+(?:still\\s+)?(?:here|alive|back|with\\s+me|home)\\b`,
+  // their things worn, kept or sorted
+  `\\b(?:wear|wearing|wore|still\\s+sleep\\s+in|sleep\\s+in|sleeping\\s+in|kept|keep|keeping|still\\s+have)\\s+${THEIR}\\s+(?:old\\s+|blue\\s+|favourite\\s+|favorite\\s+|lucky\\s+)?(?:jumper|hoodie|cardigan|shirt|coat|watch|scarf|jacket|dressing\\s+gown|ring|slippers|hat|tie|sweater|fleece)\\b(?=(?:\\s+[a-z]+){0,12}?\\s+(?:smells?|close\\s+to|feel\\s+close|felt\\s+like\\s+(?:he|she|they)\\s+(?:was|were)\\s+there|years|since|months\\s+on|good\\s+luck))|\\bstill\\s+sleep\\s+in\\s+${THEIR}\\b|\\b(?:cleared|clearing)\\s+out\\s+${THEIR}\\s+(?:wardrobe|room|drawers|flat|house|things)\\b(?=(?:\\s+[a-z]+){0,6}?\\s+kept)`,
+  `\\b(?:sorting|sorted|clearing|cleared|going|went|packing|packed)\\s+(?:through\\s+|out\\s+|up\\s+)?(?:all\\s+)?${THEIR}\\s+(?:things|clothes|wardrobe|stuff|belongings|room|drawers|cupboards)\\b(?=(?:\\s+[a-z]+){0,12}?\\s+(?:charity|kept|keep|found|hardest|letters|memories|photos))`,
+  // what is felt after them
+  `\\bas\\s+if\\s+(?:i\\s+am|im|i\\s+was|i\\s+m)\\s+forgetting\\s+${SOMEONE}`, `\\b(?:angry|furious|cross|mad)\\s+(?:with|at)\\s+${SOMEONE}\\s+for\\s+(?:dying|leaving\\s+us|leaving\\s+me\\s+(?:alone|behind))\\b`,
+  `\\b(?:(?:i|we)\\s+(?:will|ll|shall)|ill)\\s+see\\s+(?:him|her|them)\\s+again\\s+(?:one\\s+day|someday|some\\s+day|in\\s+heaven|on\\s+the\\s+other\\s+side|eventually)\\b`,
+  `\\b(?:replaying|replay|keep\\s+thinking\\s+about|think\\s+about|thinking\\s+about)\\s+(?:our|my)\\s+last\\s+(?:conversation|chat|words|phone\\s+call|call|hug)\\b`,
+];
+let REMEMBRANCE_RE = null;
+/** Someone alive and only away, or the thing everyday: the cue is no remembrance. */
+const REMEMBRANCE_ASIDE = /\b(?:away|trip|holiday|abroad|deployed|deployment|on tour|at work|working away|back (?:on|in|next|soon|tomorrow|from)|comes? home|coming home|when (?:he|she|they) (?:gets|get|comes|come) (?:back|home)|gym|sweaty|wet dog|cologne|aftershave|new perfume|at uni|at university|at college|boarding|camp|moved out|moving out|for (?:me|us) (?:and|both)|flatmate|housemate|guests?|visitors?|coming over|on the phone|video call|facetime|zoom|skype|whatsapp|text|texted|surgery|operation|recovery|get better|get well|interview|safe travels|job|healing|hospital|chemo|diet|portion|student|single|argument|fight|row|boss|my ex|breakup|break up|dumped|borrowed|borrow|nicked|lend|lent|gave me|for my birthday|christmas present|bought me|trying on|tried on|power cut|blackout|bath|scented|romantic|birthday cake)\b/u;
+/**
+ * (fix round) A death remembered: one of REMEMBRANCE's cues, with someone in its words, and none of REMEMBRANCE_ASIDE's
+ * living-and-away or everyday senses. lossRoute reads it as the gentle path.
+ */
+export function remembrance(text) {
+  // (punctuation out: a cue reads across "on sunday, to feel near him")
+  const t = blankOrdinary(norm(text)).toLowerCase().replace(/[^\p{L}\p{N}\s]+/gu, ' ').replace(/\s+/gu, ' ');
+  if (!/\p{L}/u.test(t)) return false;
+  REMEMBRANCE_RE ||= new RegExp(REMEMBRANCE.join('|'), 'iu');
+  return REMEMBRANCE_RE.test(t) && !REMEMBRANCE_ASIDE.test(t);
 }
 
 /**
