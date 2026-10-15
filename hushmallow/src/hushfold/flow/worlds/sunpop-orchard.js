@@ -181,6 +181,8 @@ export function create(ctx) {
   let prepared = false, entered = false, paused = false, complete = false, completeAt = -1, outroK = 0;
   let elapsed = 0, lastTouch = -1e9, everTouched = false, frameNo = 0;
   let progP = 0;
+  let givenBase = 0, handBase = 0;                    // what was given before the thought now on the swing came
+  const seenT0 = new WeakMap();                        // each handle's own starting tension (never one this world wrote)
   let given = 0, hand = 0, t0 = null, relief = 0, tension = 0.6, warmK = 0, glowPulse = 0;
   const prog = createOrchardProgress();
   const gentleD = createGentleHandsDetector();
@@ -241,7 +243,12 @@ export function create(ctx) {
       const maxW = Math.round(maxText + 2 * ORCHARD.LABEL_PAD_X);
       let P = null;
       try { P = L.plateFor(thought, { lines, maxW, r, z: 0 }); } catch { P = null; }
-      if (P && P.w > 0 && P.h > 0) return { w: Math.ceil(P.w), h: Math.ceil(P.h), lines: P.rows || P.lines || lines, fit: { lines, maxW } };
+      if (P && P.w > 0 && P.h > 0) {
+        // (the layer hangs its words P.below under the handle — lower than this world's own r + PLATE_GAP: the plan
+        // reserves the difference, so the words it shows are where the plan kept room for them)
+        const pad = Number.isFinite(P.below) ? Math.max(0, Math.ceil(P.below - (r + ORCHARD.PLATE_GAP))) : 0;
+        return { w: Math.ceil(P.w), h: Math.ceil(P.h) + pad, lines: P.rows || P.lines || lines, fit: { lines, maxW }, pad };
+      }
     }
     try {
       measureG ||= makeCanvas(4, 4).getContext('2d');
@@ -402,6 +409,8 @@ export function create(ctx) {
       if (!f) return;
       Object.assign(f, { on: true, id: s.id, x: s.x, y: s.y, x0: s.x, y0: s.y, t0: elapsed, len: 0, speedU: 0, held: 0, cup: null, target: -1, heat: 0, near: false });
       f.onThought = hitThought(s.x, s.y);
+      // a ripe sunpop waiting on its stem (a touch was interrupted): this touch cups it
+      if (!f.onThought) { const k = fruitAt(s.x, s.y); const q = k >= 0 ? fruits[k] : null; if (q && q.state === 'ripe' && q.heldBy < 0) { f.cup = q; q.heldBy = fingers.indexOf(f); q.cx = q.sx; q.cy = q.sy; } }
       everTouched = true; lastTouch = elapsed; hint.age = -1; hint.next = elapsed + 14; introAt = -1;
       rings.add(s.x, s.y, 4, 22, 0.8, 1, '#fff2b0', 0.5, 1.4);
       if (f.onThought) { tS.squeeze = 1; try { thought?.react?.('squeeze'); thought?.pointer?.(s); } catch { /* optional */ } }
@@ -432,7 +441,7 @@ export function create(ctx) {
     }
     if (s.type === 'up' || s.type === 'cancel') {
       const dur = elapsed - f.t0;
-      if (f.cup) release(f);
+      if (f.cup) { if (s.type === 'up') release(f); else unCup(f); }
       else if (s.type === 'up' && f.len < ORCHARD.TAP_PX && dur < ORCHARD.TAP_SEC && !f.onThought) {
         const k = fruitAt(s.x, s.y);
         if (k >= 0) { const q = fruits[k]; pokeFruit(q, s.x < q.sx ? 1 : -1, 1, reduced()); poked(q, s.x, s.y); }
@@ -442,6 +451,7 @@ export function create(ctx) {
     }
   }
   function poked(q, x, y) {
+    q.pokedAt = elapsed;
     gentleD.poke();
     pokesSeen++;
     if (elapsed - lastPluck > 0.12) { lastPluck = elapsed; ctx.sound('pluck', { intensity: 0.16, pitch: q.ripe > 0.5 ? 1.12 : 1 }); ctx.haptic('light'); }
@@ -511,7 +521,7 @@ export function create(ctx) {
         if (f?.on && f.cup === q) {
           const tx = f.x, ty = f.y - q.D * 0.7, e = 1 - Math.exp(-dt / 0.09);
           q.cx = q.cx == null ? q.sx : q.cx + (tx - q.cx) * e; q.cy = q.cy == null ? q.sy : q.cy + (ty - q.cy) * e;
-        } else release({ cup: q, x: q.cx ?? q.sx, y: q.cy ?? q.sy, held: true });
+        } else unCup({ cup: q });
       }
       // a warmed photo with photos waiting: after a while it hands its place on
       if (q.photo >= 0 && q.state === 'kept') {
@@ -530,14 +540,18 @@ export function create(ctx) {
     }
   }
 
+  /** Is this sunpop a photo now? (Not the stand-in cards in a gentle session: those are plain sunpops.) */
+  function showsPhoto(i) { return i >= 0 && !!photos?.n && !(ctx.gentle && photos.standIn); }
   function ripened(q) {
     ripenedAny = true;
-    gentleD.ripened({ via: q.ripenedBy === 'near' ? 'near' : 'far' });
+    // ('Quick pokes made it wobble. A gentle hold ripened it.': the very sunpop that was poked)
+    gentleD.ripened({ via: q.ripenedBy === 'near' ? 'near' : 'far', poked: elapsed - (q.pokedAt ?? -1e9) < 20 });
+    q.pokedAt = -1e9;
     ctx.sound('bloom', { intensity: 0.2 });
     ctx.haptic('soft');
     rings.add(q.sx, q.sy, q.D * 0.45, q.D * 0.95, 1.4, 1, '#fff2b0', 0.45, 2);
     try { mallow?.react?.('nod'); } catch { /* optional */ }
-    if (q.photo >= 0) {
+    if (showsPhoto(q.photo)) {
       // a photo stays on its tree, warm in its own colours: it sends a little light to the thought
       q.state = 'kept'; q.kept = 0;
       launch(q.sx, q.sy, Math.min(30, q.D * 0.5));
@@ -551,6 +565,13 @@ export function create(ctx) {
     }
     launch(q.sx, q.sy, q.D);
     pickFruit(q);
+  }
+  /** Not let go (paused, a cancelled touch): the sunpop goes back on its stem, ripe; the next touch on it cups it. */
+  function unCup(f) {
+    const q = f.cup;
+    if (!q) return;
+    q.heldBy = -1; q.cx = q.cy = null;
+    for (const g of fingers) if (g.cup === q) g.cup = null;
   }
   /** A finger lets go of its cupped sunpop: it floats to the thought. */
   function release(f) {
@@ -604,7 +625,7 @@ export function create(ctx) {
     given++;
     if (g.slot >= 0) lit[g.slot] = Math.max(lit[g.slot], 0.001);
     else glowPulse = 1;            // the crown is full: the light settles into the thought
-    relief = reliefFor(given, hand);
+    relief = reliefFor(given - givenBase, hand - handBase);
     // a chime a step higher each time (a soft pentatonic climb, back down after the fifth)
     const steps = [1, 1.125, 1.25, 1.5, 1.6875];
     ctx.sound('chime', { intensity: 0.18, pitch: steps[(given - 1) % steps.length] });
@@ -670,7 +691,7 @@ export function create(ctx) {
     tS.sx = x; tS.sy = y;
     tS.alpha = Math.min(1, tS.alpha + dt / (tS.glide ? 0.05 : 0.6));
     // its tension: its own, eased only by what the person gave (and a hand held on it)
-    relief = reliefFor(given, hand);
+    relief = reliefFor(given - givenBase, hand - handBase);
     tension = tensionFor(t0 ?? 0.6, relief);
     warmK += (clamp(relief / ORCHARD.RELIEF_MAX) - warmK) * (1 - Math.exp(-dt / 1.2));
     glowPulse = Math.max(0, glowPulse - dt / 1.6);
@@ -682,7 +703,7 @@ export function create(ctx) {
     thought.labelSide = 'below';
     const fit = tS.glide && tS.glide.k <= 0 ? heldFit : wordsFit;
     if (thought.labelFit !== fit && (fit || thought.labelFit === wordsFit || thought.labelFit === heldFit)) thought.labelFit = fit;
-    if (!thought.draw) thought.opacity = tS.vis;
+    if (!thought.draw) thought.opacity = tS.vis * tS.alpha;
     const st = thought.state || (thought.state = {});
     st.tension = tension; st.calm = clamp(1 - tension); st.charge = 0; st.distance = 0;
   }
@@ -692,7 +713,7 @@ export function create(ctx) {
     const down = fingers.some((f) => f.on);
     const r = prog.update(dt, { given, playing: everTouched, down, kinder: kinderD.fired });
     progP = r.p;
-    const ev = kinderD.update(dt, { given, tension, t0: t0 ?? 0.6, hasThought: !!thought });
+    const ev = kinderD.update(dt, { given: given - givenBase, tension, t0: t0 ?? 0.6, hasThought: !!thought });
     if (ev) fireDiscovery(ev);
     const g = gentleD.update(dt);
     if (g) fireDiscovery(g);
@@ -714,15 +735,16 @@ export function create(ctx) {
   }
 
   function audioAndMallow(dt, now) {
-    if (!entered) return;
+    if (!entered || outroK > 0) return;
     ambClock += dt;
     if (ambClock > 0.5) { ambClock = 0; ctx.ambienceMood(moodNow()); }
     if (mallow && now - emoAt > 0.7) {
       const busy = fingers.some((f) => f.on) ? 1 : 0;
       const g = ctx.gentle;
       const mix = { calm: 0.35 + 0.3 * warmK, curious: 0.12 + 0.2 * busy, happy: g ? 0 : 0.14 + 0.3 * warmK, comforted: 0.12 + 0.25 * warmK, relieved: 0.1 * warmK };
+      emoAt = now;
       const key = Object.values(mix).map((v) => Math.round(v * 10)).join(',');
-      if (key !== emoKey) { emoKey = key; emoAt = now; try { mallow.setEmotion?.(mix, 0.6, { quiet: true }); } catch { /* optional */ } }
+      if (key !== emoKey) { emoKey = key; try { mallow.setEmotion?.(mix, 0.6, { quiet: true }); } catch { /* optional */ } }
     }
     // Boppo watches the finger, else a light on its way, else the thought
     if (mallow?.lookAt && hero.ok && ((now * 10) | 0) % 3 === 0) {
@@ -844,8 +866,8 @@ export function create(ctx) {
     // a finger's cupped warmth, and the sunpop it holds
     for (const f of fingers) if (f.on) drawFinger(g, f, now, lowK);
     // the thought last: nothing ever covers its words
-    if (plan.thought && thought) drawThought(g, now, rm, lowK);
     if (hint.age >= 0) drawHint(g, now, rm);
+    if (plan.thought && thought) drawThought(g, now, rm, lowK);
   }
 
   function drawStem(g, q) {
@@ -915,7 +937,7 @@ export function create(ctx) {
     }
     const S = sprites.bud.width, sx = w / (S * 0.8), sy = h / (S * 0.8);
     const dw = S * sx, dh = S * sy;
-    const showPhoto = photo >= 0 && photos?.n && !(ctx.gentle && photos.standIn);
+    const showPhoto = showsPhoto(photo);
     if (showPhoto) {
       // the photo in a round window, misty until warmed into its own colours
       g.globalAlpha = alpha;
@@ -951,7 +973,8 @@ export function create(ctx) {
     const ca = Math.cos(swing.a), sa = Math.sin(swing.a), k = ropes.y0;
     const at = (x, y, out) => { const dx = x - T.x, dy = y - k; out.x = T.x + dx * ca - dy * sa; out.y = k + dx * sa + dy * ca; return out; };
     const a = at(ropes.xl, ropes.y1, pA), b = at(ropes.xr, ropes.y1, pB);
-    for (const [rx, p] of [[ropes.xl, a], [ropes.xr, b]]) {
+    for (let side = 0; side < 2; side++) {
+      const rx = side ? ropes.xr : ropes.xl, p = side ? b : a;
       g.strokeStyle = ART.ropeDark; g.lineWidth = 2.6; g.lineCap = 'round';
       g.beginPath(); g.moveTo(rx, k); g.lineTo(p.x, p.y); g.stroke();
       g.strokeStyle = ART.rope; g.lineWidth = 1.4;
@@ -1055,6 +1078,7 @@ export function create(ctx) {
     const s = Number.isFinite(v) ? v : Number.isFinite(thought?.state?.tension) ? thought.state.tension : 0.6;
     t0 = clamp(s, 0.25, 0.9);
     tension = t0;
+    if (thought) seenT0.set(thought, { t0, givenBase, handBase });
   }
 
   // ---------------------------------------------------------------- api --
@@ -1098,7 +1122,7 @@ export function create(ctx) {
       }
       if (restored) {
         for (let s = 0; s < Math.min(litN, plan.crown.length); s++) lit[s] = 1;
-        relief = reliefFor(given, hand); tension = tensionFor(t0 ?? 0.6, relief); warmK = clamp(relief / ORCHARD.RELIEF_MAX);
+        relief = reliefFor(given - givenBase, hand - handBase); tension = tensionFor(t0 ?? 0.6, relief); warmK = clamp(relief / ORCHARD.RELIEF_MAX);
       }
       hint.next = (melt ? 6 : HINT_AT);
       if (!(handoff && from)) { try { thought?.react?.(thought?.ov?.appear >= 1 ? 'notice' : 'appear'); } catch { /* optional */ } }
@@ -1130,7 +1154,7 @@ export function create(ctx) {
     pause() {
       paused = true;
       if (hum) { hum.stop?.(); hum = null; }
-      for (const f of fingers) { if (f.cup) release(f); f.on = false; f.id = -1; f.onThought = false; }
+      for (const f of fingers) { if (f.cup) unCup(f); f.on = false; f.id = -1; f.onThought = false; }
     },
     resume() { paused = false; },
     /** The person named another feeling: the orchard's weather follows it (never progress). */
@@ -1145,11 +1169,17 @@ export function create(ctx) {
     },
     setGentle() { /* read live from ctx.gentle: lines, faces and Boppo's grin follow it */ },
     setThought(h) {
-      const had = !!thought;
+      const had = !!thought, prev = thought;
       if (thought && thought !== h) { try { if (thought.labelFit === wordsFit || thought.labelFit === heldFit) thought.labelFit = null; } catch { /* */ } heldFit = null; }
       thought = h || null;
       if (prepared) layout(false);
-      if (h && !had) { t0 = null; captureT0(); tS.alpha = 0; tS.glide = null; }
+      if (h && h !== prev) {
+        const known = seenT0.get(h);
+        if (known) ({ t0, givenBase, handBase } = known);
+        else { givenBase = given; handBase = hand; t0 = null; captureT0(); }
+        relief = reliefFor(given - givenBase, hand - handBase); tension = tensionFor(t0 ?? 0.6, relief);
+        if (!had) { tS.alpha = 0; tS.glide = null; }
+      }
     },
     /** Client rects to keep subtitles off: the thought with its words, the sunpops, fingers outside the band. */
     avoid() {

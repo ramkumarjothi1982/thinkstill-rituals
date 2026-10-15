@@ -455,3 +455,94 @@ test('world: a gentle session — no quips, no faces, Boppo never grins', async 
     assert.ok(!mallow.reacts.includes('hop'));
   } finally { D?.destroy(); dom.restore(); }
 });
+
+// ------------------------------------------------------- review findings --
+test('review: the thought never calms by itself across setThought(null) → the same handle; new words start from their own tension', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const W = 390, H = 844, thought = fakeThought();
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow: fakeMallow(W, H), thought, subtitles: quiet(), registry: await orchardRegistry(), ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+    await D.start({ worldId: 'sunpop-orchard', emotion: 'sad', intention: 'calm' });
+    const w = D.world;
+    steps(D, 3);
+    giveOne(w, D); giveOne(w, D);
+    const before = w.debug.thought;
+    D.setThought(null); steps(D, 0.5); D.setThought(thought); steps(D, 1);
+    const after = w.debug.thought;
+    assert.equal(after.t0, before.t0, 'its own starting tension, not the one this world wrote');
+    assert.ok(Math.abs(after.tension - before.tension) < 1e-6, `unchanged (${before.tension} → ${after.tension})`);
+    const other = { ...fakeThought(), token: 'Something else', state: { tension: 0.8 } };
+    D.setThought(other); steps(D, 1);
+    assert.ok(Math.abs(w.debug.thought.tension - 0.8) < 1e-6, 'new words arrive with their own tension, not already softened');
+  } finally { D?.destroy(); dom.restore(); }
+});
+
+test('review: "gentle-hands" only when the sunpop that ripened is one that was poked', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const W = 390, H = 844, found = [];
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow: fakeMallow(W, H), thought: fakeThought(), subtitles: quiet(), registry: await orchardRegistry(), ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+    D.on('discovery', (e) => found.push(e.id));
+    await D.start({ worldId: 'sunpop-orchard', emotion: 'sad', intention: 'calm' });
+    const w = D.world;
+    steps(D, 3);
+    const [a, b] = w.debug.fruits;
+    for (let k = 0; k < 3; k++) tap(D, a.x, a.y);
+    hold(D, b.x, b.y + 4, ORCHARD.RIPEN_SEC + 0.4);
+    steps(D, 0.5);
+    assert.ok(!found.includes('gentle-hands'), 'another sunpop ripened: not "it"');
+    hold(D, a.x, a.y + 4, ORCHARD.RIPEN_SEC + 0.4);
+    steps(D, 0.5);
+    assert.ok(found.includes('gentle-hands'));
+  } finally { D?.destroy(); dom.restore(); }
+});
+
+test('review: pausing with a sunpop cupped puts it back, ripe — nothing is given for the person; the next touch cups it', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const W = 390, H = 844;
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow: fakeMallow(W, H), thought: fakeThought(), subtitles: quiet(), registry: await orchardRegistry(), ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+    await D.start({ worldId: 'sunpop-orchard', emotion: 'sad', intention: 'calm' });
+    const w = D.world;
+    steps(D, 3);
+    const k = w.debug.fruits.findIndex((f) => f.photo < 0), q = w.debug.fruits[k];
+    hold(D, q.x, q.y + 4, ORCHARD.RIPEN_SEC + 0.4, { lift: false });
+    assert.ok(w.debug.fingers[0].cup);
+    D.pause(); D.resume(); steps(D, GIFT_WAIT);
+    assert.equal(w.metrics.given, 0, 'not given');
+    assert.equal(w.debug.fruits[k].state, 'ripe', 'back on its stem, ripe');
+    const r = w.debug.fruits[k];
+    hold(D, r.x, r.y, 0.3);
+    steps(D, GIFT_WAIT);
+    assert.equal(w.metrics.given, 1, 'the next touch cupped it, letting go gave it');
+  } finally { D?.destroy(); dom.restore(); }
+});
+
+test('review: with W2’s ThoughtLayer drawing the words, the plan keeps room where the layer really hangs them (P.below)', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const W = 320, H = 568, thought = { ...fakeThought(), r: 40, draw: undefined };
+    delete thought.draw;
+    const layer = { primary: thought, list: () => [thought], plateFor: (th, { lines, r }) => ({ w: 200, h: lines === 1 ? 38 : 59, rows: lines, lines, below: r + 30 }) };
+    D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow: fakeMallow(W, H), thoughts: layer, subtitles: quiet(), registry: await orchardRegistry(), ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+    await D.start({ worldId: 'sunpop-orchard', emotion: 'sad', intention: 'calm' });
+    const w = D.world;
+    steps(D, 2);
+    const p = w.debug.plan, T = p.thought;
+    // where the layer puts the words: T.y + P.below … + h; the plan's box must contain that, clear of the hero's body
+    const realTop = T.y + T.r + 30, realBot = realTop + (p.plate.y1 - p.plate.y0 - (T.r + 30 - (T.r + ORCHARD.PLATE_GAP)));
+    assert.ok(p.plate.y1 >= realBot - 1, `the plan reserves the layer's offset (${p.plate.y1} vs ${realBot})`);
+    const M = fakeMallow(W, H).rect();
+    assert.ok(p.plate.y1 <= M.top - 4 + 1e-6, 'never on the hero');
+    for (const q of w.debug.fruits) assert.ok(!(q.x + q.D / 2 > p.plate.x0 && q.x - q.D / 2 < p.plate.x1 && q.y + q.D / 2 > p.plate.y0 && q.y - q.D / 2 < p.plate.y1), 'sunpops clear of the words');
+    assert.ok(thought.opacity > 0.9, 'the layer is told it is shown');
+  } finally { D?.destroy(); dom.restore(); }
+});
