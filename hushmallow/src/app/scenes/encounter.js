@@ -96,8 +96,10 @@ export function noteVisitSafety(app, r, { crisisSpoken = false } = {}) {
   if (!r || LEVELS.indexOf(r.level) < 1) return;
   const was = app?.state?.hfSafety || recallVisitSafety();
   const up = !was || LEVELS.indexOf(r.level) > LEVELS.indexOf(was.level);
-  const next = up ? { level: r.level, category: r.category || null, crisisSpoken: !!crisisSpoken || !!was?.crisisSpoken }
-    : { level: was.level, category: was.category ?? null, crisisSpoken: !!crisisSpoken || !!was.crisisSpoken };
+  // (the tab keeps routing flags only, never the category: a reading that rules out any offer keeps noWorld instead)
+  const noWorld = NO_OFFER.has(r.category) || !!was?.noWorld || NO_OFFER.has(was?.category);
+  const next = up ? { level: r.level, category: r.category || null, crisisSpoken: !!crisisSpoken || !!was?.crisisSpoken, ...(noWorld ? { noWorld: true } : {}) }
+    : { level: was.level, category: was.category ?? null, crisisSpoken: !!crisisSpoken || !!was.crisisSpoken, ...(noWorld ? { noWorld: true } : {}) };
   if (app?.state) app.state.hfSafety = next;
   rememberVisitSafety(next);
   setStageFloor(CARE_FACE);
@@ -312,7 +314,7 @@ export default function encounter(app) {
     } else if (route === 'carried') {
       // ordinary words after something heavy earlier in this visit: a short acknowledgement; a ritual only if they ask
       // (never after a crisis, a suicide named, a wish to follow someone who died or "Not really")
-      const offer = visit.level !== 'crisis' && !NO_OFFER.has(visit.category);
+      const offer = visit.level !== 'crisis' && !visit.noWorld && !NO_OFFER.has(visit.category);
       gentleCard(CARE_AGAIN, [btn('Stay here quietly', () => stayQuiet(visit), 'primary'), offer ? btn('Show me a ritual', () => goOn()) : null, supportBtn(visit)]);
     } else if (route === 'check') {
       // possibly at risk: the main screen's check-in, three answers of equal weight, before any ritual

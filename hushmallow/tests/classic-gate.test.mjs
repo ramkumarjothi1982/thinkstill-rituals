@@ -74,9 +74,18 @@ test('classic gate: a heavy reading is kept for the visit the Hushfold’s way (
     E.noteVisitSafety(app, { level: 'concern', category: 'loss', matched: 'secret words' });
     assert.deepEqual(app.state.hfSafety, { level: 'concern', category: 'loss', crisisSpoken: false });
     const kept = JSON.parse(ss.getItem('hm2:visit-safety'));
-    assert.deepEqual(Object.keys(kept).sort(), ['at', 'category', 'crisisSpoken', 'level'], 'never the words');
+    // (the tab keeps routing flags only since the fix round: never the words, nor the category)
+    assert.deepEqual(Object.keys(kept).sort(), ['at', 'crisisSpoken', 'level'], 'never the words, nor the category');
     E.noteVisitSafety(app, { level: 'crisis', category: 'self-harm' }, { crisisSpoken: true });
     assert.deepEqual(app.state.hfSafety, { level: 'crisis', category: 'self-harm', crisisSpoken: true });
+    // a reading that rules out any ritual offer (a suicide named) is kept across a reload as noWorld, not as its category
+    const app2 = { state: {} };
+    data.clear();
+    E.noteVisitSafety(app2, { level: 'care', category: 'suicide-loss' });
+    assert.deepEqual(JSON.parse(ss.getItem('hm2:visit-safety')).noWorld, true);
+    assert.equal(JSON.parse(ss.getItem('hm2:visit-safety')).category, undefined);
+    data.clear();
+    E.noteVisitSafety(app, { level: 'crisis', category: 'self-harm' }, { crisisSpoken: true });
     E.noteVisitSafety(app, { level: 'concern', category: 'distress' });
     assert.equal(app.state.hfSafety.level, 'crisis', 'it only rises');
     assert.equal(JSON.parse(ss.getItem('hm2:visit-safety')).level, 'crisis');
