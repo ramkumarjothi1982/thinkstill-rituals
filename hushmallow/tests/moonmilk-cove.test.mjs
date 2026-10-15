@@ -6,11 +6,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { COVE, planCove, shoreY, defaultHero, createRestMeter, createRestDetector, createWaitedDetector, createCoveProgress, moonShadow, tideBusy } from '../src/hushfold/flow/worlds/moonmilk-cove-rules.js';
+import { COVE, planCove, shoreY, defaultHero, createRestMeter, createRestDetector, createWaitedDetector, createCoveProgress, moonShadow, litFraction, tideBusy } from '../src/hushfold/flow/worlds/moonmilk-cove-rules.js';
 import { WORLDS, REQUIRED_FIELDS, STATUS, createRegistry, isPlayable, missingFields, selectNext } from '../src/hushfold/flow/registry.js';
 
 const DT = 1 / 60;
-const SIZES = [[390, 844], [360, 780], [375, 812], [430, 932], [320, 568], [1280, 800], [844, 390]];
+const SIZES = [[390, 844], [360, 780], [375, 812], [430, 932], [320, 568], [1280, 800], [844, 390], [667, 375]];
 const bandFor = (H) => ({ x: 0, y: 76, w: 0, h: Math.min(156, Math.max(118, Math.round(H * 0.17))) });
 const R = (o) => o && { x0: o.x0, y0: o.y0, x1: o.x1, y1: o.y1 };
 const overlap = (a, b, pad = 0) => a.x0 < b.x1 + pad && a.x1 > b.x0 - pad && a.y0 < b.y1 + pad && a.y1 > b.y0 - pad;
@@ -23,7 +23,7 @@ test('plan: the thought, its words, the shells and the lanterns never touch the 
       const where = `${W}×${H} plate ${plate ? plate.h : 0}`;
       const T = p.rects.thought, P = p.rects.plate, B = p.rects.band, M = p.rects.hero;
       assert.ok(!overlap(T, B), `${where}: thought under the band`);
-      assert.ok(!overlap(T, M, 8), `${where}: thought on the hero`);
+      assert.ok(!overlap(T, M), `${where}: thought on the hero`);
       assert.ok(T.x0 >= 0 && T.x1 <= W && T.y1 <= H, `${where}: thought on screen`);
       if (plate) {
         assert.ok(P, `${where}: a place for the words`);
@@ -35,6 +35,7 @@ test('plan: the thought, its words, the shells and the lanterns never touch the 
       // the thought sits on the water (its cradle floats there)
       assert.ok(p.home.y >= p.hy, `${where}: the cradle floats on the water`);
       assert.ok(p.shells.length >= 1, `${where}: at least one shell`);
+      assert.ok(p.slots.length >= 1, `${where}: at least one lantern for the photos`);
       for (const s of p.shells) {
         const S = { x0: s.x - s.hit, y0: s.y - s.hit, x1: s.x + s.hit, y1: s.y + s.hit * 0.8 };
         assert.ok(s.hit * 2 >= 44, `${where}: a 44 px target`);
@@ -50,6 +51,18 @@ test('plan: the thought, its words, the shells and the lanterns never touch the 
         assert.ok(S.y0 >= p.hy - 1, `${where}: lanterns float on the water`);
       }
     }
+  }
+});
+
+test('plan: a tiny landscape window at the largest text (568×320, words 232×82): nowhere is clear — the words cover as little as can be, never the band', () => {
+  const area = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  for (const plate of [{ w: 232, h: 58 }, { w: 232, h: 82 }]) {
+    const p = planCove({ W: 568, H: 320, band: bandFor(320), plate, n: 5 });
+    const P = p.rects.plate;
+    assert.equal(area(P, p.rects.band), 0, 'never under the band');
+    assert.ok(area(P, p.rects.hero) < 0.05 * plate.w * plate.h, `words on the hero: ${area(P, p.rects.hero)} px²`);
+    assert.ok(P.y1 <= 320 && P.y0 >= 0);
+    assert.ok(p.slots.length >= 1, 'the photos still get a lantern');
   }
 });
 
@@ -131,7 +144,10 @@ test('completion: a full moon, then 1.2 s with no finger moving (resting fingers
 });
 
 test('the moon: a thin crescent at the start, full at the minute, filling steadily; the tide hushes with rest', () => {
-  assert.ok(moonShadow(0) < 0.4 && moonShadow(1) >= 2.05);
+  assert.ok(moonShadow(0) < 0.4 && moonShadow(1) >= 2.08);
+  // the lit area is the rest earned: 'Half a moon.' is half a moon, and the last quarter of the minute still shows
+  for (const p of [0, 0.25, 0.5, 0.75, 0.95]) assert.ok(Math.abs(litFraction(moonShadow(p)) - (0.12 + 0.88 * p)) < 0.01, `lit at ${p}`);
+  assert.ok(moonShadow(0.95) < 2.08, 'still a sliver of shadow near the end');
   let last = -1; for (let p = 0; p <= 1; p += 0.01) { const v = moonShadow(p); assert.ok(v >= last); last = v; }
   assert.ok(tideBusy(0.9, 0, 0) > tideBusy(0.9, 1, 0) && tideBusy(0.9, 1, 0) > tideBusy(0.9, 1, 1) - 1e-9);
   assert.ok(tideBusy(0.9, 1, 1) >= 0.15 && tideBusy(1, 0, 0, 1) <= 1);
@@ -241,6 +257,8 @@ test('world: a resting finger fills the moon and hushes the shells; moving pause
     steps(D, 3);
     assert.ok(h.said.some((s) => s.lines.includes('Mm. The cove’s sleepy tonight.')), 'the intro');
     assert.equal(w.metrics.rest, 0, 'nothing counts before the first touch');
+    steps(D, 4);
+    assert.ok(h.said.some((s) => s.lines.includes('Rest a finger anywhere.')), 'the person is told how the cove works');
     // the shells ping while nobody rests
     steps(D, 8);
     assert.ok(h.sounds.filter((n) => n === 'drip').length >= 2, 'the shells ping');
