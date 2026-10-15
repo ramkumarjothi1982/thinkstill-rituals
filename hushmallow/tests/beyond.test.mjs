@@ -274,10 +274,13 @@ test('a server scene personalises the mechanics (known_fact, possible_assumption
 });
 
 // ------------------------------------------------------------- client --
-function fakeServer({ angle = null, status = 200, failSessions = 0, delay = 0, expireFirst = false } = {}) {
+const HEALTH = Object.freeze({ ok: true, service: 'another-angle', prompt_version: 'angle-v5', schema_version: 'scene-v1', provider: 'anthropic', entitlement_mode: 'testing', configured: { signing_key: true, provider_key: true } });
+function fakeServer({ angle = null, status = 200, failSessions = 0, delay = 0, expireFirst = false, health = HEALTH } = {}) {
   const calls = [];
   let sessions = 0, angles = 0;
   const fetch = async (url, init) => {
+    // (the readiness question: answered, and not counted among the calls these tests read)
+    if (url.endsWith('/v1/health')) return { status: 200, json: async () => health };
     const body = JSON.parse(init.body);
     calls.push({ url, method: init.method, headers: init.headers, body, credentials: init.credentials, redirect: init.redirect });
     if (delay) await new Promise((r, j) => { const t = setTimeout(r, delay); init.signal?.addEventListener('abort', () => { clearTimeout(t); j(new Error('aborted')); }); });
@@ -821,6 +824,7 @@ test('B4: invite_required → reason "invite", remembered until the stored code 
   const calls = [];
   let codes = ['the-code'];
   const fetchImpl = async (url, init) => {
+    if (url.endsWith('/v1/health')) return { status: 200, json: async () => HEALTH };
     const body = JSON.parse(init.body);
     calls.push(url.replace(EP, ''));
     const res = (code, data) => ({ status: code, json: async () => data });
@@ -885,4 +889,29 @@ test('B4: the invite line is said once a visit with no speaker, then Zuzu’s ow
   saveTesterCode(store, '   ');
   assert.equal(store.get(STORE_KEYS.invite, null), null, 'an empty code removes it');
   assert.equal(saveTesterCode(store, 'x'.repeat(80)).length, 64);
+});
+
+test('client: nothing is sent unless /v1/health says this server speaks scene-v1 and is fully configured', async () => {
+  const { healthReady } = await import('../src/beyond/angle-client.js');
+  assert.equal(healthReady(200, HEALTH), true);
+  assert.equal(healthReady(200, { ...HEALTH, schema_version: 'scene-v2' }), 'schema_mismatch');
+  assert.equal(healthReady(200, { ...HEALTH, configured: { signing_key: false, provider_key: true } }), 'not_configured');
+  assert.equal(healthReady(200, { ...HEALTH, provider: 'mock' }), 'mock_provider');
+  assert.equal(healthReady(200, { ...HEALTH, provider: 'mock' }, { dev: true }), true, 'the local harness may be the mock');
+  assert.equal(healthReady(503, null), 'health_unreachable');
+  assert.equal(healthReady(200, { ok: true, service: 'something-else' }), 'health_not_ok');
+  for (const health of [{ ...HEALTH, schema_version: 'scene-v2' }, { ...HEALTH, provider: 'mock' }, { ...HEALTH, configured: { signing_key: true, provider_key: false } }, null]) {
+    const srv = fakeServer({ angle: OK, health });
+    const c = createAngleClient({ store: memStore(), endpoint: EP, fetchImpl: srv.fetch });
+    const r = await c.angle({ text: 'Nobody likes me.' });
+    assert.equal(r.status, 'error', JSON.stringify(health));
+    assert.equal(srv.calls.length, 0, 'no session and no words were sent');
+  }
+  // a session kept from before (the store) does not skip the question
+  const store = memStore();
+  const good = fakeServer({ angle: OK });
+  assert.equal((await createAngleClient({ store, endpoint: EP, fetchImpl: good.fetch }).angle({ text: 'Nobody likes me.' })).status, 'ok');
+  const later = fakeServer({ angle: OK, health: { ...HEALTH, schema_version: 'scene-v2' } });
+  const r2 = await createAngleClient({ store, endpoint: EP, fetchImpl: later.fetch }).angle({ text: 'Nobody likes me.' });
+  assert.deepEqual([r2.status, r2.reason, later.calls.length], ['error', 'schema_mismatch', 0]);
 });

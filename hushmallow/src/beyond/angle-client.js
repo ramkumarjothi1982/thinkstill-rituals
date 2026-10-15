@@ -39,10 +39,26 @@ export function appVersion(build = BUILD) {
 }
 import { resolveEndpoint } from './endpoint.js';
 import { STORE_KEYS } from './consent.js';
-import { validateScene, previousAngles, PATTERNS } from './vocab.js';
+import { validateScene, previousAngles, PATTERNS, SCHEMA_VERSION } from './vocab.js';
 
 export { resolveEndpoint };
-export const PATHS = Object.freeze({ session: '/v1/session', angle: '/v1/angle', feedback: '/v1/feedback' });
+export const PATHS = Object.freeze({ session: '/v1/session', angle: '/v1/angle', feedback: '/v1/feedback', health: '/v1/health' });
+/**
+ * Is this server ready for the person's words? GET /v1/health (no words, no id) must say ok, be the Another Angle
+ * service, speak this client's scene schema and have its keys; a production server must not be the mock provider.
+ * Anything else — a different schema version, a half-configured Worker, no answer — means the authored angles play.
+ * Pure: (http, data, { dev }) → true | reason string.
+ */
+export function healthReady(http, data, { dev = false } = {}) {
+  if (http !== 200 || !data || typeof data !== 'object') return 'health_unreachable';
+  if (data.ok !== true || data.service !== 'another-angle') return 'health_not_ok';
+  if (data.schema_version !== SCHEMA_VERSION) return 'schema_mismatch';
+  if (data.configured?.signing_key !== true || data.configured?.provider_key !== true) return 'not_configured';
+  if (!dev && data.provider === 'mock') return 'mock_provider';
+  return true;
+}
+/** How long a ready answer from /v1/health is trusted (ms); a not-ready one only for this visit's client. */
+export const HEALTH_TTL_MS = 10 * 60 * 1000;
 /**
  * ms. The server's own model attempt is 15 s (it may retry once, up to 28 s), but nobody should watch waiting
  * lines for half a minute: the client waits a little over one attempt, then Zuzu's own angle plays (the
@@ -81,18 +97,20 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
     return id;
   }
 
-  /** One POST. Never throws: { http, data, timedOut }. http 0 = no response. */
+  /** One POST (or the health GET: body null). Never throws: { http, data, timedOut }. http 0 = no response. */
   async function post(path, body, { token = null, timeout = 10000 } = {}) {
     if (!endpoint || !Object.values(PATHS).includes(path)) return { http: 0, data: null, reason: 'no_endpoint' };
     const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
     let timer = 0, timedOut = false;
     const clock = new Promise((resolve) => { timer = setTimeout(() => { timedOut = true; try { ctrl?.abort(); } catch { /* ignore */ } resolve({ http: 0, data: null, timedOut: true }); }, timeout); });
     const url = `${endpoint}${path}`;
-    const init = {
-      method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', redirect: 'error',
-      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify(body), signal: ctrl?.signal,
-    };
+    const init = body == null
+      ? { method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', redirect: 'error', signal: ctrl?.signal }
+      : {
+        method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', redirect: 'error',
+        headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(body), signal: ctrl?.signal,
+      };
     const work = (async () => {
       try {
         const res = await fetchImpl(url, init);
@@ -117,9 +135,22 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
     return !!b && typeof b === 'object' && b.endpoint === endpoint && (b.invite ?? null) === storedInvite() && now() - (Number(b.at) || 0) < INVITE_RETRY_MS;
   }
 
+  // the server's readiness (healthReady): asked before the first session of this client, trusted for HEALTH_TTL_MS
+  let health = null;   // { ok: true | reason, at }
+  const devEndpoint = (() => { try { return ['localhost', '127.0.0.1'].includes(new URL(endpoint).hostname); } catch { return false; } })();
+  async function serverReady() {
+    if (health && (health.ok !== true || now() - health.at < HEALTH_TTL_MS)) return health.ok;
+    const r = await post(PATHS.health, null, { timeout: timeouts.session });
+    health = { ok: r.http === 0 ? (r.timedOut ? 'timeout' : 'network') : healthReady(r.http, r.data, { dev: devEndpoint }), at: now() };
+    return health.ok;
+  }
+
   async function getToken(force = false) {
     if (!force && session && session.exp > now() + 60000) return session.token;
     session = null;
+    // never a session (nor the words) with a server that is not ready: the authored angles play instead
+    const ready = await serverReady();
+    if (ready !== true) { sessionReason = ready; return null; }
     // the server asked for a tester code and the stored one has not changed since: no request
     if (inviteNeeded()) { sessionReason = 'invite'; return null; }
     const body = { device_id: deviceId(), platform: platform || (globalThis.webkit?.messageHandlers?.hushStore || globalThis.HushNative ? 'ios' : 'web'), app_version: appVersion() };
@@ -177,6 +208,10 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
       if (!endpoint) return { status: 'error', reason: 'no_endpoint', keepSupportClose: false };
       const words = String(text ?? '').trim().slice(0, 600);
       if (!words) return { status: 'unclear', reason: 'empty', keepSupportClose: false };
+      // a server that is not ready (another schema, half configured, the mock in production) never gets the words,
+      // not even on a session kept from before: the authored angles play instead
+      const ready = await serverReady();
+      if (ready !== true) return { status: 'error', reason: ready, keepSupportClose: false };
       const body = { consent: true, text: words, locale: 'en-GB', request_id: makeDeviceId(random).replace(/_/g, '-').slice(0, 20) };   // the server allows letters, digits and '-'
       if (typeof emotion === 'string' && EMOTION_ID.test(emotion)) body.emotion = emotion;
       if (typeof intention === 'string' && INTENTION_ID.test(intention)) body.intention = intention;

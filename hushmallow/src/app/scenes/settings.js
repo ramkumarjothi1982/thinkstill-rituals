@@ -60,6 +60,14 @@ export default function settings(app) {
   const deleteLabel = signedIn ? 'Delete this account’s things on this phone' : otherAccounts ? 'Delete the guest’s things on this phone' : 'Delete everything on this phone';
   const accountRow = h('div');
   if (signIn) import('./account.js').then((m) => m.mountAccountRow(app, accountRow)).catch(() => {});
+  // About mentions accounts only where the account row can show: signed in, or once the project has said it is
+  // ready for sign-in (src/auth/readiness.js); until then, and when it is not ready, it reads as with sign-in off
+  const aboutBody = (withAccounts) => [...withBrand(aboutIntro({ beyond: PLANS.ultra?.name || 'hushmallow Beyond' })), ' ',
+    aboutPrivacy({ signIn: withAccounts, beyond: PLANS.ultra?.name || 'hushmallow Beyond' }), ' It’s a wellbeing app, not a medical service.'];
+  const aboutPara = h('p', { 'data-about': 'privacy', style: type('body', { color: 'var(--text-2)', margin: '8px 0 0' }) }, ...aboutBody(signedIn));
+  if (signIn && !signedIn && typeof app.auth.ready === 'function') {
+    app.auth.ready().then((ok) => { if (ok && aboutPara.isConnected !== false) aboutPara.replaceChildren(...aboutBody(true)); }, () => {});
+  }
   const angleRows = h('div');
   Promise.all([import('../../beyond/consent.js'), import('../../beyond/endpoint.js')]).then(([c, a]) => {
     const endpoint = a.resolveEndpoint();
@@ -100,9 +108,7 @@ export default function settings(app) {
       section('About'),
       // what is written in advance and what leaves this phone: the same source as the Plans page (src/app/privacy.js),
       // so the first sentence and the privacy lines switch together when Another Angle goes live
-      h('p', { 'data-about': 'privacy', style: type('body', { color: 'var(--text-2)', margin: '8px 0 0' }) },
-        ...withBrand(aboutIntro({ beyond: PLANS.ultra?.name || 'hushmallow Beyond' })), ' ',
-        aboutPrivacy({ signIn, beyond: PLANS.ultra?.name || 'hushmallow Beyond' }), ' It’s a wellbeing app, not a medical service.'),
+      aboutPara,
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
       // the version, exactly as BUILD says it (the server sees the same string), never broken at a hyphen ("sign-" / "in")
       h('p', { 'data-version': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0', textWrap: 'balance' }) }, ...keepHyphenated(`Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`)),

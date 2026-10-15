@@ -23,8 +23,9 @@ test('free test purchases never on the customers\' hosts (app.hushmallow.com, hu
     assert.equal(testPurchasesAllowed(loc(h)), false, h);
   }
   assert.ok(!TEST_PURCHASE_HOSTS.some((h) => /hushmallow\.(com|pages\.dev)$/.test(h)));
-  // (known, owner-approved for the testing phase: the GitHub Pages copy unlocks plans for free — remove before launch)
-  assert.deepEqual([...TEST_PURCHASE_HOSTS].sort(), ['127.0.0.1', 'localhost', 'ramkumarjothi1982.github.io']);
+  // the GitHub Pages copy no longer unlocks plans for free (removed for the pilot): only this machine does
+  assert.deepEqual([...TEST_PURCHASE_HOSTS].sort(), ['127.0.0.1', 'localhost']);
+  assert.equal(testPurchasesAllowed(loc('ramkumarjothi1982.github.io')), false);
 });
 
 test('Another Angle talks only to the production Worker over https (or nowhere); the dev override is localhost only', () => {
@@ -83,12 +84,11 @@ test('deploys: GitHub Pages and the Worker only from main; the probe never write
   assert.match(w, /^DAILY_SPEND_CAP_USD = "10"$/m);
 });
 
-// Found by this audit: the client never asks /v1/health, so a Worker that answers but is half configured (another
-// scene schema, a missing signing key or provider key, the mock provider in production) is still sent the person's
-// words after consent; only an unusable scene falls back. The fix belongs in src/beyond/angle-client.js (the safety
-// unit's file): the proposed patch asks /v1/health before the first session and plays the authored angles unless it
-// answers ok, service another-angle, schema scene-v1, both keys configured and not the mock provider.
-test('Another Angle asks /v1/health (expected schema, keys configured, not the mock) before any session or words', { todo: 'src/beyond owner: apply the health-gate patch' }, () => {
+// Found by this audit and fixed in src/beyond/angle-client.js: a Worker that answers but is half configured (another
+// scene schema, a missing signing key or provider key, the mock provider in production) is never sent the person's
+// words: the client asks /v1/health before the first session and plays the authored angles unless it answers ok,
+// service another-angle, schema scene-v1, both keys configured and not the mock provider.
+test('Another Angle asks /v1/health (expected schema, keys configured, not the mock) before any session or words', () => {
   const c = read('src/beyond/angle-client.js');
   assert.match(c, /\/v1\/health/);
   assert.match(c, /schema_version/);

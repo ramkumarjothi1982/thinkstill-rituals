@@ -369,7 +369,10 @@ test('privacy copy: Settings → About and Plans say the same about Another Angl
   assert.match(acct, /settings, favourite worlds, Memory Garden tools and where a Hushflow paused/);
   // and both screens use it (neither keeps its own copy of the clause)
   const settings = read('src/app/scenes/settings.js'), plans = read('src/app/scenes/plans.js');
-  assert.match(settings, /aboutPrivacy\(\{ signIn, beyond: PLANS\.ultra\?\.name \|\| 'hushmallow Beyond' \}\)/);
+  // About mentions accounts only signed in, or once the project said it is ready for sign-in (src/auth/readiness.js)
+  assert.match(settings, /aboutPrivacy\(\{ signIn: withAccounts, beyond: PLANS\.ultra\?\.name \|\| 'hushmallow Beyond' \}\)/);
+  assert.match(settings, /\.\.\.aboutBody\(signedIn\)\)/);
+  assert.match(settings, /app\.auth\.ready\(\)\.then\(\(ok\) => \{ if \(ok[^}]*aboutPara\.replaceChildren\(\.\.\.aboutBody\(true\)\)/);
   assert.match(plans, /plansBeyondNote\(\)/);
   for (const src of [settings, plans]) assert.doesNotMatch(src, /what you type stays here|your words go to our server/);
 });
