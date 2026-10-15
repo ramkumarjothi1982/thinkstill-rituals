@@ -28,7 +28,7 @@
 // Layout: moonmilk-cove-rules.js planCove (the subtitle band stays clear; nothing overlaps the hero or each other).
 // Gentle session (after loss or care): no pings, no quips, no Mallow face changes (the shell's concerned face holds),
 // plain lanterns for the stand-in Mallow cards. Reduced motion: no rocking, ribbons fade without marbling, breath
-// rings become a steady glow, glides become fades.
+// rings become a soft glow that only brightens and dims, no rising motes or expanding rings, glides become fades.
 
 import { createRealmCore, moodForEmotion } from '../../../world/realm.js';
 import { glowSprite, Pool, Rings, clamp, lerp, smoothstep, TAU, makeCanvas, flashEnv } from '../../../world/util.js';
@@ -319,16 +319,22 @@ export function create(ctx) {
     for (const L of lanterns) obs.push({ x0: L.tx - L.D / 2, y0: L.ty - L.D * 0.62, x1: L.tx + L.D / 2, y1: L.ty + L.D * 0.62 });
     for (const q of shells) obs.push({ x0: q.tx - q.hit, y0: q.ty - q.hit, x1: q.tx + q.hit, y1: q.ty + q.hit });
     let best = null;
-    // (never below the hero's feet: the shell's bottom controls live there)
-    for (let y = plan.hy + ry; y <= Math.min(plan.floor - ry - 30, plan.M.y1 - ry); y += 6) {
-      for (let x = rx; x <= plan.x1 - rx; x += 6) {
-        let bad = false;
-        for (const o of obs) if (x + rx > o.x0 && x - rx < o.x1 && y + ry > o.y0 && y - ry < o.y1) { bad = true; break; }
-        if (bad) continue;
-        const d = Math.hypot((x - gx) / W, (y - gy) / H) + (y > shoreY(W, H, x) ? 0.2 : 0);
-        if (!best || d < best.d) best = { x, y, d };
+    const nHard = obs.length - lanterns.length - shells.length;
+    // (never below the hero's feet: the shell's bottom controls live there) — first a roomy clear spot; then a smaller
+    // one that may brush a lantern or a shell; then the thought's own cradle (resting a finger on it is rest too)
+    for (const [ax, ay, n] of [[rx, ry, obs.length], [30, 18, nHard]]) {
+      for (let y = plan.hy + ay; y <= Math.min(plan.floor - ay - 30, plan.M.y1 - ay); y += 6) {
+        for (let x = ax; x <= plan.x1 - ax; x += 6) {
+          let bad = false;
+          for (let k = 0; k < n; k++) { const o = obs[k]; if (x + ax > o.x0 && x - ax < o.x1 && y + ay > o.y0 && y - ay < o.y1) { bad = true; break; } }
+          if (bad) continue;
+          const d = Math.hypot((x - gx) / W, (y - gy) / H) + (y > shoreY(W, H, x) ? 0.2 : 0);
+          if (!best || d < best.d) best = { x, y, d };
+        }
       }
+      if (best) break;
     }
+    if (!best && thought) best = { x: plan.home.x, y: plan.home.y };
     hint.ok = !!best;
     if (best) { hint.x = best.x; hint.y = best.y; }
   }
@@ -497,11 +503,13 @@ export function create(ctx) {
       if (!everTouched) { everTouched = true; firstTouchAt = elapsed; }
       lastInputAt = elapsed; hint.age = -1; hint.next = 1e9; introAt = -1;
       // micro-feedback on the very first frame
-      rings.add(s.x, s.y, 3, 22, 0.6, s.y > plan.hy ? 0.45 : 1, f.onThought ? C.pink : C.milk, 0.5, 1.3);
+      if (!reduced()) rings.add(s.x, s.y, 3, 22, 0.6, s.y > plan.hy ? 0.45 : 1, f.onThought ? C.pink : C.milk, 0.5, 1.3);
       if (f.onThought) { try { thought?.react?.('squeeze'); thought?.pointer?.(s); } catch { /* optional */ } }
       return;
     }
-    const f = fingerFor(s.id);
+    let f = fingerFor(s.id);
+    // (a finger that stayed down through a pause: its next real move picks it up again, as a new touch)
+    if (!f && s.type === 'move' && !s.idle) { pointer({ ...s, type: 'down' }); f = fingerFor(s.id); }
     if (!f) return;
     if (s.type === 'move') {
       f.lastEv = elapsed;
@@ -515,7 +523,7 @@ export function create(ctx) {
         if (f.rib < 0) f.rib = startRibbon(f.x0, f.y0);
         addRibPoint(ribs[f.rib], s.x, s.y, f.speed);
         // a quick flick splashes a few droplets of milk
-        if (f.speed > 1.6 * U && R() < 0.35) { const a = R() * TAU; motes.spawn(s.x, s.y, Math.cos(a) * 40 + (s.vx || 0) * 0.05, Math.sin(a) * 30 - 20, 0.7 + R() * 0.4, 2 + R() * 2, (R() * 3) | 0, 0.7); }
+        if (!reduced() && f.speed > 1.6 * U && R() < 0.35) { const a = R() * TAU; motes.spawn(s.x, s.y, Math.cos(a) * 40 + (s.vx || 0) * 0.05, Math.sin(a) * 30 - 20, 0.7 + R() * 0.4, 2 + R() * 2, (R() * 3) | 0, 0.7); }
         // a finger that set off leaves its pool behind (it lingers and fades)
         if (f.pool >= 0) { pools[f.pool].held = false; f.pool = -1; }
       }
@@ -537,7 +545,7 @@ export function create(ctx) {
       const sh = shells[f.shell];
       if (!sh) return;
       sh.hopV += reduced() ? 0 : 5.5; sh.glow = 1;
-      backRings.add(sh.x, sh.y - sh.s * 0.3, 4, sh.s * 2.6, 1.2, 0.42, C.pink, 0.6, 1.4);
+      if (!reduced()) backRings.add(sh.x, sh.y - sh.s * 0.3, 4, sh.s * 2.6, 1.2, 0.42, C.pink, 0.6, 1.4);
       ctx.sound('glass', { intensity: 0.3, pan: clamp((x / W) * 2 - 1, -1, 1) });
       ctx.haptic('light');
       const ev = waitD.touch(meter.rest, elapsed - sh.born);
@@ -663,9 +671,10 @@ export function create(ctx) {
     rings.update(dt); backRings.update(dt);
     // the intro line, then the hint (a ghost fingertip resting) until the first touch
     if (introAt > 0 && elapsed >= introAt) { introAt = -1; say(line('intro')); }
-    if (!everTouched && !complete && hint.ok) {
+    if (!everTouched && !complete) {
+      // (the line is said even where no ghost fingertip fits: the person is always told how the cove works)
       if (hint.age < 0 && elapsed >= hint.next && hint.shown < HINT_MAX) {
-        hint.age = 0; hint.shown++;
+        hint.age = hint.ok ? 0 : -1; hint.shown++;
         hint.next = elapsed + HINT_EVERY;
         if (hint.shown === 1) say(line('hint'));
       }
@@ -682,7 +691,7 @@ export function create(ctx) {
     lastDiscoveryAt = elapsed;
     ctx.sound('chime', { intensity: 0.3 });
     const m = plan.moon;
-    backRings.add(m.x, m.y, m.r * 1.05, m.r * 2.2, 2.6, 1, C.milk, 0.4, 1.6);
+    if (!reduced()) backRings.add(m.x, m.y, m.r * 1.05, m.r * 2.2, 2.6, 1, C.milk, 0.4, 1.6);
     ctx.discover(ev.id, ev.evidence);
   }
 
@@ -692,7 +701,7 @@ export function create(ctx) {
     try { thought?.settle?.(1); } catch { /* optional */ }
     ctx.sound('bloom', { intensity: 0.3 });
     const m = plan.moon;
-    backRings.add(m.x, m.y, m.r, m.r * 2.8, 3.2, 1, C.milk, 0.5, 1.8);
+    if (!reduced()) backRings.add(m.x, m.y, m.r, m.r * 2.8, 3.2, 1, C.milk, 0.5, 1.8);
     if (!reduced()) backRings.add(m.x, m.y, m.r, m.r * 3.6, 4.2, 1, C.lav, 0.3, 1.4);
   }
 
@@ -717,7 +726,7 @@ export function create(ctx) {
         backRings.add(P.x, P.y, rr * 0.4, rr * 1.35, 3.6, P.asp, C.milk, 0.42, 1.4);
       }
       // motes rise slowly from a resting pool (fireflies of rest)
-      if (P.held && R() < dt * (ctx.lowStim ? 0.5 : 1.3) * P.a) {
+      if (P.held && !rm && R() < dt * (ctx.lowStim ? 0.5 : 1.3) * P.a) {
         const rr = (0.05 + 0.17 * easeOut(P.k)) * U, a = R() * TAU;
         motes.spawn(P.x + Math.cos(a) * rr * 0.7, P.y + Math.sin(a) * rr * P.asp * 0.7, (R() - 0.5) * 6, -10 - R() * 10, 2.4 + R() * 1.6, 2 + R() * 2.5, (R() * 3) | 0, 0.75);
       }
@@ -885,7 +894,7 @@ export function create(ctx) {
 
   function drawMoonPhase(g, rm) {
     const m = plan.moon, off = moonShadow(moonP);
-    if (off >= 2.05) return;
+    if (off >= 2.08) return;
     const mx = m.x + (realm.st.camX || 0) * 0.08, my = m.y + (realm.st.camY || 0) * 0.08;
     g.save();
     g.beginPath(); g.arc(mx, my, m.r * 1.01, 0, TAU); g.clip();
@@ -942,6 +951,9 @@ export function create(ctx) {
     const pingK = s.pingAge >= 0 ? flashEnv(s.pingAge, 0.3, 0.12, 1.1) : 0;
     const b = shellSpr.bead;
     g.globalCompositeOperation = 'lighter';
+    // (a soft warm ring on the sand marks them as the cove's own, not the realm's scattered scallops)
+    g.globalAlpha = 0.32 + 0.1 * s.glow; g.strokeStyle = '#ffd89a'; g.lineWidth = 1;
+    g.beginPath(); g.ellipse(x, s.y + s.s * 0.42, s.s * 1.35, s.s * 0.36, 0, 0, TAU); g.stroke();
     g.globalAlpha = 0.16 + 0.1 * hushK + 0.35 * s.glow;
     g.drawImage(spr.peach, x - s.s * 1.7, y - s.s * 1.1, s.s * 3.4, s.s * 2.2);
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
@@ -988,11 +1000,11 @@ export function create(ctx) {
   function face(g, i, x, y, D, a) {
     if (!(ctx.gentle && photos.standIn)) { photos.draw(g, i, x, y, D, { shape: 'arch', alpha: a, shadow: false }); return; }
     // (a plain lantern: drawn once per photo and size, then blitted — nothing allocated per frame)
-    const d = Math.min(2, Math.max(1, ctx.dpr || 1)), key = `${i}|${Math.round(D)}|${d}`;
+    const d = Math.min(2, Math.max(1, ctx.dpr || 1)), Dq = Math.max(16, Math.round(D / 8) * 8), key = `${i}|${Dq}|${d}`;
     let c = plainCache.get(key);
     if (!c) {
       if (plainCache.size > 24) plainCache.clear();
-      const w = D * 0.78, h = D;
+      const w = Dq * 0.78, h = Dq;
       c = makeCanvas(Math.ceil(w * d) + 2, Math.ceil(h * d) + 2);
       const pg = c.getContext('2d');
       pg.scale(d, d);
@@ -1005,7 +1017,7 @@ export function create(ctx) {
       c.cssW = w; c.cssH = h;
       plainCache.set(key, c);
     }
-    g.globalAlpha = a; g.drawImage(c, x - c.cssW / 2, y - c.cssH / 2, c.width / d, c.height / d); g.globalAlpha = 1;
+    const k = D / Dq; g.globalAlpha = a; g.drawImage(c, x - (c.cssW * k) / 2, y - (c.cssH * k) / 2, (c.width / d) * k, (c.height / d) * k); g.globalAlpha = 1;
   }
 
   function drawCradle(g, now, rm) {
@@ -1166,7 +1178,7 @@ export function create(ctx) {
     },
     setGentle() { /* ctx.gentle is read live: pings, lines and lantern faces follow it */ },
     setThought(h) {
-      if (thought && thought !== h) { try { if (thought.labelFit && thought.labelFit === wordsFit) thought.labelFit = null; } catch { /* */ } }
+      if (thought && thought !== h) { try { if (thought.labelFit && thought.labelFit === wordsFit) thought.labelFit = null; if ('opacity' in thought) thought.opacity = 1; } catch { /* */ } }
       const had = !!thought;
       thought = h || null;
       if (prepared) layout(false);
@@ -1214,6 +1226,7 @@ export function create(ctx) {
       if (realm) layout(true);
       for (const rb of ribs) rb.on = false;
       for (const P of pools) P.on = false;
+      for (const f of fingers) { f.pool = -1; f.rib = -1; f.settled = false; }
     },
     setQuality() { /* the director resizes the layers; the cove costs the same */ },
     destroy() {

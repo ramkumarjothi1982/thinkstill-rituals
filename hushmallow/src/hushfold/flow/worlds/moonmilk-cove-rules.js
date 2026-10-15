@@ -79,7 +79,7 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
             const px0 = clamp(x - pw / 2, E, XR - E - pw);
             P = side === 'above' ? rectOf(px0, y - r - COVE.LABEL_GAP - ph, px0 + pw, y - r - COVE.LABEL_GAP)
               : rectOf(px0, y + r * COVE.CRADLE_B + COVE.LABEL_GAP, px0 + pw, y + r * COVE.CRADLE_B + COVE.LABEL_GAP + ph);
-            if (pw > XR - 2 * E || hit(P, M, G - 4) || hit(P, B, 4) || P.y1 > floor) continue;
+            if (pw > XR - 2 * E || hit(P, M, 4) || hit(P, B, 4) || P.y1 > floor) continue;
           }
           const s = Math.hypot((x - ideal.x) / W, (y - ideal.y) / H) + (side === 'below' ? 0.05 : 0) + (rMax - r) * 0.01;
           if (!best || s < best.s) best = { s, x, y, r, side, T, P };
@@ -88,10 +88,22 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
     }
   }
   if (!best) {
-    // nowhere clear (a tiny window): beside the hero on the water, words above, as near as it gets
-    const r = 20, x = Math.max(E + r, Math.min(XR - E - r, M.x0 - G - r)), y = clamp(hy + 0.3 * r, bandB + 8 + ph + r, floor - r);
-    const px0 = clamp(x - pw / 2, E, Math.max(E, XR - E - pw));
-    best = { x, y, r, side: 'above', T: rectOf(x - r * 1.45, y - r, x + r * 1.45, y + r * COVE.CRADLE_B), P: pw ? rectOf(px0, y - r - 4 - ph, px0 + pw, y - r - 4) : null };
+    // nowhere clear (a tiny landscape window at the largest text): the place where the words cover least of the hero and
+    // the band (the words weigh most: they must stay readable), anywhere on screen
+    const area = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+    const r = 20;
+    for (const side of ['above', 'below']) {
+      for (let y = Math.max(r, hy - 2 * r); y <= floor - r * COVE.CRADLE_B; y += 4) {
+        for (let x = E + r * 1.45; x <= XR - E - r * 1.45; x += 4) {
+          const T = rectOf(x - r * 1.45, y - r, x + r * 1.45, y + r * COVE.CRADLE_B);
+          const px0 = clamp(x - pw / 2, E, Math.max(E, XR - E - pw));
+          const P = pw ? (side === 'above' ? rectOf(px0, y - r - 4 - ph, px0 + pw, y - r - 4) : rectOf(px0, y + r * COVE.CRADLE_B + 4, px0 + pw, y + r * COVE.CRADLE_B + 4 + ph)) : null;
+          let s = area(T, M) + area(T, B) + (P ? 4 * (area(P, M) + area(P, B)) + 4 * Math.max(0, -P.y0) * pw + 4 * Math.max(0, P.y1 - H) * pw : 0);
+          s += Math.hypot(x - ideal.x, y - ideal.y) * 0.01;
+          if (!best || s < best.s) best = { s, x, y, r, side, T, P };
+        }
+      }
+    }
   }
   const home = { x: Math.round(best.x), y: Math.round(best.y), r: best.r };
   const avoid = [M, B, best.T, ...(best.P ? [best.P] : [])];
@@ -146,6 +158,18 @@ export function planCove({ W, H, band = null, mallow = null, x1 = W, plate = nul
         if (bad) continue;
         slots.push({ x: Math.round(x), y: Math.round(y), D: Math.round(D) });
         x += D + 12;
+      }
+    }
+  }
+  if (n > 0 && !slots.length) {
+    // (no roomy slot at all — a tiny landscape window: one small lantern where it fits, and the photos take turns in it)
+    const D = 30;
+    for (let y = hy + D * 0.62 + 2; y <= Math.min(floor, sh) - D * 0.62 && !slots.length; y += 4) {
+      for (let x = E + D / 2; x <= XR - E - D / 2 && !slots.length; x += 4) {
+        const Rr = rectOf(x - D / 2, y - D * 0.62, x + D / 2, y + D * 0.62);
+        if (avoid.some((o) => hit(Rr, o, 2))) continue;
+        if (shells.some((q) => hit(Rr, rectOf(q.x - q.hit, q.y - q.hit, q.x + q.hit, q.y + q.hit), 0))) continue;
+        slots.push({ x: Math.round(x), y: Math.round(y), D });
       }
     }
   }
@@ -225,11 +249,25 @@ export function createCoveProgress(goal = COVE.REST_GOAL) {
 }
 
 // ---------------------------------------------------------- the moon --
+/** How much of a unit disc a same-sized shadow disc at distance d (radii) leaves lit (0..1). */
+export function litFraction(d) {
+  d = clamp(d, 0, 2);
+  const covered = 2 * Math.acos(d / 2) - (d / 2) * Math.sqrt(4 - d * d);
+  return 1 - covered / Math.PI;
+}
 /**
- * The moon's lit phase for rest progress p: the shadow disc's offset from the moon's centre in radii (0.3 → a thin
- * crescent; ≥ 2 → no shadow: a full moon). Eased, so the last of the minute still shows.
+ * The moon's phase for rest progress p: the shadow disc's offset from the moon's centre in radii, chosen so the lit
+ * AREA is what the rest has earned (a thin crescent, 12 %, at the start → half a moon at half the minute → full; 2.1:
+ * no shadow drawn). Bisection: a handful of steps, once a frame.
  */
-export function moonShadow(p) { const e = clamp(p); return 0.32 + 1.78 * (1 - (1 - e) * (1 - e) * (1 - 0.35 * e)); }
+export function moonShadow(p) {
+  const e = clamp(p);
+  if (e >= 0.999) return 2.1;
+  const want = 0.12 + 0.88 * e;
+  let lo = 0, hi = 2;
+  for (let k = 0; k < 22; k++) { const m = (lo + hi) / 2; if (litFraction(m) < want) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
 
 /** How much the cove rocks and laps now (1 busy … 0.15 deep rest): the feeling's agitation, eased by rest now and rest so far. */
 export function tideBusy(agitation, restNow, p, busyHands = 0) {
