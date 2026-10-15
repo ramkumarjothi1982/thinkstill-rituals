@@ -16,13 +16,16 @@
 //       signal (an AbortSignal, e.g. a safety hold): aborted during the offer,
 //       nothing is saved; aborted after the save, the installation is cancelled
 //       (its overlay removed at once) and the promise resolves, the tool kept.
-//   offerSave({ skillId, mallow, app, origin, face, reducedMotion, signal }) → Promise<boolean>
+//   offerSave({ skillId, mallow, app, origin, face, reducedMotion, signal, foldAsNotNow }) → Promise<boolean>
 //       Only the choice: a small non-modal card ("Keep this in your Memory
 //       Garden?" + the title, Not now / Keep this). Resolves true only on the
 //       explicit tap; it saves nothing itself. It never covers the Mallow's
 //       face: it sits below the body or above the head when there is room,
 //       else a compact card or a one-row bar below the face. Left alone for a
 //       while it folds into a small chip in a corner (tap → the offer again).
+//       foldAsNotNow (keepDiscovery passes it on; Another Angle, whose next step
+//       waits for the answer): where it would fold, it goes as "Not now" instead
+//       (resolves false, no chip), so the caller's own way on comes next.
 //   playInstall({ canvas | ctx, from:{x,y} | origin, face, words, skillId, mallow,
 //                 app, subtitles, reducedMotion, lowStim, bright, onDone })
 //       → Promise<{action}> & { skip(), cancel(), seek(t) }
@@ -721,7 +724,7 @@ function hideChip(instant) { openChip?.close(instant); openChip = null; }
 
 // --------------------------------------------------------------- offer --
 /** The explicit choice. Resolves true only on "Keep this"; saves nothing itself. */
-export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, title, origin = null, face = null, avoid = null, foldAfterMs = FOLD_AFTER.offer } = {}) {
+export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, title, origin = null, face = null, avoid = null, foldAfterMs = FOLD_AFTER.offer, foldAsNotNow = false } = {}) {
   ensureCss(); ensureLive();
   const skill = getSkill(skillId);
   const { reduced } = motionPrefs(app, { reducedMotion });
@@ -834,6 +837,10 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     function fold(force = false, { quick = false, waiting = false } = {}) {
       if (done || folded) return;
       if (!force && el.contains(document.activeElement)) { armFold(); return; }
+      // (fix round) a caller whose next step waits for this answer: folding away counts as "Not now" (no chip left with no
+      // way on beside it; the caller offers "Keep this discovery" again itself)
+      // (a microtask: a fold while the offer is still being set up, e.g. no room for it at first, closes once it is set up)
+      if (foldAsNotNow) { Promise.resolve().then(() => close(false)); return; }
       folded = true;
       clearTimeout(foldT);
       el.classList.toggle('is-quick', !!quick);
@@ -1529,7 +1536,7 @@ export function playInstall(opts = {}) {
  * in the garden isn't offered again (it counts as practised, with a quiet
  * note); a save the device refused is said honestly, never "saved".
  */
-export async function keepDiscovery({ app = null, store = app?.store, skillId, worldId = null, mallow = null, origin = null, face = null, avoid = null, words = null, from = null, subtitles = null, reducedMotion, lowStim, signal } = {}) {
+export async function keepDiscovery({ app = null, store = app?.store, skillId, worldId = null, mallow = null, origin = null, face = null, avoid = null, words = null, from = null, subtitles = null, reducedMotion, lowStim, signal, foldAsNotNow = false } = {}) {
   const skill = getSkill(skillId);
   if (!store || !skill) return { kept: false, already: false, stored: false, action: null };
   const mallowId = typeof mallow === 'string' ? mallow : mallow?.id || null;
@@ -1538,7 +1545,7 @@ export async function keepDiscovery({ app = null, store = app?.store, skillId, w
     note(`${skill.title} is already in your Memory Garden.`, { origin, face, avoid, mallow: mallowId || skill.mallow });
     return { kept: false, already: true, stored: true, action: null };
   }
-  const yes = await offerSave({ skillId, mallow, app, reducedMotion, signal, origin, face, avoid });
+  const yes = await offerSave({ skillId, mallow, app, reducedMotion, signal, origin, face, avoid, foldAsNotNow });
   if (!yes || signal?.aborted) return { kept: false, already: false, stored: false, action: null };
   const saved = saveSkill(store, { id: skillId, fromWorld: worldId, mallow: mallowId });
   if (!saved) return { kept: false, already: false, stored: false, action: null };

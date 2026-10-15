@@ -1433,6 +1433,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
         // Zuzu (and the scene's Mallow) stay clear: the garden's chip never sits on them
         avoid: () => [rectOf(zAd), rectOf(compAd), ...(mech?.avoid?.() || [])].filter(Boolean),
         subtitles: installSubtitles, reducedMotion: rmOn(), lowStim: lowOn(), signal: ctl?.signal,
+        // (fix round, the dead end) the offer left alone folds away as "Not now": the end choices come next (Keep this
+        // discovery among them), never a folded chip with no way on
+        foldAsNotNow: true,
         // which kind of angle it was (no words): for the garden's own copy per kind, when it has it
         evidence: { reasoning_pattern: S.scene?.reasoning_pattern || null, interaction_type: S.scene?.interaction_type || null },
       });
