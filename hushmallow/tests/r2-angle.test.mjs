@@ -184,7 +184,8 @@ test('item 3: the question left unanswered, or closed with Back, keeps the rest 
   // (set first, before anything that may return early: a new Tell opened over the question too)
   assert.match(quiet, /^function quietAfterAsk\(\) \{\s*S\.noPlay = true;\s*if \(S\.left \|\| overlay \|\| S\.phase !== 'asking'\) return;/);
   // Back drops the question (null), which is quietAfterAsk too
-  assert.match(AA, /if \(layer\.lossCheck && \(!token \|\| token === layer\.lossCheck\)\) \{ layer\.lossCheck = 0; subs\?\.drop\(\(o\) => o\.lossCheck\); \}/);
+  // (fix round, a11y: tellFirst puts Tell in the dock and the focus on it before the line fades)
+  assert.match(AA, /if \(layer\.lossCheck && \(!token \|\| token === layer\.lossCheck\)\) \{ layer\.lossCheck = 0; tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \}/);
   assert.match(between(AA, 'async function startAngle(', 'const FIRST_QUESTION = {'), /if \(v !== 'angle' && v !== 'else'\) \{ quietAfterAsk\(\); return; \}/);
   // and squeezing then says nothing
   assert.match(between(AA, 'function onZuzuTouch(e) {', 'async function makeTouch('), /if \(S\.grief \|\| S\.noPlay\) return;/);
@@ -265,7 +266,7 @@ test('item 6: the question lasts about 45 s, never counts while the page is hidd
   // wired in: its own clock (not the subtitles' timeout), the words kept while it is up, focus on its first answer
   const ask = between(AA, 'async function askFirst(kind) {', 'let stopClock = null;');
   assert.match(ask, /S\.keepWords = true;/);
-  assert.match(ask, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) subs\?\.drop\(\(o\) => o\.lossCheck\); \}\)/);
+  assert.match(ask, /questionClock\(q\.ms, \(\) => \{ if \(seq === S\.seq\) \{ tellFirst\(\); subs\?\.drop\(\(o\) => o\.lossCheck\); \} \}\)/);
   assert.doesNotMatch(ask, /timeoutMs/);
   assert.match(ask, /focusFirstChoice\(\);/);
   const focus = between(AA, 'function focusFirstChoice() {', 'function quietAfterAsk() {');

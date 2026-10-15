@@ -137,7 +137,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   const finishPill = h('button', { class: 'hf-pill', type: 'button', hidden: true, 'data-bx': 'finish', onclick: () => finish() }, hfIcon('finish'), 'Finish');
   const dock = h('div', { class: 'bx-dock' }, assistBtn, tellPill, supportPill, finishPill);
   const live = h('p', { class: 'sr-only', 'aria-live': 'polite' });
-  root.append(h('h1', { class: 'sr-only' }, 'Another Angle, with Zuzu. Squeeze Zuzu any time.'), top, dock, live);
+  // (the scene's heading takes the focus for a moment between two controls, e.g. after the consent card: never the page)
+  const heading = h('h1', { class: 'sr-only', tabindex: '-1' }, 'Another Angle, with Zuzu. Squeeze Zuzu any time.');
+  root.append(heading, top, dock, live);
   const tags = makeTags(root);
 
   // -------------------------------------------------------- the stage --
@@ -165,6 +167,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (i >= 0) sheets.splice(i, 1);
       // closed another way (✕, its button, the backdrop, Escape): its history entry goes too
       if (rec.token && !S.left) { const t = rec.token; rec.token = 0; app.popLayer?.(t); }
+      // (fix round, a11y) the sheet gives the focus back where it was (ui.js, after ~470 ms); when that control has gone
+      // (the "See support" chip, the Send of a closed overlay), it lands on the stage's next control, never the page or the
+      // hidden heading
+      if (!S.left) later(afterSheet, 560);
     };
     const onClass = new MutationObserver(() => {
       if (sheet.el.classList.contains('open')) rec.seen = true;
@@ -186,7 +192,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (overlay && (!token || token === layer.overlay || !sheets.length)) { layer.overlay = 0; overlay.close('back'); return; }
     // (the question before the angle, or the check-in "Is this about losing someone?": Back lets it go, and Zuzu stays
     // here quietly)
-    if (layer.lossCheck && (!token || token === layer.lossCheck)) { layer.lossCheck = 0; subs?.drop((o) => o.lossCheck); }
+    if (layer.lossCheck && (!token || token === layer.lossCheck)) { layer.lossCheck = 0; tellFirst(); subs?.drop((o) => o.lossCheck); }
   }
 
   function resize() {
@@ -512,6 +518,71 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     layout();
   }
 
+  // ---------------------------------------------------------- focus --
+  // (fix round, a11y) focus never drops to the page when the control that had it goes (a chip answered, the overlay or
+  // the consent card closed, a sheet closed over a chip that has gone): it lands on the control that comes next
+  /** The focus is nowhere useful: the page itself, the scene's hidden heading, or a control that is gone or hidden. */
+  function focusLost() {
+    if (typeof document === 'undefined') return false;
+    const a = document.activeElement;
+    if (!a || a === document.body || a === document.documentElement || a === heading) return true;
+    if (!a.isConnected || a.hidden || a.closest?.('[hidden]')) return true;
+    // (the compact input fading out after Send, the consent card fading out: their buttons are about to go)
+    if (!overlay && a.closest?.('.hf-input')) return true;
+    if (!consentCard && a.closest?.('[data-bx=consent]')) return true;
+    return typeof a.getClientRects === 'function' && a.getClientRects().length === 0;
+  }
+  const inTextField = () => { const a = document.activeElement; return !!a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable); };
+  const shown = (el) => !!el && el.isConnected && !el.hidden && !el.closest?.('[hidden]') && (typeof el.getClientRects !== 'function' || el.getClientRects().length > 0);
+  /** Focus `el` (or the first of a list that is on screen) if the focus is lost, or if `always`; never out of a text field. */
+  function focusIfLost(els, { always = false } = {}) {
+    if (S.left || overlay || consentCard || inTextField()) return false;
+    if (!always && !focusLost()) return false;
+    const el = [els].flat().find(shown);
+    if (!el) return false;
+    el.focus?.({ preventScroll: true });
+    return document.activeElement === el;
+  }
+  /** The control that comes next on this stage: a choice showing, else the dock's Support, Tell, Finish, in that order. */
+  const nextControls = () => [subs?.el?.querySelector?.('.hf-chips:not([hidden]) button'), supportPill, tellPill, finishPill, supportBtn];
+  const refocusSoon = (ms = 0) => later(() => focusIfLost(nextControls()), ms);
+  /**
+   * A sheet closed: a lost focus lands on the next control; after crisis words the Support pill comes first, also over the
+   * held crisis line's Continue (the subtitles focus it when it shows, behind the sheet), so Enter brings support back
+   * rather than letting that line go.
+   */
+  function afterSheet() {
+    if (S.left || sheets.length) return;
+    const onLine = !!document.activeElement?.closest?.('.hf-subctl');
+    if (S.crisis && (onLine || focusLost())) focusIfLost(supportPill, { always: true });
+    else focusIfLost(nextControls());
+  }
+  /**
+   * Once a choice's chips are on screen, its first chip takes a lost focus (a choice queued behind lines shows later). First
+   * looked for in a microtask: a choice asked right after this shows at once, so the focus moves in the same task (it never
+   * rests on the page between the dock's pill stepping aside and the chip).
+   */
+  function focusChipsWhenShown(label, { ms = 20000 } = {}) {
+    const t0 = now();
+    const look = () => {
+      if (S.left || now() - t0 > ms) return;
+      const btn = [...(subs?.el?.querySelectorAll?.('.hf-chips:not([hidden]) button') || [])].find((b) => b.textContent.trim() === label);
+      if (btn) { focusIfLost(btn); return; }
+      later(look, 120);
+    };
+    Promise.resolve().then(look);
+  }
+  /**
+   * (fix round, a11y) The subtitles focus a held line's Continue (the crisis lines) or a choice's chip as it shows: never from
+   * behind an open sheet (the urgent one included). The focus goes back into the sheet; once it closes, afterSheet places it.
+   */
+  function onFocusIn(e) {
+    if (S.left || !sheets.length || !subs?.el?.contains?.(e.target)) return;
+    const sh = sheets[sheets.length - 1]?.sheet?.el;
+    if (!sh?.isConnected || !sh.classList.contains('open') || sh.contains(e.target)) return;
+    sh.querySelector('.icon-btn, button, a[href], [tabindex]:not([tabindex="-1"])')?.focus?.({ preventScroll: true });
+  }
+
   // ---------------------------------------------------------- flow --
   async function arrive() {
     S.phase = 'arrive';
@@ -527,6 +598,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
         consentCard = null;
         layout();
         if (choice === 'no') S.offlineSaid = false;
+        // (fix round, a11y) Accept or Not now: the focus waits on the scene's heading (never the page) and moves to the
+        // invitation's first answer the moment it shows (invite: focusChipsWhenShown)
+        S.afterConsent = true;
+        try { heading.focus({ preventScroll: true }); } catch { /* no focus here */ }
         resolve(choice);
       } });
       layout();
@@ -549,10 +624,13 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       { label: ARRIVAL.squeeze, value: 'squeeze' },
     ];
     if (shareAgainNow()) options.push({ label: ARRIVAL.share, value: 'share' });
-    const v = await choose(first ? ARRIVAL.first[1] : ARRIVAL.ask, options, { transient: true });
+    const p = choose(first ? ARRIVAL.first[1] : ARRIVAL.ask, options, { transient: true });
+    if (S.afterConsent) { S.afterConsent = false; focusChipsWhenShown(ARRIVAL.tell); }
+    const v = await p;
     if (S.left || S.phase !== 'invite') return;
     if (v === 'share') { await askConsent(); if (S.left) return; S.offlineSaid = false; return invite(); }
     dockShow({ tell: true });
+    focusIfLost(tellPill);
     if (v === 'squeeze') say(ARRIVAL.justSqueeze[0]);
   }
 
@@ -624,6 +702,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
           // death talk typed and closed: a quiet word, support close, never a playful line (nothing is sent)
           else if (gentleRoute(typed)) gentleNote();
           else { S.phase = 'invite'; if (S.noPlay) careFace(); else zt?.setStage('curious'); dockShow({ tell: true }); }
+          // (fix round, a11y) closed without sending: the overlay gives the focus back to the Tell pill, hidden while it was
+          // open; once the dock is back, a lost focus lands there (or on Support), never on the page
+          refocusSoon(0);
         }
         layout();
       },
@@ -815,6 +896,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (!sheetShown && !document.querySelector('#sheet-root .sheet.open') && now() - S.sheetAt > 60000) openSupportSheet({ urgent: true });
     careFace();
     dockShow({ finish: true });
+    // (fix round, a11y) after Send the focus goes to support, never the page: the urgent sheet's own (it takes the focus),
+    // else the Support pill (and back to it once the sheet closes: trackSheet)
+    if (!sheets.length) focusIfLost(supportPill);
     if (S.crisisSaid) return;              // said once a visit; the Support pill stays
     S.crisisSaid = true;
     subs?.clear();
@@ -827,11 +911,15 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     dropThought(); endMechanic(true); dismissCompanion();
     careFace();
     dockShow({ finish: true });
+    // (fix round, a11y) after Send the focus goes to support: the Support pill while the lines play, then the choice's first
+    // chip ("See support") the moment it shows (the pill steps aside for it)
+    if (!sheets.length) focusIfLost(supportPill);
     if (S.careSaid) return;
     S.careSaid = true;
     subs?.clear();
     await say(lines, { interrupt: true });
     if (S.left || S.phase !== 'support') return;
+    focusChipsWhenShown(SAFETY.careOptions[0].label);
     // (review r9) the choice's "See support" carries support while it is up: never the dock's pill beside it
     dockShow({ finish: true, support: false });
     const v = await choose(SAFETY.careAsk, SAFETY.careOptions);
@@ -888,6 +976,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     careFace();
     // (while the choice below is up, its chips carry support and Finish: the dock never offers them twice)
     dockShow({ finish: true, tell: true });
+    // (fix round, a11y) after Send the focus goes to the Support pill while the lines play, then to the choice's first chip
+    if (!sheets.length) focusIfLost(supportPill);
     subs?.clear();
     // first, that they said it (never the lines about "another side")
     const heard = say(GRIEF.heard, { mallow: 'zuzu', interrupt: true });
@@ -904,6 +994,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     await sleep(rmOn() ? 400 : 1000);
     await say(scene.subtitle_line_2, { mallow: 'zuzu' });
     if (S.left || seq !== S.seq) return;
+    focusChipsWhenShown(GRIEF.options[0].label);
     dockShow({ tell: true, support: false });
     const v = await choose(GRIEF.ask, GRIEF.options, { mallow: 'zuzu' });
     if (S.left || seq !== S.seq) return;
@@ -964,6 +1055,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   /**
    * (15 Oct 2026) "Not really", the check-in's answer: the care-lite path. A calm line (CHECK_IN.heard), "See support" first,
    * support kept close, no Thought Mallow, no mechanic, nothing sent, and no angle for the rest of the visit (S.notReally).
+   * (fix round) "I'm not okay", the question's third answer, comes here too. The line is the choice's own prompt, so it is
+   * heard with its chips (the chips' group is named by it), "See support" takes the focus, and the choice never times out.
    */
   async function careLite() {
     const seq = ++S.seq;
@@ -975,9 +1068,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // (the choice's "See support" carries support while it is up: never the dock's pill beside it)
     dockShow({ finish: true, tell: true, support: false });
     subs?.clear();
-    await say(CHECK_IN.heard, { mallow: 'zuzu', interrupt: true });
-    if (S.left || seq !== S.seq) return;
-    const v = await choose(null, CHECK_IN.options, { mallow: 'zuzu' });
+    const v = await choose(CHECK_IN.heard, CHECK_IN.options, { mallow: 'zuzu', interrupt: true, focus: true });
     if (S.left || seq !== S.seq) return;
     dockShow({ finish: true, tell: true });
     if (v === 'support') { openSupportSheet(); return; }
@@ -1137,7 +1228,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     layer.lossCheck = app.pushLayer?.() || 0;
     // (r2-angle item 6) about 45 s, never counted while the page is hidden (subtitles' own timeout is not used)
     stopClock?.();
-    const stop = (stopClock = questionClock(q.ms, () => { if (seq === S.seq) subs?.drop((o) => o.lossCheck); }));
+    const stop = (stopClock = questionClock(q.ms, () => { if (seq === S.seq) { tellFirst(); subs?.drop((o) => o.lossCheck); } }));
     try {
       const p = choose(q.ask, q.options, { mallow: 'zuzu', transient: true, lossCheck: true, interrupt: true });
       focusFirstChoice();
@@ -1162,6 +1253,16 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(go); else go();
   }
   /**
+   * (fix round, a11y) The question let go by Back or its clock: Tell is in the dock at once (the Support pill beside it while
+   * the line fades) and a focus on the question's chips (or lost) moves to it, never to the page; quietAfterAsk follows.
+   */
+  function tellFirst() {
+    if (S.left || overlay || S.phase !== 'asking') return;
+    const inChips = !!document.activeElement?.closest?.('.hf-chips');
+    dockShow({ tell: true, asking: true });
+    focusIfLost(tellPill, { always: inChips });
+  }
+  /**
    * The question let go (no answer, Back, a new Tell): Zuzu stays here quietly, Tell close by (with the words kept), nothing
    * sent or made; (r2-angle item 3) and the rest of the visit stays quiet, as the main screen's softVisit: squeezing never
    * brings the playful lines back after words the person never chose to play with.
@@ -1173,6 +1274,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     careFace();
     dockShow({ tell: true });
     layout();
+    // (fix round, a11y) its chip had the focus: it moves to Tell (with the words kept), never to the page
+    focusIfLost(tellPill);
   }
   async function waitingLines(seq) {
     // Zuzu's line first, then (early, once) what is happening, in the Hushfold's own words; then the rest in turn
@@ -1459,7 +1562,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.phase = 'end';
     dockShow({});
     const opts = END.options.filter((o) => o.value !== 'keep' || !S.kept);
-    const v = await choose(END.ask, opts, { mallow: 'zuzu' });
+    const p = choose(END.ask, opts, { mallow: 'zuzu' });
+    // (fix round, a11y) after the Memory Garden's offer or card, a lost focus lands on the first way on
+    focusChipsWhenShown(opts[0].label);
+    const v = await p;
     if (S.left || seq !== S.seq) return;
     if (v === 'keep') { await keep(); return endChoice(seq); }
     if (v === 'continue') return continueFlow();
@@ -1571,6 +1677,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       rig.addTicker(rigTicker);
       addEventListener('resize', onResize);
       visualViewport?.addEventListener('resize', onResize);
+      document.addEventListener('focusin', onFocusIn, true);
       offPrefs = prefs.onChange((k, v) => {
         if (k === 'lowStim') { setLowStim(!!v); zt?.setLowStim(!!v); ct?.setLowStim(!!v); TL?.setLowStim(!!v); }
         if (k === 'motion') { zt?.setReducedMotion(rmOn()); ct?.setReducedMotion(rmOn()); TL?.setReducedMotion(rmOn()); }
@@ -1591,6 +1698,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       stopClock?.();
       removeEventListener('resize', onResize);
       visualViewport?.removeEventListener('resize', onResize);
+      document.removeEventListener('focusin', onFocusIn, true);
       offPrefs?.();
       keepCtl?.abort();
       // the sheets' history entries are forgotten by app.go(); their watchers stop here

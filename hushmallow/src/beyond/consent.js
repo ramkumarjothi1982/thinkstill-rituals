@@ -172,8 +172,10 @@ export function openConsent({ app, root = document.body, onDecide, support = nul
   const accept = h('button', { type: 'button', class: 'bx-choice bx-accept', onclick: () => decide('yes') }, 'Accept');
   const notNow = h('button', { type: 'button', class: 'bx-choice bx-notnow', onclick: () => decide('no') }, 'Not now');
   const title = h('h2', { class: 'bx-title', id: `${uid}-t`, tabindex: '-1' }, 'Before Zuzu looks at your words');
-  const scroll = h('div', { class: 'bx-scroll', id: `${uid}-d`, tabindex: '0', 'aria-label': 'The notice' }, noticeBody(app));
-  const more = h('button', { type: 'button', class: 'bx-more', 'aria-label': 'Show more of the notice', onclick: () => {
+  // (fix round, a11y) the scrolling notice is a named region; "More below" is named by its own words (WCAG 2.5.3, label in
+  // name), controls the region and is at least 44 px tall (a touch target)
+  const scroll = h('div', { class: 'bx-scroll', id: `${uid}-d`, tabindex: '0', role: 'region', 'aria-label': 'The notice' }, noticeBody(app));
+  const more = h('button', { type: 'button', class: 'bx-more', 'aria-controls': `${uid}-d`, style: { minHeight: '44px' }, onclick: () => {
     scroll.scrollTo({ top: nextNoticeStop(scroll), behavior: reduced ? 'auto' : 'smooth' });
   } }, 'More below', h('span', { class: 'bx-more-arrow', 'aria-hidden': 'true' }, '↓'));
   const el = h('section', { class: `bx-consent hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': `${uid}-t`, 'aria-describedby': `${uid}-d`, 'data-bx': 'consent' },
@@ -192,8 +194,11 @@ export function openConsent({ app, root = document.body, onDecide, support = nul
     const over = scroll.scrollHeight - scroll.clientHeight > 12;
     if (over) needed = true;
     const hide = !needed && !over;
-    if (more.hidden !== hide) more.hidden = hide;
     const show = needed && scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop > 12;
+    // (fix round, a11y) the cue going (hidden, or unseen at the end) while it has the focus: the focus moves to the notice
+    // it was scrolling (read on from there; Tab goes on to Support lines and the two choices), never to the page
+    if ((hide || (needed && !show)) && document.activeElement === more) scroll.focus({ preventScroll: true });
+    if (more.hidden !== hide) more.hidden = hide;
     more.classList.toggle('bx-end', needed && !show);
     el.classList.toggle('bx-has-more', show);
   };
