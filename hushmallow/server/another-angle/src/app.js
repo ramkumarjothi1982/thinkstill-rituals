@@ -50,7 +50,7 @@ export function createApp(options) {
   const configs = new WeakMap();
   /** @type {Map<string, Provider>} */
   const providers = new Map();
-  const fallbackNs = memoryLedgerNamespace();
+  const fallbackNs = memoryLedgerNamespace({ now });
   const fallbackAngleLimiter = memoryRateLimiter({ limit: 6, periodMs: 60000, now });
   const fallbackSessionLimiter = memoryRateLimiter({ limit: 3, periodMs: 60000, now });
   const fallbackFeedbackLimiter = memoryRateLimiter({ limit: 20, periodMs: 60000, now });
