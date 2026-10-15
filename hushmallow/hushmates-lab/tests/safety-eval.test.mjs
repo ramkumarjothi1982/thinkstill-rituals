@@ -211,7 +211,7 @@ test('the display sheet for the Tier A reviewer: the same 108 rows shuffled afre
   assert.equal(csv.split('\n')[0], 'display_id,phrasing,clinician_1,clinician_2,agreed,notes');
   assert.ok(sheet.every((r) => !r.clinician_1 && !r.clinician_2 && !r.agreed && !r.notes), 'the sheet came pre-labelled');
   assert.ok(displaySample(rows).every((r) => !csv.includes(`,${r.group},`) && !csv.includes(`,${outcome(r.phrasing)},`)), 'a group or an outcome leaked');
-  assert.deepEqual(Object.keys(key[0]), ['display_id', 'full_sheet_id']);
+  assert.deepEqual(Object.keys(key[0]), ['display_id', 'full_sheet_id', 'phrasing']);
   assert.deepEqual(sheet.map((r) => r.display_id), Array.from({ length: 108 }, (_, i) => String(i + 1)));
   // the same phrasings as the shorter sheet (one phrasing is on it twice), in a fresh order
   const sample = parseCsv(toCsv(rows, { only: ids }));
@@ -225,6 +225,11 @@ test('the display sheet for the Tier A reviewer: the same 108 rows shuffled afre
   const back = withSheetIds(sheet, key);
   for (const r of back) assert.equal(full.get(r.id), r.phrasing, `display id ${r.display_id} maps to the wrong row`);
   assert.throws(() => withSheetIds([{ display_id: '109', phrasing: 'x' }], key), /not in the key/);
+  // a key that isn't the one made with the sheet that was sent never moves labels onto other phrasings
+  const stale = key.map((k, i) => ({ ...k, full_sheet_id: key[(i + 1) % key.length].full_sheet_id, phrasing: key[(i + 1) % key.length].phrasing }));
+  assert.throws(() => withSheetIds(sheet, stale), /different phrasing/);
+  assert.throws(() => withSheetIds(sheet, key.map(({ display_id, full_sheet_id }) => ({ display_id, full_sheet_id }))), /columns/);
+  assert.throws(() => withSheetIds(sheet, key.map((k) => ({ ...k, full_sheet_id: 'x' }))), /two numbers/);
   // a labelled display sheet scores by its display ids, or by the full sheet's with the key
   const labelled = sheet.map((r) => ({ ...r, agreed: 'release' }));
   const held = score(labelled).falseAlarms;
@@ -240,6 +245,23 @@ test('docs/clinical has the current display sheet and its key', () => {
   const again = 'node tools/safety-eval.mjs --export docs/clinical/tier-a-sample-display.csv --sample --display-ids docs/clinical/tier-a-display-key.csv';
   assert.equal(doc('tier-a-sample-display.csv'), displayCsv(rows), `docs/clinical/tier-a-sample-display.csv is out of date: ${again}`);
   assert.equal(doc('tier-a-display-key.csv'), displayKeyCsv(rows), `docs/clinical/tier-a-display-key.csv is out of date: ${again}`);
+});
+
+test('the Tier 0 probe keeps its ids when it is refreshed, even if the rows are reordered, and numbers only new rows', () => {
+  const results = parseCsv(doc('tier0-probe-results.csv'));
+  const again = probeResults([...results].reverse());
+  assert.deepEqual(new Map(again.map((r) => [r.phrasing, r.id])), new Map(results.map((r) => [r.phrasing, Number(r.id)])));
+  const added = probeResults([...results, { phrasing: 'A brand new probe phrasing.', category: 'x', intended: 'release', screen_000c0cd: 'release' }]);
+  assert.equal(added.at(-1).id, results.length + 1);
+  assert.throws(() => probeResults([{ ...results[0] }, { ...results[1], id: results[0].id }]), /same id twice/);
+});
+
+test('refusals that aren’t support screens are never counted as released to strangers', () => {
+  const s = score([{ id: '1', phrasing: 'Call me on 0412 345 678 tonight', agreed: 'care' }, { id: '2', phrasing: 'I made pancakes and they were lovely.', agreed: 'release' }]);
+  assert.equal(s.careReleased.length, 0);
+  assert.deepEqual(s.refused.map((r) => [r.id, r.code]), [['1', 'contact']]);
+  const e = score([{ id: '1', phrasing: 'Call me on 0412 345 678 tonight', agreed: 'release' }]);
+  assert.equal(e.falseAlarms.length, 1, 'an everyday feeling refused is held back too');
 });
 
 test('the Tier 0 probe: its blind sheet holds every phrasing once with nothing about intent or the screen, and screen_now is today’s screen', () => {

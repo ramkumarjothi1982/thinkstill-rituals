@@ -30,7 +30,7 @@ export function share(dev, { id } = {}) {
   let j = c.journey(id);
   const mine = MALLOWS[j?.mallow] || MALLOWS.noomi;
   const r = room(mine.id, 'hf-share', { seed: 8 });
-  const head = h('div', { class: 'hf-head' }, top(dev, { title: 'Share your journey', back: true }));
+  const head = h('div', { class: 'hf-head' }, top(dev, { title: 'Share', back: true }));
   r.el.append(head);
   if (!j) {
     r.el.append(h('div', { class: 'hf-scroll' }, h('div', { class: 'hf-copy hf-copy--top' }, line('This journey isn’t here any more.', { cls: 'hf-line--sm' }))));

@@ -122,7 +122,7 @@ export function homecoming(dev, { id, refresh } = {}) {
     let sub;
     let partial = false;
     if (released) sub = items.length || j.mallowExtra ? 'These are the perspectives you kept.' : 'Nothing was kept. It’s gone, gently.';
-    else if (j.returnReason === 'removed') sub = 'Our safety team brought it home early. Sometimes a feeling needs more care than a new way of seeing it. If that’s true for you right now, support is here any time.';
+    else if (j.returnReason === 'removed') sub = 'Our safety team brought it home early. Sometimes a feeling needs more care than a new way of seeing it. If that’s true for you right now, crisis lines are there any time.';
     else if (noOne) sub = 'No one caught it this time.';
     else if (gone) sub = `${taken === 1 ? 'Someone' : `${taken} people`} caught it, but those words aren’t here any more: taken back by whoever wrote them, or removed by our safety team.`;
     else if (!shownHumans) sub = `${people} caught it. The perspectives you chose not to see aren’t shown.`;

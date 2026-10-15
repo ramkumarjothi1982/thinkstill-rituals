@@ -221,7 +221,7 @@ function paint(focusHeading = false) {
   const listPane = h('section', { class: 'desk-list', 'aria-labelledby': 'desk-list-title' },
     h('h1', { id: 'desk-list-title' }, tab === 'open' ? 'Reports waiting for a decision' : 'Decided reports'),
     list.length ? h('ul', { class: 'desk-rows' }, list.map(row))
-      : h('p', { class: 'desk-empty' }, tab === 'open' ? 'Nothing is waiting. New reports appear here by themselves while this page is open and you’re signed in. Nothing alerts anyone when it’s closed, so check at the set times.' : 'Nothing decided yet.'));
+      : h('p', { class: 'desk-empty' }, tab === 'open' ? 'Nothing is waiting. This list refreshes by itself while this tab is in view and you’re signed in. Nothing alerts anyone, open or closed, so check at the set times.' : 'Nothing decided yet.'));
   detailPane = detailPane && selected ? detailPane : h('section', { class: 'desk-detail' },
     h('p', { class: 'desk-empty' }, 'Choose a report to read it. Every report you open is recorded in the activity log.'));
   const body = h('div', { class: `desk-split${selected ? ' has-detail' : ''}` }, listPane, detailPane);

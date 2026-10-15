@@ -3,7 +3,8 @@
 //
 //   node tools/safety-eval.mjs                       what the screen does with every known phrasing
 //   node tools/safety-eval.mjs --export <file.csv>   a sheet for the clinical reviewers to label
-//   node tools/safety-eval.mjs --export <file.csv> --sample   the shorter sheet for one reviewer (REVIEWS.md, Tier A)
+//   node tools/safety-eval.mjs --export <file.csv> --sample   the shorter sheet with the full sheet's ids: for the developers only
+//                                                    (its ids give away which rows were undecided; the reviewer gets --display-ids)
 //   node tools/safety-eval.mjs --export <file.csv> --undecided   only the phrasings the developers couldn't call
 //   node tools/safety-eval.mjs --export <file.csv> --sample --display-ids <key.csv>
 //                                                    the shorter sheet again, shuffled afresh and numbered 1..108,
@@ -134,17 +135,33 @@ export function displayCsv(rows, ids) {
   const head = ['display_id', 'phrasing', 'clinician_1', 'clinician_2', 'agreed', 'notes'];
   return csvOf([head, ...displaySample(rows, ids).map((r) => [r.display_id, r.phrasing, '', '', '', ''])]);
 }
-/** The key from display ids to the full sheet's: for the developers, never the reviewer's pack. */
+/**
+ * The key from display ids to the full sheet's: for the developers, never the reviewer's pack. It carries each
+ * phrasing too, so a key that no longer matches the sheet that was sent (the fixture moved on) can't be used.
+ */
 export function displayKeyCsv(rows, ids) {
-  return csvOf([['display_id', 'full_sheet_id'], ...displaySample(rows, ids).map((r) => [r.display_id, r.id])]);
+  return csvOf([['display_id', 'full_sheet_id', 'phrasing'], ...displaySample(rows, ids).map((r) => [r.display_id, r.id, r.phrasing])]);
 }
-/** A labelled display sheet's rows with the full sheet's ids (`id`), so the labels drop straight into it. */
+/**
+ * A labelled display sheet's rows with the full sheet's ids (`id`), so the labels drop straight into it.
+ * Refuses a key with the wrong columns, an id that isn't a number, or a row whose phrasing isn't the key's:
+ * labels must never land on another phrasing's id.
+ */
 export function withSheetIds(displayRows, keyRows) {
-  const key = new Map(keyRows.map((k) => [String(k.display_id), String(k.full_sheet_id)]));
+  if (!keyRows.length || !['display_id', 'full_sheet_id', 'phrasing'].every((c) => c in keyRows[0])) {
+    throw new Error('the key needs the columns display_id, full_sheet_id and phrasing (made by --display-ids)');
+  }
+  const key = new Map(keyRows.map((k) => {
+    if (!/^\d+$/.test(String(k.display_id)) || !/^\d+$/.test(String(k.full_sheet_id))) throw new Error(`the key has a row that isn't two numbers: ${k.display_id}, ${k.full_sheet_id}`);
+    return [String(k.display_id), k];
+  }));
   return displayRows.map((r) => {
-    const id = key.get(String(r.display_id));
-    if (!id) throw new Error(`display id ${r.display_id} is not in the key`);
-    return { ...r, id };
+    const k = key.get(String(r.display_id));
+    if (!k) throw new Error(`display id ${r.display_id} is not in the key`);
+    if (normalisePhrasing(k.phrasing) !== normalisePhrasing(r.phrasing ?? '')) {
+      throw new Error(`display id ${r.display_id}: the key is for a different phrasing ("${k.phrasing}"). Use the key made with the sheet that was sent`);
+    }
+    return { ...r, id: String(k.full_sheet_id) };
   });
 }
 
@@ -156,7 +173,17 @@ export function withSheetIds(displayRows, keyRows) {
  */
 export const PROBE_SEED = 20261017;
 export function probeResults(rows) {
-  const ids = new Map(shuffle(rows.map((_, i) => i), PROBE_SEED).map((i, n) => [i, n + 1]));
+  // ids already given are kept, so labels on a blind sheet already sent still line up: only rows without one
+  // get a new id, after the highest (the first time, every row is numbered in a shuffled order)
+  const have = rows.filter((r) => /^\d+$/.test(String(r.id ?? '')));
+  let ids;
+  if (have.length === rows.length) ids = new Map(rows.map((r, i) => [i, Number(r.id)]));
+  else if (!have.length) ids = new Map(shuffle(rows.map((_, i) => i), PROBE_SEED).map((i, n) => [i, n + 1]));
+  else {
+    let next = Math.max(...have.map((r) => Number(r.id)));
+    ids = new Map(rows.map((r, i) => [i, /^\d+$/.test(String(r.id ?? '')) ? Number(r.id) : ++next]));
+  }
+  if (new Set(ids.values()).size !== rows.length) throw new Error('the probe has the same id twice');
   return rows.map((r, i) => ({ id: ids.get(i), ...Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'id' && k !== 'screen_now')), screen_now: outcome(r.phrasing) }));
 }
 export function probeResultsCsv(results) {
@@ -251,7 +278,9 @@ export function score(rows) {
   const idOf = (r) => r.id ?? r.display_id;
   const bad = rows.filter((r) => r.agreed && !LABELS.includes(r.agreed)).map((r) => `${idOf(r)}: "${r.agreed}"`);
   if (bad.length) throw new Error(`labels must be one of ${LABELS.join(', ')} (${bad.slice(0, 5).join('; ')})`);
-  const all = rows.map((r) => ({ ...r, id: idOf(r), now: outcomeDetail(r.phrasing ?? '').outcome }));
+  const all = rows.map((r) => { const d = outcomeDetail(r.phrasing ?? ''); return { ...r, id: idOf(r), now: d.outcome, code: d.code }; });
+  // a refusal that isn't a support screen ('unkind', 'contact', 'too-long'…) is never released to strangers
+  const released = (r) => r.now === 'release' && r.code === 'ok';
   const labelled = all.filter((r) => r.agreed && r.agreed !== 'unsure');
   const unsure = all.filter((r) => r.agreed === 'unsure');
   const risk = labelled.filter((r) => RISK.has(r.agreed));
@@ -259,8 +288,9 @@ export function score(rows) {
   const care = labelled.filter((r) => r.agreed === 'care');
   const caught = risk.filter((r) => RISK.has(r.now));
   const missed = risk.filter((r) => !RISK.has(r.now));
-  const heldBack = everyday.filter((r) => r.now !== 'release');
-  const careReleased = care.filter((r) => r.now === 'release');
+  const heldBack = everyday.filter((r) => !released(r));
+  const careReleased = care.filter(released);
+  const refused = all.filter((r) => r.now === 'release' && r.code !== 'ok');
   const misrouted = risk.filter((r) => RISK.has(r.now) && r.now !== r.agreed);
   const flagged = labelled.filter((r) => RISK.has(r.now));
   const confusion = {};
@@ -287,6 +317,7 @@ export function score(rows) {
     unsureRows: unsure.map((r) => ({ id: r.id, phrasing: r.phrasing, now: r.now })),
     misrouted: misrouted.map((r) => ({ id: r.id, phrasing: r.phrasing, agreed: r.agreed, now: r.now })),
     careReleased: careReleased.map((r) => ({ id: r.id, phrasing: r.phrasing, now: r.now })),
+    refused: refused.map((r) => ({ id: r.id, phrasing: r.phrasing, agreed: r.agreed || '', code: r.code })),
     awaitingAgreement: all.filter((r) => !r.agreed && (LABELS.includes(r.clinician_1) || LABELS.includes(r.clinician_2))).map((r) => r.id),
     counts: {
       sheet: count(all), labelled: count(labelled), unsure: count(unsure), risk: count(risk), caught: count(caught), missed: count(missed),
@@ -325,7 +356,7 @@ if (runAsCommand()) {
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, toCsv(rows, { only }));
     console.log(only
-      ? `Wrote ${only.size} of the ${rows.length} phrasings to ${file}, for one reviewer (docs/REVIEWS.md, Tier A). The ids are the full sheet's.`
+      ? `Wrote ${only.size} of the ${rows.length} phrasings to ${file}, with the full sheet's ids: a developer copy. Don't send it to a reviewer: its ids give away which rows were undecided. Send the --display-ids sheet instead.`
       : `Wrote ${rows.length} phrasings to ${file}, for two clinicians to label (${LABELS.join(' · ')}).`);
   } else if (arg('library')) {
     const file = arg('library');
@@ -359,11 +390,13 @@ if (runAsCommand()) {
     list('Missed', s.missed, (m) => `${m.id} (${m.agreed}, screen says ${m.now}): ${m.phrasing}`);
     list('Sent to the wrong screen (danger shown the writer’s own crisis screen, or crisis shown "Someone might be in danger"); counted as caught above', s.misrouted, (m) => `${m.id} (${m.agreed}, screen says ${m.now}): ${m.phrasing}`);
     list('Care the screen releases', s.careReleased, (m) => `${m.id}: ${m.phrasing}`);
+    list('Refused without a support screen (never released; the writer is asked to change it)', s.refused, (m) => `${m.id} (${m.agreed || 'unlabelled'}, ${m.code}): ${m.phrasing}`);
     list('Held back', s.falseAlarms, (f) => `${f.id} (screen says ${f.now}): ${f.phrasing}`);
     list('Unsure: each needs a check-in or a decision', s.unsureRows, (u) => `${u.id} (screen says ${u.now}): ${u.phrasing}`);
     list('The same phrasing more than once on the sheet', s.repeated, (r) => `ids ${r.ids.join(', ')} (labelled ${r.agreed.map((a) => a || 'blank').join(' / ')}${new Set(r.agreed).size > 1 ? ', DIFFERENTLY' : ''}): ${r.phrasing}`);
   } else if (arg('probe')) {
     const file = arg('probe');
+    if (arg('blind') && resolve(arg('blind')) === resolve(file)) fail('The blind sheet and the results must be different files: the blind sheet has none of the results.');
     const results = probeResults(parseCsv(readFileSync(file, 'utf8')));
     const baseline = Object.keys(results[0]).find((k) => k.startsWith('screen_') && k !== 'screen_now');
     if (!baseline) fail(`${file} needs a baseline column named screen_<commit>, e.g. screen_000c0cd.`);

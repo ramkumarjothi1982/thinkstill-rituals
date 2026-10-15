@@ -86,14 +86,17 @@ That makes 34 developer-filed risk rows, plus most of the undecided. An earlier 
 
 ## 4. What you'll send after a quote is accepted (not before)
 
-The pack is ready in the repository. **Send it in two parts.**
+The pack is ready in the repository. **Send it in three parts**, each only after the one before has come
+back, so nothing they read tells them what the screen does or what we expected.
 
-**Part 1, to label first:**
-- `docs/clinical/tier-a-sample-display.csv`: 108 rows, blind, with display ids. Keep `tier-a-display-key.csv` yourself.
-- For Option 2: `crisis-phrasings-for-review.csv`, 379 rows.
+**Part 1, to label first** (one sheet, never both):
+- Option 1: `docs/clinical/tier-a-sample-display.csv`, 108 rows, blind, with display ids. Keep `tier-a-display-key.csv` yourself, with the date you sent the sheet: the key is checked against the phrasings when their labels come back.
+- Option 2: `crisis-phrasings-for-review.csv`, all 379 rows. It already holds the 108, so don't send the shorter sheet as well: matching the two would reveal which rows were chosen.
 
-**Part 2, after they've labelled:**
-- `docs/clinical/tier0-probe-blind.csv`: the 246-phrasing probe, blind;
+**Part 1b, labelled before reading anything else:**
+- `docs/clinical/tier0-probe-blind.csv`: the 246-phrasing probe, blind. Send it on its own: our own results for it are in Part 2.
+
+**Part 2, after both are labelled:**
 - `docs/clinical/mallow-library-for-review.csv`: the 291 lines in use;
 - `docs/clinical/tier0-library-decisions.csv`: what Tier 0 changed in the library, and why;
 - screenshots of the support screens, *Support* and the crisis lines (`docs/screenshots/phase2/19-support-au.png` and others);

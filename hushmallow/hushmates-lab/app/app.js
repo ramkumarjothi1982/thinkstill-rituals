@@ -130,7 +130,8 @@ function resting(client) {
   const device = mount(client);
   device.env.retry = () => boot();
   device.start('away');
-  globalThis.addEventListener('online', () => boot().catch(() => {}), { once: true });
+  const again = () => { if (device._sheet) { setTimeout(again, 1500); return; } boot().catch(() => {}); };
+  globalThis.addEventListener('online', again, { once: true });
 }
 
 let booting = null;

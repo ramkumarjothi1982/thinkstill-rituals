@@ -36,14 +36,14 @@ export function you(dev) {
   const row = (test, ic, title, sub, onclick, cls = '') => h('button', { type: 'button', class: `hf-choice ${cls}`, dataset: { test }, onclick }, icon(ic), h('span', {}, h('strong', {}, title), sub ? h('small', {}, sub) : null));
   // section names are headings, so a screen reader can jump straight to "If you’re not okay"
   const section = (label, ...kids) => h('section', { class: 'hf-you-sec' }, h('h2', { class: 'kit-label' }, label), ...kids);
-  const promise = (ic, title, text) => h('li', { class: 'hf-promise' }, icon(ic), h('span', {}, h('strong', {}, title), ' ', text));
+  const promise = (ic, title, ...text) => h('li', { class: 'hf-promise' }, icon(ic), h('span', {}, h('strong', {}, title), ' ', ...text));
   const gifts = h('div', { class: 'hf-gifts', dataset: { test: 'gifts' } }, h('p', { class: 'hf-note' }, 'Loading…'));
 
   const head = h('div', { class: 'hf-head' }, top(dev, { title: 'You & safety', back: true }));
   const body = h('div', { class: 'hf-scroll hf-you-scroll' },
     h('section', { class: 'hf-you-id' },
       st.el,
-      h('p', { class: 'hf-you-name' }, p.pseudonym, hostNote(dev, 'account', { me })),
+      h('h1', { class: 'hf-you-name', 'data-autofocus': '' }, p.pseudonym, hostNote(dev, 'account', { me })),
       h('p', { class: 'hf-sub' }, 'Others never see this name. Your feelings and perspectives travel with no name at all.'),
       h('p', { class: 'hf-note hf-you-anon' }, h('strong', {}, 'Pseudonymous, not perfectly anonymous. '), 'Words can give people away, so leave out names, places and details. Our safety team can see reported words.'),
       h('button', { type: 'button', class: 'hf-link hf-link--centre', dataset: { test: 'privacy-link' }, onclick: () => privacySheet(dev) }, 'Privacy details')),
@@ -67,7 +67,7 @@ export function you(dev) {
         promise('sparkle', 'A possibility, not a verdict.', 'Perspectives offer another way of seeing, never a diagnosis, judgement or order.'),
         promise('heart', 'Five different people at most.', 'Never the author, one each, and never shown to the same person twice.'),
         promise('star', 'Mallow perspectives are labelled.', 'They’re chosen automatically from lines the Hushmates team wrote (only if you allow it), never presented as a person, and never counted as one.'),
-        promise('shield', 'Rules first, then people.', 'Words are checked for safety and personal details by rules that read English only and can miss things. Nobody on our team reads feelings as they travel. When something is reported, a person on our small safety team reads it, usually within a day or two. They aren’t counsellors, and they can’t see who anyone is or contact anyone.'),
+        promise('shield', 'Rules first, then people.', 'Words are checked for safety and personal details by rules that read English only and can miss things. Nobody on our team reads feelings as they travel, unless one is reported or an automatic check pauses it for a person to look at. When something is reported, a person on our small safety team reads it, usually within a day or two. They aren’t counsellors, and they can’t see who anyone is or contact anyone.'),
         promise('eyeOff', 'No scoreboards, no streaks.', 'Nothing here counts how popular you are.'))),
 
     section('Your data',

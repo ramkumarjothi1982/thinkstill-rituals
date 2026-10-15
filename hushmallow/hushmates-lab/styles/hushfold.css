@@ -326,7 +326,10 @@
 .hf-zero-mallow { display: grid; gap: 14px; justify-items: center; } .hf-zero-mallow > .hf-slide { justify-self: stretch; }
 
 /* ---------------------------------------------------------- welcome -- */
-.hf-welcome .hf-scroll { display: flex; flex-direction: column; justify-content: center; min-height: 100%; gap: 18px; padding-bottom: calc(28px + var(--hm-safe-bottom)); }
+/* centred with auto margins, not justify-content, so the scroller below the header never pushes its end out of reach */
+.hf-welcome .hf-scroll { display: flex; flex-direction: column; min-height: 0; gap: 18px; padding-bottom: calc(28px + var(--hm-safe-bottom)); }
+.hf-welcome .hf-scroll > :first-child, .hf-deleted-scroll > :first-child { margin-top: auto; }
+.hf-welcome .hf-scroll > :last-child, .hf-deleted-scroll > :last-child { margin-bottom: auto; }
 .hf-welcome-orb { min-height: clamp(96px, 30cqi, 150px); }
 .hf-tagline { margin: 0; font: 500 italic clamp(17px, 4.8cqi, 20px)/1.45 var(--hm-display); font-variation-settings: "SOFT" 100; color: var(--hm-ink-2); text-align: center; }
 .hf-steps { display: flex; justify-content: center; gap: 6px; margin: 4px 0 0; }
@@ -343,7 +346,7 @@
 .hf-promise strong { font-weight: 800; color: var(--hm-ink); font-family: var(--hm-ui); }
 .hf-link--centre { justify-self: center; align-self: center; }
 .hf-form { display: grid; gap: 10px; }
-.hf-welcome[data-step="2"] .hf-scroll { justify-content: flex-start; }
+.hf-welcome[data-step="2"] .hf-scroll > :first-child { margin-top: 0; }
 
 /* --------------------------------------------------- you, support, gone -- */
 .hf-you-scroll { gap: 26px; padding-bottom: calc(32px + var(--hm-safe-bottom)); }
@@ -366,7 +369,7 @@
 .hf-unsent .kit-ico { width: 20px; height: 20px; color: var(--room-deep, var(--hm-ink)); margin-top: 1px; }
 .hf-support .hf-scroll { gap: 16px; padding-bottom: calc(28px + var(--hm-safe-bottom)); }
 .hf-support .rl-support-list li { background: rgba(255,255,255,.78); }
-.hf-deleted-scroll { justify-content: center; gap: 18px; min-height: 100%; }
+.hf-deleted-scroll { gap: 18px; min-height: 0; }
 .hf-data-scroll { gap: 20px; padding-bottom: calc(32px + var(--hm-safe-bottom)); }
 .hf-data-scroll > .hf-stage { margin-inline: auto; }
 .hf-data-scroll .hf-copy { margin-top: 0; }

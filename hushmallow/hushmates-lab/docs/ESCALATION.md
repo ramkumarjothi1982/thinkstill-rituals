@@ -59,7 +59,7 @@ and *Get support now* is on every screen.
 These go to the top of the queue, marked *Priority*. In order:
 
 1. **Read the words first.** The desk never shows who anyone is, and it can't contact anyone.
-2. **If it's a feeling, take it out of circulation** (*Take it out of circulation*) unless it clearly isn't about danger. A "Someone may be in danger" report has already paused it. Nobody else is offered it, and it goes home to its writer with whatever came back. **If it's a perspective, remove it** (*Remove the perspective*).
+2. **If it's a feeling, take it out of circulation** (*Take it out of circulation*) unless it clearly isn't about danger. A "Someone may be in danger" report usually pauses it, but not always (a second report from the same person doesn't): check, and take it out of circulation if it's still travelling. Nobody else is offered it, and it goes home to its writer with whatever came back. **If it's a perspective, remove it** (*Remove the perspective*).
 3. **If the words point to immediate danger AND the team independently holds information that identifies the person** (for example, they emailed us directly), call **000** and give what you know. This is expected to be very rare: the desk shows no identities.
 4. **Write what you saw and did in the team notes** (no diagnosis, no guesses about who it is), and **tell the safety lead today**. If you can't decide, ring the safety lead now.
 5. **If the screen should have caught these words**, add a paraphrase (never their words) to the review list for the next batch (`CRISIS_DETECTION.md` §3, step 5). The words should have been answered with support when they were written.

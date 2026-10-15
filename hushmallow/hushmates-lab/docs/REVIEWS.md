@@ -139,7 +139,8 @@ For your information only (the sheet stays blind, so the reviewer doesn't see th
 - Today the screen releases 36 of the 54 rows, gives crisis support for 17, and the "care" screen for 1 (`node tools/safety-eval.mjs`).
 - The 36 released are where Tier A's answers matter most.
 - The 54 settled rows are 28 crisis, 2 crisis-not-care, 3 danger, 1 care and 20 everyday. They are a spot-check of the developers' decisions, not the hardest or most representative phrasings: the 379 were written alongside the rules, and whole categories have none (`CRISIS_DETECTION.md` §3, step 5).
-- **After the blind labelling**, the reviewer gets the Tier 0 probe as a separate, supplementary sheet: `docs/clinical/tier0-probe-blind.csv`, 246 developer-written phrasings written apart from the rules, with no outcomes. It isn't in the hours above: agree with the reviewer how much of it to label.
+- **After the blind labelling, and before the pack**, the reviewer gets the Tier 0 probe on its own as a supplementary sheet: `docs/clinical/tier0-probe-blind.csv`, 246 developer-written phrasings written apart from the rules, with no outcomes. Our own results for it are in `TIER0_SELF_ASSESSMENT.md`, which goes with the pack afterwards. It isn't in the hours above: agree with the reviewer how much of it to label.
+- **Never send `tier-a-sample-for-review.csv`** (from plain `--export --sample`): it's a developer copy whose ids give away which rows were undecided. For the full review, send only the 379-row sheet, not the 108 as well.
 
 **The leaner version:**
 - the reviewer labels only the 54 undecided rows (`--export <file> --undecided`);

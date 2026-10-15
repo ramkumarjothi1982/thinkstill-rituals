@@ -196,7 +196,8 @@ export class Device {
 }
 
 function trapFocus(panel, e) {
-  const items = [...panel.querySelectorAll('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])')].filter((x) => !x.disabled && x.offsetParent !== null);
+  const items = [...panel.querySelectorAll('button, [href], input, textarea, select, summary, [tabindex]:not([tabindex="-1"])')]
+    .filter((x) => !x.disabled && x.getClientRects().length && !x.closest('details:not([open]) > :not(summary)'));
   if (!items.length) return;
   const first = items[0]; const last = items[items.length - 1];
   if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }

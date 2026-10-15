@@ -188,7 +188,7 @@ export function journey(dev, { id } = {}) {
           put(reveal, h('div', { class: 'hf-care' }, supportBody(f.support)));
         } else {
           speech.say({
-            safety: 'I won’t offer a perspective on this one. If things feel heavy, real people are there to listen: Get support is at the top of the screen.',
+            safety: 'I won’t offer a perspective on this one. If things feel heavy, real people are there to listen: tap Support at the top of the screen.',
             withdrawn: 'You let this feeling go before I answered.',
           }[f.reason] || 'I couldn’t find the words this time. Your feeling keeps travelling, and people may still catch it.');
         }

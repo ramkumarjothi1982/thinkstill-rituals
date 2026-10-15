@@ -151,8 +151,13 @@ async function supportHere(p, where) {
   if (!(await pill.count())) { check(false, `“Support” is in the header on the ${where}`); return; }
   await pill.click();
   await p.locator('.hm-sheet [data-test="support-resources"]').waitFor({ timeout: 10000 });
-  const tels = await p.locator('.hm-sheet [data-test="support-call"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-  check(['tel:000', 'tel:131114', 'tel:1800737732'].every((t) => tels.includes(t)), `“Support” on the ${where}: 000, Lifeline and 1800RESPECT can be tapped (${tels.join(' ')})`);
+  const visibleTels = () => p.locator('.hm-sheet [data-test="support-call"]:visible').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  const first = await visibleTels();
+  check(['tel:000', 'tel:131114', 'tel:1300659467', 'tel:139276'].every((t) => first.includes(t)) && !first.includes('tel:1800737732'),
+    `“Support” on the ${where}: 000, Lifeline, Suicide Call Back and 13YARN can be tapped straight away (${first.join(' ')})`);
+  await p.locator('.hm-sheet .rl-support-more > summary').click();
+  const all = await visibleTels();
+  check(['tel:1800737732', 'tel:1300224636'].every((t) => all.includes(t)), `and 1800RESPECT and Beyond Blue one tap further, under “More support lines”`);
   await p.locator('.hm-sheet-close').click();
   await p.locator('.hm-sheet').waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
 }
@@ -193,6 +198,10 @@ async function welcome(page, { catching = false } = {}) {
   await hook(page, 'welcome').waitFor();
   for (let i = 0; i < 6 && await page.locator('[data-test="welcome-next"]:visible').count(); i++) { await hook(page, 'welcome-next').click(); await settle(page, 450); }
   if (catching) await hook(page, 'welcome-catching').click();
+  // the last promise before entering names the numbers, and they can be tapped
+  const promise = page.locator('.hf-promise', { hasText: 'Not an emergency service' });
+  check(await promise.locator('a[href="tel:000"]').count() === 1 && await promise.locator('a[href="tel:131114"]').count() === 1
+    && /call 000, or Lifeline on 13 11 14, any time/.test(await promise.innerText()), 'the welcome’s emergency promise names 000 and Lifeline, and both can be tapped');
   await hook(page, 'welcome-enter').click();
   await hook(page, 'feeling-text').waitFor();
 }
@@ -701,8 +710,12 @@ try {
   // "Get support now" carries the same tappable lines, any time
   await hook(page, 'open-support').click();
   await page.locator('.hm-sheet [data-test="support-resources"]').waitFor({ timeout: 10000 });
-  const lines = await page.locator('.hm-sheet [data-test="support-call"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-  check(['tel:000', 'tel:131114', 'tel:1300659467', 'tel:139276', 'tel:1800737732', 'tel:1300224636'].every((t) => lines.includes(t)), `“Get support now”: 000, Lifeline, Suicide Call Back, 13YARN, 1800RESPECT and Beyond Blue can be tapped (${lines.join(' ')})`);
+  await page.locator('.hm-sheet .rl-support-more > summary').click();
+  const lines = await page.locator('.hm-sheet [data-test="support-call"]:visible').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  check(['tel:000', 'tel:131114', 'tel:1300659467', 'tel:139276', 'tel:1800737732', 'tel:1300224636'].every((t) => lines.includes(t)), `“Get support now” in You & safety: 000, Lifeline, Suicide Call Back, 13YARN, and under “More support lines” 1800RESPECT and Beyond Blue, can be tapped (${lines.join(' ')})`);
+  // keyboard: Tab never leaves the open sheet, with "More support lines" open or closed
+  for (let i = 0; i < 14; i++) await page.keyboard.press('Tab');
+  check(await page.evaluate(() => !!document.activeElement?.closest('.hm-sheet')), 'Tab stays inside the support sheet');
   await page.locator('.hm-sheet-close').click();
   await page.locator('.hm-sheet').waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
   await hook(page, 'open-data').click();

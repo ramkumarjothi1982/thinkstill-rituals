@@ -38,7 +38,7 @@ function numberedSteps(md) {
 // each step's key phrases, in order: they must appear in the guide's step and in the doc's step
 const KEY_PHRASES = [
   ['read the words first', 'never shows who anyone is', "can't contact anyone"],
-  ["if it's a feeling, take it out of circulation", "unless it clearly isn't about danger", '"someone may be in danger" report has already paused it', "if it's a perspective, remove it"],
+  ["if it's a feeling, take it out of circulation", "unless it clearly isn't about danger", '"someone may be in danger" report usually pauses it', "if it's a perspective, remove it"],
   ['if the words point to immediate danger and the team independently holds information that identifies the person', 'for example, they emailed us directly', 'call 000', 'give what you know'],
   ['write what you saw and did in the team notes', 'no diagnosis, no guesses about who it is', 'tell the safety lead today', "if you can't decide, ring the safety lead now"],
   ['if the screen should have caught these words', 'add a paraphrase (never their words) to the review list'],
@@ -130,7 +130,7 @@ test('the desk’s list shows the overdue badge in words, with a screen-reader l
 });
 
 test('the desk says honestly when reports appear, and the team note reminds what to write', () => {
-  assert.ok(desk.includes('New reports appear here by themselves while this page is open and you’re signed in. Nothing alerts anyone when it’s closed, so check at the set times.'));
+  assert.ok(desk.includes('This list refreshes by itself while this tab is in view and you’re signed in. Nothing alerts anyone, open or closed, so check at the set times.'));
   assert.ok(!desk.includes('New reports appear here by themselves.'), 'the unqualified line is gone');
   const label = desk.slice(desk.indexOf("h('label', { for: 'resolve-note' }"), desk.indexOf('note,', desk.indexOf("h('label', { for: 'resolve-note' }")));
   assert.ok(label.includes('What you saw and did. No diagnosis, no guesses about who anyone is.'), 'the reminder is part of the note field’s label');

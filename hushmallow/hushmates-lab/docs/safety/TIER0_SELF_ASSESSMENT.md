@@ -156,7 +156,7 @@ Pinned in `tests/tier0-screen.test.mjs`. The 325 developer decisions and 54 unde
   - The probe is the only evidence written apart from the rules. Tuning the rules on it would destroy its value as a test.
   - New patterns also bring new false alarms (risk S2). A clinician should weigh that.
 - **What happens instead:**
-  - The probe goes to Tier A as a supplementary blind sheet, after the main labelling.
+  - The probe goes to Tier A as a supplementary blind sheet, on its own, after the main labelling and before this report (which shows our results for it).
   - New categories (threats to others, a minor disclosing, eating disorders, an overdose already taken, third-party emergencies) need routes and wording that Tier A designs.
   - The owner can choose to bring a developer batch forward (D18 in `DECISIONS.md`).
 
@@ -293,7 +293,7 @@ The team beta is people the owner knows, by invitation.
 - `docs/clinical/tier0-library-decisions.csv`: all 123 decisions, before and after, with reasons.
 - `docs/clinical/mallow-library-for-review.csv`: the 291 lines in use, for Tier A.
 - `docs/clinical/tier0-probe-results.csv`: the 246 probe phrasings and outcomes (developer-written).
-- `docs/clinical/tier0-probe-blind.csv`: the same, with no outcomes, for the reviewer after the main labelling.
+- `docs/clinical/tier0-probe-blind.csv`: the same, with no outcomes, for the reviewer after the main labelling and before the pack.
 - `docs/clinical/tier-a-sample-display.csv`: the Tier A sheet with display ids. Its key, `tier-a-display-key.csv`, isn't sent.
 
 **Tests:**

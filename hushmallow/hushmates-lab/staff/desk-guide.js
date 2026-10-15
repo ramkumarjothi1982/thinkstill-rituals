@@ -28,7 +28,7 @@ export const URGENT_GUIDE = {
   // In this order, the same as docs/ESCALATION.md §3 (tests/desk-guide.test.mjs checks they match).
   steps: [
     'Read the words first. The desk never shows who anyone is, and it can’t contact anyone.',
-    'If it’s a feeling, take it out of circulation unless it clearly isn’t about danger (a “Someone may be in danger” report has already paused it). If it’s a perspective, remove it.',
+    'If it’s a feeling, take it out of circulation unless it clearly isn’t about danger (a “Someone may be in danger” report usually pauses it, but not always: check, and take it out of circulation if it’s still travelling). If it’s a perspective, remove it.',
     'If the words point to immediate danger and the team independently holds information that identifies the person (for example, they emailed us directly), call 000 and give what you know.',
     'Write what you saw and did in the team notes (no diagnosis, no guesses about who it is), and tell the safety lead today. If you can’t decide, ring the safety lead now.',
     'If the screen should have caught these words, add a paraphrase (never their words) to the review list.',

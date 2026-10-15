@@ -154,7 +154,7 @@ node tools/sync-edge.mjs --check             # the Edge Function's shared copies
 node --test v1-messaging/tests/*.test.mjs   # 32 (archived v1)
 node tools/shots.cjs <out-dir> http://localhost:8000   # the lab: interface QA (the repository root served on :8000, see The lab)
 HUSHMATES_DENO=<deno> npm run staging:rehearse        # the staging E2E on this machine, across two hosts (npm run staging:rehearse:node without Deno)
-node tools/safety-eval.mjs                   # what the safety screen does with every known phrasing (--export, --sample, --library, --labels)
+node tools/safety-eval.mjs                   # what the safety screen does with every known phrasing (--export, --sample --display-ids, --library, --labels, --probe)
 node tools/cost-model.mjs                    # the cost tables in docs/COSTS.md
 ```
 
@@ -261,7 +261,7 @@ tests/       the reference engine, the real database (differential, races, acces
 tools/       build-app.mjs (app and desk builds, scan, deploy config), app-shots.mjs (end to end), sync-edge.mjs, shots.cjs (lab QA),
              pack-site.mjs (the static host's folder), staging-secrets.mjs, staging-preflight.mjs, staging-check.mjs (the real
              project, checked from outside), recovery-drill.mjs (a backup restored and read), safety-eval.mjs (the screen against
-             a reviewer's labels; --sample for the Tier A sheet), staging-deploy.mjs (the guarded deploy), staging-env.mjs
+             a reviewer's labels; --sample --display-ids for the Tier A sheet, --probe for the Tier 0 probe), staging-deploy.mjs (the guarded deploy), staging-env.mjs
              (secrets from a root, SQL and keys through the Management API), staging-e2e.mjs (real browsers on staging;
              --rehearse locally), cost-model.mjs (costs by scale)
 server/      … edge-local.ts (the real Edge Function under Deno), postgrest-emulator.mjs (a local stand-in for PostgREST)

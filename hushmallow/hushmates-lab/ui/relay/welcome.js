@@ -93,7 +93,7 @@ export function welcome(dev) {
       go(0);
     } else {
       const enter = h('button', { type: 'button', class: 'kit-btn kit-btn--ink kit-btn--lg kit-btn--block', disabled: !choice.adult, dataset: { test: 'welcome-enter' }, onclick: () => finish() }, 'Enter Hushmates');
-      const promise = (ic, title, text) => h('li', { class: 'hf-promise' }, icon(ic), h('span', {}, h('strong', {}, title), ' ', text));
+      const promise = (ic, title, ...text) => h('li', { class: 'hf-promise' }, icon(ic), h('span', {}, h('strong', {}, title), ' ', ...text));
       speech.say('A few promises, before we begin.');
       put(body,
         st.el,
