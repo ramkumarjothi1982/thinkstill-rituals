@@ -448,6 +448,20 @@ test('L11 suggestions() offers a kept tune', async () => {
   await flush();
 });
 
+test('L11 suggestions() offers only the newest kept tune, so other favourites and offers keep their places', async () => {
+  const dna = await new ComfortDNA(new MemoryComfortStore()).load();
+  dna.set('comfort', ['breathe']);
+  dna.toggleFavourite({ kind: 'pocket', id: 'gentle-glow' });
+  const tunes = ['00n75', '00n7501n96', '00n7501n9602n97'].map((motif) => tune({ friend: undefined, motif }));   // three Boppo tunes
+  for (const t of tunes) dna.toggleFavourite(t);
+  const s = dna.suggestions(3);
+  assert.deepEqual(s.map((x) => `${x.kind}:${x.reason}`), ['hushbeat:favourite', 'pocket:favourite', 'pocket:helps']);
+  assert.equal(s[0].motif, tunes[2].motif, 'the newest tune');
+  assert.equal(s[1].id, 'gentle-glow'); assert.equal(s[2].id, 'soft-breath');
+  assert.equal(dna.suggestions(12).filter((x) => x.kind === 'hushbeat').length, 1, 'never two tunes, however long the list');
+  await flush();
+});
+
 // ======================================================== L12 prefs.js ==
 test('L12 prefs: musicVisualOnly and nightlight defaults, persistence and reset', () => {
   assert.equal(DEFAULTS.musicVisualOnly, false);
@@ -803,6 +817,33 @@ test('L6 rest: stops and suspends, blocks the resume in _visibility; unlock clea
     restore.setHidden(false); assert.equal(c.state, 'running', 'without rest the page resumes as before');
     s.setMuted(true); s.rest(); s.setMuted(false);
     assert.equal(s.resting, false, 'unmuting from a tap unlocks, which clears resting');
+  } finally { done(); }
+});
+
+test('L6 wake: leaves a rest behind without a gesture; nothing while muted or hidden; a no-op when not resting', async () => {
+  const { s, c, restore, done } = await fakeEngine();
+  try {
+    restore.setActive(false);   // a route change from Back: no gesture
+    const r0 = c.calls.resume;
+    s.wake();
+    assert.equal(c.calls.resume, r0, 'not resting: nothing to do');
+    s.rest(); await flush();
+    assert.equal(c.state, 'suspended');
+    s.wake(); await flush();
+    assert.equal(s.resting, false); assert.equal(c.state, 'running'); assert.equal(c.calls.resume, r0 + 1);
+    assert.equal(s.ready, true, 'the next screen\'s first touch sounds');
+    s.rest(); s.setMuted(true); await flush();
+    const r1 = c.calls.resume;
+    s.wake();
+    assert.equal(s.resting, false); assert.equal(c.calls.resume, r1, 'muted: no resume');
+    assert.equal(c.state, 'suspended');
+    s.setMuted(false); restore.setActive(true); s.unlock(); await flush();
+    s.rest(); restore.setHidden(true); await flush();
+    const r2 = c.calls.resume;
+    s.wake();
+    assert.equal(s.resting, false); assert.equal(c.calls.resume, r2, 'hidden: no resume');
+    restore.setHidden(false); await flush();
+    assert.equal(c.state, 'running', 'the page coming back resumes, as without rest');
   } finally { done(); }
 });
 

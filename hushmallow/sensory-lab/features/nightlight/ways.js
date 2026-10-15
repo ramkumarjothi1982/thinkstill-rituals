@@ -134,7 +134,7 @@ export const NIGHT_WAYS = F({
   zuzu: F({
     world: 'spiral-observatory', warmthBias: 0, mood: null, closedEyes: false,
     greet: F({ kind: 'swirl', at: 1.5, overlay: F({ spin: 0.5, spiralHue: 0.3 }), dur: 2 }),
-    sign: F({ min: F({ lidTop: 0.32 }), drowse: F({ spin: F([0.25, 0.04]) }) }),                // heavy lids; spirals slow as it gets sleepy
+    sign: F({ min: F({ lidTop: 0.45 }), drowse: F({ spin: F([0.25, 0.04]) }) }),                // heavy lids; spirals slow as it gets sleepy
     set: F({ spin: 0.25 }), fx: F({}),
     stretch: F({ style: 'tall', overlay: F({ spin: 0.3 }) }),
     tapReact: null, voice: 'coo', grumble: false,

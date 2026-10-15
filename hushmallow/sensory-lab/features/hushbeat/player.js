@@ -11,8 +11,11 @@
 //   press down / second finger   it ducks under a warm bass
 //   stroke     it becomes the first note of a phrase
 // Button and key paths (Companion.act) arrive with no contact, so they strike
-// their own note. A watchdog ends anything left hanging (a pointercancel on a
-// pending pointer emits no gesture at all).
+// their own note (marked tip: false: no fingertip, so its bead rises above the
+// head). The held Hum and Bass chips and the H and S keys are layers beside the
+// touch (layer()): notes, strokes and holds on the body keep playing over them,
+// and no touch ends them. A watchdog ends anything left hanging (a
+// pointercancel on a pending pointer emits no gesture at all).
 
 import { clamp } from '../../core/math.js';
 
@@ -21,6 +24,10 @@ const STUCK_S = 0.6;    // a state this old with nothing touching the stage is s
 const PRESS_PX = 20;    // a drag this far down presses (bass) instead of bending
 const REUSE_S = 0.15;   // a stroke reuses a contact note this fresh as its first note
 const BUTTON = 0.7;     // velocity base for button and key notes
+const LAYER_Y = 0.75;   // a held Hum chip or H: the hum's top note from high on the body
+const RAMP = 2;         // a held Bass chip or S: its bass swells by this much a second…
+const RAMP_MAX = 0.7;   // …to this (as the Companion's button squeeze does)
+const BASS = new Set(['pressing', 'pressHold', 'squeezing']);   // touch states that hold the bass
 
 /** Body-relative point: y01 0 at the base (belly, low notes) → 1 at the top (head, high); x01 −1..1 across. */
 export function bodyPoint(geo, x, y) {
@@ -39,9 +46,32 @@ export class Player {
     this.id = null;         // the current gesture's note
     this.strikeT = -Infinity;
     this.tail = null;       // { t } when a gesture just ended (a paired event may follow at once)
+    this.btn = { pad: false, bass: false };   // layers held by a chip or a key (beside the touch)
+    this.btnT = 0;          // when the held bass began (its swell)
   }
 
   get state() { return this._state; }
+
+  /** Does a touch gesture hold this layer ('pad' | 'bass') right now? */
+  holds(kind) { return kind === 'pad' ? this._state === 'sustaining' : BASS.has(this._state); }
+
+  /**
+   * A layer held by a chip or a key (the Hum or Bass chip, H or S), on or off. It lives beside the touch:
+   * the touch state machine stays free, so taps, strokes and holds on the body keep playing over it, and
+   * no touch gesture ends it. A layer a finger already holds is shared (the one let go last ends it).
+   * → true when it changed.
+   */
+  layer(kind, on) {
+    const b = this.btn, p = this.part;
+    on = !!on;
+    if ((kind !== 'pad' && kind !== 'bass') || b[kind] === on) return false;
+    b[kind] = on;
+    if (kind === 'bass' && on) this.btnT = this.now();
+    if (this.holds(kind)) return true;   // a finger holds it too: it carries on with the finger
+    if (kind === 'pad') { if (on) p.padStart({ y01: LAYER_Y }); else p.padEnd(); }
+    else if (on) p.bassStart(0); else p.bassEnd();
+    return true;
+  }
 
   _go(s) { this._state = s; this.since = this.now(); }
   _pt(x, y) { const g = this.geo(); return g && x != null && y != null ? bodyPoint(g, x, y) : { y01: 0.5, x01: 0 }; }
@@ -65,19 +95,20 @@ export class Player {
       }
       case 'tap':
         if (s === 'struck') p.ring(this.id);
-        else if (s === 'idle') this.id = p.strike({ ...this._pt(d.x, d.y), vel: BUTTON });
+        else if (s === 'idle') this.id = p.strike({ ...this._pt(d.x, d.y), vel: BUTTON, tip: false });
         else return;
         this._go('idle');
         return;
       case 'doubletap':
         if (s === 'struck') p.chord(this.id);
-        else if (s === 'idle') { this.id = p.strike({ ...this._pt(d.x, d.y), vel: BUTTON }); p.chord(this.id); }
+        else if (s === 'idle') { this.id = p.strike({ ...this._pt(d.x, d.y), vel: BUTTON, tip: false }); p.chord(this.id); }
         else return;
         this._go('idle');
         return;
       case 'holdstart':
-        if (s === 'struck') p.bloom(this.id);
-        else if (s === 'idle') p.padStart(this._pt(d.x, d.y));
+        // a hum already held by a chip or H: the contact note just rings inside it (no second hum)
+        if (s === 'struck') { if (this.btn.pad) p.ring(this.id); else p.bloom(this.id); }
+        else if (s === 'idle') { if (!this.btn.pad) p.padStart(this._pt(d.x, d.y)); }
         else return;
         this._go('sustaining');
         return;
@@ -86,14 +117,14 @@ export class Player {
         return;
       case 'holdend':
         if (s !== 'sustaining') return;
-        p.padEnd();
+        if (!this.btn.pad) p.padEnd();   // a chip's or key's hum stays
         this._ended();
         return;
       case 'dragstart':
         if (s === 'struck') p.bendStart(this.id);
         else if (s === 'idle' && this._fresh()) p.bendStart(null);   // a hold broke into a drag: silent, it may still press
         else if (s === 'idle') {                                      // T key / auto stretch: a note to bend
-          this.id = p.strike({ ...this._pt(d.x0 ?? d.x, d.y0 ?? d.y), vel: BUTTON });
+          this.id = p.strike({ ...this._pt(d.x0 ?? d.x, d.y0 ?? d.y), vel: BUTTON, tip: false });
           this.strikeT = this.now();
           p.bendStart(this.id);
         } else return;
@@ -113,7 +144,7 @@ export class Player {
           else { p.bendEnd({ fling: !!d.fling && !d.cancelled }); this._ended(); }
         } else if (s === 'pressing') {
           if (d.cancelled) this._go('pressHold');   // a second finger: the press's bass carries on into the squeeze
-          else { p.bassEnd(); this._ended(); }
+          else { if (!this.btn.bass) p.bassEnd(); this._ended(); }
         }
         return;
       case 'strokestart': {
@@ -139,15 +170,15 @@ export class Player {
         if (s === 'squeezing') return;
         if (s === 'struck' || (s === 'idle' && this._fresh())) p.duck(this.id);
         else if (s !== 'idle') this._endLayers();   // the wheel while something else is held
-        p.bassStart(0);
+        if (!this.btn.bass) p.bassStart(0);          // a chip's or key's bass carries the squeeze (no second bass)
         this._go('squeezing');
         return;
-      case 'squeeze':
+      case 'squeeze':   // only this player's own squeeze (never a held chip's button squeeze on the face)
         if (s === 'squeezing') p.bassAmount(Math.max(0, +d.amount || 0));
         return;
       case 'squeezeend':
         if (s !== 'squeezing') return;
-        p.bassEnd();
+        if (!this.btn.bass) p.bassEnd();
         this._ended();
         return;
       default:
@@ -159,14 +190,16 @@ export class Player {
     const k = Math.round(+n);
     if (!(k >= 1 && k <= 7)) return null;
     const V = this.part.V;
-    return this.part.strike({ deg: V.tapLo + k - 1, vel: BUTTON, y01: (k - 1) / 6, x01: 0 });
+    return this.part.strike({ deg: V.tapLo + k - 1, vel: BUTTON, y01: (k - 1) / 6, x01: 0, tip: false });
   }
 
   /**
    * Call every frame. busy: the stage still has pointers or a held Companion gesture (computed by the
-   * feature). Anything not idle, older than 600 ms, with nothing touching, ends → true.
+   * feature). Anything not idle, older than 600 ms, with nothing touching, ends → true. A held chip's or
+   * key's bass swells here too (to 0.7 over 0.35 s) while no finger sets its amount.
    */
   watchdog(t = this.now(), busy = false) {
+    if (this.btn.bass && !this.holds('bass')) this.part.bassAmount(Math.min(RAMP_MAX, (t - this.btnT) * RAMP));
     const s = this._state;
     if (s === 'idle' || busy) return false;
     if (s !== 'pressHold' && s !== 'handoff' && t - this.since < STUCK_S) return false;
@@ -174,12 +207,13 @@ export class Player {
     return true;
   }
 
+  // the touch's own layers (a layer a chip or key also holds stays)
   _endLayers() {
     const p = this.part;
     switch (this._state) {
-      case 'sustaining': p.padEnd(); break;
+      case 'sustaining': if (!this.btn.pad) p.padEnd(); break;
       case 'bending': p.bendEnd({}); break;
-      case 'pressing': case 'pressHold': case 'squeezing': p.bassEnd(); break;
+      case 'pressing': case 'pressHold': case 'squeezing': if (!this.btn.bass) p.bassEnd(); break;
       case 'phrasing': p.phraseEnd(); break;
       default:
     }
@@ -187,6 +221,13 @@ export class Player {
 
   _endAll() { this._endLayers(); this.tail = null; this._go('idle'); }
 
-  /** Back to idle, ending anything this player holds (a no-op after engine.releaseAll()). */
-  reset() { this._endAll(); this.id = null; this.strikeT = -Infinity; }
+  /** Back to idle, ending anything this player holds, chip and key layers included (a no-op after engine.releaseAll()). */
+  reset() {
+    const b = this.btn, pad = b.pad && !this.holds('pad'), bass = b.bass && !this.holds('bass');
+    b.pad = false; b.bass = false;
+    this._endAll();
+    if (pad) this.part.padEnd();
+    if (bass) this.part.bassEnd();
+    this.id = null; this.strikeT = -Infinity;
+  }
 }

@@ -28,34 +28,50 @@ engine, Comfort DNA) are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 | Input | Music | Light and movement | Without touch |
 |---|---|---|---|
-| Touch on the body | one note, **at contact** (no added delay); height sets the register, x the pan | a bead rises from the finger; the mouth opens | — |
+| Touch on the body | one note, **at contact** (no added delay); height sets the register, x the pan | a bead rises from the finger (a key's or chip's note, with no finger, from just above the head); the mouth opens | — |
 | Tap | the contact note rings (re-struck if audio was still locked) | the usual tap reaction | Enter/Space, **Note**, digits 1–7 |
 | Double tap | the note rolls into a chord on the next 16ths | three beads in an arc | D, **Chord** |
 | Hold | the note blooms into a hum (the chord, 0.8 s attack), breathing with the clock | glow, the ring brightens, the realm transforms | H held, **Hum** |
 | Squeeze / press down / wheel | a warm bass on the chord root (the note ducks under it) | squash, cheeks puff, the floor glow widens, one ripple a bar | S held, **Bass** |
-| Stroke | a phrase on the Mallow's grid while the finger moves | a soft trail behind the finger | P, **Tune** |
+| Stroke | a phrase on the Mallow's grid while the finger moves | a trail behind the finger (a dark rim, a colour core, a white light: readable on any body); P and Tune draw theirs across the forehead | P, **Tune** |
 | Drag up | the note bends up to +2 scale steps, then snaps to a scale tone | the bead stretches | T |
-| Still press off the body (300 ms) | leads the breath: the in-breath opens the hums; the measured breath sets the tempo from the next bar (≤ 8 % a bar) | the ring follows you | B held, **Breathe** |
+| Still press off the body (300 ms) | leads the breath: the in-breath opens the hums; the measured breath sets the tempo from the next bar (≤ 8 % a bar); a lead let go within 0.6 s was a tap and measures nothing | the ring follows you | B held, **Breathe** |
 | Duet | the friend plays in the lead's key: notes within 400 ms harmonise (3rds/6ths, else 5ths/octaves), two hums bloom into one chord, two basses sit a 5th or an octave apart, strokes run in parallel, a phrase or chord gets an answer | an arc of light between the heads; they glance, blush and lean in | **Both** target, G, Tab between stages |
 
 Keys act on the stage that has keyboard focus (Tab moves between the two stages in a duet). R replays or
 stops, K keeps, G plays both together, Escape leaves (a second Escape leaves at once; an open sheet closes first).
+With Ctrl, Alt or Cmd, digits, H and S stay the browser's (tab switching, history).
+
+**Layers build.** A held **Hum** or **Bass** (the chip, H or S) is a layer beside the touch, not a touch: taps,
+strokes, holds and the Note, Chord and Tune chips keep playing over it (the engine keeps them consonant), and no
+touch ends it. A hold on the body under a held hum rings its note inside it; a pinch under a held bass ducks
+its note and sets the amount (no second bass). A layer a finger and a chip both hold ends when the last lets go.
+A quick tap on Hum or Bass still plays a short layer (1.2 s: a hum needs time to swell). The held chips carry a
+small ring that fills while held, and their names say "hold". Held keys let go when the window loses focus or a
+sheet opens.
+
+**Two hands.** A breath lead off the body and a touch on it stay two things: a finger landing on the body
+cancels a still, pending off-body pointer on that stage (the breath router still claims it at 300 ms), and an
+off-body pointer landing while that Mallow is being touched never reaches its stage. A pinch whose first finger
+lands just outside the outline therefore plays as a single touch (the hit test is generous).
 
 ### Screen
 
 - **Top bar:** Close · *Hushbeat* and the subtitle (`Boppo`, `Boppo & Loomi`, plus ` · Visual only`) · **♪**
   (opens *Sound and pace*) · Mute.
-- **Bottom:** the hint (hidden on short screens and while the tray is open; each cue stays whole and two lines
-  balance), the gesture tray (behind **Buttons**; in a duet it starts with the target **[Lead | Both | Friend]**),
-  and one row: **Play it** (a kept tune opened from home),
-  **Buttons**, **Replay ⇄ Stop**, **★ Keep ⇄ Kept**, **Friend**. Replay and Keep appear once a take has three
-  events; the row only grows wider, so the Mallow is never re-framed.
+- **Bottom:** the hint (with a tight halo in the world's ink; hidden on short landscape screens and while the
+  tray is open; at ≤ 360 px wide only the bold words, one line; each cue stays whole and two lines balance), the gesture tray (behind **Buttons**; in a duet it starts with the target **[Lead | Both | Friend]**),
+  and one row: **Play it** (a kept tune opened from home; the row's only solid fill),
+  **Buttons**, **Replay ⇄ Stop**, **★ Keep ⇄ Kept**, **Friend** (a pressed toggle is outlined). Replay and Keep
+  appear once a take has three events; the row only grows wider, so the Mallow is never re-framed.
 - **Phones:** the hand chip is icon-only at ≤ 440 px wide; Keep and Friend too at ≤ 360 px (and on screens
   ≤ 360 px tall). In portrait up to 520 px wide the tray is an even grid, nothing scrolled out of sight: Note,
   Chord, Tune (what you tap) above Bass, Hum, Breathe (what you hold), with a duet's target on its own row
   above. In short landscape the tray and the row share a line (the tray as wide as its chips, scrolling with
-  edge fades when a duet's does not fit).
-- **Duet:** two half-width stages (on desktop a centred pair of `min(50%, 440px)`), one floor. A friend
+  edge fades when a duet's does not fit at 568×320); with the tray open the row is icon-only, so at 844×390 a
+  duet's six actions are all in view.
+- **Duet:** two half-width stages (on desktop a centred pair of `min(50%, 440px)`; in short landscape
+  `min(50%, 240px)`, so the two stand close around the world's middle at the same size), one floor. A friend
   arriving or leaving cross-fades the stages (out 160 ms, re-lay out, in 280 ms: opacity only).
 
 ### Sheets (open inside the screen, so they take the realm's chrome tones)
@@ -65,8 +81,10 @@ stops, K keeps, G plays both together, Escape leaves (a second Escape leaves at 
 - *Sound*: **Music | Visual only** (`prefs.musicVisualOnly`): the identical music as light and movement, no sound.
 - *Breath pace*: **Slower | Natural | Livelier**, for this visit (default from Comfort DNA `animationSpeed`); Keep saves it.
 - *Friend answers*: **On | Off** (duet only).
-- *Your tunes*: the newest six kept tunes (`describeTune`), each with **Play** and **Remove**. Play plays it at
-  once (with its own lead the tune's friend joins first); Remove updates the list in place and keeps focus in it.
+- *Your tunes*: the newest six kept tunes (`describeTune` plus the place in the list: "· newest", "· 2nd"…, so
+  two takes never read alike; the buttons say "Play tune 2 of 3: …"), each with **Play** and **Remove**. Play
+  plays it at once (with its own lead the tune's friend joins first; another Mallow's tune reopens Hushbeat with
+  that Mallow through `ctx.openTune`, for this visit only); Remove updates the list in place and keeps focus in it.
 - *Lab settings*: **Open** closes this sheet and opens the lab's Settings.
 - Footnote: "Music plays even with the Mallow voice off. Use Mute or Visual only for quiet."
 
@@ -145,7 +163,8 @@ surface tone are polled once a second. Nothing allocates per frame.
 `listening → playing` on the first music, back after 8 s of quiet; `listening → resting` after 40 s
 untouched; `replaying` while the take is sung back (live play stays allowed); `leaving` (the cadence ≤ 0.8 s,
 a fade from 300 ms over 420 ms, then home). A hidden page stops the scheduler, releases every layer, cancels
-the replay and the breath lead, and returns to listening; nothing resumes on its own.
+the replay and the breath lead, lets a resting face go, and returns to listening; nothing resumes on its own (a
+friend arriving meanwhile enters without its hello; a tune waiting for it is dropped and Play it comes back).
 
 ---
 
@@ -202,11 +221,14 @@ and the hidden-page suspend apply.
 `NoteBead`/`BeadPool` (`POOL` 12/8/5, 3 reduced), `BeatGlow` (alpha ≤ `GLOW_MAX` 0.18), `PhraseRibbon`
 (`RIBBON` 48/32/20), `HarmonyArc` (`ARC` 32/24/16, up to 3× that in glow dots 3 px apart, each dimmed by the
 overlap: one continuous thread of light; `pulse`, `hold`), `BreathHalo`. Bright beads pass the
-screen's one `FlashGate`.
+screen's one `FlashGate`. The ribbon draws three passes on every world (a dark rim ≤ 0.25, a colour core ≤ 0.58 and
+3–8 px wide, a thin white light), painted over: it crosses the body, whose colour decides the contrast.
 
 ### `features/hushbeat/player.js` (pure)
-`Player(part, { geo, now })`: `gesture(type, d)` (the gesture state machine), `degree(n)`, `watchdog(t, busy)`,
-`reset()`, `state`; `bodyPoint(geo, x, y)` → `{ y01, x01 }`.
+`Player(part, { geo, now })`: `gesture(type, d)` (the touch state machine), `layer('pad' | 'bass', on)` (a chip's
+or key's held layer beside the touch; the bass swells to 0.7 in `watchdog`), `holds(kind)`, `btn`, `degree(n)`,
+`watchdog(t, busy)`, `reset()` (chip and key layers too), `state`; `bodyPoint(geo, x, y)` → `{ y01, x01 }`. Notes
+from buttons and keys carry `tip: false` (the engine copies it onto the event; a chord's roll keeps it).
 
 ### `features/hushbeat/performer.js`
 - `TRAITS[id]`, `grooveStep(style, cs, k, { gentle })` (pure).
@@ -215,26 +237,31 @@ screen's one `FlashGate`.
   a run of taps answers with the Mallow's own groove face and no reaction burst, so playing a fast run never
   makes it giggly, grumpy, pretend-annoyed or dizzy; every other response passes unchanged.
 - `Performer({ companion, slot, pool, off, color, reduced, tuning, now })`: `apply(ev, at, due)`,
-  `frame(t, dt, cs, { playing, resting, onsets1s, barS })`, `suppress(ms)`, `react`, `enter`, `leave`, `proud`,
+  `frame(t, dt, cs, { playing, resting, onsets1s, barS, beatCs })` (`beatCs`: the clock when the beat is heard,
+  now − output latency: the groove moves on the beats you hear), `suppress(ms)`, `react`, `enter`, `leave`, `proud`,
   `rest(on)`, `listen(pt)` (watch the other Mallow while idle, nod on bar lines), `glance(pt)`, `leanIn(dir)`
   (a bloom: `{calm .6, loved .4}` and a lean, no lean in reduced motion), `hush`, `setReduced`, `setTuning`,
   `setStrong`, `debug`, `destroy`. Face writes go through one shared `FaceMixer`; the groove through `rig.nudge`.
 - `Scene({ env, gate, tone, reduced, quality, now })`: `setPerformers([{ performer, off, color, accent }])`
   (the arc appears with a friend and takes its light; the lead keeps its own), `stroke`, `apply(ev)`,
-  `frame(t, dt, cs, stats, { state, groove })`, `setStrong`, `setReduced`, `setQuality`, `setTone`, `hush`,
+  `frame(t, dt, cs, stats, { state, groove, beatCs })` (the floor glow swells on the heard beat), `setStrong`, `setReduced`, `setQuality`, `setTone`, `hush`,
   `debug`, `destroy`. It is itself an EffectsLayer item.
 - `Cue(n)`: a fixed ring of events waiting for their moment (`push`, `drain`, `clear`, `pending`).
 
 ### `features/hushbeat/sheet.js`
 - `openMusicSheet(root, ctx, { pace, setPace, duet, answers, setAnswers, tunes, playTune, removeTune, onClosed })`
-  and `openFriendPicker(root, ctx, { lead, friend, onPick, onClosed })` → `{ el, close(), open }`.
+  and `openFriendPicker(root, ctx, { lead, friend, onPick, onClosed })` → `{ el, close(), open }` (`onClosed` once,
+  through `openSheet`'s `onClose`).
 - Pure: `friendChoices(lead)`, `yourTunes(favourites)`, `tuneItem({ lead, friend, takeFriend, pace, events })`
   (a kept duet keeps its friend even after it left, if the take has its notes), `TIER_BELOW`, `tierBelow(q)`.
 
 ### `features/hushbeat.js`
 `meta = { id: 'hushbeat', title: 'Hushbeat Symphony' }`; `mount(root, ctx, { handoff })` → `{ unmount }`.
 `handoff` is a kept tune from home "For you" (`{ mallow, friend?, pace, motif }`): its friend joins (no hello),
-its pace is set, its notes wait for **Play it**.
+its pace is set, its notes wait for **Play it** (`play: true` from `ctx.openTune`: it plays once its friend is on
+stage). Play it hands keyboard focus to Stop (or the stage), never to the page. A replay queued for an arriving
+friend runs once and only while still asked for: Replay or Stop tapped meanwhile, or a hidden page, drops it
+(Play it comes back).
 
 ---
 
@@ -279,9 +306,8 @@ its pace is set, its notes wait for **Play it**.
 - **Focus:** the Tab order is stage (then the friend's stage) → Close → ♪ → Mute → the tray (its target is one
   stop; arrow keys move it) → Buttons → Replay → Keep → Friend. Keys reach the stage from the page too, so the
   stage takes focus on arrival only when a person brought the lab here (`navigator.userActivation.hasBeenActive`):
-  a link opened directly starts without a ring framing the world. A focused stage shows a soft rounded frame
-  around the band where the Mallows stand (between the bars, `--hb-band-top/bottom` from `onLayout`), not a hard
-  frame over the realm and the controls.
+  a link opened directly starts without a ring framing the world. A focused stage shows the lab's soft rounded
+  frame around the band where the Mallows stand (between the bars), not a hard frame over the realm and the controls.
 - Announcements go through the feedback chip (`role=status`): a role word the first time it is used; while
   nothing is audible, every role every time, first uses included, at most one caption per 1.5 s; "Kept", "Removed", "Replaying", "Replay finished",
   "Loomi joins", "Playing alone", "Sound off: playing with light". Single notes are never announced.
@@ -343,26 +369,27 @@ seconds). Capturing also stalls such a page for hundreds of ms, so none is taken
 |---|---|
 | U1–U3 | voices match the production kits; chords from scale tones only; note choice per Mallow |
 | U4–U5 | seeded fuzz (solo × 7, duet × 42, bursts of 20/s): nothing clashes, all in key; rate, caps, softer when dense |
-| U6–U8 | the gesture state machine; timing on the grid; hums voice-lead at bar lines |
-| U9–U12 | breath clock; duet harmony, bloom, answers, together; scheduler; take and motif codec |
+| U6–U8 | the gesture state machine; chip and key layers beside the touch (U6b); timing on the grid; hums voice-lead at bar lines |
+| U9–U12 | breath clock (a tapped lead measures nothing, U9b); duet harmony, bloom, answers, together; scheduler; take and motif codec |
 | U13–U14 | Comfort DNA tunes (clean, key, cap without eviction); visual-only gives the identical music |
 | U15 | kits and MusicAudio on fake audio: tagged voices, timing, pitch, caps, cleanup |
-| U16 | the light and the FlashGate; TRAITS and grooves; performer; the personality as an instrument (a run never tickles or dizzies, all seven); scene; cue |
+| U16 | the light and the FlashGate; TRAITS and grooves; performer; beads with no fingertip above the head, the groove and floor glow on the heard beat, the trail's three passes; the personality as an instrument (a run never tickles or dizzies, all seven); scene; cue |
 | U17–U18 | no network or media; copy lint; shared contracts |
-| U19 | friend choices, tier, newest six tunes, the take as a tune (with its friend); glance, lean in, the arc's light |
+| U19 | friend choices, tier, newest six tunes, the take as a tune (with its friend); glance, lean in, the arc's light; each tune's place in the list (U19b) |
 
 | Browser block | Proves |
 |---|---|
 | open, quiet | E1–E3, E5: opens; nothing before a gesture (quiet browser); first tap heard; no stale burst |
 | gestures, keys, mallows | E4, E6, E7: onset at contact; every gesture, chip and key; every Mallow |
+| layers | E6, E7, E8: a held Hum, H or S under clicks, Enter and digits (touch: a tap and a long press over the held chip); two hands in both orders, a pinch still squeezes; blur lets held keys go; Ctrl/Alt/Cmd + digit; quick taps on Hum, Bass (≥ 1.1 s) and Breathe (no tempo change); the held chips' names and ring |
 | breath, offline | E8, E10: breath leads the tempo; real-DSP renders of every kit |
 | rapid | E9: 40 taps in 2 s, solo and in a duet (Zuzu leads Pipzi), and two thumbs on two Mallows at once (20 two-finger bursts, CDP touch): caps, in key, harmonies, no clash |
-| quietmode, hidden, exit | E12, E13, E19, E20: mute (beads go on) and unmute, Visual only (role captions ≤ 1 per 1.5 s, the singing mouth, a silent replay, Keep), hidden page, leaving and leaks |
-| scene, replay, keep, rest | E3, E14, E15, E17, E18: light and singing in sync, replay, Keep and Play it, resting |
+| quietmode, hidden, exit | E12, E13, E19, E20: mute (beads go on) and unmute, Visual only (role captions ≤ 1 per 1.5 s, the singing mouth, a silent replay, Keep), hidden page (resting; a friend's hello and a queued Play it never start on return; Replay during the arrival plays once), leaving and leaks |
+| scene, replay, keep, rest | E3, E14, E15, E17, E18: light and singing in sync (a key's bead above the head), replay, Keep and Play it (by keyboard: focus to Stop; the only solid chip), resting |
 | duet | E16, E21: picker, two stages, hello, harmony, bloom and arc, answers on/off, G, Tab, Keep with the friend, the kept duet from home, motion and quality on both rigs, Play alone, leaving mid-duet |
-| sheet | E11, E13, E23: Volume (master gain; light at 0), Visual only, pace, Your tunes Play/Remove, Lab settings, Escape |
-| layout | E22: seven viewports (390×844, 375×812, 320×568, 412×915, 1280×860, 844×390, 568×320) × solo, tray, row, picker, duet + tray, duet, sheet |
-| looks | E22 (visual QA): every Mallow in its own world mid-hum at phone size, its layout, text tones that follow the backdrop, the sheet over the four dark worlds |
+| sheet | E11, E13, E23: Volume (master gain; light at 0), Visual only, pace, Your tunes (place in the list) Play/Remove, another Mallow's tune through `ctx.openTune`, Lab settings, Escape |
+| layout | E22: seven viewports (390×844, 375×812, 320×568, 412×915, 1280×860, 844×390, 568×320) × solo, tray, row, picker, duet + tray, duet, sheet; the hint (short at 320, none in short landscape); short landscape duets (stages close in, icon-only row, all six actions at 844×390) |
+| looks | E22 (visual QA): every Mallow in its own world mid-hum at phone size, its layout, text tones that follow the backdrop, the hint's halo, the sheet over the four dark worlds |
 | a11y | E23: the Tab order (solo, with a take and the tray, in a duet) with names and a focus ring; Buttons, a held chip, the picker and a pill by keyboard alone; focus back on the opener; every request same-origin, none while playing; no microphone, fetch, XHR, WebSocket, beacon or media element |
 | scroll | E24: presses, stretches, strokes, pulls and flings, pinches on and off the bodies, the tray and a two-finger duet: never a scroll or a zoom |
 | isolation | E21: after a Visual only duet (livelier pace, answers off, a tune kept) TouchTalk still pokes with sound, its switches, Mallow and favourite unchanged, nothing of Hushbeat left; back in Hushbeat the visit's choices are gone and Visual only (a device setting) stays |
@@ -384,6 +411,7 @@ Simulation proves state, not feel. Not verified on real devices:
 7. VoiceOver and TalkBack: labels, how much is announced, sheet focus.
 8. A listening pass per Mallow, especially Zuzu duets, stretch and press-down.
 
-Change requests to the lead (scratchpad `cr-hushbeat.md`): `ctx.openTune(it, { play })` so *Your tunes*
-can reopen another Mallow's tune with its own voice (today the current Mallow sings it here), an `onClose`
-hook for `openSheet`, and a closing scrim that should stop taking taps.
+Change requests to the lead (scratchpad `cr-hushbeat.md`): CR-H1–H5 landed (`ctx.openTune`, `openSheet`'s
+`onClose`, the closing scrim, the Done band, the shared stage focus frame); Hushbeat's shims for them are gone.
+Open: stage-screen's held H and S should let go on a window blur (Hushbeat holds its own), its built-in keys
+should ignore Ctrl/Alt/Cmd, and the gesture engine should start a squeeze only when the second finger is on the body.

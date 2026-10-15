@@ -7,7 +7,8 @@
 // shared (lead, SHARED.md L25): stage-screen's wrap / env / onLayout and the
 // other options; Pocket Hush still mounts its realm; the duet (setPartner,
 // keys to the focused stage, removal); the L4 rig hooks; sound.debug();
-// an AmbientBed in the live page; the pointer router; and the isolation loop
+// the lab sheet (Done band, Escape, route changes); an AmbientBed in the
+// live page; the pointer router; and the isolation loop
 // (weather → hushbeat → nightlight → touchtalk, three times, with everything
 // back to its baseline at home).
 // Then each feature suite, tests/e2e-phase3-<id>.cjs, runs through its
@@ -324,6 +325,67 @@ async function sharedBlock(browser) {
     noErrors(scope, errors);
   });
 
+  // lab-ui openSheet and the lab.css sheet: the Done band ends at the sheet's padding (a sheet that fits never
+  // scrolls) and a feature's `inset: 0` makes a full-height pill; Escape with focus on the page closes only the
+  // sheet; a route change never leaves a sheet's key listener behind to take the next screen's Escape
+  if (shared('sheet')) await guard('shared:sheet', async (scope, own) => {
+    const { ctx, page, errors } = await H.open(browser, { width: 1280, height: 1100, touch: false }, '#home', { initScripts: [H.INIT.listenerCounter] });
+    own(ctx); await H.waitRig(page);
+    const keyL = () => page.evaluate(() => __listeners().document.keydown || 0);
+    const sheets = () => page.evaluate(() => ({ route: __lab.route, on: document.querySelectorAll('.sheet.on').length, all: document.querySelectorAll('.sheet').length }));
+    const openSettings = async () => {
+      await page.click('button[aria-label="Settings"]');
+      await page.waitForFunction(() => { const s = document.querySelector('.sheet.on'); return s && getComputedStyle(s).transform === 'none'; }, null, { timeout: 10000, polling: 50 });
+      await sleep(100);
+    };
+    const kHome = await keyL();
+    await page.click('[data-experience="touchtalk"]');   // a click, as a person: home stays in the history for Back
+    await page.waitForFunction(() => __lab.route === 'touchtalk' && __lab.companion?.rig?.soft, null, { timeout: 30000 });
+    const k0 = await keyL();
+    await openSettings();
+    const m = await page.evaluate(() => {
+      const s = document.querySelector('.sheet'), d = s.querySelector('.done'), af = getComputedStyle(d, '::after');
+      return { sh: s.scrollHeight, ch: s.clientHeight, pb: parseFloat(getComputedStyle(s).paddingBottom), band: parseFloat(af.height), vh: innerHeight };
+    });
+    check(scope, 'a Settings sheet that fits does not scroll: the Done band is exactly the bottom padding', m.sh === m.ch && Math.abs(m.band - m.pb) <= 0.5, JSON.stringify(m));
+    const ins = await page.evaluate(() => {
+      const st = document.createElement('style'), lab = document.getElementById('lab');
+      st.textContent = '.probe-inset .sheet .done::after { inset: 0; }';   // what Nightlight's pill does
+      document.head.append(st); lab.classList.add('probe-inset');
+      const d = document.querySelector('.sheet .done'), r = { pill: parseFloat(getComputedStyle(d, '::after').height), done: d.getBoundingClientRect().height };
+      st.remove(); lab.classList.remove('probe-inset');
+      return r;
+    });
+    check(scope, "a feature's `inset: 0` on the band gives a pill the Done's full height", ins.done >= 47 && Math.abs(ins.pill - ins.done) <= 1, JSON.stringify(ins));
+    await page.click('.sheet h3');
+    const ae = await page.evaluate(() => document.activeElement?.tagName);
+    await page.keyboard.press('Escape'); await sleep(450);
+    const e1 = await sheets(), k1 = await keyL();
+    check(scope, 'Escape with focus on the page (the title clicked) closes the sheet and stays on TouchTalk', ae === 'BODY' && e1.route === 'touchtalk' && e1.all === 0, JSON.stringify({ ae, ...e1 }));
+    check(scope, 'the closed sheet\'s key listener is gone', k1 === k0, `${k0} → ${k1}`);
+    await openSettings();
+    await page.goBack();
+    await page.waitForFunction(() => __lab.route === 'home', null, { timeout: 10000 });
+    await sleep(100);
+    const e2 = await sheets(), k2 = await keyL();
+    check(scope, 'Back with Settings open: home, no sheet, no key listener left behind', e2.all === 0 && k2 === kHome, JSON.stringify({ ...e2, kHome, k2 }));
+    // a sheet the router discards without close() (no feature does this today): it must not take the next screen's keys
+    await page.evaluate(async (LAB) => {
+      const { openSheet, h } = await import(`${LAB}/lab-ui.js`);
+      openSheet(document.getElementById('lab'), 'Probe', () => h('p', {}, 'Probe'));
+    }, LAB);
+    await page.waitForSelector('.sheet.on');
+    await go(page, 'softbody');
+    await page.focus('.stage');
+    await page.keyboard.press('Escape');
+    const left = await page.waitForFunction(() => __lab.route === 'home', null, { timeout: 5000 }).then(() => true, () => false);
+    await sleep(100);
+    const k3 = await keyL();
+    check(scope, 'a sheet discarded by a route change: one Escape still leaves SoftBody', left, JSON.stringify(await sheets()));
+    check(scope, 'and the discarded sheet\'s listener removed itself', k3 === kHome, `${kHome} → ${k3}`);
+    noErrors(scope, errors);
+  });
+
   // L3: an AmbientBed in the live page
   if (shared('bed')) await guard('shared:bed', async (scope, own) => {
     const { ctx, page, errors } = await H.open(browser, 'phone', '#touchtalk');
@@ -503,13 +565,16 @@ async function sharedBlock(browser) {
         await go(page, id);
         await sleep(500);
         if (id === 'touchtalk') {
-          const t = await page.evaluate(() => __lab.sound.trim);
-          check(scope, `round ${round}: back in TouchTalk the trim is 1`, t === 1, `${t}`);
+          // before any touch here: Nightlight's rest() stayed behind with its screen (sound.wake() in route())
+          const t = await page.evaluate(() => ({ trim: __lab.sound.trim, resting: __lab.sound.resting, state: __lab.sound.debug().state }));
+          check(scope, `round ${round}: back in TouchTalk the trim is 1`, t.trim === 1, JSON.stringify(t));
+          check(scope, `round ${round}: back in TouchTalk, before a touch, the sound is awake (a rest left Nightlight with it)`, t.resting === false && t.state === 'running', JSON.stringify(t));
         }
         const p = await bodyPoint(page);
         await page.mouse.click(p.x, p.y); await sleep(250);
         await page.focus('.stage').catch(() => {});
         await page.keyboard.press('Enter'); await sleep(300);
+        if (id === 'nightlight') await page.evaluate(() => __lab.sound.rest());   // as after Quiet, or Volume 0 and 10 s still
       }
       const st = await page.evaluate(() => {
         const c = __lab.companion, r = c.rig, s = __lab.sound;

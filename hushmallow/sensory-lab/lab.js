@@ -201,8 +201,9 @@ function card(e) {
 }
 
 // -------------------------------------------------------------- settings --
+let settingsClose = null;   // the open Settings sheet's close(): a route change closes it at once
 function settings() {
-  openSheet(root, 'Settings', (close) => {
+  settingsClose = openSheet(root, 'Settings', (close) => {
     const vol = h('input', { type: 'range', min: '0', max: '1', step: '0.05', value: String(prefs.get('volume')), 'aria-label': 'Volume',
       oninput: (e) => prefs.set('volume', +e.target.value) });
     const row = (label, ctl, sub) => h('div', { class: 'row' }, h('span', { class: 'lbl' }, label, sub ? h('span', { class: 'sub' }, sub) : null), ctl);
@@ -260,7 +261,9 @@ const fromHash = () => location.hash.replace(/^#\/?/, '').split(/[?&=]/)[0] || '
 async function route(id = fromHash()) {
   const my = ++token;
   const ho = takeHandoff();   // only the route that follows an offer's click may use it
+  settingsClose?.(); settingsClose = null;
   current?.unmount();
+  sound.wake();   // a rest() (Nightlight) belongs to the screen that asked for it
   current = null;
   root.replaceChildren();
   // #pocket-<mode> opens a Pocket Hush mode directly (one tap from anywhere that links it)

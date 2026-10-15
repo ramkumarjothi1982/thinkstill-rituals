@@ -4,6 +4,9 @@
 // notes are never announced; role words are said on first use only.
 // Mallow names are passed in (from src/mallows/registry.js) by the caller.
 
+const ORD = ['', '1st', '2nd', '3rd'];
+const ordinal = (n) => ORD[n] || `${n}th`;
+
 export const COPY = Object.freeze({
   title: 'Hushbeat',
   meta: 'Hushbeat Symphony',
@@ -34,6 +37,8 @@ export const COPY = Object.freeze({
       + 'Keys: Enter note, D chord, P tune, T glide, S bass, H hum, B breathe, 1 to 7 notes, R replay.'
       + (duet ? ' G plays both together. Tab moves to the other Mallow.' : ''),
     friend: 'Friend: invite another Mallow',
+    /** the chips you hold (the visible word first) */
+    hold: Object.freeze({ bass: 'Bass, hold for a warm bass', pad: 'Hum, hold for a hum', breathe: 'Breathe, hold as you breathe in' }),
   }),
 
   // the feedback chip (role=status)
@@ -80,9 +85,11 @@ export const COPY = Object.freeze({
     tunes: 'Your tunes',
     play: 'Play',
     remove: 'Remove',
-    /** each tune's buttons say which tune they act on */
-    playTune: (tune) => `Play ${tune}`,
-    removeTune: (tune) => `Remove ${tune}`,
+    /** where a tune is in the list (newest first), after its description: two takes can read alike */
+    position: (i) => ` · ${i === 0 ? 'newest' : ordinal(i + 1)}`,
+    /** each tune's buttons say which tune they act on: 'Play tune 2 of 3: Boppo tune · 4 notes · Natural' */
+    playTune: (tune, i = 0, n = 1) => `Play tune ${i + 1} of ${n}: ${tune}`,
+    removeTune: (tune, i = 0, n = 1) => `Remove tune ${i + 1} of ${n}: ${tune}`,
     tunesEmpty: 'Tap ★ Keep after you play to keep a tune here.',
     tunesOff: "Personalisation is off, so tunes can't be kept.",
     lab: 'Lab settings',

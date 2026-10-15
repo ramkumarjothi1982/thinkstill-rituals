@@ -51,7 +51,8 @@ On a phone on the same Wi-Fi, use your computer's IP address in place of
 ## Tests
 
 ```bash
-node --test hushmallow/sensory-lab/tests/*.test.mjs   # engines: physics, gestures, personality, prefs, Comfort DNA, Surprise Me (Node only)
+node --test hushmallow/sensory-lab/tests/*.test.mjs   # Node only. Phases 1–2: physics, gestures, personality, prefs, Comfort DNA, Surprise Me;
+                                                      # Phase 3: phase3-shared + phase3-env (shared engine), weather, hushbeat, nightlight; brand (the small h)
 python3 -m http.server 8000 &                         # then, for browser tests:
 node hushmallow/sensory-lab/tests/e2e.cjs             # Phase 1 suite: 5 viewports, real pointer/touch/multitouch input → docs/phase1/
 node hushmallow/sensory-lab/tests/e2e-phase2.cjs      # Phase 2 suite: seven Mallows, Comfort DNA, every Pocket Hush moment → docs/phase2/
@@ -83,10 +84,12 @@ sensory-lab/
   expressions, reactions, particles), `src/world/*` (the Hushfold realm
   backdrops), `src/engine/haptics.js`, `src/ui/tokens.css`, `assets/`. It
   doesn't modify any of them.
-- Its storage is two localStorage keys: `hm.sensorylab.v1` (device settings)
-  and `hm.sensorylab.comfort.v1` (Comfort DNA). It never reads or writes the
-  main app's `hm2:*` keys, except that the shared haptics helper reads
-  `hm2:haptics`.
+- Its storage is two localStorage keys, `hm.sensorylab.v1` (device settings)
+  and `hm.sensorylab.comfort.v1` (Comfort DNA), and one sessionStorage record,
+  `hm.sensorylab.nightlight.session.v1` (Mallow Nightlight's deadline, so a
+  reload or a Mallow change resumes the same session; see
+  `docs/NIGHTLIGHT.md`). It never reads or writes the main app's `hm2:*` keys,
+  except that the shared haptics helper reads `hm2:haptics`.
 - It has no Cloudflare, Framer or payment code and no credentials.
   `adapters/supabase-comfort.js` is an unused adapter that takes a client
   passed in by the main app; it imports no Supabase library and holds no

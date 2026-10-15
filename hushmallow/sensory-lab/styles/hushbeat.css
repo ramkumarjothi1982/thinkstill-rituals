@@ -13,12 +13,26 @@
 .hushbeat .hb-row .chip[hidden] { display: none; }
 /* Replay, Keep and Play it arrive softly (the row only grows wider, so the Mallow is never re-framed) */
 .hushbeat .hb-row .hb-replay, .hushbeat .hb-row .hb-keep, .hushbeat .hb-row .hb-playit { animation: hb-in 320ms var(--ease-out) both; }
+/* Play it (the one thing to do) is the row's only solid fill: a pressed toggle (Buttons, Stop, Kept) is outlined,
+   Kept keeps its filled star */
+.hushbeat .hb-row .chip[aria-pressed="true"] { background: transparent; color: var(--text-1); box-shadow: inset 0 0 0 1.5px var(--chip-on); }
+.hushbeat .hb-row .hb-playit { box-shadow: 0 0 0 3px color-mix(in srgb, var(--chip-on) 30%, transparent); }
 .hushbeat .hb-keep[aria-pressed="true"] svg { fill: currentColor; }
 @keyframes hb-in { from { opacity: 0; } to { opacity: 1; } }
 
+/* the chips you hold (Bass, Hum, Breathe) carry a small ring that fills while held (their names say "hold") */
+.hushbeat .chip.hold::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px;
+  border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; opacity: 0.7; transition: background var(--t-fast), opacity var(--t-fast); }
+.hushbeat .chip.hold.active::before { background: currentColor; opacity: 1; }
+
+/* the margins beside a duet's stages (wide and landscape screens) never scroll or zoom the page either */
+.hushbeat .stage-wrap { touch-action: none; }
+
 /* the hint: each cue ("Tap a note") stays whole and two lines balance (no word left alone); it steps aside
-   while the tray is open, whose chips say the same */
+   while the tray is open, whose chips say the same. Over a world it takes a tight halo in the backdrop's ink
+   (readable over a lily pad, a pale pedestal or a shell) */
 .hushbeat .hb-hint { text-wrap: balance; }
+.hushbeat[data-backdrop] .hb-hint { text-shadow: 0 0 1px var(--ink-0), 0 0 2px var(--ink-0), 0 0 4px var(--ink-0), 0 1px 12px var(--ink-0); }
 .hushbeat .hb-cue { white-space: nowrap; }
 .hushbeat.hb-tray-on .hb-hint { display: none; }
 
@@ -28,18 +42,6 @@
 /* a duet's target [Lead | Both | Friend] leads the tray; its own track sets it apart from the actions */
 .hushbeat .hb-target { flex: none; flex-wrap: nowrap; margin-right: 2px; }
 .hushbeat .seg button { min-height: 40px; }
-
-/* keyboard focus on a stage: a soft rounded frame around the band where the Mallows stand (between the bars,
-   --hb-band-* from the feature), never a hard frame over the whole world and the controls */
-.hushbeat .stage:focus-visible { box-shadow: none; }
-.hushbeat .stage:focus-visible::after {
-  content: ''; position: absolute; z-index: 1; pointer-events: none;
-  left: 10px; right: 10px; top: calc(var(--hb-band-top, 72px) + 4px); bottom: calc(var(--hb-band-bottom, 120px) + 4px);
-  border-radius: 28px;
-  box-shadow: inset 0 0 0 2px var(--accent);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 75%, transparent), inset 0 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
-  animation: hb-in 240ms var(--ease-out) both;
-}
 
 /* replaying: the stage tint deepens a little while the Mallow sings the take back */
 .hushbeat .stage-tint { transition: opacity 600ms var(--ease-out); }
@@ -54,15 +56,6 @@
 .hushbeat.hb-leaving { opacity: 0; transition: opacity 420ms var(--ease-out) 300ms; pointer-events: none; }
 
 /* ------------------------------------------------------------ sheets -- */
-/* the sticky Done also hides what scrolls below it: the sheet's bottom padding let rows show through under it on
-   short screens. A plain band from edge to edge of the sheet (inside its padding, so it never scrolls sideways) */
-/* …and past its rounded ends (a spread shadow under its lower half) */
-.hushbeat .sheet .done { box-shadow: 0 -12px 16px 4px var(--glass-strong), 0 10px 0 10px var(--glass-strong); }
-.hushbeat .sheet .done::after {
-  content: ''; position: absolute; pointer-events: none;
-  left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); top: 100%; height: calc(var(--safe-bottom) + 24px);
-  background: linear-gradient(var(--glass-strong), var(--glass-strong)), linear-gradient(var(--glass-strong), var(--glass-strong)), var(--glass-strong);   /* layered: no ghost of the rows */
-}
 .hushbeat .hb-sheet .btn-quiet { min-height: 40px; }
 .hushbeat .hb-sheet .hb-volume { width: clamp(120px, 38vw, 200px); min-height: 40px; }
 /* a label and its control share the line while they fit; the sub-text wraps first */
@@ -72,6 +65,7 @@
 .hushbeat .hb-tunes { display: flex; flex-direction: column; gap: 6px; outline: none; }
 .hushbeat .hb-tune { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 6px 6px 12px; border-radius: var(--r-md); background: var(--seg-track); }
 .hushbeat .hb-tune-name { flex: 1 1 150px; min-width: 0; font-size: 14px; color: var(--text-1); }
+.hushbeat .hb-tune-pos { color: var(--text-3); white-space: nowrap; }
 .hushbeat .hb-tune-acts { display: flex; gap: 6px; margin-left: auto; }
 .hushbeat .hb-empty { margin: 0; color: var(--text-3); font-size: var(--fs-small); }
 .hushbeat .hb-foot { margin: 12px 0 0; color: var(--text-3); font-size: var(--fs-micro); line-height: 1.45; }
@@ -108,8 +102,11 @@
   .hushbeat .hb-keep span, .hushbeat .hb-friend-btn span { display: none; }
   .hushbeat .hb-friend { padding: 8px 10px; gap: 8px; }
 }
-@media (max-height: 600px) {
+/* no hint on short landscape screens only (a small portrait phone keeps the short one: its only words) */
+@media (max-height: 600px) and (min-aspect-ratio: 1/1) {
   .hushbeat .hb-hint { display: none; }
+}
+@media (max-height: 600px) {
   .hushbeat .hb-tray { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; border-radius: var(--r-pill); }
   .hushbeat .bottom { gap: 8px; }
 }
@@ -121,11 +118,17 @@
   .hushbeat .hb-tray .chip { min-width: 0; padding-left: 6px; padding-right: 6px; }
   .hushbeat .hb-tray .hb-target { grid-column: 1 / -1; justify-self: center; margin: 0; }
 }
-/* short landscape: the tray and the row share one line when they fit (the tray scrolls), so the Mallows keep their size */
+/* short landscape: the tray and the row share one line when they fit (the tray scrolls), so the Mallows keep their size;
+   with the tray open the row is icon-only (names stay as aria-label and title) so the tray's actions show. A duet's
+   two stages close in around the middle (the Mallows keep their size: here height limits them) */
 @media (max-height: 460px) and (min-aspect-ratio: 3/2) {
   .hushbeat .bottom { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; }
   .hushbeat .hb-tray { flex: 1 1 260px; min-width: 0; max-width: max-content; }   /* never wider than its chips */
   .hushbeat .hb-row { flex: none; }
+  .hushbeat.hb-tray-on .hb-row .chip { width: 40px; padding: 0; justify-content: center; }
+  .hushbeat.hb-tray-on .hb-row .chip span { display: none; }
+  .screen.hushbeat[data-layout="duet"] .stage.lead { left: calc(50% - min(50%, 240px)); right: 50%; }
+  .screen.hushbeat[data-layout="duet"] .stage.partner { left: 50%; right: calc(50% - min(50%, 240px)); }
 }
 @media (max-height: 360px) {
   .hushbeat .hb-buttons, .hushbeat .hb-keep, .hushbeat .hb-friend-btn { width: 40px; padding: 0; justify-content: center; }

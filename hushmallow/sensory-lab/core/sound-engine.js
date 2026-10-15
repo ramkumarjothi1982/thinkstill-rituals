@@ -144,6 +144,13 @@ export class SoundEngine {
     if (this.ctx?.state === 'running') this.ctx.suspend().catch(() => {});
   }
 
+  /** Leave a rest() behind when its screen goes (lab.js route()): the next screen starts awake, not waiting for a lift. */
+  wake() {
+    if (!this.resting) return;
+    this.resting = false;
+    if (this.ctx && !this.muted && !document.hidden) this._resume();
+  }
+
   _gain() { return this.muted ? 0 : this.volume * this.trim; }
 
   _visibility() {

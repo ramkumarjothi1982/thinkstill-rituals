@@ -16,6 +16,8 @@
 //   gestures  E4/E6: onset at contact (≤ 6 ms added); hold → hum; press down, wheel and a pinch → bass
 //             under a ducked note; a real stroke → phrase notes on the grid; double tap → chord; drag up → bend
 //   keys      E7: Enter, D, P, T, S, H, B and 1–7, and the chips Note, Chord, Tune, Bass, Hum, Breathe
+//   layers    E6/E7 (review fixes): a held Hum or Bass (chip, H, S) lives beside the touch (notes play over it, no
+//             touch ends it); two hands; held keys let go on blur; Ctrl/Alt/Cmd + digit; quick taps on held chips
 //   mallows   every Mallow: each solo gesture renders in its own instrument (keys), no errors
 //   breath    E8: Breathe leads; the tempo moves only at bar lines by ≤ 8 % a bar; an off-body press
 //             leads too; the Mallow fills with the breath
@@ -93,7 +95,7 @@ const BRIEF = Object.freeze({
 });
 // each block and the checks it carries (a check that names its own E number counts for that one)
 const BLOCKS = Object.freeze({
-  open: ['E1'], quiet: ['E2', 'E3', 'E5'], gestures: ['E4', 'E6'], keys: ['E7'], mallows: ['E6', 'E10'], breath: ['E8'],
+  open: ['E1'], quiet: ['E2', 'E3', 'E5'], gestures: ['E4', 'E6'], keys: ['E7'], layers: ['E6', 'E7'], mallows: ['E6', 'E10'], breath: ['E8'],
   offline: ['E10'], rapid: ['E9'], quietmode: ['E12', 'E13'], hidden: ['E19'], exit: ['E20'], scene: ['E17'], replay: ['E14'],
   keep: ['E15'], rest: ['E17'], duet: ['E16'], sheet: ['E11'], layout: ['E22'], a11y: ['E23'], scroll: ['E24'],
   isolation: ['E21'], looks: ['E22'],
@@ -466,7 +468,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     results.s = await tryKey('S', async () => { await page.keyboard.down('s'); await sleep(900); await page.keyboard.up('s'); }, (L) => L.some((e) => e.kind === 'bassOn') && L.some((e) => e.kind === 'bassOff'));
     results.h = await tryKey('H', async () => { await page.keyboard.down('h'); await sleep(1200); await page.keyboard.up('h'); }, (L) => L.some((e) => e.kind === 'padOn') && L.some((e) => e.kind === 'padOff'));
     await clearLog(page);
-    await page.keyboard.down('b'); await sleep(600);
+    await page.keyboard.down('b'); await sleep(900);   // a breath, not a tap (≥ 0.6 s)
     const bIn = await hb(page, () => __lab.hushbeat.debug().breath);
     await page.keyboard.up('b'); await sleep(200);
     const bOut = await hb(page, () => __lab.hushbeat.debug().breath);
@@ -495,6 +497,141 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     cr.breathe = { ok: lead === 'in', kinds: [lead] };
     for (const [k, v] of Object.entries(cr)) check(scope, `chip ${k}: its musical result`, v.ok, JSON.stringify(v.kinds));
     noErrors(scope, errors);
+  });
+
+  // ------------------------------------------------------ E6/E7 layers --
+  // review fixes: a held Hum or Bass (chip, H or S) is a layer beside the touch (notes, strokes and holds on the body
+  // keep playing over it, no touch ends it); two hands (a breath lead off the body and a touch on it) stay two things;
+  // held keys let go on a window blur; modified digits stay the browser's; a quick tap on a held chip still plays
+  // (Hum, Bass) or measures nothing (Breathe)
+  if (only('layers')) await guard(`${SCOPE}:layers`, async (scope, own) => {
+    const { ctx, page, errors } = await openHb(browser, 'desktop', 'boppo');
+    own(ctx);
+    const b = await bodyAt(page);
+    await page.mouse.click(b.x, b.y); await sleep(700);
+    const p0 = () => hb(page, () => __lab.hushbeat.debug().players[0]);
+    const liveN = () => hb(page, () => __lab.hushbeat.log.filter((e) => e.kind === 'note' && !e.ghost && e.src === 'live').length);
+    // H held: clicks on the body, Enter and a digit all play over the hum; the hum stays until H lets go
+    await page.focus('.hushbeat .stage');
+    await page.keyboard.down('h');
+    await waitEvent(page, "e.kind === 'padOn'");
+    await clearLog(page);
+    for (let i = 0; i < 2; i++) { await page.mouse.click(b.x + (i ? 25 : -25), b.y); await sleep(450); }
+    await page.keyboard.press('Enter'); await sleep(300);
+    await page.keyboard.press('Digit3'); await sleep(300);
+    const hk = { notes: await liveN(), p: await p0() };
+    await page.keyboard.up('h');
+    await waitEvent(page, "e.kind === 'padOff'");
+    check(scope, 'E6 H held: two clicks on the body, Enter and 3 each play a note over the hum, which stays until H lets go',
+      hk.notes === 4 && hk.p.pad > 0 && hk.p.held.pad && hk.p.state === 'idle', JSON.stringify(hk));
+    await sleep(600);
+    // S held: a click on the body plays over the bass, which swells to 0.7 by itself
+    await page.keyboard.down('s'); await sleep(900);
+    await clearLog(page);
+    await page.mouse.click(b.x, b.y); await sleep(300);
+    const sk = { notes: await liveN(), p: await p0() };
+    await page.keyboard.up('s'); await sleep(300);
+    check(scope, 'E6 S held: the bass swells to 0.7 by itself and a click on the body still plays a note over it', sk.notes === 1 && Math.abs(sk.p.bass - 0.7) < 0.02, JSON.stringify(sk));
+    // Ctrl, Alt or Cmd + a digit: the browser's (no note, not prevented); a plain digit plays and is prevented
+    await hb(page, () => { window.__dp = []; addEventListener('keydown', (e) => { if (/^Digit/.test(e.code)) window.__dp.push(e.defaultPrevented); }); });
+    await clearLog(page);
+    for (const mod of ['Control', 'Alt', 'Meta']) { await page.keyboard.down(mod); await page.keyboard.press('Digit2'); await page.keyboard.up(mod); await sleep(200); }
+    const modN = await hb(page, () => __lab.hushbeat.log.filter((e) => e.kind === 'note').length);
+    await page.keyboard.press('Digit2'); await sleep(200);
+    const dp = await hb(page, () => ({ prevented: window.__dp, notes: __lab.hushbeat.log.filter((e) => e.kind === 'note' && !e.ghost).length }));
+    check(scope, 'E7 Ctrl/Alt/Cmd + digit stays the browser\'s (no note, not prevented); a plain digit plays (prevented)',
+      modN === 0 && dp.notes === 1 && JSON.stringify(dp.prevented) === '[false,false,false,true]', JSON.stringify({ modN, dp }));
+    // B tapped (150 ms): no breath is measured, the tempo stays; B held then the window blurs: the lead lets go
+    await sleep(600);
+    const br0 = await hb(page, () => ({ bpm: __lab.hushbeat.debug().bpm, target: __lab.hushbeat.clock.target }));
+    for (let i = 0; i < 2; i++) { await page.keyboard.down('b'); await sleep(150); await page.keyboard.up('b'); await sleep(500); }
+    const br1 = await hb(page, () => ({ bpm: __lab.hushbeat.debug().bpm, target: __lab.hushbeat.clock.target, leading: __lab.hushbeat.debug().breath.leading }));
+    check(scope, 'E8 two quick taps of B measure no breath: the target cycle and the tempo stay', br1.target === br0.target && br1.bpm === br0.bpm && !br1.leading, JSON.stringify({ br0, br1 }));
+    await page.keyboard.down('b'); await sleep(700);
+    await page.keyboard.down('h');
+    await waitEvent(page, "e.kind === 'padOn'");
+    const bl0 = await hb(page, () => __lab.hushbeat.debug().breath.leading);
+    await hb(page, () => window.dispatchEvent(new Event('blur')));
+    await sleep(600);
+    const bl1 = await hb(page, () => ({ leading: __lab.hushbeat.debug().breath.leading, p: __lab.hushbeat.debug().players[0], layers: __lab.hushbeat.engine.layers().length, hold: !!__lab.companion.hold }));
+    await page.keyboard.up('h'); await page.keyboard.up('b');
+    check(scope, 'E7 B and H held, then the window loses focus: the breath lead and the hum let go (their keyups never come)',
+      bl0 === 'in' && bl1.leading !== 'in' && bl1.layers === 0 && !bl1.p.held.pad && !bl1.hold, JSON.stringify({ bl0, bl1 }));
+    noErrors(scope, errors);
+
+    // ------- touch (phone, CDP; to lift one finger, touchEnd lists that point) -------
+    const tc = await openHb(browser, 'phone', 'loomi');
+    try {
+      const pg = tc.page, sc = `${scope}:touch`, q = await bodyAt(pg);
+      await H.touch(pg, [{ t: 0, points: [{ x: q.x, y: q.y, id: 9 }] }, { t: 60, points: [] }]);   // unlock
+      await sleep(900);
+      await pg.click('.hushbeat .hb-buttons'); await sleep(500);
+      const chipAt = (name) => pg.evaluate((n) => { const el = [...document.querySelectorAll('.hushbeat .hb-tray .chip')].find((x) => x.textContent.trim() === n); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, name);
+      const cdp = await pg.context().newCDPSession(pg);
+      const send = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+      try {
+        const hum = await chipAt('Hum'), q2 = await bodyAt(pg);
+        const P1 = { x: hum.x, y: hum.y, id: 1 }, P2 = { x: q2.x, y: q2.y, id: 2 };
+        await send('touchStart', [P1]);
+        await pg.waitForFunction(() => __lab.hushbeat.debug().players[0].pad > 0, null, { timeout: T });
+        await clearLog(pg);
+        await send('touchStart', [P1, P2]); await sleep(70); await send('touchEnd', [P2]); await sleep(700);
+        const tap = await hb(pg, () => ({ notes: __lab.hushbeat.log.filter((e) => e.kind === 'note' && !e.ghost).length, pad: __lab.hushbeat.debug().players[0].pad }));
+        await send('touchStart', [P1, P2]); await sleep(1100); await send('touchEnd', [P2]); await sleep(700);
+        const press = await hb(pg, () => ({ pad: __lab.hushbeat.debug().players[0].pad, padOff: __lab.hushbeat.log.filter((e) => e.kind === 'padOff').length, chip: [...document.querySelectorAll('.hushbeat .hb-tray .chip')].find((x) => x.textContent.trim() === 'Hum').classList.contains('active') }));
+        await send('touchEnd', [P1]);
+        await waitEvent(pg, "e.kind === 'padOff'");
+        check(sc, 'E6 the Hum chip held: a tap on the body plays a note over the hum; a long press on the body, lifted, leaves the hum and the chip on; letting go of the chip ends it',
+          tap.notes === 1 && tap.pad > 0 && press.pad > 0 && press.padOff === 0 && press.chip, JSON.stringify({ tap, press }));
+        await sleep(2500);
+        // a quick tap (90 ms) on Hum or Bass still plays a short layer (≥ 1.1 s), the bass swelling; on Breathe it measures nothing
+        const tapChip = async (name) => { const c = await chipAt(name); await clearLog(pg); await H.touch(pg, [{ t: 0, points: [{ x: c.x, y: c.y, id: 3 }] }, { t: 90, points: [] }]); await sleep(1700); return logOf(pg); };
+        const LH = await tapChip('Hum'), LB = await tapChip('Bass');
+        const span = (L, a, z) => { const on = L.find((e) => e.kind === a), off = L.find((e) => e.kind === z); return on && off ? +(off.t - on.t).toFixed(2) : null; };
+        const bassMax = Math.max(0, ...LB.filter((e) => e.kind === 'bassSet' && e.amount != null).map((e) => e.amount));
+        check(sc, 'E7 a quick tap on Hum or Bass still plays (≥ 1.1 s; the bass swells past 0.5)', span(LH, 'padOn', 'padOff') >= 1.1 && span(LB, 'bassOn', 'bassOff') >= 1.1 && bassMax > 0.5, JSON.stringify({ hum: span(LH, 'padOn', 'padOff'), bass: span(LB, 'bassOn', 'bassOff'), bassMax }));
+        // Breathe tapped twice, 0.7 s apart (pointer events in the page: CDP touch on a slow software-GL page can
+        // hold a press for longer than its 90 ms)
+        const br = await pg.evaluate(async () => {
+          const el = [...document.querySelectorAll('.hushbeat .hb-tray .chip')].find((x) => x.textContent.trim() === 'Breathe');
+          const t0 = { target: __lab.hushbeat.clock.target, bpm: __lab.hushbeat.debug().bpm }, held = [];
+          const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+          for (let i = 0; i < 2; i++) {
+            const a = performance.now();
+            el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 41 + i, button: 0, bubbles: true }));
+            await wait(80);
+            el.dispatchEvent(new PointerEvent('pointerup', { pointerId: 41 + i, button: 0, bubbles: true }));
+            held.push(Math.round(performance.now() - a));
+            await wait(620);
+          }
+          return { t0, held, t1: { target: __lab.hushbeat.clock.target, bpm: __lab.hushbeat.debug().bpm, leading: __lab.hushbeat.debug().breath.leading } };
+        });
+        check(sc, 'E8 two quick taps on Breathe measure no breath (the tempo stays)', br.held.every((ms) => ms < 600) && br.t1.target === br.t0.target && br.t1.bpm === br.t0.bpm && !br.t1.leading, JSON.stringify(br));
+        const lab = await hb(pg, () => [...document.querySelectorAll('.hushbeat .hb-tray .chip.hold')].map((c) => ({ label: c.getAttribute('aria-label'), title: c.title, cue: getComputedStyle(c, '::before').content })));
+        check(sc, 'E7 the held chips say so (aria-label and title "…, hold for…") and carry a hold ring', lab.length === 3 && lab.every((x) => /hold/.test(x.label) && x.title === x.label && x.cue !== 'none'), JSON.stringify(lab));
+        await pg.click('.hushbeat .hb-buttons'); await sleep(400);
+        // two hands: an off-body press (the breath lead) and a finger on the body, in either order
+        const qb = await bodyAt(pg);
+        const off = { x: 24, y: Math.max(160, qb.top - 40), id: 4 }, on = { x: qb.x, y: qb.y + 10, id: 5 };
+        const offOk = await hb(pg, (p) => { const st = document.querySelector('.hushbeat .stage'), r = st.getBoundingClientRect(), el = document.elementFromPoint(p.x, p.y); return !__lab.companion.rig.hitTest(p.x - r.left, p.y - r.top) && (el === st || st.contains(el)); }, off);
+        await hb(pg, () => { window.__g = []; const c = __lab.companion, o = c.o.onGesture; c.o.onGesture = (t, d, cc) => { if (t !== 'holding' && t !== 'squeeze') window.__g.push(t); o(t, d, cc); }; });
+        const two = async (frames) => { await clearLog(pg); await hb(pg, () => { window.__g.length = 0; }); await H.touch(pg, frames); await sleep(500); return hb(pg, () => ({ g: window.__g.join(' '), ev: __lab.hushbeat.log.filter((e) => !e.ghost && ['note', 'padOn', 'padOff', 'bassOn', 'bassOff', 'duck'].includes(e.kind)).map((e) => e.kind) })); };
+        const A = await two([{ t: 0, points: [off] }, { t: 100, points: [off, on] }, { t: 1700, points: [off, on] }, { t: 1720, points: [] }]);
+        await sleep(2500);
+        const D = await two([{ t: 0, points: [on] }, { t: 1200, points: [on, off] }, { t: 2700, points: [on, off] }, { t: 2720, points: [on] }, { t: 3600, points: [on] }, { t: 3620, points: [] }]);
+        await sleep(2500);
+        const noSq = (r) => !/squeeze/.test(r.g) && !r.ev.includes('bassOn') && r.ev.includes('padOn');
+        check(sc, 'E6 two hands: an off-body press, then a finger on the body within 300 ms: the finger holds a hum (no squeeze, no bass)', offOk && noSq(A) && /holdstart/.test(A.g), JSON.stringify({ offOk, A }));
+        check(sc, 'E6 two hands: a hum held on the body, then an off-body press: the hum stays until the body finger lifts (no squeeze, no bass)', noSq(D) && D.g.indexOf('holdend') === D.g.length - 'holdend'.length && D.ev.at(-1) === 'padOff', JSON.stringify(D));
+        // a pinch on the body still squeezes
+        const pf = [{ t: 0, points: [{ x: qb.x - 50, y: qb.y, id: 6 }] }, { t: 40, points: [{ x: qb.x - 50, y: qb.y, id: 6 }, { x: qb.x + 50, y: qb.y, id: 7 }] }];
+        for (let i = 1; i <= 10; i++) pf.push({ t: 40 + i * 50, points: [{ x: qb.x - 50 + i * 3, y: qb.y, id: 6 }, { x: qb.x + 50 - i * 3, y: qb.y, id: 7 }] });
+        pf.push({ t: 1000, points: [] });
+        const PZ = await two(pf);
+        check(sc, 'E6 a two-finger pinch on the body still squeezes (duck, bass)', /squeezestart/.test(PZ.g) && PZ.ev.includes('bassOn'), JSON.stringify(PZ));
+      } finally { await cdp.detach().catch(() => {}); }
+      noErrors(sc, tc.errors);
+    } finally { await tc.ctx.close(); }
   });
 
   // -------------------------------------------------- every Mallow, solo --
@@ -774,7 +911,70 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'visible again: listening, nothing plays on its own for 1.5 s', vis.log.filter((k) => k === 'note' || k === 'padOn' || k === 'bassOn').length === 0 && vis.state === 'listening', JSON.stringify(vis));
     const z = await untilSilent(page, 3500);
     check(scope, 'and every voice is gone', z.ok, JSON.stringify(z));
+    // resting, then hidden: back to listening with the resting face let go
+    await hb(page, () => __lab.hushbeat.setRestAfter(0.5));
+    await page.waitForFunction(() => __lab.hushbeat.state === 'resting', null, { timeout: T });
+    // hidden and read in one go (the page keeps drawing frames, which would rest it again after 0.5 s)
+    const rs = await hb(page, () => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      const r = { state: __lab.hushbeat.state, resting: __lab.hushbeat.performers.map((p) => p.resting), face: !!__lab.companion.restOverride };
+      __lab.hushbeat.setRestAfter(40);
+      return r;
+    });
+    await H.setHidden(page, false);
+    check(scope, 'E19 hidden while resting: listening, and the resting face is let go', rs.state === 'listening' && rs.resting.every((r) => !r) && !rs.face, JSON.stringify(rs));
+    // a friend invited, then the page hidden at once: no hello when it comes back
+    await clearLog(page);
+    await hb(page, () => { __lab.hushbeat.setFriend('noomi'); });
+    await H.setHidden(page, true);
+    await sleep(2500);
+    await H.setHidden(page, false);
+    await duetReady(page, 2);
+    await sleep(1500);
+    const hello = await hb(page, () => __lab.hushbeat.log.filter((e) => e.src === 'hello').length);
+    check(scope, 'E19 a friend arriving while the page is hidden makes no hello when it comes back', hello === 0, String(hello));
     noErrors(scope, errors);
+    // a kept duet: Play it while its friend is still arriving, then hidden: nothing plays on return, Play it is back;
+    // Replay tapped while the friend arrives plays once (the queued start is dropped)
+    const fav = { kind: 'hushbeat', id: 'hushbeat', mallow: 'boppo', friend: 'loomi', pace: 'natural', motif: '00n7702N8704n9706N87' };
+    const kd = await H.open(browser, 'phone', '#home', { comfort: H.comfort({ favouriteMallow: 'boppo' }, { favourites: [fav] }) });
+    try {
+      const pk = kd.page, sk = `${scope}:kept`;
+      await H.waitRig(pk, { timeout: T });
+      await pk.mouse.click(195, 400).catch(() => {}); await sleep(600);
+      const openKept = (fav) => pk.evaluate(async (fav) => {
+        __lab.ctx.openTune(fav);
+        for (let i = 0; i < 200 && !(__lab.hushbeat && __lab.companions()[1]); i++) await new Promise((r) => setTimeout(r, 0));
+        const rig = __lab.companions()[1].rig;
+        let real = rig.ready; window.__allow = false;   // the friend's body "still loading" until the test lets it arrive
+        Object.defineProperty(rig, 'ready', { configurable: true, get: () => real && window.__allow, set: (v) => { real = v; } });
+        return { entering: !!__lab.hushbeat.debug().duet?.entering, playIt: __lab.hushbeat.debug().controls.playIt };
+      }, fav);
+      const k0 = await openKept(fav);
+      await pk.evaluate(() => __lab.hushbeat.playIt());
+      const k1 = await hb(pk, () => ({ pending: __lab.hushbeat.debug().controls.playItPending, replaying: __lab.hushbeat.engine.replaying }));
+      await H.setHidden(pk, true);
+      await hb(pk, () => { window.__allow = true; });
+      await sleep(1500);
+      await H.setHidden(pk, false);
+      await pk.waitForFunction(() => !__lab.hushbeat.debug().duet?.entering, null, { timeout: T });
+      await sleep(2000);
+      const k2 = await hb(pk, () => ({ replays: __lab.hushbeat.log.filter((e) => e.kind === 'replay').length, notes: __lab.hushbeat.log.filter((e) => e.src === 'replay' && !e.ghost).length, c: __lab.hushbeat.debug().controls }));
+      check(sk, 'E19 Play it while the kept duet\'s friend arrives, then hidden: nothing plays on return and Play it is back',
+        k0.entering && k0.playIt && k1.pending && !k1.replaying && k2.replays === 0 && k2.notes === 0 && k2.c.playIt && !k2.c.playItPending && !k2.c.replay, JSON.stringify({ k0, k1, k2 }));
+      await openKept(fav);
+      await pk.evaluate(() => __lab.hushbeat.playIt());
+      await pk.waitForFunction(() => !document.querySelector('.hushbeat .hb-replay').hidden, null, { timeout: T });
+      await pk.click('.hushbeat .hb-replay');
+      await sleep(300);
+      await hb(pk, () => { window.__allow = true; });
+      await pk.waitForFunction(() => !__lab.hushbeat.debug().duet?.entering && !__lab.hushbeat.engine.replaying, null, { timeout: T });
+      await sleep(2500);
+      const k3 = await hb(pk, () => __lab.hushbeat.log.filter((e) => e.kind === 'replay').map((e) => `${e.on ? 'on' : e.done ? 'done' : 'stopped'}@${e.t.toFixed(2)}`));
+      check(sk, 'Replay tapped while the friend arrives plays once (Play it\'s queued start is dropped)', k3.filter((x) => x.startsWith('on')).length === 1, JSON.stringify(k3));
+      noErrors(sk, kd.errors);
+    } finally { await kd.ctx.close(); }
   });
 
   // ------------------------------------------------------------------ E20 --
@@ -871,6 +1071,12 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'E17: phrase notes are shown at ev.t + outputLatency (never before; ≤ one slow frame after)',
       seen.notes.length >= 3 && seen.notes.every((n) => Math.abs(n.due - n.t - seen.lat) < 1e-6 && n.at >= n.due - 1e-6 && n.at - n.due < 0.45), JSON.stringify({ lat: seen.lat, lagMax, n: seen.notes.length }));
     await shot(page, out, 'hushbeat-phone-scene');
+    // a key's notes have no fingertip: their beads start above the head (never through the eyes); the trail of P runs
+    // across the forehead, above the eyes
+    await sleep(1500);
+    await page.keyboard.press('d'); await sleep(120);
+    const kb = await hb(page, () => { const P = __lab.hushbeat.performers[0], r = P._rect(), o = P.off; return { top: r.top, h: r.h, beads: __lab.hushbeat.scene.pool.beads.filter((x) => x.alive).map((x) => Math.round(x.y0 - o.y - r.top)) }; });
+    check(scope, 'E3 a key\'s note (D) lights its bead above the head, clear of the eyes', kb.beads.length >= 1 && kb.beads.every((y) => y <= -4), JSON.stringify(kb));
     // E17: a hum keeps the music going; the groove eases in and Boppo moves on the beat
     const sample = (ms) => page.evaluate((ms) => new Promise((res) => {
       const bd = __lab.companion.rig.body, out = [], t0 = performance.now();
@@ -1035,10 +1241,16 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'E15: opening it shows Play it (Replay hidden) with Kept pressed, and nothing plays by itself for 2.5 s',
       p1.c.playIt && !p1.c.replay && p1.c.keepPressed === 'true' && p1.log === 0 && p1.live === 0 && p1.best === 4 && !p1.scheduler.running, JSON.stringify(p1));
     await shot(page, out, 'hushbeat-desktop-playit');
-    await page.click('.hushbeat .hb-playit');
+    // by keyboard: focus moves to Stop (never to the page, where Enter would add a note)
+    await page.focus('.hushbeat .hb-playit');
+    await page.keyboard.press('Enter');
     await waitEvent(page, "e.kind === 'note' && e.src === 'replay'");
-    const p2 = await hb(page, () => ({ c: __lab.hushbeat.debug().controls, state: __lab.hushbeat.state }));
-    check(scope, 'E15: Play it plays the tune (the Mallow sings it back), then goes away', !p2.c.playIt && p2.state === 'replaying' && p2.c.replay && p2.c.replayLabel === 'Stop', JSON.stringify(p2));
+    const p2 = await hb(page, () => ({ c: __lab.hushbeat.debug().controls, state: __lab.hushbeat.state, focus: document.activeElement === document.body ? 'body' : document.activeElement.className }));
+    check(scope, 'E15: Play it (Enter) plays the tune (the Mallow sings it back), then goes away; focus moves to Stop',
+      !p2.c.playIt && p2.state === 'replaying' && p2.c.replay && p2.c.replayLabel === 'Stop' && /hb-replay/.test(p2.focus), JSON.stringify(p2));
+    const pr = await hb(page, () => { const st = (sel) => { const cs = getComputedStyle(document.querySelector(sel)); return { bg: cs.backgroundColor, sh: cs.boxShadow }; }; return { stop: st('.hushbeat .hb-replay'), kept: st('.hushbeat .hb-keep') }; });
+    const clear = (c) => /rgba\(0, 0, 0, 0\)|transparent/.test(c.bg) && c.sh !== 'none';
+    check(scope, 'Play it is the only solid chip: pressed toggles (Stop, Kept) are outlined', clear(pr.stop) && clear(pr.kept), JSON.stringify(pr));
     await page.waitForFunction(() => !__lab.hushbeat.engine.replaying, null, { timeout: T });
     const n = await hb(page, () => __lab.hushbeat.log.filter((e) => e.kind === 'note' && e.src === 'replay').length);
     check(scope, 'all four notes of the kept tune', n === 4, String(n));
@@ -1269,9 +1481,9 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'Volume is the lab\'s volume ("Same as in Settings", labelled); the sub-texts and the footnote are as written',
       +sh.vol === sh.prefVol && sh.volLabel === 'Volume' && sh.sub[0] === 'Same as in Settings' && sh.sub[1] === 'Visual only: music as light and movement, no sound'
       && sh.foot === 'Music plays even with the Mallow voice off. Use Mute or Visual only for quiet.', JSON.stringify(sh));
-    check(scope, 'Your tunes: each kept tune described, with Play and Remove that name it',
-      sh.tunes.length === 2 && sh.tunes[0].name === 'Boppo & Loomi tune · 3 notes · Natural' && sh.tunes[1].name === 'Pipzi tune · 3 notes · Livelier'
-      && sh.tunes[0].play === 'Play Boppo & Loomi tune · 3 notes · Natural' && sh.tunes[1].remove === 'Remove Pipzi tune · 3 notes · Livelier', JSON.stringify(sh.tunes));
+    check(scope, 'Your tunes: each kept tune described with its place in the list (newest first), with Play and Remove that name it',
+      sh.tunes.length === 2 && sh.tunes[0].name === 'Boppo & Loomi tune · 3 notes · Natural · newest' && sh.tunes[1].name === 'Pipzi tune · 3 notes · Livelier · 2nd'
+      && sh.tunes[0].play === 'Play tune 1 of 2: Boppo & Loomi tune · 3 notes · Natural' && sh.tunes[1].remove === 'Remove tune 2 of 2: Pipzi tune · 3 notes · Livelier', JSON.stringify(sh.tunes));
     await shot(page, out, 'hushbeat-phone-sheet');
     // E11: the volume moves prefs.volume and the master gain
     const setVol = (v) => hb(page, (v) => { const r = document.querySelector('.hushbeat .hb-volume'); r.value = String(v); r.dispatchEvent(new Event('input', { bubbles: true })); }, v);
@@ -1347,6 +1559,23 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await page.keyboard.press('Escape');
     check(scope, 'Your tunes says when personalisation is off, and when nothing is kept yet', off === "Personalisation is off, so tunes can't be kept." && empty === 'Tap ★ Keep after you play to keep a tune here.', JSON.stringify({ off, empty }));
     noErrors(scope, errors);
+    // another Mallow's tune (CR-H1, ctx.openTune): Hushbeat reopens with that Mallow for this visit and the tune plays
+    // in its own voice; the favourite Mallow never changes
+    const ot = await H.open(browser, 'phone', '#hushbeat', { comfort: H.comfort({ favouriteMallow: 'boppo' }, { favourites: [tunes[1]] }) });
+    try {
+      const po = ot.page, so = `${scope}:openTune`;
+      await H.waitRig(po, { timeout: T });
+      await po.waitForFunction(() => __lab.hushbeat, null, { timeout: T });
+      await openSheetBy(po, '.hushbeat .hb-music');
+      await po.click('.hushbeat .sheet .hb-tune-play');
+      await po.waitForFunction(() => __lab.route === 'hushbeat' && __lab.companion?.id === 'pipzi' && __lab.hushbeat?.players[0]?.part.mallowId === 'pipzi', null, { timeout: T });
+      await waitEvent(po, "e.kind === 'note' && e.src === 'replay'");
+      await po.waitForFunction(() => !__lab.hushbeat.engine.replaying, null, { timeout: T });
+      const r = await hb(po, () => ({ id: __lab.companion.id, notes: __lab.hushbeat.log.filter((e) => e.kind === 'note' && e.src === 'replay' && !e.ghost).length, fav: __lab.dna.get('favouriteMallow'), pace: __lab.hushbeat.debug().pace, playIt: __lab.hushbeat.debug().controls.playIt }));
+      check(so, 'Play on another Mallow\'s tune reopens Hushbeat with Pipzi (this visit), which sings all three notes at the tune\'s pace; the favourite stays Boppo',
+        r.id === 'pipzi' && r.notes === 3 && r.fav === 'boppo' && r.pace === 'livelier' && !r.playIt, JSON.stringify(r));
+      noErrors(so, ot.errors);
+    } finally { await ot.ctx.close(); }
   });
 
   // ------------------------------------------------------------------ E23 --
@@ -1395,7 +1624,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'E23 Buttons by keyboard (Enter) shows the tray; aria-pressed follows; focus stays on it', tr.tray && tr.pressed === 'true' && tr.focus, JSON.stringify(tr));
     await page.focus('.hushbeat .stage');
     const w2 = await tabWalk(13);
-    const want2 = ['Close', 'Sound and pace', 'Mute sound', 'Note', 'Chord', 'Tune', 'Bass', 'Hum', 'Breathe', 'Buttons', 'Replay', 'Keep', 'Friend: invite another Mallow'];
+    const want2 = ['Close', 'Sound and pace', 'Mute sound', 'Note', 'Chord', 'Tune', 'Bass, hold for a warm bass', 'Hum, hold for a hum', 'Breathe, hold as you breathe in', 'Buttons', 'Replay', 'Keep', 'Friend: invite another Mallow'];
     check(scope, 'E23 Tab order with a take and the tray: the tray\'s chips, then Buttons, Replay, Keep, Friend; every stop named and ringed',
       JSON.stringify(names(w2)) === JSON.stringify(want2) && w2.every((f) => f.ring && f.labelled), JSON.stringify(names(w2)));
     await page.focus('.hushbeat .hb-tray .chip:nth-child(1)');
@@ -1627,8 +1856,9 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
       const tx = await hb(page, () => {
         const scr = document.querySelector('.screen.hushbeat');
         const lum = (el) => { const m = getComputedStyle(el).color.match(/[\d.]+/g).map(Number); const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return +(0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2])).toFixed(3); };
-        return { tone: scr.dataset.backdrop, title: lum(scr.querySelector('.topbar .title b')), sub: lum(scr.querySelector('.topbar .title small')), hint: lum(scr.querySelector('.hb-hint')) };
+        return { tone: scr.dataset.backdrop, title: lum(scr.querySelector('.topbar .title b')), sub: lum(scr.querySelector('.topbar .title small')), hint: lum(scr.querySelector('.hb-hint')), halo: getComputedStyle(scr.querySelector('.hb-hint')).textShadow };
       });
+      check(sc, 'the hint has a tight halo in the world\'s ink (readable over any part of the world)', (tx.halo.match(/px/g) || []).length >= 8, tx.halo);
       const okTone = tx.tone === 'dark' ? [tx.title, tx.sub, tx.hint].every((l) => l > 0.45) : [tx.title, tx.sub, tx.hint].every((l) => l < 0.2);
       check(sc, 'the title, subtitle and hint take the world\'s tone (light on dark, dark on light)', !!tx.tone && okTone, JSON.stringify(tx));
       if (tx.tone === 'dark') {
@@ -1654,6 +1884,15 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         const sc = `${scope}:${vp}`;
         await sleep(400);
         await H.layout(page, `${sc}:solo`, { scrollers: ['.hb-tray'] });
+        // the hint: in portrait always (one short line at 320 wide: the first screen's only words), with a halo over
+        // the world; hidden only on short landscape screens
+        const hint = await hb(page, () => {
+          const el = document.querySelector('.hushbeat .hb-hint'), cs = getComputedStyle(el), r = el.getBoundingClientRect();
+          return { shown: cs.display !== 'none', h: Math.round(r.height), short: [...el.querySelectorAll('.hb-long')].every((x) => getComputedStyle(x).display === 'none'), halo: cs.textShadow !== 'none', W: innerWidth, H: innerHeight };
+        });
+        const shortLand = hint.H <= 600 && hint.W >= hint.H;
+        check(`${sc}:solo`, 'the hint shows (with a halo over the world) except on short landscape screens; at 320 wide it is one short line',
+          shortLand ? !hint.shown : hint.shown && hint.halo && (hint.W > 360 || (hint.short && hint.h <= 22)), JSON.stringify(hint));
         await shot(page, out, `hushbeat-${vp}-solo`);
         await page.click('.hushbeat .hb-buttons');
         await sleep(500);
@@ -1678,6 +1917,19 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         await sleep(500);
         const inStage = await hb(page, () => { const st = [...document.querySelectorAll('.hushbeat .stage')]; return __lab.companions().map((c, i) => { const r = c.rig.bodyRect(), w = st[i].clientWidth; return r.cx - r.w / 2 >= -1 && r.cx + r.w / 2 <= w + 1; }); });
         check(`${sc}:duet-tray`, 'each Mallow inside its own stage', inStage.length === 2 && inStage.every(Boolean), JSON.stringify(inStage));
+        if (vp === 'land' || vp === 'land-small') {
+          // short landscape: the two stages close in around the middle; with the tray open the row is icon-only
+          const lg = await hb(page, () => {
+            const [a, z] = [...document.querySelectorAll('.hushbeat .stage')].map((x) => x.getBoundingClientRect()), tr = document.querySelector('.hushbeat .hb-tray').getBoundingClientRect();
+            const chips = [...document.querySelectorAll('.hushbeat .hb-tray > .chip')].map((c) => { const r = c.getBoundingClientRect(); return { t: c.textContent, in: r.left >= tr.left - 1 && r.right <= tr.right + 1 }; });
+            const row = [...document.querySelectorAll('.hushbeat .hb-row .chip')].filter((c) => !c.hidden).map((c) => ({ w: Math.round(c.getBoundingClientRect().width), name: c.getAttribute('aria-label') }));
+            return { W: innerWidth, lead: [Math.round(a.left), Math.round(a.right)], partner: [Math.round(z.left), Math.round(z.right)], chips, row };
+          });
+          const mid = lg.W / 2;
+          check(`${sc}:duet-tray`, 'short landscape duet: the stages meet in the middle, each ≤ 240 px wide', Math.abs(lg.lead[1] - mid) <= 1 && Math.abs(lg.partner[0] - mid) <= 1 && lg.lead[1] - lg.lead[0] <= 241 && lg.partner[1] - lg.partner[0] <= 241, JSON.stringify(lg));
+          check(`${sc}:duet-tray`, 'with the tray open the row is icon-only, every chip still named', lg.row.every((c) => c.w <= 41 && c.name), JSON.stringify(lg.row));
+          if (vp === 'land') check(`${sc}:duet-tray`, 'at 844×390 all six of the tray\'s actions are in view', lg.chips.length === 6 && lg.chips.every((c) => c.in), JSON.stringify(lg.chips));
+        }
         await H.layout(page, `${sc}:duet-tray`, { scrollers: ['.hb-tray'] });
         await shot(page, out, `hushbeat-${vp}-duet-tray`);
         await page.click('.hushbeat .hb-buttons');

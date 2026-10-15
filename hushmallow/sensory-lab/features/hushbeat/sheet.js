@@ -45,17 +45,14 @@ export function tuneItem({ lead, friend = null, takeFriend = null, pace = 'natur
   };
 }
 
-// Calls onClosed once the sheet closes by any path (Done, the scrim, Escape or close()).
-// openSheet has no close hook, so this watches its 'on' class (it arrives on the next frame).
-function track(close, el, onClosed) {
-  let done = false, seen = false;
-  const finish = () => { if (done) return; done = true; mo?.disconnect(); onClosed?.(); };
-  const mo = el && typeof MutationObserver === 'function' ? new MutationObserver(() => {
-    if (el.classList.contains('on')) seen = true;
-    else if (seen) finish();
-  }) : null;
-  mo?.observe(el, { attributes: true, attributeFilter: ['class'] });
-  return { el, close() { close(); finish(); }, get open() { return !done; } };
+// The sheet handle: onClosed runs once, whatever closed it (Done, the scrim, Escape or close()), through
+// openSheet's onClose. → { el, close(), open }
+function sheetOf(root, title, content, onClosed) {
+  let done = false, body = null;
+  const close = openSheet(root, title, (closeSheet) => (body = content(closeSheet)), {
+    onClose: () => { if (done) return; done = true; onClosed?.(); },
+  });
+  return { el: body?.closest('.sheet') || null, close, get open() { return !done; } };
 }
 
 const row = (label, ctl, sub, cls = '') => h('div', { class: `row ${cls}`.trim() },
@@ -68,8 +65,7 @@ const row = (label, ctl, sub, cls = '') => h('div', { class: `row ${cls}`.trim()
  */
 export function openMusicSheet(root, ctx, model) {
   const { prefs } = ctx;
-  let body = null;
-  const close = openSheet(root, COPY.sheet.title, (closeSheet) => {
+  return sheetOf(root, COPY.sheet.title, (closeSheet) => {
     const vol = h('input', {
       type: 'range', min: '0', max: '1', step: '0.05', value: String(prefs.get('volume')), 'aria-label': COPY.aria.volume, class: 'hb-volume',
       oninput: (e) => prefs.set('volume', +e.target.value),
@@ -89,14 +85,15 @@ export function openMusicSheet(root, ctx, model) {
       list.replaceChildren();
       if (!tunes) { list.append(h('p', { class: 'hb-empty' }, COPY.sheet.tunesOff)); return; }
       if (!tunes.length) { list.append(h('p', { class: 'hb-empty' }, COPY.sheet.tunesEmpty)); if (focusAt >= 0) list.focus({ preventScroll: true }); return; }
+      // two takes can share a description: each row also says where it is in the list (newest first)
       tunes.forEach((it, i) => {
-        const name = describeTune(it);
+        const name = describeTune(it), n = tunes.length;
         list.append(h('div', { class: 'hb-tune', role: 'listitem' },
-          h('span', { class: 'hb-tune-name' }, name),
+          h('span', { class: 'hb-tune-name' }, name, h('span', { class: 'hb-tune-pos' }, COPY.sheet.position(i))),
           h('span', { class: 'hb-tune-acts' },
-            h('button', { type: 'button', class: 'btn-quiet hb-tune-play', 'aria-label': COPY.sheet.playTune(name), onclick: () => { closeSheet(); model.playTune?.(it); } }, COPY.sheet.play),
+            h('button', { type: 'button', class: 'btn-quiet hb-tune-play', 'aria-label': COPY.sheet.playTune(name, i, n), onclick: () => { closeSheet(); model.playTune?.(it); } }, COPY.sheet.play),
             h('button', {
-              type: 'button', class: 'btn-quiet hb-tune-remove', 'aria-label': COPY.sheet.removeTune(name),
+              type: 'button', class: 'btn-quiet hb-tune-remove', 'aria-label': COPY.sheet.removeTune(name, i, n),
               onclick: () => { model.removeTune?.(it); render(i); },
             }, COPY.sheet.remove))));
       });
@@ -109,7 +106,7 @@ export function openMusicSheet(root, ctx, model) {
     render();
 
     const settings = h('button', { type: 'button', class: 'btn-quiet hb-lab', onclick: () => { closeSheet(); ctx.openSettings?.(); } }, COPY.sheet.open);
-    body = h('div', { class: 'hb-sheet' },
+    return h('div', { class: 'hb-sheet' },
       row(COPY.sheet.volume, vol, COPY.sheet.volumeSub),
       row(COPY.sheet.sound, sound, COPY.sheet.soundSub),
       row(COPY.sheet.pace, pace, COPY.sheet.paceSub),
@@ -117,17 +114,14 @@ export function openMusicSheet(root, ctx, model) {
       h('div', { class: 'row stack hb-tunes-row' }, h('span', { class: 'lbl' }, COPY.sheet.tunes), list),
       row(COPY.sheet.lab, settings),
       h('p', { class: 'hb-foot' }, COPY.sheet.footnote));
-    return body;
-  });
-  return track(close, body?.closest('.sheet'), model.onClosed);
+  }, model.onClosed);
 }
 
 /** "Who joins Boppo?": onPick(id | null) after the sheet closes; the friend on stage just closes it. → { el, close(), open } */
 export function openFriendPicker(root, ctx, { lead, friend = null, onPick, onClosed } = {}) {
-  let body = null;
-  const close = openSheet(root, COPY.friend.title(MALLOWS[lead]?.name || ''), (closeSheet) => {
+  return sheetOf(root, COPY.friend.title(MALLOWS[lead]?.name || ''), (closeSheet) => {
     const pick = (id) => { closeSheet(); if (id !== friend) onPick?.(id); };
-    body = h('div', { class: 'hb-sheet hb-friends-sheet' },
+    return h('div', { class: 'hb-sheet hb-friends-sheet' },
       h('div', { class: 'hb-friends', role: 'group', 'aria-label': COPY.friend.title(MALLOWS[lead]?.name || '') },
         ...friendChoices(lead).map((m) => h('button', {
           type: 'button', class: 'hb-friend', 'data-mallow': m.id, 'aria-pressed': String(m.id === friend),
@@ -136,7 +130,5 @@ export function openFriendPicker(root, ctx, { lead, friend = null, onPick, onClo
         h('span', { class: 'hb-dot', 'aria-hidden': 'true', style: { background: m.colour } }),
         h('span', { class: 'hb-friend-txt' }, h('b', {}, m.name), h('small', {}, m.words))))),
       friend ? h('button', { type: 'button', class: 'btn-quiet hb-alone', onclick: () => pick(null) }, COPY.friend.alone) : null);
-    return body;
-  });
-  return track(close, body?.closest('.sheet'), onClosed);
+  }, onClosed);
 }

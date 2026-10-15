@@ -213,13 +213,15 @@ export class ComfortDNA {
   /**
    * Familiar things to offer when the person comes back: favourites first, then
    * what they use most (if learning is on), then what they said helps.
-   * Never more than `n`; never invented.
+   * Only the newest kept tune is offered (tunes are kept often and their titles
+   * repeat), so other favourites still get a place. Never more than `n`; never invented.
    */
   suggestions(n = 3) {
     if (!this.data.enabled) return [];
     const out = [], seen = new Set();
     const push = (it, reason) => { const k = itemKey(it); if (!seen.has(k) && out.length < n) { seen.add(k); out.push({ ...it, reason }); } };
-    for (const f of this.data.favourites) push(f, 'favourite');
+    let tunes = 0;
+    for (const f of this.data.favourites) { if (f.kind === 'hushbeat' && tunes++) continue; push(f, 'favourite'); }   // newest first
     if (this.learning) for (const h of this.history()) if (h.kind === 'pocket' || h.kind === 'softbody') push({ kind: h.kind, id: h.id, mallow: h.mallow, material: h.material }, 'often');
     const byComfort = { squeeze: 'quick-squeeze', breathe: 'soft-breath', glow: 'gentle-glow', float: 'let-it-float', quiet: 'quiet-moment', hold: 'quiet-moment', stroke: 'quiet-moment' };
     for (const c of this.get('comfort')) push({ kind: 'pocket', id: byComfort[c] }, 'helps');

@@ -19,7 +19,8 @@
 //
 // Events (every one has kind, slot, t in performance seconds):
 //   note     {id, semi, deg, hz, vel, dur, ring, src: live|phrase|chord|answer|replay|hello|cadence|shimmer,
-//             x01, y01, immediate, ghost, glideFrom?, glide?, restrike?, stutter?, resolve?}
+//             x01, y01, immediate, ghost, glideFrom?, glide?, restrike?, stutter?, resolve?, tip?}
+//             (tip: false: struck by a button or key, no fingertip; a double tap's roll keeps its note's mark)
 //            dur = how long the voice may live; ring = how long it counts as sounding
 //   noteOff  {id, fade}                  a voice stolen for a newer note, or a queued one giving way
 //                                        to live play (a voice that has not started by t never sounds)
@@ -214,7 +215,7 @@ export class MusicEngine {
   // ------------------------------------------------- the birth of a note --
   /**
    * o: { mode: 'pick' (tap: pickNote) | 'deg' (a planned degree: guard only), deg, band01, src, base,
-   *      immediate, harmonise, accent, lenK, x01, y01, glideFrom, glide, stutter, resolve }
+   *      immediate, harmonise, accent, lenK, x01, y01, glideFrom, glide, stutter, resolve, tip }
    * → the note record, or null (a ghost when it was a touch, otherwise silently skipped)
    */
   _note(p, t, o) {
@@ -245,7 +246,7 @@ export class MusicEngine {
     const semi = degSemi(V.scale, deg);
     const n = {
       id: ++this._id, slot: p.slot, semi, deg, vel, t, dur, vEnd: t + dur, end: t + ring, tau: V.decay,
-      peak: V.peak * vel, src: o.src, x01: o.x01 ?? 0, y01: o.y01 ?? 0.5, heard: false, stolen: false, held: false,
+      peak: V.peak * vel, src: o.src, x01: o.x01 ?? 0, y01: o.y01 ?? 0.5, heard: false, stolen: false, held: false, tip: o.tip !== false,
     };
     this.notes.push(n);
     this.onsets.push(t);
@@ -260,6 +261,7 @@ export class MusicEngine {
     else if (o.glide) ev.glide = o.glide;
     if (o.stutter) ev.stutter = true;
     if (o.resolve) ev.resolve = true;
+    if (o.tip === false) ev.tip = false;
     n.heard = this._emit(ev);
     if (call) {
       this.harmonies.push(t);
@@ -277,7 +279,7 @@ export class MusicEngine {
     const V = p.V, semi = p.lastNote ? p.lastNote.semi : degSemi(V.scale, Math.round((V.tapLo + V.tapHi) / 2));
     this._emit({
       kind: 'note', slot: p.slot, t, id: null, semi, deg: nearestDeg(V.scale, semi), hz: hzOf(V, semi), vel: 0, dur: 0, ring: 0,
-      src: o.src, x01: o.x01 ?? 0, y01: o.y01 ?? 0.5, immediate: true, ghost: true,
+      src: o.src, x01: o.x01 ?? 0, y01: o.y01 ?? 0.5, immediate: true, ghost: true, ...(o.tip === false ? { tip: false } : {}),
     });
     return null;
   }
@@ -345,8 +347,8 @@ export class MusicEngine {
   together() {
     const a = this._parts[0], b = this._parts[1];
     if (!a) return [null, null];
-    const ia = a.strike({ vel: BASE.button, y01: 0.6 });
-    const ib = b ? b.strike({ vel: BASE.button, y01: 0.6 }) : null;
+    const ia = a.strike({ vel: BASE.button, y01: 0.6, tip: false });
+    const ib = b ? b.strike({ vel: BASE.button, y01: 0.6, tip: false }) : null;
     return [ia, ib];
   }
 
@@ -544,10 +546,10 @@ class Part {
 
   // ------------------------------------------------------------ notes --
   /** The contact note, now. → id, or null when it became a ghost (too fast, too many). */
-  strike({ y01 = 0.5, x01 = 0, deg = null, src = 'live', vel = null } = {}) {
+  strike({ y01 = 0.5, x01 = 0, deg = null, src = 'live', vel = null, tip = true } = {}) {
     const e = this.e, t = e.now();
     if (RECORD.has(src)) e._cancelAnswer();
-    const n = e._note(this, t, { mode: 'pick', band01: y01, deg, x01, y01, src, base: vel ?? BASE.live, immediate: true, harmonise: deg == null });
+    const n = e._note(this, t, { mode: 'pick', band01: y01, deg, x01, y01, src, base: vel ?? BASE.live, immediate: true, harmonise: deg == null, tip });
     if (n) this.lastStrikeT = t;
     return n ? n.id : null;
   }
@@ -564,7 +566,7 @@ class Part {
     n.t = t; n.vEnd = t + n.dur; n.end = t + ring;
     n.heard = e._emit({
       kind: 'note', slot: this.slot, t, id: n.id, semi: n.semi, deg: n.deg, hz: hzOf(this.V, n.semi), vel: n.vel, dur: n.dur, ring,
-      src: n.src, x01: n.x01, y01: n.y01, immediate: true, ghost: false, restrike: true,
+      src: n.src, x01: n.x01, y01: n.y01, immediate: true, ghost: false, restrike: true, ...(n.tip ? {} : { tip: false }),
     });
     return n.heard;
   }
@@ -583,7 +585,7 @@ class Part {
       t = e.clock.nextGrid(t + MIN_GAP - 1e-6, 4);
       const d = degOf(V.scale, s) ?? nearestDeg(V.scale, s);
       calls.push({ deg: d, t });
-      e.scheduler.at(t, (x) => e._note(this, x, { mode: 'deg', deg: d, src: 'chord', base: BASE.chord, x01: n.x01, y01: n.y01 }), `roll${this.slot}`);
+      e.scheduler.at(t, (x) => e._note(this, x, { mode: 'deg', deg: d, src: 'chord', base: BASE.chord, x01: n.x01, y01: n.y01, tip: n.tip }), `roll${this.slot}`);
     }
     e._answer(this, calls, t);
   }

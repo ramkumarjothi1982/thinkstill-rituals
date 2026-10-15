@@ -8,7 +8,8 @@
 //   BeatGlow             the floor glow under a Mallow: widens with the bass,
 //                        swells on its beats (it carries the beat in reduced motion)
 //   PhraseRibbon         a tapering trail behind a stroking finger (Float32Array
-//                        ring), with a little swell on every phrase note
+//                        ring), with a little swell on every phrase note; a dark
+//                        rim, a colour core and a white light, on any world
 //   HarmonyArc           an arc of light between two heads in a duet: a pulse on
 //                        each harmony, a steady glow while the hums bloom
 //   BreathHalo           the faint ring the Mallow breathes inside: its swell is
@@ -33,6 +34,7 @@ export const BEAD = Object.freeze({ rMax: 14, aMax: 0.5, brightR: 10, brightA: 0
 export const GLOW_MAX = 0.18;      // the floor glow's alpha, at most
 export const KICK_GAP = 0.6;       // s between floor-glow swells, at least
 const RIM = '#1a1440';
+const RIBBON_A = 0.58;   // the trail's colour core at its head, at most
 const HALO_R = 32, CORE_R = 12, FLOOR_R = 48, DOT_R = 10;   // sprite radii (drawn scaled)
 
 const light = (tone) => tone === 'light';
@@ -248,24 +250,27 @@ export class PhraseRibbon {
     return !this.gone;
   }
 
+  // three passes, the same on every world (the trail crosses the Mallow's body, whose colour decides the
+  // contrast, not the sky): a soft dark rim, the colour core (up to 0.58 at the head, 3–8 px wide) and a thin
+  // white light along it; a few continuous bands each, tail to head (fainter and thinner toward the tail)
   draw(g) {
     const n = this.n;
     if (n < 2) return;
-    const P = this.pts, c = P.length / 3, lt = light(this.tone), bands = Math.min(6, n - 1);
+    const P = this.pts, c = P.length / 3, bands = Math.min(6, n - 1);
     g.save();
     g.lineCap = 'round'; g.lineJoin = 'round';
-    // a few continuous bands, tail to head (fainter and thinner toward the tail): no overlapping caps
-    for (let pass = 0; pass < 2; pass++) {
-      g.globalCompositeOperation = pass ? glowBlend(this.tone) : 'source-over';
-      g.strokeStyle = pass ? (lt ? RIM : '#ffffff') : this.style;
+    g.globalCompositeOperation = 'source-over';
+    for (let pass = 0; pass < 3; pass++) {
+      g.strokeStyle = pass === 0 ? RIM : pass === 1 ? this.style : '#ffffff';
       for (let k = 0; k < bands; k++) {
         const i0 = Math.floor(k * (n - 1) / bands), i1 = Math.floor((k + 1) * (n - 1) / bands);
         const f = (k + 1) / bands, last = ((this.head - n + i1 + c) % c) * 3, age = clamp(1 - P[last + 2] / this.life, 0, 1);
         const bump = this.bumpK * smoothstep(0.5, 1, f);
-        const alpha = clamp((0.38 * f + 0.18 * bump) * age, 0, 0.5);
+        const alpha = clamp((0.44 * f + 0.14 * bump) * age, 0, RIBBON_A);
         if (alpha < 0.01) continue;
-        g.globalAlpha = pass ? alpha * (lt ? 0.25 : 0.5) : alpha;
-        g.lineWidth = pass ? 0.8 + 1.2 * f : 1.5 + 4 * f + 3 * bump;
+        const w = 3 + 4 * f + 1.5 * bump;
+        g.globalAlpha = pass === 0 ? alpha * (0.25 / RIBBON_A) : pass === 1 ? alpha : alpha * 0.6;
+        g.lineWidth = pass === 0 ? w + 3 : pass === 1 ? w : 0.8 + 1.2 * f;
         g.beginPath();
         for (let i = i0; i <= i1; i++) { const j = ((this.head - n + i + c) % c) * 3; if (i === i0) g.moveTo(P[j], P[j + 1]); else g.lineTo(P[j], P[j + 1]); }
         g.stroke();

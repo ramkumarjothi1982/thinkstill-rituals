@@ -1079,15 +1079,23 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const e1 = await wx(page, () => ({ m: __lab.weather.metrics(), mood: __lab.weather.env.mood, taps: __lab.weather.pulses.filter((p) => p.kind === 'tap' && p.ok).length, log: __lab.weather.reactor.log.map((e) => e.tag), ev: __lab.weather.events.filter((e) => e.type === 'kindle').length }));
     check(scope, 'a drag kindles the embers it passes: heat ↑, warmth target ↑, kindle taps reach the realm', e1.m.heat > 0.05 && e1.ev >= 2 && e1.taps >= 1 && e1.mood.warmth > e0.mood.warmth, JSON.stringify(e1));
     check(scope, 'Pipzi sparks at a kindle (its own beat)', e1.log.some((t) => t === 'pipzi-kindle-spark'), JSON.stringify(e1.log));
-    // hold Pipzi: it becomes the hearth (warm rings kindle embers by radius; 'success' at its feet every 2 s)
+    // hold Pipzi: it becomes the hearth (warm rings kindle embers by radius; a realm pulse at its feet every 2 s:
+    // a 'tap' in the fair, whose 'success' is a firework crown kept for the big moments)
+    await wx(page, () => {   // record where each realm pulse lands (env.log keeps only kinds)
+      const env = __lab.weather.env, orig = env.pulse.bind(env);
+      window.__feet = [];
+      env.pulse = (kind, at) => { const ok = orig(kind, at); window.__feet.push({ kind, ok, nx: at?.nx, ny: at?.ny }); return ok; };
+      window.__atFeet = () => { const g = __lab.weather.geo(); return window.__feet.filter((p) => Math.abs(p.nx - g.body.cx / g.W) < 0.01 && Math.abs(p.ny - g.body.bottom / g.H) < 0.02); };
+    });
     const h0 = await wx(page, () => __lab.weather.metrics().heat);
     await page.mouse.move(g.body.cx, g.body.mid); await page.mouse.down();
     await page.waitForFunction(() => __lab.weather.metrics().hearth, null, { timeout: T });
-    await page.waitForFunction((h0) => __lab.weather.metrics().heat > h0 + 0.1 && __lab.weather.pulses.some((p) => p.kind === 'success' && p.ok), h0, { timeout: T });
+    await page.waitForFunction((h0) => __lab.weather.metrics().heat > h0 + 0.1 && window.__atFeet().length > 0, h0, { timeout: T });
     await H.shot(page, out, 'weather-phone-hearth');
     await page.mouse.up();
-    const hh = await wx(page, () => ({ comp: __lab.events.map((e) => e.type), ring: __lab.weather.sims.embers.ringR }));
-    check(scope, 'holding Pipzi (a Companion hold) makes it the hearth: heat ↑ and "success" at its feet', hh.comp.includes('hold'), JSON.stringify(hh));
+    const hh = await wx(page, () => ({ comp: __lab.events.map((e) => e.type), ring: __lab.weather.sims.embers.ringR, feet: window.__atFeet(), resolved: __lab.weather.resolved }));
+    check(scope, 'holding Pipzi (a Companion hold) makes it the hearth: heat ↑ and a realm tap at its feet (never a firework every 2 s)',
+      hh.comp.includes('hold') && hh.feet.length > 0 && hh.feet.every((p) => p.kind === 'tap') && !hh.resolved, JSON.stringify(hh));
     // the chip is the hearth too, until every ember glows
     await holdChip(page, 'lead', () => __lab.weather.resolved);
     const r = await resolvedView(page);

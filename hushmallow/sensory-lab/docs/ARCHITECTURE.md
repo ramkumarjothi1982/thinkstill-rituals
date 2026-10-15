@@ -18,19 +18,40 @@ features/*  ──▶ features/stage-screen ──▶ core/companion (one per st
                                          └─▶ core/effects (FlashGate)
 features/pocket-hush ──▶ core/effects, core/pocket-rules, features/pocket/* (one module per moment)
 features/weather     ──▶ core/weather + core/weather/* (pure sims), core/weather-draw, -layer, -mallow, -sound,
-                         features/weather/{tools,ui}; shared: environment, pointer-router, ambience, effects, FaceMixer
+                         features/weather/{tools,ui}; shared: environment, pointer-router, ambience, effects,
+                         FaceMixer, personality (softened)
 features/hushbeat    ──▶ core/music-theory, -time, -engine (pure), core/music-kits, -audio, -fx,
-                         features/hushbeat/{player,performer,sheet,copy}; shared: sound-engine (voices, quietSound), effects, FaceMixer
+                         features/hushbeat/{player,performer,sheet,copy}; shared: environment, pointer-router,
+                         sound-engine (voices, quietSound), ambience (noiseBuffer), effects, FaceMixer,
+                         personality (softened), comfort-dna (tune titles)
 features/nightlight  ──▶ core/frame-pacer, core/screen-wake, features/nightlight/{session,settings,look,pacing,
-                         ways,modes,world,sky,bed,sheet,copy}; shared: environment (stills), ambience, sound-engine (facade, trim)
+                         ways,modes,world,sky,bed,sheet,copy}; shared: environment (stills), pointer-router,
+                         ambience, sound-engine (facade, trim, rest), effects, FaceMixer
 lab.js ──▶ core/prefs, core/sound-engine, core/perf, features/registry,
            core/comfort-dna ──▶ adapters/comfort-store (local) | adapters/supabase-comfort (later, unused)
 ```
 
-`core/math.js` is a leaf that everything may use. Only `soft-mallow`,
-`mesh-renderer`, `gesture-engine` (the `bindGestures` part), `companion` and
-`sound-engine` touch the DOM or Web Audio. Everything else runs in Node and is
-unit tested there.
+The one import from `core/` into `features/` is `core/music-kits` →
+`features/hushbeat/copy.js` (a leaf with no imports), which re-exports
+`SOUND_WORDS` for the Hushbeat tests.
+
+`core/math.js` is a leaf that everything may use. No `core/` module touches
+the DOM or Web Audio when it is imported; inside their functions they split
+like this:
+
+- **Pure** (plain data in and out; unit tested in Node): `math`, `softbody`,
+  `materials`, `personality`, `expression-engine`, `comfort-dna`,
+  `pocket-rules`, `prefs` (storage injected), `music-theory`, `music-engine`,
+  `music-time` (clock and timers injectable), `weather`, `weather/*`,
+  `weather-mallow` and `frame-pacer`.
+- **DOM or Web Audio** (unit tested in Node against stand-ins such as
+  `tests/lib/fake-audio.mjs`, a recording canvas or a fake realm mount, and
+  in the browser suites): `gesture-engine` (the `bindGestures` part),
+  `soft-mallow`, `mesh-renderer`, `companion`, `sound-engine`, `ambience`,
+  `effects`, `environment`, `music-kits`, `music-audio`, `music-fx`,
+  `weather-draw`, `weather-layer`, `weather-sound` and `screen-wake`.
+- **Browser only:** `pointer-router` (the `shared:pointer` block of
+  `tests/e2e-phase3.cjs`) and `perf` (device probes and frame timing).
 
 ## How a squeeze happens
 
@@ -137,7 +158,9 @@ unit tested there.
 - `new Prefs(storage?, key?)`: `get`, `set` (known keys only), `all`,
   `reset`, `onChange`, `reducedMotion()`, `persistent`.
 - It uses the key `hm.sensorylab.v1` for device settings only (sound,
-  volume, haptics, motion, theme, quality, material) and stores only values
+  volume, haptics, motion, theme, quality, material, the Mallow used while
+  personalisation is off, `showMesh`, `musicVisualOnly` (Hushbeat) and
+  `nightlight` (Mallow Nightlight's settings object)) and stores only values
   that differ from the defaults.
 
 ### Sensory Preferences Engine (Comfort DNA): `core/comfort-dna.js`
@@ -148,7 +171,9 @@ unit tested there.
   voice and touch-sound switches), `breathTiming()`, `palette()`,
   `environment(kind, mallowId)`, `suggestions(n)`, `surpriseBias()`.
 - Favourites and opt-in history: `toggleFavourite`, `isFavourite`,
-  `record(kind, id)` (only while learning is on, known items only).
+  `record(item)` (only while learning is on, known items only).
+  `suggestions(n)` offers only the newest kept Hushbeat tune, so other
+  favourites keep their places on home.
 - Privacy: `view()`, `resetPreferences()`, `deleteHistory()`, `deleteAll()`.
   Stored data is sanitised on load.
 - Stores share one interface (`load`, `save`, `clear`, `describe`):
@@ -156,12 +181,13 @@ unit tested there.
   `MemoryComfortStore` (tests), and `SupabaseComfortStore` (an injected
   client, not connected). Details in `docs/COMFORT_DNA.md`.
 
-### Effects Engine (first part): `core/effects.js`
+### Effects Engine: `core/effects.js`
 - `EffectsLayer(parent, {quality, reducedMotion})`: one canvas over the
   stage with `add`, `remove`, `clear`, `destroy`.
 - Effects: `GlowOrb`, `Floater` (a pure `step` with hit, hold, drag and
-  release), `BreathRing`, `Bloom`, `Motes`. Phase 3 extends this for
-  Weather Weaver and Nightlight.
+  release), `BreathRing`, `Bloom`, `Motes`. The Phase 3 additions
+  (`FlashGate`, glow sprites, layer options) are under "Effects additions"
+  below.
 
 ### Pocket Hush: `features/pocket-hush.js`, `core/pocket-rules.js`
 - The moment host owns the stage, input routing, hint, time limit, ending
@@ -176,10 +202,10 @@ unit tested there.
   evening moments at night, and picks a variant.
 
 ### Environments: `src/world/realm.js` (production, read-only)
-- `stage-screen` mounts a Hushfold realm behind the Mallow when an
-  experience asks for one (`backdrop` option, chosen through Comfort DNA).
-  The top bar switches its colour tokens from the realm's sky brightness
-  (`data-backdrop="light|dark"`).
+- `stage-screen` mounts a Hushfold realm behind the Mallow through
+  `core/environment` (its `env`) when an experience asks for one
+  (`backdrop` option, chosen through Comfort DNA). The top bar switches its
+  colour tokens from the realm's sky brightness (`data-backdrop="light|dark"`).
 
 ### Performance: `core/perf.js`
 - `initialTier(pref)` picks the starting quality from the device (pointer
@@ -221,9 +247,10 @@ time through substeps), a `'tick'` event, `overlay(kind, params, dur)`,
 
 **Sound Engine additions.** `_voice(dur, {pan, dest, send, keep})`, a
 keep-aware voice cap (`_room()`), `setTrim(k)` and `rest()` (Nightlight's
-session volume and screen-lock rest), and `soundFacade(sound, {fx, voice,
-skip})` / `quietSound(sound)` for Companions whose own sounds should be
-scaled or silenced (Hushbeat, Nightlight).
+session volume and screen-lock rest), `wake()` (the router clears a rest
+when its screen goes, so the next screen never starts silent), and
+`soundFacade(sound, {fx, voice, skip})` / `quietSound(sound)` for Companions
+whose own sounds should be scaled or silenced (Hushbeat, Nightlight).
 
 **Effects additions.** `FlashGate({max, windowMs, gaps, bright})` (the one
 photosafe limiter: at most 3 bright events a second per screen, realm and
@@ -244,8 +271,12 @@ reach a partner Companion. Kept Hushbeat tunes are handed to Hushbeat by the
 home offer, and `ctx.openTune(tune, {play})` reopens a kept tune with the
 Mallow that made it. `openSheet(root, title, content, {onClose})` calls
 `onClose` once however the sheet closes, and a closing sheet stops taking
-taps while it fades. The screen publishes its chrome bands as
-`--band-top` / `--band-bottom` and in `onLayout`.
+taps while it fades. Its Escape listener is in the capture phase, so Escape
+closes the sheet before a screen's own key listener can leave the screen,
+and a sheet that a route change discards drops its listener at the next key.
+The router closes an open Settings sheet when the route changes. The screen
+publishes its chrome bands as `--band-top` / `--band-bottom` and in
+`onLayout`.
 
 ### Phase 3 experiences
 - **Hushfold Weather Weaver:** `docs/WEATHER.md`.

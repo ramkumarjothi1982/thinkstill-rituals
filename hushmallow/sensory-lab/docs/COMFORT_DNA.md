@@ -28,9 +28,9 @@ connected), `features/comfort-dna.js` (screen).
 | `animationSpeed` | slower / natural / livelier | natural | rig and physics clock (0.82 / 1 / 1.14), Soft Breath pace |
 | `motion` | soft / normal / bouncy | normal | impulse strength of touches and reactions (0.6 / 1 / 1.25) |
 | `voice` | true / false | true | the Mallow's voice sounds |
-| `touchSounds` | true / false | true | squish, stretch, breath, bubble and chime sounds |
+| `touchSounds` | true / false | true | squish, stretch, breath, bubble and chime sounds, the Pocket Hush pad, Weather Weaver's bed and one-shots |
 | `colours` | mallow / warm / cool / lavender / rose | mallow | stage glow, light orb, breath ring, floating things |
-| `environment` | auto / stage / one of the seven realms | auto | backdrop (auto = Pocket Hush in the Mallow's own realm, plain stage elsewhere) |
+| `environment` | auto / stage / one of the seven realms | auto | backdrop (auto = the Mallow's own world in Pocket Hush, Weather Weaver and Hushbeat (Nightlight: its night world); plain stage in TouchTalk and SoftBody) |
 | `comfort` | any of squeeze, hold, stroke, breathe, glow, float, quiet | none | "For you" offers, Pocket Hush order, Surprise Me weights |
 
 Phase 3 reads the same choices: Weather Weaver, Hushbeat and Nightlight use the favourite Mallow, responses, animation speed, movement, voice, touch sounds, colours and environment (Nightlight picks a night-capable world; Weather Weaver always needs a world).
@@ -75,6 +75,9 @@ places but is one setting.
   silences the Mallow's voice and motifs everywhere.
 - **Suggestions don't change choices:** opening a "For you" suggestion with
   another Mallow uses that Mallow for that visit only; the favourite stays.
+- **"For you" offers at most one tune:** favourites come first, newest first,
+  with only the newest kept Hushbeat tune among them; then what is used most
+  (if learning is on) and what helps.
 
 ## Store interface
 

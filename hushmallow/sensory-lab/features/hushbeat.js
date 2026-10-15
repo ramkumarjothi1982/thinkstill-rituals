@@ -7,6 +7,8 @@
 // phrase on the Mallow's own grid, and a drag up bends it. A long still press
 // off the body (or B, or the Breathe chip) leads the breath: the in-breath
 // opens the hums, and the measured breath sets the tempo from the next bar.
+// Layers build: a held Hum or Bass chip (or H, S) is a layer beside the touch,
+// so notes, strokes and holds on the body keep playing over it.
 //
 // The Mallow performs what it plays: it sings its notes, glows with a hum,
 // puffs its cheeks with the bass and moves to the beat in its own way, inside
@@ -45,7 +47,7 @@ import { MusicAudio } from '../core/music-audio.js';
 import { chordAt } from '../core/music-theory.js';
 import { EffectsLayer, FlashGate, surfaceTone, clearGlowSprites } from '../core/effects.js';
 import { PULSE_GAPS } from '../core/environment.js';
-import { watchPresses } from '../core/pointer-router.js';
+import { watchPresses, defaultSkip } from '../core/pointer-router.js';
 import { BREATH, PACES, FAV_CAP } from '../core/comfort-dna.js';
 import { rng } from '../core/math.js';
 import { MALLOWS } from '../../src/mallows/registry.js';
@@ -67,6 +69,9 @@ const FADE_MS = [160, 60];     // a friend arrives or leaves: the stages fade ou
 const PAN = 0.22;              // in a duet the lead sits a little left, the friend a little right
 const ACTIVE_S = 1.2;          // a Mallow played this recently is "being played" (the other one watches)
 const GLANCE_S = 1.2;          // the two glance at each other at most this often
+const CHIP_MIN_S = 1.2;        // a tapped Hum or Bass chip still plays this long (a hum takes time to swell)
+const BREATH_MIN_S = 0.6;      // a breath lead let go sooner was a tap: no breath is measured, the tempo stays
+const SLOP = 12;               // px: a still press (the breath lead's slop)
 const perf = () => performance.now() / 1000;
 
 export function mount(root, ctx, { handoff = null } = {}) {
@@ -79,9 +84,14 @@ export function mount(root, ctx, { handoff = null } = {}) {
   let gone = false, leaveT = 0, longT = 0, wasReady = false, wasStrong = null, qT = 0, rowT = 0, lastTouch = perf();
   let restAfter = REST_S, replayH = null, playItOn = false, rowSig = '', favSig = 0, keepItem = null;
   let friend = null, takeFriend = null, entering = null, fadeT = 0, answers = true, trayTarget = 0, targetSeg = null, sheet = null, glanceT = -Infinity;
+  let playItPending = false;   // Play it was tapped and its replay waits for the Mallows' bodies (whenReady)
+  let waiting = null;          // what waits for every body on stage (whenReady), run from frame()
+  let acting = false;          // a held layer's face (Companion.act) is being shown: the players skip those gestures
   const said = new Set();
   let saidT = -Infinity;
   const breaths = new Set();   // who leads the breath right now: 'key', 'chip', 'press:<pointerId>'
+  let leadT = 0;               // when the breath lead began
+  const keyHeld = new Map();   // H / S held: 'pad' | 'bass' → the Companion it started on (it ends on the same one)
 
   // ------------------------------------------------------------ music --
   const clock = new BreathClock({ ...BREATH[pace], now: perf });
@@ -137,17 +147,18 @@ export function mount(root, ctx, { handoff = null } = {}) {
   // target control [Lead | Both | Friend]; with Both every chip plays on both (the friend harmonises)
   const chipTargets = () => (trayTarget === 'both' ? comps.slice() : [comps[trayTarget] || comps[0]]);
   const act = (kind) => () => { if (state !== 'leaving') for (const c of chipTargets()) c.act(kind); };
-  const holding = { squeeze: [], hold: [] };   // who a held chip started on (it ends on the same Mallows)
-  const hold = (kind) => holdButton(COPY.chips[kind === 'squeeze' ? 'bass' : 'hum'],
-    () => { if (state === 'leaving') return; holding[kind] = chipTargets(); for (const c of holding[kind]) c.act(`${kind}Start`); },
-    () => { for (const c of holding[kind]) if (!c.destroyed) c.act(`${kind}End`); holding[kind] = []; });
+  // Hum and Bass are held layers beside the touch (Player.layer): who a held chip started on (it ends on the
+  // same Mallows), when, and its pending end (a tapped chip still plays CHIP_MIN_S)
+  const chips = { pad: { on: [], t0: 0, timer: 0 }, bass: { on: [], t0: 0, timer: 0 } };
+  const hold = (kind) => holdButton(COPY.chips[kind === 'bass' ? 'bass' : 'hum'], () => chipDown(kind), () => chipUp(kind),
+    { 'aria-label': COPY.aria.hold[kind], title: COPY.aria.hold[kind] });
   const tray = h('div', { class: 'chips wrap hb-tray', role: 'group', 'aria-label': COPY.aria.tray, hidden: true },
     h('button', { type: 'button', class: 'chip', onclick: act('tap') }, COPY.chips.note),
     h('button', { type: 'button', class: 'chip', onclick: act('double') }, COPY.chips.chord),
     h('button', { type: 'button', class: 'chip', onclick: act('stroke') }, COPY.chips.tune),
-    hold('squeeze'),
-    hold('hold'),
-    holdButton(COPY.chips.breathe, () => breathIn('chip'), () => breathOut('chip')));
+    hold('bass'),
+    hold('pad'),
+    holdButton(COPY.chips.breathe, () => breathIn('chip'), () => breathOut('chip'), { 'aria-label': COPY.aria.hold.breathe, title: COPY.aria.hold.breathe }));
   const buttons = h('button', {
     type: 'button', class: 'chip hb-buttons', 'aria-pressed': 'false', title: COPY.chips.buttons, 'aria-label': COPY.chips.buttons,
     html: `${icon('hand')}<span>${COPY.chips.buttons}</span>`,
@@ -160,7 +171,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
     },
   });
   // Play it: a kept tune opened from home, ready but silent until tapped
-  const playIt = h('button', { type: 'button', class: 'chip primary hb-playit', hidden: true, html: `${icon('note')}<span>${COPY.chips.playIt}</span>`, onclick: () => playKept() });
+  const playIt = h('button', { type: 'button', class: 'chip primary hb-playit', hidden: true, 'aria-label': COPY.chips.playIt, title: COPY.chips.playIt, html: `${icon('note')}<span>${COPY.chips.playIt}</span>`, onclick: () => playKept() });
   const replayBtn = h('button', { type: 'button', class: 'chip hb-replay', 'aria-pressed': 'false', hidden: true, onclick: () => toggleReplay() });
   const keepBtn = h('button', { type: 'button', class: 'chip hb-keep', 'aria-pressed': 'false', hidden: true, onclick: () => keep() });
   const friendBtn = h('button', {
@@ -193,14 +204,9 @@ export function mount(root, ctx, { handoff = null } = {}) {
   function target() { const i = stages.indexOf(document.activeElement); return comps[i > 0 ? i : 0]; }
   const slotOf = (c) => Math.max(0, comps.indexOf(c));
 
-  // each stage's place in the screen (the effects layer covers the screen); after every reframe. The band
-  // between the bars (where the Mallows stand) also frames a stage's keyboard focus ring (styles/hushbeat.css)
-  function onLayout(L) {
+  // each stage's place in the screen (the effects layer covers the screen); after every reframe
+  function onLayout() {
     if (gone) return;
-    if (L) {
-      s.screen.style.setProperty('--hb-band-top', `${Math.round(L.topBottom)}px`);
-      s.screen.style.setProperty('--hb-band-bottom', `${Math.max(0, Math.round(L.H - L.bottomTop))}px`);
-    }
     const sr = s.screen.getBoundingClientRect();
     for (let i = 0; i < stages.length; i++) { const r = stages[i].getBoundingClientRect(); offs[i].x = r.left - sr.left; offs[i].y = r.top - sr.top; }
   }
@@ -220,17 +226,59 @@ export function mount(root, ctx, { handoff = null } = {}) {
   function touched() { lastTouch = perf(); if (state === 'resting') rest(false); }
 
   function onGesture(type, d, c) {
-    if (state === 'leaving' || gone) return;
+    if (acting || state === 'leaving' || gone) return;   // acting: a held layer's face, not a gesture (layer())
     const i = slotOf(c), p = players[i];
     if (!p) return;
     touched();
     p.gesture(type, d);
     if (type === 'tap') say('note');
-    // the light follows a stroking finger (buttons and keys stroke too)
-    if (type === 'strokestart' || type === 'stroke') scene.stroke(i, type === 'strokestart' ? 'start' : 'move', d.x + offs[i].x, d.y + offs[i].y);
-    else if (type === 'strokeend') scene.stroke(i, 'end');
+    // the light follows a stroking finger; the Tune chip and P stroke with no finger (nothing on the stage):
+    // their trail runs across the forehead, above the eyes
+    if (type === 'strokestart' || type === 'stroke') {
+      let y = d.y;
+      if (!c.gestures.recognizer.p.size) {
+        if (type === 'strokestart') autoY[i] = d.y;
+        y = foreheadY(c, d.y - autoY[i]);
+      }
+      scene.stroke(i, type === 'strokestart' ? 'start' : 'move', d.x + offs[i].x, y + offs[i].y);
+    } else if (type === 'strokeend') scene.stroke(i, 'end');
     if (REACTS.has(type)) performers[i]?.suppress();
   }
+  const autoY = [0, 0], fr = {};
+  function foreheadY(c, dy) { if (!c.rig?.bodyRect) return dy; c.rig.bodyRect(fr); return fr.top + 0.12 * fr.h + dy; }
+
+  /**
+   * A held layer from a chip or a key (Hum or Bass, H or S) on Mallow c: the player holds it beside the touch
+   * (taps, strokes and holds on the body play over it, no touch ends it); the Companion shows it on the face
+   * (its hold or squeeze, through act(), which the players skip). A layer a finger holds already keeps its face.
+   */
+  function layer(c, kind, on) {
+    const i = comps.indexOf(c), p = players[i];
+    if (!p || c.destroyed || (on && (state === 'leaving' || gone))) return;
+    if (on) touched();
+    if (!p.holds(kind)) {
+      acting = true;
+      try { c.act(kind === 'pad' ? (on ? 'holdStart' : 'holdEnd') : (on ? 'squeezeStart' : 'squeezeEnd')); } finally { acting = false; }
+    }
+    p.layer(kind, on);
+    if (!on) performers[i]?.suppress();
+  }
+  function chipDown(kind) {
+    if (state === 'leaving' || gone) return;
+    const ch = chips[kind], next = chipTargets();
+    clearTimeout(ch.timer); ch.timer = 0;   // pressed again before a tap's layer ended: it carries on
+    for (const c of ch.on) if (!next.includes(c)) layer(c, kind, false);
+    ch.on = next; ch.t0 = perf();
+    for (const c of next) layer(c, kind, true);
+  }
+  function chipUp(kind) {
+    const ch = chips[kind], left = CHIP_MIN_S - (perf() - ch.t0);
+    const end = () => { ch.timer = 0; for (const c of ch.on) layer(c, kind, false); ch.on = []; };
+    clearTimeout(ch.timer);
+    if (left > 0.02 && !gone && state !== 'leaving') ch.timer = setTimeout(end, left * 1000); else end();
+  }
+  // H / S let go (or the window lost focus, or a sheet took the keys)
+  function keysUp() { for (const [kind, c] of keyHeld) layer(c, kind, false); keyHeld.clear(); }
 
   function onEvent(ev) {
     const copy = { ...ev };
@@ -307,6 +355,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
     touched();
     const swap = () => {
       if (gone || state === 'leaving') return;
+      if (document.hidden) { greet = false; then = null; }   // nothing starts on its own on return
       dropFriend();
       if (next) addFriend(next, greet);
       retitle();
@@ -354,18 +403,25 @@ export function mount(root, ctx, { handoff = null } = {}) {
     scene.setPerformers([{ performer: performers[0], off: offs[0], color, accent }]);
     performers[0].listen(null);
     part0.pan = 0;
-    holding.squeeze = holding.squeeze.filter((c) => c === comps[0]);
-    holding.hold = holding.hold.filter((c) => c === comps[0]);
+    for (const ch of Object.values(chips)) ch.on = ch.on.filter((c) => c === comps[0]);
+    for (const [kind, c] of keyHeld) if (c !== comps[0]) keyHeld.delete(kind);
     friend = null; entering = null;
+    dropQueued();   // a tune waiting for this friend never plays with another
     s.setPartner(null);
   }
 
-  // fn once a joining friend is on stage (its body is built on the main thread, which would make the
-  // scheduler drop a tune's first notes as late), else at once
+  // fn once every Mallow is on stage: a body is built on the main thread, which would make the scheduler drop
+  // a tune's first notes as late (a joining friend; the lead itself when a tune plays on arrival), else at once
+  function bodiesReady() { return !entering && comps.every((c) => c.rig.ready && c.rig.soft); }
   function whenReady(fn) {
-    if (!entering) { fn(); return; }
-    const prev = entering.then;
-    entering.then = prev ? () => { prev(); fn(); } : fn;
+    if (!waiting && bodiesReady()) { fn(); return; }
+    const prev = waiting;
+    waiting = prev ? () => { prev(); fn(); } : fn;
+  }
+  // what waits is dropped (a hidden page, the friend leaving): a Play it waiting comes back
+  function dropQueued() {
+    waiting = null;
+    if (playItPending) { playItPending = false; playItOn = true; playIt.hidden = false; }
   }
 
   // the realm runs at low in a duet below the high tier (two soft bodies)
@@ -384,13 +440,12 @@ export function mount(root, ctx, { handoff = null } = {}) {
     const fc = comps[1];
     if (!fc || !performers[1]) return;
     if (entering && fc.rig.ready && fc.rig.soft) {
-      const greetNow = entering.greet && state !== 'leaving', then = entering.then;
+      const greetNow = entering.greet && state !== 'leaving';
       entering = null;
       performers[1].enter();
       glanceT = -Infinity;
       glance();
       if (greetNow) players[1].part.hello();
-      then?.();
     }
     for (let i = 0; i < 2; i++) {
       const p = players[i], st = p.part.state;
@@ -428,8 +483,18 @@ export function mount(root, ctx, { handoff = null } = {}) {
     if (state === 'leaving') return k !== 'escape';
     const ae = document.activeElement, onStage = !ae || ae === document.body || stages.includes(ae);
     const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
+    // H and S hold a hum or a bass beside the touch, on the Mallow with focus; with Ctrl, Alt or Cmd they are
+    // the browser's (never a layer, never the built-ins)
+    if (k === 'h' || k === 's') {
+      const kind = k === 'h' ? 'pad' : 'bass';
+      if (phase === 'up') { const c = keyHeld.get(kind); if (c) { keyHeld.delete(kind); layer(c, kind, false); } }
+      else if (e.repeat) { if (keyHeld.has(kind)) e.preventDefault(); }
+      else if (plain && !keyHeld.has(kind)) { const c = target(); keyHeld.set(kind, c); layer(c, kind, true); }
+      return true;
+    }
+    // digits play exact degrees; with Ctrl, Alt or Cmd they stay the browser's (tab switching)
     const dm = /^(?:Digit|Numpad)([1-9])$/.exec(e.code || '');
-    if (dm) {
+    if (dm && plain) {
       if (!onStage) return false;
       e.preventDefault();
       if (phase === 'down' && !e.repeat && +dm[1] <= 7) {
@@ -460,19 +525,21 @@ export function mount(root, ctx, { handoff = null } = {}) {
   function breathIn(src) {
     if (state === 'leaving' || gone) return;
     touched();
-    if (!breaths.size) { clock.lead('in', perf()); say('breath'); hint.classList.add('gone'); }
+    if (!breaths.size) { leadT = perf(); clock.lead('in', leadT); say('breath'); hint.classList.add('gone'); }
     breaths.add(src);
   }
+  // a lead let go within 0.6 s was a tap, not a breath: no cycle is measured and the tempo stays
   function breathOut(src) {
     if (!breaths.delete(src) || breaths.size) return;
-    clock.lead('out', perf());
+    const t = perf();
+    if (t - leadT < BREATH_MIN_S) clock.unlead(t); else clock.lead('out', t);
   }
   const onAnyBody = (e) => comps.some((c, i) => {
     const r = stages[i]?.getBoundingClientRect();
     return r && c.rig.hitTest(e.clientX - r.left, e.clientY - r.top);
   });
   const presses = watchPresses(s.screen, {
-    stage: s.stage, ms: 300, slop: 12,
+    stage: s.stage, ms: 300, slop: SLOP,
     onBody: (p, e) => onAnyBody(e),
     onPress: (p0, id) => {
       const t = performance.now();
@@ -481,6 +548,25 @@ export function mount(root, ctx, { handoff = null } = {}) {
     },
     onRelease: (id) => breathOut(`press:${id}`),
   });
+  // two hands: a breath lead off the body and a touch on it stay two things (a stage's recognizer would pair
+  // them into a squeeze). Capture phase on the screen, before the stage: a touch landing on a body cancels a
+  // still, pending off-body pointer on that stage (it emits nothing; the router still claims it at 300 ms);
+  // an off-body pointer landing while that Mallow is being touched never reaches its stage (watchPresses,
+  // on the screen too, still sees it)
+  const twoHands = (e) => {
+    if (e.button > 0 || state === 'leaving' || gone || defaultSkip(e)) return;
+    const i = stages.indexOf(e.target?.closest?.('.stage'));
+    if (i < 0) return;
+    const c = comps[i], rec = c.gestures.recognizer, r = stages[i].getBoundingClientRect();
+    if (c.rig.hitTest(e.clientX - r.left, e.clientY - r.top)) {
+      const t = performance.now();
+      for (const q of [...rec.p.values()]) if (q.state === 'pending' && !q.startedOnBody && Math.hypot(q.x - q.x0, q.y - q.y0) <= SLOP) rec.cancel(q.id, t);
+    } else if (rec.p.size) e.stopPropagation();
+  };
+  s.screen.addEventListener('pointerdown', twoHands, true);
+  // the window lost focus while B, H or S was held: their keyups will never come (pointers are cancelled anyway)
+  const onBlur = () => { breathOut('key'); keysUp(); };
+  addEventListener('blur', onBlur);
 
   // -------------------------------------------------- replay, keep, play it --
   function replayChanged(ev) {
@@ -500,6 +586,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
   /** Replay the best take (the Mallow sings it back at the current tempo), or stop the one playing. */
   function toggleReplay() {
     if (state === 'leaving' || gone) return;
+    playItPending = false;   // a person's Replay or Stop replaces a Play it still waiting for the friend
     touched();
     if (engine.replaying) { replayH?.stop(); replayH = null; syncRow(); return; }
     const best = engine.take.best();
@@ -512,13 +599,13 @@ export function mount(root, ctx, { handoff = null } = {}) {
   /**
    * Your tunes → Play (a tap in the sheet): the tune plays at once. With the tune's own lead its friend
    * joins first (or leaves) and its pace is set. Another Mallow's tune reopens Hushbeat with that Mallow
-   * once the lab offers ctx.openTune (change request); until then this Mallow sings it here.
+   * (ctx.openTune: for this visit, the favourite never changes), where it plays once its friend is on stage.
    */
   function playTune(it) {
     if (gone || state === 'leaving') return;
     const events = decodeMotif(it?.motif);
     if (!events) return;
-    if (it.mallow !== lead && typeof ctx.openTune === 'function') { ctx.openTune(it, { play: true }); return; }
+    if (it.mallow !== lead) { ctx.openTune(it, { play: true }); return; }
     const go = () => {
       if (gone || state === 'leaving') return;
       setPace(it.pace);
@@ -538,9 +625,10 @@ export function mount(root, ctx, { handoff = null } = {}) {
     syncRow();
   }
 
-  // the two sheets; focus goes back to the button that opened one
+  // the two sheets; focus goes back to the button that opened one. A sheet takes the keys: a held B, H or S lets go
   function opened(sh, from) {
     sheet = sh;
+    breathOut('key'); keysUp();
     const done = () => {
       if (sheet === sh) sheet = null;
       if (gone) return;
@@ -566,12 +654,24 @@ export function mount(root, ctx, { handoff = null } = {}) {
     done = opened(sh, friendBtn);
   }
 
+  // Play it: the replay starts once a kept duet's friend is on stage (at once without one). Focus on the chip
+  // moves to Replay (now Stop) or the stage, never to the page
   function playKept() {
     if (!playItOn || state === 'leaving' || gone) return;
+    const hadFocus = document.activeElement === playIt;
     playItOn = false;
     playIt.hidden = true;
+    playItPending = true;
     sound.unlock();
-    whenReady(toggleReplay);   // a kept duet's friend may still be arriving
+    whenReady(startReplay);
+    syncRow();
+    if (hadFocus) (replayBtn.hidden ? s.stage : replayBtn).focus({ preventScroll: true });
+  }
+  // a queued start runs once, and only while still asked for (a Replay or Stop tapped meanwhile, or a hidden page, drops it)
+  function startReplay() {
+    if (!playItPending) return;
+    playItPending = false;
+    if (!engine.replaying) toggleReplay();
   }
 
   // the take as a favourite (recomputed only when the take, the friend, the pace or the favourites change)
@@ -601,6 +701,8 @@ export function mount(root, ctx, { handoff = null } = {}) {
     if (replayBtn.dataset.mode !== mode) {
       replayBtn.dataset.mode = mode;
       replayBtn.innerHTML = `${icon(mode)}<span>${COPY.chips[mode]}</span>`;
+      replayBtn.setAttribute('aria-label', COPY.chips[mode]);   // its name when the row is icon-only (short landscape)
+      replayBtn.title = COPY.chips[mode];
       replayBtn.setAttribute('aria-pressed', String(rep));
     }
     const canKeep = has && !!ctx.dna.enabled && state !== 'leaving';
@@ -626,21 +728,27 @@ export function mount(root, ctx, { handoff = null } = {}) {
   }
 
   // ------------------------------------------------------------ frame --
-  const cs = {};   // clock.at() output, reused
-  const po = { playing: false, resting: false, onsets1s: 0, barS: 2.5 }, so = { state, groove: 0 };
-  const busy = (c) => c.gestures.recognizer.p.size > 0 || !!(c.hold || c.drag || c.sq || c.stroking || c.wheel.active);
+  const cs = {}, csHeard = {};   // clock.at() now, and when the beat is heard (reused)
+  const po = { playing: false, resting: false, onsets1s: 0, barS: 2.5, beatCs: cs }, so = { state, groove: 0, beatCs: cs };
+  // still touching (a held chip's or key's face doesn't count: it is not a stuck touch)
+  const busy = (c, p) => c.gestures.recognizer.p.size > 0 || !!(c.drag || c.stroking || c.wheel.active || (c.hold && !p.btn.pad) || (c.sq && !p.btn.bass));
   function frame(dt) {
     if (gone) return;
     const t = perf();
     clock.at(t, cs);
+    // the beat as heard (it reaches the ear after the output latency): the groove and the floor glow's swell
+    // follow it, as scheduled notes are seen when heard; the breath, the ring and bar-wise light use now
+    const lat = audible() ? audio.outputLatency() : 0;
+    po.beatCs = so.beatCs = lat > 0 ? clock.at(t - lat, csHeard) : cs;
     audio.frame(cs.level);
     // unmute, or Visual only off, while a layer is held: bring it back
     const ready = audio.ready;
     if (ready && !wasReady) audio.reconcile(engine.layers());
     wasReady = ready;
-    for (let i = 0; i < players.length; i++) { const c = comps[i]; if (c && players[i]) players[i].watchdog(t, busy(c)); }
+    for (let i = 0; i < players.length; i++) { const c = comps[i]; if (c && players[i]) players[i].watchdog(t, busy(c, players[i])); }
     cue.drain(t, show);
     if (friend) duetFrame(t);
+    if (waiting && bodiesReady()) { const fn = waiting; waiting = null; fn(); }
     const st = engine.stats(t);
     if (state === 'playing' && t - engine.lastMusicT > QUIET_S && !engine.holding) state = 'listening';
     if (state === 'listening' && t - lastTouch > restAfter) rest(true);
@@ -709,6 +817,11 @@ export function mount(root, ctx, { handoff = null } = {}) {
     for (const p of performers) p.hush();
     scene.hush();
     s.screen.classList.remove('replaying');
+    // nothing queued starts by itself on return: a friend arriving enters without its hello, a tune waiting
+    // for it is dropped, and Play it comes back
+    if (entering) entering.greet = false;
+    dropQueued();
+    if (state === 'resting') rest(false);
     if (state !== 'leaving') state = 'listening';
     syncRow();
   }
@@ -724,6 +837,8 @@ export function mount(root, ctx, { handoff = null } = {}) {
     engine.releaseAll();
     for (const p of players) p.reset();
     breaths.clear();
+    keyHeld.clear();
+    for (const ch of Object.values(chips)) { clearTimeout(ch.timer); ch.timer = 0; ch.on = []; }
     if (quiet || tuning.voice === false || !audible()) { go(); return; }
     const secs = engine.cadence();
     for (const p of performers) p.leave();
@@ -747,7 +862,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
         state, bpm: +at.bpm.toFixed(2), bar: at.bar, beat: +at.beat.toFixed(3), chord: { root: ch.root, tones: [...ch.tones] }, pace,
         breath: { level: +at.level.toFixed(3), phase: at.phase, leading: at.leading, target: +clock.target.toFixed(3) },
         scheduler: { running: scheduler.running, pending: scheduler.pending },
-        players: players.map((p, i) => ({ slot: i, mallow: p.part.mallowId, state: p.state, ...p.part.state })),
+        players: players.map((p, i) => ({ slot: i, mallow: p.part.mallowId, state: p.state, held: { ...p.btn }, ...p.part.state })),
         voices: audio.voices, live: sound.live.size, audible: audible(), visualOnly, muted: !!sound.muted,
         friend, answers, target: trayTarget, sheet: sheet?.open ? (sheet.el?.getAttribute('aria-label') || 'sheet') : null,
         take: engine.take.length, best: best ? best.length : 0, replaying: engine.replaying,
@@ -755,7 +870,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
         quality, idle: +(t - lastTouch).toFixed(1), audio: audio.debug(), latency: audio.outputLatency(),
         performers: performers.map((p) => p.debug()), scene: scene.debug(), cue: cue.pending,
         controls: {
-          playIt: !playIt.hidden, replay: !replayBtn.hidden, replayLabel: replayBtn.textContent, replayPressed: replayBtn.getAttribute('aria-pressed'),
+          playIt: !playIt.hidden, playItPending, replay: !replayBtn.hidden, replayLabel: replayBtn.textContent, replayPressed: replayBtn.getAttribute('aria-pressed'),
           keep: !keepBtn.hidden, keepLabel: keepBtn.textContent, keepPressed: keepBtn.getAttribute('aria-pressed'),
           tray: !tray.hidden, targets: targetSeg ? [...targetSeg.querySelectorAll('button')].map((b) => b.textContent) : null,
         },
@@ -784,6 +899,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
       clearTimeout(leaveT);
       clearTimeout(longT);
       clearTimeout(fadeT);
+      for (const ch of Object.values(chips)) clearTimeout(ch.timer);
       sheet?.close();
       scheduler.stop();
       engine.dispose();      // also stops a replay
@@ -794,6 +910,8 @@ export function mount(root, ctx, { handoff = null } = {}) {
       fx.destroy();
       clearGlowSprites();
       presses.dispose();
+      s.screen.removeEventListener('pointerdown', twoHands, true);
+      removeEventListener('blur', onBlur);
       document.removeEventListener('visibilitychange', onVisibility);
       tray.removeEventListener('scroll', edges);
       offPrefs();

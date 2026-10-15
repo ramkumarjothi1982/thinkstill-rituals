@@ -485,6 +485,82 @@ test('U6 player: the contact note becomes what the gesture makes it; act paths s
   assert.deepEqual(bodyPoint(GEO, 200, 100), { y01: 1, x01: 1 });
 });
 
+// a chip or key layer (the Hum or Bass chip, H or S) lives beside the touch (review: held layers silenced the Mallow)
+test('U6b player layers: a held chip or key hum or bass lives beside the touch; notes, strokes and holds play over it; no touch ends it', () => {
+  const time = fakeTime();
+  const mk = () => { const part = fakePart(); return { part, pl: new Player(part, { geo: () => GEO, now: time.now }) }; };
+  const on = (x = 100, y = 150) => ({ x, y, onBody: true });
+  // the Hum chip held, two taps: two notes over the hum; a pointer hold rings its note inside the hum and lets go of nothing
+  { const { part, pl } = mk();
+    assert.equal(pl.layer('pad', true), true); assert.equal(pl.layer('pad', true), false, 'idempotent');
+    assert.deepEqual(part.calls[0], ['padStart', { y01: 0.75 }]);
+    pl.gesture('contact', on()); pl.gesture('tap', { x: 100, y: 150 }); time.advance(0.4);
+    pl.gesture('contact', on(120, 200)); pl.gesture('tap', { x: 120, y: 200 });
+    assert.deepEqual(part.names(), ['padStart', 'strike', 'ring', 'strike', 'ring'], 'two strikes over the held hum');
+    pl.gesture('contact', on()); pl.gesture('holdstart', { x: 100, y: 150 }); pl.gesture('holding', { x: 100, y: 120 }); pl.gesture('holdend', {});
+    assert.deepEqual(part.names().slice(5), ['strike', 'ring', 'padBright'], 'a hold rings its note, no second hum, and holdend keeps the hum');
+    pl.gesture('tap', { x: 100, y: 150 });   // the Note chip (no contact): its own note, no fingertip
+    assert.equal(part.calls.at(-1)[1].tip, false);
+    assert.equal(pl.layer('pad', false), true);
+    assert.equal(part.names().at(-1), 'padEnd', 'the chip ends its hum'); }
+  // a finger's hum, then the chip: shared; whichever lets go last ends it (both orders)
+  { const { part, pl } = mk(); pl.gesture('contact', on()); pl.gesture('holdstart', {}); pl.layer('pad', true); pl.gesture('holdend', {});
+    assert.deepEqual(part.names(), ['strike', 'bloom'], 'the finger let go first: the chip keeps the hum');
+    pl.layer('pad', false); assert.deepEqual(part.names(), ['strike', 'bloom', 'padEnd']); }
+  { const { part, pl } = mk(); pl.gesture('contact', on()); pl.gesture('holdstart', {}); pl.layer('pad', true); pl.layer('pad', false);
+    assert.deepEqual(part.names(), ['strike', 'bloom'], 'the chip let go first: the finger keeps the hum');
+    pl.gesture('holdend', {}); assert.deepEqual(part.names(), ['strike', 'bloom', 'padEnd']); }
+  // the Bass chip held: it swells to 0.7 on its own; a pinch ducks its note and sets the amount, no second bass;
+  // squeezeend leaves the bass to the chip
+  { const { part, pl } = mk(); pl.layer('bass', true);
+    for (let i = 0; i < 10; i++) { time.advance(0.05); pl.watchdog(time.now(), false); }
+    const amts = part.calls.filter((c) => c[0] === 'bassAmount').map((c) => c[1]);
+    assert.ok(amts.length >= 5 && amts.every((a, i) => i === 0 || a >= amts[i - 1]) && Math.abs(amts.at(-1) - 0.7) < 1e-9, `swell ${amts}`);
+    part.calls.length = 0;
+    pl.gesture('contact', on()); pl.gesture('contact', on(60, 200)); pl.gesture('squeezestart', {}); pl.gesture('squeeze', { amount: 0.4 }); pl.gesture('squeezeend', {});
+    assert.deepEqual(part.names(), ['strike', 'duck', 'bassAmount'], 'duck, the pinch sets the amount, no second bass, no bassEnd');
+    pl.gesture('squeeze', { amount: 0.9 });
+    assert.equal(part.names().length, 3, 'a squeeze event outside its own squeeze is ignored (a held chip\'s face)');
+    pl.layer('bass', false); assert.equal(part.names().at(-1), 'bassEnd'); }
+  // a press down under the held bass: the finger moves the amount; its lift leaves the bass on
+  { const { part, pl } = mk(); pl.layer('bass', true); part.calls.length = 0;
+    pl.gesture('contact', on()); pl.gesture('dragstart', { x0: 100, y0: 150 }); pl.gesture('drag', { dy: 50 }); pl.gesture('dragend', { dy: 50 });
+    assert.deepEqual(part.names(), ['strike', 'bendStart', 'duck', 'bassStart']);
+    assert.equal(pl.state, 'idle'); }
+  // the watchdog never ends a chip's layer; reset() does (hidden page, leaving)
+  { const { part, pl } = mk(); pl.layer('pad', true); pl.layer('bass', true); pl.gesture('contact', on());
+    assert.equal(pl.watchdog(time.now() + 0.7, false), true, 'a stuck contact still ends');
+    assert.ok(!part.names().includes('padEnd') && !part.names().includes('bassEnd'));
+    pl.reset();
+    assert.ok(part.names().includes('padEnd') && part.names().includes('bassEnd'));
+    assert.deepEqual(pl.btn, { pad: false, bass: false });
+    assert.equal(pl.layer('pad', false), false, 'a key let go after the reset changes nothing'); }
+  // with the real engine: a held hum, two taps over it (two heard notes, both consonant), a pointer hold and
+  // its holdend leave the hum on until the chip lets go
+  const R = rig({ lead: 'loomi' }), [P] = R.players;
+  P.layer('pad', true);
+  assert.equal(R.engine.layers().length, 1);
+  R.time.advance(0.3); P.gesture('contact', on()); P.gesture('tap', { x: 100, y: 150 });
+  R.time.advance(0.5); P.gesture('contact', on(80, 230)); P.gesture('tap', { x: 80, y: 230 });
+  R.time.advance(0.5); P.gesture('contact', on()); R.time.advance(0.48); P.gesture('holdstart', { x: 100, y: 150 }); R.time.advance(0.6); P.gesture('holdend', {});
+  const live = notesOf(R.events, (e) => e.src === 'live');
+  assert.equal(live.length, 3, 'every touch strikes over the hum');
+  assert.equal(R.events.filter((e) => e.kind === 'padOn').length, 1, 'one hum');
+  assert.equal(R.engine.layers().length, 1, 'still humming after the pointer hold');
+  assert.ok(!clashes(R.events).length, clashes(R.events).join());
+  P.layer('pad', false);
+  assert.equal(R.engine.layers().length, 0);
+  // keys and buttons strike notes without a fingertip; the roll of a button chord keeps the mark
+  const Q = rig();
+  Q.players[0].gesture('doubletap', { x: 100, y: 150 }); Q.time.advance(1);
+  Q.players[0].degree(3); Q.time.advance(0.3);
+  Q.players[0].gesture('contact', on()); Q.players[0].gesture('tap', { x: 100, y: 150 });
+  const ns = notesOf(Q.events);
+  assert.ok(ns.filter((e) => e.src === 'chord').length >= 2 && ns.filter((e) => e.src === 'chord').every((e) => e.tip === false), 'the roll has no fingertip');
+  assert.equal(ns.filter((e) => e.tip === false).length, ns.length - 1, 'only the touch has a fingertip');
+  assert.equal(ns.at(-1).tip, undefined);
+});
+
 // ================================================================== U7 ==
 test('U7 engine timing: touch notes at now(); phrase notes 2+ on the grid; ≥ 3 per auto stroke; resolve on a beat; roll of 3; bass on beats and bar lines', () => {
   for (const id of MALLOW_IDS) {
@@ -1700,6 +1776,92 @@ test('U16 scene: the realm warms and clears with the music, eases back, ≤ 1 mo
   assert.equal(pulses.filter((x) => x.kind === 'success' && x.ok).length, 1, 'a stopped replay is no success');
   scene.destroy();
   assert.equal(scene.step(0.05), false, 'gone from the layer');
+});
+
+// review: beads from keys and buttons rose through the eyes; the dance led the beat on high-latency outputs;
+// the phrase trail barely showed on the body
+test('U16 beads without a fingertip start above the head; the groove and the floor glow move on the beat as heard; the trail has a rim on every world', () => {
+  let T = 50;
+  const now = () => T;
+  const { companion, calls } = fakeStage('boppo');   // body: cx 195, top 400, w 220, h 200
+  const pool = new BeadPool({ cap: 12 });
+  const off = { x: 10, y: 20 };
+  const p = new Performer({ companion, slot: 0, pool, off, color: '#ff5ed0', tuning: { style: 'natural' }, now });
+  const spawned = () => { const b = pool.beads.filter((x) => x.alive).at(-1); return [b.x0 - off.x, b.y0 - off.y]; };
+  p.apply({ kind: 'note', slot: 0, t: T, id: 1, vel: 0.7, x01: 0, y01: 0.75, src: 'live', immediate: true, tip: false, hz: 440 }, T);
+  assert.deepEqual(spawned(), [195 + 0.5 * 0.15 * 220, 394], 'a key note: above the head, spread by pitch');
+  p.apply({ kind: 'note', slot: 0, t: T, id: 2, vel: 0.7, x01: 0, y01: 0.5, src: 'replay', hz: 440 }, T);
+  assert.deepEqual(spawned(), [195, 394], 'the Mallow\'s own singing too');
+  p.apply({ kind: 'note', slot: 0, t: T, id: 3, vel: 0.7, x01: 0.5, y01: 0.2, src: 'live', immediate: true, hz: 440 }, T);
+  assert.deepEqual(spawned(), [195 + 0.5 * 220 * 0.42, 600 - 0.2 * 200], 'a fingertip note: at the finger');
+  const xs = [];
+  for (let i = 0; i < 3; i++) { p.apply({ kind: 'note', slot: 0, t: T, id: 4 + i, vel: 0.6, x01: 0, y01: 0.75, src: 'chord', tip: false, hz: 440 }, T); xs.push(spawned()); }
+  assert.ok(xs.every(([, y]) => y === 394) && new Set(xs.map(([x]) => x)).size === 3, `a button chord fans out above the head: ${JSON.stringify(xs)}`);
+  // the groove moves on the heard beat (beatCs), not on the clock's own crossing
+  calls.nudge.length = 0;
+  let beat = 8;
+  const o = { playing: true, barS: 2.5, beatCs: null };
+  for (let i = 0; i < 80; i++) { T += 0.05; beat += 0.08; o.beatCs = csAt(8.5); p.frame(T, 0.05, csAt(beat), o); }
+  assert.equal(calls.nudge.length, 0, 'the clock crossed beats, the heard beat did not: still');
+  for (let i = 0; i < 40; i++) { T += 0.05; beat += 0.08; o.beatCs = csAt(beat - 0.6); p.frame(T, 0.05, csAt(beat), o); }
+  assert.ok(calls.nudge.length >= 2, `it grooves on the heard beats: ${calls.nudge.length}`);
+  // the floor glow's swell: on the heard crossing
+  const sc = new Scene({ now });
+  sc.setPerformers([{ performer: p, off, color: '#ffd98a' }]);
+  const st = { pad: 0, bass: 0, bloom: false, onsets1s: 0, harmony1s: 0 };
+  const glow = sc.cast[0].glow;
+  let kicks = 0;
+  const kick = glow.kick.bind(glow);
+  glow.kick = (...a) => { kicks++; return kick(...a); };
+  sc.frame(T, 0.05, csAt(3.95), st, { state: 'playing', groove: 1, beatCs: csAt(3.85) });
+  sc.frame(T + 0.05, 0.05, csAt(4.02), st, { state: 'playing', groove: 1, beatCs: csAt(3.9) });
+  assert.equal(kicks, 0, 'no swell before the beat is heard');
+  sc.frame(T + 0.15, 0.05, csAt(4.12), st, { state: 'playing', groove: 1, beatCs: csAt(4.01) });
+  assert.equal(kicks, 1, 'the swell when it is heard');
+  // the trail: a dark rim, a colour core (≤ 0.58) and a white light, on a light world and a dark one alike
+  for (const tone of ['light', 'dark']) {
+    const rb = new PhraseRibbon({ color: '#ff5ed0', tone, max: RIBBON.high });
+    for (let i = 0; i < 20; i++) rb.push(i * 6, 100 + (i % 2) * 4);
+    rb.bump();
+    const strokes = [];
+    const g = { save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() { strokes.push({ s: this.strokeStyle, a: this.globalAlpha, w: this.lineWidth, op: this.globalCompositeOperation }); } };
+    rb.draw(g);
+    const by = (c) => strokes.filter((x) => x.s.toLowerCase() === c);
+    const rim = by('#1a1440'), core = strokes.filter((x) => x.s.startsWith('rgba')), lite = by('#ffffff');
+    assert.ok(rim.length && core.length && lite.length, `${tone}: three passes`);
+    assert.ok(strokes.every((x) => x.op === 'source-over'), `${tone}: painted over, never added`);
+    const head = Math.max(...core.map((x) => x.a));
+    assert.ok(head > 0.5 && head <= 0.58 + 1e-9, `${tone}: core ${head}`);
+    assert.ok(Math.max(...rim.map((x) => x.a)) <= 0.25 + 1e-9 && Math.max(...core.map((x) => x.w)) <= 8.5 && Math.min(...core.map((x) => x.w)) >= 3, `${tone}: rim and widths`);
+    assert.ok(rim.every((x, i) => x.w > core[i].w), `${tone}: the rim is wider than the core`);
+  }
+});
+
+// review: two quick Breathe taps set the tempo to the fastest (a tap must not measure a breath)
+test('U9b breath clock: a lead let go at once (unlead) measures nothing and keeps the tempo', () => {
+  const time = fakeTime();
+  const c = new BreathClock({ now: time.now, inhale: 4, exhale: 6 });
+  const t0 = c.target, bpm0 = c.bpm;
+  for (let i = 0; i < 2; i++) { c.lead('in', time.now()); time.advance(0.1); c.unlead(time.now()); time.advance(0.6); }
+  assert.equal(c.target, t0, 'the target cycle is the pace');
+  time.advance(20); c.step();
+  assert.ok(Math.abs(c.bpm - bpm0) < 1e-9, `the tempo stays: ${bpm0} → ${c.bpm}`);
+  // a real breath does set it
+  c.lead('in', time.now()); time.advance(1.5); c.lead('out', time.now());
+  assert.notEqual(c.target, t0);
+});
+
+// review: two takes could read alike in Your tunes; each row says where it is (newest first), and so do its buttons
+test('U19b Your tunes: each row and its buttons say where the tune is in the list', () => {
+  assert.equal(COPY.sheet.position(0), ' · newest');
+  assert.deepEqual([1, 2, 3, 5].map((i) => COPY.sheet.position(i)), [' · 2nd', ' · 3rd', ' · 4th', ' · 6th']);
+  const name = 'Boppo tune · 4 notes · Natural';
+  const labels = [0, 1, 2].map((i) => COPY.sheet.playTune(name, i, 3));
+  assert.equal(new Set(labels).size, 3);
+  assert.equal(labels[1], 'Play tune 2 of 3: Boppo tune · 4 notes · Natural');
+  assert.equal(COPY.sheet.removeTune(name, 0, 1), 'Remove tune 1 of 1: Boppo tune · 4 notes · Natural');
+  for (const k of ['bass', 'pad', 'breathe']) assert.match(COPY.aria.hold[k], /\bhold\b/, 'a held chip says so');
+  assert.ok(COPY.aria.hold.bass.startsWith(COPY.chips.bass) && COPY.aria.hold.pad.startsWith(COPY.chips.hum) && COPY.aria.hold.breathe.startsWith(COPY.chips.breathe), 'the visible word first');
 });
 
 test('U16 cue: events wait for their moment (in arrival order); a full ring hands over the oldest at once', () => {

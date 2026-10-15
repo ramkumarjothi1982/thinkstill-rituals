@@ -1,7 +1,8 @@
 // Sensory Lab device settings — development-only local storage, own namespace.
 //
-// Sound, volume, haptics, motion, theme, quality, material, and the Mallow
-// used while personalisation is off. Personal choices (favourite Mallow,
+// Sound, volume, haptics, motion, theme, quality, material, the Mallow used
+// while personalisation is off, Hushbeat's visual-only switch and Mallow
+// Nightlight's settings. Personal choices (favourite Mallow,
 // response style, colours, what helps…) live in Comfort DNA
 // (core/comfort-dna.js) behind its own store adapter and key.
 // Nothing here touches the main app's keys (hm2:*).

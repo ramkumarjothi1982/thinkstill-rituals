@@ -136,11 +136,12 @@ export function openSheet(root, title, content, { onClose = null } = {}) {
     scrim.classList.remove('on'); sheet.classList.remove('on');
     // while it fades out, a closing sheet must not swallow the next tap
     scrim.style.pointerEvents = 'none'; sheet.style.pointerEvents = 'none';
-    document.removeEventListener('keydown', esc);
+    document.removeEventListener('keydown', esc, true);
     setTimeout(() => { scrim.remove(); sheet.remove(); }, 300);
     onClose?.();   // once, whatever closed it: Done, the scrim, Escape or the returned close()
   };
   const esc = (e) => {
+    if (!sheet.isConnected) { close(); return; }   // left behind by a route change: never take the next screen's keys
     if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
     if (e.key === 'Tab') {
       // keep keyboard focus inside the sheet while it is open
@@ -156,7 +157,8 @@ export function openSheet(root, title, content, { onClose = null } = {}) {
   scrim.addEventListener('click', close);
   sheet.append(h('h3', {}, title), content(close), h('button', { class: 'done', type: 'button', onclick: close }, 'Done'));
   root.append(scrim, sheet);
-  document.addEventListener('keydown', esc);
+  // capture phase: Escape closes the sheet before a screen's own document listener (registered earlier) can leave the screen
+  document.addEventListener('keydown', esc, true);
   requestAnimationFrame(() => { scrim.classList.add('on'); sheet.classList.add('on'); tabbable()[0]?.focus({ preventScroll: true }); });
   return close;
 }

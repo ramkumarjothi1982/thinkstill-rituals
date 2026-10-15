@@ -127,7 +127,7 @@ export class Cue {
 }
 
 // ------------------------------------------------------------ performer --
-const MOUTH = new Set(['replay', 'answer', 'hello', 'cadence', 'shimmer']);   // the Mallow's own singing: beads from the mouth
+const MOUTH = new Set(['replay', 'answer', 'hello', 'cadence', 'shimmer']);   // the Mallow's own singing (no fingertip)
 const LEAN_MIX = Object.freeze({ calm: 0.6, loved: 0.4 });                     // a duet's bloom: leaning in together
 
 export class Performer {
@@ -199,8 +199,14 @@ export class Performer {
     const r = this._rect(), vel = ev.ghost ? 0.2 : clamp(ev.vel || 0, 0, 1);
     const fx = r.cx + clamp(ev.x01 || 0, -1, 1) * r.w * 0.42, fy = r.bottom - clamp(ev.y01 ?? 0.5, 0, 1) * r.h;
     let x = fx, y = fy;
-    if (MOUTH.has(ev.src)) { x = r.cx; y = r.top + r.h * 0.48; }
-    if (ev.src === 'chord') { this.roll = (this.roll + 1) % 3; x += (this.roll - 1) * 15; y -= (this.roll === 1 ? 10 : 0); }
+    const chord = ev.src === 'chord';
+    if (chord) this.roll = (this.roll + 1) % 3;
+    if (ev.tip === false || MOUTH.has(ev.src)) {
+      // no fingertip (a button, a key, the Mallow's own singing): the bead starts just above the head and rises
+      // clear of the eyes, spread a little by pitch (a chord's roll fans out)
+      x = r.cx + (chord ? this.roll - 1 : clamp((ev.y01 ?? 0.5) * 2 - 1, -1, 1)) * 0.15 * r.w;
+      y = r.top - 6;
+    } else if (chord) { x += (this.roll - 1) * 15; y -= (this.roll === 1 ? 10 : 0); }
     this.side = -this.side;
     if (this.pool) {
       const k = this.strong ? 1.4 : 1;
@@ -238,9 +244,10 @@ export class Performer {
 
   /**
    * Every frame. cs: clock.at() output; o: { playing (groove eases in over a bar, out over two),
-   * resting, onsets1s, barS }.
+   * resting, onsets1s, barS, beatCs }. beatCs: clock.at() when the beat is heard (now − output latency;
+   * default cs): the groove and the nods move on the beats you hear.
    */
-  frame(t, dt, cs, { playing = false, resting = false, onsets1s = 0, barS = 2.5 } = {}) {
+  frame(t, dt, cs, { playing = false, resting = false, onsets1s = 0, barS = 2.5, beatCs = null } = {}) {
     const rig = this.rig;
     rig.setInflate(cs.level * (this.reduced ? 0.4 : 0.8));   // the breath you can see
     this.env *= Math.exp(-dt / this.tau);
@@ -254,9 +261,9 @@ export class Performer {
     // the groove
     const B = Math.max(0.5, barS);
     this.groove = playing ? Math.min(1, this.groove + dt / B) : Math.max(0, this.groove - dt / (2 * B));
-    const b = Math.floor(cs.beat + 1e-6);
+    const bc = beatCs || cs, b = Math.floor(bc.beat + 1e-6);
     if (this.lastBeat == null || b < this.lastBeat || b > this.lastBeat + 2) this.lastBeat = b;   // first frame or a jump: resync
-    else if (b !== this.lastBeat) { this.lastBeat = b; this._beat(t, b, cs, onsets1s); }
+    else if (b !== this.lastBeat) { this.lastBeat = b; this._beat(t, b, bc, onsets1s); }
     const P = this._pend;
     if (t >= P.at) { P.at = Infinity; this._nudge(P, t, P.beat); }
     // duet: the idle one watches the other
@@ -469,16 +476,17 @@ export class Scene {
   }
 
   /**
-   * Every frame. stats: engine.stats(t); o: { state, groove (0..1, the performers'), }.
+   * Every frame. stats: engine.stats(t); o: { state, groove (0..1, the performers'), beatCs (clock.at() when the
+   * beat is heard: the floor glow swells on the beats you hear; default cs) }.
    * Ring alpha: listening 0.25 → playing up to 0.5 (groove or a hum) → resting 0.15.
    */
-  frame(t, dt, cs, stats, { state = 'listening', groove = 0 } = {}) {
+  frame(t, dt, cs, stats, { state = 'listening', groove = 0, beatCs = null } = {}) {
     const playing = state === 'playing' || state === 'replaying', resting = state === 'resting';
     this.bar = cs.bar;
     this.padS = approach(this.padS, stats.pad, stats.pad > this.padS ? 0.32 : 0.45, dt);
     this.bassS = approach(this.bassS, stats.bass, 0.08, dt);
     const ringA = resting ? 0.15 : state === 'replaying' ? 0.5 : playing ? 0.25 + 0.25 * Math.max(groove, this.padS) : 0.25;
-    const b = Math.floor(cs.beat + 1e-6);
+    const b = Math.floor((beatCs || cs).beat + 1e-6);
     const crossed = this.lastBeat != null && b === this.lastBeat + 1;
     this.lastBeat = b;
     for (const c of this.cast) {
