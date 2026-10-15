@@ -195,7 +195,7 @@ export function create(ctx) {
   let rs = { rest: 0, p: 0, rate: 0, run: 0, resting: false, mode: 'none' };
   let introAt = INTRO_AT, hint = { next: HINT_AT, shown: 0, age: -1, x: 0, y: 0 };
   const said = { busy: false, thoughtRest: false, half: false };
-  let holds = { hum: null }, faceCalm = -1, lookClock = 0;
+  let holds = { hum: null }, faceCalm = -1, faceClock = 0, lookClock = 0;
   let melt = null;                        // melting in: { k }
   let restored = null;
   let layoutRest = null, layoutBandB = 0, layoutFreeW = 0, pendingRect = null, pendingFor = 0, relayoutClock = 0;
@@ -319,12 +319,13 @@ export function create(ctx) {
     for (const L of lanterns) obs.push({ x0: L.tx - L.D / 2, y0: L.ty - L.D * 0.62, x1: L.tx + L.D / 2, y1: L.ty + L.D * 0.62 });
     for (const q of shells) obs.push({ x0: q.tx - q.hit, y0: q.ty - q.hit, x1: q.tx + q.hit, y1: q.ty + q.hit });
     let best = null;
-    for (let y = plan.hy + ry; y <= plan.floor - ry - 30; y += 6) {
+    // (never below the hero's feet: the shell's bottom controls live there)
+    for (let y = plan.hy + ry; y <= Math.min(plan.floor - ry - 30, plan.M.y1 - ry); y += 6) {
       for (let x = rx; x <= plan.x1 - rx; x += 6) {
         let bad = false;
         for (const o of obs) if (x + rx > o.x0 && x - rx < o.x1 && y + ry > o.y0 && y - ry < o.y1) { bad = true; break; }
         if (bad) continue;
-        const d = Math.hypot((x - gx) / W, (y - gy) / H);
+        const d = Math.hypot((x - gx) / W, (y - gy) / H) + (y > shoreY(W, H, x) ? 0.2 : 0);
         if (!best || d < best.d) best = { x, y, d };
       }
     }
@@ -637,7 +638,8 @@ export function create(ctx) {
     // Noomi: sleepier as the moon fills (never in a gentle session: the shell's face holds)
     if (!ctx.gentle && mallow?.setEmotion) {
       const c = Math.round(clamp(0.35 + 0.65 * Math.max(moonP, restNow * 0.8)) * 10) / 10;
-      if (c !== faceCalm) { faceCalm = c; try { mallow.setEmotion({ calm: c, curious: 1 - c }, 0.55); } catch { /* optional */ } }
+      faceClock += dt;
+      if (c !== faceCalm || faceClock > 2.5) { faceCalm = c; faceClock = 0; try { mallow.setEmotion({ calm: c, curious: 1 - c }, 0.55); } catch { /* optional */ } }
     }
     lookClock += dt;
     if (mallow?.lookAt && lookClock > 0.12) {
@@ -844,6 +846,13 @@ export function create(ctx) {
     if (sq !== tP.soft) { tP.soft = sq; try { thought.soften?.(sq); } catch { /* optional */ } }
   }
 
+  /**
+   * How much of the placeholder's words to show: on its way (gliding in from the last world or from beside the hero) its
+   * words wait and fade in at its resting place, as W2's layer does for a travelling thought — never seen sliding over
+   * the hero or doubled with the last world's copy.
+   */
+  const labelK = () => (tP.from && !tP.from.fade ? smoothstep(0.75, 1, tP.glide) : 1);
+
   // ---------------------------------------------------------------- draw --
   function drawBack(g, now, rm) {
     const dpr = realm.st.dpr;
@@ -1015,9 +1024,9 @@ export function create(ctx) {
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     // the thought (the 2D placeholder draws itself; W2's layer draws its own)
     if (thought?.draw && tP.alpha > 0.003) {
-      const labelY = plan.side === 'above' ? -(tP.r + COVE.LABEL_GAP + (plateH || 58)) : tP.r * 0.85 + COVE.LABEL_GAP;
+      const labelY = plan.side === 'above' ? -(tP.r + COVE.LABEL_GAP + (plateH || 58)) : tP.r * COVE.CRADLE_B + COVE.LABEL_GAP;
       try {
-        thought.draw(g, tP.x, tP.y, 1, { tension: tP.tension, charge: 0, calm: tP.calm, reduced: rm, radius: tP.r, now, minX: COVE.EDGE, maxX: (plan?.x1 || W) - COVE.EDGE, labelWidth: 210, labelY, alpha: tP.alpha });
+        thought.draw(g, tP.x, tP.y, 1, { tension: tP.tension, charge: 0, calm: tP.calm, reduced: rm, radius: tP.r, now, minX: COVE.EDGE, maxX: (plan?.x1 || W) - COVE.EDGE, labelWidth: 210, labelY, labelAlpha: labelK(), alpha: tP.alpha });
       } catch { /* placeholder only */ }
     }
     g.globalCompositeOperation = 'lighter';
@@ -1160,10 +1169,10 @@ export function create(ctx) {
       const out = [];
       const band = ctx.band;
       if (thought && tP.alpha > 0.1 && plan) {
-        out.push({ x: tP.x - tP.r * 1.45, y: tP.y - tP.r - 4, w: tP.r * 2.9, h: tP.r * 2.2 + 4, kind: 'thought' });
+        out.push({ x: tP.x - tP.r * 1.45, y: tP.y - tP.r - 4, w: tP.r * 2.9, h: tP.r * (1 + COVE.CRADLE_B) + 8, kind: 'thought' });
         if (plateW) {
           const px = clamp(tP.x - plateW / 2, COVE.EDGE, plan.x1 - COVE.EDGE - plateW);
-          const py = plan.side === 'above' ? tP.y - tP.r - COVE.LABEL_GAP - plateH : tP.y + tP.r * 0.85 + COVE.LABEL_GAP;
+          const py = plan.side === 'above' ? tP.y - tP.r - COVE.LABEL_GAP - plateH : tP.y + tP.r * COVE.CRADLE_B + COVE.LABEL_GAP;
           out.push({ x: px, y: py, w: plateW, h: plateH, kind: 'thought' });
         }
       }
