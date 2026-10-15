@@ -1,4 +1,5 @@
-**DRAFT, not yet reviewed or approved. Not legal advice.**
+**DRAFT, not yet reviewed or approved. Not legal advice.** It stays a draft until the owner approves it and an
+Australian lawyer has reviewed the parts marked "needs legal advice".
 **Date: 15 October 2026.**
 
 # Hushmates community guidelines
@@ -6,8 +7,9 @@
 > **Status (internal, remove before publishing).** Nothing in this document is final until the owner approves it.
 > Parts marked "needs legal advice" must also be reviewed by an Australian lawyer, and the safety wording (the
 > sections on writing for someone who may be struggling, and on danger) should be read by the independent safety
-> reviewer proposed in `docs/REVIEWS.md` before the beta. Hushmates is not live. The facts below describe the code at
-> commit `000c0cd` (15 October 2026), plus the uncommitted Tier 0 changes in the working tree where this says so.
+> reviewer proposed in `docs/REVIEWS.md` before the beta. Hushmates is not live: nothing is deployed, and AI is off.
+> The facts below were re-checked against the committed code at `9012d6f` (15 October 2026), which includes the Tier 0
+> changes (`docs/safety/TIER0_SELF_ASSESSMENT.md`).
 >
 > **How to read this draft.**
 > - The words members will read are in plain type, in Hushmallow's voice. These guidelines are part of the Terms of
@@ -51,8 +53,8 @@ paragraph), never as the page's heading. -->
 - **Everyday feelings, big and small.** Worry, joy, loneliness, frustration, excitement, the lot.
 - **Saying you're having a hard time.** That's okay here. If your words describe something that needs more than a
   new way of seeing it, like not feeling safe, abuse, violence, threats, harassment or being treated unfairly,
-  Hushmates won't send them. It shows you support lines instead, and your words aren't saved (see "If someone is in
-  danger right now").
+  Hushmates won't send them. It shows you support lines instead, and your words aren't saved (see "Writing a feeling"
+  and "If someone is in danger right now").
 - **Gentle, honest perspectives.** "Maybe…", "I wonder if…", "Another way to see it…".
 - **Short and simple.** One kind thought is plenty.
 - **Letting a feeling float past.** You never have to catch one, and you never have to explain why.
@@ -135,6 +137,12 @@ depictions, detailed methods, pacts and challenges, mockery or bullying: SM-11, 
 guidance (avoid stigmatising wording, SM-01). BOSE core expectation (SCW-05, not enforceable in court).
 [classification: needs legal advice] Personal details about third parties (PRV-05). The ban and the existing
 identifying-detail checks are recommended either way.
+What the word check does with some of these (core/feeling-safety.js at 9012d6f): words telling a reader they shouldn't
+exist or should hurt themselves are refused in a perspective (:377) and, in a feeling, answered with the crisis support
+screen, or the harassment one when someone else said them to the writer (:339-344); grooming-style questions (age,
+where someone lives, their school, meeting up, pictures) and advice about eating less, weight, stopping medication or
+drinking to cope are refused in perspectives (:378); Australian postcodes with context are refused (:233-235). Threats
+to harm others have no rule (RISKS.md S8). Everything else on this list relies on reports.
 [classification: recommended practice] The copying ban protects members against misuse of their words (the statutory
 privacy tort applies to anyone who misuses information: PRV-20, OAIC page, search extract).
 Facts: report reasons are exactly "Unkind or judgemental", "Harassment or hate", "Shares personal details",
@@ -148,22 +156,36 @@ circulation, report to police or the ACCCE and to eSafety). -->
 
 - **Write it your way,** in 3 to 500 characters. Add a feeling's name if you like.
 - **Leave out names and details.** Words can give people away. Hushmates checks for some details, like phone numbers,
-  links, street addresses and "my name is…", and will ask you to take them out.
-- **It only travels if you say so.** You tick to share it before it goes.
+  links, street addresses, postcodes and "my name is…", and will ask you to take them out.
+- **It only travels if you say so.** You tick "Share with Hushmates participants, without my name" before it goes.
 - **If your words describe something that needs more than a new way of seeing it,** like not feeling safe, abuse,
-  violence, threats, harassment or being treated unfairly, Hushmates won't send them. Your words aren't saved, so
-  nobody at Hushmates sees them or will be in touch about them. You'll see support lines instead, and you can write
-  something else whenever you're ready.
+  violence, threats, harassment or being treated unfairly, or if they tell someone to hurt themselves, Hushmates won't
+  send them. It may also hold back words that mention suicide or self-harm at all, even about the past or about
+  someone you've lost. Your words aren't saved, so nobody at Hushmates sees them or will be in touch about them.
+  You'll see support lines instead, and you can write something else whenever you're ready.
+- **The word check can miss things,** even words that clearly mean someone isn't safe. It reads English only, and
+  nobody is watching in real time.
 - **You stay in charge.** You can bring a feeling home early, let it go, or delete it.
 
-<!-- Facts: 3 to 500 characters and an optional label (schema.sql:33; ui/relay/release.js:92); consent tick required
-(rules.sql:364); identifying-detail and contact checks (core/feeling-safety.js screenFeeling; app-facts §7); held-back
-words never stored and nobody alerted (supabase/functions/_shared/gateway.js:75-77); "nobody at Hushmates will see them
-or be in touch" is the Tier 0 support-screen copy (ui/relay/support.js, uncommitted). What is held back: screenFeeling
-holds back every category the lexicon marks not reframeAppropriate (crisis, someone in danger, abuse, violence,
-threats, harassment, discrimination, "unsafe"), each with its own support message ending "It won't be sent out for
-other perspectives" (core/feeling-safety.js; SAFETY_DISCLAIMERS.md §3.3). So someone writing about being bullied or
-treated unfairly is held back too, and these lines say so, rather than "only if you might not be safe".
+<!-- Facts at 9012d6f: 3 to 500 characters and an optional label (schema.sql:33; ui/relay/release.js:92); consent tick
+"Share with Hushmates participants, without my name" required (ui/relay/release.js:103; rules.sql:364); identifying-detail
+and contact checks, Australian postcodes with context included (core/feeling-safety.js:227-236, 349-357; app-facts §7);
+held-back words never stored and nobody alerted (supabase/functions/_shared/gateway.js:75-77); "nobody at Hushmates will
+see them or be in touch" is the support screen's copy (ui/relay/support.js:38, committed since 0037d57). What is held
+back: screenFeeling holds back every category the lexicon marks not reframeAppropriate (crisis, someone in danger,
+abuse, violence, threats, harassment, discrimination, "unsafe"), each with its own support message containing "It won’t
+be sent out for other perspectives" (core/feeling-safety.js:184-216; SAFETY_DISCLAIMERS.md §3.3), and a feeling with
+words telling a reader to hurt themselves (:339-344). So someone writing about being bullied or treated unfairly is held
+back too, and these lines say so, rather than "only if you might not be safe".
+"Mention suicide or self-harm at all, even about the past or about someone you've lost": checked by running the real
+screen at 9012d6f. "My uncle died by suicide last year and I miss him." gets the crisis support screen; so does a
+perspective with "died by suicide" or "self-harm" in it, however gently it is put. "May" because the shared lexicon's
+behaviour wasn't tested phrase by phrase here. Whether grief after a suicide loss should be held back is for Tier A
+(S2 in RISKS.md: the screen holds back ordinary feelings).
+"Can miss things, even words that clearly mean someone isn't safe": the Tier 0 probe showed crisis or danger support
+for 25 of 127 developer-written crisis or danger phrasings (TIER0_SELF_ASSESSMENT.md §1, §4.2; RISKS.md S1). Evidence of
+gaps, not a measured rate (RISKS.md E1): never give members a number. The welcome says "it can miss things, and nobody
+is watching in real time" (ui/relay/welcome.js:105); TERMS_OF_USE.md §4 uses the same stronger words as here.
 [classification: recommended practice] Samaritans: when content is held back, say why without blame, what the person
 can do next, and show support (SM-05). -->
 
@@ -181,15 +203,26 @@ When a feeling finds you, you can catch it or let it float past. If you catch it
   tick it, and it never shows who you are.
 - **You can take it back** at any time in You & safety.
 
-Hushmates checks perspectives too. It won't pass on unkind phrases, diagnoses, advice about food, weight,
-medication, drinking or meeting up, personal questions, contact details, links, requests for money, words about
-something that needs real support rather than a new angle, or something almost the same as an earlier perspective. It may also nudge you gently if you sound very certain.
+Hushmates checks perspectives too. It won't pass on unkind phrases, words telling anyone to hurt themselves,
+diagnoses, advice about food, weight, medication or drinking, personal questions (like someone's age, where they live
+or their school), asking to meet up or for pictures, contact details, links, postcodes, requests for money, words about
+something that needs real support rather than a new angle, or something almost the same as an earlier perspective. It
+may also nudge you gently if you sound very certain. Naming a support line, like Lifeline on 13 11 14, is fine.
 
-<!-- Facts: 10-minute catch window (catchHoldMs 600000), 3-minute offer; 8 to 280 characters (schema.sql:33); the
-pre-writing hint "No diagnosis, judgement or orders. The person who released it will read your words, and so will
-anyone who adds a perspective after you; nobody sees who wrote it, and nobody can contact anyone." (ui/relay/catch.js:295);
-share tick off by default (ui/relay/catch.js:280-285); screenReframe refusals and the certainty nudge
-(core/feeling-safety.js; app-facts §7; similarity 0.8 in schema.sql:35). -->
+<!-- Facts at 9012d6f: 10-minute catch window (catchHoldMs 600000), 3-minute offer (offerHoldMs 180000); 8 to 280
+characters (schema.sql:33); the pre-writing hint "No diagnosis, judgement or orders. The person who released it will
+read your words, and so will anyone who adds a perspective after you; nobody sees who wrote it, and nobody can contact
+anyone." (ui/relay/catch.js:295); share tick off by default, "Off unless you choose. It never shows who you are. A
+picture they’ve made can’t be taken back." (ui/relay/catch.js:280-285); screenReframe (core/feeling-safety.js:367-392):
+crisis words get the support screen (:373); other care words, "This one can’t be passed on: it touches on something that
+needs real support rather than a new angle" (:375); incitement (:377); the advice and grooming-question list, "advice
+about food, weight, medication, drinking or meeting up isn’t something perspectives here can offer, and neither are
+personal questions" (:378, rules at :276-290); unkind, diagnosis, contact, identifying (postcodes with context
+included) and near-copies (similarity 0.8, schema.sql:35); the certainty nudge (:391). National helpline numbers are
+exempt from the phone rule (:221-225); "Lifeline is there any time on 13 11 14." passes, checked by running the screen.
+[classification: recommended practice] SM-02, SM-08: catchers should be able to point to support. That works now for
+helpline numbers, but not for words about suicide or self-harm (next section). -->
+
 
 ### If someone might be struggling
 
@@ -207,20 +240,22 @@ looking after yourself matters too.
 - **Don't argue with how they feel, or shrink it.** Leave out "at least", "just" and "look on the bright side".
 - **Don't tell them what to do.** Leave out "you should" and "you need to".
 - **Never mention methods or places,** even to warn them off.
-- **Never make suicide or self-harm sound like a way out,** or peaceful. If you need to mention it, use gentle words,
-  like "died by suicide" rather than "committed suicide".
+- **Never make suicide or self-harm sound like a way out,** or peaceful. It's best not to name them at all:
+  Hushmates holds back perspectives that do, however gently they're put (see below). "That sounds really heavy" says
+  enough.
 - **Gently point to support.** For example: "Lifeline is there any time on 13 11 14." You can't reach them, but
   they can reach people who can help.
 - **Never promise to keep them safe,** or that everything will be okay, or that you'll be there. You can't contact
   them, and they can't contact you. An honest, kind line is enough.
 
 **If you think they might be in danger,** write something kind if you feel able, and also report the feeling with
-**"Someone may be in danger"**. It goes to the front of our safety team's queue, and the feeling is paused. Our team
-can't see who wrote it, so it can't contact them or send help. If you know who they are, and they're in danger right
-now, call **000**.
+**"Someone may be in danger"**. It goes to the front of our safety team's queue, and that usually pauses the feeling
+straight away. Our team reads reports, but not straight away and not around the clock. It can't see who wrote it, so
+it can't contact them or send help. If you know who they are, and they're in danger right now, call **000**.
 
-**If what you write is about you,** and your words suggest you might not be safe, Hushmates won't pass them on. It
-shows you support instead, and the feeling floats on to someone else. Right now, that's about you.
+**If your words mention suicide or self-harm, or suggest someone might not be safe,** Hushmates won't pass them on,
+even if you meant them kindly or they're about someone else. It can't tell the difference, so it shows you support
+instead, in case this is about you, and the feeling floats on to someone else.
 
 **Afterwards,** be gentle with yourself. If it's stayed with you, Lifeline is there any time on **13 11 14**.
 
@@ -237,14 +272,25 @@ seen only as search extracts; Mindframe and #chatsafe are Australian, Samaritans
 - Samaritans, concise and clear wording for people in distress (SM-02).
 Adaptations, stated honestly: #chatsafe is written for young people (Hushmates is adults only); its "message privately"
 and "ask directly whether they're thinking about suicide" steps don't fit a one-shot perspective with no reply, and
-the perspective word check may hold such words back, so they're left out (SM-08). "Never promise to keep them safe" is
+the perspective word check holds such words back, so they're left out (SM-08). "Never promise to keep them safe" is
 derived from the app's limits (nobody can contact anyone), not quoted from a guideline. "Don't minimise, don't direct"
 are this track's derived checks (SM-02), not verbatim source text.
-Facts: helpline numbers are allowed in perspectives. 13 11 14 passes at HEAD (the phone rule blocks 7 or more digits:
-core/text-policy.js:32); the Tier 0 working tree exempts all national helpline numbers (core/feeling-safety.js:182-184,
-uncommitted). A catcher in difficulty: hold ends as passed, words not stored, support shown (rules.sql:698-707;
-gateway.js:92-96); copy "Right now, this is about you." (ui/relay/support.js). A "Someone may be in danger" report
-pauses the feeling (rules.sql:905-912).
+Changed at 9012d6f: the earlier draft passed on #chatsafe's safe-language advice ("If you need to mention it, use
+gentle words, like 'died by suicide'"). Running the real screen shows that a perspective with "died by suicide",
+"losing someone to suicide", "thoughts of suicide" or "self-harm" in it, however kind, gets the crisis support screen
+and is never passed on; so does "Please call 000 if you are in danger right now" (the someone-in-danger screen), while
+"If you are not safe, please call 000" passes. Advising wording the app always blocks would send a kind catcher into a
+crisis screen ("Right now, this is about you."), so the guideline now says not to name them. The safe-language advice
+is still good practice wherever the words can be used; whether perspectives should be allowed to name suicide gently,
+and what a catcher who wrote about someone else's loss should be told, are questions for Tier A (SAFETY_DISCLAIMERS.md
+§3.3).
+Facts: helpline numbers are allowed in perspectives: the national lines' numbers standing alone are exempt from the
+phone rule (core/feeling-safety.js:221-225, committed; the phone rule blocks 7 or more digits, core/text-policy.js:32).
+A catcher in difficulty: hold ends as passed, words not stored, support shown (rules.sql:699-707; gateway.js:92-96);
+copy "What you wrote wasn’t passed on or saved, so nobody at Hushmates will see it or be in touch. The feeling has
+floated on to someone else. Right now, this is about you." (ui/relay/support.js:35). A "Someone may be in danger"
+report pauses the feeling unless the same member has reported it before (rules.sql:888-912), hence "usually"; the same
+caveat is in ESCALATION.md §3 step 2.
 [classification: needs legal advice] Negligence and reliance (SCW-17): nothing here suggests the team will act on a
 danger report beyond reading it and pausing or removing content. -->
 
@@ -258,8 +304,13 @@ danger report beyond reading it and pausing or removing content. -->
 
 <!-- [classification: recommended practice] SM-07: catcher onboarding should say catching is opt-in, that feelings are
 picked at random, that a catcher may see something hard, and that they can pass, get support or flag it.
-Facts: catching off by default (schema.sql:61); matching takes the 3 longest-waiting eligible feelings and picks one at
-random (fairnessPool 3; rules.sql:562-610); not based on interests or history (U16-02: describe matching accurately). -->
+Facts: catching off by default (members.catching default false, schema.sql:61), and the welcome's switch starts from
+that value (choice.catching = p.catching !== false, ui/relay/welcome.js:33), so a new member starts with it off and
+turns it on themselves (the E2E clicks it on: tools/staging-e2e.mjs:329). [Check] DECISIONS.md D22 and
+SBD_SELF_ASSESSMENT.md SBD-17 say it "starts on at the welcome"; the code read here says otherwise. Settle which is
+true before either is relied on. Matching takes the 3 longest-waiting eligible feelings and picks one at random
+(fairnessPool 3; rules.sql:562-610); not based on interests or history (U16-02: describe matching accurately).
+"Support is one tap away": the Support pill is in the header of every screen (ui/relay/common.js:41-66). -->
 
 ## Reporting and blocking
 
@@ -286,12 +337,14 @@ You don't have to explain. There's no box to type in.
 As soon as you send it, the feeling leaves your sky, or the perspective leaves your collection. Nobody is told who
 reported.
 
-<!-- Facts: the "More" button on an offered or caught feeling, labelled for screen readers "More: report, or never see
-this person’s feelings", then "Report this feeling" (ui/relay/catch.js:445-454); on a perspective at home, a "More"
-button ("More: report or block", or "More: report this Mallow perspective") then "Report it" (ui/relay/returned.js:203,
-251-260); Mallow lines also reportable while travelling (ui/relay/journeys.js:285); reasons (core/relay-config.js:33-41);
-no free-text box (ui/relay/common.js reportSheet sends only a reason); leaves the sky or collection at once
-(rules.sql:916-933).
+<!-- Facts at 9012d6f: the "More" button on an offered or caught feeling, labelled for screen readers "More: report, or
+never see this person’s feelings", then "Report this feeling" (ui/relay/catch.js:445-454); on a perspective at home, a
+"More" button ("More: report or block", or "More: report this Mallow perspective") then "Report it"
+(ui/relay/returned.js:203, 251-260); Mallow lines also reportable while travelling (ui/relay/journeys.js:214, 287);
+reasons (core/relay-config.js:33-41); no free-text box (ui/relay/common.js:107-133, reportSheet sends only a reason);
+leaves the sky or collection at once (rules.sql:899-901, 916-936). Before sending, the sheet says "A person on our safety
+team reads reports, but not straight away and not around the clock. They can’t see who anyone is, and they can’t
+contact anyone. Nobody is told who reported. If someone is in danger right now, call 000." (common.js:128).
 [classification: recommended practice] Samaritans: make reporting easy; have a category for someone at imminent risk;
 consider wording that doesn't deter people who fear getting someone in trouble (SM-09). The guidance suggests "flag" or
 "I'm worried" instead of "report"; the app uses "Report". Owner decision.
@@ -306,10 +359,11 @@ counsellors, clinicians or crisis workers.
 before, and an account reference, which is a code, not a name. They never see your name or email, the other
 person's name or email, or who reported.
 
-**When.** Reports wait in a queue until someone on the team opens it. Reports that someone may be in danger go to the
-front. During the beta we aim to read priority reports within a day, and others within two days. Nights, weekends and
-holidays can take longer. That's an aim, not a promise. If the team is away for a while, the message you see after
-reporting tells you when it'll be read.
+**When.** Reports wait in a queue until someone on the team opens it. Nothing alerts the team when a report comes
+in, and nobody watches the queue around the clock. Reports that someone may be in danger go to the front. During the
+beta we aim to read priority reports within a day, and others within two days. Nights, weekends and holidays can take
+longer. That's an aim, not a promise. If the team is away for a while, the message you see after reporting says so,
+and when we expect to be back if we know.
 
 **What they can do.**
 - Let a feeling carry on, if it breaks no rule.
@@ -325,25 +379,35 @@ reporting tells you when it'll be read.
 - Take back words people have already read, or a share picture someone has already made.
 
 **Automatic pauses.** A feeling is paused straight away if two different people report it, or if one person reports
-that someone may be in danger. While it's paused, nobody else is offered it. It still comes home to its writer when
-its day is up. Its writer sees that it's paused for a safety review, but never who reported it.
+that someone may be in danger. (If you've reported the same feeling before, a new report from you waits for our team
+instead.) While it's paused, nobody else is offered it. It still comes home to its writer when its day is up. Its
+writer sees that it's paused for a safety review, but never who reported it, and that our team can't contact them.
 
 <!-- [classification: depends on Hushmallow's functionality or business circumstances] Every line here is a
 representation (ACL s18, SCW-07). The aim is a representation about a future matter and needs reasonable grounds: a
 staffed rota, which docs/ESCALATION.md leaves blank ("________ / ________"). Deciding facts: who staffs the desk and how
 often it's read. "[a few people]": owner to fill in honestly.
-Facts: queue urgent first, then oldest (rules.sql:1068-1077); no alert when a report arrives, the desk refreshes every 60
-seconds only while open (staff/desk.js:15, 169) [GAP]; what the desk sees, including "Earlier reports about the same
-person" and "Account reference (for a team lead)", and never the reporter (rules.sql:1079-1098; staff/desk.js:264-291);
+Facts at 9012d6f: queue urgent first, then oldest (rules.sql:1076); no alert when a report arrives (no email or push),
+the desk refreshes every 60 seconds only while its tab is in view and someone is signed in (staff/desk.js:15, 169; its
+empty queue says "Nothing alerts anyone, open or closed, so check at the set times", :224) [GAP]; the team's own target
+for a priority report is 12 hours, tighter than the public aim and not promised to anyone, and the desk marks one still
+open after that "Over 12 hours" (docs/ESCALATION.md §2; staff/desk-guide.js:47-56; staff/desk.js:185-187). The words
+here don't mention the 12 hours, on purpose (MODERATION.md §4.2). What the desk sees, including "Earlier reports about
+the same person" and "Account reference (for a team lead)", and never the reporter (rules.sql:1079-1098;
+staff/desk.js:264-291);
 decisions (staff/desk-guide.js:8-24); the desk can't contact anyone (staff/desk-guide.js:30). "Send help, or call anyone on
 someone's behalf" was dropped: the desk procedure allows a 000 call in one rare case, when the words point to immediate
 danger and the team already holds identifying information because the person contacted Hushmallow directly
 (MODERATION.md §6.2 step 3, §6.3). Member documents describe that only through PRIVACY_POLICY.md's serious-threat
 paragraph; this list stays true without promising anything. No outcome notice, export
-status "reviewed by our safety team" (core/export-format.js:68-73); automatic pause (rules.sql:905-912; "Paused for a
-safety review", ui/relay/journeys.js:59). The aims and the "away" message copy the Tier 0 migration
-(supabase/migrations/20261015090000_hushmates_tier0.sql, uncommitted; settings.desk.awayUntil). If Tier 0 doesn't ship,
-the app still says "we aim to look within 24 hours" and "within 48 hours", and this section must change to match.
+status "reviewed by our safety team" (core/export-format.js:68-73); automatic pause (rules.sql:888-912, and not on a
+member's repeat report; "Paused for a safety review", ui/relay/journeys.js:59; to the writer, "Paused for now. Our
+safety team will look at it, but they can’t contact you…", :134). The aims and the "away" message copy the Tier 0
+migration, committed since 0037d57 (supabase/migrations/20261015090000_hushmates_tier0.sql:21-47; core/relay.js:823-826
+for the usual words). While the owner marks the desk away (node server/admin.mjs set desk '{"awayUntil":"YYYY-MM-DD"}',
+validated to today through 90 days ahead, Sydney), reporters see "Our safety team is away until {day}, so it will be
+read when we’re back…"; a stored value the database can't read as such a day shows "away for now", with no day. Hence
+"says so, and when we expect to be back if we know", not "tells you when it'll be read".
 [classification: recommended practice] Tell reporters what happens next, the target review time, that their identity
 isn't shown, and how outcomes and appeals work (SM-09, SM-15; eSafety Safety by Design Principles,
 https://www.esafety.gov.au/sites/default/files/2019-10/SBD%20-%20%20Principles.pdf, search extract). Outcome feedback is
@@ -392,24 +456,31 @@ on" is deliberate: perspectives the blocker already gave on the other person's f
 **If it's someone on Hushmates:**
 - You can't reach them, and neither can we. Our team can't see who they are.
 - Write something kind if you feel able, and gently point to Lifeline.
-- Report it with **"Someone may be in danger"**. It goes to the front of the queue, and the feeling is paused.
+- Report it with **"Someone may be in danger"**. It goes to the front of the queue, and that usually pauses the
+  feeling. Our team reads it when it can, not straight away.
 - If you know who they are outside Hushmates, and they're in danger right now, call **000**.
 
-**Finding support in the app.** Tap **Support** at the top of the screen, or go to **You & safety** and choose
-**Get support now**. The lines are part of the app, so they're there even without internet.
+**Finding support in the app.** Tap **Support** at the top of any screen, or go to **You & safety** and choose
+**Get support now**, the first thing there. The lines are part of the app, so they still open if your connection
+drops.
 
 <!-- [classification: recommended practice] Mindframe: give at least two 24/7 sources of support wherever mental
 health concerns are discussed (SM-03; https://cdn.mindframe.org.au/assets/src/uploads/Mindframe_Quick_Ref_AIHW_09.pdf,
 search extract). Samaritans: signpost emergency services, 24-hour support and specialist lines (SM-04, UK guidance). This
 page lists more than Samaritans' "two or three at any time", which is aimed at screens shown in a moment of high
 distress; a reference page is different, and it leads with 000 and Lifeline.
-Facts: the numbers, their descriptions and "any time" are copied from the app (core/feeling-safety.js:126-141, working
-tree; the desk's list in staff/desk-guide.js matches). The "someone with you" lines paraphrase the app's "Someone might be
-in danger" screen ("If it’s safe to, stay with them or keep talking to them. You don’t have to handle this alone: a
-helpline can talk you through what to do."). "You don't need the right words first" is the app's crisis copy. Check every
-number and every "any time" against the service's own website before launch, and on a set schedule (SM-04). The
-"Support" button in every header and offline lines are in the uncommitted Tier 0 changes (ui/relay/common.js
-supportPill, openSupport); at HEAD the lines are under You & safety only. Adjust if Tier 0 doesn't ship.
+Facts at 9012d6f: the numbers, their descriptions and "any time" are copied from the app (core/feeling-safety.js:166-175;
+the desk's list in staff/desk-guide.js:37-44 has the same numbers, without "any time" for 13YARN and 1800RESPECT). The
+"someone with you" lines paraphrase the app's "Someone might be in danger" screen ("If it’s safe to, stay with them or
+keep talking to them. You don’t have to handle this alone: a helpline can talk you through what to do.",
+core/feeling-safety.js:202). "You don't need the right words first" is the app's crisis copy (:209). Check every number
+and every "any time" against the service's own website before launch, and on a set schedule (SM-04). The "Support" pill
+in every header is committed (ui/relay/common.js:41-66, supportPill and openSupport, since 0037d57): its sheet shows 000,
+Lifeline, the Suicide Call Back Service and 13YARN first, then 1800RESPECT, Beyond Blue and findahelpline under "More
+support lines" (core/feeling-safety.js:179); You & safety starts with "If you’re not okay" → "Get support now"
+(ui/relay/you.js:52-54). "Still open if your connection drops", not "without internet": the lines are bundled in the
+app's code (common.js:37-44), so the sheet opens offline once the app has loaded, and the offline screen has the pill
+(ui/relay/away.js:31); there is no service worker, so the app itself can't be opened with no connection at all.
 [classification: needs legal advice] Nothing here says or implies that anyone at Hushmates will act, contact anyone or
 watch over anyone (SCW-17; TGA-4: the danger report is described as a moderation priority read by people, not a crisis
 response). -->

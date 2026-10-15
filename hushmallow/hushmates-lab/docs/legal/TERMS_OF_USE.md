@@ -738,6 +738,11 @@ If you or someone else is in danger right now, please don't email us. Call **000
 
 ## B1. Before these terms can be used
 
+Where this sits (`docs/LAUNCH_READINESS.md` §0, §4): the owner's approval of these terms and the guidelines is a
+condition for G2, the team-only beta; a contact address and an appeal route (D23), and the lawyer's answers on
+APP-entity status, the TGA and the under-16 law, are conditions for G3, outside testers; the full legal review and
+final documents (D7, D9) are for G4.
+
 1. **Owner approval** of every commitment in Part A. The ones that go beyond what the code does today:
    - the review route and its time (section 7);
    - closing accounts and deleting data for under-18s or serious breaches (section 8), which needs an operator
@@ -987,7 +992,10 @@ Re-checked at `9012d6f`. Items marked **Done** are kept so the history is visibl
 - Whether a free beta forms a contract, and whether the guarantees apply to it.
 - The Online Safety Act s13, s13A, s14 and s106 (class 1), the registered Phase 1 Tier 3 duties, and Phase 2's
   "self-harm material" definition.
-- The operative s4A text, s63D, s63DB and s63F.
+- The operative rule 4A text (only its heading was seen), the 2025 Rules' s 5 text (s 5(1)(f) seen only through the
+  Explanatory Statement), s63D, s63DB and s63F.
+- Who wrote the 293 Mallow lines, and who checked them (owner to confirm before any "written by" or "checked by"
+  wording).
 - TGA device status for the word check and the Mallow selection; the Excluded Goods Determination's own words.
 - The OAIC, eSafety and ACCC complaint pages named in section 13.
 - The support numbers against each service's own site (they come from the app's code).

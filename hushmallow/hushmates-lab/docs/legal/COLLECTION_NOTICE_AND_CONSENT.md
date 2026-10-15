@@ -172,14 +172,15 @@ system until you ask us to delete it." -->
 **Collected:** which invitation was used (and any note the team wrote on it), the chosen name, the 18+ tick and its
 time.
 
-**Now (000c0cd):**
+**Now (9012d6f):** unchanged since the first draft.
 - "You’re invited". "Hushmates is a small, invitation-only pilot for adults. Send a feeling, and see it
-  differently." (`ui/relay/invite.js:44-45`)
-- Code hint: "It’s in the invitation you were sent." (`:48`)
+  differently." (`ui/relay/invite.js:45-46`)
+- Code hint: "It’s in the invitation you were sent." (`:49`)
 - Name hint: "3 to 20 letters or numbers. Only you see it. Your feelings and perspectives travel with no name at
-  all." (`:49`)
-- Tick: "I’m 18 or over" (`:50`). "Join Hushmates" stays disabled until there's a code, a name and the tick
-  (`:33-34`).
+  all." (`:50`)
+- Tick: "I’m 18 or over" (`:51`). "Join Hushmates" stays disabled until there's a code, a name of at least 3
+  characters and the tick (`:35`). If the tick wasn't given here, the welcome asks again: "I’m 18 or over, and I was
+  invited to the pilot" (`ui/relay/welcome.js:110`).
 
 **Proposed:**
 - Name hint:
@@ -198,76 +199,77 @@ bundled with consent to share sensitive words, which is asked for feeling by fee
 
 <!-- [classification: recommended practice] The age hint follows U16-13 (age copy matches what is checked).
 [classification: needs legal advice] Whether an 18+ tick is enough depends on whether Hushmates is an age-restricted
-social media platform (Online Safety Act 2021 Part 4A, s63C; U16-01 to U16-03). This wording claims nothing either way.
+social media platform (Online Safety Act 2021 Part 4A, s63C; U16-01 to U16-03). The research leans "in scope": the
+s63C base test leans met, and the Rules' rule 4A condition leans met through time-limited features (a 3-minute offer,
+10 minutes to write, a 24-hour journey); the health-purpose exclusion (Rules 2025 s5(1)(f)) is untested and cuts
+against the non-clinical positioning (LEGAL_REQUIREMENTS.md question 2; D9). This wording claims nothing either way,
+and nothing in this document may be read as saying the law doesn't apply.
 [GAP] Nothing is recorded when someone can't tick; their sign-in account stays (app-facts §8). -->
 
 ### 4.3 Welcome: the promises and "Let feelings find me" (`ui/relay/welcome.js`)
 
-**Now (000c0cd)** (`ui/relay/welcome.js:101-104, 107`):
+**Now (9012d6f)** (`ui/relay/welcome.js:102-106, 109`):
 - "**Pseudonymous, not perfectly anonymous.** Other participants never see your name or account, and can’t contact
-  you. Leave out names and details that could identify anyone."
-- "**Possibilities, not verdicts.** No diagnosis, no judgement, no telling anyone what to do."
-- "**People first.** A Mallow perspective is offered only if you allow it. It’s automatically generated, always
-  labelled, and never counted as a person."
-- "**Not an emergency service.** Hushmates looks out for words that suggest you might not be safe and shows real
-  support, but it can miss things. If you’re not safe, call 000 or Lifeline on 13 11 14."
+  you. Leave out names and details that could identify anyone." (`:102`)
+- "**Possibilities, not verdicts.** No diagnosis, no judgement, no telling anyone what to do." (`:103`)
+- "**People first.** A Mallow perspective is offered only if you allow it. It’s chosen automatically from a fixed set
+  of lines written in advance, always labelled, and never counted as a person." (`:104`)
+- "**Not an emergency service.** Hushmates checks words for some signs that someone might not be safe, and shows
+  numbers to call. The check reads English only, it can miss things, and nobody is watching in real time. If you’re
+  not safe, call 000, or Lifeline on 13 11 14, any time." (`:105-106`)
 - Switch "Let feelings find me": "Catch other people’s feelings when you choose to look. You can change this any
-  time." It starts off.
+  time." (`:109`) It shows the stored choice, which starts off for a new member (`:33`; `schema.sql:61`).
 
-**In progress (working tree):** "People first" now says "It’s chosen automatically from lines the Hushmates team
-wrote, always labelled, and never counted as a person." "Not an emergency service" now says "Hushmates checks words
-for some signs that someone might not be safe, and shows numbers to call. The check reads English only, it can miss
-things, and nobody is watching in real time. If you’re not safe, call 000, or Lifeline on 13 11 14, any time."
+**Done:**
+- "Not an emergency service": **Done.** The app adopted the wording this document recommended. It is accurate and
+  doesn't imply monitoring.
+- "People first": **Partly done.** The app no longer says "automatically generated" here.
 
-**Proposed:**
+**Proposed (still):**
 - First promise:
   > **Pseudonymous: your name stays with you.** Other participants never see your name or account, and can’t
   > contact you. We hold your email and know which account is yours. Words can give people away, so leave out names
   > and details that could identify anyone.
-- "People first":
+- "People first", for precision (optional):
   > **People first.** A Mallow line is offered only if you allow it. It’s put together automatically from pieces
-  > written in advance, always labelled, and never counted as a person.
+  > written in advance for Hushmallow, always labelled, and never counted as a person.
 
-  (At `f8d7e4a` the app already says "chosen automatically from a fixed set of lines written in advance". Who wrote
-  the lines is for the owner to confirm before any wording says "the Hushmates team wrote": `TERMS_OF_USE.md` §2.)
-- "Not an emergency service": adopt the in-progress wording above. It is accurate and doesn't imply monitoring.
-- The switch: keep its wording. Turning it on opens "Before you catch" (4.5) before it saves.
+  ("Chosen ... from a fixed set of lines" is close. What is shown is two pieces joined, an opening and a perspective,
+  sometimes with a feeling word filled in: `core/perspectives.js:612-618, 640`. Who wrote the lines is for the owner
+  to confirm before any wording says "the Hushmates team wrote": `TERMS_OF_USE.md` §2.)
+- The switch: keep its wording. Turning it on opens "Before you catch" (4.5) before it saves. Whether it should be an
+  explicit choice with nothing preset is decision D22.
 
 **Why:** "not perfectly anonymous" still leans on the idea of anonymity; this says plainly what is true (PRV-22,
-SCW-07), and uses "pseudonymous" only. The Mallow line comes from a fixed library, so "automatically generated" is
-not accurate (critic's correction to PRV-22).
+SCW-07), and uses "pseudonymous" only. The Mallow line comes from a fixed library, so "automatically generated" can
+suggest AI (critic's correction to PRV-22; the label itself is D21).
 
 ### 4.4 Release: before a feeling travels (`ui/relay/release.js`)
 
 This is the main consent. Nothing a person writes reaches another member without it.
 
-**Now (000c0cd)** (`ui/relay/release.js:101-107, 69-70`):
-- Tick label: **"Share anonymously with Hushmates participants"**
+**Now (9012d6f)** (`ui/relay/release.js:101-107, 69-70`):
+- Tick label: **"Share with Hushmates participants, without my name"** (`:103`)
 - Hint: "Your words may be shown to other people who can offer different perspectives. Please leave out
-  identifying details."
-- A "Privacy details" link. The tick starts off. The button rests until it's ticked: "Tick “Share anonymously with
-  Hushmates participants” to release."
-- The server refuses without it: "Please confirm you’re happy to share this anonymously first."
-  (`core/relay-messages.js:23`), and records `consent_at` (`rules.sql:384`).
-
-**In progress (working tree):** the label now reads "Share with Hushmates participants, without my name" (decision
-D8), the resting line follows it, and the server message reads "Please confirm you’re happy to share this without
-your name first."
+  identifying details." (`:104`)
+- A "Privacy details" link (`:105`). The tick starts off (`:26`). The button rests until it's ticked: "Tick “Share
+  with Hushmates participants, without my name” to release." (`:70`)
+- The server refuses without it: "Please confirm you’re happy to share this without your name first."
+  (`core/relay-messages.js:23`; `rules.sql:364`), and records `consent_at` (`rules.sql:382-386`).
 
 **What's missing:** the hint doesn't say who reads it, that the safety team may, that a word check runs first, how
 long it's kept, or that the words may be sensitive. There's no notice of who we are.
 
-**Proposed: the per-feeling tick (every feeling)**
-- Label:
-  > Share this with Hushmates participants, without my name
-- Hint:
+**The per-feeling tick (every feeling)**
+- Label: **Done** (decision D8). Keep the app's "Share with Hushmates participants, without my name". (The first
+  draft proposed "Share this with…"; the app's wording is just as clear, so no further change is proposed.)
+- Hint, **proposed (still)**:
   > People who chose to catch feelings will read it, and up to five can offer a perspective. They never see your
   > name. If it’s reported, a person on our safety team reads it too. Please leave out names and anything that
   > could identify anyone.
 - Link: "Privacy details" (keep).
-- Resting line:
-  > Tick “Share this with Hushmates participants, without my name” to release.
-- Server message (`consent-required`): adopt the in-progress wording.
+- Resting line: **Done** (it follows the label).
+- Server message (`consent-required`): **Done.**
 
 **Proposed: a one-time sheet, "Before your first feeling travels"**
 
@@ -286,11 +288,12 @@ tick only takes effect after "I understand". It informs the consent. The tick, e
 > nothing is sent.
 >
 > **A word check reads it first.** If your words describe something that needs more than a new way of seeing it,
-> like not feeling safe, abuse, violence, threats, harassment or being treated unfairly, Hushmates won’t send it. It
-> shows you support lines instead, and your words aren’t saved. The check reads English only, and it can miss things.
+> like not feeling safe, abuse, violence, threats, harassment or being treated unfairly, or if they tell someone to
+> hurt themselves, Hushmates won’t send it. It shows you support lines instead, and your words aren’t saved. The
+> check reads English only, and it misses many ways people put things, so please don’t rely on it.
 >
-> **If it’s reported,** a person on our small safety team reads it. They see an account reference, never your name
-> or email, and they can’t contact you.
+> **If it’s reported,** a person on our small safety team reads it, but not straight away and not around the clock.
+> They see an account reference, never your name or email, and they can’t contact you.
 >
 > **We know it’s you.** We hold your email, and we know which account wrote what. Your words are locked
 > (encrypted) before they’re stored, in Australia. Only a very few people hold the keys.
@@ -308,7 +311,12 @@ of the same feeling is confirmed each time with "Send it out again"), unbundled 
 Mallow choice), notice not mistaken for consent (the sheet informs; the tick consents). APP 5.2(a), (d), (e), (f) and
 the policy link (g), (h). The word-check sentence names what is actually held back: screenFeeling holds back every
 category the lexicon marks not reframeAppropriate (crisis, someone in danger, abuse, violence, threats, harassment,
-discrimination, "unsafe"), not only safety words (`core/feeling-safety.js`; `SAFETY_DISCLAIMERS.md` §3.3).
+discrimination, "unsafe"), not only safety words, and, since Tier 0, words telling the reader to hurt themselves, which
+get the crisis screen, or the harassment screen when someone else said them (`core/feeling-safety.js:330-344`;
+`SAFETY_DISCLAIMERS.md` §3.3). "Misses many ways people put things" is the honest summary of the Tier 0 developer
+probe: crisis or danger support for 25 of 127 developer-written crisis or danger phrasings
+(`docs/safety/TIER0_SELF_ASSESSMENT.md` §4.2). That is evidence of gaps, not a measured rate, and is never shown to
+members as a number. Never "detects" (TGA-4, TGA-10).
 
 <!--
 [classification: depends on functionality or business circumstances] APP 3.3 express consent for sensitive information
@@ -319,17 +327,19 @@ not made here.
 [classification: needs legal advice] Whether the one-time sheet plus a per-feeling tick is valid express consent for
 health information under APP 3.3 (and under the Victorian or NSW health privacy principles, if they apply).
 "Only a very few people hold the keys": true today (the owner, D11); must stay true, or change.
+"Not straight away and not around the clock": the app's own report-sheet words (ui/relay/common.js:128).
 -->
+
 
 ### 4.5 Catching: what catchers agree to (`ui/relay/welcome.js`, `ui/relay/catch.js`, `ui/relay/you.js`)
 
 Catchers read other people's feelings, which can be personal or heavy. They also write their own words.
 
-**Now (000c0cd):**
+**Now (9012d6f):** unchanged since the first draft.
 - Catch screen: "Let feelings find you". "Catch a feeling someone released and offer another way of seeing it."
   Switch "Let feelings find me": "Always voluntary. Letting a feeling float past is always fine, and you can turn
-  this off any time." (`ui/relay/catch.js:64-70`)
-- You & safety: "Catch other people’s feelings when you choose to look. Always voluntary." (`ui/relay/you.js:53`)
+  this off any time." (`ui/relay/catch.js:63-66`)
+- You & safety: "Catch other people’s feelings when you choose to look. Always voluntary." (`ui/relay/you.js:57`)
 - An offered feeling: "Catch this feeling" / "Let it float past", and "It waits a few minutes for you. Letting it
   float past is always fine." (`ui/relay/catch.js:162-164`)
 
@@ -357,8 +367,9 @@ they've ticked and tapped.
 > comes home. If they save it, your words stay until they delete it or you take yours back. You can take yours back
 > in You & safety at any time.
 >
-> **Look after yourself.** If something you read worries you, you can report it. If you’re not okay, Get support now
-> is always one tap away.
+> **Look after yourself.** If something you read worries you, you can report it. Our safety team reads reports, but
+> not around the clock, and it can’t contact anyone. If you’re not okay, tap Support at the top of the screen, any
+> time.
 >
 > ☐ I’ll keep what I read private, and I won’t try to find out who wrote it.
 >
@@ -374,7 +385,10 @@ informed and voluntary, and it is separate from the catcher's own words (4.6) an
 
 <!-- [classification: recommended practice] The tick is a commitment, not privacy consent. Record it with a time (for
 example catching_agreed_at): today "catching" has no timestamp (schema.sql:61). Code change for the developer; not
-made here.
+made here. "Tap Support at the top of the screen": the Support button is in the header of the catch screens
+(ui/relay/catch.js:58, 83, 147, 245 through brandBar() and top(); ui/relay/common.js:45-66). Since Tier 0, "Get support
+now" is no longer two taps deep (TIER0_SELF_ASSESSMENT.md §1), so the first draft's "one tap away" is now accurate
+too, but "tap Support" names what people see.
 Retention facts behind "It stays with their feeling": a perspective is cleared with its journey at the 30-day clearing
 of unsaved returned or released journeys, including perspectives the author kept after letting the feeling go
 (api.sql:169-177); a saved journey keeps them with no time limit until the author deletes it or the writer takes
@@ -387,7 +401,7 @@ feeling's own words go at once but kept perspectives stay up to 30 days. -->
 **Collected:** the catcher's own words, which may include sensitive information about themselves ("I went through
 something like this too").
 
-**Now (000c0cd)** (`ui/relay/catch.js:295`, button at `:255`):
+**Now (9012d6f)** (`ui/relay/catch.js:295`, button at `:255`), unchanged since the first draft:
 > No diagnosis, judgement or orders. The person who released it will read your words, and so will anyone who adds a
 > perspective after you; nobody sees who wrote it, and nobody can contact anyone.
 
@@ -409,79 +423,104 @@ statement or tick"). The statement is the lighter option; a tick is the safer on
 
 ### 4.7 The Mallow line (`ui/relay/release.js`, `ui/relay/journeys.js`, `ui/relay/returned.js`, `ui/relay/parts.js`)
 
-The Mallow line is put together by rules from a **fixed library written in advance**: an opener in the Mallow's
-voice joined to one perspective line, and some openers fill in a feeling word taken from the label, chosen or inferred
-from the words (vendored `perspectives.js:569-597`). The pieces are picked by analysing the author's words. **AI is
-off.** Today's wording calls it "automatically generated" and says Hushmates "writes it", which isn't
-accurate.
+The Mallow line is put together by rules from a **fixed library written in advance for Hushmallow** (293 lines: 51
+openers, 114 Hushmates lines and 128 of the main app's Reframe lines, each checked line by line in the Tier 0
+self-assessment, which is not a clinical review: `docs/safety/TIER0_SELF_ASSESSMENT.md` §3.2). What is shown is an
+opener in the Mallow's voice joined to one perspective line, and some openers fill in a feeling word taken from the
+label, chosen or inferred from the words (`core/perspectives.js:612-618, 640`). The pieces are picked by analysing the
+author's words. **AI is off** (`schema.sql:39`). At `9012d6f` most descriptions say so accurately ("chosen
+automatically from a fixed set of lines written in advance", "guided by your words"). The Release screen still says
+Hushmates "writes" it, which isn't accurate, and several places, and the label itself, still say "automatically
+generated" (decision D21, open).
 
-**Now (000c0cd):**
+**Now (9012d6f):**
 - Release switch: "Let a Mallow offer another perspective if nobody responds." Hint: "Your Mallow can offer an
-  automatically generated perspective if no one catches your feeling." (`ui/relay/release.js:108-113`)
+  automatically generated perspective if no one catches your feeling." (`ui/relay/release.js:108-111`) Unchanged.
 - Release note: "If you turn this on and nobody catches it within 30 minutes, Hushmates writes a perspective for you
-  automatically. It isn’t a person, and your words stay with Hushmates." + "How this works" (`:116-118`)
+  automatically. It isn’t a person, and your words stay with Hushmates." + "How this works" (`:116-118`) Unchanged.
 - While travelling: "Nobody’s caught it yet. Want me to offer another way to see it?" / "Ask {Mallow}" / "Automatically
-  generated · not written by a person" (`ui/relay/journeys.js:157-160`; also `:173`)
+  generated · not written by a person" (`ui/relay/journeys.js:159-162`; also `:172-175`) Unchanged.
 - "Send it out again" switch hint: "If no one catches your feeling, your Mallow offers an automatically generated
-  perspective. Hushmates writes it, not a person, and your words stay with Hushmates." (`ui/relay/returned.js:316-323`)
+  perspective. Hushmates chooses it from lines written in advance, guided by your words: no person writes it, and your
+  words stay with Hushmates." (`ui/relay/returned.js:318-319`) Changed since the first draft.
 - "Explore another angle": "{Mallow} will offer one automatically generated perspective. It isn’t written by a
-  person, and it isn’t counted as one." If the author hadn't opted in: "Hushmates writes it automatically from your
-  words, on its own servers. The perspective is kept with this journey and deleted with it." "How this works": "Your
-  Mallow’s perspective is written automatically by Hushmates from your words, once. It isn’t written by a person,
-  it’s always labelled “Automatically generated”, and it never counts as one of the five. Nobody else sees it unless
-  you choose to share it." (`ui/relay/returned.js:345-351`)
-- Report sheet: "Mallow perspectives are automatically generated and can get things wrong. If this one was unhelpful
-  or hurtful, report it and it disappears straight away." (`ui/relay/returned.js:256`; similar at
-  `ui/relay/journeys.js:285`)
-- The stored label: "A Mallow perspective · Automatically generated" (`core/relay-config.js:47-48`;
-  `supabase/migrations/20261014090100_hushmates_rules.sql:236`; share pictures `ui/relay/share-render.js:27`)
-- Your data: "Automatically generated, only because you allowed it" (`ui/relay/your-data.js:59`)
-
-**In progress (working tree):** the privacy sheet's Mallow section now says "Hushmates chooses it automatically from
-its own library of perspectives the team wrote" but still says "always labelled “Automatically generated”". The other
-lines above are unchanged so far.
+  person, and it isn’t counted as one." If the author hadn't opted in: "Hushmates chooses it automatically from lines
+  written in advance, guided by your words, on its own servers. The perspective is kept with this journey and deleted
+  with it." "How this works": "Your Mallow’s perspective is chosen automatically by Hushmates, once, from lines written
+  in advance and guided by your words. It isn’t written by a person, it’s always labelled “Automatically generated”,
+  and it never counts as one of the five. Nobody else sees it unless you choose to share it."
+  (`ui/relay/returned.js:347-351`) Changed since the first draft.
+- Report sheets: "Mallow perspectives are automatically generated and can get things wrong. If this one was unhelpful
+  or hurtful, report it and it disappears straight away." (`ui/relay/returned.js:257`); "Mallow perspectives are
+  automatically generated and can get things wrong. What best describes it? It disappears straight away."
+  (`ui/relay/journeys.js:287`) Unchanged.
+- The stored label: "A Mallow perspective · Automatically generated" (`core/relay-config.js:74-75`;
+  `supabase/migrations/20261014090100_hushmates_rules.sql:236`; share pictures `ui/relay/share-render.js:27, 37`)
+  Unchanged (D21).
+- Your data: "Automatically generated, only because you allowed it" (`ui/relay/your-data.js:59`) Unchanged.
+- Privacy sheet: "Hushmates chooses it automatically from a fixed set of perspectives written in advance for
+  Hushmallow, on its own servers: your words aren’t sent anywhere else for this. It isn’t written by a person, it’s
+  always labelled “Automatically generated”, and it never counts as one of the five." (`ui/relay/parts.js:184`)
+  Changed since the first draft.
+- Welcome and You & safety: "chosen automatically from a fixed set of lines written in advance" (`ui/relay/welcome.js:104`)
+  and "chosen automatically from a fixed set of lines written in advance for Hushmallow (only if you allow it)"
+  (`ui/relay/you.js:69`). Changed since the first draft.
 
 **Proposed:**
 
-| Place | Proposed wording |
-|---|---|
-| Release switch label | Let my Mallow offer a line if nobody catches it |
-| Release switch hint | Off unless you choose. |
-| Release note | If nobody catches your feeling within 30 minutes, your Mallow puts together a short line for you from pieces written in advance, chosen to fit your words. It isn’t a person, and it isn’t AI. Your words stay with Hushmates. **How this works** |
-| While travelling, the Mallow's offer | Nobody’s caught it yet. Want me to pick a line for you? |
-| While travelling, the note under "Ask {Mallow}" | From the Mallow library · not a person |
-| "Send it out again" switch hint | If no one catches it this time, your Mallow puts together a short line for you from pieces written in advance. It isn’t a person and it isn’t AI, and your words stay with Hushmates. |
-| "Explore another angle" | {Mallow} will put together a short line for you from pieces written in advance. It isn’t a person, and it isn’t counted as one. |
-| "Explore another angle", if not opted in | To choose it, Hushmates reads your words on its own servers. The line is kept with this journey and deleted with it. |
-| "How this works" (both places) | Your Mallow’s line is put together once, automatically, from pieces written in advance: an opening in your Mallow’s voice and one perspective, sometimes with a word for your feeling filled in. The pieces are picked by rules that look at the words of your feeling. It isn’t written for you by a person, and it isn’t AI. It’s always labelled, it never counts as one of the five, and nobody else sees it unless you put it in a share picture. We keep a note of which perspective it used. |
-| Report sheet intro | Mallow lines are chosen automatically and can miss the mark. If this one was unhelpful or hurtful, report it and it disappears straight away. |
-| Stored and shown label | A Mallow perspective · From the Mallow library |
-| Your data | From the Mallow library, only because you allowed it |
+| Place | Proposed wording | Status at `9012d6f` |
+|---|---|---|
+| Release switch label | Let my Mallow offer a line if nobody catches it | Proposed (unchanged in the app) |
+| Release switch hint | Off unless you choose. | Proposed: the app still says "an automatically generated perspective" (`release.js:110`) |
+| Release note | If nobody catches your feeling within 30 minutes, your Mallow puts together a short line for you from pieces written in advance for Hushmallow, guided by your words. It isn’t a person, and no AI is used. Your words stay with Hushmates. **How this works** | Proposed, and the most urgent: the app still says "Hushmates writes a perspective for you automatically" (`release.js:117`) |
+| While travelling, the Mallow's offer | Nobody’s caught it yet. Want me to pick a line for you? | Proposed (unchanged) |
+| While travelling, the note under "Ask {Mallow}" | From the Mallow library · not a person | Proposed; waits on D21 (`journeys.js:162, 175`) |
+| "Send it out again" switch hint | If no one catches it this time, your Mallow puts together a short line for you from pieces written in advance, guided by your words. It isn’t a person and no AI is used, and your words stay with Hushmates. | **Partly done:** the app now says "chooses it from lines written in advance, guided by your words"; it still opens with "an automatically generated perspective" (`returned.js:319`) |
+| "Explore another angle" | {Mallow} will put together a short line for you from pieces written in advance. It isn’t a person, and it isn’t counted as one. | **Partly done:** as above (`returned.js:348`) |
+| "Explore another angle", if not opted in | To choose it, Hushmates reads your words on its own servers. The line is kept with this journey and deleted with it. | **Done in substance:** "Hushmates chooses it automatically from lines written in advance, guided by your words, on its own servers. The perspective is kept with this journey and deleted with it." No further change needed |
+| "How this works" (both places) | Your Mallow’s line is put together once, automatically, from pieces written in advance: an opening in your Mallow’s voice and one perspective, sometimes with a word for your feeling filled in. The pieces are picked by rules that look at the words of your feeling. It isn’t written for you by a person, and no AI is used. It’s always labelled, it never counts as one of the five, and nobody else sees it unless you put it in a share picture. We keep a note of which perspective it used. | **Partly done:** "Explore another angle" now says "chosen automatically by Hushmates, once, from lines written in advance and guided by your words" (`returned.js:351`); still proposed: the two-pieces description, the note of which perspective it used, and dropping the quoted label (D21). The Release screen's "How this works" opens the privacy sheet (4.10) |
+| Report sheet intro | Mallow lines are chosen automatically and can miss the mark. If this one was unhelpful or hurtful, report it and it disappears straight away. | Proposed (unchanged: `returned.js:257`, `journeys.js:287`) |
+| Stored and shown label | A Mallow perspective · From the Mallow library | Proposed: **decision D21, open** (change it after the lawyer's view) |
+| Your data | From the Mallow library, only because you allowed it | Proposed (unchanged: `your-data.js:59`) |
+
+"No AI is used" replaces the first draft's "it isn't AI": it describes what happens when a line is chosen and shown
+(AI runs only if `settings.ai.enabled` is true: `schema.sql:39`; `supabase/functions/_shared/mallow.js:6-15`), and
+makes no claim about how the pieces were drafted. The Tier 0 rewrites were made by the developer working with AI agents
+(`TIER0_SELF_ASSESSMENT.md`, header and §3.2), so the owner confirms authorship before any wording says who wrote the
+lines.
 
 **Withdrawing:** today a person can switch it off for the next trip ("Send it out again"), or stop it by bringing the
 feeling home early or letting it go. While a feeling travels there's no switch to take the yes back
-(`rules.sql:538-541` only changes it on a resend). **[GAP]** Proposed: in the journey's detail, a switch with the
-release label ("Let my Mallow offer a line if nobody catches it"), working both ways.
+(`rules.sql:538-541` only changes it on a resend). **[GAP, still open at 9012d6f]** Proposed: in the journey's
+detail, a switch with the release label ("Let my Mallow offer a line if nobody catches it"), working both ways.
 
-**Why:** informed (accurate description: fixed library, chosen to fit the words, not AI); specific and unbundled (its
-own switch, off by default); revocable (the proposed switch). The label change also matters for misleading-conduct risk
-(SCW-07) and keeps clear of therapy wording (TGA-5, TGA-10).
+**Why:** informed (accurate description: fixed library, chosen to fit the words, no AI used); specific and unbundled
+(its own switch, off by default); revocable (the proposed switch). The label change also matters for misleading-conduct
+risk (SCW-07) and keeps clear of therapy wording (TGA-5, TGA-10).
 
 <!--
 [classification: recommended practice] PRV-22 as corrected by the critic: replace "automatically generated" and
 "writes it automatically from your words" with "a line chosen automatically from a fixed set written in advance",
-adding "picked to fit your words" because selection analyses the words (vendored perspectives.js: THEMES,
-matchScenarios, detectPatterns). Never call the lines AI or generated while AI is off (schema.sql:39).
+adding "guided by your words" (the app's own phrase since Tier 0) because selection analyses the words
+(core/perspectives.js: THEMES :198, matchScenarios :585, detectPatterns :601, inferLabel :502). Never call the lines AI
+while AI is off (schema.sql:39); "generated" only where quoting the current label, until D21 is decided.
 "We keep a note of which perspective it used": mallow_perspectives.angle_id (for example hm-loss-1) records the
 perspective part only, not the opener; it is stored in plain text and shows the matched theme, with no end date today
 (app-facts P12, [GAP]).
-"Picks one line" was replaced: what is shown is `${openerFor(...)} ${c.text}` (vendored perspectives.js:597), an opener
-in the Mallow's voice plus a perspective, with an optional {adj} slot ("It makes sense to feel {adj} about this.").
-"Written in advance", not "the Hushmates team wrote": the owner must confirm how the lines were authored and
-reviewed first (TERMS_OF_USE.md §2 comment); the app at f8d7e4a says "written in advance" too.
-Developer note: changing the label touches core/relay-config.js:46-48, rules.sql:236 (a new migration), the share
+"Picks one line" was replaced: what is shown is `${openerFor(...)} ${c.text}` (core/perspectives.js:640; the vendored
+copy is identical), an opener in the Mallow's voice plus a perspective, with an optional {adj} slot ("It makes sense to
+feel {adj} about this.", :77).
+"Written in advance for Hushmallow", not "the Hushmates team wrote": the owner must confirm how the lines were
+authored and reviewed first (TERMS_OF_USE.md §2 comment). The app at 9012d6f says "written in advance for Hushmallow"
+(ui/relay/you.js:69; parts.js:184). Note: DECISIONS.md D21 says "The app's other wording now says 'chosen
+automatically from lines the team wrote'"; the code at 9012d6f doesn't say "the team wrote" anywhere.
+[classification: needs legal advice] How the selection is described also bears on the TGA intended-purpose question
+(TGA-2, TGA-5; Tier A question 10 on recognisable CBT exercises in plain words, TIER0_SELF_ASSESSMENT.md §3.4). Nothing
+here says the TGA's rules do or don't apply.
+Developer note: changing the label touches core/relay-config.js:74-75, rules.sql:236 (a new migration), the share
 renderer's check (ui/relay/share-render.js:27 and :37, which today accepts a Mallow label only if it matches
-/automatically generated/), and the tests that pin these strings.
+/automatically generated/), the desk's "(written automatically)" caption (staff/desk.js:278), and the tests that pin
+these strings.
 -->
 
 ### 4.8 Share pictures and videos (`ui/relay/catch.js`, `ui/relay/you.js`, `ui/relay/share.js`)
@@ -489,18 +528,18 @@ renderer's check (ui/relay/share-render.js:27 and :37, which today accepts a Mal
 A share picture or video is made on the author's own device. Nothing is uploaded. A human perspective can appear only
 if its writer said yes.
 
-**Now (000c0cd), the catcher's side:**
+**Now (9012d6f), the catcher's side** (unchanged since the first draft):
 - Tick: **"They may include my words in a share picture or video"**. Hint: "Off unless you choose. It never shows who
-  you are. A picture they’ve made can’t be taken back." (`ui/relay/catch.js:280-285`)
+  you are. A picture they’ve made can’t be taken back." (`ui/relay/catch.js:282-283`)
 - You & safety, per perspective: "May appear in their share picture or video". Note: "Only you can see these. You
   decide whether the person whose feeling you caught may include your words in a share picture or video; they never
   learn who you are. A picture or video already made stays with them: it can’t be taken back." (`ui/relay/you.js:90,
-  94-97`)
+  95`)
 - "Take it back": "Your words are removed for good, including from the collection of the person whose feeling you
   caught. A share picture or video they already made can’t be taken back. They aren’t told who you are."
   (`ui/relay/you.js:101`)
 
-**Now (000c0cd), the author's side** (`ui/relay/share.js:107-109, 245-250`):
+**Now (9012d6f), the author's side** (`ui/relay/share.js:107-109, 245-250`), unchanged:
 - "Private until you choose." "Nothing is posted from here. You choose what your story shows, and nothing in it is
   made up."
 - "Include my own words": "Off unless you choose. Leave out anything that could identify you or anyone else."
