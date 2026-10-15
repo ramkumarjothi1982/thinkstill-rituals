@@ -121,7 +121,8 @@ test('rule 1 in Another Angle: suicideDeath is read before anything is asked, se
 });
 
 test('rule 1 on the main screen: care with its own gentle line, the Support pill, and no world offered (not even somewhere calm)', () => {
-  assert.deepEqual([...DEATH_CARE].sort(), ['death-follow', 'suicide-loss']);
+  // (15 Oct 2026) and the risk screener's care (risk-screen.js, category 'self-risk'): the same care path, no world offered
+  assert.deepEqual([...DEATH_CARE].sort(), ['death-follow', 'self-risk', 'suicide-loss']);
   assert.deepEqual(mainRead('my brother killed himself last spring'), { level: 'care', category: 'suicide-loss', matched: null });
   assert.deepEqual(mainRead("my son died. I'm next."), { level: 'care', category: 'death-follow', matched: null });
   // the line assumes nothing (no death, no loss, no "them"), acknowledges, and offers support; nothing to fix, nothing playful
@@ -217,7 +218,9 @@ test('false care on grief: across every earlier probe set, the self-ending rule 
   const seen = new Map();
   const walk = (v, src) => { if (typeof v === 'string') { if (/\s/.test(v) && !seen.has(v)) seen.set(v, src); } else if (Array.isArray(v)) v.forEach((x) => walk(x, src)); else if (v && typeof v === 'object') Object.values(v).forEach((x) => walk(x, src)); };
   for (const f of readdirSync(new URL('./probes/', import.meta.url))) {
-    if (!f.endsWith('.mjs') || f === 'r10-replay.mjs' || f === 'r3-esc.mjs') continue;
+    // (15 Oct 2026: the risk screener's own sets, risk-*.mjs, are measured in tests/risk-screen.test.mjs — written as positives and
+    // look-alikes for it, not an earlier round's grief phrasings)
+    if (!f.endsWith('.mjs') || f === 'r10-replay.mjs' || f === 'r3-esc.mjs' || f.startsWith('risk-')) continue;
     const m = await import(`./probes/${f}`);
     for (const [k, v] of Object.entries(m)) walk(v, `${f}:${k}`);
   }

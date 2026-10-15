@@ -345,6 +345,24 @@ export const PLAY_CHECK = Object.freeze({
   calmMs: 12000,
 });
 
+/**
+ * (owner, 15 Oct 2026: concerning messages handled before any interactive experience starts) When the risk screener
+ * (src/beyond/risk-screen.js) reads a Tell as possibly at risk ('check') and nothing more serious applies, this check-in
+ * REPLACES the usual question (PLAY_CHECK.ask), with the same equal-weight chips and the same clock, focus and words kept:
+ * `okay` → as "Play with it"; `notReally` → `heard`, the Support sheet one tap away (`support` first), support first and no
+ * world for the visit; `stay` → as "Just be with it"; no answer or Back → quiet. The Support pill is visible while it is up.
+ * A false alarm costs no extra tap (it is asked instead of the question, never as well).
+ */
+export const CHECK_IN = Object.freeze({
+  ask: 'Before we go on — are you okay right now?',
+  okay: 'I’m okay — let’s play',
+  notReally: 'Not really',
+  stay: 'Just be with it',
+  heard: 'Thank you for telling me. You don’t have to hold this on your own.',
+  support: 'See support',
+  quiet: 'Stay here quietly',
+});
+
 const SQUEEZE_KINDS = new Set(['squeeze', 'release', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle']);
 const FIRST_KIND = { squeeze: 'hold', press: 'hold', stretch: 'hold', massage: 'hold', stroke: 'hold', jiggle: 'hold', release: 'hold', tap: 'tap', doubleTap: 'tap', flick: 'flick' };
 

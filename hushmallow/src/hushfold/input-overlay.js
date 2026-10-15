@@ -15,7 +15,8 @@
 //   openInput({ app, prompt, mallow:{id,name,glow}, root, emotion, intention,
 //               hasPlan, heavy, face(faceMix), onSubmit({text, emotion, intention, reading, safety, input}),
 //               onClose(reason, {safety, supportShown}), onLayout(rect), onSafety(result), support(opts), trackSheet(sheet),
-//               photos = true, privacyNote = null, lossAware = false })
+//               photos = true, privacyNote = null, lossAware = false, history = [] })
+//   history: the visit's recent Tells (the last 3, in memory only, never stored), read by the risk screener as context.
 //   photos:false → no Photos button (Another Angle never takes photos). lossAware: death and loss talk read as
 //   concern (a wish to follow the one who died as care), for the main screen (src/beyond/grief.js; the feeling chips read loss
 //   talk on every screen: beside a death or a loss only Grief and Sad are suggested). privacyNote: the privacy clause in
@@ -48,7 +49,10 @@ let mods = null, modsNow = null;
 // The main screen also reads death and loss talk (never a Thought Mallow made of a death): grief.js, on its own
 // (Another Angle, which handles grief itself, already has it). Both read it for the feeling chips too (lossIn).
 let griefMod = null, griefNow = null;
-export const loadGrief = () => (griefMod ||= import('../beyond/grief.js').then((g) => (griefNow = g)).catch(() => null));
+// (15 Oct 2026) the risk screener (src/beyond/risk-screen.js) loads with grief.js: every screen reads with it (readSafety)
+let screenNow = null;
+export const loadGrief = () => (griefMod ||= Promise.all([import('../beyond/grief.js'), import('../beyond/risk-screen.js').catch(() => null)])
+  .then(([g, rs]) => { screenNow = rs; return (griefNow = g); }).catch(() => null));
 /**
  * A death or a loss in the words, for the feeling chips only (safety routing is readSafety's): grief.js deathTalk or
  * livingLoss, or a person beside a strong loss cue (strongLoss, re-exported there from backstop.js). Beside one only the
@@ -68,8 +72,53 @@ export function lossIn(t) {
  * anticipatory grief), whatever the words say. Not sure (owner decision 'Ask when unsure', 14 Oct 2026: a person or a
  * pet beside a softer loss cue, grief.js unsureLoss): level none with `unsure: true`, and the scene asks "Is this about
  * losing someone?" before anything is made of the words. Never lowers what checkText found.
+ *
+ * (15 Oct 2026, the risk screener) Then, with `screen` (the main screen's lossAware reading, and every Tell overlay: openInput
+ * passes it on both screens): the same reading over the words in one spelling (risk-screen.js normalise), where it is care or
+ * crisis; and the screener (risk-screen.js riskScreen, with `history`: the visit's last 3 Tells, in memory only). Its 'care' is
+ * care, category 'self-risk' (the care path: no question, no world offered; beside the lexicon's own care, `deathCare:
+ * 'self-risk'`); its 'check' with nothing more serious is `check: true` (the scene asks "Before we go on — are you okay right
+ * now?" instead of its usual question); beside distress or a loss, `supportFirst: true` (support first, no world offered).
+ * Without `screen` and without lossAware the reading is exactly checkText, as before.
  */
-export function readSafety(m, t, lossAware, { emotion = null } = {}) {
+export function readSafety(m, t, lossAware, { emotion = null, history = null, screen = lossAware } = {}) {
+  const raw = readWords(m, t, lossAware, { emotion });
+  if (!screen || !screenNow || !String(t ?? '').trim()) return raw;
+  // (15 Oct 2026) misspellings reach every layer: the same reading over the words in one spelling (risk-screen.js normalise:
+  // "i wnat to dei", "k1ll myself", "d i e"); only where it is more serious and care or crisis (nothing the words as typed found
+  // is lost, and the shapes of the gentle and unsure readings stay those of the words as typed)
+  let r = raw;
+  try {
+    const n = screenNow.normalise(t);
+    if (n && n !== String(t).toLowerCase().replace(/\s+/g, ' ').trim()) {
+      const b = readWords(m, n, lossAware, { emotion });
+      if (RANK_OF[b.level] >= 2 && RANK_OF[b.level] > RANK_OF[raw.level]) r = b;
+    }
+  } catch { /* the reading as typed stands */ }
+  // the risk screener: it reads meaning (frames and how they combine), with the visit's recent Tells as context
+  let s = null;
+  try { s = screenNow.riskScreen(t, { history: Array.isArray(history) ? history : [] }); } catch { s = null; }
+  if (!s?.level || r.level === 'crisis') return r;
+  if (s.level === 'care') {
+    // its care is the self ending: the care path, no question and no world offered (hushfold.js DEATH_CARE 'self-risk'); a
+    // death care already read stands as it is; beside the lexicon's other care (violence, abuse…) the lexicon's category and its
+    // resources stand and the death care rides along
+    if (r.level === 'care') return r.deathCare || DEATH_CATEGORIES.has(r.category) ? r : { ...r, deathCare: 'self-risk' };
+    return { level: 'care', category: 'self-risk', matched: null };
+  }
+  // 'check': nothing more serious applies → the check-in replaces the usual question; beside distress or a loss (the support
+  // path or the gentle path) → support first, no world offered
+  if (r.level === 'none') { const { unsure, ...rest } = r; return { ...rest, check: true }; }
+  if (r.level === 'concern') return r.supportFirst ? r : { ...r, supportFirst: true };
+  return r;
+}
+/** readSafety by another name, for openInput (its own readSafety reads with the screener and the visit's last Tells). */
+const readScreened = (...a) => readSafety(...a);
+const RANK_OF = { none: 0, concern: 1, care: 2, crisis: 3 };
+/** The care categories that are already a death care (the scene offers no world for them). */
+const DEATH_CATEGORIES = new Set(['death-follow', 'suicide-loss', 'self-risk']);
+/** The reading of these words by the lexicon and (lossAware) the grief rules, as before the screener. */
+function readWords(m, t, lossAware, { emotion = null } = {}) {
   const r = m.checkText(t);
   if (!lossAware || !griefNow || r.level === 'crisis') return r;
   if (r.level === 'care') {
@@ -107,8 +156,12 @@ export function loadInputModules() {
 
 export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root = document.body, emotion = null, intention = null, hasPlan = true,
   text = '', face = null, onSubmit, onClose, onLayout, onSafety = null, support = null, trackSheet = null, heavy = false,
-  photos = true, privacyNote = null, lossAware = false } = {}) {
+  photos = true, privacyNote = null, lossAware = false, history = [] } = {}) {
   // (the chips read loss talk on every screen; the safety reading only with lossAware)
+  // (history: the visit's recent Tells, in memory only, for the risk screener's context — never stored)
+  const recent = Array.isArray(history) ? history.slice(-3) : [];
+  // (15 Oct 2026) every reading in this overlay (typing, Send, close) is the risk screener's too, on both screens, beside them
+  const readSafety = (mm, tt, la, o = {}) => readScreened(mm, tt, la, { ...o, history: recent, screen: true });
   loadGrief();
   const reduced = app?.prefs?.reducedMotion?.() ?? false;
   // larger text: the speaker's name takes its own line above the prompt
@@ -132,9 +185,11 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     const first = !!r.supportFirst && !worst.supportFirst && r.level !== 'none';
     // (final) a death-care reading beside the lexicon's care: said to the scene too, so it offers no world
     const dc = !!r.deathCare && !worst.deathCare;
-    if (!rise && !first && !dc) return;
+    // (15 Oct 2026) the risk screener's check-in, seen: said to the scene too (support close while typing; the level stays)
+    const ck = !!r.check && !worst.check;
+    if (!rise && !first && !dc && !ck) return;
     worst = { level: rise ? r.level : worst.level, category: rise ? r.category : worst.category, ...(first || worst.supportFirst ? { supportFirst: true } : {}),
-      ...(r.deathCare || worst.deathCare ? { deathCare: r.deathCare || worst.deathCare } : {}) };
+      ...(r.deathCare || worst.deathCare ? { deathCare: r.deathCare || worst.deathCare } : {}), ...(ck || worst.check ? { check: true } : {}) };
     try { onSafety?.({ ...worst }); } catch (e) { console.warn('[hushfold] onSafety', e); }
   }
   let supportShown = false, closed = false, sending = false, photosOpen = false, tray = null, hintUntil = 0, hintT = 0;
@@ -293,6 +348,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     // once support has been needed it stays one tap away, even if the words change
     supportBtn.hidden = worst.level === 'none' && !heavy;
     plainSend();
+    // (15 Oct 2026) words the risk screener reads as possibly at risk keep it one tap away too
+    if (worst.check) supportBtn.hidden = false;
     renderFeelings(); renderIntentions(); setNote();
   }
   // the field grows a whole line at a time and stops on a line boundary, so a scrolled
@@ -392,6 +449,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     // the express shape every later scene already reads
     const input = { text: t, emotions, intensity, contexts: reading?.contexts || [], desires: reading?.desires || [],
       safety: { ...m.legacySafety(safety), detail: { level: safety.level, category: safety.category, ...(safety.unsure ? { unsure: true } : {}) } }, intention: chosenIntention, source: 'hushfold' };
+    // (15 Oct 2026) the risk screener's check-in reading travels with it
+    if (safety.check) input.safety.detail.check = true;
     if (app) app.state.input = input;
     close('submit');
     onSubmit?.({ text: t, emotion: chosenEmotion, intention: chosenIntention, reading, safety, input });

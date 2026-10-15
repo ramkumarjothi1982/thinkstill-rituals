@@ -9,7 +9,8 @@
 import { authoredScene, sceneParts, feelingOf, feelingGuard, guessGuard, gentleScene, candidatePatterns } from '../../src/beyond/authored.js';
 import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal, noteShape } from '../../src/beyond/grief.js';
 import { gentleRoute, bagWords, framingAllowed, framesAsGuess, heavyHarm, lossRoute, griefFeeling } from '../../src/beyond/backstop.js';
-import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, BE_WITH, END, mechanicLines } from '../../src/beyond/lines.js';
+import { SAFETY, GRIEF, FEELING, WAITING, EXPLORE, EXPLORE_ASK, EXPLORE_EMPTY, FRIEND_LINES, FEEDBACK, LOSS_CHECK, ANGLE_CHOICE, BE_WITH, CHECK_IN, END, mechanicLines } from '../../src/beyond/lines.js';
+import { riskScreen, normalise } from '../../src/beyond/risk-screen.js';
 import { firstStep, ASK_BEFORE_ANGLE } from '../../src/beyond/angle-first.js';
 import { validateScene, PATTERNS } from '../../src/beyond/vocab.js';
 import { checkText } from '../../src/engine/safety.js';
@@ -99,8 +100,13 @@ function drawn(scene, parts, L) {
  * (Final round 5, structural) the gentle path never sends, whatever the words and whatever the server (R.held: the safety net's
  * words, information only), and unsure words with the safety net's words play Zuzu's own angle after "Another angle", nothing
  * sent (R.local).
+ * (15 Oct 2026, the risk screener: another-angle.js afterTell, readDraft, startAngle, careLite) `history`: the visit's earlier
+ * Tells (its context). The screener's care is care with the follow lines (route 'follow'), nothing sent; its 'check' asks the
+ * check-in instead of the question (R.question 'check'): `answer` 'angle' (or 'else') sends and plays, 'be' (or 'yes') is
+ * "Just be with it", 'notreally' is the care-lite path (route 'carelite': support first, nothing sent), null is quiet. The lexicon
+ * also reads the words in one spelling (risk-screen.js normalise).
  */
-export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else', asks = ASK_BEFORE_ANGLE, said = null } = {}) {
+export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else', asks = ASK_BEFORE_ANGLE, said = null, history = [] } = {}) {
   const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0, grief: false, beOptions: null, finishLevel: 'none', finishLines: null, held: false, local: false };
   const S = { level: 'none', follow: false, suicide: false, noPlay: false, grief: false, care: false, crisis: false, heavyDraft: false, shown: [], used: [] };
   const say = (l) => { for (const x of [l].flat()) if (x) R.said.push(String(x)); };
@@ -117,13 +123,18 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
   const care = (lines = S.follow ? SAFETY.follow : S.suicide ? SAFETY.careGentle : SAFETY.care) => { S.care = true; note({ level: 'care' }); R.careLines = lines; R.faces.push('attentive'); say(lines); say(SAFETY.careAsk); return done(S.follow ? 'follow' : 'care'); };
   const crisis = () => { S.crisis = true; note({ level: 'crisis' }); R.faces.push('attentive'); say(SAFETY.crisis); return done('crisis'); };
   // readDraft
-  const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } else if (suicideDeath(t)) { S.suicide = true; note({ level: 'care' }); } if (!S.follow && noteShape(t)) { S.follow = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) { S.noPlay = true; S.heavyDraft = true; } };
+  const scr = (() => { try { return riskScreen(String(text ?? ''), { history }); } catch { return { level: null }; } })();
+  const readDraft = (t) => { if (deathEscalation(t)) { S.follow = true; note({ level: 'care' }); } else if (suicideDeath(t)) { S.suicide = true; note({ level: 'care' }); } if (!S.follow && noteShape(t)) { S.follow = true; note({ level: 'care' }); } if (!S.follow && scr.level === 'care') { S.follow = true; note({ level: 'care' }); } if (gentleRoute(t) || bagWords(t)) { S.noPlay = true; S.heavyDraft = true; } };
+  // careLite ("Not really", the check-in's answer): support first, nothing sent, no angle for the visit
+  const careLite = () => { S.noPlay = true; note({ level: 'concern' }); R.faces.push('attentive'); say([CHECK_IN.heard]); R.careLines = [CHECK_IN.heard]; return done('carelite'); };
 
   // afterTell: firstLook (no feeling chosen): a feeling's look, else the first candidate pattern's (review r11: never
   // 'valid_anger' beside a bag word, so the Thought Mallow and the mechanic are never tinted anger beside a loss)
   { let f = null, p = null; try { f = feelingOf(text); } catch { f = null; } try { p = candidatePatterns(text)[0] || null; } catch { p = null; } R.look = f ? `feeling:${f.kind}` : `pattern:${p}`; }
   readDraft(text);
+  if (scr.level === 'care') S.follow = true;
   note(checkText(text));
+  { let n = ''; try { n = normalise(text); } catch { n = ''; } if (n && n !== String(text).toLowerCase()) note(checkText(n)); }
   if (S.level === 'crisis') return crisis();
   if (S.level === 'care') return care();
   if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
@@ -166,14 +177,19 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     // one question before anything is sent, angle-first.js firstStep → askFirst; the answer kept for these words)
     const route = lossRoute(text, { emotion });
     if (route === 'gentle') return griefMode();
-    const step = firstStep(text, { emotion, another: k > 0, said, ask: asks });
+    let step = firstStep(text, { emotion, another: k > 0, said, ask: asks });
     if (step === 'be') return beWithIt(route);
     if (step === 'told') { S.noPlay = true; return griefMode({ told: 'loss' }); }
-    if (step === 'choice' || step === 'check-in') {
+    // (15 Oct 2026) the risk screener's 'check': the check-in instead of the question (never inside an angle already chosen)
+    if (scr.level === 'check' && k === 0) step = 'check';
+    if (step === 'choice' || step === 'check-in' || step === 'check') {
       R.asked = true; R.question = step; R.requestsBeforeAnswer = R.requests;
       R.faces.push('attentive');
-      say(step === 'choice' ? ANGLE_CHOICE.ask : LOSS_CHECK.ask);
-      const v = step === 'choice' ? ({ be: 'be', yes: 'be', angle: 'angle', else: 'angle' })[answer] : ({ yes: 'yes', else: 'else', be: 'yes', angle: 'else' })[answer];
+      say(step === 'choice' ? ANGLE_CHOICE.ask : step === 'check' ? CHECK_IN.ask : LOSS_CHECK.ask);
+      const v = step === 'choice' ? ({ be: 'be', yes: 'be', angle: 'angle', else: 'angle', notreally: 'be' })[answer]
+        : step === 'check' ? ({ be: 'be', yes: 'be', angle: 'angle', else: 'angle', notreally: 'notreally' })[answer]
+          : ({ yes: 'yes', else: 'else', be: 'yes', angle: 'else', notreally: 'yes' })[answer];
+      if (v === 'notreally') return careLite();
       if (v === 'be') return beWithIt(route);
       if (v === 'yes') { S.noPlay = true; return griefMode({ told: 'loss' }); }
       // (r2-angle item 3) let go: quiet for the rest of the visit
