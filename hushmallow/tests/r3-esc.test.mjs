@@ -138,14 +138,16 @@ test('rule 1 on the main screen: care with its own gentle line, the Support pill
   assert.match(beat, /safety\?\.category === 'suicide-loss' \? SHARED_LINES\.supportLoss/);
   const choice = between(HF, 'async function careChoice(', 'function calmTheWorld(');
   // (final round 4: and the gentle path the safety net held, S.supportFirst)
-  const no = choice.indexOf("if (S.deathCare || S.supportFirst) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }");
+  // (fix round: with something to tap — [See support] [Stay here quietly], supportChoice, which offers no world either)
+  const no = choice.indexOf('if (S.deathCare || S.supportFirst) { await supportChoice(); return; }');
+  { const sc = HF.slice(HF.indexOf('async function supportChoice('), HF.indexOf('async function gentleWorld(')); assert.doesNotMatch(sc, /gentleWorld|playCalm|startFlow|calmTheWorld/); assert.match(sc, /if \(S\.hold === 'quiet' && worldMode\) endQuietWorld\(\);/); }
   assert.ok(no > 0 && no < choice.indexOf('await gentleWorld('), 'before any world is looked up');
   // the flag is sticky for the visit (read on every level seen, raised or not), and restored with the visit's category
   assert.match(between(HF, 'function noteSafety(r) {', 'function noteNoResume('), /^function noteSafety\(r\) \{\s*noteNoResume\(r\);\s*if \(DEATH_CARE\.has\(r\?\.category\)\) S\.deathCare = true;/);
   // typed and closed: the same line
   assert.match(HF, /S\.category === 'suicide-loss' \? SHARED_LINES\.supportLoss : S\.level === 'care' \? SHARED_LINES\.supportCare/);
   // never the question: care goes to support before tellRoute asks
-  assert.match(between(HF, 'async function afterTell(', 'function careBeat('), /if \(safety\?\.level === 'care' \|\| safety\?\.level === 'concern'\) \{ S\.told = true; S\.careSaid = true; await careBeat/);
+  assert.match(between(HF, 'async function afterTell(', 'function careBeat('), /if \(safety\?\.level === 'care' \|\| safety\?\.level === 'concern'\) \{ if \(!lift\) \{ S\.told = true; S\.careSaid = true; await careBeat/);
 });
 
 // ------------------------------------------------------------------------- rule 2: the self ending --

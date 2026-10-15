@@ -116,7 +116,9 @@ test('first world: a confident reading of the words steers it when no feeling wa
   const scene = read('src/app/scenes/hushfold.js');
   const after = scene.slice(scene.indexOf('async function afterTell('), scene.indexOf('async function gentleWorld('));
   // after the safety branches (care, crisis and loss take their own paths) and only when nothing was tapped
-  assert.ok(after.indexOf('const heard = !emotion && !gentle() ? await wordsFeeling(reading) : null;') > after.indexOf("if (!ent.has('paid'))"));
+  // (fix round: back from the plans page the feeling read before it steers the same world — heardBefore, pendingTell.heard)
+  assert.ok(after.indexOf('const heard = !emotion && !gentle() ? (heardBefore || await wordsFeeling(reading)) : null;') > after.indexOf("if (!ent.has('paid'))"));
+  assert.match(after, /const suggested = !emotion && !gentle\(\) \? await wordsFeeling\(reading\) : null;/);
   assert.match(after, /const steer = emotion \|\| heard \|\| S\.emotion;/);
   assert.match(after, /startFlow\(\{ emotion: steer,/);
   assert.match(after, /warmWorld\(\{ emotion: steer,/);

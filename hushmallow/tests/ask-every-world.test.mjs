@@ -139,7 +139,8 @@ test('the reviews\' misses (semantic score 4: 41 death probes that reached a Tho
 test('afterTell: crisis, carried, support, then the question — before the plans page, any Thought Mallow and any world', () => {
   const after = between(hf, 'async function afterTell(', 'async function askPlay(');
   const order = ["if (safety?.level === 'crisis') {", 'if (carried && gentle()) {', "if (safety?.level === 'care' || safety?.level === 'concern') {",
-    "if (tellRoute({ level: safety?.level || 'none', carried, chosen }) === 'ask') {"];
+    // (fix round: distress alone this visit is asked the check-in — tellRoute's `liftable`)
+    "if (tellRoute({ level: safety?.level || 'none', carried, chosen, liftable: lift }) === 'ask') {"];
   const at = order.map((s) => after.indexOf(s));
   at.forEach((i, k) => assert.ok(i > 0, order[k]));
   for (let k = 1; k < at.length; k++) assert.ok(at[k - 1] < at[k], `${order[k - 1]} before ${order[k]}`);
@@ -156,7 +157,8 @@ test('afterTell: crisis, carried, support, then the question — before the plan
   assert.match(branch, /if \(out === 'retold'\) \{ holdForAsk\(false\); return; \}/);
   assert.match(branch, /holdForAsk\(false, \{ play: true \}\);\s*endSoft\(\);\s*\}/, 'Play: the world that waited carries on, the quiet is over, and the flow is exactly as before');
   // the free tier: "Play with it" leads to the plans page with the choice kept, so back with a plan it is not asked twice
-  assert.match(after, /app\.state\.pendingTell = \{ input, emotion, intention, chosen: 'play', at: Date\.now\(\) \};/);
+  // (fix round: with the feeling the words suggested, whether the check-in was asked, and a distress lifted by "I'm okay")
+  assert.match(after, /app\.state\.pendingTell = \{ input, emotion, intention, chosen: 'play', at: Date\.now\(\), heard: suggested, check: !!S\.checked, \.\.\.\(lifted \? \{ lifted: true \} : \{\}\) \};/);
   assert.match(between(hf, 'async function resumePendingTell() {', 'function offerRetell('), /afterTell\(\{ text: p\.input\?\.text \|\| '', [^\n]*chosen: p\.chosen \|\| null \}\)/);
   // the old check-in is gone from the scene: one question only, whatever the unsure flag says
   assert.doesNotMatch(hf, /askAboutLoss|LOSS_CHECK|lossCheck|safety\?\.unsure|detail\.unsure/);
@@ -169,7 +171,8 @@ test('the question: attentive, nothing playful, real buttons in the live region,
   assert.ok(fn.indexOf('holdForAsk(true);') < fn.indexOf('subtitles.choice(PLAY_CHECK.ask'));
   assert.match(fn, /pushLayer\('ask'\);/);
   // (equal weight, coordinator default: neither chip is primary; "Play with it" first in reading order)
-  assert.match(fn, /subtitles\.choice\(PLAY_CHECK\.ask, \[\{ label: PLAY_CHECK\.play, value: 'play', onPick: pick\('play'\) \}, \{ label: PLAY_CHECK\.stay, value: 'stay', onPick: pick\('stay'\) \}\],/);
+  // (fix round, the safety floor: a third chip of equal weight, last, "I'm not okay" — the check-in's "Not really")
+  assert.match(fn, /subtitles\.choice\(PLAY_CHECK\.ask, \[\{ label: PLAY_CHECK\.play, value: 'play', onPick: pick\('play'\) \}, \{ label: PLAY_CHECK\.stay, value: 'stay', onPick: pick\('stay'\) \}, \{ label: PLAY_CHECK\.notOkay, value: 'notreally', onPick: pick\('notreally'\) \}\],/);
   assert.doesNotMatch(fn, /primary/);
   assert.match(fn, /timeoutMs: PLAY_CHECK\.ms, transient: true, ask: true, focus: true, waitHidden: true, interrupt: !subtitles\.holding/);
   assert.match(fn, /finally \{\s*S\.asking = false;\s*popLayer\('ask'\);[\s\S]*?focusTell\(\);/);
@@ -254,7 +257,8 @@ test('the visit stays quiet after "Just be with it" or an unanswered question (r
   const sv = between(hf, 'function softVisit() {', 'function noteSafety(');
   assert.match(sv, /S\.soft = true;\s*app\.state\.hfSoft = true;/);
   assert.doesNotMatch(sv, /supportPill|noteSafety|setStageFloor|keepSafety|S\.level/, 'nothing heavy was said: no Support pill, no level');
-  assert.match(hf, /const softNow = \(\) => gentle\(\) \|\| !!S\.soft;/);
+  // (fix round: and after the check-in's "I'm okay", S.attentive — the attentive face and no playful lines for the visit)
+  assert.match(hf, /const softNow = \(\) => gentle\(\) \|\| !!S\.soft \|\| !!S\.attentive;/);
   assert.match(hf, /soft: !!app\.state\.hfSoft,/, 'kept for the page session (memory only)');
   const uses = [
     ['function onMallowTouch(e) {', /if \(softNow\(\)\) return;/],
@@ -275,7 +279,9 @@ test('the visit stays quiet after "Just be with it" or an unanswered question (r
   const shows = [...hf.matchAll(/supportPill\.hidden = false;/g)].map((x) => x.index);
   const fns = ['function noteSafety(r) {', 'async function careBeat(', 'async function careAgain(', 'async function askPlay(', 'async function careLite('].map((f) => [hf.indexOf(f), hf.indexOf('\n  }\n', hf.indexOf(f))]);
   assert.equal(shows.length, 5);
-  assert.match(between(hf, 'async function askPlay(', 'function focusTell('), /if \(check\) \{ supportPill\.hidden = false; layout\(\); \}/);
+  // (fix round, the safety floor: the pill is up whenever the question is, and goes with an ordinary answer — supportWanted)
+  assert.match(between(hf, 'async function askPlay(', 'function focusTell('), /if \(check\) markChecked\(\);\s*supportPill\.hidden = false; layout\(\);/);
+  assert.match(between(hf, 'async function askPlay(', 'function focusTell('), /if \(picked !== 'notreally' && !supportWanted\(\) && !supportPill\.hidden\) \{ supportPill\.hidden = true; layout\(\); \}/);
   for (const i of shows) assert.ok(fns.some(([a, b]) => i > a && i < b), `at ${i}`);
 });
 

@@ -285,7 +285,8 @@ test('(c) "Play with it" ends a quiet visit: faces, squeeze lines and the goodby
   const after = between(hf, 'async function afterTell(', 'async function askPlay(');
   assert.match(after, /holdForAsk\(false, \{ play: true \}\);\s*endSoft\(\);/);
   // softNow() is gentle() || S.soft: with S.soft cleared, an ordinary visit is ordinary again
-  assert.match(hf, /const softNow = \(\) => gentle\(\) \|\| !!S\.soft;/);
+  // (fix round: …unless the check-in was answered "I'm okay" — S.attentive keeps the attentive face for the visit)
+  assert.match(hf, /const softNow = \(\) => gentle\(\) \|\| !!S\.soft \|\| !!S\.attentive;/);
 });
 
 test('(d) no plan: Play → plans → Back → "Tell me again" → Send unchanged keeps the choice (never asked the same words twice)', () => {
@@ -296,7 +297,8 @@ test('(d) no plan: Play → plans → Back → "Tell me again" → Send unchange
   assert.equal(tellRoute({ level: 'none', chosen: 'play' }), 'play');
   assert.equal(tellRoute({ level: 'concern', chosen: 'play' }), 'support', 'a choice never outranks safety');
   // the free tier's pendingTell always says chosen: 'play' after "Play with it" (unchanged)
-  assert.match(hf, /app\.state\.pendingTell = \{ input, emotion, intention, chosen: 'play', at: Date\.now\(\) \};/);
+  // (fix round: plus the feeling the words suggested, the check-in flag and a lifted distress)
+  assert.match(hf, /app\.state\.pendingTell = \{ input, emotion, intention, chosen: 'play', at: Date\.now\(\), heard: suggested, check: !!S\.checked, \.\.\.\(lifted \? \{ lifted: true \} : \{\}\) \};/);
 });
 
 test('sameWords: the same words as the person sees them; changed words are new words', () => {

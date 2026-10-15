@@ -64,12 +64,31 @@ export const emergencyNumber = (region) => EMERGENCY_BY_REGION[region] || '112';
  */
 export function urgentCalls(region) {
   const num = emergencyNumber(region);
-  const calls = [{ id: 'emergency', label: `Call ${num} · Emergency`, href: `tel:${num}`, aria: `Call emergency services, ${num}`, primary: true }];
+  return [emergencyCall(num, { primary: true }), crisisLineCall(region)];
+}
+/**
+ * (fix round) Every call's accessible name starts with the words on it (WCAG 2.5.3: "Call 911 · Emergency" is named "Call
+ * 911 · Emergency services"), so a person who says what they see reaches it; a number read out a digit at a time follows.
+ */
+const digits = (n) => String(n).replace(/\D/g, '').split('').join(' ');
+const emergencyCall = (num, { primary = false, label = `Call ${num} · Emergency`, aria = `Call ${num} · Emergency services` } = {}) =>
+  ({ id: 'emergency', label, href: `tel:${num}`, aria, ...(primary ? { primary: true } : {}) });
+/** The region's crisis line (988 in the US and Canada, Samaritans in the UK and Ireland), else Find A Helpline. */
+function crisisLineCall(region, { primary = false } = {}) {
   const line = region === 'US' || region === 'CA' ? SUPPORT_LINES.find((l) => l.id === '988')
     : region === 'GB' || region === 'IE' ? SUPPORT_LINES.find((l) => l.id === 'samaritans') : null;
-  if (line) calls.push({ id: line.id, label: `Call ${line.show} · ${line.id === '988' ? 'Crisis line' : line.name}`, href: `tel:${line.tel}`, aria: line.id === '988' ? 'Call the 988 Suicide & Crisis Lifeline' : `Call ${line.name}, ${line.show}` });
-  else calls.push({ id: 'findahelpline', label: 'Find a crisis line near you', href: 'https://findahelpline.com', aria: 'Find A Helpline: crisis lines in your country (opens a new tab)', external: true });
-  return calls;
+  const p = primary ? { primary: true } : {};
+  if (line?.id === '988') return { id: '988', label: 'Call 988 · Crisis line', href: 'tel:988', aria: 'Call 988 · Crisis line, the 988 Suicide & Crisis Lifeline', ...p };
+  if (line) return { id: line.id, label: `Call ${line.show} · ${line.name}`, href: `tel:${line.tel}`, aria: `Call ${line.show} · ${line.name} (${digits(line.tel)})`, ...p };
+  return { id: 'findahelpline', label: 'Find a crisis line near you', href: 'https://findahelpline.com', aria: 'Find a crisis line near you · Find A Helpline (opens a new tab)', external: true, ...p };
+}
+/**
+ * (fix round) The calls the support sheet leads with after the check-in's "Not really" (or "I'm not okay"), or the self
+ * ending read by meaning: above the fold on the smallest phone at the largest text size, as the urgent sheet's are — the
+ * region's crisis line first (someone to talk to), then the emergency number. Only numbers this file already lists.
+ */
+export function supportCalls(region) {
+  return [crisisLineCall(region, { primary: true }), emergencyCall(emergencyNumber(region))];
 }
 
 // what someone did or is doing to them: Find A Helpline, which lists domestic-abuse services, comes first
@@ -85,8 +104,8 @@ export const abuseFirst = (category) => ABUSE_CATEGORIES.has(category);
 export function abuseActions(region) {
   const num = emergencyNumber(region);
   return [
-    { id: 'findahelpline', label: 'Find a domestic-abuse service near you', href: 'https://findahelpline.com', aria: 'Find A Helpline: domestic-abuse services in your country (opens a new tab)', external: true, primary: true },
-    { id: 'emergency', label: `Call ${num} · If you’re in danger now`, href: `tel:${num}`, aria: `Call emergency services, ${num}` },
+    { id: 'findahelpline', label: 'Find a domestic-abuse service near you', href: 'https://findahelpline.com', aria: 'Find a domestic-abuse service near you · Find A Helpline (opens a new tab)', external: true, primary: true },
+    emergencyCall(num, { label: `Call ${num} · If you’re in danger now`, aria: `Call ${num} · If you’re in danger now, emergency services` }),
   ];
 }
 /** The cards in the order they show: for the abuse family, Find A Helpline first, saying plainly what it lists. */
@@ -97,7 +116,18 @@ export function supportLines(category = null) {
     ...SUPPORT_LINES.filter((l) => l !== find)];
 }
 
-export function openSupport(app, { urgent = false, category } = {}) {
+// (fix round) after the check-in's "Not really" (or "I'm not okay" at the question), or the self ending read by meaning or a wish
+// to follow someone who died: the sheet leads with its calls (supportCalls), above the fold at 320 × 568, largest text
+const CALLS_FIRST = new Set(['check-in', 'self-risk', 'death-follow']);
+export const callsFirst = (category) => CALLS_FIRST.has(category);
+
+/**
+ * openSupport(app, { urgent, category, focus, beside, returnFocus }) → the sheet's handle (ui.js openSheet).
+ *   urgent: crisis words — the calls first, whole, then "I'm safe — continue"; a tap in its first 700 ms is ignored (a finger
+ *     on its way to Send never lands on a call). beside: the Tell overlay the person is typing in — the sheet opens below it
+ *     with its calls first, the keyboard focus stays in the words (focus: false) until the sheet's focusIn() (Send).
+ */
+export function openSupport(app, { urgent = false, category, focus = true, beside = null, returnFocus = null } = {}) {
   // something urgent gets the attentive face, never the heart-eyed comforting one
   app.world?.setStage?.(urgent ? 'concerned' : 'comforting');
   // (the visit's own reading when the caller names none: the Support pill, the Tell's Support chip)
@@ -107,29 +137,43 @@ export function openSupport(app, { urgent = false, category } = {}) {
   const lines = supportLines(urgent ? null : cat);
   const callBtn = (c) => h('a', { class: `btn block support-call${c.primary ? ' primary' : ''}`, href: c.href, 'aria-label': c.aria, 'data-call': c.id,
     ...(c.external ? { target: '_blank', rel: 'noopener' } : {}) }, c.label);
-  const card = (l) => h('div', { class: 'card', style: { padding: '14px', marginTop: '10px', boxShadow: 'none' } },
-    h('div', { class: 'eyebrow' }, l.where),
-    h('h3', { style: { marginTop: '6px' } }, l.name),
-    h('p', {}, l.how),
-    l.id === 'emergency' ? h('a', { class: 'btn', style: { marginTop: '10px', textDecoration: 'none' }, href: `tel:${emergency}`, 'aria-label': `Call emergency services, ${emergency}` }, `Call ${emergency}`) : null,
-    l.tel ? h('a', { class: 'btn primary', style: { marginTop: '10px', textDecoration: 'none' }, href: `tel:${l.tel}` }, `Call ${l.tel}`) : null,
-    l.url ? h('a', { class: 'btn', style: { marginTop: '10px', textDecoration: 'none' }, href: l.url, target: '_blank', rel: 'noopener' }, 'Open') : null);
+  // (each card's call: named for what it says first, then who answers; a number read a digit at a time)
+  const cardCall = (l) => (l.id === 'emergency' ? { label: `Call ${emergency}`, href: `tel:${emergency}`, aria: `Call ${emergency} · Emergency services`, cls: 'btn' }
+    : l.tel ? { label: `Call ${l.show || l.tel}`, href: `tel:${l.tel}`, aria: `Call ${l.show || l.tel} · ${l.name}${/\s/.test(l.show || '') ? ` (${digits(l.tel)})` : ''}`, cls: 'btn primary' }
+      : l.url ? { label: 'Open', href: l.url, aria: `Open · ${l.name} (opens a new tab)`, cls: 'btn', external: true } : null);
+  const card = (l) => {
+    const c = cardCall(l);
+    return h('div', { class: 'card', style: { padding: '14px', marginTop: '10px', boxShadow: 'none' } },
+      h('div', { class: 'eyebrow' }, l.where),
+      h('h3', { style: { marginTop: '6px' } }, l.name),
+      h('p', {}, l.how),
+      c ? h('a', { class: c.cls, style: { marginTop: '10px', textDecoration: 'none' }, href: c.href, 'aria-label': c.aria, ...(c.external ? { target: '_blank', rel: 'noopener' } : {}) }, c.label) : null);
+  };
   const note = h('p', { style: type('label', { marginTop: '16px', color: 'var(--text-2)' }) }, `${brandName} is a wellbeing app, not a medical or crisis service. The Mallows care, but they can’t replace people who can be there with you.`);
+  const heavy = (after = false) => h('p', { style: type('body', { margin: after ? '14px 0 0' : '0 0 12px', color: 'var(--text-1)' }) }, 'What you wrote sounds really heavy. You deserve a real person with you right now.');
   const body = urgent
     ? h('div', {},
-      h('p', { style: type('body', { margin: '0 0 12px', color: 'var(--text-1)' }) }, 'What you wrote sounds really heavy. You deserve a real person with you right now.'),
+      // (opened below the words while the person types: the calls lead, so the shorter sheet still shows them whole)
+      beside ? null : heavy(),
       // the calls first, whole, above "I’m safe — continue" (the sheet's body scrolls; these never need it)
       h('div', { class: 'support-calls', role: 'group', 'aria-label': 'Call now' }, ...urgentCalls(region).map(callBtn)),
+      beside ? heavy(true) : null,
       h('p', { style: type('body', { margin: '14px 0 0', color: 'var(--text-2)' }) }, 'If you might act on thoughts of hurting yourself, please call now. These lines are free and confidential.'),
       ...lines.map(card), note)
     : h('div', {},
       h('p', { style: type('body', { margin: '0 0 12px', color: 'var(--text-1)' }) }, abuseFirst(cat)
         ? 'What’s happening isn’t your fault, and you don’t have to handle it alone. These are free and confidential.'
         : 'If things feel like too much, talking to a real person can help. These are free and confidential.'),
+      // (after the check-in's "Not really", or the self ending read by meaning: the calls first, whole, above the fold)
+      callsFirst(cat) ? h('div', { class: 'support-calls', role: 'group', 'aria-label': 'Call someone now' }, ...supportCalls(region).map(callBtn)) : null,
       // (after abuse, violence or threats: the first actions whole, above the fold, as the urgent sheet's calls are — the
       // cards, with what each line is, follow)
       abuseFirst(cat) ? h('div', { class: 'support-calls', role: 'group', 'aria-label': 'Get help' }, ...abuseActions(region).map(callBtn)) : null,
       ...lines.map(card), note);
-  return openSheet({ title: urgent ? 'You’re not alone in this' : 'Support', body, label: 'Support lines',
+  return openSheet({ title: urgent ? 'You’re not alone in this' : 'Support', body, label: 'Support lines', focus: !!focus && !beside, beside, returnFocus,
+    // (a tap in the urgent sheet's first 700 ms is a finger that was on its way to something else: ignored, keys still work)
+    guardMs: urgent ? URGENT_GUARD_MS : 0,
     foot: h('button', { class: 'btn block', onclick: (e) => e.currentTarget.closest('.sheet').querySelector('.icon-btn').click() }, urgent ? 'I’m safe — continue' : 'Close') });
 }
+/** How long the urgent sheet ignores taps after it appears (a finger on its way to Send). */
+export const URGENT_GUARD_MS = 700;

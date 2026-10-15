@@ -258,7 +258,8 @@ test('main screen: the check-in replaces the question with the same machinery; "
   assert.ok(after.indexOf('askPlay(kept') < after.indexOf('spawnThought('), 'asked before any Thought Mallow');
   assert.ok(after.indexOf('askPlay(kept') < after.indexOf("app.go('plans'"), 'asked before the plans page');
   const ask = between(hf, 'async function askPlay(', 'function focusTell(');
-  assert.match(ask, /if \(check\) \{ supportPill\.hidden = false; layout\(\); \}/);
+  // (fix round, the safety floor: the Support pill is up for every question now, the check-in's included — and stays after it)
+  assert.match(ask, /if \(check\) markChecked\(\);\s*supportPill\.hidden = false; layout\(\);/);
   assert.match(ask, /const v = check \? await askCheckIn\(pick\) : await subtitles\.choice\(PLAY_CHECK\.ask,/);
   assert.match(ask, /subtitles\.choice\(CHECK_IN\.ask, \[\{ label: CHECK_IN\.okay, value: 'play', onPick: pick\('play'\) \}, \{ label: CHECK_IN\.notReally, value: 'notreally', onPick: pick\('notreally'\) \}, \{ label: CHECK_IN\.stay, value: 'stay', onPick: pick\('stay'\) \}\],/);
   assert.match(ask, /timeoutMs: PLAY_CHECK\.ms, transient: true, ask: true, checkIn: true, focus: true, waitHidden: true/);

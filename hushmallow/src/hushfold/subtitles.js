@@ -16,14 +16,16 @@
 //
 // createSubtitles({root, prefs, avoid, bounds, reducedMotion, backdrop, brightHint, onControl, onBand}) →
 //   { say(lines, {who, hold, id, kind:'dialogue'|'discovery'|'title', colour, interrupt, first}) → Promise<boolean>,
-//     choice(prompt, [{label, value, primary, onPick}], {who, timeoutMs, transient, focus, waitHidden}) → Promise<value|null>,
-//     pause, resume, replay, skip, setSpeed, clear({keepHeld, keep}), drop(match), suspend, unsuspend, layout, destroy,
+//     choice(prompt, [{label, value, primary, onPick}], {who, timeoutMs, transient, focus, waitHidden, label}) → Promise<value|null>,
+//     pause, resume, replay, skip, setSpeed, clear({keepHeld, keep}), drop(match), suspend, unsuspend, cover(on), layout, destroy,
 //     get busy, get holding, get paused, get suspended, get speed, el }
 // suspend(): while the person types, nothing shows; a held discovery or a
 // choice waits (parked) and comes back on unsuspend(); passing chatter is dropped.
 // A choice with `focus` takes the keyboard focus to its first chip when it shows (never out of a text field), so
 // keyboard and screen-reader users land on it; with `waitHidden` its timeout waits while the page is hidden (WCAG 2.2.1:
-// the person who looked away comes back to the same choice, with at least HIDDEN_BACK_MS still to answer it).
+// the person who looked away comes back to the same choice, with at least HIDDEN_BACK_MS still to answer it). A choice's
+// chips are a group named by `label` (else its prompt). cover(true): a sheet covers the stage (support, the A–Z list) — a
+// choice's clock waits until cover(false), then has at least HIDDEN_BACK_MS (or its whole time, if shorter) to go.
 
 import { h } from '../app/ui.js';
 import { hfIcon } from './icons.js';
@@ -268,6 +270,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   let cur = null;              // { item, i, lineEl, timer, t0, remaining, holding, phase }
   let paused = false;
   let suspended = false, parked = null;   // while the person types (the Tell overlay)
+  let covered = false;                    // (fix round) a sheet covers the stage: a choice's clock waits
   let lastLine = null;
   let hideCtlTimer = 0;
   let placedOnce = false;
@@ -522,6 +525,8 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     cur.lineEl = node;
     if (node) lastLine = { text: prompt, who: opts.who, colour: opts.colour };
     chipsEl.setAttribute('aria-label', prompt || 'Choose');
+    // (fix round: a real name for the group — the choice's own label, where it has one)
+    if (opts.label) chipsEl.setAttribute('aria-label', opts.label);
     // onPick runs inside the tap itself (an iPhone keyboard only opens from a real gesture)
     chipsEl.replaceChildren(...options.map((o) => h('button', { class: `hf-chip${o.primary ? ' primary' : ''}${o.soft ? ' soft' : ''}`, type: 'button', onclick: () => { try { o.onPick?.(); } catch (e) { console.warn(e); } choose(o.value); } }, o.label)));
     chipsEl.classList.remove('out');
@@ -538,21 +543,27 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       if (!a || !(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) chipsEl.firstChild?.focus?.({ preventScroll: true });
     }
     if (mine.onVis) { document.removeEventListener?.('visibilitychange', mine.onVis); mine.onVis = null; }
+    mine.clock = null;
     if (opts.timeoutMs > 0) {
       // (waitHidden: the clock stops while the page is hidden and starts again, with at least HIDDEN_BACK_MS, once it is seen)
+      // (and, for every choice, while a sheet covers the stage: cover())
       let left = opts.timeoutMs, t0 = 0;
       const arm = () => {
         clearTimeout(mine.timer); mine.timer = 0;
-        if (opts.waitHidden && document.hidden) return;
+        if (covered || (opts.waitHidden && document.hidden)) return;
         t0 = performance.now();
         mine.timer = setTimeout(() => choose(null, { faded: true }), left);
+      };
+      mine.clock = {
+        stop() { if (mine.timer) { clearTimeout(mine.timer); mine.timer = 0; left = Math.max(0, left - (performance.now() - t0)); } },
+        back() { if (!mine.timer && cur === mine && mine.phase !== 'out') { left = Math.max(left, Math.min(opts.timeoutMs, opts.hiddenBackMs ?? HIDDEN_BACK_MS)); arm(); } },
       };
       if (opts.waitHidden) {
         const onVis = mine.onVis = () => {
           if (cur !== mine || mine.phase === 'out' || mine.onVis !== onVis) { document.removeEventListener?.('visibilitychange', onVis); return; }
           if (document.hidden) {
             if (mine.timer) { clearTimeout(mine.timer); mine.timer = 0; left = Math.max(0, left - (performance.now() - t0)); }
-          } else if (!mine.timer) { left = Math.max(left, opts.hiddenBackMs ?? HIDDEN_BACK_MS); arm(); }
+          } else if (!mine.timer && !covered) { left = Math.max(left, opts.hiddenBackMs ?? HIDDEN_BACK_MS); arm(); }
         };
         document.addEventListener?.('visibilitychange', onVis);
       }
@@ -707,6 +718,17 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       }
       next();
     },
+    /**
+     * (fix round) A sheet covers the stage (true) or has gone (false): the choice showing keeps its time while it is covered
+     * (the 45 s question never runs out under the Support sheet), and has at least HIDDEN_BACK_MS once it is seen again.
+     */
+    cover(on) {
+      const v = !!on;
+      if (v === covered || destroyed) return;
+      covered = v;
+      if (v) cur?.clock?.stop(); else cur?.clock?.back();
+    },
+    get covered() { return covered; },
     layout,
     get busy() { return !!cur || queue.length > 0 || !!parked; },
     /** A discovery waits for acknowledgement (on screen, or parked while the person types). */

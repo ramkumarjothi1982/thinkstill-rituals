@@ -47,6 +47,12 @@ const SHARED = {
   supportLoss: ['Thank you for telling me. That’s a lot to carry.', 'Support is right here, whenever you want it.'],
   // distress words (can't cope, hopeless…): gentle, no jokes, support close by
   supportConcern: ['Thank you for telling me. Support is right here too, whenever you want it.'],
+  // (fix round) a loss the words name (grief.js: concern 'loss'): tender first, the loss acknowledged, assuming nothing about
+  // who it was or how; then the calm choice (careAsk)
+  supportGrief: ['I’m so sorry. That’s a lot to carry.'],
+  // (fix round) after the care line, with nothing playful offered (the self ending, a wish to follow, support first): one plain
+  // question with [See support] [Stay here quietly] (CARE_CHOICE)
+  supportAsk: ['Would you like to see who can help?'],
   // wanting to hurt someone: calm, no jokes, safety first (said as a sequence, like support)
   harmOthers: ['That’s a lot of heat to carry.', 'Let’s keep everyone safe, you included. Support is one tap away.'],
   // after a care or harm disclosure, the person decides whether anything plays
@@ -334,11 +340,16 @@ export const LOSS_CHECK = Object.freeze({
  * `calmMs` (at home staying is simply the default; in a world, the world ends quietly unless they tap it); no support
  * line, and the visit stays gentle. No answer within `ms` (the clock waits while the page is hidden), or Back, stays
  * here quietly and keeps the words for the next Tell. One extra tap for everyone.
+ * (fix round, the safety floor) `notOkay`, "I'm not okay", a third chip of equal weight, last in reading order, does exactly
+ * what the check-in's "Not really" does; the Support pill is visible whenever the question is up.
  */
 export const PLAY_CHECK = Object.freeze({
   ask: 'Shall we play with this, or just be with it?',
   play: 'Play with it',
   stay: 'Just be with it',
+  // (fix round, the safety floor) a third chip of equal weight, last in reading order: no word list is perfect, so the
+  // ordinary question itself carries a way to support — exactly the check-in's "Not really" (CHECK_IN.heard, support first)
+  notOkay: 'I’m not okay',
   be: 'Okay. Let’s just be with it for a while.',
   calm: 'Somewhere calm',
   ms: 45000,
@@ -359,6 +370,8 @@ export const CHECK_IN = Object.freeze({
   notReally: 'Not really',
   stay: 'Just be with it',
   heard: 'Thank you for telling me. You don’t have to hold this on your own.',
+  // (fix round) asked with [See support] [Stay here quietly], the first focused, with no clock: it never goes by itself
+  helpAsk: 'Would you like to see who can help?',
   support: 'See support',
   quiet: 'Stay here quietly',
 });

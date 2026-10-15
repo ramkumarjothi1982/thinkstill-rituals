@@ -204,7 +204,8 @@ test('hushfold safety verification (12 Oct): a crisis or care level seen earlier
   assert.match(scene, /if \(v === 'play' && !S\.crisis\) \{/);
   // a later Tell in the same visit knows: Support from the start, no plan offer on the button, the concerned
   // face while they type, and a calm answer (never silence) when more words follow a crisis
-  assert.match(scene, /heavy: gentle\(\),/);
+  // (fix round: after the check-in too — its pill steps under the overlay, so the overlay's own Support chip is the one)
+  assert.match(scene, /heavy: gentle\(\) \|\| !!S\.checked,/);
   assert.match(scene, /stageMallow\.setStage\(softNow\(\) \? CARE_FACE : 'listening', \{ quiet: true \}\);/);
   assert.match(scene, /if \(S\.crisisSpoken\) say\(SHARED_LINES\.supportConcern, \{ interrupt: !subtitles\.holding \}\);\s*else speakCrisis\(\);/);
   const overlay = read('src/hushfold/input-overlay.js');
@@ -822,12 +823,15 @@ test('H1 r3: the visit stays gentle across scenes (memory only) and when the pla
   const scene = read('src/app/scenes/hushfold.js');
   // the level (no words) is kept in app.state for the page session whenever it rises or the calm line is said
   const keep = fnBody(scene, 'function keepSafety() {', '// ---------------------------------------------------- telling');
-  assert.match(keep, /app\.state\.hfSafety = \{ level: S\.level, category: S\.category, crisisSpoken: S\.crisisSpoken \};/);
+  // (fix round: in memory with its routing flags; a reload keeps the flags only — visit-safety.js, never the category)
+  assert.match(keep, /app\.state\.hfSafety = \{ level: S\.level, category: S\.category, crisisSpoken: S\.crisisSpoken, \.\.\.flags \};/);
+  assert.match(keep, /rememberVisitSafety\(\{ level: S\.level, crisisSpoken: S\.crisisSpoken, \.\.\.visitFlags\(flags\) \}\);/);
   assert.doesNotMatch(keep, /text|words|input|localStorage|sessionStorage|store\./, 'only the level, never the words (kept for the tab through visit-safety.js, never in the store)');
   assert.match(fnBody(scene, 'function noteSafety(r) {', 'function safetyHold('), /else S\.care = true;\s*keepSafety\(\);/);
   // ...and applied again on enter, before the router takes a single squeeze, without repeating the calm line
   const enter = fnBody(scene, 'async enter() {', 'leave() {');
-  const keptAt = enter.indexOf('if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; noteSafety(kept); S.careSaid = true; }');
+  // (fix round: read as noteSafety reads it — keptReading — and distress alone stays liftable: never 'carried')
+  const keptAt = enter.indexOf("if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; if (!kept.liftable) S.seen.add('kept'); noteSafety(keptReading(kept)); if (!liftable()) S.careSaid = true; }");
   assert.ok(keptAt > 0 && keptAt < enter.indexOf('router = createInputRouter('), 'restored before any touch is routed');
   assert.ok(enter.indexOf('speakCrisis();') > keptAt && enter.indexOf('speakCrisis();') < enter.indexOf('await resumePendingTell()'));
   assert.match(enter, /stageMallow\.setStage\(softNow\(\) \? CARE_FACE : 'neutral', \{ quiet: true \}\);/);

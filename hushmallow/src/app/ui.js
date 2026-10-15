@@ -136,34 +136,160 @@ export function createSheetHistory({ push, pop, defer = (fn) => queueMicrotask(f
   };
 }
 
-export function openSheet({ title, body, foot, full = false, onClose, label } = {}) {
+/**
+ * Can the keyboard focus go to `el` now: on screen, in reach (not inert, hidden or stepped away), and not the page itself?
+ */
+export function canFocus(el) {
+  try {
+    if (!el || el === document.body || !el.isConnected || typeof el.focus !== 'function') return false;
+    if (el.hidden || el.closest?.('[inert], [hidden], .is-hidden, .is-under, [aria-hidden="true"]')) return false;
+    if (typeof el.getClientRects === 'function' && !el.getClientRects().length) return false;
+    if (typeof getComputedStyle === 'function' && getComputedStyle(el).visibility === 'hidden') return false;
+    return true;
+  } catch { return false; }
+}
+/**
+ * (fix round) What is behind the newest sheet is out of reach while it is open — the stage, the scene and the older sheets
+ * are `inert` (no Tab stop on a control nobody can see, nothing a screen reader wanders into) — and back in reach the moment
+ * it closes. Only what this module made inert is ever released. A sheet opened beside the Tell overlay while the person
+ * types (`beside`) leaves that overlay's own branch in reach (their words, Send), everything else behind it out of reach.
+ */
+const madeInert = new Set();
+function applyInert() {
+  if (typeof document === 'undefined' || !document.body) return;
+  const top = liveSheets[liveSheets.length - 1] || null;
+  const want = new Set();
+  if (top) {
+    const sheetRoot = document.getElementById('sheet-root');
+    const kids = (el) => Array.from(el?.children || []);
+    const keep = top.beside?.isConnected ? top.beside : null;
+    // the page behind the sheets (and, beside the overlay, everything but its branch)
+    for (const el of kids(document.body)) {
+      if (el === sheetRoot || el.tagName === 'SCRIPT' || el.tagName === 'NOSCRIPT') continue;
+      if (keep && el.contains?.(keep)) continue;
+      want.add(el);
+    }
+    if (keep) {
+      for (let node = keep; node && node.parentNode && node.parentNode !== document.body; node = node.parentNode) {
+        for (const sib of kids(node.parentNode)) if (sib !== node) want.add(sib);
+      }
+    }
+    // the older sheets and their backdrops
+    for (const el of kids(sheetRoot)) if (el !== top.el && el !== top.backdrop) want.add(el);
+  }
+  for (const el of [...madeInert]) if (!want.has(el)) { madeInert.delete(el); try { el.inert = false; el.removeAttribute?.('inert'); } catch { /* gone */ } }
+  for (const el of want) if (!madeInert.has(el) && !el.inert) { madeInert.add(el); try { el.inert = true; } catch { /* an old engine */ } }
+}
+
+/**
+ * openSheet({ title, body, foot, full, onClose, label, focus, guardMs, beside, returnFocus })
+ *   focus: true (default) → the keyboard focus goes into the sheet, to an [autofocus] control or else to its heading —
+ *     never to a dismiss control (the next Space or Enter would close it); false → it stays where it is (the person is
+ *     typing: never taken out of a text field); handle.focusIn() moves it in later.
+ *   guardMs: a tap (pointer) on the sheet or its backdrop this soon after the sheet appears is ignored — a finger already on
+ *     its way to what was under it (Send) never lands on a call or closes the sheet; a key press always works.
+ *   beside: an element the sheet opens beside (the Tell overlay, while the person types): the sheet's top and its backdrop
+ *     stay below it, so nothing in the sheet lies where that element's controls are, and it stays in reach (not modal)
+ *     until handle.focusIn() (Send, or the field idle a while) makes the sheet modal and takes the focus to its heading.
+ *   returnFocus: () => element: where the focus goes on close when the opener is gone (else a [data-sheet-return] control
+ *     of the scene, the Support pill first).
+ */
+export function openSheet({ title, body, foot, full = false, onClose, label, focus = true, guardMs = 0, beside = null, returnFocus = null } = {}) {
   const root = document.getElementById('sheet-root');
   const backdrop = h('div', { class: 'sheet-backdrop' });
   const closeBtn = iconBtn('close', 'Close', () => close());
-  const sheet = h('div', { class: `sheet${full ? ' full' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': label || title || 'Panel' },
+  const heading = title != null ? h('h2', { tabindex: '-1' }, title) : null;
+  const sheet = h('div', { class: `sheet${full ? ' full' : ''}`, role: 'dialog', 'aria-modal': beside ? 'false' : 'true', 'aria-label': label || title || 'Panel', tabindex: '-1' },
     h('div', { class: 'grab', 'aria-hidden': 'true' }),
-    title != null ? h('div', { class: 'sheet-head' }, h('h2', {}, title), closeBtn) : null,
+    title != null ? h('div', { class: 'sheet-head' }, heading, closeBtn) : null,
     h('div', { class: 'sheet-body' }, body),
     foot ? h('div', { class: 'sheet-foot' }, foot) : null);
   root.append(backdrop, sheet);
   const prevFocus = document.activeElement;
   let closed = false;
-  requestAnimationFrame(() => { if (!closed) { backdrop.classList.add('open'); sheet.classList.add('open'); } });
-  const handle = { el: sheet, body: sheet.querySelector('.sheet-body'), close };
+  let shownAt = Infinity;   // (when it appeared: the tap guard counts from here)
+  requestAnimationFrame(() => { if (!closed) { backdrop.classList.add('open'); sheet.classList.add('open'); shownAt = typeof performance !== 'undefined' ? performance.now() : Date.now(); } });
+  const handle = { el: sheet, body: sheet.querySelector('.sheet-body'), close, backdrop, beside: null, focusIn, get open() { return !closed; } };
+  // ------------------------------------------------------------- beside --
+  let besideObs = null;
+  const placeBeside = () => {
+    const b = handle.beside;
+    if (closed || !b) return;
+    if (!b.isConnected) { unbeside(); return; }
+    let bottom = 0;
+    try { bottom = Math.max(0, Math.round(b.getBoundingClientRect().bottom)); } catch { bottom = 0; }
+    const room = Math.max(160, (typeof innerHeight === 'number' ? innerHeight : 800) - bottom - 10);
+    sheet.style.maxHeight = `${room}px`;
+    backdrop.style.top = `${bottom + 4}px`;
+  };
+  function unbeside() {
+    const b = handle.beside;
+    if (!b) return;
+    handle.beside = null;
+    try { b.removeAttribute?.('data-sheet-beside'); } catch { /* gone */ }
+    besideObs?.disconnect(); besideObs = null;
+    try { window.removeEventListener('resize', placeBeside); } catch { /* no window */ }
+    sheet.style.maxHeight = ''; backdrop.style.top = '';
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.classList.remove('beside');
+    applyInert();
+  }
+  if (beside && beside.isConnected) {
+    handle.beside = beside;
+    sheet.classList.add('beside');
+    try { beside.setAttribute('data-sheet-beside', ''); } catch { /* */ }
+    placeBeside();
+    besideObs = typeof ResizeObserver === 'function' ? new ResizeObserver(placeBeside) : null;
+    besideObs?.observe(beside);
+    try { window.addEventListener('resize', placeBeside); } catch { /* no window */ }
+  }
+  /**
+   * The keyboard focus into the sheet now (its heading, or an [autofocus] control). modal (default): a sheet beside an
+   * overlay becomes the one modal layer (full height, everything behind it out of reach); { modal: false } keeps it beside
+   * the overlay, the words still in reach (the field left idle: the person may come back to it).
+   */
+  function focusIn({ modal = true } = {}) {
+    if (closed) return;
+    if (modal) unbeside();
+    (sheet.querySelector('[autofocus]') || heading || sheet)?.focus?.({ preventScroll: true });
+  }
+  // ------------------------------------------------------------ the tap guard --
+  if (guardMs > 0) {
+    const guard = (e) => {
+      const since = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - shownAt;
+      // (a pointer's click has a detail of 1 or more; Enter or Space on a focused control is 0, and always goes through)
+      if ((e.detail ?? 1) !== 0 && !(since >= guardMs)) { e.preventDefault?.(); e.stopPropagation?.(); e.stopImmediatePropagation?.(); }
+    };
+    // (and the press itself moves nothing: the focus stays in the words a finger was heading back to)
+    const press = (e) => { const since = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - shownAt; if (!(since >= guardMs)) e.preventDefault?.(); };
+    sheet.addEventListener('click', guard, true);
+    backdrop.addEventListener('click', guard, true);
+    sheet.addEventListener('mousedown', press, true);
+    backdrop.addEventListener('mousedown', press, true);
+  }
   function close(reason) {
     if (closed) return;
     closed = true;
     backdrop.classList.remove('open'); sheet.classList.remove('open');
     const i = liveSheets.indexOf(handle);
     if (i >= 0) liveSheets.splice(i, 1);
-    // focus goes back where it was, if that is still on screen; else to the newest sheet left, or the scene's heading
+    if (handle.beside) { try { handle.beside.removeAttribute?.('data-sheet-beside'); } catch { /* */ } handle.beside = null; }
+    besideObs?.disconnect(); besideObs = null;
+    try { window.removeEventListener('resize', placeBeside); } catch { /* no window */ }
+    // what was behind it is in reach again at once (the focus can go back to it)
+    applyInert();
+    // focus goes back where it was, if that is still on screen and in reach; else to the newest sheet left, the scene's own
+    // return control (the Support pill), or its heading — never left on the page itself
     setTimeout(() => {
       const a = document.activeElement;
       const lost = !a || a === document.body || sheet.contains(a);   // else focus has moved on (another sheet, a field): leave it
       backdrop.remove(); sheet.remove();
       if (!lost) return;
-      if (prevFocus?.isConnected && prevFocus !== document.body) prevFocus.focus?.({ preventScroll: true });
-      else (liveSheets[liveSheets.length - 1]?.el.querySelector('.icon-btn') || document.querySelector('#scene h1, #scene h2, #scene [data-focus]'))?.focus?.({ preventScroll: true });
+      const next = liveSheets[liveSheets.length - 1];
+      const back = [prevFocus, next && (next.el.querySelector('h2') || next.el), (() => { try { return returnFocus?.(); } catch { return null; } })(),
+        ...sceneReturns()].find((el) => canFocus(el));
+      if (back) back.focus?.({ preventScroll: true });
+      else document.querySelector('#scene h1:not(.sr-only), #scene h2, #scene [data-focus]')?.focus?.({ preventScroll: true });
     }, 470);
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('pointerup', onUp);
@@ -184,10 +310,19 @@ export function openSheet({ title, body, foot, full = false, onClose, label } = 
   sheet.querySelector('.grab').addEventListener('pointerdown', (e) => { y0 = e.clientY; });
   const onUp = (e) => { if (y0 != null && e.clientY - y0 > 60) close('swipe'); y0 = null; };
   window.addEventListener('pointerup', onUp);
-  setTimeout(() => { if (!closed) (sheet.querySelector('[autofocus]') || closeBtn)?.focus?.(); }, 480);
+  // (never to the ✕ first: a Space meant for the words, or a second Enter, would close it)
+  if (focus) setTimeout(() => { if (!closed && !handle.beside) (sheet.querySelector('[autofocus]') || heading || sheet)?.focus?.({ preventScroll: true }); }, 480);
   liveSheets.push(handle);
+  applyInert();
   try { sheetHooks?.opened?.(handle); } catch (e) { console.warn('[sheet]', e); }
   return handle;
+}
+/** The scene's own controls that take the focus back when a sheet closes and its opener is gone (data-sheet-return, in order). */
+function sceneReturns() {
+  try {
+    return Array.from(document.querySelectorAll?.('#scene [data-sheet-return]') || [])
+      .sort((a, b) => (Number(a.getAttribute('data-sheet-return')) || 9) - (Number(b.getAttribute('data-sheet-return')) || 9));
+  } catch { return []; }
 }
 
 export function toast(text, ms = 2200) {
