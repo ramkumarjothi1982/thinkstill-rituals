@@ -27,7 +27,7 @@
 // brightening rises over ≥ 300 ms; storm strikes are ≥ 8 s apart and become soft
 // glows with the gentle style or reduced motion.
 
-import { announcer } from '../lab-ui.js';
+import { announcer, h } from '../lab-ui.js';
 import { stageScreen } from './stage-screen.js';
 import { homeRealm, REALM_GEO } from '../core/environment.js';
 import { routePointers } from '../core/pointer-router.js';
@@ -193,11 +193,14 @@ export function mount(root, ctx) {
   embers.emit = (type, x, y, k) => onWeather(type, x, y, k);
   waves.emit = (type, x, y, k) => onWeather(type === 'arrive' ? 'wave-arrive' : type, x, y, k);
   // a press in the world (not on the controls) takes keyboard focus back from a clicked radio or chip, so the
-  // digits, arrows and Enter act on the stage again (registered before the router, which stops claimed presses)
+  // digits, arrows and Enter act on the stage again (registered before the router, which stops claimed presses);
+  // it also quiets the stage's focus ring again until the next key (the pointer is in use: no frame round the scene)
   const topbar = s.screen.querySelector('.topbar');
   const onPress = (e) => {
+    if (s.bottom.contains(e.target) || topbar?.contains(e.target)) return;
+    s.screen.classList.add('wx-quiet-focus');
     const ae = document.activeElement;
-    if (!ae || ae === s.stage || !s.bottom.contains(ae) || s.bottom.contains(e.target) || topbar?.contains(e.target)) return;
+    if (!ae || ae === s.stage || !s.bottom.contains(ae)) return;
     s.stage.focus({ preventScroll: true });
   };
   s.screen.addEventListener('pointerdown', onPress, true);
@@ -267,6 +270,7 @@ export function mount(root, ctx) {
     geo.W = L.W; geo.H = L.H; geo.floorY = L.floor; geo.baseline = L.baseline;
     geo.topBottom = L.topBottom; geo.bottomTop = L.bottomTop; geo.skyTop = L.topBottom + 8;
     if (closed) return;
+    fitSubtitle();
     if (!ready) { begin(); return; }
     applyGeo(false);
     // a new ground line: rebuild the realm in place (debounced, never under a front)
@@ -600,13 +604,15 @@ export function mount(root, ctx) {
     scene.lantern = w === 'fog' ? 0.32 * ma * (1 - 0.6 * live.fogClear) : 0;
     scene.dew = dewT;
     // a bright realm keeps dark chrome ink; when a storm bank or a dark front fills the top band behind the
-    // title, the title and subtitle switch to light ink (the bottom chips stay on the bright ground)
+    // title, the title, subtitle and hint switch to light ink (the bottom chips stay on the bright ground)
     let dark = 0;
     if (env.tone === 'light' && !leaving) {
       dark = clouds.amount > 0.01 ? clouds.coverage() * smoothstep(0.2, 1, clouds.amount) : 0;
       if (front.on && front.family !== 'light') dark = Math.max(dark, front.cover);
     }
-    if (inkLight ? dark < INK[0] : dark > INK[1]) { inkLight = !inkLight; topbar?.classList.toggle('wx-ink-light', inkLight); }
+    if (inkLight ? dark < INK[0] : dark > INK[1]) {   // the hint and caption sit in the same band: they follow the title
+      inkLight = !inkLight; topbar?.classList.toggle('wx-ink-light', inkLight); hint.el.classList.toggle('wx-ink-light', inkLight);
+    }
     if (front.on) {
       front.cover = st.cover; front.mode = st.mode; front.t = reduced ? 0 : simT;   // no edge drift or twinkle with reduced motion
       const k = front.swapped ? 1 - st.cover : st.cover;
@@ -777,8 +783,21 @@ export function mount(root, ctx) {
   /** Under a front's cover (before the reveal begins) the chips and W wait. */
   function covered() { return fronting() && !front.swapped && planner.phase !== 'reveal'; }
 
+  // "Storm · Raindrop Lagoon" (the same text for screen readers); where it has to wrap (320 px), the world goes on
+  // its own line without the dot, so no separator dangles, and the hint below steps down to give it room
   function setSubtitle() {
-    if (subtitleEl && env.realmId) subtitleEl.textContent = COPY.subtitle(WEATHERS[session.weather].label, realmShort(REALMS[env.realmId].name));
+    if (!subtitleEl || !env.realmId) return;
+    const text = COPY.subtitle(WEATHERS[session.weather].label, realmShort(REALMS[env.realmId].name)), at = text.indexOf(' · ');
+    if (at < 0) subtitleEl.textContent = text;
+    else subtitleEl.replaceChildren(text.slice(0, at), h('span', { class: 'wx-sep' }, ' · '), h('span', { class: 'wx-where' }, text.slice(at + 3)));
+    fitSubtitle();
+  }
+  function fitSubtitle() {
+    if (!subtitleEl) return;
+    subtitleEl.classList.remove('wx-two');
+    const lh = parseFloat(getComputedStyle(subtitleEl).lineHeight) || 17, two = subtitleEl.getBoundingClientRect().height > lh * 1.5;
+    subtitleEl.classList.toggle('wx-two', two);
+    s.screen.classList.toggle('wx-sub-two', two);
   }
 
   // ---------------------------------------------------- weather events --

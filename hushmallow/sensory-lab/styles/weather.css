@@ -36,22 +36,34 @@
   text-shadow: 0 0 1px var(--ink-0), 0 0 2px var(--ink-0), 0 0 4px var(--ink-0), 0 1px 12px var(--ink-0); }
 .weather[data-backdrop] .topbar .title small { color: var(--text-2); }   /* the weather and its world: one step stronger than --text-3 */
 .weather .topbar .title small { font-size: 14px; line-height: 1.2; text-wrap: balance; }   /* nothing under 14 px (spec §8); a long world name wraps evenly onto a second line */
+/* the world name never breaks; when the subtitle has to wrap, it takes its own line and the dot goes (features/weather.js) */
+.weather .topbar .title small .wx-where { white-space: nowrap; }
+.weather .topbar .title small.wx-two .wx-sep { display: none; }
+.weather .topbar .title small.wx-two .wx-where { display: block; }
+.weather.wx-sub-two .wx-hint { top: calc(var(--safe-top) + 84px); }
 .weather .topbar .title b, .weather .topbar .title small { transition: color 0.45s var(--ease-out, ease), text-shadow 0.45s var(--ease-out, ease); }
-/* a bright realm under a storm bank or a dark front: the title takes the dark backdrop's ink and halo (the
-   bottom chips and dial keep the realm's, over the still-bright ground) */
-.weather .topbar.wx-ink-light .title { --text-1: #f7f3ff; --text-2: #e4defa; --text-3: #b9b0dc; --ink-0: #0a0818; }
+/* a bright realm under a storm bank or a dark front: the title and the hint under it take the dark backdrop's ink
+   and halo (the bottom chips and dial keep the realm's, over the still-bright ground) */
+.weather .topbar.wx-ink-light .title, .weather .wx-hint.wx-ink-light { --text-1: #f7f3ff; --text-2: #e4defa; --text-3: #b9b0dc; --ink-0: #0a0818; }
 .weather .topbar.wx-ink-light .title b { color: var(--text-1); }
 
 /* the hint spot: hints, then the caption with the Mallow's line under it */
-.weather .wx-hint { width: max-content; max-width: min(calc(100% - 40px), 520px); }
+.weather .wx-hint { width: max-content; max-width: min(calc(100% - 40px), 520px);
+  transition: opacity 600ms var(--ease-out), color 0.45s var(--ease-out, ease), text-shadow 0.45s var(--ease-out, ease); }
 .weather .wx-hint .wx-cap { display: block; }
-.weather .wx-hint .line { display: block; margin-top: 4px; font-family: var(--font-ui); font-size: 14px; font-weight: 500; color: var(--text-2); }
+.weather .wx-hint .line { display: block; margin-top: 4px; font-family: var(--font-ui); font-size: 14px; font-weight: 500; color: var(--text-2);
+  text-wrap: balance; }   /* a wrapped line brings its last words down with the Mallow's name */
 .weather .wx-hint .line .who { color: var(--text-3); font-size: 14px; }   /* nothing under 14 px (spec §8) */
 @media (max-height: 600px) { .weather .wx-hint { font-size: 16px; } }
 
 .weather .wx-back, .weather .wx-front { position: absolute; inset: 0; pointer-events: none; }
 
-/* the narrowest phones: two chips (a lead chip and "Push the water") side by side without scrolling */
+/* the narrowest phones: two chips (a lead chip and "Push the water") side by side without scrolling; the dial shows
+   exactly seven whole radios (eight 40 px targets cannot fit), scrolls one radio at a time, and a narrow fade on the
+   side that has more says so without cutting an icon */
 @media (max-width: 360px) {
   .weather .wx-chip { padding: 10px 12px; }
+  .weather .wx-dial { gap: 0; padding: 3px; max-width: calc(7 * 40px + 8px); }
+  .weather .wx-dial.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px); mask-image: linear-gradient(90deg, transparent, #000 12px); }
+  .weather .wx-dial.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent); }
 }

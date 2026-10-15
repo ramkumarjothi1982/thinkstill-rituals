@@ -37,6 +37,7 @@ import { NoteBead, BeadPool, BeatGlow, PhraseRibbon, HarmonyArc, BreathHalo, POO
 import { TRAITS, Performer, Scene, Cue, grooveStep, musicFilter } from '../features/hushbeat/performer.js';
 import { Personality } from '../core/personality.js';
 import { friendChoices, tierBelow, yourTunes, tuneItem, TIER_BELOW } from '../features/hushbeat/sheet.js';
+import { PEDESTAL, duetLayout, pedestalHalf, FIT, BAND, TOPBAR, EDGE, ZOOM_MAX } from '../features/hushbeat/stagecraft.js';
 import { REACTIONS } from '../../src/mallows/reactions.js';
 import { PRESETS } from '../../src/mallows/expressions.js';
 
@@ -1955,7 +1956,7 @@ test('U19 duet and sheets: the six friends with their words, the friend a tier l
 });
 
 // ================================================================= U17 ==
-const NEW_FILES = ['../core/music-theory.js', '../core/music-time.js', '../core/music-engine.js', '../features/hushbeat/player.js', '../features/hushbeat/copy.js', '../features/hushbeat/performer.js', '../features/hushbeat/sheet.js'].map(here);
+const NEW_FILES = ['../core/music-theory.js', '../core/music-time.js', '../core/music-engine.js', '../features/hushbeat/player.js', '../features/hushbeat/copy.js', '../features/hushbeat/performer.js', '../features/hushbeat/sheet.js', '../features/hushbeat/stagecraft.js'].map(here);
 const AUDIO_FILES = ['../core/music-kits.js', '../core/music-audio.js'].map(here);
 const FX_FILES = ['../core/music-fx.js'].map(here);
 const FEATURE_FILES = ['../features/hushbeat.js'].map(here);
@@ -1977,6 +1978,46 @@ test('U17 no network, media or DOM in the pure modules; the copy has no therapy,
   assert.equal(COPY.subtitle('Boppo', 'Loomi', true), 'Boppo & Loomi · Visual only');
   assert.equal(COPY.friend.title('Boppo'), 'Who joins Boppo?');
   assert.match(COPY.aria.stage('Noomi'), /^Noomi\. Tap for a note/);
+});
+
+// ================================================================= U20 ==
+test('U20 duet stagecraft: both Mallows stand on the world\'s prop at every viewport (the world framed closer, ≤ 2×), the prop numbers match the realms', () => {
+  // the props as src/world/realms paints them (read-only): the table may only be as wide as the real thing
+  const src = (id) => readFileSync(here(`../../src/world/realms/${id}.js`), 'utf8');
+  const has = (id, ...needles) => { const t = src(id); for (const n of needles) assert.ok(t.includes(n), `${id}: ${n}`); };
+  has('blue-drift', 'const U = Math.min(W, H * 0.52)', 'sprites.stone = stoneSprite(U * 0.74', 'const rx = w * 0.46, ry = rx * 0.25');
+  has('spark-festival', 'return Math.min(st.W, st.H * 0.55)', 'const daisRx = Math.min(W * 0.34, u * 0.32)');
+  has('raindrop-lagoon', 'const w = W * 0.74, h = w * 0.56', 'const cx = w / 2, rx = w * 0.46');
+  has('spiral-observatory', 'g.ellipse(ox, oy + (1 - k) * 8, W * 0.46 * k');
+  has('sunpop-orchard', 'rx = W * 0.56');
+  assert.ok(PEDESTAL['blue-drift'][0] <= 0.46 * 0.74 && PEDESTAL['raindrop-lagoon'][0] <= 0.46 * 0.74 && PEDESTAL['spark-festival'][0] <= 0.32);
+  assert.deepEqual(Object.keys(PEDESTAL).sort(), ['blue-drift', 'moonmilk-cove', 'raindrop-lagoon', 'spark-festival', 'spiral-observatory', 'static-storm', 'sunpop-orchard']);
+
+  // the seven viewports with the ground lines stage-screen gives them (measured with the tray closed)
+  const VPS = [[390, 844, 0.835], [375, 812, 0.83], [320, 568, 0.759], [412, 915, 0.84], [1280, 860, 0.838], [844, 390, 0.779], [568, 320, 0.731]];
+  const capOf = (W) => (W >= 900 ? Math.min(W / 2, 440) : W / 2);
+  for (const realm of [...Object.keys(PEDESTAL), null]) for (const [W, H, ground] of VPS) {
+    const cap = capOf(W), f = duetLayout({ realm, W, H, ground, cap }), at = `${realm} ${W}×${H}`;
+    const floor = ground * H, body = Math.min(FIT * f.w, BAND * (floor - TOPBAR));
+    const Wn = W - f.world.left - f.world.right, Hn = H - f.world.top - f.world.bottom;
+    const P = pedestalHalf(realm, Wn, Hn);
+    assert.ok(f.w / 2 + body / 2 <= EDGE * P + 1, `${at}: each Mallow inside the prop's top (${f.w / 2 + body / 2} > ${EDGE * P})`);
+    assert.ok(f.w <= cap && f.zoom <= ZOOM_MAX + 1e-9 && f.zoom >= 1, `${at}: stage ≤ cap, zoom ≤ ${ZOOM_MAX}`);
+    assert.ok(body >= 64, `${at}: the Mallows stay large enough (${body})`);
+    assert.equal(f.world.left, f.world.right, `${at}: the prop stays in the middle`);
+    assert.ok(Math.abs((floor - f.world.top) / Hn - ground) <= 1 / H, `${at}: its top stays on the ground line`);
+    if (H <= 460 && W >= 1.5 * H) assert.ok(f.w <= 240, `${at}: short landscape: the stages meet close in the middle`);
+    if (!realm || PEDESTAL[realm] === null) assert.deepEqual([f.zoom, f.world.top, f.world.left, f.world.bottom], [1, 0, 0, 0], `${at}: open ground: the world as solo`);
+  }
+  // the QA's floating duet: at 844×390 the old pair (two 240 px stages meeting in the middle) stood off the stone
+  const old = { w: 240, body: Math.min(FIT * 240, BAND * (0.779 * 390 - TOPBAR)) };
+  assert.ok(old.w / 2 + old.body / 2 > 2 * pedestalHalf('blue-drift', 844, 390), 'the old layout put both Mallows beside the stone');
+  const land = duetLayout({ realm: 'blue-drift', W: 844, H: 390, ground: 0.779, cap: 422 });
+  assert.equal(land.zoom, ZOOM_MAX, 'the stone needs the world framed twice as close');
+  assert.ok(land.body >= 95 && land.body < old.body, 'the pair a little smaller beyond that');
+  // a portrait phone: framed a little closer, the Mallows keep their size
+  const phone = duetLayout({ realm: 'blue-drift', W: 390, H: 844, ground: 0.835, cap: 195 });
+  assert.ok(phone.zoom > 1 && phone.zoom < 1.4 && phone.w === 195 && phone.body === FIT * 195);
 });
 
 // ================================================================= U18 ==

@@ -134,6 +134,9 @@ export const FEEL = Object.freeze({
       gap: R('gasp', { proud: 0.5, hopeful: 0.5 }, 0.55, 1.6, null, 'glitzi-gap-pretend'),
       gust: R(null, { playful: 0.6, excited: 0.4 }, 0.5, 1.2, 'giggle', 'glitzi-gust-whee'),
       constellation: R('glitchBurst', { proud: 0.6, happy: 0.4 }, 0.6, 1.6, null, 'glitzi-constellation-order'),
+      // the storm passing is the payoff: a proud sparkle and its shards, not the glitchy celebrate (its glitch
+      // bars hid the eyes and mouth just as the caption and its line appear)
+      'resolved-storm': R('success', { proud: 0.6, happy: 0.4 }, 0.7, 2, 'giggle', 'glitzi-home-resolved', { fx: { kind: 'shard', n: 12 } }),
     },
   },
   blubi: {

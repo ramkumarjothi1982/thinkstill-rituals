@@ -34,7 +34,7 @@ import { SoundEngine, MAX_VOICES, VOICES } from '../core/sound-engine.js';
 import { noiseBuffer } from '../core/ambience.js';
 import { WeatherSound, bedLevels, padFor, LAYERS, TIER_LAYERS, GAPS, PAD, WIND_HZ } from '../core/weather-sound.js';
 import { labGlowGate, LAB_GLOW } from '../core/weather-layer.js';
-import { swellRow } from '../core/weather-draw.js';
+import { swellRow, buildSprites, drawClouds, PUFF_EDGE_PX } from '../core/weather-draw.js';
 import { segDist2 } from '../core/weather/field.js';
 
 const LAB = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1500,4 +1500,74 @@ test('R6 drawing helpers: the swell row is clear of the Mallow; guide stars; the
   const r1 = sw.release(1, 0, 0);
   assert.equal(r1.kind, 'constellation'); assert.ok(Math.abs(r1.x - body.cx) < 1, `first at the centre (${r1.x})`);
   assert.ok(sw.ky[0] < sw.ky[1] && sw.ky[0] < sw.ky[2] && sw.kx[1] < body.cx && sw.kx[2] > body.cx);
+});
+
+// a canvas whose 2D context records what is painted (just enough of the API for the puff sprites)
+function recordingCanvas() {
+  const c = { width: 0, height: 0, ops: [] }, st = { gco: 'source-over', alpha: 1, fill: null, T: [1, 0, 0, 1, 0, 0], path: [] };
+  const grad = (kind, args) => ({ kind, args, stops: [], addColorStop(o, col) { this.stops.push([o, col]); } });
+  const g = {
+    get globalCompositeOperation() { return st.gco; }, set globalCompositeOperation(v) { st.gco = v; },
+    get globalAlpha() { return st.alpha; }, set globalAlpha(v) { st.alpha = v; },
+    get fillStyle() { return st.fill; }, set fillStyle(v) { st.fill = v; },
+    strokeStyle: '', lineWidth: 1,
+    setTransform(...a) { st.T = a; },
+    createRadialGradient: (...a) => grad('radial', a), createLinearGradient: (...a) => grad('linear', a),
+    beginPath() { st.path = []; }, arc(...a) { st.path.push(a); }, moveTo() {}, lineTo() {}, closePath() {}, stroke() {},
+    fill() { c.ops.push({ op: 'fill', gco: st.gco, fill: st.fill, path: st.path.slice(), T: st.T }); },
+    fillRect(...a) { c.ops.push({ op: 'fillRect', gco: st.gco, fill: st.fill, a }); },
+    drawImage(img, ...a) { c.ops.push({ op: 'drawImage', gco: st.gco, alpha: st.alpha, img, a }); },
+  };
+  c.getContext = () => g;
+  return c;
+}
+
+test('R7 (visual QA) each puff is one crisp body: rim and gold twin inside the same silhouette, in register', () => {
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  globalThis.document = { createElement: () => recordingCanvas() };
+  try {
+    for (const [realm, tone, dpr] of [['static-storm', 'dark', 1.5], ['sunpop-orchard', 'light', 1]]) {
+      const sp = buildSprites({ palette: REALMS[realm].palette, tone, dpr });
+      for (const kind of ['thunder', 'deck']) {
+        const bank = new CloudBank({ kind, tier: 'high', seed: 3 }).resize({ W: 390, H: 844, top: 64, bottom: kind === 'thunder' ? 420 : 240 });
+        bank.setAmount(1);
+        const main = recordingCanvas();
+        const drawn = drawClouds(main.getContext(), bank, sp, 0, kind === 'thunder' ? 2 : 0, { alpha: 1, warm: kind === 'thunder' ? 0.5 : 0, blend: 'lighter', W: 390, dpr, go: { dpr } });
+        assert.ok(drawn > 0, `${realm} ${kind}: puffs drawn`);
+        const list = sp.puffs[kind].list.filter(Boolean);
+        assert.ok(list.length >= drawn);
+        for (const e of list) {
+          for (const c of kind === 'thunder' ? [e.c, e.cw] : [e.c]) {
+            assert.ok(c, `${realm} ${kind}: ${kind === 'thunder' ? 'the cool sprite and its gold twin' : 'the sprite'} exist`);
+            const at = c.ops.findIndex((o) => o.gco !== 'source-over'), sil = c.ops.slice(0, at);
+            assert.ok(at > 0 && sil.length === bank.blits, `${realm} ${kind}: the silhouette is the ${bank.blits} sub-blobs, drawn first (${at})`);
+            assert.ok(c.ops.every((o) => o.op !== 'drawImage'), 'no stretched blob bitmaps (they smear the edge)');
+            assert.ok(c.ops.slice(at).every((o) => o.gco === 'source-atop'), 'the rim, body and shading only paint inside the silhouette');
+            const k = sil[0].T[0];   // sprite px per CSS px
+            for (const o of sil) {
+              const [x, y, R] = o.path[0], solid = o.fill.stops[1][0], feather = (1 - solid) * R * k;
+              // thunderheads: a few sprite px at most; the deck: softer, but never more than 12 % of a sub-blob
+              assert.ok(kind === 'thunder' ? feather <= 4.01 : (1 - solid) <= Math.max(0.12, (PUFF_EDGE_PX + 0.01) / (R * k)),
+                `${realm} ${kind}: a firm edge (feather ${feather.toFixed(1)} sprite px, ${(1 - solid).toFixed(3)} of R)`);
+              assert.ok(feather >= PUFF_EDGE_PX - 0.01, 'never aliased: at least the minimum feather');
+              assert.ok(x - R >= e.x0 - 1e-6 && x + R <= e.x0 + e.w + 1e-6 && y - R >= e.y0 - 1e-6 && y + R <= e.y0 + e.h + 1e-6, 'the box is the silhouette: nothing offset outside it');
+            }
+          }
+          if (kind !== 'thunder') continue;
+          // the gold twin: the same silhouette, discs and stops (only the colours differ)
+          const sil = (c) => c.ops.filter((o) => o.gco === 'source-over').map((o) => [...o.path[0].slice(0, 3), ...o.fill.stops.map((s) => s[0])]);
+          assert.deepEqual(sil(e.cw), sil(e.c), `${realm}: the gold twin's silhouette is the cool one's`);
+          const geom = (c) => c.ops.filter((o) => o.gco === 'source-atop' && o.op === 'fill').map((o) => o.path[0].slice(0, 3));
+          assert.deepEqual(geom(e.cw), geom(e.c), `${realm}: the lit rims sit in the same place on both`);
+        }
+        if (kind === 'thunder') {   // both blits of a puff land on the same rectangle (cross-fading in register)
+          const rect = (img) => main.ops.filter((o) => o.img === img).map((o) => o.a.join(','));
+          for (const e of list) if (e.c && e.cw && rect(e.c).length) assert.deepEqual(rect(e.cw), rect(e.c), `${realm}: the twin is blitted in register`);
+          assert.ok(main.ops.some((o) => list.some((e) => o.img === e.cw)), `${realm}: the gold twin is drawn as the storm clears`);
+        }
+      }
+    }
+  } finally {
+    if (had) Object.defineProperty(globalThis, 'document', had); else delete globalThis.document;
+  }
 });

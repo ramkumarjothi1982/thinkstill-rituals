@@ -129,11 +129,14 @@ export class CloudBank extends SimBase {
       const b = i % bands, j = Math.floor(i / bands), m = Math.ceil((n - b) / bands);
       const sp = W * (thunder ? 1.1 : 1.15) / m;
       const yc = thunder ? this.top + bh * (0.3 + 0.21 * b) : this.top + bh * 0.5;
-      let r = sp * (thunder ? 0.7 * BAND_R[b] : 0.75) * (0.92 + 0.16 * rand());
+      // the deck varies more in size and height than the heads (evenly sized and spaced, it read as a stamped row)
+      let r = sp * (thunder ? 0.7 * BAND_R[b] * (0.92 + 0.16 * rand()) : 0.75 * (0.8 + 0.42 * rand()));
       const x = -0.05 * W + sp * (j + 0.5) + (b * sp) / 3 + (rand() - 0.5) * 0.2 * sp;
-      let y = yc + (rand() - 0.5) * bh * 0.12;
-      // a wide sky: each band breaks between groups of three (a small, higher head), at different places per band
+      let y = yc + (rand() - 0.5) * bh * (thunder ? 0.12 : 0.3);
+      // a wide sky: each band breaks between groups of three (a small, higher head), at different places per band;
+      // the deck thins every fourth puff to a small high one
       if (wide && j % 4 === [3, 1, 2][b]) { r *= 0.55; y -= bh * 0.06; }
+      else if (!thunder && W > WIDE && j % 4 === 2) { r *= 0.6; y -= bh * 0.14; }
       this.band[i] = b;
       this.r[i] = r;
       this.x[i] = this.hx[i] = x;

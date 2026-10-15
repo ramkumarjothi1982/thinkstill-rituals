@@ -55,6 +55,7 @@ import { Player } from './hushbeat/player.js';
 import { Performer, Scene, Cue } from './hushbeat/performer.js';
 import { COPY } from './hushbeat/copy.js';
 import { openMusicSheet, openFriendPicker, tierBelow, tuneItem, yourTunes } from './hushbeat/sheet.js';
+import { duetLayout } from './hushbeat/stagecraft.js';
 
 export const meta = { id: 'hushbeat', title: COPY.meta };
 
@@ -141,9 +142,17 @@ export function mount(root, ctx, { handoff = null } = {}) {
   const cue = new Cue(64);   // scheduled events wait to be seen until they are heard
 
   // ---------------------------------------------------------- controls --
-  // each cue stays whole on a line; a line may break only after a separator (no-break space before the dot)
+  // each cue stays whole on a line; a line may break only after a separator (no-break space before the dot), and a
+  // separator left at the end of a line is hidden (seps())
   const hint = h('p', { class: 'hint hb-hint' },
-    ...COPY.hint.flatMap(([b, rest], i) => [i ? '\u00a0· ' : '', h('span', { class: 'hb-cue' }, h('b', {}, b), h('span', { class: 'hb-long' }, rest))]));
+    ...COPY.hint.flatMap(([b, rest], i) => [i ? h('span', { class: 'hb-sep' }, '\u00a0· ') : '', h('span', { class: 'hb-cue' }, h('b', {}, b), h('span', { class: 'hb-long' }, rest))]));
+  // a separator whose next cue starts a new line hides (it keeps its width, so nothing re-wraps)
+  const seps = () => {
+    for (const sp of hint.querySelectorAll('.hb-sep')) {
+      const a = sp.previousElementSibling, b = sp.nextElementSibling;
+      sp.style.visibility = a && b && b.offsetTop > a.offsetTop + 2 ? 'hidden' : '';
+    }
+  };
   // the tray's chips act on the target: the lead (solo), or in a duet the Mallow chosen in the
   // target control [Lead | Both | Friend]; with Both every chip plays on both (the friend harmonises)
   const chipTargets = () => (trayTarget === 'both' ? comps.slice() : [comps[trayTarget] || comps[0]]);
@@ -181,11 +190,22 @@ export function mount(root, ctx, { handoff = null } = {}) {
   });
   const row = h('div', { class: 'chips hb-row', role: 'group', 'aria-label': COPY.aria.row }, playIt, buttons, replayBtn, keepBtn, friendBtn);
   s.bottom.append(hint, tray, row);
-  // a single-row tray (short screens) fades its edges while there is more to scroll
+  // a single-row tray (short screens) fades its edges while there is more to scroll; each fade ends on a whole chip
+  // (it covers the chip the edge cuts, so no half a word is left at the edge)
   const edges = () => {
-    const max = tray.scrollWidth - tray.clientWidth;
-    tray.classList.toggle('fade-l', max > 2 && tray.scrollLeft > 2);
-    tray.classList.toggle('fade-r', max > 2 && tray.scrollLeft < max - 2);
+    const max = tray.scrollWidth - tray.clientWidth, l = max > 2 && tray.scrollLeft > 2, r = max > 2 && tray.scrollLeft < max - 2;
+    tray.classList.toggle('fade-l', l);
+    tray.classList.toggle('fade-r', r);
+    if (!l && !r) return;
+    const box = tray.getBoundingClientRect();
+    let fl = 0, fr = 0;
+    for (const c of tray.children) {
+      const q = c.getBoundingClientRect();
+      if (l && q.left < box.left + 1 && q.right > box.left) fl = Math.max(fl, q.right - box.left);
+      if (r && q.right > box.right - 1 && q.left < box.right && !fr) fr = box.right - q.left;
+    }
+    tray.style.setProperty('--hb-fade-l', `${Math.round(Math.max(fl, 16))}px`);
+    tray.style.setProperty('--hb-fade-r', `${Math.round(Math.max(fr, 16))}px`);
   };
   tray.addEventListener('scroll', edges, { passive: true });
 
@@ -205,11 +225,53 @@ export function mount(root, ctx, { handoff = null } = {}) {
   function target() { const i = stages.indexOf(document.activeElement); return comps[i > 0 ? i : 0]; }
   const slotOf = (c) => Math.max(0, comps.indexOf(c));
 
-  // each stage's place in the screen (the effects layer covers the screen); after every reframe
-  function onLayout() {
+  // each stage's place in the screen (the effects layer covers the screen); after every reframe. A duet is
+  // framed first (stagecraft.js): the stages close in and the world comes closer, so both stand on its prop
+  let ground = 0, craft = null, craftSig = '';   // ground: the realm's ground line (0..1), from the first reframe (it mounts there)
+  const SOLO = '0px 0px 0px 0px';
+  let worldSig = SOLO, worldQ = false;          // the world's frame the realm was last built for
+  function onLayout(L) {
     if (gone) return;
+    if (!ground && L?.baseline) ground = L.baseline;
+    if (s.partner) frameDuet(); else if (worldSig !== SOLO) reframeWorld();
+    if (!s.partner && L) fitSolo(L);
+    seps();
     const sr = s.screen.getBoundingClientRect();
     for (let i = 0; i < stages.length; i++) { const r = stages[i].getBoundingClientRect(); offs[i].x = r.left - sr.left; offs[i].y = r.top - sr.top; }
+  }
+  // each stage's width and the world's frame for this screen, through two custom properties (styles/hushbeat.css);
+  // only a change touches the DOM (the stages' resize reframes once more and lands here with the same answer)
+  function frameDuet() {
+    const W = s.screen.clientWidth, H = s.screen.clientHeight;
+    if (!W || !H) return;
+    craft = duetLayout({ realm: s.env.realmId, W, H, ground: ground || 0.84, cap: W >= 900 ? Math.min(W / 2, 440) : W / 2 });
+    const w = craft.world, world = `${w.top}px ${w.right}px ${w.bottom}px ${w.left}px`, sig = `${craft.w} ${world}`;
+    if (sig !== craftSig) {
+      craftSig = sig;
+      s.screen.style.setProperty('--hb-stage-w', `${craft.w}px`);
+      s.screen.style.setProperty('--hb-world', world);
+    }
+    if (world !== worldSig) reframeWorld();
+  }
+  // a short landscape screen: the rig's own height rule (H × (fit + 0.06)) would draw a solo Mallow on the wide stage
+  // at two thirds of the size stage-screen frames it at (half the free band); ask for the fit that gives that size
+  function fitSolo({ W, H, band, fit }) {
+    if (H > 460 || W < 1.5 * H) return;
+    const size = Math.min(0.64 * W, 0.58 * band), want = Math.max(size / W, size / H - 0.06);
+    if (want > fit + 1e-3) s.companion.setLayout({ fit: want });
+  }
+  // the world framed anew: a fresh realm at the new size (the same mood and transform), so nothing the old one had
+  // in the air (ripple rings, drops) stays at the old frame's coordinates. Once, after the swap that changed it
+  function reframeWorld() {
+    if (worldQ) return;
+    worldQ = true;
+    queueMicrotask(() => {
+      worldQ = false;
+      const sig = s.partner && craftSig ? craftSig.slice(craftSig.indexOf(' ') + 1) : SOLO;
+      if (gone || sig === worldSig) return;
+      worldSig = sig;
+      s.env.remount();
+    });
   }
 
   // a kept tune from home "For you": its pace is already set and its friend joins (no hello: nothing
@@ -876,7 +938,8 @@ export function mount(root, ctx, { handoff = null } = {}) {
           keep: !keepBtn.hidden, keepLabel: keepBtn.textContent, keepPressed: keepBtn.getAttribute('aria-pressed'),
           tray: !tray.hidden, targets: targetSeg ? [...targetSeg.querySelectorAll('button')].map((b) => b.textContent) : null,
         },
-        duet: performers[1] ? { entering: !!entering, watching: performers.map((p) => !!p.watch), fading: s.screen.classList.contains('hb-fading'), stages: stages.length } : null,
+        duet: performers[1] ? { entering: !!entering, watching: performers.map((p) => !!p.watch), fading: s.screen.classList.contains('hb-fading'), stages: stages.length,
+          frame: craft && { w: craft.w, body: Math.round(craft.body), zoom: +craft.zoom.toFixed(3), world: { ...craft.world }, ground: +ground.toFixed(4) } } : null,
       };
     },
     replay() { if (!engine.replaying) toggleReplay(); },

@@ -3,8 +3,11 @@
    Every selector starts with .hushbeat; element classes use hb-, custom properties --hb-.
    The two sheets open inside the screen, so they take the realm's chrome tones and these rules. */
 
-/* top bar: the subtitle stays on one line ("Boppo & Loomi · Visual only") */
+/* top bar: the subtitle stays on one line ("Boppo & Loomi · Visual only"); over a world it takes the second ink and
+   the hint's tight halo, so it reads on a bright sky as well as the title does (≥ 4.5:1 against its halo) */
 .hushbeat .topbar .title small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hushbeat[data-backdrop] .topbar .title small { color: var(--text-2); font-weight: 500;
+  text-shadow: 0 0 1px var(--ink-0), 0 0 2px var(--ink-0), 0 0 4px var(--ink-0), 0 1px 10px var(--ink-0); }
 
 /* the one glass row of controls, centred under the Mallow */
 .hushbeat .hb-row { max-width: min(560px, 100%); justify-content: center; }
@@ -25,6 +28,17 @@
   border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; opacity: 0.7; transition: background var(--t-fast), opacity var(--t-fast); }
 .hushbeat .chip.hold.active::before { background: currentColor; opacity: 1; }
 
+/* keyboard focus on a stage: the lab's soft frame, inset further from both bars (20 px, never crowding the title or
+   the controls) and softer, a glow round a fine ring rather than a hard box (a duet's stage is tall and narrow) */
+.hushbeat .stage:focus-visible::after { left: 16px; right: 16px; top: calc(var(--band-top, 64px) + 20px); bottom: calc(var(--band-bottom, 120px) + 20px);
+  border-radius: 28px; box-shadow: 0 0 0 2px var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 14px 3px color-mix(in srgb, var(--accent) 24%, transparent),
+    inset 0 0 26px color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* while a sheet is open the controls step back (a centred card on a wide screen would leave them peeking out beside it) */
+.hushbeat .bottom { transition: opacity 200ms var(--ease-out); }
+.hushbeat:has(.sheet.on) .bottom { opacity: 0; }
+
 /* the margins beside a duet's stages (wide and landscape screens) never scroll or zoom the page either */
 .hushbeat .stage-wrap { touch-action: none; }
 
@@ -39,6 +53,15 @@
 /* the gesture tray: wraps on tall screens, one scrolling row on short ones, an even grid on phones (below) */
 .hushbeat .hb-tray { max-width: min(560px, 100%); align-items: center; }
 .hushbeat .hb-tray[hidden] { display: none; }
+/* a scrolling tray's edge fades end on a whole chip: --hb-fade-l / -r (set by the feature) span the chip the edge cuts,
+   and the fade runs over the 12 px before it (the gap and the next chip's padding), so no half a word shows */
+.hushbeat .hb-tray.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - var(--hb-fade-r, 16px) - 12px), transparent calc(100% - var(--hb-fade-r, 16px)));
+  mask-image: linear-gradient(90deg, #000 calc(100% - var(--hb-fade-r, 16px) - 12px), transparent calc(100% - var(--hb-fade-r, 16px))); }
+.hushbeat .hb-tray.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent var(--hb-fade-l, 16px), #000 calc(var(--hb-fade-l, 16px) + 12px));
+  mask-image: linear-gradient(90deg, transparent var(--hb-fade-l, 16px), #000 calc(var(--hb-fade-l, 16px) + 12px)); }
+.hushbeat .hb-tray.fade-l.fade-r {
+  -webkit-mask-image: linear-gradient(90deg, transparent var(--hb-fade-l, 16px), #000 calc(var(--hb-fade-l, 16px) + 12px), #000 calc(100% - var(--hb-fade-r, 16px) - 12px), transparent calc(100% - var(--hb-fade-r, 16px)));
+  mask-image: linear-gradient(90deg, transparent var(--hb-fade-l, 16px), #000 calc(var(--hb-fade-l, 16px) + 12px), #000 calc(100% - var(--hb-fade-r, 16px) - 12px), transparent calc(100% - var(--hb-fade-r, 16px))); }
 /* a duet's target [Lead | Both | Friend] leads the tray; its own track sets it apart from the actions */
 .hushbeat .hb-target { flex: none; flex-wrap: nowrap; margin-right: 2px; }
 .hushbeat .seg button { min-height: 40px; }
@@ -46,6 +69,12 @@
 /* replaying: the stage tint deepens a little while the Mallow sings the take back */
 .hushbeat .stage-tint { transition: opacity 600ms var(--ease-out); }
 .hushbeat.replaying .stage-tint { opacity: 0.7; }
+
+/* a duet: the two stages meet in the middle, each --hb-stage-w wide, and the world (the realm's container) is
+   framed closer by --hb-world, so both Mallows stand on the world's stage prop (both set by stagecraft.js) */
+.screen.hushbeat[data-layout="duet"] .stage.lead { left: calc(50% - var(--hb-stage-w, 50%)); right: 50%; }
+.screen.hushbeat[data-layout="duet"] .stage.partner { left: 50%; right: calc(50% - var(--hb-stage-w, 50%)); }
+.screen.hushbeat[data-layout="duet"] .stage-wrap { inset: var(--hb-world, 0); }
 
 /* a friend arrives or leaves: the stages and their light fade out over 160 ms and back over 280 ms
    (opacity only: no canvas is resized frame by frame) */
@@ -60,7 +89,7 @@
 .hushbeat .hb-sheet .hb-volume { width: clamp(120px, 38vw, 200px); min-height: 40px; }
 /* a label and its control share the line while they fit; the sub-text wraps first */
 .hushbeat .hb-sheet .row:not(.stack) > .lbl { flex: 1 1 150px; min-width: 0; }
-.hushbeat .hb-sheet .row .sub { margin-top: 2px; line-height: 1.35; }
+.hushbeat .hb-sheet .row .sub { margin-top: 2px; line-height: 1.35; text-wrap: pretty; }   /* no word left alone on a line */
 .hushbeat .hb-sheet .seg { flex: none; }
 .hushbeat .hb-tunes { display: flex; flex-direction: column; gap: 6px; outline: none; }
 .hushbeat .hb-tune { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 6px 6px 12px; border-radius: var(--r-md); background: var(--seg-track); }
@@ -119,17 +148,24 @@
   .hushbeat .hb-tray .hb-target { grid-column: 1 / -1; justify-self: center; margin: 0; }
 }
 /* short landscape: the tray and the row share one line when they fit (the tray scrolls), so the Mallows keep their size;
-   with the tray open the row is icon-only (names stay as aria-label and title) so the tray's actions show. A duet's
-   two stages close in around the middle (the Mallows keep their size: here height limits them) */
+   with the tray open the row is icon-only (names stay as aria-label and title) so the tray's actions show. A solo
+   Mallow is drawn at the size stage-screen frames it at (fitSolo in the feature) */
 @media (max-height: 460px) and (min-aspect-ratio: 3/2) {
-  .hushbeat .bottom { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; }
+  /* 12 px of air (pointer-events none) above the controls lifts the floor, so the world's prop clears them */
+  .hushbeat .bottom { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; padding-top: 12px; }
   .hushbeat .hb-tray { flex: 1 1 260px; min-width: 0; max-width: max-content; }   /* never wider than its chips */
   .hushbeat .hb-row { flex: none; }
   .hushbeat.hb-tray-on .hb-row .chip { width: 40px; padding: 0; justify-content: center; }
   .hushbeat.hb-tray-on .hb-row .chip span { display: none; }
   .hushbeat .hb-tray .chip { padding-left: 9px; padding-right: 9px; }
-  .screen.hushbeat[data-layout="duet"] .stage.lead { left: calc(50% - min(50%, 240px)); right: 50%; }
-  .screen.hushbeat[data-layout="duet"] .stage.partner { left: 50%; right: calc(50% - min(50%, 240px)); }
+}
+/* a small short landscape screen (568×320): tighter spacing, so a solo tray keeps all six chips beside the row with
+   Replay and Keep (a duet's tray, with its target, still scrolls) */
+@media (max-height: 460px) and (min-aspect-ratio: 3/2) and (max-width: 640px) {
+  .hushbeat .hb-tray { gap: 2px; }
+  .hushbeat .hb-tray .chip { padding-left: 6px; padding-right: 6px; }
+  .hushbeat .hb-tray .chip.hold::before { margin-right: 4px; }
+  .hushbeat .hb-row { gap: 2px; }
 }
 @media (max-height: 360px) {
   .hushbeat .hb-buttons, .hushbeat .hb-keep, .hushbeat .hb-friend-btn { width: 40px; padding: 0; justify-content: center; }

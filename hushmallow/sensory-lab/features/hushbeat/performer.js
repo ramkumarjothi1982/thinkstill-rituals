@@ -462,8 +462,13 @@ export class Scene {
     }
   }
 
+  // a point of the effects layer (screen px) in the realm's own frame: a duet frames the world larger than the screen
   _norm(x, y) {
-    const L = this.layer;
+    const L = this.layer, rc = this.env?.realm?.canvas;
+    if (L?.canvas && rc) {
+      const a = L.canvas.getBoundingClientRect(), b = rc.getBoundingClientRect();
+      if (b.width && b.height) return { nx: clamp((a.left + x - b.left) / b.width, 0, 1), ny: clamp((a.top + y - b.top) / b.height, 0, 1) };
+    }
     return { nx: clamp(x / (L?.W || 1), 0, 1), ny: clamp(y / (L?.H || 1), 0, 1) };
   }
 

@@ -165,6 +165,32 @@ async function resolvedView(page) {
     chips: [...document.querySelectorAll('.wx-actions button')].map((b) => b.textContent), p: __lab.weather.progress }));
 }
 
+// ------------------------------------------------------ thunderhead edges --
+// visual QA: a puff is one crisp body. Up each column from under the bank to the first solid pixel of
+// .wx-back, then down to where it is clear again: that ramp is the puff's lower edge. Blurred or ghosted
+// puffs (a second copy offset beside the body) ramp over 7–22 px; one firm edge over about 3. Runs in the page.
+function puffEdges() {
+  const c = document.querySelector('.weather canvas.wx-back'), k = c.width / c.clientWidth;
+  const cl = __lab.weather.sims.clouds, y0 = Math.max(0, Math.round(cl.top * k)), y1 = Math.min(c.height, Math.round((cl.bottom + 60) * k));
+  const w = c.width, h = y1 - y0, cp = document.createElement('canvas');   // a copy, so the app's canvas is never read back
+  cp.width = w; cp.height = h;
+  const g = cp.getContext('2d', { willReadFrequently: true });
+  g.drawImage(c, 0, y0, w, h, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data, out = [];
+  for (let x = 6; x < w - 6; x += 3) {
+    let y = h - 1;
+    while (y > 0 && d[(y * w + x) * 4 + 3] < 235) y--;
+    if (y <= 0) continue;
+    let e = y;
+    while (e < h - 1 && d[(e * w + x) * 4 + 3] > 20) e++;
+    out.push(e - y);
+  }
+  out.sort((a, b) => a - b);
+  const q = (f) => out[Math.min(out.length - 1, Math.floor(f * out.length))];
+  return { n: out.length, med: q(0.5), p80: q(0.8), k: +k.toFixed(2) };
+}
+const crispEdges = (e) => e.n >= 20 && e.med <= 3 * e.k + 2 && e.p80 <= 4 * e.k + 2;
+
 // ------------------------------------------------------- photosafety probe --
 // spec §13 lumaProbe: every frame, the realm and weather canvases composited at 32×18; per frame the mean
 // relative luminance (0..1) of the whole frame and of each quadrant. Runs in the page; __probe.stop() → samples.
@@ -474,6 +500,12 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await page.keyboard.press('ArrowLeft');
     const r2 = await ring();
     check(scope, 'deep link: no focus frame around the scene until a key is pressed (none after a drag either); the first key shows it', r0.focused && r0.content === 'none' && r1.content === 'none' && r2.focused && r2.content !== 'none', JSON.stringify([r0, r1, r2]));
+    // visual QA: a pointer press in the world quiets it again (a swipe after a key leaves no frame round the scene); the next key brings it back
+    await drag(page, line(gq.W * 0.7, gq.skyTop + 40, gq.W * 0.85, gq.skyTop + 60, 4), 16);
+    const r3 = await ring();
+    await page.keyboard.press('ArrowRight');
+    const r4 = await ring();
+    check(scope, 'after a key, a press in the sky quiets the stage ring again, and the next key shows it', r3.focused && r3.content === 'none' && r4.focused && r4.content !== 'none', JSON.stringify([r3, r4]));
     noErrors(scope, errors);
   });
 
@@ -489,6 +521,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const g = await wx(page, () => __lab.weather.geo());
     const before = await wx(page, () => ({ m: __lab.weather.metrics(), mood: __lab.weather.env.mood, realm: __lab.weather.realmId, puffs: __lab.weather.layer.stats().drawn.puffs }));
     check(scope, 'Storm in the Static Storm: a heavy bank drawn, agitation capped at 0.32', before.realm === 'static-storm' && before.m.coverage > 0.85 && before.puffs > 0 && before.mood.agitation <= 0.32 + 1e-6, JSON.stringify(before));
+    const edge0 = await wx(page, puffEdges);
+    check(scope, 'each thunderhead is one crisp body: its edge goes from clear to solid within a few px (visual QA)', crispEdges(edge0), JSON.stringify(edge0));
     // a click on Glitzi is TouchTalk: the Companion's tap; the weather tools never see it (W7)
     await H.clearEvents(page);
     const ev0 = await wx(page, () => __lab.weather.events.length);
@@ -509,6 +543,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'Glitzi reacts to the gap in character', after.log.slice(tags0).some((e) => /gap/.test(e.tag)), JSON.stringify(after.log));
     check(scope, 'light reaches the Mallow through the gap', after.m.light > 0.3 && after.ev.includes('light-through'), JSON.stringify({ light: after.m.light }));
     check(scope, 'input isolation: the Companion saw no drag or stroke from the swipes', !after.comp.some((t) => t === 'drag' || t === 'stroke' || t === 'tap'), JSON.stringify(after.comp));
+    const edge1 = { ...await wx(page, puffEdges), warm: await wx(page, () => __lab.weather.layer.scene.storm.warm) };
+    check(scope, 'parted, with the gold twin cross-fading in, the edges stay single and crisp (in register; visual QA)', edge1.warm > 0.01 && crispEdges(edge1), JSON.stringify(edge1));
     await H.shot(page, out, 'weather-phone-storm-parted');
     // a strike (forced now rather than waiting 8–14 s of sim time)
     await H.clearEvents(page);
@@ -1032,6 +1068,18 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'wiping clears the mist (fogClear ↑) and the realm clears (clarity target ↑)', f1.m.fogClear > 0.08 && f1.mood.clarity > f0.mood.clarity + 0.02, JSON.stringify({ f0: f0.mood, f1: f1.mood, fc: f1.m.fogClear }));
     check(scope, 'a wipe near Loomi reveals it', f1.ev.includes('revealed'), JSON.stringify(f1.ev));
     await H.shot(page, out, 'weather-phone-fog-wiped');
+    // visual QA: the mist's top row carries on up under the top bar with no seam where the field begins (wiped too)
+    const seam = await wx(page, () => {
+      const c = document.querySelector('.weather canvas.wx-back'), k = c.width / c.clientWidth, y0 = __lab.weather.sims.mist.grid.y0;
+      const cp = document.createElement('canvas'); cp.width = c.width; cp.height = 12;
+      const g = cp.getContext('2d', { willReadFrequently: true });
+      g.drawImage(c, 0, Math.round((y0 - 6) * k), c.width, 12, 0, 0, c.width, 12);
+      const d = g.getImageData(0, 0, c.width, 12).data, w = c.width;
+      let max = 0;
+      for (let x = 4; x < w - 4; x += 4) max = Math.max(max, Math.abs(d[(1 * w + x) * 4 + 3] - d[(10 * w + x) * 4 + 3]));
+      return { y0, max };
+    });
+    check(scope, 'no seam where the mist begins under the top bar, after a wipe too (alpha step ≤ 16 of 255)', seam.max <= 16, JSON.stringify(seam));
     // a still finger grows a clear patch
     const hp = [g.W * 0.78, g.skyTop + 150];
     const h0 = await wx(page, (p) => __lab.weather.sims.mist.grid.sample(p[0], p[1]), hp);
@@ -2071,17 +2119,40 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         await settled(page, entry);
         await sleep(900);   // the arrival hint is up from 0.8 s
         await H.shot(page, out, `weather-${vp}-layout-${entry}`);
-        const bases = {};
-        let inView = true;
+        const bases = {}, dialWhy = [];
+        let inView = true, wholeDial = true;
         for (const w of DIAL) {
           await wx(page, (w) => __lab.weather.setWeather(w, { instant: true }), w);
           await settled(page, w);
           bases[w] = await wx(page, () => __lab.companion.rig.BASE.toFixed(1));
           inView = inView && await wx(page, () => { const dial = document.querySelector('.wx-dial'), r = dial.getBoundingClientRect(), b = dial.querySelector('[aria-checked="true"]').getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1; });
-          if (w === 'storm') { await H.layout(page, sc, { scrollers: ['.wx-dial', '.wx-actions'] }); await sleep(300); await H.shot(page, out, `weather-${vp}-layout-storm`); }
+          // visual QA: the dial rests on whole radios (none cut in half at the pill's end) and shows a cue when it scrolls
+          const dw = await wx(page, () => {
+            const dial = document.querySelector('.wx-dial'), r = dial.getBoundingClientRect();
+            const cut = [...dial.querySelectorAll('.wx-radio')].map((b) => { const q = b.getBoundingClientRect(); return Math.max(0, Math.min(q.right, r.right - 1) - Math.max(q.left, r.left + 1)) / q.width; })
+              .filter((f) => f > 0.15 && f < 0.85).length;
+            const scrolls = dial.scrollWidth > dial.clientWidth + 1;
+            return { cut, scrolls, cue: dial.classList.contains('fade-l') || dial.classList.contains('fade-r') };
+          });
+          wholeDial = wholeDial && !dw.cut && (!dw.scrolls || dw.cue);
+          if (dw.cut || (dw.scrolls && !dw.cue)) dialWhy.push({ w, ...dw });
+          if (w === 'storm') {
+            await H.layout(page, sc, { scrollers: ['.wx-dial', '.wx-actions'] }); await sleep(300); await H.shot(page, out, `weather-${vp}-layout-storm`);
+            // visual QA: the hint sits in the same band as the title, so its ink follows the title's over a storm bank
+            const ink = await wx(page, () => ({ bar: document.querySelector('.weather .topbar').classList.contains('wx-ink-light'), hint: document.querySelector('.weather .wx-hint').classList.contains('wx-ink-light'), tone: document.querySelector('.weather').dataset.backdrop }));
+            check(sc, 'Storm: the hint takes the same ink as the title (light over a dark bank in a bright realm)', ink.bar === ink.hint && (ink.tone !== 'light' || ink.bar), JSON.stringify(ink));
+            // visual QA: a wrapped subtitle puts the world on its own line (no dot left dangling), and the hint keeps clear of it
+            const sub = await wx(page, () => {
+              const el = document.querySelector('.weather .topbar .title small'), sep = el.querySelector('.wx-sep'), lh = parseFloat(getComputedStyle(el).lineHeight) || 17;
+              const r = el.getBoundingClientRect(), hr = document.querySelector('.weather .wx-hint').getBoundingClientRect();
+              return { lines: Math.round(r.height / lh), sep: sep ? getComputedStyle(sep).display !== 'none' : null, gap: Math.round(hr.top - r.bottom), text: el.textContent };
+            });
+            check(sc, 'Storm: the subtitle never ends a line on its dot, and the hint sits ≥ 14 px under it', (sub.lines < 2 || sub.sep === false) && sub.gap >= 14 && / · /.test(sub.text), JSON.stringify(sub));
+          }
         }
         const rows = await wx(page, () => [...document.querySelectorAll('.weather .bottom > *')].map((e) => Math.round(e.getBoundingClientRect().height)));
         check(sc, 'the chosen radio stays in view for every weather; both bottom rows 50 px', inView && rows.join() === '50,50', JSON.stringify({ inView, rows }));
+        check(sc, 'the dial always rests on whole radios, with an edge cue whenever it scrolls (visual QA)', wholeDial, JSON.stringify(dialWhy));
         check(sc, 'the baseline is the same for all eight weathers', new Set(Object.values(bases)).size === 1, JSON.stringify(bases));
         // the resolve beat's caption and line (Rain, caught): on screen, clear of the chrome, ≥ 14 px
         await wx(page, () => __lab.weather.setWeather('rain', { instant: true }));

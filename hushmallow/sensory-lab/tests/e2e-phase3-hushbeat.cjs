@@ -203,6 +203,33 @@ async function invite(page, id) {
   await page.click(`.hushbeat .hb-friend[data-mallow="${id}"]`);
   await duetReady(page, 2);
 }
+/**
+ * Both Mallows stand on the world's stage prop (the QA's floating duet): measured against the live realm (its
+ * canvas, its own W × H and ground line) with the prop's half-width from stagecraft.js (whose numbers the unit
+ * tests check against src/world/realms). Each body's sides keep inside the prop's top, and its feet are on the prop's
+ * ground line (feet 'line', the tray closed) or on its top face (feet 'top': a tray sharing the row's line lifts them a
+ * few px, within the face's depth); feet false: not checked. Records the checks under scope and returns the measurements.
+ */
+async function onProp(page, scope, { feet = 'line' } = {}) {
+  const m = await hb(page, async () => {
+    const S = await import(new URL('features/hushbeat/stagecraft.js', location.href).href);
+    const realm = __lab.stage?.env?.realm;
+    if (!realm) return null;
+    const st = realm.debug.state, rc = realm.canvas.getBoundingClientRect(), k = rc.width / st.W;
+    const P = S.pedestalHalf(st.id, st.W, st.H) * k, cx = rc.left + (st.W / 2) * k, gy = rc.top + st.groundY * st.H * (rc.height / st.H);
+    const bodies = __lab.companions().map((c) => {
+      const r = c.rig, o = r.container.getBoundingClientRect(), b = r.bodyRect();
+      return { id: r.id, l: Math.round(o.left + b.cx - b.w / 2), r: Math.round(o.left + b.cx + b.w / 2), w: Math.round(b.w), feet: Math.round(o.top + r.BASE) };
+    });
+    return { realm: st.id, P: Number.isFinite(P) ? Math.round(P) : null, cx: Math.round(cx), gy: Math.round(gy), bodies, frame: __lab.hushbeat.debug().duet?.frame };
+  });
+  if (!check(scope, 'a duet over a realm', m && m.bodies.length === 2, JSON.stringify(m))) return m;
+  const on = m.P == null || m.bodies.every((b) => b.l >= m.cx - m.P - 1 && b.r <= m.cx + m.P + 1);
+  check(scope, 'both Mallows stand on the world\'s prop: each body inside its top (none hangs off its edge)', on, JSON.stringify(m));
+  const tol = feet === 'top' ? Math.max(3, 0.15 * (m.P ?? 20)) : 3;   // the top face's depth is a quarter of its half-width
+  if (feet) check(scope, feet === 'top' ? 'both Mallows\' feet are on the prop\'s top face' : 'both Mallows\' feet are on the prop\'s ground line', m.bodies.every((b) => Math.abs(b.feet - m.gy) <= tol), JSON.stringify({ tol, ...m }));
+  return m;
+}
 /** Open a sheet with its button and wait for it to slide in. */
 async function openSheetBy(page, sel) {
   await page.click(sel);
@@ -1918,6 +1945,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         await sleep(500);
         const inStage = await hb(page, () => { const st = [...document.querySelectorAll('.hushbeat .stage')]; return __lab.companions().map((c, i) => { const r = c.rig.bodyRect(), w = st[i].clientWidth; return r.cx - r.w / 2 >= -1 && r.cx + r.w / 2 <= w + 1; }); });
         check(`${sc}:duet-tray`, 'each Mallow inside its own stage', inStage.length === 2 && inStage.every(Boolean), JSON.stringify(inStage));
+        // an open tray lifts the Mallows clear of it in portrait (the prop stays under the tray); in short landscape it shares the row's line
+        await onProp(page, `${sc}:duet-tray`, { feet: (vp === 'land' || vp === 'land-small') && 'top' });
         if (vp === 'land' || vp === 'land-small') {
           // short landscape: the two stages close in around the middle; with the tray open the row is icon-only
           const lg = await hb(page, () => {
@@ -1936,11 +1965,22 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         await page.click('.hushbeat .hb-buttons');
         await sleep(500);
         await H.layout(page, `${sc}:duet`, { scrollers: ['.hb-tray'] });
+        await onProp(page, `${sc}:duet`);
         await shot(page, out, `hushbeat-${vp}-duet`);
         // Sound and pace (in a duet it has every row)
         await openSheetBy(page, '.hushbeat .hb-music');
         await sheetLayout(page, `${sc}:sheet`);
         await shot(page, out, `hushbeat-${vp}-sheet`);
+        if (vp === 'land') {
+          // alone again: the world is framed as it was solo (the realm's canvas is the screen again)
+          await page.keyboard.press('Escape');
+          await sheetGone(page);
+          await hb(page, () => __lab.hushbeat.setFriend(null, { instant: true }));
+          await duetReady(page, 1);
+          await sleep(600);   // the realm repaints at its new size on its next frame
+          const wd = await hb(page, () => { const r = __lab.stage.env.realm.canvas.getBoundingClientRect(), st = __lab.stage.env.realm.debug.state; return { r: [r.left, r.top, r.width, r.height].map(Math.round), st: [st.W, st.H], W: innerWidth, H: innerHeight }; });
+          check(`${sc}:alone`, 'alone again, the world is framed as solo (its canvas is the screen)', wd.r.join() === `0,0,${wd.W},${wd.H}` && wd.st.join() === `${wd.W},${wd.H}`, JSON.stringify(wd));
+        }
         noErrors(sc, errors);
       } finally { await ctx.close(); }
     }

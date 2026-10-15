@@ -44,13 +44,16 @@ export function weatherDial(order, value, onPick) {
     el.classList.toggle('fade-l', el.scrollLeft > 2);
     el.classList.toggle('fade-r', max - el.scrollLeft > 2);
   };
-  // keep the chosen radio in view without scrolling the page (scrollIntoView would)
+  // keep the chosen radio in view without scrolling the page (scrollIntoView would), clear of the edge fade, and
+  // come to rest on whole radios (a step of one radio at a time), so no icon is ever cut in half at the pill's end
   const keep = () => {
-    const b = btns[order.indexOf(cur)];
-    if (!b || el.scrollWidth <= el.clientWidth) { fades(); return; }
-    const L = b.offsetLeft, R = L + b.offsetWidth;
-    if (L - 10 < el.scrollLeft) el.scrollLeft = Math.max(0, L - 10);
-    else if (R + 10 > el.scrollLeft + el.clientWidth) el.scrollLeft = R + 10 - el.clientWidth;
+    const b = btns[order.indexOf(cur)], max = el.scrollWidth - el.clientWidth;
+    if (!b || max <= 0) { fades(); return; }
+    const L = b.offsetLeft, R = L + b.offsetWidth, x0 = el.scrollLeft, step = btns.length > 1 ? btns[1].offsetLeft - btns[0].offsetLeft : b.offsetWidth;
+    let x = x0;
+    if (L - 12 < x0) x = Math.floor((L - 12) / step) * step;
+    else if (R + 12 > x0 + el.clientWidth) x = Math.ceil((R + 12 - el.clientWidth) / step) * step;
+    el.scrollLeft = Math.max(0, Math.min(max, x));
     fades();
   };
   const set = (w) => {

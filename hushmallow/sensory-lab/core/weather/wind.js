@@ -185,6 +185,8 @@ export class WindField {
 }
 
 // ---------------------------------------------------------------- ribbons --
+export const RIB_STIFF = 0.3;   // ribbon bending stiffness per link (0 = a free chain, which folds into hooks)
+
 export class Ribbons extends SimBase {
   constructor({ tier = 'medium', seed = 1 } = {}) {
     super();
@@ -260,9 +262,16 @@ export class Ribbons extends SimBase {
         this.qx[k] = this.px[k]; this.qy[k] = this.py[k];
         this.px[k] += this.vx[k] * dt; this.py[k] += this.vy[k] * dt;
       }
-      // follow the leader: each link back to its length (unconditionally stable)
+      // follow the leader: each link back to its length (unconditionally stable), first eased toward running
+      // straight on from the link before (a little bending stiffness: silk bends in arcs, never folds into a hook)
       for (let j = 1; j < this.segs; j++) {
-        const k = b + j, dx = this.px[k] - this.px[k - 1], dy = this.py[k] - this.py[k - 1], d = Math.hypot(dx, dy) || 1e-6;
+        const k = b + j;
+        let tx = this.px[k], ty = this.py[k];
+        if (j >= 2) {
+          const ex = this.px[k - 1] - this.px[k - 2], ey = this.py[k - 1] - this.py[k - 2], el = Math.hypot(ex, ey) || 1e-6;
+          tx += (this.px[k - 1] + (ex / el) * L - tx) * RIB_STIFF; ty += (this.py[k - 1] + (ey / el) * L - ty) * RIB_STIFF;
+        }
+        const dx = tx - this.px[k - 1], dy = ty - this.py[k - 1], d = Math.hypot(dx, dy) || 1e-6;
         this.px[k] = this.px[k - 1] + (dx / d) * L; this.py[k] = this.py[k - 1] + (dy / d) * L;
         this.vx[k] = (this.px[k] - this.qx[k]) / dt; this.vy[k] = (this.py[k] - this.qy[k]) / dt;
       }

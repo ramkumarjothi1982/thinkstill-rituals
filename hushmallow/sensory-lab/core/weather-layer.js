@@ -128,15 +128,16 @@ export class WeatherLayer {
     this.frames++;
   }
 
-  // a tiny canvas the size of a FieldGrid (one putImageData a frame, drawn scaled up)
+  // a tiny canvas the size of a FieldGrid (one putImageData a frame, drawn scaled up), and a one-row canvas
+  // for its top row (stretched up under the top bar: a row of the big one would bleed the next row in)
   _tiny(name, grid) {
     let t = this._tinies[name];
     if (!t || t.c.width !== grid.cols || t.c.height !== grid.rows) {
-      if (t) { t.c.width = 0; t.c.height = 0; }
-      const c = document.createElement('canvas');
-      c.width = grid.cols; c.height = grid.rows;
+      if (t) { t.c.width = 0; t.c.height = 0; t.row.width = 0; t.row.height = 0; }
+      const c = document.createElement('canvas'), row = document.createElement('canvas');
+      c.width = grid.cols; c.height = grid.rows; row.width = grid.cols; row.height = 1;
       const g = c.getContext('2d');
-      t = this._tinies[name] = { c, g, img: g ? g.createImageData(grid.cols, grid.rows) : null };
+      t = this._tinies[name] = { c, g, img: g ? g.createImageData(grid.cols, grid.rows) : null, row, rg: row.getContext('2d') };
     }
     return t;
   }
@@ -254,7 +255,7 @@ export class WeatherLayer {
     this.front = null;
     freeSprites(this.sp);
     this.sp = null;
-    for (const k in this._tinies) { const t = this._tinies[k]; t.c.width = 0; t.c.height = 0; }
+    for (const k in this._tinies) { const t = this._tinies[k]; t.c.width = 0; t.c.height = 0; t.row.width = 0; t.row.height = 0; }
     this._tinies = {};
     this.scene = null;
   }

@@ -162,7 +162,7 @@ export class Puddles {
       const room = k ? this.W - rx - 4 >= want : want - rx - 4 >= 0;
       const x = room ? want : clamp(want, rx * 0.55, this.W - rx * 0.55);
       const under = Math.abs(x - body.cx) < w * 0.3;   // mostly under the Mallow: no puddle there
-      this.e[4 * k] = x; this.e[4 * k + 1] = (floorY ?? body.bottom) - ry * 0.4;
+      this.e[4 * k] = x; this.e[4 * k + 1] = (floorY ?? body.bottom) + ry * 0.3;   // on the ground just in front of the base line
       this.e[4 * k + 2] = under ? 0 : rx; this.e[4 * k + 3] = under ? 0 : ry;
     }
     return this;

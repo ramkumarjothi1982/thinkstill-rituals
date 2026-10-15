@@ -57,7 +57,11 @@ controls if there is room, else above it), because the weather canvas is behind 
 water** chip sends one from alternating sides; the first time there is water, a one-time hint says so, and it
 waits its turn: never while another hint, a caption or a front is showing (`hintLine().busy`), and not within
 4 s of a weather change, so it never cuts the instruction for the weather just picked.
-**Puddles** appear in dry realms after rain, either side of the Mallow, and ripple when touched.
+**Puddles** appear in dry realms after rain, either side of the Mallow on the ground just in front of its base
+line, and ripple when touched. Each is soft-edged water (no outline): the sky's light in a bright middle, a darker
+wet rim, a sheen along the far side (white over a bright sky) and one gentle glint. Where the shown swell row runs
+under the Mallow, it passes behind the pedestal or pad the Mallow stands on (clipped out over 1.24 × its body
+width), so only open water shows it.
 
 Pick order for a claimed pointer: a held object, then the light pool (within 1.4 r), a deck puff (Rain),
 the water band or a puddle (12 px of hysteresis at the horizon), then the lead tool. During a front,
@@ -86,7 +90,7 @@ a pointer that `rig.hitTest` places on the body).
 | `features/weather/tools.js` | `createTools(api)`: pointers → sim operations and weather events; the chips' alternatives and arrow keys. |
 | `features/weather/ui.js` | `weatherDial`, `actionRow`, `hintLine`, `WEATHER_ICONS`. |
 | `styles/weather.css` | Scoped `.weather` styles (two fixed 50 px bottom rows, chips, dial, hint). |
-| `tests/weather.test.mjs` | Unit tests U1–U19, and R1–R6 for the third review's findings. |
+| `tests/weather.test.mjs` | Unit tests U1–U19, R1–R6 for the third review's findings, and R7 for the visual QA pass. |
 | `tests/e2e-phase3-weather.cjs` | Browser tests (blocks listed in §10). |
 
 Paint order, back to front: the realm canvas and `canvas.wx-back` (in `.stage-wrap`), `.stage-tint`, the
@@ -192,21 +196,36 @@ new WeatherLayer({ wrap, screen, quality, reducedMotion, palette })
 `drawConstellations`, `drawBeam`, `drawPool`, `drawHalo`, `drawGlitter`, `drawField`, `drawDew`,
 `drawRibbons`, `drawFluffs`, `drawWater` (with `swellRow`), `drawPuddles`, `drawEmbers`, `drawTrail`, `drawGroundGlow`.
 None allocates per frame (one beam gradient a frame is the only exception); mist and haze are one tiny
-`putImageData` each, and their top row carries on up under the top bar, so no seam shows where the field begins.
-Each puff is composited once into its own sprite (its three passes over its sub-blobs, its lit rim and flat
-shaded base; a gold-lit twin is made only once a storm starts to clear; the long side capped at `PUFF_CAP`
-400 device px), rebuilt when the bank's `ver` changes or the sprites are rebuilt for a realm or DPR, so a puff
-costs one blit a frame (two while the gold cross-fades in) instead of 15–28.
+`putImageData` each, and their top row carries on up under the top bar from a one-row canvas of its own (a 1-px
+source rect of the grid canvas is filtered with the row under it, which drew a seam where the field begins once a
+wipe had cleared that second row), so no seam shows.
+Each puff is composited once into its own sprite, as **one body**: its silhouette is drawn once (the union of its
+sub-blobs as discs in the lit colour, with a firm, narrowly feathered edge: `puffFeather`, 2 % of a sub-blob for
+a thunderhead and 10 % for the deck, never under `PUFF_EDGE_PX` 1.5 sprite px), and everything after it is drawn
+inside it (`source-atop`): the body over each lobe shifted down-right, so each lobe's upper edge stays lit (the
+rim, in register), then light along the top and a flat darker base, each easing in over two stops (a linear ramp
+from flat colour drew a line). Nothing is drawn outside the silhouette, so the sprite's box is the silhouette's
+own (plus a pixel). The gold-lit twin, made only once a storm starts to clear, repeats exactly this geometry with
+the gold colours, so the two cross-fade in register. The long side is capped at `PUFF_CAP` 400 device px; a sprite
+is rebuilt when the bank's `ver` changes or the sprites are rebuilt for a realm or DPR, so a puff costs one blit a
+frame (two while the gold cross-fades in). (The review round's version drew three offset passes of stretched
+blob bitmaps per puff; their soft edges and the lit pass sticking out above the body read as blurred, ghosted
+puffs with a second copy offset beside each one, and the gold twin as out of register.)
 
-Look notes (from the slice-5 screenshot review and the third review): thunderheads use a firmer blob edge than
-the deck (a puff can span half a phone, and soft edges at that size read as smoke), a lit upper rim and a darker
-flat base, sizes by depth (back band ×1.15, front ×0.85) and a cool silver-lavender rim in every realm (a
-festival's gold glow mixed into violet-grey read as a dirty tan rim); the rim turns gold only as a storm
-clears. On a wide sky (over 700 px) the thunder band is no deeper than a third of the screen and each band
-breaks between groups of three (a smaller, higher head, at a different place in each band), so the sky shows
-through. Rain over a bright sky is a soft slate, never ink. Ribbons are silk bands (a wide sheen, a body, a fine
-light edge, and over a bright sky a soft edge of the realm's deep colour under them) anchored at evenly spread
-heights; their heads follow the wind more (×0.6) and the head nearest a drawing finger follows it. Light beams
+Look notes (from the slice-5 screenshot review, the third review and the visual QA pass): thunderheads have a
+firm edge (a puff can span half a phone, and a soft edge at that size reads as smoke), a lit upper rim inside
+each lobe and a darker flat base, sizes by depth (back band ×1.15, front ×0.85) and a cool silver-lavender rim in
+every realm (a festival's gold glow mixed into violet-grey read as a dirty tan rim); the rim turns a bright gold
+lining only as a storm clears. On a wide sky (over 700 px) the thunder band is no deeper than a third of the
+screen and each band breaks between groups of three (a smaller, higher head, at a different place in each band),
+so the sky shows through. The rain deck is softer-edged low cloud whose puffs vary in size (0.8–1.22×) and height
+(±15 % of its band), and on a wide sky every fourth is a small, high one, so it never reads as a stamped row; over
+a bright sky it is a cool soft slate with a silver rim (the realm's warm sky and gold glow mixed in read as a muddy
+brown band with ochre rims). Rain over a bright sky is a soft slate, never ink. Ribbons are wide soft silk bands
+(a 20 px sheen, a 9 px body, a fine light edge, and over a bright sky a broad, faint shadow of the realm's deep
+colour under them: a narrow one read as an outline) anchored at evenly spread heights; each link is eased toward
+running straight on from the one before (`RIB_STIFF` 0.3), so they bend in arcs and never fold into hooks; their
+heads follow the wind more (×0.6) and the head nearest a drawing finger follows it. Light beams
 feather (three nested quads under the one gradient) and fade out at the pool's near edge. Stars carry two or
 three brighter guide stars, and a loose star's halo grows smoothly with its twinkle (no size pop). In Warm glow
 the Mallow is the hearth from the start: a low ember glow behind it and on the ground at its feet, a warm haze
@@ -353,7 +372,7 @@ and the Mallow's signature particles.
 
 | Mallow | Loves | Wary of | Home | Some of its own beats |
 |---|---|---|---|---|
-| Glitzi | Storm, Wind | Sunshine | Storm | strikes delight it (a glitch burst, never a flinch); drops make it huff; basks proudly, then is caught enjoying it |
+| Glitzi | Storm, Wind | Sunshine | Storm | strikes delight it (a glitch burst, never a flinch); drops make it huff; basks proudly, then is caught enjoying it; the storm passing gets a proud sparkle and its shards (its glitchy celebrate hid its eyes and mouth just as the caption appears) |
 | Blubi | Rain, Moonlight | Storm, Fog | Rain | drops make it blush; relieved tears when light reaches it after a strike; melts in moonlight |
 | Zuzu | Starlight, Wind | — | Starlight | spins faster in the wind, dizzy in a fast eddy; counts drops; stares at its reflection when a swell arrives |
 | Boppo | Sunshine, Warm glow | Storm | Sunshine | the brightest bask; hops in the puddles twice when the rain stops; bounces when light reaches it |
@@ -425,16 +444,24 @@ the reactor nods instead of hopping; `rig.nudge` is ×0.25. Direct manipulation 
   person ("Rain at the Raindrop Lagoon. Hold to catch it.", "The clouds are opening.", "Light reaches
   Boppo.", "The storm passed."). The visible hint is `aria-hidden`, so nothing is read twice.
 - Chrome follows the realm's tone (`data-backdrop`); the title, subtitle, hint and caption carry a tight halo
-  in the backdrop's ink under the soft glow, and the subtitle, hint, caption and line are never under 14 px (a
-  long world name wraps evenly onto a second line at 320–390 px). In a bright realm, when a storm bank or a
-  dark front fills the top band (darkness over 0.5, back under 0.35), the title and subtitle take the dark
-  backdrop's light ink and halo (`.topbar.wx-ink-light`); the chips and dial keep the realm's, over the still
-  bright ground.
+  in the backdrop's ink under the soft glow, and the subtitle, hint, caption and line are never under 14 px. The
+  subtitle is "{Weather} · {World}" (the same text for screen readers); the world name never breaks, and where the
+  subtitle has to wrap (320 px) the world takes its own line without the dot, so no separator dangles, and the hint
+  steps down 10 px to keep clear of it (`.wx-two`, `.wx-sub-two`, measured on every change and layout). The Mallow's
+  line under a caption wraps balanced, so its name never sits alone on the second line. In a bright realm, when a
+  storm bank or a dark front fills the top band (darkness over 0.5, back under 0.35), the title, subtitle and the
+  hint and caption under them take the dark backdrop's light ink and halo (`.topbar.wx-ink-light`,
+  `.wx-hint.wx-ink-light`); the chips and dial keep the realm's, over the still bright ground.
+- At 320 px eight 40 px radios cannot fit: the dial shows exactly seven whole radios, scrolls one radio at a time
+  to keep the chosen one clear of the edge, and a narrow 12 px fade on the side that has more says so without
+  cutting an icon in half at the pill's end.
 - The stage is focused on arrival so the keys work at once, but its focus ring (lab.css draws it on
   `.stage:focus-visible::after`) waits for the first key (`.wx-quiet-focus .stage:focus-visible::after
   { content: none }`): Chrome shows `:focus-visible` for a script's focus before any click, which on a deep
-  link framed the whole screen in the accent colour. After a rebuild only the chip that took focus by itself
-  ignores presses for 0.7 s (a key still held from the old chip); a chip the person moves to answers at once.
+  link framed the whole screen in the accent colour. A pointer press in the world quiets it again until the next
+  key (after a digit, a swipe left the whole scene framed like a selected box). After a rebuild only the chip that
+  took focus by itself ignores presses for 0.7 s (a key still held from the old chip); a chip the person moves to
+  answers at once.
 
 ---
 
@@ -491,7 +518,7 @@ the hint and announcer, `wsound.end()` (the brush, then the bed), `reactor.destr
 
 ```
 cd /home/user/thinkstill-rituals
-node --test hushmallow/sensory-lab/tests/weather.test.mjs                      # U1–U19, R1–R6 (Node, no DOM)
+node --test hushmallow/sensory-lab/tests/weather.test.mjs                      # U1–U19, R1–R7 (Node, no DOM)
 node --test hushmallow/sensory-lab/tests/*.test.mjs                             # the whole unit suite
 python3 -m http.server 8000                                                     # from the repository root
 node hushmallow/sensory-lab/tests/e2e-phase3-weather.cjs [outDir]               # every browser block
@@ -519,11 +546,12 @@ state with generous limits, and nothing relies on frame counts.
 | R4 | a morph's parting is drawn only: coverage untouched, puffs drawn away from the centre, closed again on re-entry, none with reduced motion |
 | R5 | the light-through puff is let go; the hearth is a tap in the fair; gentle festival constellations, gifts and resolves are taps |
 | R6 | the swell row is clear of the Mallow in all three water realms; two or three guide stars; the first constellation forms above the Mallow |
+| R7 | (visual QA) each puff is one crisp body: through a recording canvas, every puff sprite's silhouette is its sub-blobs drawn first as discs with a firm edge (thunderheads ≤ 4 sprite px of feather, the deck ≤ 12 % of a sub-blob), no stretched bitmaps, nothing but `source-atop` after it, nothing outside its box; the gold twin has the same silhouette and rims and is blitted on the same rectangle |
 
 | Browser block | Proves (spec §13) |
 |---|---|
-| `open` | W1: opens from the home card and a deep link; on a deep link the stage's focus ring waits for the first key |
-| `storm`, `rain`, `sun`, `moon`, `stars`, `wind`, `fog`, `warm`, `water` | W4, W6, W7: each interaction, its consequences, the Mallow, the alternatives (Storm: sideways swipes part it too; water: the pushed swell shows on the strip below the Mallow) |
+| `open` | W1: opens from the home card and a deep link; on a deep link the stage's focus ring waits for the first key, and a press in the sky quiets it again until the next |
+| `storm`, `rain`, `sun`, `moon`, `stars`, `wind`, `fog`, `warm`, `water` | W4, W6, W7: each interaction, its consequences, the Mallow, the alternatives (Storm: sideways swipes part it too, and each thunderhead is one crisp body, fresh and with the gold twin cross-fading in: the *edge* probe; fog: no seam where the mist begins, after a wipe too; water: the pushed swell shows on the strip below the Mallow) |
 | `front`, `morph` | W8: covered swaps, chips under cover, drags, turns, the three morphs; Storm → Sunshine → Storm finds the storm untouched |
 | `resolve` | W15: the resolve beat and Again |
 | `motion` | W9, W12: reduced motion (fade front, same mood targets, live toggle); a hidden page freezes and releases |
@@ -535,7 +563,7 @@ state with generous limits, and nothing relies on frame counts.
 | `mallows` | W17: all seven Mallows' entry weather, home arrival, and different readings of one strike |
 | `access` | labels, the radiogroup, the announcer, keyboard holds, focus onto Again, repeats |
 | `tier` | a live quality drop sheds bed layers, the front canvas and pools; nothing grows back |
-| `layout` | W13: at all six viewports (390×844, 375×812, 320×568, 412×915, 1280×860, 844×390): no overlap, on screen, targets ≥ 40 px, the Mallow between the bars, the chosen radio in view, the same baseline for all eight weathers; the resolve caption and the Mallow's line on screen, clear of the chrome, at ≥ 14 px |
+| `layout` | W13: at all six viewports (390×844, 375×812, 320×568, 412×915, 1280×860, 844×390): no overlap, on screen, targets ≥ 40 px, the Mallow between the bars, the chosen radio in view, the dial resting on whole radios with an edge cue when it scrolls, the same baseline for all eight weathers; in Storm the hint's ink follows the title's and the subtitle never ends a line on its dot; the resolve caption and the Mallow's line on screen, clear of the chrome, at ≥ 14 px |
 | `states` | W2: every radio in turn settles in its realm at `moodFor`'s target, the Mallow answers within 2 s, and the world is not a recolour of the last (the colour-residual probe > 12, with its self-check) |
 | `reach` | W4: one gesture per weather; the realm's answer beyond the touch box + 60 px (stills at the target before and after), the swell along the water for waves |
 | `touch` | W5, W7: every interaction by CDP touch, the two-finger spread at its midpoint, a tap on the Mallow is TouchTalk; no page scroll or zoom |
@@ -554,6 +582,10 @@ state with generous limits, and nothing relies on frame counts.
   the touch box + 60 px; the same target painted twice diffs exactly 0. Waves change no mood, so they diff the
   lab layer's water band against a no-touch control instead.
 - *Luminance* (W10): see §7.
+- *Edge* (visual QA): up each column of `.wx-back` (read from a copy) from under the bank to the first solid
+  pixel, then down to where it is clear again: that ramp is a puff's lower edge. One firm edge ramps over about
+  3 px; the blurred, ghosted sprites of the review round ramped over 7–22. The check: median ≤ 3k + 2 and 80th
+  percentile ≤ 4k + 2 device px (k = canvas px per CSS px).
 
 **Touch in the harness.** CDP delivers one touch event per rendered frame, and software GL renders a few
 frames a second, so a first move sent a frame after the down reaches the page after the 220 ms hold threshold
