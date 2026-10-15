@@ -477,7 +477,7 @@ test('Loomi on the concerned stage never grins, and its rest face matches the ar
   assert.equal(P.tongue, 0);
   // the recorded sweeps (lab and app, tools/hires/lab/loomi-sweep.cjs), run against exactly today's table and files
   const J = JSON.parse(readFileSync(new URL('../tools/hires/data/loomi-sweep.json', import.meta.url), 'utf8'));
-  assert.equal(J.fingerprint, loomiFingerprint(), 'Loomi\'s table or images changed since the sweep: re-run it (docs/workstreams/hires-loomi.md)');
+  assert.equal(J.fingerprint, loomiFingerprint(), 'Loomi\'s table or images changed since the sweep: re-run it (hushmallow/docs/workstreams/hires-loomi.md)');
   // the rest-jump metric of the lab (README table): high-res Loomi vs the old drawing
   assert.ok(J.jump.new.mean < J.jump.old.mean && J.jump.new.mean < 5, `rest jump ${J.jump.new.mean}`);
   assert.equal(J.overflow.new.worstPx, 0, 'no drawn face pixel outside the body, any preset, stage or reaction');

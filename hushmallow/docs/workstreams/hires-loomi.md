@@ -35,7 +35,10 @@ Loomi now runs on the owner-approved browless cyan drawing. It is the sixth Mall
   - old drawing: 300.8 ms mean, p95 350;
   - high-res: 313.0 ms mean, p95 367.
   - That is +4%, consistent with a body about 16% wider. This container renders GL in software (SwiftShader), so the absolute numbers say nothing about phones; check on a real device.
-- **Test suite:** `hires.test.mjs` 18/18. The full suite result is filled in below.
+- **Test suite:**
+  - `hires.test.mjs`: 18/18.
+  - The full suite (`node --test hushmallow/tests/*.test.mjs`) was re-run on 643e33c, with nothing in the tree changing during the run: **1109/1109 pass**.
+  - The commits after it change only comments, examples and docs; `hires.test.mjs` passes 18/18 on them.
 
 ## Screenshots (`docs/workstreams/hires-loomi/`, before | after)
 
@@ -70,7 +73,19 @@ An adversarial subagent reviewed the work, and nothing it found was Critical.
 | 11 | Low | The drawn face lines are flatter than the painted ones | Shared rig style, the same on Noomi; not in scope |
 | 12 | Low | Pipzi is the last Mallow on its old drawing | Pipzi's own branch |
 
-Re-check verdict: filled in below.
+**Re-check verdict: ready to merge.** Nothing at Medium or above is left.
+- The re-check confirmed fixes F2, F3, F4 and F7-F10.
+- It measured the arched brows in the app at 390 and at 320 (text 1.25, reduced motion):
+  - concerned: browAlpha 0.42, smile 0.18, mouth 0.02;
+  - sad, anxious and angry: proper sloped brows, well inside the body.
+- It re-ran overflow for all seven Mallows: 0.
+
+Its remaining Lows:
+- **Fixed:** the doc path (now `hushmallow/docs/...`), and the documented examples that now need `&hires=0` (pair, jump with kind=old).
+- **Left as they are:**
+  - Recording the sweep is a manual step: the JSON is put together by hand, and the fingerprint does not hash `expressions.js`, `reactions.js` or `rig.js`.
+  - The concerned mouth peaks at 0.104 against the 0.11 threshold. It is held by the rig's 0.1 limit, so the margin is spring overshoot only.
+  - The brows on the concerned stage look faint and slightly grey, the same treatment as Noomi's.
 
 ## For the coordinator
 
