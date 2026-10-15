@@ -11,16 +11,19 @@
 //
 // Photosafe by construction: twinkles vary by at most 15 % at ≤ 0.5 Hz, a
 // firefly glint is ≤ 15 % over ≥ 600 ms, and every brightening is eased.
-// Fixed pools, cached glow sprites, no allocation per frame.
+// Fixed pools, cached glow sprites, no allocation per frame. The light's
+// sprites stay on the five authored Light steps (setTone): an in-between
+// temperature is drawn as its two neighbouring steps, weighted, so easing the
+// Light never builds new canvases.
 //
 //   const sky = new NightSky(s.screen, { before: s.stage, quality, motion: 'gentle', seed });
 //   sky.configure(MODES.drift.sky);
-//   sky.setLight(look.light, look.star); sky.setLevels(look.haloAlpha, levels.world); sky.setBody(rig.bodyRect(b));
+//   sky.setTone(glowHex, temp); sky.setLevels(look.haloAlpha, levels.world); sky.setBody(rig.bodyRect(b));
 //   sky.frame(dt);                          // on every rig tick: steps, and draws when dirty
 
 import { EffectsLayer, glowSprite, glowBlend, surfaceTone } from '../../core/effects.js';
 import { MOTION_RULES } from './settings.js';
-import { mixHex } from './look.js';
+import { mixHex, lightColour, tempStep, TEMPS } from './look.js';
 import { clamp, rng, TAU, approach } from '../../core/math.js';
 
 /** Pool sizes per lab tier (counts never grow past these). */
@@ -38,6 +41,8 @@ export const BREATH_LAG = 0.3;               // the halo follows the breath this
 const FIREFLY_HEX = '#fff0a6';
 const CLOUD_HEX = '#2c2a54';
 const EMPTY = Object.freeze({ halo: 0, pool: 0, twinkles: 0, fireflies: 0, clouds: 0, animated: false });
+const AMTS = Object.freeze(['halo', 'pool']);
+const HALO_OPTS = Object.freeze({ core: 0.85 }), PLAIN = Object.freeze({});
 
 export class NightSky {
   /**
@@ -55,6 +60,8 @@ export class NightSky {
     this.cfg = EMPTY;
     this.amt = { halo: 0, pool: 0 };
     this.light = '#ffd29a'; this.star = '#f4f1ff'; this.ffHex = mixHex(FIREFLY_HEX, this.light, 0.3);
+    this.lightA = this.light; this.lightB = this.light; this.lightF = 0;   // the halo and pool: two steps, weighted
+    this._tone = { glow: null, steps: [], i: -1, f: 0, at: { i: 0, f: 0 } };
     this.haloAlpha = 0; this.stars = 1; this.haloGain = 1;
     this.breath = null; this.breathShown = 0;
     this.body = { cx: 0, top: 0, bottom: 0, mid: 0, w: 0, h: 0 };
@@ -76,7 +83,7 @@ export class NightSky {
   /** Does the sky move by itself (else it is drawn only when something changes)? */
   get animated() { return !!(this.cfg.animated && this.rules.animated); }
 
-  /** A mode's mix: { halo, pool (0..1 amounts), twinkles, fireflies, clouds (counts), animated }. Items cross-fade. */
+  /** A mode's mix: { halo, pool (amounts: 1 is the usual light, Moonlight's own glow goes above), twinkles, fireflies, clouds (counts), animated }. Items cross-fade. */
   configure(cfg = EMPTY) { this.cfg = { ...EMPTY, ...cfg }; this._dirty = true; }
 
   setMotion(m) { this.motion = m; this.rules = MOTION_RULES[m] || MOTION_RULES.gentle; this._dirty = true; }
@@ -88,10 +95,32 @@ export class NightSky {
     this._dirty = true;
   }
 
-  /** The light (halo, pool) and twinkle colours. */
+  /** One light colour for the halo and pool, and the twinkle colour (setTone is the screen's way). */
   setLight(light, star = this.star) {
-    if (light === this.light && star === this.star) return;
+    if (light === this.light && star === this.star && this.lightF === 0 && this.lightA === light) return;
     this.light = light; this.star = star; this.ffHex = mixHex(FIREFLY_HEX, light, 0.3);
+    this.lightA = this.lightB = light; this.lightF = 0; this._tone.glow = null;
+    this._dirty = true;
+  }
+
+  /**
+   * The light by its parts: the Mallow's glow colour and the Light setting (0 Moon … 1 Ember). The halo and
+   * pool draw the two authored steps around `temp`, weighted (under additive light an exact blend of
+   * lightColour(glow, temp)); twinkles and fireflies take the nearest step. So the sprite cache holds at
+   * most five light colours per glow, however the Light eases.
+   */
+  setTone(glowHex, temp) {
+    const T = this._tone;
+    if (glowHex !== T.glow) {
+      T.glow = glowHex; T.i = -1;
+      for (let k = 0; k < TEMPS.length; k++) T.steps[k] = lightColour(glowHex, k / (TEMPS.length - 1));
+    }
+    const at = tempStep(temp, T.at);
+    if (at.i === T.i && Math.abs(at.f - T.f) < 1e-4) return;
+    T.i = at.i; T.f = at.f;
+    this.lightA = T.steps[at.i]; this.lightB = T.steps[at.i + 1]; this.lightF = at.f;
+    const near = at.f < 0.5 ? this.lightA : this.lightB;
+    if (near !== this.light) { this.light = near; this.star = mixHex('#f4f1ff', near, 0.25); this.ffHex = mixHex(FIREFLY_HEX, near, 0.3); }
     this._dirty = true;
   }
 
@@ -159,7 +188,7 @@ export class NightSky {
     this.t += d;
     const cfg = this.cfg, k = d / XFADE_S;
     // cross-fades toward the mode's mix
-    for (const key of ['halo', 'pool']) {
+    for (const key of AMTS) {
       const goal = cfg[key] || 0, cur = this.amt[key];
       if (cur !== goal) { this.amt[key] = goal > cur ? Math.min(goal, cur + k) : Math.max(goal, cur - k); dirty = true; }
     }
@@ -211,14 +240,12 @@ export class NightSky {
     const ha = this.haloAlpha * this.amt.halo * this.haloGain * bk;
     if (ha > 0.004 && b.w > 0) {
       const R = clamp(Math.max(b.w, b.h) * 0.92, 60, 460), r = R * scale;
-      g.globalAlpha = clamp(ha, 0, 1);
-      g.drawImage(glowSprite(this.light, R, { core: 0.85 }), b.cx - r, b.mid - r, r * 2, r * 2);
+      this._light(g, clamp(ha, 0, 1), R, HALO_OPTS, b.cx - r, b.mid - r, r * 2, r * 2);
     }
     const pa = this.haloAlpha * this.amt.pool * this.haloGain * 0.9;
     if (pa > 0.004 && b.w > 0) {
       const R = clamp(b.w * 0.9, 50, 420);
-      g.globalAlpha = clamp(pa, 0, 1);
-      g.drawImage(glowSprite(this.light, R), b.cx - R, b.bottom - R * 0.2, R * 2, R * 0.4);
+      this._light(g, clamp(pa, 0, 1), R, PLAIN, b.cx - R, b.bottom - R * 0.2, R * 2, R * 0.4);
     }
     // twinkles: soft points high in the sky, never faster than 0.5 Hz or more than 15 %
     const depth = TWINKLE.depth * this.rules.twinkle;
@@ -248,6 +275,7 @@ export class NightSky {
   debug() {
     const vis = (list) => list.filter((x) => x.a > 0.05).length;
     return { frames: this.frames, animated: this.animated, motion: this.motion, cfg: { ...this.cfg }, halo: { amount: +this.amt.halo.toFixed(3), alpha: +this.haloAlpha.toFixed(3), gain: +this.haloGain.toFixed(3), breath: +this.breathShown.toFixed(3) },
+      light: [this.lightA, this.lightB, +this.lightF.toFixed(3)],
       twinkles: vis(this.twinkles), fireflies: vis(this.fireflies), clouds: vis(this.clouds), maxSpeed: +this.maxSpeed.toFixed(2), pool: { ...this.pool } };
   }
 
@@ -259,6 +287,13 @@ export class NightSky {
 
   // ------------------------------------------------------------ inside --
   _count(kind) { return Math.min(this.cfg[kind] || 0, this.pool[kind]); }
+
+  // a light sprite at an in-between temperature: the two neighbouring steps' sprites, weighted
+  _light(g, a, R, opts, x, y, w, h) {
+    const f = this.lightF;
+    if (f < 0.999) { g.globalAlpha = a * (1 - f); g.drawImage(glowSprite(this.lightA, R, opts), x, y, w, h); }
+    if (f > 0.001) { g.globalAlpha = a * f; g.drawImage(glowSprite(this.lightB, R, opts), x, y, w, h); }
+  }
 
   _fadeItems(list, n, k) {
     let changed = false;
@@ -275,9 +310,11 @@ export class NightSky {
     return false;
   }
 
-  // a new firefly somewhere in the lower sky, faded out (it fades in where it is)
+  // a new firefly somewhere in the lower sky, faded out (it fades in where it is); before the first step,
+  // the layer's own measure (taken in its constructor), so a wide screen never starts with them bunched left
   _spawn(f, initial = false) {
-    const R = this.rand, W = this.W || 390, H = this.H || 844;
+    const lw = this.layer.W > 1 ? this.layer.W : 0, lh = this.layer.H > 1 ? this.layer.H : 0;
+    const R = this.rand, W = this.W || lw || 390, H = this.H || lh || 844;
     f.x = 20 + R() * Math.max(1, W - 40);
     f.y = H * (0.34 + R() * 0.42);
     f.th = R() * TAU;

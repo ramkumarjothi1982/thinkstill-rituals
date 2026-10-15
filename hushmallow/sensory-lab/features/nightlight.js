@@ -36,7 +36,7 @@
 // EffectsLayer (manual), paintRealm, AmbientBed, setTrim / rest, the lab-ui
 // announcer, and core/screen-wake.js (opt-in only).
 
-import { h, icon, iconBtn, segmented, holdButton, announcer } from '../lab-ui.js';
+import { h, iconBtn, segmented, holdButton, announcer } from '../lab-ui.js';
 import { stageScreen } from './stage-screen.js';
 import { FaceMixer } from '../core/expression-engine.js';
 import { watchPresses } from '../core/pointer-router.js';
@@ -135,6 +135,9 @@ export function mount(root, ctx) {
 
   return {
     unmount() {
+      // leaving the end view any other way than Done or Escape (Android back, a swipe back) forgets the
+      // session too, so the next visit starts afresh; a reload never gets here and still shows the end view
+      if (view?.kind === 'end') clearRecord(store);
       view?.unmount();
       view = null;
       clearGlowSprites();
@@ -275,11 +278,29 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
 
   // the one contextual chip; a newer need replaces the current one until it is resolved:
   // the sound did not come back → "Tap to bring the sound back"; fading → "A little longer"; else the mode's own
-  let chipKind = null, chipEl = null, soundPaused = false;
+  let chipKind = null, chipEl = null, soundPaused = false, unguard = null;
   const wantedChip = () => (soundPaused ? 'soundBack' : state === 'fading' && clock.canExtend ? 'longer' : MODES[mode].chip);
+  // a held "Hold to breathe in" lets go (it is going, the page is hidden or loses focus): its own end runs, and with it the lead
+  const releaseChip = () => { if (chipKind === 'breathe' && chipEl?.classList.contains('active')) chipEl.dispatchEvent(new Event('pointercancel')); };
+  // the chip that replaces a held one must not take that hold's release (a touch's click, a held key's repeats):
+  // it takes input again 0.4 s after the next release
+  function guardRelease(el) {
+    let t = 0;
+    const evs = ['pointerup', 'pointercancel', 'keyup'];
+    const eat = (e) => { if (e.repeat) e.preventDefault(); };
+    const off = () => evs.forEach((k) => removeEventListener(k, end, true));
+    const end = () => { off(); t = setTimeout(() => unguard?.(), 400); };
+    unguard = () => { off(); clearTimeout(t); el.style.pointerEvents = ''; el.removeEventListener('keydown', eat); unguard = null; };
+    el.style.pointerEvents = 'none';
+    el.addEventListener('keydown', eat);
+    evs.forEach((k) => addEventListener(k, end, true));
+  }
   function setChip(kind) {
     if (kind === chipKind) return;
     const hadFocus = !!chipEl && chipEl === document.activeElement;
+    const held = chipKind === 'breathe' && !!chipEl?.classList.contains('active');
+    releaseChip();
+    unguard?.();
     chipEl?.remove();
     chipEl = null; chipKind = kind;
     if (kind === 'breathe') {
@@ -292,7 +313,9 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       // the tap itself is the gesture that lets the audio run again (lab.js unlocks on it too)
       chipEl = h('button', { type: 'button', class: 'chip nl-chip', 'data-chip': kind, onclick: () => ctx.sound.unlock() }, COPY.chips.soundBack);
     }
-    if (chipEl) { chipSlot.append(chipEl); if (hadFocus) chipEl.focus({ preventScroll: true }); }
+    if (chipEl) { chipSlot.append(chipEl); if (held) guardRelease(chipEl); if (hadFocus) chipEl.focus({ preventScroll: true }); }
+    // no chip of the mode's own: focus stays in the chrome, on the chosen mode (just before the chip in Tab order)
+    else if (hadFocus) (modeRow.querySelector('[aria-checked="true"]') || s.stage).focus({ preventScroll: true });
     status.dataset.chip = kind || '';   // narrow screens shorten the status text beside a long chip (styles)
   }
   let statusKey = '';
@@ -311,7 +334,12 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   // chrome sleep: no input for 8 s → the chrome fades (Close stays at 0.35); any input wakes it
   let lastInput = performance.now(), asleep = false;
   const wakeChrome = () => { lastInput = performance.now(); if (asleep) { asleep = false; s.screen.classList.remove('nl-asleep'); } };
-  const chromeFocused = () => { const a = document.activeElement; return !!a && (topbar.contains(a) || s.bottom.contains(a)); };
+  // keyboard focus in the chrome keeps it awake; a tapped or clicked control (Chromium focuses it) does not
+  const chromeFocused = () => {
+    const a = document.activeElement;
+    if (!a || !(topbar.contains(a) || s.bottom.contains(a))) return false;
+    try { return a.matches(':focus-visible'); } catch { return true; }
+  };
   const sleepChrome = () => { if (!asleep && !dead) { asleep = true; s.screen.classList.add('nl-asleep'); } };
   s.screen.addEventListener('focusin', wakeChrome);
 
@@ -319,7 +347,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   const presses = watchPresses(s.screen, {
     stage: s.stage, ms: 250, slop: 12,
     onBody: (p) => !!rig.soft && rig.hitTest(p.x, p.y),
-    onDown: () => { wakeChrome(); pacer.touch(); lastTouchAt = performance.now(); },
+    onDown: () => { wakeChrome(); pacer.touch(); pacer.apply(rig, capState); lastTouchAt = performance.now(); },   // the cap lifts at the touch, not on the next capped frame
     onPress: (p) => ctlEvent({ type: 'press', x: p.x, y: p.y }),
     onRelease: () => ctlEvent({ type: 'pressend' }),
     onTap: (p) => ctlEvent({ type: 'offtap', x: p.x, y: p.y }),
@@ -386,6 +414,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   }
 
   // ------------------------------------------------------------ modes --
+  const lightPt = { x: 0, y: 0 };   // api.light()'s answer, reused (read at once by the caller)
   const api = {
     id, ways, rig, companion, face, sky, world, bed, pacer, limiter, look, levels: display,
     rand: rng(hash(`night:${id}:${Math.round(clock.startedAt)}`)),
@@ -396,7 +425,8 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     inflateK: () => inflK,
     light: () => {
       const a = nw.scene.look, W = layout.W || rig.W, H = layout.H || rig.H;
-      return { x: -MARGIN + a.nx * (W + 2 * MARGIN), y: -MARGIN + a.ny * (H + 2 * MARGIN) };
+      lightPt.x = -MARGIN + a.nx * (W + 2 * MARGIN); lightPt.y = -MARGIN + a.ny * (H + 2 * MARGIN);
+      return lightPt;
     },
   };
   api.moments = new Moments(api);
@@ -441,7 +471,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   }
 
   function onKey(e, k, phase) {
-    if (phase === 'down') { wakeChrome(); pacer.touch(); lastTouchAt = performance.now(); }
+    if (phase === 'down') { wakeChrome(); pacer.touch(); pacer.apply(rig, capState); lastTouchAt = performance.now(); }
     if (leaving) return true;   // the goodnight is under way: nothing else starts
     // the sheet is open but focus is outside it (keys inside it never reach here): Escape closes it,
     // nothing else starts underneath (releases still go through, so nothing stays held)
@@ -498,7 +528,8 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
         bed.touch();
         break;
       case 'keepAwake': if (val) wakeFailed = false; syncWake(); break;
-      case 'minutes': case 'fade': clock.restart({ minutes: S.minutes, fade: S.fade }); updateStatus(); break;
+      case 'minutes': case 'fade':   // a new timer from now: the light comes back up (2 s), as after "A little longer"
+        clock.restart({ minutes: S.minutes, fade: S.fade }); display.rise(2); pacer.event(2000); updateStatus(); break;
       default: break;
     }
     sheet?.sync();
@@ -506,7 +537,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   // lab.js's own listeners run first (registered at start-up); the night tuning and Movement are re-applied after them
   const offPrefs = ctx.prefs.onChange((k) => {
     if (k === 'motion' || k === '*') applyMotion();
-    if (k === 'sound' || k === '*') { syncMute(); sheet?.sync(); }
+    if (k === 'sound' || k === '*') sheet?.sync();   // (stage-screen's Mute button follows the switch itself)
     if ((k === 'nightlight' && !settings.writing) || k === '*') {
       S = settings.reload();
       tune(); applyMotion(); ctx.sound.setTrim(S.volume); syncWake();
@@ -557,16 +588,6 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     settings.set(k, v, { persist });
     if (k === 'temp' && !live) repaintMood(true);   // released: the world takes the new Light
   }
-  // the top bar's Mute button shows the sound switch when it changes elsewhere (the sheet's Turn on, lab Settings)
-  const muteBtn = topbar.querySelector('.tb-right button[aria-label="Mute sound"]');
-  function syncMute() {
-    if (!muteBtn) return;
-    const on = ctx.prefs.get('sound') !== false;
-    if (muteBtn.getAttribute('aria-pressed') === String(!on)) return;
-    muteBtn.innerHTML = icon(on ? 'sound' : 'mute');
-    muteBtn.setAttribute('aria-pressed', String(!on));
-  }
-
   // ------------------------------------------------------------ layout and arrival --
   function onLayout(L) {
     layout.W = L.W; layout.H = L.H; layout.baseline = L.baseline;
@@ -615,7 +636,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
   function tick(dt) {
     const t = clock.sync();
     const ph = clock.phase(t);
-    if (ph === 'ended') { finish(); return; }
+    if (ph === 'ended') { if (!leaving) finish(); return; }   // a goodnight under way still goes home
     if (revealed && !leaving && ph !== state) enterPhase(ph);
     clock.levels(t, target);
     display.step(dt, target);
@@ -641,7 +662,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     ctl.tick(dt, t);
     face.apply();
     sky.setBody(stableBody());
-    sky.setLight(look.light, look.star);
+    sky.setTone(lookIn.glowHex, lookIn.temp);   // its sprites stay on the five authored steps (no new canvases per step)
     sky.setLevels(look.haloAlpha, display.world);
     sky.frame(dt);
     applyTokens();
@@ -698,8 +719,12 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
 
   // ------------------------------------------------------------ hidden and back --
   let awayAt = 0, returnedAt = 0, unveilT = 0;
+  // a held B or breath chip never hears its release once the page is hidden or loses focus: let go of it here
+  const letGo = () => { releaseChip(); ctlEvent({ type: 'lead', source: 'key', on: false }); };
+  addEventListener('blur', letGo);
   function hide() {
     if (away || dead) return;
+    letGo();
     away = true;
     awayAt = now();
     returnedAt = 0;
@@ -845,6 +870,8 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
       document.removeEventListener('resume', onVis);
       removeEventListener('pagehide', onVis);
       removeEventListener('pageshow', onVis);
+      removeEventListener('blur', letGo);
+      unguard?.();
       offPrefs(); offDna(); offSettings();
       s.screen.removeEventListener('focusin', wakeChrome);
       modeRow.removeEventListener('scroll', fades);
@@ -896,14 +923,14 @@ function endView(root, ctx, { endsAt, skipped = false, snap = null, snapBase = n
   }
   const sr = announcer(screen);
   sr.say(COPY.say.ended);
-  // nothing runs here: the audio rests (at once after a quiet end, and 2.2 s later in every case: by then
-  // the bed has faded out, and a resume the engine started on becoming visible has settled; rest() only
-  // suspends a running context). A tap here resumes the audio (lab.js), so it re-arms the rest.
+  // nothing runs here: the audio rests, at once after a quiet end, else 2.2 s later, when the bed has faded
+  // out (or a one-shot still sounding has ended). A resume the engine started on becoming visible ends in
+  // suspend once rest() has been asked for (SoundEngine, CR-N1). A tap here resumes the audio (lab.js), so it
+  // re-arms the rest.
   let restT = 0;
-  const rest = () => { restT = 0; if (![...ctx.sound.live].some((v) => !v.keep)) ctx.sound.rest(); };
+  const rest = () => { restT = 0; if ([...ctx.sound.live].some((v) => !v.keep)) return false; ctx.sound.rest(); return true; };
   const restLater = () => { clearTimeout(restT); restT = setTimeout(rest, REST_AFTER_END_MS); };
-  if (skipped) rest();
-  restLater();
+  if (!(skipped && rest())) restLater();
   // the card rests at 0.35; a touch or a key lifts it to full for 8 s
   let dimT = 0, raf = 0;
   const lift = () => { card.classList.add('lit'); clearTimeout(dimT); dimT = setTimeout(() => card.classList.remove('lit'), CARD_DIM_MS); restLater(); };

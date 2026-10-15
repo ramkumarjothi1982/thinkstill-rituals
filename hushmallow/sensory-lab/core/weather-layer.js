@@ -65,7 +65,7 @@ export class WeatherLayer {
     this.drawn = { puffs: 0, drops: 0, beads: 0, ribbons: 0, stars: 0, embers: 0, crests: 0 };
     this._go = { dpr: 1 };   // glowSprite options, reused
     this._o = { alpha: 1, warm: 0, blend: 'lighter', W: 1, H: 1, t: 0, dpr: 1, go: this._go, reduced: this.reduced, light: false, floorY: 0, horizonY: 0,
-      slant: SHAFT_SLANT, deckY: 0, aff: 0, body: null };
+      slant: SHAFT_SLANT, deckY: 0, aff: 0, body: null, bottomTop: 0, kindle: -1 };
     this._fo = { alpha: 1, body: null, fade: 0, top: null, arc: 0 };
     this._tinies = {};
     this._backItem = { step: () => true, draw: (g) => this._drawBack(g) };
@@ -146,6 +146,7 @@ export class WeatherLayer {
     o.W = s.W; o.H = s.H; o.t = s.t; o.dpr = this.back.dpr; this._go.dpr = o.dpr; o.reduced = this.reduced;
     o.blend = glowBlend(this.tone); o.light = this.tone === 'light';
     o.floorY = s.geo.floorY; o.horizonY = s.geo.horizonY; o.deckY = s.sims.rain.deckY; o.body = s.geo.body; o.aff = 0;
+    o.bottomTop = s.geo.bottomTop ?? s.H; o.kindle = s.kindleT ?? -1;
     return o;
   }
 
@@ -212,8 +213,9 @@ export class WeatherLayer {
       drawHalo(g, b, T[s.halo.kind] || T.sun, s.halo.a * fade, o, ember ? 1.25 : 0.85);   // the hearth glows wider…
       if (ember) drawGroundGlow(g, b.cx, b.bottom - 4, b.w * 1.15, T.ember, s.halo.a * fade * 0.9, o);   // …and lights the ground at its feet
     }
-    // embers and the warm ribbon a drag lays
+    // embers and the warm ribbon a drag lays; Warm glow also hazes the horizon gold
     if (sims.embers.amount > 0.001) {
+      drawGroundGlow(g, s.W / 2, s.geo.horizonY, s.W * 0.62, T.ember, 0.2 * smoothstep(0, 1, sims.embers.amount) * fade, o, Math.min(0.3, 80 / (s.W * 0.62)));
       o.aff = this._aff('warm');
       d.embers = drawEmbers(g, sims.embers, sp, o);
       o.aff = 0;

@@ -25,7 +25,10 @@
 .nightlight .topbar .title b, .nightlight .topbar .title small { text-shadow: 0 1px 10px #000; }
 .nightlight .icon-btn:focus-visible, .nightlight .chip:focus-visible, .nightlight .nl-modes button:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px; }
-.nightlight .stage:focus-visible { box-shadow: inset 0 0 0 2px rgba(232, 198, 144, 0.5); }   /* still visible, not a bright frame */
+/* keyboard focus on the stage: a faint line around the Mallow's band, not a bright frame; it dims with the chrome */
+.nightlight .stage:focus-visible { box-shadow: none; }
+.nightlight .stage:focus-visible::after { box-shadow: 0 0 0 1px rgba(232, 198, 144, 0.3); transition: opacity 1.2s ease; }
+.nightlight.nl-asleep .stage:focus-visible::after { opacity: 0.4; }
 
 /* arriving from black, leaving into black, and the veil while hidden (never a bright first frame) */
 .screen.nightlight.nl-entering { opacity: 0; }
@@ -37,7 +40,7 @@
 /* chrome sleep: after 8 s the chrome fades (layout never moves); Close stays at 0.35 and tappable;
    a tap on a faded control falls through to the stage */
 .nightlight .topbar > *, .nightlight .bottom { transition: opacity 1.2s ease; }
-.nightlight.nl-calm .topbar > *, .nightlight.nl-calm .bottom { transition-duration: 200ms; }
+.nightlight.nl-calm .topbar > *, .nightlight.nl-calm .bottom, .nightlight.nl-calm .stage:focus-visible::after { transition-duration: 200ms; }
 .nightlight.nl-asleep .topbar > *, .nightlight.nl-asleep .bottom { opacity: 0; }
 .nightlight.nl-asleep .topbar > *, .nightlight.nl-asleep .bottom, .nightlight.nl-asleep .bottom > * { pointer-events: none; }
 .nightlight.nl-asleep .topbar > :first-child { opacity: 0.35; pointer-events: auto; }
@@ -117,14 +120,13 @@
 .nightlight .nl-row-stop { justify-content: flex-start; gap: 10px; }
 .nightlight .nl-row-stop > :last-child { margin-left: 0; }
 .nightlight .nl-foot { margin: 10px 0 0; color: var(--text-3); font-size: var(--fs-micro); line-height: 1.45; }
-.nightlight .nl-foot + .nl-foot { margin-top: 4px; }
 /* Done stays at the foot of the sheet: an opaque pill on an opaque strip the full width of the sheet, so the
    rows scroll under it and never show through or beside it */
 .nightlight .sheet .done { z-index: 1; min-height: 48px; background: transparent; box-shadow: none; }
 .nightlight .sheet .done::before, .nightlight .sheet .done::after { content: ''; position: absolute; z-index: -1; pointer-events: none; }
 .nightlight .sheet .done::before { left: calc(-1 * var(--nl-pad)); right: calc(-1 * var(--nl-pad)); top: -20px; bottom: calc(-1 * var(--nl-padb));
   background: linear-gradient(rgba(11, 9, 32, 0), var(--nl-sheet) 20px); }
-.nightlight .sheet .done::after { inset: 0; border-radius: inherit; background: linear-gradient(var(--chip-on), var(--chip-on)), var(--nl-sheet); }
+.nightlight .sheet .done::after { inset: 0; height: auto; border-radius: inherit; background: linear-gradient(var(--chip-on), var(--chip-on)), var(--nl-sheet); }
 /* less motion: the sheet fades in place instead of sliding */
 .nightlight.nl-calm .sheet, .nightlight.nl-calm .sheet.on { transform: none; transition: opacity 200ms ease; }
 .nightlight.nl-calm .sheet { opacity: 0; pointer-events: none; }
@@ -140,6 +142,10 @@
   .nightlight .nl-status[data-chip]:not([data-chip=""]) .nl-st-full { display: none; }
   .nightlight .nl-status[data-chip]:not([data-chip=""]) .nl-st-time { display: inline; }
   .nightlight .nl-status[data-chip="soundBack"] .nl-st { display: none; }
+}
+/* short screens: tighter sheet rows (targets stay ≥ 40 px) */
+@media (max-height: 600px) {
+  .nightlight .nl-row { padding: 6px 0; min-height: 44px; }
 }
 /* landscape on a bedside stand: one row (modes, then the chip); the time moves into the subtitle */
 @media (max-height: 420px) {

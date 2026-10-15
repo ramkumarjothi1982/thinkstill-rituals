@@ -3,8 +3,11 @@
 //   CloudBank   puffs you can part. 'thunder': three depth bands of storm
 //               heads; a swipe parts them like curtains (opposite impulses
 //               either side of the path, a little rubber-band resistance,
-//               decisive swipes tear wider), two fingers spreading open a
-//               gap. Parted puffs drift home by ≤ 15 % over 30 s. 'deck': the
+//               decisive swipes tear wider; a sideways swipe carries the
+//               puffs ahead of the finger and parts them at the fingertip),
+//               two fingers spreading open a gap. Parted puffs drift home by
+//               ≤ 15 % over 30 s. A tier drop or a new layout never undoes what
+//               the person parted. 'deck': the
 //               low rain deck; a puff can be grabbed and pushed, and rain
 //               falls in proportion to each column's cover, so it stops
 //               under a gap.
@@ -27,6 +30,11 @@ export const PATH_R = 70;                                // a swipe reaches puff
 export const REDRIFT_TAU = 240;                          // s: 1 − e^(−30/240) ≈ 12 % back in 30 s
 export const GLOW_RISE = 0.35, GLOW_FADE = 1.2, GLOW_GAP = 1;   // s; lab cloud glows ≤ 1 a second (SHARED C6)
 export const STRIKE_MIN = 8, STRIKE_MAX = 14;            // s between storm strikes (sim time)
+export const CARRY = 1.1;                                // a sideways swipe: puffs ahead of the finger ride along (× |ux|)
+export const SIDE_SPREAD = 0.6;                          // …and part at the fingertip (spread strength × swipe strength)
+export const BAND_R = [1.15, 1, 0.85];                   // thunderhead size per band, back → front (depth)
+export const WIDE = 700;                                 // a sky wider than this leaves breaks between puff groups
+const PART_TAU = 0.5;                                    // s: the drawing-only parting of a morph eases open and back
 
 /** Cloud glow at t seconds after it began: 0 → 1 over 0.35 s (smooth), back to 0 over 1.2 s. */
 export function glowEnvelope(t) {
@@ -60,6 +68,10 @@ export class CloudBank extends SimBase {
     this.t = 0;
     this.cov0 = 1;
     this.off = 0;                                      // choreography offset (px), drawing only
+    this.part = 0;                                     // a morph's parting from the centre (0..1), drawing only
+    this.partTo = 0;
+    this.ver = 0;                                      // bumps whenever a puff's shape changes (layout, size, tier): drawing caches
+    this._shrink = false;                              // a lower tier's puff count waits for the next layout
     this._sign = -1;
     this._lastFlash = -99;
     this.wind = this.kind === 'thunder' ? 0.05 : 0.2;  // how much the wind field carries the bank
@@ -70,50 +82,81 @@ export class CloudBank extends SimBase {
   }
 
   /**
-   * Sky band {W, H, top, bottom} the bank lives in (px). Lays the puffs out afresh; a sky wider
-   * than a phone gets more puffs (up to twice the tier's count) so each head keeps a natural size.
+   * Sky band {W, H, top, bottom} the bank lives in (px). An unseen bank is laid out afresh: a sky wider
+   * than a phone gets more puffs (up to twice the tier's count) so each head keeps a natural size. A bank
+   * on screen keeps its puffs and what the person did to them: the whole bank scales to the new band (so
+   * clear() keeps its meaning), and the puff count follows at the next layout.
    */
   resize({ W, H, top, bottom } = {}) {
+    const W0 = this.W, top0 = this.top, bh0 = this.bottom - this.top;
     this.W = W || this.W; this.H = H || this.H;
     this.top = top ?? this.top; this.bottom = Math.max(this.top + 40, bottom ?? this.bottom);
-    this.n = Math.min(this.cap, Math.round(this.base * Math.max(1, this.W / PHONE_W)));
-    this._layout();
+    if (this.amount > 0) this._scale(this.W / W0, top0, (this.bottom - this.top) / bh0);
+    else { this.n = this._count(); this._layout(); }
     return this;
   }
 
-  /** Shrink the active pool for a lower tier (never grows mid-session). */
+  /** A lower tier: fewer sub-blobs at once; fewer puffs from the next layout (never grows mid-session). */
   setTier(tier) {
     const b = PUFFS[this.kind][tier];
     if (!b || b >= this.base) return this;
     this.base = b; this.tier = tier; this.blits = BLITS[tier] ?? this.blits;
-    this.n = Math.min(this.n, Math.round(b * Math.max(1, this.W / PHONE_W)));
-    this._layout();
+    this.ver++;
+    if (this.amount > 0) this._shrink = true;   // on screen: the parted bank stays as it is until it next lays out
+    else { this.n = Math.min(this.n, this._count()); this._layout(); }
     return this;
   }
 
+  _count() { return Math.min(this.cap, Math.round(this.base * Math.max(1, this.W / PHONE_W))); }
+
+  // every position, home, size and grab scaled to a new band (x by kx; y within the band by ky)
+  _scale(kx, top0, ky) {
+    if (!(kx > 0) || !(ky > 0) || (kx === 1 && ky === 1 && top0 === this.top)) return;
+    const Y = (y) => this.top + (y - top0) * ky;
+    for (let i = 0; i < this.n; i++) {
+      this.x[i] *= kx; this.hx[i] *= kx; this.r[i] *= kx; this.vx[i] *= kx;
+      this.y[i] = Y(this.y[i]); this.hy[i] = Y(this.hy[i]); this.vy[i] *= ky;
+    }
+    for (let s = 0; s < 3; s++) { this.gx[s] *= kx; this.gy[s] = Y(this.gy[s]); }
+    this.ver++;
+    this._measure();
+  }
+
   _layout() {
-    const { W, n } = this, bh = this.bottom - this.top, rand = rng(this.seed);
-    const bands = this.kind === 'thunder' ? 3 : 1;
+    const { W, n } = this, bh = this.bottom - this.top, rand = rng(this.seed), thunder = this.kind === 'thunder';
+    const bands = thunder ? 3 : 1, wide = thunder && W > WIDE;
     for (let i = 0; i < n; i++) {
       const b = i % bands, j = Math.floor(i / bands), m = Math.ceil((n - b) / bands);
-      const sp = W * (this.kind === 'thunder' ? 1.1 : 1.15) / m;
-      const yc = this.kind === 'thunder' ? this.top + bh * (0.3 + 0.21 * b) : this.top + bh * 0.5;
-      const r = sp * (this.kind === 'thunder' ? 0.7 : 0.75) * (0.92 + 0.16 * rand());
+      const sp = W * (thunder ? 1.1 : 1.15) / m;
+      const yc = thunder ? this.top + bh * (0.3 + 0.21 * b) : this.top + bh * 0.5;
+      let r = sp * (thunder ? 0.7 * BAND_R[b] : 0.75) * (0.92 + 0.16 * rand());
       const x = -0.05 * W + sp * (j + 0.5) + (b * sp) / 3 + (rand() - 0.5) * 0.2 * sp;
+      let y = yc + (rand() - 0.5) * bh * 0.12;
+      // a wide sky: each band breaks between groups of three (a small, higher head), at different places per band
+      if (wide && j % 4 === [3, 1, 2][b]) { r *= 0.55; y -= bh * 0.06; }
       this.band[i] = b;
       this.r[i] = r;
       this.x[i] = this.hx[i] = x;
-      this.y[i] = this.hy[i] = yc + (rand() - 0.5) * bh * 0.12;
+      this.y[i] = this.hy[i] = y;
       this.vx[i] = this.vy[i] = 0;
       this.seedv[i] = rand();
       this.glowT0[i] = -99;
     }
+    this.ver++;
     this._measure();
     this.cov0 = Math.max(0.05, this.coverage());
   }
 
-  /** Back to the laid-out bank (Again). */
-  reset() { this._layout(); this.grabId.fill(-1); this.grabI.fill(-1); return this; }
+  /** Back to the laid-out bank (Again, or arriving fresh), at the tier's puff count. */
+  reset() {
+    this.n = this._count(); this._shrink = false;
+    this._layout(); this.grabId.fill(-1); this.grabI.fill(-1);
+    this.part = this.partTo = 0;
+    return this;
+  }
+
+  /** A morph's parting (drawing only: coverage and progress never see it). k 1 opens from the centre; it closes when the bank enters again. */
+  apart(k = 1) { this.partTo = clamp(k, 0, 1); return this; }
 
   // ------------------------------------------------------------ touch --
   /** Index of the puff under (x, y) (its elliptical body), or −1. */
@@ -134,7 +177,7 @@ export class CloudBank extends SimBase {
   push(x0, y0, x1, y1, strength = 0.5) {
     const sx = x1 - x0, sy = y1 - y0, L = Math.hypot(sx, sy), off = this.dx();
     if (L < 1e-3) return 0;
-    const nx = -sy / L, ny = sx / L, ux = sx / L, uy = sy / L;
+    const nx = -sy / L, ny = sx / L, ux = sx / L, uy = sy / L, horiz = Math.abs(ux);
     const imp0 = 520 * Math.pow(clamp(strength, 0, 1.5), 1.2);
     let moved = 0;
     for (let i = 0; i < this.n; i++) {
@@ -146,10 +189,16 @@ export class CloudBank extends SimBase {
       let side = Math.sign(cross);
       if (!side) side = Math.sign(nx || 1) * (px < this.W / 2 ? -1 : 1);
       const imp = imp0 * f / (1 + Math.abs(this.x[i] - this.hx[i]) / (3 * r));   // rubber band
-      this.vx[i] += (nx * side + ux * 0.25) * imp;
+      // the sides part across the path; a sideways swipe also carries the puffs ahead of the finger with it
+      // (sky opens by columns, so a swipe along the bank has to move puffs along it, like a curtain)
+      const ahead = (px - x1) * ux + (py - y1) * uy > -0.5 * r;
+      this.vx[i] += (nx * side + ux * (0.25 + (ahead ? CARRY * horiz : 0))) * imp;
       this.vy[i] += (ny * side + uy * 0.25) * imp * 0.5;
       moved++;
     }
+    // …and parts them at the fingertip as it goes (from |ux| 0.5, in full by 0.95; a vertical swipe: none)
+    const k = (horiz - 0.5) / 0.45;
+    if (k > 0) this.spread(x0, y0, SIDE_SPREAD * clamp(strength, 0, 1.5) * Math.min(1, k));
     return moved;
   }
 
@@ -226,7 +275,10 @@ export class CloudBank extends SimBase {
     dt = clamp(dt, 0, 0.1);
     this.t += dt;
     this._presence(dt);
+    if (this._shrink && this.amount <= 0) { this._shrink = false; this.n = this._count(); this._layout(); }   // gone: the new tier's count
     this._choreo();
+    if (this.entering) this.partTo = 0;
+    this.part += (this.partTo - this.part) * (1 - Math.exp(-dt / PART_TAU));
     const drag = Math.exp(-dt / DRAG_TAU), home = 1 - Math.exp(-dt / REDRIFT_TAU);
     const amb = (this.reduced ? 0.3 : 1) * this.speed;
     const carry = (wind || 0) * this.wind * amb;
@@ -266,10 +318,12 @@ export class CloudBank extends SimBase {
   /** Horizontal drawing offset (0 with reduced motion: enter and leave fade in place). */
   dx() { return this.reduced ? 0 : this.off; }
 
-  /** Where to draw puff i: its position, the choreography offset and a slow ambient sway (drawing only). */
+  /** Where to draw puff i: its position, the choreography offset, a morph's parting and a slow ambient sway (drawing only). */
   drawX(i) {
-    const sway = this.reduced ? 0 : Math.sin(this.t * 0.31 * this.speed + this.seedv[i] * 6.28) * 5 * this.speed;
-    return this.x[i] + this.dx() + sway;
+    if (this.reduced) return this.x[i];
+    const sway = Math.sin(this.t * 0.31 * this.speed + this.seedv[i] * 6.28) * 5 * this.speed;
+    const part = this.part > 1e-3 ? (Math.sign(this.x[i] - this.W / 2) || (i % 2 ? 1 : -1)) * this.part * 0.6 * this.W : 0;
+    return this.x[i] + this.off + sway + part;
   }
 
   _measure() {
@@ -311,7 +365,7 @@ export class CloudBank extends SimBase {
   snapshot() {
     const puffs = [];
     for (let i = 0; i < this.n; i++) puffs.push([Math.round(this.x[i]), Math.round(this.y[i]), Math.round(this.r[i]), this.band[i]]);
-    return { kind: this.kind, n: this.n, amount: +this.amount.toFixed(3), coverage: +this.coverage().toFixed(3), clear: +this.clear().toFixed(3),
+    return { kind: this.kind, n: this.n, amount: +this.amount.toFixed(3), coverage: +this.coverage().toFixed(3), clear: +this.clear().toFixed(3), part: +this.part.toFixed(3),
       glow: +this.glow().toFixed(3), cover: Array.from(this.columnCover, (v) => +v.toFixed(2)), puffs };
   }
 }

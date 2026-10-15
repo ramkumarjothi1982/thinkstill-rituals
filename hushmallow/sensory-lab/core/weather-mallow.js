@@ -217,7 +217,7 @@ const feelOf = (id) => (Object.hasOwn(FEEL, id) ? FEEL[id] : FEEL.zuzu);
 /** Fresh reactor memory (one per Mallow screen). */
 export function createMemory() {
   return { t: 0, weather: null, lastReact: -99, lastTag: null, lastMinor: false, lastVoice: -99, lastPoke: -99, byType: {}, strikes: 0, pending: null, follow: [],
-    restKey: '', faceKey: '', inflate: 0, lastEvent: null, rainT: 0, lulled: false, lastCondT: null };
+    restKey: '', faceKey: '', inflate: 0, evInflate: 0, evInflateUntil: -1, lastEvent: null, rainT: 0, lulled: false, lastCondT: null };
 }
 
 /** The resting face for a weather at progress p (per-Mallow overrides; storm turns hopeful as it clears). */
@@ -358,7 +358,11 @@ function emit(out, r, input, mem, t, ev, gentle, reduced) {
     const px = ev.x ?? (b ? b.cx : 0), py = ev.y ?? (b ? b.top - 80 : 0);
     out.push({ type: 'peek', x: px, y: py, dur: 1.1 });
   }
-  if (r.inflate) out.push({ type: 'inflate', v: r.inflate });
+  // an event's puff (light reaching it) is a passing one: conditions let it go once its face has passed
+  if (r.inflate) {
+    mem.evInflate = r.inflate; mem.evInflateUntil = t + (r.face?.dur || 2);
+    if (r.inflate > mem.inflate) { mem.inflate = r.inflate; out.push({ type: 'inflate', v: r.inflate }); }
+  }
   if (r.lean && ev.x != null && b) out.push({ type: 'nudge', lean: Math.sign(ev.x - b.cx) * 0.3 * (input.motion ?? 1), squash: 0, shear: 0, hop: 0 });
   if (r.gazeUp && b) out.push({ type: 'gaze', x: ev.x ?? b.cx, y: Math.min(ev.y ?? b.top - 200, b.top - 120) });
   else if (ev.x != null) out.push({ type: 'gaze', x: ev.x, y: ev.y });
@@ -422,8 +426,8 @@ function condActions(input, c, mem, rnd, out, t, touched) {
   if (spin) min.spin = +spin.toFixed(2);
   if (dart) min.gazeDart = dart;
   pushFace(out, mem, min, breathRate != null ? { breathRate } : null);
-  // basking puffs the Mallow up warm
-  const inflate = c.bask ? F.bask.inflate : c.moonlit ? 0.08 : 0;
+  // basking puffs the Mallow up warm (moonlight a little); an event's puff holds only while its face lasts
+  const inflate = Math.max(c.bask ? F.bask.inflate : c.moonlit ? 0.08 : 0, t < mem.evInflateUntil ? mem.evInflate : 0);
   if (inflate !== mem.inflate) { mem.inflate = inflate; out.push({ type: 'inflate', v: inflate }); }
   // the wind leans it
   const vx = c.windAt ? c.windAt.vx || 0 : 0;

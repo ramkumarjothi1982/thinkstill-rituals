@@ -12,9 +12,11 @@
 // than wall time there (dt is capped at 0.05 s a frame).
 //
 // Blocks (slices 2 and 3):
-//   open    W1: from the home card and from #weather; rig, realm canvas, .wx-back, 8 radios, a chip
+//   open    W1: from the home card and from #weather; rig, realm canvas, .wx-back, 8 radios, a chip; on a deep
+//           link the stage's focus ring waits for the first key
 //   storm   W4/W7 (Storm): a swipe across the bank opens it (clear, gap → 'clear' pulse, the Mallow
-//           reacts, heaviness falls, light reaches the Mallow); no Companion drag or stroke; a strike
+//           reacts, heaviness falls, light reaches the Mallow); no Companion drag or stroke; a strike;
+//           sideways swipes open it too
 //   rain    W4/W6 (Rain): a still finger grows a bead; let go in the deck → 'success' pulse, less rain;
 //           a swipe leans the rain; the chip shelters the Mallow and sends its bead up
 //   sun     W4/W6 (Sunshine, Boppo): the pool burns the haze, bask (glow, blush, inflate), a sunbeam on rest,
@@ -25,16 +27,19 @@
 //   wind    W4/W6 (Wind, Loomi): a gust leans it, an eddy, calm from slow strokes, an arrow breeze, "Send a breeze", resolve
 //   fog     W4/W6 (Fog, Loomi): wipes, revealed, a hold's clear patch, arrow bands, "Clear the mist" until it lifts
 //   warm    W4/W7 (Warm glow, Pipzi): a drag kindles (taps, sparks), holding Pipzi is the hearth, the chip resolves
-//   water   W4 (waves): a drag sends a swell that reaches Loomi, "Push the water", gold swells add heat; puddles
-//           after rain in a dry realm, touched
+//   water   W4 (waves): a drag sends a swell that reaches Loomi, "Push the water" (drawn on the strip of water
+//           below Loomi, clear of the Mallow), gold swells add heat; puddles after rain in a dry realm, touched
 //   front   W8: a front's swap only under full cover, chips wait, a drag pushes it; a same-realm turn keeps the
 //           old weather while the new enters; a swipe while Storm is still entering works
-//   morph   the same-realm morphs: Rain → Starlight, Storm → Sunshine, Fog → any
+//   morph   the same-realm morphs: Rain → Starlight, Storm → Sunshine (drawn only: a quick pick back to Storm
+//           finds it untouched), Fog → any
 //   resolve the resolve beat and Again for Storm and Rain (caption, line, chip, the bank drifts off)
 //   motion  W9/W12 (part): reduced motion (a fading front, reduced flags, same mood targets, live
 //           toggle); a hidden page freezes frames and sim time and lets go of a held bead
 //   dial    W2 (part): every weather from the dial settles in pickRealm's realm with moodFor's target
-//   keys    W3: digits from the stage, arrows in the dial, R is Again
+//   keys    W3: digits from the stage (and after a mouse pick), arrows in the dial, R is Again; a press in the sky
+//           takes focus back from a clicked radio; Enter on the chosen radio is not Again; a held W lets go
+//           on a window blur; a grab cursor over touchable weather
 //   exit    W14 (part): Close and Escape fade home; nothing left behind; listeners back to baseline
 //   layout  W13 (part): no overlap, on screen, targets ≥ 40 px, the Mallow between the bars, the
 //           chosen radio visible at 320 px, the same baseline for every weather
@@ -459,6 +464,16 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const d = await wx(page, () => ({ w: __lab.weather.weather, realm: __lab.weather.realmId, backdrop: document.querySelector('.weather').dataset.backdrop }));
     check(scope, 'opens from #weather too (the entry weather of the home realm)', d.w === 'rain' && d.realm === 'raindrop-lagoon' && d.backdrop === 'dark', JSON.stringify(d));
     await H.shot(page, out, 'weather-phone-open');
+    // a deep link focuses the stage by script, which Chrome shows as :focus-visible: the ring (lab.css draws it on
+    // ::after) waits for the keyboard, through a drag in the sky, and comes with the first key
+    const ring = () => wx(page, () => { const st = document.querySelector('.weather .stage'); return { focused: document.activeElement === st, content: getComputedStyle(st, '::after').content }; });
+    const r0 = await ring();
+    const gq = await wx(page, () => __lab.weather.geo());
+    await drag(page, line(gq.W * 0.15, gq.skyTop + 40, gq.W * 0.3, gq.skyTop + 60, 4), 16);
+    const r1 = await ring();
+    await page.keyboard.press('ArrowLeft');
+    const r2 = await ring();
+    check(scope, 'deep link: no focus frame around the scene until a key is pressed (none after a drag either); the first key shows it', r0.focused && r0.content === 'none' && r1.content === 'none' && r2.focused && r2.content !== 'none', JSON.stringify([r0, r1, r2]));
     noErrors(scope, errors);
   });
 
@@ -505,6 +520,14 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const st = await wx(page, () => ({ ev: __lab.weather.events.filter((e) => e.type === 'strike'), pulses: __lab.weather.pulses.filter((p) => p.kind === 'strike'), log: __lab.weather.reactor.log.map((e) => e.tag), W: __lab.weather.geo().W }));
     const sx = st.ev[0]?.x / st.W;
     check(scope, 'a strike: realm bolt on the far horizon, away from the Mallow, and Glitzi delights', st.pulses.some((p) => p.ok) && (sx <= 0.31 || sx >= 0.69) && st.log.some((t) => t === 'glitzi-strike-delight'), JSON.stringify(st));
+    // sideways: from the middle out to the right, then out to the left, parts them like curtains
+    await wx(page, () => __lab.weather.sims.clouds.reset());
+    const sb = await wx(page, () => { const c = __lab.weather.sims.clouds; return { y: (c.top + c.bottom) / 2, clear: c.clear() }; });
+    await drag(page, line(g.W / 2, sb.y, g.W - 8, sb.y + 6, 8), 14);
+    await drag(page, line(g.W / 2, sb.y + 12, 8, sb.y + 4, 8), 14);
+    const side = await page.waitForFunction(() => __lab.weather.metrics().clear > 0.2, null, { timeout: T }).then(() => true, () => false);
+    const sc = await wx(page, () => ({ clear: __lab.weather.metrics().clear, gaps: __lab.weather.tools.storm.n }));
+    check(scope, 'sideways swipes across the bank part it too (centre out to the right, then to the left)', side && sc.clear > sb.clear + 0.2, JSON.stringify({ before: sb.clear, after: sc }));
     // the chip parts the clouds from the centre
     await wx(page, () => __lab.weather.sims.clouds.reset());
     const c0 = await wx(page, () => __lab.weather.metrics().clear);
@@ -733,6 +756,40 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await page.waitForFunction(() => __lab.weather.state === 'live' && __lab.weather.progress === 0, null, { timeout: T });
     const r3 = await wx(page, () => ({ w: __lab.weather.weather, sr: document.querySelector('.weather .sr-only[role="status"]').textContent }));
     check(scope, 'R is Again: Storm starts over', r3.w === 'storm', JSON.stringify(r3));
+    // a mouse pick leaves focus on the radio: the digits still choose, Enter on the chosen radio is not Again,
+    // and a press in the sky gives focus back to the stage
+    await page.click('.wx-dial [data-weather="fog"]');
+    await settled(page, 'fog');
+    const fr = await wx(page, () => document.activeElement?.dataset?.weather || document.activeElement?.className);
+    await page.keyboard.press('Digit4');
+    const dg = await page.waitForFunction(() => __lab.weather.weather === 'rain', null, { timeout: T }).then(() => true, () => false);
+    check(scope, 'after a mouse pick (focus on the radio), a digit still chooses the weather', fr === 'fog' && dg, JSON.stringify({ focus: fr }));
+    await settled(page, 'rain');
+    await page.focus('.wx-dial [aria-checked="true"]');
+    const n0 = await wx(page, () => __lab.weather.said.length);
+    await page.keyboard.press('Enter');
+    await sleep(600);
+    const en = await wx(page, (n0) => ({ state: __lab.weather.state, again: __lab.weather.said.slice(n0).some((t) => /again/.test(t)), p: __lab.weather.session.planner.phase }), n0);
+    check(scope, 'Enter on the chosen radio is not Again (as on a native radio)', en.state === 'live' && !en.again && en.p === 'idle', JSON.stringify(en));
+    const gk = await wx(page, () => __lab.weather.geo());
+    await page.mouse.click(gk.W * 0.12, gk.skyTop + 50);
+    const back = await wx(page, () => document.activeElement === document.querySelector('.weather .stage'));
+    check(scope, 'a press in the sky takes focus back from the dial to the stage', back);
+    // a held W lets go when the window loses focus (no keyup ever comes)
+    await page.keyboard.down('KeyW');
+    const held = await wx(page, () => __lab.weather.tools.altActive);
+    await wx(page, () => dispatchEvent(new Event('blur')));
+    const bl = await wx(page, () => ({ alt: __lab.weather.tools.altActive, chip: !!document.querySelector('.wx-actions .active') }));
+    await page.keyboard.up('KeyW');
+    check(scope, 'a held W lets go on a window blur', held && !bl.alt && !bl.chip, JSON.stringify({ held, ...bl }));
+    // the mouse over touchable weather: a grab cursor; over the Mallow: none
+    await page.mouse.move(gk.W * 0.15, gk.skyTop + 60);
+    await sleep(100);
+    const cu = await wx(page, () => getComputedStyle(document.querySelector('.weather .stage')).cursor);
+    await page.mouse.move(gk.body.cx, gk.body.mid);
+    await sleep(100);
+    const cm = await wx(page, () => getComputedStyle(document.querySelector('.weather .stage')).cursor);
+    check(scope, 'a grab cursor over the weather, not over the Mallow', cu === 'grab' && cm !== 'grab', JSON.stringify({ sky: cu, mallow: cm }));
     noErrors(scope, errors);
   });
 
@@ -1055,9 +1112,24 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await page.waitForFunction(() => __lab.weather.reactor.log.some((e) => e.type === 'wave-arrive'), null, { timeout: T }).catch(() => {});
     const w1 = await wx(page, () => ({ pulses: __lab.weather.pulses.filter((p) => p.kind === 'ripple'), log: __lab.weather.reactor.log.map((e) => e.tag), comp: __lab.events.map((e) => e.type) }));
     check(scope, 'a drag on the water sends a swell (realm "ripple"); it reaches Loomi, who bobs serenely', w1.pulses.some((p) => p.ok) && w1.log.some((t) => t === 'loomi-wave-serene'), JSON.stringify(w1));
-    // "Push the water" (a tap chip) rolls a swell in from one side
+    // "Push the water" (a tap chip) rolls a swell in from one side: drawn on the water strip below Loomi, where the
+    // back canvas is not behind the Mallow (lab layer, the rows between Loomi and the controls: changed against a no-push control)
+    await page.waitForFunction(() => !__lab.weather.sims.waves.swells(), null, { timeout: T }).catch(() => {});
+    const strip = await wx(page, () => { const g = __lab.weather.geo(); return [g.body.bottom + 2, document.querySelector('.weather .bottom').getBoundingClientRect().top]; });
     const n0 = await wx(page, () => __lab.weather.events.filter((e) => e.type === 'wave-arrive').length);
+    await page.evaluate(layerShot, { key: 'w0' });
+    await sleep(700);
+    await page.evaluate(layerShot, { key: 'w1' });
+    const wctl = await page.evaluate(outsideDiff, { a: 'w0', b: 'w1', box: [-999, -999, -999, -999], pad: 0, band: strip });
+    await page.evaluate(layerShot, { key: 'w2' });
     await page.click('.wx-actions [data-action="water"]');
+    await page.waitForFunction(() => __lab.weather.sims.waves.swells() > 0, null, { timeout: T });
+    await sleep(700);
+    await page.evaluate(layerShot, { key: 'w3' });
+    const wsw = await page.evaluate(outsideDiff, { a: 'w2', b: 'w3', box: [-999, -999, -999, -999], pad: 0, band: strip });
+    await page.evaluate(() => { window.__stills = {}; });
+    check(scope, '"Push the water": the swell shows on the water below Loomi, clear of the Mallow (≥ 1 % of the strip and over twice a no-push control)',
+      wsw.frac >= 0.01 && wsw.frac > 2 * wctl.frac, JSON.stringify({ strip: strip.map(Math.round), swell: wsw, control: wctl }));
     await step('"Push the water" reaches Loomi', page.waitForFunction((n0) => __lab.weather.events.filter((e) => e.type === 'wave-arrive').length > n0, n0, { timeout: T }));
     check(scope, '"Push the water" rolls a swell to Loomi', true);
     await H.shot(page, out, 'weather-phone-water');
@@ -1167,14 +1239,29 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
       const r = await wx(b.page, async () => {
         const lw = __lab.weather, c0 = lw.sims.clouds.clear(), rows = [];
         lw.setWeather('sunshine');
-        for (let k = 0; k < 6; k++) { await new Promise((res) => requestAnimationFrame(res)); rows.push({ sunAt: lw.geo().sunAt.map(Math.round), clear: +lw.sims.clouds.clear().toFixed(3) }); }
+        for (let k = 0; k < 6; k++) { await new Promise((res) => requestAnimationFrame(res)); rows.push({ sunAt: lw.geo().sunAt.map(Math.round), clear: +lw.sims.clouds.clear().toFixed(3), part: +lw.sims.clouds.part.toFixed(3) }); }
         return { c0, rows, W: lw.geo().W, sun: lw.geo().sun.map(Math.round) };
       });
-      const atGap = r.rows.length && Math.abs(r.rows[0].sunAt[0] - r.W / 2) < r.W * 0.1, parted = r.rows[r.rows.length - 1].clear > r.c0 + 0.05;
-      check(scope, 'Storm → Sunshine: the clouds part from the centre and the light starts at the gap, not the sun', atGap && parted, JSON.stringify(r));
+      const last = r.rows[r.rows.length - 1], atGap = r.rows.length && Math.abs(r.rows[0].sunAt[0] - r.W / 2) < r.W * 0.1;
+      check(scope, 'Storm → Sunshine: the clouds part from the centre (drawn only: coverage untouched) and the light starts at the gap, not the sun',
+        atGap && last.part > 0.05 && Math.abs(last.clear - r.c0) < 0.02, JSON.stringify(r));
       await settled(b.page, 'sunshine');
       const end = await wx(b.page, () => ({ sunAt: __lab.weather.geo().sunAt, sun: __lab.weather.geo().sun }));
       check(scope, '…then the beam hangs from the realm\'s own sun again', Math.abs(end.sunAt[0] - end.sun[0]) < 2 && Math.abs(end.sunAt[1] - end.sun[1]) < 2, JSON.stringify(end));
+      // Storm → Sunshine → Storm while the bank is still leaving: the storm comes back as the person left it (no free progress)
+      await wx(b.page, () => __lab.weather.setWeather('storm', { instant: true }));
+      await settled(b.page, 'storm');
+      await b.page.waitForFunction(() => !__lab.weather.session.planner._instant, null, { timeout: T });
+      await wx(b.page, () => __lab.weather.setWeather('sunshine'));
+      await b.page.waitForFunction(() => __lab.weather.sims.clouds.amount < 0.9 && __lab.weather.sims.clouds.part > 0.05, null, { timeout: T });
+      const back0 = await wx(b.page, () => ({ amount: +__lab.weather.sims.clouds.amount.toFixed(2), part: +__lab.weather.sims.clouds.part.toFixed(2) }));
+      await wx(b.page, () => __lab.weather.setWeather('storm'));
+      await b.page.waitForFunction(() => __lab.weather.weather === 'storm' && __lab.weather.sims.clouds.amount > 0.99, null, { timeout: T });
+      const t4 = await wx(b.page, () => __lab.weather.session.t);
+      await b.page.waitForFunction((t4) => __lab.weather.session.t > t4 + 4, t4, { timeout: T });   // 4 s of sim time, untouched
+      const back = await wx(b.page, () => ({ p: __lab.weather.progress, resolved: __lab.weather.resolved, clear: __lab.weather.metrics().clear, part: __lab.weather.sims.clouds.part, said: __lab.weather.said.slice(-3) }));
+      check(scope, 'Storm → Sunshine → Storm inside the leave window: 4 s later, untouched, progress stays under 0.2 (the parting closes again)',
+        back.p < 0.2 && !back.resolved && back.part < 0.05, JSON.stringify({ at: back0, ...back }));
       // Fog → any: the mist sinks to the floor as it leaves
       await wx(b.page, () => __lab.weather.setWeather('fog', { instant: true }));
       await settled(b.page, 'fog');

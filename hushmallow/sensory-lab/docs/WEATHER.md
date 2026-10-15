@@ -44,16 +44,19 @@ There are no progress bars, counters, dots or streaks. Progress shows only in th
 | Wind | drag: a jet in the flow field; ribbons stream, fluffs ride it; a gust brushes and leans the Mallow; circles make eddies; slow smooth strokes build calm | calm → "Just a breeze now." | Send a breeze (tap: one sweep; held: a calming breeze) · a sweep from that side |
 | Fog | wipe 34–60 px by speed, a hold grows a clear patch, a tap opens a puff; it refills (τ 9 s); the Mallow glows like a lantern | fogClear / 0.75 → the fog lifts, dew glints | Clear the mist (a spiral from the Mallow) · a band from that side |
 | Rain | hold still: a glass bead gathers drops; let go up or in the deck → light (the rain thins); low → it falls; a swipe sweeps and leans the rain; a drag on a deck puff moves the deck | (1 − rainLevel) / 0.85 → the deck drifts off, puddles glint | Catch the rain (a sheltering bead) · leans the rain |
-| Storm | swipe across the bank: thunderheads part like curtains; two fingers spread a gap; light shafts reach the ground and the Mallow; strikes 8–14 s apart (soft glows when gentle or reduced) | clear / 0.7 → the clouds drift leeward | Part the clouds · pushes the nearest puff |
+| Storm | swipe across the bank: thunderheads part like curtains (a sideways swipe carries the puffs ahead of the finger and parts them at the fingertip, so it opens the sky as a downward one does); two fingers spread a gap; light shafts reach the ground and the Mallow; strikes 8–14 s apart (soft glows when gentle or reduced) | clear / 0.7 → the clouds drift leeward | Part the clouds · pushes the nearest puff |
 | Moonlight | drag: a silver pool (heavier lag), a moonbeam, glitter and ripples on water; resting in the sky sends a falling star (≥ 6 s apart); moonlit breathing | dwell → "The tide is still." / "The night is clear." | Bring the moonlight · moves the pool |
 | Starlight | sweep up an orbiting cluster; let go away → a constellation in the Mallow's own shape; let go on the Mallow → a star shower | constellations / 3 | Gather stars · each press asks for one more star |
 | Warm glow | dim embers wait and the Mallow glows like a hearth; drag a warm ribbon that kindles embers; tap one; holding the Mallow makes it the hearth (warm rings kindle by radius) | heat → "Everything is glowing." | Spread the warmth (the hearth) · kindles that side |
 
 **Water** (every weather but Fog, in realms with water): a drag sends a swell (60–220 px/s), a tap a
 ripple, a hold a rocking swell; a swell reaching the Mallow bobs it (big ones: a hop and drops); swells are
-gold in Warm glow and add heat. The **Push the water** chip sends one from alternating sides; the first time
-there is water, a one-time hint says so, and it waits its turn rather than cut the resolve caption and the
-Mallow's line short (`hintLine().captioning`).
+gold in Warm glow and add heat. A travelling swell rides every water row in perspective, and is drawn in full
+(a dark trough, a lit crest, a glint) on the row clear of the Mallow (`swellRow`: below it and above the
+controls if there is room, else above it), because the weather canvas is behind the Mallow. The **Push the
+water** chip sends one from alternating sides; the first time there is water, a one-time hint says so, and it
+waits its turn: never while another hint, a caption or a front is showing (`hintLine().busy`), and not within
+4 s of a weather change, so it never cuts the instruction for the weather just picked.
 **Puddles** appear in dry realms after rain, either side of the Mallow, and ripple when touched.
 
 Pick order for a claimed pointer: a held object, then the light pool (within 1.4 r), a deck puff (Rain),
@@ -83,7 +86,7 @@ a pointer that `rig.hitTest` places on the body).
 | `features/weather/tools.js` | `createTools(api)`: pointers → sim operations and weather events; the chips' alternatives and arrow keys. |
 | `features/weather/ui.js` | `weatherDial`, `actionRow`, `hintLine`, `WEATHER_ICONS`. |
 | `styles/weather.css` | Scoped `.weather` styles (two fixed 50 px bottom rows, chips, dial, hint). |
-| `tests/weather.test.mjs` | Unit tests U1–U19. |
+| `tests/weather.test.mjs` | Unit tests U1–U19, and R1–R6 for the third review's findings. |
 | `tests/e2e-phase3-weather.cjs` | Browser tests (blocks listed in §10). |
 
 Paint order, back to front: the realm canvas and `canvas.wx-back` (in `.stage-wrap`), `.stage-tint`, the
@@ -129,7 +132,7 @@ and steps in sim time.
 
 | Class | Main API | Events |
 |---|---|---|
-| `CloudBank({ kind, tier, seed })` | `resize`, `push`, `spread`, `nudge`, `hit`, `grab`/`drag`/`release`, `flash(x)` (≤ 1 a second), `step(dt, wind)`, `coverage()`, `clear()`, `columnCover`, `gaps(out)`, `drawX(i)` | — |
+| `CloudBank({ kind, tier, seed })` | `resize` (a bank on screen scales with everything the person did; an unseen one lays out afresh), `push`, `spread`, `nudge`, `hit`, `grab`/`drag`/`release`, `flash(x)` (≤ 1 a second), `apart(k)` (a morph's parting, drawn only), `step(dt, wind)`, `coverage()`, `clear()`, `columnCover`, `gaps(out)`, `drawX(i)`, `ver` (bumps when a puff's shape changes: the sprite cache) | — |
 | `MistField({ tier })` | `resize`, `wipe`, `hold`, `lift`, `step(dt, windPx)`, `fogClear()`, `rise`, `sink` | — |
 | `StrikeClock({ seed })` | `step(dt, { coverage, gentle, reduced })` → `'strike'`/`'glow'`/`'thunder'`/null; ≥ 8 s apart | — |
 | `RainField({ tier, seed, lagoon })` | `resize`, `orbStart`/`orbMove`/`orbRelease`, `sweep`, `nudge`, `step(dt, opts)`, `sheltered()`, `orbs()`, `positions(out)`, `clearDrops()`, `level`, `intensity`, `wet` | `merge`, `hit-body`, `land-*`, `orb-up`, `splash-*` |
@@ -139,7 +142,7 @@ and steps in sim time.
 | `Puddles()` | `resize`, `addWet`, `step`, `hit`, `visible`, `e` | — |
 | `LightPool({ kind, tier })` | `resize`, `to`, `place`, `step(dt, body)`, `x y r height rest onBody onWater bask dwell painted`, `haze` (sun) | `rest`, `body-in`, `body-out` |
 | `EmberField({ tier, seed })` | `resize`, `kindleAlong`, `kindleAt`, `kindleNear`, `radiate`, `heat`, `litCount` | `kindle`, `all-lit` |
-| `StarSwarm({ tier, seed, mallowId })` | `resize`, `sweep`, `hold`, `release` → `{kind, n}`, `gatherOne`, `moveCluster`, `prick`, `seedFrom`, `twinkle(i)`, `constellations`, `affordance` | `gather`, `constellation`, `gift` |
+| `StarSwarm({ tier, seed, mallowId })` | `resize`, `sweep`, `hold`, `release` → `{kind, n}` (the first constellation right above the Mallow, then left, then right), `gatherOne`, `moveCluster`, `prick`, `seedFrom`, `twinkle(i)`, `constellations`, `affordance`; `isGuide(i)` (the two or three brighter guide stars) | `gather`, `constellation`, `gift` |
 
 ### `core/weather-mallow.js`
 
@@ -187,28 +190,40 @@ new WeatherLayer({ wrap, screen, quality, reducedMotion, palette })
 (`createRings`, `addRing`, `stepRings`, `drawRings`), `frontColour`, and one drawer per element:
 `drawClouds`, `drawShafts`, `drawRain`, `drawBeads`, `drawAffordance`, `drawFront`, `drawStars`,
 `drawConstellations`, `drawBeam`, `drawPool`, `drawHalo`, `drawGlitter`, `drawField`, `drawDew`,
-`drawRibbons`, `drawFluffs`, `drawWater`, `drawPuddles`, `drawEmbers`, `drawTrail`, `drawGroundGlow`. None
-allocates per frame (one beam gradient a frame is the only exception); mist and haze are one tiny
+`drawRibbons`, `drawFluffs`, `drawWater` (with `swellRow`), `drawPuddles`, `drawEmbers`, `drawTrail`, `drawGroundGlow`.
+None allocates per frame (one beam gradient a frame is the only exception); mist and haze are one tiny
 `putImageData` each, and their top row carries on up under the top bar, so no seam shows where the field begins.
+Each puff is composited once into its own sprite (its three passes over its sub-blobs, its lit rim and flat
+shaded base; a gold-lit twin is made only once a storm starts to clear; the long side capped at `PUFF_CAP`
+400 device px), rebuilt when the bank's `ver` changes or the sprites are rebuilt for a realm or DPR, so a puff
+costs one blit a frame (two while the gold cross-fades in) instead of 15–28.
 
-Look notes (from the slice-5 screenshot review): thunderheads use a firmer blob edge than the deck (a puff can
-span half a phone, and soft edges at that size read as smoke) and a cool silver-lavender rim in every realm (a
+Look notes (from the slice-5 screenshot review and the third review): thunderheads use a firmer blob edge than
+the deck (a puff can span half a phone, and soft edges at that size read as smoke), a lit upper rim and a darker
+flat base, sizes by depth (back band ×1.15, front ×0.85) and a cool silver-lavender rim in every realm (a
 festival's gold glow mixed into violet-grey read as a dirty tan rim); the rim turns gold only as a storm
-clears. Rain over a bright sky is a soft slate, never ink. Ribbons are long silk bands (a wide sheen, a body, a
-fine light edge) with a slow ripple. In Warm glow the Mallow is the hearth from the start: a low ember glow
-behind it and on the ground at its feet, growing with the heat.
+clears. On a wide sky (over 700 px) the thunder band is no deeper than a third of the screen and each band
+breaks between groups of three (a smaller, higher head, at a different place in each band), so the sky shows
+through. Rain over a bright sky is a soft slate, never ink. Ribbons are silk bands (a wide sheen, a body, a fine
+light edge, and over a bright sky a soft edge of the realm's deep colour under them) anchored at evenly spread
+heights; their heads follow the wind more (×0.6) and the head nearest a drawing finger follows it. Light beams
+feather (three nested quads under the one gradient) and fade out at the pool's near edge. Stars carry two or
+three brighter guide stars, and a loose star's halo grows smoothly with its twinkle (no size pop). In Warm glow
+the Mallow is the hearth from the start: a low ember glow behind it and on the ground at its feet, a warm haze
+along the horizon, and on arrival the three waiting embers nearest it swell in turn, outward (drawn only:
+nothing is lit, so the progress stays the person's).
 
 ### `features/weather/tools.js` and `features/weather/ui.js`
 
 ```js
 createTools(api) → { claim, storm, rain, sun, moon, stars, wind, fog, glow, water, trail, puddleRip, breeze,
                      get(w), has(w), alt(w), altStart(w), altEnd(), altActive, nudge(w, dx, dy), pushWater(),
-                     enter(w), reset(w), step(dt), focus(out), active, wiping() }
+                     enter(w), reset(w), step(dt), focus(out), windAt(out), active, wiping() }
   // api { sims, geo, weather(), amount(w), fronting(), frontDrag(v), locked(), onMallow(x, y), waterOn(),
   //       emit(type, x, y, k, vx, vy), reduced(), gentle(), ring(x, y), touched(w), flash(bank, x) }
 weatherDial(order, value, onPick) → { el, set(id), reveal() }
 actionRow() → { el, set(list, { disabled }), endHolds() }
-hintLine(screen) → { el, show(text, ms), caption(text, line, name, ms), hide(), destroy() }
+hintLine(screen) → { el, show(text, ms), caption(text, line, name, ms), hide(), destroy(), busy, captioning }
 WEATHER_ICONS
 ```
 
@@ -260,21 +275,32 @@ latched at T once resolved. `env.setMood` sends at most every 200 ms unless an a
 | Rain | .20/.82/.35/.30 | .05/.10/.80/.55 | .50 |
 | Storm | .70/.70/.15/.25 | .06/.08/.85/.60 | .60 |
 | Moonlight | .08/.35/.55/.40 | .04/.05/.95/.50 | .60 |
-| Starlight | .06/.12/.50/.45 | .04/.02/1/.55 | .80 |
-| Warm glow | .06/.20/.60/.65 | .04/0/.85/1 | .75 |
+| Starlight | .06/.12/.70/.45 | .04/.02/1/.55 | .80 |
+| Warm glow | .06/.20/.60/.80 | .04/0/.85/1 | .75 |
+
+Starlight arrives crisp (its realm draws sharp stars and the moon ring) and Warm glow already golden, so when
+either turns in the same realm as Moonlight (the Moonmilk Cove keeps all three) each reads as its own sky;
+their progress lives mostly in the realm transform, which keeps the U5 rule (a change of ≥ 0.4 on some axis).
 
 **Pulses** (`pulseFor`, then the Environment's gate): touch tap · water push ripple · bead up success (tap in
 the fair) · splash burst on water (8 drops or more) or ripple / tap · storm gap clear · storm strike
 strike in the Static Storm only, never gentle or reduced · sun at rest strike (day realms) · moon at rest
 strike in the cove, tap in the fair · constellation and gift success · kindle tap · hearth success at the
-feet · resolved: clear for Storm, Rain, Fog and Wind, success for the others · gust over water ripple.
+feet (every 2 s while the Mallow is the hearth; a tap in the fair) · resolved: clear for Storm, Rain, Fog and
+Wind, success for the others · gust over water ripple. The Spark Festival's success is a firework crown, so
+with the gentle style a constellation, a gift and a resolve are a tap there.
 
 **Transitions.** A same-realm pick turns (the old weather leaves over 1.2 s, the new enters over 1.5 s from
 0.3 s). Another realm sends a front: cover 0.9 s (0.7 s on the low tier), swap only at ≥ 0.95 cover after
 two painted frames, reveal 1.4 s (a drag pushes it, never under 0.5 s); reduced motion fades (0.6 s in,
 0.9 s out). Morphs: Rain → Starlight (drops in flight become the stars), Storm or Rain → Sunshine (the clouds
 part from the centre and the pool slides down from the gap), Fog → any (the mist sinks to the floor; it
-fades in place with reduced motion).
+fades in place with reduced motion). The Storm or Rain → Sunshine parting is drawn only (`CloudBank.apart`):
+coverage never sees it, and it closes as the bank enters again, so a quick pick back finds the storm exactly
+as the person left it. Again (R, the chip, a re-pick) is refused under a front, including its reveal (the
+weather was entered fresh at the swap); a re-pick while Again is running changes nothing, so its reset still
+comes; and should any phase but the front's own ever be left with a veil, it lifts at reveal pace and the
+screen stays "fronting" until it has gone. A front that starts over a veil still up carries on from it.
 
 ---
 
@@ -348,7 +374,8 @@ reactions and mixes only from the expression presets.
 for the continuous face, `event` for a passing one): the resting face per weather (`restOverride`; Storm
 turns from curious to hopeful as it clears); gaze (a weather touch → the light pool → a star cluster → the
 front's edge → the last event → its own); a lean with the wind at its position (`rig.nudge`); glow from
-light on the body (a shaft, the sun close by, the fog lantern, the hearth); basking (inflate 0.2–0.4, glow
+light on the body (a shaft, the sun close by, the fog lantern, the hearth; light reaching it through a gap
+puffs it up by 0.15 only while that face lasts); basking (inflate 0.2–0.4, glow
 ≥ 0.9, blush 1.6, a halo behind it); moonlit breathing (`breathRate` 0.14, Noomi 0.12, float ≥ 0.3); glow and
 blush that rise with the heat in Warm glow; eyes that sparkle more as a star cluster grows. Gusts brush the
 body at three points and lean it (a squint on strong gusts), drops poke it (≤ 4 a second), swells bob it.
@@ -382,19 +409,30 @@ the reactor nods instead of hopping; `rig.nudge` is ×0.25. Direct manipulation 
   select. The chips are real buttons in a group "Weather actions"; hold chips take Space or Enter holds and
   release on blur. A held key's repeats never press a chip, and when the lead chip becomes Again, keyboard
   focus moves onto it.
-- Keys: 1–8 choose the weather; the arrows shape it (when focus is on the stage); holding W is the lead chip;
-  R is Again; the stage keys still reach the Mallow (Enter/Space, D, H (the hearth in Warm glow), P, S, T);
-  Escape leaves with the fade. All go through stage-screen's `keys` hook (no document listeners of our own).
+- Keys: 1–8 choose the weather from anywhere but a text field (a clicked radio or chip keeps focus, and the
+  digits still work); the arrows shape it (when focus is on the stage); holding W is the lead chip, and it
+  lets go when the window loses focus (a `blur` listener: no keyup would ever come); R is Again; the stage
+  keys still reach the Mallow (Enter/Space, D, H (the hearth in Warm glow), P, S, T); Escape leaves with the
+  fade. Keys go through stage-screen's `keys` hook (no document key listeners of our own). Enter or Space on
+  the chosen radio does nothing, as on a native radio (Again is the chip, R or a pointer tap on the radio).
+- A press in the world (not on the controls) takes keyboard focus back to the stage from a clicked radio or
+  chip, so Enter is the Mallow's tap again and no focus ring appears after a mouse click.
+- A mouse over touchable weather shows a grab cursor (`.stage.grab`; `.grabbing` while a weather pointer is
+  held); over the Mallow and the controls, none.
 - Focus starts on the stage, labelled "Weather Weaver with {Mallow}. Keys 1 to 8 choose the weather, arrow
   keys shape it, hold W to weave. Touch {Mallow} to talk."
 - The announcer (`role=status`, ≥ 3 s apart, newest wins) describes the world and the Mallow, never the
   person ("Rain at the Raindrop Lagoon. Hold to catch it.", "The clouds are opening.", "Light reaches
   Boppo.", "The storm passed."). The visible hint is `aria-hidden`, so nothing is read twice.
 - Chrome follows the realm's tone (`data-backdrop`); the title, subtitle, hint and caption carry a tight halo
-  in the backdrop's ink under the soft glow (a storm bank in a bright realm puts dark text over dark cloud),
-  and the hint, caption and line are never under 14 px.
-- The stage is focused on arrival so the keys work at once, but its focus ring waits for the first key
-  (`wx-quiet-focus`): Chrome shows `:focus-visible` for a script's focus before any click, which on a deep
+  in the backdrop's ink under the soft glow, and the subtitle, hint, caption and line are never under 14 px (a
+  long world name wraps evenly onto a second line at 320–390 px). In a bright realm, when a storm bank or a
+  dark front fills the top band (darkness over 0.5, back under 0.35), the title and subtitle take the dark
+  backdrop's light ink and halo (`.topbar.wx-ink-light`); the chips and dial keep the realm's, over the still
+  bright ground.
+- The stage is focused on arrival so the keys work at once, but its focus ring (lab.css draws it on
+  `.stage:focus-visible::after`) waits for the first key (`.wx-quiet-focus .stage:focus-visible::after
+  { content: none }`): Chrome shows `:focus-visible` for a script's focus before any click, which on a deep
   link framed the whole screen in the accent colour. After a rebuild only the chip that took focus by itself
   ignores presses for 0.7 s (a key still held from the old chip); a chip the person moves to answers at once.
 
@@ -418,7 +456,11 @@ time with dt capped at 0.05 s, so nothing catches up in a burst.
 | Realm quality | auto | auto | low |
 
 `ctx.quality` is polled once a second; a change calls `env.setQuality`, `layer.setQuality` (DPR cap, front
-canvas) and `wsound.setTier`, and shrinks the pools (never grows them). These are budgets, not measurements:
+canvas) and `wsound.setTier`, and shrinks the pools (never grows them). A drop never undoes what the person
+did: a cloud bank on screen draws fewer sub-blobs at once but keeps its puffs (and so its gaps and progress)
+until it next lays out (Again, arriving fresh, or once it has gone), and the star pool never drops a star that
+is held, flying, placed in a constellation or showering. A rotate or resize scales a bank on screen, so
+`clear()` keeps its meaning. These are budgets, not measurements:
 no frame rate is claimed until it has been measured on phones.
 
 **Hidden page:** the loop stops; the router cancels held pointers (a cancel is a release at zero velocity, so
@@ -449,7 +491,7 @@ the hint and announcer, `wsound.end()` (the brush, then the bed), `reactor.destr
 
 ```
 cd /home/user/thinkstill-rituals
-node --test hushmallow/sensory-lab/tests/weather.test.mjs                      # U1–U19 (Node, no DOM)
+node --test hushmallow/sensory-lab/tests/weather.test.mjs                      # U1–U19, R1–R6 (Node, no DOM)
 node --test hushmallow/sensory-lab/tests/*.test.mjs                             # the whole unit suite
 python3 -m http.server 8000                                                     # from the repository root
 node hushmallow/sensory-lab/tests/e2e-phase3-weather.cjs [outDir]               # every browser block
@@ -471,15 +513,21 @@ state with generous limits, and nothing relies on frame counts.
 | U16 | photosafety: glow envelopes, strike spacing, twinkle, strike pulses, the lab glow gate |
 | U17–U18 | copy (no claims, short hints, announcements about the world and the Mallow); module boundaries |
 | U19 | sound: `bedLevels`, nothing before a gesture, the bed as one keep voice, layers and levels, the rumble swell, one-shot gates, thunder without a crack, Touch sounds, mute, the voice cap, tiers, the brush, end |
+| R1 | (third review) Again during a front's reveal is refused and the veil always clears (at reveal pace, the session fronting until it has); a front over a leftover veil never jumps; a re-pick during Again keeps its one reset and one resolve |
+| R2 | sideways swipes part the storm on every tier (centre-out each way > 0.3, one full-width > 0.15, slower too, a real gap); vertical swipes puff for puff as before |
+| R3 | a tier drop or a rotate keeps the parted storm (within 0.05) and the puff count waits for the next layout; a tier drop keeps every constellation star |
+| R4 | a morph's parting is drawn only: coverage untouched, puffs drawn away from the centre, closed again on re-entry, none with reduced motion |
+| R5 | the light-through puff is let go; the hearth is a tap in the fair; gentle festival constellations, gifts and resolves are taps |
+| R6 | the swell row is clear of the Mallow in all three water realms; two or three guide stars; the first constellation forms above the Mallow |
 
 | Browser block | Proves (spec §13) |
 |---|---|
-| `open` | W1: opens from the home card and a deep link |
-| `storm`, `rain`, `sun`, `moon`, `stars`, `wind`, `fog`, `warm`, `water` | W4, W6, W7: each interaction, its consequences, the Mallow, the alternatives |
-| `front`, `morph` | W8: covered swaps, chips under cover, drags, turns, the three morphs |
+| `open` | W1: opens from the home card and a deep link; on a deep link the stage's focus ring waits for the first key |
+| `storm`, `rain`, `sun`, `moon`, `stars`, `wind`, `fog`, `warm`, `water` | W4, W6, W7: each interaction, its consequences, the Mallow, the alternatives (Storm: sideways swipes part it too; water: the pushed swell shows on the strip below the Mallow) |
+| `front`, `morph` | W8: covered swaps, chips under cover, drags, turns, the three morphs; Storm → Sunshine → Storm finds the storm untouched |
 | `resolve` | W15: the resolve beat and Again |
 | `motion` | W9, W12: reduced motion (fade front, same mood targets, live toggle); a hidden page freezes and releases |
-| `dial`, `keys` | W2, W3: every weather from the dial; digits, arrows and R |
+| `dial`, `keys` | W2, W3: every weather from the dial; digits (also after a mouse pick), arrows and R; Enter on the chosen radio is not Again; a press in the sky takes focus back; a held W lets go on blur; the grab cursor |
 | `exit` | W14: Close and Escape, nothing left behind, listeners and storage back to baseline |
 | `sound` | W11, W12: no sound before a gesture; one bed; bead sounds; thunder; Mute ≤ 500 ms; unmute ≤ 1.5 s; Touch sounds; hidden and back; Close; no AudioContext |
 | `photo` | W10: the luminance probe and the pulse and glow budgets |

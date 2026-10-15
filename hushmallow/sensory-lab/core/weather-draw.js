@@ -5,7 +5,9 @@
 //                  the glass bead, the light shaft; built once per realm, tier
 //                  and DPR (glows come from the shared glowSprite cache)
 //   drawClouds     thunderheads (three depth bands) and the rain deck, each puff
-//                  a few soft blobs with a shaded underside and a lit top
+//                  a few soft blobs with a shaded underside and a lit top,
+//                  composited once into its own sprite (rebuilt when the bank's
+//                  layout, size or tier changes), so a puff costs one blit
 //   drawShafts     warm light falling through the gaps in the bank
 //   drawRain       drops as streaks (dots with reduced motion), one path per pass
 //   drawBeads      glass beads: held (wobbling), rising as light, falling
@@ -20,16 +22,18 @@
 //   drawBeam       the soft beam from the realm's sun or moon to the light pool
 //   drawField      a FieldGrid (sun haze, fog) as one tiny putImageData, drawn scaled up
 //   drawRibbons / drawFluffs  silk currents and seed fluffs riding the flow
-//   drawWater / drawGlitter / drawPuddles  swells in perspective, the light's glitter path, puddles
+//   drawWater / drawGlitter / drawPuddles  swells in perspective (the row clear of the Mallow lit up), the light's glitter path, puddles
 //   drawPool / drawHalo  the light pool, and the warm rim behind a basking Mallow
 //   drawEmbers / drawTrail  embers (waiting, kindling, lit), hearth rings, the warm ribbon a drag lays
 //   drawDew        dew glints after the fog lifts
 //   stageFade      how much to fade weather near the Mallow
 // Rules: no shadowBlur, no filters, no per-element gradients (one per frame for
-// the front, one for the beam at most), no allocation per frame. Nothing runs at import time.
+// the front, one for the beam at most; puff sprites build theirs once), no
+// allocation per frame. Nothing runs at import time.
 
 import { clamp, smoothstep, TAU } from './math.js';
 import { glowSprite } from './effects.js';
+import { isGuide } from './weather/stars.js';
 
 export const PUFF_R = 48;    // sprite radius (CSS px) the puff blobs are drawn from
 export const BEAD_R = 32;
@@ -61,7 +65,7 @@ function blob(c, R, dpr, stops) {
 
 const BODY = [[0, 1], [0.55, 0.94], [0.8, 0.5], [1, 0]];
 // thunderheads are big (a puff can span half a phone): a firmer edge keeps them painted cumulus, not smoke
-const BODY_FIRM = [[0, 1], [0.64, 0.97], [0.83, 0.8], [0.94, 0.3], [1, 0]];
+const BODY_FIRM = [[0, 1], [0.7, 0.98], [0.86, 0.84], [0.95, 0.34], [1, 0]];
 const STORM = [hexRGB('#25203e'), hexRGB('#373159'), hexRGB('#4c4672')];   // back → front band
 const DECK = hexRGB('#5d6684');
 const WHITE = [255, 255, 255], LAVENDER = [206, 198, 255];
@@ -79,17 +83,21 @@ export function buildSprites({ palette = {}, tone = 'dark', dpr = 1 } = {}) {
   // violet-grey read as a dirty tan rim); it turns gold only as the storm clears (litWarm)
   const rimStorm = mixRGB(mixRGB(glow, LAVENDER, 0.65), WHITE, 0.25);
   // each tone: the body, a darker underside and two lit tops (cool, and gold as a storm clears)
+  // (rim, rimWarm, under: the colours a puff's sprite lights its upper edge and shades its flat base with)
   const tones = (body, coolK, warmK, rim, stops) => ({
     body: blob(body, PUFF_R, dpr, stops),
     shade: blob(scale(body, light ? 0.72 : 0.6), PUFF_R, dpr, stops),
     lit: blob(mixRGB(body, rim, coolK), PUFF_R, dpr, stops),
     litWarm: blob(mixRGB(body, rimWarm, warmK), PUFF_R, dpr, stops),
+    rim: css(mixRGB(body, rim, Math.min(1, coolK + 0.35)), 1), rimWarm: css(mixRGB(body, rimWarm, Math.min(1, warmK + 0.25)), 1),
+    under: css(scale(body, light ? 0.62 : 0.5), 1),
   });
   const thunder = STORM.map((base, b) => tones(mixRGB(light ? sky : deep, base, light ? 0.8 : 0.8 - 0.04 * b), 0.24 + 0.06 * b, 0.42, rimStorm, BODY_FIRM));
   const deck = tones(mixRGB(sky, DECK, light ? 0.55 : 0.66), 0.3, 0.4, rimCool, BODY);
   return {
     dpr, tone, light,
     thunder, deck,
+    puffs: { thunder: { ver: -1, list: [] }, deck: { ver: -1, list: [] } },   // per-puff composites (drawClouds)
     bead: beadSprite(dpr, light),
     shaft: shaftSprite(mixRGB(warm, hexRGB('#fff2cc'), 0.35), dpr),
     glowHex: hex(glow), warmHex: hex(rimWarm),
@@ -114,6 +122,7 @@ export function weatherTints(palette = {}, tone = 'dark', dna = null) {
   const moon = tintK(MOON_SILVER, ds, 0.35), star = tintK(STAR_WHITE, dg, 0.45), ember = tintK(EMBER, dg, 0.3), gold = tintK(SWELL_GOLD, dg, 0.3);
   const ribbon = ds ? mixRGB([250, 250, 255], ds, 0.45) : light ? [255, 255, 255] : [228, 234, 255];
   const crest = light ? [255, 255, 255] : mixRGB(glow, [255, 255, 255], 0.5);
+  const deep = hexRGB(palette.deep || palette.sky);
   return {
     // glow sprite colours (hex) and stroke / fill styles (css, opaque: alpha goes through globalAlpha)
     sun: hex(SUN_GOLD), amber: hex(SUN_AMBER), crisp: hex(SUN_CRISP), sunRGB: SUN_GOLD, sunCss: css(SUN_GOLD),
@@ -122,6 +131,9 @@ export function weatherTints(palette = {}, tone = 'dark', dna = null) {
     ember: hex(ember), emberCss: css(ember),
     goldHex: hex(gold), goldCss: css(gold),
     ribbonCss: css(ribbon), crestCss: css(crest),
+    // over a bright sky white silk needs a soft edge of the realm's deep colour under it to read
+    ribbonShadeCss: light ? css(deep) : null,
+    troughCss: css(mixRGB(sky, light ? deep : [4, 4, 16], light ? 0.7 : 0.6)),
     // fog: pale over day skies, a blue-grey over night ones; the overcast haze is a dull realm grey
     mist: light ? mixRGB(sky, [238, 242, 248], 0.78) : mixRGB(sky, [150, 156, 196], 0.62),
     haze: mixRGB(sky, [176, 172, 188], light ? 0.7 : 0.5),
@@ -136,6 +148,7 @@ export function freeSprites(sp) {
   const drop = (c) => { if (c && c.width) { c.width = 0; c.height = 0; } };
   for (const t of sp.thunder) for (const k in t) drop(t[k]);
   for (const k in sp.deck) drop(sp.deck[k]);
+  for (const k in sp.puffs) for (const e of sp.puffs[k].list) if (e) { drop(e.c); drop(e.cw); }
   drop(sp.bead); drop(sp.shaft);
 }
 
@@ -194,20 +207,62 @@ function sub(j, n, x, y, r, sd, out) {
 }
 const SUB = [0, 0, 0];
 
-function drawPuff(g, S, x, y, r, sd, n, a, warm) {
+// the three passes of one puff centred at (0, 0) (warm: the gold lit top), then its upper rim lit and its
+// base shaded flat (source-atop: only where the puff is). Into a sprite, once per layout.
+function paintPuff(g, S, r, sd, n, warm, x0, y0, w, h) {
   const P = SUB;
-  // underside (offset down), lit top (offset up, peeking out above the body), then the body
-  g.globalAlpha = a * 0.92;
-  for (let j = 0; j < n; j++) { sub(j, n, x, y, r, sd, P); const s = P[2] * 1.04; g.drawImage(S.shade, P[0] - s + P[2] * 0.06, P[1] - s + P[2] * 0.3, 2 * s, 2 * s); }
-  const cool = a * (1 - warm), hot = a * warm;
-  for (let j = 0; j < n; j++) {
-    sub(j, n, x, y, r, sd, P);
-    const s = P[2], lx = P[0] - s - P[2] * 0.12, ly = P[1] - s - P[2] * 0.2;
-    if (cool > 0.01) { g.globalAlpha = cool; g.drawImage(S.lit, lx, ly, 2 * s, 2 * s); }
-    if (hot > 0.01) { g.globalAlpha = hot; g.drawImage(S.litWarm, lx, ly, 2 * s, 2 * s); }
+  g.globalAlpha = 0.92;
+  for (let j = 0; j < n; j++) { sub(j, n, 0, 0, r, sd, P); const s = P[2] * 1.04; g.drawImage(S.shade, P[0] - s + P[2] * 0.06, P[1] - s + P[2] * 0.3, 2 * s, 2 * s); }
+  g.globalAlpha = 1;
+  const lit = warm ? S.litWarm : S.lit;
+  for (let j = 0; j < n; j++) { sub(j, n, 0, 0, r, sd, P); const s = P[2]; g.drawImage(lit, P[0] - s - P[2] * 0.12, P[1] - s - P[2] * 0.2, 2 * s, 2 * s); }
+  for (let j = 0; j < n; j++) { sub(j, n, 0, 0, r, sd, P); const s = P[2] * 0.94; g.drawImage(S.body, P[0] - s + P[2] * 0.04, P[1] - s + P[2] * 0.07, 2 * s, 2 * s); }
+  g.globalCompositeOperation = 'source-atop';
+  const gr = g.createLinearGradient(0, y0, 0, y0 + h);
+  gr.addColorStop(0, warm ? S.rimWarm : S.rim); gr.addColorStop(0.3, 'rgba(0,0,0,0)');
+  gr.addColorStop(0.62, 'rgba(0,0,0,0)'); gr.addColorStop(1, S.under);
+  g.globalAlpha = 0.5;
+  g.fillStyle = gr; g.fillRect(x0, y0, w, h);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+}
+
+export const PUFF_CAP = 400;   // device px: the long side of a cached puff (soft edges: a bigger puff is drawn up from it)
+
+/**
+ * Puff i's sprite from the cache C ({ver, list}), built the first time it is asked for (warm: the gold-lit
+ * one, only once a storm starts to clear). Entry {c, cw, x0, y0, w, h}: draw at (x + x0, y + y0), w × h.
+ */
+function puffSprite(C, i, S, bank, dpr, warm) {
+  let e = C.list[i];
+  if (!e) e = C.list[i] = { c: null, cw: null, ok: false, okW: false, x0: 0, y0: 0, w: 0, h: 0 };
+  if (e.ok && (!warm || e.okW)) return e;
+  const r = bank.r[i], sd = bank.seedv[i], n = bank.blits, P = SUB;
+  if (!e.ok) {   // the box its blobs cover
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let j = 0; j < n; j++) {
+      sub(j, n, 0, 0, r, sd, P);
+      x0 = Math.min(x0, P[0] - 1.2 * P[2]); x1 = Math.max(x1, P[0] + 1.15 * P[2]);
+      y0 = Math.min(y0, P[1] - 1.25 * P[2]); y1 = Math.max(y1, P[1] + 1.4 * P[2]);
+    }
+    e.x0 = x0; e.y0 = y0; e.w = x1 - x0; e.h = y1 - y0;
   }
-  g.globalAlpha = a;
-  for (let j = 0; j < n; j++) { sub(j, n, x, y, r, sd, P); const s = P[2] * 0.94; g.drawImage(S.body, P[0] - s + P[2] * 0.04, P[1] - s + P[2] * 0.07, 2 * s, 2 * s); }
+  const k = Math.min(dpr, PUFF_CAP / Math.max(e.w, e.h)), cw = Math.max(2, Math.ceil(e.w * k)), ch = Math.max(2, Math.ceil(e.h * k));
+  const make = (c) => {
+    if (!c) c = document.createElement('canvas');
+    c.width = cw; c.height = ch;   // (also clears a reused one)
+    return c;
+  };
+  for (const hot of warm && !e.okW ? (e.ok ? [true] : [false, true]) : [false]) {
+    const c = make(hot ? e.cw : e.c), g = c.getContext('2d');
+    if (hot) e.cw = c; else e.c = c;
+    if (!g) continue;
+    g.setTransform(cw / e.w, 0, 0, ch / e.h, -e.x0 * cw / e.w, -e.y0 * ch / e.h);
+    paintPuff(g, S, r, sd, n, hot, e.x0, e.y0, e.w, e.h);
+  }
+  e.ok = true;
+  if (warm) e.okW = true;
+  return e;
 }
 
 /**
@@ -218,15 +273,19 @@ export function drawClouds(g, bank, sp, b0, b1, o) {
   if (!bank || bank.amount <= 0.001) return 0;
   const a0 = o.alpha * (bank.reduced ? bank.amount : smoothstep(0, 0.35, bank.amount));
   if (a0 <= 0.004) return 0;
-  const deck = bank.kind === 'deck';
+  const deck = bank.kind === 'deck', C = sp.puffs[bank.kind], warm = clamp(o.warm, 0, 1);
+  if (C.ver !== bank.ver) { C.ver = bank.ver; for (const e of C.list) if (e) e.ok = e.okW = false; }   // a new layout, size or tier
   let drawn = 0;
   for (let b = b0; b <= b1; b++) {
     const S = deck ? sp.deck : sp.thunder[b];
     for (let i = 0; i < bank.n; i++) {
       if (bank.band[i] !== b) continue;
       const x = bank.drawX(i), y = bank.y[i], r = bank.r[i];
-      if (x + r * 1.4 < 0 || x - r * 1.4 > o.W) continue;
-      drawPuff(g, S, x, y, r, bank.seedv[i], bank.blits, a0 * (deck ? 0.94 : 1), o.warm);
+      if (x + r * 1.6 < 0 || x - r * 1.6 > o.W) continue;
+      // one blit: the cool puff, the gold one over it as a storm clears (alone once it has)
+      const e = puffSprite(C, i, S, bank, o.dpr, warm > 0.01), a = a0 * (deck ? 0.94 : 1);
+      if (warm < 0.99 && e.c) { g.globalAlpha = a; g.drawImage(e.c, x + e.x0, y + e.y0, e.w, e.h); }
+      if (warm > 0.01 && e.cw) { g.globalAlpha = warm < 0.99 ? a * warm : a; g.drawImage(e.cw, x + e.x0, y + e.y0, e.w, e.h); }
       const gl = bank.glowAt(i);
       if (gl > 0.01) {   // a soft light inside the cloud (≤ 0.35, rises over 0.35 s)
         const R = Math.max(16, Math.round((r * 1.5) / 16) * 16), s = glowSprite(sp.glowHex, R, o.go);
@@ -503,7 +562,7 @@ export function drawConstellations(g, stars, sp, o) {
  */
 export function drawStars(g, stars, sp, o, which = 2) {
   if (!stars || stars.amount <= 0.001 || o.alpha <= 0.004) return 0;
-  const T = sp.tint, small = glowSprite(T.star, 8, o.go), big = glowSprite(T.star, 14, o.go);
+  const T = sp.tint, small = glowSprite(T.star, 10, o.go), big = glowSprite(T.star, 14, o.go);
   let n = 0;
   g.globalCompositeOperation = o.blend;
   for (let pass = 0; pass < 2; pass++) {
@@ -515,12 +574,15 @@ export function drawStars(g, stars, sp, o, which = 2) {
       if (a <= 0.01) continue;
       const x = stars.x[i], y = stars.y[i];
       if (!pass) {
-        const L = held || b > 1.15 || stars.st[i] === 3, R = L ? 14 : 8;   // held, bright, or placed in a constellation
+        // held or placed in a constellation: the big halo; a loose star's grows smoothly with its twinkle
+        // (no size pop as it brightens); the two or three guide stars are always larger
+        const guide = isGuide(i), L = held || stars.st[i] === 3;
+        const R = L ? 14 : (guide ? 12 : 9.5) + 4.5 * smoothstep(1.05, 1.35, b);
         g.globalAlpha = clamp(a * b * 0.75, 0, 1);
-        g.drawImage(L ? big : small, x - R, y - R, 2 * R, 2 * R);
+        g.drawImage(R > 10 ? big : small, x - R, y - R, 2 * R, 2 * R);
         n++;
       } else {
-        const c = 1.6 + 0.6 * Math.min(1.5, b);
+        const c = 1.6 + 0.6 * Math.min(1.5, b) + (isGuide(i) ? 0.8 : 0);
         g.globalAlpha = clamp(a * Math.min(1, b), 0, 1);
         g.fillRect(x - c / 2, y - c / 2, c, c);
       }
@@ -543,22 +605,31 @@ export function drawStars(g, stars, sp, o, which = 2) {
  * The soft beam from the realm's sun or moon (ax, ay) to the pool: one gradient per frame.
  * o: {alpha, blend}.
  */
+const BEAM_W = [1, 0.66, 0.33];   // three nested quads under one gradient: the beam's edges feather, its core is brightest
+
 export function drawBeam(g, ax, ay, pool, sp, o) {
   const a = o.alpha * (pool ? smoothstep(0, 0.5, pool.amount) : 0);
   if (a <= 0.004) return;
-  const px = pool.x, py = pool.y, dx = px - ax, dy = py - ay, L = Math.hypot(dx, dy);
-  if (L < 24) return;
-  const nx = -dy / L, ny = dx / L, w0 = pool.r * 0.22, w1 = pool.r * 1.1;
+  const dx = pool.x - ax, dy = pool.y - ay, L0 = Math.hypot(dx, dy);
+  if (L0 < 24) return;
+  // it ends at the pool's near edge, fading to nothing there (the pool's glow covers the join)
+  const ux = dx / L0, uy = dy / L0, px = pool.x - ux * 0.8 * pool.r, py = pool.y - uy * 0.8 * pool.r;
+  if (Math.hypot(px - ax, py - ay) < 24) return;
+  const nx = -uy, ny = ux, w0 = pool.r * 0.22, w1 = pool.r * 1.1;
   const c = pool.kind === 'sun' ? sp.tint.sunRGB : sp.tint.moonRGB, k = pool.kind === 'sun' ? 1 : 0.8;
   const gr = g.createLinearGradient(ax, ay, px, py);
-  gr.addColorStop(0, css(c, 0.26 * a * k)); gr.addColorStop(0.75, css(c, 0.12 * a * k)); gr.addColorStop(1, css(c, 0.04 * a * k));
+  gr.addColorStop(0, css(c, 0.26 * a * k)); gr.addColorStop(0.7, css(c, 0.12 * a * k)); gr.addColorStop(1, css(c, 0));
   g.globalCompositeOperation = lightOp(o);
-  g.globalAlpha = 1;
   g.fillStyle = gr;
-  g.beginPath();
-  g.moveTo(ax + nx * w0, ay + ny * w0); g.lineTo(px + nx * w1, py + ny * w1);
-  g.lineTo(px - nx * w1, py - ny * w1); g.lineTo(ax - nx * w0, ay - ny * w0);
-  g.closePath(); g.fill();
+  g.globalAlpha = 0.36;
+  for (let q = 0; q < 3; q++) {
+    const s0 = w0 * BEAM_W[q], s1 = w1 * BEAM_W[q];
+    g.beginPath();
+    g.moveTo(ax + nx * s0, ay + ny * s0); g.lineTo(px + nx * s1, py + ny * s1);
+    g.lineTo(px - nx * s1, py - ny * s1); g.lineTo(ax - nx * s0, ay - ny * s0);
+    g.closePath(); g.fill();
+  }
+  g.globalAlpha = 1;
   g.globalCompositeOperation = 'source-over';
 }
 
@@ -610,13 +681,13 @@ export function drawHalo(g, b, hexC, a, o, k = 0.85) {
   g.globalAlpha = 1;
 }
 
-/** Warm light pooled on the ground at the Mallow's feet (the hearth): a flattened glow, w wide. */
-export function drawGroundGlow(g, x, y, w, hexC, a, o) {
+/** Warm light pooled on the ground (the hearth at the Mallow's feet, a horizon haze): a flattened glow, w wide, flat × w tall. */
+export function drawGroundGlow(g, x, y, w, hexC, a, o, flat = 0.3) {
   if (a <= 0.004) return;
   const R = 64, s = glowSprite(hexC, R, o.go);
   g.globalCompositeOperation = o.blend;
   g.globalAlpha = clamp(a, 0, 1);
-  g.save(); g.translate(x, y); g.scale(1, 0.3); g.drawImage(s, -w, -w, 2 * w, 2 * w); g.restore();
+  g.save(); g.translate(x, y); g.scale(1, flat); g.drawImage(s, -w, -w, 2 * w, 2 * w); g.restore();
   g.globalCompositeOperation = 'source-over';
   g.globalAlpha = 1;
 }
@@ -700,20 +771,23 @@ export function drawRibbons(g, rib, sp, o) {
   let affI = -1;
   if (o.aff > 0.01) { let bd = Infinity; for (let i = 0; i < rib.n; i++) { const d = Math.abs(rib.px[i * rib.capS] - o.W / 2); if (d < bd) { bd = d; affI = i; } } }
   const lift = 12 * breathe(o, o.aff);
-  g.strokeStyle = sp.tint.ribbonCss; g.lineCap = 'round'; g.lineJoin = 'round';
-  // silk, not thread: a wide soft sheen, the ribbon's body, then a fine light edge
-  for (let pass = 0; pass < 3; pass++) {
-    g.lineWidth = RIB_W[pass];
-    g.globalAlpha = a * RIB_A[pass];
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  // silk, not thread: over a bright sky a soft deep edge under it, then a wide sheen, the ribbon's body and a fine light edge
+  const shade = sp.tint.ribbonShadeCss;
+  for (let pass = shade ? -1 : 0; pass < 3; pass++) {
+    const dy = pass < 0 ? 2.5 : 0;
+    g.strokeStyle = pass < 0 ? shade : sp.tint.ribbonCss;
+    g.lineWidth = pass < 0 ? 5 : RIB_W[pass];
+    g.globalAlpha = a * (pass < 0 ? 0.14 : RIB_A[pass]);
     g.beginPath();
     for (let i = 0; i < rib.n; i++) {
       const b0 = i * rib.capS, up = i === affI ? lift : 0;
-      g.moveTo(rib.px[b0], ribY(rib, b0, 0, m, up));
+      g.moveTo(rib.px[b0], ribY(rib, b0, 0, m, up) + dy);
       for (let k = 1; k < m - 1; k++) {
-        const y = ribY(rib, b0, k, m, up);
-        g.quadraticCurveTo(rib.px[b0 + k], y, (rib.px[b0 + k] + rib.px[b0 + k + 1]) / 2, (y + ribY(rib, b0, k + 1, m, up)) / 2);
+        const y = ribY(rib, b0, k, m, up) + dy;
+        g.quadraticCurveTo(rib.px[b0 + k], y, (rib.px[b0 + k] + rib.px[b0 + k + 1]) / 2, (y + ribY(rib, b0, k + 1, m, up) + dy) / 2);
       }
-      g.lineTo(rib.px[b0 + m - 1], ribY(rib, b0, m - 1, m, up));
+      g.lineTo(rib.px[b0 + m - 1], ribY(rib, b0, m - 1, m, up) + dy);
     }
     g.stroke();
   }
@@ -721,7 +795,7 @@ export function drawRibbons(g, rib, sp, o) {
   return rib.n;
 }
 
-const RIB_W = [13, 5, 1.3], RIB_A = [0.06, 0.15, 0.46];
+const RIB_W = [14, 5.5, 1.4], RIB_A = [0.12, 0.3, 0.5];
 // a ribbon point's y; `up` lifts the last few points (the idle affordance)
 const ribY = (rib, b0, k, m, up) => rib.py[b0 + k] - (up && k > m - 5 ? (up * (k - (m - 5))) / 4 : 0);
 
@@ -741,9 +815,29 @@ export function drawFluffs(g, f, sp, o) {
 const ROWS = [0.05, 0.16, 0.34, 0.6];   // crest rows down the water band (perspective: further rows flatter)
 
 /**
+ * The water row a swell is shown best on: clear of the Mallow (the back canvas is behind it), below it and
+ * above the controls if there is room, else above it; f is its perspective (0 far .. 1 near).
+ */
+export function swellRow(y0, y1, body, bottomTop = y1, out = { y: 0, f: 0 }) {
+  let y = -1;
+  if (body) {
+    const lo = body.bottom + 8;
+    let hi = Math.min(y1, bottomTop - 8);
+    if (hi - lo < 4) hi = Math.min(y1, bottomTop);
+    if (hi - lo >= 4) y = (lo + hi) / 2;
+    else if (body.top - 8 - y0 >= 4) y = (y0 + body.top - 8) / 2;
+  }
+  if (y < 0) y = y0 + (y1 - y0) * 0.34;
+  out.y = y; out.f = clamp((y - y0) / Math.max(1, y1 - y0), 0, 1);
+  return out;
+}
+const SROW = { y: 0, f: 0 };
+
+/**
  * Swells and ripples on the realm's water band (y0..y1): crests only where the water is moving
- * (calm water is the realm's own), a lit crest riding each swell (gold in Warm glow) with a glint.
- * Returns crests drawn.
+ * (calm water is the realm's own). Each travelling swell rides every row in perspective (gold in Warm
+ * glow), and on the row clear of the Mallow (swellRow) it is drawn in full: a dark trough under a lit
+ * crest with a soft highlight and a glint. o: {alpha, W, body, bottomTop, blend, go}. Returns crests drawn.
  */
 export function drawWater(g, waves, y0, y1, sp, o) {
   if (!waves || waves.amount <= 0.01 || o.alpha <= 0.004) return 0;
@@ -767,24 +861,43 @@ export function drawWater(g, waves, y0, y1, sp, o) {
     g.stroke();
     crests++;
   }
+  const E = swellRow(y0, y1, o.body, o.bottomTop ?? y1, SROW), fe = Math.max(E.f, 0.3);   // the shown row keeps a readable size
   for (let s = 0; s < waves.maxSwells; s++) {
     if (!waves.son[s]) continue;
-    const f = 0.34, yr = y0 + (y1 - y0) * f, amp = (5 + 20 * f) * waves.motion, sx = waves.sx[s], sw = waves.sw[s], gold = !!waves.sg[s];
-    g.strokeStyle = gold ? T.goldCss : T.crestCss;
-    g.globalAlpha = o.alpha * clamp(waves.sa[s] * 1.4, 0, 0.85);
-    g.lineWidth = 2.4;
-    g.beginPath();
-    for (let k = 0; k <= 10; k++) { const x = sx - sw + (2 * sw * k) / 10, y = yr - waves.height(x) * amp; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
-    g.stroke();
-    const gs = glowSprite(gold ? T.goldHex : T.glowHex, 16, o.go), yy = yr - waves.height(sx) * amp;
+    const sx = waves.sx[s], sw = waves.sw[s], gold = !!waves.sg[s], sa = clamp(waves.sa[s], 0, 1), crest = gold ? T.goldCss : T.crestCss;
+    // the swell on every row, smaller and fainter further off
+    g.strokeStyle = crest;
+    for (let r = 0; r < ROWS.length; r++) {
+      const f = ROWS[r], yr = y0 + (y1 - y0) * f;
+      if (Math.abs(yr - E.y) < 8) continue;
+      swellPath(g, waves, sx, sw * (0.55 + 0.75 * f), yr, (5 + 20 * f) * waves.motion, 0);
+      g.globalAlpha = o.alpha * clamp(sa * 1.4, 0, 0.85) * (0.35 + 0.65 * f);
+      g.lineWidth = 1 + 2 * f;
+      g.stroke();
+    }
+    // the row clear of the Mallow: trough, highlight, crest
+    const amp = (5 + 20 * fe) * waves.motion, w = sw * (0.55 + 0.75 * fe);
+    swellPath(g, waves, sx, w, E.y, amp, 5);
+    g.strokeStyle = T.troughCss; g.lineWidth = 6; g.globalAlpha = o.alpha * 0.3 * sa; g.stroke();
+    swellPath(g, waves, sx, w, E.y, amp, -2.5);
+    g.strokeStyle = crest; g.lineWidth = 10; g.globalAlpha = o.alpha * 0.16 * sa; g.stroke();
+    swellPath(g, waves, sx, w, E.y, amp, 0);
+    g.lineWidth = 4.5; g.globalAlpha = o.alpha * clamp(sa * 1.5, 0, 0.92); g.stroke();
+    const gs = glowSprite(gold ? T.goldHex : T.glowHex, 16, o.go), yy = E.y - waves.height(sx) * amp;
     g.globalCompositeOperation = o.blend;
-    g.globalAlpha = o.alpha * clamp(waves.sa[s], 0, 0.7);
-    g.drawImage(gs, sx - 16, yy - 16, 32, 32);
+    g.globalAlpha = o.alpha * clamp(sa, 0, 0.7);
+    g.drawImage(gs, sx - 20, yy - 20, 40, 40);
     g.globalCompositeOperation = 'source-over';
     crests++;
   }
   g.globalAlpha = 1;
   return crests;
+}
+
+// one swell's crest line (sx ± w, raised by the water's height × amp, shifted dy) as the current path
+function swellPath(g, waves, sx, w, yr, amp, dy) {
+  g.beginPath();
+  for (let k = 0; k <= 10; k++) { const x = sx - w + (2 * w * k) / 10, y = yr + dy - waves.height(x) * amp; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
 }
 
 /** Puddles in dry realms after rain: they reflect the sky and glow colours, glint, and ripple when touched (rip: ages). */
@@ -817,6 +930,9 @@ export function drawPuddles(g, pud, rip, sp, o) {
 
 // ----------------------------------------------------------------- embers --
 const EMB_SHOW = new Float32Array(32), EMB_Y = new Float32Array(32);
+const NEAR = new Int16Array(3), NEAR_D = new Float32Array(3);
+/** A Warm-glow arrival: the three waiting embers nearest the Mallow swell in turn, outward (0.3 s rise, then ease back). */
+const kindleFlare = (t, k) => { const u = t - 0.28 * k; return u <= 0 ? 0 : u < 0.35 ? smoothstep(0, 0.35, u) : 1 - smoothstep(0.35, 1.3, u); };
 
 /**
  * Embers: they kindle in outward from the Mallow (enter) and drift up and fade (leave); waiting ones
@@ -845,6 +961,21 @@ export function drawEmbers(g, emb, sp, o) {
     drawn++;
   }
   if (o.aff > 0.01 && aff >= 0) { g.globalAlpha = EMB_SHOW[aff] * 0.5 * breathe(o, o.aff); g.drawImage(big, emb.x[aff] - 18, EMB_Y[aff] - 18, 36, 36); }
+  if (o.kindle >= 0 && b) {   // the arrival: drawing only (nothing is lit, so progress stays the person's)
+    NEAR.fill(-1); NEAR_D.fill(Infinity);
+    for (let i = 0; i < n; i++) {
+      if (emb.lit[i] >= 0.01) continue;
+      const d = Math.hypot(emb.x[i] - b.cx, emb.y[i] - b.mid);
+      for (let q = 0; q < 3; q++) if (d < NEAR_D[q]) { for (let z = 2; z > q; z--) { NEAR_D[z] = NEAR_D[z - 1]; NEAR[z] = NEAR[z - 1]; } NEAR_D[q] = d; NEAR[q] = i; break; }
+    }
+    for (let q = 0; q < 3; q++) {
+      const i = NEAR[q], fl = i >= 0 ? kindleFlare(o.kindle, q) : 0;
+      if (fl <= 0.01) continue;
+      const R = 12 + 10 * fl;
+      g.globalAlpha = EMB_SHOW[i] * 0.7 * fl;
+      g.drawImage(big, emb.x[i] - R, EMB_Y[i] - R, 2 * R, 2 * R);
+    }
+  }
   g.globalCompositeOperation = 'source-over';
   g.fillStyle = T.emberCss;
   for (let i = 0; i < n; i++) {

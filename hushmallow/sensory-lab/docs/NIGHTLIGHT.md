@@ -19,12 +19,14 @@ Five beats per session:
    the mode's line shows for 3 s ("A soft glow to rest by.").
 2. **Settle.** The mode's rhythm takes over. After 8 s without input the chrome goes to sleep: it fades out,
    Close stays at 35 % and still works on the first tap, and a tap on a faded control falls through to the stage.
+   Keyboard focus in the chrome keeps it awake; a tapped or clicked control does not (Chromium focuses it).
 3. **Keep company.** Small signs of life that never repeat exactly: slow blinks, a look up at its world's light,
    a dream twitch. Touches get drowsy, gentle answers, never a hop, a burst or a giggle.
 4. **Drift down (the fade).** The world dims first, then the Mallow, while the sound falls. Below a Mallow level
    of 0.35 it falls asleep: a sleepy face, slower movement and blinks, a shallower breath, and its open eyes
    close (Glitzi's last). When the world reaches 0.25 it gives one soft sigh. The world is repainted a little
-   heavier (mist, a dimmer moon) at 25, 50 and 75 % of the fade. **A little longer** adds ten minutes.
+   heavier (mist, a dimmer moon) at 25, 50 and 75 % of the fade. **A little longer** adds ten minutes, and a new
+   Timer (or Fade out) choice restarts from now; either way the light eases back up over 2 s and the Mallow wakes.
 5. **Finished.** The stage is torn down. A near-black end view shows the sleeping Mallow above a card:
    "Nightlight finished at 23:42." (between 05:00 and 11:00, "Good morning.") with one of the Mallow's own
    authored rest lines, and **Again** / **Done**. Nothing runs: no animation frames, no voices, the audio
@@ -34,7 +36,7 @@ Five beats per session:
 
 | Mode | The Mallow | The night around it | Night sound (factor · pad / texture) | Steady frame cap |
 |---|---|---|---|---|
-| **Moonlight** | its own aura is the nightlight: a slow ±12 % glow; every 40–70 s it looks up at its world's light; a tap is a touch-lamp swell (+0.4, rising over 600 ms, falling over 4 s) | the halo and floor pool breathe with the glow; a few twinkles | 1.0 · 0.6 / 0.4 | 15 |
+| **Moonlight** | its own aura is the nightlight: the strongest glow of any mode (1.3 × the light, the others ≤ 0.8 ×), a slow ±12 % wave; every 40–70 s it looks up at its world's light; a tap is a touch-lamp swell (+0.4, rising over 600 ms, falling over 4 s) | the strongest halo (1.35) and floor pool (1.2), breathing ±20 % over 14 s with the glow; a few twinkles | 1.0 · 0.6 / 0.4 | 15 |
 | **Breathing Together** | breathes with you (your Comfort DNA breath timing × the Speed setting; the cycle lengthens to × 1.12 over the first 10 min); a held press off the body, H, B or the **Hold to breathe in** chip leads the in-breath; captions for the first two cycles only | the halo swells with the breath | 0.9 · 0.5 / 0.5, the texture swelling with each breath | 24 |
 | **Sleepy Companion** | a seeded evening: heavy blinks (or sleepy peeks for closed-eyed Mallows), yawns, stretches, settles, nods and dreams as it grows drowsy; a 4 s hold puts it to sleep in your hand | a dim halo, up to 3 fireflies | 0.8 · 0.6 / 0.4 | 15 (30 during a moment) |
 | **Ambient Drift** | floats a little; its eyes follow a firefly now and then | clouds, twinkles, fireflies that drift toward your finger, a slowly sliding world; on high and medium devices with Movement Gentle the realm itself is live for the first 3 min and for 45 s after a touch; a soft bell on a firefly's glint, at most every 20 s | 1.0 · 0.3 / 0.7 | 20 |
@@ -88,16 +90,16 @@ chrome stays awake while it is open.
 |---|---|---|
 | Brightness | 5–100 % in 5s (default 40 %) | "Dims the scene. Your screen's own brightness still applies." The value is shown beside the label and spoken as "40 %". |
 | Light | Moon · Soft · Warm (default) · Candle · Ember | While sliding, only the colour grade follows; the world is repainted on release. |
-| Speed | Slowest · Slow · Natural | The rig's speed (0.62 / 0.75 / 0.9) and the breath and script tempo (× 1.25 / 1.1 / 1). It never changes when drowsiness arrives. |
+| Speed | Slowest · Slow · Natural | The rig's speed (0.62 / 0.75 / 0.9) and the breath and script tempo (× 1.25 / 1.1 / 1), live: the breath, the Sleepy script's next intervals and Moonlight's glow wave (its rate only, never a jump). It never changes when drowsiness arrives. |
 | Volume | 0–100 % (default 50 %) | The session trim on the lab's own volume; reset when you leave. "Sound pauses when the screen locks or you switch apps." When sound is off: "Sound is off" and **Turn on**. |
-| Timer | 10 · 20 · 30 (default) · 45 · 60 · None | Restarts from now. "Ends at 23:40" or "Runs until you close it". |
-| Fade out | On · Off | "Light, sound and movement ease down over the last {n} minutes" (a third of the session, 2–8 min). Off: a 10 s settle. Disabled with None ("Needs a timer"). |
+| Timer | 10 · 20 · 30 (default) · 45 · 60 · None | Restarts from now (during the fade the light eases back up over 2 s). "Ends at 23:40" or "Runs until you close it". |
+| Fade out | On · Off | "Light, sound and movement ease down over the last {n} minutes" (a third of the session, 2–8 min). Off: a 10 s settle. Disabled with None ("Needs a timer"). A change restarts the timer from now, like a Timer change. |
 | Movement | Gentle · Less · Still | When the lab or the device asks for less motion, Gentle is disabled ("Your device asks for less motion") and arrow keys skip it. |
 | Keep screen on | Off (default) · On | Only where the browser has a screen wake lock: "Until the light fades, an hour at most. Uses more battery." A refusal turns it back to Off with "Not available right now". Elsewhere: "Your screen sleeps on its usual timer." |
 | Finish | **Fade out now** · **Close Nightlight** | Fade out now ends gently within 12 s (hidden while already fading). Close Nightlight says goodnight and goes home. |
 
-Footnotes: "Night sounds follow Mute and this volume, not Touch sounds." and "A gentle companion for winding
-down. It isn't a treatment for sleep problems."
+Footnote: "A gentle companion for winding down. It isn't a treatment for sleep problems." On screens 600 px tall
+or less the rows are tighter (targets stay ≥ 40 px).
 
 ---
 
@@ -111,7 +113,7 @@ and the face mixer.
 | Noomi | moonmilk-cove | already yawning (first yawn at 8 s) | float | its peek and a coo; 1 in 3 a yawn | drifts up and settles, one moon mote | a peek | waves |
 | Loomi | raindrop-lagoon at blue hour (no rain) | barely notices bedtime; sways like a buoy | melt (wide and lazy) | stays asleep: a smile and a little float, no sound | a slow drift | a smile | waves |
 | Blubi | raindrop-lagoon | blushes and snuggles into its glow | tall, soft | a nod, a deeper blush, a coo | a blush rises | a blush | waves |
-| Zuzu | spiral-observatory, dome open | spirals slow down as it gets drowsy | tall, spirals turning | one slow swirl, a coo | a smile twitch | its spirals turn once | air |
+| Zuzu | spiral-observatory, dome open | heavy lids over its spirals, which slow down as it gets drowsy | tall, spirals turning | one slow swirl, a coo | a smile twitch | its spirals turn once | air |
 | Boppo | moonmilk-cove, a little warmer | two tiny bounces, softer each time, then stillness (never a hop) | tall, with a yawn | a grin that squashes in place, a coo | a tiny bounce attempt | a sleepy grin | waves |
 | Pipzi | spark-festival "after closing" | whisper sparks that fade as it gets drowsy | tall, with a yawn | two whisper sparks, a coo | one spark | one spark | hush |
 | Glitzi | static-storm, calmed | keeps its side-eye open longest; its glitch lines dim | tall, with a shake-off | one eye opens, faint static, a quiet grumble | its lines glow softly | opens one eye, then looks away | hush |
@@ -180,13 +182,15 @@ Mallow stays at ≥ 0.45 and at least 2.5 × its world.
 
 Session time is the wall clock: a deadline (`endsAt`) and a fade start (`fadeFrom`). The record lives in
 sessionStorage (`hm.sensorylab.nightlight.session.v1`), so a reload or a Mallow change within 5 s resumes the
-same deadline; a reload after the end (within 6 h) shows the end view, never a bright restart. A backwards
+same deadline; a reload after the end (within 6 h) shows the end view, never a bright restart. Leaving the end
+view any way (Again, Done, Escape, or back, which changes the route) forgets the session. A backwards
 clock jump shifts the whole session, so the time left never grows; a forward jump can only end it early.
 
 ### States
 
 `booting → arriving (15 s) → steady → fading → ended (end view)`, with `leaving` (600 ms, then home) from any
-state, "Fade out now" (12 s) from arriving or steady, and "A little longer" back from fading.
+state (an end that falls inside those 600 ms still goes home), "Fade out now" (12 s) from arriving or steady, and
+"A little longer" or a new Timer back from fading.
 While hidden the screen is veiled at once (opacity 0, no transition): nothing runs and nothing catches up. On
 return the levels are set from the clock under the veil, which lifts over 600 ms; after more than 30 s away the
 Mallow gives its "still here" sign; a session that ended while away opens the end view at once and quietly.
@@ -245,7 +249,9 @@ level, ended, hidden, leaving). **`NightBed(sound, { mallowId, texture, quality,
 `goStill()` (idempotent: one snapshot and one 0.8 s cross-fade, then the live realm closes on its own timer, so a
 repaint meanwhile cannot keep it alive), `stilling`, `sample()` → `{ lum, br }`, `debug()`, `destroy()`;
 `paintNightStage(W, H, dpr, opts)`.
-**`NightSky(screen, { before, quality, motion, seed })`**: `configure(mix)`, `setLight`, `setLevels`,
+**`NightSky(screen, { before, quality, motion, seed })`**: `configure(mix)`, `setTone(glowHex, temp)` (the halo
+and pool draw the two authored Light steps around `temp`, weighted, so easing the Light never builds new sprites;
+twinkles and fireflies take the nearest step), `setLight(light, star)` (one colour), `setLevels`,
 `setBody`, `setBreath`, `setHaloGain`, `attract(x, y)`, `setMotion`, `setQuality`, `frame(dt)`, `onGlint`,
 `debug()`, `destroy()`.
 
@@ -277,7 +283,7 @@ pacer, face mixer, modes, chrome, status, chips, sheet, visibility) and the end 
   the light colour), `environment` (the night world) and `comfort[]` (the first mode when none is saved). The
   router's own `experience` record is the only thing written.
 - **Touch sounds** (SHARED C7): the night bed has its own controls (Quiet with its Sound chip, the Volume row),
-  so it follows Mute and the Nightlight volume, not Touch sounds. The sheet says so.
+  so it follows Mute and the Nightlight volume, not Touch sounds (said here and in COMFORT_DNA.md, not in the sheet).
 
 ---
 
@@ -306,7 +312,8 @@ pacer, face mixer, modes, chrome, status, chips, sheet, visibility) and the end 
 
 ## 7. Background, battery and cleanup
 
-- **Frame caps** (`fpsFor`): the display rate while touched (30 on the low tier); 30 during a moment, a mode
+- **Frame caps** (`fpsFor`): the display rate while touched (30 on the low tier, lifted at the touch itself, not on
+  the next capped frame); 30 during a moment, a mode
   change or the arrival; steady 15 / 24 / 15 / 20 / 10 by mode; fading ≤ 12, then 8 below world level 0.3;
   Movement Still ≤ 10; the low tier × 0.8, never below 8; 0 when hidden or ended. Physics stays in real time at
   any cap. These are targets to measure on devices, not claims.
@@ -317,7 +324,8 @@ pacer, face mixer, modes, chrome, status, chips, sheet, visibility) and the end 
   timers are cleared. **Wake lock**: off unless the person turns it on; requested only while visible; let go when
   hidden (asked again on return), at the end, on exit and after an hour; a refusal is never retried.
 - **Audio**: nothing plays before a gesture; the bed rises from silence over 4 s; the audio rests (suspended)
-  10 s after the last touch in silent Quiet or at Volume 0, and after the end.
+  10 s after the last touch in silent Quiet or at Volume 0, and after the end (at once after a quiet end, else
+  2.2 s later, once the bed has faded; a resume the engine started on becoming visible ends in suspend, CR-N1).
 - **Unmount** (in order): timers; listeners (pointer, keys, visibility, pagehide/pageshow, freeze/resume, prefs,
   Comfort DNA); the sheet; the mode, the night filter, the frame cap, the grade and the peek; the bed, then the
   trim back to 1; the wake lock; the world and the sky; the record (`leftAt`, or removed on a deliberate exit);
@@ -354,7 +362,9 @@ shared contracts; U18 the static scan (no network, workers, notifications or `se
 only in `core/screen-wake.js`; the stylesheet loads nothing; pure modules have no DOM); U19–U20 the timeline,
 moments and the five modes on a fake api; U21 world helpers; U22 the night sound on the real sound engine with
 fake audio; U23 the settings sheet's view; U24 the stylesheet (every selector scoped to `.nightlight`, the night
-tokens, no blur, no `!important`, 40 px controls, the viewport and reduced-motion rules).
+tokens, no blur, no `!important`, 40 px controls, the viewport and reduced-motion rules); U25 the review fixes (a
+Speed change reaches Sleepy's script and moves Moonlight's wave without a jump, Moonlight is the glow mode, the
+Light's two steps, Zuzu's lids, the one footnote).
 
 **Browser** (`tests/e2e-phase3-nightlight.cjs`, on the shared harness; reports and screenshots in
 `docs/phase3/nightlight/`): `open` (E1), `moonlight` (E3), `sleepy` (E5), `mallows` (E28), `modes`, `exit`
@@ -363,7 +373,10 @@ tokens, no blur, no `!important`, 40 px controls, the viewport and reduced-motio
 `theme` (E26), `scroll` (E27), `privacy` (E22), `isolation` (E29), `breathe` (E4 in full: two breaths, the
 period, the halo following the inflate, H and the chip, Less and Still), `drift` (E6 in full: the live realm's
 3 minutes and 45 s on clock time, fireflies, Less, Still drawing nothing) and `layout` (E23 at all seven
-viewports: steady, asleep, the sheet, fading and a live end with the sleeping Mallow above the card). Every night
+viewports: steady, asleep, the sheet, fading and a live end with the sleeping Mallow above the card). Review 3
+added: Moonlight beside Quiet (E3), a Timer change deep in the fade (E13), the fade beginning under a held chip
+(E4), a turn of the phone as the live realm settles (E6), back from the end view (E19), tapped controls and chrome
+sleep (E24), the Light's sprites (E9) and Done's pill (E23). Every night
 world is also shot at the default and the minimum brightness (`nightlight-phone-<mallow>[-min].jpg`), and each mode
 once (`nightlight-phone-mode-<mode>.jpg`). Each block's header in the file maps it to its brief line. Software GL
 runs slowly, so every wait is on state.

@@ -111,8 +111,6 @@ export const COPY = Object.freeze({
     }),
     // the last row: stop gently (hidden while already fading), or leave now with the goodnight
     stop: 'Finish',
-    // SHARED C7: the night bed has its own controls, so Touch sounds don't silence it
-    soundNote: 'Night sounds follow Mute and this volume, not Touch sounds.',
   }),
 
   disclaimer: "A gentle companion for winding down. It isn't a treatment for sleep problems.",

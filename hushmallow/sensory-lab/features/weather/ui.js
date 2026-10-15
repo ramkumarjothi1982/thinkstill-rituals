@@ -66,6 +66,8 @@ export function weatherDial(order, value, onPick) {
   el.addEventListener('click', (e) => {
     const b = e.target.closest?.('.wx-radio');
     if (!b || !el.contains(b)) return;
+    // Enter or Space on the chosen radio does nothing, as on a native radio (Again is the chip, R, or a tap on it)
+    if (e.detail === 0 && b.getAttribute('aria-checked') === 'true') return;
     const w = b.dataset.weather;
     set(w);
     onPick(w, false);
@@ -127,7 +129,7 @@ export function actionRow() {
   };
 }
 
-/** The hint spot: show(text, ms), caption(text, line, name, ms), hide(), destroy(); captioning while a caption is up. */
+/** The hint spot: show(text, ms), caption(text, line, name, ms), hide(), destroy(); busy while anything shows, captioning while a caption does. */
 export function hintLine(screen) {
   const el = h('p', { class: 'moment-hint wx-hint', 'aria-hidden': 'true' });
   screen.append(el);
@@ -141,6 +143,8 @@ export function hintLine(screen) {
     el,
     /** The resolve caption (and the Mallow's line) is showing: a passing hint waits its turn. */
     get captioning() { return cap; },
+    /** A hint or a caption is showing. */
+    get busy() { return el.classList.contains('on'); },
     show(text, ms = 3000) { cap = false; el.replaceChildren(text); on(ms); },
     caption(text, line, name, ms = 4000) {
       el.replaceChildren(h('span', { class: 'wx-cap' }, text),

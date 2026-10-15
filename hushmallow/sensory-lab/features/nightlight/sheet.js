@@ -13,7 +13,7 @@
 //                                                       the device asks for less motion)
 //   Keep screen on  Off · On, where the browser has a wake lock (else a plain line)
 //   Finish       Fade out now (hidden while fading) · Close Nightlight
-//   and the two footnotes: what silences the night sounds, and the disclaimer.
+//   and one footnote: the disclaimer.
 //
 // The sheet holds no state: the feature passes a model of getters and callbacks,
 // and calls sync() whenever something it shows changes (a setting, the phase,
@@ -158,7 +158,6 @@ export function openNightSheet(root, model) {
       wake ? row('wake', C.wake.label, wake, { cls: 'nl-stack' })
         : h('div', { class: 'row nl-row nl-row-wake' }, h('span', { class: 'lbl' }, h('span', { class: 'nl-lbl' }, C.wake.label), h('span', { class: 'sub' }, C.wake.unsupported))),
       h('div', { class: 'row nl-row nl-row-stop', role: 'group', 'aria-label': C.stop }, fadeNow, exit),
-      h('p', { class: 'nl-foot' }, C.soundNote),
       h('p', { class: 'nl-foot' }, COPY.disclaimer));
   });
 

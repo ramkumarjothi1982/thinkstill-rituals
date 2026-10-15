@@ -41,7 +41,7 @@ const setRest = (api, r) => { if (api.rest) api.rest(r); else api.companion.rest
  * status row's contextual chip while the mode runs.
  */
 export const MODES = F({
-  moonlight: def('moonlight', { bed: F({ factor: 1, pad: 0.6, texture: 0.4 }), sky: F({ halo: 1, pool: 1, twinkles: 8, fireflies: 0, clouds: 0, animated: true }), chip: null }),
+  moonlight: def('moonlight', { bed: F({ factor: 1, pad: 0.6, texture: 0.4 }), sky: F({ halo: 1.35, pool: 1.2, twinkles: 8, fireflies: 0, clouds: 0, animated: true }), chip: null }),   // its own light: the strongest halo
   breathe: def('breathe', { bed: F({ factor: 0.9, pad: 0.5, texture: 0.5 }), sky: F({ halo: 1, pool: 0.8, twinkles: 4, fireflies: 0, clouds: 0, animated: true }), chip: 'breathe' }),
   sleepy: def('sleepy', { bed: F({ factor: 0.8, pad: 0.6, texture: 0.4 }), sky: F({ halo: 0.6, pool: 0.6, twinkles: 6, fireflies: 3, clouds: 0, animated: true }), chip: null }),
   drift: def('drift', { bed: F({ factor: 1, pad: 0.3, texture: 0.7 }), sky: F({ halo: 0.7, pool: 0.7, twinkles: 14, fireflies: 8, clouds: 3, animated: true }), chip: null }),
@@ -52,6 +52,7 @@ export const MODES = F({
 export const TOUCHES = F(['tap', 'doubletap', 'hold', 'stroke', 'drag', 'squeeze', 'release', 'press', 'offtap']);
 export const SWELL = F({ k: 0.4, riseS: 0.6, fallS: 4, holdS: 0.2, extendS: 0.6, maxHoldS: 3 });   // Moonlight's touch lamp
 export const LIVE = F({ firstS: 180, touchS: 45 });                                                   // Drift's live realm: first, after a touch
+export const GLOW_K = 1.3;                                                                            // Moonlight's aura × look.glow
 
 // ------------------------------------------------------------ timeline --
 /** Callbacks on the frame clock (paused while hidden, never caught up). */
@@ -162,7 +163,7 @@ const BUILD = {
   moonlight(api) {
     const { rig, face, sky } = api;
     setRest(api, restFor('moonlight'));
-    let t = 0, swell = null, nextLook = (40 + api.rand() * 30) * api.speedK(), lookUntil = -1;
+    let t = 0, ph = 0, swell = null, nextLook = (40 + api.rand() * 30) * api.speedK(), lookUntil = -1;
     const swellAt = () => {
       if (!swell) return 0;
       const s = t - swell.t0, up = swell.rise, top = up + swell.hold;
@@ -176,9 +177,12 @@ const BUILD = {
       get swell() { return swellAt(); },
       tick(dt) {
         t += dt;
-        const K = api.speedK(), sw = swellAt(), wave = Math.sin(TAU * t / (14 * K));
-        face.min('mode', 'glow', api.look.glow * (1 + 0.12 * wave) + sw + api.warm());
-        sky.setHaloGain((1 + 0.06 * wave) * (1 + 0.8 * sw));
+        const K = api.speedK(), sw = swellAt();
+        ph += dt / (14 * K);   // the glow's phase: a Speed change alters its rate, never jumps it
+        const wave = Math.sin(TAU * ph);
+        // the glow mode: a stronger aura than the others (≤ 0.8 × look.glow), and a halo that breathes ±20 % over ≥ 14 s
+        face.min('mode', 'glow', api.look.glow * GLOW_K * (1 + 0.12 * wave) + sw + api.warm());
+        sky.setHaloGain((1 + 0.2 * wave) * (1 + 0.8 * sw));
         // every 40–70 s it looks up at its world's light for 3 s
         if (t >= nextLook) {
           nextLook = t + (40 + api.rand() * 30) * K;
@@ -300,6 +304,7 @@ const BUILD = {
       drowsy: () => script.d,
       tick(dt) {
         t += dt;
+        script.setSpeed(api.speedK());   // a live Speed change reaches the script's tempo (intervals from now on)
         tl.step(dt);
         if (stroking) script.drowse(0.04 * dt);
         const ev = script.step(dt);

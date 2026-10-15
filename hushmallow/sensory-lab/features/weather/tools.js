@@ -577,6 +577,14 @@ export function createTools(api) {
       for (const tr of tracks) if (tr.on && !tr.tool.raw && tr.kind === 'pending') decide(tr, t);   // holds begin while still
       for (const T of ALL) T.step?.(dt);
     },
+    /** Where a current is being drawn now (the newest Wind finger, else the breeze) into out; false when none. */
+    windAt(out) {
+      let best = null;
+      for (const t of tracks) if (t.on && t.tool === windTool && (!best || t.t0 > best.t0)) best = t;
+      if (best) { out.x = best.x; out.y = best.y; return true; }
+      if (breeze.on) { out.x = breeze.x; out.y = breeze.y; return true; }
+      return false;
+    },
     /** The newest weather touch (for the Mallow's gaze) into out; false when none. */
     focus(out) {
       let best = null;

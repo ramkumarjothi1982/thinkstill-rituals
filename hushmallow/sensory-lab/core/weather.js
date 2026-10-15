@@ -142,8 +142,10 @@ const TABLE = {
   rain: ['rain', 'cloud', mood(0.20, 0.82, 0.35, 0.30), mood(0.05, 0.10, 0.80, 0.55), 0.50, hosts(2, 1, 3, 2, 1, 0, 2), ['raindrop-lagoon', 'blue-drift', 'moonmilk-cove']],
   storm: ['clouds', 'cloud', mood(0.70, 0.70, 0.15, 0.25), mood(0.06, 0.08, 0.85, 0.60), 0.60, hosts(2, 1, 1, 2, 1, 0, 3), ['static-storm', 'blue-drift', 'moonmilk-cove']],
   moonlight: ['moon', 'night', mood(0.08, 0.35, 0.55, 0.40), mood(0.04, 0.05, 0.95, 0.50), 0.60, hosts(0, 0, 0, 3, 2, 0, 0), ['moonmilk-cove', 'spark-festival']],
-  starlight: ['stars', 'night', mood(0.06, 0.12, 0.50, 0.45), mood(0.04, 0.02, 1, 0.55), 0.80, hosts(0, 0, 1, 2, 2, 3, 2), ['spiral-observatory', 'moonmilk-cove', 'spark-festival']],
-  warm: ['glow', 'light', mood(0.06, 0.20, 0.60, 0.65), mood(0.04, 0, 0.85, 1), 0.75, hosts(2, 2, 2, 2, 3, 1, 1), ['spark-festival', 'moonmilk-cove', 'blue-drift']],
+  // Starlight arrives crisp (its realm draws sharp stars and the moon ring) and Warm glow already golden, so each
+  // reads as its own sky when it turns in the same realm as Moonlight; their progress lives in the transform
+  starlight: ['stars', 'night', mood(0.06, 0.12, 0.70, 0.45), mood(0.04, 0.02, 1, 0.55), 0.80, hosts(0, 0, 1, 2, 2, 3, 2), ['spiral-observatory', 'moonmilk-cove', 'spark-festival']],
+  warm: ['glow', 'light', mood(0.06, 0.20, 0.60, 0.80), mood(0.04, 0, 0.85, 1), 0.75, hosts(2, 2, 2, 2, 3, 1, 1), ['spark-festival', 'moonmilk-cove', 'blue-drift']],
 };
 // Hold chips: every lead alternative is held (Send a breeze also answers a short tap with one sweep).
 export const WEATHERS = Object.freeze(Object.fromEntries(DIAL_ORDER.map((id) => {
@@ -233,19 +235,26 @@ export const PULSE_EVENTS = Object.freeze([...Object.keys(PULSE), 'bead-up', 'sp
 
 /**
  * The realm pulse that answers a weather event, or null for none.
- * opts: reduced, gentle (no static-storm bolts), n (drops in a bead: ≥ 8 bursts on water), weather (for 'resolved').
+ * opts: reduced, gentle (no static-storm bolts, no festival fireworks), n (drops in a bead: ≥ 8 bursts on water),
+ * weather (for 'resolved').
  * 'strike' only ever comes back for the storm strike (static-storm), a resting sun (day realms) and a resting moon (Moonmilk).
+ * The Spark Festival's 'success' is a firework crown: never for one bead or the hearth's steady beat (both a 'tap'),
+ * and with the gentle style a constellation, a gift and a resolve are a 'tap' there too.
  */
 export function pulseFor(event, realmId, { reduced = false, gentle = false, n = 0, weather = null } = {}) {
+  const spark = realmId === 'spark-festival';
+  let k;
   switch (event) {
-    case 'bead-up': return realmId === 'spark-festival' ? 'tap' : 'success';   // spark's success is a firework: too much for one bead
+    case 'bead-up': return spark ? 'tap' : 'success';
+    case 'hearth': return spark ? 'tap' : 'success';   // every 2 s while the Mallow is the hearth
     case 'splash-water': return n >= 8 ? 'burst' : 'ripple';
     case 'strike': return realmId === 'static-storm' && !reduced && !gentle ? 'strike' : null;
     case 'sun-rest': return DAY_REALMS.includes(realmId) ? 'strike' : null;
-    case 'moon-rest': return realmId === 'moonmilk-cove' ? 'strike' : realmId === 'spark-festival' ? 'tap' : null;
-    case 'resolved': return isWeather(weather) ? RESOLVE_PULSE[weather] : null;
-    default: return Object.hasOwn(PULSE, event) ? PULSE[event] : null;
+    case 'moon-rest': return realmId === 'moonmilk-cove' ? 'strike' : spark ? 'tap' : null;
+    case 'resolved': k = isWeather(weather) ? RESOLVE_PULSE[weather] : null; break;
+    default: k = Object.hasOwn(PULSE, event) ? PULSE[event] : null;
   }
+  return spark && gentle && k === 'success' ? 'tap' : k;
 }
 
 // ---------------------------------------------------------------- pointers --
@@ -350,7 +359,7 @@ export class TransitionPlanner {
       from: null, to: this.weather, realm, toRealm: null, mode: this.reduced ? 'fade' : 'sweep', dir: 1 };
   }
 
-  get busy() { return this.phase !== 'idle' || !!this._pending || !!this._queued; }
+  get busy() { return this.phase !== 'idle' || !!this._pending || !!this._queued || this.cover > 0; }
   amount(w) { return isWeather(w) ? this.amt[IDX[w]] : 0; }
   setReduced(b) { this.reduced = !!b; }
   setTier(t) { this.tier = t; }
@@ -371,9 +380,12 @@ export class TransitionPlanner {
     return 'turn';
   }
 
-  /** Again: the current weather leaves quickly, the step it is gone reports resetNow, then it enters again. */
+  /**
+   * Again: the current weather leaves quickly, the step it is gone reports resetNow, then it enters again.
+   * Not under a front: during its reveal the weather was entered fresh at the swap, so there is nothing to reset.
+   */
   again() {
-    if (!this.weather || this.phase === 'cover' || this.phase === 'swap') return 'none';
+    if (!this.weather || this.phase === 'cover' || this.phase === 'swap' || this.phase === 'reveal') return 'none';
     this.phase = 'again';
     return 'again';
   }
@@ -416,7 +428,8 @@ export class TransitionPlanner {
       return 'front';
     }
     if (toRealm === this.realm) {
-      if (to === this.weather && p === 'idle') return 'none';
+      // a re-pick of the weather that is idle, or already running Again (whose reset is still to come), changes nothing
+      if (to === this.weather && (p === 'idle' || p === 'again')) return 'none';
       if (to === this.weather && p === 'turn') return 'turn';   // already entering: keep its timing
       this._retarget(to, d);
       this.phase = 'turn';
@@ -426,7 +439,7 @@ export class TransitionPlanner {
     this.dir = d;
     this.toRealm = toRealm;
     this.phase = 'cover';
-    this._coverT = 0;
+    this._coverT = this.cover * TIMING.coverMin;   // a cover still up carries on from where it is (never a one-frame jump)
     this._frames = 0;
     this._from = this._mainOther();
     return 'front';
@@ -543,6 +556,10 @@ export class TransitionPlanner {
       }
       default: break;
     }
+    // a front's veil only ever clears: should any phase but the front's own leave cover behind, it lifts at reveal pace
+    if (this.cover > 0 && this.phase !== 'cover' && this.phase !== 'swap' && this.phase !== 'reveal') {
+      this.cover = Math.max(0, this.cover - (inst ? 1 : dt / (this.reduced ? TIMING.fadeOut : TIMING.reveal)));
+    }
     if (this.phase === 'idle' && !this._pending && !this._queued) this._instant = false;
     const ti = this.weather ? IDX[this.weather] : -1;
     o.phase = this.phase;
@@ -649,9 +666,9 @@ export class WeatherSession {
     this.resetNow = s.resetNow;
     if (s.swapNow) this.realm = s.realm;
     if (s.resetNow) { this.progress = 0; this.resolved = false; }
-    // a front lasts from cover until its reveal ends (a cancelled swap uncovers without one)
-    this._fronting = s.phase === 'cover' || s.phase === 'swap' || (this._fronting && s.phase === 'reveal');
-    this.state = s.phase === 'idle' ? 'live' : this._fronting ? 'fronting' : this.state === 'arriving' ? 'arriving' : 'turning';
+    // a front lasts from cover until its veil has gone (a cancelled swap uncovers without one)
+    this._fronting = s.phase === 'cover' || s.phase === 'swap' || (this._fronting && (s.phase === 'reveal' || s.cover > 0));
+    this.state = this._fronting ? 'fronting' : s.phase === 'idle' ? 'live' : this.state === 'arriving' ? 'arriving' : 'turning';
     if (!this._arrived && s.phase !== 'cover' && s.phase !== 'swap' && s.phase !== 'again' && s.enterK >= 0.8) {
       this._arrived = true;
       this.arrivedNow = true;

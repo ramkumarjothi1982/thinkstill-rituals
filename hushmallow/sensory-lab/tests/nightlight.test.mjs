@@ -18,7 +18,7 @@ import {
   defaultsFromDNA, effectiveMotion, tempIndex, tempAt, NightSettings,
 } from '../features/nightlight/settings.js';
 import {
-  TEMPS, MALLOW_SHIFT, envGains, mallowGains, lightColour, tempColour, mixHex, luminance, nightLook, chromeTokens, LightLimiter,
+  TEMPS, MALLOW_SHIFT, envGains, mallowGains, lightColour, tempColour, tempStep, mixHex, luminance, nightLook, chromeTokens, LightLimiter,
 } from '../features/nightlight/look.js';
 import { NIGHT_CAPS, PACE, fpsFor, FramePacer } from '../core/frame-pacer.js';
 import {
@@ -41,7 +41,7 @@ import { PARAM_NAMES } from '../../src/mallows/expressions.js';
 import { installAudioGlobals, reaches } from './lib/fake-audio.mjs';
 import { collectStrings, lintCopy } from './lib/copy-lint.mjs';
 import { NETWORK, scanFiles, filesUnder } from './lib/static-scan.mjs';
-import { MODES, TOUCHES, SWELL, LIVE, Timeline, Moments, startMode } from '../features/nightlight/modes.js';
+import { MODES, TOUCHES, SWELL, LIVE, GLOW_K, Timeline, Moments, startMode } from '../features/nightlight/modes.js';
 import { MARGIN, boxGround, stillDpr } from '../features/nightlight/world.js';
 import { FaceMixer } from '../core/expression-engine.js';
 import { ScreenWake, WAKE_MAX_MS } from '../core/screen-wake.js';
@@ -1263,11 +1263,11 @@ test('U20 the five modes on a fake api: rests ≥ 0.62, Moonlight swell and limi
   }
   assert.equal(startMode('nonsense', fakeScene().api).id, 'moonlight');
 
-  // Moonlight: the glow floor follows the light; a tap swells (rising over 600 ms); a second tap inside 2 s only holds it longer
+  // Moonlight: the glow floor follows the light (× GLOW_K, the glow mode); a tap swells (rising over 600 ms); a second tap inside 2 s only holds it longer
   const mo = fakeScene('boppo'), ml = startMode('moonlight', mo.api);
   mo.run(ml, 1);
   const floor = mo.face.out.min.glow;
-  assert.ok(floor >= 0.55 * 0.88 - 1e-9 && floor <= 0.55 * 1.12 + 1e-9);
+  assert.ok(floor >= 0.55 * GLOW_K * 0.88 - 1e-9 && floor <= 0.55 * GLOW_K * 1.12 + 1e-9, `${floor}`);
   ml.event({ type: 'tap' });
   mo.run(ml, 0.1); const g100 = mo.face.out.min.glow;
   mo.run(ml, 0.6); const g700 = mo.face.out.min.glow;
@@ -1653,4 +1653,57 @@ test('U24 stylesheet: every rule scoped to .nightlight, night tokens, no blur, n
   // less motion: the chrome fades in 200 ms, the sheet fades instead of sliding
   assert.ok(rules.some((r) => r.selectors.includes('.nightlight.nl-calm .sheet') && /opacity:\s*0/.test(r.body)));
   assert.ok(!new RegExp('H' + 'ushmallow').test(css));
+});
+
+// ================================================================= U25 ==
+test('U25 review fixes: Speed reaches Sleepy and Moonlight without a jump; Moonlight is the glow mode; Light steps; Zuzu lids; one footnote', () => {
+  // Moonlight's glow wave keeps its phase when Speed changes (only its rate changes): no jump in the halo or the glow
+  const mo = fakeScene('boppo'), ml = startMode('moonlight', mo.api);
+  let k = 1.1;
+  mo.api.speedK = () => k;
+  mo.run(ml, 100, 0.05);
+  const g0 = mo.sky.gain, f0 = mo.face.out.min.glow;
+  k = 1.25;
+  mo.run(ml, 0.05, 0.05);
+  assert.ok(Math.abs(mo.sky.gain - g0) < 0.01 && Math.abs(mo.face.out.min.glow - f0) < 0.01, `halo ${g0} → ${mo.sky.gain}, glow ${f0} → ${mo.face.out.min.glow}`);
+  // and over a whole slow wave the halo breathes ±20 % (min and max within 1 ± 0.2)
+  let lo = 9, hi = 0;
+  for (let i = 0; i < 400; i++) { mo.run(ml, 0.05, 0.05); lo = Math.min(lo, mo.sky.gain); hi = Math.max(hi, mo.sky.gain); }
+  assert.ok(lo < 0.85 && lo >= 0.8 - 1e-9 && hi > 1.15 && hi <= 1.2 + 1e-9, `${lo}..${hi}`);
+  // the glow mode: Moonlight's sky mix and aura are stronger than every other mode's (the others ≤ 0.8 × look.glow)
+  for (const m of MODES_ORDER.filter((x) => x !== 'moonlight')) {
+    assert.ok(MODES.moonlight.sky.halo > MODES[m].sky.halo && MODES.moonlight.sky.pool > MODES[m].sky.pool, m);
+    if (m === 'breathe') continue;   // Breathe's glow follows the breath, not the light
+    const f = fakeScene('boppo'), c = startMode(m, f.api);
+    f.run(c, 2);
+    assert.ok(f.face.out.min.glow <= 0.55 * 0.8 + 1e-9, `${m}: ${f.face.out.min.glow}`);
+  }
+  assert.ok(GLOW_K >= 1.3);
+
+  // Sleepy: a live Speed change reaches the script's tempo
+  const sl = fakeScene('noomi'), sc = startMode('sleepy', sl.api);
+  sl.run(sc, 0.2);
+  assert.equal(sc.script.speedK, 1);
+  sl.api.speedK = () => 1.25;
+  sl.run(sc, 0.1);
+  assert.equal(sc.script.speedK, 1.25);
+
+  // the Light's two authored steps around a temperature: i + f = temp × 4, and the light colour lies on that segment
+  const at = {};
+  for (const t of [0, 0.1, 0.25, 0.4, 0.5, 0.85, 1]) {
+    tempStep(t, at);
+    assert.ok(Number.isInteger(at.i) && at.i >= 0 && at.i <= 3 && at.f >= 0 && at.f <= 1 && near(at.i + at.f, t * 4, 1e-12), `${t}: ${JSON.stringify(at)}`);
+    const glow = '#9fd7ff', a = lightColour(glow, at.i / 4), b = lightColour(glow, (at.i + 1) / 4), mid = lightColour(glow, t);
+    const ch = (hx) => [1, 3, 5].map((j) => parseInt(hx.slice(j, j + 2), 16)), m = ch(mid), w = ch(mixHex(a, b, at.f));
+    assert.ok(m.every((v, j) => Math.abs(v - w[j]) <= 1), `${t}: a blend of its two steps (${mid} vs ${mixHex(a, b, at.f)}, to rounding)`);
+  }
+  assert.equal(tempStep(0.4, at), at, 'written into the given object');
+
+  // Zuzu looks sleepy at bedtime: heavy lids over its slowing spirals
+  assert.ok(NIGHT_WAYS.zuzu.sign.min.lidTop >= 0.3);
+  assert.deepEqual(NIGHT_WAYS.zuzu.sign.drowse.spin, [0.25, 0.04]);
+
+  // the sheet's one footnote is the disclaimer (Touch sounds belong to another screen)
+  assert.ok(!collectStrings(COPY.sheet).some((x) => /Touch sounds/.test(x)));
+  assert.equal(COPY.sheet.soundNote, undefined);
 });

@@ -14,12 +14,12 @@ import {
   classify, isFling, TransitionPlanner, WeatherSession,
 } from '../core/weather.js';
 import { FieldGrid, scatter } from '../core/weather/field.js';
-import { CloudBank, MistField, StrikeClock, glowEnvelope, COLS, CENTRAL, GLOW_RISE, STRIKE_MIN, MIST_TAU } from '../core/weather/clouds.js';
+import { CloudBank, MistField, StrikeClock, glowEnvelope, COLS, CENTRAL, GLOW_RISE, STRIKE_MIN, MIST_TAU, PATH_R, PUFFS } from '../core/weather/clouds.js';
 import { RainField, orbRadius, ORB_REACH } from '../core/weather/rain.js';
 import { WindField, Ribbons, Fluffs, WIND_TAU } from '../core/weather/wind.js';
 import { WaveField, Puddles, ARRIVE_AT, DRY_TAU } from '../core/weather/water.js';
 import { LightPool, EmberField, SUN_REST } from '../core/weather/light.js';
-import { placeStars, constellationShape, StarSwarm, CONSTELLATION_STYLE, TWINKLE_HZ, TWINKLE_AMP, GATHER_R, MIN_GAP } from '../core/weather/stars.js';
+import { placeStars, constellationShape, StarSwarm, CONSTELLATION_STYLE, TWINKLE_HZ, TWINKLE_AMP, GATHER_R, MIN_GAP, STARS, isGuide } from '../core/weather/stars.js';
 import { FEEL, REST, EVENT_TYPES, GAP, CLOSED_EYES, decide, createMemory, restFor, isPositiveMix } from '../core/weather-mallow.js';
 import { REALM_GEO, homeRealm } from '../core/environment.js';
 import { softened } from '../core/personality.js';
@@ -34,6 +34,8 @@ import { SoundEngine, MAX_VOICES, VOICES } from '../core/sound-engine.js';
 import { noiseBuffer } from '../core/ambience.js';
 import { WeatherSound, bedLevels, padFor, LAYERS, TIER_LAYERS, GAPS, PAD, WIND_HZ } from '../core/weather-sound.js';
 import { labGlowGate, LAB_GLOW } from '../core/weather-layer.js';
+import { swellRow } from '../core/weather-draw.js';
+import { segDist2 } from '../core/weather/field.js';
 
 const LAB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(LAB, '..', 'src');
@@ -1277,4 +1279,225 @@ test('U19 sound: the bed follows the weather (Touch sounds, mute, tiers), one-sh
     s.stopAll(); c.advance(2);
     assert.ok(![...s.live].some((v) => v.keep), 'no bed voice left');
   } finally { s.dispose(); restore(); }
+});
+
+// ------------------------------------------------------------- review 3 --
+// One test per confirmed finding of the third review (each name says what it pins).
+
+test('R1 Again during a front\'s reveal is refused, and the veil always clears; a re-pick during Again resets once', () => {
+  // the reported path: a front, R inside its reveal
+  const s = new WeatherSession({ home: 'blue-drift' });
+  s.begin(); run(() => s.update(DT, 0), 3);
+  assert.equal(s.choose('moonlight'), 'front');
+  let st;
+  for (let i = 0; i < 600; i++) { st = s.update(DT, 0); if (st.phase === 'reveal') break; }
+  run(() => { st = s.update(DT, 0); }, 0.15);
+  assert.equal(st.phase, 'reveal'); assert.ok(st.cover > 0.5, `mid-reveal (${st.cover})`);
+  assert.equal(s.again(), 'none', 'nothing to reset: the weather was entered fresh at the swap');
+  run(() => { st = s.update(DT, 0); }, 20);
+  assert.equal(s.planner.cover, 0); assert.equal(s.state, 'live'); assert.equal(st.phase, 'idle'); assert.ok(!s.planner.busy);
+  // defensively, any phase but the front's own that is left with a veil lifts it at reveal pace, and the session
+  // stays 'fronting' (so the screen's front clears as usual) until it has gone
+  const d = new WeatherSession({ home: 'raindrop-lagoon' });
+  d.begin(); run(() => d.update(DT, 0), 1.5);
+  d.planner.cover = 0.8; d._fronting = true; d.planner.phase = 'turn';   // as if a front's veil had been left behind
+  let prev = 0.8, states = new Set();
+  for (let i = 0; i < 300 && d.planner.cover > 0; i++) {
+    d.update(DT, 0); states.add(d.state);
+    assert.ok(d.planner.cover <= prev && prev - d.planner.cover <= DT / TIMING.reveal + 1e-6, `no faster than the reveal (${prev} → ${d.planner.cover})`);
+    prev = d.planner.cover;
+  }
+  assert.equal(d.planner.cover, 0); assert.ok(states.has('fronting')); d.update(DT, 0); assert.equal(d.state, 'live');
+  // a front that starts over a veil still up carries on from it (the front's alpha never jumps)
+  const j = new TransitionPlanner({ weather: 'rain', realm: 'raindrop-lagoon' });
+  j.cover = 0.7;
+  assert.equal(j.request({ to: 'sunshine', toRealm: 'sunpop-orchard' }), 'front');
+  let c0 = j.cover;
+  for (let i = 0; i < 90; i++) { const c = j.step(DT).cover; assert.ok(Math.abs(c - c0) <= DT / TIMING.coverMin + 1e-6, `cover step ${c0} → ${c}`); c0 = c; }
+  // Again, then the same radio tapped 0.1 s later: one reset, one resolve (the sims reset with it: raw back to 0)
+  const a = new WeatherSession({ home: 'static-storm', weather: 'storm' });
+  a.begin();
+  let raw = 1, resolves = 0, resets = 0;
+  const upd = () => { a.update(DT, raw); if (a.resolvedNow) resolves++; if (a.resetNow) { resets++; raw = 0; } };
+  run(upd, 3);
+  assert.equal(resolves, 1);
+  assert.equal(a.again(), 'again');
+  run(upd, 0.1);
+  assert.equal(a.choose('storm'), 'none', 'a re-pick while Again runs changes nothing');
+  run(upd, 3);
+  assert.equal(resets, 1, 'Again\'s reset still fires'); assert.equal(resolves, 1, 'and the weather does not resolve again by itself');
+  assert.equal(a.progress, 0); assert.equal(a.state, 'live');
+});
+
+// the tool's own stroke: 26 px steps at the strength features/weather/tools.js gives a brisk 1100 px/s swipe
+function swipe(c, x0, y0, x1, y1, speed = 1100) {
+  const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 26);
+  for (let k = 0; k < n; k++) {
+    const ax = x0 + (x1 - x0) * k / n, ay = y0 + (y1 - y0) * k / n, bx = x0 + (x1 - x0) * (k + 1) / n, by = y0 + (y1 - y0) * (k + 1) / n;
+    const L = Math.hypot(bx - ax, by - ay);
+    c.push(ax, ay, bx, by, (0.4 + 0.7 * Math.min(1, speed / 1400)) * Math.min(1, Math.max(0.2, L / 120)));
+    c.step(Math.max(DT, L / speed));
+  }
+}
+// push() as it was before sideways swipes carried puffs (the reference for "vertical swipes are unchanged")
+class PushBefore extends CloudBank {
+  push(x0, y0, x1, y1, strength = 0.5) {
+    const sx = x1 - x0, sy = y1 - y0, L = Math.hypot(sx, sy), off = this.dx();
+    if (L < 1e-3) return 0;
+    const nx = -sy / L, ny = sx / L, ux = sx / L, uy = sy / L, imp0 = 520 * Math.pow(Math.min(1.5, Math.max(0, strength)), 1.2);
+    for (let i = 0; i < this.n; i++) {
+      const px = this.x[i] + off, py = this.y[i], r = this.r[i], d = Math.sqrt(segDist2(px, py, x0, y0, x1, y1)) - 0.45 * r;
+      if (d >= PATH_R) continue;
+      const f = d <= 0 ? 1 : 1 - d / PATH_R;
+      let side = Math.sign(sx * (py - y0) - sy * (px - x0));
+      if (!side) side = Math.sign(nx || 1) * (px < this.W / 2 ? -1 : 1);
+      const imp = imp0 * f / (1 + Math.abs(this.x[i] - this.hx[i]) / (3 * r));
+      this.vx[i] += (nx * side + ux * 0.25) * imp; this.vy[i] += (ny * side + uy * 0.25) * imp * 0.5;
+    }
+    return 1;
+  }
+}
+
+test('R2 Storm: a sideways swipe parts the clouds on every tier; vertical swipes are exactly as before', () => {
+  const band = { W: 390, H: 844, top: 64, bottom: 429 }, mid = (64 + 429) / 2;
+  const bank = (tier, K = CloudBank) => { const c = new K({ kind: 'thunder', tier, seed: 7 }).resize(band); c.setAmount(1); run((dt) => c.step(dt), 1); return c; };
+  const settle = (c) => { run((dt) => c.step(dt), 3, 0.05); return c.clear(); };
+  for (const tier of ['low', 'medium', 'high']) {
+    const co = bank(tier); swipe(co, 195, mid, 370, mid); swipe(co, 195, mid, 20, mid);
+    const fw = bank(tier); swipe(fw, 20, mid, 370, mid);
+    const sl = bank(tier); swipe(sl, 20, mid, 370, mid, 450);
+    const [cOut, cFull, cSlow] = [settle(co), settle(fw), settle(sl)];
+    assert.ok(cOut > 0.3, `${tier}: a centre-out swipe each way opens the sky (${cOut.toFixed(2)})`);
+    assert.ok(cFull > 0.15, `${tier}: one full-width swipe opens it (${cFull.toFixed(2)})`);
+    assert.ok(cSlow > 0.15, `${tier}: a slower one too (${cSlow.toFixed(2)})`);
+    // vertical: puff for puff the same as the push before this change
+    const v = bank(tier), ref = bank(tier, PushBefore);
+    for (const x of [175, 195, 215]) { swipe(v, x, 70, x, 420); swipe(ref, x, 70, x, 420); }
+    settle(v); settle(ref);
+    for (let i = 0; i < v.n; i++) assert.ok(Math.abs(v.x[i] - ref.x[i]) < 1e-6 && Math.abs(v.y[i] - ref.y[i]) < 1e-6, `${tier}: vertical swipes unchanged (puff ${i})`);
+    assert.ok(v.clear() > 0.3, `${tier}: vertical still parts (${v.clear().toFixed(2)})`);
+  }
+  // a gap opened sideways is a real gap: shafts can fall through it
+  const g = bank('medium'); swipe(g, 195, mid, 370, mid); swipe(g, 195, mid, 20, mid); settle(g);
+  assert.ok(g.gaps(new Float32Array(6)) >= 1, 'a sideways parting reports a gap');
+});
+
+test('R3 a tier drop or a rotate keeps the parted storm; a tier drop keeps every constellation star', () => {
+  for (const tier of ['high', 'medium']) {
+    const b = new CloudBank({ kind: 'thunder', tier, seed: 7 }).resize({ W: 390, H: 844, top: 72, bottom: 400 });
+    b.setAmount(1);
+    for (let k = 0; k < 6; k++) { const x = 195 + (k % 2 ? 20 : -20); b.push(x, 60, x, 420, 0.9); run((dt) => b.step(dt), 0.5); }
+    const c0 = b.clear(), n0 = b.n;
+    assert.ok(c0 >= 0.4, `${tier}: parted (${c0.toFixed(2)})`);
+    b.setTier('low'); run((dt) => b.step(dt), 0.5);
+    assert.ok(Math.abs(b.clear() - c0) <= 0.05, `${tier}: a tier drop keeps it (${c0.toFixed(2)} → ${b.clear().toFixed(2)})`);
+    assert.equal(b.n, n0, 'on screen, the puff count waits');
+    assert.equal(b.blits, 5, 'but each puff is drawn cheaper at once');
+    b.resize({ W: 844, H: 390, top: 60, bottom: 200 });
+    assert.ok(b.clear() > 0.3 && Math.abs(b.clear() - c0) <= 0.05, `${tier}: rotated, still parted (${b.clear().toFixed(2)})`);
+    run((dt) => b.step(dt), 0.5);
+    b.resize({ W: 390, H: 844, top: 72, bottom: 400 });
+    assert.ok(b.clear() > 0.3 && Math.abs(b.clear() - c0) <= 0.05, `${tier}: and back (${b.clear().toFixed(2)})`);
+    assert.ok(Array.from(b.x.slice(0, b.n)).every((x, i) => x >= -1.1 * b.r[i] - 1e-6 && x <= 390 + 1.1 * b.r[i] + 1e-6), 'inside the new band');
+    // once it has gone, the next layout takes the new tier's count
+    b.setAmount(0); b.step(DT);
+    assert.equal(b.n, PUFFS.thunder.low);
+    b.setAmount(1); assert.equal(b.reset().clear(), 0, 'a reset lays it out fresh');
+  }
+  // an unseen bank lays out afresh at once
+  const u = new CloudBank({ kind: 'deck', tier: 'high', seed: 2 }).resize({ W: 390, H: 844, top: 64, bottom: 200 });
+  u.setTier('low'); assert.equal(u.n, PUFFS.deck.low);
+  // stars: three constellations, a tier drop, every member still there
+  const rect = { x0: 16, y0: 74, x1: 374, y1: 460 }, body = { cx: 195, top: 450, bottom: 700, mid: 575, w: 250, h: 250 };
+  const sw = new StarSwarm({ tier: 'medium', seed: 13, mallowId: 'glitzi' }).resize({ rect, body, W: 390 });
+  sw.setAmount(1);
+  for (let c = 0; c < 3; c++) { for (let g = 0; g < 20; g++) sw.gatherOne(1, 60, 120); sw.release(1, 0, 0); run((dt) => sw.step(dt), 5); }
+  const mem = new Int16Array(16), members = () => [0, 1, 2].map((k) => sw.members(k, mem));
+  assert.deepEqual(members(), [6, 6, 6]);
+  sw.setTier('low'); run((dt) => sw.step(dt), 1);
+  assert.deepEqual(members(), [6, 6, 6], 'no constellation star dropped');
+  assert.equal(sw.constellations, 3);
+  let top = 0; for (let i = 0; i < sw.cap; i++) if (sw.st[i] === 3) top = i + 1;
+  assert.ok(sw.n >= top, `n ${sw.n} covers every placed star (${top})`);
+  sw.reset(); assert.equal(sw.n, STARS.low, 'the new count once they are free');
+});
+
+test('R4 a morph\'s parting is drawn only: Storm → Sunshine → Storm keeps exactly what the person did', () => {
+  const c = new CloudBank({ kind: 'thunder', tier: 'low', seed: 7 }).resize({ W: 390, H: 844, top: 64, bottom: 450 });
+  c.setAmount(1); run((dt) => c.step(dt), 0.5);
+  const x0 = Array.from(c.x.slice(0, c.n));
+  const partOf = (i) => { const p = c.part; c.part = 0; const base = c.drawX(i); c.part = p; return c.drawX(i) - base; };   // the parting alone (the bank also drifts off as it leaves)
+  // Sunshine picked: the bank leaves and parts from the centre…
+  c.leave(1); c.apart(1);
+  for (let k = 0; k < 40; k++) { c.amount = Math.max(0, c.amount - DT / 1.2); c.step(DT); }
+  assert.equal(c.clear(), 0, 'coverage (and so progress) never sees it');
+  assert.ok(c.part > 0.6, `parting (${c.part.toFixed(2)})`);
+  for (let i = 0; i < c.n; i++) {
+    assert.ok(Math.abs(c.x[i] - x0[i]) < 1, 'the puffs themselves stay');
+    if (Math.abs(x0[i] - 195) > 30) assert.ok(Math.sign(partOf(i)) === Math.sign(x0[i] - 195) && Math.abs(partOf(i)) > 0.6 * 0.6 * 390 - 1, `puff ${i} drawn away from the centre`);
+  }
+  // …and Storm picked again: it closes as the bank enters, with progress where it was
+  c.enter(1);
+  for (let k = 0; k < 240; k++) { c.amount = Math.min(1, c.amount + DT / 1.5); c.step(DT); }
+  assert.ok(c.part < 0.01 && c.clear() === 0, `closed again (${c.part.toFixed(3)}), untouched`);
+  // reduced motion: no parting drawn (enter and leave fade in place)
+  const r = new CloudBank({ kind: 'deck', tier: 'low', seed: 3 }).resize({ W: 390, H: 844, top: 64, bottom: 200 }).setReduced(true);
+  r.setAmount(1); r.apart(1); run((dt) => r.step(dt), 1);
+  for (let i = 0; i < r.n; i++) assert.equal(r.drawX(i), r.x[i]);
+});
+
+test('R5 the light-through puff is a passing one; the Spark Festival keeps fireworks for the big moments', () => {
+  const body = { cx: 195, top: 450, bottom: 700, mid: 575, w: 250, h: 250 };
+  for (const id of ['glitzi', 'blubi', 'boppo']) {
+    const mem = createMemory(), inflates = [];
+    const at = (t, w, ev) => decide({ mallowId: id, style: 'balanced', reduced: false, weather: w, progress: 0.3, body, event: ev, cond: { t, dt: 0.1, lightOnBody: 0.5 } }, mem, rng(2));
+    const log = (acts, t) => acts.filter((a) => a.type === 'inflate').forEach((a) => inflates.push([t, a.v]));
+    log(at(0, 'storm', null), 0);
+    log(at(5, 'storm', { type: 'light-through', x: 195, y: 450 }), 5);
+    for (let t = 5.1; t < 9; t += 0.1) log(at(+t.toFixed(1), 'storm', null), t);
+    assert.ok(inflates.some(([, v]) => v === 0.15), `${id}: light puffs it up (${JSON.stringify(inflates)})`);
+    assert.equal(inflates[inflates.length - 1][1], 0, `${id}: then lets it go`);
+    // a bask that holds keeps its own inflate
+    const bm = createMemory();
+    decide({ mallowId: id, style: 'balanced', weather: 'sunshine', body, event: { type: 'light-through', x: 1, y: 1 }, cond: { t: 0, dt: 0.1 } }, bm, rng(1));
+    let last = null;
+    for (let t = 0.1; t < 5; t += 0.1) for (const a of decide({ mallowId: id, style: 'balanced', weather: 'sunshine', body, cond: { t, dt: 0.1, bask: true } }, bm, rng(1))) if (a.type === 'inflate') last = a.v;
+    assert.equal(last, FEEL[id].bask.inflate);
+  }
+  // the Spark Festival: the hearth's steady beat is a tap there (a 'success' is a firework crown), elsewhere a success
+  assert.equal(pulseFor('hearth', 'spark-festival'), 'tap');
+  assert.equal(pulseFor('hearth', 'moonmilk-cove'), 'success');
+  // gentle: no crown for a constellation, a gift or a resolve in the fair; balanced keeps them; other realms unchanged
+  for (const [ev, o] of [['constellation', {}], ['gift', {}], ['resolved', { weather: 'starlight' }], ['resolved', { weather: 'warm' }]]) {
+    assert.equal(pulseFor(ev, 'spark-festival', { ...o, gentle: true }), 'tap', `gentle ${ev} ${o.weather || ''}`);
+    assert.equal(pulseFor(ev, 'spark-festival', o), 'success', `balanced ${ev}`);
+    assert.equal(pulseFor(ev, 'moonmilk-cove', { ...o, gentle: true }), 'success', `${ev} elsewhere`);
+  }
+  assert.equal(pulseFor('resolved', 'spark-festival', { weather: 'storm', gentle: true }), 'clear', 'a clearing is never a firework anyway');
+});
+
+test('R6 drawing helpers: the swell row is clear of the Mallow; guide stars; the first constellation forms above the Mallow', () => {
+  // REALM_GEO bands at 390 × 844 (bottom bar top 718) with each realm's own Mallow
+  const row = (water, body) => swellRow(water[0] * 844, water[1] * 844, body, 718);
+  const drift = row([0.57, 1], { top: 419, bottom: 679 });
+  assert.ok(drift.y > 679 + 8 && drift.y < 718 - 8, `Blue Drift: below Loomi (${drift.y})`);
+  const cove = row([0.5, 0.735], { top: 446, bottom: 706 });
+  assert.ok(cove.y >= 422 && cove.y < 446 - 8, `Moonmilk: above Noomi (${cove.y})`);
+  const lagoon = row([0.6, 1], { top: 449, bottom: 700 });
+  assert.ok(lagoon.y > 700 + 8 && lagoon.y < 718, `Lagoon: just under Blubi (${lagoon.y})`);
+  assert.ok([drift, cove, lagoon].every((r) => r.f >= 0 && r.f <= 1));
+  assert.equal(swellRow(100, 200, null).y, 134, 'no body: the old middle row');
+  // two or three guide stars on every tier
+  for (const t of ['low', 'medium', 'high']) {
+    const k = Array.from({ length: STARS[t] }, (_, i) => i).filter(isGuide).length;
+    assert.ok(k >= 2 && k <= 3, `${t}: ${k} guide stars`);
+  }
+  // the first constellation is right above the Mallow (and higher than the two beside it)
+  const rect = { x0: 16, y0: 74, x1: 374, y1: 460 }, body = { cx: 195, top: 450, bottom: 700, mid: 575, w: 250, h: 250 };
+  const sw = new StarSwarm({ tier: 'high', seed: 4, mallowId: 'zuzu' }).resize({ rect, body, W: 390 });
+  sw.setAmount(1); run((dt) => sw.step(dt), 0.3);
+  for (let g = 0; g < 12; g++) sw.gatherOne(1, 60, 120);
+  const r1 = sw.release(1, 0, 0);
+  assert.equal(r1.kind, 'constellation'); assert.ok(Math.abs(r1.x - body.cx) < 1, `first at the centre (${r1.x})`);
+  assert.ok(sw.ky[0] < sw.ky[1] && sw.ky[0] < sw.ky[2] && sw.kx[1] < body.cx && sw.kx[2] > body.cx);
 });

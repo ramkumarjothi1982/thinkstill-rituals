@@ -30,16 +30,18 @@ const DEFAULT_GLOW = '#ffd29a';
 
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 
-// temp → segment index and fraction
+// temp → segment index and fraction, into one module-level pair (called every frame: no allocation)
+const SEG = [0, 0];
 function seg(temp) {
   const x = clamp(num(temp, 0.5), 0, 1) * (TEMPS.length - 1);
   const i = Math.min(TEMPS.length - 2, Math.floor(x));
-  return [i, x - i];
+  SEG[0] = i; SEG[1] = x - i;
+  return SEG;
 }
 
 /** World gains [r, g, b] for a colour temperature (0 Moon … 1 Ember), piecewise linear over TEMPS. */
 export function envGains(temp, out = [0, 0, 0]) {
-  const [i, f] = seg(temp), a = TEMPS[i][1], b = TEMPS[i + 1][1];
+  const sg = seg(temp), i = sg[0], f = sg[1], a = TEMPS[i][1], b = TEMPS[i + 1][1];
   for (let c = 0; c < 3; c++) out[c] = lerp(a[c], b[c], f);
   return out;
 }
@@ -67,8 +69,15 @@ export function mixHex(a, b, t) {
 
 /** The temperature's own light colour (interpolated between the five steps). */
 export function tempColour(temp) {
-  const [i, f] = seg(temp);
+  const sg = seg(temp), i = sg[0], f = sg[1];
   return mixHex(TEMPS[i][2], TEMPS[i + 1][2], f);
+}
+
+/** The light's two authored steps around `temp` and the weight of the upper one: { i, f } (i + f = temp × 4). */
+export function tempStep(temp, out = { i: 0, f: 0 }) {
+  const sg = seg(temp);
+  out.i = sg[0]; out.f = sg[1];
+  return out;
 }
 
 /** The light: 40 % of the palette (or the Mallow's) glow with 60 % of the temperature colour. */

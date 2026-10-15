@@ -10,17 +10,22 @@
 //                       sweep gathers stars within 56 px into an orbiting
 //                       cluster at the fingertip (one per pointer, two at most).
 //                       Released away from the Mallow, 3 or more fly to a
-//                       constellation above it (3 kept; a 4th replaces the
+//                       constellation above it (the first right above it, then
+//                       either side; 3 kept; a 4th replaces the
 //                       oldest; each takes at most a third of the stars, the
 //                       rest drift home, so three can always be made); near the Mallow they shower over it as a gift
-//                       and drift home. Reduced motion: no twinkle, no orbit
-//                       swirl, and stars fade between places instead of flying.
+//                       and drift home. Two or three brighter guide stars
+//                       lead the eye. A tier drop never takes a star that is
+//                       in use. Reduced motion: no twinkle, no orbit swirl,
+//                       and stars fade between places instead of flying.
 //   Events: 'gather' (k = cluster size), 'constellation' (k = n), 'gift' (k = n).
 
 import { clamp, rng, TAU } from '../math.js';
 import { SimBase, scatter } from './field.js';
 
 export const STARS = { high: 28, medium: 20, low: 12 };
+/** The brighter guide stars: indices 3, 10 and 17 (two on the low tier, three otherwise). */
+export const isGuide = (i) => i % 7 === 3 && i < 21;
 export const MIN_GAP = 44, GATHER_R = 56, TWINKLE_HZ = 1.2, TWINKLE_AMP = 0.25, KEEP = 3, MIN_CONSTELLATION = 3, MAX_CONSTELLATION = 8;
 export const CONSTELLATION_STYLE = Object.freeze({
   glitzi: Object.freeze({ style: 'snap', shape: 'polygon', fadeMs: 250, omega: 16, dim: 1 }),
@@ -121,7 +126,8 @@ export class StarSwarm extends SimBase {
     const w = W || rect.x1 + rect.x0, cx = body ? body.cx : w / 2, top = body ? body.top : rect.y1;
     const lift = Math.max(rect.y0 + 40, top - (top - rect.y0) * 0.45);
     this.kr = clamp(0.1 * Math.min(w, Math.max(200, top - rect.y0) * 2), 34, 70);
-    const spread = clamp(w * 0.3, 90, 260), sites = [[cx - spread, lift + this.kr * 0.4], [cx, lift - this.kr * 0.5], [cx + spread, lift + this.kr * 0.4]];
+    // the first constellation forms right above the Mallow (a little higher), then left, then right
+    const spread = clamp(w * 0.3, 90, 260), sites = [[cx, lift - this.kr * 0.5], [cx - spread, lift + this.kr * 0.4], [cx + spread, lift + this.kr * 0.4]];
     for (let s = 0; s < KEEP; s++) {
       this.kx[s] = clamp(sites[s][0], rect.x0 + this.kr, (W || rect.x1) - this.kr);
       this.ky[s] = clamp(sites[s][1], rect.y0 + this.kr, Math.max(rect.y0 + this.kr, top - this.kr - 10));
@@ -129,11 +135,20 @@ export class StarSwarm extends SimBase {
     return this;
   }
 
-  setTier(tier) { const n = STARS[tier]; if (n && n < this.want) { this.want = n; this.n = Math.min(this.n, n); } return this; }
+  /** A lower tier: fewer stars, but never one that is held, flying, placed or showering (they go once free). */
+  setTier(tier) { const n = STARS[tier]; if (n && n < this.want) { this.want = n; this._trim(); } return this; }
+
+  _trim() {
+    if (this.n <= this.want) return;
+    let top = this.want;
+    for (let i = this.want; i < this.n; i++) if (this.st[i] !== ST.FREE && this.st[i] !== ST.HOME) top = i + 1;
+    this.n = top;
+  }
 
   reset() {
     for (let i = 0; i < this.cap; i++) { this.st[i] = ST.FREE; this.cl[i] = -1; this.x[i] = this.hx[i]; this.y[i] = this.hy[i]; this.vx[i] = this.vy[i] = 0; this.a[i] = 1; }
     this.cId.fill(-1); this.cn.fill(0); this.kOn.fill(0); this.kn.fill(0); this.made = 0;
+    this._trim();
     return this;
   }
 
@@ -292,6 +307,7 @@ export class StarSwarm extends SimBase {
     this.t += dt;
     this._presence(dt);
     this.reduced = reduced;
+    if (this.n > this.want) this._trim();   // a tier drop: stars beyond the new count go once they are free
     const n = this.n, b = this.body, sty = this.style;
     for (let s = 0; s < 2; s++) if (this.cId[s] < 0) this.cb[s] = 0;
     for (let i = 0; i < n; i++) {
@@ -302,7 +318,7 @@ export class StarSwarm extends SimBase {
         case ST.FREE:
           this._spring(i, this.hx[i], this.hy[i], 4, dt);
           this.a[i] = vis;
-          this.b[i] = this.twinkle(i) * (i === this.affordance ? 1.25 : 1);
+          this.b[i] = this.twinkle(i) * (i === this.affordance ? 1.25 : isGuide(i) ? 1.2 : 1);
           break;
         case ST.CLUSTER: {
           const s = this.cl[i], ang = this.tp[i] + (reduced ? 0 : this.t * 2.2), rr = 8 + 2.2 * this.cn[s];

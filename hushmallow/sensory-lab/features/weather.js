@@ -62,9 +62,11 @@ const HAPTIC_GAP = { light: 250, soft: 600, pop: 800 };   // ms (light ≤ 4 a s
 const SOUND_MS = 100;                           // the bed follows the sims at most 10 times a second
 const IDLE = [12, 20];                          // s without a weather touch before the Mallow looks at the weather
 const KINDLE_PULSE = 300;                       // ms: a kindle's realm tap at most this often
-const HEARTH_PULSE = 2;                         // s between the hearth's 'success' at the Mallow's feet
+const HEARTH_PULSE = 2;                         // s between the hearth's realm pulses at the Mallow's feet
 const MOON_STAR_GAP = 6000;                     // ms between falling stars from a resting moon
 const DEW_S = 3;                                // s of dew glints after the fog lifts
+const WATER_HINT_WAIT = 4;                      // s after a weather change before the one-time water hint may show
+const INK = [0.35, 0.5];                        // top-band darkness that turns the title's ink light (off, on) over a bright realm
 
 export function mount(root, ctx) {
   const id = ctx.mallowId, mallow = MALLOWS[id], name = mallow.name;
@@ -77,7 +79,7 @@ export function mount(root, ctx) {
   let ready = false, closed = false, leaving = false;
   let raf = 0, enterRaf = 0, last = 0, simT = 0, qAcc = 0, raw = 0;
   let leaveT = 0, remountT = 0, actT = 0, groundY = 0, leanT = 0, hintAt = -1, waterHintAt = -1, waterHinted = false;
-  let shownW = null, geoKey = '', deckY0 = 0, affA = 0, affKind = null, wHeld = false;
+  let shownW = null, geoKey = '', deckY0 = 0, affA = 0, affKind = null, wHeld = false, lastPickT = 0, inkLight = false, cursor = '';
   let firstGap = false, saidLight = false, saidThin = false, saidShelter = false, saidMoon = false, saidStars = false, saidMist = false, saidWind = false, saidEmbers = false, saidHearth = false;
   let hearthT = 0, hearthK = 0, heatStep = 0, dewT = -1, haloA = 0, haloKind = 'sun', morphSun = false;
   let sndT = -Infinity, bolt = 1, idleT = 0;
@@ -135,7 +137,7 @@ export function mount(root, ctx) {
   const reactor = new WeatherReactor(companion, { mallowId: id, sound: ctx.sound, mixer, style: tuning.style, reduced, motion: tuning.motion });
   const cond = { gaze: null, touch: null, pool: null, cluster: null, front: null, windAt: null, energy: 0, lightOnBody: 0, moonlit: false, bask: false, hearth: false,
     raining: false, heat: 0, clusterN: 0, touched: false, t: 0, dt: 0 };
-  const gazePt = { x: 0, y: 0 }, frontPt = { x: 0, y: 0 }, poolPt = { x: 0, y: 0 }, clusterPt = { x: 0, y: 0 }, idlePt = { x: 0, y: 0 };
+  const gazePt = { x: 0, y: 0 }, frontPt = { x: 0, y: 0 }, poolPt = { x: 0, y: 0 }, clusterPt = { x: 0, y: 0 }, idlePt = { x: 0, y: 0 }, windPt = { x: 0, y: 0 };
 
   // ------------------------------------------------------------ layers --
   const layer = new WeatherLayer({ wrap: s.wrap, screen: s.screen, quality: tier, reducedMotion: reduced, palette: ctx.dna.palette() });
@@ -153,12 +155,18 @@ export function mount(root, ctx) {
     storm: { gaps: null, n: 0, y0: 0, shaft: 0, warm: 0 },
     affordance: null, affordanceA: 0,
     sunAt: [0, 0], moonAt: [0, 0], halo: { a: 0, kind: 'sun' }, lantern: 0, mistTop: -1e9, mistK: 0.82, dew: -1,
-    water: null, trail: null, puddleRip: null,
+    water: null, trail: null, puddleRip: null, kindleT: -1,
   };
 
   // ------------------------------------------------------------- tools --
   const hitB = {};
   const waterOn = () => !!geo.water && session.weather !== 'fog';
+  const onMallow = (x, y) => {
+    if (rig.soft) return rig.hitTest(x, y);
+    rig.bodyRect(hitB);   // before the soft body loads: its ellipse
+    const dx = (x - hitB.cx) / (hitB.w * 0.5), dy = (y - hitB.mid) / (hitB.h * 0.5);
+    return dx * dx + dy * dy < 1;
+  };
   const tools = createTools({
     sims: { clouds, deck, rain, strikes, sun, moon, stars, wind, mist, embers, waves, puddles }, geo,
     weather: () => session.weather,
@@ -166,12 +174,7 @@ export function mount(root, ctx) {
     fronting: () => fronting(),
     frontDrag: (v) => planner.drag(v),
     locked: () => !ready || leaving || session.state === 'paused',
-    onMallow: (x, y) => {
-      if (rig.soft) return rig.hitTest(x, y);
-      rig.bodyRect(hitB);   // before the soft body loads: its ellipse
-      const dx = (x - hitB.cx) / (hitB.w * 0.5), dy = (y - hitB.mid) / (hitB.h * 0.5);
-      return dx * dx + dy * dy < 1;
-    },
+    onMallow,
     waterOn,
     emit: (type, x, y, k, vx, vy) => onWeather(type, x, y, k, vx, vy),
     reduced: () => reduced, gentle,
@@ -189,7 +192,33 @@ export function mount(root, ctx) {
   wind.emit = (type, x, y, k) => onWeather(type, x, y, k);
   embers.emit = (type, x, y, k) => onWeather(type, x, y, k);
   waves.emit = (type, x, y, k) => onWeather(type === 'arrive' ? 'wave-arrive' : type, x, y, k);
+  // a press in the world (not on the controls) takes keyboard focus back from a clicked radio or chip, so the
+  // digits, arrows and Enter act on the stage again (registered before the router, which stops claimed presses)
+  const topbar = s.screen.querySelector('.topbar');
+  const onPress = (e) => {
+    const ae = document.activeElement;
+    if (!ae || ae === s.stage || !s.bottom.contains(ae) || s.bottom.contains(e.target) || topbar?.contains(e.target)) return;
+    s.stage.focus({ preventScroll: true });
+  };
+  s.screen.addEventListener('pointerdown', onPress, true);
   const router = routePointers(s.screen, { stage: s.stage, claim: tools.claim });
+  // a mouse over touchable weather: a grab cursor (grabbing while a weather pointer is held)
+  const setCursor = (c) => {
+    if (c === cursor) return;
+    cursor = c;
+    s.stage.classList.toggle('grab', c === 'grab');
+    s.stage.classList.toggle('grabbing', c === 'grabbing');
+  };
+  const onHover = (e) => {
+    if (e.pointerType !== 'mouse') return;
+    if (router.active > 0) { setCursor('grabbing'); return; }
+    if (!ready || leaving || covered() || e.buttons || topbar?.contains(e.target) || s.bottom.contains(e.target) || e.target.closest?.('.sheet')) { setCursor(''); return; }
+    const r = s.stage.getBoundingClientRect();
+    setCursor(onMallow(e.clientX - r.left, e.clientY - r.top) ? '' : 'grab');
+  };
+  const offHover = () => setCursor('');
+  for (const ev of ['pointermove', 'pointerdown', 'pointerup']) s.screen.addEventListener(ev, onHover, true);
+  s.screen.addEventListener('pointerleave', offHover);
 
   // ---------------------------------------------------------------- ui --
   const hint = hintLine(s.screen);
@@ -229,6 +258,9 @@ export function mount(root, ctx) {
     else { session.resume(); last = 0; kick(); }
   };
   document.addEventListener('visibilitychange', onVis);
+  // the window loses focus (another window, a dialog): a held W never sees its keyup, so let it go now
+  const onBlur = () => { if (wHeld) { wRelease(); tools.altEnd(); } };
+  addEventListener('blur', onBlur);
 
   // --------------------------------------------------------------- start --
   function onLayout(L) {
@@ -252,7 +284,9 @@ export function mount(root, ctx) {
     session.begin();
     shownW = session.weather;
     lastWeather = shownW;
+    lastPickT = simT;
     tools.enter(shownW);
+    if (shownW === 'warm') scene.kindleT = 0;
     reactor.weather(shownW, 0);
     setSubtitle();
     updateActions();
@@ -288,7 +322,10 @@ export function mount(root, ctx) {
     // the Mallow's rest height (not its current one, which a reaction can shrink for a moment):
     // the sims are only laid out afresh when the layout really changes
     const bb = rig.mallow.bodyBox, restTop = rig.BASE - (rig.soft ? rig.soft.H : bb[3] - bb[1]) * rig.S;
-    const W = geo.W, H = geo.H, top = geo.skyTop, bottom = Math.max(top + 120, Math.min(geo.horizonY - 8, restTop - 20));
+    // the thunderheads' band: down to the horizon or just above the Mallow; on a wide sky no deeper than a third of the screen
+    const W = geo.W, H = geo.H, top = geo.skyTop;
+    let bottom = Math.max(top + 120, Math.min(geo.horizonY - 8, restTop - 20));
+    if (W > 700) bottom = Math.max(top + 120, Math.min(bottom, top + 0.32 * H));
     const deckBottom = top + 0.5 * Math.max(120, geo.horizonY - top);
     const key = `${env.realmId}|${Math.round(W)}|${Math.round(H)}|${Math.round(top)}|${Math.round(bottom)}|${Math.round(geo.floorY)}`;
     if (!force && key === geoKey) return;
@@ -351,9 +388,9 @@ export function mount(root, ctx) {
     if (session.resolvedNow) resolve();
     frontState(st);
     if (hintAt >= 0 && simT >= hintAt) { hintAt = -1; if (!session.resolved) showHint(session.weather); }
-    if (waterHintAt >= 0 && simT >= waterHintAt) {   // the one-time water hint never cuts a caption short: it waits
-      if (hint.captioning) waterHintAt = simT + 1;
-      else { waterHintAt = -1; if (waterOn() && !front.on) hint.show(COPY.water.hint, 3000); }
+    if (waterHintAt >= 0 && simT >= waterHintAt) {   // the one-time water hint never cuts a hint or caption short: it waits its turn
+      if (hint.busy || hint.captioning || front.on || simT - lastPickT < WATER_HINT_WAIT) waterHintAt = simT + 1;
+      else { waterHintAt = -1; if (waterOn()) hint.show(COPY.water.hint, 3000); }
     }
     if (leanT && simT >= leanT) { leanT = 0; env.setFocus(0, 0); }
     const w = session.weather;
@@ -381,7 +418,10 @@ export function mount(root, ctx) {
     rain.deckY = aS > aR ? tools.storm.y0 : deckY0;
     rainOpts.wind = windMid.vx;
     rain.step(dt, rainOpts);
-    if (ribbons.amount > 0 || ribbons.target > 0) { ribbons.step(dt, wind, reduced); fluffs.step(dt, wind, reduced); }
+    if (ribbons.amount > 0 || ribbons.target > 0) {
+      if (tools.windAt(windPt)) ribbons.pull(windPt.x, windPt.y);   // the silk nearest a drawn current follows it
+      ribbons.step(dt, wind, reduced); fluffs.step(dt, wind, reduced);
+    }
     if (mist.amount > 0 || mist.target > 0) mist.step(dt, windMid.vx);
     if (sun.amount > 0 || sun.target > 0) sun.step(dt, body);
     if (moon.amount > 0 || moon.target > 0) moon.step(dt, body);
@@ -393,6 +433,7 @@ export function mount(root, ctx) {
     hearth(dt, w);
     stepRings(rings, dt);
     if (dewT >= 0) { dewT += dt; if (dewT > DEW_S) dewT = -1; }
+    if (scene.kindleT >= 0) { scene.kindleT += dt; if (scene.kindleT > 2 || w !== 'warm') scene.kindleT = -1; }
     // 4. the realm's mood and resolution follow progress (held still under a front's cover)
     if (st.phase !== 'cover' && st.phase !== 'swap' && !leaving) {
       moodOpts.gentle = gentle();
@@ -558,6 +599,14 @@ export function mount(root, ctx) {
     else { scene.mistTop = geo.floorY - (geo.floorY - geo.skyTop + 90) * ma; scene.mistK = 0.82; }
     scene.lantern = w === 'fog' ? 0.32 * ma * (1 - 0.6 * live.fogClear) : 0;
     scene.dew = dewT;
+    // a bright realm keeps dark chrome ink; when a storm bank or a dark front fills the top band behind the
+    // title, the title and subtitle switch to light ink (the bottom chips stay on the bright ground)
+    let dark = 0;
+    if (env.tone === 'light' && !leaving) {
+      dark = clouds.amount > 0.01 ? clouds.coverage() * smoothstep(0.2, 1, clouds.amount) : 0;
+      if (front.on && front.family !== 'light') dark = Math.max(dark, front.cover);
+    }
+    if (inkLight ? dark < INK[0] : dark > INK[1]) { inkLight = !inkLight; topbar?.classList.toggle('wx-ink-light', inkLight); }
     if (front.on) {
       front.cover = st.cover; front.mode = st.mode; front.t = reduced ? 0 : simT;   // no edge drift or twinkle with reduced motion
       const k = front.swapped ? 1 - st.cover : st.cover;
@@ -572,7 +621,8 @@ export function mount(root, ctx) {
     shownW = session.weather;
     lastWeather = shownW;
     idleT = 0;
-    if (planner.amount(shownW) < 0.01) tools.enter(shownW);   // arriving from nothing: fresh, untouched
+    lastPickT = simT;
+    if (planner.amount(shownW) < 0.01) { tools.enter(shownW); if (shownW === 'warm') scene.kindleT = 0; }   // arriving from nothing: fresh, untouched
     if (!fronting()) morph(from, shownW);
     dial.set(shownW);
     reactor.weather(shownW, 0);
@@ -589,7 +639,8 @@ export function mount(root, ctx) {
 
   // The same-realm morphs (everything else is the generic leave and enter):
   //   Rain → Starlight: the drops in flight slow, rise and become the stars.
-  //   Storm or Rain → Sunshine: the clouds part from the centre and drift off; the pool slides down a shaft through the gap.
+  //   Storm or Rain → Sunshine: the clouds part from the centre as they drift off (drawing only, so a quick pick back
+  //     finds the bank exactly as the person left it); the pool slides down a shaft through the gap.
   //   Fog → any: the mist sinks to the floor and thins, revealing the new weather from the top down (drawn by the layer).
   function morph(from, to) {
     if (to === 'starlight' && from === 'rain' && planner.amount('rain') > 0.05) {
@@ -598,7 +649,7 @@ export function mount(root, ctx) {
     }
     if (to === 'sunshine' && (from === 'storm' || from === 'rain')) {
       const bank = from === 'storm' ? clouds : deck, cy = bank.top + (bank.bottom - bank.top) * 0.5;
-      bank.spread(geo.W / 2, cy, 1.2);
+      bank.apart(1);
       if (sun.amount < 0.05) {
         sunGap[0] = geo.W / 2; sunGap[1] = cy;
         sun.from = sunGap;
@@ -649,6 +700,7 @@ export function mount(root, ctx) {
     rain.clearDrops();   // drops still falling belonged to the old world (hidden under the full front)
     applyGeo(true);
     tools.enter(session.weather);   // fresh behind the band (every presence was zeroed at the swap)
+    if (session.weather === 'warm') scene.kindleT = 0;
     setSubtitle();
     updateActions();   // the chips come back as the reveal begins
   }
@@ -859,8 +911,8 @@ export function mount(root, ctx) {
     const onStage = !ae || ae === document.body || ae === s.stage;
     const typing = !!ae?.closest?.('input, textarea, select');
     const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code || '');
-    if (m) {
-      if (!onStage || e.altKey || e.ctrlKey || e.metaKey || +m[1] > DIAL_ORDER.length) return false;
+    if (m) {   // from anywhere but a text field (a clicked radio or chip keeps focus: the digits still choose)
+      if (typing || e.altKey || e.ctrlKey || e.metaKey || +m[1] > DIAL_ORDER.length) return false;
       if (phase === 'down' && !e.repeat) pick(DIAL_ORDER[+m[1] - 1], true);
       return true;
     }
@@ -990,10 +1042,15 @@ export function mount(root, ctx) {
       cancelAnimationFrame(raf); raf = 0;
       cancelAnimationFrame(enterRaf); enterRaf = 0;
       router.dispose();
+      s.screen.removeEventListener('pointerdown', onPress, true);
+      for (const ev of ['pointermove', 'pointerdown', 'pointerup']) s.screen.removeEventListener(ev, onHover, true);
+      s.screen.removeEventListener('pointerleave', offHover);
+      setCursor('');
       actions.endHolds();
       tools.altEnd();
       offPrefs(); offDna();
       document.removeEventListener('visibilitychange', onVis);
+      removeEventListener('blur', onBlur);
       clearTimeout(leaveT); clearTimeout(remountT); clearTimeout(actT);
       hint.destroy();
       sr.destroy();

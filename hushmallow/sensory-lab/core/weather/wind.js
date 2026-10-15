@@ -8,8 +8,9 @@
 //              (a vortex in the flow, event 'eddy', or 'calm-loop' when slow).
 //              ambient (0..1) keeps soft gusts blowing while the Wind weather
 //              is up; calm quietens them.
-//   Ribbons    up to 8 verlet chains whose heads are softly anchored in the
-//              sky: they bend toward a jet with spring lag, then stream.
+//   Ribbons    up to 8 verlet chains whose heads are softly anchored at even
+//              heights through the sky: they bend toward a jet with spring
+//              lag, then stream; the head nearest a drawing finger follows it.
 //   Fluffs     seed fluffs riding the flow, wrapping at the edges.
 
 import { clamp, rng, TAU } from '../math.js';
@@ -197,15 +198,20 @@ export class Ribbons extends SimBase {
     this.t = 0;
     this.W = 390; this.H = 844; this.skyTop = 60; this.horizonY = 480;
     this._s = { vx: 0, vy: 0 };
+    this._pull = false; this._fx = 0; this._fy = 0;
   }
 
-  /** {W, H, skyTop, horizonY}: heads are anchored across the sky band; chains trail behind them. */
+  /** A finger drawing a current at (x, y) this frame: the nearest head (within 240 px) is drawn toward it. */
+  pull(x, y) { this._pull = true; this._fx = x; this._fy = y; return this; }
+
+  /** {W, H, skyTop, horizonY}: heads are anchored across the sky band at evenly spread heights; chains trail behind them. */
   resize({ W, H, skyTop, horizonY } = {}) {
     this.W = W || this.W; this.H = H || this.H; this.skyTop = skyTop ?? this.skyTop; this.horizonY = horizonY ?? this.horizonY;
     const rand = rng(this.seed);
     for (let i = 0; i < this.n; i++) {
       this.hx[i] = this.W * (i + 0.5) / this.n + (rand() - 0.5) * this.W * 0.08;
-      this.hy[i] = this.skyTop + (this.horizonY - this.skyTop) * (0.18 + 0.64 * rand());
+      this.hy[i] = this.skyTop + (this.horizonY - this.skyTop) * (0.18 + 0.64 * ((i * 0.618 + 0.31) % 1));   // even, not in a line
+      rand();
       this.len[i] = clamp(this.W * 0.04, 9, 22);   // long enough to read as silk currents (~150 px on a phone, low tier)
       this.ph[i] = rand() * TAU;
       this._lay(i);
@@ -231,13 +237,20 @@ export class Ribbons extends SimBase {
     this.t += dt;
     this._presence(dt);
     const sp = reduced ? 0.3 : 1, s = this._s, relax = Math.min(1, dt * 2.2), W = this.W, H = this.H;
+    let pi = -1;
+    if (this._pull) {   // the head nearest the finger
+      let bd = 240 * 240;
+      for (let i = 0; i < this.n; i++) { const b = i * this.capS, d = (this.px[b] - this._fx) ** 2 + (this.py[b] - this._fy) ** 2; if (d < bd) { bd = d; pi = i; } }
+      this._pull = false;
+    }
     for (let i = 0; i < this.n; i++) {
       const b = i * this.capS, L = this.len[i];
       if (field) field.sample(this.px[b], this.py[b], s); else s.vx = s.vy = 0;
       const sway = reduced ? 0 : Math.sin(this.t * 0.9 * this.speed + this.ph[i]) * 14;
-      // head: softly anchored, bent toward the jet with spring lag
-      this.px[b] += ((this.hx[i] - this.px[b]) * 2.5 + s.vx * 0.25) * sp * dt;
-      this.py[b] += ((this.hy[i] + sway * 0.4 - this.py[b]) * 2.5 + s.vy * 0.25) * sp * dt;
+      // head: softly anchored, bent toward the jet with spring lag (and toward a finger drawing near it)
+      this.px[b] += ((this.hx[i] - this.px[b]) * 2.5 + s.vx * 0.6) * sp * dt;
+      this.py[b] += ((this.hy[i] + sway * 0.4 - this.py[b]) * 2.5 + s.vy * 0.6) * sp * dt;
+      if (i === pi) { const k = Math.min(1, dt * 6 * sp); this.px[b] += (this._fx - this.px[b]) * k; this.py[b] += (this._fy - this.py[b]) * k; }
       for (let j = 1; j < this.segs; j++) {
         const k = b + j;
         if (field) field.sample(this.px[k], this.py[k], s); else s.vx = s.vy = 0;

@@ -166,8 +166,8 @@ export class WorldLayer {
     this._resizeT = setTimeout(() => {
       this._resizeT = 0;
       if (this.destroyed || !this.scene) return;
-      if (this.isLive) this.env.remount({ groundY: boxGround(this.baseline, this.H) });
-      else this._repaint(0);
+      if (this.isLive && !this.stilling) this.env.remount({ groundY: boxGround(this.baseline, this.H) });
+      else { if (this.stilling) this._closeLive(); this._repaint(0); }   // a realm settling into its still has the old size: close it, paint anew
     }, RESIZE_MS);
   }
 
