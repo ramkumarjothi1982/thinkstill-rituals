@@ -13,6 +13,7 @@ import { RUNNING } from '../update.js';
 import { type, withBrand, keepHyphenated } from '../../ui/type.js';
 import { aboutIntro, aboutPrivacy } from '../privacy.js';
 import { accountNamespaces } from '../../auth/namespace.js';
+import { forgetVisitSafety } from '../visit-safety.js';
 
 const TEXT_SIZES = [[1, 'Standard'], [1.12, 'Larger'], [1.25, 'Largest']];
 const SPEEDS = [[0.75, '0.75×'], [1, '1×'], [1.25, '1.25×'], [1.5, '1.5×']];
@@ -124,7 +125,15 @@ export default function settings(app) {
         : 'This removes your favourites, history, saved angles, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.';
     const s = openSheet({ title: signedIn ? 'Delete this account’s things?' : otherAccounts ? 'Delete the guest’s things?' : 'Delete everything?', body: h('p', { style: type('body', { margin: 0, color: 'var(--text-2)' }) }, body),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
-        h('button', { class: 'btn primary', onclick: () => { const keep = app.store.get('entitlement', null); app.store.clearAll(); if (keep) app.store.set('entitlement', keep); prefs.reset(); rec.clearAll(); s.close(); toast('Deleted'); app.go('home'); } }, 'Delete')) });
+        h('button', { class: 'btn primary', onclick: () => { const keep = app.store.get('entitlement', null); app.store.clearAll(); if (keep) app.store.set('entitlement', keep); prefs.reset(); rec.clearAll(); forgetVisit(); s.close(); toast('Deleted'); app.go('home'); } }, 'Delete')) });
+  }
+  /**
+   * The tab's visit safety goes too (visit-safety.js: the level of something heavy earlier in this visit, kept in this tab's
+   * sessionStorage for 12 h): its stored copy, and the page's own copy that would write it back on the way home.
+   */
+  function forgetVisit() {
+    forgetVisitSafety();
+    if (app.state) app.state.hfSafety = null;
   }
 
   // the card fills the screen, so the Mallow rests out of sight (not half-hidden behind its corner)
