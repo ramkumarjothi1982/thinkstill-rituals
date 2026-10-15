@@ -7,8 +7,11 @@
 // shared (lead, SHARED.md L25): stage-screen's wrap / env / onLayout and the
 // other options; Pocket Hush still mounts its realm; the duet (setPartner,
 // keys to the focused stage, removal); the L4 rig hooks; sound.debug();
-// the lab sheet (Done band, Escape, route changes); an AmbientBed in the
-// live page; the pointer router; and the isolation loop
+// the lab sheet (Done band, Escape, route changes); the looks a person sees
+// (shared:looks: the Done band and the sheet surface in screenshot pixels, in
+// both themes and in realm-toned screens; the inset stage focus frame; soft
+// landing dust and sigh puffs); an AmbientBed in the live page; the pointer
+// router; and the isolation loop
 // (weather → hushbeat → nightlight → touchtalk, three times, with everything
 // back to its baseline at home).
 // Then each feature suite, tests/e2e-phase3-<id>.cjs, runs through its
