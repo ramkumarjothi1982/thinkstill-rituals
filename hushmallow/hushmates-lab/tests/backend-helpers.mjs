@@ -118,7 +118,7 @@ export async function backend({ mallow = libraryMallow(), settings = {}, start =
   }
   const as = (name) => ({ call: (method, args) => gw.call(people[name], method, args) });
   return {
-    gw, db, crypt, clock, people, invite, join, as, deleted,
+    gw, db, crypt, clock, people, invite, join, as, deleted, url: fresh.url,
     advance: async (ms) => { clock.t += ms; },
     tick: () => gw.tick(),
     sql: async (q, params) => { const c = await fresh.pool.connect(); try { await c.query("select set_config('hushmates.fake_now', $1, false)", [new Date(clock.t).toISOString()]); return (await c.query(q, params)).rows; } finally { c.release(); } },

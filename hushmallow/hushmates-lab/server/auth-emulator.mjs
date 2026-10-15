@@ -11,7 +11,11 @@
 // production verifier, which trusts only the real Supabase issuer.
 //
 // Requests and answers have the same shapes as Supabase Auth, so the app's
-// sign-in code doesn't change between here and a real project. Errors carry
+// sign-in code doesn't change between here and a real project. The admin
+// endpoints the staging check uses are here too (service key only): create a
+// user, look one up, and generate a sign-in code without sending an email
+// (tools/staging-check.mjs signs its test accounts in that way, on staging as
+// here, so it sends no email and spends nothing). Errors carry
 // the string code twice (`code`, and `error_code` as GoTrue names it) and a
 // developer message (`msg`): the app maps codes to its own warm words and
 // never shows `msg` to anyone.
@@ -26,7 +30,8 @@
 //     for every holder (Supabase allows a few seconds' grace for racing tabs);
 //   · a user row is made when the email is proven (Supabase makes it when the
 //     code is sent);
-//   · only type 'email' codes and grant_type 'refresh_token'.
+//   · only email codes (type 'email', or 'magiclink' for a generated one) and
+//     grant_type 'refresh_token': no passwords at all.
 
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual, webcrypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -268,7 +273,7 @@ export async function createAuthEmulator({
 
   // POST /verify: a code for a session
   async function verifyCode(body) {
-    if (body.type !== 'email') fail(400, 'validation_failed', 'Verify requires type "email"');
+    if (body.type !== 'email' && body.type !== 'magiclink') fail(400, 'validation_failed', 'Verify requires type "email"');
     const email = normaliseEmail(body.email);
     const token = typeof body.token === 'string' ? body.token.trim() : '';
     const t = now();
@@ -342,11 +347,58 @@ export async function createAuthEmulator({
     return [204, null];
   }
 
-  // DELETE /admin/users/:id (the service key only)
-  async function deleteUser(req, id) {
+  function admin(req) {
     const m = /^Bearer[ ]+(\S+)$/i.exec(String(req.headers.authorization ?? ''));
     if (!m) fail(401, 'no_authorization', 'This endpoint requires a Bearer token');
     if (!sameSecret(m[1], serviceKey)) fail(403, 'not_admin', 'User not allowed');
+  }
+
+  // POST /admin/users { email, email_confirm }: a user whose email is taken as proven (no email sent)
+  async function createUser(req, body) {
+    admin(req);
+    if (body.password !== undefined) fail(400, 'validation_failed', 'Passwords are not supported by the local copy (Hushmates signs in by email code only)');
+    if (body.email_confirm !== true) fail(400, 'validation_failed', 'Only users with email_confirm: true can be made here');
+    const email = normaliseEmail(body.email);
+    const t = new Date(now());
+    const { rows: [user] } = await pool.query(
+      `insert into auth.users (id, email, created_at) values ($1, $2, $3) on conflict (email) do nothing
+       returning id, email, created_at, last_sign_in_at`, [randomUUID(), email, t]);
+    if (!user) fail(422, 'email_exists', 'A user with this email address has already been registered');
+    return [200, publicUser(user)];
+  }
+
+  // GET /admin/users/:id
+  async function getUser(req, id) {
+    admin(req);
+    if (!UUID.test(id)) fail(404, 'user_not_found', 'User not found');
+    const { rows: [user] } = await pool.query('select id, email, created_at, last_sign_in_at from auth.users where id = $1', [id]);
+    if (!user) fail(404, 'user_not_found', 'User not found');
+    return [200, publicUser(user)];
+  }
+
+  // POST /admin/generate_link { type: 'magiclink', email }: a sign-in code handed back, not emailed
+  async function generateLink(req, body) {
+    admin(req);
+    if (body.type !== 'magiclink') fail(400, 'validation_failed', 'Only magiclink links can be generated here');
+    const email = normaliseEmail(body.email);
+    const code = String(randomInt(0, 1000000)).padStart(6, '0');
+    const t = now();
+    const user = await tx(async (c) => {
+      await lockEmail(c, email);
+      const { rows: [u] } = await c.query('select id, email, created_at, last_sign_in_at from auth.users where email = $1', [email]);
+      if (!u) fail(404, 'user_not_found', 'User with this email not found');
+      await c.query('update auth.otp_codes set used_at = $2 where email = $1 and used_at is null', [email, new Date(t)]);
+      await c.query('insert into auth.otp_codes (email, code_hash, create_user, created_at, expires_at) values ($1, $2, false, $3, $4)',
+        [email, codeHash(email, code), new Date(t), new Date(t + otpTtlMs)]);
+      return u;
+    });
+    const hashed = codeHash(email, code);
+    return [200, { ...publicUser(user), action_link: `${issuer}/verify?token=${hashed}&type=magiclink`, email_otp: code, hashed_token: hashed, verification_type: 'magiclink', redirect_to: '' }];
+  }
+
+  // DELETE /admin/users/:id (the service key only)
+  async function deleteUser(req, id) {
+    admin(req);
     if (!UUID.test(id)) fail(404, 'user_not_found', 'User not found');
     const email = await tx(async (c) => {
       const { rows: [user] } = await c.query('select email from auth.users where id = $1 for update', [id]);
@@ -375,12 +427,15 @@ export async function createAuthEmulator({
       case '/auth/v1/token': only('POST'); return refresh(await readJson(req), query);
       case '/auth/v1/logout': only('POST'); return logout(req, query);
       case '/auth/v1/user': { only('GET'); const me = await signedIn(req); return [200, publicUser(me)]; }
+      case '/auth/v1/admin/users': only('POST'); return createUser(req, await readJson(req));
+      case '/auth/v1/admin/generate_link': only('POST'); return generateLink(req, await readJson(req));
       default: {
-        const admin = /^\/auth\/v1\/admin\/users\/([^/]+)$/.exec(pathname);
-        if (admin) {
-          only('DELETE');
+        const one = /^\/auth\/v1\/admin\/users\/([^/]+)$/.exec(pathname);
+        if (one) {
           let id;
-          try { id = decodeURIComponent(admin[1]); } catch { id = ''; }
+          try { id = decodeURIComponent(one[1]); } catch { id = ''; }
+          if (method === 'GET') return getUser(req, id);
+          only('DELETE');
           return deleteUser(req, id);
         }
         return fail(404, 'not_found', 'Not found');

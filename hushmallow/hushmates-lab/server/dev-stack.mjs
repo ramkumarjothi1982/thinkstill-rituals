@@ -81,8 +81,9 @@ export async function startDevStack({
   const db = createPgDb(pool, dbClock ? { now: dbClock } : {});
   const allowedOrigins = [origin, `http://localhost:${port}`];
   let gateway;
-  let rest = null;
   let edgeProcess = null;
+  // Supabase's PostgREST, for the Edge Function under Deno, and for checks that it refuses browsers (tools/staging-check.mjs)
+  const rest = createPostgrestEmulator({ pool, serviceKey: keys.serviceKey, anonKey, verifyUser: (t) => verifier.verify(t), now: dbClock, log });
   if (edge === 'node') {
     const mallow = createMallowFor({ db, env: process.env, log, now });
     gateway = createGateway({
@@ -94,7 +95,6 @@ export async function startDevStack({
       } },
     });
   } else {
-    rest = createPostgrestEmulator({ pool, serviceKey: keys.serviceKey, anonKey, verifyUser: (t) => verifier.verify(t), now: dbClock, log });
     const started = await startEdgeFunction({ deno, origin, allowedOrigins, keys, log, quiet });
     edgeProcess = started.child;
     gateway = edgeProxy({ edgeOrigin: started.origin, jobSecret: keys.jobSecret });

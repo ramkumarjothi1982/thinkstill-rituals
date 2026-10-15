@@ -9,7 +9,11 @@
     "build": "node tools/build-app.mjs",
     "check:edge": "deno check supabase/functions/hushmates/index.ts server/edge-local.ts",
     "e2e": "node tools/app-shots.mjs docs/screenshots/phase2",
-    "e2e:deno": "HUSHMATES_EDGE=deno node tools/app-shots.mjs .data/e2e-deno"
+    "e2e:deno": "HUSHMATES_EDGE=deno node tools/app-shots.mjs .data/e2e-deno",
+    "staging:secrets": "node tools/staging-secrets.mjs",
+    "staging:preflight": "node tools/staging-preflight.mjs",
+    "staging:check": "node tools/staging-check.mjs",
+    "staging:drill": "node tools/recovery-drill.mjs"
   },
   "devDependencies": {
     "pg": "8.13.1"
