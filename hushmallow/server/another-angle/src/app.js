@@ -1,6 +1,6 @@
 // HTTP layer for the Another Angle Worker.
 //
-//   GET  /v1/health   liveness + versions (no secrets)
+//   GET  /v1/health   liveness + versions + whether a tester invite is needed (no secrets)
 //   POST /v1/session  entitlement check → signed session token
 //   POST /v1/angle    one Another Angle scene (or support, or a fallback signal)
 //   POST /v1/feedback which of the four feedback buttons was pressed (metadata only)
@@ -103,6 +103,8 @@ export function createApp(options) {
       return json(200, {
         ok: true, service: 'another-angle', prompt_version: PROMPT_VERSION, schema_version: SCHEMA_VERSION,
         provider: cfg.provider, entitlement_mode: cfg.entitlementMode,
+        // a testing session needs one of TESTER_INVITE_CODES (src/auth/entitlement.js); only whether, never a code
+        invite_required: cfg.entitlementMode !== 'storekit' && cfg.inviteCodes.length > 0,
         configured: { signing_key: cfg.signingKeys.length > 0, provider_key: cfg.provider === 'mock' || cfg.apiKey.length > 0 },
       }, cors);
     }
@@ -123,6 +125,15 @@ export function createApp(options) {
 
   /** @param {Record<string, any>} env */
   const ledgerFor = (env) => ledgerClient(env.LEDGER || fallbackNs);
+
+  /**
+   * The opaque tag sent to Anthropic as metadata.user_id, so abuse can be
+   * spotted within a day: a keyed hash of the session subject and the UTC
+   * day, so it changes every day and one phone's requests cannot be linked
+   * across days by it (15 Oct 2026, privacy review 3).
+   * @param {import('./config.js').Config} cfg @param {string} subject @param {string} day
+   */
+  const userTag = (cfg, subject, day) => keyedHash(cfg.hashKey, `tag:${day}:${subject}`, 12);
 
   /**
    * @param {Request} request @param {Record<string, any>} env
@@ -273,7 +284,7 @@ export function createApp(options) {
     try {
       result = await runAngle(input, {
         provider, systemPrompt: options.systemPrompt, maxTokens: cfg.maxTokens, attemptTimeoutMs: cfg.attemptTimeoutMs,
-        deadlineMs: cfg.deadlineMs, userTag: await keyedHash(cfg.hashKey, `tag:${subject}`, 12), now, usage,
+        deadlineMs: cfg.deadlineMs, userTag: await userTag(cfg, subject, day), now, usage,
       });
     } catch (e) {
       await defer(ctx, ledger.settle('global', 'spend', day, reserve, costMicros(usage)));

@@ -83,6 +83,54 @@ test('a check reading on an earlier angle tells the model to judge safety first 
   assert.equal(p3.calls.length, 0);
 });
 
+test('metadata.user_id: the same within a UTC day, different the next day and for another device', async () => {
+  const now = clock(Date.parse('2026-10-12T22:00:00Z'));
+  const { app, provider } = makeApp({ now, script: Array.from({ length: 4 }, () => anchor(1)) });
+  const env = makeEnv({ DEVICE_DAILY_LIMIT: '20' });
+  const device = 'device-0123456789abcdef';
+  const token = await getToken(app, env, { device_id: device });
+  const ask = async (t) => (await app.fetch(angleReq(t, { text: ANCHORS[1].text }), env)).json();
+  await ask(token);
+  now.advance(60 * 60 * 1000);          // 23:00, the same day
+  await ask(token);
+  now.advance(2 * 60 * 60 * 1000);      // 01:00 the next day
+  await ask(token);
+  const other = await getToken(app, env, { device_id: 'device-fedcba9876543210' });
+  await ask(other);
+  const tagsSent = provider.calls.map((c) => c.userTag);
+  assert.equal(tagsSent.length, 4);
+  assert.ok(tagsSent.every((t) => typeof t === 'string' && /^[A-Za-z0-9_-]{8,}$/.test(t)), 'an opaque tag');
+  assert.equal(tagsSent[0], tagsSent[1], 'one day: one tag (abuse can still be spotted within it)');
+  assert.notEqual(tagsSent[1], tagsSent[2], 'a new UTC day: a new tag');
+  assert.notEqual(tagsSent[2], tagsSent[3], 'another device: another tag');
+  assert.ok(tagsSent.every((t) => !t.includes(device)));
+});
+
+test('/v1/health reports invite_required (a boolean, never a code) and keeps every other field', async () => {
+  const { app } = makeApp();
+  const open = await (await app.fetch(req('/v1/health'), makeEnv())).json();
+  assert.equal(open.invite_required, false);
+  const env = makeEnv({ TESTER_INVITE_CODES: 'moon-river-42,second-code-77' });
+  const gated = await (await app.fetch(req('/v1/health'), env)).json();
+  assert.equal(gated.invite_required, true);
+  assert.ok(!JSON.stringify(gated).includes('moon-river-42') && !JSON.stringify(gated).includes('second-code'));
+  for (const k of ['ok', 'service', 'prompt_version', 'schema_version', 'provider', 'entitlement_mode', 'configured']) assert.ok(k in gated, k);
+  assert.deepEqual(gated.configured, { signing_key: true, provider_key: true });
+  // StoreKit sessions never ask for an invite
+  const store = await (await app.fetch(req('/v1/health'), makeEnv({ TESTER_INVITE_CODES: 'moon-river-42', ENTITLEMENT_MODE: 'storekit' }))).json();
+  assert.equal(store.invite_required, false);
+});
+
+const APP_CLIENT = new URL('../../../src/beyond/angle-client.js', import.meta.url);
+test('the app\'s health gate still accepts the answer (src/beyond/angle-client.js healthReady)', { skip: !existsSync(APP_CLIENT) && 'app not in this checkout' }, async () => {
+  const { healthReady } = await import(APP_CLIENT.href);
+  const { app } = makeApp();
+  for (const env of [makeEnv(), makeEnv({ TESTER_INVITE_CODES: 'moon-river-42' })]) {
+    const res = await app.fetch(req('/v1/health'), env);
+    assert.equal(healthReady(res.status, await res.json()), true);
+  }
+});
+
 test('the unauthenticated pre-check reads at most the first EARLY_CHECK_CHARS characters', async () => {
   assert.equal(EARLY_CHECK_CHARS, 2000);
   const { app, provider } = makeApp({ script: [anchor(1)] });
