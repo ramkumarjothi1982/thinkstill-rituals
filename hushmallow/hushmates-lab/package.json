@@ -13,7 +13,8 @@
     "staging:secrets": "node tools/staging-secrets.mjs",
     "staging:preflight": "node tools/staging-preflight.mjs",
     "staging:check": "node tools/staging-check.mjs",
-    "staging:drill": "node tools/recovery-drill.mjs"
+    "staging:drill": "node tools/recovery-drill.mjs",
+    "safety:eval": "node tools/safety-eval.mjs"
   },
   "devDependencies": {
     "pg": "8.13.1"
