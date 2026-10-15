@@ -45,6 +45,7 @@ import { createAngleClient, resolveEndpoint, TIMEOUTS } from './angle-client.js'
 import { RATINGS, MECHANICS } from './vocab.js';
 import { loadMechanic, prefetchMechanic } from './mechanics/index.js';
 import { makeTags, Blob, ThoughtBody, RectList, tintFor, familyOf, drawGlow, blinkAt, clamp, approach, setLowStim } from './mechanics/kit.js';
+import { createBeliefHook } from './belief/hook.js';
 
 const DEV = () => typeof location !== 'undefined' && ['localhost', '127.0.0.1'].includes(location.hostname);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -306,6 +307,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   };
   /** Zuzu after something heavy: attentive, quiet, no grin. */
   const careFace = () => zt?.setEmotion(CARE_MIX, 0.55, { extra: CARE_EXTRA, quiet: true });
+  // (belief-mallows) Belief Mallows: an optional, authored look at a story that keeps coming back, on this phone only (src/beyond/belief/hook.js)
+  const belief = createBeliefHook({ app, S, root, say, choose, careFace, announce: announceSoon, dockShow, layout, measureBand, endMechanic, openTell, afterTell, startAngle, finish, rectOf,
+    get: () => ({ g, area, zAd }), setMech: (m) => { mech = m; mechId = m ? 'belief' : null; } });
   function rectOf(ad, pad = 0.12) {
     const b = ad?.bodyRect?.();
     if (!b || !b.height) return null;
@@ -624,6 +628,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       { label: ARRIVAL.squeeze, value: 'squeeze' },
     ];
     if (shareAgainNow()) options.push({ label: ARRIVAL.share, value: 'share' });
+    options.push(...belief.inviteOptions());
     const p = choose(first ? ARRIVAL.first[1] : ARRIVAL.ask, options, { transient: true });
     if (S.afterConsent) { S.afterConsent = false; focusChipsWhenShown(ARRIVAL.tell); }
     const v = await p;
@@ -670,7 +675,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       // (the risk screener reads them beside the visit's last Tells, in memory only)
       history: S.recent.slice(-3),
       // Another Angle never takes photos; with sharing on, the note says where the words go (not "on this phone")
-      photos: false, privacyNote: serverMode() ? SERVER_CLAUSE : null,
+      photos: false, privacyNote: serverMode() ? SERVER_CLAUSE : null, ...belief.tell(),
       // its support sheets (urgent on crisis words, the Support chip) and the A–Z list are layers of the scene,
       // so Back closes them before the overlay beneath
       support: (o) => openSupportSheet(o), trackSheet: (sh) => trackSheet(sh),
@@ -1124,6 +1129,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (v === 'yes') { S.answers.set(key, 'yes'); S.lossSaid = true; S.noPlay = true; return griefMode({ told: 'loss' }); }
       if (v !== 'angle' && v !== 'else') { quietAfterAsk(); return; }
     }
+    if (belief.active()) return belief.play();
     const seq = ++S.seq;
     S.phase = 'waiting';
     dockShow({});
@@ -1215,7 +1221,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     check: { ask: CHECK_IN.ask, ms: CHECK_IN.ms, options: [{ label: CHECK_IN.angle, value: 'angle' }, { label: CHECK_IN.notReally, value: 'notreally' }, { label: CHECK_IN.be, value: 'be' }] },
   };
   async function askFirst(kind) {
-    const q = FIRST_QUESTION[kind];
+    const q = belief.question(kind) || FIRST_QUESTION[kind];
     const seq = ++S.seq;
     S.phase = 'asking';
     // (r2-angle item 6) while it is up, and if it is let go, the words are kept for the next Tell
@@ -1562,7 +1568,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (S.left || seq !== S.seq) return;
     S.phase = 'end';
     dockShow({});
-    const opts = END.options.filter((o) => o.value !== 'keep' || !S.kept);
+    const opts = [...END.options.filter((o) => o.value !== 'keep' || !S.kept), ...belief.endOptions()];
     const p = choose(END.ask, opts, { mallow: 'zuzu' });
     // (fix round, a11y) after the Memory Garden's offer or card, a lost focus lands on the first way on
     focusChipsWhenShown(opts[0].label);
@@ -1691,6 +1697,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     leave() {
       S.left = true;
       S.seq++;
+      belief.leave();
       for (const t of timers) clearTimeout(t);
       timers.clear();
       clearTimeout(resizeT);
