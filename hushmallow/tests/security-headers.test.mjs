@@ -18,7 +18,7 @@ import { ANGLE_ENDPOINT } from '../src/app/config.js';
 const root = new URL('..', import.meta.url).pathname;
 const SUPA = new URL(PROJECT_URL).origin;
 const WORKER = new URL(ANGLE_ENDPOINT).origin;
-const prod = parseHeadersFile(headersFile(SUPA));
+const prod = parseHeadersFile(headersFile(SUPA, { version: '0123abcd' }));
 const get = (rules, path, name) => headersFor(rules, path).get(name.toLowerCase())?.value ?? null;
 /** CSP header value → [ Map(directive → [sources]) ] (one per comma-separated policy). */
 const policies = (v) => String(v || '').split(',').map((p) => new Map(p.split(';').map((d) => d.trim()).filter(Boolean).map((d) => { const [k, ...s] = d.split(/\s+/); return [k.toLowerCase(), s]; })));
@@ -67,8 +67,8 @@ test('connect-src is exactly this site, the Sydney project (https + wss) and the
   assert.deepEqual(c.get('connect-src'), ["'self'", 'http://127.0.0.1:54321', 'ws://127.0.0.1:54321', WORKER]);
   assert.ok(!c.has('upgrade-insecure-requests'));
   // production builds are what buildPublicConfig publishes with the real values
-  const live = buildPublicConfig({ SUPABASE_URL: PROJECT_URL, SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_only_0000000000' });
-  assert.equal(live.headers, headersFile(SUPA));
+  const live = buildPublicConfig({ SUPABASE_URL: PROJECT_URL, SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_only_0000000000' }, { version: '0123abcd' });
+  assert.equal(live.headers, headersFile(SUPA, { version: '0123abcd' }));
 });
 
 test('frame-ancestors: only the owner\'s Framer site (the agreed embed); X-Frame-Options never contradicts it', () => {
@@ -113,9 +113,12 @@ test('cache: v/<version>/ is immutable, pages / version.json / public-config.js 
   const imm = 'public, max-age=31536000, immutable';
   for (const p of ['/v/0123abcd/src/app/main.js', '/v/0123abcd/src/auth/client.js', '/v/0123abcd/src/brand.js', '/v/0123abcd/assets/mallows/blubi.webp', '/v/0123abcd/vendor/supabase/supabase.js', '/v/0123abcd/src/ui/app.css']) assert.equal(get(prod, p, 'Cache-Control'), imm, p);
   for (const p of ['/', '/index.html', '/version.json', '/manifest.webmanifest', '/src/app/main.js', '/v/0123abcd/src/auth/public-config.js']) assert.equal(get(prod, p, 'Cache-Control'), 'no-cache', p);
-  // an unknown path (the single-page fallback) keeps Pages' default (max-age=0, must-revalidate)
-  assert.equal(get(prod, '/something', 'Cache-Control'), 'public, max-age=0, must-revalidate');
-  const text = headersFile(SUPA);
+  // an unknown path (the single-page fallback serves index.html) keeps Pages' default (max-age=0, must-revalidate),
+  // and so does ANOTHER version's folder: after a deploy or a rollback it is the fallback page, never immutable code
+  for (const p of ['/something', '/v/oldversion/src/app/main.js', '/v/oldversion/vendor/supabase/supabase.js']) assert.equal(get(prod, p, 'Cache-Control'), 'public, max-age=0, must-revalidate', p);
+  assert.ok(!headersFile(SUPA, { version: '0123abcd' }).includes(':version'));
+  assert.throws(() => headersFile(SUPA, { version: '../x' }));
+  const text = headersFile(SUPA, { version: '0123abcd' });
   assert.ok(prod.length < 100, `Pages allows 100 header rules (${prod.length})`);
   assert.ok(text.split('\n').every((l) => l.length <= 2000), 'Pages allows 2,000 characters a line');
 });
@@ -134,12 +137,12 @@ test('pages-headers follows Pages: all matching rules, ", " joins, "!" detaches,
 });
 
 test('inline code: hashes for every inline script; handlers need unsafe-hashes', () => {
-  const html = '<script>a()</script><script type="module" src="x.js" onerror="b()"></script><!-- <script>c()</script> --><img onload=\'d(&quot;q&quot;)\'>';
+  const html = '<script>a()</script><script type="module" src="x.js" onerror="b()"></script><!-- <script>c()</script> --><img onload=\'d(&quot;q&quot;)\'><body onload=e()>';
   const c = inlineCode(html);
   assert.deepEqual(c.scripts, ['a()']);
-  assert.deepEqual(c.handlers.map((h) => h.code), ['b()', 'd("q")']);
+  assert.deepEqual(c.handlers.map((h) => h.code), ['b()', 'd("q")', 'e()']);
   const h = (s) => `'sha256-${createHash('sha256').update(s).digest('base64')}'`;
-  assert.deepEqual(inlineSources([html]), [h('a()'), "'unsafe-hashes'", h('b()'), h('d("q")')]);
+  assert.deepEqual(inlineSources([html]), [h('a()'), "'unsafe-hashes'", h('b()'), h('d("q")'), h('e()')]);
   assert.ok(!appCsp({ inline: inlineSources(['<p>no code</p>']) }).includes('unsafe-hashes'));
 });
 

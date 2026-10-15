@@ -8,25 +8,26 @@ import { runOnce, runMonitor, format } from '../tools/ops/monitor.mjs';
 import { headersFile } from '../tools/site/auth-config.mjs';
 import { parseHeadersFile, headersFor } from '../tools/site/pages-headers.mjs';
 import { PROJECT_URL } from '../src/auth/config.js';
-import { ANGLE_ENDPOINT } from '../src/app/config.js';
 
 const VER = 'a'.repeat(40);
 const SUPA = new URL(PROJECT_URL).origin;
-const RULES = parseHeadersFile(headersFile(SUPA));
+const rulesFor = (ver) => parseHeadersFile(headersFile(SUPA, { version: /^[0-9A-Za-z_-]+$/.test(ver) ? ver : 'x' }));
 
 /** A fake production. `o` is changed by each test (reset per test). */
 function fakeProd() {
   const o = {};
-  const reset = () => Object.assign(o, { ver: VER, page: VER, csp: true, config: { enabled: true, url: PROJECT_URL, key: 'sb_publishable_live_looking_0000000', mode: 'production' }, configRaw: null, workerDown: false, health: null, delay: 0, delayPath: null, gate: false, failTimes: 0, seenCredentials: false });
+  const reset = () => Object.assign(o, { ver: VER, page: VER, csp: true, config: { enabled: true, url: PROJECT_URL, key: 'sb_publishable_live_looking_0000000', mode: 'production' }, configRaw: null, workerDown: false, health: null, delay: 0, delayPath: null, gate: false, failTimes: 0, seenCredentials: false, override: {}, rootBody: null });
   reset();
   let fails = 0;
   const site = http.createServer(async (req, res) => {
     if (req.headers.cookie || req.headers.authorization) o.seenCredentials = true;
     const path = new URL(req.url, 'http://x').pathname;
     if (o.delay && (!o.delayPath || o.delayPath === path)) await new Promise((r) => setTimeout(r, o.delay));
-    const hs = Object.fromEntries([...headersFor(RULES, path).values()].filter(({ name }) => o.csp || name.toLowerCase() !== 'content-security-policy').map(({ name, value }) => [name, value]));
+    const hs = Object.fromEntries([...headersFor(rulesFor(o.page), path).values()].filter(({ name }) => o.csp || name.toLowerCase() !== 'content-security-policy').map(({ name, value }) => [name, value]));
+    for (const [k, v] of Object.entries(o.override[path] || {})) { if (v == null) delete hs[k]; else hs[k] = v; }
     if (o.failTimes && path === '/version.json' && fails < o.failTimes) { fails++; res.writeHead(502, hs); res.end('bad gateway'); return; }
-    if (o.gate && !path.startsWith('/auth/')) { res.writeHead(200, { ...hs, 'content-type': 'text/html' }); res.end('<!doctype html><title>pilot</title><form method="post"><input name="code"></form>'); return; }
+    if (o.gate && !path.startsWith('/auth/')) { res.writeHead(200, { ...hs, 'content-type': 'text/html' }); res.end('<!doctype html><title>pilot</title><form method="post" data-pilot-gate><input name="code"></form>'); return; }
+    if (path === '/' && o.rootBody) { res.writeHead(200, { ...hs, 'content-type': 'text/html' }); res.end(o.rootBody); return; }
     if (path === '/') { res.writeHead(200, { ...hs, 'content-type': 'text/html' }); res.end(`<!doctype html><script type="module" src="v/${o.page}/src/app/main.js"></script>`); return; }
     if (path === '/version.json') { res.writeHead(200, { ...hs, 'content-type': 'application/json' }); res.end(JSON.stringify({ v: o.ver })); return; }
     if (path === `/v/${o.page}/src/auth/public-config.js`) { res.writeHead(200, { ...hs, 'content-type': 'text/javascript' }); res.end(o.configRaw ?? `// generated\nexport default Object.freeze(${JSON.stringify(o.config)});\n`); return; }
@@ -57,8 +58,7 @@ let urls;
 test.before(async () => { urls = await prod.start(); });
 test.after(() => prod.stop());
 test.beforeEach(() => prod.reset());
-const CSP_WORKER = new URL(ANGLE_ENDPOINT).origin;
-const run = (extra = {}) => runOnce({ ...urls, cspWorkerOrigin: CSP_WORKER, maxMs: 1500, timeoutMs: 3000, ...extra });
+const run = (extra = {}) => runOnce({ ...urls, maxMs: 1500, timeoutMs: 3000, ...extra });
 const failing = (r) => r.checks.filter((c) => !c.ok).map((c) => c.name);
 
 test('healthy production: every check passes, never with credentials', async () => {
@@ -87,15 +87,23 @@ test('missing CSP fails the site check (and a gated page still needs it)', async
   prod.o.csp = false;
   const r = await run();
   assert.ok(failing(r).includes('site'));
-  assert.match(format(r), /no Content-Security-Policy header/);
+  assert.match(format(r), /site .*no Content-Security-Policy/);
   prod.o.gate = true;
-  assert.ok(failing(await run({ allowGate: true })).includes('site'));
+  const G = { allowGate: true, gateMarker: 'data-pilot-gate' };
+  assert.ok(failing(await run(G)).includes('site'));
   prod.o.csp = true;
-  const g = await run({ allowGate: true });
+  const g = await run(G);
   assert.equal(g.ok, true, format(g));
   assert.ok(g.checks.find((c) => c.name === 'site').gated);
-  // without --allow-gate the gate page is not the app
+  assert.match(format(g), /^OK \(pilot gate on: version, config, code NOT checked\)$/m);
+  // without --allow-gate the gate page is not the app; --allow-gate without a marker is refused
   assert.ok(failing(await run()).includes('site'));
+  assert.match(format(await run({ allowGate: true })), /needs --gate-marker/);
+  // a broken site that is not the gate (no marker) is not excused by --allow-gate
+  prod.o.gate = false; prod.o.rootBody = '<!doctype html><h1>Something went wrong</h1>';
+  const broken = await run(G);
+  assert.ok(failing(broken).includes('site'), format(broken));
+  assert.match(format(broken), /not the app, and not the pilot gate/);
 });
 
 test('the sign-in config must be the Sydney project, a publishable key, never a secret', async () => {
@@ -136,13 +144,33 @@ test('slow answers fail with the time, and a hang times out', async () => {
 
 test('a blip is retried once and shown as recovered; a real failure survives the retry', async () => {
   prod.o.failTimes = 1;
-  const r = await runMonitor({ ...urls, cspWorkerOrigin: CSP_WORKER, maxMs: 1500, timeoutMs: 3000, retryMs: 50 });
+  const r = await runMonitor({ ...urls, maxMs: 1500, timeoutMs: 3000, retryMs: 50 });
   assert.equal(r.ok, true);
   assert.equal(r.retried, true);
   assert.match(format(r), /RECOVERED version/);
   prod.reset();
   prod.o.workerDown = true;
-  const bad = await runMonitor({ ...urls, cspWorkerOrigin: CSP_WORKER, maxMs: 1500, timeoutMs: 3000, retryMs: 50 });
+  const bad = await runMonitor({ ...urls, maxMs: 1500, timeoutMs: 3000, retryMs: 50 });
   assert.equal(bad.ok, false);
   assert.match(format(bad), /^FAIL: worker: /m);
+});
+
+test('weakened headers fail: a broad CSP, a cached callback, a leaky referrer, a cached sign-in config', async () => {
+  prod.o.override = { '/': { 'Content-Security-Policy': "default-src 'self'; script-src * 'unsafe-inline' data:; frame-ancestors *" } };
+  let r = await run();
+  assert.deepEqual(failing(r), ['site']);
+  assert.match(format(r), /CSP script-src/);
+  prod.o.override = { '/auth/callback/': { 'Cache-Control': 'public, max-age=31536000, no-store-not' } };
+  assert.match(format(await run()), /callback: .*cache-control/);
+  prod.o.override = { '/auth/callback/': { 'Referrer-Policy': 'unsafe-url' } };
+  assert.match(format(await run()), /callback: .*referrer-policy/);
+  prod.o.override = { '/': { 'X-Frame-Options': 'SAMEORIGIN' } };
+  assert.match(format(await run()), /site: .*x-frame-options/);
+  prod.o.override = { '/': { 'Cross-Origin-Opener-Policy': null } };
+  assert.match(format(await run()), /no cross-origin-opener-policy/);
+  prod.o.override = { [`/v/${VER}/src/auth/public-config.js`]: { 'Cache-Control': 'public, max-age=31536000, immutable' } };
+  assert.match(format(await run()), /public-config\.js is cached/);
+  // only the inline-code hashes may differ from this checkout's build
+  prod.o.override = { '/': { 'Content-Security-Policy': headersFor(rulesFor(VER), '/').get('content-security-policy').value.replace(/'sha256-[^']+'/g, "'sha256-AAAA'") } };
+  assert.equal((await run()).ok, true);
 });

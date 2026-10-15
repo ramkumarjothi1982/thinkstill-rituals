@@ -3,21 +3,26 @@
 //   node hushmallow/tools/ops/monitor.mjs [--site https://app.hushmallow.com]
 //        [--worker <Another Angle URL>] [--expect-version <sha>]
 //        [--allowed-versions <sha,sha,…>] [--max-ms 4000] [--retry-ms 20000]
-//        [--json <file>] [--allow-gate]
+//        [--json <file>] [--allow-gate --gate-marker <regex>]
 //
 // Run every 10 minutes by GitHub Actions (docs/workstreams/prod-security/monitor.yml).
 // Checks, each with its response time (a response slower than --max-ms fails):
-//   site      GET /  → 200 HTML naming v/<version>/src/app/main.js, with an
-//             enforced Content-Security-Policy (no 'unsafe-eval', connect-src
-//             naming the project and the Worker) and HSTS
+//   site      GET /  → 200 HTML naming v/<version>/src/app/main.js, whose
+//             security headers are EXACTLY what this repository's build
+//             generates (tools/site/security-headers.mjs: CSP directive by
+//             directive, HSTS, nosniff, Referrer-Policy, Permissions-Policy,
+//             COOP, no X-Frame-Options, Cache-Control); only script-src's
+//             sha256 hashes may differ (the live page may be an older build)
 //   version   GET /version.json → the same <version> as the page; a 40-hex
 //             commit (Pages' CF_PAGES_COMMIT_SHA); = --expect-version or one of
 //             --allowed-versions when given
 //   config    GET /v/<version>/src/auth/public-config.js → sign-in on, the
 //             Sydney project of this repository (src/auth/config.js
 //             PROJECT_URL / PROJECT_REF), a publishable key, never a secret
-//   code      GET /v/<version>/src/app/main.js → 200 JavaScript
-//   callback  GET /auth/callback/ → 200, Cache-Control no-store, X-Frame-Options DENY
+//   code      GET /v/<version>/src/app/main.js → 200 JavaScript, cached immutable
+//             (public-config.js must never be: a changed value would not arrive)
+//   callback  GET /auth/callback/ → 200 with exactly the built headers (no-store,
+//             DENY, no-referrer, both policies); never behind the pilot gate
 //   worker    GET <worker>/v1/health with Origin: <site> (the Worker answers
 //             only the app's own origins) → 200 { ok: true, service:
 //             'another-angle', provider not 'mock', configured.signing_key and
@@ -29,14 +34,19 @@
 // runs exits 1 with one short line per failing check. A check that failed
 // and then passed is printed as "recovered" (never hidden).
 //
-// --allow-gate: while the pilot gate is on, / may answer with the gate page
-// (no app marker). Then the page must still carry the CSP and HSTS, and the
-// checks behind the gate are reported as "gated" instead of failing.
+// --allow-gate --gate-marker <regex>: while the pilot gate is on, / may answer
+// with the gate page, recognised by text only it contains. It must still carry
+// the built security headers; checks that the gate hides (an HTML answer for
+// version.json, public-config.js or main.js) are reported "NOT checked" on the
+// final line instead of failing; anything the gate lets through is checked.
+// Without the marker, --allow-gate fails the site check.
 import { writeFileSync, appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PROJECT_URL, PROJECT_REF } from '../../src/auth/config.js';
 import { ANGLE_ENDPOINT } from '../../src/app/config.js';
+import { headersFile } from '../site/auth-config.mjs';
+import { parseHeadersFile, headersFor } from '../site/pages-headers.mjs';
 
 export const DEFAULTS = Object.freeze({
   site: 'https://app.hushmallow.com',
@@ -66,10 +76,50 @@ async function get(url, { timeoutMs, headers = {}, fetchImpl = fetch } = {}) {
   } finally { clearTimeout(timer); }
 }
 
-/** CSP value → Map(directive → sources) of the FIRST policy. */
-function cspMap(v) {
-  const first = String(v || '').split(',')[0];
-  return new Map(first.split(';').map((d) => d.trim()).filter(Boolean).map((d) => { const [k, ...s] = d.split(/\s+/); return [k.toLowerCase(), s]; }));
+/** What the site must answer for `path`: the headers this repository's build generates (tools/site/security-headers.mjs). */
+const expectCache = new Map();
+export function expectedFor(projectOrigin, version) {
+  const key = `${projectOrigin}|${version || ''}`;
+  if (!expectCache.has(key)) expectCache.set(key, parseHeadersFile(headersFile(projectOrigin, { version: /^[0-9A-Za-z_-]+$/.test(version || '') ? version : 'unknown' })));
+  return expectCache.get(key);
+}
+
+const EXACT = ['strict-transport-security', 'x-content-type-options', 'referrer-policy', 'permissions-policy', 'cross-origin-opener-policy', 'x-frame-options', 'cache-control', 'content-security-policy'];
+const norm = (v) => String(v ?? '').split(',').map((x) => x.trim().replace(/\s+/g, ' ')).join(', ');
+const policyList = (v) => String(v || '').split(',').map((p) => new Map(p.split(';').map((d) => d.trim()).filter(Boolean).map((d) => { const [k, ...src] = d.split(/\s+/); return [k.toLowerCase(), src]; })));
+const HASH = /^'sha256-[A-Za-z0-9+/=]+'$/;
+
+/**
+ * Differences between the live headers and the built ones, exactly, except the script-src hashes of inline code
+ * (the live page may be a slightly older build than this checkout; a hash is still the only inline code allowed).
+ */
+export function headerProblems(headers, path, rules, skip = []) {
+  const want = headersFor(rules, path);
+  const out = [];
+  for (const name of EXACT) {
+    if (skip.includes(name)) continue;
+    const exp = want.get(name)?.value ?? null;
+    const got = headers.get(name);
+    if (name === 'content-security-policy') {
+      if (!got) { out.push(headers.get('content-security-policy-report-only') ? 'the CSP is report-only (not enforced)' : 'no Content-Security-Policy'); continue; }
+      const [e, g] = [policyList(exp), policyList(got)];
+      if (e.length !== g.length) { out.push(`CSP: ${g.length} policies, built ${e.length}`); continue; }
+      e.forEach((ep, i) => {
+        const gp = g[i];
+        for (const k of new Set([...ep.keys(), ...gp.keys()])) {
+          const es = ep.get(k) || [], gs = gp.get(k) || [];
+          const a = k === 'script-src' ? es.filter((x) => !HASH.test(x)) : es;
+          const b = k === 'script-src' ? gs.filter((x) => !HASH.test(x)) : gs;
+          if (!ep.has(k) || !gp.has(k) || a.length !== b.length || a.some((x) => !b.includes(x))) out.push(`CSP ${k}: "${gs.join(' ').slice(0, 120)}", built "${es.join(' ').slice(0, 120)}"`);
+        }
+      });
+      continue;
+    }
+    if (exp == null) { if (got != null) out.push(`${name}: "${String(got).slice(0, 80)}", built: none`); continue; }
+    if (got == null) out.push(`no ${name}`);
+    else if (norm(got).toLowerCase() !== norm(exp).toLowerCase()) out.push(`${name}: "${String(got).slice(0, 80)}", built "${exp.slice(0, 80)}"`);
+  }
+  return out;
 }
 
 /** Run every check once. Returns { ok, checks: [{ name, ok, ms, detail, gated? }] }. */
@@ -78,8 +128,6 @@ export async function runOnce(opts = {}) {
   const site = o.site.replace(/\/+$/, '');
   const worker = String(o.worker || '').replace(/\/+$/, '');
   const projectOrigin = new URL(o.projectUrl).origin;
-  // the origin the page's CSP must name for the Worker (the production Worker unless told otherwise)
-  const workerOrigin = o.cspWorkerOrigin || (worker ? new URL(worker).origin : null);
   const req = (url, h) => get(url, { timeoutMs: o.timeoutMs, headers: h, fetchImpl: o.fetchImpl });
   const checks = [];
   const add = (name, ok, r, detail, extra = {}) => { checks.push({ name, ok: !!ok && (!r || r.ms <= o.maxMs), ms: r?.ms ?? null, detail: ok && r && r.ms > o.maxMs ? `slow: ${r.ms} ms (limit ${o.maxMs} ms)` : detail, ...extra }); };
@@ -87,26 +135,17 @@ export async function runOnce(opts = {}) {
 
   // site
   const page = await req(`${site}/`);
-  const csp = page.headers.get('content-security-policy');
-  const p = cspMap(csp);
   const verM = /["']\/?v\/([0-9A-Za-z_-]+)\/src\/app\/main\.js["']/.exec(page.text);
-  const gated = !!o.allowGate && page.status !== 0 && !verM;
-  const cspProblems = [];
-  if (!csp) cspProblems.push(page.headers.get('content-security-policy-report-only') ? 'the CSP is report-only (not enforced)' : 'no Content-Security-Policy header');
-  else {
-    if ([...p.values()].some((s) => s.includes("'unsafe-eval'"))) cspProblems.push("CSP allows 'unsafe-eval'");
-    if (!(p.get('default-src') || []).includes("'self'")) cspProblems.push("CSP default-src is not 'self'");
-    if (!p.has('frame-ancestors')) cspProblems.push('CSP has no frame-ancestors');
-    if (!gated) {
-      const connect = p.get('connect-src') || [];
-      if (!connect.includes(projectOrigin)) cspProblems.push(`CSP connect-src lacks ${projectOrigin}`);
-      if (workerOrigin && !connect.includes(workerOrigin)) cspProblems.push(`CSP connect-src lacks ${workerOrigin}`);
-    }
-  }
-  const hsts = page.headers.get('strict-transport-security') || '';
-  if (!/max-age=\d{7,}/.test(hsts)) cspProblems.push('no Strict-Transport-Security');
-  const pageOk = (page.status === 200 || (gated && [200, 401, 403].includes(page.status))) && (gated || verM) && !cspProblems.length;
-  add('site', pageOk, page, page.status !== 200 && !gated ? why(page) : !verM && !gated ? 'the page does not name v/<version>/src/app/main.js (not the app?)' : cspProblems.join('; ') || (gated ? 'the pilot gate answered (CSP and HSTS present)' : `version ${verM[1].slice(0, 12)}`), gated ? { gated: true } : {});
+  // the pilot gate is recognised positively (its own marker), never as "anything that is not the app"
+  const gateRe = o.allowGate && o.gateMarker ? new RegExp(o.gateMarker) : null;
+  const gated = !!gateRe && page.status !== 0 && !verM && gateRe.test(page.text);
+  const expect = expectedFor(projectOrigin, verM?.[1]);
+  const hp = headerProblems(page.headers, '/', expect, gated ? ['cache-control'] : []);
+  let siteDetail;
+  if (o.allowGate && !o.gateMarker) siteDetail = '--allow-gate needs --gate-marker (text only the gate page contains)';
+  else if (page.status !== 200 && !(gated && [401, 403].includes(page.status))) siteDetail = why(page);
+  else if (!verM && !gated) siteDetail = 'the page does not name v/<version>/src/app/main.js (not the app, and not the pilot gate)';
+  add('site', !siteDetail && !hp.length, page, siteDetail || hp.join('; ') || (gated ? 'the pilot gate answered, with the expected security headers' : `version ${verM[1].slice(0, 12)}, headers as built`), gated ? { gated: true } : {});
   const ver = verM?.[1] || null;
 
   // version
@@ -130,13 +169,15 @@ export async function runOnce(opts = {}) {
   const live = ver || (typeof v === 'string' ? v : null);
 
   // config (public values only; never with credentials)
-  if (!live) add('config', !!gated, null, gated ? 'gated' : 'no version to read it from', gated ? { gated: true } : {});
+  if (!live) for (const n of ['config', 'code']) add(n, !!gated, null, gated ? 'gated' : 'no version to read it from', gated ? { gated: true } : {});
   else {
     const pc = await req(`${site}/v/${live}/src/auth/public-config.js`);
     const cp = [];
     let cfg = null;
     if (pc.status !== 200) cp.push(why(pc));
     else {
+      const cc = pc.headers.get('cache-control') || '';
+      if (/immutable|max-age=[1-9]/.test(cc)) cp.push(`public-config.js is cached (${cc}): a changed sign-in value would not reach browsers`);
       if (/sb_secret_|service_role/i.test(pc.text)) cp.push('public-config.js holds a SECRET');
       try { cfg = JSON.parse(/Object\.freeze\((\{[\s\S]*\})\)/.exec(pc.text)[1]); } catch { cp.push('public-config.js is not the generated module'); }
       if (cfg) {
@@ -156,18 +197,20 @@ export async function runOnce(opts = {}) {
 
     const code = await req(`${site}/v/${live}/src/app/main.js`);
     if (gated && (code.status !== 200 || isHtml(code))) add('code', true, null, `gated (HTTP ${code.status})`, { gated: true });
-    else add('code', code.status === 200 && /javascript/.test(code.headers.get('content-type') || ''), code, code.status === 200 ? (code.headers.get('content-type') || 'no content-type') : why(code));
+    else {
+      const kp = code.status !== 200 ? [why(code)] : [];
+      if (code.status === 200 && !/javascript/.test(code.headers.get('content-type') || '')) kp.push(`served as ${code.headers.get('content-type') || 'nothing'} (the fallback page?)`);
+      if (code.status === 200) kp.push(...headerProblems(code.headers, `/v/${live}/src/app/main.js`, expectedFor(projectOrigin, live), ['content-security-policy', 'permissions-policy']));
+      add('code', !kp.length, code, kp.join('; ') || 'JavaScript, immutable');
+    }
   }
 
   // callback page headers
   const cb = await req(`${site}/auth/callback/`);
-  const cbp = [];
-  if (cb.status !== 200) cbp.push(why(cb));
-  if (!/no-store/.test(cb.headers.get('cache-control') || '')) cbp.push('Cache-Control is not no-store');
-  if ((cb.headers.get('x-frame-options') || '').toUpperCase() !== 'DENY') cbp.push('X-Frame-Options is not DENY');
-  if (!/frame-ancestors 'none'/.test(cb.headers.get('content-security-policy') || '')) cbp.push("CSP lacks frame-ancestors 'none'");
+  const cbp = cb.status !== 200 ? [why(cb)] : [];
+  cbp.push(...headerProblems(cb.headers, '/auth/callback/', expectedFor(projectOrigin, live)));
   // never behind the pilot gate: sign-in email links land here
-  add('callback', !cbp.length, cb, cbp.join('; ') || 'no-store, DENY');
+  add('callback', !cbp.length, cb, cbp.join('; ') || 'no-store, DENY, both policies as built');
 
   // the Another Angle Worker
   if (!worker) add('worker', true, null, 'no Worker configured (Another Angle off in src/app/config.js)');
@@ -211,7 +254,8 @@ export async function runMonitor(opts = {}) {
 export function format(r) {
   const lines = r.checks.map((c) => `${c.ok ? (c.recovered ? 'RECOVERED' : 'ok       ') : 'FAIL     '} ${c.name.padEnd(8)} ${c.ms == null ? '' : `${String(c.ms).padStart(5)} ms  `}${c.detail}${c.recovered ? ` (first try: ${c.recovered})` : ''}`);
   const bad = r.checks.filter((c) => !c.ok);
-  lines.push(bad.length ? `FAIL: ${bad.map((c) => `${c.name}: ${c.detail}`).join(' | ')}` : `OK${r.retried ? ' (after one retry)' : ''}`);
+  const gated = r.checks.filter((c) => c.gated && c.name !== 'site').map((c) => c.name);
+  lines.push(bad.length ? `FAIL: ${bad.map((c) => `${c.name}: ${c.detail}`).join(' | ')}` : `OK${r.retried ? ' (after one retry)' : ''}${gated.length ? ` (pilot gate on: ${gated.join(', ')} NOT checked)` : ''}`);
   return lines.join('\n');
 }
 
@@ -227,6 +271,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     maxMs: Number(arg('max-ms', process.env.MONITOR_MAX_MS || DEFAULTS.maxMs)),
     retryMs: Number(arg('retry-ms', process.env.MONITOR_RETRY_MS || DEFAULTS.retryMs)),
     allowGate: argv.includes('--allow-gate') || process.env.MONITOR_ALLOW_GATE === '1',
+    gateMarker: arg('gate-marker', process.env.MONITOR_GATE_MARKER || '') || null,
   };
   const r = await runMonitor(opts);
   const text = format(r);

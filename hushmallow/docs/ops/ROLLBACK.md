@@ -7,20 +7,28 @@ below is a dashboard click or one command. Nothing here touches user data.
 ## 1. The app (Cloudflare Pages, `app.hushmallow.com`)
 
 **Roll back:** Cloudflare dashboard → Workers & Pages → **hushmallow** →
-**Deployments** → find the last good **Production** deployment (its commit is
-the `v` in `https://app.hushmallow.com/version.json`) → **⋯** → **Rollback to
-this deployment**. It is instant and swaps the whole site at once.
+**Deployments** → find the last good **Production** deployment (each row
+shows its commit; `https://app.hushmallow.com/version.json` names the one live
+now, i.e. the bad one) → **⋯** → **Rollback to this deployment**. It is
+instant and swaps the whole site at once.
 
 What happens to people already in the app: each deploy lives in its own
 folder (`v/<commit>/`, `tools/build-site.sh`). Open pages ask `version.json`
 (never cached) and move to whatever version it names, newer or older
 (`src/app/update.js`: "if it differs"), at a safe moment (home screen, never
-mid-sentence). A page whose folder vanished recovers through the inline
-`hmStale()` in `index.html`. Their things stay on their phone.
+mid-sentence). A page whose entry module can no longer load recovers once
+through the inline `hmStale()` in `index.html`; a module loaded later from a
+vanished folder fails until the page is reloaded (Pages answers it with
+`index.html`, revalidated, never cached as code). Their things stay on their
+phone.
 
 **Then fix main:** the next push to `main` deploys again. Revert the bad
 commit on `main` (a normal revert PR) before anything else merges, or the
 rollback is undone. Do not delete deployments: they are the rollback targets.
+Until main is reverted the monitor reports production as older than main every
+10 minutes: run the **hushmallow monitor** workflow by hand with
+`expect_version` = the rolled-back commit to check it, and say so on the
+incident issue.
 
 Check: `curl -sI https://app.hushmallow.com/ | grep -i content-security-policy`
 and `curl -s https://app.hushmallow.com/version.json`, or run the monitor
@@ -37,8 +45,10 @@ rollback, check Settings → Variables and Secrets still list
 `ANTHROPIC_API_KEY`, `TOKEN_SIGNING_KEY`, `IP_HASH_KEY` and
 `TESTER_INVITE_CODES`, and that `/v1/health` (with
 `Origin: https://app.hushmallow.com`) says `configured` true for both keys.
-The next push to `main` touching the server redeploys it
-(`.github/workflows/another-angle.yml`): revert on `main` too.
+The next push to `main` touching the Worker's paths redeploys it
+(`.github/workflows/another-angle.yml`: `hushmallow/server/another-angle/**`
+and also `src/data/safety-lexicon.js`, `src/data/emotions.js`,
+`tools/angle-eval.mjs` and the workflow itself): revert on `main` too.
 
 ## 3. Switch Another Angle off quickly, without a deploy
 
@@ -61,6 +71,11 @@ app-side switch is emptying `ANGLE_ENDPOINT` and `ANGLE_ALLOWED_HOSTS` in
 `src/app/config.js` (a deploy; the consent card then never shows). The monitor
 will report the Worker as failing while it is off: that is expected.
 
+Switching back on: restore the secret or the variable. Apps already open that
+saw the Worker "not ready" keep Zuzu's own angles until they are reloaded (a
+not-ready health answer is kept for the life of the page,
+`src/beyond/angle-client.js` `serverReady()`); new visits use the Worker at once.
+
 ## 4. Put the pilot gate back on
 
 The gate's code is not on this branch (another workstream). Its settings are
@@ -72,8 +87,12 @@ and preview have separate sets, the production set matching the Worker's
 new random `PILOT_COOKIE_KEY` signs everyone out of the gate) → **Deployments
 → latest production → Retry deployment** (Pages applies variable changes only
 to new deployments). Follow `docs/PILOT.md` where it exists. With the gate on,
-run the monitor with `--allow-gate` (workflow input `allow_gate`, or the
-repository variable `HM_MONITOR_ALLOW_GATE=1`). `/auth/callback/` must stay
+run the monitor with `--allow-gate --gate-marker <text only the gate page
+contains>` (workflow inputs `allow_gate` + `gate_marker`, or the repository
+variables `HM_MONITOR_ALLOW_GATE=1` and `HM_MONITOR_GATE_MARKER`); its final
+line then lists what the gate kept it from checking. The gate page must send
+the same security headers (a Pages Function's own responses do not get
+`_headers`). `/auth/callback/` must stay
 outside the gate: sign-in emails land there.
 
 ## 5. Never

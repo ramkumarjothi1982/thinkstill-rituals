@@ -41,7 +41,7 @@ export function envProblems(env) {
 }
 
 /** { ok, source, summary } | { ok: false, errors } for a given environment (pure, for tests). */
-export function buildPublicConfig(env, { stamp = '' } = {}) {
+export function buildPublicConfig(env, { stamp = '', version } = {}) {
   const errors = envProblems(env);
   const mode = env.HM_AUTH_MODE ? String(env.HM_AUTH_MODE) : 'production';
   const v = validatePublicConfig({ url: env.SUPABASE_URL ?? '', key: env.SUPABASE_PUBLISHABLE_KEY ?? '', mode });
@@ -50,7 +50,7 @@ export function buildPublicConfig(env, { stamp = '' } = {}) {
   const summary = v.enabled
     ? `sign-in on: ${v.url} (${v.mode}), key ${keyLabel(v.key)} [${classifyKey(v.key)}]`
     : 'sign-in off (no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY): publishing { enabled: false }';
-  return { ok: true, source: publicConfigModule(v, { stamp }), summary, enabled: !!v.enabled, headers: headersFile(v.enabled ? new URL(v.url).origin : null, { production: !v.enabled || !v.local }) };
+  return { ok: true, source: publicConfigModule(v, { stamp }), summary, enabled: !!v.enabled, headers: headersFile(v.enabled ? new URL(v.url).origin : null, { production: !v.enabled || !v.local, version }) };
 }
 
 /** The Another Angle origin(s) the app may call: ANGLE_ENDPOINT when it is https on an allowed host (as src/beyond/endpoint.js decides). */
@@ -88,13 +88,14 @@ export function authRule(origin) {
  * Supabase project origin (or null: sign-in off). `production` false for a
  * dev / ci build (a localhost stack over http: no upgrade-insecure-requests).
  */
-export function headersFile(origin, { production = true, root = ROOT } = {}) {
+export function headersFile(origin, { production = true, version, root = ROOT } = {}) {
   return headersText({
     supabase: origin,
     production,
     angle: angleOrigins(),
     inline: inlineSources(readPages(root)),
     srcTree: readSrcTree(resolve(root, 'src')),
+    version,
     authRule: authRule(origin),
   });
 }
@@ -102,7 +103,7 @@ export function headersFile(origin, { production = true, root = ROOT } = {}) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [outFile, ver, headersOut] = process.argv.slice(2);
   if (!outFile) { console.error('usage: node tools/site/auth-config.mjs <config-out> [<version>] [<headers-out>]'); process.exit(2); }
-  const r = buildPublicConfig(process.env, { stamp: ver ? `version ${ver}` : '' });
+  const r = buildPublicConfig(process.env, { stamp: ver ? `version ${ver}` : '', version: ver || undefined });
   if (!r.ok) {
     console.error('auth config: REFUSED. The site was not built:');
     for (const e of r.errors) console.error(`  - ${e}`);
