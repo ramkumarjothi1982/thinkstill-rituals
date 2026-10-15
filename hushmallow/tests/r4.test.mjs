@@ -266,7 +266,8 @@ test('rules, not phrases: no test sentence is written into grief.js or death-wor
 });
 
 test('the new rules stay cheap: 2,000 characters built to make them work hard take a few ms', () => {
-  const median = (xs) => xs.sort((a, b) => a - b)[xs.length >> 1];
+  // the fastest of seven runs (see r5.test.mjs): a CI runner's pauses inflate any one run; a bad backtrack slows them all
+  const best = (xs) => Math.min(...xs);
   for (const seed of ['i i i i ', 'it would be better it would be ', 'if i if i was ', 'wherever wherever where he ', 'god god take take me ', 'everyone would be so much better off if ',
     'i keep thinking about driving ', 'hope i dont hope i ', 'in heaven and i want to go ', "i'm dead lol i'm dying haha ", 'let me let me let me ', 'over over here here not ']) {
     const t = seed.repeat(Math.ceil(2000 / seed.length)).slice(0, 2000);
@@ -274,7 +275,7 @@ test('the new rules stay cheap: 2,000 characters built to make them work hard ta
       f(t);
       const xs = [];
       for (let i = 0; i < 7; i++) { const t0 = performance.now(); f(t); xs.push(performance.now() - t0); }
-      assert.ok(median(xs) < 40, `${f.name} ${seed}: ${median(xs).toFixed(1)} ms`);
+      assert.ok(best(xs) < 40, `${f.name} ${seed}: ${best(xs).toFixed(1)} ms (fastest of 7)`);
     }
   }
 });
