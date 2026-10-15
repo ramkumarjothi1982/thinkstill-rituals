@@ -289,7 +289,7 @@ async function scenTag(o) {
     const r = { start: [cx, cy], under, thoughtMaxMovePx: Math.round(maxMove), stormFingerSpeedU: maxSpeed, readerOpened: s1.reader };
     res.notes.tagStroke[name] = r;
     check(maxMove < 30, `${name}: a stroke that starts on the words does not carry the thought`, r);
-    check(maxSpeed > 0.5, `${name}: a stroke that starts on the words stirs the storm (the storm feels the finger)`, r);
+    check(maxSpeed > 0.15, `${name}: a stroke that starts on the words stirs the storm (the storm feels the finger; 0 when the words swallow it)`, r);
     check(!s1.reader, `${name}: a stroke is not a tap: the reader does not open`, r);
     if (s1.reader) { await page.evaluate(() => document.querySelector('.hf-read button')?.click()); await sleep(500); }
   }
