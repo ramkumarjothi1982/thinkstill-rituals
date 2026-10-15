@@ -11,7 +11,8 @@
 #
 # Runs only for a push to the owner-approved work branch that edits
 # ops/ACCESS (2026-10-15: the owner asked for invite codes and a key rotation).
-# No dependencies are installed: the script uses Node's own fetch and crypto.
+# The access script itself needs no packages (Node's own fetch and crypto); the
+# local rehearsal before it installs the server's, in a step without secrets.
 name: Another Angle access
 
 on:
@@ -35,6 +36,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # the rehearsal runs the real app, so it needs the server's packages; this step has no secrets in its environment
+      - name: Install the server's packages (no install scripts)
+        working-directory: hushmallow/server/another-angle
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Rehearse locally first (a stand-in Worker and Cloudflare API, no secrets)
         working-directory: hushmallow/server/another-angle
         run: |
