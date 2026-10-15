@@ -20,6 +20,14 @@ That's why each account is **new and separate**: a token from a separate account
 can't reach production at all. The tools also refuse to run if a token can see
 any project without "staging" in its name.
 
+**Who can reach staging:** anyone who has its address can load it, as with any
+website. But:
+- it asks search engines not to list it;
+- nobody gets past sign-in without an invitation;
+- Supabase's built-in sender only emails members of your Supabase team.
+
+So staging is not a public release.
+
 How to read this guide:
 - 🔒 **Secret:** never paste it into the chat, an email or a document. It goes only into the place the step names.
 - ✅ **Check:** what you should see before going on.
