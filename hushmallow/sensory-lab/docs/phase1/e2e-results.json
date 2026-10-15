@@ -1,13 +1,13 @@
 {
- "when": "2026-10-13T19:59:13.380Z",
+ "when": "2026-10-15T03:19:57.637Z",
  "passed": 308,
  "failed": 0,
  "results": [
   {
    "vp": "iphone-390x844",
-   "name": "home lists 10 experiences, 4 playable (Phase 2)",
+   "name": "home lists 10 experiences, 7 playable (Phase 3)",
    "ok": true,
-   "detail": "10/4"
+   "detail": "10/7"
   },
   {
    "vp": "iphone-390x844",
@@ -109,7 +109,7 @@
    "vp": "iphone-390x844",
    "name": "touchtalk: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":91.84471863438974,\"y\":484.8577631817398,\"w\":206.2926823831416,\"h\":224.1022368182601}"
+   "detail": "{\"x\":92.22481673709582,\"y\":482.76872632831015,\"w\":205.5610603412776,\"h\":226.19127367168977}"
   },
   {
    "vp": "iphone-390x844",
@@ -121,13 +121,13 @@
    "vp": "iphone-390x844",
    "name": "tap dents the soft body",
    "ok": true,
-   "detail": "offset 0.041"
+   "detail": "offset 0.042"
   },
   {
    "vp": "iphone-390x844",
    "name": "Mallow looks toward the finger",
    "ok": true,
-   "detail": "{\"x\":-0.19122001452323717,\"y\":0.24367102455753867,\"t\":0.7008000000000001}"
+   "detail": "{\"x\":-0.19122001452323717,\"y\":0.24367102455753867,\"t\":0.7677000000000002}"
   },
   {
    "vp": "iphone-390x844",
@@ -151,7 +151,7 @@
    "vp": "iphone-390x844",
    "name": "drag stretches the Mallow",
    "ok": true,
-   "detail": "squash -0.169"
+   "detail": "squash -0.168"
   },
   {
    "vp": "iphone-390x844",
@@ -163,7 +163,7 @@
    "vp": "iphone-390x844",
    "name": "settles back to shape after release",
    "ok": true,
-   "detail": "{\"o\":\"0.013\",\"s\":\"0.010\"}"
+   "detail": "{\"o\":\"0.019\",\"s\":\"0.032\"}"
   },
   {
    "vp": "iphone-390x844",
@@ -175,7 +175,7 @@
    "vp": "iphone-390x844",
    "name": "pinch compresses the body",
    "ok": true,
-   "detail": "squash 0.413"
+   "detail": "squash 0.399"
   },
   {
    "vp": "iphone-390x844",
@@ -211,7 +211,7 @@
    "vp": "iphone-390x844",
    "name": "touchtalk + gesture buttons: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":95.45489443819335,\"y\":370.31023325381585,\"w\":199.04143134036602,\"h\":238.68976674618415}"
+   "detail": "{\"x\":94.60363951167052,\"y\":375.10760961855505,\"w\":200.79325638779204,\"h\":233.89239038144495}"
   },
   {
    "vp": "iphone-390x844",
@@ -223,7 +223,7 @@
    "vp": "iphone-390x844",
    "name": "squeeze button compresses",
    "ok": true,
-   "detail": "squash 0.429"
+   "detail": "squash 0.415"
   },
   {
    "vp": "iphone-390x844",
@@ -283,7 +283,7 @@
    "vp": "iphone-390x844",
    "name": "softbody: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":93.43667080104942,\"y\":415.26450136261826,\"w\":203.11408598587244,\"h\":230.73549863738174}"
+   "detail": "{\"x\":92.9517994523515,\"y\":418.6243647112628,\"w\":204.08493849745767,\"h\":227.37563528873721}"
   },
   {
    "vp": "iphone-390x844",
@@ -319,19 +319,19 @@
    "vp": "iphone-390x844",
    "name": "mochi stretches more than jelly",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.17735946004204495,\"maxE\":0.5396134960480239},\"jelly\":{\"stretch\":0.15460501738153387,\"maxE\":1.6798728366071096},\"mochi\":{\"stretch\":0.320306078135997,\"maxE\":1.5154052887137963},\"cloud\":{\"stretch\":0.19759868569514638,\"maxE\":0.6641316566324762},\"pillow\":{\"stretch\":0.161257277488275,\"maxE\":0.4922522516419669}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.1698622719393792,\"maxE\":0.5167933427322001},\"jelly\":{\"stretch\":0.1680735599192269,\"maxE\":1.4565666171144378},\"mochi\":{\"stretch\":0.2890245542154768,\"maxE\":1.4268688254610138},\"cloud\":{\"stretch\":0.2005034703826296,\"maxE\":0.6459559532248145},\"pillow\":{\"stretch\":0.16626910011859342,\"maxE\":0.48872428925628436}}"
   },
   {
    "vp": "iphone-390x844",
    "name": "jelly rebounds livelier than marshmallow",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.17735946004204495,\"maxE\":0.5396134960480239},\"jelly\":{\"stretch\":0.15460501738153387,\"maxE\":1.6798728366071096},\"mochi\":{\"stretch\":0.320306078135997,\"maxE\":1.5154052887137963},\"cloud\":{\"stretch\":0.19759868569514638,\"maxE\":0.6641316566324762},\"pillow\":{\"stretch\":0.161257277488275,\"maxE\":0.4922522516419669}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.1698622719393792,\"maxE\":0.5167933427322001},\"jelly\":{\"stretch\":0.1680735599192269,\"maxE\":1.4565666171144378},\"mochi\":{\"stretch\":0.2890245542154768,\"maxE\":1.4268688254610138},\"cloud\":{\"stretch\":0.2005034703826296,\"maxE\":0.6459559532248145},\"pillow\":{\"stretch\":0.16626910011859342,\"maxE\":0.48872428925628436}}"
   },
   {
    "vp": "iphone-390x844",
    "name": "cloud floats",
    "ok": true,
-   "detail": "-24.337446875643145"
+   "detail": "-30.346548248341684"
   },
   {
    "vp": "iphone-390x844",
@@ -377,9 +377,9 @@
   },
   {
    "vp": "iphone-375x812",
-   "name": "home lists 10 experiences, 4 playable (Phase 2)",
+   "name": "home lists 10 experiences, 7 playable (Phase 3)",
    "ok": true,
-   "detail": "10/4"
+   "detail": "10/7"
   },
   {
    "vp": "iphone-375x812",
@@ -481,7 +481,7 @@
    "vp": "iphone-375x812",
    "name": "touchtalk: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":89.93595010798047,\"y\":460.6555520729289,\"w\":195.11735032393042,\"h\":221.42444792707101}"
+   "detail": "{\"x\":89.89561335809363,\"y\":460.25174521838375,\"w\":195.19789787289085,\"h\":221.82825478161618}"
   },
   {
    "vp": "iphone-375x812",
@@ -493,13 +493,13 @@
    "vp": "iphone-375x812",
    "name": "tap dents the soft body",
    "ok": true,
-   "detail": "offset 0.039"
+   "detail": "offset 0.048"
   },
   {
    "vp": "iphone-375x812",
    "name": "Mallow looks toward the finger",
    "ok": true,
-   "detail": "{\"x\":-0.19122005208333334,\"y\":0.24387343533520653,\"t\":0.8842000000000002}"
+   "detail": "{\"x\":-0.19122005208333334,\"y\":0.24387343533520653,\"t\":0.8344000000000005}"
   },
   {
    "vp": "iphone-375x812",
@@ -523,7 +523,7 @@
    "vp": "iphone-375x812",
    "name": "drag stretches the Mallow",
    "ok": true,
-   "detail": "squash -0.149"
+   "detail": "squash -0.160"
   },
   {
    "vp": "iphone-375x812",
@@ -535,7 +535,7 @@
    "vp": "iphone-375x812",
    "name": "settles back to shape after release",
    "ok": true,
-   "detail": "{\"o\":\"0.017\",\"s\":\"-0.000\"}"
+   "detail": "{\"o\":\"0.022\",\"s\":\"-0.011\"}"
   },
   {
    "vp": "iphone-375x812",
@@ -547,7 +547,7 @@
    "vp": "iphone-375x812",
    "name": "pinch compresses the body",
    "ok": true,
-   "detail": "squash 0.417"
+   "detail": "squash 0.418"
   },
   {
    "vp": "iphone-375x812",
@@ -583,7 +583,7 @@
    "vp": "iphone-375x812",
    "name": "touchtalk + gesture buttons: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":88.70526238856189,\"y\":352.10749857479817,\"w\":197.62023453884123,\"h\":224.89250142520183}"
+   "detail": "{\"x\":88.10551494584008,\"y\":354.1530665222629,\"w\":198.79277784269442,\"h\":222.84693347773708}"
   },
   {
    "vp": "iphone-375x812",
@@ -595,7 +595,7 @@
    "vp": "iphone-375x812",
    "name": "squeeze button compresses",
    "ok": true,
-   "detail": "squash 0.362"
+   "detail": "squash 0.355"
   },
   {
    "vp": "iphone-375x812",
@@ -655,7 +655,7 @@
    "vp": "iphone-375x812",
    "name": "softbody: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":89.52030031001894,\"y\":394.8387172123385,\"w\":195.95960416847052,\"h\":219.1612827876615}"
+   "detail": "{\"x\":89.05663919059346,\"y\":395.26678000465535,\"w\":196.87032408647372,\"h\":218.73321999534465}"
   },
   {
    "vp": "iphone-375x812",
@@ -691,19 +691,19 @@
    "vp": "iphone-375x812",
    "name": "mochi stretches more than jelly",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.18049904602524292,\"maxE\":0.4915410197093755},\"jelly\":{\"stretch\":0.20567946952916016,\"maxE\":1.5179617804045211},\"mochi\":{\"stretch\":0.2974877523434347,\"maxE\":1.3817833582997623},\"cloud\":{\"stretch\":0.19425935786689963,\"maxE\":0.7950598692360551},\"pillow\":{\"stretch\":0.17420718078862474,\"maxE\":0.48901513294875526}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.184628957875151,\"maxE\":0.5172347723587463},\"jelly\":{\"stretch\":0.15946941372325307,\"maxE\":1.4537978218699732},\"mochi\":{\"stretch\":0.32342232504547397,\"maxE\":1.8425538780984207},\"cloud\":{\"stretch\":0.21620227398070502,\"maxE\":0.828182075057036},\"pillow\":{\"stretch\":0.1634172719944449,\"maxE\":0.5118784447863288}}"
   },
   {
    "vp": "iphone-375x812",
    "name": "jelly rebounds livelier than marshmallow",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.18049904602524292,\"maxE\":0.4915410197093755},\"jelly\":{\"stretch\":0.20567946952916016,\"maxE\":1.5179617804045211},\"mochi\":{\"stretch\":0.2974877523434347,\"maxE\":1.3817833582997623},\"cloud\":{\"stretch\":0.19425935786689963,\"maxE\":0.7950598692360551},\"pillow\":{\"stretch\":0.17420718078862474,\"maxE\":0.48901513294875526}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.184628957875151,\"maxE\":0.5172347723587463},\"jelly\":{\"stretch\":0.15946941372325307,\"maxE\":1.4537978218699732},\"mochi\":{\"stretch\":0.32342232504547397,\"maxE\":1.8425538780984207},\"cloud\":{\"stretch\":0.21620227398070502,\"maxE\":0.828182075057036},\"pillow\":{\"stretch\":0.1634172719944449,\"maxE\":0.5118784447863288}}"
   },
   {
    "vp": "iphone-375x812",
    "name": "cloud floats",
    "ok": true,
-   "detail": "-30.480402630680693"
+   "detail": "-29.934885800184894"
   },
   {
    "vp": "iphone-375x812",
@@ -749,9 +749,9 @@
   },
   {
    "vp": "iphone-se-320x568",
-   "name": "home lists 10 experiences, 4 playable (Phase 2)",
+   "name": "home lists 10 experiences, 7 playable (Phase 3)",
    "ok": true,
-   "detail": "10/4"
+   "detail": "10/7"
   },
   {
    "vp": "iphone-se-320x568",
@@ -853,7 +853,7 @@
    "vp": "iphone-se-320x568",
    "name": "touchtalk: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":78.3873096392027,\"y\":258.0629050200714,\"w\":163.22340074680824,\"h\":182.9370949799286}"
+   "detail": "{\"x\":77.49617060012426,\"y\":259.9217392217452,\"w\":165.01462352597622,\"h\":181.0782607782548}"
   },
   {
    "vp": "iphone-se-320x568",
@@ -865,13 +865,13 @@
    "vp": "iphone-se-320x568",
    "name": "tap dents the soft body",
    "ok": true,
-   "detail": "offset 0.050"
+   "detail": "offset 0.046"
   },
   {
    "vp": "iphone-se-320x568",
    "name": "Mallow looks toward the finger",
    "ok": true,
-   "detail": "{\"x\":-0.1868316650390625,\"y\":0.17552917910293786,\"t\":0.8343000000000002}"
+   "detail": "{\"x\":-0.1868316650390625,\"y\":0.17552917910293786,\"t\":0.8676000000000001}"
   },
   {
    "vp": "iphone-se-320x568",
@@ -895,7 +895,7 @@
    "vp": "iphone-se-320x568",
    "name": "drag stretches the Mallow",
    "ok": true,
-   "detail": "squash -0.196"
+   "detail": "squash -0.195"
   },
   {
    "vp": "iphone-se-320x568",
@@ -907,7 +907,7 @@
    "vp": "iphone-se-320x568",
    "name": "settles back to shape after release",
    "ok": true,
-   "detail": "{\"o\":\"0.030\",\"s\":\"-0.001\"}"
+   "detail": "{\"o\":\"0.012\",\"s\":\"0.000\"}"
   },
   {
    "vp": "iphone-se-320x568",
@@ -955,7 +955,7 @@
    "vp": "iphone-se-320x568",
    "name": "touchtalk + gesture buttons: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":102.06785362049976,\"y\":209.3723000533264,\"w\":115.88962977835921,\"h\":123.62769994667366}"
+   "detail": "{\"x\":99.72796056521065,\"y\":214.2472576010802,\"w\":120.5766798209266,\"h\":118.75274239891985}"
   },
   {
    "vp": "iphone-se-320x568",
@@ -967,7 +967,7 @@
    "vp": "iphone-se-320x568",
    "name": "squeeze button compresses",
    "ok": true,
-   "detail": "squash 0.377"
+   "detail": "squash 0.397"
   },
   {
    "vp": "iphone-se-320x568",
@@ -1027,7 +1027,7 @@
    "vp": "iphone-se-320x568",
    "name": "softbody: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":94.41849125981797,\"y\":227.1128730333168,\"w\":131.15056585301318,\"h\":142.8871269666832}"
+   "detail": "{\"x\":94.21121992287583,\"y\":227.3353447237614,\"w\":131.5671915741408,\"h\":142.6646552762386}"
   },
   {
    "vp": "iphone-se-320x568",
@@ -1063,19 +1063,19 @@
    "vp": "iphone-se-320x568",
    "name": "mochi stretches more than jelly",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.1856810560829938,\"maxE\":0.5514288789185537},\"jelly\":{\"stretch\":0.16915846899247122,\"maxE\":1.2764058421705446},\"mochi\":{\"stretch\":0.3977810403526365,\"maxE\":1.9195700789655097},\"cloud\":{\"stretch\":0.2051322149817829,\"maxE\":0.683701395525292},\"pillow\":{\"stretch\":0.1869009430762103,\"maxE\":0.5435683986703959}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.19246075563092258,\"maxE\":0.5455217151200487},\"jelly\":{\"stretch\":0.14835349337429826,\"maxE\":1.543679883857932},\"mochi\":{\"stretch\":0.3881765399242407,\"maxE\":1.9626175053466446},\"cloud\":{\"stretch\":0.20379475473357656,\"maxE\":0.7943267756223599},\"pillow\":{\"stretch\":0.16792799659791124,\"maxE\":0.47359249550270066}}"
   },
   {
    "vp": "iphone-se-320x568",
    "name": "jelly rebounds livelier than marshmallow",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.1856810560829938,\"maxE\":0.5514288789185537},\"jelly\":{\"stretch\":0.16915846899247122,\"maxE\":1.2764058421705446},\"mochi\":{\"stretch\":0.3977810403526365,\"maxE\":1.9195700789655097},\"cloud\":{\"stretch\":0.2051322149817829,\"maxE\":0.683701395525292},\"pillow\":{\"stretch\":0.1869009430762103,\"maxE\":0.5435683986703959}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.19246075563092258,\"maxE\":0.5455217151200487},\"jelly\":{\"stretch\":0.14835349337429826,\"maxE\":1.543679883857932},\"mochi\":{\"stretch\":0.3881765399242407,\"maxE\":1.9626175053466446},\"cloud\":{\"stretch\":0.20379475473357656,\"maxE\":0.7943267756223599},\"pillow\":{\"stretch\":0.16792799659791124,\"maxE\":0.47359249550270066}}"
   },
   {
    "vp": "iphone-se-320x568",
    "name": "cloud floats",
    "ok": true,
-   "detail": "-25.38696781693416"
+   "detail": "-15.327432122662628"
   },
   {
    "vp": "iphone-se-320x568",
@@ -1121,9 +1121,9 @@
   },
   {
    "vp": "android-412x915",
-   "name": "home lists 10 experiences, 4 playable (Phase 2)",
+   "name": "home lists 10 experiences, 7 playable (Phase 3)",
    "ok": true,
-   "detail": "10/4"
+   "detail": "10/7"
   },
   {
    "vp": "android-412x915",
@@ -1225,7 +1225,7 @@
    "vp": "android-412x915",
    "name": "touchtalk: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":98.7759757082762,\"y\":524.8879587981103,\"w\":214.43452297341952,\"h\":243.71204120188978}"
+   "detail": "{\"x\":98.15212313950394,\"y\":527.0699251167374,\"w\":215.706062438625,\"h\":241.53007488326259}"
   },
   {
    "vp": "android-412x915",
@@ -1237,13 +1237,13 @@
    "vp": "android-412x915",
    "name": "tap dents the soft body",
    "ok": true,
-   "detail": "offset 0.048"
+   "detail": "offset 0.041"
   },
   {
    "vp": "android-412x915",
    "name": "Mallow looks toward the finger",
    "ok": true,
-   "detail": "{\"x\":-0.19122003351600425,\"y\":0.25277968109631144,\"t\":0.8510000000000002}"
+   "detail": "{\"x\":-0.19122003351600425,\"y\":0.25277968109631144,\"t\":0.8009000000000003}"
   },
   {
    "vp": "android-412x915",
@@ -1267,7 +1267,7 @@
    "vp": "android-412x915",
    "name": "drag stretches the Mallow",
    "ok": true,
-   "detail": "squash -0.159"
+   "detail": "squash -0.163"
   },
   {
    "vp": "android-412x915",
@@ -1279,7 +1279,7 @@
    "vp": "android-412x915",
    "name": "settles back to shape after release",
    "ok": true,
-   "detail": "{\"o\":\"0.021\",\"s\":\"-0.009\"}"
+   "detail": "{\"o\":\"0.014\",\"s\":\"-0.003\"}"
   },
   {
    "vp": "android-412x915",
@@ -1291,7 +1291,7 @@
    "vp": "android-412x915",
    "name": "pinch compresses the body",
    "ok": true,
-   "detail": "squash 0.405"
+   "detail": "squash 0.411"
   },
   {
    "vp": "android-412x915",
@@ -1327,7 +1327,7 @@
    "vp": "android-412x915",
    "name": "touchtalk + gesture buttons: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":92.52715179553297,\"y\":442.9535893546781,\"w\":226.92862767455534,\"h\":237.0464106453219}"
+   "detail": "{\"x\":90.99063358420813,\"y\":452.36313386205256,\"w\":229.93003019490408,\"h\":227.63686613794746}"
   },
   {
    "vp": "android-412x915",
@@ -1339,7 +1339,7 @@
    "vp": "android-412x915",
    "name": "squeeze button compresses",
    "ok": true,
-   "detail": "squash 0.360"
+   "detail": "squash 0.362"
   },
   {
    "vp": "android-412x915",
@@ -1399,7 +1399,7 @@
    "vp": "android-412x915",
    "name": "softbody: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":98.6838421504419,\"y\":473.41534955018136,\"w\":214.62321442646504,\"h\":243.58465044981867}"
+   "detail": "{\"x\":97.47319707027205,\"y\":479.1906789914997,\"w\":217.0337161266673,\"h\":237.80932100850035}"
   },
   {
    "vp": "android-412x915",
@@ -1435,19 +1435,19 @@
    "vp": "android-412x915",
    "name": "mochi stretches more than jelly",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.17749778946297146,\"maxE\":0.4181622407041093},\"jelly\":{\"stretch\":0.1741445957590495,\"maxE\":1.4833163361276},\"mochi\":{\"stretch\":0.266849742135574,\"maxE\":1.3216620906011936},\"cloud\":{\"stretch\":0.19357002884813368,\"maxE\":0.7509742410303211},\"pillow\":{\"stretch\":0.16905108897879173,\"maxE\":0.41596355349496617}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.19457258010306333,\"maxE\":0.42369445660150235},\"jelly\":{\"stretch\":0.14367069985978964,\"maxE\":1.0867424291961347},\"mochi\":{\"stretch\":0.2654473499629757,\"maxE\":1.1911180992513004},\"cloud\":{\"stretch\":0.14647751736069026,\"maxE\":0.4526581648037516},\"pillow\":{\"stretch\":0.16446793686520578,\"maxE\":0.4617486772005229}}"
   },
   {
    "vp": "android-412x915",
    "name": "jelly rebounds livelier than marshmallow",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.17749778946297146,\"maxE\":0.4181622407041093},\"jelly\":{\"stretch\":0.1741445957590495,\"maxE\":1.4833163361276},\"mochi\":{\"stretch\":0.266849742135574,\"maxE\":1.3216620906011936},\"cloud\":{\"stretch\":0.19357002884813368,\"maxE\":0.7509742410303211},\"pillow\":{\"stretch\":0.16905108897879173,\"maxE\":0.41596355349496617}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.19457258010306333,\"maxE\":0.42369445660150235},\"jelly\":{\"stretch\":0.14367069985978964,\"maxE\":1.0867424291961347},\"mochi\":{\"stretch\":0.2654473499629757,\"maxE\":1.1911180992513004},\"cloud\":{\"stretch\":0.14647751736069026,\"maxE\":0.4526581648037516},\"pillow\":{\"stretch\":0.16446793686520578,\"maxE\":0.4617486772005229}}"
   },
   {
    "vp": "android-412x915",
    "name": "cloud floats",
    "ok": true,
-   "detail": "-15.640520737233995"
+   "detail": "-16.843642595023663"
   },
   {
    "vp": "android-412x915",
@@ -1493,9 +1493,9 @@
   },
   {
    "vp": "desktop-1280x860",
-   "name": "home lists 10 experiences, 4 playable (Phase 2)",
+   "name": "home lists 10 experiences, 7 playable (Phase 3)",
    "ok": true,
-   "detail": "10/4"
+   "detail": "10/7"
   },
   {
    "vp": "desktop-1280x860",
@@ -1597,7 +1597,7 @@
    "vp": "desktop-1280x860",
    "name": "touchtalk: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":518.2990676210992,\"y\":454.26505906839816,\"w\":243.4107368675711,\"h\":268.1349409316018}"
+   "detail": "{\"x\":518.3342110251548,\"y\":454.2563981941241,\"w\":243.33197193705584,\"h\":268.1436018058759}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1609,13 +1609,13 @@
    "vp": "desktop-1280x860",
    "name": "tap dents the soft body",
    "ok": true,
-   "detail": "offset 0.044"
+   "detail": "offset 0.042"
   },
   {
    "vp": "desktop-1280x860",
    "name": "Mallow looks toward the finger",
    "ok": true,
-   "detail": "{\"x\":-0.0690232276916504,\"y\":0.18571201058321227,\"t\":0.6843000000000002}"
+   "detail": "{\"x\":-0.0690232276916504,\"y\":0.18571201058321227,\"t\":0.6345}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1639,7 +1639,7 @@
    "vp": "desktop-1280x860",
    "name": "drag stretches the Mallow",
    "ok": true,
-   "detail": "squash -0.156"
+   "detail": "squash -0.157"
   },
   {
    "vp": "desktop-1280x860",
@@ -1651,7 +1651,7 @@
    "vp": "desktop-1280x860",
    "name": "settles back to shape after release",
    "ok": true,
-   "detail": "{\"o\":\"0.024\",\"s\":\"-0.008\"}"
+   "detail": "{\"o\":\"0.012\",\"s\":\"0.000\"}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1687,7 +1687,7 @@
    "vp": "desktop-1280x860",
    "name": "touchtalk + gesture buttons: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":525.1291240648785,\"y\":424.3278502649866,\"w\":229.83176984476773,\"h\":246.6721497350134}"
+   "detail": "{\"x\":525.6278530253466,\"y\":423.47049630233596,\"w\":228.70660665542397,\"h\":247.529503697664}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1699,7 +1699,7 @@
    "vp": "desktop-1280x860",
    "name": "squeeze button compresses",
    "ok": true,
-   "detail": "squash 0.353"
+   "detail": "squash 0.370"
   },
   {
    "vp": "desktop-1280x860",
@@ -1759,7 +1759,7 @@
    "vp": "desktop-1280x860",
    "name": "softbody: Mallow fully visible",
    "ok": true,
-   "detail": "{\"x\":529.1317132134512,\"y\":410.8372051161938,\"w\":221.7369109378463,\"h\":251.16279488380619}"
+   "detail": "{\"x\":527.9145457785652,\"y\":416.3759917952518,\"w\":224.16225892530366,\"h\":245.6240082047482}"
   },
   {
    "vp": "desktop-1280x860",
@@ -1795,19 +1795,19 @@
    "vp": "desktop-1280x860",
    "name": "mochi stretches more than jelly",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.18515565584304738,\"maxE\":0.3703835862729722},\"jelly\":{\"stretch\":0.17560340097249783,\"maxE\":1.58135267275905},\"mochi\":{\"stretch\":0.26563595236229753,\"maxE\":1.3167637804872951},\"cloud\":{\"stretch\":0.18728407225667532,\"maxE\":0.45520755053713713},\"pillow\":{\"stretch\":0.16089104383455965,\"maxE\":0.4490370246192079}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.17967457334646353,\"maxE\":0.3783368437252355},\"jelly\":{\"stretch\":0.1640905357506408,\"maxE\":1.4004063399154123},\"mochi\":{\"stretch\":0.27903570421573254,\"maxE\":1.392557837870065},\"cloud\":{\"stretch\":0.18804704885357548,\"maxE\":0.7391215837348191},\"pillow\":{\"stretch\":0.16246379677043055,\"maxE\":0.43261981093935553}}"
   },
   {
    "vp": "desktop-1280x860",
    "name": "jelly rebounds livelier than marshmallow",
    "ok": true,
-   "detail": "{\"marshmallow\":{\"stretch\":0.18515565584304738,\"maxE\":0.3703835862729722},\"jelly\":{\"stretch\":0.17560340097249783,\"maxE\":1.58135267275905},\"mochi\":{\"stretch\":0.26563595236229753,\"maxE\":1.3167637804872951},\"cloud\":{\"stretch\":0.18728407225667532,\"maxE\":0.45520755053713713},\"pillow\":{\"stretch\":0.16089104383455965,\"maxE\":0.4490370246192079}}"
+   "detail": "{\"marshmallow\":{\"stretch\":0.17967457334646353,\"maxE\":0.3783368437252355},\"jelly\":{\"stretch\":0.1640905357506408,\"maxE\":1.4004063399154123},\"mochi\":{\"stretch\":0.27903570421573254,\"maxE\":1.392557837870065},\"cloud\":{\"stretch\":0.18804704885357548,\"maxE\":0.7391215837348191},\"pillow\":{\"stretch\":0.16246379677043055,\"maxE\":0.43261981093935553}}"
   },
   {
    "vp": "desktop-1280x860",
    "name": "cloud floats",
    "ok": true,
-   "detail": "-29.79022705963208"
+   "detail": "-30.379812143648998"
   },
   {
    "vp": "desktop-1280x860",
