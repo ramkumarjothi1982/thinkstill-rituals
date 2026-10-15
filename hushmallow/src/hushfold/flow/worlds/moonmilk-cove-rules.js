@@ -112,7 +112,7 @@ function planOnce({ W, H, band = null, mallow = null, x1 = W, plate = null, n = 
   const clear = !!best;
   if (!best) {
     // nowhere clear (a tiny landscape window at the largest text): the place where the words cover least of the hero and
-    // the band (the words weigh most: they must stay readable), anywhere on screen
+    // the band (and of the bottom-left strip where the shell's replay chip comes and goes) (the words weigh most: they must stay readable), anywhere on screen
     const area = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
     const r = 20;
     for (const side of ['above', 'below', 'right', 'left']) {
@@ -120,12 +120,13 @@ function planOnce({ W, H, band = null, mallow = null, x1 = W, plate = null, n = 
         for (let x = E + r * 1.45; x <= XR - E - r * 1.45; x += 4) {
           const T = rectOf(x - r * 1.45, y - r, x + r * 1.45, y + r * COVE.CRADLE_B);
           const P = pw ? plateRect(side, x, y, r, pw, ph, E, XR) : null;
-          if (P && (P.x0 < 0 || P.x1 > XR)) continue;
+          if (P && (P.x0 < E || P.x1 > XR - E)) continue;
           // (against the hero, only the letters count: the plate's padding and rounded corners may pass behind it)
           const Pt = P && rectOf(P.x0 + 12, P.y0 + 8, P.x1 - 12, P.y1 - 8);
           // (priorities: the thought and the letters never on the hero or under the band; on screen; and only then out of
           // the shell's bottom strip, whose replay chip comes and goes)
-          const S = rectOf(0, floor, W, H);
+          // (the shell's replay chip sits at the bottom left: the bottom right is open sand)
+          const S = rectOf(0, floor, W * 0.5, H);
           const Mi = rectOf(M.x0 - 2, M.y0 - 2, M.x1 + 2, M.y1 + 2);
           let s = 8 * (area(T, M) + area(T, B)) + (P ? 40 * (area(Pt, Mi) + area(P, B)) + 8 * (Math.max(0, -P.y0) + Math.max(0, P.y1 - H)) * pw + area(Pt, S) : 0);
           s += Math.hypot(x - ideal.x, y - ideal.y) * 0.01;
