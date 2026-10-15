@@ -238,8 +238,10 @@ test('item 1: in Another Angle the question comes before anything is sent, made 
   assert.doesNotMatch(grief, /client\.|serverMode\(\)/, 'the gentle path sends nothing');
   const q = between(aa, 'const FIRST_QUESTION = {', 'async function waitingLines(');
   // (r2-angle item 7, a coordinator default) equal weight: the same chip style, "Another angle" first
-  assert.match(q, /choice: \{ ask: ANGLE_CHOICE\.ask, ms: ANGLE_CHOICE\.ms, options: \[\{ label: ANGLE_CHOICE\.angle, value: 'angle' \}, \{ label: ANGLE_CHOICE\.be, value: 'be' \}\] \}/);
-  assert.match(q, /S\.phase = 'asking';[\s\S]*?careFace\(\);\s*dockShow\(\{\}\);\s*layer\.lossCheck = app\.pushLayer\?\.\(\) \|\| 0;/);
+  // (fix round, the safety floor) a third answer of the same weight, "I'm not okay" (the check-in's "Not really": careLite)
+  assert.match(q, /choice: \{ ask: ANGLE_CHOICE\.ask, ms: ANGLE_CHOICE\.ms, options: \[\{ label: ANGLE_CHOICE\.angle, value: 'angle' \}, \{ label: ANGLE_CHOICE\.be, value: 'be' \}, \{ label: ANGLE_CHOICE\.notOkay, value: 'notreally' \}\] \}/);
+  // (fix round, the safety floor) the Support pill is in the dock while the question is up (dockShow asking)
+  assert.match(q, /S\.phase = 'asking';[\s\S]*?careFace\(\);\s*(?:\/\/[^\n]*\n\s*)*dockShow\(\{ asking: true \}\);\s*layer\.lossCheck = app\.pushLayer\?\.\(\) \|\| 0;/);
   assert.doesNotMatch(q, /client\.|spawnThought|playScene|setStage\('playful'\)/);
   // no squeeze quips while it asks, no reload, Back lets it go
   assert.match(aa, /if \(\['arrive', 'invite', 'squeeze', 'end'\]\.includes\(S\.phase\)/);

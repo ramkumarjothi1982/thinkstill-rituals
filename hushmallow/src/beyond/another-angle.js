@@ -54,6 +54,8 @@ const REACTIONS = new Set(['squeeze', 'tap', 'doubleTap', 'flick', 'stretch', 'm
 /** Safety levels, least to most serious (src/engine/safety.js). */
 const LEVELS = ['none', 'concern', 'care', 'crisis'];
 const worse = (a, b) => (LEVELS.indexOf(b) > LEVELS.indexOf(a) ? b : a);
+/** (fix round) The lexicon's concern that is not a loss (distress, wanting to hurt someone): the check-in, never the plain question. */
+const distressOf = (r) => r?.level === 'concern' && r.category !== 'loss';
 /**
  * Zuzu's face after something heavy: attentive and quiet, the mouth soft and closed (the rig's own
  * "concerned" stage still carries Zuzu's open grin; until that art changes, this mix stands in).
@@ -114,6 +116,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // words read as possibly at risk (the check-in replaces the question); notReally: "Not really" was the answer (support
     // first, no angle for the rest of the visit, nothing sent)
     recent: [], check: false, notReally: false,
+    // (fix round) careOf: the category the server named for its care ('general': the model's own safety check, 'self-risk':
+    // the risk screener's; serverCareLines); afterConsent: the consent card just closed (the focus goes to the invitation)
+    careOf: null, afterConsent: false,
     touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9, band: 0,
   };
   const timers = new Set();
@@ -494,13 +499,16 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   }
 
   // ---------------------------------------------------------- dock --
-  function dockShow({ assist = null, tell = false, finish: fin = false, support = true } = {}) {
+  function dockShow({ assist = null, tell = false, finish: fin = false, support = true, asking = false } = {}) {
     assistBtn.hidden = !assist;
     if (assist) { assistLabel.textContent = assist; assistBtn.setAttribute('aria-label', `${assist} (instead of touch)`); }
     tellPill.hidden = !tell;
     finishPill.hidden = !fin;
     // (support: false only while a choice of its own offers support: never the same control twice)
+    // (fix round, the safety floor) asking: while the question before an angle is up, the Support pill is always there,
+    // whatever the words read as (its third answer, "I'm not okay", is support first too)
     supportPill.hidden = !(S.keepSupport || S.care || S.crisis) || !support;
+    if (asking && support) supportPill.hidden = false;
     layout();
   }
 
@@ -651,10 +659,13 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   /**
    * The lines for the server's care answer: a wish to follow → SAFETY.follow; beside a bag word, a loss shape (lossNear,
    * strongLoss) or death talk → SAFETY.careGentle ("That sounds like a lot to carry."), never "shouldn't have happened";
-   * otherwise SAFETY.care (review r11).
+   * otherwise SAFETY.care (review r11). (fix round) The server's care with no category of the lexicon's (the model's own safety
+   * check, 'general'; the risk screener's, 'self-risk'): words that may carry risk to the person → SAFETY.follow, never "That
+   * sounds like something that shouldn't have happened".
    */
   function serverCareLines() {
     if (S.follow) return SAFETY.follow;
+    if (S.careOf === 'general' || S.careOf === 'self-risk') return SAFETY.follow;
     return S.lossSaid || gentleRoute(S.text) || bagWords(S.text) || lossRoute(S.text, { emotion: S.emotion }) ? SAFETY.careGentle : SAFETY.care;
   }
   /** The risk screener's reading of these words, beside the visit's last Tells (risk-screen.js; never throws). */
@@ -722,7 +733,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.check = scr.level === 'check';
     if (S.check) S.keepSupport = true;
     if (scr.level === 'care') S.follow = true;
-    try { const n = normalise(S.text); if (n && n !== S.text.toLowerCase()) noteSafety(checkText(n)); } catch { /* the check as typed stands */ }
+    let lexN = null;
+    try { const n = normalise(S.text); if (n && n !== S.text.toLowerCase()) { lexN = checkText(n); noteSafety(lexN); } } catch { /* the check as typed stands */ }
     if (noteShape(S.text)) S.follow = true;
     if (deathEscalation(S.text)) S.follow = true; else if (suicideDeath(S.text)) S.suicide = true;
     noteSafety(seen);
@@ -742,6 +754,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // death talk or any word of the backstop's bag: no playful line for the rest of the visit
     readDraft(S.text);
     if (S.level === 'concern') S.keepSupport = true;
+    // (fix round) the lexicon's concern for these words (distress, or wanting to hurt someone; never a loss, which the gentle
+    // path takes first: startAngle): the check-in replaces the question ("Before we go on — are you okay right now?"), support
+    // kept close, nothing sent before the answer
+    if ([seen, checkText(S.text), lexN].some(distressOf)) { S.check = true; S.keepSupport = true; }
     // (r2-angle item 7) only a grief-family feeling chosen, no words: the gentle path, as on the main screen (nothing to send)
     if ((!S.text || !hasWords(S.text)) && griefFeeling(S.emotion)) { griefMode({ asked: true }); return; }
     if (!S.text || !hasWords(S.text)) { unclear(); return; }
@@ -1005,6 +1021,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       const v = await askFirst(step);
       if (S.left) return;
       if (v) S.keepWords = false;
+      // (fix round, the safety floor) "I'm not okay": exactly the check-in's "Not really" (support first, nothing sent, no angle
+      // for the rest of the visit), whatever the words read as
+      if (v === 'notreally') return careLite();
       // (r2-angle item 5) "Just be with it": a quiet path of its own, nothing sent; never the grief path's support or goodbye
       if (v === 'be') { S.answers.set(key, 'be'); return beWithIt(); }
       if (v === 'yes') { S.answers.set(key, 'yes'); S.lossSaid = true; S.noPlay = true; return griefMode({ told: 'loss' }); }
@@ -1040,6 +1059,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     let scene = null, offline = !serverMode(), hint = null, invited = false;
     if (res) {
       if (res.keepSupportClose) { S.keepSupport = true; supportPill.hidden = false; }
+      // (fix round) the server's own crisis or care (its pre-checks, or the model's own safety check for words the app read as
+      // ordinary): support, never Zuzu's own angle; the category it names picks the care lines (serverCareLines)
+      if (res.status === 'care') S.careOf = res.category || null;
       if (res.status === 'crisis') { crisisMode(); return; }
       // (review r11) the server's care beside a bag word or a loss shape is said gently, assuming nothing (careGentle)
       if (res.status === 'care') { careMode({ lines: serverCareLines() }); return; }
@@ -1089,7 +1111,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
    */
   // (r2-angle item 7, a coordinator default) the two answers carry equal weight: the same chip style, "Another angle" first
   const FIRST_QUESTION = {
-    choice: { ask: ANGLE_CHOICE.ask, ms: ANGLE_CHOICE.ms, options: [{ label: ANGLE_CHOICE.angle, value: 'angle' }, { label: ANGLE_CHOICE.be, value: 'be' }] },
+    choice: { ask: ANGLE_CHOICE.ask, ms: ANGLE_CHOICE.ms, options: [{ label: ANGLE_CHOICE.angle, value: 'angle' }, { label: ANGLE_CHOICE.be, value: 'be' }, { label: ANGLE_CHOICE.notOkay, value: 'notreally' }] },
     'check-in': { ask: LOSS_CHECK.ask, ms: LOSS_CHECK.ms, options: [{ label: LOSS_CHECK.yes, value: 'yes' }, { label: LOSS_CHECK.no, value: 'else' }] },
     // (15 Oct 2026) the risk screener's check-in: "I'm okay" is the angle (sent: the server checks again), "Not really" care-lite
     check: { ask: CHECK_IN.ask, ms: CHECK_IN.ms, options: [{ label: CHECK_IN.angle, value: 'angle' }, { label: CHECK_IN.notReally, value: 'notreally' }, { label: CHECK_IN.be, value: 'be' }] },
@@ -1103,7 +1125,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     // (the check-in: the Support pill is there while it is up, and for the visit)
     if (kind === 'check') S.keepSupport = true;
     careFace();
-    dockShow({});
+    // (fix round, the safety floor) the Support pill is there while any question is up, whatever the words read as
+    dockShow({ asking: true });
     layer.lossCheck = app.pushLayer?.() || 0;
     // (r2-angle item 6) about 45 s, never counted while the page is hidden (subtitles' own timeout is not used)
     stopClock?.();

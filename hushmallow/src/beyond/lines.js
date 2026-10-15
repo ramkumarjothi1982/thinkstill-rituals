@@ -93,6 +93,12 @@ export const ANGLE_CHOICE = Object.freeze({
   ask: 'Shall we look at this from another angle, or just be with it?',
   angle: 'Another angle',
   be: 'Just be with it',
+  /**
+   * (fix round, the safety floor: structural, whatever the word lists read) a third answer of equal weight on every question:
+   * it does exactly what the check-in's "Not really" does (another-angle.js careLite: support first, nothing sent, no angle for
+   * the rest of the visit). The Support pill is in the dock while the question is up, too.
+   */
+  notOkay: 'I’m not okay',
   ms: 45000,
 });
 /**

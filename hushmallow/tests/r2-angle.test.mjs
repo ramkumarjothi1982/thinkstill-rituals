@@ -288,7 +288,8 @@ test('item 7: a grief-family feeling with no words is gentle (nothing sent); equ
   assert.match(between(AA, 'async function afterTell(', 'function firstLook('), /if \(\(!S\.text \|\| !hasWords\(S\.text\)\) && griefFeeling\(S\.emotion\)\) \{ griefMode\(\{ asked: true \}\); return; \}/);
   // equal weight: neither chip is primary, "Another angle" first
   const q = between(AA, 'const FIRST_QUESTION = {', 'async function askFirst(');
-  assert.match(q, /options: \[\{ label: ANGLE_CHOICE\.angle, value: 'angle' \}, \{ label: ANGLE_CHOICE\.be, value: 'be' \}\]/);
+  // (fix round, the safety floor) and a third of the same weight, "I'm not okay"
+  assert.match(q, /options: \[\{ label: ANGLE_CHOICE\.angle, value: 'angle' \}, \{ label: ANGLE_CHOICE\.be, value: 'be' \}, \{ label: ANGLE_CHOICE\.notOkay, value: 'notreally' \}\]/);
   assert.doesNotMatch(between(q, 'choice:', "'check-in':"), /primary/);
   // "Just be with it", then the same words: asked again (as on the main screen); nothing sent before the answer
   assert.equal(BE_ASKS_AGAIN, true);

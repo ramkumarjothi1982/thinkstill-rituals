@@ -48,16 +48,19 @@ export const ALL_SCENE_STUBS = [...SCENE_STUBS, 'angerLines', 'harsh', 'spectrum
 /** angle-client.js: the server's answer as the experience sees it. */
 function clientShape(raw) {
   if (!raw) return { status: 'error', reason: 'network' };
-  if (raw.status === 'crisis' || raw.status === 'care') return { status: raw.status, keepSupportClose: true };
+  if (raw.status === 'crisis' || raw.status === 'care') return { status: raw.status, keepSupportClose: true, category: typeof raw.support?.category === 'string' && /^[a-z-]{1,40}$/.test(raw.support.category) ? raw.support.category : null };
   if (raw.status === 'fallback') {
     if (raw.fallback?.reason === 'unclear') return { status: 'unclear' };
     const hp = raw.fallback?.hint?.reasoning_pattern;
     return { status: 'fallback', reason: raw.fallback?.reason || 'x', hint: PATTERNS.includes(hp) ? { reasoning_pattern: hp } : null };
   }
   if (raw.status === 'ok') {
+    // (fix round) the model's own crisis or care first, before validateScene (angle-client.js read)
+    const flagged = raw.scene && typeof raw.scene === 'object' ? raw.scene.safety_status : null;
+    if (flagged === 'crisis' || flagged === 'care') return { status: flagged, keepSupportClose: true, category: 'general' };
     const scene = validateScene(raw.scene);
     if (!scene) return { status: 'error', reason: 'invalid_scene' };
-    if (scene.safety_status === 'crisis' || scene.safety_status === 'care') return { status: scene.safety_status };
+    if (scene.safety_status === 'crisis' || scene.safety_status === 'care') return { status: scene.safety_status, category: 'general' };
     return { status: 'ok', scene: { ...scene, source: 'server', prompt_version: 'stub' } };
   }
   return { status: 'error' };
@@ -105,6 +108,9 @@ function drawn(scene, parts, L) {
  * check-in instead of the question (R.question 'check'): `answer` 'angle' (or 'else') sends and plays, 'be' (or 'yes') is
  * "Just be with it", 'notreally' is the care-lite path (route 'carelite': support first, nothing sent), null is quiet. The lexicon
  * also reads the words in one spelling (risk-screen.js normalise).
+ * (fix round) the lexicon's concern that is not a loss asks the check-in too (R.question 'check'); the question's third answer,
+ * "I'm not okay" (`answer` 'notreally'), is the care-lite path; after the check-in's "I'm okay" the visit stays quiet (noPlay:
+ * attentive faces, no quips); a server scene marked crisis or care is support even when it would fail validateScene.
  */
 export function visit(text, { server = null, emotion = null, walk = 4, answer = 'else', asks = ASK_BEFORE_ANGLE, said = null, history = [] } = {}) {
   const R = { text, route: null, requests: 0, said: [], drawn: [], mechanics: [], faces: [], scenes: [], noPlay: false, quips: true, careLines: null, look: null, asked: false, question: null, requestsBeforeAnswer: 0, grief: false, beOptions: null, finishLevel: 'none', finishLines: null, held: false, local: false };
@@ -133,8 +139,12 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
   { let f = null, p = null; try { f = feelingOf(text); } catch { f = null; } try { p = candidatePatterns(text)[0] || null; } catch { p = null; } R.look = f ? `feeling:${f.kind}` : `pattern:${p}`; }
   readDraft(text);
   if (scr.level === 'care') S.follow = true;
-  note(checkText(text));
-  { let n = ''; try { n = normalise(text); } catch { n = ''; } if (n && n !== String(text).toLowerCase()) note(checkText(n)); }
+  const lex = checkText(text);
+  note(lex);
+  let lexN = null;
+  { let n = ''; try { n = normalise(text); } catch { n = ''; } if (n && n !== String(text).toLowerCase()) { lexN = checkText(n); note(lexN); } }
+  // (fix round, another-angle.js afterTell distressOf) the lexicon's concern for these words that is not a loss: the check-in
+  const distress = [lex, lexN].some((r) => r?.level === 'concern' && r.category !== 'loss');
   if (S.level === 'crisis') return crisis();
   if (S.level === 'care') return care();
   if (deathEscalation(text)) { S.follow = true; return care(SAFETY.follow); }
@@ -181,12 +191,14 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     if (step === 'be') return beWithIt(route);
     if (step === 'told') { S.noPlay = true; return griefMode({ told: 'loss' }); }
     // (15 Oct 2026) the risk screener's 'check': the check-in instead of the question (never inside an angle already chosen)
-    if (scr.level === 'check' && k === 0) step = 'check';
+    // (fix round) and the lexicon's concern that is not a loss (distress, wanting to hurt someone): the check-in too
+    if ((scr.level === 'check' || distress) && k === 0) step = 'check';
     if (step === 'choice' || step === 'check-in' || step === 'check') {
       R.asked = true; R.question = step; R.requestsBeforeAnswer = R.requests;
       R.faces.push('attentive');
       say(step === 'choice' ? ANGLE_CHOICE.ask : step === 'check' ? CHECK_IN.ask : LOSS_CHECK.ask);
-      const v = step === 'choice' ? ({ be: 'be', yes: 'be', angle: 'angle', else: 'angle', notreally: 'be' })[answer]
+      // (fix round, the safety floor) the question's third answer, "I'm not okay" ('notreally'), is the check-in's "Not really"
+      const v = step === 'choice' ? ({ be: 'be', yes: 'be', angle: 'angle', else: 'angle', notreally: 'notreally' })[answer]
         : step === 'check' ? ({ be: 'be', yes: 'be', angle: 'angle', else: 'angle', notreally: 'notreally' })[answer]
           : ({ yes: 'yes', else: 'else', be: 'yes', angle: 'else', notreally: 'yes' })[answer];
       if (v === 'notreally') return careLite();
@@ -194,13 +206,15 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
       if (v === 'yes') { S.noPlay = true; return griefMode({ told: 'loss' }); }
       // (r2-angle item 3) let go: quiet for the rest of the visit
       if (!v) { S.noPlay = true; return done('quiet'); }
+      // (fix round) the check-in's "I'm okay": the angle, the rest of the visit quiet (the attentive face, no quips)
+      if (step === 'check') S.noPlay = true;
       // (r2-angle item 2) "Another angle" is never remembered: the next Tell of these words is asked again
     }
     const unsure = route === 'ask';
     let feel = null;
     try { feel = feelingOf(text) || (framingAllowed(text) ? null : { kind: 'low' }); } catch { feel = null; }
     if (unsure) feel ||= { kind: 'low' };
-    R.faces.push(feel ? 'attentive' : 'playful');
+    R.faces.push(feel || S.noPlay || S.level !== 'none' ? 'attentive' : 'playful');
     // waitingLines (two at least)
     say((feel || server ? FEELING.waiting : WAITING).slice(0, 2));
     const exclude = S.shown.map((s) => s.reasoning_pattern);
@@ -212,7 +226,8 @@ export function visit(text, { server = null, emotion = null, walk = 4, answer = 
     if (res) {
       if (res.status === 'crisis') return crisis();
       // (serverCareLines, review r11)
-      if (res.status === 'care') return care(S.follow ? SAFETY.follow : (R.asked && answer === 'yes') || gentleRoute(text) || bagWords(text) || lossRoute(text, { emotion }) ? SAFETY.careGentle : SAFETY.care);
+      // (fix round) the server's care with no category of the lexicon's (the model's 'general', the screener's 'self-risk'): the follow lines
+      if (res.status === 'care') return care(S.follow || res.category === 'general' || res.category === 'self-risk' ? SAFETY.follow : (R.asked && answer === 'yes') || gentleRoute(text) || bagWords(text) || lossRoute(text, { emotion }) ? SAFETY.careGentle : SAFETY.care);
       if (res.status === 'unclear') return done('unclear');
       if (res.status === 'ok' && res.scene && serverLoss(res.scene, text, { heavy: heavyHarm })) return griefMode({ scene: griefLinesOk(res.scene) ? res.scene : null, asked: true });
       if (res.status === 'ok' && res.scene && !exclude.includes(res.scene.reasoning_pattern)) {
