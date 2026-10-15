@@ -37,9 +37,9 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { guardStaging, pagesProject } from './staging-env.mjs';
+import { guardStaging, pagesProject, createManagementApi } from './staging-env.mjs';
 
-export { createManagementApi } from './staging-env.mjs';
+export { createManagementApi };
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const WRANGLER = 'wrangler@4.146.0';                        // pinned (published 2026-10-01)
