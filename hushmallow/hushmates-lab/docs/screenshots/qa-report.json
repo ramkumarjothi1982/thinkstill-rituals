@@ -27,17 +27,17 @@
       "played": {
         "relay": {
           "progress": "10 of 10",
-          "seconds": 67,
+          "seconds": 66,
           "notTicked": []
         },
         "fallback": {
           "progress": "6 of 6",
-          "seconds": 25,
+          "seconds": 24,
           "notTicked": []
         },
         "partial": {
           "progress": "5 of 5",
-          "seconds": 38,
+          "seconds": 37,
           "notTicked": []
         }
       }
@@ -69,7 +69,7 @@
       "played": {
         "relay": {
           "progress": "10 of 10",
-          "seconds": 68,
+          "seconds": 67,
           "notTicked": []
         },
         "fallback": {
@@ -79,7 +79,7 @@
         },
         "partial": {
           "progress": "5 of 5",
-          "seconds": 39,
+          "seconds": 38,
           "notTicked": []
         }
       }
@@ -90,7 +90,7 @@
       "played": {
         "relay": {
           "progress": "10 of 10",
-          "seconds": 68,
+          "seconds": 67,
           "notTicked": []
         },
         "fallback": {
@@ -100,7 +100,7 @@
         },
         "partial": {
           "progress": "5 of 5",
-          "seconds": 39,
+          "seconds": 38,
           "notTicked": []
         }
       }

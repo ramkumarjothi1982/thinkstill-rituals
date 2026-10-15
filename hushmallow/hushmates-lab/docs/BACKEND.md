@@ -135,11 +135,13 @@ yet; every other method answers `invite-required`.
 
 ## Deploying (staging only, with approval)
 
-- `supabase/functions/hushmates/index.ts`: the Edge Function entry. It reads the secrets and wires up the gateway.
+- `supabase/functions/hushmates/index.ts`: the Edge Function entry. It reads the secrets and wires up the gateway. It takes the project's new secret key (`SUPABASE_SECRET_KEYS`) or the legacy `service_role` key. A new-style key goes in the `apikey` header only, as Supabase requires (`keyHeaders` in `postgrest-db.js`). It passes `deno check` (`npm run check:edge`).
 - `supabase/config.toml`: the function checks tokens itself (`verify_jwt = false`), and `hushmates_api` is exposed to PostgREST for the service role only.
 - `tools/sync-edge.mjs`: copies the shared code (`core/…`, and the main app's `src/ultra/…`) byte for byte into `supabase/functions/_shared/vendor/`, so a deploy carries it. A test fails if a copy differs.
 - `tools/build-app.mjs --supabase-url … --anon-key …`: builds the app and the desk for a project. The CSP may connect to that project only, and a secret key is refused.
 - `server/admin.mjs`: the operator's tool for invitations, settings, ops and lifting restrictions.
+- `tools/pack-site.mjs`: one folder for the static host, with its `_headers`, `_redirects` and `404.html`.
+- `tools/staging-secrets.mjs`, `tools/staging-preflight.mjs`, `tools/staging-check.mjs`, `tools/recovery-drill.mjs`: the staging kit (`npm run staging:…`).
 - Step by step in `STAGING.md`. Costs are in `COSTS.md`, and what remains before launch in `READINESS.md`.
 
 ## The safety desk
@@ -171,3 +173,14 @@ node server/dev-stack.mjs           # Postgres (local), Auth (local copy), the g
                                     # sign-in codes and invitations are printed; no email is sent
 node --test tests/*.test.mjs
 ```
+
+**The real Edge Function under Deno.** `HUSHMATES_EDGE=deno` (or `edge: 'deno'`)
+makes the dev stack run `supabase/functions/hushmates/index.ts` under Deno, through
+`server/edge-local.ts`:
+- with only its secrets, as on Supabase;
+- with network access to this machine only;
+- reaching the database over HTTP through `server/postgrest-emulator.mjs`, a local stand-in for Supabase's PostgREST: `Content-Profile`, named arguments, the database role from the key, PostgREST's error statuses.
+
+`HUSHMATES_DENO` names the Deno binary. With Deno installed, `tests/edge-deno.test.mjs`
+and `tests/staging-check.test.mjs` use it, and `npm run e2e:deno` runs the full
+browser E2E through it.

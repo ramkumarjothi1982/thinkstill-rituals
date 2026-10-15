@@ -5,7 +5,48 @@ Production launch stays subject to the owner's explicit final approval.
 
 Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
 ⬜ to do · ⚖️ needs Australian legal or privacy review · 🩺 needs clinical safety review.
-💰 means it costs money and needs the owner's approval.
+💰 means it costs money and needs the owner's approval. ⛔ OUTSTANDING: an independent
+review that hasn't happened yet (§6).
+
+Companion documents:
+- `STAGING.md`: the step-by-step staging set-up;
+- `DECISIONS.md`: what needs the owner;
+- `RISKS.md`: the remaining risks;
+- `CRISIS_DETECTION.md`: the safety screen's plan;
+- `COSTS.md`: monthly and one-off costs.
+
+## 0. Staging readiness checklist
+
+Ready in the code (Phase 3, checked on this machine):
+- ✅ **The real Edge Function entry point runs under Deno.** `index.ts` passes `deno check`, and the full browser E2E (81 checks) passes through it under Deno. It reaches the database over HTTP through a local stand-in for Supabase's PostgREST, which follows PostgREST's documented rules, so Postgres's own grants decide who may call what.
+- ✅ **Both kinds of Supabase key work.** The new `sb_secret_`/`sb_publishable_` keys go in `apikey` only; legacy JWT keys are sent as they always were. Tested both ways.
+- ✅ **The staging kit:**
+  - `staging:preflight`: an offline checklist;
+  - `staging:secrets`: private secrets, never printed;
+  - `staging:site`: one folder for the static host;
+  - `staging:check`: the real project checked from outside, cleaning up after itself;
+  - `staging:drill`: a backup restored, and every word opened with the keys.
+
+  The check and the drill are tested against the local stack. The check's scheduler watch is shown to fail when no scheduler runs.
+- ✅ **The privacy audit's findings are fixed.**
+  - A share picture re-checks with the server just before drawing, so a writer who stops sharing is never drawn.
+  - Pictures carry no clue to a writer's Mallow.
+  - A reported Mallow line is listed as a Mallow's at the desk.
+  - Writers are told a picture already made can't be recalled.
+
+Needs the owner, in order (`STAGING.md`):
+
+| Step | Who | Status |
+|---|---|---|
+| D1: a new Supabase organisation and project (Free, Sydney), and a separate free Cloudflare account | 🛑 owner | ⬜ |
+| Secrets made on the owner's computer (`staging:secrets`) and kept in a password manager (D11) | 🛑 owner | ⬜ |
+| Extensions, `db push`, exposed schema, the scheduler's Vault settings | 🛑 owner (guided) | ⬜ |
+| Sign-in by email code: templates, OTP settings, Site URL | 🛑 owner (guided) | ⬜ |
+| D4: deploy the Edge Function; publish `dist/site` | 🛑 owner approval | ⬜ |
+| `staging:check` passes (0 failed) and its report is shared | owner runs it | ⬜ |
+| The manual smoke test (`STAGING.md` part 10): both email templates send a code; a later sign-in works | owner, with two team members | ⬜ |
+| A backup made and the recovery drill passed | owner | ⬜ |
+| Before testers outside the team: D3 (Pro), D5 (email), D6 (clinical adviser), D12 (who answers the desk) | 🛑 owner | ⬜ |
 
 ## 1. Must be true before any real person signs in
 
@@ -20,16 +61,18 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
   Tested: differential against the reference engine (8 seeds × 300 steps), eight race tests, and the database access test.
 - ✅ RLS is on every table, with no grants. Browsers (anon, authenticated) can read, write and call nothing, and even the service role reaches only `hushmates_api`. Tested role by role.
 - ✅ Words are encrypted by the Edge Function (AES-256-GCM) before they reach the database. The database never sees a feeling in the clear (tested).
-- 🟡 The Edge Function on Deno, and its way to the database through PostgREST (`postgrest-db.js`). The same code runs under Node in every test. Deno and real PostgREST are only exercised on staging (`STAGING.md` step 6).
-- 🟡 Scheduled jobs on Supabase (pg_cron → pg_net → `/jobs/tick`). Locally, the dev stack runs the same job every 15 s, and race tests prove overlapping runs are safe.
-- ⬜ Backups: Supabase Pro keeps daily backups (7 days).
-  - 💰 Point-in-time recovery from about 10,000 people.
-  - ⬜ Test a restore: move staging to Pro for that test (about A$36 for the month), or practise with `pg_dump` / `pg_restore` on Free.
-- ⬜ Key custody. The data key (`HUSHMATES_DATA_KEYS`) and the MAC key:
+- ✅ The Edge Function on Deno, and its way to the database through PostgREST (`postgrest-db.js`). The real `index.ts` runs under Deno 2 against the local PostgREST stand-in, with the full browser E2E passing through it (`docs/evidence/e2e-edge-under-deno.json`). 🟡 Real PostgREST and the Supabase Edge runtime are proven by `staging:check`.
+- 🟡 Scheduled jobs on Supabase (pg_cron → pg_net → `/jobs/tick`). Locally, the dev stack runs the same job, and race tests prove overlapping runs are safe. `staging:check` checks:
+  - the jobs and Vault secrets are present;
+  - the last runs succeeded;
+  - the function answered them;
+  - the platform's scheduler ends an offer that ran out with nobody else calling.
+- ✅ Backups can be restored and read: `staging:drill` restores a `pg_dump` into a new database and opens every word with the keys (tested; wrong keys open nothing). ⬜ Supabase Pro keeps daily backups for 7 days (D3); 💰 point-in-time recovery from about 10,000 people.
+- ⬜ Key custody (D11). The data key (`HUSHMATES_DATA_KEYS`) and the MAC key:
   - decide who holds them (two people, in a password manager);
   - write the rotation steps down and test them on staging.
 
-  Losing the data key loses every stored feeling.
+  Losing the data key loses every stored feeling. `staging:check` confirms the saved keys are the deployed ones.
 
 ### Sign-in and accounts
 - ✅ Passwordless email code, invitation, 18+ confirmation. Invitations are hashed, use-limited, expiring and revocable. Wrong guesses are limited per person (10 an hour) and per network (30 an hour), counted one at a time so guesses sent together can't slip past (tested).
@@ -56,6 +99,7 @@ Legend: ✅ done and tested locally · 🟡 built, not yet proven on Supabase ·
   - Decide what the team does, within which hours, and who is on call.
   - Decide whether the person who wrote a flagged feeling should be shown support on their next visit. That's a product decision, not built.
 - ⬜ Moderator wellbeing (psychosocial hazards under WHS law ⚖️): rotation, debriefs and access to support.
+- ✅ Share pictures and videos (Phase 3 privacy audit). They draw only perspectives their writers allow, re-checked with the server just before drawing. They never name anyone or show a writer's Mallow. A Mallow's words are never drawn without "A Mallow perspective · Automatically generated" (checked frame by frame, and in the E2E from what the picture and the video actually draw).
 - ⬜ The library's ~110 new Mallow lines and 49 openers. 🩺 Review them for tone and safety. They were written to avoid diagnosis, certainty, forced positivity and claims about other people's minds, and each one is tested against the same screen as a person's perspective.
 
 ### Privacy and consent
@@ -116,7 +160,12 @@ These are questions for a lawyer, not conclusions:
 
 - The support screen's wording, and which lines appear for which kind of concern (crisis, someone in danger, abuse and violence, harassment, other).
 - The extra crisis rules Hushmates adds to the shared lexicon (`core/feeling-safety.js`): overdose, self-harm, "no point going on", "don't want to be here any more", and passive wishes not to be here ("I just want to disappear", "sleep and never wake up", "I wish I'd never been born", "everyone would be better off without me", "I'm a burden", "tired of being alive"). Methods said with intent ("I want to hang myself", "take all my pills tonight", "unalive myself") and someone else in danger ("my friend says she wants to die", "my daughter is cutting herself", shown the "Someone might be in danger" screen) were added after a fifth review. Crisis words win over abuse or bullying words in the same feeling. Every phrasing found so far, and the everyday sentences that must still be released, are in `tests/fixtures/mallow-probes.json`, with a `clinicianCandidates` list of about 55 phrasings that need a clinician's call ("I can't do this anymore", "I feel like dying", "part of me wants to die", "I just want to disappear for a while"…). Start the review from there.
-- 🩺⚖️ **Keyword rules have a ceiling.** Five adversarial rounds kept finding new phrasings, in both directions (missed risk, false alarms). The rules are a floor that shows support more often than not; they can't be complete. Before launch, decide with the clinical adviser whether that floor is enough for the beta, and whether to add a reviewed classifier (which would mean sending words to a provider: cost, consent and APP 8, so the owner's call).
+- 🩺⚖️ **Keyword rules have a ceiling.** Five adversarial rounds kept finding new phrasings, in both directions (missed risk, false alarms). The rules are a floor that shows support more often than not; they can't be complete. **Phase 3 plan: `CRISIS_DETECTION.md`.**
+  - The rules are frozen as the floor.
+  - An "ask, don't guess" check-in covers the uncertain middle (D2).
+  - A meaning-based check runs on Supabase itself, escalate-only and in shadow mode first.
+  - Changes are made only against labels two clinicians agree, on a blind sheet of all 379 known phrasings (`docs/clinical/crisis-phrasings-for-review.csv`, scored by `tools/safety-eval.mjs`).
+  - No paid AI.
 - The Mallow library's rule that a death, harm at home, or health and mood never get "unfair load" lines (`NOT_CHORES` in `core/perspectives.js`), and whether it should be wider.
 - The escalation procedure (section 1) and the desk's urgent guidance.
 - The Mallow library's lines.
@@ -137,7 +186,7 @@ Not tested, and why:
 | Not tested | Why | What covers it instead |
 |---|---|---|
 | Real Supabase (Auth, PostgREST, pg_cron, pg_net, Vault, Edge runtime) | Needs the owner's account; nothing is deployed without approval | The same code against real Postgres 16, the local Auth emulator, and the gateway under Node; `STAGING.md` steps 6 and 10 check each piece |
-| Deno | Not installed here | Web APIs only. The Mallow orchestration was also smoke-tested under Bun, a second runtime |
+| The Supabase Edge runtime itself | Needs the owner's project | The real `index.ts` under Deno 2.9 (from npm), with the full E2E through it; `staging:check` on the real platform |
 | Email delivery | No email provider may be switched on | Codes are printed by the local Auth emulator |
 | A live Another Angle call | No billable AI calls | Local fake HTTP servers for success, errors, timeouts, mock mode and costs (in `backend-mallow`, `backend-review-fixes` and `review-mallow-fallback`), and the AI limits, budget and fallbacks with in-process fakes |
 | Load at 10,000+ people | Needs staging | Race tests for correctness under concurrency |
@@ -148,3 +197,18 @@ Known limitations:
 - The AI cache and the in-flight generation guard are per Edge Function instance. The database still guarantees one Mallow perspective per feeling, and the budget hold is global.
 - With the default limits, AI (if enabled) is capped at 200 calls a day overall.
 - Moderators see an account only as a reference, never a name or an email. Lifting a restriction is an operator command (`server/admin.mjs member`), not a desk button.
+
+## 6. ⛔ Independent reviews: OUTSTANDING
+
+None of these has happened. Each is needed before a **public** launch. The ones
+marked "beta" are needed before anyone outside the team uses it. Costs are
+indicative (`COSTS.md`); decisions are in `DECISIONS.md`.
+
+| Review | What it covers | Status | Needed before |
+|---|---|---|---|
+| 🩺 **Clinical safety** (D6) | Two clinicians label the blind phrasing sheet; acceptance thresholds; the support wording and lines; the check-in (D2); the escalation procedure; the Mallow library's lines; the desk's urgent guidance | ⛔ OUTSTANDING | **beta** (outside the team) |
+| ⚖️ **Privacy** (D7) | Privacy policy and collection notice (APP 5); a Privacy Impact Assessment; health information as sensitive information; retention; the automated decisions (the screen, pausing, Mallow lines) under APP 1.7 from 10 December 2026; overseas disclosure if AI is ever on (APP 8) | ⛔ OUTSTANDING | **beta** (collection notice); launch (the rest) |
+| ⚖️ **Legal** (D7, D8, D9) | Terms and community guidelines; Online Safety Act duties; the social media minimum age law and age assurance; "Share anonymously"; how the app describes itself (Australian Consumer Law, TGA); notifiable data breaches plan | ⛔ OUTSTANDING | launch |
+| ♿ **Accessibility** (D13) | WCAG 2.2 AA by an external auditor, with screen-reader and switch users; reduced motion; contrast; the share video's alternative | ⛔ OUTSTANDING | launch |
+| 🔐 **Security** (D14) | An external penetration test of staging: the Edge Function, sign-in, the desk, the static site; key handling and rotation | ⛔ OUTSTANDING | launch |
+| 👥 **Moderator wellbeing** (WHS) | Rotation, debriefs, access to support for whoever reads the desk | ⛔ OUTSTANDING | **beta** (outside the team) |

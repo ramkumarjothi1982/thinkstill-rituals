@@ -87,7 +87,7 @@
     },
     {
       "ok": true,
-      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"a9d321ff-1b3c-4c0b-989c-4a782d4d7638\"}])"
+      "what": "Explore another angle: one perspective, from the free library ([{\"source\":\"library\",\"requested_by\":\"21debb6d-35d2-40c3-8761-bac332f7b03d\"}])"
     },
     {
       "ok": true,
@@ -104,6 +104,50 @@
     {
       "ok": true,
       "what": "a perspective its writer allowed can be chosen"
+    },
+    {
+      "ok": true,
+      "what": "a writer stopped sharing while the screen was open: no picture is made"
+    },
+    {
+      "ok": true,
+      "what": "and nothing was drawn for one"
+    },
+    {
+      "ok": true,
+      "what": "their words are no longer offered, or shown"
+    },
+    {
+      "ok": true,
+      "what": "the share screen followed the change without losing the other choice"
+    },
+    {
+      "ok": true,
+      "what": "the Mallow’s words to look for are known"
+    },
+    {
+      "ok": true,
+      "what": "the picture draws the perspective its writer allowed"
+    },
+    {
+      "ok": true,
+      "what": "the picture never draws the one its writer kept private"
+    },
+    {
+      "ok": true,
+      "what": "the picture names nobody"
+    },
+    {
+      "ok": true,
+      "what": "a Mallow perspective in the picture carries its whole label, or is left out whole (drawn)"
+    },
+    {
+      "ok": true,
+      "what": "and the picture counts people only: two, not three"
+    },
+    {
+      "ok": true,
+      "what": "the video draws the Mallow’s perspective with “A Mallow perspective · Automatically generated”"
     },
     {
       "ok": true,
@@ -379,7 +423,17 @@
       "hits": []
     },
     {
+      "name": "17c-share-writer-stopped",
+      "url": "/app/",
+      "hits": []
+    },
+    {
       "name": "17c-share-picture",
+      "url": "/app/",
+      "hits": []
+    },
+    {
+      "name": "17c-share-video",
       "url": "/app/",
       "hits": []
     },
@@ -481,5 +535,9 @@
     "error: Failed to load resource: the server responded with a status of 404 (Not Found)",
     "error: Failed to load resource: the server responded with a status of 404 (Not Found)"
   ],
-  "server": []
+  "server": [],
+  "drawn": {
+    "picture": "Hushmates I released one thought into the world… Two strangers saw it differently. Here’s what came back. A HUSHMATE’S PERSPECTIVE “Perhaps they’re worried about saying the wrong thing, and silence felt safer.” What would they see in yours? Hushmallow A softer space for feelings.",
+    "mallowPicture": "Hushmates I released one thought into the world… Two strangers saw it differently. Here’s what came back. A MALLOW PERSPECTIVE AUTOMATICALLY GENERATED “There’s no rush with this one. Let’s just sit with it a moment. You only have the replay from inside your own head. You don’t have anyone else’s.” What would they see in yours? Hushmallow A softer space for feelings."
+  }
 }

@@ -4,10 +4,13 @@
 > **Hushmates — Send a feeling. See it differently.**
 > ONE FEELING. FIVE PERSPECTIVES. BACK TO YOU.
 
-**Status: Phase 2, the real backend, built and tested locally. Nothing is
-deployed, and nothing touches production.** Staging needs the owner's
-Supabase account (`docs/STAGING.md`); launch needs the owner's final approval
-(`docs/READINESS.md`).
+**Status: Phase 3, staging prepared and rehearsed locally. Nothing is
+deployed, and nothing touches production.** The real Edge Function runs under
+Deno against local stand-ins for Supabase, and a staging kit checks the real
+platform once the owner sets it up (`docs/STAGING.md`, step by step). What needs
+the owner is in `docs/DECISIONS.md`, the remaining risks in `docs/RISKS.md`, the
+outstanding independent reviews in `docs/READINESS.md` §6, and the safety
+screen's plan in `docs/CRISIS_DETECTION.md`. Launch needs the owner's final approval.
 
 There are three experiences, kept strictly apart (`docs/ACCESS.md`):
 - **The customer app** (`app/`): sign in with an email code, an invitation the
@@ -180,18 +183,21 @@ The lab's QA tool (`tools/shots.cjs`) captures 30 scenes at five sizes, audits
 each one inside the phone, plays the three demonstrations, releases a feeling
 with the keyboard alone and checks reduced motion.
 
-**Latest run (14 October 2026, on the code in this commit):**
+**Latest run (15 October 2026, on the code in this commit):**
 
 | Check | Result |
 |---|---|
-| All tests (`node --test tests/*.test.mjs`) | 317 pass, 0 fail, 2 skipped: the optional live Another Angle checks, which need that service's local harness (and would be billable against the real one) |
+| All tests (`node --test tests/*.test.mjs`, with `HUSHMATES_DENO` set) | 338: 336 pass, 0 fail, 2 skipped (the optional live Another Angle checks, which need that service's local harness and would be billable against the real one). Without a Deno installed, the two Deno tests skip and the staging check runs the Edge Function code under Node |
+| The real Edge Function under Deno (Phase 3) | `index.ts` passes `deno check`. It runs under Deno 2.9 with only its secrets and network access to this machine, reaching the database through the local PostgREST stand-in (grants decide: anon 401, a person 403, the private schema 406, an `sb_` key as a Bearer token refused). The **full browser E2E through it: 81 of 81** (`docs/evidence/e2e-edge-under-deno.json`) |
+| The staging check, on the local stack (Phase 3) | every check it can make here passes; what only a real project has (pg_cron, pg_net, Vault, password sign-in) is reported as not checked, never as passed. Its scheduler watch fails when no scheduler runs, and the wrong keys fail the encryption check. It cleans up its test accounts and invitations |
+| Recovery drill (Phase 3) | a `pg_dump` restored into a new database: every locked text opens with the keys, none with wrong keys |
 | On the real database | differential against the reference engine (8 seeds × 300 steps); eight race tests (twelve people for five places, duplicate sends, two devices, Mallow requests, a single-use invitation, overlapping scheduled jobs, blocking mid-write, finds during a catch); the AI budget hold under concurrent calls; RLS and access role by role; tokens forged, replayed or from a password sign-in refused; retention at each of its limits |
-| End to end, many accounts | 70 of 70 checks, 37 screens, 0 problems (`docs/screenshots/phase2/`, with `app-report.json`): |
+| End to end, many accounts | 81 of 81 checks, 39 screens, 0 problems (`docs/screenshots/phase2/`, with `app-report.json`): |
 | | five people at once, and a sixth isn't offered it; two people; nobody, said plainly |
 | | the Mallow prepared by the scheduler at 30 minutes, from the free library, labelled automatic, never counted |
 | | homecoming at 24 hours; Explore another angle (one labelled perspective, still 2 people) |
 | | Send it out again: caught by a second account, home again with 1 |
-| | the share story leaves out a perspective its writer kept private |
+| | the share story leaves out a perspective its writer kept private; a writer who stops sharing while the share screen is open is left out, and nothing is made until the author looks again; the screen follows when they allow it again; what the picture and the video actually draw is read back: the allowed perspective, never the private one, nobody's name, and a Mallow's words always with "A Mallow perspective · Automatically generated" |
 | | offline, and a retry that sends once; support, and “Get support now”, with tappable Australian crisis lines; words that need care never stored |
 | | reporting and the safety desk (focus moves into an opened report; decisions logged and noted; its refresh keeps a moderator's place); blocking, never revealed |
 | | keyboard only; the same account on a second device; download, and deletion (sign-in included; the other device is signed out) |
@@ -210,7 +216,7 @@ Earlier screenshots are kept for comparison: Phase 1's customer app in
 
 | Real (built, and tested locally against real Postgres) | Not yet real |
 |---|---|
-| Every rule in Postgres functions with row locks and constraints: at most five people, no self-catch, one live hold, no duplicates, the 30-minute Mallow and the 24-hour homecoming by the scheduler, accurate counts. Differential-tested against the reference engine `core/relay.js` | **Supabase itself.** The same code runs against a local Postgres 16, a local copy of Supabase Auth's endpoints and the Edge Function code under Node. Staging needs the owner's account (`docs/STAGING.md`) |
+| Every rule in Postgres functions with row locks and constraints: at most five people, no self-catch, one live hold, no duplicates, the 30-minute Mallow and the 24-hour homecoming by the scheduler, accurate counts. Differential-tested against the reference engine `core/relay.js` | **Supabase itself.** The same code runs against a local Postgres 16 and a local copy of Supabase Auth's endpoints. The real Edge Function entry point also runs under Deno, through a local stand-in for PostgREST, with the full E2E passing through it. The real platform needs the owner's account; `staging:check` then proves each piece there (`docs/STAGING.md`) |
 | Sign-in by email code, invitation (hashed, expiring, use-limited, rate-limited) and 18+; the same account on any device; identities ready for a future Hushmallow login | **Email delivery.** The local copy prints codes; real people need a custom SMTP provider (owner's approval) |
 | RLS on every table with no grants: browsers reach nothing directly. Words encrypted (AES-256-GCM) before they reach the database | |
 | The Mallow from Hushmates' own library, fitted to the words, the label and the Mallow's voice; AI behind a server-side switch with monthly AUD caps, daily limits and an atomic budget hold | **AI is off** (no provider configured, A$0 cap), as the owner asked |
@@ -237,8 +243,13 @@ styles/      world.css, relay.css, hushfold.css, relay-scenes.css, app.css, staf
 lab/, net/   the lab (developers and testers only)
 tests/       the reference engine, the real database (differential, races, access), sign-in, the Mallow, ops, access control,
              build, the app's link, and the regression tests from each independent review
-tools/       build-app.mjs (app and desk builds, scan, deploy config), app-shots.mjs (end to end), sync-edge.mjs, shots.cjs (lab QA)
-docs/        BACKEND.md, STAGING.md, READINESS.md, COSTS.md, ACCESS.md, RELAY.md, SAFETY_AND_PRIVACY.md, SCENES.md, screenshots/
+tools/       build-app.mjs (app and desk builds, scan, deploy config), app-shots.mjs (end to end), sync-edge.mjs, shots.cjs (lab QA),
+             pack-site.mjs (the static host's folder), staging-secrets.mjs, staging-preflight.mjs, staging-check.mjs (the real
+             project, checked from outside), recovery-drill.mjs (a backup restored and read), safety-eval.mjs (the screen against
+             clinicians' labels)
+server/      … edge-local.ts (the real Edge Function under Deno), postgrest-emulator.mjs (a local stand-in for PostgREST)
+docs/        STAGING.md, DECISIONS.md, RISKS.md, READINESS.md, CRISIS_DETECTION.md, COSTS.md, BACKEND.md, ACCESS.md, RELAY.md,
+             SAFETY_AND_PRIVACY.md, SCENES.md, clinical/ (the blind phrasing sheet), evidence/, screenshots/
 v1-messaging/  the superseded private-messaging prototype (archived)
 ```
 
@@ -251,5 +262,8 @@ v1-messaging/  the superseded private-messaging prototype (archived)
   - Account 1's Another Angle service was only read. Its adapter is written but never called (AI off, nothing configured).
 - No secrets in the browser (the build refuses them). The data keys live only in the Edge Function's secrets. No paid
   services, AI calls or email providers were used; nothing was deployed.
-- **Next steps need the owner:** a staging Supabase project and the deploy (`docs/STAGING.md`), an email provider,
-  the legal, privacy and clinical reviews (`docs/READINESS.md`), and the final approval for launch.
+- **Next steps need the owner** (`docs/DECISIONS.md`):
+  - a staging Supabase project and the deploy (`docs/STAGING.md`), then the staging check;
+  - an email provider;
+  - a clinical adviser, and the legal, privacy, accessibility and security reviews (`docs/READINESS.md` §6);
+  - the final approval for launch.

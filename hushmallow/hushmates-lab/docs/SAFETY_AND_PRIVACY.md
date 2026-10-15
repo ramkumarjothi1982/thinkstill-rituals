@@ -136,9 +136,23 @@ not optional.
   allowed it when they wrote it ("They may include my words in a share
   picture", off by default). Writers can change their mind any time in You &
   safety. Nobody is ever named.
-- A Mallow's perspective keeps its own label ("Automatically generated") and is
-  never presented as a stranger's. "Five strangers saw it differently" appears
-  only when five people did.
+- **A change of mind counts at once.** Just before a picture or video is made,
+  the app asks the service for the journey as it is now. If a writer has stopped
+  sharing or taken their words back, those words are left out and nothing is made
+  until the author has looked again. The share screen also follows every refresh.
+- **What a picture can't take back.** A picture or video already made stays with
+  the person who made it. Writers are told so where they choose, when they change
+  their mind, and when they take their words back.
+- **No clue to who wrote what.** People's petals are coloured by their place in
+  the circle, never by the Mallow each writer chose, and a person's quote carries
+  a plain dot.
+- A Mallow's perspective keeps its whole label ("A Mallow perspective ·
+  Automatically generated"), in the picture and in every frame of the video, and is
+  never presented as a stranger's or counted as one. "Five strangers saw it
+  differently" appears only when five people did.
+- The "private" choice keeps a writer's words out of share pictures. The author
+  can still read them on their own homecoming screen, and could photograph it:
+  no app can prevent that.
 
 ## 4. Your data
 

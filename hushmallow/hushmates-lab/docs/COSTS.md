@@ -7,18 +7,46 @@ paid item below needs the owner's approval first.
 ([exchange-rates.org](https://www.exchange-rates.org/exchange-rate-history/aud-usd-2026-10-01)).
 Card fees and GST on foreign services are not included; allow about 10–15% on top.
 
-**Prices.** These are Supabase's published prices as reported by third-party
-pricing guides in 2026 ([makerkit](https://makerkit.dev/blog/saas/supabase-pricing),
-[jetadmin](https://www.jetadmin.io/blog/supabase-pricing-2026-guide-to-plans-limits-and-real-world-costs/),
-[toolradar](https://toolradar.com/blog/supabase-pricing-2026)). From this container
-I couldn't open supabase.com/pricing itself, so **check every figure there
-before deciding**. The figures:
+**Prices.** Phase 3 confirmed these against Supabase's own published plan data:
+`packages/shared-data/plans.ts` and `pricing.ts` in the supabase/supabase
+repository, which supabase.com/pricing is built from, read on 15 October 2026.
+Prices change; glance at supabase.com/pricing before deciding. The figures:
 
 - Pro: US$25 a month, which includes a US$10 compute credit (enough for a Micro instance).
 - Included each month: 100,000 MAU, 8 GB of database and 250 GB of egress.
 - Edge Function invocations: 2 million included, then US$2 per million.
 - Overage: MAU about US$0.00325 each, egress US$0.09 per GB, database US$0.125 per GB.
 - Compute per month: Micro about US$10, Small about US$15, Medium about US$60, Large about US$110, XL about US$210, 2XL about US$410.
+
+## Staging and the private beta: what it costs to start
+
+| | Free plan | Pro plan |
+|---|---|---|
+| Price | **A$0** | **≈ A$36 a month** (US$25, including a US$10 compute credit that covers the smallest instance) |
+| Limits that matter | 500 MB database; 50,000 monthly active users; 500,000 Edge Function calls a month; 5 GB egress; at most 2 active free projects | 8 GB database; 100,000 MAU; 2 million calls; 250 GB egress |
+| **Pauses** | **After one week without use.** While paused nothing runs: feelings don't come home and the scheduler stops, until someone resumes the project | Never |
+| **Backups** | **None.** You make your own: `pg_dump`, then the recovery drill (`STAGING.md` part 11) | Daily, kept 7 days, restorable from the dashboard |
+
+Recommendations:
+- **Staging: Free, A$0.** Use is occasional, pausing is harmless, and its data is test data.
+- **A beta with real people: Pro, ≈ A$36 a month (🛑 decision D3).** People's words and the safety desk's evidence deserve backups. A feeling waiting to come home shouldn't depend on someone visiting that week.
+- If Free must be used for the beta: a weekly `pg_dump` plus the recovery drill, and someone checks the project isn't paused.
+- About 100 people use roughly 0.13 million function calls and a few MB a month: far inside either plan.
+
+Emails for testers outside your team need a provider (decision D5). The free tiers below cover the beta: **A$0**.
+
+Crisis detection adds **A$0** in services (`CRISIS_DETECTION.md`): rules, and later Supabase's built-in embedding model, which isn't charged separately.
+
+### One-off costs before a public launch (indicative)
+
+These are planning placeholders, not researched quotes: get quotes. They are listed because launch depends on them (`READINESS.md` §6).
+
+| Review | Indicative range (A$) |
+|---|---|
+| Clinical safety review: two clinicians label the phrasing sheet, agree thresholds, review the support wording and the escalation procedure (20–30 hours) | 5,000–9,000 |
+| Privacy and legal: privacy policy and collection notice, terms, Privacy Impact Assessment, Online Safety Act and age-assurance advice | 8,000–20,000 |
+| Accessibility audit (WCAG 2.2 AA, with screen readers by hand) | 3,000–8,000 |
+| Security penetration test | 8,000–20,000 |
 
 ## Assumptions (per active person, per month)
 

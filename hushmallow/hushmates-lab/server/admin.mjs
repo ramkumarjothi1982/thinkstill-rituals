@@ -11,7 +11,7 @@
 //   node server/admin.mjs member <reference> active|restricted|suspended   (the reference the safety desk shows)
 //
 //   HUSHMATES_ADMIN_PG   postgres://… (local default: the dev stack's database)
-//   HUSHMATES_MAC_KEY    base64 (local default: .data/dev-keys.json, made by the dev stack)
+//   HUSHMATES_MAC_KEY    base64 (default: .data/staging.env with HUSHMATES_ADMIN_PG set, else .data/dev-keys.json)
 //
 // Codes are shown once, here, and stored only as a keyed hash: keep them somewhere safe
 // until you hand them out. Turning AI on (set ai '{"enabled": true}') costs money once a
@@ -87,7 +87,10 @@ async function main() {
   const pgUrl = process.env.HUSHMATES_ADMIN_PG || 'postgres://postgres@127.0.0.1:54329/hushmates_dev';
   let macKey = process.env.HUSHMATES_MAC_KEY;
   const devKeys = join(LAB_ROOT, '.data', 'dev-keys.json');
+  const stagingEnv = join(LAB_ROOT, '.data', 'staging.env');
   if (!macKey && !process.env.HUSHMATES_ADMIN_PG && existsSync(devKeys)) macKey = JSON.parse(readFileSync(devKeys, 'utf8')).macKey;
+  // against a real project: the key from the private staging secrets file (tools/staging-secrets.mjs)
+  if (!macKey && process.env.HUSHMATES_ADMIN_PG && existsSync(stagingEnv)) macKey = /^HUSHMATES_MAC_KEY='?([^'\n]+)'?$/m.exec(readFileSync(stagingEnv, 'utf8'))?.[1];
   // invitation hashes use only the MAC key (the field crypt wants a data key too: a throwaway one)
   const crypt = macKey ? await createFieldCrypt({ keys: { unused: randomBytes(32).toString('base64') }, current: 'unused', macKey }) : null;
   const client = new pg.Client({ connectionString: pgUrl });
