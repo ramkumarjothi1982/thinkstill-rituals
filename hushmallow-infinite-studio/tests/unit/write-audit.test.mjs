@@ -37,10 +37,15 @@ test('the exemption list is narrow: every entry has a reason, and none covers pl
   const writes = EXTERNAL_WRITERS.filter((x) => x.scope === 'all');
   for (const p of stray) assert.equal(coveredBy(path.resolve(p), writes), null, `${p} must not be exempt`);
   for (const p of [STUDIO, WORK]) assert.equal(coveredBy(p, EXTERNAL_WRITERS), null);
-  // removal-only entries: just the harness's own session directories
-  assert.deepEqual(EXTERNAL_WRITERS.filter((x) => x.scope === 'remove').map((x) => x.glob), ['/tmp/claude-*/*/*']);
-  const removals = EXTERNAL_WRITERS.filter((x) => x.scope !== 'touch');
-  for (const p of ['/tmp/x', '/home/user/x', '/root/.npm/_logs/x.log', '/tmp/claude-0/x']) assert.equal(coveredBy(p, removals), null, `${p} must not be exempt`);
+  // create/remove-only entries: just the harness's own session directories and the scratchpad directory itself, by exact
+  // path (FU-1 round 2): a file or directory inside a scratchpad is never covered
+  const remove = EXTERNAL_WRITERS.filter((x) => x.scope === 'remove');
+  assert.deepEqual(remove.map((x) => x.glob), ['/tmp/claude-*/*/*', '/tmp/claude-*/*/*/scratchpad']);
+  for (const p of ['/tmp/claude-0/proj/sess', '/tmp/claude-0/proj/sess/scratchpad']) assert.ok(matchesExactly(p, remove), p);
+  for (const p of ['/tmp/claude-0/proj/sess/scratchpad/old.txt', '/tmp/claude-0/proj/sess/scratchpad/newdir', '/tmp/claude-0/proj/sess/other', '/tmp/claude-0/proj', '/tmp/x']) {
+    assert.ok(!matchesExactly(p, remove), `${p} must not be exempt`);
+  }
+  for (const p of ['/tmp/x', '/home/user/x', '/root/.npm/_logs/x.log', '/tmp/claude-0/x']) assert.equal(coveredBy(p, writes), null, `${p} must not be exempt`);
   // touch-only entries: just /tmp ITSELF (the harness's per-command cwd file), never anything below it
   const touch = EXTERNAL_WRITERS.filter((x) => x.scope === 'touch');
   assert.deepEqual(touch.map((x) => x.glob), ['/tmp']);
@@ -48,14 +53,15 @@ test('the exemption list is narrow: every entry has a reason, and none covers pl
   for (const p of ['/tmp/claude-0', '/tmp/claude-0/proj/sess/scratchpad', '/tmp/x', '/home/user', '/']) assert.ok(!matchesExactly(p, touch), `${p} must not be touch-exempt`);
 });
 
-test('worktree places: git\'s and the harness\'s worktree containers may be created, touched and emptied; nothing else in the checkout', () => {
+test('worktree places: git\'s and the harness\'s worktree containers may be created and emptied; only the git directory and admin dirs may churn', () => {
   const layout = { gitDir: '/repo/.git', top: '/repo', mainTop: '/repo', worktreeDirs: [], otherWorktrees: ['/repo/.claude/worktrees/wf-1', '/repo/deep/wt/x'] };
   const w = worktreePlaces(layout, ['/repo/.claude/worktrees/wf-0']);
   for (const p of ['/repo/.git/worktrees', '/repo/.git/worktrees/wf-1', '/repo/.claude', '/repo/.claude/worktrees', '/repo/deep', '/repo/deep/wt']) assert.ok(matchesExactly(p, w.places), p);
   for (const p of ['/repo', '/repo/.git', '/repo/.git/hooks', '/repo/hushmallow-infinite-studio', '/repo/.claude/settings.json', '/repo/.git/worktrees/wf-1/hooks']) assert.ok(!matchesExactly(p, w.places), `${p} is not a worktree place`);
-  // the git directory (lock files) and the top level change with nothing left behind in normal operation
-  assert.ok(w.touch.includes('/repo/.git') && w.touch.includes('/repo'));
-  assert.ok(!w.touch.includes('/repo/.git/hooks'));
+  // the git directory and each worktree's admin directory change with nothing left behind (lock files); the checkout's top
+  // level and the worktree containers do not (FU-1 round 2): a create-then-delete there is a finding
+  for (const p of ['/repo/.git', '/repo/.git/worktrees/wf-1']) assert.ok(matchesExactly(p, w.touch), p);
+  for (const p of ['/repo', '/repo/.claude', '/repo/.claude/worktrees', '/repo/.git/worktrees', '/repo/.git/hooks', '/repo/deep']) assert.ok(!matchesExactly(p, w.touch), `${p} must not be touch-exempt`);
   assert.deepEqual(worktreePlaces(undefined), { places: [], touch: [] });
 });
 
@@ -65,7 +71,7 @@ test('gitLayout names the main checkout, and the real audit scope carries it (fo
   const s = auditScope({ layout });
   assert.equal(s.layout, layout);
   assert.ok(s.removable.includes(path.join(layout.gitDir, 'worktrees')), 'git removes <git>/worktrees itself when the last worktree goes');
-  assert.ok(TOUCH_EPS_MS >= 10 && TOUCH_EPS_MS <= 100);
+  assert.ok(TOUCH_EPS_MS >= 10 && TOUCH_EPS_MS <= 25, 'about three times the worst gap measured under load (6.1 ms), no wider');
 });
 
 test('storageRoots: writable storage mounts only (no kernel filesystems, no read-only mounts, nothing under /proc or /sys)', () => {

@@ -14,6 +14,13 @@
 // longest of its right, down and diagonal edges in world px, divided by the
 // same edge in art px, times camera zoom × render scale. That covers squash,
 // stretch, inflation, lean and camera push-ins.
+//
+// Magnification of the glass-card text rasters (FU-5; WP-01 logged them with
+// maxMagnification null): the card's text texture spans the card's rect,
+// 2·hw × 2·hh local px (GLASS_FS: tuv = local / (2 · rect.zw) + 0.5), which the
+// card draws at scale × squash, so per axis it is
+//   scale · squash · camera zoom · render scale · (2·hw or 2·hh) / (texture px),
+// the larger axis, taken at every glass draw (rotation keeps lengths).
 
 class AssetLog {
   constructor() { this.reset(); }
@@ -21,6 +28,12 @@ class AssetLog {
   reset() {
     this.rasters = [];
     this.maxMag = Object.create(null);
+    this.bound = new WeakMap();
+  }
+
+  /** Remember which logged raster a GPU texture holds (role and pixel size), so its draws can be measured. */
+  bind(texture, role, width, height) {
+    if (texture && typeof texture === 'object' && !this.bound.has(texture)) this.bound.set(texture, { role, width, height });
   }
 
   /**
@@ -71,6 +84,20 @@ class AssetLog {
       }
     }
     for (const role of roles) this.magnify(role, m * k);
+  }
+
+  /**
+   * Magnification of glass-card text rasters at one draw. cards: the bubbles being drawn
+   * ({ hw, hh, scale, squash, textTex }); k: output px per world px (camera zoom × render scale).
+   */
+  glassMagnification(cards, k) {
+    for (const b of cards || []) {
+      const t = b.textTex && this.bound.get(b.textTex);
+      if (!t || !(t.width > 0) || !(t.height > 0)) continue;
+      const sx = Math.abs(b.squash?.[0] ?? 1), sy = Math.abs(b.squash?.[1] ?? 1);
+      const mx = (b.scale * sx * k * 2 * b.hw) / t.width, my = (b.scale * sy * k * 2 * b.hh) / t.height;
+      this.magnify(t.role, Math.max(mx, my));
+    }
   }
 
   /** Plain-data copy for the worker. */

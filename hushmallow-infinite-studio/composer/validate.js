@@ -13,7 +13,8 @@
 // where the approved v2 itself sits outside them: those are calibrated on v2,
 // marked provisional in THRESHOLDS (OWNER-DECISIONS Q5: the calibrated values
 // are the limits, the plan's stricter value is a warning), and listed in
-// docs/wp/WP-03.md "Deviations" and docs/wp/FU-4.md.
+// OWNER-DECISIONS Q5 (with FU-4's additions), docs/wp/WP-03.md "Deviations"
+// and docs/wp/FU-4.md.
 
 import { createScene } from './scene.js';
 import { checkChannels, channelInfo, BODY_DOFS, FACE_PARAMS, exprWindows, compileExpr } from './channels.js';
@@ -21,7 +22,7 @@ import { MOVES } from './moves/index.js';
 import { textLine } from './layout.js';
 import { domain } from './circular.js';
 import { CONTROLLERS } from './controllers/index.js';
-import { POSES, inRange, POSE_TOL } from './poses.js';
+import { POSES, SHUT, satisfies, closedEyed, eyeGateAt } from './poses.js';
 import { resolveRef } from './clock.js';
 import { SCORE } from './compose.js';
 import { eyeGeom, sampleCubic, sampleQuad, clamp, lerp } from '../engine/face/geometry.js';
@@ -40,14 +41,24 @@ export const THRESHOLDS = Object.freeze({
   exposureChange: 0.12, exposureRamp: 0.5,
   impact: [0.25, 1.0],
   deadInterval: 1.2, deadActivity: 0.02,
-  // FU-4: the plan rules WP-03 left out. None needed calibrating: v2 sits inside every plan value.
+  // FU-4: the plan rules WP-03 left out. Spin, pulse and face-in-silhouette limits are the plan's values, and v2
+  // sits inside them. Two readings are calibrated on v2 (provisional, OWNER-DECISIONS Q5, FU-4 additions):
+  //  - spin ramp: the limit is one figure per spinning thing, its top speed against its steepest speed change
+  //    (v2: 0.72 s). The plan's stricter reading, every speed change on its own ≥ spinRamp, would fail v2 (the
+  //    orbit's stop at the turn: 0.23 s), so it warns (safety:spin-ramp-change).
+  //  - C1, below.
   spinMax: 1, spinMaxClose: 0.3, closeUpCover: 0.25, spinRamp: 0.5, spinFloor: 0.01,   // turns/s, frame share, s
+  spinRipple: 0.02, spinKink: 0.25,                                     // speed reversals under 2 % of the peak are ripple, not a change;
+                                                                        // an acceleration jump over 25 % of the steepest starts a new change
   pulseRamp: 0.15, pulseFloor: 0.02,                                    // s; transitions under 2 % of the range are ripple
   faceInside: 1.0,                                                      // normalised radius in the silhouette's inscribed ellipse
-  // C1: a slope jump, per second, as a share of the channel's range. Error above c1Kink: provisional, calibrated
-  // on v2, whose breath envelope kinks by 1.26/s where the ritual's 70 % breath hands over to the sleepy breath
-  // (a max of two ramps; 0.038/s of inflate on the body). The plan's strict C1 (any visible kink) warns above c1KinkWarn.
-  c1Kink: 1.5, c1KinkWarn: 0.05,
+  // C1 (plan craft: continuity except at declared kicks): a slope jump, per second, as a share of the channel's
+  // range. The plan's C1 (no visible kink, c1Kink) is the error limit everywhere, except at the break points of
+  // the calibrated envelopes (c1CalibratedEnv): v2's breath envelope kinks 1.26× its range per s where the ritual's
+  // 70 % breath hands over to the sleepy breath (a max of two ramps), and the body's breath sine (0.78×) inherits
+  // it. There the limit is c1KinkCalibrated (provisional, Q5) and the plan's value warns. No other channel of v2,
+  // or of 300 planned specs, kinks above c1Kink.
+  c1Kink: 0.05, c1KinkCalibrated: 1.5, c1CalibratedEnv: Object.freeze(['breath']),
 });
 
 const C1_TYPES = new Set(['track', 'spline', 'expr', 'noise', 'sine', 'envscale', 'ramp', 'pulse', 'const', 'blinks']);
@@ -242,7 +253,7 @@ export function gdir(compiled, { spec = null, moves = MOVES } = {}) {
   metrics.exposure = { min: eMin, max: eMax, change: (eMax - eMin) / eMax, per05s: eStep };
   if ((eMax - eMin) / eMax > T.exposureChange) err('safety:exposure', `exposure changes ${(100 * (eMax - eMin) / eMax).toFixed(1)} % (max 12 %)`);
   for (const n of Object.keys(direction.channels)) if (/sweat|exclaim/.test(n)) err('safety:disabled', `${n}: sweat and '!' are disabled`);
-  spinChecks(direction, sc, { D, P, err, metrics });
+  spinChecks(direction, sc, { D, P, err, warn, metrics });
   pulseChecks(direction, sc, { D, P, err, metrics });
 
   // -------------------------------------------------------------- craft --
@@ -482,11 +493,17 @@ export function faceOutline(spec, P) {
  * 0.3 turn/s while its disc covers more than 25 % of the frame (a close-up),
  * and changes speed no faster than an inOutSine ease from rest to its top
  * speed over 0.5 s would: its ramp, (π/2)·peak / max |dω/dt|, is ≥ 0.5 s.
+ * The plan's stricter reading, each speed change on its own eased over
+ * ≥ 0.5 s, (π/2)·|Δω| / max |dω/dt| within the change, is a warning
+ * (safety:spin-ramp-change; provisional, OWNER-DECISIONS Q5): v2's orbit
+ * stops at the turn faster than that. A change runs between turning points of
+ * the speed (reversals under 2 % of the peak are ripple) and is cut where the
+ * acceleration jumps (an ease or spring starting or stopping).
  * What turns: props whose controller reports an angle (item.th in radians:
  * the orbit; its disc is the orbit ellipse at the prop's radius, zoomed), and
  * the face's spiral (face.spin, a phase in turns; its disc is both eyes).
  */
-function spinChecks(direction, sc, { D, P, err, metrics }) {
+function spinChecks(direction, sc, { D, P, err, warn, metrics }) {
   const T = THRESHOLDS, hz = T.deformHz, h = 1e-3;
   const frame = direction.meta.width * direction.meta.height;
   const zoom = (t) => sc.raw.camAt(t).zoom;
@@ -514,10 +531,13 @@ function spinChecks(direction, sc, { D, P, err, metrics }) {
   const byId = new Map();
   for (const src of sources) {
     let peak = 0, at = null, acc = 0, cover = 0, close = null, prev = null;
+    const runs = [];                                                       // stretches where the thing exists: [{ t0, w: [] }]
     for (let k = 0; k <= D * hz; k++) {
       const t = -P + k / hz;
       const w = src.rate(t);
       if (w === null) { prev = null; continue; }
+      if (prev === null) runs.push({ t0: t, w: [] });
+      runs[runs.length - 1].w.push(w);
       const c = src.cover(t);
       cover = Math.max(cover, c);
       if (Math.abs(w) > peak) { peak = Math.abs(w); at = t; }
@@ -526,9 +546,29 @@ function spinChecks(direction, sc, { D, P, err, metrics }) {
       prev = w;
     }
     const ramp = peak >= T.spinFloor ? ((Math.PI / 2) * peak) / Math.max(acc, 1e-12) : Infinity;
+    // each speed change on its own: the stretch between two turning points of the speed, cut where its
+    // acceleration jumps (an ease or spring starting or stopping: v2's orbit stops at the turn without reversing)
+    let change = null;
+    const floor = Math.max(T.spinFloor, T.spinRipple * peak);
+    if (peak >= T.spinFloor) {
+      for (const { t0, w } of runs) {
+        const cuts = new Set(turningPoints(w, floor));
+        for (let i = 2; i < w.length; i++) if (Math.abs(w[i] - 2 * w[i - 1] + w[i - 2]) * hz > T.spinKink * acc) cuts.add(i - 1);
+        const piv = [...cuts].sort((x, y) => x - y);
+        for (let j = 1; j < piv.length; j++) {
+          const a = piv[j - 1], b = piv[j], dw = Math.abs(w[b] - w[a]);
+          if (dw < floor) continue;
+          let steep = 0;
+          for (let i = a + 1; i <= b; i++) steep = Math.max(steep, Math.abs(w[i] - w[i - 1]) * hz);
+          const eq = ((Math.PI / 2) * dw) / Math.max(steep, 1e-12);
+          if (!change || eq < change.ramp) change = { ramp: eq, dw, dur: (b - a) / hz, t: t0 + a / hz };
+        }
+      }
+    }
     const m = byId.get(src.id);
-    if (!m || peak > m.peak) byId.set(src.id, { id: src.id, peak, at, maxAccel: acc, ramp: Math.min(ramp, m?.ramp ?? Infinity), cover, close: close ?? m?.close ?? null });
-    else { m.ramp = Math.min(m.ramp, ramp); m.close = m.close ?? close; }
+    const rampChange = change && (!m?.rampChange || change.ramp < m.rampChange.ramp) ? change : m?.rampChange ?? null;
+    if (!m || peak > m.peak) byId.set(src.id, { id: src.id, peak, at, maxAccel: acc, ramp: Math.min(ramp, m?.ramp ?? Infinity), rampChange, cover, close: close ?? m?.close ?? null });
+    else { m.ramp = Math.min(m.ramp, ramp); m.close = m.close ?? close; m.rampChange = rampChange; }
   }
   const out = [...byId.values()];
   metrics.spin = out.map((m) => ({ ...m, ramp: Number.isFinite(m.ramp) ? m.ramp : null }));
@@ -536,6 +576,10 @@ function spinChecks(direction, sc, { D, P, err, metrics }) {
     if (m.peak > T.spinMax) err('safety:spin', `${m.id} spins ${m.peak.toFixed(3)} turns/s at t=${m.at.toFixed(2)} (max ${T.spinMax})`);
     if (m.close) err('safety:spin', `${m.id} spins ${m.close.rate.toFixed(3)} turns/s at t=${m.close.t.toFixed(2)} while its disc covers ${(100 * m.close.cover).toFixed(0)} % of the frame (close-up max ${T.spinMaxClose})`);
     if (m.ramp < T.spinRamp) err('safety:spin-ramp', `${m.id} changes speed by up to ${m.maxAccel.toFixed(2)} turns/s² against a top speed of ${m.peak.toFixed(3)} turns/s: a ${m.ramp.toFixed(2)} s ramp (min ${T.spinRamp} s)`);
+    else if (m.rampChange && m.rampChange.ramp < T.spinRamp) {
+      const c = m.rampChange;
+      warn('safety:spin-ramp-change', `${m.id} changes speed by ${c.dw.toFixed(3)} turns/s over ${c.dur.toFixed(2)} s at t=${c.t.toFixed(2)}: a ${c.ramp.toFixed(2)} s ramp for that change, under the plan's ${T.spinRamp} s per change (provisional: the limit is the whole motion's ramp, ${m.ramp.toFixed(2)} s)`);
+    }
   }
 }
 
@@ -595,19 +639,24 @@ function turningPoints(v, floor) {
  * smoothstep edges and the times a min / max / clamp switches branch, and the
  * same for the envelope the channel is scaled by. Inside the loop only: the
  * seam is loop closure's (loop:slope). A slope jump above c1Kink × the
- * channel's range per second is an error, above c1KinkWarn × range a warning.
+ * channel's range per second is an error, except at a break point of a
+ * calibrated envelope (c1CalibratedEnv: v2's breath handover), where the error
+ * limit is c1KinkCalibrated and c1Kink warns.
  */
 function c1Checks(direction, sc, { D, P, err, warn, metrics }) {
   const T = THRESHOLDS, lo = -P, hi = D - P;
   const channels = direction.channels;
-  const timesOf = (def, seen) => {
+  const calibratedEnv = (name) => T.c1CalibratedEnv.some((e) => name === `env.${e}`);
+  // break points as [t, calibrated]: calibrated when the time is a break point of a calibrated envelope
+  const timesOf = (def, seen, cal) => {
     const ts = [];
-    if (def.type === 'track') for (const k of def.keys) { ts.push(k.t); if (k.ease) ts.push(k.t + k.dur); }
-    else if (def.type === 'spline') for (const k of def.keys) ts.push(k.t);
-    else if (def.type === 'blinks') for (const b of def.list) ts.push(b.t, b.t + b.close, b.t + b.close + b.hold, b.t + b.close + b.hold + b.open);
-    else if (def.type === 'expr') ts.push(...exprWindows(def.expr).flat(), ...exprSwitchTimes(def.expr, lo, hi));
+    const push = (...t) => { for (const x of t) ts.push([x, cal]); };
+    if (def.type === 'track') for (const k of def.keys) { push(k.t); if (k.ease) push(k.t + k.dur); }
+    else if (def.type === 'spline') for (const k of def.keys) push(k.t);
+    else if (def.type === 'blinks') for (const b of def.list) push(b.t, b.t + b.close, b.t + b.close + b.hold, b.t + b.close + b.hold + b.open);
+    else if (def.type === 'expr') push(...exprWindows(def.expr).flat(), ...exprSwitchTimes(def.expr, lo, hi));
     const env = def.env === undefined ? null : channels[`env.${def.env}`];
-    if (env && !seen.has(def.env)) { seen.add(def.env); ts.push(...timesOf(env, seen)); }
+    if (env && !seen.has(def.env)) { seen.add(def.env); ts.push(...timesOf(env, seen, T.c1CalibratedEnv.includes(def.env))); }
     return ts;
   };
   // the slope jump at t: one-sided slopes at two step sizes, extrapolated to h → 0 (the smooth part of the
@@ -616,30 +665,38 @@ function c1Checks(direction, sc, { D, P, err, warn, metrics }) {
     const k = (h) => (f(t + h) - f(t)) / h - (f(t) - f(t - h)) / h;
     return Math.abs((10 * k(1e-6) - k(1e-5)) / 9);
   };
-  let worst = { kink: 0, perRange: 0, channel: null, t: null }, checked = 0;
+  let worst = { kink: 0, perRange: 0, channel: null, t: null }, strict = { perRange: 0, channel: null, t: null }, checked = 0;
   const kinks = [];
   for (const [name, def] of Object.entries(channels)) {
     if (!C1_TYPES.has(def.type) || def.type === 'const') continue;
-    const ts = [...new Set(timesOf(def, new Set()))].filter((t) => t > lo + 1e-5 && t < hi - 1e-5);
-    if (!ts.length) continue;
+    // a time that is also a break point of anything uncalibrated is judged strictly
+    const byT = new Map();
+    for (const [t, cal] of timesOf(def, new Set(), calibratedEnv(name))) if (t > lo + 1e-5 && t < hi - 1e-5) byT.set(t, (byT.get(t) ?? true) && cal);
+    if (!byT.size) continue;
     const f = sc.channel(name);
     let vmin = Infinity, vmax = -Infinity;
     for (let i = 0; i <= D * 120; i++) { const v = f(lo + i / 120); vmin = Math.min(vmin, v); vmax = Math.max(vmax, v); }
     const range = Math.max(vmax - vmin, 1e-9);
-    let top = null;
-    for (const t of ts) {
+    const floor = Math.max(T.c1Kink * range, 1e-6);
+    let bad = null, over = null;
+    for (const [t, cal] of byT) {
       checked++;
       const k = kinkAt(f, t);
       if (k / range > worst.perRange) worst = { kink: k, perRange: k / range, channel: name, t };
-      if (k > Math.max(T.c1KinkWarn * range, 1e-6) && (!top || k > top.k)) top = { k, t };
+      if (!cal && k / range > strict.perRange) strict = { perRange: k / range, channel: name, t };
+      if (k <= floor) continue;
+      const limit = cal ? T.c1KinkCalibrated : T.c1Kink;
+      if (k > limit * range) { if (!bad || k / limit > bad.k / bad.limit) bad = { k, t, limit, cal }; }
+      else if (!over || k > over.k) over = { k, t };
     }
+    const top = bad ?? over;
     if (!top) continue;
-    kinks.push({ channel: name, t: top.t, kink: top.k, perRange: top.k / range });
+    kinks.push({ channel: name, t: top.t, kink: top.k, perRange: top.k / range, calibrated: !bad || bad.cal });
     const msg = `${name}: the slope jumps by ${top.k.toPrecision(3)}/s at t=${top.t.toFixed(4)} (${(top.k / range).toPrecision(3)}× its range per s)`;
-    if (top.k > T.c1Kink * range) err('craft:c1', `${msg}: not C1 and not a declared kick (limit ${T.c1Kink}× range per s)`);
-    else warn('craft:c1-kink', `${msg}: under the calibrated limit (${T.c1Kink}×; provisional: v2's breath envelope kinks 1.26×), over the plan's strict C1 (${T.c1KinkWarn}×)`);
+    if (bad) err('craft:c1', `${msg}: not C1 and not a declared kick (limit ${bad.limit}× range per s${bad.cal ? ' at a break point of the calibrated breath envelope' : ''})`);
+    else warn('craft:c1-kink', `${msg}: a break point of the calibrated breath envelope, under its limit (${T.c1KinkCalibrated}×; provisional: v2's breath handover kinks 1.26×), over the plan's strict C1 (${T.c1Kink}×)`);
   }
-  metrics.c1 = { checked, worst, kinks };
+  metrics.c1 = { checked, worst, strict, kinks };
 }
 
 /** Times in [lo, hi] where a min, max or clamp in an envelope expression switches branch (where it can kink). */
@@ -712,14 +769,34 @@ function absoluteTimeChecks(direction, { err, warn, metrics }) {
 /**
  * Pose contracts on compiled values (composer/poses.js): every span move's
  * entry pose holds at the start of its span and its exit pose at its end,
- * channel by channel (the track's own value). A junction that needed a bridge
- * is judged after the bridge, so pose:entry is the proof the bridge landed.
- * Recorded bridges must join two adjacent span moves, inside their gap.
+ * channel by channel (the track's own value). Shut eyes meet a pose that asks
+ * for open ones only where a recorded eye-gate closure holds them shut
+ * (direction.provenance.eyeGate, poses.js eyeGateAt). The closures are checked
+ * too (pose:gate): only a closed-eye face has a gate, and each closure is
+ * written by a move that ran, inside its own window on face.eyeOpen, closed an
+ * opening, and is a decision the gate really makes (intensity × opening under
+ * the gate, personality.js eyesOpen). A junction that needed a bridge is judged after the
+ * bridge, so pose:entry is the proof the bridge landed. Recorded bridges must
+ * join two adjacent span moves, inside their gap.
  */
 function poseChecks(direction, sc, moves, { err, metrics }) {
   const A = direction.anchors;
   const value = (ch, t) => (direction.channels[ch] ? sc.channel(ch)(t) : channelInfo(ch)?.v0 ?? 0);
   const fmt = (v) => (Math.abs(v) >= 1e-3 || v === 0 ? v.toFixed(4) : v.toExponential(2));
+  // the eye-gate closures the composer recorded
+  const closures = direction.provenance?.eyeGate || [];
+  const eyeDef = direction.channels['face.eyeOpen'];
+  const ran = new Set((direction.moves || []).map((m) => m.id));
+  if (closures.length && !closedEyed(direction.mallow.faceStyle)) err('pose:gate', `${closures.length} eye-gate closure(s) recorded on face style '${direction.mallow.faceStyle}', which has no eye gate`);
+  for (const c of closures) {
+    const where = `eye-gate closure by ${c.by} at t=${c.t}`;
+    if (![c.t, c.asked, c.k, c.gate].every(Number.isFinite)) err('pose:gate', `${where}: time, asked opening, intensity and gate must be numbers`);
+    else if (!ran.has(c.by)) err('pose:gate', `${where}: ${c.by} is not a move of this direction`);
+    else if (!(eyeDef?.windows || []).some((w) => w.by === c.by && c.t >= w.from - 1e-9 && c.t < w.to + 1e-9)) err('pose:gate', `${where}: outside ${c.by}'s window on face.eyeOpen`);
+    else if (!(c.asked > SHUT[1])) err('pose:gate', `${where}: asked ${c.asked}, which is not an opening`);
+    else if (!(c.k * c.asked < c.gate)) err('pose:gate', `${where}: intensity ${c.k} × opening ${c.asked} reaches the gate ${c.gate}, so the gate lets it open`);
+  }
+  const gateAt = eyeGateAt(closures, eyeDef?.keys);
   const spans = [];
   for (const m of direction.moves || []) {
     const mv = moves[m.id];
@@ -734,12 +811,16 @@ function poseChecks(direction, sc, moves, { err, metrics }) {
     const prev = spans[i - 1];
     for (const [which, t, name] of [['entry', s.span[0], s.entry], ['exit', s.span[1], s.exit]]) {
       if (!Object.hasOwn(POSES, name)) continue;
+      const gate = gateAt(t);
       const bad = [];
+      let byGate = false;
       for (const [ch, [lo, hi]] of Object.entries(POSES[name])) {
         const v = value(ch, t);
-        if (!inRange(v, [lo, hi], POSE_TOL)) bad.push(`${ch} = ${fmt(v)} ∉ [${lo}, ${hi}]`);
+        if (satisfies(ch, v, [lo, hi])) continue;
+        if (gate && satisfies(ch, v, [lo, hi], { gated: true })) { byGate = true; continue; }
+        bad.push(`${ch} = ${fmt(v)} ∉ [${lo}, ${hi}]`);
       }
-      out.push({ move: s.id, which, t, pose: name, ok: bad.length === 0 });
+      out.push({ move: s.id, which, t, pose: name, ok: bad.length === 0, ...(byGate ? { gate: { by: gate.by, t: gate.t } } : {}) });
       if (!bad.length) continue;
       const after = which === 'entry' && prev ? ` after ${prev.id}${bridges.some((b) => b.after === prev.id && b.before === s.id) ? ' and its bridge' : ' (no bridge)'}` : '';
       err(`pose:${which}`, `${s.id} ${which === 'entry' ? 'enters' : 'exits'} '${name}' at t=${t}${after}, but ${bad.join(', ')}`);
@@ -751,4 +832,5 @@ function poseChecks(direction, sc, moves, { err, metrics }) {
     else if (!(b.at >= spans[i - 1].span[1] - 1e-9 && b.at < spans[i].span[0])) err('pose:bridge', `bridge ${b.after} → ${b.before} at t=${b.at} is outside the gap [${spans[i - 1].span[1]}, ${spans[i].span[0]})`);
   }
   metrics.poses = out;
+  metrics.eyeGate = closures.length;
 }

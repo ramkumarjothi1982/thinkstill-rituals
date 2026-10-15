@@ -25,6 +25,14 @@ Ops (frames are 0-based, boxes in design px = video px here):
   stripes       moving diagonal stripes blended over a band of the frame for [t0, t0+dur)
   mark          the engine's DRAFT corner mark composited on every frame
   reencode      no change (a duplicate render)
+  ring-fill     a ring `inner`..`outer` px around the Mallow's silhouette painted, on every
+                frame, in the Mallow's own mean colour (its interior eroded 20 px, outside
+                the face box), sparing cards, text and the logo card (FU-5)
+  world-hue     everything but the Mallow (dilated 8 px), its cards, its text and the logo
+                card hue-rotated by `deg` in Lab LCh, lightness kept (FU-5)
+  fade-text     the overlay text rows, while readable (alpha >= 0.9), washed out to `keep`
+                of their contrast against their box's mean colour (FU-5)
+  remux         container only: the source stream-copied without faststart (FU-5)
   loudness      audio: gain then a limiter (a hot mix)
   delay         audio: circularly delayed by `ms`
 """
@@ -70,6 +78,29 @@ def body_mask(fr, w, h, erode=6):
         x0, y0, x1, y1 = (int(round(v)) for v in b)
         m[max(0, y0 - 8):max(0, y1 + 8), max(0, x0 - 8):max(0, x1 + 8)] = 0
     return m
+
+
+def boxes_mask(boxes, w, h, pad):
+    """uint8 mask of axis-aligned boxes (design px = video px), each grown by pad."""
+    m = np.zeros((h, w), np.uint8)
+    for b in boxes:
+        x0, y0, x1, y1 = (int(round(v)) for v in b[:4])
+        m[max(0, y0 - pad):max(0, y1 + pad), max(0, x0 - pad):max(0, x1 + pad)] = 1
+    return m
+
+
+def silhouette(fr, w, h):
+    m = np.zeros((h, w), np.uint8)
+    cv2.fillPoly(m, [np.asarray(fr['contour'], np.float32).reshape(-1, 2).astype(np.int32)], 1)
+    return m
+
+
+def disk(r):
+    return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1,) * 2)
+
+
+def logo_box(logo):
+    return [logo['x'], logo['y'], logo['x'] + logo['w'], logo['y'] + logo['h']] if logo else None
 
 
 def feather(mask, r=3):
@@ -162,6 +193,44 @@ def video_op(job):
             s = (0.5 + 0.5 * np.sin(phase))[..., None]
             g = f[y0:y1].astype(np.float32)
             f[y0:y1] = np.clip(g * (1 - P['mix'] * s) + 255.0 * P['mix'] * s, 0, 255).astype(np.uint8)
+        elif op == 'ring-fill':
+            fr = geo['perFrame'][i]
+            sil = silhouette(fr, w, h)
+            spare = boxes_mask([g[:4] for g in fr['glass']] + [t['box'] for t in fr['text']] + ([logo_box(logo)] if logo else []), w, h, 10)
+            ring = cv2.dilate(sil, disk(P['outer'])) & (1 - cv2.dilate(sil, disk(P['inner']))) & (1 - spare)
+            inside = cv2.erode(sil, disk(20)) & (1 - spare)
+            fb = [int(round(v)) for v in fr['faceBox']]
+            inside[max(0, fb[1]):max(0, fb[3]), max(0, fb[0]):max(0, fb[2])] = 0
+            if inside.any() and ring.any():
+                col = f[inside.astype(bool)].astype(np.float32).mean(axis=0)
+                a = feather(ring, 2)
+                f = np.clip(f.astype(np.float32) * (1 - a) + col * a, 0, 255).astype(np.uint8)
+        elif op == 'world-hue':
+            fr = geo['perFrame'][i]
+            keep = cv2.dilate(silhouette(fr, w, h), disk(8)) | boxes_mask([g[:4] for g in fr['glass']], w, h, 24) \
+                | boxes_mask([t['box'] for t in fr['text']] + ([logo_box(logo)] if logo else []), w, h, 18)
+            lab = color.lab(f)
+            L, C, hdeg = color.lch(lab)
+            hr = np.radians(hdeg + P['deg'])
+            new = lab_to_srgb8(np.stack([L, C * np.cos(hr), C * np.sin(hr)], axis=-1))
+            a = feather(1 - keep, 2)
+            f = np.clip(f.astype(np.float32) * (1 - a) + new * a, 0, 255).astype(np.uint8)
+        elif op == 'fade-text':
+            fr = geo['perFrame'][i]
+            lb = logo_box(logo)
+            for t in fr['text']:
+                if t['kind'] != 'overlay' or t['alpha'] < 0.9:
+                    continue
+                x0, y0, x1, y1 = (int(round(v)) for v in t['box'])
+                x0, y0, x1, y1 = max(0, x0 - 8), max(0, y0 - 8), min(w, x1 + 8), min(h, y1 + 8)
+                reg = f[y0:y1, x0:x1].astype(np.float32)
+                mean = reg.reshape(-1, 3).mean(axis=0)
+                new = mean + (reg - mean) * P['keep']
+                if lb:                                       # never touch the logo card
+                    yy, xx = np.mgrid[y0:y1, x0:x1]
+                    inlogo = ((xx >= lb[0]) & (xx < lb[2]) & (yy >= lb[1]) & (yy < lb[3]))[..., None]
+                    new = np.where(inlogo, reg, new)
+                f[y0:y1, x0:x1] = np.clip(new, 0, 255).astype(np.uint8)
         elif op == 'mark':
             M, mx, my = mark
             mh, mw = M.shape[:2]
@@ -211,12 +280,21 @@ def audio_op(job):
     os.remove(tmp)
 
 
+def remux_op(job):
+    """Container-only faults: the source stream-copied (video and audio untouched)."""
+    P = job.get('params', {})
+    flags = ['-movflags', '+faststart'] if P.get('faststart', True) else []
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', job['src'], '-map', '0', '-c', 'copy', '-metadata', f'comment={job["stamp"]}', *flags, job['out']], check=True)
+
+
 if __name__ == '__main__':
     with open(sys.argv[1]) as fh:
         job = json.load(fh)
     os.makedirs(os.path.dirname(job['out']), exist_ok=True)
     if job['op'] in ('loudness', 'delay'):
         audio_op(job)
+    elif job['op'] == 'remux':
+        remux_op(job)
     else:
         video_op(job)
     print(job['out'])

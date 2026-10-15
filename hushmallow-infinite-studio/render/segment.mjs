@@ -7,6 +7,8 @@
 //                        the MP4's size and sha256, the job key, timings
 //   seg-00k.lock         JSON: who renders it now { pid, pidStart, host, worker, since }.
 //                        Created with O_EXCL; the owner touches it after every frame.
+//   seg-00k.lock.reclaim the short critical section in which a lock may be removed
+//                        (a stale lock reclaimed, or a lock released): see lockFile
 //   seg-00k.attempts     JSON: failed attempts { count, errors[] }
 //   seg-00k.failed       written after MAX_ATTEMPTS failed attempts (1 + 2 retries)
 //
@@ -24,6 +26,8 @@ import crypto from 'node:crypto';
 export const SEGMENT_FRAMES = 90;
 export const STALE_LOCK_MS = 10 * 60 * 1000;
 export const MAX_ATTEMPTS = 3;
+/** A reclaim section is held for microseconds; one silent for this long belongs to a process that died inside it. */
+export const RECLAIM_STALE_MS = 10 * 1000;
 
 /** Segments covering frames [from, to): [{ k, a, b }] with b exclusive. */
 export function planSegments(from, to, size = SEGMENT_FRAMES) {
@@ -107,31 +111,91 @@ export function staleReason(lock, { now = Date.now(), mtimeMs = now, host = os.h
   return null;
 }
 
+const sleepMs = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/** What a lock file is right now: its inode and exact text (null when it does not exist). */
+function lockIdentity(file) {
+  try {
+    const st = fs.statSync(file);
+    return { ino: st.ino, mtimeMs: st.mtimeMs, text: fs.readFileSync(file, 'utf8') };
+  } catch { return null; }
+}
+const sameIdentity = (a, b) => !!a && !!b && a.ino === b.ino && a.text === b.text;
+const parse = (text) => { try { return JSON.parse(text); } catch { return null; } };
+
+/**
+ * Run fn() inside `${file}.reclaim`, the only place where `file` may be removed. The section
+ * is entered with O_EXCL, so at most one process is inside it. A section left behind by a
+ * process that died inside it (owner gone, or silent for RECLAIM_STALE_MS) is cleared: moved
+ * aside, checked to be the one judged dead, and restored otherwise.
+ * → fn()'s result, or null when another process holds the section
+ */
+export function withReclaim(file, fn) {
+  const m = `${file}.reclaim`;
+  const me = JSON.stringify({ pid: process.pid, pidStart: processStart(process.pid), host: os.hostname(), since: new Date().toISOString(), nonce: crypto.randomBytes(6).toString('hex') });
+  for (let round = 0; round < 3; round++) {
+    try {
+      fs.writeFileSync(m, me, { flag: 'wx' });
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      const cur = lockIdentity(m);
+      if (!cur) continue;                                        // just released: try again
+      if (!staleReason(parse(cur.text), { mtimeMs: cur.mtimeMs, staleMs: RECLAIM_STALE_MS })) return null;
+      const grave = `${m}.dead.${process.pid}.${crypto.randomBytes(4).toString('hex')}`;
+      try { fs.renameSync(m, grave); } catch { continue; }
+      if (!sameIdentity(lockIdentity(grave), cur)) { try { fs.linkSync(grave, m); } catch { /* a new section exists: it stays */ } }
+      fs.rmSync(grave, { force: true });
+      continue;
+    }
+    try {
+      return fn();
+    } finally {
+      // leave only our own section (nobody clears a live holder's: it is never stale while we run)
+      try { if (fs.readFileSync(m, 'utf8') === me) fs.rmSync(m, { force: true }); } catch { /* already gone */ }
+    }
+  }
+  return null;
+}
+
 /**
  * Try to take the lock file `file` for `owner`. Reclaims a stale lock (see
  * staleReason; opts.staleMs overrides the 10-minute silence rule). → { file,
  * info, reclaimed (why the previous lock was stale, or null) }, or null when a
  * live owner holds it.
+ *
+ * The reclaim is atomic (FU-5): a lock judged stale is removed only inside the
+ * reclaim section, and only if the file is still exactly the lock that was judged
+ * (same inode, same text). WP-01's version moved whatever was at the path aside, so
+ * a reclaimer that had judged a dead owner's lock could remove the fresh lock another
+ * reclaimer had just created, and both went on to render the segment. Now of any
+ * number of reclaimers exactly one ends up holding the lock (the O_EXCL create after
+ * the removal decides), and a live lock is never removed.
+ * opts.beforeReclaim(held): test hook, called between judging and reclaiming.
  */
 export function lockFile(file, owner = {}, opts = {}) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const info = { pid: process.pid, pidStart: processStart(process.pid), host: os.hostname(), since: new Date().toISOString(), ...owner };
   let reclaimed = null;
-  for (let round = 0; round < 2; round++) {
+  for (let round = 0; round < 4; round++) {
     try {
       fs.writeFileSync(file, JSON.stringify(info) + '\n', { flag: 'wx' });
       return { file, info, reclaimed };
     } catch (e) {
       if (e.code !== 'EEXIST') throw e;
     }
-    let held, mtimeMs;
-    try { held = readJson(file); mtimeMs = fs.statSync(file).mtimeMs; } catch { continue; }   // released meanwhile: retry
-    const why = staleReason(held, { ...opts, mtimeMs });
+    const seen = lockIdentity(file);
+    if (!seen) continue;                                           // released meanwhile: retry
+    const held = parse(seen.text);
+    const why = staleReason(held, { ...opts, mtimeMs: seen.mtimeMs });
     if (!why) return null;
-    reclaimed = why;
-    // take over: move the stale lock aside first, so of two reclaimers only one can win the create
-    const grave = `${file}.stale.${process.pid}`;
-    try { fs.renameSync(file, grave); fs.rmSync(grave, { force: true }); } catch { /* another process reclaimed it */ }
+    opts.beforeReclaim?.(held);
+    const removed = withReclaim(file, () => {
+      if (!sameIdentity(lockIdentity(file), seen)) return false;   // released or taken over since it was judged: judge again
+      fs.rmSync(file, { force: true });
+      return true;
+    });
+    if (removed === null) return null;                             // another process is reclaiming it now
+    if (removed) reclaimed = why;
   }
   return null;
 }
@@ -147,10 +211,17 @@ export function touchLock(lock) {
   try { fs.utimesSync(lock.file, t, t); } catch { /* removed under us: the next claim will notice */ }
 }
 
-/** Release a lock we hold (only if it is still ours). */
+/** Release a lock we hold (only if it is still ours), inside the reclaim section, so a reclaimer never sees half of it. */
 export function releaseLock(lock) {
-  const held = readJson(lock.file);
-  if (held && held.pid === lock.info.pid && held.since === lock.info.since) fs.rmSync(lock.file, { force: true });
+  for (let i = 0; i < 100; i++) {
+    const r = withReclaim(lock.file, () => {
+      const held = readJson(lock.file);
+      if (held && held.pid === lock.info.pid && held.since === lock.info.since) fs.rmSync(lock.file, { force: true });
+      return true;
+    });
+    if (r !== null) return;
+    sleepMs(2);                                                    // a reclaim section is open: it lasts microseconds
+  }
 }
 
 // -------------------------------------------------------------- attempts --

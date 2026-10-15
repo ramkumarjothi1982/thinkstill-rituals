@@ -5,8 +5,9 @@
 //          v2 world and pass structure. Bit-identical to the goldens; used for
 //          goldens and parity only (~26 min per 15 s).
 //   final  the production master: scale 1, every optimisation of WP-02's
-//          performance pass, x264 master + CRF 20 preview. Target <= 9 min per
-//          15 s on one worker, accepted <= 12.
+//          performance pass; lossless segments, one CRF 16 master pass and the
+//          CRF 20 preview (render/encode.mjs, Q4(b)). Target <= 9 min per 15 s
+//          on one worker, accepted <= 12. The default profile (FU-5).
 //   draft  review drafts: scale 0.5 (uRes stays in design space), 1 sub-frame,
 //          the face once per frame without glow blur, a 3-octave world without
 //          clouds, no 1/8 bloom, x264 veryfast, DRAFT mark. <= 3 min per 15 s.
@@ -17,6 +18,11 @@
 // feature (tools/perf/gate.mjs), and `features=-<name>` (engine page query,
 // hm bench / hm gate --features) bisects a regression. The exact profile has
 // none of them.
+//
+// encoder / master / preview name the farm's x264 settings (render/encode.mjs
+// ENCODERS): the segment encoder, the encoder of the one master pass over the
+// joined lossless segments (null: segments joined with concat -c copy), and the
+// preview's. The engine page ignores them.
 //
 // Pure data, no browser APIs: imported by the engine page and by Node (the
 // render farm, hm bench) alike.
@@ -58,23 +64,30 @@ const DRAFT_QUALITY = Object.freeze({ subframes: 1, faceGlow: false, worldOctave
 export const PROFILES = Object.freeze({
   exact: Object.freeze({
     name: 'exact', summary: 'approved v2 rules, bit-identical to the goldens (goldens and parity only)',
-    scale: 1, features: Object.freeze(none()), quality: FULL_QUALITY, encoder: 'qp15', preview: null, mark: null, stills: null,
+    scale: 1, features: Object.freeze(none()), quality: FULL_QUALITY, encoder: 'lossless', master: 'crf16', preview: null, mark: null, stills: null,
   }),
   final: Object.freeze({
     name: 'final', summary: 'production master: every WP-02 optimisation at full scale',
-    scale: 1, features: Object.freeze(all()), quality: FULL_QUALITY, encoder: 'qp15', preview: 'crf20', mark: null, stills: null,
+    scale: 1, features: Object.freeze(all()), quality: FULL_QUALITY, encoder: 'lossless', master: 'crf16', preview: 'crf20', mark: null, stills: null,
   }),
   draft: Object.freeze({
     name: 'draft', summary: 'review draft: 0.5 scale, 1 sub-frame, no face glow, 3-octave world without clouds, no 1/8 bloom, DRAFT mark',
-    scale: 0.5, features: Object.freeze(all()), quality: DRAFT_QUALITY, encoder: 'draft', preview: null, mark: 'DRAFT', stills: null,
+    scale: 0.5, features: Object.freeze(all()), quality: DRAFT_QUALITY, encoder: 'draft', master: null, preview: null, mark: 'DRAFT', stills: null,
   }),
   proof: Object.freeze({
     name: 'proof', summary: '6 full-quality stills (final settings), hm proof',
-    scale: 1, features: Object.freeze(all()), quality: FULL_QUALITY, encoder: null, preview: null, mark: null, stills: 6,
+    scale: 1, features: Object.freeze(all()), quality: FULL_QUALITY, encoder: null, master: null, preview: null, mark: null, stills: 6,
   }),
 });
 
-export const DEFAULT_PROFILE = 'exact';
+/**
+ * DEFAULT_PROFILE: what the render farm renders when no profile is named (hm render): the
+ * production master (FU-5). PAGE_PROFILE: what an engine page or Stage renders when its URL or
+ * caller names none. That stays 'exact', because the goldens, the parity tests and the QA
+ * re-render of the approved v2 open pages without a profile and must get the approved rules.
+ */
+export const DEFAULT_PROFILE = 'final';
+export const PAGE_PROFILE = 'exact';
 
 /**
  * Parse a feature override list: "+a,-b" (or "a,-b"; "none" / "all" resets).
@@ -96,7 +109,7 @@ export function parseFeatures(spec) {
  * The effective profile: a named profile plus optional feature overrides.
  * → frozen { ...profile, features: { name: bool }, overrides }
  */
-export function resolveProfile(name = DEFAULT_PROFILE, { features = null } = {}) {
+export function resolveProfile(name = PAGE_PROFILE, { features = null } = {}) {
   const base = Object.hasOwn(PROFILES, name) ? PROFILES[name] : null;
   if (!base) throw new Error(`unknown profile "${name}" (have: ${Object.keys(PROFILES).join(', ')})`);
   const f = parseFeatures(features);

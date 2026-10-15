@@ -36,7 +36,8 @@
 // Issues are { rule, severity: 'error'|'warn', where, text, message, term? }.
 
 import { wrap2, hooksOf, linePools, resolutionsOf } from './library.mjs';
-import { loadPolicy, gluedForm, gluedVariants, termRegex } from './policy.mjs';
+import { loadPolicy, gluedForm, gluedVariants, wordMatcher } from './policy.mjs';
+import { inflectionalBases, tokenize } from './morph.mjs';
 import { measureText, fitSize, typographic, loadMetrics } from './text-metrics.mjs';
 import { clockClasses, allowedTods, maskClockTimes } from './time-words.mjs';
 
@@ -53,12 +54,14 @@ function libMatchers(lib, policy) {
     // the validator's exact patterns
     banned: f.banned.map((t) => [t, new RegExp(`(^|[^a-z0-9])${esc(t)}($|[^a-z0-9])`, 'i')]),
     caution: f.caution.map((t) => [t, new RegExp(`(^|[^a-z])${esc(t)}`, 'i')]),
-    // planner addition: a banned term is a lemma too, so its inflections are banned with it ('diagnosed',
-    // 'panicking', 'healed'); the caution patterns already match any ending
-    bannedInflected: f.banned.map((t) => [t, termRegex(t, { inflect: true, flex: true, morph })]),
-    // the same terms as they would sit inside a glued hashtag (banned terms with their inflections)
+    // planner addition: a banned term is a lemma too, matched by the stemmer in its inflections and regular
+    // derivatives ('diagnosed', 'panicking', 'symptomatic', 'traumatised'); a term the library writes as an
+    // inflected form stands for its base ('triggered' → trigger, 'depressed' → depress, so 'Triggers.',
+    // 'Depressing.'); the caution patterns already match any ending
+    bannedLemmas: f.banned.map((t) => [t, wordMatcher(t, { derive: true, morph, heads: inflectionalBases(t, morph) })]),
+    // the same terms as they would sit inside a glued hashtag (with their inflections and derivative stems)
     gluedFlags: [
-      ...f.banned.flatMap((t) => gluedVariants(t, { inflect: true, morph }).map((g) => ({ rule: 'medical', term: t, glued: g }))),
+      ...f.banned.flatMap((t) => gluedVariants(t, { inflect: true, derive: true, morph, heads: inflectionalBases(t, morph) }).map((g) => ({ rule: 'medical', term: t, glued: g }))),
       ...f.caution.map((t) => ({ rule: 'caution', term: t, glued: gluedForm(t) })).filter((g) => g.glued),
     ],
     // every word of the library's copy: all of it is lint-clean, so a library word that contains a
@@ -113,7 +116,8 @@ function libraryVocabulary(lib) {
 
 const issue = (rule, where, text, message, severity = 'error', term = undefined) => ({ rule, severity, where, text, message, ...(term === undefined ? {} : { term }) });
 const keyOf = (i) => `${i.rule}␟${(i.term ?? '').toLowerCase()}`;
-const BREATH_WORD = /\b(breath|breathe|inhale|exhale)/i;
+// every form of a breath word (FU-3: 'Exhaling slowly.' and 'Inhaling.' passed the whole-word list)
+const BREATH_WORD = /\b(breath|inhal|exhal)/i;
 const SPLIT_BRAND = /\bhush[\s-]+mallow/i;
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
 const COUNT_WORDS = Object.freeze({ one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 });
@@ -136,6 +140,13 @@ export function countRun(text) {
   return null;
 }
 
+/** How a matched word relates to its lemma, for messages ('a form (+ing) of', 'a derivative (+al+ly) of'). */
+function derivedFrom(h) {
+  if (!h.path.length) return 'a use of';
+  const how = h.path.map((id) => (id === 'irregular' ? 'irregular form' : `+${id}`)).join(' ');
+  return h.path.every((id) => ['s', "'s", 'ed', 'ing', 'est', 'er', 'irregular'].includes(id)) ? `a form (${how}) of` : `a derivative (${how}) of`;
+}
+
 /**
  * Raw phrase hits of a text, whatever kind of copy it is: banned medical
  * terms, caution terms (before the whitelist), topics, names and breath-hold
@@ -150,12 +161,18 @@ function phraseHits(text, lib, policy) {
   if (!cache) byPolicy.set(policy, (cache = new Map()));
   if (cache.has(text)) return cache.get(text);
   const m = libMatchers(lib, policy), c = policy.compiled, out = [];
+  const toks = tokenize(text);
   for (const [t, re] of m.banned) if (re.test(text)) out.push({ rule: 'medical', term: t, message: `banned medical/therapy/safety term "${t}" in "${text}"` });
-  for (const [t, re] of m.bannedInflected) {
-    if (re.test(text) && !out.some((h) => h.rule === 'medical' && h.term === t)) out.push({ rule: 'medical', term: t, message: `an inflection of the banned medical/therapy/safety term "${t}" in "${text}"` });
+  for (const [t, matcher] of m.bannedLemmas) {
+    if (out.some((h) => h.rule === 'medical' && h.term === t)) continue;
+    const h = matcher.hit(text, toks);
+    if (h) out.push({ rule: 'medical', term: t, message: `"${h.word}", ${derivedFrom(h)} the banned medical/therapy/safety term "${t}", in "${text}"` });
   }
   for (const [t, re] of m.caution) if (re.test(text)) out.push({ rule: 'caution', term: t, message: `caution term "${t}" in "${text}" (needs a cautionWhitelist entry in planner/policy.json)` });
-  for (const t of c.topics) if (t.re.test(text)) out.push({ rule: `topic:${t.cat}`, term: t.term, message: `${t.cat} topic ("${t.term}") in "${text}"` });
+  for (const t of c.topics) {
+    const h = t.match.hit(text, toks);
+    if (h) out.push({ rule: `topic:${t.cat}`, term: t.term, message: `${t.cat} topic ("${t.term}"${h.path.length ? `, as "${h.word}": ${derivedFrom(h)} "${h.lemma}"` : ''}) in "${text}"` });
+  }
   for (const t of c.names) if (t.re.test(text)) out.push({ rule: `name:${t.cat}`, term: t.term, message: `real ${t.cat} name ("${t.term}") in "${text}"` });
   for (const t of c.breathHold) if (t.re.test(text)) out.push({ rule: 'breath-hold', term: t.term, message: `breath-hold, breathing-count or breathing-instruction phrasing in "${text}"` });
   const run = countRun(text);
@@ -427,11 +444,13 @@ export function lintCopy(copy, ctx0) {
 
 /**
  * Lint one hashtag ('#word', lowercase letters, digits, '_'): every medical,
- * caution, topic and name term (with the inflections of the lemma lists:
- * #suicidal, #smoked), and policy.lint.hashtags.terms, searched as a
- * substring of the glued tag ('_' removed). An occurrence is excused only
- * when a longer carrier word covers it (a library copy word or
- * policy.lint.hashtags.carriers: 'pillow' covers 'pill'). Terms of one or
+ * caution, topic and name term (with the inflections of the lemma lists and
+ * the stems their derivatives start with: #smoked, #suicidally, #starvation),
+ * and policy.lint.hashtags.terms, searched as a substring of the glued tag
+ * ('_' removed). An occurrence is excused only when a longer carrier word
+ * covers it: a library copy word, policy.lint.hashtags.carriers ('pillow'
+ * covers 'pill') or an innocent look-alike of policy.lint.morphology.notForms
+ * ('gravy', 'treaty'), so the line lint and the hashtag lint agree on them. Terms of one or
  * two letters ('ig', 'fb') count only as the whole tag. Fails closed.
  * A tag may not name a time of day either (#2am, #latenight, #bedtime): the
  * owner's list in library/brand.json goes on every video, whatever its time
@@ -443,7 +462,7 @@ export function lintHashtag(tag, { lib, policy = loadPolicy(), where = 'hashtag'
   const body = tag.slice(1).toLowerCase().replace(/_/g, '');
   const m = libMatchers(lib, policy), c = policy.compiled;
   const carrierSpans = [];
-  for (const w of new Set([...m.vocabulary, ...c.carriers])) {
+  for (const w of new Set([...m.vocabulary, ...c.carriers, ...c.morph.notForms.keys()])) {
     if (w.length < 3) continue;
     for (let j = body.indexOf(w); j >= 0; j = body.indexOf(w, j + 1)) carrierSpans.push([j, j + w.length, w]);
   }

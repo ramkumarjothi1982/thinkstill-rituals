@@ -443,3 +443,80 @@ test('FU-3: the brand is one lowercase word, also when split', () => {
   assert.deepEqual(rules(lintHook(['HUSH', 'MALLOW'], ctx())), ['brand-case'], 'across the row break');
   assert.deepEqual(rules(lintEnd(['Download', 'hushmallow.'], ctx())), ['topic:claims'], 'and no call to action');
 });
+
+// ---- FU-3 round 2: the stemmer in the lint path, derivation, participle terms, hashtags -----------------------
+
+test('FU-3 r2: derived forms are refused by the stemmer, not by a list (the round-2 verifier probe)', () => {
+  const cases = {
+    'topic:self-harm': ['Suicidally sad.'],
+    'topic:body-food': ['Starvation mode.', 'Fattening snacks.', 'Fasted all day.', 'Thinspo.', 'Proana tips.'],
+    'topic:alcohol': ['Drunken night.', 'Drunkenly.', 'Intoxicated.'],
+    'topic:death': ['Deathly tired.', 'Murderous mood.', 'Gravestone rubbing.'],
+    'topic:illness': ['Bloody Monday.', 'Sickening.', 'Hospitalized.', 'Medicated.', 'Infected.', 'Feverishly.', 'Vomity.', 'Influenza.'],
+    'topic:drugs': ['Addicted again.', 'Addiction.', 'Addict.', 'Smoky room.', 'Druggy haze.'],
+    'topic:appearance': ['Ugliness.'],
+    'topic:self-hatred': ['Stupidly.', 'Idiocy.', 'Worthlessness.', 'Uselessly.'],
+    'topic:catastrophe': ['Catastrophically.', 'Disastrously.', 'Warfare.'],
+    'topic:violence': ['Violently.', 'Gunfire.'],
+    'topic:claims': ['Downloaded.', 'Downloading.'],
+    'topic:clinical': ['Psychological.', 'Neurotic.'],
+  };
+  for (const [rule, texts] of Object.entries(cases)) for (const t of texts) assert.ok(rules(lintLine(t, 0, ctx())).includes(rule), `${t}: ${rules(lintLine(t, 0, ctx()))}`);
+  // the library's banned terms derive too, and a participle term stands for its verb (triggered → trigger)
+  for (const t of ['Depressing.', 'Depressive.', 'Traumatized.', 'Traumatised.', 'Insomniac.', 'Symptomatic.', 'Triggers.', 'Trigger warning.', 'Gaslit.', 'Toxicity.', 'Insanely tired.', 'Narcissistic.']) {
+    assert.deepEqual(rules(lintLine(t, 0, ctx())), ['medical'], t);
+  }
+  // the message names the word and how it derives
+  const msgs = errorsOf(lintLine('Suicidally sad.', 0, ctx())).map((i) => i.message);
+  assert.ok(msgs.some((m) => /self-harm topic \("suicide", as "suicidally": a derivative \(\+al \+ly\) of "suicide"\)/.test(m)), msgs.join(' | '));
+  assert.ok(msgs.some((m) => /"suicidally", a derivative \(\+al \+ly\) of the banned medical\/therapy\/safety term "suicide"/.test(m)), msgs.join(' | '));
+  // each listed derived word is gone from the lists: the stemmer derives it from its base
+  for (const [t, rule] of [['Suicidal thoughts.', 'topic:self-harm'], ['Alcoholic.', 'topic:alcohol'], ['Sickly feeling.', 'topic:illness'], ['Apocalyptic.', 'topic:catastrophe']]) {
+    assert.ok(rules(lintLine(t, 0, ctx())).includes(rule), t);
+  }
+});
+
+test('FU-3 r2: innocent look-alikes pass (weight guard, suffix order, notForms), and the library still does', () => {
+  for (const ok of ['Gravity wins again.', 'Gravy on everything.', 'A peace treaty.', 'Hospitality.', 'Weightless, floating.', 'A weighty choice.', 'Ginger tea, please.',
+    'Fatal error.', 'Father knows.', 'Warm hugs only.', 'Public speaking.', 'Stability first.', 'My heroine.', 'Deadline again.', 'Little treats.', 'Healthy snack.',
+    'Gravely serious.', 'Curation is fun.', 'Riotous colour.', 'Undying love.']) {
+    assert.deepEqual(rules(lintLine(ok, 0, ctx())), [], ok);
+  }
+});
+
+test('FU-3 r2: breath words in every form (thought lines, hooks, end cards)', () => {
+  for (const t of ['Exhaling slowly.', 'Inhaling.', 'Breathless.']) assert.ok(rules(lintLine(t, 0, ctx())).includes('line-breath'), t);
+  assert.ok(rules(lintHook(['ME EXHALING', 'AT 2 AM'], ctx())).includes('breath-word'));
+});
+
+test('FU-3 r2: policy lists stay lemmas: no single-word entry derives from another of its category', () => {
+  const kept = new Map([['injury', 'a noun of its own (injure + y is a coincidence of the rules)'], ['boozy', "its stem 'booz' is too short for the hashtag search, so the word is listed for #boozy"]]);
+  const morph = policy.compiled.morph;
+  for (const [cat, terms] of Object.entries(policy.lint.topics)) {
+    if (cat === 'source' || cat.startsWith('$')) continue;
+    const singles = terms.filter((t) => /^[a-z]+$/.test(t));
+    for (const e of singles) {
+      if (kept.has(e)) continue;
+      const from = singles.find((l) => l !== e && policy.compiled.topics.find((x) => x.cat === cat && x.term === l).match.test(e));
+      assert.equal(from, undefined, `${cat}: "${e}" derives from "${from}"; drop it from the list (the stemmer refuses it)`);
+    }
+  }
+  void morph;
+});
+
+test('FU-3 r2: hashtags: derived stems and new lemmas refused; reviewed carriers and notForms pass', () => {
+  const tag = (t) => rules(lintHashtag(t, { lib, policy }));
+  for (const [t, rule] of [['#starvation', 'topic:body-food'], ['#addicted', 'topic:drugs'], ['#depressing', 'medical'], ['#thinspo', 'topic:body-food'],
+    ['#proana', 'topic:body-food'], ['#suicidally', 'topic:self-harm'], ['#traumatized', 'medical'], ['#triggers', 'medical'], ['#gaslit', 'medical'], ['#anorexic', 'topic:body-food']]) {
+    assert.ok(tag(t).includes(rule), `${t}: ${tag(t)}`);
+  }
+  // the innocent tags the round-2 verifier found refused, the notForms, and common words with a term inside
+  for (const ok of ['#heroine', '#engine', '#ginger', '#origin', '#spill', '#billboard', '#engrave', '#warrior', '#stewardship', '#grievance', '#gravy', '#treaty',
+    '#hospitality', '#weightless', '#father', '#margin', '#audience', '#soldier', '#village', '#million', '#absolutely', '#begun', '#brand', '#whisk', '#bell']) {
+    assert.deepEqual(tag(ok), [], ok);
+  }
+  // still fail closed: a word nobody reviewed that holds a term is refused, with the fix in the message
+  const i = errorsOf(lintHashtag('#ginseng', { lib, policy }))[0];
+  assert.equal(i.rule, 'topic:alcohol');
+  assert.match(i.message, /add the word that contains it to policy\.lint\.hashtags\.carriers/);
+});

@@ -4,7 +4,7 @@
 
 import fs from 'node:fs';
 import { studioPath } from '../render/lib/paths.mjs';
-import { phraseForms, gluedForms } from './morph.mjs';
+import { phraseForms, gluedForms, derivationStems, derivation, tokenize, STOP_WORDS } from './morph.mjs';
 
 export const POLICY_FILE = studioPath('planner', 'policy.json');
 let cached = null;
@@ -38,6 +38,8 @@ const alternation = (fs) => (fs.length === 1 ? escapeRe(fs[0]) : `(?:${[...new S
  * opts.flex: a space or hyphen inside the term matches a space, a hyphen or
  * nothing ('coca-cola' → Coca Cola, cocacola; 'self harm' → self-harming,
  * selfharm). opts.morph: { irregular, notForms } (policy.lint.morphology).
+ * Names use this (a name is not a lemma); topic and medical lemmas use
+ * wordMatcher(), which runs the stemmer.
  */
 export function termRegex(term, { flex = false, inflect = false, morph = null } = {}) {
   const t = parseTerm(term, { inflectByDefault: inflect });
@@ -51,6 +53,64 @@ export function termRegex(term, { flex = false, inflect = false, morph = null } 
     if (flex) body = body.replace(/[ -]/g, '[\\s-]?');
   }
   return new RegExp(`(^|[^a-z0-9\u00c0-\u00ff])${body}($|[^a-z0-9\u00c0-\u00ff])`, 'i');
+}
+
+/**
+ * A lemma-list entry → a matcher that runs the stemmer on the words of a text
+ * (planner/morph.mjs analyze): { term, test(text, tokens?), hit(text, tokens?) }.
+ *   one word        matches every word the rule table derives from it,
+ *                   inflections and regular derivation (suicide → suicidally,
+ *                   starve → starvation), or only inflections when
+ *                   derive is false;
+ *   a phrase        matches its words in order, separated by spaces or
+ *                   hyphens; content words inflect ("self harm" →
+ *                   self-harming), function words (STOP_WORDS) are as
+ *                   written; glued into one word it matches its glued forms
+ *                   (selfharm, selfharming);
+ *   '=term'         only as written (abbreviations: '=kms', '=rip');
+ *   're:<src>'      that regular expression;
+ *   other characters than letters, digits, spaces, hyphens and apostrophes
+ *                   ('r.i.p', 'h&m'): as written.
+ * opts.heads: further lemmas the entry stands for (the inflectional bases of
+ * a term written inflected, morph.inflectionalBases: triggered → trigger).
+ * hit() → { word, lemma, path } of the first match (path: the rules that
+ * derive the word, innermost first) or null.
+ */
+export function wordMatcher(term, { derive = true, morph = null, heads = [] } = {}) {
+  const t = parseTerm(term, { inflectByDefault: true });
+  const asRegex = (re) => ({ term, test: (text) => re.test(text), hit: (text) => { const m = re.exec(text); return m ? { word: m[0].trim(), lemma: t.text, path: [] } : null; } });
+  if (t.kind === 're') return asRegex(new RegExp(t.text, 'i'));
+  const text = t.text.toLowerCase();
+  if (/[^a-z0-9' -]/.test(text)) return asRegex(termRegex(`=${text}`, { flex: true }));
+  const exact = !t.inflect;
+  const words = text.split(/[ -]/).map((w) => ({ w, fixed: exact || STOP_WORDS.has(w) || /[^a-z']/.test(w) }));
+  const single = words.length === 1;
+  const lemmas = single ? [text, ...heads] : null;
+  const glued = single ? null : new Set(exact ? [text.replace(/[^a-z0-9]/g, '')] : gluedForms(text, morph));
+  const wordHit = (tok, spec) => {
+    if (spec.fixed) return tok === spec.w ? [] : null;
+    return derivation(tok, spec.w, morph, { derive: false });
+  };
+  const hit = (s, toks = tokenize(s)) => {
+    if (single) {
+      for (const tok of toks) {
+        if (exact || words[0].fixed) { if (tok.w === text) return { word: tok.w, lemma: text, path: [] }; continue; }
+        for (const l of lemmas) { const path = derivation(tok.w, l, morph, { derive }); if (path) return { word: tok.w, lemma: l, path }; }
+      }
+      return null;
+    }
+    for (let i = 0; i + words.length <= toks.length; i++) {
+      let ok = true;
+      for (let k = 0; k < words.length && ok; k++) {
+        if (k > 0 && !/^[\s-]+$/.test(s.slice(toks[i + k - 1].end, toks[i + k].at))) ok = false;
+        else if (wordHit(toks[i + k].w, words[k]) === null) ok = false;
+      }
+      if (ok) return { word: s.slice(toks[i].at, toks[i + words.length - 1].end), lemma: text, path: [] };
+    }
+    for (const tok of toks) if (glued.has(tok.w.replace(/'/g, ''))) return { word: tok.w, lemma: text, path: [] };
+    return null;
+  };
+  return { term, test: (s, toks) => hit(s, toks) !== null, hit };
 }
 
 /**
@@ -68,13 +128,24 @@ export function gluedForm(term) {
 /**
  * Every glued spelling of a term inside a hashtag: gluedForm(), plus, for an
  * inflecting entry, its inflected forms glued (planner/morph.mjs gluedForms:
- * #suicidal, #smoked, #selfharming). [] for 're:' patterns.
+ * #smoked, #selfharming), plus, for a one-word lemma that derives, the
+ * spellings its regular derivatives start with (morph derivationStems:
+ * suicide → suicid, so #suicidally; starve → starv, so #starvation).
+ * opts.heads: further lemmas the entry stands for (triggered → trigger).
+ * [] for 're:' patterns.
  */
-export function gluedVariants(term, { inflect = false, morph = null } = {}) {
+export function gluedVariants(term, { inflect = false, derive = false, morph = null, heads = [] } = {}) {
   const t = parseTerm(term, { inflectByDefault: inflect });
   if (t.kind === 're') return [];
   const base = gluedForm(term);
-  return [...new Set([...(base ? [base] : []), ...(t.inflect ? gluedForms(t.text, morph) : [])])];
+  const out = new Set(base ? [base] : []);
+  if (t.inflect) {
+    for (const lemma of [t.text, ...heads]) {
+      for (const g of gluedForms(lemma, morph)) out.add(g);
+      if (derive && !/[ -]/.test(lemma)) for (const s of derivationStems(lemma)) out.add(s);
+    }
+  }
+  return [...out];
 }
 
 const need = (cond, msg) => { if (!cond) throw new Error(`planner/policy.json: ${msg}`); };
@@ -122,7 +193,7 @@ export function compilePolicy(p) {
   const mo = lint.morphology;
   const lower = (w) => typeof w === 'string' && /^[a-z][a-z']*$/.test(w);
   need(mo && mo.irregular && typeof mo.irregular === 'object' && Object.entries(mo.irregular).every(([k, v]) => lower(k) && Array.isArray(v) && v.length && v.every(lower)), 'lint.morphology.irregular ({ lemma: [irregular forms] }, lowercase words)');
-  need(Array.isArray(mo.notForms) && mo.notForms.every(lower), 'lint.morphology.notForms (lowercase words)');
+  need(mo.notForms && typeof mo.notForms === 'object' && !Array.isArray(mo.notForms) && Object.entries(mo.notForms).every(([w, why]) => lower(w) && typeof why === 'string' && why.trim().length > 0), 'lint.morphology.notForms ({ word: reason }, lowercase words, each with its reason)');
   for (const [cat, terms] of Object.entries(lint.topics).filter(([k]) => k !== 'source' && !k.startsWith('$'))) {
     need(Array.isArray(terms) && terms.every((t) => typeof t === 'string' && t.trim() === t && t.length > 0 && (t.startsWith('re:') || t === t.toLowerCase())), `lint.topics.${cat}: lowercase terms (a lemma, '=term' as written, or 're:<regex>')`);
   }
@@ -139,14 +210,15 @@ export function compilePolicy(p) {
   const lists = (o) => Object.entries(o).filter(([k]) => k !== 'source' && !k.startsWith('$'));
   const timePhrases = lists(tp);
   for (const [classes, terms] of timePhrases) need(/^[a-z-]+(\|[a-z-]+)*$/.test(classes) && Array.isArray(terms) && terms.every((t) => typeof t === 'string' && t && !t.startsWith('re:')), `lint.timePhrases.${classes}`);
-  // topic entries are lemmas: each matches its inflections (planner/morph.mjs); names inflect when written 'name+'
-  const morph = Object.freeze({ irregular: mo.irregular, notForms: new Set(mo.notForms) });
+  // topic entries are lemmas: the stemmer matches their inflections and regular derivatives (planner/morph.mjs); names inflect when written 'name+'
+  const morph = Object.freeze({ irregular: mo.irregular, notForms: new Map(Object.entries(mo.notForms)) });
   // the term as messages show it: the entry without its '+' or '=' marker
   const shown = (t) => (t.startsWith('re:') ? t : parseTerm(t).text);
-  const glue = (rule, term, inflect) => gluedVariants(term, { inflect, morph }).map((g) => ({ rule, term: shown(term), glued: g }));
+  const glue = (rule, term, inflect) => gluedVariants(term, { inflect, derive: inflect, morph }).map((g) => ({ rule, term: shown(term), glued: g }));
   const compiled = {
     morph,
-    topics: lists(lint.topics).flatMap(([cat, terms]) => terms.map((t) => ({ cat, term: shown(t), re: termRegex(t, { flex: true, inflect: true, morph }) }))),
+    // a topic entry is a lemma: the stemmer matches every word the rule table derives from it (planner/morph.mjs)
+    topics: lists(lint.topics).flatMap(([cat, terms]) => terms.map((t) => ({ cat, term: shown(t), match: wordMatcher(t, { derive: true, morph }) }))),
     names: lists(lint.names).flatMap(([cat, terms]) => terms.map((t) => ({ cat, term: shown(t), re: termRegex(t, { flex: true, morph }) }))),
     breathHold: lint.breathHold.map((t) => ({ term: t, re: termRegex(t) })),
     breathWordKinds: new Set(lint.breathWords.kinds),

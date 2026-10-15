@@ -13,7 +13,7 @@ import { mkWorkTemp } from '../../render/lib/paths.mjs';
 import { flipRows } from '../../render/lib/png.mjs';
 import { withTimeout, WatchdogError, topDownSha256, engineUrl, outputSize, claimNext, ENGINE_ARGS, FRAME_TIMEOUT_MS, STUDIO_URL } from '../../render/worker.mjs';
 import { planSegments, tryLock, writeDone, segPaths, recordFailure, sha256File } from '../../render/segment.mjs';
-import { jobStatus, parseRange, DEFAULTS, JOB_STATES, diskCheck, sequentialGoldenCheck } from '../../render/farm.mjs';
+import { jobStatus, parseRange, DEFAULTS, JOB_STATES, diskCheck, sequentialGoldenCheck, jobParams, composedInputs, resolveDirection } from '../../render/farm.mjs';
 import { parseArgs } from '../../cli/commands/render.mjs';
 
 const HM = fileURLToPath(new URL('../../cli/hm.mjs', import.meta.url));
@@ -33,8 +33,9 @@ test('frame hash: sha256 of the top-down rows, computed on the bottom-up buffer 
 });
 
 test('engine URL, output size and the explicit SwiftShader flags (R2)', () => {
-  const p = { ...DEFAULTS, direction: 'my-brain-at-2am-v2' };
-  assert.equal(engineUrl(p), `${STUDIO_URL}/engine/index.html?direction=my-brain-at-2am-v2&w=1080&h=1920&scale=1&seed=20261013`);
+  const p = { ...DEFAULTS, profile: 'exact', direction: 'my-brain-at-2am-v2' };
+  assert.equal(engineUrl(p), `${STUDIO_URL}/engine/index.html?direction=my-brain-at-2am-v2&w=1080&h=1920&scale=1&seed=20261013`, 'exact: the page default');
+  assert.match(engineUrl({ ...DEFAULTS, direction: 'x' }), /&profile=final$/, 'the farm default (final) is named in the URL');
   assert.match(engineUrl({ ...p, scale: 0.5, mark: 'DRAFT' }), /scale=0\.5&seed=20261013&mark=DRAFT$/);
   assert.deepEqual(outputSize({ width: 1080, height: 1920, scale: 0.5 }), { width: 540, height: 960 });
   assert.deepEqual(outputSize({ width: 1080, height: 1920, scale: 1 / 3 }), { width: 360, height: 640 });
@@ -83,12 +84,13 @@ test('job status: segments, ETA from measured ms per sub-frame; frames range par
 
 test('sequential golden: applies only at the golden parameters, and names mismatching frames', () => {
   const ref = JSON.parse(fs.readFileSync(new URL('../../qa/golden/v2/sequential-frames.json', import.meta.url), 'utf8')).hashes;
-  const job = { direction: 'my-brain-at-2am-v2', params: { ...DEFAULTS }, frames: [0, 450] };
+  const job = { direction: 'my-brain-at-2am-v2', params: jobParams({ direction: 'my-brain-at-2am-v2', profile: 'exact' }), frames: [0, 450] };
   const ok = sequentialGoldenCheck(job, ref);
   assert.deepEqual({ ...ok, mismatched: ok.mismatched.length }, { golden: 'qa/golden/v2/sequential-frames.json', frames: 450, identical: 450, mismatched: 0 });
   const part = sequentialGoldenCheck({ ...job, frames: [90, 95] }, ref.slice(90, 95).map((h, i) => (i === 2 ? 'x' : h)));
   assert.deepEqual(part.mismatched, [92]);
-  assert.equal(sequentialGoldenCheck({ ...job, params: { ...DEFAULTS, scale: 0.5 } }, ref), null);
+  assert.equal(sequentialGoldenCheck({ ...job, params: { ...job.params, scale: 0.5 } }, ref), null);
+  assert.equal(sequentialGoldenCheck({ ...job, params: jobParams({ direction: 'my-brain-at-2am-v2' }) }, ref), null, 'the default (final) profile is not the golden');
   assert.equal(sequentialGoldenCheck({ ...job, direction: 'dev/text-a' }, ref), null);
   // T01 composed through runtime v3 (WP-03) is held to the same frames
   assert.equal(sequentialGoldenCheck({ ...job, direction: 'composer/t01-v2' }, ref).identical, 450);
@@ -111,4 +113,23 @@ test('hm render: options parse; --list shows the registered (non-fixture) direct
   assert.equal(st.status, 0, st.stderr);
   assert.match(st.stdout, /disk studio: [\d.]+ GB free/);
   assert.match(st.stdout, /heavy lock/);
+});
+
+test('a composed direction brings its own spec: found beside it by name and fingerprint; a code module has none', async () => {
+  const t01 = await resolveDirection('composer/t01-v2');
+  const inp = composedInputs(t01);
+  assert.match(inp.directionFile, /specs\/golden\/t01-v2\.direction\.json$/);
+  assert.match(inp.specFile, /specs\/golden\/t01-v2\.json$/);
+  assert.equal(inp.fingerprint, JSON.parse(fs.readFileSync(inp.specFile, 'utf8')).fingerprint);
+  assert.equal(composedInputs(await resolveDirection('my-brain-at-2am-v2')), null, 'the frozen v2 module is code: no spec');
+  // a direction whose neighbour spec has another fingerprint gets none (QA would judge the wrong spec)
+  const dir = mkWorkTemp('composed-');
+  try {
+    const d = JSON.parse(fs.readFileSync(t01.src, 'utf8'));
+    fs.writeFileSync(path.join(dir, 'x.direction.json'), JSON.stringify(d));
+    fs.writeFileSync(path.join(dir, 'x.json'), JSON.stringify({ ...JSON.parse(fs.readFileSync(inp.specFile, 'utf8')), fingerprint: 'sha256:other' }));
+    assert.equal(composedInputs({ src: path.join(dir, 'x.direction.json') }).specFile, null);
+    fs.writeFileSync(path.join(dir, 'spec.json'), fs.readFileSync(inp.specFile));
+    assert.equal(composedInputs({ src: path.join(dir, 'x.direction.json') }).specFile, path.join(dir, 'spec.json'), 'spec.json beside it, with the right fingerprint');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

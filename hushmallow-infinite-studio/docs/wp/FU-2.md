@@ -9,9 +9,22 @@ score id. New directions name `'hm-score'`; the golden T01 keeps `'soundtrack-v2
 A circular score is delivered with no pre-roll behind its edit list, which the switch needed to meet
 the lead decision.
 
+**Round 2 (2026-10-15).** An adversarial verifier found four ways past the round-1 lint. All four are
+closed, and so are the near variants of each, by fixing the model rather than moving a limit:
+- **The scooped thump.** A thump's "its pitch does not rise" is now read from where its energy is, not from the
+  raw glide.
+- **The staggered or lopsided ring.** A ring's two tones are paired while they *sound together*, not only
+  inside one 30 ms onset cluster. A quieter second tone counts by how much the pair's level swings.
+- **The out-of-band masker.** Masking stays in the thump's register. Thumps within 100 ms are one beat.
+- **Pips and slides.** Pips (pitched, but too short for a beep) and a chirp sliding into a note make a
+  two-tone.
+
+See "Round 2" below. The approved cues stay clean everywhere tried, and every round-1 result holds.
+
 Machine: 4 cores, no GPU, Node v22, Chromium from Playwright 1.56.1, ffmpeg 6.1.1, 2026-10-14/15. Every
 render, QA run and decode ran under the heavy lock: shared for renders, tests and QA, exclusive for the
-remux timing. Scratch work and logs are in `/home/user/hm-work/fu2/` (logs in `fu2/logs/`).
+remux timing. Scratch work and logs are in `/home/user/hm-work/fu2/` (logs in `fu2/logs/`); round 2's are in
+`/home/user/hm-work/fu2b/` (logs in `fu2b/logs/`).
 
 ## What was built
 
@@ -28,8 +41,8 @@ The four WP-04 gaps, and what replaced each:
 |---|---|
 | **"Steady" was decided from the raw glide in cents.** An inaudible 2 ms scoop turned a beep into a non-signal. | **Steady is decided from where the energy sits.** A tone is steady when ≥ 85 % of its energy lies within ±25 cents of its energy-weighted median pitch, and that median is its pitch. A 2 ms scoop under a 4 ms attack keeps ≥ 97 % of the energy at any depth (110 to 2,400 cents). The least-moving approved chirp is v2's flinch, at 78 %; v2's blink is at 66 %. Both stay chirps. Vibrato deeper than 100 cents counts against steadiness, unless it is a trill (≥ 10 Hz: a bell ring). |
 | **Engine voices were always unpitched.** | **Every engine fx voice is modelled as the app builds it.** That covers 29 voices (`ENGINE_FX`, transcribed read-only from `hushmallow/src/engine/audio.js` FX): tones, noise, grains, additive bells and pads. Each takes its pitch from `pitch` and the pentatonic `note`, its level from A × trim, and the voice's cut. A voice at pan 0 has no panner, so it is mono at full gain (+3 dB against a studio strip). The engine's noise buffers are already stereo. The model is checked against the engine itself (§ parity). The Mallow's own gestures are kit-specific and stay opaque: one part, ranked by `ENGINE.eff` and limited as a stack (`LOUD.voice`). |
-| **No telephone ring was modelled.** | **A ring burst** is any of: two steady tones 50–250 cents apart sounding together at comparable level (the beating two-tone of a phone line); a trill; or one plain steady tone held ≥ 0.8 s. It must be held ≥ 0.3 s. It is a ringtone when held ≥ 1 s (not the plain tone) or repeated within 6 s. That window covers every national ring cadence: UK 3 s, Europe 5 s, US 6 s. |
-| **Heartbeat limits were escaped just past their boundary** (0.36 s decay, 55 ms attack, a 270 Hz tom). | **The thump was redefined.** It is low by **energy**: ≥ 70 % of its energy is in tones whose energy sits ≤ 340 Hz and whose pitch does not rise, or in noise ending ≤ 680 Hz. Its attack must be ≤ half the lub-dub interval (otherwise the two beats merge into one swell). Its body must be ≤ 1.5 s. It must be in the foreground: no sound twice as loud started in the 100 ms before it. A thump no longer has a fixed attack or decay limit. 340 Hz sits a minor third under the flinch (410 Hz). v2's landing bloop (274 Hz) rises, so it is not a thump. The landing's wobbling tail is masked by its splat. |
+| **No telephone ring was modelled.** | **A ring burst** is any of: two steady tones 50–250 cents apart sounding together (the beating two-tone of a phone line); a trill; or one plain steady tone held ≥ 0.8 s. It must be held ≥ 0.3 s. It is a ringtone when held ≥ 1 s (not the plain tone) or repeated within 6 s. That window covers every national ring cadence: UK 3 s, Europe 5 s, US 6 s. Round 2 defines "sounding together" as the two bodies overlapping by ≥ 0.3 s, wherever each starts, at an interval that holds. The pair must beat at ≥ 10 Hz and its level must swing ≥ 3 dB. Each tone need only hold its pitch within ±150 cents and bend ≤ 100 cents, so a drifting or wobbling ring still rings. Round 1 required one onset cluster, steady tones (±25 cents) and the quieter tone at ≥ 0.5×. See "Round 2". |
+| **Heartbeat limits were escaped just past their boundary** (0.36 s decay, 55 ms attack, a 270 Hz tom). | **The thump was redefined.** It is low by **energy**: ≥ 70 % of its energy is in tones whose energy sits ≤ 340 Hz and whose pitch does not bend up by more than 150 cents while it sounds (round 2; round 1 used the raw glide), or in noise ending ≤ 680 Hz. Its attack must be ≤ half the lub-dub interval (otherwise the two beats merge into one swell). Its body must be ≤ 1.5 s. It must be in the foreground: no sound twice as loud **in its register** started in the 100 ms before it (round 2; round 1 took any sound). A thump no longer has a fixed attack or decay limit. 340 Hz sits a minor third under the flinch (410 Hz). v2's landing bloop (274 Hz) bends up 278 cents, so it is not a thump. The landing's wobbling tail is masked by its splat. |
 
 Further detectors and limits, each derived from a probe class:
 
@@ -40,11 +53,16 @@ Further detectors and limits, each derived from a probe class:
   - 2–24 signal notes, played again (the Nokia figure has 13 notes; WP-04 capped figures at 12).
   - Or 3–24 steady notes of any length: a marimba or chime ringtone. A pair of chimes played again is a
     doorbell figure the brand uses (MO-CLOSE), not a ringtone.
-- **Messenger pop.** As before for signal notes. Two further cases count:
+- **Messenger pop.** As before for signal notes. Further cases count:
   - two long-ringing notes **louder than v2's own celesta pairs** (`LOUD.chimePair`, calibrated on the
     eyes-open pair);
-  - two **chirps of the same kind** (waveform, glide direction and size within 1.5×) a whole tone apart within
-    150 ms. v2's double blink, the closest approved pair, is 240 ms apart; land → ripple is 200 ms.
+  - two **chirps of the same kind** a whole tone apart within 150 ms. "Same kind" means the same direction and a
+    size within 1.5×. Round 2 measures this by their `bend`, whatever the waveform; round 1 used the same
+    waveform and the raw glide. v2's double blink, the closest approved pair, is 240 ms apart; land → ripple is
+    200 ms;
+  - (round 2) two **pips** a whole tone apart within 300 ms. A pip is a steady tone under 30 ms whose body holds
+    ≥ 4 cycles;
+  - (round 2) a **chirp and a note** a whole tone apart within 150 ms: a slide into a two-tone.
 
   Every pop sounds above the thumps' register (340 Hz).
 - **Jump scare.** The summed RMS envelope now includes the engine fx voices, so engine and studio levels add up.
@@ -65,11 +83,13 @@ The limits that changed (all in `SHAPE` / `LOUD`):
 | note.maxStruck | 0.5 s (bell measured without its attack) | 0.5 s (bell 3 ms attack + decay) | v2's sleepy tink, 0.553 s, stays a chime |
 | train.tones | — | 4 | three approved repeats are a gag; four pings or clicks at 1 s are an alarm |
 | figure.maxLen / chimeLen | 12 / — | 24 / 3 | the Nokia figure is 13 notes |
-| ring | — | dual 50–250 cents, level ≥ 0.5×, body ≥ 0.3 s, held 1 s, single tone 0.8 s, cadence 6 s | national ring cadences; a major third (386 c) is a chord |
-| lubDub.lowHz / lowNoiseHz | 250 / 500 Hz | 340 / 680 Hz, no rising tone | tom probe 280 Hz (median); flinch 410 Hz |
+| ring | — | dual 50–250 cents, overlapping ≥ 0.3 s (R2: any onsets), interval holding (R2: moves ≤ half itself), beating ≥ 10 Hz (R2), level swing ≥ 3 dB (R2; R1: quieter ≥ 0.5×), held 1 s, single tone 0.8 s, cadence 6 s (R2: the repeat starts after the burst); ring tones hold their pitch: ±150 cents and bend ≤ 100 cents (R2 `ring.maxBend`; R1: steady, ±25 cents) | national ring cadences; a major third (386 c) is a chord; the phone lines beat at 25–50 Hz; a 3 dB swing is the quieter tone at 17 %; v2's breaths bend 142–181 cents; lens-focus converges |
+| lubDub.lowHz / lowNoiseHz | 250 / 500 Hz | 340 / 680 Hz | tom probe 280 Hz (median); flinch 410 Hz |
+| lubDub.maxBend (R2; R1: maxRise) | — | bend ≤ 150 cents (R1: raw glide ≤ 300 cents) | 150 = `SHAPE.drift`, the lint's "same pitch"; v2's rising bloops bend 268 (release) and 278 (landing) cents; a 2 ms scoop of any depth bends 0 |
 | lubDub.maxAttack / maxDur | 50 ms / 0.35 s (−60 dB) | ≤ ½ interval / body ≤ 1.5 s | thrum (50 ms swell, 0.68 s body) and settle are thumps |
-| lubDub mask | — | 100 ms, 2× | v2's landing splat masks its own tail |
-| pop chirps / chimes | — | 150 ms, glide 1.5× / > LOUD.chimePair | drips pop; double blink (240 ms) and celesta pairs do not |
+| lubDub mask | — | 100 ms, 2× in the thump's register (R2; R1: any sound's lead); thumps within 100 ms are one beat (R2) | v2's landing splat masks its own tail; a 2 kHz tick masks no 60 Hz thump |
+| note.minCycles (R2) | — | a pip's body holds ≥ 4 cycles | below about 4 cycles the spectral blur (about 1/cycles, > 25 %) is wider than a major third |
+| pop chirps / chimes | — | 150 ms, bend 1.5× any waveform (R2; R1: glide 1.5×, same waveform) / > LOUD.chimePair; chirp + note within 150 ms (R2) | drips pop; double blink (240 ms) and celesta pairs do not |
 | LOUD | rise 0.0773, riser 0.0773, bright 0.0155, engine 0.9 | + noise 0.0228, voice 0.5125, chimePair 0.0178 | v2 maxima 0.0161 (landing noise), 0.362 (drift sigh), 0.0126 (eyes-open pair), + 3 dB |
 
 ### 2. G-AUDIO lints the whole score plan (`qa/gates/audio-gate.mjs`)
@@ -136,6 +156,48 @@ exactly like the approved master. WP-04's loop was 1.02 s late.
 
 `render/mux.mjs` is unchanged: it calls `muxLoop`.
 
+*Since round 1, FU-5 has extended `audio/loop-aac.mjs`: the `edit` and `circular` options, no picture offset, and
+the last packet trimmed in stts. Its section 4 is now the reference for delivered timing and for the open owner
+decision on the priming edit. Round 2 did not touch the file.*
+
+## Round 2: the verifier's four gaps (`audio/lint-shapes.mjs`)
+
+An adversarial verifier (`WORK/verify-fu2/`) got four classes of banned sound past the round-1 lint, at the
+recipe level and inside a real hm-score plan through G-AUDIO. Each fix below changes what the model reads, not
+just the size of a limit, and each closes the near variants of its gap too.
+
+| Verifier gap | Cause | Fix |
+|---|---|---|
+| **1. The scooped thump.** A 60 Hz lub-dub with a 2 ms onset scoop (or 5 ms from 30 Hz, or only the lub scooped) passed; the steady control was rejected. | `isLow` decided "its pitch does not rise" from the raw glide f0 → f1 (scoop: 498 cents). That is the scooped-beep trick FU-2 had fixed for steadiness. | **A part's `bend`** (`pitchStats`): the energy-weighted median pitch of the later half of its energy minus that of the earlier half. A scoop under the attack, or a glide that runs on after the sound has died, moves neither median: its bend is 0 at any depth (300–3600 cents in 1–5 ms, tested). A thump's tones must bend up by ≤ `lubDub.maxBend` = 150 cents, the lint's own "same pitch" (`SHAPE.drift`). v2's rising bloops bend 268 cents (release) and 278 cents (landing): they stay bloops, and the landing stays a non-thump (`fu2b/logs/approved-parts-1.log`). |
+| **2. The staggered or lopsided ring.** The US ring with its 480 Hz tone 40 ms late passed, and so did the UK ring with 450 Hz at 0.45×. My own probes found two more escapes of the same class: each tone drifting 60 cents over its burst, and a 120-cent vibrato. | `ringBurst` paired two tones only inside one 30 ms onset cluster. The single-tone fallback missed too, because 440 → 480 Hz is 151 cents against a 150-cent drift. The level rule was 0.5×. Ring tones had to be *steady* (±25 cents), which is the beep/chirp boundary calibrated on v2's chirps, not a property of a ring. | **`ringBursts(cs)` pairs tones by what they do together.** Each ring tone **holds its pitch**: ≥ 85 % of its energy within ±150 cents (`SHAPE.drift`), and it bends ≤ `ring.maxBend` = 100 cents, vibrato aside. A ring drifting up to about 200 cents per burst still rings. v2's breaths glide a fifth and bend 142–181 cents at every duration: a sigh. A dual burst is two such tones whose bodies **overlap ≥ 0.3 s**, wherever each starts. Their interval is measured over the overlap, weighted by the product of their levels (`pairInterval`). It must be 50–250 cents and **hold**: it moves by at most half itself, so the app's `lens-focus` pair, converging to unison, is a tuning. The pair must **beat at ≥ 10 Hz** (`trill.rate`; the phone lines beat at 25–50 Hz; two low thumps beating at 7.5 Hz are a wobble). Its **level swing (1 + r)/(1 − r) must be ≥ 3 dB** (`ring.beatDb`; the quieter tone at ≥ 17 %; 0.45× swings 8.4 dB). A trill is any held tone warbling ≥ 10 Hz, ≥ 50 cents deep. A cadence's repeat starts after the first burst has ended. |
+| **3. The out-of-band masker.** A 60 Hz lub-dub with 2/2.2 kHz pings (2.5× louder) 40 ms before each beat gave no finding. | `masked()` let any louder non-thump sound in any band hide a thump that started ≤ 100 ms after it. | **Masking stays in the thump's register** (`registerLevel`). The masker's level counts in full only from tones, bells and narrow bands whose energy sits ≤ 340 Hz (in either glide direction). Broadband noise counts by the share of its band below 680 Hz. A higher tone counts not at all, and neither does an opaque gesture, whose spectrum is unknown. The landing's splat still masks its own tail: its 190 → 92 Hz flump is 2.4× the tail. A louder **thump** masks too, and thumps within 100 ms are **one beat**, heard at the loudest. A flam or a grace thump before each beat is still a lub-dub. Round 1 let a thump never mask, so a flam escaped by breaking the pair's "standing out". |
+| **4. Pips and slides.** A two-tone or tri-tone of 25–28 ms pips passed, and so did a rising chirp followed by a steady note a fifth up. | `isSignal` needs ≥ 30 ms (−60 dB). A pip was therefore neither a signal, a chime nor a chirp. Chirps paired only with chirps of the same waveform. | **Pips** (`isPip`): a steady tone under 30 ms whose body (above −20 dB) holds ≥ 4 cycles (`note.minCycles`). Below that its spectral blur (about 1/cycles, > 25 %) is wider than a major third, so no interval is heard. Pips are **two-tone notes** (300 ms window). A **chirp and a note** (beep, pip or loud chime) a whole tone apart **within 150 ms** are a slide into a two-tone. **Chirp kinds** are compared by `bend`, whatever the waveform. A sine and then a triangle drip, or a drip whose glide runs on twice as far after it has died, are the same drip again. |
+
+**Judgement calls, walked from both sides in the tests.**
+- **Pips are no alarm beeps.**
+  - Two 25 ms pips at one pitch are a double click.
+  - Three are a gag.
+  - Four at a steady interval are an alarm (`train.tones`, as before).
+  - Beep-beep and the 3-beep train keep the 30 ms floor (`note.minDur`, now walked: 32 ms beep-beep → alarm,
+    28 ms → clean).
+
+  A pip's pitch matters for a two-tone. Its sustain is what makes a beep.
+- **Low-pass noise thumps at 800 Hz are a knock, not a heartbeat.** The noise register ends at 680 Hz: twice
+  340 Hz, where a uniform band's energy median sits at the tones' limit. It is now walked (659 Hz → heartbeat,
+  700 Hz → clean).
+- **The app's own `unlock` and `star` voices stay clean.** unlock's pop chirp sits 184 cents under its first
+  bell. Its second bell is under `LOUD.chimePair`.
+
+**What the verifier's scripts give now** (unchanged scripts, `fu2b/logs/`):
+
+| Script | Round 1 | Round 2 |
+|---|---|---|
+| `probe-extra.mjs` (26 near variants) | 13 rejected, 13 pass: the 8 named in the gaps, the sine-then-triangle chirps, and the 4 below | **22 rejected**; the 4 that pass are the judgement calls above (800 Hz knock, 3 pips, `unlock`, `star`) |
+| `probe-mask.mjs` | lub-dub + 2 kHz ticks at 0.10: `[]` | heartbeat at every tick level |
+| `gate-inject.mjs` (G-AUDIO on a default hm-score plan) | scooped lub-dub, staggered US ring, pip tri-tone: shapes **pass** | all three **fail** G-AUDIO (heartbeat, ringtone, messenger-pop); the baseline plan passes |
+| `gate-inject2.mjs` | lub-dub behind ticks: shapes pass | **fail** |
+| `probe-vib.mjs` (vibrato beeps) | 5/5 rejected | 5/5 rejected |
+
 ## Files
 
 - **Changed:**
@@ -146,13 +208,22 @@ exactly like the approved master. WP-04's loop was 1.02 s late.
   - `audio/splice.mjs` (reports the pre-roll frames);
   - `qa/gates/audio-gate.mjs`;
   - `composer/compose.js` (the `meta.score` default only);
-  - `tests/unit/audio-lint.test.mjs` (extended: 14 → 18 tests);
+  - `tests/unit/audio-lint.test.mjs` (extended: 14 → 18 tests; round 2: 19, the limit walk rewritten for the new rules);
   - `tests/unit/audio-mux.test.mjs` (+2 tests).
 - **New:**
-  - `tests/unit/audio-gate.test.mjs` (4);
+  - `tests/unit/audio-gate.test.mjs` (4; round 2: test 2 holds the verifier's four gate-level injections);
   - `tests/unit/score-switch.test.mjs` (2);
   - `tests/parity/audio-lint-engine.test.mjs` (1);
   - `docs/wp/FU-2.md`.
+- **Round 2** changed only `audio/lint-shapes.mjs`, `tests/unit/audio-lint.test.mjs`, `tests/unit/audio-gate.test.mjs`
+  and this report:
+  - `lint-shapes.mjs`: `pitchStats` → `bend` and `holdWide`; parts carry `bend`, `holds`, `warble` and their
+    pitch `path`; `isPip`, `registerLevel`, `beats`, `ringBursts` (replaces `ringBurst`), `pairInterval`,
+    `beatDepth`; `sameChirp` by bend; `messengerPop`;
+  - `SHAPE`: `lubDub.maxBend` replaces `maxRise`, `ring.beatDb` replaces `ring.level`; `ring.maxBend` and
+    `note.minCycles` are new.
+
+  `qa/gates/audio-gate.mjs` needed no change: it calls `lintEvents`.
 - **Unchanged:**
   - frozen `audio/soundtrack.mjs`, `audio/soundtrack-v2.mjs` and every other frozen file
     (`hm guard`: frozen v2 ok);
@@ -173,6 +244,12 @@ the acceptance set").
 | test "every probe class past its boundary" | 22 further variants, all rejected in their category: dual-tone rings at 880+960 Hz and on triangles every 2 s; the 425 Hz European cadence; a 25 Hz trill held 1.2 s; scoops of 600 and 2,400 cents; a scoop over the whole attack; a glass figure, pluck and bubble two-tones; chime ×4 and pluck ×3 trains; rotate-tick ×4; lub-dubs with 0.6 s tails, 120 ms attacks, energy at 320 Hz, on the engine drop-in, after a quieter tick; snap at 0.6 × 0.8; a kit voice at full force; a 4 kHz noise burst; crackle at full intensity + a quiet hit |
 | test "each limit, walked from both sides, past the boundary" | Every limit is walked from both sides (pass/fail ±2–5 % or ±10 cents/20 ms around it): beep vs chime length (3 vs 4 chimes); the steadiness share (glide solved at 87 % and 83 %); drift; train gap; lub-dub interval, register, rising bloop, attack share, body, masking; pop gap and interval; chirp-pop gap and interval; chime-pair level; ring dual range at both ends, cadence gap, level ratio, burst body, held time; the single-tone ring; trill rate and depth; figure length 24; doorbell vs 3-note chime figure; the rise, noise and voice limits. Pass. |
 | `node /home/user/hm-work/verify-wp04r2/lint-evade2.mjs`; `node /home/user/hm-work/verify-wp04/mine/lint-evade.mjs` | R2: all 18 named cases rejected, as in WP-04. The single 400 → 1600 Hz bubble chirp still passes (v2's ripple shape; the R2 reviewer did not list it). R1: 10/10 rejected. |
+| **Round 2:** `node /home/user/hm-work/verify-fu2/probe-extra.mjs` (the FU-2 verifier's script, verbatim) | **22 rejected, 4 pass** (`fu2b/logs/probe-extra.log`; round 1: 13 and 13). Newly rejected: both scooped lub-dubs (heartbeat); the US ring with 480 Hz 40 ms late and the UK ring at 0.45× (ringtone); the 25 ms and 28 ms pip two-tones, the pip tri-tone, the slide into a fifth, and the sine-then-triangle chirps (messenger-pop). The 4 that pass are the judgement calls: the 800 Hz low-pass knock, three pips, and the app's `unlock` and `star`. |
+| **Round 2:** `node /home/user/hm-work/verify-fu2/probe-mask.mjs` | lub-dub alone, and with 2/2.2 kHz ticks at 0.06 or 0.10: **heartbeat** every time (round 1: `[]` behind the 0.10 ticks) |
+| **Round 2:** `node /home/user/hm-work/verify-fu2/gate-inject.mjs`; `gate-inject2.mjs` (G-AUDIO's `audioGate` on a default hm-score plan) | baseline **pass**. Steady lub-dub, scooped lub-dub, US ring together and 40 ms late, pip tri-tone, lub-dub alone and behind 2 kHz ticks: every one **fails** G-AUDIO `shapes`, each in its category (`fu2b/logs/gate-inject*.log`; round 1 passed the scooped lub-dub, the late ring, the tri-tone and the ticks) |
+| **Round 2:** test "FU-2 R2: the verifier's escapes are rejected" | 27 cases, each in its own category: the verifier's 13; the near variants of each fix (scoop on the lub only, 301 cents in 1 ms, the ring 0.3 s late, at 0.25×, drifting 60/120 cents, one tone drifting, a 120-cent vibrato, the 425 Hz ring and a trill bell drifting, 12 ms pips, a beep then a falling chirp, a drip whose glide runs on, a hiss masker, a grace thump, flams); `probe-mask` at four tick levels. Pass. |
+| **Round 2:** test "each limit …", extended | New walks from both sides: `note.minDur` (32 ms beep-beep → alarm, 28 ms → clean; three pips clean, four an alarm); `note.minCycles` (4 ± 0.3 cycles at 440, 880 and 2,000 Hz); `lubDub.maxBend` (± 15 cents of bend); `lowNoiseHz` (± 3 %); masking gap, level and register (low bloop, broadband noise by its low share; tick, chirp and hiss mask nothing); beat grouping (grace at 80 ms vs 130 ms, flam, louder flam); `ring.beatDb` ± 0.3 dB; ring overlap (held ± 0.05 s, burst body ± 0.02 s with any lag); beat rate (10 ± 0.5 Hz); `ring.maxBend` ± 10 cents; the interval holding (narrowing by 40 % vs 60 % of itself); chirp kinds by bend (1.4× vs 1.6×, waveform and glide tail ignored); chirp + note (gap 150 ± 10 ms, interval 2.1 vs 1.9 semitones). v2's own bloops bend > 1.6 × 150 cents and its breaths > 1.4 × 100 cents. Pass. |
+| **Round 2:** `node /home/user/hm-work/fu2b/scratch/self-probe.mjs` (my own near variants) | 11 rejected. The 4 that pass are walked boundaries: overlap 0.97 s held once; a chirp then a note 160 ms later; opposite-direction chirps (v2's release plays a falling then a rising chirp 40 ms apart); a pip before a chime quieter than v2's celesta pair. |
 
 ### 2. No false positives on the approved cues: **met**
 
@@ -185,6 +262,12 @@ the acceptance set").
 | test "whole score plans" + `node /home/user/hm-work/fu2/scratch/plan-lint2.mjs` | The approved plan (compat = `qa/golden/v2/plan-v2.json`) is clean with its 25 sparkles as texture. **701 default plans** (7 Mallows × 4 contours × 25 pan seeds, plus compat) are clean (`fu2/logs/plan-sweep-701.log`). Without the texture the cloud itself reads as pops and trains, so the exemption is needed and it is exact. |
 | `node /home/user/hm-work/fu2/scratch/planned-sweep.mjs 1000` | **1,000 planned specs** (`planBatch`, review mode, seed 2026), each composed, dry-run (`composer/artefacts.js`), scored by `buildScore` and linted whole. All 1,000 name `hm-score`; 82,892 plan events, 24,892 sparkles as texture, **0 findings**, 164 s (`fu2/logs/planned-sweep-1000.log`). |
 | `node --test tests/parity/audio-score.test.mjs` | 7/7 (203 s; `fu2/logs/parity-audio-1.log`). `buildScore` lints every cue recipe and the recipes together: the default T01, T01 voiced by all 7 Mallows, the remux. |
+| **Round 2**, final code: `node audio/lint-recipes.mjs`; `node /home/user/hm-work/verify-wp04r2/fp.mjs` | `23 recipes, 1 direction(s): 0 finding(s)`; fp.mjs: no finding |
+| **Round 2:** `node --test tests/unit/audio-lint.test.mjs` | the 1656 repeated approved cues are still clean; "no false alarms" now holds 19 figures (+ the app's `lens-focus` twice, breathing in, out and in again) |
+| **Round 2:** `node render/lib/heavy-lock.mjs --shared -- node /home/user/hm-work/fu2/scratch/plan-lint2.mjs` | **701 default plans: 0 bad** (`fu2b/logs/plan-sweep-701-final.log`) |
+| **Round 2:** `node render/lib/heavy-lock.mjs --shared -- node /home/user/hm-work/fu2/scratch/planned-sweep.mjs 1000` | **1,000 planned specs, all `hm-score`: 0 findings**; 82,892 plan events, 24,892 sparkles as texture (168 s; `fu2b/logs/planned-sweep-1000-final.log`) |
+| **Round 2:** `node /home/user/hm-work/fu2b/scratch/approved-parts.mjs` | The calibration for `maxBend`. Every approved v2 pitched part ≤ 450 Hz with its bend. The rising bloops (land 278, release 268, take 471/423 cents) stay above 150. No approved sound has a steady lead under 60 ms, so pips cannot touch v2 (`fu2b/logs/approved-parts-1.log`). |
+| **Round 2:** `node /home/user/hm-work/fu2b/scratch/app-voices.mjs` | All 29 modelled app voices alone at 3 levels: the same verdict in round 2 as in round 1 in **78/78** cases. The pre-existing flags are listed under open issues (`fu2b/logs/app-voices.log`). |
 
 ### 3. G-AUDIO runs the structural lint over the score plan, not just recipe names: **met**
 
@@ -193,6 +276,9 @@ the acceptance set").
 | `node cli/hm.mjs qa v2 --out /home/user/hm-work/fu2/qa-v2` | **PASS** (23.3 s, `fu2/logs/qa-v2.log`). G-AUDIO `shapes` pass: "82 score events, no banned shape …; 25 sparkle-layer events counted for their level only". `recipes` pass. `seamStep` warn −31.3 dBFS with `legacyExemption: 'video'`. 18 of 18 gates pass, as in the M0 audit. |
 | `node --test tests/unit/audio-gate.test.mjs` | 4/4. The approved v2: shapes pass, texture 25. Default `score-plan.json` of all 7 Mallows: clean. A plan with an injected UK ring, scooped beep-beep, thrum lub-dub, full-force snap, or a two-tone of pings inside the sparkle cloud **fails G-AUDIO** in its category. A wrong pan seed or Mallow leaves texture 0: linted whole, fails. |
 | `HM_QA_FIXTURES=1 node render/lib/write-jail.mjs -- node --test --test-name-pattern="fault fixture" tests/golden/qa-suite.test.mjs` | **pass**: every fault fixture still fails exactly its own gate, and the new `shapes` check fails none of them (319 s; `fu2/logs/qa-fixtures-2.log`). |
+| **Round 2:** `HM_QA_FIXTURES=1 node render/lib/write-jail.mjs -- node --test --test-name-pattern="fault fixture" tests/golden/qa-suite.test.mjs` | **pass** on the final code. Every fault fixture still fails exactly its own gate, and the stricter `shapes` check fails none of them (594 s, sharing the machine with the sweeps; `fu2b/logs/qa-fixtures.log`). |
+| **Round 2:** `node cli/hm.mjs qa v2 --out /home/user/hm-work/fu2b/qa-v2` | **PASS**, 18/18 gates (26.9 s, `fu2b/logs/qa-v2.log`). `shapes` pass: 82 events, 25 texture, no findings; `seam.legacyExemption: 'video'` |
+| **Round 2:** `node --test tests/unit/audio-gate.test.mjs` | 4/4. Test 2 now also injects the verifier's four gate-level escapes into a default hm-score plan: a lub-dub with 2 ms scoops, the US ring 40 ms late, a 25 ms pip tri-tone, a lub-dub behind 2 kHz ticks. Each **fails** G-AUDIO in its category. |
 
 ### 4. The legacy seam exception is keyed on the approved video's sha256 / the golden direction, not the score id: **met**
 
@@ -248,6 +334,10 @@ the acceptance set").
 | whole-plan lint and texture | test 14; `audio-gate` tests 1–3 |
 | seam re-key, score switch | `audio-gate` test 4; `score-switch` tests 1–2 |
 | no pre-roll edit | `audio-mux` tests 4–5 |
+| **round 2:** scooped thumps, `bend` | `audio-lint` test 6 (`maxBend` walk, scoops of 300–3,600 cents bend 0, v2's bloops), test "FU-2 R2" (4 cases); `audio-gate` test 2 |
+| **round 2:** staggered, lopsided, drifting rings | test 6 (`beatDb`, overlap with any lag, held, burst body, beat rate, `ring.maxBend`, interval holding, breaths), test "FU-2 R2" (11 cases); `audio-gate` test 2 |
+| **round 2:** out-of-band maskers, flams, grace thumps | test 6 (masking gap, level, register; tick, chirp and hiss; noise by low share; beat grouping), test "FU-2 R2" (4 cases + `probe-mask` at 4 levels); `audio-gate` test 2 |
+| **round 2:** pips and slides | test 6 (`note.minDur`, `note.minCycles` at 3 pitches, chirp + note gap and interval, chirp kinds by bend), test "FU-2 R2" (8 cases); `audio-gate` test 2 |
 
 ### The engine fx model against the engine (`tests/parity/audio-lint-engine.test.mjs`, 7 s)
 
@@ -283,6 +373,11 @@ is compared with the model's, both relative to a studio sine of known level.
 | `node cli/hm.mjs guard` (final tree) | all four guard checks ok: frozen v2 (tree `8d0627dfee6d`, local `9a740db17b29`), live app untouched, no repository changes outside the studio, nothing written outside the studio and WORK |
 | `git diff --stat -- <every frozen path> ../hushmallow` | empty |
 | `node cli/hm.mjs golden verify` | ok |
+| **Round 2:** `node cli/hm.mjs test` (guard, unit, parity, property), final tree | **637 tests: 636 pass, 0 fail, 1 skipped** (the opt-in sequential render), 346 s while the fixture suite shared the machine (`fu2b/logs/hm-test-final.log`). Includes `audio-score` parity (`--compat v2-score` still the approved soundtrack byte for byte; T01 voiced by all 7 Mallows, linted whole), `audio-lint-engine` (29 voices within 4.5 dB), and the composer golden frames bit-identical. Round 2 changed no engine or composer file, so the 16-frame opt-in was not re-run. |
+| **Round 2:** `node --test tests/unit/audio-lint.test.mjs tests/unit/audio-gate.test.mjs tests/unit/score-switch.test.mjs tests/unit/audio-mux.test.mjs` | **30/30** (audio-lint 19, audio-gate 4, score-switch 2, audio-mux 5) |
+| **Round 2:** `node cli/hm.mjs golden verify` | ok: all golden frames, pixel tolerance 0/255, state tolerance 1e-9 (`fu2b/logs/golden-verify.log`) |
+| **Round 2:** `git diff -- <every frozen path> ../hushmallow` | empty |
+| **Round 2:** `node cli/hm.mjs guard` (final tree) | **frozen v2 ok** (tree `8d0627dfee6d`, local `9a740db17b29`), **live app untouched**, **no repository changes outside the studio**. The write audit reports **one** file outside the studio and WORK since the 04:11:45Z baseline (re-armed by FU-1 R2): `/usr/lib/python3/dist-packages/pip/_internal/commands/__pycache__/list.cpython-313.pyc` at 04:25:08Z, the byte-code of a `pip list`. It is **not FU-2's**. FU-2 ran no pip; its jobs ran in the write jail (`/usr` read-only) or were plain node scripts writing only to WORK. 96 s later FU-3 R2's agent created `WORK/tmp/fu3r2/dl` while working on its stemmer task. I left the file and the baseline alone: they are outside FU-2's scope, and re-arming is the integrator's deliberate act (`fu2b/logs/guard.log`). |
 
 ## Deviations
 
@@ -307,6 +402,21 @@ is compared with the model's, both relative to a studio sine of known level.
 5. **The Mallow's gestures stay opaque.** Their voices are kit-specific; the lint is kit-free. They are ranked
    by `ENGINE.eff`, may be thumps (tap, press, hop), and are limited as a stack. `LOUD.voice` = v2's 0.362
    (drift sigh) + 3 dB, a new limit.
+6. **Round 2 moved test boundaries with the model.** Each old walk is replaced by a walk past its new limit:
+   - the rising-bloop walk (raw glide `maxRise` ± 20 cents) is now a walk of `bend` (`maxBend` ± 15), plus scoops
+     of 300–3,600 cents that bend 0;
+   - the ring-level walk (`ring.level` ± 0.05) is now `beatDb` ± 0.3 dB;
+   - the masking walk's masker was a 900 → 1800 Hz chirp, which by the new rule masks no 80 Hz thump. It is now
+     a low bloop, walked in gap and level, plus the counter-cases: a 2 kHz tick, a high chirp and a hiss at
+     10–14× mask nothing.
+7. **Round 2 judgement calls** (each walked from both sides, see "Round 2"):
+   - pips are two-tone notes but not alarm beeps;
+   - low-pass noise thumps above 680 Hz are a knock;
+   - opaque Mallow gestures mask nothing (their spectrum is unknown, so the lint fails closed);
+   - two tones beating slower than 10 Hz, or converging to unison, are not a ring.
+
+   The last one narrows the round-1 ring rule. It was needed once tones pair across clusters: two sustained low
+   thumps 60/52.5 Hz overlapping 1.25 s read as a ring, and so would the app's `lens-focus` played twice.
 
 ## Open issues
 
@@ -321,6 +431,23 @@ is compared with the model's, both relative to a studio sine of known level.
 - **Engine model accuracy.** Sustained tonal swells read 2–4 dB low in the model (reverb build-up and beating
   partials). They have slow onsets and none is near a jump-scare limit. The parity test holds every voice
   within 4.5 dB.
+- **The app's own voices, played alone, can trip the lint.** This is unchanged by round 2, which gives the same
+  verdicts as round 1 for every one of the 29 modelled voices at intensity/trim 0.6/0.6, 0.6/1 and 1/1
+  (`fu2b/logs/app-voices.log`):
+  - `bloom` alone reads as a ringtone and a messenger pop: its five swelled, held triangle notes count as held
+    signal notes, and its rising arpeggio as a two-tone and a transposed 2-note figure;
+  - `sort`, `clear`, `star` and `unlock` (trim 1) read as messenger pops: their bell or triangle figures are
+    louder than v2's celesta pair;
+  - most voices at full force (1/1) are jump scares, against v2's maxima + 3 dB.
+
+  No registered recipe uses them; v2 plays the engine at trims ≤ 0.8. When the M1 recipe work adds one,
+  `lintRecipe` will flag it. A "beep starts like a beep" attack rule would clear `bloom`, but it needs the M1
+  sounds to calibrate against.
+- **Masking by a sustained sound.** A louder onset in the thump's register within 100 ms absorbs the thump, even
+  when that sound then sustains (a drone onset). A transient 6 dB under a steady drone can still be heard. No
+  probe uses this; a residual-level rule would not keep v2's landing clean (its splat has decayed to 0.4× of the
+  tail when the tail peaks).
+- **Three pips are a gag.** Three 25 ms pips at a steady interval pass, four are an alarm (judgement call 7).
 - **Musical changes for the owner.** The switch makes owner-audible changes, all as raised in Q7: hit-sync
   pickups, the phone-band MO-CLOSE, and the 256 kb/s loop AAC. Per the lead decision, the owner hears them in
   the M1 batch.
@@ -347,3 +474,12 @@ is compared with the model's, both relative to a studio sine of known level.
    could be `null` to avoid confusion.
 6. **`docs/wp/WP-04.md` integrator gaps 1–4 and 6** are closed by this package; gap 5 (the edit list) too.
 7. **M0-REPORT §9 item 8** ("the QA legacy seam limit is keyed on the score id"): closed.
+8. **Round 2: the write audit.** `hm guard` reports one pip byte-code file under `/usr/lib/python3/dist-packages`
+   written at 04:25:08Z. It is not from FU-2 (see "The suites"). Whoever wrote it should remove it, or the
+   integrator should re-arm after review.
+9. **Round 2: `docs/QA.md` G-AUDIO** (with note 2). The shape check now also covers:
+   - rings whose tones start apart, drift or wobble;
+   - thumps behind out-of-band sounds, flams and grace thumps;
+   - pips and slides.
+
+   No threshold in `thresholds.json` changed; every limit is in `audio/lint-shapes.mjs` `SHAPE`/`LOUD`.

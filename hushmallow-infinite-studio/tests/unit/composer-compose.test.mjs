@@ -86,15 +86,15 @@ test('the planner\'s seam loads the real composer and its gates (planner/compose
   assert.equal(g.metrics.model, 'final');
 });
 
-test('G-COST: the exact model predicts the measured v2 render; the provisional final model fits the budget', () => {
+test('G-COST: the exact model predicts the measured v2 render; the final model (refit, tests/unit/composer-cost.test.mjs) fits the budget', () => {
   const { direction } = composeNode();
   const exact = predict(direction, COST_MODELS.exact);
   assert.equal(exact.subframes, 1991);
   assert.ok(Math.abs(exact.seconds - 1337.6) / 1337.6 < 0.01, `${exact.seconds} s vs 1,337.6 s measured (WP-01 run A)`);
   const r = gcost(direction, { spec: goldenSpec() });
   assert.equal(r.pass, true);
-  assert.ok(r.metrics.predictedMin <= 11 && r.metrics.subframes === 1490, JSON.stringify(r.metrics));
-  assert.ok(r.warnings.some((w) => w.rule === 'cost:provisional'));
+  assert.ok(r.metrics.predictedMin <= 11 && r.metrics.subframes === 1587, JSON.stringify(r.metrics));
+  assert.deepEqual(r.warnings, []);
   const slow = structuredClone(direction); slow.meta.subframes = 16;   // every frame at 16 sub-frames
   assert.equal(gcost(slow, { spec: { quality: 'exact' } }).pass, true, 'exact has no budget (goldens only)');
 });

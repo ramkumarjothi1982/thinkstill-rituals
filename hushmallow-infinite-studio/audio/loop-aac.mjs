@@ -43,6 +43,21 @@
 //
 // A non-circular score (the frozen v2 route) keeps the plain mux at 192 kb/s:
 // it is not a loop, and its approved master was built that way.
+//
+// Two ways to deliver the codec's priming (FU-5; `edit`, OWNER-DECISIONS "audio
+// pre-roll"), measured on T01's hm-score loop (docs/wp/FU-5.md):
+//   'priming'  (default) the above: the standard 1024-sample priming edit and no
+//              other, presenting exactly D. Players that honour edit lists (every
+//              browser, phone player and ffmpeg) hear the loop seamlessly (wrap step
+//              −86 dBFS); one that ignores them hears it 21.3 ms late.
+//   'trim'     no edit list at all: one more frame is dropped, so the first frame kept
+//              decodes the loop's own first 1024 samples, and the last packet lasts only
+//              what is left of D (stts), so the audio presents exactly D and starts at
+//              t = 0 even with -ignore_editlist. But AAC cannot reconstruct a stream's
+//              first frame (its overlap partner is gone): those 21.3 ms come back at
+//              about 2 dB SNR and every loop clicks (wrap step −26 dBFS), in every player.
+// The picture never carries an offset (negative composition offsets instead of the
+// B-frame delay edit), so a player that ignores edit lists shows frame 0 at t = 0.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -59,6 +74,7 @@ export const BITRATE = '192k';          // the plain mux, as render/mux.mjs (and
 export const LOOP_BITRATE = '256k';     // a loop: the codec's seam residual below −60 dBFS on all 7 kits (see above)
 export const ALIGN_TRIES = 8;           // encodes tried: pre-roll PRE_FRAMES + k frames, k < 8
 export const SEAM_STEP_TARGET = LIMITS.seamStep - 3;   // dBFS: the delivered raw wrap step, with a 3 dB margin under the gate's limit
+export const AUDIO_EDITS = Object.freeze(['priming', 'trim']);   // how the codec's priming is delivered (see above)
 const aacArgs = (bitrate = BITRATE) => ['-c:a', 'aac', '-b:a', bitrate, '-ar', String(SR), '-ac', '2'];
 
 function ffmpeg(args, opts = {}) {
@@ -97,25 +113,38 @@ export function adtsFrames(buf) {
   return out;
 }
 
+/** The score with silence around it (a score that is not a loop): `pre` samples before, `post` seconds after. */
+export function silenceExtended(x, pre, post = PAD) {
+  const n = x.length / 2, q = Math.round(post * SR);
+  const y = new Float32Array(2 * (n + pre + q));
+  y.set(x, 2 * pre);
+  return y;
+}
+
 /**
  * Encode a loop (interleaved Float32Array) to AAC with `frames` whole frames of its own
- * audio before it and PAD seconds after it, then drop those frames from the bitstream:
- * the ADTS file written to `aacPath` starts with the frame that decodes the last pre-roll
- * frame (the priming the mux's edit list skips) and then the loop from its first sample.
- * → { aac, frames }
+ * audio before it and PAD seconds after it (silence instead when not `circular`), then drop
+ * those frames from the bitstream: the ADTS file written to `aacPath` starts with the frame
+ * that decodes the last pre-roll frame (the priming the mux's edit list skips) and then the
+ * loop from its first sample. edit 'trim': one frame more is dropped, so the file starts with
+ * the frame that decodes the loop's first 1024 samples, and holds exactly the frames that
+ * cover the loop. → { aac, frames }
  */
-export function encodeLoopAac(x, aacPath, { frames = PRE_FRAMES, bitrate = LOOP_BITRATE } = {}) {
+export function encodeLoopAac(x, aacPath, { frames = PRE_FRAMES, bitrate = LOOP_BITRATE, edit = 'priming', circular = true } = {}) {
+  if (!AUDIO_EDITS.includes(edit)) throw new Error(`loop-aac: unknown edit ${edit} (have: ${AUDIO_EDITS.join(', ')})`);
   const tmp = mkWorkTemp('hm-loopaac-');
   try {
     const f32 = path.join(tmp, 'ext.f32'), full = path.join(tmp, 'ext.aac');
-    const ext = loopExtended(x, { samples: frames * FRAME }, PAD);
+    const ext = circular ? loopExtended(x, { samples: frames * FRAME }, PAD) : silenceExtended(x, frames * FRAME, PAD);
     fs.writeFileSync(f32, Buffer.from(ext.buffer, ext.byteOffset, ext.byteLength));
     // (no +bitexact flags: they change what ffmpeg's AAC encoder does at the edges, and the loop's
     // delivered click went from −76.5 to −56.8 dBFS with them; the encoder is deterministic without)
     ffmpeg(['-y', '-f', 'f32le', '-ar', String(SR), '-ac', '2', '-i', f32, ...aacArgs(bitrate), '-map_metadata', '-1', '-f', 'adts', full]);
     const fr = adtsFrames(fs.readFileSync(full));
-    if (fr.length <= frames + 1) throw new Error(`loop-aac: the encode has ${fr.length} frames, the pre-roll ${frames}`);
-    fs.writeFileSync(aacPath, Buffer.concat(fr.slice(frames)));
+    // priming: the priming frame, then the frames that cover the loop; trim: those frames alone
+    const drop = frames + (edit === 'trim' ? 1 : 0), keep = Math.ceil(x.length / 2 / FRAME) + (edit === 'trim' ? 0 : 1);
+    if (fr.length < drop + keep) throw new Error(`loop-aac: the encode has ${fr.length} frames, the pre-roll ${drop} and the loop ${keep}`);
+    fs.writeFileSync(aacPath, Buffer.concat(fr.slice(drop, drop + keep)));
     return { aac: aacPath, frames };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -123,15 +152,24 @@ export function encodeLoopAac(x, aacPath, { frames = PRE_FRAMES, bitrate = LOOP_
 }
 
 /**
- * ffmpeg arguments that mux a trimmed loop encode (encodeLoopAac) under a picture: the
- * audio starts PRIMING samples before 0 with those timestamps kept, so the only edit is
- * the standard priming. `video` null → an audio-only MP4. Follow with presentExactly().
+ * ffmpeg arguments that mux a trimmed loop encode (encodeLoopAac) under a picture. 'priming':
+ * the audio starts PRIMING samples before 0 with those timestamps kept, so the only edit is
+ * the standard priming (follow with presentExactly()). 'trim': no edit list on any track; the
+ * audio starts at 0 and its last packet lasts what is left of the duration (setts), so the
+ * sound track's media is exactly `duration`. The picture is copied with negative composition
+ * offsets, so its first frame is presented at 0 with no edit list. `video` null → audio only.
  */
-export function muxLoopArgs({ video = null, aac, out, duration, metadata = [] }) {
+export function muxLoopArgs({ video = null, aac, out, duration, metadata = [], edit = 'priming' }) {
   const inputs = video ? ['-i', video] : [];
   const maps = video ? ['-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy'] : ['-map', '0:a:0'];
-  return ['-y', ...inputs, '-itsoffset', String(-PRIMING / SR), '-i', aac, ...maps, '-c:a', 'copy', '-avoid_negative_ts', 'disabled',
-    '-t', String(duration), ...metadata, '-movflags', '+faststart', out];
+  const flags = ['-movflags', '+faststart+negative_cts_offsets'];
+  // the last packet lasts only what is left, so the sound media is exactly (priming +) D, as the approved master's
+  const span = Math.round(duration * SR) + (edit === 'trim' ? 0 : PRIMING);
+  const n = Math.ceil(span / FRAME), last = span - (n - 1) * FRAME;
+  const setts = ['-bsf:a', `setts=time_base=1/${SR}:pts=PTS*TB*${SR}:dts=DTS*TB*${SR}:duration=if(eq(N\\,${n - 1})\\,${last}\\,${FRAME})`];
+  if (edit === 'trim') return ['-y', ...inputs, '-i', aac, ...maps, '-c:a', 'copy', ...setts, '-use_editlist', '0', ...metadata, ...flags, out];
+  return ['-y', ...inputs, '-itsoffset', String(-PRIMING / SR), '-i', aac, ...maps, '-c:a', 'copy', ...setts, '-avoid_negative_ts', 'disabled',
+    ...metadata, ...flags, out];
 }
 
 /**
@@ -180,7 +218,8 @@ export function mp4Info(file, { write = false } = {}) {
 /**
  * Present the sound track for exactly `seconds`: its edit's segment duration and its track
  * duration, and the movie's duration (the longest track), written in place (same-size
- * fields). The media keeps the encoder's last partial frame; the edit stops before it.
+ * fields). (FU-5: the media itself now ends at priming + D, its last packet trimmed in stts,
+ * as the approved master's.)
  */
 export function presentExactly(file, seconds) {
   const { info, buffer: b } = mp4Info(file, { write: true });
@@ -199,6 +238,19 @@ export function assertNoPreroll(file, duration) {
   const info = mp4Info(file), snd = info.tracks.find((t) => t.handler === 'soun');
   const want = [[Math.round(duration * info.timescale), PRIMING * (snd?.media?.timescale ?? SR) / SR]];
   if (!snd || JSON.stringify(snd.edits) !== JSON.stringify(want)) throw new Error(`loop-aac: ${file}: the sound track's edit list is ${JSON.stringify(snd?.edits)}, expected ${JSON.stringify(want)} (the priming only, exactly D)`);
+  return snd.edits;
+}
+
+/**
+ * The delivered file's timing, by edit mode: 'priming' → assertNoPreroll; 'trim' → no edit list
+ * on any track, the sound media exactly D, the picture presented from 0. → the sound track's edits
+ */
+export function assertDelivery(file, duration, edit = 'priming') {
+  if (edit !== 'trim') return assertNoPreroll(file, duration);
+  const info = mp4Info(file), snd = info.tracks.find((t) => t.handler === 'soun');
+  const bad = info.tracks.filter((t) => t.edits.length);
+  if (bad.length) throw new Error(`loop-aac: ${file}: edit lists on ${bad.map((t) => `${t.handler} ${JSON.stringify(t.edits)}`).join(', ')} (trim delivers none)`);
+  if (!snd || snd.media.duration !== Math.round(duration * snd.media.timescale)) throw new Error(`loop-aac: ${file}: the sound media lasts ${snd?.media?.duration}/${snd?.media?.timescale}, expected exactly ${duration} s`);
   return snd.edits;
 }
 
@@ -221,13 +273,13 @@ export function lagSamples(a, b, maxLag = 256) {
  * `tries`. → { aac, frames, pad (the pre-roll dropped, s), clickDbfs, stepDbfs, pass, tries,
  * y (the decoded D seconds) }; the ADTS file is written to `dir`.
  */
-export function encodeLoopDelivery(x, duration, dir, { bitrate = LOOP_BITRATE, tries = ALIGN_TRIES } = {}) {
+export function encodeLoopDelivery(x, duration, dir, { bitrate = LOOP_BITRATE, tries = ALIGN_TRIES, edit = 'priming', circular = true } = {}) {
   let best = null;
   for (let k = 0; k < tries; k++) {
     const frames = PRE_FRAMES + k, aac = path.join(dir, `loop-${k}.aac`), mp4 = path.join(dir, `loop-${k}.mp4`);
-    encodeLoopAac(x, aac, { frames, bitrate });
-    ffmpeg(muxLoopArgs({ aac, out: mp4, duration }));
-    presentExactly(mp4, duration);
+    encodeLoopAac(x, aac, { frames, bitrate, edit, circular });
+    ffmpeg(muxLoopArgs({ aac, out: mp4, duration, edit }));
+    if (edit !== 'trim') presentExactly(mp4, duration);
     const y = decodeAudio(mp4, duration);
     const click = 20 * Math.log10(clickAt(y, 0)), step = 20 * Math.log10(rawStepAt(y, 0));
     const miss = Math.max(0, step - SEAM_STEP_TARGET, click - LIMITS.seamClick);
@@ -240,27 +292,29 @@ export function encodeLoopDelivery(x, duration, dir, { bitrate = LOOP_BITRATE, t
 /**
  * Mux a circular score under a picture with loop-aware AAC (the fix above) and check
  * the result: the audio lasts exactly `duration`, lines up with the WAV at lag 0, and
- * its edit list is the standard priming alone (no pre-roll hidden behind it).
- * → { out, lag, frames (samples), preRollFrames, pad, edits, clickDbfs, stepDbfs, seamPass, tries }
+ * its edit list is the standard priming alone (no pre-roll hidden behind it), or, with
+ * edit 'trim', there is no edit list at all. circular false: a score that is not a loop,
+ * padded with silence (the 'trim' delivery of the plain mux).
+ * → { out, lag, frames (samples), preRollFrames, pad, edits, edit, clickDbfs, stepDbfs, seamPass, tries }
  */
-export function muxLoop({ video, wav, out, duration, bitrate = LOOP_BITRATE, metadata = [] }) {
+export function muxLoop({ video, wav, out, duration, bitrate = LOOP_BITRATE, metadata = [], edit = 'priming', circular = true }) {
   const x = decodeAudio(wav);
   if (Math.abs(x.length / 2 - duration * SR) > 0.5) throw new Error(`loop-aac: ${wav} has ${x.length / 2} frames, the loop is ${duration} s`);
   const tmp = mkWorkTemp('hm-loopmux-');
   let enc;
   try {
-    enc = encodeLoopDelivery(x, duration, tmp, { bitrate });
-    ffmpeg(muxLoopArgs({ video, aac: enc.aac, out, duration, metadata }));
-    presentExactly(out, duration);
+    enc = encodeLoopDelivery(x, duration, tmp, { bitrate, edit, circular, tries: circular ? ALIGN_TRIES : 1 });
+    ffmpeg(muxLoopArgs({ video, aac: enc.aac, out, duration, metadata, edit }));
+    if (edit !== 'trim') presentExactly(out, duration);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-  const edits = assertNoPreroll(out, duration);
+  const edits = assertDelivery(out, duration, edit);
   const y = decodeAudio(out, duration);
   if (y.length !== x.length) throw new Error(`loop-aac: the muxed audio decodes to ${y.length / 2} frames, expected ${x.length / 2}`);
   const lag = lagSamples(x, y);
   if (lag !== 0) throw new Error(`loop-aac: the muxed audio is ${lag} samples off the score (expected 0)`);
-  return { out, lag, frames: y.length / 2, preRollFrames: enc.frames, pad: enc.pad, edits, clickDbfs: enc.clickDbfs, stepDbfs: enc.stepDbfs, seamPass: enc.pass, tries: enc.tries };
+  return { out, lag, frames: y.length / 2, preRollFrames: enc.frames, pad: enc.pad, edits, edit, clickDbfs: enc.clickDbfs, stepDbfs: enc.stepDbfs, seamPass: enc.pass, tries: enc.tries };
 }
 
 /**

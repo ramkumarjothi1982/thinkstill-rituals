@@ -16,8 +16,12 @@
 //     realm preset files library/capabilities.json gives for spec.mallow and
 //     spec.realm, each with the sha256 of that file as it is now (a hash may
 //     be null only while its file does not exist); no engine pin (the
-//     render's provenance.json records the engine); a capabilities hash;
+//     render's provenance.json records the engine); the library, policy and
+//     capabilities hashes are real sha256 digests (pinHashProblem: not empty,
+//     not a placeholder such as 64 zeros, not another pinned file's hash);
 //     and asset hashes against library/assets-manifest.json once it exists.
+//     A real digest that differs from the file as it is now is a warning, by
+//     the WP-06 design: copy and capabilities are re-checked live above.
 //
 // → { gate: 'G-SPEC', pass, errors: [{rule, message}], warnings: [...], metrics }
 
@@ -162,11 +166,12 @@ export function checkSpec(spec, ctx) {
   }
 
   // 8. pins: library, policy, capability set, packs/presets, assets
+  const current = { librarySha256: lib.sha256, policySha256: policyFileSha(), capabilitiesSha256: caps.sha256 };
+  const forged = (field, rule) => { const why = pinHashProblem(spec.pins[field], field, current); if (why) err(rule, why); return Boolean(why); };
   if (spec.pins.library !== lib.version) err('pins:library', `planned against library ${spec.pins.library}, current is ${lib.version}`);
-  else if (spec.pins.librarySha256 !== lib.sha256) warn('pins:library', 'story-library.json changed since planning (same version); copy was re-checked above');
-  if (!spec.pins.capabilitiesSha256) err('pins:capabilities', 'pins.capabilitiesSha256 is empty: a planned spec always pins the capability set it was planned against');
-  else if (caps.sha256 && spec.pins.capabilitiesSha256 !== caps.sha256) warn('pins:capabilities', 'capabilities changed since planning; gating was re-checked above');
-  if (spec.pins.policySha256 !== policyFileSha()) warn('pins:policy', 'planner/policy.json changed since planning; copy and caps were re-checked above');
+  else if (!forged('librarySha256', 'pins:library') && spec.pins.librarySha256 !== lib.sha256) warn('pins:library', 'story-library.json changed since planning (same version); copy was re-checked above');
+  if (!forged('capabilitiesSha256', 'pins:capabilities') && caps.sha256 && spec.pins.capabilitiesSha256 !== caps.sha256) warn('pins:capabilities', 'capabilities changed since planning; gating was re-checked above');
+  if (!forged('policySha256', 'pins:policy') && spec.pins.policySha256 !== policyFileSha()) warn('pins:policy', 'planner/policy.json changed since planning; copy and caps were re-checked above');
   if (spec.pins.engine !== null) err('pins:engine', `pins.engine is ${JSON.stringify(spec.pins.engine)}; the planner pins no engine (the render's provenance.json records the engine it used)`);
   for (const p of packPinProblems(spec, realm, caps)) (p.error ? err : warn)('pins:pack', p.message);
   const manifest = ctx.assetsManifest || ASSETS_MANIFEST;
@@ -174,6 +179,33 @@ export function checkSpec(spec, ctx) {
   else for (const p of checkAssets(manifest, m)) err('assets', p);
 
   return done();
+}
+
+const EMPTY_SHA256 = sha256Hex(Buffer.alloc(0));
+const PIN_FILES = { librarySha256: 'templates/story-library.json', policySha256: 'planner/policy.json', capabilitiesSha256: 'library/capabilities.json' };
+
+/**
+ * Why a library, policy or capabilities pin is no real pin, or null. A pin
+ * is the sha256 of the file the spec was planned against: 64 lowercase hex
+ * digits ('open' for the capabilities pin of a spec planned without
+ * library/capabilities.json). Refused: an empty or malformed value, a
+ * placeholder (one digit repeated, as 64 zeros), the hash of an empty file,
+ * and the current hash of another pinned file (a re-pointed pin). A real
+ * digest of an older version is not refused here (the caller warns: copy
+ * and capabilities are re-checked live).
+ * current: { librarySha256, policySha256, capabilitiesSha256 } of the files as they are now.
+ */
+export function pinHashProblem(value, field, current = {}) {
+  const what = `pins.${field}`;
+  if (field === 'capabilitiesSha256' && value === 'open') return null;
+  if (typeof value !== 'string' || !value) return `${what} is empty: a planned spec always pins the ${PIN_FILES[field]} it was planned against`;
+  if (!/^[0-9a-f]{64}$/.test(value)) return `${what} is ${JSON.stringify(value.length > 20 ? `${value.slice(0, 20)}…` : value)}, not a sha256 digest (64 lowercase hex digits${field === 'capabilitiesSha256' ? " or 'open'" : ''})`;
+  if (/^(.)\1{63}$/.test(value)) return `${what} is a placeholder (${value.slice(0, 8)}…), not the hash of ${PIN_FILES[field]}: a stripped pin`;
+  if (value === EMPTY_SHA256) return `${what} is the hash of an empty file, not of ${PIN_FILES[field]}`;
+  for (const [other, sha] of Object.entries(current)) {
+    if (other !== field && sha && value === sha && value !== current[field]) return `${what} holds the current hash of ${PIN_FILES[other]}, not of ${PIN_FILES[field]}: a re-pointed pin`;
+  }
+  return null;
 }
 
 /**

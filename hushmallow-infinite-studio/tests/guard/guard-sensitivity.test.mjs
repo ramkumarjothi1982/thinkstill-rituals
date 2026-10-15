@@ -146,16 +146,16 @@ test('write audit: fires on writes, deletions and git config changes outside the
   // a miniature machine: one storage root with a studio, WORK, harness dirs, a git directory, an npm install and "the rest of the disk"
   const m = path.join(root, 'machine');
   const at = (rel) => path.join(m, rel);
-  for (const d of ['studio', 'work', 'harness/state', 'home/user/logs', 'tmp/agent/sess/scratchpad', 'etc', 'git/objects', 'git/hooks', 'git/worktrees/wp-01', 'wt/wp-01/src', 'npm/lib', 'tmp/node-compile-cache/v22-x']) fs.mkdirSync(at(d), { recursive: true });
+  for (const d of ['studio', 'work', 'harness/state', 'home/user/logs', 'tmp/agent/sess/scratchpad', 'tmp/agent/old-sess/scratchpad', 'etc', 'git/objects', 'git/hooks', 'git/worktrees/wp-01', 'wt/wp-01/src', 'npm/lib', 'tmp/node-compile-cache/v22-x']) fs.mkdirSync(at(d), { recursive: true });
   write('wt/wp-01/src/x.js', 'a linked worktree\n', m);
   write('git/worktrees/wp-01/gitdir', 'admin\n', m);
-  for (const f of ['etc/old.conf', 'etc/keep.conf', 'home/user/logs/a.log', 'home/user/logs/b.log', 'home/user/logs/c.log', 'tmp/agent/sess/scratchpad/old.txt']) write(f, 'before arming\n', m);
+  for (const f of ['etc/old.conf', 'etc/keep.conf', 'home/user/logs/a.log', 'home/user/logs/b.log', 'home/user/logs/c.log', 'tmp/agent/sess/scratchpad/old.txt', 'tmp/agent/old-sess/scratchpad/x.png']) write(f, 'before arming\n', m);
   write('npm/lib/cli.js', 'module.exports = 1;\n', m);
   execFileSync('git', ['config', '--file', at('git/config'), 'core.bare', 'false']);
   const scope = {
     prefix: '', roots: [m], listingRoots: [m],
     allowed: [{ path: at('studio'), why: 'studio' }, { path: at('work'), why: 'WORK' }, { path: at('git/objects'), why: 'git data' }],
-    externalWriters: [{ glob: at('harness'), reason: 'harness', scope: 'all' }, { glob: at('tmp/*/*'), reason: 'harness sessions', scope: 'remove' }],
+    externalWriters: [{ glob: at('harness'), reason: 'harness', scope: 'all' }, { glob: at('tmp/*/*'), reason: 'harness sessions', scope: 'remove' }, { glob: at('tmp/*/*/scratchpad'), reason: 'scratchpad dir', scope: 'remove' }],
   };
   scope.prune = [...scope.allowed.map((a) => a.path), at('harness')];
   scope.removable = [at('wt/wp-01'), at('git/worktrees/*')];
@@ -171,7 +171,7 @@ test('write audit: fires on writes, deletions and git config changes outside the
   write('work/seg.mp4', 'scratch\n', m);
   write('harness/state/log.json', 'harness\n', m);
   write('git/objects/ab/cdef', 'blob\n', m);
-  fs.rmSync(at('tmp/agent/sess/scratchpad/old.txt'));                               // the harness tidying its session dir
+  fs.rmSync(at('tmp/agent/old-sess'), { recursive: true });                          // the harness removing an old session directory
   fs.rmSync(at('wt/wp-01'), { recursive: true }); fs.rmSync(at('git/worktrees/wp-01'), { recursive: true });   // git worktree remove
   execFileSync('git', ['config', '--file', at('git/config'), 'core.bare', 'false']);
   const code = fs.readFileSync(at('npm/lib/cli.js'));                                // npm's own compile cache, verified
@@ -190,13 +190,14 @@ test('write audit: fires on writes, deletions and git config changes outside the
   write('git/hooks/pre-commit', '#!/bin/sh\n', m);
   fs.rmSync(at('etc/keep.conf'));
   fs.rmSync(at('home/user/logs'), { recursive: true });
+  fs.rmSync(at('tmp/agent/sess/scratchpad/old.txt'));                               // a file in a live session's scratchpad (FU-1 round 2: not exempt)
   execFileSync('git', ['config', '--file', at('git/config'), 'core.hooksPath', '/tmp/hooks']);
   a = audit();
   assert.equal(a.ok, false);
   assert.deepEqual(show(a), [
     'deleted etc/keep.conf', 'written etc/old.conf', 'git-config git/config (core.hookspath added)', 'written git/hooks/pre-commit',
     'written home/user/link', 'deleted home/user/logs (a directory with 3 entries at arming)', 'written home/user/stray.txt',
-    'written tmp/agent/sess/scratchpad/probe.txt', 'written tmp/node-compile-cache/v22-x/deadbeef',
+    'deleted tmp/agent/sess/scratchpad/old.txt', 'written tmp/agent/sess/scratchpad/probe.txt', 'written tmp/node-compile-cache/v22-x/deadbeef',
   ]);
   // a missing or altered listing is an error, never a silent pass
   const b = readBaseline(at('work/baseline.json'));
@@ -219,9 +220,11 @@ test('write audit: a file created and deleted again leaves a touched directory; 
   });
   const scopeFor = (layout) => {
     const allowed = allowedRoots({ studio: at('studio'), work: at('work'), layout });
-    const externalWriters = [
+    const externalWriters = [                                                           // as EXTERNAL_WRITERS has them
       { glob: at('root/.claude.json'), reason: 'harness config, rewritten atomically', scope: 'all' },
+      { glob: at('tmp/*/*/tasks'), reason: 'harness task output', scope: 'all' },
       { glob: at('tmp/*/*'), reason: 'harness session directories', scope: 'remove' },
+      { glob: at('tmp/*/*/scratchpad'), reason: 'harness scratchpad directory', scope: 'remove' },
       { glob: at('tmp'), reason: 'harness cwd files', scope: 'touch' },
     ];
     return {
@@ -279,4 +282,66 @@ test('write audit: a file created and deleted again leaves a touched directory; 
   for (const d of ['repo/.claude', 'repo/.git/worktrees']) fs.rmSync(at(d), { recursive: true });
   a = audit(layoutWith([]), b2);
   assert.deepEqual(show(a).filter((l) => l.startsWith('deleted')), ['deleted repo/.claude (a directory with 2 entries at arming)']);
+});
+
+test('write audit (FU-1 round 2): exempt places are exact paths, a removal explains only its owner\'s directory, the checkout\'s top level is audited, and a subdirectory\'s own churn explains nothing', async () => {
+  // A third miniature machine laid out like the real one: WORK inside home/user, the checkout (top level, .git, the
+  // studio) and the harness's session directories with a scratchpad holding files from an earlier phase.
+  const m = path.join(root, 'machine3');
+  const at = (rel) => path.join(m, rel);
+  for (const d of ['repo/studio', 'repo/.git/objects', 'home/user/work/guard', 'tmp/agent/sess/scratchpad', 'tmp/agent/old-sess/scratchpad', 'etc', 'srv', 'root']) fs.mkdirSync(at(d), { recursive: true });
+  for (const f of ['home/user/keep.txt', 'repo/README.md', 'repo/.git/HEAD', 'tmp/agent/sess/scratchpad/old.txt', 'tmp/agent/sess/scratchpad/aq1.png',
+    'tmp/agent/old-sess/scratchpad/m1.py', 'etc/app.conf', 'srv/data']) write(f, 'before arming\n', m);
+  const layout = { gitDir: at('repo/.git'), top: at('repo'), mainTop: at('repo'), worktreeDirs: [], otherWorktrees: [] };
+  const allowed = allowedRoots({ studio: at('repo/studio'), work: at('home/user/work'), layout });
+  const scope = () => ({
+    prefix: '', roots: [m], listingRoots: [m], layout, allowed, worktrees: [], removable: [path.join(layout.gitDir, 'worktrees')],
+    prune: allowed.map((a) => a.path),
+    externalWriters: [
+      { glob: at('tmp/*/*/tasks'), reason: 'harness task output', scope: 'all' },
+      { glob: at('tmp/*/*'), reason: 'harness session directories', scope: 'remove' },
+      { glob: at('tmp/*/*/scratchpad'), reason: 'harness scratchpad directory', scope: 'remove' },
+      { glob: at('tmp'), reason: 'harness cwd files', scope: 'touch' },
+    ],
+  });
+  const file = at('home/user/work/b.json');
+  await sleep(60);
+  armBaseline({ reason: 'miniature machine 3', file, scope: scope(), configFiles: [], listingDir: at('home/user/work/guard') });
+  await sleep(60);
+  const audit = () => auditOutsideWrites({ baseline: readBaseline(file), scope: scope(), configFiles: [], listingDir: at('home/user/work/guard'), attributors: [] });
+  const show = () => audit().findings.map((f) => `${f.kind} ${path.relative(m, f.path)}`);
+
+  // silent: an atomic replace (write a temporary file, rename it over) and a hard link; the harness removes an old session
+  // and starts a new one (session dir, scratchpad, tasks); git's index lock; a new job directory in WORK
+  write('etc/app.conf.tmp', 'new\n', m); fs.renameSync(at('etc/app.conf.tmp'), at('etc/app.conf'));
+  fs.linkSync(at('srv/data'), at('srv/data.bak'));
+  fs.rmSync(at('tmp/agent/old-sess'), { recursive: true });
+  fs.mkdirSync(at('tmp/agent/new-sess/scratchpad'), { recursive: true }); fs.mkdirSync(at('tmp/agent/new-sess/tasks'));
+  write('repo/.git/index.lock', 'x', m); fs.rmSync(at('repo/.git/index.lock'));
+  fs.mkdirSync(at('home/user/work/job-1'));
+  assert.deepEqual(show(), ['written etc/app.conf', 'written srv/data', 'written srv/data.bak'], 'only the replaced and linked files themselves');
+  await sleep(60);
+  // the documented limit: once the owner removed a session from tmp/agent, a create-then-delete there is masked (until re-arm)
+  write('tmp/agent/stray', 'x', m); fs.rmSync(at('tmp/agent/stray'));
+  assert.ok(!show().some((l) => l.endsWith(' tmp/agent')));
+  await sleep(60);
+
+  // reported (the verifier's probes): a new empty directory in the scratchpad (W1) and directly in a session directory;
+  // a create-then-delete in the checkout's top level (W2); a scratchpad file from the earlier phase deleted (W3); a
+  // create-then-delete in home/user followed at once by a new job directory in WORK (W4); one in etc followed at once by
+  // a write into an existing file there; one in a NEW session directory's scratchpad
+  fs.mkdirSync(at('tmp/agent/sess/scratchpad/newdir'));
+  fs.mkdirSync(at('tmp/agent/sess/other'));
+  write('repo/stray.tmp', 'x', m); fs.rmSync(at('repo/stray.tmp'));
+  fs.rmSync(at('tmp/agent/sess/scratchpad/old.txt'));
+  write('home/user/stray.txt', 'x', m); fs.rmSync(at('home/user/stray.txt')); fs.mkdirSync(at('home/user/work/new-job'));
+  write('etc/stray', 'x', m); fs.rmSync(at('etc/stray')); fs.appendFileSync(at('etc/app.conf'), 'more\n');
+  write('tmp/agent/new-sess/scratchpad/p', 'x', m); fs.rmSync(at('tmp/agent/new-sess/scratchpad/p'));
+  assert.deepEqual(show(), [
+    'touched etc', 'written etc/app.conf', 'touched home/user', 'touched repo', 'written srv/data', 'written srv/data.bak',
+    'touched tmp/agent/new-sess/scratchpad', 'created tmp/agent/sess/other', 'created tmp/agent/sess/scratchpad/newdir',
+    'deleted tmp/agent/sess/scratchpad/old.txt',
+  ]);
+  // the top level's finding names the one legitimate cause the audit cannot see (a worktree lifecycle between two arms)
+  assert.match(audit().findings.find((f) => f.path === at('repo')).detail, /linked worktree's \.claude\/ created and removed since arming/);
 });

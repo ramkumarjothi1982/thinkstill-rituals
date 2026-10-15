@@ -114,5 +114,32 @@ export function stamp({ job, git }) {
   return `hushmallow-infinite-studio ${job.direction} @ ${git?.sha ? git.sha.slice(0, 12) : 'unknown'}${git?.dirty ? '-dirty' : ''} job ${job.key.slice(0, 12)}`;
 }
 
+/**
+ * The stamps QA can verify (qa/gates/delivery.mjs):
+ *   farm    "hushmallow-infinite-studio <direction> @ <commit12>[-dirty] job <key12>"
+ *   remux   a farm stamp + " remux <key12>": the farm's picture with a new score (hm remux, FU-5);
+ *           the remux record in the provenance next to the file has that key
+ *   legacy  "hushmallow-infinite-studio <direction> @ <commit12>" (render/render.mjs)
+ */
+export const STAMP_RE = /^hushmallow-infinite-studio (\S+) @ ([0-9a-f]{12}|unknown)(-dirty)? job ([0-9a-f]{12})(?: remux ([0-9a-f]{12}))?$/;
+export const LEGACY_STAMP_RE = /^hushmallow-infinite-studio (\S+) @ ([0-9a-f]{12})$/;
+
+/** → { kind: 'farm', direction, commit, dirty, job, remux (key12 or null), farm (the stamp without its remux part) } | { kind: 'legacy', direction, commit } | null */
+export function parseStamp(text) {
+  const t = String(text ?? '');
+  let m = STAMP_RE.exec(t);
+  if (m) return { kind: 'farm', direction: m[1], commit: m[2], dirty: !!m[3], job: m[4], remux: m[5] ?? null, farm: t.replace(/ remux [0-9a-f]{12}$/, '') };
+  m = LEGACY_STAMP_RE.exec(t);
+  if (m) return { kind: 'legacy', direction: m[1], commit: m[2] };
+  return null;
+}
+
+/** The stamp of a remux of a farm render (a re-remux replaces the previous remux part). */
+export function remuxStamp(farmStamp, key) {
+  const st = typeof farmStamp === 'string' ? parseStamp(farmStamp) : farmStamp;
+  if (st?.kind !== 'farm') throw new Error('remuxStamp: not a farm stamp');
+  return `${st.farm} remux ${key.slice(0, 12)}`;
+}
+
 /** Relative path inside the repository, for readable records. */
 export const repoRel = (p) => path.relative(REPO, p).split(path.sep).join('/');

@@ -28,7 +28,7 @@ node cli/hm.mjs qa gallery runs/<batch>       # runs/<batch>/gallery/index.html 
 | `v2` | `qa/fixtures/v2/target.json`: the approved master, its production twin spec, the golden direction, the v2 cue log, the render evidence |
 | `<variant or farm job dir>` | `final.mp4`, plus whichever of these exist: `spec.json`, `direction.json`, `cues.json`, `provenance.json`, `job.json`, `score-plan.json`. A legacy direction (`my-brain-at-2am-v2`) maps to the golden direction. |
 | `<batch dir>` | every sub-directory that holds a `final.mp4` |
-| `<manifest>.json` | an `hm-qa-target/1` manifest: explicit paths, used by the fixtures |
+| `<manifest>.json` | an `hm-qa-target/1` manifest: explicit paths, used by the fixtures, and written by `hm remux` as `qa-remux.json` for a remuxed file (FU-5) |
 | `<video>.mp4` | only the gates that need nothing but the video |
 
 **Options:**
@@ -178,10 +178,12 @@ This is the generalised fork of the frozen `render/verify.mjs`:
 - faststart, read from the top-level atom order;
 - zero decode errors, counted by the pixel pass's own decode, so the video is decoded once;
 - AAC 48 kHz stereo, with audio length equal to video length within ±0.025 s.
+- **`timing`** (FU-5): the sound may carry the codec's priming edit (at most 2,112 samples, presenting the whole film) and nothing more. A longer pre-roll behind an edit list fails, because a player that ignores edit lists plays it that late (WP-04's loop: 1.02 s). A picture offset (the B-frame delay written as an edit list) warns: such a player shows the picture late. The approved master warns here (66.7 ms); farm renders since FU-5 write negative composition offsets instead and pass.
 
 **Provenance** replaces verify.mjs's mtime check:
 
 - **A farm stamp** (`... @ <sha12> job <key12>`) must name the job whose `provenance.json` describes exactly this file (`final.sha256`). A `-dirty` stamp warns.
+- **A remux stamp** (FU-5: `<farm stamp> remux <key12>`, written by `hm remux`) must also match the remux record (`hm-remux/1`) in that provenance (`provenance.json` in place, `provenance.remux.json` out of place): its key, this file's sha256, and the picture. QA re-hashes the file's H.264 stream, which must equal both the stream the remux kept and the farm's `videoStream`, so a new score can never come with another picture.
 - **A composer direction** must carry the spec's fingerprint.
 - **A legacy stamp** (`... @ <sha12>`) must name a commit in this history while the frozen v2 still matches its hash-lock. When there is render evidence, it must pin this file's sha256.
 
@@ -378,10 +380,21 @@ The runner checks two things for each fixture: exactly one gate fails, and the n
 | – | `upscaled-sprite-log` | the asset log records the art raster magnified 1.6 times | G-FINAL:fidelity `magnification` | 1.6 against ≤ 1.0 |
 | – | `stray-draft-mark` | the engine's DRAFT mark on a production render | G-FINAL:brand-marks `mark` | NCC 0.997 |
 | – | `moving-stripes` | moving 40 px diagonal stripes over the bottom third, 4.0–5.5 s | G-FINAL:flash `pattern` | 21 analysed frames |
+| – | `moov-at-end` | the master remuxed without faststart (container only) | G-FINAL:delivery `faststart` | top-level atoms ftyp, free, mdat |
+| – | `foreign-frame-hashes` | the render record lists frame hashes the direction does not reproduce (`render: true`: the runner re-renders this one) | G-FINAL:determinism `frames` | frames 134, 257, 273 differ |
+| – | `unlisted-asset` | the asset log has the Mallow art served with a hash on no allowlist | G-FINAL:allowlist `assets` | `noomi-clean.png` hash not on the allowlist |
+| – | `camouflaged-mallow` | a ring 2–44 px around the Mallow painted in its own mean colour, every frame | G-FINAL:figure-ground `contrast` | dE 1.89 against ≥ 8 |
+| – | `foreign-realm` | everything but the Mallow, its cards, text and logo hue-rotated 150° (Lab, lightness kept) | G-FINAL:realm-likeness `likeness` | dE 21.7 (resolved mood) against ≤ 14 |
+| – | `washed-out-text` | the overlay rows washed out to 15 % contrast while readable | G-DRAFT:readability `overlay` | 1.54:1 against ≥ 4.5:1 |
+| – | `ballooning-cards` | the thought cards balloon ~2.4× as their words fade (direction only; only frames neither QA nor G-DIR reads the cards in change) | G-DRAFT:layout `propCoverFace` | 30.5 % of the face box against ≤ 8 % |
+| – | `unemitted-cue` | M-ORBIT's `wince` cue removed from the direction | G-DIR `audio:unemitted` | 'wince' declared, never emitted |
+| – | `subframe-flood` | 16 sub-frames on every frame | G-COST `cost:budget` | 18.6 min against 11 min |
 
-The plan's item 7, "a tinted or rescaled logo", has one fixture for each case.
+The plan's item 7, "a tinted or rescaled logo", has one fixture for each case. Since FU-5 every gate of the report has at least one fixture (`tests/unit/qa-fixtures.test.mjs`).
 
-**Result** (`WORK/qa-fixtures/summary.json`, `hm qa fixtures --render`): v2 passes, and 17 of 17 fixtures fail exactly their own gate. Every video fixture ran all 18 gates (the determinism re-render included) and failed exactly one. The two spec-only fixtures fail G-SPEC; their other 17 gates do not run, because they have no video and G-SPEC refuses them. The runner takes 431 s for the 17 fixtures plus v2.
+**Result** (FU-5, `hm qa fixtures --build`, 2026-10-15): v2 passes, and **26 of 26** fixtures fail exactly their own gate; every gate has at least one. The run took 627 s, and 1,847 s with every fixture's media rebuilt.
+
+**Earlier result** (`WORK/qa-fixtures/summary.json`, `hm qa fixtures --render`): v2 passes, and 17 of 17 fixtures fail exactly their own gate. Every video fixture ran all 18 gates (the determinism re-render included) and failed exactly one. The two spec-only fixtures fail G-SPEC; their other 17 gates do not run, because they have no video and G-SPEC refuses them. The runner takes 431 s for the 17 fixtures plus v2.
 
 ## 5. The review gallery
 
@@ -438,6 +451,7 @@ The plan's item 7, "a tinted or rescaled logo", has one fixture for each case.
 | 2026-10-14 (WP-05) | First calibration on the approved v2: every value marked `provisional` in `thresholds.json`, with the plan's value as the warn band | v2 must pass every gate (acceptance). v2 sits outside the plan on glass-card contrast (2.19:1), cards over the Mallow (21.8 %) and face (5.7 %), skin hue (22.3°) and chroma (0.55–1.42), logo SSIM (0.988) and the legacy audio seam step (−31.3 dBFS, R7). |
 | 2026-10-14 (WP-05) | Sharpness limit 0.5 → 0.6, logo SSIM limit 0.97 → 0.95 | Balanced margins: v2 0.835 and upscaled fixture 0.457 for sharpness; re-encoded fixtures 0.985 and rescaled logo 0.45 for SSIM. |
 | 2026-10-14 (WP-05) | Safezone: persistence plus rejection of periodic patterns | Moving stripes cut the water reflection into glyph-like pieces. That is a flash/pattern fault and must not also read as text. |
+| 2026-10-15 (FU-5) | G-FINAL:delivery: new `timing` check (codec priming at most, picture offset warns); remux stamps verified; nine new fixtures. No threshold changed. | No pre-roll behind an edit list (lead decision); `hm remux` output must be exportable; every gate needs a fixture. |
 
 **Cross-checks of the calibration:**
 

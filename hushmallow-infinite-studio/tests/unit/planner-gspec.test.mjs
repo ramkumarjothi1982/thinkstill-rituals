@@ -9,7 +9,7 @@ import { visibleSlots } from '../../planner/fingerprint.mjs';
 import { validateSchema } from '../../planner/spec-schema.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import { compilePolicy } from '../../planner/policy.mjs';
+import { compilePolicy, POLICY_FILE } from '../../planner/policy.mjs';
 import { sha256Hex } from '../../planner/canonical.mjs';
 import { STUDIO } from '../../render/lib/paths.mjs';
 
@@ -164,7 +164,7 @@ test('the approved v2 is expressible as a valid hm-variant/1 spec (what WP-03 pi
     sound: { motifs: t.sound.motifs, contour: 'arch-1', tickTempo: 1, panSeed: 0 },
     cells: Object.fromEntries(['G-JOLT', 'M-ORBIT', 'TURN-SQUEEZE', 'R-BREATH', 'LP-RETURN', 'C-DRIFT-IN', 'A-COLD-DIP-WARM'].map((id) => [`${id}/noomi`, 'approved'])),
     pins: {
-      library: real.lib.version, librarySha256: real.lib.sha256, capabilitiesSha256: real.caps.sha256, policySha256: '0'.repeat(64),
+      library: real.lib.version, librarySha256: real.lib.sha256, capabilitiesSha256: real.caps.sha256, policySha256: sha256Hex(fs.readFileSync(POLICY_FILE)),   // a real pin (FU-3 r2: 64 zeros is a stripped pin)
       packs: Object.fromEntries([['noomi', real.caps.packFile('noomi')], ['moonmilk-cove', real.caps.presetFile('moonmilk-cove')]].map(([id, f]) => [id, { file: f, sha256: sha256Hex(fs.readFileSync(path.join(STUDIO, f))) }])),
       engine: null,
     },
@@ -203,4 +203,34 @@ test('FU-3 pins: G-SPEC refuses a spec that empties, re-points or strips its pin
   const forged = clone(o);
   forged.pins.packs.noomi = { file: 'library/mallows/noomi.json', sha256: null };
   assert.ok(rulesOf(checkSpec(reseal(forged), open)).includes('pins:pack'), 'a pin the capabilities do not give');
+});
+
+test('FU-3 r2 pins: a placeholder, malformed, empty-file or re-pointed hash is a stripped pin (error); a real older digest warns', () => {
+  const cases = [
+    ['pins:policy', 'policy zeros', (s) => { s.pins.policySha256 = '0'.repeat(64); }],
+    ['pins:library', 'library zeros', (s) => { s.pins.librarySha256 = '0'.repeat(64); }],
+    ['pins:capabilities', "capabilities 'x'", (s) => { s.pins.capabilitiesSha256 = 'x'; }],
+    ['pins:capabilities', 'capabilities f…f', (s) => { s.pins.capabilitiesSha256 = 'f'.repeat(64); }],
+    ['pins:policy', 'policy = sha256 of an empty file', (s) => { s.pins.policySha256 = sha256Hex(Buffer.alloc(0)); }],
+    ['pins:policy', 'policy holds the library hash', (s) => { s.pins.policySha256 = s.pins.librarySha256; }],
+    ['pins:library', 'library holds the capabilities hash', (s) => { s.pins.librarySha256 = s.pins.capabilitiesSha256; }],
+  ];
+  for (const [rule, name, f] of cases) {
+    const s = clone(base);
+    f(s);
+    reseal(s);
+    const g = checkSpec(s, real);
+    assert.equal(g.pass, false, name);
+    assert.ok(rulesOf(g).includes(rule), `${name}: ${rulesOf(g).join(', ')}`);
+  }
+  // a real digest of another version: a warning, as designed (copy and capabilities are re-checked live)
+  const older = clone(base);
+  older.pins.policySha256 = sha256Hex('an older planner/policy.json');
+  const g = checkSpec(reseal(older), real);
+  assert.equal(g.pass, true);
+  assert.ok(g.warnings.some((w) => w.rule === 'pins:policy'));
+  // open capabilities pin 'open'
+  const o = openSpec({ template: ['T01'], mallow: ['noomi'] });
+  assert.equal(o.pins.capabilitiesSha256, 'open');
+  assert.equal(checkSpec(o, open).pass, true);
 });

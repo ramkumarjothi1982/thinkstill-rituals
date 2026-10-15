@@ -14,6 +14,9 @@
 //     reactions, never past the 1.0 s impact limit.
 //   - Eye gate. Closed-eye Mallows open their eyes only when intensity × opening
 //     reaches the pack's gate (the app's own rule, PERSONALITY[id].eyeGate).
+//     Every opening the gate closes is recorded ({ t, by, asked, k, gate }, into the
+//     `gates` list the composer passes): pose contracts accept the shut eyes
+//     there and only there (poses.js eyeGateAt, FU-4).
 
 import { PRESETS, PERSONALITY } from '../../hushmallow/src/mallows/expressions.js';
 import { CompileError, channelInfo } from './channels.js';
@@ -31,7 +34,11 @@ export function personalityOf(pack) {
   return {
     amp: P.amp ?? 1, tempo: P.tempo ?? 1, reactLag: P.reactLag ?? 0,
     blinkRate: P.blinkRate ?? null, microNoise: P.microNoise ?? 0, eyeGate: gate,
-    /** eyeOpen value to use for an opening of `value` at intensity k: value, or 0 when gated shut. */
+    /**
+     * eyeOpen value to use for an opening of `value` at intensity k: value, or 0 when gated shut.
+     * Moves call it through ctx.personality.eyesOpen(k, value, t), which records a closure at
+     * the key time t (compose.js makeCtx).
+     */
     eyesOpen(k, value) {
       if (!gate) return value;
       return k * value >= gate[0] ? value : 0;
@@ -78,9 +85,10 @@ export function intentTargets(pack, name) {
 
 /**
  * Apply the personality pass to a ChannelSet in place. intents: [{ name, t,
- * amount, f, z, by, rank }]. → report { intents, keysScaled, kicksScaled, lagged, lag }.
+ * amount, f, z, by, rank }]. gates: a list the eye-gate closures of intents are
+ * appended to ({ t, by, asked, k, gate }). → report { intents, keysScaled, kicksScaled, lagged, lag }.
  */
-export function applyPersonality(set, pack, { intents = [], impact = null } = {}) {
+export function applyPersonality(set, pack, { intents = [], impact = null, gates = null } = {}) {
   const per = personalityOf(pack);
   const report = { intents: 0, keysScaled: 0, kicksScaled: 0, lagged: 0, lag: 0 };
 
@@ -94,7 +102,11 @@ export function applyPersonality(set, pack, { intents = [], impact = null } = {}
       if (!channelInfo(name) || channelInfo(name).type !== 'track') continue;
       const rest = pack.face.neutral[param] ?? 0;
       let v = rest + (target - rest) * it.amount;
-      if (param === 'eyeOpen') v = per.eyesOpen(it.amount, v);
+      if (param === 'eyeOpen') {
+        const g = per.eyesOpen(it.amount, v);
+        if (g !== v && gates) gates.push({ t: it.t, by: it.by, asked: v, k: it.amount, gate: per.eyeGate[0] });
+        v = g;
+      }
       set.key(name, it.t, v, { f: it.f, z: it.z, intent: true });
       report.intents++;
     }

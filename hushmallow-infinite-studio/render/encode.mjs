@@ -1,21 +1,29 @@
-// ffmpeg/x264 for the render farm: segment encoders, concat, and the probes
-// that check the result (frame count, decode errors, IDR positions, PSNR).
+// ffmpeg/x264 for the render farm: segment encoders, the master pass, concat,
+// and the probes that check the result (frame count, decode errors, IDR
+// positions, PSNR, the H.264 stream hash).
 //
-// Segments must be invisible. A 90-frame segment is encoded on its own, then
-// the segments are joined with the concat demuxer and `-c copy`, so the joined
-// stream must equal what one encoder would have produced from all frames in
-// one pass. Measured in WP-01 (450 frames of v2, 5 segments, docs/wp/WP-01.md):
-//   - CRF 16 (x264 rate control as in the approved render): 49.5 dB against the
-//     single pass, with almost every frame different. CRF carries state across
-//     GOPs: MB-tree looks 50 frames ahead across keyframes, I-frame QPs come
-//     from a decaying average of earlier frames, and direct=auto adapts from
-//     earlier B-frames. So CRF is not segment-invariant.
+// Segments must be invisible. Measured in WP-01 (450 frames of v2, 5 segments,
+// docs/wp/WP-01.md):
+//   - CRF 16 per segment (x264 rate control as in the approved render): 49.5 dB
+//     against the single pass, with almost every frame different. CRF carries
+//     state across GOPs: MB-tree looks 50 frames ahead across keyframes, I-frame
+//     QPs come from a decaying average of earlier frames, and direct=auto adapts
+//     from earlier B-frames. So CRF is not segment-invariant.
 //   - constant QP with direct=spatial and scenecut=0 keeps every GOP self-
-//     contained: the joined segments decode bit-identically to the single pass
-//     (all 450 frames). QP 15 matches CRF 16's quality against the same source
-//     (SSIM 0.9866 vs 0.9857, PSNR-Y 44.93 vs 44.72 dB) at +6 % size.
-// Hence the segment encoder 'qp15' below is the farm's default; 'crf16' is kept
-// for single-pass work only.
+//     contained: segments joined with concat -c copy decode bit-identically to
+//     the single pass, but QP 15 is 34 % larger than the approved master.
+// Owner decision Q4(b) (OWNER-DECISIONS, lead decision 2026-10-14, FU-5): keep
+// CRF 16. Each segment is encoded LOSSLESSLY ('lossless': x264 QP 0, ultrafast,
+// so cheap that it no longer competes with the renderer for the CPU), and the
+// master is ONE pass over the joined frames ('crf16': the approved render's own
+// arguments, render/render.mjs, with the thread count x264 chose for it). The
+// lossless intermediate decodes to exactly the yuv420p frames the colour
+// conversion produced, so the master equals a single-pass encode of the frames
+// bit for bit, however the film was segmented (tests/unit/farm-encode.test.mjs,
+// hm render --tee-single-pass). The preview (CRF 20) is encoded from the same
+// decode in the same pass. 'qp15' and 'draft' stay segment-invariant encoders
+// whose segments are joined with concat -c copy (no master pass): draft keeps
+// its speed, and qp15 is kept for comparisons.
 //
 // Frames arrive as raw RGBA with bottom-up rows (WebGL readPixels) and are
 // flipped and converted exactly as the approved render did (vflip, full-range
@@ -25,22 +33,37 @@
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 /** GOP layout shared by every encoder: an IDR every 30 frames, closed GOPs, no scene-cut keyframes. */
 export const GOP = 30;
 
 export const ENCODERS = Object.freeze({
+  lossless: {
+    summary: 'x264 ultrafast, lossless (QP 0): the segment intermediate; the master is one pass over the joined frames',
+    preset: 'ultrafast',
+    rate: ['-qp', '0'],
+    profile: 'high444', level: null, tune: null,        // lossless needs High 4:4:4 Predictive (also for 4:2:0)
+    x264: `keyint=${GOP}:min-keyint=${GOP}:scenecut=0:open-gop=0`,
+    segmentSafe: true,
+    intermediate: true,
+  },
   qp15: {
-    summary: 'x264 slow, constant QP 15, GOP-local (segment-invariant); the farm default',
+    summary: 'x264 slow, constant QP 15, GOP-local (segment-invariant); joined with concat -c copy (WP-01\'s farm default)',
     rate: ['-qp', '15'],
     x264: `keyint=${GOP}:min-keyint=${GOP}:scenecut=0:open-gop=0:direct=spatial`,
     segmentSafe: true,
   },
   crf16: {
-    summary: 'x264 slow, CRF 16 (the approved render\'s rate control); NOT segment-invariant',
+    // exactly render/render.mjs's arguments (no -x264-params: x264 clamps keyint_min to 16 and keeps
+    // scenecut 40), and threads=6: what x264 chose for the approved master on the 4-core studio machine
+    // (its SEI reads threads=6), pinned so the master does not depend on the machine
+    summary: 'x264 slow, CRF 16: the approved render\'s arguments; the master, one pass over every frame (NOT segment-invariant)',
     rate: ['-crf', '16'],
-    x264: `keyint=${GOP}:min-keyint=${GOP}:scenecut=0:open-gop=0`,
+    x264: null,
+    threads: 6,
     segmentSafe: false,
+    master: true,
   },
   draft: {
     summary: 'x264 veryfast, constant QP 20, GOP-local (segment-invariant); review drafts',
@@ -52,25 +75,32 @@ export const ENCODERS = Object.freeze({
   crf20: {
     // preset fast (WP-02, measured on v2's final master): 22.7 s instead of 61.6 s (slow, 2 threads),
     // 46.46 dB against the master instead of 45.98, 9.8 MB instead of 10.7
-    summary: 'x264 fast, CRF 20 preview copy (single pass from the master)',
+    summary: 'x264 fast, CRF 20 preview copy (from the lossless frames in the master pass, else from the master)',
     preset: 'fast',
     rate: ['-crf', '20'],
     x264: `keyint=${GOP}:min-keyint=${GOP}:scenecut=0:open-gop=0`,
+    threads: 4,
     segmentSafe: false,
+    preview: true,
   },
 });
+
+/** The shareable preview's size limit (OWNER-DECISIONS Q3: previews of 15 MB or less). */
+export const PREVIEW_MAX_BYTES = 15e6;
 
 /** The colour pipeline of the approved render (render/render.mjs): flip, full → limited range, BT.709. */
 export const VF_FROM_GL = 'vflip,scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p';
 
-/** x264 output arguments for an encoder name. */
-export function x264Args(encoder = 'qp15', { fps = 30, threads = 2 } = {}) {
+/** x264 output arguments for an encoder name (threads: the encoder's own count, else 2, unless given). */
+export function x264Args(encoder = 'lossless', { fps = 30, threads, crf = null } = {}) {
   const e = ENCODERS[encoder];
   if (!e) throw new Error(`unknown encoder ${encoder} (have: ${Object.keys(ENCODERS).join(', ')})`);
+  const rate = crf === null ? e.rate : ['-crf', String(crf)];
+  const tune = e.tune === undefined ? 'film' : e.tune, level = e.level === undefined ? '4.2' : e.level;
   return [
-    '-c:v', 'libx264', '-preset', e.preset || 'slow', ...e.rate, '-tune', 'film',
-    '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.2', '-g', String(GOP), '-keyint_min', String(GOP),
-    '-x264-params', e.x264, '-threads', String(threads),
+    '-c:v', 'libx264', '-preset', e.preset || 'slow', ...rate, ...(tune ? ['-tune', tune] : []),
+    '-pix_fmt', 'yuv420p', '-profile:v', e.profile || 'high', ...(level ? ['-level', level] : []), '-g', String(GOP), '-keyint_min', String(GOP),
+    ...(e.x264 ? ['-x264-params', e.x264] : []), '-threads', String(threads ?? e.threads ?? 2),
     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
     '-r', String(fps),
   ];
@@ -81,7 +111,7 @@ export function x264Args(encoder = 'qp15', { fps = 30, threads = 2 } = {}) {
  * keyframeEvery: also force an IDR every that many frames (a single-pass
  * reference for segments whose length is not a multiple of GOP).
  */
-export function rawEncodeArgs({ width, height, fps, out, encoder = 'qp15', threads = 2, keyframeEvery = 0 }) {
+export function rawEncodeArgs({ width, height, fps, out, encoder = 'lossless', threads, keyframeEvery = 0 }) {
   return [
     '-y', '-hide_banner', '-loglevel', 'error', '-nostdin',
     '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${width}x${height}`, '-framerate', String(fps), '-i', '-',
@@ -128,11 +158,44 @@ export function concatSegments(files, out) {
   return out;
 }
 
-/** Re-encode a video stream (e.g. the CRF 20 preview). */
-export function transcode(input, out, { encoder = 'crf20', fps = 30, threads = 2, extra = [] } = {}) {
-  const r = run('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', input, '-map', '0:v:0', '-map', '0:a?', ...x264Args(encoder, { fps, threads }), '-c:a', 'copy', ...extra, '-movflags', '+faststart', out]);
+/** Re-encode a video stream (e.g. the CRF 20 preview from the master); audio is copied. */
+export function transcode(input, out, { encoder = 'crf20', fps = 30, threads, crf = null, extra = [] } = {}) {
+  const r = run('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', input, '-map', '0:v:0', '-map', '0:a?', ...x264Args(encoder, { fps, threads, crf }), '-c:a', 'copy', ...extra, '-movflags', '+faststart', out]);
   if (r.status !== 0) throw new Error(`transcode failed: ${r.stderr.toString().trim()}`);
   return out;
+}
+
+/**
+ * The master pass (Q4(b)): decode the joined lossless segments once and encode every
+ * frame in one x264 pass with the master encoder; with `previewOut`, the preview is
+ * encoded from the same decoded frames in the same process (its own x264 instance).
+ * Video only: the score is muxed afterwards. → { out, previewOut, ms }
+ */
+export function encodeMaster(files, out, { encoder = 'crf16', fps = 30, previewOut = null, previewEncoder = 'crf20' } = {}) {
+  if (!ENCODERS[encoder]?.master) throw new Error(`${encoder} is not a master encoder`);
+  for (const f of files) if (!fs.existsSync(f)) throw new Error(`master pass: segment ${f} is missing`);
+  const list = `${out}.concat.txt`;
+  fs.writeFileSync(list, files.map((f) => `file '${path.resolve(f).replace(/'/g, "'\\''")}'`).join('\n') + '\n');
+  const t0 = process.hrtime.bigint();
+  try {
+    const input = ['-y', '-hide_banner', '-loglevel', 'error', '-nostdin', '-f', 'concat', '-safe', '0', '-i', list];
+    const master = [...x264Args(encoder, { fps }), '-movflags', '+faststart', out];
+    const args = previewOut
+      ? [...input, '-filter_complex', '[0:v:0]split=2[m][p]', '-map', '[m]', ...master, '-map', '[p]', ...x264Args(previewEncoder, { fps }), '-movflags', '+faststart', previewOut]
+      : [...input, '-map', '0:v:0', ...master];
+    const r = run('ffmpeg', args);
+    if (r.status !== 0) throw new Error(`master pass failed: ${r.stderr.toString().trim()}`);
+  } finally {
+    fs.rmSync(list, { force: true });
+  }
+  return { out, previewOut, ms: Math.round(Number(process.hrtime.bigint() - t0) / 1e6) };
+}
+
+/** sha256 of a file's H.264 elementary stream (Annex B, as ffmpeg -c copy -f h264 writes it): the picture, whatever the container. */
+export function h264StreamSha256(file) {
+  const r = run('ffmpeg', ['-v', 'error', '-nostdin', '-i', file, '-map', '0:v:0', '-c', 'copy', '-f', 'h264', '-']);
+  if (r.status !== 0) throw new Error(`h264 stream of ${file}: ${r.stderr.toString().trim()}`);
+  return crypto.createHash('sha256').update(r.stdout).digest('hex');
 }
 
 /** Stream facts from ffprobe, with an exact decoded frame count. */

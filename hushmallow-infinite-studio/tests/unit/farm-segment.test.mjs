@@ -6,12 +6,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { mkWorkTemp } from '../../render/lib/paths.mjs';
 import {
   planSegments, segPaths, tryLock, lockFile, touchLock, releaseLock, staleReason, processStart, readDone, writeDone,
   recordFailure, isFailed, clearFailures, segmentStatus, writeJsonAtomic, readJson, sha256File, STALE_LOCK_MS, MAX_ATTEMPTS, SEGMENT_FRAMES,
+  withReclaim, RECLAIM_STALE_MS,
 } from '../../render/segment.mjs';
+
+const SEGMENT_MJS = fileURLToPath(new URL('../../render/segment.mjs', import.meta.url));
+/** The pid of a process that has exited (a dead lock owner). */
+const deadPid = () => Number(spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' }).stdout);
+const writeDeadLock = (file, extra = {}) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify({ pid: deadPid(), pidStart: '1', host: os.hostname(), since: 'dead', ...extra })); };
 
 const tmpJob = () => mkWorkTemp('seg-test-');
 
@@ -163,4 +170,81 @@ test('the farm lock (one farm per job) never times out while its owner lives, an
     const next = lockFile(file, { role: 'farm' }, { staleMs: Infinity });
     assert.match(next?.reclaimed ?? '', /is gone/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('stale reclaim is atomic: a reclaimer that judged a dead lock never removes the fresh lock another process took meanwhile', () => {
+  const job = tmpJob();
+  try {
+    const file = segPaths(job, 0).lock;
+    writeDeadLock(file, { worker: 9 });
+    let b = null;
+    // A judges the dead lock stale; before A acts, B reclaims it and takes the segment (the WP-01 race:
+    // A then moved B's fresh lock aside and created its own, so both rendered the segment)
+    const a = lockFile(file, { worker: 0 }, { beforeReclaim: () => { b = lockFile(file, { worker: 1 }); } });
+    assert.ok(b, 'B reclaimed the dead lock');
+    assert.match(b.reclaimed, /owner pid \d+ is gone/);
+    assert.equal(a, null, 'A sees that the lock it judged is gone and that the new one is live');
+    assert.equal(readJson(file).worker, 1, "B's lock is intact");
+    assert.ok(!fs.existsSync(`${file}.reclaim`), 'the reclaim section is left');
+    releaseLock(b);
+    assert.ok(!fs.existsSync(file));
+  } finally { fs.rmSync(job, { recursive: true, force: true }); }
+});
+
+test('only one can win: 8 processes reclaiming the same stale lock at the same instant, 12 rounds', { timeout: 120000 }, async () => {
+  const job = tmpJob();
+  try {
+    const file = segPaths(job, 0).lock;
+    const child = `
+      import { lockFile } from ${JSON.stringify(SEGMENT_MJS)};
+      const [file, k, at] = process.argv.slice(1);
+      while (Date.now() < Number(at)) {}                          // barrier: everyone starts together
+      const l = lockFile(file, { worker: Number(k) });
+      process.stdout.write(JSON.stringify({ k: Number(k), pid: process.pid, won: !!l, reclaimed: l?.reclaimed ?? null }));
+      // stay alive until every attempt of the round is over: a winner that exits leaves a lock that is
+      // legitimately stale (its owner is gone), and a slower reclaimer would rightly take it over
+      while (Date.now() < Number(at) + 1500) {}`;
+    let reclaimedByWinner = 0;
+    for (let round = 0; round < 12; round++) {
+      writeDeadLock(file, { worker: 99, round });
+      const at = Date.now() + 1500;
+      const runs = Array.from({ length: 8 }, (_, k) => new Promise((resolve, reject) => {
+        const p = spawn(process.execPath, ['--input-type=module', '-e', child, file, String(k), String(at)], { stdio: ['ignore', 'pipe', 'pipe'] });
+        let out = '', err = '';
+        p.stdout.on('data', (d) => { out += d; });
+        p.stderr.on('data', (d) => { err += d; });
+        p.once('close', (code) => (code === 0 ? resolve(JSON.parse(out)) : reject(new Error(err))));
+      }));
+      const res = await Promise.all(runs);
+      const winners = res.filter((r) => r.won);
+      assert.equal(winners.length, 1, `round ${round}: ${JSON.stringify(res)}`);
+      // the stale lock is removed by whoever enters the reclaim section first; the O_EXCL create after it decides the winner
+      assert.ok(winners[0].reclaimed === null || /owner pid \d+ is gone/.test(winners[0].reclaimed), JSON.stringify(winners[0]));
+      reclaimedByWinner += winners[0].reclaimed ? 1 : 0;
+      assert.equal(readJson(file).pid, winners[0].pid, `round ${round}: the lock on disk is the winner's`);
+      assert.ok(!fs.existsSync(`${file}.reclaim`), 'no reclaim section is left behind');
+      fs.rmSync(file);
+    }
+    assert.ok(reclaimedByWinner >= 1, 'in some rounds the winner is the reclaimer itself');
+  } finally { fs.rmSync(job, { recursive: true, force: true }); }
+});
+
+test('a reclaim section left by a process that died inside it is cleared; a live one is respected', () => {
+  const job = tmpJob();
+  try {
+    const file = segPaths(job, 1).lock;
+    writeDeadLock(file);
+    writeDeadLock(`${file}.reclaim`);
+    const l = lockFile(file, { worker: 0 });
+    assert.ok(l, 'reclaimed despite the dead section');
+    assert.ok(!fs.existsSync(`${file}.reclaim`));
+    // a live section (ours, fresh): nobody else may enter, and the lock it guards is not removed
+    fs.writeFileSync(`${file}.reclaim`, JSON.stringify({ pid: process.pid, pidStart: processStart(process.pid), host: os.hostname(), since: 'now' }));
+    assert.equal(withReclaim(file, () => true), null);
+    assert.equal(RECLAIM_STALE_MS, 10000);
+    fs.rmSync(`${file}.reclaim`);
+    assert.equal(withReclaim(file, () => 'ran'), 'ran');
+    releaseLock(l);
+    assert.ok(!fs.existsSync(file));
+  } finally { fs.rmSync(job, { recursive: true, force: true }); }
 });

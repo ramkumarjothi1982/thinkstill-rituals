@@ -8,6 +8,8 @@
 //   spec.json     a faulted spec (sealed, so only the fault is wrong), or the v2 production twin
 //   evidence.json the v2 render evidence, pinned to this fixture's video (a fixture is a render
 //                 whose provenance is in order; only its fault differs)
+//   direction.json a faulted compiled direction (the golden T01 direction with one change)
+//   provenance.json a faulted farm provenance (frame hashes the direction does not reproduce)
 //   corpus.jsonl  a G-DUPES corpus (the duplicate fixture)
 // Fixture manifests use an empty ledger, so the studio ledger never changes a
 // fixture's verdict. The faulted media (the slow part) is re-made only when
@@ -94,6 +96,40 @@ async function makeSpec(op, P, S) {
   throw new Error(`unknown spec op ${op}`);
 }
 
+/** The faulted compiled direction of a fixture (a copy of the golden T01 direction with one change). */
+export function makeDirection(op, P, base) {
+  const d = structuredClone(base);
+  if (op === 'prop-param') {
+    const prop = d.props.find((p) => p.id === P.prop);
+    if (!prop) throw new Error(`direction op prop-param: no prop ${P.prop}`);
+    let o = prop.params;
+    for (const k of P.path.slice(0, -1)) o = o[k];
+    o[P.path.at(-1)] = structuredClone(P.value);
+  } else if (op === 'drop-cue') {
+    const n = d.cues.length;
+    d.cues = d.cues.filter((c) => !(c.by === P.by && c.type === P.type));
+    if (d.cues.length === n) throw new Error(`direction op drop-cue: no cue ${P.by}:${P.type}`);
+  } else if (op === 'meta') {
+    Object.assign(d.meta, P);
+  } else {
+    throw new Error(`unknown direction op ${op}`);
+  }
+  return d;
+}
+
+/** The faulted farm provenance of a fixture: the legacy v2 render described as a farm job whose frame hashes are not v2's. */
+async function makeProvenance(op) {
+  if (op !== 'tamper-hashes') throw new Error(`unknown provenance op ${op}`);
+  const { SEQUENTIAL_GOLDENS } = await import('../../render/farm.mjs');
+  const g = SEQUENTIAL_GOLDENS['my-brain-at-2am-v2'];
+  const hashes = JSON.parse(fs.readFileSync(studioPath(g.file), 'utf8')).hashes;
+  return {
+    schema: 'hm-provenance/1', $fixture: 'qa/fixtures/build.mjs: the approved v2 render with every recorded frame hash replaced by a foreign one',
+    job: { id: 'fixture-foreign-frame-hashes', direction: 'my-brain-at-2am-v2', params: { ...g.params, preroll: 1 }, info: { score: 'soundtrack-v2', fps: 30, duration: 15 } },
+    frameHashes: hashes.map((h) => sha(`${h} foreign`)),
+  };
+}
+
 /** Build one fixture. → its target.json path */
 async function buildOne(def, S, { force, log, date }) {
   const dir = path.join(FIXTURE_ROOT, def.id);
@@ -141,9 +177,24 @@ async function buildOne(def, S, { force, log, date }) {
       r.maxMagnification = m.evidence.params.value;
       ev.assets.maxMagnification = Math.max(ev.assets.maxMagnification, m.evidence.params.value);
       ev.$fixture = `${m.evidence.params.role} raster magnified ${m.evidence.params.value}x (qa/fixtures/build.mjs)`;
+    } else if (m.evidence?.op === 'swap-asset') {
+      const r = ev.assets.rasters.find((x) => x.role === m.evidence.params.role);
+      const f = r && ev.assets.files.find((x) => x.url === r.url);
+      if (!f) throw new Error(`swap-asset: the evidence has no served file for the ${m.evidence.params.role} raster`);
+      f.sha256 = r.sha256 = sha(`not the approved ${m.evidence.params.role} raster`);
+      ev.$fixture = `${m.evidence.params.role} raster (${f.url}) served with a hash on no allowlist (qa/fixtures/build.mjs)`;
     }
     writeJson(path.join(dir, 'evidence.json'), ev);
     target.evidence = path.join(dir, 'evidence.json');
+  }
+  if (m.direction) {
+    const d = makeDirection(m.direction.op, m.direction.params, S.v2.direction);
+    writeJson(path.join(dir, 'direction.json'), d);
+    target.direction = path.join(dir, 'direction.json');
+  }
+  if (m.provenance) {
+    writeJson(path.join(dir, 'provenance.json'), await makeProvenance(m.provenance.op, m.provenance.params));
+    target.provenance = path.join(dir, 'provenance.json');
   }
   if (m.corpus?.op === 'v2-as') {
     const P = m.corpus.params;
@@ -151,7 +202,7 @@ async function buildOne(def, S, { force, log, date }) {
     target.corpus = [path.join(dir, 'corpus.jsonl')];
   }
   // manifest paths relative to the manifest
-  for (const k of ['video', 'spec', 'direction', 'cues', 'evidence', 'plan']) if (target[k]) target[k] = path.relative(dir, target[k]);
+  for (const k of ['video', 'spec', 'direction', 'cues', 'evidence', 'plan', 'provenance']) if (target[k]) target[k] = path.relative(dir, target[k]);
   if (target.corpus) target.corpus = target.corpus.map((f) => path.relative(dir, f));
   target.build = { mediaKey: media ? mediaKey : null, media: media ? (fresh ? 'kept' : 'made') : 'none', video: target.video ? sha256File(path.resolve(dir, target.video)) : null };
   const targetFile = path.join(dir, 'target.json');

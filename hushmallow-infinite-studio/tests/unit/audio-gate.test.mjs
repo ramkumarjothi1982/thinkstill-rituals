@@ -62,6 +62,12 @@ test('default hm-score plans (score-plan.json) of every Mallow pass; a banned sh
   assert.match(await fail([], [{ t: 2.5, kind: 'fx', name: 'snap', opts: { intensity: 0.8 }, trim: 1 }], 'a full-force snap'), /jump-scare/);
   // inside the sparkle cloud (9.42–11.4 s): only the layer's own pings are texture
   assert.match(await fail([0, 0.1].map((o, k) => ({ t: 10 + o, inst: 'ping', f: [880, 1318.5][k], rise: 1.012, peak: 0.04, decay: 0.55, pan: 0, send: 0.45 })), [], 'a two-tone of pings among the sparkles'), /messenger-pop/);
+  // the FU-2 verifier's gate-level escapes (WORK/verify-fu2/gate-inject.mjs, gate-inject2.mjs), each in a default plan
+  assert.match(await fail([{ t: 6.5, inst: 'blip', f: 45, f1: 60, glide: 0.002, a: 0.004, d: 0.12, peak: 0.08 }, { t: 6.78, inst: 'blip', f: 41, f1: 55, glide: 0.002, a: 0.004, d: 0.1, peak: 0.06 }], [], 'a lub-dub with 2 ms onset scoops'), /heartbeat/);
+  assert.match(await fail([{ t: 3, inst: 'blip', f: 440, a: 0.01, h: 1.95, d: 0.03, peak: 0.03 }, { t: 3.04, inst: 'blip', f: 480, a: 0.01, h: 1.95, d: 0.03, peak: 0.03 }], [], 'the US ring, its 480 Hz tone 40 ms late'), /ringtone/);
+  assert.match(await fail([1568, 1318.5, 1046.5].map((f, k) => ({ t: 6.2 + k * 0.1, inst: 'blip', f, a: 0.002, d: 0.025, peak: 0.04 })), [], 'a tri-tone of 25 ms pips'), /messenger-pop/);
+  const th = (t0) => [{ t: t0, inst: 'blip', f: 60, f1: 45, d: 0.12, peak: 0.04 }, { t: t0 + 0.28, inst: 'blip', f: 55, f1: 42, d: 0.1, peak: 0.032 }];
+  assert.match(await fail([...th(6.5), { t: 6.46, inst: 'ping', f: 2000, peak: 0.1, decay: 0.08 }, { t: 6.74, inst: 'ping', f: 2200, peak: 0.1, decay: 0.08 }], [], 'a lub-dub behind 2 kHz ticks'), /heartbeat/);
 });
 
 test('a plan whose sparkle cloud does not regenerate is linted whole (a wrong pan seed or Mallow is no excuse)', async () => {

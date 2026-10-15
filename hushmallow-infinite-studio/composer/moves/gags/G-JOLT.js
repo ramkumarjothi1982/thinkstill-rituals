@@ -57,7 +57,7 @@ export default {
     ctx.key('body.inflate', at(take, 0.35), 0, { f: 2, z: 0.8 });
 
     // face: squeezed in the flinch, then eyes snap wide with pin-prick pupils
-    const eyes = ctx.personality.eyesOpen(p.intensity, p.eyePop);
+    const eyes = ctx.personality.eyesOpen(p.intensity, p.eyePop, take);    // a closure is recorded at the snap
     ctx.post('gag.eyes', eyes > 0);
     if (eyes > 0) ctx.key('face.eyeOpen', take, eyes, { f: 8, z: 0.42, react: true });
     ctx.key('face.squint', antic, 0.6);

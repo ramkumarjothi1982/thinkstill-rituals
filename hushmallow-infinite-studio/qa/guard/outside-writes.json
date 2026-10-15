@@ -1,13 +1,13 @@
 {
   "schema": "hm-write-audit/2",
-  "since": "2026-10-14T23:49:02.330Z",
-  "armedBy": "FU-1 (guard bypasses)",
-  "reason": "FU-1 re-arm after review (2026-10-14). The audit gained the touched and created directory checks (a file created and deleted again, mkdir, a directory's metadata change) and treats git's and the harness's worktree containers as housekeeping. Before arming, against the Wave D baseline 2026-10-14T22:09:51.068Z, the new audit reported exactly one finding: touched /tmp/claude-0/-home-user-thinkstill-rituals/408ed79f-c8dc-5aa7-9180-8647f2fe949e/scratchpad at 22:33:52.871Z, the M0 auditor's copy of docs/wp/WP-02.md created there and deleted again (docs/M0-REPORT.md section 11, Audit hygiene; not studio code). Nothing else was written, deleted, created or touched outside the studio and WORK; the git config is unchanged; frozen v2, app tree and the repository outside the studio are ok. The worktree removals of 23:15-23:18 (.claude, .git/worktrees) are git and harness housekeeping, excused by rule. A dry run against the round-3 baseline (00:47:08) confirms the new checks report the Wave A 00:56:35 jail-probe event (/home/user, ../hushmallow, /usr/local, /run, /dev/shm touched).",
+  "since": "2026-10-15T04:11:45.541Z",
+  "armedBy": "FU-1 round 2 (guard bypasses)",
+  "reason": "FU-1 round 2 re-arm after review (2026-10-15). The audit now treats 'remove' exemptions as exact paths (a harness session directory and its scratchpad directory may be created or removed; everything inside them is audited), runs the touched check unless a removal was made by the directory's owner, audits the checkout's top level (only the git directory and worktree admin dirs keep a touch exemption, plus /tmp), lets an entry explain a change only if it was created then or renamed/linked in then (a subdirectory's or file's own content change explains nothing), and uses TOUCH_EPS_MS 20 (measured worst case 6.1 ms under load). Against the previous baseline 2026-10-14T23:49:02.330Z the round-2 audit reported exactly two findings, both reviewed: (1) written /home/user/thinkstill-rituals/.git/info/exclude at 01:26:53.498Z by the workflow harness, in the same nanosecond as it created hushmallow-infinite-studio/.workflows/m0fu-m1.js; the one added line, hushmallow-infinite-studio/.workflows/, hides only that harness directory inside the studio from git status; not studio code. (2) touched /dev/shm at 03:45:24.128Z: FU-1 round 2's own timestamp-gap measurement (WORK/tmp/fu1r2/eps.mjs), run once outside the write jail by mistake, created and removed /dev/shm/hm-fu1r2-eps-25874; nothing is left (only rclone-vfscache, from boot). Frozen v2, the app tree and the repository outside the studio are ok; git config unchanged.",
   "listing": {
-    "file": "listing-2026-10-14T23-49-02-330Z.json.gz",
-    "sha256": "7b78efecf73f9af68e598aad640f7e2f68e965b4ab51fc2f9006ea6ef867cf39",
-    "dirs": 27868,
-    "entries": 221554,
+    "file": "listing-2026-10-15T04-11-45-541Z.json.gz",
+    "sha256": "b05815478b82b235ddb2a8d8dc7e357e5f33ef541e71c588e5773f746fd6db6e",
+    "dirs": 27881,
+    "entries": 221737,
     "roots": [
       "/",
       "/dev/shm",
@@ -45,6 +45,11 @@
       "since": "2026-10-14T22:09:51.068Z",
       "armedBy": "Wave D integrator (WP-04, WP-05)",
       "reason": "Wave D re-arm after review (2026-10-14). Before arming, the audit against the 2026-10-14T00:47:08.488Z baseline found only files in the shared agent session scratchpad /tmp/claude-0/-home-user-thinkstill-rituals/408ed79f-c8dc-5aa7-9180-8647f2fe949e/scratchpad, none written by studio code: (a) 4 files written there after the baseline by the WP-04 round-2 and WP-05 reviewers (compat-perturb.mjs, lint-evade2.mjs, gate.mjs, variants.py; 19:10-20:03) were moved to WORK/waveD/scratchpad-moved/ (they were not in the arming listing, so no deletion finding); (b) the remaining 75 findings are Phase-1 scratch files (aq1.png, face1.png, m1.py ... world_fs.glsl) that are in the arming listing, whose content mtimes are all on 2026-10-13 (before the baseline) and whose ctime the environment bumped together at 2026-10-14T18:28:42Z (metadata only, no content written). No deletions, no git config change; frozen v2 and app tree ok; no repository changes outside the studio root."
+    },
+    {
+      "since": "2026-10-14T23:49:02.330Z",
+      "armedBy": "FU-1 (guard bypasses)",
+      "reason": "FU-1 re-arm after review (2026-10-14). The audit gained the touched and created directory checks (a file created and deleted again, mkdir, a directory's metadata change) and treats git's and the harness's worktree containers as housekeeping. Before arming, against the Wave D baseline 2026-10-14T22:09:51.068Z, the new audit reported exactly one finding: touched /tmp/claude-0/-home-user-thinkstill-rituals/408ed79f-c8dc-5aa7-9180-8647f2fe949e/scratchpad at 22:33:52.871Z, the M0 auditor's copy of docs/wp/WP-02.md created there and deleted again (docs/M0-REPORT.md section 11, Audit hygiene; not studio code). Nothing else was written, deleted, created or touched outside the studio and WORK; the git config is unchanged; frozen v2, app tree and the repository outside the studio are ok. The worktree removals of 23:15-23:18 (.claude, .git/worktrees) are git and harness housekeeping, excused by rule. A dry run against the round-3 baseline (00:47:08) confirms the new checks report the Wave A 00:56:35 jail-probe event (/home/user, ../hushmallow, /usr/local, /run, /dev/shm touched)."
     }
   ]
 }

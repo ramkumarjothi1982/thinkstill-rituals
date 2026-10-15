@@ -157,6 +157,7 @@ A move is a module under `composer/moves/<kind>/` whose default export is (schem
 | `ctx.cue(t, type, data)` | Must be declared in `cues`. |
 | `ctx.post(topic, value)`, `ctx.posts(topic)` | Facts for later moves, for example `turn.stop` or `breath.resume`. |
 | `ctx.rng(name)` | A named stream from `spec.seed` (`composer/rng.js`). |
+| `ctx.personality.eyesOpen(k, value, t)` | The pack's eye gate: `value`, or 0 when intensity × opening is under the gate. When it closes an opening, the composer records the closure at the key time `t` (`provenance.eyeGate`, used by the pose contracts, §7); a closure without `t` is the compile error `pose:eye-gate`. |
 | `ctx.measure`, `ctx.styles`, `ctx.frame`, `ctx.pack`, `ctx.realm`, `ctx.layout`, `ctx.personality`, `ctx.spec`, `ctx.fail(rule, msg)` | Context and failure. |
 
 **Deferred values.** Any key value, cue datum or envelope may be a function of the resolver `R`. Functions are resolved once, after every move has run. `R` provides `R.A`, `R.post(topic)`, `R.posts(topic)`, `R.propAt(prop, i, t)` and `R.lookAt(prop, i, t)`. This is how the eyes chase thoughts whose dissolve the ritual sets later, and how the escalation's tremble stops at the turn's stop window.
@@ -299,7 +300,14 @@ controller.create(prop, channel) → { count, at(i, t) → item | null }
   - resolution of deferred values;
   - seeded auto-blinks in open holds longer than the pack's blink interval (none on T01);
   - micro-noise with a seam-zero envelope (0 for Noomi);
-  - bridges between moves whose exit and entry poses do not match.
+  - bridges between moves whose junction does not satisfy the next move's entry pose (below).
+- **Poses** (`composer/poses.js`, FU-4) are contracts on **compiled** channel values:
+  - a move's entry pose must hold at the start of its span and its exit pose at its end, judged on each named track's value; G-DIR checks both (`pose:entry`, `pose:exit`);
+  - a junction is judged on the channels as built, for **every** channel the entry pose declares, whether or not the previous exit pose mentions it;
+  - a bridge eases each failing channel (`inOutSine`, so it stays C1) over the gap and lands it inside the entry range exactly at the entry, aiming through the residual of the previous move's still-settling spring. After the entry, a channel nobody owns is released toward the value the previous move left when holding it would break the next move's exit pose;
+  - no room (gap < 0.25 s) is the compile error `pose:no-room`, which names the move that last keyed each failing channel; a spring too far from rest to land is `pose:bridge-short`;
+  - "shut" eyes are eyeOpen ≤ 0.1 in every pose (`SHUT`: Noomi's 40.8 px lid stroke still covers the lid gap there); range tests have a perceptual slack of 1e-3;
+  - the eye gate: every time the pack's gate shuts an opening a move asked for (G-JOLT's snap, an intent), the composer records the closure in `direction.provenance.eyeGate` (`{ t, by, asked, k, gate }`; present only when the gate closed something, so the approved film has none). From a closure until the next key on `face.eyeOpen`, and only there, a pose that asks for open eyes is also met by shut eyes (`poses.js` `eyeGateAt`). Anywhere else shut eyes are judged like any other value, on every face style; open eyes going into a shut pose never pass. G-DIR re-checks each record (`pose:gate`: a closed-eye face, a move of the direction, inside its window on the eyes, an opening, and intensity × opening under the gate).
 - **The breath envelope** is built in one place (`acting/idle-breath`). It is exported as one function, `acting.breathEnvelope(direction)`, for the score. This is audit R11 on the picture side.
 
 ## 8. Gates
@@ -307,16 +315,18 @@ controller.create(prop, channel) → { count, at(i, t) → item | null }
 **G-DIR** (`composer/validate.js`) checks:
 - **structure:** catalogue, sorting, duplicates, ownership, finite values at every frame and sub-frame time;
 - **loop closure** at the seam: every body DOF, the camera, the world dials, the rest envelope, and the face whenever the painting does not cover it; no impulses, props or particles at the seam; the painted rest on both sides; the hook at full alpha on frame 0;
-- **deformation** at 240 Hz;
+- **deformation** at 240 Hz, and the **face inside the silhouette** (every feature's outline inside the ellipse inscribed in the measured silhouette box, in art space, wherever the painting does not cover the face);
 - **camera:** zoom, rates, follow, roll;
 - **text:** safe zones, motion, reading time, glass thoughts;
-- **safety:** breath timing, exposure, disabled effects;
-- **craft:** impact window, C1 channel types, eye gate, dead intervals;
-- **audio linkage:** every cue declared with a recipe, every declared cue emitted;
-- **pose contracts.**
+- **safety:** breath timing, exposure, disabled effects; **spin** (whatever turns, props by their angle and the face spiral by `face.spin`: ≤ 1 turn/s, ≤ 0.3 while its disc covers more than 25 % of the frame, the whole motion's speed changes no faster than a 0.5 s inOutSine ramp; each speed change on its own under 0.5 s warns, `safety:spin-ramp-change`); **pulse ramps** (every swing of a `pulse` channel ≥ 150 ms; today that is `mallow.glowPulse`);
+- **craft:** impact window, **C1 continuity** of every channel that is not a declared kick (slope jumps measured at each break point: key times, eased-key ends, spline knots, blink phases, smoothstep edges and min/max/clamp switches; error above 0.05× the channel's range per s, except 1.5× at the breath envelope's break points, where v2's handover kinks 1.26×), eye gate, dead intervals;
+- **audio linkage:** every cue declared with a recipe, every declared cue emitted; **no absolute-time layers** (every layer time a cue hands the score sits on an anchor or another cue; the frozen `soundtrack-v2`, keyed to v2's own seconds, only for the approved film's fingerprint);
+- **pose contracts** on compiled values (§7).
 
-On T01 it takes about 0.1–0.2 s in Node. Thresholds calibrated on v2 are marked provisional in `THRESHOLDS` and listed in `docs/wp/WP-03.md`.
+On T01 it takes about 0.15–0.3 s in Node. Thresholds calibrated on v2 are marked provisional in `THRESHOLDS` and listed in `docs/wp/WP-03.md`, `docs/wp/FU-4.md` and OWNER-DECISIONS Q5 (v2's values are the limits, the plan's stricter values warn; FU-4's additions are listed there as provisional).
 
-**G-COST** (`composer/cost.js`) predicts the render time from the dry run's sub-frame and face-redraw counts:
+**G-COST** (`composer/cost.js`) predicts the render time from the dry run's sub-frame and face-redraw counts, counted as the engine counts them for each profile:
 - the `exact` model is fitted to WP-01's measured v2 render: 1,337.7 s predicted against 1,337.6 s measured;
-- the `final` and `draft` models are provisional until WP-02's bench refits them.
+- the `final` model (FU-4 refit) uses WP-02's bench split, scaled to the median of 6 single-worker farm renders of T01: 542.1 s of segment render time (measured 481.6–604.4 s) plus 44.8 s of per-job overhead, 586.9 s = 9.78 min wall clock (measured median 586.5 s);
+- the `draft` model predicts 79.9 s of render, 89.3 s wall clock (measured medians 79.8 and 88.9 s);
+- `predictedSec` is the segment render time QA's G15 check compares with; the budget is judged on `predictedMin`, the wall clock.

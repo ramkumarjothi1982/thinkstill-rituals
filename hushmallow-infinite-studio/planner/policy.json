@@ -134,56 +134,66 @@
     "topics": {
       "self-harm": [
         "self harm", "hurt myself", "harm myself", "kill myself", "end it all", "end my life", "end my own life", "take my life", "take my own life", "cut myself",
-        "cut my wrists", "slit my wrists", "cutting again", "razor", "razor blade", "overdose", "unalive", "=kms", "suicide", "suicidal", "want to die", "wanna die",
+        "cut my wrists", "slit my wrists", "cutting again", "razor", "razor blade", "overdose", "unalive", "=kms", "suicide", "want to die", "wanna die",
         "want to disappear", "wanna disappear", "disappear forever", "want to vanish", "wanna vanish", "never wake up", "not wake up", "no reason to live",
         "nothing to live for", "done with life", "done with living", "better off without me", "better off dead", "wish i was dead", "wish i were dead",
         "wish i was gone", "wish i were gone",
         "re:\\b(think|thinks|thinking|thought)\\s+(about|of)\\s+end(ing)?\\s+it(\\s+all)?\\b"
       ],
       "death": [
-        "dead", "death", "die", "deadly", "funeral", "grave", "coffin", "casket", "corpse", "=rip", "r.i.p", "rest in peace", "kill", "murder", "gone forever",
+        "dead", "death", "die", "funeral", "grave", "coffin", "casket", "corpse", "=rip", "r.i.p", "rest in peace", "kill", "murder", "gone forever",
         "pass away", "afterlife", "drown", "deceased", "cemetery", "graveyard", "tombstone", "hearse", "morgue", "autopsy", "obituary", "grief", "grieve", "mourn",
-        "six feet under"
+        "six feet under",
+        "gravestone", "graveside", "gravedigger", "deathbed", "deathtrap", "deathblow",
+        "fatality", "guillotine"
       ],
       "illness": [
-        "sick", "sickly", "sickness", "ill", "illness", "unwell", "flu", "fever", "feverish", "cough", "virus", "covid", "cancer", "chemo", "chemotherapy", "tumor",
-        "tumour", "disease", "diabetes", "asthma", "inhaler", "allergy", "allergic", "infection", "hospital", "vomit", "puke", "nausea", "nauseous", "nauseated",
+        "sick", "ill", "unwell", "flu", "fever", "cough", "virus", "covid", "cancer", "chemo", "chemotherapy", "tumor",
+        "tumour", "disease", "diabetes", "asthma", "inhaler", "allergy", "hospital", "vomit", "puke", "nausea", "nauseous", "nauseated",
         "diarrhea", "diarrhoea", "food poisoning", "stomach bug", "migraine", "headache", "stomachache", "stomach ache", "tummy ache", "toothache", "earache",
         "sore throat", "back pain", "chest pain", "heart attack", "seizure", "concussion", "injure", "injury", "dentist", "medicine", "meds", "medication", "pill",
         "prescription", "antibiotic", "throw up", "ambulance", "surgery", "contagious", "catch a cold", "get a cold", "have a cold", "head cold", "blood", "bleed",
         "melatonin", "sleeping pill", "painkiller", "ibuprofen", "paracetamol", "xanax", "prozac", "valium", "adderall", "ritalin", "ozempic", "wegovy", "mounjaro",
         "antidepressant", "sleep aid",
-        "re:\\b(broke|broken|break|breaks|breaking)\\s+(my|a|his|her|your|their)\\s+(arm|leg|wrist|ankle|nose|toe|finger|hip|rib|bone|back|neck)s?\\b"
+        "re:\\b(broke|broken|break|breaks|breaking)\\s+(my|a|his|her|your|their)\\s+(arm|leg|wrist|ankle|nose|toe|finger|hip|rib|bone|back|neck)s?\\b",
+        "medicate", "infect", "nauseate", "allergen", "sickbed", "sickroom", "bellyache",
+        "influenza", "tuberculosis", "tonsillitis", "penicillin", "nosebleed", "hemorrhage", "haemorrhage", "seasick"
       ],
       "body-food": [
         "fat", "fatty", "chubby", "skinny", "diet", "calorie", "carbs", "bmi", "weight", "overweight", "weigh myself", "weigh yourself", "lose weight", "gain weight",
         "weight loss", "weight gain", "binge", "starve", "fasting", "keto", "count macros", "bloated", "belly", "beach body", "cheat day", "cheat meal",
         "burn it off", "guilty pleasure", "too full", "overeat", "sugar crash", "junk food", "workout", "gym", "=abs", "thighs", "drink water", "hydrate",
-        "snack guilt", "food guilt", "anorexia", "anorexic", "bulimia", "bulimic", "step on the scale",
+        "snack guilt", "food guilt", "anorexia", "bulimia", "step on the scale",
         "re:\\b(lose|loses|losing|lost|gain|gains|gained|gaining|drop|drops|dropped|dropping|shed|sheds|shedding)\\s+(\\w+\\s+){0,2}(pounds?|lbs?|kilos?|kgs?|stone)\\b",
         "re:\\b(skip|skips|skipped|skipping)\\s+(lunch|dinner|breakfast|a\\s+meal|meals)\\b",
         "re:\\b(the|my|bathroom)\\s+scales?\\s+(says?|said|is|was|hates?|won't|doesn't|lies|lied)\\b",
-        "re:\\b(ate|eaten|eating|eat|eats)\\s+(way\\s+|far\\s+|so\\s+)?too\\s+much\\b"
+        "re:\\b(ate|eaten|eating|eat|eats)\\s+(way\\s+|far\\s+|so\\s+)?too\\s+much\\b",
+        "fasted", "dietary", "dietitian", "caloric", "weightlifting", "weightlifter", "thinspo", "thinspiration", "proana", "pro-ana", "promia", "pro-mia",
+        "dehydrate", "carbohydrate"
       ],
       "alcohol": [
-        "alcohol", "alcoholic", "alcoholism", "drunk", "tipsy", "sober", "hungover", "hangover", "wine", "beer", "booze", "boozy", "vodka", "whisky", "whiskey",
+        "alcohol", "drunk", "tipsy", "sober", "hungover", "hangover", "wine", "beer", "booze", "boozy", "vodka", "whisky", "whiskey",
         "tequila", "rum", "gin", "bourbon", "brandy", "liquor", "lager", "cocktail", "margarita", "mimosa", "martini", "mojito", "negroni", "daiquiri", "aperol",
         "sangria", "prosecco", "champagne", "merlot", "chardonnay", "pinot", "nightcap", "pint", "shots", "happy hour", "pub", "drinks after work", "at the bar",
         "bar crawl", "night out drinking", "day drinking", "binge drinking", "drinking again", "drinking alone", "drinking game", "drinking buddy",
-        "bottle of red", "glass of red", "get wasted"
+        "bottle of red", "glass of red", "get wasted",
+        "drunkard", "wineglass",
+        "intoxicate"
       ],
       "drugs": [
         "drug", "druggie", "junkie", "=weed", "stoned", "stoner", "cannabis", "marijuana", "cocaine", "heroin", "meth", "ketamine", "mdma", "lsd", "shrooms",
         "magic mushrooms", "opioid", "fentanyl", "smoke", "cigarette", "vape", "nicotine", "caffeine", "energy drink", "edibles", "bong", "smoke a joint",
-        "roll a joint", "light a joint", "pot brownie", "weed brownie", "pop a molly", "crack pipe", "get high", "high as a kite", "get baked"
+        "roll a joint", "light a joint", "pot brownie", "weed brownie", "pop a molly", "crack pipe", "get high", "high as a kite", "get baked",
+        "addict", "methamphetamine", "methadone", "depressant", "rehab", "caffeinated",
+        "tranquilizer", "tranquillizer", "tranquilliser", "rehabilitate"
       ],
       "appearance": [
         "ugly", "hideous", "gorgeous", "attractive", "unattractive", "good-looking", "so pretty", "looking cute", "looking hot", "hot or not", "selfie", "makeup",
-        "make-up", "wrinkle", "pimple", "acne", "zit", "blemish", "bad skin", "bad hair", "outfit", "cellulite", "double chin",
+        "re:\\bmake-up\\b", "wrinkle", "pimple", "acne", "zit", "blemish", "bad skin", "bad hair", "outfit", "cellulite", "double chin",
         "re:\\bmy\\s+(big|huge|giant|crooked|weird|ugly|fat)\\s+(nose|ears|forehead|teeth|chin|chins|butt|bum|lips|face)\\b"
       ],
       "self-hatred": [
-        "hate myself", "i hate me", "hate my life", "worthless", "useless", "pathetic", "loser", "idiot", "idiotic", "moron", "stupid", "stupidity", "dumb", "failure",
+        "hate myself", "i hate me", "hate my life", "worthless", "useless", "pathetic", "loser", "idiot", "moron", "stupid", "dumb", "failure",
         "i suck", "nobody likes me", "no one likes me", "everyone hates me", "re:\\bscrew-?ups?\\b",
         "re:\\b(i\\s+am|i'm|im)\\s+((such|so|the|a|an|total|complete|hot|utter|absolute)\\s+)*(worst|trash|garbage|mess|wreck|disaster|joke|failure|loser|idiot|moron|nothing|nobody|disappointment|burden)\\b",
         "re:\\bhat(e|es|ed|ing)\\s+(my|this|our|your)\\s+(own\\s+)?(body|bodies|face|looks?|skin|hair|nose|thighs|belly|stomach|tummy|arms|legs|reflection|smile|teeth|voice|weight|shape|size)\\b",
@@ -192,19 +202,27 @@
       "body-image": [
         "body image", "body check", "body checking", "body shame", "body shaming", "body-shaming", "fat shaming", "fat-shaming",
         "muffin top", "love handles", "thigh gap", "bikini body", "summer body", "flabby", "glow up", "glow-up",
-        "eye bags", "dark circles", "grey hair", "grey hairs", "gray hair", "gray hairs", "bald", "balding", "wrinkly",
-        "botox", "lip filler", "lip fillers", "body goals", "body positivity", "body positive", "airbrush", "airbrushed", "airbrushing", "facelift", "nose job", "plastic surgery",
+        "eye bags", "dark circles", "grey hair", "grey hairs", "gray hair", "gray hairs", "bald", "wrinkly",
+        "botox", "lip filler", "lip fillers", "body goals", "body positivity", "body positive", "airbrush", "facelift", "nose job", "plastic surgery",
         "re:\\b(i|you|we|they|she|he|me)\\s+(look|looks|looked|am\\s+looking|are\\s+looking|is\\s+looking|was\\s+looking|looking)\\s+(so\\s+|really\\s+|super\\s+|too\\s+|kinda\\s+|very\\s+|way\\s+too\\s+|a\\s+bit\\s+|this\\s+)?(old|older|ancient|ugly|gross|hideous|awful|terrible|frumpy|puffy|bloated|haggard|wrecked|rough)\\b",
         "re:\\b(i'm|you're|we're|they're|she's|he's)\\s+looking\\s+(so\\s+|really\\s+|super\\s+|too\\s+|kinda\\s+|very\\s+|way\\s+too\\s+|a\\s+bit\\s+)?(old|older|ancient|ugly|gross|hideous|awful|terrible|frumpy|puffy|bloated|haggard|wrecked|rough)\\b"
       ],
       "catastrophe": [
-        "catastrophe", "catastrophic", "disaster", "disastrous", "apocalypse", "apocalyptic", "end of the world", "doomsday", "armageddon", "nuclear", "nuclear war",
+        "catastrophe", "disaster", "disastrous", "apocalypse", "apocalyptic", "end of the world", "doomsday", "armageddon", "nuclear", "nuclear war",
         "war", "earthquake", "tsunami", "pandemic", "terrorist", "terrorism",
-        "re:\\b(the\\s+)?world\\s+(is|was|'s)\\s+ending\\b"
+        "re:\\b(the\\s+)?world\\s+(is|was|'s)\\s+ending\\b",
+        "warfare", "warhead", "warlord", "warship", "wartime", "war zone",
+        "artillery", "guerrilla", "guerilla"
       ],
-      "violence": ["gun", "gunshot", "weapon", "stab", "assault", "violence", "violent", "riot", "hostage"],
+      "violence": ["gun", "gunshot", "weapon", "stab", "assault", "violence", "violent", "riot", "hostage",
+        "gunfire", "gunfight", "gunman", "gunpoint", "gunpowder", "weaponry", "bloodbath", "bloodshed", "bloodthirsty", "bloodstain",
+        "shotgun", "maltreat"],
       "claims": ["guarantee", "instant calm", "instant relief", "instantly calm", "miracle", "works every time", "fixes everything", "life changing", "mindfulness app", "meditation app", "wellness app", "sleep app", "calming app", "one tap away",
-        "re:\\b(your|my|our|the|all)\\s+(worries|fears|troubles|stress|problems|feelings)\\s+(are|is|will\\s+be)\\s+(gone|over|fixed|solved|cured)\\b", "re:\\bdownload\\b"],
+        "re:\\b(your|my|our|the|all)\\s+(worries|fears|troubles|stress|problems|feelings)\\s+(are|is|will\\s+be)\\s+(gone|over|fixed|solved|cured)\\b", "download"],
+      "clinical": [
+        "psychology", "psychiatry", "psychotherapy", "psychotic", "psychosis", "psychopath", "sociopath", "schizophrenia", "neurotic", "neurosis", "narcissism",
+        "hypochondria", "diagnostic", "counselling", "counseling", "counsellor", "counselor", "mental breakdown", "nervous breakdown"
+      ],
       "source": "story-library copyRules.general (no self-hatred, self-harm, death, illness, body/weight/food-guilt, alcohol, drugs or appearance comparisons; never catastrophic) and medicalTherapyFlags.decisionsInThisLibrary (no caffeine, dentist or 'drink water'). body-image (round 3) spells out body-image and appearance phrasing the single words miss ('I hate my body', 'I look so old', 'photoshop it out'); the library's own 'MY BODY: RESTING' and 'They look so serious.' stay legal, so 'my body' and 'look so' alone are not entries. claims (round 3): outcome promises and wellness-app framing (story-library copyRules.resolution 'never an instruction to fix, never an outcome promise'). Calibrated so every library string passes (tests/unit/planner-lint.test.mjs). FU-3: every entry is a lemma (inflections generated, planner/morph.mjs); derived words that must be refused are listed as lemmas of their own (suicidal, sickly, alcoholic, idiotic, apocalyptic); the round-4 reviewer's misses were added (suicide, heroin, cemetery, ozempic, nuclear war, margarita, ...), and a 'violence' category; 'kms', 'rip', 'weed' and 'abs' are exact ('=') because their inflections are innocent (ripped, weeding). Not one library lint verdict changed (0 of 28,935, docs/wp/FU-3.md). 'let it go' is deliberately not a song entry: it is an everyday phrase (and the ritual's own idea)."
     },
     "morphology": {
@@ -224,9 +242,33 @@
         "break": ["broke", "broken"],
         "fall": ["fell", "fallen"],
         "catch": ["caught"],
-        "have": ["has", "had"]
+        "have": ["has", "had"],
+        "psychosis": ["psychoses"],
+        "neurosis": ["neuroses"],
+        "whisky": ["whiskys"]
       },
-      "notForms": ["weighted", "weighting", "treats"],
+      "notForms": {
+        "weighted": "a weighted blanket: an everyday word, not a weight topic",
+        "weighting": "everyday word (weighting the options)",
+        "treats": "little treats: a snack or reward, not the banned medical verb 'treat'",
+        "treaty": "an agreement between nations, not a derivative of the medical verb 'treat'",
+        "gravy": "the sauce, not a derivative of 'grave'",
+        "gravely": "seriously (gravely concerned)",
+        "hospitality": "welcome and kindness to guests",
+        "weighty": "important, serious",
+        "weightless": "floating: a Mallow drifting in the water is weightless",
+        "doctoral": "a doctoral degree: academic, not medical",
+        "disorderly": "untidy or unruly, not the clinical 'disorder'",
+        "baldly": "plainly, bluntly (said baldly)",
+        "soberly": "seriously, calmly",
+        "pilly": "a pilly sweater (fabric pills)",
+        "curies": "curie, a unit of radioactivity, not a form of 'cure'",
+        "curation": "curating a collection, not a form of 'cure'",
+        "stably": "in a stable way, not a form of 'stab'",
+        "liquorish": "a spelling of liquorice (the sweet)",
+        "graveness": "seriousness",
+        "illation": "an inference (logic), not a form of 'ill'"
+      },
       "source": "planner default (FU-3): inflection is grammar, not a new topic, so every lemma inflects; derived and irregular words are listed by hand. 'weighted' (a weighted blanket) and 'weighting' are innocent words a rule would derive from the body-food lemma 'weight'. Calibrated: all 652 library texts still pass, and not one library lint verdict changed (docs/wp/FU-3.md)."
     },
     "names": {
@@ -324,13 +366,36 @@
         "brilliant", "thrill", "closer", "skill", "skills", "imagine", "imagination", "begin", "beginning", "public", "indie", "foodie", "goodies",
         "absolutely", "spectrum", "drip", "trip", "script", "grip", "gravity", "deadline", "pineapple", "screenshot", "screenshots",
         "aware", "awareness", "beware", "software", "hardware", "forward", "toward", "towards", "wardrobe", "swarm", "dwarf", "warp", "buddies",
-        "studies", "studied", "candies", "candied", "ladies", "original", "originals", "singing", "weeding"
+        "studies", "studied", "candies", "candied", "ladies", "original", "originals", "singing", "weeding",
+        "absence", "absent", "absolute", "absorb", "absorbed", "absorbing", "absorbs", "abstract", "abstraction", "absurd", "acknowledging", "afterward",
+        "afterwards", "aging", "alleging", "apathetic", "arranging", "assembled", "audience", "audiences", "backward", "backwards", "beginner", "beginners",
+        "begins", "begun", "bill", "billfold", "billion", "billions", "bills", "bodies", "bogging", "brand", "branded", "branding", "brands", "cabbage",
+        "cabled", "challenging", "changing", "charging", "damaging", "debugging", "deranging", "desiring", "diesel", "digging", "disabled", "discouraging",
+        "doubled", "doubts", "downhill", "downwards", "dragging", "drill", "drum", "drums", "emerging", "enabled", "encouraging", "engaging", "engine",
+        "engineer", "engineered", "engineering", "engineers", "engines", "engrave", "engraved", "engraving", "enlarging", "envisaging", "establish",
+        "established", "establishes", "establishing", "establishment", "establishments", "exchanging", "fantasies", "fantastic", "fantasy", "fate", "father",
+        "fathers", "fatuous", "fill", "filled", "filling", "fills", "flagging", "fluctuation", "fluctuations", "fluent", "fluid", "flush", "flushed",
+        "flushes", "flushing", "flute", "forum", "fulfill", "fulfilled", "fulfilling", "fulfills", "garbled", "ginger", "gingerbread", "grabs", "grandfather",
+        "hanging", "heroine", "heroines", "hill", "hills", "illegal", "illegally", "illiterate", "illogical", "illusion", "illustrate", "illustrates",
+        "illustrating", "imaginary", "imaginative", "imagined", "imagining", "indulging", "influence", "influenced", "influences", "influencing",
+        "influential", "ingredient", "ingredients", "insecure", "install", "installation", "installations", "installed", "installing", "installs", "instance",
+        "instances", "instant", "instrument", "instrumental", "instruments", "judging", "labelling", "labs", "logging", "managing", "margin", "marginal",
+        "marginally", "margins", "marvellous", "marvelous", "medieval", "merging", "method", "methods", "mill", "million", "millions", "moreover", "obliging",
+        "obscure", "obscured", "obscures", "obscuring", "origin", "originate", "originated", "originates", "originating", "originator", "origins", "outraging",
+        "packaging", "paging", "peripheral", "peripherals", "plugging", "prefix", "prefixed", "prefixes", "prefixing", "privileging", "prolonging", "publish",
+        "published", "publisher", "publishers", "publishes", "publishing", "ranging", "rearranging", "reinstate", "reinstated", "reinstates", "reinstating",
+        "resembled", "ripped", "ripping", "rips", "rumor", "rumored", "rumoring", "rumors", "rumour", "rumoured", "rumouring", "rumours", "secure", "sillier",
+        "silliest", "skilled", "soldier", "soldiers", "spill", "stability", "stable", "steward", "stewardship", "studying", "stumbled", "submission", "submit",
+        "submits", "submitted", "submitting", "suffix", "superfluous", "sympathetic", "tidied", "tidies", "tidying", "till", "trumpet", "unstable",
+        "unwilling", "upward", "upwards", "urging", "village", "villages", "virgin", "ward", "warehouse", "warn", "warning", "warnings", "warns", "warrant",
+        "warranty", "warrior", "warriors", "wary", "willed", "willing", "willingly", "wills",
+        "disinfect", "disinfectant", "disinfectants", "disinfected", "disinfecting", "grievance", "grievances", "grievous", "regulator", "regulators", "regulatory", "outrigger", "outriggers", "breakfasted", "hypoallergenic", "crazing"
       ],
       "terms": {
         "breath-hold": ["breath", "inhal", "exhal"],
         "name:app": ["zoomcall", "zoommeeting", "slackchat", "msteams", "teamsmeeting", "twitchstream", "booktok", "fyp", "foryoupage"]
       },
-      "source": "design-quality-first 8 and OWNER-DECISIONS D8 (captions: library strings plus the owner-curated hashtags only); story-library copyRules.general (no brands, apps or names) and medicalTherapyFlags. 'fyp' and 'foryoupage' name TikTok's For You page. A carrier equal to a term never excuses it ('pill' is no carrier of 'pill'). The carriers here are planner defaults the owner may extend."
+      "source": "design-quality-first 8 and OWNER-DECISIONS D8 (captions: library strings plus the owner-curated hashtags only); story-library copyRules.general (no brands, apps or names) and medicalTherapyFlags. 'fyp' and 'foryoupage' name TikTok's For You page. A carrier equal to a term never excuses it ('pill' is no carrier of 'pill'). The carriers here are planner defaults the owner may extend. FU-3 round 2 added 265 reviewed carriers: every word of the most common English (SCOWL tiers 10-20, wordlist-english@1.2.1, about 10,700 words; SCOWL is Copyright 2000-2016 Kevin Atkinson, free to use with notice) that passes the line lint but was refused as a hashtag, read one by one: breath words (the breath-hold terms are deliberate), health words (WP-06 refuses #healthyhabits on purpose) and 'fatal' were left out; the false compounds (father = fat + her, margin, warrant) were kept; plus the innocent words the FU-3 round-1 verifier found refused (heroine, ginger, engrave, warrior, stewardship), and the innocent words of held-out SCOWL tiers 35-50 that the round-2 lemmas and stems newly refused (disinfectant, grievance, regulator, outrigger, breakfasted, hypoallergenic, crazing), each read. Rarer words were not added unreviewed: an automatic list from SCOWL tier 35 would have excused intoxicated, influenza, shotgun and tranquilliser, which are now lemmas instead. The innocent look-alikes of lint.morphology.notForms are carriers too."
     },
     "cautionWhitelist": [
       {

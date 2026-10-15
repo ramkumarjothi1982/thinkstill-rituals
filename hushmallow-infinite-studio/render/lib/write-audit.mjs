@@ -15,9 +15,10 @@
 //             since the baseline are compared with that listing. Removing a
 //             linked worktree (git worktree remove) is not a finding;
 //   touched   a directory that changed since the baseline with nothing left to
-//             show for it: no name it held at arming is gone, and no entry in it
-//             was created or renamed when it last changed (birth time or ctime
-//             within TOUCH_EPS_MS of the directory's mtime). That is a file or
+//             show for it: no entry in it was created then (birth time within
+//             TOUCH_EPS_MS of the directory's mtime) or renamed or linked in then
+//             (ctime within it, content older), and no name was removed by its
+//             owner (a harness session directory, a worktree). That is a file or
 //             directory created and deleted again between two audits (a rename
 //             away and back bumps the entry's own ctime: written). A directory
 //             whose ctime is later than its mtime had its mode, owner or
@@ -56,16 +57,22 @@
 // cannot be set back (touch -d changes mtime only). A directory keeps only the
 // time of its LAST change, so known limits remain:
 //   - a create-then-delete in a directory that changes again visibly afterwards
-//     (an entry created or renamed into it, or a name removed) is masked by that
-//     later change. In practice that is where the harness writes constantly:
-//     /root (.claude.json), /tmp/claude-* (its own state);
-//   - three kinds of place change with nothing left behind in normal operation,
+//     (an entry created or renamed into it, a name removed by its owner) is
+//     masked by that later change, and so is one within TOUCH_EPS_MS before or
+//     after an entry is created or renamed in. In practice the later change
+//     comes where the harness writes: /root (.claude.json), /tmp/claude-*/<project>
+//     (session directories come and go), the checkout's top level after the last
+//     worktree's .claude/ is removed (until the next re-arm);
+//   - two kinds of place change with nothing left behind in normal operation,
 //     so a 'touch' exemption covers the directory itself (exact path, never what
-//     is below it): /tmp (the harness's per-command cwd file), the git directory
-//     (lock files of every git command) and the places git and the harness put
-//     linked worktrees (the repository's top level, .claude/, .claude/worktrees/,
-//     <git>/worktrees/). A create-then-delete directly there is not detected; a
-//     file left there still is (written, and git status for the repository);
+//     is below it): /tmp, where the harness creates and removes a cwd file on
+//     every shell command (/tmp's last change is always that, so any earlier
+//     create-then-delete there is masked whether exempt or not), and the git
+//     directory and each worktree's admin directory (every git command's lock
+//     files). A file left there is still a finding (written; git status for
+//     the repository);
+//   - a directory with a name deleted is reported (deleted) but not checked
+//     for touched as well: the deletion may be its last change;
 //   - the harness and boot-provisioning exemptions are trusted.
 // Inside the jail the audit reads the host's view (write-jail hostRoot()), so
 // it sees the real /tmp and /dev/shm.
@@ -85,12 +92,14 @@ const SCHEMA = 'hm-write-audit/2';
 
 /**
  * Places written by software that is not the studio (and that jailed studio
- * jobs cannot reach). A pattern covers the path itself and everything below
- * it; '*' matches within one path segment. The scope says which findings it excuses:
- *   'all'     anything (written, deleted, touched, created);
- *   'remove'  the removal of what existed at arming, and new directories (the
- *             harness creates and removes its session directories); files
- *             written there, and directories touched there, are still findings;
+ * jobs cannot reach). '*' matches within one path segment. The scope says
+ * which findings it excuses:
+ *   'all'     anything, at the path and everything below it (written, deleted,
+ *             touched, created);
+ *   'remove'  only the directory ITSELF (exact path) being created or removed:
+ *             the harness creates and removes its session directories. What is
+ *             inside is audited like anywhere else (files written, names
+ *             deleted, directories created or touched there are findings);
  *   'touch'   only the directory ITSELF (exact path) changing with nothing left
  *             behind: transient files a writer creates and deletes there.
  * Add an entry only with a reason, after checking that studio code is not the writer.
@@ -104,7 +113,8 @@ export const EXTERNAL_WRITERS = Object.freeze([
   ['/tmp/claude-*/bash-edit-diff', 'agent harness edit tracking'],
   ['/tmp/claude-*/cache-break-state-*.json', 'agent harness prompt-cache state'],
   ['/tmp/claude-*/*/*/tasks', 'agent harness background-task output (the scratchpad/ next to it is NOT exempt)'],
-  ['/tmp/claude-*/*/*', 'agent harness session directories: the harness creates and removes them (files written into scratchpad/ are still findings)', 'remove'],
+  ['/tmp/claude-*/*/*', 'agent harness session directories: the harness creates and removes them (exact path: everything inside is audited)', 'remove'],
+  ['/tmp/claude-*/*/*/scratchpad', 'the scratchpad directory itself, which the harness creates with its session (exact path: files and directories inside it are findings)', 'remove'],
   ['/tmp/claude-code.log', 'agent harness log'],
   ['/tmp/claude-code-*.diag.log', 'agent harness diagnostics'],
   ['/tmp/claude-command', 'agent harness'],
@@ -190,8 +200,15 @@ export function coveredBy(p, patterns) {
 const writersFor = (list, kind) => list.filter((x) => (x.scope ?? 'all') === 'all' || x.scope === kind);
 /** True when `p` itself (not an ancestor) matches one of the glob patterns. */
 export const matchesExactly = (p, patterns) => patterns.some((x) => globToRegExp(x.glob ?? x).test(p));
-/** Two timestamps closer than this belong to the same directory change (a create sets the entry's birth time and the directory's mtime from the same coarse clock; measured gap at most 6.6 ms). */
-export const TOUCH_EPS_MS = 50;
+/**
+ * Two timestamps closer than this belong to the same directory change. A create,
+ * mkdir, symlink, link or rename stamps the entry and the directory with separate
+ * clock reads inside one system call. Measured on / (ext4) and /dev/shm (tmpfs),
+ * 5,000-8,000 samples per operation (WORK/tmp/fu1r2/eps.mjs): idle, at most 2.1 ms
+ * (symlink); with 6 busy processes on the 4 cores, at most 6.1 ms (create).
+ * 20 ms is about three times the worst case under load.
+ */
+export const TOUCH_EPS_MS = 20;
 
 const git = (args, cwd) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
@@ -216,20 +233,25 @@ export function gitLayout(studio = STUDIO) {
  * checkouts themselves (allowed roots): <git>/worktrees and its admin dirs, the
  * main checkout's .claude/ and .claude/worktrees/ (the harness's convention),
  * and every directory between a known worktree and the checkout's top level.
- * → { places: [glob] (may be created, touched, or removed when they held only
- *     worktree places), touch: [path] (may change with nothing left: these
- *     plus the git directory and the top level) }
+ * → { places: [glob] (may be created, or removed when they held only worktree
+ *     places; such a removal explains its parent's change), touch: [glob] (may
+ *     change with nothing left: the git directory and each worktree's admin
+ *     directory, where every git command takes and drops its lock files) }
+ * The checkout's top level and the worktree containers are NOT touch-exempt: a
+ * worktree created there leaves a new entry, one removed leaves a removed name,
+ * and either explains the change; a file created and deleted again there is a finding.
  */
 export function worktreePlaces(layout, worktrees = []) {
   if (!layout?.gitDir) return { places: [], touch: [] };
   const tops = [...new Set([layout.mainTop, layout.top].filter(Boolean))];
-  const places = new Set([path.join(layout.gitDir, 'worktrees'), path.join(layout.gitDir, 'worktrees', '*')]);
+  const admin = path.join(layout.gitDir, 'worktrees', '*');
+  const places = new Set([path.join(layout.gitDir, 'worktrees'), admin]);
   for (const t of tops) { places.add(path.join(t, '.claude')); places.add(path.join(t, '.claude', 'worktrees')); }
   for (const wt of [...(layout.otherWorktrees ?? []), ...worktrees]) {
     const t = tops.find((x) => isInside(wt, x) && wt !== x);
     if (t) for (let d = path.dirname(wt); d !== t && isInside(d, t); d = path.dirname(d)) places.add(d);
   }
-  return { places: [...places], touch: [...places, layout.gitDir, ...tops] };
+  return { places: [...places], touch: [layout.gitDir, admin] };
 }
 
 /** Places studio work may write, or that other guards own. → [{ path, why }] */
@@ -483,6 +505,10 @@ export function armBaseline({
  *   created  directories that did not exist at arming;
  *   touched  directories whose last change left nothing to show for it, or whose
  *            metadata changed after it (see the module header).
+ * A removal that is exempt because its owner made it (a harness session
+ * directory, a worktree or worktree container, an 'all'-scope writer's own
+ * place) may be the directory's last change, so it explains the directory; an
+ * exemption for any other reason explains nothing.
  * → { findings, exempted }
  */
 export function auditDirectories({ dirs, listing, scope: s, baseline = {}, removable = [], inAllowed = () => false }) {
@@ -490,8 +516,7 @@ export function auditDirectories({ dirs, listing, scope: s, baseline = {}, remov
   const findings = [];
   let exempted = 0;
   const all = (s.externalWriters ?? []).filter((x) => (x.scope ?? 'all') === 'all');
-  const removeExempt = writersFor(s.externalWriters ?? [], 'remove');
-  const sessionDirs = (s.externalWriters ?? []).filter((x) => x.scope === 'remove');
+  const removeScope = (s.externalWriters ?? []).filter((x) => x.scope === 'remove');   // exact paths
   const touchExempt = (s.externalWriters ?? []).filter((x) => x.scope === 'touch');
   const wt = worktreePlaces(s.layout, baseline.worktrees ?? []);
   const listingRoots = s.listingRoots ?? s.roots ?? [];
@@ -517,25 +542,27 @@ export function auditDirectories({ dirs, listing, scope: s, baseline = {}, remov
     const before = listing.get(d.path) ?? [];
     const presentSet = new Set(present);
     // deleted
-    const removed = before.filter((n) => !presentSet.has(n));
-    for (const name of removed) {
+    let reported = false, housekeeping = false;
+    for (const name of before.filter((n) => !presentSet.has(n))) {
       const p = path.posix.join(d.path, name);
-      if (inAllowed(p) || coveredBy(p, removeExempt) || coveredBy(p, removable) || onlyWorktreePlaces(p)) { exempted++; continue; }
+      if (matchesExactly(p, removeScope) || coveredBy(p, all) || coveredBy(p, removable) || onlyWorktreePlaces(p)) { exempted++; housekeeping = true; continue; }
+      if (inAllowed(p)) { exempted++; continue; }
       let below = 0;
       for (const [k, v] of listing) if (k === p || k.startsWith(`${p}/`)) below += v.length;
       findings.push({ path: p, kind: 'deleted', ctime: new Date(d.ctimeMs).toISOString(), ...(below && { detail: `a directory with ${below} entries at arming` }) });
+      reported = true;
     }
     // created
     if (!existedAtArming(d.path)) {
       const npmCache = /\/node-compile-cache(\/[^/]+)?$/.test(d.path);               // its entries are each verified as npm's (attributed)
-      if (!(coveredBy(d.path, sessionDirs) || matchesExactly(d.path, wt.places) || npmCache)) {
+      if (!(matchesExactly(d.path, removeScope) || matchesExactly(d.path, wt.places) || npmCache)) {
         findings.push({ path: d.path, kind: 'created', ctime: new Date(d.ctimeMs).toISOString(), detail: 'a new directory' });
         continue;
       }
       exempted++;
     }
-    // touched
-    if (removed.length || matchesExactly(d.path, touchExempt) || matchesExactly(d.path, wt.touch)) continue;   // explained, or a place that churns by design
+    // touched: not when the directory is reported already, when its owner's removal may be its last change, or in a place that churns by design
+    if (reported || housekeeping || matchesExactly(d.path, touchExempt) || matchesExactly(d.path, wt.touch)) continue;
     const mtime = ns(st, 'mtimeNs'), ctime = ns(st, 'ctimeNs');
     if (ctime - mtime > TOUCH_EPS_MS) {
       findings.push({ path: d.path, kind: 'touched', ctime: iso(ctime), detail: 'its mode, owner or attributes changed' });
@@ -543,11 +570,20 @@ export function auditDirectories({ dirs, listing, scope: s, baseline = {}, remov
     }
     const near = (t) => Math.abs(t - mtime) <= TOUCH_EPS_MS;
     if (near(ns(st, 'birthtimeNs'))) continue;                                     // created then, unchanged since
+    // An entry explains the change if it was created then (birth time), or renamed or linked in then: its ctime moved and its
+    // content did not. A write inside a subdirectory or into a file moves its mtime with its ctime and says nothing about
+    // this directory (WORK is an entry of /home/user: a new job directory in WORK must not mask a stray file next to it).
     const explained = present.some((n) => {
-      try { const e = fs.lstatSync(path.posix.join(pfx + d.path, n), { bigint: true }); return near(ns(e, 'birthtimeNs')) || near(ns(e, 'ctimeNs')); } catch { return false; }
+      try {
+        const e = fs.lstatSync(path.posix.join(pfx + d.path, n), { bigint: true });
+        if (!e.birthtimeNs) return near(ns(e, 'ctimeNs'));                       // a filesystem without birth times
+        return near(ns(e, 'birthtimeNs')) || (near(ns(e, 'ctimeNs')) && !near(ns(e, 'mtimeNs')));
+      } catch { return false; }
     });
     if (!explained) {
-      findings.push({ path: d.path, kind: 'touched', ctime: iso(mtime), detail: 'changed with nothing left to show for it: a file or directory created and deleted again' });
+      const top = s.layout && [s.layout.top, s.layout.mainTop].includes(d.path)
+        ? ' (or a linked worktree\'s .claude/ created and removed since arming: check before re-arming)' : '';
+      findings.push({ path: d.path, kind: 'touched', ctime: iso(mtime), detail: `changed with nothing left to show for it: a file or directory created and deleted again${top}` });
     }
   }
   return { findings, exempted };

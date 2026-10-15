@@ -1,6 +1,6 @@
 {
   "schema": "hm-qa-fixtures/1",
-  "$doc": "Seeded fault fixtures (PHASE2-PLAN 'Fixtures and calibration'). Each is the approved v2 with exactly one fault; qa/fixtures/build.mjs builds them into WORK/qa-fixtures/<id>/ and qa/fixtures/run-fixtures.mjs (hm qa fixtures) checks that the approved v2 passes every gate and that each fixture fails exactly its own gate, with the named check failing inside it. 'plan' marks the fixtures of the plan's list ('planItem' 1-13 in its order; item 7, a tinted or rescaled logo, has one fixture for each); the others are extra coverage.",
+  "$doc": "Seeded fault fixtures (PHASE2-PLAN 'Fixtures and calibration'). Each is the approved v2 with exactly one fault; qa/fixtures/build.mjs builds them into WORK/qa-fixtures/<id>/ and qa/fixtures/run-fixtures.mjs (hm qa fixtures) checks that the approved v2 passes every gate and that each fixture fails exactly its own gate, with the named check failing inside it. 'plan' marks the fixtures of the plan's list ('planItem' 1-13 in its order; item 7, a tinted or rescaled logo, has one fixture for each); the others are extra coverage. FU-5 added one fixture for each gate that had none (moov-at-end, foreign-frame-hashes, unlisted-asset, camouflaged-mallow, foreign-realm, washed-out-text, ballooning-cards, unemitted-cue, subframe-flood), so every gate has at least one; 'render': true runs the determinism re-render for that fixture.",
   "date": "2026-10-14T12:00:00Z",
   "fixtures": [
     { "id": "strobe", "plan": true, "planItem": 1, "fault": "a 1 s strobe: 2 frames blended 55 % toward white, 2 frames normal, from 4.0 s",
@@ -53,6 +53,33 @@
       "expect": { "gate": "G-FINAL:brand-marks", "check": "mark" } },
     { "id": "moving-stripes", "plan": false, "fault": "moving diagonal stripes (40 px period) over the bottom third for 1.5 s from 4.0 s",
       "make": { "video": { "op": "stripes", "params": { "band": [1280, 1920], "period": 40, "speed": 6, "mix": 0.35, "t0": 4.0, "dur": 1.5 } } },
-      "expect": { "gate": "G-FINAL:flash", "check": "pattern" } }
+      "expect": { "gate": "G-FINAL:flash", "check": "pattern" } },
+    { "id": "moov-at-end", "plan": false, "fault": "the approved master remuxed without faststart: its index (moov) sits after the media (mdat), so a player must download the whole file before it can start",
+      "make": { "video": { "op": "remux", "params": { "faststart": false } } },
+      "expect": { "gate": "G-FINAL:delivery", "check": "faststart" } },
+    { "id": "foreign-frame-hashes", "plan": false, "render": true, "fault": "the render record lists frame hashes this direction does not reproduce (as if the frames came from another render or engine)",
+      "make": { "provenance": { "op": "tamper-hashes", "params": {} } },
+      "expect": { "gate": "G-FINAL:determinism", "check": "frames" } },
+    { "id": "unlisted-asset", "plan": false, "fault": "the render's asset log records the Mallow art served with a hash that is on no allowlist (a swapped or edited PNG)",
+      "make": { "evidence": { "op": "swap-asset", "params": { "role": "art" } } },
+      "expect": { "gate": "G-FINAL:allowlist", "check": "assets" } },
+    { "id": "camouflaged-mallow", "plan": false, "fault": "a ring 2-44 px around the Mallow painted in the Mallow's own mean colour on every frame: the figure no longer stands off the ground",
+      "make": { "video": { "op": "ring-fill", "params": { "inner": 2, "outer": 44 } } },
+      "expect": { "gate": "G-FINAL:figure-ground", "check": "contrast" } },
+    { "id": "foreign-realm", "plan": false, "fault": "everything around the Mallow, its cards and its text hue-rotated by 150 degrees on every frame: another realm's palette",
+      "make": { "video": { "op": "world-hue", "params": { "deg": 150 } } },
+      "expect": { "gate": "G-FINAL:realm-likeness", "check": "likeness" } },
+    { "id": "washed-out-text", "plan": false, "fault": "the overlay text (hook and end card) washed out to 15 % of its contrast while it is readable",
+      "make": { "video": { "op": "fade-text", "params": { "keep": 0.15 } } },
+      "expect": { "gate": "G-DRAFT:readability", "check": "overlay" } },
+    { "id": "ballooning-cards", "plan": false, "fault": "the thought cards balloon to about 2.4x as their words fade (swell 2 over 0.2 s instead of 0.12 over 0.55 s), burying the Mallow's face (direction only)",
+      "make": { "direction": { "op": "prop-param", "params": { "prop": "thoughts", "path": ["swell"], "value": { "amount": 2, "dur": 0.2 } } } },
+      "expect": { "gate": "G-DRAFT:layout", "check": "propCoverFace" } },
+    { "id": "unemitted-cue", "plan": false, "fault": "the wince cue of M-ORBIT is missing from the direction: a declared sound that would never play (direction only)",
+      "make": { "direction": { "op": "drop-cue", "params": { "by": "M-ORBIT", "type": "wince" } } },
+      "expect": { "gate": "G-DIR", "check": "audio:unemitted" } },
+    { "id": "subframe-flood", "plan": false, "fault": "the direction asks for 16 sub-frames on every frame (motion blur on still frames): the final render is predicted far over its 11 min budget (direction only)",
+      "make": { "direction": { "op": "meta", "params": { "subframes": 16 } } },
+      "expect": { "gate": "G-COST", "check": "cost:budget" } }
   ]
 }

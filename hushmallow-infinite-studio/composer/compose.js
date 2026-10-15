@@ -108,6 +108,7 @@ export function composeWith(spec, { lib, data, measure, options = {}, moves = MO
   const posts = new Map();
   const props = [];
   const intents = [];
+  const gates = [];                                                        // eye-gate closures { t, by, asked, k, gate } (poses.js eyeGateAt)
   const hookStyle = TEXT_STYLES.hook;
   set.setWriter('composer', 0);
   texts.push({ id: 'hook', kind: 'textblock', z: 0, by: 'composer', opts: { lines: layout.hook.lines, y: hookStyle.y, size: layout.hook.size, weight: hookStyle.weight, tracking: hookStyle.tracking, enterAt: -10, exitAt: A.HOOK_OUT, exitDur: 0.5 }, widths: layout.hook.widths, readable: { min: 2.0, with: 'hookReturn' } });
@@ -130,14 +131,14 @@ export function composeWith(spec, { lib, data, measure, options = {}, moves = MO
       }
     }
     for (const [ch, [from, to]] of Object.entries(mv.owns || {})) set.own(ch, resolveRef(from, A), resolveRef(to, A));
-    const ctx = makeCtx({ m, mv, A, D, P, set, spec, template, pack, realm: { ...realm, tod: spec.tod, preset: tod }, layout, texts, cues, posts, props, intents, rng, measure, per, lib });
+    const ctx = makeCtx({ m, mv, A, D, P, set, spec, template, pack, realm: { ...realm, tod: spec.tod, preset: tod }, layout, texts, cues, posts, props, intents, gates, rng, measure, per, lib });
     mv.compile(ctx, A, params);
     ran.push({ slot: m.slot, id: m.id, rank: m.rank, params, published, cell: { status: cells[m.id].status, version: data.tuning?.[m.id]?.version ?? null } });
   }
 
   // ---- 4. personality
   const impact = (posts.get('gag.impact') || [])[0]?.value ?? null;
-  const personality = options.personality === false ? null : applyPersonality(set, pack, { intents, impact });
+  const personality = options.personality === false ? null : applyPersonality(set, pack, { intents, impact, gates });
   if (options.personality === false && intents.length) throw new CompileError('intent', 'intents need the personality pass');
 
   // ---- 5. acting
@@ -162,11 +163,12 @@ export function composeWith(spec, { lib, data, measure, options = {}, moves = MO
       set.term('body.sway.micro', { type: 'noise', env: 'micro', amp: per.microNoise * 4, rate: 1.7, seed: 13 });
     }
     const spans = seq.filter(({ move }) => move.span && move.entry).map(({ id, move }) => ({ id, entry: move.entry, exit: move.exit, span: move.span.map((r) => resolveRef(r, A)) }));
-    for (const b of planBridges(spans, { channels: built, end: D })) {        // junctions judged on the compiled channels (FU-4)
+    // junctions judged on the compiled channels, with the recorded eye-gate closures (FU-4)
+    for (const b of planBridges(spans, { channels: built, end: D, eyeGate: gates })) {
       set.setWriter('acting/bridge', 98);
       try {
         const bridge = moves['acting/bridge'] ?? MOVES['acting/bridge'];
-        bridge.compile(makeCtx({ m: { id: 'acting/bridge', rank: 98 }, mv: bridge, A, D, P, set, spec, template, pack, realm, layout, texts, cues, posts, props, intents, rng, measure, per, lib }), A, {}, b);
+        bridge.compile(makeCtx({ m: { id: 'acting/bridge', rank: 98 }, mv: bridge, A, D, P, set, spec, template, pack, realm, layout, texts, cues, posts, props, intents, gates, rng, measure, per, lib }), A, {}, b);
       } catch (e) {
         if (e.rule === 'channel:ownership') throw new CompileError('pose:bridge-conflict', `bridge ${b.after} → ${b.before}: ${e.detail}`);
         throw e;
@@ -229,6 +231,8 @@ export function composeWith(spec, { lib, data, measure, options = {}, moves = MO
       tuning: { file: 'library/tuning-matrix.json', sha256: data.hashes?.tuning ?? null },
       props: Object.fromEntries(props.map((p) => [p.id, p.provenance])),
       bridges: acting.bridges,
+      // where the eye gate closed an opening (only when it did: the approved film has none)
+      ...(gates.length ? { eyeGate: [...gates].sort((a, b) => a.t - b.t || (a.by < b.by ? -1 : a.by > b.by ? 1 : 0)).map(({ t, by, asked, k, gate }) => ({ t, by, asked, k, gate })) } : {}),
     },
   };
   return { direction, report: { personality, acting, cells, jitter: jitterOk, posts: Object.fromEntries([...posts].map(([k, l]) => [k, l.map((p) => ({ by: p.by, value: p.value }))])) } };
@@ -267,11 +271,23 @@ function probesOf(A, D) {
 }
 
 /** The context a move compiles with (docs/ARCHITECTURE.md §3). */
-function makeCtx({ m, mv, A, D, P, set, spec, template, pack, realm, layout, texts, cues, posts, props, intents, rng, measure, per, lib }) {
+function makeCtx({ m, mv, A, D, P, set, spec, template, pack, realm, layout, texts, cues, posts, props, intents, gates, rng, measure, per, lib }) {
   const by = m.id;
   const fail = (rule, msg) => { throw new CompileError(rule, `${by}: ${msg}`); };
+  // the pack's eye gate, recording each opening it closes at the key time t (poses.js eyeGateAt)
+  const personality = {
+    ...per,
+    eyesOpen(k, value, t) {
+      const v = per.eyesOpen(k, value);
+      if (v !== value) {
+        if (!Number.isFinite(t)) fail('pose:eye-gate', `the eye gate closed an opening of ${value}; pass the key time: personality.eyesOpen(k, value, t)`);
+        gates.push({ t, by, asked: value, k, gate: per.eyeGate[0] });
+      }
+      return v;
+    },
+  };
   const ctx = {
-    id: by, D, P, A, spec, template, pack, realm, layout, measure, personality: per,
+    id: by, D, P, A, spec, template, pack, realm, layout, measure, personality,
     frame: FRAME,
     styles: { orbit: lib.raw?.format?.layout?.thoughtBubble?.orbit ?? DEFAULT_ORBIT },
     at,

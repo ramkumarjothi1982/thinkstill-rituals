@@ -6,7 +6,8 @@
 //
 //   --build    build missing or stale fixtures first (qa/fixtures/build.mjs)
 //   --render   also run the determinism re-render on every fixture (it never
-//              reads the fixture's pixels, so by default it runs only for v2)
+//              reads the fixture's pixels, so by default it runs only for v2 and
+//              for the fixtures that declare "render": true)
 // Writes WORK/qa-fixtures/summary.json; exit 0 only when every expectation holds.
 
 import fs from 'node:fs';
@@ -48,7 +49,8 @@ export async function runFixtures({ build = false, force = false, only = null, r
   for (const f of list) {
     const target = path.join(FIXTURE_ROOT, f.id, 'target.json');
     if (!fs.existsSync(target)) { rows.push({ id: f.id, ok: false, why: 'not built (run with --build)' }); log(`FAIL  ${f.id}: not built`); continue; }
-    const [r] = await runQa(target, { render, log: () => {} });
+    // a fixture of the determinism gate needs its re-render; the others never read it (--render runs it for all)
+    const [r] = await runQa(target, { render: render || !!f.render, log: () => {} });
     const j = judge(r, f.expect);
     rows.push({ id: f.id, plan: f.plan, fault: f.fault, ...j, seconds: r.timings.total, report: r.reportFile });
     log(`${j.ok ? 'PASS' : 'FAIL'}  ${f.id}: ${j.why}${j.detail ? ` | ${j.detail.slice(0, 160)}` : ''}  ${r.timings.total} s`);

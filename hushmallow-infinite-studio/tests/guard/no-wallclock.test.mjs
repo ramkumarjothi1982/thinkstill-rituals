@@ -143,6 +143,19 @@ const cases = [
   ['Math.random = mulberry32(seed);', []],
   ['performance.now = () => state.nowMs;', []],
   ['Date.now = () => epoch + nowMs; window.Date = VirtualDate;', []],
+  // FU-1 round 2: the CommonJS loader, Node's global object, with, elements that load pages
+  ["arguments[1]('./x.js');", ["arguments outside a function (in CommonJS: the module wrapper's require and module, which the guard cannot follow)"]],
+  ['function f() { return arguments[0]; }', []],
+  ['const r = require; r("./x");', ['require (as a value: the guard cannot follow what it loads)']],
+  ["const p = require.resolve('./x');", []],
+  ["const m = module.require(name);", ['require() with a computed specifier (dynamic code)']],
+  ['const { require: r } = module;', ['require (destructured: loads code the guard cannot follow)']],
+  ["const vm = process.getBuiltinModule('node:vm');", ['process.getBuiltinModule']],
+  ['global[k]();', ['global object[…] (computed member)']],
+  ['const global = {}; global[k] = 1;', []],
+  ['with (o) { now(); }', ['with statement (names inside it read properties of an object the guard cannot follow)']],
+  ["document.createElement('object');", ['creates a <object> element (it loads a page or code from a URL the guard cannot follow)']],
+  ["const mod = await import('./x.js'); mod.default(); const module = await import('./y.js'); module.default();", []],
   // inline opt-out comments are not honoured
   ['export const jitter = () => Math.random(); // hm-allow-wallclock: any text', ['Math.random']],
   ['x = Date.now(); // hm-allow-wallclock: progress log only', ['Date.now']],
@@ -348,6 +361,7 @@ test('bypass: symlinked directories are followed, imports through them are judge
 /** The v1 clock, copied (read-only) from the frozen file into a test tree's stage/components/. */
 const V1_CLOCK = fs.readFileSync(path.join(STUDIO, 'stage/components/clock.js'), 'utf8');
 const V1_CLOCK_ENTRIES = WALLCLOCK_ALLOWED.filter((e) => e.file === 'stage/components/clock.js');
+const CARRIER = (label) => `real-clock carrier ${label} (holds the handle excused at stage/components/clock.js:85): a use that can reach members the guard cannot name`;
 
 test('bypass: imports of locked code are followed: a live-app module that reads the clock is a finding (rig.js)', () => {
   const t = tree();
@@ -398,9 +412,10 @@ test('bypass: the v1 clock\'s real-clock handles (realNow, RealDate, window.__hu
       'engine/b.js:4 real-clock handle .realNow (exported by stage/components/clock.js:85)',
       'engine/b.js:5 real-clock carrier __hushClock (published by stage/components/clock.js:89)',
       'engine/b.js:6 names the real-clock handle "realNow" in a string (exported by stage/components/clock.js:85)',
+      `engine/b.js:6 ${CARRIER('clock')}`,                                            // the carrier handed to a call (FU-1 round 2)
       'engine/b.js:7 real-clock carrier __hushClock (published by stage/components/clock.js:89)',
     ]);
-    assert.deepEqual(r.watched.filter((w) => w.kind !== 'binding').map((w) => `${w.kind} ${w.name}`), ['property realNow', 'property RealDate', 'global __hushClock']);
+    assert.deepEqual(r.watched.filter((w) => w.kind === 'property' || w.kind === 'global').map((w) => `${w.kind} ${w.name}`), ['property realNow', 'property RealDate', 'global __hushClock']);
     // installing a replacement (assignment) is not a read
     t.write('engine/b.js', 'window.__hushClock = { step() {} };\n');
     assert.deepEqual(keys(t.scan(V1_CLOCK_ENTRIES)), []);
@@ -448,6 +463,185 @@ test('bypass: import maps, frames and script sources of HTML pages are followed'
       'lib/frame.html:1 performance.now',
       'lib/page-relative.js:1 Math.random',
     ]);
+  } finally { t.done(); }
+});
+
+// ---- FU-1 round 2: one per bypass the adversarial verification of FU-1 found (docs/wp/FU-1.md, "Round 2")
+
+test('bypass (round 2): the v1 clock\'s carrier object is followed into every importer; any use that can reach its members by run-time name is a finding', () => {
+  const t = tree();
+  try {
+    t.write('stage/components/clock.js', V1_CLOCK);
+    const C = "'../stage/components/clock.js'";
+    // the verifier's four probes: enumeration, for-in with a run-time key, rest destructuring, a namespace through import() + with
+    t.write('engine/p1.js', `import { clock } from ${C};\nconst fns = Object.values(clock);\nexport const realT = () => fns[fns.length - 2]();\n`);
+    t.write('engine/p2.js', `import { clock } from ${C};\nlet h; for (const k in clock) if (k.length === 7) h = clock[k];\n`);
+    t.write('engine/p3.js', `import { clock } from ${C};\nconst { seed, step, ...rest } = clock;\n`);
+    t.write('engine/p4.js', `import(${C}).then((m) => { with (m.clock) { window.t0 = realNow(); } });\n`);
+    // renamed, namespace, re-exported, aliased, stored in an object, published, exported as default, required, inline in HTML
+    t.write('engine/q1.js', `import { clock as c } from ${C};\nexport const k = Object.keys(c);\n`);
+    t.write('engine/q2.js', `import * as ns from ${C};\nns.clock.step(1); ns.mulberry32(1);\nexport const v = Object.values(ns.clock), all = Object.entries(ns);\n`);
+    t.write('lib/re.js', `export { clock as c2 } from ${C};\nexport * as ns2 from ${C};\nexport * from ${C};\n`);
+    t.write('engine/q3.js', "import { c2, ns2, clock } from '../lib/re.js';\nfor (const k in c2) {}\nconst a = Object.values(ns2.clock), b = { ...clock };\n");
+    t.write('engine/q4.js', `import { clock } from ${C};\nconst c = clock; const { clock: inner } = { clock: c };\nconst box = { c }; export const v = Object.values(box.c);\n`);
+    t.write('lib/d.js', `import { clock } from ${C};\nexport default clock;\nwindow.cc = clock;\n`);
+    t.write('engine/q5.js', "import c from '../lib/d.js';\nexport const z = Object.assign({}, c), w = Object.keys(window.cc);\n");
+    t.write('engine/q6.cjs', `const { clock } = require(${C});\n`);
+    t.write('engine/q7.html', `<script type="module">import { clock } from ${C}; JSON.stringify(clock);</script>\n`);
+    const r = t.scan(V1_CLOCK_ENTRIES);
+    assert.deepEqual(keys(r), [
+      `engine/p1.js:2 ${CARRIER('clock')}`,
+      `engine/p2.js:2 ${CARRIER('clock')}`,
+      `engine/p3.js:2 ${CARRIER('clock')}`,
+      'engine/p4.js:1 loads stage/components/clock.js by import(), which exports the real-clock carrier clock (holds the handle excused at stage/components/clock.js:85): the guard cannot follow a module object',
+      'engine/p4.js:1 with statement (names inside it read properties of an object the guard cannot follow)',
+      `engine/q1.js:2 ${CARRIER('c')}`,
+      `engine/q2.js:3 ${CARRIER('ns')}`,
+      `engine/q2.js:3 ${CARRIER('ns.clock')}`,
+      `engine/q3.js:2 ${CARRIER('c2')}`,
+      `engine/q3.js:3 ${CARRIER('clock')}`,
+      `engine/q3.js:3 ${CARRIER('ns2.clock')}`,
+      `engine/q4.js:2 ${CARRIER('c')}`,                                                 // stored in a literal the guard cannot name
+      `engine/q4.js:3 ${CARRIER('box.c')}`,
+      `engine/q5.js:2 ${CARRIER('c')}`,
+      'engine/q5.js:2 real-clock carrier cc (published by lib/d.js:3)',
+      'engine/q6.cjs:1 loads stage/components/clock.js by require(), which exports the real-clock carrier clock (holds the handle excused at stage/components/clock.js:85): the guard cannot follow a module object',
+      `engine/q7.html:1 ${CARRIER('clock')}`,
+    ]);
+    // what the frozen stage does with it (clock.step) and what engine code may do: member reads by name, moving it whole
+    for (const f of ['p1', 'p2', 'p3', 'p4', 'q1', 'q2', 'q3', 'q4', 'q5']) fs.rmSync(path.join(t.studio, `engine/${f}.js`));
+    for (const f of ['q6.cjs', 'q7.html']) fs.rmSync(path.join(t.studio, 'engine', f));
+    t.write('engine/ok.js', `import { clock } from ${C};\nimport * as ns from ${C};\nclock.step(1); clock?.step(2); const s = clock.seed, n = clock.nowMs; const { step } = clock;\n`
+      + 'const c = clock; c.step(1); ns.clock.step(1); if (clock && typeof clock === "object" && clock !== null) {}\nexport { clock as theClock };\n');
+    t.write('composer/use.js', "import { theClock } from '../engine/ok.js';\ntheClock.step(3);\n");
+    const ok = t.scan(V1_CLOCK_ENTRIES);
+    assert.deepEqual(keys(ok), []);
+    assert.deepEqual(ok.watched.filter((w) => w.kind === 'carrier').map((w) => `${w.file} ${w.name}`).sort(),
+      ['composer/use.js theClock', 'engine/ok.js c', 'engine/ok.js clock', 'engine/ok.js ns', 'stage/components/clock.js clock']);
+  } finally { t.done(); }
+});
+
+test('allowlist (round 2): a handle stored on an object the guard cannot name, or exported, leaves the line untracked', () => {
+  const t = tree();
+  try {
+    const entry = (line) => [{ file: 'engine/c.js', line, apis: ['performance.now', 'performance (as a value)'], reason: 'test entry' }];
+    const why = 'engine/c.js:1 a real-clock handle leaves this allowlisted line (returned, exported, thrown or passed on where the guard cannot follow it)';
+    for (const line of [
+      'f({ rn: performance.now.bind(performance) });',                         // a literal handed to a call: the callee can enumerate it
+      'const o = { a: { rn: performance.now.bind(performance) } };',          // nested: o.a is not a watched name
+      'module.exports = { rn: performance.now.bind(performance) };',          // CommonJS export
+      'a.b.rn = performance.now.bind(performance);',                          // an object the guard cannot name
+    ]) {
+      t.write('engine/c.js', `${line}\n`);
+      assert.deepEqual(keys(t.scan(entry(line))), [why], line);
+    }
+    // a variable holding it (declared on another line, as clock.js does) becomes a carrier: member reads by other names are
+    // allowed, enumerating it is a finding
+    t.write('engine/c.js', 'const o = {\n  rn: performance.now.bind(performance),\n};\no.other(); export const v = Object.values(o);\n');
+    assert.deepEqual(keys(t.scan(entry('rn: performance.now.bind(performance),'))),
+      ['engine/c.js:4 real-clock carrier o (holds the handle excused at engine/c.js:2): a use that can reach members the guard cannot name']);
+  } finally { t.done(); }
+});
+
+test('bypass (round 2): every CommonJS route to the loader inside a followed package is followed or a finding', () => {
+  const t = tree();
+  try {
+    t.write('node_modules/pkg/package.json', JSON.stringify({ name: 'pkg', main: './main.cjs' }));
+    t.write('node_modules/pkg/lib/clock.js', 'module.exports = () => Date.now() + Math.random();\n');
+    t.write('node_modules/pkg/lib/a.js', 'module.exports = () => Date.now();\n');
+    t.write('node_modules/pkg/addon.node', 'native code\n');
+    t.write('composer/a.js', "import p from 'pkg';\nexport const t = p;\n");
+    // the verifier's probes: module.require (followed: it resolves from this module), an alias, .call, (0, require)
+    t.write('node_modules/pkg/main.cjs', [
+      "module.exports = module.require('./lib/clock.js');",
+      "const load = require; load('./lib/a.js');",
+      "require.call(null, './lib/a.js'); (0, require)('./lib/a.js');",
+      "arguments[1]('./lib/a.js');",
+      "require.cache[k] = m; require.extensions['.txt'] = h; require.main.require('./x');",
+      "module.paths.unshift('/elsewhere'); module._compile(src, 'x.js'); module.load('/x.js');",
+      "const vm = process.getBuiltinModule('node:vm');",
+      "const n = require('./addon'); const p = require.resolve('./lib/a.js');",
+      "function local(require) { return require('./lib/a.js'); }",
+    ].join('\n'));
+    const r = t.scan();
+    const main = (line, api) => `node_modules/pkg/main.cjs:${line} ${api}`;
+    assert.deepEqual(keys(r), [
+      'node_modules/pkg/lib/a.js:1 Date.now',                                       // reached by require() in the function that names its parameter require
+      'node_modules/pkg/lib/clock.js:1 Date.now',                                   // reached by module.require (followed)
+      'node_modules/pkg/lib/clock.js:1 Math.random',
+      main(2, 'require (as a value: the guard cannot follow what it loads)'),
+      main(3, 'require (as a value: the guard cannot follow what it loads)'),
+      main(3, 'require.call (the guard cannot follow what it loads)'),
+      main(4, 'arguments outside a function (in CommonJS: the module wrapper\'s require and module, which the guard cannot follow)'),
+      main(5, '.require (another module\'s require: the guard cannot follow what it loads)'),
+      main(5, 'require.cache (the guard cannot follow what it loads)'),
+      main(5, 'require.extensions (the guard cannot follow what it loads)'),
+      main(5, 'require.main (the guard cannot follow what it loads)'),
+      main(6, '._compile (Node\'s module loader: runs or loads code the guard cannot follow)'),
+      main(6, 'module.load (Node\'s module loader: the guard cannot follow what it loads)'),
+      main(6, 'module.paths (Node\'s module loader: the guard cannot follow what it loads)'),
+      main(7, 'process.getBuiltinModule'),
+      main(8, 'imports a file the guard cannot read as JS: the guard cannot follow it'),   // ./addon probes to addon.node (native code)
+    ].sort());
+    assert.ok(r.scanned.includes('node_modules/pkg/lib/clock.js'), 'module.require is followed');
+  } finally { t.done(); }
+});
+
+test('bypass (round 2): a directory reached through several symlinks is walked by every path, whatever order readdir returns', () => {
+  // engine/<a> -> ../lib and engine/sub/y -> ../../lib: loaded as engine/sub/y/f.js, '../../../tools/evil.js' is studio/tools/evil.js
+  for (const shallow of ['a', 'zz']) {
+    const t = tree();
+    try {
+      t.write('lib/f.js', "import { now } from '../../../tools/evil.js';\nexport default now;\n");
+      t.write('tools/evil.js', 'export const now = () => Date.now();\n');
+      t.link(`engine/${shallow}`, '../lib');
+      t.link('engine/sub/y', '../../lib');
+      const r = t.scan();
+      assert.deepEqual(keys(r), ['tools/evil.js:1 Date.now'], `shallow link engine/${shallow}`);
+      assert.deepEqual(r.symlinks.map((s) => s.link).sort(), [`engine/${shallow}`, 'engine/sub/y'].sort());
+    } finally { t.done(); }
+  }
+  // a diamond of links is walked by each path; a cycle still ends
+  const t = tree();
+  try {
+    t.write('lib/x.js', 'export const x = 1;\n');
+    t.link('engine/l1', '../lib'); t.link('engine/l2', '../lib'); t.link('lib/up', '..');
+    const r = t.scan();
+    assert.deepEqual(keys(r), []);
+    assert.ok(r.symlinks.some((s) => s.link === 'engine/l1/up') && r.symlinks.some((s) => s.link === 'engine/l2/up'));
+  } finally { t.done(); }
+});
+
+test('bypass (round 2): HTML pages: <base href>, <object>, <embed>, <portal>, <iframe srcdoc>, SVG <script href>, <meta refresh>, service workers', () => {
+  const t = tree();
+  try {
+    t.write('lib/util.js', 'export const t = Date.now();\n');
+    t.write('engine/util.js', 'export const t = 1;\n');
+    t.write('lib/p.html', '<script>var t = Date.now();</script>\n');
+    t.write('lib/q.html', '<script>var q = performance.now();</script>\n');
+    t.write('lib/svg.js', 'var r = Math.random();\n');
+    t.write('lib/sw.js', 'self.onfetch = () => new Date();\n');
+    t.write('lib/picture.svg', '<svg xmlns="http://www.w3.org/2000/svg"><script>Date.now()</script></svg>\n');
+    t.write('engine/base.html', '<base href="../lib/">\n<script type="module" src="./util.js"></script>\n');
+    t.write('engine/abs.html', '<base href="https://cdn.example/">\n');
+    t.write('engine/obj.html', '<object data="../lib/p.html"></object>\n<embed src="../lib/q.html">\n<object data="../lib/picture.svg"></object>\n');
+    t.write('engine/doc.html', '<iframe srcdoc="&lt;p&gt;hi&lt;/p&gt;\n&lt;script&gt;var s = Date.now();&lt;/script&gt;"></iframe>\n<svg><script href="../lib/svg.js"/></svg>\n<meta http-equiv="refresh" content="0; url=../lib/q.html">\n');
+    t.write('engine/sw.js', "navigator.serviceWorker.register('../lib/sw.js');\nconst c = navigator.serviceWorker;\ndocument.createElement('iframe'); document.createElement('base');\n");
+    const r = t.scan();
+    assert.deepEqual(keys(r), [
+      'engine/abs.html:1 a <base href> that is not a relative path (https://cdn.example/): the guard cannot follow the page\'s relative URLs',
+      'engine/doc.html:2 Date.now',
+      'engine/obj.html:3 imports a file the guard cannot read as JS: the guard cannot follow it',
+      'engine/sw.js:2 serviceWorker (used other than to register a constant script: it can rewrite every module the page fetches)',
+      'engine/sw.js:3 creates a <base> element (it loads a page or code from a URL the guard cannot follow)',
+      'engine/sw.js:3 creates a <iframe> element (it loads a page or code from a URL the guard cannot follow)',
+      'lib/p.html:1 Date.now',
+      'lib/q.html:1 performance.now',
+      'lib/svg.js:1 Math.random',
+      'lib/sw.js:1 new Date() (current time)',
+      'lib/util.js:1 Date.now',
+    ]);
+    assert.ok(r.scanned.includes('engine/util.js'), 'the page directory is resolved too (a <base> after a script does not apply to it)');
   } finally { t.done(); }
 });
 

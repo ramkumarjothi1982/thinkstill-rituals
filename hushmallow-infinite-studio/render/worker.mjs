@@ -13,7 +13,8 @@
 //      POST instead of ~404 ms of base64; the upload overlaps the next frame's
 //      render, so the render waits only for readPixels and one copy), hashes it
 //      (sha256 of the top-down RGBA, the same hash as the goldens) and pipes it
-//      into the segment's own x264 encoder (render/encode.mjs),
+//      into the segment's own x264 encoder (render/encode.mjs; lossless for the
+//      master pass the farm runs once every segment is done),
 //   4. writes .done with the frame hashes once the MP4 is complete.
 // A frame that takes longer than the watchdog limit (60 s) aborts the attempt;
 // the browser is restarted, and the segment is retried up to twice before it
@@ -246,11 +247,17 @@ export function claimNext(jobDir, job, prev, start, owner) {
   return null;
 }
 
-/** A single-pass encoder fed with every frame in order (acceptance check of the segmented encode). */
+/**
+ * A single-pass encoder fed with every frame in order (acceptance check of the segmented
+ * encode): with a master encoder, the master's own single pass over the raw frames (the
+ * master pass over the lossless segments must reproduce it bit for bit); otherwise the
+ * segment encoder with IDRs where the segments have them.
+ */
 function makeTee(file, job, log) {
   const p = job.params, { width, height } = outputSize(p);
-  // IDRs where the segments have them (every segment start, then every GOP frames)
-  const enc = spawnEncoder(rawEncodeArgs({ width, height, fps: job.info.fps, out: file, encoder: p.encoder, keyframeEvery: p.segmentFrames }));
+  const enc = spawnEncoder(rawEncodeArgs(p.master
+    ? { width, height, fps: job.info.fps, out: file, encoder: p.master }
+    : { width, height, fps: job.info.fps, out: file, encoder: p.encoder, keyframeEvery: p.segmentFrames }));
   let next = job.segments[0].a, broken = false;
   return {
     write(buf, i) {

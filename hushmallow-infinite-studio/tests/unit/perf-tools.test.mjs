@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PROFILES, FEATURES, DEFAULT_PROFILE, resolveProfile, parseFeatures, featureLabel } from '../../engine/render/profiles.js';
+import { PROFILES, FEATURES, DEFAULT_PROFILE, PAGE_PROFILE, resolveProfile, parseFeatures, featureLabel } from '../../engine/render/profiles.js';
 import { jobParams, wantsPreview, DEFAULTS } from '../../render/farm.mjs';
 import { sampleFrames, parseBenchArgs } from '../../tools/bench.mjs';
 import { parseGateArgs, STEP_GATES, FACE_FLOOR_DB, stepGate, pickFrames } from '../../tools/perf/gate.mjs';
@@ -22,8 +22,9 @@ function everyCombination() {
   return out;
 }
 
-test('profiles: exact is the default and has no optimisation; final has every one', () => {
-  assert.equal(DEFAULT_PROFILE, 'exact');
+test('profiles: the farm renders final by default, a page without a profile renders exact; exact has no optimisation, final every one', () => {
+  assert.equal(DEFAULT_PROFILE, 'final', 'FU-5: hm render makes production masters unless told otherwise');
+  assert.equal(PAGE_PROFILE, 'exact', 'goldens, parity and the QA re-render of v2 open pages without a profile');
   const exact = resolveProfile(), final = resolveProfile('final');
   assert.equal(exact.name, 'exact');
   for (const f of Object.keys(FEATURES)) { assert.equal(exact.features[f], false, f); assert.equal(final.features[f], true, f); }
@@ -109,20 +110,31 @@ test('step gates: every feature has its own gate, and both of its sides resolve'
   assert.throws(() => pickFrames(frames, '34'), /34 not among the golden frame indices/);
 });
 
-test('farm: the profile supplies scale, encoder and mark defaults; explicit options win', () => {
-  const exact = jobParams({ direction: 'x' });
-  assert.equal(exact.profile, 'exact');
-  assert.equal(exact.scale, DEFAULTS.scale);
-  assert.equal(exact.encoder, 'qp15');
-  const fin = jobParams({ direction: 'x', profile: 'final' });
-  assert.equal(fin.profile, 'final');
-  assert.equal(fin.encoder, PROFILES.final.encoder);
+test('farm: the profile supplies scale, encoder, master and mark defaults; explicit options win', () => {
+  const fin = jobParams({ direction: 'x' });
+  assert.equal(fin.profile, 'final', 'the default profile');
+  assert.equal(fin.scale, DEFAULTS.scale);
+  assert.deepEqual([fin.encoder, fin.master], ['lossless', 'crf16'], 'lossless segments, one CRF 16 master pass (Q4(b))');
+  const exact = jobParams({ direction: 'x', profile: 'exact' });
+  assert.deepEqual([exact.profile, exact.encoder, exact.master], ['exact', 'lossless', 'crf16']);
   assert.equal(jobParams({ direction: 'x', profile: 'final', scale: 0.25 }).scale, 0.25);
-  assert.equal(jobParams({ direction: 'x', profile: 'final', encoder: 'crf16' }).encoder, 'crf16');
+  const qp = jobParams({ direction: 'x', profile: 'final', encoder: 'qp15' });
+  assert.deepEqual([qp.encoder, qp.master], ['qp15', null], 'a segment-invariant encoder is joined with concat -c copy: no master pass');
+  assert.throws(() => jobParams({ direction: 'x', encoder: 'crf16' }), /not a segment encoder/, 'CRF is never segment-invariant');
+  assert.throws(() => jobParams({ direction: 'x', encoder: 'crf20' }), /not a segment encoder/);
+  assert.throws(() => jobParams({ direction: 'x', master: 'qp15' }), /unknown master encoder/);
   assert.throws(() => jobParams({ direction: 'x', profile: 'nope' }), /unknown profile/);
   assert.equal(wantsPreview(fin, undefined), !!PROFILES.final.preview);
   assert.equal(wantsPreview(exact, undefined), false);
   assert.equal(wantsPreview(exact, true), true);
+});
+
+test('farm: an odd output size is refused before anything renders (yuv420p needs even dimensions)', () => {
+  assert.throws(() => jobParams({ direction: 'x', width: 1081 }), /output size 1081x1920 .* even width and height/);
+  assert.equal(jobParams({ direction: 'x', scale: 0.3 }).scale, 0.3, '324x576 is even');
+  assert.throws(() => jobParams({ direction: 'x', scale: 0.21 }), /output size 227x403 \(1080x1920 at scale 0\.21\)/);
+  assert.throws(() => jobParams({ direction: 'x', height: 1919 }), /1080x1919/);
+  assert.deepEqual([jobParams({ direction: 'x', scale: 0.25 }).scale, jobParams({ direction: 'x', profile: 'draft' }).scale], [0.25, 0.5], 'even sizes pass (270x480, 540x960)');
 });
 
 test('profiles: draft cuts quality knobs and marks the frame; proof is final quality as stills', () => {
@@ -148,7 +160,7 @@ test('farm: the draft profile renders at half size with its encoder and mark; pr
   assert.equal(ENCODERS.draft.segmentSafe, true);
   const a = x264Args('draft');
   assert.equal(a[a.indexOf('-preset') + 1], 'veryfast');
-  assert.equal(x264Args('qp15')[x264Args('qp15').indexOf('-preset') + 1], 'slow', 'the master encoder is unchanged');
+  assert.equal(x264Args('crf16')[x264Args('crf16').indexOf('-preset') + 1], 'slow', 'the master encoder is the approved render\'s');
   assert.equal(x264Args('crf20')[x264Args('crf20').indexOf('-preset') + 1], 'fast', 'the preview copy');
   assert.equal(wantsPreview(d, undefined), false);
   assert.throws(() => jobParams({ direction: 'x', profile: 'proof' }), /stills, not a video/);

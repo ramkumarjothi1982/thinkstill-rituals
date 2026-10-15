@@ -1,7 +1,10 @@
 // hm doctor — can this machine render? Checks the pinned toolchain (Node,
 // Playwright 1.56.1 and its Chromium with explicit software WebGL), that the
 // engine really renders a frame through the binary frame sink, the font, ffmpeg
-// with libx264/aac, cores, RAM, free disk and the hash-locks.
+// with libx264/aac, cores, RAM, free disk and the hash-locks. The engine frame
+// is a heavy job: it renders under a shared slot of the heavy-job lock (FU-5),
+// so a doctor run never disturbs a benchmark or golden capture that holds the
+// machine exclusively (it waits for it instead).
 
 export const summary = 'Check the render toolchain: WebGL2 (SwiftShader), engine frame, fonts, ffmpeg, cores, RAM, disk';
 export const usage = 'hm doctor [--json]';
@@ -15,7 +18,7 @@ export async function run(args, ctx) {
   const { diskCheck, preflight, DISK_WARN_GB, DISK_REFUSE_GB } = await import('../../render/farm.mjs');
   const { playwrightVersion } = await import('../../render/lib/provenance.mjs');
   const { isConfined } = await import('../../render/lib/write-jail.mjs');
-  const { heavyStatus } = await import('../../render/lib/heavy-lock.mjs');
+  const { heavyStatus, withHeavyLock } = await import('../../render/lib/heavy-lock.mjs');
   const fs = await import('node:fs');
   const path = await import('node:path');
 
@@ -28,7 +31,12 @@ export async function run(args, ctx) {
   const pw = playwrightVersion();
   add(pw === PLAYWRIGHT_PIN ? 'ok' : 'fail', 'playwright', `${pw ?? 'not installed'} (pinned ${PLAYWRIGHT_PIN}: newer Chromium may drop software WebGL, R2)`);
 
-  // Chromium, WebGL2 and one engine frame through the sink
+  // who holds the machine before doctor asks for a slot itself
+  const lock = await heavyStatus();
+  add('ok', 'heavy lock', lock.idle ? 'idle' : `busy: ${lock.holders.map((h) => `${h.mode} pid ${h.pid} "${h.label}"`).join('; ')} (doctor waits for a shared slot)`);
+
+  // Chromium, WebGL2 and one engine frame through the sink, under a shared slot of the heavy lock
+  await withHeavyLock({ mode: 'shared', label: 'hm doctor' }, async (lease) => {
   let session;
   try {
     session = await EngineSession.start();
@@ -51,12 +59,13 @@ export async function run(args, ctx) {
     const t2 = performance.now();
     sink.close();
     await page.close();
-    add(hash && bytes > 0 ? 'ok' : 'fail', 'engine frame', `${info.width}x${info.height} fixture frame rendered in ${(t1 - t0).toFixed(0)} ms, read back (binary POST) in ${(t2 - t1).toFixed(0)} ms${bytes ? '' : ': BLACK'}`);
+    add(hash && bytes > 0 ? 'ok' : 'fail', 'engine frame', `${info.width}x${info.height} fixture frame rendered in ${(t1 - t0).toFixed(0)} ms, read back (binary POST) in ${(t2 - t1).toFixed(0)} ms${bytes ? '' : ': BLACK'} (under the heavy lock: ${lease?.noop ? 'covered by the caller\'s lease' : `${lease?.mode} slot`})`);
   } catch (e) {
     add('fail', 'chromium/engine', e.message.split('\n')[0]);
   } finally {
     await session?.close();
   }
+  });
   const fontFile = path.join(ctx.paths.HUSHMALLOW, 'assets', 'fonts', 'fredoka-latin.woff2');
   if (!fs.existsSync(fontFile)) add('fail', 'font file', `${fontFile} missing`);
 
@@ -78,8 +87,6 @@ export async function run(args, ctx) {
   // safety rails
   try { const pre = preflight(); add('ok', 'hash-locks', `frozen v2 ${pre.frozenTree?.slice(0, 12)}, live app ${pre.appTree?.slice(0, 12)}`); } catch (e) { add('fail', 'hash-locks', e.message); }
   add(isConfined() ? 'ok' : 'warn', 'write jail', isConfined() ? 'confined (writes only to the studio and WORK)' : 'not confined (HM_JAIL=off?)');
-  const lock = await heavyStatus();
-  add('ok', 'heavy lock', lock.idle ? 'idle' : `busy: ${lock.holders.map((h) => `${h.mode} pid ${h.pid} "${h.label}"`).join('; ')}`);
 
   if (args.includes('--json')) console.log(JSON.stringify(checks, null, 1));
   else for (const c of checks) console.log(`${c.level === 'ok' ? 'ok  ' : c.level === 'warn' ? 'warn' : 'FAIL'}  ${c.name.padEnd(15)} ${c.detail}`);

@@ -269,6 +269,7 @@ export class Renderer {
       t = texture(this.gl, canvas, { mip: true });
       this.texCache.set(ck, t);
       assetLog.texture(`text:${key}`, canvas, { procedural: true, contentKey: ck });
+      assetLog.bind(t, `text:${key}`, canvas.width, canvas.height);
     }
     this.textTex.set(key, t);
     return t;

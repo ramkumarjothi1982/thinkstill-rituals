@@ -10,6 +10,7 @@ import { ChannelSet, channelTable } from '../../composer/channels.js';
 import { smoothstep, clamp, spring, lerp } from '../../engine/motion.js';
 import { PERSONALITY } from '../../../hushmallow/src/mallows/expressions.js';
 import { composeNode, dataWithPack, bitEqual, registryWith, specWith, dataWithCells, baseData } from '../parity/composer-fixtures.mjs';
+import { MOVES } from '../../composer/moves/index.js';
 
 const sansProvenance = ({ direction }) => ({ channels: direction.channels, cues: direction.cues, props: direction.props, text: direction.text, body: direction.body, face: direction.face, anchors: direction.anchors });
 
@@ -59,6 +60,7 @@ test('the eye gate: closed-eye Mallows open only when intensity × opening reach
   // a gentle spec: the jolt and its aftermath keep the painted eyes shut
   const gentle = composeNode({ spec: specWith((s) => { s.gag.intensity = 0.3; }), data: (() => { const d = baseData(); const t = structuredClone(d.tuning); t['G-JOLT'].cells.noomi.ranges.intensity = [0.3, 1, 1]; return { ...d, tuning: t }; })() });
   const eyeKeys = gentle.direction.channels['face.eyeOpen'].keys;
+  assert.deepEqual(gentle.direction.provenance.eyeGate.map((c) => [c.by, c.t, c.asked]), [['G-JOLT', 0.4, 1.32]], 'the closure is recorded at the snap');
   assert.ok(!eyeKeys.some((k) => k.by === 'G-JOLT' || k.by === 'acting/aftermath-startled'), 'no opening from the gag or the aftermath');
   assert.ok(eyeKeys.some((k) => k.by === 'M-ORBIT' && k.v > 1), 'the escalation still opens them to chase the thoughts');
 });
@@ -75,12 +77,15 @@ test('intents expand through the pack, falling back to the app presets through t
   assert.equal(own.eyeOpen, 1.2, 'the pack wins over the app');
   assert.throws(() => intentTargets(pack, 'nonsense'), /intent/);
 
-  // a move writing an intent: keys appear in the move's own window, gated and scaled by amount
+  // a move writing an intent: keys appear in the move's own window, gated and scaled by amount. It is a
+  // pose-honest turn (FU-4: poses are judged on compiled values): a flash of surprise as the stop hits, then
+  // TURN-SQUEEZE's own squeeze and letting go, so it really exits 'squeezed' where the ritual starts
+  const turn = MOVES['TURN-SQUEEZE'];
+  const zoneOf = (chs) => Object.fromEntries(chs.map((c) => [c, ['TURN-0.05', 'RITUAL0']]));
   const mover = {
-    id: 'TEST-INTENT', kind: 'turn', summary: 'test fixture: writes an intent', cost: {}, requires: {}, params: {}, cues: { squeeze: { recipe: 'test' } },
-    span: ['TURN-0.05', 'RITUAL0'], entry: 'spiralling', exit: 'squeezed', publishes: (A, at) => ({ squeeze: at(A.TURN, -0.02), relax: at(A.TURN, 0.32) }),
-    owns: { 'face.eyeOpen': ['TURN-0.05', 'RITUAL0'], 'face.mouthOpen': ['TURN-0.05', 'RITUAL0'], 'face.mouthRound': ['TURN-0.05', 'RITUAL0'], 'face.mouthSmile': ['TURN-0.05', 'RITUAL0'], 'face.irisScale': ['TURN-0.05', 'RITUAL0'], 'face.eyeScale': ['TURN-0.05', 'RITUAL0'], 'face.browY': ['TURN-0.05', 'RITUAL0'], 'face.sparkle': ['TURN-0.05', 'RITUAL0'] },
-    compile(ctx, A) { ctx.post('turn.stop', [ctx.at(A.TURN, -0.05), ctx.at(A.TURN, 0.3)]); ctx.intent('surprised', A.squeeze, { amount: ctx.spec.gag.intensity }); ctx.cue(A.squeeze, 'squeeze'); },
+    ...turn, id: 'TEST-INTENT', library: undefined, summary: 'test fixture: writes an intent', cues: { squeeze: { recipe: 'test' } },
+    owns: { ...turn.owns, ...zoneOf(['face.mouthRound', 'face.irisScale', 'face.eyeScale', 'face.sparkle']) },
+    compile(ctx, A, p) { ctx.intent('surprised', ctx.at(A.TURN, -0.05), { amount: ctx.spec.gag.intensity }); turn.compile(ctx, A, p); },
   };
   const run = (amount) => {
     const spec = specWith((x) => { x.turn = mover.id; x.gag.intensity = amount; });
@@ -97,6 +102,10 @@ test('intents expand through the pack, falling back to the app presets through t
   const half = run(0.5);
   assert.equal(k(half, 'face.eyeOpen').v, 0);
   assert.equal(k(half, 'face.mouthOpen').v, 0.425);
+  // the closure is recorded at the intent's key time, for the pose contracts (poses.js eyeGateAt); the
+  // jolt at intensity 0.5 opens (0.5 × 1.32 ≥ 0.5), so it is the only one. Nothing is closed at full amount
+  assert.deepEqual(half.direction.provenance.eyeGate, [{ t: 6.95, by: 'TEST-INTENT', asked: 0.675, k: 0.5, gate: 0.5 }]);
+  assert.equal(full.direction.provenance.eyeGate, undefined);
 });
 
 test('seeded auto-blinks fill long open holds only: deterministic, away from impacts and rest windows', () => {

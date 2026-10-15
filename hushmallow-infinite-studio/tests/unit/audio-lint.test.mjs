@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { lintRecipe, lintRecipes, lintCoverage, lintEvents, shapes, sounds, probe, calibrateLoud, LOUD, SHAPE, ENGINE_FX } from '../../audio/lint-recipes.mjs';
 import { RECIPES } from '../../audio/recipes/index.mjs';
+import { ringBursts, clusters, cents } from '../../audio/lint-shapes.mjs';
 import { buildScore, sparkleTexture, V2_SEED } from '../../audio/score.mjs';
 import { MOVES } from '../../composer/moves/index.js';
 import { studioPath } from '../../render/lib/paths.mjs';
@@ -162,10 +163,28 @@ test('each limit, walked from both sides, past the boundary', () => {
   const below = fAt(L.lowHz * 0.97), above = fAt(L.lowHz * 1.03);
   assert.ok(shaped([thump(1, below), thump(1.3, below)]).includes('heartbeat'), `energy at ${(L.lowHz * 0.97).toFixed(0)} Hz`);
   assert.deepEqual(shaped([thump(1, above), thump(1.3, above)]), [], `energy at ${(L.lowHz * 1.03).toFixed(0)} Hz`);
-  // … and its pitch does not rise (a bloop is not a thump)
+  // … its noise band ends ≤ 680 Hz
+  const thud = (t, f) => ({ t, inst: 'noiseHit', filter: 'lowpass', f, a: 0.004, d: 0.1, peak: 0.06 });
+  assert.ok(shaped([thud(1, L.lowNoiseHz * 0.97), thud(1.3, L.lowNoiseHz * 0.97)]).includes('heartbeat'));
+  assert.deepEqual(shaped([thud(1, L.lowNoiseHz * 1.03), thud(1.3, L.lowNoiseHz * 1.03)]), [], 'a knock, not a heart');
+  // … and its pitch does not bend up while it sounds (a bloop is not a thump): ≤ 150 cents between the earlier
+  // and the later half of its energy, however far the raw glide goes
   const bloop = (t, glide) => ({ t, inst: 'blip', f: 90, f1: 90 * Math.pow(2, glide / 1200), glide: 0.05, d: 0.12, peak: 0.05 });
-  assert.ok(shaped([bloop(1, L.maxRise - 20), bloop(1.3, L.maxRise - 20)]).includes('heartbeat'));
-  assert.deepEqual(shaped([bloop(1, L.maxRise + 20), bloop(1.3, L.maxRise + 20)]), []);
+  const gFor = (bend) => solve((g) => part(bloop(0, g)).bend, bend, 0, 4000);
+  const flat = gFor(L.maxBend - 15), rising = gFor(L.maxBend + 15);
+  assert.ok(shaped([bloop(1, flat), bloop(1.3, flat)]).includes('heartbeat'), `a ${flat.toFixed(0)}-cent glide bends ${part(bloop(0, flat)).bend.toFixed(0)} cents: a thump`);
+  assert.deepEqual(shaped([bloop(1, rising), bloop(1.3, rising)]), [], `a ${rising.toFixed(0)}-cent glide bends ${part(bloop(0, rising)).bend.toFixed(0)} cents: a bloop`);
+  // … an onset scoop under the attack, of any depth, bends nothing: the thump is still a thump
+  const scooped = (t, f, depth, g) => ({ t, inst: 'blip', f: f / Math.pow(2, depth / 1200), f1: f, glide: g, a: Math.max(0.004, g), d: 0.12, peak: 0.08 });
+  for (const [depth, g] of [[300, 0.002], [1200, 0.002], [3600, 0.002], [1200, 0.005]]) {
+    assert.ok(Math.abs(part(scooped(0, 60, depth, g)).bend) < 1, `a ${depth}-cent scoop in ${g * 1000} ms`);
+    assert.ok(shaped([scooped(1, 60, depth, g), scooped(1.28, 55, depth, g)]).includes('heartbeat'), `a lub-dub scooped ${depth} cents in ${g * 1000} ms`);
+  }
+  // … and v2's own rising bloops stay bloops (the landing's 274 Hz bloop bends 278 cents, the release's 268)
+  for (const id of ['v2/land', 'v2/release']) {
+    const low = sounds(probe(RECIPES[id], 1, {})).filter((p) => p.pitched && p.hz <= L.lowHz && p.glide > 0 && p.dur < 1);
+    assert.ok(low.length && low.every((p) => p.bend > L.maxBend * 1.6), `${id}: ${low.map((p) => p.bend.toFixed(0)).join(', ')}`);
+  }
   // it peaks within half the lub-dub interval (else the two beats merge into one swell)
   const d = 0.3, slowAttack = (a) => [thump(1, 80, { a }), thump(1 + d, 70, { a })];
   assert.ok(shaped(slowAttack(L.attackShare * d - 0.01)).includes('heartbeat'));
@@ -175,10 +194,32 @@ test('each limit, walked from both sides, past the boundary', () => {
   const hFor = (body) => solve((h) => part(thump(0, 80, { h })).body, body, 0, 3);
   assert.ok(shaped(bodied(hFor(L.maxBody - 0.05))).includes('heartbeat'));
   assert.deepEqual(shaped(bodied(hFor(L.maxBody + 0.05))), []);
-  // it is in the foreground: a louder sound just before it masks it
-  const hitBefore = (gap) => [1, 1.3].flatMap((t) => [{ t: t - gap, inst: 'blip', f: 900, f1: 1800, glide: 0.03, d: 0.06, peak: 0.02 * L.maskRatio * 1.2 }, thump(t, 80, { peak: 0.02 })]);
-  assert.deepEqual(shaped(hitBefore(L.maskSec - 0.02)), [], 'thumps in the wake of a louder sound');
-  assert.ok(shaped(hitBefore(L.maskSec + 0.02)).includes('heartbeat'));
+  // it is in the foreground: a sound just before it, louder in the thump's register, masks it
+  const lvl = part(thump(0, 80, { peak: 0.02 })).eff;
+  const bloopFor = (ratio) => solve((pk) => part({ t: 0, inst: 'blip', f: 120, f1: 300, glide: 0.05, d: 0.12, peak: pk }).eff, ratio * lvl, 0, 1);
+  const lowBefore = (gap, ratio) => [1, 1.3].flatMap((t) => [{ t: t - gap, inst: 'blip', f: 120, f1: 300, glide: 0.05, d: 0.12, peak: bloopFor(ratio) }, thump(t, 80, { peak: 0.02 })]);
+  assert.deepEqual(shaped(lowBefore(L.maskSec - 0.02, L.maskRatio * 1.1)), [], 'thumps in the wake of a louder low bloop');
+  assert.ok(shaped(lowBefore(L.maskSec + 0.02, L.maskRatio * 1.1)).includes('heartbeat'), 'the bloop too early to mask');
+  assert.ok(shaped(lowBefore(L.maskSec - 0.02, L.maskRatio * 0.9)).includes('heartbeat'), 'the bloop not loud enough to mask');
+  // … forward masking stays in its band: a high sound masks no thump, however loud; broadband noise by its low share
+  const highBefore = (masker) => [1, 1.3].flatMap((t) => [{ ...masker, t: t - 0.04 }, thump(t, 80, { peak: 0.02 })]);
+  assert.ok(shaped(highBefore({ inst: 'ping', f: 2000, peak: 0.2, decay: 0.08 })).includes('heartbeat'), 'a 2 kHz tick at 14×');
+  assert.ok(shaped(highBefore({ inst: 'blip', f: 900, f1: 1800, glide: 0.03, d: 0.06, peak: 0.2 })).includes('heartbeat'), 'a 900 → 1800 Hz chirp at 14×');
+  assert.ok(shaped(highBefore({ inst: 'noiseHit', filter: 'highpass', f: 2000, a: 0.002, d: 0.05, peak: 0.3 })).includes('heartbeat'), 'a hiss burst');
+  const soft = part(thump(0, 80, { peak: 0.008 })).eff;
+  const noiseBefore = (f, ratio) => {
+    const low = (pk) => { const p = part({ t: 0, inst: 'noiseHit', filter: 'lowpass', f, a: 0.002, d: 0.08, peak: pk }); return p.eff * Math.sqrt(Math.min(1, L.lowNoiseHz / p.band[1])); };
+    const pk = solve(low, ratio * soft, 0, 5);
+    return [1, 1.3].flatMap((t) => [{ t: t - 0.04, inst: 'noiseHit', filter: 'lowpass', f, a: 0.002, d: 0.08, peak: pk }, thump(t, 80, { peak: 0.008 })]);
+  };
+  assert.deepEqual(shaped(noiseBefore(1500, L.maskRatio * 1.1)), [], 'a broadband thud, its band below 680 Hz louder');
+  assert.ok(shaped(noiseBefore(1500, L.maskRatio * 0.9)).includes('heartbeat'), 'a broadband thud, its band below 680 Hz too quiet');
+  // … thumps within 100 ms are one beat, heard at the loudest: a grace thump or a flam before each beat is still a lub-dub
+  const graced = (gap, ratio) => [1, 1.3].flatMap((t) => [thump(t - gap, 80, { peak: 0.05 * ratio }), thump(t, 80)]);
+  assert.ok(shaped(graced(L.maskSec - 0.02, 0.4)).includes('heartbeat'), 'a quieter grace thump 80 ms before each beat');
+  assert.ok(shaped(graced(0.06, 1)).includes('heartbeat'), 'a flam');
+  assert.ok(shaped(graced(0.06, 1.6)).includes('heartbeat'), 'a louder thump 60 ms before each beat (it masks the beat; it is the beat)');
+  assert.deepEqual(shaped(graced(L.maskSec + 0.03, 0.8)), [], 'a thump 130 ms before each beat is a beat of its own: an even patter');
 
   // a pop: two signal notes ≤ 0.3 s apart, at least a whole tone apart
   const two = (gap, st) => [{ t: 1, inst: 'blip', f: 1000, a: 0.004, d: 0.1, peak: 0.04 }, { t: 1 + gap, inst: 'blip', f: 1000 * Math.pow(2, st / 12), a: 0.004, d: 0.1, peak: 0.04 }];
@@ -191,6 +232,36 @@ test('each limit, walked from both sides, past the boundary', () => {
   assert.ok(shaped(drips(P.chirpMax - 0.01, 7)).includes('messenger-pop'));
   assert.deepEqual(shaped(drips(P.chirpMax + 0.01, 7)), []);
   assert.deepEqual(shaped(drips(0.1, 1.5)), [], 'a semitone and a half apart: one drip again');
+  // … "the same kind" is how the chirp bends while it sounds (≤ 1.5× apart), whatever its waveform or how far its glide runs on
+  const drip = (t, f, o = {}) => ({ t, inst: 'blip', f, f1: f * 0.55, glide: 0.045, a: 0.003, d: 0.14, peak: 0.05, ...o });
+  const f5 = 980 * 1.5;
+  assert.ok(shaped([drip(1, 980), drip(1.1, f5, { type: 'triangle' })]).includes('messenger-pop'), 'a sine drip, then a triangle one a fifth up');
+  assert.ok(shaped([drip(1, 980), drip(1.1, f5, { f1: f5 * 0.55 * 0.55, glide: 0.09 })]).includes('messenger-pop'), 'the second drip\'s glide runs on twice as far, after the sound has died');
+  const bendOf = (glide) => part(drip(0, f5, { glide })).bend, base = part(drip(0, 980)).bend;
+  const gSame = solve(bendOf, base * (P.chirpGlide - 0.1), 0.02, 0.045), gOther = solve(bendOf, base * (P.chirpGlide + 0.1), 0.02, 0.045);   // (the bend is monotonic in the glide time over 20–45 ms)
+  assert.ok(shaped([drip(1, 980), drip(1.1, f5, { glide: gSame })]).includes('messenger-pop'), `bends ${base.toFixed(0)} and ${bendOf(gSame).toFixed(0)} cents: the same drip`);
+  assert.deepEqual(shaped([drip(1, 980), drip(1.1, f5, { glide: gOther })]), [], `bends ${base.toFixed(0)} and ${bendOf(gOther).toFixed(0)} cents: two different sounds`);
+  // … a chirp and a note (a slide into a two-tone) pair within 150 ms, a whole tone or more apart
+  const slide = (gap, st) => [{ t: 1, inst: 'blip', f: 740, f1: 880, glide: 0.04, a: 0.004, d: 0.06, peak: 0.04 }, { t: 1 + gap, inst: 'blip', f: part({ t: 0, inst: 'blip', f: 740, f1: 880, glide: 0.04, a: 0.004, d: 0.06, peak: 0.04 }).hz * Math.pow(2, st / 12), a: 0.004, d: 0.06, peak: 0.04 }];
+  assert.ok(shaped(slide(P.chirpMax - 0.01, 7)).includes('messenger-pop'));
+  assert.deepEqual(shaped(slide(P.chirpMax + 0.01, 7)), [], 'a slide, then a beep later');
+  assert.ok(shaped(slide(0.08, 2.1)).includes('messenger-pop'));
+  assert.deepEqual(shaped(slide(0.08, 1.9)), [], 'the beep where the slide landed');
+  // a beep lasts ≥ 30 ms (to −60 dB): two of them at one pitch are a beep-beep; two shorter pips at one pitch are a double click
+  const durFor = (dur) => (o) => ({ ...o, d: dur - (o.a || 0.002) - (o.h || 0) });
+  const pip = (t, f, dur) => durFor(dur)({ t, inst: 'blip', f, a: 0.002, peak: 0.04 });
+  assert.ok(shaped([pip(1, 3000, N.minDur + 0.002), pip(1.15, 3000, N.minDur + 0.002)]).includes('alarm'), 'beep-beep');
+  assert.deepEqual(shaped([pip(1, 3000, N.minDur - 0.002), pip(1.15, 3000, N.minDur - 0.002)]), [], 'a double click');
+  assert.deepEqual(shaped([0, 0.5, 1].map((o) => pip(1 + o, 3000, 0.025))), [], 'three pips: a gag');
+  assert.ok(shaped([0, 0.5, 1, 1.5].map((o) => pip(1 + o, 3000, 0.025))).includes('alarm'), 'four pips at a steady interval: an alarm');
+  // … but a pip has a pitch: two of them a whole tone or more apart are a two-tone once each body (above −20 dB) holds ≥ 4 cycles
+  const pipFor = (f, cycles) => { const d = solve((dd) => { const p = part({ t: 0, inst: 'blip', f, a: 0.0005, d: dd, peak: 0.04 }); return p.body * p.hz; }, cycles, 0.0002, 0.03); return (t) => ({ t, inst: 'blip', f, a: 0.0005, d, peak: 0.04 }); };
+  const fifth = (f, cycles) => [pipFor(f, cycles)(1), pipFor(f * 1.5, cycles)(1.08)];
+  for (const f of [440, 880, 2000]) {
+    assert.ok(shaped(fifth(f, N.minCycles + 0.3)).includes('messenger-pop'), `${f} Hz pips holding ${N.minCycles + 0.3} cycles, a fifth apart`);
+    assert.deepEqual(shaped(fifth(f, N.minCycles - 0.3)), [], `${f} Hz clicks holding ${N.minCycles - 0.3} cycles`);
+  }
+  assert.ok(shaped([1568, 1318.5, 1046.5].map((f, k) => pip(1 + k * 0.1, f, 0.025))).includes('messenger-pop'), 'a tri-tone of 25 ms pips');
   // … two long-ringing notes louder than v2's own celesta pairs
   const peakFor = (eff) => solve((pk) => part({ t: 0, inst: 'bell', f: 784, peak: pk, decay: 0.7 }).eff, eff, 0, 1);
   const chimes = (pk) => [{ t: 1, inst: 'bell', f: 784, peak: pk, decay: 0.7 }, { t: 1.11, inst: 'bell', f: 784 * 1.5, peak: pk, decay: 0.7 }];
@@ -206,8 +277,44 @@ test('each limit, walked from both sides, past the boundary', () => {
   assert.deepEqual(shaped(ring(R.dual[0] - 10)), []);
   assert.ok(shaped(ring(150, R.maxGap - 0.1)).includes('ringtone'));
   assert.deepEqual(shaped(ring(150, R.maxGap + 0.2)), []);
-  assert.ok(shaped(ring(150, 0.6, { ratio: R.level + 0.05 })).includes('ringtone'));
-  assert.deepEqual(shaped(ring(150, 0.6, { ratio: R.level - 0.05 })), [], 'one tone with a quiet neighbour does not beat');
+  // … the pair's level swings ≥ 3 dB as it beats (the quieter at ≥ 17 % of the louder)
+  const ratioAt = (db) => (Math.pow(10, db / 20) - 1) / (Math.pow(10, db / 20) + 1);
+  assert.ok(shaped(ring(150, 0.6, { ratio: ratioAt(R.beatDb + 0.3) })).includes('ringtone'));
+  assert.ok(shaped(ring(150, 0.6, { ratio: 0.45 })).includes('ringtone'), 'the louder tone ahead by 7 dB still beats by 8 dB');
+  assert.deepEqual(shaped(ring(150, 0.6, { ratio: ratioAt(R.beatDb - 0.3) })), [], 'one tone with a faint neighbour does not beat');
+  // … two tones beat while they SOUND together, wherever each starts: a second tone 40 ms late, or 0.2 s late
+  const staggered = (lag, h = 1.95) => [{ t: 1, inst: 'blip', f: 440, a: 0.01, h, d: 0.03, peak: 0.03 }, { t: 1 + lag, inst: 'blip', f: 480, a: 0.01, h, d: 0.03, peak: 0.03 }];
+  for (const lag of [0.04, 0.2]) assert.ok(shaped(staggered(lag)).includes('ringtone'), `the US ring, 480 Hz ${lag * 1000} ms late`);
+  const bodyUS = part(staggered(0)[0]).body;
+  assert.ok(shaped(staggered(bodyUS - R.held - 0.05)).includes('ringtone'), `overlapping ${R.held + 0.05} s: a ring held a second`);
+  assert.deepEqual(shaped(staggered(bodyUS - R.held + 0.05)), [], `overlapping ${R.held - 0.05} s, once: two long notes, a tone apart`);
+  const ukLate = (lag) => [0, 0.6].flatMap((o) => [{ t: 1 + o, inst: 'blip', f: 400, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }, { t: 1 + o + lag, inst: 'blip', f: 450, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }]);
+  const bodyUK = part(ukLate(0)[0]).body;
+  const duals = (ev) => ringBursts(clusters(sounds({ synth: ev }))).filter((x) => x.kind === 'dual');
+  assert.ok(shaped(ukLate(bodyUK - R.body - 0.02)).includes('ringtone'), `the UK cadence, its 450 Hz tone overlapping ${R.body + 0.02} s`);
+  assert.equal(duals(ukLate(bodyUK - R.body - 0.02)).length, 2);
+  assert.equal(duals(ukLate(bodyUK - R.body + 0.02)).length, 0, `overlapping ${R.body - 0.02} s: no ring burst (a note and its neighbour played twice is a figure: other rules)`);
+  // … beating at least as fast as a trill (≥ 10 Hz): the phone lines beat at 25–50 Hz; two low tones beating slower are a wobble
+  const lowPair = (f, beat) => [{ t: 1, inst: 'blip', f, a: 0.01, h: 1.2, d: 0.03, peak: 0.03 }, { t: 1.1, inst: 'blip', f: f + beat, a: 0.01, h: 1.2, d: 0.03, peak: 0.03 }];
+  assert.ok(shaped(lowPair(80, SHAPE.trill.rate + 0.5)).includes('ringtone'), `80 Hz and ${80 + SHAPE.trill.rate + 0.5} Hz beat ${SHAPE.trill.rate + 0.5} times a second`);
+  assert.deepEqual(shaped(lowPair(80, SHAPE.trill.rate - 0.5)), [], `80 Hz and ${80 + SHAPE.trill.rate - 0.5} Hz: a slow wobble`);
+  assert.ok(shaped(lowPair(300, 25)).includes('ringtone'), 'a two-tone ring a fourth under the phone lines\' (300 + 325 Hz)');
+  // … each tone holds its pitch: it bends ≤ a semitone (ring.maxBend) between the earlier and later half of its energy
+  //   (a drift of up to about 200 cents over a burst still rings; v2's breaths, gliding a fifth, bend 142–181 cents)
+  const drifting = (cents) => [0, 0.6].flatMap((o) => [400, 450].map((f) => ({ t: 1 + o, inst: 'blip', f, f1: f * Math.pow(2, cents / 1200), glide: 0.4, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 })));
+  const driftFor = (bend) => solve((cc) => part(drifting(cc)[0]).bend, bend, 0, 1200);
+  assert.equal(duals(drifting(driftFor(R.maxBend - 10))).length, 2, `a ring drifting ${driftFor(R.maxBend - 10).toFixed(0)} cents per burst`);
+  assert.equal(duals(drifting(driftFor(R.maxBend + 10))).length, 0, `a pair sliding ${driftFor(R.maxBend + 10).toFixed(0)} cents per burst`);
+  for (const id of ['v2/inhale', 'v2/exhale']) for (const dur of [1, 1.9, 3]) {
+    const breath = sounds(probe(RECIPES[id], 1, { dur })).filter((p) => p.pitched && p.wave !== 'noise');
+    assert.ok(breath.length && breath.every((p) => Math.abs(p.bend) > R.maxBend * 1.4), `${id} ${dur} s bends ${breath.map((p) => p.bend.toFixed(0))}`);
+  }
+  // … and the pair's interval holds: it moves by at most half itself while they sound (a pair converging to unison is a tuning)
+  const converge = (to) => [0, 0.6].flatMap((o) => [{ t: 1 + o, inst: 'blip', f: 400, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }, { t: 1 + o, inst: 'blip', f: 450, f1: to, glide: 0.4, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }]);
+  const ivBend = (to) => { const [p, q] = sounds({ synth: converge(to).slice(0, 2) }); return { bend: q.bend - p.bend, cents: Math.abs(cents(p.hz, q.hz)) }; };
+  const toFor = (share) => solve((to) => { const x = ivBend(to); return -x.bend / x.cents; }, share, 400 * Math.pow(2, 60 / 1200), 450);
+  assert.equal(duals(converge(toFor(0.4))).length, 2, 'the interval narrowing by 40 % of itself: the beat holds');
+  assert.equal(duals(converge(toFor(0.6))).length, 0, 'narrowing by 60 %: a tuning, not a ring');
   const hFor2 = (body) => solve((h) => part({ t: 0, inst: 'blip', f: 440, a: 0.01, h, d: 0.03, peak: 0.03 }).body, body, 0, 3);
   assert.ok(shaped(ring(150, 0.8, { h: hFor2(R.body + 0.02) })).includes('ringtone'));
   assert.deepEqual(shaped(ring(150, 0.8, { h: hFor2(R.body - 0.02) })), []);
@@ -265,6 +372,8 @@ test('no false alarms: musical figures the brand uses pass the shapes', () => {
   clean(recipe('t/pluck', (R, c) => [0, 2, 4, 7].forEach((n, k) => R.E(c.t + k * 0.35, 'fx', 'pluck', { intensity: 0.4, note: n }, 0.5))), 'an unhurried rising pluck line, once');
   clean(recipe('t/drips', (R, c) => [0, 3].forEach((n, k) => R.E(c.t + k * 0.3, 'fx', 'drip', { intensity: 0.4, note: n }, 0.5))), 'two drips, unhurried');
   clean(recipe('t/vib', (R, c) => R.S(c.t, 'blip', { f: 600, a: 0.02, h: 0.6, d: 0.3, peak: 0.02, vib: { rate: 6, cents: 40, decay: 0.9 } })), 'a held note with a gentle vibrato');
+  clean(recipe('t/focus', (R, c) => { R.E(c.t, 'fx', 'lens-focus', { intensity: 0.6 }, 0.6); R.E(c.t + 3, 'fx', 'lens-focus', { intensity: 0.6 }, 0.6); }), 'the app\'s lens-focus twice: its pair converges to unison');
+  clean(recipe('t/breaths', (R, c) => { R.E(c.t, 'fx', 'breathe-in', { intensity: 0.7, duration: 3 }, 0.3); R.E(c.t + 3, 'fx', 'breathe-out', { intensity: 0.7, duration: 3 }, 0.22); R.E(c.t + 6.5, 'fx', 'breathe-in', { intensity: 0.7, duration: 3 }, 0.3); }), 'breathing in, out and in again');
 });
 
 test('approved v2 sounds repeated by a direction are not banned patterns: every recipe and payload, × 2 and × 3, at steady gaps from 0.2 to 2 s', () => {
@@ -373,6 +482,53 @@ test('every probe class past its boundary: telephone rings, scooped signals, pit
   ];
   const missed = cases.filter(([cat, , emit]) => !has(recipe('t/x', emit), cat)).map(([cat, name, emit]) => `${cat}: ${name} → ${rules(recipe('t/x', emit)).join(', ') || 'passes'}`);
   assert.deepEqual(missed, []);
+});
+
+// The FU-2 verifier's escapes (WORK/verify-fu2/probe-extra.mjs, probe-mask.mjs), verbatim, and the near variants each fix closes.
+test('FU-2 R2: the verifier\'s escapes are rejected: scooped thumps, staggered and lopsided rings, high maskers, pips and slides', () => {
+  const cases = [
+    // a lub-dub whose pitch "rises" only in an inaudible onset scoop (the raw glide used to decide it)
+    ['heartbeat', 'lub-dub 60 Hz with 2 ms scoop up from 45 Hz', (R, c) => { R.S(c.t, 'blip', { f: 45, f1: 60, glide: 0.002, a: 0.004, d: 0.12, peak: 0.08 }); R.S(c.t + 0.28, 'blip', { f: 41, f1: 55, glide: 0.002, a: 0.004, d: 0.1, peak: 0.06 }); }],
+    ['heartbeat', 'lub-dub 60 Hz with 5 ms scoop up from 30 Hz', (R, c) => { R.S(c.t, 'blip', { f: 30, f1: 60, glide: 0.005, a: 0.005, d: 0.12, peak: 0.08 }); R.S(c.t + 0.28, 'blip', { f: 28, f1: 55, glide: 0.005, a: 0.005, d: 0.1, peak: 0.06 }); }],
+    ['heartbeat', 'only the lub scooped', (R, c) => { R.S(c.t, 'blip', { f: 45, f1: 60, glide: 0.002, a: 0.004, d: 0.12, peak: 0.08 }); R.S(c.t + 0.28, 'blip', { f: 55, a: 0.004, d: 0.1, peak: 0.06 }); }],
+    ['heartbeat', 'scooped 301 cents in 1 ms', (R, c) => { for (const o of [0, 0.28]) R.S(c.t + o, 'blip', { f: 60 / Math.pow(2, 301 / 1200), f1: 60, glide: 0.001, a: 0.004, d: 0.12, peak: 0.08 }); }],
+    // two tones of a ring that start outside one 30 ms onset cluster, or one of them quieter
+    ['ringtone', 'US ring held 2 s, 480 Hz 40 ms late', (R, c) => { R.S(c.t, 'blip', { f: 440, a: 0.01, h: 1.95, d: 0.03, peak: 0.03 }); R.S(c.t + 0.04, 'blip', { f: 480, a: 0.01, h: 1.95, d: 0.03, peak: 0.03 }); }],
+    ['ringtone', 'US ring held 2 s, 480 Hz 0.3 s late', (R, c) => { R.S(c.t, 'blip', { f: 440, a: 0.01, h: 1.95, d: 0.03, peak: 0.03 }); R.S(c.t + 0.3, 'blip', { f: 480, a: 0.01, h: 1.95, d: 0.03, peak: 0.03 }); }],
+    ['ringtone', 'UK ring, 450 Hz starts 35 ms after 400 Hz', (R, c) => { for (const o of [0, 0.6]) { R.S(c.t + o, 'blip', { f: 400, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }); R.S(c.t + o + 0.035, 'blip', { f: 450, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }); } }],
+    ['ringtone', 'UK ring, 400 Hz louder (450 Hz at 0.45×)', (R, c) => { for (const o of [0, 0.6]) { R.S(c.t + o, 'blip', { f: 400, a: 0.01, h: 0.4, d: 0.03, peak: 0.04 }); R.S(c.t + o, 'blip', { f: 450, a: 0.01, h: 0.4, d: 0.03, peak: 0.018 }); } }],
+    ['ringtone', 'UK ring, 450 Hz at 0.25× (a 4.4 dB swing)', (R, c) => { for (const o of [0, 0.6]) { R.S(c.t + o, 'blip', { f: 400, a: 0.01, h: 0.4, d: 0.03, peak: 0.04 }); R.S(c.t + o, 'blip', { f: 450, a: 0.01, h: 0.4, d: 0.03, peak: 0.01 }); } }],
+    // … or whose tones drift or wobble (a beep's ±25 cents is not a ring's)
+    ['ringtone', 'UK ring, each tone drifting +60 cents over its burst', (R, c) => { for (const o of [0, 0.6]) for (const f of [400, 450]) R.S(c.t + o, 'blip', { f, f1: f * Math.pow(2, 60 / 1200), glide: 0.4, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }); }],
+    ['ringtone', 'UK ring, each tone drifting +120 cents', (R, c) => { for (const o of [0, 0.6]) for (const f of [400, 450]) R.S(c.t + o, 'blip', { f, f1: f * Math.pow(2, 120 / 1200), glide: 0.4, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }); }],
+    ['ringtone', 'UK ring, only the 450 Hz tone drifting +60 cents', (R, c) => { for (const o of [0, 0.6]) { R.S(c.t + o, 'blip', { f: 400, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }); R.S(c.t + o, 'blip', { f: 450, f1: 450 * Math.pow(2, 60 / 1200), glide: 0.4, a: 0.01, h: 0.4, d: 0.03, peak: 0.03 }); } }],
+    ['ringtone', 'UK ring, a 120-cent vibrato at 6 Hz on each tone', (R, c) => { for (const o of [0, 0.6]) for (const f of [400, 450]) R.S(c.t + o, 'blip', { f, a: 0.01, h: 0.4, d: 0.03, peak: 0.03, vib: { cents: 120, rate: 6, decay: 10 } }); }],
+    ['ringtone', 'the 425 Hz European ring drifting +60 cents', (R, c) => { for (const o of [0, 5]) R.S(c.t + o, 'blip', { f: 425, f1: 425 * Math.pow(2, 60 / 1200), glide: 1, a: 0.01, h: 1, d: 0.05, peak: 0.03 }); }],
+    ['ringtone', 'a trill bell drifting +60 cents, twice', (R, c) => { for (const o of [0, 0.6]) R.S(c.t + o, 'blip', { f: 1000, f1: 1000 * Math.pow(2, 60 / 1200), glide: 0.4, a: 0.005, h: 0.4, d: 0.05, peak: 0.03, vib: { cents: 300, rate: 20 } }); }],
+    // a messenger pop of pips (too short for beeps, pitched all the same), and a slide into a note
+    ['messenger-pop', 'two 25 ms pips a fifth apart', (R, c) => { R.S(c.t, 'blip', { f: 880, a: 0.002, d: 0.025, peak: 0.04 }); R.S(c.t + 0.08, 'blip', { f: 1318.5, a: 0.002, d: 0.025, peak: 0.04 }); }],
+    ['messenger-pop', 'two 28 ms pips a fifth apart, held 10 ms', (R, c) => { R.S(c.t, 'blip', { f: 880, a: 0.002, h: 0.01, d: 0.016, peak: 0.04 }); R.S(c.t + 0.08, 'blip', { f: 1318.5, a: 0.002, h: 0.01, d: 0.016, peak: 0.04 }); }],
+    ['messenger-pop', 'a tri-tone of 25 ms pips', (R, c) => { [1568, 1318.5, 1046.5].forEach((f, k) => R.S(c.t + k * 0.1, 'blip', { f, a: 0.002, d: 0.025, peak: 0.04 })); }],
+    ['messenger-pop', 'two 12 ms pips a fifth apart', (R, c) => { R.S(c.t, 'blip', { f: 1046.5, a: 0.001, d: 0.011, peak: 0.04 }); R.S(c.t + 0.08, 'blip', { f: 1568, a: 0.001, d: 0.011, peak: 0.04 }); }],
+    ['messenger-pop', 'a rising chirp, then a steady note a fifth up', (R, c) => { R.S(c.t, 'blip', { f: 740, f1: 880, glide: 0.04, a: 0.004, d: 0.06, peak: 0.04 }); beep(R, c.t + 0.08, 1318.5, 0.06); }],
+    ['messenger-pop', 'a beep, then a falling chirp a fifth up', (R, c) => { beep(R, c.t, 880, 0.06); R.S(c.t + 0.1, 'blip', { f: 1400, f1: 1250, glide: 0.04, a: 0.004, d: 0.06, peak: 0.04 }); }],
+    ['messenger-pop', 'two chirps, sine then triangle, a fifth apart in 0.1 s', (R, c) => { R.S(c.t, 'blip', { f: 1200, f1: 900, glide: 0.03, a: 0.003, d: 0.08, peak: 0.04 }); R.S(c.t + 0.1, 'blip', { type: 'triangle', f: 1800, f1: 1350, glide: 0.03, a: 0.003, d: 0.08, peak: 0.04 }); }],
+    ['messenger-pop', 'two drips, the second\'s glide running on after it has died', (R, c) => { R.S(c.t, 'blip', { f: 980, f1: 539, glide: 0.045, a: 0.003, d: 0.14, peak: 0.05 }); R.S(c.t + 0.1, 'blip', { f: 1470, f1: 1470 * 0.3025, glide: 0.09, a: 0.003, d: 0.14, peak: 0.05 }); }],
+    // the heartbeat behind a louder sound in another band, or around a grace thump or a flam
+    ['heartbeat', 'lub-dub with 2/2.2 kHz pings (2.5×) 40 ms before each beat', (R, c) => {
+      R.S(c.t - 0.04, 'ping', { f: 2000, peak: 0.1, decay: 0.08 }); R.S(c.t, 'blip', { f: 60, f1: 45, d: 0.12, peak: 0.04 });
+      R.S(c.t + 0.24, 'ping', { f: 2200, peak: 0.1, decay: 0.08 }); R.S(c.t + 0.28, 'blip', { f: 55, f1: 42, d: 0.1, peak: 0.032 });
+    }],
+    ['heartbeat', 'lub-dub with a loud hiss 40 ms before each beat', (R, c) => { for (const o of [0, 0.28]) { R.S(c.t + o - 0.04, 'noiseHit', { filter: 'highpass', f: 3000, a: 0.002, d: 0.04, peak: 0.08 }); R.S(c.t + o, 'blip', { f: 60, f1: 45, d: 0.12, peak: 0.04 }); } }],
+    ['heartbeat', 'lub-dub, a quieter grace thump 80 ms before each beat', (R, c) => { for (const o of [0, 0.3]) { R.S(c.t + o - 0.08, 'blip', { f: 70, f1: 50, d: 0.1, peak: 0.03 }); R.S(c.t + o, 'blip', { f: 60, f1: 45, d: 0.12, peak: 0.08 }); } }],
+    ['heartbeat', 'lub-dub played as flams (two thumps 50 ms apart each)', (R, c) => { for (const o of [0, 0.05, 0.3, 0.35]) R.S(c.t + o, 'blip', { f: 60, f1: 45, d: 0.12, peak: 0.06 }); }],
+  ];
+  const missed = cases.filter(([cat, , emit]) => !has(recipe('t/x', emit), cat)).map(([cat, name, emit]) => `${cat}: ${name} → ${rules(recipe('t/x', emit)).join(', ') || 'passes'}`);
+  assert.deepEqual(missed, []);
+  // probe-mask.mjs, as the verifier wrote it: thumps at 0.04 alone, then with 2/2.2 kHz ticks 40 ms ahead of each beat
+  const thumps = (pk) => [{ t: 1, inst: 'blip', f: 60, f1: 45, d: 0.12, peak: pk }, { t: 1.28, inst: 'blip', f: 55, f1: 42, d: 0.1, peak: pk * 0.8 }];
+  const ticks = (pk) => [{ t: 0.96, inst: 'ping', f: 2000, peak: pk, decay: 0.08 }, { t: 1.24, inst: 'ping', f: 2200, peak: pk, decay: 0.08 }];
+  for (const tick of [0, 0.06, 0.1, 0.3]) assert.ok(shaped([...thumps(0.04), ...(tick ? ticks(tick) : [])]).includes('heartbeat'), `ticks at ${tick}`);
 });
 
 test('the engine fx model: pitched voices carry their pitch, levels follow A × trim, pan 0 is mono, the Mallow\'s gestures stay opaque', () => {

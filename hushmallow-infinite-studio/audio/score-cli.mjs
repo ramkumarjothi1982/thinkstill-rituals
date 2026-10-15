@@ -199,10 +199,12 @@ export function writeScorePlan(file, plan, report) {
 /**
  * Re-score an existing picture with new audio-only slots (contour, tickTempo,
  * panSeed) and mux it: the video stream is copied untouched; a circular score's
- * audio goes in loop-aware (audio/loop-aac.mjs).
- * → { wav, mp4, plan, report, ms }
+ * audio goes in loop-aware (audio/loop-aac.mjs). stamp(tags, report): the
+ * provenance stamp to write (FU-5: hm remux passes one G-FINAL:delivery can
+ * verify); audioEdit: how the AAC priming is delivered (render/mux.mjs).
+ * → { wav, mp4, plan, report, ms, picture, stamp }
  */
-export async function remux(jobDir, { sound = {}, fixes = FIX_ORDER, direction = null, spec = null, inPlace = false, log = () => {} } = {}) {
+export async function remux(jobDir, { sound = {}, fixes = FIX_ORDER, direction = null, spec = null, inPlace = false, stamp: stampFor = null, audioEdit = 'priming', log = () => {} } = {}) {
   const t0 = process.hrtime.bigint();
   const inputs = resolveInputs(jobDir, { direction, spec });
   for (const f of inputs.found) log(f);
@@ -213,14 +215,15 @@ export async function remux(jobDir, { sound = {}, fixes = FIX_ORDER, direction =
   assertWritable(wav); assertWritable(mp4);
   const r = await scoreToWav(inputs, { fixes, sound }, wav, { log });
   const tags = probeComment(path.join(jobDir, fs.existsSync(path.join(jobDir, 'final.mp4')) ? 'final.mp4' : path.basename(picture)));
-  const stamp = `${tags.comment ? `${tags.comment} | ` : ''}remux ${JSON.stringify({ contour: r.report.sound.contour, tickTempo: r.report.sound.tickTempo, panSeed: r.report.sound.panSeed })}`;
+  const stamp = stampFor ? stampFor(tags, r.report)
+    : `${tags.comment ? `${tags.comment} | ` : ''}remux ${JSON.stringify({ contour: r.report.sound.contour, tickTempo: r.report.sound.tickTempo, panSeed: r.report.sound.panSeed })}`;
   const metadata = ['-metadata', `comment=${stamp}`, '-metadata', `title=${tags.title || inputs.log.title || ''}`];
-  if (r.plan.circular) {
-    muxLoop({ video: picture, wav, out: mp4, duration: inputs.log.duration, metadata });
+  if (r.plan.circular || audioEdit === 'trim') {
+    muxLoop({ video: picture, wav, out: mp4, duration: inputs.log.duration, metadata, edit: audioEdit, circular: !!r.plan.circular, ...(r.plan.circular ? {} : { bitrate: '192k' }) });
   } else {
     const args = ['-y', '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', picture, '-i', wav,
       '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2',
-      '-t', String(inputs.log.duration), ...metadata, '-movflags', '+faststart', mp4];
+      '-t', String(inputs.log.duration), ...metadata, '-movflags', '+faststart+negative_cts_offsets', mp4];
     const p = spawnSync('ffmpeg', args, { encoding: 'utf8' });
     if (p.status !== 0) throw new Error(`remux: mux failed: ${p.stderr}`);
   }
@@ -230,7 +233,7 @@ export async function remux(jobDir, { sound = {}, fixes = FIX_ORDER, direction =
     outWav = path.join(jobDir, 'score.wav'); outMp4 = path.join(jobDir, 'final.mp4');
     fs.renameSync(wav, outWav); fs.renameSync(mp4, outMp4);
   }
-  return { wav: outWav, mp4: outMp4, planFile, plan: r.plan, report: r.report, master: r.master, ms: Math.round(Number(process.hrtime.bigint() - t0) / 1e6) };
+  return { wav: outWav, mp4: outMp4, planFile, plan: r.plan, report: r.report, master: r.master, picture, stamp, ms: Math.round(Number(process.hrtime.bigint() - t0) / 1e6) };
 }
 
 // --------------------------------------------------------------------- CLI --
