@@ -127,13 +127,16 @@ async function lockWorker(w, codes, results) {
   if (!p1.ok || !p2.ok) return checks;
 
   // the new settings reach the edge within seconds; wait for health to say so
+  // (an older Worker build does not report invite_required; there the direct "no invite" session check below is the proof)
+  const reports = h0.data && 'invite_required' in h0.data;
   let h1 = null;
   for (let i = 0; i < 36; i++) {
     h1 = await call(w, '/v1/health', { method: 'GET' });
-    if (h1.http === 200 && h1.data?.invite_required === true) break;
+    if (h1.http === 200 && (h1.data?.invite_required === true || !reports)) break;
     await sleep(5000);
   }
-  check('health reports invite_required true', h1?.data?.invite_required === true, `HTTP ${h1?.http}, invite_required ${h1?.data?.invite_required}`);
+  if (reports) check('health reports invite_required true', h1?.data?.invite_required === true, `HTTP ${h1?.http}, invite_required ${h1?.data?.invite_required}`);
+  else check('health answers (this Worker build does not report invite_required; the session checks below decide)', h1?.http === 200, `HTTP ${h1?.http}`);
   check('health reports a signing key and a provider key', h1?.data?.configured?.signing_key === true && h1?.data?.configured?.provider_key === true, JSON.stringify(h1?.data?.configured || {}));
   // the key may take a moment longer than the codes on every location: give it a margin
   await sleep(20000);

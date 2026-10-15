@@ -14,6 +14,6 @@ qLVSIzvbX7+IGkg8QrGV2bxxQsG3j0qfE7ZM7SsX11k/et7ZoSJGmCBTr5YztD4N
 hF11VOAmZTFdRRAkJv2jaPAaAMx3JkWClwCfpyjL4QLI8tI/UBDIEU9Kitff0chk
 bg37TIW7CESx3wtUrSLQzLcCAwEAAQ==
 -----END PUBLIC KEY-----
-mode: dry-run
 # 2026-10-15T13:56:58Z dry run again (rehearsal needs the server packages)
 # 2026-10-15T13:57:50Z dry run (rehearsal ignores the dry-run marker)
+# 2026-10-15T13:59:25Z live run: lock production and staging to invited testers
