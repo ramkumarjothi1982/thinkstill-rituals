@@ -36,9 +36,9 @@
 // check. HIRES_VERIFIED lists the ones that passed; applyHires() applies those
 // (or the ids you pass) to the registry objects, once, before rigs load.
 // The cyan file without brows is Loomi (owner-approved, workstream
-// hires-loomi): no brows at rest, as drawn; they appear only when an
-// expression raises browAlpha, as on Noomi. Sweeps:
-// docs/workstreams/hires-loomi.md.
+// hires-loomi): no brows at rest, as drawn; arched brows (build_table.py
+// LOOMI_BROWS) appear only when an expression raises browAlpha, as on Noomi.
+// Sweeps: docs/workstreams/hires-loomi.md.
 //
 // Integration (after the patch is merged): in registry.js, once, at the end:
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
@@ -547,16 +547,16 @@ const T = {
       },
       brows: {
         L: {
-          p0: [84.8, 163.1],
-          c: [111, 175.1],
-          p1: [137.3, 155.1],
+          p0: [91, 155],
+          c: [115, 145],
+          p1: [139, 152],
           lw: 8.9,
           alpha: 0,
         },
         R: {
-          p0: [244.5, 155],
-          c: [271.9, 175.8],
-          p1: [299.4, 161.1],
+          p0: [246, 151.6],
+          c: [270, 144.6],
+          p1: [294, 154.6],
           lw: 8.8,
           alpha: 0,
         },

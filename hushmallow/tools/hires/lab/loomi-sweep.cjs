@@ -7,12 +7,14 @@
 // the shots are named the same, and <out>/report.json holds the numbers:
 //   art        the rig's art (naturalWidth 1024 = high-res, 363 = old drawing)
 //   stages     every emotion stage on MallowTouch, the concerned one also mid-squeeze
-//              and after a tap (it never grins: mouthSmile <= .3, mouthOpen <= .1)
+//              and after a tap (it never grins: mouthSmile <= .22, mouthOpen <= .11:
+//              the hushed limits .2 / .1 plus the mouth spring's ~7% overshoot)
 //   tiers      MallowTouch tiers gl / tri / strip (no crop: the drawn body fits its rect)
 //   panel      the side panel switcher; mallows: the Mallows scene (cards);
 //              v3-card: Loomi's V3 ritual card
 //   hscroll    any horizontal page scroll (must be 0)
-//   frames     rAF frame times on the home stage under 4x CPU throttling
+//   frames     rAF frame times on the home stage under 4x CPU throttling (one run;
+//              PERF=3 runs interleaved old/new pairs instead -> perf.json)
 const { createRequire } = require('module');
 const fs = require('fs');
 const path = require('path');
@@ -127,10 +129,47 @@ async function one(browser, R) {
   return rep;
 }
 
+// PERF=n: n interleaved pairs of 6 s runs, the old drawing (?hires=0) then the high-res one, 390x844 at 4x CPU
+// throttling (the order alternates, so a machine getting busier does not favour either) -> <out>/perf.json
+async function perf(browser, n) {
+  const runs = { old: [], new: [] };
+  for (let i = 0; i < n; i++) {
+    for (const kind of i % 2 ? ['new', 'old'] : ['old', 'new']) {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+      await ctx.addInitScript(() => { try { localStorage.setItem('hm2:prefs', JSON.stringify({ seenIntro: true, mallow: 'loomi' })); } catch {} });
+      const p = await ctx.newPage();
+      await p.goto(BASE + (kind === 'old' ? '?hires=0' : ''));
+      await p.waitForFunction(() => window.__hushfold?.touch?.ready, null, { timeout: 60000 });
+      await wait(p, 2500);
+      const cdp = await ctx.newCDPSession(p);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      const r = await p.evaluate(async () => {
+        const t = window.__hushfold.touch, d = [], stages = ['concerned', 'celebrating', 'neutral', 'surprised'];
+        let last = performance.now(), i = 0;
+        const iv = setInterval(() => t.setStage(stages[i++ % stages.length]), 900);
+        await new Promise((res) => { const end = last + 6000; const f = (n) => { d.push(n - last); last = n; if (n < end) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+        clearInterval(iv); d.shift();
+        return { hires: !!t.rig.mallow.hires, frames: d };
+      });
+      runs[kind].push(r);
+      await ctx.close();
+    }
+  }
+  const stat = (rs) => {
+    const d = rs.flatMap((r) => r.frames).sort((a, b) => a - b), q = (x) => +d[Math.min(d.length - 1, Math.floor(d.length * x))].toFixed(1);
+    return { runs: rs.length, hires: rs.map((r) => r.hires), n: d.length, mean: +(d.reduce((a, b) => a + b, 0) / d.length).toFixed(1), p50: q(0.5), p95: q(0.95),
+      perRunMean: rs.map((r) => +(r.frames.reduce((a, b) => a + b, 0) / r.frames.length).toFixed(1)) };
+  };
+  const out = { old: stat(runs.old), new: stat(runs.new) };
+  fs.writeFileSync(path.join(OUT, 'perf.json'), JSON.stringify(out, null, 1));
+  console.log(JSON.stringify(out));
+}
+
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
   const out = [];
   try {
+    if (+process.env.PERF > 0) return await perf(browser, +process.env.PERF);
     for (const R of runs) {
       if (ONLY && !ONLY.includes(`${R.w}x${R.h}`)) continue;
       const r = await one(browser, R);
