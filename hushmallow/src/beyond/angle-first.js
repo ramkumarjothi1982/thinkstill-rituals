@@ -80,13 +80,18 @@ export const QUESTION_BACK_MS = 10000;
  * (r2-angle item 6) The question's timer: it runs only while the page is visible. Hidden, it stops; visible again, it carries
  * on with what was left (at least QUESTION_BACK_MS), so a person who looks away, reads slowly or uses a screen reader never
  * loses the question to a hidden page. `done` runs once, when the time is up. → stop() (idempotent)
+ * (fix round) `held`: while it is true (a support sheet open over the question: its Support pill is there on every question
+ * now) the time never runs out; once it is false again at least QUESTION_BACK_MS is left, as after a hidden page.
  * deps (for tests): { doc = document, now = performance.now, setTimer = setTimeout, clearTimer = clearTimeout }
  */
 export function questionClock(ms, done, { doc = typeof document !== 'undefined' ? document : null, now = () => performance.now(),
-  setTimer = (fn, t) => setTimeout(fn, t), clearTimer = (t) => clearTimeout(t) } = {}) {
-  let left = ms, t0 = 0, timer = 0, over = false;
+  setTimer = (fn, t) => setTimeout(fn, t), clearTimer = (t) => clearTimeout(t), held = () => false } = {}) {
+  let left = ms, t0 = 0, timer = 0, over = false, waited = false;
   const hidden = () => !!doc?.hidden;
-  const arm = () => { if (over || timer || hidden()) return; t0 = now(); timer = setTimer(() => { timer = 0; over = true; done(); }, left); };
+  const isHeld = () => { try { return !!held(); } catch { return false; } };
+  // time up while held: it looks again every half second, then gives at least QUESTION_BACK_MS once let go
+  const fire = () => { timer = 0; if (over) return; if (isHeld()) { waited = true; timer = setTimer(fire, 500); return; } if (waited) { waited = false; left = QUESTION_BACK_MS; arm(); return; } over = true; done(); };
+  const arm = () => { if (over || timer || hidden()) return; t0 = now(); timer = setTimer(fire, waited ? 500 : left); };
   const pause = () => { if (!timer) return; clearTimer(timer); timer = 0; left = Math.max(QUESTION_BACK_MS, left - (now() - t0)); };
   const onVis = () => (hidden() ? pause() : arm());
   doc?.addEventListener?.('visibilitychange', onVis);

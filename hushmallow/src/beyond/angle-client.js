@@ -9,7 +9,7 @@
 //   createAngleClient({ store, endpoint?, fetchImpl?, timeouts? }) →
 //     { available, endpoint, angle({text, emotion, intention, previous}) → Promise<Result>,
 //       feedback(rating, scene) → Promise<boolean>, deviceId(), forgetSession() }
-//   Result: { status: 'ok'|'crisis'|'care'|'unclear'|'fallback'|'error', scene?, keepSupportClose, reason?, hint? }
+//   Result: { status: 'ok'|'crisis'|'care'|'unclear'|'fallback'|'error', scene?, keepSupportClose, reason?, hint?, category? }
 //
 // What is sent: POST /v1/session { device_id, platform, app_version, invite? } and
 // POST /v1/angle { consent: true, text, emotion?, intention?, previous_angles?,
@@ -182,7 +182,10 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
     if (r.http !== 200 || !r.data) return { status: 'error', reason: r.http === 429 ? 'limit' : r.http === 401 ? 'auth' : `http_${r.http}`, keepSupportClose: false };
     const d = r.data;
     const keep = d.keep_support_close === true;
-    if (d.status === 'crisis' || d.status === 'care') return { status: d.status, keepSupportClose: true };
+    // (fix round) with the category the server names for it (support.category: the lexicon's, 'self-risk' from the risk
+    // screener, 'general' from the model's own safety check), so the care lines fit; never any words
+    const category = typeof d.support?.category === 'string' && /^[a-z-]{1,40}$/.test(d.support.category) ? d.support.category : null;
+    if (d.status === 'crisis' || d.status === 'care') return { status: d.status, keepSupportClose: true, category };
     if (d.status === 'fallback') {
       const reason = typeof d.fallback?.reason === 'string' ? d.fallback.reason.slice(0, 20) : 'unknown';
       if (reason === 'unclear') return { status: 'unclear', reason, keepSupportClose: keep };
@@ -190,9 +193,14 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
       return { status: 'fallback', reason, hint: PATTERNS.includes(hp) ? { reasoning_pattern: hp } : null, keepSupportClose: keep };
     }
     if (d.status === 'ok') {
+      // (fix round) the model's own safety judgement is honoured before anything else: a scene it marked crisis or care is
+      // support, never Zuzu's own angle, even when the rest of the scene would not pass validateScene (invalid_scene → the
+      // authored angle)
+      const flagged = d.scene && typeof d.scene === 'object' ? d.scene.safety_status : null;
+      if (flagged === 'crisis' || flagged === 'care') return { status: flagged, keepSupportClose: true, category: 'general' };
       const scene = validateScene(d.scene);
       if (!scene) return { status: 'error', reason: 'invalid_scene', keepSupportClose: keep };
-      if (scene.safety_status === 'crisis' || scene.safety_status === 'care') return { status: scene.safety_status, keepSupportClose: true };
+      if (scene.safety_status === 'crisis' || scene.safety_status === 'care') return { status: scene.safety_status, keepSupportClose: true, category: 'general' };
       const pv = typeof d.prompt_version === 'string' && /^angle-v\d{1,3}$/.test(d.prompt_version) ? d.prompt_version : null;
       return { status: 'ok', scene: { ...scene, source: 'server', prompt_version: pv }, keepSupportClose: keep };
     }

@@ -26,6 +26,11 @@ export const ARRIVAL = Object.freeze({
   prompt: 'What’s bothering you?',
   justSqueeze: ['Squeeze away. I’m right here.', 'Whenever you like, tell me what’s on your mind.'],
   offline: 'Zuzu’s own angles, worked out right here.',
+  /**
+   * Sharing is on but the server couldn't answer this time (a fallback, a timeout, no connection): said once a visit, as
+   * narration, BEFORE the scene's instruction (never between the instruction and the lines that follow it).
+   */
+  offlineOnce: 'Zuzu’s own angle this time, worked out on this phone.',
   /** Every few visits after "Not now": the consent notice again, only if they want it. */
   share: 'About sharing my words',
 });
@@ -93,6 +98,12 @@ export const ANGLE_CHOICE = Object.freeze({
   ask: 'Shall we look at this from another angle, or just be with it?',
   angle: 'Another angle',
   be: 'Just be with it',
+  /**
+   * (fix round, the safety floor: structural, whatever the word lists read) a third answer of equal weight on every question:
+   * it does exactly what the check-in's "Not really" does (another-angle.js careLite: support first, nothing sent, no angle for
+   * the rest of the visit). The Support pill is in the dock while the question is up, too.
+   */
+  notOkay: 'I’m not okay',
   ms: 45000,
 });
 /**
