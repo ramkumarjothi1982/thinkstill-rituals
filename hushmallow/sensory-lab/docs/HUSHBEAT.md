@@ -58,23 +58,38 @@ lands just outside the outline therefore plays as a single touch (the hit test i
 ### Screen
 
 - **Top bar:** Close · *Hushbeat* and the subtitle (`Boppo`, `Boppo & Loomi`, plus ` · Visual only`) · **♪**
-  (opens *Sound and pace*) · Mute.
+  (opens *Sound and pace*) · Mute. Over a world the subtitle takes the second ink and the hint's tight halo, so it
+  reads on Loomi's bright sky and Boppo's sunset as well as the title does.
 - **Bottom:** the hint (with a tight halo in the world's ink; hidden on short landscape screens and while the
-  tray is open; at ≤ 360 px wide only the bold words, one line; each cue stays whole and two lines balance), the gesture tray (behind **Buttons**; in a duet it starts with the target **[Lead | Both | Friend]**),
+  tray is open; at ≤ 360 px wide only the bold words, one line; each cue stays whole, two lines balance, and a
+  separator left at the end of a line is hidden), the gesture tray (behind **Buttons**; in a duet it starts with the target **[Lead | Both | Friend]**),
   and one row: **Play it** (a kept tune opened from home; the row's only solid fill),
   **Buttons**, **Replay ⇄ Stop**, **★ Keep ⇄ Kept**, **Friend** (a pressed toggle is outlined). Replay and Keep
   appear once a take has three events; the row only grows wider, so the Mallow is never re-framed.
 - **Phones:** the hand chip is icon-only at ≤ 440 px wide; Keep and Friend too at ≤ 360 px (and on screens
   ≤ 360 px tall). In portrait up to 520 px wide the tray is an even grid, nothing scrolled out of sight: Note,
   Chord, Tune (what you tap) above Bass, Hum, Breathe (what you hold), with a duet's target on its own row
-  above. In short landscape the tray and the row share a line (the tray as wide as its chips, scrolling with
-  edge fades when a duet's does not fit at 568×320); with the tray open the row is icon-only, so at 844×390 a
-  duet's six actions are all in view.
-- **Duet:** two half-width stages (on desktop a centred pair of `min(50%, 440px)`; in short landscape
-  `min(50%, 240px)`, so the two stand close around the world's middle at the same size), one floor. A friend
-  arriving or leaving cross-fades the stages (out 160 ms, re-lay out, in 280 ms: opacity only).
+  above. In short landscape the tray and the row share a line (the tray as wide as its chips; at 568×320 tighter
+  spacing keeps a solo tray's six chips beside a row with Replay and Keep, and a duet's, with its target, scrolls
+  with edge fades that end on a whole chip, so no half a word shows at the edge); with the tray open the row is
+  icon-only, so at 844×390 a duet's six actions are all in view. 12 px of air above the controls lifts the floor so
+  the world's prop clears them, and a solo Mallow is drawn at the size stage-screen frames it at (half the free band:
+  the rig's own height rule would make it two thirds of that on a wide stage).
+- **Duet:** two stages that meet in the middle, and both Mallows stand on the world's stage prop (the stone, the
+  dais, the cushion, the island; the cove's sand and the storm's floor are open ground). `stagecraft.js` works out
+  each stage's width (at most half the screen, 440 px on wide screens) and, when the prop is too small for two, frames
+  the world closer: the realm's canvas is laid out larger than the screen around the prop (it repaints at that size,
+  nothing is stretched), so the prop grows while its top stays on the ground line; at most twice as close, then the
+  pair is drawn a little smaller. Portrait phones come a little closer (×1.3 at 390×844) at full size; desktop and
+  short landscape twice as close (Loomi's stone at 844×390 holds two ~100 px Mallows). A friend arriving or leaving
+  cross-fades the stages (out 160 ms, re-lay out, in 280 ms: opacity only), and a fresh realm is built for the new
+  frame (`env.remount()`, same mood and transform), so nothing in its air stays at the old frame's coordinates.
+  With the tray open on a portrait phone the pair lifts clear of the tray, which then covers the prop (as solo).
 
 ### Sheets (open inside the screen, so they take the realm's chrome tones)
+
+While a sheet is open the bottom controls fade out (a centred card on a wide screen would leave them peeking out
+beside it); sheet sub-text wraps without leaving a word alone.
 
 **Sound and pace** (♪):
 - *Volume*: the lab's own volume (`prefs.volume`, "Same as in Settings").
@@ -128,13 +143,14 @@ features/hushbeat.js ──▶ features/stage-screen (s.env, setPartner, keys, o
    ├─▶ features/hushbeat/player.js     gestures → Part calls            (pure)
    ├─▶ features/hushbeat/performer.js  Performer, Scene, Cue, TRAITS   ──▶ core/music-fx, core/expression-engine (FaceMixer), core/personality (softened)
    ├─▶ features/hushbeat/sheet.js      the two sheets + pure helpers   ──▶ lab-ui, core/comfort-dna (describeTune)
+   ├─▶ features/hushbeat/stagecraft.js where a duet's Mallows stand    (pure)
    ├─▶ features/hushbeat/copy.js       every user-facing string (linted)
    ├─▶ core/music-engine.js            the conductor                   ──▶ core/music-theory, core/music-time   (pure)
    └─▶ core/music-audio.js             the sink                        ──▶ core/music-kits ──▶ core/sound-engine (_voice, _room, bus)
 ```
 
 Node-safe (no DOM or Web Audio at import, unit-tested in Node): music-theory, music-time, music-engine,
-music-kits, music-fx (draws only when asked), player, performer, copy and the helpers in sheet.js.
+music-kits, music-fx (draws only when asked), player, performer, copy, stagecraft and the helpers in sheet.js.
 
 ### Per frame (no extra rAF)
 
@@ -255,6 +271,16 @@ from buttons and keys carry `tip: false` (the engine copies it onto the event; a
 - Pure: `friendChoices(lead)`, `yourTunes(favourites)`, `tuneItem({ lead, friend, takeFriend, pace, events })`
   (a kept duet keeps its friend even after it left, if the take has its notes), `TIER_BELOW`, `tierBelow(q)`.
 
+### `features/hushbeat/stagecraft.js` (pure)
+`PEDESTAL[realmId]` = `[c, a]`: the top of the realm's prop has a half-width of `c · min(W, a·H)` in the realm
+canvas's px (`null`: open ground), mirrored from `src/world/realms/*.js` and checked against that code by U20.
+`pedestalHalf(realm, W, H)`; `duetLayout({ realm, W, H, ground, cap })` → `{ w, body, zoom, world }`: each stage's
+width (the two meet in the middle), the body size it gives, how much closer the world is framed (≤ `ZOOM_MAX` 2) and
+the realm container's insets (≤ 0 px, grown about the prop). The bodies keep inside `EDGE` 0.92 of the prop's
+half-width. The feature applies it in `onLayout` through `--hb-stage-w` and `--hb-world` (styles/hushbeat.css), only
+when it changes, from the realm's ground line (the first reframe's baseline: the realm mounts there). The Scene maps
+its realm pulses into the realm canvas's own frame, which a duet makes larger than the screen.
+
 ### `features/hushbeat.js`
 `meta = { id: 'hushbeat', title: 'Hushbeat Symphony' }`; `mount(root, ctx, { handoff })` → `{ unmount }`.
 `handoff` is a kept tune from home "For you" (`{ mallow, friend?, pace, motif }`): its friend joins (no hello),
@@ -307,7 +333,9 @@ friend runs once and only while still asked for: Replay or Stop tapped meanwhile
   stop; arrow keys move it) → Buttons → Replay → Keep → Friend. Keys reach the stage from the page too, so the
   stage takes focus on arrival only when a person brought the lab here (`navigator.userActivation.hasBeenActive`):
   a link opened directly starts without a ring framing the world. A focused stage shows the lab's soft rounded
-  frame around the band where the Mallows stand (between the bars), not a hard frame over the realm and the controls.
+  frame around the band where the Mallows stand, inset further in Hushbeat (20 px under the title, 10 px over the
+  controls: halfway to the feet) and softened (a fine 2 px ring in a glow): a duet's stage is tall and narrow, and a
+  hard box would crowd the title and the controls.
 - Announcements go through the feedback chip (`role=status`): a role word the first time it is used; while
   nothing is audible, every role every time, first uses included, at most one caption per 1.5 s; "Kept", "Removed", "Replaying", "Replay finished",
   "Loomi joins", "Playing alone", "Sound off: playing with light". Single notes are never announced.
@@ -337,7 +365,8 @@ friend runs once and only while still asked for: Replay or Stop tapped meanwhile
 `scheduler`, `audio`, `players`, `performers`, `scene`, `flash`, `log` (the last 128 engine events with
 `heard`, `audioT`, `ctxNow`), `router`; `debug()` (state, bpm, bar, beat, chord, pace, breath, scheduler,
 players, voices, live, audible, visualOnly, muted, friend, answers, target, sheet, take, best, replaying,
-flash1s, groove, quality, idle, latency, performers, scene, cue, controls, duet); `replay()`, `stop()`,
+flash1s, groove, quality, idle, latency, performers, scene, cue, controls, duet with its `frame`: w, body, zoom,
+world, ground); `replay()`, `stop()`,
 `keep()`, `playIt()`, `setPace(p)`, `setVisualOnly(b)`, `setFriend(id, { greet, instant })`,
 `setAnswers(b)`, `together()`, `openMusic()`, `openFriends()`, `setRestAfter(s)` (test seam).
 
@@ -346,7 +375,7 @@ flash1s, groove, quality, idle, latency, performers, scene, cue, controls, duet)
 ## 10. Tests
 
 ```
-node --test hushmallow/sensory-lab/tests/hushbeat.test.mjs                 # U1–U19, ~3 s
+node --test hushmallow/sensory-lab/tests/hushbeat.test.mjs                 # U1–U20, ~3 s
 node hushmallow/sensory-lab/tests/e2e-phase3-hushbeat.cjs [outDir]          # all browser blocks (~40 min on software GL)
 PART=hushbeat:duet node hushmallow/sensory-lab/tests/e2e-phase3-hushbeat.cjs   # one block
 LAYOUT_VPS=small,land PART=hushbeat:layout node …                          # some viewports
@@ -359,7 +388,7 @@ suite): a check that names its E number counts for it, the rest count for their 
 Serve the repository root first (`python3 -m http.server 8000`). Reports go to
 `docs/phase3/hushbeat/e2e-phase3-hushbeat.json`, screenshots to `docs/phase3/hushbeat/hushbeat-<vp>-<state>.jpg`.
 A full run writes about 70 screenshots, so pass a scratch folder and copy the ones worth keeping; the folder
-holds the last committed full report (585/585; the review-fix round ran all 627 checks in a scratch folder: one full run, then the blocks fixed after it re-run green) and 43 curated screenshots (every viewport's solo, tray, row, picker,
+holds the last committed full report (585/585; the review-fix round ran all 627 checks in a scratch folder: one full run, then the blocks fixed after it re-run green; the visual-QA round ran all 665 the same way, where three timing checks in layers and scene missed while another suite loaded the machine and passed on a re-run, and scene's bead check now counts only D's own beads) and 43 curated screenshots (every viewport's solo, tray, row, picker,
 duet, sheet; every Mallow in its own world; the dark sheets; the bloom; replay; Play it; keyboard focus).
 Screenshots are taken as a touch user sees them: a stage the feature focused on arrival is blurred first, and CSS
 transitions are suspended for the capture (a slow software-GL page can leave a 140 ms transition pending for
@@ -376,6 +405,7 @@ seconds). Capturing also stalls such a page for hundreds of ms, so none is taken
 | U16 | the light and the FlashGate; TRAITS and grooves; performer; beads with no fingertip above the head, the groove and floor glow on the heard beat, the trail's three passes; the personality as an instrument (a run never tickles or dizzies, all seven); scene; cue |
 | U17–U18 | no network or media; copy lint; shared contracts |
 | U19 | friend choices, tier, newest six tunes, the take as a tune (with its friend); glance, lean in, the arc's light; each tune's place in the list (U19b) |
+| U20 | duet stagecraft: the prop numbers match the realms' code; at all seven viewports × every world both Mallows inside the prop's top, the prop in the middle with its top on the ground line, zoom ≤ 2, bodies ≥ 64 px; the QA's floating 844×390 pair is caught |
 
 | Browser block | Proves |
 |---|---|
@@ -388,7 +418,7 @@ seconds). Capturing also stalls such a page for hundreds of ms, so none is taken
 | scene, replay, keep, rest | E3, E14, E15, E17, E18: light and singing in sync (a key's bead above the head), replay, Keep and Play it (by keyboard: focus to Stop; the only solid chip), resting |
 | duet | E16, E21: picker, two stages, hello, harmony, bloom and arc, answers on/off, G, Tab, Keep with the friend, the kept duet from home, motion and quality on both rigs, Play alone, leaving mid-duet |
 | sheet | E11, E13, E23: Volume (master gain; light at 0), Visual only, pace, Your tunes (place in the list) Play/Remove, another Mallow's tune through `ctx.openTune`, Lab settings, Escape |
-| layout | E22: seven viewports (390×844, 375×812, 320×568, 412×915, 1280×860, 844×390, 568×320) × solo, tray, row, picker, duet + tray, duet, sheet; the hint (short at 320, none in short landscape); short landscape duets (stages close in, icon-only row, all six actions at 844×390) |
+| layout | E22: seven viewports (390×844, 375×812, 320×568, 412×915, 1280×860, 844×390, 568×320) × solo, tray, row, picker, duet + tray, duet, sheet; the hint (short at 320, none in short landscape); short landscape duets (stages close in, icon-only row, all six actions at 844×390); both Mallows on the world's prop, measured on the live realm (inside its top; feet on its ground line, or on its top face with a short-landscape tray open); alone again, the world framed as solo |
 | looks | E22 (visual QA): every Mallow in its own world mid-hum at phone size, its layout, text tones that follow the backdrop, the hint's halo, the sheet over the four dark worlds |
 | a11y | E23: the Tab order (solo, with a take and the tray, in a duet) with names and a focus ring; Buttons, a held chip, the picker and a pill by keyboard alone; focus back on the opener; every request same-origin, none while playing; no microphone, fetch, XHR, WebSocket, beacon or media element |
 | scroll | E24: presses, stretches, strokes, pulls and flings, pinches on and off the bodies, the tray and a two-finger duet: never a scroll or a zoom |

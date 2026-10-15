@@ -204,10 +204,12 @@ export function mount(root, ctx, { handoff = null } = {}) {
       if (l && q.left < box.left + 1 && q.right > box.left) fl = Math.max(fl, q.right - box.left);
       if (r && q.right > box.right - 1 && q.left < box.right && !fr) fr = box.right - q.left;
     }
-    tray.style.setProperty('--hb-fade-l', `${Math.round(Math.max(fl, 16))}px`);
-    tray.style.setProperty('--hb-fade-r', `${Math.round(Math.max(fr, 16))}px`);
+    tray.style.setProperty('--hb-fade-l', `${Math.round(fl)}px`);
+    tray.style.setProperty('--hb-fade-r', `${Math.round(fr)}px`);
   };
   tray.addEventListener('scroll', edges, { passive: true });
+  const trayRO = new ResizeObserver(() => { if (!tray.hidden) edges(); });   // the row beside it grew or shrank
+  trayRO.observe(tray);
 
   // in a duet the tray starts with the target control (rebuilt when the friend changes)
   function syncTarget() {
@@ -979,6 +981,7 @@ export function mount(root, ctx, { handoff = null } = {}) {
       removeEventListener('blur', onBlur);
       document.removeEventListener('visibilitychange', onVisibility);
       tray.removeEventListener('scroll', edges);
+      trayRO.disconnect();
       offPrefs();
       offDna();
       s.setPartner(null);

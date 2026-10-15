@@ -59,9 +59,9 @@ waits its turn: never while another hint, a caption or a front is showing (`hint
 4 s of a weather change, so it never cuts the instruction for the weather just picked.
 **Puddles** appear in dry realms after rain, either side of the Mallow on the ground just in front of its base
 line, and ripple when touched. Each is soft-edged water (no outline): the sky's light in a bright middle, a darker
-wet rim, a sheen along the far side (white over a bright sky) and one gentle glint. Where the shown swell row runs
-under the Mallow, it passes behind the pedestal or pad the Mallow stands on (clipped out over 1.24 × its body
-width), so only open water shows it.
+wet rim, a sheen along the far side (white over a bright sky) and one gentle glint. No crest is drawn over the
+pedestal or pad the Mallow stands on (1.24 × its body width, 80 px down from its base): swells pass behind it, so
+the shown row reads on open water either side, not as a scratch on the platform.
 
 Pick order for a claimed pointer: a held object, then the light pool (within 1.4 r), a deck puff (Rain),
 the water band or a puddle (12 px of hysteresis at the horizon), then the lead tool. During a front,
@@ -453,8 +453,8 @@ the reactor nods instead of hopping; `rig.nudge` is ×0.25. Direct manipulation 
   hint and caption under them take the dark backdrop's light ink and halo (`.topbar.wx-ink-light`,
   `.wx-hint.wx-ink-light`); the chips and dial keep the realm's, over the still bright ground.
 - At 320 px eight 40 px radios cannot fit: the dial shows exactly seven whole radios, scrolls one radio at a time
-  to keep the chosen one clear of the edge, and a narrow 12 px fade on the side that has more says so without
-  cutting an icon in half at the pill's end.
+  to keep the chosen one clear of the edge, and a small chevron at the end that has more says so (in the end radio's
+  empty margin: no icon is faded or cut in half at the pill's end).
 - The stage is focused on arrival so the keys work at once, but its focus ring (lab.css draws it on
   `.stage:focus-visible::after`) waits for the first key (`.wx-quiet-focus .stage:focus-visible::after
   { content: none }`): Chrome shows `:focus-visible` for a script's focus before any click, which on a deep

@@ -37,7 +37,8 @@ export function weatherDial(order, value, onPick) {
     type: 'button', class: 'wx-radio', role: 'radio', 'aria-checked': String(w === value), 'aria-label': WEATHERS[w].label,
     title: WEATHERS[w].label, 'data-weather': w, html: svgIcon(WEATHER_ICONS[w]),
   }));
-  el.append(...btns);
+  // scroll cues for the narrowest phones (styles/weather.css): a chevron on the side that has more, sticky at the end
+  el.append(h('span', { class: 'wx-more wx-more-l', 'aria-hidden': 'true' }), ...btns, h('span', { class: 'wx-more wx-more-r', 'aria-hidden': 'true' }));
   let cur = value;
   const fades = () => {
     const max = el.scrollWidth - el.clientWidth;

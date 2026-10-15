@@ -1102,8 +1102,11 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     // a key's notes have no fingertip: their beads start above the head (never through the eyes); the trail of P runs
     // across the forehead, above the eyes
     await sleep(1500);
+    // only D's own beads count: on a slow page the trail's beads can still be alive (the light runs on frame time),
+    // so each pooled bead's age is noted first, and a bead that was not alive then, or is younger now, is D's
+    await hb(page, () => { __lab.hbBeadAges = __lab.hushbeat.scene.pool.beads.map((x) => (x.alive ? x.age : -1)); });
     await page.keyboard.press('d'); await sleep(120);
-    const kb = await hb(page, () => { const P = __lab.hushbeat.performers[0], r = P._rect(), o = P.off; return { top: r.top, h: r.h, beads: __lab.hushbeat.scene.pool.beads.filter((x) => x.alive).map((x) => Math.round(x.y0 - o.y - r.top)) }; });
+    const kb = await hb(page, () => { const P = __lab.hushbeat.performers[0], r = P._rect(), o = P.off, was = __lab.hbBeadAges; return { top: r.top, h: r.h, beads: __lab.hushbeat.scene.pool.beads.filter((x, i) => x.alive && (!(was[i] >= 0) || x.age < was[i])).map((x) => Math.round(x.y0 - o.y - r.top)) }; });
     check(scope, 'E3 a key\'s note (D) lights its bead above the head, clear of the eyes', kb.beads.length >= 1 && kb.beads.every((y) => y <= -4), JSON.stringify(kb));
     // E17: a hum keeps the music going; the groove eases in and Boppo moves on the beat
     const sample = (ms) => page.evaluate((ms) => new Promise((res) => {

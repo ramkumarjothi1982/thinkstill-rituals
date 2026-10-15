@@ -865,8 +865,15 @@ export function drawWater(g, waves, y0, y1, sp, o) {
   if (!waves || waves.amount <= 0.01 || o.alpha <= 0.004) return 0;
   const live = waves.swells();
   if (waves.energy < 0.004 && !live) return 0;
-  const T = sp.tint, W = o.W, N = 32;
+  const T = sp.tint, W = o.W, N = 32, b = o.body;
   let crests = 0;
+  // the water just under the Mallow is behind the pedestal or pad it stands on: no crest is drawn over that
+  // (drawn over it, the shown swell read as a scratch on the platform), so only open water shows them
+  g.save();
+  if (b && y1 > b.bottom) {
+    g.beginPath(); g.rect(0, y0 - 60, W, y1 - y0 + 120); g.rect(b.cx - b.w * PEDESTAL, b.bottom - 8, 2 * b.w * PEDESTAL, 80);
+    g.clip('evenodd');
+  }
   g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = T.crestCss;
   for (let r = 0; r < ROWS.length; r++) {
     const f = ROWS[r], yr = y0 + (y1 - y0) * f, amp = (5 + 20 * f) * waves.motion;
@@ -897,14 +904,8 @@ export function drawWater(g, waves, y0, y1, sp, o) {
       g.lineWidth = 1 + 2 * f;
       g.stroke();
     }
-    // the row clear of the Mallow: trough, highlight, crest; under the Mallow it passes behind the pedestal or pad
-    // it stands on (drawn over it, it read as a scratch on the platform), so only open water shows it
-    const amp = (5 + 20 * fe) * waves.motion, w = sw * (0.55 + 0.75 * fe), b = o.body, under = !!b && E.y > b.bottom;
-    if (under) {
-      g.save(); g.beginPath();
-      g.rect(0, E.y - 60, W, 120); g.rect(b.cx - b.w * PEDESTAL, E.y - 60, 2 * b.w * PEDESTAL, 120);
-      g.clip('evenodd');
-    }
+    // the row clear of the Mallow: trough, highlight, crest
+    const amp = (5 + 20 * fe) * waves.motion, w = sw * (0.55 + 0.75 * fe);
     swellPath(g, waves, sx, w, E.y, amp, 5);
     g.strokeStyle = T.troughCss; g.lineWidth = 6; g.globalAlpha = o.alpha * 0.3 * sa; g.stroke();
     swellPath(g, waves, sx, w, E.y, amp, -2.5);
@@ -916,13 +917,13 @@ export function drawWater(g, waves, y0, y1, sp, o) {
     g.globalAlpha = o.alpha * clamp(sa, 0, 0.7);
     g.drawImage(gs, sx - 20, yy - 20, 40, 40);
     g.globalCompositeOperation = 'source-over';
-    if (under) g.restore();
     crests++;
   }
+  g.restore();
   g.globalAlpha = 1;
   return crests;
 }
-export const PEDESTAL = 0.62;   // half-width of what the Mallow stands on, × its body width (Blue Drift's pedestal is ~1.16 ×)
+export const PEDESTAL = 0.62;   // half-width of what the Mallow stands on, × its body width (Blue Drift's pedestal is ~1.16 ×), 80 px deep from its base
 
 // one swell's crest line (sx ± w, raised by the water's height × amp, shifted dy) as the current path
 function swellPath(g, waves, sx, w, yr, amp, dy) {

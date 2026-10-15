@@ -28,9 +28,10 @@
   border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; opacity: 0.7; transition: background var(--t-fast), opacity var(--t-fast); }
 .hushbeat .chip.hold.active::before { background: currentColor; opacity: 1; }
 
-/* keyboard focus on a stage: the lab's soft frame, inset further from both bars (20 px, never crowding the title or
-   the controls) and softer, a glow round a fine ring rather than a hard box (a duet's stage is tall and narrow) */
-.hushbeat .stage:focus-visible::after { left: 16px; right: 16px; top: calc(var(--band-top, 64px) + 20px); bottom: calc(var(--band-bottom, 120px) + 20px);
+/* keyboard focus on a stage: the lab's soft frame, inset further from the bars (20 px under the title; 10 px over the
+   controls, halfway to the feet, which stand 18 px above them) and softer, a glow round a fine ring rather than a hard
+   box (a duet's stage is tall and narrow) */
+.hushbeat .stage:focus-visible::after { left: 16px; right: 16px; top: calc(var(--band-top, 64px) + 20px); bottom: calc(var(--band-bottom, 120px) + 10px);
   border-radius: 28px; box-shadow: 0 0 0 2px var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 14px 3px color-mix(in srgb, var(--accent) 24%, transparent),
     inset 0 0 26px color-mix(in srgb, var(--accent) 12%, transparent); }
@@ -53,15 +54,16 @@
 /* the gesture tray: wraps on tall screens, one scrolling row on short ones, an even grid on phones (below) */
 .hushbeat .hb-tray { max-width: min(560px, 100%); align-items: center; }
 .hushbeat .hb-tray[hidden] { display: none; }
-/* a scrolling tray's edge fades end on a whole chip: --hb-fade-l / -r (set by the feature) span the chip the edge cuts,
-   and the fade runs over the 12 px before it (the gap and the next chip's padding), so no half a word shows */
-.hushbeat .hb-tray.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - var(--hb-fade-r, 16px) - 12px), transparent calc(100% - var(--hb-fade-r, 16px)));
-  mask-image: linear-gradient(90deg, #000 calc(100% - var(--hb-fade-r, 16px) - 12px), transparent calc(100% - var(--hb-fade-r, 16px))); }
-.hushbeat .hb-tray.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent var(--hb-fade-l, 16px), #000 calc(var(--hb-fade-l, 16px) + 12px));
-  mask-image: linear-gradient(90deg, transparent var(--hb-fade-l, 16px), #000 calc(var(--hb-fade-l, 16px) + 12px)); }
+/* a scrolling tray's edge fades end on a whole chip: --hb-fade-l / -r (set by the feature) reach from the edge over the
+   chip it cuts, and the short fade runs in the gap before it (6 px, clear of the next chip's word), so no half a word
+   or hold ring shows at the edge */
+.hushbeat .hb-tray.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - var(--hb-fade-r, 16px) - 6px), transparent calc(100% - var(--hb-fade-r, 16px) + 2px));
+  mask-image: linear-gradient(90deg, #000 calc(100% - var(--hb-fade-r, 16px) - 6px), transparent calc(100% - var(--hb-fade-r, 16px) + 2px)); }
+.hushbeat .hb-tray.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent calc(var(--hb-fade-l, 16px) - 2px), #000 calc(var(--hb-fade-l, 16px) + 6px));
+  mask-image: linear-gradient(90deg, transparent calc(var(--hb-fade-l, 16px) - 2px), #000 calc(var(--hb-fade-l, 16px) + 6px)); }
 .hushbeat .hb-tray.fade-l.fade-r {
-  -webkit-mask-image: linear-gradient(90deg, transparent var(--hb-fade-l, 16px), #000 calc(var(--hb-fade-l, 16px) + 12px), #000 calc(100% - var(--hb-fade-r, 16px) - 12px), transparent calc(100% - var(--hb-fade-r, 16px)));
-  mask-image: linear-gradient(90deg, transparent var(--hb-fade-l, 16px), #000 calc(var(--hb-fade-l, 16px) + 12px), #000 calc(100% - var(--hb-fade-r, 16px) - 12px), transparent calc(100% - var(--hb-fade-r, 16px))); }
+  -webkit-mask-image: linear-gradient(90deg, transparent calc(var(--hb-fade-l, 16px) - 2px), #000 calc(var(--hb-fade-l, 16px) + 6px), #000 calc(100% - var(--hb-fade-r, 16px) - 6px), transparent calc(100% - var(--hb-fade-r, 16px) + 2px));
+  mask-image: linear-gradient(90deg, transparent calc(var(--hb-fade-l, 16px) - 2px), #000 calc(var(--hb-fade-l, 16px) + 6px), #000 calc(100% - var(--hb-fade-r, 16px) - 6px), transparent calc(100% - var(--hb-fade-r, 16px) + 2px)); }
 /* a duet's target [Lead | Both | Friend] leads the tray; its own track sets it apart from the actions */
 .hushbeat .hb-target { flex: none; flex-wrap: nowrap; margin-right: 2px; }
 .hushbeat .seg button { min-height: 40px; }

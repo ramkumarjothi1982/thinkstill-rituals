@@ -59,11 +59,19 @@
 .weather .wx-back, .weather .wx-front { position: absolute; inset: 0; pointer-events: none; }
 
 /* the narrowest phones: two chips (a lead chip and "Push the water") side by side without scrolling; the dial shows
-   exactly seven whole radios (eight 40 px targets cannot fit), scrolls one radio at a time, and a narrow fade on the
-   side that has more says so without cutting an icon */
+   exactly seven whole radios (eight 40 px targets cannot fit), scrolls one radio at a time, and a small chevron at the
+   end that has more says so (in the end radio's empty margin: no icon is faded or cut in half) */
+.weather .wx-more { display: none; }
 @media (max-width: 360px) {
   .weather .wx-chip { padding: 10px 12px; }
   .weather .wx-dial { gap: 0; padding: 3px; max-width: calc(7 * 40px + 8px); }
-  .weather .wx-dial.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px); mask-image: linear-gradient(90deg, transparent, #000 12px); }
-  .weather .wx-dial.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent); }
+  .weather .wx-dial.fade-l, .weather .wx-dial.fade-r { -webkit-mask-image: none; mask-image: none; }
+  .weather .wx-more { display: block; position: sticky; flex: none; width: 12px; height: 40px; z-index: 1; pointer-events: none;
+    color: var(--text-2); opacity: 0; transition: opacity var(--t-fast); }
+  .weather .wx-more-l { left: 0; margin-right: -12px; }
+  .weather .wx-more-r { right: 0; margin-left: -12px; }
+  .weather .wx-more::before { content: ''; position: absolute; top: 50%; width: 5px; height: 5px; border: solid currentColor; border-width: 0 2px 2px 0; }
+  .weather .wx-more-l::before { left: 3px; transform: translateY(-50%) rotate(135deg); }
+  .weather .wx-more-r::before { right: 3px; transform: translateY(-50%) rotate(-45deg); }
+  .weather .wx-dial.fade-l .wx-more-l, .weather .wx-dial.fade-r .wx-more-r { opacity: 1; }
 }
