@@ -6,7 +6,7 @@
 //     &photos=3          sample photos (0 = the seven Mallow cards)
 //     &motion=reduce     reduced motion for this lab session only (the saved pref is untouched)
 //     &autoflow=1        Auto-flow on
-//     &next=<worldId>    force the next world (e.g. static-storm, or dev-realm for a melt test; lab-only worlds: moonmilk-cove, raindrop-lagoon)
+//     &next=<worldId>    force the next world (e.g. static-storm, or dev-realm for a melt test; lab-only worlds: moonmilk-cove, raindrop-lagoon, sunpop-orchard)
 //     &q=fixed | 0..3    quality: no governor / a fixed level
 //     &resume=1          resume saved progress
 //
@@ -45,6 +45,7 @@ const DEV_REALM = {
 const LAB_WORLDS = {
   'moonmilk-cove': () => import('./worlds/moonmilk-cove.js').then((m) => ({ ...m.MOONMILK_COVE, status: STATUS.PLAYABLE })),
   'raindrop-lagoon': () => import('./worlds/raindrop-lagoon.js').then((m) => ({ ...m.RAINDROP_LAGOON, status: STATUS.PLAYABLE })),
+  'sunpop-orchard': () => import('./worlds/sunpop-orchard.js').then((m) => ({ ...m.SUNPOP_ORCHARD, status: STATUS.PLAYABLE })),
 };
 
 export async function hushflowLab(app, qs) {
