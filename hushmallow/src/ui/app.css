@@ -180,6 +180,15 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .support-calls { display: flex; flex-direction: column; gap: 8px; }
 .support-calls .support-call { text-decoration: none; padding-block: 8px; text-wrap: balance; }
 .sheet.full { top: calc(var(--safe-top) + 10px); max-height: none; }
+/* (fix round) a sheet takes the keyboard focus to its heading (never to its ✕): the heading is a place to start reading from,
+   not a control, so it draws no ring; the sheet itself likewise */
+.sheet:focus, .sheet .sheet-head h2:focus { outline: none; }
+/* (fix round) beside the Tell overlay while the person types: its top and backdrop stay below the words (inline max-height and
+   top, ui.js); the backdrop there is lighter, the words above stay as they are */
+.sheet.beside { border-top-color: rgba(255, 156, 207, 0.55); }
+/* (the room below the words is short on a small phone: its calls come first and whole, its ✕ dismisses it meanwhile; the
+   foot's "I'm safe — continue" is back the moment the person sends or stops typing — focusIn) */
+.sheet.beside .sheet-foot { display: none; }
 
 /* A–Z explorer */
 .az-letter { position: sticky; top: 0; background: rgba(20,16,48,.96); font: var(--type-overline); letter-spacing: var(--type-overline-ls); color: var(--accent); padding: 9px 0 7px; z-index: 1; }
