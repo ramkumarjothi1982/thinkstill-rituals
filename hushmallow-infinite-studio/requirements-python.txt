@@ -1,0 +1,6 @@
+# Python packages the studio's tools and tests need (QA gates, asset derivation, analysis).
+# pip install -r hushmallow-infinite-studio/requirements-python.txt
+numpy>=1.26
+scipy>=1.11
+opencv-python-headless>=4.8
+Pillow>=10

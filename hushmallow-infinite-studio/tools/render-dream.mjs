@@ -7,7 +7,7 @@
 //        time, so any order gives the same pixels), each frame is POSTed raw to the frame
 //        sink and piped into one ffmpeg (libx264 High 4.2, yuv420p, BT.709, 30-frame GOP)
 //        in frame order → <dir>/<id>.video.mp4; then cues.json.
-//   options: --direction feel-something
+//   options: --direction feel-something  --stage dream|dream2  --preview  --motion reduced
 //
 // The soundtrack and the mux are audio/score-feel.mjs and tools/mux-dream.mjs.
 
@@ -22,6 +22,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : d; };
 const DIR = opt('direction', 'feel-something');
+const STAGE = opt('stage', 'dream');                 // dream (v1) | dream2
+const PREVIEW = !!opt('preview', false);             // draft quality: ≤ 2 sub-frames (pair with --scale 0.5)
+const MOTION = opt('motion', null);                  // 'reduced': the direction's reduced-motion cut
 const OUT = path.resolve(opt('out', path.join(HERE, '..', 'output', DIR)));
 const SCALE = Number(opt('scale', 1));
 const WORKERS = Number(opt('workers', 2));
@@ -34,7 +37,7 @@ async function openPage(browser, port) {
   const page = await browser.newPage({ viewport: { width: Math.round(1080 * SCALE), height: Math.round(1920 * SCALE) }, deviceScaleFactor: 1 });
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log('[page]', m.type(), m.text()); });
   page.on('pageerror', (e) => console.log('[page] error', e.message));
-  await page.goto(`http://127.0.0.1:${port}/hushmallow-infinite-studio/dream/index.html?direction=${DIR}&scale=${SCALE}`);
+  await page.goto(`http://127.0.0.1:${port}/hushmallow-infinite-studio/${STAGE}/index.html?direction=${DIR}&scale=${SCALE}${PREVIEW ? '&preview=1' : ''}${MOTION ? `&motion=${MOTION}` : ''}`);
   const info = await page.evaluate(() => window.__dream.ready);
   return { page, info };
 }

@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>rig sheet</title>
+<body style="margin:0;background:#2a2550">
+<canvas id="c"></canvas>
+<script type="module">
+import { clock } from '../../engine/runtime/clock.js';
+import { MallowRig } from '../../../hushmallow/src/mallows/rig.js';
+import { MALLOWS } from '../../../hushmallow/src/mallows/registry.js';
+import { resolveExpression, baseParams } from '../../../hushmallow/src/mallows/expressions.js';
+const ids = ['blubi', 'loomi', 'pipzi', 'glitzi', 'zuzu', 'boppo', 'noomi'];
+const moods = [null, 'happy', 'sad', 'anxious', 'surprised', 'loved', 'curious'];
+const S = 220, c = document.getElementById('c');
+c.width = S * moods.length; c.height = S * ids.length;
+const g = c.getContext('2d');
+for (const [r, id] of ids.entries()) {
+  const div = document.createElement('div');
+  const rig = new MallowRig(div, { id, interactive: false, particles: false, reducedMotion: true });
+  await rig.loaded;
+  rig.q = 1.5; rig.skin.width = Math.ceil(rig.mallow.size[0] * 1.5); rig.skin.height = Math.ceil(rig.mallow.size[1] * 1.5);
+  for (const [k, mood] of moods.entries()) {
+    const P = mood ? resolveExpression(rig.mallow, { [mood]: 1 }, 0.85) : baseParams(rig.mallow);
+    Object.assign(rig.val, P);
+    rig.blink = { t: -1 }; rig._dt = 100; rig.skinDirty = true; rig.time = 1.0;
+    rig._renderSkin();
+    g.drawImage(rig.skin, k * S + 10, r * S + 10, S - 20, S - 20);
+  }
+}
+window.done = c.toDataURL('image/png');
+</script>

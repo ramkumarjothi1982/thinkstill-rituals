@@ -254,6 +254,142 @@ async function renderInPage({ plan, check }) {
       o.connect(a); o2.connect(a2); a.connect(lp); a2.connect(lp); lp.connect(out);
       o.start(t); o.stop(end); o2.start(t); o2.stop(end);
     },
+    // ---- the v2 score's instruments (feel-something-v2); additive, no earlier plan uses them ----
+    // felt piano: slightly inharmonic partials (each decaying faster than the one below), paired
+    // strings a few cents apart for the low partials, a soft felt thump, a damper at the end of the note
+    piano(e) {
+      const t = T(e.t), v = e.v ?? 0.7, len = e.len ?? 1.2, rel = 0.3, end = t + len + rel + 0.1;
+      const out = strip(e.pan ?? 0, e.send ?? 0.28);
+      const tone = biquad('lowpass', Math.min(9000, 1000 + 4800 * v * Math.min(1.4, 0.5 + 330 / e.f)), 0.5);
+      tone.connect(out);
+      const B = 0.00032, base = (e.peak ?? 0.03) * v;
+      for (let n = 1; n <= 9; n++) {
+        const fn = e.f * n * Math.sqrt(1 + B * n * n);
+        if (fn > 9500) break;
+        const amp = base * Math.pow(n, -1.3) * (n === 2 ? 0.75 : 1);
+        const dec = (e.decay ?? 2.8) * Math.sqrt(262 / Math.max(80, e.f)) / (1 + 0.6 * (n - 1));
+        const dets = n <= 2 ? [-1.6, 1.6] : [0];
+        for (const det of dets) {
+          const o = ctx.createOscillator(); o.frequency.value = fn; o.detune.value = det;
+          const g1 = gainNode(0);
+          g1.gain.setValueAtTime(0, t);
+          g1.gain.linearRampToValueAtTime(amp / dets.length, t + 0.005);
+          g1.gain.setTargetAtTime(0, t + 0.005, dec / 3);
+          g1.gain.setTargetAtTime(0, t + len, rel / 4);
+          o.connect(g1); g1.connect(tone); o.start(t); o.stop(end);
+        }
+      }
+      const s = noiseSrc(t, t + 0.06, (e.t * 5.17 + 1) % 2.5);
+      const bp = biquad('bandpass', Math.min(2400, e.f * 2.2), 1.2);
+      const h = gainNode(0); envAD(h.gain, t, 0.002, 0, 0.03, base * 0.12);
+      s.connect(bp); bp.connect(h); h.connect(tone);
+    },
+    // string ensemble: three detuned saws spread across the stereo field, a filter that opens as the
+    // bow digs in, a delayed vibrato; high-passed so the section never muddies the low end
+    strings(e) {
+      const t = T(e.t), a = e.a ?? 0.6, r = e.r ?? 1.2, len = Math.max(a, e.len), end = t + len + r + 0.1;
+      const amp = gainNode(0);
+      amp.gain.setValueAtTime(0, t);
+      amp.gain.linearRampToValueAtTime(e.peak, t + a);
+      amp.gain.setValueAtTime(e.peak, t + len);
+      amp.gain.linearRampToValueAtTime(0, t + len + r);
+      const lp = biquad('lowpass', e.lp0 ?? 600, 0.6);
+      lp.frequency.setValueAtTime(e.lp0 ?? 600, t);
+      lp.frequency.linearRampToValueAtTime(e.lp1 ?? 2400, t + a + 0.4);
+      const hp = biquad('highpass', e.hp ?? 160, 0.7);
+      lp.connect(hp); hp.connect(amp); amp.connect(strip(e.pan ?? 0, e.send ?? 0.45));
+      const vib = ctx.createOscillator(); vib.frequency.value = 5.1;
+      const vd = gainNode(0); vd.gain.setValueAtTime(0, t); vd.gain.linearRampToValueAtTime(7, t + 0.7);
+      vib.connect(vd); vib.start(t); vib.stop(end);
+      for (const [det, pan] of [[-9, -0.8], [1, 0], [8, 0.8]]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = e.f; o.detune.value = det;
+        vd.connect(o.detune);
+        const p = ctx.createStereoPanner(); p.pan.value = pan;
+        const og = gainNode(1 / 3); o.connect(og); og.connect(p); p.connect(lp); o.start(t); o.stop(end);
+      }
+    },
+    // choir: two detuned saws and a breath of noise through three vowel formants, with vibrato
+    choir(e) {
+      const t = T(e.t), a = e.a ?? 0.7, r = e.r ?? 1.4, len = Math.max(a, e.len), end = t + len + r + 0.1;
+      const F = { a: [[800, 1, 9], [1150, 0.55, 10], [2900, 0.22, 12]], o: [[420, 1, 8], [760, 0.42, 9], [2450, 0.12, 12]], u: [[330, 1, 8], [640, 0.3, 9], [2300, 0.08, 12]] }[e.vowel || 'o'];
+      const amp = gainNode(0);
+      amp.gain.setValueAtTime(0, t);
+      amp.gain.linearRampToValueAtTime(e.peak, t + a);
+      amp.gain.setValueAtTime(e.peak, t + len);
+      amp.gain.linearRampToValueAtTime(0, t + len + r);
+      amp.connect(strip(e.pan ?? 0, e.send ?? 0.6));
+      const mixIn = gainNode(1);
+      for (const [fc, lvl, q] of F) { const bp = biquad('bandpass', fc, q); const fg = gainNode(lvl * 5); mixIn.connect(bp); bp.connect(fg); fg.connect(amp); }
+      const vib = ctx.createOscillator(); vib.frequency.value = 5.3;
+      const vd = gainNode(0); vd.gain.setValueAtTime(0, t); vd.gain.linearRampToValueAtTime(10, t + 0.8);
+      vib.connect(vd); vib.start(t); vib.stop(end);
+      for (const det of [-7, 6]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = e.f; o.detune.value = det;
+        vd.connect(o.detune);
+        const og = gainNode(0.5); o.connect(og); og.connect(mixIn); o.start(t); o.stop(end);
+      }
+      const s = noiseSrc(t, end, (e.t * 3.3 + 0.7) % 2.5);
+      const nb = biquad('bandpass', F[1][0], 2); const ng = gainNode(0.04);
+      s.connect(nb); nb.connect(ng); ng.connect(mixIn);
+    },
+    // bass: sine + a low-passed saw, gently saturated so its harmonics carry on phone speakers
+    bass(e) {
+      const t = T(e.t), len = e.len ?? 0.5, end = t + len + 0.25;
+      const amp = gainNode(0);
+      amp.gain.setValueAtTime(0, t);
+      amp.gain.linearRampToValueAtTime(e.peak, t + 0.008);
+      amp.gain.setTargetAtTime(e.peak * 0.65, t + 0.01, 0.12);
+      amp.gain.setTargetAtTime(0, t + len, 0.06);
+      const sh = ctx.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(2.2 * x) / Math.tanh(2.2); }
+      sh.curve = curve;
+      const lp = biquad('lowpass', e.lp ?? 700, 0.7);
+      const pre = gainNode(1);
+      pre.connect(sh); sh.connect(lp); lp.connect(amp); amp.connect(strip(0, 0.04));
+      const o1 = ctx.createOscillator(); o1.frequency.value = e.f;
+      const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = e.f; o2.detune.value = 4;
+      const g1 = gainNode(0.75), g2 = gainNode(0.32);
+      o1.connect(g1); o2.connect(g2); g1.connect(pre); g2.connect(pre);
+      o1.start(t); o2.start(t); o1.stop(end); o2.stop(end);
+    },
+    // soft kick: a sine dropping in pitch, a little click, a second harmonic for small speakers
+    kick(e) {
+      const t = T(e.t), out = strip(0, 0.03);
+      const o = ctx.createOscillator(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(52, t + 0.09);
+      const a = gainNode(0); const end = envAD(a.gain, t, 0.002, 0.02, e.d ?? 0.32, e.peak);
+      const o2 = ctx.createOscillator(); o2.frequency.setValueAtTime(300, t); o2.frequency.exponentialRampToValueAtTime(110, t + 0.06);
+      const a2 = gainNode(0); envAD(a2.gain, t, 0.002, 0, 0.09, e.peak * 0.35);
+      o.connect(a); o2.connect(a2); a.connect(out); a2.connect(out);
+      o.start(t); o.stop(end); o2.start(t); o2.stop(end);
+      const s = noiseSrc(t, t + 0.03, (e.t * 7.7) % 2.5); const hp = biquad('highpass', 2500, 0.7); const c = gainNode(0); envAD(c.gain, t, 0.001, 0, 0.012, e.peak * 0.08);
+      s.connect(hp); hp.connect(c); c.connect(out);
+    },
+    // finger snap: a tight band of noise with a body, sent to the reverb
+    snap(e) {
+      const t = T(e.t), out = strip(e.pan ?? 0, e.send ?? 0.35);
+      const s = noiseSrc(t, t + 0.2, (e.t * 9.1 + 0.3) % 2.5);
+      const bp = biquad('bandpass', 2600, 2.2); const a = gainNode(0); envAD(a.gain, t, 0.001, 0, 0.07, e.peak);
+      s.connect(bp); bp.connect(a); a.connect(out);
+      const o = ctx.createOscillator(); o.frequency.value = 1150; const b2 = gainNode(0); const end = envAD(b2.gain, t, 0.001, 0, 0.025, e.peak * 0.25);
+      o.connect(b2); b2.connect(out); o.start(t); o.stop(end);
+    },
+    // shaker: high, short, a touch of swing is in the plan
+    shaker(e) {
+      const t = T(e.t), out = strip(e.pan ?? 0, 0.12);
+      const s = noiseSrc(t, t + 0.12, (e.t * 11.3 + 0.9) % 2.5);
+      const hp = biquad('highpass', 6500, 0.8); const lp = biquad('lowpass', 12000, 0.7); const a = gainNode(0);
+      envAD(a.gain, t, e.a ?? 0.008, 0, e.d ?? 0.045, e.peak);
+      s.connect(hp); hp.connect(lp); lp.connect(a); a.connect(out);
+    },
+    // riser: noise swelling and brightening toward its end time (e.t is where it lands)
+    riser(e) {
+      const t1 = T(e.t), dur = e.dur ?? 1.0, t0 = t1 - dur;
+      const s = noiseSrc(t0, t1 + 0.05, (e.t * 4.4) % 2.5);
+      const bp = biquad('bandpass', 600, 1.4); bp.frequency.setValueAtTime(600, t0); bp.frequency.exponentialRampToValueAtTime(e.f1 ?? 5000, t1);
+      const a = gainNode(0); a.gain.setValueAtTime(0.0001, t0); a.gain.exponentialRampToValueAtTime(e.peak, t1 - 0.02); a.gain.linearRampToValueAtTime(0, t1 + 0.03);
+      s.connect(bp); bp.connect(a); a.connect(strip(e.pan ?? 0, e.send ?? 0.4));
+    },
     // a plucked, marimba-like note for ostinati: sine fundamental + a quickly fading 4th harmonic
     pluck(e) {
       const t = T(e.t), out = strip(e.pan || 0, e.send || 0);

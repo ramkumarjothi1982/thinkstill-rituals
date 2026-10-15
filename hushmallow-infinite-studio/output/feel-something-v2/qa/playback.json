@@ -1,0 +1,31 @@
+{
+ "meta": {
+  "duration": 20.018,
+  "w": 540,
+  "h": 960
+ },
+ "fits": {
+  "scrollW": 390,
+  "viewW": 390,
+  "videoW": 358
+ },
+ "advanced": {
+  "from": 1.522667,
+  "to": 3.533333,
+  "realS": 2
+ },
+ "audioRms": {
+  "playing": 0.20795523997934728,
+  "muted": 0,
+  "unmuted": 0.06666840549906394
+ },
+ "endWithoutLoop": {
+  "t": 20.018,
+  "paused": true
+ },
+ "loopWrapped": {
+  "t": 0.629333,
+  "paused": false
+ },
+ "pass": true
+}

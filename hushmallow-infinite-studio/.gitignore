@@ -35,3 +35,16 @@ output/feel-something/*
 !output/feel-something/cues.json
 !output/feel-something/render-stats.json
 !output/feel-something/qa/
+# "Feel Something?" v2 (dream2) deliverables; stems and the long A/B re-render from code in under a minute
+!output/feel-something-v2/
+output/feel-something-v2/*
+!output/feel-something-v2/feel-something-v2.mp4
+!output/feel-something-v2/feel-something-v2.preview.mp4
+!output/feel-something-v2/feel-something-v2.reduced-motion.mp4
+!output/feel-something-v2/poster.jpg
+!output/feel-something-v2/score.wav
+!output/feel-something-v2/cues.json
+!output/feel-something-v2/render-stats*.json
+!output/feel-something-v2/qa/
+!output/feel-something-v2/compare/
+output/feel-something-v2/compare/a-b.mp4
