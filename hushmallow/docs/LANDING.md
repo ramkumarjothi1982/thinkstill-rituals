@@ -11,38 +11,49 @@ Screenshots: `landing/screenshots/`. Local preview and automated checks:
 
 ---
 
-## 1. The concept: "A softer space for feelings."
+## 1. The concept: "Feel something? hushmallow."
 
-**hushmallow: A softer space for feelings.** *A playful, soothing space to
-touch, unwind and connect.* The page follows the journey curiosity → delight →
-sensory interaction → understanding → human connection → sign-up, with the
-Mallows as the stars throughout. hushmallow is never called an AI companion,
-therapy, a dating service or a game.
+**Feel something? hushmallow.** *Whatever you feel, there's a Mallow for that.*
+*Think emotion. Think hushmallow.* The Mallows are the face of the experience:
+seven expressive characters you can squeeze, express yourself to and explore
+your feelings with, with you in charge of every step. "Mallow" is the
+category: feel something, visit a Mallow. hushmallow is never marketed as an
+AI companion, therapy, a medical treatment or a game.
 
 | Section | Headline | What the visitor does |
 |---|---|---|
-| Hero | **A *softer* space for feelings.** / *A playful, soothing space to touch, unwind and connect.* | Presses and holds Pipzi, who squishes, closes her eyes happily, rebounds and says *"Hey. Long day?"* The other six lean towards the cursor and hop along, and tapping one brings it to the middle. The word **softer** squishes with the Mallow. **Meet the Mallows** goes to the character stage and **Discover hushmallow** to the three ways in. |
-| Three ways in (`#discover`) | **Touch. Unwind. Connect.** | Three linked columns, each with its Mallows. Connect is marked *Coming soon*. |
-| Touch (`#mallows`) | **Meet the Mallows.** | A character stage with the neighbouring Mallows peeking in. Picking one makes it drop into focus and say hello in its own voice, and squeezing shows its signature move. Swipe, arrows or the tray all work. |
-| Unwind (`#unwind`) | **A little room for everything you feel.** | Pops floating everyday thoughts ("47 tabs open", "fine, technically"). |
-| Unwind (`#try`) | **How's your world feeling right now?** | Picks a feeling, or types one into **FeelSense** (see below). The matching Mallow moves the way that feeling feels, three press-and-hold breaths soften the thought cloud, the visitor lets it drift or keeps it and checks in on how they feel, and then gets the invitation → **Create my hushmallow account**. |
-| Unwind (`#how`) | **More than a moment.** | Pause, Express, Release, Reframe and Reflect along a line that fills as you scroll. |
-| Connect (`#hushmates`) | **Real people. Softer connections.** · *Coming soon* | Introduces **Hushmates**. Loomi and Boppo face each other across a soft glowing line, and squeezing one sends a little heart to the other. There is no chat, no matching and no member count. A **Keep me updated** button appears only if you set a real updates URL; otherwise the section says plainly that Hushmates isn't open yet. |
-| Your space (`#join`) | **Your space, your pace.** | Why an account is worth having today, a working opt-in **"Remember my Mallow on this browser"** switch, and the sign-up panel. |
-| Final | **Find your soft place.** | All seven Mallows on a dusk horizon. A remembered visitor reads *"Loomi will be here whenever you're ready."* |
+| Hero (`#top`) | **Feel something? *hushmallow.*** / *Whatever you feel, there's a Mallow for that.* | The headline appears word by word over a living backdrop (slow spirals, pearl light, drifting motes, floating bubbles, gentle parallax). Pipzi squishes when held ("Hey. Long day?"), the squad hops along, a long squeeze and a quick triple-tap get their own reactions, and a Mallow left alone does a little personality move now and then. **Meet your Mallow** goes to the live moment; **See the magic** goes to Moodspell. |
+| How it works (`#discover`) | **Feel it. Meet it. *Move through it.*** | Three linked steps, each with its Mallows. |
+| The live moment (`#try`) | **Can't explain the feeling? *Start anywhere.*** | Pick a feeling or type one into **FeelSense** (see below). The matching Mallow appears and moves like that feeling, the room around it changes (a slow spiral for overwhelm, static for frustration, rain for low, ripples for worry, fizz for restless, sun rays for good, stars and fog for not sure), three press-and-hold breaths ease the room and the thought cloud, and letting it go changes the room again (a rainbow after rain, lanterns after fizz, a moon after fog). Then the invitation → **Create my hushmallow account**, and **Tell a friend about Loomi**. |
+| Meet (`#mallows`) | **Meet the Mallows. *Find your kind of magic.*** | A character stage plus a card for each Mallow: what it's for, what it's here for, how it responds, its signature ritual and realm in the app (with a note that rituals are part of a plan), **Try a moment with Glitzi** (starts the live moment fresh with that Mallow) and **Share Glitzi**. |
+| Company (`#feelings`, old link `#unwind`) | **Your feelings *have company.*** | Pop floating everyday thoughts. |
+| Moodspell (`#moodspell`) | **Moodspell. *A little magic for whatever you're feeling.*** | Coming soon. Shows your approved film if you set one (see below); otherwise a clearly labelled live **visual preview** with Noomi and *Think emotion. Think hushmallow.*, and a Pause button. |
+| More inside (`#how`) | **More than a moment.** | Pause, Express, Release, Reframe and Reflect. |
+| Hushmates (`#hushmates`) | **Real people. Softer connections.** · *Coming soon* | Unchanged: no chat, no matching, no member counts; **Keep me updated** only with a real updates URL. |
+| Your space (`#join`) | **Your space, your pace.** | Account benefits, the opt-in **Remember my Mallow** switch and the sign-up panel. |
+| Final | *Feel something?* **Meet your Mallow.** | All seven Mallows on a dusk horizon. A remembered visitor reads "Loomi will be here whenever you're ready." |
 
-**Why it should convert:** the page lets people feel the product before
-asking for anything, and it makes clear that the Mallows and the Unwind moments
-exist *today*. Hushmates is presented as something coming later, not as the
-reason to join. Every sign-up button passes the feeling and Mallow the visitor
-tried on to your app (`?feeling=anxious&mallow=loomi`).
+**What each Mallow is for** (shown on its card):
+Noomi, gentle comfort when you need a softer moment · Blubi, quiet company
+when things feel heavy · Pipzi, bright, playful energy for restless moments ·
+Boppo, celebrating joy, gratitude and little victories · Zuzu, helping make
+sense of overwhelm and overthinking · Loomi, grounding and steadiness during
+worried moments · Glitzi, giving frustration and anger some breathing room.
+Each card names the Mallow's real ritual in the app (Moonmilk Wind-down,
+Raindrop Keeper, Spark to Lantern, Sunpop Savour, Untangle, Drift and Dock,
+Static to Signal), described the way the app actually plays it.
 
-**Brand rules followed.** Copy uses the tagline and description exactly.
-"hushmallow" stays lowercase to match the official logo and the global
-capitalisation rule in `REDESIGN_BRIEF.md`. Fonts are Fraunces, Nunito Sans and
-Manrope. There are no testimonials, user counts, prices, medical claims or
-urgency, and the footer says the Mallows are animated characters and Hushmates
-is a planned feature.
+**Sharing.** Share buttons open the phone's share sheet where there is one,
+and otherwise copy the page link, with a short confirmation at the bottom of
+the screen (also read out by screen readers). Nothing is posted anywhere by
+the page itself.
+
+**Brand rules followed.** "hushmallow" is always lowercase (also inside
+uppercase labels). Slogans are used once each where they matter most: the
+headline and support line in the hero, "Think emotion. Think hushmallow." in
+Moodspell and the footer, "Your feelings have company." as a section title,
+"Meet your Mallow." at the start and end. No testimonials, user counts,
+prices, medical claims or urgency.
 
 ### FeelSense (preview)
 
@@ -117,14 +128,15 @@ Firefox and Safari 16+ (container queries).
 | Google / Apple / Email | Show or hide each button. |
 | Terms URL / Privacy URL | Adds "By continuing you agree to our Terms and Privacy Policy" with links. |
 | Contact URL | Footer link (mailto: works). |
-| Headline / Squishy word | `A softer space for feelings.` and `softer`. The squishy word must appear in the headline (any case). If it doesn't, the headline simply shows without the squish. |
+| Headline / Squishy word | `Feel something?` + line break + `hushmallow.`, and `hushmallow`. A line break in the property starts a new line. The squishy word must appear in the headline (any case); if it doesn't, the headline shows without the squish. |
 | Support line, Description | Hero lines under the headline. |
-| Description | Two paragraphs; a blank line in the property starts a new paragraph. |
-| Hero button | "Meet the Mallows". Scrolls to the Mallows and focuses the one in the middle, ready to squeeze. |
-| Second button | "Discover hushmallow". Scrolls to the three ways in. |
-| Second button | "See how hushmallow works". Scrolls to scene 5. |
+| Description | A blank line in the property starts a new paragraph. |
+| Hero button | "Meet your Mallow". Scrolls to the live moment and focuses the first feeling. |
+| Second button | "See the magic". Scrolls to Moodspell. |
 | Nav button, After preview, Final button | The account buttons: "Create account", "Create my hushmallow account", "Create my hushmallow account". |
-| Final headline | "Find your soft place." (A headline starting with "Your Mallow" is also personalised with a remembered Mallow's name.) |
+| Final headline | "Meet your Mallow." (A headline starting with "Your Mallow" is personalised with a remembered Mallow's name.) |
+| **Moodspell video** | Your approved film (MP4 or WebM). Empty shows the labelled visual preview. With a film: it loads only when the section is near the screen, plays muted and looped while on screen, pauses when off screen, has Pause/Play and a Sound on/off button (sound never starts by itself), and with reduced motion it waits for a tap. |
+| Video poster, Video caption | A still shown before the film loads, and the line under it. |
 | Hushmates updates | Leave **empty** until you have a working waitlist or newsletter page. Empty shows a plain "Coming soon" note; a URL shows a **Keep me updated** button that opens it. |
 | Plans note | Under the sign-up buttons. It promises no prices or free tiers, only that people see what they'd pay before paying. |
 | Fixed nav | Pins the nav to the top of the window. |

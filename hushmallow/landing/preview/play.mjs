@@ -100,7 +100,8 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     // copy: the new positioning, none of the old
     const text = await page.locator(".hm").innerText()
     ok((await page.locator("#hm-hero-title").getAttribute("aria-label")) === "Feel something? hushmallow.", "hero headline: Feel something? hushmallow.")
-    ok(text.includes("Think emotion. Think hushmallow.".toUpperCase()) || text.includes("Think emotion. Think hushmallow."), "eyebrow: Think emotion. Think hushmallow.")
+    ok(text.includes("Think emotion. Think hushmallow."), "Think emotion. Think hushmallow. appears (Moodspell, footer)")
+    ok(!/HUSHMALLOW/.test(text), "the brand is never shown in capitals, even inside uppercase labels")
     ok(text.includes("Whatever you feel, there's a Mallow for that."), "support line: Whatever you feel, there's a Mallow for that.")
     ok(!/companion|second brain|virtual therapist|AI emotional|softer space/i.test(text), "no old 'companion' / AI / 'softer space' positioning anywhere on the page")
     ok((await page.locator(".hm-squishword").innerText()) === "hushmallow", "'hushmallow' is the squishy word")
@@ -116,7 +117,7 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     ok((await page.locator("#moodspell video").count()) === 0, "…and has no fake video player")
     ok((await page.locator(".hm-ms-caption").innerText()).includes("not the film itself"), "…and says it isn't the film")
     await page.locator(".hm-ms-ctl").click(); await wait(300)
-    ok((await page.locator(".hm-ms-screen").getAttribute("class")).includes("is-paused") && (await page.locator(".hm-ms-ctl").getAttribute("aria-pressed")) === "true", "Moodspell preview motion can be paused")
+    ok((await page.locator(".hm-ms-screen").getAttribute("class")).includes("is-paused") && (await page.locator(".hm-ms-ctl").getAttribute("aria-label")) === "Play the motion", "Moodspell preview motion can be paused (button now offers Play)")
     await page.locator(".hm-ms-ctl").click()
     if (w === 1440 || w === 390) { await wait(600); await page.screenshot({ path: path.join(out, `play-${w}-moodspell.png`) }) }
     await page.evaluate(() => window.scrollTo(0, 0)); await wait(500)
@@ -208,7 +209,7 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     ok(await page.locator(".hm-care").isVisible(), "'Still a lot' shows the gentle support note")
     ok((await page.locator(".hm-weather.hm-wx-anxious.is-settled").count()) === 1, "the room changed with the feeling and settled after letting it go")
     await page.locator(".hm-done .hm-share-btn").click(); await wait(700)
-    const toastText = await page.locator(".hm-toast").innerText().catch(() => "")
+    const toastText = await page.locator(".hm-portal [role=status]").innerText().catch(() => "")
     ok(/Link copied|Thanks for sharing|Sharing isn't available/.test(toastText), `sharing gives clear feedback ("${toastText}")`)
     ok(await page.locator(".hm-done-title").isVisible(), "conversion moment appears after the demo")
     await page.locator(".hm-done").scrollIntoViewIfNeeded()
@@ -252,7 +253,7 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     await page.locator(".hm-tray-btn", { hasText: "Glitzi" }).click()
     await wait(700)
     ok((await page.locator(".hm-meet-name").innerText()) === "Glitzi", "tray picks Glitzi")
-    ok((await page.locator(".hm-meet-card").innerText()).includes("Static to Signal"), "Glitzi's card names its real in-app ritual")
+    ok((await page.locator(".hm-meet-card").innerText()).includes("Static to Signal") && (await page.locator(".hm-meet-plan").innerText()).includes("part of a hushmallow plan"), "Glitzi's card names its real in-app ritual, and says rituals come with a plan")
     await page.locator(".hm-meet-stage").scrollIntoViewIfNeeded()
     await press(page, page.locator(".hm-meet-fig .hm-squish"), 500)
     await wait(200)
@@ -311,6 +312,27 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     await ctx.close()
 }
 
+// a Mallow card always starts a fresh moment: nothing typed (not even crisis words) carries over
+{
+    console.log("\n=== card starts fresh 1440")
+    const { page, errors } = await open(1440, 900)
+    await page.evaluate(() => document.getElementById("try").scrollIntoView()); await wait(600)
+    await page.locator("#hm-sense-input").fill("honestly I want to die")
+    await page.locator(".hm-sense button[type=submit]").click(); await wait(600)
+    ok(await page.locator(".hm-care-view").isVisible(), "crisis words show the care view")
+    await page.locator(".hm-tray-btn", { hasText: "Blubi" }).click(); await wait(600)
+    await page.locator(".hm-meet-cta .hm-btn-primary").click(); await wait(1500)
+    const cloud = await page.locator(".hm-cloud-text").innerText()
+    ok(cloud === "a heavy grey bit", `the card's moment starts fresh, without the earlier words (cloud: "${cloud}")`)
+    ok(await page.evaluate(() => document.activeElement?.classList.contains("hm-hold")), "keyboard focus moves into the live moment")
+    await page.locator(".hm-play-bar .hm-textbtn", { hasText: "Do it for me" }).click(); await wait(400)
+    await page.locator(".hm-tray-btn", { hasText: "Boppo" }).click(); await wait(500)
+    await page.locator(".hm-meet-cta .hm-btn-primary").click(); await wait(1500)
+    ok((await page.locator(".hm-play-bar .hm-textbtn", { hasText: "Do it for me" }).count()) === 1, "'Do it for me' doesn't carry over to the next Mallow's moment")
+    ok(errors.length === 0, `no page errors ${errors.join(" | ")}`)
+    await page.close()
+}
+
 // Moodspell with a real film: muted autoplay on screen, sound only on request, pausable
 {
     console.log("\n=== moodspell video 1440")
@@ -319,6 +341,10 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     const st = await page.locator("#moodspell video").evaluate((v) => ({ muted: v.muted, paused: v.paused, src: v.currentSrc }))
     ok(st.src.endsWith("test-video.webm") && st.muted && !st.paused, `the film loads near the screen and plays muted (${JSON.stringify(st)})`)
     ok((await page.locator(".hm-ms-badge").innerText()).toLowerCase().includes("first look"), "with a film it's labelled First look")
+    // scroll away and straight back: the film must pick up again, not stay paused
+    await page.evaluate(() => window.scrollTo(0, 0)); await wait(80)
+    await page.evaluate(() => document.getElementById("moodspell").scrollIntoView()); await wait(1500)
+    ok((await page.locator("#moodspell video").evaluate((v) => !v.paused)), "after a quick scroll past and back, the film keeps playing")
     await page.locator(".hm-ms-ctl", { hasText: "Sound on" }).click(); await wait(300)
     ok((await page.locator("#moodspell video").evaluate((v) => v.muted)) === false, "sound turns on only when asked")
     await page.locator(".hm-ms-ctl", { hasText: "Pause" }).click(); await wait(300)
@@ -329,6 +355,8 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     const r = await open(390, 844, { reduced: true, query: "?video=/test-video.webm" })
     await r.page.evaluate(() => document.getElementById("moodspell").scrollIntoView()); await wait(1500)
     ok((await r.page.locator("#moodspell video").evaluate((v) => v.paused)) === true, "reduced motion: the film waits for a tap instead of autoplaying")
+    await r.page.locator(".hm-ms-ctl", { hasText: "Play" }).click(); await wait(800)
+    ok((await r.page.locator("#moodspell video").evaluate((v) => !v.paused)), "reduced motion: a tap plays the film")
     ok(r.errors.length === 0, `no page errors ${r.errors.join(" | ")}`)
     await r.page.close()
 }
@@ -346,6 +374,8 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     await page.locator(".hm-chip", { hasText: "A bit lighter" }).click()
     await wait(600)
     ok(await page.locator(".hm-done-title").isVisible(), "reduced motion: reaches the invitation")
+    await page.evaluate(() => document.getElementById("moodspell").scrollIntoView()); await wait(500)
+    ok((await page.locator("#moodspell .hm-ms-ctl").count()) === 0, "reduced motion: the still Moodspell preview has no play button that would do nothing")
     ok(errors.length === 0, `no page errors ${errors.join(" | ")}`)
     await page.close()
 }

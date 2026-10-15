@@ -105,7 +105,7 @@ const MALLOWS: Record<MallowId, Mallow> = {
         purpose: "Gentle comfort when you need a softer moment.",
         responds: "Slows everything down: sleepy blinks, slow sinking squishes and a calm breath you can borrow.",
         world: "The Moonmilk Cove",
-        ritual: { name: "Moonmilk Wind-down", what: "Snuff out the day's lanterns, sweep a moonbeam down and take one tiny rest." },
+        ritual: { name: "Moonmilk Wind-down", what: "Dim the day's glowing loose ends, sweep a moonbeam down, blink slower with Noomi and choose one tiny rest." },
         feeling: "unsure",
         tickle: "Hehe. Shh. I'm being calm.",
     },
@@ -136,7 +136,7 @@ const MALLOWS: Record<MallowId, Mallow> = {
         purpose: "Quiet company when things feel heavy.",
         responds: "Stays close and unhurried: a gentle wobble, a little drip, and no pressure to cheer up.",
         world: "The Raindrop Lagoon",
-        ritual: { name: "Raindrop Keeper", what: "Catch the drops and name them, float them off as lanterns, then choose one small kindness." },
+        ritual: { name: "Raindrop Keeper", what: "Catch the drops and name them, hold them until they're warm, set them on the water as lanterns, then choose one small kindness." },
         feeling: "low",
         tickle: "Blub! That tickles.",
     },
@@ -168,7 +168,7 @@ const MALLOWS: Record<MallowId, Mallow> = {
         purpose: "Bright, playful energy for restless moments.",
         responds: "Bounces right back: big sparkly eyes, a burst of glitter, and the fizz slowly settling.",
         world: "The Spark Festival",
-        ritual: { name: "Spark to Lantern", what: "Tap along with a slowing beat, surf the urge wave and launch the leftover fizz as a lantern." },
+        ritual: { name: "Spark to Lantern", what: "Tap along with a slowing drum, ride the urge wave, sort your sparks into now and later, then launch a lantern." },
         feeling: "restless",
         tickle: "HAHA! Again! No, wait!",
     },
@@ -230,9 +230,9 @@ const MALLOWS: Record<MallowId, Mallow> = {
         hello: "Oh! A new friend! Quick, which way is up?",
         lids: { top: 0.32, bottom: 0.622 },
         purpose: "Helping make sense of overwhelm and overthinking.",
-        responds: "Gets it completely: spiral eyes, a dizzy spin, then one tangled thought at a time.",
+        responds: "Spirals right along with you: spiral eyes, a dizzy spin, then one tangled thought at a time.",
         world: "The Spiral Observatory",
-        ritual: { name: "Untangle", what: "Wind up the knot, pull each strand free and sort the threads into orbits." },
+        ritual: { name: "Untangle", what: "Name the strands in the knot, pull each one free, sort them onto orbits and give the first one a tug." },
         feeling: "overwhelmed",
         tickle: "Tickle attack! Wheee!",
     },
@@ -1764,7 +1764,10 @@ function Hero(props: { headline: string; squishWord: string; support: string; su
     // "Meet your Mallow": start with a feeling, and the right Mallow comes to you
     const tryFeeling = () => {
         scrollTo("try")
-        window.setTimeout(() => document.querySelector<HTMLElement>("#try .hm-chip")?.focus({ preventScroll: true }), reduced ? 50 : 900)
+        window.setTimeout(() => {
+            const t = document.querySelector<HTMLElement>("#try .hm-pick .hm-chip, #try .hm-hold, #try .hm-ctl button, #try .hm-care-view a")
+            t?.focus({ preventScroll: true })
+        }, reduced ? 50 : 900)
     }
 
     const paragraphs = (props.sub || "").split(/\n\s*\n|\n/).map((t) => t.trim()).filter(Boolean)
@@ -1779,7 +1782,7 @@ function Hero(props: { headline: string; squishWord: string; support: string; su
                 <div className="hm-hero-copy">
                     <p className="hm-eyebrow">
                         <span className="hm-eyebrow-dot" aria-hidden />
-                        <span>Think emotion. Think hushmallow.</span>
+                        <span>Seven Mallows · every feeling</span>
                     </p>
                     <h1 className="hm-h1" id="hm-hero-title" aria-label={props.headline.replace(/\s*\n\s*/g, " ")}>
                         <span aria-hidden>
@@ -2272,10 +2275,17 @@ function FeelingLab({ accountCta }: { accountCta: string }) {
         keepInView()
     }
 
-    // a Mallow card elsewhere on the page can start the moment with its feeling
-    const chooseRef = React.useRef(choose)
-    chooseRef.current = choose
-    React.useEffect(() => registerLab((id) => chooseRef.current(id)), [])
+    // a Mallow card elsewhere on the page starts a completely fresh moment with its
+    // feeling (nothing typed before, no "do it for me", no half-finished breath
+    // carries over), then moves keyboard focus into it
+    const startFresh = (id: FeelingId) => {
+        reset()
+        choose(id)
+        later(() => labRef.current?.querySelector<HTMLElement>(".hm-hold")?.focus({ preventScroll: true }), reduced ? 80 : 900)
+    }
+    const startRef = React.useRef(startFresh)
+    startRef.current = startFresh
+    React.useEffect(() => registerLab((id) => startRef.current(id)), [])
 
     // the room around the Mallow: the feeling's weather, easing as you breathe,
     // and changing once you let the thought go (or keep it)
@@ -2411,13 +2421,14 @@ function FeelingLab({ accountCta }: { accountCta: string }) {
                 <Reveal className="hm-head hm-head-center">
                     <p className="hm-eyebrow">
                         <span className="hm-eyebrow-dot" aria-hidden />
-                        Meet your Mallow · no account needed
+                        <span>Meet your Mallow<span className="hm-hide-xs"> · no account needed</span></span>
                     </p>
                     <h2 className="hm-h2" id="hm-try-title">
                         Can't explain the feeling? <em>Start anywhere.</em>
                     </h2>
                     <p className="hm-sub">
-                        Tell us what's going on, or pick a feeling. We'll help you find a Mallow to explore it with.
+                        Say what's going on in your own words, or pick a feeling. It stays on this page, and we'll help you find a Mallow to explore
+                        it with.
                     </p>
                 </Reveal>
 
@@ -2488,12 +2499,12 @@ function FeelingLab({ accountCta }: { accountCta: string }) {
                                                 value={said}
                                                 maxLength={160}
                                                 onChange={(e) => setSaid(e.target.value)}
-                                                placeholder="e.g. work has been a lot today"
+                                                placeholder="e.g. today's been a lot"
                                                 autoComplete="off"
                                                 enterKeyHint="send"
                                             />
                                             <button type="submit" className="hm-btn hm-btn-ink hm-btn-xs" disabled={!said.trim()}>
-                                                Share
+                                                Find my Mallow
                                             </button>
                                         </div>
                                         <p className="hm-sense-note">
@@ -2825,7 +2836,7 @@ function FeelingLab({ accountCta }: { accountCta: string }) {
                                                 </div>
                                                 <button type="button" className="hm-textbtn hm-share-btn" onClick={() => shareLink(m.id)}>
                                                     <ShareIcon />
-                                                    Send a Mallow to a friend
+                                                    Tell a friend about {m.name}
                                                 </button>
                                             </motion.div>
                                         )}
@@ -3033,12 +3044,13 @@ function Meet() {
                                         <dd>{m.responds}</dd>
                                     </div>
                                     <div>
-                                        <dt>Inside hushmallow</dt>
+                                        <dt>Signature ritual</dt>
                                         <dd>
                                             <strong>{m.ritual.name}</strong>, in {m.world}. {m.ritual.what}
                                         </dd>
                                     </div>
                                 </dl>
+                                <p className="hm-meet-plan">Signature rituals are part of a hushmallow plan. The little moment on this page is free.</p>
                                 <div className="hm-meet-cta">
                                     <button type="button" className="hm-btn hm-btn-primary" onClick={() => startWith(m.feeling)}>
                                         Try a moment with {m.name}
@@ -3086,6 +3098,7 @@ function NoisyHead() {
             : `${n} popped. Look at all that space.`
     return (
         <section className="hm-section hm-human" id="feelings" aria-labelledby="hm-human-title">
+            <span id="unwind" className="hm-anchor" aria-hidden />
             <div className="hm-wrap hm-human-grid">
                 <Reveal className="hm-human-copy">
                     <p className="hm-eyebrow">
@@ -3100,7 +3113,7 @@ function NoisyHead() {
                         wrong. They mean you're human.
                     </p>
                     <p className="hm-body">
-                        Whatever's in there, there's a Mallow with room for it: to squeeze, to tell, to explore with, at your own pace.
+                        Whatever's in there, bring it along: to squeeze, to play with, to explore, at your own pace.
                     </p>
                 </Reveal>
                 <div className="hm-thoughts-wrap">
@@ -3355,7 +3368,7 @@ function Discover() {
                 <Reveal className="hm-head hm-head-center">
                     <p className="hm-eyebrow">
                         <span className="hm-eyebrow-dot" aria-hidden />
-                        Inside hushmallow
+                        <span>Inside <span className="hm-brand">hushmallow</span></span>
                     </p>
                     <h2 className="hm-h2" id="hm-how-title">
                         More than a moment.
@@ -3693,13 +3706,14 @@ function Join({ cfg, mascot, rememberOption }: { cfg: AuthConfig; mascot: string
                 <Reveal className="hm-join-copy">
                     <p className="hm-eyebrow">
                         <span className="hm-eyebrow-dot" aria-hidden />
-                        Your own corner of hushmallow
+                        <span>Your own corner of <span className="hm-brand">hushmallow</span></span>
                     </p>
                     <h2 className="hm-h2" id="hm-join-title">
                         Your space, <em>your pace.</em>
                     </h2>
                     <p className="hm-body">
-                        An account turns a little moment into your own soft place. It's there when you want it, and quiet when you don't.
+                        An account turns a little moment into something you can come back to. It's there when you want it, and quiet when you
+                        don't.
                     </p>
                     <ul className="hm-perks">
                         {PERKS.map((p) => (
@@ -3769,7 +3783,7 @@ function ThreeWays() {
                 <Reveal className="hm-head hm-head-center">
                     <p className="hm-eyebrow">
                         <span className="hm-eyebrow-dot" aria-hidden />
-                        How hushmallow works
+                        <span>How <span className="hm-brand">hushmallow</span> works</span>
                     </p>
                     <h2 className="hm-h2" id="hm-ways-title">
                         Feel it. Meet it. <em>Move through it.</em>
@@ -3848,7 +3862,7 @@ function Hushmates({ updatesUrl }: { updatesUrl: string }) {
                 <Reveal className="hm-mates-copy">
                     <p className="hm-eyebrow">
                         <span className="hm-eyebrow-dot" aria-hidden />
-                        Connect
+                        Real people
                         <span className="hm-soon-tag">Coming soon</span>
                     </p>
                     <h2 className="hm-h2" id="hm-mates-title">
@@ -3952,7 +3966,7 @@ function Hushmates({ updatesUrl }: { updatesUrl: string }) {
 // when you set one (Moodspell video property). Until then this shows a clearly
 // labelled live preview of the look, with no fake player controls.
 // ---------------------------------------------------------------------------
-const MOODSPELL_POINTS = ["Original Mallow animations", "Swirling, spatial sound", "Patterns that move with your mood", "Optional longer wind-downs"]
+const MOODSPELL_POINTS = ["Original Mallow animations", "Swirling, spatial sound", "Patterns for every mood", "Optional longer wind-downs"]
 const VIDEO_URL = /^(https?:\/\/|\/|\.\/|assets\/|blob:)/i
 
 function Moodspell({ video, poster, caption }: { video: string; poster: string; caption: string }) {
@@ -3988,7 +4002,12 @@ function Moodspell({ video, poster, caption }: { video: string; poster: string; 
         v.muted = muted
         if (inView && !paused && loaded) {
             const p = v.play()
-            if (p && typeof p.catch === "function") p.catch(() => setPaused(true)) // autoplay refused: wait for a tap
+            if (p && typeof p.catch === "function")
+                p.catch((e: any) => {
+                    // the browser refused autoplay: wait for a tap. (An AbortError just means we
+                    // paused it ourselves, for example because it scrolled off screen.)
+                    if (e && e.name === "NotAllowedError") setPaused(true)
+                })
         } else v.pause()
     }, [inView, paused, loaded, hasVideo, muted, canvas])
 
@@ -4016,8 +4035,8 @@ function Moodspell({ video, poster, caption }: { video: string; poster: string; 
                         Moodspell. <em>A little magic for whatever you're feeling.</em>
                     </h2>
                     <p className="hm-body">
-                        Original Mallow films, swirling sound and slow, beautiful patterns that shift with your mood. A few minutes to get lost
-                        in, whenever a feeling needs some space.
+                        Original Mallow films, swirling sound and slow, beautiful patterns made for whichever mood you choose. A few minutes to
+                        get lost in, whenever a feeling needs some space.
                     </p>
                     <p className="hm-ms-label">What Moodspell will bring</p>
                     <ul className="hm-ms-points">
@@ -4057,10 +4076,10 @@ function Moodspell({ video, poster, caption }: { video: string; poster: string; 
                         )}
                         <span className="hm-ms-badge">{hasVideo ? "First look" : "Visual preview"}</span>
                         <div className="hm-ms-controls">
+                            {(hasVideo || !reduced) && (
                             <button
                                 type="button"
                                 className="hm-ms-ctl"
-                                aria-pressed={paused}
                                 onClick={() => setPaused((p) => !p)}
                                 aria-label={hasVideo ? (paused ? "Play the film" : "Pause the film") : paused ? "Play the motion" : "Pause the motion"}
                             >
@@ -4075,11 +4094,11 @@ function Moodspell({ video, poster, caption }: { video: string; poster: string; 
                                 )}
                                 <span>{paused ? "Play" : "Pause"}</span>
                             </button>
+                            )}
                             {hasVideo && (
                                 <button
                                     type="button"
                                     className="hm-ms-ctl"
-                                    aria-pressed={!muted}
                                     onClick={toggleSound}
                                     aria-label={muted ? "Turn sound on" : "Turn sound off"}
                                 >
@@ -4137,8 +4156,8 @@ function Finale({ headline, cta }: { headline: string; cta: string }) {
     // a remembered Mallow makes the invitation personal
     const title = saved && /^Your Mallow\b/.test(headline) ? headline.replace(/^Your Mallow/, MALLOWS[saved].name) : headline
     const sub = saved
-        ? `${MALLOWS[saved].name} will be here whenever you're ready. Whatever you feel, there's a Mallow for that.`
-        : "Whatever you feel, there's a Mallow for that. Bring it whenever you're ready, and the Mallows will make room."
+        ? `${MALLOWS[saved].name} will be here whenever you're ready. Bring whatever you're carrying.`
+        : "Bring it whenever you're ready. The Mallows will make room."
     const px = useMotionValue(0.5)
     return (
         <section
@@ -4469,12 +4488,16 @@ export default function HushmallowLanding(props: Props) {
                 !canvas &&
                 createPortal(
                     <div className="hm-portal">
+                        {/* always present, so screen readers announce each new message */}
+                        <div className="hm-vh" role="status" aria-live="polite">
+                            {toast ? toast.text : ""}
+                        </div>
                         <AnimatePresence>
                             {toast && (
                                 <motion.div
                                     key={toast.id}
                                     className="hm-toast"
-                                    role="status"
+                                    aria-hidden
                                     initial={{ opacity: 0, y: 16 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: 10 }}
@@ -4518,7 +4541,7 @@ HushmallowLanding.defaultProps = {
     squishWord: "hushmallow",
     supportHeadline: "Whatever you feel, there's a Mallow for that.",
     subheadline:
-        "Happy, anxious, angry, lonely, overthinking, or something you can't quite name. Meet the Mallows: little emotional allies to squeeze, open up to and explore your feelings with.",
+        "Happy, anxious, angry, lonely, overthinking, or something you can't quite name. Meet the Mallows: little emotional allies to squeeze, express yourself to and explore your feelings with.",
     primaryCta: "Meet your Mallow",
     secondaryCta: "See the magic",
     navCta: "Create account",
@@ -4623,6 +4646,7 @@ const CSS = `
 :where(.hm, .hm-portal) a { color:inherit; -webkit-tap-highlight-color:transparent; }
 .hm :focus-visible, .hm-portal :focus-visible { outline:3px solid #8E6BFF; outline-offset:3px; border-radius:14px; }
 :where(.hm, .hm-portal) :where(p, h1, h2, h3, blockquote, ul) { margin:0; }
+.hm-anchor { position:absolute; top:0; left:0; width:1px; height:1px; scroll-margin-top:76px; }
 .hm-vh { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 .hm-wrap { width:100%; max-width:1240px; margin:0 auto; padding:0 var(--gutter); position:relative; }
 .hm-display, .hm-h1, .hm-h2, .hm-h3, .hm-meet-name, .hm-finale-title, .hm-done-title, .hm-auth-title, .hm-cloud-text, .hm-meet-ghost {
@@ -4718,6 +4742,7 @@ const CSS = `
 
 /* A. hero */
 .hm-hero { position:relative; overflow:hidden; padding:72px 0 96px; }
+.hm-hero::after { content:""; position:absolute; left:0; right:0; bottom:0; height:140px; background:linear-gradient(180deg, rgba(255,248,243,0), var(--cream)); pointer-events:none; z-index:0; }
 .hm-hero-grid { display:grid; grid-template-columns:minmax(0,1.04fr) minmax(0,1fr); gap:24px; align-items:center; z-index:1; }
 .hm-hero-copy { max-width:620px; position:relative; z-index:2; }
 .hm-squishword { display:inline-block; transform-origin:50% 88%; font-style:italic; font-weight:500; padding:0 .04em; background:linear-gradient(100deg,#FF6FB5 0%,#A07BFF 45%,#48B8F5 90%); -webkit-background-clip:text; background-clip:text; color:transparent; }
@@ -4950,7 +4975,7 @@ const CSS = `
 .hm-human { background:linear-gradient(180deg, var(--cream), #FFF1EA 50%, var(--cream)); overflow:hidden; }
 .hm-human-grid { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:64px; align-items:center; }
 .hm-human-copy .hm-h2 { max-width:9em; }
-.hm-human-copy .hm-h2 em { background:linear-gradient(100deg,#FF7A59,#FF5FA2); -webkit-background-clip:text; background-clip:text; color:transparent; padding-right:.06em; }
+.hm-human-copy .hm-h2 em { background:linear-gradient(100deg,#D9512F,#D63C8C); -webkit-background-clip:text; background-clip:text; color:transparent; padding-right:.06em; }
 .hm-thoughts { display:flex; flex-wrap:wrap; justify-content:center; gap:14px 12px; padding:10px 0; }
 .hm-thought { display:block; border-radius:999px; }
 .hm-thought-tilt { display:block; transform:rotate(var(--rot)) translateY(var(--dy)); }
@@ -5231,13 +5256,13 @@ const CSS = `
 .hm-rv { display:inline-block; }
 .hm-rv-in { display:inline-block; animation:hm-rv 1.15s var(--ease) both; }
 @keyframes hm-rv { 0% { opacity:0; transform:translateY(.42em) rotate(2.5deg) scale(.96); filter:blur(10px) } 55% { filter:blur(0) } 100% { opacity:1; transform:none; filter:none } }
-.hm-h1 .hm-squishword { background:linear-gradient(100deg,#FF6FB5 0%,#A07BFF 26%,#48B8F5 50%,#C792FF 74%,#FF6FB5 100%); background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-pearl-text 10s ease-in-out infinite alternate; }
+.hm-h1 .hm-squishword { background:linear-gradient(100deg,#D63C8C 0%,#7A4FE0 26%,#1F7FC0 50%,#8A4FD8 74%,#D63C8C 100%); background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-pearl-text 10s ease-in-out infinite alternate; }
 @keyframes hm-pearl-text { from { background-position:0% 50% } to { background-position:100% 50% } }
 .hm-magic-dot { width:9px; height:9px; flex:none; border-radius:50%; background:conic-gradient(#FF8FC8,#A98BFF,#6CC6F5,#FF8FC8); box-shadow:0 0 10px rgba(169,139,255,.8); animation:hm-turn 4s linear infinite; }
 
 /* hero atmosphere */
 .hm-hero-grid { position:relative; z-index:1; }
-.hm-atmos { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.hm-atmos { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; -webkit-mask-image:linear-gradient(180deg, #000 0%, #000 72%, transparent 100%); mask-image:linear-gradient(180deg, #000 0%, #000 72%, transparent 100%); }
 .hm-atmos-layer { position:absolute; inset:-60px; will-change:transform; }
 .hm-pearl { position:absolute; left:64%; top:50%; width:1150px; height:1150px; margin:-575px 0 0 -575px; border-radius:50%; background:conic-gradient(from 0deg, rgba(255,184,218,.55), rgba(205,184,255,.5), rgba(175,226,255,.55), rgba(255,231,166,.45), rgba(255,184,218,.55)); -webkit-mask-image:radial-gradient(closest-side, #000 28%, transparent 100%); mask-image:radial-gradient(closest-side, #000 28%, transparent 100%); opacity:.8; animation:hm-turn 120s linear infinite; }
 @keyframes hm-turn { to { transform:rotate(360deg) } }
@@ -5257,7 +5282,7 @@ const CSS = `
 @keyframes hm-bob { 0%,100% { transform:translate3d(0,0,0) } 25% { transform:translate3d(6px,-14px,0) } 50% { transform:translate3d(-4px,-26px,0) } 75% { transform:translate3d(-8px,-10px,0) } }
 
 /* section titles with a pearly second half */
-.hm-try .hm-h2 em, .hm-meet .hm-h2 em, .hm-ways .hm-h2 em { font-style:italic; background:linear-gradient(100deg,#FF6FB5,#A07BFF 50%,#48B8F5); -webkit-background-clip:text; background-clip:text; color:transparent; padding-right:.06em; }
+.hm-try .hm-h2 em, .hm-meet .hm-h2 em, .hm-ways .hm-h2 em { font-style:italic; background:linear-gradient(100deg,#D63C8C,#7A4FE0 50%,#1F7FC0); -webkit-background-clip:text; background-clip:text; color:transparent; padding-right:.06em; }
 
 /* Mallow cards */
 .hm-meet-card { position:relative; width:100%; padding:28px 28px 24px; border-radius:32px; background:linear-gradient(160deg, #FFFFFF 30%, var(--mc)); box-shadow:0 0 0 1px rgba(31,22,64,.06) inset, 0 30px 60px -44px var(--md); overflow:hidden; isolation:isolate; }
@@ -5273,6 +5298,8 @@ const CSS = `
 .hm-meet-facts .hm-tags { margin:0; }
 .hm-meet-cta { margin-top:22px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; }
 .hm-share-btn { font-size:14.5px; color:var(--ink-2); }
+.hm-brand { text-transform:none; letter-spacing:.02em; }
+.hm-meet-plan { margin-top:14px; font:500 13.5px/1.45 var(--body); color:var(--ink-3); }
 .hm-done .hm-share-btn { margin-top:2px; }
 
 /* the live moment's weather */
@@ -5336,7 +5363,7 @@ const CSS = `
 .hm-ms-screen.is-paused *, .hm-ms-screen.is-paused *::before, .hm-ms-screen.is-paused *::after { animation-play-state:paused !important; }
 .hm-ms-screen.is-paused .hm-ms-words span { position:static; display:inline; animation:none; opacity:1; filter:none; transform:none; }
 .hm-ms-badge { position:absolute; left:16px; top:16px; z-index:2; font:800 11.5px/1 var(--ui); letter-spacing:.08em; text-transform:uppercase; color:#FFF8F3; background:rgba(18,12,44,.6); padding:8px 10px; border-radius:999px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18); }
-.hm-ms-controls { position:absolute; right:14px; bottom:14px; z-index:2; display:flex; gap:8px; }
+.hm-ms-controls { position:absolute; right:14px; top:12px; z-index:2; display:flex; gap:8px; }
 .hm-ms-ctl { display:inline-flex; align-items:center; gap:7px; min-height:44px; padding:0 14px; border-radius:999px; color:#FFF8F3 !important; background:rgba(18,12,44,.66) !important; box-shadow:inset 0 0 0 1px rgba(255,255,255,.22); font:700 14px/1 var(--ui) !important; }
 .hm-ms-ctl svg { width:16px; height:16px; flex:none; }
 .hm-ms-ctl:hover { background:rgba(18,12,44,.85) !important; }
@@ -5354,6 +5381,8 @@ const CSS = `
   .hm-ms-copy .hm-body { max-width:34em; }
   .hm-ms-points { justify-content:center; }
   .hm-meet-card { text-align:left; }
+  .hm-meet-card .hm-tags { justify-content:flex-start; }
+  .hm-meet-card .hm-meet-bio { margin:0; }
 }
 @container hm (max-width: 600px) {
   .hm-floaters { inset:40px 20px; }
@@ -5370,9 +5399,14 @@ const CSS = `
   .hm-wx-spiral { width:700px; height:700px; margin:-350px 0 0 -350px; }
 }
 
+@container hm (max-width: 420px) {
+  .hm-hide-xs { display:none; }
+  .hm-eyebrow { font-size:11.5px; letter-spacing:.06em; gap:8px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hm-ms-words span { position:static !important; display:inline !important; animation:none !important; opacity:1 !important; filter:none !important; transform:none !important; }
   .hm-rv-in { animation:none !important; }
-  .hm *, .hm-portal * { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+  .hm *, .hm-portal *, .hm *::before, .hm *::after, .hm-portal *::before, .hm-portal *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
 }
 `
