@@ -3,7 +3,7 @@
 //   check.html?mode=skins&id=glitzi&kind=new|old[&skin=600][&spin=0.7]
 //        REST approved | REST drawn | |diff| x3 | every preset at intensity 1
 //        | six at .35 | blink .5 / 1, and window.__jump (rest jump metric)
-//   check.html?mode=pair&id=glitzi&presets=happy,excited&i=1&skin=400
+//   check.html?mode=pair&id=glitzi&presets=happy,excited&i=1&skin=400&hires=0
 //        old (top row) vs new (bottom row)
 //   check.html?mode=overflow[&kind=new|old][&ids=...]
 //        drawn face pixels outside the body's alpha, for every preset (at .7
@@ -17,7 +17,7 @@
 //        spirals at spinAngle 0, the painted phase (the sprites are cut from
 //        the art); __jumps.zuzuSpin07 adds the arbitrary phase 0.7 (what a
 //        rig that keeps spinning at rest shows the moment it leaves rest).
-//        node tools/hires/lab/run.cjs json 'mode=jump&kind=new' (and kind=old)
+//        node tools/hires/lab/run.cjs json 'mode=jump&kind=new' (and 'mode=jump&kind=old&hires=0')
 //   check.html?mode=mouths&id=loomi[&kind=new]   mouth states + talking frames
 //   check.html?mode=live&id=glitzi&kind=new&sizes=110,220,380&presets=...  live rigs (run.cjs page)
 // Results: window.__ready = true, then __out (PNG data URL) and/or numbers.
