@@ -59,6 +59,7 @@ node hushmallow/sensory-lab/tests/e2e-phase2.cjs      # Phase 2 suite: seven Mal
 node hushmallow/sensory-lab/tests/e2e-phase3.cjs      # Phase 3: shared engine block + the three feature suites → docs/phase3/
 PART=weather node hushmallow/sensory-lab/tests/e2e-phase3.cjs   # one block or suite (shared, weather, hushbeat, nightlight, or <id>:<block>)
 node hushmallow/sensory-lab/tests/e2e-phase3-hushbeat.cjs        # each feature suite also runs alone
+LAB_URL=http://host/path/index.html node hushmallow/sensory-lab/tests/e2e.cjs   # any suite against another server (e.g. the published copy)
 node hushmallow/sensory-lab/tests/record-demo.cjs out # demo video (webm)
 ```
 
