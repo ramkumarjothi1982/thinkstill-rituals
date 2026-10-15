@@ -93,8 +93,10 @@ export function createEntitlements({ store }) {
   const listeners = new Set();
   let state = store.get('entitlement', { tier: 'none', source: null, since: null });
   const testOk = testPurchasesAllowed();
-  // a test plan saved on a dev host means nothing on the public site
-  if (state.source === 'test' && !testOk && !native) state = { tier: 'none', source: null, since: null };
+  // a test plan saved on a dev host means nothing on the public site (testEnded: the plans page says so, once, quietly —
+  // a returning pilot tester whose test plan this host no longer honours; nothing stored is changed)
+  const testEnded = state.source === 'test' && !testOk && !native;
+  if (testEnded) state = { tier: 'none', source: null, since: null };
 
   const set = (tier, source) => {
     state = { tier, source, since: Date.now() };
@@ -106,6 +108,8 @@ export function createEntitlements({ store }) {
     get isNative() { return !!native; },
     /** Can this build sell (or test-grant) a plan right now? */
     get canPurchase() { return !!native || testOk; },
+    /** A test plan was kept on this phone, and this host has no test purchases: it was set aside at start. */
+    get testEnded() { return testEnded && state.tier === 'none'; },
     tier: () => state.tier,
     source: () => state.source,
     has: (need) => RANK[state.tier] >= RANK[need],
