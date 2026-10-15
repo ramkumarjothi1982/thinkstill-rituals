@@ -103,9 +103,17 @@ async function readJson(req) {
   return body;
 }
 
+// As Supabase's API gateway answers for Auth: any web page may call it (the project key, not the
+// page's origin, is what's checked), so an app on another host (a static host) works the same.
+const CORS = { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'x-supabase-api-version' };
+const PREFLIGHT = {
+  ...CORS, 'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type, x-supabase-api-version', 'access-control-max-age': '600',
+};
+
 function send(res, status, body, headers = {}) {
   if (res.headersSent) return;
-  const base = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...headers };
+  const base = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...CORS, ...headers };
   if (body == null) { res.writeHead(status, base); res.end(); return; }
   const text = JSON.stringify(body);
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(text), ...base });
@@ -452,6 +460,7 @@ export async function createAuthEmulator({
     /** Answers anything under /auth/v1/; false for any other path (so the caller can route it). */
     async handle(req, res, pathname) {
       if (closed || (pathname !== '/auth/v1' && !String(pathname).startsWith('/auth/v1/'))) return false;
+      if (req.method === 'OPTIONS') { res.writeHead(204, PREFLIGHT); res.end(); return true; }
       try {
         const [status, body, headers] = await route(req, pathname);
         send(res, status, body, headers);

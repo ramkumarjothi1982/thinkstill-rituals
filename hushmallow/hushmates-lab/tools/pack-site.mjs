@@ -19,13 +19,20 @@ const NOT_HERE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><me
 
 const walk = (dir) => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? walk(p) : [p]; });
 
-export function packSite({ supabaseUrl, anonKey, out = join(ROOT, 'dist', 'site') }) {
-  const origin = new URL(supabaseUrl).origin;
-  if (new URL(supabaseUrl).protocol !== 'https:') throw new Error('the Supabase address must start with https://');
+export function packSite({ supabaseUrl, anonKey, out = join(ROOT, 'dist', 'site'), allowLocal = false }) {
+  const u = new URL(supabaseUrl);
+  const origin = u.origin;
+  // a local stack stands in for Supabase only in the staging rehearsal (tools/staging-e2e.mjs --rehearse)
+  const local = allowLocal && u.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(u.hostname);
+  if (u.protocol !== 'https:' && !local) throw new Error('the Supabase address must start with https://');
+  // the build refuses any local address in what ships, rightly: a rehearsal builds for a placeholder
+  // project and puts the local address in afterwards (the address is the only difference)
+  const PLACEHOLDER = 'https://rehearsal.invalid';
+  const buildUrl = local ? PLACEHOLDER : supabaseUrl;
   const tmp = mkdtempSync(join(tmpdir(), 'hushmates-pack-'));
   try {
     for (const which of ['app', 'staff']) {
-      const res = build({ out: join(tmp, which), which, deploy: { supabaseUrl, anonKey } });
+      const res = build({ out: join(tmp, which), which, deploy: { supabaseUrl: buildUrl, anonKey } });
       if (!res.ok) throw new Error(`the ${which} build was refused: ${res.problems.map((p) => `${p.url} ${p.why}`).slice(0, 3).join('; ')}`);
     }
     rmSync(out, { recursive: true, force: true });
@@ -39,6 +46,12 @@ export function packSite({ supabaseUrl, anonKey, out = join(ROOT, 'dist', 'site'
         if (existsSync(target) && !readFileSync(target).equals(readFileSync(file))) throw new Error(`${rel} differs between the app and the desk`);
         mkdirSync(dirname(target), { recursive: true });
         cpSync(file, target);
+      }
+    }
+    if (local) {
+      for (const file of walk(out).filter((f) => /\.(html|json)$/.test(f))) {
+        const text = readFileSync(file, 'utf8');
+        if (text.includes(PLACEHOLDER)) writeFileSync(file, text.split(PLACEHOLDER).join(origin));
       }
     }
     const csp = `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' ${origin}; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;

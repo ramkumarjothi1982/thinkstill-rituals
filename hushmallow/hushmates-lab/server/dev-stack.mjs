@@ -41,6 +41,7 @@ export async function startDevStack({
   testerKey = process.env.HUSHMATES_TESTER_KEY || null, invites = [], staffInvites = [], keysFile = join(LAB_ROOT, '.data', 'dev-keys.json'),
   now = () => Date.now(), dbNow = null, tickMs = 15e3, log = console, quiet = false,
   edge = process.env.HUSHMATES_EDGE || 'node', deno = process.env.HUSHMATES_DENO || 'deno',
+  extraOrigins = [],            // the app served from another host (as on staging: a static host), e.g. tools/staging-e2e.mjs --rehearse
 } = {}) {
   if (!['node', 'deno'].includes(edge)) throw new Error(`edge is 'node' or 'deno', not ${edge}`);
   // the database, made and migrated if needed (tests hand in one of their own)
@@ -80,7 +81,7 @@ export async function startDevStack({
   // tests move the database's clock with theirs (with the Edge Function under Deno, only the database's: Deno keeps real time)
   const dbClock = dbNow || (moveDbClock ? now : null);
   const db = createPgDb(pool, dbClock ? { now: dbClock } : {});
-  const allowedOrigins = [origin, `http://localhost:${port}`];
+  const allowedOrigins = [origin, `http://localhost:${port}`, ...extraOrigins];
   let gateway;
   let edgeProcess = null;
   // Supabase's PostgREST, for the Edge Function under Deno, and for checks that it refuses browsers (tools/staging-check.mjs)
@@ -188,7 +189,8 @@ function edgeProxy({ edgeOrigin, jobSecret }) {
       const headers = [...request.headers].filter(([k]) => !DROP_IN.has(k));
       const body = ['GET', 'HEAD'].includes(request.method) ? undefined : Buffer.from(await request.arrayBuffer());
       const r = await fetch(`${edgeOrigin}${u.pathname}${u.search}`, { method: request.method, headers, body, redirect: 'manual' });
-      return new Response(Buffer.from(await r.arrayBuffer()), { status: r.status, headers: [...r.headers].filter(([k]) => !DROP_OUT.has(k)) });
+      const bodyless = [101, 204, 205, 304].includes(r.status) || request.method === 'HEAD';      // a preflight's 204 has no body at all
+      return new Response(bodyless ? null : Buffer.from(await r.arrayBuffer()), { status: r.status, headers: [...r.headers].filter(([k]) => !DROP_OUT.has(k)) });
     },
     // the scheduler's call, as pg_cron makes it on Supabase: POST /jobs/tick with the job secret
     async tick() {

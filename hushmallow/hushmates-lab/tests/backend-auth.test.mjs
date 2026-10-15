@@ -395,6 +395,27 @@ describe('the local copy of Supabase Auth', () => {
     clock.t = saved;
   });
 
+  test('any page may call it, as Supabase answers (CORS), and the admin API makes users and codes without email', async () => {
+    const pre = await fetch(`${base}/auth/v1/otp`, { method: 'OPTIONS', headers: { origin: 'https://site.example', 'access-control-request-method': 'POST', 'access-control-request-headers': 'apikey, content-type' } });
+    assert.equal(pre.status, 204);
+    assert.equal(pre.headers.get('access-control-allow-origin'), '*');
+    assert.match(pre.headers.get('access-control-allow-headers'), /apikey/);
+    assert.equal((await call('/auth/v1/user', { method: 'GET' })).headers.get('access-control-allow-origin'), '*');
+    const email = someone();
+    assert.equal((await call('/auth/v1/admin/users', { body: { email, email_confirm: true } })).status, 401, 'made a user without the service key');
+    const made = await call('/auth/v1/admin/users', { key: SERVICE, token: SERVICE, body: { email, email_confirm: true } });
+    assert.equal(made.status, 200);
+    assert.equal((await call('/auth/v1/admin/users', { key: SERVICE, token: SERVICE, body: { email, email_confirm: true } })).status, 422);
+    assert.equal((await call('/auth/v1/admin/users', { key: SERVICE, token: SERVICE, body: { email: someone(), password: 'x', email_confirm: true } })).status, 400, 'a password account');
+    assert.equal((await call(`/auth/v1/admin/users/${made.body.id}`, { method: 'GET', key: SERVICE, token: SERVICE })).body.email, email);
+    const link = await call('/auth/v1/admin/generate_link', { key: SERVICE, token: SERVICE, body: { type: 'magiclink', email } });
+    assert.match(link.body.email_otp, /^\d{6}$/);
+    assert.equal(emu.mailbox(email), null, 'a generated code was "emailed"');
+    const s = await call('/auth/v1/verify', { body: { type: 'email', email, token: link.body.email_otp } });
+    assert.equal(s.status, 200);
+    assert.equal(s.body.user.id, made.body.id);
+  });
+
   test('only the service key deletes a user, and everything of theirs goes with them', async () => {
     const email = someone();
     const s = await signIn(email);

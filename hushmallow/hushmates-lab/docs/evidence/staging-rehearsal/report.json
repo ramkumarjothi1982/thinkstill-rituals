@@ -1,0 +1,458 @@
+{
+  "environment": "local-rehearsal",
+  "verifiedOn": "local-rehearsal",
+  "site": "http://127.0.0.1:41423",
+  "supabase": "http://127.0.0.1:43561",
+  "startedAt": "2026-10-15T05:49:41.625Z",
+  "run": "lhockf",
+  "engine": "Chromium (desktop and mobile emulation)",
+  "checks": [
+    {
+      "area": "site",
+      "ok": true,
+      "what": "the app is published",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "its security policy lets pages talk to this project only, run no outside scripts, and refuses framing",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "the protective headers are there",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "the app’s settings name this project and its public key only (no secret key)",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "/lab/ isn’t published",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "/lab/index.html isn’t published",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "/core/relay-seed.js isn’t published",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "/.git/config isn’t published",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "/server/server.mjs isn’t published",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "/supabase/functions/_shared/gateway.js isn’t published",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "the safety desk is published",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "the site’s front door leads to the app",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "the function refuses a call with no sign-in",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "the scheduler’s route is “not found” without its secret",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "a browser can’t call the database directly (permission denied)",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "another website’s page isn’t allowed to call the function (no CORS for it)",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "site",
+      "ok": true,
+      "what": "the app’s own site is allowed to call the function",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "sign-in",
+      "ok": true,
+      "what": "a new person signs up on a phone: email code, invitation, name, 18+",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "sign-in",
+      "ok": true,
+      "what": "the session is recorded as an email-code sign-in",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "sign-in",
+      "ok": true,
+      "what": "the account is theirs, under the name they chose",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "sign-in",
+      "ok": true,
+      "what": "a second person signs up on a desktop and turns on catching",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "relay",
+      "ok": true,
+      "what": "a feeling is released from the phone",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "relay",
+      "ok": true,
+      "what": "the other person is offered it",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "privacy",
+      "ok": true,
+      "what": "without learning who wrote it",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "relay",
+      "ok": true,
+      "what": "the perspective is stored once",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "encryption",
+      "ok": true,
+      "what": "the feeling is stored locked in the database",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "safety",
+      "ok": true,
+      "what": "words that suggest someone isn’t safe get Australian crisis support",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "safety",
+      "ok": true,
+      "what": "the lines can be tapped to call",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "safety",
+      "ok": true,
+      "what": "and the words were never stored or sent",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "scheduler",
+      "ok": true,
+      "what": "the Mallow’s perspective was prepared by the local scheduler with nobody calling",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "mallow",
+      "ok": true,
+      "what": "it came from the free library (no AI)",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "mallow",
+      "ok": true,
+      "what": "the Mallow’s perspective is labelled as automatic, never as a person’s",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "scheduler",
+      "ok": true,
+      "what": "the first feeling came home when its time was up, with one person",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "relay",
+      "ok": true,
+      "what": "the homecoming shows the perspective and the real count",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "privacy",
+      "ok": true,
+      "what": "the share picture draws the allowed perspective and names nobody",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "privacy",
+      "ok": true,
+      "what": "when its writer stops sharing, a new picture is not made with their words",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "a wrong sign-in code is refused, kindly",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "an invitation someone already used is refused",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "sign-in",
+      "ok": true,
+      "what": "a third person signs up on a smaller phone",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "words that look like code are shown as words, never run (refused by the screen)",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "relay",
+      "ok": true,
+      "what": "a third person, on another phone, is offered the next feeling",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "safety",
+      "ok": true,
+      "what": "they report it: “Someone may be in danger”",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "safety",
+      "ok": true,
+      "what": "the safety desk sees it first, marked priority",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "safety",
+      "ok": true,
+      "what": "the desk reads the words, never who wrote or reported them",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "safety",
+      "ok": true,
+      "what": "the desk decides, and the decision is recorded",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "safety",
+      "ok": true,
+      "what": "the activity log has the decision",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "a member can’t use the safety desk’s methods",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "a page on another website can’t use someone’s sign-in",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "a forged token is refused",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "one person can’t read another’s journey, even with its id",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "security",
+      "ok": true,
+      "what": "a signed-in person can’t call the database’s door directly as someone else",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "privacy",
+      "ok": true,
+      "what": "Your data shows the person’s own account, and nobody else by name",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "deletion",
+      "ok": true,
+      "what": "deleting from the phone removes the sign-in from Supabase Auth",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "deletion",
+      "ok": true,
+      "what": "and their words from the database",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "deletion",
+      "ok": true,
+      "what": "test person B: deleted, sign-in included",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "deletion",
+      "ok": true,
+      "what": "test person C: deleted, sign-in included",
+      "verifiedOn": "local-rehearsal"
+    },
+    {
+      "area": "deletion",
+      "ok": true,
+      "what": "test person M: deleted, sign-in included",
+      "verifiedOn": "local-rehearsal"
+    }
+  ],
+  "screens": [
+    {
+      "file": "01-phone-390-signed-up.jpg",
+      "device": "phone-390",
+      "size": "390 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "02-phone-390-released.jpg",
+      "device": "phone-390",
+      "size": "390 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "03-desktop-1280-offered.jpg",
+      "device": "desktop-1280",
+      "size": "1280",
+      "overflow": false
+    },
+    {
+      "file": "04-desktop-1280-perspective-sent.jpg",
+      "device": "desktop-1280",
+      "size": "1280",
+      "overflow": false
+    },
+    {
+      "file": "05-phone-390-support.jpg",
+      "device": "phone-390",
+      "size": "390 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "06-phone-390-mallow.jpg",
+      "device": "phone-390",
+      "size": "390 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "07-phone-390-homecoming.jpg",
+      "device": "phone-390",
+      "size": "390 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "08-phone-390-share-picture.jpg",
+      "device": "phone-390",
+      "size": "390 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "09-phone-360-probe.jpg",
+      "device": "phone-360",
+      "size": "360 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "10-phone-360-offered.jpg",
+      "device": "phone-360",
+      "size": "360 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "11-phone-360-reported.jpg",
+      "device": "phone-360",
+      "size": "360 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "12-desktop-1440-desk-queue.jpg",
+      "device": "desktop-1440",
+      "size": "1440",
+      "overflow": false
+    },
+    {
+      "file": "13-desktop-1440-desk-report.jpg",
+      "device": "desktop-1440",
+      "size": "1440",
+      "overflow": false
+    },
+    {
+      "file": "14-phone-390-your-data.jpg",
+      "device": "phone-390",
+      "size": "390 (mobile)",
+      "overflow": false
+    },
+    {
+      "file": "15-phone-390-deleted.jpg",
+      "device": "phone-390",
+      "size": "390 (mobile)",
+      "overflow": false
+    }
+  ],
+  "console": [],
+  "expected": [
+    "phone-360: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "phone-360: Failed to load resource: the server responded with a status of 409 (Conflict)"
+  ],
+  "notChecked": [
+    "HSTS: the rehearsal site is plain http on this machine",
+    "email delivery: the app’s “send me a code” call was answered by the test (no email sent); the staging guide’s hand test covers real emails",
+    "Safari/WebKit and real phones: Chromium with phone sizes and touch only (run with real devices by hand)"
+  ],
+  "finishedAt": "2026-10-15T05:51:10.392Z",
+  "passed": 57,
+  "failed": 0
+}

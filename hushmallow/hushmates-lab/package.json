@@ -15,7 +15,9 @@
     "staging:check": "node tools/staging-check.mjs",
     "staging:drill": "node tools/recovery-drill.mjs",
     "safety:eval": "node tools/safety-eval.mjs",
-    "staging:site": "node tools/pack-site.mjs"
+    "staging:site": "node tools/pack-site.mjs",
+    "staging:e2e": "node tools/staging-e2e.mjs",
+    "staging:rehearse": "node tools/staging-e2e.mjs --rehearse"
   },
   "devDependencies": {
     "pg": "8.13.1"
