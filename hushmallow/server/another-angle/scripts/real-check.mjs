@@ -253,7 +253,10 @@ async function apiStage() {
   // session
   const device = randomBytes(16).toString('hex');
   /** @param {string} base */
-  const newSession = async (base) => call(base, '/v1/session', { body: { device_id: `${device}${base === BASE ? '' : 'b'}`, platform: 'web', app_version: 'real-check' } });
+  // (a fresh device only once a device's daily angles run out, so a long list of held-out cases can all be sent)
+  let deviceN = 0;
+  /** @param {string} base @param {boolean} [fresh] */
+  const newSession = async (base, fresh = false) => call(base, '/v1/session', { body: { device_id: `${device}${base === BASE ? '' : 'b'}${fresh ? `-d${++deviceN}` : ''}`, platform: 'web', app_version: 'real-check' } });
   const ses = await newSession(BASE);
   let token = ses.json?.token || '';
   check('contract', 'session', 'POST /v1/session (testing entitlement)', '200 ok + token', `${ses.http} ${ses.json?.status || codeOf(ses.json) || ''} token=${token ? 'yes' : 'no'} quota=${ses.json?.quota?.daily ?? '?'}`,
@@ -379,7 +382,7 @@ async function apiStage() {
     let l = await lastAngle(tail);
     budget.add(l);
     if (r.http === 429 && codeOf(r.json) === 'daily_limit') {
-      const s = await newSession(BASE);
+      const s = await newSession(BASE, true);
       token = s.json?.token || token;
       r = await call(BASE, '/v1/angle', { body: reqBody, token });
       l = await lastAngle(tail);
