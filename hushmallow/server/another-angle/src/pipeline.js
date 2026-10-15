@@ -3,6 +3,8 @@
 //
 //   0. no letters or digits (emoji only)  → "unclear" fallback, no model call
 //   1. safety pre-check (shared lexicon)  crisis/care → support, no model call
+//  1b. the lexicon on the normalised words and the shared risk screener: care → support, no model call;
+//      'check' → the model is told the words may carry risk and to judge safety_status first; support kept close
 //   2. model call (structured JSON)       refusal/timeout/error → fallback signal
 //   3. strict schema validation           invalid → regenerate
 //   4. model's safety_status honoured     care/crisis → support, no reframe
@@ -11,7 +13,7 @@
 //   7. deterministic quality gate         fail → ONE regeneration with reasons
 //   8. still failing                      → fallback signal (authored engine)
 
-import { checkSafety, supportPayload, outputIsSafe } from './safety/index.js';
+import { checkSafety, screenInput, supportPayload, outputIsSafe } from './safety/index.js';
 import { buildUserMessage, looksLikeInjection, PROMPT_VERSION } from './prompt.js';
 import { SCENE_SCHEMA, validateScene, normaliseScene } from './schema.js';
 import { qualityGate, VISIBLE_FIELDS } from './gate.js';
@@ -32,7 +34,7 @@ import { SCHEMA_VERSION, PATTERN_TO_AUTHORED } from './vocab.js';
  *   keep_support_close: boolean,
  *   meta: {
  *     attempts: number, gate: 'pass' | 'regen_pass' | 'fail' | 'skipped', gate_codes: string[], safety_level: string,
- *     safety_category: string | null, safety_source: 'lexicon' | 'model' | null, injection: boolean, normalised: string[],
+ *     safety_category: string | null, safety_source: 'lexicon' | 'model' | 'screen' | null, screen_level: string, injection: boolean, normalised: string[],
  *     provider_error: string | null, refusal_category: string | null, model: string | null, fallback_model: string | null,
  *     usage: UsagePart[], model_ms: number, lexicon_level: string, drafts?: Draft[],
  *   }
@@ -66,7 +68,7 @@ export async function runAngle(input, deps) {
   const started = now();
   /** @type {AngleResult['meta']} */
   const meta = {
-    attempts: 0, gate: 'skipped', gate_codes: [], safety_level: 'none', safety_category: null, safety_source: null,
+    attempts: 0, gate: 'skipped', gate_codes: [], safety_level: 'none', safety_category: null, safety_source: null, screen_level: 'none',
     injection: false, normalised: [], provider_error: null, refusal_category: null, model: null, fallback_model: null,
     usage: deps.usage || [], model_ms: 0, lexicon_level: 'none',
   };
@@ -89,7 +91,18 @@ export async function runAngle(input, deps) {
     meta.safety_source = 'lexicon';
     return /** @type {AngleResult} */ (done({ status: safety.level, support: supportPayload(safety.level, safety.category, 'lexicon'), keep_support_close: true }));
   }
-  const concern = safety.level === 'concern';
+  // 1b. The same words in their normalised spelling, and the shared risk screener (src/safety/risk-screen.js): a client that
+  // skips its own check-in still meets them here. Care: no model call. 'check': the model is asked, told to judge safety first.
+  const screened = screenInput(input.text);
+  meta.screen_level = screened.screen_level;
+  if ((screened.level === 'crisis' || screened.level === 'care') && !deps.skipLexicon) {
+    meta.safety_source = screened.source;
+    meta.safety_level = screened.level;
+    meta.safety_category = screened.category;
+    return /** @type {AngleResult} */ (done({ status: screened.level, support: supportPayload(screened.level, screened.category, screened.source || 'lexicon'), keep_support_close: true }));
+  }
+  const riskCheck = screened.check;
+  const concern = safety.level === 'concern' || screened.level === 'concern' || riskCheck;
   // Earlier angles come back from the device too, so they are checked as well.
   meta.injection = looksLikeInjection(input.text)
     || input.previous.some((p) => looksLikeInjection(p.subtitle_line_1) || looksLikeInjection(p.subtitle_line_2));
@@ -111,7 +124,7 @@ export async function runAngle(input, deps) {
     try {
       res = await deps.provider.generate({
         system: deps.systemPrompt,
-        user: buildUserMessage({ ...input, concern, injectionSuspect: meta.injection, rejected, promptVersion: deps.promptVersion }),
+        user: buildUserMessage({ ...input, concern: safety.level === 'concern' || screened.level === 'concern', riskCheck, injectionSuspect: meta.injection, rejected, promptVersion: deps.promptVersion }),
         schema: SCENE_SCHEMA,
         maxTokens: deps.maxTokens,
         timeoutMs,

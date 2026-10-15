@@ -31,6 +31,7 @@
     "eval/**/*.mjs"
   ],
   "exclude": [
-    "src/safety/shared-lexicon.js"
+    "src/safety/shared-lexicon.js",
+    "src/safety/risk-screen.js"
   ]
 }

@@ -18,6 +18,7 @@
 
 import { HARM_LEXICON, HARM_COPY, CONCERN_LEXICON } from './shared-lexicon.js';
 import { EXTRA_LEXICON, GENERAL_CARE } from './extra-lexicon.js';
+import { riskScreen, normalise } from './risk-screen.js';
 
 /** @param {readonly string[]} list @param {string} [flags] */
 const compile = (list, flags = 'i') => list.map((src) => new RegExp(src, flags));
@@ -814,17 +815,52 @@ export function warmSafety() {
 
 /**
  * @typedef {{ level: 'care' | 'crisis', category: string, title: string, message: string,
- *   resources: readonly { readonly label: string, readonly detail: string }[], still_here: string, source: 'lexicon' | 'model' }} Support
+ *   resources: readonly { readonly label: string, readonly detail: string }[], still_here: string, source: 'lexicon' | 'model' | 'screen' }} Support
  */
+
+/**
+ * The input checks before any model call, in order (15 Oct 2026, the risk screener): the lexicon on the words as typed; the
+ * lexicon again on their normalised spelling (risk-screen.js normalise: "i wnat to dei", "k1ll myself", "d i e"); then the
+ * shared risk screener (risk-screen.js, byte-identical with the app's src/beyond/risk-screen.js), which reads meaning, not
+ * phrases. The most serious reading wins.
+ *   → { level: 'none' | 'concern' | 'care' | 'crisis', category, source: 'lexicon' | 'screen' | null, check: boolean,
+ *       lexicon_level, screen_level }
+ *   check: the screener's 'check' (and nothing more serious): the model is still asked, told to judge safety first, and
+ *   support is kept close. A client that skips its own check-in still meets the lexicon and the screener's care here.
+ * @param {string} text
+ */
+export function screenInput(text) {
+  const raw = checkSafety(text);
+  let lex = raw;
+  const norm = normalise(text);
+  if (norm && norm !== tidyForSafety(text).toLowerCase()) {
+    const again = checkSafety(norm);
+    if (RANK[again.level] > RANK[lex.level]) lex = again;
+  }
+  const screen = riskScreen(text);
+  const base = { lexicon_level: raw.level, screen_level: screen.level || 'none' };
+  if (lex.level === 'crisis' || lex.level === 'care') return { ...lex, source: /** @type {const} */ ('lexicon'), check: false, ...base };
+  if (screen.level === 'care') return { level: /** @type {const} */ ('care'), category: 'self-risk', source: /** @type {const} */ ('screen'), check: false, ...base };
+  return { ...lex, source: lex.level === 'none' ? null : /** @type {const} */ ('lexicon'), check: screen.level === 'check', ...base };
+}
+
+/** The screener's care: someone may be thinking of ending their life (support, never an angle). */
+const SELF_RISK_CARE = {
+  title: 'This one needs real support',
+  message: 'What you’ve written matters, and it sounds like you might be carrying something very heavy. You deserve support from someone who can be with you now. If you might act on these thoughts, call your local emergency number.',
+};
 
 /**
  * The authored support payload for a crisis/care result.
  * @param {'care' | 'crisis'} level
  * @param {string | null} category
- * @param {'lexicon' | 'model'} source
+ * @param {'lexicon' | 'model' | 'screen'} source
  * @returns {Support}
  */
 export function supportPayload(level, category, source) {
+  if (level === 'care' && category === 'self-risk') {
+    return { level, category, title: SELF_RISK_CARE.title, message: SELF_RISK_CARE.message, resources: HARM_COPY.crisis.resources, still_here: HARM_COPY.stillHere, source };
+  }
   if (level === 'crisis') {
     const other = category === 'someone-in-danger';
     const c = other ? HARM_COPY.crisisOther : HARM_COPY.crisis;

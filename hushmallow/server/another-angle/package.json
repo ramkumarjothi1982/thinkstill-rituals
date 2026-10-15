@@ -23,6 +23,7 @@
     "dev": "wrangler dev --env dev",
     "harness": "node --import ./test/register.mjs tools/local-harness.mjs",
     "sync:lexicon": "node scripts/sync-lexicon.mjs",
+    "sync:screen": "node scripts/sync-screen.mjs",
     "eval": "node ../../tools/angle-eval.mjs",
     "replay:gate": "node eval/replay-gate.mjs",
     "extract:log": "node eval/extract-log.mjs",
