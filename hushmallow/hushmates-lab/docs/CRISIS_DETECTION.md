@@ -196,7 +196,7 @@ replaces it.
    - the owner runs eSafety's Safety by Design start-up tool. Prepared answers: `docs/safety/SBD_SELF_ASSESSMENT.md`. **Not yet run.**
 2. **Before anyone outside the team (Tier A):** one registered psychologist or AMHSW, after the owner approves a quote. Our own estimate was about 5–6 hours. **It isn't confirmed, and it may not be enough: the reviewers' quotes will say** (`REVIEW_QUOTES.md`). In this order, they:
    - **label first**, before reading the pack, on the display-id sheet (`docs/clinical/tier-a-sample-display.csv`, 108 rows, from `node tools/safety-eval.mjs --export <file> --sample --display-ids <key.csv>`): the 54 phrasings the developers couldn't decide (53 distinct), plus 54 settled ones drawn in proportion. The key (`docs/clinical/tier-a-display-key.csv`) stays with the developers and is not in the pack;
-   - read all 291 Mallow lines in use (`docs/clinical/mallow-library-for-review.csv`). All 342 lines were reviewed at Tier 0, and 51 were left out (`docs/clinical/tier0-library-decisions.csv`);
+   - read all 293 Mallow lines in use (`docs/clinical/mallow-library-for-review.csv`). All 342 lines were reviewed at Tier 0, and 51 were left out (`docs/clinical/tier0-library-decisions.csv`);
    - after the blind labelling, and before reading the pack (which shows our results for it), label the Tier 0 probe as a separate, supplementary sheet (`docs/clinical/tier0-probe-blind.csv`, 246 phrasings), as far as the agreed time allows;
    - review the support wording, the check-in idea (D2) and `ESCALATION.md`;
    - write a go/no-go memo.

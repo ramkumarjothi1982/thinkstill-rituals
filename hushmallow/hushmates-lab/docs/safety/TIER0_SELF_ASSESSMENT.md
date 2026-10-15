@@ -18,7 +18,7 @@ infrastructure.
 |---|---|---|---|
 | **The crisis screen** | Much weaker than the documents said. On 246 new developer-written phrasings it showed crisis or danger support for **25 of 127** meant as crisis or danger (20%), and held **7 of 41** meant for care. It also had bugs: one fail-open, one contraction, whitespace and look-alike letters | Seven bug fixes that only add caution. Block lists for catchers' perspectives. 1800RESPECT on the threat and safety screens. A hash pin on the shared lexicon (§4) | **The vocabulary gaps.** Still 25 of 127 after the fixes, because they repaired bugs, not vocabulary. They wait for one batch after Tier A (`CRISIS_DETECTION.md` §3, step 5) |
 | **The 379-phrasing set** | It can't measure the screen. CI pins 335 of its 379 rows to the screen's own answers, they were written alongside the rules, and whole categories are missing (§5) | Now called the development and regression set. The scoring tool shows what it used to hide. A blind Tier A sheet with display ids. The probe kept as a separate supplementary sheet | A locked, independently written test set. Only Tier A or a clinician can start one |
-| **The Mallow library** (all 342 lines) | 123 lines were flagged. Most problems came from *where* a line could reach (harm at home, the bereaved, someone worried about a person at risk, a hint of not wanting to be here), not from its words | 40 rewritten, 51 of Reframe's lines left out, 32 kept. Routing protects people hurt at home, the bereaved and people worried about someone. 291 lines now (§3) | 11 questions for Tier A (§3.4) |
+| **The Mallow library** (all 342 lines) | 123 lines were flagged. Most problems came from *where* a line could reach (harm at home, the bereaved, someone worried about a person at risk, a hint of not wanting to be here), not from its words | 42 rewritten (40, then 2 more after the code review), 51 of Reframe's lines left out, 32 kept, 2 gentle openers added. Routing protects people hurt at home, the bereaved and people worried about someone. 293 lines now (§3) | 11 questions for Tier A (§3.4) |
 | **Reporting, escalation, moderation** | The app promised "within 24 hours" while the procedure said 12. Several lines implied someone is watching. "Get support now" was two taps deep, not on every screen as five documents claimed. Nobody is named, and nothing alerts anyone | Honest wording everywhere (§6). *Support* in the header of every screen. Neutral support on paused and removed feelings. A "desk away" setting. The desk guide reordered to match the procedure. An "Over 12 hours" badge | Named readers and a safety lead. Fixed check times. A contact address. The WHS assessment. An alert (D5). §6.3 |
 | **Safety by Design** (eSafety) | The design rules out most contact harms. The gaps are people, paperwork and honest claims | Prepared answers for the owner to enter (`SBD_SELF_ASSESSMENT.md`) | The owner runs eSafety's start-up tool (about 2–3 hours) |
 
@@ -65,20 +65,22 @@ infrastructure.
 | | Lines | What happened |
 |---|---|---|
 | Flagged | 123 of 342 | 38 high, 54 medium, 31 low |
-| Rewritten | 40 (Hushmates' own) | Same voice and idea, without the harm. For example, "Ooh, can we turn this over…" became "Can we look at this together for a second, really gently?" |
+| Rewritten | 42 (Hushmates' own) | Same voice and idea, without the harm. For example, "Ooh, can we turn this over…" became "Can we look at this together for a second, really gently?" The code review added two: grief lines that also fit a death that hasn't happened yet ("how much they matter") |
 | Left out | 51 (all Reframe's) | Reframe's library is read-only, so these go in the `SKIP` list in `core/perspectives.js`. Tier A can return any of them line by line |
 | Kept | 32 | Fine where they're meant to be used. In their worst context they mismatch rather than endanger. Each reason is recorded |
-| **The library now** | **291** | 49 openers, 114 Hushmates lines, 128 of Reframe's 179. Every feeling label still has its own lines |
+| Added | 2 openers | So every Mallow has at least two gentle openers for grief or harm (Zuzu had one, a "hold it like the sky" image that doesn't suit ongoing harm) |
+| **The library now** | **293** | 51 openers, 114 Hushmates lines, 128 of Reframe's 179. Every feeling label still has its own lines |
 
 **Routing changes** (code, tested in `tests/mallow-probes.test.mjs`; the old library fails every case):
 - **Harm or control at home** gets only tender openers. It is never offered:
-  - Reframe's lines about family arguments, someone seeming annoyed, criticism, appearance, not being listened to, or future worry;
+  - Reframe's lines about family arguments, someone seeming annoyed, criticism, appearance, not being listened to, future worry, cancelled plans, an ignored group chat, no text back, or being left out;
   - any "thinking habit" line.
-- **A worrying silence** never gets "they're probably just busy" lines. That covers "thanks for everything" and then nothing, someone who's been really low, or someone missing overnight.
+- **A volatile parent or partner** ("I never know what mood he'll be in") never gets "they might just have seemed annoyed" lines.
+- **A worrying silence or a death** never gets "they're probably just busy" lines, from any of six such situations, or thinking-habit lines. That covers "thanks for everything" and then nothing, someone who's been really low, or someone missing overnight.
 - **A mistake that hurt or killed someone** never gets "everyone makes mistakes" lines.
-- **A medical or pregnancy test** isn't an exam.
+- **A medical or pregnancy test** isn't an exam, wherever the health words appear in the feeling.
 - **Cancer, chemo and palliative care** count as health.
-- **Grief told with "he" or "she"** ("since he passed") is recognised as grief.
+- **Grief told with "he" or "she"** ("since he passed", "we lost her to cancer") is recognised as grief, and passing an exam or losing a passport isn't.
 - **Tiredness, health, nerves, rejection, trying and exams** step aside for a death.
 
 All of it preserves the Mallows and their voices. No line was made clinical.
@@ -123,7 +125,7 @@ Pinned in `tests/tier0-screen.test.mjs`. The 325 developer decisions and 54 unde
 | Length was checked before safety | A 520-character feeling starting "I want to kill myself": "Try the heart of it" → crisis support |
 | Threats, "afraid to go home" and stalking had no family-violence line | Now 000, 1800RESPECT, Lifeline |
 | **Perspectives could incite self-harm, or groom** | Now refused: "Go hang yourself", "k y s", "No one would miss you", "Try skipping dinner", "Stop taking your antidepressants", "Drink until you forget", "How old are you? We should meet up", "Send me a pic" |
-| A feeling could tell its readers to hurt themselves | "kys whoever catches this" is refused. Quoted ("people at school keep telling me to kys") gets the harassment care screen |
+| A feeling could tell its readers to hurt themselves | "kys whoever catches this" never travels: it gets crisis support, in case the writer is talking to themselves ("I keep telling myself kys"). Quoted ("people at school keep telling me to kys") gets the harassment care screen |
 | Catchers couldn't give a helpline number | "You could call 1800RESPECT on 1800 737 732" now passes; other phone numbers are still refused |
 | An Australian postcode with its context | "VIC 3065", "postcode 3065" refused as identifying |
 | **The shared lexicon could change unseen** (it belongs to Reframe) | A hash pin. Any upstream change fails CI until Hushmates' safety lead reviews it |
@@ -290,8 +292,8 @@ The team beta is people the owner knows, by invitation.
 
 **Safety and clinical:**
 - `docs/safety/SBD_SELF_ASSESSMENT.md`: answers for eSafety's start-up tool, for the owner to enter.
-- `docs/clinical/tier0-library-decisions.csv`: all 123 decisions, before and after, with reasons.
-- `docs/clinical/mallow-library-for-review.csv`: the 291 lines in use, for Tier A.
+- `docs/clinical/tier0-library-decisions.csv`: all 127 decisions, before and after, with reasons.
+- `docs/clinical/mallow-library-for-review.csv`: the 293 lines in use, for Tier A.
 - `docs/clinical/tier0-probe-results.csv`: the 246 probe phrasings and outcomes (developer-written).
 - `docs/clinical/tier0-probe-blind.csv`: the same, with no outcomes, for the reviewer after the main labelling and before the pack.
 - `docs/clinical/tier-a-sample-display.csv`: the Tier A sheet with display ids. Its key, `tier-a-display-key.csv`, isn't sent.

@@ -37,8 +37,9 @@ safe, fictional words written for the demonstration.
      "VIC 3065"). A bare suburb and number ("Fitzroy 3065") is not. National
      helpline numbers are never treated as contact details.
    - Feelings that tell readers to hurt themselves ("kys whoever catches this")
-     are refused. When they quote what someone said to the writer ("they keep
-     telling me to kys"), the writer gets the harassment care screen instead.
+     never travel. The writer gets crisis support, in case they're saying it to
+     themselves. When they quote what someone said to them ("they keep telling
+     me to kys"), they get the harassment care screen instead.
    - Perspectives are also checked for unkindness, diagnosis and near-copies.
      Perspectives that urge self-harm, give diet, medication or drinking advice,
      or ask someone's age or location, to meet, or for pictures are blocked.

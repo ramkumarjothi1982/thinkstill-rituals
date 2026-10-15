@@ -46,7 +46,7 @@ point is to hear theirs.
 | What it is for | Deciding whether a small invite-only beta (up to about 30 adults) is reasonably safe, and what must change first | Settling the safety screen's decisions across every known phrasing, with measured agreement. Needed before any public safety claim or before tuning the screen against labels |
 | Phrasings | The 108-row blind sheet: all 54 "undecided" rows, plus 54 others in proportion. Or the leaner 54 undecided only, if they judge that enough. **Then** the 246-phrasing Tier 0 probe, blind, as a supplementary sheet | All 379 rows, blind. Ideally **two** reviewers labelling independently, so their agreement can be measured. Plus the 246-phrasing probe |
 | Categories with no phrasings | A short answer per category: what Hushmates should do (crisis, danger, care, check-in or release), and whether the gap blocks a 30-person beta. The categories: threats to others, a minor disclosing, eating disorders, an overdose already taken, strangulation and coercive control, sexual assault without the keywords, someone else in danger | Same, plus 2–3 example phrasings per category for a future locked test set |
-| Mallow library | The 291 lines in use (Tier 0 rewrote 40 and left out 51 of the 342), as a sheet with ok · change · remove, plus the 11 questions in `TIER0_SELF_ASSESSMENT.md` §3.4 | Same, plus the 51 lines left out, in case any should return |
+| Mallow library | The 293 lines in use (Tier 0 rewrote 42, left out 51 of the 342 and added 2 openers), as a sheet with ok · change · remove, plus the 11 questions in `TIER0_SELF_ASSESSMENT.md` §3.4 | Same, plus the 51 lines left out, in case any should return |
 | Support screens, crisis lines, the "are you safe right now?" check-in idea | Review the wording and routing | Same, plus acceptance thresholds for the screen |
 | Escalation and moderation procedure | Review `ESCALATION.md` and what users are told | Same |
 | Lived-experience input | — | Optional: a reviewer with lived experience reads the support wording and the library (3–6 hours, paid participation) |
@@ -97,7 +97,7 @@ back, so nothing they read tells them what the screen does or what we expected.
 - `docs/clinical/tier0-probe-blind.csv`: the 246-phrasing probe, blind. Send it on its own: our own results for it are in Part 2.
 
 **Part 2, after both are labelled:**
-- `docs/clinical/mallow-library-for-review.csv`: the 291 lines in use;
+- `docs/clinical/mallow-library-for-review.csv`: the 293 lines in use;
 - `docs/clinical/tier0-library-decisions.csv`: what Tier 0 changed in the library, and why;
 - screenshots of the support screens, *Support* and the crisis lines (`docs/screenshots/phase2/19-support-au.png` and others);
 - `ESCALATION.md`, `docs/legal/MODERATION.md`, `docs/safety/TIER0_SELF_ASSESSMENT.md`;
@@ -116,7 +116,7 @@ back, so nothing they read tells them what the screen does or what we expected.
 > 1. **A limited review:**
 >    - label a blind sheet of 108 example phrasings (or advise if a different number is needed), then a further 246 we wrote to probe the gaps;
 >    - say, for about seven kinds of risk our examples don't cover (for example threats to others, a person under 18 disclosing, eating disorders), what the app should do;
->    - read the app's 291 fixed response lines;
+>    - read the app's 293 fixed response lines;
 >    - review the support screens, crisis lines and our escalation procedure;
 >    - write a short memo with go/no-go conditions for the beta and what we may say publicly about your review.
 > 2. **A full review:**

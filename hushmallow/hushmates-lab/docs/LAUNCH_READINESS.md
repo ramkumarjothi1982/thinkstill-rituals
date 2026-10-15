@@ -122,7 +122,7 @@ a lawyer.** `docs/legal/LEGAL_REQUIREMENTS.md` sorts every requirement into four
 | Who reads the desk, and a safety lead | ⛔ **Nobody named** (D12) |
 | An alert for a new priority report | ⛔ None. Free stop-gap: fixed check times and a twice-daily phone reminder. Real alert: needs email (D5) |
 | When nobody can read the desk | 🟡 The desk-away setting tells reporters. The rule is in `ESCALATION.md` and `docs/legal/MODERATION.md` |
-| The Mallow library | ✅ All 342 lines checked; 40 rewritten, 51 left out, routing fixed. 🟡 Not independently reviewed |
+| The Mallow library | ✅ All 342 lines checked; 42 rewritten, 51 left out, 2 openers added (293 now), routing fixed. 🟡 Not independently reviewed |
 | The check-in ("are you safe right now?") | ⏸ Waits on Tier A's wording (D2) |
 | Independent review | ⛔ Tier A not engaged. Quote requests are ready (`REVIEW_QUOTES.md`) |
 | Moderators' wellbeing (WHS) | ⛔ No assessment yet |
