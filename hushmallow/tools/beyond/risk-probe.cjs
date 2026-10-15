@@ -123,7 +123,13 @@ async function settle(o) {
     const cs = [...document.querySelectorAll('.hf-chips:not([hidden]) .hf-chip')].filter((e) => e.offsetParent).map((e) => e.textContent.trim());
     if (said.includes(cq) && cs.some((c) => /Not really/.test(c))) return 'check';
     if ((said.includes(mq) || said.includes(aq)) && cs.some((c) => /Just be with it/.test(c))) return 'question';
+    // (the gentle path's own lines first: Another Angle's gentle chips carry "See support" too)
+    if (cs.length && said.some((l) => /nothing to fix here|a lot to carry/i.test(l))) return 'gentle';
     if (cs.some((c) => /See support/.test(c))) return 'care';
+    // (the main screen's death care: its own line, the Support pill, and no chip at all — no world offered)
+    const lv = window.__hushfold?.S?.level;
+    const pill = [...document.querySelectorAll('.hf-pill.support')].some((e) => !e.hidden && e.offsetParent);
+    if ((lv === 'care' || lv === 'crisis') && pill && said.length && !cs.length) return 'care';
     if (cs.some((c) => /Stay here quietly|Just squeeze Zuzu/.test(c))) return 'gentle';
     return null;
   }, { cq: CHECK_Q, mq: MAIN_Q, aq: ANGLE_Q }, { timeout: 40000, polling: 150 }).then((h) => h.jsonValue()).catch(() => 'timeout');
@@ -165,7 +171,9 @@ async function probe(browser, t, want, kind, n) {
     if (kind === 'notreally' && row.got === 'check') {
       await tapEl(o, '.hf-chips:not([hidden]) .hf-chip', 'Not really');
       await o.page.waitForFunction((h) => (window.__rpSaid || []).includes(h), HEARD, { timeout: 15000, polling: 100 }).catch(() => null);
-      await sleep(2500);
+      // (the choice follows the line once it has been read)
+      await o.page.waitForFunction(() => [...document.querySelectorAll('.hf-chips:not([hidden]) .hf-chip')].some((e) => e.offsetParent && /See support/.test(e.textContent)), null, { timeout: 20000, polling: 150 }).catch(() => null);
+      await sleep(600);
       row.after = { said: (await o.page.evaluate(() => window.__rpSaid || [])).slice(-3), chips: await chips(o), requests: o.req.length, supportPill: await supportPill(o) };
       if (SCREEN === 'main') row.after.state = await o.page.evaluate(() => { const S = window.__hushfold?.S || {}; return { level: S.level, supportFirst: S.supportFirst, world: !!window.__hushfold?.flow?.state?.worldId }; });
       if (!row.after.said.includes(HEARD)) fail(t, 'heard line', row.after);
