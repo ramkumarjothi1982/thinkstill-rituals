@@ -276,7 +276,9 @@ closes the sheet before a screen's own key listener can leave the screen,
 and a sheet that a route change discards drops its listener at the next key.
 The router closes an open Settings sheet when the route changes. The screen
 publishes its chrome bands as `--band-top` / `--band-bottom` and in
-`onLayout`.
+`onLayout`. Key presses with Ctrl, Alt or Cmd (Escape aside) are left to the
+browser and never reach `keys` or the built-ins, and a held H or S lets go
+when the window loses focus.
 
 ### Phase 3 experiences
 - **Hushfold Weather Weaver:** `docs/WEATHER.md`.

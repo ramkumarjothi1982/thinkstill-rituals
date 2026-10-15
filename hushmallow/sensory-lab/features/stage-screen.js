@@ -82,6 +82,8 @@ export function stageScreen(root, ctx, {
   const key = (e) => {
     if (e.target.closest?.('.sheet')) return;
     const k = (e.key || '').toLowerCase();
+    // Ctrl, Alt and Cmd shortcuts belong to the browser (Escape aside); releases always go through
+    if (e.type === 'keydown' && k !== 'escape' && (e.ctrlKey || e.altKey || e.metaKey)) return;
     if (keys?.(e, k, e.type === 'keydown' ? 'down' : 'up')) return;
     if (e.type === 'keydown') {
       if (k === 'escape') { if (onExit) onExit(); else ctx.navigate('/'); return; }
@@ -102,6 +104,12 @@ export function stageScreen(root, ctx, {
   };
   document.addEventListener('keydown', key);
   document.addEventListener('keyup', key);
+  // a held H or S never sees its keyup when the window loses focus (Alt+Tab, a system dialog)
+  const letGo = () => {
+    for (const [k, c] of held) if (!c.destroyed) c.act(k === 'h' ? 'holdEnd' : 'squeezeEnd');
+    held.clear();
+  };
+  window.addEventListener('blur', letGo);
 
   // keep the Mallow framed between the top bar and the controls, with room above to stretch
   // body about half the free band tall, never wider than 60% of its stage
@@ -189,6 +197,7 @@ export function stageScreen(root, ctx, {
     unmount() {
       document.removeEventListener('keydown', key);
       document.removeEventListener('keyup', key);
+      window.removeEventListener('blur', letGo);
       ro.disconnect();
       offPrefs();
       if (partner) dropPartner();

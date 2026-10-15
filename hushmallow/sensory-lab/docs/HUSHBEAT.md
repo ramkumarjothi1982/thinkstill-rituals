@@ -413,5 +413,7 @@ Simulation proves state, not feel. Not verified on real devices:
 
 Change requests to the lead (scratchpad `cr-hushbeat.md`): CR-H1–H5 landed (`ctx.openTune`, `openSheet`'s
 `onClose`, the closing scrim, the Done band, the shared stage focus frame); Hushbeat's shims for them are gone.
-Open: stage-screen's held H and S should let go on a window blur (Hushbeat holds its own), its built-in keys
-should ignore Ctrl/Alt/Cmd, and the gesture engine should start a squeeze only when the second finger is on the body.
+CR-H6 and CR-H7 landed too: stage-screen lets a held H or S go on a window blur, and keys with Ctrl, Alt or Cmd
+(Escape aside) never reach a screen's keys or the built-ins. Open for a later phase: the gesture engine should start
+a squeeze only when the second finger is on the body (CR-H8; Hushbeat handles it itself), and an optional height
+for the automatic stroke (CR-H9).

@@ -387,6 +387,48 @@ async function sharedBlock(browser) {
     noErrors(scope, errors);
   });
 
+  // CR-H6/H7: built-in keys let a held H or S go on a window blur, and leave Ctrl/Alt/Cmd shortcuts to the browser
+  if (shared('keys')) await guard('shared:keys', async (scope, own) => {
+    const { ctx, page, errors } = await H.open(browser, { width: 1280, height: 860, touch: false }, '#home', { initScripts: [H.INIT.listenerCounter] });
+    own(ctx); await H.waitRig(page);
+    const blurL = () => page.evaluate(() => __listeners().window?.blur || 0);
+    const b0 = await blurL();
+    await go(page, 'touchtalk');
+    const b1 = await blurL();
+    await page.evaluate(() => {
+      const c = __lab.companion, act = c.act.bind(c);
+      window.__acts = [];
+      c.act = (type, ...a) => { window.__acts.push(type); return act(type, ...a); };
+    });
+    const acts = () => page.evaluate(() => window.__acts.splice(0));
+    await page.focus('.stage');
+    const held = {};
+    for (const k of ['h', 's']) {
+      await page.keyboard.down(k); await sleep(150);
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+      await sleep(100);
+      const atBlur = await acts();
+      await page.keyboard.up(k); await sleep(100);
+      held[k] = { atBlur, afterUp: await acts() };
+    }
+    check(scope, 'a held H or S lets go when the window loses focus, and its late keyup adds nothing',
+      held.h.atBlur.join() === 'holdStart,holdEnd' && held.s.atBlur.join() === 'squeezeStart,squeezeEnd' && !held.h.afterUp.length && !held.s.afterUp.length, JSON.stringify(held));
+    const mods = [];
+    for (const [mod, k] of [['Control', 'd'], ['Alt', 'h'], ['Meta', 's'], ['Control', 'p']]) {
+      await page.keyboard.down(mod); await page.keyboard.press(k); await page.keyboard.up(mod);
+    }
+    await sleep(150);
+    mods.push(...await acts());
+    await page.keyboard.press('d'); await sleep(150);
+    const plain = await acts();
+    check(scope, 'Ctrl, Alt and Cmd with a gesture key do nothing; the plain key still acts', mods.length === 0 && plain.join() === 'double', JSON.stringify({ mods, plain }));
+    await page.keyboard.down('Shift'); await page.keyboard.press('Escape'); await page.keyboard.up('Shift');
+    const left = await page.waitForFunction(() => __lab.route === 'home', null, { timeout: 5000 }).then(() => true, () => false);
+    const b2 = await blurL();
+    check(scope, 'Escape still leaves; the screen adds one blur listener and removes it on leaving', left && b1 === b0 + 1 && b2 === b0, `${b0} → ${b1} → ${b2}`);
+    noErrors(scope, errors);
+  });
+
   // L3: an AmbientBed in the live page
   if (shared('bed')) await guard('shared:bed', async (scope, own) => {
     const { ctx, page, errors } = await H.open(browser, 'phone', '#touchtalk');
