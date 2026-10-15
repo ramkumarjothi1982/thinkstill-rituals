@@ -1,11 +1,13 @@
-**DRAFT, not yet reviewed or approved. Not legal advice.**
+**DRAFT, not yet reviewed or approved. It stays a draft until the owner approves it and, where marked, an Australian
+lawyer has reviewed it. Not legal advice.**
 **Date: 15 October 2026.**
 
 # Hushmates · Age eligibility (18+) and the under-16 law
 
 > **Status (internal).** Nothing here is final until the owner approves it. Every part marked **needs legal advice**
 > must be answered by an Australian lawyer before a public launch (G4), and before outside testers (G3) if the lawyer
-> says so (decision D9, risk L1 in `docs/RISKS.md`). Hushmates is not live: there are no members outside the team.
+> says so (decision D9, risk L1 in `docs/RISKS.md`). Hushmates is not live: there are no members outside the team,
+> and nothing is deployed.
 >
 > **What this is.** Why Hushmates is for adults only; how the social media minimum age law (Online Safety Act 2021,
 > Part 4A) might apply, test by test, applied to the features Hushmates actually has; what "reasonable steps" would
@@ -14,9 +16,11 @@
 > sets out the tests, how the facts sit against them, and what a lawyer has to decide.
 >
 > **How to read it.** The analysis is internal and written plainly. The words members would see are in quoted boxes,
-> in Hushmallow's voice. Facts about the app were checked in the code at commit `48c7e26` (15 October 2026, which
-> includes the Tier 0 changes); paths are relative to `hushmallow/hushmates-lab/`. The research behind it is items
-> U16-01 to U16-13 of the legal research, with the critic's corrections to U16-02 and U16-05 applied.
+> in Hushmallow's voice. Facts about the app were checked in the code at commit `9012d6f` (15 October 2026: the last
+> commit that changed the code, which includes the Tier 0 changes and the code-review fixes after them; an earlier
+> version of this note was checked at `48c7e26`). Line numbers are at that commit; paths are relative to
+> `hushmallow/hushmates-lab/`. The research behind it is items U16-01 to U16-13 of the legal research, with the
+> critic's corrections to U16-02 and U16-05 applied.
 >
 > **Sources.** No official site could be opened from this environment. Every legal source below was seen only as a
 > **search extract** of the official page, sometimes paraphrased by the search tool, and is labelled that way. Some
@@ -71,15 +75,22 @@ scope. Don't describe the 18+ rule as a legal requirement.
 ### 1.2 Why 18+
 
 1. **What people share.** Feelings are adult, everyday and sometimes heavy. Catchers can be shown hard things. The word
-   check holds back some words that suggest someone might not be safe, but it can miss things: the Tier 0
-   self-assessment found it misses many new ways of saying them (`docs/safety/TIER0_SELF_ASSESSMENT.md`). That is not a
-   place to put children, as writers or as readers.
-2. **What Hushmates is built for.** The support lines shown were chosen with adults in mind, and none is a youth
-   service: Kids Helpline isn't among them (`core/feeling-safety.js:129-135`). The safety desk is a small team, not around the clock, that can't see who anyone
-   is and can't contact anyone. It isn't set up or trained for child safeguarding.
+   check holds back some words that suggest someone might not be safe, but it can miss things: on a Tier 0 developer
+   probe it showed crisis or danger support for 25 of 127 developer-written crisis or danger phrasings, which is
+   evidence of gaps, not a measured rate (`docs/safety/TIER0_SELF_ASSESSMENT.md`). That is not a place to put
+   children, as writers or as readers.
+2. **What Hushmates is built for.** The support lines shown are general national services (000, Lifeline, the Suicide
+   Call Back Service, 13YARN, 1800RESPECT, Beyond Blue and an outside-Australia link), and none is a youth service:
+   Kids Helpline isn't among them (`core/feeling-safety.js:166-180`), although a feeling or a perspective may name its
+   number (`core/feeling-safety.js:221-224`). The safety desk is a small team, not around the clock, that can't see
+   who anyone is and can't contact anyone. During the pilot it aims to read priority reports within a day and others
+   within two days; nights, weekends and holidays can take longer, and nothing alerts anyone to a new report
+   (`supabase/migrations/20261015090000_hushmates_tier0.sql:45-47`; `staff/desk.js:224`). It isn't set up or trained
+   for child safeguarding.
 3. **Strangers in a private channel.** Adults who don't know each other exchange words about their feelings, with no
-   names. Mixing children into that creates a grooming risk (`docs/RISKS.md`, S9). Perspectives are screened for some
-   grooming-style questions, but a rule can be got around.
+   names. Mixing children into that creates a grooming risk (`docs/RISKS.md`, S9). A perspective that asks someone's
+   age, where they live, their school, to meet up, or for pictures is refused (`core/feeling-safety.js:288`, checked at
+   line 378), but a rule can be got around.
 4. **Consent.** Feelings can be health information. Sharing them needs informed consent from someone able to give it.
    The OAIC says capacity can be presumed for adults unless something alerts the organisation otherwise, such as signs
    the person is a child (APP Guidelines, Chapter B, search extract). An adults-only rule supports that presumption;
@@ -140,7 +151,9 @@ perspectives, but don't misdescribe it to avoid the law (U16-01).
 **The instrument.** The Online Safety (Age-Restricted Social Media Platforms) Amendment Rules 2026 (F2026L00370, dated
 25 March 2026) inserted s4A, "Additional condition a service must satisfy to be an age-restricted social media
 platform". **Only that heading was seen on legislation.gov.au.** The operative text and its definitions were not. Two
-secondary sources (not the law) say s4A fills s63C(1)(a)(iv) and took effect on 26 March 2026.
+secondary sources (not the law) say s4A fills s63C(1)(a)(iv) and took effect on 26 March 2026. (`docs/RISKS.md`,
+`docs/REVIEWS.md` and `TERMS_OF_USE.md` call it "rule 4A"; it is the same provision. Whether the instrument calls its
+provisions sections or rules wasn't seen, so neither name should be quoted as the official one until the text is read.)
 
 **What it adds, as eSafety and the department describe it** (official guidance, search extracts): a service is in scope
 only if it **also** has a **recommender feature**, or a **logged-in feature**, or both. A logged-in feature is an
@@ -401,20 +414,20 @@ matches `MODERATION.md` §7.2; if the two ever differ, change both.
 | # | Who | What | What it does, in the app today |
 |---|---|---|---|
 | 1 | Desk reader | **Danger first.** If the words suggest danger, follow `MODERATION.md` §6 and come back to age afterwards | — |
-| 2 | Desk reader | **Restrict the account** with "Restrict the person who wrote it" on the report. If the reported item is a perspective that shouldn't stay, also "Remove the perspective" | They can no longer release or catch feelings, ask their Mallow, or write. Catching is switched off, and live offers end, on their feelings and their own. Feelings already travelling stop being offered and still come home to them (`supabase/migrations/20261014090100_hushmates_rules.sql:1122-1131`; `staff/desk-guide.js`) |
+| 2 | Desk reader | **Restrict the account** with "Restrict the person who wrote it" on the report. If the reported item is a perspective that shouldn't stay, also "Remove the perspective" | They can no longer release or catch feelings, ask their Mallow, or write. Catching is switched off, and live offers end, on their feelings and their own. Feelings already travelling stop being offered and still come home to them (`supabase/migrations/20261014090100_hushmates_rules.sql:1122-1130`; `staff/desk-guide.js:12-13, 18-19`) |
 | 3 | Desk reader | **Team note:** "Decision: restrict · age concern". Nothing else: no age, school, place, or anything that could identify them | Desk notes are encrypted and seen by every moderator who opens the report. They have **no end date today [GAP]** (`RETENTION_AND_DELETION.md`), so keep them minimal |
 | 4 | Desk reader | **Tell the safety lead the same day** | — |
-| 5 | Safety lead | **Show the member a kind message** (5.5) | **[GAP]** Today they see only the general wording: "Our safety team has paused catching for your account for now. Feelings you already released still come home to you." (`ui/relay/catch.js:434`) and "Your account can’t release feelings right now." (`ui/relay/release.js:129`). There is no way to show a reason |
+| 5 | Safety lead | **Show the member a kind message** (5.5) | **[GAP]** Today they see only the general wording: "Our safety team has paused catching for your account for now. Feelings you already released still come home to you." (`ui/relay/catch.js:434`), "Your account can’t release feelings right now." (`ui/relay/release.js:129`) and, on a travelling feeling, "While your account is paused it isn’t offered to anyone." (`ui/relay/journeys.js:133`). There is no way to show a reason. The *Support* pill stays in every header (`ui/relay/common.js:46-49`) |
 | 6 | Safety lead | **Review, if they ask.** Look again at what was reported and at what the person says. Never ask for proof. If it was a mistake, lift the restriction and say sorry (5.5). **We reply to the person's email, and once it's built, they also see the answer in the app.** Replying to an email they sent isn't the kind of contact §5.4 rules out. Nobody contacts them otherwise | Lifting is an operator task: `node server/admin.mjs member <reference> active` |
-| 7 | Member, then owner | **Download, then delete.** The member can download their data and delete everything themselves: both work for a restricted account (`m_export_raw`, `m_delete_my_data` allow active, restricted and suspended). If they haven't after **[14] days [PROPOSAL, owner to decide]**, Hushmallow deletes the account | **[GAP]** There is no tool for an operator to delete an account for someone (`RETENTION_AND_DELETION.md` §3.4). It must exist before G3 |
+| 7 | Member, then owner | **Download, then delete.** The member can download their data and delete everything themselves: both work for a restricted account (`m_export_raw`, `m_delete_my_data` allow active, restricted and suspended). If they haven't after **[14] days [PROPOSAL, owner to decide]**, Hushmallow deletes the account | **[GAP]** There is no tool for an operator to delete an account for someone (`RETENTION_AND_DELETION.md` §3.4; the operator commands are invite, revoke, settings, set, ops and member: `server/admin.mjs:149`). **[PROPOSAL]** Build it before G3. That is an internal gate (recommended practice), not a legal duty in itself; if the lawyer says the under-16 law applies, removing under-16 accounts becomes part of the reasonable steps (section 3) |
 | 8 | Owner | **Don't let them straight back in.** If the owner knows who it was (for example, because the person said so in a review), don't send them a new invitation. Don't look anyone up to find out | **[GAP]** Nothing records an under-age refusal or a closure for age, and nothing stops a new tick. Invitations are single-use by default |
 
 **What deletion does and doesn't remove.** "Delete my Hushmates data" clears the words of every feeling they released
 and every perspective they gave, including on other people's feelings, and deletes their sign-in. The member row stays,
 with its 18+ time, invitation link and preferences; journey and perspective rows stay without words; report rows and
 desk notes stay **[GAP]** (`RETENTION_AND_DELETION.md` §4). A share picture or video someone else already made on their
-own device can't be taken back. Mallow lines are put together from a fixed library written in advance, so nobody's
-words, a minor's included, ever become Mallow material.
+own device can't be taken back. Mallow lines are chosen automatically from a fixed set of lines written in advance for
+Hushmallow (`ui/relay/you.js:69`), so nobody's words, a minor's included, ever become Mallow material.
 
 **What is kept about the case:** the decision and its date in the team note; the report row; the restriction and
 deletion in the activity log (kept 365 days). Report evidence is cleared 90 days after the report is resolved
@@ -510,7 +523,7 @@ All of these must say the same thing. Today they do, on the points below.
 | `PRIVACY_POLICY.md`, "Children and age" | 18+; the tick; no ID or date of birth; how to tell us; pause, download, then delete | Needs the contact address, the report reason and the deletion tool before it is published |
 | `MODERATION.md` §7.2 | The desk steps in 5.3 | Same steps as here |
 | `COMMUNITY_GUIDELINES.md` | Adults only | Same rule |
-| The app | "Hushmates is a small, invitation-only pilot for adults." (`ui/relay/invite.js:46`); "Hushmates is an invitation-only pilot for adults (18+)." (`ui/relay/you.js:82`) | Never "verified adults" |
+| The app | "Hushmates is a small, invitation-only pilot for adults." (`ui/relay/invite.js:46`); at the welcome, if no confirmation is on record, "I’m 18 or over, and I was invited to the pilot" with the hint "Hushmates is an invitation-only pilot for adults." (`ui/relay/welcome.js:110`); "Hushmates is an invitation-only pilot for adults (18+)." (`ui/relay/you.js:82`) | Never "verified adults" |
 
 None of them, and nothing public, may say that the under-16 law applies or that it doesn't, that Hushmates is
 excluded from it, or that it complies with the Children's Online Privacy Code.
@@ -538,12 +551,17 @@ In order of importance. They also appear, with the other areas, in `README.md` i
    service "likely to be accessed by children"?
 7. **Minors who get in.** Do the Phase 2 age-restricted material codes, or the Basic Online Safety Expectations, add
    anything for a minor who slips through (neither was researched for this)?
+8. **A child who discloses harm.** If a reported feeling suggests a child is being harmed, does any reporting or
+   child-safety law in the owner's state, or where a desk reader works, reach Hushmallow or a desk reader (paid or
+   volunteer)? Nothing on this was researched, so nothing here says such a duty exists or doesn't. Today the desk can't
+   identify or contact anyone, and `MODERATION.md` §6 governs danger (`docs/LAUNCH_READINESS.md` §5 lists "a minor
+   disclosing" among the routes needed before G3).
 
 ---
 
 ## 8. Facts checked in the code
 
-At commit `48c7e26` (15 October 2026):
+At commit `9012d6f` (15 October 2026; re-checked from the `48c7e26` version of this list):
 
 - The 18+ tick and the disabled button: `ui/relay/invite.js:34-35, 51`. Server refusal:
   `supabase/migrations/20261014090100_hushmates_rules.sql:1037`. Stored time: `members.adult_confirmed_at`,
@@ -552,7 +570,10 @@ At commit `48c7e26` (15 October 2026):
 - Desk readers' tick: `staff/desk.js:123`.
 - Pilot wording: `ui/relay/invite.js:46`; `ui/relay/you.js:82`.
 - "Never about other people’s activity": `ui/relay/you.js:58`. "No scoreboards, no streaks": `ui/relay/you.js:71`.
-- Perspectives screened for some grooming-style questions: `core/feeling-safety.js:206` onwards.
+- Perspectives that ask age, where someone lives, their school, to meet up, or for pictures are refused:
+  `core/feeling-safety.js:288` (in `HARMFUL_ADVICE`, lines 276-291), checked at line 378.
+- Report acknowledgements: `supabase/migrations/20261015090000_hushmates_tier0.sql:45-47` (the same words in
+  `core/relay.js:823-826`); the away notice, lines 5-9 and 25-43. Nothing alerts anyone: `staff/desk.js:224`.
 - Matching: `m_find_feeling`, `supabase/migrations/20261014090100_hushmates_rules.sql:562-610`, with
   `fairnessPool 3`, `supabase/migrations/20261014090000_hushmates_schema.sql:35`.
 - Hold and journey times: `offerHoldMs 180000`, `catchHoldMs 600000`, `journeyTtlMs 86400000`, `maxResends 2`:
@@ -562,13 +583,20 @@ At commit `48c7e26` (15 October 2026):
   only their own words: `m_my_gifts`, lines 746-754.
 - The author's count: `humanProgress`, `ui/relay/journeys.js:25`, used at lines 48, 58, 114, 132 and in
   `ui/relay/returned.js`.
-- Restriction: `supabase/migrations/20261014090100_hushmates_rules.sql:1122-1131`; `staff/desk-guide.js`. Messages:
-  `ui/relay/catch.js:434`, `ui/relay/release.js:129`. Lifting: `server/admin.mjs member <reference> active`.
+- Restriction: `supabase/migrations/20261014090100_hushmates_rules.sql:1122-1130`; `staff/desk-guide.js:12-13, 18-19`.
+  Messages: `ui/relay/catch.js:434`, `ui/relay/release.js:129`, `ui/relay/journeys.js:133`. Lifting:
+  `server/admin.mjs member <reference> active`. No operator deletion command: `server/admin.mjs:149`.
 - Export and deletion for restricted accounts: `m_export_raw` and `m_delete_my_data` call
-  `actor(m, array['active', 'restricted', 'suspended'])`.
+  `actor(m, array['active', 'restricted', 'suspended'])`
+  (`supabase/migrations/20261014090100_hushmates_rules.sql:969-972, 995-998`).
 - Report reasons (no age reason): `core/relay-config.js:33-41`.
-- Support lines (Kids Helpline isn't one of them): `core/feeling-safety.js:129-135`.
-- Nothing reads age from words: no age rule in `core/feeling-safety.js` or `core/text-policy.js`.
+- Support lines (Kids Helpline isn't one of them): `core/feeling-safety.js:166-180`; the *Support* pill in every header
+  and its sheet: `ui/relay/common.js:41-49`. Kids Helpline's number is in the list of national numbers a feeling or
+  perspective may name: `core/feeling-safety.js:221-224`.
+- Nothing reads a stated age from anyone's words: no rule in `core/feeling-safety.js` or `core/text-policy.js` looks
+  for one. The only age-related rule refuses a perspective that asks "how old are you" (line 288).
+- The word check's gaps: 25 of 127 developer-written crisis or danger phrasings shown crisis or danger support
+  (`docs/safety/TIER0_SELF_ASSESSMENT.md`).
 
 ---
 

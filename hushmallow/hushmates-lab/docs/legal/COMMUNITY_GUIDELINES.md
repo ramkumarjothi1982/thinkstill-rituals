@@ -223,7 +223,6 @@ exempt from the phone rule (:221-225); "Lifeline is there any time on 13 11 14."
 [classification: recommended practice] SM-02, SM-08: catchers should be able to point to support. That works now for
 helpline numbers, but not for words about suicide or self-harm (next section). -->
 
-
 ### If someone might be struggling
 
 Sometimes a feeling is heavy. If you're not sure what to say, these come from Australian guidance on talking safely
@@ -250,8 +249,8 @@ looking after yourself matters too.
 
 **If you think they might be in danger,** write something kind if you feel able, and also report the feeling with
 **"Someone may be in danger"**. It goes to the front of our safety team's queue, and that usually pauses the feeling
-straight away. Our team reads reports, but not straight away and not around the clock. It can't see who wrote it, so
-it can't contact them or send help. If you know who they are, and they're in danger right now, call **000**.
+straight away. Our team reads reports when it can, not around the clock. It can't see who wrote it, so it can't
+contact them or send help. If you know who they are, and they're in danger right now, call **000**.
 
 **If your words mention suicide or self-harm, or suggest someone might not be safe,** Hushmates won't pass them on,
 even if you meant them kindly or they're about someone else. It can't tell the difference, so it shows you support
@@ -430,7 +429,7 @@ Neither of you is told, and neither of you learns who the other is.
 already on the blocker's feelings hidden; new perspectives by a catcher who blocked the author set aside). "From then
 on" is deliberate: perspectives the blocker already gave on the other person's feelings are not hidden by the code
 (app-facts §3, [Check] on ui/relay/catch.js:472). Button labels: "Don’t show me their feelings" then the confirm
-"Never see their feelings?" (ui/relay/catch.js:456, 472); "Never reach me again" (ui/relay/returned.js:260, 276). [classification: recommended practice] BOSE gives blocking as an example of reasonable steps (SCW-05). -->
+"Never see their feelings?" (ui/relay/catch.js:455, 472); "Never reach me again" (ui/relay/returned.js:260, 276). [classification: recommended practice] BOSE gives blocking as an example of reasonable steps (SCW-05). -->
 
 ## If someone is in danger right now
 
@@ -552,7 +551,7 @@ up]**. If you or someone else is in danger right now, please don't email us. Cal
 | Suicide, self-harm, disordered eating | Needs legal advice | Phase 2 "self-harm material" and "allows" not seen | eSafety Codes and Standards Regulatory Guidance, April 2026 (search extract) |
 | Personal details | Recommended practice; third-party information needs legal advice | Whether Hushmallow is an APP entity | OAIC (via PRIVACY_POLICY.md, search extracts) |
 | Writing for someone who may be struggling | Recommended practice | Guidance, not law | #chatsafe (Orygen), Mindframe (Everymind), Samaritans (search extracts) |
-| Reporting: who, when, what they can and can't do | Recommended practice; accuracy depends on Hushmallow's functionality or business circumstances | Desk staffing; Tier 0 wording shipping | eSafety Safety by Design Principles (search extract); ACL s18 (text not seen) |
+| Reporting: who, when, what they can and can't do | Recommended practice; accuracy depends on Hushmallow's functionality or business circumstances | Desk staffing (D12); the committed acknowledgement wording | eSafety Safety by Design Principles (search extract); ACL s18 (text not seen) |
 | Danger right now: 000 and support lines | Recommended practice | Numbers checked against providers | Mindframe quick reference (search extract) |
 | Consequences and review | Recommended practice; reporting to authorities depends on category | Category (needs legal advice) | eSafety Phase 1 code (search extract) |
 | Blocking | Recommended practice | None | eSafety BOSE regulatory guidance, February 2026 (search extract) |
@@ -562,20 +561,31 @@ behind these guidelines has been read in full. Mindframe, #chatsafe and Samarita
 
 ## B3. Where the app doesn't match yet
 
-1. **No link to these guidelines**, and no agreement step, anywhere in the app.
+Re-checked at `9012d6f`. Items marked **Done** are kept so the history is visible.
+
+1. **No link to these guidelines**, and no agreement step, anywhere in the app. Still open.
 2. **No "may be under 18" report reason** (U16-12), and no reason for child sexual abuse material; the desk procedure
-   must treat "Sexual content" reports that involve a child as urgent.
-3. **No outcome notice** for reporters, and **no reason, support lines or review route** in the restriction message.
-4. **No contact address** anywhere.
-5. **Tier 0 changes are uncommitted:** the aims ("within a day", "within two days"), the desk-away message, the Support
-   button in every header, offline support lines, and the helpline exemption in perspectives. If they don't ship, the
-   app says "within 24 hours" and "within 48 hours", and parts of "What happens when you report" and "If someone is in
-   danger right now" must change.
-6. **`docs/ESCALATION.md`** at `000c0cd` said the app promises no times. The working tree version (uncommitted) now
-   states the public aims and keeps 12 hours as an internal target, which matches these guidelines. Make sure that
-   version is committed (SCW-07 as corrected).
-7. **Mallow labels** still say "Automatically generated" in the app. These guidelines avoid the word; the app should too
-   (see `TERMS_OF_USE.md` Part B, B4.2).
+   must treat "Sexual content" reports that involve a child as urgent. Still open.
+3. **No outcome notice** for reporters, and **no reason, support lines or review route** in the restriction message
+   (`ui/relay/catch.js:434`). Still open.
+4. **No contact address** anywhere (D23). Still open.
+5. **Tier 0 changes. Done: committed** (`0037d57`, refined up to `9012d6f`): the aims ("within a day", "within two
+   days"), the desk-away message, the Support pill in every header, support lines that open offline once the app has
+   loaded, and the helpline exemption in perspectives.
+6. **`docs/ESCALATION.md`. Done.** The committed version states the public aims and keeps 12 hours as the team's own
+   target, "not promised to anyone", with the "Over 12 hours" badge on the desk; that matches these guidelines (SCW-07 as
+   corrected). It still needs names on the rota (D12).
+7. **Mallow labels** still say "Automatically generated" in the app (decision D21, open). These guidelines avoid the
+   word (see `TERMS_OF_USE.md` Part B, B4.2).
+8. **Naming suicide or self-harm in a perspective** always gets the crisis support screen, however gently it is put,
+   so the safe-language advice ("died by suicide") can't be followed in the app. These guidelines now tell catchers not
+   to name them. For Tier A: whether perspectives (and feelings about a suicide loss) should be allowed to name suicide
+   gently, and what a catcher who wrote about someone else's loss should be told ("Right now, this is about you."
+   assumes it's about them). See `SAFETY_DISCLAIMERS.md` §3.3.
+9. **[Check] Catching's starting position.** The code starts "Let feelings find me" off for a new member
+   (`schema.sql:61`; `ui/relay/welcome.js:33`); `docs/DECISIONS.md` D22 and `docs/safety/SBD_SELF_ASSESSMENT.md`
+   SBD-17 say it starts on. "Catching is always your choice" is true either way, but D22's choice needs the right
+   starting fact.
 
 ## B4. What could not be confirmed
 
@@ -585,3 +595,6 @@ behind these guidelines has been read in full. Mindframe, #chatsafe and Samarita
 - eSafety's and the ACCCE's reporting addresses.
 - Every support number and "any time" claim against the services' own websites (they come from the app's code).
 - Who staffs the desk, and how often.
+- How every phrasing about suicide, self-harm or grief fares in the word check: only the handful named in the comments
+  was run through the real screen. The Tier 0 probe (25 of 127 crisis or danger phrasings shown support) is evidence
+  of gaps, not a measured rate.

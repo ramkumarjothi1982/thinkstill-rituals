@@ -9,8 +9,10 @@
 > the independent safety review (Tier A, `docs/REVIEWS.md`, `docs/REVIEW_QUOTES.md`). Hushmates is not live: there
 > are no real members and no real reports yet.
 >
-> **Facts.** Every statement about what the app or the desk does was checked against the code at commit `0037d57`
-> (15 October 2026), which includes the Tier 0 changes. File names are given so they can be checked again.
+> **Facts.** Every statement about what the app or the desk does was re-checked, line by line, against the committed
+> code at `0773d1e` (15 October 2026; the app's code last changed in `9012d6f`, which validated the desk-away setting).
+> It includes the Tier 0 changes. File names and lines are given so they can be checked again. Where this document
+> disagrees with `docs/ESCALATION.md` or the code, §14 says so; `ESCALATION.md` itself was not edited.
 >
 > **Classifications.** Each requirement is labelled:
 > - **[verified obligation]**: the law requires it, and the source was seen (as a search extract, see §15);
@@ -40,7 +42,8 @@ This document adds what `ESCALATION.md` doesn't cover:
 - ordinary reports (§8);
 - notices from eSafety (§9);
 - looking after the people who read the desk (§10), and training (§11);
-- records (§12) and review (§13).
+- records (§12) and review (§13);
+- where `ESCALATION.md` and the code differ, for its owner to fix (§14.1).
 
 **What supersedes what.**
 - Where this document and `ESCALATION.md` cover the same thing, they say the same thing. If they ever seem to
@@ -65,9 +68,12 @@ This document adds what `ESCALATION.md` doesn't cover:
 |---|---|
 | Read a reported feeling or perspective, with when it was reported | See anyone's name, email or location, or who reported (`m_mod_get`, `supabase/migrations/20261014090100_hushmates_rules.sql`) |
 | See how many earlier reports there were about the same account, how many were acted on, and whether it is restricted | Browse feelings, or read anything that hasn't been reported (there is no such method) |
-| **Let it carry on**, **Take it out of circulation** (a feeling), **Remove the perspective**, **Restrict the person who wrote it**, or **Close: noted for the library** (a Mallow line) (`staff/desk-guide.js`) | Contact anyone, send help, or tell a reporter what was decided |
-| Write team notes (encrypted; every moderator sees them) | Undo something already read, or recall a share picture someone already made |
-| See the activity log (the last 200 entries, accounts by reference only) | Restrict another moderator, suspend an account, or lift a restriction (a team lead does that with `server/admin.mjs member <reference> active\|restricted\|suspended`) |
+| **Let it carry on**, **Take it out of circulation** (a feeling), **No action needed**, **Remove the perspective** (a perspective), **Restrict the person who wrote it** (either), or **Close: noted for the library** (a Mallow line) (`staff/desk-guide.js:8-24`) | Contact anyone, send help, or tell a reporter what was decided |
+| Write a team note (encrypted; every moderator who opens the report sees it), **but only together with a decision**: the note box is part of *Decide*, the desk starts each note with "Decision: …", and the server saves a note only when a decision is made (`staff/desk.js`, `decide`; `m_mod_resolve` is the only thing that writes `report_notes`) | Undo something already read, or recall a share picture someone already made |
+| See the activity log (the last 200 entries, accounts by reference only; `m_mod_audit`) | Restrict another moderator, suspend an account, or lift a restriction (a team lead does that with `server/admin.mjs member <reference> active\|restricted\|suspended`) |
+| | **Add a note after deciding, or change a decision.** A decided report shows only "Decided: action taken." or "Decided: no action needed." (`staff/desk.js`) **[GAP]** |
+| | **See whether a reported feeling is still travelling, paused or home.** The report view shows the words, the reason and when it was reported, not the feeling's state (`m_mod_get` returns no journey status) **[GAP]** |
+| | **See that two reports are about the same feeling.** Each report is its own row; the desk doesn't group them. "Earlier reports about the same person" counts only reports made before this one **[GAP]** |
 
 The account reference the desk shows ("Account reference (for a team lead)") is a random code. It is not a name and
 it does not show an email.
@@ -76,31 +82,48 @@ it does not show an email.
 
 These run on their own, day and night (verified in the code):
 - **The word check** (the safety screen, `core/feeling-safety.js`, run on the device and again on the server). Words
-  that suggest someone might not be safe are never sent or stored, and the person sees support lines instead. Nobody
-  is alerted, and nothing is recorded. It reads English only and it misses many phrasings (`docs/safety/TIER0_SELF_ASSESSMENT.md` §4).
-- **Automatic pausing.** A feeling stops being offered, and every hold on it ends, as soon as one person reports it
-  as "Someone may be in danger", or two different people report it for any reason (`reportsToPause 2`, `m_report_feeling`).
-  It still comes home to its writer when its day is up.
+  that suggest someone might not be safe are never sent or stored, and the person sees a support screen instead: one
+  for crisis words, one for "Someone might be in danger", and care screens for abuse, violence, threats, harassment
+  and feeling unsafe. A feeling that tells its readers to hurt themselves never travels: it gets the crisis screen, or
+  the harassment care screen when the writer is quoting someone else. A perspective that encourages self-harm, gives
+  diet, medication or drinking advice, or asks someone's age or location, to meet up or for pictures, is refused.
+  National helpline numbers may be named in a perspective; an Australian postcode with its context is refused as
+  identifying. Nobody is alerted, and nothing is recorded. It reads English only, and it misses many phrasings: on a
+  Tier 0 developer probe it showed crisis or danger support for 25 of 127 developer-written crisis or danger
+  phrasings. That is evidence of gaps, not a measured rate (`docs/safety/TIER0_SELF_ASSESSMENT.md` §4).
+- **Automatic pausing, usually.** A feeling stops being offered, and every live hold on it ends, when one person
+  reports it as "Someone may be in danger", or when two different people have open reports on it for any reason
+  (`reportsToPause 2`; `m_report_feeling`, `supabase/migrations/20261014090100_hushmates_rules.sql:888-914`). **Not
+  always:** a report from someone whose earlier report on the same feeling a reader has already decided can't pause
+  it on its own, and a second report from someone whose first is still open isn't a new report at all. It still comes
+  home to its writer when its day is up.
 - **A reported feeling leaves the reporter's sky,** and a reported perspective leaves the author's collection, at once.
 - **Blocking** works at once, both ways.
-- **The Support button** is in the header of every screen. It opens the crisis lines over whatever the person is
-  doing, and works offline (`ui/relay/common.js`, `supportPill`, `openSupport`).
+- **The Support button** (the visible word is "Support") is in the header of every screen. It opens the crisis lines
+  in a sheet over whatever the person is doing, and works offline (`ui/relay/common.js:41-49`, `supportPill`,
+  `openSupport`): first 000, Lifeline 13 11 14, Suicide Call Back Service 1300 659 467 and 13YARN 13 92 76; then,
+  under "More support lines", 1800RESPECT 1800 737 732, Beyond Blue 1300 22 4636 and findahelpline.com
+  (`core/feeling-safety.js:166-180`). You & safety opens with "If you’re not okay" → **Get support now**
+  (`ui/relay/you.js:52-54`).
 - **Every feeling comes home within a day of each trip**, and unsaved words are cleared 30 days after they come home.
 
-**What doesn't happen on its own:** nothing tells anyone that a report has arrived. The desk refreshes every 60
-seconds only while it is open and someone is signed in (`staff/desk.js`), and says so: "Nothing alerts anyone when
-it’s closed, so check at the set times."
+**What doesn't happen on its own:** nothing tells anyone that a report has arrived. There is no email, no push and
+no other alert. The desk refreshes its list every 60 seconds only while the desk tab is open and in view, someone is
+signed in, and the Activity log tab isn't showing (`staff/desk.js:15, 169`), and says so: "Nothing is waiting. This
+list refreshes by itself while this tab is in view and you’re signed in. Nothing alerts anyone, open or closed, so
+check at the set times." (`staff/desk.js:224`). The **Over 12 hours** badge is seen only by someone who opens the
+desk; nothing alerts anyone that a report is overdue.
 
 ---
 
-## 3. Who monitors reports
+## 3. Who monitors reports (at set times, never continuously)
 
 ### 3.1 The roles
 
 | Role | Name (write it here and in `ESCALATION.md` §2) | What they do |
 |---|---|---|
-| **Accountable owner** | ________ (Hushmallow's owner) | Runs the business, so carries the legal duties (WHS, privacy, consumer law). Names everyone below. Approves this procedure and the wording in §4. Does the operator tasks: invitations, the away setting, lifting restrictions, suspending. Gets legal advice where this document says so |
-| **Safety lead** | ________ | Owns this procedure and `ESCALATION.md`. Decides anything uncertain. Hears about every priority report the same day. Runs debriefs (§10). Checks the activity log weekly. Keeps the rota, the eSafety log and the WHS log. May also be the owner |
+| **Accountable owner** | ________ (Hushmallow's owner) | Runs the business, so carries the legal duties (WHS, privacy, consumer law). Names everyone below. Approves this procedure and the wording in §4. Does the operator tasks: invitations, the away setting (and its record, §12), restricting or suspending an account a reader asks for, lifting restrictions. Gets legal advice where this document says so |
+| **Safety lead** | ________ | Owns this procedure and `ESCALATION.md`. Decides anything uncertain. Hears about every priority report the same day. Runs debriefs (§10). Checks the activity log weekly. Keeps the rota, the priority-report log (§6.6), the eSafety log and the WHS log. May also be the owner |
 | **Desk reader (main)** | ________ | Checks the desk at the set times, reads every open report, decides, records, escalates |
 | **Desk reader (backup)** | ________ | Covers the main reader's days off, leave and illness. Reads at the same set times |
 | **eSafety and legal contact** | ________ (backup ________) | Checks the contact address every day, including weekends and holidays (§9). May be the safety lead |
@@ -134,8 +157,11 @@ and in which state] The WHS duties in §10 attach to these roles (SCW-15). -->
 
 **Reading**
 - Open the desk at each set time. Read **every** open report, not only the priority ones.
-- The queue lists priority reports ("Someone may be in danger") first, then the oldest. A priority report open for
-  more than 12 hours is marked **Over 12 hours**: read those first.
+- The queue lists priority reports ("Someone may be in danger") first, then the oldest (`m_mod_list`: urgent first,
+  then by time). A priority report open for more than 12 hours is marked **Over 12 hours** (`staff/desk-guide.js:47-56`,
+  `isOverdue`): read those first.
+- **Look through the whole open list before you decide any report.** The desk doesn't group reports about the same
+  feeling (§2.1). If two rows show the same feeling's words, decide the priority one first.
 - Reports about sexual content that may involve a child are not marked priority by the app. Read every "Sexual
   content" report straight away when you see it (§7.1).
 - Read on a computer, in private. Not on a shared screen, and not in a public place.
@@ -146,11 +172,19 @@ and in which state] The WHS duties in §10 attach to these roles (SCW-15). -->
   Guidelines). Remove things that break the rules.
 - **Don't restrict someone because they may be at risk.** Restriction is for breaking the rules. It would cut them
   off and tell them nothing.
-- If you can't decide, leave it open, write a note, and ask the safety lead. A priority feeling has already been
-  paused, so it isn't travelling while you wait.
+- **Never choose *Let it carry on* for a feeling while another report on the same feeling is still open.** *Let it
+  carry on* resumes the feeling whatever else is waiting, including a priority report on it (`m_mod_resolve`,
+  `resume-feeling`, `supabase/migrations/20261014090100_hushmates_rules.sql:1110-1112`) **[GAP]**.
+- If you can't decide, leave it open and ask the safety lead (by phone, giving the time and kind of report, never
+  its words). **The desk can't save a note without a decision** (§2.1), so don't wait to write one. For a priority
+  feeling, step 2 of §6.2 already tells you what to do: take it out of circulation unless it clearly isn't about
+  danger. A "Someone may be in danger" report usually pauses the feeling, but not always (§2.2), and the desk can't
+  show you whether it did.
 
 **Recording**
-- Write a team note with each decision: what you saw, in your own words, and what you did.
+- Write a team note with each decision: what you saw, in your own words, and what you did. It is saved with the
+  decision and can't be added to later, so put everything in it before you press the decision. Anything that happens
+  afterwards (for example, when you told the safety lead) goes to the safety lead, who records it (§6.6, §12).
 - No diagnosis, no guesses about the person's health, and no guesses about who anyone is.
 - Never copy reported words anywhere outside the desk: no screenshots, no photos of the screen, no pasting into
   email, chat, documents or AI tools.
@@ -194,20 +228,26 @@ TGA-4 (describe the danger path as a moderation priority read by people, not a c
 
 ### 4.1 The words, exactly as the app says them now
 
-| Where | The words (commit `0037d57`) |
-|---|---|
-| After a **"Someone may be in danger"** report (`hushmates.expectation`, `supabase/migrations/20261015090000_hushmates_tier0.sql`; the same in `core/relay.js` `_expectation`) | "Thank you for telling us. This goes to the front of the queue for a person on our safety team. We’re a small team and we’re not here around the clock: during the pilot we aim to read priority reports within a day, and nights, weekends and holidays can take longer. We can’t see who wrote it, so we can’t contact them or send help. If you know someone is in danger right now, call 000. If this has stayed with you, Lifeline is there any time on 13 11 14. Nobody is told who reported." |
-| After **any other** report (same places) | "Thank you for telling us. A person on our safety team will read it. We’re a small team, not here around the clock: during the pilot we aim to read reports within two days. Nobody is told who reported." |
-| After any report **while the desk is marked away** (`hushmates.expectation` only: the lab's in-memory relay has no away setting) | "Thank you for telling us. Our safety team is away until {Tuesday 29 December}, so it will be read when we’re back. We can’t see who wrote it, so we can’t contact them or send help. If someone is in danger right now, call 000. Nobody is told who reported." After a "Someone may be in danger" report, "If this has stayed with you, Lifeline is there any time on 13 11 14." comes before the last sentence. The day is read in Sydney, written `YYYY-MM-DD`; `server/admin.mjs` takes only a real day from today to 90 days ahead |
-| After any report **while the desk is marked away, with no day the database can read** (anything else stored in `awayUntil`, such as "29/12/2026", "soon" or a day more than 90 days ahead) | "Thank you for telling us. Our safety team is away for now and may not be able to read it straight away. It will be read when we’re back. We can’t see who wrote it, so we can’t contact them or send help. If someone is in danger right now, call 000. Nobody is told who reported." (with the Lifeline sentence after a priority report, as above). It never falls back to the usual times while someone has marked the desk away |
-| The report sheet, before sending (`ui/relay/common.js`, `reportSheet`) | "A person on our safety team reads reports, but not straight away and not around the clock. They can’t see who anyone is, and they can’t contact anyone. Nobody is told who reported. If someone is in danger right now, call 000." |
-| The report sheet, when "Someone may be in danger" is chosen | "Our team can’t see who wrote it, so we can’t contact them or send help. If you know someone is in danger right now, call 000." |
-| You & safety (`ui/relay/you.js:70`; re-checked at `f8d7e4a`) | "…When something is reported, a person on our small safety team reads it: during the pilot we aim to do that within a day or two, and nights, weekends and holidays can take longer. They aren’t counsellors, and they can’t see who anyone is or contact anyone. If someone is in danger right now, call 000." (At `0037d57` it said "usually within a day or two", with no 000. "Usually" reports a track record there isn't, and broke §4.2; the committed wording fixes it. Keep it, or use `SAFETY_DISCLAIMERS.md` §3.5's shorter form.) |
-| The privacy sheet, "Safety" (`ui/relay/parts.js`) | "Reported words are read by people on our small safety team, not around the clock. …" |
-| A paused feeling, to its writer (`ui/relay/journeys.js:134`; re-checked at `f8d7e4a`) | "Paused for now. Our safety team will look at it, but they can’t contact you. It still comes home within {time}." |
-| Terms of Use and Community Guidelines (drafts) | "During the beta we aim to read priority reports within a day, and others within two days. Nights, weekends and holidays can take longer. That's an aim, not a promise." |
+These are **aims, not guarantees**, and the app says so in its own way: every time is "we aim to", next to "we're a
+small team and we're not here around the clock", and nights, weekends and holidays "can take longer".
 
-`SAFETY_DISCLAIMERS.md` has the rest of the safety wording, place by place.
+| Where | The words (committed code at `0773d1e`) |
+|---|---|
+| After a **"Someone may be in danger"** report (`hushmates.expectation`, `supabase/migrations/20261015090000_hushmates_tier0.sql:13-48`, line 46; the same in `core/relay.js:823-826`, `_expectation`) | "Thank you for telling us. This goes to the front of the queue for a person on our safety team. We’re a small team and we’re not here around the clock: during the pilot we aim to read priority reports within a day, and nights, weekends and holidays can take longer. We can’t see who wrote it, so we can’t contact them or send help. If you know someone is in danger right now, call 000. If this has stayed with you, Lifeline is there any time on 13 11 14. Nobody is told who reported." |
+| After **any other** report (same places, line 47) | "Thank you for telling us. A person on our safety team will read it. We’re a small team, not here around the clock: during the pilot we aim to read reports within two days. Nobody is told who reported." |
+| After any report **while the desk is marked away** (`settings.desk.awayUntil`; `hushmates.expectation` only: the lab's in-memory relay has no away setting) | "Thank you for telling us. Our safety team is away until {Tuesday 29 December}, so it will be read when we’re back. We can’t see who wrote it, so we can’t contact them or send help. If someone is in danger right now, call 000. Nobody is told who reported." After a "Someone may be in danger" report, "If this has stayed with you, Lifeline is there any time on 13 11 14." comes before the last sentence. The day is read in Sydney time, stored as `YYYY-MM-DD` and shown as weekday, day and month; the message shows through the whole of that day. `server/admin.mjs` (`deskProblem`) accepts only a real day from today to 90 days ahead, in Sydney |
+| After any report **while the desk is marked away, with no day the database can trust** (anything else stored in `awayUntil`: another date format such as "29/12/2026", "soon", an empty string, a date that doesn't exist, or a day more than 90 days ahead) | "Thank you for telling us. Our safety team is away for now and may not be able to read it straight away. It will be read when we’re back. We can’t see who wrote it, so we can’t contact them or send help. If someone is in danger right now, call 000. Nobody is told who reported." (with the Lifeline sentence after a priority report, as above). It never falls back to the usual times while a value the database can't read is stored |
+| After any report **once the day set has passed** | The usual words above ("we aim to read … within a day" or "within two days"). The database reads a past day as "a reader is back" (`20261015090000_hushmates_tier0.sql:36-37`). So a day left in place after it has passed promises the usual times again: see §5.2 |
+| The report sheet, before sending (`ui/relay/common.js:128`, `reportSheet`) | "A person on our safety team reads reports, but not straight away and not around the clock. They can’t see who anyone is, and they can’t contact anyone. Nobody is told who reported. If someone is in danger right now, call 000." |
+| The report sheet, when "Someone may be in danger" is chosen (`ui/relay/common.js:115`) | "Our team can’t see who wrote it, so we can’t contact them or send help. If you know someone is in danger right now, call 000." |
+| You & safety, "Rules first, then people." (`ui/relay/you.js:70`) | "Words are checked for safety and personal details by rules that read English only and can miss things. Nobody on our team reads feelings as they travel. When something is reported, a person on our small safety team reads it: during the pilot we aim to do that within a day or two, and nights, weekends and holidays can take longer. They aren’t counsellors, and they can’t see who anyone is or contact anyone. If someone is in danger right now, call 000." **Done: the app adopted this.** (At `0037d57` it said "usually within a day or two", with no 000. "Usually" reported a track record there isn't, and broke §4.2.) `SAFETY_DISCLAIMERS.md` §3.5 has a shorter form, if the owner prefers it |
+| The privacy sheet, "Safety" (`ui/relay/parts.js:187`) | "Reported words are read by people on our small safety team, not around the clock. The team reads feelings only when they’re reported, and it can’t see who anyone is or contact anyone. Words are checked by rules that read English only and can miss things. Hushmates isn’t an emergency service: if you might not be safe, call 000, or a crisis line such as Lifeline on 13 11 14, any time." |
+| The welcome, "Not an emergency service." (`ui/relay/welcome.js:105`) | "Hushmates checks words for some signs that someone might not be safe, and shows numbers to call. The check reads English only, it can miss things, and nobody is watching in real time. If you’re not safe, call 000, or Lifeline on 13 11 14, any time." |
+| The Support sheet, "You deserve support" (`core/feeling-safety.js:180`) | "Hushmates isn’t an emergency service, and nobody here is watching in real time. If you or someone else is in danger right now, call 000. If you’re not okay, or you’re worried about someone, these services are free and there to talk." |
+| A paused feeling, to its writer (`ui/relay/journeys.js:59, 134-137, 197`) | In the list: "Paused for a safety review". On the feeling: "Paused for now. Our safety team will look at it, but they can’t contact you. It still comes home within {time}." then "If anything feels heavy, people on these lines are ready to listen now." with **Get support now**. Its Mallow: "This one is waiting for our safety team to read it, so I’ll hold off for now." The words are the same for every pause, so the reason isn't revealed. No time for the review is given |
+| Terms of Use and Community Guidelines (drafts; `TERMS_OF_USE.md` "Our safety team is small", `COMMUNITY_GUIDELINES.md` "When") | "During the beta we aim to read priority reports within a day, and others within two days. Nights, weekends and holidays can take longer. That's an aim, not a promise. If the team is away for a while, the message you see after reporting says so…" (the Terms put the same words in one sentence) |
+
+`SAFETY_DISCLAIMERS.md` (§3.7 for reports, §3.8 for the desk) has the rest of the safety wording, place by place.
 
 ### 4.2 The rules for this wording
 
@@ -222,8 +262,11 @@ TGA-4 (describe the danger path as a moderation priority read by people, not a c
   together), then the rota. Never leave a promise in the app that the team can't keep.
 - **Always "aim", never "will"** for a time. Always next to "call 000". Never "monitor", "watch", "24/7", "always
   here", "check on you" or "someone will contact you".
-- **Proposed** (not yet in the app): add "If anyone is in danger right now, call 000." to the ordinary
-  acknowledgement, so every statement about the desk sits next to 000 (`SAFETY_DISCLAIMERS.md` §5).
+- **The away notice must be true too.** "Away until {day}" is a statement about when someone will read the desk.
+  Set the day a reader will really check it, and change it before it passes if the plan slips (§5.2).
+- **Still a proposal** (not yet in the app: re-checked, `20261015090000_hushmates_tier0.sql:47` and
+  `core/relay.js:826`): add "If anyone is in danger right now, call 000." to the ordinary acknowledgement, so every
+  statement about the desk sits next to 000 (`SAFETY_DISCLAIMERS.md` §3.7 and §5).
 
 <!-- [depends: whether the rota in §3 is actually staffed] A published aim is a representation about a future matter.
 From memory (ACL s4, not seen this run), such a representation is taken to be misleading unless there were
@@ -246,16 +289,19 @@ Nights, weekends, holidays, illness, leave, a power or internet outage, or a rea
 - **The safeguards in §2.2 keep working:** the word check, automatic pausing, reported items leaving the reporter's
   view, blocking, the Support button on every screen, homecoming within a day.
 - **Reporters are told honestly** that the team is small and not there around the clock (§4).
-- **The app never says that someone is watching.** It says the opposite: "nobody is watching in real time".
+- **The app never says that someone is watching.** It says the opposite: "nobody is watching in real time"
+  (`ui/relay/welcome.js:105`; the Support sheet, `core/feeling-safety.js:180`).
+- **What doesn't happen on its own:** nobody is told that the desk is unread. The away notice appears only after the
+  owner sets it (§5.2).
 
 ### 5.2 What the team does
 
 | How long nobody can read the desk | What happens |
 |---|---|
 | **A missed check** (up to about 24 hours) | The backup reader takes the check. If neither can, the safety lead does. If a reader falls ill during a shift, they stop and tell the backup or the lead; nobody finishes a shift while unwell |
-| **More than 24 hours** | Before it starts, the owner marks the desk away, with the day a reader will next check it: `node server/admin.mjs set desk '{"awayUntil": "YYYY-MM-DD"}'`. Reporters are then told when it will be read (§4.1). The date is read in Sydney time, and the message shows through that whole day |
-| **More than 72 hours**, or after any priority report that couldn't be read | The owner also pauses invitations (no new codes; revoke unused ones with `node server/admin.mjs revoke <CODE>`) and tells current testers, in plain words, that the desk is away and when it's back (`ESCALATION.md` §2). **The channel:** for G2, the owner emails team testers personally (as `DATA_BREACH_RESPONSE_PLAN.md` R4 assumes). Before G3 this needs the in-app notice or the email provider (D5) **[GAP]**: there is no in-app notice feature and no sending tool today. The privacy policy ("When you sign in") and the terms (§9) list this as a use of the email address |
-| **The reader is back** | The owner clears the setting: `node server/admin.mjs set desk '{"awayUntil": null}'`. The reader reads the oldest priority reports first |
+| **More than 24 hours** (`ESCALATION.md` §2) | **Before it starts**, the owner marks the desk away, with the day a reader will next check it: `node server/admin.mjs set desk '{"awayUntil": "YYYY-MM-DD"}'`. Reporters are then told "Our safety team is away until {day}, so it will be read when we’re back…" instead of the usual times (§4.1). The day is read in Sydney time, and the message shows through that whole day. The command refuses anything but a real day from today to 90 days ahead, in Sydney (`server/admin.mjs:46-71`, `deskProblem`); for a longer absence, set the nearest day a reader will check, and set it again then. **If the plan slips, set a new day before the old one passes:** once the day has passed, reporters see the usual "within a day" and "within two days" again (§4.1). Only someone holding the database connection string can run the command, and the desk itself can't. *Recommended practice:* if the owner may be unreachable, set it before leaving, or give a named second person the means to. Settings changes aren't written to the audit log (`admin_set_setting`), so the owner records each away period (§12) |
+| **More than 72 hours**, or after any priority report that couldn't be read (`ESCALATION.md` §2) | The owner also **pauses invitations** (no new codes; revoke unused ones with `node server/admin.mjs revoke <CODE>`, which needs each code, as codes are shown only once when made; to revoke every unused code at once, the SQL in `DATA_BREACH_RESPONSE_PLAN.md` §6.1) and **tells current testers**, in plain words, that the desk is away and when it's back. **The channel:** for G2, the owner emails team testers personally (as `DATA_BREACH_RESPONSE_PLAN.md` R4 assumes). Before G3 this needs the in-app notice or the email provider (D5) **[GAP]**: there is no in-app notice feature and no sending tool today. The privacy policy ("When you sign in") and the terms (§9) list this as a use of the email address |
+| **The reader is back** | The owner clears the setting: `node server/admin.mjs set desk '{"awayUntil": null}'`. The reader reads the priority reports first, oldest first, then the rest. Any priority report past 12 hours is noted for the safety lead (§6.7) |
 
 ### 5.3 Pausing new feelings while the desk is away
 
@@ -290,35 +336,51 @@ staffing] SCW-17 (needs legal advice): a safety function the team has taken on s
 
 - The reporter was told, at once: we can't see who wrote it, we can't contact them or send help, call 000 if someone
   is in danger right now, and Lifeline is there any time (§4.1).
-- **If it's a feeling:** it was paused at once. Nobody else is offered it, and live holds ended. Its writer sees
-  "Paused for now. Our safety team will look at it, but they can’t contact you…" with **Get support now** beside it
-  (`ui/relay/journeys.js:134-137`, at `f8d7e4a`). The words are
-  the same for every pause, so the reason isn't revealed.
-- **If it's a perspective:** only a feeling's author can report one, after the feeling is home. It left their
-  collection at once. Its writer isn't told.
+- **If it's a feeling:** it was **usually** paused at once: nobody else is offered it, and live holds ended. **Not
+  always:** if the same person had reported this feeling before and a reader already decided that report, the new
+  report can't pause it on its own, and it may still be travelling (`m_report_feeling`,
+  `supabase/migrations/20261014090100_hushmates_rules.sql:902-912`). The desk doesn't show which (§2.1). When it is
+  paused, its writer sees "Paused for a safety review" in their list and, on the feeling, "Paused for now. Our
+  safety team will look at it, but they can’t contact you. It still comes home within {time}." with "If anything
+  feels heavy, people on these lines are ready to listen now." and **Get support now** beside it
+  (`ui/relay/journeys.js:59, 134-137`). The words are the same for every pause, so the reason isn't revealed.
+- **If it's a perspective:** only the feeling's author can report one: a person's perspective once the feeling is
+  home (`ui/relay/returned.js:265-268`), and a Mallow perspective also while the feeling is still travelling
+  (`ui/relay/journeys.js:286-289`). It left their collection at once. Its writer isn't told.
 - It is at the top of the queue, marked **Priority**.
 
-### 6.2 The steps (the same six as `ESCALATION.md` §3 and the desk)
+### 6.2 The steps (the same six as `ESCALATION.md` §3 and the desk, `staff/desk-guide.js:26-45`)
+
+The desk shows these steps on every priority report, in this order, with the national lines (000, Lifeline
+13 11 14, Suicide Call Back Service 1300 659 467, Beyond Blue 1300 22 4636, 13YARN 13 92 76 and 1800RESPECT
+1800 737 732). `tests/desk-guide.test.mjs` checks that the desk and `ESCALATION.md` §3 say the same six steps.
 
 1. **Read the words first.** The desk never shows who anyone is, and it can’t contact anyone.
 2. **If it’s a feeling, take it out of circulation** (*Take it out of circulation*) unless it clearly isn’t about
-   danger. A “Someone may be in danger” report has already paused it. Nobody else is offered it, and it goes home to
-   its writer with whatever came back; they then see "Our safety team brought it home early. Sometimes a feeling needs
-   more care than a new way of seeing it. If that’s true for you right now, crisis lines are there any time.", with
-   **Get support now** (`ui/relay/returned.js:125, 137`, at `f8d7e4a`). **If it’s a perspective, remove it** (*Remove the perspective*).
+   danger. A “Someone may be in danger” report **usually pauses it, but not always** (a second report from the same
+   person doesn’t): check, and take it out of circulation if it’s still travelling. *How to check:* the desk can't
+   show you whether it is paused or still travelling (§2.1, **[GAP]**), so unless the words clearly aren't about
+   danger, choose *Take it out of circulation*: it is the right step either way. Nobody else is offered it, and if it
+   is still travelling it goes home to its writer now, with whatever came back; they then see "Our safety team brought
+   it home early. Sometimes a feeling needs more care than a new way of seeing it. If that’s true for you right now,
+   crisis lines are there any time.", with **Get support now** (`ui/relay/returned.js:125, 137`). **If it’s a
+   perspective, remove it** (*Remove the perspective*).
 3. **If the words point to immediate danger and the team independently holds information that identifies the person**
    (for example, they emailed us directly), **call 000 and give what you know.** This is expected to be very rare:
    the desk shows no identities. See §6.3 and §6.4.
 4. **Write what you saw and did in the team notes** (no diagnosis, no guesses about who it is), and **tell the safety
    lead today.** If you can’t decide, ring the safety lead now.
-5. **If the screen should have caught these words**, add a paraphrase (never their words) to the review list.
+5. **If the screen should have caught these words**, add a paraphrase (never their words) to the review list for the
+   next batch (`CRISIS_DETECTION.md` §3, step 5).
 6. **Look after yourself too:** reading this is hard. Talk to the safety lead, or one of the services on the desk.
+   Lifeline 13 11 14 and Beyond Blue 1300 22 4636 are there any time. Nobody reads the desk alone for long stretches
+   (§10).
 
 ### 6.3 When 000 is appropriate, and who decides
 
 - **000 is for immediate danger:** someone is about to hurt themselves or someone else, or is being hurt, right now.
   It is the same test the app gives members: "If someone might be about to hurt themselves, or is in danger right
-  now… call 000."
+  now… call 000." (the "Someone might be in danger" screen, `core/feeling-safety.js:199-205`).
 - **A call can only help if there is something emergency services can act on:** who the person is, or where they
   are. So step 3 needs **both**: words that point to immediate danger, **and** identifying information the team
   already holds independently, because the person gave it to us directly (for example, they emailed Hushmallow with
@@ -327,8 +389,9 @@ staffing] SCW-17 (needs legal advice): a safety function the team has taken on s
   lead's approval: call, then tell the lead. If you aren't sure whether it's immediate, or whether what you hold is
   enough, **ring the safety lead now**, and the lead decides.
 - **When you call:** say you're calling from an online service, explain what the person wrote, and give the
-  identifying information you hold. Share only what's needed. Then write in the team notes that you called and when
-  (not the person's details: the safety lead keeps those, §12).
+  identifying information you hold. Share only what's needed. Then write in the team note that you called and when
+  (not the person's details: the safety lead keeps those, §12). If you have already decided the report, the note
+  can't be added to: tell the safety lead, who records it (§6.6).
 - **When the team holds nothing that identifies the person** (almost always): there is nobody to send help to. Take
   the content out of circulation, write the note, tell the lead. **Don't look for an identity.** The reporter has
   already been told to call 000 if they know the person.
@@ -392,19 +455,26 @@ docs/safety/TIER0_SELF_ASSESSMENT.md §6.3 and §8 item 9 list this as open. -->
 
 ### 6.6 Records for a priority report
 
-In the team note, every time:
+In the team note, every time (the note is saved with the decision and can't be added to later, §2.1):
 - when you read it;
 - what you saw, in your own words (no quotes, no diagnosis, no guesses about who);
-- what you decided;
-- whether 000 was called, by whom and when;
-- when you told the safety lead.
+- what you decided (the desk adds "Decision: …" itself);
+- whether 000 was called, by whom and when, if that happened before you decided.
+
+**Told to the safety lead instead**, who records it in their own priority-report log (§12), because the note can't
+hold it: when you told them; a 000 call made after the decision; anything the lead changes or does later.
 
 The activity log records the opening and the decision on its own.
 
 ### 6.7 The safety lead, the same day
 
-- Reads the report and the note.
-- Checks the decision, and changes it if needed.
+- Reads the report and the note (decided reports are under *Decided*).
+- Checks the decision. **[GAP] The desk can't change a decision once it's made**, and there is no tested operator
+  command to take a feeling out of circulation afterwards. If a priority feeling was wrongly let carry on, write it
+  down, tell the owner, and remember that it comes home within a day of its trip. Don't restrict the writer to stop
+  it travelling: restriction is for breaking the rules (§3.3). The fix is a desk action for decided reports (§14).
+  A decision that was too strong (for example, a feeling taken out of circulation that was fine) can't be undone
+  either; record it for the review (§13).
 - Calls the reader for a short debrief, about how they are, not about the case (§10).
 - Checks whether the word check should have caught it, and that the paraphrase is on the review list.
 - If the report was open past 12 hours, writes down why, for the weekly log check.
@@ -416,8 +486,14 @@ The activity log records the opening and the decision on its own.
   lead, and add the line to the library review if it played a part.
 - **A catcher whose own words tripped the word check** never reaches the desk: their words weren't stored, and they
   saw support straight away.
-- **Several reports on the same feeling:** each is its own row on the desk, and each needs a decision. The first
-  *Take it out of circulation* already covers the feeling; close the others with the same decision and a short note.
+- **Several reports on the same feeling:** each is its own row on the desk, and each needs a decision. The desk
+  doesn't link them: you recognise them by the same feeling's words. Decide the priority one first. The first *Take
+  it out of circulation* already covers the feeling; close the others with the same decision and a short note.
+  **Never choose *Let it carry on* on one of them while another is still open:** it would resume the feeling (§3.3).
+- **A priority report that no member made.** If a Mallow provider's own safety check flags a feeling, the feeling is
+  paused and a priority report is made by the system (`hushmates.hold_for_safety`,
+  `supabase/migrations/20261014090100_hushmates_rules.sql:809-822`). The desk shows it like any other. With AI off,
+  this isn't expected: the Mallow library path screens the words first and simply offers no line.
 
 ---
 
@@ -432,7 +508,10 @@ the app does **not** mark as priority.
   instructs terrorism, treat it as urgent.
 - **Don't copy, screenshot, photograph, download, forward or show it to anyone.** Possessing or passing on child
   sexual abuse material is a serious crime (from memory; the lawyer to confirm how it applies to reviewing a report).
-- **Take it out of circulation** (a feeling), or **remove** it (a perspective), and **restrict** the account.
+- **Take it out of circulation** (a feeling), or **remove** it (a perspective), and have the account **restricted**.
+  The desk takes **one decision per report** (`m_mod_resolve`), so choose the removal on the desk, and give the
+  account reference the desk shows ("Account reference (for a team lead)") to the owner, who restricts or suspends it
+  with `node server/admin.mjs member <reference> restricted` (or `suspended`) **[GAP: no desk route for both]**.
 - **Tell the safety lead at once,** by phone.
 - **The safety lead reports it:** to the Australian Centre to Counter Child Exploitation (ACCCE) for child sexual
   abuse material, to eSafety, and to police. If a child may be in immediate danger, **000**. (The reporting addresses
@@ -461,15 +540,22 @@ for an age decision, and no tool to delete an account for someone [GAP].
   support (to check before use: Kids Helpline 1800 55 1800, which serves young people up to 25), a way to ask for a
   review, the chance to download their data, then deletion. Record the decision, not the evidence.
 - **Whether the social media minimum age law** (Online Safety Act 2021, Part 4A) **applies to Hushmates needs legal
-  advice.** It turns on whether Hushmates is an age-restricted social media platform, including the 2026 additional
-  condition and the health-purpose exclusion. If it applies, eSafety's guidance on handling under-16 accounts would
-  shape this procedure (deactivation with notice, a review route, no re-declaration, no keeping of age-check data).
-  Don't assume either way.
+  advice.** It turns on whether Hushmates is an age-restricted social media platform. The research so far **leans
+  towards "in scope"**: the base test in s 63C(1)(a) leans met (people post words that reach other people), and so
+  does the time-limited-feature limb of the 2026 additional condition in rule 4A of the Online Safety
+  (Age-Restricted Social Media Platforms) Rules (a 3-minute offer and a 24-hour journey). Whether the health-purpose
+  exclusion in s 5(1)(f) of the Rules 2025 could take it out of scope is unresolved. **Nobody may say, in any
+  document or to anyone, that the law doesn't apply** until a lawyer has checked these tests. If it applies,
+  eSafety's guidance on handling under-16 accounts would shape this procedure (deactivation with notice, a review
+  route, no re-declaration, no keeping of age-check data). Don't assume either way.
 
 <!-- [recommended practice] U16-12 (a recommended flow; no statutory process found for under-18s on an out-of-scope
-service). [needs legal advice] U16-01 to U16-03 (SMMA scope: s63C, s4A, commencement 26 March 2026 per secondary sources only, Rules 2025
-s5(1)(f));
-[depends: whether in scope] U16-06 and U16-08 (eSafety SMMA Regulatory Guidance, official guidance, search extract). -->
+service). [needs legal advice] U16-01 to U16-03 (SMMA scope: s63C(1)(a) base test, leaning met; the Rules' rule 4A
+additional condition, F2026L00370, cited in LEGAL_REQUIREMENTS.md as "s4A", heading only seen, commencement
+26 March 2026 per secondary sources only; the health-purpose exclusion, Online Safety (Age-Restricted Social Media
+Platforms) Rules 2025 s5(1)(f), Explanatory Statement seen as a search extract, s5 text not seen). AGE_ELIGIBILITY.md
+§2 has the full analysis. [depends: whether in scope] U16-06 and U16-08 (eSafety SMMA Regulatory Guidance, official
+guidance, search extract). -->
 
 ### 7.3 Requests from police, courts and regulators
 
@@ -493,13 +579,25 @@ logged ([recommended practice] for the log). -->
 | A perspective that encourages self-harm or suicide | Remove it, and restrict the account |
 | A Mallow perspective | *Close: noted for the library.* Write down what missed, so the line can be fixed or retired |
 | Something else | Read it, decide by the Community Guidelines, ask the safety lead if unsure |
-| Breaks no rule | *Let it carry on* (a feeling) or *No action needed* (a perspective) |
+| Breaks no rule | *Let it carry on* (a feeling) or *No action needed* (a perspective). But never *Let it carry on* while another report on the same feeling is open (§3.3) |
 
-**After a restriction:** when the person tries to catch, they see "Our safety team has paused catching for your
-account for now. Feelings you already released still come home to you."; on Release, "Your account can’t release
-feelings right now." They aren't told why, and there is no review route or support line in those messages yet [GAP]
-(proposed wording: `SAFETY_DISCLAIMERS.md` §3.6). Review requests go to the contact address in the Terms of Use, once it exists (D23). A different person
-from the one who decided looks at a review where possible. Only a team lead lifts a restriction.
+**"Remove it, and restrict the account" is two steps.** The desk takes one decision per report (`m_mod_resolve`).
+Choose the removal on the desk, write in the note that a restriction is needed, and give the owner the account
+reference the desk shows; the owner restricts it with `node server/admin.mjs member <reference> restricted`
+**[GAP]**. (Choosing *Restrict the person who wrote it* on the desk instead stops their feelings being offered, but
+it doesn't take a perspective's words out of the author's collection, or bring a feeling home early.) The desk shows
+"Earlier reports about the same person: n (m with action taken)", which is how a reader sees a second actioned
+report.
+
+**After a restriction:** when the person tries to catch, they see "Catching is paused for your account." and "Our
+safety team has paused catching for your account for now. Feelings you already released still come home to you."
+(`ui/relay/catch.js:434`); on Release, "Your account can’t release feelings right now." (`ui/relay/release.js:129`);
+and on their travelling feelings, "Not being offered · home within {time}" and "While your account is paused it
+isn’t offered to anyone. It comes home within {time}." (`ui/relay/journeys.js:59, 133`). They aren't told why, and
+there is no review route or support line in those messages yet [GAP] (proposed wording: `SAFETY_DISCLAIMERS.md`
+§3.6). The **Support** button is still in the header of every screen. Review requests go to the contact address in
+the Terms of Use, once it exists (D23). A different person from the one who decided looks at a review where
+possible. Only a team lead lifts a restriction (`server/admin.mjs member <reference> active`).
 
 <!-- [recommended practice] Suspension a last resort; explain, signpost and offer an appeal (Samaritans and eSafety
 Safety by Design, search extracts; SM-13). [depends: whether a contract exists and its terms] unfair contract terms for
@@ -522,6 +620,8 @@ material that encourages, promotes or instructs suicide, self-harm or eating dis
      the words a notice quotes before outside testers join (for example, matching the keyed hash the database already
      keeps for duplicate checks, which works only for the exact words).
   4. Remove or disable it: take a feeling out of circulation, remove a perspective, restrict or suspend the account.
+     The desk can act only on reported material. **[GAP]** For anything else there is no tool today: the same tested
+     way as step 3 is needed, including the account reference that `server/admin.mjs member` takes.
   5. If the material is already gone (its day ended, its words were cleared, or its writer deleted it), say so.
   6. Reply to eSafety in writing, before the deadline, with what was done and when.
   7. Keep the log, and the reply, for at least two years after the end of the calendar year.
@@ -563,7 +663,7 @@ controls. Whether each state has adopted r55A-55D was not verified. SCW-15, SCW-
 | Exposure to distressing words | The word check holds back crisis words, so the desk sees fewer. The queue shows only the kind and reason, not the words, until a report is opened | Built |
 | Too much at once | **At most two desk sittings a day per reader, at the set times, each normally no longer than 45 minutes.** After a priority report, take a break before reading on | Recommended |
 | The same person carrying it every day | **Rotation:** the two readers alternate (for example, week about), and nobody is the main reader for more than **[7]** days in a row. Priority reports are shared, not always one person's | Recommended |
-| Being alone with it | **A debrief the same day** after every priority report (a short call with the safety lead, about how the reader is). **A monthly check-in** on how the team is coping | Recommended (the same-day call is `ESCALATION.md` §3 step 4) |
+| Being alone with it | **A debrief the same day** after every priority report (a short call with the safety lead, about how the reader is). **A monthly check-in** on how the team is coping | Recommended (telling the lead the same day is `ESCALATION.md` §3 step 4; the debrief call is this document's) |
 | No way out | **Anyone can step out** of a report, a sitting or the role, at any time, without giving a reason and without any consequence. They hand over to the backup or the lead. If nobody can take over, the owner marks the desk away (§5) | Recommended |
 | After-hours worry | **No after-hours expectation.** Check times are in waking hours. Nobody reads the desk between 10 pm and 7 am, or in bed on a phone. Nobody is expected to think about the desk between checks | Recommended |
 | Responsibility without control | **A written role limit:** "You read words and make content decisions. You're not a counsellor or a crisis worker, and you can't help the person directly." The limits in §3.4 | This document |
@@ -596,7 +696,9 @@ authorised.
 **Free, before anyone reads the desk (required by this procedure):**
 - Read this document, `ESCALATION.md`, the desk guide, the Community Guidelines and `SAFETY_DISCLAIMERS.md`.
 - A walk-through of the desk on the local stack or on staging, with made-up reports only (never real people's words):
-  an ordinary report, a priority report, the "Over 12 hours" badge, a team note, and the away setting.
+  an ordinary report, a priority report, the "Over 12 hours" badge, a team note (written with the decision), two
+  reports on the same feeling (and why *Let it carry on* must wait), and the away setting, including what reporters
+  see once its day has passed.
 - A practice run of §6 with the safety lead, including the decision about 000.
 - The safety lead signs off each reader before they start.
 
@@ -624,12 +726,14 @@ SCW-15: training as part of the desk WHS procedure. No source here makes any par
 | The rota and check times | This document and `ESCALATION.md` | Current | |
 | The eSafety and legal-request log | Kept by the eSafety and legal contact, outside the app | At least 2 years after the end of the calendar year | No member's words |
 | Details of a 000 call (what was passed on) | The safety lead only | Until legal advice says otherwise | Minimum detail |
+| The safety lead's priority-report log: when each priority report was read, when the lead was told, any 000 call after the decision, any decision that should have been different (§6.6, §6.7) | The safety lead, outside the app | **[PROPOSAL]** as the team notes' rule, once set | Report time and kind only; no words, no account reference |
+| Desk-away periods: when the desk was marked away, the day set, and when it was cleared (§5.2) | The owner | **[PROPOSAL]** 2 years | Needed because settings changes aren't in the activity log (`admin_set_setting`, `supabase/migrations/20261014090200_hushmates_api.sql:296-300`) |
 | The WHS log and risk assessment | The owner | As the owner's records | No member details |
 | Monthly numbers (§13) | The safety lead | Ongoing | Counts only |
 
 **What a note must never contain:** a diagnosis, a guess about anyone's health or who they are, or the member's
-words copied out. **Nothing about members is kept outside the desk**, except the minimum in the eSafety log and the
-safety lead's record of a 000 call.
+words copied out. **Nothing about members is kept outside the desk**, except the minimum in the eSafety log, the
+safety lead's priority-report log (times and kinds only) and the safety lead's record of a 000 call.
 
 <!-- [recommended practice] Record decisions, not evidence (U16-08, U16-12); follow the documented procedures and record
 decisions (SCW-17, needs legal advice for the negligence question). [depends: APP entity status] APP 11.2 destruction
@@ -684,6 +788,26 @@ or de-identification when no longer needed (PRV-13): the indefinite team notes a
 | A retention rule for team notes | §12 | Recommended |
 | "Show the words" on priority reports | §10 | Recommended |
 | A command that removes the moderator role | §3.2 | Recommended |
+| *Let it carry on* resumes a feeling even while another report on it, including a priority one, is still open. Fix: refuse it, or warn, while any other report on the same feeling is open; and group reports by feeling on the desk | §3.3, §6.8 | **Recommended before the team beta** (a reader's ordinary decision can undo a pause) |
+| The desk doesn't show whether a reported feeling is paused, travelling or home, so step 2's "check" can't be done on the desk (the safe default in §6.2 covers it) | §2.1, §6.2 | Recommended |
+| A team note can only be saved with a decision, and nothing can be added after; a decision can't be changed | §2.1, §6.6, §6.7 | Recommended: a "note only" action, and a lead-only "change decision" |
+| One decision per report, so "remove and restrict" needs the owner's command | §7.1, §8 | Recommended |
+
+### 14.1 Where `ESCALATION.md` and the code differ
+
+Checked against the committed code at `0773d1e`. `ESCALATION.md` was **not** edited; these are for its owner (the
+safety lead) to fix. The six steps themselves match the desk (`tests/desk-guide.test.mjs`), and this document
+follows them.
+
+| `ESCALATION.md` says | What the code does | Effect here |
+|---|---|---|
+| §3 step 2 (and the desk's step 2): "check, and take it out of circulation if it's still travelling" | The desk can't show whether the feeling is paused, travelling or home (`m_mod_get`; `staff/desk.js`) | §6.2 adds the safe default: take it out unless it clearly isn't about danger |
+| §4: "Remove it; restrict the account" | One decision per report (`m_mod_resolve`); the second step needs `server/admin.mjs member` | §7.1 and §8 spell out the two steps |
+| §1: "Write team notes" | A note is saved only with a decision, and can't be added to later | §3.3, §6.6 |
+| §1: the desk can't "Call anyone on a person's behalf"; §3 step 3: "call 000 and give what you know" | Not a code question: the two sentences pull against each other. Step 3 is about identifying information the team already holds independently, never anything the desk shows | §6.3 follows step 3 |
+| §2: "revoke unused ones with `node server/admin.mjs revoke <CODE>`" | `revoke` takes one code at a time, and codes are shown only once, when made. There is no "revoke all" command | §5.2 points to the SQL in `DATA_BREACH_RESPONSE_PLAN.md` §6.1 |
+| §2: "The app says 'Our safety team is away until {day}…' instead of the usual times" | True, and more: an unreadable value, or a day more than 90 days ahead, reads "away for now" with no day; **a day that has passed brings back the usual times** (`20261015090000_hushmates_tier0.sql:36-47`) | §4.1 and §5.2 |
+| §5: "The activity log records each report opened and each decision" | It also records each list view and each view of the log (`mod.list-reports`, `mod.view-audit`) | None |
 
 ---
 
@@ -710,6 +834,13 @@ the lawyer should read the primary text.
   DIS Standard fact sheet, https://www.esafety.gov.au/sites/default/files/2024-06/Fact-sheet-registration-DIS-Standard.pdf
 - eSafety, *Social Media Minimum Age Regulatory Guidance*,
   https://www.esafety.gov.au/sites/default/files/2025-09/eSafety-SMMA-Regulatory-Guidance.pdf
+- Online Safety (Age-Restricted Social Media Platforms) Rules 2025, Explanatory Statement (for s5(1)(f), the
+  health-purpose exclusion; the s5 text itself not seen),
+  https://www.legislation.gov.au/F2025L00889/asmade/2025-07-30/es/original/pdf ; the 2026 amending Rules adding
+  rule 4A, https://www.legislation.gov.au/F2026L00370/asmade/text (heading only seen; the operative text not seen;
+  commencement on 26 March 2026 from secondary sources only). Online Safety Act 2021 s63C(1)(a), compilation of
+  11 December 2024, https://www.legislation.gov.au/C2021A00076/2024-12-11/2024-12-11/text/original/epub/OEBPS/document_1/document_1.html
+  (s63C(2) not seen). The analysis is in `AGE_ELIGIBILITY.md` §2 and `LEGAL_REQUIREMENTS.md` U16-01 to U16-03.
 - eSafety, *Safety by Design* principles (voluntary),
   https://www.esafety.gov.au/sites/default/files/2019-10/SBD%20-%20%20Principles.pdf
 - Safe Work Australia, *Duties of a PCBU*,
@@ -729,8 +860,10 @@ the lawyer should read the primary text.
 - Beyond Blue Forums, *How are my posts moderated?* (a secondary source: one operator's own practice, used only as a
   benchmark), https://forums.beyondblue.org.au/t5/custom/page/page-id/How-are-my-posts-moderated
 
-**Project documents and code:** `docs/ESCALATION.md`, `staff/desk-guide.js`, `staff/desk.js`,
-`supabase/migrations/20261015090000_hushmates_tier0.sql`, `supabase/migrations/20261014090100_hushmates_rules.sql`,
-`core/relay.js`, `core/feeling-safety.js`, `ui/relay/common.js`, `server/admin.mjs`,
-`docs/safety/TIER0_SELF_ASSESSMENT.md`, `docs/DECISIONS.md`, `docs/CRISIS_DETECTION.md`, and the drafts in
-`docs/legal/`.
+**Project documents and code** (committed code at `0773d1e`): `docs/ESCALATION.md`, `staff/desk-guide.js`,
+`staff/desk.js`, `tests/desk-guide.test.mjs`, `supabase/migrations/20261015090000_hushmates_tier0.sql`,
+`supabase/migrations/20261014090100_hushmates_rules.sql`, `supabase/migrations/20261014090200_hushmates_api.sql`,
+`core/relay.js`, `core/relay-rules.js`, `core/feeling-safety.js`, `ui/relay/common.js`, `ui/relay/you.js`,
+`ui/relay/welcome.js`, `ui/relay/parts.js`, `ui/relay/journeys.js`, `ui/relay/returned.js`, `ui/relay/catch.js`,
+`ui/relay/release.js`, `server/admin.mjs`, `docs/safety/TIER0_SELF_ASSESSMENT.md`, `docs/LAUNCH_READINESS.md`,
+`docs/RISKS.md`, `docs/DECISIONS.md`, `docs/CRISIS_DETECTION.md`, and the drafts in `docs/legal/`.

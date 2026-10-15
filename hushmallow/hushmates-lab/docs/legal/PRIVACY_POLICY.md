@@ -1,14 +1,15 @@
 # Hushmates privacy policy
 
-**DRAFT, not yet reviewed or approved. Not legal advice.**
+**DRAFT, not yet reviewed or approved. It stays a draft until the owner approves it and, where marked, an Australian
+lawyer has reviewed it. Not legal advice.**
 **Date: 15 October 2026.**
 
 > **Status (internal, remove before publishing).** Nothing in this document is final until the owner approves
 > it. Every part marked "needs legal advice" must also be reviewed by an Australian privacy lawyer (decision D7)
 > before it is published or relied on. Hushmates is not live: nothing is deployed, AI is off, and there are no
 > members outside the team. The facts below describe the code at commit `9012d6f` (15 October 2026, after the
-> Tier 0 changes), each re-checked against the files cited, plus the staging plan. The GitHub repository is
-> public today; decision D19 recommends making it private.
+> Tier 0 changes; the later commits change documents only), each re-checked against the files cited, plus the
+> staging plan. The GitHub repository is public today; decision D19 recommends making it private.
 >
 > **How to read this draft.**
 > - The words members will read are in plain type. They are written in Hushmallow's voice, as if Hushmallow is
@@ -73,7 +74,6 @@ welcome.js:44, you.js:42 and :125, away.js:31) and opens the crisis lines in a s
 13 92 76, then under "More support lines" 1800RESPECT 1800 737 732, Beyond Blue 1300 22 4636 and findahelpline.com
 (core/feeling-safety.js:166-180, SUPPORT_NOW_RESOURCES). The support screen shown instead of a release has no pill
 (ui/relay/support.js:29, help: false) because it shows the lines itself. Numbers to re-check before publishing. -->
-
 
 ---
 
@@ -213,9 +213,9 @@ text: app-facts P6) [GAP: recommend an internal rule that notes never hold names
 If you allow it, your Mallow can offer you one line when nobody has caught your feeling. Your Mallow **puts that line
 together from a fixed set of pieces written in advance for Hushmallow:** an opening in your Mallow's voice and one
 perspective, sometimes with a word for your feeling filled in (like "worried"). The pieces are chosen automatically,
-by rules guided by your words. It isn't a person replying to you, and no AI is used to make it. In the app these
-lines carry the label "Automatically generated". That means our code chose it for you from lines written in advance;
-no AI is involved in making it.
+by rules guided by your words. It isn't a person replying to you. In the app these lines carry the label
+"Automatically generated": that means our code chose it for you from lines written in advance. No AI is used to make
+it.
 
 We keep: the line, locked with your journey; a reference to which perspective it used (this shows the kind of theme
 it matched, such as loss, money or study); and a daily count of Mallow lines, to keep things fair.

@@ -10,8 +10,12 @@
 > that rehearsal.
 >
 > **Built on** the OAIC's four steps (contain, assess, notify, review) and the Notifiable Data Breaches (NDB)
-> scheme in Part IIIC of the Privacy Act 1988. Facts are from the code at commit `000c0cd`. What Hushmates keeps,
-> and for how long, is in `docs/legal/RETENTION_AND_DELETION.md`. Paths are relative to `hushmallow/hushmates-lab/`.
+> scheme in Part IIIC of the Privacy Act 1988. Facts were first taken from the code at commit `000c0cd` and re-checked
+> against the committed code at `0773d1e` (15 October 2026; the app's code last changed in `9012d6f`). The database
+> migrations, the Edge Function's own files and the tools cited by line are unchanged between the two; the Tier 0
+> migration adds only the desk-away setting and the report wording. What Hushmates keeps, and for how long, is in
+> `docs/legal/RETENTION_AND_DELETION.md`. Paths are relative to `hushmallow/hushmates-lab/`. AI is off, and nothing is
+> deployed: there is no staging or production project holding real people's words yet.
 
 **Markers:** **[GAP]** something the plan needs that doesn't exist yet · **[NOT CONFIRMED]** platform behaviour to
 check · **[from memory]** law that wasn't seen in any source here: check it on legislation.gov.au or oaic.gov.au
@@ -113,7 +117,7 @@ Hushmallow is a very small operator, so one person may hold several roles. Write
 | **Response lead** | Hushmallow's owner: **[name, phone]** | Runs the response. Decides containment. **Decides whether a breach is eligible and who is told.** Signs the OAIC statement and the member email. | Deputy lead |
 | **Deputy lead** | **[second named person, phone]** (decisions D11 and D12 call for one before real people use Hushmates) | Takes over if the lead can't be reached within 2 hours. Can contain at once. Decides notification only if the owner has authorised that in writing in advance. | — |
 | **Technical responder** | **[name]**: the person who maintains the code and the staging tools | Carries out containment steps on the lead's instruction. Preserves evidence and gathers the facts (§7 queries). Never deletes evidence and never contacts members. | Lead |
-| **Safety lead** | **[name]** (`docs/ESCALATION.md` §2) | Joins whenever a desk reader or moderator account is involved. Removes desk access. Looks after desk readers affected by the incident. | Lead |
+| **Safety lead** | **[name]** (`docs/ESCALATION.md` §2; `docs/legal/MODERATION.md` §3.1) | Joins whenever a desk reader or moderator account is involved. Removes desk access. Looks after desk readers affected by the incident. Makes sure the desk is still read, or marked away (`MODERATION.md` §5), while the incident lasts. | Lead |
 | **Legal adviser** | **[lawyer, if engaged (D7), phone]** | Eligibility, notification options, holds, police or regulator requests | — |
 | **Everyone else** (desk readers, testers on the team) | — | Report a suspected breach to the lead at once | — |
 
@@ -200,7 +204,7 @@ stop the access first.
 
 | Action | How | What it does | Use when |
 |---|---|---|---|
-| **Pause everything** | Supabase dashboard → *Project Settings → General → Pause project* [DOC `docs/STAGING.md:323`] | The app, the desk, the API and the scheduler stop. Sign-in deletion retries and the daily clearing stop too. Record when, and resume as soon as it's safe. | Access is ongoing and you can't close it quickly |
+| **Pause everything** | Supabase dashboard → *Project Settings → General → Pause project* [DOC `docs/STAGING.md:323`] | The app, the desk, the API and the scheduler stop. Sign-in deletion retries and the daily clearing stop too. Nobody can make a report, and the desk can't be read, so the desk-away notice can't be shown either. Record when, and resume as soon as it's safe. If it will last more than 72 hours, tell testers directly (`MODERATION.md` §5.2). | Access is ongoing and you can't close it quickly |
 | **Stop new people joining** | `node server/admin.mjs revoke <CODE>` for codes you hold. For all at once, as the database owner: `update hushmates.invites set revoked_at = now() where revoked_at is null;` | Unused invitations stop working (`supabase/migrations/20261014090100_hushmates_rules.sql:1048`) | An invitation leak, or any serious incident |
 | **Stop one account** (member or desk reader) | `node server/admin.mjs member <reference> suspended` | Every call checks the state, so it takes effect on the next one. **Use "suspended", not "restricted": a restricted moderator can still use the desk** (`hushmates.actor` allows active and restricted; rules lines 77-82, 1061-1066). | Misuse by an account, or a stolen login |
 | **End someone's sign-in** | Supabase dashboard → *Authentication → Users* [NOT CONFIRMED exact options] | Removes their sign-in. Their Hushmates data stays. | A stolen login |
@@ -342,7 +346,8 @@ declaration (s26WQ). **Needs legal advice** before relying on any of them.
 
 - **Never** quote anyone's words or display name. Never say who reported whom.
 - Be specific about what was and wasn't involved. Don't guess about the attacker.
-- If you need to describe how members were known, say "pseudonymous": Hushmallow always knew which account wrote what.
+- If you need to describe how members were known, say "pseudonymous" or "without your name", never "anonymous":
+  Hushmallow always knew which account wrote what.
 - Point to support lines (Lifeline 13 11 14; 000 if not safe). **Don't** offer counselling, crisis help or follow-up
   calls. Hushmallow doesn't provide them, and nobody will call members.
 - Keep the subject line neutral. Don't use links that ask people to sign in.
@@ -415,7 +420,8 @@ them outside Hushmates; trying to work out who someone is; making decisions in b
 desk reader's login.
 
 **What a desk reader can reach:** reported words only, with an account reference (a member id), earlier report
-counts and team notes. Never names, emails, or who reported (`supabase/migrations/20261014090100_hushmates_rules.sql:1079-1098`).
+counts and team notes; and the activity log's last 200 entries, with accounts by a short reference only
+(`m_mod_audit`). Never names, emails, or who reported (`supabase/migrations/20261014090100_hushmates_rules.sql:1079-1098`).
 There's no way to browse feelings that weren't reported.
 
 **Contain:**
@@ -424,7 +430,8 @@ There's no way to browse feelings that weren't reported.
 - revoke any unused desk invitations;
 - end their sign-in;
 - ask them in writing to delete any copies, and to confirm they have;
-- the safety lead reassigns the desk.
+- the safety lead reassigns the desk. If that leaves nobody who can read it for more than 24 hours, the owner marks
+  it away first (`MODERATION.md` §5.2), and the 72-hour step applies after that.
 
 **Assess:**
 
@@ -629,7 +636,7 @@ It's okay to feel unsettled by this. If you'd like to talk to someone, Lifeline 
 13 11 14, any time. If you're not safe right now, please call 000.
 
 Questions
-Write to us at [contact address]. We'll reply within [5 business days].
+Write to us at [contact address]. We aim to reply within [5 business days].
 You can also contact the OAIC at oaic.gov.au.
 
 [Legal name of the business], who runs Hushmallow and Hushmates. ABN [ABN].
@@ -801,4 +808,4 @@ environment. "From memory" means not seen at all.
   (official guidance; search extract), for §9 step 5.
 - **The 72-hour proposal:** secondary sources only, in an earlier research run. No official source seen. Not cited as
   law.
-- **The code**: as cited inline, at commit `000c0cd`.
+- **The code**: as cited inline, re-checked at commit `0773d1e` (first drafted at `000c0cd`).

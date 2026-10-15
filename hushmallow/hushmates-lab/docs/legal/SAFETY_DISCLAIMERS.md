@@ -1,4 +1,5 @@
-**DRAFT, not yet reviewed or approved. Not legal advice.**
+**DRAFT, not yet reviewed or approved. Not legal advice.** It stays a draft until the owner approves it and an
+Australian lawyer has reviewed the parts marked **[needs legal advice]**.
 **Date: 15 October 2026.**
 
 # Hushmates · Safety wording, place by place
@@ -9,11 +10,11 @@
 > wording should also be read by the independent safety reviewer (Tier A, `docs/REVIEWS.md`), and the parts marked
 > **[needs legal advice]** by an Australian lawyer. Hushmates is not live.
 >
-> **Facts.** "In the app now" quotes the code at commit `0037d57` (15 October 2026), which includes the Tier 0 wording
-> changes (`docs/safety/TIER0_SELF_ASSESSMENT.md` §6). §3.1, §3.5, §3.7 and §3.9 were re-quoted from the later commit
-> `f8d7e4a` (15 October 2026), because those strings changed after `0037d57`. Re-check every other "In the app now"
-> quote against the current code before the owner approves. "Proposed" is new wording, not built. File names are given
-> so each line can be checked again.
+> **Facts.** Every "In the app now" quote was re-checked, string by string, against the committed code at `9012d6f`
+> (15 October 2026), which includes the Tier 0 wording changes (`docs/safety/TIER0_SELF_ASSESSMENT.md` §6). Nothing is
+> deployed, and AI is off. "Proposed" is new wording, not built; a proposal the app has since adopted is marked
+> **Done** and kept, so the history is visible (§5 has the status of each). File names and lines are given so each line
+> can be checked again.
 >
 > **Classifications.** **[verified obligation]**, **[depends: …]** (with the fact it depends on),
 > **[needs legal advice]**, **[recommended practice]**. Recommendations are not obligations. The register is
@@ -47,8 +48,12 @@
   email, and the safety team can read reported words.
 - That a Mallow is a person, an AI, or "here with you" (or "right here"). Mallows are cartoon characters. Their lines
   are **put together automatically from pieces written in advance** (an opening in the Mallow's voice and one
-  perspective). AI is off. Who wrote the pieces is for the owner to confirm before any wording says "the Hushmates team
-  wrote" (`TERMS_OF_USE.md` §2 comment).
+  perspective), from a library of 293 lines. AI is off. Who wrote the pieces is for the owner to confirm before any
+  wording says "the Hushmates team wrote" (`TERMS_OF_USE.md` §2 comment).
+- That the word check is reliable, or any rate for it. It can miss words that clearly mean someone isn't safe: on the
+  Tier 0 probe it showed crisis or danger support for 25 of 127 developer-written crisis or danger phrasings
+  (`docs/safety/TIER0_SELF_ASSESSMENT.md` §4.2). That is evidence of gaps, not a measured rate (`docs/RISKS.md` S1,
+  E1), so no channel quotes a number or says the check "catches", "detects" or "keeps people safe".
 
 ### 1.3 Words to leave out, and words to use
 
@@ -61,7 +66,7 @@
 | anonymous, anonymously | "without my name"; "pseudonymous: other members never see your name, but we hold your email and know which account wrote what" |
 | safe space, we keep you safe | "a gentle place", "a softer space for feelings" |
 | "I’m right here with you", "I’ll be right here" (from a Mallow) | "The people on these lines are ready to listen" |
-| AI, generated, "writes it from your words" (for Mallow lines) | "put together automatically from pieces written in advance" |
+| AI, generated, "writes it from your words" (for Mallow lines) | "put together automatically from pieces written in advance"; the app's own "chosen automatically from a fixed set of lines written in advance" is also accurate. The label "Automatically generated" is decision D21 (open) |
 | condition names (anxiety, depression, trauma, suicidal thoughts) in claims about Hushmates | "feelings", "everyday moments", "something heavy" |
 
 ### 1.4 The voice
@@ -88,8 +93,10 @@ clinical words. One idea at a time, because it is hard to take in a lot when you
 
 ## 2. The support lines
 
-These are the entries the app shows, in this order, as written in `core/feeling-safety.js` (and, for the desk,
-`staff/desk-guide.js`). Each number is a tappable `tel:` link; the chat and helpline links open the service's own site.
+These are the entries the app shows, in this order, as written in `core/feeling-safety.js:166-175` (and, for the desk,
+`staff/desk-guide.js:37-44`, the same numbers in shorter form, without "any time" for 13YARN and 1800RESPECT). Each
+number is a tappable `tel:` link; the chat and helpline links open the service's own site (only digits become `tel:`,
+only `https` becomes a link: `ui/relay/common.js:85-91`).
 
 | Line | The words people see |
 |---|---|
@@ -109,8 +116,15 @@ These are the entries the app shows, in this order, as written in `core/feeling-
 - **The support screen, harassment and discrimination:** 000, Lifeline, Beyond Blue, Outside Australia. For
   harassment that describes being followed or stalked, the abuse list instead (000, 1800RESPECT, Lifeline, Outside
   Australia).
-- **Get support now:** 000, Lifeline, Suicide Call Back Service and 13YARN first; then, under "More support lines",
-  1800RESPECT, Beyond Blue and Outside Australia.
+- **A feeling with words telling a reader to hurt themselves:** the crisis list; or, when the words are what someone
+  said to the writer (and not something they tell themselves), the harassment list (`core/feeling-safety.js:339-344`).
+- **A Mallow that holds off because its own check flagged the feeling** ("This one needs a person, not a Mallow."):
+  the crisis list (`providerSupport`, `core/feeling-safety.js:219`; `supabase/functions/_shared/gateway.js:177-178`).
+  The feeling is then paused and sent to the desk as a priority report (`hold_for_safety`, rules migration
+  lines 810-822).
+- **Get support now** (the Support pill's sheet, and You & safety): 000, Lifeline, Suicide Call Back Service and
+  13YARN first; then, under "More support lines", 1800RESPECT, Beyond Blue and Outside Australia
+  (`SUPPORT_NOW_RESOURCES`, `core/feeling-safety.js:179`; four first, `ui/relay/common.js:43`).
 
 **Checking them.** The numbers are the services' own published numbers as the developer recorded them. They could not
 be re-checked from this environment, except Beyond Blue's "24 hours a day / 7 days a week", which was seen on Beyond
@@ -131,7 +145,7 @@ specialist lines (SM-04; UK guidance, search extract).
 
 ### 3.1 Welcome (before entering, `ui/relay/welcome.js`)
 
-**In the app now** (`f8d7e4a`, `ui/relay/welcome.js:101-105`). Heading "Before you begin"; the Mallow says "A few
+**In the app now** (`9012d6f`, `ui/relay/welcome.js:97-106`). Heading "Before you begin"; the Mallow says "A few
 promises, before we begin." Four promises:
 
 > **Pseudonymous, not perfectly anonymous.** Other participants never see your name or account, and can’t contact
@@ -146,19 +160,30 @@ promises, before we begin." Four promises:
 > numbers to call. The check reads English only, it can miss things, and nobody is watching in real time. If you’re
 > not safe, call 000, or Lifeline on 13 11 14, any time.
 
+The 000 and 13 11 14 in the last promise are tappable links (`ui/relay/welcome.js:106`). The Support pill is in the
+welcome's header (`:44`).
+
 **Proposed.**
-- Replace the first promise with the collection notice's wording (`COLLECTION_NOTICE_AND_CONSENT.md` §4.3), so the
-  welcome uses "pseudonymous" only and says plainly what Hushmallow holds:
+- *Still a proposal.* Replace the first promise with the collection notice's wording
+  (`COLLECTION_NOTICE_AND_CONSENT.md` §4.3), so the welcome uses "pseudonymous" only and says plainly what Hushmallow
+  holds:
 
   > **Pseudonymous: your name stays with you.** Other participants never see your name or account, and can’t
   > contact you. We hold your email and know which account is yours. Words can give people away, so leave out names
   > and details that could identify anyone.
 
-- "People first": the collection notice's wording (§4.3), "put together automatically from pieces written in
-  advance".
-- Keep the other two. Add one short sentence to the last, so people know where support lives:
+- *Done, in substance.* "People first": the app now says "chosen automatically from a fixed set of lines written in
+  advance" (`:104`), which replaced the earlier "lines the Hushmates team wrote". The collection notice's "put together
+  automatically from pieces written in advance" (§4.3) is a little more exact (an opener plus one line, with a feeling
+  word filled in), and either is accurate; the owner may keep the app's wording.
+- *Still a proposal.* Keep the other two. Add one short sentence to the last, so people know where support lives:
 
   > … If you’re not safe, call 000, or Lifeline on 13 11 14, any time. **Support is at the top of every screen.**
+
+- *Optional, for the owner and Tier A.* "it can miss things" is true, but the Tier 0 probe suggests it is mild (§1.2).
+  A stronger form, a shorter version of what the terms and guidelines now say ("it can miss things, even words that
+  clearly mean someone isn't safe"): "The check reads English only, it can miss things, even clear ones, and nobody is
+  watching in real time."
 
 **Rests on:** [recommended practice] State the limits at onboarding, with emergency contacts beside them (SM-06);
 eSafety Safety by Design's "social contract" at sign-up (voluntary, search extract). [recommended practice]
@@ -168,22 +193,27 @@ An overall impression of near-anonymity is an ACL s18 risk (SCW-07).
 
 ### 3.2 Before release (`ui/relay/release.js`)
 
-**In the app now.** No safety line on this screen. The Support button is in the header. The consent tick is about
-privacy:
+**In the app now** (`9012d6f`, `ui/relay/release.js:101-106`). No safety line on this screen. The Support pill is in
+the header (`brandBar`, `:38`). The consent tick is about privacy, and says "without my name", never "anonymously"
+(D8; the export key is `agreedToShareWithoutYourNameAt`, format version 2, `core/export-format.js:44, 54-55`):
 
 > **Share with Hushmates participants, without my name**
 > Your words may be shown to other people who can offer different perspectives. Please leave out identifying details.
 > *Privacy details*
 
-**Proposed.** One quiet line under the Release button. Not a tick, not a pop-up, and never blocking the button:
+**Proposed.** *Still a proposal.* One quiet line under the Release button. Not a tick, not a pop-up, and never
+blocking the button:
 
 > Hushmates is for everyday feelings. If you’re not safe right now, Support is at the top of the screen, any time.
 
 It is short on purpose: most feelings are everyday ones, and the line shouldn't make every release feel like a
 warning. The owner may leave it out, because the welcome and the Support button already cover it.
 
-**Not safety wording, but on this screen:** the Mallow note ("Hushmates writes a perspective for you automatically")
-describes a fixed library inaccurately. Its new wording is in `COLLECTION_NOTICE_AND_CONSENT.md`.
+**Not safety wording, but on this screen:** the Mallow note ("If you turn this on and nobody catches it within 30
+minutes, Hushmates writes a perspective for you automatically.", `:117`) and the switch's hint ("Your Mallow can offer
+an automatically generated perspective if no one catches your feeling.", `:110`) describe a fixed library
+inaccurately; they are the last places that still say "writes". Their new wording is in
+`COLLECTION_NOTICE_AND_CONSENT.md` §4.7; "generated" waits for D21.
 
 **Rests on:** [recommended practice] Help-seeking information wherever emotional content is explored (Mindframe,
 SM-03); keep it concise (Samaritans).
@@ -191,9 +221,15 @@ SM-03); keep it concise (Samaritans).
 ### 3.3 The support screen (when words are held back, `ui/relay/support.js`, `core/feeling-safety.js`)
 
 This screen appears **only** when the word check holds words back: a feeling before release, a feeling sent out
-again, or a catcher's perspective. Nothing was sent or stored.
+again, or a catcher's perspective. Nothing was sent or stored. A feeling gets it for any of the kinds below, and for
+words telling a reader to hurt themselves (the crisis kind, or harassment when someone else said them to the writer:
+`core/feeling-safety.js:339-344`). A catcher's perspective gets it only for the crisis kinds (`:373`); other care
+words, words telling anyone to hurt themselves, and harmful advice or grooming-style questions are refused with a
+one-line message instead (`:375-378`). The screen has no Support pill of its own, because it already shows the lines
+(`ui/relay/support.js:29`).
 
-**In the app now, by kind.**
+**In the app now** (`9012d6f`; titles and messages `core/feeling-safety.js:184-216`, the rest
+`ui/relay/support.js:24-52`)**, by kind.**
 
 *Crisis.* Title "Let’s pause here":
 
@@ -255,13 +291,22 @@ support" (or "Your safety comes first" for "unsafe"):
 catcher); "Back to this feeling" (sending again).
 
 **Proposed.**
-- The Mallow's line, so it can't be read as people at Hushmates:
+- *Still a proposal.* The Mallow's line, so it can't be read as people at Hushmates:
 
   > The people on these lines are ready to listen, right now.
 
-- For Tier A to decide: the crisis screen shows five entries at once. Samaritans suggests two or three at a time for
-  someone in high distress. One option is 000, Lifeline and the Suicide Call Back Service first, with 13YARN and
-  Outside Australia under "More support lines", as Get support now already does.
+  (The app's line replaced "I’m right here with you" at Tier 0, which was the bigger problem; the remaining point is
+  only that "real people" could be read as people at Hushmates.)
+- *Still for Tier A to decide.* The crisis screen shows five entries at once. Samaritans suggests two or three at a
+  time for someone in high distress. One option is 000, Lifeline and the Suicide Call Back Service first, with 13YARN
+  and Outside Australia under "More support lines", as Get support now already does with four.
+- *New, for Tier A.* A catcher's perspective that names suicide or self-harm, however kindly ("Losing someone to
+  suicide is so hard.", "Self-harm is never your fault."), gets the crisis screen, as does "Please call 000 if you are
+  in danger right now" (the someone-in-danger screen); each was checked by running the real screen at `9012d6f`. The
+  catcher then reads "Right now, this is about you.", which may not be true. Two questions: should a perspective be able
+  to name suicide gently (the safe-language guidance assumes it can), and what should a catcher be told when the words
+  may be about someone else? `COMMUNITY_GUIDELINES.md` now tells catchers not to name them, so that nobody is led into
+  the screen by following the guidelines.
 
 **Rests on:** [recommended practice] When content is held back, say so plainly, explain why without blame, say what
 the person can do next, and show support (Samaritans, SM-05). Signpost few at a time (SM-04). [needs legal advice]
@@ -270,11 +315,14 @@ not an assessment of the person.
 
 ### 3.4 Get support now (the Support button and its sheet, `ui/relay/common.js`)
 
-**In the app now.**
-- A small **Support** button in the header of every screen (sign-in, invitation, welcome, every main place, the
-  offline and deleted screens). Its spoken label: "Support: crisis lines, any time". It isn't shown on the support
-  screen itself, which already shows the lines.
-- It opens a sheet over the current screen. Drafts and catches are kept, and it works offline.
+**In the app now** (`9012d6f`, `ui/relay/common.js:37-66`; the message `core/feeling-safety.js:180`).
+- A small **Support** button (visible text "Support") in the header of every screen: sign-in, invitation, welcome,
+  Release, Catch, My journeys, Returned, You & safety, Your data, Share, and the offline and deleted screens
+  (`supportPill` in `top` and `brandBar`; `ui/relay/sign-in.js:94`, `invite.js:56`, `welcome.js:44`, `away.js:31`,
+  `you.js:125`). Its spoken label: "Support: crisis lines, any time". It isn't shown on the support screen itself,
+  which already shows the lines (`ui/relay/support.js:29`).
+- It opens a sheet over the current screen, so a draft or a catch is never lost. The lines are part of the app's code,
+  so the sheet opens without a connection once the app has loaded, and `tel:` needs no internet.
 
 Sheet title "You deserve support":
 
@@ -284,7 +332,7 @@ Sheet title "You deserve support":
 Then 000, Lifeline, Suicide Call Back Service and 13YARN; then **More support lines**: 1800RESPECT, Beyond Blue,
 Outside Australia.
 
-**Proposed.** No change.
+**Proposed.** No change. (This was a proposal in earlier drafts; it is **Done** since Tier 0.)
 
 **Rests on:** [recommended practice] A support route reachable from every screen that shows emotional content
 (Mindframe, SM-03). [verified obligation] Not to discriminate, directly or indirectly, against people with
@@ -295,7 +343,7 @@ whether a given barrier is unlawful [depends: reasonableness and unjustifiable h
 
 ### 3.5 You & safety (`ui/relay/you.js`)
 
-**In the app now** (`f8d7e4a`, `ui/relay/you.js:48-70`).
+**In the app now** (`9012d6f`, `ui/relay/you.js:48-71`).
 - Near the top:
 
   > **Pseudonymous, not perfectly anonymous.** Words can give people away, so leave out names, places and details.
@@ -319,21 +367,25 @@ whether a given barrier is unlawful [depends: reasonableness and unjustifiable h
 (At `0037d57` the "Rules first" line said "usually within a day or two", with no 000. "Usually" reports past
 performance, and there is none. The code has since moved to "we aim to", next to 000.)
 
+The section "If you’re not okay" is placed first on purpose, "so it is never below the fold" (`you.js:51`, Tier 0). Its
+row opens the same sheet as the Support pill.
+
 **Proposed.**
-- The note near the top, in the same form as the welcome (§3.1):
+- *Still a proposal.* The note near the top, in the same form as the welcome (§3.1):
 
   > **Pseudonymous: your name stays with you.** We hold your email and know which account is yours. Words can give
   > people away, so leave out names, places and details. Our safety team can see reported words.
 
-- "Rules first, then people": keep the current wording, which is a qualified aim next to 000, as `MODERATION.md`
-  §4.2 requires. If it is ever shortened, use:
+- *Done.* "Rules first, then people": keep the current wording, which is a qualified aim next to 000, as
+  `MODERATION.md` §4.2 requires. If it is ever shortened, use:
 
   > When something is reported, a person on our small safety team reads it. We aim to read it within a day or two,
   > and we’re not here around the clock. If someone is in danger right now, call 000.
 
   Never "usually" (there is no track record) and never "will" for a time.
-- "Mallow perspectives are labelled": "put together automatically from pieces written in advance" (§1.3), once the
-  owner has confirmed who wrote them.
+- *Done, in substance.* "Mallow perspectives are labelled": the app now says "chosen automatically from a fixed set of
+  lines written in advance for Hushmallow" (`you.js:69`). "Put together automatically from pieces written in advance"
+  (§1.3) remains an option, once the owner has confirmed who wrote them.
 
 **Rests on:** [depends: the desk rota being staffed] A response time is a representation about a future matter
 (SCW-07 as corrected); it matches the one settled position on response times (`LEGAL_REQUIREMENTS.md` X-2;
@@ -342,9 +394,10 @@ performance, and there is none. The code has since moved to "we aim to", next to
 
 ### 3.6 The catcher's screens (`ui/relay/catch.js`)
 
-**In the app now.**
+**In the app now** (`9012d6f`; `ui/relay/catch.js:66, 163-164, 295, 451-452, 434`; `ui/relay/release.js:129`).
 - The switch: **Let feelings find me** · "Always voluntary. Letting a feeling float past is always fine, and you can
-  turn this off any time."
+  turn this off any time." (A new member starts with it off: `members.catching` defaults to false, `schema.sql:61`,
+  and the welcome's switch starts from that, `ui/relay/welcome.js:33`.)
 - When a feeling arrives: "Catch this feeling" / "Let it float past", and "It waits a few minutes for you. Letting it
   float past is always fine."
 - Writing a perspective: "No diagnosis, judgement or orders. The person who released it will read your words, and so
@@ -355,10 +408,11 @@ performance, and there is none. The code has since moved to "we aim to", next to
   > again. They won’t be told either way.
 
 - If a catcher's own words are held back: the support screen (§3.3, the catcher's version).
-- If their account is restricted: "Our safety team has paused catching for your account for now. Feelings you already
-  released still come home to you." (and, on Release, "Your account can’t release feelings right now.").
+- If their account is restricted: "Catching is paused for your account." with "Our safety team has paused catching for
+  your account for now. Feelings you already released still come home to you." (and, on Release, "Your account can’t
+  release feelings right now.").
 
-**Proposed.**
+**Proposed.** *All three are still proposals.*
 - The switch hint, so catchers know they might meet something hard and what to do:
 
   > Always voluntary. Now and then a feeling may be heavy to read. Letting it float past is always fine, and Support is
@@ -382,13 +436,37 @@ contract terms (SCW-08).
 
 ### 3.7 After a report, and while a feeling waits
 
-**In the app now** (`f8d7e4a`).
+**In the app now** (`9012d6f`).
 - The report sheet (`ui/relay/common.js:128`): "A person on our safety team reads reports, but not straight away and not
   around the clock. They can’t see who anyone is, and they can’t contact anyone. Nobody is told who reported. If
   someone is in danger right now, call 000."
-- When "Someone may be in danger" is chosen (`ui/relay/common.js:115`): "Our team can’t see who wrote it, so we can’t contact them or send help.
-  If you know someone is in danger right now, call 000."
-- After sending: the acknowledgements, word for word in `MODERATION.md` §4.1 (priority, ordinary, and desk away).
+- When "Someone may be in danger" is chosen (`ui/relay/common.js:115`): "Our team can’t see who wrote it, so we can’t
+  contact them or send help. If you know someone is in danger right now, call 000."
+- After sending, under "Thank you for telling us" (`hushmates.expectation`,
+  `supabase/migrations/20261015090000_hushmates_tier0.sql:13-48`; the usual two also in `core/relay.js:823-826`; also
+  in `MODERATION.md` §4.1):
+
+  > *Priority ("Someone may be in danger"):* Thank you for telling us. This goes to the front of the queue for a person
+  > on our safety team. We’re a small team and we’re not here around the clock: during the pilot we aim to read
+  > priority reports within a day, and nights, weekends and holidays can take longer. We can’t see who wrote it, so we
+  > can’t contact them or send help. If you know someone is in danger right now, call 000. If this has stayed with
+  > you, Lifeline is there any time on 13 11 14. Nobody is told who reported.
+  >
+  > *Any other report:* Thank you for telling us. A person on our safety team will read it. We’re a small team, not
+  > here around the clock: during the pilot we aim to read reports within two days. Nobody is told who reported.
+  >
+  > *While the desk is marked away* (`settings.desk.awayUntil`): Thank you for telling us. Our safety team is away until
+  > {Tuesday 29 December}, so it will be read when we’re back. We can’t see who wrote it, so we can’t contact them or
+  > send help. If someone is in danger right now, call 000. Nobody is told who reported. (After a priority report, the
+  > Lifeline sentence comes before the last one.)
+  >
+  > *Marked away with a value that isn't a day the database can read:* "Our safety team is away for now and may not be
+  > able to read it straight away. It will be read when we’re back.", then the same sentences.
+
+  The owner sets the day with `node server/admin.mjs set desk '{"awayUntil":"YYYY-MM-DD"}'`, which accepts only a real
+  day from today to 90 days ahead, in Sydney (`deskProblem`), and clears it with `'{"awayUntil": null}'`. Anything
+  else stored there reads as away with no day, never as the usual times. The team's own 12-hour target for priority
+  reports (`docs/ESCALATION.md` §2) is never stated to members.
 - A paused feeling, to its writer (`ui/relay/journeys.js:134-137`):
 
   > Paused for now. Our safety team will look at it, but they can’t contact you. It still comes home within {time}.
@@ -404,17 +482,20 @@ contract terms (SCW-08).
   (with the support lines); "I won’t offer a perspective on this one. If things feel heavy, real people are there to
   listen: tap Support at the top of the screen."; "This one is waiting for our safety team to read it, so I’ll hold
   off for now."
+- Not safety wording, but beside it: both Mallow report sheets open with "Mallow perspectives are automatically
+  generated and can get things wrong." (`ui/relay/journeys.js:287`; `ui/relay/returned.js:257`). "Generated" waits for
+  D21 (§1.3).
 
 **Proposed.**
-- Add 000 to the ordinary acknowledgement, so every statement about the desk sits next to it:
+- *Still a proposal.* Add 000 to the ordinary acknowledgement, so every statement about the desk sits next to it:
 
   > Thank you for telling us. A person on our safety team will read it. We’re a small team, not here around the clock:
   > during the pilot we aim to read reports within two days. If anyone is in danger right now, call 000. Nobody is told
   > who reported.
 
-- The Mallow's line: the app now names the button correctly ("tap Support at the top of the screen"). What remains
-  is to point at the lines, not at Hushmates, since "real people are there to listen" could be read as people at
-  Hushmates:
+- *Partly done.* The Mallow's line: the app now names the button correctly ("tap Support at the top of the screen").
+  What remains is to point at the lines, not at Hushmates, since "real people are there to listen" could be read as
+  people at Hushmates:
 
   > I won’t offer a perspective on this one. If things feel heavy, the people on the support lines are there to
   > listen: tap Support at the top of the screen.
@@ -426,9 +507,11 @@ reporter's own support (Samaritans, SM-09). [depends: the desk rota being staffe
 
 For desk readers, not members.
 
-**In the app now.**
-- The empty queue: "Nothing is waiting. New reports appear here by themselves while this page is open and you’re
-  signed in. Nothing alerts anyone when it’s closed, so check at the set times."
+**In the app now** (`9012d6f`; `staff/desk.js:185-191, 224-226, 281-291, 328`; `staff/desk-guide.js:26-56`).
+- The empty queue: "Nothing is waiting. This list refreshes by itself while this tab is in view and you’re signed in.
+  Nothing alerts anyone, open or closed, so check at the set times." (Changed since `0037d57`, which said "New reports
+  appear here by themselves while this page is open…" and "when it’s closed". The new words are the more accurate: the
+  list refreshes only while the tab is visible, `staff/desk.js:169`, and no email or push alert exists at all.)
 - Opening a report: "Choose a report to read it. Every report you open is recorded in the activity log."
 - The note box: "A note for the team (optional, only the team sees it) · What you saw and did. No diagnosis, no
   guesses about who anyone is."
@@ -437,11 +520,13 @@ For desk readers, not members.
   day or night." "Suicide Call Back Service: 1300 659 467, any time." "Beyond Blue: 1300 22 4636, any time." "13YARN
   (Aboriginal and Torres Strait Islander crisis support): 13 92 76." "1800RESPECT (family, domestic and sexual
   violence): 1800 737 732."
-- The badge **Over 12 hours** on a priority report still open after 12 hours.
+- The badge **Over 12 hours** on a priority report still open after 12 hours (with "Overdue:" for screen readers), the
+  team's own target, not a promise to members (`docs/ESCALATION.md` §2). Nothing alerts anyone that a report is
+  overdue; the badge is seen only by someone who opens the desk.
 - After 30 minutes without activity: "You were signed out after 30 minutes without activity."
 
-**Proposed.** One standing note at the top of the queue, so the role's limits and the right to stop are always in
-view:
+**Proposed.** *Still a proposal.* One standing note at the top of the queue, so the role's limits and the right to stop
+are always in view:
 
 > You read words and make content decisions. You’re not a counsellor or a crisis worker. The desk can’t see who anyone
 > is, or contact anyone. You can stop at any time: hand over to the safety lead.
@@ -452,27 +537,39 @@ limit and the right to step away (`MODERATION.md` §10).
 
 ### 3.9 Elsewhere
 
-- **The privacy sheet**, "Safety" (`ui/relay/parts.js:186`), in the app now (`f8d7e4a`):
+- **The privacy sheet**, "Safety" (`ui/relay/parts.js:187`), in the app now (`9012d6f`):
 
   > Reported words are read by people on our small safety team, not around the clock. The team reads feelings only
   > when they’re reported, and it can’t see who anyone is or contact anyone. Words are checked by rules that read
   > English only and can miss things. Hushmates isn’t an emergency service: if you might not be safe, call 000, or a
   > crisis line such as Lifeline on 13 11 14, any time.
 
-  **Proposed:** the collection notice's version (`COLLECTION_NOTICE_AND_CONSENT.md` §4.10), which says "The team reads
-  words only when they’ve been reported, or paused for safety", the same sentence as the privacy policy.
+  **Proposed:** *still a proposal.* The collection notice's version (`COLLECTION_NOTICE_AND_CONSENT.md` §4.10), which
+  says "The team reads words only when they’ve been reported, or paused for safety", the same sentence as the privacy
+  policy. It matters because a feeling can be paused for safety without a member's report (when a Mallow's own check
+  flags it: §2), and the desk then reads it.
 
-- **The offline screen** (`ui/relay/away.js`), in the app now (`f8d7e4a`): the Mallow says "I’ll be right here."
-  (`:17`), and the line under the heading says "Your feelings are safe and keep travelling. We’ll try again as soon as
-  you’re back online." (`:33`). "Right here" breaks §1.2 (a Mallow is never "here with you"), and "safe" is a claim.
-  **Proposed:**
+  Not safety wording, but on the same sheet and part of being honest about who can read words: "Your account" says
+  "Your words are stored encrypted. Hushmates’ servers unlock them to show them to the people they’re meant for, and
+  the few people who hold Hushmates’ keys could unlock them too." (`:185`). Keep that sentence. The same section's "Your
+  email is used only to sign you in" is narrower than the terms (§9) and the privacy policy (`TERMS_OF_USE.md` B4.2
+  item 7).
 
-  > *The Mallow:* Your feelings are still travelling. Come back whenever you’re ready.
+- **The offline screen** (`ui/relay/away.js`). **Done.** At `f8d7e4a` the Mallow said "I’ll be right here." and the line
+  said "Your feelings are safe and keep travelling. We’ll try again as soon as you’re back online." ("Right here" broke
+  §1.2, and "safe" was a claim.) In the app now (`9012d6f`):
+
+  > *The Mallow:* Let’s try again when you’re back online. (`:17`)
   >
-  > *The line:* Your feelings keep travelling while you’re offline. We’ll try again as soon as you’re back.
+  > *The line:* Your feelings keep travelling while you’re offline. We’ll try again as soon as you’re back online.
+  > (`:35`)
+
+  Both meet §1.2 and §1.3. The Support pill is in this screen's header (`:31`), and its sheet opens offline.
 
 - **The Terms of Use** ("Please read this part closely") and the **Community Guidelines** ("If someone is in danger
-  right now") carry the long form. They copy the lines and aims above; keep them identical.
+  right now") carry the long form. They copy the lines and aims above; keep them identical. Both now say the word
+  check "can miss things, even words that clearly mean someone isn't safe" (§1.2), and the guidelines tell catchers not
+  to name suicide or self-harm, because the check holds such perspectives back (§3.3).
 - **Emails, the app store and any marketing** (none written yet). Use the long statement in §1.1, word for word, and
   the lists in §1.3. An app-store listing is advertising material, so it is exactly where one statement matters.
   Suggested store wording:
@@ -497,7 +594,8 @@ prefer lists are [recommended practice] (TGA-10). Device status [needs legal adv
   draft or catch, and works offline. Keep it there in every new screen.
 - **Get support now** is the first section of You & safety, and sits beside a paused or brought-home feeling.
 - Every number is a tappable call link. 000 always comes first, Lifeline next.
-- The lines are part of the app, so they never depend on the connection.
+- The lines are part of the app's code, so once the app has loaded they don't depend on the connection. (There is no
+  service worker, so the app can't be opened from scratch with no connection.)
 
 **Never in the way of ordinary use**
 - No pop-ups, banners, forced reading or extra ticks during ordinary use.
@@ -523,24 +621,31 @@ AHRC material was searched); the AHRC's 2025 Guidelines, which are not legally b
 
 ## 5. Summary of proposed changes
 
-| # | Place | Change | Why | Classification |
-|---|---|---|---|---|
-| 1 | Welcome | Add "Support is at the top of every screen." | People learn where support lives | Recommended practice |
-| 2 | Before release | One quiet line under the button (optional) | Help-seeking information where feelings are written | Recommended practice |
-| 3 | Support screen | Mallow: "The people on these lines are ready to listen, right now." | Can't be read as people at Hushmates | Recommended practice; ACL s18 (depends on the words) |
-| 4 | Support screen | Fewer lines at once on the crisis screen | Signpost two or three at a time | Recommended practice; Tier A decides |
-| 5 | Catcher's switch | Say a feeling may be heavy, and where Support is | Catchers may meet hard words | Recommended practice |
-| 6 | Catcher's More sheet | Point to "Someone may be in danger" | Use the danger route, not a crisis alone | Recommended practice |
-| 7 | Paused account | A review route and Support | Explain, signpost, review | Recommended practice; needs the contact address (D23) |
-| 8 | Ordinary acknowledgement | Add "If anyone is in danger right now, call 000." | 000 beside every statement about the desk | Recommended practice |
-| 9 | Mallow on a held feeling | "the people on the support lines are there to listen" (the app already says "tap Support at the top of the screen") | Can't be read as people at Hushmates | Recommended practice |
-| 10 | Desk | A standing note on the role's limits and the right to stop | WHS psychosocial controls | Depends on who reads the desk |
-| 11 | Offline screen | Drop "safe"; replace the Mallow's "I’ll be right here." | A claim; a Mallow is never "here with you" | Depends on the words (ACL s18); recommended practice |
-| 12 | Welcome, first promise | "Pseudonymous: your name stays with you." with "We hold your email and know which account is yours." | "Not perfectly anonymous" still leans on anonymity | Recommended practice; ACL s18 (depends on the words) |
-| 13 | You & safety, the note near the top | The same "Pseudonymous: your name stays with you." form | As 12 | Recommended practice; ACL s18 (depends on the words) |
-| 14 | Welcome and You, Mallow lines | "Put together automatically from pieces written in advance" | Matches how lines are made; authorship to confirm | Recommended practice; ACL s18 (depends on the words) |
-| 15 | Privacy sheet, Safety | "reads words only when they’ve been reported, or paused for safety" | One sentence everywhere | Recommended practice |
-| 16 | Store listing and long form | The intended-purpose statement, word for word | One statement in every channel | Recommended practice (TGA-2, TGA-10); device status needs legal advice |
+Status checked against the code at `9012d6f`. None of these is a legal obligation on its own: the classification
+column says what each rests on.
+
+| # | Place | Change | Why | Classification | Status at `9012d6f` |
+|---|---|---|---|---|---|
+| 1 | Welcome | Add "Support is at the top of every screen." | People learn where support lives | Recommended practice | Proposal |
+| 2 | Before release | One quiet line under the button (optional) | Help-seeking information where feelings are written | Recommended practice | Proposal |
+| 3 | Support screen | Mallow: "The people on these lines are ready to listen, right now." | Can't be read as people at Hushmates | Recommended practice; ACL s18 (depends on the words) | Proposal (the app says "There are real people ready to listen, right now.") |
+| 4 | Support screen | Fewer lines at once on the crisis screen | Signpost two or three at a time | Recommended practice; Tier A decides | Proposal (five shown; Get support now already shows four first) |
+| 5 | Catcher's switch | Say a feeling may be heavy, and where Support is | Catchers may meet hard words | Recommended practice | Proposal |
+| 6 | Catcher's More sheet | Point to "Someone may be in danger" | Use the danger route, not a crisis alone | Recommended practice | Proposal |
+| 7 | Paused account | A review route and Support | Explain, signpost, review | Recommended practice; needs the contact address (D23) | Proposal |
+| 8 | Ordinary acknowledgement | Add "If anyone is in danger right now, call 000." | 000 beside every statement about the desk | Recommended practice | Proposal (the priority and desk-away messages already have 000) |
+| 9 | Mallow on a held feeling | "the people on the support lines are there to listen" (the app already says "tap Support at the top of the screen") | Can't be read as people at Hushmates | Recommended practice | Partly done (the button is named; "real people" remains) |
+| 10 | Desk | A standing note on the role's limits and the right to stop | WHS psychosocial controls | Depends on who reads the desk | Proposal |
+| 11 | Offline screen | Drop "safe"; replace the Mallow's "I’ll be right here." | A claim; a Mallow is never "here with you" | Depends on the words (ACL s18); recommended practice | **Done** (`ui/relay/away.js:17, 35`) |
+| 12 | Welcome, first promise | "Pseudonymous: your name stays with you." with "We hold your email and know which account is yours." | "Not perfectly anonymous" still leans on anonymity | Recommended practice; ACL s18 (depends on the words) | Proposal |
+| 13 | You & safety, the note near the top | The same "Pseudonymous: your name stays with you." form | As 12 | Recommended practice; ACL s18 (depends on the words) | Proposal |
+| 14 | Welcome and You, Mallow lines | "Put together automatically from pieces written in advance" | Matches how lines are made; authorship to confirm | Recommended practice; ACL s18 (depends on the words) | **Done, in substance**: "chosen automatically from a fixed set of lines written in advance (for Hushmallow)" (`welcome.js:104`, `you.js:69`). Still open on the release screen ("writes", `release.js:110, 117`) and the label (D21) |
+| 15 | Privacy sheet, Safety | "reads words only when they’ve been reported, or paused for safety" | One sentence everywhere; a feeling can be paused for safety without a report | Recommended practice | Proposal |
+| 16 | Store listing and long form | The intended-purpose statement, word for word | One statement in every channel | Recommended practice (TGA-2, TGA-10); device status needs legal advice | Long form done in the drafts; no store listing yet |
+| 17 | Welcome, last promise (optional) | "it can miss things, even clear ones" | The Tier 0 probe: 25 of 127 crisis or danger phrasings shown support; evidence of gaps, not a rate | Recommended practice; ACL s18 (depends on the words); owner and Tier A decide | Proposal (new) |
+| 18 | Support screen, a catcher's perspective | Decide whether a perspective may name suicide or self-harm gently, and what a catcher is told when it may be about someone else | Safe-language advice can't be followed today; "Right now, this is about you." may be wrong | Recommended practice; Tier A decides | Question (new); the guidelines now say not to name them |
+| — | Support on every screen, in a sheet | The Support pill and its sheet | One tap from every screen | Recommended practice (SM-03) | **Done** since Tier 0 (`ui/relay/common.js:37-66`) |
+| — | You & safety, "Rules first" | A qualified aim next to 000, never "usually" | Response times as a future representation | Depends on the rota (SCW-07) | **Done** (`you.js:70`) |
 
 Each change is made in the code (with its test, where one checks the words) and in any draft that quotes it, at the
 same time.
@@ -580,8 +685,12 @@ memory" were not seen at all. Guidance from Mindframe, Samaritans, Orygen and eS
 - Beyond Blue, national helplines page, https://www.beyondblue.org.au/get-support/national-mental-health-helplines-and-support-groups
   (the 24/7 support line, search extract).
 
-**Project files:** `core/feeling-safety.js`, `ui/relay/common.js`, `ui/relay/support.js`, `ui/relay/welcome.js`,
+**Project files** (all read at `9012d6f`): `core/feeling-safety.js`, `core/perspectives.js`, `core/relay.js`,
+`core/relay-config.js`, `core/export-format.js`, `ui/relay/common.js`, `ui/relay/support.js`, `ui/relay/welcome.js`,
 `ui/relay/you.js`, `ui/relay/release.js`, `ui/relay/catch.js`, `ui/relay/journeys.js`, `ui/relay/returned.js`,
-`ui/relay/parts.js`, `ui/relay/away.js`, `staff/desk.js`, `staff/desk-guide.js`,
-`supabase/migrations/20261015090000_hushmates_tier0.sql`, `core/relay.js`, `docs/safety/TIER0_SELF_ASSESSMENT.md`,
-`docs/legal/MODERATION.md`.
+`ui/relay/parts.js`, `ui/relay/away.js`, `ui/relay/sign-in.js`, `ui/relay/invite.js`, `staff/desk.js`,
+`staff/desk-guide.js`, `server/admin.mjs`, `supabase/functions/_shared/gateway.js`,
+`supabase/migrations/20261014090100_hushmates_rules.sql`, `supabase/migrations/20261015090000_hushmates_tier0.sql`,
+`docs/ESCALATION.md`, `docs/DECISIONS.md`, `docs/RISKS.md`, `docs/LAUNCH_READINESS.md`,
+`docs/safety/TIER0_SELF_ASSESSMENT.md`, `docs/legal/MODERATION.md`. The screen's behaviour on the phrasings quoted in
+§3.3 was checked by running `screenFeeling` and `screenReframe` directly.

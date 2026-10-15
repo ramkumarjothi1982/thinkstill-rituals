@@ -1,6 +1,7 @@
 # Hushmates collection notices and consent design
 
-**DRAFT, not yet reviewed or approved. Not legal advice.**
+**DRAFT, not yet reviewed or approved. It stays a draft until the owner approves it and, where marked, an Australian
+lawyer has reviewed it. Not legal advice.**
 **Date: 15 October 2026.**
 
 > **Status.** Nothing here is final until the owner approves it. Parts marked "needs legal advice" must also be
@@ -24,7 +25,7 @@ This document does two things:
 For each screen it gives:
 
 - **Now:** the current wording, quoted with its file and line at commit `9012d6f` (15 October 2026, after the Tier 0
-  changes), read from the code itself.
+  changes; the later commits change documents only), read from the code itself.
 - **Done:** where the app has adopted a proposal since the first draft (written against `000c0cd`), it's marked
   **Done** with the wording the app now uses. Where it adopted part of one, it's marked **Partly done**, and the rest
   stays proposed.
@@ -330,7 +331,6 @@ health information under APP 3.3 (and under the Victorian or NSW health privacy 
 "Not straight away and not around the clock": the app's own report-sheet words (ui/relay/common.js:128).
 -->
 
-
 ### 4.5 Catching: what catchers agree to (`ui/relay/welcome.js`, `ui/relay/catch.js`, `ui/relay/you.js`)
 
 Catchers read other people's feelings, which can be personal or heavy. They also write their own words.
@@ -574,40 +574,69 @@ P24); Mallow lines are always allowed in the author's share (share.js:43). -->
 
 **Collected:** the reporter's account link, the reason, the time, and a locked copy of the reported words.
 
-**Now (000c0cd):** the report sheet's note: "Reports go to a person on the safety team. Nobody is told who reported."
-(`ui/relay/common.js:102`)
+**Now (9012d6f):**
+- The report sheet's note: "A person on our safety team reads reports, but not straight away and not around the
+  clock. They can’t see who anyone is, and they can’t contact anyone. Nobody is told who reported. If someone is in
+  danger right now, call 000." (`ui/relay/common.js:128`)
+- While "Someone may be in danger" is chosen: "Our team can’t see who wrote it, so we can’t contact them or send help.
+  If you know someone is in danger right now, call 000." (`ui/relay/common.js:114-115`)
+- After sending, the acknowledgement (`supabase/migrations/20261015090000_hushmates_tier0.sql:45-47`; the lab's
+  `core/relay.js:823-826` says the same):
+  - priority: "Thank you for telling us. This goes to the front of the queue for a person on our safety team. We’re a
+    small team and we’re not here around the clock: during the pilot we aim to read priority reports within a day,
+    and nights, weekends and holidays can take longer. We can’t see who wrote it, so we can’t contact them or send
+    help. If you know someone is in danger right now, call 000. If this has stayed with you, Lifeline is there any
+    time on 13 11 14. Nobody is told who reported."
+  - others: "Thank you for telling us. A person on our safety team will read it. We’re a small team, not here around
+    the clock: during the pilot we aim to read reports within two days. Nobody is told who reported."
+  - while the owner has marked the desk away (`settings.desk.awayUntil`, set with
+    `node server/admin.mjs set desk '{"awayUntil":"YYYY-MM-DD"}'`, today to 90 days ahead in Sydney): "Thank you for
+    telling us. Our safety team is away until {day}, so it will be read when we’re back. …"; a value the database
+    can't read as such a day still reads as away, with no date ("Our safety team is away for now and may not be able
+    to read it straight away. …") (`tier0.sql:25-43`).
 
-**In progress (working tree):** "A person on our safety team reads reports, but not straight away and not around the
-clock. They can’t see who anyone is, and they can’t contact anyone. Nobody is told who reported. If someone is in
-danger right now, call 000."
+**Done:** the report sheet's note (the first draft proposed adopting exactly this wording).
 
-**Proposed:** adopt the in-progress note, and add one sentence at the end:
+**Proposed (still):** add one sentence at the end of the report sheet's note:
 > We keep a record that you made this report, so reports can’t be misused. The person is never told it was you, and
 > our safety team doesn’t see who you are.
 
 Blocking: keep the current wording ("Neither of you is told who the other is."). Check one claim: "your perspectives
-won’t reach them" (`ui/relay/catch.js:472`) is true for new perspectives only. Proposed:
+won’t reach them" (`ui/relay/catch.js:472`, unchanged) is true for new perspectives only. Proposed:
 > Feelings from this person won’t find you again, and new perspectives from you won’t reach them. Neither of you is
 > told who the other is.
 
 <!-- [classification: depends on functionality or business circumstances] APP 5.2(d): the reporter's own information.
-Facts: reports.by_member kept; the desk never sees it (rules.sql:1087-1097); blocks kept with no end date (app-facts
-P14, [GAP]). The block correction follows app-facts §3 "[Check]". -->
+Facts: reports.by_member kept; the desk never sees it (rules.sql:1079-1098); blocks kept with no end date (app-facts
+P14, [GAP]). The block correction follows app-facts §3 "[Check]": a block from the catch side sets aside the
+catcher's new perspectives on that author's feelings (rules.sql:721-724), but doesn't hide ones already given.
+The "within a day" and "within two days" aims, and the away notice, depend on named readers and fixed check times
+(D12, open) and on the owner setting awayUntil (docs/legal/MODERATION.md §5.2). The team's internal target for
+priority reports stays 12 hours (docs/ESCALATION.md §2), and the desk marks one still open after 12 hours "Over 12
+hours" (staff/desk.js:187); nothing alerts anyone (no email or push). These are the app's words, not proposals of
+this document. -->
 
-### 4.10 The privacy sheet, "Your privacy in Hushmates" (`ui/relay/parts.js:181-187`)
+### 4.10 The privacy sheet, "Your privacy in Hushmates" (`ui/relay/parts.js:178-194`)
 
 This is Layer 2, one tap from sign-in, joining, welcome, Release and You.
 
-**Now (000c0cd):** seven sections ("Who sees your words", "If you catch a feeling", "Not perfectly anonymous", "If you
-allow a Mallow perspective", "Your account", "Your choices", "Safety"), quoted in app-facts §4. Two lines aren't
-accurate:
-- "Your words are stored encrypted, and only Hushmates’ servers can unlock them to show them to the people they’re
-  meant for." (`:185`) The key holders can unlock them too.
-- "Hushmates writes it automatically from its own library…" and "always labelled “Automatically generated”" (`:184`).
+**Now (9012d6f):** seven sections (`ui/relay/parts.js:181-187`): "Who sees your words", "If you catch a feeling", "Not
+perfectly anonymous", "If you allow a Mallow perspective", "Your account", "Your choices", "Safety". The two lines the
+first draft found inaccurate:
+- Keys: **Done.** It now reads "Your words are stored encrypted. Hushmates’ servers unlock them to show them to the
+  people they’re meant for, and the few people who hold Hushmates’ keys could unlock them too." (`:185`)
+- Mallow: **Partly done.** "Writes it" is gone: "Hushmates chooses it automatically from a fixed set of perspectives
+  written in advance for Hushmallow, on its own servers" (`:184`). It still says "always labelled “Automatically
+  generated”" (D21).
 
-It also lacks who we are, where things are kept, how long, the sensitive-information point and a link to the policy.
+The Safety section now reads: "Reported words are read by people on our small safety team, not around the clock. The
+team reads feelings only when they’re reported, and it can’t see who anyone is or contact anyone. Words are checked
+by rules that read English only and can miss things. Hushmates isn’t an emergency service: if you might not be safe,
+call 000, or a crisis line such as Lifeline on 13 11 14, any time." (`:187`)
 
-**In progress (working tree):** the Mallow and Safety sections have new wording (see 4.7 and 4.9).
+Still missing: who we are, where things are kept, how long, the sensitive-information point and a link to the policy.
+"Your email is used only to sign you in" (`:185`) is narrower than the privacy policy's uses, and "Not perfectly
+anonymous" (`:183`) leans on anonymity.
 
 **Proposed: the whole sheet**
 
@@ -626,9 +655,9 @@ It also lacks who we are, where things are kept, how long, the sensitive-informa
 >
 > **The word check.** Before anyone sees them, rules check your words for some signs that someone might not be safe,
 > and for contact or identifying details. If your words describe something that needs more than a new way of seeing
-> it, like not feeling safe, abuse, violence, threats, harassment or being treated unfairly, Hushmates won’t send
-> your feeling. It shows you support lines instead, and your words aren’t saved. The rules read English only and can
-> miss things.
+> it, like not feeling safe, abuse, violence, threats, harassment or being treated unfairly, or if they tell someone
+> to hurt themselves, Hushmates won’t send your feeling. It shows you support lines instead, and your words aren’t
+> saved. The rules read English only, and they miss many ways people put things.
 >
 > **If you catch a feeling.** The person who released it reads your perspective when it comes home, and so does
 > anyone who adds one after you. Nobody sees who wrote it. You choose whether it may appear in their share picture or
@@ -641,10 +670,10 @@ It also lacks who we are, where things are kept, how long, the sensitive-informa
 > could identify you or someone else. Hushmates checks for some of these and will ask you to remove them.
 >
 > **If you allow a Mallow line.** If nobody has caught your feeling after 30 minutes, your Mallow puts together a
-> short line for you, even if the app is closed. It’s made from pieces written in advance: an opening in your Mallow’s
-> voice and one perspective, chosen by rules that look at your words. It isn’t a person and it isn’t AI, and your
-> words aren’t sent anywhere else for this. It’s always labelled, and it never counts as one of the five. We keep a
-> note of which perspective it used.
+> short line for you, even if the app is closed. It’s made from a fixed set of pieces written in advance for
+> Hushmallow: an opening in your Mallow’s voice and one perspective, chosen by rules guided by your words. It isn’t a
+> person and no AI is used, and your words aren’t sent anywhere else for this. It’s always labelled, and it never
+> counts as one of the five. We keep a note of which perspective it used.
 >
 > **Your account and your words.** You sign in with your email and a code. We use your email to sign you in, to
 > reply when you write to us, and to tell you something important if we ever must. Nobody else in Hushmates sees it.
@@ -664,9 +693,11 @@ It also lacks who we are, where things are kept, how long, the sensitive-informa
 > your Hushmates data at any time in You & safety. Deleting everything also deletes your sign-in. For anything else,
 > write to us.
 >
-> **Safety.** Reported words are read by people on our small safety team, not around the clock. The team reads words
-> only when they’ve been reported, or paused for safety, and it can’t see who anyone is or contact anyone. Hushmates isn’t an emergency
-> service: if you might not be safe, call 000, or a crisis line such as Lifeline on 13 11 14, any time.
+> **Safety.** Reported words are read by people on our small safety team, not around the clock. During the pilot we
+> aim to read them within a day or two, and nights, weekends and holidays can take longer. The team reads words only
+> when they’ve been reported, or paused for safety, and it can’t see who anyone is or contact anyone. Hushmates isn’t
+> an emergency service: if you might not be safe, call 000, or a crisis line such as Lifeline on 13 11 14, any time.
+> Tap Support at the top of the screen for more lines.
 >
 > **Read the full privacy policy**
 
@@ -678,29 +709,35 @@ rule (recommended practice). "Reported words are cleared 90 days after the repor
 (evidenceDaysAfterResolution 90; openEvidenceDays 180: api.sql:178-184), matching PRIVACY_POLICY.md, TERMS_OF_USE.md §6
 and MODERATION.md §12. "We reply within 5 business days" only if someone is named to watch the inbox.
 "The team reads words only when they've been reported, or paused for safety": the same sentence as PRIVACY_POLICY.md
-("Pseudonymous: what that means here") and the app's privacy sheet (ui/relay/parts.js:186); the desk has no method to
+("Pseudonymous: what that means here"); the app's privacy sheet says "The team reads feelings only when they’re
+reported" (ui/relay/parts.js:187), and a pause happens only after reports while AI is off; the desk has no method to
 read anything not reported (app-facts §9). A system hold is possible in principle, but unreachable with AI off.
+"During the pilot we aim to read them within a day or two, and nights, weekends and holidays can take longer": the
+app's own You & safety words (ui/relay/you.js:70) and the acknowledgements (tier0.sql:45-47) [classification: depends
+on functionality or business circumstances: D12, named readers and check times]. "Tap Support": ui/relay/common.js:45-49.
+"They miss many ways people put things": TIER0_SELF_ASSESSMENT.md §4.2 (25 of 127, a developer probe, not a rate).
 The key holders match PRIVACY_POLICY.md "How we keep it safe" (Edge Function secrets; the owner's password manager and
-.data/staging.env; server/admin.mjs:90-93). "On the owner's own computer" needs disk encryption confirmed.
+.data/staging.env; server/admin.mjs:131-136). "On the owner's own computer" needs disk encryption confirmed.
 The catcher's retention sentence matches 4.5 and PRIVACY_POLICY.md (api.sql:169-177; app-facts P11).
 -->
 
 ### 4.11 Your data (`ui/relay/your-data.js`, `core/export-format.js`)
 
-**Now (000c0cd):** "You agreed to share {your feeling / each of your n feelings} anonymously{, and to a Mallow
+**Now (9012d6f):** "You agreed to share {your feeling / each of your n feelings} without your name{, and to a Mallow
 perspective on …}. The dates are in your file." (`ui/relay/your-data.js:62`); the Mallow row "Automatically generated,
-only because you allowed it" (`:59`); the export key `agreedToShareAnonymouslyAt` (`core/export-format.js:44`).
+only because you allowed it" (`:59`); the export key `agreedToShareWithoutYourNameAt`, format `hushmates-personal-data`
+version 2 (`core/export-format.js:44, 54-55`; `docs/ACCESS.md:89`).
 
-**In progress (working tree):** the summary now says "without your name". The export key is unchanged.
+**Done:**
+- Summary: "without your name". **Done.**
+- Export key: renamed to `agreedToShareWithoutYourNameAt` in format version 2. **Done.** The old key wasn't kept for a
+  version; nothing in the code reads it.
 
-**Proposed:**
-- Summary: adopt "without your name".
-- Mallow row: "From the Mallow library, only because you allowed it".
-- Export key: rename to `agreedToShareWithoutYourNameAt` in a new format version (`hushmates-personal-data` v2),
-  keeping the old key for one version if anything reads it. This is a format change, so its tests and
-  `docs/ACCESS.md` change too.
-- Add to the export: the 18+ confirmation time (today it's left out: app-facts P5, **[GAP]**), and, once recorded,
-  the catching agreement time and the notice version.
+**Proposed (still):**
+- Mallow row: "From the Mallow library, only because you allowed it" (waits on D21).
+- Add to the export: the 18+ confirmation time (still left out at 9012d6f: `members.adult_confirmed_at` isn't in
+  `m_export_raw`, `rules.sql:969-993`; app-facts P5, **[GAP]**), and, once recorded, the catching agreement time and
+  the notice version.
 
 **Why:** the record of each consent should say what was agreed in accurate words, and the person should be able to
 see every consent we hold (APP 12, and "current" consent).
@@ -718,8 +755,9 @@ Before a feeling reaches another member, the person has:
 3. **Read "Before your first feeling travels"** once (4.4), which tells them: who reads it; that it may be sensitive
    and is their choice; the word check; the safety team; that we know which account wrote it; encryption and where
    it's kept; how long; and who we are.
-4. **Ticked "Share this with Hushmates participants, without my name"** for this feeling (4.4). The server refuses
-   the feeling without it and records when it was given. This already works today.
+4. **Ticked "Share with Hushmates participants, without my name"** for this feeling (4.4). The server refuses
+   the feeling without it and records when it was given. This already works today, with this wording
+   (`ui/relay/release.js:103`; `rules.sql:364`).
 5. Optionally, **allowed a Mallow line** for this feeling, as a separate switch that starts off (4.7).
 
 Nothing else is bundled into the tick. Safety screening and the safety team's review of reported words aren't
@@ -784,26 +822,29 @@ Draft for later (do not use while AI is off):
 > Let my Mallow write a new line with AI. Your words, without your name, are sent to [provider], in [country], to
 > write it. Off unless you choose.
 
-## 9. Changes for the developer (summary; no code was changed)
+## 9. Changes for the developer (summary; this drafting changed no code)
 
-| File | Change |
-|---|---|
-| `ui/relay/sign-in.js` | New hint and notice line; a "Privacy policy" link |
-| `ui/relay/invite.js` | Name hint; 18+ hint; terms line |
-| `ui/relay/welcome.js` | First and third promises; "Before you catch" before saving catching |
-| `ui/relay/release.js` | Tick label, hint and resting line; "Before your first feeling travels"; Mallow switch, hint and note |
-| `ui/relay/catch.js` | Pre-send statement; share tick label and hint; "Before you catch"; block wording |
-| `ui/relay/journeys.js` | Mallow offer and note; report intro; **[new]** the Mallow switch while travelling |
-| `ui/relay/returned.js` | Resend hint; "Explore another angle" text and details; report intro |
-| `ui/relay/you.js` | Catching hint; share note; "Before you catch"; a "Privacy policy" link |
-| `ui/relay/share.js` | One added line |
-| `ui/relay/common.js` | One added sentence in the report sheet |
-| `ui/relay/parts.js` | The whole privacy sheet |
-| `ui/relay/your-data.js` | Mallow row |
-| `core/relay-config.js`, `supabase/migrations/…_rules.sql` (new migration), `ui/relay/share-render.js` | The Mallow label and the renderer's check |
-| `core/export-format.js`, `docs/ACCESS.md` | Export key and new fields (format v2) |
-| Schema (new migration) | Notice version; catching agreement time; a way to change the Mallow choice while travelling |
-| Tests | Every test that pins these strings (for example `tests/audit-fixes.test.mjs`) |
+Status checked against the code at `9012d6f`.
+
+| File | Change | Status |
+|---|---|---|
+| `ui/relay/sign-in.js` | New hint and notice line; a "Privacy policy" link | Proposed |
+| `ui/relay/invite.js` | Name hint; 18+ hint; terms line | Proposed |
+| `ui/relay/welcome.js` | First promise; "People first" (optional precision); "Before you catch" before saving catching | "Not an emergency service" **done**; "People first" **partly done**; the rest proposed (and D22) |
+| `ui/relay/release.js` | Hint; "Before your first feeling travels"; Mallow switch, hint and note | Tick label and resting line **done** (D8); the rest proposed. The Mallow note ("Hushmates writes") is the most urgent |
+| `ui/relay/catch.js` | Pre-send statement; share tick label and hint; "Before you catch"; block wording | Proposed |
+| `ui/relay/journeys.js` | Mallow offer and note; report intro; **[new]** the Mallow switch while travelling | Proposed (note and intro wait on D21) |
+| `ui/relay/returned.js` | Resend hint; "Explore another angle" text and details; report intro; the let-go confirmation (`:293`, see `PRIVACY_POLICY.md`) | **Partly done** ("chooses it from lines written in advance, guided by your words"); "automatically generated" and the report intro remain |
+| `ui/relay/you.js` | Catching hint; share note; "Before you catch"; a "Privacy policy" link | Proposed |
+| `ui/relay/share.js` | One added line | Proposed |
+| `ui/relay/common.js` | One added sentence in the report sheet | Report note **done**; the added sentence proposed |
+| `ui/relay/parts.js` | The whole privacy sheet | Keys line **done**; Mallow section **partly done**; the rest proposed |
+| `ui/relay/your-data.js` | Mallow row | Summary **done**; Mallow row proposed (D21) |
+| `core/relay-messages.js` | `consent-required` message | **Done** |
+| `core/relay-config.js`, `supabase/migrations/…_rules.sql` (new migration), `ui/relay/share-render.js`, `staff/desk.js:278` | The Mallow label and the renderer's check | Proposed: **D21, open** |
+| `core/export-format.js`, `docs/ACCESS.md` | Export key and new fields (format v2) | Key and v2 **done**; new fields (18+ time, catching agreement, notice version) proposed |
+| Schema (new migration) | Notice version; catching agreement time; a way to change the Mallow choice while travelling | Proposed |
+| Tests | Every test that pins these strings (for example `tests/audit-fixes.test.mjs`) | Follows each change |
 
 The vendored copies under `supabase/functions/_shared/vendor/` must follow any change to `core/`
 (`tools/sync-edge.mjs --check`).
@@ -821,13 +862,17 @@ The vendored copies under `supabase/functions/_shared/vendor/` must follow any c
    can't reach it?
 6. The identity to give in notices: the legal entity, and whether a sole trader must give more than a business name,
    ABN and email.
-7. Whether the Mallow line selection, which analyses the author's words, is adequately described by "chosen to fit
-   your words", for informed consent and for APP 1.7-1.9.
+7. Whether the Mallow line selection, which analyses the author's words, is adequately described by "guided by your
+   words", for informed consent and for APP 1.7-1.9.
+8. The label on Mallow lines (decision D21): is "Automatically generated" misleading while no AI is used, and is
+   "From the Mallow library" better? The owner decides after this answer.
 
 ## 11. Sources
 
 All seen **only as search-tool extracts** (usually paraphrased), or from memory where marked. None was opened
 directly, because this environment cannot reach legislation.gov.au, oaic.gov.au, esafety.gov.au or tga.gov.au.
+Decision D20 (optional) would add those domains to the environment's allowed list, so each cited section can be
+checked against the official text before the lawyer sees this draft.
 
 - Privacy Act 1988 (Cth): https://www.legislation.gov.au/C2004A03712/latest/text (not opened; series id from memory)
 - OAIC, APP Guidelines Chapter B (consent): https://www.oaic.gov.au/privacy/australian-privacy-principles/australian-privacy-principles-guidelines/chapter-b-key-concepts
