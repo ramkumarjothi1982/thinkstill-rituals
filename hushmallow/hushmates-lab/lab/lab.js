@@ -240,7 +240,7 @@ async function renderMod() {
   const el = (tag, cls, text) => Object.assign(document.createElement(tag), { className: cls || '', textContent: text || '' });
   modList.replaceChildren(...list.slice(0, 6).map((r) => {
     const row = el('details', `lab-mod-row${r.status === 'open' ? ' is-open' : ''}`);
-    row.append(el('summary', '', `${r.urgent ? 'Priority · ' : ''}${r.kind === 'feeling' ? 'Feeling' : 'Perspective'} · ${r.reason} · ${r.status}`));
+    row.append(el('summary', '', `${r.urgent ? 'Priority · ' : ''}${r.kind === 'feeling' ? 'Feeling' : r.isMallow ? 'Mallow perspective (automatic)' : 'Perspective'} · ${r.reason} · ${r.status}`));
     const box = el('div', 'lab-mod-evidence');
     row.append(box);
     // a person decides with the evidence in front of them (every look is audited by the service)
@@ -256,7 +256,8 @@ async function renderMod() {
         if (r.status === 'open') {
           const acts = r.kind === 'feeling'
             ? [['resume-feeling', 'Resume'], ['remove-feeling', 'Remove'], ['restrict-user', 'Restrict account']]
-            : [['dismiss', 'Dismiss'], ['remove-perspective', 'Remove'], ['restrict-user', 'Restrict account']];
+            : r.isMallow ? [['dismiss', 'Dismiss'], ['remove-perspective', 'Remove']]     // no person wrote it: nobody to restrict
+              : [['dismiss', 'Dismiss'], ['remove-perspective', 'Remove'], ['restrict-user', 'Restrict account']];
           const bar = el('div', 'lab-chipset');
           for (const [action, label] of acts) {
             const b = el('button', 'guide-btn', label);

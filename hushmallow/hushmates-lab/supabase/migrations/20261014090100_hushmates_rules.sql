@@ -1070,8 +1070,10 @@ language plpgsql set search_path = '' as $$
 begin
   perform hushmates.moderator(m);
   perform hushmates.audit(m.id::text, 'mod.list-reports');
-  return jsonb_build_object('reports', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'at', hushmates.ms(at), 'kind', kind, 'reason', reason, 'urgent', urgent, 'status', status)
-    order by urgent desc, at) from hushmates.reports), '[]'));
+  -- a reported Mallow perspective is listed as a Mallow's, never as a person's
+  return jsonb_build_object('reports', coalesce((select jsonb_agg(jsonb_build_object('id', r.id, 'at', hushmates.ms(r.at), 'kind', r.kind, 'reason', r.reason, 'urgent', r.urgent, 'status', r.status,
+      'isMallow', r.kind = 'perspective' and not exists (select 1 from hushmates.perspectives x where x.id = r.perspective_id))
+    order by r.urgent desc, r.at) from hushmates.reports r), '[]'));
 end $$;
 
 create or replace function hushmates.m_mod_get(m hushmates.members, a jsonb) returns jsonb

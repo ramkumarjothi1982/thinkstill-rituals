@@ -894,7 +894,11 @@ export class RelayService {
     const mod = this._moderator(token);
     this._audit(mod.id, 'mod.list-reports');
     return { reports: Object.values(this.s.reports).sort((a, b) => (b.urgent - a.urgent) || (a.at - b.at))
-      .map((r) => ({ id: r.id, at: r.at, kind: r.kind, reason: r.reason, urgent: r.urgent, status: r.status })) };
+      .map((r) => ({ id: r.id, at: r.at, kind: r.kind, reason: r.reason, urgent: r.urgent, status: r.status, isMallow: this._reportIsMallow(r) })) };
+  }
+  /** A report about a Mallow perspective (not one any person wrote): listed and shown as a Mallow's. */
+  _reportIsMallow(r) {
+    return r.kind === 'perspective' && !this.s.reframes[r.perspectiveId];
   }
   modGetReport(token, { id } = {}) {
     const mod = this._moderator(token);
@@ -903,7 +907,7 @@ export class RelayService {
     this._audit(mod.id, 'mod.view-report', { report: id });
     // who reported it is never shown: the desk needs the words and the pattern, not the people
     const { by, subject, notes, ...rest } = structuredClone(r);
-    return { ...rest, fromSystem: by === 'system', notes: notes.map(({ at, text }) => ({ at, text })), subjectRef: subject };
+    return { ...rest, fromSystem: by === 'system', notes: notes.map(({ at, text }) => ({ at, text })), subjectRef: subject, isMallow: this._reportIsMallow(r) };
   }
   modResolve(token, { id, action, note = '' } = {}) {
     const mod = this._moderator(token);

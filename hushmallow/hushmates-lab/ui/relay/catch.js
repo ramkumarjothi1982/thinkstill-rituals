@@ -280,7 +280,7 @@ export function catchScene(dev) {
     const share = checkRow({
       id: 'hf-allow-share', test: 'allow-share', checked: !!mem.share[offer.holdId],
       label: 'They may include my words in a share picture or video',
-      hint: 'Off unless you choose. It never shows who you are.',
+      hint: 'Off unless you choose. It never shows who you are. A picture they’ve made can’t be taken back.',
       onChange: (on) => { mem.share[offer.holdId] = on; },
     });
     put(body,

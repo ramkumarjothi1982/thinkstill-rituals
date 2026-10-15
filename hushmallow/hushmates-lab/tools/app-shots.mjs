@@ -202,6 +202,17 @@ const journeysOf = async (who) => (await call(who, 'listJourneys')).journeys;
 const author = await device();
 const catcher = await device({ width: 1280, height: 860, mobile: false, motion: 'no-preference' });
 const { page } = author;
+// what a share picture or video actually draws: the text drawn on canvases that aren't on the
+// screen (the preview is; the picture and the video are drawn off screen), from each page's start
+await page.addInitScript(() => {
+  window.__drawn = new Set();
+  for (const C of [window.CanvasRenderingContext2D, window.OffscreenCanvasRenderingContext2D].filter(Boolean)) {
+    const real = C.prototype.fillText;
+    C.prototype.fillText = function fillText(t, ...rest) { if (!this.canvas?.isConnected) window.__drawn.add(String(t)); return real.call(this, t, ...rest); };
+  }
+});
+const drawnText = async () => (await page.evaluate(() => [...window.__drawn])).join(' ');
+const clearDrawn = () => page.evaluate(() => window.__drawn.clear());
 try {
   // ----------------------------------------------------------- 1. signing in --
   await page.goto(`${base}/app/`);
@@ -347,10 +358,61 @@ try {
   check(!story.includes(PRIVATE_P), 'the share story leaves out a perspective its writer kept private');
   check(/kept theirs private/.test(story), 'and says only that a Hushmate kept theirs private');
   check(story.includes(PERSPECTIVES[2]), 'a perspective its writer allowed can be chosen');
-  await page.locator('[data-test="share-pick"][data-kind="human"]:visible').first().click();
+  const humanPick = page.locator('[data-test="share-pick"][data-kind="human"]:visible');
+  const mallowPick = page.locator('[data-test="share-pick"][data-kind="mallow"]:visible');
+  await humanPick.first().click();
+  await mallowPick.first().click();
+  // its writer stops sharing while the screen is open: nothing is made, and their words go from the choices
+  const allowedGift = (await call(members[0], 'myGifts')).gifts.find((g) => g.text === PERSPECTIVES[2]);
+  await call(members[0], 'setGiftSharing', { perspectiveId: allowedGift.id, allowShare: false });
+  await clearDrawn();
+  await hook(page, 'share-save').click();
+  await page.locator('.hm-toast', { hasText: 'stopped sharing' }).waitFor({ timeout: 15000 });
+  await shot(page, '17c-share-writer-stopped');
+  check(!(await page.locator('[data-test="share-image"]').count()), 'a writer stopped sharing while the screen was open: no picture is made');
+  check(!(await drawnText()), 'and nothing was drawn for one');
+  check(!(await humanPick.count()) && !(await page.locator('body').innerText()).includes(PERSPECTIVES[2]), 'their words are no longer offered, or shown');
+  // they allow it again: the screen follows by itself (the app's next look at the journeys)
+  await call(members[0], 'setGiftSharing', { perspectiveId: allowedGift.id, allowShare: true });
+  await humanPick.first().waitFor({ timeout: 40000 });
+  check((await mallowPick.first().getAttribute('aria-checked')) === 'true', 'the share screen followed the change without losing the other choice');
+  await humanPick.first().click();
+  await clearDrawn();
   await hook(page, 'share-save').click();
   await hook(page, 'share-image').waitFor({ timeout: 20000 });
   await shot(page, '17c-share-picture');
+  const pictured = await drawnText();
+  const j3now = (await journeysOf(A)).find((j) => j.id === j3.id);
+  const mallowWords = [...(j3now?.collection || []), ...(j3now?.mallowExtra ? [j3now.mallowExtra] : [])].find((p) => p.kind === 'mallow')?.text || '';
+  check(mallowWords.length > 20, 'the Mallow’s words to look for are known');
+  check(pictured.includes(PERSPECTIVES[2].split(' ').slice(0, 3).join(' ')), 'the picture draws the perspective its writer allowed');
+  check(!pictured.includes(PRIVATE_P.split(' ').slice(0, 4).join(' ')), 'the picture never draws the one its writer kept private');
+  check(!/Moonbeam|author@example|Starling|Cloudlet|member0@/i.test(pictured), 'the picture names nobody');
+  // the Mallow's perspective on its own: drawn with its whole label, never as a person's
+  await page.getByRole('button', { name: 'Done' }).click();
+  await humanPick.first().click();
+  await clearDrawn();
+  await hook(page, 'share-save').click();
+  await hook(page, 'share-image').waitFor({ timeout: 20000 });
+  const mallowPictured = await drawnText();
+  const opening = mallowWords.split(' ').slice(0, 3).join(' ') || '(none)';
+  report.drawn = { picture: pictured, mallowPicture: mallowPictured };          // the evidence: every line the pictures drew
+  const labelled = (t) => /A MALLOW PERSPECTIVE/i.test(t) && /AUTOMATICALLY/i.test(t) && /GENERATED/i.test(t) && !/HUSHMATE’S PERSPECTIVE/i.test(t);
+  // a long one may not fit the still (the screen says so); then the picture leaves it out whole, label and words together
+  check(!!mallowWords && (mallowPictured.includes(opening) ? labelled(mallowPictured) : !/A MALLOW PERSPECTIVE/i.test(mallowPictured)),
+    `a Mallow perspective in the picture carries its whole label, or is left out whole (${mallowPictured.includes(opening) ? 'drawn' : 'too long for the still'})`);
+  check(/Two strangers saw it differently/.test(mallowPictured), 'and the picture counts people only: two, not three');
+  await page.getByRole('button', { name: 'Done' }).click();
+  // the video shows every perspective chosen, each in turn: the Mallow's with its label, frame by frame
+  if (await page.locator('[data-test="share-video"]:visible').count()) {
+    await clearDrawn();
+    await hook(page, 'share-video').click();
+    await hook(page, 'share-video-out').waitFor({ timeout: 90000 });
+    const filmed = await drawnText();
+    check(filmed.includes(opening) && labelled(filmed), 'the video draws the Mallow’s perspective with “A Mallow perspective · Automatically generated”');
+    await shot(page, '17c-share-video');
+    await page.getByRole('button', { name: 'Done' }).click();
+  } else report.expected.push('this browser can’t record video: the video checks were not run');
   // Send it out again: the quiet feeling travels once more, a second account catches it, it comes home with 1
   await page.goto(`${base}/app/`);
   await hook(page, 'nav-returned').waitFor({ timeout: 20000 });

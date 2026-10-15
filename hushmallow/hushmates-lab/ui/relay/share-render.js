@@ -24,18 +24,24 @@ const NUM = ['No', 'One', 'Two', 'Three', 'Four', 'Five'];
 
 /** Only a fallback: every item from the service brings its own label. */
 export const HUMAN_LABEL = 'A Hushmate’s perspective';
-const MALLOW_FALLBACK = 'A Mallow perspective';
+const MALLOW_FALLBACK = 'A Mallow perspective · Automatically generated';
 
 /**
- * The item's own honest label. A Mallow's always says it is a Mallow's (and
- * keeps whatever the service says about its source); a missing label never
- * becomes a claim the item can't back up.
+ * The item's own honest label. A Mallow's always says it is a Mallow's and that
+ * it was made automatically: the service's own label is kept only when it says
+ * both; anything else (missing, or shortened) is replaced by the full fallback.
+ * A missing label never becomes a claim the item can't back up.
  */
 export function honestLabel(p) {
   const own = typeof p?.label === 'string' ? p.label.trim() : '';
-  if (p?.kind === 'mallow') return /\bmallow\b/i.test(own) ? own : MALLOW_FALLBACK;
+  if (p?.kind === 'mallow') return /^A Mallow perspective · /.test(own) && /\bautomatically generated\b/i.test(own) ? own : MALLOW_FALLBACK;
   return own || HUMAN_LABEL;
 }
+
+// People's petals are coloured by their place in the circle, never by the Mallow each writer
+// chose: a share shows how many saw it differently, not anything about who they are.
+const PETAL_COLOURS = ['loomi', 'pipzi', 'zuzu', 'boppo', 'blubi'].map((id) => MALLOWS[id]).filter(Boolean);
+const PERSON_DOT = '#B9A8E8';
 
 /** The lines of the story, from real numbers only. */
 export function storyLines(d) {
@@ -193,8 +199,8 @@ function star(x, cx, cy, s, colour, alpha) {
 function orb(x, d, cx, cy, R, { bloom = 99, starAlpha = 1, breathe = 0 } = {}) {
   const petals = d.petals || [];
   const n = petals.length;
-  petals.forEach((p, i) => {
-    const m = MALLOWS[p.mallow] || MALLOWS.loomi;
+  petals.forEach((_, i) => {
+    const m = PETAL_COLOURS[i % PETAL_COLOURS.length] || MALLOWS.loomi;
     petal(x, cx, cy, R, (i * 2 * Math.PI) / 5 + (n === 1 ? 0.35 : 0), m, Math.max(0, Math.min(1, bloom - i)));
   });
   const r = R * (1 + breathe * 0.02);
@@ -325,7 +331,7 @@ function ribbon(x, p, cx, y, w, { alpha = 1, measureOnly = false, small = false 
   const lx = cx - w / 2 + pad;
   const base = y + pad + 24;
   if (p.kind === 'mallow') star(x, lx + 14, base - 12, 18, m.deep, 1);
-  else { x.fillStyle = m.body; x.beginPath(); x.arc(lx + 14, base - 12, 13, 0, Math.PI * 2); x.fill(); }
+  else { x.fillStyle = PERSON_DOT; x.beginPath(); x.arc(lx + 14, base - 12, 13, 0, Math.PI * 2); x.fill(); }
   x.font = LABEL_FONT; if ('letterSpacing' in x) x.letterSpacing = '1px';
   x.fillStyle = INK3; x.textAlign = 'left';
   labels.forEach((l, i) => x.fillText(l, lx + 44, base + i * LABEL_LH));

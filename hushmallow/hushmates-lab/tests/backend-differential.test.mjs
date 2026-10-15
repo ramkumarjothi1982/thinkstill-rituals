@@ -34,8 +34,8 @@ const mallowStub = async ({ label, mallow }) => ({ status: 'ok', text: `A gentle
 function normal(value) {
   const ids = new Map();
   const ID = /^(?:(?:jr|pv|hold|mp|rep|acc|aud)_[a-z0-9]{14}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
-  // fields only the backend has: the desk's pattern view (isMallow, subjectHistory) and the reveal flag
-  const DROP = new Set(['test', 'adultConfirmed', 'seen', 'isMallow', 'subjectHistory']);
+  // fields only the backend has: the desk's pattern view (subjectHistory) and the reveal flag
+  const DROP = new Set(['test', 'adultConfirmed', 'seen', 'subjectHistory']);
   const walk = (v) => {
     if (Array.isArray(v)) return v.map(walk);
     if (v && typeof v === 'object') {

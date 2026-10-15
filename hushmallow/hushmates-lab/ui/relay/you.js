@@ -87,18 +87,18 @@ export function you(dev) {
     if (!res) { put(gifts, h('p', { class: 'hf-note' }, 'Couldn’t load them just now.')); return; }
     if (!res.gifts.length) { put(gifts, h('p', { class: 'hf-note' }, 'When you offer a perspective on someone’s feeling, it appears here. Only you can see this list.')); return; }
     put(gifts,
-      h('p', { class: 'hf-note' }, 'Only you can see these. You decide whether the person whose feeling you caught may include your words in a share picture or video; they never learn who you are.'),
+      h('p', { class: 'hf-note' }, 'Only you can see these. You decide whether the person whose feeling you caught may include your words in a share picture or video; they never learn who you are. A picture or video already made stays with them: it can’t be taken back.'),
       res.gifts.map((g) => h('article', { class: 'hf-gift', dataset: { test: 'gift' } },
         h('p', { class: 'hf-gift-text' }, g.text),
         h('p', { class: 'hf-meta' }, g.journeyHome ? 'It has come home' : 'Still travelling', ' · ', fmtAgo(g.at, c.now())),
         sentenceSwitch({
           label: 'May appear in their share picture or video', checked: g.allowShare, test: `gift-share-${g.id}`,
-          onChange: (on) => dev.run(() => c.act('setGiftSharing', { perspectiveId: g.id, allowShare: on }), { ok: on ? 'They may include your words.' : 'Your words won’t appear in share pictures or videos.' }).then((x) => !!x),
+          onChange: (on) => dev.run(() => c.act('setGiftSharing', { perspectiveId: g.id, allowShare: on }), { ok: on ? 'They may include your words.' : 'Your words won’t appear in new share pictures or videos. Any already made can’t be taken back.' }).then((x) => !!x),
         }),
         h('button', { type: 'button', class: 'kit-btn kit-btn--text hf-gift-take', dataset: { test: `gift-withdraw-${g.id}` }, onclick: () => takeBack(g) }, 'Take it back'))));
   }
   async function takeBack(g) {
-    const ok = await dev.confirm({ title: 'Take back this perspective?', text: 'Your words are removed for good, including from the collection of the person whose feeling you caught. They aren’t told who you are.', confirmLabel: 'Take it back', danger: true });
+    const ok = await dev.confirm({ title: 'Take back this perspective?', text: 'Your words are removed for good, including from the collection of the person whose feeling you caught. A share picture or video they already made can’t be taken back. They aren’t told who you are.', confirmLabel: 'Take it back', danger: true });
     if (!ok) return;
     const res = await dev.run(() => c.act('withdrawPerspective', { perspectiveId: g.id }, ['gifts']), { ok: 'Taken back.' });
     if (res) loadGifts();

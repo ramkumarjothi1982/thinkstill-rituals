@@ -143,6 +143,40 @@ test('the desk: a report shows earlier reports about the same person (never who 
   } finally { await b.drop(); }
 });
 
+test('the desk: a reported Mallow perspective is listed and shown as a Mallow’s, never as a person’s', async () => {
+  const b = await backend();
+  try {
+    for (const n of ['moon', 'cloud']) await b.join(n);
+    await b.join('mod', { role: 'moderator', catching: false });
+    const r = await b.as('moon').call('submitFeeling', { text: FEELING, consent: true, allowFallback: true, clientId: cid('f') });
+    await b.advance(31 * 60e3);
+    await b.tick();
+    const mallow = (await b.as('moon').call('getJourney', { journeyId: r.journey.id })).collection.find((p) => p.kind === 'mallow');
+    assert.ok(mallow, 'no Mallow perspective to report');
+    const byMallow = await b.as('moon').call('reportPerspective', { journeyId: r.journey.id, perspectiveId: mallow.id, reason: 'other' });
+    // and a person's, for contrast
+    const r2 = await b.as('moon').call('submitFeeling', { text: `${FEELING} Again.`, consent: true, clientId: cid('f') });
+    const { offer } = await b.as('cloud').call('findFeeling');
+    await b.as('cloud').call('catchFeeling', { holdId: offer.holdId });
+    await b.as('cloud').call('submitReframe', { holdId: offer.holdId, text: 'Maybe they’ve had a really full week and meant to reply.', clientId: cid('p') });
+    await b.advance(25 * 3600e3);                                       // it comes home
+    await b.tick();
+    // the catcher may have been offered either feeling: the person's perspective is on whichever they caught
+    let human = null; let onJourney = null;
+    for (const jid of [r.journey.id, r2.journey.id]) {
+      const p = (await b.as('moon').call('getJourney', { journeyId: jid })).collection.find((x) => x.kind === 'human');
+      if (p) { human = p; onJourney = jid; }
+    }
+    assert.ok(human, 'the person’s perspective never arrived');
+    const byPerson = await b.as('moon').call('reportPerspective', { journeyId: onJourney, perspectiveId: human.id, reason: 'unkind' });
+    const list = (await b.as('mod').call('modListReports')).reports;
+    assert.equal(list.find((x) => x.id === byMallow.reportId)?.isMallow, true, 'the queue lists a Mallow’s perspective as a person’s');
+    assert.equal(list.find((x) => x.id === byPerson.reportId)?.isMallow, false);
+    assert.equal((await b.as('mod').call('modGetReport', { id: byMallow.reportId })).isMallow, true);
+    assert.equal((await b.as('mod').call('modGetReport', { id: byPerson.reportId })).isMallow, false);
+  } finally { await b.drop(); }
+});
+
 test('screening: unkind and diagnosing words are caught with a phone’s curly apostrophes too', () => {
   for (const t of ['You’re so pathetic, honestly.', 'You’re overreacting about this whole thing.', 'Your friend’s definitely a narcissist I think.', 'Honestly they’re a psychopath, cut them off.']) {
     assert.equal(screenReframe(t, { minChars: 8, maxChars: 280 }).ok, false, t);
