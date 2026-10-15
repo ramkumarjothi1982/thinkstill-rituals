@@ -66,7 +66,9 @@ test('plan: tiny landscape windows at the largest text (568×320, 667×375; word
     // (at most a sliver at the corner of the hero's box — the empty corner round its rounded body — never its letters' middle)
     assert.ok(area(text, p.rects.hero) <= 0.01 * (text.x1 - text.x0) * (text.y1 - text.y0), `${W}×${H}: letters behind the hero ${area(text, p.rects.hero)} px²`);
     assert.ok(area(P, p.rects.hero) < 0.05 * plate.w * plate.h, `words on the hero: ${area(P, p.rects.hero)} px²`);
-    assert.ok(P.y1 <= H && P.y0 >= 0, 'on screen');
+    assert.ok(P.y1 <= H && P.y0 >= 0 && P.x0 >= COVE.EDGE && P.x1 <= W - COVE.EDGE, 'on screen, inside the edge margin');
+    // the replay chip's corner (the bottom-left strip) never holds the letters
+    assert.equal(area(text, { x0: 0, y0: H - COVE.BOTTOM, x1: W * 0.5, y1: H }), 0, `${W}×${H}: letters under the replay chip`);
     if (p.clear) assert.ok(P.y1 <= H - COVE.BOTTOM, 'clear: out of the bottom strip');
     assert.ok(p.slots.length >= 1, 'the photos still get a lantern');
   }
