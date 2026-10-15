@@ -12,7 +12,7 @@ Every result below is labelled by where it was shown:
 | Label | Meaning |
 |---|---|
 | **STAGING** | On the real Supabase project and Cloudflare site. **None yet** |
-| **REHEARSAL** | The exact staging topology on one machine: the packed static site on one host; the real Edge Function under Deno, the local stand-ins for Supabase Auth and PostgREST, and real Postgres 16 on another; real Chromium at phone and desktop sizes |
+| **REHEARSAL** | The exact staging topology on one machine: the packed static site on one host; the real Edge Function under Deno (the report records the runtime), the local stand-ins for Supabase Auth and PostgREST, and real Postgres 16 on another; real Chromium at phone and desktop sizes |
 | **LOCAL** | The automated suite and the many-account browser E2E on the local stack |
 | **NOT RUN** | Not tested anywhere yet, with the reason |
 
@@ -29,7 +29,7 @@ Every result below is labelled by where it was shown:
 | Encryption at rest | LOCAL and REHEARSAL: stored locked, opened only with the keys; the recovery drill restores a dump | Suite; rehearsal; `staging:drill` |
 | Deletion (data, and sign-in in Auth) | REHEARSAL: passed | The rehearsal's deletion checks |
 | The static site (headers, CSP, redirects, nothing private published) | REHEARSAL: passed. **HSTS: NOT RUN** (plain http locally) | The rehearsal's site checks |
-| The deploy itself | LOCAL: tested against a stand-in that enforces the Management API's own published document. **NOT RUN on the real API** | `tests/staging-deploy.test.mjs` |
+| The deploy itself, and its guards | LOCAL: tested against a stand-in that enforces the Management API's own published document. Each command (deploy, check, E2E) is run end to end against it, including its refusals. **NOT RUN on the real Supabase or Cloudflare APIs** | `tests/staging-deploy.test.mjs`, `tests/staging-cli.test.mjs` |
 | Staging from a cloud session | LOCAL: the staging check passes end to end with keys derived from the root secret and SQL through the API stand-in | `tests/staging-check.test.mjs` |
 | Desktop and mobile | REHEARSAL and LOCAL: Chromium at 360, 390, 1280 and 1440 wide, touch and reduced motion. **Safari/WebKit and real phones: NOT RUN** | Screens in the evidence folders |
 | Load beyond a handful of people | **NOT RUN** | Needs staging; it sizes compute (`COSTS.md`) |
@@ -47,7 +47,7 @@ Every result below is labelled by where it was shown:
 | *Get support now* on every screen; the app says the screen can miss things | ✅ Built |
 | "Someone may be in danger" reports, first in the desk's queue | ✅ Built and tested (rehearsal) |
 | Escalation procedure | 🟡 A developer's draft (`ESCALATION.md`). The desk readers and the safety lead aren't named yet |
-| Retracted content never in a new share picture or video | ✅ Built (Phase 3b) and tested in the browser: a feeling let go, a deleted journey, a writer who stopped sharing, a Mallow perspective no longer on the journey |
+| Retracted content never in a new share picture or video | ✅ Built (Phase 3b) and tested in the browser:<br>• a feeling let go;<br>• a deleted journey;<br>• a writer who stopped sharing or took their words back;<br>• a Mallow perspective no longer on the journey;<br>• a writer who stops sharing while a video is recording (the video is stopped or not kept) |
 | Mallow perspectives always labelled as automatic, never as a person's | ✅ Tested in the app, the share picture and the desk |
 | No AI anywhere; no extra AI for crisis detection | ✅ AI off; cap A$0 |
 | The check-in ("are you safe right now?") | ⏸ Not built until Tier A sets its wording |
@@ -78,7 +78,7 @@ Every result below is labelled by where it was shown:
 
 | # | Requirement | Status | Where |
 |---|---|---|---|
-| 1 | Verified results from real staging infrastructure | ⛔ **PENDING.** Blocked only on the owner's accounts and the environment settings. The tools are ready and tested | `STAGING_CLOUD.md` |
+| 1 | Verified results from real staging infrastructure | ⛔ **PENDING.** Blocked only on the owner's accounts and the environment settings. The tools are ready, and each command is tested against stand-ins. None has met the real APIs yet | `STAGING_CLOUD.md` |
 | 2 | A complete pass/fail report | ✅ for local and rehearsal (§3 below); the staging column is empty until 1 is done | §3; `docs/evidence/` |
 | 3 | Evidence of end-to-end testing | ✅ REHEARSAL and LOCAL, with screens and JSON reports. STAGING pending | `docs/evidence/staging-rehearsal/`, `docs/screenshots/phase2/` |
 | 4 | Monthly and annual costs | ✅ For 100 (Free or Pro), 1,000, 10,000 and 100,000 people, polling and Realtime | `COSTS.md` §2 |
@@ -96,7 +96,7 @@ Every result below is labelled by where it was shown:
 | Automated suite (`node --test tests/*.test.mjs`, with Deno) | _filled in by the final run_ | LOCAL |
 | Many-account browser E2E (`tools/app-shots.mjs`), Edge Function under Node | _filled in by the final run_ | LOCAL |
 | The same E2E with the Edge Function under Deno | _filled in by the final run_ | LOCAL |
-| The staging E2E rehearsed (`npm run staging:rehearse`) | _filled in by the final run_ | REHEARSAL |
+| The staging E2E rehearsed (`npm run staging:rehearse`, with `HUSHMATES_DENO` set) | _filled in by the final run_ | REHEARSAL |
 | The staging check on the local stack (by database connection, and as a cloud session) | _filled in by the final run_ | LOCAL |
 | Lab QA (`tools/shots.cjs`) | _filled in by the final run_ | LOCAL |
 

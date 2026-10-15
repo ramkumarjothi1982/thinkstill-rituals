@@ -50,7 +50,7 @@ The record of unresolved risks before any launch, kept up to date with each phas
 | P1 | **The data key is lost**: every stored word becomes unreadable | L | H | The key in a private file, checked against a backup by the recovery drill | Two key holders (D11); the drill monthly | outside testers |
 | P2 | **The data key leaks** | L | H | Only in Supabase's function secrets and the owner's file; never in the app or the repository; words encrypted before the database sees them | Rotation steps on staging | — |
 | A2 | **Security weaknesses** no internal review found | L | H | Five adversarial reviews of the relay, privacy and access (Phases 1–2), and one of the Phase 3b staging tools and share safeguards (`docs/evidence/review-phase3b.md`); access tested role by role; a strict CSP; secrets server-side; negative tests in the staging E2E | Automated scanning (A$0); a scoped penetration test before launch (D14) | public launch |
-| O4 | **Production is touched by mistake** | L | H | A separate account and organisation; the deploy tool refuses a token that can see any project not named "staging", a region other than Sydney, and AI settings; nothing deploys by itself | Keep production's credentials off any machine or environment used for staging | — |
+| O4 | **Production is touched by mistake** | L | H | Separate Supabase and Cloudflare accounts. Before anything changes, the tools refuse:<br>• a Supabase token that reaches any project but the staging one;<br>• a project outside Sydney;<br>• a Cloudflare account holding any non-staging Pages project;<br>• AI settings.<br>Every command's refusals are tested. Nothing deploys by itself | Keep production's credentials off any machine or environment used for staging | — |
 
 ## Low
 
@@ -68,5 +68,7 @@ The record of unresolved risks before any launch, kept up to date with each phas
   - L1 and L2, from the legal research;
   - O7, from the cloud path.
 - **Re-ranked:** P7 (privacy duties) is now Critical. The research found the Privacy Act probably applies despite Hushmates' size.
-- **Reduced:** P4 (share pictures). Retracted content can't reach new share content.
+- **Reduced:**
+  - P4 (share pictures): retracted content can't reach new share content, including a video still recording;
+  - O4 (production touched): the guards now cover Cloudflare, and the Phase 3b review's findings are fixed (`docs/evidence/review-phase3b.md`).
 - **Replaced:** "⛔ clinical review (D6)" is now the Tier 0 / Tier A plan in `REVIEWS.md`. A review is still needed before outside testers; it is no longer A$5,000–9,000.
