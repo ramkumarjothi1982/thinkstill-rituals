@@ -75,6 +75,32 @@ test('launch 1 (backend): two ordinary reports, and the safety check’s own pri
 });
 
 // ------------------------------------------------- 2. one decision only --
+test('launch 1 (backend): a dismissal of the last open report lets it carry on too; a feeling a reader acted on stays paused', async () => {
+  const b = await backend();
+  try {
+    await team(b);
+    for (const second of ['dismiss', 'restrict']) {
+      const id = (await release(b, 'moon', { clientId: cid('f') })).journey.id;
+      const before = new Set((await desk(b).call('modListReports')).reports.map((r) => r.id));
+      for (const [who, reason] of [['cloud', 'unkind'], ['star', 'harassment']]) {
+        const o = (await b.as(who).call('findFeeling')).offer;
+        await b.as(who).call('reportFeeling', { holdId: o.holdId, reason });
+      }
+      const [r1, r2] = (await desk(b).call('modListReports')).reports.filter((r) => !before.has(r.id));
+      if (second === 'dismiss') {
+        assert.equal((await desk(b).call('modResolve', { id: r1.id, action: 'resume-feeling' })).paused, true);
+        assert.deepEqual(await desk(b).call('modResolve', { id: r2.id, action: 'dismiss' }), { id: r2.id, status: 'no-action' });
+        assert.equal(await paused(b, id), false, 'a dismissal left the feeling paused with no report open');
+        await b.as('moon').call('withdrawFeeling', { journeyId: id });
+      } else {
+        await desk(b).call('modResolve', { id: r1.id, action: 'restrict-user' });
+        assert.equal((await desk(b).call('modResolve', { id: r2.id, action: 'resume-feeling' })).paused, true);
+        assert.equal((await b.sql('select paused from hushmates.journeys where id = $1', [id]))[0].paused, true, 'a feeling a reader acted on carried on');
+      }
+    }
+  } finally { await b.drop(); }
+});
+
 test('launch 2 (backend): a decided report can’t be decided again through the API; nothing about it or the feeling changes', async () => {
   const b = await backend();
   try {

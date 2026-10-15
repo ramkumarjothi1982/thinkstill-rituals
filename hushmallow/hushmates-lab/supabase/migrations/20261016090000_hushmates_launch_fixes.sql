@@ -88,16 +88,20 @@ begin
   -- one decision per report: a second one (another reader's, or the same one sent twice) changes nothing
   if r.status <> 'open' then perform hushmates.fail('already-decided'); end if;
   select * into j from hushmates.journeys where id = r.journey_id for update;
+  -- "no action" on a feeling report (Let it carry on, or a dismissal) lets the feeling carry on only when
+  -- nothing else about it is still waiting: another open report on the same feeling (a priority one included)
+  -- keeps it paused until that one is decided too, and a feeling a reader already acted on stays paused
+  if r.kind = 'feeling' and j.id is not null and a ->> 'action' in ('dismiss', 'resume-feeling') then
+    v_waiting := exists (select 1 from hushmates.reports x
+                         where x.journey_id = j.id and x.kind = 'feeling' and x.id <> r.id
+                           and (x.status = 'open' or x.status = 'actioned'));
+    if not v_waiting then update hushmates.journeys set paused = false where id = j.id; end if;
+    v_paused := j.paused and v_waiting;
+  end if;
   case a ->> 'action'
     when 'dismiss' then v_status := 'no-action';
     when 'resume-feeling' then
       if j.id is null then perform hushmates.fail('invalid'); end if;
-      -- it carries on only when nothing else about it is still waiting: another open report on the same
-      -- feeling (a priority one included) keeps it paused until that one is decided too
-      v_waiting := exists (select 1 from hushmates.reports x
-                           where x.journey_id = j.id and x.kind = 'feeling' and x.status = 'open' and x.id <> r.id);
-      if not v_waiting then update hushmates.journeys set paused = false where id = j.id; end if;
-      v_paused := j.paused and v_waiting;
       v_status := 'no-action';
     when 'remove-feeling' then
       if j.id is null then perform hushmates.fail('invalid'); end if;

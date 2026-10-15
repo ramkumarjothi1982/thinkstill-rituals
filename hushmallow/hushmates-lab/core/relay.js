@@ -921,14 +921,15 @@ export class RelayService {
     // one decision per report: a second one (another reader's, or the same one sent twice) changes nothing
     if (r.status !== 'open') fail('already-decided');
     const j = this.s.journeys[r.journeyId];
-    if (action === 'dismiss') r.status = 'no-action';
-    else if (action === 'resume-feeling' && j) {
-      // it carries on only when nothing else about it is still waiting: another open report on the same
-      // feeling (a priority one included) keeps it paused until that one is decided too
-      const waiting = Object.values(this.s.reports).some((x) => x.id !== r.id && x.kind === 'feeling' && x.journeyId === j.id && x.status === 'open');
+    // "no action" on a feeling report (Let it carry on, or a dismissal) lets the feeling carry on only when
+    // nothing else about it is still waiting: another open report on the same feeling (a priority one included)
+    // keeps it paused until that one is decided too, and a feeling a reader already acted on stays paused
+    if (r.kind === 'feeling' && j && (action === 'dismiss' || action === 'resume-feeling')) {
+      const waiting = Object.values(this.s.reports).some((x) => x.id !== r.id && x.kind === 'feeling' && x.journeyId === j.id && (x.status === 'open' || x.status === 'actioned'));
       if (!waiting) j.paused = false;
-      r.status = 'no-action';
     }
+    if (action === 'dismiss') r.status = 'no-action';
+    else if (action === 'resume-feeling' && j) r.status = 'no-action';
     else if (action === 'remove-feeling' && j) { j.paused = true; if (j.status === 'travelling') this._return(j, 'removed'); r.status = 'actioned'; }
     else if (action === 'remove-perspective' && r.perspectiveId) { const x = this.s.reframes[r.perspectiveId]; if (x) { x.removed = true; x.text = ''; } r.status = 'actioned'; }   // the report keeps its own copy
     else if (action === 'restrict-user' && r.subject) {

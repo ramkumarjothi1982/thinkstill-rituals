@@ -46,7 +46,11 @@ test('desk: an age concern ("Seems to be under 18") shows the age steps, the sam
 test('desk: a decision on a report already decided says so plainly and shows what stands; "Let it carry on" says when it stays paused', () => {
   const decide = desk.slice(desk.indexOf('async function decide('), desk.indexOf("const back = h('button'"));
   assert.ok(decide.length > 100);
-  assert.match(decide, /if \(e\?\.code !== 'already-decided'\) \{ sayError\(err, e\); return; \}/, 'any other refusal is shown as before');
+  assert.match(decide, /if \(e\?\.code !== 'already-decided'\) \{[\s\S]*?sayError\(err, e\); return;/, 'any other refusal is shown as before');
+  // a second click while the first decision is on its way does nothing (it used to be refused and say
+  // "someone else decided", hiding the reader's own decision and "it stays paused")
+  assert.match(decide, /if \(sending\) return;/);
+  assert.match(decide, /sending = true;\s*detailPane\?\.querySelectorAll\('\.desk-actions button'\)\.forEach\(\(b\) => \{ b\.disabled = true; \}\);/);
   assert.match(decide, /said = ALREADY_DECIDED;/);
   assert.match(decide, /if \(action === 'resume-feeling' && done\?\.paused\) said = STILL_PAUSED;/);
   assert.match(decide, /await reloadList\(\);\s*await detail\(id, said\);/, 'the report is shown again, decided, with the words');

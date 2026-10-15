@@ -256,17 +256,25 @@ async function detail(id, notice = '') {
   const kind = r.kind === 'feeling' ? 'feeling' : r.isMallow ? 'mallow' : 'perspective';
   const actions = DESK_ACTIONS[kind];
 
+  let sending = false;
   async function decide(action) {
+    if (sending) return;                                                 // a second click while the first is on its way does nothing
     err.hidden = true;
     const a = actions.find((x) => x.id === action);
     if (a.confirm && !window.confirm(a.confirm)) return;
+    sending = true;
+    detailPane?.querySelectorAll('.desk-actions button').forEach((b) => { b.disabled = true; });
     let said = '';
     try {
       const done = await call('modResolve', { id, action, note: [`Decision: ${a.label}`, note.value.trim()].filter(Boolean).join('. ') });   // the team notes say which decision it was
       if (action === 'resume-feeling' && done?.paused) said = STILL_PAUSED;
     } catch (e) {
-      if (e?.code !== 'already-decided') { sayError(err, e); return; }
-      said = ALREADY_DECIDED;                                            // decided meanwhile (or sent twice): show what stands
+      if (e?.code !== 'already-decided') {
+        sending = false;
+        detailPane?.querySelectorAll('.desk-actions button').forEach((b) => { b.disabled = false; });
+        sayError(err, e); return;
+      }
+      said = ALREADY_DECIDED;                                            // another reader decided it meanwhile: show what stands
     }
     await reloadList();
     await detail(id, said);

@@ -77,6 +77,29 @@ test('launch 1: an open report about a perspective on the feeling doesn’t hold
   assert.equal(w.svc.modResolve(w.T.mod, { id: feelingReport.id, action: 'resume-feeling' }).paused, false);
 });
 
+test('launch 1: a dismissal of the last open report lets it carry on too; a feeling a reader acted on stays paused', () => {
+  const w = world();
+  const id = w.release('moon').journey.id;
+  const holds = ['cloud', 'star'].map((k) => w.svc.findFeeling(w.T[k]).offer.holdId);
+  w.svc.reportFeeling(w.T.cloud, { holdId: holds[0], reason: 'unkind' });
+  w.svc.reportFeeling(w.T.star, { holdId: holds[1], reason: 'harassment' });
+  const [r1, r2] = w.svc.modListReports(w.T.mod).reports;
+  assert.equal(w.svc.modResolve(w.T.mod, { id: r1.id, action: 'resume-feeling' }).paused, true);
+  // "no action" through the API on the last one: it isn't left paused with nothing open (it was, before)
+  assert.deepEqual(w.svc.modResolve(w.T.mod, { id: r2.id, action: 'dismiss' }), { id: r2.id, status: 'no-action' });
+  assert.equal(paused(w, id), false, 'a dismissal left the feeling paused with no report open');
+  // a feeling whose author a reader restricted stays paused, whatever the other report's decision
+  const w2 = world();
+  const id2 = w2.release('moon').journey.id;
+  const h2 = ['cloud', 'star'].map((k) => w2.svc.findFeeling(w2.T[k]).offer.holdId);
+  w2.svc.reportFeeling(w2.T.cloud, { holdId: h2[0], reason: 'unkind' });
+  w2.svc.reportFeeling(w2.T.star, { holdId: h2[1], reason: 'harassment' });
+  const [q1, q2] = w2.svc.modListReports(w2.T.mod).reports;
+  w2.svc.modResolve(w2.T.mod, { id: q1.id, action: 'restrict-user' });
+  assert.equal(w2.svc.modResolve(w2.T.mod, { id: q2.id, action: 'resume-feeling' }).paused, true);
+  assert.equal(w2.svc.getJourney(w2.T.moon, { journeyId: id2 }).paused, true, 'a feeling a reader acted on carried on');
+});
+
 // ------------------------------------------------- 2. one decision only --
 test('launch 2: a decided report can’t be decided again; the answer says so in words, and nothing changes', () => {
   const w = world();
