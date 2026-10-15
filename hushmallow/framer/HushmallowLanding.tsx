@@ -1232,12 +1232,13 @@ function Spirals({ className, tint = "pearl" }: { className?: string; tint?: "pe
                         <stop offset="1" stopColor={stops[2]} />
                     </linearGradient>
                 </defs>
-                <g className="hm-spirals-turn">
-                    <path d={SPIRAL_A} className="hm-sp-line" stroke={`url(#hm-sp-${id})`} />
-                    <path d={SPIRAL_B} className="hm-sp-line" stroke={`url(#hm-sp-${id})`} />
-                    <path d={SPIRAL_A} className="hm-sp-flow" stroke={`url(#hm-sp-${id})`} />
-                    <path d={SPIRAL_B} className="hm-sp-flow hm-sp-flow-b" stroke={`url(#hm-sp-${id})`} />
-                </g>
+                <path d={SPIRAL_A} className="hm-sp-line" stroke={`url(#hm-sp-${id})`} />
+                <path d={SPIRAL_B} className="hm-sp-line" stroke={`url(#hm-sp-${id})`} />
+            </svg>
+            {/* the dotted "flow" turns the other way on its own layer: a transform, so it never repaints */}
+            <svg className="hm-sp-flow-layer" viewBox="-500 -500 1000 1000">
+                <path d={SPIRAL_A} className="hm-sp-flow" stroke={`url(#hm-sp-${id})`} />
+                <path d={SPIRAL_B} className="hm-sp-flow" stroke={`url(#hm-sp-${id})`} />
             </svg>
         </div>
     )
@@ -1259,7 +1260,7 @@ function Motes({ density = 1, light = false }: { density?: number; light?: boole
         const c = ref.current
         const ctx = c?.getContext("2d")
         if (!c || !ctx) return
-        const dpr = Math.min(1.5, window.devicePixelRatio || 1)
+        const dpr = 1 // soft radial glows: no visible gain from more pixels
         // one pre-rendered glow per colour, so each frame is just drawImage calls
         const sprites = MOTE_COLORS.map(([r, g, b]) => {
             const s = document.createElement("canvas")
@@ -1300,6 +1301,7 @@ function Motes({ density = 1, light = false }: { density?: number; light?: boole
             seed()
         }
         let t0 = 0
+        let lastDraw = -1e9
         let raf = 0
         let visible = true
         const draw = (t: number) => {
@@ -1323,7 +1325,11 @@ function Motes({ density = 1, light = false }: { density?: number; light?: boole
                     m.x = Math.random() * w
                 }
             }
-            draw(t)
+            // slow drift: about 30 redraws a second is plenty
+            if (t - lastDraw > 31) {
+                draw(t)
+                lastDraw = t
+            }
             if (visible && !document.hidden) raf = requestAnimationFrame(frame)
         }
         const start = () => {
@@ -1666,6 +1672,7 @@ function Hero(props: { headline: string; squishWord: string; support: string; su
     const touched = React.useRef(false)
     const lastTouch = React.useRef(0)
     const heroRef = React.useRef<HTMLElement>(null)
+    const heroOn = useInView(heroRef)
     const tickled = useTickle()
     const px = useMotionValue(-1)
     const m = MALLOWS[center]
@@ -1773,7 +1780,7 @@ function Hero(props: { headline: string; squishWord: string; support: string; su
     const paragraphs = (props.sub || "").split(/\n\s*\n|\n/).map((t) => t.trim()).filter(Boolean)
 
     return (
-        <section className="hm-hero" id="top" aria-labelledby="hm-hero-title" ref={heroRef}>
+        <section className={`hm-hero${heroOn ? "" : " is-off"}`} id="top" aria-labelledby="hm-hero-title" ref={heroRef}>
             <div className="hm-orb hm-orb-a" aria-hidden />
             <div className="hm-orb hm-orb-b" aria-hidden />
             <div className="hm-orb hm-orb-c" aria-hidden />
@@ -2166,6 +2173,7 @@ function FeelingLab({ accountCta }: { accountCta: string }) {
     const discScale = useTransform(ring, (v) => 0.82 + 0.26 * v)
     const ringAnim = React.useRef<{ stop: () => void } | null>(null)
     const labRef = React.useRef<HTMLDivElement>(null)
+    const labOn = useInView(labRef)
 
     const [fid, setFid] = React.useState<FeelingId | null>(null)
     const [phase, setPhase] = React.useState<Phase>("pick")
@@ -2432,7 +2440,7 @@ function FeelingLab({ accountCta }: { accountCta: string }) {
                     </p>
                 </Reveal>
 
-                <div className="hm-lab" ref={labRef} data-phase={phase} data-feeling={f?.id || ""}>
+                <div className={`hm-lab${labOn ? "" : " is-off"}`} ref={labRef} data-phase={phase} data-feeling={f?.id || ""}>
                     <AnimatePresence initial={false}>
                         <motion.div
                             key={m ? m.id : "none"}
@@ -4022,7 +4030,7 @@ function Moodspell({ video, poster, caption }: { video: string; poster: string; 
     }
 
     return (
-        <section className="hm-section hm-ms" id="moodspell" aria-labelledby="hm-ms-title">
+        <section className={`hm-section hm-ms${inView ? "" : " is-off"}`} id="moodspell" aria-labelledby="hm-ms-title">
             <div className="hm-ms-sky" aria-hidden />
             <div className="hm-wrap hm-ms-grid">
                 <Reveal className="hm-ms-copy">
@@ -4053,7 +4061,7 @@ function Moodspell({ video, poster, caption }: { video: string; poster: string; 
                                 ref={vRef}
                                 className="hm-ms-video"
                                 src={loaded ? src : undefined}
-                                poster={poster || undefined}
+                                poster={loaded && poster ? poster : undefined}
                                 muted
                                 loop
                                 playsInline
@@ -4742,6 +4750,7 @@ const CSS = `
 
 /* A. hero */
 .hm-hero { position:relative; overflow:hidden; padding:72px 0 96px; }
+.is-off, .is-off *, .is-off *::before, .is-off *::after { animation-play-state:paused !important; }
 .hm-hero::after { content:""; position:absolute; left:0; right:0; bottom:0; height:140px; background:linear-gradient(180deg, rgba(255,248,243,0), var(--cream)); pointer-events:none; z-index:0; }
 .hm-hero-grid { display:grid; grid-template-columns:minmax(0,1.04fr) minmax(0,1fr); gap:24px; align-items:center; z-index:1; }
 .hm-hero-copy { max-width:620px; position:relative; z-index:2; }
@@ -5256,7 +5265,7 @@ const CSS = `
 .hm-rv { display:inline-block; }
 .hm-rv-in { display:inline-block; animation:hm-rv 1.15s var(--ease) both; }
 @keyframes hm-rv { 0% { opacity:0; transform:translateY(.42em) rotate(2.5deg) scale(.96); filter:blur(10px) } 55% { filter:blur(0) } 100% { opacity:1; transform:none; filter:none } }
-.hm-h1 .hm-squishword { background:linear-gradient(100deg,#D63C8C 0%,#7A4FE0 26%,#1F7FC0 50%,#8A4FD8 74%,#D63C8C 100%); background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-pearl-text 10s ease-in-out infinite alternate; }
+.hm-h1 .hm-squishword { background:linear-gradient(100deg,#D63C8C 0%,#7A4FE0 26%,#1F7FC0 50%,#8A4FD8 74%,#D63C8C 100%); background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-pearl-text 9s ease-in-out 1.4s 2 alternate both; }
 @keyframes hm-pearl-text { from { background-position:0% 50% } to { background-position:100% 50% } }
 .hm-magic-dot { width:9px; height:9px; flex:none; border-radius:50%; background:conic-gradient(#FF8FC8,#A98BFF,#6CC6F5,#FF8FC8); box-shadow:0 0 10px rgba(169,139,255,.8); animation:hm-turn 4s linear infinite; }
 
@@ -5268,10 +5277,9 @@ const CSS = `
 @keyframes hm-turn { to { transform:rotate(360deg) } }
 .hm-spirals { position:absolute; pointer-events:none; animation:hm-turn 160s linear infinite; -webkit-mask-image:radial-gradient(closest-side, #000 52%, transparent 96%); mask-image:radial-gradient(closest-side, #000 52%, transparent 96%); }
 .hm-spirals svg { width:100%; height:100%; display:block; overflow:visible; }
+.hm-spirals .hm-sp-flow-layer { position:absolute; inset:0; animation:hm-turn 48s linear infinite reverse; will-change:transform; }
 .hm-sp-line { fill:none; stroke-width:1.6; opacity:.24; }
-.hm-sp-flow { fill:none; stroke-width:4; stroke-linecap:round; stroke-dasharray:2 26; opacity:.5; animation:hm-sp-flow 7s linear infinite; }
-.hm-sp-flow-b { animation-delay:-3.5s; }
-@keyframes hm-sp-flow { to { stroke-dashoffset:112 } }
+.hm-sp-flow { fill:none; stroke-width:4; stroke-linecap:round; stroke-dasharray:2 26; opacity:.5; }
 .hm-hero-spirals { left:73%; top:50%; width:940px; height:940px; margin:-470px 0 0 -470px; }
 .hm-motes { position:absolute; inset:0; width:100%; height:100%; display:block; }
 .hm-floaters { position:absolute; inset:60px; }

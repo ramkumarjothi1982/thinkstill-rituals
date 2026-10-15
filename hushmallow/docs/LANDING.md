@@ -248,6 +248,16 @@ performance, copy and claims), and their findings were checked against the
 code and in the browser before being fixed. The fixes are in commit
 `38331e2` and later; the main ones are listed in that commit message.
 
+### Performance
+The performance review measured the new backdrop in Chromium and its fixes
+are in: the spirals' flowing light now turns on its own layer instead of
+being redrawn every frame, decorative animations pause while their section is
+off screen, the headline shimmer sweeps twice and rests, the glowing motes are
+drawn at normal resolution about 30 times a second, and the Moodspell poster
+loads with the film. Measured over 3 seconds (drawing time before → after):
+phone hero 1,995 ms → 76 ms, desktop hero 1,624 ms → 58 ms, Moodspell preview
+on a phone 1,820 ms → 0 ms. Nothing here has been measured on a real phone.
+
 ### Earlier: the "softer space" update
 That round introduced the three-ways strip, Hushmates (coming soon) and the
 "A softer space for feelings." positioning, which this update replaces.
