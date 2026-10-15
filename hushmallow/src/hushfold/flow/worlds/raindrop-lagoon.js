@@ -262,7 +262,7 @@ export function create(ctx) {
 
   // ------------------------------------------------------------ state --
   let realm = null, plan = null, prepared = false, entered = false, paused = false, complete = false, completeAt = -1, outroK = 0;
-  let elapsed = 0, lastTouch = -1e9, everTouched = false, firstTouchAt = -1;
+  let elapsed = 0, lastTouch = -1e9, everTouched = false, firstTouchAt = -1, everPlayed = false;   // (played: a drop taken — the water is only play)
   const naming = createNaming();
   const finder = createNamingDetector();
   const prog = createLagoonProgress();
@@ -377,7 +377,9 @@ export function create(ctx) {
     // the words plate W2's layer is asked to show while the lagoon drives the thought (a new object per plan)
     wordsFit = plan.plate ? { lines: plan.plate.lines, maxW: plan.plate.maxW } : null;
     tS.plateW = plan.plate?.w || 0; tS.plateH = plan.plate?.h || 0;
-    tS.x = plan.thought.x; tS.y = plan.thought.y; tS.r = plan.thought.r;
+    // (a new plan: the thought eases to its new home — it only jumps there before anything is on screen)
+    if (first && !entered) { tS.x = plan.thought.x; tS.y = plan.thought.y; }
+    tS.r = plan.thought.r;
     if (realm) {
       const gy = clamp(((rest?.bottom ?? defaultMallowBox(W, H).bottom) + 2) / H, 0.6, 0.96);
       if (Math.abs(realm.st.groundY - gy) > 0.004) { realm.st.groundY = gy; if (realm.built) realm.build(); }
@@ -414,10 +416,28 @@ export function create(ctx) {
   function placeDrops(first) {
     const want = feelingWords(emotion, plan.drops.length);
     if (first || !drops.length) {
-      // (a fresh plan: the words named stay named; the others condense in their slots)
-      drops.length = 0;
-      want.forEach((k, j) => { const d = newDrop(k, plan.drops[j], j); if (naming.has(k)) { d.state = 'in'; d.alpha = 0; } drops.push(d); });
-      // named words that are not among this feeling's drops (a restored lagoon, a changed feeling) keep a drop of their own
+      // (a new set of slots: every word keeps its own drop object — one in the hand, falling, rising or in the thought
+      // carries on as it was, only its home moves; the words named stay named; new ones condense in their slots)
+      const old = drops.splice(0);
+      const live = (d) => d.state === 'held' || d.state === 'open' || d.state === 'fall' || d.state === 'rise' || d.state === 'in';
+      want.forEach((k, j) => {
+        const sl = plan.drops[j];
+        const oi = old.findIndex((d) => d.k === k && d.state !== 'gone' && d.state !== 'fade');
+        if (oi >= 0) {
+          const d = old.splice(oi, 1)[0];
+          d.slot = sl; d.hx = sl.x; d.hy = sl.y; d.D = sl.D; d.extra = false;
+          if (d.state === 'form' && d.t < 0) { d.x = sl.x; d.y = sl.y; }
+          if (naming.has(k) && !live(d)) { d.state = 'in'; d.alpha = 0; }
+          drops.push(d);
+          return;
+        }
+        const d = newDrop(k, sl, j);
+        if (naming.has(k)) { d.state = 'in'; d.alpha = 0; }
+        drops.push(d);
+      });
+      // a word that has no place among these slots, but is in the hand, on its way or named, keeps its drop (it melts away once let go)
+      for (const d of old) if (live(d) || naming.has(d.k)) { d.extra = true; if (naming.has(d.k) && !live(d)) { d.state = 'in'; d.alpha = 0; } drops.push(d); }
+      // named words with no drop at all (a restored lagoon, a changed feeling) get one of their own, in the thought
       for (const k of naming.list) if (!drops.some((d) => d.k === k)) { const d = newDrop(k, plan.drops[drops.length % plan.drops.length], drops.length); d.state = 'in'; d.alpha = 0; d.extra = true; drops.push(d); }
       return;
     }
@@ -501,7 +521,7 @@ export function create(ctx) {
   }
   function plateBox() {
     const P = plan?.plate; if (!P) return null;
-    const dx = tS.ox, dy = tS.oy;
+    const dx = thoughtX() - plan.thought.x, dy = thoughtY() - plan.thought.y;
     return { x0: P.x0 + dx, y0: P.y0 + dy, x1: P.x1 + dx, y1: P.y1 + dy };
   }
   // the tag as drawn now (its size follows its words), in the plan's reserved box
@@ -509,7 +529,16 @@ export function create(ctx) {
   function tagBox() { return tagNow.x1 > tagNow.x0 ? tagNow : (plan ? { x0: plan.tag.x0, y0: plan.tag.y0, x1: plan.tag.x1, y1: plan.tag.y0 + 40 } : null); }
   /** The named word under (x, y) on the tag, or -1. */
   function tagWordAt(x, y) {
-    for (const w of tagNow.words) if (x >= w.x0 - 6 && x <= w.x1 + 6 && y >= w.y0 - 8 && y <= w.y1 + 8) return w.k;
+    // (≥ 44 px tall and wide: the word's span with a margin)
+    // (two rows' margins overlap: the word nearest the finger wins)
+    let best = -1, bd = Infinity;
+    for (const w of tagNow.words) {
+      const px = Math.max(8, (44 - (w.x1 - w.x0)) / 2), py = Math.max(12, (44 - (w.y1 - w.y0)) / 2);
+      if (!(x >= w.x0 - px && x <= w.x1 + px && y >= w.y0 - py && y <= w.y1 + py)) continue;
+      const dx = Math.max(0, w.x0 - x, x - w.x1), dy = Math.max(0, w.y0 - y, y - w.y1), dd = dx * dx + dy * dy;
+      if (dd < bd) { bd = dd; best = w.k; }
+    }
+    if (best >= 0) return best;
     return -1;
   }
   function onThought(x, y) {
@@ -526,7 +555,7 @@ export function create(ctx) {
       if (!f) return;
       Object.assign(f, { on: true, id: s.id, x: s.x, y: s.y, x0: s.x, y0: s.y, t0: elapsed, speed: 0, drop: null, kind: '', moved: 0, lastRx: s.x, lastRy: s.y, magnet: null, still: 0, wordAt: -1, giveOpen: false });
       lastTouch = elapsed;
-      if (!everTouched) { everTouched = true; firstTouchAt = elapsed; prog.touch(); }
+      if (!everTouched) { everTouched = true; firstTouchAt = elapsed; }
       hint.age = -1;
       const open = drops.find((d) => d.state === 'open');
       if (open && onGiveTarget(s.x, s.y)) { f.kind = 'give-open'; f.drop = open; f.giveOpen = true; return; }
@@ -543,7 +572,8 @@ export function create(ctx) {
       if (s.y >= plan.hy - 2) { f.kind = 'water'; waterTouch(s.x, s.y, true); return; }
       // the air: a resting finger draws the nearest drop to it
       f.kind = 'air';
-      f.magnet = nearestDrop(s.x, s.y, 0.34 * U);
+      // (never on the thought, its words or its tag: a finger resting there is not reaching for a drop)
+      f.magnet = onGiveTarget(s.x, s.y) ? null : nearestDrop(s.x, s.y, 0.34 * U);
       return;
     }
     const f = fingerFor(s.id);
@@ -568,11 +598,13 @@ export function create(ctx) {
     if (f.kind === 'thought') { try { thought?.pointer?.(s); } catch { /* optional */ } }
     else if (f.kind === 'tag' && tap && f.wordAt >= 0 && s.type === 'up') ungive(f.wordAt);
     else if (f.kind === 'give-open' && d && d.state === 'open' && s.type === 'up') {
-      if (onGiveTarget(s.x, s.y) || pillHit(d, s.x, s.y)) give(d);
+      // (only once its word can be read: a drop is never given before the person has seen what it says)
+      if (d.focus.k >= LAGOON.GIVE_K && d.pill && (onGiveTarget(s.x, s.y) || pillHit(d, s.x, s.y))) give(d);
     } else if (f.kind === 'drop' && d && d.state === 'held') {
       if (s.type === 'cancel') letGo(d);
       else if (tap && !d.focus.latched) openDrop(d);
-      else if (onGiveTarget(d.x, d.y) || onGiveTarget(s.x, s.y)) {
+      // (a drop drawn to a resting finger is given only when it was then carried: never by a finger that never moved)
+      else if ((onGiveTarget(d.x, d.y) || onGiveTarget(s.x, s.y)) && !(d.pulled && f.moved - (f.pulledAt || 0) < TAP_PX * 2)) {
         if (d.focus.giveable) give(d);
         else { letGo(d); once('fog'); }
       } else {
@@ -586,21 +618,25 @@ export function create(ctx) {
   }
 
   function take(f, d) {
-    f.kind = 'drop'; f.drop = d;
+    f.kind = 'drop'; f.drop = d; d.pulled = false;
+    if (!everPlayed) { everPlayed = true; prog.touch(); }
     d.state = 'held'; d.finger = f.id; d.focus.hold(); d.fx0 = d.x; d.fy0 = d.y;
     ctx.haptic('light');
     if (!holds.hum) holds.hum = ctx.hold('hum', { intensity: 0.05, pitch: 0.9 });
     try { mallow?.react?.('nod'); } catch { /* optional */ }
   }
   function letGo(d) {
-    d.state = 'hang'; d.finger = -1; d.focus.fade();
+    d.finger = -1; d.focus.fade();
+    if (d.extra) { d.state = 'fade'; return; }
+    d.state = 'hang';
     d.wobV += 2.5;
   }
   function openDrop(d) {
+    if (!everPlayed) { everPlayed = true; prog.touch(); }
     d.state = 'open'; d.finger = -1; d.open = 0; d.focus.tap();
     ctx.haptic('light');
   }
-  function closeOpen(d) { if (d.state === 'open') { d.state = 'hang'; d.focus.fade(); } }
+  function closeOpen(d) { if (d.state === 'open') { d.focus.fade(); d.state = d.extra ? 'fade' : 'hang'; } }
   function stopHum() { holds.hum?.stop(); holds.hum = null; }
 
   function waterTouch(x, y, first) {
@@ -638,7 +674,8 @@ export function create(ctx) {
     if (!rm) { try { realm?.pulse('ripple', { x, y: plan.hy + 10 }); } catch { /* decoration */ } }
     const count = naming.count;
     prog.name(count);
-    const ev = finder.given({ looked: !!d.looked, stillSec: d.stillSec || 0, count });
+    // ("You gave it a word." is not true of "unsure": it says its own line, and the discovery waits for a word)
+    const ev = d.k === UNSURE ? null : finder.given({ looked: !!d.looked, stillSec: d.stillSec || 0, count });
     if (ev && !discovered.has(ev.id)) {
       discovered.add(ev.id);
       ctx.discover(ev.id, ev.evidence);
@@ -716,7 +753,7 @@ export function create(ctx) {
     for (const f of fingers) {
       if (!f.on) continue;
       f.still = f.speed < LAGOON.STILL_U * U ? f.still + dt : 0;
-      if (f.kind === 'air' && f.magnet && !f.drop && elapsed - f.t0 > MAGNET_SEC && f.magnet.state === 'hang') take(f, f.magnet);
+      if (f.kind === 'air' && f.magnet && !f.drop && elapsed - f.t0 > MAGNET_SEC && f.magnet.state === 'hang') { take(f, f.magnet); f.drop.pulled = true; f.pulledAt = f.moved; }
     }
     // drops
     let holding = false, humK = 0;
@@ -733,6 +770,7 @@ export function create(ctx) {
     tS.tension += (target - tS.tension) * (1 - Math.exp(-dt / 1.4));
     tS.calm = clamp(1 - tS.tension);
     tS.squash *= Math.exp(-dt * 3);
+    { const k = rm ? 1 : 1 - Math.exp(-dt / 0.35); tS.x += (plan.thought.x - tS.x) * k; tS.y += (plan.thought.y - tS.y) * k; }
     if (rm) { tS.ox = 0; tS.oy = 0; } else { tS.ox = Math.sin(now * 0.37 + 1.3) * 1.5; tS.oy = Math.sin(now * 0.61) * 3; }
     // the rain and the clarity
     rainT = complete ? 0 : clamp(0.35 + 0.55 * intensity * (emotion === 'sad' || emotion === 'lonely' ? 1.1 : 0.9)) * (1 - 0.32 * Math.min(2, naming.count)) * (1 - 0.6 * quietK * (naming.count ? 1 : 0));
@@ -798,6 +836,7 @@ export function create(ctx) {
       return;
     }
     if (d.state === 'gone') { d.alpha = 0; return; }
+    if (d.state === 'fade') { d.alpha -= dt / 0.5; if (d.alpha <= 0) { d.alpha = 0; d.state = 'gone'; } return; }
     d.alpha = Math.min(1, d.alpha + dt * 3);
     const f = d.state === 'held' ? fingerFor(d.finger) : null;
     if (d.state === 'held') {
@@ -930,6 +969,8 @@ export function create(ctx) {
       white: glowSprite('#ffffff', { size: 64, core: 0.6 }), soft: glowSprite('#cfeaff', { size: 128 }), glint: glintSprite('#e6f6ff', 32),
     };
     sprites.list = [sprites.white, sprites.gold, sprites.pink];
+    // each feeling drop's own soft light (what sets it apart from the realm's little hanging beads: it can be held)
+    sprites.tints = TINTS.map((t) => glowSprite(t, { size: 64, core: 0.25 }));
   }
 
   function drawBack(g, now, rm, dt) {
@@ -1005,7 +1046,7 @@ export function create(ctx) {
     // the drops hanging, then the thought and its tag, then anything moving or in the hand above them
     // (all of them under the thought, its words and its tag: a drop carried over the person's words never hides them,
     // and one given falls in behind the thought)
-    for (const d of drops) if (d.state === 'hang' || d.state === 'form' || d.state === 'rise') drawDrop(g, d, now, rm);
+    for (const d of drops) if (d.state === 'hang' || d.state === 'form' || d.state === 'rise' || d.state === 'fade') drawDrop(g, d, now, rm);
     for (const d of drops) if (d.state === 'held' || d.state === 'open' || d.state === 'fall') drawDrop(g, d, now, rm);
     drawThought(g, now, rm);
     drawTag(g, now);
@@ -1034,12 +1075,13 @@ export function create(ctx) {
     g.scale(sx, sy);
     // a soft halo (stronger as it clears)
     g.globalCompositeOperation = 'lighter';
-    g.globalAlpha = d.alpha * (0.2 + 0.22 * d.focus.k);
-    g.drawImage(sprites.glow, -r * 1.6, -r * 1.9, r * 3.2, r * 3.2);
+    const breath = rm ? 0 : 0.07 * Math.sin(now * 1.4 + d.ph);
+    g.globalAlpha = d.alpha * (0.42 + breath + 0.2 * d.focus.k);
+    g.drawImage(sprites.tints[d.tint], -r * 1.75, -r * 2.05, r * 3.5, r * 3.5);
     g.globalCompositeOperation = 'source-over';
     g.globalAlpha = d.alpha;
     g.drawImage(spr, -w / 2, -h * spr.cy, w, h);
-    if (fog > 0.01) { g.globalAlpha = d.alpha * fog * 0.85; g.drawImage(fr, -w / 2, -h * fr.cy, w, h); }
+    if (fog > 0.01) { g.globalAlpha = d.alpha * fog * 0.74; g.drawImage(fr, -w / 2, -h * fr.cy, w, h); }
     // inside a clearing drop: its word, small, when it fits (the pill above shows it large)
     if (d.focus.k > 0.35 && (d.state === 'held' || d.state === 'open' || d.state === 'fall')) {
       g.globalAlpha = d.alpha * 0.32 * smoothstep(0.35, 0.85, d.focus.k);
@@ -1087,19 +1129,34 @@ export function create(ctx) {
     // thought or its tag, never in the band
     const minY = bandBottom() + LAGOON.TOP_GAP + P.h / 2, maxY = H - LAGOON.EDGE - P.h / 2, XR = freeW();
     const right = d.x < XR / 2, sx = r + 12 + P.w / 2;
-    const C0 = plan.cluster, CB = { x0: C0.x0 + tS.ox - 4, y0: C0.y0 + tS.oy - 4, x1: C0.x1 + tS.ox + 4, y1: C0.y1 + tS.oy + 4 };
+    const ox = thoughtX() - plan.thought.x, oy = thoughtY() - plan.thought.y;
+    const C0 = plan.cluster, CB = { x0: C0.x0 + ox - 4, y0: C0.y0 + oy - 4, x1: C0.x1 + ox + 4, y1: C0.y1 + oy + 4 };
+    const PB = plateBox();
     const M = mallowBox(), HB = M ? { x0: M.left + 0.06 * M.width, y0: M.top, x1: M.right - 0.06 * M.width, y1: M.bottom } : null;
     const over = (B, o) => !!o && !(B.x1 < o.x0 || B.x0 > o.x1 || B.y1 < o.y0 || B.y0 > o.y1);
     let x = d.x, y = d.y - r * 1.55 - 10 - P.h / 2, best = null, bestCost = Infinity;
     // (cost: the person's words worst, then the hero, then the drop in the hand; the first clear place wins)
-    for (const [cx, cy] of [[d.x, d.y - r * 1.55 - 10 - P.h / 2], [d.x + (right ? sx : -sx), d.y - r * 0.3], [d.x + (right ? -sx : sx), d.y - r * 0.3], [d.x, d.y + r + 14 + P.h / 2], [d.x, d.y - r * 0.2]]) {
+    const spots = PILL_SPOTS;
+    spots[0][0] = d.x; spots[0][1] = d.y - r * 1.55 - 10 - P.h / 2;
+    spots[1][0] = d.x + (right ? sx : -sx); spots[1][1] = d.y - r * 0.3;
+    spots[2][0] = d.x + (right ? -sx : sx); spots[2][1] = d.y - r * 0.3;
+    spots[3][0] = d.x; spots[3][1] = d.y + r + 14 + P.h / 2;
+    spots[4][0] = CB.x0 - P.w / 2 - 6; spots[4][1] = d.y - r * 0.3;
+    spots[5][0] = CB.x1 + P.w / 2 + 6; spots[5][1] = d.y - r * 0.3;
+    spots[6][0] = d.x; spots[6][1] = CB.y1 + P.h / 2 + 6;
+    spots[7][0] = d.x; spots[7][1] = CB.y0 - P.h / 2 - 6;
+    spots[8][0] = d.x; spots[8][1] = d.y - r * 0.2;
+    for (const [cx, cy] of spots) {
       const px = clamp(cx, LAGOON.EDGE + P.w / 2, XR - LAGOON.EDGE - P.w / 2), py = clamp(cy, minY, maxY);
       const B = { x0: px - P.w / 2, y0: py - P.h / 2, x1: px + P.w / 2, y1: py + P.h / 2 };
       const onDrop = Math.abs(px - d.x) < P.w / 2 + r * 0.8 && Math.abs(py - (d.y - r * 0.2)) < P.h / 2 + r * 1.1;
-      const cost = (over(B, CB) ? 100 : 0) + (over(B, HB) ? 10 : 0) + (onDrop ? 1 : 0);
+      // (the person's words: never; their thought and its tag, then the hero, then the drop itself)
+      const cost = (over(B, PB) ? 1000 : 0) + (over(B, CB) ? 100 : 0) + (over(B, HB) ? 10 : 0) + (onDrop ? 1 : 0);
       if (cost < bestCost) { bestCost = cost; best = [px, py]; }
       if (!cost) break;
     }
+    // (nowhere but over the person's words: no pill this frame — the drop's own light shows it is clear)
+    if (bestCost >= 1000) { d.pill = null; return; }
     x = best[0]; y = best[1];
     g.globalAlpha = a;
     g.drawImage(P.c, x - P.w / 2 - 8, y - P.h / 2 - 8, P.w + 16, P.h + 16);
@@ -1107,6 +1164,7 @@ export function create(ctx) {
     g.globalAlpha = 1;
     d.pill = { x0: x - P.w / 2, y0: y - P.h / 2, x1: x + P.w / 2, y1: y + P.h / 2 };
   }
+  const PILL_SPOTS = Array.from({ length: 9 }, () => [0, 0]);
   function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
   function drawOrb(g, o, now, rm) {
@@ -1173,15 +1231,16 @@ export function create(ctx) {
     const maxW = plan.tag.w - 2 * LAGOON.TAG_PAD_X;
     const words = list.map((i) => VOCAB[i]);
     // the rows, roomiest first: "This is… a · b" · "This is… a" / "and b" · "This is…" / "a · b" — then smaller type
-    const sets = !words.length ? [[['This is…', '']]]
-      : words.length === 1 ? [[['This is… ', words[0]]], [['This is…', ''], ['', words[0]]]]
-        : [[['This is… ', words.join(' · ')]], [['This is… ', words[0]], ['and ', words[1]]], [['This is…', ''], ['', words[0]], ['and ', words[1]]]];
+    // (never more rows than the plan kept for it: a tag that grew would come over the person's words or the hero)
+    const rowsMax = plan.tag.rows || 2;
+    const sets = (!words.length ? [[['This is…', '']]]
+      : words.length === 1 ? [[['This is… ', words[0]]], [['This is…', ''], ['', words[0]]], [['', words[0]]]]
+        : [[['This is… ', words.join(' · ')]], [['This is… ', words[0]], ['and ', words[1]]], [['This is…', ''], ['', words.join(' · ')]], [['', words.join(' · ')]], [['', words[0]], ['', words[1]]]])
+      .filter((set) => set.length <= rowsMax);
     let fontA, fontB, LINE, parts = null;
-    pick: for (const shrink of [1, 0.92, 0.85]) {
+    pick: for (const shrink of [1, 0.92, 0.85, 0.78]) {
       fontA = ctx.font(15 * k * shrink, 600); fontB = ctx.font(17 * k * shrink, 800); LINE = LAGOON.TAG_LINE * k * shrink;
       for (const set of sets) {
-        // (three rows only when two would not fit even in the smallest type)
-        if (set.length > 2 && shrink !== 0.85) continue;
         parts = set.map(([lead, rest]) => {
           measureG.font = fontA; const wl = lead ? measureG.measureText(lead).width : 0;
           measureG.font = fontB; const wr = rest ? measureG.measureText(rest).width : 0;
@@ -1192,13 +1251,13 @@ export function create(ctx) {
     }
     const rows = parts;
     let tw = 0; for (const p of parts) tw = Math.max(tw, p.wl + p.wr);
-    const w = Math.ceil(Math.min(plan.tag.w, tw + 2 * LAGOON.TAG_PAD_X)), h = Math.ceil(rows.length * LINE + 2 * LAGOON.TAG_PAD_Y);
+    const w = Math.ceil(tw + 2 * LAGOON.TAG_PAD_X), h = Math.ceil(rows.length * LINE + 2 * LAGOON.TAG_PAD_Y);
     const dpr = Math.max(1, ctx.dpr || 1);
     const c = makeCanvas(Math.ceil((w + 16) * dpr), Math.ceil((h + 16) * dpr));
     const g = c.getContext('2d');
     g.scale(dpr, dpr); g.translate(8, 8);
     roundRect(g, 0, 0, w, h, Math.min(18, h / 2));
-    g.fillStyle = list.length ? 'rgba(8,14,52,0.72)' : 'rgba(8,14,52,0.5)'; g.fill();
+    g.fillStyle = 'rgba(8,14,52,0.74)'; g.fill();
     g.strokeStyle = list.length ? 'rgba(255,214,242,0.55)' : 'rgba(200,232,255,0.35)'; g.lineWidth = 1;
     if (!list.length) g.setLineDash([4, 4]);
     g.stroke(); g.setLineDash([]);
@@ -1237,12 +1296,12 @@ export function create(ctx) {
     let x0;
     if (P.mode === 'below') x0 = (P.x0 + P.x1) / 2 - T.w / 2; else if (P.mode === 'right') x0 = P.x0; else x0 = P.x1 - T.w;
     const y0 = P.mode === 'below' ? P.y0 : (P.y0 + P.y1) / 2 - T.h / 2;
-    const dx = p.x - thoughtX() + tS.ox, dy = p.y - thoughtY() + tS.oy;
-    const X = x0 + dx, Y = y0 + dy;
+    const dx = p.x - plan.thought.x, dy = p.y - plan.thought.y;
+    const X = clamp(x0 + dx, LAGOON.EDGE, Math.max(LAGOON.EDGE, freeW() - LAGOON.EDGE - T.w)), Y = y0 + dy;
     tagNow.x0 = X; tagNow.y0 = Y; tagNow.x1 = X + T.w; tagNow.y1 = Y + T.h;
     tagNow.words = T.spans.map((s) => ({ k: s.k, x0: X + s.x0, x1: X + s.x1, y0: Y + s.y0, y1: Y + s.y1 }));
     if (a <= 0.01) return;
-    g.globalAlpha = a * (T.empty ? 0.9 : 1);
+    g.globalAlpha = a;
     g.drawImage(T.c, X - 8, Y - 8, T.w + 16, T.h + 16);
     g.globalAlpha = 1;
   }
@@ -1284,7 +1343,7 @@ export function create(ctx) {
       const held = drops.find((d) => d.state === 'held' || d.state === 'open');
       const looking = held ? held.focus.k : 0, named = Math.min(2, naming.count) / 2, quiet = clamp(prog.quiet / LAGOON.QUIET_SEC);
       const mix = ctx.gentle
-        ? { calm: 0.35 + 0.3 * clearK, sad: 0.25 * (1 - clearK), comforted: 0.15 + 0.3 * named, curious: 0.2 * looking, loved: 0.15 }
+        ? { calm: 0.4 + 0.3 * clearK, sad: 0.3 * (1 - clearK), comforted: Math.min(0.2, 0.08 + 0.12 * named), curious: 0.2 * looking }
         : { sad: 0.32 * (1 - clearK) * rainK, calm: 0.25 + 0.3 * quiet, curious: 0.12 + 0.35 * looking, comforted: 0.1 + 0.35 * named, relieved: 0.2 * quiet * named, happy: complete ? 0.18 : 0.04 };
       const key = Object.values(mix).map((v) => Math.round(v * 10)).join(',');
       if (key !== emoKey) { emoKey = key; emoAt = now; try { mallow.setEmotion?.(mix, 0.6, { quiet: true }); } catch { /* optional */ } }
@@ -1369,7 +1428,7 @@ export function create(ctx) {
       // a tap on a photo orb makes it glow and ring the water (the world's own; not a drop)
       if (s.type === 'down' && prepared && !paused && plan) {
         const o = orbAt(s.x, s.y);
-        if (o && !dropAt(s.x, s.y)) { o.glow = 1; rings.add(o.x, Math.max(plan.hy + 6, o.y + o.D), 3, 46, 1.6, 0.28, '#ffd1f0', 0.6, 1.4); ctx.sound('glass', { intensity: 0.3 }); ctx.haptic('light'); lastTouch = elapsed; if (!everTouched) { everTouched = true; firstTouchAt = elapsed; prog.touch(); } return; }
+        if (o && !dropAt(s.x, s.y)) { o.glow = 1; rings.add(o.x, Math.max(plan.hy + 6, o.y + o.D), 3, 46, 1.6, 0.28, '#ffd1f0', 0.6, 1.4); ctx.sound('glass', { intensity: 0.3 }); ctx.haptic('light'); lastTouch = elapsed; if (!everTouched) { everTouched = true; firstTouchAt = elapsed; } return; }
       }
       pointer(s);
     },
@@ -1423,7 +1482,7 @@ export function create(ctx) {
       const out = [];
       if (!plan) return out;
       const band = ctx.band;
-      const C0 = plan.cluster, dx = tS.ox, dy = tS.oy;
+      const C0 = plan.cluster, dx = thoughtX() - plan.thought.x, dy = thoughtY() - plan.thought.y;
       out.push({ x: C0.x0 + dx, y: C0.y0 + dy, w: C0.x1 - C0.x0, h: C0.y1 - C0.y0, kind: 'thought' });
       for (const d of drops) if (d.alpha > 0.1 && d.state !== 'in') { const r = dropR(d); out.push({ x: d.x - r - 4, y: d.y - r * 1.5 - 4, w: 2 * r + 8, h: r * 2.5 + 8, kind: 'drop' }); if (d.pill) out.push({ x: d.pill.x0, y: d.pill.y0, w: d.pill.x1 - d.pill.x0, h: d.pill.y1 - d.pill.y0, kind: 'drop' }); }
       for (const o of orbs) if (o.alpha > 0.1) out.push({ x: o.x - o.D / 2 - 4, y: o.y - o.D / 2 - 4, w: o.D + 8, h: o.D + 8, kind: 'photo' });
@@ -1451,9 +1510,9 @@ export function create(ctx) {
       const same = Math.round(w) === Math.round(W) && Math.round(h) === Math.round(H);
       W = w; H = h; U = Math.min(W, H);
       for (const d of drops) d.focus.setU(U);
-      if (realm) { realm.resize(W, H, dprBack); realm.build(); }
+      if (realm && realm.resize(W, H, dprBack)) realm.build();
       tagKey = ''; pillCache.clear();
-      if (!same && prepared) { layout(false); rainN = 0; }
+      if (!same && prepared) layout(false);
     },
     setQuality({ dprBack } = {}) { if (realm && dprBack) { realm.resize(W, H, dprBack); realm.build(); } },
     destroy() {

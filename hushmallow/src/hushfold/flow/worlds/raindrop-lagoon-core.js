@@ -110,7 +110,8 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
   const U = Math.min(W, H);
   const XR = freeW > 0 ? Math.min(W, freeW) : W;
   const E = LAGOON.EDGE;
-  const r = Math.round(clamp(0.08 * U, 22, 38));
+  const r0 = Math.round(clamp(0.08 * U, 22, 38));
+  let r = r0;                       // (a variant may hang a smaller thought: see `shapes`)
   const D = Math.round(clamp(0.125 * U, LAGOON.DROP_MIN, LAGOON.DROP_MAX)), DROP = D;
   const hy = Math.round(H * LAGOON.HORIZON);
   const bandB = band ? (band.y || 0) + (band.h || 0) : 0;
@@ -121,7 +122,8 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
   const inner = XR - 2 * E;
   // (the tag's words grow with the person's text size: its reserved place grows with them)
   const tk = clamp(+textScale || 1, 1, 1.4);
-  const tagH = Math.ceil(2 * LAGOON.TAG_LINE * tk + 2 * LAGOON.TAG_PAD_Y);
+  const tagHFor = (rows) => Math.ceil(rows * LAGOON.TAG_LINE * tk + 2 * LAGOON.TAG_PAD_Y);
+  let tagRowsNow = 2, tagH = tagHFor(2);
   const tagWBelow = Math.min(Math.round(LAGOON.TAG_MAX * tk), inner);
   const tagWSide = Math.min(Math.round(clamp(Math.round(XR * 0.44), LAGOON.TAG_SIDE_MIN, LAGOON.TAG_SIDE_MAX) * tk), Math.round(inner * 0.6));
   const wMax = Math.min(LAGOON.PLATE_MAX, inner);
@@ -138,13 +140,14 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
   function clusterAt(cx, cy, P, mode) {
     const body = { x0: cx - r, y0: cy - r, x1: cx + r, y1: cy + r };
     let pl = null;
-    if (P) { const y1 = cy - r - LAGOON.PLATE_GAP; pl = { x0: cx - P.w / 2, x1: cx + P.w / 2, y0: y1 - P.h, y1, w: P.w, h: P.h, maxW: P.maxW, lines: P.lines }; }
+    // (the plate is centred on its thought unless that would cross a side: then it slides in, as the handles hold it)
+    if (P) { const y1 = cy - r - LAGOON.PLATE_GAP, x0 = clamp(cx - P.w / 2, E, Math.max(E, XR - E - P.w)); pl = { x0, x1: x0 + P.w, y0: y1 - P.h, y1, w: P.w, h: P.h, maxW: P.maxW, lines: P.lines }; }
     let tg;
     if (mode === 'below') tg = { x0: cx - tagWBelow / 2, x1: cx + tagWBelow / 2, y0: cy + r + LAGOON.TAG_GAP, y1: cy + r + LAGOON.TAG_GAP + tagH, w: tagWBelow, h: tagH };
     else if (mode === 'right') tg = { x0: cx + r + LAGOON.TAG_GAP, x1: cx + r + LAGOON.TAG_GAP + tagWSide, y0: cy - tagH / 2, y1: cy + tagH / 2, w: tagWSide, h: tagH };
     else tg = { x0: cx - r - LAGOON.TAG_GAP - tagWSide, x1: cx - r - LAGOON.TAG_GAP, y0: cy - tagH / 2, y1: cy + tagH / 2, w: tagWSide, h: tagH };
     const all = union(union(body, tg), pl);
-    return { body, plate: pl, tag: { mode, ...tg }, all };
+    return { body, plate: pl, tag: { mode, rows: tagRowsNow, ...tg }, all, clash: !!pl && hits(pl, tg, 2) };
   }
   const inside = (b) => b.x0 >= E - 0.5 && b.x1 <= XR - E + 0.5 && b.y0 >= top - 0.5 && b.y1 <= bottom + 0.5;
 
@@ -208,9 +211,15 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
   const xs = [];
   const centreX = clamp((K.x0 + K.x1) / 2, E + r, XR - E - r);
   xs.push(centreX, XR / 2);
-  plan: for (let pi = 0; pi < plates.length; pi++) {
+  // shapes, roomiest first: a two-row tag, then a one-row tag (it shrinks its type for two words), then a smaller thought
+  const shapes = [{ rows: 2, r: r0 }, { rows: 1, r: r0 }, { rows: 1, r: Math.max(20, Math.round(r0 * 0.82)) }];
+  const plateMemo = new Map();
+  const plateAt = (spec) => { const k = `${spec.maxW}|${spec.lines}`; if (!plateMemo.has(k)) plateMemo.set(k, plate(spec.maxW, spec.lines)); return plateMemo.get(k); };
+  plan: for (let si = 0; si < shapes.length; si++) {
+  r = shapes[si].r; tagRowsNow = shapes[si].rows; tagH = tagHFor(tagRowsNow);
+  for (let pi = 0; pi < plates.length; pi++) {
     const spec = plates[pi];
-    const P = spec ? plate(spec.maxW, spec.lines) : null;
+    const P = spec ? plateAt(spec) : null;
     if (spec && !P) continue;
     const PP = P ? { ...P, maxW: spec.maxW, lines: spec.lines } : null;
     const modes = ['below', 'right', 'left'];
@@ -222,8 +231,10 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
       tries.push({ x: null, over: false, side: -1 }, { x: null, over: false, side: 1 });
       for (let ti = 0; ti < tries.length; ti++) {
         const tr = tries[ti];
-        let cl = clusterAt(0, 0, PP, mode);
-        const wL = -cl.all.x0, wR = cl.all.x1, hT = -cl.all.y0, hB = cl.all.y1;
+        // (sideways: the thought and its tag fix the extent — the plate slides in from a side; it is checked once placed)
+        let cl = clusterAt(XR / 2, 0, PP, mode);
+        const bt = union(cl.body, cl.tag);
+        const wL = Math.max(XR / 2 - bt.x0, PP ? Math.min(PP.w / 2, XR / 2 - E) : 0), wR = bt.x1 - XR / 2, hT = -cl.all.y0, hB = cl.all.y1;
         let cx;
         if (tr.over) cx = clamp(tr.x, E + wL, XR - E - wR);
         else cx = tr.side < 0 ? (E + K.x0) / 2 - (wR - wL) / 2 : (K.x1 + XR - E) / 2 - (wR - wL) / 2;
@@ -233,28 +244,34 @@ export function planLagoon({ W, H, band = null, mallow = null, freeW = 0, plate 
         // (beside the hero: level with its head, never sunk to the bottom of the screen)
         const cy = tr.over ? yLo + (yHi - yLo) * 0.62 : clamp(K.y0 + r, yLo, yHi);
         cl = clusterAt(cx, cy, PP, mode);
-        if (!inside(cl.all) || hits(cl.all, K, 2)) continue;
+        if (!inside(cl.all) || hits(cl.all, K, 2) || cl.clash) continue;
         const drops = pickSlots(cl, needDrops);
         // (a thought without its words plate is only ever the last resort: the person's words always show)
         // (and a plate that shows the person's words whole: one that has to cut them short only when nothing else fits)
         const ok = drops.length >= needDrops && !(thought && plate && !PP) && !PP?.cut;
         // (every feeling drop first; photo orbs are welcome, never at the cost of the tag under the thought or a wide plate)
-        const score = (ok ? 1000 : drops.length * 10) - pi * 40 - mi * 60 - ti * 15 - (thought && plate && !PP ? 5000 : 0) - (PP?.cut ? 300 : 0);
-        if (!best || score > best.score) best = { score, cl, drops, ok, cx, cy, pi, mode };
+        const score = (ok ? 1000 : drops.length * 10) - si * 70 - pi * 40 - mi * 60 - ti * 15 - (thought && plate && !PP ? 5000 : 0) - (PP?.cut ? 300 : 0);
+        if (!best || score > best.score) best = { score, cl, drops, ok, cx, cy, pi, mode, r };
         if (ok && pi === 0 && mi === 0) break plan;
       }
     }
   }
+  // (a shape that shows everything whole is never passed over for a smaller one)
+  if (best?.ok) break;
+  }
+  if (best) r = best.r;
   if (!best) {
     // nothing fits as planned (an extreme screen): the thought without a plate, its tag under it, in the air over the hero
     const cx = clamp(XR / 2, E + tagWBelow / 2, XR - E - tagWBelow / 2);
     const cy = clamp(K.y0 - 4 - r - LAGOON.TAG_GAP - tagH, top + r, Math.max(top + r, bottom - r));
     const cl = clusterAt(cx, cy, null, 'below');
-    best = { score: 0, cl, drops: pickSlots(cl, needDrops), ok: false, cx, cy, pi: -1, mode: 'below' };
+    best = { score: 0, cl, drops: pickSlots(cl, needDrops), ok: false, cx, cy, pi: -1, mode: 'below', r };
   }
   const drops = best.drops.slice(0, needDrops);
   // the photo orbs: in the room the drops left, a little smaller (photos that find no place wait their turn)
-  const orbs = nOrbs ? pickSlots(best.cl, nOrbs, DO, drops).map((p) => ({ x: p.x, y: p.y, D: DO })) : [];
+  // (a small screen: smaller glass drops rather than none — their touch target keeps a 12 px margin)
+  let orbs = [];
+  if (nOrbs) for (const d of [DO, Math.round(D * 0.72)]) { orbs = pickSlots(best.cl, nOrbs, d, drops).map((p) => ({ x: p.x, y: p.y, D: d })); if (orbs.length) break; }
   return {
     U, r, D, hy, top, bottom, XR, K, band: band ? { x: 0, y: band.y || 0, w: W, h: band.h || 0 } : null,
     thought: { x: Math.round(best.cx), y: Math.round(best.cy), r },
@@ -365,6 +382,8 @@ export function createLagoonProgress() {
       if (touched) played += dt;
       idle = down ? 0 : idle + dt;
       if (kept > 0 && !holding) quiet += dt * (down ? 0.5 : 1);
+      // (every word given back: the quiet starts again with the next one — "8 s of quiet with it")
+      else if (kept === 0) quiet = 0;
       let q = touched ? 0.06 : 0;
       if (looked) q = 0.2;
       if (named) q = 0.5 + (both ? 0.06 : 0) + 0.36 * clamp(quiet / LAGOON.QUIET_SEC);
