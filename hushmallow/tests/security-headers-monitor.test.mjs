@@ -99,6 +99,7 @@ test('missing CSP fails the site check (and a gated page still needs it)', async
   // without --allow-gate the gate page is not the app; --allow-gate without a marker is refused
   assert.ok(failing(await run()).includes('site'));
   assert.match(format(await run({ allowGate: true })), /needs --gate-marker/);
+  assert.match(format(await run({ allowGate: true, gateMarker: 'html' })), /needs --gate-marker/);
   // a broken site that is not the gate (no marker) is not excused by --allow-gate
   prod.o.gate = false; prod.o.rootBody = '<!doctype html><h1>Something went wrong</h1>';
   const broken = await run(G);
@@ -170,6 +171,19 @@ test('weakened headers fail: a broad CSP, a cached callback, a leaky referrer, a
   assert.match(format(await run()), /no cross-origin-opener-policy/);
   prod.o.override = { [`/v/${VER}/src/auth/public-config.js`]: { 'Cache-Control': 'public, max-age=31536000, immutable' } };
   assert.match(format(await run()), /public-config\.js is cached/);
+  // a repeated directive: browsers obey the FIRST one, so a weak one in front must not hide behind the built one
+  const built = headersFor(rulesFor(VER), '/').get('content-security-policy').value;
+  prod.o.override = { '/': { 'Content-Security-Policy': built.replace("script-src 'self'", "script-src * 'unsafe-inline' 'unsafe-eval'; script-src 'self'") } };
+  assert.match(format(await run()), /CSP repeats script-src/);
+  prod.o.override = { '/': { 'Content-Security-Policy': `frame-ancestors *; ${built}` } };
+  assert.match(format(await run()), /CSP repeats frame-ancestors/);
+  const cbBuilt = headersFor(rulesFor(VER), '/auth/callback/').get('content-security-policy').value;
+  prod.o.override = { '/auth/callback/': { 'Content-Security-Policy': cbBuilt.replace(/, default-src 'self'; script-src 'self';/, ", default-src 'self'; script-src *; connect-src *; script-src 'self';") } };
+  assert.match(format(await run()), /callback: .*CSP repeats script-src/);
+  prod.o.override = { '/': { 'Content-Security-Policy': built.replace("script-src 'self'", "script-src 'self' 'sha256-EXTRA1=' 'sha256-EXTRA2='") } };
+  assert.match(format(await run()), /more inline-code hash/);
+  prod.o.override = { '/version.json': { 'Cache-Control': 'public, max-age=31536000, immutable' } };
+  assert.match(format(await run()), /version: .*cache-control/);
   // only the inline-code hashes may differ from this checkout's build
   prod.o.override = { '/': { 'Content-Security-Policy': headersFor(rulesFor(VER), '/').get('content-security-policy').value.replace(/'sha256-[^']+'/g, "'sha256-AAAA'") } };
   assert.equal((await run()).ok, true);

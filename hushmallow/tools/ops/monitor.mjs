@@ -3,7 +3,7 @@
 //   node hushmallow/tools/ops/monitor.mjs [--site https://app.hushmallow.com]
 //        [--worker <Another Angle URL>] [--expect-version <sha>]
 //        [--allowed-versions <sha,sha,…>] [--max-ms 4000] [--retry-ms 20000]
-//        [--json <file>] [--allow-gate --gate-marker <regex>]
+//        [--json <file>] [--allow-gate --gate-marker <text>]
 //
 // Run every 10 minutes by GitHub Actions (docs/workstreams/prod-security/monitor.yml).
 // Checks, each with its response time (a response slower than --max-ms fails):
@@ -34,8 +34,8 @@
 // runs exits 1 with one short line per failing check. A check that failed
 // and then passed is printed as "recovered" (never hidden).
 //
-// --allow-gate --gate-marker <regex>: while the pilot gate is on, / may answer
-// with the gate page, recognised by text only it contains. It must still carry
+// --allow-gate --gate-marker <text>: while the pilot gate is on, / may answer
+// with the gate page, recognised by literal text (8+ characters) only it contains. It must still carry
 // the built security headers; checks that the gate hides (an HTML answer for
 // version.json, public-config.js or main.js) are reported "NOT checked" on the
 // final line instead of failing; anything the gate lets through is checked.
@@ -86,7 +86,16 @@ export function expectedFor(projectOrigin, version) {
 
 const EXACT = ['strict-transport-security', 'x-content-type-options', 'referrer-policy', 'permissions-policy', 'cross-origin-opener-policy', 'x-frame-options', 'cache-control', 'content-security-policy'];
 const norm = (v) => String(v ?? '').split(',').map((x) => x.trim().replace(/\s+/g, ' ')).join(', ');
-const policyList = (v) => String(v || '').split(',').map((p) => new Map(p.split(';').map((d) => d.trim()).filter(Boolean).map((d) => { const [k, ...src] = d.split(/\s+/); return [k.toLowerCase(), src]; })));
+/** CSP → [Map(directive → sources)], keeping the FIRST of a repeated directive (what browsers enforce) and naming repeats. */
+const policyList = (v) => String(v || '').split(',').map((p) => {
+  const m = new Map();
+  m.dupes = [];
+  for (const d of p.split(';').map((x) => x.trim()).filter(Boolean)) {
+    const [k, ...src] = d.split(/\s+/);
+    if (m.has(k.toLowerCase())) m.dupes.push(k.toLowerCase()); else m.set(k.toLowerCase(), src);
+  }
+  return m;
+});
 const HASH = /^'sha256-[A-Za-z0-9+/=]+'$/;
 
 /**
@@ -106,10 +115,13 @@ export function headerProblems(headers, path, rules, skip = []) {
       if (e.length !== g.length) { out.push(`CSP: ${g.length} policies, built ${e.length}`); continue; }
       e.forEach((ep, i) => {
         const gp = g[i];
+        if (gp.dupes.length) out.push(`CSP repeats ${[...new Set(gp.dupes)].join(', ')} (a browser obeys the first)`);
         for (const k of new Set([...ep.keys(), ...gp.keys()])) {
           const es = ep.get(k) || [], gs = gp.get(k) || [];
           const a = k === 'script-src' ? es.filter((x) => !HASH.test(x)) : es;
           const b = k === 'script-src' ? gs.filter((x) => !HASH.test(x)) : gs;
+          const extraHashes = k === 'script-src' ? gs.filter((x) => HASH.test(x)).length - es.filter((x) => HASH.test(x)).length : 0;
+          if (extraHashes > 0) out.push(`CSP script-src: ${extraHashes} more inline-code hash(es) than built`);
           if (!ep.has(k) || !gp.has(k) || a.length !== b.length || a.some((x) => !b.includes(x))) out.push(`CSP ${k}: "${gs.join(' ').slice(0, 120)}", built "${es.join(' ').slice(0, 120)}"`);
         }
       });
@@ -137,12 +149,12 @@ export async function runOnce(opts = {}) {
   const page = await req(`${site}/`);
   const verM = /["']\/?v\/([0-9A-Za-z_-]+)\/src\/app\/main\.js["']/.exec(page.text);
   // the pilot gate is recognised positively (its own marker), never as "anything that is not the app"
-  const gateRe = o.allowGate && o.gateMarker ? new RegExp(o.gateMarker) : null;
-  const gated = !!gateRe && page.status !== 0 && !verM && gateRe.test(page.text);
+  const marker = o.allowGate && typeof o.gateMarker === 'string' && o.gateMarker.length >= 8 ? o.gateMarker : null;
+  const gated = !!marker && page.status !== 0 && !verM && page.text.includes(marker);
   const expect = expectedFor(projectOrigin, verM?.[1]);
   const hp = headerProblems(page.headers, '/', expect, gated ? ['cache-control'] : []);
   let siteDetail;
-  if (o.allowGate && !o.gateMarker) siteDetail = '--allow-gate needs --gate-marker (text only the gate page contains)';
+  if (o.allowGate && !marker) siteDetail = '--allow-gate needs --gate-marker: literal text (8+ characters) only the gate page contains';
   else if (page.status !== 200 && !(gated && [401, 403].includes(page.status))) siteDetail = why(page);
   else if (!verM && !gated) siteDetail = 'the page does not name v/<version>/src/app/main.js (not the app, and not the pilot gate)';
   add('site', !siteDetail && !hp.length, page, siteDetail || hp.join('; ') || (gated ? 'the pilot gate answered, with the expected security headers' : `version ${verM[1].slice(0, 12)}, headers as built`), gated ? { gated: true } : {});
@@ -164,6 +176,7 @@ export async function runOnce(opts = {}) {
       if (o.expectVersion && v !== o.expectVersion) vp.push(`version ${v.slice(0, 12)}, expected ${o.expectVersion.slice(0, 12)}`);
       else if (o.allowedVersions?.length && !o.allowedVersions.includes(v)) vp.push(`version ${v.slice(0, 12)} is older than the last change on main that should be live (${o.allowedVersions[o.allowedVersions.length - 1].slice(0, 12)})`);
     }
+    if (vj.status === 200) vp.push(...headerProblems(vj.headers, '/version.json', expectedFor(projectOrigin, ver), ['content-security-policy', 'permissions-policy']));
     add('version', !vp.length, vj, vp.join('; ') || v.slice(0, 12));
   }
   const live = ver || (typeof v === 'string' ? v : null);

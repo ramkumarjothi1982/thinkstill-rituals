@@ -28,7 +28,9 @@ rollback is undone. Do not delete deployments: they are the rollback targets.
 Until main is reverted the monitor reports production as older than main every
 10 minutes: run the **hushmallow monitor** workflow by hand with
 `expect_version` = the rolled-back commit to check it, and say so on the
-incident issue.
+incident issue. If the rolled-back build predates a change to the
+headers, the monitor's site check also names that difference (it compares
+with the headers main builds): expected until main is reverted.
 
 Check: `curl -sI https://app.hushmallow.com/ | grep -i content-security-policy`
 and `curl -s https://app.hushmallow.com/version.json`, or run the monitor
