@@ -71,7 +71,8 @@ const ACTIVE_S = 1.2;          // a Mallow played this recently is "being played
 const GLANCE_S = 1.2;          // the two glance at each other at most this often
 const CHIP_MIN_S = 1.2;        // a tapped Hum or Bass chip still plays this long (a hum takes time to swell)
 const BREATH_MIN_S = 0.6;      // a breath lead let go sooner was a tap: no breath is measured, the tempo stays
-const SLOP = 12;               // px: a still press (the breath lead's slop)
+const SLOP = 12;               // px: a still press (the breath lead's slop)…
+const PRESS_MS = 300;          // …held this long off the body leads the breath
 const perf = () => performance.now() / 1000;
 
 export function mount(root, ctx, { handoff = null } = {}) {
@@ -522,13 +523,14 @@ export function mount(root, ctx, { handoff = null } = {}) {
   }
 
   // ----------------------------------------------------- breath lead --
-  function breathIn(src) {
+  // since: when the press began (an off-body press leads only after 300 ms still)
+  function breathIn(src, since = perf()) {
     if (state === 'leaving' || gone) return;
     touched();
-    if (!breaths.size) { leadT = perf(); clock.lead('in', leadT); say('breath'); hint.classList.add('gone'); }
+    if (!breaths.size) { leadT = since; clock.lead('in', perf()); say('breath'); hint.classList.add('gone'); }
     breaths.add(src);
   }
-  // a lead let go within 0.6 s was a tap, not a breath: no cycle is measured and the tempo stays
+  // a lead let go within 0.6 s of its press was a tap, not a breath: no cycle is measured and the tempo stays
   function breathOut(src) {
     if (!breaths.delete(src) || breaths.size) return;
     const t = perf();
@@ -539,12 +541,12 @@ export function mount(root, ctx, { handoff = null } = {}) {
     return r && c.rig.hitTest(e.clientX - r.left, e.clientY - r.top);
   });
   const presses = watchPresses(s.screen, {
-    stage: s.stage, ms: 300, slop: SLOP,
+    stage: s.stage, ms: PRESS_MS, slop: SLOP,
     onBody: (p, e) => onAnyBody(e),
     onPress: (p0, id) => {
       const t = performance.now();
       for (const c of comps) c.gestures.recognizer.cancel(id, t);   // it was a press, not a touch
-      breathIn(`press:${id}`);
+      breathIn(`press:${id}`, perf() - PRESS_MS / 1000);
     },
     onRelease: (id) => breathOut(`press:${id}`),
   });

@@ -127,6 +127,7 @@
   .hushbeat .hb-row { flex: none; }
   .hushbeat.hb-tray-on .hb-row .chip { width: 40px; padding: 0; justify-content: center; }
   .hushbeat.hb-tray-on .hb-row .chip span { display: none; }
+  .hushbeat .hb-tray .chip { padding-left: 9px; padding-right: 9px; }
   .screen.hushbeat[data-layout="duet"] .stage.lead { left: calc(50% - min(50%, 240px)); right: 50%; }
   .screen.hushbeat[data-layout="duet"] .stage.partner { left: 50%; right: calc(50% - min(50%, 240px)); }
 }

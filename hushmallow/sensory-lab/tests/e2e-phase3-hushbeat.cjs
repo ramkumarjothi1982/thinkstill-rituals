@@ -609,7 +609,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         check(sc, 'E8 two quick taps on Breathe measure no breath (the tempo stays)', br.held.every((ms) => ms < 600) && br.t1.target === br.t0.target && br.t1.bpm === br.t0.bpm && !br.t1.leading, JSON.stringify(br));
         const lab = await hb(pg, () => [...document.querySelectorAll('.hushbeat .hb-tray .chip.hold')].map((c) => ({ label: c.getAttribute('aria-label'), title: c.title, cue: getComputedStyle(c, '::before').content })));
         check(sc, 'E7 the held chips say so (aria-label and title "…, hold for…") and carry a hold ring', lab.length === 3 && lab.every((x) => /hold/.test(x.label) && x.title === x.label && x.cue !== 'none'), JSON.stringify(lab));
-        await pg.click('.hushbeat .hb-buttons'); await sleep(400);
+        await pg.click('.hushbeat .hb-buttons');
+        await sleep(1500);   // the tray closes and the Mallow re-frames (bigger) before the body is measured
         // two hands: an off-body press (the breath lead) and a finger on the body, in either order
         const qb = await bodyAt(pg);
         const off = { x: 24, y: Math.max(160, qb.top - 40), id: 4 }, on = { x: qb.x, y: qb.y + 10, id: 5 };
@@ -1634,7 +1635,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await page.focus('.hushbeat .hb-tray .chip:nth-child(4)');
     await sleep(300);
     await clearLog(page);
-    await page.keyboard.down(' '); await sleep(700);
+    await page.keyboard.down(' '); await sleep(1300);   // longer than a tapped chip's 1.2 s, so it ends on let go
     const held = await hb(page, () => __lab.hushbeat.log.some((e) => e.kind === 'bassOn'));
     await page.keyboard.up(' '); await sleep(400);
     const released = await hb(page, () => __lab.hushbeat.log.some((e) => e.kind === 'bassOff'));

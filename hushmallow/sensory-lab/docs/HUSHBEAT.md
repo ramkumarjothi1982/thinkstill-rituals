@@ -359,7 +359,7 @@ suite): a check that names its E number counts for it, the rest count for their 
 Serve the repository root first (`python3 -m http.server 8000`). Reports go to
 `docs/phase3/hushbeat/e2e-phase3-hushbeat.json`, screenshots to `docs/phase3/hushbeat/hushbeat-<vp>-<state>.jpg`.
 A full run writes about 70 screenshots, so pass a scratch folder and copy the ones worth keeping; the folder
-holds the last full report (585/585) and 43 curated screenshots (every viewport's solo, tray, row, picker,
+holds the last committed full report (585/585; the review-fix round ran all 627 checks in a scratch folder: one full run, then the blocks fixed after it re-run green) and 43 curated screenshots (every viewport's solo, tray, row, picker,
 duet, sheet; every Mallow in its own world; the dark sheets; the bloom; replay; Play it; keyboard focus).
 Screenshots are taken as a touch user sees them: a stage the feature focused on arrival is blurred first, and CSS
 transitions are suspended for the capture (a slow software-GL page can leave a 140 ms transition pending for
