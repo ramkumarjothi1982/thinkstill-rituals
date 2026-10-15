@@ -17,7 +17,8 @@
     "safety:eval": "node tools/safety-eval.mjs",
     "staging:site": "node tools/pack-site.mjs",
     "staging:e2e": "node tools/staging-e2e.mjs",
-    "staging:rehearse": "node tools/staging-e2e.mjs --rehearse"
+    "staging:rehearse": "node tools/staging-e2e.mjs --rehearse",
+    "staging:deploy": "node tools/staging-deploy.mjs"
   },
   "devDependencies": {
     "pg": "8.13.1"
