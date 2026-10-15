@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { monthly, overFree, aud, ALL_IN, table } from '../tools/cost-model.mjs';
+import { monthly, overFree, aud, ALL_IN, table, atOnce, worstCases, SCENARIOS } from '../tools/cost-model.mjs';
 
 const item = (bill, start) => bill.items.find(([k]) => k.startsWith(start))?.[1];
 
@@ -36,7 +36,29 @@ test('Realtime adds messages and peak connections beyond what Pro includes', () 
   assert.equal(item(monthly(1000, { realtime: true }), 'Realtime messages'), 0);
 });
 
+test('monthly active people are not people at once: the busiest moment is a small share of them', () => {
+  assert.deepEqual(atOnce(100000), { people: 100000, daily: 35000, simultaneous: 5000, callsPerSecond: 500 });
+  assert.equal(atOnce(100000, 'high').simultaneous, 10000);
+  assert.equal(monthly(100000).items.find(([k]) => k.startsWith('Compute'))[0], 'Compute beyond the credit (2XL)');
+  assert.equal(monthly(100000, { scenario: 'high' }).items.find(([k]) => k.startsWith('Compute'))[0], 'Compute beyond the credit (4XL)');
+});
+
+test('high use costs more and can pass the Free plan even at 100 people', () => {
+  assert.ok(SCENARIOS.high.calls > SCENARIOS.typical.calls * 4);
+  assert.deepEqual(overFree(100, { scenario: 'high' }), ['calls']);
+  assert.throws(() => monthly(100, { plan: 'free', scenario: 'high' }), /pass the Free plan/);
+  for (const n of [1000, 10000, 100000]) assert.ok(monthly(n, { scenario: 'high' }).usd >= monthly(n).usd, `${n}`);
+});
+
+test('worst cases: an open tab with and without the idle back-off, an account at the rate limit, a flood', () => {
+  const w = worstCases();
+  assert.equal(w.alwaysOpenTab.withoutBackoff, 259200);                    // 6 calls a minute, all month
+  assert.ok(w.alwaysOpenTab.withBackoff < 5000, String(w.alwaysOpenTab.withBackoff));
+  assert.equal(w.abusiveAccount.calls, 120 * 60 * 24 * 30);
+  assert.ok(Math.abs(w.abusiveAccount.usd - 10.368) < 1e-9);
+});
+
 test('the tables in docs/COSTS.md are the ones the model prints', () => {
   const doc = readFileSync(new URL('../docs/COSTS.md', import.meta.url), 'utf8');
-  for (const realtime of [false, true]) for (const row of table({ realtime }).rows) assert.ok(doc.includes(row), `COSTS.md is missing or has an old row: ${row}`);
+  for (const scenario of ['typical', 'high']) for (const realtime of [false, true]) for (const row of table({ realtime, scenario }).rows) assert.ok(doc.includes(row), `COSTS.md is missing or has an old ${scenario} row: ${row}`);
 });

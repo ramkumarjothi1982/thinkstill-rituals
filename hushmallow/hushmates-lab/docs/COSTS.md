@@ -1,6 +1,7 @@
 # Hushmates · Costs (AUD): staging, the beta, and 100 to 100,000 people
 
-A forecast, not a quote. **Nothing has been bought, and no paid plan or service is
+A forecast, not a quote, and **not a maximum**: the bill follows real use, and §2.4
+shows how it can run higher. **Nothing has been bought, and no paid plan or service is
 switched on.**
 - Supabase Pro isn't activated.
 - No AI, email provider or professional service is paid for.
@@ -39,20 +40,41 @@ The separate account matters for cost as well as safety:
 
 ## 2. The model: monthly and annual cost by scale
 
-### Assumptions (per active person, per month)
+`tools/cost-model.mjs` makes every table here; `tests/cost-model.test.mjs` checks the
+arithmetic and that these tables are the ones it prints.
 
-| What | Assumption | Why |
-|---|---|---|
-| Feelings released | 4 | A reflective app, used a few times a week at most |
-| Gateway calls (Edge Function invocations) | about 1,300 | Mostly polling: about 6 calls a minute while the app is visible, 10 minutes a day, 20 days. The other ~100 are actions |
-| API egress | about 7 MB | About 5 KB per call |
-| Stored data | about 100 KB at steady state | Encrypted words, events and indexes. Unsaved feelings are cleared after 30 days |
-| Sign-in emails | about 1.5 | A code only on a new device or after signing out |
-| With Realtime instead of polling | 15% of the calls, plus about 300 change notices; 5% of people connected at the busiest moment | Notices replace most polling |
-| Compute | Micro at 100 (covered by the credit), Small at 1,000, Medium at 10,000, 2XL at 100,000 | The least certain line: a staging load test should size it |
-| Point-in-time recovery | From 10,000 people | Daily backups are enough before that |
+### 2.1 Assumptions, and how they were checked
 
-### As built (polling every 20 seconds)
+Per **monthly active person** (someone who signs in or refreshes a session in the month), per month:
+
+| What | Typical use | High use | Checked against |
+|---|---|---|---|
+| Time with the app open and in use | 10 minutes a day, 20 days | 30 minutes a day, every day | An assumption: a reflective app used a few times a week. High use is a deliberately heavy case |
+| Gateway calls (Edge Function invocations) | about 1,300 | about 5,700 | The code: while in use the app asks for changes twice every 20 seconds (`client/functions-link.js`), about 6 calls a minute; plus about 100 actions (releasing, catching, writing, sharing) |
+| Calls Supabase doesn't count | — | — | Signing in and refreshing a session go to Supabase Auth, not the function. A browser's CORS preflight (OPTIONS) isn't billed as an invocation (Supabase's usage docs) |
+| API egress | about 7 MB | about 30 MB | About 5 KB per call |
+| Stored data | about 100 KB | about 300 KB | Encrypted words, events and indexes. Unsaved feelings are cleared after 30 days |
+| Sign-in emails | about 1.5 | about 3 | A code only on a new device or after signing out |
+| Share using it on a given day | 35% | — | An assumption |
+| Share using it at the busiest moment | 5% | 10% | An assumption. This sets compute, and Realtime connections later |
+| Compute | Micro up to 10 people at once; Small to 100; Medium to 600; Large to 2,500; 2XL to 6,000; 4XL beyond | same | An assumption to replace with a staging load test |
+| Point-in-time recovery | From 10,000 people | same | A recommendation, not a requirement |
+
+### 2.2 Monthly active people are not people at once
+
+| Monthly active | On a given day | At the busiest moment (typical) | (high use) | Calls a second then (typical) |
+|---:|---:|---:|---:|---:|
+| 100 | 35 | 5 | 10 | 0.5 |
+| 1,000 | 350 | 50 | 100 | 5 |
+| 10,000 | 3,500 | 500 | 1,000 | 50 |
+| 100,000 | 35,000 | 5,000 | 10,000 | 500 |
+
+"Calls a second" assumes about 6 calls a minute for each person using the app at that moment.
+A busy evening could be several times the average, which is what compute must handle.
+
+### 2.3 Typical and high use
+
+**Typical use, as built (polling every 20 seconds while in use):**
 
 | Active people | US$/month | A$/month (before GST and card fees) | A$/month all-in | A$/year all-in |
 |---|---:|---:|---:|---:|
@@ -69,12 +91,11 @@ The separate account matters for cost as well as safety:
 | Edge Function calls beyond 2 million (US$2 per started million) | 0 | 0 | 22 | 256 |
 | Egress beyond 250 GB (US$0.09/GB) | 0 | 0 | 0 | 41 |
 | Database beyond 8 GB (US$0.125/GB) | 0 | 0 | 0 | 0.25 |
-| Monthly active users beyond 100,000 | 0 | 0 | 0 | 0 |
 | Point-in-time recovery, 7 days | – | – | 100 | 100 |
 | Sign-in emails | 0 (free tier) | 0 (free tier) | 20 (e.g. Resend Pro) | 15 (e.g. Amazon SES) |
 | Static site, captcha (Cloudflare Pages, Turnstile) | 0 | 0 | 0 | 0 |
 
-### After switching to Realtime change notices
+**Typical use, after switching to Realtime change notices:**
 
 | Active people | US$/month | A$/month (before GST and card fees) | A$/month all-in | A$/year all-in |
 |---|---:|---:|---:|---:|
@@ -84,20 +105,45 @@ The separate account matters for cost as well as safety:
 | 10,000 | 195 | 278 | 316 | 3,786 |
 | 100,000 | 689 | 984 | 1,114 | 13,374 |
 
-At 100,000 people, Realtime cuts calls from 130 million to 19.5 million a month, and adds:
-- about 30 million messages (US$62.50 beyond the 5 million included);
-- about 5,000 peak connections (US$50 beyond the 500 included).
+**High use, as built:**
 
-### Reading it
+| Active people | US$/month | A$/month (before GST and card fees) | A$/month all-in | A$/year all-in |
+|---|---:|---:|---:|---:|
+| 100 (beta, Pro plan) | 25 | 36 | 40 | 485 |
+| 1,000 | 38 | 54 | 61 | 738 |
+| 10,000 | 360 | 513 | 582 | 6,981 |
+| 100,000 | 2,491 | 3,558 | 4,031 | 48,373 |
 
-- **The beta (about 100 people) fits the Free plan's quotas** (`overFree(100)` is empty). The choice between Free and Pro is about safety of data, not capacity (decision D3):
-  - **Free: A$0.** No automatic backups: a weekly `pg_dump` and the recovery drill instead (`STAGING.md` part 11). It may pause after a week of low activity. Daily use by 100 people makes that unlikely, but a quiet week can still trigger it.
-  - **Pro: A$35.70 a month, about A$40 all-in (A$485 a year).** Daily backups kept 7 days, and it never pauses.
-  - Recommendation unchanged: Pro once people outside the team rely on it. **Not activated**: that is D3.
-- **1,000 people pass the Free plan's call and egress quotas as built.** With Realtime they would fit, but Pro is still the right plan by then.
-- **Polling is the biggest variable cost.** Realtime is worth doing before about 10,000 people. It saves about A$35 a month at 10,000 and about A$240 at 100,000 (all-in).
-- **Compute at 100,000 is the least certain line.** A staging load test should size it before it matters.
-- **Fixed costs:** only the Pro plan fee, and point-in-time recovery once chosen. Everything else grows with use.
+**High use, after switching to Realtime:**
+
+| Active people | US$/month | A$/month (before GST and card fees) | A$/month all-in | A$/year all-in |
+|---|---:|---:|---:|---:|
+| 100 (beta, Pro plan) | 25 | 36 | 40 | 485 |
+| 1,000 | 30 | 43 | 49 | 583 |
+| 10,000 | 279 | 398 | 451 | 5,417 |
+| 100,000 | 1,614 | 2,306 | 2,612 | 31,346 |
+
+### 2.4 Worst cases: what the projections don't bound
+
+These come from *how* the service is used, not *how many* people use it. On Free nothing is
+billed, but passing a quota can get the whole organisation restricted (paused, read-only, or
+refused with errors). On Pro, the Spend Cap blocks overage on function calls: that also stops
+the app, which is safer than an unbounded bill.
+
+| Case | Function calls a month | On Pro, beyond what's included | What limits it |
+|---|---:|---:|---|
+| A browser tab left visible all month, **before** the idle back-off | 259,200 per tab | about US$0.52 per tab | Nothing. Two such tabs would pass half of Free's 500,000 |
+| The same tab **with** the idle back-off (added in Phase 3b+, `client/functions-link.js`) | about 2,500 per tab | about US$0.01 | The app slows to every 2 minutes after 5 quiet minutes, rests after an hour, and catches up when touched. It runs in the browser, so a modified client can ignore it |
+| One account scripted to call as fast as allowed (120 requests a minute, enforced in the database) | about 5.2 million | about US$10 | The per-person limit; invitations; restricting the account at the desk. Refused calls still count as calls |
+| A flood of calls with no sign-in (anyone on the internet) | no fixed limit | US$20 per 10 million | Each is refused at once, but still counted. The Spend Cap turns this into an outage, not a bill. Supabase has no budget alerts; a weekly look at Usage is the check |
+| AI | 0 | A$0 | Switched off, with a A$0 cap held in the database |
+
+**For the beta:**
+- With typical use, 100 people fit Free's quotas comfortably: about 130,000 calls a month against 500,000.
+- With **high use** they wouldn't: about 570,000. So watch the Usage page weekly.
+- The free fixes come before any upgrade:
+  - the idle back-off, done;
+  - if needed, a slower poll, for example every 30 seconds instead of 20.
 
 ### AI (off; only if the owner turns it on)
 
@@ -166,34 +212,29 @@ Other places a bill could start:
 | A Supabase invoice left unpaid | Projects pause and the organisation drops to Free | Use a card that is checked monthly |
 | Card fees | About 3% foreign-transaction fee | A card without foreign fees |
 
-## 5. Stopping runaway usage
+## 5. Spending safeguards: which ones are enforced
 
-**Built into Hushmates (works on any plan):**
-- **Invitations only:** nobody can sign up without one. Codes are limited per email, and guesses per person and per network.
-- **Per-person limits**, in `settings 'limits'`, on:
-  - releases;
-  - finds;
-  - perspectives;
-  - reports;
-  - Mallow fallbacks;
-  - requests a minute.
-- The Mallow's own daily allowance: 500 a day overall, 5 per person.
-- **AI off, with a cap of A$0.** The budget is held atomically in the database (`ai_reserve`, under a lock), so no number of Edge Function instances can overspend it. Every attempt is recorded with its cost, and an unsure outcome is charged, never assumed free.
-- **Scheduled work runs once a minute, in one place:** homecoming, expiry and Mallow preparation, batched, and safe to overlap.
-- **Data stays small:**
-  - unsaved feelings are cleared after 30 days;
-  - report evidence after 90 or 180 days;
-  - old rate-limit events are deleted.
-- **Polling pauses when the app is hidden:** it only polls while visible.
+| Safeguard | Enforced by | Strength |
+|---|---|---|
+| Staying on the Free plan | Supabase | **Enforced:** a Free organisation is never charged. Overuse restricts instead |
+| Pro's Spend Cap, on by default (keep it on) | Supabase | **Enforced** for the usage items it covers (function calls, egress, MAU, disk, Realtime, storage, logs). **Not** for compute, PITR, custom domains, IPv4, log drains, branching, replicas, phone MFA (§4) |
+| AI off, a A$0 monthly cap, an atomic budget hold | The database (`ai_reserve`) | **Enforced:** no number of function instances can overspend it |
+| Invitations only; sign-in codes limited per email; invitation guesses limited per person and network | The database and Supabase Auth | **Enforced** |
+| Per-person limits: releases, finds, perspectives, reports, Mallow fallbacks, 120 requests a minute | The database | **Enforced**, though refused requests still count as function calls |
+| The Mallow's daily allowance (500 overall, 5 per person) | The database | **Enforced** |
+| Retention: unsaved feelings after 30 days, report evidence after 90 or 180 days, rate events after 48 hours | The scheduler | **Enforced** while the scheduler runs |
+| Polling only while the page is visible; the idle back-off | The app in the browser | **Advisory:** it saves most calls, but a modified client can ignore it |
+| No paid Cloudflare products; the site has no Functions | Your Cloudflare account settings | **Enforced** by not subscribing: Pages static hosting is free |
+| Email free tiers (Resend 100 a day; Brevo 300 a day) | The provider | **Enforced:** sending stops at the cap |
+| A card with a low limit, or a virtual card, for Supabase | Your bank | **Enforced** by the bank. The cheapest hard ceiling on any surprise |
+| A weekly look at Supabase's *Usage* page and *Upcoming invoice*, and `node server/admin.mjs ops` | You | **Manual.** Supabase can't alert at a spending threshold |
+| The staging tools refuse AI settings, and any token or account that isn't staging-only | The tools | **Enforced** before they change anything |
 
-**On the platforms:**
-- **Supabase Free:** cannot bill.
-- **Supabase Pro:** keep the **Spend Cap on**. Supabase sends no budget alerts: it can't notify you at a spending threshold. So, once a week:
-  - look at the organisation's *Usage* page and the *Upcoming invoice*;
-  - run `node server/admin.mjs ops`: daily counts of the expensive operations, AI spend this month, members, travelling feelings and open reports.
-- **Cloudflare:** no paid product is enabled. The site has no Functions, so no request can be billed.
-- **Email:** free tiers stop rather than bill.
-- **Staging tools:** they refuse to run if they see AI settings, or if the access token can reach any project that isn't staging (`tools/staging-deploy.mjs`).
+**When to upgrade:** only for a clear technical or operational reason.
+- **Before people outside the team rely on it:** Free has no automatic backups, and a project can pause after a quiet week. Losing testers' words would be a real harm.
+- **When usage approaches a Free quota:** the Usage page shows it.
+
+Neither applies to staging today. Pro stays off until you approve it (D3).
 
 ## 6. What would change the forecast
 

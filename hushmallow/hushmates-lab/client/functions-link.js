@@ -11,6 +11,10 @@
 //     else is one gentle line.
 //   • There is no realtime yet: while the page is visible, it asks for changes
 //     every 20 seconds, and straight away when the page or the connection comes back.
+//     A page left open with nobody using it asks less (every 2 minutes after 5 quiet
+//     minutes) and then rests (after an hour) until someone touches it, when it
+//     catches up at once: an open tab nobody looks at shouldn't cost thousands of
+//     calls a day (docs/COSTS.md). The hour covers the Mallow's 30-minute wait.
 
 import { KEY_HEADER } from './supabase-auth.js';
 
@@ -28,16 +32,22 @@ export class FunctionsLink {
    * auth         createAuth(…): accessToken({ force })
    * anonKey      the project's public key (Supabase's own gateway asks for it)
    * onSignedOut  called once when the session can't be used any more
-   * pollMs       how often to look for changes while the page is visible
-   * fetch, doc, win, timeoutMs   for tests
+   * pollMs       how often to look for changes while the page is visible and in use
+   * idle         { afterMs, everyMs, restAfterMs }: with nobody using the page for afterMs, look
+   *              every everyMs; after restAfterMs, rest until someone does
+   * fetch, doc, win, timeoutMs, now   for tests
    */
-  constructor({ base = '/functions/v1/hushmates', auth, anonKey, onSignedOut = null, pollMs = 20000, fetch: fetchImpl, doc = globalThis.document, win = globalThis, timeoutMs = 25e3 } = {}) {
+  constructor({ base = '/functions/v1/hushmates', auth, anonKey, onSignedOut = null, pollMs = 20000,
+    idle = { afterMs: 5 * 60e3, everyMs: 2 * 60e3, restAfterMs: 60 * 60e3 },
+    fetch: fetchImpl, doc = globalThis.document, win = globalThis, timeoutMs = 25e3, now = () => Date.now() } = {}) {
     if (!auth || typeof auth.accessToken !== 'function') throw new Error('FunctionsLink needs the sign-in (createAuth)');
     this.base = String(base).replace(/\/+$/, '');
     this.auth = auth;
     this.anonKey = anonKey;
     this.onSignedOut = onSignedOut;
     this.pollMs = pollMs;
+    this.idle = idle;
+    this.now = now;
     this.fetch = fetchImpl;
     this.doc = doc;
     this.win = win;
@@ -124,33 +134,54 @@ export class FunctionsLink {
 
   /**
    * While the page is visible: onEvent({ type: 'changed', scope }) for journeys and me every
-   * pollMs. Hidden: nothing. Visible again, or back online: onReconnect, then polling resumes.
+   * pollMs; less often once nobody has used the page for a while, and not at all after longer
+   * (until someone does, when it catches up). Hidden: nothing. Visible again, or back online:
+   * onReconnect, then polling resumes.
    * → unsubscribe
    */
   subscribe(_token, onEvent, { onReconnect } = {}) {
     let timer = null;
     let stopped = false;
+    let lastUsed = this.now();
+    let lastAsked = this.now();
     const visible = () => !this.doc || this.doc.visibilityState !== 'hidden';
+    const quietFor = () => this.now() - lastUsed;
     const tick = () => {
       if (stopped || !visible()) return;
+      const quiet = quietFor();
+      if (quiet >= this.idle.restAfterMs) return;                                          // resting
+      if (quiet >= this.idle.afterMs && this.now() - lastAsked < this.idle.everyMs) return;  // asking less
+      lastAsked = this.now();
       onEvent({ type: 'changed', scope: 'journeys' });
       onEvent({ type: 'changed', scope: 'me' });
     };
     const start = () => { if (!timer && !stopped && visible()) timer = setInterval(tick, this.pollMs); };
     const pause = () => { clearInterval(timer); timer = null; };
+    // someone is using the page: if it had gone quiet, catch up now
+    const used = () => {
+      if (stopped) return;
+      const wasQuiet = quietFor() >= this.idle.afterMs;
+      lastUsed = this.now();
+      if (wasQuiet && visible()) { lastAsked = this.now(); onReconnect?.(); }
+    };
     const onVisibility = () => {
       if (stopped) return;
       if (!visible()) { pause(); return; }
+      lastUsed = this.now();
+      lastAsked = this.now();
       onReconnect?.();
       start();
     };
     const onOnline = () => { if (!stopped && visible()) onReconnect?.(); };
+    const USE = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
+    for (const t of USE) this.doc?.addEventListener?.(t, used, { passive: true });
     this.doc?.addEventListener?.('visibilitychange', onVisibility);
     this.win?.addEventListener?.('online', onOnline);
     start();
     return () => {
       stopped = true;
       pause();
+      for (const t of USE) this.doc?.removeEventListener?.(t, used, { passive: true });
       this.doc?.removeEventListener?.('visibilitychange', onVisibility);
       this.win?.removeEventListener?.('online', onOnline);
     };

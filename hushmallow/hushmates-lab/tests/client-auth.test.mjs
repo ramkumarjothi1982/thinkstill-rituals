@@ -537,6 +537,40 @@ test('link: while visible it asks for changes every 20 s; hidden, it rests; back
   assert.equal(quiet.length, 0);
 });
 
+test('link: a page left open with nobody using it asks less, then rests, and catches up the moment someone uses it', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const { doc, win } = fakePage();
+  const { auth } = await signedIn();
+  let clock = 0;
+  const link = new FunctionsLink({ base: BASE, auth, anonKey: ANON, fetch: async () => new Response('{}'), doc, win, now: () => clock });
+  const asked = [];
+  let reconnects = 0;
+  const stop = link.subscribe('x', (ev) => { if (ev.scope === 'journeys') asked.push(clock); }, { onReconnect: () => { reconnects += 1; } });
+  const advance = (ms) => { for (let i = 0; i < ms / 20000; i += 1) { clock += 20000; t.mock.timers.tick(20000); } };
+  advance(5 * 60e3 - 20000);                               // in use: every 20 s
+  assert.equal(asked.length, 14);
+  const lively = asked.length;
+  advance(25 * 60e3 + 20000);                              // quiet from 5 minutes: every 2 minutes
+  assert.equal(asked.length - lively, 12, `asked ${asked.length - lively} times in 25 quiet minutes`);
+  advance(30 * 60e3);
+  const beforeRest = asked.length;
+  advance(4 * 60 * 60e3);                                  // over an hour quiet: resting
+  assert.equal(asked.length, beforeRest, 'nothing while resting');
+  assert.equal(reconnects, 0);
+  doc.fire('keydown');                                     // someone uses the page: catch up at once
+  assert.equal(reconnects, 1);
+  advance(20000);
+  assert.equal(asked.length, beforeRest + 1, 'and asking every 20 s again');
+  doc.fire('pointerdown');
+  assert.equal(reconnects, 1, 'using a page that is already lively doesn’t ask twice');
+  // an always-visible tab nobody touches, over a whole day: dozens of looks, not thousands
+  const dayStart = asked.length;
+  advance(24 * 60 * 60e3);
+  assert.ok(asked.length - dayStart < 60, `${asked.length - dayStart} looks in a quiet day`);
+  stop();
+  for (const ev of ['pointerdown', 'keydown', 'touchstart', 'wheel', 'visibilitychange']) assert.equal(doc.count(ev), 0, `${ev} listener left behind`);
+});
+
 test('link: RelayClient runs over it unchanged (me and journeys at start)', async (t) => {
   const { auth, f } = await signedIn();
   const me = { now: Date.now(), profile: { pseudonym: 'Moonbeam', mallow: 'noomi', onboarded: true }, accountState: 'active', adultConfirmed: true };

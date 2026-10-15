@@ -1,35 +1,40 @@
 # Hushmates · Staging from the cloud session, step by step
 
-This is the shortest way to get Hushmates onto real staging infrastructure. **You**
-make two accounts, two tokens and one root secret; **the developer's cloud session** deploys
-and runs every test. Nothing needs installing on your computer.
+You do **6 short things** (about 45 minutes, no installing anything, A$0). The developer's
+cloud session then deploys Hushmates to staging and runs every check on the real
+infrastructure.
 
-`STAGING.md` is the other way, run from your own computer. Both end in the same place.
+## The short version
 
-**Cost: A$0.** Supabase Free, Cloudflare Free, and Supabase's built-in email
-sender, which only sends to team members. None of these can bill you
-(`COSTS.md` §1).
+| # | You do | Where | Time |
+|---|---|---|---|
+| 1 | Make a **new** Supabase account with a different email, and one Free project called `hushmates-staging` in Sydney | supabase.com | 15 min |
+| 2 | Make a Supabase **access token** limited to that project | Supabase → your account → Access Tokens | 5 min |
+| 3 | Make a **new** Cloudflare account with a different email, and one Pages project called `hushmates-staging`; make a token that can only edit Pages | dash.cloudflare.com | 10 min |
+| 4 | Generate a 48-character **root secret** and save it | Your password manager | 2 min |
+| 5 | Put the **four values** in the environment's secret settings, and allow **four web addresses** | The session's title bar → environment → Edit | 5 min |
+| 6 | Start a **new session** and paste one sentence (in step 6) | Claude | 1 min |
 
-**Nothing here touches production:**
-- Hushmallow's Supabase project and sign-in;
-- the Framer site;
-- the production DNS and Cloudflare;
-- live users.
+The detailed steps below say exactly what to click.
 
-That's why each account is **new and separate**: a token from a separate account
-can't reach production at all. The tools also check, before changing anything:
-- the Supabase token must reach the staging project and nothing else;
-- every Pages project on the Cloudflare account must have "staging" in its name.
+## The rules this follows
 
-Otherwise they refuse.
+- **Separate from production.** New accounts, new email addresses, new projects. Nothing from Hushmallow's production Supabase, Framer, DNS, Cloudflare or users is used, copied or connected. Never import real users' information into staging: it holds only test accounts the tools make and remove.
+- **Free plans only.** Supabase Free and Cloudflare Free can't bill you. Don't add a payment card to either account. If one asks for a card, stop and tell the developer.
+- **Least privilege:**
+  - Supabase: a scoped token for the one staging project, with only the permissions the deploy uses, expiring in 30 days.
+  - Cloudflare: a token that can only edit Pages, on the staging account only.
+  - The tools refuse a token that can see anything else.
+- **Secrets never appear in chat, code, logs or screenshots.**
+  - You paste each token only into the environment's secret settings.
+  - The tools never print a secret, and the reports they write hold none.
+  - Don't take screenshots of token pages.
+- **Not open to outside testers.**
+  - Signing in needs an invitation, and Supabase's built-in sender only emails members of your Supabase team. So nobody outside your team can sign in.
+  - The address can still be loaded by anyone who has it, as with any website, and it asks search engines not to list it.
+  - Opening staging to outside testers needs your approval and an email provider (D5, D12).
 
-**Who can reach staging:** anyone who has its address can load it, as with any
-website. But:
-- it asks search engines not to list it;
-- nobody gets past sign-in without an invitation;
-- Supabase's built-in sender only emails members of your Supabase team.
-
-So staging is not a public release.
+**Cost: A$0** (`COSTS.md` §1).
 
 How to read this guide:
 - 🔒 **Secret:** never paste it into the chat, an email or a document. It goes only into the place the step names.
