@@ -30,7 +30,8 @@ const LIBRARY_LINE = PAID_COUNT >= 1000
 
 // Lines that sell something not switched on in this build stay out until
 // the release that switches it on (flip the flag in that same change).
-//   beliefMallows: Belief Mallows (W2 stage 2) inside Another Angle (W8)
+//   beliefMallows: Belief Mallows (W2 stage 2) inside Another Angle (W8): src/beyond/belief (on this phone only). Off here;
+//   the development host can switch them on for one page load with ?beliefMallows=1 (src/beyond/belief/gate.js).
 export const LIVE_FEATURES = Object.freeze({ beliefMallows: false });
 
 // Customer copy. Never the word 'AI' (brand language rule): Another Angle
