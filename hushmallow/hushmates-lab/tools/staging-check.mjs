@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { createFieldCrypt } from '../supabase/functions/_shared/fieldcrypt.js';
 import { createAdmin } from '../server/admin.mjs';
+import { keyHeaders } from '../supabase/functions/_shared/postgrest-db.js';
 import { readEnvFile, problemsWith, ENV_FILE } from './staging-secrets.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -66,7 +67,9 @@ export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, secre
   const check = (area, what, ok, detail) => say(area, what, ok ? 'pass' : 'fail', ok ? '' : detail);
   const fn = `${url}/functions/v1/hushmates`;
   const run = randomBytes(4).toString('hex');
-  const MARK = `staging check ${run}: I keep replaying the meeting and wondering what they thought of me.`;
+  // letters only: a run of digits in a feeling reads as contact details, and is (rightly) refused
+  const tag = run.replace(/[0-9]/g, (d) => 'ghijklmnop'[d]);
+  const MARK = `Staging check ${tag}: I keep replaying the meeting and wondering what they thought of me.`;
   const created = { users: [], codes: [] };
   const issuer = `${url}/auth/v1`;
 
@@ -82,7 +85,7 @@ export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, secre
     body: { args },
   });
   const authAdmin = (path, { method = 'POST', body } = {}) => http(`${issuer}${path}`, {
-    method, headers: { 'content-type': 'application/json', apikey: serviceKey, authorization: `Bearer ${serviceKey}` }, body,
+    method, headers: { 'content-type': 'application/json', ...keyHeaders(serviceKey) }, body,
   });
 
   // ------------------------------------------------------------------ 1 --
@@ -95,9 +98,9 @@ export async function runStagingCheck({ url, anonKey, serviceKey, adminPg, secre
   check('function', 'refuses the public project key as a sign-in (401)', keyAsToken.status === 401, `${keyAsToken.status}`);
   const tickNoSecret = await http('/jobs/tick', { headers: { 'content-type': 'application/json' }, body: {} });
   check('function', 'the scheduler’s route is “not found” without its secret', tickNoSecret.status === 404, `${tickNoSecret.status}`);
-  const direct = await http(`${url}/rest/v1/rpc/settings`, { headers: { apikey: anonKey, authorization: `Bearer ${anonKey}`, 'content-type': 'application/json', 'content-profile': 'hushmates_api' }, body: {} });
+  const direct = await http(`${url}/rest/v1/rpc/settings`, { headers: { ...keyHeaders(anonKey), 'content-type': 'application/json', 'content-profile': 'hushmates_api' }, body: {} });
   check('database', 'a browser can’t call the database’s functions directly (anon key → permission denied)', [401, 403].includes(direct.status) && direct.body?.code === '42501', `${direct.status} ${direct.text}`);
-  const tables = await http(`${url}/rest/v1/journeys?select=*`, { method: 'GET', headers: { apikey: anonKey, authorization: `Bearer ${anonKey}`, 'accept-profile': 'hushmates' } });
+  const tables = await http(`${url}/rest/v1/journeys?select=*`, { method: 'GET', headers: { ...keyHeaders(anonKey), 'accept-profile': 'hushmates' } });
   check('database', 'a browser can’t read the tables (the private schema isn’t exposed)', [404, 406].includes(tables.status) && !Array.isArray(tables.body), `${tables.status} ${tables.text}`);
 
   // ------------------------------------------------------------------ 2 --

@@ -10,8 +10,9 @@
 //   · the JSON body's keys are the function's named arguments; a function is found only if every
 //     key is one of its arguments and every argument without a default is given (else 404, PGRST202);
 //   · arguments are converted the way PostgREST converts them (jsonb_to_record);
-//   · the database role comes from the bearer key: the service key → service_role, the anon key
-//     (or none) → anon, a signed-in person's token → authenticated; each call is one transaction
+//   · the database role comes from the bearer key, or the apikey when there's none (new-style keys,
+//     sb_…, go in apikey only, and as a Bearer token are refused as an invalid JWT): the service key
+//     → service_role, the anon key → anon, a signed-in person's token → authenticated; each call is one transaction
 //     with SET LOCAL ROLE, so a role without EXECUTE is refused (401 for anon, 403 otherwise);
 //   · a function's value is the response body; a void function answers 204;
 //   · a raised error answers 400 (P0001 and data errors), 409 (unique and foreign keys), 500 otherwise,
@@ -50,6 +51,8 @@ export function createPostgrestEmulator({ pool, serviceKey, anonKey, schemas = [
     if (!apikey) throw new RestError(401, 'no_api_key', 'No API key found in request');
     if (!same(apikey, serviceKey) && !same(apikey, anonKey)) throw new RestError(401, 'invalid_api_key', 'Invalid API key');
     const m = /^Bearer[ ]+(\S+)$/i.exec(String(req.headers.authorization || ''));
+    // a new-style key (sb_…) isn't a JWT: the platform refuses it as a Bearer token
+    if (m && /^sb_/.test(m[1])) throw new RestError(401, 'PGRST301', 'Invalid JWT');
     const token = m ? m[1] : apikey;
     if (same(token, serviceKey)) return 'service_role';
     if (same(token, anonKey)) return 'anon';

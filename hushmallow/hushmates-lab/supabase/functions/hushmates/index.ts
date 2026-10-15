@@ -4,7 +4,9 @@
 // function's secrets and wires it up. `npm run check:edge` type-checks it with Deno.
 //
 // Secrets (supabase secrets set …; never in the app or the repository):
-//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   provided by Supabase
+//   SUPABASE_URL                provided by Supabase
+//   SUPABASE_SECRET_KEYS        provided by Supabase: the project's secret keys ({"default":"sb_secret_…"});
+//   SUPABASE_SERVICE_ROLE_KEY   or, on a project still using them, the legacy service_role key
 //   HUSHMATES_DATA_KEYS        {"<kid>":"<base64 32 bytes>", …}  every key words may still be locked with
 //   HUSHMATES_DATA_KEY_ID      the kid new words are locked with
 //   HUSHMATES_MAC_KEY          base64 32 bytes (invitation codes, duplicate checks, job secret checks)
@@ -23,14 +25,16 @@
 import { createGateway } from '../_shared/gateway.js';
 import { createVerifier } from '../_shared/jwt.js';
 import { createFieldCrypt } from '../_shared/fieldcrypt.js';
-import { createPostgrestDb } from '../_shared/postgrest-db.js';
+import { createPostgrestDb, keyHeaders } from '../_shared/postgrest-db.js';
 import { createMallowFor } from '../_shared/mallow-setup.js';
 
 const env = (name: string) => Deno.env.get(name) || '';
 const must = (name: string) => { const v = env(name); if (!v) throw new Error(`the ${name} secret is not set`); return v; };
 
 const url = must('SUPABASE_URL').replace(/\/+$/, '');
-const serviceKey = must('SUPABASE_SERVICE_ROLE_KEY');
+// the new secret key if the project has one, else the legacy service_role key
+const secretKeys = (() => { try { return JSON.parse(env('SUPABASE_SECRET_KEYS') || '{}'); } catch { return {}; } })();
+const serviceKey = secretKeys.default || Object.values(secretKeys)[0] || must('SUPABASE_SERVICE_ROLE_KEY');
 const issuer = `${url}/auth/v1`;
 // the shared code only ever calls log.log and log.error
 const log = { log: (...a: unknown[]) => console.log(...a), error: (...a: unknown[]) => console.error(...a) } as unknown as Console;
@@ -58,7 +62,7 @@ const gateway = createGateway({
   // deleting their data ends the person's sign-in too (only this project's own accounts)
   authAdmin: {
     async deleteUser({ subject }: { subject: string }) {
-      const res = await fetch(`${issuer}/admin/users/${encodeURIComponent(subject)}`, { method: 'DELETE', headers: { apikey: serviceKey, authorization: `Bearer ${serviceKey}` } });
+      const res = await fetch(`${issuer}/admin/users/${encodeURIComponent(subject)}`, { method: 'DELETE', headers: keyHeaders(serviceKey) });
       if (!res.ok && res.status !== 404) throw new Error(`could not delete the sign-in (${res.status})`);
     },
   // the shared JavaScript's default for it is null, which Deno's checker reads as its only type

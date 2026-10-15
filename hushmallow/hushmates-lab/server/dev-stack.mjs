@@ -33,6 +33,7 @@ import { createGateway } from '../supabase/functions/_shared/gateway.js';
 import { createVerifier } from '../supabase/functions/_shared/jwt.js';
 import { createFieldCrypt } from '../supabase/functions/_shared/fieldcrypt.js';
 import { createMallowFor } from '../supabase/functions/_shared/mallow-setup.js';
+import { keyHeaders } from '../supabase/functions/_shared/postgrest-db.js';
 
 export async function startDevStack({
   port = 8090, host = '127.0.0.1', pgUrl = process.env.HUSHMATES_PG || 'postgres://postgres@127.0.0.1:54329', database = 'hushmates_dev',
@@ -65,7 +66,7 @@ export async function startDevStack({
   if (existsSync(keysFile)) keys = JSON.parse(readFileSync(keysFile, 'utf8'));
   else {
     keys = { dataKeyId: 'dev1', dataKey: randomBytes(32).toString('base64'), macKey: randomBytes(32).toString('base64'),
-      jobSecret: randomBytes(24).toString('base64url'), serviceKey: `dev-service-${randomBytes(18).toString('base64url')}` };
+      jobSecret: randomBytes(24).toString('base64url'), serviceKey: `sb_secret_dev_${randomBytes(18).toString('base64url')}` };   // a new-style secret key, as a new project has
     mkdirSync(join(keysFile, '..'), { recursive: true });
     writeFileSync(keysFile, JSON.stringify(keys, null, 2), { mode: 0o600 });
   }
@@ -90,7 +91,7 @@ export async function startDevStack({
       db, verifier, crypt, mallow, log, now,
       config: { allowedOrigins, jobSecret: keys.jobSecret, ownIssuers: [issuer] },
       authAdmin: { deleteUser: async ({ subject }) => {
-        const res = await fetch(`${issuer}/admin/users/${subject}`, { method: 'DELETE', headers: { apikey: keys.serviceKey, authorization: `Bearer ${keys.serviceKey}` } });
+        const res = await fetch(`${issuer}/admin/users/${subject}`, { method: 'DELETE', headers: keyHeaders(keys.serviceKey) });
         if (!res.ok && res.status !== 404) throw new Error(`auth delete ${res.status}`);    // gone already is fine
       } },
     });
@@ -141,7 +142,7 @@ export async function startDevStack({
 const freePort = () => new Promise((r, j) => { const s = net.createServer(); s.on('error', j); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 // every secret supabase/functions/hushmates/index.ts reads: Deno may read these and nothing else
-const EDGE_ENV = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'HUSHMATES_DATA_KEYS', 'HUSHMATES_DATA_KEY_ID', 'HUSHMATES_MAC_KEY', 'HUSHMATES_JOB_SECRET',
+const EDGE_ENV = ['SUPABASE_URL', 'SUPABASE_SECRET_KEYS', 'SUPABASE_SERVICE_ROLE_KEY', 'HUSHMATES_DATA_KEYS', 'HUSHMATES_DATA_KEY_ID', 'HUSHMATES_MAC_KEY', 'HUSHMATES_JOB_SECRET',
   'HUSHMATES_ALLOWED_ORIGINS', 'HUSHMATES_JWT_SECRET', 'HUSHMATES_CLIENT_IP_HEADER', 'HUSHMATES_AI_URL', 'HUSHMATES_AI_TOKEN',
   'ANOTHER_ANGLE_COST_PER_CALL_AUD', 'ANOTHER_ANGLE_TIMEOUT_MS', 'HUSHMATES_EDGE_PORT'];
 
@@ -153,7 +154,8 @@ async function startEdgeFunction({ deno, origin, allowedOrigins, keys, log, quie
   const port = await freePort();
   const env = {
     PATH: process.env.PATH || '', HOME: process.env.HOME || '', NO_COLOR: '1', ...(process.env.DENO_DIR ? { DENO_DIR: process.env.DENO_DIR } : {}),
-    SUPABASE_URL: origin, SUPABASE_SERVICE_ROLE_KEY: keys.serviceKey,
+    // as a new project gives it (a legacy-style key, a JWT, comes as SUPABASE_SERVICE_ROLE_KEY instead)
+    SUPABASE_URL: origin, ...(/^eyJ/.test(keys.serviceKey) ? { SUPABASE_SERVICE_ROLE_KEY: keys.serviceKey } : { SUPABASE_SECRET_KEYS: JSON.stringify({ default: keys.serviceKey }) }),
     HUSHMATES_DATA_KEYS: JSON.stringify({ [keys.dataKeyId]: keys.dataKey }), HUSHMATES_DATA_KEY_ID: keys.dataKeyId,
     HUSHMATES_MAC_KEY: keys.macKey, HUSHMATES_JOB_SECRET: keys.jobSecret, HUSHMATES_ALLOWED_ORIGINS: allowedOrigins.join(','),
     HUSHMATES_EDGE_PORT: String(port),

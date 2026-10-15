@@ -347,10 +347,13 @@ export async function createAuthEmulator({
     return [204, null];
   }
 
+  // the service key, as Supabase takes it: a legacy key (a JWT) as a Bearer token; a new secret key
+  // (sb_secret_…) in `apikey` only, since the platform refuses a key that isn't a JWT as a Bearer token
   function admin(req) {
     const m = /^Bearer[ ]+(\S+)$/i.exec(String(req.headers.authorization ?? ''));
-    if (!m) fail(401, 'no_authorization', 'This endpoint requires a Bearer token');
-    if (!sameSecret(m[1], serviceKey)) fail(403, 'not_admin', 'User not allowed');
+    if (m && /^sb_/.test(m[1])) fail(401, 'bad_jwt', 'Invalid JWT');
+    if (!m && !sameSecret(req.headers.apikey, serviceKey)) fail(401, 'no_authorization', 'This endpoint requires a Bearer token');
+    if (!sameSecret(m ? m[1] : req.headers.apikey, serviceKey)) fail(403, 'not_admin', 'User not allowed');
   }
 
   // POST /admin/users { email, email_confirm }: a user whose email is taken as proven (no email sent)

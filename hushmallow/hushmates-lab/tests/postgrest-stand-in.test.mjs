@@ -11,7 +11,8 @@ import { createPostgrestEmulator } from '../server/postgrest-emulator.mjs';
 import { createPostgrestDb } from '../supabase/functions/_shared/postgrest-db.js';
 import { freshDb } from './backend-helpers.mjs';
 
-const SERVICE = 'service-key-for-these-tests-only';
+const SERVICE = 'sb_secret_service-key-for-these-tests-only';   // a new-style secret key (apikey only)
+const LEGACY = 'eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.legacy-service-key';   // a legacy one (a JWT)
 const ANON = 'anon-key-for-these-tests-only';
 const USER = 'a-signed-in-person-s-token';
 
@@ -26,7 +27,7 @@ test.before(async () => {
 });
 test.after(async () => { await new Promise((r) => server.close(r)); await db.drop(); });
 
-const raw = (fn, body, { key = SERVICE, bearer = key, profile = 'hushmates_api', method = 'POST' } = {}) => fetch(`${url}/rest/v1/rpc/${fn}`, {
+const raw = (fn, body, { key = SERVICE, bearer = /^eyJ/.test(String(key)) ? key : null, profile = 'hushmates_api', method = 'POST' } = {}) => fetch(`${url}/rest/v1/rpc/${fn}`, {
   method,
   headers: { ...(key ? { apikey: key } : {}), ...(bearer ? { authorization: `Bearer ${bearer}` } : {}), 'content-type': 'application/json', ...(profile ? { 'content-profile': profile } : {}) },
   body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
@@ -47,6 +48,26 @@ test('the Edge Function’s database client works through PostgREST’s interfac
   assert.equal(typeof await edgeDb.rpc('ai_summary', { p_member: null }), 'object');
   // a refused call is an error the function sees (and logs), with PostgREST's status
   await assert.rejects(() => createPostgrestDb({ url, serviceKey: 'wrong-key-wrong-key-wrong' }).rpc('settings', {}), (e) => e.status === 401);
+  // a new-style key sent as a Bearer token is refused, as on Supabase ("Invalid JWT"): the client never does that
+  const asBearer = await raw('settings', {}, { bearer: SERVICE });
+  assert.equal(asBearer.status, 401);
+  assert.match((await asBearer.json()).message, /Invalid JWT/);
+});
+
+test('a project still on the legacy keys: the same client sends the service key as a Bearer token too', async () => {
+  const rest = createPostgrestEmulator({ pool: db.pool, serviceKey: LEGACY, anonKey: ANON, log: { error() {} } });
+  const srv = http.createServer(async (req, res) => { await rest.handle(req, res, new URL(req.url, 'http://x').pathname); });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  try {
+    const seen = [];
+    const spy = (u, o) => { seen.push(o.headers); return fetch(u, o); };
+    const legacyDb = createPostgrestDb({ url: `http://127.0.0.1:${srv.address().port}`, serviceKey: LEGACY, fetch: spy });
+    assert.equal(typeof await legacyDb.rpc('settings', {}), 'object');
+    assert.equal(seen[0].authorization, `Bearer ${LEGACY}`);
+    const newDb = [];
+    await createPostgrestDb({ url, serviceKey: SERVICE, fetch: (u, o) => { newDb.push(o.headers); return fetch(u, o); } }).rpc('settings', {});
+    assert.equal(newDb[0].authorization, undefined, 'a new-style key was sent as a Bearer token');
+  } finally { await new Promise((r) => srv.close(r)); }
 });
 
 test('only the service role may call hushmates_api: Postgres’s own grants decide', async () => {
