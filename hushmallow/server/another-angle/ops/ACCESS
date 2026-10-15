@@ -1,0 +1,17 @@
+# Trigger for .github/workflows/another-angle-access.yml (see ops/access.mjs).
+# The invite codes leave the job only sealed to this public key.
+-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAsFlDPHpnOOOaJsKmkqPU
+vXlIvtxsg8U8lisKUp/jt+iBM8f7o0/yhHgZFqQEXFWqeNKvRsIDzRulUHUGIDsX
+MjBvnk7uaEFkkpdLRAg6zBTh1JGJUuFssR+xR0v8B7fGMc2WGrgIpgC2kl3+NYZ2
+s3j5Wg2GA60IZM2Uk+JsVktSTcBRK7/G2Z/2iEet7Y6kdPFw+RR7MmTnhcIhc1vY
+5ET39zU4jMVbC3J5iIEM4CyvPibertI4aLAu8VTFgJZPja7ATyaxG6Zhy7Hhi9ZR
+YWDqXa/w/r+aYUKvjRrSKaR2voo0c9HWa8bwKjYKfKrMc3Q3wyih8FW5Tdk1FLlm
+FsRtrkaEzNSzI3P4qh9M5G5UFROCWoIFqKQXuH81T3VQDg5LBCCQcGLUvjs27odk
+UA+VdVT1D6PRl02xxXodD005LXHdSxmtc/5s8OjpHa5jAmk0fjgMg+HvuntmsrrB
+Y4sGSd84FNAFyL8qs7ZNfSpfuaGvG6QPvltEvM983FhE6GbYFiA4sRrYpkxBdCZE
+qLVSIzvbX7+IGkg8QrGV2bxxQsG3j0qfE7ZM7SsX11k/et7ZoSJGmCBTr5YztD4N
+hF11VOAmZTFdRRAkJv2jaPAaAMx3JkWClwCfpyjL4QLI8tI/UBDIEU9Kitff0chk
+bg37TIW7CESx3wtUrSLQzLcCAwEAAQ==
+-----END PUBLIC KEY-----
+mode: dry-run

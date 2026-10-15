@@ -1,0 +1,51 @@
+# Locks the Another Angle Workers (production and staging) to invited testers
+# and proves it with direct calls to the live Workers: hushmallow/server/
+# another-angle/ops/access.mjs. It sets TESTER_INVITE_CODES and a brand-new
+# TOKEN_SIGNING_KEY through the Cloudflare API (deleting
+# TOKEN_SIGNING_KEY_PREVIOUS), then checks that no token, an old token, a
+# forged or expired token, no invite, a wrong invite and a foreign origin are
+# all refused, and that a real invite works. If anything cannot be verified it
+# deletes ANTHROPIC_API_KEY from that Worker (the model is off until the next
+# deploy from main). The new invite codes leave the job only sealed to the
+# public key in ops/ACCESS; the log shows check names and HTTP statuses only.
+#
+# Runs only for a push to the owner-approved work branch that edits
+# ops/ACCESS (2026-10-15: the owner asked for invite codes and a key rotation).
+# No dependencies are installed: the script uses Node's own fetch and crypto.
+name: Another Angle access
+
+on:
+  push:
+    branches: ['claude/upbeat-pasteur-b0aqg1']
+    paths: ['hushmallow/server/another-angle/ops/ACCESS']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: another-angle-access
+  cancel-in-progress: false
+
+jobs:
+  access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rehearse locally first (a stand-in Worker and Cloudflare API, no secrets)
+        working-directory: hushmallow/server/another-angle
+        run: |
+          node ops/rehearse.mjs > "$RUNNER_TEMP/rehearse.log" 2>&1 || { tail -40 "$RUNNER_TEMP/rehearse.log"; exit 1; }
+          tail -1 "$RUNNER_TEMP/rehearse.log"
+          node ops/rehearse.mjs --broken > "$RUNNER_TEMP/rehearse-broken.log" 2>&1 || { tail -40 "$RUNNER_TEMP/rehearse-broken.log"; exit 1; }
+          tail -1 "$RUNNER_TEMP/rehearse-broken.log"
+          rm -f "$RUNNER_TEMP"/rehearse*.log
+      - name: Lock the live Workers to invited testers and verify
+        working-directory: hushmallow/server/another-angle
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node ops/access.mjs
